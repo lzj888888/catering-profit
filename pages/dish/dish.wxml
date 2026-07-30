@@ -1,0 +1,7 @@
+<view class="form">
+  <view class="field"><text>菜品名称</text><input value="{{name}}" bindinput="onInput" data-field="name" placeholder="如 招牌炒饭"/></view>
+  <view class="field"><text>售价(元)</text><input type="digit" value="{{sellPrice}}" bindinput="onInput" data-field="sellPrice" placeholder="0"/></view>
+  <view class="field"><text>单位成本(元)</text><input type="digit" value="{{unitCost}}" bindinput="onInput" data-field="unitCost" placeholder="0"/></view>
+  <view class="field"><text>销量</text><input type="digit" value="{{soldQty}}" bindinput="onInput" data-field="soldQty" placeholder="0"/></view>
+  <button class="save" bindtap="save">保存</button>
+</view>
