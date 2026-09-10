@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>餐饮毛利核算 · 验证版</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: #f2f3f5; color: #1f2329; padding: 16px; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .tip { font-size: 12px; color: #8a8f99; margin: 0 0 14px; }
+  .summary { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .card { background: #fff; border-radius: 12px; padding: 12px 14px; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+  .card .label { font-size: 12px; color: #8a8f99; display: block; }
+  .card .value { font-size: 22px; font-weight: 700; color: #1f2329; }
+  .card.hl { background: linear-gradient(135deg, #07c160, #06a050); }
+  .card.hl .label, .card.hl .value, .card.hl .sub { color: #fff; }
+  .card.hl .sub { font-size: 12px; opacity: .9; }
+  .card.net .value { color: #f5482d; }
+  .sec { font-size: 14px; font-weight: 600; margin: 14px 0 8px; }
+  .row { display: flex; align-items: center; background: #fff; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+  .row span:first-child { width: 56px; font-size: 14px; color: #4e5969; }
+  .row input { flex: 1; border: none; outline: none; font-size: 15px; text-align: right; background: transparent; }
+  .dish { background: #fff; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; position: relative; }
+  .dish .top { display: flex; justify-content: space-between; align-items: center; }
+  .dish .name { font-size: 15px; font-weight: 600; }
+  .dish .meta { font-size: 12px; color: #8a8f99; margin-top: 2px; }
+  .dish .profit { font-size: 13px; color: #07c160; font-weight: 600; margin-top: 4px; }
+  .dish .profit.neg { color: #f5482d; }
+  .del { position: absolute; top: 10px; right: 12px; color: #f5482d; font-size: 13px; }
+  .del:hover { opacity: .7; }
+  .add { width: 100%; border: none; background: #07c160; color: #fff; font-size: 15px; font-weight: 600; padding: 12px; border-radius: 10px; margin-top: 4px; cursor: pointer; }
+  .add:active { opacity: .85; }
+  .empty { text-align: center; color: #b0b4bd; font-size: 13px; padding: 18px; }
+  .actions { display: flex; gap: 10px; margin: 14px 0; }
+  .btn2 { flex: 1; border: 1px solid #d0d3d9; background: #fff; color: #4e5969; font-size: 13px; padding: 9px; border-radius: 10px; cursor: pointer; }
+  .btn2:active { background: #f2f3f5; }
+  /* 简易弹窗 */
+  .mask { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: none; align-items: flex-end; }
+  .mask.show { display: flex; }
+  .sheet { background: #fff; width: 100%; border-radius: 16px 16px 0 0; padding: 18px 16px 24px; }
+  .sheet h3 { margin: 0 0 14px; font-size: 16px; }
+  .fld { margin-bottom: 12px; }
+  .fld label { display: block; font-size: 13px; color: #4e5969; margin-bottom: 5px; }
+  .fld input { width: 100%; border: 1px solid #e5e6eb; border-radius: 8px; padding: 10px; font-size: 15px; outline: none; }
+  .sheet .ok { width: 100%; border: none; background: #07c160; color: #fff; font-size: 15px; font-weight: 600; padding: 12px; border-radius: 10px; margin-top: 6px; cursor: pointer; }
+  .warn { font-size: 12px; color: #f5482d; margin: 10px 0; display: none; }
+</style>
+</head>
+<body>
+  <h1>🍜 餐饮毛利核算</h1>
+  <p class="tip">验证版（与微信小程序同套算法）· 数据自动保存在本机浏览器</p>
+
+  <div class="summary">
+    <div class="card"><span class="label">营收</span><span class="value" id="s-rev">¥0.00</span></div>
+    <div class="card"><span class="label">食材成本</span><span class="value" id="s-cost">¥0.00</span></div>
+    <div class="card hl"><span class="label">毛利</span><span class="value" id="s-gp">¥0.00</span><span class="sub">毛利率 <b id="s-rate">0.0</b>%</span></div>
+    <div class="card net"><span class="label">净利</span><span class="value" id="s-net">¥0.00</span></div>
+  </div>
+
+  <div class="sec">固定成本（日）</div>
+  <div class="row"><span>房租</span><input type="number" id="fc-rent" placeholder="0" inputmode="decimal"></div>
+  <div class="row"><span>人工</span><input type="number" id="fc-labor" placeholder="0" inputmode="decimal"></div>
+  <div class="row"><span>水电</span><input type="number" id="fc-util" placeholder="0" inputmode="decimal"></div>
+
+  <div class="sec">菜品（按销量核算）</div>
+  <div id="dish-list"></div>
+  <div id="dish-empty" class="empty">还没有菜品，点下面添加</div>
+
+  <button class="add" id="btn-add">+ 添加菜品</button>
+
+  <div class="actions">
+    <button class="btn2" id="btn-sample">填入示例数据</button>
+    <button class="btn2" id="btn-clear">清空</button>
+  </div>
+
+  <!-- 添加/编辑弹窗 -->
+  <div class="mask" id="mask">
+    <div class="sheet">
+      <h3 id="sheet-title">添加菜品</h3>
+      <div class="fld"><label>菜名</label><input id="i-name" placeholder="如 招牌牛肉面"></div>
+      <div class="fld"><label>售价（元）</label><input id="i-price" type="number" inputmode="decimal" placeholder="如 28"></div>
+      <div class="fld"><label>单位成本（元）</label><input id="i-cost" type="number" inputmode="decimal" placeholder="食材+包装"></div>
+      <div class="fld"><label>当日销量（份）</label><input id="i-qty" type="number" inputmode="decimal" placeholder="如 60"></div>
+      <div class="warn" id="warn">请填写完整且为有效数字</div>
+      <button class="ok" id="sheet-ok">保存</button>
+    </div>
+  </div>
+
+<script>
+// ===== 与小程序完全一致的算法 =====
+function calcDish(d){
+  const sellPrice=Number(d.sellPrice)||0, unitCost=Number(d.unitCost)||0, soldQty=Number(d.soldQty)||0;
+  const revenue=sellPrice*soldQty, cost=unitCost*soldQty, profit=revenue-cost;
+  const rate=revenue>0?(profit/revenue)*100:0;
+  return {revenue,cost,profit,rate};
+}
+function calcSummary(dishes,fc){
+  fc=fc||{rent:0,labor:0,utility:0};
+  let totalRevenue=0,totalCost=0;
+  dishes.forEach(d=>{const r=calcDish(d);totalRevenue+=r.revenue;totalCost+=r.cost;});
+  const grossProfit=totalRevenue-totalCost;
+  const grossRate=totalRevenue>0?(grossProfit/totalRevenue)*100:0;
+  const fixedTotal=(Number(fc.rent)||0)+(Number(fc.labor)||0)+(Number(fc.utility)||0);
+  const netProfit=grossProfit-fixedTotal;
+  return {totalRevenue,totalCost,grossProfit,grossRate,fixedTotal,netProfit};
+}
+const yuan=n=>(n<0?'-¥':'¥')+Math.abs(Number(n)).toFixed(2);
+const $id=id=>document.getElementById(id);
+
+function load(key,def){try{const v=localStorage.getItem(key);return v?JSON.parse(v):def;}catch(e){return def;}}
+function save(){try{localStorage.setItem('wb_dishes',JSON.stringify(dishes));localStorage.setItem('wb_fc',JSON.stringify(fixedCosts));}catch(e){}}
+let dishes=load('wb_dishes',[]);
+let fixedCosts=load('wb_fc',{rent:0,labor:0,utility:0});
+let editId=null;
+
+function render(){
+  // 固定成本输入
+  $id('fc-rent').value=fixedCosts.rent;$id('fc-labor').value=fixedCosts.labor;$id('fc-util').value=fixedCosts.utility;
+  // 菜品列表
+  const list=$id('dish-list');list.innerHTML='';
+  $id('dish-empty').style.display=dishes.length?'none':'block';
+  dishes.forEach(d=>{
+    const r=calcDish(d);
+    const el=document.createElement('div');el.className='dish';
+    el.innerHTML=`<div class="top"><span class="name">${d.name}</span></div>
+      <div class="meta">售价 ¥${d.sellPrice} · 成本 ¥${d.unitCost} · 售 ${d.soldQty} 份</div>
+      <div class="profit ${r.profit<0?'neg':''}">单品毛利 ${yuan(r.profit)}（毛利率 ${r.rate.toFixed(1)}%）</div>
+      <span class="del" data-id="${d.id}">删</span>`;
+    el.querySelector('.del').onclick=e=>{dishes=dishes.filter(x=>x.id!==d.id);save();render();};
+    el.querySelector('.name').onclick=()=>openSheet(d.id);
+    list.appendChild(el);
+  });
+  // 汇总
+  const s=calcSummary(dishes,fixedCosts);
+  $id('s-rev').textContent=yuan(s.totalRevenue);
+  $id('s-cost').textContent=yuan(s.totalCost);
+  $id('s-gp').textContent=yuan(s.grossProfit);
+  $id('s-rate').textContent=s.grossRate.toFixed(1);
+  $id('s-net').textContent=yuan(s.netProfit);
+}
+
+// 固定成本输入
+['rent','labor','utility'].forEach(f=>{
+  $id('fc-'+f).oninput=e=>{fixedCosts[f]=Number(e.target.value)||0;save();render();};
+});
+
+// 弹窗
+function openSheet(id){
+  editId=id||null;
+  $id('warn').style.display='none';
+  if(id){const d=dishes.find(x=>x.id===id);$id('sheet-title').textContent='编辑菜品';
+    $id('i-name').value=d.name;$id('i-price').value=d.sellPrice;$id('i-cost').value=d.unitCost;$id('i-qty').value=d.soldQty;
+  }else{$id('sheet-title').textContent='添加菜品';$id('i-name').value='';$id('i-price').value='';$id('i-cost').value='';$id('i-qty').value='';}
+  $id('mask').classList.add('show');
+}
+function closeSheet(){$id('mask').classList.remove('show');}
+$id('btn-add').onclick=()=>openSheet(null);
+$id('mask').onclick=e=>{if(e.target.id==='mask')closeSheet();};
+$id('sheet-ok').onclick=()=>{
+  const name=$id('i-name').value.trim();
+  const sellPrice=Number($id('i-price').value),unitCost=Number($id('i-cost').value),soldQty=Number($id('i-qty').value);
+  if(!name||[sellPrice,unitCost,soldQty].some(v=>!(v>=0))||[sellPrice,unitCost,soldQty].some(v=>isNaN(v))){
+    $id('warn').style.display='block';return;
+  }
+  if(editId){const d=dishes.find(x=>x.id===editId);Object.assign(d,{name,sellPrice,unitCost,soldQty});}
+  else dishes.push({id:'d'+Date.now(),name,sellPrice,unitCost,soldQty});
+  save();closeSheet();render();
+};
+
+// 示例 / 清空
+$id('btn-sample').onclick=()=>{
+  dishes=[
+    {id:'d1',name:'招牌牛肉面',sellPrice:28,unitCost:11,soldQty:60},
+    {id:'d2',name:'酸辣粉',sellPrice:16,unitCost:6,soldQty:90},
+    {id:'d3',name:'卤味拼盘',sellPrice:38,unitCost:20,soldQty:25}
+  ];
+  fixedCosts={rent:300,labor:500,utility:120};
+  save();render();
+};
+$id('btn-clear').onclick=()=>{dishes=[];fixedCosts={rent:0,labor:0,utility:0};save();render();};
+
+render();
+</script>
+</body>
+</html>

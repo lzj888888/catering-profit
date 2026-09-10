@@ -1,0 +1,13 @@
+{
+  "description": "餐饮毛利核算小程序",
+  "appid": "touristappid",
+  "projectname": "catering-profit",
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "postcss": true,
+    "minified": true
+  },
+  "compileType": "miniprogram",
+  "libVersion": "latest"
+}
