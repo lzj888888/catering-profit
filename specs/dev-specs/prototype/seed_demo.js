@@ -59,6 +59,16 @@ async function insertMany(coll, rows) {
 }
 
 exports.main = async (event, context) => {
+  // ===== 代码级环境门禁（运维纪律，非仅注释）=====
+  // 仅允许 dev 环境运行；任何非 dev（含 prod / 未知）一律拒绝，防演示数据污染真实业务库。
+  let curEnv = '';
+  try { curEnv = String(cloud.getWXContext().ENV || ''); } catch (e) { curEnv = String(process.env.TCB_ENV || ''); }
+  curEnv = curEnv.toLowerCase();
+  if (!/^dev/.test(curEnv)) {
+    console.error(`[SEED_DEMO_BLOCKED] env="${curEnv}" 非 dev 前缀，禁止灌演示数据！请立即删除本云函数。`);
+    return { blocked: true, reason: 'non-dev-env', env: curEnv };
+  }
+
   const result = { steps: [], errors: [] };
 
   // ---------- 0. 建/取 demo 用户+店铺+权限（幂等）----------

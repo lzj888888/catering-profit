@@ -106,13 +106,31 @@ const INDEXES = {
   feature_permissions: [
     { name: 'idx_fp_plan', keys: { plan_id: 1 } },
   ],
+  // 审查 P1-5：补齐此前遗漏的四张集合索引
+  shop_stored_value: [
+    { name: 'idx_sv_shop', keys: { shop_id: 1 } },
+    { name: 'idx_sv_shop_month', keys: { shop_id: 1, month: 1 } },
+  ],
+  shop_credit_ledger: [
+    { name: 'idx_cl_shop', keys: { shop_id: 1 } },
+    { name: 'idx_cl_shop_created', keys: { shop_id: 1, created_at: -1 } },
+  ],
+  shop_income_item: [
+    { name: 'idx_ii_shop_month', keys: { shop_id: 1, month: 1 } },
+  ],
+  shop_expense_item: [
+    { name: 'idx_ei_shop_month', keys: { shop_id: 1, month: 1 } },
+  ],
 };
 
 // ===== 3. 种子数据（套餐 + 功能权限，价格/名从表读，禁硬编码）=====
+// 价格/天数严格对齐商业化方案_v1.4 四档套餐（单位：price=分整数，days=自然日）
+// 阶段1前端仅展示单次月包；季/年/自动订阅后台预埋、前端按阶段隐藏
 const SEED_PLANS = [
-  { plan_id: 'plan_basic_month', name: '真实利润·月', price: 2990, days: 30, type: 'one_time', enabled: true, sort: 1 },
-  { plan_id: 'plan_basic_quarter', name: '真实利润·季', price: 7990, days: 90, type: 'one_time', enabled: true, sort: 2 },
-  { plan_id: 'plan_basic_year', name: '真实利润·年', price: 29900, days: 365, type: 'one_time', enabled: true, sort: 3 },
+  { plan_id: 'plan_basic_month', name: '真实利润·月', price: 2590, days: 31, type: 'one_time', enabled: true, sort: 1 },
+  { plan_id: 'plan_basic_quarter', name: '真实利润·季', price: 6900, days: 90, type: 'one_time', enabled: true, sort: 2 },
+  { plan_id: 'plan_basic_year', name: '真实利润·年', price: 19900, days: 365, type: 'one_time', enabled: true, sort: 3 },
+  { plan_id: 'plan_auto_subscribe', name: '真实利润·自动续费(月)', price: 1990, days: 31, type: 'auto_subscribe', enabled: true, sort: 4 },
 ];
 // 真实利润功能对全部付费套餐开放
 const SEED_FEATURES = SEED_PLANS.map(p => ({ plan_id: p.plan_id, feature_key: 'real_profit', enabled: true }))
