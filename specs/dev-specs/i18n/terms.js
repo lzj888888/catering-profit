@@ -127,8 +127,17 @@ function t(path) {
 
 /**
  * 错误码 → 前端展示文案映射（唯一来源，禁止在 wxml/wxss 硬编码中文提示）
- * 取值：const msg = ERROR_MESSAGES[res.code] || ERROR_MESSAGES['ERR.SYSTEM']
- * 与 core/09_统一错误码表.md §3 同步锁死。
+ *
+ * ⚠️ 易错点（务必按此取值）：
+ *   后端返回的是 **wire code**（如 UNAUTHORIZED / FREE_LIMIT_EXCEEDED，见 core/09 §1）；
+ *   而本表键是 **i18n key**（如 ERR.UNAUTHORIZED / ERR.FREE_LIMIT，见 core/09 §3）。
+ *   两者**不是同一个东西** —— 直接写 ERROR_MESSAGES[res.code] 会**永远 miss**，
+ *   导致所有业务提示都被吞成「系统异常，请稍后重试」。必须先经 CODE_TO_I18N 转一次：
+ *     const msg = msgOf(res.code);                                          // ✅ 推荐
+ *     const msg = ERROR_MESSAGES[CODE_TO_I18N[res.code] || 'ERR.SYSTEM'];   // ✅ 等价
+ *     const msg = ERROR_MESSAGES[res.code] || ERROR_MESSAGES['ERR.SYSTEM']; // ❌ 永远 miss
+ *
+ * 与 core/09_统一错误码表.md §3 同步锁死；双向一致性由 prototype/check_error_codes.js 机械校验。
  */
 const ERROR_MESSAGES = {
   OK: '',
@@ -142,6 +151,7 @@ const ERROR_MESSAGES = {
   'ERR.ARCHIVED_LOCKED': '归档月份为只读，不可修改',
   'ERR.SNAPSHOT_IMMUTABLE': '历史快照不可修改',
   'ERR.FREE_LIMIT': '已达免费上限，开通后解锁',
+  'ERR.HARD_CAP': '已达系统上限，请联系客服',
   'ERR.FEATURE_LOCKED': '该功能需开通后使用',
   'ERR.PLAN_MISMATCH': '套餐信息异常，请联系客服',
   'ERR.BOM_CYCLE': '检测到循环引用，请调整配方',
@@ -156,8 +166,66 @@ const ERROR_MESSAGES = {
   'ERR.ADMIN_TOKEN_EXPIRED': '登录已过期，请重新登录',
   'ERR.ADMIN_LOCKED': '账号已锁定，请 30 分钟后再试',
   'ERR.ADMIN_PERM': '权限不足',
+  'ERR.ADMIN_INITED': '后台已完成初始化，无需重复操作',
   'ERR.SYSTEM': '系统异常，请稍后重试',
   'ERR.NOT_IMPL': '功能暂未开放',
 };
 
-module.exports = { TERMS, t, ERROR_MESSAGES };
+/**
+ * wire code（core/09 §1 的 code 列）→ i18n key（core/09 §3 的 i18n key 列 / 本表 ERROR_MESSAGES 键）
+ *
+ * ⚠️ 新增错误码必须**三处同步**：core/09 §1 表 + core/09 §3 表 + 本表 ERROR_MESSAGES 键。
+ *    三者由 prototype/check_error_codes.js 做双向断言，任一处漏改会直接报 fail。
+ */
+const CODE_TO_I18N = {
+  // 1.1 基础 / 鉴权
+  SUCCESS: 'OK',
+  UNAUTHORIZED: 'ERR.UNAUTHORIZED',
+  USER_NOT_FOUND: 'ERR.USER_NOT_FOUND',
+  FORBIDDEN: 'ERR.FORBIDDEN',
+  RATE_LIMITED: 'ERR.RATE_LIMITED',
+  INVALID_PARAM: 'ERR.INVALID_PARAM',
+  // 1.2 资源 / 业务状态
+  RESOURCE_NOT_FOUND: 'ERR.RESOURCE_NOT_FOUND',
+  SOFT_DELETED: 'ERR.SOFT_DELETED',
+  ARCHIVED_LOCKED: 'ERR.ARCHIVED_LOCKED',
+  SNAPSHOT_IMMUTABLE: 'ERR.SNAPSHOT_IMMUTABLE',
+  // 1.3 配额 / 付费
+  FREE_LIMIT_EXCEEDED: 'ERR.FREE_LIMIT',
+  HARD_CAP_EXCEEDED: 'ERR.HARD_CAP',
+  FEATURE_LOCKED: 'ERR.FEATURE_LOCKED',
+  PLAN_MISMATCH: 'ERR.PLAN_MISMATCH',
+  // 1.4 M2/M3 算法
+  BOM_CYCLE_DETECTED: 'ERR.BOM_CYCLE',
+  BOM_DEPTH_EXCEEDED: 'ERR.BOM_DEPTH',
+  M2_RED_ALERT: 'ERR.M2_RED_ALERT',
+  AMORT_TERMINATED: 'OK',
+  // 1.5 支付 / 订单 / 退款
+  PAY_FAILED: 'ERR.PAY_FAILED',
+  PAY_PENDING: 'ERR.PAY_PENDING',
+  ORDER_NOT_FOUND: 'ERR.ORDER_NOT_FOUND',
+  ORDER_DUPLICATE: 'OK',
+  REFUND_FAILED: 'ERR.REFUND_FAILED',
+  REFUND_NOT_ALLOWED: 'ERR.REFUND_NOT_ALLOWED',
+  // 1.6 管理端
+  ADMIN_AUTH_FAILED: 'ERR.ADMIN_AUTH',
+  ADMIN_TOKEN_EXPIRED: 'ERR.ADMIN_TOKEN_EXPIRED',
+  ADMIN_LOCKED: 'ERR.ADMIN_LOCKED',
+  ADMIN_PERMISSION_DENIED: 'ERR.ADMIN_PERM',
+  ADMIN_OP_IDEMPOTENT: 'OK',
+  ADMIN_ALREADY_INIT: 'ERR.ADMIN_INITED',
+  // 1.7 系统
+  SYSTEM_ERROR: 'ERR.SYSTEM',
+  NOT_IMPLEMENTED: 'ERR.NOT_IMPL',
+};
+
+/**
+ * 取值助手：wire code → 前端展示文案；未知码回落 ERR.SYSTEM。
+ * 用法：const msg = msgOf(res.code);
+ */
+function msgOf(code) {
+  const key = CODE_TO_I18N[code] || 'ERR.SYSTEM';
+  return ERROR_MESSAGES[key] || ERROR_MESSAGES['ERR.SYSTEM'];
+}
+
+module.exports = { TERMS, t, ERROR_MESSAGES, CODE_TO_I18N, msgOf };
