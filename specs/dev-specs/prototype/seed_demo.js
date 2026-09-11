@@ -61,16 +61,21 @@ async function insertMany(coll, rows) {
 exports.main = async (event, context) => {
   // ===== 代码级环境门禁（运维纪律，非仅注释）=====
   // 仅允许 dev 环境运行；任何非 dev（含 prod / 未知）一律拒绝，防演示数据污染真实业务库。
-  // 匹配规则（详见 core/06 §1.3，commit 8a9c5e0 教训）：
-  //   1) 若配置了 DEV_ENV_ID 环境变量 → 精确白名单（curEnv === DEV_ENV_ID）；
-  //   2) 否则启发式：含 "dev" 子串且不得含 "prod" 子串（/dev/.test && !/prod/.test），
-  //      拦住 catering-prod-* 及 catering-*-dev-mirror 这类命名撞车。
+  // 匹配规则（详见 core/06 §1.3.1，commit 8a9c5e0 教训）：
+  //   1) 若配置了 DEV_ENV_ID 环境变量 → 走精确白名单（curEnv === DEV_ENV_ID）；否则启发式：放行含 "dev" 子串的环境。
+  //   2) 【始终生效的兜底】任何情况下 curEnv 含 "prod" 子串一律拒绝 —— 白名单分支同样受此约束，
+  //      防 DEV_ENV_ID 被误配到 prod 云函数环境变量（复制环境变量是常见人为事故）导致 prod 被放行。
+  //      命名约定为 catering-prod-*，该兜底对正常 prod 恒成立、不误伤放行路径。
   //   失败方向关闭，且本分支仅写服务端日志、绝不回传 env 值（core/06:58-62 环境 ID 属敏感信息）。
+  // env 取值（与 init_db.js 对齐）：优先 wxContext.ENV，其为空(undefined/'')或 getWXContext() 抛错时回落到 TCB_ENV。
+  //   ⚠️ 兜底必须写在 try 表达式内部：若只在 catch 里兜底，getWXContext() 正常返回但 ENV 为空时
+  //   curEnv 会被赋成 '' 且 catch 不触发 → TCB_ENV 兜底永不生效 → /dev/.test('') 为 false → 误拦 dev 自身。
+  //   （本函数正是 core/14:14 / README 描述的"手动测试调用"场景，getWXContext() 字段残缺概率最高。）
   let curEnv = '';
-  try { curEnv = String(cloud.getWXContext().ENV || ''); } catch (e) { curEnv = String(process.env.TCB_ENV || ''); }
+  try { curEnv = String(cloud.getWXContext().ENV || process.env.TCB_ENV || ''); } catch (e) { curEnv = String(process.env.TCB_ENV || ''); }
   curEnv = curEnv.toLowerCase();
   const DEV_ENV_ID = (process.env.DEV_ENV_ID || '').toLowerCase();
-  const isDevEnv = DEV_ENV_ID ? (curEnv === DEV_ENV_ID) : (/dev/.test(curEnv) && !/prod/.test(curEnv));
+  const isDevEnv = (DEV_ENV_ID ? (curEnv === DEV_ENV_ID) : /dev/.test(curEnv)) && !/prod/.test(curEnv);
   if (!isDevEnv) {
     console.error(`[SEED_DEMO_BLOCKED] env="${curEnv}" 非 dev 环境，禁止灌演示数据！请立即删除本云函数。`);
     return { blocked: true, reason: 'non-dev-env' };
