@@ -141,10 +141,17 @@ exports.main = async (event, context) => {
   // 🚫 生产环境部署禁令（与 seed_demo 一致）：initDb 仅允许 dev 环境运行。
   // 生产环境 25 张集合由云开发控制台手工创建（一次性），本函数**绝不部署到 prod**。
   // 约定：环境 ID 形如 catering-dev-xxxxxx（dev）/ catering-prod-xxxxxx（prod），见 写码阶段启动执行手册 / core/06。
-  // 本门禁仅放行含 "dev" 子串的环境（/dev/.test），含 "prod" 的 prod 环境一律拒绝，防止种子/演示数据污染真实业务库。
+  // 门禁匹配规则（详见 core/06 §1.3，commit 8a9c5e0 教训）：
+  //   1) 若配置了 DEV_ENV_ID 环境变量 → 改用精确白名单（env === DEV_ENV_ID），对命名漂移/随机后缀双重免疫（推荐最终形态）；
+  //   2) 否则启发式：须含 "dev" 子串且不得含 "prod" 子串（/dev/.test && !/prod/.test），
+  //      既放行 catering-dev-*，又拦住 catering-prod-* 及 catering-*-dev-mirror 这类命名撞车，防种子/演示数据污染真实业务库。
+  //   失败方向一律关闭（env 取空或匹配失败都 blocked），且本分支仅写服务端日志、绝不回传 env 值（core/06:58-62 环境 ID 属敏感信息）。
   const wxContext = cloud.getWXContext();
   const env = (wxContext.ENV || process.env.TCB_ENV || '').toLowerCase();
-  if (!/dev/.test(env)) {
+  const DEV_ENV_ID = (process.env.DEV_ENV_ID || '').toLowerCase();
+  const isDevEnv = DEV_ENV_ID ? (env === DEV_ENV_ID) : (/dev/.test(env) && !/prod/.test(env));
+  if (!isDevEnv) {
+    console.error(`[INITDB_BLOCKED] env="${env}" 非 dev 环境，禁止建库与播种演示数据`);
     return { blocked: true, reason: 'INITDB_DEV_ONLY: initDb 仅允许 dev 环境，prod 集合请由控制台手工创建' };
   }
   const result = { created: [], indexes: [], seeds: [], errors: [] };

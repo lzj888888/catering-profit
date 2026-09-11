@@ -61,10 +61,17 @@ async function insertMany(coll, rows) {
 exports.main = async (event, context) => {
   // ===== 代码级环境门禁（运维纪律，非仅注释）=====
   // 仅允许 dev 环境运行；任何非 dev（含 prod / 未知）一律拒绝，防演示数据污染真实业务库。
+  // 匹配规则（详见 core/06 §1.3，commit 8a9c5e0 教训）：
+  //   1) 若配置了 DEV_ENV_ID 环境变量 → 精确白名单（curEnv === DEV_ENV_ID）；
+  //   2) 否则启发式：含 "dev" 子串且不得含 "prod" 子串（/dev/.test && !/prod/.test），
+  //      拦住 catering-prod-* 及 catering-*-dev-mirror 这类命名撞车。
+  //   失败方向关闭，且本分支仅写服务端日志、绝不回传 env 值（core/06:58-62 环境 ID 属敏感信息）。
   let curEnv = '';
   try { curEnv = String(cloud.getWXContext().ENV || ''); } catch (e) { curEnv = String(process.env.TCB_ENV || ''); }
   curEnv = curEnv.toLowerCase();
-  if (!/dev/.test(curEnv)) {
+  const DEV_ENV_ID = (process.env.DEV_ENV_ID || '').toLowerCase();
+  const isDevEnv = DEV_ENV_ID ? (curEnv === DEV_ENV_ID) : (/dev/.test(curEnv) && !/prod/.test(curEnv));
+  if (!isDevEnv) {
     console.error(`[SEED_DEMO_BLOCKED] env="${curEnv}" 非 dev 环境，禁止灌演示数据！请立即删除本云函数。`);
     return { blocked: true, reason: 'non-dev-env' };
   }
