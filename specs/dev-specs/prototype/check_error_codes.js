@@ -168,7 +168,13 @@ for (const f of allMd) {
 notes.push(`core/10 §6 已登记 admin 函数   : ${registered.size} 个`);
 notes.push(`全树引用 admin 函数（已排除中间件/字段）: ${usedFns.size} 个`);
 notes.push(`配额口径 / 表格结构 扫描 : ${allMd.length} 个 .md`);
-notes.push(`字符完整性扫描           : ${allText.length} 个（.md + .js + .txt）`);
+// 按扩展名给出实际构成（避免"以为在守 .txt、其实仓库内没有 .txt"的错觉）
+const extCount = { '.md': 0, '.js': 0, '.txt': 0 };
+allText.forEach((p) => {
+  const e = path.extname(p).toLowerCase();
+  if (e in extCount) extCount[e]++;
+});
+notes.push(`字符完整性扫描           : ${allText.length} 个（.md ${extCount['.md']} / .js ${extCount['.js']} / .txt ${extCount['.txt']}）`);
 
 // 注：C1 / D1 / E1 的断言统一放在 D、E 两组计算完成之后（见下），避免 TDZ。
 
@@ -281,7 +287,40 @@ for (const f of allText) {
   });
 }
 
-// ---- C1 / D1 / E1 / F1 断言（必须在上面各组计算之后执行）----
+// ===================== G. 套餐价格结构断言（读代码值，不做文本 grep）=====================
+// 背景：P0-1 的原始缺陷（2990 / 7990 / 29900 / 月包 30 天）就住在 init_db.js 的 SEED_PLANS 里，
+//       而 D 组只扫 .md —— 对最可能出事的那份文件，文本 grep 这条保险是**失效的**。
+// 做法：直接解析 SEED_PLANS 的 price / days 字段做逐值断言；不依赖注释文本，不会自我命中。
+const EXPECT_PLANS = {
+  plan_basic_month:    { price: 2590,  days: 31,  label: '月包' },
+  plan_basic_quarter:  { price: 6900,  days: 90,  label: '季包' },
+  plan_basic_year:     { price: 19900, days: 365, label: '年包' },
+  plan_auto_subscribe: { price: 1990,  days: 31,  label: '自动续费(月)' },
+};
+const planIssues = [];
+const initDbSrc = read('prototype/init_db.js');
+for (const [id, exp] of Object.entries(EXPECT_PLANS)) {
+  const m = initDbSrc.match(
+    new RegExp("plan_id:\\s*'" + id + "'[^}]*?price:\\s*(\\d+)[^}]*?days:\\s*(\\d+)")
+  );
+  if (!m) {
+    planIssues.push(`[G1] init_db.js 找不到套餐 ${id} 的 price/days 定义（结构已变？） —— 应为 price=${exp.price} / days=${exp.days}`);
+    continue;
+  }
+  if (+m[1] !== exp.price) {
+    planIssues.push(`[G2] init_db.js ${id}(${exp.label}) price=${m[1]}，应为 ${exp.price}（分）—— P0-1 曾错写为 2990/7990/29900`);
+  }
+  if (+m[2] !== exp.days) {
+    planIssues.push(`[G3] init_db.js ${id}(${exp.label}) days=${m[2]}，应为 ${exp.days} —— P0-1 曾把月包错写为 30 天`);
+  }
+}
+// seedDemo 的"验收期永久解锁"常量：改动会静默破坏 22 项验收（演示店权益到期）
+const seedDemoSrc = read('prototype/seed_demo.js');
+if (!/2099-12-31/.test(seedDemoSrc)) {
+  planIssues.push('[G4] seed_demo.js 缺少 2099-12-31 解锁常量 —— demo 店权益将不再是"验收期永久解锁"，22 项验收会静默失败');
+}
+
+// ---- C1 / D1 / E1 / F1 / G 组断言（必须在上面各组计算之后执行）----
 for (const [fn, src] of usedFns) {
   if (!registered.has(fn)) {
     fails.push(`[C1] \`${fn}\`（首见于 ${src}）未登记进 core/10 §6 契约表（违反"函数名即契约"）`);
@@ -298,6 +337,10 @@ for (const s of structureHits) {
 
 for (const c of charHits) {
   fails.push(`[F1] 字符损坏（U+FFFD）${c}\n        该行含替换字符 —— 通常是写入时字节序列损坏（如「一行」显示成「???行」）。须按原字补回，不可用其它字替代。`);
+}
+
+for (const g of planIssues) {
+  fails.push(g);
 }
 
 // ===================== 输出 =====================
