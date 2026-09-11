@@ -155,6 +155,9 @@ exports.main = async (event, context) => {
   try { env = String(cloud.getWXContext().ENV || process.env.TCB_ENV || ''); } catch (e) { env = String(process.env.TCB_ENV || ''); }
   env = env.toLowerCase();
   const DEV_ENV_ID = (process.env.DEV_ENV_ID || '').toLowerCase();
+  // 未配置白名单时给出启动告警（不阻断）：启发式分支的安全性依赖"prod 环境 ID 含 prod 子串"这一否定式假设，
+  // 若将来有人把生产环境命名成 catering-live-dev / catering-release-dev（含 dev、不含 prod）会被放行。
+  if (!DEV_ENV_ID) console.warn('[GATE] DEV_ENV_ID 未配置，initDb 当前走启发式匹配（依赖环境命名约定），建议配置为精确白名单');
   const isDevEnv = (DEV_ENV_ID ? (env === DEV_ENV_ID) : /dev/.test(env)) && !/prod/.test(env);
   if (!isDevEnv) {
     console.error(`[INITDB_BLOCKED] env="${env}" 非 dev 环境，禁止建库与播种演示数据`);

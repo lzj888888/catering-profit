@@ -75,6 +75,9 @@ exports.main = async (event, context) => {
   try { curEnv = String(cloud.getWXContext().ENV || process.env.TCB_ENV || ''); } catch (e) { curEnv = String(process.env.TCB_ENV || ''); }
   curEnv = curEnv.toLowerCase();
   const DEV_ENV_ID = (process.env.DEV_ENV_ID || '').toLowerCase();
+  // 未配置白名单时给出启动告警（不阻断）：启发式分支的安全性依赖"prod 环境 ID 含 prod 子串"这一否定式假设，
+  // 若将来有人把生产环境命名成 catering-live-dev / catering-release-dev（含 dev、不含 prod）会被放行。
+  if (!DEV_ENV_ID) console.warn('[GATE] DEV_ENV_ID 未配置，seedDemo 当前走启发式匹配（依赖环境命名约定），建议配置为精确白名单');
   const isDevEnv = (DEV_ENV_ID ? (curEnv === DEV_ENV_ID) : /dev/.test(curEnv)) && !/prod/.test(curEnv);
   if (!isDevEnv) {
     console.error(`[SEED_DEMO_BLOCKED] env="${curEnv}" 非 dev 环境，禁止灌演示数据！请立即删除本云函数。`);
