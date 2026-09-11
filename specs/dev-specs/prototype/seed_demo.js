@@ -64,9 +64,9 @@ exports.main = async (event, context) => {
   let curEnv = '';
   try { curEnv = String(cloud.getWXContext().ENV || ''); } catch (e) { curEnv = String(process.env.TCB_ENV || ''); }
   curEnv = curEnv.toLowerCase();
-  if (!/^dev/.test(curEnv)) {
-    console.error(`[SEED_DEMO_BLOCKED] env="${curEnv}" 非 dev 前缀，禁止灌演示数据！请立即删除本云函数。`);
-    return { blocked: true, reason: 'non-dev-env', env: curEnv };
+  if (!/dev/.test(curEnv)) {
+    console.error(`[SEED_DEMO_BLOCKED] env="${curEnv}" 非 dev 环境，禁止灌演示数据！请立即删除本云函数。`);
+    return { blocked: true, reason: 'non-dev-env' };
   }
 
   const result = { steps: [], errors: [] };

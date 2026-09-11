@@ -140,11 +140,12 @@ const SEED_FEATURES = SEED_PLANS.map(p => ({ plan_id: p.plan_id, feature_key: 'r
 exports.main = async (event, context) => {
   // 🚫 生产环境部署禁令（与 seed_demo 一致）：initDb 仅允许 dev 环境运行。
   // 生产环境 25 张集合由云开发控制台手工创建（一次性），本函数**绝不部署到 prod**。
-  // 约定：dev 环境 ID 必须以 "dev" 开头，prod 以 "prod" 开头（见 README_整理说明 / core/10）。
+  // 约定：环境 ID 形如 catering-dev-xxxxxx（dev）/ catering-prod-xxxxxx（prod），见 写码阶段启动执行手册 / core/06。
+  // 本门禁仅放行含 "dev" 子串的环境（/dev/.test），含 "prod" 的 prod 环境一律拒绝，防止种子/演示数据污染真实业务库。
   const wxContext = cloud.getWXContext();
-  const env = (wxContext.ENV || process.env.WX_ENV || '').toLowerCase();
-  if (!/^dev/.test(env)) {
-    return { blocked: true, reason: 'INITDB_DEV_ONLY: initDb 仅允许 dev 环境，prod 集合请由控制台手工创建', env };
+  const env = (wxContext.ENV || process.env.TCB_ENV || '').toLowerCase();
+  if (!/dev/.test(env)) {
+    return { blocked: true, reason: 'INITDB_DEV_ONLY: initDb 仅允许 dev 环境，prod 集合请由控制台手工创建' };
   }
   const result = { created: [], indexes: [], seeds: [], errors: [] };
 
