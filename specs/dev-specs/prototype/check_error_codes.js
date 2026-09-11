@@ -185,8 +185,14 @@ const FORBIDDEN_QUOTA = [
 const QUOTA_SKIP_MARKERS = [
   '作废', '已回退', '沿革', '历史', '曾误', '原规划', '原"免费', '原“免费', '无 3 套限制',
 ];
-// 按子句切分：豁免标记只保护**它所在的子句**，不再保护整行
-const CLAUSE_SPLIT = /[。；;，,]/;
+// 按子句切分：豁免标记只保护**它所在的分句**，不再保护整行；
+// 且豁免再按「匹配位置 ±20 字符」就近判定（见下），不因同句出现沿革词而整句免检。
+// ⚠️ 必须包含 、(U+3001)：它是本项目并列项最常用的分隔符
+//    （如 core/13「M1=1 账套、M3=3 张、M2 不限套」），漏了它混排行就不会被切分。
+// ℹ️ 2026-09-12 试运行结论：**清空上表后全树命中数为 0** —— 当前 25 个 md 里没有任何���行
+//    真正依赖豁免。保留它是为将来书写「沿革 / 作废」记录留余地；若哪天它开始造成误豁免，
+//    可直接整表删除（届时需给沿革行加行内标记：属「响亮失败」，优于静默漏检）。
+const CLAUSE_SPLIT = /[。；;，,、]/;
 
 const quotaHits = [];
 for (const f of allMd) {
@@ -195,14 +201,21 @@ for (const f of allMd) {
   lines.forEach((line, i) => {
     const clauses = line.split(CLAUSE_SPLIT);
     for (const { re, tip } of FORBIDDEN_QUOTA) {
-      const hit = clauses.find(
-        (c) => re.test(c) && !QUOTA_SKIP_MARKERS.some((m) => c.includes(m))
-      );
+      // 就近判定：豁免标记必须出现在**匹配位置附近**（±EXEMPT_RADIUS 字符）才生效，
+      // 而不是"子句里任意位置出现就整句免检"。后者只要旧值与沿革词共处一句就失效，
+      // 且换用 ＋ / ／ / 空格 等粘合方式又会重新破功 —— 就近判定对分隔符形态不敏感，更治本。
+      const EXEMPT_RADIUS = 20;
+      const hit = clauses
+        .map((c) => ({ c, m: re.exec(c) }))
+        .find(({ c, m }) => m && !QUOTA_SKIP_MARKERS.some((k) =>
+          c.slice(Math.max(0, m.index - EXEMPT_RADIUS),
+                  m.index + m[0].length + EXEMPT_RADIUS).includes(k)
+        ));
       if (hit) {
         quotaHits.push({
           rel, line: i + 1, tip,
           text: line.trim().slice(0, 110),
-          clause: hit.trim().slice(0, 70),
+          clause: hit.c.trim().slice(0, 70),
         });
       }
     }
