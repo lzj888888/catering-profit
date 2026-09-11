@@ -145,6 +145,12 @@ const allMd = walk(ROOT)
   .filter((p) => p.endsWith('.md'))
   .filter((p) => !path.basename(p).startsWith('OBSOLETE_'));
 
+// F 组（字符完整性）用的文件集：.md + .js + .txt
+// ⚠️ 在此处定义（紧邻 allMd）以避免 TDZ —— 上方 notes 会引用 allText.length。
+const allText = walk(ROOT)
+  .filter((p) => ['.md', '.js', '.txt'].includes(path.extname(p).toLowerCase()))
+  .filter((p) => !path.basename(p).startsWith('OBSOLETE_'));
+
 const usedFns = new Map(); // fn -> 首次出现的文件
 for (const f of allMd) {
   const txt = read(path.relative(ROOT, f).replace(/\\/g, '/'));
@@ -161,13 +167,16 @@ for (const f of allMd) {
 
 notes.push(`core/10 §6 已登记 admin 函数   : ${registered.size} 个`);
 notes.push(`全树引用 admin 函数（已排除中间件/字段）: ${usedFns.size} 个`);
-notes.push(`配额口径 / 表格结构 扫描文件数: ${allMd.length} 个`);
+notes.push(`配额口径 / 表格结构 扫描 : ${allMd.length} 个 .md`);
+notes.push(`字符完整性扫描           : ${allText.length} 个（.md + .js + .txt）`);
 
 // 注：C1 / D1 / E1 的断言统一放在 D、E 两组计算完成之后（见下），避免 TDZ。
 
 // ===================== D. 配额口径一致性（防 v1.1 旧值复发）=====================
 // 背景：M3「8 张」、M2「3 套」都是 v1.1 过期值，此前各复发过一次且都靠人眼才发现。
 // 这里把 v1.4 权威口径写成可机械断言的常量：命中禁用模式即 fail。
+// ⚠️ 本表正则一律使用**无 /g 标志**的字面量：下方按子句反复调用 re.exec()，
+//    若某条加了 /g，lastIndex 会跨调用残留 → 间歇性漏检（表现为"有时报有时不报"，极难排查）。
 const FORBIDDEN_QUOTA = [
   { re: /M2\s*[=＝]\s*3/, tip: 'M2 应是「不限套」，不是 3' },
   { re: /M2[^。；\n]{0,12}3\s*套/, tip: 'M2 无套数限制' },
@@ -189,7 +198,7 @@ const QUOTA_SKIP_MARKERS = [
 // 且豁免再按「匹配位置 ±20 字符」就近判定（见下），不因同句出现沿革词而整句免检。
 // ⚠️ 必须包含 、(U+3001)：它是本项目并列项最常用的分隔符
 //    （如 core/13「M1=1 账套、M3=3 张、M2 不限套」），漏了它混排行就不会被切分。
-// ℹ️ 2026-09-12 试运行结论：**清空上表后全树命中数为 0** —— 当前 25 个 md 里没有任何���行
+// ℹ️ 2026-09-12 试运行结论：**清空上表后全树命中数为 0** —— 当前 25 个 md 里没有任何一行
 //    真正依赖豁免。保留它是为将来书写「沿革 / 作废」记录留余地；若哪天它开始造成误豁免，
 //    可直接整表删除（届时需给沿革行加行内标记：属「响亮失败」，优于静默漏检）。
 const CLAUSE_SPLIT = /[。；;，,、]/;
@@ -256,7 +265,23 @@ for (const f of allMd) {
   structureHits.push(...orphanTableRows(read(rel), rel));
 }
 
-// ---- C1 / D1 / E1 断言（必须在上面三组计算之后执行）----
+// ===================== F. 字符完整性（U+FFFD 替换字符）=====================
+// 背景：core/06「兜底」（3 字节损坏）与本文件「一行」都曾变成 U+FFFD，两次都靠人眼偶然发现。
+// ⚠️ 扫描面必须是 **.md + .js + .txt**：只扫 .md 会漏掉 .js 里的损坏（历史上真漏过一次）。
+//    注意 F 组用 allText，而 C / D / E 仍用 allMd —— 把 .js 纳入 D 组会让本文件自我命中
+//    （本文件注释里就有「8 张」「2990」等被检查的字样）。
+// allText 已在 C 组上方定义（紧邻 allMd），此处直接使用
+
+const FFFD = '\uFFFD';
+const charHits = [];
+for (const f of allText) {
+  const rel = path.relative(ROOT, f).replace(/\\/g, '/');
+  read(rel).split('\n').forEach((l, i) => {
+    if (l.includes(FFFD)) charHits.push(`${rel}:${i + 1}  ${l.trim().slice(0, 90)}`);
+  });
+}
+
+// ---- C1 / D1 / E1 / F1 断言（必须在上面各组计算之后执行）----
 for (const [fn, src] of usedFns) {
   if (!registered.has(fn)) {
     fails.push(`[C1] \`${fn}\`（首见于 ${src}）未登记进 core/10 §6 契约表（违反"函数名即契约"）`);
@@ -271,6 +296,10 @@ for (const s of structureHits) {
   fails.push(`[E1] 表格结构损坏（孤儿表行）${s}\n        该行不在任何完整表格内 —— 常见成因：①引用块（>）插在表格中间把表行挤出；②表行之间夹了不带空行的散文行（CommonMark 下同样中断表格）。表行必须连续排列。`);
 }
 
+for (const c of charHits) {
+  fails.push(`[F1] 字符损坏（U+FFFD）${c}\n        该行含替换字符 —— 通常是写入时字节序列损坏（如「一行」显示成「???行」）。须按原字补回，不可用其它字替代。`);
+}
+
 // ===================== 输出 =====================
 console.log('══════ 规范层一致性机械门禁 ══════');
 notes.forEach((n) => console.log('  · ' + n));
@@ -281,7 +310,8 @@ if (fails.length === 0) {
   console.log('   A/B 错误码三向一致 + 映射完整 : core/09 §1 ↔ §3 ↔ terms.js 已闭合');
   console.log('   C   云函数登记一致           : 全树引用的 admin 函数均已登记于 core/10 §6');
   console.log('   D   配额口径一致             : 无 M2=3 / M3=8 张 / 单张导出免费 等 v1.1 旧值残留');
-  console.log('   E   表格结构完整             : 无被引用块挤出表格的孤儿表行');
+  console.log('   E   表格结构完整             : 无被引用块 / 散文行挤出表格的孤儿表行');
+  console.log('   F   字符完整性               : .md / .js / .txt 均无 U+FFFD 替换字符');
   process.exit(0);
 } else {
   console.log(`❌ 发现 ${fails.length} 处断裂：`);
@@ -293,6 +323,8 @@ if (fails.length === 0) {
   console.log('  · C 类（未登记函数） → 在 core/10 §6 契约表补一行函数名/入参/出参/鉴权');
   console.log('  · D 类（配额旧值）   → 改回 v1.4 口径：M1=1 账套 / M3=3 张 / M2 不限套；导出全禁');
   console.log('                         （若确属沿革记录，在同行加「作废 / 已回退 / 原规划」等豁免标记）');
-  console.log('  · E 类（表格结构）   → 把被引用块挤出的表行移回表内（紧邻表头，勿用 > 分隔）');
+  console.log('  · E 类（表格结构）   → 把被引用块 / 散文行挤出的表行移回表内（紧邻表头，保持连续）');
+  console.log('  · F 类（字符损坏）   → 按原字补回被损坏的字（如「???行」补成「一行」），不可用其它字替代；');
+  console.log('                         本组扫描 .md + .js + .txt，注意 .js 里的注释同样在扫描范围内');
   process.exit(1);
 }
