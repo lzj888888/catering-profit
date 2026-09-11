@@ -125,25 +125,119 @@ for (const line of sec6.split('\n')) {
   if (fn && /^admin[A-Za-z]+$/.test(fn)) registered.add(fn);
 }
 
-const implText = read('core/16_后台鉴权规范.md');
-const bootstrapPlusToken = `${section(implText, '## 7. 首超管引导', '## 9.')}`;
-const usedFns = new Set();
-// 逐个取反引号内容，再取开头的 admin 标识符。
-// ⚠️ 不能简单用 /`(admin[A-Za-z]+)`/ —— core/16 里写成 `adminRevokeToken(admin_id)`（带括号），
-//    那样会漏掉它（假阴性）。这里允许后面跟 "(" 或直接结束；同时也排除 `admin_user` 这类集合名
-//    （下划线后不是大写字母，故不匹配）。
-for (const m of bootstrapPlusToken.matchAll(/`([^`]+)`/g)) {
-  const hit = m[1].match(/^(admin[A-Z][A-Za-z]*)(?:\(|$)/);
-  if (hit) usedFns.add(hit[1]);
+// 扫描面扩展：不再只取 core/16 §7~§9，而是遍历 specs/dev-specs 下**全部 .md**
+// （原范围会漏掉在别的文件/新章节里引入的 admin 函数 —— 复审指出的盲区）。
+const EXCLUDE_FN = new Set([
+  'adminAuth',   // 中间件，不是云函数
+  'adminId',     // ctx 字段
+]);
+
+function walk(dir, out = []) {
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) walk(p, out);
+    else out.push(p);
+  }
+  return out;
 }
 
-notes.push(`core/10 §6 已登记 admin 函数: ${registered.size} 个`);
-notes.push(`core/16 §7/§8 引用 admin 函数: ${usedFns.size} 个`);
+const allMd = walk(ROOT)
+  .filter((p) => p.endsWith('.md'))
+  .filter((p) => !path.basename(p).startsWith('OBSOLETE_'));
 
-for (const fn of usedFns) {
-  if (!registered.has(fn)) {
-    fails.push(`[C1] core/16 引入 \`${fn}\`，但 core/10 §6 契约表未登记（违反"函数名即契约"）`);
+const usedFns = new Map(); // fn -> 首次出现的文件
+for (const f of allMd) {
+  const txt = read(path.relative(ROOT, f).replace(/\\/g, '/'));
+  for (const m of txt.matchAll(/`([^`]+)`/g)) {
+    // ⚠️ 不能简单用 /`(admin[A-Za-z]+)`/ —— 写成 `adminRevokeToken(admin_id)`（带括号）会漏掉（假阴性）。
+    //    这里允许后面跟 "(" 或直接结束；下划线开头（admin_user 等集合名）自然不匹配。
+    const hit = m[1].match(/^(admin[A-Z][A-Za-z]*)(?:\(|$)/);
+    if (!hit) continue;
+    const fn = hit[1];
+    if (EXCLUDE_FN.has(fn)) continue;
+    if (!usedFns.has(fn)) usedFns.set(fn, path.relative(ROOT, f).replace(/\\/g, '/'));
   }
+}
+
+notes.push(`core/10 §6 已登记 admin 函数   : ${registered.size} 个`);
+notes.push(`全树引用 admin 函数（已排除中间件/字段）: ${usedFns.size} 个`);
+notes.push(`配额口径 / 表格结构 扫描文件数: ${allMd.length} 个`);
+
+// 注：C1 / D1 / E1 的断言统一放在 D、E 两组计算完成之后（见下），避免 TDZ。
+
+// ===================== D. 配额口径一致性（防 v1.1 旧值复发）=====================
+// 背景：M3「8 张」、M2「3 套」都是 v1.1 过期值，此前各复发过一次且都靠人眼才发现。
+// 这里把 v1.4 权威口径写成可机械断言的常量：命中禁用模式即 fail。
+const FORBIDDEN_QUOTA = [
+  { re: /M2\s*[=＝]\s*3/, tip: 'M2 应是「不限套」，不是 3' },
+  { re: /M2[^。；\n]{0,12}3\s*套/, tip: 'M2 无套数限制' },
+  { re: /M2[^。；\n]{0,12}3\s*方案/, tip: 'M2 方案不限套' },
+  { re: /M3[^。；\n]{0,14}8\s*张/, tip: 'M3 应为 3 张，8 张是 v1.1 过期值' },
+  { re: /单张导出免费/, tip: '导出（含单张 PDF）全部仅付费解锁' },
+];
+// 合法豁免：沿革/作废说明里出现旧值是正常记录，不算残留
+const QUOTA_SKIP_MARKERS = [
+  '作废', '已回退', '沿革', '历史', '曾误', '原规划', '原"免费', '原“免费',
+  '无 3 套限制', '不限套', 'OBSOLETE',
+];
+
+const quotaHits = [];
+for (const f of allMd) {
+  const rel = path.relative(ROOT, f).replace(/\\/g, '/');
+  const lines = read(rel).split('\n');
+  lines.forEach((line, i) => {
+    if (QUOTA_SKIP_MARKERS.some((m) => line.includes(m))) return;
+    for (const { re, tip } of FORBIDDEN_QUOTA) {
+      if (re.test(line)) quotaHits.push({ rel, line: i + 1, text: line.trim().slice(0, 110), tip });
+    }
+  });
+}
+
+// ===================== E. 表格结构完整性（堵"引用块把表行挤出表格"的盲区）=====================
+// 背景：core/09 §1.4 曾因 blockquote 插在表格中间，导致 AMORT_TERMINATED 行被挤出表格、
+//       Markdown 下不再渲染为表行；而"按行首 | 抓表行"的解析方式照收不误，门禁全绿。
+// 做法：识别孤儿表行 —— 以 | 开头、但其上一行不是表行/表头、且下一行不是分隔行的行。
+function orphanTableRows(text, label) {
+  const lines = text.split('\n');
+  const orphans = [];
+  let inTable = false;
+  for (let i = 0; i < lines.length; i++) {
+    const t = lines[i].trim();
+    if (!t.startsWith('|')) {
+      if (t === '' || t.startsWith('>') || t.startsWith('#')) inTable = false;
+      continue;
+    }
+    if (inTable) continue;
+    // 不在表内却出现 | 行：只有"下一行是分隔行"才算表头，否则就是孤儿行
+    const next = (lines[i + 1] || '').trim();
+    if (/^\|[\s:|-]+\|$/.test(next)) {
+      inTable = true;
+      continue;
+    }
+    orphans.push(`${label}:${i + 1}  ${t.slice(0, 90)}`);
+  }
+  return orphans;
+}
+
+const structureHits = [];
+for (const f of allMd) {
+  const rel = path.relative(ROOT, f).replace(/\\/g, '/');
+  structureHits.push(...orphanTableRows(read(rel), rel));
+}
+
+// ---- C1 / D1 / E1 断言（必须在上面三组计算之后执行）----
+for (const [fn, src] of usedFns) {
+  if (!registered.has(fn)) {
+    fails.push(`[C1] \`${fn}\`（首见于 ${src}）未登记进 core/10 §6 契约表（违反"函数名即契约"）`);
+  }
+}
+
+for (const h of quotaHits) {
+  fails.push(`[D1] 配额口径残留 ${h.rel}:${h.line} —— ${h.tip}\n        原文: ${h.text}`);
+}
+
+for (const s of structureHits) {
+  fails.push(`[E1] 表格结构损坏（孤儿表行）${s}\n        该行不在任何完整表格内，常见原因是引用块（>）把表行挤出了表格`);
 }
 
 // ===================== 输出 =====================
@@ -152,16 +246,22 @@ notes.forEach((n) => console.log('  · ' + n));
 console.log('');
 
 if (fails.length === 0) {
-  console.log('✅ 全部断言通过（错误码三向一致 / 映射完整 / 函数登记一致）');
-  console.log('   → core/09 §1 ↔ §3 ↔ terms.js 三向闭合；core/16 引入的 admin 函数均已登记于 core/10');
+  console.log('✅ 全部断言通过');
+  console.log('   A/B 错误码三向一致 + 映射完整 : core/09 §1 ↔ §3 ↔ terms.js 已闭合');
+  console.log('   C   云函数登记一致           : 全树引用的 admin 函数均已登记于 core/10 §6');
+  console.log('   D   配额口径一致             : 无 M2=3 / M3=8 张 / 单张导出免费 等 v1.1 旧值残留');
+  console.log('   E   表格结构完整             : 无被引用块挤出表格的孤儿表行');
   process.exit(0);
 } else {
   console.log(`❌ 发现 ${fails.length} 处断裂：`);
   fails.forEach((f, i) => console.log(`  ${String(i + 1).padStart(2)}. ${f}`));
   console.log('');
   console.log('修法提示：');
-  console.log('  · A 类（缺 i18n 键）→ 在 core/09 §3 表补一行 + i18n/terms.js ERROR_MESSAGES 补同键');
-  console.log('  · B 类（缺映射）   → 在 i18n/terms.js CODE_TO_I18N 补 wire → i18n 条目');
-  console.log('  · C 类（未登记函数）→ 在 core/10 §6 契约表补一行函数名/入参/出参/鉴权');
+  console.log('  · A 类（缺 i18n 键） → 在 core/09 §3 表补一行 + i18n/terms.js ERROR_MESSAGES 补同键');
+  console.log('  · B 类（缺映射）     → 在 i18n/terms.js CODE_TO_I18N 补 wire → i18n 条目');
+  console.log('  · C 类（未登记函数） → 在 core/10 §6 契约表补一行函数名/入参/出参/鉴权');
+  console.log('  · D 类（配额旧值）   → 改回 v1.4 口径：M1=1 账套 / M3=3 张 / M2 不限套；导出全禁');
+  console.log('                         （若确属沿革记录，在同行加「作废 / 已回退 / 原规划」等豁免标记）');
+  console.log('  · E 类（表格结构）   → 把被引用块挤出的表行移回表内（紧邻表头，勿用 > 分隔）');
   process.exit(1);
 }
