@@ -138,6 +138,14 @@ const SEED_FEATURES = SEED_PLANS.map(p => ({ plan_id: p.plan_id, feature_key: 'r
 
 // ===== 4. 执行 =====
 exports.main = async (event, context) => {
+  // 🚫 生产环境部署禁令（与 seed_demo 一致）：initDb 仅允许 dev 环境运行。
+  // 生产环境 25 张集合由云开发控制台手工创建（一次性），本函数**绝不部署到 prod**。
+  // 约定：dev 环境 ID 必须以 "dev" 开头，prod 以 "prod" 开头（见 README_整理说明 / core/10）。
+  const wxContext = cloud.getWXContext();
+  const env = (wxContext.ENV || process.env.WX_ENV || '').toLowerCase();
+  if (!/^dev/.test(env)) {
+    return { blocked: true, reason: 'INITDB_DEV_ONLY: initDb 仅允许 dev 环境，prod 集合请由控制台手工创建', env };
+  }
   const result = { created: [], indexes: [], seeds: [], errors: [] };
 
   // 4.1 建集合（已存在则跳过）
