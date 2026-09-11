@@ -174,21 +174,37 @@ const FORBIDDEN_QUOTA = [
   { re: /M2[^。；\n]{0,12}3\s*方案/, tip: 'M2 方案不限套' },
   { re: /M3[^。；\n]{0,14}8\s*张/, tip: 'M3 应为 3 张，8 张是 v1.1 过期值' },
   { re: /单张导出免费/, tip: '导出（含单张 PDF）全部仅付费解锁' },
+  // 价格旧值：P0-1 的原始缺陷就是价格，且改价概率高于改配额，顺手加保险
+  { re: /2990|7990|29900/, tip: '套餐价 v1.4 = 2590 / 6900 / 19900（分）；2990 / 7990 / 29900 是旧值' },
+  { re: /(?<!\d)(29\.9|79\.9)\s*元/, tip: '套餐价 v1.4 = 25.9 / 69 / 199 元（(?<!\\d) 防误伤「19.9 元/月」云开发套餐）' },
 ];
-// 合法豁免：沿革/作废说明里出现旧值是正常记录，不算残留
+// 合法豁免：**只放沿革 / 作废类标记**。
+// ⚠️ 绝不可把「不限套」这类"当前正确值"放进来 —— 那是被检查对象本身，放进豁免等于该行免检；
+//    且本项目「配额维度」常写成 M1 / M3 / M2 三项混排一行（如 core/13:59），
+//    整行豁免会让同行的 M3=8 张 之类旧值一起逃检（2026-09-12 复审指出的真实漏洞 G1）。
 const QUOTA_SKIP_MARKERS = [
-  '作废', '已回退', '沿革', '历史', '曾误', '原规划', '原"免费', '原“免费',
-  '无 3 套限制', '不限套', 'OBSOLETE',
+  '作废', '已回退', '沿革', '历史', '曾误', '原规划', '原"免费', '原“免费', '无 3 套限制',
 ];
+// 按子句切分：豁免标记只保护**它所在的子句**，不再保护整行
+const CLAUSE_SPLIT = /[。；;，,]/;
 
 const quotaHits = [];
 for (const f of allMd) {
   const rel = path.relative(ROOT, f).replace(/\\/g, '/');
   const lines = read(rel).split('\n');
   lines.forEach((line, i) => {
-    if (QUOTA_SKIP_MARKERS.some((m) => line.includes(m))) return;
+    const clauses = line.split(CLAUSE_SPLIT);
     for (const { re, tip } of FORBIDDEN_QUOTA) {
-      if (re.test(line)) quotaHits.push({ rel, line: i + 1, text: line.trim().slice(0, 110), tip });
+      const hit = clauses.find(
+        (c) => re.test(c) && !QUOTA_SKIP_MARKERS.some((m) => c.includes(m))
+      );
+      if (hit) {
+        quotaHits.push({
+          rel, line: i + 1, tip,
+          text: line.trim().slice(0, 110),
+          clause: hit.trim().slice(0, 70),
+        });
+      }
     }
   });
 }
@@ -204,7 +220,9 @@ function orphanTableRows(text, label) {
   for (let i = 0; i < lines.length; i++) {
     const t = lines[i].trim();
     if (!t.startsWith('|')) {
-      if (t === '' || t.startsWith('>') || t.startsWith('#')) inTable = false;
+      // 任何非表行都要复位（含不带空行的散文行）—— CommonMark 下段落行同样会中断表格，
+      // 表行必须连续排列。原写法只在空行 / 引用块 / 标题处复位，会漏掉散文行中断的情形（G2）。
+      inTable = false;
       continue;
     }
     if (inTable) continue;
@@ -233,11 +251,11 @@ for (const [fn, src] of usedFns) {
 }
 
 for (const h of quotaHits) {
-  fails.push(`[D1] 配额口径残留 ${h.rel}:${h.line} —— ${h.tip}\n        原文: ${h.text}`);
+  fails.push(`[D1] 配额/价格旧值残留 ${h.rel}:${h.line} —— ${h.tip}\n        命中子句: ${h.clause}\n        整行原文: ${h.text}`);
 }
 
 for (const s of structureHits) {
-  fails.push(`[E1] 表格结构损坏（孤儿表行）${s}\n        该行不在任何完整表格内，常见原因是引用块（>）把表行挤出了表格`);
+  fails.push(`[E1] 表格结构损坏（孤儿表行）${s}\n        该行不在任何完整表格内 —— 常见成因：①引用块（>）插在表格中间把表行挤出；②表行之间夹了不带空行的散文行（CommonMark 下同样中断表格）。表行必须连续排列。`);
 }
 
 // ===================== 输出 =====================
