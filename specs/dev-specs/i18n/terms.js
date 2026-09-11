@@ -125,4 +125,39 @@ function t(path) {
   return path.split('.').reduce((acc, k) => (acc == null ? acc : acc[k]), TERMS);
 }
 
-module.exports = { TERMS, t };
+/**
+ * 错误码 → 前端展示文案映射（唯一来源，禁止在 wxml/wxss 硬编码中文提示）
+ * 取值：const msg = ERROR_MESSAGES[res.code] || ERROR_MESSAGES['ERR.SYSTEM']
+ * 与 core/09_统一错误码表.md §3 同步锁死。
+ */
+const ERROR_MESSAGES = {
+  OK: '',
+  'ERR.UNAUTHORIZED': '请先登录后再试',
+  'ERR.USER_NOT_FOUND': '账号信息异常，请联系客服',
+  'ERR.FORBIDDEN': '无权访问该数据',
+  'ERR.RATE_LIMITED': '操作太频繁，请稍后再试',
+  'ERR.INVALID_PARAM': '填写有误，请检查后重试',
+  'ERR.RESOURCE_NOT_FOUND': '数据不存在或已被删除',
+  'ERR.SOFT_DELETED': '该数据已删除',
+  'ERR.ARCHIVED_LOCKED': '归档月份为只读，不可修改',
+  'ERR.SNAPSHOT_IMMUTABLE': '历史快照不可修改',
+  'ERR.FREE_LIMIT': '已达免费上限，开通后解锁',
+  'ERR.FEATURE_LOCKED': '该功能需开通后使用',
+  'ERR.PLAN_MISMATCH': '套餐信息异常，请联系客服',
+  'ERR.BOM_CYCLE': '检测到循环引用，请调整配方',
+  'ERR.BOM_DEPTH': '配方嵌套层数过多',
+  'ERR.M2_RED_ALERT': '当前结构下难以盈利，请调整方案',
+  'ERR.PAY_FAILED': '支付失败，请重试',
+  'ERR.PAY_PENDING': '支付处理中，请稍候',
+  'ERR.ORDER_NOT_FOUND': '订单不存在',
+  'ERR.REFUND_FAILED': '退款失败，请联系客服',
+  'ERR.REFUND_NOT_ALLOWED': '当前订单不可退款',
+  'ERR.ADMIN_AUTH': '管理员验证失败',
+  'ERR.ADMIN_TOKEN_EXPIRED': '登录已过期，请重新登录',
+  'ERR.ADMIN_LOCKED': '账号已锁定，请 30 分钟后再试',
+  'ERR.ADMIN_PERM': '权限不足',
+  'ERR.SYSTEM': '系统异常，请稍后重试',
+  'ERR.NOT_IMPL': '功能暂未开放',
+};
+
+module.exports = { TERMS, t, ERROR_MESSAGES };
