@@ -7,14 +7,14 @@
 
 | 项 | 状态 |
 |---|---|
-| 本地分支 | `master`，**零提交**（只有微信小程序空骨架 + `specs/`） |
+| 本地分支 | `dev`（已从 master 建出并 **SSH 推上 origin**；`main` 远程仅保留早期骨架历史，未动） |
 | 远程 `origin` | `https://github.com/lzj888888/catering-profit.git` |
 | 远程 `main` 分支 | **已存在且有历史**（早期"餐饮毛利核算"骨架，2026-08 前后 push 过） |
 | `gh` CLI | **本机未安装** |
 | PAT | **当前环境不可用**（仅运行时使用、未落盘） |
 | inscode 连接器 | **无**（需用户在 inscode 网页登录操作） |
 
-⚠️ **关键结论**：本地 `master` 与远程 `main` **没有共同祖先**。本机已把"店算"全量锁定规范 + POC 归档进 `specs/dev-specs/`，并建立了 `main` 本地基线（纯本地 commit，**不 push**，避免破坏远程 `main`）。
+⚠️ **关键结论**：本地 `master` 与远程 `main` **没有共同祖先**。本机已把"店算"全量锁定规范 + POC 归档进 `specs/dev-specs/`，并建立 `dev` 分支（**已 SSH 推上 origin**，作为写码前准备收官资产的归口）；`main` 远程保留早期骨架、受保护，等各批次投喂完成后再统一 PR 合入，期间**不直推 main**。
 
 ## 1. 分支命名（与 06 规范一致）
 
@@ -27,19 +27,20 @@
 
 > 当前先建 `main` 本地基线；inscode 接通后，让它往 `feature/inscode-*` 推，你（或我在本机）提 PR 合入 `main`。
 
-## 2. 本机已做的基线（纯本地，未推送）
+## 2. 本机已做的基线（已建 dev 并 SSH 推上 origin）
 
 ```
-git branch -m master main        # 本地默认分支对齐规范
-git add -A && git commit -m "chore: 归档店算全量锁定规范+POC+写码手册(main基线)"
-# 注意：未执行 git push（无 PAT + 远程 main 已有内容，需你决策对接方式）
+git checkout -b dev              # 写码前准备收官资产归口分支
+git add -A && git commit -m "feat: 归档写码前准备收官地基资产 — seed_demo验收套件(41/41)+core/09-14规范+init_db/calcM2原型"
+git -c url."git@github.com:".insteadOf="https://github.com/" push -u origin dev   # SSH 推送，remote 配置不动、不留 token
 ```
 
 `specs/dev-specs/` 已含：
-- `core/`：01 架构、02 测试集、03 写码提示词、04 核对清单、05 审计、06 工程治理、Module A/M1/M2/M3 规范、商业化 v1.1
+- `core/`：01 架构、02 测试集、03 写码提示词、04 核对清单、05 审计、06 工程治理、09 统一错误码、10 云函数契约、11 微信审核、12 云开发配额、13 上线查缺补漏、14 种子数据验收规范、Module A/M1/M2/M3 规范、商业化 v1.1/v1.4
 - `poc/`：POC1 摊销 / POC2 BOM / POC3 双利润
-- `prototype/`：POC3 双利润引擎 Node 验证原型（已跑通 S1/S2/2-R 锚点）
-- `★知识存储点_2026-09-10.md`、`商业化方案_v1.1_融合版.md`、`BRANCH_STRATEGY.md`、写码手册
+- `prototype/`：POC 双利润/摊销/BOM 引擎 + M2 沙盘 `calcM2` + `init_db` 建库 + `seed_data`/`verify_seed_data`/`seed_demo` 验收套件（verify 41/41 全绿）
+- `i18n/terms.js`：文案 + 错误码映射
+- `★知识存储点_2026-09-10.md`（重启键，已同步至 v1.4 现状）、`商业化方案_v1.4_融合版.md`、`BRANCH_STRATEGY.md`、写码手册
 
 ## 3. 远程 `main` 保护（你在 GitHub 网页做，3 步）
 
