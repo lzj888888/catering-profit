@@ -523,6 +523,15 @@ if (!fs.existsSync(FEED_HTML)) {
       }
     }
   }
+
+  // K11（A9）：小程序内 terms.js 必须与 specs 单源逐字一致（防双副本漂移）
+  const TERMS_SPEC = path.join(ROOT, 'i18n', 'terms.js');
+  const TERMS_MINI = path.join(ROOT, '..', '..', 'miniprogram', 'i18n', 'terms.js');
+  if (!fs.existsSync(TERMS_MINI)) {
+    fails.push('[K11] 缺 miniprogram/i18n/terms.js（小程序运行时要用它）');
+  } else if (normNL(fs.readFileSync(TERMS_MINI, 'utf8')) !== normNL(fs.readFileSync(TERMS_SPEC, 'utf8'))) {
+    fails.push('[K11] miniprogram/i18n/terms.js 与 specs/dev-specs/i18n/terms.js 不一致（双副本漂移）—— 以后者为准同步');
+  }
 }
 notes.push(`投喂链派生一致性 : 8 txt + 8 html 块 vs MD 单源（CRLF 已归一）`);
 

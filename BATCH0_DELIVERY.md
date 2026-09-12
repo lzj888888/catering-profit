@@ -13,7 +13,7 @@
 | **点1** | 鉴权丢弃前端 user_id/shop_id/openid，身份只来自 `cloud.getWXContext().OPENID` | `cloudfunctions/common/auth.js:26` `resolveAuth(ctx, db, audit)`（签名**无 event 入口**）<br>`auth.js:27` `const OPENID = ctx && ctx.OPENID;`<br>`auth.js:31` 只按 OPENID 查 user | 函数只接收云端上下文 ctx，任何前端伪造 `user_id`/`shop_id`/`openid` 无从进入；身份唯一来源 = `ctx.OPENID`。自测「点1·身份只来自OPENID(忽略伪造记录)」`user.id=u_real`（伪造 u_forged 被忽略）✅ |
 | **点2** | `shop.user_id !== ctx.user.id → FORBIDDEN` | `cloudfunctions/common/auth.js:75-87`<br>`if (shop.user_id !== userId) return fail(ERROR_CODES.FORBIDDEN);` | 越权 → `FORBIDDEN`；本人 → `SUCCESS`。✅ **A1 已修（重验通过 + 变异护栏）**：`assertShopOwner` 改 `const shop = r && r.data` + try/catch 兼容 SDK reject，`auth.js:75-87`。复审曾发现原契约错（当文档本体 → 线上恒 FORBIDDEN 死锁）。 |
 | **点3** | DataAdapter `is_deleted=true` 不出现于任何列表 | `cloudfunctions/common/dataAdapter.js:16-19`<br>`const cond = Object.assign({}, extra \|\| {}, where \|\| {}, { is_deleted: false });`<br>`dataAdapter.js:27` count 同注入 | 列表/计数统一注入 `is_deleted:false`；软删数据不出现。✅ **A2 已修（重验通过）**：`get()` 改 `r && r.data` + try/catch（`dataAdapter.js:21-24`），单条软删生效。✅ **A3 已修**：`is_deleted:false` 移到 `Object.assign` **最后**，extra 无法覆盖（列表铁律加固）；另增 `listIncludingDeleted` 供审计/管理端看软删。 |
-| **点4** | `config/env.js` 填真实 `catering-dev-xxxxxx`（非短名） 🔶 **待建环境后替换** | `miniprogram/config/env.js:14-15` `ENV_MAP.dev/prod = 'catering-dev-xxxxxxxx'/'catering-prod-xxxxxxxx'`（**占位符，未填真实 ID**）<br>`app.js:3,13` `wx.cloud.init({ env: env.getEnv() })` | 占位符即「真实ID形态」，绝非短名。🔶 **自测点④ 现为 🔶 待办（不打 ✅、不计入失败）**：占位符未替换时推入待办；点④ 须**待你建 dev/prod 环境后替换 env.js:14-15 真实 ID** 才算完成（需人对着控制台比，不能靠自测）。 |
+| **点4** | `config/env.js` 填真实 `catering-dev-xxxxxx`（非短名） 🔶 **待建环境后替换** | `miniprogram/config/env.js:14-15` `ENV_MAP.dev/prod = 'catering-dev-xxxxxxxx'/'catering-prod-xxxxxxxx'`（**占位符，未填真实 ID**）<br>`app.js:3` `require('./miniprogram/config/env.js')` + `app.js:13` `wx.cloud.init({ env: env.getEnv() })`（⚠️ 复审核出 **A8**：原误写 `./config/env.js` 致 MODULE_NOT_FOUND → `wx.cloud.init` 永不执行，**已改 `./miniprogram/config/env.js` 闭环**） | 占位符即「真实ID形态」，绝非短名。🔶 **自测点④ 现为 🔶 待办（不打 ✅、不计入失败）**：占位符未替换时推入待办；点④ 须**待你建 dev/prod 环境后替换 env.js:14-15 真实 ID** 才算完成（需人对着控制台比，不能靠自测）。 |
 | **点5** | initDb 部署后 `blocked===undefined && created.length===25` | `cloudfunctions/initDb/collections.js:7` `COLLECTIONS`（25 张）<br>`collections.js:141` `return { blocked: undefined };`（dev 放行）<br>`cloudfunctions/initDb/index.js` `result.created.push(c)` + 末尾 `return result;`（**不设 blocked 字段**） | COLLECTIONS.length===25 ✅；dev 环境 gate 返回 `blocked===undefined` ✅；prod 恒 `blocked=true` ✅；白名单误配 prod 仍拒 ✅。运行时：fresh dev 环境建 25 集合 → `created.length===25` 且 `blocked===undefined` |
 
 ---
@@ -87,4 +87,13 @@
 
 ## 五、与门禁关系
 
-本批源码不触碰 `specs/dev-specs/` 内规范，故 **A–K 门禁无需重跑**（门禁守规范层，不守本批生成的应用代码）。本批质量由本交付文档 §一 五条 file:line + §二 自测（20 通过 + 1 待办，EXIT=0）承保；点②/③ 另经**内存回退变异验证**确认回归护栏有效（回退 A1→1 失败、回退 A2→2 失败）。
+本批在 8e7e37f 后续修复中**改动了 `specs/dev-specs/` 门禁（新增 K11 双副本断言）**，按 N23 **已重跑 A–K 门禁全绿**（EXIT=0）；另新增 `tools/check_requires.js` 静态路径检查纳入 `verify_all.js` 防 A8 类回潮。本批质量由本交付文档 §一 五条 file:line + §二 自测（20 通过 + 1 待办，EXIT=0）+ 静态路径检查承保；点②/③ 另经**内存回退变异验证**确认回归护栏有效（回退 A1→1 失败、回退 A2→2 失败），A8 修复亦经**磁盘回退变异验证**（改回 `./config/env.js` → 静态检查 EXIT=1、命中 1 处；改回 `./miniprogram/...` → EXIT=0）。
+
+---
+
+## 六、8e7e37f 复审补充（2026-09-12 · 你独立复验）
+
+- **A8（🔴→已闭环）** `app.js:3` 原 `require('./config/env.js')` 路径错误：小程序根 = 仓库根（`project.config.json` 无 `miniprogramRoot`，`app.js/app.json/app.wxss/pages/` 均在根），真实位置是 `miniprogram/config/env.js` → 原路径 MODULE_NOT_FOUND → `wx.cloud.init` 永不执行、所有云调用全废。一处修复：`app.js:3` → `require('./miniprogram/config/env.js')`。**判据④ 因此有两个未完成原因：① 占位符未替换（仍是 dev 侧待办）；② 取用路径错误（现已闭环）**。
+- **A9（🟡 双副本）** `miniprogram/i18n/terms.js` 与 `specs/dev-specs/i18n/terms.js` 今日字节相同（SHA256 `065b79b9…`），但**只有 specs 那份被 A/B 门禁守着** → 门禁加 **K11 等式断言**（双副本漂移自动挂红）。
+- **新增护栏**：`tools/check_requires.js` 静态校验小程序侧所有相对 `require` 目标必须存在，纳入 `verify_all.js`；`verify_all.js` 失败聚合改 fail-closed + 打印 why/stdout/stderr（B4）。
+- 🧠 **方法论**：「套件全绿」又一次漏系统——`app.js` 入口根本不在任何套件里。盲区不只在**文件类型**（.md vs .txt），还在**目录层次**（specs/ vs 前端根）。覆盖外的代码须有独立 runner + 静态检查兜底。

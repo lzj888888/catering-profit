@@ -19,6 +19,7 @@ const SUITES = [
   ['test_poc3',           'specs/dev-specs/prototype/test_poc3.js'],
   ['test_poc4',           'specs/dev-specs/prototype/test_poc4.js'],
   ['batch0 代码自测',     'cloudfunctions/common/__tests__/batch0_selfcheck.js'],
+  ['静态路径检查',        'tools/check_requires.js'],
   // 后续批次的套件在此追加即可（如 test_poc5、batch1_selfcheck ...）
 ];
 
@@ -32,9 +33,13 @@ for (const [name, rel] of SUITES) {
     process.stdout.write(`  [${name}] ✅ PASS\n`);
   } catch (e) {
     failed++;
+    const why = e.code ? e.code : ('exit=' + e.status);
+    process.stdout.write(`  [${name}] ❌ FAIL (${why})\n`);
+    if (!e.stdout && !e.stderr) {
+      process.stdout.write(`      ↳ 子进程未产出输出：${String(e.message).split('\n')[0]}\n`);
+    }
     if (e.stdout) process.stdout.write(e.stdout.toString());
     if (e.stderr) process.stderr.write(e.stderr.toString());
-    process.stdout.write(`  [${name}] ❌ FAIL (exit=${e.status})\n`);
   }
 }
 
