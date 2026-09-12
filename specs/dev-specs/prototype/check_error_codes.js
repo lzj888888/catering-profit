@@ -313,6 +313,24 @@ for (const f of allMd) {
 }
 notes.push(`派生精度一致性扫描 : ${allMd.length} 个 .md（禁 6.6667 / 0.03333）`);
 
+// ===================== J. H5 购买页内容护栏（防非数值内容漂移 / D1 回潮）=====================
+// 背景：D1 发现投喂包批次 5 §2.5 引用「v1.4 §10.7」却装了修复前内容——"引导至安卓端或 H5 购买页
+//       （预留跳转入口）"。虚拟商品引导 H5 支付违反微信运营规范 5.13，会致审核驳回（P1-9 已判定删除）。
+//       此前 A~I 门禁全绿，因漂移扫描模式集只含数值项（8张/12.09/...），天然扫不到 H5 这类非数值内容。
+// 做法：全树 .md 搜「H5 购买页」，命中行必须是**否定句**（含 禁止/❌/不预留/不引导/禁硬编码 H5 之一），
+//       否则 fail——肯定式引导 H5 = 把已删违规方案装回去。与 D/E/I 同构、成本极低。
+const H5_NEG = ['禁止', '❌', '不预留', '不引导', '禁硬编码 H5'];
+const h5Hits = [];
+for (const f of allMd) {
+  const rel = path.relative(ROOT, f).replace(/\\/g, '/');
+  read(rel).split('\n').forEach((line, i) => {
+    if (line.includes('H5 购买页') && !H5_NEG.some((t) => line.includes(t))) {
+      h5Hits.push(`${rel}:${i + 1}  ${line.trim().slice(0, 110)}`);
+    }
+  });
+}
+notes.push(`H5 购买页内容护栏 : ${allMd.length} 个 .md（命中须为否定句）`);
+
 // ===================== G. 套餐价格结构断言（读代码值，不做文本 grep）=====================
 // 背景：P0-1 的原始缺陷（2990 / 7990 / 29900 / 月包 30 天）就住在 init_db.js 的 SEED_PLANS 里，
 //       而 D 组只扫 .md —— 对最可能出事的那份文件，文本 grep 这条保险是**失效的**。
@@ -408,6 +426,10 @@ for (const d of derivHits) {
   fails.push(`[I1] 派生精度 5 位小数残余 ${d}`);
 }
 
+for (const h of h5Hits) {
+  fails.push(`[J1] 非否定式出现「H5 购买页」（违反微信运营规范 5.13、P1-9 已判定删除）${h}\n        命中行必须是禁止 H5 购买页兜底的否定句（含 禁止/❌/不预留/不引导/禁硬编码 H5 之一）；肯定式引导 H5 = 把已删违规方案装回去`);
+}
+
 for (const g of planIssues) {
   fails.push(g);
 }
@@ -431,6 +453,7 @@ if (fails.length === 0) {
   console.log('   G   套餐价格/天数一致       : init_db.js 四档 = 2590/6900/19900/1990，31/90/365/31');
   console.log('   H   环境门禁结构             : init_db/seed_demo 均无 /^dev/、含 DEV_ENV_ID 白名单 + 恒效 !/prod/ + try 内 TCB_ENV 兜底、blocked 不回传 env');
   console.log('   I   派生精度一致             : 无 6.6667 / 0.03333 等 5 位小数残余（N13/N14 回潮护栏）');
+  console.log('   J   H5 购买页护栏           : 全树 .md 命中「H5 购买页」者均为否定句（禁止 H5 兜底），无肯定式引导（D1 护栏）');
   process.exit(0);
 } else {
   console.log(`❌ 发现 ${fails.length} 处断裂：`);
