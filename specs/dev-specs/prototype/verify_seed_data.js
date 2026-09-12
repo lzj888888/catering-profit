@@ -100,8 +100,9 @@ chk('招牌 2027-01(到期次月=0)', calcAmortize(sign, '2027-01'), 0);
 section('S3 · 宫保鸡丁（单份，损耗5%，辅料0.5/份，售价28）');
 const g = S3.cards.gongbao;
 const rg = calcDishCost({ mode: 'single', lossPct: g.lossPct, auxYuan: g.auxYuan, items: g.items.map(it => ({ amount: it.amount, netCost: it.netCost })) });
-const gTotal = fenRound(rg.total); // 对齐生产：先四舍五入至分，再反推毛利/毛利率
-chk('宫保鸡丁 单品原材料总成本=9.75', gTotal, 9.75);
+const gTotalFen = rg.totalFen;            // 生产落库值=整数分，由引擎直接产出（ModuleM3:62），非测试脚本额外 round
+const gTotal = gTotalFen / 100;           // 9.75（精确，源自整数分，无浮点 masking）
+chk('宫保鸡丁 单品原材料总成本=975分(整数)', gTotalFen, 975);
 chk('宫保鸡丁 单品毛利=18.25', fenRound(g.saleYuan - gTotal), 18.25);
 chk('宫保鸡丁 毛利率=65.18%', fenRound((g.saleYuan - gTotal) / g.saleYuan * 100), 65.18);
 chk('宫保鸡丁 倒推售价(目标毛利60%)=24.38', fenRound(reversePrice(gTotal, 60)), 24.38);

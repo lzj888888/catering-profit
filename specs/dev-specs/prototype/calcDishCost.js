@@ -9,10 +9,11 @@
  *    且能暴露文档锚点偏差——test_poc2.js 已按「口径 B」锁定宫保鸡丁总成本 9.75（旧文档 9.76 为笔误）。）
  */
 
-// 净料单位成本（元/克）
+// 净料单位成本（元/克）—— ModuleM3:60 纪律：中间保留 4 位小数（禁止原始双精度直接累积）
 function netCostPerGram(unitPriceYuan, convToGram, yieldPct) {
-  const perGram = unitPriceYuan / convToGram;     // 采购每克
-  return perGram / (yieldPct / 100);              // 净料单位成本
+  const perGram = unitPriceYuan / convToGram;          // 采购每克
+  const net = perGram / (yieldPct / 100);              // 净料单位成本
+  return Math.round(net * 10000) / 10000;              // 锁定 4 位小数，杜绝浮点漂移（2位→9.05 / 3位→9.68 反例）
 }
 
 /**
@@ -25,15 +26,15 @@ function netCostPerGram(unitPriceYuan, convToGram, yieldPct) {
  */
 function calcDishCost(card) {
   let detail = 0;
-  for (const it of card.items) detail += it.amount * it.netCost; // 明细净料成本合计
+  for (const it of card.items) detail += it.amount * it.netCost; // 明细净料成本合计（netCost 已锁 4 位小数）
   const denom = 1 - card.lossPct / 100;                          // (1 - 损耗率)
   if (card.mode === 'batch') {
     const batchTotal = (detail + card.auxYuan) / denom;          // 整批总成本
     const perShare = batchTotal / card.batchShares;              // 单份半成品成本
-    return { detail, batchTotal, perShare };
+    return { detail, batchTotal, perShare, totalFen: Math.round(batchTotal * 100) }; // 落库值=整数分
   }
   const total = (detail + card.auxYuan) / denom;                 // 单品原材料总成本（辅料一并放大）
-  return { detail, total };
+  return { detail, total, totalFen: Math.round(total * 100) };   // totalFen = 生产落库整数分（ModuleM3:62）
 }
 
 // 反算售价：目标毛利率 g% -> 售价 = 总成本 / (1 - g/100)
