@@ -151,6 +151,13 @@ const allText = walk(ROOT)
   .filter((p) => ['.md', '.js', '.txt'].includes(path.extname(p).toLowerCase()))
   .filter((p) => !path.basename(p).startsWith('OBSOLETE_'));
 
+// D 组（配额口径）文件集：.md + .txt —— 必须含 .txt。
+// D7 复发点之一就是 delivery/批次5_提示词_可直接复制.txt（.txt），.md-only 扫不到它。
+// ⚠️ 不可直接用 allText（含 .js）：check_error_codes.js 自身的 tip/汇总串必然引用禁用值 → 自命中（实测 15 条）。
+const allDoc = walk(ROOT)
+  .filter((p) => ['.md', '.txt'].includes(path.extname(p).toLowerCase()))
+  .filter((p) => !path.basename(p).startsWith('OBSOLETE_'));
+
 const usedFns = new Map(); // fn -> 首次出现的文件
 for (const f of allMd) {
   const txt = read(path.relative(ROOT, f).replace(/\\/g, '/'));
@@ -167,7 +174,7 @@ for (const f of allMd) {
 
 notes.push(`core/10 §6 已登记 admin 函数   : ${registered.size} 个`);
 notes.push(`全树引用 admin 函数（已排除中间件/字段）: ${usedFns.size} 个`);
-notes.push(`配额口径 / 表格结构 扫描 : ${allMd.length} 个 .md`);
+notes.push(`配额口径(D组)扫描 : ${allDoc.length} 个 .md+.txt；表格结构(E组)扫描 : ${allMd.length} 个 .md`);
 // 按扩展名给出实际构成（避免"以为在守 .txt、其实仓库内没有 .txt"的错觉）
 const extCount = { '.md': 0, '.js': 0, '.txt': 0 };
 allText.forEach((p) => {
@@ -212,7 +219,7 @@ const QUOTA_SKIP_MARKERS = [
 const CLAUSE_SPLIT = /[。；;，,、]/;
 
 const quotaHits = [];
-for (const f of allMd) {
+for (const f of allDoc) {
   const rel = path.relative(ROOT, f).replace(/\\/g, '/');
   const lines = read(rel).split('\n');
   lines.forEach((line, i) => {
