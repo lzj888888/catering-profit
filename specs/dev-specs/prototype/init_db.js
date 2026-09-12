@@ -172,7 +172,8 @@ exports.main = async (event, context) => {
       result.created.push(c);
     } catch (e) {
       // 集合已存在 / 环境不支持 createCollection 时静默跳过
-      if (!/already|exist|EXISTS/i.test(e.message || '')) {
+      // 兼容英文(already/exist/EXISTS)与中文(已存在)等措辞，避免重跑时把"集合已存在"噪声误记进 errors
+      if (!/already|exist|EXISTS|已存在|已建|冲突/i.test(e.message || '')) {
         result.errors.push(`create ${c}: ${e.message}`);
       }
     }
