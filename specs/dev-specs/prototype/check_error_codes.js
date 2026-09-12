@@ -287,6 +287,28 @@ for (const f of allText) {
   });
 }
 
+// ===================== I. 派生精度一致性（防 5 位小数残余 / N13·N14 回潮）=====================
+// 背景：N13 发现"明细表行值 6.6667（5 位）与合计 8.76（4 位纪律）不自洽、相邻行加总对不上"；
+//       N14 发现"净料单位成本 0.03333（5 位）"散落 5 处。自动判定式 netCostPerGram 只产出 ≤4 位，
+//       文档里出现 5 位小数即意味着"手算值未跟随纪律更新"。
+// 做法：在 .md 内扫描两个已知坏串——`6.6667`（应为 6.66）、`0.03333`（应为 0.0333）；
+//       命中即 fail。特地只扫 .md（不扫 .js）——seed_data.js 注释里"非裸浮点 0.03333…"是有意保留的对照，
+//       扫 .js 会误伤。本组只增严、不放松。
+const FORBIDDEN_DERIV = [
+  { re: /6\.6667/, tip: '鸡胸肉 200g 行成本应为 4 位纪律值 6.66（6.6667 是 5 位，与合计 8.76 不自洽，N13）' },
+  { re: /0\.03333/, tip: '净料单位成本应为 4 位纪律值 0.0333（0.03333 是 5 位，N14）' },
+];
+const derivHits = [];
+for (const f of allMd) {
+  const rel = path.relative(ROOT, f).replace(/\\/g, '/');
+  read(rel).split('\n').forEach((line, i) => {
+    for (const { re, tip } of FORBIDDEN_DERIV) {
+      if (re.test(line)) derivHits.push(`${rel}:${i + 1}  ${line.trim().slice(0, 90)}  —— ${tip}`);
+    }
+  });
+}
+notes.push(`派生精度一致性扫描 : ${allMd.length} 个 .md（禁 6.6667 / 0.03333）`);
+
 // ===================== G. 套餐价格结构断言（读代码值，不做文本 grep）=====================
 // 背景：P0-1 的原始缺陷（2990 / 7990 / 29900 / 月包 30 天）就住在 init_db.js 的 SEED_PLANS 里，
 //       而 D 组只扫 .md —— 对最可能出事的那份文件，文本 grep 这条保险是**失效的**。
@@ -378,6 +400,10 @@ for (const c of charHits) {
   fails.push(`[F1] 字符损坏（U+FFFD）${c}\n        该行含替换字符 —— 通常是写入时字节序列损坏（如「一行」显示成「???行」）。须按原字补回，不可用其它字替代。`);
 }
 
+for (const d of derivHits) {
+  fails.push(`[I1] 派生精度 5 位小数残余 ${d}`);
+}
+
 for (const g of planIssues) {
   fails.push(g);
 }
@@ -400,6 +426,7 @@ if (fails.length === 0) {
   console.log('   F   字符完整性               : .md / .js / .txt 均无 U+FFFD 替换字符');
   console.log('   G   套餐价格/天数一致       : init_db.js 四档 = 2590/6900/19900/1990，31/90/365/31');
   console.log('   H   环境门禁结构             : init_db/seed_demo 均无 /^dev/、含 DEV_ENV_ID 白名单 + 恒效 !/prod/ + try 内 TCB_ENV 兜底、blocked 不回传 env');
+  console.log('   I   派生精度一致             : 无 6.6667 / 0.03333 等 5 位小数残余（N13/N14 回潮护栏）');
   process.exit(0);
 } else {
   console.log(`❌ 发现 ${fails.length} 处断裂：`);
@@ -414,5 +441,6 @@ if (fails.length === 0) {
   console.log('  · E 类（表格结构）   → 把被引用块 / 散文行挤出的表行移回表内（紧邻表头，保持连续）');
   console.log('  · F 类（字符损坏）   → 按原字补回被损坏的字（如「???行」补成「一行」），不可用其它字替代；');
   console.log('                         本组扫描 .md + .js + .txt，注意 .js 里的注释同样在扫描范围内');
+  console.log('  · I 类（派生精度）   → 文档内出现 5 位小数金额（6.6667 / 0.03333）即错：改为 4 位纪律值 6.66 / 0.0333；净料单位成本以 netCostPerGram 4 位为准');
   process.exit(1);
 }
