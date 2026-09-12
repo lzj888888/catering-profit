@@ -283,7 +283,7 @@ for (const f of allMd) {
 // ===================== F. 字符完整性（U+FFFD 替换字符）=====================
 // 背景：core/06「兜底」（3 字节损坏）与本文件「一行」都曾变成 U+FFFD，两次都靠人眼偶然发现。
 // ⚠️ 扫描面必须是 **.md + .js + .txt**：只扫 .md 会漏掉 .js 里的损坏（历史上真漏过一次）。
-//    注意 F 组用 allText，而 C / D / E 仍用 allMd —— 把 .js 纳入 D 组会让本文件自我命中
+//    注意 F 组用 allText，而 C / E 仍用 allMd，D / I / J 用 allDoc（.md+.txt，排除 .js）—— 后者把 .js 排除正是为避免本文件自身的 tip/汇总串自命中
 //    （本文件注释里就有「8 张」「2990」等被检查的字样）。
 // allText 已在 C 组上方定义（紧邻 allMd），此处直接使用
 
@@ -301,7 +301,7 @@ for (const f of allText) {
 //       N14 发现"净料单位成本 0.03333（5 位）"散落 5 处。自动判定式 netCostPerGram 只产出 ≤4 位，
 //       文档里出现 5 位小数即意味着"手算值未跟随纪律更新"。
 // 做法：在 .md 内扫描三个已知坏串——`6.6667`（应为 6.66）、`0.03333`（应为 0.0333）、`9.76`（应为 9.75）；
-//       命中即 fail。特地只扫 .md（不扫 .js）——seed_data.js 的"非裸浮点 0.03333…"、
+//       命中即 fail。特地只扫 .md+.txt（不扫 .js）——seed_data.js 的"非裸浮点 0.03333…"、
 //       calcDishCost.js:9 / test_poc2.js:7,55 的"旧文档 9.76 为笔误"均是有意保留的对照，
 //       扫 .js 会误伤。本组只增严、不放松。
 // ⚠️ 覆盖边界（N22，必读）：本组只守 specs/dev-specs/。**桌面派生层（C_桌面已生成交付物 / B_工作台_parse）
@@ -319,7 +319,7 @@ const FORBIDDEN_DERIV = [
 //    按"响亮失败优于静默漏检"整表撤除——尤其 `原值` 偏宽，会把"原值 6.6667"这类**真实残余**误豁免（N19）。
 //    将来若确需在沿革里写旧值，再加**更窄**的标记（并同步更新本注释），不预置宽泛词。
 const derivHits = [];
-for (const f of allMd) {
+for (const f of allDoc) {
   const rel = path.relative(ROOT, f).replace(/\\/g, '/');
   read(rel).split('\n').forEach((line, i) => {
     for (const { re, tip } of FORBIDDEN_DERIV) {
@@ -327,17 +327,17 @@ for (const f of allMd) {
     }
   });
 }
-notes.push(`派生精度一致性扫描 : ${allMd.length} 个 .md（禁 6.6667 / 0.03333 / 9.76）`);
+notes.push(`派生精度一致性扫描 : ${allDoc.length} 个 .md+.txt（禁 6.6667 / 0.03333 / 9.76）`);
 
 // ===================== J. H5 购买页内容护栏（防非数值内容漂移 / D1 回潮）=====================
 // 背景：D1 发现投喂包批次 5 §2.5 引用「v1.4 §10.7」却装了修复前内容——"引导至安卓端或 H5 购买页
 //       （预留跳转入口）"。虚拟商品引导 H5 支付违反微信运营规范 5.13，会致审核驳回（P1-9 已判定删除）。
 //       此前 A~I 门禁全绿，因漂移扫描模式集只含数值项（8张/12.09/...），天然扫不到 H5 这类非数值内容。
-// 做法：全树 .md 搜「H5 购买页」，命中行必须是**否定句**（含 禁止/❌/不预留/不引导/禁硬编码 H5 之一），
+// 做法：全树 .md+.txt 搜「H5 购买页」，命中行必须是**否定句**（含 禁止/❌/不预留/不引导/禁硬编码 H5 之一），
 //       否则 fail——肯定式引导 H5 = 把已删违规方案装回去。与 D/E/I 同构、成本极低。
 const H5_NEG = ['禁止', '❌', '不预留', '不引导', '禁硬编码 H5'];
 const h5Hits = [];
-for (const f of allMd) {
+for (const f of allDoc) {
   const rel = path.relative(ROOT, f).replace(/\\/g, '/');
   read(rel).split('\n').forEach((line, i) => {
     if (line.includes('H5 购买页') && !H5_NEG.some((t) => line.includes(t))) {
@@ -345,7 +345,7 @@ for (const f of allMd) {
     }
   });
 }
-notes.push(`H5 购买页内容护栏 : ${allMd.length} 个 .md（命中须为否定句）`);
+notes.push(`H5 购买页内容护栏 : ${allDoc.length} 个 .md+.txt（命中须为否定句）`);
 
 // ===================== G. 套餐价格结构断言（读代码值，不做文本 grep）=====================
 // 背景：P0-1 的原始缺陷（2990 / 7990 / 29900 / 月包 30 天）就住在 init_db.js 的 SEED_PLANS 里，
@@ -454,6 +454,78 @@ for (const h of gateHits) {
   fails.push(h);
 }
 
+// ===================== K. 投喂链派生一致性（txt / html 必须等于 MD 单源）=====================
+// 背景：8 份「批次N_提示词_可直接复制.txt」与「一键复制.html」均由 delivery/_gen_8batch_html.py
+//       从 inscode喂投包_8批_自包含完整版.md 的「===== 批次 N 开始/结束 =====」标记间内容生成。
+//       D4（桌面 HTML 落后一版）与 D7（批次 5 txt 残留旧配额口径）是同一根因：
+//       改了 MD 没重跑生成器，而 A~J 没有任何一组看得见"派生件落后"。
+// ⚠️ 必须先归一 \r\n → \n 再比：Python 文本模式写入用 os.linesep（Windows 下为 CRLF），
+//    .txt / .html 含 CRLF 而 MD 读入为 LF，直接比字节会把**正确**的树判红（实测 raw_eq=false / norm_eq=true）。
+const FEED_DIR  = path.join(ROOT, 'delivery');
+const FEED_MD   = path.join(FEED_DIR, 'inscode喂投包_8批_自包含完整版.md');
+const FEED_HTML = path.join(FEED_DIR, 'inscode喂投包_8批_一键复制.html');
+const normNL = (s) => s.replace(/\r\n/g, '\n');
+const FEED_MD_TXT = fs.readFileSync(FEED_MD, 'utf8');
+const FEED_BLK = {};
+for (let n = 0; n < 8; n++) {
+  const sm = new RegExp(`^===== 批次 ${n} 开始 =====[ \\t]*$`, 'm').exec(FEED_MD_TXT);
+  const em = new RegExp(`^===== 批次 ${n} 结束 =====[ \\t]*$`, 'm').exec(FEED_MD_TXT);
+  FEED_BLK[n] = (sm && em) ? normNL(FEED_MD_TXT.slice(sm.index + sm[0].length, em.index).trim()) : null;
+}
+for (let n = 0; n < 8; n++) {
+  if (FEED_BLK[n] === null) {
+    fails.push(`[K1] MD 缺批次 ${n} 的开始/结束标记 —— 生成器会 WARN 并跳过，该批 txt/html 不会被生成`);
+    continue;
+  }
+  const tf = path.join(FEED_DIR, `批次${n}_提示词_可直接复制.txt`);
+  if (!fs.existsSync(tf)) {
+    fails.push(`[K2] 缺 批次${n}_提示词_可直接复制.txt —— 重跑 delivery/_gen_8batch_html.py`);
+  } else if (normNL(fs.readFileSync(tf, 'utf8')).trim() !== FEED_BLK[n]) {
+    fails.push(`[K3] 批次${n} txt 与 MD 单源不一致（派生件落后）—— 重跑 delivery/_gen_8batch_html.py，勿手改 txt`);
+  }
+}
+if (!fs.existsSync(FEED_HTML)) {
+  fails.push('[K4] 缺 inscode喂投包_8批_一键复制.html —— 重跑 delivery/_gen_8batch_html.py');
+} else {
+  // 括号配对扫描（兼容 text 内含 ] 或 ]; 的情形，比正则 [\s\S]*? 更稳）
+  const hSrc = fs.readFileSync(FEED_HTML, 'utf8');
+  const mi = hSrc.indexOf('const BLOCKS = ');
+  if (mi < 0) {
+    fails.push('[K5] HTML 里找不到 const BLOCKS = ...（生成器结构已变？）');
+  } else {
+    const start = hSrc.indexOf('[', mi);
+    let depth = 0, inStr = false, esc = false, end = -1;
+    for (let k = start; k < hSrc.length; k++) {
+      const ch = hSrc[k];
+      if (inStr) {
+        if (esc) esc = false;
+        else if (ch === '\\') esc = true;
+        else if (ch === '"') inStr = false;
+      } else {
+        if (ch === '"') inStr = true;
+        else if (ch === '[') depth++;
+        else if (ch === ']') { depth--; if (depth === 0) { end = k; break; } }
+      }
+    }
+    if (end < 0) fails.push('[K6] HTML 的 BLOCKS 括号不匹配');
+    else {
+      let FB = null;
+      try { FB = JSON.parse(hSrc.slice(start, end + 1)); } catch (e) { fails.push('[K7] HTML 的 BLOCKS 不是合法 JSON'); }
+      if (FB) {
+        if (FB.length !== 8) fails.push(`[K8] HTML 块数 = ${FB.length}，应为 8`);
+        for (let n = 0; n < 8; n++) {
+          const b = FB.find((x) => x.n === n);
+          if (!b) { fails.push(`[K9] HTML 缺批次 ${n} 块`); continue; }
+          if (normNL(b.text).trim() !== FEED_BLK[n]) {
+            fails.push(`[K10] 批次${n} HTML 块与 MD 单源不一致（派生件落后）—— 重跑 delivery/_gen_8batch_html.py`);
+          }
+        }
+      }
+    }
+  }
+}
+notes.push(`投喂链派生一致性 : 8 txt + 8 html 块 vs MD 单源（CRLF 已归一）`);
+
 // ===================== 输出 =====================
 console.log('══════ 规范层一致性机械门禁 ══════');
 notes.forEach((n) => console.log('  · ' + n));
@@ -469,7 +541,8 @@ if (fails.length === 0) {
   console.log('   G   套餐价格/天数一致       : init_db.js 四档 = 2590/6900/19900/1990，31/90/365/31');
   console.log('   H   环境门禁结构             : init_db/seed_demo 均无 /^dev/、含 DEV_ENV_ID 白名单 + 恒效 !/prod/ + try 内 TCB_ENV 兜底、blocked 不回传 env');
   console.log('   I   派生精度一致             : 无 6.6667 / 0.03333 / 9.76 等旧值残余（N13/N14/N22 回潮护栏）');
-  console.log('   J   H5 购买页护栏           : 全树 .md 命中「H5 购买页」者均为否定句（禁止 H5 兜底），无肯定式引导（D1 护栏）');
+  console.log('   J   H5 购买页护栏           : 全树 .md+.txt 命中「H5 购买页」者均为否定句（禁止 H5 兜底），无肯定式引导（D1 护栏）');
+  console.log('   K   投喂链派生一致         : 8 份 txt + 8 个 HTML 块均与 MD 单源逐字一致（CRLF 已归一，防 D4/D7 类派生件落后）');
   process.exit(0);
 } else {
   console.log(`❌ 发现 ${fails.length} 处断裂：`);
