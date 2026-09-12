@@ -51,7 +51,7 @@ const gongbao = {
 const rA = calcDishCost(gongbao);
 const costR = Math.round(rA.total * 100) / 100; // 口径B：最终 round 到分存储 = 9.75
 console.log('\n--- POC2 用例A: 宫保鸡丁（单份）---');
-check('明细净料成本合计', rA.detail, 8.7667);
+check('明细净料成本合计', rA.detail, 8.76);
 check('🟢 单品原材料总成本', costR, 9.75, '⚠️旧文档笔误标9.76；口径B锁定9.75(中间保精度,最终round)');
 check('单品毛利(28-成本)', 28 - costR, 18.25);
 check('单品毛利率%', (28 - costR) / 28 * 100, 65.18, '基于锁定成本9.75推导');
@@ -112,8 +112,9 @@ const gongbaoV2 = {
   ],
 };
 const rE = calcDishCost(gongbaoV2);
-check('改价后新版本明细', rE.detail, 10.9889);
-check('🟢 同步后新版本总成本', rE.total, 12.09);
+check('改价后新版本明细', rE.detail, 10.98);
+check('🟢 同步后新版本总成本(整数分)', rE.totalFen, 1208);
+check('🟢 同步后新版本总成本(元)', rE.totalFen / 100, 12.08);
 
 // ---- 用例 D · 循环引用拦截 ----
 console.log('\n--- POC2 用例D: 循环引用拦截 ---');

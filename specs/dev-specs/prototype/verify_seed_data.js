@@ -13,7 +13,7 @@
  */
 
 const { calcMonthlyProfit, toFen, toYuan } = require('./calcMonthlyProfit.js');
-const { calcDishCost, reversePrice, detectBomCycle } = require('./calcDishCost.js');
+const { calcDishCost, reversePrice, detectBomCycle, netCostPerGram } = require('./calcDishCost.js');
 const { calcSandbox } = require('./calcM2.js');
 const { calcAmortize, calcResidualFen } = require('./calcAmortize.js');
 const { S1, S2, S2b, S3, S4 } = require('./seed_data.js');
@@ -130,12 +130,23 @@ chk('循环引用被拦截（detectBomCycle=true）', cycleHit, true);
 section('S3 · 快照不联动 + 手动刷新（3-R）');
 // 快照不联动：改原料档案后，已保存成本卡仍用保存时快照 = 9.75
 chk('成本卡快照不联动（旧卡仍 9.75）', gTotal, 9.75);
-// 手动刷新=另存新版：鸡胸肉 15→20 元/斤 后重算
-const updItems = g.items.map(it => it.name === '鸡胸肉'
-  ? { ...it, netCost: S3.refresh.gongbaoUpdatedItem.netCost }
-  : it);
+// 纪律一致性守卫（N10）：已保存快照的净料单位成本必须等于 netCostPerGram(原料档案)，
+// 否则快照未走 ModuleM3:60 的 4 位小数纪律——此前 verify 喂字面量、完全绕过了该纪律的验证。
+const mat = (name) => S3.materials.find(m => m.name === name);
+g.items.forEach(it => {
+  const m = mat(it.name);
+  chk(`快照纪律锁定：${it.name} netCost==netCostPerGram(${m.priceYuan},${m.conv},${m.yield})`,
+      it.netCost, netCostPerGram(m.priceYuan, m.conv, m.yield));
+});
+// 手动刷新=另存新版：鸡胸肉 15→20 元/斤 后，按 ModuleM3:60 纪律重算净料单位成本（4 位小数=0.0444）
+const refreshNet = netCostPerGram(20, 500, 90);
+chk('刷新净料单位成本=netCostPerGram(20,500,90)=0.0444（纪律锁定，非裸浮点 0.04444…）', refreshNet, S3.refresh.gongbaoUpdatedItem.netCost);
+const updItems = g.items.map(it => it.name === '鸡胸肉' ? { ...it, netCost: refreshNet } : it);
 const rg2 = calcDishCost({ mode: 'single', lossPct: g.lossPct, auxYuan: g.auxYuan, items: updItems.map(it => ({ amount: it.amount, netCost: it.netCost })) });
-chk('手动同步后 v2 总成本=12.09（v1=9.75 保留可回溯）', fenRound(rg2.total), 12.09);
+const v2Fen = rg2.totalFen;            // 生产落库值=整数分，由引擎直接产出（ModuleM3:62），非测试脚本额外 round
+const v2Total = v2Fen / 100;          // 12.08（精确，源自整数分，无浮点 masking）
+chk('手动同步后 v2 总成本=1208分(整数)', v2Fen, 1208);
+chk('手动同步后 v2 总成本=12.08（v1=9.75 保留可回溯）', v2Total, 12.08);
 
 // ---------------- S4：选址盈利沙盘（M2）----------------
 section('S4 · 选址盈利沙盘（M2）');

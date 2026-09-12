@@ -131,7 +131,7 @@ const S3 = {
     gongbao: {
       name: '宫保鸡丁', mode: 'single', category: '热菜', lossPct: 5, auxYuan: 0.5, saleYuan: 28,
       items: [
-        { name: '鸡胸肉', amount: 200, netCost: 0.03333 }, // 15/500/0.9
+        { name: '鸡胸肉', amount: 200, netCost: 0.0333 },  // 15/500/0.9 → netCostPerGram 4位小数=0.0333（纪律锁定，非裸浮点 0.03333…）
         { name: '花生米', amount: 50,  netCost: 0.02 },    // 10/500/1.0
         { name: '干辣椒', amount: 10,  netCost: 0.04 },    // 20/500
         { name: '葱姜蒜', amount: 30,  netCost: 0.01 },    // 5/500
@@ -167,8 +167,8 @@ const S3 = {
   // 刷新测试（3-R）：鸡胸肉采购单价 15→20 元/斤 后，对宫保鸡丁点「同步至原料最新价格」
   refresh: {
     // 新净料每克成本 = 20 / 500 / 0.9 = 0.04444...
-    gongbaoUpdatedItem: { name: '鸡胸肉', amount: 200, netCost: 20 / 500 / 0.9 },
-    expectedV2: 12.09,
+    gongbaoUpdatedItem: { name: '鸡胸肉', amount: 200, netCost: 0.0444 }, // 20/500/0.9 → netCostPerGram 4位小数=0.0444（纪律锁定，非裸浮点 0.04444…）
+    expectedV2: 12.08,
   },
   // 循环引用测试（3.5）：半成品 A 引用 B，B 引用 A
   cycle: { A: ['B'], B: ['A'] },
