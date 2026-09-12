@@ -11,8 +11,8 @@ const { netCostPerGram, calcDishCost, reversePrice, detectBomCycle } = require('
 
 let pass = 0, fail = 0;
 function approx(a, b, eps = 0.01) { return Math.abs(a - b) <= eps; }
-function check(name, actual, expected, note) {
-  const ok = approx(actual, expected, 0.01);
+function check(name, actual, expected, note, strict) {
+  const ok = strict ? (actual === expected) : approx(actual, expected, 0.01);
   ok ? pass++ : fail++;
   let line = `${ok ? '✅' : '❌'} ${name}: 实际=${actual.toFixed(2)}  预期=${expected}`;
   if (note) line += `   ${note}`;
@@ -51,7 +51,7 @@ const gongbao = {
 const rA = calcDishCost(gongbao);
 const costR = Math.round(rA.total * 100) / 100; // 口径B：最终 round 到分存储 = 9.75
 console.log('\n--- POC2 用例A: 宫保鸡丁（单份）---');
-check('明细净料成本合计', rA.detail, 8.76);
+check('明细净料成本合计(分)', Math.round(rA.detail * 100), 876, '4位纪律:0.0333×200=6.66+2.10', true);
 check('🟢 单品原材料总成本', costR, 9.75, '⚠️旧文档笔误标9.76；口径B锁定9.75(中间保精度,最终round)');
 check('单品毛利(28-成本)', 28 - costR, 18.25);
 check('单品毛利率%', (28 - costR) / 28 * 100, 65.18, '基于锁定成本9.75推导');
@@ -112,9 +112,8 @@ const gongbaoV2 = {
   ],
 };
 const rE = calcDishCost(gongbaoV2);
-check('改价后新版本明细', rE.detail, 10.98);
+check('改价后新版本明细(分)', Math.round(rE.detail * 100), 1098, '4位纪律:0.0444×200=8.88+2.10', true);
 check('🟢 同步后新版本总成本(整数分)', rE.totalFen, 1208);
-check('🟢 同步后新版本总成本(元)', rE.totalFen / 100, 12.08);
 
 // ---- 用例 D · 循环引用拦截 ----
 console.log('\n--- POC2 用例D: 循环引用拦截 ---');
