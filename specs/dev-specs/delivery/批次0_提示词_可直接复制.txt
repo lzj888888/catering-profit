@@ -1,0 +1,158 @@
+# 批次 0 / 8 · 工程地基（项目初始化 + 鉴权中间件 + 统一错误码 + 基础表结构 + 时间工具 + 软删过滤层）
+
+## 1. 批次定位
+
+这是整个项目的**第 0 批**，在 POC 算法（1~3 批）、页面（4 批）、付费（5 批）、后台（6 批）**之前**完成。
+**核心目标**：把所有业务都会复用的**公共能力**一次建好，让后续每一批生成的云函数**生来就带鉴权、带统一错误码、走服务端时间、默认过滤软删**。
+⚠️ **地基打歪，后面 7 批全部返工**，所以本批**只做地基，不做任何业务**。
+
+## 2. 完整需求
+
+### 2.1 项目与分层
+- 微信小程序原生 + 微信云开发（不用服务器）。目录：`miniprogram/`（前端）、`cloudfunctions/`（云函数，按模块分目录）。
+- **分层铁律**：Controller / Service / DataAdapter / Utils 四层；**Service 层禁止引入云开发 SDK**（便于单测与复用）。
+- **计算下沉**：所有金额/成本/利润计算在云函数完成，**前端传来的计算结果一律丢弃不采信**，由 Service 用原始录入数据重算。
+
+### 2.2 鉴权中间件（本批最重要）
+1. **绝不信任前端传来的 `user_id` / `shop_id` / `openid`**。一律用 `cloud.getWXContext().OPENID` 取可信身份；前端传来的身份字段**一律丢弃**。
+2. 中间件统一解析：`const { OPENID } = cloud.getWXContext()` → 查 `user` 表 → 得到 `user.id`。**若 openid 无对应 `user` 记录（首次进入），自动建档**：插入 `user`（`openid`→`user_id`）＋ 一个默认 `shop` ＋ `shop_entitlement`（`user_id` 唯一，`expire_at=0` 视为免费档），建档动作写 `audit_log`；建档完成后再继续业务逻辑（**不要**返回 `USER_NOT_FOUND`，首次建档是常态而非异常，否则 `payQueryEntitlement` 会查不到权限记录）。
+3. **所有涉及店铺的操作必须做归属校验**：`shop.user_id === user.id`，否则返回 `FORBIDDEN`。缺这一步 = 越权漏洞。
+4. **写操作必须校验 `client_request_id` 幂等**：同一 id 重复请求直接返回首次结果，不重复写入。
+5. **按 openid 维度限流**：写操作 60 次/分钟，超限返回 `RATE_LIMITED`。
+
+### 2.3 统一错误码与返回格式
+所有云函数统一返回 `{ code, msg, data }`：
+
+| code | 含义 |
+|---|---|
+| `SUCCESS` | 成功 |
+| `UNAUTHORIZED` | 无法识别用户（无 OPENID） |
+| `FORBIDDEN` | 身份有效但无权访问该资源 |
+| `USER_NOT_FOUND` | openid 未建档 |
+| `RATE_LIMITED` | 触发限流 |
+| `INVALID_PARAM` | 参数校验失败 |
+
+### 2.4 基础表结构（**严格照做，表名/字段/类型不得改动**）
+
+**A 类 · 已锁定表**
+| 表名 | 用途 |
+|---|---|
+| `shop_material` | 原料档案（含半成品虚拟原料 `is_virtual`） |
+| `shop_cost_card` | 成本卡主表（**只 INSERT 不 UPDATE**） |
+| `shop_cost_card_line` | 成本卡明细行（**快照**） |
+| `shop_sandbox` | 选址盈利沙盘方案（M2） |
+| `shop_amortize` | 摊销资产台账 |
+| `audit_log` | 全局操作日志（**只 INSERT**） |
+
+**B 类 · 设计表（关键字段）**
+| 表名 | 关键字段 |
+|---|---|
+| `shop_monthly_account` | `id, shop_id, month(YYYY-MM), revenue_total(分), cost_total, expense_total, profit_ref, profit_true, gross_profit, gross_margin, is_archive, archived_at` |
+| `shop_monthly_income` | `id, shop_id, month, category, sub_item, amount(分), remark` |
+| `shop_monthly_expense` | `id, shop_id, month, category, sub_item, amount(分)` |
+| `shop_inventory` | `id, shop_id, month, begin_stock(分), purchase(分), end_stock(分), actual_consume(分,系统算)` |
+| `shop_stored_value` | `id, shop_id, month, recharge, consume, balance` |
+| `shop_credit_ledger` | `id, shop_id, date, type, amount(分), customer, is_settled` |
+| `subscription_plan` | `plan_id, name, price(分), days, type, enabled, sort` |
+| `feature_permissions` | `plan_id, feature_key, enabled` |
+| `shop_switch` | `shop_id, switch_key, enabled`（库存开关 / 摊销开关 / 收入开关） |
+| `shop_income_item` / `shop_expense_item` | `id, shop_id, item_key, item_name, category, sort_order, enabled, is_system` |
+| `shop_subscription` | `id, **user_id**, plan_id, start_at, expire_at, source(manual/payment), status`（**主体=用户**，非店铺） |
+| `shop_payment_flow` | `id, **user_id**, order_no, amount(分), plan_id, status, paid_at, channel, shop_id(可选,下单来源)` |
+
+**本版补充表**
+| 表名 | 关键字段 |
+|---|---|
+| `user` | `user_id(雪花主键), openid(唯一索引), unionid, nickname, avatar, created_at, is_deleted`（**权限主体**） |
+| `shop` | `id, user_id, name, remark, is_deleted, created_at`（**M1 账套按此表 is_deleted=false 计数**） |
+| `shop_entitlement` | **`user_id(唯一)`**, `expire_at(BIGINT UTC), source, updated_at`（**权限唯一依据**）⚠️ **不是 shop_id** |
+| `order_refund` | `id, order_id, user_id(权限主体), shop_id(业务关联), amount(分), refund_at, reason, operator` |
+| `admin_user` | `id, username(唯一), pwd_hash, salt, role, status, locked_until, last_login_at` |
+| `admin_login_log` | `id, admin_id, ip, result, created_at` |
+
+**通用字段（业务表均带）**：`created_at / updated_at (BIGINT 毫秒)`、`is_deleted (BOOL)`、`delete_at (BIGINT)`、`delete_by`。
+**类型铁律**：金额 **INT「分」**；百分比 `DECIMAL(5,2)`（35.00 表示 35%）；时间 **BIGINT 毫秒 / UTC**；年月 **YYYY-MM 字符串**。
+**索引**：`openid`(唯一)、`user_id`、`shop_id`、`expire_at`、`is_deleted`；复合 `(shop_id, month)`、`(shop_id, is_deleted)`。
+
+> 🔴 **主体维度铁律（易错，务必照做）**
+> **权限 / 订阅 / 订单的"主体"是 `user_id`，不是 `shop_id`** —— 对齐 v1.4 §7.7 原文：`shop_entitlement(user_id, expire_at, source)`。
+> - 用户付费 → 名下**所有店铺共享权限**，**不是**"一店一权限、一店一付费"。
+> - `shop_id` 仅在订单/退款里作为**业务关联来源**保留，**不参与任何权限判定**。
+> - 免费配额（M1 限 1 家店）仍按 `shop` 表 `is_deleted=false` **计数**，与权限主体无关。
+
+**`audit_log` 字段（地基阶段锁死，只 INSERT）**
+`id, action(如 ADMIN_GRANT_ENTITLEMENT / M3_CREATE_CARD), operator_type(user/admin), operator_id, shop_id(可选), before_data(JSON), after_data(JSON), remark, created_at`
+→ 保证所有操作**可追溯到人、可还原前后状态**。
+
+**幂等键维度**
+唯一键 = **`(shop_id + client_request_id)`**（不同店铺允许复用请求 ID，避免全局唯一导致误拦截）；**读操作不强制**，**所有写操作必须校验**。
+
+### 2.5 服务端时间工具
+- 统一 `nowUtc()` 返回服务端 UTC 毫秒；**禁止使用前端传入时间**。
+- 月份统一用 `YYYY-MM` 字符串；需要 Date 时用**月中固定时刻** `new Date(year, month, 15, 12, 0, 0)`（防时区/夏令时跳变）。
+
+### 2.6 软删过滤层
+- 数据访问层**统一注入** `is_deleted = false`，不依赖每个云函数手写。
+- 软删写 `is_deleted=true` + `delete_at` + `delete_by`；**软删数据不占免费配额**。
+
+### 2.7 通用工具
+金额元↔分转换、百分比计算、**尾差倒挤**工具、audit_log 写入工具（只 INSERT）。
+
+### 2.8 可运行建表脚本 + 配套规范（必做，防「集合不存在」）
+- **建库云函数 `initDb`**：把 §2.4 的 **25 张集合 + 索引 + 种子套餐/权限** 落地为可运行脚本 `prototype/init_db.js`，部署为云函数 `initDb`，**仅手动运行一次**（可重复跑，已存在则跳过）。**不建集合代码一跑就报「集合不存在」**。
+- **统一错误码表**（`core/09_统一错误码表.md`）：所有批次共用同一套码，**禁止各批自造**；前端按 `code` 从 `i18n/terms.js` 映射文案，禁硬编码。
+- **云函数清单与接口契约**（`core/10_云函数清单与接口契约.md`）：全部云函数名/入参/出参/归属批次/鉴权单一来源；前端与后端**按此表函数名对接**，不得自造函数名。
+
+### 2.9 前后端字段命名约定（snake_case ↔ camelCase 映射，写码防对接坑）
+- **数据库 / 云开发文档字段**：一律 `snake_case`（`expire_at`、`is_deleted`、`client_request_id`、`shop_id`）。
+- **云函数出入参（契约层）**：统一 `snake_case`（`expire_at`、`client_request_id`、`plan_id`、`card_code`），与数据库字段对齐，便于 DataAdapter 直转。
+- **前端 JS / WXML 绑定**：一律 `camelCase`（`expireAt`、`clientRequestId`、`planId`、`cardCode`）。
+- **转换唯一位置**：`snake_case ↔ camelCase` 的转换**只在 DataAdapter 层（后端）或前端请求适配层**做；**业务逻辑 / Service 层禁止混用两种命名**。
+- 本约定与 `core/10_云函数清单与接口契约.md` §8 为单一来源；任何字段若需改名，先改契约表 + 本批表结构清单。
+
+### 2.10 验收提效：种子数据 + 自检脚本（seed_demo，与 initDb 配套）
+
+> 写码完成各模块后，用本套脚本可「一键复现」《02_模拟测试数据集》S1~S4 的 22 项验收锚点，无需手动造数。
+
+- **三个文件（均在 `prototype/`）**：
+  - `seed_data.js`：**验收输入的单一真相源**。把 S1~S4 用四个计算原型（calcMonthlyProfit / calcDishCost / calcAmortize / calcSandbox）的输入形状结构化表达，并携带预期输出值。
+  - `verify_seed_data.js`：**本机自检脚本（无需云环境）**。把 `seed_data.js` 喂给四个计算原型，断言 22 项验收锚点 100% 命中（误差 ≤ 0.01 元）。**当前已本机跑通：41/41 全绿**。
+  - `seed_demo.js`：**云函数灌库脚本**。部署为云函数 `seedDemo`，在 initDb 之后手动调用一次，把同一份 `seed_data.js` 翻译为集合记录插入 dev 环境的 demo 测试店（shop_id=`shop_seed_demo`，与真实数据隔离；entitlement 解锁便于验收全额跑通）。
+- **运行顺序**：① 跑 `initDb`（建 25 集合+索引+套餐种子）→ ② 跑 `seedDemo`（灌 S1~S4 业务数据）→ ③ 前端/云函数按《02_模拟测试数据集》22 项清单逐项核对。
+- **详细规范**：`core/14_种子数据与验收脚本规范.md`（字段映射表、部署步骤、精度与隔离说明）。
+- **关键纪律**：① `seed_data.js` 是单一真相源，verify 与 seed_demo 都引用它，改验收数据只改这一处；② 循环引用拦截与成本卡刷新是「保存时/运行时」行为，不预置违规数据，验收时手动触发；③ 精度：金额一律分整数，verify 已对齐「先四舍五入至分再反推毛利/毛利率」的生产口径。
+
+## 3. 强制遵守（已拍板规范）
+- **01 铁律 1**：金额统一分（INT）、重量克、时间 Unix 毫秒、月份 YYYY-MM
+- **01 铁律 3**：所有查询强制带 `shop_id`
+- **01 铁律 7**：**配置读表，禁硬编码**（价格、限额、套餐名）
+- **01 铁律 8**：必留痕（audit_log 只 INSERT）
+- **06 §6.1**：写操作必带 `client_request_id` 幂等（唯一键 = `shop_id + client_request_id`）
+- **分层约束**：**所有数据库操作必须走 DataAdapter 层**，禁止 Controller / Service 直连数据库（保证软删过滤、统一字段注入全局生效）
+- **v1.4 §7.7**：权限判定**只读 `shop_entitlement.expire_at`**，不读 plan_id；**权限主体为 `user_id`**（用户付费 → 名下所有店铺共享权限）
+- **v1.4 §10.3**：有效期以**服务端 UTC** 为准，禁前端本地时间
+- **v1.4 §10.5**：软删不占配额
+
+## 4. ✅ 明确禁止（地基纯净的关键，逐条写死）
+- ❌ 禁止写入任何 **M1 / M2 / M3 业务计算逻辑**（不做利润、摊销、BOM、成本卡任何算法）
+- ❌ 禁止硬编码任何**价格、套餐名、功能文案**（一律读表 / 读 i18n）
+- ❌ 禁止**跳过鉴权中间件**直接编写业务接口
+- ❌ 禁止**自定义时间计算逻辑**，必须统一调用服务端 UTC 工具函数
+- ❌ 禁止创建**本批表结构清单以外**的任何表
+- ❌ 禁止给前端返回任何**非当前用户权限内**的数据
+- ❌ 禁止做前端页面（本批只有云函数与数据层）
+- ❌ 禁止接入支付（当前 `enable_real_payment=false`）
+- ❌ 禁止实现**管理端鉴权**逻辑 —— 本批**仅做用户端微信 openid 鉴权**；管理端独立账号鉴权在**批次 6** 实现（防止混入用户端中间件、打破权限隔离）
+
+## 5. 验收标准（可量化，逐条对照）
+1. 篡改请求里的 `user_id` → 返回 `FORBIDDEN`，拿不到他人店铺数据
+2. 同一 `client_request_id` 在同一店铺连发两次写请求 → 只产生一条数据（幂等生效）；**换一个店铺用同一 ID 不被误拦截**（幂等键含 shop_id）
+3. 1 分钟内第 61 次写请求 → 返回 `RATE_LIMITED`
+4. 前端传入任意本地时间 → 服务端不采信，全部走 UTC 工具
+5. **建表结果：表名与字段与本批清单 100% 一致**（不多表、不改名、不改类型）
+6. 查询默认过滤 `is_deleted=false`，软删数据不出现在结果中
+7. 🔴 **主体维度正确**：`shop_entitlement` 以 **`user_id` 唯一**（不是 shop_id）；给一个用户发权益后，其名下**所有店铺**均按付费档判定；`shop_id` 不参与权限判定
+8. `audit_log` 一条记录能同时看到 `operator_type/operator_id/before_data/after_data`，可还原前后状态
+
+## 输出要求
+先给建表结构（集合名+字段+索引），再给鉴权中间件与工具函数代码，最后附**自测结果表**（预期/实际/是否通过）。
