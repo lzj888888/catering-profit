@@ -52,8 +52,8 @@ const rA = calcDishCost(gongbao);
 const costR = Math.round(rA.total * 100) / 100; // 口径B：最终 round 到分存储 = 9.75
 console.log('\n--- POC2 用例A: 宫保鸡丁（单份）---');
 check('明细净料成本合计(分)', Math.round(rA.detail * 100), 876, '4位纪律:0.0333×200=6.66+2.10', true);
-check('🟢 单品原材料总成本', costR, 9.75, '⚠️旧文档笔误标9.76；口径B锁定9.75(中间保精度,最终round)');
-check('单品毛利(28-成本)', 28 - costR, 18.25);
+check('🟢 单品原材料总成本(整数分)', rA.totalFen, 975, '口径B锁定 975 分（引擎产整数分；旧笔误 9.76 已排除）', true);
+check('单品毛利(整数分)', Math.round((28 - costR) * 100), 1825, '28元−9.75元', true);
 check('单品毛利率%', (28 - costR) / 28 * 100, 65.18, '基于锁定成本9.75推导');
 
 // ---- 用例 B · 红油底料（批量，产出10份，损耗0%，辅料2.00整批）----
@@ -69,9 +69,9 @@ const hongyou = {
 };
 const rB = calcDishCost(hongyou);
 console.log('\n--- POC2 用例B: 红油底料（批量→半成品）---');
-check('整批明细合计', rB.detail, 42.80);
-check('整批总成本', rB.batchTotal, 44.80);
-check('🟢 单份半成品成本', rB.perShare, 4.48);
+check('整批明细合计(分)', Math.round(rB.detail * 100), 4280, '4位纪律', true);
+check('整批总成本(整数分)', rB.totalFen, 4480, '引擎产整数分', true);
+check('🟢 单份半成品成本(分)', Math.round(rB.perShare * 100), 448, '4480÷10', true);
 
 // 红油自动生成的虚拟原料：单位=份，换算系数=1，净料单位成本=每份成本 4.48
 const hongyouVirtual = rB.perShare;
@@ -87,18 +87,18 @@ const mala = {
 };
 const rC = calcDishCost(mala);
 console.log('\n--- POC2 用例C: 麻辣香锅（引用红油半成品）---');
-check('明细合计', rC.detail, 11.48);
-check('🟢 单品原材料总成本', rC.total, 12.35);
-check('单品毛利(38-成本)', 38 - rC.total, 25.65);
+check('明细合计(分)', Math.round(rC.detail * 100), 1148, '4位纪律', true);
+check('🟢 单品原材料总成本(整数分)', rC.totalFen, 1235, '(11.48+0.50)÷0.97=12.3505→1235分', true);
+check('单品毛利(整数分)', Math.round((38 - rC.total) * 100), 2565, '38元−12.35元', true);
 check('单品毛利率%', (38 - rC.total) / 38 * 100, 67.50);
 
 // ---- 反算 ----
 console.log('\n--- POC2 反算 ---');
-check('目标毛利60% 售价', reversePrice(costR, 60), 24.38, '口径B：基于已存储的9.75反算 9.75÷0.4=24.375→24.38');
+check('目标毛利60% 售价(整数分)', Math.round(reversePrice(costR, 60) * 100), 2438, '9.75÷0.4=24.375→2438分', true);
 
 // ---- 用例 E · 快照与手动刷新 ----
 console.log('\n--- POC2 用例E: 快照 ---');
-check('保存后总成本(快照锁定)', costR, 9.75, '快照锁定存储值9.75');
+check('保存后总成本(整数分,快照锁定)', rA.totalFen, 975, '快照锁定存储值 975 分', true);
 // 改原料档案：鸡胸肉 15→20 元/斤（已保存卡不受影响，下面是"同步至最新价"后的新版本）
 const M2 = Object.assign({}, M, { '鸡胸肉': netCostPerGram(20, 500, 90) });
 const gongbaoV2 = {

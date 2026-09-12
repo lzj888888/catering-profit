@@ -110,14 +110,15 @@ chk('宫保鸡丁 倒推售价(目标毛利60%)=24.38', fenRound(reversePrice(gT
 section('S3 · 红油底料（批量预制，损耗0%，辅料2整批，产出10）');
 const h = S3.cards.hongyou;
 const rh = calcDishCost({ mode: 'batch', lossPct: h.lossPct, auxYuan: h.auxYuan, batchShares: h.batchShares, items: h.items.map(it => ({ amount: it.amount, netCost: it.netCost })) });
-chk('红油底料 整批总成本=44.80', rh.batchTotal, 44.80);
-chk('红油底料 单份半成品成本=4.48', rh.perShare, 4.48);
+// N17：把 N9 的「整数分契约」补齐到全部三道菜——断言引擎产出的 totalFen（整数分），不再比「元 + EPS 容差」
+chk('红油底料 整批总成本=4480分(整数)', rh.totalFen, 4480);
+chk('红油底料 单份半成品成本=448分(整数)', Math.round(rh.perShare * 100), 448);
 
 section('S3 · 麻辣香锅（单份，引用红油底料虚拟原料，损耗3%）');
 const m = S3.cards.mala;
 const rm = calcDishCost({ mode: 'single', lossPct: m.lossPct, auxYuan: m.auxYuan, items: m.items.map(it => ({ amount: it.amount, netCost: it.netCost })) });
-const mTotal = fenRound(rm.total);
-chk('麻辣香锅 单品原材料总成本=12.35', mTotal, 12.35);
+chk('麻辣香锅 单品原材料总成本=1235分(整数)', rm.totalFen, 1235);
+const mTotal = rm.totalFen / 100;   // 12.35（源自整数分，供下游毛利/毛利率用）
 chk('麻辣香锅 单品毛利=25.65', fenRound(m.saleYuan - mTotal), 25.65);
 chk('麻辣香锅 毛利率=67.50%', fenRound((m.saleYuan - mTotal) / m.saleYuan * 100), 67.50);
 

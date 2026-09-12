@@ -298,12 +298,21 @@ const FORBIDDEN_DERIV = [
   { re: /6\.6667/, tip: '鸡胸肉 200g 行成本应为 4 位纪律值 6.66（6.6667 是 5 位，与合计 8.76 不自洽，N13）' },
   { re: /0\.03333/, tip: '净料单位成本应为 4 位纪律值 0.0333（0.03333 是 5 位，N14）' },
 ];
+// 沿革/作废行豁免（与 D 组 QUOTA_SKIP_MARKERS 同构、同用 ±20 字符就近判定，N18①）：
+// 「曾用 0.03333（5 位）」「原值 8.7667」这类**沿革记录**必须允许出现旧值，否则门禁会把历史说明误报为回归。
+// ⚠️ 豁免标记只放沿革类词，绝不放"当前正确值"；且仅保护**匹配位置附近**的标记（不整行免检）。
+const DERIV_SKIP_MARKERS = ['作废', '已回退', '曾误', '沿革', '原值', '历史'];
 const derivHits = [];
 for (const f of allMd) {
   const rel = path.relative(ROOT, f).replace(/\\/g, '/');
   read(rel).split('\n').forEach((line, i) => {
     for (const { re, tip } of FORBIDDEN_DERIV) {
-      if (re.test(line)) derivHits.push(`${rel}:${i + 1}  ${line.trim().slice(0, 90)}  —— ${tip}`);
+      const m = re.exec(line);
+      if (!m) continue;
+      const EXEMPT_RADIUS = 20;
+      const near = line.slice(Math.max(0, m.index - EXEMPT_RADIUS), m.index + m[0].length + EXEMPT_RADIUS);
+      if (DERIV_SKIP_MARKERS.some((k) => near.includes(k))) continue; // 沿革/作废行豁免
+      derivHits.push(`${rel}:${i + 1}  ${line.trim().slice(0, 90)}  —— ${tip}`);
     }
   });
 }
