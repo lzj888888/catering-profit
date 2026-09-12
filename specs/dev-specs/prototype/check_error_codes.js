@@ -316,11 +316,50 @@ for (const [id, exp] of Object.entries(EXPECT_PLANS)) {
 }
 // seedDemo 的"验收期永久解锁"常量：改动会静默破坏 22 项验收（演示店权益到期）
 const seedDemoSrc = read('prototype/seed_demo.js');
-if (!/2099-12-31/.test(seedDemoSrc)) {
-  planIssues.push('[G4] seed_demo.js 缺少 2099-12-31 解锁常量 —— demo 店权益将不再是"验收期永久解锁"，22 项验收会静默失败');
+if (!/expire_at:\s*new Date\('2099-12-31T23:59:59Z'\)\.getTime\(\)/.test(seedDemoSrc)) {
+  planIssues.push('[G4] seed_demo.js 的 expire_at 不再是 2099-12-31T23:59:59Z（注释里出现该字样不算）—— demo 店权益将不再是"验收期永久解锁"，22 项验收会静默失败');
 }
 
-// ---- C1 / D1 / E1 / F1 / G 组断言（必须在上面各组计算之后执行）----
+// ===================== H. 环境门禁结构断言（防回归，唯一会"静默污染生产库"的高危逻辑）=====================
+// 背景：环境门禁匹配逻辑三次出方向性缺陷，每次都靠人眼/复审发现，且能静默通过 A~G 全部断言：
+//   8a9c5e0  /^dev/ 前缀匹配 → 真实 ID 是 catering-dev-*（以 catering 开头）→ 误拦 dev，建库/灌数据静默失败
+//   92ad740  白名单优先但 !/prod/ 落在白名单分支内 → DEV_ENV_ID 误配到 prod → prod 被放行
+//   e8352db  TCB_ENV 兜底只写在 catch 内 → ENV 为空时兜底永不生效 → 误拦 dev 自身
+// 此处把"方向正确"变成机械断言。全是否定式（缺什么/出现什么就 fail），只增严、不放松；只读文本，不碰环境门禁代码。
+// ⚠️ 正则经实际写法校准（init_db.js:155-164 / seed_demo.js:75-84）：
+//   H3 用更强断言（isDevEnv 那一行内含 && !/prod/.test，而非仅"字符串出现过"），确保 !/prod/ 在白名单之外恒生效；
+//   H4 只禁"实际变量使用"（process.env.WX_ENV / .WX_ENV），放过了注释里"非 WX_ENV"这类说明；
+//   H5 要求 TCB_ENV 写在 try 表达式内部（/try\s*\{[^}]*process\.env\.TCB_ENV/），能抓 e8352db 回归（catch 里有不算）；
+//   H6 禁止 blocked 返回体回传 env 变量（env: / =env / ${env}），避开 'non-dev-env' 常量里的 env 子串误伤。
+const gateHits = [];
+const GATE_FILES = ['prototype/init_db.js', 'prototype/seed_demo.js'];
+for (const gf of GATE_FILES) {
+  const s = read(gf);
+  if (/\/\^dev\//.test(s)) {
+    gateHits.push(`[H1] ${gf} 出现 /^dev/ 前缀匹配 —— 真实环境 ID 形如 catering-dev-*（以 catering 开头），会误拦 dev（见 8a9c5e0）`);
+  }
+  if (!/DEV_ENV_ID/.test(s)) {
+    gateHits.push(`[H2] ${gf} 缺少 DEV_ENV_ID 白名单分支`);
+  }
+  if (!/isDevEnv\s*=.*&&\s*!\/prod\/\.test\(/.test(s)) {
+    gateHits.push(`[H3] ${gf} 缺少恒生效的 !/prod/ 兜底（须在 isDevEnv 那一行内、白名单之外）—— 白名单被误配到 prod 时 prod 会被放行（见 92ad740）`);
+  }
+  if (/process\.env\.WX_ENV|\.WX_ENV|getWXContext\(\)\.WX_ENV/.test(s)) {
+    gateHits.push(`[H4] ${gf} 使用了非标准变量 WX_ENV，应为 TCB_ENV（注释里"非 WX_ENV"之类说明不算违规）`);
+  }
+  if (!/try\s*\{[^}]*process\.env\.TCB_ENV/.test(s)) {
+    gateHits.push(`[H5] ${gf} 的 TCB_ENV 兜底未写在 try 表达式内部 —— ENV 为空时兜底永不生效、误拦 dev（见 e8352db）`);
+  }
+  if (/blocked:\s*true[^}]*(?:env\s*[:=]|[{,]\s*env\b|\$\{env\})/.test(s)) {
+    gateHits.push(`[H6] ${gf} 的 blocked 返回体回传了 env（环境 ID 属敏感信息，core/06:58-62）`);
+  }
+  if (!/console\.error\(/.test(s)) {
+    gateHits.push(`[H7] ${gf} 被拦时无服务端日志（[INITDB_BLOCKED]/[SEED_DEMO_BLOCKED]），无法排查`);
+  }
+}
+notes.push(`环境门禁结构断言 : ${GATE_FILES.length} 个云函数（init_db / seed_demo）`);
+
+// ---- C1 / D1 / E1 / F1 / G / H 组断言（必须在上面各组计算之后执行）----
 for (const [fn, src] of usedFns) {
   if (!registered.has(fn)) {
     fails.push(`[C1] \`${fn}\`（首见于 ${src}）未登记进 core/10 §6 契约表（违反"函数名即契约"）`);
@@ -343,6 +382,10 @@ for (const g of planIssues) {
   fails.push(g);
 }
 
+for (const h of gateHits) {
+  fails.push(h);
+}
+
 // ===================== 输出 =====================
 console.log('══════ 规范层一致性机械门禁 ══════');
 notes.forEach((n) => console.log('  · ' + n));
@@ -355,6 +398,8 @@ if (fails.length === 0) {
   console.log('   D   配额口径一致             : 无 M2=3 / M3=8 张 / 单张导出免费 等 v1.1 旧值残留');
   console.log('   E   表格结构完整             : 无被引用块 / 散文行挤出表格的孤儿表行');
   console.log('   F   字符完整性               : .md / .js / .txt 均无 U+FFFD 替换字符');
+  console.log('   G   套餐价格/天数一致       : init_db.js 四档 = 2590/6900/19900/1990，31/90/365/31');
+  console.log('   H   环境门禁结构             : init_db/seed_demo 均无 /^dev/、含 DEV_ENV_ID 白名单 + 恒效 !/prod/ + try 内 TCB_ENV 兜底、blocked 不回传 env');
   process.exit(0);
 } else {
   console.log(`❌ 发现 ${fails.length} 处断裂：`);
