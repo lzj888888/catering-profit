@@ -1,0 +1,9 @@
+{
+  "name": "initDb",
+  "version": "1.0.0",
+  "description": "店算 · 一次性建库云函数（仅 dev，prod 集合由控制台手工创建）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}
