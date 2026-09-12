@@ -122,6 +122,13 @@
 - **详细规范**：`core/14_种子数据与验收脚本规范.md`（字段映射表、部署步骤、精度与隔离说明）。
 - **关键纪律**：① `seed_data.js` 是单一真相源，verify 与 seed_demo 都引用它，改验收数据只改这一处；② 循环引用拦截与成本卡刷新是「保存时/运行时」行为，不预置违规数据，验收时手动触发；③ 精度：金额一律分整数，verify 已对齐「先四舍五入至分再反推毛利/毛利率」的生产口径。
 
+### 2.11 前端环境配置 `config/env.js`（必须生成 · 复审节点①核对项）
+
+- 小程序端 `wx.cloud.init({ env })` **只允许从 `config/env.js` 取值**（core/06 §1.3.1 铁律）；**禁止**在业务代码硬编码环境 ID 字面量（如 `catering-dev` / `catering-prod`）。
+- `config/env.js` 必须导出 `ENV_MAP = { dev: '<真实环境ID>', prod: '<真实环境ID>' }`，其中 **`dev` / `prod` 填云开发控制台给出的真实环境 ID（形如 `catering-dev-xxxxxx` / `catering-prod-xxxxxx`）**，**严禁照抄规范示例里的短名 `catering-dev` / `catering-prod`**（短名是展示别名，`wx.cloud.init` 传别名可能解析不到真实环境，导致所有云调用失败）。
+- 真实环境 ID 在「建 dev / prod 双环境」后由控制台获取，填进 `config/env.js`；**云函数内一律用 `cloud.DYNAMIC_CURRENT_ENV`，不引用任何环境 ID 常量**（core/06 §1.3.1）。
+- 自测：切换 dev / prod 环境后前端能正确调用对应云环境；`config/env.js` 中无短名 `catering-dev` / `catering-prod` 裸写。
+
 ## 3. 强制遵守（已拍板规范）
 - **01 铁律 1**：金额统一分（INT）、重量克、时间 Unix 毫秒、月份 YYYY-MM
 - **01 铁律 3**：所有查询强制带 `shop_id`
