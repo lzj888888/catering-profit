@@ -34,6 +34,7 @@ function section(t) { console.log(`\n========== ${t} ==========`); }
 // 生产环境金额一律「分」整数存储，除法四舍五入 2 位。验证脚本须对齐该精度，
 // 否则浮点中间值会让 毛利率 出现 65.17 vs 65.18 的虚假偏差。
 const fenRound = (yuan) => Math.round(yuan * 100) / 100;
+const fen4 = (v) => Math.round(v * 10000); // 净料单位成本 4 位小数纪律 → 整数比较（防 EPS=0.01 吞 ±22% 相对误差，见 :144）
 
 // 把 S1/S2 的 incomes/expenses 摊平成数组
 const inc = (s) => s.incomes.map(i => i.amountYuan);
@@ -141,7 +142,7 @@ g.items.forEach(it => {
 });
 // 手动刷新=另存新版：鸡胸肉 15→20 元/斤 后，按 ModuleM3:60 纪律重算净料单位成本（4 位小数=0.0444）
 const refreshNet = netCostPerGram(20, 500, 90);
-chk('刷新净料单位成本=netCostPerGram(20,500,90)=0.0444（纪律锁定，非裸浮点 0.04444…）', refreshNet, S3.refresh.gongbaoUpdatedItem.netCost);
+chk('刷新净料单位成本=netCostPerGram(20,500,90)=0.0444（4位小数纪律锁定，整数严格）', fen4(refreshNet) === fen4(S3.refresh.gongbaoUpdatedItem.netCost), true);
 const updItems = g.items.map(it => it.name === '鸡胸肉' ? { ...it, netCost: refreshNet } : it);
 const rg2 = calcDishCost({ mode: 'single', lossPct: g.lossPct, auxYuan: g.auxYuan, items: updItems.map(it => ({ amount: it.amount, netCost: it.netCost })) });
 const v2Fen = rg2.totalFen;            // 生产落库值=整数分，由引擎直接产出（ModuleM3:62），非测试脚本额外 round
