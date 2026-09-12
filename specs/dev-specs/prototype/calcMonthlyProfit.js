@@ -55,6 +55,7 @@ function calcMonthlyProfit(input) {
   const diffFen = (realCostFen - directCostFen) + amortFen;
 
   return {
+    // 展示层（元）
     income: toYuan(incomeFen),
     expense: toYuan(expenseFen),
     grossProfit: toYuan(grossProfitFen),
@@ -62,8 +63,12 @@ function calcMonthlyProfit(input) {
     bizRefProfit: toYuan(bizRefProfitFen),
     fullProfit: toYuan(fullProfitFen),
     diff: toYuan(diffFen),
-    _realCost: toYuan(realCostFen), // 调试用：真实消耗
+    _realCost: toYuan(realCostFen), // 调试用：真实消耗（元）
     _pendingSettle: toYuan(toFen(input.pendingSettleYuan || 0)), // 不进利润，仅回声
+
+    // 验收层（整数分，落库口径）—— 断言一律比这些字段（core/02:5 铁律：整数分严格相等，禁"比元+容差"；N11 仅修 poc2，本轮补 poc3）
+    incomeFen, expenseFen, grossProfitFen,
+    bizRefProfitFen, fullProfitFen, diffFen, realCostFen,
   };
 }
 
