@@ -68,6 +68,13 @@ function calcSandbox(input) {
     breakEvenDaily: breakEvenDaily === null ? null : toYuan(breakEvenDaily),
     targetMonthly: targetMonthly === null ? null : toYuan(targetMonthly),
     targetDaily: targetDaily === null ? null : toYuan(targetDaily),
+
+    // 验收层用（整数分，落库口径）—— 断言一律比这些字段（core/02:5 / N17）
+    fixedTotalFen: fixedFen,
+    breakEvenMonthlyFen: breakEvenMonthly,
+    breakEvenDailyFen: breakEvenDaily,
+    targetMonthlyFen: targetMonthly,
+    targetDailyFen: targetDaily,
   };
 }
 
