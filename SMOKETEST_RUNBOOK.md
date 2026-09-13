@@ -27,6 +27,38 @@
 - 确认你有微信公众平台 / 小程序账号，且已开通**云开发**（微信开发者工具 → 云开发按钮）。
 - 本地 `cloudfunctions/smokeTest/` 已就绪（含 `common/` 副本，由 `node tools/sync_common.js` 生成）。
 
+### 步骤 0.1 · 投喂前硬前置与阻塞清单（缺一项就别开跑）
+
+0.1.1 【硬前置】真实 AppID —— 没有它云开发根本不可用
+- 现状：`project.config.json` 的 `appid` 是 `"touristappid"`（微信开发者工具的**游客模式占位**）。
+- 必须：去微信公众平台注册/登录小程序，取得**真实 AppID**，替换该字段，并用该 AppID 在开发者工具打开本项目。
+- 判据：`appid` 不等于 `touristappid`，且「云开发」面板可正常打开。
+
+0.1.2 25 张集合权限 = 仅管理端可读写（`core/15_集合权限矩阵` 口径）
+- 位置：云开发控制台 → 数据库 → 逐张集合 → 权限设置 → 选「仅管理端可读写」。
+- 为什么：控制台默认是「仅创建者可读写」，**不是本项目口径**；本项目前端不直连数据库（一律走云函数），对客户端全关最安全。
+- 工作量：25 张逐张设置，建议一次做完。判据：25 张全部为「仅管理端可读写」。
+
+0.1.3 【待定·开跑前先决定】seedDemo 来源未定
+- 现状：仓库内**没有** `cloudfunctions/seedDemo/`（批次 0 只生成 `initDb`）。
+- 三选一：(a) 手工把 `specs/dev-specs/prototype/seed_demo.js` 包成云函数目录（+`package.json`，依赖 wx-server-sdk）；
+  (b) 由某个批次生成；(c) 批次 0 阶段先不灌演示数据（不影响建库与投喂）。
+- ⚠️ 无论哪种：**严禁部署到 prod**（会写 demo 数据 + 永久权益进真实业务库）。
+
+0.1.4 索引清单核对（答悬案 A7）—— 这是步骤 2 最重要的一步
+- 位置：云开发控制台 → 数据库 → 逐张集合 → 索引。
+- 核对 `cloudfunctions/initDb/collections.js` 声明的 **9 个 unique 索引**是否真的建上：
+  `user.openid` / `user.user_id` / `shop_entitlement.user_id` / `shop_monthly_account.(shop_id,month)` /
+  `shop_cost_card.card_code` / `shop_switch.(shop_id,switch_key)` / `admin_user.username` /
+  `shop_payment_flow.order_no` / `order_refund.order_id`
+- 判读：**全在** → A7=支持，A6（首建档非原子）风险=偶发失败一次，可缓；
+        **有缺失** → A7=不支持（`createIndex` 不可用）→ 索引须控制台手工建，且 A6 **升级**为
+        「可能产生重复账号」（须给首建档加 unique 冲突重试）。
+
+0.1.5 外部上线阻塞（不挡写码/投喂/建环境，但别误以为「能跑=能上线」）
+营业执照 → 微信支付商户号 → 隐私政策正文+URL → 小程序类目(工具>记账) → 审核测试账号。
+现状：`enable_real_payment=false`，走私域手动发权益；运营流程（谁发/怎么发/怎么对账）尚无文档 → 待补。
+
 ### 步骤 1 · 建 dev / prod 云环境
 - 微信开发者工具打开本小程序项目 → 顶部「云开发」→「环境」→「新建环境」。
 - **环境名称必须含 `dev` 与 `prod` 字样**（门禁 H 组判据：`!/prod/` 恒效、`dev` 白名单放行；名称不对会导致 env 门禁逻辑判定异常）。
