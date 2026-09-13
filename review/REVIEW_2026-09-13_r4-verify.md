@@ -139,4 +139,4 @@ R4 的失败不是"忘了做"，而是**回执把"我打算写的内容"当成�
   grep -c seedDemo         SMOKETEST_RUNBOOK.md → 2
   grep -c 营业执照         SMOKETEST_RUNBOOK.md → 1
   grep -c 步骤\ 0.1         SMOKETEST_RUNBOOK.md → 1
-  全部 ≥1；五项（0.1.1 真实AppID / 0.1.2 25集合仅管理端可读写 / 0.1.3 seedDemo来源 / 0.1.4 索引清单核对9个unique索引 / 0.1.5 外部上线阻塞）已插入「步骤 0 · 准备」与「步骤 1」之间（原 :28 后、:30 前）；文件 14047B→16765B。R6/R7 不重复追加（复审方已落，已读 README.md 确认）。commit <sha 见下> · 本轮报告见 memory/2026-09-13.md
+  全部 ≥1；五项（0.1.1 真实AppID / 0.1.2 25集合仅管理端可读写 / 0.1.3 seedDemo来源 / 0.1.4 索引清单核对9个unique索引 / 0.1.5 外部上线阻塞）已插入「步骤 0 · 准备」与「步骤 1」之间（原 :28 后、:30 前）；文件 14047B→16765B。R6/R7 不重复追加（复审方已落，已读 README.md 确认）。commit f0c626f · 本轮报告见 memory/2026-09-13.md
