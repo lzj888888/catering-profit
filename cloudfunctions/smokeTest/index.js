@@ -15,12 +15,13 @@ catch (e) { commonErr = e.message; }
 
 exports.main = async () => {
   const out = {
-    env: '', requireCommon: {}, createIndex: {}, docGet: {},
-    docGetMissing: {}, uniqueEnforce: {}, assertShopOwner: {},
+    env: '', requireCommon: {}, createCollection: {}, createIndex: {}, docGet: {},
+    docGetMissing: {}, uniqueEnforce: {}, assertShopOwner: {}, dataAdapterGet: {},
   };
 
   // 确保探针集合存在（建索引/写入前先建集合，避免对不存在集合操作报无意义错）
-  try { await db.createCollection(PROBE); } catch (e) { /* 已存在则忽略 */ }
+  try { await db.createCollection(PROBE); out.createCollection = { ok: true }; }
+  catch (e) { out.createCollection = { ok: false, msg: e.message }; }  // 「已存在」属正常，看 msg 判读
 
   // 环境（顺带确认 env 取值与门禁判据一致）
   try { out.env = String(cloud.getWXContext().ENV || process.env.TCB_ENV || ''); }
@@ -70,6 +71,20 @@ exports.main = async () => {
     catch (e) { out.assertShopOwner = { THROW: e.message }; }
   } else {
     out.assertShopOwner = { skipped: !commonOk ? 'common 未加载' : 'assertShopOwner 未导出' };
+  }
+
+  // ⑤b 直接验 A2 落点：dataAdapter.get 对软删文档必须返回 null（真 SDK 上）
+  if (commonOk && common.dataAdapter && typeof common.dataAdapter.makeAdapter === 'function') {
+    try {
+      const da = common.dataAdapter.makeAdapter(db);
+      const res = await db.collection(PROBE).add({ data: { k: 'soft_del', is_deleted: false, created_at: Date.now() } });
+      const live = await da.get(PROBE, res._id);
+      await db.collection(PROBE).doc(res._id).update({ data: { is_deleted: true } });
+      const dead = await da.get(PROBE, res._id);
+      out.dataAdapterGet = { liveIsDoc: !!(live && live.k === 'soft_del' && !live.data), deadIsNull: dead === null };
+    } catch (e) { out.dataAdapterGet = { THROW: e.message }; }
+  } else {
+    out.dataAdapterGet = { skipped: !commonOk ? 'common 未加载' : 'dataAdapter.makeAdapter 未导出' };
   }
 
   return out;

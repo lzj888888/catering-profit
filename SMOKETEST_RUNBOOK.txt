@@ -3,6 +3,7 @@
 > 用途：在真 wx-server-sdk / 真云数据库上一次性答完 4 个本地从没验证过的前提（A6 / A7 / require('./common') / doc().get() 契约）。
 > 跑完这个再投喂批次 1，比「先投喂、后建环境」省一个来回。
 > 配套代码已落盘：`cloudfunctions/smokeTest/`（index.js + package.json + 已 sync 的 common/ 副本）。本 Runbook 是给你在控制台照做的纸质流程。
+> ⚠️ **本文件是【唯一 Runbook】**。若见 `SMOKEST_RUNBOOK.*`（漏 `ET` 的手误副本）属历史残留，已删除，请勿再使用。
 
 ---
 
