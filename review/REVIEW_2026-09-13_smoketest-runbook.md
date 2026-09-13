@@ -130,3 +130,9 @@ node_modules/
 - [ ] R2 建 .gitignore          —— 待执行
 - [ ] R3 探针补 2 处            —— 待执行
 - [ ] R4 Runbook 补 4 项        —— 待执行
+
+- [2026-09-13 11:42] R1 已落 · 证据：ls SMOKEST_RUNBOOK.* → 已删除(仅SMOKETEST_*在盘)；diff SMOKEST vs SMOKETEST 仅行尾1空行差且均含「七、三方协作规则」(独立核验R1「除末尾换行完全相同」前提成立，未误删正本)；SMOKEST_RUNBOOK.md头部加唯一性声明(第6行) · commit 7100114
+- [2026-09-13 11:42] R2 已落 · 证据：cat .gitignore → *.pdf / node_modules/ / **/node_modules/ / .DS_Store；R1删后SMOKEST*.pdf被忽略；git status --porcelain 提交后应无噪声(仅review/本次未含回执前略) · commit 7100114
+- [2026-09-13 11:42] R3 已落 · 证据：node --check cloudfunctions/smokeTest/index.js → 语法OK；index.js ①createCollection 由「吞异常」改为 out.createCollection={ok,msg}留痕 ②新增 dataAdapterGet 节(require common.dataAdapter.makeAdapter(db) 已核实导出；直验A2软删:live.k==='soft_del'、softDelete后 dead===null) · commit 7100114
+- [2026-09-13 11:42] R4 已落 · 证据：SMOKETEST_RUNBOOK.md 新增「步骤 0.1 投喂前硬前置与阻塞清单」含①真实AppID(touristappid→云开发不可用,须先换) ②25集合权限设仅管理端可读写 ③seedDemo来源未定(仓库无cloudfunctions/seedDemo,三走法择一,禁prod) ④外部上线阻塞(营业执照→商户号→隐私政策→类目→测试账号)；步骤2已含「索引清单核对」(9个unique索引,答A7),经确认无需补 · commit 7100114
+- 本轮报告见 memory/2026-09-13.md
