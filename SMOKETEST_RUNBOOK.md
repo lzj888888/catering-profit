@@ -4,6 +4,8 @@
 > 跑完这个再投喂批次 1，比「先投喂、后建环境」省一个来回。
 > 配套代码已落盘：`cloudfunctions/smokeTest/`（index.js + package.json + 已 sync 的 common/ 副本）。本 Runbook 是给你在控制台照做的纸质流程。
 > ⚠️ **本文件是【唯一 Runbook】**。若见 `SMOKEST_RUNBOOK.*`（漏 `ET` 的手误副本）属历史残留，已删除，请勿再使用。
+> 本文件是【**权威操作流程**】。`新手上云操作手册.md` 是同一流程的**小白友好版**（面向没用过开发者工具的人）；
+> 两者若冲突，**以本文件为准**。
 
 ---
 
@@ -92,6 +94,8 @@
 | `createIndex.typeof` / `call` | `function` 且 `OK` | `undefined` 或 THROW → A7：createIndex 不可用 |
 | `uniqueEnforce.result` | 含「报错（符合预期）」 | 含「未报错」→ unique 索引未生效，A6 升级为「可能重复账号」，需给首建档加 unique 冲突重试 |
 | `assertShopOwner` | `RESOURCE_NOT_FOUND`（code 字段） | 抛异常或恒 `FORBIDDEN` → A1 修复在真云上不成立，需重议 |
+| `createCollection` | `{ok:true}`，或 `ok:false` 且 msg 含「已存在」 | 其余 msg → 建集合失败，先修环境/权限再重跑 |
+| `dataAdapterGet` | `liveIsDoc:true` **且** `deadIsNull:true` | `deadIsNull:false` → **A2 在真 SDK 上不成立，须回退**；`THROW` → adapter 契约待议 |
 
 ### 步骤 6 · 替换 env.js 占位符（判据④）
 - 打开 `miniprogram/config/env.js`，把第 14–15 行的占位符（如 `your-dev-env-id` / `your-prod-env-id`）换成步骤 1 记下的真实环境 ID。
@@ -143,7 +147,7 @@
 ---
 
 ## 附：smokeTest/index.js（已落盘，供纸质对照）
-（代码见 `cloudfunctions/smokeTest/index.js`；要点：① try 包 require('./common') 答机制；② createIndex + 重复写答 A7/A6；③ doc().get() 答 A1/A2；④ 缺文档 get 答契约；⑤ 真云跑 assertShopOwner 答 A1 落点。）
+（代码见 `cloudfunctions/smokeTest/index.js`；要点：① try 包 require('./common') 答机制；② createIndex + 重复写答 A7/A6；③ doc().get() 答 A1/A2；④ 缺文档 get 答契约；⑤ 真云跑 assertShopOwner 答 A1 落点；⑥ `dataAdapterGet` 直验 A2 软删分支——`common.dataAdapter.get()` 对 `is_deleted:true` 文档须返回 `null`。）
 
 ---
 

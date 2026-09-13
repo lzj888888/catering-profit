@@ -535,6 +535,28 @@ if (!fs.existsSync(FEED_HTML)) {
 }
 notes.push(`投喂链派生一致性 : 8 txt + 8 html 块 vs MD 单源（CRLF 已归一）`);
 
+// ---- K12/K13：Runbook / 手册 的 .txt 派生件必须 ≡ 同名单源 .md（防「改 MD 忘重生」派生件落后）----
+// 背景：R9 复审发现 SMOKETEST_RUNBOOK.txt/.docx/.pdf 落后 .md 5~7 小时（缺整个步骤 0.1）。
+//       本仓已为 delivery/(K1–K10) 与 common/(L) 建了派生件守卫；仓库根的 Runbook/手册 .txt 此前无人守。
+// 做法：仓库根 <name>.txt 与 <name>.md 逐字比对（剥 BOM + CRLF 归一，与 K11/L 同构）。
+// ⚠️ .txt 须由生成器从 .md 复制生成（tools/md2docx_portrait.py），**勿手改**；
+//    .docx 为二进制不做逐字比对（只保证被重生成）。仓库根文档不在 A–K 其余组扫描面内（walk(ROOT)=specs/dev-specs）。
+const REPO = path.resolve(ROOT, '..', '..');   // catering-profit 根（ROOT = specs/dev-specs）
+const stripBom = (s) => s.replace(/^\uFEFF/, '');
+const DOC_PAIRS = ['SMOKETEST_RUNBOOK', '新手上云操作手册'];
+for (const base of DOC_PAIRS) {
+  const mdF = path.join(REPO, base + '.md');
+  const txtF = path.join(REPO, base + '.txt');
+  if (!fs.existsSync(mdF)) {
+    fails.push(`[K12] 缺 ${base}.md（单源）`);
+  } else if (!fs.existsSync(txtF)) {
+    fails.push(`[K12] 缺 ${base}.txt —— 从 ${base}.md 同源重生成，勿手写`);
+  } else if (normNL(fs.readFileSync(mdF, 'utf8')) !== stripBom(normNL(fs.readFileSync(txtF, 'utf8')))) {
+    fails.push(`[K13] ${base}.txt 与 ${base}.md 不一致（派生件落后）—— 重跑生成器重生 .txt，勿手改 .txt`);
+  }
+}
+notes.push(`文档派生一致性 : ${DOC_PAIRS.length} 组（Runbook / 新手上云手册 的 .txt ≡ .md，CRLF/BOM 已归一）`);
+
 // ===================== L. common/ 同步一致性（派生件护栏，与 K11 同构；首个跨 specs/ 覆盖 cloudfunctions/ 的组）=====================
 // 背景：微信云开发每个云函数独立打包上传，父目录 cloudfunctions/common/ 不在任何单函数包内；
 //       若云函数写 require('../common') 本机通、云端 MODULE_NOT_FOUND。采用「单源 + 同步副本 + 守卫」范式：
@@ -572,7 +594,7 @@ if (fails.length === 0) {
   console.log('   H   环境门禁结构             : init_db/seed_demo 均无 /^dev/、含 DEV_ENV_ID 白名单 + 恒效 !/prod/ + try 内 TCB_ENV 兜底、blocked 不回传 env');
   console.log('   I   派生精度一致             : 无 6.6667 / 0.03333 / 9.76 等旧值残余（N13/N14/N22 回潮护栏）');
   console.log('   J   H5 购买页护栏           : 全树 .md+.txt 命中「H5 购买页」者均为否定句（禁止 H5 兜底），无肯定式引导（D1 护栏）');
-  console.log('   K   投喂链派生一致         : 8 份 txt + 8 个 HTML 块均与 MD 单源逐字一致（CRLF 已归一，防 D4/D7 类派生件落后）');
+  console.log('   K   投喂链派生一致         : 8 份 txt + 8 个 HTML 块均与 MD 单源逐字一致（CRLF 已归一，防 D4/D7 类派生件落后）；Runbook/手册 .txt ≡ .md');
   console.log('   L   common 同步一致        : 各云函数目录 common/ 副本均 ≡ cloudfunctions/common/ 单源（派生件护栏，防云端 require(\'../common\') 落地 MODULE_NOT_FOUND）');
   process.exit(0);
 } else {
