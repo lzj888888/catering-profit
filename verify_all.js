@@ -12,7 +12,7 @@ const NODE = process.execPath; // 当前执行的 node，子进程复用
 
 // [展示名, 相对根的路径]
 const SUITES = [
-  ['门禁 A-K',            'specs/dev-specs/prototype/check_error_codes.js'],
+  ['门禁 A-L',            'specs/dev-specs/prototype/check_error_codes.js'],
   ['verify_seed_data',    'specs/dev-specs/prototype/verify_seed_data.js'],
   ['test_poc1',           'specs/dev-specs/prototype/test_poc1.js'],
   ['test_poc2',           'specs/dev-specs/prototype/test_poc2.js'],

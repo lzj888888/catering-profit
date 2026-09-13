@@ -535,6 +535,27 @@ if (!fs.existsSync(FEED_HTML)) {
 }
 notes.push(`投喂链派生一致性 : 8 txt + 8 html 块 vs MD 单源（CRLF 已归一）`);
 
+// ===================== L. common/ 同步一致性（派生件护栏，与 K11 同构；首个跨 specs/ 覆盖 cloudfunctions/ 的组）=====================
+// 背景：微信云开发每个云函数独立打包上传，父目录 cloudfunctions/common/ 不在任何单函数包内；
+//       若云函数写 require('../common') 本机通、云端 MODULE_NOT_FOUND。采用「单源 + 同步副本 + 守卫」范式：
+//       单源 cloudfunctions/common/ → tools/sync_common.js 复制到各 cloudfunctions/<func>/common/ → 门禁 L 校验副本≡单源。
+// 做法：复用 tools/sync_common.js 的 checkSync()（与 K11 同构的逐字 + CRLF 归一判别式），漂移即 fail。
+// ⚠️ 本组是 A–K 之后首个跨出 specs/dev-specs/ 的组（read cloudfunctions/ + require 仓库根 tools/），与 methodology #2
+//    「cloudfunctions/ 在 specs 门禁覆盖外、须有独立 runner」一致 —— 此处把该独立 runner 收编进门禁红线。
+const REPOROOT = path.resolve(__dirname, '../../..');               // catering-profit 根
+let commonDrifts = [];
+try {
+  const { checkSync } = require(path.join(REPOROOT, 'tools', 'sync_common.js'));
+  const r = checkSync();
+  commonDrifts = r.drifts || [];
+} catch (e) {
+  commonDrifts = [{ func: '(工具)', rel: 'tools/sync_common.js', reason: '无法加载同步工具：' + e.message }];
+}
+for (const d of commonDrifts) {
+  fails.push(`[L1] ${d.func}/common/${d.rel} —— ${d.reason}（重跑 node tools/sync_common.js 再提交副本）`);
+}
+notes.push(`common 同步一致性 : ${commonDrifts.length === 0 ? '各函数副本≡单源' : commonDrifts.length + ' 处漂移'}`);
+
 // ===================== 输出 =====================
 console.log('══════ 规范层一致性机械门禁 ══════');
 notes.forEach((n) => console.log('  · ' + n));
@@ -552,6 +573,7 @@ if (fails.length === 0) {
   console.log('   I   派生精度一致             : 无 6.6667 / 0.03333 / 9.76 等旧值残余（N13/N14/N22 回潮护栏）');
   console.log('   J   H5 购买页护栏           : 全树 .md+.txt 命中「H5 购买页」者均为否定句（禁止 H5 兜底），无肯定式引导（D1 护栏）');
   console.log('   K   投喂链派生一致         : 8 份 txt + 8 个 HTML 块均与 MD 单源逐字一致（CRLF 已归一，防 D4/D7 类派生件落后）');
+  console.log('   L   common 同步一致        : 各云函数目录 common/ 副本均 ≡ cloudfunctions/common/ 单源（派生件护栏，防云端 require(\'../common\') 落地 MODULE_NOT_FOUND）');
   process.exit(0);
 } else {
   console.log(`❌ 发现 ${fails.length} 处断裂：`);

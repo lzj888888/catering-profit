@@ -8,6 +8,14 @@
 
 ---
 
+## 0.1 部署前置铁律（批次 0–7 通用 · 上传前必跑）
+
+> ⚠️ **每个云函数上传前，必须在仓库根跑一次：`node tools/sync_common.js`**（把 `cloudfunctions/common/` 单源同步进各 `cloudfunctions/<func>/common/`）。
+> - 微信云开发**每个云函数独立打包上传**，父目录 `cloudfunctions/common/` 不在任何单函数包内；云函数若写 `require('../common')` 本机通、**云端 MODULE_NOT_FOUND**。
+> - 机制：`cloudfunctions/common/` 是单源（只改这里）→ `tools/sync_common.js` 复制进每个函数目录的 `common/` → 云函数内 `require('./common')`。
+> - 门禁 **L 组**（`prototype/check_error_codes.js`）断言「各函数目录 `common/` 副本 ≡ `cloudfunctions/common/` 单源」，漂移即红；`git` 提交前先同步再提交副本。
+> - **批次 1 起每个云函数都受此约束**；忘跑 sync → 云端部署即炸，返工面 = 后面全部批次。
+
 ===== 批次 0 开始 =====
 
 # 批次 0 / 8 · 工程地基（项目初始化 + 鉴权中间件 + 统一错误码 + 基础表结构 + 时间工具 + 软删过滤层）
