@@ -137,8 +137,8 @@ SMOKETEST_RUNBOOK.pdf   10:13  398883B  ← 落后 7h（打印版！）
 - [2026-09-13 19:44] R10 已落 · 证据：`grep -c "权威" SMOKETEST_RUNBOOK.md → 2`；`grep -c "权威" 新手上云操作手册.md → 1`（两侧各加主从声明：Runbook=权威流程、手册=小白友好改编版，冲突以 Runbook 为准）· commit 5c92ee6
 - [2026-09-13 19:44] R11 已落 · 证据：`grep -c "dataAdapterGet" SMOKETEST_RUNBOOK.md → 2`（判读表补 `createCollection` + `dataAdapterGet` 两行；附录补 ⑥ dataAdapterGet 直验 A2 软删分支）· commit 5c92ee6
 - [2026-09-13 19:44] R12 已落 · 证据：`grep -c "__probe" 新手上云操作手册.md → 2`（新增 5.5 删 `__probe` 集合）；`grep -c "seedDemo" 新手上云操作手册.md → 2`（新增 5.6 seedDemo 来源三选一、严禁 prod）· commit 5c92ee6
-- [2026-09-13 19:44] tmpdir 已删 · 证据：`rm -rf review/.REVIEW_*.tmpdir/ → exit 0`；`ls -a review/ | grep -i tmpdir → 无残留`（内含 `REVIEW_…_exec-readiness.md.tmp` 8006B，与正式文件同大小，无内容损失）· commit __SHA2__
-- [2026-09-13 19:44] README §2 已补「变异还原纪律（注入→跑→还原须在同一次命令序列内、离开前复跑确认 exit 0；🚫 跨调用留残留）」——按李老师直接指令补入协议正文（该处正文通常归复审方，本次注明系用户指令）· commit __SHA2__
+- [2026-09-13 19:44] tmpdir 已删 · 证据：`rm -rf review/.REVIEW_*.tmpdir/ → exit 0`；`ls -a review/ | grep -i tmpdir → 无残留`（内含 `REVIEW_…_exec-readiness.md.tmp` 8006B，与正式文件同大小，无内容损失）· commit cbba1d3
+- [2026-09-13 19:44] README §2 已补「变异还原纪律（注入→跑→还原须在同一次命令序列内、离开前复跑确认 exit 0；🚫 跨调用留残留）」——按李老师直接指令补入协议正文（该处正文通常归复审方，本次注明系用户指令）· commit cbba1d3
 - [2026-09-13 19:44] 存疑/说明：李老师指令「`git checkout -- 新手上云操作手册.txt`」**未照做** —— HEAD 版 .txt 是 R8 之前的旧版（`git show HEAD:新手上云操作手册.txt | grep -c 5.2b → 0`），checkout 会丢掉刚补的 5.2b 内容、并让新守卫 K13 转红（目标背反）。改用**正确修法「从 .md 单源重生 .txt」**，达成同一目标（门禁回 exit 0、DRIFT 残留 0）· commit 5c92ee6
 - [2026-09-13 19:44] 打印：按指令**从新的 `SMOKETEST_RUNBOOK.docx`（mtime 19:29:27）**走（转 PDF→送纸），**未用 10:13 的旧 `SMOKETEST_RUNBOOK.pdf`**（并已将其重生为新版）。
 - 本轮报告见 memory/2026-09-13.md
