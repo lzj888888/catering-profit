@@ -1,4 +1,4 @@
-﻿# 店算小程序 · 新手上云操作手册（纯小白版）
+# 店算小程序 · 新手上云操作手册（纯小白版）
 
 > 这份手册是给**完全没用过**微信开发者工具的人写的。照着一步步点，就能把云环境建好、把探针跑起来。
 > 全程只需要：**一台电脑 + 一个能收短信的手机号 + 一个邮箱**。
@@ -107,7 +107,7 @@
 > ✅ **例外（咱们已采用的路子）**：如果你建的是微信侧默认的**免费开发环境**（名字像 `cloud1`，**不含 dev 字样**），**照样能当 dev 用**——项目预留了 `DEV_ENV_ID` **白名单**口子：把这个环境的 ID 填进 `cloudfunctions/initDb/config.json` 的 `DEV_ENV_ID`，门禁就会放行。
 >
 > 📌 **咱们项目现状（2026-09-14 定）**：
-> - **dev = 免费环境 `cloud1`**，环境 ID 是 **`cloud1-4dgphoxy337f2a25`**（已由 WorkBuddy 配进 `env.js` 和 `initDb/config.json`）。
+> - **dev = 免费环境 `cloud1`**，环境 ID 是 **`cloud1-d4gphpoxy337f2a25`**（已由 WorkBuddy 配进 `env.js` 和 `initDb/config.json`）。
 > - **prod 暂未建**——写码阶段用不到，等要上线时再建一个名字带 `prod` 的环境即可。
 > - 每个账号可免费建 **2 个**环境（现在已用 1 个，还剩 1 个）。
 >
@@ -167,7 +167,7 @@
 ## 6. 第⑥件：替换 env.js 里的环境 ID
 
 - 开发者工具左侧打开文件：`miniprogram/config/env.js`。
-- dev 那一行：**已由 WorkBuddy 填好 `cloud1-4dgphoxy337f2a25`**（咱们的 dev 环境，见 4.2）→ ✅ **这行你不用动**
+- dev 那一行：**已由 WorkBuddy 填好 `cloud1-d4gphpoxy337f2a25`**（咱们的 dev 环境，见 4.2）→ ✅ **这行你不用动**
 - prod 那一行：还留着占位符 `catering-prod-xxxxxxxx` → **现在保持原样**，等第 4.3 步建好 prod 环境后再换成它的环境 ID
 - 保存文件。（prod 那行换掉后「判据④」才算完成；现在 prod 还没建，不急。）
 

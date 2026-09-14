@@ -23,7 +23,7 @@
 
 | # | 事 | 为什么只有你能做 |
 |---|---|---|
-| ① | 云环境：dev = 现有免费环境 `cloud1`（ID `cloud1-4dgphoxy337f2a25`，走 `DEV_ENV_ID` 白名单放行）；prod 待建（上线前）→ 部署 initDb 到 dev → 控制台核对 25 集合 + 索引清单 | 需你的微信账号与云开发控制台；一次性问清 A7 / A6 / require 三悬案 |
+| ① | 云环境：dev = 现有免费环境 `cloud1`（ID `cloud1-d4gphpoxy337f2a25`，走 `DEV_ENV_ID` 白名单放行）；prod 待建（上线前）→ 部署 initDb 到 dev → 控制台核对 25 集合 + 索引清单 | 需你的微信账号与云开发控制台；一次性问清 A7 / A6 / require 三悬案 |
 | ② | 替换 `miniprogram/config/env.js:14-15` 占位符为真实环境 ID | 建完环境才有真值（判据④唯一未完项） |
 | ③ | 投喂批次 1（从 `specs/dev-specs/delivery/` 取 .md / 8 个 .txt / .html，勿用 Desktop 副本） | 从仓库权威源取，避免派生件落后 |
 
@@ -72,7 +72,7 @@
 - **推荐做法**：环境名称含 `dev` / `prod` 字样（门禁 H 组判据：`!/prod/` 恒效、`dev` 白名单放行）。
 - **例外（本项目已采用）**：微信侧默认**免费环境**（名如 `cloud1`，**不含 dev 字样**）**也可以当 dev 用**——环境门禁留有 `DEV_ENV_ID` **精确白名单**分支（见 `cloudfunctions/initDb/collections.js` 的 `gate()`）：把该环境 ID 填进 `cloudfunctions/initDb/config.json` 的 `DEV_ENV_ID` 即被放行。
 - **本项目当前状态（2026-09-14 定）**：
-  - dev = 微信侧免费环境 `cloud1`，环境 ID **`cloud1-4dgphoxy337f2a25`**；`initDb/config.json` 已配好 `DEV_ENV_ID`。
+  - dev = 微信侧免费环境 `cloud1`，环境 ID **`cloud1-d4gphpoxy337f2a25`**；`initDb/config.json` 已配好 `DEV_ENV_ID`。
   - prod **暂未建**——写码阶段用不到，等上线前再建一个名含 `prod` 的环境即可。
 - ⚠️ 每个账号可免费建 **2 个**环境（当前已用 1 个，剩 1 个）；且官方规则为「环境注销需**超过 1 个月**才能再免费创建」→ **绝不要删掉 cloud1**，否则可能 1 个月内建不了新环境。
 - 在 dev 环境开通数据库（默认已有，确认「数据库」标签页可见）。
@@ -96,7 +96,7 @@
 ### 步骤 5 · 结果判读（逐字段 → 结论）
 | 返回字段 | 期望 | 若为否则 → 行动 |
 |---|---|---|
-| `env` | 非空、等于你的 dev 环境 ID（咱们是 `cloud1-4dgphoxy337f2a25`；**不含 `dev` 字样属正常**，因走 `DEV_ENV_ID` 白名单放行） | 空/ERR → 环境初始化有问题，先修环境 |
+| `env` | 非空、等于你的 dev 环境 ID（咱们是 `cloud1-d4gphpoxy337f2a25`；**不含 `dev` 字样属正常**，因走 `DEV_ENV_ID` 白名单放行） | 空/ERR → 环境初始化有问题，先修环境 |
 | `requireCommon.ok` | `true` | `false` → **机制失效**：全部云函数返工（改为云端公共层或 npm file: 方案） |
 | `requireCommon.exports` | 含 `assertShopOwner` 等 | 缺关键导出 → 同步脚本漏文件，重跑 sync |
 | `docGet.hasDataField` | `true`（返回 `{data:{...}}`） | `false` → **A1/A2 修反了，立刻回退**（最关键翻案点） |
@@ -109,7 +109,7 @@
 
 ### 步骤 6 · 替换 env.js 占位符（判据④）
 - 打开 `miniprogram/config/env.js`，把第 14–15 行的占位符换成步骤 1 记下的真实环境 ID。
-- **当前状态（2026-09-14）**：dev 那行**已填** `cloud1-4dgphoxy337f2a25`；prod 那行仍是占位符（prod 环境尚未建）。
+- **当前状态（2026-09-14）**：dev 那行**已填** `cloud1-d4gphpoxy337f2a25`；prod 那行仍是占位符（prod 环境尚未建）。
 - 这是判据④唯一未完项；prod 环境建好并替换后，batch0 自测的「点4 未完成」会变 ✅。
 
 ### 步骤 7 · 投喂批次 1

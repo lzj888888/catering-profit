@@ -13,7 +13,7 @@
 
 module.exports = {
   ENV_MAP: {
-    dev: 'cloud1-4dgphoxy337f2a25', // 真实 dev 环境 ID（微信侧免费环境，控制台短名 cloud1；2026-09-14 定）
+    dev: 'cloud1-d4gphpoxy337f2a25', // 真实 dev 环境 ID（微信侧免费环境，控制台短名 cloud1；2026-09-14 定）
     prod: 'catering-prod-xxxxxxxx', // TODO(用户): 替换为控制台真实环境 ID（catering-prod-xxxxxx）
   },
 
