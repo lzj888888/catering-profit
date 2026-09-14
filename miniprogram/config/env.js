@@ -5,13 +5,15 @@
 // 真实环境 ID 在「建 dev / prod 双环境」后，由云开发控制台获取并替换下方占位符：
 //   dev  → 形如 catering-dev-xxxxxx（控制台给出的真实环境 ID，非短名）
 //   prod → 形如 catering-prod-xxxxxx
+// 注：dev 也可以是微信侧默认免费环境（ID 形如 cloud1-xxxxxx，名字不含 "dev" 字样）。
+//     这种环境下云函数 initDb 走「DEV_ENV_ID 精确白名单」放行（见 initDb/collections.js 的 gate）。
 // ❌ 严禁照抄规范示例里的短名 'catering-dev' / 'catering-prod'：
 //    wx.cloud.init 传别名可能解析不到真实环境，导致所有云调用失败。
 // 占位符 'catering-dev-xxxxxxxx' / 'catering-prod-xxxxxxxx' 仅为结构占位，上线前必须替换。
 
 module.exports = {
   ENV_MAP: {
-    dev: 'catering-dev-xxxxxxxx',   // TODO(用户): 替换为控制台真实环境 ID（catering-dev-xxxxxx）
+    dev: 'cloud1-4dgphoxy337f2a25', // 真实 dev 环境 ID（微信侧免费环境，控制台短名 cloud1；2026-09-14 定）
     prod: 'catering-prod-xxxxxxxx', // TODO(用户): 替换为控制台真实环境 ID（catering-prod-xxxxxx）
   },
 

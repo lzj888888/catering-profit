@@ -2,3 +2,6 @@
 node_modules/
 **/node_modules/
 .DS_Store
+
+# 微信开发者工具本地私有配置（含个人/本地设置，官方建议不共享）
+project.private.config.json
