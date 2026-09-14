@@ -2,6 +2,12 @@
 
 > 用途：在真 wx-server-sdk / 真云数据库上一次性答完 4 个本地从没验证过的前提（A6 / A7 / require('./common') / doc().get() 契约）。
 > 跑完这个再投喂批次 1，比「先投喂、后建环境」省一个来回。
+
+> 🔬 **2026-09-14 晚实测已答一项（A7）**：在 dev 环境 `cloud1` 上真跑 `initDb`，30 条索引**全部**报 `db.collection(...).createIndex is not a function` ——
+> 即 wx-server-sdk **压根不存在这个方法**（不是"调用失败"，是"没有这个接口"）。
+> ⇒ **A7 = 不支持，且坐实为 SDK 层面缺失**（非偶发）→ 索引**只能云端控制台手工建**；按本 Runbook §五的既定判读，**A6 相应升级为「可能重复账号」**，首建档须加 unique 冲突重试（或改用其他去重手段）。
+> 余下三项（A6 实测行为 / `require('./common')` / `doc().get()` 契约）仍待 `smokeTest` 探针答题。
+
 > 配套代码已落盘：`cloudfunctions/smokeTest/`（index.js + package.json + 已 sync 的 common/ 副本）。本 Runbook 是给你在控制台照做的纸质流程。
 > ⚠️ **本文件是【唯一 Runbook】**。若见 `SMOKEST_RUNBOOK.*`（漏 `ET` 的手误副本）属历史残留，已删除，请勿再使用。
 > 本文件是【**权威操作流程**】。`新手上云操作手册.md` 是同一流程的**小白友好版**（面向没用过开发者工具的人）；
