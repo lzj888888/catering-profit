@@ -111,4 +111,4 @@
 - 三条按你「不阻塞投喂」的裁决延后。执行时按你给的修法 + 强制变异验证（`check_requires.js` 加 `cloudfunctions` 扫描 + **剥行注释** + 探针显式豁免；`./validate`→`./validates` 必须 exit 1 并点名）走。
 
 ### 提交
-- `___COMMIT___`（含 `cloudfunctions/calcAmortize/*`、`verify_all.js` 接批次 2、本回执、round6 入库、`BATCH2_DELIVERY.md`），`git push origin dev`。
+- `f94f5e0`（含 `cloudfunctions/calcAmortize/*`、`verify_all.js` 接批次 2、本回执、round6 入库、`BATCH2_DELIVERY.md`），`git push origin dev`。
