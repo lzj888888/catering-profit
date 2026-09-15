@@ -2,7 +2,6 @@
   "description": "餐饮毛利核算小程序",
   "appid": "wx33c110dc57a9c8dc",
   "projectname": "catering-profit",
-  "miniprogramRoot": "miniprogram/",
   "cloudfunctionRoot": "cloudfunctions/",
   "setting": {
     "urlCheck": false,
