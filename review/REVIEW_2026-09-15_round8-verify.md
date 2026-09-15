@@ -142,4 +142,4 @@ specs/dev-specs/core/10_云函数清单与接口契约.md:46
 **六、批次门禁提示**
 R34 已在批次 4 前端按字段名取数之前闭环（改名零破坏、入参已对齐）。批次 3（POC2 BOM）为独立引擎，不依赖此变更。
 
-- `___COMMIT___`（含 `cloudfunctions/calcAmortize/{service,validate,selftest,index}.js` 修复 + `core/10` + 投喂包 MD + 派生 txt/HTML 重生 + 本回执 + round8 入库），`git push origin dev`。
+- `98f6f5e`（含 `cloudfunctions/calcAmortize/{service,validate,selftest,index}.js` 修复 + `core/10` + 投喂包 MD + 派生 txt/HTML 重生 + 本回执 + round8 入库），`git push origin dev`。
