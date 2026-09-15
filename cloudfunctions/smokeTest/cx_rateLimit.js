@@ -1,6 +1,6 @@
 // cloudfunctions/common/rateLimit.js
 // 按 openid 维度限流（批次 0 §2.2.5）：写操作 60 次/分钟，超限返回 RATE_LIMITED。
-const { ERROR_CODES } = require('./errors');
+const { ERROR_CODES } = require('./cx_errors');
 
 const WINDOW_MS = 60 * 1000;
 const MAX_WRITES = 60;

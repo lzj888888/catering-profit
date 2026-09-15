@@ -8,8 +8,8 @@
 //
 // 点2（店铺归属）：assertShopOwner 校验 shop.user_id === ctx.user.id，否则 FORBIDDEN。
 
-const { ERROR_CODES, ok, fail } = require('./errors');
-const { nowUtc } = require('./utilTime');
+const { ERROR_CODES, ok, fail } = require('./cx_errors');
+const { nowUtc } = require('./cx_utilTime');
 
 // 生成短 id（演示用；真实环境可换雪花/uuid）
 function genId(prefix) {

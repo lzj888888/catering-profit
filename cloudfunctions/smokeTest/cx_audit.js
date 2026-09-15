@@ -1,6 +1,6 @@
 // cloudfunctions/common/audit.js
 // 操作留痕（批次 0 §2.4 audit_log 字段）。铁律 8：只 INSERT，可追溯前后状态。
-const { nowUtc } = require('./utilTime');
+const { nowUtc } = require('./cx_utilTime');
 
 /**
  * 写审计日志（只 INSERT）

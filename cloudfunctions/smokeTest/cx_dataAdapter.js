@@ -5,7 +5,7 @@
 //
 // 复审节点①·点3：列表查询一律注入 is_deleted=false，软删数据绝不出现于任何列表。
 
-const { nowUtc } = require('./utilTime');
+const { nowUtc } = require('./cx_utilTime');
 
 function makeAdapter(db) {
   if (!db) throw new Error('DataAdapter requires a db handle');

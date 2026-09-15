@@ -1,6 +1,6 @@
 // cloudfunctions/common/money.js
 // 金额工具。铁律：金额一律「分」整数（INT），计算在云函数完成，前端传来结果一律丢弃。
-const { ERROR_CODES } = require('./errors');
+const { ERROR_CODES } = require('./cx_errors');
 
 // 元 → 分（整数）。非数/非有限 → 抛 INVALID_PARAM。
 function yuanToFen(yuan) {

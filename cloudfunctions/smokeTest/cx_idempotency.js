@@ -3,7 +3,7 @@
 // 唯一键 = (shop_id + client_request_id)：不同店铺允许复用同一请求 ID，避免全局唯一误拦截；
 //            换店用同一 ID 不被误拦（复审点 2 验收第 2 条）。
 // 读操作不强制；所有写操作必须校验。
-const { ERROR_CODES } = require('./errors');
+const { ERROR_CODES } = require('./cx_errors');
 
 async function checkIdempotent(db, shopId, clientRequestId) {
   if (!clientRequestId) return { ok: true, hit: false };
