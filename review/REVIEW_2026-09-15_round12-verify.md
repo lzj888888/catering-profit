@@ -206,3 +206,69 @@
 3. 真云同店连续两月调用 `calcAmortize`；真云跑一次 `smokeTest`（顺带验 R29 的 `commonShape` 真值）。
 4. 上传：**提审前**再点（接受你的裁决）。
 5. 投喂批次 3（POC2 BOM）不受以上阻塞 —— 我可以随时开。
+
+---
+
+## §10 执行回执（round 12 补记）：§9.4 那条"没做成"的替代验证，**做成了**，而且换成了决定性证据
+
+> 触发：李老师手动处理了僵局（那个提权的零窗口僵尸进程已消失），从桌面双击重开、打开最近项目成功。我接着驱动。
+> 时间：2026-09-16。
+
+### 10.1 先补上 §9.4 缺的那一环：重开项目 → 再预览 ✅
+
+工具重开后：窗口标题 `catering-profit`、模拟器正常渲染 `pages/index/index`（餐饮毛利核算 / 四卡 / + 添加菜品）、console 仅 perf + 热重载 + preload 那几条旧 warning。点「预览」→ 面板 `编译提示 183 ▸ 代码包 9 ▸`（R37 那次是 177 / 9）—— **重开后仍 9 KB，且不再出现"本次预览使用修改前的文件"提示**。
+
+但**这个数字本身不能证明 ignore 真加载**：`ignoreDevUnusedFiles: true`（§9.5 那个工具自写的私有设置）会把无依赖文件一并过滤，两条机制效果重叠，9 KB 在"ignore 生效"和"ignore 未生效"两种情况下**都会出现**。所以我没停在这里。
+
+### 10.2 决定性验证：**哨兵法**（可逆，已完全还原）
+
+设计要点：要让目标文件**不可能**被 `ignoreDevUnusedFiles` 过滤掉，它就必须是"被使用文件"；再让它**只可能**被 `packOptions.ignore` 挡住。
+
+| 步骤 | 动作 |
+|---|---|
+| ① | 在 **`specs/dev-specs/prototype/`**（命中 `folder: specs` 规则）放哨兵 `_sentinel_r13.js`，**410,230 bytes = 400.6 KB** 合法 JS（大块注释 + `module.exports`）。选 `.js` 是因为它**不在** suffix 忽略列表（`.pdf/.docx/.md/.txt`）里 —— 只有 folder 规则能挡它 |
+| ② | `app.js` 顶部临时插一行 `require('./specs/dev-specs/prototype/_sentinel_r13.js');` ⇒ 它是**被使用文件**，`ignoreDevUnusedFiles` 无权过滤（另备份 `app.js` 到 `%TEMP%\app.js.bak`） |
+| ③ | 点「预览」 |
+
+**结果（原始报错，放大 3× 后由系统 OCR 读出，未做任何改写）：**
+
+```
+@<Error: MiniProgramError
+Error: module 'specs/dev-specs/prototype/_sentinel_r13.js' is not defined, require args is
+'specs/dev-specs/prototype/_sentinel_r13.js'
+  at … WAAutoService.js
+  at … WASubContext.js
+  at h…/_dev_/appservice/getmainpackagebundle.js…:239:1
+```
+
+**磁盘上确实躺着那个 400.6 KB 的文件，包里却没有它 ⇒ `packOptions` 的 `folder: specs` 规则已加载生效。** 这是**直接证据**，不是推理：如果 ignore 未加载，包体会变成 ~400 KB 且预览正常；实际是**模块找不到**。
+
+### 10.3 还原（已做，逐项核过）
+
+- 删除 `specs/dev-specs/prototype/_sentinel_r13.js`（`ls` 确认 No such file）
+- `app.js` 从备份还原（`head -4` 与 HEAD 一致、`node --check` SYNTAX OK、`git diff --stat` **空**）
+- `git status --short` **空**（工作树干净）
+- 还原后**再预览一次**：`编译提示 183 ▸ 代码包 9 ▸`，console **无 Error**、模拟器正常 ⇒ 现场回到基线，未留任何痕迹
+
+### 10.4 结论与口径
+
+| 命题 | 判定 | 依据等级 |
+|---|---|---|
+| `packOptions.ignore` 已加载生效 | ✅ **已实测** | **直接证据**（10.2 哨兵报错） |
+| 重开项目后才生效 | ✅ 相符（本轮所有预览均在重开之后） | 直接证据 |
+| 打包体积不超 2 MB（小程序自身 ~21 KB） | ✅ 9 KB | 真机预览面板 |
+| `specs/` 进 git 不进包 | ✅ | 10.2 + §9.6 |
+
+⇒ 建议把 **R37 从"闭环"升级为"已实测（含 ignore 生效性直接证据）"**。§9.3 那条"上传留到提审前"的裁决我不改，仍然接受。
+**方法学备注（给你复用）**：哨兵法能给出直接证据，代价是**故意制造一次编译错误**、且必须记得还原（我做了备份 + 还原后复验）。同法可用于验证 `review`/`cloudfunctions`/`tools`/`web-preview`/`.inscode`（folder 型）；suffix 型可用"`.md` 大文件 + 被 require"变体，但 .md 不能被 require，需改走"图片 + wxml 引用"。
+
+### 10.5 顺手两条
+
+- **工具这次是深色主题**（截图背景 `56,56,56`），上一轮 R37 是浅色 —— 我原先靠"亮绿色按钮色团"定位 `预览` 的做法**在深色主题下失效**（`find_color_center` 返回 None）。改用了更稳的锚点法：OCR 定位「真机调试」中心 x=1221、「上传」x=1329，**等距 108** ⇒ 「预览」= 1113，一次点中。已回写技能。
+- **`project.private.config.json` 的 `ignoreDevUnusedFiles` 仍是 `true`**（重开项目后复核），与 §9.5 一致。
+
+### 10.6 边界披露（本轮我动了什么）
+
+- **临时改动并已全部还原**：`specs/dev-specs/prototype/_sentinel_r13.js`（新建→删除）、`app.js`（插入 1 行→还原）。**仓库终态 = 提交前状态**，`git status` 干净，**无需任何提交**。
+- **只新增**（未改你任何既有文件）：工作区 `…/R37_ignore生效实测_20260916/`（3 张截图 + `app.js.还原基线` + 2 个 OCR 脚本），并同步入库 `review/evidence/R37_20260916/` 下同名子目录（`review` 在 ignore 内，进 git 不进包）。
+- 本 §10 为**追加**，未改动你 §0–§9 的任何一字。
