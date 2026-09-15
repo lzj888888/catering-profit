@@ -47,9 +47,16 @@ function validateInput(event) {
 // 复用本文件的 MONTH_RE 与 ERROR_CODES，错误信息沿用「点名 asset_id + 字段」风格。
 function docToAsset(doc) {
   const id = doc.asset_id || doc.id;
-  const total = Number(doc.total_value);
-  if (!Number.isInteger(total) || total < 0) {
-    throw { code: ERROR_CODES.INVALID_PARAM, msg: `台账资产 asset_id=${id} 的 total_value 必须是「分」非负整数` };
+  // R36：asset_id 必须是非空字符串（删 cleanAssets 时一并丢失的守卫，第 9 轮补回）。
+  //       所有错误信息都以「点名 asset_id」为前提，缺失/非字符串会让错误信息点名一个不存在的 id。
+  if (typeof id !== 'string' || !id) {
+    throw { code: ERROR_CODES.INVALID_PARAM, msg: `台账资产缺少 asset_id（必须是非空字符串）` };
+  }
+  // R35：total_value 必须严格是 JSON number（整数分），禁止 Number() 强转。
+  //      Number(null/""/true/[]) 会静默变成 0/1 等非负整数放行，把脏值当「0 元资产」计算 → 静默错账。
+  const total = doc.total_value;
+  if (typeof total !== 'number' || !Number.isInteger(total) || total < 0) {
+    throw { code: ERROR_CODES.INVALID_PARAM, msg: `台账资产 asset_id=${id} 的 total_value 必须是「分」非负整数（JSON number，字符串不接受）` };
   }
   const startMonth = doc.start_month;
   if (typeof startMonth !== 'string' || !MONTH_RE.test(startMonth)) {

@@ -147,6 +147,23 @@ docToAssetThrows({ asset_id: 'A5', total_value: 120, start_month: '2026-01', tot
 docToAssetThrows({ asset_id: 'A6', total_value: 120, start_month: '2026-01', total_months: 12, terminate_month: '2026-13' }, 'terminate_month="2026-13"');
 docToAssetThrows({ asset_id: 'A7', start_month: '2026-01', total_months: 12 }, 'total_value 缺失（R34：唯一校验路径也须响亮失败）');
 
+// ===================== R35/R36 回归：total_value 严格 number + asset_id 非空字符串 =====================
+console.log('');
+console.log('--- R35/R36 回归：docToAsset total_value 必须 JSON number、asset_id 必须非空字符串 ---');
+// R35（第 9 轮）：total_value 禁止 Number() 强转静默放过 null/""/true/[]/数字字符串
+docToAssetThrows({ asset_id: 'R35a', start_month: '2026-01', total_months: 12, total_value: null }, 'total_value=null（静默当 0 元资产）');
+docToAssetThrows({ asset_id: 'R35b', start_month: '2026-01', total_months: 12, total_value: '' }, 'total_value=""');
+docToAssetThrows({ asset_id: 'R35c', start_month: '2026-01', total_months: 12, total_value: true }, 'total_value=true');
+docToAssetThrows({ asset_id: 'R35d', start_month: '2026-01', total_months: 12, total_value: [] }, 'total_value=[]');
+docToAssetThrows({ asset_id: 'R35e', start_month: '2026-01', total_months: 12, total_value: '100' }, 'total_value="100" 数字字符串');
+check('docToAsset total_value=100（整数分）放行', docToAsset({ asset_id: 'R35f', start_month: '2026-01', total_months: 12, total_value: 100 }).total_value === 100);
+check('docToAsset total_value=0（0 元资产合法）放行', docToAsset({ asset_id: 'R35g', start_month: '2026-01', total_months: 12, total_value: 0 }).total_value === 0);
+// R36（第 9 轮）：asset_id 必须非空字符串（删 cleanAssets 时一并丢失，本轮补回）
+docToAssetThrows({ start_month: '2026-01', total_months: 12, total_value: 100 }, 'asset_id 缺失');
+docToAssetThrows({ asset_id: 12345, start_month: '2026-01', total_months: 12, total_value: 100 }, 'asset_id=数字');
+docToAssetThrows({ asset_id: '', start_month: '2026-01', total_months: 12, total_value: 100 }, 'asset_id="" 空串');
+check('docToAsset asset_id="R36ok" 正常放行', docToAsset({ asset_id: 'R36ok', start_month: '2026-01', total_months: 12, total_value: 100 }).asset_id === 'R36ok');
+
 // ===================== DataAdapter 软删过滤（需求 2.8：软删资产默认排除，业务层不关心） =====================
 console.log('');
 console.log('--- DataAdapter 软删过滤（读台账自动排除 is_deleted=true）---');
