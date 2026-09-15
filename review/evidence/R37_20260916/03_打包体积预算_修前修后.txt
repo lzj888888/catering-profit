@@ -1,0 +1,20 @@
+ignore 规则数 = 12
+=== 会被打包 keep: 18 文件 / 24.2 KB ===
+       10.1 KB  miniprogram/i18n/terms.js
+        1.8 KB  pages/index/index.js
+        1.7 KB  pages/index/index.wxml
+        1.7 KB  miniprogram/config/env.js
+        1.6 KB  project.config.json
+        1.5 KB  app.wxss
+        1.2 KB  pages/dish/dish.js
+        1.0 KB  utils/calc.js
+        1.0 KB  LICENSE
+        0.7 KB  app.js
+        0.7 KB  pages/dish/dish.wxml
+        0.6 KB  project.private.config.json
+        0.3 KB  .gitignore
+        0.3 KB  app.json
+        0.1 KB  pages/index/index.json
+=== 被 ignore 排除 drop: 175 文件 / 3008.1 KB ===
+修前（ignore 为空）预期包体 =   3032.3 KB = 2.96 MB  -> 超 2MB? True
+修后（当前 ignore）预期包体 =     24.2 KB = 0.02 MB  -> 超 2MB? False
