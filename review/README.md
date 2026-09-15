@@ -12,8 +12,11 @@
 | 路径 | 仓库根 `review/` |
 | 复审方产出 | `REVIEW_<YYYY-MM-DD>_<主题>.md`（**ASCII 文件名**；中文路径已坑过本仓两次） |
 | WorkBuddy 报告 | **仍在 `.workbuddy/memory/<日期>.md`**（那是它的单一源，**不要再复制一份到 review/**，否则又是「同一事实写两遍」） |
-| 为何放仓库根 | 在门禁 A–L 全部扫描面之外（门禁 ROOT = `specs/dev-specs/`；`check_requires` 只扫 `app.js`/`pages`/`miniprogram`/`utils`；L 组只扫 `cloudfunctions/`）→ 复审方写什么都不会让门禁变红 |
+| 为何放仓库根 | 在门禁 A–L 全部扫描面之外（门禁 ROOT = `specs/dev-specs/`；`check_requires` 自 **R28（2026-09-15）** 起扫 `app.js` + `pages`/`miniprogram`/`utils` + **`cloudfunctions/`**（剥注释 + 精确豁免表）；L 组只扫 `cloudfunctions/`）→ 复审方写什么都不会让门禁变红；且 `review/` 已在 `packOptions.ignore` 内 ⇒ **进 git 不进小程序包**（R37） |
 | 必须入库 | 本仓出现过「只落盘未入库 → 跨回合文件消失」（2026-09-13 日记 `:52-55`）→ 每轮落盘后立即 `git add review/ && git commit && git push dev` |
+
+> **证据目录约定（2026-09-16 增）**：本轮次的实测证据（截图/脚本/输出）放 `review/evidence/<主题>_<日期>/`，并附 `_README.md` 说明来源。
+> `review/` 已在 `packOptions.ignore` 内 ⇒ 证据**进 git、不进小程序包**（R37 起生效）；且门禁扫描面不含 `review/`。
 
 ## 2. 双向规则（互不篡改）
 
