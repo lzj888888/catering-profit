@@ -1,6 +1,6 @@
 ---
 name: win-desktop-control
-description: Windows 桌面「真实截屏 + 键鼠控制」通用技能。截取真实屏幕/某个窗口、控制鼠标点击拖拽滚轮、敲键与组合键、剪贴板粘贴长中文、判定窗口是否卡死、驱动任意桌面应用（微信开发者工具 / 浏览器 / 记事本 / InsCode 等）。当用户说"截屏给我看""截图看看屏幕上有什么""帮我点一下""控制鼠标键盘""驱动 XX 窗口""帮我操作 XX 软件""看看这个软件界面"时使用。纯 ctypes 调 Win32，不需要 pywin32；截屏需 Pillow。
+description: Windows 桌面「真实截屏 + 键鼠控制 + OCR读屏」通用技能。截取真实屏幕/某个窗口、控制鼠标点击拖拽滚轮、敲键与组合键、剪贴板粘贴长中文、判定窗口是否卡死、**把界面文字 OCR 成文本并按关键词定位按钮坐标**、驱动任意桌面应用（微信开发者工具 / 浏览器 / 记事本 / InsCode 等）。当用户说"截屏给我看""截图看看屏幕上有什么""帮我点一下""控制鼠标键盘""驱动 XX 窗口""帮我操作 XX 软件""看看这个软件界面""屏幕上写了什么"时使用；**当模型读不了图片时，也必须用本技能把截图转成文字**。纯 ctypes 调 Win32，不需要 pywin32；截屏需 Pillow；OCR 内置（winocr + WinRT，离线）。
 agent_created: true
 ---
 
@@ -42,6 +42,15 @@ PY="C:/Users/lzj/.workbuddy/skills/win-desktop-control/scripts/win_gui.py"   # �
 ```
 **然后用 Read 工具读那张 png** —— 你能看图，这才是闭环的关键一步。截图只是手段，"读图"才是结果。
 
+> ⚠️ **如果你的模型读不了图片**（无图像输入），别就此认为"截了也没用"：
+> 用 `scripts/ocr_screen.py` 把 png 转成**文字**，一样能闭环（而且更精确 —— 能拿到坐标）。
+> ```bash
+> "C:/Users/lzj/.workbuddy/skills/win-desktop-control/scripts/ocr_screen.py" shot   # 截图+OCR+坐标一次到位
+> "$OCR" "$P" read  "$TEMP/a.png"                 # 只要文字
+> "$OCR" "$P" find  "$TEMP/a.png" 预览 上传        # 关键词 → 坐标（可直接喂给 click）
+> "$OCR" "$P" watch 文件较新 --frames 12 --interval 0.5   # 连拍抓一闪而过的提示
+> ```
+
 ## 能力速查（CLI = 命令行动词，模块 = from win_gui import *）
 | 用途 | 命令 | 模块函数 |
 |---|---|---|
@@ -59,6 +68,20 @@ PY="C:/Users/lzj/.workbuddy/skills/win-desktop-control/scripts/win_gui.py"   # �
 | 原生保存框填路径 | `save-dialog --path ..` | `save_dialog_fill(path)` |
 | 关窗口 | `close --title X [--force]` | `close_window(hwnd)` |
 | 颜色定位按钮 | — | `find_color_center(path, pred)` |
+| **OCR 读屏/读图** | `ocr_screen.py list/read/find/shot/watch` | 见下节 |
+
+## OCR 读屏（`scripts/ocr_screen.py`）—— 读不了图时的眼睛
+| 子命令 | 作用 |
+|---|---|
+| `list <png>` | 列出所有行 + 坐标 |
+| `read <png> [--out txt]` | 输出纯文本 |
+| `find <png> <kw>...` | **关键词 → 中心坐标**（多字词自动做同行相邻字合并，中文被切成单字也能命中） |
+| `shot [--window X\|--screen]` | 截图 + OCR 一次完成（窗口截图会给**屏幕坐标**） |
+| `watch <kw>... [--frames 12] [--interval 0.5]` | **连拍 + 逐帧 OCR**，抓一闪而过的 Toast/提示框 |
+
+- 引擎 = Windows 自带 `Windows.Media.Ocr`（**离线**，无需 tesseract）；依赖已内置 `vendor/ocrlibs/`。
+- 语言自动挑：`zh-Hans-CN` → `zh-Hans` → `zh-CN` → `en-US`。
+- **坐标换算**：png 坐标 + 窗口原点 `(L,T)` = 屏幕坐标（`win_gui.rect(hwnd)` 取 L,T）。
 
 键名可用 `--name B / ENTER / F5 / ESC / TAB`，也可直接 `--vk 0x42`。
 
@@ -75,6 +98,9 @@ PY="C:/Users/lzj/.workbuddy/skills/win-desktop-control/scripts/win_gui.py"   # �
 10. **Git Bash 会把 `taskkill //PID` 转义坏** → 用 Python `subprocess.run([...])` 绕开。
 11. 同一 App 的第二个实例会秒退（单实例守卫）——"重启"必须先真正结束旧进程。
 12. 安全软件（360 主动防御 / 金山毒霸）曾让输入注入整体失效数天 → **每次代点前先 `selfcheck`**。
+13. **别只用颜色找按钮** —— 应用主题可变（微信开发者工具浅色↔深色 `#383838`），"亮绿色按钮"这类判据会**整体失效**（`find_color_center` 返回 None，不是按钮不在）。**锚点法更稳**：OCR 定位两个已知按钮，按**等距**推第三个（实测：真机调试 1221 / 上传 1329 → 间距 108 → 预览 1113，一次点中）。
+14. **kill 掉微信开发者工具后，绝不要用 `cli.bat open` 去开** —— CLI 会拉起一个**零窗口、提权**的 IDE 服务进程占住单实例锁，之后双击 exe 只会把请求转发给它 ⇒ **再也开不出窗口**，且该僵尸进程 `taskkill` 报"拒绝访问"。正确做法：**结束后用桌面图标/`exe` 正常启动**。
+15. **"能重绘 + 能响应悬停 + `IsHungAppWindow` 报健康" 仍可能是半死状态**（不接受业务输入）。`probe` 也会被骗过 —— 判据要加一条：**按钮点完 UI 无变化**。此时别硬怼（会推成真死），交给人工。
 
 ## 安全护栏（不可违反）
 - 只做用户明确要求的操作；**不确定就先截图给用户确认再点**。
@@ -96,9 +122,21 @@ key(VK['B'], ctrl=True)                  # ④ Ctrl+B 编译
 time.sleep(6)
 screenshot_window(h, r'C:\tmp\b.png')    # ⑤ 再截一张确认结果
 ```
-更多配方见 `references/recipes.md`（微信开发者工具验收、控制台日志导出、颜色定位按钮、长文本投喂）；
+更多配方见 `references/recipes.md`（微信开发者工具验收、控制台日志导出、颜色/锚点定位按钮、长文本投喂、**哨兵法验证构建配置生效性**）；
 全部坑与判定法见 `references/pitfalls.md`；换电脑安装见 `references/install.md`；
 给新会话的"提醒词"在 `references/reminder.md`。
+
+## 一条通用方法学：**哨兵法**（要"证明某个配置真生效"时）
+> 适用：任何"我改了构建/忽略/过滤配置，但工具没报错、结果又看不出区别"的场合。
+
+思路：**造一个只可能被目标配置挡住的探针**，让"配置生效"和"配置没生效"产生**完全不同的现象**。
+
+实战案例（微信小程序 `packOptions.ignore`）：
+1. 目标规则是 `folder: specs`；但另有"过滤未使用文件"机制会掩盖效果 → 两者结果都是 9 KB，**分不开**。
+2. 破法：把探针做成**"被使用文件"**（`app.js` 里 `require` 它）⇒ 只剩 folder 规则能挡。
+3. 探针后缀选**不在其它规则里**的（`.js` 不在 `.pdf/.docx/.md/.txt` 里）。
+4. 观察：预览**直接报 `module not found`** ⇒ 规则生效（若未生效则是包体从 9 KB 涨到 ~400 KB，现象完全不同）。
+5. **务必还原**：删探针 + 还原入口文件 + `git diff` 必须为空 + 还原后复跑一次确认回基线。
 
 ## 移植到别的电脑
 ```bash

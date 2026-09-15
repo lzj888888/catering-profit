@@ -101,7 +101,7 @@ screenshot_window(h, T + r'\preview.png') # 面板上会显示「编译提示 N 
 - ⚠️ **别点「上传」**：会真向微信后台提交体验版本（不可逆），必须由人确认后再点。
 - ⚠️ `packOptions` 改动官方注明"**可能需要重新打开项目才生效**"；工具会提示"本次预览使用修改前的文件" —— 想验证配置真生效，先重开项目。
 
-## 配方 9：重开项目（让 project.config.json 的改动真生效）
+## 配方 10：重开项目（让 project.config.json 的改动真生效）
 ```python
 h = find_window(title='Devtools'); L, T, _, _ = rect(h)
 focus(h, settle=0.5)
@@ -115,3 +115,60 @@ click(L + 249, T + 500, settle=2.0)      # 「重新打开此项目」（菜单�
 - 菜单**第一次点常常不弹**：先点一下正文区把焦点抢回来，再点菜单栏。
 - ⚠️ 重开会弹 **「是否保存对以下文件的更改？settings.json」**（落盘其实是项目根的 `project.private.config.json`，通常已 gitignore）。
 - 🔴 **这一步在实测中卡死过**：状态栏 `Closing the window is taking a bit longer...` 出现后，模态按钮**点不动**（probe 仍报 alive + hover_diff）→ 见 `pitfalls.md` P25。**遇到就去叫人，别连点**。
+
+## 配方 11：OCR 读屏 / 读图（模型读不了图片时必用）
+```bash
+PY="C:/Users/lzj/.workbuddy/binaries/python/envs/default/Scripts/python.exe"
+OCR="C:/Users/lzj/.workbuddy/skills/win-desktop-control/scripts/ocr_screen.py"
+
+# ① 截图 + OCR + 屏幕坐标，一次到位（默认找标题含 Devtools 的窗口）
+"$PY" "$OCR" shot
+
+# ② 已有 png → 纯文本
+"$PY" "$OCR" read "$TEMP/a.png" --out "$TEMP/a.txt"
+
+# ③ 关键词 → 中心坐标（可直接喂 click）
+"$PY" "$OCR" find "$TEMP/a.png" 真机调试 上传
+
+# ④ 裁剪 + 放大后 OCR（小字/低对比度必做，2~4 倍）
+"$PY" "$OCR" find "$TEMP/a.png" 预览 --crop 1020 4 1400 48 --scale 4
+
+# ⑤ 连拍抓一闪而过的提示（本机实战抓到了「文件较新」）
+"$PY" "$OCR" watch 文件较新 取消 --frames 12 --interval 0.5
+```
+- **中文会被切成单字**（`预览` → `'预'` `'览'`）：`find` 内部已做「同行相邻字合并」，直接给多字词即可。
+- **绿色/彩色按钮上的浅色文字常常 OCR 不出来**（实测「预览」MISS，而「真机调试」「上传」正常）→ 此时改用**锚点法**（下条）。
+- 定点裁小块 + `--scale 3~4` 能显著提升识别率；`--crop` 传的是**原图坐标**，脚本会自动把结果换算回原图坐标。
+
+## 配方 12：锚点法定按钮（主题可变 / 颜色失效时的正解）
+```python
+# 思路：OCR 认得出「真机调试」「上传」→ 两锚点算间距 → 等距推左边的「预览」
+# 实测（窗口 1875x1034）：真机调试 x=1221、上传 x=1329 → 间距 108 → 预览 x=1113 ☑ 一次点中
+import subprocess
+PY  = r'C:/Users/lzj/.workbuddy/binaries/python/envs/default/Scripts/python.exe'
+OCR = r'C:/Users/lzj/.workbuddy/skills/win-desktop-control/scripts/ocr_screen.py'
+png = r'C:\Users\lzj\AppData\Local\Temp\a.png'
+subprocess.run([PY, OCR, 'find', png, '真机调试', '上传'])   # 读回坐标后手工等距推算
+```
+- **不要**写死"亮绿色按钮色团"这类判据：微信开发者工具**浅色↔深色主题可切换**，切换后色团判据整体失效。
+- 工具栏按钮一般**等距**，用两个 OCR 得出来的锚点推第三个，比颜色可靠得多。
+
+## 配方 13：哨兵法 —— 证明某个构建配置「真生效」
+> 场景：改了忽略/过滤/打包配置，工具不报错、结果又看不出区别（例：小程序 `packOptions.ignore`）。
+
+```bash
+# ① 造一个「只可能被目标规则挡住」的探针，放进目标目录
+#    · 后缀要选「不在其它规则里」的（.js 不在 .pdf/.docx/.md/.txt 里）
+#    · 体积要够大（本次 400 KB），保证"生效/不生效"现象差异巨大
+# ② 让它成为「被使用文件」：入口文件里 require 它
+#    ⇒ 排除"过滤未使用文件"这类机制对结果的掩盖
+# ③ 触发构建（本处 = 点预览）
+# ④ 判读：
+#    生效   → 直接报 module not found（本处实测 Error: MiniProgramError）★
+#    未生效 → 构建正常，包体从 9 KB 涨到 ~400 KB
+# ⑤ 还原并复验：删探针 + 还原入口 + git diff 必须为空 + 再跑一次确认回基线
+```
+- 本机实测原文：`Error: MiniProgramError — module 'specs/dev-specs/prototype/_sentinel_r13.js' is not defined`
+  ⇒ 磁盘有、包里没有 ⇒ `folder: specs` **确已生效**（**直接证据**，非推理）。
+- ⚠️ 代价：会**故意制造一次构建失败**。必须先备份、后还原，**还原后一定要复跑一次**。
+- suffix 型规则（`.md` 等）不能照搬：`.md` 无法被 `require`，需改走"图片 + 模板引用"变体。

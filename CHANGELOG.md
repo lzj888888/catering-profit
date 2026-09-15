@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## 2026-09-16 · v1.4（OCR 读屏固化进 vendor）
+把 OCR 读屏/读图能力**固化进技能**，真正「换电脑解压即用」：
+- 新增 `scripts/ocr_screen.py`：OCR 读屏/读图（`list / read / find / shot / watch`）。
+  - 引擎 = Windows 自带 `Windows.Media.Ocr`（离线，无需 tesseract）。
+  - `find` 内部做「同行相邻字合并」—— 解决 WinRT OCR 把中文词切成单字导致多字词匹配 MISS 的问题；坐标自动换算回原图/屏幕坐标。
+  - `watch` 连拍 + 逐帧 OCR，抓一闪而过的 Toast/提示框（本机实战抓到 DevTools「文件较新」保存冲突）。
+- 新增 `vendor/ocrlibs/`：自带 `winocr` + `winrt-*` 原生依赖（约 3.5 MB），离线可用。
+- `SKILL.md` 加 OCR 速查表 + 哨兵法方法学；`recipes.md` 加 **配方 11 OCR 读屏 / 配方 12 锚点法定按钮 / 配方 13 哨兵法**；`install.md` 加 OCR 语言包说明（换机要装对应 Windows OCR 包）。
+- 关键结论：OCR 依赖的是**系统 OCR 语言包**（本机 zh-Hans 可用、en-US 未装），不是自带字库 —— 已在 install.md 写明换机安装方法。
+
+## 2026-09-16 · v1.3（P26 单实例锁陷阱）
+- `pitfalls.md` 新增 **P26：kill 掉微信开发者工具后绝不能用 `cli.bat open`** —— CLI 会拉起一个零窗口、提权的 IDE 服务进程占住单实例锁，之后双击 exe 只转发请求给它 ⇒ 再也开不出窗口，且该僵尸进程 `taskkill` 报「拒绝访问」。正确做法：结束后用桌面图标/`exe` 正常启动。
+- 同时补全 P25 关联的「保存冲突死循环」完整链条：VSCode 保存冲突（磁盘 `project.private.config.json` 比缓冲区新）→ 保存/不保存/取消/Alt+F4 全失效（半死 UI）→ 只能人工桌面重启。
+
 ## 2026-09-16 · v1.2 第二次实战（R28–R30 收尾 + 重开项目）
 - `recipes.md` 新增 **配方 9：重开项目**（项目菜单坐标、菜单项清单、"先点正文区再点菜单"的激活技巧、菜单弹层要用全屏截图裁）。
 - `pitfalls.md` 新增 **P25：「半死」窗口会骗过 probe** —— 应用"正在关闭/重载"时能重绘、`hover_diff=True`、`IsHungAppWindow=0`，但点击/回车全无反应；对策=识别状态栏进度文案 + 立刻停手交人。

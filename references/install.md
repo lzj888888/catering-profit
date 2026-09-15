@@ -12,8 +12,11 @@ win-desktop-control/
 ├─ SKILL.md                 技能入口（Agent 读这个）
 ├─ scripts/
 │  ├─ win_gui.py            核心驱动（模块 + CLI）
+│  ├─ ocr_screen.py         OCR 读屏/读图（list/read/find/shot/watch）
 │  ├─ bootstrap.py          环境体检 / 装依赖 / 打印提醒词
 │  └─ pack.py               打包成 zip
+├─ vendor/
+│  └─ ocrlibs/              OCR 依赖自带（winocr + winrt-*，约 3.5 MB，离线可用）
 └─ references/
    ├─ pitfalls.md           踩坑全集
    ├─ recipes.md            实战配方
@@ -47,6 +50,19 @@ python "C:\Users\<用户名>\.workbuddy\skills\win-desktop-control\scripts\boots
 | Pillow | 仅截屏 | `pip install pillow`；没有也能点、能敲键 |
 | pywin32 | ❌ | **不需要**，全部走 ctypes |
 | 管理员权限 | ❌ | 不需要；反而"目标是管理员"时才需要人工介入 |
+| **Windows OCR 语言包** | OCR 必需 | 引擎是系统自带的 `Windows.Media.Ocr`，**需要目标语言的 OCR 能力包** |
+
+### OCR 语言包（换机必读）
+`ocr_screen.py` 走系统 `Windows.Media.Ocr`，**不是离线模型**、也不带字库 —— 它依赖 Windows 已装的 OCR 语言包。
+- 本机实测：`zh-Hans-CN / zh-Hans / zh-CN` 可用，`en-US` 未安装（`ocr_screen.py` 会按 `zh-Hans-CN → zh-Hans → zh-CN → en-US` 顺序自动挑第一个能用的）。
+- **换到新电脑/给别人**：要识别哪种语言文字，那台机器就得装对应 OCR 包。
+  - 通常**系统显示语言**的 OCR 包默认就在（中文系统 → 中文 OCR 开箱即用）。
+  - 若要识别**非系统语言**（如中文系统想认英文），需先装包：
+    ```powershell
+    # 以"英语 OCR"为例（管理员 PowerShell）
+    Add-WindowsCapability -Online -Name "Language.OCR~~~en-US~0.0.1.0"
+    ```
+- 装好前 `ocr_screen.py` 会明确报错而不是静默返回空 —— 看到报错先确认目标机有没有对应语言包。
 
 ## 5. 验证（换机后必做）
 ```bash

@@ -1,12 +1,14 @@
 # win-desktop-control
 
-Windows 桌面「**真实截屏 + 键鼠控制**」通用技能 —— 给 AI Agent（WorkBuddy / CodeBuddy / 任何能跑命令行的助手）用。
+Windows 桌面「**真实截屏 + 键鼠控制 + OCR 读屏**」通用技能 —— 给 AI Agent（WorkBuddy / CodeBuddy / 任何能跑命令行的助手）用。
 
 能抓**真实屏幕**（不是示意图）、能移动/点击鼠标、能敲键盘与组合键、能判定窗口是否卡死、能驱动任意桌面应用
 （微信开发者工具 / 浏览器 / 记事本 / Electron 系 App…）。
+**当模型读不了图片时**，还能把屏幕/截图上的文字 OCR 成文本、按关键词定位按钮坐标，照样闭环。
 
 - 纯标准库 `ctypes` 直调 Win32（user32 / kernel32），**不需要 pywin32**
 - 截屏用 `PIL.ImageGrab`（唯一外部依赖，缺了它也只剩"不能截图"，键鼠照常能用）
+- OCR 用系统自带 `Windows.Media.Ocr`（离线），依赖随技能内置在 `vendor/ocrlibs/`
 - **不需要管理员权限**
 
 ## 安装（三步）
@@ -45,6 +47,7 @@ S="skills/win-desktop-control/scripts/win_gui.py"
 ```
 
 **关键闭环：截图之后用 Agent 的"读图"能力去看那张 png。** 截屏只是手段，"看得懂"才是结果。
+**若模型读不了图片**：用 `python scripts/ocr_screen.py shot` 把屏幕 OCR 成文字（含坐标），一样能闭环，还更精确。
 
 也能当模块用：
 
@@ -60,13 +63,15 @@ key(VK['B'], ctrl=True)          # Ctrl+B 编译
 
 | 路径 | 内容 |
 |---|---|
-| `SKILL.md` | 技能入口（触发词 / 能力速查 / 12 条硬教训 / 安全护栏） |
+| `SKILL.md` | 技能入口（触发词 / 能力速查 / 15 条硬教训 / 安全护栏） |
 | `scripts/win_gui.py` | 核心驱动，模块 + CLI 双形态 |
+| `scripts/ocr_screen.py` | OCR 读屏/读图（list/read/find/shot/watch），依赖在 `vendor/ocrlibs/` |
 | `scripts/bootstrap.py` | 换机体检 + `--install` 装依赖 + `--hint` 打印提醒词 |
 | `scripts/pack.py` | 打包成 zip，便于拷贝到别的电脑 |
-| `references/pitfalls.md` | **24 条踩坑全集**（症状 → 真因 → 对策） |
-| `references/recipes.md` | 8 个照抄配方（DevTools 验收、控制台日志导出、颜色定位按钮…） |
-| `references/install.md` | 换电脑 / 给别人安装的完整步骤 |
+| `vendor/ocrlibs/` | OCR 依赖自带（winocr + winrt-*），离线可用 |
+| `references/pitfalls.md` | **26 条踩坑全集**（症状 → 真因 → 对策） |
+| `references/recipes.md` | 13 个照抄配方（DevTools 验收、控制台日志导出、OCR 读屏、锚点/颜色定位按钮、哨兵法…） |
+| `references/install.md` | 换电脑 / 给别人安装的完整步骤（含 OCR 语言包说明） |
 | `references/reminder.md` | 给新会话的「提醒词」，复制发给 Agent 即可唤醒能力 |
 
 ## 三条最重要的坑
