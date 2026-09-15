@@ -3,19 +3,35 @@
 // 部署后在云开发控制台「云函数 → smokeTest → 测试」用空 {} 触发，看返回 JSON。
 // ⚠️ 本函数刻意不依赖任何本沙箱行为；价值只在「跑到真云上」。删除：跑完去控制台手动删 __probe 集合（SDK 不能 drop collection）。
 const cloud = require('wx-server-sdk');
+const fs = require('fs');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 
-const PROBE = '__probe';
+// ⚠️ 2026-09-15 实测：集合名**不能以下划线开头**（微信报 -501007 invalid parameters），故由 __probe 改名
+const PROBE = 'probe_tmp';
 
 // ① require('./common') 是否可解析（不可解析则整个函数起不来——用 try 包住以便同时答其余三条）
 let commonOk = false, commonErr = null, common = null;
 try { common = require('./common'); commonOk = true; }
-catch (e) { commonErr = e.message; }
+catch (e) {
+  commonErr = e.message;
+  // 兜底：目录解析失败时直接指到 index.js（2026-09-15 云端曾报 Cannot find module './common'）
+  try { common = require('./common/index.js'); commonOk = true; commonErr = 'fallback ok: ' + e.message; }
+  catch (e2) { commonErr = e.message + ' || fallback: ' + e2.message; }
+}
+
+// ①b 云端文件清单自检（诊断用：确认 common/ 到底有没有被打进包）
+let fsDiag = {};
+try {
+  fsDiag.root = fs.readdirSync(__dirname);
+  fsDiag.hasCommonDir = fs.existsSync(__dirname + '/common');
+  fsDiag.common = fsDiag.hasCommonDir ? fs.readdirSync(__dirname + '/common') : null;
+  fsDiag.cwd = process.cwd();
+} catch (e) { fsDiag = { THROW: e.message }; }
 
 exports.main = async () => {
   const out = {
-    env: '', requireCommon: {}, createCollection: {}, createIndex: {}, docGet: {},
+    env: '', fsDiag, requireCommon: {}, createCollection: {}, createIndex: {}, docGet: {},
     docGetMissing: {}, uniqueEnforce: {}, assertShopOwner: {}, dataAdapterGet: {},
   };
 
