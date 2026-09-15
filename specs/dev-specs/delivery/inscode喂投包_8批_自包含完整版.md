@@ -10,10 +10,15 @@
 
 ## 0.1 部署前置铁律（批次 0–7 通用 · 上传前必跑）
 
-> ⚠️ **每个云函数上传前，必须在仓库根跑一次：`node tools/sync_common.js`**（把 `cloudfunctions/common/` 单源同步进各 `cloudfunctions/<func>/common/`）。
+> ⚠️ **每个云函数上传前，必须在仓库根跑一次：`node tools/sync_common.js`**（把 `cloudfunctions/common/` 单源**扁平派生**进各 `cloudfunctions/<func>/`）。
 > - 微信云开发**每个云函数独立打包上传**，父目录 `cloudfunctions/common/` 不在任何单函数包内；云函数若写 `require('../common')` 本机通、**云端 MODULE_NOT_FOUND**。
-> - 机制：`cloudfunctions/common/` 是单源（只改这里）→ `tools/sync_common.js` 复制进每个函数目录的 `common/` → 云函数内 `require('./common')`。
-> - 门禁 **L 组**（`prototype/check_error_codes.js`）断言「各函数目录 `common/` 副本 ≡ `cloudfunctions/common/` 单源」，漂移即红；`git` 提交前先同步再提交副本。
+> - 🔴🔴 **2026-09-15 云端实测铁律：云函数包内禁止使用子目录。**
+>   即便副本放在**本函数目录内的 `common/` 子目录**，真云端**依然 MODULE_NOT_FOUND** ——
+>   Windows 侧打包把子目录拼成 `common\xxx.js` 这种**带反斜杠的扁平文件名**，Linux 云端不认它是目录
+>   （云端自检 `fsDiag`：`hasCommonDir=false`，`readdirSync` 返回 `"common\\audit.js"`）。
+> - 机制（已按实测更正）：`cloudfunctions/common/` 是单源（只改这里）→ `tools/sync_common.js` **扁平派生**出
+>   `<func>/common.js`（入口，`require('./common')` 命中它）+ `<func>/cx_*.js`（各模块，`cx_` 前缀防撞名）→ 云函数内仍写 `require('./common')`。
+> - 门禁 **L 组**（`prototype/check_error_codes.js`）断言「各函数目录扁平副本 ≡ 单源派生」，漂移即红；`git` 提交前先同步再提交副本。
 > - **批次 1 起每个云函数都受此约束**；忘跑 sync → 云端部署即炸，返工面 = 后面全部批次。
 
 ===== 批次 0 开始 =====

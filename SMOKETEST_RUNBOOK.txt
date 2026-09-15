@@ -6,9 +6,20 @@
 > 🔬 **2026-09-14 晚实测已答一项（A7）**：在 dev 环境 `cloud1` 上真跑 `initDb`，30 条索引**全部**报 `db.collection(...).createIndex is not a function` ——
 > 即 wx-server-sdk **压根不存在这个方法**（不是"调用失败"，是"没有这个接口"）。
 > ⇒ **A7 = 不支持，且坐实为 SDK 层面缺失**（非偶发）→ 索引**只能云端控制台手工建**；按本 Runbook §五的既定判读，**A6 相应升级为「可能重复账号」**，首建档须加 unique 冲突重试（或改用其他去重手段）。
-> 余下三项（A6 实测行为 / `require('./common')` / `doc().get()` 契约）仍待 `smokeTest` 探针答题。
+> ✅ **2026-09-15：四项前提全部答完（smokeTest 探针 v3 真云端实跑）**，见下表。**批次 1 前置全部解除。**
 
-> 配套代码已落盘：`cloudfunctions/smokeTest/`（index.js + package.json + 已 sync 的 common/ 副本）。本 Runbook 是给你在控制台照做的纸质流程。
+### 🏁 四前提终局结论（2026-09-15 云端实测，真 wx-server-sdk）
+
+| 前提 | 结论 | 云端实测证据 | 对后续代码的影响 |
+|---|---|---|---|
+| **A7**（`createIndex` 是否可用） | ❌ **不支持** | `createIndex.typeof = "undefined"`；插入重复值**未报错** | 索引**只能控制台手工建**；`initDb` 的 30 条索引属预期内失败 |
+| **A6**（首建档是否原子） | ⚠️ **升级为「可能重复账号」** | 同上（unique 索引建不了 ⇒ 无唯一约束） | **首建档必须加 unique 冲突重试**，或改用其他去重手段 |
+| **`require('./common')`** | ✅ **可行，但必须扁平化** | 子目录方案 `MODULE_NOT_FOUND`（云端 `fsDiag.hasCommonDir=false`，子目录被拼成 `common\xxx.js` 扁平怪名）；改 `common.js` + `cx_*.js` 后 `ok:true`，13 项导出齐 | **云函数包内禁用子目录**；改 common 单源后必跑 `node tools/sync_common.js` |
+| **`doc().get()` 契约** | ✅ **成立（A1/A2 未修反）** | `topLevelKeys=["data","errMsg"]`、`hasDataField=true`；文档不存在时 **`behavior:"reject"`** | 取值**必须取 `.data`**；读取**必须 try/catch**（不存在会抛，不是返回 null） |
+| A1 落点（`assertShopOwner`） | ✅ 正确 | 不存在的店铺返回 `{code:"RESOURCE_NOT_FOUND"}`，**非抛异常、非恒 FORBIDDEN** | A1 修法确认无误 |
+| A2 落点（`dataAdapter.get`） | ✅ 正确 | `liveIsDoc:true`（未删返回文档）、`deadIsNull:true`（软删返回 null） | A2 修法确认无误 |
+
+> 配套代码已落盘：`cloudfunctions/smokeTest/`（index.js + package.json + 同步派生的 `common.js` + `cx_*.js`）。本 Runbook 是给你在控制台照做的纸质流程。
 > ⚠️ **本文件是【唯一 Runbook】**。若见 `SMOKEST_RUNBOOK.*`（漏 `ET` 的手误副本）属历史残留，已删除，请勿再使用。
 > 本文件是【**权威操作流程**】。`新手上云操作手册.md` 是同一流程的**小白友好版**（面向没用过开发者工具的人）；
 > 两者若冲突，**以本文件为准**。
@@ -84,9 +95,16 @@
 - 去「数据库」标签页核对：**集合数 = 25**（若不是 25，截图给我，可能涉及 A6 严重度）。
 - 索引清单：门禁 A7 关注 9 个 unique 索引；initDb 是否建索引由代码决定，本探针第②条专门验 createIndex 能力。
 
-### 步骤 3 · 部署 smokeTest（含 common 副本）
-- 右键 `cloudfunctions/smokeTest` →「上传并部署：云端安装依赖」（wx-server-sdk 会云端 npm 安装）。
-- 上传时把本地 `smokeTest/common/` 副本一并打进包（微信打包本函数目录自身内容，副本就在目录内 → 这正是机制成立的关键）。
+### 步骤 3 · 部署 smokeTest（含 common **扁平**副本）
+- 推荐命令行部署（服务端口已开）：
+  ```bat
+  "C:\Program Files (x86)\Tencent\微信web开发者工具\cli.bat" cloud functions deploy ^
+    --env cloud1-d4gphpoxy337f2a25 --names smokeTest ^
+    --project "C:\Users\lzj\WorkBuddy\Claw\catering-profit" --remote-npm-install
+  ```
+  或右键 `cloudfunctions/smokeTest` →「上传并部署：云端安装依赖」。
+- 🔴 **副本必须是扁平的**（`common.js` + `cx_*.js`），**不能是 `common/` 子目录**——2026-09-15 云端实测：子目录会被 Windows 打包拼成 `common\xxx.js` 这种带反斜杠的扁平文件名，Linux 云端不认它是目录 → `MODULE_NOT_FOUND`。
+  ⇒ 上传前跑 `node tools/sync_common.js`（它已改为扁平派生）；若用旧版脚本生成了 `common/` 子目录，须先删掉再同步。
 - 若上传后控制台报「找不到模块 ./common」→ **机制失效信号**（见结果判读 ①）。
 
 ### 步骤 4 · 控制台触发 smokeTest，取 JSON
@@ -129,7 +147,9 @@
 - **云开发 / 云函数 / 云数据库**：微信提供的后端托管。云函数 = 一段部署在微信服务器的 Node.js 代码；云数据库 = 微信托管的 MongoDB 风格库。
 - **`wx-server-sdk`**：云函数里操作数据库/存储的官方 SDK，`cloud.init({env})` 初始化，`cloud.database()` 拿库句柄。
 - **`DYNAMIC_CURRENT_ENV`**：让云函数自动用「当前所在环境」，避免硬编码环境 ID。
-- **`require('./common')` vs `require('../common')`**：`./` 指本函数目录内的副本（云端能找到）；`../` 指兄弟目录 `cloudfunctions/common/`（云端打包不含兄弟目录 → MODULE_NOT_FOUND）。这正是本机制的命门。
+- **`require('./common')` vs `require('../common')`**：`../` 指兄弟目录 `cloudfunctions/common/`（云端打包不含兄弟目录 → MODULE_NOT_FOUND）；`./` 指本函数目录内的副本。
+  🔴 **2026-09-15 云端实测补一条铁律**：即便是**本函数目录内的子目录**（`<func>/common/`），真云端**依然 MODULE_NOT_FOUND** —— Windows 打包把它拼成 `common\xxx.js`（文件名含反斜杠），Linux 云端不认它是目录（`fsDiag.hasCommonDir=false`）。
+  ⇒ **云函数包内禁用子目录**：副本一律扁平为 `<func>/common.js`（入口）+ `<func>/cx_*.js`（模块）。这是本机制真正的命门。
 - **createIndex / unique 索引**：给集合字段建唯一索引，重复值写入会报错——用来防重复账号（A6）。
 - **`doc().get()` 契约**：A1/A2 修复的依据是「返回 `{data}` 而非文档本体」；本探针③专门验真云返回形状。
 - **`blocked` / 门禁 H 组**：部署时 dev 允许、prod 拒绝的逻辑开关；initDb 的 `blocked===undefined` 表示 dev 放行。放行有两条路：环境 ID 含 `dev` 子串（默认正则），**或**配了 `DEV_ENV_ID` 环境变量则精确匹配该 ID（**白名单**，见 `cloudfunctions/initDb/config.json`）；两条路都受 `!/prod/` 恒效约束。

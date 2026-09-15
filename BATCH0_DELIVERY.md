@@ -78,7 +78,10 @@
 
 ## 四、部署注意（你执行，本机无 inscode/云连接器）
 
-1. **common 层打包**：WeChat 云函数按函数目录独立部署，`cloudfunctions/common/` 不是可部署函数。inscode 部署每个云函数时，需把 `common/` 随函数一起上传（或在每个函数目录内放一份 `common` 副本）。当前 `initDb/index.js` 通过 `require('./collections')` 引用同目录文件，可直接部署；后续 1~7 批云函数 `require('../common/...')` 时请确认 common 已随包上传。
+1. **common 层打包**（🔴 2026-09-15 云端实测更正）：WeChat 云函数按函数目录独立部署，`cloudfunctions/common/` 不是可部署函数。
+   - **云函数包内禁止使用子目录** —— 即便副本放在本函数目录内的 `common/`，真云端仍 `MODULE_NOT_FOUND`：Windows 打包把子目录拼成 `common\xxx.js`（文件名含反斜杠），Linux 云端不认它是目录。
+   - 正解：上传前跑 `node tools/sync_common.js`，它会把 `cloudfunctions/common/` 单源**扁平派生**为 `<func>/common.js`（入口）+ `<func>/cx_*.js`（模块），云函数内仍写 `require('./common')`。
+   - 当前 `initDb/index.js` 通过 `require('./collections')` 引用同目录文件，可直接部署；后续 1~7 批云函数统一用 `require('./common')`，**不要写 `require('../common/...')`**。
 2. **config/env.js 填真实 ID（点4 上线动作）**：把 `dev`/`prod` 占位替换为云开发控制台真实环境 ID（形如 `catering-dev-xxxxxx`），**切勿留短名**。
 3. **initDb 仅 dev**：`initDb` 部署到 **dev** 手动跑一次建 25 集合；**prod 的 25 张集合在控制台手工建，绝不部署 initDb 到 prod**（代码门禁已强制 `!/prod/` 恒拒）。部署后实测 `blocked===undefined && created.length===25`。
 4. **commit 策略**：地基先合 `dev`，各批次投喂完成后再统一合 `main`（与分支策略一致）。
