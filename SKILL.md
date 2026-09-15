@@ -123,6 +123,7 @@ time.sleep(6)
 screenshot_window(h, r'C:\tmp\b.png')    # ⑤ 再截一张确认结果
 ```
 更多配方见 `references/recipes.md`（微信开发者工具验收、控制台日志导出、颜色/锚点定位按钮、长文本投喂、**哨兵法验证构建配置生效性**）；
+**怎么把原语串成一次"看→想→动→验"的高效闭环（装配图）见 `references/playbook.md`**；
 全部坑与判定法见 `references/pitfalls.md`；换电脑安装见 `references/install.md`；
 给新会话的"提醒词"在 `references/reminder.md`。
 

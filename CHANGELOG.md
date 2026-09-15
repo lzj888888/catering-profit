@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-09-16 · v1.5（Playbook：把原语串成闭环）
+- 新增 `references/playbook.md` —— **装配图**（`recipes.md` 是零件，本文是装配图）：
+  - **统一前置**（`sys.path.insert` + `from win_gui import *` + `T=%TEMP%`）为什么这么写；`/tmp` 是 Git Bash 虚拟路径、桌面应用打不开。
+  - **标准闭环七步**：找 → 前置 → **留证(前)** → 定位 → **判活** → 动 → **验+留证(后)**；并标明每步的已知翻车点。
+  - **能力搭配决策树**：14 种现象 → 该用哪个原语（OCR / 锚点 / probe / 剪贴板 / watch / 哨兵 / 交人）。
+  - **与既有方法学嫁接表**：直接证据 > 推理、留证入 `review/evidence/`、可回滚+复验、差异/体积/计数先对齐口径、探针先于盲点 —— 讲清"旧知识判可信度、本技能取第一手现象"的分工。
+  - 效率速查 + **何时不该用**（提权/敏感界面/半死窗口/能用官方 API 就别上 GUI）。
+- `SKILL.md`、`README.md` 目录表加 Playbook 指针。
+
 ## 2026-09-16 · v1.4（OCR 读屏固化进 vendor）
 把 OCR 读屏/读图能力**固化进技能**，真正「换电脑解压即用」：
 - 新增 `scripts/ocr_screen.py`：OCR 读屏/读图（`list / read / find / shot / watch`）。

@@ -71,6 +71,7 @@ key(VK['B'], ctrl=True)          # Ctrl+B 编译
 | `vendor/ocrlibs/` | OCR 依赖自带（winocr + winrt-*），离线可用 |
 | `references/pitfalls.md` | **26 条踩坑全集**（症状 → 真因 → 对策） |
 | `references/recipes.md` | 13 个照抄配方（DevTools 验收、控制台日志导出、OCR 读屏、锚点/颜色定位按钮、哨兵法…） |
+| `references/playbook.md` | **装配图**：统一前置 + 标准闭环七步 + 能力搭配决策树 + 与既有方法学嫁接 |
 | `references/install.md` | 换电脑 / 给别人安装的完整步骤（含 OCR 语言包说明） |
 | `references/reminder.md` | 给新会话的「提醒词」，复制发给 Agent 即可唤醒能力 |
 
