@@ -100,3 +100,18 @@ screenshot_window(h, T + r'\preview.png') # 面板上会显示「编译提示 N 
 - 若面板没关：`focus(h); key(VK['ESCAPE'])`。
 - ⚠️ **别点「上传」**：会真向微信后台提交体验版本（不可逆），必须由人确认后再点。
 - ⚠️ `packOptions` 改动官方注明"**可能需要重新打开项目才生效**"；工具会提示"本次预览使用修改前的文件" —— 想验证配置真生效，先重开项目。
+
+## 配方 9：重开项目（让 project.config.json 的改动真生效）
+```python
+h = find_window(title='Devtools'); L, T, _, _ = rect(h)
+focus(h, settle=0.5)
+click(L + 700, T + 120, settle=0.8)      # 先点正文区，窗口才算真激活
+click(L + 193, T + 20,  settle=2.0)      # 顶栏菜单「项目」（1875x1034 窗口实测 x≈193, y≈20）
+# 菜单弹出：新建项目 / 导入项目 / 打开最近项目 ▸ / 创建代码片段… / 查看所有项目 / 调试公众号网页 / 重新打开此项目
+click(L + 249, T + 500, settle=2.0)      # 「重新打开此项目」（菜单最底一项）
+```
+- **菜单坐标怎么定**：先 `screenshot_screen` 全屏，再 `crop` 出菜单区放大 1.6–3 倍 + Read 目视读中心；
+  **菜单是独立弹层**，`screenshot_window` 可能照不到 → 用全屏截图再裁。
+- 菜单**第一次点常常不弹**：先点一下正文区把焦点抢回来，再点菜单栏。
+- ⚠️ 重开会弹 **「是否保存对以下文件的更改？settings.json」**（落盘其实是项目根的 `project.private.config.json`，通常已 gitignore）。
+- 🔴 **这一步在实测中卡死过**：状态栏 `Closing the window is taking a bit longer...` 出现后，模态按钮**点不动**（probe 仍报 alive + hover_diff）→ 见 `pitfalls.md` P25。**遇到就去叫人，别连点**。
