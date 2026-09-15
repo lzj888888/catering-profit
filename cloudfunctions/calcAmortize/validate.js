@@ -97,4 +97,38 @@ function validateInput(event) {
   };
 }
 
-module.exports = { validateInput, cleanAssets, MONTH_RE };
+// DB 台账文档 → Service 干净资产对象。
+// 与入参校验同纪律（R27）：内部可信源也要守结构合法性（R32）——台账是唯一真相源，
+// 脏字段会静默产出错账；本项目对涉金额缺陷一律要求"响亮失败"。
+// 复用本文件的 MONTH_RE 与 ERROR_CODES，错误信息沿用「点名 asset_id + 字段」风格。
+function docToAsset(doc) {
+  const id = doc.asset_id || doc.id;
+  const total = Number(doc.total_value);
+  if (!Number.isInteger(total) || total < 0) {
+    throw { code: ERROR_CODES.INVALID_PARAM, msg: `台账资产 asset_id=${id} 的 total_value 必须是「分」非负整数` };
+  }
+  const startMonth = doc.start_month;
+  if (typeof startMonth !== 'string' || !MONTH_RE.test(startMonth)) {
+    throw { code: ERROR_CODES.INVALID_PARAM, msg: `台账资产 asset_id=${id} 的 start_month 必须是 YYYY-MM` };
+  }
+  // ⚠️ 必须用 typeof 严格判型，不能用 Number() 强转：字符串 "36" 经 Number() 会变 36 放行，
+  // 但在引擎里 start + "36" - 1 会触发字符串拼接（start 是数字），区间算飞 → 静默错账（R32 复现）。
+  if (typeof doc.total_months !== 'number' || !Number.isInteger(doc.total_months) || doc.total_months < 1) {
+    throw { code: ERROR_CODES.INVALID_PARAM, msg: `台账资产 asset_id=${id} 的 total_months 必须是 ≥1 的整数（JSON number，字符串不接受）` };
+  }
+  const totalMonths = doc.total_months;
+  const terminateMonth = doc.terminate_month || '';
+  if (terminateMonth !== '' && (typeof terminateMonth !== 'string' || !MONTH_RE.test(terminateMonth))) {
+    throw { code: ERROR_CODES.INVALID_PARAM, msg: `台账资产 asset_id=${id} 的 terminate_month 必须是 YYYY-MM 或留空` };
+  }
+  return {
+    asset_id: id,
+    name: doc.name || '',
+    total_value: total,
+    start_month: startMonth,
+    total_months: totalMonths,
+    terminate_month: terminateMonth,
+  };
+}
+
+module.exports = { validateInput, cleanAssets, MONTH_RE, docToAsset, ERROR_CODES };

@@ -8,7 +8,7 @@
 //   另对「装修末月尾差倒挤」做专项变异：注入「末月不倒挤」的实现，锚点必须由绿转红，证明正是这个锚点识别出没做倒挤。
 
 const { calcAmortize, calcAmortizeSchedule, amountForMonthFen, calcResidualFen, amortizedTotalFen, addMonths, parseMonthIndex, formatMonthIndex } = require('./service');
-const { validateInput, MONTH_RE } = require('./validate');
+const { validateInput, MONTH_RE, docToAsset } = require('./validate');
 
 let pass = 0, failN = 0;
 function check(name, cond, detail) {
@@ -79,14 +79,16 @@ const decorSched = calcAmortizeSchedule(decor);
 check('装修全程累计=120,000.00(等于原值)', decorSched.total_amortized_fen === 12000000, `=${decorSched.total_amortized_fen}分`);
 check('装修共 36 期(2026-01~2028-12, 含两端)', decorSched.rows.length === 36, `rows=${decorSched.rows.length}`);
 
-// ===================== 尾差倒挤专项变异回验（证明该锚点真有鉴别力） =====================
+// ===================== 尾差倒挤鉴别力（不依赖生产代码开关；R33 后移入测试侧） =====================
+// 判别力证明：若末月不做尾差倒挤（每月都按 base），装修全程累计会少 12 分；
+// 真实实现走尾差倒挤 → 全程累计严格 === 原值。两者不一致即证明"倒挤"这个动作真的发生了。
 console.log('');
-console.log('--- 尾差倒挤专项变异（注入「末月不倒挤」，锚点必须转红）---');
-const mutatedDec = calcAmortize([decor, fr, freezer], '2028-12', { mutateNoTail: true });
-const noclam = assertFen(mutatedDec.details[0].amount_fen, 333345);
-check('未注入时 2028-12 装修=3,333.45(绿)', amountForMonthFen(decor, '2028-12') === 333345);
-check('注入「末月不倒挤」后变成 3,333.33(红) → 锚点能识别没做倒挤', mutatedDec.details[0].amount_fen === 333333 && !noclam, `变异后=${mutatedDec.details[0].amount_fen}分`);
-check('变异后「严格=3,333.45」断言必红(判别力)', noclam === false);
+console.log('--- 尾差倒挤鉴别力（base×N 对照，不依赖生产代码开关）---');
+const baseDecor = Math.round(decor.total_value / decor.total_months); // 333333
+const noClampTotal = baseDecor * 36; // 11999988（漏做倒挤的"错误"累计）
+check('装修末月确实走了尾差倒挤（≠ base，=3,333.45）', amountForMonthFen(decor, '2028-12') === 333345 && amountForMonthFen(decor, '2028-12') !== baseDecor, `末月=${amountForMonthFen(decor, '2028-12')}分, base=${baseDecor}分`);
+check('真实全程累计=12,000.00（末月倒挤保证）', decorSched.total_amortized_fen === 12000000, `=${decorSched.total_amortized_fen}分`);
+check('若漏做倒挤累计=11,999,988（与真实不一致 → 判据有鉴别力）', noClampTotal === 11999988 && decorSched.total_amortized_fen !== noClampTotal);
 
 // ===================== details 输出结构（对接批次 1） =====================
 console.log('');
@@ -128,6 +130,23 @@ for (const it of V_IN) {
   if (passV) pass++; else failN++;
   console.log(`${passV ? '✅' : '❌'} [V] ${it.desc} → ${got} ${passV ? '' : '期望 ' + it.expect}${msg ? '  点名: ' + msg : ''}`);
 }
+
+// ===================== R32 回归：docToAsset 守卫（台账是唯一真相源，结构合法性也要守） =====================
+console.log('');
+console.log('--- R32 回归：docToAsset 守卫 start_month / total_months / terminate_month ---');
+const goodAsset = { asset_id: 'A1', total_value: 1200000, start_month: '2026-01', total_months: 36, terminate_month: '' };
+const okA = docToAsset(goodAsset);
+check('docToAsset 合法资产放行', okA.total_months === 36 && okA.start_month === '2026-01' && okA.terminate_month === '');
+function docToAssetThrows(doc, label) {
+  let thrown = false, codeOk = false;
+  try { docToAsset(doc); } catch (e) { thrown = true; codeOk = e && e.code === 'INVALID_PARAM'; }
+  check(`docToAsset ${label} → 抛 INVALID_PARAM 并点名`, thrown && codeOk);
+}
+docToAssetThrows({ asset_id: 'A2', total_value: 120, start_month: 'bad', total_months: 12 }, 'start_month="bad"');
+docToAssetThrows({ asset_id: 'A3', total_value: 120, start_month: '2026-01', total_months: '36' }, 'total_months=字符串"36"');
+docToAssetThrows({ asset_id: 'A4', total_value: 120, start_month: '2026-01', total_months: 0 }, 'total_months=0');
+docToAssetThrows({ asset_id: 'A5', total_value: 120, start_month: '2026-01', total_months: 12, terminate_month: 'bad' }, 'terminate_month="bad"');
+docToAssetThrows({ asset_id: 'A6', total_value: 120, start_month: '2026-01', total_months: 12, terminate_month: '2026-13' }, 'terminate_month="2026-13"');
 
 // ===================== DataAdapter 软删过滤（需求 2.8：软删资产默认排除，业务层不关心） =====================
 console.log('');
