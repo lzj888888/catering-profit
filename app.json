@@ -9,8 +9,5 @@
     "navigationBarTextStyle": "white",
     "backgroundColor": "#f5f6f8"
   },
-  "style": "v2",
-  "projectConfig": {
-    "appid": "touristappid"
-  }
+  "style": "v2"
 }

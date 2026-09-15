@@ -145,6 +145,22 @@ function run() {
   console.log(`S2 真实消耗=${map['S2'].realConsumeFen / 100}元 、直接填消耗=${map['S2'].directConsumeFen / 100}元`);
   console.log(`S2 毛利率展示=${map['S2'].grossMarginRatePctDisplay}% （全精度 ${map['S2'].grossMarginRatePct}%）`);
 
+  // ===== R27 入参用例：标量/明细金额字符串一律 INVALID_PARAM（不留口子，响亮失败优于静默漏检）=====
+  const { validateInput } = require('./validate');
+  const INPUT_CASES = [
+    { desc: '标量 direct_consume_fen 传字符串 "2200000"', ev: { income_items: [], expense_items: [], direct_consume_fen: '2200000' }, expect: 'INVALID_PARAM' },
+    { desc: '库存 opening_fen 传字符串 "500000"',         ev: { income_items: [], expense_items: [], direct_consume_fen: 2200000, inventory: { opening_fen: '500000', purchase_fen: 2500000, closing_fen: 700000 } }, expect: 'INVALID_PARAM' },
+    { desc: '明细 amount_fen 传字符串 "100000"',          ev: { income_items: [{ amount_fen: '100000' }], expense_items: [], direct_consume_fen: 2200000 }, expect: 'INVALID_PARAM' },
+    { desc: '合法整数 number 应放行',                      ev: { income_items: [{ amount_fen: 100000 }], expense_items: [], direct_consume_fen: 2200000 }, expect: 'OK' },
+  ];
+  for (const ic of INPUT_CASES) {
+    const vr = validateInput(ic.ev);
+    const got = vr.error ? vr.error : 'OK';
+    const pass = got === ic.expect;
+    if (!pass) { allPass = false; failedCount++; }
+    console.log(`[R27] ${ic.desc} → ${got} ${pass ? '✅' : '❌ 期望 ' + ic.expect}`);
+  }
+
   console.log('\n' + (allPass
     ? '✅ 12/12 锚点 + 2 项自洽断言全数通过（判据：金额=整数分严格相等）'
     : `❌ 存在未通过项：${failedCount} 处`));

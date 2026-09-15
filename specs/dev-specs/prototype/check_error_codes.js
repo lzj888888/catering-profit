@@ -539,7 +539,7 @@ notes.push(`投喂链派生一致性 : 8 txt + 8 html 块 vs MD 单源（CRLF �
 // 背景：R9 复审发现 SMOKETEST_RUNBOOK.txt/.docx/.pdf 落后 .md 5~7 小时（缺整个步骤 0.1）。
 //       本仓已为 delivery/(K1–K10) 与 common/(L) 建了派生件守卫；仓库根的 Runbook/手册 .txt 此前无人守。
 // 做法：仓库根 <name>.txt 与 <name>.md 逐字比对（剥 BOM + CRLF 归一，与 K11/L 同构）。
-// ⚠️ .txt 须由生成器从 .md 复制生成（tools/md2docx_portrait.py），**勿手改**；
+// ⚠️ .txt 是 .md 的逐字副本（cp -f 生成），**勿手改**；.docx 由 tools/md2docx_portrait.py 生成。
 //    .docx 为二进制不做逐字比对（只保证被重生成）。仓库根文档不在 A–K 其余组扫描面内（walk(ROOT)=specs/dev-specs）。
 const REPO = path.resolve(ROOT, '..', '..');   // catering-profit 根（ROOT = specs/dev-specs）
 const stripBom = (s) => s.replace(/^\uFEFF/, '');
