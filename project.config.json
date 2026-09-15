@@ -33,7 +33,20 @@
   "libVersion": "latest",
   "simulatorPluginLibVersion": {},
   "packOptions": {
-    "ignore": [],
+    "ignore": [
+      { "type": "folder", "value": "specs" },
+      { "type": "folder", "value": "review" },
+      { "type": "folder", "value": "cloudfunctions" },
+      { "type": "folder", "value": "tools" },
+      { "type": "folder", "value": "web-preview" },
+      { "type": "folder", "value": ".inscode" },
+      { "type": "folder", "value": "node_modules" },
+      { "type": "suffix", "value": ".pdf" },
+      { "type": "suffix", "value": ".docx" },
+      { "type": "suffix", "value": ".md" },
+      { "type": "suffix", "value": ".txt" },
+      { "type": "file", "value": "verify_all.js" }
+    ],
     "include": []
   },
   "editorSetting": {}
