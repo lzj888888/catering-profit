@@ -3,7 +3,7 @@
 > 用途：在真 wx-server-sdk / 真云数据库上一次性答完 4 个本地从没验证过的前提（A6 / A7 / require('./common') / doc().get() 契约）。
 > 跑完这个再投喂批次 1，比「先投喂、后建环境」省一个来回。
 
-> 🔬 **2026-09-14 晚实测已答一项（A7）**：在 dev 环境 `cloud1` 上真跑 `initDb`，30 条索引**全部**报 `db.collection(...).createIndex is not a function` ——
+> 🔬 **2026-09-14 晚实测已答一项（A7）**：在 dev 环境 `cloud1` 上真跑 `initDb`，39 条索引**全部**报 `db.collection(...).createIndex is not a function` ——
 > 即 wx-server-sdk **压根不存在这个方法**（不是"调用失败"，是"没有这个接口"）。
 > ⇒ **A7 = 不支持，且坐实为 SDK 层面缺失**（非偶发）→ 索引**只能云端控制台手工建**；按本 Runbook §五的既定判读，**A6 相应升级为「可能重复账号」**，首建档须加 unique 冲突重试（或改用其他去重手段）。
 > ✅ **2026-09-15：四项前提全部答完（smokeTest 探针 v3 真云端实跑）**，见下表。**批次 1 前置全部解除。**
@@ -12,7 +12,7 @@
 
 | 前提 | 结论 | 云端实测证据 | 对后续代码的影响 |
 |---|---|---|---|
-| **A7**（`createIndex` 是否可用） | ❌ **不支持** | `createIndex.typeof = "undefined"`；插入重复值**未报错** | 索引**只能控制台手工建**；`initDb` 的 30 条索引属预期内失败 |
+| **A7**（`createIndex` 是否可用） | ❌ **不支持** | `createIndex.typeof = "undefined"`；插入重复值**未报错** | 索引**只能控制台手工建**；`initDb` 的 39 条索引属预期内失败 |
 | **A6**（首建档是否原子） | ⚠️ **升级为「可能重复账号」** | 同上（unique 索引建不了 ⇒ 无唯一约束） | **首建档必须加 unique 冲突重试**，或改用其他去重手段 |
 | **`require('./common')`** | ✅ **可行，但必须扁平化** | 子目录方案 `MODULE_NOT_FOUND`（云端 `fsDiag.hasCommonDir=false`，子目录被拼成 `common\xxx.js` 扁平怪名）；改 `common.js` + `cx_*.js` 后 `ok:true`，13 项导出齐 | **云函数包内禁用子目录**；改 common 单源后必跑 `node tools/sync_common.js` |
 | **`doc().get()` 契约** | ✅ **成立（A1/A2 未修反）** | `topLevelKeys=["data","errMsg"]`、`hasDataField=true`；文档不存在时 **`behavior:"reject"`** | 取值**必须取 `.data`**；读取**必须 try/catch**（不存在会抛，不是返回 null） |
@@ -28,14 +28,14 @@
 
 ## 一、一句话结论与顺序
 
-- **不要从头重跑本地 8 套件**：HEAD 仍是 `4ddcc5c` / dirty=0，同一棵树跑同一批套件只会得到同一结果（仪式不是验证）。本地层鉴别力已逐项用变异证明过。
+- **不要从头重跑本地 8 套件**：HEAD 以 `git log --oneline -1` 为准（本 Runbook 不复制 commit —— 同一事实写两遍必然过期），同一棵树跑同一批套件只会得到同一结果（仪式不是验证）。本地层鉴别力已逐项用变异证明过。
 - **唯一该跑的是云端探针**：它一次答完 4 个前提，其中 `doc().get()` 返回形状有翻案能力（决定 A1/A2 是否修反）。
 - **建议顺序：先做①建环境，后③投喂**（①未知量最大；「hello 能否 require('./common')」实测会反哺后面所有函数代码放置，虽写法已定为 require('./common')，但机制是否成立要云端实测）。①③ 互不阻塞，可并行。
 
 | # | 事 | 为什么只有你能做 |
 |---|---|---|
 | ① | 云环境：dev = 现有免费环境 `cloud1`（ID `cloud1-d4gphpoxy337f2a25`，走 `DEV_ENV_ID` 白名单放行）；prod 待建（上线前）→ 部署 initDb 到 dev → 控制台核对 25 集合 + 索引清单 | 需你的微信账号与云开发控制台；一次性问清 A7 / A6 / require 三悬案 |
-| ② | 替换 `miniprogram/config/env.js:14-15` 占位符为真实环境 ID | 建完环境才有真值（判据④唯一未完项） |
+| ② | `config/env.js` 的 **dev 槽已填**（`cloud1-d4gphpoxy337f2a25`），仅 **prod 槽**待建环境后替换 | 建完 prod 环境才有真值（判据④ dev 侧已闭环） |
 | ③ | 投喂批次 1（从 `specs/dev-specs/delivery/` 取 .md / 8 个 .txt / .html，勿用 Desktop 副本） | 从仓库权威源取，避免派生件落后 |
 
 ---
@@ -44,7 +44,7 @@
 
 ### 步骤 0 · 准备
 - 确认你有微信公众平台 / 小程序账号，且已开通**云开发**（微信开发者工具 → 云开发按钮）。
-- 本地 `cloudfunctions/smokeTest/` 已就绪（含 `common/` 副本，由 `node tools/sync_common.js` 生成）。
+- 本地 `cloudfunctions/smokeTest/` 已就绪（**扁平副本** `common.js` + `cx_*.js`，无子目录，由 `node tools/sync_common.js` 生成）。
 
 ### 步骤 0.1 · 投喂前硬前置与阻塞清单（缺一项就别开跑）
 
@@ -66,13 +66,13 @@
 
 0.1.4 索引清单核对（答悬案 A7）—— 这是步骤 2 最重要的一步
 - 位置：云开发控制台 → 数据库 → 逐张集合 → 索引。
-- 核对 `cloudfunctions/initDb/collections.js` 声明的 **9 个 unique 索引**是否真的建上：
+- 核对 `cloudfunctions/initDb/collections.js` 声明的 **10 个 unique 索引**是否真的建上：
   `user.openid` / `user.user_id` / `shop_entitlement.user_id` / `shop_monthly_account.(shop_id,month)` /
-  `shop_cost_card.card_code` / `shop_switch.(shop_id,switch_key)` / `admin_user.username` /
-  `shop_payment_flow.order_no` / `order_refund.order_id`
-- 判读：**全在** → A7=支持，A6（首建档非原子）风险=偶发失败一次，可缓；
-        **有缺失** → A7=不支持（`createIndex` 不可用）→ 索引须控制台手工建，且 A6 **升级**为
-        「可能产生重复账号」（须给首建档加 unique 冲突重试）。
+  `shop_inventory.(shop_id,month)` / `shop_cost_card.card_code` / `shop_switch.(shop_id,switch_key)` /
+  `admin_user.username` / `shop_payment_flow.order_no` / `order_refund.order_id`
+- 判读（A7 已于 2026-09-14 定案 = **不支持**）：10 条 unique 全在 → A6 风险低；**有缺失** → 按「工序 5.5」控制台**手工补建**，
+  在补齐前 A6 按「**可能产生重复账号**」处理（首建档须加 unique 冲突重试）。
+  注：本 Runbook 顶部已定案 `createIndex` 不可用，故此处「全在 → A7=支持」的旧分支不再适用。
 
 0.1.5 外部上线阻塞（不挡写码/投喂/建环境，但别误以为「能跑=能上线」）
 营业执照 → 微信支付商户号 → 隐私政策正文+URL → 小程序类目(工具>记账) → 审核测试账号。
@@ -93,7 +93,7 @@
 - 上传完成后 → 右键 initDb →「测试」→ 入参 `{}`（或触发 `initDb` 的 `main`）→ 运行。
 - 预期：`created.length === 25` 且 `blocked === undefined`（dev 门禁放行）。
 - 去「数据库」标签页核对：**集合数 = 25**（若不是 25，截图给我，可能涉及 A6 严重度）。
-- 索引清单：门禁 A7 关注 9 个 unique 索引；initDb 是否建索引由代码决定，本探针第②条专门验 createIndex 能力。
+- 索引清单：门禁 A7 关注 10 个 unique 索引；initDb 是否建索引由代码决定，本探针第②条专门验 createIndex 能力。
 
 ### 步骤 3 · 部署 smokeTest（含 common **扁平**副本）
 - 推荐命令行部署（服务端口已开）：
@@ -137,7 +137,7 @@
 - 回来后我按三件核：`node verify_all.js`（8 套件）/ 读 POC3 引擎确认整数分落库+口径锁 directCost+待结算不进利润 / 变异 bizRefProfitFen+1 看 test_poc3 15 条转红。
 
 ### 步骤 8 · 清理
-- 去云开发控制台「数据库」→ 删除 `__probe` 集合（**SDK 不能 drop collection，只能控制台手动删**）。
+- 去云开发控制台「数据库」→ 删除 `probe_tmp` 集合（**SDK 不能 drop collection，只能控制台手动删**）。
 - 删除 `smokeTest` 云函数（可选；探针使命结束）。
 
 ---

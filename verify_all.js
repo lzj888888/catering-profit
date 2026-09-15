@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：6 个 specs 套件（门禁 A–K + seed/poc1-4）+ 批次0 代码自测（batch0_selfcheck）。
+// 串联：8 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0 代码自测（batch0_selfcheck）+ 静态路径检查（tools/check_requires.js）。
 // 用同一个 node（process.execPath）跑子进程，避免多解释器/环境问题。
 // ⚠️ 不在 CI 之外假定任何 secrets；纯本地静态 + 单测。
 

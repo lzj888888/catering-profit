@@ -1,7 +1,7 @@
 // cloudfunctions/smokeTest/index.js
 // 一次性云侧探针：答 A6 / A7 / require('./common') / doc().get() 契约 四个从没在真 wx-server-sdk 上验证过的前提。
 // 部署后在云开发控制台「云函数 → smokeTest → 测试」用空 {} 触发，看返回 JSON。
-// ⚠️ 本函数刻意不依赖任何本沙箱行为；价值只在「跑到真云上」。删除：跑完去控制台手动删 __probe 集合（SDK 不能 drop collection）。
+// ⚠️ 本函数刻意不依赖任何本沙箱行为；价值只在「跑到真云上」。删除：跑完去控制台手动删 probe_tmp 集合（SDK 不能 drop collection）。
 const cloud = require('wx-server-sdk');
 const fs = require('fs');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
