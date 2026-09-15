@@ -82,3 +82,17 @@
 - **`SendMessage(WM_CLOSE)` 永久阻塞**：被关窗口弹模态（记事本「是否保存」）时 SendMessage 不返回 ⇒ 收尾用 `PostMessage` + 看门狗。
 - **64 位指针**：`GlobalAlloc/GlobalLock/GetClipboardData` 必须设 `restype = c_void_p`，否则指针截成 32 位 → `GlobalLock` 返 0 → 访问违例。
 - 可复用技能：`~/.workbuddy/skills/inscode-desktop-feed/`（含 `scripts/inscode_ui.py`）。
+
+---
+
+## 七、后续修订（2026-09-15 · 复审 round3 R19/R20，**正文不改写，本节追加**）
+
+> §4.2 / §5.3 的原文描述已**部分过期**，以本节为准。
+
+1. **自测判据升级（R19）**：12 条金额锚点由「元展示串 + ±0.01 容差」改为**整数分严格相等 `===`**（`exp` 现为分：`916000 / 347667 / 568333 / 2300000 / 2100000 / 547667 …`）；仅 `#4 毛利率`保留 ±0.01（比率）。`diffCheck` 与口径锁由"打印"升级为**断言**，三场景不一致即 exit≠0。
+   - **原因**：同一份「末步 +1 分」变异下，`#6/#12` 被拦下而 `#9`（S2 全要素 3,476.67）因浮点差恰为 `0.0099999999997635 ≤ 0.01` 被**放行** —— 判据实际取决于落在容差哪一边，等于把 N9/N11/N17 的"容差掩膜"重新请回。
+2. **契约字段收口（R20）**：`index.js` 的明细项**不再双收** `amountFen`/`amount_fen` —— 契约层只认 `amount_fen`；只传 `amountFen` 明确回 `INVALID_PARAM`，两者并存且不相等亦拒收。（对应原 §5 第 3 点的**判读点已关闭**。）
+3. **`cleanItems` 校验**由 `%TEMP%\round3_r19\check_cleanitems.js` 覆盖 10 条用例（`index.js` 顶层 require `wx-server-sdk`，无法整体加载，按括号配平截取函数原文测试）。
+4. **契约表出处**：`specs/dev-specs/core/10` 的入参/出参已统一 `snake_case` + 金额 `*_fen`，与该处实现逐字对齐。
+
+**当前状态**：`node verify_all.js` → 9/9 PASS（批次 1 自测已接进总闸）；门禁 A–L exit 0。

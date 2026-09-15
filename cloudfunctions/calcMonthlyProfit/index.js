@@ -93,7 +93,7 @@ function validateInput(event) {
 
   const src = event.input || event;
 
-  // 明细数组：逐项检查 amountFen 为非负整数分
+  // 明细数组：逐项检查 amount_fen 为非负整数分（契约层只认 snake_case，见 cleanItems 注释）
   const incomeItems = cleanItems(src.income_items);
   if (incomeItems.error) return incomeItems;
   const expenseItems = cleanItems(src.expense_items);
@@ -142,13 +142,32 @@ function cleanItems(list) {
   if (!Array.isArray(list)) {
     return { error: ERROR_CODES.INVALID_PARAM, msg: '明细必须是数组' };
   }
+  // ⚠️ 契约层只认 snake_case 的 `amount_fen`（批次 0 §2.9 / core/10 R20）：
+  //    不再宽容双收 `amountFen` —— 双收会静默掩盖前端字段名拼错，属本项目反模式。
+  //    ① 只传了 amountFen → 明确拒收（给出改名提示）；② 两者都传且不相等 → 拒绝，避免歧义。
   const out = [];
   for (const it of list) {
-    const n = Number(it && it.amountFen !== undefined ? it.amountFen : it && it.amount_fen);
-    if (!Number.isInteger(n) || n < 0) {
-      return { error: ERROR_CODES.INVALID_PARAM, msg: '明细 amountFen 必须是「分」非负整数' };
+    const hasSnake = it && it.amount_fen !== undefined;
+    const hasCamel = it && it.amountFen !== undefined;
+    if (!hasSnake) {
+      return {
+        error: ERROR_CODES.INVALID_PARAM,
+        msg: hasCamel
+          ? '明细金额字段请用 snake_case 的 amount_fen（不收 amountFen）'
+          : '明细缺少 amount_fen（「分」非负整数）',
+      };
     }
-    out.push({ amountFen: n });
+    if (hasCamel && Number(it.amountFen) !== Number(it.amount_fen)) {
+      return {
+        error: ERROR_CODES.INVALID_PARAM,
+        msg: '明细金额字段冲突：amountFen 与 amount_fen 不相等，请只传 amount_fen',
+      };
+    }
+    const n = Number(it.amount_fen);
+    if (!Number.isInteger(n) || n < 0) {
+      return { error: ERROR_CODES.INVALID_PARAM, msg: '明细 amount_fen 必须是「分」非负整数' };
+    }
+    out.push({ amountFen: n }); // 转成 Service 内部形态（Service 层用 camelCase JS 变量名）
   }
   return out;
 }

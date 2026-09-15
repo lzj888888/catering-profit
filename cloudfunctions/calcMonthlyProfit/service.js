@@ -122,10 +122,11 @@ function rounded2(x) {
   return Math.round((x + Number.EPSILON) * 100) / 100;
 }
 
-// 分 → 元展示字符串（整数/小数均可）
+// 分 → 元展示字符串（如 916000 → "9160"、347667 → "3476.67"）
+// ⚠️ 仅用于**展示**，不参与任何判据（判据一律用「分」整数，见 selftest.js 头部判据纪律）。
+//    注：R22 之前此处写作 `Number.isInteger(yuan) ? String(yuan) : String(yuan)`，两个分支完全相同（死分支），现改为直白写法。
 function fenToYuanStr(fen) {
-  const yuan = fen / 100;
-  return Number.isInteger(yuan) ? String(yuan) : String(yuan);
+  return String(fen / 100);
 }
 
 module.exports = { calcMonthlyProfit };

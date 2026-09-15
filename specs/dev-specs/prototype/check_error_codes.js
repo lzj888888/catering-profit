@@ -543,7 +543,7 @@ notes.push(`投喂链派生一致性 : 8 txt + 8 html 块 vs MD 单源（CRLF �
 //    .docx 为二进制不做逐字比对（只保证被重生成）。仓库根文档不在 A–K 其余组扫描面内（walk(ROOT)=specs/dev-specs）。
 const REPO = path.resolve(ROOT, '..', '..');   // catering-profit 根（ROOT = specs/dev-specs）
 const stripBom = (s) => s.replace(/^\uFEFF/, '');
-const DOC_PAIRS = ['SMOKETEST_RUNBOOK', '新手上云操作手册'];
+const DOC_PAIRS = ['SMOKETEST_RUNBOOK', '新手上云操作手册', '下一步工序清单'];
 for (const base of DOC_PAIRS) {
   const mdF = path.join(REPO, base + '.md');
   const txtF = path.join(REPO, base + '.txt');
@@ -555,7 +555,7 @@ for (const base of DOC_PAIRS) {
     fails.push(`[K13] ${base}.txt 与 ${base}.md 不一致（派生件落后）—— 重跑生成器重生 .txt，勿手改 .txt`);
   }
 }
-notes.push(`文档派生一致性 : ${DOC_PAIRS.length} 组（Runbook / 新手上云手册 的 .txt ≡ .md，CRLF/BOM 已归一）`);
+notes.push(`文档派生一致性 : ${DOC_PAIRS.length} 组（${DOC_PAIRS.join(' / ')} 的 .txt ≡ .md，CRLF/BOM 已归一）`);
 
 // ===================== L. common/ 同步一致性（派生件护栏，与 K11 同构；首个跨 specs/ 覆盖 cloudfunctions/ 的组）=====================
 // 背景：微信云开发每个云函数独立打包上传，父目录 cloudfunctions/common/ 不在任何单函数包内；
