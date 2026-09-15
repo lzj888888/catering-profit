@@ -193,7 +193,7 @@ R27（标量金额收紧：拒字符串）
 ### 总闸
 - 门禁 `node check_error_codes.js` → **EXIT=0**。
 - `node verify_all.js` → **9/9 套件通过**（批次1 自测现含 R27 入参用例）。
-- 提交：`___COMMIT___`（含 R23/R25/R24/R27/R26 + round5 §4 注释修正 + 本回执），`git push origin dev`。
+- 提交：`87806cb`（含 R23/R25/R24/R27/R26 + round5 §4 注释修正 + 本回执），`git push origin dev`。
 
 ### 待你/李老师复核（硬边界外）
 - R23 删块后微信开发者工具编译一次（我核不了）。
