@@ -145,7 +145,7 @@
 - R19 纪律保持：金额锚点整数分严格 `===`，无 ±0.01 容差；R32 的 `total_months='36'` 用例证明 **typeof 判型对字符串有鉴别力**（这正是 R33 删除 `Number()` 强转的原因）。
 
 ### 提交
-- `___COMMIT___`（含 `cloudfunctions/calcAmortize/{index,service,validate,selftest}.js` 修复 + 本回执 + round7 入库），`git push origin dev`。
+- `8ce59b1`（含 `cloudfunctions/calcAmortize/{index,service,validate,selftest}.js` 修复 + 本回执 + round7 入库），`git push origin dev`。
 
 ### 仍在你/李老师侧（不擅自造）
 - **R23 编译确认**：`app.json` 删 `projectConfig` 后于微信开发者工具编译一次（沙箱无工具）。
