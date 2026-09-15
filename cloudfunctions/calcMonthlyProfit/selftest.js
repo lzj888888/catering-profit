@@ -152,6 +152,10 @@ function run() {
     { desc: '库存 opening_fen 传字符串 "500000"',         ev: { income_items: [], expense_items: [], direct_consume_fen: 2200000, inventory: { opening_fen: '500000', purchase_fen: 2500000, closing_fen: 700000 } }, expect: 'INVALID_PARAM' },
     { desc: '明细 amount_fen 传字符串 "100000"',          ev: { income_items: [{ amount_fen: '100000' }], expense_items: [], direct_consume_fen: 2200000 }, expect: 'INVALID_PARAM' },
     { desc: '合法整数 number 应放行',                      ev: { income_items: [{ amount_fen: 100000 }], expense_items: [], direct_consume_fen: 2200000 }, expect: 'OK' },
+    // R30：明细双字段并存 —— 收紧后「相等也不放行」，契约只认 amount_fen 一种写法
+    { desc: '明细 amount_fen 与 amountFen 并存且相等（R30 收紧后应拒）', ev: { income_items: [{ amount_fen: 100000, amountFen: 100000 }], expense_items: [], direct_consume_fen: 2200000 }, expect: 'INVALID_PARAM' },
+    { desc: '明细 amount_fen 与 amountFen 并存且不相等',    ev: { income_items: [{ amount_fen: 100000, amountFen: 1 }], expense_items: [], direct_consume_fen: 2200000 }, expect: 'INVALID_PARAM' },
+    { desc: '明细只传 amountFen（缺 amount_fen）',          ev: { income_items: [{ amountFen: 100000 }], expense_items: [], direct_consume_fen: 2200000 }, expect: 'INVALID_PARAM' },
   ];
   for (const ic of INPUT_CASES) {
     const vr = validateInput(ic.ev);
@@ -162,7 +166,7 @@ function run() {
   }
 
   console.log('\n' + (allPass
-    ? '✅ 12/12 锚点 + 2 项自洽断言全数通过（判据：金额=整数分严格相等）'
+    ? '✅ 12/12 锚点 + 2 项自洽断言 + ' + INPUT_CASES.length + ' 条 R27/R30 入参用例全数通过（判据：金额=整数分严格相等）'
     : `❌ 存在未通过项：${failedCount} 处`));
   process.exit(allPass ? 0 : 1);
 }

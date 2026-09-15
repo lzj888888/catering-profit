@@ -30,10 +30,18 @@ function cleanItems(list) {
           : '明细缺少 amount_fen（「分」非负整数）',
       };
     }
-    if (hasCamel && Number(it.amountFen) !== Number(it.amount_fen)) {
+    // R30（round 12 裁决：**收紧拒**，不留「相等即放行」的口子）
+    //   旧行为：amountFen 与 amount_fen 并存且相等 → 静默放行。两个问题：
+    //     ① 与 R27「响亮失败优于静默兼容」自相矛盾；
+    //     ② 本项目自己把「amount_fen 双收」列为反模式（见本文件头第 9 行）。
+    //   新行为：只要并存就拒（无论是否相等）—— 契约只有一种写法，等于不确定的调用方当场暴露。
+    if (hasCamel) {
       return {
         error: ERROR_CODES.INVALID_PARAM,
-        msg: '明细金额字段冲突：amountFen 与 amount_fen 不相等，请只传 amount_fen',
+        msg: '明细金额字段并存：只收 amount_fen，请勿同时传 amountFen'
+          + (Number(it.amountFen) === Number(it.amount_fen)
+            ? '（即便两者相等也不收，R30）'
+            : '（当前两者还不相等，R30）'),
       };
     }
     const v = it.amount_fen;

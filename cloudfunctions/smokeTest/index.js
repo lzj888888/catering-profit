@@ -15,17 +15,28 @@ let commonOk = false, commonErr = null, common = null;
 try { common = require('./common'); commonOk = true; }
 catch (e) {
   commonErr = e.message;
-  // 兜底：目录解析失败时直接指到 index.js（2026-09-15 云端曾报 Cannot find module './common'）
+  // ⚠️ R29（round 12）：扁平化后包内只有 `common.js`、**没有** `common/` 目录，
+  //    所以下面的 fallback **永不可能成功** —— 保留它只是为了在探针输出里留下
+  //    「目录形态在云端确实不可用」的证据，**别把它当修复手段**。
+  //    真判据是 fsDiag.hasCommonFile / commonShape（见 ①b）。
+  //    （2026-09-15 云端曾报 Cannot find module './common'）
   try { common = require('./common/index.js'); commonOk = true; commonErr = 'fallback ok: ' + e.message; }
-  catch (e2) { commonErr = e.message + ' || fallback: ' + e2.message; }
+  catch (e2) { commonErr = e.message + ' || fallback(预期失败): ' + e2.message; }
 }
 
-// ①b 云端文件清单自检（诊断用：确认 common/ 到底有没有被打进包）
+// ①b 云端文件清单自检（诊断用：确认 common 到底以**什么形态**被打进包）
+//     R29（round 12）：扁平化之后 `hasCommonDir` 恒 false —— 这个字段名读起来像"common 没打进包"，
+//     ① 是误导、② 掩盖了真实形态。故补 `hasCommonFile`（common.js 存在性）作**真判据**，
+//     并给出三态结论 `commonShape`，看一眼就知道是扁平文件 / 目录 / 真缺失。
 let fsDiag = {};
 try {
   fsDiag.root = fs.readdirSync(__dirname);
-  fsDiag.hasCommonDir = fs.existsSync(__dirname + '/common');
+  fsDiag.hasCommonFile = fs.existsSync(__dirname + '/common.js');  // ← 真判据（扁平形态）
+  fsDiag.hasCommonDir = fs.existsSync(__dirname + '/common');      // ← 扁平化后恒 false，勿据此判"没打进包"
   fsDiag.common = fsDiag.hasCommonDir ? fs.readdirSync(__dirname + '/common') : null;
+  fsDiag.commonShape = fsDiag.hasCommonFile
+    ? 'flat-file(common.js)'
+    : (fsDiag.hasCommonDir ? 'dir(common/)' : 'ABSENT(common 未打进包)');
   fsDiag.cwd = process.cwd();
 } catch (e) { fsDiag = { THROW: e.message }; }
 
