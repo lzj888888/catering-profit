@@ -81,3 +81,22 @@ PY="C:/Users/lzj/.workbuddy/binaries/python/envs/default/Scripts/python.exe"
 "$PY" "C:/Users/lzj/.workbuddy/skills/win-desktop-control/scripts/win_gui.py" shot --screen --out "$TEMP/full.png"
 ```
 然后用 Read 工具读这张 png。
+
+## 配方 9：微信开发者工具「预览」+ 读包体积（实测于 2026-09-16，R37 验收）
+目标：不改线上版本的前提下，拿到**代码包体积**。
+```python
+h = find_window(title='Devtools'); focus(h)
+L, T, _, _ = rect(h)
+click(L + 1109, T + 27, settle=1.2)      # 顶栏「预览」按钮（窗口内坐标，1875x1034 窗口实测）
+time.sleep(4)
+# ⚠ 会弹「有文件未保存，本次预览使用修改前的文件，是否继续？」
+click(L + 1090, T + 237, settle=4)      # 「确定」
+time.sleep(35)                            # 实测编译 ~34s
+screenshot_window(h, T + r'\preview.png') # 面板上会显示「编译提示 N ▸ 代码包 X KB ▸」
+```
+- **如何拿到「预览」按钮坐标**：顶栏按钮**不是色块**，绿色定位法在这里失效 →
+  截图后 `crop((900, 4, 1400, 60))` 再放大 3 倍，Read 看图目视读出中心（本机 = 窗口内 x≈1109, y≈27）。
+- 预览面板 = 二维码 + `代码包 X KB`；二维码有效期内自动失效，无破坏性。
+- 若面板没关：`focus(h); key(VK['ESCAPE'])`。
+- ⚠️ **别点「上传」**：会真向微信后台提交体验版本（不可逆），必须由人确认后再点。
+- ⚠️ `packOptions` 改动官方注明"**可能需要重新打开项目才生效**"；工具会提示"本次预览使用修改前的文件" —— 想验证配置真生效，先重开项目。
