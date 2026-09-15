@@ -20,7 +20,7 @@
 //    往返 —— 二者均以 UTC 为准（monthAnchor=UTC 月中 15 号 12:00 锚点；toMonth 用 UTC 字段输出
 //    YYYY-MM）。本文件不引入任何自定义时区/格式/月中基准，确保与批次 0 全局一致。
 //
-// 金额一律「分」整数（INT）。返回结构含 total_amount（分）+ details（各资产明细），可直接喂给
+// 金额一律「分」整数（INT）。返回结构含 total_amount_fen（分）+ details（各资产明细），可直接喂给
 // 批次 1 calcMonthlyProfit 的 amortizeFen 输入。
 
 const { utilTime } = require('./common');         // 扁平分发副本（sync_common 生成），仅用纯函数工具
@@ -122,10 +122,10 @@ function calcResidualFen(asset) {
  * 多资产**逐个独立**算当月摊销 + 独立尾差倒挤，绝不合并资产后统一算总尾差（规则 7）。
  * @param {Array} assets 干净资产数组（Controller 读台账后映射，已经 DataAdapter 软删过滤）
  * @param {string} targetMonth YYYY-MM
- * @returns {{ total_amount:number, details:Array }} total_amount=当月摊销总费用(分整数)；
+ * @returns {{ total_amount_fen:number, details:Array }} total_amount_fen=当月摊销总费用(分整数)；
  *          details 每项 { asset_id, name, amount_fen, start_month, total_months, terminate_month,
  *                         in_period, residual_loss };
- *          total_amount 与 details[].amount_fen 的数值格式与批次 1「当月摊销总费用」输入直接对齐。
+ *          total_amount_fen 与 details[].amount_fen 的数值格式与批次 1「当月摊销总费用」输入直接对齐。
  */
 function calcAmortize(assets, targetMonth) {
   const list = (assets && Array.isArray(assets)) ? assets : [];
@@ -145,7 +145,7 @@ function calcAmortize(assets, targetMonth) {
       residual_loss: calcResidualFen(asset), // 提前终止时的未摊残值（处置损失）；自然到期=0
     });
   }
-  return { total_amount: total, details };
+  return { total_amount_fen: total, details };
 }
 
 // 逐月摊销表（自测/审计用）：start..end 逐期金额 + 总摊销 + 残值。

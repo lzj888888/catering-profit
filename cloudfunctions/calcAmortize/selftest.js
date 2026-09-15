@@ -62,11 +62,11 @@ backcheckFen('招牌已摊合计', signTotal, 600000);
 console.log('');
 console.log('--- 用例 B · 多资产并行 + 尾差倒挤 ---');
 const rB2026_08 = calcAmortize([decor, fr, freezer], '2026-08');
-check('2026-08 三资产合计=4,683.33', rB2026_08.total_amount === 468333, `=${rB2026_08.total_amount}分=${rB2026_08.total_amount / 100}元`);
-backcheckFen('2026-08 三资产合计', rB2026_08.total_amount, 468333);
+check('2026-08 三资产合计=4,683.33', rB2026_08.total_amount_fen === 468333, `=${rB2026_08.total_amount_fen}分=${rB2026_08.total_amount_fen / 100}元`);
+backcheckFen('2026-08 三资产合计', rB2026_08.total_amount_fen, 468333);
 
 const rB2026_02 = calcAmortize([decor, fr, freezer], '2026-02');
-check('2026-02 仅装修在摊(加盟费/冰柜未开始)=3,333.33', rB2026_02.total_amount === 333333, `=${rB2026_02.total_amount}分=${rB2026_02.total_amount / 100}元`);
+check('2026-02 仅装修在摊(加盟费/冰柜未开始)=3,333.33', rB2026_02.total_amount_fen === 333333, `=${rB2026_02.total_amount_fen}分=${rB2026_02.total_amount_fen / 100}元`);
 
 const decorLast = amountForMonthFen(decor, '2028-12');
 check('🔴 装修末月 2028-12 尾差倒挤=3,333.45(非 3,333.33)', decorLast === 333345, `=${decorLast}分=${decorLast / 100}元`);
@@ -92,11 +92,11 @@ check('若漏做倒挤累计=11,999,988（与真实不一致 → 判据有鉴别
 
 // ===================== details 输出结构（对接批次 1） =====================
 console.log('');
-console.log('--- 输出对接批次 1（total_amount + details 结构）---');
+console.log('--- 输出对接批次 1（total_amount_fen + details 结构）---');
 const d = rB2026_08.details;
 check('details 含 3 条资产明细', d.length === 3, `len=${d.length}`);
 check('details 金额为分整数 + 命名 amount_fen', d.every((x) => Number.isInteger(x.amount_fen) && 'amount_fen' in x), `sum=${d.reduce((s, x) => s + x.amount_fen, 0)}分`);
-check('details 金额之和 === total_amount', d.reduce((s, x) => s + x.amount_fen, 0) === rB2026_08.total_amount);
+check('details 金额之和 === total_amount_fen', d.reduce((s, x) => s + x.amount_fen, 0) === rB2026_08.total_amount_fen);
 check('冰柜 2026-08 in_period=true(2026-06已开始)', rB2026_08.details.find((x) => x.asset_id === 'freezer').in_period === true);
 check('旧空调 in_period=false 于 2026-09(提前停)', calcAmortize([oldAC], '2026-09').details[0].in_period === false);
 
@@ -117,10 +117,8 @@ const V_IN = [
   { desc: '合法调用', ev: { shop_id: 's1', month: '2026-08' }, expect: 'OK' },
   { desc: 'month 传坏 "2026-08-01"', ev: { shop_id: 's1', month: '2026-08-01' }, expect: 'INVALID_PARAM' },
   { desc: 'shop_id 缺失', ev: { month: '2026-08' }, expect: 'INVALID_PARAM' },
-  { desc: 'assets[].total_value 传字符串', ev: { shop_id: 's1', month: '2026-08', assets: [{ asset_id: 'a', total_value: '1200000', start_month: '2026-01', total_months: 36 }] }, expect: 'INVALID_PARAM' },
-  { desc: 'assets[].total_months 传字符串', ev: { shop_id: 's1', month: '2026-08', assets: [{ asset_id: 'a', total_value: 1200000, start_month: '2026-01', total_months: '36' }] }, expect: 'INVALID_PARAM' },
-  { desc: '合法资产应放行', ev: { shop_id: 's1', month: '2026-08', assets: [{ asset_id: 'a', total_value: 1200000, start_month: '2026-01', total_months: 36 }] }, expect: 'OK' },
-  { desc: 'terminate_month 非法格式', ev: { shop_id: 's1', month: '2026-08', assets: [{ asset_id: 'a', total_value: 1200000, start_month: '2026-01', total_months: 36, terminate_month: '2026-13' }] }, expect: 'INVALID_PARAM' },
+  // R34：wire 入参不再接受 assets（死代码入口已删），传了也忽略，不会污染计算、也不会绕过校验
+  { desc: '带 assets（含非法字段）被忽略 → 仍 OK', ev: { shop_id: 's1', month: '2026-08', assets: [{ asset_id: 'a', total_value: 'x', start_month: 'bad' }] }, expect: 'OK' },
 ];
 for (const it of V_IN) {
   const vr = validateInput(it.ev);
@@ -147,6 +145,7 @@ docToAssetThrows({ asset_id: 'A3', total_value: 120, start_month: '2026-01', tot
 docToAssetThrows({ asset_id: 'A4', total_value: 120, start_month: '2026-01', total_months: 0 }, 'total_months=0');
 docToAssetThrows({ asset_id: 'A5', total_value: 120, start_month: '2026-01', total_months: 12, terminate_month: 'bad' }, 'terminate_month="bad"');
 docToAssetThrows({ asset_id: 'A6', total_value: 120, start_month: '2026-01', total_months: 12, terminate_month: '2026-13' }, 'terminate_month="2026-13"');
+docToAssetThrows({ asset_id: 'A7', start_month: '2026-01', total_months: 12 }, 'total_value 缺失（R34：唯一校验路径也须响亮失败）');
 
 // ===================== DataAdapter 软删过滤（需求 2.8：软删资产默认排除，业务层不关心） =====================
 console.log('');

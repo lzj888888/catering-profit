@@ -6,7 +6,7 @@
 //               → 把干净资产数组传给 Service 纯函数 → 纯计算返回当月摊销（契约 core/10:46：只算不写，总额由调用方落库）
 //   Service   ：calcAmortize/service.js，纯计算，不碰云与前端请求。
 //
-// 输出对接批次 1：返回 data 含 total_amount（当月摊销总费用，分整数）+ details（各资产明细），
+// 输出对接批次 1：返回 data 含 total_amount_fen（当月摊销总费用，分整数）+ details（各资产明细），
 //                数值格式与 calcMonthlyProfit 的「当月摊销总费用」输入完全对齐，可直接传入。
 
 const cloud = require('wx-server-sdk');
