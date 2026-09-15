@@ -22,6 +22,7 @@ const SUITES = [
   ['test_poc4',           'specs/dev-specs/prototype/test_poc4.js'],
   ['batch0 代码自测',     'cloudfunctions/common/__tests__/batch0_selfcheck.js'],
   ['batch1 代码自测',     'cloudfunctions/calcMonthlyProfit/selftest.js'],
+  ['batch2 代码自测',     'cloudfunctions/calcAmortize/selftest.js'],
   ['静态路径检查',        'tools/check_requires.js'],
   // 后续批次的套件在此追加即可（如 batch2_selfcheck ...）；追加后记得同步头部注释里的套件数量。
 ];
