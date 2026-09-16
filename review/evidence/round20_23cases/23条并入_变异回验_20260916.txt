@@ -1,0 +1,20 @@
+### 1) 基线（未变异）
+$ node cloudfunctions/calcMonthlyProfit/selftest.js
+   EXIT=0
+
+✅ 12/12 锚点 + 2 项自洽断言 + 23 条入参对抗用例（validate）全数通过（判据：金额=整数分严格相等）
+
+### 2) 变异注入：validate.js cleanItems 的 hasCamel 判定退一档（"并存且相等" 退回放行 = R30 之前的宽松行为）
+   → 已注入 1 处
+$ node cloudfunctions/calcMonthlyProfit/selftest.js
+   EXIT=1（期望 1）
+   [入参 C4] 明细 amount_fen 与 amountFen 并存且相等 → 拒（R30 收紧，原为放行） → OK ❌ 期望 INVALID_PARAM
+   ❌ 存在未通过项：1 处
+$ node verify_all.js
+   EXIT=1（期望 1：门禁也接住了）
+
+### 3) 还原 + 复跑
+   还原后 git diff --stat：(空)
+   selftest EXIT=0
+   ✅ 12/12 锚点 + 2 项自洽断言 + 23 条入参对抗用例（validate）全数通过（判据：金额=整数分严格相等）
+   verify_all EXIT=0

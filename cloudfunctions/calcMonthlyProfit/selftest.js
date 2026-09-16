@@ -1,4 +1,5 @@
-// cloudfunctions/calcMonthlyProfit/selftest.js —— 批次 1 自测：12 条验收锚点 + 2 项自洽断言。
+// cloudfunctions/calcMonthlyProfit/selftest.js —— 批次 1 自测：12 条验收锚点 + 2 项自洽断言
+//                                          + 23 条入参对抗用例（validate）。
 //
 // 运行： node cloudfunctions/calcMonthlyProfit/selftest.js
 // 直接测 Service 纯函数（不触云/DB）。
@@ -145,28 +146,61 @@ function run() {
   console.log(`S2 真实消耗=${map['S2'].realConsumeFen / 100}元 、直接填消耗=${map['S2'].directConsumeFen / 100}元`);
   console.log(`S2 毛利率展示=${map['S2'].grossMarginRatePctDisplay}% （全精度 ${map['S2'].grossMarginRatePct}%）`);
 
-  // ===== R27 入参用例：标量/明细金额字符串一律 INVALID_PARAM（不留口子，响亮失败优于静默漏检）=====
-  const { validateInput } = require('./validate');
+  // ===== 入参对抗（validate）=====
+  // 来源：round18 §2 裁决① —— 复审方 23 条独立对抗用例并入本文件（不另建套件：同族用例本就在此、
+  //   零接线成本、也少一个"忘了接进 verify_all 的 SUITES"的孤立失败面）。
+  //   原 R27/R30 那 7 条是该 23 条的子集（标量字符串 / 库存字符串 / 明细字符串 / 合法整数 /
+  //   并存相等 / 并存不等 / 只传 camel），已去重，**覆盖未减**。
+  // 纪律（R27/R30 延续）：入参面留一个口子，错误金额就会"看起来正常"地流进账目
+  //   （同族反模式：字符串金额、amount_fen 双收、±0.01 容差掩膜）。故一律「响亮失败」：
+  //   期望值写进表里，逐条点名 id，跑挂一眼看出是"入参面"还是"锚点面"。
+  const { validateInput, cleanItems } = require('./validate');
+  const P_OK = 'OK';
+  const P_BAD = 'INVALID_PARAM';
+  // 标量三字段共用同一个 f()，故以 direct_consume_fen 作代表；D1 单独查错误信息是否点名字段
+  const scalarAt = (key, v) => { const r = validateInput({ [key]: v }); return r.error === null ? P_OK : r.error; };
+  const invAt = (v) => { const r = validateInput({ inventory: { opening_fen: v } }); return r.error === null ? P_OK : r.error; };
+  const itemAt = (it) => { const r = cleanItems([it]); return (r && r.error) ? r.error : P_OK; };
   const INPUT_CASES = [
-    { desc: '标量 direct_consume_fen 传字符串 "2200000"', ev: { income_items: [], expense_items: [], direct_consume_fen: '2200000' }, expect: 'INVALID_PARAM' },
-    { desc: '库存 opening_fen 传字符串 "500000"',         ev: { income_items: [], expense_items: [], direct_consume_fen: 2200000, inventory: { opening_fen: '500000', purchase_fen: 2500000, closing_fen: 700000 } }, expect: 'INVALID_PARAM' },
-    { desc: '明细 amount_fen 传字符串 "100000"',          ev: { income_items: [{ amount_fen: '100000' }], expense_items: [], direct_consume_fen: 2200000 }, expect: 'INVALID_PARAM' },
-    { desc: '合法整数 number 应放行',                      ev: { income_items: [{ amount_fen: 100000 }], expense_items: [], direct_consume_fen: 2200000 }, expect: 'OK' },
-    // R30：明细双字段并存 —— 收紧后「相等也不放行」，契约只认 amount_fen 一种写法
-    { desc: '明细 amount_fen 与 amountFen 并存且相等（R30 收紧后应拒）', ev: { income_items: [{ amount_fen: 100000, amountFen: 100000 }], expense_items: [], direct_consume_fen: 2200000 }, expect: 'INVALID_PARAM' },
-    { desc: '明细 amount_fen 与 amountFen 并存且不相等',    ev: { income_items: [{ amount_fen: 100000, amountFen: 1 }], expense_items: [], direct_consume_fen: 2200000 }, expect: 'INVALID_PARAM' },
-    { desc: '明细只传 amountFen（缺 amount_fen）',          ev: { income_items: [{ amountFen: 100000 }], expense_items: [], direct_consume_fen: 2200000 }, expect: 'INVALID_PARAM' },
+    // A. 标量金额（direct_consume_fen 等）：只认 JSON number 整数分
+    { id: 'A1',  desc: '标量 100（整数分）→ 放行',              run: () => scalarAt('direct_consume_fen', 100),          exp: P_OK },
+    { id: 'A2',  desc: '标量 0 → 放行',                        run: () => scalarAt('direct_consume_fen', 0),            exp: P_OK },
+    { id: 'A3',  desc: '标量字符串 "100" → 拒',                run: () => scalarAt('direct_consume_fen', '100'),        exp: P_BAD },
+    { id: 'A4',  desc: '标量字符串 "0" → 拒',                   run: () => scalarAt('direct_consume_fen', '0'),          exp: P_BAD },
+    { id: 'A5',  desc: '标量小数 100.5 → 拒',                   run: () => scalarAt('direct_consume_fen', 100.5),        exp: P_BAD },
+    { id: 'A6',  desc: '标量负数 -1 → 拒',                      run: () => scalarAt('direct_consume_fen', -1),           exp: P_BAD },
+    { id: 'A7',  desc: '标量布尔 true → 拒',                    run: () => scalarAt('direct_consume_fen', true),         exp: P_BAD },
+    { id: 'A8',  desc: '标量数组 [] → 拒',                      run: () => scalarAt('direct_consume_fen', []),           exp: P_BAD },
+    { id: 'A9',  desc: '标量对象 {} → 拒',                      run: () => scalarAt('direct_consume_fen', {}),           exp: P_BAD },
+    { id: 'A10', desc: '标量 NaN → 拒',                        run: () => scalarAt('direct_consume_fen', NaN),          exp: P_BAD },
+    { id: 'A11', desc: '标量 Infinity → 拒',                    run: () => scalarAt('direct_consume_fen', Infinity),     exp: P_BAD },
+    { id: 'A12', desc: '标量 undefined → 默认 0（设计：可省）',  run: () => scalarAt('direct_consume_fen', undefined),    exp: P_OK },
+    { id: 'A13', desc: '标量 null → 默认 0（设计：可省）',       run: () => scalarAt('direct_consume_fen', null),         exp: P_OK },
+    // B. 库存三字段（与标量共用同一个 f()，走 inventory.* 名字前缀）
+    { id: 'B1',  desc: '库存 opening_fen 数字 → 放行',       run: () => invAt(100),                                   exp: P_OK },
+    { id: 'B2',  desc: '库存 opening_fen 字符串 → 拒',       run: () => invAt('100'),                                 exp: P_BAD },
+    // C. 明细数组（cleanItems）：只认 amount_fen 一种写法（R30 起"并存即拒"，相等也不收）
+    { id: 'C1',  desc: '明细 {amount_fen:100} → 放行',          run: () => itemAt({ amount_fen: 100 }),                  exp: P_OK },
+    { id: 'C2',  desc: '明细 {amount_fen:"100"} → 拒',          run: () => itemAt({ amount_fen: '100' }),                exp: P_BAD },
+    { id: 'C3',  desc: '明细只传 amountFen（缺 snake）→ 拒',     run: () => itemAt({ amountFen: 100 }),                   exp: P_BAD },
+    { id: 'C4',  desc: '明细 amount_fen 与 amountFen 并存且相等 → 拒（R30 收紧，原为放行）', run: () => itemAt({ amount_fen: 100, amountFen: 100 }), exp: P_BAD },
+    { id: 'C5',  desc: '明细 amount_fen 与 amountFen 并存且不等 → 拒', run: () => itemAt({ amount_fen: 100, amountFen: 200 }), exp: P_BAD },
+    { id: 'C6',  desc: '明细 {} 空对象 → 拒',                    run: () => itemAt({}),                                   exp: P_BAD },
+    { id: 'C7',  desc: '明细 {amount_fen:100.5} → 拒',           run: () => itemAt({ amount_fen: 100.5 }),                exp: P_BAD },
+    // D. 可诊断性：错误信息必须点名字段（否则开发期要查半天）
+    { id: 'D1',  desc: '错误信息点名字段（amortize_fen）',        run: () => { const m = (validateInput({ amortize_fen: '100' }).msg || ''); return m.includes('amortize_fen') ? P_OK : '未点名：' + m; }, exp: P_OK },
   ];
+  console.log('===== 入参对抗（validate）=====');
   for (const ic of INPUT_CASES) {
-    const vr = validateInput(ic.ev);
-    const got = vr.error ? vr.error : 'OK';
-    const pass = got === ic.expect;
+    let got;
+    try { got = ic.run(); } catch (e) { got = 'THROW:' + e.message; }
+    const pass = got === ic.exp;
     if (!pass) { allPass = false; failedCount++; }
-    console.log(`[R27] ${ic.desc} → ${got} ${pass ? '✅' : '❌ 期望 ' + ic.expect}`);
+    console.log(`[入参 ${ic.id}] ${ic.desc} → ${got} ${pass ? '✅' : '❌ 期望 ' + ic.exp}`);
   }
 
   console.log('\n' + (allPass
-    ? '✅ 12/12 锚点 + 2 项自洽断言 + ' + INPUT_CASES.length + ' 条 R27/R30 入参用例全数通过（判据：金额=整数分严格相等）'
+    ? '✅ 12/12 锚点 + 2 项自洽断言 + ' + INPUT_CASES.length + ' 条入参对抗用例（validate）全数通过（判据：金额=整数分严格相等）'
     : `❌ 存在未通过项：${failedCount} 处`));
   process.exit(allPass ? 0 : 1);
 }
