@@ -18,6 +18,10 @@
 > **证据目录约定（2026-09-16 增）**：本轮次的实测证据（截图/脚本/输出）放 `review/evidence/<主题>_<日期>/`，并附 `_README.md` 说明来源。
 > `review/` 已在 `packOptions.ignore` 内 ⇒ 证据**进 git、不进小程序包**（R37 起生效）；且门禁扫描面不含 `review/`。
 
+> **测试脚本落位约定（R55，2026-09-17 立）**：测试/校验脚本**一律**放 `tools/`（已在 `packOptions.ignore` 内，最干净）或 `cloudfunctions/<fn>/__tests__/`（`__` 前缀目录 devtools 自动忽略）；
+> 🚫 **不放** `utils/`、`pages/` —— `packOptions.ignore` 现为 13 条（不含 `utils/`、也不忽略 `.js` 后缀）⇒ 放那儿会**随小程序包发布**。
+> 实例：`utils/selftest_batch7.js` 曾因此进包，已移入 `tools/selftest_batch7.js`。
+
 ## 2. 双向规则（互不篡改）
 
 | 谁 | 能改什么 |

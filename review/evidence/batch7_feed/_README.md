@@ -441,3 +441,62 @@ feature_permissions / order_refund / probe_tmp / shop），**不是「dev 只有
 - [未落] R55（移 `utils/selftest_batch7.js` → `tools/`）、R57（补 `saveAsset`/`saveShopSetting` 自测）
 - [未落] `ADMIN_SETUP_TOKEN` 环境变量需在控制台为 `adminInit` 配置（批次 6 已登记，仍在阻塞清单）
 - [未落] 真云 unique 实测、39 条索引补齐、上线三项阻塞
+
+---
+
+## 6.17 R55 + R57 处置（round23 队列 ②③）· 2026-09-17 07:42
+
+> 队列来源：`review/REVIEW_2026-09-15_round23-verify.md` §5「待执行侧」②③。
+> ①（提交批次 7）与 ④（R56 留痕）已在 `49f02f7`/`52716c6`/`780c8d6` 轮次完成。
+
+### 6.17.1 R55 —— 已落：测试文件移出小程序包
+
+**修法取 round23 建议的 ①**（移入 `tools/`，最干净，优于"在 ignore 里加一条 file"）。
+
+| 项 | 证据（可复现） |
+|---|---|
+| 移动 | `git mv utils/selftest_batch7.js tools/selftest_batch7.js` → 输出 `MOVED-OK`；`ls utils/ \| grep selftest` → 空 |
+| 内部相对路径改基 | `require('./validate.js'\|'./loading.js'\|'./shopSwitcher.js')` → `../utils/*`（`../miniprogram/i18n/terms.js` 不变） |
+| 套件复跑 | `node tools/selftest_batch7.js` → **20 通过 / 0 失败**，exit 0 |
+| 接线同步 | `verify_all.js` 的 `['batch7-utils', 'tools/selftest_batch7.js']` |
+| 出包性（根因核实） | `node -e "console.log(require('./project.config.json').packOptions)"` → ignore 13 条，含 `{type:'folder',value:'tools'}`，**不含** `utils/`、**不含** `.js` 后缀 ⇒ 原位置确会进包（与 round23 §R55 一致） |
+
+**顺带立约**（写进 `review/README.md §1`）：测试/校验脚本一律放 `tools/` 或 `cloudfunctions/<fn>/__tests__/`；🚫 不放 `utils/`、`pages/`。
+
+### 6.17.2 R57（= round23 编号 R54，撞号改名）—— 已落：batch4 六个函数补自测，**6/6 全补（非只补 2 个写操作）**
+
+round23 建议"至少补 `saveAsset`/`saveShopSetting` 两个写操作"，本侧**把 6 个全补**：成本低（每个都有独立 `validate.js`，`service.js` 多为纯函数），且能一次消掉"6 个函数行为无机器断言"这条。
+
+| 新增套件 | 断言 | 覆盖重点 |
+|---|---|---|
+| `cloudfunctions/saveAsset/selftest.js` | **43** | 金额=整数分（拒字符串/0/负/小数/NaN）、月份两位格式、`total_months`、`terminate_month` 可空归一、`asset_id` 缺省=新增语义 |
+| `cloudfunctions/saveShopSetting/selftest.js` | **29** | 🔴 **开关三态**：缺省=`null`（不动库）/ 显式 `false` 必须保留为 `false`（最易误写成"缺省即关"）；`SWITCH_KEYS` 读≡写 |
+| `cloudfunctions/getLedger/selftest.js` | **37** | 锚点 S1 9,160 / S2 3,476.67 / 差异 5,683.33；🔴 **口径锁**（开库存开关也不改用倒轧，含"≠8160"反面断言）；🔴 `getLedger.calcMonthlyProfit ≡ saveLedger.calcMonthlyProfit`（**7 组输入逐字段**，含脏输入） |
+| `cloudfunctions/getMonthList/selftest.js` | **17** | 入参面 + **源码形状断言**（按 month 去重 / 倒序 `a.month<b.month?1:-1` / 出参仅 `month`+`is_archive`） |
+| `cloudfunctions/getShopContext/selftest.js` | **26** | `shop_id` **可选**语义；`switchesFromRows` 键精确匹配、缺行=关、未知键不污染；`SWITCH_KEYS` 读≡写 |
+| `cloudfunctions/getCardVersions/selftest.js` | **37** | `calc_mode 2→'B'`、字段重命名（`aux_cost→aux_fen`、`price_list→price_fen`、`total_cost→total_cost_fen`）、`net_unit_cost` 为**万分**快照；🔴 `cardToOut/lineToOut ≡ getCostCard.cardToOutput/lineToOutput`（**4+2 组逐字段**） |
+| **合计** | **189 项** | |
+
+**方法论（本轮的增量）**：这 6 个函数的 `index.js` 都 `require('wx-server-sdk')`，纯 node 加载不了 ⇒ 断言分两层：
+① **纯函数层**（`validate.js`/`service.js`）做真行为断言；② **`index.js` 源码形状断言**（顺序：鉴权→越权→校验 / 软删过滤 / 只读性 / 关键字段名）。
+形状断言会被"合理重写"误红 —— **已在文件头诚实地标注等级**，不当成行为断言。另：本次新增的**跨函数等价断言**（同源副本逐字段比对）比单函数断言更有价值，它守的是"注释里写的同源"这件事。
+
+**顺带发现（未改生产代码，留痕）**：`saveAsset/validate.js:16` 错误文案写"必须是非负正整数分"，而行为是 `<= 0` 即拒（**0 也被拒**）⇒ 文案与行为不一致（应为"正整数分"）。已用断言固化**实际行为**（`value_fen 0 → 拒`），文案修正待下次触碰该文件时一并做。
+
+### 6.17.3 门禁与套件（改 `specs/` 后必跑）
+
+```
+node specs/dev-specs/prototype/check_error_codes.js  → exit 0（A–L 全绿；重启键 .md 已改故必跑）
+node verify_all.js                                   → 52/52 套件通过，exit 0
+```
+
+同步回填：`★知识存储点_2026-09-10.md` 套件数**两处**（§1.1 L38 一键校验入口 + §1.3 套件数纪律行）46 → **52**；§1.3 另立两条新约（测试脚本落位 / 每函数应有 selftest + 新函数一律 `validate.js` 独立 = R56 的处置）。
+
+### 6.17.4 回执
+
+- [已落] **R55**：`utils/selftest_batch7.js` → `tools/selftest_batch7.js`（含相对路径改基 + `verify_all.js` 接线）· 证据：`node tools/selftest_batch7.js` → `20 通过 / 0 失败` exit 0
+- [已落] **R57**：batch4 六函数补自测（189 项断言，含 3 组跨函数同源守卫）· 证据：`node verify_all.js` → `52/52 套件通过` exit 0
+- [已落] **R56 留痕**：「新函数一律 `validate.js` 独立」+「每函数应有 selftest（两层断言范式）」写入重启键 §1.3
+- [已落] 门禁：A–L exit 0 + `verify_all` 52/52 exit 0
+- [存疑] `getMonthList` 的去重/倒序逻辑内联在 `index.js` ⇒ 只能形状断言；若复审方认为需要行为断言，则需把该逻辑抽 `service.js`（本侧未擅自改生产代码）
+- [未落] 真云三验 / 39 条索引补齐 / `ADMIN_SETUP_TOKEN` 配置 / 上线三项阻塞 / `wechatide` client 授权 / R58 备选方案待拍板

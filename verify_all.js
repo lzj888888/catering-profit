@@ -42,6 +42,13 @@ const SUITES = [
   ['batch4-calcSandbox',  'cloudfunctions/calcSandbox/selftest.js'],
   ['batch4-getAmortSchedule', 'cloudfunctions/getAmortSchedule/selftest.js'],
   ['batch4-saveLedger',   'cloudfunctions/saveLedger/selftest.js'],
+  // ===== batch4 补齐（R57）：此前只有结构类检查覆盖、行为无机器断言 =====
+  ['batch4-getLedger',      'cloudfunctions/getLedger/selftest.js'],
+  ['batch4-getMonthList',   'cloudfunctions/getMonthList/selftest.js'],
+  ['batch4-getShopContext', 'cloudfunctions/getShopContext/selftest.js'],
+  ['batch4-getCardVersions', 'cloudfunctions/getCardVersions/selftest.js'],
+  ['batch4-saveAsset',      'cloudfunctions/saveAsset/selftest.js'],
+  ['batch4-saveShopSetting', 'cloudfunctions/saveShopSetting/selftest.js'],
   // ===== 批次 5 · 付费全流程（配额 + 订单 + 回调 + 权益 + 提醒 + 订单记录）=====
   ['batch5-checkQuota',        'cloudfunctions/checkQuota/selftest.js'],
   ['batch5-payCreateOrder',    'cloudfunctions/payCreateOrder/selftest.js'],
@@ -66,7 +73,7 @@ const SUITES = [
   ['batch7-getShopList',     'cloudfunctions/getShopList/selftest.js'],
   ['batch7-exportData',      'cloudfunctions/exportData/selftest.js'],
   ['batch7-deleteAccount',   'cloudfunctions/deleteAccount/selftest.js'],
-  ['batch7-utils',           'utils/selftest_batch7.js'],
+  ['batch7-utils',           'tools/selftest_batch7.js'],
   // 后续批次的套件在此追加即可（如 batch2_selfcheck ...）；追加后记得同步头部注释里的套件数量。
 ];
 

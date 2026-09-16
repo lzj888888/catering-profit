@@ -1,6 +1,10 @@
-// utils 前端工具单测（node 可直接跑：validate / loading / shopSwitcher 纯逻辑部分）
-// 运行： node utils/selftest_batch7.js
+// 前端工具单测（node 可直接跑：validate / loading / shopSwitcher 纯逻辑部分）
+// 运行： node tools/selftest_batch7.js
 // 覆盖验收 1（金额负数前端拦截）、验收 2（防重复提交语义）、验收 3（多店隔离 + 持久化键）。
+//
+// ⚠️ R55（2026-09-17）：本套件原在 `utils/`，而 `packOptions.ignore` 不含 `utils/`、也不忽略 `.js`
+//    ⇒ 测试代码会随小程序包发布。已移入 `tools/`（在 ignore 内）。
+//    约定：**测试/校验脚本一律放 `tools/` 或 `cloudfunctions/<fn>/__tests__/`，不放 `utils/`、`pages/`。**
 
 // ⚠️ wx storage mock 必须先于任何调用定义（node 环境无 wx）
 const wxStorage = {};
@@ -9,9 +13,9 @@ global.wx = {
   getStorageSync(k) { return wxStorage[k] || ''; },
 };
 
-const v = require('./validate.js');
-const loading = require('./loading.js');
-const sw = require('./shopSwitcher.js');
+const v = require('../utils/validate.js');
+const loading = require('../utils/loading.js');
+const sw = require('../utils/shopSwitcher.js');
 
 let pass = 0, failN = 0;
 function check(name, cond, detail) {
