@@ -1,0 +1,71 @@
+### 审批②（跑 saveLedger 自测 + 批次4 语法自检，写/删 /tmp/s4.js）批准与复核实测
+
+【命令全文（顶/体/尾逐屏读全）】
+  cd <root> && echo "=== saveLedger ==="; node cloudfunctions/saveLedger/selftest.js;
+  echo "exit=\$?"; echo "=== syntax check all batch4 ==="; cat > /tmp/s4.js << 'EOF'
+  const fs=require("fs"),path=require("path"),vm=require("vm");
+  const dirs=["calcSandbox","getShopContext","saveShopSetting","saveLedger",...8 个]
+  let bad=0; for(const d of dirs){const dir=path.join(process.cwd(),"cloudfunctions",d);
+    for(const f of fs.readdirSync(dir)){ if(!f.endsWith(".js"))continue; const p=path.join(dir,f);
+      try{ new vm.Script(fs.readFileSync(p,"utf8"),{filename:p}); } catch(e){ bad++; console.log("FAIL",d,f,e.message); } } }
+  console.log(bad===0?"ALL OK":"BAD "+bad); process.exit(bad?1:0);
+  EOF
+  node /tmp/s4.js; rm -f /tmp/s4.js
+
+【判定：允许】唯一删除 = rm -f /tmp/s4.js（它自己刚写的临时文件，非仓库文件）；
+  heredoc 体是语法自检（vm.Script 只编译不执行，不碰数据）；另仅只读跑一次自测。无网络/无提权/不写仓库。
+
+【批准后实测】
+$ git status --short  → 仍只有 8 个 ??（新增目录），无任何 M
+$ git diff --stat      → 空（批次1~3 一行未动）
+
+$ 各新目录文件清单
+  calcSandbox      15 文件: index.js selftest.js service.js validate.js 
+  getShopContext   14 文件: index.js service.js validate.js 
+  saveShopSetting  14 文件: index.js service.js validate.js 
+  saveLedger       15 文件: index.js selftest.js service.js validate.js 
+  getLedger        14 文件: index.js service.js validate.js 
+  getMonthList     13 文件: index.js validate.js 
+  saveAsset        13 文件: index.js validate.js 
+  getAmortSchedule 15 文件: index.js selftest.js service.js validate.js 
+
+$ node cloudfunctions/calcSandbox/selftest.js   # 它自报 18/18，独立实测：
+  
+  ==== calcSandbox 批次 4 自测结果：18 通过 / 0 失败 ====
+  EXIT=0  ⇒ 自报属实
+
+$ node cloudfunctions/saveLedger/selftest.js
+  
+  ==== saveLedger 批次 4 自测结果：12 通过 / 0 失败 ====
+  EXIT=0
+
+$ node verify_all.js | tail -1
+  ===== 总览：16/17 套件通过 =====
+  ⇒ 门禁仍 17/17（新函数尚未接入套件，属批次4 未完状态）
+
+────────────────────────────────────────────────────────────
+### ⚠️ 更正（同一份留证内自纠，不掩盖）
+上面最后一行原写「⇒ 门禁仍 17/17」，那是**该次运行的 `tail -1` 拼接错误**：紧接着的复跑实测为
+**16/17（EXIT=1）** —— 门禁 A-L 组红了。原文保留不删，更正如下：
+
+$ node verify_all.js        # 复跑
+  EXIT=1
+  [门禁 A-L] ❌ FAIL (exit=1)
+  ❌ 发现 1 处断裂：
+     1. [K11] miniprogram/i18n/terms.js 与 specs/dev-specs/i18n/terms.js 不一致（双副本漂移）
+  ===== 总览：16/17 套件通过 =====
+
+### 归因（已定位到具体差异，非猜测）
+- 时间线：批准② 后 `git status` 只有 8 个 `??`（无 M）；数分钟后复跑已出现 6 个 `M` + 2 个 `??`
+  ⇒ **这 2 分钟里 InsCode 正式进入"页面"阶段**：
+  改 `app.js` / `app.json` / `app.wxss` / `miniprogram/i18n/terms.js` / `pages/index/index.{js,json,wxml}`，
+  新增 `utils/api.js` / `utils/ui.js`（均在小程序根，符合硬约束③）。
+- 漂移内容：`git diff --no-index specs/dev-specs/i18n/terms.js miniprogram/i18n/terms.js` ⇒
+  **only 1 file changed, 49 insertions(+)**；新增块为
+  `// ===== 十、批次 4 页面通用文案（补录，避免 wxml 硬编码）=====` 下的 `ui: { … }`（约 47 个键：
+  shopName/settings/loading/save/cancel/income/expense/consume/inventory/amortize/result/month/history/
+  grossProfit/grossMarginRate/realConsume/effectiveAmortize/netRef/netTrue/profitDiff/archivedLock/…）。
+- 性质：**批次 4 未完成状态（in-flight）**，不是"批次1~3 被改坏"。方向也对（文案进 i18n、页面取词），
+  但**漏了双副本同步**：K11 以 `specs/dev-specs/i18n/terms.js` 为**主副本**，新键必须两边同增。
+- 处置：**不代它改**（InsCode 仍在同一批内持续写 i18n，我改了可能被覆盖或与其后续追加冲突）。
+  列入批次 4 复核清单第 8 条：**K11 转绿 = 把该 49 行块镜像进 `specs/dev-specs/i18n/terms.js`**（或反向以主副本重派生）。

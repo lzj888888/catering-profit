@@ -73,3 +73,44 @@ cd /c/Users/lzj/WorkBuddy/Claw/catering-profit && node tools/sync_common.js && e
 二者对应批次 4 页面清单第 10 项「**店铺设置页**（库存开关 / 摊销开关 / 店铺名称与备注，写 `shop_switch`）」——
 即**规格给了页面、没给端点**，InsCode 只能自拟名。契约表里的 `shopList`/`shopSwitch` 语义是"多店切换器"，**不能顶替**。
 ⇒ 待裁决：**补进契约表**（倾向）／改名对齐／或合并进既有函数。另 `getShopContext` 与 `auth` 中间件的"首次建档"职责需划清，避免两处都写 `shop`/`shop_entitlement`。
+
+---
+
+## 审批②（第 2 个人工闸口）：跑 saveLedger 自测 + 批次4 语法自检 —— 已核并**批准**
+
+## 弹窗原文（顶/体/尾逐屏读全）
+
+```
+cd <root> && echo "=== saveLedger ==="; node cloudfunctions/saveLedger/selftest.js;
+echo "exit=$?"; echo "=== syntax check all batch4 ==="; cat > /tmp/s4.js << 'EOF'
+const fs=require('fs'),path=require('path'),vm=require('vm');
+const dirs=['calcSandbox','getShopContext','saveShopSetting','saveLedger', …8 个];
+let bad=0;
+for(const d of dirs){const dir=path.join(process.cwd(),'cloudfunctions',d);
+  for(const f of fs.readdirSync(dir)){ if(!f.endsWith('.js'))continue; const p=path.join(dir,f);
+    try{ new vm.Script(fs.readFileSync(p,'utf8'),{filename:p}); }
+    catch(e){ bad++; console.log('FAIL',d,f,e.message); } } }
+console.log(bad===0?'ALL OK':'BAD '+bad); process.exit(bad?1:0);
+EOF
+node /tmp/s4.js; rm -f /tmp/s4.js
+```
+
+**这次是真的有 `rm` 才去读全文的**（告警写「会删除文件 `/tmp/s4.js`」）—— 结论：唯一删除是 `rm -f /tmp/s4.js`，
+目标是**它自己刚写的临时文件**；heredoc 体是**语法自检**（`vm.Script` 只编译不执行、不碰数据）；另仅只读跑一次自测。
+无网络 / 无提权 / 不写仓库 ⇒ **允许**。
+
+## 批准后实测（含一次"自我打脸"留痕）
+
+- `git status --short` → 仍只有 8 个 `??`（无 `M`）；`git diff --stat` → 空 ⇒ 此刻批次 1~3 未动。
+- 独立复跑它的自测：`calcSandbox` **18/18**、`saveLedger` **12/12**（**它自报的 18/18 属实**）。
+- ⚠️ **但数分钟后复跑门禁 ⇒ `16/17`（EXIT=1），门禁 A-L 组红**。**我先写下的"17/17"是错的，已在留证文件内自纠、原文未删。**
+  - 断裂 = **K11**：`miniprogram/i18n/terms.js` 与 `specs/dev-specs/i18n/terms.js` **双副本漂移**；
+  - `git diff --no-index` 两份 ⇒ **49 insertions**：新增 `// ===== 十、批次 4 页面通用文案（补录，避免 wxml 硬编码）=====` 的 `ui: { … }`（≈47 键）；
+  - 同窗口 `git status` 出现 6 个 `M`（`app.js`/`app.json`/`app.wxss`/`miniprogram/i18n/terms.js`/`pages/index/index.{js,json,wxml}`）+ 2 个 `??`（`utils/api.js`、`utils/ui.js`）
+    ⇒ **InsCode 已正式进入"页面"阶段**，方向正确（文案进 i18n、页面取词），只是**漏同步主副本**；
+  - 处置：**不代它改**（同批内它还会继续写 i18n，我改易被覆盖/冲突）⇒ 列复核清单第 ⑧ 条。
+
+## 复核清单（新增第 ⑧ 条）
+
+⑧ **门禁 A-L 恢复全绿** —— 具体 = 把上述 49 行 `ui.*` 块**镜像进主副本 `specs/dev-specs/i18n/terms.js`**（K11 以主副本为准），
+或反向以主副本重新派生 `miniprogram/i18n/terms.js`；**并且**批次 4 若新增错误码/i18n 键，`core/09 §1`+`§3` 与 `terms.js` 三处要同增（A/B 类）。
