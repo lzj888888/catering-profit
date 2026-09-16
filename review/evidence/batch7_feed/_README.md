@@ -394,3 +394,50 @@ feature_permissions / order_refund / probe_tmp / shop），**不是「dev 只有
 - [未落] R55 移动测试脚本（待办，未改代码）
 - [未落] R57 补 `saveAsset`/`saveShopSetting` 自测（待办）
 - [未落] 真云 unique 实测 —— 若授权打通可程序化完成，否则仍需手工
+
+### 6.15 R58（新发现·真缺口）：prod 环境「首超管」没有落地路径 —— 已补可复现方案
+
+**发现链**：查 R52 的 prod 侧时，从 InsCode 自查报告（04:23 那轮）的「`ADMIN_SETUP_TOKEN` 未配置 ⇒ adminInit 拒绝调用」
+往下挖，发现更根本的问题：
+
+| 事实 | 出处（已核实） |
+|---|---|
+| `adminInit` 的 env 门禁是 **prod 恒拒**（`/prod/` → 拒；空 env 也拒） | `cloudfunctions/adminInit/index.js:20-24` |
+| 规范要求的引导方式含「**或控制台脚本**」 | `specs/dev-specs/core/16_后台鉴权规范.md:74` |
+| 但仓库里**没有任何** prod 引导脚本/产物 | 全仓检索 |
+| 手工向 `admin_user` 插文档**算不出** scrypt 哈希（需盐 + `scryptSync`） | `_adminCore/adminAuth.js:38` |
+| R48 之后 `status !== 'active'` 一律拒（fail-closed） | `_adminCore/adminAuth.js` requireAuth |
+
+⇒ **结论**：prod 首超管目前**无可用通道**；若走手工插入，既容易漏 `status`（被 R48 永久拒、无法自愈），
+也只能靠人算哈希（不可行）。这是**上线前必须闭环**的一项（非代码缺陷，是"引导路径缺失"）。
+
+**已补（本侧实现，不动交付代码、不改规范）**：`tools/gen_admin_bootstrap.js`
+
+- **算法同源**：直接 `require('cloudfunctions/_adminCore/adminAuth.js')` 的 `genSalt/hashPassword/verifyPassword`
+  （该模块零依赖、纯 `node crypto`，可被本地脚本复用）⇒ 不引第二套实现
+- **字段防漂移**：从 `adminInit/index.js` 源码**解析**其 `data:{...}` 的字段集，与生成文档做**集合相等**断言
+  （实测已抓到我自己的解析器漏了简写属性 `salt,`，已修 → 说明这道守卫是真守卫）
+- **哈希回环自检**：生成后立即 `verifyPassword(password, salt, pwd_hash) === true`，否则退出码 1
+- **执行链一致性（静态证明）**：`adminLogin/index.js:58` 用的正是同一个 `verifyPassword(v.password, admin.salt, admin.pwd_hash)`
+  且字段名相同 ⇒ 生成的文档必被登录链路接受
+- **正反验证（实测）**：正向 exit 0；密码错一位 exit 1；salt 被改 exit 1
+- **安全边界**：明文密码只在本机进程内使用，不落盘（除非显式 `--out`）、不打印、不打日志；
+  脚本位于 `tools/`，**已在 `project.config.json` 的 `packOptions.ignore` 内**（不随小程序包发布）
+- 另有 `--verify --password --salt --hash` 模式：用于事后核对控制台那条记录与生成时是否一致
+
+**用法**：`node tools/gen_admin_bootstrap.js --username <u> --password <p> [--role super] [--out x.json]`
+
+**另一条路（备选，未做）**：放宽 `adminInit` 门禁为「dev 白名单 OR prod 且显式 `ADMIN_SETUP_ALLOW_PROD=1`」。
+属**规范层变更**（core/16 §7 与 core/10 §6 的「仅 dev / 首次运行的 env 门禁」口径），会削弱 prod 的默认安全姿态
+⇒ **留李老师拍板**，本侧不擅自改。
+
+### 6.16 回执（R52 收尾轮 · 2026-09-17 07:45）
+
+- [已落] R52 核查完成（§6.11，控制台实测 dev `admin_user` = 0 条，截图留证）
+- [已落] **R58 处置**：prod 首超管引导路径补齐 = `tools/gen_admin_bootstrap.js`（字段防漂移 + 哈希回环 + 正反验证）
+- [已落] 门禁：`verify_all` **46/46** exit 0 + A–L exit 0；`check_requires` 598 个 .js 全部可解析
+- [存疑] `wechatide` client 授权（未找到弹窗）—— 需李老师在场；打通后可程序化读库/建索引
+- [存疑] R58 的备选方案（放宽 adminInit 门禁）属规范层，待拍板
+- [未落] R55（移 `utils/selftest_batch7.js` → `tools/`）、R57（补 `saveAsset`/`saveShopSetting` 自测）
+- [未落] `ADMIN_SETUP_TOKEN` 环境变量需在控制台为 `adminInit` 配置（批次 6 已登记，仍在阻塞清单）
+- [未落] 真云 unique 实测、39 条索引补齐、上线三项阻塞
