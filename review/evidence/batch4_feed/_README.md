@@ -114,3 +114,55 @@ node /tmp/s4.js; rm -f /tmp/s4.js
 
 ⑧ **门禁 A-L 恢复全绿** —— 具体 = 把上述 49 行 `ui.*` 块**镜像进主副本 `specs/dev-specs/i18n/terms.js`**（K11 以主副本为准），
 或反向以主副本重新派生 `miniprogram/i18n/terms.js`；**并且**批次 4 若新增错误码/i18n 键，`core/09 §1`+`§3` 与 `terms.js` 三处要同增（A/B 类）。
+
+---
+
+## 附：2026-09-16 20:20–20:45 · 余额耗尽导致「响应中断」的排查与修复（WorkBuddy 桌面自动化）
+
+### 现象
+批次 4 跑到 `已处理 9m10s` 时中断，界面显示「请求失败，请查看原始报错」：
+```
+响应中断:为避免重复输出或工具执行,未自动重放;…此错误常见于公司网络或代理环境,
+请检查代理/VPN/防火墙设置后重试。详情: error decoding response body:
+error reading a body from connection: 远程主机强迫关闭了一个现有的连接。(os error 10054)
+```
+点「重新发送」后依旧失败（`turn-lifecycle.log` 显示连点 4 次，其中两次 5–6 秒即终结）。
+
+### 根因（来自应用自己的遥测，不是猜）
+上游与套餐写在 `inscode.db` 的 `turn_telemetry` 表里：
+
+| turn | 起始 | 时长 | stop_reason | taotoken_plan | error |
+|---|---|---|---|---|---|
+| 3 | 19:42:26 | 539s | **ProviderError** | **free** | 连接被上游掐断，**无 HTTP 状态码** |
+| 2 | 08:46:20 | 19506s | Stopped | free | — |
+| 1 | 07:07:06 | 2340s | Stopped | free | — |
+
+- `provider_host = https://api.taotoken.net/coding/v1`（淘Token）。
+- 会话 `sessions.provider = taotoken/free` —— **钉死在免费套餐**，而免费套餐额度已耗尽。
+- 充值 50 元后 `~/.config/inscode/taotoken.json` 于 19:20 新增 `pros[0]`（`api_key` + **29 个模型**），
+  但 **会话没有跟着切** ⇒ 补发仍走旧套餐 ⇒ 再次被掐断。
+
+### 修复动作（应用内 UI，非改文件）
+1. `Ctrl+M` 打开模型切换器（工具栏底部模型芯片的快捷键，实测可用）。
+2. 选择器里是**两组**，标题必须看清：
+   - **`TaoToken 个人套餐`**：只有 1 个模型 = 免费套餐（当时在用）
+   - **`TaoToken 个人余额`**：29 个模型 = **按充值余额计费**
+3. 选中「个人余额」组的 `deepseek-v4-flash`（模型不变、只换计费通道，最省）。
+4. 核实：`sessions.provider` 由 `taotoken/free` → **`taotoken/pro`**；
+   `ui_preferences.last_model_selection` = `{model: deepseek-v4-flash, tier: pro, slot: pro}` ⇒ **新会话也会走余额套餐**。
+
+### 顺带解决的两个卡点
+- **僵尸租约**：切换后点「重新发送」报 `lease_rejected`（旧轮租约没释放），界面卡在「上一轮回复还在进行中」且按钮点了无反应。
+  → **重启 InsCode**（`WM_CLOSE` 干净退出，无弹窗）后僵尸态清除，被中断的轮次自动续跑。
+- **审批挂起**：`approval_audit` 显示有一个 `write_file` 审批在 20:31:29 挂起（等 72s 后被批准）；
+  期间输入框发送会被提示「请先处理上方审批」。⇒ 长轮次中**审批是主要阻塞点**，需及时处理。
+
+### 结果
+修复后同一会话立刻恢复：`session-stream.log` 实时增量输出，交付侧的「已编辑 N 个文件」计数
+**19 → 27 → 40 → 42** 持续增长（截图 `批次4_充值后切换个人余额套餐_恢复运行_20260916.png`），未再出现 `ProviderError`。
+
+### 备忘（下次直接用）
+- 入口：模型芯片（输入框右下）`Ctrl+M`；左下角**齿轮 = 设置**；界面缩小时底部工具条才不会被任务栏遮住。
+- 「个人套餐」vs「个人余额」是**两个不同的计费通道**，名字像但含义完全不同 —— 选错等于没充值。
+- 该应用本名是 **AtomCode/AtomGit 系**（`~/.config/inscode/` 下为 `config.toml` + `taotoken.json` + `inscode.db`），
+  配置与遥测都在这里，排查问题时优先读 `turn_telemetry` / `approval_audit` / `logs/turn-lifecycle.log`。
