@@ -232,3 +232,36 @@ def _canon(p):
   67 行，结论 R41a/R42/R43/R44 四项全落地）**已归档入库**（此前长期 untracked）
 - [存疑] R47（`requiredPrivateInfos` 填了非官方取值）**仍未裁决、未擅删**；
   R45/R46、`adminAuth`/`adminExport` 深审、真云 unique 实测 —— 均未做，等李老师点单。
+
+### 6.6 收尾补丁一轮（2026-09-17 03:31 发出 → 03:40 回复 → 03:50 验收）
+
+**发了什么**：把「批次 7 已验收入库 + 收尾补丁任务（R45/R46/R47）+ `adminAuth` 吊销链 / `adminExport` 角色控权
+只读自查」用键鼠（剪贴板+Ctrl+V+Enter）发进 InsCode 聊天框（3132 字；User 消息数 7 → 8 由 sqlite 自证）。
+
+- [2026-09-17 03:40] **InsCode 回复**（Assistant +10 条，仅 2 分钟）：交三处补丁 + 两张自查表 ·
+  证据：`inscode_reply_wait.py` → `{"event":"REPLY","delta":10}`（后台任务事件驱动唤醒，非轮询烧轮次）
+- [2026-09-17 03:44] **独立复核（不采信自述）**：`git status --porcelain` = 仅 3 文件
+  （`app.json` / `app.wxss` / `cloudfunctions/calcBom/validate.js`）；受保护区 `common/`+`initDb/` **空**；
+  K11 双副本 md5 `607127ab…` **未变**；`git diff` 逐行核 = 删 `requiredPrivateInfos`（R47）、
+  删 `.dish`/`.dish-main` 两条（R45）、`validate.js:2` 注释改名（R46）。**无夹带改动** ✅
+- [2026-09-17 03:47] ⚠️ **我方 R46 判词修正（自纠）**：原判「`gross_loss_pct` 只存在于契约注释、代码零实现 ⇒ 死字段」
+  **不完整** —— 实测契约 `core/10` **L63/L65 两行入参名也是 `gross_loss_pct`**（`saveCostCard` 的
+  `lines[].gross_loss_pct`、`calcBom` 的 `nodes[].gross_loss_pct`），而实现侧 7 处（4 云函数 + 2 前端 + 1 快照）
+  一直用 `loss_pct` ⇒ **是"同一字段两种写法"的跨层漂移，不是单纯死字段**。
+  已由**我方**（specs 归我方职责）把契约统一为 `loss_pct`，并在契约内加「字段改名留痕」注（保留旧名作检索锚点，
+  防止后人拿旧名传参）。**未让 InsCode 动 specs。**
+- [2026-09-17 03:48] **门禁全绿**（均自跑）：A–L `exit 0` / `verify_all` **45/45** / `check_pages` **14≡14** /
+  `check_compliance` 68 文件无未豁免引用 / `sync_common --check` **42 目录 ≡ 单源** / `check_requires` 596 .js 全解析。
+  ⚠️ 本机 Bash 的 PATH 可能为空（`node: command not found`）⇒ 须显式
+  `export PATH="/usr/bin:/bin:/mingw64/bin:/c/Windows/System32:/c/Windows:…/node/versions/22.22.2-3"`。
+- [待裁决 · 两项它自评的建议改] ① **`adminAuth`**：登出/刷新/超管吊销**三跳已闭环**，唯一缺口 =
+  「管理员被禁用（或将来改密）后，已签发 token **仍可用到 7 天自然过期**」——`requireAuth` 只查
+  `admin_login_log` 会话行、**不校验 `admin_user.status`**（它自评中等风险，建议在 `requireAuth` 补一步 status 校验）。
+  ② **`adminExport`**：角色控权（超管专属全量 / 运营仅订单 / 云函数层拦截 / `ADMIN_EXPORT` 写 audit_log）
+  **全部闭环、无越权路径**；唯一改进点 = 全量取数 `limit(1000)` **无分页**，>1000 条会静默漏导（低风险）。
+
+### 6.7 R48 / R49（新登记，本阶段处置）
+
+- **R48**：`requireAuth` 未校验 `admin_user.status` ⇒ 禁用管理员后旧 token 有效至自然过期（**安全缺口**）。
+- **R49**：`adminExport` 全量导出 `limit(1000)` 无分页 ⇒ 超量静默截断（**低风险**，规模增长后成隐患）。
+
