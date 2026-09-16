@@ -27,7 +27,7 @@ const r = calcSandbox(base);
 
 check('固定成本合计 = 21,300（2130000分）', r.fixed_total_fen === 2130000, `=${r.fixed_total_fen}分`);
 check('综合变动成本率 = 45%', r.composite_var_rate_pct === 45, `=${r.composite_var_rate_pct}%`);
-check('边际贡献率 = 55%', r.margin_rate_pct === 0.55, `=${r.margin_rate_pct}`);
+check('边际贡献率 = 55%', r.margin_rate_ratio === 0.55, `=${r.margin_rate_ratio}`);
 check('🏆 保本月营业额 = 38,727.27（3872727分）', r.break_even_monthly_fen === 3872727, `=${r.break_even_monthly_fen}分`);
 backcheckFen('保本月营业额', r.break_even_monthly_fen, 3872727);
 check('🏆 保本日均 = 1,290.91（129091分）', r.break_even_daily_fen === 129091, `=${r.break_even_daily_fen}分`);

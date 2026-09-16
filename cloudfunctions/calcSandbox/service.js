@@ -24,7 +24,7 @@
  *   - varFoodPct, varMktPct, varOtherPct: 三类变动成本率%（综合 = 三者和）
  *   - targetProfitFen: 目标月利润（分）
  * @returns {object} {
- *   fixed_total_fen, composite_var_rate_pct, margin_rate_pct, red_alert:boolean,
+ *   fixed_total_fen, composite_var_rate_pct, margin_rate_ratio, red_alert:boolean,
  *   break_even_monthly_fen, break_even_daily_fen, target_monthly_fen, target_daily_fen
  * }
  */
@@ -68,7 +68,7 @@ function calcSandbox(clean) {
   return {
     fixed_total_fen: fixedTotalFen,
     composite_var_rate_pct: compositeVarRatePct,
-    margin_rate_pct: Math.round(marginRatePct * 10000) / 10000,
+    margin_rate_ratio: Math.round(marginRatePct * 10000) / 10000,
     red_alert: redAlert,
     break_even_monthly_fen: breakEvenMonthlyFen,
     break_even_daily_fen: breakEvenDailyFen,

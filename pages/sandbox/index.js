@@ -102,7 +102,9 @@ Page({
           red_alert: !!d.red_alert,
           fixed_total: fen(d.fixed_total_fen),
           composite_var: d.composite_var_rate_pct != null ? d.composite_var_rate_pct.toFixed(1) : '—',
-          margin_rate: d.margin_rate_pct != null ? (d.margin_rate_pct * 100).toFixed(1) : '—',
+          // margin_rate_ratio 是比率（0.55 = 55%），出参保留 4 位小数；显示需 ×100 转百分数。
+          // 与 composite_var_rate_pct（百分数，直接 toFixed）单位不同 —— 按 R41 口径以 _ratio/_pct 后缀区分。
+          margin_rate: d.margin_rate_ratio != null ? (d.margin_rate_ratio * 100).toFixed(1) : '—',
           break_even_monthly: fen(d.break_even_monthly_fen),
           break_even_daily: fen(d.break_even_daily_fen),
           target_monthly: fen(d.target_monthly_fen),
