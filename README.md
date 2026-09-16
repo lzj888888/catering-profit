@@ -67,6 +67,8 @@ key(VK['B'], ctrl=True)          # Ctrl+B 编译
 | `scripts/win_gui.py` | 核心驱动，模块 + CLI 双形态 |
 | `scripts/ocr_screen.py` | OCR 读屏/读图（list/read/find/shot/watch），依赖在 `vendor/ocrlibs/` |
 | `scripts/bootstrap.py` | 换机体检 + `--install` 装依赖 + `--hint` 打印提醒词 |
+| `scripts/hook_reminder.py` | **常驻提醒钩子本体**（SessionStart 注入定位 / UserPromptSubmit 命中关键词注入避坑） |
+| `scripts/install_hooks.py` | 把钩子幂等装进 `~/.workbuddy/settings.json`（含 `--status` / `--remove`） |
 | `scripts/pack.py` | 打包成 zip，便于拷贝到别的电脑 |
 | `vendor/ocrlibs/` | OCR 依赖自带（winocr + winrt-*），离线可用 |
 | `references/pitfalls.md` | **26 条踩坑全集**（症状 → 真因 → 对策） |

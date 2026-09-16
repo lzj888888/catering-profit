@@ -127,6 +127,9 @@ screenshot_window(h, r'C:\tmp\b.png')    # ⑤ 再截一张确认结果
 全部坑与判定法见 `references/pitfalls.md`；换电脑安装见 `references/install.md`；
 给新会话的"提醒词"在 `references/reminder.md`。
 
+**常驻化（推荐）**：本技能已通过 Hooks 常驻 —— 新会话开工就有这套能力，不用等关键词匹配。
+换机重装只需 `python scripts/install_hooks.py`（幂等）。详见 `references/install.md` §6。
+
 ## 一条通用方法学：**哨兵法**（要"证明某个配置真生效"时）
 > 适用：任何"我改了构建/忽略/过滤配置，但工具没报错、结果又看不出区别"的场合。
 
