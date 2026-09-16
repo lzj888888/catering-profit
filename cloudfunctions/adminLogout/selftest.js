@@ -28,11 +28,19 @@ const fakeColl = {
     };
   },
 };
+// 假 admin_user 集合（钉死平台返回契约：res.data 形态）
+const fakeAdminColl = {
+  rows: [{ admin_id: 'adm_1', status: 'active' }],
+  where(cond) {
+    const matched = this.rows.filter((r) => Object.keys(cond).every((k) => r[k] === cond[k]));
+    return { limit() { return { get: async () => ({ data: matched }) }; } };
+  },
+};
 (async () => {
-  const sess = await adminAuth.requireAuth(fakeColl, 'tok_logout');
+  const sess = await adminAuth.requireAuth(fakeColl, fakeAdminColl, 'tok_logout');
   check('退出前会话有效', sess.error === undefined && sess.adminId === 'adm_1');
   await fakeColl.where({ token: 'tok_logout' }).remove();
-  const after = await adminAuth.requireAuth(fakeColl, 'tok_logout');
+  const after = await adminAuth.requireAuth(fakeColl, fakeAdminColl, 'tok_logout');
   check('退出后同一 token → ADMIN_AUTH_FAILED（立即失效）', after.error === 'ADMIN_AUTH_FAILED');
 
   console.log(`\n==== adminLogout 批次 6 自测结果：${pass} 通过 / ${failN} 失败 ====`);

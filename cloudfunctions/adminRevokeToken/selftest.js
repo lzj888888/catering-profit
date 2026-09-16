@@ -32,12 +32,23 @@ const fakeColl = {
     };
   },
 };
+// 假 admin_user 集合（钉死平台返回契约：res.data 形态）
+const fakeAdminColl = {
+  rows: [
+    { admin_id: 'adm_1', status: 'active' },
+    { admin_id: 'adm_2', status: 'active' },
+  ],
+  where(cond) {
+    const matched = this.rows.filter((r) => Object.keys(cond).every((k) => r[k] === cond[k]));
+    return { limit() { return { get: async () => ({ data: matched }) }; } };
+  },
+};
 (async () => {
   // 吊销 adm_2 的全部会话
   await fakeColl.where({ admin_id: 'adm_2' }).remove();
   check('adm_2 的两个会话全部删除', fakeColl.rows.filter((r) => r.admin_id === 'adm_2').length === 0);
   check('adm_1 会话不受影响', fakeColl.rows.filter((r) => r.admin_id === 'adm_1').length === 1);
-  const gone = await adminAuth.requireAuth(fakeColl, 't1');
+  const gone = await adminAuth.requireAuth(fakeColl, fakeAdminColl, 't1');
   check('被吊销 token → ADMIN_AUTH_FAILED', gone.error === 'ADMIN_AUTH_FAILED');
 
   console.log(`\n==== adminRevokeToken 批次 6 自测结果：${pass} 通过 / ${failN} 失败 ====`);

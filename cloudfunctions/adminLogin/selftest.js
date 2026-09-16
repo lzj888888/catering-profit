@@ -40,7 +40,7 @@ check('token 为 64 位 hex', /^[0-9a-f]{64}$/.test(token), token.length);
 check('TOKEN_TTL_MS = 7 天', adminAuth.TOKEN_TTL_MS === 7 * DAY);
 check('tokenTtlMs() = 7 天', adminAuth.tokenTtlMs() === 7 * DAY);
 
-// requireAuth 中间件（注入假会话集合）
+// requireAuth 中间件（注入假会话集合 + 假 admin_user 集合）
 console.log('===== adminAuth 中间件（requireAuth / parseBearer）=====');
 const fakeColl = {
   rows: [
@@ -52,15 +52,68 @@ const fakeColl = {
     return { limit() { return { get: async () => ({ data: rows }) }; } };
   },
 };
+// 假 admin_user 集合（钉死平台返回契约：res.data 形态）
+const fakeAdminColl = {
+  rows: [
+    { admin_id: 'adm_1', status: 'active' },
+    { admin_id: 'adm_2', status: 'active' },
+  ],
+  where(cond) {
+    const rows = this.rows.filter((r) => r.admin_id === cond.admin_id);
+    return { limit() { return { get: async () => ({ data: rows }) }; } };
+  },
+};
 (async () => {
-  const okSess = await adminAuth.requireAuth(fakeColl, 'tok_ok');
-  check('有效 token → 注入 adminId/role', okSess.adminId === 'adm_1' && okSess.role === 'super' && !okSess.error);
-  const expired = await adminAuth.requireAuth(fakeColl, 'tok_expired');
+  const okSess = await adminAuth.requireAuth(fakeColl, fakeAdminColl, 'tok_ok');
+  check('有效 token + active 账号 → 注入 adminId/role', okSess.adminId === 'adm_1' && okSess.role === 'super' && !okSess.error);
+  const expired = await adminAuth.requireAuth(fakeColl, fakeAdminColl, 'tok_expired');
   check('过期 token → ADMIN_TOKEN_EXPIRED', expired.error === 'ADMIN_TOKEN_EXPIRED');
-  const none = await adminAuth.requireAuth(fakeColl, 'nope');
+  const none = await adminAuth.requireAuth(fakeColl, fakeAdminColl, 'nope');
   check('不存在 token → ADMIN_AUTH_FAILED', none.error === 'ADMIN_AUTH_FAILED');
-  const empty = await adminAuth.requireAuth(fakeColl, '');
+  const empty = await adminAuth.requireAuth(fakeColl, fakeAdminColl, '');
   check('空 token → ADMIN_AUTH_FAILED', empty.error === 'ADMIN_AUTH_FAILED');
+
+  // ===== R48 三例（账号状态校验，fail-closed）=====
+  console.log('');
+  console.log('===== R48 · 账号状态校验（禁用旧 token 立即失效）=====');
+  // ① 禁用管理员的旧 token → 被拒
+  const disabledColl = {
+    rows: [{ admin_id: 'adm_disabled', status: 'disabled' }],
+    where(cond) { const rows = this.rows.filter((r) => r.admin_id === cond.admin_id); return { limit() { return { get: async () => ({ data: rows }) }; } }; },
+  };
+  const sessionForDisabled = {
+    rows: [{ token: 'tok_disabled', admin_id: 'adm_disabled', role: 'op', expires_at: NOW + 3 * DAY }],
+    where(cond) { const rows = this.rows.filter((r) => r.token === cond.token); return { limit() { return { get: async () => ({ data: rows }) }; } }; },
+  };
+  const disabledAuth = await adminAuth.requireAuth(sessionForDisabled, disabledColl, 'tok_disabled');
+  check('① 禁用管理员旧 token → ADMIN_AUTH_FAILED（不等自然过期）', disabledAuth.error === 'ADMIN_AUTH_FAILED');
+
+  // ② 正常管理员的 token → 放行
+  const activeAuth = await adminAuth.requireAuth(fakeColl, fakeAdminColl, 'tok_ok');
+  check('② 正常管理员 token → 放行', activeAuth.error === undefined && activeAuth.adminId === 'adm_1');
+
+  // ③ 账号记录取不到（如被删）→ fail-closed 拒绝
+  const emptyAdminColl = {
+    rows: [],
+    where() { return { limit() { return { get: async () => ({ data: [] }) }; } }; },
+  };
+  const noAdmin = await adminAuth.requireAuth(fakeColl, emptyAdminColl, 'tok_ok');
+  check('③ 账号记录不存在 → 拒绝（fail-closed）', noAdmin.error === 'ADMIN_AUTH_FAILED');
+
+  // ④ 账号读异常（SDK 抛错）→ 拒绝（不因容错放行）
+  const throwAdminColl = {
+    where() { return { limit() { return { get: async () => { throw new Error('db down'); } }; } }; },
+  };
+  const dbErr = await adminAuth.requireAuth(fakeColl, throwAdminColl, 'tok_ok');
+  check('④ 账号读异常 → 拒绝（容错不放行）', dbErr.error === 'ADMIN_AUTH_FAILED');
+
+  // ⑤ status 未知值 → 拒绝（fail-closed）
+  const weirdColl = {
+    rows: [{ admin_id: 'adm_1', status: 'pending_review' }],
+    where(cond) { const rows = this.rows.filter((r) => r.admin_id === cond.admin_id); return { limit() { return { get: async () => ({ data: rows }) }; } }; },
+  };
+  const weirdAuth = await adminAuth.requireAuth(fakeColl, weirdColl, 'tok_ok');
+  check('⑤ status 未知值 → 拒绝（fail-closed）', weirdAuth.error === 'ADMIN_AUTH_FAILED');
 
   check('parseBearer 标准头', adminAuth.parseBearer({ Authorization: 'Bearer abc123' }) === 'abc123');
   check('parseBearer 小写头', adminAuth.parseBearer({ authorization: 'Bearer xyz' }) === 'xyz');

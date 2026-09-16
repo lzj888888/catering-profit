@@ -75,19 +75,53 @@ function parseBearer(headers) {
 
 // ===================== 会话中间件（注入式） =====================
 
+// 管理员账号的可用状态（admin_user.status）。取不到记录 / 任何非此值 → fail-closed 拒绝。
+const ADMIN_STATUS_ACTIVE = 'active';
+
 /**
- * adminAuth 中间件：校验 token → 返回会话信息或错误。
- * @param {object} sessionColl 注入的会话集合句柄（db.collection('admin_login_log')；测试可注入假集合）
+ * adminAuth 中间件：校验 token → 校验 admin_user 账号状态 → 返回会话信息或错误。
+ * @param {object} sessionColl  注入的会话集合句柄（db.collection('admin_login_log')；测试可注入假集合）
+ * @param {object} adminUserColl 注入的管理员集合句柄（db.collection('admin_user')；测试可注入假集合）
  * @param {string} token Bearer token
  * @returns {Promise<object>} 成功 { adminId, role, sessionId }；失败 { error: 'ADMIN_AUTH_FAILED'|'ADMIN_TOKEN_EXPIRED' }
+ *
+ * ⚠️ R48（安全加固）：token 有效 ≠ 账号可用。管理员被禁用（status !== 'active'）后，
+ *   已签发 token 必须立即失效，不得用到自然过期 —— 否则禁用形同虚设。
+ *   · 按会话行 admin_id 读 admin_user，仅当 status==='active' 才放行；
+ *   · 取不到记录 / status 非 active / 读取异常 → **一律 fail-closed**（复用 ADMIN_AUTH_FAILED，不新增错误码）；
+ *   · 读库容错：SDK 返回 { data } 形态（r && r.data && r.data[0]），包 try/catch（历史教训：doc().get()
+ *     被当文档本体用 → 线上恒错；此处宁可拒绝也不放行）。
  */
-async function requireAuth(sessionColl, token) {
+async function requireAuth(sessionColl, adminUserColl, token) {
   if (!token) return { error: 'ADMIN_AUTH_FAILED' };
-  const res = await sessionColl.where({ token }).limit(1).get();
-  const row = res && res.data && res.data[0];
+
+  // 1) 会话行：token 必须存在且未过期
+  let row = null;
+  try {
+    const res = await sessionColl.where({ token }).limit(1).get();
+    row = res && res.data && res.data[0];
+  } catch (e) {
+    return { error: 'ADMIN_AUTH_FAILED' };       // 会话读异常 → 拒绝
+  }
   if (!row) return { error: 'ADMIN_AUTH_FAILED' };
   if ((row.expires_at || 0) < Date.now()) return { error: 'ADMIN_TOKEN_EXPIRED' };
-  return { adminId: row.admin_id || '', role: row.role || 'op', sessionId: row._id || '' };
+
+  // 2) R48：账号状态校验（fail-closed）
+  const adminId = row.admin_id || '';
+  if (!adminId) return { error: 'ADMIN_AUTH_FAILED' };
+  let adminRow = null;
+  try {
+    const ar = await adminUserColl.where({ admin_id: adminId }).limit(1).get();
+    adminRow = ar && ar.data && ar.data[0];
+  } catch (e) {
+    return { error: 'ADMIN_AUTH_FAILED' };       // 账号读异常 → 拒绝（不因容错放行）
+  }
+  // 取不到记录 / 状态不是 active（禁用/停用/未知值）→ 一律拒绝
+  if (!adminRow || adminRow.status !== ADMIN_STATUS_ACTIVE) {
+    return { error: 'ADMIN_AUTH_FAILED' };
+  }
+
+  return { adminId, role: row.role || 'op', sessionId: row._id || '' };
 }
 
 /**

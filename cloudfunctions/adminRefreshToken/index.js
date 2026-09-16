@@ -18,7 +18,7 @@ exports.main = async (event) => {
   const token = parseBearer(headers);
 
   // ===== 1. adminAuth 中间件（校验当前 token）=====
-  const sess = await requireAuth(db.collection('admin_login_log'), token);
+  const sess = await requireAuth(db.collection('admin_login_log'), db.collection('admin_user'), token);
   if (sess.error) return fail(sess.error, '登录已失效');
 
   const now = nowUtc();

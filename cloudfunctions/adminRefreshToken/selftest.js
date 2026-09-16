@@ -33,11 +33,19 @@ const fakeColl = {
     };
   },
 };
+// 假 admin_user 集合（钉死平台返回契约：res.data 形态）
+const fakeAdminColl = {
+  rows: [{ admin_id: 'adm_1', status: 'active' }],
+  where(cond) {
+    const matched = this.rows.filter((r) => Object.keys(cond).every((k) => r[k] === cond[k]));
+    return { limit() { return { get: async () => ({ data: matched }) }; } };
+  },
+};
 (async () => {
-  const before = await adminAuth.requireAuth(fakeColl, 'tok_1');
+  const before = await adminAuth.requireAuth(fakeColl, fakeAdminColl, 'tok_1');
   check('吊销前 token 有效', before.error === undefined && before.adminId === 'adm_1');
   await fakeColl.where({ token: 'tok_1' }).remove(); // 模拟 adminLogout 删除会话
-  const after = await adminAuth.requireAuth(fakeColl, 'tok_1');
+  const after = await adminAuth.requireAuth(fakeColl, fakeAdminColl, 'tok_1');
   check('吊销后 token → ADMIN_AUTH_FAILED', after.error === 'ADMIN_AUTH_FAILED');
 
   // adminRevokeToken：超管角色拦截

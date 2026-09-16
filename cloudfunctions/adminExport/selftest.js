@@ -53,5 +53,50 @@ const eh = ['user_id', 'expire_at', 'source', 'updated_at'];
 const ecsv = csvFromRows(eh, [['u1', 1727000000000, 'manual', 1726000000000]]);
 check('权益 CSV 4 字段 + BOM', ecsv.split('\r\n')[0].split(',').length === 4 && ecsv.charCodeAt(0) === 0xFEFF);
 
-console.log(`\n==== adminExport 批次 6 自测结果：${pass} 通过 / ${failN} 失败 ====`);
-process.exit(failN === 0 ? 0 : 1);
+console.log('');
+console.log('===== R49 · 分页累取到耗尽（fetchAllPages，service.js）=====');
+const { fetchAllPages } = require('./service');
+(async () => {
+  // ① 常规：不足一页 → 取尽
+  const small = await fetchAllPages(async (skip, limit) => Array.from({ length: 3 }, (_, i) => ({ id: skip + i })));
+  check('不足一页 → 全部取到（3 条）', small.length === 3);
+
+  // ② >1000 条边界：1500 条 → 分 2 页取尽，无静默截断
+  const total = 1500;
+  const pageHits = [];
+  const big = await fetchAllPages(async (skip, limit) => {
+    pageHits.push({ skip, limit });
+    const n = Math.min(limit, total - skip);
+    return Array.from({ length: Math.max(0, n) }, (_, i) => ({ id: skip + i }));
+  });
+  check('1500 条 → 分页取尽（无静默截断）', big.length === 1500);
+  check('分页命中：页1 skip=0/limit=1000，页2 skip=1000/limit=1000', pageHits.length === 2 && pageHits[0].skip === 0 && pageHits[1].skip === 1000);
+
+  // ③ 精确边界：恰好 2000 条（20 页 × 1000）→ 取尽不触发上限
+  const exact = await fetchAllPages(async (skip, limit) => {
+    const n = Math.min(limit, 2000 - skip);
+    return Array.from({ length: Math.max(0, n) }, (_, i) => ({ id: skip + i }));
+  });
+  check('恰好 2000 条（上限内）→ 取尽', exact.length === 2000);
+
+  // ④ 超过安全上限（20000）→ 响亮失败（HARD_CAP_EXCEEDED），不静默截断
+  let capErr = null;
+  try {
+    await fetchAllPages(async (skip, limit) => Array.from({ length: limit }, (_, i) => ({ id: skip + i })), { pageSize: 1000, maxPages: 20 });
+  } catch (e) { capErr = e; }
+  check('超过安全上限 → 抛 HARD_CAP_EXCEEDED（响亮失败）', capErr && capErr.code === 'HARD_CAP_EXCEEDED');
+
+  // ⑤ 注入小上限（测试可控）：maxPages=2 且数据不断 → 第 3 页触发响亮失败
+  let smallCapErr = null;
+  try {
+    await fetchAllPages(async (skip, limit) => Array.from({ length: limit }, (_, i) => ({ id: skip + i })), { pageSize: 3, maxPages: 2 });
+  } catch (e) { smallCapErr = e; }
+  check('注入 maxPages=2 且数据不断 → 响亮失败', smallCapErr && smallCapErr.code === 'HARD_CAP_EXCEEDED');
+
+  // ⑥ 空集合 → 0 条
+  const empty = await fetchAllPages(async () => []);
+  check('空集合 → 0 条', empty.length === 0);
+
+  console.log(`\n==== adminExport 批次 6/7 自测结果：${pass} 通过 / ${failN} 失败 ====`);
+  process.exit(failN === 0 ? 0 : 1);
+})();
