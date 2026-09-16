@@ -1,9 +1,13 @@
-// pages/month/index.js —— 批次 4 · M1 月度经营首页
+// pages/month/index.js —— 批次 4/5 · M1 月度经营首页
 // 月份选择器 + 双口径 tab + 结果卡 + 待归档徽标 + 结账归档。
 // ⚠️ 计算下沉：金额一律取 getLedger 返回的整数「分」，前端仅展示不计算。
-// ⚠️ 付费 tab：仅展示后端返回的真实利润与 freeHint，**点击不触发付费弹窗**（交互边界：非保存超限/导出）。
+// ⚠️ 批次 5 权限 tab（§2.1.1/§2.4）：免费用户只见「经营参考估算」；付费用户（expire_at 有效）见双 tab。
+//   · 前端只读 payQueryEntitlement 的 expire_at/is_active，不读 plan_id；
+//   · **切换 tab 不触发付费弹窗**（交互边界：仅保存超限/导出触发）；
+//   · 到期前 7 天展示常驻提示条（双渠道之一，订阅消息为另一渠道）。
 const api = require('../../utils/api.js');
 const ui = require('../../utils/ui.js');
+const entitle = require('../../utils/entitlement.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 const app = getApp();
 
@@ -33,10 +37,18 @@ Page({
       archiveNow: TERMS.nav.archiveNow,
       confirmArchive: TERMS.ui.confirmArchive,
       history: TERMS.ui.history,
+      expireSoonTitle: TERMS.pay.expireSoonTitle,
+      renewEntry: TERMS.pay.renewEntry,
+      goOrders: TERMS.pay.goOrders,
+      expiredLocked: TERMS.pay.expiredLocked,
     },
     months: [],              // 可选月份（倒序）
     curMonth: '',
     tab: 'free',
+    isPaid: false,           // 权限判定（只读 expire_at / is_active）
+    expireSoonDays: 0,       // 到期前 7 天内天数（0 = 不提示）
+    expireSoonText: '',      // 预计算提示文案（WXML 不支持函数调用）
+    isExpired: false,        // 曾付费但已过期 → 回落到免费档 + 提示
     isArchive: false,
     archivedAtMs: 0,
     canArchive: false,
@@ -51,6 +63,19 @@ Page({
     try {
       await api.ensureShop();
       ui.setTitle(TERMS.modules.m1.display);
+      // 批次 5：拉权限（只读 expire_at），免费用户 tab 锁定在 free
+      let ent = null;
+      try { ent = await entitle.fetchEntitlement(); } catch (e) { /* 权限查询失败回落免费档 */ }
+      const isPaid = entitle.isPaid(ent);
+      const expireSoonDays = entitle.expireSoonDays(ent);
+      const isExpired = !!(ent && ent.expire_at > 0 && !isPaid);
+      this.setData({
+        isPaid,
+        expireSoonDays,
+        expireSoonText: expireSoonDays > 0 ? TERMS.pay.expireSoonBody(expireSoonDays) : '',
+        isExpired,
+        tab: isPaid ? (this.data.tab === 'paid' ? 'paid' : 'free') : 'free',
+      });
       const cur = this.data.curMonth || ui.nowMonth();
       const ml = await api.call('getMonthList', {});
       let months = (ml.list || []).map((m) => m.month);
@@ -116,6 +141,7 @@ Page({
   goInventory() { wx.navigateTo({ url: '/pages/month/inventory?month=' + this.data.curMonth }); },
   goAmortize() { wx.navigateTo({ url: '/pages/month/amortize?month=' + this.data.curMonth }); },
   goResult() { wx.navigateTo({ url: '/pages/month/result?month=' + this.data.curMonth }); },
+  goOrders() { wx.navigateTo({ url: '/pages/pay/orders' }); },
 
   onArchive() {
     wx.showModal({

@@ -1,0 +1,2 @@
+/* pages/pay/orders.wxss —— 订单记录页 */
+.btn-block { width: 100%; }

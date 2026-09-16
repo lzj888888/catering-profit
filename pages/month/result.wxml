@@ -1,6 +1,15 @@
 <view class="container safe-bottom" wx:if="{{!loading && r}}">
   <view class="archived-bar" wx:if="{{isArchive}}">{{t.archiveLocked}}</view>
 
+  <!-- 批次 5 · 到期提醒常驻提示条（双渠道兜底） -->
+  <view class="expire-banner" wx:if="{{expireSoonDays > 0}}">
+    <view class="muted">{{t.expireSoonTitle}} · {{expireSoonText}}</view>
+    <view class="expire-ops">
+      <button class="btn-small ghost" style="margin:0;" bindtap="onAskSubscribe">{{t.subscribeTip}}</button>
+      <button class="btn-small ghost" style="margin:0;color:#ff6b35;border-color:#ff6b35;" bindtap="goOrders">{{t.renewEntry}}</button>
+    </view>
+  </view>
+
   <!-- 双利润 -->
   <view class="card2">
     <view class="muted">{{t.refProfit}}</view>

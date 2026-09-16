@@ -1,1 +1,4 @@
 /* pages/month/result.wxss —— M1 结果展示页（继承 app.wxss 共享组件） */
+.expire-banner { background: #fef3c7; border-radius: 16rpx; padding: 20rpx 24rpx; margin-bottom: 16rpx; }
+.expire-ops { display: flex; gap: 16rpx; margin-top: 12rpx; }
+.expire-ops .btn-small { flex: 1; }

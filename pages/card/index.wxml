@@ -23,5 +23,8 @@
   <view wx:if="{{list.length === 0 && !loading}}" class="empty">{{t.empty}}</view>
   <view wx:if="{{loading}}" class="muted" style="text-align:center;padding:40rpx;">{{t.loading}}</view>
 
-  <button class="btn primary" bindtap="goAdd">{{t.addCard}}</button>
+  <view class="ops-row">
+    <button class="btn primary" style="flex:2;margin-top:24rpx;" bindtap="goAdd">{{t.addCard}}</button>
+    <button class="btn ghost" style="flex:1;margin-top:24rpx;margin-left:16rpx;" bindtap="onExport">{{t.export}}</button>
+  </view>
 </view>

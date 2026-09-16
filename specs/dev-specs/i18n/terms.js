@@ -360,6 +360,46 @@ const TERMS = {
     namePh: '如 招牌炒饭',
     nameRequired: '请输入菜品名称',
   },
+
+  // ===== 二十二、批次 5 付费全流程文案 =====
+  pay: {
+    // 支付结果
+    successTitle: '已开通',
+    successBody: (dateStr) => `有效期至 ${dateStr}`,
+    failTitle: '未完成',
+    failBody: '未收到支付结果，可重试或联系客服。',
+    retry: '重试',
+    contactService: '联系客服开通',
+    contactServiceHint: '当前为私域开通阶段，请联系客服完成开通。',
+    // 订单记录页
+    orderTitle: '订单记录',
+    orderNo: '订单号',
+    plan: '套餐',
+    amount: '金额',
+    channel: '支付方式',
+    status: '状态',
+    statusPaid: '已支付',
+    statusPending: '待支付',
+    statusManual: '待客服开通',
+    paidAt: '支付时间',
+    empty: '还没有订单',
+    expireInfo: '当前有效期至',
+    renew: '续费',
+    // 到期提醒（双渠道：订阅消息 + 结果页常驻提示条）
+    expireSoonTitle: '即将到期',
+    expireSoonBody: (days) => `您的真实利润将在 ${days} 天后到期，续费后有效期自动累加。`,
+    renewEntry: '去续费',
+    subscribeTip: '到期提醒：授权后可接收订阅消息提醒',
+    subscribeDenied: '未授权到期提醒，仍可在本页看到到期提示',
+    // 权限 tab
+    paidTabAvailable: '真实利润',
+    freeTabHint: '当前为经营参考估算（按你直接填的消耗）。开通真实利润，可用库存倒轧算真实消耗，结果更准。',
+    expiredLocked: '权限已到期，已回落到经营参考估算。历史数据仍可查看，续费后立即恢复。',
+    // 弹窗动作
+    goPay: '去下单',
+    goOrders: '查看订单',
+    goRenew: '去续费',
+  },
 };
 
 /**

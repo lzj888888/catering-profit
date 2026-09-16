@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：21 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~4 代码自测（batch0/1/2/3/4）
+// 串联：28 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~5 代码自测（batch0/1/2/3/4/5）
 //       + 静态路径检查（tools/check_requires.js）。
 // ⚠️ 新增/删除套件时必须同步改上面这句数量，否则 `SUITES.length` 与注释不符（R21）。
 // 用同一个 node（process.execPath）跑子进程，避免多解释器/环境问题。
@@ -37,6 +37,14 @@ const SUITES = [
   ['batch4-calcSandbox',  'cloudfunctions/calcSandbox/selftest.js'],
   ['batch4-getAmortSchedule', 'cloudfunctions/getAmortSchedule/selftest.js'],
   ['batch4-saveLedger',   'cloudfunctions/saveLedger/selftest.js'],
+  // ===== 批次 5 · 付费全流程（配额 + 订单 + 回调 + 权益 + 提醒 + 订单记录）=====
+  ['batch5-checkQuota',        'cloudfunctions/checkQuota/selftest.js'],
+  ['batch5-payCreateOrder',    'cloudfunctions/payCreateOrder/selftest.js'],
+  ['batch5-payCallback',       'cloudfunctions/payCallback/selftest.js'],
+  ['batch5-payQueryEntitlement', 'cloudfunctions/payQueryEntitlement/selftest.js'],
+  ['batch5-payRenew',          'cloudfunctions/payRenew/selftest.js'],
+  ['batch5-payExpireNotify',   'cloudfunctions/payExpireNotify/selftest.js'],
+  ['batch5-payOrderList',      'cloudfunctions/payOrderList/selftest.js'],
   // 后续批次的套件在此追加即可（如 batch2_selfcheck ...）；追加后记得同步头部注释里的套件数量。
 ];
 

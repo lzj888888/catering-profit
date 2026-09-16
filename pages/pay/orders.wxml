@@ -1,0 +1,41 @@
+<view class="container safe-bottom" wx:if="{{!loading}}">
+  <!-- 当前有效期 + 续费入口 -->
+  <view class="card2" wx:if="{{expireText}}">
+    <view class="cell">
+      <text class="lbl">{{t.expireInfo}}</text>
+      <text class="val">{{expireText}}</text>
+    </view>
+    <button class="btn ghost btn-block" wx:if="{{showRenew}}" bindtap="onRenew">{{t.renew}}</button>
+  </view>
+
+  <!-- 订单列表 -->
+  <view class="card2" wx:for="{{orders}}" wx:key="order_no">
+    <view class="cell">
+      <text class="lbl">{{t.orderNo}}</text>
+      <text class="val muted">{{item.order_no}}</text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.plan}}</text>
+      <text class="val">{{item.plan_name}}</text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.amount}}</text>
+      <text class="val">{{t.cur}}{{item.amount}}</text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.channel}}</text>
+      <text class="val">{{item.channel}}</text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.status}}</text>
+      <text class="val"><text class="tag {{item.status === 'paid' ? '' : 'lock'}}">{{item.status_text}}</text></text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.paidAt}}</text>
+      <text class="val muted">{{item.paid_at}}</text>
+    </view>
+  </view>
+
+  <view wx:if="{{orders.length === 0 && !loading}}" class="empty">{{t.empty}}</view>
+</view>
+<view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

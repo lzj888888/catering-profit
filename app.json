@@ -10,7 +10,8 @@
     "pages/sandbox/index",
     "pages/card/index",
     "pages/card/edit",
-    "pages/card/version"
+    "pages/card/version",
+    "pages/pay/orders"
   ],
   "window": {
     "navigationBarTitleText": "开店算账",

@@ -1,4 +1,13 @@
 <view class="container safe-bottom" wx:if="{{!loading}}">
+  <!-- 批次 5 · 权限状态条（只读 expire_at 判定） -->
+  <view class="card2 banner" wx:if="{{isExpired}}">
+    <view class="muted">{{t.expiredLocked}}</view>
+  </view>
+  <view class="card2 banner warn" wx:if="{{expireSoonDays > 0}}">
+    <view class="muted">{{t.expireSoonTitle}} · {{expireSoonText}}</view>
+    <button class="btn-small ghost" style="margin-top:12rpx;" bindtap="goOrders">{{t.renewEntry}}</button>
+  </view>
+
   <!-- 月份选择 -->
   <view class="card2">
     <picker mode="selector" range="{{months}}" value="{{months.indexOf(curMonth)}}" bindchange="onMonthChange">
@@ -13,10 +22,10 @@
     <view wx:if="{{canArchive}}" class="hint">{{t.pendingArchive}} · {{t.goResult}}</view>
   </view>
 
-  <!-- 双口径 tab -->
+  <!-- 双口径 tab（免费用户仅见「经营参考估算」；付费用户见双 tab） -->
   <view class="tabs">
     <view class="tab {{tab === 'free' ? 'active' : ''}}" data-tab="free" bindtap="switchTab">{{t.freeTab}}</view>
-    <view class="tab {{tab === 'paid' ? 'active' : ''}}" data-tab="paid" bindtap="switchTab">{{t.paidTab}}</view>
+    <view class="tab {{tab === 'paid' ? 'active' : ''}}" wx:if="{{isPaid}}" data-tab="paid" bindtap="switchTab">{{t.paidTab}}</view>
   </view>
 
   <!-- 结果卡 -->
