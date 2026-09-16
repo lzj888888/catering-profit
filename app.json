@@ -23,9 +23,5 @@
     "enablePullDownRefresh": true
   },
   "style": "v2",
-  "lazyCodeLoading": "requiredComponents",
-  "requiredPrivateInfos": [
-    "getPrivacySetting",
-    "requirePrivacyAuthorize"
-  ]
+  "lazyCodeLoading": "requiredComponents"
 }

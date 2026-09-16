@@ -1,5 +1,5 @@
 // cloudfunctions/calcBom/validate.js —— 入参校验（纯函数，无云依赖，可单测）。
-// 契约（core/10 §3 M3）：calcBom 入参 { nodes:[{id,type,children[],qty,gross_loss_pct,...}] }。
+// 契约（core/10 §3 M3）：calcBom 入参 { nodes:[{id,type,children[],qty,loss_pct,...}] }。
 // 本实现接受扁平化「成本卡 + 素材快照」形态，语义对齐核心公式（M3 §3.5）：
 //   event.card { lines:[{quantity,net_unit_cost}], auxYuan, loss_pct, mode, batch_output, priceYuan, target_margin_pct }
 //   （辅料/售价以「元」入参，Service 内部统一转「分」；或直接以「分」传入 *_fen——两种都收，保证灵活）
