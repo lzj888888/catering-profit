@@ -265,3 +265,23 @@ def _canon(p):
 - **R48**：`requireAuth` 未校验 `admin_user.status` ⇒ 禁用管理员后旧 token 有效至自然过期（**安全缺口**）。
 - **R49**：`adminExport` 全量导出 `limit(1000)` 无分页 ⇒ 超量静默截断（**低风险**，规模增长后成隐患）。
 
+### 6.8 R50（新登记 + 守卫已落）：`_adminCore/adminAuth.js` 单源派生**无门禁覆盖**
+
+**发现经过**：R48 要改 `requireAuth`，InsCode 一动手就有 **26 个 `cloudfunctions/**/adminAuth.js` 同时变 M**
+⇒ 顺着查单源机制，发现 `cloudfunctions/_adminCore/adminAuth.js` 是自述的「单源」，
+各 admin 云函数目录各有**一份同名副本**（共 11 份），但 `tools/sync_common.js` **只管 `cloudfunctions/common/`**，
+对 `_adminCore` **零覆盖** —— 也就是说：**改了单源忘同步副本、或手改某一份副本，45 个套件全绿也发现不了**，
+上线后表现为「同一个鉴权逻辑在不同云函数里行为不一致」，且是静默的。
+（与 L 组把 `common/` 收编进门禁**之前**的状态完全同构 —— 属"修了一处没查同类"的典型。）
+
+**为什么不能改成 require 单源**：云函数各自独立打包上传，跨目录 require 到包外会 `MODULE_NOT_FOUND`（L 组实测结论）。
+⇒ 派生副本是**必需**的，**只能靠守卫守一致性**。
+
+**守卫**：`tools/check_admincore.js`
+- 逐字节（归一 BOM/CRLF）比对每份 `<func>/adminAuth.js` ≡ 单源；另校验「`index.js` 引了 `./adminAuth` 却没副本」（云端必然启动失败）。
+- `--fix` 用单源覆盖所有副本（确定性、可 git 回退）；报错信息给出"到底哪边是最新的"的两种修法。
+- **变异验证**：给 `adminQueryUser/adminAuth.js` 追加一行 → `exit 1` 点名「不一致」；还原 → `exit 0`（11 份全 ≡）。
+- 状态：**已落文件、已单独提交**；**登记进 `verify_all.js` 待 InsCode 本轮收尾后做**（避免与它正在改的
+  `verify_all.js` 抢同一文件）。
+
+
