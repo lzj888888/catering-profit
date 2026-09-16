@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>开店算账 · 管理后台</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: #f2f3f5; color: #1f2329; padding: 16px; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  h3 { margin: 4px 0 10px; }
+  .muted { color: #8a919f; font-size: 12px; }
+  .card { background: #fff; border-radius: 10px; padding: 14px; margin: 12px 0; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+  label { display: block; font-size: 13px; margin: 10px 0 4px; }
+  input, select { width: 100%; padding: 9px 10px; border: 1px solid #dcdfe6; border-radius: 6px; font-size: 14px; }
+  button { margin: 12px 4px 0 0; padding: 9px 18px; border: 0; border-radius: 6px; background: #ff6b35; color: #fff; font-size: 14px; cursor: pointer; }
+  button.ghost { background: #fff; color: #ff6b35; border: 1px solid #ff6b35; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+  th, td { border: 1px solid #ebeef5; padding: 6px 8px; text-align: left; white-space: nowrap; }
+  th { background: #f7f8fa; }
+  .ok { color: #22a06b; font-weight: 600; }
+  .err { color: #e74c3c; font-weight: 600; }
+  .row { display: flex; gap: 8px; }
+  .row > div { flex: 1; }
+  #toast { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.78); color: #fff; padding: 10px 18px; border-radius: 6px; font-size: 13px; display: none; z-index: 99; }
+  .banner { display: flex; justify-content: space-between; align-items: center; }
+  .tabs button { background: #fff; color: #444; border: 1px solid #dcdfe6; }
+  .tabs button.on { background: #ff6b35; color: #fff; border-color: #ff6b35; }
+  .expire { color: #b45309; }
+  .paid { color: #22a06b; }
+</style>
+</head>
+<body>
+<div id="toast"></div>
+
+<!-- ===== 登录 ===== -->
+<div id="loginView" class="card">
+  <h1>开店算账 · 管理后台</h1>
+  <div class="muted">独立管理员账号登录（非微信 openid）。登录成功后 token 7 天有效；连续 5 次密码错误锁定 30 分钟。</div>
+  <label>用户名</label><input id="loginUser" autocomplete="username" placeholder="super / 运营账号">
+  <label>密码</label><input id="loginPass" type="password" autocomplete="current-password" placeholder="密码">
+  <button id="btnLogin" onclick="doLogin()">登录</button>
+  <div id="loginMsg" class="muted" style="margin-top:8px;"></div>
+</div>
+
+<!-- ===== 主界面 ===== -->
+<div id="mainView" style="display:none;">
+  <div class="card banner">
+    <div>
+      <h1>开店算账 · 管理后台</h1>
+      <div class="muted" id="whoami"></div>
+    </div>
+    <div><button class="ghost" onclick="logout()">退出登录</button></div>
+  </div>
+
+  <div class="card tabs" id="tabs">
+    <button data-tab="query" class="on" onclick="switchTab('query')">用户查询</button>
+    <button data-tab="grant" onclick="switchTab('grant')">手动调权</button>
+    <button data-tab="order" onclick="switchTab('order')">私域录单</button>
+    <button data-tab="orders" onclick="switchTab('orders')">订单管理</button>
+    <button data-tab="refund" onclick="switchTab('refund')">退款标记</button>
+    <button data-tab="export" onclick="switchTab('export')">数据导出</button>
+  </div>
+
+  <!-- 用户查询 -->
+  <div class="card tab-panel" id="tab-query">
+    <h3>用户查询</h3>
+    <div class="row">
+      <div><label>关键词（openid / user_id / 昵称）</label><input id="qKeyword" placeholder="留空 = 分页全量"></div>
+      <div style="flex:0 0 120px;"><label>每页</label><input id="qPageSize" value="20"></div>
+    </div>
+    <button onclick="queryUsers()">查询</button>
+    <div id="qResult"></div>
+  </div>
+
+  <!-- 手动调权 -->
+  <div class="card tab-panel" id="tab-grant" style="display:none;">
+    <h3>手动调权（仅超级管理员）</h3>
+    <div class="row">
+      <div><label>user_id</label><input id="gUserId"></div>
+      <div style="flex:0 0 140px;"><label>天数</label><input id="gDays" value="30"></div>
+    </div>
+    <label>原因（必填，留痕）</label><input id="gReason">
+    <button onclick="grantEnt()">调权</button>
+    <div id="gResult"></div>
+  </div>
+
+  <!-- 私域录单 -->
+  <div class="card tab-panel" id="tab-order" style="display:none;">
+    <h3>私域订单录入（标记已支付 → 自动发权益）</h3>
+    <div class="row">
+      <div><label>user_id</label><input id="mUserId"></div>
+      <div><label>套餐 plan_id</label><input id="mPlanId" value="plan_basic_month"></div>
+      <div style="flex:0 0 130px;"><label>金额（分）</label><input id="mAmount" value="2590"></div>
+    </div>
+    <label>备注</label><input id="mRemark">
+    <button onclick="manualOrder()">录单并发权益</button>
+    <div id="mResult"></div>
+  </div>
+
+  <!-- 订单管理 -->
+  <div class="card tab-panel" id="tab-orders" style="display:none;">
+    <h3>订单管理</h3>
+    <div class="row">
+      <div><label>user_id（可选）</label><input id="oUserId"></div>
+      <div style="flex:0 0 130px;"><label>状态</label>
+        <select id="oStatus"><option value="">全部</option><option value="paid">已支付</option><option value="pending">待支付</option><option value="refunded">已退款</option></select>
+      </div>
+    </div>
+    <button onclick="orderList()">查询</button>
+    <div id="oResult"></div>
+  </div>
+
+  <!-- 退款标记 -->
+  <div class="card tab-panel" id="tab-refund" style="display:none;">
+    <h3>退款标记（权收数据留）</h3>
+    <label>订单号 order_no</label><input id="rOrderId">
+    <label>原因（必填）</label><input id="rReason">
+    <button onclick="refundMark()" style="background:#e74c3c;">标记退款</button>
+    <div id="rResult"></div>
+  </div>
+
+  <!-- 导出 -->
+  <div class="card tab-panel" id="tab-export" style="display:none;">
+    <h3>数据导出（对账）</h3>
+    <div class="muted">仅超级管理员可导出全量权益；运营仅可导出订单明细。导出写审计留痕。</div>
+    <button onclick="exportData('orders','csv')">导出订单明细 CSV</button>
+    <button onclick="exportData('entitlements','csv')" id="exportAllBtn">导出全量权益 CSV（超管）</button>
+    <div id="eResult"></div>
+  </div>
+</div>
+
+<!-- 云开发 Web SDK：静态托管直连云函数需 @cloudbase/js-sdk -->
+<script src="https://static.cloudbase.net/cloudbase-js-sdk/2.6.0/cloudbase.full.js"></script>
+<script>
+/* ============================================================
+ * 开店算账 · 管理后台 H5（批次 6 · 独立部署于云开发静态托管 admin-h5/，不进小程序包体）
+ * 云端：调 admin* 云函数（adminLogin / adminQueryUser / adminGrantEntitlement /
+ *        adminManualOrder / adminOrderList / adminRefundMark / adminExport）。
+ * 鉴权：token 存 localStorage，每次请求带 Authorization: Bearer。
+ * ⚠️ 部署前把 ENV_ID 改为你的云环境 ID（与小程序同 env，admin 函数已部署其上）。
+ * ============================================================ */
+var ENV_ID = 'YOUR_ENV_ID'; // ← 部署时改为实际环境 ID
+var TOKEN_KEY = 'adm_token';
+
+function toast(msg, isErr) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  t.style.background = isErr ? 'rgba(200,50,50,.85)' : 'rgba(0,0,0,.78)';
+  setTimeout(function(){ t.style.display = 'none'; }, 2600);
+}
+
+/* ---------- 云函数调用（自动带 Authorization 头）---------- */
+function getApp() {
+  if (window.__app) return window.__app;
+  var app = cloudbase.init({ env: ENV_ID });
+  window.__app = app;
+  return app;
+}
+async function callFn(name, data) {
+  var app = getApp();
+  var headers = {};
+  var token = localStorage.getItem(TOKEN_KEY);
+  if (token) headers.Authorization = 'Bearer ' + token;
+  var res = await app.callFunction({ name: name, data: Object.assign({ headers: headers }, data || {}) });
+  var r = res && res.result;
+  if (!r) throw new Error('服务无响应');
+  if (r.code !== 'SUCCESS') throw new Error(r.msg || r.code);
+  return r.data || {};
+}
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]; }); }
+function fmtTime(ms) { return ms ? new Date(Number(ms)).toLocaleString() : '—'; }
+
+/* ---------- 登录 / 登出（adminLogin） ---------- */
+async function doLogin() {
+  var u = document.getElementById('loginUser').value.trim();
+  var p = document.getElementById('loginPass').value;
+  if (!u || !p) { toast('请输入用户名和密码', true); return; }
+  try {
+    var d = await callFn('adminLogin', { input: { username: u, password: p } });
+    localStorage.setItem(TOKEN_KEY, d.token);
+    showMain(d.role);
+    toast('登录成功');
+  } catch (e) {
+    document.getElementById('loginMsg').innerHTML = '<span class="err">' + esc(e.message) + '</span>';
+  }
+}
+function logout() {
+  localStorage.removeItem(TOKEN_KEY);
+  document.getElementById('mainView').style.display = 'none';
+  document.getElementById('loginView').style.display = 'block';
+}
+function showMain(role) {
+  document.getElementById('loginView').style.display = 'none';
+  document.getElementById('mainView').style.display = 'block';
+  document.getElementById('whoami').textContent = '当前角色：' + (role || 'op') + '（登录态 7 天）';
+  // 运营角色隐藏「手动调权」「全量导出」入口（角色隔离）
+  if (role !== 'super') {
+    var g = document.querySelector('#tabs button[data-tab="grant"]'); if (g) g.style.display = 'none';
+    document.getElementById('exportAllBtn').style.display = 'none';
+  }
+}
+
+/* ---------- Tab 切换 ---------- */
+function switchTab(name) {
+  var btns = document.querySelectorAll('#tabs button');
+  for (var i = 0; i < btns.length; i++) btns[i].className = '';
+  var cur = document.querySelector('#tabs button[data-tab="' + name + '"]');
+  if (cur) cur.className = 'on';
+  var panels = document.querySelectorAll('.tab-panel');
+  for (var j = 0; j < panels.length; j++) panels[j].style.display = 'none';
+  var p = document.getElementById('tab-' + name);
+  if (p) p.style.display = 'block';
+}
+
+/* ---------- 1. 用户查询（adminQueryUser） ---------- */
+async function queryUsers() {
+  var keyword = document.getElementById('qKeyword').value.trim();
+  var pageSize = Number(document.getElementById('qPageSize').value) || 20;
+  try {
+    var d = await callFn('adminQueryUser', { input: { keyword: keyword, page_size: pageSize } });
+    var rows = (d.list || []).map(function (u) {
+      return '<tr><td>' + esc(u.user_id) + '</td><td>' + esc(u.openid_mask) + '</td><td>' + esc(u.nickname) +
+        '</td><td class="' + (u.tier === 'paid' ? 'paid' : 'expire') + '">' + fmtTime(u.expire_at) +
+        '</td><td>' + (u.tier === 'paid' ? '付费' : '免费') + '</td><td>' + esc((u.shops || []).map(function (s) { return s.name; }).join(' / ')) + '</td></tr>';
+    }).join('');
+    document.getElementById('qResult').innerHTML =
+      '<table><tr><th>user_id</th><th>openid</th><th>昵称</th><th>expire_at</th><th>档位</th><th>店铺</th></tr>' + rows + '</table>' +
+      '<div class="muted">共 ' + d.count + ' 条</div>';
+  } catch (e) { toast(e.message, true); }
+}
+
+/* ---------- 2. 手动调权（adminGrantEntitlement · 仅超管） ---------- */
+async function grantEnt() {
+  var userId = document.getElementById('gUserId').value.trim();
+  var days = Number(document.getElementById('gDays').value);
+  var reason = document.getElementById('gReason').value.trim();
+  if (!userId) { toast('user_id 必填', true); return; }
+  if (!reason) { toast('原因必填（留痕）', true); return; }
+  try {
+    var d = await callFn('adminGrantEntitlement', { input: { user_id: userId, days: days, reason: reason, client_request_id: 'h5g' + Date.now() } });
+    document.getElementById('gResult').innerHTML =
+      '<div class="ok">调权成功</div>' +
+      '<div class="muted">前值 ' + fmtTime(d.before_expire_at) + ' → 新值 ' + fmtTime(d.expire_at) + '（未到期累加 / 过期从当日）</div>';
+  } catch (e) { toast(e.message, true); }
+}
+
+/* ---------- 3. 私域录单（adminManualOrder · 自动发权益） ---------- */
+async function manualOrder() {
+  var userId = document.getElementById('mUserId').value.trim();
+  var planId = document.getElementById('mPlanId').value.trim();
+  var amount = Number(document.getElementById('mAmount').value);
+  var remark = document.getElementById('mRemark').value.trim();
+  if (!userId) { toast('user_id 必填', true); return; }
+  try {
+    var d = await callFn('adminManualOrder', { input: { user_id: userId, plan_id: planId, amount_fen: amount, remark: remark, client_request_id: 'h5m' + Date.now() } });
+    document.getElementById('mResult').innerHTML =
+      '<div class="ok">录单成功，权益已自动发放</div>' +
+      '<div class="muted">订单号 ' + esc(d.order_no) + ' · 新 expire_at ' + fmtTime(d.expire_at) + '（source=manual）</div>';
+  } catch (e) { toast(e.message, true); }
+}
+
+/* ---------- 4. 订单管理（adminOrderList） ---------- */
+async function orderList() {
+  var userId = document.getElementById('oUserId').value.trim();
+  var status = document.getElementById('oStatus').value;
+  try {
+    var d = await callFn('adminOrderList', { input: { user_id: userId, status: status, page_size: 50 } });
+    var rows = (d.list || []).map(function (o) {
+      var st = o.status === 'paid' ? '已支付' : (o.status === 'refunded' ? '已退款' : '待支付');
+      var cls = o.status === 'paid' ? 'paid' : 'expire';
+      return '<tr><td>' + esc(o.order_no) + '</td><td>' + esc(o.user_id) + '</td><td>' + (o.amount_fen / 100).toFixed(2) +
+        '</td><td>' + esc(o.plan_name || o.plan_id) + '</td><td class="' + cls + '">' + st + '</td><td>' + esc(o.channel) +
+        '</td><td>' + fmtTime(o.paid_at) + '</td></tr>';
+    }).join('');
+    document.getElementById('oResult').innerHTML =
+      '<table><tr><th>订单号</th><th>user_id</th><th>金额(元)</th><th>套餐</th><th>状态</th><th>渠道</th><th>支付时间</th></tr>' + rows + '</table>' +
+      '<div class="muted">共 ' + d.count + ' 条</div>';
+  } catch (e) { toast(e.message, true); }
+}
+
+/* ---------- 5. 退款标记（adminRefundMark · 权收数据留） ---------- */
+async function refundMark() {
+  var orderId = document.getElementById('rOrderId').value.trim();
+  var reason = document.getElementById('rReason').value.trim();
+  if (!orderId) { toast('订单号必填', true); return; }
+  if (!reason) { toast('原因必填（留痕）', true); return; }
+  try {
+    var d = await callFn('adminRefundMark', { input: { order_id: orderId, reason: reason, client_request_id: 'h5r' + Date.now() } });
+    document.getElementById('rResult').innerHTML =
+      '<div class="ok">已标记退款（数据保留，权益已回收）</div>' +
+      '<div class="muted">退款后 expire_at：' + fmtTime(d.expire_at_after_refund) + '</div>';
+  } catch (e) { toast(e.message, true); }
+}
+
+/* ---------- 6. 数据导出（adminExport · 角色控权） ---------- */
+async function exportData(scope, format) {
+  try {
+    var d = await callFn('adminExport', { input: { scope: scope, format: format, client_request_id: 'h5e' + Date.now() } });
+    if (d.format === 'csv' && d.csv) {
+      var blob = new Blob([d.csv], { type: 'text/csv;charset=utf-8' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = d.filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      document.getElementById('eResult').innerHTML = '<div class="ok">已导出 CSV（' + d.count + ' 行）</div>';
+    } else if (d.json) {
+      document.getElementById('eResult').innerHTML = '<pre>' + esc(JSON.stringify(d.json, null, 2)) + '</pre>';
+    } else {
+      document.getElementById('eResult').innerHTML = '<div class="muted">无数据</div>';
+    }
+  } catch (e) { toast(e.message, true); }
+}
+
+/* ---------- 自动尝试已有 token ---------- */
+(function init() {
+  if (localStorage.getItem(TOKEN_KEY)) {
+    document.getElementById('loginView').style.display = 'none';
+    document.getElementById('mainView').style.display = 'block';
+    document.getElementById('whoami').textContent = '登录态存在（7 天有效）';
+  }
+})();
+</script>
+</body>
+</html>
+

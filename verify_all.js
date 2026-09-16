@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：28 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~5 代码自测（batch0/1/2/3/4/5）
+// 串联：39 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~6 代码自测（batch0/1/2/3/4/5/6）
 //       + 静态路径检查（tools/check_requires.js）。
 // ⚠️ 新增/删除套件时必须同步改上面这句数量，否则 `SUITES.length` 与注释不符（R21）。
 // 用同一个 node（process.execPath）跑子进程，避免多解释器/环境问题。
@@ -45,6 +45,18 @@ const SUITES = [
   ['batch5-payRenew',          'cloudfunctions/payRenew/selftest.js'],
   ['batch5-payExpireNotify',   'cloudfunctions/payExpireNotify/selftest.js'],
   ['batch5-payOrderList',      'cloudfunctions/payOrderList/selftest.js'],
+  // ===== 批次 6 · 管理后台（鉴权 / 调权 / 录单 / 退款 / 导出）=====
+  ['batch6-adminInit',          'cloudfunctions/adminInit/selftest.js'],
+  ['batch6-adminLogin',         'cloudfunctions/adminLogin/selftest.js'],
+  ['batch6-adminRefreshToken',  'cloudfunctions/adminRefreshToken/selftest.js'],
+  ['batch6-adminLogout',        'cloudfunctions/adminLogout/selftest.js'],
+  ['batch6-adminRevokeToken',   'cloudfunctions/adminRevokeToken/selftest.js'],
+  ['batch6-adminQueryUser',     'cloudfunctions/adminQueryUser/selftest.js'],
+  ['batch6-adminGrantEntitlement', 'cloudfunctions/adminGrantEntitlement/selftest.js'],
+  ['batch6-adminManualOrder',   'cloudfunctions/adminManualOrder/selftest.js'],
+  ['batch6-adminOrderList',     'cloudfunctions/adminOrderList/selftest.js'],
+  ['batch6-adminRefundMark',    'cloudfunctions/adminRefundMark/selftest.js'],
+  ['batch6-adminExport',        'cloudfunctions/adminExport/selftest.js'],
   // 后续批次的套件在此追加即可（如 batch2_selfcheck ...）；追加后记得同步头部注释里的套件数量。
 ];
 
