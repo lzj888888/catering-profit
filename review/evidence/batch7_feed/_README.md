@@ -86,3 +86,145 @@ cd /c/Users/lzj/WorkBuddy/Claw/catering-profit/cloudfunctions \
 `needs_human.json` 的 `batch` 字段记为 `6`，但卡片正文与 `sessions.body` 末条 User 文本均为**批次 7**。
 该字段取自当时尚未清理的过期 `batch_done.flag`（turn_id=5，批次 6 遗留）。本轮已删除该过期 flag，
 下批起 `batch` 字段将指向正确批次。
+
+---
+
+## 5. 复核方补充（WorkBuddy 主代理，01:30–01:55 接手处置）
+
+### 5.1 时间线校正：本批有两次 `--approve`，第二次是空点
+
+| 时刻 | 动作 | 证据 |
+|---|---|---|
+| 01:27:22 | 审批 id=19 pending | `approval_audit` |
+| 01:30 | 主代理截图，确认卡片仍在（平台弹「高风险」） | `审批1_批准前_挂起弹窗_20260917.png` |
+| 01:33 | **巡检自动化按 SOP 批准** → id=20 `approved_once`，`wait_ms=265342` | §1.5 |
+| 01:45 | 主代理**又跑了一次** `inscode_patrol.py --approve` → `clicked_screen_xy=[959,835]` | `审批1_批准后_InsCode继续推进_20260917.png` |
+
+**01:45 那次是 no-op**：审批早已处置，点击未产生第二次批准记录、也未落到任何危险控件。
+教训：**代点前必须先读 `approval_audit` 的 `max(id)` 状态，确认仍为 `pending` 才点**（已写入 SKILL 硬教训）。
+
+### 5.2 监工假阳性根因已修（脚本级）
+
+§1.1 的 OCR 字形误报不是一次性事故：`_canon` 归一化前，**每轮** `l→I` 的误读都会让合法仓库内路径被判成"仓库外"→ 交人停机。
+已在 `inscode_watch.py` 的 `outside_repo()` 前加归一化：
+
+```python
+_CMD_SEP  = re.compile(r"[&|;<>,\s\"'`()\[\]{}]+")   # 命令分隔符 = 路径边界
+_BAD_CHR  = re.compile(r"[^a-z0-9/._\-]")
+_OCR_MAP  = str.maketrans({"1": "l", "i": "l", "0": "o"})   # OCR 易混字形
+
+def _canon(p):
+    p = p.lower().replace("\\", "/")
+    p = _CMD_SEP.sub("/", p)      # `-profit&&gitIog` 不再被当成同一路径
+    p = _BAD_CHR.sub("", p)
+    return p.translate(_OCR_MAP)
+```
+前缀命中后还要求**下一个字符不是路径字符**，避免 `catering-profit-evil/` 这类同前缀越权路径被放行。
+
+用例验证（7/7 通过）：
+
+| 输入 | 期望 | 实际 |
+|---|---|---|
+| `/c/Users/Izj/WorkBuddy/CIaw/catering-profit&&gitIog --oneline` | 仓库内 | ✅ 仓库内 |
+| `/c/Users/lzj/WorkBuddy/C1aw/catering-profit/cIoudfunctions&&fO「fin` | 仓库内 | ✅ 仓库内 |
+| `C:\Users\lzj\…\Claw\catering-profit\pages\mine\index.js` | 仓库内 | ✅ 仓库内 |
+| `C:/Users/lzj/WorkBuddy/Claw/catering-profit-evil/x.js` | 仓库外 | ✅ 拦截 |
+| `/c/Users/lzj/Desktop/evil.sh` / `D:/tmp/foo.js` | 仓库外 | ✅ 拦截 |
+
+监工已重启（pid 24008，心跳 alive），批准后 `inflight_turn=1` 正常在跑。
+
+### 5.3 本批待复核风险点（复核方提前登记，逐条核完再提交）
+
+| # | 风险点 | 为什么是风险 | 复核动作 |
+|---|---|---|---|
+| 1 | 自动化版硬约束**缺 i18n 双副本条目**，且第 5 条写「不改 `specs/`」 | 与 K11（两份 `terms.js` 必须逐字节一致）**直接冲突**；而批次 7 必然加界面文案 | `md5sum miniprogram/i18n/terms.js specs/dev-specs/i18n/terms.js` |
+| 2 | 硬约束缺「新增页面须在 `app.json` 声明」 | 本批新增 `pages/mine/`、`pages/shop/switch.*`；漏声明被 R44 守卫点名 | `node tools/check_pages.js` |
+| 3 | 硬约束缺「前端禁 `auto_subscribe`」 | R42 守卫（iOS 合规）会转红 | `node tools/check_compliance.js` |
+| 4 | **`verify_all.js` 出现 `M`** | 门禁脚本属复核方资产，禁止为"变绿"而改 | 逐行审是否仅为登记本批新套件 |
+| 5 | `exportStatus` 目录被 InsCode 自行 `rm -rf` | 删除动作已发生（仅删它自己刚建的目录，无内容损失） | 确认无代码引用残留 |
+| 6 | 实测改动面 | 用户体验打磨必然改既有前端页面 | 逐文件确认没有改到 `common/`、`initDb/`、既有云函数契约 |
+
+### 5.4 本批仍未投喂的硬约束（差异说明）
+
+主代理原准备 11 条硬约束，实际投喂的是自动化的 6 条版本，**缺**：i18n 双副本同步、`app.json` 页面声明、
+前端禁 `auto_subscribe`、`_pct`/`_ratio` 口径、日志脱敏重申。→ 由 §5.3 的守卫与复核兜底，
+不重复投喂（避免同一批重复劳动）。
+
+---
+
+## 6. 交付复核（主代理独立复核 · 02:50–03:00，不采信 InsCode 自述）
+
+本轮结束判据：`turn_terminal kind=complete`（turn `:8`，01:25:19→02:09:32，62 轮 / 78 次工具调用）、
+`inflight_turn = 0`、`session-stream.log` mtime 停止增长 —— 三条同时成立 ⇒ 可安全复核提交。
+
+### 6.1 门禁与硬约束（全部实测）
+
+| # | 检查 | 命令 / 依据 | 实际 | 判定 |
+|---|---|---|---|---|
+| 1 | 全量门禁 | `node verify_all.js` | **45/45，exit 0**（41 → 45，新增 batch7 ×4） | ✅ |
+| 2 | common 派生同步 | `node tools/sync_common.js --check` | 42 个函数目录副本 ≡ 单源 | ✅ |
+| 3 | 静态 require | `node tools/check_requires.js` | 596 个 .js（小程序 26 / 云函数 570），相对引用 1171 条全解析 | ✅ |
+| 4 | K11 双副本 | `md5sum` + `diff -q` | 两份 `terms.js` `md5=607127ab…` 逐字节一致 | ✅ |
+| 5 | 受保护区 | `git status --porcelain cloudfunctions/common/ initDb/` | **空** | ✅ |
+| 6 | 既有云函数是否被改 | `git status --porcelain cloudfunctions/ \| grep '^ M'` | **无**（仅 3 个新目录 `??`） | ✅ |
+| 7 | 门禁脚本被改的性质 | `git diff verify_all.js` | **仅**登记 batch7 ×4 套件 + 头部注释 41→45，无放宽/豁免 | ✅ 非"改绿" |
+| 8 | 用户可见硬编码中文 | 剔 `<!-- -->` 后扫 `pages/**/*.wxml` | **0 命中**；`utils/*.js` 中文全在注释 | ✅ |
+| 9 | 页面声明守卫 R44 | `node tools/check_pages.js` | 14 页声明 ≡ 14 页实到，无孤儿 | ✅ |
+| 10 | 合规守卫 R42 | `node tools/check_compliance.js`（含在全量门禁内） | 前端无 `auto_subscribe` 引用 | ✅ |
+
+### 6.2 交付清单（与它的自述核对一致）
+
+- 新云函数 ×3：`getShopList`（仅 `is_deleted=false` + 免费配额）、`exportData`（权限只读 `expire_at`，
+  非付费 `FEATURE_LOCKED` 兜底；Excel=CSV+BOM / JSON；文件名含店铺名+月份）、
+  `deleteAccount`（软删 user + 匿名化 openid/昵称 + 关联软删 + 幂等）。
+- 前端 ×4：`utils/validate.js`（`INVALID_PARAM` + i18n）、`utils/loading.js`（`withLock` 防连点）、
+  `utils/shopSwitcher.js`（持久化 `shop_switcher_shop_id`）、`utils/selftest_batch7.js`（20 项，全过）。
+- 新页 ×2：`pages/shop/switch/`（切换**不**弹付费窗，仅保存超限才弹）、
+  `pages/mine/index/`（隐私协议查看 + 撤回授权 + 注销二次确认）。
+- 必要修改：`app.js`（`getPrivacySetting` / `onNeedPrivacyAuthorization` / `requirePrivacyAuthorize`，
+  同会话 ≤2 次、可跳过）、`app.json`（注册 2 页）、`pages/index` / `pages/month/result` / `pages/card/index`
+  （切换入口 + 导出按钮）、i18n 双副本（`terms.exp` / `terms.exportBtn`）、`verify_all.js`（登记套件）。
+
+### 6.3 §5 六条验收锚点（复核方抽验）
+
+| # | 锚点 | 复核方式 | 判定 |
+|---|---|---|---|
+| 1 | 金额负数前后端双拦 | `validate.money('-5')` 拦截 + 云函数非负整数分校验 | ✅ |
+| 2 | 连点只产生一条 | `withLock` busy 忽略；门禁里实测「连点两次只执行一次 calls=1」 | ✅ |
+| 3 | 多店铺数据隔离 | 切换写 `globalData.shop_id`，`api.js` 统一注入；后端仅返活跃店铺 | ✅ |
+| 4 | 导出进度不卡 | 前端 `showLoading` + 云函数内同步生成（**简版**，任务队列排 v1.1） | ⚠️ 见 6.4 |
+| 5 | 免费导出弹付费窗 | `onExport` 先查 `expire_at`，后端 `FEATURE_LOCKED` 兜底 | ✅ |
+| 6 | 日志无手机号明文 | `deleteAccount` selftest 断言审计 JSON 无 openid/手机号/昵称明文 | ✅ |
+
+### 6.4 新发现 · **R47**（待裁决，本轮未擅动）
+
+`app.json` 新增了：
+
+```json
+"requiredPrivateInfos": ["getPrivacySetting", "requirePrivacyAuthorize"]
+```
+
+但微信官方 `requiredPrivateInfos` 的**合法取值只有位置/地址类隐私接口**
+（`getFuzzyLocation` / `getLocation` / `onLocationChange` / `startLocationUpdate*` / `chooseLocation` /
+`choosePoi` / `chooseAddress`），`getPrivacySetting` 与 `requirePrivacyAuthorize` **不在其列**。
+本项目**未使用任何位置类接口** ⇒ 这段声明既**多余**，又可能在开发者工具里触发配置告警。
+
+- 风险：低（多半只是告警，不阻塞编译），但属"写了未被官方认可的配置"。
+- 真实入口其实是：① 公众平台后台配置《用户隐私保护指引》（非代码）② 代码侧 `wx.getPrivacySetting`
+  判断 + `wx.requirePrivacyAuthorize` 拉起 —— 这两件它**都已正确实现**。
+- 建议：删掉这段 `requiredPrivateInfos`，或等真机联调时看工具是否告警再定。**未擅自删。**
+
+### 6.5 回执（round22 · 本轮）
+
+- [2026-09-17 01:45] 投喂：批次 7 **已由 hourly 自动化于 01:25 投喂**（未重复投喂）·
+  证据：`sessions.body` 末条 User 3738 字 + turn `:8` started 01:25:19 · 未产生投喂 commit
+- [2026-09-17 01:45] 审批 id=19：预检 4 目录均为新建 → 判定安全；**实际已于 01:33 由自动化批准**，
+  我的点击为 no-op（已记 SKILL 硬教训 9）· 证据：`approval_audit` id=20 `approved_once`
+- [2026-09-17 01:50] 监工假阳性修复：`outside_repo()` 加 `_canon()` 归一化 + 边界校验，7/7 用例通过 ·
+  证据：`C:\Users\lzj\.workbuddy\skills\inscode-desktop-feed\scripts\inscode_watch.py`
+- [2026-09-17 02:05] 监工重启 pid 38664（宿主会回收后台进程，靠 hourly 自动化「分支 0」兜底）
+- [2026-09-17 03:00] 复核：45/45 + K11 一致 + 受保护区零改动 → 提交（见下方 commit）
+- [存疑] 重启键 `specs/dev-specs/★知识存储点_2026-09-10.md` §1.1 仍写「一键校验入口串 **10** 个套件」，
+  现值 45；批次 5/6 均未回填（该文件最后改动停留在批次 4 的 `92e7fab`）。
+  **理由**：该节明写"本行不再复制 commit 快照"（防同一事实两处漂移），且它落在 I/J 组扫描范围内，
+  擅自改写易触发门禁自命中 → 留待用户裁决是否统一刷新。
