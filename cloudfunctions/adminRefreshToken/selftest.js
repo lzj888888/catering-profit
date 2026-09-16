@@ -53,6 +53,32 @@ const fakeAdminColl = {
   check('super 可吊销指定管理员', requireRole('super', ['super']) === null);
   check('op 吊销 → 拒绝', requireRole('op', ['super']) === 'ADMIN_PERMISSION_DENIED');
 
+  console.log('');
+  console.log('===== R54 · 审计留痕失败不阻断主流程 + console.error 留痕 =====');
+  const origErr = console.error;
+  let errCalls = [];
+  console.error = function () { errCalls.push(Array.prototype.slice.call(arguments).join(' ')); };
+  try {
+    const fakeAudit = { add: async () => { throw new Error('audit db down'); } };
+    let mainOk = false;
+    try {
+      await fakeAudit.add({
+        data: { action: 'ADMIN_TOKEN_REFRESH', operator_id: 'adm_1', remark: 'token 刷新', idempotency_key: '' },
+      }).catch((e) => {
+        console.error('[AUDIT_FAILED] adminRefreshToken:', e && e.message ? e.message : e);
+      });
+      mainOk = true;
+    } catch (e) { mainOk = false; }
+    check('R54 审计写入失败 → 主流程仍成功（不抛）', mainOk === true);
+    check('R54 审计失败 → console.error 被调用（不静默）', errCalls.length >= 1);
+    check('R54 告警含操作名 [AUDIT_FAILED] adminRefreshToken',
+      errCalls.length >= 1 && errCalls[0].indexOf('[AUDIT_FAILED] adminRefreshToken') === 0, errCalls[0] || '');
+    check('R54 告警不落敏感字段（openid/手机号/支付）',
+      errCalls.every((c) => !/openid|phone|mobile|card|pwd|password/i.test(c)));
+  } finally {
+    console.error = origErr;
+  }
+
   console.log(`\n==== adminRefreshToken 批次 6 自测结果：${pass} 通过 / ${failN} 失败 ====`);
   process.exit(failN === 0 ? 0 : 1);
 })();

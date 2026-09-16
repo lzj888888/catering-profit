@@ -58,6 +58,9 @@ exports.main = async (event) => {
       const body = rows.map((r) => [r.user_id || '', r.expire_at || 0, r.source || '', r.updated_at || 0]);
       const csv = format === 'csv' ? csvFromRows(header, body) : '';
       const json = format === 'json' ? rows : [];
+      // ⚠️ 此处审计**不吞错**（writeAudit 失败会随外层 try/catch 抛到 fail(SYSTEM_ERROR)）：
+      //   导出全量用户数据是高危动作，留痕失败应当失败（fail-closed），与 Logout/Refresh/Revoke 的
+      //   「留痕失败仅 console.error 告警、不阻断主流程」策略不同 —— 属**有意差异**，勿"统一"掉（R54）。
       await writeAudit(db, {
         action: 'ADMIN_EXPORT',
         operator_type: 'admin',
@@ -78,6 +81,8 @@ exports.main = async (event) => {
     const csv = format === 'csv' ? csvFromRows(header, body) : '';
     const json = format === 'json' ? rows : [];
 
+    // ⚠️ 同前：此处审计**不吞错**（导出高危动作，留痕失败应当失败），与 Logout/Refresh/Revoke 的
+    //   「留痕失败仅告警」策略不同 —— 有意差异，勿"统一"掉（R54）。
     await writeAudit(db, {
       action: 'ADMIN_EXPORT',
       operator_type: 'admin',

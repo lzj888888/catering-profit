@@ -62,7 +62,11 @@ exports.main = async (event) => {
       idempotency_key: '',
       created_at: now,
     },
-  }).catch(() => {});
+  }).catch((e) => {
+    // ⚠️ R54：审计留痕失败**不阻断**续签主流程，但必须 console.error 留痕（追溯链断裂本身要有痕迹）。
+    //   不落 openid / 手机号 / 支付明文（脱敏铁律），只记操作名 + 错误摘要。
+    console.error('[AUDIT_FAILED] adminRefreshToken:', e && e.message ? e.message : e);
+  });
 
   return ok({ token: newToken, role: sess.role, expires_at: newExpiresAt, refreshed: true });
 };
