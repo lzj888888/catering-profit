@@ -147,3 +147,6 @@ screenshot_window(h, r'C:\tmp\b.png')    # ⑤ 再截一张确认结果
 python scripts/pack.py --out "%USERPROFILE%/Desktop/win-desktop-control.zip"
 ```
 把 zip 拷到新机器，解压到 `C:\Users\<用户名>\.workbuddy\skills\win-desktop-control\`，跑 `scripts/bootstrap.py` 即可。
+16. **云开发控制台 = 工具栏 `∞` 图标**（不是 `≡`，也不是其余图标；**悬停不出 tooltip**，别在图标上耗时间）。控制台是**独立顶层窗口**，被最小化时 rect 是 `(-32000,-32000,…)`，`focus(hwnd)` 即恢复。详见 `references/recipes.md` 配方 14。
+17. **圆形按钮的语义会随行变**：加索引表单里 **只有最后一行是 `⊕`（加行）**，其余行是 `⊗`（删本行）—— 按行距连点会把刚填好的行删掉。凡"每行带图标"的列表控件，**点之前先截图核对行位**，别用 delta 推。
+18. **中文路径别交给命令解释器去调外部程序**：`微信web开发者工具` 这类路径会被编码吃掉 → `系统找不到指定的文件`（`WinError 2`）。用 Python `subprocess` 直调（带 `cwd`），或干脆走 GUI。
