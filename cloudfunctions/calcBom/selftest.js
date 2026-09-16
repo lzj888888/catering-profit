@@ -6,7 +6,7 @@
 // ⚠️ 判据纪律（沿用批次 1/2 R19）：金额锚点一律「整数分」严格相等（===），禁止 ±0.01 容差；
 //   每条金额锚点再加「±1 分变异回验」，证明判据对 1 分误差有鉴别力（口径 B：中间保精度、最终 round 到分）。
 
-const { netUnitCostWan, calcCostCard } = require('./service');
+const { netUnitCostWan, calcCostCard, lineNetCostYuan } = require('./service');
 
 let pass = 0, failN = 0;
 function check(name, cond, detail) {
@@ -118,6 +118,23 @@ backcheckFen('同步后新版本总成本', E.unit_cost_fen, 1208);
 const wrongA = (876 + 50 - 50) / 100; // 仅明细放大、辅料不放大
 check('⚠️ 反证：辅料不随损耗放大会得 9.73（正确实现必须 ≠9.73）',
   A.unit_cost_fen / 100 !== wrongA && A.unit_cost_fen === 975, `辅助放大法=${(876 / 100) / 0.95}元, 正确答案=9.75`);
+
+console.log('');
+console.log('===== R38 判据缺口回归：防「逐行 round」（规范 service.js:16）=====');
+// ⚠️ 反例：3 行 {quantity:250, net_unit_cost:333(万分)}。既有的宫保/红油/麻辣等行的逐行值恰好是 2 位小数，
+//    两种做法（高精度累积 vs 逐行 round）同值 → 把差异掩盖了。本用例制造 1 分分歧：
+//      单行精确 = 250 × (333/10000) = 8.325 元 → 3 行精确合计 = 24.975 元
+//      高精度累积（规范要求）→ Math.round(24.975×100)=2498 分
+//      逐行 round（规范禁止）→ 每行 Math.round(832.5)=833 分 × 3 = 2499 分   ← 差 1 分
+const R38_LINES = [0, 1, 2].map(() => ({ quantity: 250, net_unit_cost: 333 }));
+const R38 = calcCostCard({ mode: 'A', lines: R38_LINES, auxFen: 0, lossPct: 0, priceFen: 0 });
+check('R38：高精度累积 → unit_cost_fen = 2498（非 2499）', R38.unit_cost_fen === 2498, `=${R38.unit_cost_fen}分`);
+backcheckFen('R38 高精度累积', R38.unit_cost_fen, 2498);
+// 变异回验：证明判据对「逐行 round」有鉴别力（= 判据真的覆盖了这条规范）
+const perLineWrong = R38_LINES.reduce((s, l) => s + Math.round(lineNetCostYuan(l.quantity, l.net_unit_cost) * 100), 0);
+check('R38 变异：逐行 round 会得 2499 ≠ 规范值 2498（判据能抓住此 bug）',
+  perLineWrong === 2499 && R38.unit_cost_fen !== perLineWrong, `逐行 round=${perLineWrong}分, 正确=2498分`);
+check('R38 总成本即明细合计（无损耗无辅料）', R38.material_total_fen === 2498 && R38.unit_cost_fen === R38.material_total_fen);
 
 console.log(`\n==== calcBom 批次 3 自测结果：${pass} 通过 / ${failN} 失败 ====`);
 process.exit(failN === 0 ? 0 : 1);
