@@ -1,0 +1,16 @@
+<view class="container safe-bottom" wx:if="{{!loading}}">
+  <view class="hint">{{t.switchHint}}</view>
+
+  <view class="card2" wx:for="{{list}}" wx:key="shop_id" data-id="{{item.shop_id}}" bindtap="onSelect">
+    <view class="card-title">
+      {{item.name}}
+      <text class="tag" wx:if="{{item.shop_id === currentShopId}}">{{t.currentShop}}</text>
+    </view>
+    <view class="muted">{{item.shop_id}}</view>
+  </view>
+
+  <view wx:if="{{list.length === 0 && !loading}}" class="empty">{{t.noShop}}</view>
+
+  <button class="btn ghost" bindtap="onAdd">{{t.addShop}}</button>
+</view>
+<view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

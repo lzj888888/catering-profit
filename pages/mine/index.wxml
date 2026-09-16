@@ -1,0 +1,27 @@
+<view class="container safe-bottom">
+  <view class="card2">
+    <view class="card-title">{{shopName || t.shopName}}</view>
+  </view>
+
+  <view class="card2">
+    <view class="cell" bindtap="onOpenPrivacy">
+      <text class="lbl">{{t.privacyOpen}}</text>
+      <text class="val muted">›</text>
+    </view>
+    <view class="cell" bindtap="onRevokePrivacy">
+      <text class="lbl">{{t.privacyRevoke}}</text>
+      <text class="val muted">›</text>
+    </view>
+  </view>
+
+  <view class="card2">
+    <view class="muted">{{t.privacyDesc}}</view>
+  </view>
+
+  <view class="card2">
+    <view class="muted">{{t.dataCleanNote}}</view>
+  </view>
+
+  <view style="height:40rpx;"></view>
+  <button class="btn" style="background:#e74c3c;color:#fff;" bindtap="onLogout" disabled="{{loadingLogout}}">{{t.logoutTitle}}</button>
+</view>

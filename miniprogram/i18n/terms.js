@@ -388,6 +388,63 @@ const TERMS = {
     goOrders: '查看订单',
     goRenew: '去续费',
   },
+
+  // ===== 二十三、批次 7 体验打磨文案 =====
+  exp: {
+    // 校验
+    required: (label) => `${label}不能为空`,
+    moneyNeg: (label) => `${label}不能为负`,
+    moneyReq: (label) => `${label}必须填写`,
+    monthFormat: (label) => `${label}格式应为 YYYY-MM`,
+    positiveInt: (label) => `${label}必须为正整数`,
+    pctMax100: (label) => `${label}不能超过 100`,
+    dateFormat: (label) => `${label}格式应为 YYYY-MM-DD`,
+    // loading / 防重复提交
+    submitting: '提交中…',
+    loading: '加载中…',
+    // 店铺切换
+    switchTitle: '切换店铺',
+    currentShop: '当前店铺',
+    noShop: '还没有店铺',
+    addShop: '+ 新增店铺',
+    switchHint: '切换店铺不会触发任何付费弹窗；免费版可建 1 家店铺。',
+    // 导出
+    exportTitle: '导出数据',
+    exportIng: '正在导出…',
+    exportDone: '导出完成',
+    exportScopeM1: '月度报表',
+    exportScopeM3: '成本卡批量',
+    exportFormatExcel: 'Excel',
+    exportFormatJson: 'JSON',
+    exportNeedPaid: '导出需开通真实利润',
+    // 隐私合规
+    privacyTitle: '用户隐私保护指引',
+    privacyAgree: '同意并继续',
+    privacyDisagree: '暂不同意',
+    privacyNeed: '使用前需同意隐私协议；不同意将无法使用完整功能。',
+    privacyOpen: '查看隐私协议',
+    privacyRevoke: '撤回授权',
+    privacyRevoked: '已撤回授权',
+    goSetting: '去设置',
+    fileSaved: '文件已保存',
+    viewFile: '查看文件',
+    // 注销
+    mineTitle: '我的',
+    account: '账号与安全',
+    logoutTitle: '注销账号',
+    logoutConfirm: '注销后您的账号数据将被匿名化处理，且无法恢复。确定注销吗？',
+    logoutDone: '已提交注销申请，我们将于 15 个工作日内完成数据处理。',
+    cancelLogout: '暂不注销',
+    dataCleanNote: '历史数据不硬删，优先软删恢复 + 周备份（保留 30 天）。',
+    // 日志脱敏
+    privacyDesc: '本工具仅收集登录所需 openid / 昵称头像等必要信息，用于账号识别与数据同步；不含手机号、支付信息等敏感数据。',
+  },
+
+  // ===== 二十四、导出按钮（付费墙触发）=====
+  exportBtn: {
+    m1Report: '导出月度报表',
+    m3Cards: '导出成本卡',
+  },
 };
 
 /**
