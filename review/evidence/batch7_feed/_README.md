@@ -224,7 +224,11 @@ def _canon(p):
   证据：`C:\Users\lzj\.workbuddy\skills\inscode-desktop-feed\scripts\inscode_watch.py`
 - [2026-09-17 02:05] 监工重启 pid 38664（宿主会回收后台进程，靠 hourly 自动化「分支 0」兜底）
 - [2026-09-17 03:00] 复核：45/45 + K11 一致 + 受保护区零改动 → 提交（见下方 commit）
-- [存疑] 重启键 `specs/dev-specs/★知识存储点_2026-09-10.md` §1.1 仍写「一键校验入口串 **10** 个套件」，
-  现值 45；批次 5/6 均未回填（该文件最后改动停留在批次 4 的 `92e7fab`）。
-  **理由**：该节明写"本行不再复制 commit 快照"（防同一事实两处漂移），且它落在 I/J 组扫描范围内，
-  擅自改写易触发门禁自命中 → 留待用户裁决是否统一刷新。
+- [存疑 → 已落 2026-09-17 03:18] 重启键 §1.1 套件数 10 → **45**、里程碑补批次 3/4/5/6/7、
+  §1 状态行补「8 批（批次 0–7）已全部交付，**无批次 8**」、新增「两个跨出 specs 的新守卫」条目 ·
+  证据：`node verify_all.js` → 45/45 exit 0；`node specs/dev-specs/prototype/check_error_codes.js`
+  → A–L 全绿 exit 0（重启键在 I/J 扫描面内，改完必跑，本次无自命中）
+- [2026-09-17 03:18] round22 复审产物 `review/REVIEW_2026-09-15_round22-verify.md`（DeepSeek 出，
+  67 行，结论 R41a/R42/R43/R44 四项全落地）**已归档入库**（此前长期 untracked）
+- [存疑] R47（`requiredPrivateInfos` 填了非官方取值）**仍未裁决、未擅删**；
+  R45/R46、`adminAuth`/`adminExport` 深审、真云 unique 实测 —— 均未做，等李老师点单。
