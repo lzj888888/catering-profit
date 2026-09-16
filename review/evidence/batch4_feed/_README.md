@@ -166,3 +166,53 @@ error reading a body from connection: 远程主机强迫关闭了一个现有的
 - 「个人套餐」vs「个人余额」是**两个不同的计费通道**，名字像但含义完全不同 —— 选错等于没充值。
 - 该应用本名是 **AtomCode/AtomGit 系**（`~/.config/inscode/` 下为 `config.toml` + `taotoken.json` + `inscode.db`），
   配置与遥测都在这里，排查问题时优先读 `turn_telemetry` / `approval_audit` / `logs/turn-lifecycle.log`。
+
+---
+
+## 附：2026-09-16 21:00 · 批次 4 终态确认与独立复核（结论：**已交付，已提交**）
+
+### ① 怎么确认「它已经干完了」（补记上一段读不出结论的原因）
+之前试图从 `sessions.body` 取最后一条 assistant 回复时得到 `assistant 消息数 0`，是**过滤条件写错**导致的假象：
+该库 `messages[].role` 的值是**首字母大写**的 `Assistant` / `User` / `Tool` / `System`，
+不是小写的 `assistant`（只读的函数签名Immediately——40 条以内的判断可以先确认角色大小写）。
+正确写法：`[m for m in msgs if m.get('role')=='Assistant' and (m.get('text') or '').strip()]` → 非空 143 条。
+
+另外两个确认跑完的硬指标：
+- `logs/turn-lifecycle.log` 尾行 `20:43:21 turn_terminal complete ... plan=pro`（不再是 ProviderError）
+- `inflight_turn` 表 0 行 + `session-stream.log` mtime 停止增长 ⇒ 已进入空闲，等待下一句。
+
+### ② 独立复核（我自己跑的，不是采信模型自述）
+| 复核项 | 手段 | 结果 |
+|---|---|---|
+| 全量门禁 | `node verify_all.js` | ✅ **21/21 套件通过**（含 batch4 ×4 selftest） |
+| common 单源派生 | `tools/sync_common.js --check` | ✅ 21 个云函数目录扁平副本 ≡ `cloudfunctions/common/` |
+| 依赖可解析 | `tools/check_requires.js` | ✅ 309 个 .js / 639 条 require（相对 616）全通过 |
+| **K11 i18n 双副本** | `md5sum` + `diff` | ✅ **MD5 一致 `398f9bd4…`，diff 0 行**（此前是断裂红灯，现转绿） |
+| 硬约束保护 | `git status` M 计数 | ✅ `cloudfunctions/common/`、`initDb/`、批次 1~3 云函数 **全部 0 改动** |
+| 金额复算 | 手算 | ✅ 9160 − 3476.67 = 5683.33 ✔；347667分=3476.67元；333345分=3333.45元；975分=9.75元 |
+| 契约缺口关闭 | 存在性检查 | ✅ `getShopContext`/`saveShopSetting` 等此前**全仓零命中**的缺口已建成并登记进 verify_all |
+| 页面注册 | `app.json` | ✅ 11 页全存在；`pages/dish/dish` 已按说明移除（违反 AD-9 且无入口） |
+
+### ③ 一处「模型说 0 命中、我扫出命中」的差异（已排雷，非问题）
+模型声称「WXML 硬编码扫描 0 命中」，但我扫 `pages/` 得到 6 个文件共 30 余处中文。
+逐行核对后确认**全部落在 HTML 注释 `<!-- … -->` 内**（如 `<!-- 双利润 -->`、`<!-- 核算模式 -->`），属开发注释而非用户可见文案。
+用 `sed 's/<!--[^>]*-->//g'` 剔除注释后再扫 → **用户可见中文 0 命中**，模型的结论成立。
+⇒ 教训：自己的扫描脚本要把注释排除掉，否则每次都会误报一轮。
+
+### ④ 提交与推送
+`529c0f8 feat(batch4): M1/M2/M3 页面闭环交付（8 页面 + 10 云函数 + i18n 双副本同步）`
+共 196 个文件（12 M + 184 新增），已 push 到 `origin/dev`（`c78b952..529c0f8`），工作区干净。
+按纪律**未用 `git add -A`**，而是逐个路径显式 add；提交前已确认被云服务实例"在飞"状态已结束。
+
+### ⑤ 遗留（非阻塞，需真机）
+iOS / 安卓真机验证四项：**键盘遮挡、小数键盘收起、侧滑返回、深色模式** —— 本地无法代跑。
+代码层已落实（深色 media query、字号≥28rpx、按钮≥88rpx、`type="digit"`、`confirm-type="done"`、输入防抖、onHide 草稿）。
+
+### ⑥ 下一步：批次 5
+`specs/dev-specs/delivery/inscode喂投包_8批_自包含完整版.md` L570–663 定义了**批次 5 / 8 · 付费全流程**
+（弹窗触发 + 订单 + 续费 + 提醒 + 失败处理 + iOS 降级），共 6 条验收标准。
+注意两个前置约束（投喂前必须先跟用户对齐）：
+- **§2.6 当前阶段（私域）**：`enable_real_payment=false`，支付入口隐藏或提示「联系客服开通」，
+  权益由后台 `source=manual` 发放；**前端展示逻辑完全一致**（仍只读 `expire_at`），执照下来改配置即可，前端一行不改。
+- **§2.5 iOS 合规**：iOS 不展示 19.9 自动订阅（苹果 IAP 抽成），仅放一次性套餐；
+  不可用只能引导安卓/鸿蒙端，**禁止 H5 购买页兜底**（违反微信运营规范 5.13）。
