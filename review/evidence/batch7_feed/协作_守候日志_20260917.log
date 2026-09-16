@@ -1,0 +1,11 @@
+[03:38:19] smoke-test ok
+[03:38:36] WAIT start | assist_baseline=299 user_baseline=8 timeout=45min
+[03:38:36] poll | assist=299(+0) inflight=1 approval=approved_once stream_age=16s elapsed=0min
+[03:38:45] screen[reply_wait_1789587516.png] 批次7已落盘（我方独叟陔完成，已push到origin/dev) / 运行中“．
+[03:39:30] poll | assist=299(+0) inflight=1 approval=approved_once stream_age=4s elapsed=1min
+[03:40:15] poll | assist=309(+10) inflight=0 approval=approved_once stream_age=0s elapsed=2min
+[03:40:15] EVENT=REPLY 收到回复（+10 条）
+[03:45:40] WAIT start | assist_baseline=309 user_baseline=9 timeout=60min
+[03:45:40] poll | assist=309(+0) inflight=1 approval=approved_once stream_age=5s elapsed=0min
+[03:45:48] screen[reply_wait_1789587940.png] 运行中 / 独立管理员账号登录（非微信openid)。登录成功后token7天有效，连续5冫欠码错误锁定30分钟。
+[03:46:33] poll | assist=309(+0) inflight=1 approval=approved_once stream_age=5s elapsed=1min
