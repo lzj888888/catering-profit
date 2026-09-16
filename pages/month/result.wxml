@@ -61,5 +61,7 @@
       <text class="val">{{t.cur}}{{r.profitDiff}}</text>
     </view>
   </view>
+
+  <button class="btn ghost" bindtap="onExport">{{t.exportBtn}}</button>
 </view>
 <view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

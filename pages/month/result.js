@@ -34,6 +34,11 @@ Page({
       renewEntry: TERMS.pay.renewEntry,
       subscribeTip: TERMS.pay.subscribeTip,
       subscribeDenied: TERMS.pay.subscribeDenied,
+      exportBtn: TERMS.exportBtn.m1Report,
+      exportIng: TERMS.exp.exportIng,
+      exportDone: TERMS.exp.exportDone,
+      fileSaved: TERMS.exp.fileSaved,
+      viewFile: TERMS.exp.viewFile,
     },
     month: '',
     isArchive: false,
@@ -103,4 +108,53 @@ Page({
 
   onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()); },
   goOrders() { wx.navigateTo({ url: '/pages/pay/orders' }); },
+
+  // M1 报表导出：权限只读 expire_at（前端先查，后端 exportData 再兜底校验）；免费用户触发付费墙
+  async onExport() {
+    const ent = await require('../../utils/entitlement.js').fetchEntitlement().catch(() => null);
+    if (!ent || !ent.is_active) {
+      require('../../utils/paywall.js').openPaywall('export', {
+        shopId: (getApp().globalData && getApp().globalData.shop_id) || '',
+      });
+      return;
+    }
+    await this.doExport();
+  },
+
+  async doExport() {
+    wx.showLoading({ title: this.data.t.exportIng, mask: true });   // 进度提示：生成中不阻塞
+    try {
+      const d = await require('../../utils/api.js').call('exportData', {
+        scope: 'm1_report',
+        format: 'excel',
+        month: this.data.month,
+        client_request_id: 'ex_' + Date.now(),
+      });
+      wx.hideLoading();
+      this.downloadContent(d.filename, d.content, d.format);
+      wx.showToast({ title: this.data.t.exportDone, icon: 'success' });
+    } catch (e) {
+      wx.hideLoading();
+      require('../../utils/api.js').toastError(e);
+    }
+  },
+
+  // 前端下载导出内容（Excel=CSV 文本；JSON 原样）
+  downloadContent(filename, content, format) {
+    const api = require('../../utils/api.js');
+    if (format === 'json') {
+      const fs = wx.getFileSystemManager();
+      const tmp = `${wx.env.USER_DATA_PATH}/${filename}`;
+      try { fs.writeFileSync(tmp, JSON.stringify(content)); } catch (e) { api.toastError(e); return; }
+      wx.openDocument({ filePath: tmp, showMenu: true, fail: () => wx.showToast({ title: this.data.t.fileSaved, icon: 'none' }) });
+      return;
+    }
+    // CSV/Excel：wx 无直接下载，落本地文件 + openDocument 预览（v1.0 简版）
+    const fs = wx.getFileSystemManager();
+    const tmp = `${wx.env.USER_DATA_PATH}/${filename}`;
+    try {
+      fs.writeFileSync(tmp, String(content), 'utf8');
+      wx.openDocument({ filePath: tmp, showMenu: true, fileType: 'csv', fail: () => {} });
+    } catch (e) { api.toastError(e); }
+  },
 });

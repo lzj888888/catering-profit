@@ -19,6 +19,8 @@ Page({
       defaultShopName: TERMS.ui.defaultShopName,
       settings: TERMS.ui.settings,
       loading: TERMS.ui.loading,
+      switchShop: TERMS.exp.switchTitle,
+      mine: TERMS.exp.mineTitle,
     },
     shopName: '',
     loading: true,
@@ -43,4 +45,6 @@ Page({
   goSandbox() { wx.navigateTo({ url: '/pages/sandbox/index' }); },
   goCard() { wx.navigateTo({ url: '/pages/card/index' }); },
   goSettings() { wx.navigateTo({ url: '/pages/shop/setting' }); },
+  goSwitch() { wx.navigateTo({ url: '/pages/shop/switch' }); },
+  goMine() { wx.navigateTo({ url: '/pages/mine/index' }); },
 });

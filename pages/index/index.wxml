@@ -1,6 +1,9 @@
 <view class="container safe-bottom" wx:if="{{!loading}}">
-  <view class="card2">
-    <view class="card-title">{{shopName || t.defaultShopName}}</view>
+  <view class="card2" bindtap="goSwitch" hover-class="none">
+    <view class="card-title">
+      {{shopName || t.defaultShopName}}
+      <text class="tag">{{t.switchShop}}</text>
+    </view>
     <view class="muted">{{t.shopName}}</view>
   </view>
 
@@ -20,5 +23,6 @@
   </view>
 
   <button class="btn ghost" bindtap="goSettings">{{t.settings}}</button>
+  <button class="btn ghost" bindtap="goMine">{{t.mine}}</button>
 </view>
 <view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

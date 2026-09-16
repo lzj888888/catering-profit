@@ -25,6 +25,8 @@ Page({
       calcModeB: TERMS.card.calcModeB,
       export: TERMS.buttons.export,
       goOrders: TERMS.pay.goOrders,
+      exportIng: TERMS.exp.exportIng,
+      exportDone: TERMS.exp.exportDone,
     },
     list: [],
     loading: true,
@@ -78,9 +80,41 @@ Page({
     wx.navigateTo({ url: '/pages/card/version?card_code=' + (cc || '') });
   },
   goOrders() { wx.navigateTo({ url: '/pages/pay/orders' }); },
-  // 导出：付费功能，免费触发付费墙（M3 导出全禁）
-  onExport() {
-    openPaywall('export', { shopId: (getApp().globalData && getApp().globalData.shop_id) || '' });
+  // 导出：付费功能，免费触发付费墙（M3 导出全禁）；权限判定只读 expire_at（前端先查 + 后端 exportData 兜底）
+  async onExport() {
+    const ent = await require('../../utils/entitlement.js').fetchEntitlement().catch(() => null);
+    if (!ent || !ent.is_active) {
+      openPaywall('export', { shopId: (getApp().globalData && getApp().globalData.shop_id) || '' });
+      return;
+    }
+    await this.doExport();
+  },
+
+  async doExport() {
+    wx.showLoading({ title: TERMS.exp.exportIng, mask: true });   // 进度提示：生成中不阻塞
+    try {
+      const d = await api.call('exportData', {
+        scope: 'm3_cards',
+        format: 'excel',
+        client_request_id: 'ex3_' + Date.now(),
+      });
+      wx.hideLoading();
+      this.downloadContent(d.filename, d.content, d.format);
+      wx.showToast({ title: TERMS.exp.exportDone, icon: 'success' });
+    } catch (e) {
+      wx.hideLoading();
+      api.toastError(e);
+    }
+  },
+
+  // 落本地文件 + openDocument 预览（v1.0 简版导出）
+  downloadContent(filename, content, format) {
+    const fs = wx.getFileSystemManager();
+    const tmp = `${wx.env.USER_DATA_PATH}/${filename}`;
+    try {
+      fs.writeFileSync(tmp, format === 'json' ? JSON.stringify(content) : String(content), 'utf8');
+      wx.openDocument({ filePath: tmp, showMenu: true, fileType: format === 'json' ? 'json' : 'csv', fail: () => {} });
+    } catch (e) { api.toastError(e); }
   },
   onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()); },
 });
