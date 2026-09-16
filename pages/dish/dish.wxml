@@ -1,7 +1,0 @@
-<view class="form">
-  <view class="field"><text>{{t.name}}</text><input value="{{name}}" bindinput="onInput" data-field="name" placeholder="{{t.namePh}}"/></view>
-  <view class="field"><text>{{t.price}}</text><input type="digit" value="{{sellPrice}}" bindinput="onInput" data-field="sellPrice" placeholder="0"/></view>
-  <view class="field"><text>{{t.unitCost}}</text><input type="digit" value="{{unitCost}}" bindinput="onInput" data-field="unitCost" placeholder="0"/></view>
-  <view class="field"><text>{{t.qty}}</text><input type="digit" value="{{soldQty}}" bindinput="onInput" data-field="soldQty" placeholder="0"/></view>
-  <button class="save" bindtap="save">{{t.save}}</button>
-</view>
