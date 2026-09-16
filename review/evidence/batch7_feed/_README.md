@@ -331,3 +331,66 @@ def _canon(p):
 - [未落] 真云 unique 实测（用户顺序 ⑦，仍需云控制台）
 - [未落] `specs/dev-specs/★知识存储点_2026-09-10.md` 套件数仍是 **45**（本轮改 46 未回填，
   留待本阶段收官统一刷新，避免同一事实在多处反复漂移）
+
+---
+
+### 6.11 R52 核查完成（2026-09-17 07:05–07:25，云开发控制台 GUI 实测）
+
+**结论：dev 环境 `admin_user` 集合 = 0 条记录 ⇒ R48 的 fail-closed 在 dev 不会锁死任何管理员。**
+
+证据：`r52_admin_user_dev_空集合_20260917.png`（+ `r52_集合列表_20260917.png`）
+
+- 路径：微信开发者工具 → 工具栏「云」图标 → **云开发控制台 v2.0.3** → 数据库 → 集合管理 → 选中 `admin_user` → 记录列表「**没有找到记录**」
+- 环境：`cloud1-d4gphpoxy337f2a25`（控制台显示「cloud1 免费开发环境」）—— 与 `cli cloud env list` 返回一致，非猜环境
+- 方法：截图 + WinRT OCR 双重定位（`win-desktop-control` 技能），非肉眼
+
+**prod 侧推导（结论不变，风险面收窄）**
+
+- prod 环境尚未创建（属上线阻塞，非本轮范围）
+- 首个管理员由 `adminInit` 创建，`adminInit/index.js:65` 写 `status:'active'` ⇒ **只要走 adminInit，R48 就不会拒**
+- **唯一风险路径**：手工在控制台向 `admin_user` 插文档且漏 `status`。因 `adminInit` 对「已有记录」直接拒绝 ⇒
+  该记录**永久被 R48 拒且无法自愈**。⇒ 上线清单加入一条硬规则：
+  **首个管理员必须由 `adminInit` 创建，禁止手工插入 `admin_user` 文档**（如必须手工插入，务必带 `status:"active"`）
+
+**顺带排除一个假发现**：集合列表按字母序仅显示到 `shop`（admin_login_log / admin_user / audit_log /
+feature_permissions / order_refund / probe_tmp / shop），**不是「dev 只有 7 个集合」**——列表可滚动，属显示截断。
+
+### 6.12 工具链发现：开发者工具自带云 CLI 原子工具（可解锁真云测试）
+
+- 安装目录 `resources/app.asar.unpacked/wechatide-skill/` 内含官方 skill 包，提供 `wechatide <tool>` 原子工具：
+  `cloud_env_list` / `cloud_fn_list` / `cloud_fn_info` / `cloud_fn_deploy` / `cloud_fn_inc_deploy` /
+  **`cloud_db_read_doc`** / **`cloud_db_read_struct`（listCollections / describeCollection / listIndexes / checkIndex）** /
+  `cloud_db_write_struct`（建/删集合、管理索引）/ `cloud_db_write_doc` / `cloud_query_storage` …
+- 价值：**若授权打通，「39 条索引补齐」与「真云 unique 实测」都可程序化完成**，不必手工点控制台
+- 当前阻塞：`wechatide` 按客户端名授权（`-c <clientName>`），调用返回
+  `status: pending` / `Waiting for user authorization.`（`-c workbuddy` 与 `-c CodeBuddy` 均如此）。
+  已在「主窗口 / 通知中心 / 进程内其它窗口 / 云控制台设置」逐一排查，**未找到授权弹窗** ⇒ 待李老师在开发者工具内完成
+- 排除项：`cli agent tool` 走的是小程序 `app.json` 的 `agent.skills`（小程序 AI 技能）通道，与本用途无关
+  （缺该字段时报 `agent.skills is empty in app.json`，已实测）
+- **操作纪律（实测）**：官方 SKILL 明确「禁止在沙箱中运行 `wechatide`」⇒ 必须非沙箱执行；
+  本机 Bash 的 PATH 可能为空（`node`/`python` 均找不到），每条命令前需显式 `export PATH=…`；
+  `wechatide` 与 `cli` 是两套入口（`skill-index.js` vs `index.js`），`cli` 免授权但**没有数据库命令**
+
+### 6.13 round23 复审产物登记（含撞号处理）
+
+`review/REVIEW_2026-09-15_round23-verify.md` 已归档（见本轮提交）。它提三条，其中一条**编号撞车**：
+
+- ⚠️ round23 的 **R54（6 个 batch4 云函数无 selftest.js）** 与我方本阶段已用的 **R54（审计留痕失败静默吞）** 撞号
+  ⇒ **本侧改用 `R57`** 指代「6 个 batch4 云函数缺机器断言」：
+  `getLedger` / `getMonthList` / `getShopContext` / `getCardVersions` / `saveAsset` / `saveShopSetting`
+  （其中 `saveAsset` / `saveShopSetting` 是**写操作**，优先补）。round23 文件保持原样不改（复审方产物）
+- **R55**（`utils/selftest_batch7.js` 随小程序包发布，`packOptions.ignore` 未覆盖 `.js`）：成立，待处置
+  —— 移入 `tools/`（已在 ignore 内）或加一条 ignore；约定：测试脚本一律放 `tools/`
+- **R56**（admin 族 12 函数入参校验内联于 `index.js`，无独立 `validate.js` ⇒ 入参面无法单测）：
+  成立，属「与 batch1/2/3 范式不一致」的一致性缺口，非缺陷；下次触碰某 admin 函数时顺手抽出
+
+### 6.14 回执（R52 核查轮 · 2026-09-17 07:30）
+
+- [已落] **R52 核查完成**：dev `admin_user` = 0 条（控制台实测 + 截图留证）⇒ dev 无锁死风险；
+  产出上线硬规则「首个管理员必须由 `adminInit` 创建」
+- [已落] 工具链发现（§6.12）：官方云 CLI 原子工具可用性已摸清，**卡在 client 授权**（待李老师）
+- [已落] round23 产物归档 + 撞号处理（R54→R57）+ R55/R56 登记（§6.13）
+- [存疑] `wechatide` 授权弹窗位置未找到 —— 需李老师本人在场（或告知「设置 → 安全」入口）
+- [未落] R55 移动测试脚本（待办，未改代码）
+- [未落] R57 补 `saveAsset`/`saveShopSetting` 自测（待办）
+- [未落] 真云 unique 实测 —— 若授权打通可程序化完成，否则仍需手工
