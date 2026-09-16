@@ -1,0 +1,56 @@
+<view class="container safe-bottom" wx:if="{{!loading && r}}">
+  <view class="archived-bar" wx:if="{{isArchive}}">{{t.archiveLocked}}</view>
+
+  <!-- 双利润 -->
+  <view class="card2">
+    <view class="muted">{{t.refProfit}}</view>
+    <view class="result-num">{{t.cur}}{{r.refProfit}}</view>
+    <view class="muted">{{t.refNote}}</view>
+  </view>
+  <view class="card2">
+    <view class="muted">{{t.trueProfit}}</view>
+    <view class="result-num" style="color:#22a06b;">{{t.cur}}{{r.trueProfit}}</view>
+    <view class="muted">{{t.trueNote}}</view>
+  </view>
+
+  <!-- 收入/费用/毛利 -->
+  <view class="card2">
+    <view class="cell">
+      <text class="lbl">{{t.income}}</text>
+      <text class="val">{{t.cur}}{{r.income}}</text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.expense}}</text>
+      <text class="val">{{t.cur}}{{r.expense}}</text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.grossProfit}}</text>
+      <text class="val">{{t.cur}}{{r.grossProfit}}</text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.grossMargin}}</text>
+      <text class="val">{{r.grossMargin}}%</text>
+    </view>
+  </view>
+
+  <!-- 明细（消耗/摊销/差异） -->
+  <view class="card2">
+    <view class="cell">
+      <text class="lbl">{{t.materialCost}}</text>
+      <text class="val">{{t.cur}}{{r.materialCost}}</text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.realConsume}}</text>
+      <text class="val">{{t.cur}}{{r.realConsume}}</text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.effectiveAmortize}}</text>
+      <text class="val">{{t.cur}}{{r.effectiveAmortize}}</text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.profitDiff}}</text>
+      <text class="val">{{t.cur}}{{r.profitDiff}}</text>
+    </view>
+  </view>
+</view>
+<view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

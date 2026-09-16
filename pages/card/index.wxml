@@ -1,0 +1,27 @@
+<view class="container safe-bottom">
+  <view class="hint">{{t.hintAlways}}</view>
+
+  <view class="card2" wx:for="{{list}}" wx:key="card_code" bindtap="goEdit" data-code="{{item.card_code}}">
+    <view class="card-title">
+      {{item.name}}
+      <text class="tag">{{item.calc_mode === 'A' ? t.calcModeA : t.calcModeB}}</text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.totalCost}}</text>
+      <text class="val">{{t.cur}}{{item.total_cost}}</text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.price}}</text>
+      <text class="val">{{item.margin === null ? '—' : (item.margin) + '%'}}</text>
+    </view>
+    <view class="row-ops">
+      <button class="btn-small ghost" catchtap="goVersion" data-code="{{item.card_code}}">{{t.viewVersion}}</button>
+      <text class="muted">{{t.version}} {{item.version}}</text>
+    </view>
+  </view>
+
+  <view wx:if="{{list.length === 0 && !loading}}" class="empty">{{t.empty}}</view>
+  <view wx:if="{{loading}}" class="muted" style="text-align:center;padding:40rpx;">{{t.loading}}</view>
+
+  <button class="btn primary" bindtap="goAdd">{{t.addCard}}</button>
+</view>

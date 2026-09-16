@@ -1,0 +1,5 @@
+/* pages/month/inventory.wxss —— M1 库存录入页 */
+.val-input { text-align: right; font-size: 30rpx; width: 300rpx; }
+.lbl-col { display: flex; flex-direction: column; }
+.lbl-col .lbl { font-size: 30rpx; color: #333; }
+.lbl-col .muted { margin-top: 6rpx; font-size: 24rpx; }

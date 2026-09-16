@@ -1,0 +1,8 @@
+.val-input { text-align: right; font-size: 30rpx; width: 260rpx; }
+.mode-group { display: flex; align-items: center; }
+.mode-item { font-size: 30rpx; margin-right: 32rpx; display: flex; align-items: center; }
+.line { background: #fff; border-radius: 12rpx; padding: 16rpx 24rpx; margin-bottom: 16rpx; }
+.cell2 { display: flex; justify-content: space-between; align-items: center; padding: 12rpx 0; }
+.cell2 .lbl { font-size: 28rpx; color: #666; }
+.picker { color: #ff6b35; font-size: 30rpx; min-height: 60rpx; line-height: 60rpx; }
+.reverse { background: #fff; border-radius: 12rpx; padding: 16rpx 24rpx; margin-bottom: 16rpx; }

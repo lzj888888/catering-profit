@@ -1,0 +1,4 @@
+/* pages/card/version.wxss —— M3 成本卡版本历史 */
+.lines-title { font-size: 28rpx; font-weight: 700; color: #666; margin: 20rpx 0 8rpx; }
+.line-row { display: flex; justify-content: space-between; align-items: center; padding: 8rpx 0; font-size: 28rpx; }
+.line-row .lbl { color: #444; }

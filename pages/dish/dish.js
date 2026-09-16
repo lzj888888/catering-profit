@@ -1,7 +1,20 @@
+// pages/dish/dish.js —— 历史遗留菜品 demo 页（本地存储，未接入云；无入口引用，仅兜底显示）
+// ⚠️ 已从 app.json 移除注册（批次 4 起由 M3 成本卡替代）；保留仅防旧链接/旧缓存。文案走 i18n。
+const { TERMS } = require('../../miniprogram/i18n/terms.js');
 const app = getApp();
 
 Page({
   data: {
+    t: {
+      title: TERMS.dish.title,
+      name: TERMS.dish.name,
+      price: TERMS.dish.price,
+      unitCost: TERMS.dish.unitCost,
+      qty: TERMS.dish.qty,
+      save: TERMS.dish.save,
+      namePh: TERMS.dish.namePh,
+      nameRequired: TERMS.dish.nameRequired,
+    },
     name: '', sellPrice: '', unitCost: '', soldQty: '1', id: ''
   },
 
@@ -24,7 +37,7 @@ Page({
 
   save() {
     const name = this.data.name.trim();
-    if (!name) { wx.showToast({ title: '请输入菜品名称', icon: 'none' }); return; }
+    if (!name) { wx.showToast({ title: this.data.t.nameRequired, icon: 'none' }); return; }
     const dish = {
       id: this.data.id || ('d' + Date.now()),
       name,

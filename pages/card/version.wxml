@@ -1,0 +1,31 @@
+<view class="container safe-bottom" wx:if="{{!loading}}">
+  <view class="hint">{{t.versionReadonly}}</view>
+
+  <view class="card2" wx:for="{{list}}" wx:key="version" wx:for-item="v">
+    <view class="card-title">
+      {{v.name}} <text class="tag">{{t.version}} {{v.version}}</text>
+      <text class="tag">{{v.calc_mode}}</text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.versionCreatedAt}}</text>
+      <text class="val muted">{{v.created_at}}</text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.totalCost}}</text>
+      <text class="val">{{t.cur}}{{v.total_cost}}</text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.price}}</text>
+      <text class="val">{{v.price}}</text>
+    </view>
+
+    <view class="lines-title">{{t.versionLines}}</view>
+    <view class="line-row" wx:for="{{v.lines}}" wx:key="material_id" wx:for-item="l">
+      <text class="lbl">{{l.material_name}} × {{l.quantity}}</text>
+      <text class="val muted">{{t.cur}}{{l.line_net_cost}}</text>
+    </view>
+  </view>
+
+  <view wx:if="{{list.length === 0 && !loading}}" class="empty">{{t.oldVersionNote}}</view>
+</view>
+<view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

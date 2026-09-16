@@ -1,0 +1,66 @@
+<view class="form safe-bottom" wx:if="{{!loading}}">
+  <view class="field">
+    <text class="lbl">{{t.dishName}}</text>
+    <input class="val-input" value="{{name}}" placeholder="{{t.dishNamePh}}" bindinput="onName" />
+  </view>
+
+  <!-- 核算模式 -->
+  <view class="field">
+    <text class="lbl">{{t.calcMode}}</text>
+    <radio-group class="mode-group" bindchange="onMode">
+      <label class="mode-item"><radio value="A" checked="{{calcMode === 'A'}}" color="#ff6b35"/>{{t.calcModeA}}</label>
+      <label class="mode-item"><radio value="B" checked="{{calcMode === 'B'}}" color="#ff6b35"/>{{t.calcModeB}}</label>
+    </radio-group>
+  </view>
+
+  <!-- 批量模式：产出份数 -->
+  <view class="field" wx:if="{{calcMode === 'B'}}">
+    <text class="lbl">{{t.batchOutput}}</text>
+    <input class="val-input" type="number" value="{{batchOutput}}" bindinput="onBatch" />
+  </view>
+
+  <!-- 明细行 -->
+  <view class="line" wx:for="{{lines}}" wx:key="idx">
+    <view class="cell2">
+      <text class="lbl">{{t.material}}</text>
+      <picker mode="selector" range="{{materials}}" range-key="name" data-idx="{{index}}" bindchange="onMaterialChange">
+        <view class="picker">{{lines[index].material_name ? lines[index].material_name : t.material}}</view>
+      </picker>
+      <button class="btn-small" style="background:none;color:#e74c3c;min-height:56rpx;" data-idx="{{index}}" catchtap="delLine">×</button>
+    </view>
+    <view class="cell2">
+      <text class="lbl">{{t.qty}}</text>
+      <input class="val-input" type="digit" value="{{lines[index].qty}}" data-idx="{{index}}" bindinput="onQty" />
+    </view>
+  </view>
+  <button class="btn ghost btn-small" style="min-height:72rpx;" bindtap="addLine">{{t.addLine}}</button>
+
+  <!-- 成本参数 -->
+  <view class="field">
+    <text class="lbl">{{t.lossRate}}</text>
+    <input class="val-input" type="digit" value="{{lossRate}}" bindinput="onLoss" />
+  </view>
+  <view class="field">
+    <text class="lbl">{{t.auxAmount}}</text>
+    <input class="val-input" type="digit" value="{{auxYuan}}" bindinput="onAux" />
+  </view>
+  <view class="field">
+    <text class="lbl">{{t.price}}</text>
+    <input class="val-input" type="digit" value="{{priceYuan}}" bindinput="onPrice" />
+  </view>
+
+  <!-- 反算售价 -->
+  <view class="reverse">
+    <view class="cell">
+      <text class="lbl">{{t.targetMargin}}</text>
+      <input class="val-input" type="digit" value="{{targetMargin}}" bindinput="onTargetMargin" />
+    </view>
+    <button class="btn ghost btn-small" style="min-height:72rpx;" bindtap="reverseCalc">{{t.reverseTitle}}</button>
+    <view class="muted" wx:if="{{reversePriceFen > 0}}">{{t.reverseResult}}：{{t.cur}}{{reverseResultPreview}}</view>
+    <view class="muted" wx:if="{{previewCostFen > 0}}">{{t.totalCost}}：<text style="color:#ff6b35;">{{t.cur}}{{previewCost}}</text></view>
+  </view>
+
+  <view style="height:20rpx;"></view>
+  <button class="btn primary" style="margin-top:0;" bindtap="onSave">{{t.save}}</button>
+</view>
+<view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

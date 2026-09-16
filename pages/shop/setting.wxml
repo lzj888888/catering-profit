@@ -1,0 +1,27 @@
+<view class="form safe-bottom" wx:if="{{!loading}}">
+  <view class="label2">{{t.shopName}}</view>
+  <view class="inp"><input value="{{shopName}}" placeholder="{{t.shopNamePh}}" bindinput="onName" /></view>
+
+  <view class="label2">{{t.remark}}</view>
+  <view class="inp"><textarea value="{{remark}}" placeholder="{{t.remarkPh}}" bindinput="onRemark" /></view>
+
+  <view class="switch-row">
+    <view>
+      <view class="lbl2">{{t.inventorySwitch}}</view>
+      <view class="muted">{{t.inventorySwitchDesc}}</view>
+    </view>
+    <switch checked="{{inventoryOn}}" color="#ff6b35" bindchange="onInventory" />
+  </view>
+
+  <view class="switch-row">
+    <view>
+      <view class="lbl2">{{t.amortizeSwitch}}</view>
+      <view class="muted">{{t.amortizeSwitchDesc}}</view>
+    </view>
+    <switch checked="{{amortizeOn}}" color="#ff6b35" bindchange="onAmortize" />
+  </view>
+
+  <view style="height:20rpx;"></view>
+  <button class="btn primary" style="margin-top:0;" bindtap="onSave">{{t.save}}</button>
+</view>
+<view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

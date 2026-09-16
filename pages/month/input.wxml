@@ -1,0 +1,36 @@
+<view class="form safe-bottom" wx:if="{{!loading}}">
+  <!-- 归档状态条 -->
+  <view class="archived-bar" wx:if="{{isArchive}}">
+    {{t.archiveReadonly}}<text wx:if="{{inGrace}}"> · {{t.graceNote}}</text>
+  </view>
+
+  <!-- 收入 -->
+  <view class="sec">{{t.incomeTitle}}</view>
+  <view class="field" wx:for="{{t.income}}" wx:key="category">
+    <text class="lbl">{{item.label}}</text>
+    <input class="val-input" type="digit" confirm-type="done" disabled="{{readOnly}}"
+      value="{{incomeVals[index]}}" data-idx="{{index}}" bindinput="onIncome" />
+  </view>
+
+  <!-- 费用 -->
+  <view class="sec">{{t.expenseTitle}}</view>
+  <view class="field" wx:for="{{t.expense}}" wx:key="category">
+    <text class="lbl">{{item.label}}</text>
+    <input class="val-input" type="digit" confirm-type="done" disabled="{{readOnly}}"
+      value="{{expenseVals[index]}}" data-idx="{{index}}" bindinput="onExpense" />
+  </view>
+
+  <!-- 食材消耗（库存关时直接填总额） -->
+  <view class="sec">{{t.directConsume}}</view>
+  <view class="field">
+    <text class="lbl">{{t.directConsume}}</text>
+    <input class="val-input" type="digit" confirm-type="done" disabled="{{readOnly}}"
+      value="{{directConsumeYuan}}" bindinput="onDirectConsume" />
+  </view>
+  <view class="hint">{{t.directConsumeHint}}</view>
+
+  <view style="height:20rpx;"></view>
+  <button class="btn primary" style="margin-top:0;" bindtap="onSave"
+    disabled="{{readOnly}}">{{isArchive ? t.saveArchiveOverride : t.save}}</button>
+</view>
+<view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

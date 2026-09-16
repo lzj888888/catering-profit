@@ -1,0 +1,4 @@
+/* pages/month/index.wxss —— M1 月度经营首页（继承 app.wxss 共享组件） */
+.tabs { display: flex; margin: 8rpx 0 20rpx; background: #fff; border-radius: 16rpx; padding: 8rpx; }
+.tab { flex: 1; text-align: center; padding: 20rpx 0; font-size: 30rpx; color: #666; border-radius: 12rpx; }
+.tab.active { background: #ff6b35; color: #fff; font-weight: 700; }

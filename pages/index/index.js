@@ -1,62 +1,46 @@
-const calc = require('../../utils/calc.js');
+// pages/index/index.js —— 批次 4 · 模块入口首页
+// 首次进入拉 getShopContext（店铺 + 服务端权威开关），写入 app.globalData 后供全站请求携带 shop_id。
+const api = require('../../utils/api.js');
+const ui = require('../../utils/ui.js');
+const { TERMS } = require('../../miniprogram/i18n/terms.js');
 const app = getApp();
 
 Page({
   data: {
-    dishes: [],
-    fixedCosts: { rent: 0, labor: 0, utility: 0 },
-    summary: {
-      totalRevenue: '0.00', totalCost: '0.00', grossProfit: '0.00',
-      grossRate: '0.0', fixedTotal: '0.00', netProfit: '0.00'
+    t: {
+      m1: TERMS.modules.m1.display,
+      m1Sub: TERMS.modules.m1.subtitle,
+      m2: TERMS.modules.m2.display,
+      m2Sub: TERMS.modules.m2.subtitle,
+      m3: TERMS.modules.m3.display,
+      m3Sub: TERMS.modules.m3.subtitle,
+      addShop: TERMS.buttons.addShop,
+      shopName: TERMS.ui.shopName,
+      defaultShopName: TERMS.ui.defaultShopName,
+      settings: TERMS.ui.settings,
+      loading: TERMS.ui.loading,
+    },
+    shopName: '',
+    loading: true,
+  },
+
+  onShow() { this.bootstrap(); },
+
+  async bootstrap() {
+    ui.setTitle(TERMS.app.title);
+    this.setData({ loading: true });
+    try {
+      const ctx = await api.call('getShopContext', {});
+      app.setShopContext(ctx);
+      this.setData({ shopName: ctx.shop_name || '', loading: false });
+    } catch (e) {
+      this.setData({ loading: false });
+      wx.showToast({ title: (e && e.msg) || TERMS.ui.loadFailed, icon: 'none' });
     }
   },
 
-  onShow() { this.refresh(); },
-
-  refresh() {
-    const dishes = app.globalData.dishes;
-    const fixedCosts = app.globalData.fixedCosts;
-    const s = calc.calcSummary(dishes, fixedCosts);
-    const view = dishes.map(d => {
-      const r = calc.calcDish(d);
-      return Object.assign({}, d, {
-        revenue: r.revenue.toFixed(2),
-        profit: r.profit.toFixed(2),
-        rate: r.rate.toFixed(1)
-      });
-    });
-    this.setData({
-      dishes: view,
-      fixedCosts,
-      summary: {
-        totalRevenue: s.totalRevenue.toFixed(2),
-        totalCost: s.totalCost.toFixed(2),
-        grossProfit: s.grossProfit.toFixed(2),
-        grossRate: s.grossRate.toFixed(1),
-        fixedTotal: s.fixedTotal.toFixed(2),
-        netProfit: s.netProfit.toFixed(2)
-      }
-    });
-  },
-
-  onFixedInput(e) {
-    const field = e.currentTarget.dataset.field;
-    const val = Number(e.detail.value) || 0;
-    const fixedCosts = Object.assign({}, this.data.fixedCosts, { [field]: val });
-    app.globalData.fixedCosts = fixedCosts;
-    wx.setStorageSync('fixedCosts', fixedCosts);
-    this.refresh();
-  },
-
-  goAdd() { wx.navigateTo({ url: '/pages/dish/dish' }); },
-
-  editDish(e) { wx.navigateTo({ url: '/pages/dish/dish?id=' + e.currentTarget.dataset.id }); },
-
-  delDish(e) {
-    const id = e.currentTarget.dataset.id;
-    const dishes = app.globalData.dishes.filter(d => d.id !== id);
-    app.globalData.dishes = dishes;
-    wx.setStorageSync('dishes', dishes);
-    this.refresh();
-  }
+  goMonth() { wx.navigateTo({ url: '/pages/month/index' }); },
+  goSandbox() { wx.navigateTo({ url: '/pages/sandbox/index' }); },
+  goCard() { wx.navigateTo({ url: '/pages/card/index' }); },
+  goSettings() { wx.navigateTo({ url: '/pages/shop/setting' }); },
 });

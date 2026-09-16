@@ -1,26 +1,24 @@
-<view class="container">
-  <view class="summary">
-    <view class="card"><text class="label">营收</text><text class="value">¥{{summary.totalRevenue}}</text></view>
-    <view class="card"><text class="label">食材成本</text><text class="value">¥{{summary.totalCost}}</text></view>
-    <view class="card hl"><text class="label">毛利</text><text class="value">¥{{summary.grossProfit}}</text><text class="sub">毛利率 {{summary.grossRate}}%</text></view>
-    <view class="card net"><text class="label">净利</text><text class="value">¥{{summary.netProfit}}</text></view>
+<view class="container safe-bottom" wx:if="{{!loading}}">
+  <view class="card2">
+    <view class="card-title">{{shopName || t.defaultShopName}}</view>
+    <view class="muted">{{t.shopName}}</view>
   </view>
 
-  <view class="sec">固定成本（日）</view>
-  <view class="row"><text>房租</text><input type="digit" value="{{fixedCosts.rent}}" data-field="rent" bindinput="onFixedInput" placeholder="0"/></view>
-  <view class="row"><text>人工</text><input type="digit" value="{{fixedCosts.labor}}" data-field="labor" bindinput="onFixedInput" placeholder="0"/></view>
-  <view class="row"><text>水电</text><input type="digit" value="{{fixedCosts.utility}}" data-field="utility" bindinput="onFixedInput" placeholder="0"/></view>
-
-  <view class="sec">菜品（按销量核算）</view>
-  <view class="dish" wx:for="{{dishes}}" wx:key="id">
-    <view class="dish-main" bindtap="editDish" data-id="{{item.id}}">
-      <text class="name">{{item.name}}</text>
-      <text class="meta">售价¥{{item.sellPrice}} · 成本¥{{item.unitCost}} · 售{{item.soldQty}}</text>
-      <text class="profit">毛利¥{{item.profit}} ({{item.rate}}%)</text>
-    </view>
-    <text class="del" bindtap="delDish" data-id="{{item.id}}">删</text>
+  <view class="card2" bindtap="goMonth" hover-class="none">
+    <view class="card-title">{{t.m1}}</view>
+    <view class="muted">{{t.m1Sub}}</view>
   </view>
-  <view wx:if="{{dishes.length===0}}" class="empty">还没有菜品，点下面添加</view>
 
-  <button class="add" bindtap="goAdd">+ 添加菜品</button>
+  <view class="card2" bindtap="goSandbox">
+    <view class="card-title">{{t.m2}}</view>
+    <view class="muted">{{t.m2Sub}}</view>
+  </view>
+
+  <view class="card2" bindtap="goCard">
+    <view class="card-title">{{t.m3}}</view>
+    <view class="muted">{{t.m3Sub}}</view>
+  </view>
+
+  <button class="btn ghost" bindtap="goSettings">{{t.settings}}</button>
 </view>
+<view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

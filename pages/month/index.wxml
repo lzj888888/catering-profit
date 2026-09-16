@@ -1,0 +1,58 @@
+<view class="container safe-bottom" wx:if="{{!loading}}">
+  <!-- 月份选择 -->
+  <view class="card2">
+    <picker mode="selector" range="{{months}}" value="{{months.indexOf(curMonth)}}" bindchange="onMonthChange">
+      <view class="cell">
+        <text class="lbl">{{t.month}}</text>
+        <text class="val">{{curMonth}}</text>
+      </view>
+    </picker>
+    <view wx:if="{{isArchive}}" class="archived-bar">
+      {{t.archivedLock}}<text wx:if="{{archivedAtMs}}">（{{t.graceArchive}}）</text>
+    </view>
+    <view wx:if="{{canArchive}}" class="hint">{{t.pendingArchive}} · {{t.goResult}}</view>
+  </view>
+
+  <!-- 双口径 tab -->
+  <view class="tabs">
+    <view class="tab {{tab === 'free' ? 'active' : ''}}" data-tab="free" bindtap="switchTab">{{t.freeTab}}</view>
+    <view class="tab {{tab === 'paid' ? 'active' : ''}}" data-tab="paid" bindtap="switchTab">{{t.paidTab}}</view>
+  </view>
+
+  <!-- 结果卡 -->
+  <view class="card2" wx:if="{{result}}">
+    <block wx:if="{{tab === 'free'}}">
+      <view class="muted">{{t.netRef}}</view>
+      <view class="result-num">{{t.cur}}{{result.ref_profit}}</view>
+    </block>
+    <block wx:else>
+      <view class="hint">{{t.freeHint}}</view>
+      <view class="muted">{{t.netTrue}}</view>
+      <view class="result-num">{{t.cur}}{{result.true_profit}}</view>
+    </block>
+    <view class="row" style="margin-top:20rpx;">
+      <text class="lbl">{{t.totalRevenue}}</text>
+      <text class="val">{{t.cur}}{{result.income_total}}</text>
+    </view>
+    <view class="row">
+      <text class="lbl">{{t.totalExpense}}</text>
+      <text class="val">{{t.cur}}{{result.expense_total}}</text>
+    </view>
+    <view class="row">
+      <text class="lbl">{{t.grossProfit}}</text>
+      <text class="val">{{t.cur}}{{result.gross_profit}}</text>
+    </view>
+    <view class="row" wx:if="{{tab === 'paid'}}">
+      <text class="lbl">{{t.profitDiff}}</text>
+      <text class="val">{{t.cur}}{{result.profit_diff}}</text>
+    </view>
+  </view>
+
+  <!-- 快捷入口 -->
+  <button class="btn primary" bindtap="goInput">{{t.goInput}}</button>
+  <button class="btn" wx:if="{{switches.inventorySwitchOn}}" bindtap="goInventory">{{t.goInventory}}</button>
+  <button class="btn" wx:if="{{switches.amortizeSwitchOn}}" bindtap="goAmortize">{{t.goAmortize}}</button>
+  <button class="btn ghost" bindtap="goResult">{{t.goResult}}</button>
+  <button class="btn ghost" wx:if="{{canArchive}}" bindtap="onArchive">{{t.archiveNow}}</button>
+</view>
+<view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

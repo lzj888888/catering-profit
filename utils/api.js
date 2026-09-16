@@ -1,0 +1,81 @@
+// utils/api.js —— 批次 4 · 前端统一请求适配层
+//
+// 职责（强制执行批次 4 §强制遵守）：
+//   1) 所有云函数请求自动注入 shop_id（来自 app.globalData，读 getShopContext 后设置）。
+//   2) 错误统一映射后端标准错误码（经 i18n/terms.js 的 msgOf），禁止页面自造错误文案。
+//   3) 金额「元→分」转换：界面单位是「元」，适配层 Math.round(元×100) 转成整数「分」number 再传，
+//      ❌ 禁止把 input 字符串直接透传（云函数对非 number 一律 INVALID_PARAM）。
+module.exports = {
+  /**
+   * 调云函数（自动注入 shop_id + 统一错误映射）。
+   * @returns {Promise<object>} 解析出的 data（后端 { code:'SUCCESS', data } 已解包）
+   * @throws {{code,msg}} 非 SUCCESS 时抛 { code, msg }（msg 已 i18n 映射）
+   */
+  async call(name, payload) {
+    const app = getApp && getApp();
+    const shopId = (app && app.globalData && app.globalData.shop_id) || (payload && payload.shop_id) || '';
+    const body = Object.assign({ shop_id: shopId }, payload || {});
+    const res = await wx.cloud.callFunction({ name, data: body });
+    const r = res && res.result;
+    if (!r) {
+      const terms = require('../miniprogram/i18n/terms.js');
+      const msg = (terms && terms.msgOf) ? terms.msgOf('SYSTEM_ERROR') : '服务无响应';
+      throw { code: 'SYSTEM_ERROR', msg };
+    }
+    if (r.code !== 'SUCCESS') {
+      const terms = require('../miniprogram/i18n/terms.js');
+      const msg = (terms && terms.msgOf) ? terms.msgOf(r.code) : (r.msg || '操作失败');
+      throw { code: r.code, msg };
+    }
+    return r.data || {};
+  },
+
+  /** 元（字符串/数字）→ 分（number）整数。input 值是字符串、界面单位是元。 */
+  yuanToFen(yuanInput) {
+    const n = Number(yuanInput);
+    if (!isFinite(n) || n < 0) return 0;
+    return Math.round(n * 100);
+  },
+
+  /** 分 → 展示字符串（如 2200000 → "22000.00"）。仅展示，不参与任何计算。 */
+  fenToYuan(fen, digits) {
+    const v = (Number(fen) || 0) / 100;
+    const d = digits === undefined ? 2 : digits;
+    return v.toFixed(d);
+  },
+
+  /** 方案内：分 → 展示元（月核算大额用整数展示，如 916000 → "9160"）。 */
+  fenToYuanInt(fen) {
+    return String(Math.round((Number(fen) || 0) / 100));
+  },
+
+  /** 300ms 防抖（输入场景） */
+  debounce(fn, wait) {
+    let t = null;
+    return function (...args) {
+      if (t) clearTimeout(t);
+      t = setTimeout(() => fn.apply(this, args), wait || 300);
+    };
+  },
+
+  /**
+   * 确保店铺上下文已加载（首次进入拉 getShopContext 写入 globalData）。
+   * 页面 onShow 调用；返回 ctx（含 shop_id / shop_name / switches）。
+   */
+  async ensureShop() {
+    const app = getApp && getApp();
+    if (app && app.globalData && app.globalData.shop_id) {
+      return app.globalData;
+    }
+    const ctx = await this.call('getShopContext', {});
+    if (app && app.setShopContext) app.setShopContext(ctx);
+    return ctx;
+  },
+
+  /** 展示后端标准错误（已 i18n 映射）；供 catch 统一调用 */
+  toastError(e) {
+    const terms = require('../miniprogram/i18n/terms.js');
+    const fallback = (terms && terms.msgOf) ? terms.msgOf('SYSTEM_ERROR') : '操作失败';
+    wx.showToast({ title: (e && e.msg) || fallback, icon: 'none' });
+  },
+};

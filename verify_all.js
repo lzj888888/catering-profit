@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：17 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~3 代码自测（batch0/1/2/3）
+// 串联：21 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~4 代码自测（batch0/1/2/3/4）
 //       + 静态路径检查（tools/check_requires.js）。
 // ⚠️ 新增/删除套件时必须同步改上面这句数量，否则 `SUITES.length` 与注释不符（R21）。
 // 用同一个 node（process.execPath）跑子进程，避免多解释器/环境问题。
@@ -32,6 +32,11 @@ const SUITES = [
   ['batch3-syncCostCard', 'cloudfunctions/syncCostCard/selftest.js'],
   ['batch3-getMaterial',  'cloudfunctions/getMaterial/selftest.js'],
   ['batch3-getCostCard',  'cloudfunctions/getCostCard/selftest.js'],
+  // ===== 批次 4 · M1 结账归档 + M2 沙盘 + 摊销 + 账保存（各自单测）=====
+  ['batch4-archiveMonth', 'cloudfunctions/archiveMonth/selftest.js'],
+  ['batch4-calcSandbox',  'cloudfunctions/calcSandbox/selftest.js'],
+  ['batch4-getAmortSchedule', 'cloudfunctions/getAmortSchedule/selftest.js'],
+  ['batch4-saveLedger',   'cloudfunctions/saveLedger/selftest.js'],
   // 后续批次的套件在此追加即可（如 batch2_selfcheck ...）；追加后记得同步头部注释里的套件数量。
 ];
 

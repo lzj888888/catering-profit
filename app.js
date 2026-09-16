@@ -4,17 +4,23 @@ const env = require('./miniprogram/config/env.js');
 
 App({
   globalData: {
-    dishes: [],
-    fixedCosts: { rent: 0, labor: 0, utility: 0 }
+    shop_id: '',          // 店铺 ID（页面首次 getShopContext 后写入；所有请求自动携带 commit）
+    shop_name: '',
+    switches: { inventorySwitchOn: false, amortizeSwitchOn: false },
   },
+
   onLaunch() {
-    // 初始化云开发：环境 ID 单一来源 = config/env.js
     if (wx.cloud) {
       wx.cloud.init({ env: env.getEnv(), traceUser: true });
     } else {
       console.error('[cloud] wx.cloud 未就绪');
     }
-    this.globalData.dishes = wx.getStorageSync('dishes') || [];
-    this.globalData.fixedCosts = wx.getStorageSync('fixedCosts') || { rent: 0, labor: 0, utility: 0 };
-  }
+  },
+
+  // 供 pages 设置/读取当前店铺上下文
+  setShopContext(ctx) {
+    this.globalData.shop_id = ctx.shop_id || '';
+    this.globalData.shop_name = ctx.shop_name || '';
+    this.globalData.switches = ctx.switches || { inventorySwitchOn: false, amortizeSwitchOn: false };
+  },
 });

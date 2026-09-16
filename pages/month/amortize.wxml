@@ -1,0 +1,65 @@
+<view class="container safe-bottom" wx:if="{{!loading}}">
+  <!-- 当月摊销合计 -->
+  <view class="card2">
+    <view class="muted">{{t.monthTotal}}</view>
+    <view class="result-num">{{t.cur}}{{totalYuan}}</view>
+  </view>
+
+  <!-- 资产列表 -->
+  <view class="card2" wx:for="{{assets}}" wx:key="asset_id">
+    <view class="card-title">
+      {{item.name}}
+      <text class="tag" wx:if="{{item.terminate_month}}">{{t.terminateMonth}}</text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.value}}</text>
+      <text class="val">{{t.cur}}{{item.value}}</text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.startMonth}} / {{t.totalMonths}}</text>
+      <text class="val">{{item.start_month}} · {{item.total_months}}{{t.monthUnit}}</text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.monthAmountShort}}</text>
+      <text class="val" style="color:#ff6b35;">{{t.cur}}{{item.amountYuan}}</text>
+    </view>
+    <view class="row-ops">
+      <button class="btn-small ghost" catchtap="onEdit" data-asset="{{item}}">{{t.edit}}</button>
+      <button class="btn-small ghost" style="color:#e74c3c;border-color:#e74c3c;" catchtap="onTerminate" data-asset="{{item}}">{{t.terminateNow}}</button>
+    </view>
+  </view>
+
+  <view wx:if="{{assets.length === 0 && !loading}}" class="empty">{{t.empty}}</view>
+
+  <button class="btn primary" bindtap="onAdd">{{t.add}}</button>
+
+  <!-- 新增/编辑表单 -->
+  <view class="mask" wx:if="{{showForm}}" bindtap="onCancelForm">
+    <view class="sheet" catchtap="">
+      <view class="card-title">{{editing ? t.edit : t.add}}</view>
+      <view class="field">
+        <text class="lbl">{{t.name}}</text>
+        <input class="val-input" value="{{formName}}" placeholder="{{t.namePh}}" bindinput="onName" />
+      </view>
+      <view class="field">
+        <text class="lbl">{{t.value}}</text>
+        <input class="val-input" type="digit" confirm-type="done" value="{{formValueYuan}}" bindinput="onValue" />
+      </view>
+      <view class="field">
+        <text class="lbl">{{t.startMonth}}</text>
+        <input class="val-input" value="{{formStartMonth}}" placeholder="2026-01" bindinput="onStartMonth" />
+      </view>
+      <view class="field">
+        <text class="lbl">{{t.totalMonths}}</text>
+        <input class="val-input" type="number" value="{{formTotalMonths}}" bindinput="onTotalMonths" />
+      </view>
+      <view class="field">
+        <text class="lbl">{{t.terminateMonth}}</text>
+        <input class="val-input" value="{{formTerminateMonth}}" placeholder="{{t.optional}}" bindinput="onTerminateMonth" />
+      </view>
+      <button class="btn primary" style="margin-top:0;" bindtap="onSaveAsset">{{t.save}}</button>
+      <button class="btn ghost" bindtap="onCancelForm">{{t.cancel}}</button>
+    </view>
+  </view>
+</view>
+<view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

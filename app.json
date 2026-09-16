@@ -1,13 +1,24 @@
 {
   "pages": [
     "pages/index/index",
-    "pages/dish/dish"
+    "pages/month/index",
+    "pages/month/input",
+    "pages/month/inventory",
+    "pages/month/amortize",
+    "pages/month/result",
+    "pages/shop/setting",
+    "pages/sandbox/index",
+    "pages/card/index",
+    "pages/card/edit",
+    "pages/card/version"
   ],
   "window": {
-    "navigationBarTitleText": "餐饮毛利核算",
+    "navigationBarTitleText": "开店算账",
     "navigationBarBackgroundColor": "#ff6b35",
     "navigationBarTextStyle": "white",
-    "backgroundColor": "#f5f6f8"
+    "backgroundColor": "#f5f6f8",
+    "enablePullDownRefresh": true
   },
-  "style": "v2"
+  "style": "v2",
+  "lazyCodeLoading": "requiredComponents"
 }
