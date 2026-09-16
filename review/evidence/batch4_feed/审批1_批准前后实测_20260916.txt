@@ -1,0 +1,51 @@
+### 审批①（新建 8 个云函数目录 + 同步 common 副本）批准前后实测（2026-09-16 17:5x）
+
+【批准前 · 只读预检】避免「批准后才发现副作用」
+$ node tools/sync_common.js --check
+  ✅ common 同步校验通过：19 个云函数目录的扁平副本（common.js + cx_*.js）均 ≡ cloudfunctions/common/ 单源派生
+  EXIT=0  ⇒ 11 个既有目录副本 ≡ 单源 ⇒ sync 对它们是零改动（幂等），不会碰批次1~3
+
+$ 重名检查：8 个新名 vs 既有 11 个目录
+  calcSandbox  ⚠️ 已存在（会被覆盖！）
+  getShopContext  ⚠️ 已存在（会被覆盖！）
+  saveShopSetting  ⚠️ 已存在（会被覆盖！）
+  saveLedger  ⚠️ 已存在（会被覆盖！）
+  getLedger  ⚠️ 已存在（会被覆盖！）
+  getMonthList  ⚠️ 已存在（会被覆盖！）
+  saveAsset  ⚠️ 已存在（会被覆盖！）
+  getAmortSchedule  ⚠️ 已存在（会被覆盖！）
+
+【批准后 · 落盘实测】
+$ git status --short
+  ?? cloudfunctions/calcSandbox/
+  ?? cloudfunctions/getAmortSchedule/
+  ?? cloudfunctions/getLedger/
+  ?? cloudfunctions/getMonthList/
+  ?? cloudfunctions/getShopContext/
+  ?? cloudfunctions/saveAsset/
+  ?? cloudfunctions/saveLedger/
+  ?? cloudfunctions/saveShopSetting/
+  ?? "review/evidence/batch4_feed/\345\256\241\346\211\2711_\346\211\271\345\207\206\345\211\215\345\220\216\345\256\236\346\265\213_20260916.txt"
+  ?? "review/evidence/batch4_feed/\345\256\241\346\211\2711_\346\226\260\345\273\2728\345\207\275\346\225\260\347\233\256\345\275\225\344\270\216\345\220\214\346\255\245\345\211\257\346\234\254_\345\221\275\344\273\244\345\205\250\346\231\257.png"
+  ⇒ 只有 8 个 ??（新增），没有任何 M（修改）
+
+$ ls -d cloudfunctions/*/ | wc -l
+  20 个目录（原 12：11 函数 + common）
+
+$ cat cloudfunctions/calcSandbox/package.json
+  {
+    "name": "calcSandbox",
+    "version": "1.0.0",
+    "main": "index.js",
+    "dependencies": {
+      "wx-server-sdk": "~2.6.3"
+    }
+  }
+
+$ node tools/sync_common.js --check
+  ✅ common 同步校验通过：19 个云函数目录的扁平副本（common.js + cx_*.js）均 ≡ cloudfunctions/common/ 单源派生
+  EXIT=0  ⇒ 19 个目录副本均 ≡ 单源
+
+$ node verify_all.js | tail -1
+  ===== 总览：17/17 套件通过 =====
+  EXIT=0  ⇒ 门禁未因新增空目录而转红（无硬编码函数数，动态枚举）
