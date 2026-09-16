@@ -14,7 +14,7 @@ const { ERROR_CODES, ok, fail } = common;
 const { nowUtc } = common.utilTime;
 const { writeAudit } = common.audit;
 const { parseBearer, requireAuth, requireRole } = require('./adminAuth');
-const { csvFromRows, fetchAllPages } = require('./service');
+const { csvFromRows, fetchAllPages, makePagedQuery } = require('./service');
 
 exports.main = async (event) => {
   const headers = (event && event.headers) || (event && event.header) || {};
@@ -47,16 +47,13 @@ exports.main = async (event) => {
   const now = nowUtc();
 
   // ===== 4. 取数（R49：分页累取到耗尽，安全上限响亮失败）=====
-  const pagedQuery = (coll, where) => async (skip, limit) => {
-    let q = db.collection(coll).where(where).skip(skip).limit(limit);
-    const res = await q.get();
-    return (res && res.data) || [];
-  };
+  // ⚠️ R51：空 where({}) 无平台行为保证（全仓零先例），故「全量无过滤」走**不带 where 的路径**
+  //   （where == null → makePagedQuery 跳过 .where()），不凑恒真条件、不赌平台对空对象的行为。留痕防后人改回去。
 
   try {
     if (scope === 'entitlements') {
-      // 全量权益明细（仅 super；无时间过滤，全部取尽）
-      const rows = await fetchAllPages(pagedQuery('shop_entitlement', {}));
+      // 全量权益明细（仅 super；无过滤 → where=null 不带 where 取全量）
+      const rows = await fetchAllPages(makePagedQuery(db.collection('shop_entitlement'))(null));
       const header = ['user_id', 'expire_at', 'source', 'updated_at'];
       const body = rows.map((r) => [r.user_id || '', r.expire_at || 0, r.source || '', r.updated_at || 0]);
       const csv = format === 'csv' ? csvFromRows(header, body) : '';
@@ -75,7 +72,7 @@ exports.main = async (event) => {
     }
 
     // 订单明细（超管/运营均可；支持时间范围过滤）
-    const rows = await fetchAllPages(pagedQuery('shop_payment_flow', cond));
+    const rows = await fetchAllPages(makePagedQuery(db.collection('shop_payment_flow'))(cond));
     const header = ['order_no', 'user_id', 'amount_fen', 'plan_id', 'plan_name', 'status', 'channel', 'paid_at', 'created_at'];
     const body = rows.map((r) => [r.order_no || '', r.user_id || '', r.amount != null ? r.amount : 0, r.plan_id || '', r.plan_name || '', r.status || '', r.channel || '', r.paid_at || 0, r.created_at || 0]);
     const csv = format === 'csv' ? csvFromRows(header, body) : '';

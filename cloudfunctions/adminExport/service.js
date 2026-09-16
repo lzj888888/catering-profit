@@ -52,4 +52,22 @@ async function fetchAllPages(fetchPage, opts) {
   return all;
 }
 
-module.exports = { csvEscape, csvFromRows, fetchAllPages, MAX_EXPORT_PAGES, EXPORT_PAGE_SIZE, EXPORT_ROWS_CAP };
+// ===================== R51 · 分页查询构造（注入 collection 句柄，可单测）=====================
+
+/**
+ * 构造分页查询器（R51）：where == null → **跳过 .where()**（全量，不带 where 路径）。
+ * ⚠️ 空 where({}) 无平台行为保证（全仓零先例），全量查询不凑恒真条件、不赌平台对空对象的行为。
+ * @param {object} coll 注入的 collection 句柄（db.collection(name) 返回值；测试可注入假句柄）
+ * @returns {function} (where) => async (skip, limit) => Array —— where 为 null/undefined → 不带 where
+ */
+function makePagedQuery(coll) {
+  return (where) => async (skip, limit) => {
+    let q = coll;
+    if (where != null) q = q.where(where);   // where == null → 跳过（全量）
+    q = q.skip(skip).limit(limit);
+    const res = await q.get();
+    return (res && res.data) || [];
+  };
+}
+
+module.exports = { csvEscape, csvFromRows, fetchAllPages, makePagedQuery, MAX_EXPORT_PAGES, EXPORT_PAGE_SIZE, EXPORT_ROWS_CAP };

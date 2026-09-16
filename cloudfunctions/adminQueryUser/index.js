@@ -10,6 +10,7 @@ const db = cloud.database();
 const common = require('./common');                 // 扁平派生副本（sync_common 生成）
 const { ERROR_CODES, ok, fail } = common;
 const { parseBearer, requireAuth } = require('./adminAuth');
+const { fetchShopsAll } = require('./service');
 
 exports.main = async (event) => {
   const headers = (event && event.headers) || (event && event.header) || {};
@@ -49,7 +50,14 @@ exports.main = async (event) => {
   const list = [];
   for (const u of users) {
     const userId = u.user_id || u.id;
-    const shopsRes = await db.collection('shop').where({ user_id: userId, is_deleted: false }).limit(20).get();
+    // ⚠️ R53（A 类加固）：店铺列表分页累取到耗尽（service.fetchShopsAll），
+    //   杜绝 limit(20) 静默截断；超过安全上限响亮失败（HARD_CAP_EXCEEDED）。
+    const shops = await fetchShopsAll(async (skip, limit) => {
+      const shopsRes = await db.collection('shop')
+        .where({ user_id: userId, is_deleted: false })
+        .skip(skip).limit(limit).get();
+      return (shopsRes && shopsRes.data) || [];
+    });
     const entRes = await db.collection('shop_entitlement').where({ user_id: userId }).limit(1).get();
     const ent = entRes && entRes.data && entRes.data[0];
     const expireAt = ent ? (ent.expire_at || 0) : 0;
@@ -57,7 +65,7 @@ exports.main = async (event) => {
       user_id: userId,
       openid_mask: maskOpenid(u.openid || ''),
       nickname: u.nickname || '',
-      shops: ((shopsRes && shopsRes.data) || []).map((s) => ({ shop_id: s.id || s.shop_id, name: s.name || '' })),
+      shops: shops.map((s) => ({ shop_id: s.id || s.shop_id, name: s.name || '' })),
       expire_at: expireAt,
       tier: expireAt > Date.now() ? 'paid' : 'free',   // 档位判定：只读 expire_at（解耦铁律）
       source: ent ? (ent.source || '') : '',

@@ -97,6 +97,46 @@ const { fetchAllPages } = require('./service');
   const empty = await fetchAllPages(async () => []);
   check('空集合 → 0 条', empty.length === 0);
 
+  console.log(`\n==== adminExport R49 子测：${pass} 通过 / ${failN} 失败 ====`);
+})();
+
+console.log('');
+console.log('===== R51 · where=null 走不带 where 的路径（makePagedQuery 真实实现）=====');
+const { makePagedQuery } = require('./service');
+// 假 collection：记录调用形态，链式返回自身（模拟 wx SDK 查询对象），get 返回 {data}
+function makeFakeColl() {
+  const calls = [];
+  const coll = {
+    where(cond) { calls.push('where:' + JSON.stringify(cond)); return coll; },
+    skip(n) { calls.push('skip:' + n); return coll; },
+    limit(n) { calls.push('limit:' + n); return coll; },
+    get: async () => ({ data: [{ id: 'e1' }] }),
+  };
+  return { calls, coll };
+}
+
+(async () => {
+  // ① where=null（entitlements 全量）→ 不出现 where 调用
+  const f1 = makeFakeColl();
+  const rows1 = await makePagedQuery(f1.coll)(null)(0, 1000);
+  check('R51-① where=null → 无 where() 调用（只有 skip/limit/get）',
+    rows1.length === 1 && !f1.calls.some((c) => c.indexOf('where:') === 0),
+    'calls=' + f1.calls.join(','));
+  check('R51-① where=null → skip/limit 顺序正确',
+    f1.calls.join(',') === 'skip:0,limit:1000', 'calls=' + f1.calls.join(','));
+
+  // ② where 对象（orders 明细）→ 有 where() 调用且条件透传
+  const f2 = makeFakeColl();
+  const cond = { is_deleted: false, user_id: 'u1' };
+  await makePagedQuery(f2.coll)(cond)(0, 1000);
+  check('R51-② where 对象 → 调用 .where(cond) 且条件透传',
+    f2.calls[0] === 'where:' + JSON.stringify(cond), 'calls=' + f2.calls.join(','));
+
+  // ③ 禁止回归：全量路径不产生空 where({})（index.js 已传 null）
+  const f3 = makeFakeColl();
+  await makePagedQuery(f3.coll)(null)(0, 1000);
+  check('R51-③ 全量路径不产生空 where({})', !f3.calls.some((c) => c === 'where:{}'), 'calls=' + f3.calls.join(','));
+
   console.log(`\n==== adminExport 批次 6/7 自测结果：${pass} 通过 / ${failN} 失败 ====`);
   process.exit(failN === 0 ? 0 : 1);
 })();

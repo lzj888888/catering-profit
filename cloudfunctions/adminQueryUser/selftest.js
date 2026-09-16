@@ -30,5 +30,36 @@ check('expire_at 过期 → free', tier(NOW - DAY) === 'free');
 check('无权益(0) → free', tier(0) === 'free');
 check('判定不依赖 plan_id（无 plan 字段参与）', true, '见 adminQueryUser/index.js：tier = expire_at > now');
 
-console.log(`\n==== adminQueryUser 批次 6 自测结果：${pass} 通过 / ${failN} 失败 ====`);
-process.exit(failN === 0 ? 0 : 1);
+console.log('');
+console.log('===== R53 · 店铺列表分页累取（A 类加固，service.fetchShopsAll 真实实现）=====');
+const { fetchShopsAll } = require('./service');
+(async () => {
+  // ① 20 家（旧 limit 会被截断的量级）→ 一次取尽
+  const s20 = await fetchShopsAll(async (skip, limit) => Array.from({ length: Math.min(20, 20 - skip) }, (_, i) => ({ id: skip + i })));
+  check('R53-① 20 家店 → 全部取到（旧 limit(20) 恰好取尽，分页同样取尽）', s20.length === 20);
+
+  // ② 150 家（>20，旧 limit(20) 会静默截断）→ 分页取尽
+  const total = 150;
+  const hits = [];
+  const s150 = await fetchShopsAll(async (skip, limit) => {
+    hits.push({ skip, limit });
+    const n = Math.min(limit, total - skip);
+    return Array.from({ length: Math.max(0, n) }, (_, i) => ({ id: skip + i }));
+  });
+  check('R53-② 150 家店（>20）→ 分页取尽，无静默截断', s150.length === 150, `len=${s150.length}`);
+  check('R53-② 分页命中：第 2 页 skip=100', hits.length === 2 && hits[1].skip === 100);
+
+  // ③ 超过安全上限（500）→ 响亮失败（HARD_CAP_EXCEEDED）
+  let capErr = null;
+  try {
+    await fetchShopsAll(async (skip, limit) => Array.from({ length: limit }, (_, i) => ({ id: skip + i })));
+  } catch (e) { capErr = e; }
+  check('R53-③ 店铺数超过安全上限 → 抛 HARD_CAP_EXCEEDED（响亮失败）', capErr && capErr.code === 'HARD_CAP_EXCEEDED');
+
+  // ④ 空店铺 → 0 家
+  const s0 = await fetchShopsAll(async () => []);
+  check('R53-④ 无店铺 → 0 家', s0.length === 0);
+
+  console.log(`\n==== adminQueryUser 批次 6/7 自测结果：${pass} 通过 / ${failN} 失败 ====`);
+  process.exit(failN === 0 ? 0 : 1);
+})();
