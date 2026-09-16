@@ -1,8 +1,9 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：45 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7）
+// 串联：46 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7）
 //       + 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
-//       + 合规守卫（tools/check_compliance.js，R42）。
+//       + 合规守卫（tools/check_compliance.js，R42）
+//       + 单源派生守卫（tools/check_admincore.js，R50：_adminCore/adminAuth.js 的副本一致性）。
 // ⚠️ 新增/删除套件时必须同步改上面这句数量，否则 `SUITES.length` 与注释不符（R21）。
 // 用同一个 node（process.execPath）跑子进程，避免多解释器/环境问题。
 // ⚠️ 不在 CI 之外假定任何 secrets；纯本地静态 + 单测。
@@ -27,6 +28,7 @@ const SUITES = [
   ['静态路径检查',        'tools/check_requires.js'],
   ['页面声明守卫 R44',    'tools/check_pages.js'],
   ['合规守卫 R42',        'tools/check_compliance.js'],
+  ['单源派生守卫 R50',    'tools/check_admincore.js'],
   // ===== 批次 3 · POC2 BOM 两层 / 循环拦截 / 快照（7 个云函数各自单测）=====
   ['batch3-calcBom',      'cloudfunctions/calcBom/selftest.js'],
   ['batch3-detectCycle',  'cloudfunctions/detectCycle/selftest.js'],

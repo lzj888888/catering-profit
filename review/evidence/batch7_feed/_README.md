@@ -285,3 +285,49 @@ def _canon(p):
   `verify_all.js` 抢同一文件）。
 
 
+
+### 6.9 一轮加固（R48/R49）验收（2026-09-17 03:55 发出 → 03:54 回复 → 04:05 验收）
+
+**时间线**（注：回复时间戳 03:54 早于我发出任务前守候脚本的起点，是因为守候脚本
+`--assist 309` 基线取自 03:40 那轮；本轮 Assistant 309 → 337，+28 条，为 R48/R49 的完整交付报告。）
+
+**复核（不采信自述，逐项实测）**
+| 项 | 命令 / 方法 | 结果 |
+|---|---|---|
+| 改动面 | `git status --porcelain` | 26 M + 1 新增（`adminExport/service.js`），与自述逐项对上 |
+| 受保护区 | `git status --porcelain cloudfunctions/common/ initDb/` | 空 ✅ |
+| K11 | md5 双副本 | `607127ab…` 一致，未变 ✅ |
+| 核心 diff | `git diff _adminCore/adminAuth.js` + `adminExport/index.js` | 逐行审：`requireAuth` 三参、fail-closed 四处分支、读库 try/catch ✅ |
+| 调用点遗漏 | `grep -rn "requireAuth("` | 9 处 index.js **全为三参**，旧二参**零残留** ✅ |
+| 错误码 | `grep HARD_CAP_EXCEEDED` | `common/errors.js:19` 既有；i18n 双副本 `HARD_CAP_EXCEEDED→ERR.HARD_CAP` 已有 ✅（未新增错误码） |
+| 变异残留 | `grep -rn MUTATION` | 0 ✅ |
+| selftest | 逐个 `node …/selftest.js` | adminLogin 33/0、adminExport 21/0、adminRefreshToken 8/0、adminLogout 4/0、adminRevokeToken 5/0、adminInit 7/0、adminGrantEntitlement 14/0 ✅ |
+| 门禁 | `node verify_all.js` | 46/46 exit 0（含新登记 R50 守卫）✅ |
+| 单源 | `node tools/check_admincore.js` | 11 份副本 ≡ 单源 ✅ |
+
+**提交**：`2a3753f` fix(admin) R48/R49（`origin/dev` 已推）。
+
+#### 6.9.1 复核方独立发现（本轮新增，非 InsCode 报）
+
+- **R51（存疑，未拦）**：`adminExport/index.js` 的 `pagedQuery('shop_entitlement', {})` 用了**空 where 对象**。
+  全仓**无先例**（`grep where({})` 零命中），腾讯云开发文档仅约束「条件必须 object、值不能全 undefined」，
+  未明示空对象行为 ⇒ 平台若不吞，超管导出权益会直接 `SYSTEM_ERROR`。**当前数据量下不触发，随规模暴露**。
+  已作为下一轮任务派给 InsCode（改为不带 where 或恒真条件）。
+- **R52（上线前必查，非代码缺陷）**：R48 是 **fail-closed**，`admin_user.status !== 'active'` 一律拒。
+  已核实 `adminInit` 建号时写 `status:'active'`（index.js:65）⇒ 新建管理员安全。
+  ⚠️ 但**若库里存在历史/手工插入的缺 `status` 记录，部署 R48 后该管理员会被立刻拒，
+  且 adminInit「已有记录即拒绝」—— 无法自救**。
+  ⇒ **部署前需李老师在控制台确认 `admin_user` 每条记录都有 `status='active'`**；
+  否则需手工补字段后再部署。已列入上线阻塞清单。
+
+### 6.10 回执（本轮 · 2026-09-17 04:05）
+
+- [已落] R48/R49 验收并提交 `2a3753f`（InsCode 交付，复核全绿）
+- [已落] R50 守卫 `tools/check_admincore.js` 登记进 `verify_all.js` SUITES（45 → **46** 套件），
+  改后 `verify_all` 46/46 + A–L exit 0 双跑通过 · `caa3f40`(文件) + 本轮提交
+- [已落] R51 / R52 登记（见 §6.9.1）
+- [存疑] R51 空 where —— 平台行为未实测，需真云验证或下一轮加固
+- [存疑] R52 上线前人工核查 —— 依赖李老师在云控制台看 `admin_user`（InsCode 与我方均无数据库访问权）
+- [未落] 真云 unique 实测（用户顺序 ⑦，仍需云控制台）
+- [未落] `specs/dev-specs/★知识存储点_2026-09-10.md` 套件数仍是 **45**（本轮改 46 未回填，
+  留待本阶段收官统一刷新，避免同一事实在多处反复漂移）
