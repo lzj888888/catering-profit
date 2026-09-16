@@ -1,0 +1,291 @@
+// cloudfunctions/saveCostCard/index.js —— 批次 3 · POC2 成本卡保存（Controller 层 · 写）
+//
+// 分层归属：
+//   Controller：鉴权中间件（批次 0）→ 校验/清洗 → 读原料（DataAdapter，软删自动排除）
+//               → 构建快照明细 + 循环预检 + 成本计算（Service 纯函数）
+//               → 只 INSERT 新版本（shop_cost_card + shop_cost_card_line 明细行含净料单位成本快照）
+//               → 模式 B 自动生成/更新虚拟半成品原料（shop_material，is_virtual=true）。
+//
+// ⚠️ 铁律：
+//   · 成本卡主表**只 INSERT 不 UPDATE**（改 = 另存新版本；版本号自然数递增，经 card_code 关联历史版本）。
+//     本实现不翻转 is_latest（查询一律取 card_code 下版本号最大者），真正做到只增不改。
+//   · 明细行必须**完整存储当时的净料单位成本快照值**，不得仅存 material_id 做关联（快照隔离本质）。
+//   · 循环引用：保存半成品（模式 B）前用 detectCycle 同款 DFS 预检，命中抛 BOM_CYCLE_DETECTED、**数据不入库**。
+//   · 幂等：同一 shop_id + client_request_id 重复调用不重复落库，直接返回首次结果。
+
+const cloud = require('wx-server-sdk');
+cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
+const db = cloud.database();
+
+const common = require('./common');                 // 扁平派生副本（sync_common 生成）
+const { resolveAuth, assertShopOwner, genId } = common;
+const { ERROR_CODES, ok, fail } = common;
+const { makeAdapter } = common.dataAdapter;
+const { nowUtc } = common.utilTime;
+const { buildSnapshotLines, calcCostCard, wouldCreateCycle } = require('./service');
+const { validateInput } = require('./validate');
+
+// 幂等：取该店已登记的 client_request_id 对应的首次结果
+async function getIdempotent(da, shopId, clientRequestId) {
+  if (!clientRequestId) return null;
+  const rec = await db.collection('audit_log')
+    .where({ shop_id: shopId, idempotency_key: `${shopId}__${clientRequestId}` }).limit(1).get();
+  const row = rec && rec.data && rec.data[0];
+  return row && row.after_data ? row.after_data : null;
+}
+
+// 构建「虚拟半成品 → 其引用的虚拟半成品 id[]」映射（判环用）。
+// 遍历该店虚拟原料，找到每个虚拟对应源半成品成本卡（parent_card_id 关联）的最新版本，收集其引用到的虚拟 id。
+async function loadEdgesFromVirtual(da, shopId) {
+  const virtRes = await da.list('shop_material', { shop_id: shopId, is_virtual: true });
+  const virtuals = (virtRes && virtRes.data) || [];
+  const byCardCode = new Map(); // card_code -> 本卡对应的虚拟物料 id
+  for (const v of virtuals) {
+    if (v.parent_card_id) byCardCode.set(String(v.parent_card_id), String(v.material_id || v.id));
+  }
+  const edges = new Map(); // virtualId -> [referenced virtualId...]
+  // 一次拉全该店所有成本卡，内存里去重按 card_code 取最新版本
+  const cardsRes = await da.list('shop_cost_card', { shop_id: shopId });
+  const latestByCode = new Map();
+  for (const c of (cardsRes && cardsRes.data) || []) {
+    const cc = c.card_code;
+    if (!cc) continue;
+    const cur = latestByCode.get(cc);
+    if (!cur || (c.version || 0) > (cur.version || 0)) latestByCode.set(cc, c);
+  }
+  // 对每个最新半成品卡，读它的明细行，找引用到的虚拟 id
+  for (const [cc, card] of latestByCode) {
+    if (card.calc_mode !== 2) continue; // 仅半成品（模式 B）
+    const virtualId = byCardCode.get(cc);
+    if (!virtualId) continue;
+    const out = [];
+    try {
+      // ⚠️ 明细行的软删过滤也走 DataAdapter（统一注入 is_deleted=false）
+      const lineRes = await da.list('shop_cost_card_line', { shop_id: shopId, cost_card_row_id: card.id });
+      for (const ln of ((lineRes && lineRes.data) || [])) {
+        // 该行引用的原料是否在本店的虚拟原料集合里
+        if (byCardCode.has(ln.material_id) || virtuals.some((v) => String(v.material_id || v.id) === String(ln.material_id))) {
+          if (String(ln.material_id) !== virtualId) out.push(String(ln.material_id));
+        }
+      }
+    } catch (e) { /* 明细读取失败不阻断主流程 */ }
+    edges.set(virtualId, out);
+  }
+  return edges;
+}
+
+exports.main = async (event) => {
+  const ctx = cloud.getWXContext();
+
+  // ===== 1. 鉴权中间件（批次 0）=====
+  const auth = await resolveAuth(ctx, db);
+  if (auth.error) return fail(auth.error);
+  const userId = auth.user.id;
+
+  const shopId = event && event.shop_id;
+  const owner = await assertShopOwner(db, shopId, userId);
+  if (owner.error) return fail(owner.error, owner.msg);
+
+  // ===== 2. 校验 =====
+  const v = validateInput(event);
+  if (v.error) return fail(v.error, v.msg);
+
+  // ===== 3. 幂等预检 =====
+  const da = makeAdapter(db);
+  const clientRequestId = v.input.client_request_id;
+  if (clientRequestId) {
+    const prior = await getIdempotent(da, shopId, clientRequestId);
+    if (prior) return ok(prior); // 重复调用：直接返回首次结果，不重复落库
+  }
+
+  // ===== 4. 读本卡引用的原料（DataAdapter.get 过滤软删）=====
+  const card = v.card;
+  const materialsById = new Map();
+  let missing = null;
+  for (let pass = 0; pass < 2 && materialsById.size < card.lines.length; pass++) { /* no-op */ }
+  for (const ln of card.lines) {
+    if (materialsById.has(String(ln.material_id))) continue;
+    const mat = await da.get('shop_material', String(ln.material_id));
+    if (!mat) { missing = ln.material_id; break; }
+    materialsById.set(String(ln.material_id), mat);
+  }
+  if (missing) return fail(ERROR_CODES.RESOURCE_NOT_FOUND, `引用的原料 ${missing} 不存在或已软删`);
+
+  // ===== 5. 构建快照明细（含净料单位成本快照）+ 收集引用的虚拟 id =====
+  let snap;
+  try {
+    snap = buildSnapshotLines(card.lines, materialsById);
+  } catch (e) {
+    if (e && e.code) return fail(e.code, e.message);
+    return fail(ERROR_CODES.SYSTEM_ERROR, e && e.message);
+  }
+
+  // ===== 6. 循环引用预检（仅半成品"生产/引用半成品"参与；命中即拒、不入库）=====
+  if (card.mode === 'B') {
+    // 本半成品的虚拟输出 id（编辑时用既有虚拟，新建用临时 id）
+    let outputVirtualId = null;
+    if (card.card_code) {
+      const virtRes = await da.list('shop_material', { shop_id: shopId, is_virtual: true });
+      for (const v of ((virtRes && virtRes.data) || [])) {
+        if (String(v.parent_card_id) === String(card.card_code)) { outputVirtualId = String(v.material_id || v.id); break; }
+      }
+    }
+    if (!outputVirtualId) outputVirtualId = 'tmp_new_' + genId('vm_');
+    const edges = await loadEdgesFromVirtual(da, shopId);
+    if (wouldCreateCycle(outputVirtualId, snap.childVirtualIds, edges)) {
+      return fail(ERROR_CODES.BOM_CYCLE_DETECTED, '检测到半成品循环引用（A→B→A），禁止保存，数据不入库');
+    }
+  }
+
+  // ===== 7. 计算成本（Service 纯引擎，口径与 calcBom 完全一致）=====
+  const result = calcCostCard({
+    mode: card.mode,
+    lines: snap.lines,
+    auxFen: card.auxFen,
+    lossPct: card.lossPct,
+    batchOutput: card.batchOutput,
+    priceFen: card.priceFen,
+    targetMarginPct: card.targetMarginPct,
+  });
+
+  // ===== 8. 确定 version（只 INSERT，不 UPDATE；最新 = 该 card_code 版本号最大者）=====
+  let cardCode = card.card_code;
+  let nextVersion = 1;
+  const now = nowUtc();
+  if (cardCode) {
+    const existRes = await da.list('shop_cost_card', { shop_id: shopId, card_code: cardCode });
+    for (const c of ((existRes && existRes.data) || [])) {
+      if ((c.version || 0) >= nextVersion) nextVersion = (c.version || 0) + 1;
+    }
+  } else {
+    cardCode = cardCode || genId('cc_'); // 新卡：新 card_code，version=1
+  }
+
+  const createdBy = userId;
+  const cardDoc = {
+    card_code: cardCode,
+    version: nextVersion,
+    shop_id: shopId,
+    name: card.name,
+    category: card.category || '',
+    tags: card.tags || '',
+    calc_mode: card.mode === 'B' ? 2 : 1,
+    batch_output: card.mode === 'B' ? card.batchOutput : null,
+    loss_rate: card.lossPct,
+    aux_cost: card.auxFen,
+    price_list: card.priceFen,
+    total_cost: result.unit_cost_fen, // 落库必须为整数分（INT）
+    material_total_fen: result.material_total_fen,
+    gross_profit_fen: result.gross_profit_fen,
+    gross_margin_pct: result.gross_margin_pct,
+    reverse_price_fen: result.reverse_price_fen,
+    parent_card_id: card.parent_card_code || '',
+    created_by: createdBy,
+    client_request_id: clientRequestId || '',
+  };
+
+  // ===== 9. 落库（只 INSERT）=====
+  const cardInsert = await da.insert('shop_cost_card', cardDoc);
+  const cardRowId = cardInsert && cardInsert._id;
+  const lineRows = [];
+  if (cardRowId) {
+    for (let i = 0; i < snap.lines.length; i++) {
+      const ln = snap.lines[i];
+      await da.insert('shop_cost_card_line', {
+        cost_card_row_id: cardRowId,
+        card_code: cardCode,
+        card_version: nextVersion,
+        shop_id: shopId,
+        material_id: ln.material_id,
+        material_name: ln.material_name,     // 快照：名称
+        quantity: ln.quantity,               // 用量（g 或 份）
+        net_unit_cost: ln.net_unit_cost,     // 快照：净料单位成本（万分整数）★快照隔离本体
+        line_net_cost: result.lines[i].line_net_cost_fen,
+        input_type: 1,
+        sort_order: i + 1,
+      });
+      lineRows.push({
+        material_id: ln.material_id,
+        net_unit_cost: ln.net_unit_cost,
+        line_net_cost_fen: result.lines[i].line_net_cost_fen,
+      });
+    }
+  }
+
+  // ===== 10. 模式 B：自动生成 / 更新虚拟半成品原料（shop_material，is_virtual=true）=====
+  let virtualMaterialId = null;
+  if (card.mode === 'B') {
+    // 既有虚拟（上次同卡）→ 更新其"每份成本"；否则新建
+    let vm = null;
+    if (cardCode) {
+      const virtRes = await da.list('shop_material', { shop_id: shopId, is_virtual: true });
+      vm = ((virtRes && virtRes.data) || []).find((x) => String(x.parent_card_id) === String(cardCode)) || null;
+    }
+    const unitWan = Math.round(result.unit_cost_fen * 100); // 单份半成品成本：分→万分（1分=100万分）
+    if (vm) {
+      await db.collection('shop_material').doc(vm.id || vm.material_id).update({
+        data: {
+          name: card.name,
+          purchase_unit: '份',
+          purchase_price: result.unit_cost_fen, // 每份成本（分整数）
+          convert_factor: 1,
+          net_unit_cost: unitWan,               // 每份成本（万分）
+          updated_at: now,
+          is_deleted: false,
+        },
+      });
+      virtualMaterialId = String(vm.material_id || vm.id);
+    } else {
+      virtualMaterialId = genId('vm_');
+      await da.insert('shop_material', {
+        material_id: virtualMaterialId,
+        id: virtualMaterialId,
+        shop_id: shopId,
+        name: card.name,
+        brand_spec: '半成品',
+        purchase_unit: '份',
+        purchase_price: result.unit_cost_fen,
+        convert_factor: 1,
+        yield_rate: 100,
+        net_unit_cost: unitWan,
+        is_virtual: true,
+        parent_card_id: cardCode,
+      });
+    }
+  }
+
+  const out = {
+    shop_id: shopId,
+    card_code: cardCode,
+    version: nextVersion,
+    card_row_id: cardRowId,
+    total_cost_fen: result.unit_cost_fen,      // 整数分锚点
+    material_total_fen: result.material_total_fen,
+    gross_profit_fen: result.gross_profit_fen,
+    gross_margin_pct: result.gross_margin_pct,
+    reverse_price_fen: result.reverse_price_fen,
+    lines: lineRows,
+    virtual_material_id: virtualMaterialId,
+    client_request_id: clientRequestId || '',
+  };
+
+  // 幂等登记（落 audit_log 的 idempotency_key，供下次查重）
+  if (clientRequestId) {
+    try {
+      await db.collection('audit_log').add({
+        data: {
+          action: 'SAVE_COST_CARD',
+          operator_type: 'user',
+          operator_id: userId,
+          shop_id: shopId,
+          before_data: null,
+          after_data: out,
+          idempotency_key: `${shopId}__${clientRequestId}`,
+          created_at: nowUtc(),
+        },
+      });
+    } catch (e) { /* 审计失败不阻断主流程 */ }
+  }
+
+  return ok(out);
+};

@@ -40,6 +40,7 @@
       { "type": "folder", "value": "tools" },
       { "type": "folder", "value": "web-preview" },
       { "type": "folder", "value": ".inscode" },
+      { "type": "folder", "value": ".atomcode" },
       { "type": "folder", "value": "node_modules" },
       { "type": "suffix", "value": ".pdf" },
       { "type": "suffix", "value": ".docx" },

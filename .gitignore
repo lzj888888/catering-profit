@@ -8,3 +8,7 @@ project.private.config.json
 
 # InsCode 桌面版的本地 AI 编辑元数据（.xmp / *.inscode-aigc.json），不进版本库
 .inscode/
+
+# InsCode 新版本地元数据目录（.atomcode/，含 memory.md 等）；同时已加进 packOptions.ignore，
+# 不进版本库也不进小程序包（此前仅靠 .md 后缀规则偶然挡住，出现 .json/.png 就会漏）。
+.atomcode/

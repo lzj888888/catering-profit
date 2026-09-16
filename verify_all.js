@@ -1,7 +1,7 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：9 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0 代码自测（batch0_selfcheck）
-//       + 批次1 代码自测（calcMonthlyProfit/selftest，POC3 双利润引擎）+ 静态路径检查（tools/check_requires.js）。
+// 串联：17 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~3 代码自测（batch0/1/2/3）
+//       + 静态路径检查（tools/check_requires.js）。
 // ⚠️ 新增/删除套件时必须同步改上面这句数量，否则 `SUITES.length` 与注释不符（R21）。
 // 用同一个 node（process.execPath）跑子进程，避免多解释器/环境问题。
 // ⚠️ 不在 CI 之外假定任何 secrets；纯本地静态 + 单测。
@@ -24,6 +24,14 @@ const SUITES = [
   ['batch1 代码自测',     'cloudfunctions/calcMonthlyProfit/selftest.js'],
   ['batch2 代码自测',     'cloudfunctions/calcAmortize/selftest.js'],
   ['静态路径检查',        'tools/check_requires.js'],
+  // ===== 批次 3 · POC2 BOM 两层 / 循环拦截 / 快照（7 个云函数各自单测）=====
+  ['batch3-calcBom',      'cloudfunctions/calcBom/selftest.js'],
+  ['batch3-detectCycle',  'cloudfunctions/detectCycle/selftest.js'],
+  ['batch3-saveMaterial', 'cloudfunctions/saveMaterial/selftest.js'],
+  ['batch3-saveCostCard', 'cloudfunctions/saveCostCard/selftest.js'],
+  ['batch3-syncCostCard', 'cloudfunctions/syncCostCard/selftest.js'],
+  ['batch3-getMaterial',  'cloudfunctions/getMaterial/selftest.js'],
+  ['batch3-getCostCard',  'cloudfunctions/getCostCard/selftest.js'],
   // 后续批次的套件在此追加即可（如 batch2_selfcheck ...）；追加后记得同步头部注释里的套件数量。
 ];
 

@@ -58,7 +58,10 @@ const INDEXES = {
   ],
   shop_cost_card: [
     { name: 'idx_card_shop', keys: { shop_id: 1 } },
-    { name: 'idx_card_code', unique: true, keys: { card_code: 1 } },
+    // R38（2026-09-16）：多版本模型（同 card_code、version 递增）⇒ 单列唯一会被第二版撞库。
+    // 改复合唯一 (shop_id, card_code, version)：允许多版本、防同版本重复，并充当并发守卫
+    //  （saveCostCard 是"读最大版本+1"的非原子写，唯一索引让撞车变成响亮失败）。
+    { name: 'idx_card_code_version', unique: true, keys: { shop_id: 1, card_code: 1, version: 1 } },
   ],
   shop_cost_card_line: [
     { name: 'idx_line_card', keys: { card_id: 1 } },
