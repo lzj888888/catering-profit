@@ -41,6 +41,7 @@ Page({
       renewEntry: TERMS.pay.renewEntry,
       goOrders: TERMS.pay.goOrders,
       expiredLocked: TERMS.pay.expiredLocked,
+      monthEmpty: TERMS.uiFix.monthEmpty,
     },
     months: [],              // 可选月份（倒序）
     curMonth: '',

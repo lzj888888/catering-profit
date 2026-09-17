@@ -1,1 +1,3 @@
 /* pages/mine/index.wxss —— 「我的」页（继承 app.wxss 共享组件） */
+/* 修 6：注销等危险操作按钮（视觉与原来内联样式一致：#e74c3c 底白字） */
+.btn.danger { background: #e74c3c; color: #fff; }

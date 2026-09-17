@@ -36,6 +36,7 @@ Page({
     },
     month: '',
     totalFen: 0,
+    totalYuan: '0.00',       // 修 2：初值必须有（接口失败/未返回时渲染「¥0.00」而非裸「¥」）
     assets: [],
     showForm: false,
     editing: null,           // 编辑中的资产（含 asset_id）

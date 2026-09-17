@@ -1,4 +1,9 @@
-<view class="container safe-bottom" wx:if="{{!loading && r}}">
+<!-- 修 1：三态拆分 —— loading / 有结果 / 空态（无账本或接口异常，中性表述 + 去录入出口） -->
+<view class="container safe-bottom" wx:if="{{loading}}">
+  <view class="muted" style="text-align:center;padding:60rpx 0;">{{t.loading}}</view>
+</view>
+
+<view class="container safe-bottom" wx:elif="{{r}}">
   <view class="archived-bar" wx:if="{{isArchive}}">{{t.archiveLocked}}</view>
 
   <!-- 批次 5 · 到期提醒常驻提示条（双渠道兜底） -->
@@ -64,4 +69,11 @@
 
   <button class="btn ghost" bindtap="onExport">{{t.exportBtn}}</button>
 </view>
-<view wx:else class="container"><view class="muted">{{t.loading}}</view></view>
+
+<!-- 修 1：空态（r 为 null：无账本或接口异常；中性表述 + 去录入出口） -->
+<view class="container safe-bottom" wx:else>
+  <view class="empty-state">
+    <view class="muted" style="text-align:center;padding:60rpx 0 0;">{{t.resultEmpty}}</view>
+    <button class="btn primary" style="margin-top:32rpx;" bindtap="goInput">{{t.resultEmptyGoInput}}</button>
+  </view>
+</view>

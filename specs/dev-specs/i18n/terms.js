@@ -445,6 +445,18 @@ const TERMS = {
     m1Report: '导出月度报表',
     m3Cards: '导出成本卡',
   },
+
+  // ===== 二十五、批次 8 UI 走查修复（2026-09-18）=====
+  uiFix: {
+    // 修 1：result 页空态（无账本 / 接口异常 → 中性表述，不写死"没有数据"）
+    resultEmpty: '本月还没有账本，先去录入收入与费用吧',
+    resultEmptyGoInput: '去录入',
+    // 修 3：month/index 月份空值占位
+    monthEmpty: '暂无账本',
+    // 修 4：input 页「食材消耗」小节标题与字段标签拆开
+    directConsumeSec: '食材消耗',
+    directConsumeField: '食材消耗合计（元）',
+  },
 };
 
 /**

@@ -22,6 +22,8 @@ Page({
       amount: TERMS.ledger.amount,
       directConsume: TERMS.ledger.directConsume,
       directConsumeHint: TERMS.ledger.directConsumeHint,
+      directConsumeSec: TERMS.uiFix.directConsumeSec,
+      directConsumeField: TERMS.uiFix.directConsumeField,
       save: TERMS.buttons.save,
       archiveReadonly: TERMS.inputPage.archiveReadonly,
       graceNote: TERMS.inputPage.graceNote,

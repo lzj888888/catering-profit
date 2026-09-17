@@ -39,6 +39,8 @@ Page({
       exportDone: TERMS.exp.exportDone,
       fileSaved: TERMS.exp.fileSaved,
       viewFile: TERMS.exp.viewFile,
+      resultEmpty: TERMS.uiFix.resultEmpty,
+      resultEmptyGoInput: TERMS.uiFix.resultEmptyGoInput,
     },
     month: '',
     isArchive: false,
@@ -108,6 +110,7 @@ Page({
 
   onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()); },
   goOrders() { wx.navigateTo({ url: '/pages/pay/orders' }); },
+  goInput() { wx.navigateTo({ url: '/pages/month/input?month=' + this.data.month }); },
 
   // M1 报表导出：权限只读 expire_at（前端先查，后端 exportData 再兜底校验）；免费用户触发付费墙
   async onExport() {

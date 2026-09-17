@@ -23,5 +23,6 @@
   </view>
 
   <view style="height:40rpx;"></view>
-  <button class="btn" style="background:#e74c3c;color:#fff;" bindtap="onLogout" disabled="{{loadingLogout}}">{{t.logoutTitle}}</button>
+  <!-- 修 6：注销按钮类抽到 wxss（.btn.danger），去内联 style -->
+  <button class="btn danger" bindtap="onLogout" disabled="{{loadingLogout}}">{{t.logoutTitle}}</button>
 </view>

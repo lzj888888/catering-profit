@@ -13,7 +13,9 @@
     <picker mode="selector" range="{{months}}" value="{{months.indexOf(curMonth)}}" bindchange="onMonthChange">
       <view class="cell">
         <text class="lbl">{{t.month}}</text>
-        <text class="val">{{curMonth}}</text>
+        <!-- 修 3：curMonth 为空时显示占位，不空白 -->
+        <text class="val" wx:if="{{curMonth}}">{{curMonth}}</text>
+        <text class="val muted" wx:else>{{t.monthEmpty}}</text>
       </view>
     </picker>
     <view wx:if="{{isArchive}}" class="archived-bar">
@@ -22,8 +24,8 @@
     <view wx:if="{{canArchive}}" class="hint">{{t.pendingArchive}} · {{t.goResult}}</view>
   </view>
 
-  <!-- 双口径 tab（免费用户仅见「经营参考估算」；付费用户见双 tab） -->
-  <view class="tabs">
+  <!-- 双口径 tab（免费用户仅见「经营参考估算」；付费用户见双 tab）· 修 5：单 tab 时不满宽 -->
+  <view class="tabs {{isPaid ? '' : 'single'}}">
     <view class="tab {{tab === 'free' ? 'active' : ''}}" data-tab="free" bindtap="switchTab">{{t.freeTab}}</view>
     <view class="tab {{tab === 'paid' ? 'active' : ''}}" wx:if="{{isPaid}}" data-tab="paid" bindtap="switchTab">{{t.paidTab}}</view>
   </view>

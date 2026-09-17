@@ -20,10 +20,10 @@
       value="{{expenseVals[index]}}" data-idx="{{index}}" bindinput="onExpense" />
   </view>
 
-  <!-- 食材消耗（库存关时直接填总额） -->
-  <view class="sec">{{t.directConsume}}</view>
+  <!-- 食材消耗（库存关时直接填总额）· 修 4：小节标题与字段标签拆开 -->
+  <view class="sec">{{t.directConsumeSec}}</view>
   <view class="field">
-    <text class="lbl">{{t.directConsume}}</text>
+    <text class="lbl">{{t.directConsumeField}}</text>
     <input class="val-input" type="digit" confirm-type="done" disabled="{{readOnly}}"
       value="{{directConsumeYuan}}" bindinput="onDirectConsume" />
   </view>
