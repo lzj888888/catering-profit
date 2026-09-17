@@ -132,7 +132,13 @@
 
 > 本区归 WorkBuddy：**只追加、不改上文**。格式：`- [YYYY-MM-DD HH:MM] R<n>/验N 已落/未落/存疑 · 证据：<命令或操作> → <输出摘要> · commit <sha>`。
 
-（暂无）
+- [2026-09-18 01:30] **验一 已落（主体完成，判据 1 项不可判读）** · 操作：云开发控制台 → 云函数 → `smokeTest` → 云端测试 → 入参 `{}` → 运行测试（键鼠代点，李老师在场）· 证据：`review/evidence/realcloud_20260917/`（`01_smokeTest.json` + `_clip_raw.txt` 剪贴板原文 3204 字符 + 12 张截图 + 2 个脚本）
+  - **环境门禁**：下拉列表**只有 1 个环境**（无 prod），ID = `cloud1-d4gphpoxy337f2a25`，与单源 `DEV_ENV_ID` **逐字符一致**；返回 JSON 的 `env` 同值。
+  - **判定**：`docGet.hasDataField=true`（A1/A2 **不回退**）、`dataAdapterGet={liveIsDoc:true,deadIsNull:true}`（A2 成立）、`assertShopOwner=RESOURCE_NOT_FOUND`（A1 落点成立）、`createIndex.typeof="undefined"`（**A7 复现**）、`requireCommon.ok=true` 且 13 个导出齐（**R29 扁平化在真云成立**）、`docGetMissing.behavior=reject`（A1 的 try/catch **确有必要**）。→ **A1/A2/A7/R29 四条静态结论首次在真云正面确认，无一条需回退。**
+  - 🔴 **`uniqueEnforce` 零证明力，不作判据**（round36 裁定）：`idx_probe_k` 从未在 `probe_tmp` 上创建过，插入同 `k` 不报错是必然 ⇒ 既不得据此升级 A6，也不得据此回退。
+  - 🔴 **发现 A（新）**：**冷启动必撞 3 秒超时** —— 第 1 次 `{"errorCode":-1,"errorMessage":"Invoking task timed out after 3 seconds","statusCode":433}`／3000ms；第 2 次（热启动）**724ms 正常返回**。（控件显示"测试结果：成功"指调用成功，与函数跑完无关。）⇒ `SMOKETEST_RUNBOOK.md:117` 缺硬前置：**先调大超时 ≥10s，或直接重跑一次**。
+  - 🔴 **发现 B（新）**：**线上部署件落后于仓库** —— 线上 `fsDiag` 键集只有 4 个 `{root,hasCommonDir,common,cwd}`，**缺 `hasCommonFile`/`commonShape`**；两字段由 `2a46b09`（2026-09-16 02:41）加入，而控制台显示 `smokeTest` 最后更新 **2026-09-15 08:47:38** ⇒ 部署件早于仓库 1 天。⇒ 执行单 §2 那条 `fsDiag.commonShape` 判据**当前不可判读**（字段不存在）；事实仍由旁证成立（`root` 含 `common.js`、`hasCommonDir:false`）。**须 `cli cloud functions deploy` 重发后重跑才能闭合该判据。**
+  - **清理未做（故意）**：`probe_tmp` 保留至重跑之后；**控制台手删属不可逆云侧操作，等李老师逐字确认**。
 
 ---
 

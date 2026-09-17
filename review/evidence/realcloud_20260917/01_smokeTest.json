@@ -1,0 +1,90 @@
+{
+  "captured_at": "2026-09-18 01:2x +0800",
+  "source": "云开发控制台 v2.0.3 → 云函数 → smokeTest → 云端测试 → 入参 {} → 运行测试",
+  "env_display": "cloud1（免费开发环境）",
+  "raw_clipboard_len": 3204,
+  "result_json": {
+    "env": "cloud1-d4gphpoxy337f2a25",
+    "fsDiag": {
+      "root": [
+        "common.js",
+        "cx_audit.js",
+        "cx_auth.js",
+        "cx_dataAdapter.js",
+        "cx_errors.js",
+        "cx_idempotency.js",
+        "cx_index.js",
+        "cx_money.js",
+        "cx_rateLimit.js",
+        "cx_utilTime.js",
+        "index.js",
+        "node_modules",
+        "package.json"
+      ],
+      "hasCommonDir": false,
+      "common": null,
+      "cwd": "/var/user"
+    },
+    "requireCommon": {
+      "ok": true,
+      "err": null,
+      "exports": [
+        "errors",
+        "ERROR_CODES",
+        "ok",
+        "fail",
+        "utilTime",
+        "money",
+        "dataAdapter",
+        "auth",
+        "resolveAuth",
+        "assertShopOwner",
+        "idempotency",
+        "rateLimit",
+        "audit"
+      ]
+    },
+    "createCollection": {
+      "ok": false,
+      "msg": "createCollection:fail -501001 resource system error. [ResourceUnavailable.ResourceExist] Table exist. Please check your request, but if the problem cannot be solved, contact us. 更多错误信息请访问：https://docs.cloudbase.net/error-code/basic/DATABASE_COLLECTION_ALREADY_EXIST"
+    },
+    "createIndex": {
+      "typeof": "undefined"
+    },
+    "docGet": {
+      "topLevelKeys": [
+        "data",
+        "errMsg"
+      ],
+      "hasDataField": true,
+      "dataKeys": [
+        "_id",
+        "k",
+        "is_deleted",
+        "created_at"
+      ],
+      "id": "92994ce06aac2659006b1bf3436e95cf"
+    },
+    "docGetMissing": {
+      "behavior": "reject",
+      "message": "document.get:fail document with _id __definitely_not_exist__ does not exist"
+    },
+    "uniqueEnforce": {
+      "result": "未报错 → unique 索引可能未生效（A7 判定为「索引不可用」）"
+    },
+    "assertShopOwner": {
+      "code": "RESOURCE_NOT_FOUND",
+      "msg": "RESOURCE_NOT_FOUND",
+      "data": {}
+    },
+    "dataAdapterGet": {
+      "liveIsDoc": true,
+      "deadIsNull": true
+    }
+  },
+  "invocation": {
+    "duration_ms": 724,
+    "coldstart_ms": 561
+  },
+  "clipboard_raw_tail": "08896ad9-4cfa-4eac-8993-47ce757bc4e2\n\n724 ms\n\n800 ms\n\n27.08 MB\n\nInit Report RequestId: 08896ad9-4cfa-4eac-8993-47ce757bc4e2 Coldstart: 561ms (InitRuntime: 11ms InitFunction: 550ms) Memory: 256MB MemUsage: 25.19MB\n\nSTART RequestId: 08896ad9-4cfa-4eac-8993-47ce757bc4e2\n\nEvent RequestId: 08896ad9-4cfa-4eac-8993-47ce757bc4e2\n\nResponse RequestId: 08896ad9-4cfa-4eac-8993-47ce757bc4e2 RetMsg: {\"env\":\"cloud1-d4gphpoxy337f2a25\",\"fsDiag\":{\"root\":[\"common.js\",\"cx_audit.js\",\"cx_auth.js\",\"cx_dataAdapter.js\",\"cx_errors.js\",\"cx_idempotency.js\",\"cx_index.js\",\"cx_money.js\",\"cx_rateLimit.js\",\"cx_utilTime.js\",\"i"
+}
