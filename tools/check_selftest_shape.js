@@ -37,6 +37,10 @@ const ROOT = path.resolve(__dirname, '..');
 function matchesSelftest(base) {
   return /^selftest\.js$/.test(base) || /^selftest.*\.js$/.test(base) || /selfcheck.*\.js$/.test(base);
 }
+// ⚠️ **已知假红面（保守方向，2026-09-17 复审方备注）**：名字长得像自测的 **helper / 夹具**（例如
+//   `selftest_helpers.js`、`foo_selfcheck_fixture.js`）也会被算进扫描面 ⇒ 它没被挂进 SUITES 时报「漏挂」。
+//   方向是保守的（宁可红、不可漏跑），处置 = 改名（去掉 selftest/selfcheck 前缀）或真的挂进 SUITES；
+//   **不要**因此放宽判据 —— 放宽后"漏挂"就会从红变绿，那才是危险方向。
 
 function collect() {
   const out = [];
@@ -151,6 +155,9 @@ function strip(src) {
 //   背景：收尾条件 `/[;}]$/` 不满足时（典型 = 顶层语句**缺分号**，或跨行表达式），原实现会**继续往下吞**
 //   ⇒ 其后整片语句并进同一块 ⇒ 落在该块里的 `process.exit` 会被 R2 当成「末块内的 exit」而**放过**，
 //   这正是 R65 的逃逸口。⇒ 现在遇到不确定边界就停手报 ERROR（请补齐分号或改写），而不是猜着合并。
+// ⚠️ **已知假红面（保守方向，2026-09-17 复审方备注）**：**缺分号的跨行顶层调用**也会被判"不确定"
+//   （例如 `const X = cond ? a\n  : b;`，或一段没写分号的多行表达式）。42 个真实文件实测 **0 误报**
+//   （本仓顶层语句一律以 `;` / `}` 收尾），故不为此放宽；真遇到时**补分号**即可，别改判据。合并。
 function topLevelChunks(stripped) {
   const chunks = [];
   let cur = null, depth = 0, ln = 0;

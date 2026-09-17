@@ -118,8 +118,25 @@ const SUITES = [
 //      写新套件/新段时请沿用 ✅，否则须同时改这里。
 const SECTION_HEAD = /^(={3,}|-{3,}|─{3,}|═{3,})[ \t]*(.*?)[ \t]*(={3,}|-{3,}|─{3,}|═{3,})[ \t]*$/;
 const SUMMARY_TAIL = /通过\s*\/\s*\d+\s*失败/;
+// 🔒 R69（运行期，可选补强）：套件输出必须「走完收尾」—— 末尾 3 个非空行须含 `N 通过`。
+//   背景：末块内提前 `process.exit` 时输出被**腰斩在汇总行之前**；若被截断的区间恰好每段都留下过断言，
+//   R66 的「段内 ✅==0」就抓不到 ⇒ 需要"收尾行"这个**独立**信号（与 R66 互补）。
+//   ⚠️ 实测（2026-09-17，逐套件直采各自 stdout）：**6/53 个套件不以 `N 通过` 收尾** —— 4 个守卫类各以
+//   `✅ …校验通过` 收尾、batch1 用 `✅ 12/12 锚点…全数通过`、门禁 A–L 的 `✅ 全部断言通过` 打在**第 17 行**
+//   （明细之前，不在末尾）。⇒ **字面实现会误报 6/53**。
+//   处理 = 显式豁免清单 `NO_SUMMARY_TAIL`（逐个写理由），并让**新增套件若既无汇总行又不在清单内 → 判红**
+//   （fail-closed：不许"静默不合规"，要么补一条 `N 通过 / M 失败` 收尾行、要么在此显式登记）。
+const TAIL_SUMMARY = /\d+\s*通过/;
+const NO_SUMMARY_TAIL = new Set([
+  'specs/dev-specs/prototype/check_error_codes.js', // 门禁 A–L：`✅ 全部断言通过` 在第 17 行，其后才是 A–L 逐组明细
+  'cloudfunctions/calcMonthlyProfit/selftest.js',   // 收尾 = `✅ 12/12 锚点 + … 全数通过`（写作 12/12，非 "N 通过"）
+  'tools/check_requires.js',                        // 收尾 = `✅ 相对 require 全部可解析（扫描 603 个…）`
+  'tools/check_pages.js',                           // 收尾 = `✅ 页面声明校验通过（…）`
+  'tools/check_compliance.js',                      // 收尾 = `✅ 合规校验通过（…）`
+  'tools/check_admincore.js',                       // 收尾 = `✅ 单源派生校验通过：11 份…`
+]);
 const isDelimOnly = (s) => s === '' || /^[=\-─═]+$/.test(s);
-function auditAssertions(out) {
+function auditAssertions(out, rel) {
   const text = String(out);
   const secs = [];
   let cur = null;
@@ -134,7 +151,10 @@ function auditAssertions(out) {
   const total = (text.match(/✅/g) || []).length;
   const zero = secs.filter((s, i) => s.marks === 0
     && !(i === secs.length - 1 && SUMMARY_TAIL.test(s.title)));
-  return { total, zero, sections: secs.length };
+  // R69：末尾 3 个非空行须含 `N 通过`；不在 NO_SUMMARY_TAIL 里又不满足 ⇒ 判"未走完收尾"
+  const tail3 = text.split(/\r?\n/).filter((l) => l.trim() !== '').slice(-3);
+  const tail = tail3.some((l) => TAIL_SUMMARY.test(l)) || NO_SUMMARY_TAIL.has(rel);
+  return { total, zero, sections: secs.length, tail };
 }
 
 let failed = 0;
@@ -143,12 +163,16 @@ for (const [name, rel] of SUITES) {
   process.stdout.write(`\n===== [${name}] ${rel} =====\n`);
   try {
     const out = execFileSync(NODE, [fp], { cwd: ROOT, encoding: 'utf8' });
-    const audit = auditAssertions(out);   // 🔒 R66：即使 exit 0 也要审「断言是否真跑了」
+    const audit = auditAssertions(out, rel);   // 🔒 R66/R69：即使 exit 0 也要审「断言是否真跑了 / 是否走完收尾」
     process.stdout.write(out);
     if (audit.zero.length) {
       failed++;
       process.stdout.write(`  [${name}] ❌ FAIL (R66 段标题下零断言：`
         + audit.zero.map((z) => `「${z.title}」`).join('、') + ')  ← 断言疑似静默未跑\n');
+    } else if (!audit.tail) {
+      failed++;
+      process.stdout.write(`  [${name}] ❌ FAIL (R69 输出未走完收尾：末尾 3 行无「N 通过」且不在 NO_SUMMARY_TAIL 内`
+        + '  ← 疑似提前退出；要么补一条 `N 通过 / M 失败` 收尾行，要么在 NO_SUMMARY_TAIL 显式登记)\n');
     } else if (audit.total === 0) {
       failed++;
       process.stdout.write(`  [${name}] ❌ FAIL (R66 整段 0 条 ✅ 断言 —— 疑似全程未执行)\n`);
