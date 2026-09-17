@@ -73,6 +73,16 @@
 - [2026-09-17 13:50] ⚠️ **编号冲突登记（透明）**：本侧在本份取件**之前**误用 `R70` 记录了「幂等单源化」⇒ 取件发现撞号后，**已在提交前全文更正为 R72**（未污染历史）。`R70` 归本份议题；`R71`/`R72` 为本侧提出，复审方未占用。
 - [2026-09-17 13:50] **终态**：`GATE=0`；`sync_common --check` 42 目录一致；`check_admincore` 11 副本一致；`verify_all` **53/53**（`[suite-count] ≡ 53`）；断言合计 836 → **839**；工作树干净、两方一致 = `3397deb`（回执提交后另计）。
 
+- [2026-09-17 14:15] 🟡 **R73 已落**（本侧主动加固，承接 R72 的「缺口已量化、待处置」）· commit `925effe`（索引）+ `b279f26`（主体）· 证据：`node tools/check_idempotency.js` → `54 通过 / 0 失败`（exit 0）；`node verify_all.js` → `54/54 · VERIFYALL=0`；`node specs/dev-specs/prototype/check_error_codes.js` → `GATE=0`。判据改为**从契约表派生**（`core/10` 有 6 行鉴权列标 `+幂等`，不手抄清单）⇒ 实测 **4/6 未实现**：`saveAsset`／`saveMaterial`（新增分支 `genId()` 后 INSERT ⇒ 重复资产／原料；其中重复资产会让 `saveLedger` 读 `shop_amortize` 算摊销**翻倍 ⇒ M1 利润算错**，链路真实）、`syncCostCard`（**`client_request_id` 读进变量却从未使用**＝死读，每次 INSERT 新版本 ⇒ 版本连跳）、`saveCostCard`（有实现但**自带内联 `getIdempotent`**，与单源构成两份）。已补齐 4 函数（**重放形态** = 命中即返回首次结果，合契约「同一 id 重复请求直接返回首次结果」）；单源新增 `findPriorResult`／`shopKey`（键格式收进模块，防 5 个调用点各拼前缀）并删**零调用**死函数 `markIdempotent`。新守卫 I1~I7，含**新增的一类判据 I7「装饰性 `idempotency_key`」**：写了非空键却从不查 ⇒ **看代码像有幂等、实则永不生效**；据此抓出 `adminExport`，因导出**只读**、`after_data` **不存内容**（无文件可重放）⇒ **诚实登记为「追溯标记、非幂等闸门」**，不假造幂等。**套件 53 → 54**（`A–L` 标签未动，历史 REVIEW 里 "A–L" 含义不变）。
+- [2026-09-17 14:15] 🔴 **两条自我纠错（透明登记；本 §3 上文按「只追加、不改上文」保留原样）**：
+  - ⓐ 上文 R72 那条写的「**`payCallback` 幂等键为空串**」**是误读**。已回读源码复核（`cloudfunctions/payCallback/index.js`）：两处 `idempotency_key: ''` 分别在第 **43** 行（**验签失败**审计行）与第 **113** 行（异常兜底行）—— 都是**失败路径**、本来就没有 `client_request_id`，留空属正常；该函数的业务幂等键是**全局 `transaction_id`**（第 65 行 `where({ transaction_id: txn }).limit(1)` 真查重）。⇒ `payCallback` **应算已实现幂等**（且是第三种形态：业务唯一键），**不计入缺口**。
+  - ⓑ `cloudfunctions/saveCostCard/selftest.js` 头部曾宣称「⑥ idempotency 幂等登记键」，**而该文件并无对应断言**（宣称未兑现）。已删除该条，改为指向真覆盖处（`tools/check_idempotency.js` + `common/__tests__/batch0_selfcheck.js`），并注明**勿再抄一份**（R72/R73 的病灶正是「同一语义多份实现」）。
+- [2026-09-17 14:15] **口径更正（防误减）**：R73 守卫的覆盖率是 **22 个有写函数 → 9 有幂等 / 13 逐条登记理由**（口径 = 业务写／库·适配器写入，**不含**纯审计写）；上文 R72 记的「**3 / 23**」其分母含纯审计写（如 `adminExport`）⇒ **两者不是同一分母，勿相减**，也不宜用后者推出"还差 20 个"。
+- [2026-09-17 14:15] ⚠️ **索引计数 39 → 40**（本份 §5 队列写的「先补 39 条索引 / 线上 1/39」是**取件时点快照**，现为 **1/40**）：`cloudfunctions/initDb/collections.js` 新增 `idx_audit_idem(idempotency_key)`（`audit_log` 只增不删、幂等预检恰按此字段查重 ⇒ 无索引即"随时间线性恶化的全表扫描"），commit `925effe`。⚠️ **`wx-server-sdk` 无 `createIndex`** ⇒ 线上仍须**李老师在控制台手工建**（人工项，**未落**）。
+- [2026-09-17 14:15] **一条纪律沉淀（非本份议题，主动登记）**：`review/README.md §7` 新增**第 11 条** —— 「变异回灌须**自证变异已生效**，并如实标注**等价变异**」（commit `e802de9`）。来源即本轮 M8：摘掉 `findPriorResult` 的 `shop_id` 条件**不转红**（隔离已由键格式 `<shopId>__<crid>` 携带 ⇒ 该条件属**冗余防御**），改用「`shopKey` 丢 shopId」才击穿隔离 ⇒ **等价变异混进证据 = 虚增守卫可信度**，必须写明「为什么它不构成反例」并从证据里剔除。
+- [2026-09-17 14:15] 🔵 **待你方 round31 复核**：R70／R71／R72／**R73** 四条均待独立复核（R73 尤需核：I1 契约解析的 fail-closed 可否被绕过、I7 是否存在误报面、`EXEMPT_WRITE`/`EXEMPT_KEY`/`NOT_IMPLEMENTED` 三张登记表是否"不腐"）。
+- [2026-09-17 14:15] **终态**：`GATE=0`；`sync_common --check` 42 目录一致（门禁 L 组）；形状守卫 `42/42`（R71 豁免 1 条 WARN）；幂等守卫 `54/0`；全闸 **54/54**（`[suite-count] ≡ 54`）；`check_requires` exit 0（相对 require 全部可解析）；零变异残留（`grep MUTATION` 无命中）；工作树干净、两方一致 = `e802de9`（本条回执提交后另计）。
+
 ---
 
 ## §4 我自己的登记
