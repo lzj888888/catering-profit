@@ -62,6 +62,14 @@ const PHRASES = [
   },
 ];
 
+// ---------------- 防回潮观察名单（0 命中属设计内，不 WARN）----------------
+// 用途：某条已证伪说法**已被彻底清除出活文档**（0 命中）时，直接删条目会连"防回潮"一起丢掉 ——
+//      将来它一旦复现，守卫就再也看不见了。⇒ 这类条目登记在此：0 命中不 WARN，改打印"防回潮保留"。
+// 🔴 纪律：**登记前必须做变异回灌** —— 往一份活文档塞回该说法，守卫必须转红；
+//         变不红说明该条目已失效（正则写歪 / 扫描面被跳过），那时它就是个装饰品，必须修好再登记。
+//         （R85 首版教训：基线全绿不代表守卫有效 —— 只跑基线不算验过。）
+const REVIVAL_WATCH = new Set(['不支持代码建索引']);
+
 // ---------------- 豁免标记 ----------------
 // 命中行只要含任一个 ⇒ 视为"带上下文的引用/留痕"，放行并打印（不静默吞掉）。
 const MARKS_QUOTE = ['已证伪', '旧口径', '旧版', '曾写', '曾经', '引述',
@@ -155,12 +163,21 @@ if (markedP.length) {
   markedP.forEach((s) => console.log(`   ${s}`));
 }
 
-// ---- S4 短语表不腐（0 命中 = 该说法已从活文档消失 ⇒ 条目该剔除）----
-if (emptyPhrases.length) {
-  console.log(`\n⚠️ S4 短语表可能已腐：${emptyPhrases.join(' / ')} 在活文档内 **0 命中** `
-    + `⇒ 要么该说法已被彻底清除（好事，请从 PHRASES 里剔除该条目），要么正则写错了（坏事，请修正）。`
+// ---- S4 短语表不腐（0 命中 ⇒ 该条目要么该剔除、要么是防回潮保留）----
+const staleIds = emptyPhrases.filter((id) => !REVIVAL_WATCH.has(id));
+const watchIds = emptyPhrases.filter((id) => REVIVAL_WATCH.has(id));
+if (staleIds.length) {
+  console.log(`\n⚠️ S4 短语表可能已腐：${staleIds.join(' / ')} 在活文档内 **0 命中** `
+    + `⇒ 要么该说法已被彻底清除（好事：从 PHRASES 剔除，或登记进 REVIVAL_WATCH），`
+    + `要么正则写错了（坏事，请修正）。`
     + `\n   （不判红：0 命中本身不是错误，但必须看得见。）`);
-} else {
+}
+if (watchIds.length) {
+  pass += 1;
+  console.log(`\nℹ️ S4 防回潮保留 · ${watchIds.join(' / ')} 当前 0 命中（该说法已从活文档清除）`
+    + `⇒ 条目**不删**，用于防回潮；其有效性判据 = **变异回灌**（塞回该说法须转红）。`);
+}
+if (!emptyPhrases.length) {
   pass += 1;
   console.log(`\n✅ S4 短语表未腐 · ${PHRASES.length} 个条目均有命中`);
 }

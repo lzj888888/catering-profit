@@ -1,5 +1,6 @@
 // cloudfunctions/smokeTest/index.js
-// 一次性云侧探针：答 A6 / A7 / require('./common') / doc().get() 契约 四个从没在真 wx-server-sdk 上验证过的前提。
+// 一次性云侧探针：答 A7 / require('./common') / doc().get() 契约 三个从没在真 wx-server-sdk 上验证过的前提。
+// 🔴 它**不答 A6**：`uniqueEnforce` 零证明力（2026-09-18 裁定）——  A6 的唯一证据是"真集合上手工插入重复三元组被拒"。
 // 部署后在云开发控制台「云函数 → smokeTest → 测试」用空 {} 触发，看返回 JSON。
 // ⚠️ 本函数刻意不依赖任何本沙箱行为；价值只在「跑到真云上」。删除：跑完去控制台手动删 probe_tmp 集合（SDK 不能 drop collection）。
 const cloud = require('wx-server-sdk');
@@ -56,7 +57,7 @@ exports.main = async () => {
 
   out.requireCommon = { ok: commonOk, err: commonErr, exports: common ? Object.keys(common) : null };
 
-  // ② createIndex 是否存在 / 可用（答 A7）
+  // ② createIndex 是否存在（答 A7；已定案 = **不支持**，此处只作复核——typeof=undefined 即符合预期，勿据此再改结论）
   try {
     const coll = db.collection(PROBE);
     out.createIndex.typeof = typeof coll.createIndex;
@@ -85,12 +86,17 @@ exports.main = async () => {
     out.docGetMissing = { behavior: 'resolve', topLevelKeys: Object.keys(miss || {}), data: miss && miss.data === null ? 'null' : typeof (miss && miss.data) };
   } catch (e) { out.docGetMissing = { behavior: 'reject', message: e.message }; }
 
-  // ② 续：unique 索引是否真的生效（插入重复 k）
+  // ② 续：唯一约束自检 —— 🔴 本项**零证明力、不作判据**（2026-09-18 复核裁定；此前文案印的是旧结论，已废）
+  //    PROBE 集合上从未建过 `idx_probe_k`（A7 已定案：SDK 无 createIndex）⇒ 插入同 k「不报错」是**必然**结果。
+  //    两条禁令：① **不得**据此升级 A6（"唯一约束不可用"）；② **不得**据任何取值回退既有结论。
+  //    真实的唯一性证据只有一条：在**真集合**上手工插入重复三元组被拒（见 SMOKETEST_RUNBOOK 步骤 5 / 执行单 §3）。
   try {
     await db.collection(PROBE).add({ data: { k: 'dup_test' } });
     await db.collection(PROBE).add({ data: { k: 'dup_test' } });
-    out.uniqueEnforce = { result: '未报错 → unique 索引可能未生效（A7 判定为「索引不可用」）' };
-  } catch (e) { out.uniqueEnforce = { result: '报错（符合预期）', message: e.message }; }
+    out.uniqueEnforce = { result: '未报错（预期内）', proof: 'none', note: '本集合无该 unique 索引 ⇒ 不报错是必然；不得据此判定 A6/A7' };
+  } catch (e) {
+    out.uniqueEnforce = { result: '报错', proof: 'partial', note: '仅说明存在某项唯一约束，仍不构成 A6 证据', message: e.message };
+  }
 
   // ⑤ 在真云上跑一次 A1 的落点（应当返回 RESOURCE_NOT_FOUND，而不是抛异常/恒 FORBIDDEN）
   if (commonOk && typeof common.assertShopOwner === 'function') {

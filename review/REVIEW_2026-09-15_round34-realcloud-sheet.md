@@ -49,7 +49,8 @@
 | **`docGet.hasDataField`** | **`true`** | **`false` → A1/A2 修反了，立刻回退**（最关键翻案点） |
 | `docGetMissing.behavior` | `resolve`(+`data:null`) 或 `reject` 都算"契约明确" | 哪种都正确 |
 | `createIndex.typeof` / `.call` | `function` / `OK`（**A7 已定案为不支持，这里只是复核**） | `undefined`/THROW → A7 结论复现 |
-| `uniqueEnforce.result` | 含「**报错（符合预期）**」 | 含「未报错」→ 唯一索引未生效 |
+| `uniqueEnforce.result` | **本字段零证明力，不作判据**（round36 裁定；2026-09-18 探针文案已改印 `proof:"none"`） | 任何取值都**不构成** A6/A7 证据；见 Runbook 步骤 5 附注 |
+| `fsDiag.hasCommonFile` | `true`（**与 `commonShape` 同为 R29 真判据**） | `false` → common 没打进包 |
 | `assertShopOwner` | `RESOURCE_NOT_FOUND` | 抛异常/恒 `FORBIDDEN` → A1 修复在真云不成立 |
 | `createCollection` | `{ok:true}` 或 `ok:false` 且 msg 含「已存在」 | 其余 → 先修权限再重跑 |
 | `dataAdapterGet` | `liveIsDoc:true` **且** `deadIsNull:true` | `deadIsNull:false` → **A2 不成立须回退** |
@@ -139,6 +140,16 @@
   - 🔴 **发现 A（新）**：**冷启动必撞 3 秒超时** —— 第 1 次 `{"errorCode":-1,"errorMessage":"Invoking task timed out after 3 seconds","statusCode":433}`／3000ms；第 2 次（热启动）**724ms 正常返回**。（控件显示"测试结果：成功"指调用成功，与函数跑完无关。）⇒ `SMOKETEST_RUNBOOK.md:117` 缺硬前置：**先调大超时 ≥10s，或直接重跑一次**。
   - 🔴 **发现 B（新）**：**线上部署件落后于仓库** —— 线上 `fsDiag` 键集只有 4 个 `{root,hasCommonDir,common,cwd}`，**缺 `hasCommonFile`/`commonShape`**；两字段由 `2a46b09`（2026-09-16 02:41）加入，而控制台显示 `smokeTest` 最后更新 **2026-09-15 08:47:38** ⇒ 部署件早于仓库 1 天。⇒ 执行单 §2 那条 `fsDiag.commonShape` 判据**当前不可判读**（字段不存在）；事实仍由旁证成立（`root` 含 `common.js`、`hasCommonDir:false`）。**须 `cli cloud functions deploy` 重发后重跑才能闭合该判据。**
   - **清理未做（故意）**：`probe_tmp` 保留至重跑之后；**控制台手删属不可逆云侧操作，等李老师逐字确认**。
+
+- [2026-09-18 03:20] **重发 + 重跑 已落（发现 B 闭合；顺带修掉探针自身印错的结论）** · 操作：`cli cloud functions deploy`（**微信开发者工具自带 CLI**）→ 控制台云端测试重跑 → 剪贴板取原文 · 证据：`review/evidence/realcloud_20260917/`（`30_info_before.txt`、`31_deploy_out.txt`、`32_info_after.txt`、`40_result_raw.txt`、`42_deploy2_out.txt`、`46_result_raw_fixed.txt` + 截图 `33~45`）
+  - **通道路径（先证后跑）**：本机没有腾讯云 `tcb`，装了 `@cloudbase/cli` 后其 `tcb login` 走 **device-flow**，需人工在浏览器点授权（实测授权页在本机渲染空白，`20~23b` 截图留证），且**主账号级凭据会落到本机 `~/.cloudbase/`** ⇒ 与最小权限纪律冲突，**未采用**。改用**微信开发者工具自带 CLI**（`…\微信web开发者工具\cli.bat` 的 `cli cloud functions deploy`）—— **复用 IDE 已登录会话**（`cli islogin → {"login":true}`），零新凭据、零授权页。**这就是"cli cloud functions deploy"的正确落点。**
+  - **部署 2 次（均 `success=true`，12 文件）**：① `packSize=14.0 KB`／19.4s；② `packSize=14.5 KB`／18.5s（含探针文案修正）。包体变大本身就是内容已更新的旁证。
+  - ✅ **发现 B 已闭合**：线上 `fsDiag` 现含 **`hasCommonFile:true`** + **`commonShape:"flat-file(common.js)"`**（旧件这两键根本不存在）；控制台「最后更新时间」由 `2026.09.15 08:47:38` → **`2026.09.18 02:29:24`** ⇒ **部署件不再落后于仓库**。
+  - ✅ **发现 A 的配置层证据**：部署前 `cli cloud functions info` 显示 **`timeout=3`**（runtime `Nodejs16.13`）⇒「冷启动必撞 3 秒超时」不再只是现象，配置就是 3s。本次两次运行**均成功**（未复现超时 —— 函数刚部署，是热态）⇒ 与发现 A **不矛盾**，只是这次没撞上；_runbook 的硬前置（调大超时 ≥10s 或重跑一次）仍然有效。
+  - 🔴 **发现 C（本轮新）· 探针把已作废的判据当结论印出来**：旧文案 `"result":"未报错 → unique 索引可能未生效（A7 判定为「索引不可用」）"` 与 round36 裁定**直接冲突**（该字段零证明力）。已改 `cloudfunctions/smokeTest/index.js` 三处：输出改 `{result:'未报错（预期内）', proof:'none', note:'…不得据此判定 A6/A7'}`、报错分支 `proof:'partial'`、文件头注明"**本探针不答 A6**"。并同步四处文档：`SMOKETEST_RUNBOOK.md`（`:14`/`:21`/`:22`）、重启键（`:89`/`:92`/`:107`）、本执行单 `:52`。
+  - **对照证据（同一判据两版输出，可证伪）**：`uniqueEnforce` 旧 `{"result":"未报错 → unique 索引可能未生效…"}` → 新 `{"result":"未报错（预期内）","proof":"none",…}`；其余字段**逐字 SAME**（`env`/`requireCommon`/`createIndex`/`docGetMissing`/`assertShopOwner`/`dataAdapterGet`），`fsDiag.root` 13 项全等（含 `node_modules` ⇒ `-r` 云端装依赖确实生效）；`docGet` 仅 `_id` 不同（每次新插文档，**预期内**）。
+  - 🟡 **A6 待重判（不自行改结论）**：A6「升级为『可能重复账号』」的**唯一依据**已作废；且线上 40 条索引（含 10 unique）已于 2026-09-17 建成 ⇒「无唯一约束」这一前提不再成立。**首建档的 unique 冲突重试保留为防御性措施**；它是否仍属**必需**，**待 §3「在真集合手工插入重复三元组被拒」验证后再定**。
+  - **清理仍未做**：`probe_tmp` 保留（后续验证还要用）；**手删属不可逆云侧操作，等李老师逐字确认**。
 
 ---
 

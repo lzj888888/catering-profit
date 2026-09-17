@@ -1,0 +1,23 @@
+rc=0 elapsed=18.5s
+--STDOUT--
+
+┌───────────┬─────────┬────────────┬───────────┐
+│ (index)   │ success │ filesCount │ packSize  │
+├───────────┼─────────┼────────────┼───────────┤
+│ smokeTest │ true    │ 12         │ '14.5 KB' │
+└───────────┴─────────┴────────────┴───────────┘
+
+--STDERR--
+- initialize
+
+(node:36988) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)
+√ IDE server has started, listening on http://127.0.0.1:35237
+- deploy cloudfunctions
+- fetching cloud env list
+- [smokeTest] Fetching info of cloudfunction smokeTest
+√ [smokeTest] cloudfunction smokeTest exists in the cloud, will update it
+- [smokeTest] upload cloud function smokeTest - preparing
+√ [smokeTest] upload cloud function smokeTest - deploy
+√ deploy cloudfunctions
+
