@@ -3,7 +3,7 @@
  * tools/apply_indexes.js —— 把「单源索引定义」批量建到微信云开发环境（走官方 HTTP API）。
  *
  * ⚠️ 本文件的存在本身就是一条**结论更正**（2026-09-17 实测）：
- *   在案结论「wx-server-sdk 无 createIndex ⇒ 索引只能在控制台手工建」**只对了一半**。
+ *   在案结论「wx-server-sdk 无 createIndex ⇒ 索引只能靠人在控制台一条条填」**只对了一半**。
  *   - 对的一半：wx-server-sdk@2.6.3 确实没有建索引方法（已双验证：index.js 全包零命中 createIndex；
  *     index.d.ts 里 Collection 只有 add/where/orderBy/get/update/remove/aggregate…，无任何索引方法）。
  *   - 错的一半：**「只能手工」是假的**。官方 HTTP API 提供
@@ -19,6 +19,12 @@
  *   3. 回读校验**fail-closed**：分页取全时断言 pager.Total 与实收条数一致，不一致即响亮失败。
  *   4. 默认 dry-run（不联网、不写入）；必须显式 --apply 才真调 API。
  *   5. AppSecret / access_token **永不打印**（打印一律打码），也不写入任何文件。
+ *   6. **用后即轮换**（R83）：AppSecret 是**账号级**凭证 —— 重置即旧值失效、换取 access_token
+ *      会让**同账号此前签发的 token 全部失效**。⇒ 只在要建索引时取，用完立刻回 mp 后台重置。
+ *   7. **回执不回显任何令牌值**（R83）：日志 / 证据 / REVIEW 里只写「已用 --secret-file 传参」，
+ *      绝不出现 AppSecret / access_token 的字面值、前几位或长度。
+ *   8. **绝不写进云函数环境变量**（R83）：AppSecret 不进 `cloudfunctions/*/config.json`、不进云端
+ *      环境变量、不进仓库 —— 与 `ADMIN_SETUP_TOKEN` 的六条纪律同构。
  *
  * 用法：
  *   node tools/apply_indexes.js                                # dry-run：只打印将要提交的请求

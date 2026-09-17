@@ -1,7 +1,9 @@
 // cloudfunctions/initDb/index.js
 // 一次性建库云函数（仅 dev 手动运行一次）。部署为云函数 initDb。
 // 依赖：安装 wx-server-sdk（见 package.json）。
-// ⚠️ prod 25 张集合由云开发控制台手工创建，本函数**绝不部署到 prod**（见 gate 门禁）。
+// ⚠️ prod 25 张集合由云开发控制台创建，本函数**绝不部署到 prod**（见 gate 门禁）。
+//    （这是**政策**，不是能力限制：本函数在 dev 侧能建集合；"不部署到 prod"是刻意的风险控制，
+//     与「索引能不能代码建」是两件事 —— 后者见 collections.js 顶部与 tools/apply_indexes.js。）
 
 const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });

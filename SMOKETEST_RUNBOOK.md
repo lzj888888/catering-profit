@@ -7,14 +7,18 @@
 
 > 🔬 **2026-09-14 晚实测已答一项（A7）**：在 dev 环境 `cloud1` 上真跑 `initDb`，39 条索引**全部**报 `db.collection(...).createIndex is not a function` ——
 > 即 wx-server-sdk **压根不存在这个方法**（不是"调用失败"，是"没有这个接口"）。
-> ⇒ **A7 = 不支持，且坐实为 SDK 层面缺失**（非偶发）→ 索引**只能云端控制台手工建**；按本 Runbook §五的既定判读，**A6 相应升级为「可能重复账号」**，首建档须加 unique 冲突重试（或改用其他去重手段）。
+> ⇒ **A7 = 不支持，且坐实为 SDK 层面缺失**（非偶发）→ **SDK 里建不了索引**；
+> ⚠️ 但**「只能靠人在控制台一条条填」这半句已于 2026-09-17 证伪**：SDK 无方法 ≠ 平台无接口 ——
+> 官方 HTTP API `POST /tcb/updateindex` 可脚本化（见 `tools/apply_indexes.js`，需 AppSecret），
+> 无密钥时亦可 GUI 键鼠全量建（已实证 40/40）。⇒ 索引**不是只能手填**，只是**不能用 wx-server-sdk 建**。
+> 按本 Runbook §五的既定判读，**A6 相应升级为「可能重复账号」**，首建档须加 unique 冲突重试（或改用其他去重手段）。
 > ✅ **2026-09-15：四项前提全部答完（smokeTest 探针 v3 真云端实跑）**，见下表。**批次 1 前置全部解除。**
 
 ### 🏁 四前提终局结论（2026-09-15 云端实测，真 wx-server-sdk）
 
 | 前提 | 结论 | 云端实测证据 | 对后续代码的影响 |
 |---|---|---|---|
-| **A7**（`createIndex` 是否可用） | ❌ **不支持** | `createIndex.typeof = "undefined"`；插入重复值**未报错** | 索引**只能控制台手工建**；`initDb` 的 39 条索引属预期内失败 |
+| **A7**（`createIndex` 是否可用） | ❌ **不支持** | `createIndex.typeof = "undefined"`；插入重复值**未报错** | **SDK 建不了索引** ⇒ `initDb` 的 39 条索引属预期内失败；**但可用官方 HTTP API 脚本化建**（见 `tools/apply_indexes.js`） |
 | **A6**（首建档是否原子） | ⚠️ **升级为「可能重复账号」** | 同上（unique 索引建不了 ⇒ 无唯一约束） | **首建档必须加 unique 冲突重试**，或改用其他去重手段 |
 | **`require('./common')`** | ✅ **可行，但必须扁平化** | 子目录方案 `MODULE_NOT_FOUND`（云端 `fsDiag.hasCommonDir=false`，子目录被拼成 `common\xxx.js` 扁平怪名）；改 `common.js` + `cx_*.js` 后 `ok:true`，13 项导出齐 | **云函数包内禁用子目录**；改 common 单源后必跑 `node tools/sync_common.js` |
 | **`doc().get()` 契约** | ✅ **成立（A1/A2 未修反）** | `topLevelKeys=["data","errMsg"]`、`hasDataField=true`；文档不存在时 **`behavior:"reject"`** | 取值**必须取 `.data`**；读取**必须 try/catch**（不存在会抛，不是返回 null） |
@@ -72,7 +76,7 @@
   `user.openid` / `user.user_id` / `shop_entitlement.user_id` / `shop_monthly_account.(shop_id,month)` /
   `shop_inventory.(shop_id,month)` / `shop_cost_card.card_code` / `shop_switch.(shop_id,switch_key)` /
   `admin_user.username` / `shop_payment_flow.order_no` / `order_refund.order_id`
-- 判读（A7 已于 2026-09-14 定案 = **不支持**）：10 条 unique 全在 → A6 风险低；**有缺失** → 按「工序 5.5」控制台**手工补建**，
+- 判读（A7 已于 2026-09-14 定案 = **不支持**）：10 条 unique 全在 → A6 风险低；**有缺失** → 按「工序 5.5」补建（首选 `tools/apply_indexes.js`），
   在补齐前 A6 按「**可能产生重复账号**」处理（首建档须加 unique 冲突重试）。
   注：本 Runbook 顶部已定案 `createIndex` 不可用，故此处「全在 → A7=支持」的旧分支不再适用。
 

@@ -98,7 +98,11 @@ const INDEXES = {
     { name: 'idx_audit_created', keys: { created_at: -1 } },
     // 🔒 R72：幂等预检（common/idempotency.js::checkIdempotent）按 idempotency_key 查重，
     //   而 audit_log 是**只增不删**的审计表 ⇒ 无索引时每次幂等检查都全表扫描、随时间线性恶化。
-    //   ⚠️ 上线前必须**在云开发控制台手工创建**（wx-server-sdk 无 createIndex，A7 已定案）。
+    //   ⚠️ 上线前必须**另外建索引**（wx-server-sdk 无 createIndex，A7 已定案 ⇒ 本函数建不上）。
+    //     建法三选一（2026-09-17 更新，旧口径「只能靠人在控制台填」已证伪）：
+    //     ① 脚本化（首选）`node tools/apply_indexes.js --apply --secret-file <文件>`（官方 HTTP API，幂等可回读）；
+    //     ② GUI 键鼠自动驾驶（无密钥，实证 40/40，脚本见 review/evidence/index_buildout_20260917/scripts/）；
+    //     ③ 控制台逐条填（兜底，照 `索引补齐核对单.md`）。
     //   saveCostCard 的「重放」形态查询额外带 shop_id 条件，但无需复合索引——idempotency_key 基数已足够。
     { name: 'idx_audit_idem', keys: { idempotency_key: 1 } },
   ],
