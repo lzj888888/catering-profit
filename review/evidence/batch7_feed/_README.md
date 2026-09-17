@@ -500,3 +500,85 @@ node verify_all.js                                   → 52/52 套件通过，ex
 - [已落] 门禁：A–L exit 0 + `verify_all` 52/52 exit 0
 - [存疑] `getMonthList` 的去重/倒序逻辑内联在 `index.js` ⇒ 只能形状断言；若复审方认为需要行为断言，则需把该逻辑抽 `service.js`（本侧未擅自改生产代码）
 - [未落] 真云三验 / 39 条索引补齐 / `ADMIN_SETUP_TOKEN` 配置 / 上线三项阻塞 / `wechatide` client 授权 / R58 备选方案待拍板
+
+---
+
+## 6.18 round24 处置（2026-09-17 08:35，WorkBuddy 侧）
+
+### 6.18.1 复审方产物归档
+
+`review/REVIEW_2026-09-15_round24-verify.md`（96 行，md5 `bbaf82a4548d9d262936fc8eaa5a56f9`），原样入库不改。
+复审方结论：**R52 / R55 / R57 独立复核通过**（HEAD `6b00110`、工作树 0 项、门禁 exit 0、套件 52/52 逐个跑、
+并用 OCR 独立确认 R52 的控制台截图），另提 1 条新发现。
+
+### 6.18.2 三条裁决（逐条实证，不采信转述）
+
+| 复审方主张 | 我方实证 | 裁决 |
+|---|---|---|
+| 「R58（新）：`verify_all.js:3` 注释仍写 46，实际 52」 | `sed -n '1,8p' verify_all.js` = `// 串联：46 个套件 = …`；`grep -cE "^  \['" verify_all.js` = **52** | ✅ **真**。我方上轮只改了注释块**后半段**（补 R50 行），漏了第 3 行的总数 ⇒ 真漂移 |
+| 「`saveAsset/validate.js:16` 文案与行为矛盾」 | `:15` 判据 `a.value_fen <= 0`（拒 0）；`:16` 文案写"必须是非负正整数分" | ✅ **真**。已改文案为「必须是正整数分（JSON number；不接受字符串、0 与负数）」，**行为不动**（0 元资产无业务意义） |
+| 「`origin/dev` 解析不出来 ⇒ 可能引用被清理或 upstream 没了；推送无法独立确证」 | `git branch -vv` 原为 `dev 6b00110 [origin/dev: **gone**]`，`.git/refs/remotes/` 为空、`packed-refs` 无 origin 条目；`git ls-remote origin dev` 正常 | ✅ **现象真，归因需修正**：不是沙箱、也不是 upstream 配置丢失（`.git/config` 的 branch.dev.remote/merge 在），而是**本地 remote-tracking 引用缺失** |
+
+**⚠️ 编号撞车**：复审方这条新发现编号 `R58` 与我方已落库的 **R58（prod 首超管引导 `tools/gen_admin_bootstrap.js`，已在 `780c8d6` 提交、且已写进重启键）** 撞号。
+按 round23 先例（迟到方改名）：**本侧记作 R59**，`REVIEW_2026-09-15_round24-verify.md` 原样不改。
+
+### 6.18.3 R59 处置（比"改个数字"更强：把它变成机器守的事实源）
+
+`verify_all.js` 里同一个数量有**三层事实源**：① 代码注释（L3）② `SUITES.length`（运行时）③ 重启键两处。
+R21 与 R59 两次翻车**都是 ① 与 ② 不一致**。既然 ② 是运行时可得，就没必要靠记性守 ①：
+
+- L3 注释 `46 → 52`，并把描述补实（含 batch4 六函数补齐 / batch7 工具套件 / 三守卫）。
+- 新增 **`guardSuiteCount()`**（文件内自校验，非独立套件 ⇒ 套件数仍 52）：
+  解析自身源码的 `// 串联：N 个套件` 与 `SUITES.length` 比对，**不等即 `exit 1`**；找不到该句也 `exit 1`（守卫失效要响）。
+- 保留 L7 的警示，并明写「另有两处在重启键，仍是人工面」（不假装全自动）。
+
+**变异验证（注入 → 跑 → 还原，工作树无残留）**
+
+```
+A 注释 52→46（模拟"加了套件忘改注释"）→ RC=1，❌ [suite-count] 头部注释写 46 个套件，实际 SUITES = 52 个
+B 删掉整句「// 串联：N 个套件」        → RC=1，❌ [suite-count] 头部注释缺少…R59 守卫无法工作
+还原                                   → RC=0，✅ [suite-count] 头部注释 ≡ SUITES.length = 52；总览 52/52
+```
+
+### 6.18.4 澄清复审方一处**前提有误**
+
+复审方问：「请确认 `tools/gen_admin_bootstrap.js` 取值方式与环境变量一致」——
+该脚本**不读任何环境变量**（离线生成器：读 `cloudfunctions/_adminCore/adminAuth.js` 做算法同源、生成 JSON 交控制台插入），
+与 `ADMIN_SETUP_TOKEN` **无取值关系**。token 的**唯一取值方**是 `cloudfunctions/adminInit/index.js:17`
+（`(process.env.ADMIN_SETUP_TOKEN || '').trim()`，`:30` 与入参 `setup_token` 比对）。
+⇒ 前提不成立，故「一致性问题」不存在的；但**规矩值得落规范**（见下）。
+
+**已落规范**：`specs/dev-specs/core/16_后台鉴权规范.md` §7 新增两段 ——
+① **prod 首超管通道（R58 定案）**：prod `adminInit` 恒拒 ⇒ 唯一推荐路径 = `tools/gen_admin_bootstrap.js` 生成文档后控制台插入；🚫 禁止手工拼文档（算不出 scrypt 哈希、漏 `status` 会被 R48 fail-closed **永久拒且无法自愈**）。
+② **setup token 六条规矩**（采纳复审方判据）：只放云函数环境变量 / ≥32 位 `crypto` 随机 / dev≠prod / 一次性用后轮换或删除 / 回执不回显实际值（只记"是否已配置·是否已轮换"）/ 取值方仅 `adminInit` 入参 `setup_token`。
+
+### 6.18.5 顺带抓到的新坑（工具层，非产品代码）
+
+**同一条消息里对同一文件的两处 `Edit` 会互相覆盖**：本侧先给 `verify_all.js` 加 `const fs = require('fs')`（Edit 报 success），
+再改 L3 注释（同样报 success）—— 结果 **`fs` 那句被后写覆盖丢失**，`verify_all.js` 抛
+`ReferenceError: fs is not defined at guardSuiteCount`、**RC=1 且无任何套件输出**。
+靠「改完必回读源码」纪律（先 `sed -n` 回读 + 单独跑一次）拦下，未进入提交。
+⇒ **纪律**：同一文件的多处改动**串行发**（一条消息一处）；`Edit` 报 success **不等于**改动落地，关键改动必须回读。
+（本轮未把这条加进 `verify_all` —— 它是编辑工具的行为，不是仓库不变量，故只落回执与日记。）
+
+### 6.18.6 证据（命令 → 输出）
+
+```
+git log --oneline -1                 → 6b00110（round24 复核的即是此 HEAD）
+git fetch origin dev                 → * [new branch] dev -> origin/dev（引用重建）
+git branch -vv                       → dev 6b00110 [origin/dev]（gone 消失）
+git rev-parse @{u} / HEAD            → 6b0011065a4b839264bc0a1bd401396b45d81c4e（两处一致）
+node verify_all.js                   → ✅ [suite-count] 注释 ≡ SUITES.length = 52；总览 52/52 exit 0
+node specs/…/check_error_codes.js    → exit 0（改 core/16 + 重启键后必跑）
+grep -rn "非负正整数分"               → 仅 saveAsset 1 处（已改），无同类残留
+```
+
+### 6.18.7 回执
+
+- [已落] **R59**：`verify_all.js` 注释 46→52 + **`guardSuiteCount()` 自校验守卫**（变异 A/B 双证）
+- [已落] **saveAsset 文案**对齐行为（文案改、行为不改；`grep` 确认无同类残留）
+- [已落] **`core/16 §7`**：prod 首超管通道（R58 定案）+ setup token 六条规矩
+- [已落] **`origin/dev` 引用重建**；新纪律：推送后**双证**（远端 `ls-remote origin dev` + 本地 `git rev-parse @{u}` + `HEAD` 三方一致）
+- [已落] 重启键：里程碑链续写 round24 + R59；「套件数会漂」行注明「代码注释层已自动、重启键两处仍人工面」；收口轮标注「round24 已核 R52/R55/R57 ✅」
+- [存疑] 复审方点名要复核 **R48（fail-closed）/ R53（静默截断）** —— 本侧**同意优先给这两条**（同属"静默错误"类），但复核是复审方的动作，本侧待其点名后提供证据路径（无需新增代码）
+- [未落] 真云三验 / 39 条索引 / `ADMIN_SETUP_TOKEN` 值 / 上线三项 / `wechatide` 授权 / R58 备选方案（放宽 `adminInit` 门禁）待李老师拍板

@@ -13,7 +13,7 @@ function validateInput(event) {
   if (!a || typeof a !== 'object') return err('asset 必须是对象');
   if (typeof a.name !== 'string' || !a.name.trim()) return err('asset.name 必须是非空字符串');
   if (typeof a.value_fen !== 'number' || !Number.isInteger(a.value_fen) || a.value_fen <= 0) {
-    return err('asset.value_fen 必须是非负正整数分（JSON number，字符串不接受）');
+    return err('asset.value_fen 必须是正整数分（JSON number；不接受字符串、0 与负数）');
   }
   if (typeof a.start_month !== 'string' || !MONTH_RE.test(a.start_month)) return err('asset.start_month 必须是 YYYY-MM');
   if (typeof a.total_months !== 'number' || !Number.isInteger(a.total_months) || a.total_months < 1) {
