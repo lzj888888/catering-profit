@@ -89,6 +89,7 @@
 - [2026-09-17 09:14] **【自查纠错】** 本轮我误建**中文名**证据目录（违本仓 ASCII 约定）⇒ 已改 `round25_R48_R53_点名复核/` → `round25_R48_R53_review_request/`，并把「`review/` 下目录名/文件名一律 ASCII」写进 `review/README.md §1`（附本实例）。 · commit `8603cd4`
 - [2026-09-17 09:14] **【存疑】** 无。
 - [未落] 真云三验 / 39 条索引补齐 / `ADMIN_SETUP_TOKEN` 的值 / 上线三项（隐私政策 URL·审核测试账号·营业执照商户号）/ `wechatide` client 授权 —— **均待人工（李老师）**，不属本侧可自主推进项。
+- [2026-09-17 09:21] **【更正】「已推」判据 三方 → 两方** · 证据：`git fetch origin dev` 报 `* [new branch] dev -> origin/dev` 后**同一命令内** `ls .git/refs/remotes/origin/` → `No such file or directory`；`git update-ref refs/remotes/origin/dev HEAD` → `rc=0`（无报错）但该文件**仍不存在**；`git branch -vv` → `[origin/dev: gone]`（而 `logs/refs/remotes/origin/dev` reflog 16 KB 仍在）⇒ 本机 **`.git/refs/remotes/**` 写入报成功却不落盘**（`.git/refs/heads/**` 正常，提交/推送均持久），因此 `@{u}` **不可作证据**。**权威判据 = 远端 `git ls-remote origin dev` == 本地 `git rev-parse HEAD`**（本次 = `1af3d1e6e7b86815262a79b96ffe1ad70d3ca972`，两方一致 ✅）。 ⚠️ 这也**解释并对 round24 做了更正**：08:45 那次 `fetch` 确实建立过该引用（你 08:56 读到 `refs/remotes/origin/dev` ⇒ 你记的"三方一致"**当时为真、没记错**），但该引用**不持久**。已同步 `review/README.md §6.2` + 重启键 §1.3 + `review/evidence/batch7_feed/_README.md §6.19.6`（含原始命令与输出）· commit `1af3d1e`
 
 ---
 
