@@ -142,7 +142,7 @@
 | 2 | **回执已追加**（本清单的核心） | 在对应 `REVIEW_*` 的 §3 区追加一行：<br>`- [YYYY-MM-DD HH:MM] R<n> 已落/未落/存疑 · 证据：<命令> → <输出摘要> · commit <sha>` | **没写就别提交** |
 | 3 | 门禁 exit 0 | `node verify_all.js` | 红了先修，别带病提交 |
 | 4 | 重启键已回填 | 本轮「活过一轮」的项写进 `specs/dev-specs/★知识存储点_2026-09-10.md` §1.1 / §1.3 | 只留在 `review/` 会随流水过期，换会话接不上 |
-| 5 | 提交后工作树干净、已推远端 | `git status --short` + `git rev-parse HEAD origin/dev` | 有残留就补提交 |
+| 5 | 提交后工作树干净、已推远端 | `git status --short` + **两方一致**：`git ls-remote origin dev` == `git rev-parse HEAD`（**R64 修正**：原写 `git rev-parse HEAD origin/dev`，该命令本身依赖本机不落盘的 `refs/remotes/**`，会假红/取不到值） | 有残留就补提交 |
 
 > **为什么第 2 条最要紧（round13/15/16 连续三轮实证）**：提交只记录「改了哪些文件」，**记不下「哪条没做、为什么没做」**。
 > round15 恰有两条没做（R38 用例未提交、`§1.3` 未记 R38）——**当时若写了回执，这两条会在提交前被自己先发现**，

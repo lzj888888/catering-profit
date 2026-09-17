@@ -674,3 +674,65 @@ ls .git/logs/refs/remotes/origin/ → dev / main reflog **仍在**（16 KB，说
   我上一提交里写的"三方一致"**是错的**，已同步 `review/README.md §6.2`、重启键 §1.3、round25 §3 回执。
 - [存疑] 无。
 - [未落] 真云三验 / 39 条索引 / `ADMIN_SETUP_TOKEN` 值 / 上线三项 / `wechatide` 授权 —— 均待人工。
+
+
+## 6.20 round26 取件 + InsCode 值守判 E（2026-09-17 09:46~10:00，WorkBuddy 侧）
+
+### 6.20.1 InsCode：连续第 2 次同形态 ⇒ 判定「它不回了」（分支 E）
+
+| 指标 | 本轮读数 | 基线/判据 |
+|---|---|---|
+| `inflight_turn` | **0** | 无在飞轮次 |
+| Assistant 非空 | **387** | = 基线 387（08:35 锁定）⇒ **无新回复** |
+| `approval_audit` max(id) | 44 / `approved_once` | 无挂起审批 |
+| stream mtime 龄 | **19679 s（5.5 h）** | 最后一次输出停在 04:23 |
+| heartbeat 龄 | 22448 s（6.2 h） | 陈旧 |
+| 屏上 | OCR 仍是 R54 自查报告，输入框为空占位文案，无弹窗、无「运行中」 | 截图 `C:\Users\lzj\AppData\Local\Temp\inscode\patrol_20260917_0949.png` |
+
+上一轮（08:35）已是同一形态 ⇒ **连续 2 次**，按值守规则判 **E**。
+未派新活、未投喂、未批准任何操作、未改 `cloudfunctions/` 与 `specs/`。
+
+### 6.20.2 round26（复审方 `miniprogram-code-reviewer`，09:39:56 落盘）已取件
+
+- **结论**：R60 / R61 ✅；**点名复核 R48 ✅、R53 ✅（均 ①档）**；`@{u}` 不可信现象 ①档确证、机制未定论（复审方排除 4 个假说）。
+- **新开两条**：🟡 **R62** `adminLogin/index.js:52` 判据单源化（`!== ADMIN_STATUS_ACTIVE`）+ 补「未知状态不得登录」断言；
+  🔵 **R63** 分页两处补「形态守卫 + 探针页」（`adminQueryUser/service.js:22`、`adminExport/service.js:49/69`）。
+- **复审方自认三处**：① round25「三方一致」判据缺陷（把「当时可读」当「持久可信」）② **操作失误**——清理时用
+  `git update-ref -d refs/remotes/origin/dev`，**连带删掉了 17.2 KB reflog（销毁了自己刚引用的证据）**，
+  新增纪律：删 ref 用 `Remove-Item` 删文件，**禁用 `update-ref -d`** ③ `logs/refs/remotes/origin/dev` 探针残留保留（防二次销毁）。
+- 另提 🔵 措辞级：「写了不取」建议改为「3 次取件异常（2 次未回执 + 1 次落点错）」——**本侧采纳，但本轮未改**
+  （在下一次动 `review/README.md` 时一并处理，避免为措辞单开提交）。
+
+### 6.20.3 R64 已落：§7 第 5 条「已推」命令改为两方
+
+- 改了什么：`review/README.md:145`，`git rev-parse HEAD origin/dev` → **`git ls-remote origin dev` == `git rev-parse HEAD`（两方）**。
+- 为什么：复审方 round26 §4.3 指出 —— 第 5 条的**示例命令自己就踩在那个坑上**（它依赖本机写入不落盘的 `refs/remotes/**`），
+  照它执行会得到假结论。这是「判据改了、但判据的落地命令没跟上」的同类病，属 R60 的延伸。
+- 证据：`grep -n "origin/dev" review/README.md` → 仅 §6.2 说明段与 §7 第 5 条命中；改后 `sed -n '145p'` 回读确认已落地。
+
+### 6.20.4 未落（本值守**故意不做**，待李老师拍板）
+
+- ⚠️ **09:59 更新（并发写入）**：本值守跑门禁时发现 `cloudfunctions/` **正被并发改动**（mtime 09:52:48~09:58:57，
+  含 `_adminCore/adminAuth.js` + 11 份 `adminAuth.js` 副本 + `adminLogin/{index,selftest}.js` +
+  `adminQueryUser/{index,service}.js` + `adminExport/service.js`，`git diff --stat` = 16 文件 +485/−45）。
+  内容经判读 = **R62（`isAdminActive` 单源判据）+ R63（形态守卫 + 探针页）**，注释风格与本仓一致 ⇒ **非本值守所为**
+  （本值守本轮未写任何 `cloudfunctions/` 文件）。**处置：不碰、不提交、不为它背书** —— 等对方跑完门禁自行入库；
+  本值守只 commit 自己的 `review/` 文档三件。
+- 🟡 **R62** / 🔵 **R63**：均需改 `cloudfunctions/`（`adminLogin` / `adminQueryUser` / `adminExport`）。
+  **不擅自执行的三条理由**：① 值守授权只覆盖「不做不可逆/对外动作」，而**动已验收的鉴权与分页实现**属下轮排期范畴，
+  不是值守的兜底范围；② InsCode 已判终态，若由我改则**无人做独立复核**（本仓铁律：谁写的自测不算证据）；
+  ③ 两者都是 🔵/🟡 建议级，非阻塞上线。⇒ 留给李老师决定「派 InsCode / 我改+复审方复核 / 暂缓」。
+- 真云三验 / 39 条索引 / `ADMIN_SETUP_TOKEN` 值 / 上线三项 / `wechatide` 授权 —— 均须人工。
+
+### 6.20.5 建议：**暂停本值守**（未擅自执行）
+
+8 批喂投已全部交付、收官加固连走三轮且已被 round24/25/26 独立复核通过，InsCode 侧连续两轮零在飞、零回复、零审批
+⇒ 本值守已无事可做。**暂停是可逆的**（李老师派新任务后再开启即可）。本侧保留自动化为 ACTIVE，**等李老师醒后定夺**。
+
+### 6.20.6 回执
+
+- [已落] R64（`review/README.md` §7 第 5 条两方命令）；round26 已取件并入库
+- [已落] 本值守本轮**未写任何 `cloudfunctions/` / `specs/`** —— 门禁 52/52 与 GATE=0 是在 09:53~09:55 跑的，
+  **早于** 09:58 那批并发写入 ⇒ **那两条绿不覆盖并发改动**（本值守不为它背书，也不回滚它）
+- [存疑] 无（`refs/remotes` 机制仍未定论，属复审方同判）
+- [未落] R62 / R63（见 6.20.4，待拍板）；其余人工项照旧
