@@ -268,7 +268,8 @@ const TOTAL = countAll(single.indexes), UNIQ = countUnique(single.indexes), NCOL
   //   collections.js ==(S4)== .md ==(verify_docx.py)== .docx
   const vd = readOrDie(VERIFY_DOCX);
   const hard = [...vd.matchAll(/(\d+)\s*条索引/g), ...vd.matchAll(/(\d+)\s*条是\s*unique/g)].map((m) => m[0]);
-  check('S4 verify_docx.py 无写死的计数期望值（须从同名 .md 派生）', hard.length === 0,
+  // ⚠️ 名里写「**计数类**期望值」：`OLD_STRINGS` 里也有 `8 套件` 这类**套件数旧值**，但它属「**被禁旧串**」（性质是禁值，不是期望值）⇒ 与本断言不冲突（R77 观察项，勿为此去「修」它）
+  check('S4 verify_docx.py 无写死的「计数类期望值」（须从同名 .md 派生）', hard.length === 0,
     hard.length ? `写死 ${hard.length} 处：${hard.join(', ')}` : '0 处（已全部派生）');
 }
 
