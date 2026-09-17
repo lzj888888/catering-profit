@@ -632,10 +632,45 @@ node cloudfunctions/adminQueryUser/selftest.js     → adminQueryUser 批次 6/7
 node tools/check_admincore.js                      → ✅ 单源派生校验通过：11 份 adminAuth.js 副本均 ≡ 单源（179 行，指纹 7b90bc56）
 ```
 
-### 6.19.6 回执（摘要；正式一行在 `REVIEW_...round25-verify.md §3`）
+### 6.19.6 ⚠️ 追加发现（09:17）：本机 `.git/refs/remotes/**` 写入**不落盘** ⇒ `@{u}` 不可作证据
+
+**触发**：本轮第一次推送后 `git rev-parse @{u}` 又报 `fatal: ambiguous argument '@{u}'`（round24 那次"引用缺失"复发）⇒ 不再归因"引用被清理"，改做隔离实验：
+
+```
+git fetch origin dev            → From github.com:…
+                                →  * branch  dev -> FETCH_HEAD
+                                →  * [new branch]  dev -> origin/dev      ← git 说建好了
+  ls .git/refs/remotes/origin/  → No such file or directory               ← 同一命令内，文件不存在
+  git rev-parse @{u}            → fatal: Needed a single revision
+git update-ref refs/remotes/origin/dev HEAD  → rc=0（无任何报错）
+  ls .git/refs/remotes/origin/  → No such file or directory               ← 同一命令内，仍不存在
+git branch -vv                  → * dev 05b54d3 [origin/dev: gone]
+ls -la .git/refs/               → refs/heads 正常（提交可持久化、可推送）、refs/remotes/ **空**
+ls .git/packed-refs             → No such file or directory（不是被 pack 走了）
+ls .git/logs/refs/remotes/origin/ → dev / main reflog **仍在**（16 KB，说明该 ref 历史上真实存在过）
+```
+
+**结论（事实层）**：`.git/refs/heads/**` 的写入**正常持久化**（本轮两次 commit + 两次 push 都成立），
+但 `.git/refs/remotes/**` 的写入**报成功却不落盘** ⇒ 本机 **`@{u}` 不是可用的证据来源**。
+
+**与 round24 的关系（更正我自己的归因）**：round24 我判"根因 = 本地 remote-tracking 引用缺失"，方向对但**不完整**——
+真正原因是**该路径在本环境不持久**。08:45 那次 `git fetch origin dev` 确实建立过并维持了约半小时
+（round25 §0 复审方也是在那个窗口内读到 `refs/remotes/origin/dev` 的，所以它记的"三方一致"当时为真 ✅），
+但**随时可能消失**，不能当作稳定事实。
+
+**假说（未证，仅登记）**：像是**防伪造远端状态**的写入保护（本地分支可写、代表"远端真相"的 remote-tracking 引用不可写）——
+**未经证实**，不敢写成结论。可证伪路径：在**非沙箱** shell 里重跑上面三条命令。
+
+**判据更正（已同步 3 处）**：「已推」改为 **两方判定** —— **远端** `git ls-remote origin dev` == **本地** `git rev-parse HEAD`
+（远端视角才是权威，且本机实测稳定可用）；若要额外看本地引用，必须把 `fetch` 与 `rev-parse` **压进同一条命令**，
+并注明"仅同命令内有效"。**单靠推送方回显不算已验。**
+
+### 6.19.7 回执（摘要；正式一行在 `REVIEW_...round25-verify.md §3`）
 
 - [已落] R60（两档边界 + 同类查全含我方 MEMORY.md 一处）、R61（本份起用 §3 区；历史不改写）
 - [已落] 点名复核包 `review/evidence/round25_R48_R53_review_request/`
-- [已落] 重启键 §1.3 复审协议段（计数不写死 / §3 落点 / 三方一致 / 断点三次）
+- [已落] 重启键 §1.3 复审协议段（计数不写死 / §3 落点 / **「已推」判据** / 断点两次→三次）
+- [更正] 「已推」判据由「三方一致」**改回两方**（远端 `ls-remote` == 本地 `HEAD`）—— `@{u}` 在本机不落盘（§6.19.6），
+  我上一提交里写的"三方一致"**是错的**，已同步 `review/README.md §6.2`、重启键 §1.3、round25 §3 回执。
 - [存疑] 无。
 - [未落] 真云三验 / 39 条索引 / `ADMIN_SETUP_TOKEN` 值 / 上线三项 / `wechatide` 授权 —— 均待人工。

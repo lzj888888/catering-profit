@@ -122,7 +122,8 @@
 | **①档（默认，未申请放行）** | 直接可用 | ✅ 文件系统层静态核验：`Test-Path` / `Get-Content -Encoding UTF8` / `Get-FileHash` / 纯文本比对 / 读源码。<br>🚫 子进程类被拦：`git.exe` / `node.exe` / `powershell.exe` 等（曾实测 `spawn+pipe = EPERM(-4048)`、`git` SSH `Win32 error 5`、HTTPS `SEC_E_NO_CREDENTIALS`） |
 | **②档（每轮申请一次放行后）** | 用户已接受"每轮一次"的代价 | ✅ `node verify_all.js` **端到端**（2026-09-17 实测 `总览：52/52 套件通过`、`VERIFYALL=0`）· ✅ 门禁 A–L · ✅ **远端 `git ls-remote origin dev`**（⇒「是否已推」**可核**）· ✅ 变异注入/还原 · ✅ `Get-FileHash` 交叉验证 |
 
-- **「已推」的判定（2026-09-17 立，round25 起生效）**：**三方一致**才算 —— `git ls-remote origin dev` = `git rev-parse @{u}` = `git rev-parse HEAD`。
+- **「已推」的判定（2026-09-17 立；同日**自我更正**）**：**两方一致**即算已验 —— **远端** `git ls-remote origin dev` == **本地** `git rev-parse HEAD`。
+  ⚠️ **`@{u}` 不作为证据**：本机 `.git/refs/remotes/**` 的写入**报成功却不落盘**（`git update-ref refs/remotes/origin/dev HEAD` → `rc=0` 但该文件不存在；`git fetch origin dev` 报 `* [new branch] dev -> origin/dev` 后**同一命令内** `ls` 仍找不到）⇒ `git branch -vv` 会显示 `[origin/dev: gone]`，而**远端一切正常**。要读本地引用，必须把 `fetch` 与 `rev-parse` **压进同一条命令**，并注明"仅同命令内有效"。原始证据见 `review/evidence/batch7_feed/_README.md §6.19.6`。
   单靠推送方回显的那一次**不算**已验事实。（R4 教训不变：**描述可凭记忆，输出不能**。）
 - **git 读回的坑仍在**：`git -C` / `git show HEAD:path` / `git cat-file` 曾误报（2026-09-13 日记 `:52-55`）；
   即便在 ②档，判「文件存在/内容相等」仍**优先非 git 方法**（`Test-Path` / `Get-FileHash` / 直接读文件）交叉验证。
