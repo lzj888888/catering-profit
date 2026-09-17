@@ -34,7 +34,7 @@ const SUITES = [
   ['页面声明守卫 R44',    'tools/check_pages.js'],
   ['合规守卫 R42',        'tools/check_compliance.js'],
   ['单源派生守卫 R50',    'tools/check_admincore.js'],
-  ['自测形状守卫 R66',    'tools/check_selftest_shape.js'],
+  ['自测形状守卫 R66/67/68', 'tools/check_selftest_shape.js'],
   // ===== 批次 3 · POC2 BOM 两层 / 循环拦截 / 快照（7 个云函数各自单测）=====
   ['batch3-calcBom',      'cloudfunctions/calcBom/selftest.js'],
   ['batch3-detectCycle',  'cloudfunctions/detectCycle/selftest.js'],
@@ -113,6 +113,9 @@ const SUITES = [
 //   ⚠️ 分隔符与标题之间的空格**可有可无**（仓内两种写法并存：`===== CSV 转义 =====` 与
 //      `===== §2.9 角色控权（…）=====`）。首版要求必须有空格 ⇒ 紧贴写法的段**整段识别不到**，
 //      故障段恰好落在这一类里 ⇒ 变异回灌仍报绿（实测）。别把 `[ \t]*` 改回 `[ \t]+`。
+// 🔒 约定（R66 配套，**已成文**）：套件断言一律以 **✅** 标记。本判据与该符号绑定 ——
+//      改用其它符号会被判成「零断言段」= **假红**（方向保守：宁可红，不可漏跑）；
+//      写新套件/新段时请沿用 ✅，否则须同时改这里。
 const SECTION_HEAD = /^(={3,}|-{3,}|─{3,}|═{3,})[ \t]*(.*?)[ \t]*(={3,}|-{3,}|─{3,}|═{3,})[ \t]*$/;
 const SUMMARY_TAIL = /通过\s*\/\s*\d+\s*失败/;
 const isDelimOnly = (s) => s === '' || /^[=\-─═]+$/.test(s);
