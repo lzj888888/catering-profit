@@ -1,0 +1,44 @@
+[
+  {
+    "id": "F1-result-空态出现",
+    "expect": "loading=false 且 r=null 时显示空态文案",
+    "actual": "loading=false r=null 含空态文案=true",
+    "pass": true,
+    "note": "含\"加载中\"=false；按钮=[\"去录入\"]"
+  },
+  {
+    "id": "F2a-摊销合计非空",
+    "expect": "显示「¥0.00」而不是裸「¥」",
+    "actual": "data.totalYuan=\"0.00\" .result-num=\"¥0.00\"",
+    "pass": true,
+    "note": ""
+  },
+  {
+    "id": "F2b-月份占位",
+    "expect": "curMonth 为空时显示占位文案",
+    "actual": "curMonth=\"\" 含\"暂无账本\"=true",
+    "pass": true,
+    "note": ""
+  },
+  {
+    "id": "L2-单tab不满宽",
+    "expect": "isPaid=false 时 .tabs 带 single、只 1 个 .tab、且 wxss 有「单 tab 不满宽」规则",
+    "actual": ".tabs class=\"tabs single\" .tab 数=1 wxss规则=true isPaid=false",
+    "pass": true,
+    "note": ""
+  },
+  {
+    "id": "L1-标题与标签拆开",
+    "expect": "小节标题=\"食材消耗\"、字段标签=\"食材消耗合计（元）\"，叶子节点计数=1",
+    "actual": "sec列表=[\"收入\",\"费用\",\"食材消耗\"] | lbl列表=[\"堂食收入\",\"外卖收入\",\"其他收入\",\"房租租金\",\"人员工资\",\"水电物业\",\"其他杂费\",\"食材消耗合计（元）\"] | 叶子计数=1",
+    "pass": true,
+    "note": ""
+  },
+  {
+    "id": "L3-注销按钮抽类",
+    "expect": "class 含 danger 且无内联 style",
+    "actual": "class=\"btn danger\" style=\"null\"",
+    "pass": true,
+    "note": ""
+  }
+]
