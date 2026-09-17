@@ -18,6 +18,25 @@ function csvFromRows(header, rows) {
   return '\uFEFF' + all.map((r) => r.map(csvEscape).join(',')).join('\r\n');
 }
 
+// ===================== R63 · 取数形态守卫（与 adminQueryUser/service.js 同源口径）=====================
+
+/** R63 · 查询返回形态异常（期望 { data: [] }）—— 响亮失败，不静默归一为空数组。 */
+function invalidShapeError() {
+  const e = new Error('查询返回形态异常（期望 { data: [] }）');
+  e.code = 'SYSTEM_ERROR';   // 复用既有错误码（core/09 §1.7），不新增
+  return e;
+}
+
+/**
+ * R63 · 取数结果归一 + 形态守卫：null/undefined → []（等价"无数据"）；
+ * **非数组 ≠ 无数据** → 响亮失败（防形态漂移被当成"取尽"）。
+ */
+function asRows(x) {
+  if (x == null) return [];
+  if (!Array.isArray(x)) throw invalidShapeError();
+  return x;
+}
+
 // ===================== R49 · 分页累取（纯编排，DB 由调用方注入）=====================
 
 // 分页安全上限（防死循环 / 防单次导出拉爆内存）：20 页 × 1000 = 20000 条
@@ -43,10 +62,19 @@ async function fetchAllPages(fetchPage, opts) {
       e.code = 'HARD_CAP_EXCEEDED'; // 复用既有错误码（不新增）
       throw e;
     }
-    const rows = await fetchPage(page * pageSize, pageSize);
-    const arr = (rows && Array.isArray(rows)) ? rows : [];
+    // ⚠️ R63：offset 用 all.length（而非 page * pageSize）：探针非空时页起点须随之平移，
+    //    否则"短页 + 数据仍在"场景会把中间一段静默跳过。
+    const rows = await fetchPage(all.length, pageSize);
+    const arr = asRows(rows);
     all.push.apply(all, arr);
-    if (arr.length < pageSize) break;   // 本页不满 → 已取尽
+    if (arr.length < pageSize) {
+      // R63：短页 ≠ 一定耗尽 —— 补一次探针（只多取 1 条）确证；
+      //   探针为空 ⇒ 确证耗尽（正常出口）；探针非空 ⇒ 平台返回条数低于请求值，继续下一页。
+      const probe = asRows(await fetchPage(all.length, 1));
+      if (probe.length === 0) break;
+      page++;
+      continue;
+    }
     page++;
   }
   return all;
@@ -66,8 +94,11 @@ function makePagedQuery(coll) {
     if (where != null) q = q.where(where);   // where == null → 跳过（全量）
     q = q.skip(skip).limit(limit);
     const res = await q.get();
-    return (res && res.data) || [];
+    // R63 形态守卫：形态漂移若静默归一为 []，会被 fetchAllPages 当成"取尽"⇒ 导出成功但为空
+    //   （本仓已栽过的形态事故类型：单源 adminAuth.js 记着 `doc().get()` 被当文档本体的教训）。
+    if (res == null || !Array.isArray(res.data)) throw invalidShapeError();
+    return res.data;
   };
 }
 
-module.exports = { csvEscape, csvFromRows, fetchAllPages, makePagedQuery, MAX_EXPORT_PAGES, EXPORT_PAGE_SIZE, EXPORT_ROWS_CAP };
+module.exports = { csvEscape, csvFromRows, fetchAllPages, makePagedQuery, asRows, invalidShapeError, MAX_EXPORT_PAGES, EXPORT_PAGE_SIZE, EXPORT_ROWS_CAP };

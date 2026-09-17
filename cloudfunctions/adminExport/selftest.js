@@ -58,7 +58,11 @@ console.log('===== R49 · 分页累取到耗尽（fetchAllPages，service.js）=
 const { fetchAllPages } = require('./service');
 (async () => {
   // ① 常规：不足一页 → 取尽
-  const small = await fetchAllPages(async (skip, limit) => Array.from({ length: 3 }, (_, i) => ({ id: skip + i })));
+  //    ⚠️ R63：注入方**必须遵守契约**「skip 超界 → 返回空」，否则探针会把它误判成"还有更多"
+  const small = await fetchAllPages(async (skip, limit) => {
+    const n = Math.max(0, Math.min(3, 3 - skip));
+    return Array.from({ length: n }, (_, i) => ({ id: skip + i }));
+  });
   check('不足一页 → 全部取到（3 条）', small.length === 3);
 
   // ② >1000 条边界：1500 条 → 分 2 页取尽，无静默截断
@@ -70,7 +74,10 @@ const { fetchAllPages } = require('./service');
     return Array.from({ length: Math.max(0, n) }, (_, i) => ({ id: skip + i }));
   });
   check('1500 条 → 分页取尽（无静默截断）', big.length === 1500);
-  check('分页命中：页1 skip=0/limit=1000，页2 skip=1000/limit=1000', pageHits.length === 2 && pageHits[0].skip === 0 && pageHits[1].skip === 1000);
+  check('分页命中：页1 skip=0/limit=1000，页2 skip=1000/limit=1000（+ R63 探针 skip=1500/limit=1）',
+    pageHits.length === 3 && pageHits[0].skip === 0 && pageHits[1].skip === 1000
+      && pageHits[2].skip === 1500 && pageHits[2].limit === 1,
+    'hits=' + JSON.stringify(pageHits.map((h) => [h.skip, h.limit])));
 
   // ③ 精确边界：恰好 2000 条（20 页 × 1000）→ 取尽不触发上限
   const exact = await fetchAllPages(async (skip, limit) => {
@@ -97,12 +104,69 @@ const { fetchAllPages } = require('./service');
   const empty = await fetchAllPages(async () => []);
   check('空集合 → 0 条', empty.length === 0);
 
-  console.log(`\n==== adminExport R49 子测：${pass} 通过 / ${failN} 失败 ====`);
-})();
+  // ===== R63：短页探针 + 形态守卫（取尽判据不再依赖两个未验证前提）=====
+  console.log('');
+  console.log('===== R63 · 短页探针 + 形态守卫（fetchAllPages / makePagedQuery / asRows）=====');
 
-console.log('');
-console.log('===== R51 · where=null 走不带 where 的路径（makePagedQuery 真实实现）=====');
-const { makePagedQuery } = require('./service');
+  // ⑦ 前提①-正面：首页偶发少返回（50，远低于请求的 1000）→ 探针确证未耗尽 → 继续取尽
+  //    （R49 逻辑 `arr.length < pageSize → break` 在此**只取到 50 条** ⇒ 静默少导出 1250 条）
+  {
+    const TOTAL = 1300;
+    const big2 = await fetchAllPages(async (skip, limit) => {
+      const n = skip === 0 ? Math.min(50, TOTAL) : Math.max(0, Math.min(limit, TOTAL - skip));
+      return Array.from({ length: n }, (_, i) => ({ id: skip + i }));
+    });
+    check('R63-① 首页短页（50/1000）→ 探针确证未耗尽，仍取尽 1300 条（旧逻辑只取 50）',
+      big2.length === TOTAL, `len=${big2.length}`);
+    check('R63-② 探针不跳不重：id 连续 0..1299', big2.every((x, i) => x.id === i));
+  }
+
+  // ⑧ 前提①-反面：平台单次上限（300）远低于请求值 → 页数用尽 ⇒ **响亮失败**（不静默返回已取部分）
+  {
+    let capErr2 = null;
+    try {
+      await fetchAllPages(async (skip, limit) => {
+        const n = Math.max(0, Math.min(300, limit, 5000 - skip));
+        return Array.from({ length: n }, (_, i) => ({ id: skip + i }));
+      }, { pageSize: 1000, maxPages: 3 });
+    } catch (e) { capErr2 = e; }
+    check('R63-③ 平台单次上限 300 条 ⇒ 页数用尽时响亮失败 HARD_CAP_EXCEEDED（不静默返回部分）',
+      capErr2 && capErr2.code === 'HARD_CAP_EXCEEDED', capErr2 ? capErr2.code : 'no-throw');
+  }
+
+  // ⑨ 前提②：形态守卫（makePagedQuery 是**注入点** ⇒ 生产路径上"静默空"变"响亮失败"）
+  {
+    const { makePagedQuery, asRows } = require('./service');
+    const collRet = (ret) => ({
+      where() { return this; }, skip() { return this; }, limit() { return this; },
+      async get() { return ret; },
+    });
+    let sh1 = null;
+    try { await makePagedQuery(collRet({}))(null)(0, 1000); } catch (e) { sh1 = e; }
+    check('R63-④ 形态 {}(无 data) → 抛 SYSTEM_ERROR（不静默当空 ⇒ 不被当成"取尽"）',
+      sh1 && sh1.code === 'SYSTEM_ERROR');
+    let sh2 = null;
+    try { await makePagedQuery(collRet({ data: 'oops' }))(null)(0, 1000); } catch (e) { sh2 = e; }
+    check('R63-⑤ 形态 {data:"oops"}(非数组) → 抛 SYSTEM_ERROR', sh2 && sh2.code === 'SYSTEM_ERROR');
+    const okr = await makePagedQuery(collRet({ data: [{ id: 'e9' }] }))(null)(0, 1000);
+    check('R63-⑥ 形态 {data:[...]} → 正常返回数组', Array.isArray(okr) && okr.length === 1);
+    const emptyr = await makePagedQuery(collRet({ data: [] }))(null)(0, 1000);
+    check('R63-⑦ 形态 {data:[]} → 返回 []（空 ≠ 异常）', Array.isArray(emptyr) && emptyr.length === 0);
+    check('R63-⑧ asRows(null/undefined) → []（无数据不是异常）',
+      asRows(null).length === 0 && asRows(undefined).length === 0);
+    let asE = null;
+    try { asRows(123); } catch (e) { asE = e; }
+    check('R63-⑨ asRows(非数组非 null) → 抛 SYSTEM_ERROR', asE && asE.code === 'SYSTEM_ERROR');
+  }
+
+  console.log(`\n==== adminExport R49 子测：${pass} 通过 / ${failN} 失败 ====`);
+
+  // ===== R51 · where=null 走不带 where 的路径（makePagedQuery 真实实现）=====
+  // ⚠️ 与 R49 段**共用同一个 IIFE**（2026-09-17 修隐性竞态）：原先两段各起一个 IIFE，
+  //   而只有 R51 段尾部调 `process.exit`；R51 用假集合（微任务即完成）⇒ **抢先退出进程**，
+  //   把 R49 段后半截腰斩。R63 给 fetchAllPages 加探针后 await 链变长，该竞态首次暴露：
+  //   实跑只见「不足一页」一条，1500/2000/上限/空集合/R63 共十余条**一条都没执行**。
+  const { makePagedQuery } = require('./service');
 // 假 collection：记录调用形态，链式返回自身（模拟 wx SDK 查询对象），get 返回 {data}
 function makeFakeColl() {
   const calls = [];
@@ -115,7 +179,6 @@ function makeFakeColl() {
   return { calls, coll };
 }
 
-(async () => {
   // ① where=null（entitlements 全量）→ 不出现 where 调用
   const f1 = makeFakeColl();
   const rows1 = await makePagedQuery(f1.coll)(null)(0, 1000);

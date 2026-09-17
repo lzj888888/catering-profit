@@ -125,6 +125,42 @@ const fakeAdminColl = {
   check('op 访问 super 专属 → ADMIN_PERMISSION_DENIED', adminAuth.requireRole('op', ['super']) === 'ADMIN_PERMISSION_DENIED');
   check('op 可访问 op 允许', adminAuth.requireRole('op', ['super', 'op']) === null);
 
+  // ===== R62：登录闸门判据单源化（登录闸门 ≡ 请求闸门，共用 isAdminActive）=====
+  // 背景：adminLogin 原用 `status === 'disabled'`（只堵一个已知值），requireAuth 用
+  //   `status !== ADMIN_STATUS_ACTIVE`（fail-closed）⇒ 未知状态能"登录成功"却处处被拒。
+  // 两层断言：① 纯函数层 = 行为断言（可单测的真实现）；② 源码形状断言（等级：形状 ——
+  //   index.js 带 wx-server-sdk 无法纯 node 加载，故只钉"登录闸门不得退回字面量写法"）。
+  console.log('');
+  console.log('===== R62 · 账号状态判据单源化（登录闸门 ≡ 请求闸门）=====');
+  check('R62-① isAdminActive({status:active}) → true', adminAuth.isAdminActive({ status: 'active' }) === true);
+  check('R62-② isAdminActive({status:disabled}) → false', adminAuth.isAdminActive({ status: 'disabled' }) === false);
+  check('R62-③ isAdminActive(未知值 pending_review) → false（fail-closed）',
+    adminAuth.isAdminActive({ status: 'pending_review' }) === false);
+  check('R62-④ isAdminActive(status 为空串) → false（此前可"登录成功"）',
+    adminAuth.isAdminActive({ status: '' }) === false);
+  check('R62-⑤ isAdminActive(缺 status 字段) → false', adminAuth.isAdminActive({ admin_id: 'adm_x' }) === false);
+  check('R62-⑥ isAdminActive(null / undefined 行) → false',
+    adminAuth.isAdminActive(null) === false && adminAuth.isAdminActive(undefined) === false);
+  check('R62-⑦ ADMIN_STATUS_ACTIVE 常量已随单源导出', adminAuth.ADMIN_STATUS_ACTIVE === 'active');
+  // ⑦ 与 requireAuth 的一致性：两闸门对同一组输入必须给出同一判定（这正是 R62 的病根）
+  const sameJudgement = ['active', 'disabled', 'pending_review', ''].every((st) => {
+    const byFn = adminAuth.isAdminActive({ status: st });
+    const byMiddlewareRule = !!({ status: st }) && ({ status: st }).status === adminAuth.ADMIN_STATUS_ACTIVE;
+    return byFn === byMiddlewareRule;
+  });
+  check('R62-⑧ 纯函数判据与中间件判据等价（两闸门同源）', sameJudgement);
+
+  // ② 源码形状断言：剥离整行注释后测（否则会命中本改动自己的说明注释）
+  const fs = require('fs');
+  const pathMod = require('path');
+  const loginSrc = fs.readFileSync(pathMod.join(__dirname, 'index.js'), 'utf8');
+  const codeOnly = loginSrc.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
+  check('R62-⑨ 登录闸门调用单源 isAdminActive(admin)', /isAdminActive\(admin\)/.test(codeOnly));
+  check("R62-⑩ 已无 status === 'disabled' 字面量判据（代码区）",
+    !/\bstatus\s*===\s*'disabled'/.test(codeOnly));
+  const authLine = loginSrc.split('\n').find((l) => l.indexOf("require('./adminAuth')") >= 0) || '';
+  check('R62-⑪ 登录闸门从 ./adminAuth 解构 isAdminActive', authLine.indexOf('isAdminActive') >= 0);
+
   console.log(`\n==== adminLogin 批次 6 自测结果：${pass} 通过 / ${failN} 失败 ====`);
   process.exit(failN === 0 ? 0 : 1);
 })();

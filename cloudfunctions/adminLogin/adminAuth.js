@@ -79,6 +79,26 @@ function parseBearer(headers) {
 const ADMIN_STATUS_ACTIVE = 'active';
 
 /**
+ * R62（判据单源化）：管理员账号是否「可用」。
+ *
+ * ⚠️ 为什么要有这个函数：**同一语义曾有两处不等价判据** ——
+ *   · 请求闸门 `requireAuth`（本文件）:`status !== ADMIN_STATUS_ACTIVE` → fail-closed，只认 active；
+ *   · 登录闸门 `adminLogin/index.js`:`status === 'disabled'` → **只堵一个已知值**。
+ *   于是 status 为未知值（`pending_review` / 将来新增的 `suspended` / 历史脏数据）时，
+ *   登录会**成功**并签发 token、审计写 success，而该 token 在**每一个** admin 调用上都被拒
+ *   ⇒ "登录成功但什么都做不了" + 审计里出现失败账号的成功登录记录。
+ *   今天 `requireAuth` 兜住了（无提权），但这意味着**登录闸门事实上不设防** ——
+ *   将来若有新端点忘了接 `requireAuth`，未知状态账号就从"被兜住"变成"真进得去"。
+ *   ⇒ 两个闸门必须共用本函数，不得各自写字面量。
+ *
+ * @param {object|null} row admin_user 行（或 null / undefined）
+ * @returns {boolean} 仅 `status === 'active'` 为 true；其余（缺失 / 空串 / 未知值）一律 false
+ */
+function isAdminActive(row) {
+  return !!row && row.status === ADMIN_STATUS_ACTIVE;
+}
+
+/**
  * adminAuth 中间件：校验 token → 校验 admin_user 账号状态 → 返回会话信息或错误。
  * @param {object} sessionColl  注入的会话集合句柄（db.collection('admin_login_log')；测试可注入假集合）
  * @param {object} adminUserColl 注入的管理员集合句柄（db.collection('admin_user')；测试可注入假集合）
@@ -116,8 +136,8 @@ async function requireAuth(sessionColl, adminUserColl, token) {
   } catch (e) {
     return { error: 'ADMIN_AUTH_FAILED' };       // 账号读异常 → 拒绝（不因容错放行）
   }
-  // 取不到记录 / 状态不是 active（禁用/停用/未知值）→ 一律拒绝
-  if (!adminRow || adminRow.status !== ADMIN_STATUS_ACTIVE) {
+  // 取不到记录 / 状态不是 active（禁用/停用/未知值）→ 一律拒绝（与登录闸门共用 isAdminActive，R62）
+  if (!isAdminActive(adminRow)) {
     return { error: 'ADMIN_AUTH_FAILED' };
   }
 
@@ -174,6 +194,7 @@ module.exports = {
   genSalt, hashPassword, verifyPassword,
   genToken, tokenTtlMs, TOKEN_TTL_MS,
   parseBearer, requireAuth, requireRole,
+  isAdminActive, ADMIN_STATUS_ACTIVE,
   isLocked, lockUntilAfter, LOCK_AFTER_FAILS, LOCK_DURATION_MS,
   calcGrantExpireAt, DAY_MS, SCRYPT_KEYLEN,
 };

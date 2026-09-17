@@ -12,7 +12,7 @@ const db = cloud.database();
 const common = require('./common');                 // 扁平派生副本（sync_common 生成）
 const { ERROR_CODES, ok, fail } = common;
 const { nowUtc } = common.utilTime;
-const { verifyPassword, genToken, TOKEN_TTL_MS, isLocked, lockUntilAfter, LOCK_AFTER_FAILS } = require('./adminAuth');
+const { verifyPassword, genToken, TOKEN_TTL_MS, isLocked, lockUntilAfter, LOCK_AFTER_FAILS, isAdminActive } = require('./adminAuth');
 
 exports.main = async (event) => {
   const v = (event && event.input) || event || {};
@@ -49,8 +49,12 @@ exports.main = async (event) => {
     await writeLoginLog(admin.admin_id, 'locked', { reason: 'account_locked' });
     return fail(ERROR_CODES.ADMIN_LOCKED, '账号已锁定，请 30 分钟后再试');
   }
-  if (admin.status === 'disabled') {
-    await writeLoginLog(admin.admin_id, 'fail', { reason: 'disabled' });
+  // R62：账号状态判据与请求闸门（requireAuth）**共用单源 isAdminActive**，不得写字面量。
+  //   原写法 `admin.status === 'disabled'` 只堵一个已知值 ⇒ 未知状态（pending_review / 将来新增的
+  //   suspended / 历史脏数据）能"登录成功"并签发 token、审计写 success，而该 token 处处被 requireAuth 拒
+  //   ⇒ 审计失真 + "登录成功却什么都做不了" + 给"漏接 requireAuth 的新端点"留口子。
+  if (!isAdminActive(admin)) {
+    await writeLoginLog(admin.admin_id, 'fail', { reason: 'not_active' });   // 泛化原因，不暴露内部状态机
     return fail(ERROR_CODES.ADMIN_AUTH_FAILED, '账号已停用');
   }
 

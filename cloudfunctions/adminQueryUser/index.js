@@ -10,7 +10,7 @@ const db = cloud.database();
 const common = require('./common');                 // 扁平派生副本（sync_common 生成）
 const { ERROR_CODES, ok, fail } = common;
 const { parseBearer, requireAuth } = require('./adminAuth');
-const { fetchShopsAll } = require('./service');
+const { fetchShopsAll, makeShopPageQuery } = require('./service');
 
 exports.main = async (event) => {
   const headers = (event && event.headers) || (event && event.header) || {};
@@ -52,12 +52,16 @@ exports.main = async (event) => {
     const userId = u.user_id || u.id;
     // ⚠️ R53（A 类加固）：店铺列表分页累取到耗尽（service.fetchShopsAll），
     //   杜绝 limit(20) 静默截断；超过安全上限响亮失败（HARD_CAP_EXCEEDED）。
-    const shops = await fetchShopsAll(async (skip, limit) => {
-      const shopsRes = await db.collection('shop')
-        .where({ user_id: userId, is_deleted: false })
-        .skip(skip).limit(limit).get();
-      return (shopsRes && shopsRes.data) || [];
-    });
+    // ⚠️ R63：取数器改用 service.makeShopPageQuery —— **形态守卫在注入点**，
+    //   平台返回形态漂移（期望 { data: [] }）时响亮失败，不静默当成"取尽"（否则=静默少显示）。
+    let shops;
+    try {
+      shops = await fetchShopsAll(makeShopPageQuery(db.collection('shop'), { user_id: userId, is_deleted: false }));
+    } catch (e) {
+      // 响亮失败：上限/形态异常一律如实回传，不降级为"少显示几家店"
+      const code = (e && e.code === 'HARD_CAP_EXCEEDED') ? ERROR_CODES.HARD_CAP_EXCEEDED : ERROR_CODES.SYSTEM_ERROR;
+      return fail(code, (e && e.message) || '店铺列表读取失败');
+    }
     const entRes = await db.collection('shop_entitlement').where({ user_id: userId }).limit(1).get();
     const ent = entRes && entRes.data && entRes.data[0];
     const expireAt = ent ? (ent.expire_at || 0) : 0;
