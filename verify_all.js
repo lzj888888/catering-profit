@@ -1,11 +1,13 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：54 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：55 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
 //       + 幂等覆盖守卫（tools/check_idempotency.js，R73：契约「+幂等」逐函数对照 / 预检早于写的顺序不变量 /
 //         登记同源 shopKey / 装饰性 idempotency_key 检出；判据来源 = 契约表本身，不手抄清单）
+//       + 建库单源同步守卫（tools/check_schema_sync.js，R74：单源 collections.js ≡ 镜像 init_db.js 的
+//         集合与索引清单 / 三份文档里写死的索引计数与逐条对照表 ≡ 单源；字面量解析 fail-closed）
 //       + batch7 前端工具套件（tools/selftest_batch7.js，R55 移入 tools/ 以免随小程序包发布）。
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
@@ -38,6 +40,7 @@ const SUITES = [
   ['单源派生守卫 R50',    'tools/check_admincore.js'],
   ['自测形状守卫 R66/67/68', 'tools/check_selftest_shape.js'],
   ['幂等覆盖守卫 R73',    'tools/check_idempotency.js'],
+  ['建库单源同步守卫 R74', 'tools/check_schema_sync.js'],
   // ===== 批次 3 · POC2 BOM 两层 / 循环拦截 / 快照（7 个云函数各自单测）=====
   ['batch3-calcBom',      'cloudfunctions/calcBom/selftest.js'],
   ['batch3-detectCycle',  'cloudfunctions/detectCycle/selftest.js'],

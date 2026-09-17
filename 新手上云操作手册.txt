@@ -136,7 +136,7 @@
 
 ### 5.2b 核对索引清单（A7 已答：**不支持代码建索引**，所以清单要手工建全）
 - 控制台 →「**数据库**」→ 逐张集合 →「**索引**」。
-- `cloudfunctions/initDb/collections.js` 里共 **39 条索引**，其中 **10 条是 unique（唯一）索引**，逐条核对这 10 条：
+- `cloudfunctions/initDb/collections.js` 里共 **40 条索引**，其中 **10 条是 unique（唯一）索引**，逐条核对这 10 条：
   `user.openid` / `user.user_id` / `shop_entitlement.user_id` / `shop_monthly_account.(shop_id,month)` /
   `shop_inventory.(shop_id,month)` / `shop_cost_card.(shop_id,card_code,version)` / `shop_switch.(shop_id,switch_key)` /
   `admin_user.username` / `shop_payment_flow.order_no` / `order_refund.order_id`

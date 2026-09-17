@@ -23,20 +23,24 @@ import sys
 OLD_STRINGS = [
     "A7 成立",            # R1：A7 已被 2026-09-14 云端实测否定（不支持代码建索引）
     "9 个 unique",        # R1：实为 10 条 unique 索引
-    "30 条索引",          # R1：实为 39 条
+    "30 条索引",          # R1：早期旧值（索引计数的**当前值**以 tools/check_schema_sync.js 的 S4 为准）
     "__probe",            # R2：违规集合名（不得以 _ 开头），已改名 probe_tmp
     "判据④唯一未完项",     # R14：dev 侧已闭环，仅剩 prod
     "第 14–15 行",         # R14：env.js 真值在第 16/17 行
     "env.js:14-15",       # R16：同上
-    "8 套件",              # R21：现为 9 个套件
+    "8 套件",              # R21：套件数的历史旧值（当前值见 verify_all.js 头部注释，已有 guardSuiteCount 自校验）
     "8 个套件",            # R21：同上
 ]
 
 # 针对具体文档的"必须存在"新串（缺了说明派生件没跟上单源）
 EXPECT = {
+    # ⚠️ Runbook 里的「39 条索引」是 2026-09-14 实测的**历史快照**（描述当日 initDb 全部报
+    #    `createIndex is not a function` 的那一次），**不是**对当前计数的声明 ⇒ 此处保留原文。
+    #    当前计数（40 条 / 其中 10 条 unique）由 `tools/check_schema_sync.js` 的 S4 机械守着
+    #    —— 该文件的 EXPECT 不再是对计数的唯一守卫，计数漂移别只改这里。
     "SMOKETEST_RUNBOOK": ["39 条索引", "probe_tmp", "派生件"],
-    "新手上云操作手册": ["39 条索引", "probe_tmp", "派生件"],
-    "下一步工序清单": ["39 条索引", "派生件"],
+    "新手上云操作手册": ["40 条索引", "probe_tmp", "派生件"],
+    "下一步工序清单": ["40 条索引", "派生件"],
 }
 
 DEFAULT_DOCS = ["SMOKETEST_RUNBOOK", "新手上云操作手册", "下一步工序清单"]

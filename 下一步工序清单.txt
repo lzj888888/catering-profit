@@ -1,7 +1,7 @@
 # 下一步工序清单 · 李老师专用
 
 > ⚠️ 本文档为**派生件**：同名 `.txt` / `.docx` / `.pdf` 均由本 `.md` 生成，**冲突一律以 `.md` 为准**（勿手改派生件）。
-> 生成日期：2026-09-14 ｜ 制作：WorkBuddy
+> 生成日期：2026-09-17 ｜ 制作：WorkBuddy
 > 这份清单**只管你现在要做的这一段**：把库建起来、跑通探针、把结果发给我。
 > 每一步都写清「点哪里 → 看到什么 → 填什么 → 对了是什么样」。**卡住就截图发我，别自己乱试。**
 
@@ -125,19 +125,19 @@
 
 ---
 
-## 工序 5.5 · 索引 39 条（可延后，上线前必须补）
+## 工序 5.5 · 索引 40 条（可延后，上线前必须补）
 
 > dev 阶段**可以跳过**：数据量小、不影响跑通。但**上线前在 prod 必须补齐**，否则唯一约束（比如同一个微信只能有一个 `user`、管理账号名不能重复）形同虚设。
 
-25 张集合共 **39 条索引**，全部定义在 `cloudfunctions/initDb/collections.js` 的 `INDEXES` 里。
+25 张集合共 **40 条索引**，全部定义在 `cloudfunctions/initDb/collections.js` 的 `INDEXES` 里。
 
 **微信云开发的 SDK 不支持用代码建索引**（实测就是 `createIndex is not a function`），只能手工：
 
 1. 云开发控制台 →「数据库」→ 点开某个集合 →「**索引管理**」→「**添加索引**」。
 2. 按 `collections.js` 里对应条目填：**索引名、字段（+升序/降序）、是否唯一**。
-3. 逐条重复 39 次。
+3. 逐条重复 40 次。
 
-⚠️ 枯燥但绕不开。下面是**逐条对照表**（共 39 条；`【唯一】`= 建索引时勾选「唯一」；控制台一次只建一张集合的索引）：
+⚠️ 枯燥但绕不开。下面是**逐条对照表**（共 40 条；`【唯一】`= 建索引时勾选「唯一」；控制台一次只建一张集合的索引）：
 
 | # | 集合 | 索引名 | 字段（升/降） | 唯一 |
 |---|---|---|---|---|
@@ -170,16 +170,19 @@
 | 27 | audit_log | idx_audit_shop | shop_id ↑ | |
 | 28 | audit_log | idx_audit_action | action ↑ | |
 | 29 | audit_log | idx_audit_created | created_at ↓ | |
-| 30 | admin_user | idx_admin_username | username ↑ | 【唯一】 |
-| 31 | admin_login_log | idx_login_admin | admin_id ↑ | |
-| 32 | subscription_plan | idx_plan_enabled | enabled ↑, sort ↑ | |
-| 33 | feature_permissions | idx_fp_plan | plan_id ↑ | |
-| 34 | shop_stored_value | idx_sv_shop | shop_id ↑ | |
-| 35 | shop_stored_value | idx_sv_shop_month | shop_id ↑, month ↑ | |
-| 36 | shop_credit_ledger | idx_cl_shop | shop_id ↑ | |
-| 37 | shop_credit_ledger | idx_cl_shop_created | shop_id ↑, created_at ↓ | |
-| 38 | shop_income_item | idx_ii_shop_month | shop_id ↑, month ↑ | |
-| 39 | shop_expense_item | idx_ei_shop_month | shop_id ↑, month ↑ | |
+| 30 | audit_log | idx_audit_idem | idempotency_key ↑ | |
+| 31 | admin_user | idx_admin_username | username ↑ | 【唯一】 |
+| 32 | admin_login_log | idx_login_admin | admin_id ↑ | |
+| 33 | subscription_plan | idx_plan_enabled | enabled ↑, sort ↑ | |
+| 34 | feature_permissions | idx_fp_plan | plan_id ↑ | |
+| 35 | shop_stored_value | idx_sv_shop | shop_id ↑ | |
+| 36 | shop_stored_value | idx_sv_shop_month | shop_id ↑, month ↑ | |
+| 37 | shop_credit_ledger | idx_cl_shop | shop_id ↑ | |
+| 38 | shop_credit_ledger | idx_cl_shop_created | shop_id ↑, created_at ↓ | |
+| 39 | shop_income_item | idx_ii_shop_month | shop_id ↑, month ↑ | |
+| 40 | shop_expense_item | idx_ei_shop_month | shop_id ↑, month ↑ | |
+
+> 🔒 **第 30 条 `audit_log.idx_audit_idem`（R73 新增，非唯一）**：幂等预检按 `idempotency_key` 查重，而 `audit_log` 只增不删 ⇒ 缺这条索引会让**每次幂等检查都全表扫描、随时间线性恶化**。它不是唯一索引 ⇒ 上表「10 条 unique」清单不变。
 
 ---
 
