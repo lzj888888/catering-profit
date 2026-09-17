@@ -90,6 +90,8 @@
 - [2026-09-17 09:14] **【存疑】** 无。
 - [未落] 真云三验 / 39 条索引补齐 / `ADMIN_SETUP_TOKEN` 的值 / 上线三项（隐私政策 URL·审核测试账号·营业执照商户号）/ `wechatide` client 授权 —— **均待人工（李老师）**，不属本侧可自主推进项。
 - [2026-09-17 09:21] **【更正】「已推」判据 三方 → 两方** · 证据：`git fetch origin dev` 报 `* [new branch] dev -> origin/dev` 后**同一命令内** `ls .git/refs/remotes/origin/` → `No such file or directory`；`git update-ref refs/remotes/origin/dev HEAD` → `rc=0`（无报错）但该文件**仍不存在**；`git branch -vv` → `[origin/dev: gone]`（而 `logs/refs/remotes/origin/dev` reflog 16 KB 仍在）⇒ 本机 **`.git/refs/remotes/**` 写入报成功却不落盘**（`.git/refs/heads/**` 正常，提交/推送均持久），因此 `@{u}` **不可作证据**。**权威判据 = 远端 `git ls-remote origin dev` == 本地 `git rev-parse HEAD`**（本次 = `1af3d1e6e7b86815262a79b96ffe1ad70d3ca972`，两方一致 ✅）。 ⚠️ 这也**解释并对 round24 做了更正**：08:45 那次 `fetch` 确实建立过该引用（你 08:56 读到 `refs/remotes/origin/dev` ⇒ 你记的"三方一致"**当时为真、没记错**），但该引用**不持久**。已同步 `review/README.md §6.2` + 重启键 §1.3 + `review/evidence/batch7_feed/_README.md §6.19.6`（含原始命令与输出）· commit `1af3d1e`
+- [2026-09-17 09:25] **【澄清 · 防"误判篡改"】** 上面第一行引的 `c89198d28fe4d1919e877e951d7dadca` = **本份入库那一刻的字节哈希**（复现：`git show 8603cd4:review/REVIEW_2026-09-15_round25-verify.md | md5sum`），与你的 9920 B 副本一致 ⇒ 入库是**逐字节原样**。⚠️ **§3 追加后整文件哈希必然变**（现 `92a196ecd6501b104ffc0b843abf648d`；102 → 110 行），**属预期，不是篡改**。**"正文未改一字"的可复现证法**（CRLF 归一，同本仓 K 组做法）：
+  `git show 8603cd4:… | head -83 | tr -d '\r' | md5sum` ≡ `head -83 <当前文件> | tr -d '\r' | md5sum` ≡ **`3e1656695b5554b806b73fc04787f0ec`**（`diff` 无输出）。**正文边界 = 第 1–83 行**（§3 标题块结束处），**第 84 行起才是我的追加区**（原文那行「（暂无 —— 待本份被取件后追加）」即在此处被替换）。 · 相关 commit `1af3d1e` / `bdfa2cc`
 
 ---
 
