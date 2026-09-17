@@ -139,20 +139,35 @@
 
 **发现 B 闭合的证据链**：
 - `30_info_before.txt`：部署前 `cli cloud functions info` → `smokeTest | Active | timeout=3 | Nodejs16.13`（**这就是发现 A 的配置层证据**）
-- `32_info_after.txt`：`info` 字段不含更新时间 ⇒ **单靠它证不了"已更新"**，故另取控制台函数列表的「最后更新时间」：`35_function_list2.png` = **`2026.09.18 02:29:24`**（旧值 `2026.09.15 08:47:38`）⇒ 部署件**不再落后于仓库**。
+- `32_info_after.txt`：`info` 字段不含更新时间 ⇒ **单靠它证不了"已更新"**，故另取控制台函数列表的「最后更新时间」：`35_function_list2.png` **采集 = 02:27:08**，其中显示**晚于旧值 `2026.09.15 08:47:38`** 的更新时间 ⇒ 部署件**不再落后于仓库**。
+  - ⚠️ **R89 存疑（复审 round37 提出；本侧复核后认定"属实、且比我原写法更严"）**：此前把该值写成 **`2026.09.18 02:29:24`** —— 但该截图 **mtime = 02:27:08** ⇒ **`02:29:24` 物理上不可能出现在这张图里**（截图不能显示"未来"的时间）。**⇒ 该具体数值撤回，不作为证据**（很可能是读图时把 `02:2x:24` 的分钟位读错；本仓已有多次"读图/OCR 读错数字"的前例，见 `review/README.md` 与 `win-desktop-control` P32）。
+  - ✅ **闭合结论不依赖这个数值**：判"部署件已与仓库对齐"的依据是**字段差** —— `01`（旧件）**根本没有** `commonShape`/`hasCommonFile` 这两个键，`40`/`46` 都有且值为 `flat-file(common.js)`（§6.3）；**复审方已独立逐字复现**。
+  - ⏳ **待办**：下次进控制台时**顺手复核**该时间戳（现在看到的应是接近 **`09-18 03:30`**，即 deploy#2 的时刻），把真值补回本行并去掉"存疑"标记。
 - 重跑返回（`46_result_raw_fixed.txt`）的 `fsDiag` 已含 **`hasCommonFile:true`** + **`commonShape:"flat-file(common.js)"`** —— 旧件这两个键**根本不存在** ⇒ **判据闭合**。
 
-### 6.3 「同一判据两版输出」对照（可证伪）
+### 6.3 「同一判据三版原文」对照（可证伪）
 
-| 字段 | 旧（09-15 部署件） | 新（09-18 重发） |
-|---|---|---|
-| `uniqueEnforce` | `{"result":"未报错 → unique 索引可能未生效（A7 判定为「索引不可用」）"}` | `{"result":"未报错（预期内）","proof":"none","note":"本集合无该 unique 索引 ⇒ 不报错是必然；不得据此判定 A6/A7"}` |
-| `fsDiag.commonShape` | **键不存在** | `flat-file(common.js)` |
-| `env` / `requireCommon` / `createIndex` / `docGetMissing` / `assertShopOwner` / `dataAdapterGet` | — | **逐字 SAME** |
-| `fsDiag.root` | 13 项 | **13 项全等**（含 `node_modules`） |
-| `docGet` | — | 仅 `_id` 不同（每次新插文档，**预期内**） |
+**采集先后**（**采集时刻 = 文件 mtime**，可直接 `ls -l --time-style=+%H:%M:%S` 复现）：
 
-> 判读口径：两份原文都在本目录（`40_result_raw.txt` = 旧件、`46_result_raw_fixed.txt` = 新件），逐字段用 Python 比对，**不靠肉眼**。
+| 原文 | 采集时刻 | 跑的是哪个部署件 | 关键差异 |
+|---|---|---|---|
+| `01_smokeTest.json` | 09-18 **01:42:11** | **09-15 的旧件** | `fsDiag` **只有 4 键**：**`commonShape`/`hasCommonFile` 根本不存在**；`uniqueEnforce` = 旧文案 |
+| `40_result_raw.txt` | 09-18 **03:27:30** | **deploy#1 之后**（`31_deploy_out.txt` 02:25:13） | ✅ **`commonShape` 的改善发生在这里**：`hasCommonFile:true` + `commonShape:"flat-file(common.js)"`；`uniqueEnforce` **仍是旧文案** |
+| `46_result_raw_fixed.txt` | 09-18 **03:31:54** | **deploy#2 之后**（`42_deploy2_out.txt` 03:30:43） | ✅ **`uniqueEnforce` 文案改在这里**（`proof:"none"` + `note`）；`commonShape` 与 `40` 相同 |
+
+逐字段对照（Python 比对，**不靠肉眼**）：
+
+| 字段 | 01（旧件） | 40（deploy#1 后） | 46（deploy#2 后） |
+|---|---|---|---|
+| `fsDiag.commonShape` | **键不存在** | `flat-file(common.js)` | `flat-file(common.js)` |
+| `fsDiag.hasCommonFile` | **键不存在** | `true` | `true` |
+| `uniqueEnforce` | 旧文案「未报错 → unique 索引可能未生效…」 | **旧文案（与 01 相同）** | `{"result":"未报错（预期内）","proof":"none","note":"…不得据此判定 A6/A7"}` |
+| `env` / `requireCommon` / `createIndex` / `docGetMissing` / `assertShopOwner` / `dataAdapterGet` | — | **逐字 SAME** | **逐字 SAME** |
+| `docGet` | — | 仅 `_id` 不同（每次新插文档，**预期内**） | 同 |
+
+> ⚠️ **R88 更正（2026-09-18 复审 round37）**：本节此前把 `40_result_raw.txt` 写成"**旧件**"，与本表"旧 = 键不存在"那句**自相矛盾**（40 里该键在、且已是新值）。**正确配对是 `01` vs `40`/`46`；旧件是 `01`，不是 `40`。**
+> 后果不是结论错，而是**下一个照本文档复跑的人会以为闭合是假的、白烧一轮**。
+> ⚠️ 连带更正一句：**`commonShape` 的改善发生在 deploy#1，deploy#2 只改了 `uniqueEnforce` 文案** —— 此前笼统写成"重发后都有了"，掩盖了两次部署各自的作用。
 
 ### 6.4 🔴 本轮新发现 C：**探针把已作废的判据当结论印出来**
 
@@ -184,9 +199,10 @@
 |---|---|
 | `30_info_before.txt` / `32_info_after.txt` | 部署前后 `cli cloud functions info`（含 **`timeout=3`**） |
 | `31_deploy_out.txt` / `42_deploy2_out.txt` | 两次部署的完整 stdout/stderr |
-| `40_result_raw.txt` | **旧件**重跑原文（未修文案前，含旧 `uniqueEnforce`） |
-| `46_result_raw_fixed.txt` | **新件**重跑原文（文案修正后，`proof:"none"`） |
-| `35_function_list2.png` | 云函数列表（**最后更新时间 = 2026.09.18 02:29:24**，判"部署件已更新"的原始出处） |
+| `40_result_raw.txt` | **deploy#1 之后**的重跑原文（采集 03:27:30；`commonShape` 已是新值，但 `uniqueEnforce` **仍是旧文案**）。⚠️ **它不是"旧件"** —— 旧件是 `01_smokeTest.json`（R88 更正，见 §6.3） |
+| `46_result_raw_fixed.txt` | **deploy#2 之后**的重跑原文（采集 03:31:54；`uniqueEnforce` 文案已修，`proof:"none"`） |
+| `47_timeout_all.txt` | **R86**：全函数 `timeout` 回读（线上只 2 函数、**均 3s**）+ 单源缺口核查（全仓仅 1 个 `config.json`、不含 `timeout`）+ 与 `core/06:410`「60s 铁律」的冲突 |
+| `35_function_list2.png` | 云函数列表（**采集 02:27:08**；显示更新时间晚于旧值 ⇒ 判"部署件已更新"的出处。⚠️ **其中具体时间戳数值已按 R89 撤回、不作证据**，理由见 §6.2） |
 | `22b_cliauth_reload.png` | 腾讯云 `tcb` device-flow 授权页在本机**渲染空白**（说明为何不走该通道） |
 | `44_run1.png` / `45_run2.png` | 本轮重跑（两次均成功；**本次未复现冷启动超时** —— 函数刚部署是热态，与发现 A 不矛盾） |
 
@@ -196,6 +212,19 @@
 
 | 项 | 状态 | 理由 |
 |---|---|---|
-| `probe_tmp` 集合 | **仍存在** | 执行单 §3「手工重复三元组」还要用它；**手删属不可逆云侧操作，等李老师逐字确认** |
-| `smokeTest` 函数 | 保留 | 同上 |
+| `probe_tmp` 集合 | **仍存在** | 原理由「执行单 §3 还要用它」**已于 2026-09-18 作废**（R90：§3 测成本卡，**答不了 A6**）⇒ 现理由只剩"**删除属不可逆云侧操作，等李老师逐字确认**"；复审方 round37 §2.6 已裁定「**删**，且删完立刻重跑可白捡一条判据」（`createCollection` 成功分支从未走过）|
+| `smokeTest` 函数 | 保留 | 探针还要用；且它是 R86 单点试 `config.json` 的首选对象 |
 | `~` 下的 `tcb` 凭据 | **不存在**（未走该通道） | `tcb login` 已自行超时退出，未产生 `~/.cloudbase/` |
+
+---
+
+## 7 · round37 复审处置（2026-09-18 04:4x）
+
+| 编号 | 处置 | 落点 |
+|---|---|---|
+| 🔴 **R86** | **升 🔴**（`initDb` 实测也是 `timeout=3` ⇒ 触发复审方预设的升级条件）；三步处置写入活文档 | 本目录 `47_timeout_all.txt` · `core/13_上线前查缺补漏…§5` · `★知识存储点 §1.2` · `SMOKETEST_RUNBOOK.md` 步骤 **0.1.6** + 步骤 4 ② |
+| 🟡 **R87** | 规则落地：`review/README.md §2` 新增「**正文归属 = 复审方（含执行单）** ＋ 例外必须**逐行**登记（文件+起止行号+改前改后原文）」 | `review/README.md §2` |
+| 🟡 **R88** | 已更正：**旧件是 `01`，不是 `40`**；`commonShape` 的改善发生在 **deploy#1**，deploy#2 只改 `uniqueEnforce` 文案 | 本节 §6.3 / §6.7（两处"旧件"字样均已改） |
+| 🔵 **R89** | **撤回数值**：`35_function_list2.png` 采集 **02:27:08** ⇒ 其**不可能**显示 `02:29:24`；改为"显示值晚于旧值"的**定性**表述，具体数值**不作证据**，并列待办复核 | 本节 §6.2 / §6.7 |
+| 🟡 **R90** | 已落地：A6 拆 **A6a（已被 unique 兜底）／A6b（`shop` 无 unique、仍无兜底）**，新判据换成两条 1 分钟操作；**原挂点（执行单 §3）已声明作废** | `★知识存储点 §1.1`（**两处**：在案项 + 判据表）· `SMOKETEST_RUNBOOK.md` 步骤 0.1.4 |
+| ⏳ **待人工** | ① `probe_tmp` 删除 + 重跑取原文（`48_result_raw_afterdrop.txt`）② R86 步骤 ②：单点试 `config.json` 能否设 `timeout`（**云侧变更，待确认**） | 见 `REVIEW_2026-09-15_round37-verify.md §3` 回执 |
