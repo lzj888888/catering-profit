@@ -15,9 +15,18 @@
 //   S1 集合清单一致    collections.js ↔ init_db.js 的 COLLECTIONS 集合相等
 //   S2 索引清单一致    逐集合比 `名字|是否唯一|字段键序` 的多重集合（顺序无关）
 //   S3 单源结构不变量  INDEXES 的键 ⊆ COLLECTIONS；索引名全局唯一（重复给 WARN，不阻断）
-//   S4 文档声明计数    `新手上云操作手册.md` / `下一步工序清单.md` 里**每一处**写死的总数、
-//                      unique 数、集合数 == 实测（写死多处 ⇒ 每处都要一致）
+//   S4 文档声明计数    `新手上云操作手册.md` / `下一步工序清单.md` / **重启键**（`★知识存储点_2026-09-10.md`）
+//                      里**每一处**写死的总数、unique 数、集合数 == 实测（写死多处 ⇒ 每处都要一致）；
+//                      重启键里**合法引用历史值**的行走显式豁免表 `RESTART_EXEMPTS`（S4 内），
+//                      另含一条「`tools/verify_docx.py` 里不得出现写死计数」断言（R75：期望值须从同名 .md 派生）
 //   S5 工序清单对照表  「逐条对照表」每一行 `集合|索引名|字段↑↓|唯一` ≡ INDEXES（人照着它建索引）
+//
+// 约定（R75/R76 沉淀：把纪律前移到「编写时」）——
+//   **新增声明请沿用既有措辞；或在本文件的模式表 / 豁免表里补一行（二选一）。**
+//   理由：S4 对每个模式都要求「命中 ≥1」—— 这把"措辞改了导致静默漏检"变成响亮转红；
+//   但反过来，**同一事实若写成第二种措辞，新模式不会被自动覆盖**（新句子既在模式之外、
+//   又不触发"零命中"）⇒ 新写法必须显式登记。豁免表同律：每条都必须**仍然命中**（豁免不腐），
+//   清单过期 = 静默放宽 ⇒ 判红。
 //
 // 运行：
 //   node tools/check_schema_sync.js          # 校验（exit 0/1）
@@ -32,6 +41,8 @@ const SINGLE = path.join(ROOT, 'cloudfunctions/initDb/collections.js');
 const MIRROR = path.join(ROOT, 'specs/dev-specs/prototype/init_db.js');
 const MANUAL = path.join(ROOT, '新手上云操作手册.md');
 const STEPS = path.join(ROOT, '下一步工序清单.md');
+const RESTART = path.join(ROOT, 'specs/dev-specs/★知识存储点_2026-09-10.md');  // 重启键（项目侧唯一状态入口）
+const VERIFY_DOCX = path.join(ROOT, 'tools/verify_docx.py');                  // 派生件自检（R75）
 
 const LIST_ONLY = process.argv.includes('--list');
 
@@ -211,6 +222,54 @@ const TOTAL = countAll(single.indexes), UNIQ = countUnique(single.indexes), NCOL
   scan('工序清单·重复次数', steps, /逐条重复\s*(\d+)\s*次/g, TOTAL, '索引总数');
   scan('工序清单·表说明条数', steps, /（共\s*(\d+)\s*条[；;]/g, TOTAL, '索引总数');
   scan('工序清单·集合数', steps, /(\d+)\s*张集合共/g, NCOL, '集合数');
+
+  // ---- R76：重启键（项目侧**唯一状态入口**，见 review/README.md §5）纳入扫描面 ----
+  // 它自相矛盾时，新任接线人会照着它漏建索引 —— 正是 R74 要防的场景本身。
+  // 但它是散文、且**合法引用历史值**（A7 定案的当日实测、R73/R74 的变更叙述、Runbook 快照引用）
+  // ⇒ 用**显式豁免清单**（每条写理由 + 必须仍然命中），而不是靠"正则恰好扫不到"。
+  //   该文件的「N 条索引」只有两类：**活声明**（当前态："共 N 条索引" / 人工项"补齐 N 条索引"）
+  //   与**历史叙述**（R74 条目里叙述变更本身并引用 Runbook 快照、A7 定案的当日实测、
+  //   §1.3 ⑨ 的复盘、R75/R76 条目自述）。
+  //   ⚠️ 此处**刻意不写行号**：行号每轮都会漂（本轮插入两条即整体后移），写进注释只会变成新的
+  //      过期事实 —— 分类由下面的正则 + 豁免表机械判定，日志里会打印实际行号。
+  const RESTART_EXEMPTS = [
+    { key: 'R74 建库单源同步（', why: 'R74 条目：叙述 39→40 的变更本身 + 引用 Runbook 历史快照（该行含 2 处旧值）' },
+    { key: '2026-09-14 云端实测', why: 'A7 定案的**历史实测记录**（记录当日实际值，非当前态声明）' },
+    { key: 'R74 建库单源同步守卫', why: '§1.3 ⑨ 对 R74 的复盘，引用旧值作为教训' },
+    { key: 'R75 自检脚本的期望值', why: 'R75/R76 条目本身：叙述"期望值改派生 + 重启键改 40"的变更，合法引用旧值' },
+  ];
+  const key = readOrDie(RESTART);
+  // ⚠️ 容忍数字被加粗包裹（`**40** 条索引`）—— 仓内文档惯用加粗，窄正则会把这种写法**静默漏掉**
+  const RE_KEY = /\*{0,2}(\d+)\*{0,2}\s*条索引/g;
+  const exemptHit = new Map(RESTART_EXEMPTS.map((e) => [e.key, 0]));
+  const live = [];
+  key.split(/\r?\n/).forEach((line, i) => {
+    const vals = [...line.matchAll(RE_KEY)].map((m) => Number(m[1]));
+    if (!vals.length) return;
+    const ex = RESTART_EXEMPTS.find((e) => line.includes(e.key));
+    if (ex) exemptHit.set(ex.key, exemptHit.get(ex.key) + vals.length);
+    else live.push({ ln: i + 1, vals });
+  });
+  check('S4 重启键·活声明至少一处（fail-closed）', live.length > 0, `命中 ${live.length} 行`);
+  const badLive = live.flatMap((h) => h.vals.filter((v) => v !== TOTAL).map((v) => `L${h.ln}=${v}`));
+  check('S4 重启键·活声明计数 == 实测索引总数', badLive.length === 0,
+    badLive.length ? `不符：${badLive.join(', ')}（应为 ${TOTAL}）`
+                   : live.map((h) => `L${h.ln}=${h.vals.join('/')}`).join(' '));
+  for (const e of RESTART_EXEMPTS) {
+    const n = exemptHit.get(e.key);
+    check(`S4 重启键·豁免仍生效「${e.key}」`, n > 0,
+      n > 0 ? `${n} 处 · ${e.why}` : `**已失效**（清单过期 = 静默放宽，判红）· ${e.why}`);
+  }
+  scan('重启键·unique 数', key, /其中\s*\*\*(\d+)\s*条\s*`unique:true`\*\*/g, UNIQ, 'unique 数');
+
+  // ---- R75：`tools/verify_docx.py` 的期望值必须**派生**，不得写死计数 ----
+  // 该副本此前**不在任何守卫的扫描面内**（复审方实测：把它改回旧值，本守卫仍 55/0）
+  // ⇒ 用一条"不得有第二份数字"的断言把它钉住。派生链：
+  //   collections.js ==(S4)== .md ==(verify_docx.py)== .docx
+  const vd = readOrDie(VERIFY_DOCX);
+  const hard = [...vd.matchAll(/(\d+)\s*条索引/g), ...vd.matchAll(/(\d+)\s*条是\s*unique/g)].map((m) => m[0]);
+  check('S4 verify_docx.py 无写死的计数期望值（须从同名 .md 派生）', hard.length === 0,
+    hard.length ? `写死 ${hard.length} 处：${hard.join(', ')}` : '0 处（已全部派生）');
 }
 
 // ===================== S5 工序清单逐条对照表 ≡ 单源 =====================
