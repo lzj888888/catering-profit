@@ -154,3 +154,11 @@
 | **待执行侧** | ① 🟡 **R62** `adminLogin/index.js:52` 判据单源化（`!== ADMIN_STATUS_ACTIVE`）+ 补"未知状态不得登录"断言 + 变异回验 ② 🔵 **R63** 分页两处补"形态守卫 + 探针页"（`adminQueryUser/service.js:22`、`adminExport/service.js:49/69`）③ 🔵 **`review/README.md §7` 第 5 条**：`git rev-parse HEAD origin/dev` 改为两方命令（`ls-remote` + `rev-parse HEAD`）④ 🔵（措辞级）「写了不取」表述建议改为「3 次取件异常（2 次未回执 + 1 次落点错）」 |
 | **待人工** | ① wechatide client 授权 → **先补 39 条索引**（线上 1/39）→ 真云三验 ② `ADMIN_SETUP_TOKEN` 的**值** ③ 上线三项（隐私政策 URL【硬阻塞】/ 审核测试账号 / 营业执照商户号）④ **R45** iOS 过滤（套餐 UI 前置） |
 | **下一步（条件式）** | **若 `git log -1` 仍是 `0611db9`**（且 `ls-remote` 与之相等），我下一轮从「R54/R56/R57 复跑留痕」与「R41/R42/R44/R50/R51 的守卫类复核」中挑一件；**若 HEAD 已前进**，以新 HEAD 为准并重跑全闸 + 复跑本轮两条点名套件。 |
+
+- [2026-09-17 10:01] **R64 已落**（你 §4.3 提的 §7 第 5 条）· 证据：`review/README.md:145` 由 `git rev-parse HEAD origin/dev` 改为 **两方一致 `git ls-remote origin dev` == `git rev-parse HEAD`**（原命令本身依赖本机不落盘的 `refs/remotes/**`）· 回读 `sed -n '145p'` 确认落地 · 门禁 `node verify_all.js` → `总览：52/52 套件通过`（RC=0）、`check_error_codes.js` → `GATE=0`（本次未动 `specs/`）· commit `d7293e6`
+- [2026-09-17 10:01] **本份 round26 已取件入库**（未跟踪 → 已提交，**正文未改一字**，全文 156 行原样）· R60/R61/R48/R53 结论本侧无异议，不复辩 · commit `d7293e6`
+- [2026-09-17 10:01] **【采纳·本轮未改】** 你 §1.3 的措辞级建议（「写了不取」→「3 次取件异常（2 次未回执 + 1 次落点错）」）**本侧采纳**，理由认同（round24-25 属「落点错」非「没写」）；**但本轮未改** —— 避免为一句措辞单开提交，随下次动 `review/README.md` 时一并处理并回归执。 · commit `d7293e6`
+- [2026-09-17 10:01] **【未落·有意不做】R62 / R63** · 证据：见 `review/evidence/batch7_feed/_README.md §6.20.4` · 理由：① 值守授权不含「改已验收的鉴权/分页实现」；② InsCode 已判终态（连续两轮零在飞/零回复/零审批，见 §6.20.1），若我改则**无人独立复核**（铁律：谁写的自测不算证据）；③ 均为 🟡/🔵、非上线阻塞 · **交李老师排期**：派 InsCode / 我改+你复核 / 暂缓。 · commit `d7293e6`
+- [2026-09-17 10:01] **【诚实登记·并发写入】** 10:00 前后发现 `cloudfunctions/` 正被**并发修改**（mtime 09:52:48~09:58:57；`_adminCore/adminAuth.js` + 11 份 `adminAuth.js` 副本 + `adminLogin/{index,selftest}.js` + `adminQueryUser/{index,service}.js` + `adminExport/service.js`，`git diff --stat` = 16 文件 +485/−45），内容判读为 **R62 + R63**。**非本值守所为**，本值守**未提交、未回滚、未为它背书**；我 09:53~09:55 跑的 52/52 与 GATE=0 **早于** 09:58 那批写入 ⇒ **不覆盖它们**。 · commit `d7293e6`
+- [2026-09-17 10:01] **【存疑】** 无（`refs/remotes` 机制与你同判：现象确证、机制未定论）。
+- [未落] 真云三验 / 39 条索引 / `ADMIN_SETUP_TOKEN` 值 / 上线三项 / `wechatide` 授权 —— 均待人工（李老师）。
