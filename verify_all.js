@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：56 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：57 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -10,6 +10,9 @@
 //         集合与索引清单 / 三份文档里写死的索引计数与逐条对照表 ≡ 单源；字面量解析 fail-closed）
 //       + 交接面引用位置守卫（tools/check_handoff_paths.js，R77：协议/手册里的「报告在哪」必须给
 //         **可解析绝对路径**且**真实存在**，并显式点名两个同名诱饵；根因=此前从没人验证过那个路径）
+//       + 核对单派生守卫（tools/gen_index_checklist.js --check，R79：**整份**派生件重算逐字比对，
+//         含剥 BOM + CRLF 归一 + 末尾空白归一；根因=核对单此前不在任何守卫扫描面内，
+//         改单源却不重跑 ⇒ 它会静默停在旧计数，而全套 56 个套件全绿）
 //       + batch7 前端工具套件（tools/selftest_batch7.js，R55 移入 tools/ 以免随小程序包发布）。
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
@@ -44,6 +47,10 @@ const SUITES = [
   ['幂等覆盖守卫 R73',    'tools/check_idempotency.js'],
   ['建库单源同步守卫 R74', 'tools/check_schema_sync.js'],
   ['交接面引用位置守卫 R77', 'tools/check_handoff_paths.js'],
+  // ===== 核对单派生守卫（R79 · 复审方 round33 裁定「方案②」）=====
+  // 用**整份重算逐字比对**覆盖派生件 —— S4 那种"抽数字比对"覆盖不了 §3 那 40 行正文，
+  // 而那才是人真正照着操作的部分。硬要求：剥 BOM + CRLF 归一（不归一 ⇒ 入库后首次拉取假红）。
+  ['核对单派生守卫 R79', 'tools/gen_index_checklist.js', ['--check']],
   // ===== 批次 3 · POC2 BOM 两层 / 循环拦截 / 快照（7 个云函数各自单测）=====
   ['batch3-calcBom',      'cloudfunctions/calcBom/selftest.js'],
   ['batch3-detectCycle',  'cloudfunctions/detectCycle/selftest.js'],
@@ -178,11 +185,16 @@ function auditAssertions(out, rel) {
 }
 
 let failed = 0;
-for (const [name, rel] of SUITES) {
+// 第三元素 = 传给该套件的额外 argv（目前只有核对单派生守卫需要 `--check`）。
+//   为什么必须显式传：那份文件是**同一份、两种模式** —— 默认模式是"渲染并写出核对单"，
+//   若不加 `--check` 就挂进来，每跑一次 verify_all 都会把核对单**覆写一遍**（还顺带
+//   改掉时间戳，让"有人偷偷改过"这件事永远无法被发现）。
+for (const [name, rel, extra] of SUITES) {
   const fp = path.join(ROOT, rel);
-  process.stdout.write(`\n===== [${name}] ${rel} =====\n`);
+  const argStr = extra && extra.length ? ' ' + extra.join(' ') : '';
+  process.stdout.write(`\n===== [${name}] ${rel}${argStr} =====\n`);
   try {
-    const out = execFileSync(NODE, [fp], { cwd: ROOT, encoding: 'utf8' });
+    const out = execFileSync(NODE, [fp].concat(extra || []), { cwd: ROOT, encoding: 'utf8' });
     const audit = auditAssertions(out, rel);   // 🔒 R66/R69：即使 exit 0 也要审「断言是否真跑了 / 是否走完收尾」
     process.stdout.write(out);
     if (audit.zero.length) {

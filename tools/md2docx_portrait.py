@@ -2,7 +2,9 @@
 """Markdown -> 纵向 A4 可打印 docx（表头每页重复 + 页码 + 引用框 + 代码框）。
 支持： #/##/### 标题、- 列表、1. 编号行、| 表格、> 引用、```代码```、--- 分隔、
       行内 `code`、**粗体**、【粗体】。
-用法： python _tmp_gen_manual.py <in.md> <out.docx> <标题>
+用法： python tools/md2docx_portrait.py <in.md> <out.docx> <标题>
+       ⚠️ 传参给 Windows python 一律用**显式 `C:/...` 绝对路径**，别用 shell 变量拼
+          （`$R/x.py` 展开成 `/c/...` 会被当成 `c:\c\...` ⇒ `Errno 2`）。
 """
 import sys, re
 from docx import Document

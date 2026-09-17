@@ -1,0 +1,105 @@
+== coll user
+   现有可见: ['id', '_openid_l', 'idXuserid', 'idx_openid']
+   EXISTS   idx_openid
+   EXISTS   idx_user_id
+== coll shop
+   现有可见: ['idx_shop_userdel', '_openid_l', 'id', 'idx_shop_user']
+   EXISTS   idx_shop_user
+   EXISTS   idx_shop_user_del
+== coll shop_entitlement
+   现有可见: ['id', 'idXentuser', '_openid_l', 'idxent_expire']
+   EXISTS   idx_ent_user
+   EXISTS   idx_ent_expire
+== coll shop_subscription
+   现有可见: ['idXsubuser', '_openid_l', 'id']
+   EXISTS   idx_sub_user
+== coll shop_payment_flow
+   现有可见: ['idx—pay_order', 'id', '—openid_l', 'idx—pay_-user', 'idx—pay—shop']
+   EXISTS   idx_pay_user
+   EXISTS   idx_pay_order
+   EXISTS   idx_pay_shop
+== coll order_refund
+   现有可见: ['id', 'idxrefunduser', '_openid_l', 'idxrefundorder']
+   EXISTS   idx_refund_order
+   EXISTS   idx_refund_user
+== coll shop_monthly_account
+   现有可见: ['id', '_openid_l', 'idxacc_shop_month']
+   EXISTS   idx_acc_shop_month
+   OK     idx_acc_shop_del  OK
+       建后可见: ['_openid_l', 'idxacc_shop_del', 'id', 'idxacc_shop_month']
+== coll shop_monthly_income
+   现有可见: ['id', '_openid_l']
+   OK     idx_inc_shop_month  OK
+       建后可见: ['_openid_l', 'idxinc_shop_month', 'id']
+== coll shop_monthly_expense
+   现有可见: ['id', '_openid_l']
+   OK     idx_exp_shop_month  OK
+       建后可见: ['id', '_openid_l', 'idx_exp_shop_month']
+== coll shop_inventory
+   现有可见: ['id', '_openid_l']
+   OK     idx_inv_shop_month  OK
+       建后可见: ['idxinv_shop_month', '_openid_l', 'id']
+== coll shop_cost_card
+   现有可见: ['id', '_openid_l', 'idxcard_shop', 'idXcardCOdeversion']
+   EXISTS   idx_card_shop
+   EXISTS   idx_card_code_version
+== coll shop_cost_card_line
+   现有可见: ['idxlinecard', '_openid_l', 'id']
+   EXISTS   idx_line_card
+== coll shop_material
+   现有可见: ['idxmat_shop', '_openid_l', 'id']
+   EXISTS   idx_mat_shop
+   OK     idx_mat_shop_virtual  OK
+       建后可见: ['id', '_openid_l', 'idxmat_shop', 'idxmat_shop_virtual']
+== coll shop_sandbox
+   现有可见: ['idxsb_shop', '_openid_l', 'id']
+   EXISTS   idx_sb_shop
+   OK     idx_sb_shop_del  OK
+       建后可见: ['id', '_openid_l', 'idxsb_shop', 'idxsb_shop_del']
+== coll shop_amortize
+   现有可见: ['idxamort_shop', '_openid_l', 'id']
+   EXISTS   idx_amort_shop
+== coll shop_switch
+   现有可见: ['—openid_l', 'id']
+   OK     idx_switch_shop_key  OK
+       建后可见: ['_openid_l', 'idxswitch_shop_key', 'id']
+== coll audit_log
+   现有可见: ['id', '_openid_l', 'idxauditaction', 'idxauditcreated', 'idxaudit_shop', 'idxauditidem']
+   EXISTS   idx_audit_shop
+   EXISTS   idx_audit_action
+   EXISTS   idx_audit_created
+   EXISTS   idx_audit_idem
+== coll admin_user
+   现有可见: ['idXadminusername', 'idx_login_admin', '_openid_l', 'id']
+   EXISTS   idx_admin_username
+== coll admin_login_log
+   现有可见: ['id', '_openid_l']
+   OK     idx_login_admin  OK
+       建后可见: ['id', '_openid_l', 'idx_login_admin']
+== coll subscription_plan
+   现有可见: ['—openid_l', 'id']
+   OK     idx_plan_enabled  OK
+       建后可见: ['id', '_openid_l', 'idx—plan_enabled']
+== coll feature_permissions
+   现有可见: ['id', '_openid_l', 'idx_fp—plan']
+   EXISTS   idx_fp_plan
+== coll shop_stored_value
+   现有可见: ['id', '_openid_l', 'idxsv_shop']
+   EXISTS   idx_sv_shop
+   OK     idx_sv_shop_month  OK
+       建后可见: ['id', 'idxsv_shop_month', '_openid_l', 'idxsv_shop']
+== coll shop_credit_ledger
+   现有可见: ['idxcl_shop', 'id', '_openid_l']
+   EXISTS   idx_cl_shop
+   OK     idx_cl_shop_created  OK
+       建后可见: ['idxcl_shop', 'id', '_openid_l', 'idxcl_shop_created']
+== coll shop_income_item
+   现有可见: ['id', '_openid_l']
+   OK     idx_ii_shop_month  OK
+       建后可见: ['id', 'idxii_shop_month', '_openid_l']
+== coll shop_expense_item
+   现有可见: ['id', '_openid_l']
+   OK     idx_ei_shop_month  OK
+       建后可见: ['id', '_openid_l', 'idxei_shop_month']
+
+DONE ok=13 exists=27 fail=0 in 1467s

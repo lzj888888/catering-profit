@@ -1,0 +1,627 @@
+{
+  "singleSource": "cloudfunctions/initDb/collections.js",
+  "env": "cloud1-d4gphpoxy337f2a25",
+  "appid": "wx33c110dc57a9c8dc",
+  "collTotal": 25,
+  "collWithIndexes": 25,
+  "indexTotal": 40,
+  "uniqueTotal": 10,
+  "byCollection": [
+    {
+      "coll": "user",
+      "indexes": [
+        {
+          "name": "idx_openid",
+          "unique": true,
+          "keys": [
+            {
+              "name": "openid",
+              "direction": "1"
+            }
+          ]
+        },
+        {
+          "name": "idx_user_id",
+          "unique": true,
+          "keys": [
+            {
+              "name": "user_id",
+              "direction": "1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "coll": "shop",
+      "indexes": [
+        {
+          "name": "idx_shop_user",
+          "unique": false,
+          "keys": [
+            {
+              "name": "user_id",
+              "direction": "1"
+            }
+          ]
+        },
+        {
+          "name": "idx_shop_user_del",
+          "unique": false,
+          "keys": [
+            {
+              "name": "user_id",
+              "direction": "1"
+            },
+            {
+              "name": "is_deleted",
+              "direction": "1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "coll": "shop_entitlement",
+      "indexes": [
+        {
+          "name": "idx_ent_user",
+          "unique": true,
+          "keys": [
+            {
+              "name": "user_id",
+              "direction": "1"
+            }
+          ]
+        },
+        {
+          "name": "idx_ent_expire",
+          "unique": false,
+          "keys": [
+            {
+              "name": "expire_at",
+              "direction": "1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "coll": "shop_subscription",
+      "indexes": [
+        {
+          "name": "idx_sub_user",
+          "unique": false,
+          "keys": [
+            {
+              "name": "user_id",
+              "direction": "1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "coll": "shop_payment_flow",
+      "indexes": [
+        {
+          "name": "idx_pay_user",
+          "unique": false,
+          "keys": [
+            {
+              "name": "user_id",
+              "direction": "1"
+            }
+          ]
+        },
+        {
+          "name": "idx_pay_order",
+          "unique": true,
+          "keys": [
+            {
+              "name": "order_no",
+              "direction": "1"
+            }
+          ]
+        },
+        {
+          "name": "idx_pay_shop",
+          "unique": false,
+          "keys": [
+            {
+              "name": "shop_id",
+              "direction": "1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "coll": "order_refund",
+      "indexes": [
+        {
+          "name": "idx_refund_order",
+          "unique": true,
+          "keys": [
+            {
+              "name": "order_id",
+              "direction": "1"
+            }
+          ]
+        },
+        {
+          "name": "idx_refund_user",
+          "unique": false,
+          "keys": [
+            {
+              "name": "user_id",
+              "direction": "1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "coll": "shop_monthly_account",
+      "indexes": [
+        {
+          "name": "idx_acc_shop_month",
+          "unique": true,
+          "keys": [
+            {
+              "name": "shop_id",
+              "direction": "1"
+            },
+            {
+              "name": "month",
+              "direction": "1"
+            }
+          ]
+        },
+        {
+          "name": "idx_acc_shop_del",
+          "unique": false,
+          "keys": [
+            {
+              "name": "shop_id",
+              "direction": "1"
+            },
+            {
+              "name": "is_deleted",
+              "direction": "1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "coll": "shop_monthly_income",
+      "indexes": [
+        {
+          "name": "idx_inc_shop_month",
+          "unique": false,
+          "keys": [
+            {
+              "name": "shop_id",
+              "direction": "1"
+            },
+            {
+              "name": "month",
+              "direction": "1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "coll": "shop_monthly_expense",
+      "indexes": [
+        {
+          "name": "idx_exp_shop_month",
+          "unique": false,
+          "keys": [
+            {
+              "name": "shop_id",
+              "direction": "1"
+            },
+            {
+              "name": "month",
+              "direction": "1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "coll": "shop_inventory",
+      "indexes": [
+        {
+          "name": "idx_inv_shop_month",
+          "unique": true,
+          "keys": [
+            {
+              "name": "shop_id",
+              "direction": "1"
+            },
+            {
+              "name": "month",
+              "direction": "1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "coll": "shop_cost_card",
+      "indexes": [
+        {
+          "name": "idx_card_shop",
+          "unique": false,
+          "keys": [
+            {
+              "name": "shop_id",
+              "direction": "1"
+            }
+          ]
+        },
+        {
+          "name": "idx_card_code_version",
+          "unique": true,
+          "keys": [
+            {
+              "name": "shop_id",
+              "direction": "1"
+            },
+            {
+              "name": "card_code",
+              "direction": "1"
+            },
+            {
+              "name": "version",
+              "direction": "1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "coll": "shop_cost_card_line",
+      "indexes": [
+        {
+          "name": "idx_line_card",
+          "unique": false,
+          "keys": [
+            {
+              "name": "card_id",
+              "direction": "1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "coll": "shop_material",
+      "indexes": [
+        {
+          "name": "idx_mat_shop",
+          "unique": false,
+          "keys": [
+            {
+              "name": "shop_id",
+              "direction": "1"
+            }
+          ]
+        },
+        {
+          "name": "idx_mat_shop_virtual",
+          "unique": false,
+          "keys": [
+            {
+              "name": "shop_id",
+              "direction": "1"
+            },
+            {
+              "name": "is_virtual",
+              "direction": "1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "coll": "shop_sandbox",
+      "indexes": [
+        {
+          "name": "idx_sb_shop",
+          "unique": false,
+          "keys": [
+            {
+              "name": "shop_id",
+              "direction": "1"
+            }
+          ]
+        },
+        {
+          "name": "idx_sb_shop_del",
+          "unique": false,
+          "keys": [
+            {
+              "name": "shop_id",
+              "direction": "1"
+            },
+            {
+              "name": "is_deleted",
+              "direction": "1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "coll": "shop_amortize",
+      "indexes": [
+        {
+          "name": "idx_amort_shop",
+          "unique": false,
+          "keys": [
+            {
+              "name": "shop_id",
+              "direction": "1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "coll": "shop_switch",
+      "indexes": [
+        {
+          "name": "idx_switch_shop_key",
+          "unique": true,
+          "keys": [
+            {
+              "name": "shop_id",
+              "direction": "1"
+            },
+            {
+              "name": "switch_key",
+              "direction": "1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "coll": "audit_log",
+      "indexes": [
+        {
+          "name": "idx_audit_shop",
+          "unique": false,
+          "keys": [
+            {
+              "name": "shop_id",
+              "direction": "1"
+            }
+          ]
+        },
+        {
+          "name": "idx_audit_action",
+          "unique": false,
+          "keys": [
+            {
+              "name": "action",
+              "direction": "1"
+            }
+          ]
+        },
+        {
+          "name": "idx_audit_created",
+          "unique": false,
+          "keys": [
+            {
+              "name": "created_at",
+              "direction": "-1"
+            }
+          ]
+        },
+        {
+          "name": "idx_audit_idem",
+          "unique": false,
+          "keys": [
+            {
+              "name": "idempotency_key",
+              "direction": "1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "coll": "admin_user",
+      "indexes": [
+        {
+          "name": "idx_admin_username",
+          "unique": true,
+          "keys": [
+            {
+              "name": "username",
+              "direction": "1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "coll": "admin_login_log",
+      "indexes": [
+        {
+          "name": "idx_login_admin",
+          "unique": false,
+          "keys": [
+            {
+              "name": "admin_id",
+              "direction": "1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "coll": "subscription_plan",
+      "indexes": [
+        {
+          "name": "idx_plan_enabled",
+          "unique": false,
+          "keys": [
+            {
+              "name": "enabled",
+              "direction": "1"
+            },
+            {
+              "name": "sort",
+              "direction": "1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "coll": "feature_permissions",
+      "indexes": [
+        {
+          "name": "idx_fp_plan",
+          "unique": false,
+          "keys": [
+            {
+              "name": "plan_id",
+              "direction": "1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "coll": "shop_stored_value",
+      "indexes": [
+        {
+          "name": "idx_sv_shop",
+          "unique": false,
+          "keys": [
+            {
+              "name": "shop_id",
+              "direction": "1"
+            }
+          ]
+        },
+        {
+          "name": "idx_sv_shop_month",
+          "unique": false,
+          "keys": [
+            {
+              "name": "shop_id",
+              "direction": "1"
+            },
+            {
+              "name": "month",
+              "direction": "1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "coll": "shop_credit_ledger",
+      "indexes": [
+        {
+          "name": "idx_cl_shop",
+          "unique": false,
+          "keys": [
+            {
+              "name": "shop_id",
+              "direction": "1"
+            }
+          ]
+        },
+        {
+          "name": "idx_cl_shop_created",
+          "unique": false,
+          "keys": [
+            {
+              "name": "shop_id",
+              "direction": "1"
+            },
+            {
+              "name": "created_at",
+              "direction": "-1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "coll": "shop_income_item",
+      "indexes": [
+        {
+          "name": "idx_ii_shop_month",
+          "unique": false,
+          "keys": [
+            {
+              "name": "shop_id",
+              "direction": "1"
+            },
+            {
+              "name": "month",
+              "direction": "1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "coll": "shop_expense_item",
+      "indexes": [
+        {
+          "name": "idx_ei_shop_month",
+          "unique": false,
+          "keys": [
+            {
+              "name": "shop_id",
+              "direction": "1"
+            },
+            {
+              "name": "month",
+              "direction": "1"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "sampleRequest": {
+    "env": "cloud1-d4gphpoxy337f2a25",
+    "collection_name": "user",
+    "create_indexes": [
+      {
+        "name": "idx_openid",
+        "unique": true,
+        "keys": [
+          {
+            "name": "openid",
+            "direction": "1"
+          }
+        ]
+      },
+      {
+        "name": "idx_user_id",
+        "unique": true,
+        "keys": [
+          {
+            "name": "user_id",
+            "direction": "1"
+          }
+        ]
+      }
+    ],
+    "drop_indexes": []
+  }
+}

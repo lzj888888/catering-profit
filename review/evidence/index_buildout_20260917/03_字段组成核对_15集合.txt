@@ -1,0 +1,113 @@
+03 · 字段组成核对（15 个含复合索引 / 降序的集合）
+================================================================================
+方法：逐行绑定「索引名称 | 索引属性 | 索引字段」三列，核 ①字段顺序 ②升/降序 ③唯一性。
+     行锚点 = 「索引占用空间」列（每行必有 8.00 KB）⇒ **不依赖 OCR 行序**（实测同集合两次运行行序会变）。
+工具：C:\Users\lzj\.workbuddy\skills\win-desktop-control\scripts\examples\cloudbase_index\verify_fields.py
+输入：10_单源dump.json（单源 cloudfunctions/initDb/collections.js 的派生 dump）
+
+⚠️ 本文件 = 2026-09-17 起**修正判据后**的全量复跑结果（RC=0，15/15 集合通过）。
+   修正前首轮跑出 3 处报红，逐条结论 —— **全部为 OCR 伪影，线上数据本身正确**：
+   ① `idx_card_code_version` 缺 version → 字段列**折行**成 3 行，逐行窗口把第 3 行切掉
+      ⇒ 改**整列读**后通过（另见 pitfalls P28）；
+   ② `idx_sb_shop_del` 缺 is_deleted → `is_deleted` 被读成 `isde丨eted`（l→丨），
+      near() 归一化后相等 ⇒ 通过；
+   ③ `idx_plan_enabled` 缺 sort → **OCR 稳定系统性误读** `so戊`（12 种读法全错，见 `09_sort_OCR穷举对照.txt`）
+      ⇒ 走**显式白名单** + `08_sort字段_OCR稳定误读_放大佐证.png`（10x 放大图肉眼可见真值）。
+   人工复核图：`05_三处报红_人工复核.png`（三处放大后数据全对）。
+
+----- 以下为实测输出原文（stdout 逐字，未改写） -----
+== shop  (行锚点 4 个)
+   y=450  | _openid_l                  | 非艹     | 一0nid  User_id升序
+   y=530  | idxshop_user               |        | User_id升序  userid月．序
+   y=608  | idx_shop_userdel           | 非艹     | userid月．序  is—deleted
+   y=713  | id                         |        | id升序
+   ✅ 2 条字段/唯一性/方向吻合
+== shop_monthly_account  (行锚点 4 个)
+   y=450  | idxacc_shop_del            | 非唯一    | shopid  is—deleted
+   y=554  | _openid_l                  | 非唯一    | —openid  -id升序
+   y=634  | id                         |        | -id升序  shopid
+   y=710  | idxacc_shop_month          |        | shopid  month
+   ✅ 2 条字段/唯一性/方向吻合（1 项 OCR 读空、记 UNKNOWN: idx_acc_shop_month 属性列 OCR 读空（唯一性未从列表复核））
+== shop_monthly_income  (行锚点 3 个)
+   y=450  | _openid_l                  | 非唯一    | —OPenid  shop_id
+   y=529  | idxinc_shop_month          | 非唯一    | shop_id  month
+   y=634  | id                         |        | id
+   ✅ 1 条字段/唯一性/方向吻合
+== shop_monthly_expense  (行锚点 3 个)
+   y=450  | _openid_l                  | 非唯一    | —OPenid  shop_id
+   y=529  | idx_exp_shop_month         | 非唯一    | shop_id  month
+   y=634  | id                         |        | id
+   ✅ 1 条字段/唯一性/方向吻合
+== shop_inventory  (行锚点 3 个)
+   y=450  | _openid_l                  | 非唯一    | 升序  _openid  id
+   y=530  | id                         |        | id  shop_id升序
+   y=606  | idxinv_shop_month          |        | shop_id升序  升序  month
+   ✅ 1 条字段/唯一性/方向吻合（1 项 OCR 读空、记 UNKNOWN: idx_inv_shop_month 属性列 OCR 读空（唯一性未从列表复核））
+== shop_cost_card  (行锚点 4 个)
+   y=450  | _openid_l                  | 非唯一    | 升序  openid  ld升序
+   y=530  | id                         |        | ld升序  升序  shop_id
+   y=606  | idxcard_shop               | 非唯一    | 升序  shop_id  shop_id升序
+   y=685  | idXcardCOdeversion         |        | shop_id升序  升序  cardcode  version
+   ✅ 2 条字段/唯一性/方向吻合（1 项 OCR 读空、记 UNKNOWN: idx_card_code_version 属性列 OCR 读空（唯一性未从列表复核））
+== shop_material  (行锚点 4 个)
+   y=450  | idxmat_shop_virtual        | 非唯一    | shopid  lS—Virtual升序
+   y=554  | _openid_l                  | 非唯一    | —openid  shopid
+   y=633  | idxmat_shop                | 非唯一    | shopid  -id升序
+   y=713  | id                         |        | -id升序
+   ✅ 2 条字段/唯一性/方向吻合
+== shop_sandbox  (行锚点 4 个)
+   y=450  | _openid_l                  | 非唯一    | —OPenid  shop_id
+   y=529  | idxsb_shop                 | 非唯一    | shop_id  shop_id
+   y=608  | idxsb_shop_del             | 非唯一    | shop_id  is—deleted
+   y=713  | id                         |        | id升序
+   ✅ 2 条字段/唯一性/方向吻合
+== shop_switch  (行锚点 3 个)
+   y=450  | _openid_l                  | 非唯一    | —OPenid  shop_id
+   y=529  | idxswitch_shop_key         |        | shop_id  switch_key升序
+   y=634  | id                         |        | id
+   ✅ 1 条字段/唯一性/方向吻合（1 项 OCR 读空、记 UNKNOWN: idx_switch_shop_key 属性列 OCR 读空（唯一性未从列表复核））
+== audit_log  (行锚点 6 个)
+   y=451  | id                         |        | id升序  升序  _openid
+   y=527  | _openid_l                  | 非艹     | 升序  _openid  action升序
+   y=606  | idxauditaction             | 非艹     | action升序  createdat降序
+   y=685  | idxauditcreated            | 非艹     | createdat降序  shop_id升序
+   y=765  | idxaudit_shop              | 非唯一    | shop_id升序  idempotency_key
+   y=843  | idxauditidem               | 非艹     | idempotency_key  升序
+   ✅ 4 条字段/唯一性/方向吻合
+== subscription_plan  (行锚点 3 个)
+   y=451  | _openid_l                  | 非唯一    | 升序  openid  d升序
+   y=530  | id                         |        | d升序  enabled
+   y=607  | idx_plan_enabled           | 非唯一    | enabled  so戊
+   ✅ 1 条字段/唯一性/方向吻合（1 项走 OCR 变体白名单: idx_plan_enabled.sort←'so戊'）
+== shop_stored_value  (行锚点 4 个)
+   y=451  | id                         |        | ld升序  _openid
+   y=527  | _openid_l                  | 非唯一    | _openid  shop_id升序
+   y=606  | idxsv_shop_month           | 非唯一    | shop_id升序  升序  month
+   y=710  | idxsv_shop                 | 非唯一    | shop_id升序
+   ✅ 2 条字段/唯一性/方向吻合
+== shop_credit_ledger  (行锚点 4 个)
+   y=450  | idxcl_shop                 | 非唯一    | Sh0P_id升序  shop_id升序
+   y=529  | idxcl_shop_created         | 非唯一    | shop_id升序  created_at降序
+   y=634  | id                         |        | -id升序  —OPenid
+   y=710  | _openid_l                  | 非唯一    | —OPenid
+   ✅ 2 条字段/唯一性/方向吻合
+== shop_income_item  (行锚点 3 个)
+   y=451  | id                         |        | ld升序  _openid
+   y=527  | _openid_l                  | 非唯一    | _openid  shop_id升序
+   y=606  | idxii_shop_month           | 非唯一    | shop_id升序  升序  month
+   ✅ 1 条字段/唯一性/方向吻合
+== shop_expense_item  (行锚点 3 个)
+   y=450  | _openid_l                  | 非唯一    | 升序  _openid  id
+   y=530  | id                         |        | id  shop_id升序
+   y=606  | idxei_shop_month           | 非唯一    | shop_id升序  升序  month
+   ✅ 1 条字段/唯一性/方向吻合
+
+===== 组成核对：15 个集合通过 / 0 个有问题 =====
+
+----- 说明 -----
+· 末行 `15 个集合通过 / 0 个有问题`，进程退出码 **0**（全绿）。
+· 「✅ …（N 项 OCR 读空、记 UNKNOWN…）」= **属性列 OCR 读空，不是数据错**（判据宁标不确定也不假红）；
+  这几条的唯一性另有**两层证据**：建索引提交前的**像素级**绿点校验（必过才允许提交）+ `05/06` 放大截图人工确认。
+· 「（N 项走 OCR 变体白名单: …）」= 靠**显式白名单**放行的项，逐项点名（对应上面 ③）；
+  白名单已做**变异回灌**：清空后用副本复跑 ⇒ RC=1 + `❌ 缺字段 sort`（证明它在起作用，不是装饰）。
+· 本文件是**时间点快照**，其数字不被任何守卫扫描（边界见 `_README.md` §8）。
