@@ -1095,3 +1095,43 @@ ls .git/logs/refs/remotes/origin/ → dev / main reflog **仍在**（16 KB，说
 - ⚠️ **口径更正（我方自查 + 复审方 round33 前指出，已逐条核过）**：本条目初稿曾在上一行写「**R72/R73 仍待专审**」—— **这是错的**。实测 `review/REVIEW_2026-09-15_round32-verify.md:39` 标题即 `## §2 R72 / R73 内容专审（round31 §2.4 承诺的范围）`，其 **2.1**（13 条 `EXEMPT_WRITE` 理由逐条成立 + `EXEMPT_KEY` / `NOT_IMPLEMENTED` 各 1 条）、**2.2**（I3 注入形态改判 `service.js` = 必要非绕过，未见绕过路径）、**2.3**（分母 23 vs 22：认可「不是同一分母、勿相减」）**均已于 round32 交付**，唯一产物即 **R78**（§2.5 新发现）。⇒ **R72/R73 从此不挂待办**（挂着的"待办"会变成永远待办 —— 这正是 R77 同族的病：**该终结的项没人负责收口**）。
 - [已落] **ⓑ 索引补齐核对单（2026-09-17 傍晚，回应复审方"火力转到人工四项"的建议）**：新增**生成器** `tools/gen_index_checklist.js`（⚠️ **不是守卫** —— 不进 SUITES、不产生断言、无"该红时红"语义，故不违反"冻结新增守卫"的约定）⇒ 它从**单源** `cloudfunctions/initDb/collections.js` 派生 `索引补齐核对单.md`（25 集合 / 40 条索引 / 10 条 unique / 0 张无索引集合，**全部 `length` 得来、脚本内不写死任何计数**）。设计立场 = R74/R75 纪律的正向应用：核对单**不是第二份真相、是派生件**（文件头写明"勿手工编辑"，索引改了重跑即可）。产物 docx 走 `tools/md2docx_portrait.py` 生成（`C:\Users\lzj\Desktop\索引补齐核对单.docx`，41 行 × 6 列表格、40 个 □ 勾选格），**docx 不入库**（仅打印用，避免又一份会陈旧的副本）。⚠️ 落地时自曝两个小坑：① 首版用 `toISOString()` 写生成时间 ⇒ **UTC 差 8 小时**（17:52 打成 09:52），已改本地时间；② 首版用 `☐` / `🔴` ⇒ 换成 `□` / 文字标记（打印字体兼容性）。
 
+
+---
+
+### §6.30 索引可脚本化创建（2026-09-17 晚）—— **在案结论更正**：「只能在控制台手工建」被证伪
+
+**来由**：李老师问「索引现在能做吗？你能通过键鼠做吗？」⇒ 触发对「索引只能人工建」这条在案结论的实测复核。
+
+**结论更正**（是我方在案表述有误，非复审方提出）：
+- 在案原文（`collections.js` 的 `audit_log` 索引注释 + A7 定案 + 重启键人工项）：**「wx-server-sdk 无 createIndex ⇒ 只能在控制台手工创建」**。
+- 实测结果：**只对了一半**。
+  - ✅ 对的一半：SDK 确无该方法。双验证 —— ① `wx-server-sdk@2.6.3` 的 `index.js` 全包 `grep createIndex` **零命中**（`createCollection` 有）；② `index.d.ts` 里 `Collection` 只有 `add/where/orderBy/get/update/remove/aggregate/field/limit/skip/count`，**无任何索引方法**。
+  - ❌ 错的一半（关键）：「只能手工」是假的。**官方 HTTP API 提供 `updateIndex`**：
+
+    POST https://api.weixin.qq.com/tcb/updateindex?access_token=ACCESS_TOKEN
+    { env, collection_name, create_indexes:[{name,unique,keys:[{name,direction:"1"|"-1"|"2dsphere"}]}], drop_indexes:[] }
+    返回 {errcode,errmsg}；相关错误码 40097 / 40101 / 44002 / 47001
+    文档：.../reference-http-api/database/updateIndex
+
+  - 旁证：微信开发者工具 `resources/app.asar`（asar 为**明文拼接**格式，可直接 grep）内嵌腾讯云 API 元数据，含 `CreateIndexes/DropIndexes/EnvId/MongoConnector/TableName`（描述「修改文档型数据库表索引信息」）⇒ 控制台建索引底层走 OpenAPI，**不是私有通道**。
+- **它是怎么被发现的**：不是「想起来了」，而是从「是否存在机器路径」这个第一性提问出发**逐条排查**
+  （CLI → asar → SDK 源码 + 类型定义 → 官方 HTTP API 文档），每步都落成**可证伪的证据**。
+  ⇒ 教训：**「只能人工」这类否定式结论最该被定期复核** —— 它一旦写进注释/文档，就会被后来者（包括我）当成事实继承。
+
+**顺带清掉三条错误候选**（本轮均已证伪，避免以后被当成路走）：
+1. 多篇 CSDN / 百度智能云文章称「云函数里 `db.collection().createIndex()` 可用」⇒ **AI 幻觉**，SDK 无此方法。
+2. `cloudbase_access_token` **不适用**：它是云托管容器内免鉴权 / 第三方平台微信令牌（需配接口白名单）场景的凭证，本项目未开云托管 ⇒ 走不通。
+3. 微信云开发网页控制台：`cloud.weixin.qq.com` 已 302 → `/cloudrun`（不再是数据库控制台）⇒ 网页版路线不存在。
+   另：开发者工具 CLI **无 invoke**（关键词计数：functions 44 / deploy 44 / list 43 / upload 30 / download 12 / **invoke 0**）⇒ 云函数可部署、不可触发。
+
+**产出**：`tools/apply_indexes.js`（新增；dry-run 实测 **25 集合 / 40 索引 / 10 unique** 全部由 `length` 实算，与手边核对单一致）
+- 索引清单**只 require 单源** `initDb/collections.js`（本文件零写死计数，R74/R75 同族处置）；环境 ID 取单源 `config.json` 的 `DEV_ENV_ID`（不手抄控制台）。
+- 结构转换：`keys` 对象 `{field:1|-1}` → 数组 `[{name,direction:"1"|"-1"}]`，`unique` 补 `false`（API 侧必填）。
+- 回读校验 fail-closed：分页取全时断言 `pager.Total == 实收`，短页异常即响亮失败（R63 同型）。
+- AppSecret 只从 `--secret-file` / 环境变量读，**永不落盘、永不打印**（打码）；默认 dry-run，`--apply` 才联网写入，建议首跑 `--apply --only <单集合>` 试水。
+
+**留痕**：`collections.js` 里那条「上线前必须**在云开发控制台手工创建**」注释已更正（**纯注释改动**，不动任何计数与数据）。
+提交 `f090a28`；复跑 门禁 A–L `0` / 建库守卫 `64/0` / 全闸 `56/56`。
+
+**唯一卡点（待人工）**：真建需 **AppSecret**（小程序后台 → 开发管理 → 开发设置；⚠️ 若此前未留存、需「重置」才能看到新值，而重置会使旧值立刻失效）。
+⚠️ 另注意：小程序 `access_token` 是**账号级全局凭证**，本次获取会使此前签发的同账号 token 失效（本项目尚未上线运行，影响可控）。
