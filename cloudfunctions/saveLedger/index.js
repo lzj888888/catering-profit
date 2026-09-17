@@ -40,6 +40,15 @@ exports.main = async (event) => {
   const v = validateInput(event);
   if (v.error) return fail(v.error, v.msg);
 
+  // ===== 2b. 幂等预检（契约 §10：saveLedger = user+shop+幂等）=====
+  // 🔒 R73：本函数按 (shop_id, month) upsert ⇒ **终态天然幂等**，但契约明文要求校验 client_request_id，
+  //   且此处仍要拦"同一请求被重复投递"。放置位置刻意在**归档守卫之前**：
+  //   否则一条晚到的重复投递会撞上 is_archive 而被误报 ARCHIVED_LOCKED —— 而该请求其实早已成功过。
+  //   命中即返回首次结果、不再落库。空 client_request_id ⇒ 单源返回 null ⇒ 不做约束（守卫已登记在案）。
+  const clientRequestId = v.input.client_request_id;
+  const prior = await common.idempotency.findPriorResult(db, shopId, clientRequestId);
+  if (prior) return ok(prior);
+
   const da = makeAdapter(db);
   const now = nowUtc();
 
@@ -115,7 +124,7 @@ exports.main = async (event) => {
     accountId = ins && ins._id;
   }
 
-  return ok({
+  const out = {
     shop_id: shopId, month: v.month,
     account_id: accountId,
     profit_ref: result.operationRefProfitFen,
@@ -123,6 +132,22 @@ exports.main = async (event) => {
     amortize_fen: amortizeFen,
     real_consume_fen: result.realConsumeFen,
     switch_used: result.switchUsed,
-    client_request_id: v.input.client_request_id || '',
-  });
+    client_request_id: clientRequestId || '',
+  };
+
+  // ===== 8. 幂等登记（键与上面查重键**同源**，一律走单源 shopKey）=====
+  if (clientRequestId) {
+    try {
+      await common.audit.writeAudit(db, {
+        action: 'SAVE_LEDGER',
+        operator_type: 'user',
+        operator_id: userId,
+        shop_id: shopId,
+        after_data: out,
+        idempotency_key: common.idempotency.shopKey(shopId, clientRequestId),
+      });
+    } catch (e) { /* 审计失败不阻断主流程 */ }
+  }
+
+  return ok(out);
 };

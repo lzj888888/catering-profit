@@ -8,7 +8,7 @@ const ROOT = path.resolve(__dirname, '../../..'); // catering-profit 根
 
 const { resolveAuth, assertShopOwner } = require('../auth');
 const { makeAdapter } = require('../dataAdapter');
-const { checkIdempotent } = require('../idempotency');
+const { checkIdempotent, findPriorResult, shopKey } = require('../idempotency');
 const { makeRateLimiter } = require('../rateLimit');
 const { writeAudit } = require('../audit');
 const { ERROR_CODES } = require('../errors');
@@ -129,16 +129,66 @@ function check(name, cond, detail) {
     const db = makeFakeDb({
       audit_log: [
         { _id: 'al1', idempotency_key: 'adm_grant_req1' },
-        { _id: 'al2', idempotency_key: 'shop_shopA__req2' },
+        { _id: 'al2', shop_id: 'shopA', idempotency_key: shopKey('shopA', 'req2') },
       ],
     });
     const dbinstance = { collection: db.collection };
     const hit = await checkIdempotent(dbinstance, 'adm_grant_req1');
     check('R72·已登记 key → true（判为重复提交）', hit === true, `got=${hit}`);
     // 隔离能力仍在，但责任在调用方：前缀带店号 ⇒ 换店用同一 reqId 互不命中
-    const a = await checkIdempotent(dbinstance, 'shop_shopA__req2');
-    const b = await checkIdempotent(dbinstance, 'shop_shopB__req2');
+    // ⚠️ 夹具改用单源 shopKey() 造键：原先写死 `'shop_shopA__req2'`（多一个 `shop_` 前缀），
+    //    而全仓**没有任何地方**产出这种键 ⇒ 夹具与真实格式脱节的误导，已纠正。
+    const a = await checkIdempotent(dbinstance, shopKey('shopA', 'req2'));
+    const b = await checkIdempotent(dbinstance, shopKey('shopB', 'req2'));
     check('R72·换店同 reqId 不误拦（靠调用方前缀隔离）', a === true && b === false, `A=${a}, B=${b}`);
+  }
+
+  // ===== 🔒 R73：重放形态（findPriorResult）+ 键格式单源（shopKey）=====
+  // 背景：契约（喂投包 §181 / §6.1）要求"同一 client_request_id 重复请求**直接返回首次结果**、
+  //   不重复写入"，而 saveCostCard 曾自带一份 `getIdempotent` 内联实现 ⇒ 与单源构成两份。
+  // 本节的**假库真往返**（writeAudit 登记 → findPriorResult 取回）直接证伪
+  //   「登记了却查不到」这类静默失效 —— R73 修的正是它。
+  {
+    check('R73·shopKey 格式 = <shopId>__<crid>', shopKey('shopA', 'req1') === 'shopA__req1', `=${shopKey('shopA', 'req1')}`);
+    check('R73·shopKey 空 crid → 空串（= 该调用点不做约束）',
+      shopKey('shopA', '') === '' && shopKey('shopA', undefined) === '');
+  }
+  {
+    const db = makeFakeDb({ audit_log: [] });
+    const miss = await findPriorResult({ collection: db.collection }, 'shopA', 'req_none');
+    check('R73·未登记 → null（不误判成"已处理过"）', miss === null, `got=${JSON.stringify(miss)}`);
+  }
+  {
+    // 用**全新的**假库，才能用 lastWhere 判定"到底有没有查库"
+    const db = makeFakeDb({ audit_log: [] });
+    const empty = await findPriorResult({ collection: db.collection }, 'shopA', '');
+    check('R73·空 crid → null（无键不受约束）', empty === null, `got=${JSON.stringify(empty)}`);
+    check('R73·空 crid 时**连库都不查**（无谓读为 0）', db.lastWhere.audit_log === undefined,
+      `lastWhere=${JSON.stringify(db.lastWhere.audit_log)}`);
+  }
+  {
+    // 🏆 真往返：登记侧的键 ≡ 查重侧的键
+    const db = makeFakeDb({ audit_log: [] });
+    const dbinstance = { collection: db.collection };
+    const firstResult = { shop_id: 'shopA', asset_id: 'amort_1', client_request_id: 'req_rt' };
+    await writeAudit(dbinstance, {
+      action: 'SAVE_ASSET', operator_type: 'user', operator_id: 'u1', shop_id: 'shopA',
+      after_data: firstResult, idempotency_key: shopKey('shopA', 'req_rt'),
+    });
+    const got = await findPriorResult(dbinstance, 'shopA', 'req_rt');
+    check('R73🏆 往返一致：findPriorResult 取回 writeAudit 存的首次结果',
+      !!got && got.asset_id === 'amort_1' && got.shop_id === 'shopA', `got=${JSON.stringify(got)}`);
+    check('R73·换店同 crid 不误命中（shop 维度隔离）',
+      (await findPriorResult(dbinstance, 'shopB', 'req_rt')) === null);
+    check('R73·两种形态对同一行判定一致（checkIdempotent 亦命中）',
+      (await checkIdempotent(dbinstance, shopKey('shopA', 'req_rt'))) === true);
+  }
+  {
+    // 边界：行存在但**没有 after_data**（例如只记 before 的审计行）⇒ 必须返回 null，
+    //   否则调用方会把 undefined 当"首次结果"返回 = 假成功 + 数据丢失
+    const db = makeFakeDb({ audit_log: [{ _id: 'al9', shop_id: 'shopA', idempotency_key: shopKey('shopA', 'req_bf') }] });
+    const got = await findPriorResult({ collection: db.collection }, 'shopA', 'req_bf');
+    check('R73·命中行无 after_data → null（不当成首次结果返回）', got === null, `got=${JSON.stringify(got)}`);
   }
 
   // ===== 点3：DataAdapter 列表默认 is_deleted=false，软删不出现 =====

@@ -30,8 +30,17 @@ exports.main = async (event) => {
   const now = nowUtc();
   const a = v.asset;
 
-  // ===== 编辑：目标必须存在且未软删 =====
+  // ===== 幂等预检（契约 §10：saveAsset = user+shop+幂等）=====
+  // 🔒 R73：新增分支每次 genId('amort_') 后 INSERT ⇒ 天然**非**幂等；重复提交（网络重试 / 双击）
+  //   会重复记一笔资产 ⇒ saveLedger 读 shop_amortize 台账算当月摊销时**翻倍** ⇒ M1 利润算错。
+  //   命中即返回首次结果、不再落库。空 client_request_id ⇒ 单源返回 null ⇒ 不做约束（守卫已登记在案）。
+  const clientRequestId = v.input.client_request_id;
+  const prior = await common.idempotency.findPriorResult(db, shopId, clientRequestId);
+  if (prior) return ok(prior);
+
+  let out;
   if (a.asset_id) {
+    // ===== 编辑：目标必须存在且未软删 =====
     const exist = await da.get('shop_amortize', a.asset_id);
     if (!exist) return fail(ERROR_CODES.RESOURCE_NOT_FOUND, `资产 ${a.asset_id} 不存在或已软删`);
     await db.collection('shop_amortize').doc(exist._id || a.asset_id).update({
@@ -40,15 +49,30 @@ exports.main = async (event) => {
         total_months: a.total_months, terminate_month: a.terminate_month, updated_at: now, is_deleted: false,
       },
     });
-    return ok({ shop_id: shopId, asset_id: a.asset_id, client_request_id: v.input.client_request_id || '' });
+    out = { shop_id: shopId, asset_id: a.asset_id, client_request_id: clientRequestId || '' };
+  } else {
+    // ===== 新增 =====
+    const assetId = genId('amort_');
+    await da.insert('shop_amortize', {
+      asset_id: assetId, id: assetId, shop_id: shopId,
+      name: a.name, value_fen: a.value_fen, start_month: a.start_month,
+      total_months: a.total_months, terminate_month: a.terminate_month,
+    });
+    out = { shop_id: shopId, asset_id: assetId, client_request_id: clientRequestId || '' };
   }
 
-  // ===== 新增 =====
-  const assetId = genId('amort_');
-  await da.insert('shop_amortize', {
-    asset_id: assetId, id: assetId, shop_id: shopId,
-    name: a.name, value_fen: a.value_fen, start_month: a.start_month,
-    total_months: a.total_months, terminate_month: a.terminate_month,
-  });
-  return ok({ shop_id: shopId, asset_id: assetId, client_request_id: v.input.client_request_id || '' });
+  // ===== 幂等登记（键与上面查重键**同源**，一律走单源 shopKey）=====
+  if (clientRequestId) {
+    try {
+      await common.audit.writeAudit(db, {
+        action: 'SAVE_ASSET',
+        operator_type: 'user',
+        operator_id: userId,
+        shop_id: shopId,
+        after_data: out,
+        idempotency_key: common.idempotency.shopKey(shopId, clientRequestId),
+      });
+    } catch (e) { /* 审计失败不阻断主流程 */ }
+  }
+  return ok(out);
 };

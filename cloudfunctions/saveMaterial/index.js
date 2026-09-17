@@ -36,13 +36,22 @@ exports.main = async (event) => {
   const v = validateInput(event);
   if (v.error) return fail(v.error, v.msg);
 
-  // ===== 3. Service 计算净料单位成本（万分整数，4 位精度）=====
+  // ===== 3. 幂等预检（契约 §10：saveMaterial = user+shop+幂等）=====
+  // 🔒 R73：新增分支每次 genId('mat_') 后 INSERT ⇒ 天然**非**幂等；重复提交会产生**重复原料档案**，
+  //   此后在其中一条改价，成本卡按 id 取到的价与另一条不一致（同一原料两个价）。
+  //   命中即返回首次结果、不再落库。空 client_request_id ⇒ 单源返回 null ⇒ 不做约束（守卫已登记在案）。
+  const clientRequestId = v.input.client_request_id;
+  const prior = await common.idempotency.findPriorResult(db, shopId, clientRequestId);
+  if (prior) return ok(prior);
+
+  // ===== 4. Service 计算净料单位成本（万分整数，4 位精度）=====
   const m = v.material;
   const netCostWan = netUnitCostWan(m.purchase_price_fen, m.convert_factor, m.yield_rate);
 
   const da = makeAdapter(db);
   const now = nowUtc();
 
+  let out;
   if (m.id) {
     // ===== 编辑既有原料 =====
     const exist = await da.get('shop_material', m.id);
@@ -63,24 +72,38 @@ exports.main = async (event) => {
         is_deleted: false,
       },
     });
-    return ok({ shop_id: shopId, id: m.id, client_request_id: v.input.client_request_id || '' });
+    out = { shop_id: shopId, id: m.id, client_request_id: clientRequestId || '' };
+  } else {
+    // ===== 新增原料 =====
+    const id = common.genId('mat_');
+    await da.insert('shop_material', {
+      material_id: id,
+      id: id,
+      shop_id: shopId,
+      name: m.name,
+      brand_spec: m.brand_spec,
+      purchase_unit: m.purchase_unit,
+      purchase_price: m.purchase_price_fen,
+      convert_factor: m.convert_factor,
+      yield_rate: m.yield_rate,
+      net_unit_cost: netCostWan,
+      is_virtual: m.is_virtual,
+    });
+    out = { shop_id: shopId, id, client_request_id: clientRequestId || '' };
   }
 
-  // ===== 新增原料 =====
-  const id = common.genId('mat_');
-  await da.insert('shop_material', {
-    material_id: id,
-    id: id,
-    shop_id: shopId,
-    name: m.name,
-    brand_spec: m.brand_spec,
-    purchase_unit: m.purchase_unit,
-    purchase_price: m.purchase_price_fen,
-    convert_factor: m.convert_factor,
-    yield_rate: m.yield_rate,
-    net_unit_cost: netCostWan,
-    is_virtual: m.is_virtual,
-  });
-
-  return ok({ shop_id: shopId, id, client_request_id: v.input.client_request_id || '' });
+  // ===== 5. 幂等登记（键与上面查重键**同源**，一律走单源 shopKey）=====
+  if (clientRequestId) {
+    try {
+      await common.audit.writeAudit(db, {
+        action: 'SAVE_MATERIAL',
+        operator_type: 'user',
+        operator_id: userId,
+        shop_id: shopId,
+        after_data: out,
+        idempotency_key: common.idempotency.shopKey(shopId, clientRequestId),
+      });
+    } catch (e) { /* 审计失败不阻断主流程 */ }
+  }
+  return ok(out);
 };

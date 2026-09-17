@@ -28,6 +28,13 @@ exports.main = async (event) => {
   const scope = v.scope === 'orders' ? 'orders' : (v.scope === 'entitlements' ? 'entitlements' : 'orders');
   const format = v.format === 'json' ? 'json' : 'csv';
   const clientRequestId = v.client_request_id || '';
+  // ⚠️ R73：本函数**有意不做幂等拦截** —— 下方 audit 里的 `idempotency_key` 仅作**追溯标记**
+  //   （同一 crid 重复导出会在 audit_log 留多行，可追溯谁在何时导了什么），**不是**幂等闸门。
+  //   理由：① 导出是**只读**动作、无数据变更，重复执行不产生脏数据；② `after_data` 只存
+  //   {scope,format,from,to,count}、**不存导出内容** ⇒ 命中也没有文件可重放；③ 契约 §6 该行鉴权列
+  //   是 `adminAuth+角色`，未标 `+幂等`。⇒ 已登记进 `tools/check_idempotency.js` 的 `EXEMPT_KEY`。
+  //   将来若要做真幂等，须**先改 after_data 形态**（改存 file_url 或结果引用），别只加个查重就完事
+  //   —— 那会变成"查到了却给不出东西"的假幂等。
 
   // ===== 2. 角色控权：全量（entitlements）仅 super；运营仅订单明细 =====
   if (scope === 'entitlements') {

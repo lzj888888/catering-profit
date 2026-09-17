@@ -246,7 +246,7 @@ let r67 = null;
     const orphan = suiteSelf.filter((r) => !treeSet.has(r));               // SUITES 挂了、树里没有
     if (missing.length) {
       problems.push({ level: 'ERROR', rel: 'verify_all.js',
-        msg: `R67 自测文件已存在但未接入 SUITES（整文件静默不跑，而 53/53 仍全绿）${missing.length} 个：${missing.join('、')}` });
+        msg: `R67 自测文件已存在但未接入 SUITES（整文件静默不跑，而 54/54 仍全绿）${missing.length} 个：${missing.join('、')}` });
     }
     if (orphan.length) {
       problems.push({ level: 'ERROR', rel: 'verify_all.js',

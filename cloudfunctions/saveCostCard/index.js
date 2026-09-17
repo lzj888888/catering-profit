@@ -25,14 +25,9 @@ const { nowUtc } = common.utilTime;
 const { buildSnapshotLines, calcCostCard, wouldCreateCycle } = require('./service');
 const { validateInput } = require('./validate');
 
-// 幂等：取该店已登记的 client_request_id 对应的首次结果
-async function getIdempotent(da, shopId, clientRequestId) {
-  if (!clientRequestId) return null;
-  const rec = await db.collection('audit_log')
-    .where({ shop_id: shopId, idempotency_key: `${shopId}__${clientRequestId}` }).limit(1).get();
-  const row = rec && rec.data && rec.data[0];
-  return row && row.after_data ? row.after_data : null;
-}
+// 🔒 R73：重放形态的幂等实现已收回单源 common/idempotency.js::findPriorResult
+// （此前本文件内联了一份 getIdempotent，与单源构成"同一语义两份实现"）。
+// 键格式同样由单源 shopKey() 统一产出，本文件不再自己拼字符串。
 
 // 构建「虚拟半成品 → 其引用的虚拟半成品 id[]」映射（判环用）。
 // 遍历该店虚拟原料，找到每个虚拟对应源半成品成本卡（parent_card_id 关联）的最新版本，收集其引用到的虚拟 id。
@@ -94,7 +89,7 @@ exports.main = async (event) => {
   const da = makeAdapter(db);
   const clientRequestId = v.input.client_request_id;
   if (clientRequestId) {
-    const prior = await getIdempotent(da, shopId, clientRequestId);
+    const prior = await common.idempotency.findPriorResult(db, shopId, clientRequestId);
     if (prior) return ok(prior); // 重复调用：直接返回首次结果，不重复落库
   }
 
@@ -269,20 +264,17 @@ exports.main = async (event) => {
     client_request_id: clientRequestId || '',
   };
 
-  // 幂等登记（落 audit_log 的 idempotency_key，供下次查重）
+  // 幂等登记：键必须走单源 shopKey()，与上面 findPriorResult 的**查重键同源** ——
+  // 两处若各自拼字符串，就会出现「登记了却查不到」的静默失效（幂等看着有、实际没有）。
   if (clientRequestId) {
     try {
-      await db.collection('audit_log').add({
-        data: {
-          action: 'SAVE_COST_CARD',
-          operator_type: 'user',
-          operator_id: userId,
-          shop_id: shopId,
-          before_data: null,
-          after_data: out,
-          idempotency_key: `${shopId}__${clientRequestId}`,
-          created_at: nowUtc(),
-        },
+      await common.audit.writeAudit(db, {
+        action: 'SAVE_COST_CARD',
+        operator_type: 'user',
+        operator_id: userId,
+        shop_id: shopId,
+        after_data: out,
+        idempotency_key: common.idempotency.shopKey(shopId, clientRequestId),
       });
     } catch (e) { /* 审计失败不阻断主流程 */ }
   }

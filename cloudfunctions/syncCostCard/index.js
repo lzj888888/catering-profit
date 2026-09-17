@@ -39,6 +39,14 @@ exports.main = async (event) => {
 
   const da = makeAdapter(db);
 
+  // ===== 幂等预检（契约 §10：syncCostCard = user+shop+幂等）=====
+  // 🔒 R73：本函数此前**把 client_request_id 读进变量却从未使用**（死读，纯回显）—— 而第 8 步每次都
+  //   INSERT 新版本，天然**非**幂等：重复提交（网络重试 / 双击）会让版本号连跳（1→2→3），
+  //   且新增的几版内容完全相同，属脏数据。
+  //   命中即返回首次结果、不再落库。空 client_request_id ⇒ 单源返回 null ⇒ 不做约束（守卫已登记在案）。
+  const prior = await common.idempotency.findPriorResult(db, shopId, clientRequestId);
+  if (prior) return ok(prior);
+
   // ===== 3. 找该 card_code 的最新版本卡 =====
   const cardsRes = await da.list('shop_cost_card', { shop_id: shopId, card_code: cardCode });
   const versions = (cardsRes && cardsRes.data) || [];
@@ -143,7 +151,7 @@ exports.main = async (event) => {
     // 若尚无虚拟（理论上已有），不新建——保持与 saveCostCard 一致即可
   }
 
-  return ok({
+  const out = {
     shop_id: shopId,
     card_code: cardCode,
     new_version: nextVersion,
@@ -156,5 +164,21 @@ exports.main = async (event) => {
     lines: lineRows,
     virtual_material_id: virtualMaterialId,
     client_request_id: clientRequestId || '',
-  });
+  };
+
+  // ===== 10. 幂等登记（键与上面查重键**同源**，一律走单源 shopKey）=====
+  if (clientRequestId) {
+    try {
+      await common.audit.writeAudit(db, {
+        action: 'SYNC_COST_CARD',
+        operator_type: 'user',
+        operator_id: userId,
+        shop_id: shopId,
+        after_data: out,
+        idempotency_key: common.idempotency.shopKey(shopId, clientRequestId),
+      });
+    } catch (e) { /* 审计失败不阻断主流程 */ }
+  }
+
+  return ok(out);
 };
