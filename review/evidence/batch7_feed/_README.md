@@ -736,3 +736,75 @@ ls .git/logs/refs/remotes/origin/ → dev / main reflog **仍在**（16 KB，说
   **早于** 09:58 那批并发写入 ⇒ **那两条绿不覆盖并发改动**（本值守不为它背书，也不回滚它）
 - [存疑] 无（`refs/remotes` 机制仍未定论，属复审方同判）
 - [未落] R62 / R63（见 6.20.4，待拍板）；其余人工项照旧
+
+---
+
+## 6.21 R62 / R63 / R65 处置（2026-09-17 10:00~10:15，**WorkBuddy 主会话**）
+
+> 李老师本轮（round26 转述）点名执行 ① R62 ② R63 ③ §7 命令 ④ 措辞级。**本会话负责 ①②④ + ⑥（新增发现）+ ③ 的核验与归属澄清**（③ 实际由并行的值守会话先落）。
+> ⚠️ **并发写入事件**：09:46~10:02 期间「InsCode 协作值守」自动化与本会话**同时**在写同一仓库。它只 `git add` 了 3 个 `review/` 文件（已核 `git show --stat`：`cloudfunctions/` 命中 **0**），**未夹带代码**；本侧已**暂停该值守**（可逆，见 §6.21.5）。
+
+### 6.21.1 R62 账号状态判据单源化
+
+| 项 | 内容 |
+|---|---|
+| 病 | `adminLogin/index.js:52` 用字面量 `admin.status === 'disabled'`（只堵一个已知值）；单源 `requireAuth` 用 `status !== ADMIN_STATUS_ACTIVE`（fail-closed）⇒ **同一语义两处不等价判据** |
+| 后果（**无提权**，故非 🔴） | 未知状态（`pending_review` / 将来新增的 `suspended` / 历史脏数据）**能登录成功**并签发 token、审计写 `result:'success'` + `last_login_at`，而该 token 在**每一个** admin 调用上都被 `requireAuth` 拒 ⇒ ①审计失真 ②"登录成功却什么都做不了" ③给"漏接 `requireAuth` 的新端点"留**真口子** |
+| 修 | 单源新增 `isAdminActive(row)`（`!!row && row.status === ADMIN_STATUS_ACTIVE`）→ `requireAuth` 改用它 → `adminLogin` 解构并改用；`reason` 由 `'disabled'` 泛化为 `'not_active'` |
+| 副本 | `node tools/check_admincore.js --fix` → 11 份同步（200 行 / 指纹 `17feb263`）→ 复检「11 份副本均 ≡ 单源」✅ |
+| 断言 | `adminLogin/selftest.js` **44 通过 / 0 失败**（原 33）。新增 11 例：纯函数 8（active ✓ / disabled / 未知 / 空串 / 缺字段 / null+undefined / 常量导出 / **两闸门等价**）+ 源码形状 3（**剥掉整行注释后**再测：调用 `isAdminActive(`、无 `status === 'disabled'`、解构含它） |
+
+**变异矩阵（注入 → 跑 → 还原）**
+
+| # | 注入 | 期望 | 实测 | 还原 |
+|---|---|---|---|---|
+| A | 副本 `isAdminActive` → `row.status !== 'disabled'`（退化"只挡一个值"） | 纯函数层转红 | **5 条转红**：`⑤` / `R62-③` / `R62-④` / `R62-⑤` / `R62-⑧` | RC=0 ✅ |
+| B | `index.js` 判据退回 `admin.status === 'disabled'` | 形状层转红 | **2 条转红**：`R62-⑨` / `R62-⑩` | RC=0 ✅ |
+
+**同类查全**：`grep -rn "'disabled'" cloudfunctions/` → 12 处，**全部在注释**（单源文档块 + `index.js` 的 R62 说明），**无生产代码残留** ✅
+
+### 6.21.2 R63 分页「形态守卫 + 探针页」
+
+| 处 | 改动 |
+|---|---|
+| `adminQueryUser/service.js` | 新增 `invalidShapeError()` / `asRows()` / **`makeShopPageQuery(coll, where)`**（形态守卫在**注入点**）；`fetchShopsAll` 短页后补**探针页** + offset 改**动态** + **上限检查移到循环顶部** |
+| `adminQueryUser/index.js` | 改用 `makeShopPageQuery`；补 try/catch → `fail(HARD_CAP_EXCEEDED / SYSTEM_ERROR)`（原实现异常会冒泡出 `{code,msg,data}` 契约之外） |
+| `adminExport/service.js` | `makePagedQuery` 加同款形态守卫（原 `return (res && res.data) \|\| []` 正是静默归一点）；`fetchAllPages` 同款探针 + 动态 offset |
+| `adminExport/index.js` | **无需改** —— 其 catch 已有 `SYSTEM_ERROR` 兜底（`:98-103`），守卫抛错自然转成 `fail(SYSTEM_ERROR)` ✅ |
+
+**⚠️ 比复审方补丁多改一处（关键差异）**：复审方把上限检查留在原位置（`page === SHOP_MAX_PAGES - 1` 时抛）。但探针非空会 `continue`，此时若页数配额已尽，**循环自然结束 ⇒ 静默返回已取到的部分数据**（比不探针更隐蔽 —— "看起来取到了不少"）。⇒ 移到**循环顶部** `if (page >= SHOP_MAX_PAGES) throw`。实测该场景：留在旧位置 → `no-throw`（静默 150 条）；移到顶部 → `HARD_CAP_EXCEEDED` ✅（见变异 A 的 `R63-③` 转红）。
+
+**错误码**：`SYSTEM_ERROR`（复用 `core/09 §1.7`）+ `HARD_CAP_EXCEEDED`（既有），**均不新增** ⇒ 不必改 `core/09` / i18n / 云函数登记**三处**，A–L 的「错误码三向同步」不受扰动（这是刻意的：复审方原建议的 `INVALID_RESPONSE` 是新码，会牵动三处同步）。
+
+**变异矩阵**
+
+| # | 注入 | 实测转红 | 判读 |
+|---|---|---|---|
+| A | 去掉探针（`break` 替代） | **3 条**：`R53-② 命中序列` / `R63-①`（`len=5` ← **静默截断 100 家**）/ `R63-③`（`no-throw` ← 静默返回部分） | 探针有鉴别力 ✅ |
+| B | 去掉形态守卫（退回 `\|\| []`） | **2 条**：`R63-④` / `R63-⑤` | 守卫有鉴别力 ✅ |
+
+还原后 `diff` 逐字节一致 ✅；`adminQueryUser` **21/0**、`adminExport` **34/0**。
+
+### 6.21.3 🔴 R65（新发现）：`adminExport/selftest.js` 假绿 —— 多 IIFE + `process.exit` 竞态
+
+- **现象**：实测该套件只输出「不足一页 → 全部取到（3 条）」**1 条**断言，`1500 条 / 恰好 2000 / 超过上限 / 空集合` 等**十余条一条都没跑**，但 `verify_all` 一路绿灯。
+- **根因**：文件里**两个顶层 IIFE** 并发，而只有 R51 段尾部有 `process.exit(failN === 0 ? 0 : 1)`。R51 段用假集合（`get: async () => ({data:[...]})`，微任务即完成）⇒ **抢先跑完并 `process.exit`**，把 R49 段腰斩；而退出码用的是 R51 段的 `failN`。
+- **为何现在才暴露**：R63 给 `fetchAllPages` 加探针 ⇒ await 链变长几个 microtask，R51 恰好抢先。**此前它一直是"假绿"**（R49 后半段的断言从未执行过）。
+- **修**：合并为**单 IIFE**（删掉 R51 段的 `(async () => {` 头）；断言数 **19 → 34**。
+- **同类查全**：全仓 selftest 顶层 IIFE 计数 → 其余**全部 0 或 1** ✅ **无第二例**。
+- **纪律**（已入重启键 §1.3）：每个 selftest **只允许 1 个顶层 IIFE**；**改动 await 链后必须数实际跑了多少条断言**，别只看 exit 0。
+
+### 6.21.4 文档更正（`specs/dev-specs/★知识存储点_2026-09-10.md`）
+
+- 里程碑登记 **R62/R63/R64/R65**（含 R64 = 值守会话所落、本侧核验后才纳入）
+- §1.3 措辞：3 处「写了不取」→「**3 次取件异常（2 次未回执 + 1 次落点错）**」+ 两种性质修法不同
+- §1.3 新增 selftest 假绿纪律（R65）
+- §1.1 修**写死计数**（R60 同类残留：「已运行 19 轮、R1–R41、22 份」）与**自身矛盾**（`:66` 写"三方一致"而 §1.3 已更正两方 → 统一**两方**）
+
+### 6.21.5 回执
+
+- [已落] R62、R63、措辞级 ④、R65 新发现与修复 —— 同在 `30d6d4a`（20 文件 +577/−61）
+- [已落] 全闸：`verify_all` **52/52**（含 `[suite-count]` 守卫）+ `GATE=0` + 11 副本 ≡ 单源 + 42 目录 + 603 js + 两方一致 `30d6d4a`
+- [已核验 · 非本会话所落] **R64**（§7 第 5 条两方命令，`d7293e6`，由并行的值守会话落，本侧独立核验内容正确后才纳入）
+- [已处置] **暂停「InsCode 协作值守」automation** —— 它自己建议暂停（§6.20.5），且与主会话并行写同一仓库已实测撞车风险；**可逆**（李老师派任务后可恢复）
+- [未落 · 待人工] 真云三验 / 39 条索引 / `ADMIN_SETUP_TOKEN` 值 / 上线三项 / `wechatide` 授权
