@@ -2,7 +2,7 @@
 //
 // 为什么需要（R73 的溢出发现）：
 //   `cloudfunctions/initDb/collections.js` 是**建库单源**（25 集合 + 索引 + 种子），
-//   而 `specs/dev-specs/prototype/init_db.js` 是**贴进云开发控制台手工建库的那份代码**
+//   而 `specs/dev-specs/prototype/init_db.js` 是**贴进云开发控制台执行的那份建库代码**
 //   （A7 已定案：wx-server-sdk 无 createIndex ⇒ SDK 里建不了索引；但**不是只能人肉填** ——
 //    官方 HTTP API `POST /tcb/updateindex` 可脚本化，见 tools/apply_indexes.js；2026-09-17 实证 40/40），
 //   其文件头明写两者「**同步锁死**」—— 但**此前没有任何机器守卫**。

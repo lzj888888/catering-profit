@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：57 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：58 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -13,6 +13,9 @@
 //       + 核对单派生守卫（tools/gen_index_checklist.js --check，R79：**整份**派生件重算逐字比对，
 //         含剥 BOM + CRLF 归一 + 末尾空白归一；根因=核对单此前不在任何守卫扫描面内，
 //         改单源却不重跑 ⇒ 它会静默停在旧计数，而全套 56 个套件全绿）
+//       + 已证伪短语守卫（tools/check_stale_claims.js，R85：**已证伪的说法必须带上下文标记**，
+//         政策类须带政策标记；按**概念**而非句式命中 ⇒ R84 那种「同一概念换了说法」不会再漏。
+//         根因=R60/R77/R82/R84 四次都是审定式断言的时效性没人守、且四次都靠人 grep）
 //       + batch7 前端工具套件（tools/selftest_batch7.js，R55 移入 tools/ 以免随小程序包发布）。
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
@@ -51,6 +54,11 @@ const SUITES = [
   // 用**整份重算逐字比对**覆盖派生件 —— S4 那种"抽数字比对"覆盖不了 §3 那 40 行正文，
   // 而那才是人真正照着操作的部分。硬要求：剥 BOM + CRLF 归一（不归一 ⇒ 入库后首次拉取假红）。
   ['核对单派生守卫 R79', 'tools/gen_index_checklist.js', ['--check']],
+  // ===== 已证伪短语守卫（R85 · 复审方 round36 提议，本轮提前做）=====
+  // 目的：R60/R77/R82/R84 四次都是「否定式断言的时效性没人守」，且四次都靠人 grep。
+  // 判据不是"句子长什么样"，而是"概念 + 上下文标记" —— 已证伪说法必须带豁免标记，
+  // 政策类必须带政策标记 ⇒ 引述天然放行，不必要求写作者改写措辞去躲关键词。
+  ['已证伪短语守卫 R85', 'tools/check_stale_claims.js'],
   // ===== 批次 3 · POC2 BOM 两层 / 循环拦截 / 快照（7 个云函数各自单测）=====
   ['batch3-calcBom',      'cloudfunctions/calcBom/selftest.js'],
   ['batch3-detectCycle',  'cloudfunctions/detectCycle/selftest.js'],

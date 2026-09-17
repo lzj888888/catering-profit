@@ -6,7 +6,7 @@
  *   在案结论「wx-server-sdk 无 createIndex ⇒ 索引只能靠人在控制台一条条填」**只对了一半**。
  *   - 对的一半：wx-server-sdk@2.6.3 确实没有建索引方法（已双验证：index.js 全包零命中 createIndex；
  *     index.d.ts 里 Collection 只有 add/where/orderBy/get/update/remove/aggregate…，无任何索引方法）。
- *   - 错的一半：**「只能手工」是假的**。官方 HTTP API 提供
+ *   - 错的一半：**「只能手工」是假的**（**已证伪** · 2026-09-17）。官方 HTTP API 提供
  *       POST https://api.weixin.qq.com/tcb/updateindex?access_token=ACCESS_TOKEN
  *     参数 { env, collection_name, create_indexes:[{name,unique,keys:[{name,direction}]}], drop_indexes:[] }
  *     文档：https://developers.weixin.qq.com/miniprogram/dev/wxcloudservice/wxcloud/reference-http-api/database/updateIndex
