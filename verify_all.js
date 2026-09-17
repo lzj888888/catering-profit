@@ -1,9 +1,11 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：52 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：53 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
+//       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
 //       + batch7 前端工具套件（tools/selftest_batch7.js，R55 移入 tools/ 以免随小程序包发布）。
+//       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
 //    那两处仍是**人工面**，改 SUITES 后须手动跟（A–L 无一组能发现重启键自相矛盾）。
@@ -32,6 +34,7 @@ const SUITES = [
   ['页面声明守卫 R44',    'tools/check_pages.js'],
   ['合规守卫 R42',        'tools/check_compliance.js'],
   ['单源派生守卫 R50',    'tools/check_admincore.js'],
+  ['自测形状守卫 R66',    'tools/check_selftest_shape.js'],
   // ===== 批次 3 · POC2 BOM 两层 / 循环拦截 / 快照（7 个云函数各自单测）=====
   ['batch3-calcBom',      'cloudfunctions/calcBom/selftest.js'],
   ['batch3-detectCycle',  'cloudfunctions/detectCycle/selftest.js'],
@@ -98,14 +101,58 @@ const SUITES = [
   process.stdout.write(`\n✅ [suite-count] 头部注释 ≡ SUITES.length = ${SUITES.length}（R59 守卫）\n`);
 })();
 
+// 🔒 R66 主体（运行期）：对**每个套件的 stdout** 做「段标题下零断言」审计。
+// 背景（R65）：adminExport/selftest.js 曾因「两个顶层 IIFE + 抢先 process.exit」把 R49 段十余条断言腰斩，
+//   而该套件 **exit 0、总览全绿** ⇒ 光看退出码/总览**发现不了「断言静默不跑」**。
+// 规则：段标题下 ✅ == 0 → 该套件判红并点名标题。
+//   ⚠️ 必须豁免「末段汇总行」：每个自测末尾都有 `===== xxx 自测结果：N 通过 / 0 失败 =====`，
+//      它本身就是段标题形态、其下天然无 ✅。**按字面规则直接实现会误报 44/52**（本仓实测）。
+//   ⚠️ 同理不可写成「任何标题下都必须有 ✅」。豁免条件收紧为：**末段** 且标题含 `N 通过 / M 失败`。
+//   兜底：整个套件 ✅ == 0 → 判红（"一条断言都没跑"的终态）。
+// 段标题形态仓内并存三种（实测）：`===== x =====` / `========== x ==========` / `--- x ---`（外加门禁用的 ══）。
+//   ⚠️ 分隔符与标题之间的空格**可有可无**（仓内两种写法并存：`===== CSV 转义 =====` 与
+//      `===== §2.9 角色控权（…）=====`）。首版要求必须有空格 ⇒ 紧贴写法的段**整段识别不到**，
+//      故障段恰好落在这一类里 ⇒ 变异回灌仍报绿（实测）。别把 `[ \t]*` 改回 `[ \t]+`。
+const SECTION_HEAD = /^(={3,}|-{3,}|─{3,}|═{3,})[ \t]*(.*?)[ \t]*(={3,}|-{3,}|─{3,}|═{3,})[ \t]*$/;
+const SUMMARY_TAIL = /通过\s*\/\s*\d+\s*失败/;
+const isDelimOnly = (s) => s === '' || /^[=\-─═]+$/.test(s);
+function auditAssertions(out) {
+  const text = String(out);
+  const secs = [];
+  let cur = null;
+  for (const ln of text.split(/\r?\n/)) {
+    const h = SECTION_HEAD.exec(ln);
+    if (h && !isDelimOnly(h[2].trim())) {
+      if (cur) secs.push(cur);
+      cur = { title: h[2].trim(), marks: (ln.match(/✅/g) || []).length }; // 标题行自身的 ✅ 计入本段
+    } else if (cur) { cur.marks += (ln.match(/✅/g) || []).length; }
+  }
+  if (cur) secs.push(cur);
+  const total = (text.match(/✅/g) || []).length;
+  const zero = secs.filter((s, i) => s.marks === 0
+    && !(i === secs.length - 1 && SUMMARY_TAIL.test(s.title)));
+  return { total, zero, sections: secs.length };
+}
+
 let failed = 0;
 for (const [name, rel] of SUITES) {
   const fp = path.join(ROOT, rel);
   process.stdout.write(`\n===== [${name}] ${rel} =====\n`);
   try {
     const out = execFileSync(NODE, [fp], { cwd: ROOT, encoding: 'utf8' });
+    const audit = auditAssertions(out);   // 🔒 R66：即使 exit 0 也要审「断言是否真跑了」
     process.stdout.write(out);
-    process.stdout.write(`  [${name}] ✅ PASS\n`);
+    if (audit.zero.length) {
+      failed++;
+      process.stdout.write(`  [${name}] ❌ FAIL (R66 段标题下零断言：`
+        + audit.zero.map((z) => `「${z.title}」`).join('、') + ')  ← 断言疑似静默未跑\n');
+    } else if (audit.total === 0) {
+      failed++;
+      process.stdout.write(`  [${name}] ❌ FAIL (R66 整段 0 条 ✅ 断言 —— 疑似全程未执行)\n`);
+    } else {
+      process.stdout.write(`  [${name}] ✅ PASS  (✅ ${audit.total} 条`
+        + (audit.sections ? ` / 段 ${audit.sections}` : '') + ')\n');
+    }
   } catch (e) {
     failed++;
     const why = e.code ? e.code : ('exit=' + e.status);
