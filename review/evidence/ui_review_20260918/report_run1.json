@@ -1,0 +1,347 @@
+[
+  {
+    "name": "01_index",
+    "url": "/pages/index/index",
+    "ok": false,
+    "error": "timeout waiting for automator response"
+  },
+  {
+    "name": "02_month_index",
+    "url": "/pages/month/index",
+    "ok": true,
+    "actualPath": "pages/index/index",
+    "query": {},
+    "buttons": [
+      {
+        "text": "设置",
+        "cls": "btn ghost",
+        "disabled": null
+      },
+      {
+        "text": "我的",
+        "cls": "btn ghost",
+        "disabled": null
+      }
+    ],
+    "dataKeys": [
+      "t",
+      "shopName",
+      "loading",
+      "__webviewId__"
+    ],
+    "screenshot": "C:\\Users\\lzj\\WorkBuddy\\2026-09-08-22-08-11\\_gui\\sim\\02_month_index.png"
+  },
+  {
+    "name": "03_month_input",
+    "url": "/pages/month/input",
+    "ok": true,
+    "actualPath": "pages/month/input",
+    "query": {},
+    "buttons": [
+      {
+        "text": "保存",
+        "cls": "btn primary",
+        "disabled": "false"
+      }
+    ],
+    "dataKeys": [
+      "t",
+      "month",
+      "isArchive",
+      "archivedAtMs",
+      "inGrace",
+      "readOnly",
+      "incomeVals",
+      "expenseVals",
+      "directConsumeYuan",
+      "loading",
+      "__webviewId__"
+    ],
+    "screenshot": "C:\\Users\\lzj\\WorkBuddy\\2026-09-08-22-08-11\\_gui\\sim\\03_month_input.png"
+  },
+  {
+    "name": "04_month_inventory",
+    "url": "/pages/month/inventory",
+    "ok": true,
+    "actualPath": "pages/month/inventory",
+    "query": {},
+    "buttons": [
+      {
+        "text": "保存库存",
+        "cls": "btn primary",
+        "disabled": "false"
+      }
+    ],
+    "dataKeys": [
+      "t",
+      "month",
+      "inventorySwitchOn",
+      "isArchive",
+      "inGrace",
+      "readOnly",
+      "openingYuan",
+      "purchaseYuan",
+      "closingYuan",
+      "loading",
+      "__webviewId__"
+    ],
+    "screenshot": "C:\\Users\\lzj\\WorkBuddy\\2026-09-08-22-08-11\\_gui\\sim\\04_month_inventory.png"
+  },
+  {
+    "name": "05_month_amortize",
+    "url": "/pages/month/amortize",
+    "ok": true,
+    "actualPath": "pages/month/amortize",
+    "query": {},
+    "buttons": [
+      {
+        "text": "新增资产",
+        "cls": "btn primary",
+        "disabled": null
+      }
+    ],
+    "dataKeys": [
+      "t",
+      "month",
+      "totalFen",
+      "assets",
+      "showForm",
+      "editing",
+      "formName",
+      "formValueYuan",
+      "formStartMonth",
+      "formTotalMonths",
+      "formTerminateMonth",
+      "readOnly",
+      "loading",
+      "__webviewId__"
+    ],
+    "screenshot": "C:\\Users\\lzj\\WorkBuddy\\2026-09-08-22-08-11\\_gui\\sim\\05_month_amortize.png"
+  },
+  {
+    "name": "06_month_result",
+    "url": "/pages/month/result",
+    "ok": true,
+    "actualPath": "pages/month/result",
+    "query": {},
+    "buttons": [],
+    "dataKeys": [
+      "t",
+      "month",
+      "isArchive",
+      "loading",
+      "r",
+      "expireSoonDays",
+      "expireSoonText",
+      "subscribeAsked",
+      "__webviewId__"
+    ],
+    "screenshot": "C:\\Users\\lzj\\WorkBuddy\\2026-09-08-22-08-11\\_gui\\sim\\06_month_result.png"
+  },
+  {
+    "name": "07_shop_setting",
+    "url": "/pages/shop/setting",
+    "ok": true,
+    "actualPath": "pages/shop/setting",
+    "query": {},
+    "buttons": [
+      {
+        "text": "保存设置",
+        "cls": "btn primary",
+        "disabled": null
+      }
+    ],
+    "dataKeys": [
+      "t",
+      "shopName",
+      "remark",
+      "inventoryOn",
+      "amortizeOn",
+      "loading",
+      "__webviewId__"
+    ],
+    "screenshot": "C:\\Users\\lzj\\WorkBuddy\\2026-09-08-22-08-11\\_gui\\sim\\07_shop_setting.png"
+  },
+  {
+    "name": "08_sandbox",
+    "url": "/pages/sandbox/index",
+    "ok": true,
+    "actualPath": "pages/sandbox/index",
+    "query": {},
+    "buttons": [
+      {
+        "text": "开始测算",
+        "cls": "btn primary",
+        "disabled": null
+      }
+    ],
+    "dataKeys": [
+      "t",
+      "rentYuan",
+      "propertyYuan",
+      "laborYuan",
+      "otherYuan",
+      "includeAmort",
+      "simAmortYuan",
+      "varFoodPct",
+      "varMktPct",
+      "varOtherPct",
+      "targetProfitYuan",
+      "result",
+      "calcError",
+      "loading",
+      "__webviewId__"
+    ],
+    "screenshot": "C:\\Users\\lzj\\WorkBuddy\\2026-09-08-22-08-11\\_gui\\sim\\08_sandbox.png"
+  },
+  {
+    "name": "09_card_index",
+    "url": "/pages/card/index",
+    "ok": true,
+    "actualPath": "pages/card/index",
+    "query": {},
+    "buttons": [
+      {
+        "text": "+ 新增成本卡",
+        "cls": "btn primary",
+        "disabled": null
+      },
+      {
+        "text": "导出 / 打印",
+        "cls": "btn ghost",
+        "disabled": null
+      }
+    ],
+    "dataKeys": [
+      "t",
+      "list",
+      "loading",
+      "__webviewId__"
+    ],
+    "screenshot": "C:\\Users\\lzj\\WorkBuddy\\2026-09-08-22-08-11\\_gui\\sim\\09_card_index.png"
+  },
+  {
+    "name": "10_card_edit",
+    "url": "/pages/card/edit",
+    "ok": true,
+    "actualPath": "pages/card/edit",
+    "query": {},
+    "buttons": [
+      {
+        "text": "+ 添加明细行",
+        "cls": "btn ghost btn-small",
+        "disabled": null
+      },
+      {
+        "text": "反算售价",
+        "cls": "btn ghost btn-small",
+        "disabled": null
+      },
+      {
+        "text": "保存成本卡",
+        "cls": "btn primary",
+        "disabled": null
+      }
+    ],
+    "dataKeys": [
+      "t",
+      "card_code",
+      "isEdit",
+      "name",
+      "calcMode",
+      "batchOutput",
+      "lossRate",
+      "auxYuan",
+      "priceYuan",
+      "targetMargin",
+      "reversePriceFen",
+      "previewCostFen",
+      "reverseResultPreview",
+      "previewCost",
+      "materials",
+      "lines",
+      "loading",
+      "__webviewId__"
+    ],
+    "screenshot": "C:\\Users\\lzj\\WorkBuddy\\2026-09-08-22-08-11\\_gui\\sim\\10_card_edit.png"
+  },
+  {
+    "name": "11_card_version",
+    "url": "/pages/card/version",
+    "ok": true,
+    "actualPath": "pages/card/version",
+    "query": {},
+    "buttons": [],
+    "dataKeys": [
+      "t",
+      "card_code",
+      "list",
+      "loading",
+      "__webviewId__"
+    ],
+    "screenshot": "C:\\Users\\lzj\\WorkBuddy\\2026-09-08-22-08-11\\_gui\\sim\\11_card_version.png"
+  },
+  {
+    "name": "12_pay_orders",
+    "url": "/pages/pay/orders",
+    "ok": true,
+    "actualPath": "pages/pay/orders",
+    "query": {},
+    "buttons": [],
+    "dataKeys": [
+      "t",
+      "expireText",
+      "showRenew",
+      "orders",
+      "loading",
+      "__webviewId__"
+    ],
+    "screenshot": "C:\\Users\\lzj\\WorkBuddy\\2026-09-08-22-08-11\\_gui\\sim\\12_pay_orders.png"
+  },
+  {
+    "name": "13_shop_switch",
+    "url": "/pages/shop/switch",
+    "ok": true,
+    "actualPath": "pages/shop/switch",
+    "query": {},
+    "buttons": [
+      {
+        "text": "+ 新增店铺",
+        "cls": "btn ghost",
+        "disabled": null
+      }
+    ],
+    "dataKeys": [
+      "t",
+      "list",
+      "currentShopId",
+      "used",
+      "freeLimit",
+      "hitFreeLimit",
+      "loading",
+      "__webviewId__"
+    ],
+    "screenshot": "C:\\Users\\lzj\\WorkBuddy\\2026-09-08-22-08-11\\_gui\\sim\\13_shop_switch.png"
+  },
+  {
+    "name": "14_mine",
+    "url": "/pages/mine/index",
+    "ok": true,
+    "actualPath": "pages/mine/index",
+    "query": {},
+    "buttons": [
+      {
+        "text": "注销账号",
+        "cls": "btn",
+        "disabled": "false"
+      }
+    ],
+    "dataKeys": [
+      "t",
+      "shopName",
+      "loadingLogout",
+      "__webviewId__"
+    ],
+    "screenshot": "C:\\Users\\lzj\\WorkBuddy\\2026-09-08-22-08-11\\_gui\\sim\\14_mine.png"
+  }
+]

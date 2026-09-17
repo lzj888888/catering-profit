@@ -1,0 +1,64 @@
+[
+  {
+    "name": "p_month_index",
+    "url": "/pages/month/index",
+    "actualPath": "pages/month/index",
+    "pick": {
+      "curMonth": "",
+      "months": [],
+      "tab": "free",
+      "isPaid": false,
+      "result": null,
+      "switches": {}
+    },
+    "buttons": [
+      {
+        "text": "录入收入·费用·消耗",
+        "cls": "btn primary"
+      },
+      {
+        "text": "查看结果",
+        "cls": "btn ghost"
+      }
+    ],
+    "tapTargets": [],
+    "ok": true
+  },
+  {
+    "name": "p_mine",
+    "url": "/pages/mine/index",
+    "actualPath": "pages/mine/index",
+    "pick": {
+      "result": null,
+      "shopName": ""
+    },
+    "buttons": [
+      {
+        "text": "注销账号",
+        "cls": "btn"
+      }
+    ],
+    "tapTargets": [],
+    "ok": true
+  },
+  {
+    "name": "p_card_index",
+    "url": "/pages/card/index",
+    "actualPath": "pages/card/index",
+    "pick": {
+      "result": null
+    },
+    "buttons": [
+      {
+        "text": "+ 新增成本卡",
+        "cls": "btn primary"
+      },
+      {
+        "text": "导出 / 打印",
+        "cls": "btn ghost"
+      }
+    ],
+    "tapTargets": [],
+    "ok": true
+  }
+]

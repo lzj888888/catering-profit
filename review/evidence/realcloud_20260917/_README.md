@@ -202,6 +202,8 @@
 | `40_result_raw.txt` | **deploy#1 之后**的重跑原文（采集 03:27:30；`commonShape` 已是新值，但 `uniqueEnforce` **仍是旧文案**）。⚠️ **它不是"旧件"** —— 旧件是 `01_smokeTest.json`（R88 更正，见 §6.3） |
 | `46_result_raw_fixed.txt` | **deploy#2 之后**的重跑原文（采集 03:31:54；`uniqueEnforce` 文案已修，`proof:"none"`） |
 | `47_timeout_all.txt` | **R86**：全函数 `timeout` 回读（线上只 2 函数、**均 3s**）+ 单源缺口核查（全仓仅 1 个 `config.json`、不含 `timeout`）+ 与 `core/06:410`「60s 铁律」的冲突 |
+| `48_result_raw_afterdrop.txt` | **删掉 `probe_tmp` 之后**的重跑原文（采集 05:30；剪贴板全文 **2868 字符**，含 `RequestId` 与 `Duration: 900ms`）⇒ **`createCollection` 由历次的 `{"ok":false,"msg":"…ResourceExist] Table exist…"}` 变为 `{"ok":true}`** —— **成功分支首次在真云走通** |
+| `47_timeout_all.txt §F` | **R86 第二步已实测**：`config.json` 加 `{"timeout":20}` → 重发 → `info` 与「配置 · 高级配置 · 执行超时」**两处读到的都仍是 3 秒** ⇒ **该字段不被采纳**（实验文件已删除还原） |
 | `35_function_list2.png` | 云函数列表（**采集 02:27:08**；显示更新时间晚于旧值 ⇒ 判"部署件已更新"的出处。⚠️ **其中具体时间戳数值已按 R89 撤回、不作证据**，理由见 §6.2） |
 | `22b_cliauth_reload.png` | 腾讯云 `tcb` device-flow 授权页在本机**渲染空白**（说明为何不走该通道） |
 | `44_run1.png` / `45_run2.png` | 本轮重跑（两次均成功；**本次未复现冷启动超时** —— 函数刚部署是热态，与发现 A 不矛盾） |
@@ -212,7 +214,7 @@
 
 | 项 | 状态 | 理由 |
 |---|---|---|
-| `probe_tmp` 集合 | **仍存在** | 原理由「执行单 §3 还要用它」**已于 2026-09-18 作废**（R90：§3 测成本卡，**答不了 A6**）⇒ 现理由只剩"**删除属不可逆云侧操作，等李老师逐字确认**"；复审方 round37 §2.6 已裁定「**删**，且删完立刻重跑可白捡一条判据」（`createCollection` 成功分支从未走过）|
+| `probe_tmp` 集合 | **已删除（两次）** | 2026-09-18 05:31 首次删（造出 `createCollection` 成功分支）→ 重跑（探针把它建回来）→ 约 05:35 **再删收尾**。两次确认框逐字均为「**删除集合 / 确定要删除集合 "probe_tmp" 吗？**」；删后列表 `order_refund` 下直接是 `shop` ⇒ **环境已复原** |
 | `smokeTest` 函数 | 保留 | 探针还要用；且它是 R86 单点试 `config.json` 的首选对象 |
 | `~` 下的 `tcb` 凭据 | **不存在**（未走该通道） | `tcb login` 已自行超时退出，未产生 `~/.cloudbase/` |
 
@@ -227,4 +229,4 @@
 | 🟡 **R88** | 已更正：**旧件是 `01`，不是 `40`**；`commonShape` 的改善发生在 **deploy#1**，deploy#2 只改 `uniqueEnforce` 文案 | 本节 §6.3 / §6.7（两处"旧件"字样均已改） |
 | 🔵 **R89** | **撤回数值**：`35_function_list2.png` 采集 **02:27:08** ⇒ 其**不可能**显示 `02:29:24`；改为"显示值晚于旧值"的**定性**表述，具体数值**不作证据**，并列待办复核 | 本节 §6.2 / §6.7 |
 | 🟡 **R90** | 已落地：A6 拆 **A6a（已被 unique 兜底）／A6b（`shop` 无 unique、仍无兜底）**，新判据换成两条 1 分钟操作；**原挂点（执行单 §3）已声明作废** | `★知识存储点 §1.1`（**两处**：在案项 + 判据表）· `SMOKETEST_RUNBOOK.md` 步骤 0.1.4 |
-| ⏳ **待人工** | ① `probe_tmp` 删除 + 重跑取原文（`48_result_raw_afterdrop.txt`）② R86 步骤 ②：单点试 `config.json` 能否设 `timeout`（**云侧变更，待确认**） | 见 `REVIEW_2026-09-15_round37-verify.md §3` 回执 |
+| ✅ **已人工（本轮回执）** | ① `probe_tmp` **已删两次 + 重跑取原文**（`48_result_raw_afterdrop.txt`；`createCollection:{ok:true}`）② R86 步骤 ②：**已试，结论否定** —— `config.json` 的 `timeout` 不被采纳 ⇒ **退控制台**（`47_timeout_all.txt §F`） | 见 `REVIEW_2026-09-15_round37-verify.md §3` 回执 |

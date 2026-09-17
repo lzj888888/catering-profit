@@ -164,6 +164,20 @@
 
 - [2026-09-18 04:45] **§2.6① `probe_tmp`：未落**（等你/李老师**逐字确认**后执行）。届时我按你给的顺序做：控制台删 → 重跑（**剪贴板取原文**）→ 归档 `48_result_raw_afterdrop.txt` → 判 `createCollection:{ok:true}` → 再删收尾，并在回执里**逐字写"已删 + 集合名"**。
 - [2026-09-18 04:45] **R81 未落（排队）**：`saveCostCard` 的 `mode` 白名单（`round34 §4.5`），已挂 3 轮 —— 同意排进下一批。
+
+- [2026-09-18 05:31] ✅ **§2.6① `probe_tmp`：已落（两次删除 + 一次重跑）** · 操作：云开发控制台 → 数据库 → 右键 `probe_tmp` →「删除集合」（确认框逐字「**删除集合 / 确定要删除集合 "probe_tmp" 吗？**」）→ 云函数 → `smokeTest` → 云端测试 → 运行测试（**剪贴板取原文**）→ **再删一次收尾**
+  - **回执逐字**：**已删 + 集合名 = `probe_tmp`**。**共删两次**：第一次为造出 `createCollection` 的成功分支，第二次为收尾（探针重跑会把它建回来）。删前列表含它；**删后列表 `order_refund` 下直接是 `shop`**。
+  - ✅ **白捡的判据成立**：`createCollection` 由历次 `{"ok":false,"msg":"…ResourceExist] Table exist…"}` 变为 **`{"ok":true}`** ⇒ **成功分支首次在真云走通**（此前三次运行从未走过）。
+  - 其余字段与 `46` **逐字 SAME**（`uniqueEnforce` 仍是 `proof:"none"` 修正版）；`fsDiag.root` 为 **14 项**（比 `46` 多一个 `config.json` —— 那是下面那次 `config.json` 实验的副证，该文件**已删除还原**）。`Duration: 900ms`（热态）· RequestId `1ceefb05-ad08-4a38-8d71-1733c03b751a`。
+  - 证据：`review/evidence/realcloud_20260917/48_result_raw_afterdrop.txt`（3949 B · sha256 `B88430C8C4AA3568…`）。
+
+- [2026-09-18 05:2x] 🟡 **R86 第二步「单点试」：已落 —— 结论是否定的** · 操作：给 `cloudfunctions/smokeTest/config.json` 写 `{"timeout": 20}` → `cli cloud functions deploy -r` 重发 → 双面回读
+  - 部署 `success=true` / **13 files** / `packSize=14.6 KB`（上次 14.5 KB）；`fsDiag.root` 里**出现 `config.json`**（**文件确实随包上传**）；控制台「最后更新时间」`03:34:55 → 05:24:52`（**部署确实生效**）。
+  - ❌ **但超时值没变**，两处独立读到都是 3：`cli cloud functions info` → `smokeTest | Active | timeout 3`；控制台 → 云函数 → 版本管理（`$LATEST`）→「配置」→ **高级配置 → 执行超时 = 3 秒**。
+  - ⇒ **该字段随包上传 ≠ 该字段生效力**。按你给的第三步：**退控制台**（精确路径已写进 `core/13…§5` 与 `SMOKETEST_RUNBOOK.md` 步骤 0.1.6）；**实验文件已删除还原**（不留"看着像生效"的死配置）。
+  - ⚠️ **待拍板的值**：`smokeTest` ≥10s · **`initDb` ≥20s（建议）** · 导出类对齐 `core/06:410` 的 60s 铁律。另：平台默认运行时 **`Nodejs16.13`**（已 EOL），是否一并评估**另立待办**。
+  - 证据：`review/evidence/realcloud_20260917/47_timeout_all.txt §F`。
+- [2026-09-18 05:4x] 🟡 **R81 已登记进「下一批」**（本轮仍不实现 —— 写码归快马 `inscode`）：落点 `core/13_上线前查缺补漏…§6`（**新节**：三处修法 + 4 条断言 + **变异回灌**要求 + 状态"已挂 4 轮"）。
 - **本轮回执同批校验**：门禁 A–L `rc=0` · `verify_docx` **3/3** · `verify_all` **58/58 rc=0** · 派生链 `SMOKETEST_RUNBOOK.md` → `.txt`（`cp`，**md5 逐字节相等 `acc90a0477fa1a65717445ae55ad8c70`**）→ `.docx`（59045 B）→ `.pdf`（719952 B）。
 
 ---

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>店算 · 真机/模拟器 UI 走查（2026-09-18）</title>
+<style>
+  :root{--fg:#1f2328;--muted:#656d76;--line:#d8dee4;--bg:#f6f8fa;--card:#fff;--accent:#ff6b35;--red:#d1242f;--amber:#9a6700;--blue:#0969da;--green:#1a7f37}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.65 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 20px 64px}
+  h1{font-size:24px;margin:0 0 6px}
+  h2{font-size:18px;margin:34px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+  h3{font-size:15px;margin:20px 0 8px}
+  .sub{color:var(--muted);margin:0 0 18px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin:14px 0}
+  .kpis{display:flex;gap:12px;flex-wrap:wrap;margin:18px 0}
+  .kpi{flex:1 1 200px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .kpi .n{font-size:22px;font-weight:700}
+  .kpi .l{color:var(--muted);font-size:12px;margin-top:2px}
+  .red{color:var(--red)}.amber{color:var(--amber)}.green{color:var(--green)}.blue{color:var(--blue)}
+  code{background:#eff1f3;border-radius:4px;padding:1px 5px;font:12px/1.5 Consolas,Menlo,monospace}
+  pre{background:#0d1117;color:#e6edf3;border-radius:8px;padding:12px 14px;overflow:auto;font:12px/1.6 Consolas,Menlo,monospace}
+  table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+  th{background:#eef1f4;font-weight:600}
+  .shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:14px;margin:14px 0}
+  .shot{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px;text-align:center}
+  .shot img{width:100%;display:block;border-radius:6px;border:1px solid var(--line)}
+  .shot .cap{font-size:11px;color:var(--muted);margin-top:6px;word-break:break-all}
+  .shot.bad{border-color:var(--red);box-shadow:0 0 0 2px #ffd7d5}
+  .badge{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--line);margin-right:6px}
+  .b-red{background:#ffebe9;border-color:#ffc1bc;color:var(--red)}
+  .b-amber{background:#fff8c5;border-color:#eac54f;color:var(--amber)}
+  .b-blue{background:#ddf4ff;border-color:#b6e3ff;color:var(--blue)}
+  .b-green{background:#dafbe1;border-color:#aceebb;color:var(--green)}
+  blockquote{margin:10px 0;padding:8px 14px;border-left:3px solid var(--line);color:var(--muted);background:#fff}
+  .foot{margin-top:36px;color:var(--muted);font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>店算 · 真机 / 模拟器 UI 走查</h1>
+  <p class="sub">执行时间 2026-09-18 06:1x–06:2x ｜ 通道：微信开发者工具自动化（<code>cli auto --auto-port 9420</code> + <code>miniprogram-automator</code>）｜ 设备：iPhone 12/13 模拟器</p>
+
+  <div class="kpis">
+    <div class="kpi"><div class="n">14 / 14</div><div class="l">页面已逐页驱动（<code>app.json</code> 全量）</div></div>
+    <div class="kpi"><div class="n red">2</div><div class="l">确认缺陷（1 中 + 1 低）</div></div>
+    <div class="kpi"><div class="n amber">3</div><div class="l">排版优化建议</div></div>
+    <div class="kpi"><div class="n green">通过</div><div class="l">按钮文案 / 付费边界 / 只读门禁</div></div>
+  </div>
+
+  <blockquote>
+    <b>一句话结论</b>：按钮层面<strong class="green">全部合规</strong>（含"导出"确实走付费墙，不是白点）；
+    排版层面有 <strong class="red">1 处硬伤</strong>——<code>pages/month/result</code> 在无账本 / 加载失败时<strong>永久显示「加载中…」</strong>，
+    以及 <strong class="amber">2 处"半截 UI"</strong>（金额 / 月份渲染成空白）。
+  </blockquote>
+
+  <h2>① 逐页截图（14 页）</h2>
+  <p class="sub">红框 = 本轮确认缺陷页。截图由 <code>miniProgram.screenshot()</code> 直接取自模拟器渲染结果。</p>
+  <div class="shots">
+    <div class="shot"><img src="r1_index.png" alt="index"><div class="cap">pages/index/index<br>首页</div></div>
+    <div class="shot"><img src="r2_month_index.png" alt="month/index"><div class="cap">pages/month/index<br>月度经营</div></div>
+    <div class="shot"><img src="03_month_input.png" alt="month/input"><div class="cap">pages/month/input<br>录入收入费用</div></div>
+    <div class="shot"><img src="04_month_inventory.png" alt="month/inventory"><div class="cap">pages/month/inventory<br>库存</div></div>
+    <div class="shot"><img src="05_month_amortize.png" alt="month/amortize"><div class="cap">pages/month/amortize<br>摊销</div></div>
+    <div class="shot bad"><img src="r3_month_result.png" alt="month/result"><div class="cap">pages/month/result<br>⚠️ 结果页（缺陷 F1）</div></div>
+    <div class="shot"><img src="07_shop_setting.png" alt="shop/setting"><div class="cap">pages/shop/setting<br>店铺设置</div></div>
+    <div class="shot"><img src="08_sandbox.png" alt="sandbox"><div class="cap">pages/sandbox/index<br>开店测算</div></div>
+    <div class="shot"><img src="09_card_index.png" alt="card/index"><div class="cap">pages/card/index<br>成本卡列表</div></div>
+    <div class="shot"><img src="10_card_edit.png" alt="card/edit"><div class="cap">pages/card/edit<br>编辑成本卡</div></div>
+    <div class="shot"><img src="11_card_version.png" alt="card/version"><div class="cap">pages/card/version<br>历史版本</div></div>
+    <div class="shot"><img src="12_pay_orders.png" alt="pay/orders"><div class="cap">pages/pay/orders<br>订单</div></div>
+    <div class="shot"><img src="13_shop_switch.png" alt="shop/switch"><div class="cap">pages/shop/switch<br>切换店铺</div></div>
+    <div class="shot"><img src="14_mine.png" alt="mine"><div class="cap">pages/mine/index<br>我的</div></div>
+  </div>
+
+  <h2>② 确认缺陷</h2>
+
+  <div class="card">
+    <h3><span class="badge b-red">F1 · 中</span>结果页在"无账本 / 加载失败"时永久显示「加载中…」</h3>
+    <p><b>源码判据</b>：</p>
+    <pre>pages/month/result.wxml:1   &lt;view class="container safe-bottom" wx:if="{{!loading && r}}"&gt;
+pages/month/result.wxml:67  &lt;view wx:else class="container"&gt;&lt;view class="muted"&gt;{{t.loading}}&lt;/view&gt;&lt;/view&gt;</pre>
+    <p><code>&amp;&amp; r</code> 让 <code>wx:else</code> 同时承接<strong>"加载中"与"r 为空"两种状态</strong>：只要 <code>r</code> 为假（账本不存在，或 <code>getLedger</code> 报错被 catch），页面就停在"加载中…"。</p>
+    <p><b>实测</b>（两次长等待复跑）：</p>
+    <table>
+      <tr><th>用例</th><th>等待</th><th><code>data().loading</code></th><th><code>data().r</code></th><th>界面</th></tr>
+      <tr><td>r3_month_result</td><td>8s</td><td>false</td><td>null</td><td class="red">加载中…</td></tr>
+      <tr><td>r4_month_result_again</td><td>4s</td><td>false</td><td>null</td><td class="red">加载中…</td></tr>
+    </table>
+    <p><span class="badge b-green">反例已排除</span>全仓 <code>grep pages/**/*.wxml</code>：其余 <b>12 页</b>均为 <code>wx:if="{{!loading}}"</code>，
+      else 分支<b>只在 loading 时触发</b>，属正确写法；<code>card/index</code>、<code>mine/index</code> 无此分支
+      ⇒ <b>本条只针对 <code>month/result</code> 一页</b>，不是系统性写法问题。</p>
+    <p><b>修法（属快马）</b>：拆三段 —— <code>wx:if="{{loading}}"</code> 加载 →
+      <code>wx:elif="{{!r}}"</code> <strong>空态/错误态</strong>（需新增文案 + 跳 <code>/pages/month/input</code> 的按钮）→ <code>wx:else</code> 结果。<br>
+      <b>验收（可证伪）</b>：无账本 / 断网时不得再出现"加载中…"；有账本时渲染与现状逐字一致。</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="badge b-amber">F2 · 低</span>两处"数值占位缺失"（首屏 / 失败态渲染出半截 UI）</h3>
+    <table>
+      <tr><th>位置</th><th>现象</th><th>根因</th><th>修法建议</th></tr>
+      <tr>
+        <td><code>pages/month/amortize</code></td>
+        <td>「当月摊销合计」下方只有一个橙色 <b>¥</b>，数值空白（见 <code>05_month_amortize.png</code>）</td>
+        <td><code>amortize.js:38</code> 的 <code>data</code> 只初始化 <code>totalFen: 0</code>，<b>未初始化 <code>totalYuan</code></b>，而 <code>wxml:5</code> 绑定 <code>{{t.cur}}{{totalYuan}}</code></td>
+        <td><code>data</code> 补 <code>totalYuan: '0.00'</code>，或 wxml 写 <code>{{totalYuan || '0.00'}}</code></td>
+      </tr>
+      <tr>
+        <td><code>pages/month/index</code></td>
+        <td>「月份」行右侧空白（见 <code>r2_month_index.png</code>）</td>
+        <td>无任何账本时 <code>curMonth === ""</code> 且 <code>months === []</code>（<code>report_run3.json</code> 实抽，非推断），<code>index.wxml:16</code> 绑定 <code>{{curMonth}}</code></td>
+        <td><code>curMonth</code> 兜底为当前月（<code>ui.nowMonth()</code>）</td>
+      </tr>
+    </table>
+    <p>⚠️ 两条<b>同属一类</b>：<code>data</code> 缺兜底初值 ⇒ 空数据 / 错误态渲染出"半截 UI"。建议顺手扫一遍全页 <code>data</code> 初值（本轮只实测了这两处）。</p>
+  </div>
+
+  <h2>③ 排版优化（非缺陷）</h2>
+  <table>
+    <tr><th>#</th><th>位置</th><th>现象</th><th>建议</th></tr>
+    <tr><td>L1</td><td><code>pages/month/input.wxml:24</code> + <code>:26</code></td>
+      <td><b>「食材消耗合计（元）」连续出现两次</b>：<code>:24</code> 是段落小标题（<code>class="sec"</code>）、<code>:26</code> 是字段标签，<b>两处绑同一个 i18n key <code>t.directConsume</code></b></td>
+      <td>小标题改用短标题（如"食材消耗"）或删掉标题行（<code>:30</code> 的 hint 已说明用途）</td></tr>
+    <tr><td>L2</td><td><code>pages/month/index</code></td>
+      <td>免费用户只有 1 个 tab（<code>t.freeTab</code>=「经营参考估算」；<code>t.paidTab</code> 需 <code>isPaid</code> 才渲染，<code>index.wxml:28</code>），但 <code>.tab.active</code> 是<b>满宽橙色</b> ⇒ 视觉上像一条橙色横幅，不像 tab</td>
+      <td>单 tab 时隐藏 tab 栏；或加"未选中"对照 / 左右留白</td></tr>
+    <tr><td>L3</td><td><code>pages/mine/index.wxml:26</code></td>
+      <td>「注销账号」用<b>内联样式</b> <code>background:#e74c3c;color:#fff</code>（红色危险色，语义正确）</td>
+      <td>抽成 <code>.btn.danger</code> 类，便于统一改主题（<code>app.wxss:26-31</code> 现只有 <code>.primary</code>/<code>.ghost</code>/<code>.disabled</code>）</td></tr>
+  </table>
+
+  <h2>④ 本轮通过项（按钮合规）</h2>
+  <div class="card">
+    <p><span class="badge b-green">文案</span>14 页 <code>&lt;button&gt;</code> 全量机器抽取（<code>report_run1.json</code>）：</p>
+    <p><code>设置</code> · <code>我的</code> · <code>保存</code> · <code>保存库存</code> · <code>新增资产</code> · <code>保存设置</code> · <code>开始测算</code> ·
+      <code>+ 新增成本卡</code> · <code>导出 / 打印</code> · <code>+ 添加明细行</code> · <code>反算售价</code> · <code>保存成本卡</code> ·
+      <code>+ 新增店铺</code> · <code>注销账号</code></p>
+    <p>⇒ <b>无「会员 / 订阅 / 权益」等禁词，付费按钮没有裸"开通"</b>，合 <code>miniprogram/i18n/terms.js</code> 的 <code>forbidden</code> 表。</p>
+    <p><span class="badge b-green">付费边界</span><code>pages/card/index.js:84 onExport()</code> —— 先 <code>fetchEntitlement()</code>，非 active 即 <code>openPaywall('export')</code>，
+      后端 <code>exportData</code> 兜底。免费用户看到的「导出 / 打印」<b>不是"可用但白点"，是付费墙入口</b> ⇒ <b>不是漏洞</b>。</p>
+    <p><span class="badge b-green">主次样式</span><code>app.wxss:26-31</code> 的 <code>.btn</code> 基类<b>无背景色</b>，
+      <code>.primary</code>=橙实心 / <code>.ghost</code>=白底橙描边 / <code>.disabled</code>=灰 ⇒ 未观察到误染。</p>
+    <p><span class="badge b-green">只读门禁</span><code>pages/month/input.wxml:11/19/27/34</code> 输入框与保存按钮均
+      <code>disabled="{{readOnly}}"</code>（归档月只读的生效路径存在）。</p>
+  </div>
+
+  <h2>⑤ 本轮未证 / 已推翻的中间猜测（留痕防回潮）</h2>
+  <table>
+    <tr><th>项</th><th>结论</th><th>依据</th></tr>
+    <tr><td>自动化首次 <code>reLaunch</code> 报 <code>timeout waiting for automator response</code></td>
+      <td class="amber">属握手问题，<b>非页面缺陷</b></td><td>首轮 <code>01_index</code> ERR，复跑 <code>r1_index</code> 正常</td></tr>
+    <tr><td>"<code>/pages/month/index</code> 会重定向回首页"</td>
+      <td class="green">已<b>证伪</b></td><td><code>r2</code> 长等待复测 <code>actualPath = pages/month/index</code>；首轮是 reLaunch 与读页的<b>时序错位</b></td></tr>
+    <tr><td>"<code>month/result</code> 卡在加载"</td>
+      <td class="red">已<b>改判为 F1</b></td><td>不是卡住（<code>loading === false</code>），是 <code>wx:else</code> 兜底分支语义错</td></tr>
+    <tr><td>"注销账号红色来自 wxss 样式污染"</td>
+      <td class="green">已<b>证伪</b></td><td><code>mine/index.wxml:26</code> 是内联样式；<code>mine/index.wxss</code> 无 <code>.btn</code> 规则</td></tr>
+  </table>
+
+  <h2>⑥ 复现方式</h2>
+  <pre># 1) 起自动化（复用 IDE 已登录会话，dev-only）
+"C:\Program Files (x86)\Tencent\微信web开发者工具\cli.bat" auto \
+    --project C:\Users\lzj\WorkBuddy\Claw\catering-profit --auto-port 9420
+
+# 2) 依赖（隔离安装，不入用户环境）
+cd C:\Users\lzj\.workbuddy\binaries\node\mpauto && npm install miniprogram-automator
+
+# 3) 逐页驱动
+set NODE_PATH=C:\Users\lzj\.workbuddy\binaries\node\mpauto\node_modules
+node _gui\auto_pages.js  <outDir> ws://127.0.0.1:9420</pre>
+
+  <div class="foot">
+    证据件：<code>report_run1.json</code>（14 页 × 按钮文案/class/disabled）、<code>report_run2.json</code>（长等待复测）、
+    <code>report_run3.json</code>（<code>curMonth</code> / <code>months</code> 实抽）｜ 截图 17 张。<br>
+    登记位置：<code>specs/dev-specs/core/13_上线前查缺补漏_决策与待办总览.md §7</code>。
+    写码归快马 <code>inscode</code>；验收走本仓套件（谁写的自测不算证据）。
+  </div>
+
+</div>
+</body>
+</html>

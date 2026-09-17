@@ -1,0 +1,89 @@
+[
+  {
+    "name": "r1_index",
+    "url": "/pages/index/index",
+    "wait": 5000,
+    "actualPath": "pages/index/index",
+    "loading": false,
+    "dataKeys": [
+      "t",
+      "shopName",
+      "loading",
+      "__webviewId__"
+    ],
+    "sample": {
+      "shopName": ""
+    },
+    "ok": true
+  },
+  {
+    "name": "r2_month_index",
+    "url": "/pages/month/index",
+    "wait": 7000,
+    "actualPath": "pages/month/index",
+    "loading": false,
+    "dataKeys": [
+      "t",
+      "months",
+      "curMonth",
+      "tab",
+      "isPaid",
+      "expireSoonDays",
+      "expireSoonText",
+      "isExpired",
+      "isArchive",
+      "archivedAtMs",
+      "canArchive",
+      "switches",
+      "result",
+      "loading",
+      "__webviewId__"
+    ],
+    "sample": {},
+    "ok": true
+  },
+  {
+    "name": "r3_month_result",
+    "url": "/pages/month/result",
+    "wait": 8000,
+    "actualPath": "pages/month/result",
+    "loading": false,
+    "dataKeys": [
+      "t",
+      "month",
+      "isArchive",
+      "loading",
+      "r",
+      "expireSoonDays",
+      "expireSoonText",
+      "subscribeAsked",
+      "__webviewId__"
+    ],
+    "sample": {
+      "month": "2026-09"
+    },
+    "ok": true
+  },
+  {
+    "name": "r4_month_result_again",
+    "url": "/pages/month/result",
+    "wait": 4000,
+    "actualPath": "pages/month/result",
+    "loading": false,
+    "dataKeys": [
+      "t",
+      "month",
+      "isArchive",
+      "loading",
+      "r",
+      "expireSoonDays",
+      "expireSoonText",
+      "subscribeAsked",
+      "__webviewId__"
+    ],
+    "sample": {
+      "month": "2026-09"
+    },
+    "ok": true
+  }
+]

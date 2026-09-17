@@ -1,0 +1,23 @@
+# 48 · 探针重跑原文（probe_tmp 已删除之后）
+# 采集：2026-09-18 05:30 (+0800)
+# 通道：云开发控制台 v2.0.3 → 云函数 → smokeTest → 云端测试 → 运行测试
+# 取文：点进「返回结果」文本框 → Ctrl+A → Ctrl+C（剪贴板原文，未经 OCR、未改写）
+# 前置①：2026-09-18 05:31 已在控制台删除集合 probe_tmp
+#        确认框逐字：「删除集合 / 确定要删除集合 "probe_tmp" 吗？」
+# 前置②：2026-09-18 05:21 已 cli 重发部署 smokeTest（含新增 cloudfunctions/smokeTest/config.json；
+#        控制台函数列表「最后更新时间」= 2026-09-18 05:24:52）
+# 判读要点：createCollection 由历次的 {"ok":false,"…Table exist"} 变为 {"ok":true} ⇒ 成功分支首次走通
+# ────────────────────────────────────────────────────────────
+
+{}
+{"env":"cloud1-d4gphpoxy337f2a25","fsDiag":{"root":["common.js","config.json","cx_audit.js","cx_auth.js","cx_dataAdapter.js","cx_errors.js","cx_idempotency.js","cx_index.js","cx_money.js","cx_rateLimit.js","cx_utilTime.js","index.js","node_modules","package.json"],"hasCommonFile":true,"hasCommonDir":false,"common":null,"commonShape":"flat-file(common.js)","cwd":"/var/user"},"requireCommon":{"ok":true,"err":null,"exports":["errors","ERROR_CODES","ok","fail","utilTime","money","dataAdapter","auth","resolveAuth","assertShopOwner","idempotency","rateLimit","audit"]},"createCollection":{"ok":true},"createIndex":{"typeof":"undefined"},"docGet":{"topLevelKeys":["data","errMsg"],"hasDataField":true,"dataKeys":["_id","k","is_deleted","created_at"],"id":"3d00e15d6aac5d170022c1a35f52b4e5"},"docGetMissing":{"behavior":"reject","message":"document.get:fail document with _id __definitely_not_exist__ does not exist"},"uniqueEnforce":{"result":"未报错（预期内）","proof":"none","note":"本集合无该 unique 索引 ⇒ 不报错是必然；不得据此判定 A6/A7"},"assertShopOwner":{"code":"RESOURCE_NOT_FOUND","msg":"RESOURCE_NOT_FOUND","data":{}},"dataAdapterGet":{"liveIsDoc":true,"deadIsNull":true}}
+1ceefb05-ad08-4a38-8d71-1733c03b751a
+900 ms
+900 ms
+26.85 MB
+Init Report RequestId: 1ceefb05-ad08-4a38-8d71-1733c03b751a Coldstart: 567ms (InitRuntime: 10ms InitFunction: 557ms) Memory: 256MB MemUsage: 24.80MB
+START RequestId: 1ceefb05-ad08-4a38-8d71-1733c03b751a
+Event RequestId: 1ceefb05-ad08-4a38-8d71-1733c03b751a
+Response RequestId: 1ceefb05-ad08-4a38-8d71-1733c03b751a RetMsg: {"env":"cloud1-d4gphpoxy337f2a25","fsDiag":{"root":["common.js","config.json","cx_audit.js","cx_auth.js","cx_dataAdapter.js","cx_errors.js","cx_idempotency.js","cx_index.js","cx_money.js","cx_rateLimit.js","cx_utilTime.js","index.js","node_modules","package.json"],"hasCommonFile":true,"hasCommonDir":false,"common":null,"commonShape":"flat-file(common.js)","cwd":"/var/user"},"requireCommon":{"ok":true,"err":null,"exports":["errors","ERROR_CODES","ok","fail","utilTime","money","dataAdapter","auth","resolveAuth","assertShopOwner","idempotency","rateLimit","audit"]},"createCollection":{"ok":true},"createIndex":{"typeof":"undefined"},"docGet":{"topLevelKeys":["data","errMsg"],"hasDataField":true,"dataKeys":["_id","k","is_deleted","created_at"],"id":"3d00e15d6aac5d170022c1a35f52b4e5"},"docGetMissing":{"behavior":"reject","message":"document.get:fail document with _id __definitely_not_exist__ does not exist"},"uniqueEnforce":{"result":"未报错（预期内）","proof":"none","note":"本集合无该 unique 索引 ⇒ 不报错是必然；不得据此判定 A6/A7"},"assertShopOwner":{"code":"RESOURCE_NOT_FOUND","msg":"RESOURCE_NOT_FOUND","data":{}},"dataAdapterGet":{"liveIsDoc":true,"deadIsNull":true}}
+END RequestId: 1ceefb05-ad08-4a38-8d71-1733c03b751a
+Report RequestId: 1ceefb05-ad08-4a38-8d71-1733c03b751a Duration: 900ms Memory: 256MB MemUsage: 26.847656MB
