@@ -33,7 +33,9 @@ check('不同用户各自独立计数（u_a=0 不超 / u_b=1 超）', a.hit_free
 console.log('===== 软删不占额（DataAdapter 层语义）=====');
 // 计数输入是已过滤的活跃数：软删由 DataAdapter 过滤后传入 activeCount，Service 不重复处理
 check('活跃数=2（软删已滤）→ 判定按活跃数', checkQuota({ userId: 'u1', scope: 'cost_card', activeCount: 2 }).used === 2);
-check('软删数据不进入计数（Controller 用 da.list 过滤 is_deleted=false）', true, '见 checkQuota/index.js 步骤 3');
+check('软删数据不进入计数（Controller 用 da.list 过滤 is_deleted=false）',
+  (() => { const s = require('fs').readFileSync(require('path').join(__dirname, 'index.js'), 'utf8').replace(/^\s*\/\/.*$/gm, ''); return /da\.list\(/.test(s); })(),
+  'index.js 经 da.list 取数（🔒 R71：原为恒真断言）');
 
 console.log('===== 入参校验 =====');
 check('合法 scope=shop', validateInput({ shop_id: 's1', scope: 'shop' }).error === null);

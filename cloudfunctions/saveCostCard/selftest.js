@@ -63,8 +63,9 @@ console.log('===== ③ 循环引用预检（命中即拒、不入库）=====');
 const edgesMap = new Map([['A', ['B']]]);
 check('A→B，保存 B 引用 A → BOM 判环', wouldCreateCycle('B', ['A'], edgesMap) === true);
 check('半成品引用自身 → 判环', wouldCreateCycle('B', ['B'], edgesMap) === true);
-check('Cards 不入库判定：拒绝即不落库（此处仅判定不产生任何写）', true,
-  'Controller 在 wouldCreateCycle 返回 true 时 return fail(BOM_CYCLE_DETECTED)，无 INSERT');
+check('Cards 不入库判定：拒绝即不落库（此处仅判定不产生任何写）',
+  (() => { const s = require('fs').readFileSync(require('path').join(__dirname, 'index.js'), 'utf8').replace(/^\s*\/\/.*$/gm, ''); return /BOM_CYCLE_DETECTED/.test(s); })(),
+  'Controller 判环命中即 fail(BOM_CYCLE_DETECTED)，无 INSERT（🔒 R71：原为恒真断言）');
 
 // ===== ④ 版本自然递增 + 虚拟半成品每份成本 =====
 console.log('');

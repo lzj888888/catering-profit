@@ -127,6 +127,10 @@ const SUMMARY_TAIL = /通过\s*\/\s*\d+\s*失败/;
 //   处理 = 显式豁免清单 `NO_SUMMARY_TAIL`（逐个写理由），并让**新增套件若既无汇总行又不在清单内 → 判红**
 //   （fail-closed：不许"静默不合规"，要么补一条 `N 通过 / M 失败` 收尾行、要么在此显式登记）。
 const TAIL_SUMMARY = /\d+\s*通过/;
+// ⚠️ 本清单**按路径**登记：移动/改名套件时，若它在此清单内**必须同步改这里的路径**，
+//   否则豁免静默失效、该套件转红（方向保守 = 响亮失败而非漏检，但会白折腾一轮）。
+//   前例：R55 把 `utils/selftest_batch7.js` 移到了 `tools/`。
+//   （复审方 round30 §2 观察；不建议改成按 basename 匹配——那会放松判据。）
 const NO_SUMMARY_TAIL = new Set([
   'specs/dev-specs/prototype/check_error_codes.js', // 门禁 A–L：`✅ 全部断言通过` 在第 17 行，其后才是 A–L 逐组明细
   'cloudfunctions/calcMonthlyProfit/selftest.js',   // 收尾 = `✅ 12/12 锚点 + … 全数通过`（写作 12/12，非 "N 通过"）
@@ -152,8 +156,15 @@ function auditAssertions(out, rel) {
   const zero = secs.filter((s, i) => s.marks === 0
     && !(i === secs.length - 1 && SUMMARY_TAIL.test(s.title)));
   // R69：末尾 3 个非空行须含 `N 通过`；不在 NO_SUMMARY_TAIL 里又不满足 ⇒ 判"未走完收尾"
-  const tail3 = text.split(/\r?\n/).filter((l) => l.trim() !== '').slice(-3);
-  const tail = tail3.some((l) => TAIL_SUMMARY.test(l)) || NO_SUMMARY_TAIL.has(rel);
+  // R70（复审方 round30 提出）：「末尾 3 行」窗口过宽 —— 若某套件**中途**打印过形如 `N 通过` 的行，
+  //   且提前退出落在该行之后 3 行以内，窗口仍能命中 ⇒ R69 放行。本仓确有这种中途行：
+  //   adminExport 的 `==== adminExport R49 子测：30 通过 / 0 失败 ====` 出现在最终汇总行**之前**。
+  //   ⇒ 收紧为「**忽略纯分隔线后的最后 1 行**」，窗口 3 → 1。
+  //   零豁免成本（复审方逐套件实测，本侧复核）：剔除纯分隔线后取末行，不满足项恰好仍是原 6 项 ——
+  //   verify_seed_data 的末行是纯分隔线 `====…====`，其 `48 通过 / 0 失败` 在上方 2 行，剔掉即自然通过。
+  const isDelimRow = (s) => /^[=\-─═\s]{3,}$/.test(s);
+  const tail1 = text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l !== '' && !isDelimRow(l)).slice(-1);
+  const tail = tail1.some((l) => TAIL_SUMMARY.test(l)) || NO_SUMMARY_TAIL.has(rel);
   return { total, zero, sections: secs.length, tail };
 }
 

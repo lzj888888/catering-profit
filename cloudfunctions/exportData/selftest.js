@@ -22,7 +22,9 @@ const NOW = Date.now(), DAY = 24 * 3600 * 1000;
 const isPaid = (expireAt, now) => expireAt > now;
 check('付费用户（expire_at 有效）→ 可导出', isPaid(NOW + 30 * DAY, NOW) === true);
 check('免费用户（无/过期）→ FEATURE_LOCKED 兜底', isPaid(0, NOW) === false && isPaid(NOW - DAY, NOW) === false);
-check('判定不读 plan_id（无 plan 参与）', true, '见 exportData/index.js：仅读 shop_entitlement.expire_at');
+check('判定不读 plan_id（无 plan 参与）',
+  (() => { const s = require('fs').readFileSync(require('path').join(__dirname, 'index.js'), 'utf8').replace(/^\s*\/\/.*$/gm, ''); return /expire_at/.test(s) && !/plan_id/.test(s); })(),
+  'index.js 仅读 shop_entitlement.expire_at（🔒 R71：原为恒真断言）');
 
 console.log('===== M1 报表 CSV（字段完整 + 文件名含店铺/月份）=====');
 const header = ['收入项', '金额(分)', '费用项', '金额(分)', '经营参考利润(分)', '真实利润(分)'];

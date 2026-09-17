@@ -12,6 +12,10 @@
 //   R3  全文无 `process.exit` / `process.exitCode` ⇒ 断言失败时退出码仍为 0（fail-open）。**提示级**，不阻断。
 //   R67 自测文件 ↔ `verify_all.js` 的 SUITES **双向差集**：任一方向非空即红（整个文件静默不跑 / 孤儿条目）。
 //   R68 顶层块切分**不确定即 fail-closed**（缺分号会让其后整片并入同块 ⇒ R2 被绕过，见函数首注）。
+//   R71 **恒真断言** `check(name, true, ...)`：条件为字面量真值 ⇒ 该断言永远通过、零验证。
+//       R66（段内 ✅==0）与 R69（输出须走完收尾）**都抓不到它** —— 它既打了 ✅、收尾也完整。
+//       实测全仓曾有 9 条 / 6 个文件，其中 deleteAccount 那 4 条覆盖的正是「软删 / 幂等」这类关键语义。
+//       豁免：调用所在行或次行带 `// R71-ok: <理由>`（用于「有意的非断言声明」，理由必须写明，不许裸标）。
 //
 // ⚠️ "读不到给不出结论"一律判红，绝不静默给绿 —— 本工具自己若不可信，比它要防的漏洞更危险
 //    （首版两个 bug 都属此类：ⓐ 除号被误判成正则起点、吞掉半篇代码；ⓑ IIFE 收尾正则多一个 `\)`、R1 永不触发。
@@ -196,6 +200,34 @@ function kindOf(t) {
   return 'other';
 }
 
+// R71 支撑：找出「恒真断言」—— check(name, true, ...) / check(name, 1, ...)。
+//   条件若是字面量真值，该断言**永远通过**，不验证任何东西。
+//   ⚠️ 解析必须自洽：depth 起点 = 1（此时已在 `(` 之内）。首版在临时脚本里写成 0，
+//      实参从未被累积 ⇒ 41 个文件全判「零恒真」= **守卫自己假绿**（实测踩过）。
+function findAlwaysTrueChecks(clean, orig) {
+  const out = [];
+  const origLines = orig.split('\n');
+  const re = /\bcheck\s*\(/g;
+  let m;
+  while ((m = re.exec(clean))) {
+    let depth = 1, args = [''];
+    for (let i = m.index + m[0].length; i < clean.length; i++) {
+      const c = clean[i];
+      if (c === '(' || c === '[' || c === '{') depth++;
+      else if (c === ')' || c === ']' || c === '}') { depth--; if (depth === 0) break; }
+      else if (c === ',' && depth === 1) { args.push(''); continue; }
+      args[args.length - 1] += c;
+    }
+    if (args.length < 2) continue;
+    if (!/^(true|1|!0|!false)$/.test(args[1].trim())) continue;
+    const lineNo = clean.slice(0, m.index).split('\n').length - 1;
+    const here = origLines[lineNo] || '';
+    const next = origLines[lineNo + 1] || '';
+    out.push({ line: lineNo + 1, exempt: /R71-ok/.test(here) || /R71-ok/.test(next) });
+  }
+  return out;
+}
+
 const problems = [];
 const list = collect();
 
@@ -269,12 +301,29 @@ for (const fp of list) {
   if (exitIdx.length === 0 && !/process\s*\.\s*exitCode/.test(clean)) {
     problems.push({ level: 'WARN', rel, msg: 'R3 全文无 process.exit / process.exitCode —— 断言失败时退出码仍为 0（fail-open）' });
   }
+
+  // ===== R71：恒真断言 =====
+  //   条件为字面量真值 ⇒ 永远通过、零验证。R66（段内 ✅==0）与 R69（输出须走完收尾）**都抓不到**：
+  //   它既打了 ✅、收尾也完整。实测全仓曾有 9 条 / 6 个文件，其中 deleteAccount 的 4 条覆盖的正是
+  //   「软删 / 幂等」这类关键语义，却因恒真而一条也没验证。
+  //   豁免：调用所在行或次行带 `// R71-ok: <理由>`（用于「有意的非断言声明」，理由必须写明）。
+  const at = findAlwaysTrueChecks(clean, src);
+  const hard = at.filter((a) => !a.exempt);
+  if (hard.length) {
+    problems.push({ level: 'ERROR', rel,
+      msg: `R71 恒真断言 ${hard.length} 条（条件为字面量 true/1，永远通过、零验证）：第 ${hard.map((a) => a.line).join('、')} 行`
+        + '　⇒ 改为「读源码的形状断言」或真值断言；确属有意的非断言声明，请在该行加 `// R71-ok: 理由`' });
+  }
+  const soft = at.filter((a) => a.exempt);
+  if (soft.length) {
+    problems.push({ level: 'WARN', rel, msg: `R71 已豁免恒真断言 ${soft.length} 条（第 ${soft.map((a) => a.line).join('、')} 行，带 R71-ok 标记）` });
+  }
 }
 
 const errs = problems.filter((p) => p.level === 'ERROR');
 const warns = problems.filter((p) => p.level === 'WARN');
 
-process.stdout.write(`\n[形状守卫 R66/R67/R68] 扫描自测文件 ${list.length} 个（R1 顶层 IIFE ≤1 / R2 exit 仅在末块或函数声明体内 / R3 退出码存在）\n`);
+process.stdout.write(`\n[形状守卫 R66/R67/R68/R71] 扫描自测文件 ${list.length} 个（R1 顶层 IIFE ≤1 / R2 exit 仅在末块或函数声明体内 / R3 退出码存在 / R71 无恒真断言）\n`);
 if (r67) {
   process.stdout.write(`  [R67 登记完整性] 树内 ${r67.inTree} 个 ↔ SUITES 内 ${r67.inSuite} 个；`
     + `漏挂 ${r67.missing} / 孤儿 ${r67.orphan}\n`);

@@ -110,10 +110,35 @@ function check(name, cond, detail) {
     const owner = await assertShopOwner(dbinstance, 's1', 'owner');
     check('点2·越权→FORBIDDEN', attacker.code === ERROR_CODES.FORBIDDEN, `code=${attacker.code}`);
     check('点2·本人→SUCCESS', owner.code === ERROR_CODES.SUCCESS, `code=${owner.code}`);
-    // 幂等键含 shop_id：不同店同一 reqId 不误拦（换店用同一ID不被误拦截）
-    const idem1 = await checkIdempotent(dbinstance, 'shopA', 'req1');
-    const idem2 = await checkIdempotent(dbinstance, 'shopB', 'req1');
-    check('点2·幂等键含shop_id(换店同ID不误拦)', idem1.ok && idem2.ok, `shopA.ok=${idem1.ok}, shopB.ok=${idem2.ok}`);
+  }
+
+  // ===== 🔒 R72：幂等单源化后的行为契约 =====
+  // 契约改为 (db, key) → boolean，key 由调用方构造。
+  // ⚠️ 旧 (db, shopId, clientRequestId) 三参形态**已废除**（R72）：它零生产调用，
+  //    真正生效的 3 处各自内联了同一段查询 ⇒ 同一语义 4 份实现、本模块是死的。
+  //    随之取消的是「模块自带 shop_id 隔离」这一从未被使用的行为；隔离改由**调用方前缀**承担。
+  {
+    const db = makeFakeDb({ audit_log: [] });
+    const dbinstance = { collection: db.collection };
+    const noKey = await checkIdempotent(dbinstance, '');
+    check('R72·空 key → false（该调用点不做幂等约束）', noKey === false, `got=${noKey}`);
+    const miss = await checkIdempotent(dbinstance, 'adm_grant_req1');
+    check('R72·未登记 key → false', miss === false, `got=${miss}`);
+  }
+  {
+    const db = makeFakeDb({
+      audit_log: [
+        { _id: 'al1', idempotency_key: 'adm_grant_req1' },
+        { _id: 'al2', idempotency_key: 'shop_shopA__req2' },
+      ],
+    });
+    const dbinstance = { collection: db.collection };
+    const hit = await checkIdempotent(dbinstance, 'adm_grant_req1');
+    check('R72·已登记 key → true（判为重复提交）', hit === true, `got=${hit}`);
+    // 隔离能力仍在，但责任在调用方：前缀带店号 ⇒ 换店用同一 reqId 互不命中
+    const a = await checkIdempotent(dbinstance, 'shop_shopA__req2');
+    const b = await checkIdempotent(dbinstance, 'shop_shopB__req2');
+    check('R72·换店同 reqId 不误拦（靠调用方前缀隔离）', a === true && b === false, `A=${a}, B=${b}`);
   }
 
   // ===== 点3：DataAdapter 列表默认 is_deleted=false，软删不出现 =====
@@ -155,7 +180,7 @@ function check(name, cond, detail) {
     const PLACEHOLDER = /^catering-(dev|prod)-x{4,}$/;
     const isReal = (v) => /^catering-(dev|prod)-[0-9a-z]{6,}$/.test(v) && !PLACEHOLDER.test(v);
     if (isReal(dev) && isReal(prod)) {
-      check('点4·dev/prod 已替换为真实环境 ID（非占位符）', true, `dev=${dev}, prod=${prod}`);
+      check('点4·dev/prod 已替换为真实环境 ID（非占位符）', true, `dev=${dev}, prod=${prod}`); // R71-ok: 已知未完成项（env.js 仍为占位符），由上方 todos 承载，替换真实 ID 后才可判真
     } else {
       todos.push('🔶 点4 未完成：env.js:14-15 仍是占位符 —— 部署前置，非单测可判真；替换真实ID后重跑转 ✅（点⑤ 给 gate 喂输入属真测试，不受影响）');
     }

@@ -32,11 +32,12 @@ exports.main = async (event) => {
   const v = (event && event.input) || event || {};
   const clientRequestId = v.client_request_id || '';
 
-  // ===== 2. 幂等预检（audit_log idempotency_key）=====
+  // ===== 2. 幂等预检（🔒 R72：走单源 common/idempotency.js，不再内联重写）=====
   if (clientRequestId) {
     const key = `acc_del_${clientRequestId}`;
-    const dup = await db.collection('audit_log').where({ idempotency_key: key }).limit(1).get();
-    if (dup && dup.data && dup.data.length > 0) return fail(ERROR_CODES.ADMIN_OP_IDEMPOTENT, '重复提交');
+    if (await common.idempotency.checkIdempotent(db, key)) {
+      return fail(ERROR_CODES.ADMIN_OP_IDEMPOTENT, '重复提交');
+    }
   }
 
   const now = nowUtc();

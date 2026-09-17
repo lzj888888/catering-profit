@@ -28,7 +28,9 @@ const tier = (expireAt) => (expireAt > Date.now() ? 'paid' : 'free');
 check('expire_at 有效 → paid', tier(NOW + 30 * DAY) === 'paid');
 check('expire_at 过期 → free', tier(NOW - DAY) === 'free');
 check('无权益(0) → free', tier(0) === 'free');
-check('判定不依赖 plan_id（无 plan 字段参与）', true, '见 adminQueryUser/index.js：tier = expire_at > now');
+check('判定不依赖 plan_id（无 plan 字段参与）',
+  (() => { const s = require('fs').readFileSync(require('path').join(__dirname, 'index.js'), 'utf8').replace(/^\s*\/\/.*$/gm, ''); return /expireAt\s*>\s*Date\.now\(\)/.test(s) && !/plan_id/.test(s); })(),
+  'index.js:74：tier 仅由 expire_at 决定（🔒 R71：原为恒真断言）');
 
 console.log('');
 console.log('===== R53 · 店铺列表分页累取（A 类加固，service.fetchShopsAll 真实实现）=====');

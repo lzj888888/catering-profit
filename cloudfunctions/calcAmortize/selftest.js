@@ -193,7 +193,9 @@ console.log('--- DataAdapter 软删过滤（读台账自动排除 is_deleted=tru
   const live = res.data;
   check('台账列表仅返回活跃资产(is_deleted=false)', live.length === 1 && live[0].id === 'a1', `len=${live.length}`);
   check('软删资产不进入列表(业务层无需过滤)', live.every((x) => x.is_deleted !== true));
-  check('Controller 读台账=da.list(...) 同路径(软删天然排除)', true, '服务端从 DB 台账取数，符合需求 2.8');
+  check('Controller 读台账=da.list(...) 同路径(软删天然排除)',
+    (() => { const s = require('fs').readFileSync(require('path').join(__dirname, 'index.js'), 'utf8').replace(/^\s*\/\/.*$/gm, ''); return /da\.list\(/.test(s); })(),
+    'index.js 经 da.list 取台账（🔒 R71：原为恒真断言）');
 
   console.log(`\n==== calcAmortize 批次 2 自测结果：${pass} 通过 / ${failN} 失败 ====`);
   process.exit(failN === 0 ? 0 : 1);

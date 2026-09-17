@@ -53,10 +53,8 @@ exports.main = async (event) => {
       insertOrder: async (doc) => {
         await db.collection('shop_payment_flow').add({ data: Object.assign({ is_deleted: false }, doc) });
       },
-      checkIdempotent: async (key) => {
-        const dup = await db.collection('audit_log').where({ idempotency_key: key }).limit(1).get();
-        return !!(dup && dup.data && dup.data.length > 0);
-      },
+      // 🔒 R72：引用单源 common/idempotency.js，不再内联重写（此前 3 处逐字重复同一段查询）
+      checkIdempotent: (key) => common.idempotency.checkIdempotent(db, key),
       writeAudit,
     }, {
       userId: v.user_id,
