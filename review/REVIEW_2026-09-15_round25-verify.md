@@ -81,7 +81,14 @@
 > 本区归 WorkBuddy：**只追加、不改上文**。格式：`- [YYYY-MM-DD HH:MM] R<n> 已落/未落/存疑 · 证据：<命令> → <输出摘要> · commit <sha>`
 > 存疑项写「存疑 + 理由」，交复审方判；🚫 不要静默跳过。
 
-（暂无 —— 待本份被取件后追加）
+- [2026-09-17 09:14] **R60 已落** · 证据：`review/README.md §6` 升为 `### 6.2 沙箱边界：两档`（①默认档 = 文件系统层静态核验 / ②申请一次放行后 = 端到端 `verify_all`+门禁 A–L+`git ls-remote` 核远端+变异+`Get-FileHash` 交叉验证）；原三条证据（`EPERM(-4048)` / SSH `Win32 error 5` / HTTPS `SEC_E_NO_CREDENTIALS`）降级为①档条件从句内注 · 验收：`grep -c "跑不了\|核不了\|不可核" review/README.md` → `0` · 同类查全：全仓仅 4 处（§6 三处 + §4 标准指令第 6 条）已全改，另修我方自身同类残留 1 处（工作区 `MEMORY.md` 原写「`verify_all.js` 不能端到端跑」= 事实错误，实测 52/52 exit 0）· commit `8603cd4`
+- [2026-09-17 09:14] **R61 已落** · 证据：本行即写在 §3 区（本份入库 md5 `c89198d28fe4d1919e877e951d7dadca`，**正文未改一字**）；`review/README.md §2` 已记「round25 起每份 `REVIEW_*` 由复审方固定留 §3 空区」，重启键 §1.3 复审协议段同步（「写了不取」断点由两次更正为**三次**：round2/round4/**round24-25**）· 明细见 `review/evidence/batch7_feed/_README.md §6.19` · commit `8603cd4`
+- [2026-09-17 09:14] **【点名】R48 / R53 复核包已交** · 证据：`review/evidence/round25_R48_R53_review_request/_README.md`（R48：`_adminCore/adminAuth.js:109-120` 单源 + `adminLogin/selftest.js:76-116` 五例反例 + 变异方向；R53：`adminQueryUser/service.js` 分页 100×5=500 ≥ `HARD_LIMIT.shop=200` + `selftest.js:34-60` 四例 + 变异方向）· 立场：**本侧不预判等级**（①/②档由你方判），只给路径 + 可复现命令 + 期望输出 · 相关实跑：`adminLogin/selftest.js` → `33 通过 / 0 失败`、`adminQueryUser/selftest.js` → `12 通过 / 0 失败`、`check_admincore.js` → `11 份副本 ≡ 单源（179 行，指纹 7b90bc56）` · commit `8603cd4`
+- [2026-09-17 09:14] **【诚实登记①】** 我查 R48 时一度判断「fail-closed 的反例路径缺断言」（`grep "status: '"` 命中多为 `active`）—— **该怀疑不成立**：核到 `adminLogin/selftest.js:76-116` 才确认五例反例俱全（禁用/active/缺记录/读异常/未知 status）。已在点名包内主动写明，防你方也照 grep 结果误判。 · commit `8603cd4`
+- [2026-09-17 09:14] **【诚实登记②】** 我上轮报的「同一消息内对同一文件两处编辑互相覆盖」——重启键 §1.3 **早在 round8 就有记载**（7 次 Edit 只存活最后一次），本轮属**重复踩坑** ⇒ 说明该纪律停在文档未成默认动作。已写进工作区 `MEMORY.md` 铁律与值守 prompt 每轮自检④（同文件改动串行发 + 改完回读 + `Edit 报 success ≠ 落地`）。 · commit `8603cd4`
+- [2026-09-17 09:14] **【自查纠错】** 本轮我误建**中文名**证据目录（违本仓 ASCII 约定）⇒ 已改 `round25_R48_R53_点名复核/` → `round25_R48_R53_review_request/`，并把「`review/` 下目录名/文件名一律 ASCII」写进 `review/README.md §1`（附本实例）。 · commit `8603cd4`
+- [2026-09-17 09:14] **【存疑】** 无。
+- [未落] 真云三验 / 39 条索引补齐 / `ADMIN_SETUP_TOKEN` 的值 / 上线三项（隐私政策 URL·审核测试账号·营业执照商户号）/ `wechatide` client 授权 —— **均待人工（李老师）**，不属本侧可自主推进项。
 
 ---
 
