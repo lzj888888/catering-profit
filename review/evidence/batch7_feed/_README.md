@@ -582,3 +582,60 @@ grep -rn "非负正整数分"               → 仅 saveAsset 1 处（已改）�
 - [已落] 重启键：里程碑链续写 round24 + R59；「套件数会漂」行注明「代码注释层已自动、重启键两处仍人工面」；收口轮标注「round24 已核 R52/R55/R57 ✅」
 - [存疑] 复审方点名要复核 **R48（fail-closed）/ R53（静默截断）** —— 本侧**同意优先给这两条**（同属"静默错误"类），但复核是复审方的动作，本侧待其点名后提供证据路径（无需新增代码）
 - [未落] 真云三验 / 39 条索引 / `ADMIN_SETUP_TOKEN` 值 / 上线三项 / `wechatide` 授权 / R58 备选方案（放宽 `adminInit` 门禁）待李老师拍板
+
+---
+
+## 6.19 round25 处置（2026-09-17 09:0x~09:3x，WorkBuddy 侧）
+
+> 复审方产物：`review/REVIEW_2026-09-15_round25-verify.md`（9920 B，md5 `c89198d28fe4d1919e877e951d7dadca`）原样入库；
+> 结论：**round24 处置独立复核通过**（R59 守卫双证 / 注释 ≡ SUITES / 文案对齐 / `core/16 §7` / `origin/dev` 已重建 / 52-52 / **远端首次可核**），并**自认两处错**（§1.4 归因、§1.5 前提）、另提 R60 / R61。
+
+### 6.19.1 R60 已落：能力边界改「两档」
+
+- **改法**：`review/README.md §6` 的裸 bullet 升为 **`### 6.2 沙箱边界：两档`** 表格 —— ①默认档 = 文件系统层静态核验（`Test-Path` / `Get-Content -Encoding UTF8` / `Get-FileHash`）；②申请一次放行后 = 端到端 `verify_all`、门禁 A–L、`git ls-remote` 核远端、变异注入/还原。
+  另把原文里 3 处证据（`spawn+pipe = EPERM(-4048)` / SSH `Win32 error 5` / HTTPS `SEC_E_NO_CREDENTIALS`）**降级为①档的条件从句内注**，不再作为"能力断言"。
+- **同类查全（修一处必 grep 全树）**：`grep -rn "端到端跑不了\|跑不了\|核不了\|不可核"` 全仓仅 `review/README.md` **4 处**（`:70`、`:110-112`）——
+  `:70`（§4 标准指令第 6 条）已改；`:110-112` 已并入 §6.2。
+  另**我方自己的同类残留**：工作区 `.workbuddy/memory/MEMORY.md` 原写「沙箱禁管道子进程 → `verify_all.js` 不能端到端跑」——**事实错误**（本机实测 52/52 exit 0）⇒ 已改为条件句（仅**受限沙箱**拦管道子进程）。
+- **验收自证**：`grep -c "跑不了\|核不了\|不可核" review/README.md` → **0**（连"为什么改"的历史引述也改写为概念表述，防自动 grep 误命中）。
+
+### 6.19.2 R61 已落：回执落点 = `REVIEW_*` 的 §3 区
+
+- 本份（round25）**已按新约定**在 `REVIEW_2026-09-15_round25-verify.md` 的 `## §3 执行回执区` 追加（见该文件 §3）。
+- **历史流水不改写**（同 `audit_log` 只 INSERT）⇒ 本文件 §6.18 等**旧回执保持原样**；`_README.md:273` 那句写死的「45 个套件」**按新判据有意保留**（历史流水），活文档今后引用套件数一律指向 `verify_all` 的 `[suite-count]` 输出。
+- 重启键 §1.3「复审协议」段已更新：**份数不再写死**（改指向 `ls review/REVIEW_*.md | wc -l`）、§3 落点、R60 两档、「已推」三方一致判据、**「写了不取」断点由两次更正为三次**（round24-25 这次：回执写在取件规则读不到的地方）。
+
+### 6.19.3 R48 / R53「点名复核」包已建（本侧正式点名）
+
+新建 `review/evidence/round25_R48_R53_review_request/_README.md`。复审方 §4 写「未复核（要点名才做）：R48/R49/R50/R51/R53」，并自荐优先 R48/R53 ⇒ 本侧按其建议**点名**，包里给：
+
+- **R48**：单源 `_adminCore/adminAuth.js:109-120`（fail-closed 三行原文）+ 语义注释 `:88-93` + 常量 `:78`；副本守卫 `tools/check_admincore.js`（11 份 ≡ 单源，指纹 `7b90bc56`）；
+  断言在 `cloudfunctions/adminLogin/selftest.js:76-116` **五例**（① 禁用 ② active 放行 ③ 缺记录 ④ 读异常 ⑤ 未知 status）⇒ 实跑 `33 通过 / 0 失败`；
+  **变异方向**已列（把 `status !== ADMIN_STATUS_ACTIVE` 退化为只看 token ⇒ ①⑤ 应转红而 ②③④ 不连坐；只改某副本 ⇒ `check_admincore` 转红）。
+- **R53**：`adminQueryUser/service.js:1-38` `fetchShopsAll`（100/页 × 5 = 500 ≥ `HARD_LIMIT.shop=200`，超限**响亮失败** `HARD_CAP_EXCEEDED`）+ 调用点 `index.js:54-59`；
+  断言 `adminQueryUser/selftest.js:34-60` 四例（20 边界 / 150 / >500 抛错 / 0）⇒ 实跑 `12 通过 / 0 失败`；
+  **变异方向**已列（删 `break` 或把 `SHOP_PAGE` 改回 20 ⇒ R53-② 应转红；把 `throw` 改 `break` ⇒ R53-③ 转红）。
+- **立场**：本侧**不预判**等级（①/②档由复审方定），只给路径 + 可复现命令 + 期望输出 + 变异方向。
+
+### 6.19.4 诚实登记两处（本侧）
+
+1. **差点误报**：查 R48 时我一度判断「fail-closed 的反例路径没有断言」（因为 `grep "status: '"` 命中多为 `active`）⇒ 继续核到 `adminLogin/selftest.js:76-116` 才确认**五例反例俱全**。**该怀疑不成立，已在点名包里主动写明**（防止复审方也照 grep 结果误判）。
+2. **重复踩已知坑**：我上轮报的「同一条消息里对同一文件的两处 Edit 互相覆盖」，**重启键 §1.3 早有记载**（round8 实测：7 次 Edit 只有最后一次存活）。
+   ⇒ 说明该纪律当时**只停在文档、没变成默认动作**。本轮已把它写进工作区 `MEMORY.md` 铁律（`Edit 报 success ≠ 落地`；同文件改动串行发 + 改完回读），并写进值守 prompt 的每轮自检 ④。
+
+### 6.19.5 证据（命令 → 输出）
+
+```
+grep -c "跑不了\|核不了\|不可核" review/README.md   → 0（改后）
+node cloudfunctions/adminLogin/selftest.js         → adminLogin 批次 6 自测结果：33 通过 / 0 失败（R48 五例全绿）
+node cloudfunctions/adminQueryUser/selftest.js     → adminQueryUser 批次 6/7 自测结果：12 通过 / 0 失败（R53 四例）
+node tools/check_admincore.js                      → ✅ 单源派生校验通过：11 份 adminAuth.js 副本均 ≡ 单源（179 行，指纹 7b90bc56）
+```
+
+### 6.19.6 回执（摘要；正式一行在 `REVIEW_...round25-verify.md §3`）
+
+- [已落] R60（两档边界 + 同类查全含我方 MEMORY.md 一处）、R61（本份起用 §3 区；历史不改写）
+- [已落] 点名复核包 `review/evidence/round25_R48_R53_review_request/`
+- [已落] 重启键 §1.3 复审协议段（计数不写死 / §3 落点 / 三方一致 / 断点三次）
+- [存疑] 无。
+- [未落] 真云三验 / 39 条索引 / `ADMIN_SETUP_TOKEN` 值 / 上线三项 / `wechatide` 授权 —— 均待人工。
