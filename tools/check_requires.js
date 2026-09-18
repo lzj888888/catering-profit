@@ -85,9 +85,84 @@ for (const f of files) {
   }
 }
 
-if (hits.length) {
-  console.log('❌ 相对 require 目标缺失 ' + hits.length + ' 处：');
-  hits.forEach((h) => console.log('   ' + h));
+// =====================================================================
+// §2 · common 解构符号「导出完整性」守卫（2026-09-18 真云事故伴侣）
+// 背景：cloudfunctions/common/auth.js 早已 export genId，但聚合入口 common/index.js
+//       **漏导**；7 个云函数写 `const { ..., genId } = common` ⇒ 云端运行期
+//       `TypeError: genId is not a function`，且 getShopContext 建店分支首当其冲
+//       ⇒ **全新用户首次进入必崩**。
+//       而门禁 L 只守「扁平副本 ≡ 单源」（副本忠实 = 漏导也被忠实地复制了），
+//       check_requires §1 只守「require 路径存在」（路径存在 ≠ 符号存在）⇒ 两层都漏。
+// 判据：从单源 common/index.js 静态解析出导出键集合；凡云函数里解构/点取的符号不在其中 ⇒ 判红。
+// ⚠️ 为什么静态解析而不是 require()：auth.js 会拉 wx-server-sdk，node 侧跑不起来。
+// =====================================================================
+const COMMON_INDEX = path.join(ROOT, 'cloudfunctions', 'common', 'index.js');
+const strip = (s) => stripComments(s);
+
+function exportedKeys(src) {
+  const keys = new Set();
+  const body = src.match(/module\.exports\s*=\s*\{([\s\S]*?)\}\s*;?\s*$/m);
+  if (!body) return keys;
+  for (const line of body[1].split('\n')) {
+    let m = line.match(/^\s*([A-Za-z_]\w*)\s*:/);          // key: value
+    if (m) { keys.add(m[1]); continue; }
+    m = line.match(/^\s*([A-Za-z_]\w*)\s*,/);              // 简写 key,
+    if (m) keys.add(m[1]);
+  }
+  return keys;
+}
+
+let s2Fail = 0;
+if (fs.existsSync(COMMON_INDEX)) {
+  const KEYS = exportedKeys(strip(fs.readFileSync(COMMON_INDEX, 'utf8')));
+  const used = [];   // { file, sym, how }
+  for (const f of cfSide) {
+    const rf = rel(f);
+    if (rf.startsWith('cloudfunctions/common/')) continue;      // 单源自身不参与
+    if (/(^|\/)cx_[a-zA-Z]+\.js$/.test(rf)) continue;           // 扁平副本 = 被检查对象，不是使用方
+    if (rf.endsWith('/common.js')) continue;                    // 派生入口桩
+    const src = strip(fs.readFileSync(f, 'utf8'));
+    // 解构：const { a, b } = common;
+    for (const m of src.matchAll(/const\s*\{([^}]*)\}\s*=\s*common\s*;/g)) {
+      for (const raw of m[1].split(',')) {
+        const s = raw.trim().split(/\s+as\s+/)[0].trim();
+        if (s) used.push({ file: rf, sym: s, how: '解构' });
+      }
+    }
+    // 点取：common.xxx
+    for (const m of src.matchAll(/\bcommon\.([A-Za-z_]\w*)/g)) {
+      if (m[1] === 'js') continue;                              // './common.js' 之类的字符串噪声
+      used.push({ file: rf, sym: m[1], how: '点取' });
+    }
+  }
+  const missing = used.filter((u) => !KEYS.has(u.sym));
+  // 断言不得恒真：单源至少得解析出已知键，否则说明解析写歪了（守卫自己失效）
+  const MIN_KEYS = ['ok', 'fail', 'ERROR_CODES', 'resolveAuth', 'assertShopOwner', 'genId'];
+  const absent = MIN_KEYS.filter((k) => !KEYS.has(k));
+  if (absent.length || KEYS.size < 8) {
+    console.log('❌ §2 守卫自失效：单源 common/index.js 解析出的导出键不足/缺 '
+      + absent.join(',') + '（实际 ' + KEYS.size + ' 个）⇒ 解析逻辑写歪，不许算通过');
+    s2Fail++;
+  }
+  if (missing.length) {
+    console.log('❌ common 解构了未导出的符号 ' + missing.length + ' 处（云端运行期必 TypeError）：');
+    for (const u of missing) console.log(`   ${u.file}  ${u.how}  common.${u.sym}`);
+    s2Fail++;
+  } else {
+    const uniq = new Set(used.map((u) => u.sym));
+    console.log('✅ §2 common 解构符号均已导出（引用 ' + used.length + ' 处 / '
+      + uniq.size + ' 个符号；单源导出 ' + KEYS.size + ' 个键）');
+  }
+} else {
+  console.log('❌ §2 找不到单源 cloudfunctions/common/index.js ⇒ 守卫无法生效，判红');
+  s2Fail++;
+}
+
+if (hits.length || s2Fail) {
+  if (hits.length) {
+    console.log('❌ 相对 require 目标缺失 ' + hits.length + ' 处：');
+    hits.forEach((h) => console.log('   ' + h));
+  }
   process.exit(1);
 }
 const mpCount = mpSide.length + (fs.existsSync(APP) ? 1 : 0);

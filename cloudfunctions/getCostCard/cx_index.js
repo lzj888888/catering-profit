@@ -17,6 +17,12 @@ module.exports = {
   auth: require('./cx_auth'),
   resolveAuth: require('./cx_auth').resolveAuth,
   assertShopOwner: require('./cx_auth').assertShopOwner,
+  // 🔴 2026-09-18 真云事故：auth.js 早已 export genId，但本聚合入口**漏导**，
+  //    而 archiveMonth/getShopContext/saveAsset/saveCostCard/saveLedger/saveMaterial/syncCostCard
+  //    都写 `const { ..., genId } = common` ⇒ 云端运行期 TypeError: genId is not a function。
+  //    最致命的一条 = getShopContext 建店分支 ⇒ **全新用户首次进入必崩**。
+  //    伴侣守卫：tools/check_requires.js §2「common 解构符号导出完整性」。
+  genId: require('./cx_auth').genId,
 
   idempotency: require('./cx_idempotency'),
   rateLimit: require('./cx_rateLimit'),
