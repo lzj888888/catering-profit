@@ -1,0 +1,46 @@
+# wxss 字号/触控高度 扫描（仅 *.wxss）
+生成: 2026-09-18 14:04:51
+
+## 字号 < 28rpx（共 19 条）
+app.wxss:7:.label { display: block; font-size: 24rpx; color: #888; }
+app.wxss:9:.sub { font-size: 22rpx; color: #ff6b35; }
+app.wxss:14:.meta { display: block; font-size: 22rpx; color: #888; margin: 6rpx 0; }
+app.wxss:15:.profit { font-size: 24rpx; color: #ff6b35; }
+app.wxss:40:.tag { display: inline-block; font-size: 24rpx; color: #ff6b35; background: #fff3ec; border-radius: 8rpx; padding: 4rpx 12rpx; margin-left: 12rpx; }
+app.wxss:44:.muted { color: #999; font-size: 26rpx; }
+app.wxss:45:.hint { font-size: 26rpx; color: #666; background: #fff7f1; border-radius: 12rpx; padding: 16rpx 20rpx; margin-bottom: 12rpx; line-height: 1.6; }
+app.wxss:49:.archived-bar { font-size: 26rpx; color: #b45309; background: #fef3c7; border-radius: 12rpx; padding: 12rpx 20rpx; margin-bottom: 12rpx; }
+pages/month/amortize.wxss:14:.batch-title { font-size: 26rpx; color: #666; padding: 12rpx 0 4rpx; }
+pages/month/amortize.wxss:19:.bh-txt { font-size: 24rpx; color: #888; }
+pages/month/amortize.wxss:20:.bh-arrow { font-size: 24rpx; color: #999; }
+pages/month/input.wxss:9:.g-toggle { font-size: 26rpx; color: #ff6b35; }
+pages/month/input.wxss:31:.fg-title { font-size: 26rpx; color: #555; }
+pages/month/input.wxss:32:.fg-toggle { font-size: 26rpx; color: #999; }
+pages/month/input.wxss:38:.fg-line { font-size: 24rpx; color: #777; line-height: 1.6; padding: 6rpx 0; }
+pages/month/input.wxss:39:.scope { font-size: 22rpx; color: #999; line-height: 1.5; padding: 0 0 12rpx 8rpx; }
+pages/month/inventory.wxss:5:.lbl-col .muted { margin-top: 6rpx; font-size: 24rpx; }
+pages/month/result.wxss:8:.drill-caret { color: #ff6b35; font-size: 24rpx; }
+pages/month/result.wxss:13:.drill-sub { display: flex; justify-content: space-between; padding: 6rpx 0 0 16rpx; font-size: 26rpx; color: #666; }
+
+## 触控高度 < 88rpx
+app.wxss:27:  min-height: 88rpx; margin-top: 24rpx; border-radius: 16rpx; font-size: 32rpx; font-weight: 600; }
+app.wxss:31:.btn-small { min-height: 64rpx; padding: 0 24rpx; font-size: 28rpx; border-radius: 12rpx; }
+app.wxss:36:.inp { background: #fff; border-radius: 12rpx; padding: 24rpx; min-height: 88rpx; margin-bottom: 16rpx; font-size: 30rpx; }
+pages/card/edit.wxml:29:      <button class="btn-small" style="background:none;color:#e74c3c;min-height:56rpx;" data-idx="{{index}}" catchtap="delLine">×</button>
+pages/card/edit.wxml:36:  <button class="btn ghost btn-small" style="min-height:72rpx;" bindtap="addLine">{{t.addLine}}</button>
+pages/card/edit.wxml:58:    <button class="btn ghost btn-small" style="min-height:72rpx;" bindtap="reverseCalc">{{t.reverseTitle}}</button>
+pages/card/edit.wxml:63:  <view style="height:20rpx;"></view>
+pages/card/edit.wxss:7:.picker { color: #ff6b35; font-size: 30rpx; min-height: 60rpx; line-height: 60rpx; }
+pages/mine/index.wxml:49:  <view style="height:40rpx;"></view>
+pages/month/amortize.wxss:3:.picker-val { text-align: right; font-size: 30rpx; color: #222; min-height: 60rpx; line-height: 60rpx; }
+pages/month/input.wxml:83:  <view style="height:20rpx;"></view>
+pages/month/input.wxss:13:.btn-small.del { background: none; color: #e74c3c; min-height: 56rpx; margin: 0; }
+pages/month/inventory.wxml:33:  <view style="height:20rpx;"></view>
+pages/shop/setting.wxml:24:  <view style="height:20rpx;"></view>
+
+## 数字输入个数（需 adjust-position 的场景）
+pages/card/edit.wxml:6
+pages/month/amortize.wxml:2
+pages/month/input.wxml:3
+pages/month/inventory.wxml:3
+pages/sandbox/index.wxml:9

@@ -1,0 +1,47 @@
+=== 逐个重部署开始 2026-09-18 13:45:47 ===
+待部署：42 个
+✅ adminExport
+✅ adminGrantEntitlement
+✅ adminInit
+✅ adminLogin
+✅ adminLogout
+✅ adminManualOrder
+✅ adminOrderList
+✅ adminQueryUser
+✅ adminRefreshToken
+✅ adminRefundMark
+✅ adminRevokeToken
+✅ archiveMonth
+✅ calcAmortize
+✅ calcBom
+✅ calcMonthlyProfit
+✅ calcSandbox
+✅ checkQuota
+✅ deleteAccount
+✅ detectCycle
+✅ exportData
+✅ getAmortSchedule
+✅ getCardVersions
+✅ getCostCard
+✅ getLedger
+✅ getMaterial
+✅ getMonthList
+✅ getShopContext
+✅ getShopList
+✅ initDb
+✅ payCallback
+✅ payCreateOrder
+✅ payExpireNotify
+✅ payOrderList
+✅ payQueryEntitlement
+✅ payRenew
+✅ saveAsset
+✅ saveCostCard
+✅ saveLedger
+✅ saveMaterial
+✅ saveShopSetting
+✅ smokeTest
+✅ syncCostCard
+=== 完成 2026-09-18 14:07:23 ===
+成功 42 / 失败 0
+ALL_DONE OK=42 FAIL=0

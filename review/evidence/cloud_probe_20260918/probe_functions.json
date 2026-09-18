@@ -1,0 +1,82 @@
+{
+  "getShopContext": {
+    "verdict": "SHELL",
+    "errMsg": "cloud.callFunction:ok",
+    "raw": "{\"tcbContext\":{},\"userInfo\":{\"appId\":\"wx33c110dc57a9c8dc\",\"openId\":\"oFzRO3Y5fOc0xkoHASVPEMhkKA6Q\"}}"
+  },
+  "getMonthList": {
+    "verdict": "SHELL",
+    "errMsg": "cloud.callFunction:ok",
+    "raw": "{\"shop_id\":\"PROBE\",\"tcbContext\":{},\"userInfo\":{\"appId\":\"wx33c110dc57a9c8dc\",\"openId\":\"oFzRO3Y5fOc0xkoHASVPEMhkKA6Q\"}}"
+  },
+  "getLedger": {
+    "verdict": "BIZ",
+    "errMsg": "cloud.callFunction:ok",
+    "raw": "{\"code\":\"SUCCESS\",\"msg\":\"ok\",\"data\":{\"shop_id\":\"PROBE\",\"month\":\"2026-01\",\"account_id\":\"\",\"is_archive\":false,\"archived_at\":0,\"income_items\":[],\"expense_items\":[],\"direct_consume_fen\":0,\"inventory\":{\"openingFen\":0,\"purchaseFen\":0,\"closingFen\":0},\"amortize_fen\":0,\"switches\":{\"inventorySwitchOn\":false,\"amortizeSwitchOn\":false},\"result\":{\"income_total_fen\":0,\"expense_total_fen\":0,\"material_cost_fen\":0,\"gross_profit_fen\":0,\"gross_margin_pct\":0,\"operation_ref_profit_fen\":0,\"total_factor_real_profit_fen\":0,\"profit_diff_fen\":0,\"real_consume_fen\":0,\"effective_amortize_fen\":0},\"client_request_id\":\"\"}}"
+  },
+  "getCardVersions": {
+    "verdict": "SHELL",
+    "errMsg": "cloud.callFunction:ok",
+    "raw": "{\"shop_id\":\"PROBE\",\"tcbContext\":{},\"userInfo\":{\"appId\":\"wx33c110dc57a9c8dc\",\"openId\":\"oFzRO3Y5fOc0xkoHASVPEMhkKA6Q\"}}"
+  },
+  "getMaterial": {
+    "verdict": "SHELL",
+    "errMsg": "cloud.callFunction:ok",
+    "raw": "{\"shop_id\":\"PROBE\",\"tcbContext\":{},\"userInfo\":{\"appId\":\"wx33c110dc57a9c8dc\",\"openId\":\"oFzRO3Y5fOc0xkoHASVPEMhkKA6Q\"}}"
+  },
+  "getAmortSchedule": {
+    "verdict": "BIZ",
+    "errMsg": "cloud.callFunction:ok",
+    "raw": "{\"code\":\"SUCCESS\",\"msg\":\"ok\",\"data\":{\"shop_id\":\"PROBE\",\"month\":\"2026-01\",\"assets\":[],\"total_amount_fen\":0,\"details\":[],\"client_request_id\":\"\"}}"
+  },
+  "getShopList": {
+    "verdict": "SHELL",
+    "errMsg": "cloud.callFunction:ok",
+    "raw": "{\"tcbContext\":{},\"userInfo\":{\"appId\":\"wx33c110dc57a9c8dc\",\"openId\":\"oFzRO3Y5fOc0xkoHASVPEMhkKA6Q\"}}"
+  },
+  "payOrderList": {
+    "verdict": "SHELL",
+    "errMsg": "cloud.callFunction:ok",
+    "raw": "{\"shop_id\":\"PROBE\",\"tcbContext\":{},\"userInfo\":{\"appId\":\"wx33c110dc57a9c8dc\",\"openId\":\"oFzRO3Y5fOc0xkoHASVPEMhkKA6Q\"}}"
+  },
+  "payQueryEntitlement": {
+    "verdict": "SHELL",
+    "errMsg": "cloud.callFunction:ok",
+    "raw": "{\"shop_id\":\"PROBE\",\"tcbContext\":{},\"userInfo\":{\"appId\":\"wx33c110dc57a9c8dc\",\"openId\":\"oFzRO3Y5fOc0xkoHASVPEMhkKA6Q\"}}"
+  },
+  "calcAmortize": {
+    "verdict": "SHELL",
+    "errMsg": "cloud.callFunction:ok",
+    "raw": "{\"month\":\"2026-01\",\"shop_id\":\"PROBE\",\"tcbContext\":{},\"userInfo\":{\"appId\":\"wx33c110dc57a9c8dc\",\"openId\":\"oFzRO3Y5fOc0xkoHASVPEMhkKA6Q\"}}"
+  },
+  "calcMonthlyProfit": {
+    "verdict": "SHELL",
+    "errMsg": "cloud.callFunction:ok",
+    "raw": "{\"month\":\"2026-01\",\"shop_id\":\"PROBE\",\"tcbContext\":{},\"userInfo\":{\"appId\":\"wx33c110dc57a9c8dc\",\"openId\":\"oFzRO3Y5fOc0xkoHASVPEMhkKA6Q\"}}"
+  },
+  "calcSandbox": {
+    "verdict": "SHELL",
+    "errMsg": "cloud.callFunction:ok",
+    "raw": "{\"shop_id\":\"PROBE\",\"tcbContext\":{},\"userInfo\":{\"appId\":\"wx33c110dc57a9c8dc\",\"openId\":\"oFzRO3Y5fOc0xkoHASVPEMhkKA6Q\"}}"
+  },
+  "checkQuota": {
+    "verdict": "SHELL",
+    "errMsg": "cloud.callFunction:ok",
+    "raw": "{\"shop_id\":\"PROBE\",\"tcbContext\":{},\"userInfo\":{\"appId\":\"wx33c110dc57a9c8dc\",\"openId\":\"oFzRO3Y5fOc0xkoHASVPEMhkKA6Q\"}}"
+  },
+  "detectCycle": {
+    "verdict": "SHELL",
+    "errMsg": "cloud.callFunction:ok",
+    "raw": "{\"shop_id\":\"PROBE\",\"tcbContext\":{},\"userInfo\":{\"appId\":\"wx33c110dc57a9c8dc\",\"openId\":\"oFzRO3Y5fOc0xkoHASVPEMhkKA6Q\"}}"
+  },
+  "smokeTest": {
+    "verdict": "BIZ",
+    "errMsg": "cloud.callFunction:ok",
+    "raw": "{\"env\":\"cloud1-d4gphpoxy337f2a25\",\"fsDiag\":{\"root\":[\"common.js\",\"config.json\",\"cx_audit.js\",\"cx_auth.js\",\"cx_dataAdapter.js\",\"cx_errors.js\",\"cx_idempotency.js\",\"cx_index.js\",\"cx_money.js\",\"cx_rateLimit.js\",\"cx_utilTime.js\",\"index.js\",\"node_modules\",\"package.json\"],\"hasCommonFile\":true,\"hasCommonDir\":false,\"common\":null,\"commonShape\":\"flat-file(common.js)\",\"cwd\":\"/var/user\"},\"requireCommon\":{\"ok\":true,\"err\":null,\"exports\":[\"errors\",\"ERROR_CODES\",\"ok\",\"fail\",\"utilTime\",\"money\",\"dataAdapter\",\"auth\",\"resolveAuth\",\"assertShopOwner\",\"idempotency\",\"rateLimit\",\"audit\"]},\"createCollection\":{\"ok\":true},\"createIndex\":{\"typeof\":\"undefined\"},\"docGet\":{\"topLevelKeys\":[\"data\",\"errMsg\"],\"hasDataField\":true,\"dataKeys\":[\"_id\",\"k\",\"is_deleted\",\"created_at\"],\"id\":\"01f3430d6aacd068002115872c033e0a\"},\"docGetMissing\":{\"behavior\":\"reject\",\"message\":\"document.get:fail document with _id __definitely_not_exist__ does not exist\"},\"uniqueEnforce\":{\"result\":\"未报错（预期内）\",\"proof\":\"none\",\"note\":\"本集合无该 unique 索引 ⇒ 不报错是必然；不得据此判定 A6/A7\"},\"assertShopOwner\":{\"code\":\"RESOURCE_NOT_FOUND\",\"msg\":\"RESOURCE_NOT_FOUND\",\"data\":{}},\"dataAdapterGet\":{\"liveIsDoc\":true,\"deadIsNull\":true}}"
+  },
+  "exportData": {
+    "verdict": "SHELL",
+    "errMsg": "cloud.callFunction:ok",
+    "raw": "{\"shop_id\":\"PROBE\",\"tcbContext\":{},\"userInfo\":{\"appId\":\"wx33c110dc57a9c8dc\",\"openId\":\"oFzRO3Y5fOc0xkoHASVPEMhkKA6Q\"}}"
+  }
+}

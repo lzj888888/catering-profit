@@ -1,0 +1,28 @@
+# AD 适配缺口静态扫描原始输出
+
+扫描时间: 2026-09-18 14:02:21
+扫描根: 仓库根（排除 node_modules）
+说明: 扫描范围为真实代码（pages/ utils/ app.js app.wxss *.wxss）；specs/ 与 review/ 内的同名关键词系文档引用，不计为实现。
+
+## 1. 关键词命中总数（含文档）
+getUpdateManager         2
+chooseAvatar             1
+getUserProfile           1
+vibrateShort             1
+options.scene            1
+adjust-position          4
+onUnload                 2
+onNetworkStatusChange    0
+getNetworkType           0
+debounce                 1
+prefers-color-scheme     2
+
+## 2. 真实代码内命中（排除 specs/ review/）
+getUpdateManager         0
+chooseAvatar             0
+getUserProfile           0
+vibrateShort             0
+options.scene            0
+adjust-position          0
+onUnload                 0
+debounce                 1
