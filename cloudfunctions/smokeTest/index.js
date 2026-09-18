@@ -41,10 +41,15 @@ try {
   fsDiag.cwd = process.cwd();
 } catch (e) { fsDiag = { THROW: e.message }; }
 
-exports.main = async () => {
+// ⚠️ ⑥ 段（真集合唯一约束实测）**默认不跑**，靠入参 `{ uniq: 'cc' | 'user' | 'shop' | 'all' }` 触发。
+//   为什么：线上 `smokeTest` 的 timeout 仍是平台默认 **3 秒**（R86 未闭环），
+//   而 ⑥ 段有 6 次真库往返 ⇒ 全量跑容易超时拿不到结果。拆成单项跑 = 每项都在 3 秒内。
+//   默认行为与历史 runbook 完全一致（不加 ⑥），已归档的证据不受影响。
+exports.main = async (event) => {
   const out = {
     env: '', fsDiag, requireCommon: {}, createCollection: {}, createIndex: {}, docGet: {},
     docGetMissing: {}, uniqueEnforce: {}, assertShopOwner: {}, dataAdapterGet: {},
+    uniqueReal: {},
   };
 
   // 确保探针集合存在（建索引/写入前先建集合，避免对不存在集合操作报无意义错）
@@ -118,6 +123,67 @@ exports.main = async () => {
     } catch (e) { out.dataAdapterGet = { THROW: e.message }; }
   } else {
     out.dataAdapterGet = { skipped: !commonOk ? 'common 未加载' : 'dataAdapter.makeAdapter 未导出' };
+  }
+
+  // ===== ⑥ 真集合唯一约束实测（§3 / A6a / A6b）=====
+  // 为什么加这一段：这三条此前**只能靠控制台 GUI 手工插重复三元组**（属人工面，一直挂着重）。
+  //   smokeTest 有裸写库能力 ⇒ 可以程序化完成，且**自带清理**（按显式 `_id` 删除，不留垃圾）。
+  // 🔴 判读纪律（勿反）：
+  //   写入「成功」= 该键**没有**唯一兜底；写入「被拒」= 唯一约束**真生效**。
+  //   §3  = `idx_card_code_version`(shop_id+card_code+version, unique) ⇒ 重复三元组**必须被拒**；
+  //   A6a = `user.idx_openid`(unique)                                 ⇒ 重复 openid **必须被拒**；
+  //   A6b = `shop.idx_shop_user`(**非** unique)                        ⇒ 同 user_id **应当成功**（= 无兜底，正是风险点）。
+  const P = 'zz_probe_';
+  const tryAdd = async (coll, data) => {
+    try { const r = await db.collection(coll).add({ data }); return { ok: true, _id: r._id }; }
+    catch (e) { return { ok: false, code: e.errCode || e.code || '', msg: e.message }; }
+  };
+  const tryRemove = async (coll, id) => {
+    try { await db.collection(coll).doc(id).remove(); return true; } catch (e) { return false; }
+  };
+  const judge = (a, b, enforceExpected) => {
+    if (!a.ok) return 'INCONCLUSIVE（首次写入就失败，集合/权限问题，非索引结论）';
+    if (enforceExpected) return b.ok ? '❌ NOT_ENFORCED（重复写入成功 ⇒ 索引未生效）' : '✅ UNIQUE_ENFORCED（重复被拒）';
+    return b.ok ? '✅ NO_UNIQUE_BACKSTOP（预期内：该键确实无唯一兜底）' : '⚠️ UNEXPECTED_REJECT（本应放行却被拒 ⇒ 索引与单源不符）';
+  };
+  const W = String((event && event.uniq) || '');            // '' = 不跑（默认）；'cc' / 'user' / 'shop' / 'all'
+  const want = (k) => W === 'all' || W === k;
+  try {
+    // §3 · shop_cost_card 三元组（unique: shop_id + card_code + version）
+    if (want('cc')) {
+      const base = { shop_id: P + 'shop', card_code: P + 'card', version: 1, name: 'probe', created_at: Date.now() };
+      const a = await tryAdd('shop_cost_card', Object.assign({ _id: P + 'cc1' }, base));
+      const b = await tryAdd('shop_cost_card', Object.assign({ _id: P + 'cc2' }, base));
+      out.uniqueReal.idx_card_code_version = { first: a, second: b, verdict: judge(a, b, true) };
+      out.uniqueReal.cleanup_cc = {
+        cc1: await tryRemove('shop_cost_card', P + 'cc1'),
+        cc2: await tryRemove('shop_cost_card', P + 'cc2'),
+      };
+    }
+    // A6a · user.openid（unique）⇒ 重复 openid 必须被拒
+    if (want('user')) {
+      const a = await tryAdd('user', { _id: P + 'u1', openid: P + 'openid', user_id: P + 'uid1', created_at: Date.now() });
+      const b = await tryAdd('user', { _id: P + 'u2', openid: P + 'openid', user_id: P + 'uid2', created_at: Date.now() });
+      out.uniqueReal.A6a_user_openid = { first: a, second: b, verdict: judge(a, b, true) };
+      out.uniqueReal.cleanup_user = {
+        u1: await tryRemove('user', P + 'u1'),
+        u2: await tryRemove('user', P + 'u2'),
+      };
+    }
+    // A6b · shop.user_id（**非** unique）⇒ 同 user_id 应能建出两个店 = 无兜底（预期内，正是风险点）
+    if (want('shop')) {
+      const base = { user_id: P + 'sameuser', name: 'probe', created_at: Date.now() };
+      const a = await tryAdd('shop', Object.assign({ _id: P + 's1', shop_id: P + 's1' }, base));
+      const b = await tryAdd('shop', Object.assign({ _id: P + 's2', shop_id: P + 's2' }, base));
+      out.uniqueReal.A6b_shop_user_id = { first: a, second: b, verdict: judge(a, b, false) };
+      out.uniqueReal.cleanup_shop = {
+        s1: await tryRemove('shop', P + 's1'),
+        s2: await tryRemove('shop', P + 's2'),
+      };
+    }
+    if (!W) out.uniqueReal.skipped = "未触发：入参加 { uniq: 'cc' | 'user' | 'shop' | 'all' } 才跑（线上 timeout=3s，拆项跑）";
+  } catch (e) {
+    out.uniqueReal = { THROW: e.message };
   }
 
   return out;

@@ -1,0 +1,55 @@
+{
+  "cc": {
+    "idx_card_code_version": {
+      "first": {
+        "ok": true,
+        "_id": "zz_probe_cc1"
+      },
+      "second": {
+        "ok": false,
+        "code": -502001,
+        "msg": "collection.add:fail -502001 database request fail. [FailedOperation.Insert] bulk write error: [{[{E11000 duplicate key error collection: tnt-kff4xv31u.shop_cost_card index: idx_card_code_version dup key: { shop_id: \"zz_probe_shop\", card_code: \"zz_probe_card\", version: 1 }}]}, {<nil>}] 更多错误信息请访问：https://docs.cloudbase.net/error-code/basic/DATABASE_REQUEST_FAILED"
+      },
+      "verdict": "✅ UNIQUE_ENFORCED（重复被拒）"
+    },
+    "cleanup_cc": {
+      "cc1": true,
+      "cc2": true
+    }
+  },
+  "user": {
+    "A6a_user_openid": {
+      "first": {
+        "ok": true,
+        "_id": "zz_probe_u1"
+      },
+      "second": {
+        "ok": false,
+        "code": -502001,
+        "msg": "collection.add:fail -502001 database request fail. [FailedOperation.Insert] bulk write error: [{[{E11000 duplicate key error collection: tnt-kff4xv31u.user index: idx_openid dup key: { openid: \"zz_probe_openid\" }}]}, {<nil>}] 更多错误信息请访问：https://docs.cloudbase.net/error-code/basic/DATABASE_REQUEST_FAILED"
+      },
+      "verdict": "✅ UNIQUE_ENFORCED（重复被拒）"
+    },
+    "cleanup_user": {
+      "u1": true,
+      "u2": true
+    }
+  },
+  "shop": {
+    "A6b_shop_user_id": {
+      "first": {
+        "ok": true,
+        "_id": "zz_probe_s1"
+      },
+      "second": {
+        "ok": true,
+        "_id": "zz_probe_s2"
+      },
+      "verdict": "✅ NO_UNIQUE_BACKSTOP（预期内：该键确实无唯一兜底）"
+    },
+    "cleanup_shop": {
+      "s1": true,
+      "s2": true
+    }
+  }
+}
