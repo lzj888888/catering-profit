@@ -51,5 +51,22 @@
       "s1": true,
       "s2": true
     }
+  },
+  "id": {
+    "primary_id": {
+      "first": {
+        "ok": true,
+        "_id": "zz_probe_same_id"
+      },
+      "second": {
+        "ok": false,
+        "code": -502001,
+        "msg": "collection.add:fail -502001 database request fail. [FailedOperation.Insert] bulk write error: [{[{E11000 duplicate key error collection: tnt-kff4xv31u.probe_tmp index: _id_ dup key: { _id: \"zz_probe_same_id\" }}]}, {<nil>}] 更多错误信息请访问：https://docs.cloudbase.net/error-code/basic/DATABASE_REQUEST_FAILED"
+      },
+      "verdict": "✅ UNIQUE_ENFORCED（重复被拒）"
+    },
+    "cleanup_id": {
+      "same_id": true
+    }
   }
 }

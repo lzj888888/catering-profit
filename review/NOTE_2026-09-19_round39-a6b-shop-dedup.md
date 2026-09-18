@@ -60,8 +60,13 @@
 
 ## 5. 部署与真云复验
 
-- 因 `cloudfunctions/common/` 变更 ⇒ **全量 42 个函数逐个重部署**（日志 `review/evidence/a6b_deploy_20260919.txt`）。
+- 因 `cloudfunctions/common/` 变更 ⇒ **全量逐个重部署**（日志 `review/evidence/a6b_deploy_20260919.txt`）：
+  **43/43 零失败**（42 业务函数 + `smokeTest` + `initDb`…实为目录全量，42 可部署 + `smokeTest`）。
 - ⚠️ 必须**逐个**（一次多个 `--names` 会产生空壳，见 round38 根因分析）。
+- **真云复验（路径 A，页面上下文 `mp.evaluate` 调 `smokeTest`）4/4 全中**：
+  `idx_card_code_version` UNIQUE / `user.idx_openid` UNIQUE / `shop.user_id` 无唯一兜底（预期）/
+  **`_id` 主键唯一**（第二次插同 `_id` 被拒）⇒ A6b 确定性 `_id` 兜底的前提**真云成立**。
+  证据 `review/evidence/uniq_probe_result.json`（含 `primary_id` 段），探针 `review/evidence/uniq_probe.js`。
 
 ## 6. 顺带记录（本轮发现，未闭合）
 

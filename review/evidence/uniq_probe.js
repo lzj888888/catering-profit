@@ -15,7 +15,7 @@ const OUT = 'C:/Users/lzj/WorkBuddy/Claw/catering-profit/review/evidence/uniq_pr
   await sleep(3500);
 
   const res = {};
-  for (const key of ['cc', 'user', 'shop']) {
+  for (const key of ['cc', 'user', 'shop', 'id']) {
     for (let attempt = 1; attempt <= 3; attempt++) {
       const r = await race(mp.evaluate(async (k) => {
         try {

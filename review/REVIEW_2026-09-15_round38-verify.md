@@ -160,7 +160,11 @@
 - [2026-09-19 02:20] ⚠️ **自我更正（写在回执里，不藏）** · 我一条断言原写「旧实现随机 id 会建 2 个」——**措辞不实**：`resolveAuth` 并发场景里输家采用赢家 `user_id` 后**提前返回、根本不建店**，功劳不在确定性 id。已改中性措辞，并把「确定性 id 真正压住的那条路径」（**用户已存在但无店** ⇒ 两个并发都 insert）单独做成**机制级**判据
 - [2026-09-19 02:20] 📄 分析件 `review/NOTE_2026-09-19_round39-a6b-shop-dedup.md`；两处**过期否定式结论**已更正（`★知识存储点:92/107` 的「A6b 仍无任何兜底」→ 实测原文 + 已修，按 R82 纪律不删只改）
 - [2026-09-19 02:20] ⚠️ **因 `cloudfunctions/common/` 变更 ⇒ 全量 42 个函数逐个重部署**（日志 `review/evidence/a6b_deploy_20260919.txt`）—— 不能批量（一次多个 `--names` 会产生**空壳**，见 round38 根因分析）
-- [2026-09-19 02:20] 🔎 **顺带登记（未闭合，本轮未动）** · `dataAdapter.BIZ_KEY_FIELDS` **不含 `user_id`** ⇒ 若存在 `da.get('user', <user_id>)` 形态的调用会取不到；本轮**未**发现该形态的有效调用（`resolveAuth` 走 `where({openid})`）⇒ 登记待查，**不得**凭此改 `BIZ_KEY_FIELDS`（会动到 A6a 的兜底面）
+- [2026-09-19 02:20] 🔎 **顺带登记（未闭合，本轮未动）** · `dataAdapter.BIZ_KEY_FIELDS` **不含 `user_id`** ⇒ 若存在 `da.get('user', <user_id>)` 形态的调用会取不到；本轮**未**发现该形态的有效调用（`resolveAuth` 走 `where({openid})`）   ⇒ 登记待查，**不得**凭此改 `BIZ_KEY_FIELDS`（会动到 A6a 的兜底面）
+
+- [2026-09-19 02:25] ✅ **A6b 全量重部署完成 43/43 零失败** · 日志 `review/evidence/a6b_deploy_20260919.txt`（`OK=43 FAIL=0`，逐个部署，含 `smokeTest`）
+- [2026-09-19 02:25] ✅ **`_id` 主键唯一性真云实测**（A6b 兜底的前提）· `smokeTest` 加 `{ uniq: 'id' }` 段：同 `_id` 连插两次 ⇒ 第二次**被拒 `-502001`** ⇒ `_id` 必然唯一。4 项真云全中：`idx_card_code_version` UNIQUE / `user.idx_openid` UNIQUE / `shop.user_id` 无兜底（预期）/ **`_id` UNIQUE**，清理全成功 · 证据 `review/evidence/uniq_probe_result.json`（`primary_id` 段）· commit 待落
+- [2026-09-19 02:25] 📄 A6b 分析件 `NOTE_...a6b-shop-dedup.md` 已补 §1 证据行 + §5 部署/复验结果
 
 - [2026-09-19 02:15] 评审请求 · **批次 8（8a/8b/8c）+ genId 事故 + 本件两个新缺陷** 都还没经你复审；我落的执行方分析件 = `review/NOTE_2026-09-19_round39-realcloud-get.md`（按 R96 用 `NOTE_` 前缀）· 建议下轮优先审它
 

@@ -181,7 +181,16 @@ exports.main = async (event) => {
         s2: await tryRemove('shop', P + 's2'),
       };
     }
-    if (!W) out.uniqueReal.skipped = "未触发：入参加 { uniq: 'cc' | 'user' | 'shop' | 'all' } 才跑（线上 timeout=3s，拆项跑）";
+    // `_id` 主键唯一性 —— A6b 的兜底（`defaultShopId()` 确定性 `_id`）**正建立在这条前提上**：
+    //   若同 `_id` 能插两次，那"幂等由构造保证"就是空话。MongoDB 层面 `_id` 必然唯一，
+    //   但本仓纪律是「存在 ≠ 生效、平台行为必须实测」⇒ 一并实测。
+    if (W === 'id' || W === 'all') {
+      const a = await tryAdd(PROBE, { _id: P + 'same_id', k: 'first', created_at: Date.now() });
+      const b = await tryAdd(PROBE, { _id: P + 'same_id', k: 'second', created_at: Date.now() });
+      out.uniqueReal.primary_id = { first: a, second: b, verdict: judge(a, b, true) };
+      out.uniqueReal.cleanup_id = { same_id: await tryRemove(PROBE, P + 'same_id') };
+    }
+    if (!W) out.uniqueReal.skipped = "未触发：入参加 { uniq: 'cc' | 'user' | 'shop' | 'id' | 'all' } 才跑（线上 timeout=3s，拆项跑）";
   } catch (e) {
     out.uniqueReal = { THROW: e.message };
   }
