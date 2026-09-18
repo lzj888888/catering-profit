@@ -1,0 +1,10 @@
+{
+  "tag": "TAP2",
+  "steps": [
+    [
+      "reLaunch input",
+      "pages/month/input"
+    ]
+  ],
+  "error": "timeout waiting for automator response"
+}

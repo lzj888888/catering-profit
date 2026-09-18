@@ -1,0 +1,10 @@
+{
+  "tag": "NOTAP",
+  "steps": [
+    [
+      "reLaunch input",
+      "pages/month/input"
+    ]
+  ],
+  "error": "timeout waiting for automator response"
+}

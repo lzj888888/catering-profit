@@ -1,0 +1,64 @@
+# 批次 8c 模拟器核验日志（automator 只读断言）· 2026-09-18
+
+环境：微信开发者工具 Stable 2.02.2608070 / 自动化 ws://127.0.0.1:9420（cli auto --trust-project）
+脚本：verify_8c_all.js --only=h2 / --only=h1（拆两段跑，降低单次调用量）
+
+## ⚠️ 读法（必读）
+- 只读操作（reLaunch / currentPage / screenshot / 元素文本）在本机稳定；
+  **写操作（tap / setData）之后的下一次调用必超时**（≈12s），故「展开后 / 注入后」类断言
+  无法由 automator 取回 —— 这些由「保持连接 + 真实窗口截图」覆盖，见 README §4.3/§4.4 B 组。
+- 因此下面两组日志的 ❌ **不代表产品缺陷**，只代表自动化通道在写操作后失去响应。
+
+## 一、H2 录入页（--only=h2）
+```
+[0.0s] mode = h2
+[0.1s] == H2 录入页 ==
+[11.5s] ✅ 录入页可达  (pages/month/input)
+[13.4s]   shot h2_input_top.png
+[14.3s] ✅ 引导·「填写口径」标题渲染
+[14.3s] ✅ 引导·收入总口径
+[14.3s] ✅ 引导·费用总口径
+[14.3s] ✅ 引导·堂食口径（含/不含）
+[14.3s] ✅ 引导·外卖口径（佣金记营销）
+[14.3s] ✅ 引导·运营口径（设备装修走摊销）
+[14.3s] ✅ 引导·其他口径（加盟费走摊销资产）
+[14.3s] ✅ 费用含「营销」大类
+[14.3s] ✅ 折叠体默认不渲染（收起）
+[14.3s]   tap heads=1
+[26.1s]   shot FAIL h2_input_guide_open.png timeout waiting for automator response
+[36.2s]   $$ failed timeout waiting for automator response
+[36.2s] ❌ 点开后折叠体渲染（同一笔钱只填一次）  (heads=1)
+[36.2s] ❌ 展开后可见「食材采购不计入费用」
+[36.2s] ❌ 展开后可见「设备、装修、加盟费等一次性投入」
+
+===== 批次 8c 模拟器核验：10/13 通过 =====
+过程告警：
+  shot h2_input_guide_open.png: timeout waiting for automator response
+```
+
+## 二、H1 摊销页（--only=h1）
+```
+[0.0s] mode = h1
+[0.1s] == H1 摊销页 ==
+[11.8s] ✅ 摊销页可达  (pages/month/amortize)
+[13.6s]   shot h1_amortize_real.png
+[13.7s] ✅ 摊销页含「追加采购」入口
+[13.7s] ✅ 摊销页含「每笔独立起摊」口径说明
+[13.8s]   setData ok
+[25.4s]   shot FAIL h1_amortize_group2.png timeout waiting for automator response
+[35.5s]   $$ failed timeout waiting for automator response
+[35.5s] ❌ 组卡片「共 2 笔采购」
+[35.5s] ❌ 组卡片「合计原值」
+[35.5s] ❌ 逐笔「第 1 笔 / 第 2 笔」
+[35.5s] ❌ 每笔各自「提前报废」
+[35.5s] ❌ 组内「追加采购」按钮
+
+===== 批次 8c 模拟器核验：3/8 通过 =====
+过程告警：
+  shot h1_amortize_group2.png: timeout waiting for automator response
+```
+
+## 三、结论
+- 机器只读断言 **13/13 通过**（H2 10 条 + H1 3 条）。
+- 余 8 条（折叠展开 3 + 分组渲染 5）由 README §4.4 B 组截图（机器采集 + 人工判读）覆盖。
+- 追加模式运行态另有机器证据：appendGroup=amort_x / appendSeq=3 / formName=装修（README §4.4 C）。

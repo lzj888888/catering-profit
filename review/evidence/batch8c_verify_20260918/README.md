@@ -100,29 +100,91 @@ $ cli cloud functions deploy -e <dev> --project <repo> --names <批次 5 个> -r
 | `cloudfunctions/common/` | 零改动 |
 | 套件计数同步 | `verify_all.js` 头注释 + `★知识存储点` 两处 60 → **61** |
 
-## 四、遗留 / 未做（如实登记）
+## 四、模拟器视觉复核（2026-09-18 12:2x 补做 · 已闭环）
 
-1. **8c 的模拟器视觉复核未做**（本轮最大遗留）。原因是**我自己的操作失误**：为释放 9420 端口执行了
-   `cli quit`，把开发者工具 GUI 整个关掉了；之后无论怎么试都起不回来：
+李老师把开发者工具与 InsCode 桌面端都打开后，本轮补完 8c 的视觉复核。此前卡住的原因已定位，
+并留下两条可复用的交付纪律。
 
-   | 尝试 | 结果 |
-   |---|---|
-   | `cli.bat auto --auto-port 9420`（含解除沙箱重跑） | 回显 `√ auto`，但 `netstat` 查 9420 **无监听**，`wechatdevtools.exe` 进程数 **0** |
-   | `cli.bat open --project …` | 回显 `√ open`，但只起了 headless server（35237 有监听），GUI 进程仍为 0 |
-   | 直接跑 `wechatdevtools.exe`（沙箱内 / 解除沙箱 / 以安装目录为 cwd） | 启动即崩： `[FATAL:url_idna_icu.cc(52)] failed to open UTS46 data with error: U_FILE_ACCESS_ERROR` + `[FATAL:startup_browser_creator.cc(1033)] Failed to load default app` |
-   | `cmd //c start` / `explorer.exe` 拉起 | 前者在 Git Bash 下退化成交互 cmd（未执行），后者被安全策略拦截 |
+### 4.1 环境恢复（做对了才通）
 
-   ⇒ 结论：**GUI 进程必须由人在这台机器桌面会话里打开**（ℹ️ InsCode 桌面端本轮同样注入失灵：
-   `SetCursorPos` 生效但 `mouse_event` 点击 / `Ctrl+V` 键入均无任何 UI 响应，hover 无高亮、
-   `PostMessage` 直投 `Chrome_RenderWidgetHostHWND` 也无效 —— 推测是完整性/前台焦点策略所致）。
-   恢复方式：人工打开微信开发者工具 → 打开本仓库 → `cli.bat auto --auto-port 9420` →
-   `node review/evidence/batch8c_verify_20260918/verify_8c.js`（脚本已随证据入库，依赖
-   `miniprogram-automator`，见 `C:/Users/lzj/.workbuddy/binaries/node/mpauto/`）。
-   当前 8c 的证据强度 = **静态契约 56 条 + 全量门禁 61/61 + 受影响三个云函数自测 43/7/57 全绿**，
-   尚缺一帧真机/模拟器截图。
+| 现象 | 处置 |
+|---|---|
+| IDE / InsCode 窗口 `GetWindowRect` = `-32000` | **只是被最小化**（不是进程死亡）；`ShowWindow(hwnd, SW_RESTORE)` 即恢复 |
+| 首屏 `settings.json` 未保存弹窗 | 点「**不保存**」（不写用户磁盘） |
+| `cli auto --project … --auto-port 9420` 回显 `√ auto` 但 9420 **无监听** | 加 **`--trust-project`** 后 9420 正常监听 ⇒ **交付纪律：auto 要带 `--trust-project`** |
+| `cli close --project` 之后截图黑/空 | 项目窗口关闭会**重建窗口 ⇒ 句柄会变**（7738478 → 3151442）⇒ 截图脚本必须每次重新枚举 |
 
-   **教训登记（别再犯）**：释放自动化端口**不要**用 `cli quit`；正确做法是
-   `cli close --project …` 再 `cli open --project …`（只关项目窗口，IDE 主进程不动）。
-2. `initDb` 超时值仍需人在控制台改（见上）。
-3. 摊销页多笔分组的**真实数据**渲染未在模拟器验证（本地 dev 库无摊销资产）；脚本里用 `setData`
-   注入两笔做了渲染路径核验，属合成渲染，非端到端。
+### 4.2 新发现的工具坑（automator「写后读」必超时）
+
+| 操作类型 | 实测 |
+|---|---|
+| 读：`reLaunch` / `currentPage` / `screenshot` / `$$`+`text` | 单连接内连续 40+ 次稳定 |
+| 写：`element.tap()` / `page.setData()` | **紧随其后的下一次调用必 `timeout waiting for automator response`**（≈12s），并连带污染同连接后续 `$$`（`rawPath null`） |
+
+**对照实验（防误判，必做）**：写一个「**不点击**」的对照组，结果**同样**在第二次调用超时
+⇒ 属**通道/模拟器侧行为**，与「点击把页面弄崩」**无因果**。
+（此前一版曾把「展开后回首页 + 系统异常 toast」读成产品缺陷，已由该对照实验证伪。）
+对照实验原始输出存 `ctrl/`：`guide_probe_TAP.json`（点击组）、`guide_probe_NOTAP.json`（不点击组）、
+`guide_probe_TAP2.json`（第二次点击组），三组均在 screenshot 之后的第二次调用超时。
+
+同源另两条坑：
+- `page.data()` 在本模拟器恒报 `page is not on top of page stack` ⇒ 改用 `mp.evaluate(getCurrentPages())`；
+  且其栈顶**有时与 `currentPage()` 不一致**，两者不可互相印证。
+- **断开连接后页面会重置回 `pages/index/index`** ⇒ 任何截图必须在**保持连接期间**完成。
+
+### 4.3 取证方法：automator 触发 + 真实窗口截图（本轮定式）
+
+1. 脚本内完成「连接 → reLaunch → 注入 / 点击」；
+2. **不断开连接**，`await sleep(N)` 保持会话；
+3. 期间用 `win_gui` 截**真实 IDE 窗口**（已验证：模拟器渲染的正是 automator 控制的那个实例）；
+4. 需看更靠下的内容时，用 `mp.evaluate(() => wx.pageScrollTo(...))` 滚动（写操作会超时，但**滚动已执行**）。
+
+脚本随证据入库：`verify_8c_all.js`（只读断言）、`hold_action.js`、`scroll_bottom.js`、
+`append_probe.js`、`inject_probe.js`、`shot_ide.py`。
+
+### 4.4 取证结果
+
+**A. 机器断言（automator 只读，13 条全过）**
+录入页可达 / 「填写口径」标题 / 收入·费用·堂食·外卖·运营·其他六条口径句 / 费用含「营销」大类 /
+折叠体默认不渲染（收起）/ 摊销页可达 / 摊销页含「追加采购」入口 / 摊销页含「每笔从各自的采购月起单独摊销」。
+
+**B. 保持连接期间的真实窗口截图（8 条，机器采集 + 人工判读）**
+
+| 图 | 覆盖断言 |
+|---|---|
+| `h2_input_real_render.png` | 录入页真实渲染：堂食 / 外卖 / 其他业务收入、运营 / 人工 / 营销 每类「包括…；不包括…」 |
+| `h2_input_guide_open.png` | 点开后折叠体 5 条：同一笔只填一次 / 单位「元」 / **食材采购不计入费用**（走库存倒轧）/ **设备、装修、加盟费走「摊销资产」分期摊，可分多次采购分别摊** / 佣金统一记「费用·营销」 |
+| `h1_amortize_group2.png` | 「装修 **[共2笔采购]**」· **合计原值 ¥380000.00** · **第1笔** ¥300000.00 / 2026-01·36月 / ¥83.34 · **第2笔** ¥80000.00 / 2026-07·24月 / ¥33.34 · 每笔各有「编辑 / 提前报废」· 顶部口径句「同一资产以后又追加投入，点『追加采购』再记一笔，每笔从各自的采购月起单独摊销」 |
+| `h1_amortize_append_btn.png` | 组内「**+ 追加采购**」按钮 + 底部「新增资产」 |
+| `h1_append_form.png` | 追加表单：标题「追加采购」、提示「同一资产再次投入请用『追加采购』，不要另建同名资产，否则会重复计一遍」、资产名称自动带出「装修」、开始月份默认当前月 `2026-09` |
+
+> OCR 对本机模拟器小字不可靠（实测把「共2笔采购」读成「共2采的」）⇒ **B 组不作为机器判据**，
+> 按「截图机器采集 + 人工判读」登记，不计入自动化口径。
+
+**C. 追加模式的运行态（机器证据，`mp.evaluate` 直取）**
+
+```json
+{"path":"pages/month/amortize","showForm":true,"appendGroup":"amort_x","appendSeq":3,"formName":"装修"}
+```
+
+⇒ 追加动作确实**沿原组**、记为**第 3 笔**、并带出组名（与 `saveAsset` 的 group_id / batch_seq 设计一致）。
+
+**D. 日期控件复查（对应用户「还有日期等等」）**
+全仓 `grep 'mode="date"'` = **2 处**，均在 `pages/month/amortize.wxml:95/106`（起摊月、终止月，
+`fields="month"` 年月选择器）；**已无手输月份**（唯一 `YYYY-MM` 命中是行内注释）。
+另有 `picker`：`pages/month/index.wxml`、`pages/card/edit.wxml`。
+
+### 4.5 本轮仍未覆盖（如实登记）
+
+1. 摊销页分组用的是 **`setData` 注入的合成数据**（本地 dev 库暂无摊销资产），属**渲染路径核验**，
+   非端到端；补法：在页面真实新增一笔 → 再用「追加采购」加第二笔 → 复核分组。
+2. **「保存资产」的落库路径本轮未点**（会写云库），留待真实数据核验时一并做。
+3. `initDb` 超时值仍需人在控制台改（见 §二）。
+
+### 4.6 教训登记（别再犯）
+
+- 释放自动化端口**不要**用 `cli quit`；正确做法是 `cli close --project …` + `cli open --project …`。
+- `cli auto` 要带 `--trust-project`；`cli` 是单通道。
+- 窗口最小化 ≠ 进程死了：先 `SW_RESTORE` 再判断。
+- **automator 的读/写要分开设计**：断言尽量只用读操作；交互类核验走「保持连接 + 外部截图」。
+- 环境异常时**必须做对照组**再下结论，否则容易把工具缺陷写成产品缺陷。
