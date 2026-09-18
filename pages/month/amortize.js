@@ -241,7 +241,7 @@ Page({
     } catch (e) { api.toastError(e); }
   },
 
-  // 报废：软删除（is_deleted=true），二次确认
+  // 报废：软删除（is_deleted=true），二次确认 + 触觉反馈（G6 不可逆操作）
   onTerminate(e) {
     const a = e.currentTarget.dataset.asset;
     wx.showModal({
@@ -250,6 +250,8 @@ Page({
       confirmColor: '#e74c3c',
       success: async (r) => {
         if (!r.confirm) return;
+        // G6：不可逆操作（报废资产）→ 触觉反馈
+        if (wx.vibrateShort) { try { wx.vibrateShort({ type: 'medium' }); } catch (err) { /* 部分机型不支持，忽略 */ } }
         try {
           // 报废 = 保留资产但标记终止（terminate_month=当前月）→ 未摊余额作为处置损失；
           // 资产本身保留在台账（不可复活），前端列表由 DataAdapter 只展示活跃。

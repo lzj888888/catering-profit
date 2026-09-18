@@ -16,7 +16,7 @@
   <!-- 批量模式：产出份数 -->
   <view class="field" wx:if="{{calcMode === 'B'}}">
     <text class="lbl">{{t.batchOutput}}</text>
-    <input class="val-input" type="number" value="{{batchOutput}}" bindinput="onBatch" />
+    <input class="val-input" type="number" value="{{batchOutput}}" bindinput="onBatch"  adjust-position="{{true}}" cursor-spacing="20" />
   </view>
 
   <!-- 明细行 -->
@@ -26,36 +26,36 @@
       <picker mode="selector" range="{{materials}}" range-key="name" data-idx="{{index}}" bindchange="onMaterialChange">
         <view class="picker">{{lines[index].material_name ? lines[index].material_name : t.material}}</view>
       </picker>
-      <button class="btn-small" style="background:none;color:#e74c3c;min-height:56rpx;" data-idx="{{index}}" catchtap="delLine">×</button>
+      <button class="btn-small" style="background:none;color:#e74c3c;min-height:88rpx;" data-idx="{{index}}" catchtap="delLine">×</button>
     </view>
     <view class="cell2">
       <text class="lbl">{{t.qty}}</text>
-      <input class="val-input" type="digit" value="{{lines[index].qty}}" data-idx="{{index}}" bindinput="onQty" />
+      <input class="val-input" type="digit" value="{{lines[index].qty}}" data-idx="{{index}}" bindinput="onQty"  adjust-position="{{true}}" cursor-spacing="20" />
     </view>
   </view>
-  <button class="btn ghost btn-small" style="min-height:72rpx;" bindtap="addLine">{{t.addLine}}</button>
+  <button class="btn ghost btn-small" style="min-height:88rpx;" bindtap="addLine">{{t.addLine}}</button>
 
   <!-- 成本参数 -->
   <view class="field">
     <text class="lbl">{{t.lossRate}}</text>
-    <input class="val-input" type="digit" value="{{lossRate}}" bindinput="onLoss" />
+    <input class="val-input" type="digit" value="{{lossRate}}" bindinput="onLoss"  adjust-position="{{true}}" cursor-spacing="20" />
   </view>
   <view class="field">
     <text class="lbl">{{t.auxAmount}}</text>
-    <input class="val-input" type="digit" value="{{auxYuan}}" bindinput="onAux" />
+    <input class="val-input" type="digit" value="{{auxYuan}}" bindinput="onAux"  adjust-position="{{true}}" cursor-spacing="20" />
   </view>
   <view class="field">
     <text class="lbl">{{t.price}}</text>
-    <input class="val-input" type="digit" value="{{priceYuan}}" bindinput="onPrice" />
+    <input class="val-input" type="digit" value="{{priceYuan}}" bindinput="onPrice"  adjust-position="{{true}}" cursor-spacing="20" />
   </view>
 
   <!-- 反算售价 -->
   <view class="reverse">
     <view class="cell">
       <text class="lbl">{{t.targetMargin}}</text>
-      <input class="val-input" type="digit" value="{{targetMargin}}" bindinput="onTargetMargin" />
+      <input class="val-input" type="digit" value="{{targetMargin}}" bindinput="onTargetMargin"  adjust-position="{{true}}" cursor-spacing="20" />
     </view>
-    <button class="btn ghost btn-small" style="min-height:72rpx;" bindtap="reverseCalc">{{t.reverseTitle}}</button>
+    <button class="btn ghost btn-small" style="min-height:88rpx;" bindtap="reverseCalc">{{t.reverseTitle}}</button>
     <view class="muted" wx:if="{{reversePriceFen > 0}}">{{t.reverseResult}}：{{t.cur}}{{reverseResultPreview}}</view>
     <view class="muted" wx:if="{{previewCostFen > 0}}">{{t.totalCost}}：<text style="color:#ff6b35;">{{t.cur}}{{previewCost}}</text></view>
   </view>

@@ -4,19 +4,19 @@
     <view class="card-title">{{t.inputTitle}}</view>
     <view class="field">
       <text class="lbl">{{t.rent}}</text>
-      <input class="val-input" type="digit" confirm-type="done" value="{{rentYuan}}" bindinput="onRent" />
+      <input class="val-input" type="digit" confirm-type="done" value="{{rentYuan}}" bindinput="onRent"  adjust-position="{{true}}" cursor-spacing="20" />
     </view>
     <view class="field">
       <text class="lbl">{{t.property}}</text>
-      <input class="val-input" type="digit" confirm-type="done" value="{{propertyYuan}}" bindinput="onProperty" />
+      <input class="val-input" type="digit" confirm-type="done" value="{{propertyYuan}}" bindinput="onProperty"  adjust-position="{{true}}" cursor-spacing="20" />
     </view>
     <view class="field">
       <text class="lbl">{{t.labor}}</text>
-      <input class="val-input" type="digit" confirm-type="done" value="{{laborYuan}}" bindinput="onLabor" />
+      <input class="val-input" type="digit" confirm-type="done" value="{{laborYuan}}" bindinput="onLabor"  adjust-position="{{true}}" cursor-spacing="20" />
     </view>
     <view class="field">
       <text class="lbl">{{t.other}}</text>
-      <input class="val-input" type="digit" confirm-type="done" value="{{otherYuan}}" bindinput="onOther" />
+      <input class="val-input" type="digit" confirm-type="done" value="{{otherYuan}}" bindinput="onOther"  adjust-position="{{true}}" cursor-spacing="20" />
     </view>
     <view class="switch-row">
       <view class="lbl2">{{t.includeAmort}}</view>
@@ -24,23 +24,23 @@
     </view>
     <view class="field" wx:if="{{includeAmort}}">
       <text class="lbl">{{t.simAmort}}</text>
-      <input class="val-input" type="digit" confirm-type="done" value="{{simAmortYuan}}" bindinput="onSimAmort" />
+      <input class="val-input" type="digit" confirm-type="done" value="{{simAmortYuan}}" bindinput="onSimAmort"  adjust-position="{{true}}" cursor-spacing="20" />
     </view>
     <view class="field">
       <text class="lbl">{{t.varFood}}</text>
-      <input class="val-input" type="digit" confirm-type="done" value="{{varFoodPct}}" bindinput="onVarFood" />
+      <input class="val-input" type="digit" confirm-type="done" value="{{varFoodPct}}" bindinput="onVarFood"  adjust-position="{{true}}" cursor-spacing="20" />
     </view>
     <view class="field">
       <text class="lbl">{{t.varMkt}}</text>
-      <input class="val-input" type="digit" confirm-type="done" value="{{varMktPct}}" bindinput="onVarMkt" />
+      <input class="val-input" type="digit" confirm-type="done" value="{{varMktPct}}" bindinput="onVarMkt"  adjust-position="{{true}}" cursor-spacing="20" />
     </view>
     <view class="field">
       <text class="lbl">{{t.varOther}}</text>
-      <input class="val-input" type="digit" confirm-type="done" value="{{varOtherPct}}" bindinput="onVarOther" />
+      <input class="val-input" type="digit" confirm-type="done" value="{{varOtherPct}}" bindinput="onVarOther"  adjust-position="{{true}}" cursor-spacing="20" />
     </view>
     <view class="field">
       <text class="lbl">{{t.targetProfit}}</text>
-      <input class="val-input" type="digit" confirm-type="done" value="{{targetProfitYuan}}" bindinput="onTargetProfit" />
+      <input class="val-input" type="digit" confirm-type="done" value="{{targetProfitYuan}}" bindinput="onTargetProfit"  adjust-position="{{true}}" cursor-spacing="20" />
     </view>
     <button class="btn primary" style="margin-top:24rpx;" bindtap="onCalc">{{t.calc}}</button>
   </view>

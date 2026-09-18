@@ -5,10 +5,10 @@
 
 /* D1：下钻明细面板 */
 .drill-head { border-bottom: 1rpx solid #f0f0f0; }
-.drill-caret { color: #ff6b35; font-size: 24rpx; }
+.drill-caret { color: #ff6b35; font-size: 28rpx; }
 .drill-body { padding: 12rpx 0 16rpx; }
 .drill-row { margin-bottom: 12rpx; }
 .drill-gname { font-size: 28rpx; font-weight: 600; color: #333; display: flex; justify-content: space-between; }
 .drill-gamt { color: #222; font-weight: 600; }
-.drill-sub { display: flex; justify-content: space-between; padding: 6rpx 0 0 16rpx; font-size: 26rpx; color: #666; }
+.drill-sub { display: flex; justify-content: space-between; padding: 6rpx 0 0 16rpx; font-size: 28rpx; color: #666; }
 .drill-samt { color: #444; }

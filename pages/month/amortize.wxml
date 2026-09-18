@@ -87,7 +87,7 @@
       </view>
       <view class="field">
         <text class="lbl">{{t.value}}</text>
-        <input class="val-input" type="digit" confirm-type="done" value="{{formValueYuan}}" bindinput="onValue" />
+        <input class="val-input" type="digit" confirm-type="done" value="{{formValueYuan}}" bindinput="onValue"  adjust-position="{{true}}" cursor-spacing="20" />
       </view>
       <view class="field">
         <text class="lbl">{{t.startMonth}}</text>
@@ -98,7 +98,7 @@
       </view>
       <view class="field">
         <text class="lbl">{{t.totalMonths}}</text>
-        <input class="val-input" type="number" value="{{formTotalMonths}}" bindinput="onTotalMonths" />
+        <input class="val-input" type="number" value="{{formTotalMonths}}" bindinput="onTotalMonths"  adjust-position="{{true}}" cursor-spacing="20" />
       </view>
       <view class="field">
         <text class="lbl">{{t.terminateMonth}}</text>

@@ -15,7 +15,20 @@ module.exports = {
     const app = getApp && getApp();
     const shopId = (app && app.globalData && app.globalData.shop_id) || (payload && payload.shop_id) || '';
     const body = Object.assign({ shop_id: shopId }, payload || {});
-    const res = await wx.cloud.callFunction({ name, data: body });
+    let res;
+    try {
+      res = await wx.cloud.callFunction({ name, data: body });
+    } catch (e) {
+      // G8：网络不可用（云调用底层失败，如断网/超时/环境不可达）→ 区分「网络不可用」与「服务端错误」
+      const terms8 = require('../miniprogram/i18n/terms.js');
+      const t8 = (terms8 && terms8.TERMS && terms8.TERMS.exp) || {};
+      const networkMsg = t8.networkErr || 'NETWORK_ERROR';
+      const serviceMsg = t8.serviceUnavailable || 'SERVICE_UNAVAILABLE';
+      const msg = (e && e.errMsg && /cloud\.callFunction:fail|ERR_NETWORK|timeout|offline/i.test(e.errMsg))
+        ? networkMsg
+        : ((e && e.errMsg) || serviceMsg);
+      throw { code: 'NETWORK_ERROR', msg };
+    }
     const r = res && res.result;
     if (!r) {
       const terms = require('../miniprogram/i18n/terms.js');
@@ -47,15 +60,6 @@ module.exports = {
   /** 方案内：分 → 展示元（月核算大额用整数展示，如 916000 → "9160"）。 */
   fenToYuanInt(fen) {
     return String(Math.round((Number(fen) || 0) / 100));
-  },
-
-  /** 300ms 防抖（输入场景） */
-  debounce(fn, wait) {
-    let t = null;
-    return function (...args) {
-      if (t) clearTimeout(t);
-      t = setTimeout(() => fn.apply(this, args), wait || 300);
-    };
   },
 
   /**

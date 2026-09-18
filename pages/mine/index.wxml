@@ -1,4 +1,18 @@
 <view class="container safe-bottom">
+  <!-- G5：头像昵称（AD-15，chooseAvatar + nickname 新能力，本地保存展示） -->
+  <view class="card2 profile">
+    <view class="profile-avatar">
+      <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+        <image wx:if="{{avatarUrl}}" class="avatar-img" src="{{avatarUrl}}" mode="aspectFill" />
+        <text wx:else class="avatar-ph">{{t.avatarLabel}}</text>
+      </button>
+    </view>
+    <view class="profile-name">
+      <text class="lbl">{{t.nicknameLabel}}</text>
+      <input class="nickname-inp" type="nickname" value="{{nickname}}" placeholder="{{t.nicknamePh}}" bindinput="onNickname" bindblur="onNickname" />
+    </view>
+  </view>
+
   <view class="card2">
     <view class="card-title">{{shopName || t.shopName}}</view>
   </view>

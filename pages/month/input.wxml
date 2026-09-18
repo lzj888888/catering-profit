@@ -34,7 +34,7 @@
       <input class="sub-item-inp" wx:if="{{g.expanded}}" value="{{r.subItem}}" placeholder="{{t.subItemPh}}"
         data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubItem" disabled="{{readOnly}}" />
       <input class="val-input" type="digit" confirm-type="done" value="{{r.amountYuan}}"
-        data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubAmount" disabled="{{readOnly}}" />
+        data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubAmount" disabled="{{readOnly}}"  adjust-position="{{true}}" cursor-spacing="20" />
       <button class="btn-small del" wx:if="{{g.expanded && g.rows.length > 1}}"
         data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" catchtap="delRow">{{t.delSubItem}}</button>
     </view>
@@ -61,7 +61,7 @@
       <input class="sub-item-inp" wx:if="{{g.expanded}}" value="{{r.subItem}}" placeholder="{{t.subItemPh}}"
         data-kind="expense" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubItem" disabled="{{readOnly}}" />
       <input class="val-input" type="digit" confirm-type="done" value="{{r.amountYuan}}"
-        data-kind="expense" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubAmount" disabled="{{readOnly}}" />
+        data-kind="expense" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubAmount" disabled="{{readOnly}}"  adjust-position="{{true}}" cursor-spacing="20" />
       <button class="btn-small del" wx:if="{{g.expanded && g.rows.length > 1}}"
         data-kind="expense" data-gidx="{{gi}}" data-ridx="{{ri}}" catchtap="delRow">{{t.delSubItem}}</button>
     </view>
@@ -76,7 +76,7 @@
   <view class="field">
     <text class="lbl">{{t.directConsumeField}}</text>
     <input class="val-input" type="digit" confirm-type="done" disabled="{{readOnly}}"
-      value="{{directConsumeYuan}}" bindinput="onDirectConsume" />
+      value="{{directConsumeYuan}}" bindinput="onDirectConsume"  adjust-position="{{true}}" cursor-spacing="20" />
   </view>
   <view class="hint">{{t.directConsumeHint}}</view>
 

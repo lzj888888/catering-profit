@@ -496,6 +496,20 @@ const TERMS = {
     feedback: '意见反馈',
     feedbackHint: '使用中遇到问题，点这里反馈',
     disclaimerLabel: '免责声明',
+    // G4/G8：热更新 + 断网提示（app.js 全局）
+    updateTitle: '发现新版本',
+    updateBody: '有新版本可用，是否立即更新？',
+    updateConfirm: '立即更新',
+    updateCancel: '暂不',
+    offlineTitle: '网络不可用',
+    offlineBody: '当前网络已断开，请检查网络连接后重试。',
+    networkErr: '网络不可用，请检查网络连接',
+    serviceUnavailable: '服务不可用',
+    // G5：头像昵称（AD-15，chooseAvatar + nickname 新能力，本地保存展示）
+    avatarLabel: '头像',
+    nicknameLabel: '昵称',
+    nicknamePh: '请输入昵称',
+    avatarSaved: '已保存',
   },
 
   // ===== 二十四、导出按钮（付费墙触发）=====

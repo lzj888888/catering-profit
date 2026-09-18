@@ -33,15 +33,41 @@ Page({
       feedbackHint: TERMS.exp.feedbackHint,
       disclaimerLabel: TERMS.exp.disclaimerLabel,
       disclaimer: TERMS.auditSafe.disclaimer,
+      // G5：头像昵称（AD-15 新能力，本地保存展示）
+      avatarLabel: TERMS.exp.avatarLabel,
+      nicknameLabel: TERMS.exp.nicknameLabel,
+      nicknamePh: TERMS.exp.nicknamePh,
+      avatarSaved: TERMS.exp.avatarSaved,
     },
     shopName: '',
+    avatarUrl: '',
+    nickname: '',
     loadingLogout: false,
   },
 
   onShow() {
     ui.setTitle(TERMS.exp.mineTitle);
     const app = getApp();
-    this.setData({ shopName: (app.globalData && app.globalData.shop_name) || '' });
+    this.setData({
+      shopName: (app.globalData && app.globalData.shop_name) || '',
+      avatarUrl: wx.getStorageSync('user_avatar') || '',
+      nickname: wx.getStorageSync('user_nickname') || '',
+    });
+  },
+
+  // G5：头像选择（新能力 chooseAvatar，不用 getUserProfile）
+  onChooseAvatar(e) {
+    const url = e.detail && e.detail.avatarUrl;
+    if (!url) return;
+    this.setData({ avatarUrl: url });
+    wx.setStorageSync('user_avatar', url);
+  },
+  // G5：昵称输入（新能力 input type=nickname）
+  onNickname(e) {
+    const v = e.detail && e.detail.value;
+    if (v === undefined || v === null) return;
+    this.setData({ nickname: v });
+    wx.setStorageSync('user_nickname', v);
   },
 
   // C1：意见反馈（AD-16 客服入口）
@@ -107,6 +133,8 @@ Page({
   async doLogout() {
     await loading.withLock(this, 'logout', async () => {
       try {
+        // G6：注销为不可逆操作 → 触觉反馈
+        if (wx.vibrateShort) { try { wx.vibrateShort({ type: 'medium' }); } catch (err) { /* 部分机型不支持，忽略 */ } }
         await api.call('deleteAccount', { client_request_id: 'acc_' + Date.now() });
         // 清本地缓存 + 退出
         wx.clearStorageSync();

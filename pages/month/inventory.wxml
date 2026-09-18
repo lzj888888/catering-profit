@@ -9,7 +9,7 @@
       <text class="muted">{{t.openingHint}}</text>
     </view>
     <input class="val-input" type="digit" confirm-type="done" disabled="{{readOnly}}"
-      value="{{openingYuan}}" bindinput="onOpening" />
+      value="{{openingYuan}}" bindinput="onOpening"  adjust-position="{{true}}" cursor-spacing="20" />
   </view>
   <view class="field">
     <view class="lbl-col">
@@ -17,7 +17,7 @@
       <text class="muted">{{t.purchaseHint}}</text>
     </view>
     <input class="val-input" type="digit" confirm-type="done" disabled="{{readOnly}}"
-      value="{{purchaseYuan}}" bindinput="onPurchase" />
+      value="{{purchaseYuan}}" bindinput="onPurchase"  adjust-position="{{true}}" cursor-spacing="20" />
   </view>
   <view class="field">
     <view class="lbl-col">
@@ -25,7 +25,7 @@
       <text class="muted">{{t.closingHint}}</text>
     </view>
     <input class="val-input" type="digit" confirm-type="done" disabled="{{readOnly}}"
-      value="{{closingYuan}}" bindinput="onClosing" />
+      value="{{closingYuan}}" bindinput="onClosing"  adjust-position="{{true}}" cursor-spacing="20" />
   </view>
 
   <view class="hint">{{t.hintFormula}}</view>
