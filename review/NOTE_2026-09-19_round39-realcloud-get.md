@@ -12,7 +12,7 @@
 |---|---|---|---|---|
 | 1 | `common/index.js` 漏导 `genId` | 全新用户首进必崩（`TypeError: genId is not a function`） | 门禁 L 只守"副本≡单源"——副本忠实，把漏导**复制了 42 份** | ✅ 已修 + 真云复验（`39e3e8a`） |
 | 2 | 资产原值**字段名分裂**：写端 `value_fen` vs 读端 `total_value` | `calcAmortize` 全程 `-504002 functions execute fail`，**摊销功能不可用** | 自测直接构造 `total_value` 喂 `docToAsset`，**从未走「saveAsset 写入 → DB → 读出」真链路** | ✅ 已修 + 真云复验（本件） |
-| 3 | 🔴 **`da.get(coll, 业务主键)` 按 `_id` 查，而 `_id` ≠ 业务主键** | 6 处调用点在真云一律返回 null ⇒ 5 个业务功能不可用 | mock adapter 的 get 直接按业务 id 命中，**从未模拟「_id ≠ 业务主键」这一真云事实** | ✅ 已修，部署中，待复验 |
+| 3 | 🔴 **`da.get(coll, 业务主键)` 按 `_id` 查，而 `_id` ≠ 业务主键** | 6 处调用点在真云一律返回 null ⇒ 5 个业务功能不可用 | mock adapter 的 get 直接按业务 id 命中，**从未模拟「_id ≠ 业务主键」这一真云事实** | ✅ **已修 + 已复验**（见 §1.4） |
 
 ## 1. 缺陷 3（本轮最大）：`da.get` 的 `_id` vs 业务主键
 
@@ -49,6 +49,17 @@
 - 兜底覆盖**存量数据**（dev 库里已插入的文档 `_id` 都是自动生成的，改 `insert` 救不了它们）。
 - ⚠️ 兜底字段**只列唯一性字段**：`card_code` **不列** —— 多版本模型下同 `card_code` 有多条，会取错版本。
 - 字段不存在时 `where` 返回空、不报错 ⇒ 逐个试是安全的。
+
+### 1.4 真云复验（42 函数重部署后，**决定性**）
+```
+修复前：saveCostCard → RESOURCE_NOT_FOUND「引用的原料 mat_mu7606ti1psx 不存在或已软删」
+修复后：saveCostCard v1 → SUCCESS  version = 1
+        saveCostCard v2 → SUCCESS  version = 2   （同 card_code 连续写 ⇒ **只 INSERT 不改、版本递增**）
+        getCardVersions → SUCCESS  list 有数据
+```
+⇒ **验二（真云多版本写入）通过**，多版本模型（R38）在真云成立。
+证据：`review/evidence/realcloud_20260919/card_versions_after_fix.json`（修复后）对比
+`card_versions.json`（修复前，含 `RESOURCE_NOT_FOUND` 原文）。
 
 ## 2. 缺陷 2：资产原值字段名分裂（写端 `value_fen` / 读端 `total_value`）
 
@@ -90,7 +101,6 @@
 - `saveCostCard` 会**校验原料真实存在**（`RESOURCE_NOT_FOUND`）⇒ 严格，不是宽松放行 ✅
 
 ## 5. 待办（本件未闭合）
-- 缺陷 3 的**真云复验**：42 函数重部署完成后，重跑 `saveCostCard` 多版本写入（验二）。
 - **§3 判据**（`idx_card_code_version` 是否真生效）仍需**控制台 GUI 手工插入重复三元组**
   —— 云函数入参不接受 `version`，只能用控制台加记录；属人工面。
 - 超时值（R86/R93）仍需控制台手点 + `info` 回读。

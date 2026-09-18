@@ -1,0 +1,258 @@
+{
+  "_shop_id": "shop_mu6j87v1itrs",
+  "mat_jitui": {
+    "ok": true,
+    "res": {
+      "code": "SUCCESS",
+      "msg": "ok",
+      "data": {
+        "shop_id": "shop_mu6j87v1itrs",
+        "id": "mat_mu76zy13h19p",
+        "client_request_id": "mat1_1789749832188"
+      }
+    }
+  },
+  "mat_huasheng": {
+    "ok": true,
+    "res": {
+      "code": "SUCCESS",
+      "msg": "ok",
+      "data": {
+        "shop_id": "shop_mu6j87v1itrs",
+        "id": "mat_mu7700y3ck2i",
+        "client_request_id": "mat2_1789749836080"
+      }
+    }
+  },
+  "get_material": {
+    "ok": true,
+    "res": {
+      "code": "SUCCESS",
+      "msg": "ok",
+      "data": {
+        "shop_id": "shop_mu6j87v1itrs",
+        "client_request_id": "",
+        "list": [
+          {
+            "id": "mat_mu7606ti1psx",
+            "name": "鸡腿肉",
+            "brand_spec": "",
+            "purchase_unit": "斤",
+            "purchase_price_fen": 9750,
+            "convert_factor": 10,
+            "yield_rate": 100,
+            "is_virtual": false,
+            "net_unit_cost": 97500,
+            "unit_cost_fen": 975
+          },
+          {
+            "id": "mat_mu7608oyd0x6",
+            "name": "花生米",
+            "brand_spec": "",
+            "purchase_unit": "斤",
+            "purchase_price_fen": 12000,
+            "convert_factor": 10,
+            "yield_rate": 100,
+            "is_virtual": false,
+            "net_unit_cost": 120000,
+            "unit_cost_fen": 1200
+          },
+          {
+            "id": "mat_mu7611sj3ige",
+            "name": "鸡腿肉",
+            "brand_spec": "",
+            "purchase_unit": "斤",
+            "purchase_price_fen": 9750,
+            "convert_factor": 10,
+            "yield_rate": 100,
+            "is_virtual": false,
+            "net_unit_cost": 97500,
+            "unit_cost_fen": 975
+          },
+          {
+            "id": "mat_mu7613fo5ame",
+            "name": "花生米",
+            "brand_spec": "",
+            "purchase_unit": "斤",
+            "purchase_price_fen": 12000,
+            "convert_factor": 10,
+            "yield_rate": 100,
+            "is_virtual": false,
+            "net_unit_cost": 120000,
+            "unit_cost_fen": 1200
+          },
+          {
+            "id": "mat_mu76zy13h19p",
+            "name": "鸡腿肉",
+            "brand_spec": "",
+            "purchase_unit": "斤",
+            "purchase_price_fen": 9750,
+            "convert_factor": 10,
+            "yield_rate": 100,
+            "is_virtual": false,
+            "net_unit_cost": 97500,
+            "unit_cost_fen": 975
+          },
+          {
+            "id": "mat_mu7700y3ck2i",
+            "name": "花生米",
+            "brand_spec": "",
+            "purchase_unit": "斤",
+            "purchase_price_fen": 12000,
+            "convert_factor": 10,
+            "yield_rate": 100,
+            "is_virtual": false,
+            "net_unit_cost": 120000,
+            "unit_cost_fen": 1200
+          }
+        ]
+      }
+    }
+  },
+  "save_v1": {
+    "ok": true,
+    "res": {
+      "code": "SUCCESS",
+      "msg": "ok",
+      "data": {
+        "shop_id": "shop_mu6j87v1itrs",
+        "card_code": "GONGBAO",
+        "version": 1,
+        "card_row_id": "92994ce06aad6b5c0092c4445c5ab582",
+        "total_cost_fen": 231000,
+        "material_total_fen": 231000,
+        "gross_profit_fen": -227200,
+        "gross_margin_pct": -5978.95,
+        "reverse_price_fen": 0,
+        "lines": [
+          {
+            "material_id": "mat_mu7606ti1psx",
+            "net_unit_cost": 97500,
+            "line_net_cost_fen": 195000
+          },
+          {
+            "material_id": "mat_mu7608oyd0x6",
+            "net_unit_cost": 120000,
+            "line_net_cost_fen": 36000
+          }
+        ],
+        "virtual_material_id": null,
+        "client_request_id": "v1_1789749841746"
+      }
+    }
+  },
+  "save_v2": {
+    "ok": true,
+    "res": {
+      "code": "SUCCESS",
+      "msg": "ok",
+      "data": {
+        "shop_id": "shop_mu6j87v1itrs",
+        "card_code": "GONGBAO",
+        "version": 2,
+        "card_row_id": "92994ce06aad6b5e0092c7183a68815c",
+        "total_cost_fen": 231000,
+        "material_total_fen": 231000,
+        "gross_profit_fen": -226800,
+        "gross_margin_pct": -5400,
+        "reverse_price_fen": 0,
+        "lines": [
+          {
+            "material_id": "mat_mu7606ti1psx",
+            "net_unit_cost": 97500,
+            "line_net_cost_fen": 195000
+          },
+          {
+            "material_id": "mat_mu7608oyd0x6",
+            "net_unit_cost": 120000,
+            "line_net_cost_fen": 36000
+          }
+        ],
+        "virtual_material_id": null,
+        "client_request_id": "v2_1789749846274"
+      }
+    }
+  },
+  "get_versions": {
+    "ok": true,
+    "res": {
+      "code": "SUCCESS",
+      "msg": "ok",
+      "data": {
+        "shop_id": "shop_mu6j87v1itrs",
+        "card_code": "GONGBAO",
+        "list": [
+          {
+            "card_code": "GONGBAO",
+            "version": 2,
+            "name": "宫保鸡丁",
+            "category": "热菜",
+            "tags": "",
+            "calc_mode": "A",
+            "batch_output": null,
+            "loss_rate": 0,
+            "aux_fen": 0,
+            "price_fen": 4200,
+            "total_cost_fen": 231000,
+            "material_total_fen": 231000,
+            "gross_profit_fen": -226800,
+            "gross_margin_pct": -5400,
+            "reverse_price_fen": 0,
+            "created_at": 1789750110945,
+            "lines": [
+              {
+                "material_id": "mat_mu7606ti1psx",
+                "material_name": "鸡腿肉",
+                "quantity": 200,
+                "net_unit_cost": 97500,
+                "line_net_cost_fen": 195000
+              },
+              {
+                "material_id": "mat_mu7608oyd0x6",
+                "material_name": "花生米",
+                "quantity": 30,
+                "net_unit_cost": 120000,
+                "line_net_cost_fen": 36000
+              }
+            ]
+          },
+          {
+            "card_code": "GONGBAO",
+            "version": 1,
+            "name": "宫保鸡丁",
+            "category": "热菜",
+            "tags": "",
+            "calc_mode": "A",
+            "batch_output": null,
+            "loss_rate": 0,
+            "aux_fen": 0,
+            "price_fen": 3800,
+            "total_cost_fen": 231000,
+            "material_total_fen": 231000,
+            "gross_profit_fen": -227200,
+            "gross_margin_pct": -5978.95,
+            "reverse_price_fen": 0,
+            "created_at": 1789750108020,
+            "lines": [
+              {
+                "material_id": "mat_mu7606ti1psx",
+                "material_name": "鸡腿肉",
+                "quantity": 200,
+                "net_unit_cost": 97500,
+                "line_net_cost_fen": 195000
+              },
+              {
+                "material_id": "mat_mu7608oyd0x6",
+                "material_name": "花生米",
+                "quantity": 30,
+                "net_unit_cost": 120000,
+                "line_net_cost_fen": 36000
+              }
+            ]
+          }
+        ],
+        "client_request_id": ""
+      }
+    }
+  }
+}
