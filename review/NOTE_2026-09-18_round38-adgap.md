@@ -1,4 +1,24 @@
-# REVIEW 2026-09-18 · round38 · 上线前适配项（AD）静态走查缺口清单
+# NOTE 2026-09-18 · round38 · 上线前适配项（AD）静态走查缺口清单
+
+> **归属（R96，2026-09-18 立）**：本件是**执行方（WorkBuddy）的分析件**，不是复审方产出 ⇒ 前缀用 `NOTE_` 而非 `REVIEW_`。
+> `REVIEW_*` = 复审方（DeepSeek harness）正文；`NOTE_*` = 执行方分析/登记件。**两者都可入库、都可被引用，但前缀标明归属**。
+> **编号规则**：`roundNN` 按「复审方一轮」计数；执行方与复审方**同一轮号并行**时用**后缀主题**区分（本件 `round38-adgap`，复审方 `round38-verify`），**不再用 `roundNNx`**（会暗示它是"下一轮"）。
+
+> ⏱️ **时点标注（复审方 §5 建议②，2026-09-18 补）**：**本快照 = 2026-09-18 14:06 的静态扫描结果**，
+> 文中 G1–G8 八类缺口**已于 14:43–14:53 在工作树修好**，并**已于 23:5x 提交入库**（commit `372838f`，见下）。
+> ⇒ **不要把本件读成"尚未修复"**：它是**修复前的缺口清单 + 修复依据**，现状请以下表为准。
+
+| 缺口 | 本件记录（14:06 快照） | 现状（2026-09-18 23:5x） |
+|---|---|---|
+| G1 字号 <28rpx（19 条） | 缺口 | ✅ 已修（`372838f`）+ 有守卫 `tools/selftest_ad_gates.js` |
+| G2 触控高度 <88rpx（6 处） | 缺口 | ✅ 已修（同上） |
+| G3 `adjust-position` 0 命中（23 个数字输入） | 缺口 | ✅ 已修（同上） |
+| G4 `getUpdateManager` 0 | 缺口 | ✅ 已修（`app.js`） |
+| G5 `chooseAvatar`/`getUserProfile` 均 0 | 缺口 | ✅ 已修（`pages/mine/index.wxml` `type="nickname"`） |
+| G6 `vibrateShort` 0 | 缺口 | ✅ 已修（`amortize.js` / `mine/index.js`） |
+| G7 `options.scene` 0 | 缺口 | ✅ 已修（`app.js`） |
+| G8 断网提示 0 | 缺口 | ✅ 已修（`onNetworkStatusChange` + `api.js` NETWORK_ERROR） |
+| `debounce` 定义但 0 调用 | 死代码 | ✅ 已删（`utils/api.js`） |
 
 ## 0. 一句话结论
 

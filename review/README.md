@@ -11,6 +11,8 @@
 |---|---|
 | 路径 | 仓库根 `review/` |
 | 复审方产出 | `REVIEW_<YYYY-MM-DD>_<主题>.md`（**ASCII 文件名**；中文路径已坑过本仓两次） |
+| 执行方分析件 | `NOTE_<YYYY-MM-DD>_<主题>.md`（**R96，2026-09-18 立**） |
+| 前缀/编号怎么定（R96） | ① **前缀标归属**：`REVIEW_*` = 复审方正文；`NOTE_*` = 执行方（WorkBuddy）分析/登记件。**两者都入库**，前缀只标归属、不标优劣。② **`roundNN` 按「复审方一轮」计数**；执行方与复审方**同轮并行**时用**后缀主题**区分（执行方 `round38-adgap` / 复审方 `round38-verify`），**不用 `roundNNx`**（会被读成"下一轮"）。③ **已落文件不改名不删**（R61 历史留痕），R96 只约束**新落**的件；本轮唯一改名实例 = `round38-adgap` 由 `REVIEW_` 改 `NOTE_`（在文件头加了归属说明，内容未删）。④ **分析件必须带时点标注**：静态扫描类 `NOTE_*` 顶部须写明「快照时刻」+「现状（已修/未修 + commit）」，否则下一个读者会把旧快照当成现状（复审方 §5 建议②） |
 | WorkBuddy 报告 | **仍在「工作区记忆目录」里**——那是它的单一源，**不要再复制一份到 review/**，否则又是「同一事实写两遍」。**绝对路径**：`C:\Users\lzj\WorkBuddy\2026-09-08-22-08-11\.workbuddy\memory\<日期>.md`（当日示例 `2026-09-17.md`）；⚠️ 该目录**不在仓库内**（`<仓库根>\.workbuddy` 不存在）⇒ 是本机路径、不随 git 走，复核方请**按绝对路径直读**；目录名若变，用 `ls -d /c/Users/lzj/WorkBuddy/*/.workbuddy/memory` 重取（R77：**引用位置必须可解析**，别只写相对路径）。🚫 **两个同名诱饵都不是报告**（R77 实测：round32 据此误判"报告链中断"）：`~\.workbuddy\memory\` = **云端画像缓存**（自动注入的 `<uuid>_memory.md`，非本项目报告）；`~\.workbuddy\MEMORY.md` = **跨项目用户级记忆**（画像，非本项目报告） |
 | 为何放仓库根 | 在门禁 A–L 全部扫描面之外（门禁 ROOT = `specs/dev-specs/`；`check_requires` 自 **R28（2026-09-15）** 起扫 `app.js` + `pages`/`miniprogram`/`utils` + **`cloudfunctions/`**（剥注释 + 精确豁免表）；L 组只扫 `cloudfunctions/`）→ 复审方写什么都不会让门禁变红；且 `review/` 已在 `packOptions.ignore` 内 ⇒ **进 git 不进小程序包**（R37） |
 | 必须入库 | 本仓出现过「只落盘未入库 → 跨回合文件消失」（2026-09-13 日记 `:52-55`）→ 每轮落盘后立即 `git add review/ && git commit && git push dev` |

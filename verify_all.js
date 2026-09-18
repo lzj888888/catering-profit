@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：62 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：63 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -112,6 +112,8 @@ const SUITES = [
   ['batch8c-amort-batches',  'tools/selftest_batch8c.js'],
   // ===== 上线前 AD 缺口补齐（G1 字号 / G2 触控 / G3 adjust-position / G4 热更新 / G5 头像昵称 / G6 触觉反馈 / G7 场景值 / G8 断网提示 + debounce 清理）=====
   ['ad-gates',               'tools/selftest_ad_gates.js'],
+  // ===== R95 证据文件留证元信息（纯读声明 vs 写入痕迹须自洽 / 前置时刻 ≤ 采集时刻）=====
+  ['evidence-meta',          'tools/check_evidence_meta.js'],
   // 后续批次的套件在此追加即可（如 batch2_selfcheck ...）；追加后记得同步头部注释里的套件数量。
 ];
 
@@ -131,6 +133,38 @@ const SUITES = [
     process.exit(1);
   }
   process.stdout.write(`\n✅ [suite-count] 头部注释 ≡ SUITES.length = ${SUITES.length}（R59 守卫）\n`);
+})();
+
+// 🔒 R92 守卫（自校验）：SUITES 里登记的**每个套件文件都必须已纳入 git 索引**（`git ls-files` 命中）。
+// 背景（R92，复审方发现）：AD 缺口 G1~G8 在工作树里全修好了、`verify_all` 也跑出「62/62」，
+//   但**代码一个都没提交** ⇒ ① 远端那份是 61 套件且没有 AD 守卫，② 更糟的是它**不会红**：
+//   R59 的 guardSuiteCount 比的是「同一份文件内注释数 ≡ SUITES 长度」，未提交时照样 62 ≡ 62。
+//   这是 R67 的镜像：那次是「接线了没文件」，这次是「登记了没提交」。
+// ⇒ 判据必须是**仓库事实**（git 索引），不能是文件系统事实（存在即算）。
+// fail-closed：git 不可用 / 不在仓库内 ⇒ 直接判红（宁可挡住，不放过"证据与被证物分离"）。
+(function guardSuiteTracked() {
+  let tracked;
+  try {
+    tracked = new Set(
+      execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' })
+        .split('\n').map((s) => s.trim()).filter(Boolean)
+    );
+  } catch (e) {
+    process.stdout.write('\n❌ [suite-tracked] `git ls-files` 执行失败（不在 git 仓库 / git 不可用）'
+      + ' —— 无法确认套件文件是否已入库，按 fail-closed 判红。\n');
+    process.exit(1);
+  }
+  const missing = SUITES
+    .map((s) => s[1])
+    .filter((rel) => rel && !tracked.has(rel.replace(/\\/g, '/')));
+  if (missing.length) {
+    process.stdout.write(`\n❌ [suite-tracked] 以下 ${missing.length} 个已登记套件**未纳入 git 索引**（R92：登记了没提交 ⇒ `
+      + '远端复现不出这些成绩，且 R59 不会红）：\n');
+    missing.forEach((rel) => process.stdout.write('   ' + rel + '\n'));
+    process.stdout.write('   处置：先 `git add` 并提交这些文件，再跑本校验器。\n');
+    process.exit(1);
+  }
+  process.stdout.write(`✅ [suite-tracked] ${SUITES.length} 个套件文件全部已入库（R92 守卫）\n`);
 })();
 
 // 🔒 R66 主体（运行期）：对**每个套件的 stdout** 做「段标题下零断言」审计。
