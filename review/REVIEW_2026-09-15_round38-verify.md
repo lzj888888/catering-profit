@@ -136,6 +136,14 @@
 - [2026-09-19 00:02] probe_tmp 存疑（**按你说明应为已闭环，我不重开**）· 你已核 `48_result_raw_afterdrop.txt` 原文：`createCollection` 由 `{ok:false,…Table exist…}` 变为 `{ok:true}` ⇒ 成功分支首次在真云走通 · 我不重复验，仅登记为「按复审方结论闭环」
 - [2026-09-19 00:02] 全量门禁 · `node verify_all.js` → **63/63 RC=0**（含新增 `evidence-meta` 与 `ad-gates`）；门禁 A–L → **RC=0** · commit 待落
 
+<!-- 以下为 00:40–02:15 追加（提交工作树后**真云首次跑通完整业务链路**的结果） -->
+- [2026-09-19 02:15] 🔴 **新缺陷 2 已落**（真云）· 资产原值**字段名分裂**：写端 `saveAsset:48/60` 落库 `value_fen`，读端 `calcAmortize::docToAsset` 只认 `total_value` 且 throw ⇒ 真云上 `calcAmortize` 全程 `-504002`，**摊销不可用**。修法与既有先例 `getAmortSchedule:32` 一致（两字段名都接受，严格判型不变）。**复验**：修复前 2026-08/09 均 `-504002`；修复后均 `SUCCESS` = **833333 分**（30,000,000 ÷ 36，尾差倒挤末月，自洽）· 证据 `realcloud_20260919/amort_after_fix.json` · commit `89ce56e`
+- [2026-09-19 02:15] 🔴🔴 **新缺陷 3 已落**（真云，**本轮最大**）· `da.get(coll, id)` = `.doc(id).get()` **按 `_id` 查**，而 `insert()` 走 `add()` ⇒ **`_id` ≠ 业务主键** ⇒ 6 处调用点真云一律 null（成本卡存不下 / 资产·物料只能新增不能改 / 店铺设置 / 导出）。**反证**：`smokeTest:114/116` 传真 `_id` ⇒ 一直正常。**证据链三步**：saveMaterial 建出 id → getMaterial 能列出 → saveCostCard 说"不存在"。**复验**：修复前 `RESOURCE_NOT_FOUND`；修复后 `version=1` / `version=2`（同 card_code 只 INSERT 不改）+ `getCardVersions` 有数据 ⇒ **验二通过** · 证据 `card_versions_after_fix.json` · commit `89ce56e` + `0b2d6b5`
+- [2026-09-19 02:15] R97 已落 · 新增 `tools/check_data_contract.js` 并挂进 SUITES（63 → **64**）：C1 `da.get` 兜底在位**且非空**（≥3 字段）+ 不含非唯一字段；C2 同义字段在 **DB 读取点**必须兼容。**变异回灌三组**（含**修我自己的恒真断言**：首版只查"字符串在位" ⇒ 清空数组仍绿）；**两次假红**已收窄（只认 `doc.` 前缀 / `\]+` 容两个 `]`）· commit `89ce56e`
+- [2026-09-19 02:15] 第三轮逐个重部署 · **42/42 FAIL=0**（推 common 变更必全量逐个部署）· 证据 `deploy_pass3_42ok.txt` · commit `0b2d6b5`
+- [2026-09-19 02:15] 未闭合 · ① **§3 判据**（`idx_card_code_version` 真生效）需**控制台 GUI 手工插入重复三元组** —— 云函数入参**不接受 `version`**，我造不出重复三元组，只能走控制台 ② 超时值控制台手点 + `info` 回读 ③ **R81**（`mode` 白名单，挂 4 轮）· 无 commit
+- [2026-09-19 02:15] 评审请求 · **批次 8（8a/8b/8c）+ genId 事故 + 本件两个新缺陷** 都还没经你复审；我落的执行方分析件 = `review/NOTE_2026-09-19_round39-realcloud-get.md`（按 R96 用 `NOTE_` 前缀）· 建议下轮优先审它
+
 ---
 
 ## §4 队列与自登记
