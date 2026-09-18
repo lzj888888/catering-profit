@@ -1,0 +1,82 @@
+{
+  "getShopContext": {
+    "verdict": "BIZ",
+    "errMsg": "cloud.callFunction:ok",
+    "raw": "{\"code\":\"SUCCESS\",\"msg\":\"ok\",\"data\":{\"shop_id\":\"shop_mu6j87v1itrs\",\"shop_name\":\"默认店铺\",\"shop_remark\":\"\",\"switches\":{\"inventorySwitchOn\":false,\"amortizeSwitchOn\":false},\"is_new_shop\":false,\"client_request_id\":\"\"}}"
+  },
+  "getMonthList": {
+    "verdict": "BIZ",
+    "errMsg": "cloud.callFunction:ok",
+    "raw": "{\"code\":\"SUCCESS\",\"msg\":\"ok\",\"data\":{\"shop_id\":\"PROBE\",\"list\":[],\"client_request_id\":\"\"}}"
+  },
+  "getLedger": {
+    "verdict": "BIZ",
+    "errMsg": "cloud.callFunction:ok",
+    "raw": "{\"code\":\"SUCCESS\",\"msg\":\"ok\",\"data\":{\"shop_id\":\"PROBE\",\"month\":\"2026-01\",\"account_id\":\"\",\"is_archive\":false,\"archived_at\":0,\"income_items\":[],\"expense_items\":[],\"direct_consume_fen\":0,\"inventory\":{\"openingFen\":0,\"purchaseFen\":0,\"closingFen\":0},\"amortize_fen\":0,\"switches\":{\"inventorySwitchOn\":false,\"amortizeSwitchOn\":false},\"result\":{\"income_total_fen\":0,\"expense_total_fen\":0,\"material_cost_fen\":0,\"gross_profit_fen\":0,\"gross_margin_pct\":0,\"operation_ref_profit_fen\":0,\"total_factor_real_profit_fen\":0,\"profit_diff_fen\":0,\"real_consume_fen\":0,\"effective_amortize_fen\":0},\"client_request_id\":\"\"}}"
+  },
+  "getCardVersions": {
+    "verdict": "BIZ",
+    "errMsg": "cloud.callFunction:ok",
+    "raw": "{\"code\":\"INVALID_PARAM\",\"msg\":\"card_code 必须是非空字符串\",\"data\":{}}"
+  },
+  "getMaterial": {
+    "verdict": "BIZ",
+    "errMsg": "cloud.callFunction:ok",
+    "raw": "{\"code\":\"SUCCESS\",\"msg\":\"ok\",\"data\":{\"shop_id\":\"PROBE\",\"client_request_id\":\"\",\"list\":[]}}"
+  },
+  "getAmortSchedule": {
+    "verdict": "BIZ",
+    "errMsg": "cloud.callFunction:ok",
+    "raw": "{\"code\":\"SUCCESS\",\"msg\":\"ok\",\"data\":{\"shop_id\":\"PROBE\",\"month\":\"2026-01\",\"assets\":[],\"total_amount_fen\":0,\"details\":[],\"client_request_id\":\"\"}}"
+  },
+  "getShopList": {
+    "verdict": "BIZ",
+    "errMsg": "cloud.callFunction:ok",
+    "raw": "{\"code\":\"SUCCESS\",\"msg\":\"ok\",\"data\":{\"shop_id\":\"\",\"list\":[{\"shop_id\":\"shop_mu6j87v1itrs\",\"name\":\"默认店铺\",\"remark\":\"\"}],\"free_limit\":1,\"used\":1,\"hit_free_limit\":true,\"client_request_id\":\"\"}}"
+  },
+  "payOrderList": {
+    "verdict": "BIZ",
+    "errMsg": "cloud.callFunction:ok",
+    "raw": "{\"code\":\"SUCCESS\",\"msg\":\"ok\",\"data\":{\"shop_id\":\"PROBE\",\"list\":[],\"client_request_id\":\"\"}}"
+  },
+  "payQueryEntitlement": {
+    "verdict": "BIZ",
+    "errMsg": "cloud.callFunction:ok",
+    "raw": "{\"code\":\"SUCCESS\",\"msg\":\"ok\",\"data\":{\"shop_id\":\"PROBE\",\"user_id\":\"u_mu6j87t1a283\",\"expire_at\":0,\"is_active\":false,\"source\":\"auto\",\"days_left\":0,\"client_request_id\":\"\"}}"
+  },
+  "calcAmortize": {
+    "verdict": "BIZ",
+    "errMsg": "cloud.callFunction:ok",
+    "raw": "{\"code\":\"SUCCESS\",\"msg\":\"ok\",\"data\":{\"shop_id\":\"PROBE\",\"month\":\"2026-01\",\"client_request_id\":\"\",\"total_amount_fen\":0,\"details\":[]}}"
+  },
+  "calcMonthlyProfit": {
+    "verdict": "BIZ",
+    "errMsg": "cloud.callFunction:ok",
+    "raw": "{\"code\":\"SUCCESS\",\"msg\":\"ok\",\"data\":{\"shop_id\":\"PROBE\",\"month\":\"2026-01\",\"client_request_id\":\"\",\"incomeTotalFen\":0,\"incomeTotalYuan\":\"0\",\"expenseTotalFen\":0,\"expenseTotalYuan\":\"0\",\"materialCostFen\":0,\"materialCostYuan\":\"0\",\"directConsumeFen\":0,\"realConsumeFen\":0,\"grossProfitFen\":0,\"grossProfitYuan\":\"0\",\"grossMarginRatePct\":0,\"grossMarginRatePctDisplay\":0,\"amortizeFen\":0,\"effectiveAmortizeFen\":0,\"operationRefProfitFen\":0,\"operationRefProfitYuan\":\"0\",\"totalFactorRealProfitFen\":0,\"totalFactorRealProfitYuan\":\"0\",\"profitDiffFen\":0,\"profitDiffYuan\":\"0\",\"switchUsed\":{\"inventorySwitchOn\":false,\"amortizeSwitchOn\":false},\"pendingSettlementFen\":0,\"diffCheck\":true}}"
+  },
+  "calcSandbox": {
+    "verdict": "BIZ",
+    "errMsg": "cloud.callFunction:ok",
+    "raw": "{\"code\":\"INVALID_PARAM\",\"msg\":\"rent_fen 必须是非负整数分（JSON number，字符串不接受）\",\"data\":{}}"
+  },
+  "checkQuota": {
+    "verdict": "BIZ",
+    "errMsg": "cloud.callFunction:ok",
+    "raw": "{\"code\":\"INVALID_PARAM\",\"msg\":\"scope 必须是 shop 或 cost_card\",\"data\":{}}"
+  },
+  "detectCycle": {
+    "verdict": "BIZ",
+    "errMsg": "cloud.callFunction:ok",
+    "raw": "{\"code\":\"SUCCESS\",\"msg\":\"ok\",\"data\":{\"shop_id\":\"PROBE\",\"client_request_id\":\"\",\"has_cycle\":false}}"
+  },
+  "smokeTest": {
+    "verdict": "BIZ",
+    "errMsg": "cloud.callFunction:ok",
+    "raw": "{\"env\":\"cloud1-d4gphpoxy337f2a25\",\"fsDiag\":{\"root\":[\"common.js\",\"cx_audit.js\",\"cx_auth.js\",\"cx_dataAdapter.js\",\"cx_errors.js\",\"cx_idempotency.js\",\"cx_index.js\",\"cx_money.js\",\"cx_rateLimit.js\",\"cx_utilTime.js\",\"index.js\",\"node_modules\",\"package.json\"],\"hasCommonFile\":true,\"hasCommonDir\":false,\"common\":null,\"commonShape\":\"flat-file(common.js)\",\"cwd\":\"/var/user\"},\"requireCommon\":{\"ok\":true,\"err\":null,\"exports\":[\"errors\",\"ERROR_CODES\",\"ok\",\"fail\",\"utilTime\",\"money\",\"dataAdapter\",\"auth\",\"resolveAuth\",\"assertShopOwner\",\"idempotency\",\"rateLimit\",\"audit\"]},\"createCollection\":{\"ok\":false,\"msg\":\"createCollection:fail -501001 resource system error. [ResourceUnavailable.ResourceExist] Table exist. Please check your request, but if the problem cannot be solved, contact us. 更多错误信息请访问：https://docs.cloudbase.net/error-code/basic/DATABASE_COLLECTION_ALREADY_EXIST\"},\"createIndex\":{\"typeof\":\"undefined\"},\"docGet\":{\"topLevelKeys\":[\"data\",\"errMsg\"],\"hasDataField\":true,\"dataKeys\":[\"_id\",\"k\",\"is_deleted\",\"created_at\"],\"id\":\"92994ce06aacd6e6007cdfa26256e6a5\"},\"docGetMissing\":{\"behavior\":\"reject\",\"message\":\"document.get:fail document with _id __definitely_not_exist__ does not exist\"},\"uniqueEnforce\":{\"result\":\"未报错（预期内）\",\"proof\":\"none\",\"note\":\"本集合无该 unique 索引 ⇒ 不报错是必然；不得据此判定 A6/A7\"},\"assertShopOwner\":{\"code\":\"RESOURCE_NOT_FOUND\",\"msg\":\"RESOURCE_NOT_FOUND\",\"data\":{}},\"dataAdapterGet\":{\"liveIsDoc\":true,\"deadIsNull\":true}}"
+  },
+  "exportData": {
+    "verdict": "BIZ",
+    "errMsg": "cloud.callFunction:ok",
+    "raw": "{\"code\":\"INVALID_PARAM\",\"msg\":\"m1_report 需提供 month（YYYY-MM）\",\"data\":{}}"
+  }
+}

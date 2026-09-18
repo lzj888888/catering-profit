@@ -1,0 +1,100 @@
+{
+  "01_index": {
+    "url": "/pages/index/index",
+    "path": null,
+    "texts": [],
+    "shots": [],
+    "err": "timeout waiting for automator response"
+  },
+  "02_month_index": {
+    "url": "/pages/month/index",
+    "path": null,
+    "texts": [],
+    "shots": [],
+    "err": "Cannot destructure property 'rawPath' of 't.getPageMetaByWebviewId(...)' as it is null."
+  },
+  "03_month_input": {
+    "url": "/pages/month/input",
+    "path": null,
+    "texts": [],
+    "shots": [],
+    "err": "Cannot destructure property 'rawPath' of 't.getPageMetaByWebviewId(...)' as it is null."
+  },
+  "04_month_inventory": {
+    "url": "/pages/month/inventory",
+    "path": null,
+    "texts": [],
+    "shots": [],
+    "err": "Cannot destructure property 'rawPath' of 't.getPageMetaByWebviewId(...)' as it is null."
+  },
+  "05_month_amortize": {
+    "url": "/pages/month/amortize",
+    "path": null,
+    "texts": [],
+    "shots": [],
+    "err": "timeout waiting for automator response"
+  },
+  "06_month_result": {
+    "url": "/pages/month/result",
+    "path": null,
+    "texts": [],
+    "shots": [],
+    "err": "timeout waiting for automator response"
+  },
+  "07_shop_setting": {
+    "url": "/pages/shop/setting",
+    "path": null,
+    "texts": [],
+    "shots": [],
+    "err": "timeout waiting for automator response"
+  },
+  "08_sandbox": {
+    "url": "/pages/sandbox/index",
+    "path": null,
+    "texts": [],
+    "shots": [],
+    "err": "timeout waiting for automator response"
+  },
+  "09_card_index": {
+    "url": "/pages/card/index",
+    "path": null,
+    "texts": [],
+    "shots": [],
+    "err": "Cannot destructure property 'rawPath' of 't.getPageMetaByWebviewId(...)' as it is null."
+  },
+  "10_card_edit": {
+    "url": "/pages/card/edit",
+    "path": null,
+    "texts": [],
+    "shots": [],
+    "err": "Cannot destructure property 'rawPath' of 't.getPageMetaByWebviewId(...)' as it is null."
+  },
+  "11_card_version": {
+    "url": "/pages/card/version",
+    "path": null,
+    "texts": [],
+    "shots": [],
+    "err": "timeout waiting for automator response"
+  },
+  "12_pay_orders": {
+    "url": "/pages/pay/orders",
+    "path": null,
+    "texts": [],
+    "shots": [],
+    "err": "Cannot destructure property 'rawPath' of 't.getPageMetaByWebviewId(...)' as it is null."
+  },
+  "13_shop_switch": {
+    "url": "/pages/shop/switch",
+    "path": null,
+    "texts": [],
+    "shots": [],
+    "err": "timeout waiting for automator response"
+  },
+  "14_mine": {
+    "url": "/pages/mine/index",
+    "path": null,
+    "texts": [],
+    "shots": [],
+    "err": "timeout waiting for automator response"
+  }
+}
