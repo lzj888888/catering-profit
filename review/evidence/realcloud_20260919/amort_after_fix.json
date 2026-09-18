@@ -1,0 +1,61 @@
+{
+  "_shop_id": "shop_mu6j87v1itrs",
+  "schedule": {
+    "ok": true,
+    "res": {
+      "code": "INVALID_PARAM",
+      "msg": "month 必须是 YYYY-MM",
+      "data": {}
+    }
+  },
+  "amort_2026-08": {
+    "ok": true,
+    "res": {
+      "code": "SUCCESS",
+      "msg": "ok",
+      "data": {
+        "shop_id": "shop_mu6j87v1itrs",
+        "month": "2026-08",
+        "client_request_id": "",
+        "total_amount_fen": 833333,
+        "details": [
+          {
+            "asset_id": "amort_mu6lessqaa4y",
+            "name": "装修",
+            "amount_fen": 833333,
+            "start_month": "2026-01",
+            "total_months": 36,
+            "terminate_month": "",
+            "in_period": true,
+            "residual_loss": 0
+          }
+        ]
+      }
+    }
+  },
+  "amort_2026-09": {
+    "ok": true,
+    "res": {
+      "code": "SUCCESS",
+      "msg": "ok",
+      "data": {
+        "shop_id": "shop_mu6j87v1itrs",
+        "month": "2026-09",
+        "client_request_id": "",
+        "total_amount_fen": 833333,
+        "details": [
+          {
+            "asset_id": "amort_mu6lessqaa4y",
+            "name": "装修",
+            "amount_fen": 833333,
+            "start_month": "2026-01",
+            "total_months": 36,
+            "terminate_month": "",
+            "in_period": true,
+            "residual_loss": 0
+          }
+        ]
+      }
+    }
+  }
+}

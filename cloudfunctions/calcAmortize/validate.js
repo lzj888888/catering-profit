@@ -54,9 +54,16 @@ function docToAsset(doc) {
   }
   // R35：total_value 必须严格是 JSON number（整数分），禁止 Number() 强转。
   //      Number(null/""/true/[]) 会静默变成 0/1 等非负整数放行，把脏值当「0 元资产」计算 → 静默错账。
-  const total = doc.total_value;
+  // 🔴 2026-09-19 真云缺陷修复（与 genId 同族：**跨函数字段契约没人守**）：
+  //   写端 `saveAsset/index.js:48/60` 落库的字段名是 **value_fen**，而这里只认 **total_value**
+  //   ⇒ 真云上 `calcAmortize` 一读到 saveAsset 建的资产就 throw ⇒ 全程 `-504002 functions execute fail`，
+  //   **摊销功能在真云 100% 不可用**。本地自测测不出：`calcAmortize/selftest.js` 直接构造 `total_value`
+  //   喂给 docToAsset，**从未覆盖「saveAsset 写入 → DB → docToAsset 读出」这条真实链路**。
+  //   修法与既有先例 `getAmortSchedule/index.js:32`（`a.value_fen != null ? a.value_fen : a.total_value`）
+  //   保持一致：**两个字段名都接受**。严格判型不变 ⇒ 两者都缺/都非法时仍然响亮失败（R35/R36 不被削弱）。
+  const total = (doc.total_value != null) ? doc.total_value : doc.value_fen;
   if (typeof total !== 'number' || !Number.isInteger(total) || total < 0) {
-    throw { code: ERROR_CODES.INVALID_PARAM, msg: `台账资产 asset_id=${id} 的 total_value 必须是「分」非负整数（JSON number，字符串不接受）` };
+    throw { code: ERROR_CODES.INVALID_PARAM, msg: `台账资产 asset_id=${id} 的 total_value/value_fen 必须是「分」非负整数（JSON number，字符串不接受）` };
   }
   const startMonth = doc.start_month;
   if (typeof startMonth !== 'string' || !MONTH_RE.test(startMonth)) {
