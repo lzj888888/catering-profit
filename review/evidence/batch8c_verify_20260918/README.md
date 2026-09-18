@@ -102,11 +102,27 @@ $ cli cloud functions deploy -e <dev> --project <repo> --names <批次 5 个> -r
 
 ## 四、遗留 / 未做（如实登记）
 
-1. **8c 的模拟器视觉复核未做**：本轮我曾用 `cli quit` 释放 9420 端口，之后 IDE GUI 无法从
-   沙箱内重新拉起（`wechatdevtools.exe` / `explorer` / `cli open` 均只起 headless server，
-   `wechatdevtools` 进程数始终 0）。⇒ 需要**人工打开微信开发者工具**后，跑
-   `node verify_8c.js`（脚本在 `C:/Users/lzj/.workbuddy/binaries/node/mpauto/`）补视觉证据。
-   当前 8c 的证据强度 = **静态契约 56 条 + 全量门禁 61/61**，尚缺一帧真机/模拟器截图。
+1. **8c 的模拟器视觉复核未做**（本轮最大遗留）。原因是**我自己的操作失误**：为释放 9420 端口执行了
+   `cli quit`，把开发者工具 GUI 整个关掉了；之后无论怎么试都起不回来：
+
+   | 尝试 | 结果 |
+   |---|---|
+   | `cli.bat auto --auto-port 9420`（含解除沙箱重跑） | 回显 `√ auto`，但 `netstat` 查 9420 **无监听**，`wechatdevtools.exe` 进程数 **0** |
+   | `cli.bat open --project …` | 回显 `√ open`，但只起了 headless server（35237 有监听），GUI 进程仍为 0 |
+   | 直接跑 `wechatdevtools.exe`（沙箱内 / 解除沙箱 / 以安装目录为 cwd） | 启动即崩： `[FATAL:url_idna_icu.cc(52)] failed to open UTS46 data with error: U_FILE_ACCESS_ERROR` + `[FATAL:startup_browser_creator.cc(1033)] Failed to load default app` |
+   | `cmd //c start` / `explorer.exe` 拉起 | 前者在 Git Bash 下退化成交互 cmd（未执行），后者被安全策略拦截 |
+
+   ⇒ 结论：**GUI 进程必须由人在这台机器桌面会话里打开**（ℹ️ InsCode 桌面端本轮同样注入失灵：
+   `SetCursorPos` 生效但 `mouse_event` 点击 / `Ctrl+V` 键入均无任何 UI 响应，hover 无高亮、
+   `PostMessage` 直投 `Chrome_RenderWidgetHostHWND` 也无效 —— 推测是完整性/前台焦点策略所致）。
+   恢复方式：人工打开微信开发者工具 → 打开本仓库 → `cli.bat auto --auto-port 9420` →
+   `node review/evidence/batch8c_verify_20260918/verify_8c.js`（脚本已随证据入库，依赖
+   `miniprogram-automator`，见 `C:/Users/lzj/.workbuddy/binaries/node/mpauto/`）。
+   当前 8c 的证据强度 = **静态契约 56 条 + 全量门禁 61/61 + 受影响三个云函数自测 43/7/57 全绿**，
+   尚缺一帧真机/模拟器截图。
+
+   **教训登记（别再犯）**：释放自动化端口**不要**用 `cli quit`；正确做法是
+   `cli close --project …` 再 `cli open --project …`（只关项目窗口，IDE 主进程不动）。
 2. `initDb` 超时值仍需人在控制台改（见上）。
 3. 摊销页多笔分组的**真实数据**渲染未在模拟器验证（本地 dev 库无摊销资产）；脚本里用 `setData`
    注入两笔做了渲染路径核验，属合成渲染，非端到端。
