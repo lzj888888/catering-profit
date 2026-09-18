@@ -6,7 +6,7 @@
 const path = require('path');
 const ROOT = path.resolve(__dirname, '../../..'); // catering-profit 根
 
-const { resolveAuth, assertShopOwner } = require('../auth');
+const { resolveAuth, assertShopOwner, defaultShopId, genId, isDuplicateKeyError } = require('../auth');
 const { makeAdapter } = require('../dataAdapter');
 const { checkIdempotent, findPriorResult, shopKey } = require('../idempotency');
 const { makeRateLimiter } = require('../rateLimit');
@@ -255,6 +255,89 @@ function check(name, cond, detail) {
     let limited = false;
     for (let i = 0; i < 61; i++) { const r = await rl('openid_x'); if (r.limited) limited = true; }
     check('限流·第61次写触发RATE_LIMITED', limited === true, `limited=${limited}`);
+  }
+
+  // ===== A6b（2026-09-19）：并发首次进入只能建出**一个**店 =====
+  // 背景：真云实测 `shop.idx_shop_user` **非** unique（同一 user_id 连插两次都成功，
+  //   `review/evidence/uniq_probe_result.json`）⇒ 「随机 id + 先查后建」在并发下能建出两个店，
+  //   而 `resolveAuth` 是**每个云函数的必经路径**。
+  // 本用例用「会拒重复 `_id` / 重复 `openid`」的**严格假库**模拟真云行为：
+  //   · `_id` 重复 → 抛 -502001/E11000（真云原文形态）
+  //   · `user.openid` 重复 → 抛 -502001/E11000（对应 `idx_openid` unique，真云实测生效）
+  // ⚠️ 判据不得恒真：旧实现（随机 genId + 先查后建）在本用例下 **shop 会 = 2** ⇒ 必须转红。
+  {
+    function makeStrictFakeDb() {
+      const store = {};
+      const dup = () => {
+        const e = new Error('collection.add:fail -502001 database request fail. [FailedOperation.Insert] '
+          + 'bulk write error: E11000 duplicate key error collection: tnt.shop index: idx_dup dup key: { }');
+        e.errCode = -502001;
+        throw e;
+      };
+      return {
+        store,
+        collection(name) {
+          const arr = (store[name] = store[name] || []);
+          return {
+            where(cond) {
+              const filtered = arr.filter((d) => match(d, cond));
+              return {
+                limit(n) { return { get() { return Promise.resolve({ data: filtered.slice(0, n) }); } }; },
+                get() { return Promise.resolve({ data: filtered }); },
+              };
+            },
+            add({ data }) {
+              const doc = Object.assign({}, data);
+              if (doc._id != null && arr.some((x) => x._id === doc._id)) dup();
+              if (name === 'user' && doc.openid != null && arr.some((x) => x.openid === doc.openid)) dup();
+              if (doc._id == null) doc._id = 'gen_' + Math.random().toString(36).slice(2);
+              arr.push(doc);
+              return Promise.resolve({ _id: doc._id });
+            },
+          };
+        },
+      };
+    }
+    const sdb = makeStrictFakeDb();
+    const [a, b] = await Promise.all([
+      resolveAuth({ OPENID: 'openid_new_user' }, sdb),
+      resolveAuth({ OPENID: 'openid_new_user' }, sdb),
+    ]);
+    const errs = [a, b].filter((x) => x && x.error);
+    check('A6b·并发首进不得硬失败（撞唯一键要容错回读）', errs.length === 0, `errors=${JSON.stringify(errs)}`);
+    check('A6b·并发首进只建出 1 个 user', (sdb.store.user || []).length === 1, `user=${(sdb.store.user || []).length}`);
+    // ⚠️ 措辞纪律：本断言在 resolveAuth 场景下**不是**靠确定性 id 生效的
+    //   （输家采用了赢家的 user_id 后**提前返回**，根本不建店）⇒ 别把功劳记错。
+    check('A6b·并发首进只建出 1 个 shop', (sdb.store.shop || []).length === 1,
+      `shop=${(sdb.store.shop || []).length}`);
+    check('A6b·并发首进只建出 1 条 entitlement', (sdb.store.shop_entitlement || []).length === 1,
+      `ent=${(sdb.store.shop_entitlement || []).length}`);
+    const ids = [a, b].map((x) => x && x.user && x.user.id).filter(Boolean);
+    check('A6b·并发两次拿到同一个 user_id', ids.length === 2 && ids[0] === ids[1], `ids=${ids.join(',')}`);
+    const shopIds = (sdb.store.shop || []).map((s) => s.shop_id);
+    check('A6b·店铺 id 用单源确定性格式 shop_<user_id>',
+      shopIds.length === 1 && shopIds[0] === defaultShopId(ids[0]), `shop_id=${shopIds.join(',')}`);
+
+    // ---- 机制级判据（这才真正压住「同一 user 建出两个店」的那条路径）----
+    // 场景：用户已存在但**没有店**（`getShopContext` 建店分支 / 建档中途失败的补偿重跑），
+    //   两个并发请求都「先查到没有 → 各自 insert」。真云实测 `shop.idx_shop_user` **非** unique
+    //   ⇒ 唯一能拦住第二份的，只有**确定性 `_id`**。
+    const uid = 'u_mech_probe';
+    const sdb2 = makeStrictFakeDb();
+    await sdb2.collection('shop').add({ data: { _id: defaultShopId(uid), shop_id: defaultShopId(uid), user_id: uid } });
+    let rejected = null;
+    try {
+      await sdb2.collection('shop').add({ data: { _id: defaultShopId(uid), shop_id: defaultShopId(uid), user_id: uid } });
+    } catch (e) { rejected = isDuplicateKeyError(e); }
+    check('A6b·机制级：确定性 id ⇒ 同 user 第二次建店被库拒', rejected === true, `rejected=${rejected}`);
+    check('A6b·机制级：仅剩 1 个店', sdb2.store.shop.length === 1, `shop=${sdb2.store.shop.length}`);
+
+    // 反向证据（证判据有鉴别力）：换回随机 `genId` ⇒ 两次都成功 = 2 个店 = **旧实现的真实后果**
+    const sdb3 = makeStrictFakeDb();
+    await sdb3.collection('shop').add({ data: { _id: genId('shop_'), user_id: uid } });
+    await sdb3.collection('shop').add({ data: { _id: genId('shop_'), user_id: uid } });
+    check('A6b·反向证据：随机 id 两次都成功 ⇒ 2 个店（这就是旧实现能建出重复店的原因）',
+      sdb3.store.shop.length === 2, `shop=${sdb3.store.shop.length}`);
   }
 
   // ---------- 输出 ----------

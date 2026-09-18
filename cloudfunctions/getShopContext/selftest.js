@@ -57,7 +57,17 @@ const body = src.slice(src.indexOf('exports.main'));
 const at = (s) => body.indexOf(s);
 check('顺序：resolveAuth → validateInput（本函数无 shop 越权判定，按 user_id 取店）', at('resolveAuth') < at('validateInput'));
 check('按 user_id 取店（非按前端传入 shop_id 直读）', /da\.list\('shop',\s*\{\s*user_id:\s*userId\s*\}\)/.test(body));
-check('🔴 首店自动建档：服务端 genId(\'shop_\') + 落 user_id', /genId\('shop_'\)/.test(body) && /user_id:\s*userId/.test(body));
+// 🔴 A6b（2026-09-19 改）：首店自动建档**必须**用单源确定性 id，且**必须**容错回读。
+//   旧断言断言的是 `genId('shop_')`（随机 id）—— 那正是 A6b 的病灶：
+//   真云实测 `shop.idx_shop_user` **非** unique（同 user_id 连插两次都成功）
+//   ⇒ 随机 id + 先查后建 = 并发下能建出两个店。
+check('🔴 首店自动建档：复用单源 defaultShopId(userId)（确定性 _id，幂等由构造保证）',
+  /defaultShopId\(userId\)/.test(body) && !/genId\('shop_'\)/.test(body));
+check('🔴 建档落 user_id', /user_id:\s*userId/.test(body));
+check('🔴 撞唯一键后必须回读（不得直接返回假 shop_id）',
+  /isDuplicateKeyError\(/.test(body) && /again\s*=\s*await da\.list\('shop'/.test(body)
+  && /回读为空/.test(body));
+check('🔴 回读仍为空 ⇒ fail-closed（SYSTEM_ERROR，不猜）', /fail\(ERROR_CODES\.SYSTEM_ERROR,\s*'店铺初始化失败（并发冲突后回读为空）'\)/.test(body));
 check('新建标记 is_new_shop 回传（前端可提示）', /is_new_shop:\s*created/.test(body));
 check('开关行经 service 映射（不内联 find）', /switchesFromRows\(/.test(body));
 check('出参不泄漏 user_id / openid', !/user_id:/.test(body.slice(body.indexOf('return ok'))) && !/openid/.test(body));

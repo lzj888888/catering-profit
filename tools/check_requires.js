@@ -137,7 +137,8 @@ if (fs.existsSync(COMMON_INDEX)) {
   }
   const missing = used.filter((u) => !KEYS.has(u.sym));
   // 断言不得恒真：单源至少得解析出已知键，否则说明解析写歪了（守卫自己失效）
-  const MIN_KEYS = ['ok', 'fail', 'ERROR_CODES', 'resolveAuth', 'assertShopOwner', 'genId'];
+  const MIN_KEYS = ['ok', 'fail', 'ERROR_CODES', 'resolveAuth', 'assertShopOwner', 'genId',
+    'defaultShopId', 'defaultEntitlementId', 'isDuplicateKeyError'];
   const absent = MIN_KEYS.filter((k) => !KEYS.has(k));
   if (absent.length || KEYS.size < 8) {
     console.log('❌ §2 守卫自失效：单源 common/index.js 解析出的导出键不足/缺 '

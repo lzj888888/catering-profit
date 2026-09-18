@@ -53,4 +53,18 @@ function fail(code, msg, data) {
   return { code, msg: msg || code, data: data || {} };
 }
 
-module.exports = { ERROR_CODES, ok, fail };
+// 云数据库「唯一键冲突」判定（单源）——A6b 并发建档的容错判据。
+// 真云形态（2026-09-19 实测原文）：
+//   code = -502001，msg 含 'E11000 duplicate key error collection: <env>.<coll> index: <idx> dup key: {...}'
+// 为什么必须单源：`resolveAuth` 与 `getShopContext` 两处建档都要判它，
+//   调用点各写一份正则 = 又是一处「同一语义多份实现」（R62/R72/R73 反复清过的病）。
+function isDuplicateKeyError(e) {
+  if (!e) return false;
+  const msg = String(e.msg || e.message || '');
+  if (/E11000|duplicate key/i.test(msg)) return true;
+  // 部分包装层只透传错误码
+  const code = e.errCode != null ? e.errCode : e.code;
+  return code === -502001 && /dup|duplicate/i.test(msg);
+}
+
+module.exports = { ERROR_CODES, ok, fail, isDuplicateKeyError };

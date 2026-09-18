@@ -7,6 +7,8 @@ module.exports = {
   ERROR_CODES: require('./cx_errors').ERROR_CODES,
   ok: require('./cx_errors').ok,
   fail: require('./cx_errors').fail,
+  // A6b（2026-09-19）：「唯一键冲突」判定单源 —— resolveAuth / getShopContext 建档容错共用。
+  isDuplicateKeyError: require('./cx_errors').isDuplicateKeyError,
 
   utilTime: require('./cx_utilTime'),
 
@@ -23,6 +25,11 @@ module.exports = {
   //    最致命的一条 = getShopContext 建店分支 ⇒ **全新用户首次进入必崩**。
   //    伴侣守卫：tools/check_requires.js §2「common 解构符号导出完整性」。
   genId: require('./cx_auth').genId,
+  // 🔴 同族风险（勿重犯 genId 的错）：新增的单源符号**必须**在本聚合入口同时导出，
+  //    否则调用点 `const { defaultShopId } = common` 会在真云上 TypeError（本地测不出）。
+  //    伴侣守卫：tools/check_requires.js §2「common 解构符号导出完整性」。
+  defaultShopId: require('./cx_auth').defaultShopId,
+  defaultEntitlementId: require('./cx_auth').defaultEntitlementId,
 
   idempotency: require('./cx_idempotency'),
   rateLimit: require('./cx_rateLimit'),

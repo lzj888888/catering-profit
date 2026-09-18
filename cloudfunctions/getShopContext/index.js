@@ -8,7 +8,7 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 
 const common = require('./common');                 // 扁平派生副本（sync_common 生成）
-const { resolveAuth, genId } = common;
+const { resolveAuth, genId, defaultShopId, isDuplicateKeyError } = common;
 const { ERROR_CODES, ok, fail } = common;
 const { makeAdapter } = common.dataAdapter;
 const { nowUtc } = common.utilTime;
@@ -33,12 +33,26 @@ exports.main = async (event) => {
   let shop = (shopsRes && shopsRes.data && shopsRes.data[0]) || null;
   let created = false;
   if (!shop) {
-    const id = genId('shop_');
-    await da.insert('shop', {
-      id, shop_id: id, user_id: userId, name: '我的店铺', remark: '', created_at: nowUtc(),
-    });
-    shop = { id, shop_id: id, user_id: userId, name: '我的店铺', remark: '' };
-    created = true;
+    // 🔴 A6b 兜底（2026-09-19 真云实测 `shop.idx_shop_user` **非** unique：
+    //    同一 user_id 连插两次都成功 ⇒ 「先查后建」在并发下会建出两个店）。
+    //    修法 = 键格式复用**单源** `common.defaultShopId(userId)`（确定性 `_id`）：
+    //    第二个并发请求必然撞 `_id` 被库拒，而不是靠"我先查过一遍"。
+    //    ⚠️ 撞键后**必须回读**；回读仍为空 ⇒ fail-closed（不猜、不硬返回假 shop_id）。
+    const id = defaultShopId(userId);
+    try {
+      await da.insert('shop', {
+        _id: id, id, shop_id: id, user_id: userId, name: '我的店铺', remark: '', created_at: nowUtc(),
+      });
+      created = true;
+    } catch (e) {
+      if (!isDuplicateKeyError(e)) {
+        return fail(ERROR_CODES.SYSTEM_ERROR, (e && (e.msg || e.message)) || '店铺初始化失败');
+      }
+      created = false; // 并发方已建好
+    }
+    const again = await da.list('shop', { user_id: userId });
+    shop = (again && again.data && again.data[0]) || null;
+    if (!shop) return fail(ERROR_CODES.SYSTEM_ERROR, '店铺初始化失败（并发冲突后回读为空）');
   }
   const shopId = shop.shop_id || shop.id;
 

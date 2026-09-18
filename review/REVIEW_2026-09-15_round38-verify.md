@@ -153,6 +153,15 @@
 - [2026-09-19 01:40] 仍挂（人工面）· ① **§3 判据**（`idx_card_code_version` 真生效）需控制台 GUI 手工插重复三元组 ② 超时值（R86/R93）控制台手点 + `cli cloud functions info` 回读 · 无 commit
 - [2026-09-19 01:40] 评审请求 · 执行方分析件 = `review/NOTE_2026-09-19_round39-r81-mode-whitelist.md`（`NOTE_` 前缀，R96）；建议与 `NOTE_...realcloud-get.md` 一并审
 
+<!-- 以下为 2026-09-19 02:00-02:35 追加（A6a/A6b/§3 三判据实测 + A6b 修复） -->
+- [2026-09-19 02:20] ✅ **A6a / A6b / §3 三条判据全部真云实测完成**（此前只能靠**控制台 GUI 手工插重复三元组** = 人工面，一直挂着重）· 做法：给 `smokeTest` 加 `{ uniq: 'cc' | 'user' | 'shop' }` 入参触发（**程序化 + 自带清理**；默认不跑，避开线上 3s timeout）⇒ ① 往 `shop` 抄同 `user_id` **两次都成功** = **A6b 成立**（**实测，不再是"查单源推断"**）② 往 `user` 抄同 `openid` **被拒**（`E11000 … index: idx_openid`）= **A6a 已兜底** ③ `shop_cost_card` 重复三元组 **被拒**（`E11000 … index: idx_card_code_version`）= **§3 判据闭合**（"索引存在 ≠ 生效"首次拿到**正面证据**）· 证据 `review/evidence/uniq_probe_result.json`（E11000 全句原文）+ `uniq_probe.js` · commit `3a60294`
+- [2026-09-19 02:20] ✅ **A6b 已修（代码层兜底）** · `shop` 无唯一索引 ⇒ **两处**建店点（`common/auth.js::resolveAuth` —— **每个函数必经**、风险面最大；+ `getShopContext` 建店分支）改用**确定性 `_id`**：单源新增 `defaultShopId(userId)` / `defaultEntitlementId(userId)`（**键格式单源，禁调用点自拼**）· 抽出 `autoProvision`，**顺序不可换**：先抢 `user`（`idx_openid` 是权威）→ 撞键则回读并**采用赢家的 `user_id`** → 再建 shop/entitlement（反过来会给临时 user_id 建出**孤儿店**）· 撞键判定单源 `isDuplicateKeyError`（认 `E11000|duplicate key` 或 `errCode=-502001`）· 回读仍为空 ⇒ **fail-closed**（不猜、不返回假 shop_id）· 三名新符号**同步进聚合入口 `common/index.js`** 并加进 `check_requires §2 MIN_KEYS`（**防 genId 漏导事故重演**）
+- [2026-09-19 02:20] ✅ **A6b 判据 9 条 + 变异回灌** · `common/__tests__/batch0_selfcheck.js` 新增 A6b 段（严格假库：拒重复 `_id` / 拒重复 `openid`）：并发两次 `resolveAuth` ⇒ 1 user / 1 shop / 1 entitlement / 同一 `user_id` / `shop_id == shop_<user_id>`；**机制级**：确定性 id 下同 user 第二次建店**被库拒**；**反向证据**：换回随机 `genId` ⇒ **两次都成功 = 2 个店**（证明判据**非恒真**）· **变异回灌**：`defaultShopId(userId)` 改回 `genId('shop_')` ⇒ **RC=1** · 基线 `batch0_selfcheck` 41/41、`getShopContext` 29/29、套件 64/64、门禁 A–L RC=0
+- [2026-09-19 02:20] ⚠️ **自我更正（写在回执里，不藏）** · 我一条断言原写「旧实现随机 id 会建 2 个」——**措辞不实**：`resolveAuth` 并发场景里输家采用赢家 `user_id` 后**提前返回、根本不建店**，功劳不在确定性 id。已改中性措辞，并把「确定性 id 真正压住的那条路径」（**用户已存在但无店** ⇒ 两个并发都 insert）单独做成**机制级**判据
+- [2026-09-19 02:20] 📄 分析件 `review/NOTE_2026-09-19_round39-a6b-shop-dedup.md`；两处**过期否定式结论**已更正（`★知识存储点:92/107` 的「A6b 仍无任何兜底」→ 实测原文 + 已修，按 R82 纪律不删只改）
+- [2026-09-19 02:20] ⚠️ **因 `cloudfunctions/common/` 变更 ⇒ 全量 42 个函数逐个重部署**（日志 `review/evidence/a6b_deploy_20260919.txt`）—— 不能批量（一次多个 `--names` 会产生**空壳**，见 round38 根因分析）
+- [2026-09-19 02:20] 🔎 **顺带登记（未闭合，本轮未动）** · `dataAdapter.BIZ_KEY_FIELDS` **不含 `user_id`** ⇒ 若存在 `da.get('user', <user_id>)` 形态的调用会取不到；本轮**未**发现该形态的有效调用（`resolveAuth` 走 `where({openid})`）⇒ 登记待查，**不得**凭此改 `BIZ_KEY_FIELDS`（会动到 A6a 的兜底面）
+
 - [2026-09-19 02:15] 评审请求 · **批次 8（8a/8b/8c）+ genId 事故 + 本件两个新缺陷** 都还没经你复审；我落的执行方分析件 = `review/NOTE_2026-09-19_round39-realcloud-get.md`（按 R96 用 `NOTE_` 前缀）· 建议下轮优先审它
 
 ---
