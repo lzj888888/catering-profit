@@ -166,6 +166,10 @@
 - [2026-09-19 02:25] ✅ **`_id` 主键唯一性真云实测**（A6b 兜底的前提）· `smokeTest` 加 `{ uniq: 'id' }` 段：同 `_id` 连插两次 ⇒ 第二次**被拒 `-502001`** ⇒ `_id` 必然唯一。4 项真云全中：`idx_card_code_version` UNIQUE / `user.idx_openid` UNIQUE / `shop.user_id` 无兜底（预期）/ **`_id` UNIQUE**，清理全成功 · 证据 `review/evidence/uniq_probe_result.json`（`primary_id` 段）· commit 待落
 - [2026-09-19 02:25] 📄 A6b 分析件 `NOTE_...a6b-shop-dedup.md` 已补 §1 证据行 + §5 部署/复验结果
 
+- [2026-09-19 02:35] ✅ **R91 已闭环（核实后回写，非新修）** · F1/F2a/F2b/L1/L2/L3 六项**早已修复并经独立核验 6/6**（证据 `review/evidence/ui_fix_20260918/` + 自测 `tools/selftest_ui_fix.js` 27 条，已挂套件 59）⇒ 队列里「R91 待修」是**过期状态**，已把 `core/13 §7` 标题回写为「✅ 已闭环」并加状态块（保留原始走查记录供追溯）
+- [2026-09-19 02:35] ✅ **AD 适配 G1–G8 复验通过** · `node tools/selftest_ad_gates.js` **24/24**；G1 `font-size<28rpx` grep **0 命中**；G2 触控 15 处 grep 命中**全合规**（`min-height:88rpx`=恰好 88 / `height:20/40rpx`=spacer 占位**非触控**）⇒ 无违规。**修正技能 §6.3 过宽正则**（旧 `(min-)?height:\s*([0-9]{1,2}|8[0-7])rpx` 把合规的 `min-height:88rpx` 误匹配，已收窄为「不含 `min-`」+ 注明需人工判读）
+- [2026-09-19 02:35] 🔴 **R86 超时值现状回读：42 函数全部 `timeout=3`** · `cli cloud functions info` **含 timeout 列**（`-e <env> --names <fns>`），回读 42 函数**全部 `timeout=3` + `Nodejs16.13`**（`_adminCore` 目录误列报 `InvalidParameterValue.FunctionName`，非真实函数）⇒ 违反铁律 `core/06:410`「60s」，与定值表（smokeTest 15s / initDb 30s / 导出 60s / calcAmortize+adminQueryUser 20s / 其余 20s）严重不符 · 证据 `review/evidence/timeout_probe_20260919.txt` · **手改仍待人工**（`config.json` 加 `timeout` 实测不被采纳 ⇒ 唯一路径=控制台逐个手改，42 次 GUI 操作，属李老师操作面）
+
 - [2026-09-19 02:15] 评审请求 · **批次 8（8a/8b/8c）+ genId 事故 + 本件两个新缺陷** 都还没经你复审；我落的执行方分析件 = `review/NOTE_2026-09-19_round39-realcloud-get.md`（按 R96 用 `NOTE_` 前缀）· 建议下轮优先审它
 
 ---

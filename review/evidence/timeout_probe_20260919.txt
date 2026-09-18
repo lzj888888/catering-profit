@@ -1,0 +1,54 @@
+=== R86 超时值回读 2026-09-19T02:30:49+08:00 ===
+
+√ IDE server has started, listening on http://127.0.0.1:35237
+‼ query cloudfunctions info
+
+┌───────────────────────┬──────────┬─────────┬───────────────┐
+│ (index)               │ status   │ timeout │ runtime       │
+├───────────────────────┼──────────┼─────────┼───────────────┤
+│ adminExport           │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ adminGrantEntitlement │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ adminInit             │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ adminLogin            │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ adminLogout           │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ adminManualOrder      │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ adminOrderList        │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ adminQueryUser        │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ adminRefreshToken     │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ adminRefundMark       │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ adminRevokeToken      │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ archiveMonth          │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ calcAmortize          │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ calcBom               │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ calcMonthlyProfit     │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ calcSandbox           │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ checkQuota            │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ deleteAccount         │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ detectCycle           │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ exportData            │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ getAmortSchedule      │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ getCardVersions       │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ getCostCard           │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ getLedger             │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ getMaterial           │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ getMonthList          │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ getShopContext        │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ getShopList           │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ initDb                │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ payCallback           │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ payCreateOrder        │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ payExpireNotify       │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ payOrderList          │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ payQueryEntitlement   │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ payRenew              │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ saveAsset             │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ saveCostCard          │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ saveLedger            │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ saveMaterial          │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ saveShopSetting       │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ smokeTest             │ 'Active' │ 3       │ 'Nodejs16.13' │
+│ syncCostCard          │ 'Active' │ 3       │ 'Nodejs16.13' │
+└───────────────────────┴──────────┴─────────┴───────────────┘
+[error] fail to get info of cloudfunction _adminCore :
+{"code":"InvalidParameterValue.FunctionName"}
+=== 完成 ===
