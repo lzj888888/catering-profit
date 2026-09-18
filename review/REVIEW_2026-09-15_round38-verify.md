@@ -170,6 +170,8 @@
 - [2026-09-19 02:35] ✅ **AD 适配 G1–G8 复验通过** · `node tools/selftest_ad_gates.js` **24/24**；G1 `font-size<28rpx` grep **0 命中**；G2 触控 15 处 grep 命中**全合规**（`min-height:88rpx`=恰好 88 / `height:20/40rpx`=spacer 占位**非触控**）⇒ 无违规。**修正技能 §6.3 过宽正则**（旧 `(min-)?height:\s*([0-9]{1,2}|8[0-7])rpx` 把合规的 `min-height:88rpx` 误匹配，已收窄为「不含 `min-`」+ 注明需人工判读）
 - [2026-09-19 02:35] 🔴 **R86 超时值现状回读：42 函数全部 `timeout=3`** · `cli cloud functions info` **含 timeout 列**（`-e <env> --names <fns>`），回读 42 函数**全部 `timeout=3` + `Nodejs16.13`**（`_adminCore` 目录误列报 `InvalidParameterValue.FunctionName`，非真实函数）⇒ 违反铁律 `core/06:410`「60s」，与定值表（smokeTest 15s / initDb 30s / 导出 60s / calcAmortize+adminQueryUser 20s / 其余 20s）严重不符 · 证据 `review/evidence/timeout_probe_20260919.txt` · **手改仍待人工**（`config.json` 加 `timeout` 实测不被采纳 ⇒ 唯一路径=控制台逐个手改，42 次 GUI 操作，属李老师操作面）
 
+- [2026-09-19 02:50] ✅ **14 页真数据走查补齐（14/14）** · 根因定位：旧 `audit_pages.js` 是**单连接 + `page.data()`（恒报 `page is not on top of page stack`）+ `pageScrollTo`（写操作）** ⇒ 5/14。重写为 v3（**每页独立 connect + 纯读 + 失败重试 3 次**，`mp.screenshot` / `mp.evaluate(getCurrentPages())` 取 state）⇒ 13 页直接成功；`03_month_input` 补跑成功（根因=该页需 `month` 参数，无参数时 `currentPage` 报栈错，已修脚本带动态当前月）。**全部按钮文案合规**（无「会员/订阅/权益」禁词、付费按钮「导出·打印」是付费墙入口、无裸「开通」）· 各页 state 真实（`incomeGroups`/`assets`/`lines`/`orders` 等，证明云函数部署后走真数据路径非空壳）· 证据 `review/evidence/ui_walk4_20260919/`（14 截图 + `audit.json`，13 页 `attempt=2` 是首次握手超时、第二次成功——技能已预判）
+
 - [2026-09-19 02:15] 评审请求 · **批次 8（8a/8b/8c）+ genId 事故 + 本件两个新缺陷** 都还没经你复审；我落的执行方分析件 = `review/NOTE_2026-09-19_round39-realcloud-get.md`（按 R96 用 `NOTE_` 前缀）· 建议下轮优先审它
 
 ---

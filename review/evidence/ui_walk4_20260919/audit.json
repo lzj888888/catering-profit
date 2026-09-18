@@ -1,0 +1,632 @@
+{
+  "ok": 13,
+  "total": 14,
+  "pages": [
+    {
+      "name": "01_index",
+      "url": "/pages/index/index",
+      "ok": true,
+      "actualPath": "pages/index/index",
+      "screenshot": "01_index.png",
+      "buttons": [
+        {
+          "text": "设置",
+          "cls": "btn ghost",
+          "disabled": null
+        },
+        {
+          "text": "我的",
+          "cls": "btn ghost",
+          "disabled": null
+        }
+      ],
+      "texts": [
+        "切换店铺"
+      ],
+      "dataKeys": [
+        "t",
+        "shopName",
+        "loading",
+        "__webviewId__"
+      ],
+      "attempt": 1
+    },
+    {
+      "name": "02_month_index",
+      "url": "/pages/month/index",
+      "ok": true,
+      "err": "timeout waiting for automator response",
+      "attempt": 2,
+      "actualPath": "pages/month/index",
+      "screenshot": "02_month_index.png",
+      "buttons": [
+        {
+          "text": "录入收入·费用·消耗",
+          "cls": "btn primary",
+          "disabled": null
+        },
+        {
+          "text": "查看结果",
+          "cls": "btn ghost",
+          "disabled": null
+        },
+        {
+          "text": "结账并归档",
+          "cls": "btn ghost",
+          "disabled": null
+        }
+      ],
+      "texts": [
+        "月份",
+        "2026-09",
+        "营业收入",
+        "¥74000.00",
+        "费用合计",
+        "¥36200.00",
+        "毛利",
+        "¥52000.00"
+      ],
+      "dataKeys": [
+        "t",
+        "months",
+        "curMonth",
+        "tab",
+        "isPaid",
+        "expireSoonDays",
+        "expireSoonText",
+        "isExpired",
+        "isArchive",
+        "archivedAtMs",
+        "canArchive",
+        "switches",
+        "result",
+        "loading",
+        "__webviewId__"
+      ]
+    },
+    {
+      "name": "03_month_input",
+      "url": "/pages/month/input",
+      "ok": false,
+      "err": "page is not on top of page stack",
+      "attempt": 3,
+      "actualPath": "pages/month/input",
+      "screenshot": "03_month_input.png",
+      "buttons": [
+        {
+          "text": "删除",
+          "cls": "btn-small del",
+          "disabled": null
+        },
+        {
+          "text": "删除",
+          "cls": "btn-small del",
+          "disabled": null
+        },
+        {
+          "text": "删除",
+          "cls": "btn-small del",
+          "disabled": null
+        },
+        {
+          "text": "+ 添加细项",
+          "cls": "btn-small ghost",
+          "disabled": null
+        },
+        {
+          "text": "删除",
+          "cls": "btn-small del",
+          "disabled": null
+        },
+        {
+          "text": "删除",
+          "cls": "btn-small del",
+          "disabled": null
+        },
+        {
+          "text": "+ 添加细项",
+          "cls": "btn-small ghost",
+          "disabled": null
+        },
+        {
+          "text": "删除",
+          "cls": "btn-small del",
+          "disabled": null
+        },
+        {
+          "text": "删除",
+          "cls": "btn-small del",
+          "disabled": null
+        },
+        {
+          "text": "+ 添加细项",
+          "cls": "btn-small ghost",
+          "disabled": null
+        },
+        {
+          "text": "删除",
+          "cls": "btn-small del",
+          "disabled": null
+        },
+        {
+          "text": "删除",
+          "cls": "btn-small del",
+          "disabled": null
+        },
+        {
+          "text": "+ 添加细项",
+          "cls": "btn-small ghost",
+          "disabled": null
+        },
+        {
+          "text": "删除",
+          "cls": "btn-small del",
+          "disabled": null
+        },
+        {
+          "text": "删除",
+          "cls": "btn-small del",
+          "disabled": null
+        },
+        {
+          "text": "+ 添加细项",
+          "cls": "btn-small ghost",
+          "disabled": null
+        },
+        {
+          "text": "",
+          "cls": "",
+          "disabled": null
+        },
+        {
+          "text": "",
+          "cls": "",
+          "disabled": null
+        },
+        {
+          "text": "",
+          "cls": "",
+          "disabled": null
+        },
+        {
+          "text": "",
+          "cls": "",
+          "disabled": null
+        }
+      ],
+      "texts": []
+    },
+    {
+      "name": "04_month_inventory",
+      "url": "/pages/month/inventory",
+      "ok": true,
+      "actualPath": "pages/month/inventory",
+      "screenshot": "04_month_inventory.png",
+      "buttons": [
+        {
+          "text": "保存库存",
+          "cls": "btn primary",
+          "disabled": "false"
+        }
+      ],
+      "texts": [
+        "期初库存",
+        "月初食材库存总价值（元）",
+        "本月采购",
+        "本月采购入库总价值（元）",
+        "期末盘点",
+        "月末盘点剩余库存总价值（元）"
+      ],
+      "dataKeys": [
+        "t",
+        "month",
+        "inventorySwitchOn",
+        "isArchive",
+        "inGrace",
+        "readOnly",
+        "openingYuan",
+        "purchaseYuan",
+        "closingYuan",
+        "loading",
+        "__webviewId__",
+        "incomeItems",
+        "expenseItems",
+        "directConsumeFen"
+      ],
+      "attempt": 1
+    },
+    {
+      "name": "05_month_amortize",
+      "url": "/pages/month/amortize",
+      "ok": true,
+      "err": "timeout waiting for automator response",
+      "attempt": 2,
+      "actualPath": "pages/month/amortize",
+      "screenshot": "05_month_amortize.png",
+      "buttons": [
+        {
+          "text": "编辑",
+          "cls": "btn-small ghost",
+          "disabled": null
+        },
+        {
+          "text": "提前报废",
+          "cls": "btn-small ghost",
+          "disabled": null
+        },
+        {
+          "text": "+ 追加采购",
+          "cls": "btn-small ghost",
+          "disabled": null
+        },
+        {
+          "text": "新增资产",
+          "cls": "btn primary",
+          "disabled": null
+        }
+      ],
+      "texts": [
+        "合计原值",
+        "¥300000.00",
+        "月摊销",
+        "¥8333.33",
+        "开始月份 / 总月数（月）",
+        "2026-01 · 36月"
+      ],
+      "dataKeys": [
+        "t",
+        "month",
+        "totalFen",
+        "totalYuan",
+        "assets",
+        "groups",
+        "showForm",
+        "editing",
+        "appendGroup",
+        "appendSeq",
+        "formName",
+        "formValueYuan",
+        "formStartMonth",
+        "formTotalMonths",
+        "formTerminateMonth",
+        "readOnly",
+        "loading",
+        "__webviewId__"
+      ]
+    },
+    {
+      "name": "06_month_result",
+      "url": "/pages/month/result",
+      "ok": true,
+      "err": "timeout waiting for automator response",
+      "attempt": 2,
+      "actualPath": "pages/month/result",
+      "screenshot": "06_month_result.png",
+      "buttons": [
+        {
+          "text": "导出月度报表",
+          "cls": "btn ghost",
+          "disabled": null
+        }
+      ],
+      "texts": [
+        "营业收入",
+        "¥74000.00 ▾",
+        "▾",
+        "费用合计",
+        "¥36200.00 ▾",
+        "▾",
+        "毛利",
+        "¥52000.00",
+        "毛利率",
+        "70.27%",
+        "食材成本",
+        "¥22000.00",
+        "真实消耗",
+        "¥22000.00",
+        "当月摊销",
+        "¥0.00",
+        "口径差异",
+        "¥0.00"
+      ],
+      "dataKeys": [
+        "t",
+        "month",
+        "isArchive",
+        "loading",
+        "r",
+        "incDetail",
+        "expDetail",
+        "showIncDrill",
+        "showExpDrill",
+        "expireSoonDays",
+        "expireSoonText",
+        "subscribeAsked",
+        "__webviewId__"
+      ]
+    },
+    {
+      "name": "07_shop_setting",
+      "url": "/pages/shop/setting",
+      "ok": true,
+      "err": "timeout waiting for automator response",
+      "attempt": 2,
+      "actualPath": "pages/shop/setting",
+      "screenshot": "07_shop_setting.png",
+      "buttons": [
+        {
+          "text": "保存设置",
+          "cls": "btn primary",
+          "disabled": null
+        }
+      ],
+      "texts": [],
+      "dataKeys": [
+        "t",
+        "shopName",
+        "remark",
+        "inventoryOn",
+        "amortizeOn",
+        "loading",
+        "__webviewId__"
+      ]
+    },
+    {
+      "name": "08_sandbox",
+      "url": "/pages/sandbox/index",
+      "ok": true,
+      "err": "timeout waiting for automator response",
+      "attempt": 2,
+      "actualPath": "pages/sandbox/index",
+      "screenshot": "08_sandbox.png",
+      "buttons": [
+        {
+          "text": "开始测算",
+          "cls": "btn primary",
+          "disabled": null
+        }
+      ],
+      "texts": [
+        "月房租（元）",
+        "物业费（元）",
+        "固定人工合计（元）",
+        "其他固定杂费（元）",
+        "菜品变动成本率（%）",
+        "营销费用率（%）",
+        "其他变动率（%）",
+        "目标月利润（元）"
+      ],
+      "dataKeys": [
+        "t",
+        "rentYuan",
+        "propertyYuan",
+        "laborYuan",
+        "otherYuan",
+        "includeAmort",
+        "simAmortYuan",
+        "varFoodPct",
+        "varMktPct",
+        "varOtherPct",
+        "targetProfitYuan",
+        "result",
+        "calcError",
+        "loading",
+        "__webviewId__"
+      ]
+    },
+    {
+      "name": "09_card_index",
+      "url": "/pages/card/index",
+      "ok": true,
+      "err": "timeout waiting for automator response",
+      "attempt": 2,
+      "actualPath": "pages/card/index",
+      "screenshot": "09_card_index.png",
+      "buttons": [
+        {
+          "text": "版本历史",
+          "cls": "btn-small ghost",
+          "disabled": null
+        },
+        {
+          "text": "版本历史",
+          "cls": "btn-small ghost",
+          "disabled": null
+        },
+        {
+          "text": "+ 新增成本卡",
+          "cls": "btn primary",
+          "disabled": null
+        },
+        {
+          "text": "导出 / 打印",
+          "cls": "btn ghost",
+          "disabled": null
+        }
+      ],
+      "texts": [
+        "单份",
+        "单份成本",
+        "¥2310.00",
+        "建议售价",
+        "-5400%",
+        "版本 2",
+        "单份",
+        "单份成本",
+        "¥975.00",
+        "建议售价",
+        "—",
+        "版本 1"
+      ],
+      "dataKeys": [
+        "t",
+        "list",
+        "loading",
+        "__webviewId__"
+      ]
+    },
+    {
+      "name": "10_card_edit",
+      "url": "/pages/card/edit",
+      "ok": true,
+      "err": "timeout waiting for automator response",
+      "attempt": 2,
+      "actualPath": "pages/card/edit",
+      "screenshot": "10_card_edit.png",
+      "buttons": [
+        {
+          "text": "+ 添加明细行",
+          "cls": "btn ghost btn-small",
+          "disabled": null
+        },
+        {
+          "text": "反算售价",
+          "cls": "btn ghost btn-small",
+          "disabled": null
+        },
+        {
+          "text": "保存成本卡",
+          "cls": "btn primary",
+          "disabled": null
+        }
+      ],
+      "texts": [
+        "菜品名称",
+        "核算模式",
+        "制作损耗率（%）",
+        "辅料分摊（元）",
+        "建议售价",
+        "目标毛利率（%）"
+      ],
+      "dataKeys": [
+        "t",
+        "card_code",
+        "isEdit",
+        "name",
+        "calcMode",
+        "batchOutput",
+        "lossRate",
+        "auxYuan",
+        "priceYuan",
+        "targetMargin",
+        "reversePriceFen",
+        "previewCostFen",
+        "reverseResultPreview",
+        "previewCost",
+        "materials",
+        "lines",
+        "loading",
+        "__webviewId__"
+      ]
+    },
+    {
+      "name": "11_card_version",
+      "url": "/pages/card/version",
+      "ok": true,
+      "err": "timeout waiting for automator response",
+      "attempt": 3,
+      "actualPath": "pages/card/version",
+      "screenshot": "11_card_version.png",
+      "buttons": [],
+      "texts": [],
+      "dataKeys": [
+        "t",
+        "card_code",
+        "list",
+        "loading",
+        "__webviewId__"
+      ]
+    },
+    {
+      "name": "12_pay_orders",
+      "url": "/pages/pay/orders",
+      "ok": true,
+      "err": "timeout waiting for automator response",
+      "attempt": 2,
+      "actualPath": "pages/pay/orders",
+      "screenshot": "12_pay_orders.png",
+      "buttons": [],
+      "texts": [],
+      "dataKeys": [
+        "t",
+        "expireText",
+        "showRenew",
+        "orders",
+        "loading",
+        "__webviewId__"
+      ]
+    },
+    {
+      "name": "13_shop_switch",
+      "url": "/pages/shop/switch",
+      "ok": true,
+      "err": "timeout waiting for automator response",
+      "attempt": 2,
+      "actualPath": "pages/shop/switch",
+      "screenshot": "13_shop_switch.png",
+      "buttons": [
+        {
+          "text": "+ 新增店铺",
+          "cls": "btn ghost",
+          "disabled": null
+        }
+      ],
+      "texts": [
+        "当前店铺"
+      ],
+      "dataKeys": [
+        "t",
+        "list",
+        "currentShopId",
+        "used",
+        "freeLimit",
+        "hitFreeLimit",
+        "loading",
+        "__webviewId__"
+      ]
+    },
+    {
+      "name": "14_mine",
+      "url": "/pages/mine/index",
+      "ok": true,
+      "err": "timeout waiting for automator response",
+      "attempt": 2,
+      "actualPath": "pages/mine/index",
+      "screenshot": "14_mine.png",
+      "buttons": [
+        {
+          "text": "头像",
+          "cls": "avatar-btn",
+          "disabled": null
+        },
+        {
+          "text": "注销账号",
+          "cls": "btn danger",
+          "disabled": "false"
+        }
+      ],
+      "texts": [
+        "头像",
+        "昵称",
+        "查看隐私协议",
+        "›",
+        "撤回授权",
+        "›",
+        "意见反馈",
+        "›",
+        "关于",
+        "版本 v1.0.0",
+        "免责声明",
+        "›"
+      ],
+      "dataKeys": [
+        "t",
+        "shopName",
+        "avatarUrl",
+        "nickname",
+        "loadingLogout",
+        "__webviewId__"
+      ]
+    }
+  ]
+}
