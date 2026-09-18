@@ -142,6 +142,17 @@
 - [2026-09-19 02:15] R97 已落 · 新增 `tools/check_data_contract.js` 并挂进 SUITES（63 → **64**）：C1 `da.get` 兜底在位**且非空**（≥3 字段）+ 不含非唯一字段；C2 同义字段在 **DB 读取点**必须兼容。**变异回灌三组**（含**修我自己的恒真断言**：首版只查"字符串在位" ⇒ 清空数组仍绿）；**两次假红**已收窄（只认 `doc.` 前缀 / `\]+` 容两个 `]`）· commit `89ce56e`
 - [2026-09-19 02:15] 第三轮逐个重部署 · **42/42 FAIL=0**（推 common 变更必全量逐个部署）· 证据 `deploy_pass3_42ok.txt` · commit `0b2d6b5`
 - [2026-09-19 02:15] 未闭合 · ① **§3 判据**（`idx_card_code_version` 真生效）需**控制台 GUI 手工插入重复三元组** —— 云函数入参**不接受 `version`**，我造不出重复三元组，只能走控制台 ② 超时值控制台手点 + `info` 回读 ③ **R81**（`mode` 白名单，挂 4 轮）· 无 commit
+
+
+<!-- 以下为 2026-09-19 01:00-01:40 追加（R81 闭环：挂 4 轮后本轮做完） -->
+- [2026-09-19 01:40] ✅ **R81 已落（挂 4 轮后闭环）** · `saveCostCard` / `calcBom` 的 `mode` 白名单。改 **8 处**：① `saveCostCard/validate.js:34` ② `calcBom/validate.js:43`（入口白名单，**含缺失也拒**）③⑤ 三份 `calcCostCard` 引擎副本改**断言式** `throw {code:'INVALID_PARAM'}`（`calcBom` / `saveCostCard` / `syncCostCard` 的 service.js）⑥⑧ 三处调用点包 `try/catch`把引擎抛错**透传为 INVALID_PARAM**（否则退化成 SYSTEM_ERROR = 含糊拒，违背 R27）· commit 待落
+- [2026-09-19 01:40] ✅ **19 条断言 + 变异回灌** · 越界 `'b'` / `2` / `'C'` / `''` / 缺失 ⇒ INVALID_PARAM；**反向证据** `'A'` / `'B'` 必须放行（否则"一律拒绝"也能让越界断言转绿 = 判据失效）。**回灌**：把四处白名单条件改回 `false`（等价旧三元兜底）⇒ **19 条转红、两个 selftest RC=1**；还原后 `saveCostCard` 29/29、`calcBom` 40/40、`syncCostCard` 4/4 · 基线套件 64/64 + 门禁 A–L RC=0
+- [2026-09-19 01:40] ✅ **真云复验通过（路径 A）** · 三函数**逐个**部署均一次成功（`success:true`）⇒ 页面上下文实调：`saveCostCard` 的 `'b'` / `2` / `'C'` / `''` 四条全 `INVALID_PARAM`（msg 逐字带当前值），`'A'` = **`SUCCESS`**；`calcBom` 同样 `'b'` 拒 / `'A'` 通。真 `shop_id=shop_mu6j87v1itrs`、真原料 `mat_mu7606ti1psx`（`getMaterial` 返回 6 条）⇒ **不是 mock** · 证据 `review/evidence/r81_probe_result.json` + `r81_deploy_20260919.txt` + `r81_probe.js`
+
+- [2026-09-19 01:40] 🔎 **顺带核清（防误伤，不是想当然）** · 前端**恒传** `'A'`/`'B'`：`pages/card/edit.js:71` 的 `calcMode` 取自 `getCostCard` 出参，而 `getCostCard/service.js:13` 已把 DB 的 `calc_mode(1/2)` 映射成 wire 的 `'A'/'B'` ⇒ 收紧**不打断**现有流程；**grep 查全同类**：全仓 `=== 'B' ? 'B' : 'A'` **零命中**（唯一命中是 selftest 里的背景注释），`function calcCostCard` 只有 3 份，`web-preview` / `admin-h5` **无第四副本**
+- [2026-09-19 01:40] 仍挂（人工面）· ① **§3 判据**（`idx_card_code_version` 真生效）需控制台 GUI 手工插重复三元组 ② 超时值（R86/R93）控制台手点 + `cli cloud functions info` 回读 · 无 commit
+- [2026-09-19 01:40] 评审请求 · 执行方分析件 = `review/NOTE_2026-09-19_round39-r81-mode-whitelist.md`（`NOTE_` 前缀，R96）；建议与 `NOTE_...realcloud-get.md` 一并审
+
 - [2026-09-19 02:15] 评审请求 · **批次 8（8a/8b/8c）+ genId 事故 + 本件两个新缺陷** 都还没经你复审；我落的执行方分析件 = `review/NOTE_2026-09-19_round39-realcloud-get.md`（按 R96 用 `NOTE_` 前缀）· 建议下轮优先审它
 
 ---

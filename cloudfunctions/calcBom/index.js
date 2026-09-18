@@ -35,7 +35,14 @@ exports.main = async (event) => {
   if (v.error) return fail(v.error, v.msg);
 
   // ===== 3. Service 纯计算 =====
-  const r = calcCostCard(v.card);
+  let r;
+  try {
+    r = calcCostCard(v.card);
+  } catch (e) {
+    // R81：引擎对非法 mode 抛 INVALID_PARAM（透传为响亮失败），其余按系统错误兜底
+    if (e && e.code) return fail(e.code, e.msg || e.message);
+    return fail(ERROR_CODES.SYSTEM_ERROR, (e && e.message) || '成本计算失败');
+  }
 
   return ok({
     shop_id: shopId,

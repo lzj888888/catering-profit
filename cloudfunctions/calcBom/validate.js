@@ -38,7 +38,12 @@ function validateInput(event) {
   if (!Number.isInteger(auxFen) || auxFen < 0) return err('辅料分摊必须是非负整数分');
   if (!Number.isInteger(priceFen) || priceFen < 0) return err('建议售价必须是非负整数分');
 
-  const mode = src.mode === 'B' ? 'B' : 'A';
+  // R81：mode 白名单（与 saveCostCard/validate.js 同口径）—— 非法值响亮拒，禁止静默兜底 A。
+  // 兜底会让「预览成本」按 A 算而「保存」按 B 存（或反之）⇒ 页面预览与落库结果不一致。
+  if (src.mode !== 'A' && src.mode !== 'B') {
+    return err('card.mode 必须是 "A" 或 "B"（当前值：' + JSON.stringify(src.mode === undefined ? null : src.mode) + '）');
+  }
+  const mode = src.mode;
   const batchOutput = (mode === 'B' && Number.isInteger(src.batch_output) && src.batch_output > 0) ? src.batch_output : 0;
   if (mode === 'B' && !(batchOutput > 0)) return err('模式 B 必须提供 batch_output（>0 的整数份数）');
 

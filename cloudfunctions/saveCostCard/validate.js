@@ -28,7 +28,13 @@ function validateInput(event) {
     cLines.push({ material_id: ln.material_id, quantity: qty });
   }
 
-  const mode = card.mode === 'B' ? 'B' : 'A';
+  // R81：mode 白名单 —— 非法值一律**响亮拒**，禁止静默兜底 A。
+  // 历史兜底会把 'b' / 2 / 'C' / '' / 缺失 静默当成 A ⇒ 不生成虚拟半成品、忽略 batch_output、
+  // 落库 calc_mode:1 ⇒ **成本语义悄悄变错且无任何报错**（本仓唯一"已知会静默算错成本"的开口）。
+  if (card.mode !== 'A' && card.mode !== 'B') {
+    return err('card.mode 必须是 "A" 或 "B"（当前值：' + JSON.stringify(card.mode === undefined ? null : card.mode) + '）');
+  }
+  const mode = card.mode;
   const auxFen = (typeof card.aux_fen === 'number') ? card.aux_fen
     : (typeof card.auxYuan === 'number' ? Math.round(card.auxYuan * 100) : 0);
   if (!Number.isInteger(auxFen) || auxFen < 0) return err('card.aux_fen/auxYuan 辅料分摊必须是非负值');

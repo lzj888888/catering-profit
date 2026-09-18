@@ -76,14 +76,21 @@ exports.main = async (event) => {
     return fail(e.code || ERROR_CODES.SYSTEM_ERROR, e.message);
   }
   const p = cardParamFromDoc(latestCard);
-  const result = calcCostCard({
-    mode: p.mode,
-    lines: newLines,
-    auxFen: p.auxFen,
-    lossPct: p.lossPct,
-    batchOutput: p.batchOutput,
-    priceFen: p.priceFen,
-  });
+  let result;
+  try {
+    result = calcCostCard({
+      mode: p.mode,
+      lines: newLines,
+      auxFen: p.auxFen,
+      lossPct: p.lossPct,
+      batchOutput: p.batchOutput,
+      priceFen: p.priceFen,
+    });
+  } catch (e) {
+    // R81：引擎对非法 mode 抛 INVALID_PARAM（透传为响亮失败），其余按系统错误兜底
+    if (e && e.code) return fail(e.code, e.msg || e.message);
+    return fail(ERROR_CODES.SYSTEM_ERROR, (e && e.message) || '成本计算失败');
+  }
 
   // ===== 7. 计算新版本号（该 card_code 最大版本 + 1）=====
   let nextVersion = 1;

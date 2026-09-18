@@ -104,4 +104,5 @@
 - **§3 判据**（`idx_card_code_version` 是否真生效）仍需**控制台 GUI 手工插入重复三元组**
   —— 云函数入参不接受 `version`，只能用控制台加记录；属人工面。
 - 超时值（R86/R93）仍需控制台手点 + `info` 回读。
-- `R81`（`saveCostCard` 的 `mode` 白名单）仍挂。
+- ~~`R81`（`saveCostCard` 的 `mode` 白名单）仍挂~~ ⇒ **2026-09-19 01:40 已闭环**（同上条纪律，更正留痕）：
+  见 `review/NOTE_2026-09-19_round39-r81-mode-whitelist.md`（8 处改动 / 19 条断言 / 变异回灌已做）。

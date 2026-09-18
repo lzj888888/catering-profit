@@ -136,5 +136,26 @@ check('R38 变异：逐行 round 会得 2499 ≠ 规范值 2498（判据能抓�
   perLineWrong === 2499 && R38.unit_cost_fen !== perLineWrong, `逐行 round=${perLineWrong}分, 正确=2498分`);
 check('R38 总成本即明细合计（无损耗无辅料）', R38.material_total_fen === 2498 && R38.unit_cost_fen === R38.material_total_fen);
 
+// ===== R81：mode 白名单（预览路径与 saveCostCard 同口径）=====
+// 背景：预览若静默兜底 A，会出现「页面预览按 A 算、保存按 B 存」的口径分裂。
+console.log('');
+console.log('===== R81 · mode 白名单（预览入口 + 引擎）=====');
+const { validateInput } = require('./validate');
+const goodBom = { shop_id: 's1', lines: [{ quantity: 100, net_unit_cost: 333 }], mode: 'A' };
+for (const bad of ['b', 2, 'C', '']) {
+  const rv = validateInput({ ...goodBom, mode: bad });
+  check(`预览入口：mode=${JSON.stringify(bad)} → INVALID_PARAM`, rv.error === 'INVALID_PARAM', `实际=${rv.error}`);
+}
+check('预览入口：mode 缺失 → INVALID_PARAM', validateInput({ ...goodBom, mode: undefined }).error === 'INVALID_PARAM');
+check("预览入口反向：mode='A' 放行", validateInput(goodBom).error === null);
+function bomModeCode(m) {
+  try { calcCostCard({ mode: m, lines: [{ quantity: 100, net_unit_cost: 333 }], auxFen: 0, lossPct: 0, priceFen: 0 }); return null; }
+  catch (e) { return (e && e.code) || 'THROW_WITHOUT_CODE'; }
+}
+for (const bad of ['b', 2, 'C', '']) {
+  check(`引擎：mode=${JSON.stringify(bad)} → 抛 INVALID_PARAM`, bomModeCode(bad) === 'INVALID_PARAM', `实际=${bomModeCode(bad)}`);
+}
+check("引擎反向：mode='B' 不抛", bomModeCode('B') === null);
+
 console.log(`\n==== calcBom 批次 3 自测结果：${pass} 通过 / ${failN} 失败 ====`);
 process.exit(failN === 0 ? 0 : 1);

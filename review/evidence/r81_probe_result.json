@@ -1,0 +1,49 @@
+{
+  "shop_id": "shop_mu6j87v1itrs",
+  "steps": [
+    {
+      "fn": "saveCostCard",
+      "mode": "b",
+      "code": "INVALID_PARAM",
+      "msg": "card.mode 必须是 \"A\" 或 \"B\"（当前值：\"b\"）"
+    },
+    {
+      "fn": "saveCostCard",
+      "mode": 2,
+      "code": "INVALID_PARAM",
+      "msg": "card.mode 必须是 \"A\" 或 \"B\"（当前值：2）"
+    },
+    {
+      "fn": "saveCostCard",
+      "mode": "C",
+      "code": "INVALID_PARAM",
+      "msg": "card.mode 必须是 \"A\" 或 \"B\"（当前值：\"C\"）"
+    },
+    {
+      "fn": "saveCostCard",
+      "mode": "",
+      "code": "INVALID_PARAM",
+      "msg": "card.mode 必须是 \"A\" 或 \"B\"（当前值：\"\"）"
+    },
+    {
+      "fn": "saveCostCard",
+      "mode": "A",
+      "code": "SUCCESS",
+      "msg": "ok"
+    },
+    {
+      "fn": "calcBom",
+      "mode": "b",
+      "code": "INVALID_PARAM",
+      "msg": "card.mode 必须是 \"A\" 或 \"B\"（当前值：\"b\"）"
+    },
+    {
+      "fn": "calcBom",
+      "mode": "A",
+      "code": "SUCCESS",
+      "msg": "ok"
+    }
+  ],
+  "materialCount": 6,
+  "materialId": "mat_mu7606ti1psx"
+}

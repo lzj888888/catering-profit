@@ -133,15 +133,22 @@ exports.main = async (event) => {
   }
 
   // ===== 7. 计算成本（Service 纯引擎，口径与 calcBom 完全一致）=====
-  const result = calcCostCard({
-    mode: card.mode,
-    lines: snap.lines,
-    auxFen: card.auxFen,
-    lossPct: card.lossPct,
-    batchOutput: card.batchOutput,
-    priceFen: card.priceFen,
-    targetMarginPct: card.targetMarginPct,
-  });
+  let result;
+  try {
+    result = calcCostCard({
+      mode: card.mode,
+      lines: snap.lines,
+      auxFen: card.auxFen,
+      lossPct: card.lossPct,
+      batchOutput: card.batchOutput,
+      priceFen: card.priceFen,
+      targetMarginPct: card.targetMarginPct,
+    });
+  } catch (e) {
+    // R81：引擎对非法 mode 抛 INVALID_PARAM（透传为响亮失败），其余按系统错误兜底
+    if (e && e.code) return fail(e.code, e.msg || e.message);
+    return fail(ERROR_CODES.SYSTEM_ERROR, (e && e.message) || '成本计算失败');
+  }
 
   // ===== 8. 确定 version（只 INSERT，不 UPDATE；最新 = 该 card_code 版本号最大者）=====
   let cardCode = card.card_code;

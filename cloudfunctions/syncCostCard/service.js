@@ -34,7 +34,14 @@ function rebuildSnapshotLines(existingLines, materialsById) {
 // 成本引擎（与 calcBom.calcCostCard 同款）
 function calcCostCard(p) {
   const lines = (p && Array.isArray(p.lines)) ? p.lines : [];
-  const mode = (p && p.mode === 'B') ? 'B' : 'A';
+  // R81：mode 白名单（断言式）—— 非法值**抛错**，不再静默兜底 A。
+  //   与 validate.js 构成双保险：validate 守入口，这里守引擎（syncCostCard 等旁路也会经过）。
+  //   历史兜底会把 'b' / 2 / 'C' / '' / 缺失 静默当 A ⇒ 成本语义悄悄变错且无报错。
+  //   'INVALID_PARAM' 与 common/errors.js::ERROR_CODES.INVALID_PARAM 同值（与另两副本同口径）。
+  if (!p || (p.mode !== 'A' && p.mode !== 'B')) {
+    throw { code: 'INVALID_PARAM', msg: 'card.mode 必须是 "A" 或 "B"（当前值：' + JSON.stringify(p && p.mode !== undefined ? p.mode : null) + '）' };
+  }
+  const mode = p.mode;
   const lossPct = p && Number.isFinite(p.lossPct) ? p.lossPct : 0;
   const auxFen = (p && Number.isFinite(p.auxFen)) ? p.auxFen : 0;
   let detailSumYuan = 0;

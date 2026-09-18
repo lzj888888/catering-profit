@@ -88,5 +88,33 @@ check('模式 B 缺 batch_output → INVALID_PARAM',
 check('命令式：name 为空 → INVALID_PARAM',
   validateInput({ ...goodCard, card: { ...goodCard.card, name: '  ' } }).error === 'INVALID_PARAM');
 
+// ===== ⑥ R81：mode 白名单（禁止静默兜底 A）=====
+// 背景：修之前 `card.mode === 'B' ? 'B' : 'A'` 会把 'b' / 2 / 'C' / '' / 缺失 静默当 A
+//   ⇒ 不生成虚拟半成品、忽略 batch_output、落库 calc_mode:1 ⇒ **成本语义悄悄变错且无报错**。
+console.log('');
+console.log('===== ⑥ R81 · mode 白名单（入口 + 引擎双层）=====');
+const BAD_MODES = ['b', 2, 'C', ''];
+for (const bad of BAD_MODES) {
+  const rv = validateInput({ ...goodCard, card: { ...goodCard.card, mode: bad } });
+  check(`入口：mode=${JSON.stringify(bad)} → INVALID_PARAM（不得静默兜底 A）`, rv.error === 'INVALID_PARAM', `实际=${rv.error}`);
+}
+check('入口：mode 缺失 → INVALID_PARAM（不得静默兜底 A）',
+  validateInput({ ...goodCard, card: { ...goodCard.card, mode: undefined } }).error === 'INVALID_PARAM');
+// 反向证据（不该红时不红）：合法值必须放行
+check("入口反向：mode='A' 放行", validateInput({ ...goodCard, card: { ...goodCard.card, mode: 'A' } }).error === null);
+check("入口反向：mode='B' + batch_output 放行",
+  validateInput({ ...goodCard, card: { ...goodCard.card, mode: 'B', batch_output: 10 } }).error === null);
+
+function modeCode(m) {
+  try { calcCostCard({ mode: m, lines: snap.lines, auxFen: 0, lossPct: 0, priceFen: 0 }); return null; }
+  catch (e) { return (e && e.code) || 'THROW_WITHOUT_CODE'; }
+}
+for (const bad of BAD_MODES) {
+  check(`引擎：mode=${JSON.stringify(bad)} → 抛 INVALID_PARAM`, modeCode(bad) === 'INVALID_PARAM', `实际=${modeCode(bad)}`);
+}
+check('引擎：mode 缺失 → 抛 INVALID_PARAM', modeCode(undefined) === 'INVALID_PARAM');
+check("引擎反向：mode='A' 不抛", modeCode('A') === null);
+check("引擎反向：mode='B' 不抛", modeCode('B') === null);
+
 console.log(`\n==== saveCostCard 批次 3 自测结果：${pass} 通过 / ${failN} 失败 ====`);
 process.exit(failN === 0 ? 0 : 1);
