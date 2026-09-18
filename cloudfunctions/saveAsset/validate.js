@@ -1,5 +1,8 @@
 // cloudfunctions/saveAsset/validate.js —— 入参校验（纯函数）。
-// 入参 { shop_id, asset:{asset_id?,name,value_fen,start_month,total_months,terminate_month?}, terminate?:bool, client_request_id }。
+// 入参 { shop_id, asset:{asset_id?,name,value_fen,start_month,total_months,terminate_month?,group_id?,batch_seq?}, terminate?:bool, client_request_id }。
+// ⚠️ H1（批次 8c）：同一资产多次采购 —— 「追加采购」= 另起一行资产（独立起摊），用 group_id 归到同一组、
+//   batch_seq 标记是该资产第几笔。摊销引擎（calcAmortize / saveLedger）**零改动**：每笔各自是一行资产，
+//   现有「逐行独立尾差倒挤」规则天然满足「新增采购也单独摊」。
 const { ERROR_CODES } = require('./common');
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 
@@ -22,6 +25,19 @@ function validateInput(event) {
   const terminate_month = (typeof a.terminate_month === 'string' && a.terminate_month) ? a.terminate_month : '';
   if (terminate_month && !MONTH_RE.test(terminate_month)) return err('asset.terminate_month 必须是 YYYY-MM 或留空');
 
+  // H1：分组字段（可选）。group_id 是「同一资产的多次采购」归组键；batch_seq 是该组内第几笔（≥1 整数）。
+  //   缺省时：group_id = ''（独立资产，前端把自身 asset_id 当作组键）、batch_seq = 1。
+  const group_id = (typeof a.group_id === 'string' && a.group_id.trim()) ? a.group_id.trim() : '';
+  let batch_seq = 1;
+  if (a.batch_seq !== undefined && a.batch_seq !== null) {
+    if (typeof a.batch_seq !== 'number' || !Number.isInteger(a.batch_seq) || a.batch_seq < 1) {
+      return err('asset.batch_seq 必须是 ≥1 的整数（JSON number；不接受字符串与 0）');
+    }
+    batch_seq = a.batch_seq;
+  }
+  // 自指组键（group_id === 自己）无意义且会让前端分组自相矛盾 → 拒，迫使前端传真实父键
+  if (group_id && group_id === a.asset_id) return err('asset.group_id 不能等于自身 asset_id');
+
   return {
     error: null,
     shop_id: src.shop_id,
@@ -32,6 +48,8 @@ function validateInput(event) {
       start_month: a.start_month,
       total_months: a.total_months,
       terminate_month,
+      group_id,
+      batch_seq,
     },
     input: { client_request_id: src.client_request_id || '' },
   };

@@ -55,7 +55,6 @@ const TERMS = {
     calc: '算一算', // 不叫"计算盈利"
     export: '导出 / 打印', // 免费禁，触发 paywall.export
     unlockPro: '开通真实利润', // ⭐ 主按钮，必须带功能名
-    unlockAll: '开通完整功能',
     cancel: '取消',
     thinkAgain: '再想想',
   },
@@ -85,10 +84,7 @@ const TERMS = {
 
   // ===== 六、结果页术语替换 =====
   result: {
-    netMargin: '净收益占比', // 内部：净利率
     grossMargin: '毛利率', // ✅ 安全，直接用
-    breakeven: '保本点', // ✅ 安全，直接用
-    paybackPrefix: '按当前数据，约',
     paybackSuffix: '可收回投入', // 内部：回本周期 → 软展示"约 X 个月收回投入"
     m2Conclusion: (amount) => `按你填的数，这家店每月大概能剩 ¥${amount}`,
   },
@@ -96,7 +92,6 @@ const TERMS = {
   // ===== 七、应用信息（上架审核）=====
   app: {
     title: '开店算账',
-    intro: '开店算账工具，算清每月能剩多少', // ⭐ 2026-09-10 拍板
     category: '工具 → 效率', // 禁选 金融 / 理财
   },
 
@@ -136,10 +131,9 @@ const TERMS = {
     month: '月份',
     history: '历史月份',
     totalRevenue: '营业收入',
-    totalExpense: '总费用',
+    totalExpense: '费用合计',
     directConsume: '直接填消耗',
     grossProfit: '毛利',
-    grossMarginRate: '毛利率',
     realConsume: '真实消耗',
     effectiveAmortize: '当月摊销',
     netRef: '经营参考利润',
@@ -148,7 +142,6 @@ const TERMS = {
     pendingArchive: '待归档',
     archivedLock: '归档月只读',
     graceArchive: '归档后 7 天内可补录（需确认）',
-    conclude: '本月结果',
     confirmArchive: '确认结账并归档该月？归档后默认只读（7 天内仍可补录）。',
     currencySymbol: '¥',
     loadFailed: '加载失败',
@@ -163,11 +156,9 @@ const TERMS = {
     goInventory: '录入库存（期初/采购/期末）',
     goAmortize: '管理摊销资产',
     goResult: '查看结果',
-    addAsset: '新增摊销资产',
     addCard: '+ 新增成本卡',
     viewVersion: '版本历史',
     syncPrice: '同步至原料最新价',
-    calcReverse: '反算售价',
     archiveNow: '结账并归档',
   },
 
@@ -175,21 +166,73 @@ const TERMS = {
   ledger: {
     incomeTitle: '收入',
     expenseTitle: '费用',
+    // A1/A2（批次 8）：收入/费用为「大类 → 二级细项」两级结构。
+    //   收入三大类（S1：堂食43,000 / 外卖20,000 / 其他1,000）；
+    //   费用四大类 = 运营 / 人工 / 营销 / 其他（S1：门店10,300 / 人工15,000 / 营销7,240 / 其他300 / 合计32,840）。
+    //   营销类细项**团购与外卖佣金分列**（04 核对清单 阶段 2：不合并）。
     income: [
-      { category: 'dine_in',   label: '堂食收入' },
-      { category: 'takeaway',  label: '外卖收入' },
-      { category: 'other',     label: '其他收入' },
+      {
+        category: 'dine_in', label: '堂食',
+        items: ['现金', '微信支付宝', '储值消费', '团购券核销', '企业挂账消费'],
+      },
+      {
+        category: 'takeaway', label: '外卖',
+        items: ['商品总价', '打包费', '商家活动补贴'],
+      },
+      {
+        category: 'other', label: '其他业务收入',
+        items: ['废品变卖', '预制菜零售'],
+      },
     ],
     expense: [
-      { category: 'rent',      label: '房租租金' },
-      { category: 'labor',     label: '人员工资' },
-      { category: 'utility',   label: '水电物业' },
-      { category: 'other',     label: '其他杂费' },
+      {
+        category: 'operation', label: '运营',
+        items: ['房租', '物业费', '水费', '电费', '燃气费', '垃圾清运费', '宽带网费'],
+      },
+      {
+        category: 'labor', label: '人工',
+        items: ['工资绩效', '社保', '员工宿舍', '员工餐', '工装福利'],
+      },
+      {
+        category: 'marketing', label: '营销',
+        items: ['外卖平台佣金', '外卖配送服务费', '外卖活动补贴', '外卖配送补贴', '外卖推广费', '团购平台佣金'],
+      },
+      {
+        category: 'other', label: '其他',
+        items: ['代账费', '其他杂项'],
+      },
     ],
     subItem: '细项',
+    subItemPh: '细项名称（选填）',
+    addSubItem: '+ 添加细项',
+    delSubItem: '删除',
     amount: '金额（元）',
     directConsume: '食材消耗合计（元）',
     directConsumeHint: '关闭了库存核算时，直接填本月食材消耗总额。',
+    // E1：收入/费用引导文案（总口径）
+    incomeHint: '收入按当月实际到账金额填写，平台抽成前的流水不要填。',
+    expenseHint: '费用只填本月实际支出，不含采购库存。',
+    // ===== E2（批次 8c）：每一类的「包括 / 不包括」口径 —— 说清填什么，防重填漏填 =====
+    incomeScope: {
+      dine_in: '包括店内扫码点单、现金、微信支付宝、储值卡核销、团购券核销；不包括会员充值预收（没消费不算收入）。',
+      takeaway: '按平台实际到账金额填；平台佣金与配送费不要在这里扣，记到「费用 · 营销」。',
+      other: '包括废品变卖、预制菜零售等；不包括老板个人转入、借款、押金。',
+    },
+    expenseScope: {
+      operation: '包括房租、物业、水电燃气、耗材、平台年费；不包括设备与装修购置（走「摊销资产」分期摊）。',
+      labor: '包括工资绩效、社保、加班费、员工餐、临时工；不包括老板个人开支。',
+      marketing: '包括团购与外卖平台佣金、配送服务费、推广费、活动补贴；不要与收入重复扣减。',
+      other: '包括代账费、维修、差旅、办公；加盟费/品牌使用费金额大请走「摊销资产」；不包括食材采购与还本付息。',
+    },
+    // 页面顶部「填写口径」折叠块（默认收起，点开看 5 条防重防错规则）
+    fillGuideTitle: '填写口径（点开看，避免填重填错）',
+    fillGuide: [
+      '① 同一笔钱只填一次：填了收入就别再填成费用，填了费用别再抵一次收入。',
+      '② 金额单位是「元」，可以填两位小数；按当月实际发生填，不要估。',
+      '③ 食材采购不计入费用：采购进库存，系统按「月初 + 采购 − 月末」自动算食材消耗。',
+      '④ 设备、装修、加盟费等一次性投入走「摊销资产」分期摊，可分多次采购分别摊。',
+      '⑤ 外卖、团购的佣金不要在收入里扣，统一记到「费用 · 营销」。',
+    ],
   },
 
   // ===== 十三、M2 开店测算文案 =====
@@ -251,7 +294,6 @@ const TERMS = {
     empty: '还没有成本卡，点下方新增',
     oldVersionNote: '历史版本（只读）',
     syncNote: '同步后将按原料最新价生成新版本，旧版本保留可查。',
-    syncPrice2: '同步至最新价',
     versionCreatedAt: '保存时间',
     versionCostDiff: '成本变化',
     versionLines: '配方明细',
@@ -292,6 +334,19 @@ const TERMS = {
     namePh: '如 装修、设备',
     monthUnit: '月',
     optional: '可选',
+    // ===== H1（批次 8c）：同一资产多次采购，每笔独立起摊 =====
+    scopeHint: '装修、设备、加盟费等一次性投入在这里按笔登记、分期摊销。同一资产以后又追加投入，点「追加采购」再记一笔，每笔从各自的采购月起单独摊销。',
+    appendPurchase: '追加采购',
+    appendTitle: '追加采购',
+    batchWord: '采购',
+    batchPrefix: '第',
+    batchSuffix: '笔',
+    batchTotalPrefix: '共',
+    batchTotalSuffix: '笔采购',
+    groupValueLabel: '合计原值',
+    expandHint: '展开看每一笔',
+    collapseHint: '收起',
+    appendHint: '同一资产再次投入请用「追加采购」，不要另建同名资产，否则会重复计一遍。',
   },
 
   // ===== 十七、M1 结果展示页 =====
@@ -344,8 +399,6 @@ const TERMS = {
     conclusionSuffix: '元',
     redAlert: '当前结构无法盈利',
     redAlertHint: '综合变动成本率达到或超过 100%，请调整成本结构后重试。',
-    inputs: '你的输入',
-    outputs: '测算结果',
     noCalc: '填写上方参数后点击测算',
   },
 
@@ -412,7 +465,6 @@ const TERMS = {
     exportTitle: '导出数据',
     exportIng: '正在导出…',
     exportDone: '导出完成',
-    exportScopeM1: '月度报表',
     exportScopeM3: '成本卡批量',
     exportFormatExcel: 'Excel',
     exportFormatJson: 'JSON',
@@ -421,7 +473,6 @@ const TERMS = {
     privacyTitle: '用户隐私保护指引',
     privacyAgree: '同意并继续',
     privacyDisagree: '暂不同意',
-    privacyNeed: '使用前需同意隐私协议；不同意将无法使用完整功能。',
     privacyOpen: '查看隐私协议',
     privacyRevoke: '撤回授权',
     privacyRevoked: '已撤回授权',
@@ -438,6 +489,13 @@ const TERMS = {
     dataCleanNote: '历史数据不硬删，优先软删恢复 + 周备份（保留 30 天）。',
     // 日志脱敏
     privacyDesc: '本工具仅收集登录所需 openid / 昵称头像等必要信息，用于账号识别与数据同步；不含手机号、支付信息等敏感数据。',
+    // C1：关于 / 客服 / 免责声明（mine 页）
+    about: '关于',
+    versionLabel: '版本',
+    appVersion: 'v1.0.0',
+    feedback: '意见反馈',
+    feedbackHint: '使用中遇到问题，点这里反馈',
+    disclaimerLabel: '免责声明',
   },
 
   // ===== 二十四、导出按钮（付费墙触发）=====

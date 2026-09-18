@@ -1,7 +1,20 @@
 /* pages/month/amortize.wxss —— M1 摊销资产管理页 */
 .val-input { text-align: right; font-size: 30rpx; width: 280rpx; }
+.picker-val { text-align: right; font-size: 30rpx; color: #222; min-height: 60rpx; line-height: 60rpx; }
+.picker-val.ph { color: #bbb; }
 .row-ops { display: flex; justify-content: flex-end; gap: 16rpx; margin-top: 16rpx; }
 .row-ops .btn-small { margin-top: 0; }
 .mask { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 99; display: flex; align-items: flex-end; }
 .sheet { width: 100%; background: #f5f6f8; border-radius: 24rpx 24rpx 0 0; padding: 32rpx 24rpx calc(env(safe-area-inset-bottom) + 32rpx); box-sizing: border-box; }
 .sheet .field { background: #fff; }
+
+/* ===== H1（批次 8c）：同一资产多次采购 —— 分组明细样式 ===== */
+.scope-hint { padding: 0 24rpx 16rpx; }
+.batch { border-top: 1rpx dashed #eee; padding-top: 8rpx; margin-top: 4rpx; }
+.batch-title { font-size: 26rpx; color: #666; padding: 12rpx 0 4rpx; }
+.batch-head {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12rpx 0; border-top: 1rpx solid #f0f0f0;
+}
+.bh-txt { font-size: 24rpx; color: #888; }
+.bh-arrow { font-size: 24rpx; color: #999; }

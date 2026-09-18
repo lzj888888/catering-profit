@@ -1,0 +1,12 @@
+待部署: adminExport adminGrantEntitlement adminInit adminLogin adminLogout adminManualOrder adminOrderList adminQueryUser adminRefreshToken adminRefundMark adminRevokeToken archiveMonth calcAmortize calcBom calcMonthlyProfit calcSandbox checkQuota deleteAccount detectCycle exportData getAmortSchedule getCardVersions getCostCard getLedger getMaterial getMonthList getShopContext getShopList payCallback payCreateOrder payExpireNotify payOrderList payQueryEntitlement payRenew saveAsset saveCostCard saveLedger saveMaterial saveShopSetting syncCostCard 
+总数: 40
+########## 第 1 轮 ##########
+  ✅ getLedger
+  ✅ saveLedger
+>>> 第 1 轮后仍失败: adminExport adminGrantEntitlement adminInit adminLogin adminLogout adminManualOrder adminOrderList adminQueryUser adminRefreshToken adminRefundMark adminRevokeToken archiveMonth calcAmortize calcBom calcMonthlyProfit calcSandbox checkQuota deleteAccount detectCycle exportData getAmortSchedule getCardVersions getCostCard getMaterial getMonthList getShopContext getShopList payCallback payCreateOrder payExpireNotify payOrderList payQueryEntitlement payRenew saveAsset saveCostCard saveMaterial saveShopSetting syncCostCard  （等待 60s 重试）
+########## 第 2 轮 ##########
+  ✅ adminExport
+  ✅ adminGrantEntitlement
+  ✅ adminInit
+  ✅ adminLogin
+  ✅ adminLogout

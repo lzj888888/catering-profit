@@ -1,0 +1,43 @@
+# 批次 8c 门禁结果（2026-09-18）
+
+## verify_all（全量串联）
+  [batch8c-amort-batches] ✅ PASS  (✅ 56 条 / 段 7)
+
+===== 总览：61/61 套件通过 =====
+
+## 逐个守卫
+### node specs/dev-specs/prototype/check_error_codes.js
+   K   投喂链派生一致         : 8 份 txt + 8 个 HTML 块均与 MD 单源逐字一致（CRLF 已归一，防 D4/D7 类派生件落后）；Runbook/手册 .txt ≡ .md
+   L   common 同步一致        : 各云函数目录**扁平副本**（common.js + cx_*.js）均 ≡ cloudfunctions/common/ 单源派生（护栏：云端不认子目录，防 MODULE_NOT_FOUND）
+### node tools/check_schema_sync.js
+
+===== 建库单源同步守卫结果：64 通过 / 0 失败 =====
+### node tools/check_pages.js
+✅ 页面声明校验通过（app.json 声明 14 页，pages/ 下实到 14 页；四件套必需项 .js/.wxml 齐全，无孤儿页）
+### node tools/check_compliance.js
+✅ 合规校验通过（扫描 67 个前端文件；未发现未加豁免的 auto_subscribe 引用）
+### node tools/check_selftest_shape.js
+      ↳ R71 已豁免恒真断言 1 条（第 233 行，带 R71-ok 标记）
+✅ 全部 45 个自测形状合规（R1/R2 通过），且 Δ(SUITES) 双向为零（R67）；另有 1 条 WARN（不阻断）：cloudfunctions/common/__tests__/batch0_selfcheck.js
+### node tools/sync_common.js --check
+✅ common 同步校验通过：42 个云函数目录的扁平副本（common.js + cx_*.js）均 ≡ cloudfunctions/common/ 单源派生
+### node tools/check_requires.js
+✅ 相对 require 全部可解析（扫描 603 个 .js：小程序侧 25 / 云函数侧 578；require 语句 1277 条，其中相对引用 1195 条，豁免 1 条）
+### node tools/check_idempotency.js
+
+===== 幂等覆盖守卫结果：54 通过 / 0 失败 =====
+### node tools/check_stale_claims.js
+
+===== 已证伪短语守卫结果：3 通过 / 0 失败 =====
+### node tools/selftest_batch8c.js
+
+==== 批次 8c 自测：56 通过 / 0 失败 ====
+### node cloudfunctions/saveAsset/selftest.js
+
+==== saveAsset 自测结果：43 通过 / 0 失败 ====
+### node cloudfunctions/getAmortSchedule/selftest.js
+
+==== getAmortSchedule 批次 4 自测结果：7 通过 / 0 失败 ====
+### node cloudfunctions/calcAmortize/selftest.js
+
+==== calcAmortize 批次 2 自测结果：57 通过 / 0 失败 ====

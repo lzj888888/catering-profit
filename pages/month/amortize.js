@@ -28,6 +28,17 @@ Page({
       namePh: TERMS.amortizePage.namePh,
       monthUnit: TERMS.amortizePage.monthUnit,
       optional: TERMS.amortizePage.optional,
+      // H1（批次 8c）：同一资产多次采购
+      scopeHint: TERMS.amortizePage.scopeHint,
+      appendPurchase: TERMS.amortizePage.appendPurchase,
+      appendTitle: TERMS.amortizePage.appendTitle,
+      batchPrefix: TERMS.amortizePage.batchPrefix,
+      batchSuffix: TERMS.amortizePage.batchSuffix,
+      batchTotalPrefix: TERMS.amortizePage.batchTotalPrefix,
+      batchTotalSuffix: TERMS.amortizePage.batchTotalSuffix,
+      groupValueLabel: TERMS.amortizePage.groupValueLabel,
+      expandHint: TERMS.amortizePage.expandHint,
+      appendHint: TERMS.amortizePage.appendHint,
       loading: TERMS.ui.loading,
       cur: '¥',
       cancel: TERMS.buttons.cancel,
@@ -38,8 +49,11 @@ Page({
     totalFen: 0,
     totalYuan: '0.00',       // 修 2：初值必须有（接口失败/未返回时渲染「¥0.00」而非裸「¥」）
     assets: [],
+    groups: [],              // H1：按「同一资产」分组的视图（每组 = 该资产的 N 笔采购）
     showForm: false,
     editing: null,           // 编辑中的资产（含 asset_id）
+    appendGroup: '',         // H1：追加采购时的目标组键（'' = 普通新增）
+    appendSeq: 1,            // H1：追加采购的笔次
     formName: '',
     formValueYuan: '',
     formStartMonth: '',
@@ -62,20 +76,27 @@ Page({
       ui.setTitle(TERMS.amortizePage.title);
       const d = await api.call('getAmortSchedule', { month: this.data.month });
       const isArchive = false; // 摊销资产不属于月度归档（可跨月管理）；归档守卫只作用于记账录入
-      const assets = (d.assets || []).map((a) => ({
-        asset_id: a.asset_id,
-        name: a.name,
-        value: api.fenToYuan(a.value_fen, 2),
-        start_month: a.start_month,
-        total_months: a.total_months,
-        terminate_month: a.terminate_month || '',
-        amount_fen: this.findMonthAmount(d.details, a.asset_id),
-        amountYuan: api.fenToYuan(this.findMonthAmount(d.details, a.asset_id), 2),
-      }));
+      const assets = (d.assets || []).map((a) => {
+        const amountFen = this.findMonthAmount(d.details, a.asset_id);
+        return {
+          asset_id: a.asset_id,
+          name: a.name,
+          value_fen: a.value_fen,
+          value: api.fenToYuan(a.value_fen, 2),
+          start_month: a.start_month,
+          total_months: a.total_months,
+          terminate_month: a.terminate_month || '',
+          group_id: a.group_id || '',
+          batch_seq: a.batch_seq || 1,
+          amount_fen: amountFen,
+          amountYuan: api.fenToYuan(amountFen, 2),
+        };
+      });
       this.setData({
         totalFen: d.total_amount_fen || 0,
         totalYuan: api.fenToYuan(d.total_amount_fen || 0, 2),
         assets,
+        groups: this.buildGroups(assets),
         readOnly: isArchive,
         loading: false,
       });
@@ -83,6 +104,40 @@ Page({
       this.setData({ loading: false });
       api.toastError(e);
     }
+  },
+
+  // H1：把资产行按组键（group_id || asset_id）聚成「同一资产的多次采购」
+  //   ⚠️ 计算仍全部由后端算：这里只做展示合计（元金额由 fenToYuan 换算），不参与摊销公式。
+  buildGroups(rows) {
+    const map = {};
+    const order = [];
+    (rows || []).forEach((r) => {
+      const key = r.group_id || r.asset_id;   // 无 group_id 的独立资产 = 自成一组（老数据行为不变）
+      if (!map[key]) {
+        map[key] = { key, name: r.name, count: 0, valueFen: 0, monthFen: 0, batches: [], expanded: false };
+        order.push(key);
+      }
+      const g = map[key];
+      g.batches.push(r);
+      g.count += 1;
+      g.valueFen += r.value_fen || 0;
+      g.monthFen += r.amount_fen || 0;
+    });
+    return order.map((k) => {
+      const g = map[k];
+      g.batches.sort((x, y) => (x.batch_seq || 1) - (y.batch_seq || 1));
+      g.valueYuan = api.fenToYuan(g.valueFen, 2);
+      g.monthYuan = api.fenToYuan(g.monthFen, 2);
+      g.multi = g.count > 1;
+      return g;
+    });
+  },
+
+  // H1：展开/收起某组的多笔明细
+  onToggleGroup(e) {
+    const key = e.currentTarget.dataset.group;
+    const groups = this.data.groups.map((g) => (g.key === key ? Object.assign({}, g, { expanded: !g.expanded }) : g));
+    this.setData({ groups });
   },
 
   // 从 getAmortSchedule.details 找该资产当月摊销（分）
@@ -95,7 +150,26 @@ Page({
     this.setData({
       showForm: true,
       editing: null,
+      appendGroup: '',
+      appendSeq: 1,
       formName: '',
+      formValueYuan: '',
+      formStartMonth: this.data.month,
+      formTotalMonths: '',
+      formTerminateMonth: '',
+    });
+  },
+  // H1：追加采购 —— 同一资产再投一笔：沿用组名/组键，起摊月默认当前月，保存后成为组内下一笔（独立起摊）
+  onAppend(e) {
+    const g = e.currentTarget.dataset.group;
+    const group = (this.data.groups || []).find((x) => x.key === g);
+    if (!group) return;
+    this.setData({
+      showForm: true,
+      editing: null,
+      appendGroup: group.key,
+      appendSeq: group.count + 1,
+      formName: group.name,
       formValueYuan: '',
       formStartMonth: this.data.month,
       formTotalMonths: '',
@@ -107,6 +181,8 @@ Page({
     this.setData({
       showForm: true,
       editing: a,
+      appendGroup: '',
+      appendSeq: 1,
       formName: a.name,
       formValueYuan: api.fenToYuan(Math.round(Number(a.value) * 100), 2),
       formStartMonth: a.start_month,
@@ -114,13 +190,18 @@ Page({
       formTerminateMonth: a.terminate_month || '',
     });
   },
-  onCancelForm() { this.setData({ showForm: false, editing: null }); },
+  onCancelForm() { this.setData({ showForm: false, editing: null, appendGroup: '', appendSeq: 1 }); },
 
   onName(e) { this.setData({ formName: e.detail.value }); },
   onValue(e) { this.setData({ formValueYuan: e.detail.value }); },
-  onStartMonth(e) { this.setData({ formStartMonth: e.detail.value }); },
+  // B1：年月选择（mode=date fields=month 返回 YYYY-MM）
+  onMonthPick(e) {
+    const field = e.currentTarget.dataset.field;   // 'start' | 'end'
+    const v = e.detail.value || '';
+    if (field === 'start') this.setData({ formStartMonth: v });
+    else this.setData({ formTerminateMonth: v });
+  },
   onTotalMonths(e) { this.setData({ formTotalMonths: e.detail.value }); },
-  onTerminateMonth(e) { this.setData({ formTerminateMonth: e.detail.value }); },
 
   onSaveAsset() {
     const name = this.data.formName.trim();
@@ -143,11 +224,19 @@ Page({
       total_months: Number(this.data.formTotalMonths),
     };
     if (this.data.formTerminateMonth) asset.terminate_month = this.data.formTerminateMonth;
-    if (this.data.editing && this.data.editing.asset_id) asset.asset_id = this.data.editing.asset_id;
+    if (this.data.editing && this.data.editing.asset_id) {
+      asset.asset_id = this.data.editing.asset_id;
+      // 编辑某一笔时保留它的组归属，别把多笔资产拆散
+      if (this.data.editing.group_id) { asset.group_id = this.data.editing.group_id; asset.batch_seq = this.data.editing.batch_seq || 1; }
+    } else if (this.data.appendGroup) {
+      // H1 追加采购：新行 + 组键指向首笔 + 组内序号（后端按行独立起摊，互不干扰）
+      asset.group_id = this.data.appendGroup;
+      asset.batch_seq = this.data.appendSeq;
+    }
     try {
       await api.call('saveAsset', { asset, client_request_id: 'as_' + Date.now() });
       wx.showToast({ title: TERMS.amortizePage.save, icon: 'success' });
-      this.setData({ showForm: false, editing: null });
+      this.setData({ showForm: false, editing: null, appendGroup: '', appendSeq: 1 });
       this.load();
     } catch (e) { api.toastError(e); }
   },
@@ -164,15 +253,18 @@ Page({
         try {
           // 报废 = 保留资产但标记终止（terminate_month=当前月）→ 未摊余额作为处置损失；
           // 资产本身保留在台账（不可复活），前端列表由 DataAdapter 只展示活跃。
+          const payload = {
+            asset_id: a.asset_id,
+            name: a.name,
+            value_fen: api.yuanToFen(a.value),
+            start_month: a.start_month,
+            total_months: a.total_months,
+            terminate_month: this.data.month,
+          };
+          // H1：只报废这一笔，保留它的组归属（多笔资产的其他笔不受影响）
+          if (a.group_id) { payload.group_id = a.group_id; payload.batch_seq = a.batch_seq || 1; }
           await api.call('saveAsset', {
-            asset: {
-              asset_id: a.asset_id,
-              name: a.name,
-              value_fen: api.yuanToFen(a.value),
-              start_month: a.start_month,
-              total_months: a.total_months,
-              terminate_month: this.data.month,
-            },
+            asset: payload,
             client_request_id: 'at_' + Date.now(),
           });
           wx.showToast({ title: TERMS.amortizePage.terminateNow, icon: 'success' });

@@ -25,6 +25,14 @@ Page({
       cancel: TERMS.buttons.cancel,
       shopName: TERMS.ui.shopName,
       goSetting: TERMS.exp.goSetting,
+      // C1：关于 / 版本 / 意见反馈 / 免责声明
+      about: TERMS.exp.about,
+      versionLabel: TERMS.exp.versionLabel,
+      appVersion: TERMS.exp.appVersion,
+      feedback: TERMS.exp.feedback,
+      feedbackHint: TERMS.exp.feedbackHint,
+      disclaimerLabel: TERMS.exp.disclaimerLabel,
+      disclaimer: TERMS.auditSafe.disclaimer,
     },
     shopName: '',
     loadingLogout: false,
@@ -34,6 +42,26 @@ Page({
     ui.setTitle(TERMS.exp.mineTitle);
     const app = getApp();
     this.setData({ shopName: (app.globalData && app.globalData.shop_name) || '' });
+  },
+
+  // C1：意见反馈（AD-16 客服入口）
+  onFeedback() {
+    if (wx.openFeedback) {
+      wx.openFeedback({});
+    } else {
+      wx.showToast({ title: TERMS.exp.feedbackHint, icon: 'none' });
+    }
+  },
+
+  // C1：免责声明弹窗
+  onDisclaimer() {
+    wx.showModal({
+      title: TERMS.exp.disclaimerLabel,
+      content: TERMS.auditSafe.disclaimer,
+      showCancel: false,
+      confirmText: TERMS.buttons.thinkAgain || '知道了',
+      confirmColor: '#ff6b35',
+    });
   },
 
   // 查看隐私协议

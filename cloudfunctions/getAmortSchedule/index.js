@@ -32,6 +32,8 @@ exports.main = async (event) => {
     total_value: a.value_fen != null ? a.value_fen : a.total_value,
     start_month: a.start_month, total_months: a.total_months,
     terminate_month: a.terminate_month || '',
+    // H1（批次 8c）：多次采购分组字段透传（老数据无此字段 → '' / 1，前端按独立资产处理）
+    group_id: a.group_id || '', batch_seq: a.batch_seq || 1,
   }));
   const sched = amortizeForMonth(assets, v.month);
 
@@ -40,6 +42,7 @@ exports.main = async (event) => {
     assets: assets.map((a) => ({
       asset_id: a.asset_id, name: a.name, value_fen: a.total_value,
       start_month: a.start_month, total_months: a.total_months, terminate_month: a.terminate_month,
+      group_id: a.group_id, batch_seq: a.batch_seq,
     })),
     total_amount_fen: sched.total_amount_fen,
     details: sched.details,

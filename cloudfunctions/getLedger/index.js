@@ -13,6 +13,30 @@ const { makeAdapter } = common.dataAdapter;
 const { calcMonthlyProfit } = require('./service');
 const { validateInput } = require('./validate');
 
+// A2 兼容：库内明细可能是旧格式（camelCase amountFen）或新格式（snake_case amount_fen + sub_items）。
+//   · 读库统一归一为 camelCase 喂引擎（引擎读 it.amountFen）；
+//   · 返回统一 snake_case（契约层，含二级细项 sub_items）。
+function normalizeToCamel(rawItems) {
+  return (rawItems || []).map((it) => {
+    const amt = it.amount_fen !== undefined ? it.amount_fen : it.amountFen;
+    const subRaw = it.sub_items || it.subItems || [];
+    return {
+      category: it.category || '',
+      name: it.name || '',
+      amountFen: amt != null ? amt : 0,
+      subItems: subRaw.map((si) => ({ subItem: si.sub_item !== undefined ? si.sub_item : si.subItem || '', amountFen: si.amount_fen !== undefined ? si.amount_fen : si.amountFen })),
+    };
+  });
+}
+function toSnake(items) {
+  return (items || []).map((it) => ({
+    category: it.category || '',
+    name: it.name || '',
+    amount_fen: it.amountFen,
+    sub_items: (it.subItems || []).map((si) => ({ sub_item: si.subItem, amount_fen: si.amountFen })),
+  }));
+}
+
 exports.main = async (event) => {
   const ctx = cloud.getWXContext();
   const auth = await resolveAuth(ctx, db);
@@ -32,11 +56,15 @@ exports.main = async (event) => {
   const ex = await da.list('shop_monthly_account', { shop_id: shopId, month: v.month });
   const acct = (ex && ex.data && ex.data[0]) || null;
 
-  const incomeItems = (acct && acct.income_items) || [];
-  const expenseItems = (acct && acct.expense_items) || [];
+  const rawIncome = (acct && acct.income_items) || [];
+  const rawExpense = (acct && acct.expense_items) || [];
   const directConsumeFen = (acct && acct.direct_consume_fen) || 0;
   const inventory = (acct && acct.inventory) || { openingFen: 0, purchaseFen: 0, closingFen: 0 };
   const amortizeFen = (acct && acct.amortize_fen) || 0;
+
+  // A2：归一为 camelCase 喂引擎（引擎读 amountFen）；返回侧再转 snake_case
+  const incomeItems = normalizeToCamel(rawIncome);
+  const expenseItems = normalizeToCamel(rawExpense);
 
   // ===== 服务端权威开关 =====
   const swRes = await da.list('shop_switch', { shop_id: shopId });
@@ -56,7 +84,7 @@ exports.main = async (event) => {
     account_id: acct ? (acct.account_id || acct._id) : '',
     is_archive: !!acct && !!acct.is_archive,
     archived_at: acct ? (acct.archived_at || 0) : 0,
-    income_items: incomeItems, expense_items: expenseItems,
+    income_items: toSnake(incomeItems), expense_items: toSnake(expenseItems),
     direct_consume_fen: directConsumeFen, inventory,
     amortize_fen: amortizeFen,
     switches: { inventorySwitchOn, amortizeSwitchOn },

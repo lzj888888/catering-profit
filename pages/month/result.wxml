@@ -29,14 +29,38 @@
 
   <!-- 收入/费用/毛利 -->
   <view class="card2">
-    <view class="cell">
+    <!-- D1：营业收入行可点下钻（大类 → 细项） -->
+    <view class="cell drill-head" data-kind="income" bindtap="toggleDrill">
       <text class="lbl">{{t.income}}</text>
-      <text class="val">{{t.cur}}{{r.income}}</text>
+      <text class="val">{{t.cur}}{{r.income}} <text class="drill-caret">{{showIncDrill ? '▴' : '▾'}}</text></text>
     </view>
-    <view class="cell">
+    <view class="drill-body" wx:if="{{showIncDrill}}">
+      <view class="drill-row" wx:for="{{incDetail}}" wx:key="name" wx:for-item="g">
+        <view class="drill-gname">{{g.name}} <text class="drill-gamt">{{t.cur}}{{g.amount}}</text></view>
+        <view class="drill-sub" wx:for="{{g.sub_items}}" wx:key="index" wx:for-item="s">
+          <text class="drill-sname">{{s.name || t.subItem}}</text>
+          <text class="drill-samt">{{t.cur}}{{s.amount}}</text>
+        </view>
+      </view>
+      <view class="muted" wx:if="{{incDetail.length === 0}}">—</view>
+    </view>
+
+    <!-- D1：费用合计行可点下钻 -->
+    <view class="cell drill-head" data-kind="expense" bindtap="toggleDrill">
       <text class="lbl">{{t.expense}}</text>
-      <text class="val">{{t.cur}}{{r.expense}}</text>
+      <text class="val">{{t.cur}}{{r.expense}} <text class="drill-caret">{{showExpDrill ? '▴' : '▾'}}</text></text>
     </view>
+    <view class="drill-body" wx:if="{{showExpDrill}}">
+      <view class="drill-row" wx:for="{{expDetail}}" wx:key="name" wx:for-item="g">
+        <view class="drill-gname">{{g.name}} <text class="drill-gamt">{{t.cur}}{{g.amount}}</text></view>
+        <view class="drill-sub" wx:for="{{g.sub_items}}" wx:key="index" wx:for-item="s">
+          <text class="drill-sname">{{s.name || t.subItem}}</text>
+          <text class="drill-samt">{{t.cur}}{{s.amount}}</text>
+        </view>
+      </view>
+      <view class="muted" wx:if="{{expDetail.length === 0}}">—</view>
+    </view>
+
     <view class="cell">
       <text class="lbl">{{t.grossProfit}}</text>
       <text class="val">{{t.cur}}{{r.grossProfit}}</text>

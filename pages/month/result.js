@@ -41,11 +41,16 @@ Page({
       viewFile: TERMS.exp.viewFile,
       resultEmpty: TERMS.uiFix.resultEmpty,
       resultEmptyGoInput: TERMS.uiFix.resultEmptyGoInput,
+      subItem: TERMS.ledger.subItem,
     },
     month: '',
     isArchive: false,
     loading: true,
     r: null,       // 展示用已格式化数据
+    incDetail: [],
+    expDetail: [],
+    showIncDrill: false,
+    showExpDrill: false,
     expireSoonDays: 0,
     expireSoonText: '',
     subscribeAsked: false,
@@ -65,8 +70,13 @@ Page({
       const d = await api.call('getLedger', { month: this.data.month });
       const res = d.result || {};
       const fen = (v) => api.fenToYuan(v || 0, 2);
+      // D1：保存原始明细（snake_case，含 sub_items），供下钻面板展示（前端不重算金额）
+      const incDetail = this.buildDetail(d.income_items || []);
+      const expDetail = this.buildDetail(d.expense_items || []);
       this.setData({
         isArchive: !!d.is_archive,
+        incDetail,
+        expDetail,
         r: {
           income: fen(res.income_total_fen),
           expense: fen(res.expense_total_fen),
@@ -91,6 +101,28 @@ Page({
       this.setData({ loading: false });
       api.toastError(e);
     }
+  },
+
+  // D1：把后端明细（snake_case 大类列表）转为下钻面板数据（大类 → 细项，金额仅格式化展示）
+  buildDetail(items) {
+    return (items || []).map((it) => {
+      const subs = (it.sub_items || []).map((si) => ({
+        name: si.sub_item || '',
+        amount: si.amount_fen ? api.fenToYuan(si.amount_fen, 2) : '0.00',
+      }));
+      return {
+        name: it.name || '',
+        amount: it.amount_fen ? api.fenToYuan(it.amount_fen, 2) : '0.00',
+        sub_items: subs,
+      };
+    });
+  },
+
+  // D1：切换下钻面板（income / expense）
+  toggleDrill(e) {
+    const kind = e.currentTarget.dataset.kind;   // 'income' | 'expense'
+    const key = kind === 'income' ? 'showIncDrill' : 'showExpDrill';
+    this.setData({ [key]: !this.data[key] });
   },
 
   // 订阅消息授权（双渠道①）；拒绝不影响常驻提示条（兜底），提示一次即可

@@ -1,0 +1,105 @@
+[
+  {
+    "name": "v1_input",
+    "url": "/pages/month/input",
+    "ok": false,
+    "checks": [
+      {
+        "name": "E1 收入引导",
+        "ok": true,
+        "actual": "命中"
+      },
+      {
+        "name": "E1 费用引导",
+        "ok": true,
+        "actual": "命中"
+      },
+      {
+        "name": "A2 大类可展开(细项机制)",
+        "ok": false,
+        "actual": "未命中"
+      },
+      {
+        "name": "F1 无「总费用」旧词",
+        "ok": true,
+        "actual": "无残留"
+      },
+      {
+        "name": "A2 大类行可点展开",
+        "ok": false,
+        "actual": "timeout waiting for automator response"
+      }
+    ],
+    "texts": [
+      "收入收入按当月实际到账金额填写，平台抽成前的流水不要填。堂食▸外卖▸其他业务收入▸费用费用只填本月实际支出，不含采购库存。运营▸人工▸营销▸其他▸食材消耗食材消耗合计（元）关闭了库存核算时，直接填本月食材消耗总额。保存",
+      "收入",
+      "收入按当月实际到账金额填写，平台抽成前的流水不要填。",
+      "堂食▸",
+      "外卖▸",
+      "其他业务收入▸",
+      "费用",
+      "费用只填本月实际支出，不含采购库存。",
+      "运营▸",
+      "人工▸",
+      "营销▸",
+      "其他▸",
+      "食材消耗",
+      "食材消耗合计（元）",
+      "关闭了库存核算时，直接填本月食材消耗总额。",
+      "堂食",
+      "▸",
+      "外卖",
+      "其他业务收入",
+      "运营",
+      "人工",
+      "营销",
+      "其他",
+      "保存"
+    ],
+    "screens": [
+      "v1_input.png"
+    ],
+    "actualPath": "pages/month/input",
+    "pickerCount": 0,
+    "groupKeys": [
+      "incomeGroups",
+      "expenseGroups"
+    ]
+  },
+  {
+    "name": "v2_amortize",
+    "url": "/pages/month/amortize",
+    "ok": false,
+    "checks": [],
+    "texts": [],
+    "screens": [],
+    "error": "Error: Cannot destructure property 'rawPath' of 't.getPageMetaByWebviewId(...)' as it is null.\n    at Connection.onMessage (C:\\Users\\lzj\\.workbuddy\\binaries\\node\\mpauto\\node_modules\\miniprogram-automator\\out\\Connection.js:1:985)\n    at Transport.emit (node:events:519:28)\n    at WebSocket.<anonymous> (C:\\Users\\lzj\\.workbuddy\\binaries\\node\\mpauto\\node_modules\\miniprogram-automator\\out\\Transport.js:1:220)\n    at WebSocket.onMessage (C:\\Users\\lzj\\.workbuddy\\binaries\\node\\mpauto\\node_modules\\ws\\lib\\event-target.js:120:16)\n    at WebSocket.emit (node:events:519:28)\n    at Receiver.receiverOnMessage (C:\\Users\\lzj\\.workbuddy\\binaries\\node\\mpauto\\node_modules\\ws\\lib\\websocket.js:807:20)\n    at Receiver.emit (node:events:519:28)\n    at Receiver.dataMessage (C:\\Users\\lzj\\.workbuddy\\binaries\\node\\mpauto\\node_modules\\ws\\lib\\receiver.js:448:14)\n    at Receiver.getData (C:\\Users\\lzj\\.workbuddy\\binaries\\node\\mpauto\\node_modules\\ws\\lib\\receiver.js:377:17)\n    at Receiver.startLoop (C:\\Users\\lzj\\.workbuddy\\binaries\\node\\mpauto\\node_modules\\ws\\lib\\receiver.js:158:22)"
+  },
+  {
+    "name": "v3_mine",
+    "url": "/pages/mine/index",
+    "ok": false,
+    "checks": [],
+    "texts": [],
+    "screens": [],
+    "error": "Error: Cannot destructure property 'rawPath' of 't.getPageMetaByWebviewId(...)' as it is null.\n    at Connection.onMessage (C:\\Users\\lzj\\.workbuddy\\binaries\\node\\mpauto\\node_modules\\miniprogram-automator\\out\\Connection.js:1:985)\n    at Transport.emit (node:events:519:28)\n    at WebSocket.<anonymous> (C:\\Users\\lzj\\.workbuddy\\binaries\\node\\mpauto\\node_modules\\miniprogram-automator\\out\\Transport.js:1:220)\n    at WebSocket.onMessage (C:\\Users\\lzj\\.workbuddy\\binaries\\node\\mpauto\\node_modules\\ws\\lib\\event-target.js:120:16)\n    at WebSocket.emit (node:events:519:28)\n    at Receiver.receiverOnMessage (C:\\Users\\lzj\\.workbuddy\\binaries\\node\\mpauto\\node_modules\\ws\\lib\\websocket.js:807:20)\n    at Receiver.emit (node:events:519:28)\n    at Receiver.dataMessage (C:\\Users\\lzj\\.workbuddy\\binaries\\node\\mpauto\\node_modules\\ws\\lib\\receiver.js:448:14)\n    at Receiver.getData (C:\\Users\\lzj\\.workbuddy\\binaries\\node\\mpauto\\node_modules\\ws\\lib\\receiver.js:377:17)\n    at Receiver.startLoop (C:\\Users\\lzj\\.workbuddy\\binaries\\node\\mpauto\\node_modules\\ws\\lib\\receiver.js:158:22)"
+  },
+  {
+    "name": "v4_result",
+    "url": "/pages/month/result",
+    "ok": false,
+    "checks": [],
+    "texts": [],
+    "screens": [],
+    "error": "Error: Cannot destructure property 'rawPath' of 't.getPageMetaByWebviewId(...)' as it is null.\n    at Connection.onMessage (C:\\Users\\lzj\\.workbuddy\\binaries\\node\\mpauto\\node_modules\\miniprogram-automator\\out\\Connection.js:1:985)\n    at Transport.emit (node:events:519:28)\n    at WebSocket.<anonymous> (C:\\Users\\lzj\\.workbuddy\\binaries\\node\\mpauto\\node_modules\\miniprogram-automator\\out\\Transport.js:1:220)\n    at WebSocket.onMessage (C:\\Users\\lzj\\.workbuddy\\binaries\\node\\mpauto\\node_modules\\ws\\lib\\event-target.js:120:16)\n    at WebSocket.emit (node:events:519:28)\n    at Receiver.receiverOnMessage (C:\\Users\\lzj\\.workbuddy\\binaries\\node\\mpauto\\node_modules\\ws\\lib\\websocket.js:807:20)\n    at Receiver.emit (node:events:519:28)\n    at Receiver.dataMessage (C:\\Users\\lzj\\.workbuddy\\binaries\\node\\mpauto\\node_modules\\ws\\lib\\receiver.js:448:14)\n    at Receiver.getData (C:\\Users\\lzj\\.workbuddy\\binaries\\node\\mpauto\\node_modules\\ws\\lib\\receiver.js:377:17)\n    at Receiver.startLoop (C:\\Users\\lzj\\.workbuddy\\binaries\\node\\mpauto\\node_modules\\ws\\lib\\receiver.js:158:22)"
+  },
+  {
+    "name": "v5_month_index",
+    "url": "/pages/month/index",
+    "ok": false,
+    "checks": [],
+    "texts": [],
+    "screens": [],
+    "error": "Error: Cannot destructure property 'rawPath' of 't.getPageMetaByWebviewId(...)' as it is null.\n    at Connection.onMessage (C:\\Users\\lzj\\.workbuddy\\binaries\\node\\mpauto\\node_modules\\miniprogram-automator\\out\\Connection.js:1:985)\n    at Transport.emit (node:events:519:28)\n    at WebSocket.<anonymous> (C:\\Users\\lzj\\.workbuddy\\binaries\\node\\mpauto\\node_modules\\miniprogram-automator\\out\\Transport.js:1:220)\n    at WebSocket.onMessage (C:\\Users\\lzj\\.workbuddy\\binaries\\node\\mpauto\\node_modules\\ws\\lib\\event-target.js:120:16)\n    at WebSocket.emit (node:events:519:28)\n    at Receiver.receiverOnMessage (C:\\Users\\lzj\\.workbuddy\\binaries\\node\\mpauto\\node_modules\\ws\\lib\\websocket.js:807:20)\n    at Receiver.emit (node:events:519:28)\n    at Receiver.dataMessage (C:\\Users\\lzj\\.workbuddy\\binaries\\node\\mpauto\\node_modules\\ws\\lib\\receiver.js:448:14)\n    at Receiver.getData (C:\\Users\\lzj\\.workbuddy\\binaries\\node\\mpauto\\node_modules\\ws\\lib\\receiver.js:377:17)\n    at Receiver.startLoop (C:\\Users\\lzj\\.workbuddy\\binaries\\node\\mpauto\\node_modules\\ws\\lib\\receiver.js:158:22)"
+  }
+]

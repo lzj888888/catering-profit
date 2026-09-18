@@ -148,6 +148,44 @@ const SEED_PLANS = [
 const SEED_FEATURES = SEED_PLANS.map(p => ({ plan_id: p.plan_id, feature_key: 'real_profit', enabled: true }))
   .concat(SEED_PLANS.map(p => ({ plan_id: p.plan_id, feature_key: 'export', enabled: true })));
 
+// ===== A3（批次 8）：收入/费用分类配置种子（shop_income_item / shop_expense_item）=====
+// 结构对齐 A1（费用四大类 = 运营/人工/营销/其他）与 02 数据集 S1；
+// ⚠️ 营销类「外卖平台佣金」「团购平台佣金」为**独立细项，不合并**（04 核对清单 阶段 2）。
+const SEED_INCOME_ITEMS = [
+  { item_key: 'income_dine_cash',       item_name: '现金',         category: 'dine_in',  sort_order: 10, enabled: true, is_system: true },
+  { item_key: 'income_dine_wepay',      item_name: '微信支付宝',   category: 'dine_in',  sort_order: 20, enabled: true, is_system: true },
+  { item_key: 'income_dine_stored',     item_name: '储值消费',     category: 'dine_in',  sort_order: 30, enabled: true, is_system: true },
+  { item_key: 'income_dine_groupon',    item_name: '团购券核销',   category: 'dine_in',  sort_order: 40, enabled: true, is_system: true },
+  { item_key: 'income_dine_credit',     item_name: '企业挂账消费', category: 'dine_in',  sort_order: 50, enabled: true, is_system: true },
+  { item_key: 'income_takeaway_goods',  item_name: '商品总价',     category: 'takeaway', sort_order: 10, enabled: true, is_system: true },
+  { item_key: 'income_takeaway_pack',   item_name: '打包费',       category: 'takeaway', sort_order: 20, enabled: true, is_system: true },
+  { item_key: 'income_takeaway_subsidy', item_name: '商家活动补贴', category: 'takeaway', sort_order: 30, enabled: true, is_system: true },
+  { item_key: 'income_other_scrap',     item_name: '废品变卖',     category: 'other',    sort_order: 10, enabled: true, is_system: true },
+  { item_key: 'income_other_premade',   item_name: '预制菜零售',   category: 'other',    sort_order: 20, enabled: true, is_system: true },
+];
+const SEED_EXPENSE_ITEMS = [
+  { item_key: 'exp_op_rent',            item_name: '房租',         category: 'operation', sort_order: 10, enabled: true, is_system: true },
+  { item_key: 'exp_op_property',        item_name: '物业费',       category: 'operation', sort_order: 20, enabled: true, is_system: true },
+  { item_key: 'exp_op_water',           item_name: '水费',         category: 'operation', sort_order: 30, enabled: true, is_system: true },
+  { item_key: 'exp_op_electric',        item_name: '电费',         category: 'operation', sort_order: 40, enabled: true, is_system: true },
+  { item_key: 'exp_op_gas',             item_name: '燃气费',       category: 'operation', sort_order: 50, enabled: true, is_system: true },
+  { item_key: 'exp_op_trash',           item_name: '垃圾清运费',   category: 'operation', sort_order: 60, enabled: true, is_system: true },
+  { item_key: 'exp_op_network',         item_name: '宽带网费',     category: 'operation', sort_order: 70, enabled: true, is_system: true },
+  { item_key: 'exp_labor_salary',       item_name: '工资绩效',     category: 'labor',     sort_order: 10, enabled: true, is_system: true },
+  { item_key: 'exp_labor_social',       item_name: '社保',         category: 'labor',     sort_order: 20, enabled: true, is_system: true },
+  { item_key: 'exp_labor_dorm',         item_name: '员工宿舍',     category: 'labor',     sort_order: 30, enabled: true, is_system: true },
+  { item_key: 'exp_labor_meal',         item_name: '员工餐',       category: 'labor',     sort_order: 40, enabled: true, is_system: true },
+  { item_key: 'exp_labor_uniform',      item_name: '工装福利',     category: 'labor',     sort_order: 50, enabled: true, is_system: true },
+  { item_key: 'exp_mkt_takeaway_com',   item_name: '外卖平台佣金',   category: 'marketing', sort_order: 10, enabled: true, is_system: true },
+  { item_key: 'exp_mkt_takeaway_deliv', item_name: '外卖配送服务费', category: 'marketing', sort_order: 20, enabled: true, is_system: true },
+  { item_key: 'exp_mkt_takeaway_subsidy', item_name: '外卖活动补贴', category: 'marketing', sort_order: 30, enabled: true, is_system: true },
+  { item_key: 'exp_mkt_takeaway_delivsub', item_name: '外卖配送补贴', category: 'marketing', sort_order: 40, enabled: true, is_system: true },
+  { item_key: 'exp_mkt_takeaway_promo', item_name: '外卖推广费',     category: 'marketing', sort_order: 50, enabled: true, is_system: true },
+  { item_key: 'exp_mkt_groupon_com',    item_name: '团购平台佣金',   category: 'marketing', sort_order: 60, enabled: true, is_system: true },
+  { item_key: 'exp_other_accounting',   item_name: '代账费',       category: 'other',     sort_order: 10, enabled: true, is_system: true },
+  { item_key: 'exp_other_misc',         item_name: '其他杂项',     category: 'other',     sort_order: 20, enabled: true, is_system: true },
+];
+
 // ===== 4. 执行 =====
 exports.main = async (event, context) => {
   // 🚫 生产环境部署禁令（与 seed_demo 一致）：initDb 仅允许 dev 环境运行。
@@ -211,6 +249,17 @@ exports.main = async (event, context) => {
       await db.collection('subscription_plan').add({ data: SEED_PLANS });
       await db.collection('feature_permissions').add({ data: SEED_FEATURES });
       result.seeds.push('subscription_plan', 'feature_permissions');
+    }
+    // A3：收入/费用分类配置种子（shop_income_item / shop_expense_item）
+    const incCnt = await db.collection('shop_income_item').count();
+    if (incCnt.total === 0) {
+      await db.collection('shop_income_item').add({ data: SEED_INCOME_ITEMS });
+      result.seeds.push('shop_income_item');
+    }
+    const expCnt = await db.collection('shop_expense_item').count();
+    if (expCnt.total === 0) {
+      await db.collection('shop_expense_item').add({ data: SEED_EXPENSE_ITEMS });
+      result.seeds.push('shop_expense_item');
     }
   } catch (e) {
     result.errors.push(`seed: ${e.message}`);

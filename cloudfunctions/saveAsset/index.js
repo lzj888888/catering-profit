@@ -43,12 +43,14 @@ exports.main = async (event) => {
     // ===== 编辑：目标必须存在且未软删 =====
     const exist = await da.get('shop_amortize', a.asset_id);
     if (!exist) return fail(ERROR_CODES.RESOURCE_NOT_FOUND, `资产 ${a.asset_id} 不存在或已软删`);
-    await db.collection('shop_amortize').doc(exist._id || a.asset_id).update({
-      data: {
-        name: a.name, value_fen: a.value_fen, start_month: a.start_month,
-        total_months: a.total_months, terminate_month: a.terminate_month, updated_at: now, is_deleted: false,
-      },
-    });
+    // H1：分组字段只在「有值」时覆盖（编辑单笔/报废单笔不该把多笔资产拆散）；独立资产保持 '' 不写。
+    const patch = {
+      name: a.name, value_fen: a.value_fen, start_month: a.start_month,
+      total_months: a.total_months, terminate_month: a.terminate_month,
+      updated_at: now, is_deleted: false,
+    };
+    if (a.group_id) { patch.group_id = a.group_id; patch.batch_seq = a.batch_seq; }
+    await db.collection('shop_amortize').doc(exist._id || a.asset_id).update({ data: patch });
     out = { shop_id: shopId, asset_id: a.asset_id, client_request_id: clientRequestId || '' };
   } else {
     // ===== 新增 =====
@@ -57,6 +59,9 @@ exports.main = async (event) => {
       asset_id: assetId, id: assetId, shop_id: shopId,
       name: a.name, value_fen: a.value_fen, start_month: a.start_month,
       total_months: a.total_months, terminate_month: a.terminate_month,
+      // H1（批次 8c）：多次采购分组。「追加采购」= 新行 + group_id 指向首笔、batch_seq = 组内序号；
+      //   独立资产 group_id=''、batch_seq=1（前端用自身 asset_id 当组键，故老数据行为不变）。
+      group_id: a.group_id, batch_seq: a.batch_seq,
     });
     out = { shop_id: shopId, asset_id: assetId, client_request_id: clientRequestId || '' };
   }

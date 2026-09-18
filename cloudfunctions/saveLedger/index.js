@@ -95,10 +95,20 @@ exports.main = async (event) => {
     inventorySwitchOn,
   });
 
+  // A2：内部 camelCase → 契约 snake_case（含二级细项 sub_items），落库用
+  const toSnake = (items) => (items || []).map((it) => ({
+    category: it.category || '',
+    name: it.name || '',
+    amount_fen: it.amountFen,            // 云函数汇总后的大类金额（分）
+    sub_items: (it.subItems || []).map((si) => ({ sub_item: si.subItem, amount_fen: si.amountFen })),
+  }));
+  const incomeItemsSnake = toSnake(v.incomeItems);
+  const expenseItemsSnake = toSnake(v.expenseItems);
+
   // ===== 7. 落库（upsert shop_monthly_account，归档标记原样保留）=====
   const doc = {
     shop_id: shopId, month: v.month,
-    income_items: v.incomeItems, expense_items: v.expenseItems,
+    income_items: incomeItemsSnake, expense_items: expenseItemsSnake,
     direct_consume_fen: v.directConsumeFen,
     inventory: v.inventory,
     amortize_fen: amortizeFen,

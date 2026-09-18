@@ -4,20 +4,71 @@
     {{t.archiveReadonly}}<text wx:if="{{inGrace}}"> · {{t.graceNote}}</text>
   </view>
 
-  <!-- 收入 -->
-  <view class="sec">{{t.incomeTitle}}</view>
-  <view class="field" wx:for="{{t.income}}" wx:key="category">
-    <text class="lbl">{{item.label}}</text>
-    <input class="val-input" type="digit" confirm-type="done" disabled="{{readOnly}}"
-      value="{{incomeVals[index]}}" data-idx="{{index}}" bindinput="onIncome" />
+  <!-- E2（批次 8c）：顶部「填写口径」折叠块（默认收起）—— 防重填漏填 -->
+  <view class="fill-guide">
+    <view class="fill-guide-head" bindtap="onToggleFillGuide">
+      <text class="fg-title">{{t.fillGuideTitle}}</text>
+      <text class="fg-toggle">{{fillGuideOpen ? '▾' : '▸'}}</text>
+    </view>
+    <view class="fill-guide-body" wx:if="{{fillGuideOpen}}">
+      <view class="fg-line" wx:for="{{t.fillGuide}}" wx:key="index" wx:for-item="line">{{line}}</view>
+    </view>
   </view>
 
-  <!-- 费用 -->
+  <!-- 收入（A2：大类 → 二级细项；E1：引导文案） -->
+  <view class="sec">{{t.incomeTitle}}</view>
+  <view class="hint">{{t.incomeHint}}</view>
+
+  <view class="group" wx:for="{{incomeGroups}}" wx:key="category" wx:for-item="g" wx:for-index="gi">
+    <!-- 大类行：点击展开/收起 -->
+    <view class="group-head" data-kind="income" data-idx="{{gi}}" bindtap="onToggleGroup">
+      <text class="g-label">{{g.label}}</text>
+      <text class="g-toggle">{{g.expanded ? '▾' : '▸'}}</text>
+    </view>
+    <!-- E2：该类的「包括 / 不包括」口径 -->
+    <view class="scope" wx:if="{{g.scope}}">{{g.scope}}</view>
+
+    <!-- 细项行（展开时显示全部行；折叠时只显示第一行 = 整类总额） -->
+    <view class="sub-row" wx:for="{{g.expanded ? g.rows : g.rows.slice(0, 1)}}" wx:key="index"
+      wx:for-item="r" wx:for-index="ri">
+      <input class="sub-item-inp" wx:if="{{g.expanded}}" value="{{r.subItem}}" placeholder="{{t.subItemPh}}"
+        data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubItem" disabled="{{readOnly}}" />
+      <input class="val-input" type="digit" confirm-type="done" value="{{r.amountYuan}}"
+        data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubAmount" disabled="{{readOnly}}" />
+      <button class="btn-small del" wx:if="{{g.expanded && g.rows.length > 1}}"
+        data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" catchtap="delRow">{{t.delSubItem}}</button>
+    </view>
+
+    <view class="group-ops" wx:if="{{g.expanded}}">
+      <button class="btn-small ghost" data-kind="income" data-gidx="{{gi}}" catchtap="addRow">{{t.addSubItem}}</button>
+    </view>
+  </view>
+
+  <!-- 费用（A2：四大类；E1：引导文案） -->
   <view class="sec">{{t.expenseTitle}}</view>
-  <view class="field" wx:for="{{t.expense}}" wx:key="category">
-    <text class="lbl">{{item.label}}</text>
-    <input class="val-input" type="digit" confirm-type="done" disabled="{{readOnly}}"
-      value="{{expenseVals[index]}}" data-idx="{{index}}" bindinput="onExpense" />
+  <view class="hint">{{t.expenseHint}}</view>
+
+  <view class="group" wx:for="{{expenseGroups}}" wx:key="category" wx:for-item="g" wx:for-index="gi">
+    <view class="group-head" data-kind="expense" data-idx="{{gi}}" bindtap="onToggleGroup">
+      <text class="g-label">{{g.label}}</text>
+      <text class="g-toggle">{{g.expanded ? '▾' : '▸'}}</text>
+    </view>
+    <!-- E2：该类的「包括 / 不包括」口径 -->
+    <view class="scope" wx:if="{{g.scope}}">{{g.scope}}</view>
+
+    <view class="sub-row" wx:for="{{g.expanded ? g.rows : g.rows.slice(0, 1)}}" wx:key="index"
+      wx:for-item="r" wx:for-index="ri">
+      <input class="sub-item-inp" wx:if="{{g.expanded}}" value="{{r.subItem}}" placeholder="{{t.subItemPh}}"
+        data-kind="expense" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubItem" disabled="{{readOnly}}" />
+      <input class="val-input" type="digit" confirm-type="done" value="{{r.amountYuan}}"
+        data-kind="expense" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubAmount" disabled="{{readOnly}}" />
+      <button class="btn-small del" wx:if="{{g.expanded && g.rows.length > 1}}"
+        data-kind="expense" data-gidx="{{gi}}" data-ridx="{{ri}}" catchtap="delRow">{{t.delSubItem}}</button>
+    </view>
+
+    <view class="group-ops" wx:if="{{g.expanded}}">
+      <button class="btn-small ghost" data-kind="expense" data-gidx="{{gi}}" catchtap="addRow">{{t.addSubItem}}</button>
+    </view>
   </view>
 
   <!-- 食材消耗（库存关时直接填总额）· 修 4：小节标题与字段标签拆开 -->

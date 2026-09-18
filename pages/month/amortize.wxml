@@ -5,38 +5,82 @@
     <view class="result-num">{{t.cur}}{{totalYuan}}</view>
   </view>
 
-  <!-- 资产列表 -->
-  <view class="card2" wx:for="{{assets}}" wx:key="asset_id">
-    <view class="card-title">
-      {{item.name}}
-      <text class="tag" wx:if="{{item.terminate_month}}">{{t.terminateMonth}}</text>
+  <!-- H1：口径说明（同一资产可多次采购，每笔独立起摊） -->
+  <view class="hint scope-hint">{{t.scopeHint}}</view>
+
+  <!-- 资产列表（H1：按「同一资产」分组，一组 = 该资产的 N 笔采购） -->
+  <view class="card2" wx:for="{{groups}}" wx:key="key" wx:for-item="g">
+    <view class="card-title" bindtap="onToggleGroup" data-group="{{g.key}}">
+      {{g.name}}
+      <text class="tag" wx:if="{{g.multi}}">{{t.batchTotalPrefix}}{{g.count}}{{t.batchTotalSuffix}}</text>
+      <text class="tag" wx:if="{{!g.multi && g.batches[0].terminate_month}}">{{t.terminateMonth}}</text>
     </view>
+
+    <!-- 组合计（单笔时即为该资产本身） -->
     <view class="cell">
-      <text class="lbl">{{t.value}}</text>
-      <text class="val">{{t.cur}}{{item.value}}</text>
-    </view>
-    <view class="cell">
-      <text class="lbl">{{t.startMonth}} / {{t.totalMonths}}</text>
-      <text class="val">{{item.start_month}} · {{item.total_months}}{{t.monthUnit}}</text>
+      <text class="lbl">{{t.groupValueLabel}}</text>
+      <text class="val">{{t.cur}}{{g.valueYuan}}</text>
     </view>
     <view class="cell">
       <text class="lbl">{{t.monthAmountShort}}</text>
-      <text class="val" style="color:#ff6b35;">{{t.cur}}{{item.amountYuan}}</text>
+      <text class="val" style="color:#ff6b35;">{{t.cur}}{{g.monthYuan}}</text>
     </view>
+
+    <!-- 多笔：展开看每一笔（每笔独立起摊、独立终止） -->
+    <view class="batch-head" wx:if="{{g.multi}}" bindtap="onToggleGroup" data-group="{{g.key}}">
+      <text class="bh-txt">{{g.expanded ? t.collapseHint : t.expandHint}}</text>
+      <text class="bh-arrow">{{g.expanded ? '▾' : '▸'}}</text>
+    </view>
+    <view class="batch" wx:if="{{g.multi && g.expanded}}" wx:for="{{g.batches}}" wx:key="asset_id" wx:for-item="b">
+      <view class="batch-title">
+        {{t.batchPrefix}}{{b.batch_seq}}{{t.batchSuffix}}
+        <text class="tag" wx:if="{{b.terminate_month}}">{{t.terminateMonth}}</text>
+      </view>
+      <view class="cell">
+        <text class="lbl">{{t.value}}</text>
+        <text class="val">{{t.cur}}{{b.value}}</text>
+      </view>
+      <view class="cell">
+        <text class="lbl">{{t.startMonth}} / {{t.totalMonths}}</text>
+        <text class="val">{{b.start_month}} · {{b.total_months}}{{t.monthUnit}}</text>
+      </view>
+      <view class="cell">
+        <text class="lbl">{{t.monthAmountShort}}</text>
+        <text class="val" style="color:#ff6b35;">{{t.cur}}{{b.amountYuan}}</text>
+      </view>
+      <view class="row-ops">
+        <button class="btn-small ghost" catchtap="onEdit" data-asset="{{b}}">{{t.edit}}</button>
+        <button class="btn-small ghost" style="color:#e74c3c;border-color:#e74c3c;" catchtap="onTerminate" data-asset="{{b}}">{{t.terminateNow}}</button>
+      </view>
+    </view>
+
+    <!-- 单笔：明细直接展示（与改造前完全一致） -->
+    <block wx:if="{{!g.multi}}">
+      <view class="cell">
+        <text class="lbl">{{t.startMonth}} / {{t.totalMonths}}</text>
+        <text class="val">{{g.batches[0].start_month}} · {{g.batches[0].total_months}}{{t.monthUnit}}</text>
+      </view>
+      <view class="row-ops">
+        <button class="btn-small ghost" catchtap="onEdit" data-asset="{{g.batches[0]}}">{{t.edit}}</button>
+        <button class="btn-small ghost" style="color:#e74c3c;border-color:#e74c3c;" catchtap="onTerminate" data-asset="{{g.batches[0]}}">{{t.terminateNow}}</button>
+      </view>
+    </block>
+
+    <!-- H1：追加采购 —— 同一资产再投一笔（独立起摊） -->
     <view class="row-ops">
-      <button class="btn-small ghost" catchtap="onEdit" data-asset="{{item}}">{{t.edit}}</button>
-      <button class="btn-small ghost" style="color:#e74c3c;border-color:#e74c3c;" catchtap="onTerminate" data-asset="{{item}}">{{t.terminateNow}}</button>
+      <button class="btn-small ghost" catchtap="onAppend" data-group="{{g.key}}">+ {{t.appendPurchase}}</button>
     </view>
   </view>
 
-  <view wx:if="{{assets.length === 0 && !loading}}" class="empty">{{t.empty}}</view>
+  <view wx:if="{{groups.length === 0 && !loading}}" class="empty">{{t.empty}}</view>
 
   <button class="btn primary" bindtap="onAdd">{{t.add}}</button>
 
   <!-- 新增/编辑表单 -->
   <view class="mask" wx:if="{{showForm}}" bindtap="onCancelForm">
     <view class="sheet" catchtap="">
-      <view class="card-title">{{editing ? t.edit : t.add}}</view>
+      <view class="card-title">{{editing ? t.edit : (appendGroup ? t.appendTitle : t.add)}}</view>
+      <view class="hint" wx:if="{{appendGroup && !editing}}">{{t.appendHint}}</view>
       <view class="field">
         <text class="lbl">{{t.name}}</text>
         <input class="val-input" value="{{formName}}" placeholder="{{t.namePh}}" bindinput="onName" />
@@ -47,7 +91,10 @@
       </view>
       <view class="field">
         <text class="lbl">{{t.startMonth}}</text>
-        <input class="val-input" value="{{formStartMonth}}" placeholder="2026-01" bindinput="onStartMonth" />
+        <!-- B1：年月选择用原生 picker（mode=date fields=month，绑定仍为 YYYY-MM），替代手输 -->
+        <picker mode="date" fields="month" value="{{formStartMonth}}" data-field="start" bindchange="onMonthPick">
+          <view class="picker-val {{formStartMonth ? '' : 'ph'}}">{{formStartMonth || t.optional}}</view>
+        </picker>
       </view>
       <view class="field">
         <text class="lbl">{{t.totalMonths}}</text>
@@ -55,7 +102,10 @@
       </view>
       <view class="field">
         <text class="lbl">{{t.terminateMonth}}</text>
-        <input class="val-input" value="{{formTerminateMonth}}" placeholder="{{t.optional}}" bindinput="onTerminateMonth" />
+        <!-- B1：终止月同为年月 picker（可选） -->
+        <picker mode="date" fields="month" value="{{formTerminateMonth}}" data-field="end" bindchange="onMonthPick">
+          <view class="picker-val {{formTerminateMonth ? '' : 'ph'}}">{{formTerminateMonth || t.optional}}</view>
+        </picker>
       </view>
       <button class="btn primary" style="margin-top:0;" bindtap="onSaveAsset">{{t.save}}</button>
       <button class="btn ghost" bindtap="onCancelForm">{{t.cancel}}</button>

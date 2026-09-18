@@ -14,6 +14,30 @@
     </view>
   </view>
 
+  <!-- C1：意见反馈（AD-16 客服入口） -->
+  <view class="card2">
+    <view class="cell" bindtap="onFeedback">
+      <text class="lbl">{{t.feedback}}</text>
+      <text class="val muted">›</text>
+    </view>
+  </view>
+
+  <!-- C1：关于（版本号）+ 免责声明 -->
+  <view class="card2">
+    <view class="cell">
+      <text class="lbl">{{t.about}}</text>
+      <text class="val muted">{{t.versionLabel}} {{t.appVersion}}</text>
+    </view>
+    <view class="cell" bindtap="onDisclaimer">
+      <text class="lbl">{{t.disclaimerLabel}}</text>
+      <text class="val muted">›</text>
+    </view>
+  </view>
+
+  <view class="card2">
+    <view class="muted">{{t.disclaimer}}</view>
+  </view>
+
   <view class="card2">
     <view class="muted">{{t.privacyDesc}}</view>
   </view>

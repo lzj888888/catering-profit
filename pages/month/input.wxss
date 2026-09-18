@@ -1,3 +1,39 @@
 /* pages/month/input.wxss —— M1 收入/费用/消耗录入页 */
 .val-input { text-align: right; font-size: 30rpx; width: 300rpx; }
 .sec { font-size: 30rpx; font-weight: 700; color: #333; margin: 28rpx 8rpx 14rpx; }
+
+/* A2：大类组（收入/费用二级细项） */
+.group { background: #fff; border-radius: 12rpx; margin-bottom: 16rpx; padding: 8rpx 24rpx; }
+.group-head { display: flex; justify-content: space-between; align-items: center; padding: 20rpx 0; }
+.g-label { font-size: 30rpx; font-weight: 600; color: #222; }
+.g-toggle { font-size: 26rpx; color: #ff6b35; }
+.sub-row { display: flex; align-items: center; gap: 12rpx; padding: 10rpx 0; border-top: 1rpx solid #f5f5f5; }
+.sub-item-inp { flex: 1; font-size: 28rpx; min-width: 0; }
+.sub-row .val-input { width: 220rpx; flex: 0 0 auto; }
+.btn-small.del { background: none; color: #e74c3c; min-height: 56rpx; margin: 0; }
+.group-ops { padding: 8rpx 0 16rpx; }
+.group-ops .btn-small { margin-top: 0; }
+
+/* ===== E2（批次 8c）：填写口径折叠块 + 每类口径句 ===== */
+.fill-guide {
+  margin: 16rpx 24rpx 8rpx;
+  border: 1rpx solid #e5e5e5;
+  border-radius: 12rpx;
+  background: #fafafa;
+  overflow: hidden;
+}
+.fill-guide-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20rpx 24rpx;
+}
+.fg-title { font-size: 26rpx; color: #555; }
+.fg-toggle { font-size: 26rpx; color: #999; }
+.fill-guide-body {
+  border-top: 1rpx solid #ececec;
+  padding: 8rpx 24rpx 16rpx;
+  background: #fff;
+}
+.fg-line { font-size: 24rpx; color: #777; line-height: 1.6; padding: 6rpx 0; }
+.scope { font-size: 22rpx; color: #999; line-height: 1.5; padding: 0 0 12rpx 8rpx; }
