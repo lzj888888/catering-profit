@@ -66,7 +66,12 @@ function hasDocx(py) {
 (function main() {
   const pass = [];
   const bad = [];
-  const check = (name, ok, detail) => { (ok ? pass : bad).push(name + (detail ? ' · ' + detail : '')); };
+  // ⚠️ check() 必须**当场打印** ✅/❌：verify_all.js 的 R66 审计要求「每个段标题下至少一个 ✅」，
+  //    只登记不打印 ⇒ 被判「断言疑似静默未跑」而转红（本文件首次接入时就踩过）。
+  const check = (name, ok, detail) => {
+    (ok ? pass : bad).push(name + (detail ? ' · ' + detail : ''));
+    console.log((ok ? '✅ ' : '❌ ') + name + (detail ? ' · ' + detail : ''));
+  };
 
   console.log('===== D1 前置：python 解释器可用 =====');
   let py = null;
@@ -82,27 +87,22 @@ function hasDocx(py) {
     console.log('\n===== 派生件 docx 守卫结果：0 通过 / ' + bad.length + ' 失败 =====');
     process.exit(1);
   }
-  console.log('✅ D1 python 解释器可用 · ' + py);
 
   console.log('\n===== D2 前置：python-docx 依赖可用 =====');
   const docxOk = hasDocx(py);
-  check('D2 python-docx 依赖可用', docxOk);
+  check('D2 python-docx 依赖可用', docxOk, docxOk ? 'import docx OK' : py + ' 无法 `import docx`');
   if (!docxOk) {
-    console.log('   ❌ D2 python-docx 依赖不可用（' + py + ' 无法 `import docx`）');
     console.log('\n===== 派生件 docx 守卫结果：1 通过 / 1 失败 =====');
     process.exit(1);
   }
-  console.log('✅ D2 python-docx 依赖可用 · import docx OK');
 
   console.log('\n===== D3 判据本体存在 =====');
   const srcOk = fs.existsSync(path.join(ROOT, PY_SRC));
-  check('D3 ' + PY_SRC + ' 存在', srcOk);
+  check('D3 ' + PY_SRC + ' 存在', srcOk, srcOk ? 'fail-closed 前置' : '判据本体丢失');
   if (!srcOk) {
-    console.log('   ❌ D3 ' + PY_SRC + ' 不存在（判据本体丢失，fail-closed）');
     console.log('\n===== 派生件 docx 守卫结果：2 通过 / 1 失败 =====');
     process.exit(1);
   }
-  console.log('✅ D3 ' + PY_SRC + ' 存在');
 
   // ===== 实跑 verify_docx.py =====
   let out = '';
