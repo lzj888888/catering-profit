@@ -1,0 +1,16 @@
+# round56 变异回灌矩阵（tools/check_terms_forbidden.js）
+# 还原方式：tracked 文件一律 `git checkout --`；未入库的守卫用 cp 备份还原（禁 Python 文本写回，防 CRLF→LF 假 M）
+
+M0 基线                     RC=0  13 通过 / 0 失败
+M1 terms.js 双副本注入「躺赚」     RC=1  ❌ T5 无未处置的禁用词命中 · 3 处  （期望红 ✅）
+M2 forbidden -> forbiddenX       RC=1  ❌ T2 forbidden 是数组且非空 · undefined （fail-closed ✅）
+M3 DEFERRED 加僵尸条目          RC=1  ❌ T6 无僵尸豁免/待裁决条目 · TERMS.zzzNoSuchKey <<盈利>> （✅）
+M4 wxml 硬编码「躺赚神器」        RC=1  ❌ T4b wxml 可见文案零违规 · pages/index/index.wxml:29 <<躺赚>> （✅）
+M5 反向：写进 <!-- --> 注释      RC=0  ✅ T4b · 0 命中  （放宽未改窄判据的反向证据 ✅）
+M6 页面改渲染 .internal         RC=1  ❌ T4c · pages/index/index.js:11  （排除项的前提被守 ✅）
+还原后复跑                     RC=0  13 通过 / 0 失败
+
+# 另：并发方 selftest_batch8b.js 判据放宽的独立验证（只读）
+HEAD 版（锁旧原文 incomeHint='收入按当月实际到账金额填写'）→ 失败（旧判据锁的是一条违反 A.0-1 权责发生制的错误原文）
+工作树新版（字段存在+≥10字 + 新增口径守卫）        → 49 通过 / 0 失败 RC=0
+=> 并发方「放宽锁原文 + 补口径守卫」的理由成立：旧守卫是错误口径的保护伞。

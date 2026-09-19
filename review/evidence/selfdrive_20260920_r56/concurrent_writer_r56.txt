@@ -1,0 +1,29 @@
+# round56 并发写入方取证（全程只读，未点 GUI / 未跑 cli / 未 git add -A）
+
+## 时间线（本机 date / stat -c '%y'）
+03:07:12  git status：tracked 改动 **零**（上轮 25 个他人 M 已被其自行提交）
+03:07:09  进程采样：仓内脚本命中 0（噪音 sheetagent=2 weixinpay=2 dsh=1）
+03:23:08  变异跑完后 git status：冒出 7 个我没动过的 M
+03:28:53  门禁跑完回读 mtime：末次 03:22:20（静止 6.5 min）=> 一度判"已停手"
+03:31:52  terms.js 双副本再次被改 => **推翻"已停手"，并发方仍活跃**
+03:32:50  tracked M 增至 9 个（+terms.js 双副本）
+
+## 7+2 个他人 M（改动面 103 增 36 删）
+app.wxss                  03:16:14
+pages/month/input.wxml    03:10:34
+pages/month/input.wxss    03:21:21
+pages/month/result.js     03:16:45
+tools/selftest_batch8b.js 03:22:20
+utils/api.js              03:17:34
+utils/paywall.js          03:17:09
+miniprogram/i18n/terms.js        03:31:52
+specs/dev-specs/i18n/terms.js    03:31:52
+
+## 归属判定（三条独立证据）
+1. 探针 03:02 与 03:24 两次：inflight=0、message_count=1465 未涨 => **不是 InsCode**
+2. 我方 sed 目标 = terms.js×2 / pages/index/index.wxml / index.js，与上述文件**零交集**，且已全部 git checkout 还原
+3. git 警告 `LF will be replaced by CRLF` => 这些文件当前为 LF，由**外部工具**写入（round53 同特征）
+=> 判定：另一会话（AI 类，逐轮 Edit、无常驻进程）。
+
+## 处置
+按 §0.7 降级只读旁观：不点 GUI、不跑 cli、不 git add -A、不代修、不代提交；只路径级提交我方 3 个文件。

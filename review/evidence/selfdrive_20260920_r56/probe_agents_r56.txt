@@ -1,0 +1,31 @@
+# round56 状态探针（03:02 与 03:24 两次，结论一致）
+# 命令：python C:/Users/lzj/.workbuddy/skills/self-drive-loop/scripts/probe_agents.py
+
+## 03:02 采样
+inscode:
+  inflight = 0
+  session.message_count = 1465
+  session.idle_sec = 129439  (35.96 h)
+  session.model = deepseek-v4-flash
+  session.permission = auto
+  last_approval = [54, ..., "bash", "cd", "approved_once", "permission_mode"]  -> 无 pending
+  verdict = idle
+dsh:
+  hwnd = 855322, rect = [-32000,-32000,-31763,-31961]  -> minimized
+
+## 03:24 复采（写完 SUITES 后，确认 InsCode 未转忙）
+inscode: inflight = 0, message_count = 1465（与 03:02 同值、未涨）, idle_sec = 130578.3
+  verdict = idle  -> 本轮所见 7 个他人 M 文件不是 InsCode 写的
+dsh: 仍 minimized（hwnd 855322）
+
+## dsh 后端侧证（只读，未动 GUI）
+GET /            -> 200  (SPA 兜底，非健康信号)
+GET /v1/models   -> 200  (SPA 兜底，非健康信号)
+GET /api/sessions-> 404
+GET /api/health  -> 404
+GET https://api.deepseek.com -> 401  (上游可达仅缺鉴权 => 排除断网与额度耗尽)
+mtime C:\Users\lzj\.dsh\web.log                       = 2026-09-17 02:59:56 (72.12 h 前)
+mtime C:\Users\lzj\.dsh\storages\session_projcache.json = 2026-09-19 09:21:08 (17.77 h 前)
+dsh 进程 CreationDate = 20260917030702  => uptime 72.0 h 未重启
+=> web.log mtime ≈ 进程 uptime：该实例自启动起零业务写入。
+=> dsh 第 10 轮不可用；不投递（另：当前会话名非仓库复审上下文，投递属上下文污染）。
