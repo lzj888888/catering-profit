@@ -10,6 +10,7 @@
 
 const { TERMS } = require('../miniprogram/i18n/terms.js');
 const api = require('./api.js');
+const { isIOS } = require('./platform.js');
 
 /**
  * 打开付费弹窗。
@@ -22,6 +23,8 @@ const api = require('./api.js');
  */
 function openPaywall(type, opts) {
   if (type !== 'saveLimit' && type !== 'export') return; // 防误触发
+  // R45：iOS 端不得提供虚拟商品购买入口 ⇒ 弹窗改为纯提示，**不给确认下单按钮**
+  if (isIOS()) return showIOSBlocked();
   const def = TERMS.paywall[type];
   const buttons = TERMS.buttons;
   wx.showModal({
@@ -41,10 +44,28 @@ function openPaywall(type, opts) {
 }
 
 /**
+ * R45 · iOS 端拦截提示：只告知、不下单（无 confirm 购买动作）。
+ * 文案走 i18n 单源（TERMS.pay.iosBlocked*），禁硬编码。
+ */
+function showIOSBlocked() {
+  wx.showModal({
+    title: TERMS.pay.iosBlockedTitle,
+    content: TERMS.pay.iosBlockedBody,
+    showCancel: false,
+    confirmText: TERMS.buttons.gotIt,
+    confirmColor: '#ff6b35',
+  });
+}
+
+/**
  * 主按钮确认：创建订单 → 当前阶段（enable_real_payment=false）提示联系客服开通。
  * 不接真实支付时，订单仍写入 shop_payment_flow（订单记录页可见），权益由后台 source=manual 发放。
+ *
+ * ⚠️ R45 纵深：即便调用方绕过 openPaywall 直接调本函数，iOS 端仍不得下单
+ *    （守卫 tools/check_ios_pay.js 只保证"文件里做了判断"，本行保证"运行时真挡住"）。
  */
 async function onConfirm(type, opts) {
+  if (isIOS()) return showIOSBlocked();
   const shopId = (opts && opts.shopId) || (getApp && getApp().globalData && getApp().globalData.shop_id) || '';
   const planId = (opts && opts.planId) || 'plan_basic_month';
   try {
