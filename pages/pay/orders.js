@@ -96,7 +96,7 @@ Page({
         content: TERMS.pay.iosBlockedBody,
         showCancel: false,
         confirmText: TERMS.buttons.gotIt,
-        confirmColor: '#ff6b35',
+        confirmColor: '#1e3a5f',
       });
       return;
     }
@@ -113,7 +113,7 @@ Page({
           content: TERMS.pay.contactServiceHint,
           showCancel: false,
           confirmText: TERMS.buttons.thinkAgain,
-          confirmColor: '#ff6b35',
+          confirmColor: '#1e3a5f',
         });
       }
     } catch (e) { api.toastError(e); }

@@ -20,7 +20,7 @@
     </view>
     <view class="switch-row">
       <view class="lbl2">{{t.includeAmort}}</view>
-      <switch checked="{{includeAmort}}" color="#ff6b35" bindchange="onIncludeAmort" />
+      <switch checked="{{includeAmort}}" color="#1e3a5f" bindchange="onIncludeAmort" />
     </view>
     <view class="field" wx:if="{{includeAmort}}">
       <text class="lbl">{{t.simAmort}}</text>

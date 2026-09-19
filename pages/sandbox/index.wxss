@@ -1,4 +1,4 @@
 /* pages/sandbox/index.wxss —— M2 开店测算 */
 .val-input { text-align: right; font-size: 30rpx; width: 280rpx; }
 .concl { font-size: 32rpx; font-weight: 700; color: #333; margin-bottom: 20rpx; line-height: 1.6; }
-.concl .hl { color: #ff6b35; font-size: 36rpx; }
+.concl .hl { color: #1e3a5f; font-size: 36rpx; }

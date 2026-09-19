@@ -10,7 +10,7 @@
       <view class="lbl2">{{t.inventorySwitch}}</view>
       <view class="muted">{{t.inventorySwitchDesc}}</view>
     </view>
-    <switch checked="{{inventoryOn}}" color="#ff6b35" bindchange="onInventory" />
+    <switch checked="{{inventoryOn}}" color="#1e3a5f" bindchange="onInventory" />
   </view>
 
   <view class="switch-row">
@@ -18,7 +18,7 @@
       <view class="lbl2">{{t.amortizeSwitch}}</view>
       <view class="muted">{{t.amortizeSwitchDesc}}</view>
     </view>
-    <switch checked="{{amortizeOn}}" color="#ff6b35" bindchange="onAmortize" />
+    <switch checked="{{amortizeOn}}" color="#1e3a5f" bindchange="onAmortize" />
   </view>
 
   <view style="height:20rpx;"></view>

@@ -8,8 +8,8 @@
   <view class="field">
     <text class="lbl">{{t.calcMode}}</text>
     <radio-group class="mode-group" bindchange="onMode">
-      <label class="mode-item"><radio value="A" checked="{{calcMode === 'A'}}" color="#ff6b35"/>{{t.calcModeA}}</label>
-      <label class="mode-item"><radio value="B" checked="{{calcMode === 'B'}}" color="#ff6b35"/>{{t.calcModeB}}</label>
+      <label class="mode-item"><radio value="A" checked="{{calcMode === 'A'}}" color="#1e3a5f"/>{{t.calcModeA}}</label>
+      <label class="mode-item"><radio value="B" checked="{{calcMode === 'B'}}" color="#1e3a5f"/>{{t.calcModeB}}</label>
     </radio-group>
   </view>
 
@@ -57,7 +57,7 @@
     </view>
     <button class="btn ghost btn-small" style="min-height:88rpx;" bindtap="reverseCalc">{{t.reverseTitle}}</button>
     <view class="muted" wx:if="{{reversePriceFen > 0}}">{{t.reverseResult}}：{{t.cur}}{{reverseResultPreview}}</view>
-    <view class="muted" wx:if="{{previewCostFen > 0}}">{{t.totalCost}}：<text style="color:#ff6b35;">{{t.cur}}{{previewCost}}</text></view>
+    <view class="muted" wx:if="{{previewCostFen > 0}}">{{t.totalCost}}：<text style="color:#1e3a5f;">{{t.cur}}{{previewCost}}</text></view>
   </view>
 
   <view style="height:20rpx;"></view>

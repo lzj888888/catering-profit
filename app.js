@@ -56,7 +56,7 @@ App({
         content: TERMS.exp.updateBody,
         confirmText: TERMS.exp.updateConfirm,
         cancelText: TERMS.exp.updateCancel,
-        confirmColor: '#ff6b35',
+        confirmColor: '#1e3a5f',
         success: (r) => { if (r.confirm) um.applyUpdate(); },
       });
     });
@@ -117,7 +117,7 @@ App({
       content: TERMS.exp.privacyDesc,
       confirmText: TERMS.exp.privacyAgree,
       cancelText: TERMS.exp.privacyDisagree,
-      confirmColor: '#ff6b35',
+      confirmColor: '#1e3a5f',
       success: (r) => {
         if (r.confirm) {
           // 主动拉起系统授权（同会话首次）

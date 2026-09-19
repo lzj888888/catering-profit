@@ -14,7 +14,7 @@ const app = getApp();
 Page({
   data: {
     t: {
-      m1: TERMS.modules.m1.display,
+      m1: TERMS.modules.m1.navTitle,
       freeTab: TERMS.m1Tabs.free.display,
       paidTab: TERMS.m1Tabs.paid.display,
       freeHint: TERMS.freeHint,
@@ -63,7 +63,7 @@ Page({
   async bootstrap() {
     try {
       await api.ensureShop();
-      ui.setTitle(TERMS.modules.m1.display);
+      ui.setTitle(TERMS.modules.m1.navTitle);
       // 批次 5：拉权限（只读 expire_at），免费用户 tab 锁定在 free
       let ent = null;
       try { ent = await entitle.fetchEntitlement(); } catch (e) { /* 权限查询失败回落免费档 */ }
@@ -148,7 +148,7 @@ Page({
     wx.showModal({
       title: TERMS.nav.archiveNow,
       content: TERMS.ui.confirmArchive,
-      confirmColor: '#ff6b35',
+      confirmColor: '#1e3a5f',
       success: async (r) => {
         if (!r.confirm) return;
         try {

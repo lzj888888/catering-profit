@@ -11,6 +11,6 @@
 
   <view wx:if="{{list.length === 0 && !loading}}" class="empty">{{t.noShop}}</view>
 
-  <button class="btn ghost" bindtap="onAdd">{{t.addShop}}</button>
+  <button class="btn ghost" bindtap="onAdd">{{addShopLabel}}</button>
 </view>
 <view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

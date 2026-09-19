@@ -32,7 +32,7 @@ function openPaywall(type, opts) {
     content: def.content,
     cancelText: def.secondary || buttons.cancel,
     confirmText: def.primary || buttons.unlockPro,
-    confirmColor: '#ff6b35',
+    confirmColor: '#1e3a5f',
     success(res) {
       if (res.confirm) {
         onConfirm(type, opts || {});
@@ -53,7 +53,7 @@ function showIOSBlocked() {
     content: TERMS.pay.iosBlockedBody,
     showCancel: false,
     confirmText: TERMS.buttons.gotIt,
-    confirmColor: '#ff6b35',
+    confirmColor: '#1e3a5f',
   });
 }
 
@@ -83,7 +83,7 @@ async function onConfirm(type, opts) {
         content: TERMS.pay.contactServiceHint,
         showCancel: false,
         confirmText: TERMS.buttons.thinkAgain,
-        confirmColor: '#ff6b35',
+        confirmColor: '#1e3a5f',
       });
     }
     // enable_real_payment=true 后：pay_params 非空 → 拉起 wx.requestPayment（批次 5 后接真实支付）

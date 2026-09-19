@@ -86,7 +86,7 @@ Page({
       content: TERMS.auditSafe.disclaimer,
       showCancel: false,
       confirmText: TERMS.buttons.thinkAgain || '知道了',
-      confirmColor: '#ff6b35',
+      confirmColor: '#1e3a5f',
     });
   },
 
@@ -97,7 +97,7 @@ Page({
       content: TERMS.exp.privacyDesc,
       showCancel: false,
       confirmText: TERMS.buttons.thinkAgain || '知道了',
-      confirmColor: '#ff6b35',
+      confirmColor: '#1e3a5f',
     });
   },
 
@@ -109,7 +109,7 @@ Page({
       content: TERMS.exp.privacyRevoked,
       confirmText: TERMS.exp.goSetting,
       cancelText: TERMS.buttons.cancel,
-      confirmColor: '#ff6b35',
+      confirmColor: '#1e3a5f',
       success(res) {
         if (res.confirm) wx.openSetting({});
       },

@@ -11,7 +11,7 @@
     <view class="muted">{{t.expireSoonTitle}} · {{expireSoonText}}</view>
     <view class="expire-ops">
       <button class="btn-small ghost" style="margin:0;" bindtap="onAskSubscribe">{{t.subscribeTip}}</button>
-      <button class="btn-small ghost" style="margin:0;color:#ff6b35;border-color:#ff6b35;" bindtap="goOrders">{{t.renewEntry}}</button>
+      <button class="btn-small ghost" style="margin:0;color:#1e3a5f;border-color:#1e3a5f;" bindtap="goOrders">{{t.renewEntry}}</button>
     </view>
   </view>
 

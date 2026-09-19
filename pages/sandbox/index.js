@@ -11,7 +11,7 @@ const { TERMS } = require('../../miniprogram/i18n/terms.js');
 Page({
   data: {
     t: {
-      title: TERMS.modules.m2.display,
+      title: TERMS.modules.m2.navTitle,
       inputTitle: TERMS.m2.inputTitle,
       rent: TERMS.m2.rent,
       property: TERMS.m2.property,
@@ -58,7 +58,7 @@ Page({
     this.setData({ loading: true });
     try {
       await api.ensureShop();
-      ui.setTitle(TERMS.modules.m2.display);
+      ui.setTitle(TERMS.modules.m2.navTitle);
       this.setData({ loading: false });
     } catch (e) {
       this.setData({ loading: false });

@@ -104,7 +104,7 @@ Page({
       wx.showModal({
         title: TERMS.inputPage.saveArchiveOverride,
         content: TERMS.inputPage.confirmGraceSave,
-        confirmColor: '#ff6b35',
+        confirmColor: '#1e3a5f',
         success: (r) => { if (r.confirm) doSave(); },
       });
     } else {

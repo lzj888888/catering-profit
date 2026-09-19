@@ -27,6 +27,8 @@ Page({
     used: 0,
     freeLimit: 1,
     hitFreeLimit: false,
+    // 达上限时按钮改文案（点它仍弹付费墙，但用户先看懂为什么）
+    addShopLabel: TERMS.exp.addShop,
     loading: true,
   },
 
@@ -50,6 +52,7 @@ Page({
         used: d.used,
         freeLimit: d.free_limit,
         hitFreeLimit: d.hit_free_limit,
+        addShopLabel: d.hit_free_limit ? TERMS.exp.addShopLimited : TERMS.exp.addShop,
         loading: false,
       });
     } catch (e) {

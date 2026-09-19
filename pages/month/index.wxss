@@ -1,7 +1,7 @@
 /* pages/month/index.wxss —— M1 月度经营首页（继承 app.wxss 共享组件） */
 .tabs { display: flex; margin: 8rpx 0 20rpx; background: #fff; border-radius: 16rpx; padding: 8rpx; }
 .tab { flex: 1; text-align: center; padding: 20rpx 0; font-size: 30rpx; color: #666; border-radius: 12rpx; }
-.tab.active { background: #ff6b35; color: #fff; font-weight: 700; }
+.tab.active { background: #1e3a5f; color: #fff; font-weight: 700; }
 /* 修 5：免费用户仅一个 tab 时不满宽（避免像横幅），双 tab 时保持 flex:1 满宽 */
 .tabs.single { display: inline-flex; }
 .tabs.single .tab { flex: 0 0 auto; min-width: 220rpx; }

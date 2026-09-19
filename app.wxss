@@ -1,57 +1,65 @@
+/* ============================================================
+ * 店算小程序 · 全局样式（墨蓝主题 v2 · 2026-09-20）
+ * 品牌色：墨蓝 #1e3a5f（渐变 #2a4e7c → #162c49）
+ * 浅底：#e8eff7 / 提示底 #f3f7fb
+ * ⚠️ 旧橘黄 #ff6b35 已全量下线（含 app.json 导航栏与各页内联色）。
+ * ============================================================ */
 page { background: #f5f6f8; font-family: -apple-system, "PingFang SC", sans-serif; }
 .container { padding: 24rpx; }
 .summary { display: flex; flex-wrap: wrap; }
-.card { width: 48%; margin: 1%; background: #fff; border-radius: 16rpx; padding: 20rpx; box-sizing: border-box; }
-.card.hl { background: #fff3ec; }
+.card { width: 48%; margin: 1%; background: #fff; border-radius: 20rpx; padding: 20rpx; box-sizing: border-box; }
+.card.hl { background: #e8eff7; }
 .card.net { background: #eafaf0; }
 .label { display: block; font-size: 28rpx; color: #888; }
 .value { display: block; font-size: 40rpx; font-weight: 700; color: #222; }
-.sub { font-size: 28rpx; color: #ff6b35; }
+.sub { font-size: 28rpx; color: #1e3a5f; }
 .sec { display: block; margin: 24rpx 8rpx 12rpx; font-weight: 700; color: #333; }
-.row { display: flex; justify-content: space-between; background: #fff; padding: 20rpx; border-radius: 12rpx; margin-bottom: 12rpx; align-items: center; }
+.row { display: flex; justify-content: space-between; background: #fff; padding: 20rpx; border-radius: 16rpx; margin-bottom: 12rpx; align-items: center; }
 .row input { text-align: right; }
 .name { font-weight: 600; }
 .meta { display: block; font-size: 28rpx; color: #888; margin: 6rpx 0; }
-.profit { font-size: 28rpx; color: #ff6b35; }
-.del { color: #e74c3c; padding: 0 20rpx; }
+.profit { font-size: 28rpx; color: #1e3a5f; }
+.del { color: #c0392b; padding: 0 20rpx; }
 .empty { text-align: center; color: #aaa; padding: 40rpx; }
-.add { margin-top: 24rpx; background: #ff6b35; color: #fff; }
+.add { margin-top: 24rpx; background: #1e3a5f; color: #fff; }
 .form { padding: 24rpx; }
-.field { display: flex; justify-content: space-between; background: #fff; padding: 24rpx; border-radius: 12rpx; margin-bottom: 16rpx; align-items: center; }
+.field { display: flex; justify-content: space-between; background: #fff; padding: 24rpx; border-radius: 16rpx; margin-bottom: 16rpx; align-items: center; }
 .field input { text-align: right; }
-.save { margin-top: 24rpx; background: #ff6b35; color: #fff; }
+.save { margin-top: 24rpx; background: #1e3a5f; color: #fff; }
 
-/* ===== 批次 4 · 共享组件样式（AD-1~AD-26 对齐：按钮≥88rpx、字号≥28rpx、深色/大字体适配） ===== */
-.card2 { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 16rpx; }
+/* ===== 批次 4 · 共享组件样式（AD-1~AD-26 对齐：按钮≥88rpx、字号≥28rpx） ===== */
+.card2 { background: #fff; border-radius: 20rpx; padding: 24rpx; margin-bottom: 16rpx;
+  box-shadow: 0 4rpx 16rpx rgba(30, 58, 95, 0.06); }
 .btn { display: flex; align-items: center; justify-content: center;
   min-height: 88rpx; margin-top: 24rpx; border-radius: 16rpx; font-size: 32rpx; font-weight: 600; }
-.btn.primary { background: #ff6b35; color: #fff; }
-.btn.ghost { background: #fff; color: #ff6b35; border: 2rpx solid #ff6b35; }
-.btn.disabled { background: #ccc; color: #fff; }
+.btn.primary { background: linear-gradient(135deg, #2a4e7c 0%, #162c49 100%); color: #fff;
+  box-shadow: 0 6rpx 16rpx rgba(30, 58, 95, 0.18); }
+.btn.ghost { background: #fff; color: #1e3a5f; border: 2rpx solid #1e3a5f; }
+.btn.disabled { background: #ccc; color: #fff; box-shadow: none; }
 .btn-small { min-height: 88rpx; padding: 0 24rpx; font-size: 28rpx; border-radius: 12rpx; }
 .cell { display: flex; justify-content: space-between; align-items: center; padding: 24rpx 0; border-bottom: 1rpx solid #f0f0f0; font-size: 30rpx; }
 .cell:last-child { border-bottom: none; }
 .cell .lbl { color: #555; }
 .cell .val { font-weight: 600; color: #222; }
-.inp { background: #fff; border-radius: 12rpx; padding: 24rpx; min-height: 88rpx; margin-bottom: 16rpx; font-size: 30rpx; }
+.inp { background: #fff; border-radius: 16rpx; padding: 24rpx; min-height: 88rpx; margin-bottom: 16rpx; font-size: 30rpx; }
 .inp input { width: 100%; }
 .inp textarea { width: 100%; min-height: 160rpx; font-size: 30rpx; }
 .label2 { display: block; font-size: 28rpx; color: #666; margin: 16rpx 4rpx 8rpx; }
-.tag { display: inline-block; font-size: 28rpx; color: #ff6b35; background: #fff3ec; border-radius: 8rpx; padding: 4rpx 12rpx; margin-left: 12rpx; }
+.tag { display: inline-block; font-size: 28rpx; color: #1e3a5f; background: #e8eff7; border-radius: 8rpx; padding: 4rpx 12rpx; margin-left: 12rpx; }
 .tag.lock { color: #999; background: #eee; }
-.card-title { font-size: 32rpx; font-weight: 700; margin-bottom: 12rpx; }
-.result-num { font-size: 56rpx; font-weight: 800; color: #ff6b35; }
-.muted { color: #999; font-size: 28rpx; }
-.hint { font-size: 28rpx; color: #666; background: #fff7f1; border-radius: 12rpx; padding: 16rpx 20rpx; margin-bottom: 12rpx; line-height: 1.6; }
+.card-title { font-size: 32rpx; font-weight: 700; margin-bottom: 12rpx; color: #1e3a5f; }
+.result-num { font-size: 56rpx; font-weight: 800; color: #1e3a5f; }
+.muted { color: #666; font-size: 28rpx; }
+.hint { font-size: 28rpx; color: #4a5b70; background: #f3f7fb; border-radius: 12rpx; padding: 16rpx 20rpx; margin-bottom: 12rpx; line-height: 1.6; }
 .safe-bottom { padding-bottom: calc(env(safe-area-inset-bottom) + 24rpx); }
-.switch-row { display: flex; justify-content: space-between; align-items: center; padding: 24rpx 20rpx; background: #fff; border-radius: 12rpx; margin-bottom: 12rpx; }
+.switch-row { display: flex; justify-content: space-between; align-items: center; padding: 24rpx 20rpx; background: #fff; border-radius: 16rpx; margin-bottom: 12rpx; }
 .switch-row .lbl2 { font-size: 30rpx; }
-.archived-bar { font-size: 28rpx; color: #b45309; background: #fef3c7; border-radius: 12rpx; padding: 12rpx 20rpx; margin-bottom: 12rpx; }
+.archived-bar { font-size: 28rpx; color: #92610a; background: #fdf3d8; border-radius: 12rpx; padding: 12rpx 20rpx; margin-bottom: 12rpx; }
 
-/* 深色 / 大字体系统适配：跟随系统，字号缩放由骨架屏与 rpx 统一，背景随 page */
-@media (prefers-color-scheme: dark) {
-  .card2, .inp, .switch-row, .cell { background: #2a2a2e; }
-  .cell .val { color: #eee; }
-  .cell .lbl { color: #bbb; }
-  .label2 { color: #999; }
-}
+/* ============================================================
+ * ⚠️ 深色模式：已移除（2026-09-20 · 真机走查缺陷②）
+ * 原 @media (prefers-color-scheme: dark) 只改了 .card2/.cell/.label2，
+ * 漏掉 .card-title / .muted ⇒ 深色手机上是「黑底黑字、完全看不清」。
+ * 决策：全站统一浅色（page 背景已显式写死 #f5f6f8，不随系统切）。
+ * 若要重新支持深色，必须**整份配色 token 化后全量适配**，禁止只补几个类。
+ * ============================================================ */

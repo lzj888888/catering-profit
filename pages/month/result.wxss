@@ -5,7 +5,7 @@
 
 /* D1：下钻明细面板 */
 .drill-head { border-bottom: 1rpx solid #f0f0f0; }
-.drill-caret { color: #ff6b35; font-size: 28rpx; }
+.drill-caret { color: #1e3a5f; font-size: 28rpx; }
 .drill-body { padding: 12rpx 0 16rpx; }
 .drill-row { margin-bottom: 12rpx; }
 .drill-gname { font-size: 28rpx; font-weight: 600; color: #333; display: flex; justify-content: space-between; }

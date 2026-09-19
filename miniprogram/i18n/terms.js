@@ -20,24 +20,29 @@
 const TERMS = {
   // ===== 一、模块名与入口 =====
   modules: {
+    // 📌 2026-09-20 用户拍板改名（真机走查后）：外显词改长名，internal 术语不动（术语双轨）。
+    //    navTitle = 导航栏短版（微信导航栏约 10 字即截断，长名只用于首页卡片/列表）。
     m1: {
       internal: '月度盈利核算',
-      display: '月度经营',
+      display: '月度盈利核算',
+      navTitle: '月度盈利核算',
       subtitle: '每月到底能剩多少，一算就清楚',
-      cardTitle: '月度经营',
+      cardTitle: '月度盈利核算',
     },
     m2: {
       internal: '选址盈利沙盘',
-      display: '开店测算',
+      display: '开店盈亏平衡点测算',
+      navTitle: '开店盈亏平衡测算',
       subtitle: '先算清这家店能不能开，再掏钱',
-      cardTitle: '开店测算',
+      cardTitle: '开店盈亏平衡点测算',
     },
     m3: {
       internal: '菜品成本卡',
-      display: '成本卡',
+      display: '菜品成本毛利核算',
+      navTitle: '菜品成本毛利核算',
       subtitle: '一道菜成本多少、卖多少不亏，自动算',
-      cardTitle: '成本卡',
-      itemTitle: (dishName) => `${dishName} 成本卡`,
+      cardTitle: '菜品成本毛利核算',
+      itemTitle: (dishName) => `${dishName} 成本毛利`,
     },
   },
 
@@ -50,7 +55,7 @@ const TERMS = {
   // ===== 三、按钮文案 =====
   buttons: {
     addShop: '+ 新增店铺', // M1，免费限 1 家，第 2 家触发 paywall.saveLimit
-    addCostCard: '+ 新增成本卡', // M3，免费限 3 张，第 4 张触发 paywall.saveLimit
+    addCostCard: '+ 新增菜品', // M3，免费限 3 张，第 4 张触发 paywall.saveLimit
     save: '保存',
     calc: '算一算', // 不叫"计算盈利"
     export: '导出 / 打印', // 免费禁，触发 paywall.export
@@ -65,13 +70,13 @@ const TERMS = {
     saveLimit: {
       title: '已达免费上限',
       content:
-        '免费版可建 1 家店铺 / 3 张成本卡。开通真实利润后不限数量，还能用库存倒轧算真实消耗，结果更准。',
+        '免费版可建 1 家店铺 / 3 个菜品。开通真实利润后不限数量，还能用库存倒轧算真实消耗，结果更准。',
       primary: '开通真实利润', // 跳套餐页
       secondary: '再想想',
     },
     export: {
       title: '导出需开通',
-      content: '开通真实利润后可导出 / 打印成本卡与经营报表。',
+      content: '开通真实利润后可导出 / 打印菜品成本与经营报表。',
       primary: '开通真实利润',
       secondary: '取消',
     },
@@ -101,7 +106,10 @@ const TERMS = {
     { word: '投资回报 / ROI', reason: '金融类目红线', replace: '(不出现)' },
     { word: '回本周期', reason: '金融色彩重', replace: '收回投入期' },
     { word: '收益率 / 利润率', reason: '金融暗示', replace: '收益占比 / 净收益占比' },
-    { word: '盈利 / 赚钱 / 躺赚', reason: '收益承诺', replace: '经营测算 / 能剩多少' },
+    // ⚠️ 2026-09-20 用户拍板豁免：「月度盈利核算」作为**模块名**为唯一例外（首页卡片 + 导航栏）。
+    //    除该模块名外，其余页面文案仍不得出现「盈利 / 赚钱」（理由：收益承诺，易被判收益暗示）。
+    { word: '盈利 / 赚钱 / 躺赚', reason: '收益承诺', replace: '经营测算 / 能剩多少',
+      exception: '模块名「月度盈利核算」（用户 2026-09-20 拍板，不含其他任何位置）' },
     { word: '投资 / 理财 / 股', reason: '金融类目', replace: '(不出现)' },
     { word: '付费 / 订阅 / 会员费', reason: '触发虚拟支付审核', replace: '开通 / 升级解锁' },
   ],
@@ -157,7 +165,7 @@ const TERMS = {
     goInventory: '录入库存（期初/采购/期末）',
     goAmortize: '管理摊销资产',
     goResult: '查看结果',
-    addCard: '+ 新增成本卡',
+    addCard: '+ 新增菜品',
     viewVersion: '版本历史',
     syncPrice: '同步至原料最新价',
     archiveNow: '结账并归档',
@@ -267,7 +275,7 @@ const TERMS = {
 
   // ===== 十四、M3 成本卡页面文案 =====
   card: {
-    listTitle: '成本卡',
+    listTitle: '菜品成本毛利核算',
     dishName: '菜品名称',
     category: '成本分类',
     totalCost: '单份成本',
@@ -282,7 +290,7 @@ const TERMS = {
     material: '原料',
     qty: '用量（g/份）',
     delete: '删除',
-    save: '保存成本卡',
+    save: '保存菜品核算',
     addLine: '+ 添加明细行',
     reverseTitle: '反算售价',
     reverseHint: '输入目标毛利率，反推建议售价',
@@ -292,7 +300,7 @@ const TERMS = {
     hintAlways: '提示：理论配方成本 ≠ 真实门店毛利。',
     versionHistory: '版本历史',
     version: '版本',
-    empty: '还没有成本卡，点下方新增',
+    empty: '还没有菜品核算，点下方新增',
     oldVersionNote: '历史版本（只读）',
     syncNote: '同步后将按原料最新价生成新版本，旧版本保留可查。',
     versionCreatedAt: '保存时间',
@@ -465,12 +473,14 @@ const TERMS = {
     currentShop: '当前店铺',
     noShop: '还没有店铺',
     addShop: '+ 新增店铺',
+    // 已达免费上限时的按钮文案（真机走查缺陷①：按钮仍写「新增店铺」但点了弹付费墙，用户以为坏了）
+    addShopLimited: '已建 1 家 · 开通后可建多家',
     switchHint: '切换店铺不会触发任何付费弹窗；免费版可建 1 家店铺。',
     // 导出
     exportTitle: '导出数据',
     exportIng: '正在导出…',
     exportDone: '导出完成',
-    exportScopeM3: '成本卡批量',
+    exportScopeM3: '菜品成本批量',
     exportFormatExcel: 'Excel',
     exportFormatJson: 'JSON',
     exportNeedPaid: '导出需开通真实利润',
@@ -520,7 +530,7 @@ const TERMS = {
   // ===== 二十四、导出按钮（付费墙触发）=====
   exportBtn: {
     m1Report: '导出月度报表',
-    m3Cards: '导出成本卡',
+    m3Cards: '导出菜品成本',
   },
 
   // ===== 二十五、批次 8 UI 走查修复（2026-09-18）=====
