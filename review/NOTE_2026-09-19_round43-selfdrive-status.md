@@ -96,3 +96,4 @@ diff 只有一行变化：生成时间 `2026-09-18 22:45` → `2026-09-19 09:17`
 - [2026-09-19 14:10] R43 未落 · 投递 dsh round39 复审 —— 理由：dsh 沙箱受阻态不在输入框，投不进去（见 §5）
 - [2026-09-19 14:10] R43 未落 · 提交他人 `REVIEW_2026-09-15_round38-verify.md` / `索引补齐核对单.md` —— 理由：非我方产物、归属存疑（见 §3.2/§3.3）
 - [2026-09-19 14:10] R43 存疑 · `screenshot_window` 自存图为全黑（`rgb(39,39,39)` 占 71%）⇒ OCR `find` 全 MISS —— 理由：BitBlt 抓不到被遮挡窗口内容，非窗口无内容；已改以 `probe_agents.py` 文本为准
+- [2026-09-19 14:18] R43 已落 · 证据：`git -c url."git@github.com:".insteadOf=… push origin dev` → `fbc0089..5b93913 dev -> dev`；`git rev-parse HEAD` == `git ls-remote origin refs/heads/dev` == `5b93913d1d505c2bb72fe799bcf6a229aa67d833`（两方一致）· commit **5b93913**（本轮主体；本行回执补录在紧随其后的 docs-only commit 中，工作树刻意保留他人 3 项未提交改动）
