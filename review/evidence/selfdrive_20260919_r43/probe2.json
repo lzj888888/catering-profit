@@ -1,0 +1,37 @@
+{
+  "inscode": {
+    "db": "C:\\Users\\lzj\\.config\\inscode\\inscode.db",
+    "inflight": 0,
+    "last_approval": [
+      54,
+      "831bd65c-70cb-4600-8fb6-7ebe07886768",
+      "bash",
+      "cd",
+      "approved_once",
+      "permission_mode",
+      1789714954453
+    ],
+    "session": {
+      "id": "831bd65c-70cb-4600-8fb6-7ebe07886768",
+      "name": "# 批次 3 / 8 · POC2 BOM 两层嵌套、循环拦截与成本快照（云函数",
+      "working_dir": "C:\\Users\\lzj\\WorkBuddy\\Claw\\catering-profit",
+      "message_count": 1465,
+      "model": "deepseek-v4-flash",
+      "permission": "auto",
+      "updated_at": 1789715243206,
+      "idle_sec": 82817.5
+    },
+    "verdict": "idle"
+  },
+  "dsh": {
+    "hwnd": 855322,
+    "rect": [
+      852,
+      105,
+      1764,
+      924
+    ],
+    "text": "的\n令C\nO\n127℃.0.1×\n1270．0．1：3080\n．恢复会话记》×\n沙箱拒绝此类写入与node子进程。\ncd'C:\\Users\\1zj\\WorkBuddy\\C1aw\\catering-profit'$E\nrrorActionPreference='CO'$V='cloudfunctions\n\\saveCostCard\\va1idate.js'$d='cloudfunctions\\commo\nn\\dataAdapter.js'Copy-Item$v\"$env:TEMP\\mv巧s\"\nForceCopy-Item$d\"$env:TEMP\\m_d.js\"\n一F0rce$hve=\n(Get-Fi1eHash-A1gorithmSHA256(v).Hash;$hd0=(Get\n一Fi1eHash-A1gorithmSHA256(d)．Hash\nMI：mode\n白名年．一>false(saveCostCard)\n$t=Get-Content\n$v-Raw$new=$t.Rep1ace(\"if(card.mode！=\nif(false){\"）\"changed=\n($new一ne(t)[System.IO.Fi1e]::WriteA11Text((Res01\n拒绝",
+    "verdict": "found"
+  }
+}
