@@ -1,0 +1,11 @@
+=== dsh root-cause probe 2026-09-19 round52 ===
+[proc] 李志杰,"C:\Program Files\nodejs\node.exe" C:/Users/lzj/.dsh/runtime/node_modules/@deepseek-ai/dsh/lib/bin.js web,20260917030702.778578+480,3324
+[uptime] 67.5 h  (CreationDate=20260917030702)
+[http] /              -> 200 len>=120 b'<!doctype html>\n<html lang="zh-CN">\n  <h'
+[http] /v1/models     -> 200 len>=120 b'<!doctype html>\n<html lang="zh-CN">\n  <h'
+[http] /api/sessions  -> HTTPError 404
+[http] /api/health    -> HTTPError 404
+[http] /api/config    -> HTTPError 404
+[upstream] api.deepseek.com -> HTTPError 401 (401=reachable, not quota)
+[mtime] web.log                            67.62 h ago
+[mtime] storages\session_projcache.json    13.26 h ago

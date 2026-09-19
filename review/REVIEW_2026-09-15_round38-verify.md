@@ -168,6 +168,19 @@
 
 - [2026-09-19 02:35] ✅ **R91 已闭环（核实后回写，非新修）** · F1/F2a/F2b/L1/L2/L3 六项**早已修复并经独立核验 6/6**（证据 `review/evidence/ui_fix_20260918/` + 自测 `tools/selftest_ui_fix.js` 27 条，已挂套件 59）⇒ 队列里「R91 待修」是**过期状态**，已把 `core/13 §7` 标题回写为「✅ 已闭环」并加状态块（保留原始走查记录供追溯）
 - [2026-09-19 02:35] ✅ **AD 适配 G1–G8 复验通过** · `node tools/selftest_ad_gates.js` **24/24**；G1 `font-size<28rpx` grep **0 命中**；G2 触控 15 处 grep 命中**全合规**（`min-height:88rpx`=恰好 88 / `height:20/40rpx`=spacer 占位**非触控**）⇒ 无违规。**修正技能 §6.3 过宽正则**（旧 `(min-)?height:\s*([0-9]{1,2}|8[0-7])rpx` 把合规的 `min-height:88rpx` 误匹配，已收窄为「不含 `min-`」+ 注明需人工判读）
+- [2026-09-19 09:50] 🔌 **R86 程序化路径终审（李老师授权执行后先做穷尽复验）**：
+  ① `cli cloud functions` 仅 `list/info/deploy/inc-deploy/download` 五个子命令，**无 config/update**；
+  ② **config.json timeout 复验（决定性实验）**：给 `smokeTest` 新建 `config.json` 写 `{"timeout": 15}` → CLI 部署 success → `info` 回读 **仍=3** ⇒ 「config.json 不被采纳」结论**维持成立**（实验文件已删，工作树还原）；
+  ③ 微信 HTTP API 无改函数超时的接口（`/tcb/*` 系列只有 invoke/索引类）。
+  ⇒ **GUI 手改是唯一路径**，判定依据与 R86 原判一致，非重复劳动。
+- [2026-09-19 09:50] 🖥️ **R86 GUI 手改执行中（李老师说"这个你操作吧"）**：
+  - 云控制台打开路径实测：DevTools 工具栏「∞」图标（png 实测 x=1390，OCR 锚点法：真机调试 1222.6 / 上传 1330.2 → ∞=上传+63）；控制台 hwnd 标题「云开发控制台 v2.0.3」。
+  - **每函数六步**（固定 png 坐标）：列表行「版本与配置」(1579,388) → 版本页「配置」(1552,389) → 弹窗「高级配置」展开 (558,556) → 超时输入框 (740,716) Ctrl+A 输入 → 「确定」(1281,906)（绿按钮像素定位 g>140 & g-r>50）→ 版本页「←」(323,155)。
+  - **两个新坑入册**：㊀ 返回列表后**滚动位置重置到顶部** ⇒ 滚动推进方案不成立，改用**搜索框过滤**（每函数搜索→唯一行→处理）；㊁ **搜狗输入法在搜索框吞字母+拦截 Ctrl+A/V**（同 win-desktop-control 硬教训 1）⇒ 配方=ESC 关候选 + **单击 Shift 切英文** + 剪贴板粘贴。
+  - 脚本 `_gui/settimeouts.py`：六步固定坐标 + **每步像素级验证**（版本页标题区/弹窗高级配置行/输入框亮像素计数）+ 失败重试 + **CLI 回读逐个验证**（expect==got 才算过），证据落 `review/evidence/r86_timeout_20260919/`（search/typed/chk 截图 + results.json）。
+  - 定值表：smokeTest 15 / initDb 30 / adminExport+exportData 60 / 其余 20。
+- [2026-09-19 09:50] ⏳ 批量进行中（38 个，预计 30 分钟）；已完成：syncCostCard=20、saveMaterial=20（手动流程验证）、saveCostCard=20（脚本验证）· 批量完成后补终值回执 + commit
+
 - [2026-09-19 02:35] 🔴 **R86 超时值现状回读：42 函数全部 `timeout=3`** · `cli cloud functions info` **含 timeout 列**（`-e <env> --names <fns>`），回读 42 函数**全部 `timeout=3` + `Nodejs16.13`**（`_adminCore` 目录误列报 `InvalidParameterValue.FunctionName`，非真实函数）⇒ 违反铁律 `core/06:410`「60s」，与定值表（smokeTest 15s / initDb 30s / 导出 60s / calcAmortize+adminQueryUser 20s / 其余 20s）严重不符 · 证据 `review/evidence/timeout_probe_20260919.txt` · **手改仍待人工**（`config.json` 加 `timeout` 实测不被采纳 ⇒ 唯一路径=控制台逐个手改，42 次 GUI 操作，属李老师操作面）
 
 - [2026-09-19 02:50] ✅ **14 页真数据走查补齐（14/14）** · 根因定位：旧 `audit_pages.js` 是**单连接 + `page.data()`（恒报 `page is not on top of page stack`）+ `pageScrollTo`（写操作）** ⇒ 5/14。重写为 v3（**每页独立 connect + 纯读 + 失败重试 3 次**，`mp.screenshot` / `mp.evaluate(getCurrentPages())` 取 state）⇒ 13 页直接成功；`03_month_input` 补跑成功（根因=该页需 `month` 参数，无参数时 `currentPage` 报栈错，已修脚本带动态当前月）。**全部按钮文案合规**（无「会员/订阅/权益」禁词、付费按钮「导出·打印」是付费墙入口、无裸「开通」）· 各页 state 真实（`incomeGroups`/`assets`/`lines`/`orders` 等，证明云函数部署后走真数据路径非空壳）· 证据 `review/evidence/ui_walk4_20260919/`（14 截图 + `audit.json`，13 页 `attempt=2` 是首次握手超时、第二次成功——技能已预判）
