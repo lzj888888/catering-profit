@@ -377,22 +377,50 @@ const TERMS = {
     archiveLocked: '归档月只读，无法修改',
   },
 
-  // ===== 十八、店铺设置页 =====
+  // ===== 十八、核算方式（录入页就地二选一 · 2026-09-20 从店铺设置页迁入）=====
+  // ⚠️ 单源：库存 / 摊销的口径选择**只在这一处**暴露给老板；店铺设置页不得再放开关。
+  //    原因（真机走查 2026-09-19）：老板在设置页看到"库存核算 / 摊销核算"不知道是什么，
+  //    放到真正要用到它的计算步骤旁边才有意义。切换即写库，服务端仍是唯一权威。
+  calcMethod: {
+    secTitle: '这两笔钱怎么算',
+    secHint: '随时能改，改了不影响已经填好的数字',
+    consumeTitle: '① 食材消耗',
+    consumeDirect: '按采购直接填',
+    consumeDirectDesc: '本月买菜花多少就填多少',
+    consumeInv: '按库存盘点倒算',
+    consumeInvDesc: '期初 + 采购 − 期末，算真实消耗',
+    consumeDirectField: '本月食材消耗',
+    consumeDirectHint: '没盘点习惯就填采购总额',
+    consumeInvGo: '去填库存盘点',
+    consumeInvSummary: (o, p, c) => `已填：期初 ${o} · 采购 ${p} · 期末 ${c}`,
+    consumeInvEmpty: '还没填过盘点，点上面去填',
+    consumeInvHint: '填完系统自动倒算，不用自己算',
+    assetTitle: '② 装修设备',
+    assetOnce: '一次性计入当月',
+    assetOnceDesc: '金额不大，就当这个月的费用',
+    assetAmortize: '按月分摊',
+    assetAmortizeDesc: '装修设备分月摊，不把当月压太狠',
+    assetGo: '管理摊销资产',
+    assetCount: (n) => `已登记 ${n} 笔资产`,
+    assetEmpty: '还没登记过资产，点上面去加',
+    assetHint: '装修、设备这类大额建议按月分摊',
+    switchSaved: '已切换',
+    switchFail: '切换失败，请重试',
+    movedNote: '核算方式（食材怎么算 / 装修设备怎么算）在「月度录入」页里选',
+  },
+
+  // ===== 十九、店铺设置页 =====
   settings: {
     title: '店铺设置',
     shopName: '店铺名称',
     shopNamePh: '如 老王川菜馆',
     remark: '备注',
     remarkPh: '选填，如 门店地址、主营品类',
-    inventorySwitch: '库存核算',
-    inventorySwitchDesc: '开启后按「期初 + 采购 − 期末」倒轧真实消耗',
-    amortizeSwitch: '摊销核算',
-    amortizeSwitchDesc: '开启后将摊销资产按月分摊计入费用',
     save: '保存设置',
     saved: '已保存',
   },
 
-  // ===== 十九、M1 录入页（收入/费用/消耗）=====
+  // ===== 二十、M1 录入页（收入/费用/消耗）=====
   inputPage: {
     title: '月度录入',
     archiveReadonly: '归档月只读',

@@ -56,6 +56,19 @@ page { background: #f5f6f8; font-family: -apple-system, "PingFang SC", sans-seri
 .switch-row .lbl2 { font-size: 30rpx; }
 .archived-bar { font-size: 28rpx; color: #92610a; background: #fdf3d8; border-radius: 12rpx; padding: 12rpx 20rpx; margin-bottom: 12rpx; }
 
+/* ===== 核算方式：就地二选一（2026-09-20 从店铺设置页迁入月度录入页）=====
+ * 选中态 = 墨蓝描边 + 浅蓝底 + 标题带 ✓，三重可辨，不只靠颜色。 */
+.cm-sub { font-size: 30rpx; font-weight: 600; color: #1e3a5f; margin: 20rpx 4rpx 12rpx; }
+.cm-card { background: #fff; border-radius: 20rpx; padding: 16rpx; margin-bottom: 12rpx; }
+.cm-opt { padding: 20rpx; border-radius: 16rpx; border: 2rpx solid #e3e9f2; margin-bottom: 12rpx; }
+.cm-opt:last-child { margin-bottom: 0; }
+.cm-opt.on { border-color: #1e3a5f; background: #f3f7fb; }
+.cm-opt-h { font-size: 30rpx; font-weight: 600; color: #222; }
+.cm-opt.on .cm-opt-h { color: #1e3a5f; }
+.cm-opt-d { font-size: 28rpx; color: #6b7a8d; margin-top: 6rpx; line-height: 1.5; }
+.cm-state { font-size: 28rpx; color: #4a5b70; background: #f3f7fb; border-radius: 12rpx; padding: 16rpx 20rpx; margin: 12rpx 0; line-height: 1.6; }
+.cm-moved { font-size: 28rpx; color: #4a5b70; background: #f3f7fb; border-radius: 12rpx; padding: 20rpx; margin: 12rpx 0; line-height: 1.6; }
+
 /* ============================================================
  * ⚠️ 深色模式：已移除（2026-09-20 · 真机走查缺陷②）
  * 原 @media (prefers-color-scheme: dark) 只改了 .card2/.cell/.label2，

@@ -38,9 +38,14 @@ console.log('===== 2. 入参面 =====');
 check('switches.inventory 字符串 "true" → 拒', validateInput({ shop_id: 's1', switches: { inventory: 'true' } }).error === ERROR_CODES.INVALID_PARAM);
 check('switches.inventory 数字 1 → 拒', validateInput({ shop_id: 's1', switches: { inventory: 1 } }).error === ERROR_CODES.INVALID_PARAM);
 check('switches.amortize null → 拒（undefined 才是"不动"，null 是非法类型）', validateInput({ shop_id: 's1', switches: { amortize: null } }).error === ERROR_CODES.INVALID_PARAM);
-check('name 非字符串 → 归一空串（不清空已有名，见 §4 守卫）', validateInput({ shop_id: 's1', name: 123 }).name === '');
+check('name 非字符串 → 归一空串', validateInput({ shop_id: 's1', name: 123 }).name === '');
 check('remark 非字符串 → 归一空串', validateInput({ shop_id: 's1', remark: {} }).remark === '');
 check('name 合法回传', validateInput({ shop_id: 's1', name: '我的店' }).name === '我的店');
+// 🔴 2026-09-20：只改核算口径（不传 name/remark）不得清空店铺名——旧实现正是把 '' 写回了库
+check('🔴 不传 name → undefined（= 不动库，防只改开关却清空店铺名）', validateInput({ shop_id: 's1' }).name === undefined);
+check('🔴 不传 remark → undefined（同上）', validateInput({ shop_id: 's1' }).remark === undefined);
+check('🔴 undefined 与 "" 可区分（=== 断言，非真假值断言）', validateInput({ shop_id: 's1' }).name !== '');
+check('name 显式 "" → ""（保留清空能力）', validateInput({ shop_id: 's1', name: '' }).name === '');
 check('shop_id 缺失 → 拒', validateInput({ name: 'x' }).error === ERROR_CODES.INVALID_PARAM);
 check('event 为 null → 拒', validateInput(null).error === ERROR_CODES.INVALID_PARAM);
 check('支持 { input: {...} } 包裹层', validateInput({ input: { shop_id: 's7' } }).shop_id === 's7');
@@ -63,6 +68,8 @@ check('🔴 只对非 null 开关写库：`!== null` 判定存在（防未传开
 check('开关 upsert 以 shop_id + switch_key 为定位键（唯一键契约）', /shop_id:\s*shopId,\s*switch_key:\s*kv\.key/.test(body));
 check('upsert 冲突回退：update 失败 → add（防竞态丢写）', /catch[\s\S]{0,200}?\.add\(/.test(body));
 check('店铺名/备注写 shop 表（存在才写）', /da\.get\('shop'/.test(body) && /db\.collection\('shop'\)\.doc/.test(body));
+check('🔴 name 写库以 `!== undefined` 判定存在（防未传被写空）', /v\.name\s*!==\s*undefined/.test(body));
+check('🔴 remark 写库同样以 `!== undefined` 判定存在', /v\.remark\s*!==\s*undefined/.test(body));
 check('开关落库为服务端权威（返回体带 switches 供前端同步）', /switches:/.test(body) && /enabled:\s*kv\.enabled/.test(body));
 
 console.log(`\n==== saveShopSetting 自测结果：${pass} 通过 / ${failN} 失败 ====`);

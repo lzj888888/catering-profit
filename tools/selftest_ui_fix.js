@@ -45,19 +45,24 @@ check('monthEmpty 词条存在且无禁词', (() => {
 })());
 
 // ============ 修 4：input 两 key 拆分 ============
+// 2026-09-20 更新：核算方式（库存/摊销）迁入录入页后，小节标题 = cmSecTitle，
+// 字段标签 = cmConsumeDirectField。**守卫意图不变**：标题与字段标签必须是两个不同 key、
+// 且文案不同（防"标题与字段名重复"的 UI 缺陷）；只是 key 从 uiFix 迁到 calcMethod。
 console.log('');
-console.log('===== 修 4 · input 食材消耗两 key =====');
+console.log('===== 修 4 · input 小节标题 ≠ 字段标签 =====');
 const iw = read("pages/month/input.wxml");
 const ij = read("pages/month/input.js");
-check('小节标题用 directConsumeSec', /<view class="sec">\{\{t\.directConsumeSec\}\}<\/view>/.test(iw));
-check('字段标签用 directConsumeField', /<text class="lbl">\{\{t\.directConsumeField\}\}<\/text>/.test(iw));
-check('两处文案不再相同（Sec=食材消耗 / Field=食材消耗合计（元））', (() => {
+check('小节标题用独立 key（cmSecTitle）', /<view class="sec">\{\{t\.cmSecTitle\}\}<\/view>/.test(iw));
+check('字段标签用独立 key（cmConsumeDirectField）', /<text class="lbl">\{\{t\.cmConsumeDirectField\}\}<\/text>/.test(iw));
+check('两处文案不再相同（Sec ≠ Field）', (() => {
   const t = read("miniprogram/i18n/terms.js");
-  const sec = /directConsumeSec: '([^']+)'/.exec(t);
-  const field = /directConsumeField: '([^']+)'/.exec(t);
+  const sec = /secTitle: '([^']+)'/.exec(t);
+  const field = /consumeDirectField: '([^']+)'/.exec(t);
   return sec && field && sec[1] !== field[1];
 })());
-check('input.js 有 Sec/Field 映射', /directConsumeSec: TERMS\.uiFix\.directConsumeSec/.test(ij) && /directConsumeField: TERMS\.uiFix\.directConsumeField/.test(ij));
+check('input.js 有 Sec/Field 映射', /cmSecTitle: TERMS\.calcMethod\.secTitle/.test(ij) && /cmConsumeDirectField: TERMS\.calcMethod\.consumeDirectField/.test(ij));
+// 防回归：核算方式不得再出现在店铺设置页（单源 = 录入页）
+check('🔴 设置页不再有库存/摊销开关', !/inventorySwitch|amortizeSwitch/.test(read("pages/shop/setting.wxml")));
 
 // ============ 修 5：tabs 单 tab 不满宽 ============
 console.log('');

@@ -39,8 +39,10 @@ exports.main = async (event) => {
   const shopDoc = await da.get('shop', shopId);
   if (shopDoc) {
     const patch = { updated_at: now };
-    if (Array.isArray(v.name) === false && (v.name || shopDoc.name)) patch.name = v.name;
-    if (Array.isArray(v.remark) === false) patch.remark = v.remark;
+    // 🔴 只有「调用方真的传了」才写：undefined = 不动库（防只改开关却把店铺名/备注写空）。
+    //    显式 '' 仍需生效（= 清空），故用 !== undefined 判定，不可用真假值判定。
+    if (v.name !== undefined && Array.isArray(v.name) === false) patch.name = v.name;
+    if (v.remark !== undefined && Array.isArray(v.remark) === false) patch.remark = v.remark;
     await db.collection('shop').doc(shopDoc.id || shopId).update({ data: patch });
   }
 

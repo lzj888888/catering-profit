@@ -71,14 +71,53 @@
     </view>
   </view>
 
-  <!-- 食材消耗（库存关时直接填总额）· 修 4：小节标题与字段标签拆开 -->
-  <view class="sec">{{t.directConsumeSec}}</view>
-  <view class="field">
-    <text class="lbl">{{t.directConsumeField}}</text>
-    <input class="val-input" type="digit" confirm-type="done" disabled="{{readOnly}}"
-      value="{{directConsumeYuan}}" bindinput="onDirectConsume"  adjust-position="{{true}}" cursor-spacing="20" />
+  <!-- 核算方式（2026-09-20：库存/摊销开关从店铺设置页迁入此处，就地二选一） -->
+  <view class="sec">{{t.cmSecTitle}}</view>
+  <view class="hint">{{t.cmSecHint}}</view>
+
+  <!-- ① 食材消耗 -->
+  <view class="cm-sub">{{t.cmConsumeTitle}}</view>
+  <view class="cm-card">
+    <view class="cm-opt {{inventoryOn ? '' : 'on'}}" data-kind="inventory" data-val="0" bindtap="onPickMethod">
+      <view class="cm-opt-h"><text wx:if="{{!inventoryOn}}">✓ </text>{{t.cmConsumeDirect}}</view>
+      <view class="cm-opt-d">{{t.cmConsumeDirectDesc}}</view>
+    </view>
+    <view class="cm-opt {{inventoryOn ? 'on' : ''}}" data-kind="inventory" data-val="1" bindtap="onPickMethod">
+      <view class="cm-opt-h"><text wx:if="{{inventoryOn}}">✓ </text>{{t.cmConsumeInv}}</view>
+      <view class="cm-opt-d">{{t.cmConsumeInvDesc}}</view>
+    </view>
   </view>
-  <view class="hint">{{t.directConsumeHint}}</view>
+  <block wx:if="{{inventoryOn}}">
+    <button class="btn ghost" bindtap="goInventory">{{t.cmConsumeInvGo}}</button>
+    <view class="cm-state">{{invSummary || t.cmConsumeInvEmpty}}</view>
+    <view class="hint">{{t.cmConsumeInvHint}}</view>
+  </block>
+  <block wx:else>
+    <view class="field">
+      <text class="lbl">{{t.cmConsumeDirectField}}</text>
+      <input class="val-input" type="digit" confirm-type="done" disabled="{{readOnly}}"
+        value="{{directConsumeYuan}}" bindinput="onDirectConsume"  adjust-position="{{true}}" cursor-spacing="20" />
+    </view>
+    <view class="hint">{{t.cmConsumeDirectHint}}</view>
+  </block>
+
+  <!-- ② 装修设备 -->
+  <view class="cm-sub">{{t.cmAssetTitle}}</view>
+  <view class="cm-card">
+    <view class="cm-opt {{amortizeOn ? '' : 'on'}}" data-kind="amortize" data-val="0" bindtap="onPickMethod">
+      <view class="cm-opt-h"><text wx:if="{{!amortizeOn}}">✓ </text>{{t.cmAssetOnce}}</view>
+      <view class="cm-opt-d">{{t.cmAssetOnceDesc}}</view>
+    </view>
+    <view class="cm-opt {{amortizeOn ? 'on' : ''}}" data-kind="amortize" data-val="1" bindtap="onPickMethod">
+      <view class="cm-opt-h"><text wx:if="{{amortizeOn}}">✓ </text>{{t.cmAssetAmortize}}</view>
+      <view class="cm-opt-d">{{t.cmAssetAmortizeDesc}}</view>
+    </view>
+  </view>
+  <block wx:if="{{amortizeOn}}">
+    <button class="btn ghost" bindtap="goAmortize">{{t.cmAssetGo}}</button>
+    <view class="cm-state">{{assetSummary || t.cmAssetEmpty}}</view>
+    <view class="hint">{{t.cmAssetHint}}</view>
+  </block>
 
   <view style="height:20rpx;"></view>
   <button class="btn primary" style="margin-top:0;" bindtap="onSave"

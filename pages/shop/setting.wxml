@@ -5,21 +5,9 @@
   <view class="label2">{{t.remark}}</view>
   <view class="inp"><textarea value="{{remark}}" placeholder="{{t.remarkPh}}" bindinput="onRemark" /></view>
 
-  <view class="switch-row">
-    <view>
-      <view class="lbl2">{{t.inventorySwitch}}</view>
-      <view class="muted">{{t.inventorySwitchDesc}}</view>
-    </view>
-    <switch checked="{{inventoryOn}}" color="#1e3a5f" bindchange="onInventory" />
-  </view>
-
-  <view class="switch-row">
-    <view>
-      <view class="lbl2">{{t.amortizeSwitch}}</view>
-      <view class="muted">{{t.amortizeSwitchDesc}}</view>
-    </view>
-    <switch checked="{{amortizeOn}}" color="#1e3a5f" bindchange="onAmortize" />
-  </view>
+  <!-- 核算方式（库存倒轧 / 摊销）已于 2026-09-20 迁到「月度录入」页就地二选一：
+       放在设置页老板看不懂，放到真正要用到的计算步骤旁边才有意义。单源 = pages/month/input.wxml -->
+  <view class="cm-moved">{{t.calcMoved}}</view>
 
   <view style="height:20rpx;"></view>
   <button class="btn primary" style="margin-top:0;" bindtap="onSave">{{t.save}}</button>

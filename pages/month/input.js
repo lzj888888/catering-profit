@@ -30,10 +30,27 @@ Page({
       // E2（批次 8c）：每类「包括 / 不包括」+ 顶部填写口径折叠块
       fillGuideTitle: TERMS.ledger.fillGuideTitle,
       fillGuide: TERMS.ledger.fillGuide,
-      directConsume: TERMS.ledger.directConsume,
-      directConsumeHint: TERMS.ledger.directConsumeHint,
-      directConsumeSec: TERMS.uiFix.directConsumeSec,
-      directConsumeField: TERMS.uiFix.directConsumeField,
+      // 核算方式（2026-09-20：库存 / 摊销开关从店铺设置页迁入本页，就地二选一）
+      cmSecTitle: TERMS.calcMethod.secTitle,
+      cmSecHint: TERMS.calcMethod.secHint,
+      cmConsumeTitle: TERMS.calcMethod.consumeTitle,
+      cmConsumeDirect: TERMS.calcMethod.consumeDirect,
+      cmConsumeDirectDesc: TERMS.calcMethod.consumeDirectDesc,
+      cmConsumeInv: TERMS.calcMethod.consumeInv,
+      cmConsumeInvDesc: TERMS.calcMethod.consumeInvDesc,
+      cmConsumeDirectField: TERMS.calcMethod.consumeDirectField,
+      cmConsumeDirectHint: TERMS.calcMethod.consumeDirectHint,
+      cmConsumeInvGo: TERMS.calcMethod.consumeInvGo,
+      cmConsumeInvEmpty: TERMS.calcMethod.consumeInvEmpty,
+      cmConsumeInvHint: TERMS.calcMethod.consumeInvHint,
+      cmAssetTitle: TERMS.calcMethod.assetTitle,
+      cmAssetOnce: TERMS.calcMethod.assetOnce,
+      cmAssetOnceDesc: TERMS.calcMethod.assetOnceDesc,
+      cmAssetAmortize: TERMS.calcMethod.assetAmortize,
+      cmAssetAmortizeDesc: TERMS.calcMethod.assetAmortizeDesc,
+      cmAssetGo: TERMS.calcMethod.assetGo,
+      cmAssetEmpty: TERMS.calcMethod.assetEmpty,
+      cmAssetHint: TERMS.calcMethod.assetHint,
       save: TERMS.buttons.save,
       archiveReadonly: TERMS.inputPage.archiveReadonly,
       graceNote: TERMS.inputPage.graceNote,
@@ -53,6 +70,15 @@ Page({
     expenseGroups: [],
     fillGuideOpen: false,      // E2：顶部「填写口径」折叠块（默认收起）
     directConsumeYuan: '',
+    // 核算方式（就地二选一）：真值以服务端 switches 为准；改动即时写库，失败回滚
+    inventoryOn: false,
+    amortizeOn: false,
+    invSummary: '',
+    assetSummary: '',
+    // 切换口径时必须把店铺名/备注原样回传：saveShopSetting 对未传字段归一 '' 并写库
+    shopName: '',
+    shopRemark: '',
+    shopBaseLoaded: false,
     loading: true,
   },
 
@@ -141,15 +167,28 @@ Page({
       const incomeGroups = this.rebuildFromItems(TERMS.ledger.income, d.income_items, TERMS.ledger.incomeScope);
       const expenseGroups = this.rebuildFromItems(TERMS.ledger.expense, d.expense_items, TERMS.ledger.expenseScope);
       const directConsumeYuan = d.direct_consume_fen ? api.fenToYuan(d.direct_consume_fen) : '';
+      // 核算方式读回（服务端权威；口径锁：经营参考利润用直接填值，真实利润才倒轧）
+      const inventoryOn = !!sw.inventorySwitchOn;
+      const amortizeOn = !!sw.amortizeSwitchOn;
+      const inv = d.inventory || {};
+      const invSummary = (inv.openingFen || inv.purchaseFen || inv.closingFen)
+        ? TERMS.calcMethod.consumeInvSummary(
+            api.fenToYuan(inv.openingFen || 0, 2),
+            api.fenToYuan(inv.purchaseFen || 0, 2),
+            api.fenToYuan(inv.closingFen || 0, 2))
+        : '';
       // 若草稿存在且已保存过 → 用后端值（服务端为准）；否则后端值直接回填
       this.setData({
         isArchive, archivedAtMs, inGrace, readOnly,
         inventory: d.inventory || {},          // 原样带回，库存页保存时不丢
         incomeGroups,
         expenseGroups,
+        inventoryOn, amortizeOn, invSummary,
         directConsumeYuan: directConsumeYuan || this.data.directConsumeYuan,
         loading: false,
       });
+      if (amortizeOn) this.loadAssetCount();   // 笔数只是提示，失败不打扰
+      this.loadShopBase();                     // 切换口径时要原样回传店铺名 / 备注
     } catch (e) {
       this.setData({ loading: false });
       api.toastError(e);
@@ -214,6 +253,65 @@ Page({
   },
 
   onDirectConsume(e) { this.setData({ directConsumeYuan: e.detail.value }); },
+
+  // ===== 核算方式（就地二选一 · 2026-09-20 从店铺设置页迁入）=====
+  // ⚠️ 服务端唯一权威：这里只做「乐观更新 → 写库 → 失败回滚」，不自行推导计算口径。
+  // ⚠️ name / remark 必须一并回传：saveShopSetting 对未传字段归一为 '' 并写库 → 会把店铺名清空。
+  async onPickMethod(e) {
+    if (this.data.readOnly) {
+      wx.showModal({
+        title: TERMS.inputPage.archiveReadonly,
+        content: TERMS.inputPage.confirmLocked,
+        showCancel: false,
+      });
+      return;
+    }
+    const kind = e.currentTarget.dataset.kind;                 // 'inventory' | 'amortize'
+    const val = String(e.currentTarget.dataset.val) === '1';   // dataset 一律字符串
+    const key = kind === 'inventory' ? 'inventoryOn' : 'amortizeOn';
+    if (this.data[key] === val) return;                        // 已选中，不重复写库
+
+    if (!this.data.shopBaseLoaded) await this.loadShopBase();
+    const prev = this.data[key];
+    this.setData({ [key]: val });                              // 乐观更新
+    try {
+      await api.call('saveShopSetting', {
+        name: this.data.shopName,
+        remark: this.data.shopRemark,
+        switches: kind === 'inventory' ? { inventory: val } : { amortize: val },
+        client_request_id: 'cm_' + Date.now(),
+      });
+      wx.showToast({ title: TERMS.calcMethod.switchSaved, icon: 'success' });
+      if (kind === 'amortize' && val) this.loadAssetCount();
+    } catch (err) {
+      this.setData({ [key]: prev });                           // 服务端才是权威 → 回滚
+      api.toastError(err);
+    }
+  },
+
+  // 店铺名 / 备注（仅用于切换口径时原样回传，避免被写空）
+  async loadShopBase() {
+    try {
+      const ctx = await api.call('getShopContext', {});
+      this.setData({ shopName: ctx.shop_name || '', shopRemark: ctx.shop_remark || '', shopBaseLoaded: true });
+    } catch (e) {
+      this.setData({ shopBaseLoaded: true });   // 取不到就不回传（后端 undefined = 不动库）
+    }
+  },
+
+  // 摊销资产笔数（纯提示位：显示"已登记 N 笔"，失败不打断填表）
+  async loadAssetCount() {
+    try {
+      const d = await api.call('getAmortSchedule', { month: this.data.month });
+      const n = (d.assets || []).length;
+      this.setData({ assetSummary: n > 0 ? TERMS.calcMethod.assetCount(n) : '' });
+    } catch (e) {
+      this.setData({ assetSummary: '' });
+    }
+  },
+
+  goInventory() { wx.navigateTo({ url: '/pages/month/inventory?month=' + this.data.month }); },
+  goAmortize() { wx.navigateTo({ url: '/pages/month/amortize?month=' + this.data.month }); },
 
   // 归档守卫 + 保存（保存时带已有库存数据，避免丢失）
   onSave() {

@@ -8,8 +8,12 @@ function validateInput(event) {
   const src = event.input || event;
   if (typeof src.shop_id !== 'string' || !src.shop_id) return err('shop_id 必须是非空字符串');
 
-  const name = (typeof src.name === 'string') ? src.name : '';
-  const remark = (typeof src.remark === 'string') ? src.remark : '';
+  // 🔴 三态语义（2026-09-20 修）：undefined = 调用方没传 → **不动库**；
+  //    '' = 显式清空；非字符串 = 归一 ''（既有语义不变）。
+  //    起因：月度录入页只切换核算口径时不传 name，被归一成 '' 写库 → **店铺名被清空**；
+  //    而旧注释写着"不清空已有名"，实现与注释不符。此处与 switches 的 null 语义对齐。
+  const name = src.name === undefined ? undefined : ((typeof src.name === 'string') ? src.name : '');
+  const remark = src.remark === undefined ? undefined : ((typeof src.remark === 'string') ? src.remark : '');
 
   let switches = { inventory: null, amortize: null };
   if (src.switches && typeof src.switches === 'object') {
