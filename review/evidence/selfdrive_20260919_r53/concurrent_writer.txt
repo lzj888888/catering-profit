@@ -1,0 +1,54 @@
+采样时刻: 2026-09-20 00:18:43
+=== 1. 他人改动文件 mtime（升序）===
+2026-09-20 00:09:07.958465900 +0800 app.js
+2026-09-20 00:09:08.294535100 +0800 app.json
+2026-09-20 00:09:08.767785600 +0800 utils/paywall.js
+2026-09-20 00:09:09.546346100 +0800 pages/card/edit.wxml
+2026-09-20 00:09:09.640327400 +0800 pages/card/edit.wxss
+2026-09-20 00:09:11.878037900 +0800 pages/mine/index.js
+2026-09-20 00:09:12.666135100 +0800 pages/month/amortize.wxml
+2026-09-20 00:09:13.283807900 +0800 pages/month/index.wxss
+2026-09-20 00:09:13.406736800 +0800 pages/month/input.js
+2026-09-20 00:09:13.692957000 +0800 pages/month/input.wxss
+2026-09-20 00:09:13.814890300 +0800 pages/month/inventory.js
+2026-09-20 00:09:14.498565300 +0800 pages/month/result.wxml
+2026-09-20 00:09:14.586612500 +0800 pages/month/result.wxss
+2026-09-20 00:09:14.678573900 +0800 pages/pay/orders.js
+2026-09-20 00:09:15.362184800 +0800 pages/sandbox/index.wxml
+2026-09-20 00:09:15.507615000 +0800 pages/sandbox/index.wxss
+2026-09-20 00:09:15.794969100 +0800 pages/shop/setting.wxml
+2026-09-20 00:09:16.529626400 +0800 admin-h5/index.html
+2026-09-20 00:09:54.305473500 +0800 app.wxss
+2026-09-20 00:14:45.272106800 +0800 pages/sandbox/index.js
+2026-09-20 00:14:47.433699400 +0800 pages/month/index.js
+2026-09-20 00:15:47.375074000 +0800 miniprogram/i18n/terms.js
+2026-09-20 00:16:09.626249800 +0800 pages/shop/switch.js
+2026-09-20 00:16:16.476191900 +0800 pages/shop/switch.wxml
+2026-09-20 00:16:36.268613800 +0800 specs/dev-specs/i18n/terms.js
+
+=== 2. 改动面（抽样 diff，证明是实质代码改动非行尾）===
+warning: in the working copy of 'app.js', LF will be replaced by CRLF the next time Git touches it
+diff --git a/app.js b/app.js
+index 3c9b0d0..6dfc46a 100644
+--- a/app.js
++++ b/app.js
+@@ -56,7 +56,7 @@ App({
+         content: TERMS.exp.updateBody,
+         confirmText: TERMS.exp.updateConfirm,
+         cancelText: TERMS.exp.updateCancel,
+-        confirmColor: '#ff6b35',
++        confirmColor: '#1e3a5f',
+         success: (r) => { if (r.confirm) um.applyUpdate(); },
+       });
+     });
+@@ -117,7 +117,7 @@ App({
+       content: TERMS.exp.privacyDesc,
+       confirmText: TERMS.exp.privacyAgree,
+       cancelText: TERMS.exp.privacyDisagree,
+-      confirmColor: '#ff6b35',
++      confirmColor: '#1e3a5f',
+       success: (r) => {
+         if (r.confirm) {
+           // 主动拉起系统授权（同会话首次）
+
+=== 3. 进程级采样 ===
