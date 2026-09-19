@@ -1,0 +1,40 @@
+===== D1 前置：python 解释器可用 =====
+✅ D1 python 解释器可用 · C:\Users\lzj\.workbuddy\binaries\python\envs\default\Scripts\python.exe
+
+===== D2 前置：python-docx 依赖可用 =====
+✅ D2 python-docx 依赖可用 · import docx OK
+
+===== D3 判据本体存在 =====
+✅ D3 tools/verify_docx.py 存在 · fail-closed 前置
+
+仓库根 = C:\Users\lzj\WorkBuddy\Claw\catering-profit
+===== SMOKETEST_RUNBOOK.docx（提取 15307 字符）=====
+   ❌ 旧串残留 [1] 9 个 unique
+   计数比对（派生）：md=['39', '40']  docx=['39', '40']
+   
+===== 新手上云操作手册.docx（提取 6770 字符）=====
+   计数比对（派生）：md=['10', '40']  docx=['10', '40']
+   ✅ 无旧串残留、必备新串与计数均一致
+===== 下一步工序清单.docx（提取 8556 字符）=====
+   计数比对（派生）：md=['40']  docx=['40']
+   ✅ 无旧串残留、必备新串与计数均一致
+
+❌ 派生件检查失败：1 处 —— 说明 .docx 落后于同名 .md，请重生成：python tools/md2docx_portrait.py <in.md> <out.docx> <标题>
+
+===== D4 · 实跑 verify_docx.py 退出码 =====
+❌ D4 tools/verify_docx.py 退出码为 0 · rc=1 · Command failed: C:\Users\lzj\.workbuddy\binaries\python\envs\default\Scripts\python.exe tools/verify_docx.py
+
+===== D5 · 覆盖份数（不写死内容，只交叉份数）=====
+❌ D5 实扫份数 ≡ 3 份 · 未能从输出解析份数（判据或输出格式变动）
+
+===== D6 · 输出内无失败标记 =====
+❌ D6 输出内零 ❌
+
+===== 派生件 docx 守卫结果：3 通过 / 3 失败 =====
+   ❌ D4 tools/verify_docx.py 退出码为 0 · rc=1 · Command failed: C:\Users\lzj\.workbuddy\binaries\python\envs\default\Scripts\python.exe tools/verify_docx.py
+   ❌ D5 实扫份数 ≡ 3 份 · 未能从输出解析份数（判据或输出格式变动）
+   ❌ D6 输出内零 ❌
+
+修复指引：
+  1) 若 D4/D6 红：按 verify_docx.py 的指引重生派生件（.md → .docx），别手改 docx；
+  2) 若 D5 红：根目录新增/删除了派生 .docx，同步本文件 EXPECTED_DOCS 或补齐派生链。

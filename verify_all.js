@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：66 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：67 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -120,6 +120,9 @@ const SUITES = [
   ['ios-pay-guard',          'tools/check_ios_pay.js'],
   // ===== 环境 ID 就绪（env.js 占位符静默回落缺口：ACTIVE_ENV 切 prod 而 ID 未填 ⇒ 全站云调用瘫痪且无告警）=====
   ['env-ready',              'tools/check_env_ready.js'],
+  // ===== 派生件 .docx 内容守卫（round53 补：verify_docx.py 是权威判据却从未挂 SUITES，
+  //       导致「66/66 全绿」并不包含 docx 校验；本项把它变成每次门禁必跑。fail-closed：python/docx 缺失即红）=====
+  ['docx-derive',            'tools/check_docx_derive.js'],
   // 后续批次的套件在此追加即可（如 batch2_selfcheck ...）；追加后记得同步头部注释里的套件数量。
 ];
 

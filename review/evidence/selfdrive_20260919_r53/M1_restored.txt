@@ -1,0 +1,32 @@
+===== D1 前置：python 解释器可用 =====
+✅ D1 python 解释器可用 · C:\Users\lzj\.workbuddy\binaries\python\envs\default\Scripts\python.exe
+
+===== D2 前置：python-docx 依赖可用 =====
+✅ D2 python-docx 依赖可用 · import docx OK
+
+===== D3 判据本体存在 =====
+✅ D3 tools/verify_docx.py 存在 · fail-closed 前置
+
+仓库根 = C:\Users\lzj\WorkBuddy\Claw\catering-profit
+===== SMOKETEST_RUNBOOK.docx（提取 15253 字符）=====
+   计数比对（派生）：md=['39', '40']  docx=['39', '40']
+   ✅ 无旧串残留、必备新串与计数均一致
+===== 新手上云操作手册.docx（提取 6770 字符）=====
+   计数比对（派生）：md=['10', '40']  docx=['10', '40']
+   ✅ 无旧串残留、必备新串与计数均一致
+===== 下一步工序清单.docx（提取 8556 字符）=====
+   计数比对（派生）：md=['40']  docx=['40']
+   ✅ 无旧串残留、必备新串与计数均一致
+
+✅ 派生件 .docx 无旧串残留、必备新串齐全、计数与同名 .md 一致（3 份）
+
+===== D4 · 实跑 verify_docx.py 退出码 =====
+✅ D4 tools/verify_docx.py 退出码为 0 · rc=0
+
+===== D5 · 覆盖份数（不写死内容，只交叉份数）=====
+✅ D5 实扫份数 ≡ 3 份 · 实扫 3 份
+
+===== D6 · 输出内无失败标记 =====
+✅ D6 输出内零 ❌
+
+===== 派生件 docx 守卫结果：6 通过 / 0 失败 =====

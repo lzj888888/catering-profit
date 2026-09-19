@@ -1,0 +1,10 @@
+===== D1 前置：python 解释器可用 =====
+✅ D1 python 解释器可用 · C:\Users\lzj\.workbuddy\binaries\python\envs\default\Scripts\python.exe
+
+===== D2 前置：python-docx 依赖可用 =====
+✅ D2 python-docx 依赖可用 · import docx OK
+
+===== D3 判据本体存在 =====
+❌ D3 tools/verify_docx.py 存在 · 判据本体丢失
+
+===== 派生件 docx 守卫结果：2 通过 / 1 失败 =====
