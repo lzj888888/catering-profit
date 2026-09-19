@@ -123,4 +123,11 @@
 
 ## 7. 回执
 
-（见文末「回执」小节，提交前写入）
+- [2026-09-20 03:35] R56-① **已落** · 新增 `tools/check_terms_forbidden.js`（13 条 / 段 9）+ 挂为 SUITES 第 68 项 + 重启键套件数两处 66→68 · 证据：`node verify_all.js` 重定向取 RC=0 → `===== 总览：68/68 套件通过 =====`、`[terms-forbidden] ✅ PASS (✅ 13 条 / 段 9)`；`check_error_codes.js` RC=0 · commit `691f162`
+- [2026-09-20 03:24] R56-② **已落** · 变异回灌 6 组全如期（含反向证据 M5）· 证据：`_tmp_r56_mut.sh` → M1 `❌ T5 … 3 处` / M2 `❌ T2 forbidden … undefined` / M3 `❌ T6 … TERMS.zzzNoSuchKey` / M4 `❌ T4b … index.wxml:29` / **M5 RC=0 `✅ T4b 0 命中`（反向）** / M6 `❌ T4c … index.js:11`；还原后 RC=0 · commit `691f162`
+- [2026-09-20 03:24] R56-③ **存疑** · dsh 状态 · 证据：探针 `rect[0]=-32000` 最小化；`/api/sessions` `/api/health` 全 404、`api.deepseek.com` 401（排除断网/额度）、`web.log` mtime **72.12h ≈ 进程 uptime 72.0h** · **未投递理由**：后端未起（第 10 轮）+ 当前会话上下文非本仓主题（投递＝上下文污染）
+- [2026-09-20 03:33] R56-④ **未落** · 并发方 9 个未提交改动的复核与独立变异回灌 · **理由**：§0.7 只读旁观 —— 对方 03:31:52 仍在写（terms.js 双副本），代修/代提交＝抢写；已取证 `concurrent_writer_r56.txt` 并点名待办
+- [2026-09-20 03:33] R56-⑤ **未落** · round55 待办 ⑦（`c24e0a2` 守卫改语义级，现绑死 `inventorySwitch|amortizeSwitch` 旧 key 名）· **理由**：并发方活跃，改 `tools/selftest_ui_fix.js` 属抢写
+- [2026-09-20 03:35] R56-⑥ **未落** · 1033 张并发方过程 PNG（`review/evidence/r86_timeout_20260919/`）· **理由**：归属待李老师定夺，不代提交不代删（工作树因此不干净，非我方遗留）
+- [2026-09-20 03:35] R56-⑦ **未落（需李老师裁决）** · 6 项禁用词冲突（否定式「无法盈利/难以盈利」、微信「订阅消息」、免责声明「投资」）· 已在守卫 T8 段**全部明示**（打印 ⚠️ 不判红），不是静默放过 · 证据：`review/evidence/selfdrive_20260920_r56/terms_forbidden_guard_full.txt`
+- [2026-09-20 03:35] R56-⑧ **已落** · 推远端两方一致 · 证据：`git rev-parse HEAD` == `git ls-remote origin refs/heads/dev` == `691f162e9ab753fcdc1755ea3b6a8b4a1a38c7a3`
