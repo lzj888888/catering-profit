@@ -93,3 +93,14 @@
   本轮**未**找到 `da.get('user', <user_id>)` 形态的有效调用，**维持不改**（改它会动到 A6a 兜底面）。
   已一并交给 dsh 复核。
 - ⚪ dsh 本轮复审**结论未出**（发出后即收口），下一轮巡检应优先取 `REVIEW_2026-09-19_round39-verify.md`。
+
+## 7. 回执
+
+- [2026-09-19 08:12] R40-a 已落 · 证据：`probe_agents.py` → inscode `inflight=0` / 末条批准非 pending / `idle_sec=61320` ⇒ idle；dsh `rect=-32000` ⇒ minimized · commit `bc41131`
+- [2026-09-19 08:14] R40-b 已落 · 证据：`node verify_all.js` → `总览：64/64 套件通过`，RC=0 · commit `bc41131`
+- [2026-09-19 08:15] R40-c 已落 · 证据：`node specs/dev-specs/prototype/check_error_codes.js` → A–L 全绿，RC=0 · commit `bc41131`
+- [2026-09-19 08:21] R40-d 已落 · 证据：剪贴板+Ctrl+V+Enter → `dsh_after_paste2.png` OCR 见请求正文入框；`dsh_turn_start.png` OCR 见 dsh 跑 `git log`/`verify_all.js`/`selftest_ad_gates.js` ⇒ 已受理起新轮 · commit `bc41131`
+- [2026-09-19 08:27] R40-e 已落 · 证据：`cli cloud functions info --names <42>` → 42/42 `timeout=3`，`grep -v "│ 3 "` 零命中 · commit `bc41131`
+- [2026-09-19 08:30] R40-f **未落** · R86 超时值改为定值表 —— 属控制台人工面，`config.json` 写 `timeout` 不被采纳，我方无解，需李老师手点 · commit —（无）
+- [2026-09-19 08:30] R40-g **未落** · 投喂新批次 —— 8 批（0~7）已收官无「批次 8」，中优先级项归属运营/工程且标注「上线后 1 月内补」，不由无人值守自动化擅自开工，待李老师定 · commit —（无）
+- [2026-09-19 08:30] R40-h **存疑** · `BIZ_KEY_FIELDS` 不含 `user_id` 是否构成真实缺口 —— 未找到 `da.get('user', <user_id>)` 形态的有效调用，维持不改（改它会动到 A6a 兜底面），已交 dsh 复核 · commit —（无）
