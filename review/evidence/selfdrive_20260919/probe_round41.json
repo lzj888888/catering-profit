@@ -1,0 +1,33 @@
+{
+  "captured_at": "2026-09-19T09:50:00+0800",
+  "source": "python C:/Users/lzj/.workbuddy/skills/self-drive-loop/scripts/probe_agents.py",
+  "inscode": {
+    "db": "C:\\Users\\lzj\\.config\\inscode\\inscode.db",
+    "inflight": 0,
+    "last_approval": [
+      "831bd65c-70cb-4600-8fb6-7ebe07886768",
+      "bash",
+      "cd",
+      "approved_once",
+      "permission_mode",
+      1789714954453
+    ],
+    "session": {
+      "id": "831bd65c-70cb-4600-8fb6-7ebe07886768",
+      "name": "# 批次 3 / 8 · POC2 BOM 两层嵌套、循环拦截与成本快照（云函数",
+      "working_dir": "C:\\Users\\lzj\\WorkBuddy\\Claw\\catering-profit",
+      "message_count": 1465,
+      "model": "deepseek-v4-flash",
+      "permission": "auto",
+      "updated_at": 1789715243206,
+      "idle_sec": 67520.2
+    },
+    "verdict": "idle"
+  },
+  "dsh": {
+    "hwnd": 855322,
+    "rect": [-32000, -32000, -31763, -31961],
+    "verdict": "minimized",
+    "note": "已 ShowWindow(9) 恢复到 (852,105,1764,924)；但本轮未做二次 OCR 判读（见 NOTE_round41 §存疑）"
+  }
+}

@@ -1,0 +1,41 @@
+=== R86 GUI 批量 · 只读旁观复核（round41，2026-09-19 10:05）===
+本文件全部为只读取数，不参与、不打断正在运行的 GUI 批量。
+
+[1] 权威函数全集（ls cloudfunctions/ 排除 _adminCore / common）
+总数 = 42
+adminExport adminGrantEntitlement adminInit adminLogin adminLogout adminManualOrder
+adminOrderList adminQueryUser adminRefreshToken adminRefundMark adminRevokeToken
+archiveMonth calcAmortize calcBom calcMonthlyProfit calcSandbox checkQuota
+deleteAccount detectCycle exportData getAmortSchedule getCardVersions getCostCard
+getLedger getMaterial getMonthList getShopContext getShopList initDb payCallback
+saveLedger saveMaterial saveShopSetting smokeTest syncCostCard
+（另有已在 results.json 中出现的 10 个：saveCostCard saveAsset payRenew payQueryEntitlement
+ payOrderList payExpireNotify payCreateOrder + 3 个 JSON 字段名，实为 7 个函数）
+
+[2] results.json 实读（mtime 2026-09-19 10:02:28）
+已处理 7 / 42：
+  saveCostCard        expect=20  ok=true   why=cli=20     <-- 唯一 CLI 回读确认成功
+  saveAsset           expect=20  ok=false  why=search-miss
+  payRenew            expect=20  ok=false  why=search-miss
+  payQueryEntitlement expect=20  ok=false  why=search-miss
+  payOrderList        expect=20  ok=false  why=search-miss
+  payExpireNotify     expect=20  ok=false  why=search-miss
+  payCreateOrder      expect=20  ok=false  why=search-miss
+成功率 1/7；失败模式单一 = search-miss（控制台搜索框没匹配到行）。
+
+[3] search-miss 根因排除（决定性）
+对 08:15 云端 42 函数回读证据 timeout_probe_20260919_0815.txt 逐个 grep：
+  saveAsset=2  payRenew=2  payQueryEntitlement=2  payOrderList=2
+  payExpireNotify=2  payCreateOrder=2  saveCostCard=2   （均命中）
+⇒ 6 个 search-miss 的函数**在云端确实存在**。
+⇒ 根因**不是**「函数没部署/不在列表」，而是**控制台搜索框交互失败**
+   （与已入册坑同族：搜狗输入法吞字母 + 拦截 Ctrl+A/V；配方 = ESC 关候选 + 单击 Shift 切英文 + 剪贴板粘贴）。
+   备选方案：放弃搜索框，改**滚动 + 逐行 OCR 文本匹配**定位目标行。
+
+[4] 尚未覆盖 35 个（含最关键的定值差异化函数）
+  initDb(应30) / adminExport(应60) / exportData(应60) / smokeTest(应15)
+  calcAmortize(应20) / adminQueryUser(应20)  ← 这 6 个才是与「其余 20」不同的差异化定值，必须逐个核对
+
+[5] 终值验收判据（下轮批量结束后执行，空格分隔、排除 _adminCore/common）
+  cli cloud functions info -e cloud1-d4gphpoxy337f2a25 --names "<42 个空格分隔>"
+  合格线：grep -c "│ 3 " == 0，且差异化 6 个取值与定值表一致。
