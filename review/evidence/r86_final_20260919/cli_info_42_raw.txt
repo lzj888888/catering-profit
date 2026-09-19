@@ -1,0 +1,99 @@
+
+┌───────────────────────┬──────────┬─────────┬───────────────┐
+│ (index)               │ status   │ timeout │ runtime       │
+├───────────────────────┼──────────┼─────────┼───────────────┤
+│ adminExport           │ 'Active' │ 60      │ 'Nodejs16.13' │
+│ adminGrantEntitlement │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ adminInit             │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ adminLogin            │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ adminLogout           │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ adminManualOrder      │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ adminOrderList        │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ adminQueryUser        │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ adminRefreshToken     │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ adminRefundMark       │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ adminRevokeToken      │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ archiveMonth          │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ calcAmortize          │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ calcBom               │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ calcMonthlyProfit     │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ calcSandbox           │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ checkQuota            │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ deleteAccount         │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ detectCycle           │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ exportData            │ 'Active' │ 60      │ 'Nodejs16.13' │
+│ getAmortSchedule      │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ getCardVersions       │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ getCostCard           │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ getLedger             │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ getMaterial           │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ getMonthList          │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ getShopContext        │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ getShopList           │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ initDb                │ 'Active' │ 30      │ 'Nodejs16.13' │
+│ payCallback           │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ payCreateOrder        │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ payExpireNotify       │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ payOrderList          │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ payQueryEntitlement   │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ payRenew              │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ saveAsset             │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ saveCostCard          │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ saveLedger            │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ saveMaterial          │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ saveShopSetting       │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ smokeTest             │ 'Active' │ 15      │ 'Nodejs16.13' │
+│ syncCostCard          │ 'Active' │ 20      │ 'Nodejs16.13' │
+└───────────────────────┴──────────┴─────────┴───────────────┘
+
+---STDERR---
+- initialize
+
+(node:30136) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)
+√ IDE server has started, listening on http://127.0.0.1:35237
+- query cloudfunctions info
+- Preparing to fetch cloudfunctions info
+- Fetching info of cloudfunction adminExport
+- Fetching info of cloudfunction adminGrantEntitlement
+- Fetching info of cloudfunction adminInit
+- Fetching info of cloudfunction adminLogin
+- Fetching info of cloudfunction adminLogout
+- Fetching info of cloudfunction adminManualOrder
+- Fetching info of cloudfunction adminOrderList
+- Fetching info of cloudfunction adminQueryUser
+- Fetching info of cloudfunction adminRefreshToken
+- Fetching info of cloudfunction adminRefundMark
+- Fetching info of cloudfunction adminRevokeToken
+- Fetching info of cloudfunction archiveMonth
+- Fetching info of cloudfunction calcAmortize
+- Fetching info of cloudfunction calcBom
+- Fetching info of cloudfunction calcMonthlyProfit
+- Fetching info of cloudfunction calcSandbox
+- Fetching info of cloudfunction checkQuota
+- Fetching info of cloudfunction deleteAccount
+- Fetching info of cloudfunction detectCycle
+- Fetching info of cloudfunction exportData
+- Fetching info of cloudfunction getAmortSchedule
+- Fetching info of cloudfunction getCardVersions
+- Fetching info of cloudfunction getCostCard
+- Fetching info of cloudfunction getLedger
+- Fetching info of cloudfunction getMaterial
+- Fetching info of cloudfunction getMonthList
+- Fetching info of cloudfunction getShopContext
+- Fetching info of cloudfunction getShopList
+- Fetching info of cloudfunction initDb
+- Fetching info of cloudfunction payCallback
+- Fetching info of cloudfunction payCreateOrder
+- Fetching info of cloudfunction payExpireNotify
+- Fetching info of cloudfunction payOrderList
+- Fetching info of cloudfunction payQueryEntitlement
+- Fetching info of cloudfunction payRenew
+- Fetching info of cloudfunction saveAsset
+- Fetching info of cloudfunction saveCostCard
+- Fetching info of cloudfunction saveLedger
+- Fetching info of cloudfunction saveMaterial
+- Fetching info of cloudfunction saveShopSetting
+- Fetching info of cloudfunction smokeTest
+- Fetching info of cloudfunction syncCostCard
+√ query cloudfunctions info
