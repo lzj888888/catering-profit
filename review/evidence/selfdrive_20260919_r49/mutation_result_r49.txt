@@ -1,0 +1,26 @@
+=== M1 抽掉 utils/paywall.js::onConfirm 的 isIOS 拦截 ===
+  变异生效(内容已变): True
+  变异后 rc=1 :: ❌ P1 utils/paywall.js 已做 iOS 过滤 · payCreateOrder 调用于第 71 行，其所在函数体（第 67~71 行）内未见 isIOS() 判定，也无 ios-pay-ok 豁免 | ===== iOS 虚拟支付守卫结果：5 通过 / 1 失败 ===== |    ❌ P1 utils/paywall.js 已做 iOS 过滤 · payCreateOrder 调用于第 71 行，其所在函数体（第 67~71 行）内未见 isIOS() 判定，也无 ios-pay-ok 豁免 | 修复指引：在支付动作所在行（或上一行）加上 iOS 判定，例如： |   i
+  还原后 rc=0 :: ✅ S1 扫描面非空 · pages/ + utils/ + app.js 共 52 个文件 | ✅ S2 支付入口命中数 ≥ 2（防支付动作改名/被删导致守卫空跑） · 实测命中 2 个文件：pages/pay/orders.js , utils/paywall.js | ===== P1 · 支付入口须做 iOS 过滤 ===== | ✅ P1 pages/pay/orders.js 已做 i
+
+=== M2 抽掉 miniprogram/config/env.js::getEnv 的 isPlaceholder 防护 ===
+  变异生效: True
+  变异后 rc=1 ::    ❌ N1 负样本（ACTIVE_ENV=prod 且 ID 仍是占位符）未交出占位符 · getEnv() 实际返回 "catering-prod-xxxxxxxx"（应回落到 dev） |    ❌ N2 负样本回落时必须有 console.error 告警（不得静默） · 告警次数 = 0 |    ❌ E2.2 getEnv() 内有占位符判定（isPlaceholder） · 函数体 11 行 | 修复指引： |   1) 在 getEnv() 内先判 isPlaceholder(id)，命中则回落 dev 并 console.error('[ENV_FALLBACK] ...'
+  还原后 rc=0 :: ✅ E2.1 getEnv() 存在 · 第 47 行 | ✅ E2.2 getEnv() 内有占位符判定（isPlaceholder） · 函数体 11 行 | ✅ E2.3 getEnv() 内回落时有 console.error 告警 | ===== E3 · 实跑：getEnv() 返回值不得是占位符 ===== | ✅ E3 当前配置下 getEnv() 返回真实环境 ID · "clo
+
+=== M3 新增漏网支付入口 pages/__mut_probe_r49.js（有 payRenew 调用、无 isIOS）===
+  变异后 rc=1 捕获到新文件=True :: ✅ P1 utils/paywall.js 已做 iOS 过滤 · 含 isIOS() 判定或已带理由豁免 | ===== iOS 虚拟支付守卫结果：6 通过 / 1 失败 ===== |    ❌ P1 pages/__mut_probe_r49.js 已做 iOS 过滤 · payRenew 调用于第 3 行，其所在函数体（第 2~3 行）内未见 isIOS() 判定，也无 ios-pay-ok 豁免 | 修复指引：在支付动作所在行（或上一行）加上 iOS 判定，例如： |   if (isIOS()) { return; }   // 引入：const { isIOS } = requi
+  已删除探针文件，存在性=False
+  还原后 rc=0 :: ✅ S1 扫描面非空 · pages/ + utils/ + app.js 共 52 个文件 | ✅ S2 支付入口命中数 ≥ 2（防支付动作改名/被删导致守卫空跑） · 实测命中 2 个文件：pages/pay/orders.js , utils/paywall.js | ===== P1 · 支付入口须做 iOS 过滤 ===== | ✅ P1 pages/pay/orders.js 已做 i
+
+=== M4 反向：注释里裸写 payRenew（应仍绿，不该红时不红）rc=0 :: ✅ S1 扫描面非空 · pages/ + utils/ + app.js 共 52 个文件 | ✅ S2 支付入口命中数 ≥ 2（防支付动作改名/被删导致守卫空跑） · 实测命中 2 个文件：pages/pay/orders.js , utils/paywall.js | ===== P1 · 支付入口须做 iOS 过滤 ===== | ✅ P1 pages/pay/orders.js 已做 i
+
+=== 汇总 ===
+  M1_mutated_rc = 1
+  M1_restored_rc = 0
+  M2_mutated_rc = 1
+  M2_restored_rc = 0
+  M3_mutated_rc = 1
+  M3_caught = True
+  M3_restored_rc = 0
+  M4_comment_rc = 0
