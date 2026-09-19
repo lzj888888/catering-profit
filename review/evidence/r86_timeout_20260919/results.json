@@ -1,0 +1,212 @@
+{
+ "saveCostCard": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "saveAsset": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "saveMaterial": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20 (之前已完成)"
+ },
+ "syncCostCard": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20 (之前已完成)"
+ },
+ "adminExport": {
+  "expect": 60,
+  "ok": true,
+  "why": "cli=60"
+ },
+ "adminGrantEntitlement": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "adminInit": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20 (ground_truth_42 复核修正)"
+ },
+ "adminLogin": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "adminLogout": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "adminManualOrder": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "adminOrderList": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "adminQueryUser": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "adminRefreshToken": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "adminRefundMark": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "adminRevokeToken": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "archiveMonth": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "calcAmortize": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "calcBom": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "calcMonthlyProfit": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "calcSandbox": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "checkQuota": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "deleteAccount": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "detectCycle": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "exportData": {
+  "expect": 60,
+  "ok": true,
+  "why": "cli=60"
+ },
+ "getAmortSchedule": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "getCardVersions": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "getCostCard": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "getLedger": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "getMaterial": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "getMonthList": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "getShopContext": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "getShopList": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "initDb": {
+  "expect": 30,
+  "ok": true,
+  "why": "cli=30"
+ },
+ "payCallback": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "payCreateOrder": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "payExpireNotify": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "payOrderList": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "payQueryEntitlement": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "payRenew": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "saveLedger": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "saveShopSetting": {
+  "expect": 20,
+  "ok": true,
+  "why": "cli=20"
+ },
+ "smokeTest": {
+  "expect": 15,
+  "ok": true,
+  "why": "cli=15 (ground_truth_42 复核修正)"
+ }
+}

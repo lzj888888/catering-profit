@@ -1,0 +1,212 @@
+{
+ "adminExport": {
+  "expect": 60,
+  "got": 60,
+  "ok": true
+ },
+ "adminGrantEntitlement": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "adminInit": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "adminLogin": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "adminLogout": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "adminManualOrder": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "adminOrderList": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "adminQueryUser": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "adminRefreshToken": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "adminRefundMark": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "adminRevokeToken": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "archiveMonth": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "calcAmortize": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "calcBom": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "calcMonthlyProfit": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "calcSandbox": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "checkQuota": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "deleteAccount": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "detectCycle": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "exportData": {
+  "expect": 60,
+  "got": 60,
+  "ok": true
+ },
+ "getAmortSchedule": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "getCardVersions": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "getCostCard": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "getLedger": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "getMaterial": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "getMonthList": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "getShopContext": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "getShopList": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "initDb": {
+  "expect": 30,
+  "got": 30,
+  "ok": true
+ },
+ "payCallback": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "payCreateOrder": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "payExpireNotify": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "payOrderList": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "payQueryEntitlement": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "payRenew": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "saveAsset": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "saveCostCard": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "saveLedger": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "saveMaterial": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "saveShopSetting": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ },
+ "smokeTest": {
+  "expect": 15,
+  "got": 15,
+  "ok": true
+ },
+ "syncCostCard": {
+  "expect": 20,
+  "got": 20,
+  "ok": true
+ }
+}
