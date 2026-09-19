@@ -1,0 +1,46 @@
+复审请求 · round39 + round40（执行方 WorkBuddy 产出，尚未经复审方复核）
+
+仓库：C:\Users\lzj\WorkBuddy\Claw\catering-profit  分支 dev，HEAD = 5f7ace8
+
+一、待审提交（新到旧）
+- 5f7ace8  14 页真数据走查补齐（v3 每页独立 connect，14/14）
+- 3374423  R91 状态回写 + AD 适配 G1–G8 复验通过 + R86 超时值回读留证
+- cd8877e  smokeTest 加「真集合唯一约束实测」⇒ §3 判据闭合 + 部署/复验收口
+- 68ae219  A6b 兜底：默认店铺改用确定性 _id + 撞唯一键容错回读
+- e660dd3  R81：saveCostCard / calcBom 的 mode 白名单（挂 4 轮后闭环）
+
+二、待审分析件（review/ 下，均为执行方 NOTE_，正文归你）
+1. NOTE_2026-09-19_round39-a6b-shop-dedup.md
+   真云实测：shop.user_id 上 idx_shop_user 非 unique（同一 user_id 两次写入均成功）⇒ 改单源
+   defaultShopId() 产出确定性 _id = shop_<user_id>，并加撞键容错回读（回读空则 fail-closed）。
+   请核：①两处建店点（common/auth.js::resolveAuth 与 getShopContext 建店分支）是否都已收口
+   ②撞键容错回读是否真 fail-closed（会不会静默返回空店）③§6「BIZ_KEY_FIELDS 不含 user_id」
+   是否构成真实缺口，还是仅为待查项。
+2. NOTE_2026-09-19_round39-r81-mode-whitelist.md
+   mode 白名单 8 处改动 + 19 条断言 + 变异回灌 + 真云复验（路径 A：页面上下文调云函数）。
+   请核：①是否仍存在静默兜底开口（旧病是 === 'B' ? 'B' : 'A' 会把非法值吞成 A）
+   ②反向证据（'A'/'B' 必须放行）是否足以防「过度收紧」。
+3. NOTE_2026-09-19_round39-realcloud-get.md
+   da.get() 按 _id 查而 insert() 走 add() ⇒ _id ≠ 业务主键，真云 6 处调用点取不到；
+   另有资产原值字段名分裂（写端 value_fen / 读端 total_value）。
+   请核：①BIZ_KEY_FIELDS 兜底是否覆盖全部受害面 ②R97 守卫（tools/check_data_contract.js）
+   是否真能防住同类，还是又是一个「副本忠实会把缺陷复制 42 份」的检查。
+
+三、请重点判三件事
+① 我的判据是否可证伪——有没有恒真断言、写死期望值、或「存在类」判据冒充「行为类」判据。
+② 变异回灌是否真转红（回退修复后套件是否 exit 1），还是只做了形式。
+③ 有没有「三层守卫全绿但真云仍崩」的同族缺口被我漏掉。参考已知同族：
+   common/index.js 漏导 genId（7 函数 TypeError，老用户靠「查到即返回」躲过 ⇒ 探针全绿掩盖）；
+   批量部署产生空壳函数（list 只证「存在」，调用返回无 code）。
+
+四、本轮我方基线（已跑，供你对照）
+node verify_all.js → 64/64，RC=0
+node specs/dev-specs/prototype/check_error_codes.js → 门禁 A–L 全绿，RC=0
+
+五、已知未闭合且我无法自解（不要记成我的漏项，属人工面 / 李老师）
+- R86 云函数 timeout：config.json 加 "timeout" 不被采纳，唯一路径是控制台手点
+  （版本管理 → 配置 → 高级配置 → 执行超时 1–300s），我只做提醒 + cli info 回读留证。
+- idx_card_code_version 的 GUI 手工插重复三元组（云函数入参不接受 version）。
+
+输出约定：只读不改文件；结论落到 review/REVIEW_2026-09-19_round39-verify.md（含 round40 部分），
+按 review/README.md 的回执格式写 §3 回执区。
