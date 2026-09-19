@@ -15,12 +15,19 @@ const terms = read("miniprogram/i18n/terms.js");
 const termsSpec = read("specs/dev-specs/i18n/terms.js");
 
 console.log('===== A1 · 费用四大类（运营/人工/营销/其他）+ 营销含佣金分列 =====');
-check('费用四大类含运营(operation)', /category: 'operation', label: '运营'/.test(terms));
-check('费用四大类含人工(labor)', /category: 'labor', label: '人工'/.test(terms));
-check('费用四大类含营销(marketing)', /category: 'marketing', label: '营销'/.test(terms));
-check('费用四大类含其他(other)', /category: 'other', label: '其他'/.test(terms));
-// 定位 expense 数组里的营销块：从 "label: '营销'" 到 "label: '其他'"（收入里的 other 是 '其他业务收入'，不会误命中）
-const mktBlock = terms.slice(terms.indexOf("label: '营销'"), terms.indexOf("label: '其他'"));
+// 2026-09-20 调整判据：原先把 label 中文名一起当判据（如 label: '运营'），
+// 但 label 是**展示文案**，会随用词口径调整（李老师要求四大类带上「费用」二字）；label 一改守卫就红，
+// 逼得人不敢改显示文案 —— 属守卫锁错了对象（且它挡不住「category 被改」这种真回归）。
+// category 才是后端契约锚点（落库/读写都用它）⇒ 改在 expense 块内按 category 判定，识别力不降反升：
+// 四大类缺任何一类、或 category 被改名，依旧必红（且不再受显示文案改动干扰）。
+const expBlock = terms.slice(terms.indexOf('expense: ['), terms.indexOf('subItem:'));
+check('费用四大类含运营(operation)', /category: 'operation'/.test(expBlock));
+check('费用四大类含人工(labor)', /category: 'labor'/.test(expBlock));
+check('费用四大类含营销(marketing)', /category: 'marketing'/.test(expBlock));
+check('费用四大类含其他(other)', /category: 'other'/.test(expBlock));
+// 定位 expense 块里的营销段（收入里也有 category:'other'，故必须先在 expBlock 内切片，避免误命中）
+const mktStart = expBlock.indexOf("category: 'marketing'");
+const mktBlock = mktStart >= 0 ? expBlock.slice(mktStart, mktStart + 400) : '';
 check('营销细项含外卖平台佣金', mktBlock.includes('外卖平台佣金'));
 check('营销细项含团购平台佣金（分列不合并）', mktBlock.includes('团购平台佣金'));
 check('营销佣金分列（两独立词条）', mktBlock.includes("'外卖平台佣金'") && mktBlock.includes("'团购平台佣金'"));
@@ -71,8 +78,16 @@ check('result.js 有 buildDetail/toggleDrill（前端仅格式化展示）', /bu
 
 console.log('');
 console.log('===== E1 · 录入页引导文案 =====');
-check('input 收入引导 incomeHint 渲染', /t\.incomeHint/.test(read("pages/month/input.wxml")) && /incomeHint: '收入按当月实际到账金额填写/.test(terms));
-check('input 费用引导 expenseHint 渲染', /t\.expenseHint/.test(read("pages/month/input.wxml")) && /expenseHint: '费用只填本月实际支出/.test(terms));
+// 2026-09-20 调整：原判据锁死了文案**原文**（'收入按当月实际到账金额填写'）。
+// 问题在于这条原文是**错的**——违反规范 A.0-1 权责发生制，且与「佣金记营销费用」自相矛盾（佣金会被扣两次）。
+// 锁死原文 ⇒ 谁去修正错误口径，守卫就红谁 ⇒ 守卫成了错误口径的保护伞。
+// 改为守「字段存在且非空（≥10 字）+ 页面确实渲染它」，另加一条**口径守卫**（下），比锁原文更强。
+check('input 收入引导 incomeHint 渲染', /t\.incomeHint/.test(read("pages/month/input.wxml")) && /incomeHint: '[^']{10,}'/.test(terms));
+check('input 费用引导 expenseHint 渲染', /t\.expenseHint/.test(read("pages/month/input.wxml")) && /expenseHint: '[^']{10,}'/.test(terms));
+// 口径守卫（新增）：收入必须是**权责发生制**（出餐即确认收入），不得退回「按实际到账填」的收付实现制。
+// 依据：specs/dev-specs/core/开发规范v1.0_ModuleA_收入费用核算.md A.0-1 / A.1。
+check('收入口径=权责发生制（不得写「按当月实际到账金额填写」）',
+  /incomeHint: '[^']*出了餐就算/.test(terms) && !/incomeHint: '[^']*按当月实际到账金额填写/.test(terms));
 
 console.log('');
 console.log('===== F1 · 术语统一 + 幽灵清理 =====');

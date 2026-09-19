@@ -27,6 +27,10 @@ module.exports = {
       const msg = (e && e.errMsg && /cloud\.callFunction:fail|ERR_NETWORK|timeout|offline/i.test(e.errMsg))
         ? networkMsg
         : ((e && e.errMsg) || serviceMsg);
+      // 2026-09-20 诊断加固：「网络不可用」这个提示把真实原因吞掉了 —— 上一次真机事故里，
+      // 真实原因是云函数部署漏带依赖导致容器起不来（callFunction fail），却只显示"请检查网络连接"。
+      // 现在把原始 errMsg 打到 console，真机可在「开发调试/日志」里看到，不再靠猜。
+      console.error('[api.call] 云调用失败:', name, '| errMsg =', (e && e.errMsg) || e);
       throw { code: 'NETWORK_ERROR', msg };
     }
     const r = res && res.result;
@@ -37,8 +41,11 @@ module.exports = {
     }
     if (r.code !== 'SUCCESS') {
       const terms = require('../miniprogram/i18n/terms.js');
+      // 云函数内部抛异常时 result 形如 { error: '...' } 而非 { code, data }；
+      // 此时 msgOf(undefined) 会统统显示「系统异常」，掩盖真实原因 → 打印原文供定位。
+      if (r.error) console.error('[api.call] 云函数执行异常:', name, '| error =', r.error);
       const msg = (terms && terms.msgOf) ? terms.msgOf(r.code) : (r.msg || '操作失败');
-      throw { code: r.code, msg };
+      throw { code: r.code || 'SYSTEM_ERROR', msg };
     }
     return r.data || {};
   },

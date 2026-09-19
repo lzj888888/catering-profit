@@ -24,7 +24,9 @@ page { background: #f5f6f8; font-family: -apple-system, "PingFang SC", sans-seri
 .add { margin-top: 24rpx; background: #1e3a5f; color: #fff; }
 .form { padding: 24rpx; }
 .field { display: flex; justify-content: space-between; background: #fff; padding: 24rpx; border-radius: 16rpx; margin-bottom: 16rpx; align-items: center; }
-.field input { text-align: right; }
+/* 2026-09-20：李老师反馈输入框边框不明显、点数字易误删 → 统一加边框+内边距+加大字号 */
+.field input { text-align: right; min-width: 320rpx; padding: 14rpx 18rpx; font-size: 32rpx;
+  border: 2rpx solid #cfdae8; border-radius: 10rpx; background: #fff; }
 .save { margin-top: 24rpx; background: #1e3a5f; color: #fff; }
 
 /* ===== 批次 4 · 共享组件样式（AD-1~AD-26 对齐：按钮≥88rpx、字号≥28rpx） ===== */

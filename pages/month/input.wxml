@@ -29,14 +29,21 @@
     <view class="scope" wx:if="{{g.scope}}">{{g.scope}}</view>
 
     <!-- 细项行（展开时显示全部行；折叠时只显示第一行 = 整类总额） -->
-    <view class="sub-row" wx:for="{{g.expanded ? g.rows : g.rows.slice(0, 1)}}" wx:key="index"
+    <!-- 2026-09-20 李老师真机反馈：一行挤「细项名+金额+删除」→ 金额框太窄、点数字容易误删、边框不明显。
+         改为两行：行①细项名（整行宽）+ × 删除；行②金额（整行宽、带边框）。折叠时只留行②= 整类合计。 -->
+    <view class="sub-block" wx:for="{{g.expanded ? g.rows : g.rows.slice(0, 1)}}" wx:key="index"
       wx:for-item="r" wx:for-index="ri">
-      <input class="sub-item-inp" wx:if="{{g.expanded}}" value="{{r.subItem}}" placeholder="{{t.subItemPh}}"
-        data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubItem" disabled="{{readOnly}}" />
-      <input class="val-input" type="digit" confirm-type="done" value="{{r.amountYuan}}"
-        data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubAmount" disabled="{{readOnly}}"  adjust-position="{{true}}" cursor-spacing="20" />
-      <button class="btn-small del" wx:if="{{g.expanded && g.rows.length > 1}}"
-        data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" catchtap="delRow">{{t.delSubItem}}</button>
+      <view class="sub-line1">
+        <input class="sub-item-inp" wx:if="{{g.expanded}}" value="{{r.subItem}}" placeholder="{{t.subItemPh}}"
+          data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubItem" disabled="{{readOnly}}" />
+        <button class="btn-del" wx:if="{{g.expanded && g.rows.length > 1}}"
+          data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" catchtap="delRow">{{t.delSubItem}}</button>
+      </view>
+      <view class="sub-line2">
+        <text class="sub-amt-lbl">{{g.expanded ? t.amount : g.label + t.classTotalSuffix}}</text>
+        <input class="val-input" type="digit" confirm-type="done" value="{{r.amountYuan}}"
+          data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubAmount" disabled="{{readOnly}}"  adjust-position="{{true}}" cursor-spacing="20" />
+      </view>
     </view>
 
     <view class="group-ops" wx:if="{{g.expanded}}">
@@ -56,14 +63,19 @@
     <!-- E2：该类的「包括 / 不包括」口径 -->
     <view class="scope" wx:if="{{g.scope}}">{{g.scope}}</view>
 
-    <view class="sub-row" wx:for="{{g.expanded ? g.rows : g.rows.slice(0, 1)}}" wx:key="index"
+    <view class="sub-block" wx:for="{{g.expanded ? g.rows : g.rows.slice(0, 1)}}" wx:key="index"
       wx:for-item="r" wx:for-index="ri">
-      <input class="sub-item-inp" wx:if="{{g.expanded}}" value="{{r.subItem}}" placeholder="{{t.subItemPh}}"
-        data-kind="expense" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubItem" disabled="{{readOnly}}" />
-      <input class="val-input" type="digit" confirm-type="done" value="{{r.amountYuan}}"
-        data-kind="expense" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubAmount" disabled="{{readOnly}}"  adjust-position="{{true}}" cursor-spacing="20" />
-      <button class="btn-small del" wx:if="{{g.expanded && g.rows.length > 1}}"
-        data-kind="expense" data-gidx="{{gi}}" data-ridx="{{ri}}" catchtap="delRow">{{t.delSubItem}}</button>
+      <view class="sub-line1">
+        <input class="sub-item-inp" wx:if="{{g.expanded}}" value="{{r.subItem}}" placeholder="{{t.subItemPh}}"
+          data-kind="expense" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubItem" disabled="{{readOnly}}" />
+        <button class="btn-del" wx:if="{{g.expanded && g.rows.length > 1}}"
+          data-kind="expense" data-gidx="{{gi}}" data-ridx="{{ri}}" catchtap="delRow">{{t.delSubItem}}</button>
+      </view>
+      <view class="sub-line2">
+        <text class="sub-amt-lbl">{{g.expanded ? t.amount : g.label + t.classTotalSuffix}}</text>
+        <input class="val-input" type="digit" confirm-type="done" value="{{r.amountYuan}}"
+          data-kind="expense" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubAmount" disabled="{{readOnly}}"  adjust-position="{{true}}" cursor-spacing="20" />
+      </view>
     </view>
 
     <view class="group-ops" wx:if="{{g.expanded}}">

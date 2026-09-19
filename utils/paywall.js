@@ -40,6 +40,11 @@ function openPaywall(type, opts) {
         opts.onCancel();
       }
     },
+    // 2026-09-20 加固：showModal 失败（页面栈/系统拦截）时原来完全静默，用户看到的就是「点了没反应」。
+    // 现在兜底 toast 出真实 errMsg，保证任何一次点击都有可见反馈。
+    fail(err) {
+      wx.showToast({ title: (err && err.errMsg) || def.title, icon: 'none', duration: 2500 });
+    },
   });
 }
 
@@ -54,6 +59,9 @@ function showIOSBlocked() {
     showCancel: false,
     confirmText: TERMS.buttons.gotIt,
     confirmColor: '#1e3a5f',
+    fail(err) {
+      wx.showToast({ title: (err && err.errMsg) || TERMS.pay.iosBlockedTitle, icon: 'none', duration: 2500 });
+    },
   });
 }
 

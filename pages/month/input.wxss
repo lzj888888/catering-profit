@@ -1,5 +1,6 @@
 /* pages/month/input.wxss —— M1 收入/费用/消耗录入页 */
-.val-input { text-align: right; font-size: 30rpx; width: 300rpx; }
+.val-input { text-align: right; font-size: 32rpx; width: 320rpx;
+  padding: 14rpx 18rpx; border: 2rpx solid #cfdae8; border-radius: 10rpx; background: #fff; }
 .sec { font-size: 30rpx; font-weight: 700; color: #333; margin: 28rpx 8rpx 14rpx; }
 
 /* A2：大类组（收入/费用二级细项） */
@@ -7,10 +8,26 @@
 .group-head { display: flex; justify-content: space-between; align-items: center; padding: 20rpx 0; }
 .g-label { font-size: 30rpx; font-weight: 600; color: #222; }
 .g-toggle { font-size: 28rpx; color: #1e3a5f; }
-.sub-row { display: flex; align-items: center; gap: 12rpx; padding: 10rpx 0; border-top: 1rpx solid #f5f5f5; }
-.sub-item-inp { flex: 1; font-size: 28rpx; min-width: 0; }
-.sub-row .val-input { width: 220rpx; flex: 0 0 auto; }
-.btn-small.del { background: none; color: #e74c3c; min-height: 88rpx; margin: 0; }
+/* 2026-09-20 改两行：行①细项名 + ×；行②金额（整行宽、带边框）
+   原一行三控件时金额框仅 220rpx，点中间数字易误删、边框不明显 —— 李老师真机反馈。 */
+.sub-block { padding: 14rpx 0; border-top: 1rpx solid #f5f5f5; }
+.sub-line1 { display: flex; align-items: center; gap: 10rpx; }
+.sub-item-inp {
+  flex: 1; min-width: 0; font-size: 30rpx; color: #222;
+  padding: 14rpx 18rpx; background: #f7f9fc; border-radius: 10rpx;
+}
+/* ⚠️ AD 规范（ad-gates 套件硬守）：可点元素 min-height ≥ 88rpx、字号 ≥ 28rpx —— 勿调小 */
+.btn-del {
+  flex: 0 0 auto; width: 88rpx; min-height: 88rpx; line-height: 84rpx;
+  padding: 0; margin: 0; font-size: 36rpx; color: #c0392b; background: #fdeceb; border-radius: 10rpx;
+}
+.btn-del::after { display: none; }         /* 去掉小程序 button 默认边框 */
+.sub-line2 { display: flex; align-items: center; gap: 14rpx; margin-top: 12rpx; }
+.sub-amt-lbl { flex: 0 0 auto; font-size: 28rpx; color: #6b7a8d; }
+.sub-line2 .val-input {
+  flex: 1; width: auto; text-align: right; font-size: 34rpx;
+  padding: 16rpx 20rpx; border: 2rpx solid #cfdae8; border-radius: 10rpx; background: #fff;
+}
 .group-ops { padding: 8rpx 0 16rpx; }
 .group-ops .btn-small { margin-top: 0; }
 

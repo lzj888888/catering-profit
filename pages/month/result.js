@@ -146,14 +146,20 @@ Page({
 
   // M1 报表导出：权限只读 expire_at（前端先查，后端 exportData 再兜底校验）；免费用户触发付费墙
   async onExport() {
-    const ent = await require('../../utils/entitlement.js').fetchEntitlement().catch(() => null);
-    if (!ent || !ent.is_active) {
-      require('../../utils/paywall.js').openPaywall('export', {
-        shopId: (getApp().globalData && getApp().globalData.shop_id) || '',
-      });
-      return;
+    // 2026-09-20 加固：此前整段无 try/catch —— 一旦取权益/弹窗任一步抛异常，点击就是「毫无反应」，
+    // 用户无从判断是没权限还是坏了。现统一兜底：任何异常都 toast 出来（可证伪，不静默）。
+    try {
+      const ent = await require('../../utils/entitlement.js').fetchEntitlement().catch(() => null);
+      if (!ent || !ent.is_active) {
+        require('../../utils/paywall.js').openPaywall('export', {
+          shopId: (getApp().globalData && getApp().globalData.shop_id) || '',
+        });
+        return;
+      }
+      await this.doExport();
+    } catch (e) {
+      require('../../utils/api.js').toastError(e);
     }
-    await this.doExport();
   },
 
   async doExport() {
