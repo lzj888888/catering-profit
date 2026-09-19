@@ -95,3 +95,4 @@ cli.bat cloud functions info --project C:\Users\lzj\WorkBuddy\Claw\catering-prof
 - [2026-09-19 17:0x] R46 已落 · `core/13 §5` R86 状态回写「已闭环」+ prod 重走提醒 · 证据：Read 回读第 35–46 行
 - [2026-09-19 17:0x] R46 未落 · dsh 复审（round39 三份 NOTE）· 理由：dsh 第四轮沙箱受阻，无法投递，待李老师三选一裁定
 - [2026-09-19 17:0x] R46 未落 · 并发方 1000+ 过程 PNG 入库/清理决策 · 理由：属他人产出且含删除动作，永不自动批，待李老师定
+- [2026-09-19 17:05] R46 已落 · 收口 · 证据：`git push origin dev` → `40d43b6..735c9af`；`git ls-remote origin refs/heads/dev` == `git rev-parse HEAD` == `735c9af` · commit `735c9af`
