@@ -1,0 +1,37 @@
+{
+  "inscode": {
+    "db": "C:\\Users\\lzj\\.config\\inscode\\inscode.db",
+    "inflight": 0,
+    "last_approval": [
+      54,
+      "831bd65c-70cb-4600-8fb6-7ebe07886768",
+      "bash",
+      "cd",
+      "approved_once",
+      "permission_mode",
+      1789714954453
+    ],
+    "session": {
+      "id": "831bd65c-70cb-4600-8fb6-7ebe07886768",
+      "name": "# 批次 3 / 8 · POC2 BOM 两层嵌套、循环拦截与成本快照（云函数",
+      "working_dir": "C:\\Users\\lzj\\WorkBuddy\\Claw\\catering-profit",
+      "message_count": 1465,
+      "model": "deepseek-v4-flash",
+      "permission": "auto",
+      "updated_at": 1789715243206,
+      "idle_sec": 103564.5
+    },
+    "verdict": "idle"
+  },
+  "dsh": {
+    "hwnd": 855322,
+    "rect": [
+      852,
+      105,
+      1764,
+      924
+    ],
+    "text": "的\n127℃.0.1×\n1270．0．1：3080\n．餐饮闭店决一×\n令C\n0\nO\n标准模式\n餐饮闭店决策指标模型咨询\n对话轨迹\n历史加载失败：signaltimedout(internal)\n给智能体发消息\nSessi",
+    "verdict": "found"
+  }
+}

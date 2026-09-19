@@ -1,0 +1,16 @@
+采集时刻: 2026-09-19 19:53:30
+--- dsh web 进程 ---
+李志杰,"C:\Program Files\nodejs\node.exe" C:/Users/lzj/.dsh/runtime/node_modules/@deepseek-ai/dsh/lib/bin.js web,20260917030702.778578+480,3324
+--- 端点 ---
+OK   http://127.0.0.1:3080/ -> 200
+OK   http://127.0.0.1:3080/v1/models -> 200
+HTTP http://127.0.0.1:3080/api/sessions -> 404 Not Found
+HTTP http://127.0.0.1:3080/api/health -> 404 Not Found
+HTTP http://127.0.0.1:3080/api/config -> 404 Not Found
+HTTP https://api.deepseek.com -> 401 Authorization Required
+--- storages ---
+  .7f16053f-e2ff-4183-a5a7-e31d18b27b34.tmp  mtime=2026-09-11 21:11:00 age_min=11442.5 size=21920
+  session_projcache.json  mtime=2026-09-19 09:21:08 age_min=632.4 size=25690
+  workspace.json  mtime=2026-09-15 12:08:37 age_min=6224.9 size=713
+--- 并发第三次采样（进程级）---
+  仓内目标进程数 = 0 (0 => 并发方停手)
