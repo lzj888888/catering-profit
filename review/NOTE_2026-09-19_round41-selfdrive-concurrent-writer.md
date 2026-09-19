@@ -47,9 +47,11 @@ InsCode 空闲 18.7h、dsh 最小化；**但仓库里另有一个 WorkBuddy 会�
 ## 6 · 回执
 - [2026-09-19 09:50] R41-a **已落** · 探针 → inscode idle 67520s / inflight=0 / 无 pending；dsh minimized→已恢复 · 证据 `review/evidence/selfdrive_20260919/probe_round41.json` · commit 见 §7
 - [2026-09-19 10:05] R41-b **已落** · 只读复核 R86 → 42 函数全集 / 已处理 7（成功 1：`saveCostCard` cli=20）/ 6 个 search-miss 经云端清单 grep 排除「未部署」根因 · 证据 `review/evidence/selfdrive_20260919/r86_progress_readonly_1005.txt` · commit 见 §7
-- [2026-09-19 10:06] R41-c **未落（有理由）** · 未跑门禁 `verify_all.js` / `check_error_codes.js` → ①自 `c9434f1` 起无任何代码改动（仅文档与证据），门禁结论无新信息量 ②并发会话可能同时在跑门禁/CLI，避免单通道争用 · 下一轮批量结束后补跑并出数
+- [2026-09-19 10:16] R41-c **已落** · `node verify_all.js` → **64/64 套件通过 RC=0**；`node specs/dev-specs/prototype/check_error_codes.js` → **A–L 全绿 RC=0**（改 `specs/` 后必跑）· 日志 `_gui/verify_all_round41.log`（工作区侧）· commit 见 §7
+  ↳ 修正：先前记「未跑」是怕与并发方抢通道，实测二者不冲突（互不写文件），已补跑出数。
 - [2026-09-19 10:06] R41-d **未落（有理由）** · 未提交他人文件、未做到「git status 空」→ 并发写入方在途（3 项他人改动），清树 = 夹带半成品；本轮仅**路径级提交**我方两只文件（§7）
 - [2026-09-19 10:06] R41-e **未落（有理由）** · 未投喂 InsCode、未递 dsh 复审 → 队列已空无「批次 8」；round39 复审请求上一轮已递出且无结论，重复投递会打断其进行中轮次
+- [2026-09-19 10:18] R41-f **已落** · 重启键 `specs/dev-specs/★知识存储点_2026-09-10.md` §1.1 回填 round41（含并发冲突判定 + search-miss 根因排除 + 存疑项）→ `grep -c round41` = 2 · commit 见 §7
 
 ## 7 · 提交范围（路径级，不含他人文件）
 - `review/NOTE_2026-09-19_round41-selfdrive-concurrent-writer.md`
