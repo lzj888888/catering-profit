@@ -1,0 +1,33 @@
+{
+  "inscode": {
+    "inflight": 0,
+    "session_id": "831bd65c-70cb-4600-8fb6-7ebe07886768",
+    "name": "# 批次 3 / 8 · POC2 BOM...",
+    "message_count": 1465,
+    "model": "deepseek-v4-flash",
+    "permission": "auto",
+    "idle_sec": 87531.1,
+    "verdict": "idle",
+    "last_approval": [
+      54,
+      "831bd65c-70cb-4600-8fb6-7ebe07886768",
+      "bash",
+      "cd",
+      "approved_once",
+      "permission_mode",
+      1789714954453
+    ]
+  },
+  "dsh": {
+    "hwnd": 855322,
+    "rect": [
+      852,
+      105,
+      1764,
+      924
+    ],
+    "verdict": "found",
+    "text_head": "沙箱拒绝此类写入与node子进程。",
+    "find_发消息": "MISS"
+  }
+}

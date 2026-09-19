@@ -1,0 +1,2 @@
+node verify_all.js  -> 总览：64/64 套件通过 (data-contract 7/7, S2 命中 1 处) RC=0  [2m15s]
+node specs/dev-specs/prototype/check_error_codes.js -> 全部断言通过 A-L RC=0 [9s]

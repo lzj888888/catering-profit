@@ -1,0 +1,6 @@
+15:27:49 dir mtime (size 87073)
+15:28:26 dir mtime (size 87409)  -> STILL_GROWING (+? files in 25s)
+15:31:05 mtime=1789803105 / 15:31:45 mtime=1789803145 -> STILL_GROWING
+window: 12913604 云开发控制台 v2.0.3 (2.0.34@707916636)
+window: 855322 恢复会话记忆继续小程序沟通 - DeepSeek Harness ... Edge
+git: M review/REVIEW_2026-09-15_round38-verify.md | M 索引补齐核对单.md | ?? review/evidence/r86_timeout_20260919/

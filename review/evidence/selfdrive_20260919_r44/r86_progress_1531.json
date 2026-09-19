@@ -1,0 +1,84 @@
+{
+  "read_at": "2026-09-19 15:31",
+  "results_json_mtime": "2026-09-19 15:25:20",
+  "total": 42,
+  "ok": 39,
+  "ok_list": [
+    "adminExport",
+    "adminGrantEntitlement",
+    "adminLogin",
+    "adminLogout",
+    "adminManualOrder",
+    "adminOrderList",
+    "adminQueryUser",
+    "adminRefreshToken",
+    "adminRefundMark",
+    "adminRevokeToken",
+    "archiveMonth",
+    "calcAmortize",
+    "calcBom",
+    "calcMonthlyProfit",
+    "calcSandbox",
+    "checkQuota",
+    "deleteAccount",
+    "detectCycle",
+    "exportData",
+    "getAmortSchedule",
+    "getCardVersions",
+    "getCostCard",
+    "getLedger",
+    "getMaterial",
+    "getMonthList",
+    "getShopContext",
+    "getShopList",
+    "initDb",
+    "payCallback",
+    "payCreateOrder",
+    "payExpireNotify",
+    "payOrderList",
+    "payRenew",
+    "saveAsset",
+    "saveCostCard",
+    "saveLedger",
+    "saveMaterial",
+    "saveShopSetting",
+    "syncCostCard"
+  ],
+  "ok_why_dist": {
+    "cli=20": 34,
+    "cli=20 (之前已完成)": 2,
+    "cli=60": 2,
+    "cli=30": 1
+  },
+  "expect_dist": {
+    "20": 38,
+    "60": 2,
+    "30": 1,
+    "15": 1
+  },
+  "not_ok": {
+    "adminInit": {
+      "expect": 20,
+      "ok": false,
+      "why": "adv-not-expanded"
+    },
+    "payQueryEntitlement": {
+      "expect": 20,
+      "ok": false,
+      "why": "version-page-not-loaded"
+    },
+    "smokeTest": {
+      "expect": 15,
+      "ok": false,
+      "why": "reset-fail"
+    }
+  },
+  "evidence_dir_files": 1024,
+  "latest_files": [
+    "adv_smokeTest_1_1.png",
+    "adv_smokeTest_1_2.png",
+    "adv_smokeTest_1_3.png",
+    "adv_smokeTest_1_4.png",
+    "ide_dialog_chk.png"
+  ]
+}
