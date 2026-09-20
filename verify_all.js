@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：75 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：76 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -174,6 +174,14 @@ const SUITES = [
   //       裸扫「N 张」必误杀（OBSOLETE 历史版、演进链「8→3」、「第 4 张触发」序号、core/12 的云资源「硬上限」）
   //       ⇒ 判据用「类别锚点就近 + 额度语义 + 版本号/单位数排除」三条腿。
   ['quota-limits',           'tools/check_quota_limits.js'],
+  // 第 76 套件（round67 新增，R103）：集合权限矩阵口径守卫 tools/check_collection_perms.js
+  //       同族病第 11 例：集合权限是**安全边界**口径（AD-9 客户端不直连 DB，默认安全态
+  //       = 仅管理端可读写），单源 = collections.js::COLLECTIONS（25 张），人工面 = core/15 §2 表格；
+  //       实扫 tools/ 与 prototype/ 零引用 core/15 ⇒ 与单源**零守卫**（R74 的 S1~S5 不看它一个字）。
+  //       加/删集合时 R74 会要求同步镜像与文档计数（绿），但 core/15 静默过期 ⇒ 新集合留在默认
+  //       「仅创建者可读写」⇒ 客户端可直连越权。判据＝声明 ≡ 表格行数 ≡ 单源三方 + 逐条双向 +
+  //       权限模式白名单 + 序号连续 + 三道前提守卫（防列错位零命中假绿）。
+  ['collection-perms',       'tools/check_collection_perms.js'],
   // 后续批次的套件在此追加即可（如 batch2_selfcheck ...）；追加后记得同步头部注释里的套件数量。
 ];
 

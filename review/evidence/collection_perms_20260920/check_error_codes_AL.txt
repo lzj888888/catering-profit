@@ -1,0 +1,29 @@
+══════ 规范层一致性机械门禁 ══════
+  · core/09 §1 wire code: 32 个
+  · core/09 §3 i18n key : 29 个
+  · terms.js ERROR_MESSAGES 键: 29 个
+  · terms.js CODE_TO_I18N 条目: 32 个
+  · core/10 §6 已登记 admin 函数   : 11 个
+  · 全树引用 admin 函数（已排除中间件/字段）: 11 个
+  · 配额口径(D组)扫描 : 36 个 .md+.txt；表格结构(E组)扫描 : 28 个 .md
+  · 字符完整性扫描           : 51 个（.md 28 / .js 15 / .txt 8）
+  · 派生精度一致性扫描 : 36 个 .md+.txt（禁 6.6667 / 0.03333 / 9.76）
+  · H5 购买页内容护栏 : 36 个 .md+.txt（命中须为否定句）
+  · 环境门禁结构断言 : 2 个云函数（init_db / seed_demo）
+  · 投喂链派生一致性 : 8 txt + 8 html 块 vs MD 单源（CRLF 已归一）
+  · 文档派生一致性 : 3 组（SMOKETEST_RUNBOOK / 新手上云操作手册 / 下一步工序清单 的 .txt ≡ .md，CRLF/BOM 已归一）
+  · common 同步一致性 : 各函数副本≡单源
+
+✅ 全部断言通过
+   A/B 错误码三向一致 + 映射完整 : core/09 §1 ↔ §3 ↔ terms.js 已闭合
+   C   云函数登记一致           : 全树引用的 admin 函数均已登记于 core/10 §6
+   D   配额口径一致             : 无 M2=3 / M2 3个方案 / 免费≤3 / M3=8 张 / 单张导出免费 等 v1.1 旧值残留
+   E   表格结构完整             : 无被引用块 / 散文行挤出表格的孤儿表行
+   F   字符完整性               : .md / .js / .txt 均无 U+FFFD 替换字符
+   G   套餐价格/天数一致       : init_db.js 四档 = 2590/6900/19900/1990，31/90/365/31
+   H   环境门禁结构             : init_db/seed_demo 均无 /^dev/、含 DEV_ENV_ID 白名单 + 恒效 !/prod/ + try 内 TCB_ENV 兜底、blocked 不回传 env
+   I   派生精度一致             : 无 6.6667 / 0.03333 / 9.76 等旧值残余（N13/N14/N22 回潮护栏）
+   J   H5 购买页护栏           : 全树 .md+.txt 命中「H5 购买页」者均为否定句（禁止 H5 兜底），无肯定式引导（D1 护栏）
+   K   投喂链派生一致         : 8 份 txt + 8 个 HTML 块均与 MD 单源逐字一致（CRLF 已归一，防 D4/D7 类派生件落后）；Runbook/手册 .txt ≡ .md
+   L   common 同步一致        : 各云函数目录**扁平副本**（common.js + cx_*.js）均 ≡ cloudfunctions/common/ 单源派生（护栏：云端不认子目录，防 MODULE_NOT_FOUND）
+AL_rc=0

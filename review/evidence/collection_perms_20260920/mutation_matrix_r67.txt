@@ -1,0 +1,12 @@
+M1 声明 25→26                      OK           red    expect_red=True
+M2 单源加一张集合                       OK           red    expect_red=True
+M3 表格删末行                         OK           red    expect_red=True
+M4 权限模式改非白名单                     OK           red    expect_red=True
+M5 删唯一声明处                        OK           red    expect_red=True
+M6 序号跳号 25→26                    OK           red    expect_red=True
+M7 换措辞「共登记 25 张」                 OK           green  expect_red=False
+M8 表格两行互换（顺序无关）                  OK           green  expect_red=False
+M9 扫描面路径写错                       OK           red    expect_red=True
+M10 单源集合改名                       OK           red    expect_red=True
+
+总 10 组，异常 0
