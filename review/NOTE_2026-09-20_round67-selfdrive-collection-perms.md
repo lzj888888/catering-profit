@@ -90,17 +90,17 @@
 
 ## 6. 回执
 
-- [2026-09-20 22:43] R67 探针已落 · 证据：`probe_agents.py` → InsCode idle（msg 1465 十四连持平、无待批）；dsh 窗口在但上下文不匹配 · commit 待回填
-- [2026-09-20 22:45] R67 门禁基线已落 · 证据：`node verify_all.js` → 75/75 rc=0（改 specs 前）· commit 待回填
-- [2026-09-20 22:50] R67 并发方判定已落 · 证据：进程两采 0/0（采样脚本 .py 化并排除自身 PID）+ mtime 静止 + `git log` 无新 commit + `M`=0 → 无并发写入方 · commit 待回填
-- [2026-09-20 22:52] R67 缺口定位已落 · 证据：`grep -rn "集合权限矩阵\|core/15" tools/ specs/dev-specs/prototype/` → **零命中**；`collections.js` node 实跑 → 25 张 · commit 待回填
-- [2026-09-20 22:54] R67 口径单源已落 · 证据：`core/15` §2 新增「集合权限口径（唯一声明处）」行 · commit 待回填
-- [2026-09-20 22:55] R67 守卫已落 · 证据：`node tools/check_collection_perms.js` → 20/20 rc=0 · commit 待回填
-- [2026-09-20 22:57] R67 SUITES 已落 · 证据：`node verify_all.js` → **76/76** rc=0（R92 首跑拦「未入库」⇒ `git add` 后转绿，属预期）· commit 待回填
-- [2026-09-20 22:59] R67 双向变异已落 · 证据：`_mut_r67.py` → **10 组 0 异常**（8 转红 + M7/M8 不错杀），`mutation_matrix_r67.txt` · commit 待回填
-- [2026-09-20 23:00] R67 A–L/AD/UI 已落 · 证据：`check_error_codes.js` rc=0 · `selftest_ad_gates.js` 24/24 · `selftest_ui_fix.js` 31/31 · commit 待回填
-- [2026-09-20 23:00] R67 **未落（人工面）**：dsh 复审 —— 上下文不匹配（会话是「餐饮闭店决策指标模型咨询」）且后端自启动零业务写入 ⇒ 不投递；round39 等 5 份 NOTE 复审仍悬，待李老师四选一 · commit —
-- [2026-09-20 23:00] R67 **未落（待裁决）**：1033 个并发方过程 PNG 不代提交不代删 · commit —
+- [2026-09-20 22:43] R67 探针已落 · 证据：`probe_agents.py` → InsCode idle（msg 1465 十四连持平、无待批）；dsh 窗口在但上下文不匹配 · commit e1293ac
+- [2026-09-20 22:45] R67 门禁基线已落 · 证据：`node verify_all.js` → 75/75 rc=0（改 specs 前）· commit e1293ac
+- [2026-09-20 22:50] R67 并发方判定已落 · 证据：进程两采 0/0（采样脚本 .py 化并排除自身 PID）+ mtime 静止 + `git log` 无新 commit + `M`=0 → 无并发写入方 · commit e1293ac
+- [2026-09-20 22:52] R67 缺口定位已落 · 证据：`grep -rn "集合权限矩阵\|core/15" tools/ specs/dev-specs/prototype/` → **零命中**；`collections.js` node 实跑 → 25 张 · commit e1293ac
+- [2026-09-20 22:54] R67 口径单源已落 · 证据：`core/15` §2 新增「集合权限口径（唯一声明处）」行 · commit e1293ac
+- [2026-09-20 22:55] R67 守卫已落 · 证据：`node tools/check_collection_perms.js` → 20/20 rc=0 · commit e1293ac
+- [2026-09-20 22:57] R67 SUITES 已落 · 证据：`node verify_all.js` → **76/76** rc=0（R92 首跑拦「未入库」⇒ `git add` 后转绿，属预期）· commit e1293ac
+- [2026-09-20 22:59] R67 双向变异已落 · 证据：`_mut_r67.py` → **10 组 0 异常**（8 转红 + M7/M8 不错杀），`mutation_matrix_r67.txt` · commit e1293ac
+- [2026-09-20 23:00] R67 A–L/AD/UI 已落 · 证据：`check_error_codes.js` rc=0 · `selftest_ad_gates.js` 24/24 · `selftest_ui_fix.js` 31/31 · commit e1293ac
+- [2026-09-20 23:00] R67 **未落（人工面）**：dsh 复审 —— 上下文不匹配（会话是「餐饮闭店决策指标模型咨询」）且后端自启动零业务写入 ⇒ 不投递；round39 等 5 份 NOTE 复审仍悬，待李老师四选一 · commit e1293ac（本轮不涉）
+- [2026-09-20 23:00] R67 **未落（待裁决）**：1033 个并发方过程 PNG 不代提交不代删 · commit e1293ac（本轮不涉）
 
 ## 7. 待下轮
 
