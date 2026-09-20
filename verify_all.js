@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：72 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：73 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -153,6 +153,13 @@ const SUITES = [
   //       此套件做「文档口径声明 ≡ 剥反引号后实扫」双向比对，口径以语义标记编码进文本
   //       （裸扫「N 处」会误杀 4 处：19 处跳转计数 + 两处否定式引用「非 4 处」）。
   ['privacy-placeholders',   'tools/check_privacy_placeholders.js'],
+  // 红线复核条数口径守卫 R100（round64）：core/04 §C「红线复核表（一票否决）」实算 12 行，
+  //       2026-09-12 的校订（04 明写「原写 11 条红线…漏计 1 条」）**只更正了一处** —— round64 回源实扫发现
+  //       05 审计单 / 06 工程治理（就在 **v1.0.0 提审发布**那一行）/ 写码阶段启动手册 三处仍写 11 条，零守卫。
+  //       与 R59「套件数」/ round61「重启键套件数」/ R98「云函数清单」/ R99「隐私占位符」同族第 8 例。
+  //       此套件做「单源声明 ≡ §C 实算行数 ≡ 全仓引用」三方比对；裸扫「N 条红线」会误杀校订说明行，
+  //       故口径以语义标记编码进文本 + 历史行靠上下文标记放行，并用前提守卫证明排除面生效。
+  ['redline-inventory',      'tools/check_redline_inventory.js'],
   // 后续批次的套件在此追加即可（如 batch2_selfcheck ...）；追加后记得同步头部注释里的套件数量。
 ];
 

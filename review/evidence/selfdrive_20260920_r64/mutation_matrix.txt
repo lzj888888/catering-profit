@@ -1,0 +1,31 @@
+M1 06 提审行改回 11: -> RED (expect RED) OK | 还原后 GREEN
+      ❌ P5 当前态声明全部 ≡ 12（共 4 处） —— specs/dev-specs/core/06_工程治理与运维规范.md:313 写 11
+M2 05 换措辞仍为 12: -> GREEN (expect GREEN) OK | 还原后 GREEN
+M3 删单源声明: -> RED (expect RED) OK | 还原后 GREEN
+      ❌ P2-① 语义标记「红线全集口径」可解析出数字（fail-closed） —— 零命中
+      ❌ P2-② 「唯一声明处」在 04 内恰 1 行 —— 0 行
+      ❌ P3-② 声明 N=-1 ≡ 实算行数 12 —— 声明 -1 / 实算 12
+      ❌ P5 当前态声明全部 ≡ -1（共 4 处） —— specs/dev-specs/core/04_核对清单.md:267 写 12 | specs/dev-specs/core/05_审计单.md:149 写 12
+M4 §C 删一行: -> RED (expect RED) OK | 还原后 GREEN
+      ❌ P3-② 声明 N=12 ≡ 实算行数 11 —— 声明 12 / 实算 11
+M5 声明改 13: -> RED (expect RED) OK | 还原后 GREEN
+      ❌ P3-② 声明 N=13 ≡ 实算行数 12 —— 声明 13 / 实算 12
+      ❌ P5 当前态声明全部 ≡ 13（共 4 处） —— specs/dev-specs/core/04_核对清单.md:268 写 12 | specs/dev-specs/core/05_审计单.md:149 写 12
+M6 校订行抹去历史上下文: -> GREEN (expect RED) MISMATCH | 还原后 GREEN
+M7 扫描面写错: -> RED (expect RED) OK | 还原后 GREEN
+      ❌ P1-② 扫描面 .md 数 ≥ 20（排除 review/，路径写错即红） —— 0 个
+      ❌ P6 排除面前提：确有历史/校订类陈述被放行（证明排除面没打错） —— 0 行
+      ❌ P7 当前态声明命中数 ≥ 3（正则/扫描面失效即零命中假绿） —— 0 处
+
+=== 变异汇总 ===
+   M1 06 提审行改回 11 -> RED | 如期
+   M2 05 换措辞仍为 12 -> GREEN | 如期
+   M3 删单源声明 -> RED | 如期
+   M4 §C 删一行 -> RED | 如期
+   M5 声明改 13 -> RED | 如期
+   M6 校订行抹去历史上下文 -> GREEN | 不符预期
+   M7 扫描面写错 -> RED | 如期
+不符预期数: 1
+M6b -> RED (expect RED)
+      ❌ P5 当前态声明全部 ≡ 12（共 6 处） —— specs/dev-specs/core/04_核对清单.md:269 写 11 | specs/dev-specs/core/04_核对清单.md:269 写 1
+还原后 -> GREEN

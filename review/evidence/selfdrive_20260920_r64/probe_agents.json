@@ -1,0 +1,37 @@
+{
+  "inscode": {
+    "db": "C:\\Users\\lzj\\.config\\inscode\\inscode.db",
+    "inflight": 0,
+    "last_approval": [
+      54,
+      "831bd65c-70cb-4600-8fb6-7ebe07886768",
+      "bash",
+      "cd",
+      "approved_once",
+      "permission_mode",
+      1789714954453
+    ],
+    "session": {
+      "id": "831bd65c-70cb-4600-8fb6-7ebe07886768",
+      "name": "# 批次 3 / 8 · POC2 BOM 两层嵌套、循环拦截与成本快照（云函数",
+      "working_dir": "C:\\Users\\lzj\\WorkBuddy\\Claw\\catering-profit",
+      "message_count": 1465,
+      "model": "deepseek-v4-flash",
+      "permission": "auto",
+      "updated_at": 1789715243206,
+      "idle_sec": 184413.6
+    },
+    "verdict": "idle"
+  },
+  "dsh": {
+    "hwnd": 855322,
+    "rect": [
+      852,
+      105,
+      1764,
+      924
+    ],
+    "text": "的\n127℃.0.1×\n1270．0．1：3080\n．餐饮闭店决一×\n令C\nD\n巴\n0\nO\n标准模式\n餐饮闭店决策指标模型咨询\n对话轨迹\nSessi\n由刂/（朩丌sesslon冫弋1木'由同，十丿畀月扌匕/人，犭亚}刁\n你就能在GU|里直接打开）；O帮你把9/14一9/1\n测结论回写进项目重启键*知识存储点一2926一99一1'\n．产物」_sessioncheck.js\n在文件夹中显示\n给智能体发消息\n_session_frames.js+6，个文亻牛",
+    "verdict": "found"
+  }
+}
