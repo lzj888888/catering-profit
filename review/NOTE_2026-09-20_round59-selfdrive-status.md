@@ -93,14 +93,14 @@ check('🔴 设置页不再有库存/摊销开关', !/inventorySwitch|amortizeSw
 
 ## 8 · 回执（round59）
 
-- [2026-09-20 10:52] R59-01 已落 · 证据：`probe_agents.py` → InsCode inflight=0 / msg=1465 六连持平 / idle 43.5h；dsh hwnd=855322 未最小化 · commit `<sha>`
-- [2026-09-20 10:52] R59-02 已落 · 证据：`_proc_scan_r59.py`（排除自身 PID，间隔 75s 两采）→ SAMPLE1=0 / SAMPLE2=0 / CONCURRENT=False · commit `<sha>`
-- [2026-09-20 10:52] R59-03 已落 · 证据：`git log --oneline -12` → HEAD `38f6d66` == 上轮 ⇒ 无未复核新 commit · commit `<sha>`
-- [2026-09-20 10:52] R59-04 已落 · 证据：`tools/selftest_ui_fix.js` 撤 1 条绑字面判据、加 4 条语义级（锚点 a/b + 禁用 a/b） · commit `<sha>`
-- [2026-09-20 10:52] R59-05 已落 · 证据：M1 新 key 名变异 → 旧判据 `OLD_JUDGMENT_GREEN=True`（漏）/ 新判据 RC=1 两红 · commit `<sha>`
-- [2026-09-20 10:52] R59-06 已落 · 证据：M2 正确实现换写法 → 31/31 RC=0（不误杀） · commit `<sha>`
-- [2026-09-20 10:52] R59-07 已落 · 证据：M3 抽锚点（CRLF 修正后）→ RC=1 `movedNote…(MISS)` · commit `<sha>`
-- [2026-09-20 10:52] R59-08 已落 · 证据：`verify_all.js` → `总览：68/68 套件通过` RC=0；A–L RC=0；AD 24/24；UI 31/31 · commit `<sha>`
-- [2026-09-20 10:52] R59-09 未落 · dsh 复审投递 —— 会话上下文不匹配（餐饮闭店决策 ≠ 仓库复审）+ 后端历 10 轮不可用 · 待李老师四选一 · commit `<sha>`
-- [2026-09-20 10:52] R59-10 未落 · 1033 个并发方过程 PNG —— 归属待裁决，不代提交不代删 · commit `<sha>`
-- [2026-09-20 10:52] R59-11 存疑 · dsh 后端健康度仅窗口级观察，未做 round50 四步侧证（本轮不投递故未深入） · commit `<sha>`
+- [2026-09-20 10:52] R59-01 已落 · 证据：`probe_agents.py` → InsCode inflight=0 / msg=1465 六连持平 / idle 43.5h；dsh hwnd=855322 未最小化 · commit `90fad10`
+- [2026-09-20 10:52] R59-02 已落 · 证据：`_proc_scan_r59.py`（排除自身 PID，间隔 75s 两采）→ SAMPLE1=0 / SAMPLE2=0 / CONCURRENT=False · commit `90fad10`
+- [2026-09-20 10:52] R59-03 已落 · 证据：`git log --oneline -12` → HEAD `38f6d66` == 上轮 ⇒ 无未复核新 commit · commit `90fad10`
+- [2026-09-20 10:52] R59-04 已落 · 证据：`tools/selftest_ui_fix.js` 撤 1 条绑字面判据、加 4 条语义级（锚点 a/b + 禁用 a/b） · commit `90fad10`
+- [2026-09-20 10:52] R59-05 已落 · 证据：M1 新 key 名变异 → 旧判据 `OLD_JUDGMENT_GREEN=True`（漏）/ 新判据 RC=1 两红 · commit `90fad10`
+- [2026-09-20 10:52] R59-06 已落 · 证据：M2 正确实现换写法 → 31/31 RC=0（不误杀） · commit `90fad10`
+- [2026-09-20 10:52] R59-07 已落 · 证据：M3 抽锚点（CRLF 修正后）→ RC=1 `movedNote…(MISS)` · commit `90fad10`
+- [2026-09-20 10:52] R59-08 已落 · 证据：`verify_all.js` → `总览：68/68 套件通过` RC=0；A–L RC=0；AD 24/24；UI 31/31 · commit `90fad10`
+- [2026-09-20 10:52] R59-09 未落 · dsh 复审投递 —— 会话上下文不匹配（餐饮闭店决策 ≠ 仓库复审）+ 后端历 10 轮不可用 · 待李老师四选一 · commit `90fad10`
+- [2026-09-20 10:52] R59-10 未落 · 1033 个并发方过程 PNG —— 归属待裁决，不代提交不代删 · commit `90fad10`
+- [2026-09-20 10:52] R59-11 存疑 · dsh 后端健康度仅窗口级观察，未做 round50 四步侧证（本轮不投递故未深入） · commit `90fad10`
