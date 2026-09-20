@@ -1,0 +1,14 @@
+=== round58 变异回灌矩阵 2026-09-20 09:11:36 ===
+判据 RED = rc!=0 或 输出含 ❌
+
+A1_面A_注入躺赚(display)                      | RED   (rc=1) 还原后=GREEN OK | ❌ T5 无未处置的禁用词命中 · 1 处：TERMS.modules.m1.cardTitle <<躺赚>> 月度盈利核算躺赚
+A2_面B_wxml硬编码躺赚                          | RED   (rc=1) 还原后=GREEN OK | ❌ T4b wxml 可见文案零违规 · pages/month/input.wxml:30 <<躺赚>>
+A3_僵尸豁免                                  | RED   (rc=1) 还原后=GREEN OK | ❌ T6 无僵尸豁免/待裁决条目 · TERMS.modules.m9.notExist <<盈利>>
+A4_豁免缺by元信息                              | SKIP  锚点未命中:     by: '李老师', date: '2026-09-20',
+    reason: '同上：首页卡片沿用拍板模
+A5_抽掉真实豁免                                | SKIP  锚点未命中:   { path: 'TERMS.modules.m1.cardTitle', word: '盈利',
+    by: 
+B1_口径_退回原文(收付实现制)                        | RED   (rc=1) 还原后=GREEN OK | ❌ 收入口径=权责发生制（不得写「按当月实际到账金额填写」）
+B2_口径_换成同义收付说法(保留锚点)                     | GREEN (rc=0) 还原后=GREEN OK | ==== 批次 8b 功能补齐自测：49 通过 / 0 失败 ====
+B3_口径_正确但换写法(业务发生日)                      | RED   (rc=1) 还原后=GREEN OK | ❌ 收入口径=权责发生制（不得写「按当月实际到账金额填写」）
+B4_文案缩短到<10字                             | RED   (rc=1) 还原后=GREEN OK | ❌ input 收入引导 incomeHint 渲染

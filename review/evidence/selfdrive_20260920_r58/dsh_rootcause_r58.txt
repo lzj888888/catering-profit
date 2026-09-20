@@ -1,0 +1,12 @@
+IMAGE 912x819  white=90.8%  dark=0.3%  samples=46740
+TOP_COLORS: rgb(224, 224, 224)=92.1%, rgb(192, 192, 192)=5.9%, rgb(96, 96, 96)=0.6%
+DSH_PROC: pid=3324 uptime_h=-1.00 raw=李志杰,"C:\Program Files\nodejs\node.exe" C:/Users/lzj/.dsh/runtime/node_modules/@deepseek-ai/dsh/lib/bin.js web,20260917030702.778578+480,3324
+HTTP /              -> 200 len=12076
+HTTP /v1/models     -> 200 len=12076
+HTTP /api/sessions  -> 404
+HTTP /api/health    -> 404
+HTTP /api/config    -> 404
+UPSTREAM https://api.deepseek.com -> HTTP 401
+UPSTREAM https://api.deepseek.com/models -> HTTP 401
+MTIME session_projcache.json                               age_h=23.75  (2026-09-19 09:21:08.063613)
+MTIME web.log                                              age_h=78.10  (2026-09-17 02:59:56.743386)

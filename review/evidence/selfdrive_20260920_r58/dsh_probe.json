@@ -1,0 +1,25 @@
+{
+  "windows": [
+    [
+      855322,
+      "Chrome_WidgetWin_1",
+      "餐饮闭店决策指标模型咨询 — DeepSeek Harness 和另外 1 个页面 - 个人 - Microsoft​ Edge",
+      237,
+      39
+    ]
+  ],
+  "hwnd": 855322,
+  "title": "餐饮闭店决策指标模型咨询 — DeepSeek Harness 和另外 1 个页面 - 个人 - Microsoft​ Edge",
+  "rect_before": [
+    -32000,
+    -32000,
+    -31763,
+    -31961
+  ],
+  "rect_after": [
+    852,
+    105,
+    1764,
+    924
+  ]
+}
