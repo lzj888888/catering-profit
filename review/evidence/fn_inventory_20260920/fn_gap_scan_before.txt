@@ -1,0 +1,27 @@
+ACTUAL_N 42
+TBL_N 49
+ALL_BACKTICK_N 114
+--- 实际有 / 契约表无 ---
+--- 契约表有 / 实际无 ---
+  DOC_ONLY: auth
+  DOC_ONLY: dataAdapter
+  DOC_ONLY: getPlan
+  DOC_ONLY: savePlan
+  DOC_ONLY: shopList
+  DOC_ONLY: shopSwitch
+  DOC_ONLY: utilTime
+--- 文档里的「N 个云函数」类声明 ---
+--- 全仓 md 里的「N 个云函数」声明 ---
+  specs\dev-specs\★知识存储点_2026-09-10.md:401: 40 个云函数 | ⚠️ 间接匹配**只用相对路径不用 basename** —— 40 个云函数都叫 `selftest.js`，按名会互相覆盖致守卫失明；
+
+
+===== 第二轮：零出现函数的 specs 内落点 + 写死清单 =====
+
+=== 契约文档零出现的函数（ 0 ）===
+
+=== 全仓是否有写死的「42 个函数名」清单（tools/）===
+  tools\check_idempotency.js: 含 22 个函数名
+
+=== 契约文档表格首列（全部表格行）===
+  N = 47
+  实际无: ['getPlan', 'savePlan', 'shopList', 'shopSwitch', 'utilTime']

@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：70 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：71 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -141,6 +141,12 @@ const SUITES = [
   //       此套件把「口径 ≡ 实算」变成常驻断言；历史陈述（review/ 下的旧计数）按只增不改放行，
   //       并用前提守卫证明排除面没打错。
   ['suite-count-claims',     'tools/check_suite_count_claims.js'],
+  // 云函数清单守卫 R98（round62）：core/10「云函数清单与接口契约」自称「单一文档列出全部云函数」，
+  //       实测双向漂移 —— 8 个已部署函数零出现、4 个表内名字从未落地为目录 ⇒ 写码 AI 拿它当基线会漏 8 个、
+  //       并按 4 个不存在的名字造代码。与 R59「套件数」/ R74「索引计数」/ round61「重启键套件数」
+  //       同族第 6 例：同一事实两处写、无机器校验。此套件做「契约文档 ≡ 实际目录」双向比对，
+  //       并把「全集计数」做成单源声明（裸扫「N 个函数」会误杀 5 处子集/历史口径，已改语义级）。
+  ['fn-inventory',           'tools/check_fn_inventory.js'],
   // 后续批次的套件在此追加即可（如 batch2_selfcheck ...）；追加后记得同步头部注释里的套件数量。
 ];
 

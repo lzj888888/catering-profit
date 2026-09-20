@@ -1,0 +1,24 @@
+RC=0
+
+=== 基线 ===
+guard rc = 0
+coverage rc = 0
+
+=== 变异结果 ===
+OK                   M1 删掉 getShopList 登记行（漏）  rc=1 red=True expect_red=True
+INFO                 M1 删掉 getShopList 登记行（漏） · 点名  ❌ F2 每个已部署函数都有契约表格登记行 · 无登记行：getShopList
+OK                   M2 正确实现换措辞「本表共登记→全仓目前共」（不错杀）  rc=0 red=False expect_red=False
+OK                   M3 新增未知函数目录 __mut_fn62（漏）  rc=1 red=True expect_red=True
+INFO                 M3 新增未知函数目录 __mut_fn62（漏） · 点名  ❌ F2 每个已部署函数都有契约表格登记行 · 无登记行：__mut_fn62
+INFO                 M3 新增未知函数目录 __mut_fn62（漏） · 点名  ❌ F4 全集声明「共登记 N 个已部署」≡ 实测 43 · 不符：specs/dev-specs/core/10_云函数清单与接口契约.md:5 写 42
+OK                   M4 表格加一行 common 模块 rateLimit（不错杀）  rc=0 red=False expect_red=False
+OK                   M5 删掉「全集口径」声明行（fail-closed）  rc=1 red=True expect_red=True
+INFO                 M5 删掉「全集口径」声明行（fail-closed） · 点名  ❌ F4 全集口径声明存在（fail-closed：删了/改了措辞 ⇒ 红） · 命中 0 处
+OK                   M6 从 SUITES 摘掉 fn-inventory（覆盖守卫活性）  rc=1 red=True expect_red=True
+INFO                 M6 从 SUITES 摘掉 fn-inventory（覆盖守卫活性） · 点名  ❌ S5 面 A 71 个判据零漏网 · 未挂 SUITES：tools/check_fn_inventory.js
+OK                   M7 给已落地函数打「未实现」标记（F3 反向防腐）  rc=1 red=True expect_red=True
+INFO                 M7 给已落地函数打「未实现」标记（F3 反向防腐） · 点名  ❌ F3 反向：「未实现」标记未过期（标记了却已落地 ⇒ 判红） · 已落地仍标未实现：getShopList
+
+=== 还原后基线 ===
+guard rc = 0
+coverage rc = 0
