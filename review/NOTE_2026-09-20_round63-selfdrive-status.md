@@ -2,6 +2,7 @@
 
 > 仓库 `C:\Users\lzj\WorkBuddy\Claw\catering-profit`；证据 `review/evidence/selfdrive_20260920_r63/`（9 个文件，已 `ls` 回读）。
 > 本轮性质：**队列全清** ⇒ 按技能 §0.10 做「防回潮扫描」⇒ 抓出**同族病第 7 例**并做成守卫。
+> commit：**本 NOTE `26e13c4`**；守卫与文档改动（feat 件）**`610b3ac`**；两者均已推 dev 且两方一致。
 
 ## 0. 一句话结论
 
