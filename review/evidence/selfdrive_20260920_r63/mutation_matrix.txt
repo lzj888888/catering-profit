@@ -1,0 +1,9 @@
+MUTATION                               VERDICT              RC     NOTE
+M1 正文加一个占位符（漏）                         OK                   RC=1   实扫 7 ≠ 声明 6 | ❌ P5 全部口径声明 ≡ 实扫 7 处 —— 不符：specs/dev-specs/上线材料_隐私政策_v1.md:88 写 6 | specs/dev-specs/上线材料_提
+M2 唯一声明处换措辞（错杀）                        OK                   RC=0   保留标记+数字 ⇒ 仍绿
+M3 删唯一声明处（fail-closed）                 OK                   RC=1   标记命中 < 3 且 P6 零命中 | ❌ P6 「唯一声明处」恰 1 处且在隐私政策内（口径单源） —— 零命中
+M4 重启键引用改回 7（第 7 例回归）                  OK                   RC=1   声明 7 ≠ 实扫 6 | ❌ P5 全部口径声明 ≡ 实扫 6 处 —— 不符：specs/dev-specs/★知识存储点_2026-09-10.md:232 写 7
+M5 元描述拿出反引号（规则生效）                      OK                   RC=1   裸 【…】 被计入 ⇒ 7 ≠ 6 | ❌ P5 全部口径声明 ≡ 实扫 7 处 —— 不符：specs/dev-specs/上线材料_隐私政策_v1.md:87 写 6 | specs/dev-specs/上线材料_提
+M6 扫描面路径写错（P1）                         OK                   RC=1   扫描面 fail-closed | ❌ P1 扫描面三个文件均存在 —— 缺失：specs/dev-specs/上线材料_隐私政策_v9.md
+
+BAD=0 / TOTAL=6
