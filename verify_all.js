@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：69 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：70 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -133,6 +133,14 @@ const SUITES = [
   //       与 R86「索引已建≠生效」同族：判据存在 ≠ 判据被自动执行。此套件把「覆盖率」本身变成被校验对象
   //       ⇒ 第三次同类疏漏会在门禁当场转红，不再依赖某轮巡检恰好扫到。
   ['suite-coverage',         'tools/check_suite_coverage.js'],
+  // 套件数口径守卫（round61）：R59 只守本文件头注 ≡ SUITES.length，而重启键
+  //       specs/dev-specs/★知识存储点_2026-09-10.md 的两处「套件数」是**人工维护面**（该文件自己就写着
+  //       「改 SUITES 后两处都要跟，否则重启键自相矛盾而 A–L 无一组能发现」）。
+  //       round60 新增第 69 个套件后确实漏跟 ⇒ round61 实扫：重启键两处仍写 68、实算 69（漂移已发生且无人报警）。
+  //       与 R86「索引已建≠生效」、round53「判据存在≠被执行」同族：权威入口写的数 ≠ 机器实算的数。
+  //       此套件把「口径 ≡ 实算」变成常驻断言；历史陈述（review/ 下的旧计数）按只增不改放行，
+  //       并用前提守卫证明排除面没打错。
+  ['suite-count-claims',     'tools/check_suite_count_claims.js'],
   // 后续批次的套件在此追加即可（如 batch2_selfcheck ...）；追加后记得同步头部注释里的套件数量。
 ];
 

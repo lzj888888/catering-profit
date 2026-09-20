@@ -1,0 +1,22 @@
+MUTATION_APPLIED M1
+❌ C2-② 重启键 §1.1 一键校验入口行的套件数 ≡ N · 文档 68 / 实算 70
+  M1 期望=RED 实际RC=1 ⇒ ✔如期转红
+MUTATION_APPLIED M2
+  M2 期望=GREEN 实际RC=0 ⇒ ✔仍绿(不错杀)
+MUTATION_APPLIED M3
+❌ C3 面内 3 处「第 N 套件」序号声明全部对得上 · specs/dev-specs/上线材料_提审材料包_v1.md:29 第 61 套件 ≠ 实为 tools/selftest_batch8c.js（同行未点名该脚本，或序号已错）
+  M3 期望=RED 实际RC=1 ⇒ ✔如期转红
+MUTATION_APPLIED M4
+❌ C2-② 重启键 §1.1 一键校验入口行的套件数 ≡ N · 未找到「一键校验入口」行 ⇒ fail-closed
+❌ C4 面 A 三处声明 + 序号面全部有命中 · 头注/§1.1/会漂行/序号声明 = true/false/true/3
+  M4 期望=RED 实际RC=1 ⇒ ✔如期转红
+MUTATION_APPLIED M5
+❌ C5 review/ 历史计数陈述存在（排除面没打错、放行规则确有必要） · 历史陈述文件 0 个 ⇒ 若确已清理，须同步改本守卫的排除面
+  M5 期望=RED 实际RC=1 ⇒ ✔如期转红
+MUTATION_APPLIED M7
+❌ C6 自身文件「第 N 套件」仅出现在注释行 · 非注释行命中：tools/check_suite_count_claims.js:254
+  M7 期望=RED 实际RC=1 ⇒ ✔如期转红
+MUTATION_APPLIED M6
+❌ S5 面 A 70 个判据零漏网 · 未挂 SUITES：tools/check_suite_count_claims.js
+   ❌ S5 面 A 70 个判据零漏网 · 未挂 SUITES：tools/check_suite_count_claims.js
+  M6 期望=RED 实际RC=1 ⇒ ✔如期转红

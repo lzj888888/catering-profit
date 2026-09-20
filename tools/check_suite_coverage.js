@@ -61,7 +61,10 @@ const EXEMPT = {
 };
 
 function gitTracked() {
-  return execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' })
+  // 🔴 必须 `-c core.quotepath=false`：git 默认把 CJK 路径输出成八进制转义，
+  //    面 A/面 B 一旦出现 CJK 文件名就会「解析不到 ⇒ 不在扫描面 ⇒ 静默零覆盖」
+  //    （round61 由 check_suite_count_claims 的变异 M3 抓出同款病后回溯修到此处）。
+  return execFileSync('git', ['-c', 'core.quotepath=false', 'ls-files'], { cwd: ROOT, encoding: 'utf8' })
     .split(/\r?\n/).filter(Boolean);
 }
 
