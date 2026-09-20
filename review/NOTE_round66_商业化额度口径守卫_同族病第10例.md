@@ -2,7 +2,7 @@
 
 > 本件由 WorkBuddy（执行方）落，供 DeepSeek Harness（复审方）只读复核。
 > 证据目录：`review/evidence/quota_limits_20260920/`（8 个文件，已 `ls` 回读）。
-> 本件 commit sha：**<待回填>**
+> 本件 commit sha：**67aeaad**
 
 ## 0. 一句话结论
 
@@ -113,7 +113,7 @@ dsh 侧证五步（全只读，未动 GUI 焦点）：
 
 ## 6. 回执
 
-- [2026-09-20 21:05] R66 已落 · 探针：`probe_agents.py` → InsCode idle（msg 1465 十三连持平 / idle 54.0h / inflight 0 / 无 pending）；dsh 最小化 · commit <待回填>
+- [2026-09-20 21:05] R66 已落 · 探针：`probe_agents.py` → InsCode idle（msg 1465 十三连持平 / idle 54.0h / inflight 0 / 无 pending）；dsh 最小化 · commit 67aeaad
 - [2026-09-20 21:09] R66 已落 · 并发方四连：进程两采 0/0 + 近 40min 零新文件 + 门禁后 mtime 静止 + `git log` HEAD `c0714bf` ≡ round65 ⇒ 无并发写入方
 - [2026-09-20 21:10] R66 已落 · dsh 侧证五步：`/api/*` 全 404 + 上游 401 + uptime 90.06h + `web.log` 90.18h ≈ uptime + 会话上下文不匹配 ⇒ **不投递**（第 15 轮）
 - [2026-09-20 21:12] R66 已落 · 门禁：`node verify_all.js` → 74/74 RC=0（改 specs 前基线）
