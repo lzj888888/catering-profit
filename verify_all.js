@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：73 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：74 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -160,6 +160,12 @@ const SUITES = [
   //       此套件做「单源声明 ≡ §C 实算行数 ≡ 全仓引用」三方比对；裸扫「N 条红线」会误杀校订说明行，
   //       故口径以语义标记编码进文本 + 历史行靠上下文标记放行，并用前提守卫证明排除面生效。
   ['redline-inventory',      'tools/check_redline_inventory.js'],
+  // 功能页面清单口径守卫 R101（round65）：提审材料 §4「功能页面清单」是递交给微信审核的材料，
+  //       而 R44（tools/check_pages.js）只守 app.json ↔ pages/ 文件，**不看提审材料一个字**
+  //       ⇒ 加/删页面时材料清单静默过期，零守卫。同族第 9 例（人工陈述面 ≡ 实然）。
+  //       此套件做「单源声明 ≡ app.json::pages 实算 ≡ §4 表格逐条双向」比对；
+  //       裸扫「N 页」会误杀导出分页页数与子集页数，故判据用「全集语义锚点就近」两条腿。
+  ['page-manifest',          'tools/check_page_manifest.js'],
   // 后续批次的套件在此追加即可（如 batch2_selfcheck ...）；追加后记得同步头部注释里的套件数量。
 ];
 
