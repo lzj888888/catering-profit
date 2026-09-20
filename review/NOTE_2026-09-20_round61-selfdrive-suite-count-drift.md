@@ -106,19 +106,21 @@ M2 首轮判「误杀」，实为**本守卫自己的注释里写了「第 66 �
 
 ## 6. 回执
 
-- [2026-09-20 13:26] R61-01 探针（InsCode idle 46.3h / msg 1465 八连持平、无待批；dsh 第 11 轮不可用）· **已落** · 证据：`probe_agents.py` → `inflight:0, verdict:idle` / `/api/*` 全 404、`web.log` mtime 2026-09-17 02:59 · commit 见 §7
-- [2026-09-20 13:28] R61-02 并发写入方判定 · **已落（判无）** · 证据：进程两采 0/0（`_proc_scan_r61.txt`）+ `git status` M=0 + 证据目录静止 + HEAD≡上轮 · commit 见 §7
-- [2026-09-20 13:40] R61-03 **重启键套件数漂移实锤** · **已落** · 证据：`node tools/check_suite_count_claims.js` → `❌ C2-② 文档 68 / 实算 69`、`❌ C2-③ 文档 68 / 实算 69`，RC=1（`count_claims_before2.txt`）· commit 见 §7
-- [2026-09-20 13:44] R61-04 修正口径（重启键两处 68→70 + 演进链补 69/70；`verify_all.js` 头注 69→70 + SUITES 追加）· **已落** · 证据：`count_claims_after.txt` → `9 通过 / 0 失败` RC=0 · commit 见 §7
-- [2026-09-20 13:52] R61-05 双向变异 7 组（M1–M5/M7 红、M2 绿、M6 覆盖层红）· **已落** · 证据：`mutations3.txt` 七行全「✔如期」 · commit 见 §7
-- [2026-09-20 13:47] R61-06 **CJK quotepath 静默跳过**修复（两个守卫 + fail-closed 断言）· **已落** · 证据：`git -c core.quotepath=false ls-files | grep 上线材料` 命中；M3 由假绿转红 · commit 见 §7
-- [2026-09-20 13:49] R61-07 门禁 · **已落** · 证据：`verify_all.js` → `总览：70/70 套件通过` RC=0；A–L RC=0；AD 24/24；UI 31/31 · commit 见 §7
-- [2026-09-20 13:50] R61-08 队列五项复验 · **已落（全闭环、无一回潮）** · 证据：见 §3（UI 31/31、AD 24/24、G1 0 命中、G2 15 命中人工判读合规）· commit 见 §7
+- [2026-09-20 13:26] R61-01 探针（InsCode idle 46.3h / msg 1465 八连持平、无待批；dsh 第 11 轮不可用）· **已落** · 证据：`probe_agents.py` → `inflight:0, verdict:idle` / `/api/*` 全 404、`web.log` mtime 2026-09-17 02:59 · commit `7c84e5d`
+- [2026-09-20 13:28] R61-02 并发写入方判定 · **已落（判无）** · 证据：进程两采 0/0（`_proc_scan_r61.txt`）+ `git status` M=0 + 证据目录静止 + HEAD≡上轮 · commit `7c84e5d`
+- [2026-09-20 13:40] R61-03 **重启键套件数漂移实锤** · **已落** · 证据：`node tools/check_suite_count_claims.js` → `❌ C2-② 文档 68 / 实算 69`、`❌ C2-③ 文档 68 / 实算 69`，RC=1（`count_claims_before2.txt`）· commit `7c84e5d`
+- [2026-09-20 13:44] R61-04 修正口径（重启键两处 68→70 + 演进链补 69/70；`verify_all.js` 头注 69→70 + SUITES 追加）· **已落** · 证据：`count_claims_after.txt` → `9 通过 / 0 失败` RC=0 · commit `7c84e5d`
+- [2026-09-20 13:52] R61-05 双向变异 7 组（M1–M5/M7 红、M2 绿、M6 覆盖层红）· **已落** · 证据：`mutations3.txt` 七行全「✔如期」 · commit `7c84e5d`
+- [2026-09-20 13:47] R61-06 **CJK quotepath 静默跳过**修复（两个守卫 + fail-closed 断言）· **已落** · 证据：`git -c core.quotepath=false ls-files | grep 上线材料` 命中；M3 由假绿转红 · commit `7c84e5d`
+- [2026-09-20 13:49] R61-07 门禁 · **已落** · 证据：`verify_all.js` → `总览：70/70 套件通过` RC=0；A–L RC=0；AD 24/24；UI 31/31 · commit `7c84e5d`
+- [2026-09-20 13:50] R61-08 队列五项复验 · **已落（全闭环、无一回潮）** · 证据：见 §3（UI 31/31、AD 24/24、G1 0 命中、G2 15 命中人工判读合规）· commit `7c84e5d`
 - [2026-09-20 13:26] R61-09 dsh 复审请求投递 · **未落** · 理由：后端 `/api/*` 全 404 + 会话上下文为「餐饮闭店决策指标模型咨询」与仓库不符 ⇒ 投了是上下文污染 · 证据：见 §1
 - [2026-09-20 13:26] R61-10 并发方 1033 个过程 PNG · **未落（不代提交不代删）** · 理由：归属待李老师裁决，round58 起实测数量未变 · 证据：`git status --short | wc -l` = 1034
 - [2026-09-20 13:26] R61-11 R86 超时值回读 · **未落（按 round50 结论不再回读）** · 理由：三方一致 42/42 已「稳定保持」；保留提醒：建 prod 须重走定值与回读 · 证据：round46/round50 证据目录
 
 ## 7. 提交
+
+主体 commit ****（本 NOTE 的 sha 回填见紧随其后的 docs commit）。
 
 本轮改动：`tools/check_suite_count_claims.js`（新）、`tools/check_suite_coverage.js`（quotepath 修复）、
 `verify_all.js`（头注 69→70 + SUITES 第 70 项）、`specs/dev-specs/★知识存储点_2026-09-10.md`（两处口径 + 演进链）、
