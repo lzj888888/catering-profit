@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：74 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：75 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -166,6 +166,14 @@ const SUITES = [
   //       此套件做「单源声明 ≡ app.json::pages 实算 ≡ §4 表格逐条双向」比对；
   //       裸扫「N 页」会误杀导出分页页数与子集页数，故判据用「全集语义锚点就近」两条腿。
   ['page-manifest',          'tools/check_page_manifest.js'],
+  // 第 75 套件（round66 新增，R102）：商业化额度口径守卫 tools/check_quota_limits.js
+  //       同族病第 10 例：免费/硬上限额度是**收钱口径**，单源 = checkQuota/service.js 的
+  //       FREE_LIMIT{shop:1,cost_card:3} / HARD_LIMIT{shop:200,cost_card:2000}，
+  //       却被抄进 6 份 .md。实扫发现 core/04_核对清单.md:70 仍写「M3 成本卡免费上限 8」（v1.1 旧值，
+  //       v1.3 已改 3），而**同文件** :55/:64/:117 三处写 3、代码也是 3 ⇒ 上线前核对清单自相矛盾。
+  //       裸扫「N 张」必误杀（OBSOLETE 历史版、演进链「8→3」、「第 4 张触发」序号、core/12 的云资源「硬上限」）
+  //       ⇒ 判据用「类别锚点就近 + 额度语义 + 版本号/单位数排除」三条腿。
+  ['quota-limits',           'tools/check_quota_limits.js'],
   // 后续批次的套件在此追加即可（如 batch2_selfcheck ...）；追加后记得同步头部注释里的套件数量。
 ];
 
