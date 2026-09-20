@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：68 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：69 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -128,6 +128,11 @@ const SUITES = [
   //       豁免 EXEMPT 与待裁决 DEFERRED 均须带 by/date/reason，且双向防腐（僵尸豁免也判红）。
   //       根因与 R86「索引已建≠生效」、round53「verify_docx.py 未挂 SUITES」同族：判据存在 ≠ 被自动执行）=====
   ['terms-forbidden',        'tools/check_terms_forbidden.js'],
+  // SUITES 覆盖守卫 R93（round60）：本仓两次踩「新判据忘了挂 SUITES 且无人报警」——
+  //       round53 的 tools/verify_docx.py（权威判据却从未登记）、round55 的 TERMS.forbidden（零守卫引用）。
+  //       与 R86「索引已建≠生效」同族：判据存在 ≠ 判据被自动执行。此套件把「覆盖率」本身变成被校验对象
+  //       ⇒ 第三次同类疏漏会在门禁当场转红，不再依赖某轮巡检恰好扫到。
+  ['suite-coverage',         'tools/check_suite_coverage.js'],
   // 后续批次的套件在此追加即可（如 batch2_selfcheck ...）；追加后记得同步头部注释里的套件数量。
 ];
 

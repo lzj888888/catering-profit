@@ -1,0 +1,34 @@
+RC=1
+===== S1 前置：git 列表可用（fail-closed）=====
+✅ S1 能在仓库根执行 git ls-files · 跟踪文件 1233 个
+
+===== S2 前置：SUITES 块可解析（fail-closed）=====
+✅ S2 verify_all.js 的 SUITES 块解析成功 · SUITES 条目 70 个
+
+===== S3 前置：面 A 扫描结果非空（fail-closed）=====
+✅ S3 面 A（生产判据脚本）非空 · 面 A 共 69 个
+
+===== S4 判据本体存在：SUITES 引用的文件不得缺失 =====
+✅ S4 SUITES 引用的 70 个文件全部存在 · 零缺失
+
+===== S5 覆盖：面 A 每个判据都已挂进 SUITES =====
+✅ S5 面 A 69 个判据零漏网 · 全部已挂（含间接包装）
+
+===== S6 证据目录：面 B 判据类脚本须逐条豁免 =====
+✅ S6 面 B 4 个取证脚本全部在豁免清单内 · 全部已登记
+
+===== S7 双向防腐：豁免清单无僵尸条目 =====
+✅ S7 豁免清单 4 条无僵尸 · 条目 ≡ 面 B
+
+===== S8 前提守卫：被豁免的证据脚本不得被 SUITES 引用 =====
+❌ S8 面 B 零个脚本被 SUITES 引用 · 实为生产判据、不该豁免：review/evidence/ui_fix_20260918/verify_ui_fix.js
+
+===== SUITES 覆盖守卫结果：7 通过 / 1 失败 =====
+   ❌ S8 面 B 零个脚本被 SUITES 引用 · 实为生产判据、不该豁免：review/evidence/ui_fix_20260918/verify_ui_fix.js
+
+修复指引：
+  1) S5 红（有判据没挂 SUITES）：在 verify_all.js 的 SUITES 末尾追加一项，
+     并同步头部注释「// 串联：N 个套件」（R59 守卫会校验 N ≡ SUITES.length）；
+     .py 判据不能直接挂（runner 只跑 node），需写薄包装 .js 并在其中按相对路径调用它。
+  2) S6 红：新取证脚本补 EXEMPT（by/date/reason）；S7 红：删除已失效的豁免条目。
+  3) S8 红：该脚本已被当生产判据用 ⇒ 移出 review/evidence/ 并挂进 SUITES，不要继续豁免。
