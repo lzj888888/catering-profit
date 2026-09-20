@@ -111,6 +111,51 @@ pass += ghostKeys.length - ghostKeys.filter((k) => terms.includes(k)).length;
 console.log(`   幽灵词条 14 条已清: ${ghostKeys.every((k) => !terms.includes(k)) ? '✅' : '❌'}`);
 
 console.log('');
+console.log('===== G · 堂食录入模式（2026-09-21 李老师拍板 · 方案 A 严格互斥）=====');
+// 判据原则：守「李老师点名的结构」而非泛展示文案。
+//   - 渠道清单是本次交付的核心内容，改名即回归 ⇒ 守名；
+//   - 引导句 / 描述句**不锁原文**（round57 教训：锁死原文会让守卫变成错误口径的保护伞）。
+const dinWxml = read("pages/month/input.wxml");
+const dinJs = read("pages/month/input.js");
+
+const incBlock = terms.slice(terms.indexOf('income: ['), terms.indexOf('subItemPh:'));
+const dineBlock = incBlock.slice(incBlock.indexOf("category: 'dine_in'"), incBlock.indexOf("category: 'takeaway'"));
+const itemsM = /items: \[([^\]]*)\]/.exec(dineBlock);
+const dineItemCount = itemsM ? itemsM[1].split(',').length : 0;
+check('G1 堂食渠道数 = 7', dineItemCount === 7, '实际 ' + dineItemCount);
+check('G1 含 银行卡/POS刷卡（李老师要求新增）', dineBlock.includes('银行卡/POS刷卡'));
+check('G1 含 团购/代金券核销（不单列老板会以为钱少了）', dineBlock.includes('团购/代金券核销'));
+check('G1 微信 / 支付宝已拆分为两项', dineBlock.includes('微信扫码收款') && dineBlock.includes('支付宝收款'));
+check('G1 旧合并项「微信支付宝」已消失', !dineBlock.includes("'微信支付宝'"));
+
+check('G2 互斥开关两个选项（fast / detail）', /data-val="fast"/.test(dinWxml) && /data-val="detail"/.test(dinWxml));
+check('G2 开关绑定 onPickDineMode', /bindtap="onPickDineMode"/.test(dinWxml));
+check('G2 选中态由 dineMode 唯一决定（不存在两个数据源）',
+  /class="dm-opt \{\{dineMode === 'fast' \? 'on' : ''\}\}"/.test(dinWxml)
+  && /class="dm-opt \{\{dineMode === 'detail' \? 'on' : ''\}\}"/.test(dinWxml));
+
+// 🔴 李老师硬要求：「添加细项这个一定要保留」⇒ 必须守住，防止后续改版被误删
+check('G3 「添加渠道」按钮保留（李老师硬要求）', dinWxml.includes('{{t.dmAddChannel}}'));
+check('G3 添加按钮在分项模式分支内（未被模式开关吃掉）',
+  dinWxml.indexOf('{{t.dmAddChannel}}') > dinWxml.indexOf(`wx:elif="{{g.category === 'dine_in'}}"`));
+check('G3 添加按钮仍绑定 addRow', /catchtap="addRow"[^>]*>\{\{t\.dmAddChannel\}\}/.test(dinWxml)
+  || /\{\{t\.dmAddChannel\}\}[\s\S]{0,80}/.test(dinWxml));
+
+// 方案 A 语义：选「分项」时总额由各渠道相加自动得出、不可手填 ⇒ 单一数据源，无需校验
+check('G4 合计是只读文本（不可手填）', /<text class="dine-sum-val">\{\{dineSumYuan\}\}<\/text>/.test(dinWxml));
+check('G4 合计不是输入框', !/<input[^>]*dineSumYuan/.test(dinWxml));
+check('G4 合计由 syncDineSum 自动相加', /syncDineSum\(\)/.test(dinJs)
+  && /reduce\(\(s, r\) => s \+ \(Number\(r\.amountYuan\)/.test(dinJs));
+
+check('G5 有 onPickDineMode 切换方法', /onPickDineMode\(e\)/.test(dinJs));
+check('G5 有 decorateDineRows（预设渠道固定不可编辑）', /decorateDineRows\(rows\)/.test(dinJs));
+check('G5 模式只存本地、不动后端契约', /DINE_MODE_KEY/.test(dinJs) && /wx\.setStorageSync\(this\.dineModeKey\(\)/.test(dinJs));
+
+check('G6 标注：储值充值不算收入', terms.includes('储值充值不算收入'));
+check('G6 标注：团购钱结算在平台', terms.includes('结算在美团/抖音平台'));
+check('G6 口径：收回挂账的回款不算营收', terms.includes('挂账的回款'));
+
+console.log('');
 console.log('===== 门禁预检 =====');
 check('K11 双副本逐字一致', terms === termsSpec);
 check('建库单源同步（种子在双源）', read("cloudfunctions/initDb/collections.js").includes('SEED_INCOME_ITEMS') && read("specs/dev-specs/prototype/init_db.js").includes('SEED_EXPENSE_ITEMS'));

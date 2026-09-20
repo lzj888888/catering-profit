@@ -11,6 +11,8 @@ const ui = require('../../utils/ui.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 
 const DRAFT_KEY = 'draft_month_input_';
+// 堂食录入模式（快速 / 分项）**仅存本地**，不动后端契约；换设备或清缓存回默认，默认值由数据推断
+const DINE_MODE_KEY = 'dine_mode_';
 
 Page({
   data: {
@@ -57,6 +59,19 @@ Page({
       saveArchiveOverride: TERMS.inputPage.saveArchiveOverride,
       confirmGraceSave: TERMS.inputPage.confirmGraceSave,
       confirmLocked: TERMS.inputPage.confirmLocked,
+      // 堂食录入模式（2026-09-21 李老师拍板 · 方案 A 严格互斥）
+      dmSecTitle: TERMS.ledger.dineMode.secTitle,
+      dmFast: TERMS.ledger.dineMode.fast,
+      dmFastDesc: TERMS.ledger.dineMode.fastDesc,
+      dmDetail: TERMS.ledger.dineMode.detail,
+      dmDetailDesc: TERMS.ledger.dineMode.detailDesc,
+      dmFastField: TERMS.ledger.dineMode.fastField,
+      dmFastHint: TERMS.ledger.dineMode.fastHint,
+      dmDetailHint: TERMS.ledger.dineMode.detailHint,
+      dmSumLabel: TERMS.ledger.dineMode.sumLabel,
+      dmSumAutoHint: TERMS.ledger.dineMode.sumAutoHint,
+      dmAddChannel: TERMS.ledger.dineMode.addChannel,
+      dmChannelPh: TERMS.ledger.dineMode.channelPh,
       cur: '¥',
       loading: TERMS.ui.loading,
     },
@@ -69,6 +84,8 @@ Page({
     incomeGroups: [],          // [{ category, label, items(模板), expanded, rows }]
     expenseGroups: [],
     fillGuideOpen: false,      // E2：顶部「填写口径」折叠块（默认收起）
+    dineMode: 'fast',          // 堂食录入模式：'fast' | 'detail'（严格互斥；方案 A）
+    dineSumYuan: '0.00',       // 分项模式：各渠道相加**自动算出**（预计算，WXML 不支持方法调用）
     directConsumeYuan: '',
     // 核算方式（就地二选一）：真值以服务端 switches 为准；改动即时写库，失败回滚
     inventoryOn: false,
@@ -117,9 +134,13 @@ Page({
       return {
         category: g.category, label: g.label, items: g.items || [],
         scope: (scopeMap || {})[g.category] || '',
-        expanded: false, rows, showRows: rows,
+        expanded: false,
+        rows: g.category === 'dine_in' ? this.decorateDineRows(rows) : rows,
+        showRows: rows,
       };
-    });
+    }).map((g) => (g.category === 'dine_in'
+      ? Object.assign({}, g, { showRows: g.rows })
+      : g));
     this.setData({
       incomeGroups: mk(TERMS.ledger.income, TERMS.ledger.incomeScope),
       expenseGroups: mk(TERMS.ledger.expense, TERMS.ledger.expenseScope),
@@ -145,11 +166,16 @@ Page({
         }
       }
       const expanded = rows.length > 1;
-      return {
+      const out = {
         category: g.category, label: g.label, items: g.items || [],
         scope: (scopeMap || {})[g.category] || '',
         expanded, rows, showRows: expanded ? rows : rows.slice(0, 1),
       };
+      if (g.category === 'dine_in') {
+        out.rows = this.decorateDineRows(rows);
+        out.showRows = expanded ? out.rows : out.rows.slice(0, 1);
+      }
+      return out;
     });
   },
 
@@ -183,6 +209,7 @@ Page({
         inventory: d.inventory || {},          // 原样带回，库存页保存时不丢
         incomeGroups,
         expenseGroups,
+        dineMode: this.pickDineMode(incomeGroups),
         inventoryOn, amortizeOn, invSummary,
         directConsumeYuan: directConsumeYuan || this.data.directConsumeYuan,
         loading: false,
@@ -195,7 +222,16 @@ Page({
     }
   },
 
+  // 堂食模式初始判定：本地缓存优先；无缓存则按数据推断（细项行 > 1 ⇒ 分项）
+  pickDineMode(incomeGroups) {
+    const cached = this.loadDineMode();
+    if (cached) return cached;
+    const g = (incomeGroups || []).find((x) => x.category === 'dine_in');
+    return (g && g.rows && g.rows.length > 1) ? 'detail' : 'fast';
+  },
+
   // ===== 大类展开/收起 =====
+  // ⚠️ 堂食走「快速 / 分项」模式开关（dineMode），不再用这里的手风琴展开
   onToggleGroup(e) {
     const kind = e.currentTarget.dataset.kind;   // 'income' | 'expense'
     const idx = Number(e.currentTarget.dataset.idx);
@@ -227,6 +263,7 @@ Page({
     g.showRows = g.expanded ? rows : rows.slice(0, 1);
     groups[gidx] = g;
     this.setData({ [key]: groups });
+    this.syncDineSum();
   },
   addRow(e) {
     const { kind, gidx } = e.currentTarget.dataset;
@@ -234,9 +271,11 @@ Page({
     const groups = this.data[key].slice();
     const g = Object.assign({}, groups[Number(gidx)]);
     g.rows = g.rows.concat([{ subItem: '', amountYuan: '' }]);
+    g.rows = g.category === 'dine_in' ? this.decorateDineRows(g.rows) : g.rows;
     g.showRows = g.rows;
     groups[Number(gidx)] = g;
     this.setData({ [key]: groups });
+    this.syncDineSum();
   },
   delRow(e) {
     const { kind, gidx, ridx } = e.currentTarget.dataset;
@@ -246,10 +285,92 @@ Page({
     let rows = g.rows.slice();
     rows.splice(Number(ridx), 1);
     if (rows.length === 0) rows = [{ subItem: '', amountYuan: '' }]; // 至少保留一行（老板只填一行也能走）
-    g.rows = rows;
-    g.showRows = g.expanded ? rows : rows.slice(0, 1);
+    g.rows = g.category === 'dine_in' ? this.decorateDineRows(rows) : rows;
+    g.showRows = g.expanded ? g.rows : g.rows.slice(0, 1);
     groups[Number(gidx)] = g;
     this.setData({ [key]: groups });
+    this.syncDineSum();
+  },
+
+  // ===== 堂食录入模式（严格互斥二选一 · 方案 A）=====
+  // ⚠️ 方案 A 语义：选「分项」时总额由各渠道相加**自动得出、不可手填** ⇒ 单一数据源，
+  //    天然一致，压根不需要「分项之和==总额」的校验（互斥单选下两模式不并存，本就无两值可比）。
+  // ⚠️ fast → detail：总额无法凭空拆分 ⇒ 暂放第一行并提示，数据不丢（不清空用户已填的总额）。
+  // ⚠️ detail → fast：把合计写回单行，无损。
+  // ⚠️ 模式只存本地（wx.setStorageSync），不动后端；换设备/清缓存回默认，默认值由数据推断。
+
+  // 堂食预设渠道行：名称固定不可编辑（省出宽度给金额框），并挂渠道口径标注
+  decorateDineRows(rows) {
+    const def = TERMS.ledger.income.find((g) => g.category === 'dine_in');
+    const items = (def && def.items) || [];
+    const notes = TERMS.ledger.channelNotes || {};
+    return (rows || []).map((r) => ({
+      subItem: r.subItem || '',
+      amountYuan: r.amountYuan || '',
+      fixed: !!r.subItem && items.indexOf(r.subItem) >= 0,
+      note: notes[r.subItem] || '',
+    }));
+  },
+
+  // 分项模式合计（预计算，WXML 不支持方法调用）
+  syncDineSum() {
+    const g = this.data.incomeGroups.find((x) => x.category === 'dine_in');
+    if (!g) return;
+    const sum = (g.rows || []).reduce((s, r) => s + (Number(r.amountYuan) || 0), 0);
+    this.setData({ dineSumYuan: sum ? sum.toFixed(2) : '0.00' });
+  },
+
+  dineModeKey() {
+    const app = getApp();
+    const shopId = (app && app.globalData && app.globalData.shop_id) || '';
+    return DINE_MODE_KEY + shopId + '_' + this.data.month;
+  },
+  saveDineMode(m) { try { wx.setStorageSync(this.dineModeKey(), m); } catch (e) { /* 存不了不影响填表 */ } },
+  loadDineMode() {
+    try {
+      const v = wx.getStorageSync(this.dineModeKey());
+      if (v === 'fast' || v === 'detail') return v;
+    } catch (e) { /* 读不到 → 由数据推断 */ }
+    return null;
+  },
+
+  onPickDineMode(e) {
+    if (this.data.readOnly) {
+      wx.showModal({
+        title: TERMS.inputPage.archiveReadonly,
+        content: TERMS.inputPage.confirmLocked,
+        showCancel: false,
+      });
+      return;
+    }
+    const val = e.currentTarget.dataset.val === 'detail' ? 'detail' : 'fast';
+    if (this.data.dineMode === val) return;
+    const gi = this.data.incomeGroups.findIndex((g) => g.category === 'dine_in');
+    if (gi < 0) return;
+    const groups = this.data.incomeGroups.slice();
+    const g = Object.assign({}, groups[gi]);
+
+    if (val === 'detail') {
+      // 只有一行（总额）时，铺开预设渠道并把总额暂放第一行 —— 系统不知道拆分比例，只能交给人
+      if (g.rows.length <= 1) {
+        const total = (g.rows[0] && g.rows[0].amountYuan) || '';
+        const def = TERMS.ledger.income.find((x) => x.category === 'dine_in');
+        const seed = ((def && def.items) || []).map((name, i) => ({ subItem: name, amountYuan: i === 0 ? total : '' }));
+        g.rows = this.decorateDineRows(seed.length ? seed : [{ subItem: '', amountYuan: total }]);
+        if (total) wx.showToast({ title: TERMS.ledger.dineMode.splitNotice, icon: 'none' });
+      }
+      g.expanded = true;
+    } else {
+      // 收拢为单行总额（各渠道相加，无损）
+      const sum = (g.rows || []).reduce((s2, r) => s2 + (Number(r.amountYuan) || 0), 0);
+      g.rows = this.decorateDineRows([{ subItem: '', amountYuan: sum ? sum.toFixed(2) : '' }]);
+      g.expanded = false;
+    }
+    g.showRows = g.rows;
+    groups[gi] = g;
+    this.setData({ incomeGroups: groups, dineMode: val });
+    this.syncDineSum();
+    this.saveDineMode(val);
   },
 
   onDirectConsume(e) { this.setData({ directConsumeYuan: e.detail.value }); },
