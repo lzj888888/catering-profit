@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：77 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：78 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -183,6 +183,15 @@ const SUITES = [
   //       权限模式白名单 + 序号连续 + 三道前提守卫（防列错位零命中假绿）。
   ['collection-perms',       'tools/check_collection_perms.js'],
   ['privacy-collection',     'tools/check_privacy_collection.js'],
+  // 第 78 套件（round69 新增，R105）：验收自检通过数口径守卫 tools/check_acceptance_counts.js
+  //   根因＝《02_模拟测试数据集》是验收唯一标准，其机器落点 verify_seed_data.js 的**通过数**
+  //   被 5 处文档记成 41、实跑已是 48（同一份重启键里 §1.1 行写 48/48、另一处却仍写 41/41；
+  //   verify_all.js 收尾注释也早写着 48）⇒ 与 round61 套件数同族第 13 例。
+  //   后果＝「期望通过数」被写低即**下界保护失效**：断言从 48 掉回 41 时文档仍说 41 符合预期
+  //   ⇒ 7 条断言静默丢失而验收照旧判绿。判据＝**真跑脚本**取实算（不抄字面量，fail-closed）
+  //   ≡ 唯一声明处（core/14 语义标记）≡ 全仓锚点就近的当前态引用（N/N 全绿 与 N 通过/M 失败
+  //   两种句式分别归一）+ HIST 排除面前提守卫。
+  ['acceptance-counts',      'tools/check_acceptance_counts.js'],
   // 后续批次的套件在此追加即可（如 batch2_selfcheck ...）；追加后记得同步头部注释里的套件数量。
 ];
 

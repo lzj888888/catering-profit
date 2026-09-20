@@ -1,0 +1,7 @@
+{
+  "inscode": {"inflight": 0, "message_count": 1465, "idle_sec": 211594.7,
+    "model": "deepseek-v4-flash", "permission": "auto",
+    "session": "# 批次 3 / 8 · POC2 BOM 两层嵌套...", "verdict": "idle"},
+  "dsh": {"hwnd": 855322, "rect": [-32000,-32000,-31763,-31961], "verdict": "minimized"},
+  "note": "探针 verdict 原文。InsCode msg=1465 十六连持平且 inflight=0 ⇒ 排除 InsCode 为写入方（其写码必然有 inflight 或消息数增长）"
+}

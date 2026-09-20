@@ -1,0 +1,35 @@
+
+===== A0 实算单源（真跑 verify_seed_data.js，不抄字面量） =====
+  ✅ A1-① 实跑可解析（fail-closed） —— 48 通过 / 0 失败
+  ✅ A1-② 实跑失败数为 0（验收锚点当前全绿）
+
+===== A2 扫描面（index ∪ 工作树 · CJK 不得被转义跳过） =====
+  ✅ A2-① 无 CJK 八进制转义路径（坑⑪） —— git ls-files 1354 条
+  ❌ A2-② 扫描面仅 39 个 .md，疑似路径写错（非恒真前提守卫）
+
+===== A3 唯一声明处 ≡ 实算 =====
+  ✅ A3-① 唯一声明处恰 1 处 —— specs/dev-specs/core/14_种子数据与验收脚本规范.md:29
+  ✅ A3-② 声明可解析出通过/失败数（fail-closed） —— 声明 48 通过 / 0 失败
+  ✅ A4-① 声明通过数 ≡ 实算 —— 声明 48 / 实跑 48
+  ✅ A4-② 声明失败数 ≡ 实算 —— 均为 0
+
+===== A5 全仓当前态引用 ≡ 实算 =====
+  ✅ A5-① 引用面命中 ≥3（扫描面/句式写错即零命中，非恒真） —— 4 处
+  ❌ A5-② specs/dev-specs/BRANCH_STRATEGY.md:41 写 48/48 ≠ 实算 48/0 —— - `prototype/`：POC 双利润/摊销/BOM 引擎 + M2 沙盘 `calcM2` + `init_db` 建库 + `seed_data`/`verify_see
+  ❌ A5-② specs/dev-specs/core/14_种子数据与验收脚本规范.md:24 写 48/48 ≠ 实算 48/0 —— | `verify_seed_data.js` | 本机自检：喂四计算原型断言 22 锚点 | 本机 node | **48/48 全绿** |
+  ❌ A5-② specs/dev-specs/delivery/inscode喂投包_8批_自包含完整版.md:144 写 48/48 ≠ 实算 48/0 —— - `verify_seed_data.js`：**本机自检脚本（无需云环境）**。把 `seed_data.js` 喂给四个计算原型，断言 22 项验收锚点 100% 命中（误差
+  ✅ A6-① HIST 排除面生效（确有历史/非当前态陈述被放行，非恒真） —— 2 处：specs/dev-specs/★知识存储点_2026-09-10.md:573, specs/dev-specs/★知识存储点_2026-09-10.md:585
+  ⚠️ 弱面（锚点不就近，只明示不判红，可能是子集/另一口径）12 处：
+     BATCH0_DELIVERY.md:5 写 20/0（最近锚点 Infinity 字符） —— > 自测：本机 `node cloudfunctions/common/__tests__/batch0_selfcheck.js` → **20 通过 / 0 失败 + 1 待办
+     BATCH0_DELIVERY.md:45 写 20/0（最近锚点 Infinity 字符） —— 合计：20 通过 / 0 失败（待办 1 项不计入失败）
+     BATCH1_DELIVERY.md:16 写 20/0（最近锚点 Infinity 字符） —— | 批次 0 自测**现场实测** | `node cloudfunctions/common/__tests__/batch0_selfcheck.js` → **20 通过 /
+     BATCH2_DELIVERY.md:14 写 20/0（最近锚点 Infinity 字符） —— | 批次 0 地基在库且冻结 | `node cloudfunctions/common/__tests__/batch0_selfcheck.js` → **20 通过 / 0 
+     BATCH2_DELIVERY.md:55 写 42/0（最近锚点 Infinity 字符） —— **42 通过 / 0 失败，EXIT=0**。判据为**整数分严格相等**（无容差）。
+     SMOKETEST_RUNBOOK.md:265 写 21/21（最近锚点 Infinity 字符） —— 实例：批次 0 生成方自测 21/21 全绿，仍掩盖 A1/A2 两个真 bug（mock 契约与平台不符）。
+     specs/dev-specs/core/13_上线前查缺补漏_决策与待办总览.md:136 写 4/4（最近锚点 Infinity 字符） —— 还原后 `saveCostCard` 29/29、`calcBom` 40/40、`syncCostCard` 4/4 全绿；套件 64/64、门禁 A–L RC=0。
+     specs/dev-specs/★知识存储点_2026-09-10.md:287 写 66/66（最近锚点 Infinity 字符） —— 但它**从未登记 SUITES** ⇒ 「门禁 66/66 全绿」这句话**不包含 docx 校验**，忘了跑就永远没人知道。
+
+===== A7 口径单源不扩散 =====
+  ✅ A7-① 仅 core/14 一处自称本口径单源
+
+===== 验收自检通过数口径守卫结果：10 通过 / 4 失败 =====

@@ -38,7 +38,7 @@ git -c url."git@github.com:".insteadOf="https://github.com/" push -u origin dev 
 `specs/dev-specs/` 已含：
 - `core/`：01 架构、02 测试集、03 写码提示词、04 核对清单、05 审计、06 工程治理、09 统一错误码、10 云函数契约、11 微信审核、12 云开发配额、13 上线查缺补漏、14 种子数据验收规范、Module A/M1/M2/M3 规范、商业化 v1.1/v1.4
 - `poc/`：POC1 摊销 / POC2 BOM / POC3 双利润
-- `prototype/`：POC 双利润/摊销/BOM 引擎 + M2 沙盘 `calcM2` + `init_db` 建库 + `seed_data`/`verify_seed_data`/`seed_demo` 验收套件（verify 41/41 全绿）
+- `prototype/`：POC 双利润/摊销/BOM 引擎 + M2 沙盘 `calcM2` + `init_db` 建库 + `seed_data`/`verify_seed_data`/`seed_demo` 验收套件（verify 48/48 全绿）
 - `i18n/terms.js`：文案 + 错误码映射
 - `★知识存储点_2026-09-10.md`（重启键，已同步至 v1.4 现状）、`商业化方案_v1.4_融合版.md`、`BRANCH_STRATEGY.md`、写码手册
 

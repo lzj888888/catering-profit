@@ -116,7 +116,7 @@
 
 - **三个文件（均在 `prototype/`）**：
   - `seed_data.js`：**验收输入的单一真相源**。把 S1~S4 用四个计算原型（calcMonthlyProfit / calcDishCost / calcAmortize / calcSandbox）的输入形状结构化表达，并携带预期输出值。
-  - `verify_seed_data.js`：**本机自检脚本（无需云环境）**。把 `seed_data.js` 喂给四个计算原型，断言 22 项验收锚点 100% 命中（误差 ≤ 0.01 元）。**当前已本机跑通：41/41 全绿**。
+  - `verify_seed_data.js`：**本机自检脚本（无需云环境）**。把 `seed_data.js` 喂给四个计算原型，断言 22 项验收锚点 100% 命中（误差 ≤ 0.01 元）。**当前已本机跑通：48/48 全绿**。
   - `seed_demo.js`：**云函数灌库脚本**。部署为云函数 `seedDemo`，在 initDb 之后手动调用一次，把同一份 `seed_data.js` 翻译为集合记录插入 dev 环境的 demo 测试店（shop_id=`shop_seed_demo`，与真实数据隔离；entitlement 解锁便于验收全额跑通）。
 - **运行顺序**：① 跑 `initDb`（建 25 集合+索引+套餐种子）→ ② 跑 `seedDemo`（灌 S1~S4 业务数据）→ ③ 前端/云函数按《02_模拟测试数据集》22 项清单逐项核对。
 - **详细规范**：`core/14_种子数据与验收脚本规范.md`（字段映射表、部署步骤、精度与隔离说明）。
