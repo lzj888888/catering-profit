@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：71 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：72 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -147,6 +147,12 @@ const SUITES = [
   //       同族第 6 例：同一事实两处写、无机器校验。此套件做「契约文档 ≡ 实际目录」双向比对，
   //       并把「全集计数」做成单源声明（裸扫「N 个函数」会误杀 5 处子集/历史口径，已改语义级）。
   ['fn-inventory',           'tools/check_fn_inventory.js'],
+  // 隐私政策占位符口径守卫 R99（round63）：上线唯一硬阻塞里唯一要李老师动手的一项，处数在仓里
+  //       先后被记成 4 → 7 → 6，round51 修了 4 处陈述却漏跟重启键（round63 实扫发现仍写「7 处未填」）。
+  //       与 round61「重启键套件数」/ R98「云函数清单」同族第 7 例：人工陈述面零机器校验。
+  //       此套件做「文档口径声明 ≡ 剥反引号后实扫」双向比对，口径以语义标记编码进文本
+  //       （裸扫「N 处」会误杀 4 处：19 处跳转计数 + 两处否定式引用「非 4 处」）。
+  ['privacy-placeholders',   'tools/check_privacy_placeholders.js'],
   // 后续批次的套件在此追加即可（如 batch2_selfcheck ...）；追加后记得同步头部注释里的套件数量。
 ];
 
