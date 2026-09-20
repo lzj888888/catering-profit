@@ -100,8 +100,14 @@ check('input.js 折叠块状态 + 开关', /fillGuideOpen: false/.test(inputJs) 
 check('input.js initGroups 给每类挂 scope', /scope: \(scopeMap \|\| \{\}\)\[g\.category\] \|\| ''/.test(inputJs));
 check('input.js 从后端重建时也挂 scope', /rebuildFromItems\(TERMS\.ledger\.income, d\.income_items, TERMS\.ledger\.incomeScope\)/.test(inputJs));
 check('input.wxml 渲染顶部口径折叠块', /fill-guide-head/.test(inputWxml) && /t\.fillGuideTitle/.test(inputWxml));
-check('input.wxml 渲染每类口径句', /class="scope" wx:if="\{\{g\.scope\}\}"/.test(inputWxml));
-check('input.wxss 有折叠块/口径样式', /\.fill-guide-head/.test(read('pages/month/input.wxss')) && /\.scope \{/.test(read('pages/month/input.wxss')));
+// 2026-09-21：口径句从「常展开」改为「折叠块」（李老师真机反馈：太占地方）
+//   判据**升级**而非放宽：仍要求 {{g.scope}} 被渲染，另要求折叠机制存在 + 老形态已消失。
+check('input.wxml 每类口径句收进折叠块（引导行 + 按需展开）',
+  /class="scope-head"/.test(inputWxml) && /bindtap="onToggleScope"/.test(inputWxml)
+  && /<view class="scope" wx:if="\{\{g\.scopeOpen\}\}">\{\{g\.scope\}\}<\/view>/.test(inputWxml));
+check('input.wxml 口径句未退回「常展开」形态', !/class="scope" wx:if="\{\{g\.scope\}\}"/.test(inputWxml));
+check('input.wxss 有折叠块/口径样式', /\.fill-guide-head/.test(read('pages/month/input.wxss'))
+  && /\.scope-head/.test(read('pages/month/input.wxss')) && /\.scope \{/.test(read('pages/month/input.wxss')));
 check('口径文案无硬编码（全部走 t.*）', !/[\u4e00-\u9fff]/.test(inputWxml.replace(/<!--[\s\S]*?-->/g, '')));
 
 console.log('');

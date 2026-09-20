@@ -155,6 +155,31 @@ check('G6 标注：储值充值不算收入', terms.includes('储值充值不算
 check('G6 标注：团购钱结算在平台', terms.includes('结算在美团/抖音平台'));
 check('G6 口径：收回挂账的回款不算营收', terms.includes('挂账的回款'));
 
+// ===== G7 / G8（2026-09-21 真机反馈）：口径句折叠 + 渠道行两行 + × 高度不可下调 =====
+// 背景：原「堂食」下方整段口径句常展开、渠道行一行三列把渠道名挤成竖排 —— 都是**版面回归**，
+//       旧守卫一条都抓不到（它们只守数据/文案）。这里补上结构判据。
+const dinWxss = read("pages/month/input.wxss");
+check('G7 口径句收进折叠块（引导行 + 按需展开）',
+  /class="scope-head"/.test(dinWxml) && /class="scope" wx:if="\{\{g\.scopeOpen\}\}"/.test(dinWxml));
+check('G7 有 onToggleScope 且默认收起（scopeOpen 初值 false）',
+  /onToggleScope\(e\)/.test(dinJs) && /scopeOpen: false/.test(dinJs));
+check('G7 引导语走 i18n（页面不写死文案）', /scopeShow: '/.test(terms) && /scopeHide: '/.test(terms));
+check('G7 口径句未退回「常展开」形态', !/class="scope" wx:if="\{\{g\.scope\}\}"/.test(dinWxml));
+
+check('G8 渠道行拆两行（行①名字+× / 行②金额）',
+  /class="dine-line1"/.test(dinWxml) && /class="dine-line2"/.test(dinWxml)
+  && dinWxml.indexOf('class="dine-line2"') > dinWxml.indexOf('class="dine-line1"'));
+check('G8 一行三列已废（渠道名不再与金额抢宽度而竖排）', !/class="dine-row"/.test(dinWxml));
+// 结构性判据（比只认类名强）：行① 只许放名字 + ×，金额框必须落在行② —— 防「把金额挪回名字行」的半回归
+const dLine1 = dinWxml.slice(dinWxml.indexOf('class="dine-line1"'), dinWxml.indexOf('class="dine-line2"'));
+check('G8 金额框不在行①（名字行不含金额）', dLine1.indexOf('dine-amt') < 0 && dLine1.indexOf('dine-name') >= 0);
+check('G8 渠道名不竖排（nowrap + 省略号）',
+  /\.dine-name \{[^}]*white-space: nowrap/.test(dinWxss) && /\.dine-name \{[^}]*text-overflow: ellipsis/.test(dinWxss));
+check('G8 金额框占满行②（flex 1 + width auto）',
+  /\.dine-amt \{[^}]*flex: 1 1 auto/.test(dinWxss) && /\.dine-amt \{[^}]*width: auto/.test(dinWxss));
+check('G8 × 触控高度仍 88rpx（李老师要求「变小」≠ 下调 min-height，G2 硬约束）',
+  /\.btn-del \{[^}]*min-height: 88rpx/.test(dinWxss));
+
 console.log('');
 console.log('===== 门禁预检 =====');
 check('K11 双副本逐字一致', terms === termsSpec);

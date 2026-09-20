@@ -28,8 +28,14 @@
       <text class="g-label">{{g.label}}</text>
       <text class="g-toggle">{{g.expanded ? '▾' : '▸'}}</text>
     </view>
-    <!-- E2：该类的「包括 / 不包括」口径 -->
-    <view class="scope" wx:if="{{g.scope}}">{{g.scope}}</view>
+    <!-- E2 + 2026-09-21：该类的「包括 / 不包括」口径 —— 收进折叠块，默认只留一行引导语 -->
+    <view class="scope-fold" wx:if="{{g.scope}}">
+      <view class="scope-head" data-kind="income" data-idx="{{gi}}" bindtap="onToggleScope">
+        <text class="scope-guide">{{g.scopeOpen ? t.scopeHide : t.scopeShow}}</text>
+        <text class="scope-arrow">{{g.scopeOpen ? '▾' : '▸'}}</text>
+      </view>
+      <view class="scope" wx:if="{{g.scopeOpen}}">{{g.scope}}</view>
+    </view>
 
     <!-- ===== 堂食·模式开关（严格互斥二选一）===== -->
     <view class="dm-wrap" wx:if="{{g.category === 'dine_in'}}">
@@ -57,21 +63,26 @@
       <view class="hint">{{t.dmFastHint}}</view>
     </view>
 
-    <!-- 堂食·分项渠道录入：一行三列（渠道名 / 金额 / 删除）+ 合计自动算 -->
+    <!-- 堂食·分项渠道录入：两行（行①渠道名+× / 行②金额整行宽）+ 合计自动算 -->
     <block wx:elif="{{g.category === 'dine_in'}}">
       <view class="hint">{{t.dmDetailHint}}</view>
       <view class="dine-item" wx:for="{{g.rows}}" wx:key="index" wx:for-item="r" wx:for-index="ri">
-        <view class="dine-row">
-          <input wx:if="{{!r.fixed}}" class="dine-name" value="{{r.subItem}}" placeholder="{{t.dmChannelPh}}"
+        <!-- 2026-09-21 李老师真机反馈：原一行三列把渠道名挤成竖排、金额框只剩 240rpx
+             ⇒ 改两行：行① 渠道名（整行，永不竖排）+ ×；行② 金额（整行宽，好点好改） -->
+        <view class="dine-line1">
+          <input wx:if="{{!r.fixed}}" class="dine-name inp" value="{{r.subItem}}" placeholder="{{t.dmChannelPh}}"
             data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubItem" disabled="{{readOnly}}" />
-          <text wx:else class="dine-name fixed">{{r.subItem}}</text>
-          <input class="val-input dine-amt" type="digit" confirm-type="done" value="{{r.amountYuan}}"
-            data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubAmount" disabled="{{readOnly}}"
-            adjust-position="{{true}}" cursor-spacing="20" />
+          <text wx:else class="dine-name">{{r.subItem}}</text>
           <button class="btn-del" wx:if="{{g.rows.length > 1}}"
             data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" catchtap="delRow">{{t.delSubItem}}</button>
         </view>
         <view class="dine-note" wx:if="{{r.note}}">{{r.note}}</view>
+        <view class="dine-line2">
+          <input class="val-input dine-amt" type="digit" confirm-type="done" value="{{r.amountYuan}}"
+            placeholder="{{t.dmAmtPh}}" data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}"
+            bindinput="onSubAmount" disabled="{{readOnly}}"
+            adjust-position="{{true}}" cursor-spacing="20" />
+        </view>
       </view>
       <view class="dine-sum">
         <text class="dine-sum-lbl">{{t.dmSumLabel}}</text>
@@ -114,8 +125,14 @@
       <text class="g-label">{{g.label}}</text>
       <text class="g-toggle">{{g.expanded ? '▾' : '▸'}}</text>
     </view>
-    <!-- E2：该类的「包括 / 不包括」口径 -->
-    <view class="scope" wx:if="{{g.scope}}">{{g.scope}}</view>
+    <!-- E2 + 2026-09-21：该类的「包括 / 不包括」口径 —— 收进折叠块，默认只留一行引导语 -->
+    <view class="scope-fold" wx:if="{{g.scope}}">
+      <view class="scope-head" data-kind="expense" data-idx="{{gi}}" bindtap="onToggleScope">
+        <text class="scope-guide">{{g.scopeOpen ? t.scopeHide : t.scopeShow}}</text>
+        <text class="scope-arrow">{{g.scopeOpen ? '▾' : '▸'}}</text>
+      </view>
+      <view class="scope" wx:if="{{g.scopeOpen}}">{{g.scope}}</view>
+    </view>
 
     <view class="sub-block" wx:for="{{g.expanded ? g.rows : g.rows.slice(0, 1)}}" wx:key="index"
       wx:for-item="r" wx:for-index="ri">

@@ -215,6 +215,10 @@ const TERMS = {
     ],
     subItem: '细项',
     subItemPh: '细项名称（选填）',
+    // 2026-09-21 李老师真机反馈：「堂食下面那些如何填写」文字太长、占地方
+    //   ⇒ 每类口径句收进折叠块，默认只留一行引导语，点开看完整口径、再点收回。
+    scopeShow: '怎么填？点开看口径',
+    scopeHide: '收起口径',
     addSubItem: '+ 添加细项',
     delSubItem: '×',   // 2026-09-20 李老师真机反馈："删除"两字太占地 → 改图标，宽度让给细项名与金额
     amount: '金额（元）',
@@ -236,6 +240,7 @@ const TERMS = {
       detailHint: '按收款渠道分开填，下面合计自动算出来。',
       sumLabel: '合计',
       sumAutoHint: '由各渠道相加自动算出，不用手填',
+      amtPh: '填金额（元）', // 渠道行改两行后，金额框独占一行、用 placeholder 代替重复的「金额（元）」标签
       addChannel: '+ 添加渠道',
       splitNotice: '总额已暂放在第一行，请按实际拆分到各渠道',
       channelPh: '渠道名称',

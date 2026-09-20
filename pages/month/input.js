@@ -134,6 +134,7 @@ Page({
       return {
         category: g.category, label: g.label, items: g.items || [],
         scope: (scopeMap || {})[g.category] || '',
+        scopeOpen: false,   // 2026-09-21：口径句默认收起（李老师反馈原样展开太占地方）
         expanded: false,
         rows: g.category === 'dine_in' ? this.decorateDineRows(rows) : rows,
         showRows: rows,
@@ -150,6 +151,19 @@ Page({
   // E2：顶部「填写口径」折叠块开关
   onToggleFillGuide() {
     this.setData({ fillGuideOpen: !this.data.fillGuideOpen });
+  },
+
+  // 2026-09-21：每类「怎么填」口径句折叠开关（默认收起，只留一行引导语）
+  //   ⚠️ 与 onToggleGroup 同为「就地改一份 + 整数组回写」，不要图省事直接改 this.data。
+  onToggleScope(e) {
+    const kind = e.currentTarget.dataset.kind;   // 'income' | 'expense'
+    const idx = Number(e.currentTarget.dataset.idx);
+    const key = kind === 'income' ? 'incomeGroups' : 'expenseGroups';
+    const groups = this.data[key].slice();
+    const g = Object.assign({}, groups[idx]);
+    g.scopeOpen = !g.scopeOpen;
+    groups[idx] = g;
+    this.setData({ [key]: groups });
   },
 
   // 从后端明细（snake_case income_items/expense_items）重建组：每大类 → rows = sub_items（无细项则单行整类）
@@ -169,6 +183,7 @@ Page({
       const out = {
         category: g.category, label: g.label, items: g.items || [],
         scope: (scopeMap || {})[g.category] || '',
+        scopeOpen: false,   // 与 initGroups 一致：读回后端数据也默认收起
         expanded, rows, showRows: expanded ? rows : rows.slice(0, 1),
       };
       if (g.category === 'dine_in') {
