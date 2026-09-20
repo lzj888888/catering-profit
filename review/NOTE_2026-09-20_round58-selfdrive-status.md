@@ -72,16 +72,16 @@ round57 的 E1 口径守卫实为：`必须含「出了餐就算」` 且 `不得
 
 ## 7 · 回执（round58）
 
-- [2026-09-20 08:56] R58-① 已落 · 证据：`probe_agents.py` → InsCode `inflight=0`/`msg=1465`/`idle=150561s`；dsh `rect=(-32000,…)` 最小化 · commit <待填>
-- [2026-09-20 09:00] R58-② 已落 · 证据：`git status --short | grep -v evidence` → `M=0`、非证据未跟踪=0；`find -mmin -30` 零命中；进程两采 `CONCURRENT_REPO_WRITER=False` ⇒ 无并发写入方 · commit <待填>
-- [2026-09-20 09:07] R58-③ 已落（判据） · 证据：`_dsh_root_r58.py` → 白屏 90.8%（两采同值）、`/api/sessions|health|config` 全 404、进程 uptime 78.0h、`web.log` mtime **78.1h≈uptime**、`api.deepseek.com` 401 ⇒ dsh 第 10 轮不可用 · commit <待填>
-- [2026-09-20 09:07] R58-④ **未落 + 理由** · 给 dsh 投复审请求 —— 后端未起（上条）+ 会话上下文为「餐饮闭店决策指标模型咨询」与仓库复审不匹配，投了是上下文污染 ⇒ 不投，改上报李老师四选一 · commit <待填>
-- [2026-09-20 09:11] R58-⑤ 已落 · 证据：`mutation_matrix_r58.txt` → A1/A2/A3 全 RED 且还原回绿（面A 注入躺赚 / 面B wxml 硬编码 / 僵尸豁免）⇒ `691f162` 守卫是真判据 · commit <待填>
-- [2026-09-20 09:14] R58-⑥ 已落 · 证据：`mutation_matrix_r58_round2.txt` → A4（缺 by 元信息）RED / A5（抽真实豁免）RED，还原回绿 ⇒ 双向防腐有效 · commit <待填>
-- [2026-09-20 09:11] R58-⑦ 已落（发现） · 证据：`mutation_matrix_r58.txt` B2→**GREEN**（同义收付实现制说法漏判）/ B3→**RED**（正确权责写法误报）⇒ round57 E1 口径守卫绑字面，与 `c24e0a2` 同族 · commit <待填>
-- [2026-09-20 09:14] R58-⑧ 已落（加固） · 证据：`tools/selftest_batch8b.js` 改语义级判据后复测 → BASE 绿 / B1 红 / B2 **红** / B3 **绿** / B4 红 / B5 红，还原回绿 · commit <待填>
-- [2026-09-20 09:17] R58-⑨ 已落 · 证据：改 `specs/` 前后各跑 `verify_all.js` → **68/68 RC=0** ×2；`check_error_codes.js` → **RC=0** ×2；AD 24/24；UI 28/28 · commit <待填>
-- [2026-09-20 09:17] R58-⑩ **存疑 + 理由** · 1033 个 `review/evidence/**` PNG 归属：round41 起由并发写入方产生，我方未复核其内容即入库风险不明 ⇒ **不代提交不代删**，待李老师裁决 · commit <待填>
+- [2026-09-20 08:56] R58-① 已落 · 证据：`probe_agents.py` → InsCode `inflight=0`/`msg=1465`/`idle=150561s`；dsh `rect=(-32000,…)` 最小化 · commit `cf6bd45`
+- [2026-09-20 09:00] R58-② 已落 · 证据：`git status --short | grep -v evidence` → `M=0`、非证据未跟踪=0；`find -mmin -30` 零命中；进程两采 `CONCURRENT_REPO_WRITER=False` ⇒ 无并发写入方 · commit `cf6bd45`
+- [2026-09-20 09:07] R58-③ 已落（判据） · 证据：`_dsh_root_r58.py` → 白屏 90.8%（两采同值）、`/api/sessions|health|config` 全 404、进程 uptime 78.0h、`web.log` mtime **78.1h≈uptime**、`api.deepseek.com` 401 ⇒ dsh 第 10 轮不可用 · commit `cf6bd45`
+- [2026-09-20 09:07] R58-④ **未落 + 理由** · 给 dsh 投复审请求 —— 后端未起（上条）+ 会话上下文为「餐饮闭店决策指标模型咨询」与仓库复审不匹配，投了是上下文污染 ⇒ 不投，改上报李老师四选一 · commit `cf6bd45`
+- [2026-09-20 09:11] R58-⑤ 已落 · 证据：`mutation_matrix_r58.txt` → A1/A2/A3 全 RED 且还原回绿（面A 注入躺赚 / 面B wxml 硬编码 / 僵尸豁免）⇒ `691f162` 守卫是真判据 · commit `cf6bd45`
+- [2026-09-20 09:14] R58-⑥ 已落 · 证据：`mutation_matrix_r58_round2.txt` → A4（缺 by 元信息）RED / A5（抽真实豁免）RED，还原回绿 ⇒ 双向防腐有效 · commit `cf6bd45`
+- [2026-09-20 09:11] R58-⑦ 已落（发现） · 证据：`mutation_matrix_r58.txt` B2→**GREEN**（同义收付实现制说法漏判）/ B3→**RED**（正确权责写法误报）⇒ round57 E1 口径守卫绑字面，与 `c24e0a2` 同族 · commit `cf6bd45`
+- [2026-09-20 09:14] R58-⑧ 已落（加固） · 证据：`tools/selftest_batch8b.js` 改语义级判据后复测 → BASE 绿 / B1 红 / B2 **红** / B3 **绿** / B4 红 / B5 红，还原回绿 · commit `cf6bd45`
+- [2026-09-20 09:17] R58-⑨ 已落 · 证据：改 `specs/` 前后各跑 `verify_all.js` → **68/68 RC=0** ×2；`check_error_codes.js` → **RC=0** ×2；AD 24/24；UI 28/28 · commit `cf6bd45`
+- [2026-09-20 09:17] R58-⑩ **存疑 + 理由** · 1033 个 `review/evidence/**` PNG 归属：round41 起由并发写入方产生，我方未复核其内容即入库风险不明 ⇒ **不代提交不代删**，待李老师裁决 · commit `cf6bd45`
 
 ## 8 · 待李老师（沿用 + 本轮新增）
 
