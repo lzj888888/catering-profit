@@ -61,8 +61,33 @@ check('两处文案不再相同（Sec ≠ Field）', (() => {
   return sec && field && sec[1] !== field[1];
 })());
 check('input.js 有 Sec/Field 映射', /cmSecTitle: TERMS\.calcMethod\.secTitle/.test(ij) && /cmConsumeDirectField: TERMS\.calcMethod\.consumeDirectField/.test(ij));
-// 防回归：核算方式不得再出现在店铺设置页（单源 = 录入页）
-check('🔴 设置页不再有库存/摊销开关', !/inventorySwitch|amortizeSwitch/.test(read("pages/shop/setting.wxml")));
+// 防回归：核算方式（库存倒轧 / 摊销）单源 = 月度录入页；设置页只保留「去向说明」，不得再出现任何选择入口。
+// 🔴 2026-09-20 round59 加固：旧判据 !/inventorySwitch|amortizeSwitch/ **绑死旧 key 名** ⇒
+//    换个新名（如 calcMethod.invMode）把开关放回设置页，它**不会红**（round55 实证、与 E1 同族病）。
+//    现改**语义级**（沿用 round58 为 E1 跑通的加固模板）：
+//      ① 锚点 fail-closed —— 单源在录入页 + 去向说明来自 TERMS.calcMethod.movedNote，均**不绑 key 名**；
+//      ② 禁用框架 —— 控件/指令 + 受限字符窗，不裸扫关键词（正确文案里常含否定式提法）。
+console.log('');
+console.log('===== 修 4 防回归 · 核算方式单源（语义级，round59 加固）=====');
+const swSrc = read("pages/shop/setting.wxml"), sjSrc = read("pages/shop/setting.js");
+const stripCmt = (s) => s.replace(/<!--[\s\S]*?-->/g, "").replace(/(^|\s)\/\/[^\n]*/g, "$1").replace(/\/\*[\s\S]*?\*\//g, "");
+const swCode = stripCmt(swSrc), sjCode = stripCmt(sjSrc);
+// ① 锚点 a：选择入口必须在月度录入页（不绑 handler 名，只看是否提供 inventory + amortize 两种二选一）
+const cmKinds = [...iw.matchAll(/data-kind="(\w+)"/g)].map(m => m[1]);
+check('🔴 核算方式选择入口在月度录入页（inventory+amortize 二选一）',
+  cmKinds.includes('inventory') && cmKinds.includes('amortize') && /bindtap="\w+"/.test(iw),
+  'kinds=' + [...new Set(cmKinds)].join('/'));
+// ① 锚点 b：设置页去向说明必须来自单源 TERMS.calcMethod.movedNote 且真被渲染（不绑 key 名，fail-closed）
+const movedKey = /(\w+):\s*TERMS\.calcMethod\.movedNote/.exec(sjCode);
+check('🔴 设置页去向说明来自单源 calcMethod.movedNote 且已渲染',
+  !!movedKey && new RegExp('\\{\\{t\\.' + movedKey[1] + '\\}\\}').test(swCode),
+  movedKey ? 'key=' + movedKey[1] : 'MISS');
+// ② 禁用 a：设置页**有效代码面**不得引用 movedNote 之外的任何 calcMethod 取值
+const badCmRefs = [...(swCode + sjCode).matchAll(/calcMethod\.(\w+)/g)].map(m => m[1]).filter(v => v !== 'movedNote');
+check('🔴 设置页无 movedNote 之外的 calcMethod 引用', badCmRefs.length === 0, badCmRefs.join(','));
+// ② 禁用 b：设置页不得出现任何选择型入口或 switches 写入（与 key 名、与措辞无关）
+const chooseHit = /<(picker|switch|radio-group|checkbox-group|slider)\b|data-kind="(?:inventory|amortize)"|switches\s*:|saveShopSetting[\s\S]{0,240}switches/.exec(swCode + sjCode);
+check('🔴 设置页无核算方式选择入口 / switches 写入', !chooseHit, chooseHit ? chooseHit[0].slice(0, 40) : '');
 
 // ============ 修 5：tabs 单 tab 不满宽 ============
 console.log('');

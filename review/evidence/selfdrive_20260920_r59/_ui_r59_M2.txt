@@ -1,0 +1,52 @@
+===== 修 1 · result 三态（loading / 有结果 / 空态）=====
+✅ 存在 loading 独立分支 (wx:if={{loading}})
+✅ 存在结果分支 (wx:elif={{r}})
+✅ 存在空态分支 (wx:else) 且含 resultEmpty
+✅ 空态分支不含「加载中」
+✅ 空态有去录入出口 (goInput + resultEmptyGoInput)
+✅ result.js 有 goInput 方法跳 input
+✅ result.js 空态文案引用 uiFix.resultEmpty
+✅ 旧 wx:else=加载中 已移除（无 !loading && r 写法）
+
+===== 修 2 · amortize totalYuan 初值 =====
+✅ data 有 totalYuan: '0.00' 初值
+✅ load() 成功路径仍赋值 totalYuan
+✅ catch 分支不改 totalYuan（保留初值 0.00）
+
+===== 修 3 · month/index 月份空值占位 =====
+✅ curMonth 空时显示 monthEmpty
+✅ monthEmpty 文案引用 uiFix.monthEmpty
+✅ monthEmpty 词条存在且无禁词
+
+===== 修 4 · input 小节标题 ≠ 字段标签 =====
+✅ 小节标题用独立 key（cmSecTitle）
+✅ 字段标签用独立 key（cmConsumeDirectField）
+✅ 两处文案不再相同（Sec ≠ Field）
+✅ input.js 有 Sec/Field 映射
+
+===== 修 4 防回归 · 核算方式单源（语义级，round59 加固）=====
+✅ 🔴 核算方式选择入口在月度录入页（inventory+amortize 二选一）  (kinds=income/expense/inventory/amortize)
+✅ 🔴 设置页去向说明来自单源 calcMethod.movedNote 且已渲染  (key=calcTip)
+✅ 🔴 设置页无 movedNote 之外的 calcMethod 引用
+✅ 🔴 设置页无核算方式选择入口 / switches 写入
+
+===== 修 5 · 单 tab 不满宽 =====
+✅ tabs 依 isPaid 加 single 类
+✅ wxss 有 .tabs.single 规则（flex 0 0 auto + min-width 220rpx）
+✅ 双 tab 时保持 .tab flex:1（未改默认）
+
+===== 修 6 · mine 注销按钮抽类 =====
+✅ 按钮用 .btn.danger 类
+✅ 无内联 style（background:#e74c3c 已移除）
+✅ wxss 定义 .btn.danger
+
+===== 硬编码中文检查（6 个页面 wxml，排除注释与 {{}} 绑定）=====
+✅ 6 页 wxml 无硬编码中文（除注释）
+
+===== i18n 双副本一致（K11）=====
+✅ terms.js 双副本逐字节一致
+
+===== 禁词检查（uiFix 词条）=====
+✅ uiFix 词条无禁词（投资回报/ROI/回本周期/会员/订阅/会员费）
+
+==== 批次 8 UI 修复自测：31 通过 / 0 失败 ====
