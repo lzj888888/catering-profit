@@ -3,7 +3,7 @@
 - 时间：2026-09-20 19:30–19:56
 - 执行：WorkBuddy（我，门禁/复核方）
 - 证据：`review/evidence/page_manifest_20260920/`
-- commit：（见文末回执，提交后回填）
+- commit：`bdc3b6a`（已推 dev，两方一致）
 
 ---
 
@@ -135,16 +135,16 @@ A 给 dsh 放开写+node 子进程 / B 改只读判据复审 / C 退场我方自
 
 ## 5 · 回执（格式见 SOUL.md）
 
-- [2026-09-20 19:56] R65-① 探针已落 · 证据：`probe_agents.py` → InsCode `inflight=0`/`msg=1465` 十二连持平、dsh `minimized` 恢复后截图白 78.9% · commit 待填
-- [2026-09-20 19:56] R65-② InsCode 不投喂（已落）· 证据：8 批 0~7 收官、无批次 8 · commit 待填
-- [2026-09-20 19:56] R65-③ dsh 第 14 轮不投递（已落）· 证据：`/api/*` 全 404 + `web.log` 88.55h ≈ uptime 88.4h + 会话「餐饮闭店决策指标模型咨询」上下文不匹配 · commit 待填
-- [2026-09-20 19:56] R65-④ 并发方判定（已落）· 证据：`M`=0 + 进程两采 0/0 + 门禁后 mtime 静止 + `git log` 无新 commit · commit 待填
-- [2026-09-20 19:56] R65-⑤ 同族病第 9 例守卫（已落）· 证据：新增 `tools/check_page_manifest.js` 17 条断言，SUITES 73→74 · commit 待填
-- [2026-09-20 19:56] R65-⑥ 重启键套件数两处同步 73→74（已落）· 证据：R97 首跑报「文档 73 / 实算 74」→ 改后 74/74 RC=0 · commit 待填
-- [2026-09-20 19:56] R65-⑦ 双向变异 8 组（已落）· 证据：`mutation_matrix.md` → 6 红 / 2 绿（含 M8 证明就近锚点非恒真）、还原后 RC=0 · commit 待填
-- [2026-09-20 19:56] R65-⑧ 门禁（已落）· 证据：`node verify_all.js` → 74/74 RC=0；A–L RC=0；AD 24/24；UI 31/31 · commit 待填
-- [2026-09-20 19:56] R65-⑨ 证据落盘并 `ls` 回读（已落）· 证据：`review/evidence/page_manifest_20260920/` 7 个文件 · commit 待填
-- [2026-09-20 19:56] R65-⑩ 提交并推 dev（已落）· 证据：`git status` 空 + `ls-remote` ≡ `rev-parse HEAD` · commit 待填
+- [2026-09-20 19:56] R65-① 探针已落 · 证据：`probe_agents.py` → InsCode `inflight=0`/`msg=1465` 十二连持平、dsh `minimized` 恢复后截图白 78.9% · commit bdc3b6a
+- [2026-09-20 19:56] R65-② InsCode 不投喂（已落）· 证据：8 批 0~7 收官、无批次 8 · commit bdc3b6a
+- [2026-09-20 19:56] R65-③ dsh 第 14 轮不投递（已落）· 证据：`/api/*` 全 404 + `web.log` 88.55h ≈ uptime 88.4h + 会话「餐饮闭店决策指标模型咨询」上下文不匹配 · commit bdc3b6a
+- [2026-09-20 19:56] R65-④ 并发方判定（已落）· 证据：`M`=0 + 进程两采 0/0 + 门禁后 mtime 静止 + `git log` 无新 commit · commit bdc3b6a
+- [2026-09-20 19:56] R65-⑤ 同族病第 9 例守卫（已落）· 证据：新增 `tools/check_page_manifest.js` 17 条断言，SUITES 73→74 · commit bdc3b6a
+- [2026-09-20 19:56] R65-⑥ 重启键套件数两处同步 73→74（已落）· 证据：R97 首跑报「文档 73 / 实算 74」→ 改后 74/74 RC=0 · commit bdc3b6a
+- [2026-09-20 19:56] R65-⑦ 双向变异 8 组（已落）· 证据：`mutation_matrix.md` → 6 红 / 2 绿（含 M8 证明就近锚点非恒真）、还原后 RC=0 · commit bdc3b6a
+- [2026-09-20 19:56] R65-⑧ 门禁（已落）· 证据：`node verify_all.js` → 74/74 RC=0；A–L RC=0；AD 24/24；UI 31/31 · commit bdc3b6a
+- [2026-09-20 19:56] R65-⑨ 证据落盘并 `ls` 回读（已落）· 证据：`review/evidence/page_manifest_20260920/` 7 个文件 · commit bdc3b6a
+- [2026-09-20 19:56] R65-⑩ 提交并推 dev（已落）· 证据：`git status` 空 + `ls-remote` ≡ `rev-parse HEAD` · commit bdc3b6a
 - [2026-09-20 19:56] R65-⑪ **未落**：dsh 重启（方案 D）—— 理由：无人值守不动手，会杀李老师窗口，须李老师批准
 - [2026-09-20 19:56] R65-⑫ **未落**：1033 个并发方过程 PNG —— 理由：归属待李老师裁决，不代提交不代删（round65 实测仍是 1033 个，仍未动）
 
