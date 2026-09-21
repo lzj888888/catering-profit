@@ -98,7 +98,7 @@
 
 ## 8. 回执
 
-- [2026-09-21 18:2x] R78 **已落** · 证据：`node verify_all.js` → **83/83 RC=0**；`node tools/check_income_channel_seed.js` → 18/18；`node specs/.../check_error_codes.js` → RC=0；`_mut_r78.py` 10 组 0 异常 · commit 见 §9
+- [2026-09-21 18:2x] R78 **已落** · 证据：`node verify_all.js` → **83/83 RC=0**；`node tools/check_income_channel_seed.js` → 18/18；`node specs/.../check_error_codes.js` → RC=0；`_mut_r78.py` 10 组 0 异常 · commit `5c077e7` + `32b9d24`
 - [2026-09-21 18:2x] R78 **未落** · ① dsh 复审 —— 李老师 09-21 已定暂停参与本仓，且窗口缺失，不投递
 - [2026-09-21 18:2x] R78 **未落** · ② InsCode 投喂 —— idle 74.8h 但 8 批已收官，不擅自造新批次（越权）
 - [2026-09-21 18:2x] R78 **未落** · ③ 堂食 5 vs 7 的**拉齐方向**需李老师裁定，本轮只冻结不代修
