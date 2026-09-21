@@ -1,0 +1,12 @@
+编号   实际       期望     判定       说明
+M1   RED      RED    声明数字改错（15→12） OK
+M2   GREEN    GREEN  正确实现换措辞（前置空格）不错杀 OK
+M3   RED      RED    表格值改错（20→18） OK
+M4   RED      RED    M3 引用行改错（55→60） OK
+M5   RED      RED    删唯一声明处（fail-closed） OK
+M6   RED      RED    声明扩散到第二份 md（单源不扩散） OK
+M7   RED      GREEN  引用行换措辞（加空格）不错杀 MISMATCH
+M8   RED      RED    扫描面根路径写错（前提守卫非恒真） OK
+
+异常组数 = 1
+还原后 git diff --stat: ''

@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：83 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：84 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -225,6 +225,13 @@ const SUITES = [
   //   本守卫**不裁定**哪侧为准：只硬判「原型副本 ≡ 云函数副本」「其他业务收入前后端一致」，
   //   堂食分歧走**冻结 + 防扩散**（差异集合 ≡ core/13 在册集合，双向含僵尸防腐）。
   ['channel-seed-guard',     'tools/check_income_channel_seed.js'],
+  // 第 84 套件（round80 新增，R111）：经营红线阈值口径守卫 tools/check_redline_thresholds.js
+  //   —— 根因＝M1 开发规范 M1.6「四红线」（房租≤15% / 人工≤20% / 毛利率≥55% / 损耗≤5%）
+  //   是模块写码基线里的经营预警口径，当前态只在 M1 规范（表 4 行）与 M3 规范（引用行）两处，
+  //   而 tools/ + prototype/ 对这两份**零引用**（round80 引用次数扫描实测 0/0）⇒ 改任一侧无人报警。
+  //   裸扫「房租|人工|毛利|损耗 + 数字%」当场误杀 49 处合法口径（S3 测试数据 / 用例损耗 /
+  //   PRODUCT_PLAN 另一套警戒线）⇒ 走语义标记单源 + 弱面只明示（坑⑭ 第八次印证）。
+  ['redline-thresholds',     'tools/check_redline_thresholds.js'],
   // 后续批次的套件在此追加即可（如 batch2_selfcheck ...）；追加后记得同步头部注释里的套件数量。
 ];
 
