@@ -73,7 +73,9 @@
           <input wx:if="{{!r.fixed}}" class="dine-name inp" value="{{r.subItem}}" placeholder="{{t.dmChannelPh}}"
             data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubItem" disabled="{{readOnly}}" />
           <text wx:else class="dine-name">{{r.subItem}}</text>
-          <button class="btn-del" wx:if="{{g.rows.length > 1}}"
+          <!-- 预设渠道（fixed）不给删除键：清单是单一数据源，装配时必然补回，
+               给了 × 只会让人以为「删不掉」（G10j 守）；自定义渠道行仍可删 -->
+          <button class="btn-del" wx:if="{{!r.fixed}}"
             data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" catchtap="delRow">{{t.delSubItem}}</button>
         </view>
         <view class="dine-note" wx:if="{{r.note}}">{{r.note}}</view>

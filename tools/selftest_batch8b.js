@@ -181,6 +181,91 @@ check('G8 × 触控高度仍 88rpx（李老师要求「变小」≠ 下调 min-h
   /\.btn-del \{[^}]*min-height: 88rpx/.test(dinWxss));
 
 console.log('');
+console.log('===== G9 · 分项→快速→分项 round-trip 不丢值（2026-09-21 李老师反馈）=====');
+// 背景：原实现切到快速时把分项行整体覆盖成单行总额、切回再重铺，导致来回切一次原输入全丢。
+//   守「快照字段存在 + 切快速前存快照 + 切回优先恢复（非空才恢复，不再永远重铺）」。
+check('G9 数据层有 dineDetailRows 快照字段', /dineDetailRows: \[\],/.test(dinJs));
+check('G9 切到快速前先把分项行快照进 dineDetailRows', /dineDetailRows: this\.decorateDineRows\(cur\)/.test(dinJs));
+check('G9 切回分项优先恢复快照（非空则原样恢复，不重铺首行）',
+  /const snap = this\.data\.dineDetailRows/.test(dinJs) && /if \(snap\.length > 0\)/.test(dinJs));
+check('G9 仅从未填过分项才走「总额铺首行」旧逻辑', /从未填过分项/.test(dinJs));
+
+console.log('');
+console.log('===== G10 · 堂食渠道全集常在 + 单一装配口（2026-09-21 李老师「挂账/团购不见了」）=====');
+// 背景：改版前渠道行 = 「后端存过什么就渲染什么」⇒ 没填过的预设渠道（挂账/团购/POS…）凭空消失；
+//   且 initGroups / rebuildFromItems / 加行 / 删行 / 切模式 各自拼一遍 ⇒ 改一处漏三处。
+// 修法：渠道清单只认 terms.js；所有产出路径强制走 utils/dineChannels.js::normalizeDineRows。
+// ⚠️ 守卫**直接 require 真模块 + 真 terms 跑用例**，不在守卫里复制一份实现 ——
+//    复制实现会跟着一起错，守卫就成摆设（验收铁律：断言不得恒真）。
+const { normalizeDineRows } = require(path.join(ROOT, 'utils/dineChannels.js'));
+const { TERMS: T } = require(path.join(ROOT, 'miniprogram/i18n/terms.js'));
+const dineDef = (T.ledger.income || []).find((g) => g.category === 'dine_in');
+const PRESETS = (dineDef && dineDef.items) || [];
+const NOTES = T.ledger.channelNotes || {};
+
+check('G10a 装配模块导出 normalizeDineRows', typeof normalizeDineRows === 'function');
+check('G10a 渠道清单来自 terms.js（≥7 条）', PRESETS.length >= 7, `实际 ${PRESETS.length} 条`);
+check('G10a 清单含李老师点名的挂账与团购', PRESETS.some((x) => /挂账/.test(x)) && PRESETS.some((x) => /团购/.test(x)));
+
+// 场景①：后端只回传 3 条（缺挂账/团购）⇒ 仍必须补齐全集（李老师现场就是这个）
+const fromBackend = [
+  { subItem: '现金收款', amountYuan: '1000' },
+  { subItem: '微信扫码收款', amountYuan: '2000' },
+  { subItem: '储值卡消费', amountYuan: '30' },
+];
+const full = normalizeDineRows(fromBackend, PRESETS, NOTES);
+check('G10b 后端只回传部分渠道时仍补齐全集', full.length === PRESETS.length, `${full.length}/${PRESETS.length}`);
+check('G10b 缺失的挂账被补回（空行）', full.some((r) => /挂账/.test(r.subItem) && r.amountYuan === ''));
+check('G10b 缺失的团购被补回（空行）', full.some((r) => /团购/.test(r.subItem) && r.amountYuan === ''));
+check('G10b 金额按名回填不错位（微信=2000 / 储值卡=30）',
+  (full.find((r) => r.subItem === '微信扫码收款') || {}).amountYuan === '2000'
+  && (full.find((r) => r.subItem === '储值卡消费') || {}).amountYuan === '30');
+check('G10b 顺序按 terms 不打乱', full.map((r) => r.subItem).join('|') === PRESETS.join('|'));
+
+// 场景②：自定义渠道（「+ 添加渠道」）保留在末尾、可编辑可删
+const withCustom = normalizeDineRows(fromBackend.concat([{ subItem: '抖音团购', amountYuan: '50' }]), PRESETS, NOTES);
+check('G10c 自定义渠道保留在末尾', withCustom.length === PRESETS.length + 1
+  && withCustom[PRESETS.length].subItem === '抖音团购');
+check('G10c 自定义行 fixed=false（可编辑可删）', withCustom[PRESETS.length].fixed === false);
+check('G10c 预设行 fixed=true（名称不可改）', full.every((r) => r.fixed === true));
+
+// 场景③：空行取舍
+check('G10d 无名无额的空行被丢弃（不占位）',
+  normalizeDineRows([{ subItem: '', amountYuan: '' }], PRESETS, NOTES).length === PRESETS.length);
+check('G10d 刚添加的空行(custom)放行（点了有反应）',
+  normalizeDineRows([{ subItem: '', amountYuan: '', custom: true }], PRESETS, NOTES).length === PRESETS.length + 1);
+
+// 场景④：幂等（可重复调用，不越补越多）
+check('G10f 幂等：normalize(normalize(x)) === normalize(x)',
+  JSON.stringify(normalizeDineRows(full, PRESETS, NOTES)) === JSON.stringify(full));
+
+// 场景⑤：round-trip（分项→快速→分项）后渠道全集与数值俱在
+const tripSum = full.reduce((s, r) => s + (Number(r.amountYuan) || 0), 0);
+const backToDetail = normalizeDineRows(full.map((r) => ({ subItem: r.subItem, amountYuan: r.amountYuan })), PRESETS, NOTES);
+check('G10e round-trip 后渠道全集 + 数值俱在', backToDetail.length === PRESETS.length
+  && (backToDetail.find((r) => r.subItem === '微信扫码收款') || {}).amountYuan === '2000'
+  && tripSum === 3030);
+
+// 静态：唯一入口 + 不许写死渠道名（防「改一处漏三处」复发）
+check('G10g decorateDineRows 转调唯一装配口',
+  /decorateDineRows\(rows\) \{[\s\S]{0,400}?normalizeDineRows\(rows/.test(dinJs));
+check('G10g 页面 require 了装配模块',
+  /require\('\.\.\/\.\.\/utils\/dineChannels\.js'\)/.test(dinJs));
+check('G10h 页面不写死任何渠道名（清单只认 terms.js）',
+  !PRESETS.some((n) => dinJs.includes(`'${n}'`) || dinWxml.includes(n)));
+// ⚠️ 判据不能只认「有 .filter(」—— 变异回灌 M4（改成 .filter((r) => true)）照样命中，属假绿（恒真）。
+//   必须同时锁住「过滤的是金额字段」：过滤表达式里出现 amountYuan。
+// ⚠️ `[^)]*` 是特意用的：把匹配锁在 filter 箭头函数**体内**，不许跨到后面的 .map() ——
+//   用 [\s\S]{0,160}? 时，变异体 `.filter((r) => true)` 会吃到 .map() 里的 amountYuan ⇒ 假绿（回灌 M4 实证）。
+check('G10i 保存只提交填了金额的行（空渠道不落库）',
+  /sub_items: g\.rows[\s\S]{0,160}?\.filter\(\(r\) =>[^)]*amountYuan/.test(dinJs));
+// 回灌 M6 抓到：只有运行时用例（G10d）守不住 addRow 这处静态写法 ⇒ 补静态判据
+check('G10k 新增行带 custom 标记（点了「添加渠道」立刻出现空行）',
+  /concat\(\[\{ subItem: '', amountYuan: '', custom: true \}\]\)/.test(dinJs));
+check('G10j 预设行不给删除键（× 只对自定义行）',
+  /class="btn-del" wx:if="\{\{!r\.fixed\}\}"/.test(dinWxml));
+
+console.log('');
 console.log('===== 门禁预检 =====');
 check('K11 双副本逐字一致', terms === termsSpec);
 check('建库单源同步（种子在双源）', read("cloudfunctions/initDb/collections.js").includes('SEED_INCOME_ITEMS') && read("specs/dev-specs/prototype/init_db.js").includes('SEED_EXPENSE_ITEMS'));

@@ -8,6 +8,7 @@
 // ⚠️ AD-10/AD-23：onHide 自动存草稿（wx.setStorageSync），返回自动回填，不静默丢数据。
 const api = require('../../utils/api.js');
 const ui = require('../../utils/ui.js');
+const { normalizeDineRows } = require('../../utils/dineChannels.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 
 const DRAFT_KEY = 'draft_month_input_';
@@ -85,6 +86,7 @@ Page({
     expenseGroups: [],
     fillGuideOpen: false,      // E2：顶部「填写口径」折叠块（默认收起）
     dineMode: 'fast',          // 堂食录入模式：'fast' | 'detail'（严格互斥；方案 A）
+    dineDetailRows: [],        // 分项行**快照**：切到快速前保留，切回分项时原样恢复（防 round-trip 丢值）
     dineSumYuan: '0.00',       // 分项模式：各渠道相加**自动算出**（预计算，WXML 不支持方法调用）
     directConsumeYuan: '',
     // 核算方式（就地二选一）：真值以服务端 switches 为准；改动即时写库，失败回滚
@@ -113,6 +115,7 @@ Page({
         incomeGroups: draft.incomeGroups || this.data.incomeGroups,
         expenseGroups: draft.expenseGroups || this.data.expenseGroups,
         directConsumeYuan: draft.directConsumeYuan !== undefined ? draft.directConsumeYuan : this.data.directConsumeYuan,
+        dineDetailRows: draft.dineDetailRows ? draft.dineDetailRows.map((r) => ({ subItem: r.subItem || '', amountYuan: r.amountYuan || '', fixed: !!r.fixed, note: r.note || '' })) : this.data.dineDetailRows,
       });
     }
   },
@@ -122,6 +125,7 @@ Page({
       incomeGroups: this.data.incomeGroups,
       expenseGroups: this.data.expenseGroups,
       directConsumeYuan: this.data.directConsumeYuan,
+      dineDetailRows: this.data.dineDetailRows,
     });
   },
 
@@ -208,6 +212,11 @@ Page({
       const incomeGroups = this.rebuildFromItems(TERMS.ledger.income, d.income_items, TERMS.ledger.incomeScope);
       const expenseGroups = this.rebuildFromItems(TERMS.ledger.expense, d.expense_items, TERMS.ledger.expenseScope);
       const directConsumeYuan = d.direct_consume_fen ? api.fenToYuan(d.direct_consume_fen) : '';
+      // 堂食分项快照：若后端已存分项（>1 行），原样带入 dineDetailRows，切回分项可恢复（防 round-trip 丢值）
+      const dG = incomeGroups.find((x) => x.category === 'dine_in');
+      const dineDetailRows = (dG && dG.rows && dG.rows.length > 1)
+        ? dG.rows.map((r) => ({ subItem: r.subItem || '', amountYuan: r.amountYuan || '', fixed: !!r.fixed, note: r.note || '' }))
+        : [];
       // 核算方式读回（服务端权威；口径锁：经营参考利润用直接填值，真实利润才倒轧）
       const inventoryOn = !!sw.inventorySwitchOn;
       const amortizeOn = !!sw.amortizeSwitchOn;
@@ -225,6 +234,7 @@ Page({
         incomeGroups,
         expenseGroups,
         dineMode: this.pickDineMode(incomeGroups),
+        dineDetailRows,
         inventoryOn, amortizeOn, invSummary,
         directConsumeYuan: directConsumeYuan || this.data.directConsumeYuan,
         loading: false,
@@ -285,7 +295,8 @@ Page({
     const key = kind === 'income' ? 'incomeGroups' : 'expenseGroups';
     const groups = this.data[key].slice();
     const g = Object.assign({}, groups[Number(gidx)]);
-    g.rows = g.rows.concat([{ subItem: '', amountYuan: '' }]);
+    // custom:true = 「刚点添加、还没填」的空行，装配时要放行（否则点了没反应）
+    g.rows = g.rows.concat([{ subItem: '', amountYuan: '', custom: true }]);
     g.rows = g.category === 'dine_in' ? this.decorateDineRows(g.rows) : g.rows;
     g.showRows = g.rows;
     groups[Number(gidx)] = g;
@@ -310,21 +321,18 @@ Page({
   // ===== 堂食录入模式（严格互斥二选一 · 方案 A）=====
   // ⚠️ 方案 A 语义：选「分项」时总额由各渠道相加**自动得出、不可手填** ⇒ 单一数据源，
   //    天然一致，压根不需要「分项之和==总额」的校验（互斥单选下两模式不并存，本就无两值可比）。
-  // ⚠️ fast → detail：总额无法凭空拆分 ⇒ 暂放第一行并提示，数据不丢（不清空用户已填的总额）。
-  // ⚠️ detail → fast：把合计写回单行，无损。
+  // ⚠️ 防 round-trip 丢值（李老师 2026-09-21 反馈）：分项→快速→分项 来回切，原填的各渠道数值必须原样恢复，
+  //    不能重铺成「总额塞第一行让你手填」。做法：切到快速前把分项行快照进 dineDetailRows，
+  //    切回分项时若快照非空则整体恢复，只有【从未填过分项】才走「总额铺首行、交人分配」旧逻辑。
   // ⚠️ 模式只存本地（wx.setStorageSync），不动后端；换设备/清缓存回默认，默认值由数据推断。
 
-  // 堂食预设渠道行：名称固定不可编辑（省出宽度给金额框），并挂渠道口径标注
+  // 堂食渠道行装配（🔒 唯一入口）：预设渠道全集常在 + 自定义行留末尾 + 金额按名回填。
+  // ⚠️ 所有产出堂食行的路径都必须调这里（读后端/加行/删行/切模式/初始化），
+  //    不许任何地方自己 map 拼装 —— 否则「改一处漏三处」（渠道凭空消失）会复发（G10g 守）。
+  // ⚠️ 渠道清单只来自 terms.js，本页不写死渠道名（G10h 守）。
   decorateDineRows(rows) {
     const def = TERMS.ledger.income.find((g) => g.category === 'dine_in');
-    const items = (def && def.items) || [];
-    const notes = TERMS.ledger.channelNotes || {};
-    return (rows || []).map((r) => ({
-      subItem: r.subItem || '',
-      amountYuan: r.amountYuan || '',
-      fixed: !!r.subItem && items.indexOf(r.subItem) >= 0,
-      note: notes[r.subItem] || '',
-    }));
+    return normalizeDineRows(rows, (def && def.items) || [], TERMS.ledger.channelNotes || {});
   },
 
   // 分项模式合计（预计算，WXML 不支持方法调用）
@@ -366,8 +374,12 @@ Page({
     const g = Object.assign({}, groups[gi]);
 
     if (val === 'detail') {
-      // 只有一行（总额）时，铺开预设渠道并把总额暂放第一行 —— 系统不知道拆分比例，只能交给人
-      if (g.rows.length <= 1) {
+      // 切回分项：优先恢复快照（原样回填各渠道数值，不重铺、不弹提示）
+      const snap = this.data.dineDetailRows || [];
+      if (snap.length > 0) {
+        g.rows = this.decorateDineRows(snap.map((r) => ({ subItem: r.subItem || '', amountYuan: r.amountYuan || '' })));
+      } else {
+        // 从未填过分项（或已清空）：把快速总额铺到第一行，交人分配（系统不知道拆分比例）
         const total = (g.rows[0] && g.rows[0].amountYuan) || '';
         const def = TERMS.ledger.income.find((x) => x.category === 'dine_in');
         const seed = ((def && def.items) || []).map((name, i) => ({ subItem: name, amountYuan: i === 0 ? total : '' }));
@@ -376,14 +388,21 @@ Page({
       }
       g.expanded = true;
     } else {
-      // 收拢为单行总额（各渠道相加，无损）
-      const sum = (g.rows || []).reduce((s2, r) => s2 + (Number(r.amountYuan) || 0), 0);
+      // 切到快速：先把当前分项行**快照**保住（原样恢复用），再收拢为单行总额
+      const cur = (g.rows || []).map((r) => ({ subItem: r.subItem || '', amountYuan: r.amountYuan || '' }));
+      const sum = cur.reduce((s2, r) => s2 + (Number(r.amountYuan) || 0), 0);
       g.rows = this.decorateDineRows([{ subItem: '', amountYuan: sum ? sum.toFixed(2) : '' }]);
       g.expanded = false;
+      g.showRows = g.rows;
+      groups[gi] = g;
+      this.setData({ incomeGroups: groups, dineMode: val, dineDetailRows: this.decorateDineRows(cur) });
+      this.syncDineSum();
+      this.saveDineMode(val);
+      return;
     }
     g.showRows = g.rows;
     groups[gi] = g;
-    this.setData({ incomeGroups: groups, dineMode: val });
+    this.setData({ incomeGroups: groups, dineMode: val, dineDetailRows: g.rows.map((r) => ({ subItem: r.subItem || '', amountYuan: r.amountYuan || '', fixed: !!r.fixed, note: r.note || '' })) });
     this.syncDineSum();
     this.saveDineMode(val);
   },
@@ -473,7 +492,12 @@ Page({
     return groups.map((g) => ({
       category: g.category,
       name: g.label,
-      sub_items: g.rows.map((r) => ({ sub_item: (r.subItem || '').trim(), amount_fen: api.yuanToFen(r.amountYuan) })),
+      // ⚠️ 堂食预设渠道是「全集常驻」，多数行是空的 ⇒ 只提交**填了金额**的行，
+      //    否则每保存一次就往后端塞一堆空 sub_item（G10i 守）。
+      //    注意：快速模式单行（无名、有金额）必须保留 ⇒ 判据看金额，不看名字。
+      sub_items: g.rows
+        .filter((r) => String(r.amountYuan === undefined || r.amountYuan === null ? '' : r.amountYuan).trim() !== '')
+        .map((r) => ({ sub_item: (r.subItem || '').trim(), amount_fen: api.yuanToFen(r.amountYuan) })),
     }));
   },
 
