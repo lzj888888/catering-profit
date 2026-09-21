@@ -1,0 +1,124 @@
+{
+ "front": {
+  "dine_in": [
+   "现金收款",
+   "微信扫码收款",
+   "支付宝收款",
+   "银行卡/POS刷卡",
+   "储值卡消费",
+   "个人/单位挂账消费",
+   "团购/代金券核销"
+  ],
+  "other": [
+   "废品变卖",
+   "预制菜零售"
+  ]
+ },
+ "cloudfunction": {
+  "dine_in": [
+   [
+    "income_dine_cash",
+    "现金"
+   ],
+   [
+    "income_dine_wepay",
+    "微信支付宝"
+   ],
+   [
+    "income_dine_stored",
+    "储值消费"
+   ],
+   [
+    "income_dine_groupon",
+    "团购券核销"
+   ],
+   [
+    "income_dine_credit",
+    "企业挂账消费"
+   ]
+  ],
+  "takeaway": [
+   [
+    "income_takeaway_goods",
+    "商品总价"
+   ],
+   [
+    "income_takeaway_pack",
+    "打包费"
+   ],
+   [
+    "income_takeaway_subsidy",
+    "商家活动补贴"
+   ]
+  ],
+  "other": [
+   [
+    "income_other_scrap",
+    "废品变卖"
+   ],
+   [
+    "income_other_premade",
+    "预制菜零售"
+   ]
+  ]
+ },
+ "prototype": {
+  "dine_in": [
+   [
+    "income_dine_cash",
+    "现金"
+   ],
+   [
+    "income_dine_wepay",
+    "微信支付宝"
+   ],
+   [
+    "income_dine_stored",
+    "储值消费"
+   ],
+   [
+    "income_dine_groupon",
+    "团购券核销"
+   ],
+   [
+    "income_dine_credit",
+    "企业挂账消费"
+   ]
+  ],
+  "takeaway": [
+   [
+    "income_takeaway_goods",
+    "商品总价"
+   ],
+   [
+    "income_takeaway_pack",
+    "打包费"
+   ],
+   [
+    "income_takeaway_subsidy",
+    "商家活动补贴"
+   ]
+  ],
+  "other": [
+   [
+    "income_other_scrap",
+    "废品变卖"
+   ],
+   [
+    "income_other_premade",
+    "预制菜零售"
+   ]
+  ]
+ }
+}
+
+=== 堂食逐项比对 ===
+前端 terms 堂食 (7): ['现金收款', '微信扫码收款', '支付宝收款', '银行卡/POS刷卡', '储值卡消费', '个人/单位挂账消费', '团购/代金券核销']
+云函数种子 堂食 (5): ['现金', '微信支付宝', '储值消费', '团购券核销', '企业挂账消费']
+原型副本   堂食 (5): ['现金', '微信支付宝', '储值消费', '团购券核销', '企业挂账消费']
+
+=== 其他业务收入比对 ===
+前端 (2): ['废品变卖', '预制菜零售']
+云函数 (2): ['废品变卖', '预制菜零售']
+
+=== 原型副本 ≡ 云函数副本 ? === True
