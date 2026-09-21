@@ -1,0 +1,12 @@
+OK   M1 expect=RED got=RED rc=1  # 月份集合退回纯数据驱动（缺陷本体）
+OK   M2 expect=RED got=RED rc=1  # 窗口函数写死返回单个月份（丧失滚动语义）
+OK   M3 expect=GREEN got=GREEN rc=0  # 正确答案换名字（recentMonths → monthWindow，定义+调用点同改）
+OK   M4 expect=RED got=RED rc=1  # 窗口倒序 → 升序
+OK   M5 expect=RED got=RED rc=1  # 窗口跳月（每 2 个月一个）
+OK   M6 expect=RED got=RED rc=1  # 窗口默认只给 3 个月（短于语义阈值 12）
+OK   M7 expect=GREEN got=GREEN rc=0  # 正确答案换等价实现（Date → 算术，名字不变）
+
+还原后: rc=0 red=false  ==== 批次 8 UI 修复自测：38 通过 / 0 失败 ====
+  还原完整性 utils/ui.js: byte-identical ✅
+  还原完整性 pages/month/index.js: byte-identical ✅
+MISMATCH: 无
