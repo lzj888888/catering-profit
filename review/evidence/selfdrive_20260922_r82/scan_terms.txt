@@ -1,0 +1,22 @@
+TERMS_BYTES 22341 CRLF 0 LF 751
+BLOCKS 23
+  modules                      leaves= 19  tools_ref=3
+  buttons                      leaves=  9  tools_ref=0
+  paywall                      leaves= 10  tools_ref=3
+  result                       leaves=  3  tools_ref=37
+  auditSafe                    leaves=  3  tools_ref=2
+  ui                           leaves= 34  tools_ref=5
+  nav                          leaves=  8  tools_ref=0
+  ledger                       leaves= 58  tools_ref=10
+  m2                           leaves= 25  tools_ref=6
+  card                         leaves= 33  tools_ref=41
+  inventoryPage                leaves=  9  tools_ref=0
+  amortizePage                 leaves= 30  tools_ref=0
+  resultPage                   leaves= 15  tools_ref=0
+  calcMethod                   leaves= 25  tools_ref=11
+  settings                     leaves=  7  tools_ref=0
+  inputPage                    leaves=  6  tools_ref=0
+  sandboxResult                leaves=  5  tools_ref=1
+  pay                          leaves= 33  tools_ref=7
+  exp                          leaves= 57  tools_ref=20
+  uiFix                        leaves=  5  tools_ref=9

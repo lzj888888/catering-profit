@@ -1,0 +1,4 @@
+MD_TOTAL 30
+ZERO_REF 2
+   specs/dev-specs/BRANCH_STRATEGY.md
+   specs/dev-specs/OBSOLETE_商业化方案_v1.1_融合版.md

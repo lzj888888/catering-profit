@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：85 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：86 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -239,6 +239,14 @@ const SUITES = [
   //   ⚠️ 当前实扫**零漂移**（全仓仅清单标题一处提及）⇒ 本守卫是**防复发**，不是修缺陷。
   //   裸扫「N 条红线」会误杀重启键演进链里的历史值（12/11）⇒ 走语义标记 + 锚点就近 ±30（坑⑭/⑯）。
   ['audit-redlines',         'tools/check_audit_redlines.js'],
+  // 第 86 套件（round82 新增，R113）：限流阈值口径守卫 tools/check_rate_limit_params.js
+  //   —— 根因＝`RATE_LIMITED` 的「写操作 > 60 次/分钟（openid 维度）」是批次 0 投喂基线 §2.2.5 明写的口径、
+  //   且落在这份统一错误码表（对外契约）里；代码单源 `common/rateLimit.js` 的 `MAX_WRITES=60`/`WINDOW_MS=60000`
+  //   连同 42 份扁平副本 `cx_rateLimit.js` 实扫零漂移，但 `tools/`+`prototype/`+verify_all 对 `MAX_WRITES` **零引用**
+  //   ⇒ 把阈值改成 600（限流形同虚设）或 6（正常用户被拒），文档仍写 60、门禁全绿（同族病第 20 例，防护性边界口径）。
+  //   ⚠️ 当前实扫**零漂移**（43 处同值）⇒ 本守卫是**防复发**，不是修缺陷。
+  //   裸扫「60」会误杀 `60 * 1000` / 60rpx / 7 天 24h 等合法口径 ⇒ 走语义标记 + 锚点就近 ±40（坑⑭/⑯）。
+  ['rate-limit-params',      'tools/check_rate_limit_params.js'],
   // 后续批次的套件在此追加即可（如 batch2_selfcheck ...）；追加后记得同步头部注释里的套件数量。
 ];
 

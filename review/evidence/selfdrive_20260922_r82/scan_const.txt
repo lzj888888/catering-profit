@@ -1,0 +1,11 @@
+CONST_TOTAL 13
+--- 既无 specs 声明 也无 tools 引用（盲区候选）---
+  EXPORT_PAGE_SIZE = 1000   cloudfunctions/adminExport/service.js
+  MAX_DEPTH = 5   cloudfunctions/detectCycle/service.js
+  MAX_EXPORT_PAGES = 20   cloudfunctions/adminExport/service.js
+  MAX_WRITES = 60   cloudfunctions/adminExport/cx_rateLimit.js
+  SCRYPT_KEYLEN = 64   cloudfunctions/adminExport/adminAuth.js
+  SHOP_MAX_PAGES = 5   cloudfunctions/adminQueryUser/service.js
+  SHOP_PAGE = 100   cloudfunctions/adminQueryUser/service.js
+  YUAN = 100   cloudfunctions/calcAmortize/selftest.js
+CANDIDATES 8

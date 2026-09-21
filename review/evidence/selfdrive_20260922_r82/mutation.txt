@@ -1,0 +1,28 @@
+===== round82 · R113 双向变异回灌 =====
+  M1  单源 MAX_WRITES 60→600（限流形同虚设）
+      期望=red 实际=red · OK rc=1 ❌ A3-② 声明次数 N=60 ≡ 单源 MAX_WRITES=600 —— 声明 60 / 实算 600 count=1
+  M2  单源 WINDOW_MS 改 30s（口径自洽性）
+      期望=red 实际=red · OK rc=1 ❌ A3-③ 声明窗口 W=60000 ≡ 单源 WINDOW_MS=30000 —— 声明 60000 / 实算 30000 count=1
+  M3  副本 adminLogin MAX_WRITES 60→6（只改一处副本）
+      期望=red 实际=red · OK rc=1 ❌ A4 全部 42 份副本 ≡ 单源（防只改一处副本） —— adminLogin(6/60000) count=1
+  M4  声明次数 60→120（改声明不改代码）
+      期望=red 实际=red · OK rc=1 ❌ A3-② 声明次数 N=120 ≡ 单源 MAX_WRITES=60 —— 声明 120 / 实算 60 count=1
+  M5  声明窗口 60000→30000
+      期望=red 实际=red · OK rc=1 ❌ A3-③ 声明窗口 W=30000 ≡ 单源 WINDOW_MS=60000 —— 声明 30000 / 实算 60000 count=1
+  M6  引用处 core/16 写 30 次/分钟
+      期望=red 实际=red · OK rc=1 ❌ A5-① 当前态声明全部 ≡ 60（共 4 处，HIST 放行 0 行） —— specs/dev-specs/core/16_后台鉴权规范.md:48 写 30 count=1
+  M7  删唯一声明处（fail-closed）
+      期望=red 实际=red · OK rc=1 ❌ A2-① 语义标记「限流阈值口径」可解析出次数 N（fail-closed） —— 零命中 count=1
+  M8  扫描面路径写错（扫空=零覆盖）
+      期望=red 实际=red · OK rc=1 ❌ A1-④ 扫描面 .md 数 ≥ 25（排除 review/，路径写错即红） —— 0 个 count=1
+  M9  副本目录名写错（副本面失效）
+      期望=red 实际=red · OK rc=1 ❌ A1-③ 扁平副本数 ≥ 40（副本扫描面失效即红） —— 0 份 count=1
+  M10 正确实现换措辞（「60 次 / 分钟」加空格）
+      期望=green 实际=green · OK rc=0  count=1
+  M11 单源窗口写等价字面量 60000
+      期望=green 实际=green · OK rc=0  count=1
+  M12 无关口径：core/16 增补一句 60rpx 字号
+      期望=green 实际=green · OK rc=0  count=1
+
+变异 12 组，异常 0 组
+还原后 git status（应为空）: 'M  "specs/dev-specs/core/09_\\347\\273\\237\\344\\270\\200\\351\\224\\231\\350\\257\\257\\347\\240\\201\\350\\241\\250.md"\nA  tools/check_rate_limit_params.js'
