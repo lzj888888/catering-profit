@@ -1,0 +1,31 @@
+M1 声明值写回旧值（ui_fix 31→27）: 锚点命中1 got=RED rc=1 expect=RED -> OK
+      ❌ A2-selftest_ui_fix 声明 27 ≠ 实跑 31
+    ⚠️ 还原后仍脏: M  "specs/dev-specs/\342\230\205\347\237\245\350\257\206\345\255\230\345\202\250\347\202\271_2026-09
+M2 声明值乱写（batch8b 104→48）: 锚点命中1 got=RED rc=1 expect=RED -> OK
+      ❌ A2-selftest_batch8b 声明 48 ≠ 实跑 104
+    ⚠️ 还原后仍脏: M  "specs/dev-specs/\342\230\205\347\237\245\350\257\206\345\255\230\345\202\250\347\202\271_2026-09
+M3 声明行删掉一个受守 key: 锚点命中1 got=RED rc=1 expect=RED -> OK
+      ❌ A2-check_env_ready 声明行缺少 `check_env_ready` 的断言数
+    ⚠️ 还原后仍脏: M  "specs/dev-specs/\342\230\205\347\237\245\350\257\206\345\255\230\345\202\250\347\202\271_2026-09
+M4 实跑路径写错（ios_pay → typo）: 锚点命中1 got=RED rc=1 expect=RED -> OK
+      ❌ A0-check_ios_pay 实跑失败 rc≠0（tools/check_ios_pay_typo.js）
+      ❌ A2-check_ios_pay 声明 6 ≠ 实跑 undefined
+    ⚠️ 还原后仍脏: A  tools/check_suite_assert_counts.js
+M5 受守集合改小（CASES 删到 2 个）: 锚点命中1 got=RED rc=1 expect=RED -> OK
+      ❌ A5-① 受守套件仅 4 个 < 6 ⇒ 覆盖面不足
+      ❌ A5-② 声明行含未受守 key：check_ios_pay, check_env_ready
+    ⚠️ 还原后仍脏: A  tools/check_suite_assert_counts.js
+M6 历史面扫描路径写错（review → review_typo）: 锚点命中1 got=RED rc=1 expect=RED -> OK
+      ❌ A6-① 历史面零命中 ⇒ 排除面可能打错，守卫前提失效
+    ⚠️ 还原后仍脏: A  tools/check_suite_assert_counts.js
+M7 声明扩散到第二份 md: got=RED rc=1 expect=RED -> OK
+      ❌ A7-① 另有 1 处自称本口径单源：specs/dev-specs/_mut_r73_probe.md
+    探针已删除: True
+M8 删除唯一声明行（fail-closed）: got=RED rc=1 expect=RED -> OK
+      ❌ A1-① 声明行数为 0（须恰为 1）
+      ❌ A2-selftest_ui_fix 声明行缺少 `selftest_ui_fix` 的断言数
+      ❌ A2-selftest_ad_gates 声明行缺少 `selftest_ad_gates` 的断言数
+M9 声明行换措辞（加空格 / 换行顺序调整）: 锚点命中1 got=GREEN rc=0 expect=GREEN -> OK
+    ⚠️ 还原后仍脏: M  "specs/dev-specs/\342\230\205\347\237\245\350\257\206\345\255\230\345\202\250\347\202\271_2026-09
+M10 历史措辞旧值陈述（不错杀）: got=GREEN rc=0 expect=GREEN -> OK
+    探针已删除: True

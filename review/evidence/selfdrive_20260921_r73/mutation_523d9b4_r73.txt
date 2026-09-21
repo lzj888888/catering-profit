@@ -1,0 +1,38 @@
+M1 金额改按下标回填（首个非空即取）: got=RED rc=1 expect=RED -> OK
+     ❌ G10b 缺失的挂账被补回（空行）
+     ❌ G10b 缺失的团购被补回（空行）
+     ❌ G10b 金额按名回填不错位（微信=2000 / 储值卡=30）
+M2 取消预设全集常在（presets 置空）: got=RED rc=1 expect=RED -> OK
+     ❌ G10b 后端只回传部分渠道时仍补齐全集  (3/7)
+     ❌ G10b 缺失的挂账被补回（空行）
+     ❌ G10b 缺失的团购被补回（空行）
+M3 保存不再过滤空行（全部落库）: got=RED rc=1 expect=RED -> OK
+     ❌ G10i 保存只提交填了金额的行（空渠道不落库）
+M4 addRow 丢掉 custom 标记（点了没反应）: got=RED rc=1 expect=RED -> OK
+     ❌ G10k 新增行带 custom 标记（点了「添加渠道」立刻出现空行）
+M5 预设行恢复给删除键: got=GREEN rc=0 expect=RED -> MISMATCH
+M9 页面写死渠道名: got=GREEN rc=0 expect=RED -> MISMATCH
+M11 decorateDineRows 不再转调唯一装配口: got=RED rc=1 expect=RED -> OK
+     ❌ G10g decorateDineRows 转调唯一装配口
+M6 新增一条自己 map 拼装堂食行的路径（不经唯一装配口）: got=GREEN rc=0 expect=RED -> MISMATCH
+M7 删除键换等价写法（r.fixed === false）: got=GREEN rc=0 expect=GREEN -> OK
+M8 filter 换等价写法（保留金额判据）: got=GREEN rc=0 expect=GREEN -> OK
+M10 装配口内部等价改写（重命名+换注释）: got=GREEN rc=0 expect=GREEN -> OK
+
+===== 变异回灌汇总 =====
+OK        RED          (expect RED  ) M1 金额改按下标回填（首个非空即取）
+OK        RED          (expect RED  ) M2 取消预设全集常在（presets 置空）
+OK        RED          (expect RED  ) M3 保存不再过滤空行（全部落库）
+OK        RED          (expect RED  ) M4 addRow 丢掉 custom 标记（点了没反应）
+MISMATCH  GREEN        (expect RED  ) M5 预设行恢复给删除键
+MISMATCH  GREEN        (expect RED  ) M9 页面写死渠道名
+OK        RED          (expect RED  ) M11 decorateDineRows 不再转调唯一装配口
+MISMATCH  GREEN        (expect RED  ) M6 新增一条自己 map 拼装堂食行的路径（不经唯一装配口）
+OK        GREEN        (expect GREEN) M7 删除键换等价写法（r.fixed === false）
+OK        GREEN        (expect GREEN) M8 filter 换等价写法（保留金额判据）
+OK        GREEN        (expect GREEN) M10 装配口内部等价改写（重命名+换注释）
+
+合计 11 组，异常 3 组
+  ⚠️ M5 预设行恢复给删除键 got GREEN expect RED
+  ⚠️ M9 页面写死渠道名 got GREEN expect RED
+  ⚠️ M6 新增一条自己 map 拼装堂食行的路径（不经唯一装配口） got GREEN expect RED

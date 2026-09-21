@@ -1,0 +1,8 @@
+   锚点命中 1 处
+M5b 预设行恢复给删除键（精确锚点）: got=RED rc=1 expect=RED -> OK
+      ❌ G10j 预设行不给删除键（× 只对自定义行）
+   锚点命中 1 处
+M9b 页面写死完整渠道名（个人/单位挂账消费）: got=RED rc=1 expect=RED -> OK
+      ❌ G10h 页面不写死任何渠道名（清单只认 terms.js）
+   锚点命中 1 处
+M9c 注释里出现渠道全名（换措辞·期望仍绿）: got=GREEN rc=0 expect=GREEN -> OK

@@ -1,0 +1,114 @@
+===== A1 · 费用四大类（运营/人工/营销/其他）+ 营销含佣金分列 =====
+✅ 费用四大类含运营(operation)
+✅ 费用四大类含人工(labor)
+✅ 费用四大类含营销(marketing)
+✅ 费用四大类含其他(other)
+✅ 营销细项含外卖平台佣金
+✅ 营销细项含团购平台佣金（分列不合并）
+✅ 营销佣金分列（两独立词条）
+✅ 旧费用分类(房租租金/人员工资/水电物业)已移除
+
+===== A2 · 二级细项（前端 UI + 后端契约）=====
+✅ input.js 有 incomeGroups/expenseGroups 组模型
+✅ input.js 有 rows/showRows 细项行模型
+✅ input.js 有 buildItems（提交 sub_items，前端不汇总）
+✅ input.wxml 有 sub_item 输入与 addRow/delRow
+✅ input.wxml 用 group-head 展开/收起
+✅ saveLedger validate 接受 sub_items
+✅ validate 云函数汇总大类金额（不采信前端大类值）
+✅ validate 限制 sub_item ≤20 字
+✅ saveLedger 落库转 snake_case（amount_fen/sub_items）
+✅ getLedger 兼容旧格式并返回 snake_case
+
+===== B1 · 摊销年月 picker（替代手输）=====
+✅ 开始月用 picker mode=date fields=month
+✅ 终止月用 picker mode=date fields=month
+✅ amortize.js 有 onMonthPick 处理
+
+===== C1 · mine 页 版本/客服/免责声明 =====
+✅ mine 页有版本号 cell（关于）
+✅ mine 页有意见反馈 cell（AD-16 客服入口）
+✅ mine 页有免责声明 cell + 弹窗
+✅ disclaimer 词条被引用（不再是幽灵）
+
+===== D1 · result 下钻明细 =====
+✅ result 营业收入行可点下钻
+✅ result 费用合计行可点下钻
+✅ result 有展开明细面板（大类→细项）
+✅ result.js 有 buildDetail/toggleDrill（前端仅格式化展示）
+
+===== E1 · 录入页引导文案 =====
+✅ input 收入引导 incomeHint 渲染
+✅ input 费用引导 expenseHint 渲染
+✅ 收入口径=权责发生制（语义级：有权责锚点 且 无收付实现制框架）
+
+===== F1 · 术语统一 + 幽灵清理 =====
+✅ 总费用→费用合计（两页统一）
+   幽灵词条 14 条已清: ✅
+
+===== G · 堂食录入模式（2026-09-21 李老师拍板 · 方案 A 严格互斥）=====
+✅ G1 堂食渠道数 = 7  (实际 7)
+✅ G1 含 银行卡/POS刷卡（李老师要求新增）
+✅ G1 含 团购/代金券核销（不单列老板会以为钱少了）
+✅ G1 微信 / 支付宝已拆分为两项
+✅ G1 旧合并项「微信支付宝」已消失
+✅ G2 互斥开关两个选项（fast / detail）
+✅ G2 开关绑定 onPickDineMode
+✅ G2 选中态由 dineMode 唯一决定（不存在两个数据源）
+✅ G3 「添加渠道」按钮保留（李老师硬要求）
+✅ G3 添加按钮在分项模式分支内（未被模式开关吃掉）
+✅ G3 添加按钮仍绑定 addRow
+✅ G4 合计是只读文本（不可手填）
+✅ G4 合计不是输入框
+✅ G4 合计由 syncDineSum 自动相加
+✅ G5 有 onPickDineMode 切换方法
+✅ G5 有 decorateDineRows（预设渠道固定不可编辑）
+✅ G5 模式只存本地、不动后端契约
+✅ G6 标注：储值充值不算收入
+✅ G6 标注：团购钱结算在平台
+✅ G6 口径：收回挂账的回款不算营收
+✅ G7 口径句收进折叠块（引导行 + 按需展开）
+✅ G7 有 onToggleScope 且默认收起（scopeOpen 初值 false）
+✅ G7 引导语走 i18n（页面不写死文案）
+✅ G7 口径句未退回「常展开」形态
+✅ G8 渠道行拆两行（行①名字+× / 行②金额）
+✅ G8 一行三列已废（渠道名不再与金额抢宽度而竖排）
+✅ G8 金额框不在行①（名字行不含金额）
+✅ G8 渠道名不竖排（nowrap + 省略号）
+✅ G8 金额框占满行②（flex 1 + width auto）
+✅ G8 × 触控高度仍 88rpx（李老师要求「变小」≠ 下调 min-height，G2 硬约束）
+
+===== G9 · 分项→快速→分项 round-trip 不丢值（2026-09-21 李老师反馈）=====
+✅ G9 数据层有 dineDetailRows 快照字段
+✅ G9 切到快速前先把分项行快照进 dineDetailRows
+✅ G9 切回分项优先恢复快照（非空则原样恢复，不重铺首行）
+✅ G9 仅从未填过分项才走「总额铺首行」旧逻辑
+
+===== G10 · 堂食渠道全集常在 + 单一装配口（2026-09-21 李老师「挂账/团购不见了」）=====
+✅ G10a 装配模块导出 normalizeDineRows
+✅ G10a 渠道清单来自 terms.js（≥7 条）  (实际 7 条)
+✅ G10a 清单含李老师点名的挂账与团购
+✅ G10b 后端只回传部分渠道时仍补齐全集  (7/7)
+✅ G10b 缺失的挂账被补回（空行）
+✅ G10b 缺失的团购被补回（空行）
+✅ G10b 金额按名回填不错位（微信=2000 / 储值卡=30）
+✅ G10b 顺序按 terms 不打乱
+✅ G10c 自定义渠道保留在末尾
+✅ G10c 自定义行 fixed=false（可编辑可删）
+✅ G10c 预设行 fixed=true（名称不可改）
+✅ G10d 无名无额的空行被丢弃（不占位）
+✅ G10d 刚添加的空行(custom)放行（点了有反应）
+✅ G10f 幂等：normalize(normalize(x)) === normalize(x)
+✅ G10e round-trip 后渠道全集 + 数值俱在
+✅ G10g decorateDineRows 转调唯一装配口
+✅ G10g 页面 require 了装配模块
+✅ G10h 页面不写死任何渠道名（清单只认 terms.js）
+✅ G10i 保存只提交填了金额的行（空渠道不落库）
+✅ G10k 新增行带 custom 标记（点了「添加渠道」立刻出现空行）
+✅ G10j 预设行不给删除键（× 只对自定义行）
+
+===== 门禁预检 =====
+✅ K11 双副本逐字一致
+✅ 建库单源同步（种子在双源）
+
+==== 批次 8b 功能补齐自测：104 通过 / 0 失败 ====
