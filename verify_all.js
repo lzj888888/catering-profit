@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：81 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：82 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -16,7 +16,11 @@
 //       + 已证伪短语守卫（tools/check_stale_claims.js，R85：**已证伪的说法必须带上下文标记**，
 //         政策类须带政策标记；按**概念**而非句式命中 ⇒ R84 那种「同一概念换了说法」不会再漏。
 //         根因=R60/R77/R82/R84 四次都是审定式断言的时效性没人守、且四次都靠人 grep）
-//       + batch7 前端工具套件（tools/selftest_batch7.js，R55 移入 tools/ 以免随小程序包发布）。
+//       + batch7 前端工具套件（tools/selftest_batch7.js，R55 移入 tools/ 以免随小程序包发布）
+//       + 状态陈述矛盾守卫（tools/check_stale_status.js，R109：小节标题说「待修/待办」而同节正文
+//         已说「已闭环/已修复」⇒ 转红；扫**活文档面** specs/，review/ 为历史档案只作弱面明示。
+//         根因=core/13 事项闭环后只改正文、标题/页脚停在旧时态，而同族 16 例全是**数字**漂移、
+//         无一是**时态**漂移 ⇒ 用结构判定而非短语表；含 5 组正负样本互证 + 2 道自失效护栏）
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -208,6 +212,13 @@ const SUITES = [
   //   —— 根因＝POC2 七函数 selftest 实跑 108 项而重启键仍写 83 项，
   //   通过数是**下界**，写低了 ⇒ 25 条断言静默丢失仍判绿（与第 13/15 例同族，向云函数层推广）
   ['fn-selftest-counts',     'tools/check_fn_selftest_counts.js'],
+  // 第 82 套件（round76 新增，R109）：状态陈述矛盾守卫 tools/check_stale_status.js
+  //   —— 根因＝core/13「决策与待办总览」§6 标题仍写「下一批待修…本轮正式排进"下一批"」，
+  //   而同节正文早已写「2026-09-19 round39 已修复」+ 27 行落地明细；页脚两段带日期的警告
+  //   也仍称 §5「未决策、未处置」、§6/§7「均为待修」（三者均已于 09-19 闭环）。
+  //   即「事项闭环后只改正文、标题/页脚停在旧时态」，同族病第 17 例（前 16 例多为数字漂移，
+  //   本例是时态漂移），A–L 无一组可测。判据见该文件头注释。
+  ['stale-status-guard',     'tools/check_stale_status.js'],
   // 后续批次的套件在此追加即可（如 batch2_selfcheck ...）；追加后记得同步头部注释里的套件数量。
 ];
 
