@@ -133,5 +133,13 @@ check('A18 runReconcile 不写死中文项名', !/mrow\('外卖(平台佣金|配
 check('A18 promoItem 单源在营销 items 内', MARKETING.indexOf(TERMS.ledger.takeawayMode.promoItem) >= 0);
 check('A18 promo 判断不再由文案内容驱动', !/推广中心\/\.test\(note\)/.test(inputJs));
 
+console.log('===== A19 · 主题色单源（旧橘黄已全线下线，不得回流）=====');
+const wxssSrc = fs.readFileSync(path.join(ROOT, 'pages/month/input.wxss'), 'utf8');
+// 判据只扫「生效样式」：逐行滤掉注释行（块注释首行 /* 与续行 *、含 */ 的收尾行）
+// ⚠️ 必须写成**单行**：R68 顶层块切分要求「深度回 0 时以 ; 或 } 收尾」，链式调用换行会让首行括号即平衡 ⇒ 判「不确定」而 fail-closed
+const wxssLive = wxssSrc.split('\n').filter((l) => !/^\s*(\/\*|\*)/.test(l) && l.indexOf('*/') < 0).join('\n');
+check('A19 input.wxss 生效样式不含旧橘黄', !/#ff6b35/i.test(wxssLive));
+check('A19 粘贴面板主按钮走主色渐变（#2a4e7c → #162c49）', /linear-gradient\(135deg, #2a4e7c 0%, #162c49 100%\)/.test(wxssLive));
+
 console.log(`\n==== R85 外卖段自测：${pass} 通过 / ${failN} 失败 ====`);
 process.exit(failN === 0 ? 0 : 1);

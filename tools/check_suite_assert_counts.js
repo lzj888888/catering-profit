@@ -45,6 +45,9 @@ const CASES = [
   // R85 扩面（round85）：外卖段自测原不在受守集合内 ⇒ 本轮实测 60 条而文档写 43 条、零守卫；
   //   与 round73 立本守卫的根因同族（文档写低 = 下界保护失效）⇒ 纳入。
   { key: 'selftest_r85', rel: 'tools/selftest_r85.js' },
+  // R115 扩面（round86）：主题色单源守卫同批纳入 —— 该守卫初版 A3-③ 即被变异 M3 判出**恒真断言**
+  //   （声称「防 EXTS 被改小」而实现恒真）⇒ 断言数必须受守，否则「改小扫描面/删断言」静默通过。
+  { key: 'check_theme_color', rel: 'tools/check_theme_color.js' },
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

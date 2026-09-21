@@ -1,6 +1,6 @@
-# NOTE · 2026-09-22 round86 · R85 外卖段产出：独立复核 + 三处「算错钱」级修复
+# NOTE · 2026-09-22 round86 · R85 外卖段产出：独立复核 + 三处「算错钱」级修复 + 新守卫 R115（主题色单源）
 
-> 一句话：**InsCode 交付的 R85 外卖段（前端取数与录入）主体合格，但独立复核抓到 3 处「静默算错钱」级缺陷 + 2 处单源违规，已全部修复并由 7 组双向变异证伪式验证；门禁 88/88 RC=0。**
+> 一句话：**InsCode 交付的 R85 外卖段（前端取数与录入）主体合格，但独立复核抓到 3 处「静默算错钱」级缺陷 + 3 处单源/色值违规（含**旧橘黄回流**），已全部修复并由 **15 组**双向变异证伪式验证（R85 7 组 + R115 8 组）；门禁 88→**89**/89 RC=0。**
 
 本 NOTE 属**写入方**（本轮唯一活跃写入方，见 §5 并发处置），与同日的 `NOTE_2026-09-22_round85-concurrent-writer-detected.md`（**旁观方**视角）互补——**两份都要读**：那份是"看到有人在写"，这份是"写的人自己交底"。
 
@@ -16,7 +16,8 @@ InsCode 按投喂件 `specs/dev-specs/delivery/R85_外卖段录入_提示词_可
 | `miniprogram/i18n/terms.js` + `specs/dev-specs/i18n/terms.js` | 修改 | 双副本（K11）新增 `ledger.takeawayMode` 全文案 + `ledger.expenseItemNotes` |
 | `verify_all.js` | 修改 | SUITES 追加 `r85-takeaway`（第 88）+ 头注 87→88 |
 | `specs/dev-specs/★知识存储点_2026-09-10.md` | 修改 | 套件数两处 87→88；断言数声明加 `selftest_r85` |
-| **`tools/check_suite_assert_counts.js`** | 修改 | **本轮扩面**：`selftest_r85` 纳入受守集合（6→7） |
+| **`tools/check_suite_assert_counts.js`** | 修改 | **本轮两次扩面**：`selftest_r85`（6→7）与 `check_theme_color`（7→8） |
+| **`tools/check_theme_color.js`** | **新增** | **R115 主题色单源守卫**（11 断言 / 5 段）——因 P8 当场复发而建 |
 
 后端**零改动**（`git status cloudfunctions/` 为空）；平台名与营销项名均来自代码单源，页面零硬编码。
 
@@ -68,19 +69,28 @@ terms 注释写「按 **item_key** 挂」，实际按**中文显示名**挂 ⇒ 
 「快速 → 分项」切换把**总额**铺进分项「商品总价」列 ⇒ 该列语义偏移（值守恒、小计不虚增）。
 有 hint 文案提示，按已知限制登记。
 
+### 🔴 P8 新引入**已明令下线的旧橘黄 `#ff6b35`**（色值单源违规 · 第 4 个真缺陷）
+`app.wxss:2-5` 是全仓唯一主题色声明：**墨蓝 v2（2026-09-20）**，并明写「⚠️ 旧橘黄 `#ff6b35` **已全量下线**」。
+而 InsCode 新增的 `pages/month/input.wxss` 写进了 `background: #ff6b35`（粘贴面板主按钮）——
+**全仓门禁 88/88 全绿，零守卫拦住它**。
+**修**：改主色渐变 `linear-gradient(135deg, #2a4e7c 0%, #162c49 100%)`；
+并**补建 R115 守卫**（见 §8）——因为「明令下线 + 零守卫」= 一定复发，P8 只是它第 N 次复发而已。
+
 ## 4 验证证据（全部实测）
 
 | 项 | 结果 |
 |---|---|
 | 门禁基线（改动前，InsCode 版） | 88/88 RC=0 |
-| 门禁终态（修复后） | **88/88 RC=0**，`[r85-takeaway] ✅ PASS (60 条 / 段 15)` |
+| 门禁终态（修复后，R85 单批） | **88/88 RC=0**，`[r85-takeaway] ✅ PASS (60 条 / 段 15)` |
+| 门禁终态（挂 R115 后） | **89/89 RC=0**，`[theme-color] ✅ PASS (11 条 / 段 6)` |
 | 独立边界用例（14 例，含账期/日期/时间/长单号/千分位/4 位无千分位/负数/合计行） | **14/14 PASS** |
 | `reconcile` 五态独立用例 | null / pass / packaging / delivery / miss 全对 |
 | **双向变异回灌 7 组** | **0 异常**：5 组正向全 RED（且报出精确对应断言名）+ 2 组反向 GREEN（不错杀）；逐组还原**字节相等**，复跑回绿 60/0 |
+| **双向变异回灌 8 组（R115）** | **0 异常**：5 组正向全 RED + 3 组反向 GREEN；逐组还原**字节相等**，复跑回绿 11/0 |
 | 双副本一致（K11） | `diff -q` 0 |
 | 相关守卫（terms_forbidden / stale_claims / waimai_spec_sync / suite_assert_counts / income_channel_seed） | 全 GREEN |
 
-变异文件：`review/evidence/r85_feed/mutation_r85.txt`；门禁输出：`gate_88_afterfix.txt`；投喂留证：`p1_focus.png`~`p5_running.png`。
+变异文件：`review/evidence/r85_feed/mutation_r85.txt`（7 组）、`mutation_r115.txt`（8 组）；门禁输出：`gate_88_afterfix.txt`、`gate_88_final.txt`、`gate_89_final.txt`；投喂留证：`p1_focus.png`~`p5_running.png`。
 
 ## 5 并发处置（本轮特殊）
 
@@ -101,6 +111,8 @@ terms 注释写「按 **item_key** 挂」，实际按**中文显示名**挂 ⇒ 
    症状：工具返回 success，但读回内容未变 ⇒ 之后一律**同文件改多处直接用 Write 整体重写**，或改完立即读回验证。
 3. ⚠️ 我按字节统计 CRLF 一度误判「行尾污染」，实际 `core.autocrlf=true` 下 git 会规范化；
    **权威判据是 `git diff --numstat`**（只记真实增删），不是字节计数。
+4. 🔴 **`assert` 写在写盘之后** —— 记忆压缩脚本先 `wr()` 再校验长度，结果 MEMORY 一度被写到 3013 字（超 3000 上限）
+   才报错。**教训：一切「有上限的写入」必须「先算 → 先校验 → 再写」。**
 
 ## 7 未落 / 待下轮
 
@@ -109,3 +121,53 @@ terms 注释写「按 **item_key** 挂」，实际按**中文显示名**挂 ⇒ 
 2. P7（快速→分项语义偏移）是否需要在 UI 上更明确提示 —— 待李老师看真机后定。
 3. 同仓另一会话挂起的「4 份仅扫 index 守卫补工作树面」—— 留它下轮（本轮单写入方原则）。
 4. `开发规范v1.0_ModuleA_收入费用核算.md` 引用的 `外卖核算_专项核对.md` 全仓 0 命中（round84 已登记待裁决）。
+
+
+## 8 R115（主题色单源守卫）—— 因 P8 而建，且**初版自己就写错了**
+
+### 8.1 为什么建
+`app.wxss:2-5` 是全仓唯一主题色声明，且**明写旧橘黄已全量下线**；但 `tools/` 对这句声明的引用为 **0**（grep 实扫）
+⇒ 「明令下线 + 零守卫」= 必然复发。P8 就是复发。
+
+### 8.2 判据（11 断言 / 5 段；**门禁机械计数报「段 6」**——它把末尾汇总分隔行也算作一段，非我多写一段）
+| 段 | 判据 |
+|---|---|
+| A0 | 扫描面非空（工作树递归，**不依赖 git index**） |
+| A1 | 声明在场（fail-closed）：`app.wxss` 头部须含「旧橘黄」+「已全量下线」+ 品牌色，缺一即红 ⇒ 口径单源被删时守卫不会静默变哑 |
+| A2 | 去注释后扫全仓 `.wxss/.wxml/.json/.js` **生效部分**零命中旧橘黄 |
+| A3 | 前提护栏：文件数 ≥30 / 品牌色 ≥10 次 / **EXTS 须为 REQUIRED_EXTS 超集** / 四类扩展名计数达下界 |
+| A4 | 正负样本互证三条（注释里放行、生效里必抓、wxml 注释去得掉）⇒ 防判据恒真/恒假 |
+
+扫描面排除 `tools/`（守卫自身必须写出色值才能判它）、`review/`、`prototype/`、`specs/`。
+
+### 8.3 初版自伤：A3-③ 是**恒真断言**（被变异 M3 当场判出）
+初版写的是：
+
+```js
+const missingExt = EXTS.filter((e) => !extCount[e]);   // ← 恒真
+```
+
+注释声称「防把 EXTS 改小（如去掉 .wxss）后扫不到命中 ⇒ 假绿」，但实现上**只检查「EXTS 里每个扩展名都有文件」**：
+EXTS 一缩，过滤集同步缩 ⇒ **永远为空**。变异 M3（从 EXTS 删掉 `.wxss`）实测**判 GREEN**，与注释声称完全相反。
+**修**：改为 `REQUIRED_EXTS.filter(e => !EXTS.includes(e))`（超集判定）+ 新增 A3-④ 每类文件数下界。
+修后 M3 → **RED**（A3-③「EXTS 缺失必需扩展名 .wxss」+ A3-④「.wxss 0<5」双报），并新增 M7 证明 A3-④ 非恒真。
+
+> 这一例的价值 > 守卫本身：**「注释声称的护栏」≠「实现真的守得住」——只有变异回灌能分辨**。
+
+### 8.4 R115 变异回灌 8 组（0 异常）
+| 组 | 变异 | 期望 | 实际 |
+|---|---|---|---|
+| M1 | `input.wxss` 真引入旧橘黄（模拟 P8 复发） | RED | RED ✔（A2-① 精确报 `pages/month/input.wxss:43`） |
+| M2 | `app.wxss` 声明句去掉「已全量下线」 | RED | RED ✔（A1-①） |
+| M3 | EXTS 去掉 `.wxss` | RED | RED ✔（A3-③ + A3-④） |
+| M4 | `stripComments` 失效 | RED | RED ✔（A2-① app.wxss:5 + A4-①） |
+| M5 | 注释里写旧橘黄做说明 | GREEN | GREEN ✔（不误杀） |
+| M6 | 无关样式改动 | GREEN | GREEN ✔ |
+| M7 | `EXT_FLOOR` 下界改大到 9999 | RED | RED ✔（A3-④） |
+| M8 | `.js` **行注释**里写旧橘黄 | GREEN | GREEN ✔（JS 行注释剥离有效） |
+
+证据：`review/evidence/r85_feed/mutation_r115.txt`；还原后复跑 **11/0 GREEN**。
+
+### 8.5 连带加固
+`check_theme_color` 已纳入 `check_suite_assert_counts.js` 的受守集合（7→8）⇒ 其断言数（11）写入重启键唯一声明处，
+此后**增删断言不报备即转红**（本次 A3 扩面 10→11 已同步）。
