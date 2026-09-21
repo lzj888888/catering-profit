@@ -125,11 +125,11 @@ dsh 窗口缺失 + 李老师 09-21 已定「dsh 暂停参与本仓」 ⇒ **不�
 
 ## 5 回执
 
-- [2026-09-22 00:2x] R82 已落 · 证据：`node verify_all.js` → 总览 **86/86 套件通过**、RC=0 · commit 见文末
-- [2026-09-22 00:1x] R82 已落 · 证据：`node specs/dev-specs/prototype/check_error_codes.js` → RC=0（A–L 全绿） · commit 同上
-- [2026-09-22 00:1x] R82 已落 · 证据：`node tools/selftest_ad_gates.js` → 24/24；`node tools/selftest_ui_fix.js` → 38/38 · commit 同上
-- [2026-09-22 00:4x] R82 已落 · 证据：R113 首跑 17/1（W-① 方向正则写反）→ 修后 **18/18 RC=0** · commit 同上
-- [2026-09-22 00:5x] R82 已落 · 证据：双向变异 **12 组 0 异常**，还原后 `git diff --stat` 空 · commit 同上
+- [2026-09-22 00:2x] R82 已落 · 证据：`node verify_all.js` → 总览 **86/86 套件通过**、RC=0 · commit `609fc28`
+- [2026-09-22 00:1x] R82 已落 · 证据：`node specs/dev-specs/prototype/check_error_codes.js` → RC=0（A–L 全绿） · commit `609fc28`
+- [2026-09-22 00:1x] R82 已落 · 证据：`node tools/selftest_ad_gates.js` → 24/24；`node tools/selftest_ui_fix.js` → 38/38 · commit `609fc28`
+- [2026-09-22 00:4x] R82 已落 · 证据：R113 首跑 17/1（W-① 方向正则写反）→ 修后 **18/18 RC=0** · commit `609fc28`
+- [2026-09-22 00:5x] R82 已落 · 证据：双向变异 **12 组 0 异常**，还原后 `git diff --stat` 空 · commit `609fc28`
 - [2026-09-22 00:1x] R82 **未落** · ④ R86 超时值（人工面，需云控制台/CLI 回读）→ 按 round50 三方一致结论本轮**不回读**，记**存疑** · commit —
 - [2026-09-22 00:1x] R82 **未落** · dsh 复审请求**未投递**（窗口 missing；且李老师 09-21 已定 dsh 暂停参与本仓） · commit —
 - [2026-09-22 00:1x] R82 **未落** · InsCode **未投喂**（idle 但 8 批 0~7 已收官、无批次 8 ⇒ 无下一批可投） · commit —
