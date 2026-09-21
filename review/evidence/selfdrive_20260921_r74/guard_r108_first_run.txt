@@ -1,0 +1,40 @@
+
+===== C0 实算单源（逐个真跑云函数 selftest，不抄字面量） =====
+  · cloudfunctions/calcBom/selftest.js → 40 通过
+  · cloudfunctions/detectCycle/selftest.js → 12 通过
+  · cloudfunctions/getCostCard/selftest.js → 8 通过
+  · cloudfunctions/getMaterial/selftest.js → 7 通过
+  · cloudfunctions/saveCostCard/selftest.js → 29 通过
+  · cloudfunctions/saveMaterial/selftest.js → 8 通过
+  · cloudfunctions/syncCostCard/selftest.js → 4 通过
+  ✅ C0-① 7 个云函数 selftest 全部实跑成功（rc=0）且解析到通过数
+  ✅ C0-② 各函数通过数均 > 0（下界非空）
+  · 七函数合计（实跑）= 108 项
+
+===== C1 唯一声明处（重启键内的语义标记行） =====
+  ✅ C1-① 唯一声明处存在且仅 1 行（★知识存储点_2026-09-10.md）
+  · 声明合计 = 108 项
+
+===== C2 声明 ≡ 实跑求和 =====
+  ✅ C2-① 声明 108 ≡ 实跑求和 108
+
+===== C3 当前态单函数陈述 ≡ 实跑 =====
+  ✅ C3-calcBom specs/dev-specs/core/13_上线前查缺补漏_决策与待办总览.md:136 写 40/40 ≡ 实跑 40
+  ✅ C3-saveCostCard specs/dev-specs/core/13_上线前查缺补漏_决策与待办总览.md:136 写 29/29 ≡ 实跑 29
+  ✅ C3-syncCostCard specs/dev-specs/core/13_上线前查缺补漏_决策与待办总览.md:136 写 4/4 ≡ 实跑 4
+
+===== C4 前提守卫（证明本守卫不是恒真） =====
+  ✅ C4-① 受守函数 7 个 ≥ 7（集合被改小即转红）
+  ✅ C4-② 声明合计 108 > 0（声明解析非退化）
+  ✅ C4-③ 当前态单函数陈述命中 3 条 ≥ 3（扫描面非空）
+  ✅ C4-④ 历史面命中 1 份旧值（83 项）陈述（排除面确实生效）
+
+===== C5 单源不扩散 =====
+  ✅ C5-① 仅重启键一处自称本口径单源
+
+===== W 弱面：specs 内当前态聚合/裸数字与实跑不符（明示，不判红） =====
+  （无不符）
+  · 弱面共 0 条（只明示，不判红 —— 可能是子集/另一口径）
+  ✅ W-① 弱面扫描完成：0 条明示（弱面只提示、不判红）
+
+===== 云函数 selftest 通过数口径守卫结果：13 通过 / 0 失败 =====

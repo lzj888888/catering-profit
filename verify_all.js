@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：80 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：81 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -204,6 +204,10 @@ const SUITES = [
 
   // 第 80 套件（round73 新增，R107）：套件断言数口径守卫 tools/check_suite_assert_counts.js
   ['suite-assert-counts',    'tools/check_suite_assert_counts.js'],
+  // 第 81 套件（round74 新增，R108）：云函数 selftest 通过数口径守卫 tools/check_fn_selftest_counts.js
+  //   —— 根因＝POC2 七函数 selftest 实跑 108 项而重启键仍写 83 项，
+  //   通过数是**下界**，写低了 ⇒ 25 条断言静默丢失仍判绿（与第 13/15 例同族，向云函数层推广）
+  ['fn-selftest-counts',     'tools/check_fn_selftest_counts.js'],
   // 后续批次的套件在此追加即可（如 batch2_selfcheck ...）；追加后记得同步头部注释里的套件数量。
 ];
 
