@@ -8,7 +8,7 @@
 // ⚠️ AD-10/AD-23：onHide 自动存草稿（wx.setStorageSync），返回自动回填，不静默丢数据。
 const api = require('../../utils/api.js');
 const ui = require('../../utils/ui.js');
-const { normalizeDineRows } = require('../../utils/dineChannels.js');
+const { normalizeDineRows, markFixedRows } = require('../../utils/dineChannels.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 
 const DRAFT_KEY = 'draft_month_input_';
@@ -140,7 +140,7 @@ Page({
         scope: (scopeMap || {})[g.category] || '',
         scopeOpen: false,   // 2026-09-21：口径句默认收起（李老师反馈原样展开太占地方）
         expanded: false,
-        rows: g.category === 'dine_in' ? this.decorateDineRows(rows) : rows,
+        rows: this.decorateRows(g, rows),
         showRows: rows,
       };
     }).map((g) => (g.category === 'dine_in'
@@ -188,10 +188,11 @@ Page({
         category: g.category, label: g.label, items: g.items || [],
         scope: (scopeMap || {})[g.category] || '',
         scopeOpen: false,   // 与 initGroups 一致：读回后端数据也默认收起
-        expanded, rows, showRows: expanded ? rows : rows.slice(0, 1),
+        expanded,
+        rows: this.decorateRows(g, rows),
+        showRows: expanded ? rows : rows.slice(0, 1),
       };
       if (g.category === 'dine_in') {
-        out.rows = this.decorateDineRows(rows);
         out.showRows = expanded ? out.rows : out.rows.slice(0, 1);
       }
       return out;
@@ -297,7 +298,7 @@ Page({
     const g = Object.assign({}, groups[Number(gidx)]);
     // custom:true = 「刚点添加、还没填」的空行，装配时要放行（否则点了没反应）
     g.rows = g.rows.concat([{ subItem: '', amountYuan: '', custom: true }]);
-    g.rows = g.category === 'dine_in' ? this.decorateDineRows(g.rows) : g.rows;
+    g.rows = this.decorateRows(g, g.rows);
     g.showRows = g.rows;
     groups[Number(gidx)] = g;
     this.setData({ [key]: groups });
@@ -311,7 +312,7 @@ Page({
     let rows = g.rows.slice();
     rows.splice(Number(ridx), 1);
     if (rows.length === 0) rows = [{ subItem: '', amountYuan: '' }]; // 至少保留一行（老板只填一行也能走）
-    g.rows = g.category === 'dine_in' ? this.decorateDineRows(rows) : rows;
+    g.rows = this.decorateRows(g, rows);
     g.showRows = g.expanded ? g.rows : g.rows.slice(0, 1);
     groups[Number(gidx)] = g;
     this.setData({ [key]: groups });
@@ -326,13 +327,20 @@ Page({
   //    切回分项时若快照非空则整体恢复，只有【从未填过分项】才走「总额铺首行、交人分配」旧逻辑。
   // ⚠️ 模式只存本地（wx.setStorageSync），不动后端；换设备/清缓存回默认，默认值由数据推断。
 
-  // 堂食渠道行装配（🔒 唯一入口）：预设渠道全集常在 + 自定义行留末尾 + 金额按名回填。
+  // 堂食渠道行装配（🔒 唯一入口）：预设渠道全集常在 + 别名归并 + 自定义行留末尾 + 金额按名回填。
   // ⚠️ 所有产出堂食行的路径都必须调这里（读后端/加行/删行/切模式/初始化），
   //    不许任何地方自己 map 拼装 —— 否则「改一处漏三处」（渠道凭空消失）会复发（G10g 守）。
   // ⚠️ 渠道清单只来自 terms.js，本页不写死渠道名（G10h 守）。
   decorateDineRows(rows) {
     const def = TERMS.ledger.income.find((g) => g.category === 'dine_in');
-    return normalizeDineRows(rows, (def && def.items) || [], TERMS.ledger.channelNotes || {});
+    return normalizeDineRows(rows, (def && def.items) || [], TERMS.ledger.channelNotes || {},
+      TERMS.ledger.channelAliases || {});
+  },
+
+  // 任意大类行装配（🔒 唯一入口）：堂食走渠道装配；其余大类只标「预设行不可删」（fixed）。
+  // ⚠️ 别在这里另写分支逻辑，堂食的渠道全集/别名规则只在 dineChannels.js 里（G11 守）。
+  decorateRows(g, rows) {
+    return g.category === 'dine_in' ? this.decorateDineRows(rows) : markFixedRows(rows, g.items);
   },
 
   // 分项模式合计（预计算，WXML 不支持方法调用）

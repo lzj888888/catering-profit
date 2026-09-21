@@ -16,6 +16,9 @@
   flex: 1; min-width: 0; font-size: 30rpx; color: #222;
   padding: 14rpx 18rpx; background: #f7f9fc; border-radius: 10rpx;
 }
+/* 预设细项名（不可改）：与可编辑细项同字号同内边距，只是没有输入框底色。
+   ⚠️ 别删这条 —— 少了它，固定名与可编辑名会左右错位（2026-09-21）。 */
+.sub-item-fixed { flex: 1; min-width: 0; font-size: 30rpx; color: #222; padding: 14rpx 18rpx; }
 /* ⚠️ AD 规范（ad-gates G2 硬守）：可点元素 min-height ≥ 88rpx —— **不可下调**。
    2026-09-21 李老师反馈「删除键太大、占地」⇒ 收窄 width + 去掉红底方块：
    视觉上只剩一个 × 字符（不占视觉面积），但**点击热区仍是 88rpx**。

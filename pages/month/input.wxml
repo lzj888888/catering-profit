@@ -101,9 +101,12 @@
       <view class="sub-block" wx:for="{{g.expanded ? g.rows : g.rows.slice(0, 1)}}" wx:key="index"
         wx:for-item="r" wx:for-index="ri">
         <view class="sub-line1">
-          <input class="sub-item-inp" wx:if="{{g.expanded}}" value="{{r.subItem}}" placeholder="{{t.subItemPh}}"
+          <!-- 预设细项（fixed）：名字固定、不给删除键 —— 清单是单一数据源，装配时必然补回，
+               给了 × 只会让人以为「删不掉」；只有自己加的细项才可改名 / 可删（G11d 守） -->
+          <input class="sub-item-inp" wx:if="{{g.expanded && !r.fixed}}" value="{{r.subItem}}" placeholder="{{t.subItemPh}}"
             data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubItem" disabled="{{readOnly}}" />
-          <button class="btn-del" wx:if="{{g.expanded && g.rows.length > 1}}"
+          <text class="sub-item-fixed" wx:elif="{{g.expanded}}">{{r.subItem}}</text>
+          <button class="btn-del" wx:if="{{g.expanded && !r.fixed && g.rows.length > 1}}"
             data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" catchtap="delRow">{{t.delSubItem}}</button>
         </view>
         <view class="sub-line2">
@@ -139,9 +142,11 @@
     <view class="sub-block" wx:for="{{g.expanded ? g.rows : g.rows.slice(0, 1)}}" wx:key="index"
       wx:for-item="r" wx:for-index="ri">
       <view class="sub-line1">
-        <input class="sub-item-inp" wx:if="{{g.expanded}}" value="{{r.subItem}}" placeholder="{{t.subItemPh}}"
+        <!-- 预设细项（fixed）：名字固定、不给删除键（同收入侧口径，G11d 守） -->
+        <input class="sub-item-inp" wx:if="{{g.expanded && !r.fixed}}" value="{{r.subItem}}" placeholder="{{t.subItemPh}}"
           data-kind="expense" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubItem" disabled="{{readOnly}}" />
-        <button class="btn-del" wx:if="{{g.expanded && g.rows.length > 1}}"
+        <text class="sub-item-fixed" wx:elif="{{g.expanded}}">{{r.subItem}}</text>
+        <button class="btn-del" wx:if="{{g.expanded && !r.fixed && g.rows.length > 1}}"
           data-kind="expense" data-gidx="{{gi}}" data-ridx="{{ri}}" catchtap="delRow">{{t.delSubItem}}</button>
       </view>
       <view class="sub-line2">

@@ -265,6 +265,64 @@ check('G10k 新增行带 custom 标记（点了「添加渠道」立刻出现空
 check('G10j 预设行不给删除键（× 只对自定义行）',
   /class="btn-del" wx:if="\{\{!r\.fixed\}\}"/.test(dinWxml));
 
+// ===== G11（2026-09-21 李老师真机反馈「美团和现金后面有红色X、和上面重复了」）=====
+// 现场（真云 getLedger 实测）：2026-09 堂食 sub_items = [{美团: 50000}, {现金: 2000}]
+//   —— 名字都是老板自己用「+ 添加渠道」填的口语叫法 ⇒ 改版前被当成「自定义渠道」，
+//      在 7 个预设渠道下面又各占一行、各带一个红色 ×，看着就是「跟上面的渠道重复了」。
+// 修法：terms 加别名表（口语 → 正式渠道），唯一装配口归并（金额相加，一分不丢），
+//      并且**所有大类的预设行一律不给删除键**（清单是单一数据源，删了装配必补回）。
+const { markFixedRows } = require(path.join(ROOT, 'utils/dineChannels.js'));
+const ALIASES = T.ledger.channelAliases || {};
+
+check('G11a 别名表存在且够用（≥8 条）', Object.keys(ALIASES).length >= 8, `${Object.keys(ALIASES).length} 条`);
+check('G11c 别名指向的都是真实预设渠道（不许写错渠道名）',
+  Object.keys(ALIASES).every((k) => PRESETS.indexOf(ALIASES[k]) >= 0),
+  Object.keys(ALIASES).filter((k) => PRESETS.indexOf(ALIASES[k]) < 0).join(',') || '全部命中');
+check('G11c 别名不指向自己（防原地打转）', Object.keys(ALIASES).every((k) => ALIASES[k] !== k));
+
+// 现场数据原样回放
+const liveRows = [{ subItem: '美团', amountYuan: '50000.00' }, { subItem: '现金', amountYuan: '2000.00' }];
+const mergedRows = normalizeDineRows(liveRows, PRESETS, NOTES, ALIASES);
+check('G11a 归并后行数 = 预设渠道数（不再多出重复行）',
+  mergedRows.length === PRESETS.length, `${mergedRows.length}/${PRESETS.length}`);
+check('G11a 「现金」并入「现金收款」（2000.00）',
+  (mergedRows.find((r) => r.subItem === '现金收款') || {}).amountYuan === '2000.00');
+check('G11a 「美团」并入「团购/代金券核销」（50000.00）',
+  (mergedRows.find((r) => /团购/.test(r.subItem)) || {}).amountYuan === '50000.00');
+check('G11a 金额一分不丢（归并后合计 = 52000）',
+  mergedRows.reduce((s, r) => s + (Number(r.amountYuan) || 0), 0) === 52000);
+check('G11b 归并后没有非预设行（页面不会出现重复渠道）',
+  mergedRows.every((r) => PRESETS.indexOf(r.subItem) >= 0 && r.fixed === true));
+// 反向证据：不在别名表里的自定义渠道**不许被吞**（防别名归并退化成「乱合并」）
+const keepCustom = normalizeDineRows([{ subItem: '抖音团购', amountYuan: '50' }], PRESETS, NOTES, ALIASES);
+check('G11b 不在别名表的自定义渠道原样保留（不被吞）',
+  keepCustom.length === PRESETS.length + 1 && keepCustom[PRESETS.length].subItem === '抖音团购');
+// 加法语义 + 幂等
+const bothCash = normalizeDineRows(
+  [{ subItem: '现金收款', amountYuan: '100' }, { subItem: '现金', amountYuan: '200' }], PRESETS, NOTES, ALIASES);
+check('G11b 同渠道「正式行 + 别名行」相加（100+200=300）',
+  (bothCash.find((r) => r.subItem === '现金收款') || {}).amountYuan === '300.00');
+check('G11b 归并幂等（再归并一次结果不变）',
+  JSON.stringify(normalizeDineRows(mergedRows, PRESETS, NOTES, ALIASES)) === JSON.stringify(mergedRows));
+check('G11b 页面把别名表真的传进装配口（不传 = 归并静默失效）',
+  /TERMS\.ledger\.channelAliases \|\| \{\}/.test(dinJs));
+
+// 非堂食大类：预设细项同样不给删除键
+const opDef = (T.ledger.expense || []).find((g) => g.category === 'operation');
+const opItems = (opDef && opDef.items) || [];
+const markedRows = markFixedRows(
+  [{ subItem: opItems[0], amountYuan: '1' }, { subItem: '水电', amountYuan: '2' }], opItems);
+check('G11d 非堂食预设行标 fixed=true（预设有清单，删了会自己回来）',
+  markedRows[0] && markedRows[0].fixed === true);
+check('G11d 非堂食自定义行 fixed=false（可改名可删）',
+  markedRows[1] && markedRows[1].fixed === false);
+check('G11d 非堂食行装配也走唯一入口（不再各自拼装）',
+  /decorateRows\(g, rows\) \{[\s\S]{0,160}?dine_in' \? this\.decorateDineRows\(rows\) : markFixedRows\(rows, g\.items\)/.test(dinJs));
+check('G11d 两个 WXML 分支的 × 都带 !r.fixed（预设行不显 ×）',
+  (dinWxml.match(/class="btn-del" wx:if="\{\{g\.expanded && !r\.fixed && g\.rows\.length > 1\}\}"/g) || []).length === 2);
+check('G11d 预设行名以纯文本渲染（不可编辑）',
+  (dinWxml.match(/class="sub-item-fixed" wx:elif="\{\{g\.expanded\}\}"/g) || []).length === 2);
+
 console.log('');
 console.log('===== 门禁预检 =====');
 check('K11 双副本逐字一致', terms === termsSpec);
