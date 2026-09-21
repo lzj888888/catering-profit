@@ -157,3 +157,14 @@
 
 结转（未决）：四红线/红绿灯代码侧零实现二选一 · M3.7 配额指令二选一 · R106 `CAT` 补「小时/秒」 ·
 dsh 方案 D · 建 prod 须重走 R86 定值 · 隐私政策 6 处 · 堂食渠道 5 vs 7 拉齐 · 仓库根 1000+ 取证件去留。
+
+## 9. 回执（round86）
+
+- [2026-09-22 03:50] R86 已落 · 证据：`probe_agents.py` → InsCode `inflight=0 / msg=1671 / idle≈3733s`、dsh `missing` ⇒ 不投喂不投递 · commit aa4197f
+- [2026-09-22 03:51] R86 已落 · 证据：`_proc_scan_r86.py` 两采 03:50:19 / 03:51:36 均 `hits=0`；`verify_all.js` mtime 03:32:30 静止 19min；`git diff HEAD --stat` 空 ⇒ 停手四连通过 · commit aa4197f
+- [2026-09-22 03:51] R86 已落 · 证据：`node verify_all.js` → 「总览：89/89 套件通过」RC=0（`gate_baseline.txt`）· commit aa4197f
+- [2026-09-22 03:56] R86 已落 · 证据：`_mut_r86.py` 13 组双向变异 → T1-T4/W1-W3 转红、T5/T6/W5 仍绿、T7/W4 判出强度缺口、W6 变异打偏（已由 `_probe_w6b.py` 定点复验）· commit aa4197f
+- [2026-09-22 03:52] R86 已落 · 证据：独立核验 R116 撤回 → `check_error_codes.js:575` require `sync_common.js::checkSync` 属实 ⇒ 派生件覆盖早由 A–L 的 L1 承担 · commit aa4197f
+- [2026-09-22 04:06] R86 已落 · 证据：坑⑱ 元守卫补面 → `check_suite_coverage.js` 断言 8→10，M-A 红 / M-B 绿 / M-Cc 红 / clean 绿（4 组 0 异常），全量门禁 `gate_final.txt` 89/89 RC=0 · commit aa4197f
+- [2026-09-22 04:06] R86 存疑 · ④R86 云函数超时值**本轮未实测**（人工面，须控制台手点或 cli 单通道）· 理由：按 round45/46/50 三方一致结论不再回读，且无人值守轮次不擅自动人工面 · commit aa4197f
+- [2026-09-22 04:06] R86 未落 · 3 条判据/覆盖缺口（§5 ①②③）+ 余 3 份仅扫 index 守卫 · 理由：均属并发方产出或范围裁决，按「不代修 / 不代选方案」纪律登记待办 · commit aa4197f
