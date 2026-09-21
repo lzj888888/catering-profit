@@ -86,7 +86,7 @@ alarm|threshold|健康|诊断` ⇒ **零命中**；前端仅存 M2 的两个词�
 
 - [2026-09-21 21:0x] R80 已落 · 证据：`probe_agents.py` → InsCode idle(msg 1465 二十二连)/dsh missing；
   `node verify_all.js` → **84/84 RC=0**；`check_error_codes.js` → RC=0；`selftest_ad_gates.js` → 24/24；
-  `selftest_ui_fix.js` → 38/38；停手四连全过 · commit 见下
+  `selftest_ui_fix.js` → 38/38；停手四连全过 · commit a883c6f
 - [2026-09-21 21:0x] R80 已落 · 新增 `tools/check_redline_thresholds.js`（R111，18 断言），SUITES **83→84**，
   三处套件数同步（verify_all 头注 + 重启键 §1.1 + 「套件数会漂」行，由 R97 自动校验）；双向变异 8 组 0 异常
 - [2026-09-21 21:0x] R80 **未落** · ④R86 超时值：按 round50 三方一致结论不再回读，**本轮未实测** ⇒ 记**存疑**（人工面）
