@@ -38,6 +38,35 @@
 .group-ops { padding: 8rpx 0 16rpx; }
 .group-ops .btn-small { margin-top: 0; }
 
+/* R85 · 外卖段（规范 §A.11） */
+.tw-detail-row { border-top: 1rpx solid #f5f5f5; padding: 12rpx 0; }
+.tw-plat-name { font-size: 30rpx; font-weight: 600; color: #222; margin-bottom: 8rpx; }
+.tw-fields { display: flex; flex-direction: column; gap: 8rpx; }
+.tw-field { display: flex; align-items: center; gap: 10rpx; }
+.tw-field-lbl { flex: 0 0 180rpx; font-size: 28rpx; color: #555; }
+.tw-field .val-input { flex: 1; min-width: 0; }
+.paste-btn { flex: 0 0 auto; min-height: 88rpx; margin: 0; padding: 0 16rpx; font-size: 28rpx; background: #fff; color: #1e3a5f; border: 1rpx solid #1e3a5f; }
+.tw-subtotal { text-align: right; font-size: 28rpx; color: #888; margin-top: 6rpx; }
+.tw-rec { background: #f7f8fa; border-radius: 12rpx; padding: 16rpx; margin-top: 12rpx; }
+.tw-rec-field { display: flex; align-items: center; gap: 10rpx; }
+.tw-rec-hint { font-size: 28rpx; color: #888; margin-top: 8rpx; line-height: 1.5; }
+.tw-rec-msg { font-size: 28rpx; color: #b45309; background: #fef3c7; border-radius: 8rpx; padding: 10rpx 14rpx; margin-top: 10rpx; line-height: 1.5; }
+
+/* R85 · 费用侧营销项「取数路径」标注 */
+.exp-note { font-size: 28rpx; color: #999; padding: 2rpx 0 6rpx 20rpx; line-height: 1.5; }
+.exp-note.promo { color: #b45309; }
+.promo-path { font-weight: 600; }
+.promo-hint { font-size: 28rpx; color: #b45309; margin-top: 4rpx; }
+
+/* R85 · 粘贴面板 */
+.paste-mask { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 99; display: flex; align-items: flex-end; }
+.paste-sheet { width: 100%; background: #fff; border-radius: 24rpx 24rpx 0 0; padding: 32rpx 24rpx calc(env(safe-area-inset-bottom) + 32rpx); box-sizing: border-box; }
+.paste-title { font-size: 32rpx; font-weight: 700; margin-bottom: 16rpx; }
+.paste-area { width: 100%; min-height: 240rpx; background: #f7f8fa; border-radius: 12rpx; padding: 16rpx; box-sizing: border-box; font-size: 28rpx; }
+.paste-ops { display: flex; justify-content: flex-end; gap: 16rpx; margin-top: 16rpx; }
+.paste-ops .btn-small { margin-top: 0; }
+.paste-ops .primary-btn { background: #ff6b35; color: #fff; }
+
 /* ===== E2（批次 8c）：填写口径折叠块 + 每类口径句 ===== */
 .fill-guide {
   margin: 16rpx 24rpx 8rpx;

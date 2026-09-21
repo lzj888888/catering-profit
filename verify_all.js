@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：87 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：88 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -252,6 +252,9 @@ const SUITES = [
   //   裸扫「60」会误杀 `60 * 1000` / 60rpx / 7 天 24h 等合法口径 ⇒ 走语义标记 + 锚点就近 ±40（坑⑭/⑯）。
   ['rate-limit-params',      'tools/check_rate_limit_params.js'],
   ['waimai-spec-sync',       'tools/check_waimai_spec_sync.js'],
+  // ===== R85 · 月度录入页「外卖段」取数与录入（规范 §A.11：快速/分项模式互斥 · 粘贴提取求和 · 配平软提示 · 活动补贴自动带出）=====
+  // ⚠️ 追加在 SUITES 末尾：R92/C3 守卫对既有「第 N 套件」序号声明有硬依赖，中间插入会打乱序号。
+  ['r85-takeaway',           'tools/selftest_r85.js'],
   // 后续批次的套件在此追加即可（如 batch2_selfcheck ...）；追加后记得同步头部注释里的套件数量。
 ];
 

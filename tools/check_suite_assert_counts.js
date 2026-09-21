@@ -42,6 +42,9 @@ const CASES = [
   { key: 'selftest_batch8c', rel: 'tools/selftest_batch8c.js' },
   { key: 'check_ios_pay', rel: 'tools/check_ios_pay.js' },
   { key: 'check_env_ready', rel: 'tools/check_env_ready.js' },
+  // R85 扩面（round85）：外卖段自测原不在受守集合内 ⇒ 本轮实测 60 条而文档写 43 条、零守卫；
+  //   与 round73 立本守卫的根因同族（文档写低 = 下界保护失效）⇒ 纳入。
+  { key: 'selftest_r85', rel: 'tools/selftest_r85.js' },
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

@@ -96,7 +96,92 @@
       </view>
     </block>
 
-    <!-- 非堂食（外卖等）：保持原两行细项，待单独调整 -->
+    <!-- ===== 外卖（R85 · 规范 §A.11）：快速 / 分项 模式开关（严格互斥二选一）===== -->
+    <block wx:elif="{{g.category === 'takeaway'}}">
+      <!-- 模式开关（复用堂食 dineMode 约定：仅存本地、默认按数据推断、快照恢复） -->
+      <view class="dm-wrap">
+        <view class="dm-sec">{{t.twSecTitle}}</view>
+        <view class="dm-opts">
+          <view class="dm-opt {{takeoutMode === 'fast' ? 'on' : ''}}" data-val="fast" bindtap="onPickTakeoutMode">
+            <view class="dm-h">{{takeoutMode === 'fast' ? '✓ ' : ''}}{{t.twFast}}</view>
+            <view class="dm-d">{{t.twFastDesc}}</view>
+          </view>
+          <view class="dm-opt {{takeoutMode === 'detail' ? 'on' : ''}}" data-val="detail" bindtap="onPickTakeoutMode">
+            <view class="dm-h">{{takeoutMode === 'detail' ? '✓ ' : ''}}{{t.twDetail}}</view>
+            <view class="dm-d">{{t.twDetailDesc}}</view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 平台口径句（A.11.2：这一个数 = 商品总价+打包费+活动补贴；非实付/非到账/非应收款） -->
+      <view class="hint">{{t.twScopeGuide}}</view>
+
+      <!-- 快速录入：每平台 1 个金额框（默认） -->
+      <block wx:if="{{takeoutMode === 'fast'}}">
+        <view class="hint">{{t.twFastHint}}</view>
+        <view class="dine-item" wx:for="{{g.rows}}" wx:key="index" wx:for-item="r" wx:for-index="ri">
+          <view class="dine-line1"><text class="dine-name">{{r.subItem}}</text></view>
+          <view class="dine-line2">
+            <input class="val-input dine-amt" type="digit" confirm-type="done" value="{{r.amountYuan}}"
+              placeholder="{{t.twRecPh}}" data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}"
+              bindinput="onSubAmount" disabled="{{readOnly}}"
+              adjust-position="{{true}}" cursor-spacing="20" />
+          </view>
+        </view>
+      </block>
+
+      <!-- 分项录入：每平台 3 框（商品总价 / 打包费 / 商家活动补贴），小计自动 -->
+      <block wx:else>
+        <view class="hint">{{t.twDetailHint}}</view>
+        <view class="tw-detail-row" wx:for="{{takeoutDetailRows}}" wx:key="platform" wx:for-item="r" wx:for-index="ri">
+          <view class="tw-plat-name">{{r.platform}}</view>
+          <view class="tw-fields">
+            <view class="tw-field">
+              <text class="tw-field-lbl">{{t.twGoodsField}}</text>
+              <input class="val-input" type="digit" confirm-type="done" value="{{r.goods}}" placeholder="{{t.twGoodsPh}}"
+                data-field="goods" data-idx="{{ri}}" bindinput="onTwDetail" disabled="{{readOnly}}"
+                adjust-position="{{true}}" cursor-spacing="20" />
+              <!-- 可粘贴入口（加速器，非唯一路径；手写同样可用） -->
+              <button class="btn-small paste-btn" data-target="goods" data-idx="{{ri}}" catchtap="openPaste">{{t.twPasteBtn}}</button>
+            </view>
+            <view class="tw-field">
+              <text class="tw-field-lbl">{{t.twPackField}}</text>
+              <input class="val-input" type="digit" confirm-type="done" value="{{r.pack}}" placeholder="{{t.twPackPh}}"
+                data-field="pack" data-idx="{{ri}}" bindinput="onTwDetail" disabled="{{readOnly}}"
+                adjust-position="{{true}}" cursor-spacing="20" />
+              <button class="btn-small paste-btn" data-target="pack" data-idx="{{ri}}" catchtap="openPaste">{{t.twPasteBtn}}</button>
+            </view>
+            <view class="tw-field">
+              <text class="tw-field-lbl">{{t.twSubsidyField}}</text>
+              <input class="val-input" type="digit" confirm-type="done" value="{{r.subsidy}}" placeholder="{{t.twSubsidyPh}}"
+                data-field="subsidy" data-idx="{{ri}}" bindinput="onTwDetail" disabled="{{readOnly}}"
+                adjust-position="{{true}}" cursor-spacing="20" />
+              <button class="btn-small paste-btn" data-target="subsidy" data-idx="{{ri}}" catchtap="openPaste">{{t.twPasteBtn}}</button>
+            </view>
+          </view>
+          <view class="tw-subtotal">{{t.twSumLabel}}：{{r.subtotal || '0.00'}}</view>
+        </view>
+        <view class="dine-sum">
+          <text class="dine-sum-lbl">{{t.twSumLabel}}</text>
+          <text class="dine-sum-val">{{takeoutSumYuan}}</text>
+        </view>
+        <view class="hint">{{t.twSumAutoHint}}</view>
+
+        <!-- 配平校验（A.11.4 · 只做软提示：不阻断保存、不参与利润、不写入金额） -->
+        <view class="tw-rec">
+          <view class="tw-rec-field">
+            <text class="tw-field-lbl">{{t.twRecField}}</text>
+            <input class="val-input" type="digit" confirm-type="done" value="{{twRecYuan}}" placeholder="{{t.twRecPh}}"
+              bindinput="onRecYuan" disabled="{{readOnly}}" adjust-position="{{true}}" cursor-spacing="20" />
+          </view>
+          <view class="tw-rec-hint">{{t.twRecCalcHint}}</view>
+          <view class="tw-rec-msg" wx:if="{{twRecText}}">{{twRecText}}</view>
+          <view class="tw-rec-hint" wx:elif="{{!twRecYuan}}">{{t.twRecNoInput}}</view>
+        </view>
+      </block>
+    </block>
+
+    <!-- 非堂食 / 非外卖（其他业务收入等）：保持原两行细项 -->
     <block wx:else>
       <view class="sub-block" wx:for="{{g.expanded ? g.rows : g.rows.slice(0, 1)}}" wx:key="index"
         wx:for-item="r" wx:for-index="ri">
@@ -153,6 +238,12 @@
         <text class="sub-amt-lbl">{{g.expanded ? t.amount : g.label + t.classTotalSuffix}}</text>
         <input class="val-input" type="digit" confirm-type="done" value="{{r.amountYuan}}"
           data-kind="expense" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubAmount" disabled="{{readOnly}}"  adjust-position="{{true}}" cursor-spacing="20" />
+      </view>
+      <!-- R85：营销项「取数路径」标注（由 js 按 terms.expenseItemNotes 预计算挂到 r.note / r.promo，页面不写死项名） -->
+      <view class="exp-note {{r.promo ? 'promo' : ''}}" wx:if="{{g.category === 'marketing' && r.note}}">
+        {{r.note}}
+        <text wx:if="{{r.promo}}" class="promo-path">{{t.twPromoPathLabel}}</text>
+        <view wx:if="{{r.promo}}" class="promo-hint">{{t.twPromoPathHint}}</view>
       </view>
     </view>
 
@@ -212,5 +303,19 @@
   <view style="height:20rpx;"></view>
   <button class="btn primary" style="margin-top:0;" bindtap="onSave"
     disabled="{{readOnly}}">{{isArchive ? t.saveArchiveOverride : t.save}}</button>
+
+  <!-- R85 · 粘贴面板（加速器，非唯一录入入口；手写金额同样可用） -->
+  <view class="paste-mask" wx:if="{{twPasteOpen}}" catchtap="closePaste">
+    <view class="paste-sheet" catchtap="">
+      <view class="paste-title">{{t.twPasteAreaTitle}}</view>
+      <textarea class="paste-area" value="{{twPasteText}}" placeholder="{{t.twPasteAreaPh}}"
+        bindinput="onPasteText" maxlength="2000" adjust-position="{{true}}" cursor-spacing="30" />
+      <view class="paste-ops">
+        <button class="btn-small ghost" catchtap="closePaste">{{t.twPasteCancel}}</button>
+        <button class="btn-small primary-btn" catchtap="onPasteExtract">{{t.twPasteExtract}}</button>
+      </view>
+      <view class="hint">{{t.twPasteRawKept}}</view>
+    </view>
+  </view>
 </view>
 <view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

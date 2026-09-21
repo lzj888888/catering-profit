@@ -9,11 +9,15 @@
 const api = require('../../utils/api.js');
 const ui = require('../../utils/ui.js');
 const { normalizeDineRows, markFixedRows } = require('../../utils/dineChannels.js');
+const { pickTakeawayMode, takeawayModeKey, snapshotDetail, restoreDetail, subtotalOf,
+  extractPaste, subsidyTotal, reconcile } = require('../../utils/takeaway.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 
 const DRAFT_KEY = 'draft_month_input_';
 // 堂食录入模式（快速 / 分项）**仅存本地**，不动后端契约；换设备或清缓存回默认，默认值由数据推断
 const DINE_MODE_KEY = 'dine_mode_';
+// R85：外卖录入模式（快速 / 分项），同堂食约定（仅存本地；默认按数据推断）
+const TAKEOUT_MODE_KEY = 'takeout_mode_';
 
 Page({
   data: {
@@ -73,6 +77,43 @@ Page({
       dmSumAutoHint: TERMS.ledger.dineMode.sumAutoHint,
       dmAddChannel: TERMS.ledger.dineMode.addChannel,
       dmChannelPh: TERMS.ledger.dineMode.channelPh,
+      // R85：外卖段（规范 §A.11）—— 模式开关 / 分项三框 / 粘贴 / 配平 / 带出 / 推广费取数路径
+      twSecTitle: TERMS.ledger.takeawayMode.secTitle,
+      twFast: TERMS.ledger.takeawayMode.fast,
+      twFastDesc: TERMS.ledger.takeawayMode.fastDesc,
+      twDetail: TERMS.ledger.takeawayMode.detail,
+      twDetailDesc: TERMS.ledger.takeawayMode.detailDesc,
+      twFastHint: TERMS.ledger.takeawayMode.fastHint,
+      twDetailHint: TERMS.ledger.takeawayMode.detailHint,
+      twSumLabel: TERMS.ledger.takeawayMode.sumLabel,
+      twSumAutoHint: TERMS.ledger.takeawayMode.sumAutoHint,
+      twGoodsField: TERMS.ledger.takeawayMode.goodsField,
+      twPackField: TERMS.ledger.takeawayMode.packField,
+      twSubsidyField: TERMS.ledger.takeawayMode.subsidyField,
+      twGoodsPh: TERMS.ledger.takeawayMode.goodsPh,
+      twPackPh: TERMS.ledger.takeawayMode.packPh,
+      twSubsidyPh: TERMS.ledger.takeawayMode.subsidyPh,
+      twPasteBtn: TERMS.ledger.takeawayMode.pasteBtn,
+      twPasteAreaTitle: TERMS.ledger.takeawayMode.pasteAreaTitle,
+      twPasteAreaPh: TERMS.ledger.takeawayMode.pasteAreaPh,
+      twPasteExtract: TERMS.ledger.takeawayMode.pasteExtract,
+      twPasteCancel: TERMS.ledger.takeawayMode.pasteCancel,
+      twPasteConfirmTitle: TERMS.ledger.takeawayMode.pasteConfirmTitle,
+      twPasteConfirmBody: TERMS.ledger.takeawayMode.pasteConfirmBody,
+      twPasteDone: TERMS.ledger.takeawayMode.pasteDone,
+      twPasteEmpty: TERMS.ledger.takeawayMode.pasteEmpty,
+      twPasteRawKept: TERMS.ledger.takeawayMode.pasteRawKept,
+      twScopeGuide: TERMS.ledger.takeawayMode.scopeGuide,
+      twRecTitle: TERMS.ledger.takeawayMode.reconcileTitle,
+      twRecField: TERMS.ledger.takeawayMode.recField,
+      twRecPh: TERMS.ledger.takeawayMode.recPh,
+      twRecCalcHint: TERMS.ledger.takeawayMode.recCalcHint,
+      twRecNoInput: TERMS.ledger.takeawayMode.recNoInput,
+      twAutoCarryLabel: TERMS.ledger.takeawayMode.autoCarryLabel,
+      twAutoCarryHint: TERMS.ledger.takeawayMode.autoCarryHint,
+      twPromoPathLabel: TERMS.ledger.takeawayMode.promoPathLabel,
+      twPromoPathHint: TERMS.ledger.takeawayMode.promoPathHint,
+      expenseItemNotes: TERMS.ledger.expenseItemNotes || {},
       cur: '¥',
       loading: TERMS.ui.loading,
     },
@@ -88,6 +129,15 @@ Page({
     dineMode: 'fast',          // 堂食录入模式：'fast' | 'detail'（严格互斥；方案 A）
     dineDetailRows: [],        // 分项行**快照**：切到快速前保留，切回分项时原样恢复（防 round-trip 丢值）
     dineSumYuan: '0.00',       // 分项模式：各渠道相加**自动算出**（预计算，WXML 不支持方法调用）
+    // R85：外卖录入模式（'fast' | 'detail'，同堂食方案 A 严格互斥）
+    takeoutMode: 'fast',
+    takeoutDetailRows: [],     // 分项模式行快照 [{platform,goods,pack,subsidy}]（切模式/草稿留存）
+    takeoutSumYuan: '0.00',    // 分项模式小计合计（预计算）
+    twPasteFor: '',            // 当前粘贴目标（'goods'|'pack'|'subsidy'|'platform' + idx）
+    twPasteText: '',           // 粘贴区文本（textarea v-model）
+    twPasteOpen: false,        // 粘贴面板是否打开
+    twRecYuan: '',             // 账单商家应收款（客户手填，选填）
+    twRecText: '',             // 配平提示文案（软提示；不阻断、不入库）
     directConsumeYuan: '',
     // 核算方式（就地二选一）：真值以服务端 switches 为准；改动即时写库，失败回滚
     inventoryOn: false,
@@ -116,7 +166,13 @@ Page({
         expenseGroups: draft.expenseGroups || this.data.expenseGroups,
         directConsumeYuan: draft.directConsumeYuan !== undefined ? draft.directConsumeYuan : this.data.directConsumeYuan,
         dineDetailRows: draft.dineDetailRows ? draft.dineDetailRows.map((r) => ({ subItem: r.subItem || '', amountYuan: r.amountYuan || '', fixed: !!r.fixed, note: r.note || '' })) : this.data.dineDetailRows,
+        // R85：外卖段草稿回填（分项明细 / 粘贴原文 / 账单商家应收款；均只存本地，不入库）
+        takeoutMode: (draft.takeoutMode === 'fast' || draft.takeoutMode === 'detail') ? draft.takeoutMode : this.data.takeoutMode,
+        takeoutDetailRows: draft.takeoutDetailRows || this.data.takeoutDetailRows,
+        twRecYuan: draft.twRecYuan !== undefined ? draft.twRecYuan : this.data.twRecYuan,
+        twPasteRaw: draft.twPasteRaw || this.data.twPasteRaw || [],
       });
+      if (draft.takeoutDetailRows) this.syncTakeoutSum();
     }
   },
   onHide() {
@@ -126,6 +182,11 @@ Page({
       expenseGroups: this.data.expenseGroups,
       directConsumeYuan: this.data.directConsumeYuan,
       dineDetailRows: this.data.dineDetailRows,
+      // R85：外卖段草稿（分项明细 / 粘贴原文可回溯 / 账单商家应收款；均不入库）
+      takeoutMode: this.data.takeoutMode,
+      takeoutDetailRows: this.data.takeoutDetailRows,
+      twRecYuan: this.data.twRecYuan,
+      twPasteRaw: this.data.twPasteRaw || [],
     });
   },
 
@@ -148,7 +209,7 @@ Page({
       : g));
     this.setData({
       incomeGroups: mk(TERMS.ledger.income, TERMS.ledger.incomeScope),
-      expenseGroups: mk(TERMS.ledger.expense, TERMS.ledger.expenseScope),
+      expenseGroups: this.decorateExpenseNotes(mk(TERMS.ledger.expense, TERMS.ledger.expenseScope)),
     });
   },
 
@@ -211,13 +272,20 @@ Page({
       const inGrace = ui.withinGrace(archivedAtMs, Date.now());
       const readOnly = isArchive && !inGrace;   // 归档且超 7 天 → 硬锁
       const incomeGroups = this.rebuildFromItems(TERMS.ledger.income, d.income_items, TERMS.ledger.incomeScope);
-      const expenseGroups = this.rebuildFromItems(TERMS.ledger.expense, d.expense_items, TERMS.ledger.expenseScope);
+      const expenseGroups = this.decorateExpenseNotes(this.rebuildFromItems(TERMS.ledger.expense, d.expense_items, TERMS.ledger.expenseScope));
       const directConsumeYuan = d.direct_consume_fen ? api.fenToYuan(d.direct_consume_fen) : '';
       // 堂食分项快照：若后端已存分项（>1 行），原样带入 dineDetailRows，切回分项可恢复（防 round-trip 丢值）
       const dG = incomeGroups.find((x) => x.category === 'dine_in');
       const dineDetailRows = (dG && dG.rows && dG.rows.length > 1)
         ? dG.rows.map((r) => ({ subItem: r.subItem || '', amountYuan: r.amountYuan || '', fixed: !!r.fixed, note: r.note || '' }))
         : [];
+      // R85：外卖段 —— 从后端回读的 takeaway 行（每平台 1 个数）铺到分项「商品总价」行
+      //   （分项三明细不落库，只有小计回后端；切分项时按小计铺 goods，用户可继续拆）
+      const twG = incomeGroups.find((x) => x.category === 'takeaway');
+      const takeoutDetailRows = restoreDetail(
+        (twG && twG.rows || []).map((r) => ({ platform: r.subItem || '', goods: r.amountYuan || '' })),
+        TERMS.ledger.income.find((g) => g.category === 'takeaway') ? TERMS.ledger.income.find((g) => g.category === 'takeaway').items : [],
+      );
       // 核算方式读回（服务端权威；口径锁：经营参考利润用直接填值，真实利润才倒轧）
       const inventoryOn = !!sw.inventorySwitchOn;
       const amortizeOn = !!sw.amortizeSwitchOn;
@@ -236,10 +304,18 @@ Page({
         expenseGroups,
         dineMode: this.pickDineMode(incomeGroups),
         dineDetailRows,
+        // R85：外卖模式（本地缓存优先，默认按数据推断）+ 分项行（从小计回铺 goods）
+        takeoutMode: this.pickTakeoutMode(incomeGroups),
+        takeoutDetailRows,
         inventoryOn, amortizeOn, invSummary,
         directConsumeYuan: directConsumeYuan || this.data.directConsumeYuan,
         loading: false,
       });
+      // R85：模式确定后计算小计与带出（分项模式把收入侧活动补贴带到费用侧）、配平（如已填应收款）
+      if (this.data.takeoutMode === 'detail') {
+        this.syncTakeoutSum();
+        this.runReconcile();
+      }
       if (amortizeOn) this.loadAssetCount();   // 笔数只是提示，失败不打扰
       this.loadShopBase();                     // 切换口径时要原样回传店铺名 / 备注
     } catch (e) {
@@ -285,6 +361,10 @@ Page({
     const g = Object.assign({}, groups[gidx]);
     const rows = g.rows.slice();
     rows[ridx] = Object.assign({}, rows[ridx], patch);
+    // R85：费用侧「外卖活动补贴」被用户手改 → 上锁（syncSubsidyCarry 不再覆盖；除非再动收入侧分项值）
+    if (kind === 'expense' && g.category === 'marketing' && rows[ridx].subItem === '外卖活动补贴' && patch.amountYuan !== undefined) {
+      rows[ridx].twCarryLock = true;
+    }
     g.rows = rows;
     g.showRows = g.expanded ? rows : rows.slice(0, 1);
     groups[gidx] = g;
@@ -341,6 +421,27 @@ Page({
   // ⚠️ 别在这里另写分支逻辑，堂食的渠道全集/别名规则只在 dineChannels.js 里（G11 守）。
   decorateRows(g, rows) {
     return g.category === 'dine_in' ? this.decorateDineRows(rows) : markFixedRows(rows, g.items);
+  },
+
+  // R85：费用侧营销行「取数路径」标注（按 terms.expenseItemNotes 预计算挂到行上；页面不写死项名）
+  // ⚠️ 项名与顺序单源 = collections.js::SEED_EXPENSE_ITEMS(marketing)；terms 的 expense.marketing.items 已对齐。
+  decorateExpenseNotes(groups) {
+    const notes = TERMS.ledger.expenseItemNotes || {};
+    const mkIdx = (groups || []).findIndex((x) => x.category === 'marketing');
+    if (mkIdx < 0) return groups;
+    const g = Object.assign({}, groups[mkIdx]);
+    g.rows = (g.rows || []).map((r) => {
+      const note = notes[r.subItem] || '';
+      if (!note) return r;
+      return Object.assign({}, r, {
+        note,
+        // 推广费单独高亮取数路径（项名走 terms 单源 promoItem；不用文案内容判断，避免改文案即失效）
+        promo: r.subItem === (TERMS.ledger.takeawayMode && TERMS.ledger.takeawayMode.promoItem),
+      });
+    });
+    const out = (groups || []).slice();
+    out[mkIdx] = g;
+    return out;
   },
 
   // 分项模式合计（预计算，WXML 不支持方法调用）
@@ -414,6 +515,215 @@ Page({
     this.syncDineSum();
     this.saveDineMode(val);
   },
+
+  // ===================== R85 · 外卖段（规范 §A.11，2026-09-22 锁定）=====================
+  // ⚠️ 后端零改动：提交仍走现有契约（category='takeaway' → sub_items[].sub_item/amount_fen），
+  //   分项三明细只在本页当场计算小计，不落库（留存走本地草稿，见 §2.6）。
+  // ⚠️ 平台名与顺序严格取自 TERMS.ledger.income[takeaway].items（页面不写死平台名）。
+  takeoutPlatforms() {
+    const def = TERMS.ledger.income.find((g) => g.category === 'takeaway');
+    return (def && def.items) || [];
+  },
+
+  takeoutModeKey() {
+    const app = getApp();
+    const shopId = (app && app.globalData && app.globalData.shop_id) || '';
+    return TAKEOUT_MODE_KEY + shopId + '_' + this.data.month;
+  },
+  saveTakeoutMode(m) { try { wx.setStorageSync(this.takeoutModeKey(), m); } catch (e) { /* 存不了不影响填表 */ } },
+  loadTakeoutMode() {
+    try {
+      const v = wx.getStorageSync(this.takeoutModeKey());
+      if (v === 'fast' || v === 'detail') return v;
+    } catch (e) { /* 读不到 → 由数据推断 */ }
+    return null;
+  },
+
+  // 默认模式由数据推断：该组细项行 >1 ⇒ 分项（同堂食 pickDineMode 约定）
+  pickTakeoutMode(incomeGroups) {
+    const cached = this.loadTakeoutMode();
+    if (cached === 'fast' || cached === 'detail') return cached;
+    const g = (incomeGroups || []).find((x) => x.category === 'takeaway');
+    return (g && g.rows && g.rows.length > 1) ? 'detail' : 'fast';
+  },
+
+  // 分项模式行：平台全集常驻（名称固定、不可删），三框 + 小计预计算
+  buildTakeoutDetail() {
+    const snap = this.data.takeoutDetailRows || [];
+    const rows = restoreDetail(snap, this.takeoutPlatforms());
+    this.setData({ takeoutDetailRows: rows });
+    this.syncTakeoutSum();
+  },
+
+  syncTakeoutSum() {
+    const rows = this.data.takeoutDetailRows || [];
+    const sum = rows.reduce((s, r) => s + (Number(r.subtotal) || 0), 0);
+    this.setData({ takeoutSumYuan: sum ? sum.toFixed(2) : '0.00' });
+    this.syncSubsidyCarry();   // 带出联动：活动补贴合计 → 费用侧
+  },
+
+  // ===== 模式切换（严格互斥；快照恢复防 round-trip 丢值）=====
+  onPickTakeoutMode(e) {
+    if (this.data.readOnly) {
+      wx.showModal({ title: TERMS.inputPage.archiveReadonly, content: TERMS.inputPage.confirmLocked, showCancel: false });
+      return;
+    }
+    const val = e.currentTarget.dataset.val === 'detail' ? 'detail' : 'fast';
+    if (this.data.takeoutMode === val) return;
+    const gi = this.data.incomeGroups.findIndex((g) => g.category === 'takeaway');
+    if (gi < 0) return;
+
+    if (val === 'detail') {
+      // 快速 → 分项：把快速模式的各平台金额铺到分项「商品总价」行（单一数据源，不重铺、不丢数）
+      const groups = this.data.incomeGroups.slice();
+      const g = Object.assign({}, groups[gi]);
+      const snap = (g.rows || []).map((r) => ({
+        platform: r.subItem || '',
+        goods: r.amountYuan || '',
+        pack: '',
+        subsidy: '',
+      }));
+      this.setData({ takeoutMode: val, takeoutDetailRows: restoreDetail(snap, this.takeoutPlatforms()) });
+      this.saveTakeoutMode(val);
+      this.syncTakeoutSum();
+    } else {
+      // 分项 → 快速：先快照（草稿留存），再按平台小计收拢为单行总额
+      const snap = (this.data.takeoutDetailRows || []).map((r) => ({
+        platform: r.platform || '', goods: r.goods || '', pack: r.pack || '', subsidy: r.subsidy || '',
+      }));
+      const groups = this.data.incomeGroups.slice();
+      const g = Object.assign({}, groups[gi]);
+      g.rows = this.decorateRows(g, snap.map((r) => ({ subItem: r.platform, amountYuan: subtotalOf(r.goods, r.pack, r.subsidy) })));
+      groups[gi] = g;
+      this.setData({ incomeGroups: groups, takeoutMode: val, takeoutDetailRows: snap });
+      this.saveTakeoutMode(val);
+      this.syncTakeoutSum();
+    }
+  },
+
+  // ===== 分项三框输入 =====
+  onTwDetail(e) {
+    const field = e.currentTarget.dataset.field;     // 'goods'|'pack'|'subsidy'
+    const idx = Number(e.currentTarget.dataset.idx);
+    const rows = (this.data.takeoutDetailRows || []).slice();
+    const r = Object.assign({}, rows[idx]);
+    r[field] = e.detail.value;
+    r.subtotal = subtotalOf(r.goods, r.pack, r.subsidy);
+    rows[idx] = r;
+    this.setData({ takeoutDetailRows: rows });
+    this.syncTakeoutSum();
+  },
+
+  // ===== 粘贴（A.11.5：加速器，非唯一入口）=====
+  openPaste(e) {
+    // data-target: 'goods'|'pack'|'subsidy', data-idx: 平台行
+    this.setData({
+      twPasteFor: (e.currentTarget.dataset.target || 'goods') + ':' + String(e.currentTarget.dataset.idx),
+      twPasteText: '',
+      twPasteOpen: true,
+    });
+  },
+  onPasteText(e) { this.setData({ twPasteText: e.detail.value }); },
+  closePaste() { this.setData({ twPasteOpen: false, twPasteFor: '', twPasteText: '' }); },
+  onPasteExtract() {
+    const text = this.data.twPasteText;
+    const res = extractPaste(text);
+    if (!res || res.numbers.length === 0) {
+      wx.showToast({ title: TERMS.ledger.takeawayMode.pasteEmpty, icon: 'none' });
+      return;
+    }
+    const doFill = () => {
+      const [field, idxStr] = (this.data.twPasteFor || 'goods:0').split(':');
+      const idx = Number(idxStr) || 0;
+      const rows = (this.data.takeoutDetailRows || []).slice();
+      if (!rows[idx]) return;
+      const r = Object.assign({}, rows[idx]);
+      r[field] = res.sum ? res.sum.toFixed(2) : '';
+      r.subtotal = subtotalOf(r.goods, r.pack, r.subsidy);
+      rows[idx] = r;
+      this.setData({ takeoutDetailRows: rows, twPasteOpen: false });
+      // 原始粘贴内容留存可回溯（本地草稿，见 onHide）
+      this.setData({ twPasteRaw: (this.data.twPasteRaw || []).concat([{ at: Date.now(), field, idx, raw: res.raw }]) });
+      this.syncTakeoutSum();
+      wx.showToast({ title: TERMS.ledger.takeawayMode.pasteDone, icon: 'success' });
+    };
+    if (res.hasTotal) {
+      wx.showModal({
+        title: TERMS.ledger.takeawayMode.pasteConfirmTitle,
+        content: TERMS.ledger.takeawayMode.pasteConfirmBody,
+        confirmColor: '#1e3a5f',
+        success: (r) => { if (r.confirm) doFill(); },
+      });
+    } else {
+      doFill();
+    }
+  },
+
+  // ===== 配平校验（A.11.4 · 只做软提示）=====
+  onRecYuan(e) { this.setData({ twRecYuan: e.detail.value }); this.runReconcile(); },
+
+  runReconcile() {
+    const rows = this.data.takeoutDetailRows || [];
+    // 外卖收入合计：分项 = Σ 小计；快速 = Σ 各平台行金额（回读 groups）
+    let incomeTotal = rows.reduce((s, r) => s + (Number(r.subtotal) || 0), 0);
+    const g = this.data.incomeGroups.find((x) => x.category === 'takeaway');
+    if (g && this.data.takeoutMode === 'fast') {
+      incomeTotal = (g.rows || []).reduce((s, r) => s + (Number(r.amountYuan) || 0), 0);
+    }
+    // 费用侧读数（营销项按展示名找；⚠️ 项名**只**取自 terms 单源 reconcileRoles，页面不写死）
+    const mk = (this.data.expenseGroups || []).find((x) => x.category === 'marketing');
+    const roles = (TERMS.ledger.takeawayMode && TERMS.ledger.takeawayMode.reconcileRoles) || {};
+    const mrow = (name) => { if (!name) return 0; const r = (mk && mk.rows || []).find((x) => x.subItem === name); return r ? (Number(r.amountYuan) || 0) : 0; };
+    const subsidy = rows.reduce((s, r) => s + (Number(r.subsidy) || 0), 0);
+    const packTotal = rows.reduce((s, r) => s + (Number(r.pack) || 0), 0);
+    const rec = reconcile({
+      incomeTotal,
+      subsidy,
+      commission: mrow(roles.commission),
+      deliveryFee: mrow(roles.deliveryFee),
+      deliverySubsidy: mrow(roles.deliverySubsidy),
+      actualReceivable: Number(this.data.twRecYuan) || 0,
+      packTotal,
+    });
+    if (!rec) { this.setData({ twRecText: '' }); return; }
+    const t = TERMS.ledger.takeawayMode;
+    let text;
+    if (rec.status === 'pass') text = t.recPass;
+    else if (rec.status === 'packaging') text = t.recPack;
+    else if (rec.status === 'delivery') text = t.recDeliv;
+    else text = t.recMiss.replace('{diff}', String(Math.abs(rec.diff)));
+    this.setData({ twRecText: text });
+  },
+
+  // ===== 自动带出（A.11.3 sort 30：外卖活动补贴 = 收入侧补贴合计；手改后不覆盖）=====
+  // ⚠️ 语义：仅当费用侧该行**为空**时带出；已有值且与合计不同 = 用户手改过 → 加锁不再覆盖
+  //   （回读加载时若两边恰好一致也保持幂等不重写）。
+  syncSubsidyCarry() {
+    if (this.data.takeoutMode !== 'detail') return;   // 仅分项模式带出
+    const rows = this.data.takeoutDetailRows || [];
+    const total = subsidyTotal(rows);
+    const groups = this.data.expenseGroups.slice();
+    const mk = groups.findIndex((x) => x.category === 'marketing');
+    if (mk < 0) return;
+    const g = Object.assign({}, groups[mk]);
+    const ri = g.rows.findIndex((r) => r.subItem === '外卖活动补贴');
+    if (ri < 0) return;
+    const cur = (g.rows[ri] && g.rows[ri].amountYuan) || '';
+    const target = total ? total.toFixed(2) : '';
+    if (g.rows[ri].twCarryLock) return;              // 仅「本会话手改过费用侧」→ 不覆盖
+    // 🔴 R85 修复：**不得**把「回读旧值 ≠ 当前合计」判为用户手改 —— 那是**用户改了收入侧**的
+    //    正常信号，判错会锁死旧值 ⇒ 费用侧不跟随、配平与利润都错（跨月二次录入必踩）。
+    if (!cur && !target) return;                     // 两边都空，无事可做
+    if (cur === target) return;                      // 已一致 → 幂等不重写（省一次 setData）
+    const nr = Object.assign({}, g.rows[ri], { amountYuan: target, twCarryLock: false });
+    const rows2 = g.rows.slice();
+    rows2[ri] = nr;
+    g.rows = rows2;
+    groups[mk] = g;
+    this.setData({ expenseGroups: groups });
+  },
+
+  // （营销「外卖活动补贴」手改加锁逻辑已并入 updateRow：expense+marketing+该行 → twCarryLock=true）
 
   onDirectConsume(e) { this.setData({ directConsumeYuan: e.detail.value }); },
 
@@ -497,16 +807,29 @@ Page({
 
   // 组装提交：每大类 → sub_items（云函数汇总大类金额，前端不汇总）；旧调用兼容（无细项时也走 sub_items 单行）
   buildItems(groups) {
-    return groups.map((g) => ({
-      category: g.category,
-      name: g.label,
-      // ⚠️ 堂食预设渠道是「全集常驻」，多数行是空的 ⇒ 只提交**填了金额**的行，
-      //    否则每保存一次就往后端塞一堆空 sub_item（G10i 守）。
-      //    注意：快速模式单行（无名、有金额）必须保留 ⇒ 判据看金额，不看名字。
-      sub_items: g.rows
-        .filter((r) => String(r.amountYuan === undefined || r.amountYuan === null ? '' : r.amountYuan).trim() !== '')
-        .map((r) => ({ sub_item: (r.subItem || '').trim(), amount_fen: api.yuanToFen(r.amountYuan) })),
-    }));
+    return groups.map((g) => {
+      // R85：外卖组 —— 分项模式按平台小计提交（3 明细只参与当场小计，不落库）
+      if (g.category === 'takeaway' && this.data.takeoutMode === 'detail') {
+        const rows = this.data.takeoutDetailRows || [];
+        return {
+          category: g.category,
+          name: g.label,
+          sub_items: rows
+            .filter((r) => String(r.subtotal === undefined || r.subtotal === null ? '' : r.subtotal).trim() !== '')
+            .map((r) => ({ sub_item: (r.platform || '').trim(), amount_fen: api.yuanToFen(r.subtotal) })),
+        };
+      }
+      return {
+        category: g.category,
+        name: g.label,
+        // ⚠️ 堂食预设渠道是「全集常驻」，多数行是空的 ⇒ 只提交**填了金额**的行，
+        //    否则每保存一次就往后端塞一堆空 sub_item（G10i 守）。
+        //    注意：快速模式单行（无名、有金额）必须保留 ⇒ 判据看金额，不看名字。
+        sub_items: g.rows
+          .filter((r) => String(r.amountYuan === undefined || r.amountYuan === null ? '' : r.amountYuan).trim() !== '')
+          .map((r) => ({ sub_item: (r.subItem || '').trim(), amount_fen: api.yuanToFen(r.amountYuan) })),
+      };
+    });
   },
 
   async save(archiveOverride) {
