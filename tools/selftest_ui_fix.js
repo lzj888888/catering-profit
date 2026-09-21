@@ -64,8 +64,19 @@ check('🔴 utils/ui.js 存在「滚动窗口」函数（行为判据，不绑�
 const wv = winFn ? UI2[winFn]() : [];
 check('🔴 月度首页真的调用它（不绑函数名）',
   !!winFn && new RegExp('ui\\.' + winFn + '\\(').test(mj));
-check('🔴 月份集合 = 滚动窗口 ∪ 已建档（不纯靠 getMonthList，去重靠 Set）',
-  /getMonthList/.test(mj) && /const months = Array\.from\(new Set\(/.test(mj));
+check('🔴 月份集合 = 滚动窗口 ∪ 已建档 ∪ 当月（语义判据：并入已建档 + 调窗口函数 + 去重，均不认具体写法）', (() => {
+  // 🔴 round77 加固：原判据绑死字面写法 `Array.from(new Set(` ⇒ 正确实现改用 `[...new Set(...)]`
+  //    或 `.filter(indexOf)` 去重会被**误杀**（round55/59 同族病：绑字面 ⇒ 换个写法就错判）。
+  //    改语义三条腿：① 并入已建档月份 ② 真的调用窗口函数（不绑函数名）③ 有去重动作（写法随意）。
+  const m = mj.match(/(?:const|let|var)\s+months\s*=\s*([\s\S]{0,240}?)\.sort\(\)\.reverse\(\)/);
+  if (!m) return false;                                       // 拿不到赋值块 ⇒ fail-closed
+  const blk = m[1];
+  // \u53bb\u91cd\u5fc5\u987b\u662f\u201c\u771f\u53bb\u91cd\u201d\uff1a`new Set(` \u6216 \u201cfilter/reduce + indexOf|includes\u201d\u2014\u2014 \u5355\u7eaf `.filter(Boolean)` \u53ea\u662f\u53bb\u7a7a\uff0c\u4e0d\u7b97\uff08round77 A8 \u5b9e\u8bc1\uff09\u3002
+  const dedupe = /new Set\(/.test(blk)
+    || ((/\.filter\(|\.reduce\(/.test(blk)) && /indexOf|includes\(/.test(blk));
+  const win = !!winFn && new RegExp('ui\\.' + winFn + '\\(').test(blk);
+  return /ml\.list|getMonthList/.test(blk) && win && dedupe && /\bcur\b/.test(blk);
+})());
 check('反向：月份不得写死为固定数组', !/months:\s*\[\s*'\d{4}-\d{2}'/.test(mj));
 check('运行时：窗口含当月 + 倒序 + 格式合法',
   wv.length >= 12 && wv[0] === UI2.nowMonth()

@@ -1,0 +1,16 @@
+===== 加固后复验 =====
+  A1     RED   rc=1 期望=RED   OK   ==== 批次 8 UI 修复自测：36 通过 / 2 失败 ====
+  A5     GREEN rc=0 期望=GREEN OK   ==== 批次 8 UI 修复自测：38 通过 / 0 失败 ====
+  A6     GREEN rc=0 期望=GREEN OK   ==== 批次 8 UI 修复自测：38 通过 / 0 失败 ====
+  A7     RED   rc=1 期望=RED   OK   ==== 批次 8 UI 修复自测：36 通过 / 2 失败 ====
+  A8     GREEN rc=0 期望=RED   *** MISMATCH ***   ==== 批次 8 UI 修复自测：38 通过 / 0 失败 ====
+  A9     RED   rc=1 期望=RED   OK   ==== 批次 8 UI 修复自测：36 通过 / 2 失败 ====
+
+===== 汇总 =====
+  A1    RED         rc=1   期望=RED    OK
+  A5    GREEN       rc=0   期望=GREEN  OK
+  A6    GREEN       rc=0   期望=GREEN  OK
+  A7    RED         rc=1   期望=RED    OK
+  A8    GREEN       rc=0   期望=RED    MISMATCH
+  A9    RED         rc=1   期望=RED    OK
+共 6 组，异常 1 组
