@@ -1,6 +1,7 @@
 # NOTE · round77 自驱动巡检 —— 独立复核 round75 / round76，并抓出一处判据强度缺口
 
 - 时间：2026-09-21 15:23–15:5x
+- 本件 commit：`fcecbed`；配套代码/证据 commit：`2aed5ad`
 - 角色：我方（巴迪）= 门禁与复核方。**不采信任何自述，含 round75/76 两个 commit 自带的「7/7、4/4、5/5」**。
 - 证据目录：`review/evidence/selfdrive_20260921_r77/`（6 个文件，已 `ls` 回读）
 
