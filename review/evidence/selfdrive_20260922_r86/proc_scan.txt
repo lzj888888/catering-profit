@@ -1,0 +1,2 @@
+SAMPLE1 ts=03:50:19 hits=0
+SAMPLE2 ts=03:51:36 hits=0

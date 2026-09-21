@@ -1,0 +1,28 @@
+  [T1] tools/check_theme_color.js rc=1  ==== 主题色单源守卫结果：15 通过 / 1 失败 ====
+  [T2] tools/check_theme_color.js rc=1  ==== 主题色单源守卫结果：15 通过 / 1 失败 ====
+  [T3] tools/check_theme_color.js rc=1  ==== 主题色单源守卫结果：15 通过 / 1 失败 ====
+  [T4] tools/check_theme_color.js rc=1  ==== 主题色单源守卫结果：14 通过 / 2 失败 ====
+  [T5] tools/check_theme_color.js rc=0  ==== 主题色单源守卫结果：16 通过 / 0 失败 ====
+  [T6] tools/check_theme_color.js rc=0  ==== 主题色单源守卫结果：16 通过 / 0 失败 ====
+  [T7] tools/check_theme_color.js rc=0  ==== 主题色单源守卫结果：16 通过 / 0 失败 ====
+  [W1] tools/selftest_r85.js rc=1  ==== R85 外卖段自测：57 通过 / 5 失败 ====
+  [W2] tools/selftest_r85.js rc=1  ==== R85 外卖段自测：59 通过 / 3 失败 ====
+  [W3] tools/selftest_r85.js rc=1  ==== R85 外卖段自测：60 通过 / 2 失败 ====
+  [W4] tools/selftest_r85.js rc=1  ==== R85 外卖段自测：60 通过 / 2 失败 ====
+  [W5] tools/selftest_r85.js rc=0  ==== R85 外卖段自测：62 通过 / 0 失败 ====
+  [W6] tools/selftest_r85.js rc=0  ==== R85 外卖段自测：62 通过 / 0 失败 ====
+
+===== round86 独立变异回灌汇总 =====
+T1   期望=RED     实测=RED(OK)        旧橘黄回流到生效样式（input.wxss）
+T2   期望=RED     实测=RED(OK)        深色模式回流（app.wxss 生效 @media）
+T3   期望=RED     实测=RED(OK)        删除深色模式退役声明（fail-closed 应转红）
+T4   期望=RED     实测=RED(OK)        EXTS 缩水删掉 .wxss（A3-③ 应转红）
+T5   期望=GREEN   实测=GREEN(OK)      注释里出现旧橘黄/prefers-color-scheme（不得误报）
+T6   期望=GREEN   实测=GREEN(OK)      页面合法使用 backgroundTextStyle:"dark"（不得误杀）
+T7   期望=GREEN?  实测=GREEN(INFO)    【探漏】旧橘黄的 rgba 等价写法（预期判绿=强度缺口）
+W1   期望=RED     实测=RED(OK)        firstNumber 退回截断版（≥4 位只取前 3 位）
+W2   期望=RED     实测=RED(OK)        stripNonMoney 去掉账期/日期剔除
+W3   期望=RED     实测=RED(OK)        补贴带出退回「回读旧值≠合计即加锁」误判
+W4   期望=GREEN?  实测=RED(INFO)      【探误杀】工具注释里合法提及平台名（A13 裸 includes 会否误报）
+W5   期望=GREEN   实测=GREEN(OK)      firstNumber 换等价写法（不错杀）
+W6   期望=RED     实测=GREEN(MISMATCH) 补贴求和去掉空值兜底（NaN 传播）

@@ -37,10 +37,12 @@ const ROOT = path.resolve(__dirname, '..');
 const RUNNER = 'verify_all.js';
 
 // 面 A：生产判据脚本（命名前缀 = 判据身份；放错目录/改错名字都会被这条抓出来）
+// ⚠️ `key` 是**固定身份**，`dir` 是可变路径：工作树下界只按 key 取，
+//   否则把 dir 改错时「键跟着改」⇒ 下界查不到 ⇒ 断言恒真（round86 M-C 实证，与 round61「锚点随定义漂移」同族）。
 const FACE_A_DIRS = [
-  { dir: 'tools',                        re: /^(check_|verify_|selftest_|test_).*\.(js|py)$/ },
-  { dir: 'specs/dev-specs/prototype',    re: /^(check_|verify_|test_).*\.(js|py)$/ },
-  { dir: 'cloudfunctions/common/__tests__', re: /^.*\.js$/ },
+  { key: 'tools',     dir: 'tools',                        re: /^(check_|verify_|selftest_|test_).*\.(js|py)$/ },
+  { key: 'prototype', dir: 'specs/dev-specs/prototype',    re: /^(check_|verify_|test_).*\.(js|py)$/ },
+  { key: 'cfTests',   dir: 'cloudfunctions/common/__tests__', re: /^.*\.js$/ },
 ];
 const FACE_A_CF = /^cloudfunctions\/[^/]+\/selftest\.js$/;
 
@@ -66,6 +68,45 @@ function gitTracked() {
   //    （round61 由 check_suite_count_claims 的变异 M3 抓出同款病后回溯修到此处）。
   return execFileSync('git', ['-c', 'core.quotepath=false', 'ls-files'], { cwd: ROOT, encoding: 'utf8' })
     .split(/\r?\n/).filter(Boolean);
+}
+
+// 🔴 坑⑱（round68 实证，round86 修）：`git ls-files` **只扫 index** ⇒ 未 `git add` 的新判据根本不在扫描面，
+//    元守卫因此「暂时失明」（round70：并发方写了判据却没挂 SUITES，add 之前它一声不吭）。
+//    ⇒ 面 A 补「工作树扫描」，只为 FACE_A_DIRS 三个既有根做一层枚举 + `cloudfunctions/<fn>/selftest.js`。
+//    ⚠️ 只补面 A（生产判据所在目录）：面 B 是 `review/evidence/`，工作树里躺着上千个取证件，
+//       若一并补面会把每轮临时脚本都判成「未登记豁免」⇒ 反而制造误报（与「裸扫必误报」同族）。
+// 逐根下界（⚠️ 不得只给「总计下界」：实测把 `tools` 根写错成 `tools_typo` 后总量 103→55 仍过 30 ⇒ 恒真。
+//  必须**逐根**判非空，根路径一写错当场转红。取实测值的保守下界。）
+const FACE_A_FLOOR = { tools: 40, prototype: 3, cfTests: 1 };   // 实测 tools=48 / prototype=14 / cfTests=7
+const CF_SELFTEST_FLOOR = 30;                                    // 实测 40
+
+function worktreeFaceA() {
+  const out = [];
+  const counts = {};
+  const list = (key, dir) => {
+    let ents = [];
+    try { ents = fs.readdirSync(path.join(ROOT, dir), { withFileTypes: true }); } catch (_) { counts[key] = 0; return; }
+    let n = 0;
+    for (const e of ents) {
+      if (!e.isFile() || e.name.includes('\\')) continue;
+      out.push(dir + '/' + e.name);
+      n++;
+    }
+    counts[key] = n;
+  };
+  for (const d of FACE_A_DIRS) list(d.key, d.dir);
+  let cfN = 0;
+  let cfDirs = [];
+  try { cfDirs = fs.readdirSync(path.join(ROOT, 'cloudfunctions'), { withFileTypes: true }); } catch (_) { cfDirs = []; }
+  for (const e of cfDirs) {
+    if (!e.isDirectory() || e.name === 'common' || e.name === '_adminCore') continue;
+    if (fs.existsSync(path.join(ROOT, 'cloudfunctions', e.name, 'selftest.js'))) {
+      out.push('cloudfunctions/' + e.name + '/selftest.js');
+      cfN++;
+    }
+  }
+  counts.__cf = cfN;
+  return { out: out, counts: counts };
 }
 
 // 只取 `const SUITES = [ ... ];` 这一段 —— 全文件扫会把 R59 的"收尾期望值"映射里的路径也算成引用，
@@ -98,6 +139,25 @@ function suitesBlock() {
     process.exit(1);
   }
   check('S1 能在仓库根执行 git ls-files', files.length > 0, '跟踪文件 ' + files.length + ' 个');
+
+  // 坑⑱：面 A 并上工作树（未入库的新判据也要进扫描面）
+  const wt = worktreeFaceA();
+  const wtAll = wt.out;
+  // ⚠️ 逐根下界：只给「总计下界」会被证伪（tools 根写错后总量 103→55 仍过 30 ⇒ 恒真，变异 M-C 实证）。
+  const missingKey = Object.keys(FACE_A_FLOOR).filter((k) => !FACE_A_DIRS.some((d) => d.key === k));
+  const underRoot = Object.keys(FACE_A_FLOOR)
+    .filter((k) => (wt.counts[k] || 0) < FACE_A_FLOOR[k])
+    .map((k) => k + '(' + (wt.counts[k] || 0) + '<' + FACE_A_FLOOR[k] + ')')
+    .concat(missingKey.map((k) => k + '(面 A 根缺失)'))
+    .concat((wt.counts.__cf || 0) < CF_SELFTEST_FLOOR ? ['cloudfunctions/<fn>/selftest.js'] : []);
+  check('S1-② 面 A 工作树补面逐根达下界（根路径写错即转红）', underRoot.length === 0,
+    underRoot.length ? '低于下界：' + underRoot.join(', ')
+      : 'tools:' + wt.counts.tools + ' prototype:' + wt.counts.prototype + ' cfTests:' + wt.counts.cfTests
+        + ' cf-selftest:' + wt.counts.__cf);
+  const wtAdd = wtAll.filter((f) => !files.includes(f));
+  files = files.concat(wtAdd);
+  check('S1-③ 面 A 工作树补面并入扫描面', true,
+    '工作树新增 ' + wtAdd.length + ' 个未入库文件（未 add 的新判据不再失明）');
 
   console.log('\n===== S2 前置：SUITES 块可解析（fail-closed）=====');
   const block = suitesBlock();
