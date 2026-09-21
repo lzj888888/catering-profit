@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：82 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：83 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -219,6 +219,12 @@ const SUITES = [
   //   即「事项闭环后只改正文、标题/页脚停在旧时态」，同族病第 17 例（前 16 例多为数字漂移，
   //   本例是时态漂移），A–L 无一组可测。判据见该文件头注释。
   ['stale-status-guard',     'tools/check_stale_status.js'],
+  // 第 83 套件（round78 新增，R110）：收入渠道字典口径守卫 tools/check_income_channel_seed.js
+  //   —— 根因＝前端 terms 堂食 7 项 / 后端种子 SEED_INCOME_ITEMS 堂食 5 项，**已分叉且零守卫**
+  //   （selftest_batch8b 只守前端侧；check_schema_sync 只看集合与索引）。分叉自 round69 起挂 5 轮靠人记。
+  //   本守卫**不裁定**哪侧为准：只硬判「原型副本 ≡ 云函数副本」「其他业务收入前后端一致」，
+  //   堂食分歧走**冻结 + 防扩散**（差异集合 ≡ core/13 在册集合，双向含僵尸防腐）。
+  ['channel-seed-guard',     'tools/check_income_channel_seed.js'],
   // 后续批次的套件在此追加即可（如 batch2_selfcheck ...）；追加后记得同步头部注释里的套件数量。
 ];
 
