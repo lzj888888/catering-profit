@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：86 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：87 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -21,6 +21,10 @@
 //         已说「已闭环/已修复」⇒ 转红；扫**活文档面** specs/，review/ 为历史档案只作弱面明示。
 //         根因=core/13 事项闭环后只改正文、标题/页脚停在旧时态，而同族 16 例全是**数字**漂移、
 //         无一是**时态**漂移 ⇒ 用结构判定而非短语表；含 5 组正负样本互证 + 2 道自失效护栏）
+//       + 外卖段规范口径守卫（tools/check_waimai_spec_sync.js，R114：规范 ModuleA §A.11 明文声称
+//         「严格取自代码单源」的两处**文档抄代码**派生面 —— 平台名与顺序 ≡ terms.js 外卖 items、
+//         营销项 key/显示名/顺序 ≡ collections.js 营销项，逐项有序双向比对；
+//         根因=round84 新落规范时新增了这两处派生面，而 R110 只守三份代码副本、**根本不看规范正文**）
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -247,6 +251,7 @@ const SUITES = [
   //   ⚠️ 当前实扫**零漂移**（43 处同值）⇒ 本守卫是**防复发**，不是修缺陷。
   //   裸扫「60」会误杀 `60 * 1000` / 60rpx / 7 天 24h 等合法口径 ⇒ 走语义标记 + 锚点就近 ±40（坑⑭/⑯）。
   ['rate-limit-params',      'tools/check_rate_limit_params.js'],
+  ['waimai-spec-sync',       'tools/check_waimai_spec_sync.js'],
   // 后续批次的套件在此追加即可（如 batch2_selfcheck ...）；追加后记得同步头部注释里的套件数量。
 ];
 
