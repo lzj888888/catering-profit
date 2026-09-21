@@ -107,7 +107,9 @@ check('input.wxml 每类口径句收进折叠块（引导行 + 按需展开）',
   && /<view class="scope" wx:if="\{\{g\.scopeOpen\}\}">\{\{g\.scope\}\}<\/view>/.test(inputWxml));
 check('input.wxml 口径句未退回「常展开」形态', !/class="scope" wx:if="\{\{g\.scope\}\}"/.test(inputWxml));
 check('input.wxss 有折叠块/口径样式', /\.fill-guide-head/.test(read('pages/month/input.wxss'))
-  && /\.scope-head/.test(read('pages/month/input.wxss')) && /\.scope \{/.test(read('pages/month/input.wxss')));
+  // round70 加固：原判据 `/\.scope-head/` 是**裸子串**，`.scope-head-x {` 也能命中 ⇒ 样式类被改名成
+  //  带后缀的兄弟类时判绿（漏）。加边界 `[\s,{]`（类名后须紧跟空白/逗号/左花括号＝真选择器声明）。
+  && /\.scope-head[\s,{]/.test(read('pages/month/input.wxss')) && /\.scope \{/.test(read('pages/month/input.wxss')));
 check('口径文案无硬编码（全部走 t.*）', !/[\u4e00-\u9fff]/.test(inputWxml.replace(/<!--[\s\S]*?-->/g, '')));
 
 console.log('');

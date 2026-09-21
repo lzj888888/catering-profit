@@ -1,0 +1,12 @@
+=== A 组：R106 后台鉴权参数口径守卫 ===
+  [OK] A1 单源锁阈值 5→10                              mut_rc=1 restore_rc=0  
+  [OK] A2 单源 token 7天→30天                         mut_rc=1 restore_rc=0  
+  [OK] A3 声明换措辞(不错杀)                              mut_rc=0 restore_rc=0  
+  [OK] A4 删唯一声明(fail-closed)                      mut_rc=1 restore_rc=0  
+  [OK] A5 文档另写错值 8 次                              mut_rc=1 restore_rc=0  
+=== B 组：48bf7c9 UI 判据（口径折叠 / 渠道行两行 / × 高度） ===
+  [OK] B1 口径句退回常展开                                mut_rc=1 restore_rc=0  
+  [OK] B2 × min-height 88→60rpx                   mut_rc=1 restore_rc=0  
+  [OK] B3 渠道行退回一行三列                               mut_rc=1 restore_rc=0  
+  [OK] B4 折叠样式被改名                                 mut_rc=1 restore_rc=0  
+DONE
