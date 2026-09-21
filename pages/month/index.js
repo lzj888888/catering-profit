@@ -79,9 +79,15 @@ Page({
       });
       const cur = this.data.curMonth || ui.nowMonth();
       const ml = await api.call('getMonthList', {});
-      let months = (ml.list || []).map((m) => m.month);
-      if (!months.includes(cur)) months.push(cur);
-      months = months.sort().reverse();
+      // 月份下拉 = 滚动窗口（最近 24 个月）∪ 已建档月份 ∪ 当前月，倒序去重。
+      // 🔴 不能只用 getMonthList：它只返回「已建档」月份（shop_monthly_account 有行）⇒ 新店首次只剩当月，
+      //    想补录上个月连选项都没有（李老师真机反馈「月份选择 只有两个月份」）。单源 = utils/ui.recentMonths。
+      const months = Array.from(new Set(
+        ui.recentMonths(24)
+          .concat((ml.list || []).map((m) => m.month))
+          .concat([cur])
+          .filter(Boolean),
+      )).sort().reverse();
       await this.loadMonth(cur);
       this.setData({ months, curMonth: cur, loading: false });
     } catch (e) {

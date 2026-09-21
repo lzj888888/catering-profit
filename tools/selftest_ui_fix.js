@@ -44,6 +44,43 @@ check('monthEmpty 词条存在且无禁词', (() => {
   return /monthEmpty: '暂无账本'/.test(t);
 })());
 
+// ============ 修 7：月份下拉必须自带滚动窗口 ============
+// 缺陷本体（2026-09-21 李老师真机反馈「月份选择 只有两个月份」）：months 只由
+// getMonthList（= 已建档月份）∪ 当月 组成 ⇒ 新店首次只剩当月，补录往月无从下手。
+// ⚠️ 判据一律**不绑函数名**（round55/59 同族病：绑字面名 ⇒ 换个新名就漏判或误杀）：
+//    窗口函数靠**行为**识别 —— 无参调用返回 ≥12 个连续月份、首项=当月、格式 YYYY-MM。
+console.log('');
+console.log('===== 修 7 · 月份下拉滚动窗口（round75）=====');
+const UI2 = require(path.join(ROOT, "utils/ui.js"));
+const winFn = Object.keys(UI2).find((k) => {
+  if (typeof UI2[k] !== 'function') return false;
+  try {
+    const r = UI2[k]();
+    return Array.isArray(r) && r.length >= 12 && r[0] === UI2.nowMonth()
+      && r.every((x) => /^\d{4}-(0[1-9]|1[0-2])$/.test(x));
+  } catch (e) { return false; }
+});
+check('🔴 utils/ui.js 存在「滚动窗口」函数（行为判据，不绑函数名）', !!winFn, 'fn=' + (winFn || 'MISS'));
+const wv = winFn ? UI2[winFn]() : [];
+check('🔴 月度首页真的调用它（不绑函数名）',
+  !!winFn && new RegExp('ui\\.' + winFn + '\\(').test(mj));
+check('🔴 月份集合 = 滚动窗口 ∪ 已建档（不纯靠 getMonthList，去重靠 Set）',
+  /getMonthList/.test(mj) && /const months = Array\.from\(new Set\(/.test(mj));
+check('反向：月份不得写死为固定数组', !/months:\s*\[\s*'\d{4}-\d{2}'/.test(mj));
+check('运行时：窗口含当月 + 倒序 + 格式合法',
+  wv.length >= 12 && wv[0] === UI2.nowMonth()
+  && JSON.stringify([...wv].sort().reverse()) === JSON.stringify(wv));
+check('运行时：逐月连续无跳月/重月（含跨年）', (() => {
+  for (let i = 1; i < wv.length; i++) {
+    const [y1, m1] = wv[i - 1].split('-').map(Number);
+    const [y2, m2] = wv[i].split('-').map(Number);
+    if ((y1 * 12 + m1) - (y2 * 12 + m2) !== 1) return false;
+  }
+  return true;
+})());
+check('运行时：支持传参取 n 个月；非法入参回落（不返回空数组）',
+  !!winFn && UI2[winFn](6).length === 6 && UI2[winFn]('x').length >= 12 && UI2[winFn](0).length >= 12);
+
 // ============ 修 4：input 两 key 拆分 ============
 // 2026-09-20 更新：核算方式（库存/摊销）迁入录入页后，小节标题 = cmSecTitle，
 // 字段标签 = cmConsumeDirectField。**守卫意图不变**：标题与字段标签必须是两个不同 key、
