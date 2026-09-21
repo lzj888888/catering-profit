@@ -167,6 +167,68 @@ function gitTracked() {
   check('C3-前置 git 路径未被转义（CJK 文件真进扫描面）', escaped.length === 0,
     escaped.length ? '转义路径 ' + escaped.length + ' 条：' + escaped.slice(0, 3).join(', ') : '零转义');
 
+  // 🔴 坑⑱（round68 实证，round86 先在元守卫上修、round87 补齐本份）：`git ls-files` **只扫 index**
+  //    ⇒ 一份**尚未 `git add`** 的新文档根本不在扫描面，于是「新文档写了错的第 N 套件序号」「新文档自称当前套件数」
+  //    这类回归被整族静默跳过（与 round56「判据扫错了层」、round61「CJK 被静默跳过」同族：扫空 = 零覆盖而单向变异照样通过）。
+  //    补面严格对齐 SEQ_FACES + 仓根 md —— **不补 `review/`**（上千取证件会被序号面全判违规）。
+  const WT_FACES = [
+    { key: 'specs', dir: 'specs' },
+    { key: 'tools', dir: 'tools' },
+    { key: 'miniprogram', dir: 'miniprogram' }
+  ];
+  const WT_FLOOR = { specs: 30, tools: 30, miniprogram: 1, rootMd: 4 };   // 实测 56/48/2/8 ⇒ 取保守下界
+  function worktreeFace(idxFiles) {
+    const seen = new Set(idxFiles.map((f) => f.replace(/\\/g, '/')));
+    const add = [];
+    const all = [];
+    const counts = {};
+    const walk = (rel, key) => {
+      let ents = [];
+      try { ents = fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true }); } catch (_) { return; }
+      for (const e of ents) {
+        if (e.name === 'node_modules' || e.name === '.git' || e.name === 'miniprogram_npm') continue;
+        const r = rel + '/' + e.name;
+        if (e.isDirectory()) { walk(r, key); continue; }
+        if (!e.isFile()) continue;
+        counts[key] = (counts[key] || 0) + 1;
+        all.push(r);
+        if (!seen.has(r)) add.push(r);
+      }
+    };
+    for (const d of WT_FACES) { counts[d.key] = 0; walk(d.dir, d.key); }
+    let rootN = 0;
+    let rootEnts = [];
+    try { rootEnts = fs.readdirSync(ROOT, { withFileTypes: true }); } catch (_) { rootEnts = []; }
+    for (const e of rootEnts) {
+      if (!e.isFile() || !SEQ_ROOT_MD.test(e.name)) continue;
+      counts.rootMd = (counts.rootMd || 0) + 1;
+      all.push(e.name);
+      if (!seen.has(e.name)) add.push(e.name);
+    }
+    if (counts.rootMd === undefined) counts.rootMd = rootN;
+    return { add: add, all: all, counts: counts };
+  }
+  const idxFiles = files.slice();
+  const wt = worktreeFace(idxFiles);
+  files = files.concat(wt.add);
+  // 两条前提守卫（§0.3⑦）：① 逐根下界 —— 补面被扫成空就转红；② 回环 —— index 面须能被工作树扫描复现，根路径写错即转红。
+  const wtKeys = WT_FACES.map((d) => d.key).concat(['rootMd']);
+  const wtUnder = wtKeys.filter((k) => (wt.counts[k] || 0) < WT_FLOOR[k])
+    .map((k) => k + '(' + (wt.counts[k] || 0) + '<' + WT_FLOOR[k] + ')');
+  check('C3-补面① 工作树补面逐根达下界（补面被扫空即转红）',
+    wtKeys.every((k) => k in WT_FLOOR) && wtUnder.length === 0,
+    wtKeys.map((k) => k + '=' + (wt.counts[k] || 0)).join(' / ') +
+    (wtUnder.length ? ' 未达下界: ' + wtUnder.join(',') : ' ＋未入库 ' + wt.add.length + ' 个'));
+  const wtAll = new Set(wt.all);
+  const idxFace = idxFiles.filter(
+    (f) => f !== SELF && !f.startsWith('review/') &&
+      (SEQ_FACES.some((p) => f.startsWith(p)) || SEQ_ROOT_MD.test(f))
+  );
+  const loopMiss = idxFace.filter((f) => !wtAll.has(f));
+  check('C3-补面② 回环：index 面内文件均能由工作树扫描复现（根路径写错即转红）', loopMiss.length === 0,
+    loopMiss.length ? '工作树扫不到 ' + loopMiss.length + ' 个：' + loopMiss.slice(0, 3).join(', ')
+      : 'index ' + idxFace.length + ' 个全部复现');
+
   // 自指排除：本守卫自己的注释里会**举例**「第 66 套件」这类字样（说明变异怎么抓的），
   // 那是说明性文字、不是序号声明 ⇒ 与 round59「正确实现本身也会引用被禁对象」同族，
   // 「不得出现 X」这类粗判据必误杀。故走「白名单外禁用 + 前提守卫」：

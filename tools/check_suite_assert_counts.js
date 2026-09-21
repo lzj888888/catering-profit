@@ -48,6 +48,9 @@ const CASES = [
   // R115 扩面（round86）：主题色单源守卫同批纳入 —— 该守卫初版 A3-③ 即被变异 M3 判出**恒真断言**
   //   （声称「防 EXTS 被改小」而实现恒真）⇒ 断言数必须受守，否则「改小扫描面/删断言」静默通过。
   { key: 'check_theme_color', rel: 'tools/check_theme_color.js' },
+  // 坑⑱ 元守卫（round87）：SUITES 覆盖守卫自身**不在受守集合内** ⇒ 它 round86 断言数 8→10 无人校验，
+  //   而它恰恰是「防判据漏挂 SUITES」的元守卫（第 4 例）；删它一条断言就少守一类漏挂 ⇒ 纳入下界保护。
+  { key: 'check_suite_coverage', rel: 'tools/check_suite_coverage.js' },
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

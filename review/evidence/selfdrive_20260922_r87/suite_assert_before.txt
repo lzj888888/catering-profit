@@ -1,0 +1,40 @@
+
+===== A0 实算单源（逐个真跑套件脚本，不抄字面量） =====
+  · tools/selftest_ui_fix.js → 38 通过
+  · tools/selftest_ad_gates.js → 24 通过
+  · tools/selftest_batch8b.js → 121 通过
+  · tools/selftest_batch8c.js → 57 通过
+  · tools/check_ios_pay.js → 6 通过
+  · tools/check_env_ready.js → 11 通过
+  · tools/selftest_r85.js → 62 通过
+  · tools/check_theme_color.js → 16 通过
+  ✅ A0-① 8 个套件全部实跑成功（rc=0）且解析到通过数
+  ✅ A0-② 各套件通过数均 > 0（下界非空）
+
+===== A1 唯一声明处（重启键内的语义标记行） =====
+  ✅ A1-① 唯一声明处存在且仅 1 行（★知识存储点_2026-09-10.md）
+
+===== A2 声明 ≡ 实跑（逐 key 比对） =====
+  ✅ A2-selftest_ui_fix 声明 38 ≡ 实跑 38
+  ✅ A2-selftest_ad_gates 声明 24 ≡ 实跑 24
+  ✅ A2-selftest_batch8b 声明 121 ≡ 实跑 121
+  ✅ A2-selftest_batch8c 声明 57 ≡ 实跑 57
+  ✅ A2-check_ios_pay 声明 6 ≡ 实跑 6
+  ✅ A2-check_env_ready 声明 11 ≡ 实跑 11
+  ✅ A2-selftest_r85 声明 62 ≡ 实跑 62
+  ✅ A2-check_theme_color 声明 16 ≡ 实跑 16
+
+===== A5 前提守卫（证明本守卫不是恒真） =====
+  ✅ A5-① 受守套件 8 个 ≥ 6（集合被改小即转红）
+  ✅ A5-② 声明行无受守集合外的多余 key
+  ✅ A6-① 历史面命中 9 份旧值陈述（HIST 排除确实生效）
+
+===== A7 单源不扩散 =====
+  ✅ A7-① 仅重启键一处自称本口径单源
+
+===== W 弱面：specs 内当前态引用与实跑不符（明示，不判红） =====
+  （无不符）
+  · 弱面共 0 条（只明示，不判红 —— 可能是子集/另一口径）
+  ✅ W-① 弱面扫描完成：0 条明示（弱面只提示、不判红）
+
+===== 套件断言数口径守卫结果：16 通过 / 0 失败 =====

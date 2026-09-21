@@ -63,6 +63,50 @@ octal = files.filter((f) => /\\[0-7]{3}/.test(f)).length;
 check('P1-① 扫描面非空且无八进制转义（CJK 路径不得被静默跳过）', files.length > 0 && octal === 0,
   `${files.length} 个文件 / 转义 ${octal}`);
 
+// 🔴 坑⑱（round68 实证，round86 先在元守卫上修、round87 补齐本份）：`git ls-files` **只扫 index**
+//    ⇒ 一份**尚未 `git add`** 的新 `specs/*.md` 根本不在扫描面，于是「新文档自称本口径单源」「新文档写错集合数」
+//    这类回归被整族静默跳过（与 round56「判据扫错了层」、round61「CJK 被静默跳过」同族：扫空 = 零覆盖而单向变异照样通过）。
+//    补面只取 `specs/` 一个既有根 —— **不补 `review/evidence/`**（上千取证件会被 P9「单源不扩散」全判违规）。
+const WT_DIRS = [{ key: 'specs', dir: 'specs' }];
+const WT_FLOOR = { specs: 20 };              // 实测 30 ⇒ 取保守下界（下界表键必须是固定 key，不能随被判对象变 ⇒ 坑㉚）
+const WT_EXT = /\.md$/;
+function worktreeFace(idxFiles) {
+  const seen = new Set(idxFiles.map((f) => f.replace(/\\/g, '/')));
+  const add = [];
+  const all = [];
+  const counts = {};
+  const walk = (rel, key) => {
+    let ents = [];
+    try { ents = fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true }); } catch (_) { return; }
+    for (const e of ents) {
+      if (e.name === 'node_modules' || e.name === '.git') continue;
+      const r = rel + '/' + e.name;
+      if (e.isDirectory()) { walk(r, key); continue; }
+      if (!e.isFile() || !WT_EXT.test(e.name)) continue;
+      counts[key] = (counts[key] || 0) + 1;
+      all.push(r);
+      if (!seen.has(r)) add.push(r);
+    }
+  };
+  for (const d of WT_DIRS) { counts[d.key] = 0; walk(d.dir, d.key); }
+  return { add: add, all: all, counts: counts };
+}
+const idxFiles = files.slice();
+const wt = worktreeFace(idxFiles);
+files = files.concat(wt.add);
+// 两条前提守卫（§0.3⑦）：① 逐根下界 —— 补面被扫成空就转红；② 回环 —— index 面须能被工作树扫描复现，根路径写错即转红。
+const wtUnder = WT_DIRS.filter((d) => (wt.counts[d.key] || 0) < WT_FLOOR[d.key])
+  .map((d) => `${d.key}(${wt.counts[d.key] || 0}<${WT_FLOOR[d.key]})`);
+check('P1-② 工作树补面逐根达下界（补面被扫空即转红）',
+  WT_DIRS.every((d) => d.key in WT_FLOOR) && wtUnder.length === 0,
+  WT_DIRS.map((d) => `${d.key}=${wt.counts[d.key] || 0}`).join(' / ') +
+  (wtUnder.length ? ` 未达下界: ${wtUnder.join(',')}` : ` ＋未入库 ${wt.add.length} 个`));
+const wtAll = new Set(wt.all);
+const idxSpecs = idxFiles.filter((f) => /\.md$/.test(f) && f.startsWith('specs/')).map((f) => f.replace(/\\/g, '/'));
+const loopMiss = idxSpecs.filter((f) => !wtAll.has(f));
+check('P1-③ 回环：index 内 specs/*.md 均能由工作树扫描复现（根路径写错即转红）', loopMiss.length === 0,
+  loopMiss.length ? `工作树扫不到 ${loopMiss.length} 个：${loopMiss.slice(0, 3).join(', ')}` : `index ${idxSpecs.length} 个全部复现`);
+
 // —— P2 单源解析（fail-closed）
 let SRC = [];
 let srcOk = false;

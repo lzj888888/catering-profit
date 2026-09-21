@@ -1,0 +1,26 @@
+
+===== collection_perms (tools/check_collection_perms.js) =====
+  [BASE] rc=0 expect=GREEN OK ::   ✅ P9 唯一声明处不扩散（其它 .md 不得再自称本口径单源） —— 仅 specs/dev-specs/core/15_集合权限矩阵.md 一处 |   ✅ P8-④ 弱面扫描面有效（确有「N 张集合」陈述被扫到） —— 5 处 | ===== 集合权限矩阵口径守卫结果：22 通过 / 0 
+  [M1] rc=1 expect=RED OK ::   ✅ P9 唯一声明处不扩散（其它 .md 不得再自称本口径单源） —— 仅 specs/dev-specs/core/15_集合权限矩阵.md 一处 |   ✅ P8-④ 弱面扫描面有效（确有「N 张集合」陈述被扫到） —— 5 处 | ===== 集合权限矩阵口径守卫结果：20 通过 / 2 
+  [M2] rc=0 expect=GREEN OK ::   ✅ P9 唯一声明处不扩散（其它 .md 不得再自称本口径单源） —— 仅 specs/dev-specs/core/15_集合权限矩阵.md 一处 |   ✅ P8-④ 弱面扫描面有效（确有「N 张集合」陈述被扫到） —— 5 处 | ===== 集合权限矩阵口径守卫结果：22 通过 / 0 
+  [M3] rc=1 expect=RED OK ::   ⚠️ 弱面（与单源不符，只明示不判红，可能是历史/子集/截断）1 处： |      specs/dev-specs/__mut_r87_probe.md:3 写 26（单源 25） —— 集合权限口径（唯一声明处）：本表共 **26** 张集合。 | ===== 集合权限矩阵口径守卫结果：21
+  [M3b] rc=0 expect=GREEN(漏) OK ::   ✅ P9 唯一声明处不扩散（其它 .md 不得再自称本口径单源） —— 仅 specs/dev-specs/core/15_集合权限矩阵.md 一处 |   ✅ P8-④ 弱面扫描面有效（确有「N 张集合」陈述被扫到） —— 5 处 | ===== 集合权限矩阵口径守卫结果：22 通过 / 0 
+  [RESTORE] 字节一致 OK
+
+===== quota_limits (tools/check_quota_limits.js) =====
+  [BASE] rc=0 expect=GREEN OK ::      specs/dev-specs/core/12_云开发配额与成本测算.md:1 写 2026 —— # 店算 · 微信云开发配额与成本测算（2026 版） |      specs/dev-specs/core/12_云开发配额与成本测算.md:3 写 2026 —— > **用途**：上
+  [M1] rc=1 expect=RED OK ::      specs/dev-specs/core/12_云开发配额与成本测算.md:1 写 2026 —— # 店算 · 微信云开发配额与成本测算（2026 版） |      specs/dev-specs/core/12_云开发配额与成本测算.md:3 写 2026 —— > **用途**：上
+  [M2] rc=0 expect=GREEN OK ::      specs/dev-specs/core/12_云开发配额与成本测算.md:1 写 2026 —— # 店算 · 微信云开发配额与成本测算（2026 版） |      specs/dev-specs/core/12_云开发配额与成本测算.md:3 写 2026 —— > **用途**：上
+  [M3] rc=1 expect=RED OK ::      specs/dev-specs/core/12_云开发配额与成本测算.md:1 写 2026 —— # 店算 · 微信云开发配额与成本测算（2026 版） |      specs/dev-specs/core/12_云开发配额与成本测算.md:3 写 2026 —— > **用途**：上
+  [M3b] rc=0 expect=GREEN(漏) OK ::      specs/dev-specs/core/12_云开发配额与成本测算.md:1 写 2026 —— # 店算 · 微信云开发配额与成本测算（2026 版） |      specs/dev-specs/core/12_云开发配额与成本测算.md:3 写 2026 —— > **用途**：上
+  [RESTORE] 字节一致 OK
+
+===== suite_count_claims (tools/check_suite_count_claims.js) =====
+  [BASE] rc=0 expect=GREEN OK :: ===== C6 前提守卫：自指排除只放行注释行（§0.3⑦）===== | ✅ C6 自身文件「第 N 套件」仅出现在注释行 · 注释行命中 2 处，全部属说明性举例 | ===== 套件数口径守卫结果：11 通过 / 0 失败 =====
+  [M1] rc=1 expect=RED OK ::   2) C3 红：「第 N 套件」写错位置，或同行没点名脚本 ⇒ 按 SUITES 实际顺序改正； |      序号声明必须同行给出脚本名（`tools/xxx.js` 或反引号名），否则按 fail-closed 判红。 |   3) C4/C5 红：扫描规则或目录结构已变 ⇒ 修规则，不许放
+  [M2] rc=0 expect=GREEN OK :: ===== C6 前提守卫：自指排除只放行注释行（§0.3⑦）===== | ✅ C6 自身文件「第 N 套件」仅出现在注释行 · 注释行命中 2 处，全部属说明性举例 | ===== 套件数口径守卫结果：11 通过 / 0 失败 =====
+  [M3] rc=1 expect=RED OK ::   2) C3 红：「第 N 套件」写错位置，或同行没点名脚本 ⇒ 按 SUITES 实际顺序改正； |      序号声明必须同行给出脚本名（`tools/xxx.js` 或反引号名），否则按 fail-closed 判红。 |   3) C4/C5 红：扫描规则或目录结构已变 ⇒ 修规则，不许放
+  [M3b] rc=0 expect=GREEN(漏) OK :: ===== C6 前提守卫：自指排除只放行注释行（§0.3⑦）===== | ✅ C6 自身文件「第 N 套件」仅出现在注释行 · 注释行命中 2 处，全部属说明性举例 | ===== 套件数口径守卫结果：11 通过 / 0 失败 =====
+  [RESTORE] 字节一致 OK
+
+===== 变异矩阵合计 15 组，异常 0 =====
