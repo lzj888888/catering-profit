@@ -1,8 +1,9 @@
 
-✅ [suite-count] 头部注释 ≡ SUITES.length = 89（R59 守卫）
-✅ [suite-tracked] 89 个套件文件全部已入库（R92 守卫）
+✅ [suite-count] 头部注释 ≡ SUITES.length = 90（R59 守卫）
+✅ [suite-tracked] 90 个套件文件全部已入库（R92 守卫）
 
 ===== [门禁 A-L] specs/dev-specs/prototype/check_error_codes.js =====
+  [门禁 A-L] ❌ FAIL (exit=1)
 ══════ 规范层一致性机械门禁 ══════
   · core/09 §1 wire code: 32 个
   · core/09 §3 i18n key : 29 个
@@ -17,21 +18,23 @@
   · 环境门禁结构断言 : 2 个云函数（init_db / seed_demo）
   · 投喂链派生一致性 : 8 txt + 8 html 块 vs MD 单源（CRLF 已归一）
   · 文档派生一致性 : 3 组（SMOKETEST_RUNBOOK / 新手上云操作手册 / 下一步工序清单 的 .txt ≡ .md，CRLF/BOM 已归一）
-  · common 同步一致性 : 各函数副本≡单源
+  · common 同步一致性 : 1 处漂移
 
-✅ 全部断言通过
-   A/B 错误码三向一致 + 映射完整 : core/09 §1 ↔ §3 ↔ terms.js 已闭合
-   C   云函数登记一致           : 全树引用的 admin 函数均已登记于 core/10 §6
-   D   配额口径一致             : 无 M2=3 / M2 3个方案 / 免费≤3 / M3=8 张 / 单张导出免费 等 v1.1 旧值残留
-   E   表格结构完整             : 无被引用块 / 散文行挤出表格的孤儿表行
-   F   字符完整性               : .md / .js / .txt 均无 U+FFFD 替换字符
-   G   套餐价格/天数一致       : init_db.js 四档 = 2590/6900/19900/1990，31/90/365/31
-   H   环境门禁结构             : init_db/seed_demo 均无 /^dev/、含 DEV_ENV_ID 白名单 + 恒效 !/prod/ + try 内 TCB_ENV 兜底、blocked 不回传 env
-   I   派生精度一致             : 无 6.6667 / 0.03333 / 9.76 等旧值残余（N13/N14/N22 回潮护栏）
-   J   H5 购买页护栏           : 全树 .md+.txt 命中「H5 购买页」者均为否定句（禁止 H5 兜底），无肯定式引导（D1 护栏）
-   K   投喂链派生一致         : 8 份 txt + 8 个 HTML 块均与 MD 单源逐字一致（CRLF 已归一，防 D4/D7 类派生件落后）；Runbook/手册 .txt ≡ .md
-   L   common 同步一致        : 各云函数目录**扁平副本**（common.js + cx_*.js）均 ≡ cloudfunctions/common/ 单源派生（护栏：云端不认子目录，防 MODULE_NOT_FOUND）
-  [门禁 A-L] ✅ PASS  (✅ 1 条 / 段 1)
+❌ 发现 1 处断裂：
+   1. [L1] adminInit/cx_money.js —— 副本与单源派生内容不一致（派生件落后）（重跑 node tools/sync_common.js 再提交副本）
+
+修法提示：
+  · A 类（缺 i18n 键） → 在 core/09 §3 表补一行 + i18n/terms.js ERROR_MESSAGES 补同键
+  · B 类（缺映射）     → 在 i18n/terms.js CODE_TO_I18N 补 wire → i18n 条目
+  · C 类（未登记函数） → 在 core/10 §6 契约表补一行函数名/入参/出参/鉴权
+  · D 类（配额旧值）   → 改回 v1.4 口径：M1=1 账套 / M3=3 张 / M2 不限套；导出全禁
+                         （若确属沿革记录，在同行加「作废 / 已回退 / 原规划」等豁免标记）
+  · E 类（表格结构）   → 把被引用块 / 散文行挤出的表行移回表内（紧邻表头，保持连续）
+  · F 类（字符损坏）   → 按原字补回被损坏的字（如「???行」补成「一行」），不可用其它字替代；
+                         本组扫描 .md + .js + .txt，注意 .js 里的注释同样在扫描范围内
+  · I 类（派生精度）   → 文档内出现 5 位小数金额（6.6667 / 0.03333）或旧笔误 9.76 即错：改为 4 位纪律值 6.66 / 0.0333 / 锚点 9.75；净料单位成本以 netCostPerGram 4 位为准
+                         ⚠️ 本组只守 specs/dev-specs/：桌面派生层（C_桌面已生成交付物 / B_工作台_parse）
+                         不在 A–K 任何一组覆盖内，那里的旧值只能靠「从仓库单源重生成」或「作废」消除
 
 ===== [verify_seed_data] specs/dev-specs/prototype/verify_seed_data.js =====
 
@@ -235,7 +238,7 @@
 ===== 批次0 自测结果（复审节点① 五条）=====
 ✅ 点1·身份只来自OPENID(忽略伪造记录)  →  user.id=u_real
 ✅ 点1·函数不接收event(签名为 ctx,db,audit)  →  resolveAuth.length=3（参数=ctx,db,audit，无 event 入口）
-✅ 点1b·首次自动建档返回user  →  user.id=u_mubn8d0a943v
+✅ 点1b·首次自动建档返回user  →  user.id=u_mubn1ui5e3wv
 ✅ 点1b·建了默认shop  →  shop=1
 ✅ 点1b·建了entitlement(expire_at=0)  →  expire_at=0
 ✅ 点1b·建档写audit_log(AUTH_AUTO_PROVISION)  →  audit=1
@@ -269,8 +272,8 @@
 ✅ A6b·并发首进只建出 1 个 user  →  user=1
 ✅ A6b·并发首进只建出 1 个 shop  →  shop=1
 ✅ A6b·并发首进只建出 1 条 entitlement  →  ent=1
-✅ A6b·并发两次拿到同一个 user_id  →  ids=u_mubn8d0kkszz,u_mubn8d0kkszz
-✅ A6b·店铺 id 用单源确定性格式 shop_<user_id>  →  shop_id=shop_u_mubn8d0kkszz
+✅ A6b·并发两次拿到同一个 user_id  →  ids=u_mubn1uii9aim,u_mubn1uii9aim
+✅ A6b·店铺 id 用单源确定性格式 shop_<user_id>  →  shop_id=shop_u_mubn1uii9aim
 ✅ A6b·机制级：确定性 id ⇒ 同 user 第二次建店被库拒  →  rejected=true
 ✅ A6b·机制级：仅剩 1 个店  →  shop=1
 ✅ A6b·反向证据：随机 id 两次都成功 ⇒ 2 个店（这就是旧实现能建出重复店的原因）  →  shop=2
@@ -1178,7 +1181,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 
 ===== [batch5-payCreateOrder] cloudfunctions/payCreateOrder/selftest.js =====
 ===== 订单生成 =====
-✅ 生成订单号（PO 前缀）  (POMUBN8VIBK5D0)
+✅ 生成订单号（PO 前缀）  (POMUBN29XXD5X8)
 ✅ 金额=2590 分（整数）
 ✅ plan_id/plan_name 原样携带
 ✅ status=pending
@@ -1237,7 +1240,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 
 ===== [batch5-payRenew] cloudfunctions/payRenew/selftest.js =====
 ===== 续费订单生成 =====
-✅ 生成续费订单号（PR 前缀）  (PRMUBN8WL63YI9)
+✅ 生成续费订单号（PR 前缀）  (PRMUBN2B3H8E5Z)
 ✅ 金额=19900 分
 ✅ plan 携带 + status=pending
 ✅ enable_real_payment=false
@@ -1458,7 +1461,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 ✅ 新用户录单 → expire_at = 今日 + 31 天
 ✅ 权益 source=manual
 ✅ 订单写入（status=paid / channel=manual / 金额分）
-✅ 订单号 MO 前缀  (MOMU2MDMO02D30)
+✅ 订单号 MO 前缀  (MOMU2MDMO0I9UJ)
 ✅ 订单关联 plan/user
 ✅ 审计 action=ADMIN_MANUAL_ORDER 且含前后值
 ✅ 未到期续费 → 原值 + 365 天（累加非覆盖）  (diff=33264000000)
@@ -1938,7 +1941,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 
 ===== [evidence-meta] tools/check_evidence_meta.js =====
 ===== S · 自失效护栏 =====
-✅ S1 扫描面非空 · review/evidence 下 .md/.txt = 347 个
+✅ S1 扫描面非空 · review/evidence 下 .md/.txt = 346 个
 
 ===== E1 · 纯读声明 vs 写入痕迹 =====
    ↳ review/evidence/realcloud_20260917/47_timeout_all.txt:77 检出写入痕迹，但**同小节已声明例外** ⇒ 放行（正面样本）
@@ -2098,13 +2101,13 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 ✅ S1 能在仓库根执行 git ls-files · 跟踪文件 1524 个
 
 ===== S2 前置：SUITES 块可解析（fail-closed）=====
-✅ S2 verify_all.js 的 SUITES 块解析成功 · SUITES 条目 89 个
+✅ S2 verify_all.js 的 SUITES 块解析成功 · SUITES 条目 90 个
 
 ===== S3 前置：面 A 扫描结果非空（fail-closed）=====
 ✅ S3 面 A（生产判据脚本）非空 · 面 A 共 89 个
 
 ===== S4 判据本体存在：SUITES 引用的文件不得缺失 =====
-✅ S4 SUITES 引用的 89 个文件全部存在 · 零缺失
+✅ S4 SUITES 引用的 90 个文件全部存在 · 零缺失
 
 ===== S5 覆盖：面 A 每个判据都已挂进 SUITES =====
 ✅ S5 面 A 89 个判据零漏网 · 全部已挂（含间接包装）
@@ -2123,12 +2126,12 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 
 ===== [suite-count-claims] tools/check_suite_count_claims.js =====
 ===== C1 前置：实算单源 SUITES 可解析（fail-closed）=====
-✅ C1 verify_all.js 可读且 SUITES 块可解析 · 实算 N = 89
+✅ C1 verify_all.js 可读且 SUITES 块可解析 · 实算 N = 90
 
 ===== C2 当前态声明 ≡ 实算 N（重启键是人工面，R59 只守 verify_all 头注）=====
-✅ C2-① verify_all.js 头注「串联：N 个套件」 ≡ N · 文档 89 / 实算 89
-✅ C2-② 重启键 §1.1 一键校验入口行的套件数 ≡ N · 文档 89 / 实算 89
-✅ C2-③ 重启键「套件数会漂」行当前值 ≡ N · 文档 89 / 实算 89
+✅ C2-① verify_all.js 头注「串联：N 个套件」 ≡ N · 文档 90 / 实算 90
+✅ C2-② 重启键 §1.1 一键校验入口行的套件数 ≡ N · 文档 90 / 实算 90
+✅ C2-③ 重启键「套件数会漂」行当前值 ≡ N · 文档 90 / 实算 90
 
 ===== C3 「第 N 套件」序号声明 ≡ SUITES 实际位置 =====
 ✅ C3-前置 git 路径未被转义（CJK 文件真进扫描面） · 零转义
@@ -2138,7 +2141,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 ✅ C4 面 A 三处声明 + 序号面全部有命中 · 头注/§1.1/会漂行/序号声明 = true/true/true/4
 
 ===== C5 前提守卫：被排除的 review/ 确实是历史陈述面 =====
-✅ C5 review/ 历史计数陈述存在（排除面没打错、放行规则确有必要） · 历史陈述文件 123 个
+✅ C5 review/ 历史计数陈述存在（排除面没打错、放行规则确有必要） · 历史陈述文件 124 个
 
 ===== C6 前提守卫：自指排除只放行注释行（§0.3⑦）=====
 ✅ C6 自身文件「第 N 套件」仅出现在注释行 · 注释行命中 2 处，全部属说明性举例
@@ -2307,7 +2310,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
   ✅ C9 唯一声明处不扩散（其它 .md 不得再自称本口径单源） —— 仅 specs/dev-specs/上线材料_隐私政策_v1.md 一处
   ✅ C8-⑦ 弱面扫描面有效（确有「N 项 / N 个文件」陈述被扫到） —— 7 处
   ⚠️ 弱面（与声明不符，只明示不判红，可能是子集/另一口径/历史快照）2 处：
-     specs/dev-specs/★知识存储点_2026-09-10.md:723 写 52（声明 6） —— - **套件数会漂**：`verify_all.js` 增删套件后必须同步头部注释里的数量（现 **89**；2026-09-17 由 41 → 45（新增 batch7 四组自测
+     specs/dev-specs/★知识存储点_2026-09-10.md:723 写 52（声明 6） —— - **套件数会漂**：`verify_all.js` 增删套件后必须同步头部注释里的数量（现 **90**；2026-09-17 由 41 → 45（新增 batch7 四组自测
      specs/dev-specs/上线材料_隐私政策_v1.md:101 写 52（声明 6） —— - 「收集项」逐条来自代码扫描（本轮已扫 `pages/` `utils/` `app.js` 共 52 个文件），**非编写者主观描述**。
 
 ===== 隐私收集项清单口径守卫结果：20 通过 / 0 失败 =====
@@ -2332,10 +2335,11 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 ===== A5 全仓当前态引用 ≡ 实算 =====
   ✅ A5-① 引用面命中 ≥3（扫描面/句式写错即零命中，非恒真） —— 4 处
   ✅ A5-② 全部 4 处当前态引用 ≡ 实算 48/0
-  ✅ A6-① HIST 排除面生效（确有历史/非当前态陈述被放行，非恒真） —— 3 处：specs/dev-specs/★知识存储点_2026-09-10.md:711, specs/dev-specs/★知识存储点_2026-09-10.md:723, specs/dev-specs/★知识存储点_2026-09-10.md:728
+  ✅ A6-① HIST 排除面生效（确有历史/非当前态陈述被放行，非恒真） —— 4 处：specs/dev-specs/★知识存储点_2026-09-10.md:711, specs/dev-specs/★知识存储点_2026-09-10.md:723, specs/dev-specs/★知识存储点_2026-09-10.md:728, specs/dev-specs/★知识存储点_2026-09-10.md:728
      [HIST 放行] specs/dev-specs/★知识存储点_2026-09-10.md:711 「79/79 全绿」 —— - ✅ **R38 已清（round 15 裁决 / round 16 验收）：① 索引由单列唯一 `idx_card_code(card_code)` 改为复合唯一 `idx_c
-     [HIST 放行] specs/dev-specs/★知识存储点_2026-09-10.md:723 「66/66 全绿」 —— - **套件数会漂**：`verify_all.js` 增删套件后必须同步头部注释里的数量（现 **89**；2026-09-17 由 41 → 45（新增 batch7 四组自测
+     [HIST 放行] specs/dev-specs/★知识存储点_2026-09-10.md:723 「66/66 全绿」 —— - **套件数会漂**：`verify_all.js` 增删套件后必须同步头部注释里的数量（现 **90**；2026-09-17 由 41 → 45（新增 batch7 四组自测
      [HIST 放行] specs/dev-specs/★知识存储点_2026-09-10.md:728 「88/88 全绿」 —— 前 16 例同族病均为数字漂移，本例为**时态**漂移；含 5 组正负样本互证 + 2 道自失效护栏）** → **83（round78：新增 `tools/check_incom
+     [HIST 放行] specs/dev-specs/★知识存储点_2026-09-10.md:728 「89/89 全绿」 —— 前 16 例同族病均为数字漂移，本例为**时态**漂移；含 5 组正负样本互证 + 2 道自失效护栏）** → **83（round78：新增 `tools/check_incom
   ⚠️ 弱面（锚点不就近，只明示不判红，可能是子集/另一口径）13 处：
      BATCH0_DELIVERY.md:5 写 20/0（最近锚点 Infinity 字符） —— > 自测：本机 `node cloudfunctions/common/__tests__/batch0_selfcheck.js` → **20 通过 / 0 失败 + 1 待办
      BATCH0_DELIVERY.md:45 写 20/0（最近锚点 Infinity 字符） —— 合计：20 通过 / 0 失败（待办 1 项不计入失败）
@@ -2390,6 +2394,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
   [admin-auth-params] ✅ PASS  (✅ 9 条 / 段 6)
 
 ===== [suite-assert-counts] tools/check_suite_assert_counts.js =====
+  [suite-assert-counts] ❌ FAIL (exit=1)
 
 ===== A0 实算单源（逐个真跑套件脚本，不抄字面量） =====
   · tools/selftest_ui_fix.js → 38 通过
@@ -2398,9 +2403,8 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
   · tools/selftest_batch8c.js → 57 通过
   · tools/check_ios_pay.js → 6 通过
   · tools/check_env_ready.js → 11 通过
-  · tools/selftest_r85.js → 62 通过
+  ❌ A0-selftest_r85 实跑失败 rc≠0（tools/selftest_r85.js）
   · tools/check_theme_color.js → 16 通过
-  ✅ A0-① 8 个套件全部实跑成功（rc=0）且解析到通过数
   ✅ A0-② 各套件通过数均 > 0（下界非空）
 
 ===== A1 唯一声明处（重启键内的语义标记行） =====
@@ -2413,7 +2417,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
   ✅ A2-selftest_batch8c 声明 57 ≡ 实跑 57
   ✅ A2-check_ios_pay 声明 6 ≡ 实跑 6
   ✅ A2-check_env_ready 声明 11 ≡ 实跑 11
-  ✅ A2-selftest_r85 声明 62 ≡ 实跑 62
+  ❌ A2-selftest_r85 声明 62 ≠ 实跑 undefined
   ✅ A2-check_theme_color 声明 16 ≡ 实跑 16
 
 ===== A5 前提守卫（证明本守卫不是恒真） =====
@@ -2425,12 +2429,11 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
   ✅ A7-① 仅重启键一处自称本口径单源
 
 ===== W 弱面：specs 内当前态引用与实跑不符（明示，不判红） =====
-  （无不符）
-  · 弱面共 0 条（只明示，不判红 —— 可能是子集/另一口径）
-  ✅ W-① 弱面扫描完成：0 条明示（弱面只提示、不判红）
+  ⚠️ specs/dev-specs/★知识存储点_2026-09-10.md:38 selftest_r85 写 62 / 实跑 undefined
+  · 弱面共 1 条（只明示，不判红 —— 可能是子集/另一口径）
+  ✅ W-① 弱面扫描完成：1 条明示（弱面只提示、不判红）
 
-===== 套件断言数口径守卫结果：16 通过 / 0 失败 =====
-  [suite-assert-counts] ✅ PASS  (✅ 16 条 / 段 7)
+===== 套件断言数口径守卫结果：14 通过 / 2 失败 =====
 
 ===== [fn-selftest-counts] tools/check_fn_selftest_counts.js =====
 
@@ -2661,6 +2664,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
   [waimai-spec-sync] ✅ PASS  (✅ 10 条 / 段 5)
 
 ===== [r85-takeaway] tools/selftest_r85.js =====
+  [r85-takeaway] ❌ FAIL (exit=1)
 ===== A1 · 外卖组默认模式（按数据推断：细项行 >1 ⇒ 分项）=====
 ✅ A1 无缓存 + 单行 → 快速
 ✅ A1 无缓存 + 多行 → 分项
@@ -2714,7 +2718,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 ✅ A15 input.js 含粘贴处理（openPaste/onPasteExtract）
 ✅ A15 input.js 含配平（onRecYuan/runReconcile）
 ✅ A15 推广费取数路径标注存在
-✅ A15 后端零改动：cloudfunctions 未触碰
+❌ A15 后端零改动：cloudfunctions 未触碰
 ===== A16 · 账期/日期/时间/长单号不得被当金额（P1 回归）=====
 ✅ A16 账期 2026-09 → 不计入 sum  (sum=0)
 ✅ A16 日期+金额行 → 只取金额  (sum=1234.56)
@@ -2739,8 +2743,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 ✅ A19 input.wxss 生效样式不含旧橘黄
 ✅ A19 粘贴面板主按钮走主色渐变（#2a4e7c → #162c49）
 
-==== R85 外卖段自测：62 通过 / 0 失败 ====
-  [r85-takeaway] ✅ PASS  (✅ 62 条 / 段 16)
+==== R85 外卖段自测：61 通过 / 1 失败 ====
 
 ===== [theme-color] tools/check_theme_color.js =====
 
@@ -2775,4 +2778,11 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 ==== 主题色单源守卫结果：16 通过 / 0 失败 ====
   [theme-color] ✅ PASS  (✅ 16 条 / 段 7)
 
-===== 总览：89/89 套件通过 =====
+===== [common-sync] tools/sync_common.js --check =====
+  [common-sync] ❌ FAIL (exit=1)
+❌ common 同步校验失败：1 处漂移
+   [L] adminInit/cx_money.js —— 副本与单源派生内容不一致（派生件落后）
+   修法：在仓库根跑 `node tools/sync_common.js` 重新同步，再提交副本
+==== common 同步校验结果：0 通过 / 1 失败 ====
+
+===== 总览：86/90 套件通过 =====

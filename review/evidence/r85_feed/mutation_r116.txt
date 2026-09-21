@@ -1,0 +1,23 @@
+=== 基线 ===
+  sync_common --check RC=0 漂移=0
+  门禁：===== 总览：90/90 套件通过 ===== RC=0
+
+M1 副本内容漂移：check RC=1 ❘ ['[L] adminInit/cx_money.js —— 副本与单源派生内容不一致（派生件落后）']
+   变异态门禁：===== 总览：86/90 套件通过 ===== RC=1 ❘ FAIL 行 ['[门禁 A-L] ❌ FAIL (exit=1)', '[suite-assert-counts] ❌ FAIL (exit=1)']
+
+M2 副本缺失：check RC=1 ❘ ['[L] adminLogout/cx_audit.js —— 副本缺失（未运行 sync 或同步被跳过）']
+
+M3 子目录副本回归：check RC=1 ❘ ['[L] adminInit/common/ —— 仍存在废止的子目录副本（云端不认目录，须重跑 sync 清理）']
+
+M4 无关文档改动：check RC=0 漂移=0
+
+=== 还原后 ===
+  check RC=0 漂移=0
+
+=== 汇总 ===
+  M1 副本内容漂移（+判据点名 +门禁跌到 89/90）                         期望=RED   实际=MISS  [L] adminInit/cx_money.js —— 副本与单源派生内容不一致（派生件落后）
+  M2 副本缺失（未同步/被跳过）                                     期望=RED   实际=RED   [L] adminLogout/cx_audit.js —— 副本缺失（未运行 sync 或同步被跳过）
+  M3 废止子目录副本回归（云端会 MODULE_NOT_FOUND）                   期望=RED   实际=RED   [L] adminInit/common/ —— 仍存在废止的子目录副本（云端不认目录，须重跑 sync 清理）
+  M4 无关文档改动（应放行，不误杀）                                   期望=GREEN 实际=GREEN 
+
+异常组数 = 1 / 4

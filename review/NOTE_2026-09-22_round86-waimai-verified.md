@@ -171,3 +171,57 @@ EXTS 一缩，过滤集同步缩 ⇒ **永远为空**。变异 M3（从 EXTS 删
 ### 8.5 连带加固
 `check_theme_color` 已纳入 `check_suite_assert_counts.js` 的受守集合（7→8）⇒ 其断言数（11）写入重启键唯一声明处，
 此后**增删断言不报备即转红**（本次 A3 扩面 10→11 已同步）。
+
+
+## 9 续批 · A5 深色模式退役守卫（成立）
+
+按 R115 的根因做**泛化巡检**（扫全仓「已下线 / 已废弃 / 已移除 / 单源 / 铁律」类声明 → 逐条查有没有守卫），
+在 `app.wxss:74-80` 抓到第二处零守卫声明：
+
+> ⚠️ **深色模式：已移除**（2026-09-20 · 真机走查缺陷②）—— 原 `@media (prefers-color-scheme: dark)`
+> 只改了 `.card2/.cell/.label2`，漏掉 `.card-title/.muted` ⇒ 深色手机上是「黑底黑字、完全看不清」。
+
+`grep -rln "prefers-color-scheme|深色" tools/` = **0** ⇒ 又是「明令退役 + 零守卫」，
+而它正是李老师真机走查**亲自抓到**的缺陷（复发代价 = 用户直接看不清）。
+
+A5 段 5 条（`tools/check_theme_color.js` 10→16）：① 退役声明在场（fail-closed）② **声明的前提** ——
+`page { background: #f5f6f8 }` 显式写死（否则浅色决策落空、深色手机回落黑底黑字）③ 去注释后全仓生效代码
+零命中 `prefers-color-scheme` ④⑤ 正负样本互证。
+
+🔴 **判据陷阱（差点踩）**：本想用 `dark` 一词做判据 —— **必大规模误杀**：实测 14 个页面 `.json` 的
+`"backgroundTextStyle": "dark"` 是**合法的**（下拉刷新指示器样式），与深色模式无关
+⇒ 判据锁精确 token `prefers-color-scheme`，并由 M12 专门守这一点。
+
+变异扩到 **12 组 / 0 异常**（证据 `mutation_r115.txt`）：M9 真注入深色 `@media` → RED ｜ M10 改退役声明句 → RED ｜
+M11 `page` 浅底不再写死 → RED ｜ M12 只含 `dark` 字样 → GREEN（不错杀）。
+
+## 10 续批 · **R116：一次误判，以及它被我自己的变异回灌当场挡住**（如实上报）
+
+### 10.1 假说
+`grep sync_common verify_all.js` = **零命中** ⇒ 我判定「`cloudfunctions/common/` 9 模块 × 42 云函数 =
+**420 份派生件**（`cx_*.js` 378 + `common.js` 42）的整文件一致性**零门禁覆盖**」，
+于是把 `tools/sync_common.js --check` 登记为套件 `common-sync`（套件数 89→90），
+并把这条结论写进 `verify_all.js` 注释、重启键演进链、MEMORY / PITFALLS。
+
+### 10.2 证伪（只做了一步）
+按铁律对新登记项做变异回灌：制造一处 `adminInit/cx_money.js` 漂移 ⇒ 门禁 90/90 → **86/90**，
+其中 **`[门禁 A-L]` 报 `[L1] adminInit/cx_money.js —— 副本与单源派生内容不一致`**。
+即：该覆盖**早已存在** —— `specs/dev-specs/prototype/check_error_codes.js:575` 早就
+`require` 了 `sync_common.js::checkSync()`（A–L 的 L 组）。
+同批 4 条 FAIL 全部由这一处漂移引起：A–L 的 L1 ＋ 新增的 common-sync ＋ `[r85-takeaway]` 的 A15「后端零改动」
+＋ `[suite-assert-counts]`（因 r85 失败而级联）。
+
+### 10.3 处置：全部逐字回退，套件数保持 89
+回退 `verify_all.js`（SUITES 条目 + 头注说明 + 90→89）、`tools/sync_common.js`（头注与两条收尾行）、
+重启键（两处计数 90→89 + 演进链节点改为**撤回记录**）、MEMORY（三处）；
+演进链留一条撤回记录，防下轮重犯「同一处假洞」。
+
+证据：`review/evidence/r85_feed/mut_r116_m1_gate.txt`（变异态全量门禁原文，可见 `[L1]` 行）、
+`mutation_r116.txt`（4 组：判据层 check 与门禁层双证）、`gate_90_clean.txt`（登记后的 90/90，留作对照）。
+
+### 10.4 教训（已写进 PITFALLS §4）
+1. **判「某判据没被门禁跑」不能只 grep `verify_all.js`，必须跟 `require` 图**
+   （全仓 `grep -rn "require.*<模块>"`）—— 覆盖可以是**间接**的。
+2. **新增/登记守卫的下一步必须立刻是变异回灌** —— 本例正是回灌把误判挡在落库之前，
+   否则这套假结论会永久留在 `verify_all.js` 与重启键里。
+3. **撤回要逐字回退**（含注释、计数三处、演进链），并留撤回记录，别只删代码。

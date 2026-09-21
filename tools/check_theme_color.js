@@ -1,4 +1,4 @@
-// tools/check_theme_color.js —— 主题色单源守卫（R115 · round86）
+// tools/check_theme_color.js —— 主题色 / 主题决策单源守卫（R115 · round86；A5 深色模式退役段 = round86 续批）
 //
 // 根因（实扫为据，不是推测）：
 //   · `app.wxss` 头部第 3~5 行是全仓**唯一的主题色口径声明**：
@@ -13,6 +13,10 @@
 //   A2 生效样式零命中：扫全仓 .wxss / .wxml / .json / .js 的**生效部分**（去块注释与 HTML 注释），不得出现旧橘黄
 //   A3 扫描面非空 + 下界：被扫文件数 ≥ 30、主色在 app.wxss 出现次数 ≥ 10、EXTS 须为 REQUIRED_EXTS 超集、四类扩展名计数达下界（证明 A2 不是"扫了个空集/被改小所以全绿"）
 //   A4 正负样本互证：内置两条样本验证「去注释 + 命中」逻辑本身有效（防"判据恒真/恒假"）
+//   A5 深色模式退役（app.wxss 头部第二处「已移除」声明，同款根因：明令退役却零守卫）：
+//      声明在场(fail-closed) + page 浅底显式写死 + 全仓零命中 prefers-color-scheme + 正负样本互证。
+//      ⚠️ 判据必须锁精确 token `prefers-color-scheme`，**不得**用 `dark` 一词 —— 实测 14 个页面 .json 的
+//         `"backgroundTextStyle": "dark"` 是合法的下拉刷新指示器样式，粗判据必大规模误杀（见 PITFALLS §1）。
 //
 // ⚠️ 扫描面**排除 `tools/`**：本守卫自身必须写出旧橘黄色值才能判它，不排除即自命中（本仓既有惯例）。
 // ⚠️ 判据只扫**生效代码**，不扫注释：在注释里说明「勿用旧橘黄」是正当做法，不该被判红。
@@ -156,6 +160,33 @@ else no('A4-②', '负样本失败：生效样式里的色值未被抓到 ⇒ �
 const wxmlLive = stripComments('<!-- ' + OLD_COLOR + ' -->\n<view class="a">x</view>', '.wxml');
 if (!new RegExp(OLD_COLOR, 'i').test(wxmlLive)) ok('A4-③', 'wxml 注释里的色值被正确忽略');
 else no('A4-③', 'wxml 注释去不掉 ⇒ 会误报');
+
+// ============ A5 深色模式退役 ============
+section('A5 深色模式已移除（明令退役却零守卫 ⇒ 同款根因）');
+if (!fs.existsSync(APP_WXSS)) {
+  no('A5-①', 'app.wxss 不存在 ⇒ 深色模式退役声明无从校验');
+} else {
+  const appTxt = fs.readFileSync(APP_WXSS, 'utf8');
+  if (appTxt.includes('深色模式：已移除')) ok('A5-①', '头部退役声明「深色模式：已移除」在场');
+  else no('A5-①', '头部未见「深色模式：已移除」⇒ 声明被删、本段判据失效（若确要恢复深色，须整份配色 token 化全量适配，并同步删除本段）');
+  if (/page\s*\{[^}]*background:\s*#f5f6f8/.test(appTxt)) ok('A5-②', '声明前提成立：page 背景显式写死 #f5f6f8（不随系统切）');
+  else no('A5-②', 'page 未显式写死浅底 ⇒ 深色手机可能回落到「黑底黑字」（真机走查缺陷② 复发）');
+}
+const darkHits = [];
+for (const abs of FILES) {
+  let raw = '';
+  try { raw = fs.readFileSync(abs, 'utf8'); } catch (e) { continue; }
+  const live = stripComments(raw, path.extname(abs).toLowerCase());
+  if (/prefers-color-scheme/.test(live)) darkHits.push(path.relative(ROOT, abs).replace(/\\/g, '/'));
+}
+if (darkHits.length === 0) ok('A5-③', '全仓生效代码零命中 prefers-color-scheme（深色模式未回流）');
+else no('A5-③', darkHits.length + ' 个文件的生效代码出现 prefers-color-scheme（深色模式回流）：' + darkHits.slice(0, 5).join(' , '));
+const dPos = stripComments('/* 原 @media (prefers-color-scheme: dark) 已移除 */\n.x{color:' + BRAND + ';}', '.wxss');
+const dNeg = stripComments('@media (prefers-color-scheme: dark) { .x{color:#000;} }', '.wxss');
+if (!/prefers-color-scheme/.test(dPos)) ok('A5-④', '正样本：注释里的 prefers-color-scheme 被忽略（不误报）');
+else no('A5-④', '正样本失败：注释里的标记未被忽略 ⇒ 会误报');
+if (/prefers-color-scheme/.test(dNeg)) ok('A5-⑤', '负样本：生效的 @media 深色块被抓到（不错漏）');
+else no('A5-⑤', '负样本失败：判据恒假，本段无效');
 
 console.log('\n==== 主题色单源守卫结果：' + pass + ' 通过 / ' + fail + ' 失败 ====');
 process.exit(fail === 0 ? 0 : 1);
