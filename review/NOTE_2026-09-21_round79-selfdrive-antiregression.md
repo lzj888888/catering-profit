@@ -94,6 +94,6 @@
 
 - [2026-09-21 20:0x] R79 已落 · 证据：`probe_agents.py` → InsCode idle(msg 1465 二十一连)/dsh missing；
   `node verify_all.js` → 83/83 RC=0；`check_error_codes.js` → RC=0；`selftest_ui_fix.js` → 38/38；
-  `selftest_ad_gates.js` → 24/24；停手四连全过 · commit <本件 sha>
+  `selftest_ad_gates.js` → 24/24；停手四连全过 · commit f6455c3
 - [2026-09-21 20:0x] R79 **未落** · ②R86 超时值：按 round50 三方一致结论不再回读，**本轮未实测** ⇒ 记**存疑**（人工面）
 - [2026-09-21 20:0x] R79 **未代修** · M3.7 配额指令冲突：属口径裁决，已登记 `core/13` 待李老师二选一
