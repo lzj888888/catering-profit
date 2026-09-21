@@ -1,0 +1,12 @@
+=== round88 双向变异回灌（R117 免费店铺数口径穿透守卫）===
+  M1 rc=1 red=True expect_red=True [OK] —— 第二硬编码点 1→2（展示与拦截分叉）⇒ 应红
+  M2 rc=1 red=True expect_red=True [OK] —— 删掉第二硬编码点定义（fail-closed A3）⇒ 应红
+  M3 rc=1 red=True expect_red=True [OK] —— 单源 FREE_LIMIT.shop 1→2（反向穿透）⇒ 应红
+  M4 rc=1 red=True expect_red=True [OK] —— 测试镜像 1→2（只改 selftest 造成本地漂移）⇒ 应红
+  M5 rc=1 red=True expect_red=True [OK] —— 前端硬编码该口径（违反「后端权威」设计意图）⇒ 应红
+  M6 rc=0 red=False expect_red=False [OK] —— 正确实现换等价写法（去空格）⇒ 应仍绿（不错杀）
+  M7 rc=1 red=True expect_red=True [OK] —— 前端扫描面根路径写错（扫空）⇒ 应红
+  M8 rc=0 red=False expect_red=False [OK] —— 前端加无关常量 ⇒ 应仍绿（不错杀）
+  M9 rc=0 red=False expect_red=True [MISMATCH] —— 删掉出参 free_limit（违反 core/10:171 契约）⇒ 应红
+  clean rc=0 全绿=True
+=== 结果：10 组，异常 1 组 ===

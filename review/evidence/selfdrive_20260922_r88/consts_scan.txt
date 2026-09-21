@@ -1,0 +1,55 @@
+TOTAL_CONST = 58
+
+=== A 组：文档零提及 且 tools 零引用（完全无守卫）===
+  DAY_MS                                     cloudfunctions/adminExport/adminAuth.js              :23  scalar=24 * 3600 * 1000
+  DIRECT_CONSUME_FEN                         cloudfunctions/calcMonthlyProfit/selftest.js         :38  scalar=22000
+  EXPORT_PAGE_SIZE                           cloudfunctions/adminExport/service.js                :44  scalar=1000
+  FREE_SHOP_LIMIT                            cloudfunctions/getShopList/index.js                  :38  scalar=1
+  GRACE_DAYS_MS                              cloudfunctions/saveLedger/index.js                   :25  scalar=7 * 24 * 3600 * 1000
+  MAX_DEPTH                                  cloudfunctions/detectCycle/service.js                :18  scalar=5
+  MAX_EXPORT_PAGES                           cloudfunctions/adminExport/service.js                :43  scalar=20
+  REFRESH_WINDOW_MS                          cloudfunctions/adminRefreshToken/index.js            :14  scalar=24 * 3600 * 1000
+  SCRYPT_KEYLEN                              cloudfunctions/adminExport/adminAuth.js              :19  scalar=64
+  SHOP_MAX_PAGES                             cloudfunctions/adminQueryUser/service.js             :18  scalar=5
+  SHOP_PAGE                                  cloudfunctions/adminQueryUser/service.js             :17  scalar=100
+  YUAN                                       cloudfunctions/calcAmortize/selftest.js              :36  scalar=100
+A_TOTAL = 12
+
+=== B 组：名字像"口径"常量（可能进对外契约）===
+  CF_SELFTEST_FLOOR                          tools/check_suite_coverage.js                  :81    scalar=30         doc=0 tool=1
+  CLAIM_MIN                                  tools/check_audit_redlines.js                  :48    scalar=2          doc=0 tool=4
+  COPY_MIN                                   tools/check_rate_limit_params.js               :51    scalar=40         doc=0 tool=1
+  EXPORT_PAGE_SIZE                           cloudfunctions/adminExport/service.js          :44    scalar=1000       doc=0 tool=0
+  FACE_A_FLOOR.prototype                     tools/check_suite_coverage.js                  :80    obj=3          doc=8 tool=15
+  FACE_A_FLOOR.tools                         tools/check_suite_coverage.js                  :80    obj=40         doc=11 tool=45
+  FREE_LIMIT.shop                            cloudfunctions/checkQuota/service.js           :17    obj=1          doc=22 tool=11
+  FREE_SHOP_LIMIT                            cloudfunctions/getShopList/index.js            :38    scalar=1          doc=0 tool=0
+  FULL_DOC.batch_output                      cloudfunctions/getCardVersions/selftest.js     :23    obj=2          doc=2 tool=1
+  FULL_DOC.loss_rate                         cloudfunctions/getCardVersions/selftest.js     :23    obj=12         doc=3 tool=1
+  FULL_DOC.price_list                        cloudfunctions/getCardVersions/selftest.js     :23    obj=2438       doc=1 tool=1
+  FULL_DOC.reverse_price_fen                 cloudfunctions/getCardVersions/selftest.js     :23    obj=2438       doc=1 tool=0
+  GRACE_DAYS_MS                              cloudfunctions/saveLedger/index.js             :25    scalar=7 * 24 * 3600 * 1000 doc=0 tool=0
+  HARD_LIMIT.shop                            cloudfunctions/checkQuota/service.js           :19    obj=200        doc=22 tool=11
+  LABEL_WINDOW                               tools/check_handoff_paths.js                   :84    scalar=40         doc=0 tool=1
+  LOCK_AFTER_FAILS                           cloudfunctions/adminExport/adminAuth.js        :21    scalar=5          doc=2 tool=1
+  LOCK_DURATION_MS                           cloudfunctions/adminExport/adminAuth.js        :22    scalar=30 * 60 * 1000 doc=2 tool=1
+  MARK_MIN                                   tools/check_privacy_placeholders.js            :45    scalar=3          doc=0 tool=1
+  MAX_DEPTH                                  cloudfunctions/detectCycle/service.js          :18    scalar=5          doc=0 tool=0
+  MAX_EXPORT_PAGES                           cloudfunctions/adminExport/service.js          :43    scalar=20         doc=0 tool=0
+  MAX_WRITES                                 cloudfunctions/common/rateLimit.js             :6     scalar=60         doc=1 tool=1
+  MIN_BYTES                                  tools/check_audit_redlines.js                  :46    scalar=800        doc=0 tool=5
+  MIN_FILES                                  tools/check_stale_claims.js                    :42    scalar=20         doc=0 tool=1
+  MIN_FN                                     tools/check_fn_inventory.js                    :46    scalar=40         doc=0 tool=1
+  MIN_HEADS                                  tools/check_stale_status.js                    :53    scalar=300        doc=0 tool=1
+  MIN_MD                                     tools/check_stale_status.js                    :52    scalar=20         doc=0 tool=1
+  REFRESH_WINDOW_MS                          cloudfunctions/adminRefreshToken/index.js      :14    scalar=24 * 3600 * 1000 doc=0 tool=0
+  REMIND_WINDOW_MS                           cloudfunctions/payExpireNotify/index.js        :16    scalar=7 * 24 * 3600 * 1000 doc=0 tool=1
+  SCAN_MIN                                   tools/check_audit_redlines.js                  :47    scalar=25         doc=0 tool=4
+  SHOP_MAX_PAGES                             cloudfunctions/adminQueryUser/service.js       :18    scalar=5          doc=0 tool=0
+  SHOP_PAGE                                  cloudfunctions/adminQueryUser/service.js       :17    scalar=100        doc=0 tool=0
+  SUB_ITEM_MAX_LEN                           cloudfunctions/saveLedger/validate.js          :12    scalar=20         doc=0 tool=1
+  TOKEN_TTL_MS                               cloudfunctions/adminExport/adminAuth.js        :20    scalar=7 * 24 * 3600 * 1000 doc=2 tool=1
+  WINDOW_MS                                  cloudfunctions/common/rateLimit.js             :5     scalar=60 * 1000  doc=1 tool=1
+  WT_FLOOR.miniprogram                       tools/check_suite_count_claims.js              :179   obj=1          doc=7 tool=19
+  WT_FLOOR.specs                             tools/check_suite_count_claims.js              :179   obj=30         doc=8 tool=37
+  WT_FLOOR.tools                             tools/check_suite_count_claims.js              :179   obj=30         doc=11 tool=45

@@ -1,0 +1,36 @@
+===== G1 · 字号 ≥28rpx（应 0 残留）=====
+✅ G1 无 <28rpx 字号（0 残留）
+✅ G1 .scope（填表引导口径）≥28rpx
+===== G2 · 触控 ≥88rpx（占位 20/40rpx 除外）=====
+✅ G2 wxss 无 <88rpx min-height（20/40 占位除外）
+✅ G2 wxml 内联无 <88rpx min-height
+===== G3 · 数字输入 adjust-position =====
+✅ G3 全部数字输入含 adjust-position（共 30 个）
+✅ G3 均配 cursor-spacing
+===== G4 · 热更新 getUpdateManager =====
+✅ G4 app.js 有 setupUpdate/getUpdateManager
+✅ G4 有 applyUpdate（用户确认后）
+✅ G4 同版本只提示一次（updatePromptedVersion 去重）
+✅ G4 不静默强更（showModal + updateTitle 用户确认）
+===== G5 · 头像昵称（AD-15）=====
+✅ G5 mine 页有 chooseAvatar 按钮
+✅ G5 mine 页有 nickname 输入
+✅ G5 未用废弃 getUserProfile 调用
+===== G6 · 触觉反馈（不可逆操作）=====
+✅ G6 报废资产 vibrateShort(medium)
+✅ G6 注销 vibrateShort
+✅ G6 仅不可逆操作（amortize 仅 1 行 vibrateShort 调用）
+===== G7 · 场景值留痕 =====
+✅ G7 app.js 有 recordScene
+✅ G7 onLaunch 与 onShow 都记录
+===== G8 · 断网提示 =====
+✅ G8 app.js 有 onNetworkStatusChange
+✅ G8 断网给全局提示（offlineBody）
+✅ G8 api.js 区分网络错误（NETWORK_ERROR）
+===== debounce 死代码 =====
+✅ debounce 已从 api.js 删除
+✅ 全仓无 debounce 调用残留
+===== K11 双副本 =====
+✅ K11 i18n 双副本逐字一致
+
+==== 上线前 AD 缺口自测：24 通过 / 0 失败 ====
