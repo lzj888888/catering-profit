@@ -64,7 +64,7 @@
 
 ## 4. 回执
 
-- [2026-09-22 05:16] R87 已落 · 探针：`probe_agents.py` → InsCode idle（msg 1671 持平 / inflight 0）、dsh missing · commit 待填
+- [2026-09-22 05:16] R87 已落 · 探针：`probe_agents.py` → InsCode idle（msg 1671 持平 / inflight 0）、dsh missing · commit `a171dee`
 - [2026-09-22 05:1x] R87 已落 · 停手四连：mtime≥72min 静止 + 进程两采 0-0 + 门禁后回读未变 + HEAD `56bbfaa` 无新 commit
 - [2026-09-22 05:1x] R87 已落 · 门禁基线：`node verify_all.js` → 89/89 RC=0
 - [2026-09-22 05:2x] R87 已落 · 实扫 INDEX-ONLY 名单：ls-files 14 份 − readdirSync 交集 10 份 − 注释型 1 份 = 3 份
