@@ -1,0 +1,30 @@
+===== C1 前置：实算单源 SUITES 可解析（fail-closed）=====
+✅ C1 verify_all.js 可读且 SUITES 块可解析 · 实算 N = 88
+
+===== C2 当前态声明 ≡ 实算 N（重启键是人工面，R59 只守 verify_all 头注）=====
+✅ C2-① verify_all.js 头注「串联：N 个套件」 ≡ N · 文档 88 / 实算 88
+✅ C2-② 重启键 §1.1 一键校验入口行的套件数 ≡ N · 文档 88 / 实算 88
+✅ C2-③ 重启键「套件数会漂」行当前值 ≡ N · 文档 88 / 实算 88
+
+===== C3 「第 N 套件」序号声明 ≡ SUITES 实际位置 =====
+✅ C3-前置 git 路径未被转义（CJK 文件真进扫描面） · 零转义
+❌ C3 面内 4 处「第 N 套件」序号声明全部对得上 · miniprogram/config/env.js:19 第 66 套件 ≠ 实为 tools/check_ios_pay.js（同行未点名该脚本，或序号已错）；specs/dev-specs/core/13_上线前查缺补漏_决策与待办总览.md:247 第 83 套件 ≠ 实为 tools/check_stale_status.js（同行未点名该脚本，或序号已错）；specs/dev-specs/上线材料_提审材料包_v1.md:29 第 66 套件 ≠ 实为 tools/check_ios_pay.js（同行未点名该脚本，或序号已错）；tools/check_env_ready.js:1 第 66 套件 ≠ 实为 tools/check_ios_pay.js（同行未点名该脚本，或序号已错）
+
+===== C4 扫描面非空（判据存在 ≠ 判据被执行）=====
+✅ C4 面 A 三处声明 + 序号面全部有命中 · 头注/§1.1/会漂行/序号声明 = true/true/true/4
+
+===== C5 前提守卫：被排除的 review/ 确实是历史陈述面 =====
+✅ C5 review/ 历史计数陈述存在（排除面没打错、放行规则确有必要） · 历史陈述文件 116 个
+
+===== C6 前提守卫：自指排除只放行注释行（§0.3⑦）=====
+✅ C6 自身文件「第 N 套件」仅出现在注释行 · 注释行命中 2 处，全部属说明性举例
+
+===== 套件数口径守卫结果：8 通过 / 1 失败 =====
+   ❌ C3 面内 4 处「第 N 套件」序号声明全部对得上 · miniprogram/config/env.js:19 第 66 套件 ≠ 实为 tools/check_ios_pay.js（同行未点名该脚本，或序号已错）；specs/dev-specs/core/13_上线前查缺补漏_决策与待办总览.md:247 第 83 套件 ≠ 实为 tools/check_stale_status.js（同行未点名该脚本，或序号已错）；specs/dev-specs/上线材料_提审材料包_v1.md:29 第 66 套件 ≠ 实为 tools/check_ios_pay.js（同行未点名该脚本，或序号已错）；tools/check_env_ready.js:1 第 66 套件 ≠ 实为 tools/check_ios_pay.js（同行未点名该脚本，或序号已错）
+
+修复指引：
+  1) C2 红：把重启键 §1.1 一键校验入口行与「套件数会漂」行的数字改成实算 N；
+     若刚增删 SUITES，两处**都必须跟**（这正是本守卫存在的原因）。
+  2) C3 红：「第 N 套件」写错位置，或同行没点名脚本 ⇒ 按 SUITES 实际顺序改正；
+     序号声明必须同行给出脚本名（`tools/xxx.js` 或反引号名），否则按 fail-closed 判红。
+  3) C4/C5 红：扫描规则或目录结构已变 ⇒ 修规则，不许放宽到静默通过。

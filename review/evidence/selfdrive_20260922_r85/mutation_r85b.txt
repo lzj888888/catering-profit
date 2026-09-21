@@ -1,0 +1,5 @@
+BASELINE rc=0 ===== 外卖段规范口径守卫结果：10 通过 / 0 失败 =====
+anchor present(LF) = True
+M5b  OK  expect=RED actual=RED | rc=1 ===== 外卖段规范口径守卫结果：7 通过 / 3 失败 =====
+RESTORED rc=0 ===== 外卖段规范口径守卫结果：10 通过 / 0 失败 =====
+ABNORMAL=0

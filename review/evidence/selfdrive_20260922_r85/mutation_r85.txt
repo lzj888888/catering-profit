@@ -1,0 +1,12 @@
+BASELINE rc=0  ===== 外卖段规范口径守卫结果：10 通过 / 0 失败 =====
+M1  OK     expect=RED   actual=RED    规范 A.11.2 平台名漂移（美团外卖→美团外送）  | rc=1 ===== 外卖段规范口径守卫结果：9 通过 / 1 失败 =====
+M2  OK     expect=RED   actual=RED    规范 A.11.3 item_key 漂移（subsidy→subsidy_x）  | rc=1 ===== 外卖段规范口径守卫结果：9 通过 / 1 失败 =====
+M3  OK     expect=RED   actual=RED    代码单源 terms.js 平台名漂移（美团外卖→美团外送）  | rc=1 ===== 外卖段规范口径守卫结果：9 通过 / 1 失败 =====
+M4  OK     expect=RED   actual=RED    代码单源 collections.js item_name 漂移（外卖推广费→外卖推广费用）  | rc=1 ===== 外卖段规范口径守卫结果：9 通过 / 1 失败 =====
+M5  MUTATION_NOT_APPLIED  锚点缺失=['| 4 | 其他外卖 | 同上（私域自配送等归此，或按 A.1「私域外卖」单列）']
+M6  OK     expect=RED   actual=RED    规范 A.11.3 显示名漂移（外卖平台佣金→外卖佣金）  | rc=1 ===== 外卖段规范口径守卫结果：9 通过 / 1 失败 =====
+M7  OK     expect=GREEN actual=GREEN  正确实现换写法：规范平台名加粗 **美团外卖**  | rc=0 ===== 外卖段规范口径守卫结果：10 通过 / 0 失败 =====
+M8  OK     expect=GREEN actual=GREEN  正确实现换写法：collections.js sort_order 改成 1..6（相对顺序不变）  | rc=0 ===== 外卖段规范口径守卫结果：10 通过 / 0 失败 =====
+M9  OK     expect=RED   actual=RED    fail-closed：守卫 SPEC_REL 路径写错  | rc=1 ===== 外卖段规范口径守卫结果：2 通过 / 8 失败 =====
+RESTORED rc=0  ===== 外卖段规范口径守卫结果：10 通过 / 0 失败 =====
+ABNORMAL=1
