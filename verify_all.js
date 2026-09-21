@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：84 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：85 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -232,6 +232,13 @@ const SUITES = [
   //   裸扫「房租|人工|毛利|损耗 + 数字%」当场误杀 49 处合法口径（S3 测试数据 / 用例损耗 /
   //   PRODUCT_PLAN 另一套警戒线）⇒ 走语义标记单源 + 弱面只明示（坑⑭ 第八次印证）。
   ['redline-thresholds',     'tools/check_redline_thresholds.js'],
+  // 第 85 套件（round81 新增，R112）：微信审核硬红线口径守卫 tools/check_audit_redlines.js
+  //   —— 根因＝`core/11_微信审核自查清单.md` §2「审核硬红线清单」自称「权威计数」且是**提审前逐条勾的面**，
+  //   实扫 6 条；而 `tools/`+`prototype/` 对 core/11 **零引用**，既有的 R100 `check_redline_inventory.js`
+  //   把 LIST_REL 写死为 `core/04`，**不看 core/11 一个字** ⇒ 该口径长期零守卫（同族病第 19 例）。
+  //   ⚠️ 当前实扫**零漂移**（全仓仅清单标题一处提及）⇒ 本守卫是**防复发**，不是修缺陷。
+  //   裸扫「N 条红线」会误杀重启键演进链里的历史值（12/11）⇒ 走语义标记 + 锚点就近 ±30（坑⑭/⑯）。
+  ['audit-redlines',         'tools/check_audit_redlines.js'],
   // 后续批次的套件在此追加即可（如 batch2_selfcheck ...）；追加后记得同步头部注释里的套件数量。
 ];
 

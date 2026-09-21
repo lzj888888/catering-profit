@@ -1,0 +1,37 @@
+扫描面 specs/*.md 份数 = 30
+引用面文件数 = 58
+  2  specs/PRODUCT_PLAN.md
+  0  specs/dev-specs/BRANCH_STRATEGY.md
+  0  specs/dev-specs/OBSOLETE_商业化方案_v1.1_融合版.md
+  1  specs/dev-specs/core/01_架构总览.md
+  6  specs/dev-specs/core/02_模拟测试数据集.md
+  1  specs/dev-specs/core/03_写码提示词.md
+  3  specs/dev-specs/core/04_核对清单.md
+  1  specs/dev-specs/core/05_审计单.md
+  1  specs/dev-specs/core/06_工程治理与运维规范.md
+  2  specs/dev-specs/core/09_统一错误码表.md
+  4  specs/dev-specs/core/10_云函数清单与接口契约.md
+  0  specs/dev-specs/core/11_微信审核自查清单.md
+  1  specs/dev-specs/core/12_云开发配额与成本测算.md
+  2  specs/dev-specs/core/13_上线前查缺补漏_决策与待办总览.md
+  1  specs/dev-specs/core/14_种子数据与验收脚本规范.md
+  1  specs/dev-specs/core/15_集合权限矩阵.md
+  1  specs/dev-specs/core/16_后台鉴权规范.md
+  1  specs/dev-specs/core/开发规范v1.0_ModuleA_收入费用核算.md
+  1  specs/dev-specs/core/开发规范v1.0_ModuleM1_月度盈利核算.md
+  1  specs/dev-specs/core/开发规范v1.0_ModuleM2_选址沙盘.md
+  1  specs/dev-specs/core/开发规范v1.0_ModuleM3_菜品成本卡.md
+  1  specs/dev-specs/delivery/inscode喂投包_8批_自包含完整版.md
+  2  specs/dev-specs/poc/POC1_摊销边界与尾差残值.md
+  2  specs/dev-specs/poc/POC2_BOM两层与循环拦截.md
+  2  specs/dev-specs/poc/POC3_双利润口径锁.md
+  6  specs/dev-specs/★知识存储点_2026-09-10.md
+  2  specs/dev-specs/上线材料_提审材料包_v1.md
+  2  specs/dev-specs/上线材料_隐私政策_v1.md
+  1  specs/dev-specs/写码阶段启动执行手册_v1.0.md
+  1  specs/dev-specs/商业化方案_v1.4_融合版.md
+
+===== 零引用候选 (3) =====
+   specs/dev-specs/BRANCH_STRATEGY.md
+   specs/dev-specs/OBSOLETE_商业化方案_v1.1_融合版.md
+   specs/dev-specs/core/11_微信审核自查清单.md
