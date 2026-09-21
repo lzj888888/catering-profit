@@ -118,11 +118,11 @@ R81，已挂 4 轮，本轮正式排进"下一批"」，而同节正文早已写
 
 ## 5. 回执
 
-- [2026-09-21 14:0x] **R109 已落** · core/13 §6 标题 + 页脚两段过期时态已更正（历史句保留 + 追加更正） · 证据：`scan_stale_status.js` → 全 specs 命中 1 处真矛盾（review/ 2 处判为误报） · commit `<本件 sha>`
-- [2026-09-21 14:2x] **R109 守卫已落** · 新建 `tools/check_stale_status.js`（12 断言）· 证据：`node tools/check_stale_status.js` → `12 通过 / 0 失败` RC=0 · commit `<本件 sha>`
-- [2026-09-21 14:4x] **变异回灌已落** · 5/5 如期（M1 真实回灌 RED）· 证据：`_gui/mut_r76.js` → `回灌结论：5/5 如期 · 全绿` + 还原 byte-identical · commit `<本件 sha>`
-- [2026-09-21 15:0x] **SUITES 81→82 已落** · 三处人工面同步 + 演进链补齐 79~82 · 证据：`tools/check_suite_count_claims.js` → `9 通过 / 0 失败`（文档 82 / 实算 82） · commit `<本件 sha>`
-- [2026-09-21 15:1x] **门禁已落** · 证据：`verify_all.js` → `82/82 RC=0`；`check_error_codes.js` → RC=0 · commit `<本件 sha>`
+- [2026-09-21 14:0x] **R109 已落** · core/13 §6 标题 + 页脚两段过期时态已更正（历史句保留 + 追加更正） · 证据：`scan_stale_status.js` → 全 specs 命中 1 处真矛盾（review/ 2 处判为误报） · commit `0973a2c`
+- [2026-09-21 14:2x] **R109 守卫已落** · 新建 `tools/check_stale_status.js`（12 断言）· 证据：`node tools/check_stale_status.js` → `12 通过 / 0 失败` RC=0 · commit `0973a2c`
+- [2026-09-21 14:4x] **变异回灌已落** · 5/5 如期（M1 真实回灌 RED）· 证据：`_gui/mut_r76.js` → `回灌结论：5/5 如期 · 全绿` + 还原 byte-identical · commit `0973a2c`
+- [2026-09-21 15:0x] **SUITES 81→82 已落** · 三处人工面同步 + 演进链补齐 79~82 · 证据：`tools/check_suite_count_claims.js` → `9 通过 / 0 失败`（文档 82 / 实算 82） · commit `0973a2c`
+- [2026-09-21 15:1x] **门禁已落** · 证据：`verify_all.js` → `82/82 RC=0`；`check_error_codes.js` → RC=0 · commit `0973a2c`
 - **存疑（未做，摊开说）**：页脚"带日期的过期警告"结构守卫守不到，未加 R85 短语（理由见 §2）；`review/` 面 2 处保持原样（正确的留痕写法）。
 
 ---
