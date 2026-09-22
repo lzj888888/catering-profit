@@ -115,7 +115,10 @@ check('填写口径 5 条（防重填漏填）', guideCount === 5, `实际 ${gui
 check('口径含「同一笔钱只填一次」', /同一笔钱只填一次/.test(terms));
 check('口径含「食材采购不计入费用」', /食材采购不计入费用/.test(terms));
 check('input.js 折叠块状态 + 开关', /fillGuideOpen: false/.test(inputJs) && /onToggleFillGuide\(\)/.test(inputJs));
-check('input.js initGroups 给每类挂 scope', /scope: \(scopeMap \|\| \{\}\)\[g\.category\] \|\| ''/.test(inputJs));
+// round102（2026-09-22）判据放宽到**语义级**：原判据绑死了 map 回调参数名（g）—— 本轮把
+//   initGroups/rebuildFromItems 改成「先建页面对象、再装配 rows」后回调参数改名 d ⇒ 误报。
+//   守卫意图是「initGroups 给每类挂 scope（取自 scopeMap、按 category 取）」，与参数名无关。
+check('input.js initGroups 给每类挂 scope', /scope: \(scopeMap \|\| \{\}\)\[(?:g|d)\.category\] \|\| ''/.test(inputJs));
 check('input.js 从后端重建时也挂 scope', /rebuildFromItems\(TERMS\.ledger\.income, d\.income_items, TERMS\.ledger\.incomeScope\)/.test(inputJs));
 check('input.wxml 渲染顶部口径折叠块', /fill-guide-head/.test(inputWxml) && /t\.fillGuideTitle/.test(inputWxml));
 // 2026-09-21：口径句从「常展开」改为「折叠块」（李老师真机反馈：太占地方）

@@ -227,19 +227,22 @@ Page({
   initGroups() {
     // T1：分平台小计行按收入侧平台单源铺开（此时通常全空 ⇒ 不接管任何行）
     const byPlat = this.buildMkByPlat(this.data.twMkByPlat);
-    const mk = (defs, scopeMap) => defs.map((g) => {
-      const rows = [{ subItem: '', amountYuan: '' }];
-      return {
-        category: g.category, label: g.label, items: g.items || [],
-        scope: (scopeMap || {})[g.category] || '',
+    // ⚠️ round102：先建出**页面对象**再装配 rows —— decorateRows 会往 g 上挂只读派生字段
+    //   （unused / mkPlatAfterRi），若把 terms 单源元素直接传进去会污染单源。
+    const mk = (defs, scopeMap) => defs.map((d) => {
+      const raw = [{ subItem: '', amountYuan: '' }];
+      const g = {
+        category: d.category, label: d.label, items: d.items || [],
+        scope: (scopeMap || {})[d.category] || '',
         scopeOpen: false,   // 2026-09-21：口径句默认收起（李老师反馈原样展开太占地方）
         expanded: false,
-        rows: this.decorateRows(g, rows),
-        showRows: rows,
+        rows: [],
+        showRows: [],
       };
-    }).map((g) => (g.category === 'dine_in'
-      ? Object.assign({}, g, { showRows: g.rows })
-      : g));
+      g.rows = this.decorateRows(g, raw);
+      g.showRows = g.category === 'dine_in' ? g.rows : raw;
+      return g;
+    });
     this.setData({
       incomeGroups: mk(TERMS.ledger.income, TERMS.ledger.incomeScope),
       expenseGroups: this.decorateExpenseNotes(mk(TERMS.ledger.expense, TERMS.ledger.expenseScope)),
@@ -269,8 +272,8 @@ Page({
 
   // 从后端明细（snake_case income_items/expense_items）重建组：每大类 → rows = sub_items（无细项则单行整类）
   rebuildFromItems(defs, items, scopeMap) {
-    return defs.map((g) => {
-      const found = (items || []).find((it) => (it.category || '') === g.category);
+    return defs.map((d) => {
+      const found = (items || []).find((it) => (it.category || '') === d.category);
       let rows = [{ subItem: '', amountYuan: '' }];
       if (found) {
         const subs = found.sub_items || [];
@@ -281,18 +284,21 @@ Page({
         }
       }
       const expanded = rows.length > 1;
-      const out = {
-        category: g.category, label: g.label, items: g.items || [],
-        scope: (scopeMap || {})[g.category] || '',
+      // ⚠️ round102：同 initGroups —— 先建页面对象再装配（decorateRows 会往 g 挂只读派生字段）
+      const g = {
+        category: d.category, label: d.label, items: d.items || [],
+        scope: (scopeMap || {})[d.category] || '',
         scopeOpen: false,   // 与 initGroups 一致：读回后端数据也默认收起
         expanded,
-        rows: this.decorateRows(g, rows),
-        showRows: expanded ? rows : rows.slice(0, 1),
+        rows: [],
+        showRows: [],
       };
-      if (g.category === 'dine_in') {
-        out.showRows = expanded ? out.rows : out.rows.slice(0, 1);
+      g.rows = this.decorateRows(g, rows);
+      g.showRows = expanded ? rows : rows.slice(0, 1);
+      if (d.category === 'dine_in') {
+        g.showRows = expanded ? g.rows : g.rows.slice(0, 1);
       }
-      return out;
+      return g;
     });
   },
 
@@ -496,7 +502,35 @@ Page({
   // 任意大类行装配（🔒 唯一入口）：堂食走渠道装配；其余大类只标「预设行不可删」（fixed）。
   // ⚠️ 别在这里另写分支逻辑，堂食的渠道全集/别名规则只在 dineChannels.js 里（G11 守）。
   decorateRows(g, rows) {
-    return g.category === 'dine_in' ? this.decorateDineRows(rows) : markFixedRows(rows, g.items);
+    const out = g.category === 'dine_in' ? this.decorateDineRows(rows) : markFixedRows(rows, g.items);
+    // round102（2026-09-22）· 顺带算两个**只读派生字段**（挂到 g 上；不入库、不影响 fixed）：
+    //   · g.unused / g.unusedText —— 该类「还没用上的预设项」（供 WXML 底部提示行）
+    //   · g.mkPlatAfterRi —— 「分平台佣金小计」块该渲染在哪一行**之后**（营销组专用）
+    //   ⚠️ 放在这里是因为它正是所有 rows 变更路径的**唯一装配口**；散到各 setData 点必漏一处。
+    //   ⚠️ 因此调用方传进来的 g **必须是可写的页面对象**，不能是 terms 单源数组的元素（会污染单源）。
+    const used = out.map((r) => (r.subItem || '').trim()).filter(Boolean);
+    const items = g.items || [];
+    const unused = (g.category === 'dine_in' || !items.length)
+      ? [] : items.filter((n) => used.indexOf(n) < 0);
+    g.unused = unused;
+    g.unusedText = unused.join(TERMS.ledger.presetHintSep || '');
+    g.mkPlatAfterRi = this.calcMkPlatAfterRi(g, out);
+    return out;
+  },
+
+  // round102：营销组「分平台佣金小计」块的渲染锚点（返回**行下标** —— WXML 在该行之后插块）
+  //   · 佣金项名单源 = takeawayMode.reconcileRoles.commission（页面零硬编码）
+  //   · 找不到（老板删了 / 从没加过）⇒ 退化为**末行之后** —— 块仍可见、功能不丢
+  //   · 非营销组 ⇒ -1（WXML 里 ri 永不等于 -1，自然不渲染）
+  calcMkPlatAfterRi(g, rows) {
+    if (g.category !== 'marketing') return -1;
+    const name = ((TERMS.ledger.takeawayMode || {}).reconcileRoles || {}).commission || '';
+    const list = rows || [];
+    if (name) {
+      const ri = list.findIndex((r) => r.subItem === name);
+      if (ri >= 0) return ri;
+    }
+    return list.length - 1;
   },
 
   // R85：费用侧营销行「取数路径」标注（按 terms.expenseItemNotes 预计算挂到行上；页面不写死项名）

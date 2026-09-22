@@ -200,12 +200,15 @@
       <view class="sub-block" wx:for="{{g.expanded ? g.rows : g.rows.slice(0, 1)}}" wx:key="index"
         wx:for-item="r" wx:for-index="ri">
         <view class="sub-line1">
-          <!-- 预设细项（fixed）：名字固定、不给删除键 —— 清单是单一数据源，装配时必然补回，
-               给了 × 只会让人以为「删不掉」；只有自己加的细项才可改名 / 可删（G11d 守） -->
+          <!-- 预设细项（fixed）：**名字**固定（防同一笔费用两个名字），但**可以删** ——
+               round102（2026-09-22）修正：原判据「名字在预设清单里就不给删除键」的立论
+               「清单是单一数据源，装配时必然补回」**实测不成立**（装配口只铺空行 / 只按后端数据重建，
+               从不补回预设项），故放开删除键、只留「至少留一行」护栏（规范 A.2：费用项支持老板自定义增删）。
+               ⚠️ 堂食渠道行是**例外**：那里的预设渠道确实会被补回，仍不给删除键（G10j 守）。 -->
           <input class="sub-item-inp" wx:if="{{g.expanded && !r.fixed}}" value="{{r.subItem}}" placeholder="{{t.subItemPh}}"
             data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubItem" disabled="{{readOnly}}" />
           <text class="sub-item-fixed" wx:elif="{{g.expanded}}">{{r.subItem}}</text>
-          <button class="btn-del" wx:if="{{g.expanded && !r.fixed && g.rows.length > 1}}"
+          <button class="btn-del" wx:if="{{g.expanded && g.rows.length > 1}}"
             data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" catchtap="delRow">{{t.delSubItem}}</button>
         </view>
         <view class="sub-line2">
@@ -214,6 +217,9 @@
             data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubAmount" disabled="{{readOnly}}"  adjust-position="{{true}}" cursor-spacing="20" />
         </view>
       </view>
+      <!-- round102：未用预设项只读提示（点它直开预设面板）—— 补「添加」这条腿的可发现性 -->
+      <view class="hint preset-hint" wx:if="{{g.expanded && g.unusedText}}" data-kind="income" data-gidx="{{gi}}"
+        catchtap="onOpenPresetPick">{{t.presetHintPrefix}}{{g.unusedText}}</view>
       <view class="group-ops" wx:if="{{g.expanded}}">
         <button class="btn-small ghost" data-kind="income" data-gidx="{{gi}}" catchtap="addRow">{{t.addSubItem}}</button>
       </view>
@@ -241,11 +247,11 @@
     <view class="sub-block" wx:for="{{g.expanded ? g.rows : g.rows.slice(0, 1)}}" wx:key="index"
       wx:for-item="r" wx:for-index="ri">
       <view class="sub-line1">
-        <!-- 预设细项（fixed）：名字固定、不给删除键（同收入侧口径，G11d 守） -->
+        <!-- 预设细项（fixed）：名字固定、但可删（同收入侧口径，G11d 守） -->
         <input class="sub-item-inp" wx:if="{{g.expanded && !r.fixed}}" value="{{r.subItem}}" placeholder="{{t.subItemPh}}"
           data-kind="expense" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubItem" disabled="{{readOnly}}" />
         <text class="sub-item-fixed" wx:elif="{{g.expanded}}">{{r.subItem}}</text>
-        <button class="btn-del" wx:if="{{g.expanded && !r.fixed && g.rows.length > 1}}"
+        <button class="btn-del" wx:if="{{g.expanded && g.rows.length > 1}}"
           data-kind="expense" data-gidx="{{gi}}" data-ridx="{{ri}}" catchtap="delRow">{{t.delSubItem}}</button>
       </view>
       <view class="sub-line2">
@@ -260,31 +266,36 @@
         <text wx:if="{{r.promo}}" class="promo-path">{{t.twPromoPathLabel}}</text>
         <view wx:if="{{r.promo}}" class="promo-hint">{{t.twPromoPathHint}}</view>
       </view>
+      <!-- T1（round97）+ round102 · 营销段「分平台佣金小计」：只回显、不入库；填了即**自动汇成**佣金总额那一行
+           （该行随即转只读，避免两个来源打架）；一行都不填则完全不碰那一行。
+           ⚠️ 平台名 / 项名一律取自单源（收入侧外卖 items + reconcileRoles），页面零硬编码。
+           ⚠️ round102：块从「段末操作区里」移到**佣金行之后**（下标 g.mkPlatAfterRi 由 js 单源算好；
+              营销组没有佣金行时该下标退化为末行下标 ⇒ 块仍可见、功能不丢）。 -->
+      <view class="mk-plat" wx:if="{{g.category === 'marketing' && g.expanded && ri === g.mkPlatAfterRi}}">
+        <view class="mk-plat-title">{{t.mkPlatTitle}}</view>
+        <view class="hint">{{t.mkPlatHint}}</view>
+        <view class="mk-plat-row" wx:for="{{twMkByPlat}}" wx:key="platform" wx:for-item="p" wx:for-index="pi">
+          <text class="mk-plat-name">{{p.platform}}</text>
+          <input class="val-input mk-plat-amt" type="digit" confirm-type="done" value="{{p.amountYuan}}"
+            placeholder="{{t.mkPlatPh}}" data-idx="{{pi}}" bindinput="onMkByPlat" disabled="{{readOnly}}"
+            adjust-position="{{true}}" cursor-spacing="20" />
+        </view>
+        <view class="mk-plat-sum">
+          <text class="mk-plat-sum-lbl">{{t.mkPlatSumLabel}}</text>
+          <text class="mk-plat-sum-val">{{twMkByPlatSum}}</text>
+        </view>
+        <view class="group-ops" wx:if="{{twMkByPlatActive}}">
+          <button class="btn-small ghost" catchtap="clearMkByPlat">{{t.mkPlatClear}}</button>
+        </view>
+      </view>
     </view>
+
+    <!-- round102：未用预设项只读提示（点它直开预设面板）—— 补「添加」这条腿的可发现性 -->
+    <view class="hint preset-hint" wx:if="{{g.expanded && g.unusedText}}" data-kind="expense" data-gidx="{{gi}}"
+      catchtap="onOpenPresetPick">{{t.presetHintPrefix}}{{g.unusedText}}</view>
 
     <view class="group-ops" wx:if="{{g.expanded}}">
       <button class="btn-small ghost" data-kind="expense" data-gidx="{{gi}}" catchtap="onOpenPresetPick">{{t.addSubItem}}</button>
-    <!-- T1（round97）· 营销段「分平台佣金小计」：只回显、不入库；填了即**自动汇成**佣金总额那一行
-         （该行随即转只读，避免两个来源打架）；一行都不填则完全不碰那一行。
-         ⚠️ 平台名 / 项名一律取自单源（收入侧外卖 items + reconcileRoles），页面零硬编码。 -->
-    <view class="mk-plat" wx:if="{{g.category === 'marketing' && g.expanded}}">
-      <view class="mk-plat-title">{{t.mkPlatTitle}}</view>
-      <view class="hint">{{t.mkPlatHint}}</view>
-      <view class="mk-plat-row" wx:for="{{twMkByPlat}}" wx:key="platform" wx:for-item="p" wx:for-index="pi">
-        <text class="mk-plat-name">{{p.platform}}</text>
-        <input class="val-input mk-plat-amt" type="digit" confirm-type="done" value="{{p.amountYuan}}"
-          placeholder="{{t.mkPlatPh}}" data-idx="{{pi}}" bindinput="onMkByPlat" disabled="{{readOnly}}"
-          adjust-position="{{true}}" cursor-spacing="20" />
-      </view>
-      <view class="mk-plat-sum">
-        <text class="mk-plat-sum-lbl">{{t.mkPlatSumLabel}}</text>
-        <text class="mk-plat-sum-val">{{twMkByPlatSum}}</text>
-      </view>
-      <view class="group-ops" wx:if="{{twMkByPlatActive}}">
-        <button class="btn-small ghost" catchtap="clearMkByPlat">{{t.mkPlatClear}}</button>
-      </view>
-    </view>
-
     </view>
   </view>
 

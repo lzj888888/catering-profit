@@ -38,7 +38,14 @@ console.log('===== A2 · 二级细项（前端 UI + 后端契约）=====');
 const inputJs = read("pages/month/input.js");
 const inputWxml = read("pages/month/input.wxml");
 check('input.js 有 incomeGroups/expenseGroups 组模型', /incomeGroups: \[\],/.test(inputJs) && /expenseGroups: \[\],/.test(inputJs));
-check('input.js 有 rows/showRows 细项行模型', /const rows = \[\{ subItem: '', amountYuan: '' \}\]/.test(inputJs) && /showRows: expanded \? rows : rows\.slice\(0, 1\)/.test(inputJs));
+// round102（2026-09-22）判据放宽到**语义级**：原判据绑死了 initGroups 里的局部变量名（const rows）——
+//   本轮把 initGroups/rebuildFromItems 改成「先建页面对象、再装配 rows」后变量名变成 raw ⇒ 误报。
+//   守卫意图是「有 rows/showRows 细项行模型」（折叠态取首行、展开态全量），与局部变量名无关。
+//   腿①：行数组以「单个空行」初始化（= [{ subItem: ... }]，不限 const/let/变量名）
+//   腿②：showRows 按 expanded 取首行 / 全量（showRows: 与 g.showRows = 两种写法均算）
+check('input.js 有 rows/showRows 细项行模型（折叠取首行 / 展开全量）',
+  /=\s*\[\{ subItem: '', amountYuan: '' \}\]/.test(inputJs)
+  && /showRows\s*[:=]\s*(?:g\.|out\.)?expanded\s*\?\s*(?:g\.|out\.)?rows\s*:\s*(?:g\.|out\.)?rows\.slice\(0, 1\)/.test(inputJs));
 check('input.js 有 buildItems（提交 sub_items，前端不汇总）', /buildItems\(groups\)/.test(inputJs) && /sub_items:/.test(inputJs));
 check('input.wxml 有 sub_item 输入与 addRow/delRow', /onSubItem/.test(inputWxml) && /addRow/.test(inputWxml) && /delRow/.test(inputWxml));
 check('input.wxml 用 group-head 展开/收起', /group-head/.test(inputWxml) && /onToggleGroup/.test(inputWxml));
@@ -318,10 +325,44 @@ check('G11d 非堂食自定义行 fixed=false（可改名可删）',
   markedRows[1] && markedRows[1].fixed === false);
 check('G11d 非堂食行装配也走唯一入口（不再各自拼装）',
   /decorateRows\(g, rows\) \{[\s\S]{0,160}?dine_in' \? this\.decorateDineRows\(rows\) : markFixedRows\(rows, g\.items\)/.test(dinJs));
-check('G11d 两个 WXML 分支的 × 都带 !r.fixed（预设行不显 ×）',
-  (dinWxml.match(/class="btn-del" wx:if="\{\{g\.expanded && !r\.fixed && g\.rows\.length > 1\}\}"/g) || []).length === 2);
+// round102（2026-09-22）：预设细项**改为可删** —— 原判据「名字在预设清单里就不给删除键」的立论
+//   （「清单是单一数据源，装配时必然补回」）**实测不成立**：initGroups 只铺一个空行、
+//   rebuildFromItems 只按后端 sub_items 重建，两条装配口**从不补回预设项**（那套「删了会回来」
+//   只在**堂食渠道**成立）。⇒ 保留名字只读（防同一笔费用两个名字），放开删除键、只留「至少留一行」护栏。
+//   依据：规范 A.2「费用项支持老板自定义增删」。
+check('G11d 两个 WXML 分支的 × 只受「至少留一行」护栏约束（预设行也可删）',
+  (dinWxml.match(/class="btn-del" wx:if="\{\{g\.expanded && g\.rows\.length > 1\}\}"/g) || []).length === 2);
+check('G11d 反向腿：预算行的 × 已不再带 !r.fixed（防被改回去）',
+  !/class="btn-del" wx:if="\{\{g\.expanded && !r\.fixed/.test(dinWxml));
+check('G11d 堂食渠道的 × 仍带 !r.fixed（那里的预设渠道确实会被补回，与 G10j 同口径）',
+  /class="btn-del" wx:if="\{\{!r\.fixed\}\}"/.test(dinWxml));
 check('G11d 预设行名以纯文本渲染（不可编辑）',
   (dinWxml.match(/class="sub-item-fixed" wx:elif="\{\{g\.expanded\}\}"/g) || []).length === 2);
+
+// ===== round102（2026-09-22）· 未用预设提示行 / 小计块位置 / 只读派生字段 =====
+// 为什么需要这组：本轮三处改动都能「改一半」而不报错 —— 放开删除键却忘了提示行（老板仍看不全）、
+//   小计块移了位却没接上定位字段（块直接消失）、派生字段算了却没人用（提示行永远空）。
+//   故每一条都配方向性判据（含条件与取值来源），不是只判「字符串出现过」。
+check('R102-① 装配口挂了两个只读派生字段（unusedText / mkPlatAfterRi）',
+  /g\.unusedText = unused\.join\(/.test(dinJs)
+  && /g\.mkPlatAfterRi = this\.calcMkPlatAfterRi\(g, out\);/.test(dinJs));
+check('R102-② 未用预设项只读计算：堂食排除在外 + 清单取自 g.items（不写死）',
+  /g\.category === 'dine_in' \|\| !items\.length/.test(dinJs)
+  && /const items = g\.items \|\| \[\];/.test(dinJs));
+check('R102-③ 提示行两段都有（费用 + 收入非堂食），文案走 terms 单源前缀',
+  (dinWxml.match(/class="hint preset-hint" wx:if="\{\{g\.expanded && g\.unusedText\}\}"/g) || []).length === 2
+  && /\{\{t\.presetHintPrefix\}\}\{\{g\.unusedText\}\}/.test(dinWxml));
+check('R102-④ 提示行点击直开预设面板（onOpenPresetPick 三处：两段提示 + 费用添加按钮）',
+  (dinWxml.match(/catchtap="onOpenPresetPick"/g) || []).length >= 3);
+// 反向腿：小计块必须已**移出**段末操作区 —— 取 group-ops 起 300 字符窗口，其中不得再出现 mk-plat
+const r102GoIdx = dinWxml.indexOf('<view class="group-ops" wx:if="\{\{g.expanded\}\}">\r\n      <button class="btn-small ghost" data-kind="expense"');
+const r102Win = r102GoIdx >= 0 ? dinWxml.slice(r102GoIdx, r102GoIdx + 300) : '';
+check('R102-⑤ 小计块已移出「段末操作区」（group-ops 首 300 字符内不含 mk-plat）',
+  r102GoIdx >= 0 && r102Win.indexOf('mk-plat') < 0);
+check('R102-⑥ 小计块改为按 g.mkPlatAfterRi 在**行循环内**定位（紧跟佣金行）',
+  /<view class="mk-plat" wx:if="\{\{g\.category === 'marketing' && g\.expanded && ri === g\.mkPlatAfterRi\}\}">/.test(dinWxml));
+check('R102-⑦ 佣金行定位走单源（reconcileRoles.commission），页面零硬编码项名',
+  /const name = \(\(TERMS\.ledger\.takeawayMode \|\| \{\}\)\.reconcileRoles \|\| \{\}\)\.commission \|\| '';/.test(dinJs));
 
 console.log('');
 console.log('');
@@ -372,7 +413,7 @@ check('A6-⑥ 接管时该行转只读（两个来源不打架）+ 只回显不�
 console.log('');
 console.log('===== 门禁预检 =====');
 check('K11 双副本逐字一致', terms === termsSpec);
-check('建库单源同步（种子在双源）', read("cloudfunctions/initDb/collections.js").includes('SEED_INCOME_ITEMS') && read("specs/dev-specs/prototype/init_db.js").includes('SEED_EXPENSE_ITEMS'));
+check('建库单源文件仍在（仅存在性；逐项一致性比对在 R124 tools/check_seed_terms_sync.js）', read("cloudfunctions/initDb/collections.js").includes('SEED_INCOME_ITEMS') && read("specs/dev-specs/prototype/init_db.js").includes('SEED_EXPENSE_ITEMS'));
 
 console.log(`\n==== 批次 8b 功能补齐自测：${pass} 通过 / ${failN} 失败 ====`);
 process.exit(failN === 0 ? 0 : 1);

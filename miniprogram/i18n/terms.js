@@ -225,6 +225,10 @@ const TERMS = {
     presetPickTitle: '加哪一项？',
     presetPickCustom: '自定义细项（自己填名字）',
     presetPickEmpty: '本类预设项都已用上，可加自定义细项',
+    // round102（2026-09-22）：展开态底部的「还没加的有：…」只读提示 —— 补上「添加」这条腿的可发现性。
+    //   ⚠️ 前缀与顿号分隔符都放这里（单源）；js 只做 join 拼串，页面零硬编码文案。
+    presetHintPrefix: '还没加的有：',
+    presetHintSep: '、',
     delSubItem: '×',   // 2026-09-20 李老师真机反馈："删除"两字太占地 → 改图标，宽度让给细项名与金额
     amount: '金额（元）',
     classTotalSuffix: '合计', // 折叠时只显示首行 = 整类总额，标签写「XX合计」防误当成某一细项

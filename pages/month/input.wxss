@@ -36,6 +36,8 @@
   padding: 16rpx 20rpx; border: 2rpx solid #cfdae8; border-radius: 10rpx; background: #fff;
 }
 .group-ops { padding: 8rpx 0 16rpx; }
+/* round102：展开态底部的「还没加的有：…」只读提示（点击直开预设面板） */
+.preset-hint { margin: 4rpx 0 0; }
 .group-ops .btn-small { margin-top: 0; }
 
 /* R85 · 外卖段（规范 §A.11） */
