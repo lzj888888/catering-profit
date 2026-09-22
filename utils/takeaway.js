@@ -85,25 +85,48 @@ function subtotalOf(goods, pack, subsidy) {
  * 从粘贴文本中提取数字并求和。
  * - 自动跳过表头文字、空单元格、说明列（非数字行自然跳过）；
  * - 行内若有多个数字，只取每行的**第一个**数字（一列对应一个数）；
- * - 含「合计 / 总计」字样的行 → hasTotal=true（由页面弹确认）；
+ * - 含「合计 / 总计 / 小计」字样 ⇒ hasTotal=true（由页面弹确认），且该合计值**不算入求和**；
  * - 千分位逗号与中文金额符号已处理。
+ *
+ * 🔴 R120 修复（静默算错钱第 3 例）：原护栏写成「**整行**含合计字样就 continue」——
+ *   只在「标签与金额同行」（Excel 常规复制 `合计⇥7140.00`）时有效；
+ *   而账单里常见的**标签占一行、金额在下一行**（`合计` ⏎ `7140.00`）时护栏完全不触发，
+ *   于是合计值被当普通明细加进去 ⇒ 4380+2760+7140 = **14280（翻倍）**，界面却照旧提示「已提取并填入」。
+ *   ⇒ 改为**配对**：同行形态直接归合计；纯标签行开启 `pendingTotal`（跨越其间的纯文字行），
+ *     由**紧随其后的第一个数字行**归合计。两种形态都不再进 numbers。
+ *
  * @param {string} text 原始粘贴文本（含换行/制表符/逗号分隔）
- * @returns {{ sum:number, hasTotal:boolean, numbers:number[], raw:string }}
+ * @returns {{ sum:number, hasTotal:boolean, totalValue:number|null, numbers:number[], raw:string }}
+ *   sum       = 明细求和（**不含**合计行）
+ *   totalValue= 合计行的金额（同行形态 或 悬空标签后的第一个数字行；无则 null）
+ *   numbers   = 计入求和的明细数字（合计值不在其中）
  */
 function extractPaste(text) {
   const raw = String(text == null ? '' : text);
   const lines = raw.split(/\r?\n/).map((l) => l.replace(/\s+$/, '')).filter((l) => l.trim() !== '');
   let sum = 0;
   let hasTotal = false;
+  let totalValue = null;      // 合计金额（后者覆盖前者 ⇒ 无明细时兜底取「最后出现的合计」）
+  let pendingTotal = false;   // 上行是「纯标签合计行」⇒ 本行数字归合计，不进 numbers
   const numbers = [];
   for (const line of lines) {
     const n = firstNumber(line);
-    if (n === null) continue;                       // 纯文字行（表头/说明列）→ 跳过
-    if (/合计|总计|total|小计/i.test(line)) { hasTotal = true; continue; } // 合计行不算入求和（防重复加）
+    const isTotalLabel = /合计|总计|total|小计/i.test(line);
+    if (n === null) {
+      // 纯文字行：合计标签 ⇒ 开启悬空态（金额在下一行）；其余表头/说明列照旧跳过
+      if (isTotalLabel) { hasTotal = true; pendingTotal = true; }
+      continue;
+    }
+    if (isTotalLabel) {                 // 形态一：同行（合计⇥7140.00）
+      hasTotal = true; pendingTotal = false; totalValue = n; continue;
+    }
+    if (pendingTotal) {                 // 形态二：悬空标签后的第一个数字行（合计⏎7140.00）
+      hasTotal = true; pendingTotal = false; totalValue = n; continue;
+    }
     sum += n;
     numbers.push(n);
   }
-  return { sum, hasTotal, numbers, raw };
+  return { sum, hasTotal, totalValue, numbers, raw };
 }
 
 /**
@@ -141,9 +164,33 @@ function firstNumber(line) {
  * @returns {string} '' = 确实没提取到数字；否则两位小数（含 '0.00'）
  */
 function pasteFillValue(res) {
-  if (!res || !Array.isArray(res.numbers) || res.numbers.length === 0) return '';
-  const v = Number(res.sum);
+  if (!res) return '';
+  if (Array.isArray(res.numbers) && res.numbers.length > 0) {
+    const v = Number(res.sum);
+    return Number.isFinite(v) ? v.toFixed(2) : '';
+  }
+  // 🔴 R120 兜底：排除后**一个明细数字都不剩**（用户只复制了合计那一行/那两行）⇒ 填合计值，
+  //   而不是回「未提取到数字」（旧行为：同行合计给空、换行合计反而填对 ⇒ 同一份账单两种结果）。
+  //   ⚠️ 必须显式判 null/undefined：Number(null) === 0 且 isFinite(0) === true，
+  //     否则「空文本 / 纯表头」会被误填成 0.00（用例 E1/E2 守这条）。
+  const tv = res.totalValue;
+  if (tv === null || tv === undefined) return '';
+  const v = Number(tv);
   return Number.isFinite(v) ? v.toFixed(2) : '';
+}
+
+/**
+ * 本次填入是否**来自合计兜底**（而非明细求和）——页面据此给不同提示。
+ * 语义：没有任何明细数字、但有可用的合计值。
+ * @param {{numbers:number[], totalValue:number|null}} res
+ * @returns {boolean}
+ */
+function pasteFilledFromTotal(res) {
+  if (!res) return false;
+  if (Array.isArray(res.numbers) && res.numbers.length > 0) return false;
+  const tv = res.totalValue;
+  if (tv === null || tv === undefined) return false;
+  return Number.isFinite(Number(tv));
 }
 
 /**
@@ -224,6 +271,6 @@ function reconcile(p) {
 
 module.exports = {
   pickTakeawayMode, takeawayModeKey, snapshotDetail, restoreDetail, subtotalOf,
-  extractPaste, firstNumber, stripNonMoney, pasteFillValue, filledLabel,
+  extractPaste, firstNumber, stripNonMoney, pasteFillValue, pasteFilledFromTotal, filledLabel,
   subsidyTotal, reconcile, RECONCILE_THRESHOLD,
 };

@@ -1,9 +1,10 @@
 // tools/selftest_r85.js —— R85 · 月度录入页「外卖段」取数与录入（规范 §A.11）自测
 // 运行： node tools/selftest_r85.js
-// 覆盖验收锚点 A1~A22：模式默认推断 / 快速4×1 / 分项4×3 / 互斥快照 / 粘贴提取 / 合计确认 /
+// 覆盖验收锚点 A1~A24：模式默认推断 / 快速4×1 / 分项4×3 / 互斥快照 / 粘贴提取 / 合计确认 /
 //      手写路径 / 自动带出 / 配平四态 / 不阻断 / 平台名单源 / 双副本一致 /
 //      账期与长单号不误算金额(A16) / 带出误锁回归(A17) / 配平角色单源(A18) / 主题色单源(A19) /
-//      粘贴到 0 不被吞(A20) / 快速录入汇总(A21) / 快速框占位不串线(A22)。
+//      粘贴到 0 不被吞(A20) / 快速录入汇总(A21) / 快速框占位不串线(A22) / 已填平台数 M≤1 不显示(A23) /
+//      账单形态用例表：换行合计不翻倍 + 只有合计兜底填入(A24, R120)。
 const fs = require("fs"), path = require("path");
 const ROOT = path.resolve(__dirname, "..");
 let pass = 0, failN = 0;
@@ -14,7 +15,7 @@ function check(name, cond, detail) {
 
 const takeaway = require("../utils/takeaway.js");
 const {
-  pickTakeawayMode, restoreDetail, subtotalOf, extractPaste, pasteFillValue, filledLabel,
+  pickTakeawayMode, restoreDetail, subtotalOf, extractPaste, pasteFillValue, pasteFilledFromTotal, filledLabel,
   subsidyTotal, reconcile, RECONCILE_THRESHOLD,
 } = takeaway;
 const TERMS = require("../miniprogram/i18n/terms.js").TERMS;
@@ -150,7 +151,9 @@ check('A20 粘空文本不填（空串，不误填 0.00）', pasteFillValue(extr
 check('A20 粘纯表头不填（空串）', pasteFillValue(extractPaste('项目\t金额')) === '');
 check('A20 千分位照旧 -> 1234.56', pasteFillValue(extractPaste('1,234.56')) === '1234.56');
 check('A20 页面不再用「非零才写」三态', !/res\.sum \?/.test(inputJs));
-check('A20 页面改走 pasteFillValue 单源', /r\[field\] = pasteFillValue\(res\);/.test(inputJs));
+// R120 后页面先算 fill 再赋值（多一个「合计兜底提示」的分支）⇒ 判语义而非绑定字面：
+check('A20 页面改走 pasteFillValue 单源', /const fill = pasteFillValue\(res\);/.test(inputJs)
+  && /r\[field\] = fill;/.test(inputJs));
 
 console.log('===== A21 · 快速录入汇总：合计 + 已填平台数（R119）=====');
 const twT = TERMS.ledger.takeawayMode;
@@ -190,6 +193,46 @@ check('A23 双平台：1/2 正常显示', filledLabel('已填 {n} / {m} 个平�
 check('A23 四平台：3/4 正常显示', filledLabel('已填 {n} / {m} 个平台', 3, 4) === '已填 3 / 4 个平台');
 check('A23 模板缺参不抛异常（回落到空串替换）', typeof filledLabel('', 1, 3) === 'string');
 check('A23 页面改用 filledLabel 单源', /takeoutFilledText: filledLabel\(/.test(inputJs));
+
+console.log('===== A24 · 账单形态用例表（R120：换行合计不得翻倍 + 只有合计兜底填入）=====');
+// 用例表单源：tools/paste_cases.js（守卫 check_takeaway_paste_cases.js 跑同一张表）
+const { PASTE_CASES } = require('./paste_cases.js');
+const gB24 = PASTE_CASES.filter((c) => String(c.id)[0] === 'B');
+const gC24 = PASTE_CASES.filter((c) => String(c.id)[0] === 'C');
+const gA24 = PASTE_CASES.filter((c) => String(c.id)[0] === 'A');
+check('A24 用例表单源存在且 ≥24 条', Array.isArray(PASTE_CASES) && PASTE_CASES.length >= 24, `${PASTE_CASES.length} 条`);
+check('A24 全表零红（形态 → 期望填入值）',
+  PASTE_CASES.every((c) => pasteFillValue(extractPaste(c.input)) === c.fill),
+  PASTE_CASES.filter((c) => pasteFillValue(extractPaste(c.input)) !== c.fill).map((c) => c.id).join(',') || '28/28');
+check('A24 明细+换行合计（B 组）不得翻倍',
+  gB24.length >= 4 && gB24.every((c) => pasteFillValue(extractPaste(c.input)) === c.fill),
+  `B 组 ${gB24.length} 条`);
+check('A24 明细+同行合计（A 组）排除合计后取明细和',
+  gA24.every((c) => pasteFillValue(extractPaste(c.input)) === c.fill));
+check('A24 只有合计（C 组）兜底填入合计值',
+  gC24.length >= 3 && gC24.every((c) => pasteFillValue(extractPaste(c.input)) === c.fill),
+  `C 组 ${gC24.length} 条`);
+check('A24 兜底判据：无明细+有合计 ⇒ fromTotal=true',
+  gC24.every((c) => pasteFilledFromTotal(extractPaste(c.input)) === true));
+check('A24 有明细 ⇒ fromTotal=false（不得漏掉确认弹窗）',
+  gA24.every((c) => pasteFilledFromTotal(extractPaste(c.input)) === false));
+check('A24 合计值须真被识别（B 组 totalValue 非 null）',
+  gB24.every((c) => {
+    const r = extractPaste(c.input);
+    return r.totalValue !== null && r.totalValue !== undefined;
+  }));
+check('A24 numbers 不得含合计值（翻倍根因）',
+  gB24.every((c) => {
+    const r = extractPaste(c.input);
+    return !r.numbers.some((v) => Math.abs(Number(v) - Number(r.totalValue)) < 0.001);
+  }));
+check('A24 空文本 / 纯表头不误填 0.00（null 判据不得弱化为 Number()）',
+  pasteFillValue(extractPaste('')) === '' && pasteFillValue(extractPaste('项目\t金额')) === '');
+check('A24 pasteFromTotal 文案键非空', typeof TERMS.ledger.takeawayMode.pasteFromTotal === 'string'
+  && TERMS.ledger.takeawayMode.pasteFromTotal.length > 0, TERMS.ledger.takeawayMode.pasteFromTotal);
+check('A24 页面判据走「最终能否填出值」', /const fill = pasteFillValue\(res\);/.test(inputJs)
+  && /if \(fill === ''\)/.test(inputJs));
+check('A24 页面按 fromTotal 分流提示', /fromTotal \? TERMS\.ledger\.takeawayMode\.pasteFromTotal/.test(inputJs));
 
 console.log(`\n==== R85 外卖段自测：${pass} 通过 / ${failN} 失败 ====`);
 process.exit(failN === 0 ? 0 : 1);

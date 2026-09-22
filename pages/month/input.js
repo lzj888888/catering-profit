@@ -10,7 +10,7 @@ const api = require('../../utils/api.js');
 const ui = require('../../utils/ui.js');
 const { normalizeDineRows, markFixedRows } = require('../../utils/dineChannels.js');
 const { pickTakeawayMode, takeawayModeKey, snapshotDetail, restoreDetail, subtotalOf,
-  extractPaste, pasteFillValue, filledLabel, subsidyTotal, reconcile } = require('../../utils/takeaway.js');
+  extractPaste, pasteFillValue, pasteFilledFromTotal, filledLabel, subsidyTotal, reconcile } = require('../../utils/takeaway.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 
 const DRAFT_KEY = 'draft_month_input_';
@@ -104,6 +104,7 @@ Page({
       twPasteConfirmTitle: TERMS.ledger.takeawayMode.pasteConfirmTitle,
       twPasteConfirmBody: TERMS.ledger.takeawayMode.pasteConfirmBody,
       twPasteDone: TERMS.ledger.takeawayMode.pasteDone,
+      twPasteFromTotal: TERMS.ledger.takeawayMode.pasteFromTotal,
       twPasteEmpty: TERMS.ledger.takeawayMode.pasteEmpty,
       twPasteRawKept: TERMS.ledger.takeawayMode.pasteRawKept,
       twScopeGuide: TERMS.ledger.takeawayMode.scopeGuide,
@@ -650,26 +651,36 @@ Page({
   onPasteExtract() {
     const text = this.data.twPasteText;
     const res = extractPaste(text);
-    if (!res || res.numbers.length === 0) {
+    const fill = pasteFillValue(res);
+    // 🔴 R120：判据 = 「**最终**能不能填出值」，而不是「有没有明细数字」。
+    //   旧判据 `res.numbers.length === 0` 会把「只复制了合计那一行」误判成没粘到东西 ⇒ 报「未提取到数字」；
+    //   而同一份账单换成「合计⏎7140.00」的写法又会直接填 —— 同一语义两种结果。
+    if (fill === '') {
       wx.showToast({ title: TERMS.ledger.takeawayMode.pasteEmpty, icon: 'none' });
       return;
     }
+    // 本次填入来自「合计兜底」（无任何明细数字）⇒ 必须换一种提示，提醒可能与明细重复
+    const fromTotal = pasteFilledFromTotal(res);
     const doFill = () => {
       const [field, idxStr] = (this.data.twPasteFor || 'goods:0').split(':');
       const idx = Number(idxStr) || 0;
       const rows = (this.data.takeoutDetailRows || []).slice();
       if (!rows[idx]) return;
       const r = Object.assign({}, rows[idx]);
-      r[field] = pasteFillValue(res);   // R119：0 是合法金额，不能被当成空
+      r[field] = fill;                  // R119：0 是合法金额，不能被当成空
       r.subtotal = subtotalOf(r.goods, r.pack, r.subsidy);
       rows[idx] = r;
       this.setData({ takeoutDetailRows: rows, twPasteOpen: false });
-      // 原始粘贴内容留存可回溯（本地草稿，见 onHide）
-      this.setData({ twPasteRaw: (this.data.twPasteRaw || []).concat([{ at: Date.now(), field, idx, raw: res.raw }]) });
+      // 原始粘贴内容留存可回溯（本地草稿，见 onHide）；fromTotal 标记本次为合计兜底填入
+      this.setData({ twPasteRaw: (this.data.twPasteRaw || []).concat([{ at: Date.now(), field, idx, raw: res.raw, fromTotal }]) });
       this.syncTakeoutSum();
-      wx.showToast({ title: TERMS.ledger.takeawayMode.pasteDone, icon: 'success' });
+      wx.showToast({
+        title: fromTotal ? TERMS.ledger.takeawayMode.pasteFromTotal : TERMS.ledger.takeawayMode.pasteDone,
+        icon: fromTotal ? 'none' : 'success',
+      });
     };
-    if (res.hasTotal) {
+    // 只有「有明细 + 有合计」才需要确认明细口径；纯合计兜底场景没有明细可确认，直接填并提示
+    if (res.hasTotal && !fromTotal) {
       wx.showModal({
         title: TERMS.ledger.takeawayMode.pasteConfirmTitle,
         content: TERMS.ledger.takeawayMode.pasteConfirmBody,

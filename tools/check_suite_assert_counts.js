@@ -54,6 +54,10 @@ const CASES = [
   // R119 扩面（round92）：金额框同行守卫同批纳入 —— 它守「金额框被同层元素挤窄」这个已复发三次的布局病，
   //   而 A3 的下界护栏与 A4 的正负样本正是它的「非恒真」证明；断言数不受守则改小下界同样无人知。
   { key: 'check_amount_input_row', rel: 'tools/check_amount_input_row.js' },
+  // R120 扩面（round93）：粘贴形态用例表守卫同批纳入 —— 它的 A0 表宽护栏（用例条数/B 组 ≥4/C 组 ≥3）
+  //   与 A6 前提证明正是「非恒真」的凭据；断言数不受守则「删掉 A0 一道护栏 + 从表里删 5 条用例」
+  //   就等于把守卫悄悄改小，而门禁照旧判绿（与 round73 立本守卫的根因同族）。
+  { key: 'check_takeaway_paste_cases', rel: 'tools/check_takeaway_paste_cases.js' },
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

@@ -1,0 +1,8 @@
+takeaway.js 导出键: pickTakeawayMode, takeawayModeKey, snapshotDetail, restoreDetail, subtotalOf, extractPaste, firstNumber, stripNonMoney, pasteFillValue, pasteFilledFromTotal, filledLabel, subsidyTotal, reconcile, RECONCILE_THRESHOLD
+pasteFilledFromTotal 存在? function
+
+id  | 形态 | 期望 | 实测 | 判定
+------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------
+
+===== 基线：28 绿 / 0 红（共 28 条）=====

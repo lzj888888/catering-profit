@@ -309,8 +309,9 @@ const TERMS = {
       pasteExtract: '提取并填入',
       pasteCancel: '取消',
       pasteConfirmTitle: '发现合计行',
-      pasteConfirmBody: '粘贴内容里含「合计 / 总计」行。已把非合计行求和，要继续吗？（若合计行本身是唯一金额，可能重复计算）',
+      pasteConfirmBody: '粘贴内容里含「合计 / 总计」行，已按明细行求和、合计行本身不计入。要继续吗？',
       pasteDone: '已提取并填入',
+      pasteFromTotal: '已按合计行填入，请核对是否与明细重复',
       pasteEmpty: '未提取到数字',
       pasteRawKept: '原始粘贴内容已保存在本地草稿，可回溯。',
       // 平台口径句（挂在分项/快速下方；文案走 i18n，页面不写死平台名）

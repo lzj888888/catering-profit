@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：92 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：93 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -28,6 +28,13 @@
 //       + 金额框同行守卫（tools/check_amount_input_row.js，R119：金额输入框被**同层**的按钮/字段名挤窄 ——
 //         李老师真机反馈已三次（09-20 其他收入细项 220rpx / 09-21 堂食分项 240rpx / 09-22 外卖分项 181.7px），
 //         前两次只在 wxss 留注释禁令、**零机器判据** ⇒ 新页面照抄旧写法即复发。判据=val-input 不得与 button 同父）
+//       + 外卖账单「粘贴形态」用例表守卫（tools/check_takeaway_paste_cases.js，R120：同族病第 24 例 ·
+//         **静默算错钱第 3 例** —— extractPaste 的合计护栏写在**行**上，只在「标签与金额同行」时生效；
+//         账单常见的「合计」⏎「7140.00」（标签一行、金额下行）护栏完全不触发 ⇒ 合计被当明细加进去，
+//         4380+2760+7140 = **14280（翻倍）**且界面照旧提示「已提取并填入」。
+//         前两例（R85 firstNumber 截断 / 账期列被当金额）都只改了**一处正则**、所以第三例照旧复发
+//         ⇒ 本轮把**账单形态**钉成用例表（tools/paste_cases.js 单源 28 条）并常驻双向校验：
+//         有明细 ⇒ 只按明细求和（合计必须排除，两种形态都要排除）；只有合计 ⇒ 兜底填入并换提示）
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -274,6 +281,10 @@ const SUITES = [
   // ===== R119 金额框同行守卫（同族病第 23 例，round92）：见头部注释同名条目。
   //   判据只认 val-input，不得扩大到所有 <input> —— 「细项名 + 删除键」同层是合法设计（A4-④ 有样本钉住）。
   ['amount-input-row', 'tools/check_amount_input_row.js'],
+  // ===== R120 外卖账单「粘贴形态」用例表守卫（同族病第 24 例 · 静默算错钱第 3 例，round93）：见头部注释同名条目。
+  //   用例表单源 = tools/paste_cases.js（28 条 / A~E 五组）；守卫与 selftest_r85 A24 段跑同一张表。
+  //   含 A6 前提证明：B/C 组用例对**旧实现**必须转红 ⇒ 证明本表不是恒真（变异 9 组零异常，见 review/evidence）。
+  ['takeaway-paste-cases', 'tools/check_takeaway_paste_cases.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
