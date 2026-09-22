@@ -61,6 +61,11 @@ const CASES = [
   // R121 扩面（round97）：费用项清单守卫同批纳入 —— 它的 E5 下界护栏（总项数 ≥20 / 每类 ≥2）与
   //   E6 前提证明正是「非恒真」的凭据；断言数不受守则「删掉下界 + 删一处副本比对」同样静默通过。
   { key: 'check_expense_item_seed', rel: 'tools/check_expense_item_seed.js' },
+  // R123 扩面（round100）：WXML 结构完整性守卫同批纳入 —— 它是**唯一有两个独立判据**的守卫
+  //   （A 裸属性行 / B 标签配平），删掉其中任一条 ⇒ 实跑通过数 2→1，**仍 > 0**
+  //   ⇒ A0-② 的「通过数为 0」下界抓不到，只有本守卫的 A2「声明 ≡ 实跑」能发现。
+  //   （对照：R122 `check_js_syntax` 只有单一判据，删掉即 pass=0、A0-② 当场转红，故不必另立声明。）
+  { key: 'check_wxml_structure', rel: 'tools/check_wxml_structure.js' },
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

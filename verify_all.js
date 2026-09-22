@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：95 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：96 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -56,6 +56,17 @@
 //         排除面**显式声明**（node_modules/.git/.workbuddy/review —— review 是历史归档面，
 //         存有变异期故意写坏的脚本快照）；两条下界护栏（文件数 ≥ 400 + 六个锚点文件必须命中）
 //         防扫描面被悄悄写窄）
+//       + WXML 结构完整性守卫（tools/check_wxml_structure.js，R123：**WXML 不得把属性暴露成文本**）。
+//         根因=round97 T1 的**同一支插入脚本**在把 input.js 的 require 拆成两条（R122 记）之后，
+//         **同一轮**又把 pages/month/input.wxml 的金额 <input> 从**属性集合中间**用 `/>` 收掉
+//         ⇒ 其后的属性行失去归属、成了文本节点；而 WXML 的文本节点**仍会插值 {{}}**
+//         ⇒ 真机屏上是**求值后**的 `data-gidx="0"` / `disabled="false"`（所以像"英文报错"
+//         却看不到双花括号）。缺口：95 个套件里**没有任何一条读 .wxml** —— R122 只覆盖 .js，
+//         前端页面结构此前零机器判据（真机页面只在模拟器里跑）。
+//         判据 A＝裸属性行（该行形如 attr="…" 而**上一非空行以 > 或 /> 结尾** ⇒ 属性无归属）；
+//         判据 B＝标签配平（骨架化抹 `{{…}}` / `<!--…-->` 后单趟 tag 栈：未闭合 / 错配 / 缺 > 均判红）。
+//         骨架化时**保留换行**⇒ 报出的行号与源文件一致、不漂移；
+//         下界护栏＝文件数 ≥ 10 + 四个锚点页面（含事故现场 pages/month/input.wxml）必须命中）
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -316,6 +327,13 @@ const SUITES = [
   //   前端 pages/ 与 miniprogram/ 又无任何套件 require，只在真机/模拟器里跑）。
   //   判据 = 每个受管 .js 至少能被引擎编译一次（vm.Script 同进程编译，不执行、不 spawn）。
   ['js-syntax', 'tools/check_js_syntax.js'],
+  // ===== R123 WXML 结构完整性守卫（同族病第 26 例，round100）：见头部注释同名条目。
+  //   背景：round97 T1 的**同一支插入脚本**（为 R85 补互斥 disabled）在把 input.js 的 require
+  //   拆成两条（R122 记）之后，**同一轮**又把 pages/month/input.wxml 的金额 <input> 从
+  //   **属性集合中间**用 `/>` 收掉 ⇒ 其后属性行成了文本节点，真机渲染出整片英文
+  //   （WXML 文本节点仍会插值 {{}} ⇒ 屏上是**求值后**的值，故像"英文报错"）。
+  //   判据 A＝裸属性行（上一非空行已闭合）；判据 B＝标签配平（未闭合 / 错配 / 缺 >）。
+  ['wxml-struct', 'tools/check_wxml_structure.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

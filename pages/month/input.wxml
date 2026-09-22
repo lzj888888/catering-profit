@@ -251,7 +251,6 @@
       <view class="sub-line2">
         <text class="sub-amt-lbl">{{g.expanded ? t.amount : g.label + t.classTotalSuffix}}</text>
         <input class="val-input" type="digit" confirm-type="done" value="{{r.amountYuan}}"
-          data-kind="expense" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubAmount" disabled="{{readOnly}}"  adjust-position="{{true}}" cursor-spacing="20" />
           data-kind="expense" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubAmount"
           disabled="{{readOnly || (twMkByPlatActive && gi === twMkRowGi && ri === twMkRowRi)}}"  adjust-position="{{true}}" cursor-spacing="20" />
       </view>
