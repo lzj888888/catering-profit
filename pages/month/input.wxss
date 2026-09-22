@@ -75,6 +75,15 @@
 .preset-list { display: flex; flex-wrap: wrap; gap: 16rpx; margin: 8rpx 0 4rpx; }
 .preset-item { padding: 16rpx 24rpx; background: #f2f4f8; border-radius: 12rpx; font-size: 28rpx; color: #1e3a5f; }
 .preset-item.custom { width: 100%; text-align: center; background: #eaf0f8; }
+
+/* T1（round97）· 营销段「分平台佣金小计」（只回显不入库） */
+.mk-plat { margin: 8rpx 0 4rpx; padding: 16rpx 20rpx; background: #f2f4f8; border-radius: 12rpx; }
+.mk-plat-title { font-size: 28rpx; color: #1e3a5f; font-weight: 600; }
+.mk-plat-row { display: flex; align-items: center; margin-top: 10rpx; }
+.mk-plat-name { flex: 0 0 160rpx; font-size: 28rpx; color: #1e3a5f; }
+.mk-plat-amt { flex: 1 1 auto; min-width: 0; }
+.mk-plat-sum { display: flex; justify-content: space-between; margin-top: 10rpx; font-size: 28rpx; color: #1e3a5f; }
+.mk-plat-sum-val { font-weight: 600; }
 .paste-ops { display: flex; justify-content: flex-end; gap: 16rpx; margin-top: 16rpx; }
 .paste-ops .btn-small { margin-top: 0; }
 .paste-ops .primary-btn { background: linear-gradient(135deg, #2a4e7c 0%, #162c49 100%); color: #fff; }

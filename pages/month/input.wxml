@@ -252,6 +252,8 @@
         <text class="sub-amt-lbl">{{g.expanded ? t.amount : g.label + t.classTotalSuffix}}</text>
         <input class="val-input" type="digit" confirm-type="done" value="{{r.amountYuan}}"
           data-kind="expense" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubAmount" disabled="{{readOnly}}"  adjust-position="{{true}}" cursor-spacing="20" />
+          data-kind="expense" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubAmount"
+          disabled="{{readOnly || (twMkByPlatActive && gi === twMkRowGi && ri === twMkRowRi)}}"  adjust-position="{{true}}" cursor-spacing="20" />
       </view>
       <!-- R85：营销项「取数路径」标注（由 js 按 terms.expenseItemNotes 预计算挂到 r.note / r.promo，页面不写死项名） -->
       <view class="exp-note {{r.promo ? 'promo' : ''}}" wx:if="{{g.category === 'marketing' && r.note}}">
@@ -263,6 +265,27 @@
 
     <view class="group-ops" wx:if="{{g.expanded}}">
       <button class="btn-small ghost" data-kind="expense" data-gidx="{{gi}}" catchtap="onOpenPresetPick">{{t.addSubItem}}</button>
+    <!-- T1（round97）· 营销段「分平台佣金小计」：只回显、不入库；填了即**自动汇成**佣金总额那一行
+         （该行随即转只读，避免两个来源打架）；一行都不填则完全不碰那一行。
+         ⚠️ 平台名 / 项名一律取自单源（收入侧外卖 items + reconcileRoles），页面零硬编码。 -->
+    <view class="mk-plat" wx:if="{{g.category === 'marketing' && g.expanded}}">
+      <view class="mk-plat-title">{{t.mkPlatTitle}}</view>
+      <view class="hint">{{t.mkPlatHint}}</view>
+      <view class="mk-plat-row" wx:for="{{twMkByPlat}}" wx:key="platform" wx:for-item="p" wx:for-index="pi">
+        <text class="mk-plat-name">{{p.platform}}</text>
+        <input class="val-input mk-plat-amt" type="digit" confirm-type="done" value="{{p.amountYuan}}"
+          placeholder="{{t.mkPlatPh}}" data-idx="{{pi}}" bindinput="onMkByPlat" disabled="{{readOnly}}"
+          adjust-position="{{true}}" cursor-spacing="20" />
+      </view>
+      <view class="mk-plat-sum">
+        <text class="mk-plat-sum-lbl">{{t.mkPlatSumLabel}}</text>
+        <text class="mk-plat-sum-val">{{twMkByPlatSum}}</text>
+      </view>
+      <view class="group-ops" wx:if="{{twMkByPlatActive}}">
+        <button class="btn-small ghost" catchtap="clearMkByPlat">{{t.mkPlatClear}}</button>
+      </view>
+    </view>
+
     </view>
   </view>
 

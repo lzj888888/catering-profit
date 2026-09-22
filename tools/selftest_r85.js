@@ -17,6 +17,7 @@ const takeaway = require("../utils/takeaway.js");
 const {
   pickTakeawayMode, restoreDetail, subtotalOf, extractPaste, pasteFillValue, pasteFilledFromTotal, filledLabel,
   subsidyTotal, reconcile, RECONCILE_THRESHOLD,
+  mkByPlatTotal, mkByPlatFilled,
 } = takeaway;
 const TERMS = require("../miniprogram/i18n/terms.js").TERMS;
 const PLATFORMS = TERMS.ledger.income.find((g) => g.category === "takeaway").items;
@@ -245,6 +246,21 @@ check('A24 pasteFromTotal 文案键非空', typeof TERMS.ledger.takeawayMode.pas
 check('A24 页面判据走「最终能否填出值」', /const fill = pasteFillValue\(res\);/.test(inputJs)
   && /if \(fill === ''\)/.test(inputJs));
 check('A24 页面按 fromTotal 分流提示', /fromTotal \? TERMS\.ledger\.takeawayMode\.pasteFromTotal/.test(inputJs));
+
+console.log('===== A25 · 营销段分平台佣金小计（T1，round97）=====');
+// 语义：只回显不入库；4 平台逐行填 ⇒ 合计自动汇成佣金总额那一行；**全空则完全不碰那一行**。
+const mkTotal = mkByPlatTotal([{ amountYuan: '10' }, { amountYuan: '20.5' }, { amountYuan: '' }, { amountYuan: '5' }]);
+check('A25 分平台合计 = 35.5（空值 / 缺值按 0）', Math.abs(mkTotal - 35.5) < 0.001, `sum=${mkTotal}`);
+check('A25 全空 / 空数组 ⇒ 未接管（第一红线：不得清零库里已存值）',
+  mkByPlatFilled([]) === false
+  && mkByPlatFilled([{ platform: PLATFORMS[0], amountYuan: '' }, { platform: PLATFORMS[1], amountYuan: '' }]) === false
+  && [null, undefined, ''].every((v) => mkByPlatFilled([{ amountYuan: v }]) === false));
+check('A25 填 0 也算「填过」（语义与页面其它已填判据一致）', mkByPlatFilled([{ amountYuan: '0' }]) === true);
+const mkBody = (inputJs.match(/syncMkByPlat\(\) \{[\s\S]{0,2200}?\n  \},/) || [''])[0];
+check('A25 页面：全空即早退不碰行 + 项名走 reconcileRoles 单源',
+  /if \(!active \|\| mk < 0 \|\| !name\)/.test(mkBody)
+  && /reconcileRoles[\s\S]{0,140}commission/.test(mkBody)
+  && mkBody.indexOf('expenseGroups = groups') > 0);
 
 console.log(`\n==== R85 外卖段自测：${pass} 通过 / ${failN} 失败 ====`);
 process.exit(failN === 0 ? 0 : 1);

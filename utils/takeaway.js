@@ -269,8 +269,35 @@ function reconcile(p) {
   return { status: 'miss', diff, expected, actual };
 }
 
+// ===================== 分平台佣金小计（T1，round97 · 只回显不入库） =====================
+
+/**
+ * 分平台佣金合计（元）。小计区只是**录入加速器**：按各平台账单填完，合计由这里算，
+ * 页面再把它**汇成**营销段佣金总额那一行（入库仍只有一个数，不动库结构与会计口径）。
+ * @param {Array} list [{platform, amountYuan}]
+ * @returns {number} 合计（元）；空值 / 缺值按 0
+ */
+function mkByPlatTotal(list) {
+  return (Array.isArray(list) ? list : []).reduce((s, p) => s + (Number(p && p.amountYuan) || 0), 0);
+}
+
+/**
+ * 分平台小计**是否已有任一非空输入** —— 决定要不要「接管」佣金总额那一行。
+ * ⚠️ 这是本功能的第一红线：**全空必须返回 false**，否则每次进页都会把库里已存的佣金清零。
+ * ⚠️ 语义与页面其它「已填」判据一致：填 `0` 也算填过（只看有没有输入，不看数值大小）。
+ * @param {Array} list [{platform, amountYuan}]
+ * @returns {boolean}
+ */
+function mkByPlatFilled(list) {
+  return (Array.isArray(list) ? list : []).some((p) => {
+    const v = p && p.amountYuan;
+    return String(v === undefined || v === null ? '' : v).trim() !== '';
+  });
+}
+
 module.exports = {
   pickTakeawayMode, takeawayModeKey, snapshotDetail, restoreDetail, subtotalOf,
   extractPaste, firstNumber, stripNonMoney, pasteFillValue, pasteFilledFromTotal, filledLabel,
   subsidyTotal, reconcile, RECONCILE_THRESHOLD,
+  mkByPlatTotal, mkByPlatFilled,
 };

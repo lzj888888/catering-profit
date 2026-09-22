@@ -11,6 +11,7 @@ const ui = require('../../utils/ui.js');
 const { normalizeDineRows, markFixedRows } = require('../../utils/dineChannels.js');
 const { pickTakeawayMode, takeawayModeKey, snapshotDetail, restoreDetail, subtotalOf,
   extractPaste, pasteFillValue, pasteFilledFromTotal, filledLabel, subsidyTotal, reconcile } = require('../../utils/takeaway.js');
+  mkByPlatTotal, mkByPlatFilled } = require('../../utils/takeaway.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 
 const DRAFT_KEY = 'draft_month_input_';
@@ -106,6 +107,12 @@ Page({
       twPasteExtract: TERMS.ledger.takeawayMode.pasteExtract,
       twPasteCancel: TERMS.ledger.takeawayMode.pasteCancel,
       twSelfCheckMiss: TERMS.ledger.takeawayMode.selfCheckMiss,
+      // T1（round97）：营销段「分平台佣金小计」（只回显不入库）；提示句里的项名走 reconcileRoles 单源
+      mkPlatTitle: TERMS.ledger.takeawayMode.mkPlatTitle,
+      mkPlatHint: (TERMS.ledger.takeawayMode.mkPlatHintTpl || '').replace('{name}', (TERMS.ledger.takeawayMode.reconcileRoles || {}).commission || ''),
+      mkPlatPh: TERMS.ledger.takeawayMode.mkPlatPh,
+      mkPlatSumLabel: TERMS.ledger.takeawayMode.mkPlatSumLabel,
+      mkPlatClear: TERMS.ledger.takeawayMode.mkPlatClear,
       twPasteConfirmTitle: TERMS.ledger.takeawayMode.pasteConfirmTitle,
       twPasteConfirmBody: TERMS.ledger.takeawayMode.pasteConfirmBody,
       twPasteDone: TERMS.ledger.takeawayMode.pasteDone,
@@ -149,6 +156,12 @@ Page({
     // T4b（round97）：费用段「+ 添加细项」的预设项选择面板（清单每次打开现算 = 该类预设 ∖ 已有行名）
     presetPick: { open: false, kind: '', gi: 0, list: [] },
     twSelfCheck: '',           // T3′（round97）：快速模式轻量自查提示（预计算，WXML 直接取）
+    // T1（round97）：分平台佣金小计（只回显、不入库；进本地草稿，同分项三明细待遇）
+    twMkByPlat: [],            // [{platform, amountYuan}] —— 平台名取自收入侧外卖 items 单源
+    twMkByPlatSum: '0.00',     // 分平台合计（预计算，WXML 直接取）
+    twMkByPlatActive: false,   // 任一小计非空 ⇒ 接管佣金总额那一行（该行转只读）
+    twMkRowGi: -1,             // 被接管的佣金行所在组下标（-1 = 未接管）
+    twMkRowRi: -1,             // 被接管的佣金行在组内下标
     twRecYuan: '',             // 账单商家应收款（客户手填，选填）
     twRecText: '',             // 配平提示文案（软提示；不阻断、不入库）
     directConsumeYuan: '',
@@ -184,8 +197,11 @@ Page({
         takeoutDetailRows: draft.takeoutDetailRows || this.data.takeoutDetailRows,
         twRecYuan: draft.twRecYuan !== undefined ? draft.twRecYuan : this.data.twRecYuan,
         twPasteRaw: draft.twPasteRaw || this.data.twPasteRaw || [],
+        // T1：分平台小计（只存本地、不入库）
+        twMkByPlat: this.buildMkByPlat(draft.twMkByPlat || this.data.twMkByPlat),
       });
       this.syncTakeoutSum();   // R119：两种模式都要重算（快速模式的合计取自 groups）
+      this.syncMkByPlat();     // T1：小计回草稿后重算（全空 ⇒ 不碰那一行）
     }
   },
   onHide() {
@@ -200,6 +216,8 @@ Page({
       takeoutDetailRows: this.data.takeoutDetailRows,
       twRecYuan: this.data.twRecYuan,
       twPasteRaw: this.data.twPasteRaw || [],
+      // T1：分平台小计（只回显不入库 ⇒ 只进草稿）
+      twMkByPlat: this.data.twMkByPlat,
     });
   },
 
@@ -207,6 +225,8 @@ Page({
   // ⚠️ showRows = 实际渲染行：折叠时仅首行（整类总额），展开时全部细项行（WXML 不支持方法调用，故预计算）
   // E2：每类带一句 scope（包括 / 不包括），来源 i18n（incomeScope / expenseScope），页面不写死文案
   initGroups() {
+    // T1：分平台小计行按收入侧平台单源铺开（此时通常全空 ⇒ 不接管任何行）
+    const byPlat = this.buildMkByPlat(this.data.twMkByPlat);
     const mk = (defs, scopeMap) => defs.map((g) => {
       const rows = [{ subItem: '', amountYuan: '' }];
       return {
@@ -223,6 +243,9 @@ Page({
     this.setData({
       incomeGroups: mk(TERMS.ledger.income, TERMS.ledger.incomeScope),
       expenseGroups: this.decorateExpenseNotes(mk(TERMS.ledger.expense, TERMS.ledger.expenseScope)),
+      twMkByPlat: byPlat,
+      twMkByPlatSum: mkByPlatTotal(byPlat) ? mkByPlatTotal(byPlat).toFixed(2) : '0.00',
+      twMkByPlatActive: mkByPlatFilled(byPlat),
     });
   },
 
@@ -825,6 +848,69 @@ Page({
   },
 
   // （营销「外卖活动补贴」手改加锁逻辑已并入 updateRow：expense+marketing+该行 → twCarryLock=true）
+  // ===== T1（round97）· 营销段「分平台佣金小计」（只回显、不入库）=====
+  // ⚠️ 语义：客户按各平台账单逐行填佣金 ⇒ 合计**自动汇成**营销段佣金总额那一行（该行随即转只读，
+  //   避免「分平台」与「手填总额」两个来源打架）；**一行都不填则完全不碰那一行**（第一红线）。
+  // ⚠️ 只回显不入库：本区状态不进 buildItems / saveLedger，只进本地草稿。
+  // ⚠️ 平台名单源 = 收入侧外卖 items；佣金项名单源 = terms.reconcileRoles.commission ⇒ 页面零硬编码。
+  buildMkByPlat(prev) {
+    const map = {};
+    (prev || []).forEach((p) => { if (p && p.platform) map[p.platform] = p.amountYuan || ''; });
+    return this.takeoutPlatforms().map((p) => ({ platform: p, amountYuan: map[p] !== undefined ? map[p] : '' }));
+  },
+  onMkByPlat(e) {
+    const idx = Number(e.currentTarget.dataset.idx);
+    const list = (this.data.twMkByPlat || []).slice();
+    if (!list[idx]) return;
+    list[idx] = Object.assign({}, list[idx], { amountYuan: e.detail.value });
+    this.setData({ twMkByPlat: list });
+    this.syncMkByPlat();
+  },
+  clearMkByPlat() {
+    this.setData({
+      twMkByPlat: (this.data.twMkByPlat || []).map((p) => ({ platform: p.platform, amountYuan: '' })),
+    });
+    this.syncMkByPlat();
+  },
+  syncMkByPlat() {
+    const list = this.data.twMkByPlat || [];
+    const active = mkByPlatFilled(list);
+    const total = mkByPlatTotal(list);
+    const name = ((TERMS.ledger.takeawayMode && TERMS.ledger.takeawayMode.reconcileRoles) || {}).commission || '';
+    const mk = (this.data.expenseGroups || []).findIndex((x) => x.category === 'marketing');
+    const patch = { twMkByPlatActive: active, twMkByPlatSum: total ? total.toFixed(2) : '0.00' };
+    if (!active || mk < 0 || !name) {   // 全空 / 无营销组 / 无项名单源 ⇒ 一律不碰那一行
+      patch.twMkRowGi = -1;
+      patch.twMkRowRi = -1;
+      this.setData(patch);
+      this.syncTakeoutSelfCheck();
+      return;
+    }
+    const groups = this.data.expenseGroups.slice();
+    const g = Object.assign({}, groups[mk]);
+    const rows = (g.rows || []).slice();
+    const ri = rows.findIndex((r) => r.subItem === name);
+    const target = total.toFixed(2);
+    const cur = ri < 0 ? '' : String(rows[ri].amountYuan === undefined || rows[ri].amountYuan === null ? '' : rows[ri].amountYuan);
+    if (ri >= 0 && cur === target) {    // 已一致 ⇒ 幂等，不重铺、不 setData 业务面
+      patch.twMkRowGi = mk;
+      patch.twMkRowRi = ri;
+      this.setData(patch);
+      this.syncTakeoutSelfCheck();
+      return;
+    }
+    if (ri < 0) rows.push({ subItem: name, amountYuan: target });
+    else rows[ri] = Object.assign({}, rows[ri], { amountYuan: target });
+    g.rows = this.decorateRows(g, rows);   // 走同一装配口：名字命中预设清单 ⇒ fixed、无删除键
+    g.showRows = g.expanded ? g.rows : g.rows.slice(0, 1);
+    groups[mk] = g;
+    patch.expenseGroups = groups;
+    patch.twMkRowGi = mk;
+    patch.twMkRowRi = g.rows.findIndex((r) => r.subItem === name);
+    this.setData(patch);
+    this.syncTakeoutSelfCheck();
+  },
+
 
   onDirectConsume(e) { this.setData({ directConsumeYuan: e.detail.value }); },
 

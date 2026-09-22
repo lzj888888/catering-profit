@@ -347,6 +347,29 @@ check('A4-③ 三个处理函数均在位（打开 / 选中 / 加行）', /onOpe
 check('A4-④ 弹层渲染文案与清单（页面零硬编码）', /\{\{t\.presetPickTitle\}\}/.test(a4Wxml) && /wx:for="\{\{presetPick\.list\}\}"/.test(a4Wxml) && /\{\{t\.presetPickCustom\}\}/.test(a4Wxml));
 check('A4-⑤ 三条文案已在 data.t 里映射（否则 wxml 取到空串）', /presetPickTitle: TERMS\.ledger\.presetPickTitle/.test(a4Js) && /presetPickCustom: TERMS\.ledger\.presetPickCustom/.test(a4Js) && /presetPickEmpty: TERMS\.ledger\.presetPickEmpty/.test(a4Js));
 console.log('');
+console.log('===== A6 · 营销段「分平台佣金小计」（T1，round97）=====');
+// 背景：收入侧外卖分 4 平台、费用侧只有 1 个佣金总额 ⇒ 客户要自己把 4 份账单分别求和再相加，
+//   漏平台 = 佣金少记 = 利润虚高。本区按平台逐行填、自动汇成那一行（只回显不入库）。
+const a6Js = read('pages/month/input.js');
+const a6Wxml = read('pages/month/input.wxml');
+check('A6-① 五条文案均在位且非空', ['mkPlatTitle', 'mkPlatHintTpl', 'mkPlatPh', 'mkPlatSumLabel', 'mkPlatClear']
+  .every((k) => new RegExp(k + ": '[^']{2,}'").test(terms)));
+check('A6-② 五条文案已在 data.t 里映射（否则 wxml 取到空串）',
+  ['mkPlatTitle', 'mkPlatPh', 'mkPlatSumLabel', 'mkPlatClear']
+    .every((k) => new RegExp(k + ': TERMS\\.ledger\\.takeawayMode\\.' + k).test(a6Js))
+  && a6Js.indexOf("mkPlatHint: (TERMS.ledger.takeawayMode.mkPlatHintTpl || '').replace('{name}'") >= 0);
+check('A6-③ 小计区只挂营销类且随展开显示（页面零硬编码）',
+  /g\.category === 'marketing' && g\.expanded/.test(a6Wxml)
+  && /wx:for="\{\{twMkByPlat\}\}"/.test(a6Wxml) && /\{\{t\.mkPlatSumLabel\}\}/.test(a6Wxml));
+check('A6-④ 小计输入接 onMkByPlat 并传下标', /data-idx="\{\{pi\}\}" bindinput="onMkByPlat"/.test(a6Wxml));
+check('A6-⑤ 三个处理函数均在位（输入 / 清空 / 汇总）',
+  /onMkByPlat\s*\(/.test(a6Js) && /clearMkByPlat\s*\(/.test(a6Js) && /syncMkByPlat\s*\(/.test(a6Js));
+const a6Build = (a6Js.match(/buildItems\(groups\) \{[\s\S]{0,2500}?\n  \},/) || [''])[0];
+check('A6-⑥ 接管时该行转只读（两个来源不打架）+ 只回显不入库（buildItems 不含小计）',
+  /twMkByPlatActive && gi === twMkRowGi && ri === twMkRowRi/.test(a6Wxml)
+  && a6Build.length > 0 && !/twMkByPlat/.test(a6Build));
+
+console.log('');
 console.log('===== 门禁预检 =====');
 check('K11 双副本逐字一致', terms === termsSpec);
 check('建库单源同步（种子在双源）', read("cloudfunctions/initDb/collections.js").includes('SEED_INCOME_ITEMS') && read("specs/dev-specs/prototype/init_db.js").includes('SEED_EXPENSE_ITEMS'));
