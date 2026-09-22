@@ -203,6 +203,12 @@ Page({
       this.syncTakeoutSum();   // R119：两种模式都要重算（快速模式的合计取自 groups）
       this.syncMkByPlat();     // T1：小计回草稿后重算（全空 ⇒ 不碰那一行）
     }
+    // round104：从「库存盘点 / 摊销」子页返回时，按钮下面那行摘要必须重读 ——
+    //   invSummary / assetSummary 原来只在 load()（= onLoad）里算 ⇒ 返回后恒显旧数字
+    //   （李老师实机反馈 2026-09-23：「去填库存盘点」下面那行不变）。
+    //   ⚠️ 首次 onShow 紧跟 onLoad，load() 已经拉过 ⇒ 用 _shown 跳过，省一次云调用。
+    if (this._shown) this.refreshCalcSummaries();
+    this._shown = true;
   },
   onHide() {
     // AD-10：自动存草稿（含已录入值）
@@ -334,12 +340,8 @@ Page({
       const inv = d.inventory || {};
       // round103：getLedger 出参 inventory 已按契约转 snake_case。此前后端透传 DB 的 camelCase，
       //   本页读 camelCase「碰巧能跑」—— 一旦后端按契约修好，这里会静默变空（同族隐患，一并统一）。
-      const invSummary = (inv.opening_fen || inv.purchase_fen || inv.closing_fen)
-        ? TERMS.calcMethod.consumeInvSummary(
-            api.fenToYuan(inv.opening_fen || 0, 2),
-            api.fenToYuan(inv.purchase_fen || 0, 2),
-            api.fenToYuan(inv.closing_fen || 0, 2))
-        : '';
+      // round104：摘要算法抽到 invSummaryOf()，与「子页返回刷新」共用同一份（防两处漂移）
+      const invSummary = this.invSummaryOf(d);
       // 若草稿存在且已保存过 → 用后端值（服务端为准）；否则后端值直接回填
       this.setData({
         isArchive, archivedAtMs, inGrace, readOnly,
@@ -1006,6 +1008,32 @@ Page({
     } catch (e) {
       this.setData({ assetSummary: '' });
     }
+  },
+
+  // round104：库存摘要的唯一算法 —— load() 与 refreshCalcSummaries() 共用，避免两处各写一份
+  invSummaryOf(d) {
+    const inv = (d && d.inventory) || {};
+    return (inv.opening_fen || inv.purchase_fen || inv.closing_fen)
+      ? TERMS.calcMethod.consumeInvSummary(
+          api.fenToYuan(inv.opening_fen || 0, 2),
+          api.fenToYuan(inv.purchase_fen || 0, 2),
+          api.fenToYuan(inv.closing_fen || 0, 2))
+      : '';
+  },
+
+  // round104：只刷新「库存摘要 / 摊销笔数」—— 这两项在子页（inventory / amortize）里改。
+  //   **不重建 groups**：重建会用后端值覆盖本页还没保存的草稿（与 onShow 的草稿回填打架）。
+  async refreshCalcSummaries() {
+    try {
+      const d = await api.call('getLedger', { month: this.data.month });
+      const sw = d.switches || {};
+      this.setData({
+        inventoryOn: !!sw.inventorySwitchOn,
+        amortizeOn: !!sw.amortizeSwitchOn,
+        invSummary: this.invSummaryOf(d),
+      });
+      if (sw.amortizeSwitchOn) this.loadAssetCount();   // 摊销笔数（内部已静默兜底）
+    } catch (e) { /* 摘要刷新失败不打扰：本页主流程不受影响 */ }
   },
 
   goInventory() { wx.navigateTo({ url: '/pages/month/inventory?month=' + this.data.month }); },

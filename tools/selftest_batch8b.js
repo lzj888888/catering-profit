@@ -451,6 +451,40 @@ check('A7-⑧ 期初结转新增文案已在 data.t 里映射（否则 wxml 取�
   && /TERMS\.inventoryPage\.openingCarryNote\(prevMonth\)/.test(a7InvJs));
 
 console.log('');
+console.log('===== A8 · 子页返回后摘要必须重读（round104）=====');
+// 背景（李老师实机反馈 2026-09-23）：点「去填库存盘点」改数保存后返回，**按钮下面那行摘要不变** ——
+//   因为 invSummary / assetSummary 只在 load()（= onLoad）里算，而本页是 navigateBack 回来的
+//   **已有实例**（只触发 onShow）⇒ 摘要恒显旧值。全量扫查：其它页面都是 onShow(){ this.load(); }，
+//   只有 month/input.js 与 month/inventory.js 是「只回填草稿、不重拉」。
+//   同族病：库存页的「期初自动结转」在上月期末改完之后也不刷新（会把旧期初落库）。
+const a8InJs = read('pages/month/input.js');
+const a8InvJs = read('pages/month/inventory.js');
+// 取方法体：到下一个顶层方法闭合（\n + 2 空格 + },）为止 —— 判据只看「有没有触发重读」，
+//   不绑死 refreshCalcSummaries 之外的写法（round103 曾因绑死写法误红一次）。
+const a8InShow = (a8InJs.match(/onShow\(\) \{[\s\S]{0,2200}?\n  \},/) || [''])[0];
+const a8InvShow = (a8InvJs.match(/onShow\(\) \{[\s\S]{0,1400}?\n  \},/) || [''])[0];
+const a8Refresh = (a8InJs.match(/async refreshCalcSummaries\(\) \{[\s\S]{0,1200}?\n  \},/) || [''])[0];
+const a8Carry = (a8InvJs.match(/async refreshOpeningCarry\(\) \{[\s\S]{0,1600}?\n  \},/) || [''])[0];
+check('A8-① 录入页 onShow 触发摘要重读（否则「去填库存盘点」下面那行恒为旧值）',
+  a8InShow.length > 0 && /refreshCalcSummaries\s*\(/.test(a8InShow));
+check('A8-② 摘要重读真去后端取数（不是本地重算 / 读缓存）',
+  a8Refresh.length > 0 && /getLedger/.test(a8Refresh));
+check('A8-③ 首次 onShow 不重复取数（_shown 门闩，防 onLoad 后再打一次云）',
+  /if \(this\._shown\)/.test(a8InShow) && /this\._shown = true;/.test(a8InShow));
+check('A8-④ 库存摘要算法单源（load 与刷新共用一份，防两处漂移）',
+  /invSummaryOf\(d\)/.test(a8InJs) && /const invSummary = this\.invSummaryOf\(d\);/.test(a8InJs));
+check('A8-⑤ 刷新**不得**重建 groups（否则用后端值覆盖本页未保存的草稿）',
+  a8Refresh.length > 0 && !/incomeGroups|expenseGroups/.test(a8Refresh));
+check('A8-⑥ 库存页 onShow 也触发期初刷新（改完上月期末返回，只读期初必须跟着变）',
+  a8InvShow.length > 0 && /refreshOpeningCarry\s*\(/.test(a8InvShow));
+check('A8-⑦ 期初刷新真去后端取数 + 会更新只读态金额',
+  a8Carry.length > 0 && /getLedger/.test(a8Carry) && /openingYuan/.test(a8Carry));
+check('A8-⑧ 期初刷新**绝不**覆盖用户可编辑的采购 / 期末两格（防丢草稿）',
+  // ⚠️ 必须同时覆盖**两种写法**：对象字面量键（`purchaseYuan: x`）与属性赋值（`patch.purchaseYuan = x`）。
+  //   round104 变异回灌实测：首版只写 `\s*:`，用 `patch.purchaseYuan = '0'` 变异时**抓不到**（假绿）。
+  a8Carry.length > 0 && !/purchaseYuan\s*[:=]/.test(a8Carry) && !/closingYuan\s*[:=]/.test(a8Carry));
+
+console.log('');
 console.log('===== 门禁预检 =====');
 check('K11 双副本逐字一致', terms === termsSpec);
 check('建库单源文件仍在（仅存在性；逐项一致性比对在 R121 tools/check_expense_item_seed.js）', read("cloudfunctions/initDb/collections.js").includes('SEED_INCOME_ITEMS') && read("specs/dev-specs/prototype/init_db.js").includes('SEED_EXPENSE_ITEMS'));

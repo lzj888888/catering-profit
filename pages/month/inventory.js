@@ -59,6 +59,10 @@ Page({
         closingYuan: draft.closingYuan !== undefined ? draft.closingYuan : this.data.closingYuan,
       });
     }
+    // round104：从「上月库存页」（去改上月期末）返回时，本页期初若处于**自动结转只读态**，
+    //   数值已随上月期末变化 ⇒ 必须重读（详见 refreshOpeningCarry 注释）。
+    if (this._shown) this.refreshOpeningCarry();
+    this._shown = true;
   },
   onHide() {
     wx.setStorageSync(DRAFT_KEY + this.data.month, {
@@ -114,6 +118,27 @@ Page({
       this.setData({ loading: false });
       api.toastError(e);
     }
+  },
+
+  // round104：**只**刷新「期初自动结转」相关的只读态 —— 上月期末改了，本页只读期初必须跟着变，
+  //   否则用户一点保存就把**旧期初**落库（与上月期末打架）。
+  //   ⚠️ 绝不覆盖用户可编辑的三格（草稿优先）；非自动态只更新来源月份，不碰金额与提示。
+  async refreshOpeningCarry() {
+    try {
+      const d = await api.call('getLedger', { month: this.data.month });
+      const openingAuto = !!d.opening_auto;
+      const prevMonth = d.opening_source_month || '';
+      const prevFen = Number(d.opening_prev_fen) || 0;
+      const patch = { prevMonth };
+      if (openingAuto) {
+        patch.openingAuto = true;
+        patch.openingYuan = prevFen > 0 ? api.fenToYuan(prevFen) : '';
+        patch.openingNote = prevFen > 0
+          ? TERMS.inventoryPage.openingCarryNote(prevMonth)
+          : TERMS.inventoryPage.openingEmptyNote;
+      }
+      this.setData(patch);
+    } catch (e) { /* 静默：本页主流程不受影响 */ }
   },
 
   onOpening(e) { this.setData({ openingYuan: e.detail.value }); },
