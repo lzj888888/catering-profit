@@ -56,7 +56,9 @@ check('validate 限制 sub_item ≤20 字', /SUB_ITEM_MAX_LEN = 20/.test(slv));
 const sli = read("cloudfunctions/saveLedger/index.js");
 check('saveLedger 落库转 snake_case（amount_fen/sub_items）', /income_items: incomeItemsSnake/.test(sli) && /sub_items: \(it\.subItems/.test(sli));
 const gli = read("cloudfunctions/getLedger/index.js");
-check('getLedger 兼容旧格式并返回 snake_case', /normalizeToCamel/.test(gli) && /toSnake\(incomeItems\)/.test(gli));
+// round103 加严：原判据只验「收入/费用侧过了 toSnake」，**漏了 inventory** —— 而那正是漏网的字段。
+check('getLedger 兼容旧格式并返回 snake_case（含 inventory）',
+  /normalizeToCamel/.test(gli) && /toSnake\(incomeItems\)/.test(gli) && /opening_fen/.test(gli));
 
 console.log('');
 console.log('===== B1 · 摊销年月 picker（替代手输）=====');
@@ -411,9 +413,47 @@ check('A6-⑥ 接管时该行转只读（两个来源不打架）+ 只回显不�
   && a6Build.length > 0 && !/twMkByPlat/.test(a6Build));
 
 console.log('');
+console.log('===== A7 · 库存期初结转 / 命名一元化 / 静默清零（round103）=====');
+// 背景（真机反馈触发）：① 库存页「原来填过的数字不出来」= getLedger 把 DB 的 camelCase 原样透传、
+//   而页面**照契约**读 snake_case ⇒ 预填恒空；② 更重的一件：月度录入页保存一次就把盘点
+//   **静默清零**（saveLedger 把可选入参 `inventory?` 的缺省读成全 0 并整体覆盖，实跑复现零报错）。
+const a7InvJs = read('pages/month/inventory.js');
+const a7InvWxml = read('pages/month/inventory.wxml');
+const a7InJs = read('pages/month/input.js');
+const a7Gl = read('cloudfunctions/getLedger/index.js');
+const a7Slv = read('cloudfunctions/saveLedger/validate.js');
+const a7Sli = read('cloudfunctions/saveLedger/index.js');
+// ⚠️ 判据写法无关：实现把转换结果先落到 `inventoryOut`（`const inventoryOut = invToSnake(inventory)`）
+//   再进出参，**不是内联调用** ⇒ 首版判据绑死 `inventory: invToSnake(` 属假红（round103 门禁首跑实测）。
+check('A7-① getLedger 出参库存经转换产出 snake_case（不再裸透传 DB 文档）',
+  /function invToSnake\(inv\)/.test(a7Gl) && /const inventoryOut = invToSnake\(inventory\);/.test(a7Gl)
+  && /inventory: inventoryOut/.test(a7Gl));
+check('A7-② 期初结转：未保存过的月份取上月期末，并回带来源标记',
+  /prevMonthOf\(v\.month\)/.test(a7Gl) && /opening_auto:\s*openingAuto/.test(a7Gl)
+  && /opening_prev_fen:\s*prevClosingFen/.test(a7Gl));
+check('A7-③ 库存页按契约读 snake_case（三个框都能预填）',
+  /inv\.opening_fen/.test(a7InvJs) && /inv\.purchase_fen/.test(a7InvJs) && /inv\.closing_fen/.test(a7InvJs)
+  && !/inv\.openingFen/.test(a7InvJs));
+check('A7-④ 期初三态落位（自动结转只读 / 差异提示 / 两条修正腿）',
+  /openingNote/.test(a7InvJs) && /onUnlockOpening\s*\(/.test(a7InvJs) && /onFixPrev\s*\(/.test(a7InvJs)
+  && a7InvWxml.indexOf('disabled="{{readOnly || openingAuto}}"') >= 0
+  && a7InvWxml.indexOf('{{t.openingUnlock}}') >= 0 && a7InvWxml.indexOf('{{t.openingFix}}') >= 0
+  && a7InvWxml.indexOf('onFixPrev') >= 0);
+check('A7-⑤ 月度录入页不再回带库存（契约 inventory? 可选，风险源已移除）',
+  !/inventory: d\.inventory/.test(a7InJs) && !/inventory: this\.data\.inventory/.test(a7InJs));
+check('A7-⑥ 月度录入页盘点摘要行也按契约读 snake_case', /inv\.opening_fen/.test(a7InJs) && !/inv\.openingFen/.test(a7InJs));
+check('A7-⑦ saveLedger 缺省入参不得覆盖库内库存（防静默清零）',
+  /let inventory = null;/.test(a7Slv) && !/let inventory = \{ openingFen: 0/.test(a7Slv)
+  && /if \(v\.inventory\) doc\.inventory = v\.inventory;/.test(a7Sli)
+  && /const effectiveInventory = v\.inventory \|\| existingInventory;/.test(a7Sli));
+check('A7-⑧ 期初结转新增文案已在 data.t 里映射（否则 wxml 取到空串）',
+  ['openingUnlock', 'openingFix'].every((k) => new RegExp(k + ': TERMS\\.inventoryPage\\.' + k).test(a7InvJs))
+  && /TERMS\.inventoryPage\.openingCarryNote\(prevMonth\)/.test(a7InvJs));
+
+console.log('');
 console.log('===== 门禁预检 =====');
 check('K11 双副本逐字一致', terms === termsSpec);
-check('建库单源文件仍在（仅存在性；逐项一致性比对在 R124 tools/check_seed_terms_sync.js）', read("cloudfunctions/initDb/collections.js").includes('SEED_INCOME_ITEMS') && read("specs/dev-specs/prototype/init_db.js").includes('SEED_EXPENSE_ITEMS'));
+check('建库单源文件仍在（仅存在性；逐项一致性比对在 R121 tools/check_expense_item_seed.js）', read("cloudfunctions/initDb/collections.js").includes('SEED_INCOME_ITEMS') && read("specs/dev-specs/prototype/init_db.js").includes('SEED_EXPENSE_ITEMS'));
 
 console.log(`\n==== 批次 8b 功能补齐自测：${pass} 通过 / ${failN} 失败 ====`);
 process.exit(failN === 0 ? 0 : 1);

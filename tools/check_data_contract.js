@@ -10,14 +10,18 @@
 //   共同点：**没有任何一个守卫在验「跨函数的字段契约」** —— 门禁 L 只验副本是否忠实（忠实反而复制缺陷）、
 //   `check_requires` 只验符号是否存在（存在 ≠ 行为正确）、各函数 selftest 用 mock（mock 没有真云的 `_id` 语义）。
 //
-// 规则（两条，都只查**结构**，不查业务语义）：
+// 规则（四条，都只查**结构**，不查业务语义）：
 //   C1 `_id` vs 业务主键：`common/dataAdapter.js` 的 `get()` 必须带**业务主键兜底**；
 //      且兜底字段清单**不得含非唯一字段**（`card_code` —— 多版本模型下同 card_code 有多条，会取错版本）。
 //   C2 同义字段双轨（DB 读取点）：定义同义字段组（现一组：资产原值 `total_value` / `value_fen`）。
 //      凡**从 DB 文档变量**读取该语义字段的点（前缀 ∈ DB_VAR），若该文件**只读其中一个字段名**
 //      且**无兼容写法** ⇒ 判红（写端落库只用一种名是合法的，本规则只管**读**）。
+//   C3 契约层（响应体）命名：`getLedger` 的 `ok({...})` 出参 `inventory` 必须由**转换函数**产出，
+//      不得裸透传 DB 文档（round103 实测：透传 camelCase + 前端照契约读 snake_case ⇒ 页面恒空）。
+//   C4 可选入参不得以缺省值覆盖库内现值：`saveLedger` 的 `inventory?` 缺省 ⇒ **不动库存**
+//      （round103 实测：缺省被读成全 0 并整体覆盖 ⇒ 保存一次就把盘点静默清零）。
 //
-// 自失效护栏：S1 扫描面非空；S2 C2 的 DB 读取点**至少命中过一次**（否则正则腐了 ⇒ 判红）。
+// 自失效护栏：S1 扫描面非空；S2 C2 的 DB 读取点**至少命中过一次**；S3 C3 的出参块必须解析得出（否则判红）。
 //
 // 边界（明写，别高估）：
 //   · C2 靠「变量名前缀」识别 DB 文档变量（`doc`/`r`/`hit`/`asset`/`material`/`exist`），
@@ -124,6 +128,57 @@
 
   check('S2 C2 的 DB 读取点至少命中过一次（防正则腐化）', c2Hits >= 1,
     c2Hits >= 1 ? ('命中 ' + c2Hits + ' 处') : '零命中 ⇒ 变量名前缀正则可能已腐，本规则无法自证有效');
+
+  // ---------- C3：契约层（响应体）命名 —— `inventory` 不得裸透传 DB 文档 ----------
+  console.log('\n===== C3 · getLedger 出参 inventory 必须经转换 =====');
+  // 🔴 为什么需要它（round103，真机「点『去填库存盘点』原来填过的数字不出来」触发）：
+  //   `getLedger` 的 `inventory` 出参在契约里是 snake_case（本仓 `10_云函数清单与接口契约.md` 第 42 行
+  //   `inventory{opening_fen,purchase_fen,closing_fen}`），实现却把它从 DB 文档**原样透传**
+  //   （落库是 camelCase `openingFen`）⇒ 前端**照契约**读 `opening_fen` 的页面永远读不到值。
+  //   同一份响应里 `income_items` / `direct_consume_fen` 都过了 `toSnake`，**只漏这一个字段**。
+  //   也正因为 C2 的 DB_VAR 前缀是**枚举**（只认 `doc`，且同义组只登记了资产原值一组）⇒ 此前扫不到。
+  const GL = path.join(CF, 'getLedger', 'index.js');
+  const glSrc = fs.existsSync(GL) ? fs.readFileSync(GL, 'utf8') : '';
+  const okIdx = glSrc.indexOf('return ok({');
+  const okBlk = okIdx >= 0 ? glSrc.slice(okIdx, glSrc.indexOf('});', okIdx) + 3) : '';
+  check('S3 C3 的出参块可解析（防正则腐化）', okBlk.length > 0,
+    okBlk.length > 0 ? (okBlk.length + ' B') : '未找到 `return ok({` 块 ⇒ fail-closed');
+  const mInv = /inventory\s*:\s*([^,\n]+)/.exec(okBlk);
+  let invExpr = mInv ? mInv[1].trim() : '';
+  // 简写形态 `..., inventory,` 本身就是**裸透传**，必须同样纳入判定（否则漏判）
+  if (!invExpr && /(?:^|[\s{])inventory\s*[,\n}]/.test(okBlk)) invExpr = 'inventory';
+  // 判定：表达式本身是函数调用；或它绑定的标识符在本文件里由**函数调用**产出
+  //   ⚠️ 判据要求 RHS **以标识符开头**（`= fn(`），不能用「RHS 含 `(`」——
+  //      旧写法的 `= (acct && acct.inventory) || {...}` 含括号，会假绿（首版即踩）。
+  let invConverted = false;
+  if (invExpr) {
+    if (invExpr.indexOf('(') >= 0) invConverted = true;
+    else if (/^[A-Za-z_$][\w$]*$/.test(invExpr)) {
+      invConverted = new RegExp('(?:const|let|var)\\s+' + invExpr + '\\s*=\\s*[A-Za-z_$][\\w$]*\\s*\\(').test(glSrc);
+    }
+  }
+  check('C3-1 出参 inventory 经转换函数产出（禁裸透传 DB 文档）', invConverted,
+    invExpr ? ('取值表达式 = ' + invExpr) : '未解析出出参 inventory ⇒ fail-closed');
+  check('C3-2 getLedger 确实产出契约要求的 snake_case 库存字段', /opening_fen/.test(glSrc),
+    /opening_fen/.test(glSrc) ? 'opening_fen 在位' : '未出现 opening_fen ⇒ 契约字段名未落地');
+
+  // ---------- C4：可选入参不得以缺省值覆盖库内现值 ----------
+  console.log('\n===== C4 · saveLedger 的 inventory? 缺省不得覆盖库存 =====');
+  const SLV = path.join(CF, 'saveLedger', 'validate.js');
+  const SLI = path.join(CF, 'saveLedger', 'index.js');
+  const slvSrc = fs.existsSync(SLV) ? fs.readFileSync(SLV, 'utf8') : '';
+  const sliSrc = fs.existsSync(SLI) ? fs.readFileSync(SLI, 'utf8') : '';
+  check('C4-1 validate 的缺省初值为 null（= 未提供，而非全 0）', /let\s+inventory\s*=\s*null\s*;/.test(slvSrc),
+    /let\s+inventory\s*=\s*null\s*;/.test(slvSrc) ? '缺省 = null' : '缺省被赋成具体对象 ⇒ 缺省即覆盖');
+  check('C4-2 不得退回「缺省全 0 对象」的旧写法', !/let\s+inventory\s*=\s*\{\s*openingFen:\s*0/.test(slvSrc),
+    '该写法会让可选入参缺省时把库存清零（round103 实测的真缺陷）');
+  check('C4-3 落库侧按真值判断后才写库存字段', /if\s*\(\s*v\.inventory\s*\)\s*doc\.inventory\s*=\s*v\.inventory\s*;/.test(sliSrc),
+    /if\s*\(\s*v\.inventory\s*\)\s*doc\.inventory\s*=\s*v\.inventory\s*;/.test(sliSrc)
+      ? '条件写入在位' : '未找到条件写入 ⇒ 可能仍是无条件覆盖');
+  check('C4-4 引擎用的是「本次值 or 库内现值」而不是缺失即 0',
+    /const\s+effectiveInventory\s*=\s*v\.inventory\s*\|\|\s*existingInventory\s*;/.test(sliSrc),
+    /const\s+effectiveInventory\s*=\s*v\.inventory\s*\|\|\s*existingInventory\s*;/.test(sliSrc)
+      ? 'effectiveInventory 在位' : '未找到回退到库内现值的写法');
 
   console.log('\n===== 跨函数数据契约守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
   if (failN) bad.forEach((b) => console.log('   ❌ ' + b));

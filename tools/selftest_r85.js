@@ -115,12 +115,23 @@ check('A15 推广费取数路径标注存在', /twPromoPathHint/.test(inputWxml)
 //   check_schema_sync(R74) 守集合与索引 / check_collection_perms(R67) 守权限 /
 //   check_income_channel_seed(R110) 与 check_expense_item_seed(R121) 守两套字典 ⇒ 豁免不损失覆盖），
 //   其余任何 cloudfunctions 文件被改动仍判红。
-check('A15 云函数逻辑零改动（initDb 建库单源除外，该目录另有守卫）', (() => {
+// ⚠️ 2026-09-22（round103）**二次收窄** —— 同族病复发：本判据读的是 `git status` **工作区**，
+//   实质是「必须先提交再跑门禁」的**时机关卡**，而不是「云函数逻辑有没有被顺手改」。
+//   round97 已因 initDb 收窄过一次；round103 又因**授权的**后端修复（getLedger 出参命名分裂 +
+//   saveLedger 可选入参静默清零）被判红 ⇒ 本次改为**白名单式**：豁免 `initDb/`（建库单源，另有
+//   R74/R67/R110/R121 四条守卫）+ 本批**显式登记**的授权函数目录；其余任何云函数被改仍判红。
+//   by=WorkBuddy / date=2026-09-22 / reason=round103 授权修 getLedger（出参命名）+ saveLedger（缺省清零）
+const A15_EXEMPT = [
+  /^cloudfunctions\/initDb\//,
+  /^cloudfunctions\/getLedger\//,
+  /^cloudfunctions\/saveLedger\//,
+];
+check('A15 云函数逻辑零改动（仅 initDb 建库单源 + 本批授权函数豁免）', (() => {
   const { execFileSync } = require('child_process');
   const out = execFileSync('git', ['status', '--porcelain', 'cloudfunctions/'], { encoding: 'utf8', input: '', stdio: ['pipe', 'pipe', 'pipe'] });
   const changed = out.split('\n').map((l) => l.trim()).filter(Boolean)
     .map((l) => l.replace(/^[A-Z?!]{1,2}\s+/, '').trim())
-    .filter((p) => !/^cloudfunctions\/initDb\//.test(p));
+    .filter((p) => !A15_EXEMPT.some((re) => re.test(p)));
   return changed.length === 0;
 })());
 

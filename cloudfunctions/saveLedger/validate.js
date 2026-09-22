@@ -86,8 +86,13 @@ function validateInput(event) {
   const directConsumeFen = f(src.direct_consume_fen, 'direct_consume_fen', true);
   if (directConsumeFen && directConsumeFen.error) return directConsumeFen;
 
-  let inventory = { openingFen: 0, purchaseFen: 0, closingFen: 0 };
+  // round103：契约里 `inventory?` 是**可选**入参（`core/10_云函数清单与接口契约.md` 第 43 行）
+  //   ⇒ 缺省语义 = **本次不动库存**，返回 null 交 Controller 沿用库内现值。
+  //   🔴 原实现缺省时返回全 0 对象，而 Controller 无条件 `inventory: v.inventory` 覆盖落库
+  //   ⇒ 从月度录入页保存一次就把盘点**静默清零**（实跑复现：真实消耗 23,000 → 0，error 为 null）。
+  let inventory = null;
   if (src.inventory && typeof src.inventory === 'object') {
+    inventory = { openingFen: 0, purchaseFen: 0, closingFen: 0 };
     for (const k of ['opening_fen', 'purchase_fen', 'closing_fen']) {
       const vv = f(src.inventory[k], 'inventory.' + k, true);
       if (vv.error) return vv;

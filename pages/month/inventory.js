@@ -27,6 +27,8 @@ Page({
       saveArchiveOverride: TERMS.inputPage.saveArchiveOverride,
       confirmGraceSave: TERMS.inputPage.confirmGraceSave,
       confirmLocked: TERMS.inputPage.confirmLocked,
+      openingUnlock: TERMS.inventoryPage.openingUnlock,
+      openingFix: TERMS.inventoryPage.openingFix,
     },
     month: '',
     inventorySwitchOn: false,
@@ -36,6 +38,10 @@ Page({
     openingYuan: '',
     purchaseYuan: '',
     closingYuan: '',
+    // round103：期初来源三态（自动结转 / 与上月期末不符 / 首月待填）
+    openingAuto: false,
+    prevMonth: '',
+    openingNote: '',
     loading: true,
   },
 
@@ -72,16 +78,36 @@ Page({
       const isArchive = !!d.is_archive;
       const inGrace = ui.withinGrace(d.archived_at || 0, Date.now());
       const readOnly = isArchive && !inGrace;
+      // round103：字段名必须与契约一致（getLedger 出参 inventory 已转 snake_case）。
+      //   此前本页**照契约**读 snake_case，而后端把 DB 的 camelCase 原样透传 ⇒ 预填恒为空。
       const inv = d.inventory || {};
+      const openingAuto = !!d.opening_auto;
+      const prevMonth = d.opening_source_month || '';
+      const openingFen = Number(inv.opening_fen) || 0;
+      const purchaseFen = Number(inv.purchase_fen) || 0;
+      const closingFen = Number(inv.closing_fen) || 0;
+      const prevFen = Number(d.opening_prev_fen) || 0;
+      // 期初三态：① 自动结转（只读）② 与上月期末不符（提示差异 + 修正入口）③ 首月待填
+      const openingNote = openingAuto
+        ? (prevFen > 0
+          ? TERMS.inventoryPage.openingCarryNote(prevMonth)
+          : TERMS.inventoryPage.openingEmptyNote)
+        : ((openingFen > 0 && prevFen > 0 && prevFen !== openingFen)
+          ? TERMS.inventoryPage.openingDiffNote(
+            api.fenToYuan(prevFen),
+            openingFen > prevFen ? '多' : '少',
+            api.fenToYuan(Math.abs(openingFen - prevFen)))
+          : '');
       this.setData({
         inventorySwitchOn: !!sw.inventorySwitchOn,
         isArchive, inGrace, readOnly,
         incomeItems: d.income_items || [],          // 原样带回，保存时不丢收入/费用
         expenseItems: d.expense_items || [],
         directConsumeFen: d.direct_consume_fen || 0,
-        openingYuan: inv.opening_fen != null && inv.opening_fen > 0 ? api.fenToYuan(inv.opening_fen) : '',
-        purchaseYuan: inv.purchase_fen != null && inv.purchase_fen > 0 ? api.fenToYuan(inv.purchase_fen) : '',
-        closingYuan: inv.closing_fen != null && inv.closing_fen > 0 ? api.fenToYuan(inv.closing_fen) : '',
+        openingYuan: openingFen > 0 ? api.fenToYuan(openingFen) : '',
+        purchaseYuan: purchaseFen > 0 ? api.fenToYuan(purchaseFen) : '',
+        closingYuan: closingFen > 0 ? api.fenToYuan(closingFen) : '',
+        openingAuto, prevMonth, openingNote,
         loading: false,
       });
     } catch (e) {
@@ -91,6 +117,15 @@ Page({
   },
 
   onOpening(e) { this.setData({ openingYuan: e.detail.value }); },
+
+  // round103：期初默认是「上月期末结转」的**只读**态。老板发现期初算错时给两条腿 ——
+  //   ① 根因修正：去改**上月期末**（期初是它的影射，改源头才不会出现「上月 3000 / 本月 5000」两数打架）
+  //   ② 就地修正：解锁本页期初手填覆盖（保存即生效，页面会提示与上月期末的差异）
+  onUnlockOpening() { this.setData({ openingAuto: false }); },
+  onFixPrev() {
+    if (!this.data.prevMonth) return;
+    wx.navigateTo({ url: '/pages/month/inventory?month=' + this.data.prevMonth });
+  },
   onPurchase(e) { this.setData({ purchaseYuan: e.detail.value }); },
   onClosing(e) { this.setData({ closingYuan: e.detail.value }); },
 

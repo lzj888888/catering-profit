@@ -85,11 +85,16 @@ exports.main = async (event) => {
   }
 
   // ===== 6. 内嵌双利润引擎重算（不信任前端利润）=====
+  // round103：v.inventory === null 表示「本次不动库存」（契约 `inventory?` 可选）⇒
+  //   引擎与落库都用**库内现值**，否则会把库存当 0 参与倒轧并静默清零。
+  const existingInventory = (existing && existing.inventory)
+    || { openingFen: 0, purchaseFen: 0, closingFen: 0 };
+  const effectiveInventory = v.inventory || existingInventory;
   const result = calcMonthlyProfit({
     incomeItems: v.incomeItems,
     expenseItems: v.expenseItems,
     directConsumeFen: v.directConsumeFen,
-    inventory: v.inventory,
+    inventory: effectiveInventory,
     amortizeFen,
     amortizeSwitchOn,
     inventorySwitchOn,
@@ -110,7 +115,6 @@ exports.main = async (event) => {
     shop_id: shopId, month: v.month,
     income_items: incomeItemsSnake, expense_items: expenseItemsSnake,
     direct_consume_fen: v.directConsumeFen,
-    inventory: v.inventory,
     amortize_fen: amortizeFen,
     // 汇总结果（分整数）
     income_total_fen: result.incomeTotalFen,
@@ -125,6 +129,8 @@ exports.main = async (event) => {
     switch_used: result.switchUsed,
     updated_at: now,
   };
+  // round103：本次带了库存才写该字段；缺省则**保留库内原值**（防静默清零）
+  if (v.inventory) doc.inventory = v.inventory;
   let accountId;
   if (existing) {
     accountId = existing._id || existing.id;

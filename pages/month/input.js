@@ -332,16 +332,20 @@ Page({
       const inventoryOn = !!sw.inventorySwitchOn;
       const amortizeOn = !!sw.amortizeSwitchOn;
       const inv = d.inventory || {};
-      const invSummary = (inv.openingFen || inv.purchaseFen || inv.closingFen)
+      // round103：getLedger 出参 inventory 已按契约转 snake_case。此前后端透传 DB 的 camelCase，
+      //   本页读 camelCase「碰巧能跑」—— 一旦后端按契约修好，这里会静默变空（同族隐患，一并统一）。
+      const invSummary = (inv.opening_fen || inv.purchase_fen || inv.closing_fen)
         ? TERMS.calcMethod.consumeInvSummary(
-            api.fenToYuan(inv.openingFen || 0, 2),
-            api.fenToYuan(inv.purchaseFen || 0, 2),
-            api.fenToYuan(inv.closingFen || 0, 2))
+            api.fenToYuan(inv.opening_fen || 0, 2),
+            api.fenToYuan(inv.purchase_fen || 0, 2),
+            api.fenToYuan(inv.closing_fen || 0, 2))
         : '';
       // 若草稿存在且已保存过 → 用后端值（服务端为准）；否则后端值直接回填
       this.setData({
         isArchive, archivedAtMs, inGrace, readOnly,
-        inventory: d.inventory || {},          // 原样带回，库存页保存时不丢
+        // round103：**不再回带库存**。契约里 saveLedger 的 `inventory?` 是可选的，缺省即「不动库存」；
+        //   原先把 getLedger 的 camelCase 原样回带，而 saveLedger 只认 snake_case
+        //   ⇒ 保存一次就把盘点**静默清零**（实跑复现：真实消耗 23,000 → 0，零报错）。
         incomeGroups,
         expenseGroups,
         dineMode: this.pickDineMode(incomeGroups),
@@ -1061,7 +1065,7 @@ Page({
         income_items: this.buildItems(this.data.incomeGroups),
         expense_items: this.buildItems(this.data.expenseGroups),
         direct_consume_fen: api.yuanToFen(this.data.directConsumeYuan),
-        inventory: this.data.inventory || undefined,
+        // round103：库存不在这里提交（见上）；saveLedger 缺省即可保留库内现值。
         archive_override: archiveOverride || undefined,
         client_request_id: 'li_' + Date.now(),
       });

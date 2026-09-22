@@ -8,8 +8,13 @@
       <text class="lbl">{{t.opening}}</text>
       <text class="muted">{{t.openingHint}}</text>
     </view>
-    <input class="val-input" type="digit" confirm-type="done" disabled="{{readOnly}}"
+    <input class="val-input" type="digit" confirm-type="done" disabled="{{readOnly || openingAuto}}"
       value="{{openingYuan}}" bindinput="onOpening"  adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+  <view class="hint" wx:if="{{openingNote}}">{{openingNote}}</view>
+  <view class="group-ops" wx:if="{{openingAuto || prevMonth}}">
+    <button class="btn-small ghost" wx:if="{{openingAuto}}" bindtap="onUnlockOpening">{{t.openingUnlock}}</button>
+    <button class="btn-small ghost" wx:if="{{prevMonth}}" bindtap="onFixPrev">{{t.openingFix}}</button>
   </view>
   <view class="field">
     <view class="lbl-col">

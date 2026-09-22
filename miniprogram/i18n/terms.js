@@ -482,6 +482,12 @@ const TERMS = {
     closingHint: '月末盘点剩余库存总价值（元）',
     save: '保存库存',
     hintFormula: '保存后由服务端按库存倒轧计算真实消耗。',
+    // ===== round103：期初结转 + 修正（依据 规范 02_模拟测试数据集.md:127「从上月期末结转，不可编辑」）=====
+    openingCarryNote: (m) => `期初由上月（${m}）期末自动结转，不用手填`,
+    openingEmptyNote: '还没有可结转的上月期末，请填写建账库存',
+    openingDiffNote: (p, s, d) => `与上月期末 ${p} 元不符（本页${s} ${d} 元），建议先核对上月盘点`,
+    openingUnlock: '手动修正期初',
+    openingFix: '去改上月期末',
   },
 
   // ===== 十六、M1 摊销资产页（shop_amortize）=====

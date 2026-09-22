@@ -37,6 +37,27 @@ function toSnake(items) {
   }));
 }
 
+// round103：库存出参一律转 snake_case —— 契约 `core/10_云函数清单与接口契约.md` 第 42 行明文
+//   `getLedger` 出参为 `inventory{opening_fen,purchase_fen,closing_fen}`。此前把 DB 的 camelCase
+//   **原样透传**，而库存页是**照契约**读 `opening_fen` 的 ⇒ 三个框永远读不到值
+//   （真机反馈「原来填写过的数字不出来」的根因）。此处兼容两种来源命名，不留新的「同义字段双轨」。
+function num0(v) { const n = Number(v); return Number.isFinite(n) ? n : 0; }
+function invToSnake(inv) {
+  const s = inv || {};
+  return {
+    opening_fen: num0(s.openingFen !== undefined ? s.openingFen : s.opening_fen),
+    purchase_fen: num0(s.purchaseFen !== undefined ? s.purchaseFen : s.purchase_fen),
+    closing_fen: num0(s.closingFen !== undefined ? s.closingFen : s.closing_fen),
+  };
+}
+// 上一个自然月（'YYYY-MM' → 'YYYY-MM'）；入参不合法返回 ''（fail-closed，不猜月份）
+function prevMonthOf(ym) {
+  const p = String(ym || '').split('-');
+  const y = Number(p[0]), m = Number(p[1]);
+  if (!Number.isInteger(y) || !Number.isInteger(m) || m < 1 || m > 12) return '';
+  return m === 1 ? (y - 1) + '-12' : y + '-' + String(m - 1).padStart(2, '0');
+}
+
 exports.main = async (event) => {
   const ctx = cloud.getWXContext();
   const auth = await resolveAuth(ctx, db);
@@ -60,6 +81,21 @@ exports.main = async (event) => {
   const rawExpense = (acct && acct.expense_items) || [];
   const directConsumeFen = (acct && acct.direct_consume_fen) || 0;
   const inventory = (acct && acct.inventory) || { openingFen: 0, purchaseFen: 0, closingFen: 0 };
+
+  // round103：期初结转 —— 规范 `core/02_模拟测试数据集.md` 第 127 行「期初存货 …从上月期末结转，不可编辑」
+  //   · 本月**没保存过**（acct == null）⇒ 期初自动取上月期末，前端只读展示（opening_auto = true）
+  //   · 本月**保存过** ⇒ 一律尊重老板填的值（他可能确实要修正），另带上月期末供前端做差异提示
+  //   · 首月 / 上月无记录 ⇒ prevClosingFen 恒 0 ⇒ 期初留空待填（即规范里的「期初建账引导」）
+  const prevMonth = prevMonthOf(v.month);
+  let prevClosingFen = 0;
+  if (prevMonth) {
+    const pRes = await da.list('shop_monthly_account', { shop_id: shopId, month: prevMonth });
+    const pAcct = (pRes && pRes.data && pRes.data[0]) || null;
+    prevClosingFen = num0(pAcct && pAcct.inventory && pAcct.inventory.closingFen);
+  }
+  const inventoryOut = invToSnake(inventory);
+  const openingAuto = !acct && !!prevMonth;
+  if (openingAuto) inventoryOut.opening_fen = prevClosingFen;
   const amortizeFen = (acct && acct.amortize_fen) || 0;
 
   // A2：归一为 camelCase 喂引擎（引擎读 amountFen）；返回侧再转 snake_case
@@ -85,7 +121,11 @@ exports.main = async (event) => {
     is_archive: !!acct && !!acct.is_archive,
     archived_at: acct ? (acct.archived_at || 0) : 0,
     income_items: toSnake(incomeItems), expense_items: toSnake(expenseItems),
-    direct_consume_fen: directConsumeFen, inventory,
+    direct_consume_fen: directConsumeFen, inventory: inventoryOut,
+    // round103：期初来源做成**可观测**（auto = 系统结转；否则为老板填的值，prev 供差异提示）
+    opening_auto: openingAuto,
+    opening_source_month: openingAuto ? prevMonth : '',
+    opening_prev_fen: prevClosingFen,
     amortize_fen: amortizeFen,
     switches: { inventorySwitchOn, amortizeSwitchOn },
     result: {
