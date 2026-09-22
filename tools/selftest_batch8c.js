@@ -86,6 +86,24 @@ const inputJs = read('pages/month/input.js');
 const inputWxml = read('pages/month/input.wxml');
 check('terms 有 incomeScope（收入三类口径）', /incomeScope: \{/.test(terms) && /dine_in: '包括店内扫码点单/.test(terms));
 check('堂食口径含「不包括会员充值预收」', /不包括会员充值预收/.test(terms));
+// T5（2026-09-22 李老师拍板）：收入一律按实际成交金额（折后）记，折扣不单列（判据见 ModuleA A.1 配套段）。
+//   语义级：只守**正向锚点**（`折后` / `实际成交` / `成交金额` 之一）—— 同义换词不误报，不锁整句。
+//   ⚠️ 为什么**不设**「无原价框架」反向腿（第一版设了，当场被自己判红，禁再犯）：
+//      口径句为提醒老板**特意**写了「**不按**菜单原价填」这句**否定式**，反向正则 `按…原价…填` 会命中它
+//      ⇒ 把**正确文案**判成违规。与本仓 batch8b 记载的「『不看钱到账没有』被误判成收付实现制」**同族**。
+//      又：本场景正向锚点（折后）与错误状态（原价）**互斥**，单腿已足以抓到回退 ⇒ 反向腿收益 < 误报风险。
+//   fail-closed：正向锚点不满足即红（拿不出「这是折后口径」的证据 = 不许过）。
+{
+  const dineScope = (terms.match(/dine_in: '([^']*)'/) || [])[1] || '';
+  const hasAfter = /折后|实际成交|成交金额/.test(dineScope);
+  check('堂食口径=折后成交（语义级：口径句须含折后锚点）', hasAfter,
+    `实取 ${dineScope.length} 字 / 折后锚点=${hasAfter}`);
+}
+
+// T5 决策留痕：口径已写进规范正文 ⇒ 段落被删即红（规格是决策载体，不是可选项）。
+const specA = read('specs/dev-specs/core/开发规范v1.0_ModuleA_收入费用核算.md');
+check('ModuleA 收入口径铁律段在位（T5 决策留痕）',
+  /收入金额口径铁律/.test(specA) && /实际成交金额（折后）/.test(specA));
 check('外卖口径指向「费用 · 营销」（不重复扣）', /平台佣金与配送费不要在这里扣/.test(terms));
 check('terms 有 expenseScope（费用四类口径）', /expenseScope: \{/.test(terms) && /operation: '包括房租/.test(terms));
 check('运营口径含「不包括设备与装修（走摊销资产）」', /不包括设备与装修购置/.test(terms));
