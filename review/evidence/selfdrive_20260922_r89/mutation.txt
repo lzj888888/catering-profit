@@ -1,0 +1,14 @@
+M1    OK     expect=RED   got=RED   restore=GREEN 单源 GRACE_DAYS_MS 7→14 天（核心穿透） | ❌ B3-② 声明行内每个「N 天」≡ 实算 14 天（含「超过 N 天硬锁」） —— 命中 7,7 vs 14
+M2    OK     expect=GREEN got=GREEN restore=GREEN 单源换等价字面量 604800000（不错杀） | 
+M3    OK     expect=RED   got=RED   restore=GREEN 只改服务端文案 7→14（用户看到的天数分叉） | ❌ B4-② 文案天数 14 ≡ 实算 7 —— 14 vs 7
+M4    OK     expect=GREEN got=GREEN restore=GREEN 声明行去掉加粗（正确实现换排版，不错杀） | 
+M5    OK     expect=RED   got=RED   restore=GREEN 只改前端 i18n graceArchive 7→3（双副本同改） | ❌ B5-graceArchive 主副本≡实算 7 天 —— 命中 3
+M5b   OK     expect=RED   got=RED   restore=GREEN i18n 只改主副本、派生副本不同步 | ❌ B5-graceArchive 主副本≡实算 7 天 —— 命中 3
+M6    OK     expect=GREEN got=GREEN restore=GREEN i18n 换措辞「7 天之内均可补录」（不错杀） | 
+M7    OK     expect=RED   got=RED   restore=GREEN 删掉唯一声明行（fail-closed） | ❌ B3-① 声明行存在（fail-closed，删掉即红） —— 未找到
+M8    OK     expect=RED   got=RED   restore=GREEN 标记词扩散到第二份 md（单源不扩散） | ❌ B3-③ 标记词在 md 扫描面出现且仅 1 次（单源不扩散，坑⑮） —— specs/dev-specs/core/09_统一错误码表
+M9    OK     expect=RED   got=RED   restore=GREEN md 扫描面根路径写错 specs→specs_typo | ❌ B1-⑤ md 扫描面达下界（坑㉛：路径写错即红） —— 0/25
+M10   OK     expect=GREEN got=GREEN restore=GREEN 单源换等价表达式（60*60 写法，不错杀） | 
+M11   OK     expect=RED   got=RED   restore=GREEN 归档守卫表达式不再引用 GRACE_DAYS_MS（死常量） | ❌ B2-③ 关键：单源确被归档守卫使用（不是死常量） —— GRACE_DAYS_MS 在归档守卫表达式内
+
+===== 双向变异汇总：12 组，异常 0 组 =====

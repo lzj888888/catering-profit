@@ -1,0 +1,9 @@
+wxss CRLF=0 LF=150 EQU=False
+V0-clean    OK       expect=GREEN got=GREEN restore=GREEN 干净态（e1056b2 原样） | 
+V1-hotzone  MISMATCH expect=RED   got=GREEN restore=GREEN 粘贴按钮热区 88rpx→40rpx（AD G2 触控） | 
+V2-font     OK       expect=RED   got=RED   restore=GREEN 粘贴按钮字号 28rpx→20rpx（AD G1 字号） | ❌ G1 无 <28rpx 字号（0 残留）  (pages/month/input.wxss:54 .paste-btn { flex: 0 0 auto; 
+
+门禁全量（e1056b2 之后）：rc=0 ===== 总览：91/91 套件通过 =====
+
+===== 独立复核汇总：异常 1 项 =====
+   V1-hotzone

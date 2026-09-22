@@ -1,0 +1,5 @@
+C:\Users\lzj\WorkBuddy\Claw\catering-profit\review\evidence\_recheck_r89b.py:3: SyntaxWarning: invalid escape sequence '\s'
+  G2 判据 = /min-height:\s*(<88 的数)rpx/ 且 20/40rpx 无条件豁免。
+V1b  OK       expect=RED   got=RED   restore=GREEN min-height 88→50rpx（不在 20/40 豁免区） | ❌ G2 wxss 无 <88rpx min-height（20/40 占位除外）  (pages/month/input.wxss:28 flex: 0 0 auto; widt
+V1c  GAP      expect=RED   got=GREEN restore=GREEN 只留 height:40rpx、删掉 min-height（G2 不扫 height） | 
+V1d  GAP      expect=RED   got=GREEN restore=GREEN 高度声明整个删除（无 min-height 也无 height） | 

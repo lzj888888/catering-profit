@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：90 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：91 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -263,6 +263,11 @@ const SUITES = [
   //   两个互不引用的硬编码点（checkQuota::FREE_LIMIT.shop 与 getShopList::FREE_SHOP_LIMIT），
   //   R102 的 SRC_REL 写死 checkQuota ⇒ 第二点零守卫 ⇒ 改一侧门禁全绿而展示与拦截分叉。
   ['free-shop-limit', 'tools/check_free_shop_limit.js'],
+  // ===== R118 归档补录宽限期口径穿透守卫（同族病第 22 例，round89）：「归档后 7 天内可补录、超过 7 天硬锁」
+  //       是 core/13 §3 已锁死决策 + 用户可见承诺 + 写操作拦截边界，实扫却有四类互不引用的落点
+  //       （计算常量 GRACE_DAYS_MS / 服务端错误文案 / 前端 i18n 四条 / 决策声明），
+  //       `tools/` 对该常量零引用 ⇒ 改任一侧门禁全绿无人报警（承诺与拦截分叉）。
+  ['archive-grace',        'tools/check_archive_grace.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
