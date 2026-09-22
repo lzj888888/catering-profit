@@ -1,0 +1,37 @@
+=== 导出面 ===
+calcAmortize/service      : calcAmortize, calcAmortizeSchedule, amountForMonthFen, calcResidualFen, amortizedTotalFen, parseMonthIndex, formatMonthIndex, addMonths
+saveLedger/service        : calcMonthlyProfit, amortizeTotalForMonth, amountForMonth, monthIndex
+getAmortSchedule/service  : amortizeForMonth, amountForMonth, fmtMonthIdx, monthIndex, ERROR_CODES
+
+=== 场景 ===
+原值 120,000.00 元｜12 期｜2026-01 起｜2026-06 提前报废
+月摊 base = 12000000/12 = 1000000 分 = 10000.00 元
+已摊 6 期 = 60000.00 元；未摊余额（残值）应为 60000.00 元 = 6000000 分
+
+=== ① calcAmortize（产出侧） ===
+total_amount_fen = 1000000 = 10000 元
+details = [{"asset_id":"a1","name":"门面装修","amount_fen":1000000,"start_month":"2026-01","total_months":12,"terminate_month":"2026-06","in_period":true,"residual_loss":6000000}]
+→ details[0].residual_loss = 6000000 分 = 60000 元
+→ calcResidualFen(A) = 6000000 分 = 60000 元
+
+=== ② saveLedger（入账侧·真实落库） ===
+amountForMonth(2026-06)        = 1000000 分
+amortizeTotalForMonth(2026-06) = 1000000 分
+amortizeTotalForMonth(2026-07) = 0 分（终止次月=0，符合规则）
+
+=== ③ getAmortSchedule（页面侧） ===
+amortizeForMonth(2026-06) = {"total_amount_fen":1000000,"details":[{"asset_id":"a1","name":"门面装修","amount_fen":1000000,"in_period":true}]}
+
+=== ④ 利润链路（saveLedger 内嵌 calcMonthlyProfit） ===
+收入 50000｜直接消耗 10000｜摊销(实传) = 10000 元
+返回字段 = incomeTotalFen, expenseTotalFen, materialCostFen, directConsumeFen, realConsumeFen, grossProfitFen, grossMarginRatePct, grossMarginRatePctDisplay, amortizeFen, effectiveAmortizeFen, operationRefProfitFen, totalFactorRealProfitFen, profitDiffFen, switchUsed, diffCheck
+全要素真实利润 = 3000000 分 = 30000 元
+→ 公式核验：50000 − 0 − 10000 − 10000 = 30000 元
+→ 若残值 60000 元按规范「一次性计入当期」，利润应为 -30000 元
+→ 差 = 60000.00 元（= 残值全额，未进利润）
+
+=== ⑤ 摊销开关关闭（口径=一次性计入当月） ===
+effectiveAmortizeFen = 0 分（开关关 ⇒ 强制 0）
+全要素真实利润 = 40000 元
+→ 同月同一资产，12 万元在利润表里是否出现任何一笔？ amortize=0 且无其他入账字段
+→ 利润引擎入参字段只有：incomeItems/expenseItems/directConsumeFen/amortizeFen/inventory/pendingSettlementFen
