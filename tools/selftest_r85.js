@@ -126,12 +126,19 @@ check('A15 推广费取数路径标注存在', /twPromoPathHint/.test(inputWxml)
 //   数据又要 getAmortSchedule 出参 ⇒ 这 4 个函数全部是**李老师授权的**后端改动（「按你建议的来」）。
 //   仍按 round103 的**白名单式**登记，**不放宽成 `cloudfunctions/` 全豁免**（那样等于守卫作废）：
 //   by=WorkBuddy / date=2026-09-23 / reason=round106 授权加 lump_sum_fen 口径（F2）+ 摊销留存数据出参（F5b）
+// ⚠️ 2026-09-21（round107）**四次登记** —— 同一时机关卡第 4 次触发：本轮把「一次性投入」从
+//   录入页的 shop 级二选一拆成**台账行级 mode**（李老师真机反馈授权），后端必须动 saveAsset
+//   （新增 mode + 删除分支 + 台账归档锁）、getAmortSchedule（拆 assets/lumps + is_archive）、
+//   saveLedger / getLedger / calcMonthlyProfit（去互斥 + 台账求和）。故新增登记 saveAsset/。
+//   仍按 round103 的**白名单式**登记，**绝不放宽成 `cloudfunctions/` 全豁免**（那样等于守卫作废）：
+//   by=WorkBuddy / date=2026-09-21 / reason=round107 授权拆台账行级 mode（saveAsset 新增 mode+删除+归档锁）
 const A15_EXEMPT = [
   /^cloudfunctions\/initDb\//,
   /^cloudfunctions\/getLedger\//,
   /^cloudfunctions\/saveLedger\//,
   /^cloudfunctions\/calcMonthlyProfit\//,
   /^cloudfunctions\/getAmortSchedule\//,
+  /^cloudfunctions\/saveAsset\//,
 ];
 check('A15 云函数逻辑零改动（仅 initDb 建库单源 + 本批授权函数豁免）', (() => {
   const { execFileSync } = require('child_process');

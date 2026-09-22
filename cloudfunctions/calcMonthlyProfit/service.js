@@ -34,7 +34,7 @@ function calcMonthlyProfit(clean) {
   const expenseItems = (clean && clean.expenseItems) || [];
   const directConsumeFen = num0(clean && clean.directConsumeFen);
   const amortizeFen = num0(clean && clean.amortizeFen);
-  // round106（F2）：一次性装修设备投入（分）—— 与 getLedger/saveLedger 的引擎副本同源同口径
+  // round106（F2）：一次性投入（分）—— 与 getLedger/saveLedger 的引擎副本同源同口径
   const lumpSumFen = num0(clean && clean.lumpSumFen);
   const amortizeSwitchOn = !!(clean && clean.amortizeSwitchOn);
   const inventorySwitchOn = !!(clean && clean.inventorySwitchOn);
@@ -63,8 +63,10 @@ function calcMonthlyProfit(clean) {
 
   // ===== 4. 当月摊销实际计入值（摊销开关关 → 不计入 0） =====
   const effectiveAmortizeFen = amortizeSwitchOn ? fenRoundN(amortizeFen) : 0;
-  // 「一次性」与「按月分摊」互斥：选了摊销就不再吃一次性，防同一笔钱被算两遍
-  const effectiveLumpSumFen = amortizeSwitchOn ? 0 : lumpSumFen;
+  // round107 纠正：原为「与按月分摊互斥」（amortizeSwitchOn ? 0 : lumpSumFen）—— 那是错的。
+  //   摊销资产与一次算清的投入是两笔不同的钱，一个月可以两者都有；互斥会把后者悄悄丢掉。
+  //   防重复靠「同一笔钱只登记一行」（mode 二选一）。三副本（本文件 / saveLedger / getLedger）同源同口径。
+  const effectiveLumpSumFen = lumpSumFen;
 
   // ===== 5. 两个利润口径 =====
   // 🟢 经营参考利润：必须用【直接填总消耗】，即使开库存也**不改用倒轧值**（口径锁）。

@@ -68,7 +68,9 @@
 .promo-hint { font-size: 28rpx; color: #b45309; margin-top: 4rpx; }
 
 /* R85 · 粘贴面板 */
-.paste-mask { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 99; display: flex; align-items: flex-end; }
+/* round107：inset 简写（四向归一）在部分 WebView 内核不被 WXSS 支持 ⇒ 遮罩丢失定位（同 amortize.wxss 的 .mask）。
+   一律改用四向展开写法。 */
+.paste-mask { position: fixed; top: 0; right: 0; bottom: 0; left: 0; background: rgba(0,0,0,.45); z-index: 99; display: flex; align-items: flex-end; }
 .paste-sheet { width: 100%; background: #fff; border-radius: 24rpx 24rpx 0 0; padding: 32rpx 24rpx calc(env(safe-area-inset-bottom) + 32rpx); box-sizing: border-box; }
 .paste-title { font-size: 32rpx; font-weight: 700; margin-bottom: 16rpx; }
 .paste-area { width: 100%; min-height: 200rpx; background: #f7f8fa; border-radius: 12rpx; padding: 16rpx; box-sizing: border-box; font-size: 28rpx; }

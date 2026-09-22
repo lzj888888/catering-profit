@@ -86,16 +86,10 @@ function validateInput(event) {
   const directConsumeFen = f(src.direct_consume_fen, 'direct_consume_fen', true);
   if (directConsumeFen && directConsumeFen.error) return directConsumeFen;
 
-  // round106：`lump_sum_fen`（一次性装修设备投入，选「一次性计入当月」时才有值）—— 同为**可选**入参。
-  //   缺省语义与 `inventory?` 完全一致：返回 null = **本次不动**（沿用库内现值），
-  //   绝不退回全 0 并整体覆盖（round103 那次的教训：缺省被读成 0 ⇒ 保存一次静默清零）。
-  //   ⚠️ 第三个参数（allowZero）**必须不传**：f() 在该参为真时会把缺省返回 0 而不是 null，
-  //      那正是本规则要防的形态（首版即误传 true，被回头核对抓到）。
-  //   注：显式传 0 仍会通过校验并落 0 —— 那是老板「把一次性金额清空」的正当表达。
-  const lumpSumFen = f(src.lump_sum_fen, 'lump_sum_fen');
-  // ⚠️ 必须回收 f() 的错误对象：f 校验失败时**返回对象**（不是抛异常），漏了这一行
-  //    字符串 / 负数会被静默放过并落进 v.lumpSumFen（首版即漏，被行为验证 A4/A5 抓到）。
-  if (lumpSumFen && lumpSumFen.error) return lumpSumFen;
+  // round107：`lump_sum_fen` **入参已退休** —— 一次性投入改由台账（shop_amortize 里 mode='lump' 的行）
+  //   在 saveLedger/index.js §5 服务端求和。前端不再有机会漏传/误传这个值，
+  //   于是 round106 那条「缺省 = 不动」的可选入参规则连同它的两个坑一起消失。
+  //   ⚠️ 别把这条规则照搬回来：少一个「前端可传、缺省语义微妙」的金额入参，就少一类静默清零。
 
   // round103：契约里 `inventory?` 是**可选**入参（`core/10_云函数清单与接口契约.md` 第 43 行）
   //   ⇒ 缺省语义 = **本次不动库存**，返回 null 交 Controller 沿用库内现值。
@@ -115,7 +109,7 @@ function validateInput(event) {
     error: null,
     shop_id: src.shop_id, month: src.month,
     incomeItems, expenseItems,
-    directConsumeFen, inventory, lumpSumFen,
+    directConsumeFen, inventory,
     archiveOverride: src.archive_override === true,
     input: { client_request_id: src.client_request_id || '' },
   };

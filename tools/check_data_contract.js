@@ -205,16 +205,70 @@
     });
     const okBase = c5(c5Base());
     check('S5 C5 基线用例本身合法（防整段空转、恒绿）', okBase.error === null, okBase.error || 'error = null');
-    check('C5-1 缺省 lump_sum_fen ⇒ null（= 本次不动），绝不是 0',
-      okBase.lumpSumFen === null, '缺省解析值 = ' + JSON.stringify(okBase.lumpSumFen));
-    const zero = c5(Object.assign(c5Base(), { lump_sum_fen: 0 }));
-    check('C5-2 显式送 0 ⇒ 0（老板主动清空是正当表达，不得被当成「未提供」）',
-      zero.error === null && zero.lumpSumFen === 0, 'lumpSumFen = ' + JSON.stringify(zero.lumpSumFen));
-    const str = c5(Object.assign(c5Base(), { lump_sum_fen: '1' }));
-    const neg = c5(Object.assign(c5Base(), { lump_sum_fen: -1 }));
-    check('C5-3 非法金额（字符串 / 负数）必须被拒收，不得被静默放过',
-      !!str.error && !!neg.error, '字符串 → ' + (str.error || '未拦') + ' / 负数 → ' + (neg.error || '未拦'));
+    // round107 **C5 守点平移**：原守对象（saveLedger 的 `lump_sum_fen` 入参）**已退休** ——
+    //   一次性投入改由服务端从台账（shop_amortize 里 mode='lump' 的行）求和，前端不再传标量。
+    //   但「可选入参缺省必须『不动』、非法值不得静默放过」这条**纪律没退休**，它只是换了落点：
+    //   现在最要紧的可变真相源是 saveAsset 的 `mode`（它决定这笔钱进哪张表）与**删除分支**。
+    //   ⚠️ 三条仍全部**行为级**（require 真模块实跑），与 C4 的静态正则解耦。
+    check('C5-1 saveLedger 的 lump_sum_fen **入参已退休**（出参不得再有该键 ⇒ 前端传了也不生效）',
+      !('lumpSumFen' in okBase) && c5(Object.assign(c5Base(), { lump_sum_fen: 999 })).error === null,
+      'lumpSumFen 键存在？' + ('lumpSumFen' in okBase));
+    let c5a = null;
+    try { c5a = require(path.join(CF, 'saveAsset', 'validate.js')).validateInput; } catch (e) { c5a = null; }
+    const aBase = () => ({ shop_id: 's1', asset: { name: '装修', value_fen: 100, start_month: '2026-09', total_months: 12 } });
+    const aWith = (patch) => c5a(Object.assign(aBase(), { asset: Object.assign(aBase().asset, patch) }));
+    const mDefault = c5a(aBase());
+    const mLump = aWith({ mode: 'lump' });
+    const mJunk = aWith({ mode: 'whatever' });
+    check('C5-2 saveAsset.mode 缺省语义：缺省/非法一律归 amort（老数据兼容），只有显式 \'lump\' 才判 lump',
+      typeof c5a === 'function'
+      && mDefault.error === null && mDefault.asset.mode === 'amort'
+      && mLump.error === null && mLump.asset.mode === 'lump'
+      && mJunk.error === null && mJunk.asset.mode === 'amort',
+      '缺省=' + (mDefault.asset && mDefault.asset.mode) + ' / lump=' + (mLump.asset && mLump.asset.mode)
+        + ' / 非法=' + (mJunk.asset && mJunk.asset.mode));
+    const dOk = c5a({ shop_id: 's1', asset: { asset_id: 'a1', delete: true } });
+    const dBad = c5a({ shop_id: 's1', asset: { delete: true } });
+    check('C5-3 删除分支：只认 asset_id + delete:true；缺 asset_id 必须响亮拒收（不得静默当成新增）',
+      typeof c5a === 'function' && dOk.error === null && dOk.remove === true && !!dBad.error,
+      '合法删=' + (dOk.error || 'ok') + ' / 缺 id → ' + (dBad.error || '未拦'));
   }
+
+  // ---------- C6：台账行级 mode 契约（**round107 新增**）----------
+  console.log('\n===== C6 · 「一次性投入」改为台账行级 mode 后的契约（round107）=====');
+  // 背景：round107 前，「一次性计入当月 / 按月摊销」是 **shop 级** `amortize_switch` 二选一 ——
+  //   结构上排除了「本月既有一笔摊销、又有几笔小额一次算清」（李老师真机反馈否决）。
+  //   现改为**台账行自带 mode**（shop_amortize 每行一个 mode），两类可共存。
+  //   ⚠️ 这条契约的失败模式是**静默的**：任一处被改坏，某一类钱就不进利润表 —— 不报错、
+  //      只是数字变小/变大（与 round103「库存静默清零」同族）。故三处各设一条判据，缺一不可：
+  //        ① saveLedger 的一次性合计必须**从台账求和**（前端传什么都不能再影响它）；
+  //        ② getAmortSchedule 必须把两类**分开返回**（否则摊销引擎会把「一次算清」也摊开，
+  //           虽然 total_months=1 时数值恰好相同，但**口径归属错了**：它进的是另一个减项）；
+  //        ③ 台账的增删改必须与 saveLedger **共用同一把归档锁**（否则账锁了、钱能从台账被挪走）。
+  //   ⚠️ 判据只认语义锚点，**不绑变量名**（只改变量名不该红）。
+  const sliSrc107 = fs.existsSync(SLI) ? fs.readFileSync(SLI, 'utf8') : '';
+  const gasPath107 = path.join(CF, 'getAmortSchedule', 'index.js');
+  const gasSrc107 = fs.existsSync(gasPath107) ? fs.readFileSync(gasPath107, 'utf8') : '';
+  const saPath107 = path.join(CF, 'saveAsset', 'index.js');
+  const saSrc107 = fs.existsSync(saPath107) ? fs.readFileSync(saPath107, 'utf8') : '';
+
+  const c6Sum = /shop_amortize/.test(sliSrc107)
+    && /mode === 'lump'/.test(sliSrc107)
+    && /start_month === v\.month/.test(sliSrc107);
+  check('C6-1 saveLedger 的一次性合计从台账（shop_amortize 且 mode=lump 且 start_month=本月）求和',
+    c6Sum,
+    c6Sum ? '台账求和在位' : '未找到台账求和 ⇒ 可能退回前端入参（前端传什么就记什么）');
+
+  const c6Split = /mode !== 'lump'/.test(gasSrc107) && /mode === 'lump'/.test(gasSrc107)
+    && /lumps:/.test(gasSrc107) && /lump_total_fen/.test(gasSrc107);
+  check('C6-2 getAmortSchedule 分开返回 assets（摊销）/ lumps（一次算清）两类',
+    c6Split,
+    c6Split ? '两类已分开返回' : '未找到两张过滤腿 ⇒ 一次算清可能被混进摊销引擎');
+
+  const c6Lock = /is_archive/.test(saSrc107) && /ARCHIVED_LOCKED/.test(saSrc107);
+  check('C6-3 saveAsset 的台账增删改与 saveLedger 共用归档锁（is_archive ⇒ ARCHIVED_LOCKED）',
+    c6Lock,
+    c6Lock ? '归档锁在位' : '台账未受归档锁保护 ⇒ 账锁了仍能从台账挪钱');
 
   console.log('\n===== 跨函数数据契约守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
   if (failN) bad.forEach((b) => console.log('   ❌ ' + b));

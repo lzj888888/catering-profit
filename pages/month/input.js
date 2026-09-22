@@ -55,14 +55,12 @@ Page({
       cmConsumeInvGo: TERMS.calcMethod.consumeInvGo,
       cmConsumeInvEmpty: TERMS.calcMethod.consumeInvEmpty,
       cmConsumeInvHint: TERMS.calcMethod.consumeInvHint,
+      // round107：「一次性投入」段 —— 二选一卡片整块删除（那对选项写的是 shop 级 amortize_switch，
+      //   结构上排除了「本月既有一笔摊销、又有几笔小额一次算清」）。现在只留：口径说明 + 两行摘要 + 一个入口。
       cmAssetTitle: TERMS.calcMethod.assetTitle,
-      cmAssetOnce: TERMS.calcMethod.assetOnce,
-      cmAssetOnceDesc: TERMS.calcMethod.assetOnceDesc,
-      cmAssetAmortize: TERMS.calcMethod.assetAmortize,
-      cmAssetAmortizeDesc: TERMS.calcMethod.assetAmortizeDesc,
-      cmAssetGo: TERMS.calcMethod.assetGo,
-      cmAssetEmpty: TERMS.calcMethod.assetEmpty,
       cmAssetHint: TERMS.calcMethod.assetHint,
+      cmAssetGo: TERMS.calcMethod.assetGo,
+      cmAssetSumEmpty: TERMS.calcMethod.assetSumEmpty,
       save: TERMS.buttons.save,
       archiveReadonly: TERMS.inputPage.archiveReadonly,
       graceNote: TERMS.inputPage.graceNote,
@@ -165,14 +163,13 @@ Page({
     twRecYuan: '',             // 账单商家应收款（客户手填，选填）
     twRecText: '',             // 配平提示文案（软提示；不阻断、不入库）
     directConsumeYuan: '',
-    // round106（F2）：「一次性计入当月」的金额（元）。选「按月分摊」时不展示，提交时显式置 0
-    //   （显式置 0 而不是缺省不带：老板从一次性切到按月分摊后，旧值必须被清掉，不能留在库里继续减利润）。
-    lumpSumYuan: '',
     // 核算方式（就地二选一）：真值以服务端 switches 为准；改动即时写库，失败回滚
     inventoryOn: false,
-    amortizeOn: false,
     invSummary: '',
-    assetSummary: '',
+    // round107：「一次性投入」两行摘要 —— ① 本月一次算清（lumps）② 本月分月摊（assets）。
+    //   两行都由 getAmortSchedule 出参拼文案，空串 = 该行不显示。
+    assetSummaryLump: '',
+    assetSummaryAmort: '',
     // 切换口径时必须把店铺名/备注原样回传：saveShopSetting 对未传字段归一 '' 并写库
     shopName: '',
     shopRemark: '',
@@ -194,7 +191,6 @@ Page({
         incomeGroups: draft.incomeGroups || this.data.incomeGroups,
         expenseGroups: draft.expenseGroups || this.data.expenseGroups,
         directConsumeYuan: draft.directConsumeYuan !== undefined ? draft.directConsumeYuan : this.data.directConsumeYuan,
-        lumpSumYuan: draft.lumpSumYuan !== undefined ? draft.lumpSumYuan : this.data.lumpSumYuan,
         dineDetailRows: draft.dineDetailRows ? draft.dineDetailRows.map((r) => ({ subItem: r.subItem || '', amountYuan: r.amountYuan || '', fixed: !!r.fixed, note: r.note || '' })) : this.data.dineDetailRows,
         // R85：外卖段草稿回填（分项明细 / 粘贴原文 / 账单商家应收款；均只存本地，不入库）
         takeoutMode: (draft.takeoutMode === 'fast' || draft.takeoutMode === 'detail') ? draft.takeoutMode : this.data.takeoutMode,
@@ -208,7 +204,8 @@ Page({
       this.syncMkByPlat();     // T1：小计回草稿后重算（全空 ⇒ 不碰那一行）
     }
     // round104：从「库存盘点 / 摊销」子页返回时，按钮下面那行摘要必须重读 ——
-    //   invSummary / assetSummary 原来只在 load()（= onLoad）里算 ⇒ 返回后恒显旧数字
+    //   invSummary / 两行投入摘要（assetSummaryLump / assetSummaryAmort，round107 前身是 assetSummary）
+    //   原来只在 load()（= onLoad）里算 ⇒ 返回后恒显旧数字
     //   （李老师实机反馈 2026-09-23：「去填库存盘点」下面那行不变）。
     //   ⚠️ 首次 onShow 紧跟 onLoad，load() 已经拉过 ⇒ 用 _shown 跳过，省一次云调用。
     if (this._shown) this.refreshCalcSummaries();
@@ -220,7 +217,6 @@ Page({
       incomeGroups: this.data.incomeGroups,
       expenseGroups: this.data.expenseGroups,
       directConsumeYuan: this.data.directConsumeYuan,
-      lumpSumYuan: this.data.lumpSumYuan,
       dineDetailRows: this.data.dineDetailRows,
       // R85：外卖段草稿（分项明细 / 粘贴原文可回溯 / 账单商家应收款；均不入库）
       takeoutMode: this.data.takeoutMode,
@@ -327,8 +323,6 @@ Page({
       const incomeGroups = this.rebuildFromItems(TERMS.ledger.income, d.income_items, TERMS.ledger.incomeScope);
       const expenseGroups = this.decorateExpenseNotes(this.rebuildFromItems(TERMS.ledger.expense, d.expense_items, TERMS.ledger.expenseScope));
       const directConsumeYuan = d.direct_consume_fen ? api.fenToYuan(d.direct_consume_fen) : '';
-      // round106（F2）：一次性计入当月的金额回读（缺省 0 = 没填过；草稿优先，避免覆盖未保存的输入）
-      const lumpSumFen = d.lump_sum_fen || 0;
       // 堂食分项快照：若后端已存分项（>1 行），原样带入 dineDetailRows，切回分项可恢复（防 round-trip 丢值）
       const dG = incomeGroups.find((x) => x.category === 'dine_in');
       const dineDetailRows = (dG && dG.rows && dG.rows.length > 1)
@@ -343,7 +337,6 @@ Page({
       );
       // 核算方式读回（服务端权威；口径锁：经营参考利润用直接填值，真实利润才倒轧）
       const inventoryOn = !!sw.inventorySwitchOn;
-      const amortizeOn = !!sw.amortizeSwitchOn;
       const inv = d.inventory || {};
       // round103：getLedger 出参 inventory 已按契约转 snake_case。此前后端透传 DB 的 camelCase，
       //   本页读 camelCase「碰巧能跑」—— 一旦后端按契约修好，这里会静默变空（同族隐患，一并统一）。
@@ -362,16 +355,15 @@ Page({
         // R85：外卖模式（本地缓存优先，默认按数据推断）+ 分项行（从小计回铺 goods）
         takeoutMode: this.pickTakeoutMode(incomeGroups),
         takeoutDetailRows,
-        inventoryOn, amortizeOn, invSummary,
+        inventoryOn, invSummary,
         directConsumeYuan: directConsumeYuan || this.data.directConsumeYuan,
-        lumpSumYuan: (lumpSumFen ? api.fenToYuan(lumpSumFen) : '') || this.data.lumpSumYuan,
         loading: false,
       });
       // R85/R119：模式确定后算合计与带出。**两种模式都要算合计** —— 快速模式的合计取自各平台单值
       //   （原先只在分项模式算 ⇒ 快速模式合计恒显 0.00）。配平仍只在分项：快速模式拆不出「活动补贴」。
       this.syncTakeoutSum();
       if (this.data.takeoutMode === 'detail') this.runReconcile();
-      if (amortizeOn) this.loadAssetCount();   // 笔数只是提示，失败不打扰
+      this.loadAssetCount();   // round107：两行摘要与「按月分摊」开关无关（一次性投入也走这里）⇒ 无条件拉
       this.loadShopBase();                     // 切换口径时要原样回传店铺名 / 备注
     } catch (e) {
       this.setData({ loading: false });
@@ -961,8 +953,6 @@ Page({
 
 
   onDirectConsume(e) { this.setData({ directConsumeYuan: e.detail.value }); },
-  // round106（F2）：一次性计入当月的金额输入
-  onLumpSum(e) { this.setData({ lumpSumYuan: e.detail.value }); },
 
   // ===== 核算方式（就地二选一 · 2026-09-20 从店铺设置页迁入）=====
   // ⚠️ 服务端唯一权威：这里只做「乐观更新 → 写库 → 失败回滚」，不自行推导计算口径。
@@ -976,9 +966,10 @@ Page({
       });
       return;
     }
-    const kind = e.currentTarget.dataset.kind;                 // 'inventory' | 'amortize'
+    // round107：本卡片只剩「食材消耗」一项（库存口径）。「一次性投入」的处置方式**不在店铺级开关里**，
+    //   而是逐笔登记在台账行上（见「一次性投入」页）⇒ 此处不再有 amortize 分支。
     const val = String(e.currentTarget.dataset.val) === '1';   // dataset 一律字符串
-    const key = kind === 'inventory' ? 'inventoryOn' : 'amortizeOn';
+    const key = 'inventoryOn';
     if (this.data[key] === val) return;                        // 已选中，不重复写库
 
     if (!this.data.shopBaseLoaded) await this.loadShopBase();
@@ -988,11 +979,11 @@ Page({
       await api.call('saveShopSetting', {
         name: this.data.shopName,
         remark: this.data.shopRemark,
-        switches: kind === 'inventory' ? { inventory: val } : { amortize: val },
+        switches: { inventory: val },
         client_request_id: 'cm_' + Date.now(),
       });
       wx.showToast({ title: TERMS.calcMethod.switchSaved, icon: 'success' });
-      if (kind === 'amortize' && val) this.loadAssetCount();
+      this.refreshCalcSummaries();   // 口径变了 ⇒ 摘要跟着变
     } catch (err) {
       this.setData({ [key]: prev });                           // 服务端才是权威 → 回滚
       api.toastError(err);
@@ -1009,17 +1000,24 @@ Page({
     }
   },
 
-  // 摊销资产笔数（纯提示位：显示"已登记 N 笔"，失败不打断填表）
+  // round107：「一次性投入」两行摘要（纯提示位，失败不打断填表）
+  //   ① 本月一次算清：笔数 + 金额（台账里 mode='lump' 且 start_month = 本月）
+  //   ② 本月分月摊：项数 + 本月合计（摊销引擎对 mode='amort' 行的当月计提）
+  //   ⚠️ 数据全来自 getAmortSchedule，前端只拼文案 —— 不在前端算钱（口径单源在服务端）。
   async loadAssetCount() {
     try {
       const d = await api.call('getAmortSchedule', { month: this.data.month });
-      const n = (d.assets || []).length;
-      // round106（F5b）：摊销摘要升级为「本月摊销合计 ¥X（N 笔）」—— 老板最关心的是对当月利润的影响
+      const lumps = d.lumps || [];
+      const assets = d.assets || [];
+      const lumpSum = lumps.reduce((s, x) => s + (x.amount_fen || 0), 0);
       this.setData({
-        assetSummary: n > 0 ? TERMS.calcMethod.assetCount(n, api.fenToYuan(d.total_amount_fen || 0, 2)) : '',
+        assetSummaryLump: lumps.length > 0
+          ? TERMS.calcMethod.assetLumpSum(lumps.length, api.fenToYuan(lumpSum, 2)) : '',
+        assetSummaryAmort: assets.length > 0
+          ? TERMS.calcMethod.assetAmortSum(assets.length, api.fenToYuan(d.total_amount_fen || 0, 2)) : '',
       });
     } catch (e) {
-      this.setData({ assetSummary: '' });
+      this.setData({ assetSummaryLump: '', assetSummaryAmort: '' });
     }
   },
 
@@ -1042,10 +1040,9 @@ Page({
       const sw = d.switches || {};
       this.setData({
         inventoryOn: !!sw.inventorySwitchOn,
-        amortizeOn: !!sw.amortizeSwitchOn,
         invSummary: this.invSummaryOf(d),
       });
-      if (sw.amortizeSwitchOn) this.loadAssetCount();   // 摊销笔数（内部已静默兜底）
+      this.loadAssetCount();   // round107：两行摘要无条件拉（内部已静默兜底）
     } catch (e) { /* 摘要刷新失败不打扰：本页主流程不受影响 */ }
   },
 
@@ -1106,8 +1103,8 @@ Page({
         income_items: this.buildItems(this.data.incomeGroups),
         expense_items: this.buildItems(this.data.expenseGroups),
         direct_consume_fen: api.yuanToFen(this.data.directConsumeYuan),
-        // round106（F2）：一次性装修设备投入（选「按月分摊」时显式送 0 ⇒ 清掉旧值，不与摊销重复计）
-        lump_sum_fen: this.data.amortizeOn ? 0 : api.yuanToFen(this.data.lumpSumYuan),
+        // round107：`lump_sum_fen` **入参已退休** —— 一次性投入改为服务端从台账（shop_amortize 里
+        //   mode='lump' 的行）求和，前端不再传标量。少一个可变真相源 ⇒ 也就少一处静默清零的机会。
         // round103：库存不在这里提交（见上）；saveLedger 缺省即可保留库内现值。
         archive_override: archiveOverride || undefined,
         client_request_id: 'li_' + Date.now(),

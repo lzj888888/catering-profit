@@ -5,6 +5,7 @@
     "pages/month/input",
     "pages/month/inventory",
     "pages/month/amortize",
+    "pages/month/assetEdit",
     "pages/month/result",
     "pages/shop/setting",
     "pages/sandbox/index",

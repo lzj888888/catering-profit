@@ -1,0 +1,65 @@
+<view class="container safe-bottom" wx:if="{{!loading}}">
+  <!-- 归档月只读提示 -->
+  <view class="archived-bar" wx:if="{{readOnly}}">{{t.archiveReadonly}}</view>
+
+  <!-- 页头：这一笔是什么 -->
+  <view class="card2">
+    <view class="card-title">{{kind === 'lump' ? t.lumpTitle : (mode === 'append' ? t.appendTitle : t.amortTitle)}}</view>
+    <view class="muted">{{kind === 'lump' ? t.lumpHint : t.amortHint}}</view>
+    <view class="muted" wx:if="{{mode === 'append'}}">{{t.appendHint}}</view>
+  </view>
+
+  <!-- 名称 -->
+  <view class="field">
+    <text class="lbl">{{t.fName}}</text>
+    <input class="val-input" value="{{name}}" placeholder="{{t.fNamePh}}" disabled="{{readOnly}}"
+      bindinput="onName" adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+
+  <!-- 金额 -->
+  <view class="field">
+    <text class="lbl">{{t.fAmount}}</text>
+    <input class="val-input" type="digit" confirm-type="done" value="{{amountYuan}}" disabled="{{readOnly}}"
+      bindinput="onAmount" adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+  <view class="hint">{{t.fAmountHint}}</view>
+
+  <!-- 月份：一次性投入叫「计入月份」，摊销叫「开始月份」 -->
+  <view class="field">
+    <text class="lbl">{{kind === 'lump' ? t.lumpMonthLabel : t.fStartMonth}}</text>
+    <picker mode="date" fields="month" value="{{startMonth}}" data-field="start"
+      disabled="{{readOnly}}" bindchange="onMonthPick">
+      <view class="picker-val {{startMonth ? '' : 'ph'}}">{{startMonth || t.fStartPh}}</view>
+    </picker>
+  </view>
+  <view class="hint">{{kind === 'lump' ? t.lumpMonthHint : t.fStartHint}}</view>
+
+  <!-- 摊销专属：总月数 / 终止月份 -->
+  <block wx:if="{{kind === 'amort'}}">
+    <view class="field">
+      <text class="lbl">{{t.fTotalMonths}}</text>
+      <input class="val-input" type="number" value="{{totalMonths}}" disabled="{{readOnly}}"
+        bindinput="onTotalMonths" adjust-position="{{true}}" cursor-spacing="20" />
+    </view>
+    <view class="hint">{{t.fTotalHint}}</view>
+
+    <view class="field">
+      <text class="lbl">{{t.fTerminateMonth}}</text>
+      <picker mode="date" fields="month" value="{{terminateMonth}}" data-field="end"
+        disabled="{{readOnly}}" bindchange="onMonthPick">
+        <view class="picker-val {{terminateMonth ? '' : 'ph'}}">{{terminateMonth || t.optional}}</view>
+      </picker>
+    </view>
+    <view class="hint">{{t.fTerminateHint}}</view>
+  </block>
+
+  <button class="btn primary" style="margin-top:24rpx;" bindtap="onSave"
+    disabled="{{readOnly || saving}}">{{t.fSave}}</button>
+
+  <button class="btn ghost" wx:if="{{kind === 'lump' && mode === 'edit' && !readOnly}}"
+    style="color:#e74c3c;border-color:#e74c3c;" bindtap="onDelete">{{t.fDelete}}</button>
+
+  <button class="btn ghost" bindtap="onBack">{{t.cancel}}</button>
+</view>
+
+<view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

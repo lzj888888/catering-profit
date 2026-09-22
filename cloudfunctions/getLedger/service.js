@@ -10,9 +10,10 @@ function calcMonthlyProfit(clean) {
   const amortizeFen = num0(clean && clean.amortizeFen);
   const amortizeSwitchOn = !!(clean && clean.amortizeSwitchOn);
   const inventorySwitchOn = !!(clean && clean.inventorySwitchOn);
-  // round106（F2）：一次性装修设备投入（分）—— 与 saveLedger/service.js 同源同口径
+  // round106（F2）：一次性投入（分）—— 与 saveLedger/service.js 同源同口径
+  // round107：去掉「与摊销互斥」（原 amortizeSwitchOn ? 0 : lumpSumFen）。理由见 saveLedger/service.js。
   const lumpSumFen = num0(clean && clean.lumpSumFen);
-  const effectiveLumpSumFen = amortizeSwitchOn ? 0 : lumpSumFen;
+  const effectiveLumpSumFen = lumpSumFen;
   const inv = (clean && clean.inventory) || {};
   const incomeTotalFen = incomeItems.reduce((s, it) => s + num0(it && it.amountFen), 0);
   const expenseTotalFen = expenseItems.reduce((s, it) => s + num0(it && it.amountFen), 0);

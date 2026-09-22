@@ -13,11 +13,14 @@ function calcMonthlyProfit(clean) {
   const amortizeFen = num0(clean && clean.amortizeFen);
   const amortizeSwitchOn = !!(clean && clean.amortizeSwitchOn);
   const inventorySwitchOn = !!(clean && clean.inventorySwitchOn);
-  // round106（F2）：一次性装修设备投入（分）。语义 = 「金额不大，就当这个月的费用」⇒
+  // round106（F2）：一次性投入（分）。语义 = 「金额不大，就当这个月的费用」⇒
   //   在**当月**作为费用扣减，参考利润与全要素真实利润**两式都减**（与摊销不同：摊销只影响真实利润）。
-  //   与摊销互斥：选了按月分摊（amortizeSwitchOn）就不该再吃一次性 ⇒ effective 归 0（防同一笔钱被算两遍）。
+  // 🔴 round107 纠正：这里原来写着「与摊销互斥」（amortizeSwitchOn 为真就归 0）。**那是错的** ——
+  //   摊销资产和一次算清的投入是**两笔不同的钱**，一个月完全可以两者都有（李老师真机反馈）。
+  //   互斥只会在「既摊着装修、又买了个小东西」时把后者悄悄丢掉 ⇒ 当月利润虚高。
+  //   防重复靠的是「同一笔钱只能登记成一行」（mode 二选一），不靠跨口径互斥。
   const lumpSumFen = num0(clean && clean.lumpSumFen);
-  const effectiveLumpSumFen = amortizeSwitchOn ? 0 : lumpSumFen;
+  const effectiveLumpSumFen = lumpSumFen;
   const inv = (clean && clean.inventory) || {};
   const incomeTotalFen = incomeItems.reduce((s, it) => s + num0(it && it.amountFen), 0);
   const expenseTotalFen = expenseItems.reduce((s, it) => s + num0(it && it.amountFen), 0);

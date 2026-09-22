@@ -14,6 +14,18 @@ function validateInput(event) {
 
   const a = src.asset;
   if (!a || typeof a !== 'object') return err('asset 必须是对象');
+
+  // round107：**删除分支**（一次性投入记错了要能删）。只认 asset_id + delete:true，
+  //   **不要求**其余字段 —— 删除请求里没有 name/value_fen/start_month，
+  //   若先走下面的字段校验必然被误拒。
+  if (a.delete === true) {
+    if (typeof a.asset_id !== 'string' || !a.asset_id) return err('删除时必须带 asset_id');
+    return {
+      error: null, shop_id: src.shop_id, remove: true,
+      asset: { asset_id: a.asset_id, mode: '' },
+      input: { client_request_id: src.client_request_id || '' },
+    };
+  }
   if (typeof a.name !== 'string' || !a.name.trim()) return err('asset.name 必须是非空字符串');
   if (typeof a.value_fen !== 'number' || !Number.isInteger(a.value_fen) || a.value_fen <= 0) {
     return err('asset.value_fen 必须是正整数分（JSON number；不接受字符串、0 与负数）');
@@ -35,6 +47,12 @@ function validateInput(event) {
     }
     batch_seq = a.batch_seq;
   }
+  // round107：`mode` —— 这笔投入**怎么进利润表**，唯一真相在这一行（不由店铺级开关决定）：
+  //   'amort'（缺省；老数据没有这个字段，一律按它处理）= 分期摊销，按 total_months 摊开；
+  //   'lump'  = 一次算清，只在 start_month 那一个月全额进当月费用。
+  //   两类**可以同时存在**（李老师真机反馈：一个月既有一笔摊销、又有几笔小额一次算清）。
+  const mode = (a.mode === 'lump') ? 'lump' : 'amort';
+
   // 自指组键（group_id === 自己）无意义且会让前端分组自相矛盾 → 拒，迫使前端传真实父键
   if (group_id && group_id === a.asset_id) return err('asset.group_id 不能等于自身 asset_id');
 
@@ -50,6 +68,7 @@ function validateInput(event) {
       terminate_month,
       group_id,
       batch_seq,
+      mode,
     },
     input: { client_request_id: src.client_request_id || '' },
   };

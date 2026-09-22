@@ -63,20 +63,31 @@ console.log('');
 console.log('===== H1 · 前端（摊销页分组 + 追加采购）=====');
 const amortJs = read('pages/month/amortize.js');
 const amortWxml = read('pages/month/amortize.wxml');
+// round107：表单（新增 / 再投一笔 / 编辑 / 删除）已搬去独立页 ⇒ 相关判据的宿主随之切换。
+const aeJs = read('pages/month/assetEdit.js');
+const aeWxml = read('pages/month/assetEdit.wxml');
 check('amortize.js 有 buildGroups（按 group_id || asset_id 分组）', /buildGroups\(rows\)/.test(amortJs) && /r\.group_id \|\| r\.asset_id/.test(amortJs));
 check('amortize.js 有 onToggleGroup（展开看每一笔）', /onToggleGroup\(e\)/.test(amortJs));
-check('amortize.js 有 onAppend（追加采购）', /onAppend\(e\)/.test(amortJs) && /appendGroup: group\.key/.test(amortJs));
-check('追加采购写入 group_id + 组内序号', /asset\.group_id = this\.data\.appendGroup/.test(amortJs) && /asset\.batch_seq = this\.data\.appendSeq/.test(amortJs));
-check('编辑某一笔保留其组归属', /asset\.group_id = this\.data\.editing\.group_id/.test(amortJs));
+check('amortize.js 有 onAppend（「再投一笔」跳编辑页并带组键）',
+  /onAppend\(e\)/.test(amortJs) && /assetEdit\?kind=amort/.test(amortJs) && /'&group=' \+ key|&group=' \+ key/.test(amortJs));
+check('「再投一笔」写入 group_id + 组内序号（round107：随表单搬到 assetEdit）',
+  /asset\.group_id = this\.data\.groupKey/.test(aeJs) && /asset\.batch_seq = this\.data\.batchSeq/.test(aeJs));
+// round107：编辑分支只送 asset_id，**不送 group_id** ⇒ 组键由后端 patch 原样保留，前端无从写坏。
+//   故判据反转为「不得出现编辑期回写组键」（旧写法 `asset.group_id = this.data.editing.group_id` 会红）。
+check('编辑某一笔时**不回写**组归属（只送 asset_id，组键由后端保留 ⇒ 前端写不坏）',
+  /asset\.asset_id = this\.data\.assetId/.test(aeJs) && !/asset\.group_id = this\.data\.edit/.test(aeJs + amortJs));
 check('提前报废保留组归属（只终止该笔）', /payload\.group_id = a\.group_id/.test(amortJs));
 check('摊销页不再直接用 assets 渲染（改走 groups）', /wx:for="\{\{groups\}\}"/.test(amortWxml) && !/wx:for="\{\{assets\}\}"/.test(amortWxml));
 check('卡片显示「共 N 笔采购」', /batchTotalPrefix/.test(amortWxml) && /batchTotalSuffix/.test(amortWxml));
 check('卡片显示「合计原值」', /t\.groupValueLabel/.test(amortWxml));
 check('每笔显示「第 N 笔」', /batchPrefix/.test(amortWxml) && /batchSuffix/.test(amortWxml));
-check('每笔各自有 编辑 / 提前报废', /catchtap="onEdit" data-asset="\{\{b\}\}"/.test(amortWxml) && /catchtap="onTerminate" data-asset="\{\{b\}\}"/.test(amortWxml));
+check('每笔各自有 编辑 / 提前报废（round107 handler 改名 onEdit → onEditAsset）',
+  /catchtap="onEditAsset" data-asset="\{\{b\}\}"/.test(amortWxml) && /catchtap="onTerminate" data-asset="\{\{b\}\}"/.test(amortWxml));
 check('有「追加采购」按钮（data-group 定位组）', /onAppend" data-group="\{\{g\.key\}\}"/.test(amortWxml));
-check('表单标题区分 新增 / 追加采购 / 编辑', /appendGroup \? t\.appendTitle : t\.add/.test(amortWxml));
-check('追加采购时提示「不要另建同名资产」', /t\.appendHint/.test(amortWxml));
+check('表单标题区分 一次算清 / 分期摊销 / 再投一笔（round107：三态在 assetEdit）',
+  /mode === 'append' \? t\.appendTitle : t\.amortTitle/.test(aeWxml) && /kind === 'lump' \? t\.lumpTitle/.test(aeWxml));
+check('「再投一笔」时渲染提示（t.appendHint 真出现；不绑具体文案，改词不误报）',
+  /t\.appendHint/.test(aeWxml));
 check('摊销页 wxss 有分组样式', /\.batch-title/.test(read('pages/month/amortize.wxss')) && /\.batch-head/.test(read('pages/month/amortize.wxss')));
 
 // ==========================================================================

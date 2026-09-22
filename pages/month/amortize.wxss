@@ -1,19 +1,18 @@
-/* pages/month/amortize.wxss —— M1 摊销资产管理页 */
-.val-input { text-align: right; font-size: 30rpx; width: 280rpx; }
-.picker-val { text-align: right; font-size: 30rpx; color: #222; min-height: 88rpx; line-height: 88rpx; }
-.picker-val.ph { color: #bbb; }
+/* pages/month/amortize.wxss —— M1「一次性投入」页（本月一次算清清单 + 分期摊销台账） */
 .row-ops { display: flex; justify-content: flex-end; gap: 16rpx; margin-top: 16rpx; }
 .row-ops .btn-small { margin-top: 0; }
-.mask { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 99; display: flex; align-items: flex-end; }
-/* round106（F4，李老师真机反馈）：「点追加采购，窗口变成透明的，和原来摊销窗口在一起，没办法操作」。
-   根因：面板底色 #f5f6f8 与 page 背景（app.wxss:7 page{background:#f5f6f8}）**完全同值** ⇒
-   半透明遮罩下的面板与页面同色，看起来就是"透明窗口叠在原窗口上"。
-   对照组：input.wxss:72 的 .paste-sheet 用 #fff（同结构 .mask + *-sheet + catchtap=""）且行为正常。
-   改法：面板改白底 + 顶部一条细线定边界；行底改 #f7f8fa 保住"行卡片"观感（原设计是白行配灰面板）。*/
-.sheet { width: 100%; background: #fff; border-top: 1rpx solid #e6e8eb; border-radius: 24rpx 24rpx 0 0; padding: 32rpx 24rpx calc(env(safe-area-inset-bottom) + 32rpx); box-sizing: border-box; }
-.sheet .field { background: #f7f8fa; }
 
-/* ===== H1（批次 8c）：同一资产多次采购 —— 分组明细样式 ===== */
+/* ===== round107：底部弹层已整体移除 =====
+   原来新增/编辑走「固定定位遮罩 + 底部面板」那套（选择器名就不写了 —— 本仓「注释里不写字面」
+   纪律：注释写选择器字面会被守卫当代码扫到）。
+   真机截图证明：5 个字段 + 键盘时面板会被键盘整个盖住、输入框浮到卡片上 ⇒ 看不见、存不了。
+   表单已搬去 pages/month/assetEdit（独立页），本文件**不再保留任何 fixed 底部弹层样式**。
+   ⚠️ 同时纠正 round106 的误判：那次的「透明窗口」**不是**底色问题，主因是遮罩用了 inset 简写 ——
+   WXSS 在部分较旧的 WebView 内核上不支持它 ⇒ 整条声明被丢弃 ⇒ position:fixed 四向偏移全为 auto
+   ⇒ 遮罩退回文档流静态位置，既没有全屏深色遮罩、面板又叠在白卡片上。
+   ⚠️ 全仓同款的只剩 input.wxss 的粘贴遮罩，也已改为四向展开（top/right/bottom/left）。 */
+
+/* ===== H1（批次 8c）：同一资产多次投入 —— 分组明细样式 ===== */
 .scope-hint { padding: 0 24rpx 16rpx; }
 .batch { border-top: 1rpx dashed #eee; padding-top: 8rpx; margin-top: 4rpx; }
 .batch-title { font-size: 28rpx; color: #666; padding: 12rpx 0 4rpx; }
@@ -31,3 +30,12 @@
 }
 .prog .strong { color: #1e3a5f; font-weight: 600; }
 .prog-batch { margin-top: 8rpx; }
+
+/* ===== round107：本月一次算清清单 ===== */
+.lump-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12rpx 0; border-bottom: 1rpx solid #f0f0f0; gap: 16rpx;
+}
+.lump-name { flex: 1; font-size: 30rpx; color: #222; }
+.lump-amt { font-size: 30rpx; font-weight: 600; color: #222; }
+.empty-inline { font-size: 28rpx; color: #999; padding: 20rpx 0; }

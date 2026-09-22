@@ -13,6 +13,19 @@ const { makeAdapter } = common.dataAdapter;
 const { nowUtc } = common.utilTime;
 const { validateInput } = require('./validate');
 
+// round107：一次性投入（mode='lump'）是挂在**某一个月**上的 ⇒ 那个月归档后不许再增删改。
+//   与 saveLedger 用**同一把锁**（只读 + ARCHIVED_LOCKED），否则会出现「账锁了、但钱从台账被挪走」的缝。
+//   ⚠️ 只对 mode='lump' 生效：摊销资产跨月管理，其归档约束是**既有缺口**，本轮不扩大改动面。
+async function archiveLocked(da, shopId, month) {
+  if (!month) return null;
+  const res = await da.list('shop_monthly_account', { shop_id: shopId, month });
+  const row = (res && res.data && res.data[0]) || null;
+  if (row && row.is_archive) {
+    return fail(ERROR_CODES.ARCHIVED_LOCKED, '该月已归档为只读，不能改动挂在它上面的一次性投入');
+  }
+  return null;
+}
+
 exports.main = async (event) => {
   const ctx = cloud.getWXContext();
   const auth = await resolveAuth(ctx, db);
@@ -39,7 +52,18 @@ exports.main = async (event) => {
   if (prior) return ok(prior);
 
   let out;
-  if (a.asset_id) {
+  if (v.remove) {
+    // ===== round107 删除：软删（不可复活）=====
+    const exist = await da.get('shop_amortize', v.asset.asset_id);
+    if (!exist) return fail(ERROR_CODES.RESOURCE_NOT_FOUND, `资产 ${v.asset.asset_id} 不存在或已软删`);
+    if ((exist.mode || 'amort') === 'lump') {
+      const locked = await archiveLocked(da, shopId, exist.start_month);
+      if (locked) return locked;
+    }
+    await db.collection('shop_amortize').doc(exist._id || v.asset.asset_id)
+      .update({ data: { is_deleted: true, updated_at: now } });
+    out = { shop_id: shopId, asset_id: v.asset.asset_id, deleted: true, client_request_id: clientRequestId || '' };
+  } else if (a.asset_id) {
     // ===== 编辑：目标必须存在且未软删 =====
     const exist = await da.get('shop_amortize', a.asset_id);
     if (!exist) return fail(ERROR_CODES.RESOURCE_NOT_FOUND, `资产 ${a.asset_id} 不存在或已软删`);
@@ -47,6 +71,7 @@ exports.main = async (event) => {
     const patch = {
       name: a.name, value_fen: a.value_fen, start_month: a.start_month,
       total_months: a.total_months, terminate_month: a.terminate_month,
+      mode: a.mode,                      // round107：处置方式（'amort' / 'lump'）
       updated_at: now, is_deleted: false,
     };
     if (a.group_id) { patch.group_id = a.group_id; patch.batch_seq = a.batch_seq; }
@@ -54,6 +79,11 @@ exports.main = async (event) => {
     out = { shop_id: shopId, asset_id: a.asset_id, client_request_id: clientRequestId || '' };
   } else {
     // ===== 新增 =====
+    // round107：一次性投入挂在 start_month 那个月 ⇒ 归档月不许新记
+    if (a.mode === 'lump') {
+      const locked = await archiveLocked(da, shopId, a.start_month);
+      if (locked) return locked;
+    }
     const assetId = genId('amort_');
     await da.insert('shop_amortize', {
       asset_id: assetId, id: assetId, shop_id: shopId,
@@ -62,6 +92,8 @@ exports.main = async (event) => {
       // H1（批次 8c）：多次采购分组。「追加采购」= 新行 + group_id 指向首笔、batch_seq = 组内序号；
       //   独立资产 group_id=''、batch_seq=1（前端用自身 asset_id 当组键，故老数据行为不变）。
       group_id: a.group_id, batch_seq: a.batch_seq,
+      // round107：处置方式。'amort' = 分期摊销（老行为）；'lump' = 一次算清（只影响 start_month 当月）
+      mode: a.mode,
     });
     out = { shop_id: shopId, asset_id: assetId, client_request_id: clientRequestId || '' };
   }

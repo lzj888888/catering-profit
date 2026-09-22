@@ -120,11 +120,20 @@ console.log('===== 修 4 防回归 · 核算方式单源（语义级，round59 �
 const swSrc = read("pages/shop/setting.wxml"), sjSrc = read("pages/shop/setting.js");
 const stripCmt = (s) => s.replace(/<!--[\s\S]*?-->/g, "").replace(/(^|\s)\/\/[^\n]*/g, "$1").replace(/\/\*[\s\S]*?\*\//g, "");
 const swCode = stripCmt(swSrc), sjCode = stripCmt(sjSrc);
-// ① 锚点 a：选择入口必须在月度录入页（不绑 handler 名，只看是否提供 inventory + amortize 两种二选一）
+// ① 锚点 a：食材口径的选择入口必须在月度录入页；且录入页要有一处去「一次性投入」页的入口。
+//   🔴 round107 **重定（语义级）** —— 旧判据要求 `data-kind` 里同时出现 inventory + amortize。
+//      那对选项写的是 **shop 级** `amortize_switch`，结构上把「本月一笔摊销 + 几笔小额一次算清」
+//      变成互斥 —— 李老师真机反馈否决了它，现已拆成「逐笔登记」（见 pages/month/assetEdit）。
+//      ⇒ 判据改为**不绑 handler 名、不绑 data-kind 取值**：
+//         ① `data-kind="inventory"` 二选一仍在录入页（食材口径单源没搬走）；
+//         ② `iw` 里某个 bindtap 的 handler，其方法体内跳向 /pages/month/amortize（= 去投入页的入口）。
+//      本条的**真正意图**（防开关挪回设置页）由下面 `chooseHit` 独立守，未放宽（round59 加固不撤）。
 const cmKinds = [...iw.matchAll(/data-kind="(\w+)"/g)].map(m => m[1]);
-check('🔴 核算方式选择入口在月度录入页（inventory+amortize 二选一）',
-  cmKinds.includes('inventory') && cmKinds.includes('amortize') && /bindtap="\w+"/.test(iw),
-  'kinds=' + [...new Set(cmKinds)].join('/'));
+const cmTapNames = [...iw.matchAll(/bindtap="(\w+)"/g)].map(m => m[1]);
+const cmGoesAsset = cmTapNames.some((n) => new RegExp(n + '\\s*\\(\\)\\s*\\{[^}]*\\/pages\\/month\\/amortize').test(ij));
+check('🔴 食材口径选择入口在月度录入页 + 录入页有一处去「一次性投入」页的入口',
+  cmKinds.includes('inventory') && cmGoesAsset && /bindtap="\w+"/.test(iw),
+  'kinds=' + [...new Set(cmKinds)].join('/') + ' / 去投入页=' + (cmGoesAsset ? '有' : '无'));
 // ① 锚点 b：设置页去向说明必须来自单源 TERMS.calcMethod.movedNote 且真被渲染（不绑 key 名，fail-closed）
 const movedKey = /(\w+):\s*TERMS\.calcMethod\.movedNote/.exec(sjCode);
 check('🔴 设置页去向说明来自单源 calcMethod.movedNote 且已渲染',

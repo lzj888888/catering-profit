@@ -61,11 +61,15 @@ check('getLedger 兼容旧格式并返回 snake_case（含 inventory）',
   /normalizeToCamel/.test(gli) && /toSnake\(incomeItems\)/.test(gli) && /opening_fen/.test(gli));
 
 console.log('');
-console.log('===== B1 · 摊销年月 picker（替代手输）=====');
-const amWxml = read("pages/month/amortize.wxml");
-check('开始月用 picker mode=date fields=month', /<picker mode="date" fields="month" value="\{\{formStartMonth\}\}"/.test(amWxml));
-check('终止月用 picker mode=date fields=month', /<picker mode="date" fields="month" value="\{\{formTerminateMonth\}\}"/.test(amWxml));
-check('amortize.js 有 onMonthPick 处理', /onMonthPick\(e\)/.test(read("pages/month/amortize.js")));
+console.log('===== B1 · 摊销年月 picker（round107：随表单搬到 assetEdit 独立页）=====');
+// round107：表单不再用摊销页的底部弹层（弹层 × 键盘 = 死结，真机截图已证），已搬去
+//   pages/month/assetEdit（独立页）⇒ 年月选择的**宿主文件**同步换成 assetEdit.{wxml,js}。
+//   ⚠️ 只换宿主路径，语义一字不改（原生 picker + mode=date + fields=month + 起/止两个字段各一）
+//      —— 换文件 ≠ 放宽判据；若有人把 picker 退回手输 input，本条仍会红。
+const aeWxmlB1 = read("pages/month/assetEdit.wxml");
+check('开始月用 picker mode=date fields=month', /<picker mode="date" fields="month" value="\{\{startMonth\}\}"[\s\S]{0,160}?data-field="start"/.test(aeWxmlB1));
+check('终止月用 picker mode=date fields=month', /<picker mode="date" fields="month" value="\{\{terminateMonth\}\}"[\s\S]{0,160}?data-field="end"/.test(aeWxmlB1));
+check('assetEdit.js 有 onMonthPick 处理', /onMonthPick\(e\)/.test(read("pages/month/assetEdit.js")));
 
 console.log('');
 console.log('===== C1 · mine 页 版本/客服/免责声明 =====');
@@ -499,23 +503,52 @@ const a9AmoWxss = read('pages/month/amortize.wxss');
 const a9AppWxss = read('app.wxss');
 const a9Gas = read('cloudfunctions/getAmortSchedule/index.js');
 
-// —— A9-① 面板底色 ≠ 页面底色：**比较两处颜色值**，不写死具体色值（改配色不该把守卫搞红）——
-const a9mPage = /page\s*\{[^}]*background:\s*([^;\s]+)/.exec(a9AppWxss);
-const a9mSheet = /\.sheet\s*\{[^}]*background:\s*([^;\s]+)/.exec(a9AmoWxss);
-check('A9-① 摊销页弹窗面板底色 ≠ 页面底色（同值 ⇒ 看着像"透明窗口叠在原页面上"）',
-  !!a9mPage && !!a9mSheet && a9mPage[1].toLowerCase() !== a9mSheet[1].toLowerCase(),
-  (a9mPage && a9mSheet) ? ('page=' + a9mPage[1] + ' / .sheet=' + a9mSheet[1]) : '颜色值解析不出 ⇒ fail-closed');
+// —— A9-① round107 **判据重定：从「底色」改到「真因」** ——
+//   旧判据查 `.sheet` 的底色是否 ≠ page 底色。它**抓不到真缺陷**：底色同值只是让症状更明显，
+//   而真因是**遮罩用了 inset 简写**（部分 WebView 内核不支持 ⇒ 整条声明被丢弃 ⇒ position:fixed
+//   四向偏移全 auto ⇒ 遮罩退回文档流静态位置：既无全屏深色遮罩、白面板又叠在白卡片上）。
+//   round107 李老师两张真机截图当场证伪了旧的「底色论」。现改为**根因级 + 扫全面**：
+//     ① 扫描面内 WXSS **代码面**不得出现 inset 简写声明（剔注释，免本仓「注释不写字面」纪律自伤）；
+//     ② 底部弹层不得在摊销页复活（表单已迁 assetEdit 独立页）。
+//   ⚠️ 只扫 5 个已知含遮罩/面板的文件（app + 4 个页面），不是全仓裸扫 —— 避免误伤未来的合法用法。
+const A9_INSET_FILES = ['app.wxss', 'pages/month/input.wxss', 'pages/month/amortize.wxss',
+  'pages/month/assetEdit.wxss', 'pages/month/inventory.wxss'];
+const a9InsetHits = [];
+for (const f of A9_INSET_FILES) {
+  let src = '';
+  try { src = read(f); } catch (e) { continue; }
+  const code = src.replace(/\/\*[\s\S]*?\*\//g, '');
+  if (/inset\s*:/.test(code)) a9InsetHits.push(f);
+}
+check('A9-① 扫描面 WXSS 不得用 inset 简写（round107 真因：简写被丢 ⇒ 遮罩丢定位 = 「透明窗口」）',
+  a9InsetHits.length === 0,
+  a9InsetHits.length ? ('命中：' + a9InsetHits.join(', ')) : ('已全部四向展开（扫了 ' + A9_INSET_FILES.length + ' 个文件）'));
 
-// —— A9-② ~ ⑤ 「一次性计入当月」必须真有金额入口 ——
-check('A9-② 一次性分支里有金额输入框（原来这一分支整块为空）',
-  /<block wx:else>[\s\S]{0,500}?bindinput="onLumpSum"[\s\S]{0,500}?<\/block>/.test(a9InWxml)
-  && /value="\{\{lumpSumYuan\}\}"/.test(a9InWxml));
-check('A9-③ 录入页有 lumpSumYuan 状态位 + 输入回调',
-  /lumpSumYuan: ''/.test(a9InJs) && /onLumpSum\(e\)/.test(a9InJs));
-check('A9-④ 提交时带 lump_sum_fen，且选「按月分摊」时显式置 0（两口径互斥，防同一笔钱被算两遍）',
-  /lump_sum_fen:\s*this\.data\.amortizeOn\s*\?\s*0\s*:/.test(a9InJs));
-check('A9-⑤ 一次性金额进草稿（切页 / 返回不丢）',
-  /lumpSumYuan/.test(a9InJs) && /draft\.lumpSumYuan/.test(a9InJs));
+// —— A9-② ~ ⑤ round107 **重定：从「录入页弹层里就地录」改到「独立页逐笔登记」** ——
+//   旧设计：录入页选「一次性计入当月」⇒ 就地出一个金额框 ⇒ 随 saveLedger 的 lump_sum_fen 提交。
+//   它有三个结构性毛病（李老师 round107 真机反馈全中）：
+//     ① 只出一个框、无提示，容易看不见；② 一个月只能记**一笔**（真实场景常有多笔小额）；
+//     ③ 与「按月摊销」做成 shop 级二选一 ⇒ 排除了「本月既摊一笔、又有几笔一次算清」。
+//   新设计：两类投入**可共存**，逐笔登记在 pages/month/assetEdit；录入页只给口径说明 + 两行摘要 + 入口。
+//   ⚠️ ③④ 是**反转腿**（原为「必须有」→ 现为「**不得有**」）：防有人把旧实现照搬回来。
+const a9InJsCode = a9InJs.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+const a9SlvCode = read('cloudfunctions/saveLedger/validate.js').replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+const a9AeWxml = read('pages/month/assetEdit.wxml');
+const a9AeJs = read('pages/month/assetEdit.js');
+// ⚠️ 判据必须**剔注释**再查 `.mask{` / `.sheet{` —— 本文件注释里正是拿这两个选择器当例子说明「已移除」，
+//    裸查会被自己的说明文字绊红（本仓「注释里不写字面」纪律的由来；这里是第 N 次踩到，故两边都防）。
+const a9AmoCode = a9AmoWxss.replace(/\/\*[\s\S]*?\*\//g, '');
+check('A9-② 摊销表单在 assetEdit 独立页，且摊销页底部弹层（.mask/.sheet）不得复活（弹层 × 键盘 = 死结）',
+  /<picker mode="date"/.test(a9AeWxml) && /bindinput="onAmount"/.test(a9AeWxml)
+  && !/\.mask\s*\{/.test(a9AmoCode) && !/\.sheet\s*\{/.test(a9AmoCode)
+  && /pages\/month\/assetEdit/.test(read('app.json')));
+check('A9-③ 录入页**不得**再持有一次性金额状态位（round107：改由台账逐笔登记 ⇒ 前端不留标量）',
+  !/lumpSumYuan/.test(a9InJsCode) && !/onLumpSum/.test(a9InJsCode));
+check('A9-④ 录入页提交**不得**再传 lump_sum_fen，且 saveLedger 代码面不得再收该入参（入参已退休）',
+  !/lump_sum_fen/.test(a9InJsCode) && !/lump_sum_fen/.test(a9SlvCode));
+check('A9-⑤ 一次性投入金额走 saveAsset 台账（mode=lump），不再是 saveLedger 的标量入参',
+  /saveAsset/.test(a9AeJs) && /mode: isLump \? 'lump' : 'amort'/.test(a9AeJs)
+  && /getAmortSchedule/.test(a9AeJs));
 
 // —— A9-⑥ ~ ⑩ 留存数据：后端算、前端只格式化 ——
 check('A9-⑥ 后端出参含留存三字段（已摊期数 / 剩余未摊 / 摊完月）',
@@ -535,8 +568,9 @@ check('A9-⑨ 摊销页留存文案来自术语表（页面零硬编码：函数
   && !/[\u4e00-\u9fa5]/.test(a9ProgBody),
   a9ProgBody.length ? ('方法体 ' + a9ProgBody.length + ' B／中文字面量 ' + (/[\u4e00-\u9fa5]/.test(a9ProgBody) ? '有' : '无'))
     : '取不到 progressOf 方法体 ⇒ fail-closed');
-check('A9-⑩ 录入页摊销摘要带「本月摊销合计」（对利润的影响可见）',
-  /total_amount_fen/.test(a9InJs) && /assetCount\(n,\s*api\.fenToYuan/.test(a9InJs));
+check('A9-⑩ 录入页「一次性投入」段给两行摘要（本月一次算清 / 本月分月摊，对利润的影响可见）',
+  /assetSummaryLump/.test(a9InJs) && /assetSummaryAmort/.test(a9InJs)
+  && /assetLumpSum|assetAmortSum/.test(a9InJs) && /d\.lumps/.test(a9InJs));
 
 // —— A9-⑪ 命名不得只覆盖「采购」一种支出语义（P2 拍板：装修 / 加盟 / 二次装修都要通顺）——
 check('A9-⑪ 按钮文案不绑「采购」单词语义',
@@ -559,7 +593,8 @@ check('A9-⑬ 行为级：末月剩余恰好 0（尾差倒挤后正好摊完，�
 check('A9-⑭ 行为级：起摊前 ⇒ 已摊 0、剩余 = 原值',
   !!a9Prog && a9pBefore.paid_months === 0 && a9pBefore.remaining_fen === 24000000, JSON.stringify(a9pBefore));
 
-// —— A9-⑮ ~ ⑯ 行为级：一次性投入两式都减 + 与摊销互斥（**三副本同源同口径**）——
+// —— A9-⑮ ~ ⑯ 行为级：一次性投入两式都减 + **与摊销可共存**（**三副本同源同口径**）——
+//   round107：⑯ 由「互斥」**反转为「共存」** —— 见下方注释与实测值。
 const A9_ENGINES = ['saveLedger/service.js', 'getLedger/service.js', 'calcMonthlyProfit/service.js'];
 const a9Clean = {
   incomeItems: [{ amountFen: 1000000 }], expenseItems: [{ amountFen: 200000 }],
@@ -574,13 +609,23 @@ const a9Bad = A9_ENGINES.filter((f) => {
 });
 check('A9-⑮ 一次性投入在【参考利润 + 真实利润两式都减】且两利润差异公式不破（三副本一致）',
   a9Bad.length === 0, a9Bad.length ? ('未达标：' + a9Bad.join(', ')) : '三副本一致');
-const a9ExclBad = A9_ENGINES.filter((f) => {
+// round107 **反转**：round106 曾要求「开摊销 ⇒ 一次性归 0（互斥，防同一笔钱算两遍）」。
+//   李老师 round107 真机反馈证明那是**错的设计** —— 一个月完全可以既摊着装修、又买了几个小东西；
+//   互斥会把后者**悄悄丢掉** ⇒ 当月利润虚高（比重复计更危险：不报错、只是数字变大）。
+//   防重复改由「同一笔钱只能登记成一行」（saveAsset 的 mode 二选一）承担，不靠跨口径互斥。
+//   ⚠️ 期望值是**实测**来的（2026-09-21，_r107_engine.js 三副本一致），不是推的：
+//      amortizeFen=50000 + amortizeSwitchOn=true + lumpSumFen=100000 ⇒
+//      effLump=100000（**不得归 0**）/ effAmort=50000 / 参考=400000 / 真实=350000 / 差异=50000。
+//   其中 `effectiveLumpSumFen === 100000` 就是**防回退腿**：谁把互斥写回来，本条立刻红。
+const a9BothBad = A9_ENGINES.filter((f) => {
   const r = require(path.join(ROOT, 'cloudfunctions/' + f)).calcMonthlyProfit(
     Object.assign({}, a9Clean, { amortizeFen: 50000, amortizeSwitchOn: true }));
-  return r.operationRefProfitFen !== 500000;
+  return !(r.effectiveLumpSumFen === 100000 && r.effectiveAmortizeFen === 50000
+    && r.operationRefProfitFen === 400000 && r.totalFactorRealProfitFen === 350000
+    && r.profitDiffFen === 50000 && r.diffCheck === true);
 });
-check('A9-⑯ 月分摊开启时一次性归 0（防同一笔钱被摊销与一次性各算一遍）',
-  a9ExclBad.length === 0, a9ExclBad.length ? ('未达标：' + a9ExclBad.join(', ')) : '三副本一致');
+check('A9-⑯ 摊销与一次性投入**可共存**（一次算清不被归 0；摊销只进真实利润；三副本一致）',
+  a9BothBad.length === 0, a9BothBad.length ? ('未达标：' + a9BothBad.join(', ')) : '三副本一致');
 
 console.log('');
 console.log('===== 门禁预检 =====');

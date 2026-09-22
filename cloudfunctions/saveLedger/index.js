@@ -21,8 +21,9 @@ const { calcMonthlyProfit, amortizeTotalForMonth } = require('./service');
 const { validateInput } = require('./validate');
 
 const SWITCH_KEY_INVENTORY = 'inventory_switch';
-// round106：lump_sum_fen 的「缺省 = 不动」需要一个数值兜底（num0 在 service.js 内，此处自带同款）
-function num0(v) { const n = Number(v); return Number.isFinite(n) ? n : 0; }
+// round107：原 `num0` 兜底（为 `lump_sum_fen` 可选入参服务）**随入参一起退休** —— 一次性投入现在由
+//   本函数从台账（shop_amortize 的 mode='lump' 行）自行求和，不再有「缺省 = 不动」的可选标量入参。
+//   删掉死函数而不是留着：留着的死代码会让下一个人以为还有那条入参路径。
 const SWITCH_KEY_AMORTIZE = 'amortize_switch';
 const GRACE_DAYS_MS = 7 * 24 * 3600 * 1000;
 
@@ -74,17 +75,24 @@ exports.main = async (event) => {
   const inventorySwitchOn = swGet(SWITCH_KEY_INVENTORY);
   const amortizeSwitchOn = swGet(SWITCH_KEY_AMORTIZE);
 
-  // ===== 5. 摊销：amortizeSwitch 开时由台账计算当月摊销（否则 0）=====
+  // ===== 5. 台账：摊销 + 一次性投入（round107：两类都由**服务端**从台账求和，前端不传标量）=====
+  const assetsRes = await da.list('shop_amortize', { shop_id: shopId });
+  const ledgerRows = ((assetsRes && assetsRes.data) || []).map((a) => ({
+    asset_id: a.asset_id || a.id, name: a.name || '', start_month: a.start_month,
+    total_months: a.total_months, terminate_month: a.terminate_month || '',
+    total_value: a.value_fen != null ? a.value_fen : a.total_value,
+    // round107：处置方式；缺字段的老数据一律 'amort'
+    mode: a.mode === 'lump' ? 'lump' : 'amort',
+  }));
+  // 摊销：amortizeSwitch 开时才计（**这个口径没变**）；只吃 mode='amort' 的行
   let amortizeFen = 0;
   if (amortizeSwitchOn) {
-    const assetsRes = await da.list('shop_amortize', { shop_id: shopId });
-    const assets = ((assetsRes && assetsRes.data) || []).map((a) => ({
-      asset_id: a.asset_id || a.id, start_month: a.start_month,
-      total_months: a.total_months, terminate_month: a.terminate_month || '',
-      total_value: a.value_fen != null ? a.value_fen : a.total_value,
-    }));
-    amortizeFen = amortizeTotalForMonth(assets, v.month);
+    amortizeFen = amortizeTotalForMonth(ledgerRows.filter((a) => a.mode !== 'lump'), v.month);
   }
+  // 一次性投入：只收「计入月份 == 本月」的 mode='lump' 行；与摊销**互不排斥**（round107 去掉互斥）
+  const ledgerLumpSumFen = ledgerRows
+    .filter((a) => a.mode === 'lump' && a.start_month === v.month)
+    .reduce((s, a) => s + (a.total_value || 0), 0);
 
   // ===== 6. 内嵌双利润引擎重算（不信任前端利润）=====
   // round103：v.inventory === null 表示「本次不动库存」（契约 `inventory?` 可选）⇒
@@ -92,9 +100,10 @@ exports.main = async (event) => {
   const existingInventory = (existing && existing.inventory)
     || { openingFen: 0, purchaseFen: 0, closingFen: 0 };
   const effectiveInventory = v.inventory || existingInventory;
-  // round106：`lump_sum_fen` 缺省（null）⇒ 沿用库内现值，与 inventory 完全同一套「缺省 = 不动」语义
-  const existingLumpSumFen = num0(existing && existing.lump_sum_fen);
-  const effectiveLumpSumFen = v.lumpSumFen != null ? v.lumpSumFen : existingLumpSumFen;
+  // round107：一次性投入改为**服务端权威**（上一步从台账求和）。原 lump_sum_fen **入参已退休** ⇒
+  //   「入参缺省 = 沿用库内现值」这条规则连同它的坑一起消失（少了整整一个可变真相源：
+  //   round103 的库存静默清零、round106 的首版 allowZero 误传，都是这一类）。
+  const effectiveLumpSumFen = ledgerLumpSumFen;
   const result = calcMonthlyProfit({
     incomeItems: v.incomeItems,
     expenseItems: v.expenseItems,
@@ -137,7 +146,7 @@ exports.main = async (event) => {
   };
   // round103：本次带了库存才写该字段；缺省则**保留库内原值**（防静默清零）
   if (v.inventory) doc.inventory = v.inventory;
-  // round106：同一条纪律 —— lump_sum_fen 只在本次显式带上时才写；缺省保留库内原值
+  // round107：一次算清合计**每次都由台账重算并落库**（快照值，供列表/审计直接读，不再依赖前端传参）
   doc.lump_sum_fen = effectiveLumpSumFen;
   let accountId;
   if (existing) {

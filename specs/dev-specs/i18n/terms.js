@@ -492,10 +492,10 @@ const TERMS = {
 
   // ===== 十六、M1 摊销资产页（shop_amortize）=====
   amortizePage: {
-    title: '摊销资产',
-    monthTotal: '当月摊销合计',
-    add: '新增资产',
-    name: '资产名称',
+    title: '一次性投入',
+    monthTotal: '本月摊销合计',
+    add: '新增摊销资产',
+    name: '名称',
     value: '原值（元）',
     startMonth: '开始月份',
     totalMonths: '总月数（月）',
@@ -504,14 +504,14 @@ const TERMS = {
     monthAmountShort: '月摊销',
     terminateNow: '提前报废',
     confirmTerminate: '确认提前报废该资产？未摊余额将作为处置损失计入。',
-    save: '保存资产',
+    save: '保存',
     edit: '编辑',
-    empty: '还没有摊销资产，点下方新增',
-    namePh: '如 装修、设备',
+    empty: '还没有摊销资产，点下面新增',
+    namePh: '如 装修、设备、加盟费',
     monthUnit: '月',
     optional: '可选',
     // ===== H1（批次 8c）：同一资产多次采购，每笔独立起摊 =====
-    scopeHint: '装修、设备、加盟费等一次性投入在这里按笔登记、分期摊销。同一项支出以后又花钱（再买一台、二次装修、追加加盟费），点「再投一笔」再记一笔，每笔从各自投入的月份单独摊销、互不影响。',
+    scopeHint: '装修、设备、加盟费等一次花的钱都在这里登记。金额小的选「一次算清」——全部算进投入那个月的费用；金额大的选「分期摊销」——按月摊开、不把当月压太狠。同一项支出以后又花钱（再买一台、二次装修、追加加盟费），点「再投一笔」再记一笔，每笔从各自投入的月份单独起摊、互不影响。',
     appendPurchase: '再投一笔',
     appendTitle: '再投一笔',
     batchWord: '投入',
@@ -532,6 +532,46 @@ const TERMS = {
     endNote: (m) => `摊完 ${m}`,
     endNoteLast: (m) => `末笔摊完 ${m}`,
     endTerminated: (m) => `已终止（${m} 月）`,
+
+    // ===== round107：本页同时承载两类投入 =====
+    lumpSectionTitle: '本月一次算清',
+    lumpSectionHint: '这些钱全部算进本月费用，不跨月摊',
+    lumpEmpty: '本月还没有一次算清的投入',
+    lumpSumLabel: '合计（计入本月费用）',
+    lumpAdd: '记一笔',
+    lumpDelete: '删掉这一笔',
+    confirmDeleteLump: '确认删掉这一笔一次性投入？删除后本月费用会跟着变小。',
+    amortSectionTitle: '分期摊销',
+    // 摊销开关：⚠️ 服务端权威（shop_switch.amortize_switch）。入口从「录入页二选一」搬到这里，
+    //   因为二选一会把两类投入变成互斥；开关本身的口径（关掉就不计摊销）**没变**。
+    amortSwitchLabel: '启用分期摊销',
+    amortSwitchHint: '关掉后，下面登记的摊销资产不计入利润',
+    swOn: '已启用',
+    swOff: '未启用',
+
+    // ===== round107：独立编辑页（assetEdit）=====
+    editLumpTitle: '一次算清的投入',
+    editAmortTitle: '摊销资产',
+    editLumpHint: '这笔钱全部算进所选月份的费用，之后不再影响别的月份',
+    editAmortHint: '从开始月份起按月摊，摊完为止',
+    fName: '名称',
+    fNamePh: '如 装修、设备、加盟费',
+    fAmount: '金额（元）',
+    fAmountHint: '一共花了多少（分位可留空）',
+    fStartMonth: '开始月份',
+    fStartHint: '从哪个月开始算',
+    fStartPh: '选月份',
+    lumpMonthLabel: '计入月份',
+    lumpMonthHint: '这笔钱算进哪个月的账；之后不再影响别的月份',
+    fTotalMonths: '总月数（月）',
+    fTotalHint: '分几个月摊完，填 1 就等于当月一次算清',
+    fTerminateMonth: '终止月份',
+    fTerminateHint: '提前停摊才填；不填就自然摊完',
+    fSave: '保存',
+    fErrName: '请填名称',
+    fErrAmount: '请填金额',
+    fErrStart: '请选开始月份',
+    fErrMonths: '总月数请填 1 以上的整数',
   },
 
   // ===== 十七、M1 结果展示页 =====
@@ -571,26 +611,21 @@ const TERMS = {
     consumeInvSummary: (o, p, c) => `已填：期初 ${o} · 采购 ${p} · 期末 ${c}`,
     consumeInvEmpty: '还没填过盘点，点上面去填',
     consumeInvHint: '填完系统自动倒算，不用自己算',
-    assetTitle: '② 装修设备',
-    assetOnce: '一次性计入当月',
-    assetOnceDesc: '金额不大，就当这个月的费用',
-    // round106（F2）：选「一次性计入当月」时的金额入口。
-    //   原来这一分支**整块没有任何输入框**（唯一入口是 amortizeOn）⇒ 文案承诺了「就当这个月的费用」，
-    //   这笔钱却无处可录，当月利润虚高（李老师真机反馈「没有数值输入框」）。
-    assetOnceField: '一次性金额（元）',
-    assetOnceFieldHint: '这笔钱全部算进本月费用，不跨月摊',
-    assetAmortize: '按月分摊',
-    assetAmortizeDesc: '装修设备分月摊，不把当月压太狠',
-    assetGo: '管理摊销资产',
-    // round106（F5b）：摘要带上「本月摊销合计」—— 老板真正关心的是这个月被摊掉多少、对利润的影响
-    assetCount: (n, amt) => (amt === undefined
-      ? `已登记 ${n} 笔资产`
-      : `本月摊销 ¥${amt}（${n} 笔，点开看明细）`),
-    assetEmpty: '还没登记过资产，点上面去加',
-    assetHint: '装修、设备这类大额建议按月分摊',
+    // ===== round107（李老师真机反馈）=====
+    // ① 段名「装修设备」太窄：装修 / 加盟费 / 转让费 / 品牌使用费 / 进场费**都可能摊销**，统一叫「一次性投入」。
+    // ② **取消「一次性计入当月 / 按月分摊」二选一** —— 那一对选项写的是 shop 级 amortize_switch，
+    //    结构上就排除了「本月既有一笔摊销、又有几笔小额一次算清」，而这正是真实场景。
+    //    现在两类投入**可以同时存在**，各自的处置方式在「一次性投入」页里逐笔登记。
+    assetTitle: '② 一次性投入',
+    assetHint: '装修、设备、加盟费等一次花的钱：金额小的当月一次算清，金额大的分月摊。两类可以同时存在',
+    // 摘要两行：笔数与金额均由后端算，前端只拼文案
+    assetLumpSum: (n, amt) => `一次算清 ¥${amt}（${n} 笔）`,
+    assetAmortSum: (n, amt) => `分月摊 ¥${amt}（${n} 项）`,
+    assetSumEmpty: '还没登记过，点上面去登记',
+    assetGo: '去登记 / 管理',
     switchSaved: '已切换',
     switchFail: '切换失败，请重试',
-    movedNote: '核算方式（食材怎么算 / 装修设备怎么算）在「月度录入」页里选',
+    movedNote: '核算方式（食材怎么算）在「月度录入」页里选；一次性投入在「一次性投入」页里登记',
   },
 
   // ===== 十九、店铺设置页 =====

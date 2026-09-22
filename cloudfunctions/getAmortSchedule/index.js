@@ -47,15 +47,28 @@ exports.main = async (event) => {
   if (v.error) return fail(v.error, v.msg);
 
   const da = makeAdapter(db);
+  // round107：本页/编辑页要知道**这个月有没有归档** —— 一次性投入挂在月份上，归档后不该再改。
+  //   与 saveAsset 的 archiveLocked / saveLedger 的归档守卫是同一把锁（这里只做前置提示，不替代服务端拦截）。
+  const accRes = await da.list('shop_monthly_account', { shop_id: shopId, month: v.month });
+  const acc = (accRes && accRes.data && accRes.data[0]) || null;
+  const isArchive = !!(acc && acc.is_archive);
   const res = await da.list('shop_amortize', { shop_id: shopId });
-  const assets = ((res && res.data) || []).map((a) => ({
+  const rows = ((res && res.data) || []).map((a) => ({
     asset_id: a.asset_id || a.id, name: a.name || '',
     total_value: a.value_fen != null ? a.value_fen : a.total_value,
     start_month: a.start_month, total_months: a.total_months,
     terminate_month: a.terminate_month || '',
     // H1（批次 8c）：多次采购分组字段透传（老数据无此字段 → '' / 1，前端按独立资产处理）
     group_id: a.group_id || '', batch_seq: a.batch_seq || 1,
+    // round107：处置方式。缺字段的老数据一律按 'amort'（老行为不变）
+    mode: a.mode === 'lump' ? 'lump' : 'amort',
   }));
+  // round107：两类投入**拆开返回**。
+  //   摊销引擎只吃 mode='amort' 的行 —— 一次性投入不进摊销公式（虽然 total_months=1 时数值恰好相同，
+  //   但口径归属就错了：它不是「1 个月摊完」，而是「当月一次性费用」，在利润表里进的是另一个减项）。
+  const assets = rows.filter((a) => a.mode !== 'lump');
+  // 本月一次算清清单：只列「计入月份 == 本月」的行（别月的一次性投入与本月无关）
+  const lumps = rows.filter((a) => a.mode === 'lump' && a.start_month === v.month);
   const sched = amortizeForMonth(assets, v.month);
 
   return ok({
@@ -65,6 +78,13 @@ exports.main = async (event) => {
       start_month: a.start_month, total_months: a.total_months, terminate_month: a.terminate_month,
       group_id: a.group_id, batch_seq: a.batch_seq,
     }, progressOf(a, v.month))),
+    // round107：本月一次性投入清单（金额取台账原值，前端只做 fenToYuan 格式化，绝不重算）
+    lumps: lumps.map((a) => ({
+      item_id: a.asset_id, name: a.name, amount_fen: a.total_value, month: a.start_month,
+    })),
+    lump_total_fen: lumps.reduce((s, a) => s + (a.total_value || 0), 0),
+    // round107：该月归档态（前端据此把一次性投入与台账操作置只读；服务端另有硬拦截）
+    is_archive: isArchive,
     total_amount_fen: sched.total_amount_fen,
     details: sched.details,
     client_request_id: v.input.client_request_id || '',

@@ -15,7 +15,7 @@
 //   A4 正负样本互证：内置两条样本验证「去注释 + 命中」逻辑本身有效（防"判据恒真/恒假"）
 //   A5 深色模式退役（app.wxss 头部第二处「已移除」声明，同款根因：明令退役却零守卫）：
 //      声明在场(fail-closed) + page 浅底显式写死 + 全仓零命中 prefers-color-scheme + 正负样本互证。
-//      ⚠️ 判据必须锁精确 token `prefers-color-scheme`，**不得**用 `dark` 一词 —— 实测 14 个页面 .json 的
+//      ⚠️ 判据必须锁精确 token `prefers-color-scheme`，**不得**用 `dark` 一词 —— 实测各页 .json 的
 //         `"backgroundTextStyle": "dark"` 是合法的下拉刷新指示器样式，粗判据必大规模误杀（见 PITFALLS §1）。
 //
 // ⚠️ 扫描面**排除 `tools/`**：本守卫自身必须写出旧橘黄色值才能判它，不排除即自命中（本仓既有惯例）。

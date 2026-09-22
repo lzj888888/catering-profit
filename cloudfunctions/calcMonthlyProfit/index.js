@@ -48,7 +48,7 @@ exports.main = async (event) => {
     expenseItems: v.expenseItems,      // 费用明细（分）
     directConsumeFen: v.input.directConsumeFen,
     amortizeFen: v.input.amortizeFen || 0,
-    lumpSumFen: v.input.lumpSumFen || 0,     // round106（F2）：一次性装修设备投入（分）
+    lumpSumFen: v.input.lumpSumFen || 0,     // round106（F2）：一次性投入（分）；round107 段名由「装修设备」改称
     amortizeSwitchOn: sw.amortizeSwitchOn,     // 服务端权威
     inventorySwitchOn: sw.inventorySwitchOn,   // 服务端权威
     inventory: v.input.inventory || {},

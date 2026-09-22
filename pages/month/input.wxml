@@ -329,35 +329,16 @@
     <view class="hint">{{t.cmConsumeDirectHint}}</view>
   </block>
 
-  <!-- ② 装修设备 -->
+  <!-- ② 一次性投入（round107 重做）-->
+  <!-- 原来这里是一对二选一卡片（一次性计入当月 / 按月分摊）。它写的是 shop 级 amortize_switch，
+       结构上就排除了「本月既有一笔摊销、又有几笔小额一次算清」—— 而这正是真实场景（李老师真机反馈）。
+       现在两类投入**可以同时存在**，按笔登记在「一次性投入」页；本页只给口径说明 + 两行摘要 + 一个入口。 -->
   <view class="cm-sub">{{t.cmAssetTitle}}</view>
-  <view class="cm-card">
-    <view class="cm-opt {{amortizeOn ? '' : 'on'}}" data-kind="amortize" data-val="0" bindtap="onPickMethod">
-      <view class="cm-opt-h"><text wx:if="{{!amortizeOn}}">✓ </text>{{t.cmAssetOnce}}</view>
-      <view class="cm-opt-d">{{t.cmAssetOnceDesc}}</view>
-    </view>
-    <view class="cm-opt {{amortizeOn ? 'on' : ''}}" data-kind="amortize" data-val="1" bindtap="onPickMethod">
-      <view class="cm-opt-h"><text wx:if="{{amortizeOn}}">✓ </text>{{t.cmAssetAmortize}}</view>
-      <view class="cm-opt-d">{{t.cmAssetAmortizeDesc}}</view>
-    </view>
-  </view>
-  <block wx:if="{{amortizeOn}}">
-    <button class="btn ghost" bindtap="goAmortize">{{t.cmAssetGo}}</button>
-    <view class="cm-state">{{assetSummary || t.cmAssetEmpty}}</view>
-    <view class="hint">{{t.cmAssetHint}}</view>
-  </block>
-  <!-- round106（F2，李老师真机反馈）：「一次性计入当月 点 没有数值输入框」。
-       原来这里**只有 amortizeOn 一个分支**（选择「按月分摊」才出按钮），选「一次性计入当月」后
-       整块什么都不显示 ⇒ 这笔钱无处可录，而文案却承诺「就当这个月的费用」＝ 当月利润虚高。
-       本分支补金额框：该值随 saveLedger 的 lump_sum_fen 进当月费用（参考利润与真实利润**都减**）。 -->
-  <block wx:else>
-    <view class="field">
-      <text class="lbl">{{t.cmAssetOnceField}}</text>
-      <input class="val-input" type="digit" confirm-type="done" disabled="{{readOnly}}"
-        value="{{lumpSumYuan}}" bindinput="onLumpSum"  adjust-position="{{true}}" cursor-spacing="20" />
-    </view>
-    <view class="hint">{{t.cmAssetOnceFieldHint}}</view>
-  </block>
+  <view class="hint">{{t.cmAssetHint}}</view>
+  <button class="btn ghost" bindtap="goAmortize">{{t.cmAssetGo}}</button>
+  <view class="cm-state" wx:if="{{assetSummaryLump}}">{{assetSummaryLump}}</view>
+  <view class="cm-state" wx:if="{{assetSummaryAmort}}">{{assetSummaryAmort}}</view>
+  <view class="cm-state" wx:if="{{!assetSummaryLump && !assetSummaryAmort}}">{{t.cmAssetSumEmpty}}</view>
 
   <view style="height:20rpx;"></view>
   <button class="btn primary" style="margin-top:0;" bindtap="onSave"

@@ -1,0 +1,4 @@
+/* pages/month/assetEdit.wxss —— round107 · 一次性投入独立编辑页 */
+.val-input { text-align: right; font-size: 30rpx; width: 320rpx; }
+.picker-val { text-align: right; font-size: 30rpx; color: #222; min-height: 88rpx; line-height: 88rpx; }
+.picker-val.ph { color: #bbb; }
