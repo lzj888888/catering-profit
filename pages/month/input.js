@@ -10,7 +10,7 @@ const api = require('../../utils/api.js');
 const ui = require('../../utils/ui.js');
 const { normalizeDineRows, markFixedRows } = require('../../utils/dineChannels.js');
 const { pickTakeawayMode, takeawayModeKey, snapshotDetail, restoreDetail, subtotalOf,
-  extractPaste, pasteFillValue, pasteFilledFromTotal, filledLabel, subsidyTotal, reconcile } = require('../../utils/takeaway.js');
+  extractPaste, pasteFillValue, pasteFilledFromTotal, filledLabel, subsidyTotal, reconcile,
   mkByPlatTotal, mkByPlatFilled } = require('../../utils/takeaway.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 

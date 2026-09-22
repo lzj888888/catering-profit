@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：94 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：95 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -43,6 +43,19 @@
 //         改动都不会有套件转红。判据＝云函数种子 ≡ 原型副本（key|名|类|sort 逐项保序）+
 //         前端 terms.expense ≡ 种子（逐 category、项名、保序）+ 规范 §A.2 营销表 ≡ 代码 marketing
 //         （集合双向）+ 下界护栏（总项数 ≥ 20 / 每 category ≥ 2））
+//       + 全仓 .js 语法编译守卫（tools/check_js_syntax.js，R122：**每个受管 .js 至少能被引擎编译一次**，
+//         用 `vm.Script` 同进程编译 675 个文件、不执行不 spawn）。
+//         根因=round97 T1 把 `pages/month/input.js` 的 require 解构**拆成两条**（第 13 行已 `}` 收尾、
+//         第 14 行又接一段）⇒ 微信出码 `Unexpected token (14:32)`、**小程序根本起不来**，
+//         而门禁当时报 **94/94 全绿**：check_requires 只查「require 路径**存在**」（存在 ≠ 可编译），
+//         全部 selftest/check_* 都是**文本级 grep**，而前端 `pages/`+`miniprogram/` **无任何套件 require**
+//         ⇒ **前端语法是零覆盖区**，事故正落在那里。
+//         首发即抓到 `tools/apply_indexes.js`：块注释里写下 glob 形态的「通配符星号紧跟斜杠」，
+//         **提前闭合了块注释** ⇒ 该建索引工具自 2026-09-17 起**一直编译不过、根本跑不起来**而无人知。
+//         扫描面＝仓根 + miniprogram/pages/utils/cloudfunctions/tools/specs；
+//         排除面**显式声明**（node_modules/.git/.workbuddy/review —— review 是历史归档面，
+//         存有变异期故意写坏的脚本快照）；两条下界护栏（文件数 ≥ 400 + 六个锚点文件必须命中）
+//         防扫描面被悄悄写窄）
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -296,6 +309,13 @@ const SUITES = [
   // ===== R121 费用项清单口径守卫（同族病第 25 例，round97）：见头部注释同名条目。
   //   背景：费用项清单四处副本此前**零守卫**（收入侧 R110 守的是 SEED_INCOME_ITEMS，不看费用侧）。
   ['expense-item-seed', 'tools/check_expense_item_seed.js'],
+  // ===== R122 全仓 .js 语法编译守卫（round99）：见头部注释同名条目。
+  //   背景：round97 T1 的插入脚本把 pages/month/input.js 的 require 解构**拆成两条** ⇒
+  //   微信开发者工具出码时编译失败、小程序根本起不来，而门禁报 94/94 全绿 ——
+  //   因为**全仓没有任何套件编译过 .js**（check_requires 只查「require 路径存在」，
+  //   前端 pages/ 与 miniprogram/ 又无任何套件 require，只在真机/模拟器里跑）。
+  //   判据 = 每个受管 .js 至少能被引擎编译一次（vm.Script 同进程编译，不执行、不 spawn）。
+  ['js-syntax', 'tools/check_js_syntax.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
