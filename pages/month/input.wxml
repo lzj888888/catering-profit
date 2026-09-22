@@ -137,26 +137,31 @@
           <view class="tw-plat-name">{{r.platform}}</view>
           <view class="tw-fields">
             <view class="tw-field">
-              <text class="tw-field-lbl">{{t.twGoodsField}}</text>
+              <view class="tw-field-head">
+                <text class="tw-field-lbl">{{t.twGoodsField}}</text>
+                <button class="btn-small paste-btn" data-target="goods" data-idx="{{ri}}" catchtap="openPaste">{{t.twPasteBtn}}</button>
+              </view>
               <input class="val-input" type="digit" confirm-type="done" value="{{r.goods}}" placeholder="{{t.twGoodsPh}}"
                 data-field="goods" data-idx="{{ri}}" bindinput="onTwDetail" disabled="{{readOnly}}"
                 adjust-position="{{true}}" cursor-spacing="20" />
-              <!-- 可粘贴入口（加速器，非唯一路径；手写同样可用） -->
-              <button class="btn-small paste-btn" data-target="goods" data-idx="{{ri}}" catchtap="openPaste">{{t.twPasteBtn}}</button>
             </view>
             <view class="tw-field">
-              <text class="tw-field-lbl">{{t.twPackField}}</text>
+              <view class="tw-field-head">
+                <text class="tw-field-lbl">{{t.twPackField}}</text>
+                <button class="btn-small paste-btn" data-target="pack" data-idx="{{ri}}" catchtap="openPaste">{{t.twPasteBtn}}</button>
+              </view>
               <input class="val-input" type="digit" confirm-type="done" value="{{r.pack}}" placeholder="{{t.twPackPh}}"
                 data-field="pack" data-idx="{{ri}}" bindinput="onTwDetail" disabled="{{readOnly}}"
                 adjust-position="{{true}}" cursor-spacing="20" />
-              <button class="btn-small paste-btn" data-target="pack" data-idx="{{ri}}" catchtap="openPaste">{{t.twPasteBtn}}</button>
             </view>
             <view class="tw-field">
-              <text class="tw-field-lbl">{{t.twSubsidyField}}</text>
+              <view class="tw-field-head">
+                <text class="tw-field-lbl">{{t.twSubsidyField}}</text>
+                <button class="btn-small paste-btn" data-target="subsidy" data-idx="{{ri}}" catchtap="openPaste">{{t.twPasteBtn}}</button>
+              </view>
               <input class="val-input" type="digit" confirm-type="done" value="{{r.subsidy}}" placeholder="{{t.twSubsidyPh}}"
                 data-field="subsidy" data-idx="{{ri}}" bindinput="onTwDetail" disabled="{{readOnly}}"
                 adjust-position="{{true}}" cursor-spacing="20" />
-              <button class="btn-small paste-btn" data-target="subsidy" data-idx="{{ri}}" catchtap="openPaste">{{t.twPasteBtn}}</button>
             </view>
           </view>
           <view class="tw-subtotal">{{t.twSumLabel}}：{{r.subtotal || '0.00'}}</view>

@@ -1,0 +1,30 @@
+=== 解析层：extractPaste（真实账单形态）===
+  PASS  ① Excel 复制一列金额（3 行）  sum=8340 numbers=[4380,2760,1200] hasTotal=false
+  PASS  ② 带表头「商品总价」  sum=7140 numbers=[4380,2760] hasTotal=false
+  PASS  ③ 日期列 + 金额列（两列一起粘）  sum=7140 numbers=[4380,2760] hasTotal=false
+  PASS  ④ 含「合计」行（防重复加）  sum=7140 numbers=[4380,2760] hasTotal=true
+  PASS  ⑤ 时间 + 长订单号 + 金额  sum=128.5 numbers=[128.5] hasTotal=false
+  PASS  ⑥ 千分位  sum=1234.56 numbers=[1234.56] hasTotal=false
+  PASS  ⑦ 金额带单位「元」  sum=320 numbers=[320] hasTotal=false
+  PASS  ⑧ 负值行（退款/扣款）  sum=270 numbers=[-50,320] hasTotal=false
+  PASS  ⑨ 单个数字（最常用）  sum=4828.5 numbers=[4828.5] hasTotal=false
+
+=== 落值层：doFill（照抄 input.js）===
+  PASS  填 row0.goods <- "4380.00|2760.00"  得到 "7140.00"
+  PASS  填 row0.pack <- "128.50"  得到 "128.50"
+  PASS  填 row0.subsidy <- "320.00"  得到 "320.00"
+  PASS  填 row1.goods <- "1,234.56"  得到 "1234.56"
+  PASS  美团小计 = 7140.00 + 128.50 + 320.00  小计="7588.50"（subtotalOf 返回字符串，故按 Number 比）
+  PASS  饿了么小计 = 1234.56  小计="1234.56"
+  PASS  外卖合计（两平台）  合计=8823.06
+  最终 rows = [{"platform":"美团外卖","goods":"7140.00","pack":"128.50","subsidy":"320.00","subtotal":"7588.50"},{"platform":"饿了么","goods":"1234.56","pack":"","subsidy":"","subtotal":"1234.56"}]
+
+=== 边界（记录行为，不一定算缺陷）===
+  PASS  粘 "0"：解析 sum=0 numbers=[0]  [0]
+  ⚠️ 粘 "0" 后 doFill 落值 = ""（因 `res.sum ? … : ""`，0 视为空 ⇒ 界面显示未填）
+  PASS  纯文字：numbers 为空 ⇒ 走 pasteEmpty 分支  []
+  PASS  空文本：numbers 为空 ⇒ 走 pasteEmpty 分支
+  PASS  单粘账期 "2026-09"：不再被当金额（R85 已修）  numbers=[]
+
+===== 汇总 =====
+20 通过 / 0 失败

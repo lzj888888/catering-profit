@@ -39,13 +39,20 @@
 .group-ops .btn-small { margin-top: 0; }
 
 /* R85 · 外卖段（规范 §A.11） */
+/* 2026-09-22 改两行：行① 字段名 + 粘贴（右端）；行② 金额整行宽。
+   原一行三控件时金额框实测仅 181.7px（375 屏 / 容器 327px），李老师真机反馈「金额框预留过小、粘贴框预留过大」。
+   ⚠️ 同族病第 3 例：.sub-block(wxss:11, 09-20)、.dine-item(wxml:70, 09-21) 已因同一问题改两行
+      —— 新增录入区**不要再写「标签+输入框+按钮」一行三控件**。 */
 .tw-detail-row { border-top: 1rpx solid #f5f5f5; padding: 12rpx 0; }
 .tw-plat-name { font-size: 30rpx; font-weight: 600; color: #222; margin-bottom: 8rpx; }
 .tw-fields { display: flex; flex-direction: column; gap: 8rpx; }
-.tw-field { display: flex; align-items: center; gap: 10rpx; }
-.tw-field-lbl { flex: 0 0 180rpx; font-size: 28rpx; color: #555; }
-.tw-field .val-input { flex: 1; min-width: 0; }
-.paste-btn { flex: 0 0 auto; min-height: 88rpx; margin: 0; padding: 0 16rpx; font-size: 28rpx; background: #fff; color: #1e3a5f; border: 1rpx solid #1e3a5f; }
+.tw-field { display: flex; flex-direction: column; gap: 4rpx; }
+.tw-field-head { display: flex; align-items: center; justify-content: space-between; }
+.tw-field-lbl { flex: 1 1 auto; min-width: 0; font-size: 28rpx; color: #555; }
+.tw-field .val-input { flex: 1 1 auto; width: auto; font-size: 34rpx; }
+/* 粘贴＝轻量按钮：去掉描边与白底重心（视觉不再抢金额框），但**点击热区仍守 AD 规范 ≥88rpx，不可下调** */
+.paste-btn { flex: 0 0 auto; min-height: 88rpx; height: 88rpx; line-height: 88rpx; margin: 0; padding: 0 10rpx; font-size: 28rpx; background: #eef3fa; color: #1e3a5f; border: 0; border-radius: 8rpx; }
+.paste-btn::after { display: none; }
 .tw-subtotal { text-align: right; font-size: 28rpx; color: #888; margin-top: 6rpx; }
 .tw-rec { background: #f7f8fa; border-radius: 12rpx; padding: 16rpx; margin-top: 12rpx; }
 .tw-rec-field { display: flex; align-items: center; gap: 10rpx; }
@@ -62,7 +69,7 @@
 .paste-mask { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 99; display: flex; align-items: flex-end; }
 .paste-sheet { width: 100%; background: #fff; border-radius: 24rpx 24rpx 0 0; padding: 32rpx 24rpx calc(env(safe-area-inset-bottom) + 32rpx); box-sizing: border-box; }
 .paste-title { font-size: 32rpx; font-weight: 700; margin-bottom: 16rpx; }
-.paste-area { width: 100%; min-height: 240rpx; background: #f7f8fa; border-radius: 12rpx; padding: 16rpx; box-sizing: border-box; font-size: 28rpx; }
+.paste-area { width: 100%; min-height: 200rpx; background: #f7f8fa; border-radius: 12rpx; padding: 16rpx; box-sizing: border-box; font-size: 28rpx; }
 .paste-ops { display: flex; justify-content: flex-end; gap: 16rpx; margin-top: 16rpx; }
 .paste-ops .btn-small { margin-top: 0; }
 .paste-ops .primary-btn { background: linear-gradient(135deg, #2a4e7c 0%, #162c49 100%); color: #fff; }
