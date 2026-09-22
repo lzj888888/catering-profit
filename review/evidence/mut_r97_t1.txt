@@ -1,0 +1,97 @@
+round97 T1 变异回灌 · 基线 = commit 8f541e2（门禁 94/94 RC=0）
+节点: C:/Users/lzj/.workbuddy/binaries/node/versions/22.22.2-3/node.exe
+
+BASELINE tools/selftest_r85.js            rc=0  ==== R85 外卖段自测：104 通过 / 0 失败 ====
+BASELINE tools/selftest_batch8b.js        rc=0  ==== 批次 8b 功能补齐自测：136 通过 / 0 失败 ====
+BASELINE tools/selftest_ad_gates.js       rc=0  ==== 上线前 AD 缺口自测：24 通过 / 0 失败 ====
+
+[M1] some -> every（空数组 every 恒真 ⇒ 全空被判『填过』= 会清零库里值）
+     file=utils/takeaway.js  注入生效=True  md5 66438b62 -> 71757820
+     suite=tools/selftest_r85.js  rc=1  ==== R85 外卖段自测：103 通过 / 1 失败 ====
+       ❌ A25 全空 / 空数组 ⇒ 未接管（第一红线：不得清零库里已存值）
+     判据=PASS(该红已红)  期望点名「A25 全空」→ 已点名
+     还原 md5=66438b62  逐字节一致
+
+[M2] 『有没有填过』判据恒真
+     file=utils/takeaway.js  注入生效=True  md5 66438b62 -> 9f7cbab4
+     suite=tools/selftest_r85.js  rc=1  ==== R85 外卖段自测：103 通过 / 1 失败 ====
+       ❌ A25 全空 / 空数组 ⇒ 未接管（第一红线：不得清零库里已存值）
+     判据=PASS(该红已红)  期望点名「A25 全空」→ 已点名
+     还原 md5=66438b62  逐字节一致
+
+[M3] 合计算式取整 ⇒ 35.5 变 36
+     file=utils/takeaway.js  注入生效=True  md5 66438b62 -> f1a67265
+     suite=tools/selftest_r85.js  rc=1  ==== R85 外卖段自测：103 通过 / 1 失败 ====
+       ❌ A25 分平台合计 = 35.5（空值 / 缺值按 0）  (sum=36)
+     判据=PASS(该红已红)  期望点名「A25 分平台合计」→ 已点名
+     还原 md5=66438b62  逐字节一致
+
+[M4] 摘掉 active 早退 ⇒ 全空也接管那一行（第一红线）
+     file=pages/month/input.js  注入生效=True  md5 cbcfc5f9 -> afa61fc4
+     suite=tools/selftest_r85.js  rc=1  ==== R85 外卖段自测：103 通过 / 1 失败 ====
+       ❌ A25 页面：全空即早退不碰行 + 项名走 reconcileRoles 单源
+     判据=PASS(该红已红)  期望点名「A25 页面」→ 已点名
+     还原 md5=cbcfc5f9  逐字节一致
+
+[M5] data.t 映射断开（wxml 取空串）
+     file=pages/month/input.js  注入生效=True  md5 cbcfc5f9 -> 298073fb
+     suite=tools/selftest_batch8b.js  rc=1  ==== 批次 8b 功能补齐自测：135 通过 / 1 失败 ====
+       ❌ A6-② 五条文案已在 data.t 里映射（否则 wxml 取到空串）
+     判据=PASS(该红已红)  期望点名「A6-②」→ 已点名
+     还原 md5=cbcfc5f9  逐字节一致
+
+[M6] 摘掉『接管行转只读』⇒ 两个来源打架
+     file=pages/month/input.wxml  注入生效=True  md5 f6650e8f -> 9ba7104d
+     suite=tools/selftest_batch8b.js  rc=1  ==== 批次 8b 功能补齐自测：135 通过 / 1 失败 ====
+       ❌ A6-⑥ 接管时该行转只读（两个来源不打架）+ 只回显不入库（buildItems 不含小计）
+     判据=PASS(该红已红)  期望点名「A6-⑥」→ 已点名
+     还原 md5=f6650e8f  逐字节一致
+
+[M7] 把小计塞进入库面 buildItems（破『只回显不入库』）
+     file=pages/month/input.js  注入生效=True  md5 cbcfc5f9 -> dd556f3d
+     suite=tools/selftest_batch8b.js  rc=1  ==== 批次 8b 功能补齐自测：135 通过 / 1 失败 ====
+       ❌ A6-⑥ 接管时该行转只读（两个来源不打架）+ 只回显不入库（buildItems 不含小计）
+     判据=PASS(该红已红)  期望点名「A6-⑥」→ 已点名
+     还原 md5=cbcfc5f9  逐字节一致
+
+[M8] 字号退回 26rpx（AD 铁律 ≥28rpx）
+     file=pages/month/input.wxss  注入生效=True  md5 64a4673f -> 6689ff8e
+     suite=tools/selftest_ad_gates.js  rc=1  ==== 上线前 AD 缺口自测：23 通过 / 1 失败 ====
+       ❌ G1 无 <28rpx 字号（0 残留）  (pages/month/input.wxss:81 .mk-plat-title { font-size: 26rpx; color: #1e3a5f; font-weig)
+     判据=PASS(该红已红)  期望点名「mk-plat」→ 已点名
+     还原 md5=64a4673f  逐字节一致
+
+[M9] 单侧删文案（破三处同步 + 双副本逐字一致）
+     file=miniprogram/i18n/terms.js  注入生效=True  md5 2e305def -> 56b40fb2
+     suite=tools/selftest_batch8b.js  rc=1  ==== 批次 8b 功能补齐自测：134 通过 / 2 失败 ====
+       ❌ A6-① 五条文案均在位且非空
+       ❌ K11 双副本逐字一致
+     判据=PASS(该红已红)  期望点名「A6-①」→ 已点名
+     还原 md5=2e305def  逐字节一致
+
+[M10] 小计输入框接线改错名
+     file=pages/month/input.wxml  注入生效=True  md5 f6650e8f -> 77d88aba
+     suite=tools/selftest_batch8b.js  rc=1  ==== 批次 8b 功能补齐自测：135 通过 / 1 失败 ====
+       ❌ A6-④ 小计输入接 onMkByPlat 并传下标
+     判据=PASS(该红已红)  期望点名「A6-④」→ 已点名
+     还原 md5=f6650e8f  逐字节一致
+
+[N1] 等价改写：p && p.amountYuan -> p ? p.amountYuan : 0
+     file=utils/takeaway.js  注入生效=True  md5 66438b62 -> 1a87a297
+     suite=tools/selftest_r85.js  rc=0  ==== R85 外卖段自测：104 通过 / 0 失败 ====
+     判据=PASS(不该红没红)（等价/放宽性改动，期望全绿）
+     还原 md5=66438b62  逐字节一致
+
+[N2] 等价改写：total ? total.toFixed(2) : '0.00' -> (total || 0).toFixed(2)
+     file=pages/month/input.js  注入生效=True  md5 cbcfc5f9 -> ffabcffc
+     suite=tools/selftest_r85.js  rc=0  ==== R85 外卖段自测：104 通过 / 0 失败 ====
+     判据=PASS(不该红没红)（等价/放宽性改动，期望全绿）
+     还原 md5=cbcfc5f9  逐字节一致
+
+[N3] 列宽 160 -> 170rpx（字号仍 28rpx，不受 AD 铁律约束）
+     file=pages/month/input.wxss  注入生效=True  md5 64a4673f -> 70f00822
+     suite=tools/selftest_ad_gates.js  rc=0  ==== 上线前 AD 缺口自测：24 通过 / 0 失败 ====
+     判据=PASS(不该红没红)（等价/放宽性改动，期望全绿）
+     还原 md5=64a4673f  逐字节一致
+
+==== 变异回灌小结：13 组通过 / 0 组异常（共 13 组）====

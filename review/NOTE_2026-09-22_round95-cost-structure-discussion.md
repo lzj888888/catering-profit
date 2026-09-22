@@ -5,6 +5,11 @@
 - 性质：**纯讨论**，本轮不改任何业务代码；所有结论均带代码锚点或实跑证据
 - 上游：`NOTE_2026-09-22_round94-cost-amortize-audit.md`（费用/摊销 6 条发现）
 
+> **更正（2026-09-22 · round97）**：本文原写费用项清单总数为 **19**，**真值 20**
+> —— 实取 `git show 0a0c604:cloudfunctions/initDb/collections.js` ⇒ 运营 7 + 人工 5 + 营销 6 + 其他 2 = **20**。
+> 19 是笔误，下文 5 处已一并更正。另：round97 按规范 §A.2 给营销段补 3 项（线上广告推广 / 宣传物料印刷 / 其他营销费）后，
+> **现为 23 项**（营销 9），并已由 `tools/check_expense_item_seed.js`（R121）守住四副本一致性。
+
 ---
 
 ## 0. 一句话结论
@@ -21,23 +26,23 @@
 
 **现状（事实）**
 
-- 费用项清单**已有单源 19 项**：`cloudfunctions/initDb/collections.js::SEED_EXPENSE_ITEMS`
+- 费用项清单**已有单源 20 项**：`cloudfunctions/initDb/collections.js::SEED_EXPENSE_ITEMS`
   - 运营 7：房租、物业费、水费、电费、燃气费、垃圾清运费、宽带网费
   - 人工 5：工资绩效、社保、员工宿舍、员工餐、工装福利
   - 营销 6：外卖平台佣金、外卖配送服务费、外卖活动补贴、外卖配送补贴、外卖推广费、团购平台佣金
   - 其他 2：代账费、其他杂项
-  - 前端 `miniprogram/i18n/terms.js::ledger.expense` 与之一致（19 项），术语层是渲染实际用的那一份
+  - 前端 `miniprogram/i18n/terms.js::ledger.expense` 与之一致（20 项），术语层是渲染实际用的那一份
 - 但**界面上初始一项都不显示**：
   - `pages/month/input.js:201-219 initGroups()` 初始 `rows = [{subItem:'', amountYuan:''}]`（**每类只有 1 行空行**）
   - `input.js:429 decorateRows()` 分派为 `g.category === 'dine_in' ? this.decorateDineRows(rows) : markFixedRows(rows, g.items)`
   - `utils/dineChannels.js:98 markFixedRows()` **只在已有行上打 fixed 标**，不铺全集 ⇒ 初始那个空行的 `subItem=''`，一个标都打不上
   - ⇒ 费用四大类默认形态 = **4 个「整类总额」框**（标签见 `input.wxml:250`，`g.label + t.classTotalSuffix`）
-- 用户要加明细，只能点「+ 添加细项」→ `input.js:380-392 addRow()` 加的是**空白行**（`{subItem:'', amountYuan:'', custom:true}`），**名字要手打**，且没有「从 19 项里挑」的入口
+- 用户要加明细，只能点「+ 添加细项」→ `input.js:380-392 addRow()` 加的是**空白行**（`{subItem:'', amountYuan:'', custom:true}`），**名字要手打**，且没有「从 20 项里挑」的入口
 - 而**堂食侧完全相反**：`utils/dineChannels.js:67-73 normalizeDineRows()` 用 `presets.map(...)` **把清单里的渠道全部铺出来**（没填就是空行），并给 `fixed:true`（`input.wxml:243-247` 据此不给输入框、不给删除键）
 
 **结论**：要让「房租 / 水费 / 电费 / 燃气费」常显，**不需要发明新机制**——把 `normalizeDineRows` 的模式复制到费用侧即可（见 §3 方案）。
 
-**餐饮实务中「常见但 19 项里没有」的费用（建议清单，见 §3 分层）**
+**餐饮实务中「常见但 20 项里没有」的费用（建议清单，见 §3 分层）**
 
 | 缺口项 | 为什么常见 | 备注 |
 |---|---|---|
@@ -233,7 +238,7 @@ totalFactorRealProfitFen = 收入 − 费用 − 真实食材成本 − 摊销  
 - 营销：外卖活动补贴、外卖配送补贴、外卖推广费、团购平台佣金、**堂食推广费**
 - 其他：代账费、**税费**、**押金/保证金（可退，打标排除）**
 
-（加粗 = 19 项种子之外、建议新增的）
+（加粗 = 20 项种子之外、建议新增的）
 
 **C 档 · 自由细项**：空白行手打（现状保留），但**必须配套下面 3.3 的「可复用」**。
 
