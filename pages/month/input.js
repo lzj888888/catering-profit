@@ -10,7 +10,7 @@ const api = require('../../utils/api.js');
 const ui = require('../../utils/ui.js');
 const { normalizeDineRows, markFixedRows } = require('../../utils/dineChannels.js');
 const { pickTakeawayMode, takeawayModeKey, snapshotDetail, restoreDetail, subtotalOf,
-  extractPaste, subsidyTotal, reconcile } = require('../../utils/takeaway.js');
+  extractPaste, pasteFillValue, filledLabel, subsidyTotal, reconcile } = require('../../utils/takeaway.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 
 const DRAFT_KEY = 'draft_month_input_';
@@ -87,6 +87,9 @@ Page({
       twDetailHint: TERMS.ledger.takeawayMode.detailHint,
       twSumLabel: TERMS.ledger.takeawayMode.sumLabel,
       twSumAutoHint: TERMS.ledger.takeawayMode.sumAutoHint,
+    twTotalLabel: TERMS.ledger.takeawayMode.totalLabel,
+    twTotalAutoHint: TERMS.ledger.takeawayMode.totalAutoHint,
+    twFastPh: TERMS.ledger.takeawayMode.fastPh,
       twGoodsField: TERMS.ledger.takeawayMode.goodsField,
       twPackField: TERMS.ledger.takeawayMode.packField,
       twSubsidyField: TERMS.ledger.takeawayMode.subsidyField,
@@ -132,7 +135,8 @@ Page({
     // R85：外卖录入模式（'fast' | 'detail'，同堂食方案 A 严格互斥）
     takeoutMode: 'fast',
     takeoutDetailRows: [],     // 分项模式行快照 [{platform,goods,pack,subsidy}]（切模式/草稿留存）
-    takeoutSumYuan: '0.00',    // 分项模式小计合计（预计算）
+    takeoutSumYuan: '0.00',    // 外卖收入合计（预计算；按模式取数：快速=Σ平台单值 / 分项=Σ小计）
+    takeoutFilledText: '',     // 「已填 N / M 个平台」预计算串（WXML 不支持方法调用）
     twPasteFor: '',            // 当前粘贴目标（'goods'|'pack'|'subsidy'|'platform' + idx）
     twPasteText: '',           // 粘贴区文本（textarea v-model）
     twPasteOpen: false,        // 粘贴面板是否打开
@@ -172,7 +176,7 @@ Page({
         twRecYuan: draft.twRecYuan !== undefined ? draft.twRecYuan : this.data.twRecYuan,
         twPasteRaw: draft.twPasteRaw || this.data.twPasteRaw || [],
       });
-      if (draft.takeoutDetailRows) this.syncTakeoutSum();
+      this.syncTakeoutSum();   // R119：两种模式都要重算（快速模式的合计取自 groups）
     }
   },
   onHide() {
@@ -311,11 +315,10 @@ Page({
         directConsumeYuan: directConsumeYuan || this.data.directConsumeYuan,
         loading: false,
       });
-      // R85：模式确定后计算小计与带出（分项模式把收入侧活动补贴带到费用侧）、配平（如已填应收款）
-      if (this.data.takeoutMode === 'detail') {
-        this.syncTakeoutSum();
-        this.runReconcile();
-      }
+      // R85/R119：模式确定后算合计与带出。**两种模式都要算合计** —— 快速模式的合计取自各平台单值
+      //   （原先只在分项模式算 ⇒ 快速模式合计恒显 0.00）。配平仍只在分项：快速模式拆不出「活动补贴」。
+      this.syncTakeoutSum();
+      if (this.data.takeoutMode === 'detail') this.runReconcile();
       if (amortizeOn) this.loadAssetCount();   // 笔数只是提示，失败不打扰
       this.loadShopBase();                     // 切换口径时要原样回传店铺名 / 备注
     } catch (e) {
@@ -370,6 +373,8 @@ Page({
     groups[gidx] = g;
     this.setData({ [key]: groups });
     this.syncDineSum();
+    // R119：外卖收入（收入侧 takeaway 组）在快速模式下就在这里改 → 合计必须跟着重算
+    if (kind === 'income' && g.category === 'takeaway') this.syncTakeoutSum();
   },
   addRow(e) {
     const { kind, gidx } = e.currentTarget.dataset;
@@ -555,11 +560,28 @@ Page({
     this.syncTakeoutSum();
   },
 
+  // R119：快速 / 分项共用 —— 按当前模式取数算合计，并算「已填 N / M 个平台」。
+  //   ⚠️ 两种模式的钱**不在同一处**：快速 = groups.rows[].amountYuan；分项 = takeoutDetailRows[].subtotal。
+  //   合计只用于回显与自查，不写入任何金额（口径见规范 §A.11）。
   syncTakeoutSum() {
-    const rows = this.data.takeoutDetailRows || [];
-    const sum = rows.reduce((s, r) => s + (Number(r.subtotal) || 0), 0);
-    this.setData({ takeoutSumYuan: sum ? sum.toFixed(2) : '0.00' });
-    this.syncSubsidyCarry();   // 带出联动：活动补贴合计 → 费用侧
+    const g = this.data.incomeGroups.find((x) => x.category === 'takeaway');
+    const platforms = (g && g.rows) || [];
+    const detail = this.data.takeoutDetailRows || [];
+    const isFast = this.data.takeoutMode === 'fast';
+    const sum = isFast
+      ? platforms.reduce((s, r) => s + (Number(r.amountYuan) || 0), 0)
+      : detail.reduce((s, r) => s + (Number(r.subtotal) || 0), 0);
+    // 已填平台数：快速看单值；分项看三项里填过任意一个
+    const filled = isFast
+      ? platforms.filter((r) => Number(r.amountYuan) > 0).length
+      : detail.filter((r) => Number(r.goods) > 0 || Number(r.pack) > 0 || Number(r.subsidy) > 0).length;
+    const t = TERMS.ledger.takeawayMode || {};
+    this.setData({
+      takeoutSumYuan: sum ? sum.toFixed(2) : '0.00',
+      // 只有 1 个平台行（整类总额）时不给这句，避免噪音（见 filledLabel 注释）
+      takeoutFilledText: filledLabel(t.filledTpl || '已填 {n} / {m} 个平台', filled, platforms.length),
+    });
+    this.syncSubsidyCarry();   // 带出联动：活动补贴合计 → 费用侧（仅分项模式生效）
   },
 
   // ===== 模式切换（严格互斥；快照恢复防 round-trip 丢值）=====
@@ -638,7 +660,7 @@ Page({
       const rows = (this.data.takeoutDetailRows || []).slice();
       if (!rows[idx]) return;
       const r = Object.assign({}, rows[idx]);
-      r[field] = res.sum ? res.sum.toFixed(2) : '';
+      r[field] = pasteFillValue(res);   // R119：0 是合法金额，不能被当成空
       r.subtotal = subtotalOf(r.goods, r.pack, r.subsidy);
       rows[idx] = r;
       this.setData({ takeoutDetailRows: rows, twPasteOpen: false });

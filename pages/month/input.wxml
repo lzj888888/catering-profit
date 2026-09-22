@@ -123,11 +123,18 @@
           <view class="dine-line1"><text class="dine-name">{{r.subItem}}</text></view>
           <view class="dine-line2">
             <input class="val-input dine-amt" type="digit" confirm-type="done" value="{{r.amountYuan}}"
-              placeholder="{{t.twRecPh}}" data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}"
+              placeholder="{{t.twFastPh}}" data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}"
               bindinput="onSubAmount" disabled="{{readOnly}}"
               adjust-position="{{true}}" cursor-spacing="20" />
           </view>
         </view>
+        <!-- 汇总（R119：各平台填完后给「合计 + 已填平台数」；合计只回显，不写入金额） -->
+        <view class="dine-sum">
+          <text class="dine-sum-lbl">{{t.twTotalLabel}}</text>
+          <text class="dine-sum-val">{{takeoutSumYuan}}</text>
+        </view>
+        <view class="hint">{{takeoutFilledText}}</view>
+        <view class="hint">{{t.twTotalAutoHint}}</view>
       </block>
 
       <!-- 分项录入：每平台 3 框（商品总价 / 打包费 / 商家活动补贴），小计自动 -->

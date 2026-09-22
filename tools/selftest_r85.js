@@ -1,7 +1,9 @@
 // tools/selftest_r85.js —— R85 · 月度录入页「外卖段」取数与录入（规范 §A.11）自测
 // 运行： node tools/selftest_r85.js
-// 覆盖验收锚点 A1~A15：模式默认推断 / 快速4×1 / 分项4×3 / 互斥快照 / 粘贴提取 / 合计确认 /
-//      手写路径 / 自动带出 / 配平四态 / 不阻断 / 平台名单源 / 双副本一致。
+// 覆盖验收锚点 A1~A22：模式默认推断 / 快速4×1 / 分项4×3 / 互斥快照 / 粘贴提取 / 合计确认 /
+//      手写路径 / 自动带出 / 配平四态 / 不阻断 / 平台名单源 / 双副本一致 /
+//      账期与长单号不误算金额(A16) / 带出误锁回归(A17) / 配平角色单源(A18) / 主题色单源(A19) /
+//      粘贴到 0 不被吞(A20) / 快速录入汇总(A21) / 快速框占位不串线(A22)。
 const fs = require("fs"), path = require("path");
 const ROOT = path.resolve(__dirname, "..");
 let pass = 0, failN = 0;
@@ -12,7 +14,7 @@ function check(name, cond, detail) {
 
 const takeaway = require("../utils/takeaway.js");
 const {
-  pickTakeawayMode, restoreDetail, subtotalOf, extractPaste,
+  pickTakeawayMode, restoreDetail, subtotalOf, extractPaste, pasteFillValue, filledLabel,
   subsidyTotal, reconcile, RECONCILE_THRESHOLD,
 } = takeaway;
 const TERMS = require("../miniprogram/i18n/terms.js").TERMS;
@@ -140,6 +142,54 @@ const wxssSrc = fs.readFileSync(path.join(ROOT, 'pages/month/input.wxss'), 'utf8
 const wxssLive = wxssSrc.split('\n').filter((l) => !/^\s*(\/\*|\*)/.test(l) && l.indexOf('*/') < 0).join('\n');
 check('A19 input.wxss 生效样式不含旧橘黄', !/#ff6b35/i.test(wxssLive));
 check('A19 粘贴面板主按钮走主色渐变（#2a4e7c → #162c49）', /linear-gradient\(135deg, #2a4e7c 0%, #162c49 100%\)/.test(wxssLive));
+
+console.log('===== A20 · 粘贴填入值：0 是合法金额，不得被当成空（R119 回归）=====');
+check('A20 粘 "0" 应变 "0.00"（原先被当空吞掉）', pasteFillValue(extractPaste('0')) === '0.00', pasteFillValue(extractPaste('0')));
+check('A20 粘 "0\n0" 应变 "0.00"', pasteFillValue(extractPaste('0\n0')) === '0.00');
+check('A20 粘空文本不填（空串，不误填 0.00）', pasteFillValue(extractPaste('')) === '');
+check('A20 粘纯表头不填（空串）', pasteFillValue(extractPaste('项目\t金额')) === '');
+check('A20 千分位照旧 -> 1234.56', pasteFillValue(extractPaste('1,234.56')) === '1234.56');
+check('A20 页面不再用「非零才写」三态', !/res\.sum \?/.test(inputJs));
+check('A20 页面改走 pasteFillValue 单源', /r\[field\] = pasteFillValue\(res\);/.test(inputJs));
+
+console.log('===== A21 · 快速录入汇总：合计 + 已填平台数（R119）=====');
+const twT = TERMS.ledger.takeawayMode;
+check('A21 totalLabel / filledTpl / totalAutoHint / fastPh 四键齐备且非空',
+  ['totalLabel', 'filledTpl', 'totalAutoHint', 'fastPh'].every((k) => typeof twT[k] === 'string' && twT[k].length > 0));
+const fastBlock = (() => {
+  const i = inputWxml.indexOf("takeoutMode === 'fast'");
+  if (i < 0) return '';
+  const j = inputWxml.indexOf('</block>', i);
+  return j < 0 ? '' : inputWxml.slice(i, j);
+})();
+check('A21 快速块内给出合计（twTotalLabel + takeoutSumYuan）',
+  fastBlock.length > 0 && /twTotalLabel/.test(fastBlock) && /takeoutSumYuan/.test(fastBlock));
+check('A21 快速块内给出已填平台数（takeoutFilledText）', /takeoutFilledText/.test(fastBlock));
+check('A21 快速块内不复用分项标签 / 配平占位', !/twSumLabel/.test(fastBlock) && !/twRecPh/.test(fastBlock));
+check('A21 syncTakeoutSum 按模式取数（快速读各平台 amountYuan）',
+  /syncTakeoutSum\(\) \{[\s\S]{0,900}?takeoutMode === 'fast'[\s\S]{0,300}?amountYuan/.test(inputJs));
+check('A21 平台金额变化即重算合计（updateRow 内联动）',
+  /if \(kind === 'income' && g\.category === 'takeaway'\) this\.syncTakeoutSum\(\);/.test(inputJs));
+check('A21 载入后无条件算合计（不再仅分项模式才算）',
+  /this\.syncTakeoutSum\(\);\r?\n\s+if \(this\.data\.takeoutMode === 'detail'\) this\.runReconcile\(\);/.test(inputJs));
+check('A21 takeoutFilledText 已在 data 声明', /takeoutFilledText: ''/.test(inputJs));
+
+console.log('===== A22 · 快速框占位文案不串线（R119）=====');
+check('A22 terms.fastPh 非空且不等同 recPh', twT.fastPh.length > 0 && twT.fastPh !== twT.recPh);
+check('A22 快速金额框占位走 twFastPh', /placeholder="\{\{t\.twFastPh\}\}" data-kind="income"/.test(inputWxml));
+check('A22 pasteFillValue 已从纯模块导出', typeof pasteFillValue === 'function');
+check('A22 页面映射了 twFastPh / twTotalLabel / twTotalAutoHint',
+  /twFastPh: TERMS\.ledger\.takeawayMode\.fastPh/.test(inputJs)
+  && /twTotalLabel: TERMS\.ledger\.takeawayMode\.totalLabel/.test(inputJs)
+  && /twTotalAutoHint: TERMS\.ledger\.takeawayMode\.totalAutoHint/.test(inputJs));
+
+console.log('===== A23 · 已填平台数文案（M ≤ 1 不显示，避免「1 / 1」噪音）=====');
+check('A23 单平台（整类总额）不显示该句', filledLabel('已填 {n} / {m} 个平台', 1, 1) === '');
+check('A23 0 个平台行同样不显示', filledLabel('已填 {n} / {m} 个平台', 0, 0) === '');
+check('A23 双平台：1/2 正常显示', filledLabel('已填 {n} / {m} 个平台', 1, 2) === '已填 1 / 2 个平台');
+check('A23 四平台：3/4 正常显示', filledLabel('已填 {n} / {m} 个平台', 3, 4) === '已填 3 / 4 个平台');
+check('A23 模板缺参不抛异常（回落到空串替换）', typeof filledLabel('', 1, 3) === 'string');
+check('A23 页面改用 filledLabel 单源', /takeoutFilledText: filledLabel\(/.test(inputJs));
 
 console.log(`\n==== R85 外卖段自测：${pass} 通过 / ${failN} 失败 ====`);
 process.exit(failN === 0 ? 0 : 1);

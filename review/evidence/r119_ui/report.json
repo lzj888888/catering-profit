@@ -1,0 +1,59 @@
+[
+ {
+  "tag": "init",
+  "attempt": 1,
+  "screenshot": "ok",
+  "route": "pages/month/input",
+  "month": "2026-09",
+  "loading": false,
+  "mode": "fast",
+  "sumField": "2500.00",
+  "filledField": "",
+  "platforms": [
+   {
+    "name": "",
+    "amt": "2500.00"
+   }
+  ],
+  "detailRows": [
+   {
+    "p": "美团外卖",
+    "sub": ""
+   },
+   {
+    "p": "淘宝闪购",
+    "sub": ""
+   },
+   {
+    "p": "京东外卖",
+    "sub": ""
+   },
+   {
+    "p": "其他外卖",
+    "sub": ""
+   }
+  ],
+  "readOnly": false
+ },
+ {
+  "tag": "interact",
+  "attempt": 2,
+  "screenshot": "ok",
+  "A_全填(1111/2222/3333/4444)": {
+   "sum": "11110.00",
+   "filled": "已填 4 / 4 个平台"
+  },
+  "B_只填两个(1000.00/2345.67)": {
+   "sum": "3345.67",
+   "filled": "已填 2 / 4 个平台"
+  },
+  "C_全填0(合法边界)": {
+   "sum": "0.00",
+   "filled": "已填 0 / 4 个平台"
+  },
+  "D_粘0与数混合(0/1234.56)": {
+   "sum": "1234.56",
+   "filled": "已填 1 / 4 个平台"
+  }
+ }
+]

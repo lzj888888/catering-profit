@@ -292,6 +292,11 @@ const TERMS = {
       detailHint: '每个平台填 3 个数，小计自动算出、不用手填。',
       sumLabel: '小计',
       sumAutoHint: '由三项相加自动算出',
+      // R119：快速录入汇总 —— 各平台填完后在下方给「合计 + 已填平台数」。合计只回显、不写入金额。
+      totalLabel: '各平台合计',
+      totalAutoHint: '各平台金额自动相加 = 当月外卖收入；快速录入不做账单核对（拆不出活动补贴），要核对请切「分项录入」。',
+      filledTpl: '已填 {n} / {m} 个平台',
+      fastPh: '商品总价+打包费+活动补贴（元）',
       goodsField: '商品总价',
       packField: '打包费',
       subsidyField: '商家活动补贴',

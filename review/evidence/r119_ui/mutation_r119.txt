@@ -1,0 +1,20 @@
+=== R119 双向变异回灌（7 组）===
+  [PASS] M1 恢复修复前 wxml（真历史 e1056b2^：按钮与金额框同层）                 rc=1 实得=RED 期望=RED 还原字节相等=True
+        · pages/month/input.wxml:141  input=val-input  button=btn-small paste-btn
+        · pages/month/input.wxml:149  input=val-input  button=btn-small paste-btn
+        · pages/month/input.wxml:156  input=val-input  button=btn-small paste-btn
+  [PASS] M2 拆掉 head、粘贴键退回与金额框同层（真结构退化）                        rc=1 实得=RED 期望=RED 还原字节相等=True
+        · pages/month/input.wxml:148  input=val-input  button=btn-small paste-btn
+        ❌ A1 全仓 val-input 与 button 同父的块数 = 0  (1 处)
+        ❌ A2-② 每个字段都有 head（两行结构没被合并回一行）  (head=2 / field=3)
+  [PASS] M3 另页引入 val-input+button 同层（全仓面有效性）                  rc=1 实得=RED 期望=RED 还原字节相等=True
+        · pages/month/inventory.wxml:4  input=val-input  button=btn-small
+        ❌ A1 全仓 val-input 与 button 同父的块数 = 0  (1 处)
+  [PASS] M4 注释里写反例结构（应放行）                                     rc=0 实得=GREEN 期望=GREEN 还原字节相等=True
+  [PASS] M5 无关注释改动（应放行）                                       rc=0 实得=GREEN 期望=GREEN 还原字节相等=True
+  [PASS] M6 真实页面加「细项名 + 删除键」同层（合法，不得误杀）                       rc=0 实得=GREEN 期望=GREEN 还原字节相等=True
+  [PASS] M7 前提阈值抬到 100（证明 A3 护栏非恒真）                           rc=1 实得=RED 期望=RED 还原字节相等=True
+        ❌ A3-① val-input 实例数  (32 个（下界 100）)
+
+异常组数 = 0 / 7
+还原后复跑：rc=0  ['==== 金额框同行守卫：15 通过 / 0 失败 ====']

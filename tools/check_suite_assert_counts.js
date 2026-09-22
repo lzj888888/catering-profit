@@ -51,6 +51,9 @@ const CASES = [
   // 坑⑱ 元守卫（round87）：SUITES 覆盖守卫自身**不在受守集合内** ⇒ 它 round86 断言数 8→10 无人校验，
   //   而它恰恰是「防判据漏挂 SUITES」的元守卫（第 4 例）；删它一条断言就少守一类漏挂 ⇒ 纳入下界保护。
   { key: 'check_suite_coverage', rel: 'tools/check_suite_coverage.js' },
+  // R119 扩面（round92）：金额框同行守卫同批纳入 —— 它守「金额框被同层元素挤窄」这个已复发三次的布局病，
+  //   而 A3 的下界护栏与 A4 的正负样本正是它的「非恒真」证明；断言数不受守则改小下界同样无人知。
+  { key: 'check_amount_input_row', rel: 'tools/check_amount_input_row.js' },
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

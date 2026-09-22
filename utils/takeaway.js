@@ -132,6 +132,33 @@ function firstNumber(line) {
   return Number.isFinite(v) ? v : null;
 }
 
+/**
+ * 粘贴提取结果 → 金额框显示值（元，两位小数字符串）。
+ * 🔴 R119 修复：原页面写 `res.sum ? res.sum.toFixed(2) : ''` —— 提取到 **0** 时被当成"空"，
+ *   金额框什么都不显示，用户以为没粘上（而 0 是合法金额：零打包费 / 零补贴都要能填）。
+ *   判据改为「有没有提取到数字」而不是「数字非零」。
+ * @param {{sum:number,numbers:number[]}} res extractPaste 的返回值
+ * @returns {string} '' = 确实没提取到数字；否则两位小数（含 '0.00'）
+ */
+function pasteFillValue(res) {
+  if (!res || !Array.isArray(res.numbers) || res.numbers.length === 0) return '';
+  const v = Number(res.sum);
+  return Number.isFinite(v) ? v.toFixed(2) : '';
+}
+
+/**
+ * 「已填 N / M 个平台」串。
+ * ⚠️ M ≤ 1 时返回 '' —— 真机实测：外卖组在「只填整类总额」的常态下**只有 1 行**，
+ *   此时显示「已填 1 / 1 个平台」纯属噪音；这句话只在**多平台**场景才有信息量。
+ * @param {string} tpl i18n 模板（含 {n} / {m}）
+ * @param {number} filled 已填平台数
+ * @param {number} total 平台行总数
+ */
+function filledLabel(tpl, filled, total) {
+  if (!(Number(total) > 1)) return '';
+  return String(tpl || '').replace('{n}', String(filled)).replace('{m}', String(total));
+}
+
 // ===================== 费用侧自动带出（A.11.3 sort 30） =====================
 
 /**
@@ -197,6 +224,6 @@ function reconcile(p) {
 
 module.exports = {
   pickTakeawayMode, takeawayModeKey, snapshotDetail, restoreDetail, subtotalOf,
-  extractPaste, firstNumber, stripNonMoney,
+  extractPaste, firstNumber, stripNonMoney, pasteFillValue, filledLabel,
   subsidyTotal, reconcile, RECONCILE_THRESHOLD,
 };
