@@ -212,3 +212,46 @@
 - `tools/selftest_r85.js`：+A24 段 13 条、头注 A1~A24、解构引 `pasteFilledFromTotal`、1 条过期断言改语义判据
 - `tools/check_suite_assert_counts.js`：受守集合 +1
 - `specs/dev-specs/★知识存储点_2026-09-10.md`：§1.1 入口 93、套件数会漂行 93、演进链 +93 节点、断言数声明行（`selftest_r85`=100 + `check_takeaway_paste_cases`=80 + 十者→十一者）
+
+---
+
+## 11 外卖段截图（模拟器真图）+ 工具侧两处更正
+
+**取图方式（可复现）**
+1. `cli.bat auto --project <repo> --auto-port 9420 --trust-project`（实测 rc=0，9420 随即可连）
+2. `miniprogram-automator@0.12.1`：`connect({ wsEndpoint: 'ws://127.0.0.1:9420' })`
+3. 位置探测（只读）：`wx.createSelectorQuery().selectAll('.dm-sec').fields({rect:true,size:true}, cb).exec()`
+   —— 未滚动时 `rect.top` 即**文档 y**：堂食段 **256** / **外卖段 1225**（模拟器视口 390×753）
+   ⚠️ `selectAll(...).boundingBox()` **不是函数**（`boundingBox` 只挂单节点 `select()`）⇒ 必须用 `fields({rect:true,size:true})`
+4. 滚到外卖段：`mp.evaluate(y => wx.pageScrollTo({scrollTop:y,duration:0}), 1135~1180)`
+5. 截图：`mp.screenshot({ path })` ⇒ **336×725 模拟器原生分辨率**
+
+**产出图（`review/evidence/r120_paste/screenshots/`）**
+| 文件 | 内容 | 用途 |
+|---|---|---|
+| `tw_fast_simulator.png` | 外卖段·**快速模式**（口径句 + 每平台一个数 + 各平台合计 2500.00） | 主交付图 |
+| `tw_detail_simulator.png` | 外卖段·**分项模式**（商品总价/打包费/活动补贴 三行，各带**粘贴**按钮 + 小计） | 本轮修复的界面载体 |
+| `tw_paste_panel_simulator.png` | **粘贴面板**（「粘贴账单金额」/ 说明 / 取消 / 提取并填入 / 原始内容已存草稿可回溯） | R120 用户可见面 |
+| `tw_fast_window_1875x1034.png` | 同一时刻的**真 IDE 窗口**截图 | 证「确实跑在 IDE 模拟器里」 |
+| `control_scrolled_past_window.png`、`control_more_window.png` | 滚过外卖段之后（其他业务收入 / 费用） | 对照，证明 y=1180 那张确为外卖段 |
+| `page_top_simulator.png` | 页首（收入 / 堂食段） | 位置基准 |
+| `shot_detail.log` | 切模式→滚页→截图→开面板→截图→复原 的逐步回执（**零超时**） | 写操作未触发超时的机器证据 |
+
+**工具侧两处更正（本轮实测推翻 / 限定）**
+1. 🔴 **「IDE GUI 不在」是上轮的误判**：`tasklist | grep -ci wechatdevtools` 为 0 时 GUI **其实一直在**
+   （枚举窗口命中 `Chrome_WidgetWin_1` / 1875×1034）。据错误前提得出的"三条起 GUI 路全灭 ⇒ 无解"**作废**
+   （那三条命令确实跑过，但 GUI 已在、重复启动当然退）。⇒ 判据改用**窗口枚举**，已同步 `PITFALLS §2` 与 `miniprogram-page-review` skill。
+   ⚠️ **IDE 窗口标题 = `<文件名> - <项目名> - WeChat Web Devtools`，而 `win_gui.py list` 只回显项目名那一段**
+   ⇒ `win_gui.py shot --title` 必须用 `catering-profit`；用 `WeChat Web Devtools` 会 `ERROR: window not found`。
+   ⚠️ hwnd **每轮会变**（实测 1775172 → 1840708）⇒ 每次重新枚举。
+2. ⚠️ **「写必死」要限定作用域**：会超时的只有 automator 的**元素 / 页面 API**（`element.tap()` / `page.setData()`）；
+   在 `mp.evaluate` 里直接操作**页面实例**（`p.onPickTakeoutMode(...)` / `p.setData({...})` / `wx.pageScrollTo(...)`）
+   **实测零超时** —— 本轮六连写全绿（见 `shot_detail.log`），且是走**页面自己的方法**（不绕过业务逻辑）。
+   同轮另测得：`pageScrollTo` 后 `sleep(1.5s)` 再 `screenshot()` **拿到的是新帧**（与真窗口截图互证）⇒
+   此前"写后恒给旧帧"的记载**不是通则**，应改为「需实测 + 与真窗口截图对照」，**不据此写"页面滚不动"这类假缺陷**。
+   两条均已回写 `miniprogram-page-review/SKILL.md`。
+
+**一处坦白**：本节的两处工具侧更正是我**上一轮自己写错**的结论（并已污染 PITFALLS/skill）。
+根因与本轮 R120 同型 —— **用了一个不成立的判据（用 `tasklist` 判窗口在不在）就去下结论**，
+且当时 PITFALLS 里**已有**正确判据（`enum_windows()` 那条）却先读了错的一半。
+⇒ 已把「写结论前先在本仓 PITFALLS/skill 里 grep 同一主题」列为动手前的固定动作。

@@ -1,0 +1,8 @@
+WRITE pickTakeoutMode(detail) -> {"mode":"detail","detailRows":4}
+dm-sec tops = [256,1225]
+scroll target y = 1135
+WRITE pageScrollTo(detail) -> undefined
+shot A ok
+WRITE openPaste -> {"open":true,"for":"goods:0"}
+shot B ok
+WRITE restore -> {"mode":"fast","open":false}
