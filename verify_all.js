@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：93 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：94 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -35,6 +35,14 @@
 //         前两例（R85 firstNumber 截断 / 账期列被当金额）都只改了**一处正则**、所以第三例照旧复发
 //         ⇒ 本轮把**账单形态**钉成用例表（tools/paste_cases.js 单源 28 条）并常驻双向校验：
 //         有明细 ⇒ 只按明细求和（合计必须排除，两种形态都要排除）；只有合计 ⇒ 兜底填入并换提示）
+//       + 费用项清单口径守卫（tools/check_expense_item_seed.js，R121：费用项清单散在**四处副本**
+//         —— 云函数种子 `SEED_EXPENSE_ITEMS` / 原型副本 `prototype/init_db.js` / 前端单源
+//         `terms.js::ledger.expense` / 术语副本（后者已由 batch8b K11 守逐字一致），另有规范 §A.2
+//         人读面。收入侧 2026-09 已被 R110 守上，**费用侧此前零守卫**（R110 的扫描面只解析
+//         SEED_INCOME_ITEMS）⇒ round97 按规范 A.2 给营销段补 3 项时才暴露该洞：任一处副本被单独
+//         改动都不会有套件转红。判据＝云函数种子 ≡ 原型副本（key|名|类|sort 逐项保序）+
+//         前端 terms.expense ≡ 种子（逐 category、项名、保序）+ 规范 §A.2 营销表 ≡ 代码 marketing
+//         （集合双向）+ 下界护栏（总项数 ≥ 20 / 每 category ≥ 2））
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -285,6 +293,9 @@ const SUITES = [
   //   用例表单源 = tools/paste_cases.js（28 条 / A~E 五组）；守卫与 selftest_r85 A24 段跑同一张表。
   //   含 A6 前提证明：B/C 组用例对**旧实现**必须转红 ⇒ 证明本表不是恒真（变异 9 组零异常，见 review/evidence）。
   ['takeaway-paste-cases', 'tools/check_takeaway_paste_cases.js'],
+  // ===== R121 费用项清单口径守卫（同族病第 25 例，round97）：见头部注释同名条目。
+  //   背景：费用项清单四处副本此前**零守卫**（收入侧 R110 守的是 SEED_INCOME_ITEMS，不看费用侧）。
+  ['expense-item-seed', 'tools/check_expense_item_seed.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

@@ -70,6 +70,11 @@
 .paste-sheet { width: 100%; background: #fff; border-radius: 24rpx 24rpx 0 0; padding: 32rpx 24rpx calc(env(safe-area-inset-bottom) + 32rpx); box-sizing: border-box; }
 .paste-title { font-size: 32rpx; font-weight: 700; margin-bottom: 16rpx; }
 .paste-area { width: 100%; min-height: 200rpx; background: #f7f8fa; border-radius: 12rpx; padding: 16rpx; box-sizing: border-box; font-size: 28rpx; }
+
+/* T4b（round97）：预设细项选择面板 —— 复用 paste-mask / paste-sheet 外壳，只加清单本身 */
+.preset-list { display: flex; flex-wrap: wrap; gap: 16rpx; margin: 8rpx 0 4rpx; }
+.preset-item { padding: 16rpx 24rpx; background: #f2f4f8; border-radius: 12rpx; font-size: 28rpx; color: #1e3a5f; }
+.preset-item.custom { width: 100%; text-align: center; background: #eaf0f8; }
 .paste-ops { display: flex; justify-content: flex-end; gap: 16rpx; margin-top: 16rpx; }
 .paste-ops .btn-small { margin-top: 0; }
 .paste-ops .primary-btn { background: linear-gradient(135deg, #2a4e7c 0%, #162c49 100%); color: #fff; }

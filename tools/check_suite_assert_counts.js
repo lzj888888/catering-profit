@@ -58,6 +58,9 @@ const CASES = [
   //   与 A6 前提证明正是「非恒真」的凭据；断言数不受守则「删掉 A0 一道护栏 + 从表里删 5 条用例」
   //   就等于把守卫悄悄改小，而门禁照旧判绿（与 round73 立本守卫的根因同族）。
   { key: 'check_takeaway_paste_cases', rel: 'tools/check_takeaway_paste_cases.js' },
+  // R121 扩面（round97）：费用项清单守卫同批纳入 —— 它的 E5 下界护栏（总项数 ≥20 / 每类 ≥2）与
+  //   E6 前提证明正是「非恒真」的凭据；断言数不受守则「删掉下界 + 删一处副本比对」同样静默通过。
+  { key: 'check_expense_item_seed', rel: 'tools/check_expense_item_seed.js' },
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

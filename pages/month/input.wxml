@@ -135,6 +135,8 @@
         </view>
         <view class="hint">{{takeoutFilledText}}</view>
         <view class="hint">{{t.twTotalAutoHint}}</view>
+        <!-- T3′（round97）：快速模式轻量自查 —— 零依赖判据（不看补贴，只看营销段是否记了佣金/配送费） -->
+        <view class="tw-rec-msg" wx:if="{{twSelfCheck}}">{{twSelfCheck}}</view>
       </block>
 
       <!-- 分项录入：每平台 3 框（商品总价 / 打包费 / 商家活动补贴），小计自动 -->
@@ -260,7 +262,7 @@
     </view>
 
     <view class="group-ops" wx:if="{{g.expanded}}">
-      <button class="btn-small ghost" data-kind="expense" data-gidx="{{gi}}" catchtap="addRow">{{t.addSubItem}}</button>
+      <button class="btn-small ghost" data-kind="expense" data-gidx="{{gi}}" catchtap="onOpenPresetPick">{{t.addSubItem}}</button>
     </view>
   </view>
 
@@ -327,6 +329,22 @@
         <button class="btn-small primary-btn" catchtap="onPasteExtract">{{t.twPasteExtract}}</button>
       </view>
       <view class="hint">{{t.twPasteRawKept}}</view>
+    </view>
+  </view>
+
+  <!-- T4b · 预设细项选择面板（费用段「+ 添加细项」先弹此项；清单 = 该类预设项 ∖ 已添加项） -->
+  <view class="paste-mask" wx:if="{{presetPick.open}}" catchtap="closePresetPick">
+    <view class="paste-sheet" catchtap="">
+      <view class="paste-title">{{t.presetPickTitle}}</view>
+      <view class="preset-list">
+        <view class="preset-item" wx:for="{{presetPick.list}}" wx:key="*this"
+          data-name="{{item}}" catchtap="onPickPreset">{{item}}</view>
+        <view class="preset-item custom" data-name="" catchtap="onPickPreset">{{t.presetPickCustom}}</view>
+      </view>
+      <view class="hint" wx:if="{{presetPick.list.length === 0}}">{{t.presetPickEmpty}}</view>
+      <view class="paste-ops">
+        <button class="btn-small ghost" catchtap="closePresetPick">{{t.twPasteCancel}}</button>
+      </view>
     </view>
   </view>
 </view>

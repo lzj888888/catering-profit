@@ -8,7 +8,7 @@
  *   §A.11 里有两处**明文声称"严格取自代码单源"**：
  *     · A.11.2 的 4 个平台名与顺序 ← 声明取自 `miniprogram/i18n/terms.js::ledger.income`
  *       的 `category: 'takeaway'` 块 items；
- *     · A.11.3 的 6 个营销项 key / 顺序 / 显示名 ← 声明取自
+ *     · A.11.3 的 9 个营销项 key / 顺序 / 显示名 ← 声明取自
  *       `cloudfunctions/initDb/collections.js::SEED_EXPENSE_ITEMS` 的 `category: 'marketing'` 项。
  *   ⇒ 这等于**新增两处"文档抄代码"的派生面**。本仓同族病史（截至 round82 已 20 例）反复证明：
  *     派生面**没有守卫就会漂**，且漂了无人知晓（陈述面 ≠ 实然）。
@@ -51,7 +51,7 @@ const CF_REL = 'cloudfunctions/initDb/collections.js';
 // 契约值：规范 A.11 明文规定的数量（设计决定，不是派生值）。
 // 改设计时须同时改 规范正文 + 本常量 + SUITES 描述 —— 这是**有意**的人工面。
 const WANT_PLATFORMS = 4;
-const WANT_MARKETING = 6;
+const WANT_MARKETING = 9;
 
 let pass = 0;
 let fail = 0;
@@ -219,10 +219,10 @@ if (specMk && seedMk) {
     if (s.key !== c.key) badKey.push(`[${i + 1}] 规范「${s.key || '缺'}」vs 代码「${c.key || '缺'}」`);
     if (s.name !== c.name) badName.push(`[${i + 1}] 规范「${s.name || '缺'}」vs 代码「${c.name || '缺'}」`);
   }
-  if (badKey.length === 0) ok('W2-①', `6 个 item_key 与顺序逐项一致`);
+  if (badKey.length === 0) ok('W2-①', `${specMk.length} 个 item_key 与顺序逐项一致`);
   else no('W2-①', `item_key 或顺序漂移：${badKey.join('；')}`);
 
-  if (badName.length === 0) ok('W2-②', `6 个显示名逐项一致`);
+  if (badName.length === 0) ok('W2-②', `${specMk.length} 个显示名逐项一致`);
   else no('W2-②', `显示名漂移（以代码 item_name 为准）：${badName.join('；')}`);
 } else {
   no('W2-①', `无法比对 item_key（规范或代码单源解析失败，见 W3）`);

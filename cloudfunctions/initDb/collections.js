@@ -170,6 +170,11 @@ const SEED_EXPENSE_ITEMS = [
   { item_key: 'exp_mkt_takeaway_delivsub', item_name: '外卖配送补贴', category: 'marketing', sort_order: 40, enabled: true, is_system: true },
   { item_key: 'exp_mkt_takeaway_promo', item_name: '外卖推广费',     category: 'marketing', sort_order: 50, enabled: true, is_system: true },
   { item_key: 'exp_mkt_groupon_com',    item_name: '团购平台佣金',   category: 'marketing', sort_order: 60, enabled: true, is_system: true },
+  // 2026-09-22（round97）按规范 A.2 补齐营销段 3 项（此前 6 项 / 规范列 9 项）：
+  //   线上广告推广 / 宣传物料印刷 / 其他营销费 —— 让「店铺自己做的活动」（到店投流、地推物料）有落点。
+  { item_key: 'exp_mkt_online_ad',      item_name: '线上广告推广',   category: 'marketing', sort_order: 70, enabled: true, is_system: true },
+  { item_key: 'exp_mkt_print_material', item_name: '宣传物料印刷',   category: 'marketing', sort_order: 80, enabled: true, is_system: true },
+  { item_key: 'exp_mkt_misc',           item_name: '其他营销费',     category: 'marketing', sort_order: 90, enabled: true, is_system: true },
   // 其他
   { item_key: 'exp_other_accounting',   item_name: '代账费',       category: 'other',     sort_order: 10, enabled: true, is_system: true },
   { item_key: 'exp_other_misc',         item_name: '其他杂项',     category: 'other',     sort_order: 20, enabled: true, is_system: true },

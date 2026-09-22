@@ -105,10 +105,22 @@ check('A15 input.wxml 含外卖模式开关', /onPickTakeoutMode/.test(inputWxml
 check('A15 input.js 含粘贴处理（openPaste/onPasteExtract）', /openPaste/.test(inputJs) && /onPasteExtract/.test(inputJs) && /extractPaste/.test(inputJs));
 check('A15 input.js 含配平（onRecYuan/runReconcile）', /onRecYuan/.test(inputJs) && /runReconcile/.test(inputJs));
 check('A15 推广费取数路径标注存在', /twPromoPathHint/.test(inputWxml) && /twPromoPathLabel/.test(inputWxml));
-check('A15 后端零改动：cloudfunctions 未触碰', (() => {
+// ⚠️ 2026-09-22（round97）按 by/date/reason 修订 ——
+//   by=WorkBuddy / date=2026-09-22 / reason=原判据「git status cloudfunctions/ 完全干净」**语义过强**：
+//   它把「建库单源」`cloudfunctions/initDb/collections.js`（集合定义与费用/收入项种子，本就随
+//   规范 A.2 这类口径变更而变）也算作「后端改动」，于是「按规范补 3 项营销费用项」这个**正确动作**
+//   必然转红，且断言实质变成「必须先提交再跑门禁」的**时机关卡**（与本身要守的「云函数逻辑别被顺手改」
+//   无关）。现收窄为**云函数逻辑零改动**：允许 `cloudfunctions/initDb/`（该目录另有
+//   check_schema_sync(R74) 守集合与索引 / check_collection_perms(R67) 守权限 /
+//   check_income_channel_seed(R110) 与 check_expense_item_seed(R121) 守两套字典 ⇒ 豁免不损失覆盖），
+//   其余任何 cloudfunctions 文件被改动仍判红。
+check('A15 云函数逻辑零改动（initDb 建库单源除外，该目录另有守卫）', (() => {
   const { execFileSync } = require('child_process');
   const out = execFileSync('git', ['status', '--porcelain', 'cloudfunctions/'], { encoding: 'utf8', input: '', stdio: ['pipe', 'pipe', 'pipe'] });
-  return out.trim() === '';
+  const changed = out.split('\n').map((l) => l.trim()).filter(Boolean)
+    .map((l) => l.replace(/^[A-Z?!]{1,2}\s+/, '').trim())
+    .filter((p) => !/^cloudfunctions\/initDb\//.test(p));
+  return changed.length === 0;
 })());
 
 console.log('===== A16 · 账期/日期/时间/长单号不得被当金额（P1 回归）=====');

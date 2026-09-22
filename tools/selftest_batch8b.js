@@ -324,6 +324,29 @@ check('G11d 预设行名以纯文本渲染（不可编辑）',
   (dinWxml.match(/class="sub-item-fixed" wx:elif="\{\{g\.expanded\}\}"/g) || []).length === 2);
 
 console.log('');
+console.log('');
+console.log('');
+console.log('===== A5 · 快速模式轻量自查（T3\u2032，round97）=====');
+// 背景修正：快速模式**没有补贴数据源**（只填每平台一个总额）⇒ A.11.4 配平等式硬套会稳定误报；
+//   故改为零依赖判据（营销段三个角色是否全空）。本段锁住「它不读分项快照」这件事。
+const a5Js = read('pages/month/input.js');
+const a5Wxml = read('pages/month/input.wxml');
+const a5Body = (a5Js.match(/syncTakeoutSelfCheck\(\) \{[\s\S]{0,1400}?\n  \},/) || [''])[0];
+check('A5-① 自查文案在位且非空', /selfCheckMiss: '[^']{10,}'/.test(terms));
+check('A5-② 方法在位且接线 ≥3 处（定义 + 合计变化 + 费用行变化）', /syncTakeoutSelfCheck\s*\(/.test(a5Js) && (a5Js.match(/syncTakeoutSelfCheck\(\)/g) || []).length >= 3);
+check('A5-③ 页面渲染 + data.t 映射（页面零硬编码）', /\{\{twSelfCheck\}\}/.test(a5Wxml) && /twSelfCheckMiss: TERMS\.ledger\.takeawayMode\.selfCheckMiss/.test(a5Js));
+check('A5-④ 判据不读分项快照/补贴合计（方法体非空且零依赖）', a5Body.length > 0 && !/takeoutDetailRows|subsidyTotal/.test(a5Body));
+console.log('');
+console.log('===== A4 · 费用细项「预设项选择」入口（T4b，round97）=====');
+// 背景：预设项清单（含 round97 新增的营销 3 项）若没有「可选入口」，用户只能手打项名 ⇒ 补了也看不见。
+const a4Js = read('pages/month/input.js');
+const a4Wxml = read('pages/month/input.wxml');
+check('A4-① 三条文案均在位且非空', /presetPickTitle: '[^']{2,}'/.test(terms) && /presetPickCustom: '[^']{2,}'/.test(terms) && /presetPickEmpty: '[^']{2,}'/.test(terms));
+check('A4-② 费用侧「+ 添加细项」接预设选择入口', /data-kind="expense"[^>]*catchtap="onOpenPresetPick"/.test(a4Wxml));
+check('A4-③ 三个处理函数均在位（打开 / 选中 / 加行）', /onOpenPresetPick\s*\(/.test(a4Js) && /onPickPreset\s*\(/.test(a4Js) && /addSubRow\s*\(/.test(a4Js));
+check('A4-④ 弹层渲染文案与清单（页面零硬编码）', /\{\{t\.presetPickTitle\}\}/.test(a4Wxml) && /wx:for="\{\{presetPick\.list\}\}"/.test(a4Wxml) && /\{\{t\.presetPickCustom\}\}/.test(a4Wxml));
+check('A4-⑤ 三条文案已在 data.t 里映射（否则 wxml 取到空串）', /presetPickTitle: TERMS\.ledger\.presetPickTitle/.test(a4Js) && /presetPickCustom: TERMS\.ledger\.presetPickCustom/.test(a4Js) && /presetPickEmpty: TERMS\.ledger\.presetPickEmpty/.test(a4Js));
+console.log('');
 console.log('===== 门禁预检 =====');
 check('K11 双副本逐字一致', terms === termsSpec);
 check('建库单源同步（种子在双源）', read("cloudfunctions/initDb/collections.js").includes('SEED_INCOME_ITEMS') && read("specs/dev-specs/prototype/init_db.js").includes('SEED_EXPENSE_ITEMS'));

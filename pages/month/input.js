@@ -30,6 +30,10 @@ Page({
       subItem: TERMS.ledger.subItem,
       subItemPh: TERMS.ledger.subItemPh,
       addSubItem: TERMS.ledger.addSubItem,
+      // T4b（round97）：预设项选择面板文案（页面零硬编码 ⇒ 必须在此映射，否则 wxml 取到空串）
+      presetPickTitle: TERMS.ledger.presetPickTitle,
+      presetPickCustom: TERMS.ledger.presetPickCustom,
+      presetPickEmpty: TERMS.ledger.presetPickEmpty,
       delSubItem: TERMS.ledger.delSubItem,
       amount: TERMS.ledger.amount,
       incomeHint: TERMS.ledger.incomeHint,   // E1
@@ -101,6 +105,7 @@ Page({
       twPasteAreaPh: TERMS.ledger.takeawayMode.pasteAreaPh,
       twPasteExtract: TERMS.ledger.takeawayMode.pasteExtract,
       twPasteCancel: TERMS.ledger.takeawayMode.pasteCancel,
+      twSelfCheckMiss: TERMS.ledger.takeawayMode.selfCheckMiss,
       twPasteConfirmTitle: TERMS.ledger.takeawayMode.pasteConfirmTitle,
       twPasteConfirmBody: TERMS.ledger.takeawayMode.pasteConfirmBody,
       twPasteDone: TERMS.ledger.takeawayMode.pasteDone,
@@ -141,6 +146,9 @@ Page({
     twPasteFor: '',            // 当前粘贴目标（'goods'|'pack'|'subsidy'|'platform' + idx）
     twPasteText: '',           // 粘贴区文本（textarea v-model）
     twPasteOpen: false,        // 粘贴面板是否打开
+    // T4b（round97）：费用段「+ 添加细项」的预设项选择面板（清单每次打开现算 = 该类预设 ∖ 已有行名）
+    presetPick: { open: false, kind: '', gi: 0, list: [] },
+    twSelfCheck: '',           // T3′（round97）：快速模式轻量自查提示（预计算，WXML 直接取）
     twRecYuan: '',             // 账单商家应收款（客户手填，选填）
     twRecText: '',             // 配平提示文案（软提示；不阻断、不入库）
     directConsumeYuan: '',
@@ -376,6 +384,45 @@ Page({
     this.syncDineSum();
     // R119：外卖收入（收入侧 takeaway 组）在快速模式下就在这里改 → 合计必须跟着重算
     if (kind === 'income' && g.category === 'takeaway') this.syncTakeoutSum();
+    // T3′：费用侧营销行被改 → 轻量自查提示要跟着消/显（幂等，无变化不 setData）
+    if (kind === 'expense') this.syncTakeoutSelfCheck();
+  },
+  // T4b（round97）：费用段「+ 添加细项」→ 先弹该类**尚未添加**的预设项清单。
+  //   ⚠️ 本轮只作用于费用侧（data-kind="expense"）；收入侧仍走 addRow（空白行）—— 范围刻意限定。
+  //   ⚠️ 清单**每次打开现算**（= g.items 去掉已有行名），不预存 data ⇒ 不会与 rows 状态不一致。
+  onOpenPresetPick(e) {
+    const kind = e.currentTarget.dataset.kind;
+    const gi = Number(e.currentTarget.dataset.gidx);
+    const key = kind === 'income' ? 'incomeGroups' : 'expenseGroups';
+    const g = (this.data[key] || [])[gi];
+    if (!g) return;
+    const used = (g.rows || []).map((r) => (r.subItem || '').trim()).filter(Boolean);
+    const list = (g.items || []).filter((n) => used.indexOf(n) < 0);
+    this.setData({ presetPick: { open: true, kind, gi, list } });
+  },
+  closePresetPick() {
+    this.setData({ 'presetPick.open': false });
+  },
+  // 选中预设项（name 非空）或末位「自定义」（name 空 ⇒ 空白行，行为与旧 addRow 一致）
+  onPickPreset(e) {
+    const pp = this.data.presetPick || {};
+    const name = e.currentTarget.dataset.name || '';
+    this.setData({ 'presetPick.open': false });
+    this.addSubRow(pp.kind, pp.gi, name);
+  },
+  // 加一行细项（name 空 = 自定义空白行）；其余与 addRow 完全同构，避免两条装配路径分叉
+  addSubRow(kind, gidx, name) {
+    const key = kind === 'income' ? 'incomeGroups' : 'expenseGroups';
+    const groups = this.data[key].slice();
+    const g = Object.assign({}, groups[Number(gidx)]);
+    // custom:true = 「刚点添加、还没填」的空行，装配时要放行（否则点了没反应）
+    g.rows = g.rows.concat([{ subItem: name || '', amountYuan: '', custom: !name }]);
+    g.rows = this.decorateRows(g, g.rows);
+    g.showRows = g.rows;
+    groups[Number(gidx)] = g;
+    this.setData({ [key]: groups });
+    this.syncDineSum();
+    if (kind === 'income' && g.category === 'takeaway') this.syncTakeoutSum();
   },
   addRow(e) {
     const { kind, gidx } = e.currentTarget.dataset;
@@ -583,6 +630,7 @@ Page({
       takeoutFilledText: filledLabel(t.filledTpl || '已填 {n} / {m} 个平台', filled, platforms.length),
     });
     this.syncSubsidyCarry();   // 带出联动：活动补贴合计 → 费用侧（仅分项模式生效）
+    this.syncTakeoutSelfCheck();   // T3′：外卖收入变了 → 重算轻量自查提示
   },
 
   // ===== 模式切换（严格互斥；快照恢复防 round-trip 丢值）=====
@@ -754,6 +802,26 @@ Page({
     g.rows = rows2;
     groups[mk] = g;
     this.setData({ expenseGroups: groups });
+  },
+
+  // T3′（round97）：快速模式的轻量自查 —— 零依赖判据（**不读分项快照、不看补贴**）。
+  //   判据：外卖收入合计 > 0 且营销段三个角色（佣金 / 配送服务费 / 配送补贴）全空
+  //   ⇒ 提示「账单这两项记得记上」（直击「不要填少」这个诉求）。
+  //   ⚠️ 角色名只取自 terms 单源 reconcileRoles（页面零硬编码）；幂等：值未变则不 setData。
+  syncTakeoutSelfCheck() {
+    const tw = TERMS.ledger.takeawayMode || {};
+    const roles = tw.reconcileRoles || {};
+    const mk = (this.data.expenseGroups || []).find((x) => x.category === 'marketing');
+    const filled = (name) => {
+      if (!name) return false;
+      const r = ((mk && mk.rows) || []).find((x) => x.subItem === name);
+      return !!r && String(r.amountYuan || '').trim() !== '';
+    };
+    const anyRole = filled(roles.commission) || filled(roles.deliveryFee) || filled(roles.deliverySubsidy);
+    const income = Number(this.data.takeoutSumYuan) || 0;
+    const next = (income > 0 && !anyRole) ? (tw.selfCheckMiss || '') : '';
+    if ((this.data.twSelfCheck || '') === next) return;   // 幂等
+    this.setData({ twSelfCheck: next });
   },
 
   // （营销「外卖活动补贴」手改加锁逻辑已并入 updateRow：expense+marketing+该行 → twCarryLock=true）
