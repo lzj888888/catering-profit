@@ -26,6 +26,12 @@
       <text class="val" style="color:#1e3a5f;">{{t.cur}}{{g.monthYuan}}</text>
     </view>
 
+    <!-- round106（F5b）：留存数据（剩余未摊 / 摊完月份）—— 期数与剩余额均由后端引擎算出，前端只格式化 -->
+    <view class="prog" wx:if="{{g.progressNote}}">
+      <view>{{g.progressNote}}</view>
+      <view wx:if="{{g.endNote}}">{{g.endNote}}</view>
+    </view>
+
     <!-- 多笔：展开看每一笔（每笔独立起摊、独立终止） -->
     <view class="batch-head" wx:if="{{g.multi}}" bindtap="onToggleGroup" data-group="{{g.key}}">
       <text class="bh-txt">{{g.expanded ? t.collapseHint : t.expandHint}}</text>
@@ -47,6 +53,11 @@
       <view class="cell">
         <text class="lbl">{{t.monthAmountShort}}</text>
         <text class="val" style="color:#1e3a5f;">{{t.cur}}{{b.amountYuan}}</text>
+      </view>
+      <!-- round106（F5b）：每一笔各自一行留存数据（多笔组展开后可见） -->
+      <view class="prog prog-batch" wx:if="{{b.progressNote}}">
+        <view>{{b.progressNote}}</view>
+        <view wx:if="{{b.endNote}}">{{b.endNote}}</view>
       </view>
       <view class="row-ops">
         <button class="btn-small ghost" catchtap="onEdit" data-asset="{{b}}">{{t.edit}}</button>

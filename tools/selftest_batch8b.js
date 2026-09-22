@@ -485,6 +485,104 @@ check('A8-⑧ 期初刷新**绝不**覆盖用户可编辑的采购 / 期末两�
   a8Carry.length > 0 && !/purchaseYuan\s*[:=]/.test(a8Carry) && !/closingYuan\s*[:=]/.test(a8Carry));
 
 console.log('');
+console.log('===== A9 · 一次性投入入口 / 弹窗底色 / 留存数据（round106）=====');
+// 背景（李老师实机反馈 2026-09-23，一条消息里三个点）：
+//   ① 「装修设备 点 一次性计入当月 没有数值输入框」—— input.wxml 里唯一入口是 amortizeOn，
+//      选「一次性」后**整块什么都不显示**，而文案已承诺「就当这个月的费用」⇒ 这笔钱无处可录、当月利润虚高。
+//   ② 「点 追加采购 窗口变成透明的，和原来摊销窗口在一起，没办法操作」—— 面板底色与 page 背景同值。
+//   ③ 「要有留存数据，后面月份显示 还剩余多少未摊销」。
+const a9InWxml = read('pages/month/input.wxml');
+const a9InJs = read('pages/month/input.js');
+const a9AmoWxml = read('pages/month/amortize.wxml');
+const a9AmoJs = read('pages/month/amortize.js');
+const a9AmoWxss = read('pages/month/amortize.wxss');
+const a9AppWxss = read('app.wxss');
+const a9Gas = read('cloudfunctions/getAmortSchedule/index.js');
+
+// —— A9-① 面板底色 ≠ 页面底色：**比较两处颜色值**，不写死具体色值（改配色不该把守卫搞红）——
+const a9mPage = /page\s*\{[^}]*background:\s*([^;\s]+)/.exec(a9AppWxss);
+const a9mSheet = /\.sheet\s*\{[^}]*background:\s*([^;\s]+)/.exec(a9AmoWxss);
+check('A9-① 摊销页弹窗面板底色 ≠ 页面底色（同值 ⇒ 看着像"透明窗口叠在原页面上"）',
+  !!a9mPage && !!a9mSheet && a9mPage[1].toLowerCase() !== a9mSheet[1].toLowerCase(),
+  (a9mPage && a9mSheet) ? ('page=' + a9mPage[1] + ' / .sheet=' + a9mSheet[1]) : '颜色值解析不出 ⇒ fail-closed');
+
+// —— A9-② ~ ⑤ 「一次性计入当月」必须真有金额入口 ——
+check('A9-② 一次性分支里有金额输入框（原来这一分支整块为空）',
+  /<block wx:else>[\s\S]{0,500}?bindinput="onLumpSum"[\s\S]{0,500}?<\/block>/.test(a9InWxml)
+  && /value="\{\{lumpSumYuan\}\}"/.test(a9InWxml));
+check('A9-③ 录入页有 lumpSumYuan 状态位 + 输入回调',
+  /lumpSumYuan: ''/.test(a9InJs) && /onLumpSum\(e\)/.test(a9InJs));
+check('A9-④ 提交时带 lump_sum_fen，且选「按月分摊」时显式置 0（两口径互斥，防同一笔钱被算两遍）',
+  /lump_sum_fen:\s*this\.data\.amortizeOn\s*\?\s*0\s*:/.test(a9InJs));
+check('A9-⑤ 一次性金额进草稿（切页 / 返回不丢）',
+  /lumpSumYuan/.test(a9InJs) && /draft\.lumpSumYuan/.test(a9InJs));
+
+// —— A9-⑥ ~ ⑩ 留存数据：后端算、前端只格式化 ——
+check('A9-⑥ 后端出参含留存三字段（已摊期数 / 剩余未摊 / 摊完月）',
+  /paid_months/.test(a9Gas) && /remaining_fen/.test(a9Gas) && /end_month/.test(a9Gas));
+check('A9-⑦ 剩余额由引擎逐月累加（调 amountForMonth），不是另起一套公式',
+  /amountForMonth\s*\(/.test(a9Gas) && /function progressOf\(asset, month\)/.test(a9Gas));
+check('A9-⑧ 前端**不得**重算摊销（出现后端内部字段名 total_value 即说明在本地算）',
+  !/total_value/.test(a9AmoJs));
+const a9ProgBody = (a9AmoJs.match(/progressOf\(a\) \{[\s\S]{0,900}?\n  \},/) || [''])[0];
+const a9TermsFrom = /const T = TERMS\.amortizePage;/.test(a9AmoJs) || /TERMS\.amortizePage/.test(a9ProgBody);
+check('A9-⑨ 摊销页留存文案来自术语表（页面零硬编码：函数体内不得出现中文字面量）',
+  // ⚠️ 首版判据写成 `/TERMS\.amortizePage\.paidProgress/` ⇒ **假红**：代码里是先 `const T = TERMS.amortizePage`
+  //   再 `T.paidProgress(...)`，字面量并不长这样。这是本仓第三次「判据绑死写法」自伤
+  //   （round103 A7-①、round104 A8-⑧、本轮 A9-⑨）⇒ 改成**语义级**：
+  //   取 progressOf 方法体，断言它 (a) 引用了 paidProgress、(b) 有 TERMS 来源、(c) 体内不含中文字面量。
+  a9ProgBody.length > 0 && /paidProgress/.test(a9ProgBody) && a9TermsFrom
+  && !/[\u4e00-\u9fa5]/.test(a9ProgBody),
+  a9ProgBody.length ? ('方法体 ' + a9ProgBody.length + ' B／中文字面量 ' + (/[\u4e00-\u9fa5]/.test(a9ProgBody) ? '有' : '无'))
+    : '取不到 progressOf 方法体 ⇒ fail-closed');
+check('A9-⑩ 录入页摊销摘要带「本月摊销合计」（对利润的影响可见）',
+  /total_amount_fen/.test(a9InJs) && /assetCount\(n,\s*api\.fenToYuan/.test(a9InJs));
+
+// —— A9-⑪ 命名不得只覆盖「采购」一种支出语义（P2 拍板：装修 / 加盟 / 二次装修都要通顺）——
+check('A9-⑪ 按钮文案不绑「采购」单词语义',
+  !!T.amortizePage.appendPurchase && !/采购/.test(T.amortizePage.appendPurchase),
+  '文案 = ' + T.amortizePage.appendPurchase);
+
+// —— A9-⑫ ~ ⑭ 行为级：progressOf 从**真实源码**抽出后逐月累加（与引擎同源，不绑写法）——
+const a9FnSrc = /function progressOf\(asset, month\) \{[\s\S]*?\n\}/.exec(a9Gas);
+const a9Svc = require(path.join(ROOT, 'cloudfunctions/getAmortSchedule/service.js'));
+const a9Prog = a9FnSrc ? new Function('amountForMonth', 'monthIndex', 'fmtMonthIdx',
+  a9FnSrc[0] + '; return progressOf;')(a9Svc.amountForMonth, a9Svc.monthIndex, a9Svc.fmtMonthIdx) : null;
+const A9A = { start_month: '2026-01', total_months: 24, total_value: 24000000, terminate_month: '' };
+const a9p12 = a9Prog ? a9Prog(A9A, '2026-12') : {};
+const a9pEnd = a9Prog ? a9Prog(A9A, '2027-12') : {};
+const a9pBefore = a9Prog ? a9Prog(A9A, '2025-12') : {};
+check('A9-⑫ 行为级：第 12 月 ⇒ 已摊 12/24、剩余 12,000,000 分',
+  !!a9Prog && a9p12.paid_months === 12 && a9p12.remaining_fen === 12000000, JSON.stringify(a9p12));
+check('A9-⑬ 行为级：末月剩余恰好 0（尾差倒挤后正好摊完，不外溢成负数）',
+  !!a9Prog && a9pEnd.paid_months === 24 && a9pEnd.remaining_fen === 0, JSON.stringify(a9pEnd));
+check('A9-⑭ 行为级：起摊前 ⇒ 已摊 0、剩余 = 原值',
+  !!a9Prog && a9pBefore.paid_months === 0 && a9pBefore.remaining_fen === 24000000, JSON.stringify(a9pBefore));
+
+// —— A9-⑮ ~ ⑯ 行为级：一次性投入两式都减 + 与摊销互斥（**三副本同源同口径**）——
+const A9_ENGINES = ['saveLedger/service.js', 'getLedger/service.js', 'calcMonthlyProfit/service.js'];
+const a9Clean = {
+  incomeItems: [{ amountFen: 1000000 }], expenseItems: [{ amountFen: 200000 }],
+  directConsumeFen: 300000, amortizeFen: 0,
+  amortizeSwitchOn: false, inventorySwitchOn: false, lumpSumFen: 100000,
+};
+const a9Bad = A9_ENGINES.filter((f) => {
+  const r = require(path.join(ROOT, 'cloudfunctions/' + f)).calcMonthlyProfit(a9Clean);
+  return !(r.operationRefProfitFen === 400000 && r.totalFactorRealProfitFen === 400000
+    && r.profitDiffFen === 0
+    && r.operationRefProfitFen - r.totalFactorRealProfitFen === r.profitDiffFen);
+});
+check('A9-⑮ 一次性投入在【参考利润 + 真实利润两式都减】且两利润差异公式不破（三副本一致）',
+  a9Bad.length === 0, a9Bad.length ? ('未达标：' + a9Bad.join(', ')) : '三副本一致');
+const a9ExclBad = A9_ENGINES.filter((f) => {
+  const r = require(path.join(ROOT, 'cloudfunctions/' + f)).calcMonthlyProfit(
+    Object.assign({}, a9Clean, { amortizeFen: 50000, amortizeSwitchOn: true }));
+  return r.operationRefProfitFen !== 500000;
+});
+check('A9-⑯ 月分摊开启时一次性归 0（防同一笔钱被摊销与一次性各算一遍）',
+  a9ExclBad.length === 0, a9ExclBad.length ? ('未达标：' + a9ExclBad.join(', ')) : '三副本一致');
+
+console.log('');
 console.log('===== 门禁预检 =====');
 check('K11 双副本逐字一致', terms === termsSpec);
 check('建库单源文件仍在（仅存在性；逐项一致性比对在 R121 tools/check_expense_item_seed.js）', read("cloudfunctions/initDb/collections.js").includes('SEED_INCOME_ITEMS') && read("specs/dev-specs/prototype/init_db.js").includes('SEED_EXPENSE_ITEMS'));

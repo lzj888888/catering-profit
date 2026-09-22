@@ -21,7 +21,13 @@
 //   C4 可选入参不得以缺省值覆盖库内现值：`saveLedger` 的 `inventory?` 缺省 ⇒ **不动库存**
 //      （round103 实测：缺省被读成全 0 并整体覆盖 ⇒ 保存一次就把盘点静默清零）。
 //
-// 自失效护栏：S1 扫描面非空；S2 C2 的 DB 读取点**至少命中过一次**；S3 C3 的出参块必须解析得出（否则判红）。
+//   C5 可选入参的缺省语义 —— **行为级**（require 真模块实跑，不绑源码写法）：缺省必须 == null（= 不动），
+//      不得是 0；且非法金额（字符串 / 负数）必须被拒收。
+//      round106 实测（同一处踩两个坑，静态判据都抓不到）：`f()` 的 allowZero 误传 true ⇒ 缺省变 0；
+//      且漏回收 `f()` 返回的**错误对象**（它不是抛异常）⇒ 字符串 / 负数被静默放过并落进入参。
+//
+// 自失效护栏：S1 扫描面非空；S2 C2 的 DB 读取点**至少命中过一次**；S3 C3 的出参块必须解析得出（否则判红）；
+//   S4 C5 能 require 到 saveLedger 校验模块；S5 C5 的基线用例本身必须合法（防整段空转恒绿）。
 //
 // 边界（明写，别高估）：
 //   · C2 靠「变量名前缀」识别 DB 文档变量（`doc`/`r`/`hit`/`asset`/`material`/`exist`），
@@ -179,6 +185,36 @@
     /const\s+effectiveInventory\s*=\s*v\.inventory\s*\|\|\s*existingInventory\s*;/.test(sliSrc),
     /const\s+effectiveInventory\s*=\s*v\.inventory\s*\|\|\s*existingInventory\s*;/.test(sliSrc)
       ? 'effectiveInventory 在位' : '未找到回退到库内现值的写法');
+
+  // ---------- C5：可选入参的缺省语义（**行为级**） ----------
+  console.log('\n===== C5 · saveLedger 可选入参缺省必须「不动」（require 真模块实跑）=====');
+  // 为什么不写成静态正则：C4 那种「绑写法」的判据在本轮**两条真缺陷上都失明** ——
+  //   ① `f(src.lump_sum_fen, 'x', true)` 与正确写法只差一个参数，正则很难只靠形态分辨；
+  //   ② 漏掉 `if (x && x.error) return x;` 时，源码里该有的字符串全都在位 ⇒ 静态判据照样绿。
+  //   实跑一次就能同时盖住两条，且与写法解耦。
+  let c5 = null;
+  try { c5 = require(path.join(CF, 'saveLedger', 'validate.js')).validateInput; } catch (e) { c5 = null; }
+  check('S4 C5 能 require 到 saveLedger 校验模块（require 失败 ⇒ fail-closed）', typeof c5 === 'function',
+    typeof c5 === 'function' ? '已加载' : ('require 失败：' + '模块不可加载'));
+  if (typeof c5 === 'function') {
+    const c5Base = () => ({
+      shop_id: 's1', month: '2026-09',
+      income_items: [{ category: 'dine_in', name: 'x', amount_fen: 100 }],
+      expense_items: [{ category: 'labor', name: 'y', amount_fen: 50 }],
+      direct_consume_fen: 10,
+    });
+    const okBase = c5(c5Base());
+    check('S5 C5 基线用例本身合法（防整段空转、恒绿）', okBase.error === null, okBase.error || 'error = null');
+    check('C5-1 缺省 lump_sum_fen ⇒ null（= 本次不动），绝不是 0',
+      okBase.lumpSumFen === null, '缺省解析值 = ' + JSON.stringify(okBase.lumpSumFen));
+    const zero = c5(Object.assign(c5Base(), { lump_sum_fen: 0 }));
+    check('C5-2 显式送 0 ⇒ 0（老板主动清空是正当表达，不得被当成「未提供」）',
+      zero.error === null && zero.lumpSumFen === 0, 'lumpSumFen = ' + JSON.stringify(zero.lumpSumFen));
+    const str = c5(Object.assign(c5Base(), { lump_sum_fen: '1' }));
+    const neg = c5(Object.assign(c5Base(), { lump_sum_fen: -1 }));
+    check('C5-3 非法金额（字符串 / 负数）必须被拒收，不得被静默放过',
+      !!str.error && !!neg.error, '字符串 → ' + (str.error || '未拦') + ' / 负数 → ' + (neg.error || '未拦'));
+  }
 
   console.log('\n===== 跨函数数据契约守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
   if (failN) bad.forEach((b) => console.log('   ❌ ' + b));

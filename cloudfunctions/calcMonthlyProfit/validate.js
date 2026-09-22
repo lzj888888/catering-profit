@@ -80,6 +80,9 @@ function validateInput(event) {
   if (typeof directConsumeFen === 'object' && directConsumeFen.error) return directConsumeFen;
   const amortizeFen = f(src.amortize_fen, 'amortize_fen');
   if (typeof amortizeFen === 'object' && amortizeFen.error) return amortizeFen;
+  // round106（F2）：一次性装修设备投入（可选；纯计算函数，缺省即 0）
+  const lumpSumFen = f(src.lump_sum_fen, 'lump_sum_fen');
+  if (typeof lumpSumFen === 'object' && lumpSumFen.error) return lumpSumFen;
   const pendingFen = f(src.pending_settlement_fen, 'pending_settlement_fen');
   if (typeof pendingFen === 'object' && pendingFen.error) return pendingFen;
 
@@ -100,7 +103,7 @@ function validateInput(event) {
     input: {
       month: src.month || '',
       client_request_id: src.client_request_id || '',
-      directConsumeFen, amortizeFen, pendingFen, inventory,
+      directConsumeFen, amortizeFen, lumpSumFen, pendingFen, inventory,
       inventory_switch_reference: !!src.inventory_switch_reference,
       amortize_switch_reference: !!src.amortize_switch_reference,
     },

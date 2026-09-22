@@ -5,8 +5,13 @@
 .row-ops { display: flex; justify-content: flex-end; gap: 16rpx; margin-top: 16rpx; }
 .row-ops .btn-small { margin-top: 0; }
 .mask { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 99; display: flex; align-items: flex-end; }
-.sheet { width: 100%; background: #f5f6f8; border-radius: 24rpx 24rpx 0 0; padding: 32rpx 24rpx calc(env(safe-area-inset-bottom) + 32rpx); box-sizing: border-box; }
-.sheet .field { background: #fff; }
+/* round106（F4，李老师真机反馈）：「点追加采购，窗口变成透明的，和原来摊销窗口在一起，没办法操作」。
+   根因：面板底色 #f5f6f8 与 page 背景（app.wxss:7 page{background:#f5f6f8}）**完全同值** ⇒
+   半透明遮罩下的面板与页面同色，看起来就是"透明窗口叠在原窗口上"。
+   对照组：input.wxss:72 的 .paste-sheet 用 #fff（同结构 .mask + *-sheet + catchtap=""）且行为正常。
+   改法：面板改白底 + 顶部一条细线定边界；行底改 #f7f8fa 保住"行卡片"观感（原设计是白行配灰面板）。*/
+.sheet { width: 100%; background: #fff; border-top: 1rpx solid #e6e8eb; border-radius: 24rpx 24rpx 0 0; padding: 32rpx 24rpx calc(env(safe-area-inset-bottom) + 32rpx); box-sizing: border-box; }
+.sheet .field { background: #f7f8fa; }
 
 /* ===== H1（批次 8c）：同一资产多次采购 —— 分组明细样式 ===== */
 .scope-hint { padding: 0 24rpx 16rpx; }
@@ -18,3 +23,11 @@
 }
 .bh-txt { font-size: 28rpx; color: #888; }
 .bh-arrow { font-size: 28rpx; color: #999; }
+
+/* ===== round106（F5b）：留存数据行（剩余未摊 / 摊完月份）—— 纯展示，数值全由后端算 ===== */
+.prog {
+  font-size: 28rpx; color: #4a5b70; background: #f3f7fb; border-radius: 12rpx;
+  padding: 14rpx 20rpx; margin-top: 12rpx; line-height: 1.7;
+}
+.prog .strong { color: #1e3a5f; font-weight: 600; }
+.prog-batch { margin-top: 8rpx; }

@@ -34,6 +34,8 @@ function calcMonthlyProfit(clean) {
   const expenseItems = (clean && clean.expenseItems) || [];
   const directConsumeFen = num0(clean && clean.directConsumeFen);
   const amortizeFen = num0(clean && clean.amortizeFen);
+  // round106（F2）：一次性装修设备投入（分）—— 与 getLedger/saveLedger 的引擎副本同源同口径
+  const lumpSumFen = num0(clean && clean.lumpSumFen);
   const amortizeSwitchOn = !!(clean && clean.amortizeSwitchOn);
   const inventorySwitchOn = !!(clean && clean.inventorySwitchOn);
   const inv = (clean && clean.inventory) || {};
@@ -61,15 +63,17 @@ function calcMonthlyProfit(clean) {
 
   // ===== 4. 当月摊销实际计入值（摊销开关关 → 不计入 0） =====
   const effectiveAmortizeFen = amortizeSwitchOn ? fenRoundN(amortizeFen) : 0;
+  // 「一次性」与「按月分摊」互斥：选了摊销就不再吃一次性，防同一笔钱被算两遍
+  const effectiveLumpSumFen = amortizeSwitchOn ? 0 : lumpSumFen;
 
   // ===== 5. 两个利润口径 =====
   // 🟢 经营参考利润：必须用【直接填总消耗】，即使开库存也**不改用倒轧值**（口径锁）。
   const operationRefProfitFen = fenRoundN(
-    incomeTotalFen - expenseTotalFen - directConsumeFen
+    incomeTotalFen - expenseTotalFen - directConsumeFen - effectiveLumpSumFen
   );
-  // 🔵 全要素真实利润：用【真实消耗】 + 当月摊销（实际计入值）。
+  // 🔵 全要素真实利润：用【真实消耗】 + 当月摊销（实际计入值） + 一次性投入（实际计入值）。
   const totalFactorRealProfitFen = fenRoundN(
-    incomeTotalFen - expenseTotalFen - realConsumeFen - effectiveAmortizeFen
+    incomeTotalFen - expenseTotalFen - realConsumeFen - effectiveAmortizeFen - effectiveLumpSumFen
   );
   // 两利润差异 = (真实消耗 − 直接填消耗) + 当月摊销
   const profitDiffFen = fenRoundN(
@@ -93,6 +97,7 @@ function calcMonthlyProfit(clean) {
     grossMarginRatePctDisplay,
     // 摊销（本批由外部传入；实际计入值随摊销开关）
     amortizeFen, effectiveAmortizeFen,
+    lumpSumFen, effectiveLumpSumFen,
     // 双利润
     operationRefProfitFen, operationRefProfitYuan: fenToYuanStr(operationRefProfitFen),
     totalFactorRealProfitFen, totalFactorRealProfitYuan: fenToYuanStr(totalFactorRealProfitFen),

@@ -9,8 +9,29 @@ const common = require('./common');                 // 扁平派生副本（sync
 const { resolveAuth, assertShopOwner } = common;
 const { ok, fail } = common;
 const { makeAdapter } = common.dataAdapter;
-const { amortizeForMonth } = require('./service');
+const { amortizeForMonth, amountForMonth, monthIndex, fmtMonthIdx } = require('./service');
 const { validateInput } = require('./validate');
+
+// round106（F5b）：留存数据 —— 「已摊多少期 / 还剩余多少未摊 / 哪个月摊完」。
+//   纪律：剩余额**必须由引擎累加**（逐月调 amountForMonth），前端只格式化，绝不重算摊销公式。
+//   区间口径与引擎一致：起 = start_month；止 = min(自然到期月, terminate_month)。
+function progressOf(asset, month) {
+  const start = monthIndex(asset.start_month);
+  const naturalEnd = start + asset.total_months - 1;
+  let end = naturalEnd;
+  if (asset.terminate_month) { const t = monthIndex(asset.terminate_month); if (t < naturalEnd) end = t; }
+  const mi = monthIndex(month);
+  const paidMonths = mi < start ? 0 : (Math.min(mi, end) - start + 1);
+  let paidFen = 0;
+  for (let k = start; k <= Math.min(mi, end); k++) paidFen += amountForMonth(asset, fmtMonthIdx(k));
+  return {
+    paid_months: paidMonths,
+    total_periods: asset.total_months,
+    paid_fen: paidFen,
+    remaining_fen: asset.total_value - paidFen,
+    end_month: fmtMonthIdx(end),
+  };
+}
 
 exports.main = async (event) => {
   const ctx = cloud.getWXContext();
@@ -39,11 +60,11 @@ exports.main = async (event) => {
 
   return ok({
     shop_id: shopId, month: v.month,
-    assets: assets.map((a) => ({
+    assets: assets.map((a) => Object.assign({
       asset_id: a.asset_id, name: a.name, value_fen: a.total_value,
       start_month: a.start_month, total_months: a.total_months, terminate_month: a.terminate_month,
       group_id: a.group_id, batch_seq: a.batch_seq,
-    })),
+    }, progressOf(a, v.month))),
     total_amount_fen: sched.total_amount_fen,
     details: sched.details,
     client_request_id: v.input.client_request_id || '',

@@ -13,6 +13,11 @@ function calcMonthlyProfit(clean) {
   const amortizeFen = num0(clean && clean.amortizeFen);
   const amortizeSwitchOn = !!(clean && clean.amortizeSwitchOn);
   const inventorySwitchOn = !!(clean && clean.inventorySwitchOn);
+  // round106（F2）：一次性装修设备投入（分）。语义 = 「金额不大，就当这个月的费用」⇒
+  //   在**当月**作为费用扣减，参考利润与全要素真实利润**两式都减**（与摊销不同：摊销只影响真实利润）。
+  //   与摊销互斥：选了按月分摊（amortizeSwitchOn）就不该再吃一次性 ⇒ effective 归 0（防同一笔钱被算两遍）。
+  const lumpSumFen = num0(clean && clean.lumpSumFen);
+  const effectiveLumpSumFen = amortizeSwitchOn ? 0 : lumpSumFen;
   const inv = (clean && clean.inventory) || {};
   const incomeTotalFen = incomeItems.reduce((s, it) => s + num0(it && it.amountFen), 0);
   const expenseTotalFen = expenseItems.reduce((s, it) => s + num0(it && it.amountFen), 0);
@@ -23,8 +28,8 @@ function calcMonthlyProfit(clean) {
   const grossProfitFen = Math.round(incomeTotalFen - materialCostFen);
   const grossMarginRatePct = incomeTotalFen === 0 ? 0 : (grossProfitFen / incomeTotalFen) * 100;
   const effectiveAmortizeFen = amortizeSwitchOn ? Math.round(amortizeFen) : 0;
-  const operationRefProfitFen = Math.round(incomeTotalFen - expenseTotalFen - directConsumeFen);
-  const totalFactorRealProfitFen = Math.round(incomeTotalFen - expenseTotalFen - realConsumeFen - effectiveAmortizeFen);
+  const operationRefProfitFen = Math.round(incomeTotalFen - expenseTotalFen - directConsumeFen - effectiveLumpSumFen);
+  const totalFactorRealProfitFen = Math.round(incomeTotalFen - expenseTotalFen - realConsumeFen - effectiveAmortizeFen - effectiveLumpSumFen);
   const profitDiffFen = Math.round((realConsumeFen - directConsumeFen) + effectiveAmortizeFen);
   return {
     incomeTotalFen, expenseTotalFen,
@@ -32,6 +37,7 @@ function calcMonthlyProfit(clean) {
     grossProfitFen, grossMarginRatePct,
     grossMarginRatePctDisplay: Math.round((grossMarginRatePct + Number.EPSILON) * 100) / 100,
     amortizeFen, effectiveAmortizeFen,
+    lumpSumFen, effectiveLumpSumFen,
     operationRefProfitFen, totalFactorRealProfitFen, profitDiffFen,
     switchUsed: { inventorySwitchOn, amortizeSwitchOn },
     diffCheck: operationRefProfitFen - totalFactorRealProfitFen === profitDiffFen,

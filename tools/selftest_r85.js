@@ -121,10 +121,17 @@ check('A15 推广费取数路径标注存在', /twPromoPathHint/.test(inputWxml)
 //   saveLedger 可选入参静默清零）被判红 ⇒ 本次改为**白名单式**：豁免 `initDb/`（建库单源，另有
 //   R74/R67/R110/R121 四条守卫）+ 本批**显式登记**的授权函数目录；其余任何云函数被改仍判红。
 //   by=WorkBuddy / date=2026-09-22 / reason=round103 授权修 getLedger（出参命名）+ saveLedger（缺省清零）
+// ⚠️ 2026-09-23（round106）**三次登记** —— 同一时机关卡第 3 次触发：本轮 F2「一次性计入当月」
+//   的利润口径必须同时落在三副本引擎（saveLedger / getLedger / calcMonthlyProfit），F5b 留存
+//   数据又要 getAmortSchedule 出参 ⇒ 这 4 个函数全部是**李老师授权的**后端改动（「按你建议的来」）。
+//   仍按 round103 的**白名单式**登记，**不放宽成 `cloudfunctions/` 全豁免**（那样等于守卫作废）：
+//   by=WorkBuddy / date=2026-09-23 / reason=round106 授权加 lump_sum_fen 口径（F2）+ 摊销留存数据出参（F5b）
 const A15_EXEMPT = [
   /^cloudfunctions\/initDb\//,
   /^cloudfunctions\/getLedger\//,
   /^cloudfunctions\/saveLedger\//,
+  /^cloudfunctions\/calcMonthlyProfit\//,
+  /^cloudfunctions\/getAmortSchedule\//,
 ];
 check('A15 云函数逻辑零改动（仅 initDb 建库单源 + 本批授权函数豁免）', (() => {
   const { execFileSync } = require('child_process');

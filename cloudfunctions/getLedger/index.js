@@ -97,6 +97,8 @@ exports.main = async (event) => {
   const openingAuto = !acct && !!prevMonth;
   if (openingAuto) inventoryOut.opening_fen = prevClosingFen;
   const amortizeFen = (acct && acct.amortize_fen) || 0;
+  // round106（F2）：一次性装修设备投入（分）—— 回读时必须带进引擎，否则重算的利润与落库值对不上
+  const lumpSumFen = num0(acct && acct.lump_sum_fen);
 
   // A2：归一为 camelCase 喂引擎（引擎读 amountFen）；返回侧再转 snake_case
   const incomeItems = normalizeToCamel(rawIncome);
@@ -113,6 +115,7 @@ exports.main = async (event) => {
   const result = calcMonthlyProfit({
     incomeItems, expenseItems, directConsumeFen, amortizeFen,
     inventory, amortizeSwitchOn, inventorySwitchOn,
+    lumpSumFen,
   });
 
   return ok({
@@ -127,6 +130,9 @@ exports.main = async (event) => {
     opening_source_month: openingAuto ? prevMonth : '',
     opening_prev_fen: prevClosingFen,
     amortize_fen: amortizeFen,
+    // round106（F2）：一次性投入（落库原值）+ 生效值（按月分摊时恒 0 —— 与摊销互斥，防同一笔钱算两遍）
+    lump_sum_fen: lumpSumFen,
+    effective_lump_sum_fen: result.effectiveLumpSumFen,
     switches: { inventorySwitchOn, amortizeSwitchOn },
     result: {
       income_total_fen: result.incomeTotalFen,

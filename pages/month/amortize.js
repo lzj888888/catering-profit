@@ -78,6 +78,9 @@ Page({
       const isArchive = false; // 摊销资产不属于月度归档（可跨月管理）；归档守卫只作用于记账录入
       const assets = (d.assets || []).map((a) => {
         const amountFen = this.findMonthAmount(d.details, a.asset_id);
+        // round106（F5b）：留存数据 —— paid_months / remaining_fen / end_month 一律取后端出参，
+        //   前端**不重算摊销**（摊销公式单源在引擎 amountForMonth），这里只拼文案。
+        const prog = this.progressOf(a);
         return {
           asset_id: a.asset_id,
           name: a.name,
@@ -90,6 +93,12 @@ Page({
           batch_seq: a.batch_seq || 1,
           amount_fen: amountFen,
           amountYuan: api.fenToYuan(amountFen, 2),
+          paid_months: a.paid_months || 0,
+          total_periods: a.total_periods || a.total_months || 0,
+          remaining_fen: a.remaining_fen != null ? a.remaining_fen : (a.value_fen || 0),
+          end_month: a.end_month || '',
+          progressNote: prog.progressNote,
+          endNote: prog.endNote,
         };
       });
       this.setData({
@@ -104,6 +113,21 @@ Page({
       this.setData({ loading: false });
       api.toastError(e);
     }
+  },
+
+  // round106（F5b）：留存数据文案 —— 期数与剩余额全部来自后端出参（引擎累加），前端只做格式化拼接。
+  progressOf(a) {
+    const T = TERMS.amortizePage;
+    const remainingYuan = '¥' + api.fenToYuan((a && a.remaining_fen) || 0, 2);
+    const periods = (a && (a.total_periods || a.total_months)) || 0;
+    const progressNote = periods > 0
+      ? T.paidProgress((a && a.paid_months) || 0, periods, remainingYuan)
+      : T.remainingOnly(remainingYuan);
+    const endMonth = (a && a.end_month) || '';
+    const endNote = endMonth
+      ? ((a && a.terminate_month) ? T.endTerminated(endMonth) : T.endNote(endMonth))
+      : '';
+    return { progressNote, endNote };
   },
 
   // H1：把资产行按组键（group_id || asset_id）聚成「同一资产的多次采购」
@@ -129,6 +153,16 @@ Page({
       g.valueYuan = api.fenToYuan(g.valueFen, 2);
       g.monthYuan = api.fenToYuan(g.monthFen, 2);
       g.multi = g.count > 1;
+      // round106（F5b）：组级留存数据 —— 多笔组给「合计剩余未摊 + 末笔摊完」，单笔沿用该笔自己的文案
+      g.remainingFen = g.batches.reduce((s, b) => s + (b.remaining_fen || 0), 0);
+      const ends = g.batches.map((b) => b.end_month).filter(Boolean).sort();
+      if (g.multi) {
+        g.progressNote = TERMS.amortizePage.progressMulti(g.count, '¥' + api.fenToYuan(g.remainingFen, 2));
+        g.endNote = ends.length ? TERMS.amortizePage.endNoteLast(ends[ends.length - 1]) : '';
+      } else {
+        g.progressNote = g.batches[0].progressNote;
+        g.endNote = g.batches[0].endNote;
+      }
       return g;
     });
   },

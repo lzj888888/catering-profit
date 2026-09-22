@@ -21,6 +21,8 @@ const { calcMonthlyProfit, amortizeTotalForMonth } = require('./service');
 const { validateInput } = require('./validate');
 
 const SWITCH_KEY_INVENTORY = 'inventory_switch';
+// round106：lump_sum_fen 的「缺省 = 不动」需要一个数值兜底（num0 在 service.js 内，此处自带同款）
+function num0(v) { const n = Number(v); return Number.isFinite(n) ? n : 0; }
 const SWITCH_KEY_AMORTIZE = 'amortize_switch';
 const GRACE_DAYS_MS = 7 * 24 * 3600 * 1000;
 
@@ -90,11 +92,15 @@ exports.main = async (event) => {
   const existingInventory = (existing && existing.inventory)
     || { openingFen: 0, purchaseFen: 0, closingFen: 0 };
   const effectiveInventory = v.inventory || existingInventory;
+  // round106：`lump_sum_fen` 缺省（null）⇒ 沿用库内现值，与 inventory 完全同一套「缺省 = 不动」语义
+  const existingLumpSumFen = num0(existing && existing.lump_sum_fen);
+  const effectiveLumpSumFen = v.lumpSumFen != null ? v.lumpSumFen : existingLumpSumFen;
   const result = calcMonthlyProfit({
     incomeItems: v.incomeItems,
     expenseItems: v.expenseItems,
     directConsumeFen: v.directConsumeFen,
     inventory: effectiveInventory,
+    lumpSumFen: effectiveLumpSumFen,
     amortizeFen,
     amortizeSwitchOn,
     inventorySwitchOn,
@@ -131,6 +137,8 @@ exports.main = async (event) => {
   };
   // round103：本次带了库存才写该字段；缺省则**保留库内原值**（防静默清零）
   if (v.inventory) doc.inventory = v.inventory;
+  // round106：同一条纪律 —— lump_sum_fen 只在本次显式带上时才写；缺省保留库内原值
+  doc.lump_sum_fen = effectiveLumpSumFen;
   let accountId;
   if (existing) {
     accountId = existing._id || existing.id;
@@ -146,6 +154,7 @@ exports.main = async (event) => {
     profit_ref: result.operationRefProfitFen,
     profit_true: result.totalFactorRealProfitFen,
     amortize_fen: amortizeFen,
+    lump_sum_fen: result.effectiveLumpSumFen,
     real_consume_fen: result.realConsumeFen,
     switch_used: result.switchUsed,
     client_request_id: clientRequestId || '',

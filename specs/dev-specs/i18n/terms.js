@@ -400,7 +400,7 @@ const TERMS = {
       '① 同一笔钱只填一次：填了收入就别再填成费用，填了费用别再抵一次收入。',
       '② 金额单位是「元」，可以填两位小数；按当月实际发生填，不要估。',
       '③ 食材采购不计入费用：采购进库存，系统按「月初 + 采购 − 月末」自动算食材消耗。',
-      '④ 设备、装修、加盟费等一次性投入走「摊销资产」分期摊，可分多次采购分别摊。',
+      '④ 设备、装修、加盟费等一次性投入走「摊销资产」分期摊；同一项以后再投入，点「再投一笔」另记一笔、各自摊。',
       '⑤ 外卖、团购的佣金不要在收入里扣，统一记到「费用 · 营销」。',
     ],
   },
@@ -511,18 +511,27 @@ const TERMS = {
     monthUnit: '月',
     optional: '可选',
     // ===== H1（批次 8c）：同一资产多次采购，每笔独立起摊 =====
-    scopeHint: '装修、设备、加盟费等一次性投入在这里按笔登记、分期摊销。同一资产以后又追加投入，点「追加采购」再记一笔，每笔从各自的采购月起单独摊销。',
-    appendPurchase: '追加采购',
-    appendTitle: '追加采购',
-    batchWord: '采购',
+    scopeHint: '装修、设备、加盟费等一次性投入在这里按笔登记、分期摊销。同一项支出以后又花钱（再买一台、二次装修、追加加盟费），点「再投一笔」再记一笔，每笔从各自投入的月份单独摊销、互不影响。',
+    appendPurchase: '再投一笔',
+    appendTitle: '再投一笔',
+    batchWord: '投入',
     batchPrefix: '第',
     batchSuffix: '笔',
     batchTotalPrefix: '共',
-    batchTotalSuffix: '笔采购',
+    batchTotalSuffix: '笔投入',
     groupValueLabel: '合计原值',
     expandHint: '展开看每一笔',
     collapseHint: '收起',
-    appendHint: '同一资产再次投入请用「追加采购」，不要另建同名资产，否则会重复计一遍。',
+    appendHint: '同一项支出再次投入用「再投一笔」（如再买一台设备）；若其实是另一件事（如二次装修），直接新建一个资产，别混进同一笔。',
+    // ===== round106（F5b）：留存数据（剩余未摊 / 摊完月份）=====
+    // 期数 k/N 与剩余额一律由后端（getAmortSchedule 调引擎 amountForMonth 逐月累加）算出，前端只拼文案，
+    // 绝不在这里重算摊销公式（摊销口径单源在引擎）。
+    paidProgress: (k, n, amount) => `已摊 ${k}/${n} 期 · 剩余未摊 ${amount}`,
+    progressMulti: (n, amount) => `共 ${n} 笔 · 剩余未摊合计 ${amount}`,
+    remainingOnly: (amount) => `剩余未摊 ${amount}`,
+    endNote: (m) => `摊完 ${m}`,
+    endNoteLast: (m) => `末笔摊完 ${m}`,
+    endTerminated: (m) => `已终止（${m} 月）`,
   },
 
   // ===== 十七、M1 结果展示页 =====
@@ -565,10 +574,18 @@ const TERMS = {
     assetTitle: '② 装修设备',
     assetOnce: '一次性计入当月',
     assetOnceDesc: '金额不大，就当这个月的费用',
+    // round106（F2）：选「一次性计入当月」时的金额入口。
+    //   原来这一分支**整块没有任何输入框**（唯一入口是 amortizeOn）⇒ 文案承诺了「就当这个月的费用」，
+    //   这笔钱却无处可录，当月利润虚高（李老师真机反馈「没有数值输入框」）。
+    assetOnceField: '一次性金额（元）',
+    assetOnceFieldHint: '这笔钱全部算进本月费用，不跨月摊',
     assetAmortize: '按月分摊',
     assetAmortizeDesc: '装修设备分月摊，不把当月压太狠',
     assetGo: '管理摊销资产',
-    assetCount: (n) => `已登记 ${n} 笔资产`,
+    // round106（F5b）：摘要带上「本月摊销合计」—— 老板真正关心的是这个月被摊掉多少、对利润的影响
+    assetCount: (n, amt) => (amt === undefined
+      ? `已登记 ${n} 笔资产`
+      : `本月摊销 ¥${amt}（${n} 笔，点开看明细）`),
     assetEmpty: '还没登记过资产，点上面去加',
     assetHint: '装修、设备这类大额建议按月分摊',
     switchSaved: '已切换',
