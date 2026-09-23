@@ -225,6 +225,47 @@ function listBands(bizKey, cityKey) {
 }
 
 /** 取某指标对应的警戒线（rent/labor/grossMargin 有值；其余返回 null）。 */
+/**
+ * 反算「各项月度费用的参考金额」—— 把"行业参考区间"从**区间**升级为**起点**。
+ *
+ * 场景（round114 · 2026-09-24 李老师"这个直接加"）：M2 开店测算页，用户手里**没有任何数字**，
+ *   只给"房租 8~15%"这种区间仍然回答不了"那到底该填多少"。给一个预计月营业额，
+ *   本函数按各指标参考带的**中值**反算金额 ⇒ 用户拿它当起点去核对行情。
+ *
+ * ⚠️ 只覆盖 from 为 `fixed:*` 的指标（房租/人工/能耗/管理费）—— 只有它们对应"填金额"的输入行。
+ *    毛利率由用户直填、挂钩费率本身是"率"、其他投入无占比带 ⇒ 一律不反算（**不编造**）。
+ * ⚠️ 语义边界：这是**参考起点**，不是建议值、更不是承诺。前端只可用作 placeholder（灰字），
+ *    **绝不自动填值** —— 否则用户不核对就得到一份"自证的合理"，反而误事。
+ * ⚠️ 金额 = 营业额 × 中值%（中值 = (lo+hi)/2，不加权）；城市系数已含在 bandOf 内（只调房租/人工）。
+ *
+ * @param {string} bizKey 业态
+ * @param {string} cityKey 城市层级
+ * @param {number} revenueFen 预计月营业额（分）；非有限数或 ≤0 ⇒ 返回 []（不编造）
+ * @returns {Array<{key,indKey,pct,fen}>}
+ *   key    = 固定项 key（rent|labor|utility|manage），供**输入行**匹配
+ *   indKey = 指标 key（rent|labor|energy|manage），供**参考区间卡**匹配
+ *   （两边都回，是为了让"固定项 ↔ 指标"的映射单源留在本层 —— 前端不做映射、不编公式）
+ */
+function suggestAmounts(bizKey, cityKey, revenueFen) {
+  const rev = Number(revenueFen);
+  if (!isFinite(rev) || rev <= 0) return [];
+  const out = [];
+  for (const ind of INDICATORS) {
+    if (ind.from.indexOf('fixed:') !== 0) continue;
+    const b = bandOf(bizKey, ind.key, cityKey);
+    if (!b) continue;
+    const mid = round1((b.lo + b.hi) / 2);   // ⚠️ 先定标到 1 位小数**再**算金额：否则展示的
+                                             // pct(22.5%) 与 fen(按 22.45% 算) 互相反算对不上
+    out.push({
+      key: ind.from.slice(6),
+      indKey: ind.key,
+      pct: round1(mid),
+      fen: Math.round(rev * mid / 100),
+    });
+  }
+  return out;
+}
+
 function redlineOf(indKey) {
   if (indKey === 'rent') return REDLINE.rent;
   if (indKey === 'labor') return REDLINE.labor;
@@ -239,5 +280,5 @@ module.exports = {
   INDICATORS, IND_KEYS,
   REDLINE, REDLINE_KEYS,
   FIXED_KEYS, VAR_KEYS, BUILD_KEYS, BUILD_DEFAULT_YEARS,
-  bandOf, levelOf, evaluateIndicators, redlineOf, listBands,
+  bandOf, levelOf, evaluateIndicators, redlineOf, listBands, suggestAmounts,
 };

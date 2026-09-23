@@ -79,6 +79,16 @@ const CASES = [
   //   D-② 词族 5 例正负样本互证与 D-③~D-⑤ 三道下界正是「非恒真」的凭据；断言数不受守则
   //   「删掉 5 例正负样本」就等于把守卫悄悄改小（判据仍全绿而证明力归零），与 round73 同族。
   { key: 'check_m2_no_cost_rate', rel: 'tools/check_m2_no_cost_rate.js' },
+  // round114 扩面：**云函数 selftest 的断言数此前零守卫**（`check_fn_selftest_counts.js` 只守
+  //   POC2 七函数，calcSandbox 是后加的批次 4，不在其集合内）—— round113 它 46→53、
+  //   round114 又 53→66，两次都无人校验。它满足「非恒真」条件：66 条里删掉一批仍 > 0 ⇒
+  //   A0-② 的「通过数为 0」下界抓不到，只有本守卫的 A2「声明 ≡ 实跑」能发现。
+  { key: 'calcSandbox_selftest', rel: 'cloudfunctions/calcSandbox/selftest.js' },
+  // R128 扩面（round114）：M2「参考值不预填」守卫同批纳入 —— 它的 D 段四组正负样本互证
+  //   （剥注释器 / 判别器 / bodyOf 锚定义不锚调用 / value 提取器）与 E 段断言数下界正是
+  //   「非恒真」的凭据；断言数不受守则「删掉两组正负样本」就等于把守卫悄悄改小
+  //   （判据仍全绿而证明力归零），与 round73 立本守卫的根因同族。
+  { key: 'check_m2_ref_not_prefill', rel: 'tools/check_m2_ref_not_prefill.js' },
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

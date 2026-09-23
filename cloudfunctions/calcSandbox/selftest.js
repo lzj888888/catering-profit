@@ -5,6 +5,7 @@
 // v2（2026-09-23）：契约由「4 金额 + 3 变效率」改为结构化清单 ⇒ 本自测同步重写。
 //   ⚠️ 标准工况**可手算**，任何人拿计算器都能复现（这是 S4 锚点的意义）。
 const { calcSandbox } = require('./service');
+const { validateInput } = require('./validate');   // round114：入参契约此前零自测覆盖
 const { indicatorRef } = require('./common');
 
 let pass = 0, failN = 0;
@@ -148,6 +149,71 @@ check('G5 🔴 红警时预览带仍在（红警=算不出保本点，不等于"
   red.bands_preview ? `${red.bands_preview.length} 项` : 'null（缺失 ⚠️）');
 check('G6 空入参也给默认业态（dining）的参考带，不崩',
   (() => { const z = calcSandbox({}); return Array.isArray(z.bands_preview) && z.bands_preview.length === 6; })());
+
+console.log('\n===== H 参考金额反算（round114 · 预计月营业额锚点）=====');
+// 正餐 · 二三线 · 预计月营业额 100,000 元（10000000 分）：
+//   房租 带[8,15] 中值 11.5% ⇒ 11,500.00 元；人工 [17,22]→19.5% ⇒ 19,500.00 元
+//   能耗 [3,5]  →4%         ⇒  4,000.00 元；管理 [5,10]→7.5% ⇒  7,500.00 元
+const withRev = calcSandbox(Object.assign({}, base, { expectedRevenueFen: 10000000 }));
+const am = withRev.amount_preview || [];
+const amOf = (k) => am.filter((x) => x.key === k)[0] || {};
+check('H1 填了预计营业额 ⇒ 反算 4 项（房租/人工/水电气/管理费）', am.length === 4, `=${am.length} 项`);
+check('H2 房租参考金额 = 100,000 × 11.5% = 11,500（1150000分）', amOf('rent').fen === 1150000, `=${amOf('rent').fen}分`);
+check('H3 人工参考金额 = 19,500（1950000分）', amOf('labor').fen === 1950000, `=${amOf('labor').fen}分`);
+check('H4 能耗/管理 = 4,000 / 7,500（固定项 key=utility，指标 indKey=energy —— 双键各归其位）',
+  amOf('utility').fen === 400000 && amOf('utility').indKey === 'energy' && amOf('manage').fen === 750000,
+  `utility=${amOf('utility').fen}/${amOf('utility').indKey} manage=${amOf('manage').fen}`);
+check('H5 🔴 未填营业额（0）⇒ 空数组，不编造 0 元', (calcSandbox(base).amount_preview || []).length === 0);
+check('H6 🔴 pct 与 fen 自洽（fen == 营业额 × pct%，客户拿计算器可复算）',
+  am.length === 4 && am.every((x) => x.fen === Math.round(10000000 * x.pct / 100)),
+  am.map((x) => `${x.key}:${x.pct}%→${x.fen}`).join(' '));
+check('H7 城市系数生效：一线人工 22.5% ⇒ 2,250,000 分（22.45% 先定标再算金额）',
+  (() => {
+    const t1 = calcSandbox(Object.assign({}, base, { cityTier: 'tier1', expectedRevenueFen: 10000000 })).amount_preview;
+    const l = t1.filter((x) => x.key === 'labor')[0] || {};
+    return l.pct === 22.5 && l.fen === 2250000;
+  })());
+check('H8 🔴 红警时参考金额仍在（红警=算不出保本点，不等于"我没有参考"）',
+  (() => {
+    const r2 = calcSandbox({
+      cityTier: 'tier23', bizType: 'dining', grossMarginPct: 5,
+      varItems: [{ key: 'takeawayComm', pct: 96 }], expectedRevenueFen: 10000000,
+    });
+    return r2.red_alert === true && (r2.amount_preview || []).length === 4;
+  })());
+
+console.log('\n===== I 入参契约（round114 · 补测：此前 validate 零自测覆盖）=====');
+// 🔴 本条守的是本轮修回的**真缺陷**：M2 页面在用户"一个字没填"时也要能拿到参考区间/参考金额，
+//    而旧校验要求 fixed_items 至少一项 ⇒ 空表单被拒 ⇒ 参考区间**根本没显示**（round113 零生效）。
+const vEmpty = validateInput({
+  shop_id: 's', city_tier: 'tier23', biz_type: 'dining',
+  build_items: [], fixed_items: [], var_items: [],
+  gross_margin_pct: 65, target_profit_fen: 0,
+});
+check('I1 🔴 空 fixed_items 必须放行（否则"没填就先看行业参考"整条路走不通 —— round114 修）',
+  !vEmpty.error, vEmpty.error ? vEmpty.error + ' / ' + vEmpty.msg : 'error=null');
+check('I2 空表单的 clean 可跑 service 且不崩（参考区间照常下发）',
+  !vEmpty.error && (() => {
+    const z = calcSandbox(vEmpty.clean);
+    return z.fixed_total_fen === 0 && Array.isArray(z.bands_preview) && z.bands_preview.length === 6;
+  })());
+check('I3 预计月营业额缺省 = 0（选填；前端不传也不报错）',
+  !vEmpty.error && vEmpty.clean.expectedRevenueFen === 0);
+check('I4 预计月营业额非整数分 ⇒ 拒（放宽非空 ≠ 放宽格式）', (() => {
+  const e = validateInput({
+    shop_id: 's', city_tier: 'tier23', biz_type: 'dining',
+    fixed_items: [], build_items: [], var_items: [],
+    gross_margin_pct: 65, target_profit_fen: 0, expected_revenue_fen: 12.5,
+  });
+  return !!e.error;
+})());
+check('I5 fixed_items 的 key 越白名单 / 重复 ⇒ 仍拒（放宽非空 ≠ 放宽内容）', (() => {
+  const a = validateInput({ shop_id: 's', city_tier: 'tier23', biz_type: 'dining',
+    fixed_items: [{ key: 'hack', fen: 1 }], build_items: [], var_items: [], gross_margin_pct: 65, target_profit_fen: 0 });
+  const b = validateInput({ shop_id: 's', city_tier: 'tier23', biz_type: 'dining',
+    fixed_items: [{ key: 'rent', fen: 1 }, { key: 'rent', fen: 2 }], build_items: [], var_items: [], gross_margin_pct: 65, target_profit_fen: 0 });
+  return !!a.error && !!b.error;
+})());
 
 console.log(`\n==== calcSandbox M2 v2 自测结果：${pass} 通过 / ${failN} 失败 ====`);
 process.exit(failN === 0 ? 0 : 1);

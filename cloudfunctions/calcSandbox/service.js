@@ -36,6 +36,7 @@ const { indicatorRef } = common;
  *   - varItems:   [{key, pct}]        跟营业额挂钩的费用（%）
  *   - grossMarginPct: 菜品毛利率（%）
  *   - targetProfitFen: 目标月利润（分）
+ *   - expectedRevenueFen: 预计月营业额（分，选填；0 = 未填 ⇒ 不反算参考金额）
  * @returns {object}
  */
 function calcSandbox(clean) {
@@ -47,6 +48,7 @@ function calcSandbox(clean) {
   const varItems = arr(c.varItems);
   const grossMarginPct = num0(c.grossMarginPct);
   const targetProfitFen = num0(c.targetProfitFen);
+  const expectedRevenueFen = num0(c.expectedRevenueFen);
 
   // ---- 1) 一次性建店投入 → 月摊销（逐项高精度，最后一步取整）----
   let buildTotalFen = 0;
@@ -133,7 +135,11 @@ function calcSandbox(clean) {
     //（M2 的主要流失点：开店前用户手里没有任何数字）。
     // ⚠️ 与 indicators_* 的区别：那两份是"你的值 vs 参考带"（需分母），本份只有参考带本身。
     // ⚠️ 中文名仍由前端 terms 映射（key → 名），本层只回 key / 数值 / 方向。
+    // 参考**金额**起点（round114）：给一个预计月营业额，按各项参考带的中值反算金额 ——
+    // 让"该填多少"从区间升级为可直接核对的起点。同样只依赖 业态 × 城市 × 营业额，
+    // **与用户填了哪些固定项无关**，红警时也在。前端只当 placeholder，不自动填值。
     bands_preview: indicatorRef.listBands(bizType, cityTier),
+    amount_preview: indicatorRef.suggestAmounts(bizType, cityTier, expectedRevenueFen),
   };
 }
 

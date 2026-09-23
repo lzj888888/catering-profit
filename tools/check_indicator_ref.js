@@ -368,6 +368,55 @@ for (const ind of ['rent', 'labor']) {
     bad.length === 0, bad.length ? '矛盾：' + bad.join('；') : '四业态 × 3 个有警戒线的指标全过');
 }
 
+// C-⑬~C-⑰ round114 新增：**参考金额反算** suggestAmounts（预计月营业额锚点）
+//   由来：M2 用户"不知道各项该填多少"，光给区间仍回答不了"那我到底该填多少钱" ⇒
+//        填一个预计月营业额，按各带**中值**反算参考金额（起点）。
+//   单源必须留在本层 —— 前端只拼装、不编公式、不自行把 fixed 项映射到指标。
+{
+  const REV = 10000000;   // 100,000 元
+  const got = code.suggestAmounts('dining', 'tier23', REV);
+  const by = {};
+  got.forEach((x) => { by[x.key] = x; });
+  // 手算：房租 [8,15]→11.5% ⇒ 1150000；人工 [17,22]→19.5% ⇒ 1950000；
+  //       能耗 [3,5]→4% ⇒ 400000；管理 [5,10]→7.5% ⇒ 750000
+  const wantFen = { rent: 1150000, labor: 1950000, utility: 400000, manage: 750000 };
+  const bad = Object.keys(wantFen).filter((k) => !by[k] || by[k].fen !== wantFen[k]);
+  check('C-⑬ 🔴 参考金额正样本：正餐·二三线·10万 ⇒ 4 项且金额 = 营业额 × 中值%',
+    got.length === 4 && bad.length === 0,
+    bad.length ? bad.map((k) => `${k}=${by[k] ? by[k].fen : 'null'}（应 ${wantFen[k]}）`).join('，')
+      : `4/4 全中 ${got.map((x) => x.key + '=' + x.fen).join(' ')}`);
+  // key（固定项）与 indKey（指标）必须各自归位：前者供**输入行**匹配、后者供**区间卡**匹配。
+  // ⚠️ 能耗最易错：固定项叫 utility、指标叫 energy ⇒ 映射单源必须留本层，不能让前端自己猜。
+  const keyOk = !!by.utility && by.utility.indKey === 'energy' && by.energy === undefined;
+  const fixedOk = got.every((x) => code.FIXED_KEYS.indexOf(x.key) >= 0 && code.IND_KEYS.indexOf(x.indKey) >= 0);
+  check('C-⑭ 🔴 键归属：key ∈ 固定项白名单 / indKey ∈ 指标白名单（utility↔energy 不得混淆）',
+    keyOk && fixedOk, `utility.indKey=${by.utility ? by.utility.indKey : 'null'} · 各自在白名单=${fixedOk}`);
+}
+{
+  const REV = 10000000;
+  const empty = [
+    code.suggestAmounts('dining', 'tier23', 0),
+    code.suggestAmounts('dining', 'tier23', -1),
+    code.suggestAmounts('dining', 'tier23', NaN),
+    code.suggestAmounts('dining', 'tier23', undefined),
+  ];
+  check('C-⑮ 未填 / 非法营业额 ⇒ 空数组（不编造 0 元）',
+    empty.every((a) => Array.isArray(a) && a.length === 0), empty.map((a) => a.length).join('/'));
+  // 城市系数：房租 tier1 ×1.2 ⇒ [9.6,18] 中值 13.8% ⇒ 1380000；
+  //          人工 tier1 ×1.15 ⇒ [19.6,25.3] 中值 22.45 → **先定标 22.5%** ⇒ 2250000
+  const t1 = code.suggestAmounts('dining', 'tier1', REV);
+  const rent1 = t1.find((x) => x.key === 'rent') || {};
+  const labor1 = t1.find((x) => x.key === 'labor') || {};
+  check('C-⑯ 城市系数生效：一线房租 13.8%→1380000 / 人工 22.5%→2250000（先定标再算）',
+    rent1.pct === 13.8 && rent1.fen === 1380000 && labor1.pct === 22.5 && labor1.fen === 2250000,
+    `rent=${rent1.pct}%/${rent1.fen} labor=${labor1.pct}%/${labor1.fen}`);
+  // 🔴 展示的 pct 与 fen 必须能**互相反算** —— 客户拿计算器一按就要对得上。
+  //    若先用未定标的 22.45% 算金额、却展示 22.5%，两个数就对不上（本仓 S4 锚点精神）。
+  check('C-⑰ pct 与 fen 可互相反算（fen == 营业额 × pct%）',
+    t1.every((x) => x.fen === Math.round(REV * x.pct / 100)),
+    t1.map((x) => `${x.key}:${x.pct}%→${x.fen}`).join(' '));
+}
+
 // ============ E 对外文案面（round111：客户看不懂「食材成本率」）============
 sec('E 对外文案面：用户可见处不得出现「食材成本率」');
 // 为什么单列一段：round111 李老师的原话是「尽量统一到毛利率，避免食材成本率，**客户看不懂**」——

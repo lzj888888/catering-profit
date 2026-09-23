@@ -81,7 +81,13 @@ function validateInput(event) {
   // ---- 每月固定支出（key/fen）----
   const fixed_items = arrOf(src.fixed_items, 'fixed_items', false);
   if (fixed_items && fixed_items.error) return fixed_items;
-  if (!fixed_items.length) return err('fixed_items 至少要有一项（房租/人工等）');
+  // ⚠️ round114 起**不再要求 fixed_items 非空**（实测坐实的真缺陷修复）：
+  //    M2 页面在用户"一个字没填"时也要能拿到 bands_preview（行业参考区间）与 amount_preview
+  //    （参考金额起点）—— 这两者只依赖 业态 × 城市（× 预计营业额），与固定支出无关。
+  //    旧校验会把空表单直接拒成 INVALID_PARAM ⇒ 前端 catch ⇒ 参考区间**根本没显示**
+  //    （round113 宣称"进页面就有参考"，实际零生效）+ 用户还收到一条英文 key 报错。
+  //    "没填够"属于**页面语义**（前端 hasFixed 控制不展示测算结果），不是入参非法。
+  //    注意：这里只是**允许空数组**，并没有丢弃任何数据（fail-closed 说的是"不静默丢数据"）。
   const fixedItems = [];
   const fixedSeen = {};
   for (let i = 0; i < fixed_items.length; i++) {
@@ -121,13 +127,19 @@ function validateInput(event) {
   const targetProfitFen = fen(src.target_profit_fen, 'target_profit_fen');
   if (targetProfitFen && targetProfitFen.error) return targetProfitFen;
 
+  // ---- 预计月营业额（分，选填）：只用于反算「各项参考金额」；未填（null/undefined/0）= 不反算 ----
+  const expRaw = src.expected_revenue_fen === undefined || src.expected_revenue_fen === null
+    ? 0 : src.expected_revenue_fen;
+  const expectedRevenueFen = fen(expRaw, 'expected_revenue_fen');
+  if (expectedRevenueFen && expectedRevenueFen.error) return expectedRevenueFen;
+
   return {
     error: null,
     shop_id: src.shop_id,
     clean: {
       cityTier, bizType,
       buildItems, fixedItems, varItems,
-      grossMarginPct, targetProfitFen,
+      grossMarginPct, targetProfitFen, expectedRevenueFen,
     },
     input: { client_request_id: src.client_request_id || '' },
   };

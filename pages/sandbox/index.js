@@ -73,6 +73,10 @@ Page({
       fixedNote: M.fixedNote,
       varNote: M.varNote,
       marginBandLabel: M.marginBandLabel,
+      expectRevLabel: M.expectRevLabel,
+      expectRevPh: M.expectRevPh,
+      expectRevNote: M.expectRevNote,
+      refAmtCard: M.refAmtCard,
       calc: M.calc,
       redAlert: M.redAlert,
       redAlertHint: M.redAlertHint,
@@ -89,13 +93,14 @@ Page({
       mkRow('franchise', M.buildItems, M.buildItemNotes, { yuan: '', years: 3 }),
     ],
     fixedRows: [
-      mkRow('rent', M.fixedItems, M.fixedItemNotes, { yuan: '' }),
-      mkRow('labor', M.fixedItems, M.fixedItemNotes, { yuan: '' }),
-      mkRow('utility', M.fixedItems, M.fixedItemNotes, { yuan: '' }),
-      mkRow('manage', M.fixedItems, M.fixedItemNotes, { yuan: '' }),
+      mkRow('rent', M.fixedItems, M.fixedItemNotes, { yuan: '', ph: M.buildPh }),
+      mkRow('labor', M.fixedItems, M.fixedItemNotes, { yuan: '', ph: M.buildPh }),
+      mkRow('utility', M.fixedItems, M.fixedItemNotes, { yuan: '', ph: M.buildPh }),
+      mkRow('manage', M.fixedItems, M.fixedItemNotes, { yuan: '', ph: M.buildPh }),
     ],
     varRows: [mkRow('takeawayComm', M.varItems, M.varItemNotes, { pct: '' })],
     marginPct: 65,
+    expectYuan: '',      // 预计月营业额（选填）—— 锚点：后端据此反算各项参考金额
     targetYuan: '',
     // 结果（全部来自后端）
     result: null,
@@ -108,7 +113,7 @@ Page({
     dirty: false,
   },
 
-  onLoad() { this.bootstrap(); },
+  onLoad() { this._seq = 0; this.bootstrap(); },
   onUnload() { if (this._timer) clearTimeout(this._timer); },
 
   async bootstrap() {
@@ -116,10 +121,11 @@ Page({
     try {
       await api.ensureShop();
       ui.setTitle(TERMS.modules.m2.navTitle);
-      this.setData({ loading: false });
       // round113：进页面先拿一次"行业参考区间" —— 用户**还没填任何数**就能看到该填多少量级
       //（开店前手里没数字，是本页的主要流失点）
-      this.onCalc();
+      // ⚠️ round114：改为 await + 首算保持整页 loading —— 拿到结果一次性渲染。
+      //    否则会先渲染一版"没有参考区间"的空页、再跳一下（双闪）。
+      await this.onCalc(true);
     } catch (e) {
       this.setData({ loading: false });
       api.toastError(e);
@@ -181,7 +187,7 @@ Page({
     const used = this.data.fixedRows.map((r) => r.key);
     const k = FIXED_ALL.filter((x) => used.indexOf(x) < 0)[0];
     if (!k) return;
-    const rows = this.data.fixedRows.concat([mkRow(k, M.fixedItems, M.fixedItemNotes, { yuan: '' })]);
+    const rows = this.data.fixedRows.concat([mkRow(k, M.fixedItems, M.fixedItemNotes, { yuan: '', ph: M.buildPh })]);
     this.setData({ fixedRows: rows });
     this.scheduleCalc();
   },
@@ -232,6 +238,9 @@ Page({
   // ===== 目标利润 =====
   onTarget(e) { this.setData({ targetYuan: e.detail.value }); this.scheduleCalc(); },
 
+  // ===== 预计月营业额（锚点 · round114）=====
+  onExpect(e) { this.setData({ expectYuan: e.detail.value }); this.scheduleCalc(); },
+
   // ===== 自动重算（防抖；AD-6/AD-7 折中）=====
   scheduleCalc() {
     this.setData({ dirty: true });
@@ -239,16 +248,26 @@ Page({
     this._timer = setTimeout(() => { this.onCalc(); }, DEBOUNCE_MS);
   },
 
-  async onCalc() {
-    if (this.data.loading) return;
+  /**
+   * 重算（唯一云端交互点）。
+   * @param {boolean} isFirst 首次进页面=true ⇒ 走整页 loading（wxml 用 `wx:if="{{!loading}}"` 整页切换）
+   *
+   * ⚠️ round114 修 ①：此前每次自动重算都把 loading 置 true ⇒ 用户每改一个数、停顿 700ms 后
+   *    **整页闪成"加载中"**（输入框被整页重绘，体验差且易丢光标）。改为只有首算才整页 loading。
+   * ⚠️ round114 修 ②：加请求序号 _seq —— 云函数有网络延迟，慢响应的**旧结果**可能晚于新结果返回，
+   *    把界面覆盖成上一次的数（改了数却看到旧保本点）。序号不匹配即丢弃过期响应。
+   */
+  async onCalc(isFirst) {
     if (this._timer) { clearTimeout(this._timer); this._timer = null; }
+    const first = !!isFirst;
+    if (first) this.setData({ loading: true, calcError: '' });
+    const seq = ++this._seq;
     const fixedItems = this.data.fixedRows
       .map((r) => ({ key: r.key, fen: api.yuanToFen(r.yuan) }))
       .filter((x) => x.fen > 0);
     // ⚠️ round113：**不再**在"无固定支出"时提前 return —— 因为"行业参考区间"与用户填了什么无关，
     //    进页面 / 换业态城市时就该显示。改为照常请求后端，只是**不展示测算结果**（保本点此时无意义）。
     const hasFixed = fixedItems.length > 0;
-    this.setData({ loading: true, calcError: '' });
     try {
       const d = await api.call('calcSandbox', {
         city_tier: this.data.t.cityTiers[this.data.cityIdx].key,
@@ -262,13 +281,21 @@ Page({
           .map((r) => ({ key: r.key, pct: Number(r.pct) })),
         gross_margin_pct: Number(this.data.marginPct),
         target_profit_fen: api.yuanToFen(this.data.targetYuan),
+        // round114：预计月营业额（选填）—— 后端据此反算各项参考金额（amount_preview）
+        expected_revenue_fen: api.yuanToFen(this.data.expectYuan),
         client_request_id: 'sb_' + Date.now(),
       });
+      if (seq !== this._seq) return;      // 过期响应：新请求已在路上，丢弃
       const fen = (v) => (v == null ? null : api.fenToYuan(v, 2));
+      const amt = this.amountMaps(d.amount_preview || []);
+      const rowsWithPh = this.applyRefAmount(this.data.fixedRows, amt);
+      const phChanged = rowsWithPh.some((r, i) => r.ph !== this.data.fixedRows[i].ph);
       this.setData({
-        // 行业参考区间（round113）：与"填了多少"无关，红警时也在
-        bands: this.decorateBands(d.bands_preview || []),
+        // 行业参考区间（round113）+ 参考金额（round114）：与"填了多少"无关，红警时也在
+        bands: this.decorateBands(d.bands_preview || [], amt),
         marginBand: this.pickBand(d.bands_preview, 'grossMargin'),
+        // 只在真的变了才回写（减少无谓的输入行重绘）
+        fixedRows: phChanged ? rowsWithPh : this.data.fixedRows,
         result: !hasFixed ? null : {
           red_alert: !!d.red_alert,
           build_total: fen(d.build_total_fen),
@@ -294,6 +321,7 @@ Page({
         dirty: false,
       });
     } catch (e) {
+      if (seq !== this._seq) return;
       this.setData({ loading: false, dirty: false });
       if (e.code === 'M2_RED_ALERT') {
         this.setData({ result: { red_alert: true }, calcError: '' });
@@ -305,13 +333,42 @@ Page({
   },
 
   // 行业参考区间（round113）：key → 中文名 + "lo~hi%"。
-  // ⚠️ 本函数**不含任何数值常量** —— 参考带单源仍是云端 indicatorRef.BANDS（经 bands_preview 下发）。
-  decorateBands(list) {
+  // round114：追加参考**金额**（amt）—— 用户填了"预计月营业额"后，每项旁边给出该量级下的
+  //   参考金额，把"给区间"升级为"给起点"。
+  // ⚠️ 本函数**不含任何数值常量、不含任何公式** —— 区间与金额的单源都在云端 indicatorRef
+  //    （BANDS / suggestAmounts），经 bands_preview / amount_preview 下发；前端只做拼装。
+  decorateBands(list, amt) {
     const names = M.indNames;
+    const byInd = (amt && amt.byInd) || {};
     return (list || []).map((x) => ({
       key: x.key,
       name: names[x.key] || x.key,
       band: x.lo == null ? '—' : x.lo + '~' + x.hi + '%',
+      amt: byInd[x.key] || '',
+    }));
+  },
+
+  /** amount_preview → 两张匹配表：按固定项 key（输入行）/ 按指标 key（参考区间卡）。 */
+  amountMaps(list) {
+    const byFixed = {};
+    const byInd = {};
+    (list || []).forEach((x) => {
+      const s = api.fenToYuanInt(x.fen);
+      if (x.key) byFixed[x.key] = s;
+      if (x.indKey) byInd[x.indKey] = s;
+    });
+    return { byFixed, byInd };
+  },
+
+  /**
+   * 把参考金额写进固定支出行的 placeholder（灰字起点）。
+   * 🔴 只改 placeholder，**绝不碰用户已填的 yuan** —— 参考值是"起点"不是"答案"：
+   *    自动填值会让用户跳过核对，直接得到一份"自证的合理"（round114 设计边界）。
+   */
+  applyRefAmount(rows, amt) {
+    const byFixed = (amt && amt.byFixed) || {};
+    return (rows || []).map((r) => Object.assign({}, r, {
+      ph: byFixed[r.key] ? (M.refAmtPh + byFixed[r.key]) : M.buildPh,
     }));
   },
 

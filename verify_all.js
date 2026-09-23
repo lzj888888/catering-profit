@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：100 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：101 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -122,6 +122,17 @@
 //         不得被切坏、wxml 属性值不得被误剥；词族 5 例；扫描面/锚点/断言数三道下界）。
 //         ⚠️ 与 check_indicator_ref 的 E 段是**不重复的两层**：E 段只守与指标库直接相关的 4 个文件，
 //         本守卫守**全前端文案面**；两者在 terms.js / sandbox 上重叠是刻意的（E 段就近、R127 兜底）。
+//       + M2「参考值不预填」守卫（tools/check_m2_ref_not_prefill.js，R128：round114 新落「预计月营业额
+//         锚点」时暴露的**护栏缺口** —— 该功能把参考金额显示成输入框的**灰字起点**，它的边界是
+//         「参考值只作提示、**绝不替你填**」（M2 是前瞻沙盘，参考值=行业平均；一旦自动填值，
+//         用户不核对就得到「全绿、保本点健康」的**自证合理**，比不给还坏）。
+//         而这条边界在 round114 落地时**零守卫**：变异回灌 A10（把参考金额写进 `yuan`）与
+//         A11（wxml 输入框 `value` 绑成 `{{item.ph}}`）**跑遍全部相关套件 0 条转红**
+//         ⇒ 同族病「文档里写了『绝不』却没有机器判据」（与 round111 的 A9「判据面写窄」同类）。
+//         判据 = P 前置（函数体可解析 / input 数下界）+ A `applyRefAmount` 函数体剥注释后**零 `yuan`**
+//         + B wxml 每个 `<input>` 的 `value` 必须在**用户值白名单**内
+//         + C 正向（确实写 `ph` / 参考值仍有出口）+ D 四组正负样本互证（剥注释器 / 判别器 /
+//         `bodyOf` 锚定义不锚调用 / value 提取器）+ E 断言数下界）
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -422,6 +433,9 @@ const SUITES = [
   //        + C 正向要求（术语正面叫「菜品毛利率」+ 两张方向表）
   //        + D 自失效护栏（剥注释器 5 例 + 词族 5 例 + 扫描面 ≥70 / 锚点 / 断言数下界）。
   ['no-cost-rate', 'tools/check_m2_no_cost_rate.js'],
+  // R128（round114）：M2「参考值只作提示·绝不自动填值」—— round114 的锚点功能把参考金额
+  //   显示成输入框灰字起点，而「不自动填值」这条边界当时**零守卫**（回灌 A10/A11 实证）。
+  ['ref-not-prefill', 'tools/check_m2_ref_not_prefill.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

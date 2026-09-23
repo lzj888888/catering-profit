@@ -502,6 +502,18 @@ const TERMS = {
       other: '会员折扣、支付通道费等其他按流水抽的',
     },
     marginBandLabel: '本业态参考',
+
+    // ===== 预计月营业额锚点（round114 · 2026-09-24 李老师"这个直接加"）=====
+    // 目的：光给"房租 8~15%"这种区间，小白仍回答不了"那我到底该填多少钱"。
+    // 手段：填一个预计月营业额 ⇒ 后端按各项参考带的**中值**反算金额，作为输入框的灰字起点
+    //       + 参考区间卡上的"参考 ¥X"。
+    // ⚠️ 只当灰字起点，**绝不自动填值** —— 用户不核对就得到一份"自证的合理"，反而误事。
+    // ⚠️ 金额数值不在本文件（云端 indicatorRef.suggestAmounts 单源 → 经 amount_preview 下发）。
+    expectRevLabel: '预计月营业额',
+    expectRevPh: '选填，如 150000',
+    expectRevNote: '填个大概数，上面各项就会给出行业常见的参考金额，拿去核对行情就行',
+    refAmtCard: '参考 ¥',
+    refAmtPh: '参考 ',
     varItems: { takeawayComm: '外卖平台佣金', grouponComm: '团购佣金', cardFee: '刷卡手续费', other: '其他' },
     varTotal: '合计扣点',
     resBreakMonthly: '保本月营业额',

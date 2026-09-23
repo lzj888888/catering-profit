@@ -84,3 +84,6 @@
 }
 .bp-name { font-size: 28rpx; color: #333; }
 .bp-band { font-size: 28rpx; font-weight: 700; color: #1e3a5f; }
+/* round114：参考金额（起点）—— 与区间上下排列，灰字弱化，避免与"区间"抢注意力 */
+.bp-right { display: flex; flex-direction: column; align-items: flex-end; }
+.bp-amt { font-size: 28rpx; color: #9aa4b2; }

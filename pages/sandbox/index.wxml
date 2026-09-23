@@ -17,14 +17,27 @@
     <view class="hint">{{t.autoHint}}</view>
   </view>
 
-  <!-- ⓪ 行业参考区间（round113）—— 用户"还没填"时就知道该填多少量级（本页主要流失点） -->
+  <!-- ⓪ 行业参考区间 + 参考金额（round113 立 · round114 加"预计月营业额"锚点）
+       —— 用户"还没填"时就知道该填多少量级；填了预计营业额后，每项再给出参考金额（起点）。
+       ⚠️ 参考金额只是灰字起点（在下面各输入框的 placeholder 里），**不会自动填值**。 -->
   <view class="card2" wx:if="{{bands.length}}">
     <view class="sec">{{t.bandPreviewTitle}}</view>
     <view class="hint">{{t.bandPreviewNote}}</view>
+    <view class="row">
+      <text class="row-name">{{t.expectRevLabel}}</text>
+      <view class="row-in-wrap">
+        <input class="row-in" type="digit" placeholder="{{t.expectRevPh}}" value="{{expectYuan}}" bindinput="onExpect" adjust-position="{{true}}" cursor-spacing="20" />
+        <text class="row-unit">元</text>
+      </view>
+    </view>
+    <view class="hint">{{t.expectRevNote}}</view>
     <view class="bp-grid">
       <view class="bp-item" wx:for="{{bands}}" wx:key="key">
         <text class="bp-name">{{item.name}}</text>
-        <text class="bp-band">{{item.band}}</text>
+        <view class="bp-right">
+          <text class="bp-band">{{item.band}}</text>
+          <text class="bp-amt" wx:if="{{item.amt}}">{{t.refAmtCard}}{{item.amt}}</text>
+        </view>
       </view>
     </view>
   </view>
@@ -59,7 +72,7 @@
       <view class="row">
         <text class="row-name">{{item.name}}</text>
         <view class="row-in-wrap">
-          <input class="row-in" type="digit" placeholder="{{t.buildPh}}" value="{{item.yuan}}" data-idx="{{index}}" bindinput="onFixedYuan" adjust-position="{{true}}" cursor-spacing="20" />
+          <input class="row-in" type="digit" placeholder="{{item.ph}}" value="{{item.yuan}}" data-idx="{{index}}" bindinput="onFixedYuan" adjust-position="{{true}}" cursor-spacing="20" />
           <text class="row-unit">元</text>
         </view>
         <text class="row-del" data-idx="{{index}}" bindtap="onDelFixed">{{t.delItem}}</text>
