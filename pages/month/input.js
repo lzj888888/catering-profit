@@ -42,6 +42,14 @@ Page({
       // E2（批次 8c）：每类「包括 / 不包括」+ 顶部填写口径折叠块
       fillGuideTitle: TERMS.ledger.fillGuideTitle,
       fillGuide: TERMS.ledger.fillGuide,
+      // round108 修复（同族病：**wxml 用了、t 里没映射 ⇒ 渲染成空串**）：
+      //   下面 4 个键 input.wxml 一直在用，却从来没映射进来 —— 术语本体一直在 TERMS.ledger 里。
+      //   症状：「怎么填？点开看口径」/「收起口径」的引导文字变空白、小计后缀（「食材合计」的「合计」）
+      //   与预设项提示前缀（「还没加的有：」）消失。守卫 check_page_terms 已补上防复发。
+      scopeShow: TERMS.ledger.scopeShow,
+      scopeHide: TERMS.ledger.scopeHide,
+      classTotalSuffix: TERMS.ledger.classTotalSuffix,
+      presetHintPrefix: TERMS.ledger.presetHintPrefix,
       // 核算方式（2026-09-20：库存 / 摊销开关从店铺设置页迁入本页，就地二选一）
       cmSecTitle: TERMS.calcMethod.secTitle,
       cmSecHint: TERMS.calcMethod.secHint,
@@ -80,6 +88,8 @@ Page({
       dmSumAutoHint: TERMS.ledger.dineMode.sumAutoHint,
       dmAddChannel: TERMS.ledger.dineMode.addChannel,
       dmChannelPh: TERMS.ledger.dineMode.channelPh,
+      // round108 修复：渠道金额输入框的 placeholder（「填金额（元）」）此前取到 undefined ⇒ 空白
+      dmAmtPh: TERMS.ledger.dineMode.amtPh,
       // R85：外卖段（规范 §A.11）—— 模式开关 / 分项三框 / 粘贴 / 配平 / 带出 / 推广费取数路径
       twSecTitle: TERMS.ledger.takeawayMode.secTitle,
       twFast: TERMS.ledger.takeawayMode.fast,

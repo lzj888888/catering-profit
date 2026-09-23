@@ -132,6 +132,12 @@ check('A15 推广费取数路径标注存在', /twPromoPathHint/.test(inputWxml)
 //   saveLedger / getLedger / calcMonthlyProfit（去互斥 + 台账求和）。故新增登记 saveAsset/。
 //   仍按 round103 的**白名单式**登记，**绝不放宽成 `cloudfunctions/` 全豁免**（那样等于守卫作废）：
 //   by=WorkBuddy / date=2026-09-21 / reason=round107 授权拆台账行级 mode（saveAsset 新增 mode+删除+归档锁）
+// ⚠️ 2026-09-23（round108）**五次触发** —— 同一时机关卡第 5 次：李老师真机反馈「启用分期摊销」开关
+//   关不上、自己弹回打开，真因＝**摊销页读了前端缓存**（`app.globalData.switches` 只在 getShopContext
+//   时写一次，保存后没人刷）；修法是 getAmortSchedule 随笔数据返回**服务端权威**开关
+//   `amortize_switch_on`（页面只认这次出参）。该函数**已在白名单内**（round107 登记）⇒ 本轮**沿用既有条目、
+//   不新增白名单**（避免把豁免面撑大），但按纪律把时点与理由记明：
+//   by=WorkBuddy / date=2026-09-23 / reason=round108 授权：开关回弹真因修复（getAmortSchedule 出参加权威开关）
 const A15_EXEMPT = [
   /^cloudfunctions\/initDb\//,
   /^cloudfunctions\/getLedger\//,

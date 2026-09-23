@@ -270,6 +270,48 @@
     c6Lock,
     c6Lock ? '归档锁在位' : '台账未受归档锁保护 ⇒ 账锁了仍能从台账挪钱');
 
+  // ---------- C7：开关的「谁是真相源」契约（**round108 新增**）----------
+  console.log('\n===== C7 · 开关值必须来自云函数出参（round108）=====');
+  // 背景（2026-09-23 李老师真机）：摊销页「启用分期摊销」开关**关不上、自己弹回打开**。
+  //   真因 = 该页从 `app.globalData.switches`（**前端缓存**）读开关，而缓存只在 getShopContext 时写一次；
+  //   保存开关后没人刷新它 ⇒ 保存后重拉读回旧值（true）⇒ 开关自己弹回。**同族病：把缓存当真相源**。
+  //   ⚠️ 本仓既有正确范式：录入页的库存开关读 `getLedger` 出参（服务端）、月度首页读 `d.switches || 缓存`。
+  //     全仓**只有摊销页**把缓存当唯一来源 —— 故判据 ② 是「反向腿」：不许再出现那一行。
+  //   判据三条腿（缺一不可）：
+  //     ① getAmortSchedule 必须随本页数据返回服务端权威开关（渲染它的那次调用 = 唯一真相源）；
+  //     ② 摊销页**不得**把 globalData 缓存当开关来源（否则缺陷原样复发）；
+  //     ③ 开关的口径腿仍在（引擎里 `effectiveAmortizeFen` 带开关三元 ⇒ 关掉即归 0），
+  //        行为级由 batch8b A9-⑰ 承担，这里只确认那条腿没被整段删掉（静态）。
+  const gas108 = fs.readFileSync(path.join(CF, 'getAmortSchedule', 'index.js'), 'utf8');
+  const c7Srv = /amortize_switch_on/.test(gas108)
+    && /shop_switch/.test(gas108)
+    && /amortize_switch/.test(gas108);
+  check('C7-1 getAmortSchedule 随出参返回服务端权威开关（amortize_switch_on ← shop_switch.amortize_switch）',
+    c7Srv,
+    c7Srv ? '权威开关已在出参里' : '出参缺权威开关 ⇒ 页面只能去读前端缓存（= 缺陷复发）');
+
+  const amoPath108 = path.join(ROOT, 'pages', 'month', 'amortize.js');
+  const amo108 = fs.existsSync(amoPath108) ? fs.readFileSync(amoPath108, 'utf8') : '';
+  // ⚠️ 必须**剔注释**再判（踩过）：页面里那句「不再读 app.globalData.switches」的**解释性注释**
+  //   本身就是这串 token ⇒ 裸扫会把正确的修复判成缺陷（round107 的 batch8b A9-② 同款自伤）。
+  const amo108Code = amo108.replace(/\/\*[\s\S]*?\*\//g, '').split('\n')
+    .map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+  const c7NoCache = amo108.length > 0
+    && !/globalData\.switches/.test(amo108Code)
+    && /d\.amortize_switch_on/.test(amo108Code);
+  check('C7-2 摊销页的开关值取自云函数出参（且**不得**再出现 globalData.switches 读取）',
+    c7NoCache,
+    c7NoCache ? '页面只认服务端出参' : '页面仍在读前端缓存 ⇒ 保存后重拉会读回旧值、开关弹回');
+
+  const engines108 = ['saveLedger/service.js', 'getLedger/service.js', 'calcMonthlyProfit/service.js'];
+  const c7LegBad = engines108.filter((f) => {
+    const src = fs.readFileSync(path.join(CF, f), 'utf8');
+    return !/effectiveAmortizeFen\s*=\s*amortizeSwitchOn\s*\?/.test(src);
+  });
+  check('C7-3 三副本引擎都保留「关掉 ⇒ 摊销归 0」的口径腿（缺一即某条链路上开关形同虚设）',
+    c7LegBad.length === 0,
+    c7LegBad.length ? ('缺腿：' + c7LegBad.join(', ')) : '三副本均在位');
+
   console.log('\n===== 跨函数数据契约守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
   if (failN) bad.forEach((b) => console.log('   ❌ ' + b));
   process.exit(failN === 0 ? 0 : 1);

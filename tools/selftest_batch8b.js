@@ -627,6 +627,26 @@ const a9BothBad = A9_ENGINES.filter((f) => {
 check('A9-⑯ 摊销与一次性投入**可共存**（一次算清不被归 0；摊销只进真实利润；三副本一致）',
   a9BothBad.length === 0, a9BothBad.length ? ('未达标：' + a9BothBad.join(', ')) : '三副本一致');
 
+// —— A9-⑰（round108）行为级：**开关关掉 ⇒ 摊销不计入利润**（李老师 2026-09-23 真机复述的口径）——
+//   本条给摊销页那个开关的**语义**上锁：界面上写着「关掉后，下面登记的摊销资产不计入利润」，
+//   而在此之前**没有任何断言**看这条腿 —— 谁把它删掉都无人报警（失败还是静默的：数字变小/变大）。
+//   判据不看源码写法，只看引擎产出（同一条 50000 分摊销，两种开关状态对拍）：
+//     · 开关**开** ⇒ effAmort=50000、真实利润 350000
+//     · 开关**关** ⇒ effAmort=**0**、真实利润 400000（摊销被摘掉 ⇒ 利润回到未摊状态）
+//     · 且**参考利润不随开关变**（摊销只进真实利润 —— 本仓既有口径，一并钉住防漂移）
+const a9SwOffBad = A9_ENGINES.filter((f) => {
+  const eng = require(path.join(ROOT, 'cloudfunctions/' + f)).calcMonthlyProfit;
+  const on = eng(Object.assign({}, a9Clean, { amortizeFen: 50000, amortizeSwitchOn: true }));
+  const off = eng(Object.assign({}, a9Clean, { amortizeFen: 50000, amortizeSwitchOn: false }));
+  return !(off.effectiveAmortizeFen === 0
+    && off.totalFactorRealProfitFen === 400000
+    && on.totalFactorRealProfitFen === 350000
+    && off.operationRefProfitFen === on.operationRefProfitFen
+    && off.totalFactorRealProfitFen - on.totalFactorRealProfitFen === 50000);
+});
+check('A9-⑰ 开关关掉 ⇒ 摊销**不计入利润**（effAmort=0、真实利润 +摊销额；参考利润不随开关变；三副本一致）',
+  a9SwOffBad.length === 0, a9SwOffBad.length ? ('未达标：' + a9SwOffBad.join(', ')) : '三副本一致');
+
 console.log('');
 console.log('===== 门禁预检 =====');
 check('K11 双副本逐字一致', terms === termsSpec);

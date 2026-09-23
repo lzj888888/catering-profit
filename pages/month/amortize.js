@@ -25,11 +25,13 @@ Page({
       lumpAdd: TERMS.amortizePage.lumpAdd,
       // 分期摊销区块
       amortSectionTitle: TERMS.amortizePage.amortSectionTitle,
-      amortAdd: TERMS.amortizePage.amortAdd,
+      // ⚠️ round108 修复：这里原来写 `TERMS.amortizePage.amortAdd` —— **该键在 terms.js 里不存在**
+      //   ⇒ 取到 undefined ⇒ 页面底部那个主按钮渲染成**纯蓝色、无文字**（李老师真机反馈）。
+      //   术语本体一直是 `amortizePage.add`（「新增摊销资产」）。守卫 check_page_terms 已补上防复发。
+      amortAdd: TERMS.amortizePage.add,
       amortSwitchLabel: TERMS.amortizePage.amortSwitchLabel,
       amortSwitchHint: TERMS.amortizePage.amortSwitchHint,
       swSaved: TERMS.calcMethod.switchSaved,
-      add: TERMS.amortizePage.add,
       name: TERMS.amortizePage.name,
       value: TERMS.amortizePage.value,
       startMonth: TERMS.amortizePage.startMonth,
@@ -85,8 +87,6 @@ Page({
     try {
       await api.ensureShop();
       ui.setTitle(TERMS.amortizePage.title);
-      const app = getApp();
-      const sw = (app && app.globalData && app.globalData.switches) || {};
       const d = await api.call('getAmortSchedule', { month: this.data.month });
 
       // round107：本月一次算清清单 —— 名称与金额都由后端出参直取，前端只做 fenToYuan 格式化
@@ -131,7 +131,10 @@ Page({
         lumpTotalYuan: api.fenToYuan(d.lump_total_fen || 0, 2),
         assets,
         groups: this.buildGroups(assets),
-        amortizeOn: !!sw.amortizeSwitchOn,
+        // round108（真机缺陷修复）：开关值**只认本次云函数出参**（`amortize_switch_on`），
+        //   不再读 `app.globalData.switches` —— 那是只在 getShopContext 时刷新的前端缓存，
+        //   保存开关后没人刷新它 ⇒ 重拉时读回旧值 ⇒ 开关「自己弹回打开」（李老师真机反馈）。
+        amortizeOn: !!d.amortize_switch_on,
         isArchive: !!d.is_archive,
         loading: false,
       });

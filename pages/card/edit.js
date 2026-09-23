@@ -11,6 +11,8 @@ Page({
   data: {
     t: {
       dishName: TERMS.card.dishName,
+      // round108 修复：菜品名输入框的 placeholder（「如 宫保鸡丁」）此前没映射 ⇒ 取到 undefined ⇒ 空白
+      dishNamePh: TERMS.card.dishNamePh,
       calcMode: TERMS.card.calcMode,
       calcModeA: TERMS.card.calcModeA,
       calcModeB: TERMS.card.calcModeB,

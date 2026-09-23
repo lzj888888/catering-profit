@@ -52,6 +52,17 @@ exports.main = async (event) => {
   const accRes = await da.list('shop_monthly_account', { shop_id: shopId, month: v.month });
   const acc = (accRes && accRes.data && accRes.data[0]) || null;
   const isArchive = !!(acc && acc.is_archive);
+
+  // round108（真机缺陷修复）：把**服务端权威**的摊销开关随本页数据一起返回。
+  //   起因（李老师真机）：开关「关不上，会自动调整为打开状态」。
+  //   真因 = 摊销页原来从 `app.globalData.switches`（**前端缓存**）读开关，而那个缓存只在 getShopContext
+  //     时写一次 —— 保存开关后**没有任何人刷新它** ⇒ 页面保存后重拉时读回**旧值**（true）⇒ 开关自己弹回打开。
+  //   修法与 getLedger 一致：**页面只认云函数出参**（渲染本页的那次调用就是唯一真相源），不认前端缓存。
+  //   注：开关本身的口径没变 —— 关掉 ⇒ 摊销不进真实利润（引擎 `effectiveAmortizeFen` 已按此实现）。
+  const swRes = await da.list('shop_switch', { shop_id: shopId });
+  const swRows = (swRes && swRes.data) || [];
+  const amortizeSwitchOn = !!((swRows.find((r) => r.switch_key === 'amortize_switch') || {}).enabled);
+
   const res = await da.list('shop_amortize', { shop_id: shopId });
   const rows = ((res && res.data) || []).map((a) => ({
     asset_id: a.asset_id || a.id, name: a.name || '',
@@ -85,6 +96,8 @@ exports.main = async (event) => {
     lump_total_fen: lumps.reduce((s, a) => s + (a.total_value || 0), 0),
     // round107：该月归档态（前端据此把一次性投入与台账操作置只读；服务端另有硬拦截）
     is_archive: isArchive,
+    // round108：摊销开关（服务端权威）—— 前端**必须**用这个值渲染开关，不得读 globalData 缓存
+    amortize_switch_on: amortizeSwitchOn,
     total_amount_fen: sched.total_amount_fen,
     details: sched.details,
     client_request_id: v.input.client_request_id || '',
