@@ -8,6 +8,7 @@
   —— 已跟踪文件 **56 changed, +1268 / −274**；**新增 44 个**（`common/indicatorRef.js` + 42 `cx_indicatorRef.js` + `tools/check_indicator_ref.js`）。
 - **门禁**：`node verify_all.js` → **99/99 套件通过，RC=0**（证据 `review/evidence/gate_99_r110.txt`）
 - **变异回灌**：**15 条 / 15 条如期，漏网 0**，还原后 ❌=0 且**逐字节 md5 全等**（详见 §5）
+- **部署**：`calcSandbox` 已上 dev —— `success=true / filesCount=16 / packSize=28.3 KB`（详见 §10）
 - ⚠️ **前提澄清（李老师原话）**：预览二维码弹窗**是李老师自己扫完关闭的**，**不是窗口被回收** ⇒ 已推翻"窗口只能活几分钟"的旧结论，技能与纪律已同步（见 §7-③）。
 
 ---
@@ -157,4 +158,14 @@ v1 → v2：① 综合变动率不再由三个"率"相加，而是 `(100 − 毛
 5. **目标月利润**填 15,000 ⇒ 出现「目标利润月营收 / 日均」与「开店投入抵完 X 个月」。
 6. **指标对照 tab**：两套分母（按保本营业额 / 按目标利润营业额）切换正常；未填的项显示「未填」而**不是 0**。
 
-> ⚠️ 本轮改动**尚未部署到云**（`calcSandbox` 需重新部署，`indicatorRef` 已随 `common` 派生进该函数目录）。部署命令见下一条回复。
+## 10 部署记录（已上云）
+
+- **`calcSandbox` 已部署到 dev**（`cloud1-d4gphpoxy337f2a25`，ENV 现读 `initDb/config.json`）：
+  **`success=true` / `filesCount=16` / `packSize=28.3 KB`**。
+  命令：`cli.bat cloud functions deploy --project <repo> -e <dev> --names calcSandbox -r`（🔴 **`-r` 铁律**：漏了会覆盖云端 `wx-server-sdk` ⇒ 前端统一「网络不可用」）。
+  证据：`_gui/_deploy_20260923_181723.log`（工作区，流式落盘 + 240s 硬超时）。
+- **`filesCount=16` 与磁盘实况一致** —— 已回磁盘数过：该目录 16 个文件，含本轮新增的 `cx_indicatorRef.js`（**不是**记忆里"说好的 15"）。
+- **本轮只部署 `calcSandbox` 一个函数**：其余 41 个函数目录的改动**全是 `common/` 派生的副本同步**
+  （`cx_index.js` / `common.js`），**零逻辑变更** ⇒ 按「改了哪几个就上哪几个」不动它们。
+  部署前已复跑 `tools/sync_common.js`，确认**派生件 ≡ 单源**（复跑后 `cloudfunctions` 零未提交改动）。
+- ⚠️ **话术边界**：「**已上云**」≠「**功能可用**」—— 唯一硬判据仍是**真机点一次**（见 §9 六项）。
