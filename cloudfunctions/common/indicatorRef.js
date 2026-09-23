@@ -7,12 +7,30 @@
 //   展示时两者并列；警戒线数值**只在 M1.6 声明**，本文件 REDLINE 段是**引用副本**，
 //   由守卫 tools/check_indicator_ref.js 双向校验两边数字一致（改任一侧都会判红）。
 //
+// ===== 口径铁律：对用户**一律用「毛利率」，不出现「食材成本率」（round111 李老师拍板）=====
+//   客户是餐饮小白，"食材成本率"听不懂；"毛利率"是餐饮人日常语言。
+//   ⇒ **对外一切展示面（参考带 / 你的值 / 术语 / 规范正文）全部是毛利率**，
+//     本文件 BANDS 的 grossMargin 段就是**毛利率区间**（不是成本率）。
+//   ⚠️ 引擎内部仍需"食材成本率"这一个**中间量**（`100 − 毛利率`，在 service.js 算
+//     「综合变动成本率 = 食材成本率 + Σ 挂钩费率」用）—— 那是**数学必需**，但**不出前端**：
+//     · service.js 的 `food_cost_pct` 出参保留（内部/对账用），前端页面**不再渲染它**；
+//     · 前端曾有的"食材成本占售价 35%"小字已改为「每卖 100 元，毛利 X 元」。
+//     改这一层时注意：删 `food_cost_pct` 会**算错保本点**（它是综合变动成本率的加数），勿删。
+//
 // 数据出处（勿删，后续换真实样本时要能溯源）：
 //   [D1] TrueSight《连锁餐饮企业成本控制：餐饮费用占营业额比例》—— 四业态 × 六成本项区间表
 //   [D2] 帆软 E 数通《餐饮店门店盈利诊断报表》—— 五大成本健康区间 + 警戒线
 //   [D3] 餐赢计《餐饮连锁品牌单店盈利模型测算体系》—— 固定/可变成本分类、外卖抽佣 15%~25%
-//   [D4] 用户既有交付件 deepseek空间/餐饮闭店决策模型 v1.0 —— **城市系数**
-//        （原文：一线 ×1.2、二三线 ×1.0、县城 ×0.75，用于房租警戒线）
+//   [D4] 用户既有交付件 deepseek空间/餐饮闭店决策模型 v1.0 —— **城市系数** + **食材/人工/房租基线**
+//        （原文：一线 ×1.2、二三线 ×1.0、县城 ×0.75，用于房租警戒线；
+//          参数库食材 快餐36/正餐40/火锅45/茶饮35（含损耗），人工+房租+食材=三项刚性）
+//   [D5] round111 行业多源校准（毛利率口径 · 2026-09-23 查证）：
+//        · 火锅 55%~68%（掌邦调味品 2026 口径 55-68 / 餐饮财税大全 60-68 / 外卖科技社 55-65）
+//        · 烧烤 50%~65%（外卖科技社 50-60 / 爱企查 50-70 多数 50-60 / 中年急救包 60-70）
+//        · 正餐 50%~65%（不动卷 60-65 / 餐饮财税大全 55-60 / 丝路资讯 50-65 / 爱企查 50-60）
+//        · 快餐 50%~65%（餐饮财税大全 60-65 / 不动卷 55-60 / 丝路资讯 40-55 / 爱企查 50-60）
+//        · 茶饮 60%~75%（不动卷 60-70 / 餐饮财税大全 65-75）
+//        · 火锅人工 18%~24%（餐饮财税大全 20-24 / 外卖科技社 18-22 / [D4] 参数库 18）
 //   [E1] 经验推算（无直接出处）—— 标注处须在真实样本校准后替换
 //
 // 契约：金额一律「分」整数；占比一律**百分数**（65 表示 65%），展示保留 1 位小数。
@@ -27,26 +45,41 @@ const CITY_TIERS = [
 ];
 const CITY_KEYS = CITY_TIERS.map((t) => t.key);
 
-// ===== 二、业态（[D1] 四类）=====
+// ===== 二、业态（[D1] 四类；hotpot 的**显示名**是"火锅烧烤"，覆盖两类，见带值说明）=====
 const BIZ_KEYS = ['fastfood', 'dining', 'hotpot', 'cafe'];
 
-// ===== 三、参考带（[D1] 原表，**二三线基准**，单位 %）=====
-// 六项：food 食材成本率 / labor 人工成本率 / rent 房租成本率 / mkt 营销（含平台抽成）
-//       energy 能耗（水电气）/ manage 管理费用率
+// ===== 三、参考带（**毛利率口径** · **二三线基准** · 单位 %）=====
+// 六项：grossMargin 菜品毛利率 / labor 人工占比 / rent 房租占比 /
+//       mkt 平台推广费占比 / energy 能耗（水电气）占比 / manage 管理费用占比
+//
+// ⚠️ grossMargin 是**越高越好**（dir: 'gain'），其余五项**越低越好**（dir: 'cost'）。
+//    这是本库唯一一个方向相反的指标 —— 展示时必须分区，不可与成本项混排判级。
+//
+// grossMargin 段的定法（round111）：以 [D4] 参数库基线为中心，用 [D5] 行业多源区间校准
+//   · fastfood [58,68]：[D4] 64（食材36）居中；[D5] 快餐 50-65 上沿
+//   · dining   [55,65]：[D4] 60（食材40）居中；[D5] 正餐 50-65 共识中段 ⇒ 与 [D1] 原带一致，未改
+//   · hotpot   [52,67]：[D4] 55（食材45）在带内偏下；[D5] **火锅 55-68 与 烧烤 50-65 并集折中**
+//                      ⚠️ 该业态名合并了火锅与烧烤两类，两者毛利率基准**不同**（火锅更高、烧烤更低），
+//                         故带比单一业态宽（15pp）。**若将来要分列，新增 bbq 业态即可**，不要硬塞进本带。
+//   · cafe     [62,72]：[D4] 65（食材35）在带内；[D5] 茶饮 60-75 中段
+//   （原 [D1] 成本率带换算成毛利率后为 快餐65-75/正餐55-65/火锅60-70/茶饮70-80 ——
+//     快餐、火锅、茶饮三项**偏高**，会把行业正常水平误判成"偏低"，故按 [D5] 校准下移。）
 const BANDS = {
-  fastfood: { food: [25, 35], labor: [20, 25], rent: [5, 10], mkt: [3, 8], energy: [2, 4], manage: [5, 10] },
-  dining: { food: [35, 45], labor: [25, 35], rent: [8, 15], mkt: [5, 10], energy: [3, 5], manage: [5, 10] },
-  hotpot: { food: [30, 40], labor: [30, 40], rent: [8, 15], mkt: [5, 10], energy: [4, 6], manage: [5, 10] },
-  cafe: { food: [20, 30], labor: [20, 30], rent: [5, 12], mkt: [3, 8], energy: [1, 3], manage: [5, 10] },
+  fastfood: { grossMargin: [58, 68], labor: [20, 25], rent: [5, 10], mkt: [3, 8], energy: [2, 4], manage: [5, 10] },
+  dining: { grossMargin: [55, 65], labor: [25, 35], rent: [8, 15], mkt: [5, 10], energy: [3, 5], manage: [5, 10] },
+  hotpot: { grossMargin: [52, 67], labor: [18, 24], rent: [8, 15], mkt: [5, 10], energy: [4, 6], manage: [5, 10] },
+  cafe: { grossMargin: [62, 72], labor: [20, 30], rent: [5, 12], mkt: [3, 8], energy: [1, 3], manage: [5, 10] },
 };
-const BAND_KEYS = ['food', 'labor', 'rent', 'mkt', 'energy', 'manage'];
+const BAND_KEYS = ['grossMargin', 'labor', 'rent', 'mkt', 'energy', 'manage'];
 
 // ===== 四、指标元数据 =====
 // dir: 'cost' 越低越好 / 'gain' 越高越好
-// citySensitive: true 才乘城市系数（食材**不乘** —— 一线采购贵约 15% 但售价同步高，占比不必然变，[D2]）
-// amountKey: 该指标由哪一类输入算出（'grossMargin' / 'platform' 为派生，非金额项）
+// citySensitive: true 才乘城市系数（毛利率**不乘** —— 一线采购贵约 15% 但售价同步高，
+//   占比/毛利率不必然变，[D2]）
+// from: 该指标由哪一类输入算出（'grossMargin' 直接取用户填的毛利率；'platform' 为派生
+//   挂钩费率合计；'fixed:<key>' 为该月固定项 ÷ 营业额的占比）
 const INDICATORS = [
-  { key: 'food', band: 'food', dir: 'cost', citySensitive: false, from: 'grossMargin' },
+  { key: 'grossMargin', band: 'grossMargin', dir: 'gain', citySensitive: false, from: 'grossMargin' },
   { key: 'rent', band: 'rent', dir: 'cost', citySensitive: true, from: 'fixed:rent' },
   { key: 'labor', band: 'labor', dir: 'cost', citySensitive: true, from: 'fixed:labor' },
   { key: 'energy', band: 'energy', dir: 'cost', citySensitive: false, from: 'fixed:utility' },
@@ -56,6 +89,8 @@ const INDICATORS = [
 const IND_KEYS = INDICATORS.map((i) => i.key);
 
 // ===== 五、红线警戒线（🔴 引用 M1.6 唯一声明处；本段是副本，勿顺手改数）=====
+// 注：grossMargin 在此是**毛利率警戒线**（低于它才告警），与 BANDS.grossMargin 同向同义
+//     ⇒ round111 起两侧语义已统一，不再有"100 − 毛利率"的换算桥。
 const REDLINE = { rent: 15, labor: 20, grossMargin: 55, loss: 5 };
 const REDLINE_KEYS = ['rent', 'labor', 'grossMargin', 'loss'];
 
@@ -114,7 +149,7 @@ function levelOf(pct, lo, hi, dir) {
  *   - bizKey / cityKey
  *   - revenueFen   分母（分）—— 由调用方给定（保本营业额 / 目标利润营业额各调一次）
  *   - fixedFen     { rent|labor|utility|manage|other: 分 }
- *   - grossMarginPct 菜品毛利率（%）
+ *   - grossMarginPct 菜品毛利率（%）—— **直接就是对照值**（round111 起不再换算成成本率）
  *   - platformPct  「跟营业额挂钩」合计费率（%）
  * @returns {Array<{key,pct,lo,hi,level,redline,redlineHit}>}
  */
@@ -128,7 +163,8 @@ function evaluateIndicators(o) {
   for (const ind of INDICATORS) {
     let pct = null;
     if (ind.from === 'grossMargin') {
-      pct = isFinite(gm) ? 100 - gm : null;
+      // 毛利率：直接用用户填的值对照毛利率带（口径统一，不做 100−x 换算）
+      pct = isFinite(gm) ? gm : null;
     } else if (ind.from === 'var:platform') {
       pct = isFinite(plat) ? plat : null;
     } else if (ind.from.indexOf('fixed:') === 0) {
@@ -155,11 +191,11 @@ function evaluateIndicators(o) {
   return out;
 }
 
-/** 取某指标对应的警戒线（仅 rent/labor 有；其余返回 null）。 */
+/** 取某指标对应的警戒线（rent/labor/grossMargin 有值；其余返回 null）。 */
 function redlineOf(indKey) {
   if (indKey === 'rent') return REDLINE.rent;
   if (indKey === 'labor') return REDLINE.labor;
-  if (indKey === 'food') return 100 - REDLINE.grossMargin; // 食材成本率警戒线 = 100 − 毛利率警戒线
+  if (indKey === 'grossMargin') return REDLINE.grossMargin;
   return null;
 }
 

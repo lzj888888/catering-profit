@@ -71,9 +71,9 @@ check('C5 回本周期 = 660,000 ÷ 15,000 = 44 月', r.payback_months === 44, `
 
 console.log('\n===== D 餐饮指标对照（分母=保本营业额 76,000）=====');
 const ib = r.indicators_at_breakeven;
-check('D1 指标条数 = 6（食材/房租/人工/能耗/管理/平台）', ib.length === 6, `=${ib.length}`);
+check('D1 指标条数 = 6（毛利率/房租/人工/能耗/管理/平台）', ib.length === 6, `=${ib.length}`);
 const pick = (k) => ib.filter((x) => x.key === k)[0] || {};
-const irent = pick('rent'), ilabor = pick('labor'), ifood = pick('food'), imkt = pick('mkt'), ienergy = pick('energy');
+const irent = pick('rent'), ilabor = pick('labor'), igm = pick('grossMargin'), imkt = pick('mkt'), ienergy = pick('energy');
 check('D2 房租占比 = 12,000 ÷ 76,000 = 15.8%', irent.pct === 15.8, `=${irent.pct}%`);
 check('D3 房租参考带（正餐·二三线）= 8%~15%', irent.lo === 8 && irent.hi === 15, `=${irent.lo}%~${irent.hi}%`);
 check('D4 房租超带上限 ⇒ level=warn', irent.level === 'warn', `=${irent.level}`);
@@ -81,16 +81,31 @@ check('D5 房租命中 M1.6 警戒线 15%（15.8 > 15）', irent.redline === 15 
 check('D6 人工占比 = 9.2%（7,000 ÷ 76,000）', ilabor.pct === 9.2, `=${ilabor.pct}%`);
 check('D7 人工低于参考带下限 ⇒ level=good', ilabor.level === 'good', `=${ilabor.level}`);
 check('D8 人工未命中警戒线 20%', ilabor.redlineHit === false, `命中=${ilabor.redlineHit}`);
-check('D9 食材成本率 = 35%（由毛利率反推，非用户直填）', ifood.pct === 35, `=${ifood.pct}%`);
-check('D10 平台费率 = 15% 超参考带上限 10% ⇒ level=bad', imkt.pct === 15 && imkt.level === 'bad', `=${imkt.pct}% / ${imkt.level}`);
-check('D11 未填的能耗项占比 = null（未填 ≠ 0 元，前端渲染「—」而不编造 0%）', ienergy.pct === null, `=${ienergy.pct}`);
+check('D9 菜品毛利率 = 65%（**用户直填值直接对照** —— round111 起不再换算成成本率）', igm.pct === 65, `=${igm.pct}%`);
+check('D10 毛利率 65% 达带上限（正餐 55~65）⇒ level=good · gain 方向越高越好', igm.level === 'good', `=${igm.level}`);
+check('D11 毛利率未命中 M1.6 警戒线 55%（gain 方向判"低于"才命中 ⇒ 65 不命中）', igm.redline === 55 && igm.redlineHit === false, `警戒线=${igm.redline} 命中=${igm.redlineHit}`);
+check('D12 平台费率 = 15% 超参考带上限 10% ⇒ level=bad', imkt.pct === 15 && imkt.level === 'bad', `=${imkt.pct}% / ${imkt.level}`);
+check('D13 未填的能耗项占比 = null（未填 ≠ 0 元，前端渲染「—」而不编造 0%）', ienergy.pct === null, `=${ienergy.pct}`);
+// ---- round111 新增：口径统一到毛利率 + [D5] 行业校准（钉死，防被"优化"回去）----
+check('D14 🔴 方向分区：毛利率 50%（正餐带 55~65）⇒ warn，**不是 good**',
+  indicatorRef.levelOf(50, 55, 65, 'gain') === 'warn' && indicatorRef.levelOf(65, 55, 65, 'gain') === 'good',
+  `50⇒${indicatorRef.levelOf(50, 55, 65, 'gain')} / 65⇒${indicatorRef.levelOf(65, 55, 65, 'gain')}`);
+check('D15 🔴 火锅烧烤人工带 = 18%~24%（原 [30,40] 偏高 12pp 的真错 · round111 修）',
+  indicatorRef.BANDS.hotpot.labor[0] === 18 && indicatorRef.BANDS.hotpot.labor[1] === 24,
+  `=${JSON.stringify(indicatorRef.BANDS.hotpot.labor)}`);
+check('D16 四业态毛利率带（快餐58~68 / 正餐55~65 / 火锅52~67 / 茶饮62~72 · [D5] 校准）',
+  JSON.stringify(indicatorRef.BANDS.fastfood.grossMargin) === '[58,68]'
+  && JSON.stringify(indicatorRef.BANDS.dining.grossMargin) === '[55,65]'
+  && JSON.stringify(indicatorRef.BANDS.hotpot.grossMargin) === '[52,67]'
+  && JSON.stringify(indicatorRef.BANDS.cafe.grossMargin) === '[62,72]',
+  Object.keys(indicatorRef.BANDS).map((b) => b + ':' + indicatorRef.BANDS[b].grossMargin.join('~')).join(' '));
 
 console.log('\n===== E 城市层级只调「有据可依」的项 =====');
 const g = (biz, ind, city) => indicatorRef.bandOf(biz, ind, city);
 check('E1 正餐·一线 房租带 = 9.6%~18%（×1.2）', g('dining', 'rent', 'tier1').lo === 9.6 && g('dining', 'rent', 'tier1').hi === 18, JSON.stringify(g('dining', 'rent', 'tier1')));
 check('E2 正餐·县城 房租带 = 6%~11.3%（×0.75）', g('dining', 'rent', 'county').lo === 6 && g('dining', 'rent', 'county').hi === 11.3, JSON.stringify(g('dining', 'rent', 'county')));
 check('E3 正餐·一线 人工带 = 28.8%~40.3%（×1.15）', g('dining', 'labor', 'tier1').lo === 28.8 && g('dining', 'labor', 'tier1').hi === 40.3, JSON.stringify(g('dining', 'labor', 'tier1')));
-check('E4 食材带**不随城市变**（一线采购贵但售价同步高）', g('dining', 'food', 'tier1').hi === g('dining', 'food', 'county').hi && g('dining', 'food', 'tier1').hi === 45, `一线 ${g('dining', 'food', 'tier1').hi} / 县城 ${g('dining', 'food', 'county').hi}`);
+check('E4 毛利率带**不随城市变**（一线采购贵但售价同步高）', g('dining', 'grossMargin', 'tier1').hi === g('dining', 'grossMargin', 'county').hi && g('dining', 'grossMargin', 'tier1').hi === 65, `一线 ${g('dining', 'grossMargin', 'tier1').hi} / 县城 ${g('dining', 'grossMargin', 'county').hi}`);
 
 console.log('\n===== F 红警与边界（不编造数据）=====');
 const red = calcSandbox({ ...base, grossMarginPct: 10, varItems: [{ key: 'takeawayComm', pct: 95 }] });

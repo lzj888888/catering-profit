@@ -469,7 +469,8 @@ const TERMS = {
     fixedItems: { rent: '房租', labor: '人工', utility: '水电气', manage: '管理费', other: '其他固定' },
     fixedTotal: '每月固定支出合计',
     marginName: '菜品毛利率',
-    marginTip: '食材成本占售价的比例会跟着变',
+    marginSub: '毛利率越高，需要卖出的营业额越少',
+    marginTip: '不用另填食材成本，它会随毛利率自动折算',
     varItems: { takeawayComm: '外卖平台佣金', grouponComm: '团购佣金', cardFee: '刷卡手续费', other: '其他' },
     varTotal: '合计扣点',
     resBreakMonthly: '保本月营业额',
@@ -479,8 +480,14 @@ const TERMS = {
     resPayback: '开店投入抵完',
     targetRow: '每月想赚',
     paybackUnit: '个月',
-    indNames: { food: '食材成本率', rent: '房租占比', labor: '人工占比', energy: '能耗占比', manage: '管理费占比', mkt: '平台推广费' },
+    // ⚠️ 键名必须与 indicatorRef 的 INDICATORS 严格同名（后端只回 key，中文全在前端 —— 术语单源）。
+    // grossMargin 是**菜品毛利率**（越高越好）；其余五项是成本/费用占比（越低越好）。
+    indNames: { grossMargin: '菜品毛利率', rent: '房租占比', labor: '人工占比', energy: '能耗占比', manage: '管理费占比', mkt: '平台推广费' },
+    // 🔴 必须**两张**评级表：成本类"高"是坏，毛利率"低"才是坏。
+    //    用一张表会把"毛利率偏低"渲染成「偏高」—— 方向相反，客户会读反。
     indLevels: { good: '优秀', ok: '合理', warn: '偏高', bad: '过高', na: '未填' },
+    indLevelsGain: { good: '优秀', ok: '合理', warn: '偏低', bad: '过低', na: '未填' },
+    indGainKey: 'grossMargin',
     indBand: '行业参考',
     indMine: '你的',
     indRedline: '警戒线',

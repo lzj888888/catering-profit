@@ -6,7 +6,8 @@
 // 公式（M2.5 v2，2026-09-23 李老师拍板改造）：
 //   月摊销         = Σ(建店投入_i ÷ (年限_i × 12))          ← 逐项高精度求和，最后一步 round 到分
 //   固定成本合计   = Σ 每月固定项 + 月摊销
-//   食材成本率     = 100 − 菜品毛利率                         ← 对餐饮人用毛利率更好理解（拍板项②）
+//   食材成本率     = 100 − 菜品毛利率                         ← ⚠️ **引擎内部中间量，不出前端**
+//                                                              （round111：对外一律"毛利率" —— 客户看不懂成本率）
 //   综合变动成本率 = 食材成本率 + Σ 跟营业额挂钩费率           ← 佣金是"率"不是"额"（拍板项③方案 A）
 //   边际贡献率     = 1 − 综合变动成本率 ÷ 100
 //   保本月营业额   = 固定成本合计 ÷ 边际贡献率
@@ -70,6 +71,9 @@ function calcSandbox(clean) {
   const fixedTotalFen = fixedExAmortFen + buildAmortMonthlyFen;
 
   // ---- 3) 变动成本率 ----
+  // ⚠️ foodCostPct 是「综合变动成本率」的加数，**删了保本点会算错** —— 必须留。
+  //    但 round111 起它**不再作为前端展示口径**：对外（指标对照 / 术语 / 文案）统一用"毛利率"，
+  //    因为目标客户是餐饮小白，"食材成本率"听不懂。见 indicatorRef.js 顶部「口径铁律」。
   const foodCostPct = 100 - grossMarginPct;              // 食材成本率 = 100 − 菜品毛利率
   let platformPct = 0;
   for (let i = 0; i < varItems.length; i++) platformPct += num0(varItems[i] && varItems[i].pct);

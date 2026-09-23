@@ -54,7 +54,7 @@
     <view class="sec">{{t.secMargin}}</view>
     <view class="mg-top">
       <text class="mg-val">{{marginPct}}%</text>
-      <text class="mg-sub">食材成本占售价 {{foodCostPct}}%</text>
+      <text class="mg-sub">{{t.marginSub}}</text>
     </view>
     <slider min="0" max="100" step="1" value="{{marginPct}}" activeColor="#1e3a5f" block-size="22"
             bindchanging="onMarginChanging" bindchange="onMarginChange" />

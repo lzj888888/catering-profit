@@ -43,6 +43,7 @@ Page({
       amortMonthly: M.amortMonthly,
       fixedTotal: M.fixedTotal,
       marginName: M.marginName,
+      marginSub: M.marginSub,
       marginTip: M.marginTip,
       varTotal: M.varTotal,
       targetProfit: M.targetProfit,
@@ -86,7 +87,6 @@ Page({
     ],
     varRows: [mkRow('takeawayComm', M.varItems, { pct: '' })],
     marginPct: 65,
-    foodCostPct: 35,                 // 仅用于滑杆旁的联动提示（100 − 毛利率，纯减法展示）
     targetYuan: '',
     // 结果（全部来自后端）
     result: null,
@@ -181,13 +181,13 @@ Page({
 
   // ===== 毛利率滑杆 =====
   // bindchanging：拖动中只更新数字（不发请求）；bindchange：松手才重算 ⇒ 既是"实时"又不刷爆云函数
+  // ⚠️ round111：这里原有一个 foodCostPct（100 − 毛利率）联动展示，已**删掉** ——
+  //    对外不出现"食材成本率"（客户看不懂）。成本率只在云函数内部参与计算。
   onMarginChanging(e) {
-    const v = Number(e.detail.value);
-    this.setData({ marginPct: v, foodCostPct: 100 - v });
+    this.setData({ marginPct: Number(e.detail.value) });
   },
   onMarginChange(e) {
-    const v = Number(e.detail.value);
-    this.setData({ marginPct: v, foodCostPct: 100 - v });
+    this.setData({ marginPct: Number(e.detail.value) });
     this.scheduleCalc();
   },
 
@@ -288,19 +288,23 @@ Page({
   },
 
   // 指标对照：把后端 key/level 枚举 → 中文（术语单源在 terms，后端不存中文）
+  // ⚠️ 评级文案必须**分两张表**：毛利率"越高越好"，成本项"越低越好"。
+  //    若统一用成本类那张，会把"毛利率偏低"渲染成「偏高」—— 方向相反，客户会读反（round111 立）。
   decorate(list) {
     const names = M.indNames;
-    const levels = M.indLevels;
-    return (list || []).map((x) => ({
-      key: x.key,
-      name: names[x.key] || x.key,
-      mine: x.pct == null ? '—' : x.pct + '%',
-      band: x.lo == null ? '—' : x.lo + '~' + x.hi + '%',
-      level: x.level,
-      levelName: levels[x.level] || '',
-      redline: x.redline == null ? '' : x.redline + '%',
-      hit: !!x.redlineHit,
-    }));
+    return (list || []).map((x) => {
+      const levels = x.key === M.indGainKey ? M.indLevelsGain : M.indLevels;
+      return {
+        key: x.key,
+        name: names[x.key] || x.key,
+        mine: x.pct == null ? '—' : x.pct + '%',
+        band: x.lo == null ? '—' : x.lo + '~' + x.hi + '%',
+        level: x.level,
+        levelName: levels[x.level] || '',
+        redline: x.redline == null ? '' : x.redline + '%',
+        hit: !!x.redlineHit,
+      };
+    });
   },
 
   onIndTab(e) {

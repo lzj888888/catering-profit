@@ -22,7 +22,9 @@
 //   P 前置    M2 规范可读 / 权威 JSON 标记唯一 / JSON 可解析含三段 / 代码模块三段齐
 //   A 双向    城市系数（3 档）/ 参考带（4 业态 × 6 项）/ 红线（4 项）**逐项双向**
 //             （双向 = 两侧 key 集合也必须相等 ⇒ 「哪边多写了一个」同样转红）
-//   B 三方    红线：M1.6 声明 ≡ M2.4b JSON ≡ code REDLINE（含 food 派生 100 − 毛利率）
+//   B 三方    红线：M1.6 声明 ≡ M2.4b JSON ≡ code REDLINE。
+//             ⚠️ round111 起**不再有** `food = 100 − 毛利率` 的派生桥 —— 指标口径已统一到
+//             `grossMargin`（同向同值，两侧直接比）。B-③ 兼作**反向护栏**：谁把口径改回成本率即转红。
 //   C 行为    城市敏感性（敏感项乘系数 / 不敏感项三档同值）/ 浮点容差钉死样本 /
 //             level 边界 / redlineOf 映射 / evaluateIndicators 语义样本 / 未填 = na
 //   D 护栏    比较器正负样本互证（证明它既不恒真也不恒红）/ 逐项比较对数下界 /
@@ -192,10 +194,13 @@ for (const k of ['rent', 'labor', 'grossMargin', 'loss']) {
     decl !== undefined && decl === sp && decl === cd,
     `声明 ${decl} / 规范 ${sp} / 代码 ${cd}`);
 }
-// food 派生：食材成本率警戒线 = 100 − 毛利率警戒线
-check('B-③ 食材警戒线 = 100 − 毛利率警戒线（派生在位）',
-  code.redlineOf('food') === 100 - code.REDLINE.grossMargin,
-  `redlineOf('food')=${code.redlineOf('food')} / 100−${code.REDLINE.grossMargin}=${100 - code.REDLINE.grossMargin}`);
+// round111：指标口径统一到毛利率 ⇒ 不再有 100 − x 派生桥，两侧**同向同值**直接比。
+// 本条兼作**反向护栏**：若有人把 grossMargin 又换回成本率口径（redlineOf 返回 45）即转红。
+check('B-③ 毛利率警戒线 = 55（同向同值 · 无 100−x 派生桥 · 旧键 food 已废）',
+  code.redlineOf('grossMargin') === code.REDLINE.grossMargin
+  && code.redlineOf('grossMargin') === 55
+  && code.redlineOf('food') === null,
+  `redlineOf('grossMargin')=${code.redlineOf('grossMargin')} / REDLINE.grossMargin=${code.REDLINE.grossMargin} / 旧键 'food'=${code.redlineOf('food')}`);
 
 // ============ C 行为级口径（JSON 数字比不出来的四条语义）============
 sec('C 行为级口径：城市敏感性 / 浮点容差 / level 边界 / 未填 ≠ 0');
@@ -204,7 +209,7 @@ const TIERS = code.CITY_KEYS;
 
 // C-① 不随城市调整的四项：三档同值（且 = 参考带原值）
 const INSENSITIVE = code.INDICATORS.filter((i) => !i.citySensitive).map((i) => i.key);
-check('C-① 不敏感项恰为 food/energy/manage/mkt 四项', INSENSITIVE.slice().sort().join('/') === 'energy/food/manage/mkt',
+check('C-① 不敏感项恰为 grossMargin/energy/manage/mkt 四项', INSENSITIVE.slice().sort().join('/') === 'energy/grossMargin/manage/mkt',
   INSENSITIVE.join('/'));
 for (const biz of code.BIZ_KEYS) {
   let bad = [];
@@ -217,7 +222,7 @@ for (const biz of code.BIZ_KEYS) {
       }
     }
   }
-  check(`C-② ${biz} 不敏感项三档同值（食材不随城市变）`, bad.length === 0, bad.length ? bad.join('，') : '4 项 × 3 档全等');
+  check(`C-② ${biz} 不敏感项三档同值（毛利率不随城市变）`, bad.length === 0, bad.length ? bad.join('，') : '4 项 × 3 档全等');
 }
 
 // C-③ 敏感项（rent/labor）逐档乘系数一致
@@ -273,11 +278,11 @@ for (const ind of ['rent', 'labor']) {
     bad.length ? '不符：' + bad.join('；') : '10/10 全中');
 }
 
-// C-⑦ redlineOf 映射（rent/labor/food 有值，其余 null）
+// C-⑦ redlineOf 映射（rent/labor/grossMargin 有值，其余 null；**旧键 'food' 必须已废**）
 {
-  const want = { rent: code.REDLINE.rent, labor: code.REDLINE.labor, food: 100 - code.REDLINE.grossMargin, energy: null, manage: null, mkt: null };
+  const want = { rent: code.REDLINE.rent, labor: code.REDLINE.labor, grossMargin: code.REDLINE.grossMargin, energy: null, manage: null, mkt: null, food: null };
   const bad = Object.keys(want).filter((k) => code.redlineOf(k) !== want[k]);
-  check('C-⑦ redlineOf 映射（rent/labor/food 有值 · 其余 null）', bad.length === 0,
+  check('C-⑦ redlineOf 映射（rent/labor/grossMargin 有值 · 其余 null · 旧键 food 已废）', bad.length === 0,
     bad.length ? bad.map((k) => `${k}=${code.redlineOf(k)}`).join('，') : JSON.stringify(want));
 }
 
@@ -291,10 +296,11 @@ for (const ind of ['rent', 'labor']) {
   });
   const by = {};
   got.forEach((r) => { by[r.key] = r; });
-  // 期望：房租 10%（dining 带 8~15 ⇒ ok，未过 15 警戒线）/ 人工 15%（带 25~35 ⇒ good）
-  //       食材 35%（带 35~45 ⇒ good）/ 能耗 3%（带 3~5 ⇒ good）/ 管理 5%（带 5~10 ⇒ good）
+  // 期望：**毛利率 65%（dining 带 55~65 ⇒ 达上限 good —— gain 方向越高越好）**
+  //       房租 10%（dining 带 8~15 ⇒ ok，未过 15 警戒线）/ 人工 15%（带 25~35 ⇒ good）
+  //       能耗 3%（带 3~5 ⇒ good）/ 管理 5%（带 5~10 ⇒ good）
   //       营销 15%（带 5~10，超上限 25%（12.5）之外 ⇒ bad）
-  const want = { food: ['35', 'good'], rent: ['10', 'ok'], labor: ['15', 'good'], energy: ['3', 'good'], manage: ['5', 'good'], mkt: ['15', 'bad'] };
+  const want = { grossMargin: ['65', 'good'], rent: ['10', 'ok'], labor: ['15', 'good'], energy: ['3', 'good'], manage: ['5', 'good'], mkt: ['15', 'bad'] };
   const bad = Object.keys(want).filter((k) => !by[k] || String(by[k].pct) !== want[k][0] || by[k].level !== want[k][1]);
   check('C-⑧ evaluateIndicators 语义样本 6 项（占比 + 评级）', bad.length === 0,
     bad.length ? bad.map((k) => `${k}=${by[k] ? by[k].pct + '/' + by[k].level : 'null'}`).join('，')
@@ -313,6 +319,86 @@ for (const ind of ['rent', 'labor']) {
   const en = got.find((r) => r.key === 'energy');
   check('C-⑩ 未填项 ⇒ pct=null / level=na（不按 0 元处理）',
     !!en && en.pct === null && en.level === 'na', en ? `pct=${en.pct} / level=${en.level}` : '未产出 energy 行');
+}
+
+// C-⑪ round111 口径统一护栏（这条守的是"口径不被改回去"，不只是值）：
+//     `grossMargin` 必须①存在②dir=gain③取值 = **用户直填的毛利率**（不是 100 − 毛利率）
+//     ④旧键 `food` 必须已消失。若谁把它改回成本率口径，本条立刻转红。
+{
+  const got = code.evaluateIndicators({
+    bizKey: 'dining', cityKey: 'tier23', revenueFen: 1000000,
+    fixedFen: { rent: 100000 }, grossMarginPct: 65, platformPct: 0,
+  });
+  const gm = got.find((r) => r.key === 'grossMargin');
+  const old = got.find((r) => r.key === 'food');
+  const gainKeys = code.INDICATORS.filter((i) => i.dir === 'gain').map((i) => i.key).join('/');
+  check('C-⑪ 口径统一：键=grossMargin / dir=gain / 值=直填 65（非 100−65=35）/ 旧键 food 已废',
+    !!gm && !old && gm.pct === 65 && gainKeys === 'grossMargin',
+    gm ? `pct=${gm.pct}（应 65）· 旧键 food ${old ? '仍存在 ⚠️' : '已废'} · gain 项 [${gainKeys}]`
+      : '未产出 grossMargin 行');
+}
+
+// ============ E 对外文案面（round111：客户看不懂「食材成本率」）============
+sec('E 对外文案面：用户可见处不得出现「食材成本率」');
+// 为什么单列一段：round111 李老师的原话是「尽量统一到毛利率，避免食材成本率，**客户看不懂**」——
+//   这是**产品口径要求**，改错了不会让任何数字出错，只会让文案退回老说法 ⇒ 数字类判据全抓不到。
+//   所以必须直接扫**文案源**。
+// ⚠️ 扫描前必须**剥注释**：本仓多处注释里正当地提到"食材成本率"（含本守卫上方与 indicatorRef 顶部说明），
+//    裸扫必误杀（记忆纪律「扫描/计数类守卫先剥注释再数」）。
+const VISIBLE = [
+  'pages/sandbox/index.wxml',
+  'pages/sandbox/index.js',
+  'miniprogram/i18n/terms.js',
+  'specs/dev-specs/i18n/terms.js',
+];
+const stripComments = (s) => s
+  .replace(/\/\*[\s\S]*?\*\//g, '')      // 块注释（js/wxss）
+  .replace(/<!--[\s\S]*?-->/g, '')       // html/wxml 注释
+  .replace(/^[ \t]*\/\/.*$/gm, '');      // 行注释
+// 🔴 判据必须是**词族，不是单词**（此条由 round111 回灌 A9 实测抓出，初版判据面写窄了）：
+//   初版只查「食材成本率」5 个字；而 A9 把滑杆小字改回「食材成本**占**售价 35%」——
+//   一个"率"字都没有 ⇒ **漏网**。而那句话恰恰是 round111 从 UI 上删掉的原话。
+//   ⇒ 改查"率类表述族"：`食材成本[率占比]` + 独立的 `食材占比`。
+//   ⚠️ 但**不能**裸禁「食材成本」四个字：terms 的 marginTip **正当**写着
+//   「不用另填食材成本，它会随毛利率自动折算」（解释为什么没有食材输入框）⇒ 会误杀。
+//   词族恰好把两者分开 —— marginTip 的「食材成本」后跟「，」，不匹配 `[率占比]`（E-③ 第四例守着这条）。
+const BANNED_RE = /食材成本[率占比]|食材占比/;
+{
+  const bad = [];
+  for (const rel of VISIBLE) {
+    let raw = '';
+    try { raw = readRel(rel); } catch (e) { bad.push(rel + '（读不到）'); continue; }
+    stripComments(raw).split(/\r?\n/).forEach((l, i) => {
+      if (BANNED_RE.test(l)) bad.push(`${rel}:${i + 1} 「${l.trim().slice(0, 80)}」`);
+    });
+  }
+  check('E-① 四个用户可见面（剥注释后）零「食材成本率 / 食材成本占… / 食材占比」类表述',
+    bad.length === 0, bad.length ? bad.join('；') : '4 份文件全扫，0 命中');
+
+  // 前提（防本条"剥了个寂寞"而误杀注释，或反过来漏扫）—— 剥注释器正负样本互证：
+  // 三种注释形态（行 / 块 / html）里的词必须**被剥掉**；而**字符串字面量里的必须保留**（那才是真命中）。
+  const t1 = stripComments('// 这里写食材成本率\nconst a = 1;');
+  const t2 = stripComments('/* 食材成本率 */ const b = 2;');
+  const t3 = stripComments('<!-- 食材成本率 --><view/>');
+  const t4 = stripComments('const c = "食材成本率";');
+  check('E-② 剥注释器正负样本互证（行/块/html 注释被剥 · 字符串里保留）',
+    !t1.includes('食材成本率') && !t2.includes('食材成本率') && !t3.includes('食材成本率')
+    && t4.includes('食材成本率'),
+    `行[${t1.includes('食材成本率') ? '未剥⚠️' : '剥'}] 块[${t2.includes('食材成本率') ? '未剥⚠️' : '剥'}]`
+    + ` html[${t3.includes('食材成本率') ? '未剥⚠️' : '剥'}] 字符串[${t4.includes('食材成本率') ? '保留✅' : '误剥⚠️'}]`);
+
+  // E-③ 词族判据正负样本互证（证明判据面既没写窄、也没写宽）
+  const cases = [
+    ['「食材成本率」命中', BANNED_RE.test('食材成本率')],
+    ['「食材成本占售价 35%」命中（= A9 漏网的那种写法）', BANNED_RE.test('食材成本占售价')],
+    ['「食材占比」命中', BANNED_RE.test('食材占比')],
+    ['「食材成本比例」命中', BANNED_RE.test('食材成本比例')],
+    ['正当表述「不用另填食材成本，它会随毛利率自动折算」**不**命中',
+      !BANNED_RE.test('不用另填食材成本，它会随毛利率自动折算')],
+  ];
+  const badC = cases.filter((c) => !c[1]).map((c) => c[0]);
+  check('E-③ 词族判据正负样本互证 5 例（4 命中 + 1 不误杀）', badC.length === 0,
+    badC.length ? '不符：' + badC.join('；') : '5/5 如期');
 }
 
 // ============ D 自失效护栏（证明本守卫既不恒真也不恒红）============
