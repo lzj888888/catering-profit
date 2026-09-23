@@ -235,7 +235,7 @@
 ===== 批次0 自测结果（复审节点① 五条）=====
 ✅ 点1·身份只来自OPENID(忽略伪造记录)  →  user.id=u_real
 ✅ 点1·函数不接收event(签名为 ctx,db,audit)  →  resolveAuth.length=3（参数=ctx,db,audit，无 event 入口）
-✅ 点1b·首次自动建档返回user  →  user.id=u_mue8ukzbj27k
+✅ 点1b·首次自动建档返回user  →  user.id=u_mue9dp5kdjjq
 ✅ 点1b·建了默认shop  →  shop=1
 ✅ 点1b·建了entitlement(expire_at=0)  →  expire_at=0
 ✅ 点1b·建档写audit_log(AUTH_AUTO_PROVISION)  →  audit=1
@@ -269,8 +269,8 @@
 ✅ A6b·并发首进只建出 1 个 user  →  user=1
 ✅ A6b·并发首进只建出 1 个 shop  →  shop=1
 ✅ A6b·并发首进只建出 1 条 entitlement  →  ent=1
-✅ A6b·并发两次拿到同一个 user_id  →  ids=u_mue8ukzgl8v,u_mue8ukzgl8v
-✅ A6b·店铺 id 用单源确定性格式 shop_<user_id>  →  shop_id=shop_u_mue8ukzgl8v
+✅ A6b·并发两次拿到同一个 user_id  →  ids=u_mue9dp5q7774,u_mue9dp5q7774
+✅ A6b·店铺 id 用单源确定性格式 shop_<user_id>  →  shop_id=shop_u_mue9dp5q7774
 ✅ A6b·机制级：确定性 id ⇒ 同 user 第二次建店被库拒  →  rejected=true
 ✅ A6b·机制级：仅剩 1 个店  →  shop=1
 ✅ A6b·反向证据：随机 id 两次都成功 ⇒ 2 个店（这就是旧实现能建出重复店的原因）  →  shop=2
@@ -601,7 +601,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 ✅ P4 每个报告目录均真实存在  (1 个目录全部存在)
 ✅ P4 每个提到报告路径的活文档都给出了可解析的绝对路径  (4 份：review/README.md, SMOKETEST_RUNBOOK.md, 新手上云操作手册.md, specs/dev-specs/★知识存储点_2026-09-10.md)
 ✅ P5 报告目录含 ≥1 份 `YYYY-MM-DD.md`  (16 份)
-   ℹ️ 最新报告：2026-09-23.md（56500 B，mtime 2026-09-23 14:20）
+   ℹ️ 最新报告：2026-09-23.md（61710 B，mtime 2026-09-23 15:21）
 ✅ P6 诱饵「~\.workbuddy\memory」确实存在（标注不腐）  (~\.workbuddy\memory · 云端画像缓存)
 ✅ P6 诱饵「~\.workbuddy\MEMORY.md」确实存在（标注不腐）  (~\.workbuddy\MEMORY.md · 跨项目用户级记忆)
 
@@ -1217,7 +1217,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 
 ===== [batch5-payCreateOrder] cloudfunctions/payCreateOrder/selftest.js =====
 ===== 订单生成 =====
-✅ 生成订单号（PO 前缀）  (POMUE8UX1UECZF)
+✅ 生成订单号（PO 前缀）  (POMUE9E1M4AOVA)
 ✅ 金额=2590 分（整数）
 ✅ plan_id/plan_name 原样携带
 ✅ status=pending
@@ -1276,7 +1276,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 
 ===== [batch5-payRenew] cloudfunctions/payRenew/selftest.js =====
 ===== 续费订单生成 =====
-✅ 生成续费订单号（PR 前缀）  (PRMUE8UY3C9ZYX)
+✅ 生成续费订单号（PR 前缀）  (PRMUE9E2OT7GSS)
 ✅ 金额=19900 分
 ✅ plan 携带 + status=pending
 ✅ enable_real_payment=false
@@ -1497,7 +1497,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 ✅ 新用户录单 → expire_at = 今日 + 31 天
 ✅ 权益 source=manual
 ✅ 订单写入（status=paid / channel=manual / 金额分）
-✅ 订单号 MO 前缀  (MOMU2MDMO0CWB6)
+✅ 订单号 MO 前缀  (MOMU2MDMO0KO22)
 ✅ 订单关联 plan/user
 ✅ 审计 action=ADMIN_MANUAL_ORDER 且含前后值
 ✅ 未到期续费 → 原值 + 365 天（累加非覆盖）  (diff=33264000000)
@@ -2235,7 +2235,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 
 ===== [suite-coverage] tools/check_suite_coverage.js =====
 ===== S1 前置：git 列表可用（fail-closed）=====
-✅ S1 能在仓库根执行 git ls-files · 跟踪文件 1797 个
+✅ S1 能在仓库根执行 git ls-files · 跟踪文件 1799 个
 ✅ S1-② 面 A 工作树补面逐根达下界（根路径写错即转红） · tools:60 prototype:14 cfTests:1 cf-selftest:40
 ✅ S1-③ 面 A 工作树补面并入扫描面 · 工作树新增 0 个未入库文件（未 add 的新判据不再失明）
 
@@ -2282,7 +2282,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 ✅ C4 面 A 三处声明 + 序号面全部有命中 · 头注/§1.1/会漂行/序号声明 = true/true/true/4
 
 ===== C5 前提守卫：被排除的 review/ 确实是历史陈述面 =====
-✅ C5 review/ 历史计数陈述存在（排除面没打错、放行规则确有必要） · 历史陈述文件 193 个
+✅ C5 review/ 历史计数陈述存在（排除面没打错、放行规则确有必要） · 历史陈述文件 194 个
 
 ===== C6 前提守卫：自指排除只放行注释行（§0.3⑦）=====
 ✅ C6 自身文件「第 N 套件」仅出现在注释行 · 注释行命中 2 处，全部属说明性举例
@@ -2378,7 +2378,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
   [page-manifest] ✅ PASS  (✅ 17 条 / 段 2)
 
 ===== [quota-limits] tools/check_quota_limits.js =====
-  ✅ L1-① 扫描面非空且无八进制转义（CJK 路径不得被静默跳过） —— 1797 个文件 / 转义 0
+  ✅ L1-① 扫描面非空且无八进制转义（CJK 路径不得被静默跳过） —— 1799 个文件 / 转义 0
   ✅ L1-② 工作树补面逐根达下界（补面被扫空即转红） —— specs=30 ＋未入库 0 个
   ✅ L1-③ 回环：index 内 specs/*.md 均能由工作树扫描复现（根路径写错即转红） —— index 30 个全部复现
   ✅ L2-① 单源 FREE_LIMIT 可解析（fail-closed） —— shop=1 / cost_card=3
@@ -2407,7 +2407,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
   [quota-limits] ✅ PASS  (✅ 15 条 / 段 1)
 
 ===== [collection-perms] tools/check_collection_perms.js =====
-  ✅ P1-① 扫描面非空且无八进制转义（CJK 路径不得被静默跳过） —— 1797 个文件 / 转义 0
+  ✅ P1-① 扫描面非空且无八进制转义（CJK 路径不得被静默跳过） —— 1799 个文件 / 转义 0
   ✅ P1-② 工作树补面逐根达下界（补面被扫空即转红） —— specs=30 ＋未入库 0 个
   ✅ P1-③ 回环：index 内 specs/*.md 均能由工作树扫描复现（根路径写错即转红） —— index 30 个全部复现
   ✅ P2-① 单源 COLLECTIONS 可解析 —— cloudfunctions/initDb/collections.js
@@ -2434,7 +2434,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
   [collection-perms] ✅ PASS  (✅ 22 条 / 段 1)
 
 ===== [privacy-collection] tools/check_privacy_collection.js =====
-  ✅ C1-① 扫描面非空且无八进制转义（CJK 路径不得被静默跳过） —— 1797 个文件 / 转义 0
+  ✅ C1-① 扫描面非空且无八进制转义（CJK 路径不得被静默跳过） —— 1799 个文件 / 转义 0
   ✅ C1-③ 工作树补面非空（路径写错即零覆盖，非恒真） —— 工作树 738 个 / 其中 index 外 0 个
   ✅ C2-① 云函数目录集可解析（fail-closed） —— 44 个目录
   ✅ C2-② 小程序端源码扫描面可解析（fail-closed） —— 74 个文件
@@ -2469,7 +2469,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
   ✅ A1-② 实跑失败数为 0（验收锚点当前全绿）
 
 ===== A2 扫描面（index ∪ 工作树 · CJK 不得被转义跳过） =====
-  ✅ A2-① 无 CJK 八进制转义路径（坑⑪） —— git ls-files 1797 条
+  ✅ A2-① 无 CJK 八进制转义路径（坑⑪） —— git ls-files 1799 条
   ✅ A2-② 扫描面非空（路径写错即零覆盖，非恒真） —— 39 个 .md（工作树补 1 个）
 
 ===== A3 唯一声明处 ≡ 实算 =====
@@ -2512,8 +2512,8 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
   ✅ P2-② 声明 ≡ 实算（5/30/7）
 
 ===== P3 全仓当前态引用 ≡ 实算（锚点就近 ≤40 字符） =====
-  ✅ P3-① 扫描面 184 个 .md（index ∪ 工作树，无八进制转义）
-  ✅ P3-② 扫描面文件数 184 ≥ 30（前提守卫，非恒真）
+  ✅ P3-① 扫描面 185 个 .md（index ∪ 工作树，无八进制转义）
+  ✅ P3-② 扫描面文件数 185 ≥ 30（前提守卫，非恒真）
   ✅ P3-⑤ 关键文件均在扫描面（3 个，fail-closed）
   ✅ P3-③ 强面（可判红的当前态陈述）18 处 ≥ 5（扫描面/句式写错即零命中，非恒真）
   ✅ P3-④ 全部 18 处当前态引用 ≡ 实算（5/30/7）
@@ -2666,7 +2666,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 ===== W 弱面：review/ 历史档案里的同型分布（只明示，不判红） =====
   ⚠️ review/NOTE_2026-09-19_round39-realcloud-get.md:103 「## 5. 待办（本件未闭合）」/ 正文 "已闭环"
   ⚠️ review/REVIEW_2026-09-15_round2-verify.md:32 「## §1 待办（R12 起顺延上一份编号）」/ 正文 "已闭环"
-  · 弱面共 2 条 / 扫 146 个档案文件 —— 档案里的"待办清单部分已闭环"属正常形态，只提示不判红
+  · 弱面共 2 条 / 扫 147 个档案文件 —— 档案里的"待办清单部分已闭环"属正常形态，只提示不判红
   ✅ W-① 弱面扫描完成：2 条明示（弱面只提示、不判红）
 
 ===== 状态陈述矛盾守卫结果：12 通过 / 0 失败 =====
@@ -2701,7 +2701,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 
 ===== C7 前提守卫（登记面非空，证明解析真的生效） =====
   ✅ C7-① 在册集合非空（前端 7 / 后端 5）—— 登记解析生效
-  ✅ C7-② 扫描面 184 个 .md（index ∪ 工作树）
+  ✅ C7-② 扫描面 185 个 .md（index ∪ 工作树）
   ✅ C7-③ 扫描面无八进制转义（quotepath=false 生效）
 
 ===== C8 口径单源不扩散 =====
