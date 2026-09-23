@@ -235,7 +235,7 @@
 ===== 批次0 自测结果（复审节点① 五条）=====
 ✅ 点1·身份只来自OPENID(忽略伪造记录)  →  user.id=u_real
 ✅ 点1·函数不接收event(签名为 ctx,db,audit)  →  resolveAuth.length=3（参数=ctx,db,audit，无 event 入口）
-✅ 点1b·首次自动建档返回user  →  user.id=u_mueqyw9788dk
+✅ 点1b·首次自动建档返回user  →  user.id=u_muerca5nhp9d
 ✅ 点1b·建了默认shop  →  shop=1
 ✅ 点1b·建了entitlement(expire_at=0)  →  expire_at=0
 ✅ 点1b·建档写audit_log(AUTH_AUTO_PROVISION)  →  audit=1
@@ -269,8 +269,8 @@
 ✅ A6b·并发首进只建出 1 个 user  →  user=1
 ✅ A6b·并发首进只建出 1 个 shop  →  shop=1
 ✅ A6b·并发首进只建出 1 条 entitlement  →  ent=1
-✅ A6b·并发两次拿到同一个 user_id  →  ids=u_mueqyw9c6cqz,u_mueqyw9c6cqz
-✅ A6b·店铺 id 用单源确定性格式 shop_<user_id>  →  shop_id=shop_u_mueqyw9c6cqz
+✅ A6b·并发两次拿到同一个 user_id  →  ids=u_muerca5sej9p,u_muerca5sej9p
+✅ A6b·店铺 id 用单源确定性格式 shop_<user_id>  →  shop_id=shop_u_muerca5sej9p
 ✅ A6b·机制级：确定性 id ⇒ 同 user 第二次建店被库拒  →  rejected=true
 ✅ A6b·机制级：仅剩 1 个店  →  shop=1
 ✅ A6b·反向证据：随机 id 两次都成功 ⇒ 2 个店（这就是旧实现能建出重复店的原因）  →  shop=2
@@ -569,7 +569,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 ✅ S4 工序清单·集合数 至少声明一次  (命中 1 处)
 ✅ S4 工序清单·集合数 声明值 == 实测集合数  (25)
 ✅ S4 重启键·活声明至少一处（fail-closed）  (命中 5 行)
-✅ S4 重启键·活声明计数 == 实测索引总数  (L609=40 L622=40 L711=40 L720=40 L753=40)
+✅ S4 重启键·活声明计数 == 实测索引总数  (L613=40 L626=40 L715=40 L724=40 L757=40)
 ✅ S4 重启键·豁免仍生效「R74 建库单源同步（」  (2 处 · R74 条目：叙述 39→40 的变更本身 + 引用 Runbook 历史快照（该行含 2 处旧值）)
 ✅ S4 重启键·豁免仍生效「2026-09-14 云端实测」  (1 处 · A7 定案的**历史实测记录**（记录当日实际值，非当前态声明）)
 ✅ S4 重启键·豁免仍生效「R74 建库单源同步守卫」  (1 处 · §1.3 ⑨ 对 R74 的复盘，引用旧值作为教训)
@@ -601,7 +601,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 ✅ P4 每个报告目录均真实存在  (1 个目录全部存在)
 ✅ P4 每个提到报告路径的活文档都给出了可解析的绝对路径  (4 份：review/README.md, SMOKETEST_RUNBOOK.md, 新手上云操作手册.md, specs/dev-specs/★知识存储点_2026-09-10.md)
 ✅ P5 报告目录含 ≥1 份 `YYYY-MM-DD.md`  (17 份)
-   ℹ️ 最新报告：2026-09-24.md（9525 B，mtime 2026-09-23 18:20）
+   ℹ️ 最新报告：2026-09-24.md（12511 B，mtime 2026-09-23 23:44）
 ✅ P6 诱饵「~\.workbuddy\memory」确实存在（标注不腐）  (~\.workbuddy\memory · 云端画像缓存)
 ✅ P6 诱饵「~\.workbuddy\MEMORY.md」确实存在（标注不腐）  (~\.workbuddy\MEMORY.md · 跨项目用户级记忆)
 
@@ -628,14 +628,14 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 ✅ S2 活文档内无「裸的已证伪断言」 · 0 处（共 13 处命中均带上下文标记）
 
 ℹ️ 以下 8 处为**带标记的引用/留痕**（放行，但必须看得见）：
-   specs/dev-specs/★知识存储点_2026-09-10.md:591  [引述/留痕]  **R74 建库单源同步（本侧主动加固，R73 的溢出发现）**：`cloudfunctions/initDb/collections.js`（建库**单源**）与 `specs/dev-sp
-   specs/dev-specs/★知识存储点_2026-09-10.md:621  [引述/留痕]  脚本化走官方 HTTP API `POST /tcb/updateindex`（见 `tools/apply_indexes.js`；旧口径「索引改控制台手工建」已于 2026-09-17 *
+   specs/dev-specs/★知识存储点_2026-09-10.md:595  [引述/留痕]  **R74 建库单源同步（本侧主动加固，R73 的溢出发现）**：`cloudfunctions/initDb/collections.js`（建库**单源**）与 `specs/dev-sp
+   specs/dev-specs/★知识存储点_2026-09-10.md:625  [引述/留痕]  脚本化走官方 HTTP API `POST /tcb/updateindex`（见 `tools/apply_indexes.js`；旧口径「索引改控制台手工建」已于 2026-09-17 *
    tools/apply_indexes.js:9  [引述/留痕]  *   - 错的一半：**「只能手工」是假的**（**已证伪** · 2026-09-17）。官方 HTTP API 提供
    tools/gen_index_checklist.js:21  [引述/留痕]  //      ⇒ 本单的用途随之改变：它不是"必须手工"的理由（该旧口径**已于 2026-09-17 证伪**），
    下一步工序清单.md:147  [引述/留痕]  ⚠️ 枯燥 —— **有 AppSecret 就走 ①，别走 ③**（旧版这里写「只能手工」，已于 2026-09-17 证伪并改正）。
    下一步工序清单.txt:147  [引述/留痕]  ⚠️ 枯燥 —— **有 AppSecret 就走 ①，别走 ③**（旧版这里写「只能手工」，已于 2026-09-17 证伪并改正）。
-   specs/dev-specs/★知识存储点_2026-09-10.md:653  [引述/留痕]  · **触发**：回查李老师 2026-09-21 那批真机反馈的闭环质量。「月份选择 只有两个月份」这一条，我在 round57 曾判成「这是设计不是 bug」⇒ 本轮回读源码实锤：**判错
-   specs/dev-specs/★知识存储点_2026-09-10.md:667  [引述/留痕]  `月份只有两个=设计`：凡把该现象判成「设计/不是 bug/正常现象」的行，必须带引述标记（如「曾」）。
+   specs/dev-specs/★知识存储点_2026-09-10.md:657  [引述/留痕]  · **触发**：回查李老师 2026-09-21 那批真机反馈的闭环质量。「月份选择 只有两个月份」这一条，我在 round57 曾判成「这是设计不是 bug」⇒ 本轮回读源码实锤：**判错
+   specs/dev-specs/★知识存储点_2026-09-10.md:671  [引述/留痕]  `月份只有两个=设计`：凡把该现象判成「设计/不是 bug/正常现象」的行，必须带引述标记（如「曾」）。
 
 ℹ️ 以下 5 处为**政策类**（非能力限制，放行）：
    BATCH0_DELIVERY.md:86  [政策]  3. **initDb 仅 dev**：`initDb` 部署到 **dev** 手动跑一次建 25 集合；**prod 的 25 张集合在控制台手工建，绝不部署 initDb 到 prod*
@@ -1243,7 +1243,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 
 ===== [batch5-payCreateOrder] cloudfunctions/payCreateOrder/selftest.js =====
 ===== 订单生成 =====
-✅ 生成订单号（PO 前缀）  (POMUEQZ9HLGXXX)
+✅ 生成订单号（PO 前缀）  (POMUERCP3S2IEA)
 ✅ 金额=2590 分（整数）
 ✅ plan_id/plan_name 原样携带
 ✅ status=pending
@@ -1302,7 +1302,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 
 ===== [batch5-payRenew] cloudfunctions/payRenew/selftest.js =====
 ===== 续费订单生成 =====
-✅ 生成续费订单号（PR 前缀）  (PRMUEQZAIJKBIG)
+✅ 生成续费订单号（PR 前缀）  (PRMUERCQI4KO7G)
 ✅ 金额=19900 分
 ✅ plan 携带 + status=pending
 ✅ enable_real_payment=false
@@ -1523,7 +1523,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 ✅ 新用户录单 → expire_at = 今日 + 31 天
 ✅ 权益 source=manual
 ✅ 订单写入（status=paid / channel=manual / 金额分）
-✅ 订单号 MO 前缀  (MOMU2MDMO02OLH)
+✅ 订单号 MO 前缀  (MOMU2MDMO0L0D3)
 ✅ 订单关联 plan/user
 ✅ 审计 action=ADMIN_MANUAL_ORDER 且含前后值
 ✅ 未到期续费 → 原值 + 365 天（累加非覆盖）  (diff=33264000000)
@@ -2348,7 +2348,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
   ✅ P8 扫描面固定且不含 tools/（本守卫不在扫描面内，无自指污染） —— specs/dev-specs/上线材料_隐私政策_v1.md | specs/dev-specs/上线材料_提审材料包_v1.md | specs/dev-specs/★知识存储点_2026-09-10.md
   ✅ P2 实扫占位符 ≥ 1（扫描面/规则非空） —— 实扫 6 处：L18【营业执照上的主体全称】 L20【常用邮箱】 L21【微信号 / 客服电话，需与小程序内「意见反馈」一致】 L81【客服方式，与第一节一致】 L82【15】 L94【可公网访问的静态页 / 公众号图文】
   ✅ P3 元描述（反引号内）≥ 1（「剥反引号」规则的前提守卫） —— 命中 4 处：L7【】 L88【…】 L89【…】 L90【15】
-  ✅ P4 语义标记「占位符全集口径」命中 ≥ 3（fail-closed） —— 命中 4 处：specs/dev-specs/上线材料_隐私政策_v1.md:89=6 | specs/dev-specs/上线材料_提审材料包_v1.md:13=6 | specs/dev-specs/上线材料_提审材料包_v1.md:130=6 | specs/dev-specs/★知识存储点_2026-09-10.md:251=6
+  ✅ P4 语义标记「占位符全集口径」命中 ≥ 3（fail-closed） —— 命中 4 处：specs/dev-specs/上线材料_隐私政策_v1.md:89=6 | specs/dev-specs/上线材料_提审材料包_v1.md:13=6 | specs/dev-specs/上线材料_提审材料包_v1.md:130=6 | specs/dev-specs/★知识存储点_2026-09-10.md:255=6
   ✅ P5 全部口径声明 ≡ 实扫 6 处 —— 一致
   ✅ P6 「唯一声明处」恰 1 处且在隐私政策内（口径单源） —— specs/dev-specs/上线材料_隐私政策_v1.md:89
   ✅ P7 排除面前提：review/ 下确有历史计数陈述（证明排除面没打错） —— 12 个文件
@@ -2391,10 +2391,10 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
   ✅ Q6 当前态全集陈述全部 ≡ 15（强锚点面共 4 处） —— 4 处一致
   ⚠️ 弱面（无全集锚点，`N 页` 只明示不判红，避免误杀分页页数/子集页数）6 处：
      specs/dev-specs/core/13_上线前查缺补漏_决策与待办总览.md:79 写 15 —— | `adminExport` / `exportData` | **60s** | 对齐 `core/06:410` 铁律；1500 条 ≈ 15 页往返 |
-     specs/dev-specs/★知识存储点_2026-09-10.md:156 写 14 —— - **队列五项正确已全清**（A6b / R91 / AD G1–G8 / **R86** / 14 页走查）⇒ 按 §6 纪律**不擅自开工**中优先级项（
-     specs/dev-specs/★知识存储点_2026-09-10.md:201 写 15 —— `common/auth.js::resolveAuth`，无注册页）＋ 5 步走查路径 ② 15 页功能清单 ③ 类目/服务范围声明文案草稿
-     specs/dev-specs/★知识存储点_2026-09-10.md:330 写 7 —— 覆盖 `app.wxss` / `app.json` 导航栏 / `app.js`+`utils/paywall.js`+各页 `confirmColor` /
-     specs/dev-specs/★知识存储点_2026-09-10.md:433 写 14 —— G2 grep 15 命中经人工判读均为 spacer / min-height 合规）/ R86 按 round50 结论**不再回读** / 14 页走查已
+     specs/dev-specs/★知识存储点_2026-09-10.md:160 写 14 —— - **队列五项正确已全清**（A6b / R91 / AD G1–G8 / **R86** / 14 页走查）⇒ 按 §6 纪律**不擅自开工**中优先级项（
+     specs/dev-specs/★知识存储点_2026-09-10.md:205 写 15 —— `common/auth.js::resolveAuth`，无注册页）＋ 5 步走查路径 ② 15 页功能清单 ③ 类目/服务范围声明文案草稿
+     specs/dev-specs/★知识存储点_2026-09-10.md:334 写 7 —— 覆盖 `app.wxss` / `app.json` 导航栏 / `app.js`+`utils/paywall.js`+各页 `confirmColor` /
+     specs/dev-specs/★知识存储点_2026-09-10.md:437 写 14 —— G2 grep 15 命中经人工判读均为 spacer / min-height 合规）/ R86 按 round50 结论**不再回读** / 14 页走查已
      specs/dev-specs/上线材料_提审材料包_v1.md:86 写 15 —— 静态自检（2026-09-19 首过 / 2026-09-21 复跑，命令可复现）：15 页的 `.js/.wxml/.json/.wxss` **零缺失**（
   ✅ Q7 排除面前提：确有子集/历史类陈述被放行（证明排除面没打错） —— 6 行
   ✅ Q8 当前态陈述命中数 ≥ 4（正则/扫描面失效即零命中假绿） —— 4 处
@@ -2482,7 +2482,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
   ✅ C8-⑦ 弱面扫描面有效（确有「N 项 / N 个文件」陈述被扫到） —— 8 处
   ⚠️ 弱面（与声明不符，只明示不判红，可能是子集/另一口径/历史快照）3 处：
      specs/dev-specs/★知识存储点_2026-09-10.md:38 写 675（声明 6） —— - **一键校验入口（改完必跑）**：`node verify_all.js`（仓库根；串 **101** 个套件 = 门禁 A–L + `verify_seed_data` 48
-     specs/dev-specs/★知识存储点_2026-09-10.md:772 写 52（声明 6） —— - **套件数会漂**：`verify_all.js` 增删套件后必须同步头部注释里的数量（现 **101**；2026-09-17 由 41 → 45（新增 batch7 四组自
+     specs/dev-specs/★知识存储点_2026-09-10.md:776 写 52（声明 6） —— - **套件数会漂**：`verify_all.js` 增删套件后必须同步头部注释里的数量（现 **101**；2026-09-17 由 41 → 45（新增 batch7 四组自
      specs/dev-specs/上线材料_隐私政策_v1.md:101 写 52（声明 6） —— - 「收集项」逐条来自代码扫描（本轮已扫 `pages/` `utils/` `app.js` 共 52 个文件），**非编写者主观描述**。
 
 ===== 隐私收集项清单口径守卫结果：20 通过 / 0 失败 =====
@@ -2507,12 +2507,12 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 ===== A5 全仓当前态引用 ≡ 实算 =====
   ✅ A5-① 引用面命中 ≥3（扫描面/句式写错即零命中，非恒真） —— 4 处
   ✅ A5-② 全部 4 处当前态引用 ≡ 实算 48/0
-  ✅ A6-① HIST 排除面生效（确有历史/非当前态陈述被放行，非恒真） —— 5 处：specs/dev-specs/★知识存储点_2026-09-10.md:38, specs/dev-specs/★知识存储点_2026-09-10.md:760, specs/dev-specs/★知识存储点_2026-09-10.md:772, specs/dev-specs/★知识存储点_2026-09-10.md:772, specs/dev-specs/★知识存储点_2026-09-10.md:777
+  ✅ A6-① HIST 排除面生效（确有历史/非当前态陈述被放行，非恒真） —— 5 处：specs/dev-specs/★知识存储点_2026-09-10.md:38, specs/dev-specs/★知识存储点_2026-09-10.md:764, specs/dev-specs/★知识存储点_2026-09-10.md:776, specs/dev-specs/★知识存储点_2026-09-10.md:776, specs/dev-specs/★知识存储点_2026-09-10.md:781
      [HIST 放行] specs/dev-specs/★知识存储点_2026-09-10.md:38 「94/94 全绿」 —— - **一键校验入口（改完必跑）**：`node verify_all.js`（仓库根；串 **101** 个套件 = 门禁 A–L + `verify_seed_data` 48
-     [HIST 放行] specs/dev-specs/★知识存储点_2026-09-10.md:760 「79/79 全绿」 —— - ✅ **R38 已清（round 15 裁决 / round 16 验收）：① 索引由单列唯一 `idx_card_code(card_code)` 改为复合唯一 `idx_c
-     [HIST 放行] specs/dev-specs/★知识存储点_2026-09-10.md:772 「66/66 全绿」 —— - **套件数会漂**：`verify_all.js` 增删套件后必须同步头部注释里的数量（现 **101**；2026-09-17 由 41 → 45（新增 batch7 四组自
-     [HIST 放行] specs/dev-specs/★知识存储点_2026-09-10.md:772 「94/94 全绿」 —— - **套件数会漂**：`verify_all.js` 增删套件后必须同步头部注释里的数量（现 **101**；2026-09-17 由 41 → 45（新增 batch7 四组自
-     [HIST 放行] specs/dev-specs/★知识存储点_2026-09-10.md:777 「88/88 全绿」 —— 前 16 例同族病均为数字漂移，本例为**时态**漂移；含 5 组正负样本互证 + 2 道自失效护栏）** → **83（round78：新增 `tools/check_incom
+     [HIST 放行] specs/dev-specs/★知识存储点_2026-09-10.md:764 「79/79 全绿」 —— - ✅ **R38 已清（round 15 裁决 / round 16 验收）：① 索引由单列唯一 `idx_card_code(card_code)` 改为复合唯一 `idx_c
+     [HIST 放行] specs/dev-specs/★知识存储点_2026-09-10.md:776 「66/66 全绿」 —— - **套件数会漂**：`verify_all.js` 增删套件后必须同步头部注释里的数量（现 **101**；2026-09-17 由 41 → 45（新增 batch7 四组自
+     [HIST 放行] specs/dev-specs/★知识存储点_2026-09-10.md:776 「94/94 全绿」 —— - **套件数会漂**：`verify_all.js` 增删套件后必须同步头部注释里的数量（现 **101**；2026-09-17 由 41 → 45（新增 batch7 四组自
+     [HIST 放行] specs/dev-specs/★知识存储点_2026-09-10.md:781 「88/88 全绿」 —— 前 16 例同族病均为数字漂移，本例为**时态**漂移；含 5 组正负样本互证 + 2 道自失效护栏）** → **83（round78：新增 `tools/check_incom
   ⚠️ 弱面（锚点不就近，只明示不判红，可能是子集/另一口径）14 处：
      BATCH0_DELIVERY.md:5 写 20/0（最近锚点 Infinity 字符） —— > 自测：本机 `node cloudfunctions/common/__tests__/batch0_selfcheck.js` → **20 通过 / 0 失败 + 1 待办
      BATCH0_DELIVERY.md:45 写 20/0（最近锚点 Infinity 字符） —— 合计：20 通过 / 0 失败（待办 1 项不计入失败）
@@ -2521,7 +2521,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
      BATCH2_DELIVERY.md:55 写 42/0（最近锚点 Infinity 字符） —— **42 通过 / 0 失败，EXIT=0**。判据为**整数分严格相等**（无容差）。
      SMOKETEST_RUNBOOK.md:265 写 21/21（最近锚点 Infinity 字符） —— 实例：批次 0 生成方自测 21/21 全绿，仍掩盖 A1/A2 两个真 bug（mock 契约与平台不符）。
      specs/dev-specs/core/13_上线前查缺补漏_决策与待办总览.md:138 写 4/4（最近锚点 Infinity 字符） —— 还原后 `saveCostCard` 29/29、`calcBom` 40/40、`syncCostCard` 4/4 全绿；套件 64/64、门禁 A–L RC=0。
-     specs/dev-specs/★知识存储点_2026-09-10.md:306 写 66/66（最近锚点 Infinity 字符） —— 但它**从未登记 SUITES** ⇒ 「门禁 66/66 全绿」这句话**不包含 docx 校验**，忘了跑就永远没人知道。
+     specs/dev-specs/★知识存储点_2026-09-10.md:310 写 66/66（最近锚点 Infinity 字符） —— 但它**从未登记 SUITES** ⇒ 「门禁 66/66 全绿」这句话**不包含 docx 校验**，忘了跑就永远没人知道。
 
 ===== A7 口径单源不扩散 =====
   ✅ A7-① 仅 core/14 一处自称本口径单源

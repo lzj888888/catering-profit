@@ -86,9 +86,10 @@
 
 | 件 | 位置 | 自证 |
 |---|---|---|
-| 仓外 zip（review/ + 仓根一次性脚本 + 工作区记忆 + 云端记忆缓存 + 工作区脚本） | `C:\Users\lzj\WorkBuddy\Claw\_archive\catering-profit_backup_2026-09-24_r114.zip` | 2144 件 · 131.22 MB → 106.92 MB · CRC 全通过 · 解压体积**逐字节一致** · 抽验 6/6 md5 一致 · zip md5 `1784beb3b470553146e5e613ca14d36a` |
+| 仓外 zip（review/ + 仓根一次性脚本 + 工作区记忆 + 云端记忆缓存 + 工作区脚本） | `C:\Users\lzj\WorkBuddy\Claw\_archive\catering-profit_backup_2026-09-24_r114.zip` | **2148 件 · 131.23 MB → 106.93 MB** · CRC 全通过 · 解压体积**逐字节一致** · 抽验 6/6 md5 一致 · zip md5 `33e3723ccab43ff8e4b5ff0bdbcf73a1`（**收口后最终一份**） |
 | 同名清单（**含逐件 md5**） | 同目录 `.list.txt` | 行数 = 文件数 |
 | 全仓 git bundle | 同目录 `catering-profit_full_2026-09-24_r114.bundle` | `git bundle verify` → complete history（≈ 24.7 MB；含全部 refs；HEAD 命中 bundle 内 `refs/heads/dev`） |
+| **M2 权威源（不在任何仓库）** | `C:\Users\lzj\WorkBuddy\Claw\_archive\deepseek空间_backup_2026-09-24.zip` | 桌面 `deepseek空间/` 全量 24 件 · 359.60 KB · CRC 全通过 · 体积逐字节一致 · 抽验 4/4 md5 一致 · zip md5 `ee7fdac82c570ad659a2303e16f8f82f` |
 | 代码云端 | GitHub `lzj888888/catering-profit` @ `dev` = `ab1474b` | `ls-remote` ≡ `rev-parse HEAD` |
 | **记忆云端** | GitHub `lzj888888/workbuddy-memory` @ `main` | 记忆目录本身即 git 仓，SSH 推送；另有每日 23:00 自动同步 |
 
