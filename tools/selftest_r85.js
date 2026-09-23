@@ -138,6 +138,15 @@ check('A15 推广费取数路径标注存在', /twPromoPathHint/.test(inputWxml)
 //   `amortize_switch_on`（页面只认这次出参）。该函数**已在白名单内**（round107 登记）⇒ 本轮**沿用既有条目、
 //   不新增白名单**（避免把豁免面撑大），但按纪律把时点与理由记明：
 //   by=WorkBuddy / date=2026-09-23 / reason=round108 授权：开关回弹真因修复（getAmortSchedule 出参加权威开关）
+// ⚠️ 2026-09-23（round110）**六次触发** —— 同一时机关卡第 6 次：李老师拍板 M2 大改造
+//   （「菜品变动成本率→毛利率 / 去掉营销率与其他率、改自选费用项 / 补加盟费·装修·摊销·管理费 /
+//    加餐饮指标对照 / 按城市层级区分占比」），后端必须动 calcSandbox（契约 v2：结构化清单 +
+//   一次性投入摊销 + 指标对照），并新增**公共层单源** common/indicatorRef.js（分业态 × 城市层级参考库）。
+//   ⚠️ 本轮有个新形态：sync_common 会因新增单源而向**全部 42 个云函数目录**派生 cx_indicatorRef.js
+//   并重写 common.js ⇒ 同步产物必须按**精确文件名**一并登记，否则本判据在任何一次公共层变更后
+//   必然转红（那是「同步动作」而非「顺手改云函数逻辑」）。
+//   仍按 round103 的**白名单式**登记，**绝不放宽成 `cloudfunctions/` 全豁免**（那样等于守卫作废）：
+//   by=WorkBuddy / date=2026-09-23 / reason=round110 授权 M2 契约 v2（calcSandbox）+ 新增公共层单源 indicatorRef
 const A15_EXEMPT = [
   /^cloudfunctions\/initDb\//,
   /^cloudfunctions\/getLedger\//,
@@ -145,6 +154,15 @@ const A15_EXEMPT = [
   /^cloudfunctions\/calcMonthlyProfit\//,
   /^cloudfunctions\/getAmortSchedule\//,
   /^cloudfunctions\/saveAsset\//,
+  /^cloudfunctions\/calcSandbox\//,                    // round110：M2 契约 v2（service/validate/selftest）
+  /^cloudfunctions\/common\/indicatorRef\.js$/,        // round110：新增指标参考库单源
+  /^cloudfunctions\/common\/index\.js$/,               // round110：聚合入口挂载 indicatorRef
+  // round110：以下三条是 sync_common 的**派生产物**（非云函数自有逻辑）——
+  //   common/index.js 加一个导出，就会让全部 42 个函数的 cx_index.js 同步变动；
+  //   新增单源文件则派生 cx_indicatorRef.js。精确到文件名登记，不做 cx_*.js 泛化豁免。
+  /^cloudfunctions\/[^/]+\/cx_indicatorRef\.js$/,      // round110：sync_common 派生（全函数）
+  /^cloudfunctions\/[^/]+\/cx_index\.js$/,             // round110：sync_common 派生（全函数，本轮 35 个变动）
+  /^cloudfunctions\/[^/]+\/common\.js$/,               // round110：sync_common 派生入口
 ];
 check('A15 云函数逻辑零改动（仅 initDb 建库单源 + 本批授权函数豁免）', (() => {
   const { execFileSync } = require('child_process');

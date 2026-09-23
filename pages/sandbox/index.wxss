@@ -1,4 +1,73 @@
-/* pages/sandbox/index.wxss —— M2 开店测算 */
+/* pages/sandbox/index.wxss —— M2 开店盈亏平衡点测算（v2）
+   色值单源见 app.wxss 头部声明（品牌墨蓝 #1e3a5f / 渐变 #2a4e7c → #162c49）；本文件不引入新的品牌色。
+   板块区隔手法与 M1 一致（李老师 round109 拍板）：一级标题「大字 + 左侧墨蓝渐变竖条」，
+   与二级信息拉开**量级**而非只加粗 —— 让餐饮小白一眼看出「这是新的一个板块」。
+
+   ⚠️ 无障碍硬约束（tools/selftest_ad_gates.js G1/G2 判据，两条都是真规则不是建议）：
+     G1 字号一律 ≥28rpx（本文件无 <28rpx）
+     G2 min-height 一律 ≥88rpx，或恰为 20/40rpx 占位（本文件用 88rpx + 40rpx） */
+
+/* v1 遗留（结论行样式；v2 结果区改为表格化展示，保留以防其他引用） */
 .val-input { text-align: right; font-size: 30rpx; width: 280rpx; }
 .concl { font-size: 32rpx; font-weight: 700; color: #333; margin-bottom: 20rpx; line-height: 1.6; }
 .concl .hl { color: #1e3a5f; font-size: 36rpx; }
+
+/* ===== 0 · 前提选择器（城市层级 / 经营类型）===== */
+.sel-row { display: flex; align-items: center; justify-content: space-between; min-height: 88rpx; border-bottom: 1rpx solid #eef1f5; }
+.sel-lbl { font-size: 28rpx; color: #333; }
+.sel-pk { flex: 0 0 auto; }
+.sel-val { font-size: 28rpx; color: #1e3a5f; font-weight: 600; padding: 8rpx 16rpx; background: #f2f5f9; border-radius: 8rpx; }
+
+/* ===== 板块一级标题 ===== */
+.sec { position: relative; font-size: 40rpx; font-weight: 800; color: #1e3a5f; padding-left: 20rpx; margin: 8rpx 0 18rpx; line-height: 1.3; }
+.sec::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 6rpx; bottom: 6rpx; width: 8rpx; border-radius: 4rpx;
+  background: linear-gradient(180deg, #2a4e7c 0%, #162c49 100%);
+}
+
+/* ===== 明细行 ===== */
+.row { display: flex; align-items: center; min-height: 88rpx; }
+.row-name { flex: 0 0 200rpx; font-size: 28rpx; color: #333; }
+.row-in-wrap {
+  flex: 1 1 auto; display: flex; align-items: center;
+  border: 1rpx solid #dfe5ec; border-radius: 10rpx; padding: 6rpx 14rpx; background: #fff;
+  margin-right: 12rpx; min-height: 88rpx;
+}
+.row-in-wrap.yr { flex: 0 0 168rpx; }
+.row-in { flex: 1 1 auto; font-size: 28rpx; color: #1e3a5f; text-align: right; min-height: 40rpx; }
+.row-unit { font-size: 28rpx; color: #888; margin-left: 6rpx; }
+.row-del { flex: 0 0 auto; font-size: 28rpx; color: #9aa4b2; padding: 16rpx 0 16rpx 8rpx; }
+.add-row { font-size: 28rpx; color: #1e3a5f; min-height: 88rpx; line-height: 88rpx; }
+
+/* ===== ③ 毛利率滑杆 ===== */
+.mg-top { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6rpx; }
+.mg-val { font-size: 46rpx; font-weight: 800; color: #1e3a5f; }
+.mg-sub { font-size: 28rpx; color: #888; }
+
+/* ===== 结果区 ===== */
+.cell.big .lbl { font-weight: 600; color: #333; }
+.keynum { font-size: 40rpx; font-weight: 800; color: #1e3a5f; }
+.calc-btn { margin: 8rpx 0 24rpx; }
+.err-hint { font-size: 28rpx; color: #c0392b; min-height: 88rpx; line-height: 88rpx; }
+.empty-tip { text-align: center; padding: 30rpx; }
+
+/* ===== 餐饮指标对照 ===== */
+.tab-row { display: flex; margin-bottom: 14rpx; }
+.tab { flex: 1 1 0; text-align: center; font-size: 28rpx; color: #666; min-height: 88rpx; line-height: 88rpx; border-bottom: 3rpx solid transparent; }
+.tab.on { color: #1e3a5f; font-weight: 700; border-bottom-color: #1e3a5f; }
+.ind-row { display: flex; align-items: center; min-height: 88rpx; border-bottom: 1rpx solid #f0f3f7; }
+.ind-row.ind-head { border-bottom: 1rpx solid #dfe5ec; }
+.ind-c1 { flex: 0 0 200rpx; font-size: 28rpx; color: #333; }
+.ind-c2 { flex: 1 1 0; text-align: center; font-size: 28rpx; font-weight: 700; color: #1e3a5f; }
+.ind-c3 { flex: 1 1 0; text-align: center; font-size: 28rpx; color: #666; }
+.ind-c4 { flex: 0 0 120rpx; text-align: right; font-size: 28rpx; }
+.ind-head .ind-c1, .ind-head .ind-c2, .ind-head .ind-c3, .ind-head .ind-c4 {
+  font-size: 28rpx; font-weight: 400; color: #888;
+}
+.lv-good { color: #1e8e5a; }
+.lv-ok { color: #1e3a5f; }
+.lv-warn { color: #d68910; }
+.lv-bad { color: #c0392b; }
+.lv-na { color: #aaa; }

@@ -1,58 +1,104 @@
-// pages/sandbox/index.js —— 批次 4 · M2 开店测算（输入页 + 结果页，仅正算）
+// pages/sandbox/index.js —— M2 开店盈亏平衡点测算（v2 · 2026-09-23 李老师拍板改造）
 //
-// ⚠️ 计算下沉：所有公式在云函数 calcSandbox（Service 层）计算，前端**只展示返回的分整数**，
-//   绝不自行编公式（M2.5 公式 + S4 锚点由后端保证）。
-// ⚠️ 付费弹窗边界：M2 模块**永不触发**付费弹窗。
-// ⚠️ 触发方式（AD-6/AD-7）：输入不实时调云函数，手动点「开始测算」才调。
+// ⚠️ 计算下沉（铁律不变）：所有**公式**在云函数 calcSandbox（Service 层）算，前端只展示返回的分整数。
+//   前端只允许做「纯金额求和」这类展示汇总（如各行金额相加），**任何含除法 / 费率的量
+//   （月摊销、保本营业额、各类占比）一律只用后端返回值** —— 前端不编公式。
+//
+// ⚠️ 触发方式（AD-6/AD-7 的 v2 折中，已写进 M2 规范）：
+//   仍**不按键调用**（防每敲一个字符就发一次云函数），改为「改动停顿 700ms 自动重算」+「滑块松手即算」
+//   + 底部「开始测算」按钮兜底。公式权威性不变（仍由后端算），只是把"点按钮"从必做变成可选。
+//
+// ⚠️ 付费弹窗边界：M2 模块**永不触发**付费弹窗（不变）。
 const api = require('../../utils/api.js');
 const ui = require('../../utils/ui.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 
+const M = TERMS.m2;
+const BUILD_ALL = Object.keys(M.buildItems);
+const FIXED_ALL = Object.keys(M.fixedItems);
+const VAR_ALL = Object.keys(M.varItems);
+const DEBOUNCE_MS = 700;
+
+// 行工厂：把「术语里的中文名」直接塞进行对象，wxml 只渲染 {{item.name}} ——
+// 避免在 WXML 里写动态键（{{t.xxx[item.key]}}）这种解析边界写法。
+const mkRow = (k, nameMap, extra) => Object.assign({ key: k, name: nameMap[k] }, extra || {});
+
 Page({
   data: {
     t: {
-      title: TERMS.modules.m2.navTitle,
-      inputTitle: TERMS.m2.inputTitle,
-      rent: TERMS.m2.rent,
-      property: TERMS.m2.property,
-      labor: TERMS.m2.labor,
-      other: TERMS.m2.other,
-      includeAmort: TERMS.m2.includeAmort,
-      simAmort: TERMS.m2.simAmort,
-      varFood: TERMS.m2.varFood,
-      varMkt: TERMS.m2.varMkt,
-      varOther: TERMS.m2.varOther,
-      targetProfit: TERMS.m2.targetProfit,
-      calc: TERMS.m2.calc,
-      fixedTotal: TERMS.m2.fixedTotal,
-      compositeVar: TERMS.m2.compositeVar,
-      marginRate: TERMS.m2.marginRate,
-      breakEvenMonthly: TERMS.m2.breakEvenMonthly,
-      breakEvenDaily: TERMS.m2.breakEvenDaily,
-      targetMonthly: TERMS.m2.targetMonthly,
-      targetDaily: TERMS.m2.targetDaily,
-      redAlert: TERMS.m2.redAlert,
-      redAlertHint: TERMS.m2.redAlertHint,
-      yuanSuffix: TERMS.m2.yuanSuffix,
-      daySuffix: TERMS.m2.daySuffix,
-      conclusionPrefix: TERMS.sandboxResult.conclusionPrefix,
-      conclusionSuffix: TERMS.sandboxResult.conclusionSuffix,
+      cityLabel: M.cityLabel,
+      cityTiers: M.cityTiers,
+      bizLabel: M.bizLabel,
+      bizTypes: M.bizTypes,
+      secBuild: M.secBuild,
+      secFixed: M.secFixed,
+      secMargin: M.secMargin,
+      secVar: M.secVar,
+      secTarget: M.secTarget,
+      secResult: M.secResult,
+      secIndicators: M.secIndicators,
+      buildPh: M.buildPh,
+      yearsSuffix: M.yearsSuffix,
+      buildTotal: M.buildTotal,
+      amortMonthly: M.amortMonthly,
+      fixedTotal: M.fixedTotal,
+      marginName: M.marginName,
+      marginTip: M.marginTip,
+      varTotal: M.varTotal,
+      targetProfit: M.targetProfit,
+      targetRow: M.targetRow,
+      resBreakMonthly: M.resBreakMonthly,
+      resBreakDaily: M.resBreakDaily,
+      resTargetMonthly: M.resTargetMonthly,
+      resTargetDaily: M.resTargetDaily,
+      resPayback: M.resPayback,
+      paybackUnit: M.paybackUnit,
+      indBand: M.indBand,
+      indMine: M.indMine,
+      indRedline: M.indRedline,
+      indByBreak: M.indByBreak,
+      indByTarget: M.indByTarget,
+      indLevels: M.indLevels,
+      addItem: M.addItem,
+      delItem: M.delItem,
+      autoHint: M.autoHint,
+      needFixed: M.needFixed,
+      calc: M.calc,
+      redAlert: M.redAlert,
+      redAlertHint: M.redAlertHint,
       noCalc: TERMS.sandboxResult.noCalc,
       loading: TERMS.ui.loading,
       cur: '¥',
     },
-    // 输入（界面单位：元 / %）
-    rentYuan: '', propertyYuan: '', laborYuan: '', otherYuan: '',
-    includeAmort: false, simAmortYuan: '',
-    varFoodPct: '', varMktPct: '', varOtherPct: '',
-    targetProfitYuan: '',
-    // 结果（后端返回，仅展示）
+    // 选择器
+    cityIdx: 1, bizIdx: 1,          // 默认「二三线 / 中式正餐」
+    // 各行（yuan / pct 保存**字符串**，与输入框语义一致；提交时才转分）
+    buildRows: [
+      mkRow('decor', M.buildItems, { yuan: '', years: 3 }),
+      mkRow('equip', M.buildItems, { yuan: '', years: 5 }),
+      mkRow('franchise', M.buildItems, { yuan: '', years: 3 }),
+    ],
+    fixedRows: [
+      mkRow('rent', M.fixedItems, { yuan: '' }),
+      mkRow('labor', M.fixedItems, { yuan: '' }),
+      mkRow('utility', M.fixedItems, { yuan: '' }),
+      mkRow('manage', M.fixedItems, { yuan: '' }),
+    ],
+    varRows: [mkRow('takeawayComm', M.varItems, { pct: '' })],
+    marginPct: 65,
+    foodCostPct: 35,                 // 仅用于滑杆旁的联动提示（100 − 毛利率，纯减法展示）
+    targetYuan: '',
+    // 结果（全部来自后端）
     result: null,
+    indicators: [],
+    indTab: 'break',
     calcError: '',
     loading: true,
+    dirty: false,
   },
 
   onLoad() { this.bootstrap(); },
+  onUnload() { if (this._timer) clearTimeout(this._timer); },
 
   async bootstrap() {
     this.setData({ loading: true });
@@ -66,55 +112,172 @@ Page({
     }
   },
 
-  onRent(e) { this.setData({ rentYuan: e.detail.value }); },
-  onProperty(e) { this.setData({ propertyYuan: e.detail.value }); },
-  onLabor(e) { this.setData({ laborYuan: e.detail.value }); },
-  onOther(e) { this.setData({ otherYuan: e.detail.value }); },
-  onIncludeAmort(e) { this.setData({ includeAmort: e.detail.value }); },
-  onSimAmort(e) { this.setData({ simAmortYuan: e.detail.value }); },
-  onVarFood(e) { this.setData({ varFoodPct: e.detail.value }); },
-  onVarMkt(e) { this.setData({ varMktPct: e.detail.value }); },
-  onVarOther(e) { this.setData({ varOtherPct: e.detail.value }); },
-  onTargetProfit(e) { this.setData({ targetProfitYuan: e.detail.value }); },
+  // ===== 选择器 =====
+  onCity(e) {
+    const i = Number(e.detail.value);
+    this.setData({ cityIdx: i, cityName: M.cityTiers[i].name });
+    this.scheduleCalc();
+  },
+  onBiz(e) {
+    const i = Number(e.detail.value);
+    this.setData({ bizIdx: i, bizName: M.bizTypes[i].name });
+    this.scheduleCalc();
+  },
 
-  // 手动点击触发（AD-7：不在 input 实时调云函数）
+  // ===== 建店投入 =====
+  onBuildYuan(e) {
+    const i = Number(e.currentTarget.dataset.idx);
+    const rows = this.data.buildRows.slice();
+    rows[i].yuan = e.detail.value;
+    this.setData({ buildRows: rows });
+    this.scheduleCalc();
+  },
+  onBuildYears(e) {
+    const i = Number(e.currentTarget.dataset.idx);
+    const rows = this.data.buildRows.slice();
+    rows[i].years = e.detail.value;
+    this.setData({ buildRows: rows });
+    this.scheduleCalc();
+  },
+  onAddBuild() {
+    const used = this.data.buildRows.map((r) => r.key);
+    const k = BUILD_ALL.filter((x) => used.indexOf(x) < 0)[0];
+    if (!k) return;
+    const rows = this.data.buildRows.concat([mkRow(k, M.buildItems, { yuan: '', years: 3 })]);
+    this.setData({ buildRows: rows });
+    this.scheduleCalc();
+  },
+  onDelBuild(e) {
+    const i = Number(e.currentTarget.dataset.idx);
+    const rows = this.data.buildRows.slice();
+    rows.splice(i, 1);
+    this.setData({ buildRows: rows });
+    this.scheduleCalc();
+  },
+
+  // ===== 每月固定 =====
+  onFixedYuan(e) {
+    const i = Number(e.currentTarget.dataset.idx);
+    const rows = this.data.fixedRows.slice();
+    rows[i].yuan = e.detail.value;
+    this.setData({ fixedRows: rows });
+    this.scheduleCalc();
+  },
+  onAddFixed() {
+    const used = this.data.fixedRows.map((r) => r.key);
+    const k = FIXED_ALL.filter((x) => used.indexOf(x) < 0)[0];
+    if (!k) return;
+    const rows = this.data.fixedRows.concat([mkRow(k, M.fixedItems, { yuan: '' })]);
+    this.setData({ fixedRows: rows });
+    this.scheduleCalc();
+  },
+  onDelFixed(e) {
+    const i = Number(e.currentTarget.dataset.idx);
+    const rows = this.data.fixedRows.slice();
+    rows.splice(i, 1);
+    this.setData({ fixedRows: rows });
+    this.scheduleCalc();
+  },
+
+  // ===== 毛利率滑杆 =====
+  // bindchanging：拖动中只更新数字（不发请求）；bindchange：松手才重算 ⇒ 既是"实时"又不刷爆云函数
+  onMarginChanging(e) {
+    const v = Number(e.detail.value);
+    this.setData({ marginPct: v, foodCostPct: 100 - v });
+  },
+  onMarginChange(e) {
+    const v = Number(e.detail.value);
+    this.setData({ marginPct: v, foodCostPct: 100 - v });
+    this.scheduleCalc();
+  },
+
+  // ===== 挂钩费用 =====
+  onVarPct(e) {
+    const i = Number(e.currentTarget.dataset.idx);
+    const rows = this.data.varRows.slice();
+    rows[i].pct = e.detail.value;
+    this.setData({ varRows: rows });
+    this.scheduleCalc();
+  },
+  onAddVar() {
+    const used = this.data.varRows.map((r) => r.key);
+    const k = VAR_ALL.filter((x) => used.indexOf(x) < 0)[0];
+    if (!k) return;
+    const rows = this.data.varRows.concat([mkRow(k, M.varItems, { pct: '' })]);
+    this.setData({ varRows: rows });
+    this.scheduleCalc();
+  },
+  onDelVar(e) {
+    const i = Number(e.currentTarget.dataset.idx);
+    const rows = this.data.varRows.slice();
+    rows.splice(i, 1);
+    this.setData({ varRows: rows });
+    this.scheduleCalc();
+  },
+
+  // ===== 目标利润 =====
+  onTarget(e) { this.setData({ targetYuan: e.detail.value }); this.scheduleCalc(); },
+
+  // ===== 自动重算（防抖；AD-6/AD-7 折中）=====
+  scheduleCalc() {
+    this.setData({ dirty: true });
+    if (this._timer) clearTimeout(this._timer);
+    this._timer = setTimeout(() => { this.onCalc(); }, DEBOUNCE_MS);
+  },
+
   async onCalc() {
     if (this.data.loading) return;
+    if (this._timer) { clearTimeout(this._timer); this._timer = null; }
+    const fixedItems = this.data.fixedRows
+      .map((r) => ({ key: r.key, fen: api.yuanToFen(r.yuan) }))
+      .filter((x) => x.fen > 0);
+    if (!fixedItems.length) {
+      // 一条固定支出都没有 ⇒ 保本点无意义；提示但不判错（用户可能正在填）
+      this.setData({ calcError: M.needFixed });
+      return;
+    }
     this.setData({ loading: true, calcError: '' });
     try {
       const d = await api.call('calcSandbox', {
-        rent_fen: api.yuanToFen(this.data.rentYuan),
-        property_fen: api.yuanToFen(this.data.propertyYuan),
-        labor_fen: api.yuanToFen(this.data.laborYuan),
-        other_fen: api.yuanToFen(this.data.otherYuan),
-        include_amort: this.data.includeAmort,
-        sim_amort_fen: this.data.includeAmort ? api.yuanToFen(this.data.simAmortYuan) : 0,
-        var_food_pct: Number(this.data.varFoodPct) || 0,
-        var_mkt_pct: Number(this.data.varMktPct) || 0,
-        var_other_pct: Number(this.data.varOtherPct) || 0,
-        target_profit_fen: api.yuanToFen(this.data.targetProfitYuan),
+        city_tier: this.data.t.cityTiers[this.data.cityIdx].key,
+        biz_type: this.data.t.bizTypes[this.data.bizIdx].key,
+        build_items: this.data.buildRows
+          .filter((r) => api.yuanToFen(r.yuan) > 0)
+          .map((r) => ({ key: r.key, fen: api.yuanToFen(r.yuan), years: Number(r.years) || 1 })),
+        fixed_items: fixedItems,
+        var_items: this.data.varRows
+          .filter((r) => Number(r.pct) > 0)
+          .map((r) => ({ key: r.key, pct: Number(r.pct) })),
+        gross_margin_pct: Number(this.data.marginPct),
+        target_profit_fen: api.yuanToFen(this.data.targetYuan),
         client_request_id: 'sb_' + Date.now(),
       });
-      // 后端返回分整数 → 仅格式化展示
       const fen = (v) => (v == null ? null : api.fenToYuan(v, 2));
       this.setData({
         result: {
           red_alert: !!d.red_alert,
+          build_total: fen(d.build_total_fen),
+          build_amort: fen(d.build_amort_monthly_fen),
           fixed_total: fen(d.fixed_total_fen),
+          food_cost_pct: d.food_cost_pct,
+          platform_pct: d.platform_pct,
           composite_var: d.composite_var_rate_pct != null ? d.composite_var_rate_pct.toFixed(1) : '—',
-          // margin_rate_ratio 是比率（0.55 = 55%），出参保留 4 位小数；显示需 ×100 转百分数。
-          // 与 composite_var_rate_pct（百分数，直接 toFixed）单位不同 —— 按 R41 口径以 _ratio/_pct 后缀区分。
+          // margin_rate_ratio 是比率（0.55 = 55%），与 *_pct（百分数）单位不同 —— 按 R41 口径以后缀区分
           margin_rate: d.margin_rate_ratio != null ? (d.margin_rate_ratio * 100).toFixed(1) : '—',
           break_even_monthly: fen(d.break_even_monthly_fen),
           break_even_daily: fen(d.break_even_daily_fen),
           target_monthly: fen(d.target_monthly_fen),
           target_daily: fen(d.target_daily_fen),
+          payback_months: d.payback_months,
+          _ind: { break: d.indicators_at_breakeven || [], target: d.indicators_at_target || [] },
         },
+        indicators: this.decorate(d.indicators_at_breakeven || []),
+        indTab: 'break',
         loading: false,
+        dirty: false,
       });
     } catch (e) {
-      this.setData({ loading: false });
-      // M2 红警由后端 M2_RED_ALERT / red_alert=true 表达；非该码的错误统一映射 i18n
+      this.setData({ loading: false, dirty: false });
       if (e.code === 'M2_RED_ALERT') {
         this.setData({ result: { red_alert: true }, calcError: '' });
       } else {
@@ -122,6 +285,28 @@ Page({
         api.toastError(e);
       }
     }
+  },
+
+  // 指标对照：把后端 key/level 枚举 → 中文（术语单源在 terms，后端不存中文）
+  decorate(list) {
+    const names = M.indNames;
+    const levels = M.indLevels;
+    return (list || []).map((x) => ({
+      key: x.key,
+      name: names[x.key] || x.key,
+      mine: x.pct == null ? '—' : x.pct + '%',
+      band: x.lo == null ? '—' : x.lo + '~' + x.hi + '%',
+      level: x.level,
+      levelName: levels[x.level] || '',
+      redline: x.redline == null ? '' : x.redline + '%',
+      hit: !!x.redlineHit,
+    }));
+  },
+
+  onIndTab(e) {
+    const tab = e.currentTarget.dataset.tab;
+    const ind = this.data.result && this.data.result._ind;
+    this.setData({ indTab: tab, indicators: this.decorate(ind ? ind[tab] : []) });
   },
 
   onPullDownRefresh() { this.bootstrap().then(() => wx.stopPullDownRefresh()); },

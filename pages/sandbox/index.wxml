@@ -1,88 +1,142 @@
 <view class="container safe-bottom" wx:if="{{!loading}}">
-  <!-- 输入区 -->
+
+  <!-- 0 · 前提：城市层级 + 经营类型（决定下面用的「行业参考带」是哪一套） -->
   <view class="card2">
-    <view class="card-title">{{t.inputTitle}}</view>
-    <view class="field">
-      <text class="lbl">{{t.rent}}</text>
-      <input class="val-input" type="digit" confirm-type="done" value="{{rentYuan}}" bindinput="onRent"  adjust-position="{{true}}" cursor-spacing="20" />
+    <view class="sel-row">
+      <text class="sel-lbl">{{t.cityLabel}}</text>
+      <picker class="sel-pk" range="{{t.cityTiers}}" range-key="name" value="{{cityIdx}}" bindchange="onCity">
+        <view class="sel-val">{{cityName}} ▾</view>
+      </picker>
     </view>
-    <view class="field">
-      <text class="lbl">{{t.property}}</text>
-      <input class="val-input" type="digit" confirm-type="done" value="{{propertyYuan}}" bindinput="onProperty"  adjust-position="{{true}}" cursor-spacing="20" />
+    <view class="sel-row">
+      <text class="sel-lbl">{{t.bizLabel}}</text>
+      <picker class="sel-pk" range="{{t.bizTypes}}" range-key="name" value="{{bizIdx}}" bindchange="onBiz">
+        <view class="sel-val">{{bizName}} ▾</view>
+      </picker>
     </view>
-    <view class="field">
-      <text class="lbl">{{t.labor}}</text>
-      <input class="val-input" type="digit" confirm-type="done" value="{{laborYuan}}" bindinput="onLabor"  adjust-position="{{true}}" cursor-spacing="20" />
-    </view>
-    <view class="field">
-      <text class="lbl">{{t.other}}</text>
-      <input class="val-input" type="digit" confirm-type="done" value="{{otherYuan}}" bindinput="onOther"  adjust-position="{{true}}" cursor-spacing="20" />
-    </view>
-    <view class="switch-row">
-      <view class="lbl2">{{t.includeAmort}}</view>
-      <switch checked="{{includeAmort}}" color="#1e3a5f" bindchange="onIncludeAmort" />
-    </view>
-    <view class="field" wx:if="{{includeAmort}}">
-      <text class="lbl">{{t.simAmort}}</text>
-      <input class="val-input" type="digit" confirm-type="done" value="{{simAmortYuan}}" bindinput="onSimAmort"  adjust-position="{{true}}" cursor-spacing="20" />
-    </view>
-    <view class="field">
-      <text class="lbl">{{t.varFood}}</text>
-      <input class="val-input" type="digit" confirm-type="done" value="{{varFoodPct}}" bindinput="onVarFood"  adjust-position="{{true}}" cursor-spacing="20" />
-    </view>
-    <view class="field">
-      <text class="lbl">{{t.varMkt}}</text>
-      <input class="val-input" type="digit" confirm-type="done" value="{{varMktPct}}" bindinput="onVarMkt"  adjust-position="{{true}}" cursor-spacing="20" />
-    </view>
-    <view class="field">
-      <text class="lbl">{{t.varOther}}</text>
-      <input class="val-input" type="digit" confirm-type="done" value="{{varOtherPct}}" bindinput="onVarOther"  adjust-position="{{true}}" cursor-spacing="20" />
-    </view>
-    <view class="field">
-      <text class="lbl">{{t.targetProfit}}</text>
-      <input class="val-input" type="digit" confirm-type="done" value="{{targetProfitYuan}}" bindinput="onTargetProfit"  adjust-position="{{true}}" cursor-spacing="20" />
-    </view>
-    <button class="btn primary" style="margin-top:24rpx;" bindtap="onCalc">{{t.calc}}</button>
+    <view class="hint">{{t.autoHint}}</view>
   </view>
 
-  <!-- 结果区（后端返回值，仅展示） -->
+  <!-- ① 开店投入（一次性）—— 按年限摊到每月 -->
+  <view class="card2">
+    <view class="sec">{{t.secBuild}}</view>
+    <view class="row" wx:for="{{buildRows}}" wx:key="key">
+      <text class="row-name">{{item.name}}</text>
+      <view class="row-in-wrap">
+        <input class="row-in" type="digit" placeholder="{{t.buildPh}}" value="{{item.yuan}}" data-idx="{{index}}" bindinput="onBuildYuan" adjust-position="{{true}}" cursor-spacing="20" />
+        <text class="row-unit">元</text>
+      </view>
+      <view class="row-in-wrap yr">
+        <input class="row-in" type="number" value="{{item.years}}" data-idx="{{index}}" bindinput="onBuildYears" adjust-position="{{true}}" cursor-spacing="20" />
+        <text class="row-unit">{{t.yearsSuffix}}</text>
+      </view>
+      <text class="row-del" data-idx="{{index}}" bindtap="onDelBuild">{{t.delItem}}</text>
+    </view>
+    <view class="add-row" wx:if="{{buildRows.length < 4}}" bindtap="onAddBuild">{{t.addItem}}</view>
+  </view>
+
+  <!-- ② 每月固定支出 -->
+  <view class="card2">
+    <view class="sec">{{t.secFixed}}</view>
+    <view class="row" wx:for="{{fixedRows}}" wx:key="key">
+      <text class="row-name">{{item.name}}</text>
+      <view class="row-in-wrap">
+        <input class="row-in" type="digit" placeholder="{{t.buildPh}}" value="{{item.yuan}}" data-idx="{{index}}" bindinput="onFixedYuan" adjust-position="{{true}}" cursor-spacing="20" />
+        <text class="row-unit">元</text>
+      </view>
+      <text class="row-del" data-idx="{{index}}" bindtap="onDelFixed">{{t.delItem}}</text>
+    </view>
+    <view class="add-row" wx:if="{{fixedRows.length < 5}}" bindtap="onAddFixed">{{t.addItem}}</view>
+  </view>
+
+  <!-- ③ 菜品毛利率（滑杆：拖动只改数字，松手才重算） -->
+  <view class="card2">
+    <view class="sec">{{t.secMargin}}</view>
+    <view class="mg-top">
+      <text class="mg-val">{{marginPct}}%</text>
+      <text class="mg-sub">食材成本占售价 {{foodCostPct}}%</text>
+    </view>
+    <slider min="0" max="100" step="1" value="{{marginPct}}" activeColor="#1e3a5f" block-size="22"
+            bindchanging="onMarginChanging" bindchange="onMarginChange" />
+    <view class="hint">{{t.marginTip}}</view>
+  </view>
+
+  <!-- ④ 跟营业额挂钩的费用（是"率"不是"额"：流水越高，这笔钱越多） -->
+  <view class="card2">
+    <view class="sec">{{t.secVar}}</view>
+    <view class="row" wx:for="{{varRows}}" wx:key="key">
+      <text class="row-name">{{item.name}}</text>
+      <view class="row-in-wrap">
+        <input class="row-in" type="digit" value="{{item.pct}}" data-idx="{{index}}" bindinput="onVarPct" adjust-position="{{true}}" cursor-spacing="20" />
+        <text class="row-unit">%</text>
+      </view>
+      <text class="row-del" data-idx="{{index}}" bindtap="onDelVar">{{t.delItem}}</text>
+    </view>
+    <view class="add-row" wx:if="{{varRows.length < 4}}" bindtap="onAddVar">{{t.addItem}}</view>
+  </view>
+
+  <!-- ⑤ 目标月利润 -->
+  <view class="card2">
+    <view class="sec">{{t.secTarget}}</view>
+    <view class="row">
+      <text class="row-name">{{t.targetRow}}</text>
+      <view class="row-in-wrap">
+        <input class="row-in" type="digit" value="{{targetYuan}}" bindinput="onTarget" adjust-position="{{true}}" cursor-spacing="20" />
+      </view>
+    </view>
+  </view>
+
+  <view class="err-hint" wx:if="{{calcError}}">{{calcError}}</view>
+  <button class="btn primary calc-btn" bindtap="onCalc">{{t.calc}}</button>
+
+  <!-- 结果（后端返回值，仅展示） -->
   <view class="card2" wx:if="{{result && result.red_alert}}">
     <view class="result-num" style="color:#e74c3c;font-size:36rpx;">{{t.redAlert}}</view>
     <view class="hint">{{t.redAlertHint}}</view>
   </view>
 
-  <view class="card2" wx:if="{{result && !result.red_alert}}">
-    <view class="concl" wx:if="{{targetProfitYuan}}">{{t.conclusionPrefix}}<text class="hl">{{t.cur}}{{targetProfitYuan}}</text>{{t.conclusionSuffix}}</view>
-    <view class="cell">
-      <text class="lbl">{{t.fixedTotal}}</text>
-      <text class="val">{{t.cur}}{{result.fixed_total}}</text>
+  <block wx:if="{{result && !result.red_alert}}">
+    <view class="card2">
+      <view class="sec">{{t.secResult}}</view>
+      <view class="cell"><text class="lbl">{{t.buildTotal}}</text><text class="val">{{t.cur}}{{result.build_total}}</text></view>
+      <view class="cell"><text class="lbl">{{t.amortMonthly}}</text><text class="val">{{t.cur}}{{result.build_amort}}</text></view>
+      <view class="cell"><text class="lbl">{{t.fixedTotal}}</text><text class="val">{{t.cur}}{{result.fixed_total}}</text></view>
+      <view class="cell"><text class="lbl">{{t.marginName}}</text><text class="val">{{result.margin_rate}}%</text></view>
+      <view class="cell"><text class="lbl">{{t.varTotal}}</text><text class="val">{{result.platform_pct}}%</text></view>
     </view>
-    <view class="cell">
-      <text class="lbl">{{t.compositeVar}}</text>
-      <text class="val">{{result.composite_var}}%</text>
+
+    <view class="card2">
+      <view class="cell big"><text class="lbl">{{t.resBreakMonthly}}</text><text class="val keynum">{{t.cur}}{{result.break_even_monthly}}</text></view>
+      <view class="cell"><text class="lbl">{{t.resBreakDaily}}</text><text class="val">{{t.cur}}{{result.break_even_daily}}</text></view>
+      <view class="cell big"><text class="lbl">{{t.resTargetMonthly}}</text><text class="val keynum">{{t.cur}}{{result.target_monthly}}</text></view>
+      <view class="cell"><text class="lbl">{{t.resTargetDaily}}</text><text class="val">{{t.cur}}{{result.target_daily}}</text></view>
+      <view class="cell" wx:if="{{result.payback_months}}">
+        <text class="lbl">{{t.resPayback}}</text><text class="val">{{result.payback_months}}{{t.paybackUnit}}</text>
+      </view>
     </view>
-    <view class="cell">
-      <text class="lbl">{{t.marginRate}}</text>
-      <text class="val">{{result.margin_rate}}%</text>
+  </block>
+
+  <!-- 餐饮指标对照 -->
+  <view class="card2" wx:if="{{indicators.length}}">
+    <view class="sec">{{t.secIndicators}}</view>
+    <view class="tab-row">
+      <view class="tab {{indTab === 'break' ? 'on' : ''}}" data-tab="break" bindtap="onIndTab">{{t.indByBreak}}</view>
+      <view class="tab {{indTab === 'target' ? 'on' : ''}}" data-tab="target" bindtap="onIndTab">{{t.indByTarget}}</view>
     </view>
-    <view class="cell">
-      <text class="lbl">{{t.breakEvenMonthly}}</text>
-      <text class="val">{{t.cur}}{{result.break_even_monthly}}</text>
+    <view class="ind-row ind-head">
+      <text class="ind-c1"> </text>
+      <text class="ind-c2">{{t.indMine}}</text>
+      <text class="ind-c3">{{t.indBand}}</text>
+      <text class="ind-c4"> </text>
     </view>
-    <view class="cell">
-      <text class="lbl">{{t.breakEvenDaily}}</text>
-      <text class="val">{{t.cur}}{{result.break_even_daily}}</text>
-    </view>
-    <view class="cell">
-      <text class="lbl">{{t.targetMonthly}}</text>
-      <text class="val">{{t.cur}}{{result.target_monthly}}</text>
-    </view>
-    <view class="cell">
-      <text class="lbl">{{t.targetDaily}}</text>
-      <text class="val">{{t.cur}}{{result.target_daily}}</text>
+    <view class="ind-row" wx:for="{{indicators}}" wx:key="key">
+      <text class="ind-c1">{{item.name}}</text>
+      <text class="ind-c2">{{item.mine}}</text>
+      <text class="ind-c3">{{item.band}}</text>
+      <text class="ind-c4 lv-{{item.level}}">{{item.levelName}}</text>
     </view>
   </view>
 
-  <view class="muted" wx:if="{{!result}}" style="text-align:center;padding:30rpx;">{{t.noCalc}}</view>
+  <view class="muted empty-tip" wx:if="{{!result}}">{{t.noCalc}}</view>
 </view>
 <view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

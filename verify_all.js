@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：98 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：99 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -98,6 +98,17 @@
 //         自失效护栏＝S1 十一个锚点可读 / S2 正负样本互证 ×4（旧写法必判红、新写法必判绿）+
 //         S2-⑤ bodyOf 锚定义不锚调用（本轮真实误报的钉死样本）/ S3 cssBlock 解析有效 / S4 elifConds 有效 /
 //         S5 断言数 ≥20）
+//       + 餐饮指标参考库口径守卫（tools/check_indicator_ref.js，R126：M2 v2 新落的「分业态 × 分城市层级」
+//         参考带 + 城市系数 + 红线副本**一个事实两处副本** —— 机器面 `cloudfunctions/common/indicatorRef.js`
+//         与 M2 规范 §M2.4b 的权威 JSON；改任一侧另一侧静默过期而门禁全绿，与 round61/round64/R111 同族
+//         （第 29 例：人工陈述面 ≡ 实然，零机器校验）。本守卫比前 28 例多做两件事：
+//         ① **三方对齐** —— `REDLINE` 段是 M1.6 唯一声明处的引用副本 ⇒ code ≡ M2 JSON ≡ M1.6 声明行（含浮点）；
+//         ② **行为级口径** —— M2.4b 正文写死的四条语义（食材/能耗/管理/推广**不随城市变**、
+//            房租/人工乘城市系数、level 边界「cost 超上限 25% 内 = warn / gain 低于下限 15% 内 = warn」、
+//            **未填 ≠ 0 元**）用 JSON 数字比不出来，只能调函数断言行为；
+//         另把 round110 E3 的浮点坑钉成固定样本（`25 × 1.15 = 28.749999999999996` ⇒ 必须 28.8 而非 28.7）。
+//         自失效护栏 = 比较器正负样本互证 5 组 + 真实数据变异互证 + 逐项比较对 ≥34 + 断言数下界 +
+//         两份目标文档须在扫描面内；弱面（其它 .md 提及本库）只 ⚠️ 明示不判红（坑⑭ 裸扫必误杀））
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -380,6 +391,15 @@ const SUITES = [
   //   C 真折叠（两态顺序 + 摘要按模式分流 + 默认折叠）/ D 一级/二级字号 **语义级**比较；
   //   配 S1~S5 自失效护栏（含 4 组正负样本 + bodyOf 锚定义不锚调用）。
   ['flow-entry-and-fold', 'tools/check_flow_entry_and_fold.js'],
+  // ===== R126 餐饮指标参考库口径守卫（同族病第 29 例，round110）：见头部注释同名条目。
+  //   背景：M2 v2 新增「分业态 × 分城市层级」参考带 + 城市系数 + 红线副本，落在**两处副本** ——
+  //   机器面 cloudfunctions/common/indicatorRef.js 与人读面 M2 规范 §M2.4b 的权威 JSON；
+  //   改任一侧另一侧静默过期而门禁全绿（与 round61 套件数 / round64 红线条数 / R111 同族）。
+  //   判据 = A 双向逐项（系数 3 档 / 参考带 4×6 / 红线 4，含 key 集合双向）
+  //        + B 红线**三方**对齐（code ≡ M2 JSON ≡ M1.6 声明）
+  //        + C 行为级（城市敏感性 / 浮点容差钉死样本 / level 边界 / redlineOf / 未填 ≠ 0）
+  //        + D 自失效护栏（比较器 5 组正负样本互证 + 真实数据变异 + 对数下界 + 断言数下界）。
+  ['indicator-ref', 'tools/check_indicator_ref.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

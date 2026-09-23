@@ -34,4 +34,9 @@ module.exports = {
   idempotency: require('./cx_idempotency'),
   rateLimit: require('./cx_rateLimit'),
   audit: require('./cx_audit'),
+
+  // M2 餐饮指标参考库（分业态 × 分城市层级）· 口径单源
+  // ⚠️ 同 genId 的教训：新增单源符号务必在此聚合入口导出，否则云端 `const { indicatorRef } = common` 会 TypeError。
+  //    伴侣守卫：tools/check_requires.js §2。
+  indicatorRef: require('./cx_indicatorRef'),
 };
