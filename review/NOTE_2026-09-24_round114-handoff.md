@@ -85,9 +85,9 @@
 
 | 件 | 位置 | 自证 |
 |---|---|---|
-| 仓外 zip（review/ + 仓根一次性脚本 + 工作区记忆 + 云端记忆缓存 + 工作区脚本） | `C:\Users\lzj\WorkBuddy\Claw\_archive\catering-profit_backup_2026-09-24_r114.zip` | 2140 件 · CRC 全通过 · 解压体积**逐字节一致** · 抽验 6/6 md5 一致 |
+| 仓外 zip（review/ + 仓根一次性脚本 + 工作区记忆 + 云端记忆缓存 + 工作区脚本） | `C:\Users\lzj\WorkBuddy\Claw\_archive\catering-profit_backup_2026-09-24_r114.zip` | 2144 件 · 131.22 MB → 106.92 MB · CRC 全通过 · 解压体积**逐字节一致** · 抽验 6/6 md5 一致 · zip md5 `1784beb3b470553146e5e613ca14d36a` |
 | 同名清单（**含逐件 md5**） | 同目录 `.list.txt` | 行数 = 文件数 |
-| 全仓 git bundle | 同目录 `catering-profit_full_2026-09-24_r114.bundle` | `git bundle verify` → complete history |
+| 全仓 git bundle | 同目录 `catering-profit_full_2026-09-24_r114.bundle` | `git bundle verify` → complete history（24.74 MB；含全部 refs；HEAD 命中 bundle 内 `refs/heads/dev`） |
 | 代码云端 | GitHub `lzj888888/catering-profit` @ `dev` = `ab1474b` | `ls-remote` ≡ `rev-parse HEAD` |
 | **记忆云端** | GitHub `lzj888888/workbuddy-memory` @ `main` | 记忆目录本身即 git 仓，SSH 推送；另有每日 23:00 自动同步 |
 
