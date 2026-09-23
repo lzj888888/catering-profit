@@ -78,6 +78,10 @@ Page({
       startMonth: month,
       totalMonths: kind === 'lump' ? '1' : '',
       name: '', amountYuan: '', terminateMonth: '',
+      // round109：删除键的文案按 kind 分流 —— 摊销删掉影响「从起摊月起的各月」，一次算清只影响当月。
+      //   ⚠️ 必须用 setData **路径写法**（'t.fDelete'），整块覆盖 t 会把其它键全丢掉。
+      't.fDelete': kind === 'lump' ? T.lumpDelete : T.amortDelete,
+      't.confirmDelete': kind === 'lump' ? T.confirmDeleteLump : T.confirmDeleteAmort,
     });
     ui.setTitle(kind === 'lump' ? T.editLumpTitle : T.editAmortTitle);
     this.load();
@@ -184,12 +188,17 @@ Page({
     }
   },
 
-  // 删除（仅「一次算清」的投入；摊销资产请用列表里的「提前报废」保留痕迹）
+  // 删除（round109：对「一次算清」与「分期摊销」都开放）
+  //   · 一次算清（lump）：删掉只影响它挂的那个月 ⇒ 文案讲「本月费用会跟着变小」
+  //   · 分期摊销（amort）：删掉会影响**从起摊月起的各月** ⇒ 文案讲「各月摊销都会跟着变小」
+  //   ⚠️ 后端 saveAsset 也同步给摊销资产加了归档锁：只要它覆盖到的月份里有已归档的，
+  //     删除会被拒（提示改用「提前报废」保留痕迹）—— 防「账锁了、但钱从台账被挪走」。
   onDelete() {
     if (this.data.mode !== 'edit') return;
+    const label = this.data.t.fDelete;          // 按 kind 分流后的文案（onLoad 里已 setData）
     wx.showModal({
-      title: T.lumpDelete,
-      content: T.confirmDeleteLump,
+      title: label,
+      content: this.data.t.confirmDelete,
       confirmColor: '#e74c3c',
       success: async (r) => {
         if (!r.confirm) return;
@@ -200,7 +209,7 @@ Page({
             asset: { asset_id: this.data.assetId, delete: true },
             client_request_id: 'ad_' + Date.now(),
           });
-          wx.showToast({ title: T.lumpDelete, icon: 'success' });
+          wx.showToast({ title: label, icon: 'success' });
           setTimeout(() => wx.navigateBack(), 600);
         } catch (e) { api.toastError(e); }
       },

@@ -120,6 +120,19 @@
   <view wx:if="{{groups.length === 0}}" class="empty">{{t.empty}}</view>
 
   <button class="btn primary" bindtap="onAddAmort">{{t.amortAdd}}</button>
+
+  <!-- ===== round109：收尾区（李老师真机：「填完理论上需要返回，或者可以看整体的经营结果，对吗？
+       现在的情况是填完了不知道做什么了，需要点手机最上面的退回，一步一步退回」）=====
+       本页是全流程的**最后一步填写**（月度首页 → 月度录入 → 库存盘点 → 一次性投入 → 看经营结果），
+       但原来底部只有「+ 新增摊销资产」，**一个出口都没有**。这里给两条明确的路：
+         · 主按钮 → 直接看本月经营结果（不必再退回首页再点一次）
+         · 次按钮 → 回月度首页（想改收入/费用/核算方式时走这条）
+       ⚠️ 归档月也照给 —— 看结果是只读操作，归档不该挡着看。 -->
+  <view class="finish-zone">
+    <view class="finish-hint">{{t.finishZoneHint}}</view>
+    <button class="btn primary" bindtap="goResult">{{t.viewResult}}</button>
+    <button class="btn ghost" bindtap="goHome">{{t.backHome}}</button>
+  </view>
 </view>
 
 <view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

@@ -56,7 +56,11 @@
   <button class="btn primary" style="margin-top:24rpx;" bindtap="onSave"
     disabled="{{readOnly || saving}}">{{t.fSave}}</button>
 
-  <button class="btn ghost" wx:if="{{kind === 'lump' && mode === 'edit' && !readOnly}}"
+  <!-- round109：删除键对「分期摊销」也开放（李老师真机：「分期摊销的如果输入错误怎么解决？它没有删除这一笔」）。
+       原来条件写死 `kind === 'lump'` ⇒ 摊销资产**永远看不到**这个键，只能走「提前报废」——
+       而「报废」是**保留痕迹**的语义（把未摊余额转成处置损失），跟「填错了想直接抹掉」不是一回事。
+       两类资产的删除文案不同（后果不同），由 js 按 kind 分流到 t.fDelete / t.confirmDelete。 -->
+  <button class="btn ghost" wx:if="{{mode === 'edit' && !readOnly}}"
     style="color:#e74c3c;border-color:#e74c3c;" bindtap="onDelete">{{t.fDelete}}</button>
 
   <button class="btn ghost" bindtap="onBack">{{t.cancel}}</button>

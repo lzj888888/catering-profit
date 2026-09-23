@@ -56,6 +56,10 @@ Page({
       cur: '¥',
       archiveReadonly: TERMS.inputPage.archiveReadonly,
       confirmLocked: TERMS.inputPage.confirmLocked,
+      // round109：收尾区（本页是流程最后一步，填完要有明确出口）
+      finishZoneHint: TERMS.amortizePage.finishZoneHint,
+      viewResult: TERMS.amortizePage.viewResult,
+      backHome: TERMS.amortizePage.backHome,
     },
     month: '',
     totalFen: 0,
@@ -295,6 +299,19 @@ Page({
         } catch (err) { api.toastError(err); }
       },
     });
+  },
+
+  // ===== round109：收尾出口 =====
+  //   起因（李老师真机）：填完摊销后「不知道做什么」，只能按手机最上面的返回键一层层退。
+  goResult() {
+    wx.navigateTo({ url: '/pages/month/result?month=' + this.data.month });
+  },
+  goHome() {
+    // 本页由月度首页 navigateTo 进来 ⇒ 返回即回首页；
+    // 若是直接进入本页（栈里只有自己），navigateBack 会失败 ⇒ 兜底 redirect。
+    const pages = getCurrentPages();
+    if (pages.length > 1) wx.navigateBack();
+    else wx.redirectTo({ url: '/pages/month/index' });
   },
 
   onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()); },

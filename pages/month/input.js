@@ -19,6 +19,12 @@ const DRAFT_KEY = 'draft_month_input_';
 const DINE_MODE_KEY = 'dine_mode_';
 // R85：外卖录入模式（快速 / 分项），同堂食约定（仅存本地；默认按数据推断）
 const TAKEOUT_MODE_KEY = 'takeout_mode_';
+// round109：外卖分组的**展开状态**记忆键（仅存本地）。
+//   李老师真机：「外卖那个一直是全部显示全部的状态，可以把外卖也做成折叠吗？」
+//   ⇒ 默认**折叠**（外卖满屏 2~3 个平台 × 三框，占地方）；展开过一次就记住，下次进来保持。
+//   ⚠️ 与 TAKEOUT_MODE_KEY 分开存：一个是「怎么填」（快速/分项），一个是「看不看」（展开/折叠），
+//      两件事。合在一个键里会让「切模式」误改「展开状态」（口径串味）。
+const TAKEOUT_FOLD_KEY = 'takeout_fold_';
 
 Page({
   data: {
@@ -101,8 +107,10 @@ Page({
       twSumLabel: TERMS.ledger.takeawayMode.sumLabel,
       twSumAutoHint: TERMS.ledger.takeawayMode.sumAutoHint,
     twTotalLabel: TERMS.ledger.takeawayMode.totalLabel,
-    twTotalAutoHint: TERMS.ledger.takeawayMode.totalAutoHint,
-    twFastPh: TERMS.ledger.takeawayMode.fastPh,
+      twTotalAutoHint: TERMS.ledger.takeawayMode.totalAutoHint,
+      twFastPh: TERMS.ledger.takeawayMode.fastPh,
+      // round109：外卖**折叠态**的空态占位（一行都没填时显示）。页面零硬编码 ⇒ 必须在此映射。
+      twFoldEmpty: TERMS.ledger.takeawayMode.foldEmpty,
       twGoodsField: TERMS.ledger.takeawayMode.goodsField,
       twPackField: TERMS.ledger.takeawayMode.packField,
       twSubsidyField: TERMS.ledger.takeawayMode.subsidyField,
@@ -161,6 +169,13 @@ Page({
     twPasteFor: '',            // 当前粘贴目标（'goods'|'pack'|'subsidy'|'platform' + idx）
     twPasteText: '',           // 粘贴区文本（textarea v-model）
     twPasteOpen: false,        // 粘贴面板是否打开
+    // round109：外卖**折叠态**摘要（各平台已填金额 + 是否有过填写）。
+    //   ⚠️ 为什么不用 wxml 直接渲染 g.rows：两种模式的金额**不在同一处**
+    //      （快速 = groups.rows[].amountYuan；分项 = takeoutDetailRows[].subtotal），
+    //      分项模式下 g.rows 是切模式时的旧值 ⇒ 折叠起来会显示过期数字（口径串味）。
+    //      所以由 js 按**当前模式**取数、预计算好再交给 wxml（WXML 不支持方法调用）。
+    takeoutFoldRows: [],       // [{name, amt}] —— 仅含有金额的平台，按平台顺序
+    takeoutAnyFilled: false,   // 一行都没填 ⇒ 折叠态显示 twFoldEmpty 占位
     // T4b（round97）：费用段「+ 添加细项」的预设项选择面板（清单每次打开现算 = 该类预设 ∖ 已有行名）
     presetPick: { open: false, kind: '', gi: 0, list: [] },
     twSelfCheck: '',           // T3′（round97）：快速模式轻量自查提示（预计算，WXML 直接取）
@@ -352,6 +367,11 @@ Page({
       //   本页读 camelCase「碰巧能跑」—— 一旦后端按契约修好，这里会静默变空（同族隐患，一并统一）。
       // round104：摘要算法抽到 invSummaryOf()，与「子页返回刷新」共用同一份（防两处漂移）
       const invSummary = this.invSummaryOf(d);
+      // round109：外卖分组的展开状态 = 记忆优先，**默认折叠**。
+      //   rebuildFromItems 会把 expanded 推断成「细项行 >1 ⇒ 展开」—— 那条推断是给
+      //   「其他业务收入 / 费用类」的大类细项用的；外卖平台全集本来就有 2~3 行，
+      //   沿用同一条推断 ⇒ 每次进来都全摊开（正是李老师反馈的现象）。这里就地覆盖。
+      this.applyTakeoutFold(incomeGroups);
       // 若草稿存在且已保存过 → 用后端值（服务端为准）；否则后端值直接回填
       this.setData({
         isArchive, archivedAtMs, inGrace, readOnly,
@@ -389,6 +409,19 @@ Page({
     return (g && g.rows && g.rows.length > 1) ? 'detail' : 'fast';
   },
 
+  // round109：把「外卖分组的展开状态」落到 incomeGroups 上（就地替换该组对象，其余不动）。
+  //   ⚠️ 只碰 category==='takeaway' 那一组 —— 别的组的展开语义是「手风琴看细项」，与它无关。
+  //   ⚠️ 同时把 showRows 跟着设成 rows：折叠态下 g.rows 仍是全量（摘要按模式另行取数），
+  //      而 showRows 是给别处（其他收入类）用的；外卖两态都不读 showRows，设一下只为不留半旧值。
+  applyTakeoutFold(groups) {
+    const gi = (groups || []).findIndex((x) => x.category === 'takeaway');
+    if (gi < 0) return groups;
+    const expanded = this.loadTakeoutFold();
+    const g = Object.assign({}, groups[gi], { expanded, showRows: groups[gi].rows });
+    groups[gi] = g;
+    return groups;
+  },
+
   // ===== 大类展开/收起 =====
   // ⚠️ 堂食走「快速 / 分项」模式开关（dineMode），不再用这里的手风琴展开
   onToggleGroup(e) {
@@ -401,6 +434,8 @@ Page({
     g.showRows = g.expanded ? g.rows : g.rows.slice(0, 1); // 折叠只显示首行（整类总额）
     groups[idx] = g;
     this.setData({ [key]: groups });
+    // round109：外卖分组的展开/折叠要记住（下次进来保持），其余组不记（手风琴状态本就不跨次保留）
+    if (key === 'income' && g.category === 'takeaway') this.saveTakeoutFold(g.expanded);
   },
 
   // ===== 细项行：细项名 / 金额 / 新增 / 删除 =====
@@ -665,6 +700,23 @@ Page({
     return null;
   },
 
+  // round109：外卖折叠态（默认折叠；展开过就记住）。与模式记忆同款约定：仅本地、换设备回默认。
+  takeoutFoldKey() {
+    const app = getApp();
+    const shopId = (app && app.globalData && app.globalData.shop_id) || '';
+    return TAKEOUT_FOLD_KEY + shopId + '_' + this.data.month;
+  },
+  saveTakeoutFold(expanded) { try { wx.setStorageSync(this.takeoutFoldKey(), !!expanded); } catch (e) { /* 存不了不影响填表 */ } },
+  // ⚠️ 默认值必须是 **false（折叠）**：李老师的诉求是「别老是全部摊开」，
+  //   读不到记忆（首次进入 / 清缓存 / 换设备）时回到折叠，而不是回到展开。
+  loadTakeoutFold() {
+    try {
+      const v = wx.getStorageSync(this.takeoutFoldKey());
+      if (v === true || v === false) return v;
+    } catch (e) { /* 读不到 → 默认折叠 */ }
+    return false;
+  },
+
   // 默认模式由数据推断：该组细项行 >1 ⇒ 分项（同堂食 pickDineMode 约定）
   pickTakeoutMode(incomeGroups) {
     const cached = this.loadTakeoutMode();
@@ -704,6 +756,22 @@ Page({
     });
     this.syncSubsidyCarry();   // 带出联动：活动补贴合计 → 费用侧（仅分项模式生效）
     this.syncTakeoutSelfCheck();   // T3′：外卖收入变了 → 重算轻量自查提示
+    this.syncTakeoutFold();    // round109：折叠态摘要（与合计同源同模式，必须一起重算）
+  },
+
+  // round109：外卖**折叠态**摘要 —— 各平台已填金额（金额为 0/空的平台不渲染，免得折叠态出现一排 ¥0.00）。
+  //   ⚠️ 取数口径与 syncTakeoutSum 完全一致（快速 = groups.rows[].amountYuan；分项 = takeoutDetailRows[].subtotal）：
+  //      两处若各写一份，改一眼必漏另一眼（同族病）。这里只做「取数 + 过滤 + 定值」，
+  //      模式判断与 syncTakeoutSum 用同一个 this.data.takeoutMode。
+  //   ⚠️ 平台名：快速模式的 subItem 就是平台名（固定不可改）；分项模式的 platform 同源。
+  syncTakeoutFold() {
+    const isFast = this.data.takeoutMode === 'fast';
+    const g = this.data.incomeGroups.find((x) => x.category === 'takeaway');
+    const src = isFast
+      ? ((g && g.rows) || []).map((r) => ({ name: r.subItem || '', amt: Number(r.amountYuan) || 0 }))
+      : ((this.data.takeoutDetailRows) || []).map((r) => ({ name: r.platform || '', amt: Number(r.subtotal) || 0 }));
+    const rows = src.filter((r) => r.amt > 0).map((r) => ({ name: r.name, amt: r.amt.toFixed(2) }));
+    this.setData({ takeoutFoldRows: rows, takeoutAnyFilled: rows.length > 0 });
   },
 
   // ===== 模式切换（严格互斥；快照恢复防 round-trip 丢值）=====

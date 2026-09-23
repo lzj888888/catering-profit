@@ -96,8 +96,13 @@
       </view>
     </block>
 
-    <!-- ===== 外卖（R85 · 规范 §A.11）：快速 / 分项 模式开关（严格互斥二选一）===== -->
-    <block wx:elif="{{g.category === 'takeaway'}}">
+    <!-- ===== 外卖（R85 · 规范 §A.11）：快速 / 分项 模式开关（严格互斥二选一）=====
+         round109（李老师真机「外卖那个一直是全部显示全部的状态，可以把外卖也做成折叠吗？」）：
+         本块原来**不受 g.expanded 控制** —— 标题行明明有 ▾/▸，但内容块压根不读它，
+         点下去只有符号翻转、内容纹丝不动（「假开关」）。
+         现在接上真折叠：展开 = 完整录入（本块）；折叠 = 只读摘要（紧随其后的 elif 分支）。
+         ⚠️ 条件必须写成「takeaway && g.expanded」并**排在摘要分支之前** —— wx:elif 按顺序匹配。 -->
+    <block wx:elif="{{g.category === 'takeaway' && g.expanded}}">
       <!-- 模式开关（复用堂食 dineMode 约定：仅存本地、默认按数据推断、快照恢复） -->
       <view class="dm-wrap">
         <view class="dm-sec">{{t.twSecTitle}}</view>
@@ -193,6 +198,26 @@
           <view class="tw-rec-hint" wx:elif="{{!twRecYuan}}">{{t.twRecNoInput}}</view>
         </view>
       </block>
+    </block>
+
+    <!-- round109：外卖**折叠态** —— 只读摘要（各平台已填金额 + 合计），点标题行展开才录入。
+         ⚠️ 逐平台列表取 js 预计算的 takeoutFoldRows，**不直接渲染 g.rows** ——
+            两种模式的金额不在同一处（快速 = groups.rows；分项 = takeoutDetailRows），
+            g.rows 在分项模式下是切模式时的旧值 ⇒ 直接渲染会显示过期数字（见 syncTakeoutFold 注释）。
+            金额为 0 / 空的平台不出来，免得折叠态出现一排 ¥0.00。
+         ⚠️ 本分支必须**排在展开分支之后** —— wx:elif 是按顺序匹配的。 -->
+    <block wx:elif="{{g.category === 'takeaway'}}">
+      <view class="tw-fold">
+        <view class="tw-fold-row" wx:for="{{takeoutFoldRows}}" wx:key="name" wx:for-item="r">
+          <text class="tw-fold-name">{{r.name}}</text>
+          <text class="tw-fold-amt">{{t.cur}}{{r.amt}}</text>
+        </view>
+        <view class="tw-fold-empty" wx:if="{{!takeoutAnyFilled}}">{{t.twFoldEmpty}}</view>
+      </view>
+      <view class="dine-sum">
+        <text class="dine-sum-lbl">{{t.twTotalLabel}}</text>
+        <text class="dine-sum-val">{{takeoutSumYuan}}</text>
+      </view>
     </block>
 
     <!-- 非堂食 / 非外卖（其他业务收入等）：保持原两行细项 -->

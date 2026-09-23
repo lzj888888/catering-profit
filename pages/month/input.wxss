@@ -1,7 +1,30 @@
 /* pages/month/input.wxss —— M1 收入/费用/消耗录入页 */
 .val-input { text-align: right; font-size: 32rpx; width: 320rpx;
   padding: 14rpx 18rpx; border: 2rpx solid #cfdae8; border-radius: 10rpx; background: #fff; }
-.sec { font-size: 30rpx; font-weight: 700; color: #333; margin: 28rpx 8rpx 14rpx; }
+/* ===== round109（李老师真机）：板块一级区隔 =====
+   原话：「整体流程其实很明朗了，可以从头到尾，把主关键词放大，比如收入一个板块、费用一个板块，
+   或者用什么方式把每一个板块稍微区隔一下，这样看起来清爽明了」。
+   根因（实读样式，不是猜）：一级板块标题（.sec = 收入 / 费用 / 核算方式）原本 30rpx/700，
+   与二级标题（.g-label 30rpx/600、.cm-sub 30rpx/600）**同字号、只差 100 字重**
+   ⇒ 扫一屏看不出谁归谁，"收入一块费用一块"没有视觉断点。
+   方案（对比图拍板）：
+     ① 字号 30→40rpx、字重 700→800 —— 与二级标题拉开**量级**，不是只加粗；
+     ② 左侧 8rpx 墨蓝渐变竖条（色值取 app.wxss 头部单源：上 #2a4e7c → 下 #162c49）；
+     ③ 上方 1rpx 分隔线 + 上间距 28→44rpx —— 三块之间给明确断点。
+   ⚠️ 不引入 ①②③ 编号：本页「核算方式」段内已用 ① 食材消耗 / ② 一次性投入，两处编号会打架。
+   ⚠️ 只改本页（input.wxss 覆盖全局 .sec）；app.wxss 里的全局 .sec 不动，别的页面照旧。 */
+.sec {
+  position: relative;
+  font-size: 40rpx; font-weight: 800; color: #1e3a5f;
+  margin: 44rpx 8rpx 16rpx; padding: 22rpx 0 0 24rpx;
+  border-top: 1rpx solid #e3eaf2;
+}
+/* 左侧渐变竖条：色值取 app.wxss 头部单源（上 #2a4e7c → 下 #162c49），不新造色。 */
+.sec::before {
+  content: ''; position: absolute; left: 0; top: 28rpx;
+  width: 8rpx; height: 36rpx; border-radius: 4rpx;
+  background: linear-gradient(180deg, #2a4e7c 0%, #162c49 100%);
+}
 
 /* A2：大类组（收入/费用二级细项） */
 .group { background: #fff; border-radius: 12rpx; margin-bottom: 16rpx; padding: 8rpx 24rpx; }
@@ -56,6 +79,13 @@
 .paste-btn { flex: 0 0 auto; min-height: 88rpx; height: 88rpx; line-height: 88rpx; margin: 0; padding: 0 10rpx; font-size: 28rpx; background: #eef3fa; color: #1e3a5f; border: 0; border-radius: 8rpx; }
 .paste-btn::after { display: none; }
 .tw-subtotal { text-align: right; font-size: 28rpx; color: #888; margin-top: 6rpx; }
+/* round109：外卖**折叠态**摘要 —— 折叠时只读「各平台已填金额 + 合计」，点标题行才展开录入。
+   （接的是原本那个"假箭头"：标题行的 ▾/▸ 一直有，但内容块压根不读 expanded —— 点了只翻符号。） */
+.tw-fold { border-top: 1rpx solid #f5f5f5; padding: 12rpx 0 4rpx; }
+.tw-fold-row { display: flex; justify-content: space-between; align-items: center; padding: 6rpx 0; }
+.tw-fold-name { font-size: 28rpx; color: #555; }
+.tw-fold-amt { font-size: 30rpx; font-weight: 600; color: #1e3a5f; }
+.tw-fold-empty { font-size: 28rpx; color: #8a97a6; padding: 8rpx 0; line-height: 1.6; }
 .tw-rec { background: #f7f8fa; border-radius: 12rpx; padding: 16rpx; margin-top: 12rpx; }
 .tw-rec-field { display: flex; align-items: center; gap: 10rpx; }
 .tw-rec-hint { font-size: 28rpx; color: #888; margin-top: 8rpx; line-height: 1.5; }

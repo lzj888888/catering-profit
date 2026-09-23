@@ -66,6 +66,10 @@ const CASES = [
   //   ⇒ A0-② 的「通过数为 0」下界抓不到，只有本守卫的 A2「声明 ≡ 实跑」能发现。
   //   （对照：R122 `check_js_syntax` 只有单一判据，删掉即 pass=0、A0-② 当场转红，故不必另立声明。）
   { key: 'check_wxml_structure', rel: 'tools/check_wxml_structure.js' },
+  // R125 扩面（round109）：流程出口与折叠守卫同批纳入 —— 它的 S5 断言数下界（≥20）与 S2 四组
+  //   正负样本互证正是「非恒真」的凭据；断言数不受守则「删掉两组正负样本」就等于把守卫悄悄改小
+  //   （判据仍全绿而证明力归零），与 round73 立本守卫的根因同族。
+  { key: 'check_flow_entry_and_fold', rel: 'tools/check_flow_entry_and_fold.js' },
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

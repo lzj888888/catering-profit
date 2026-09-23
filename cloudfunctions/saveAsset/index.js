@@ -26,6 +26,26 @@ async function archiveLocked(da, shopId, month) {
   return null;
 }
 
+// round109：**摊销资产**的归档锁（随「放开摊销删除键」一并补上）。
+//   为什么不能沿用上面那把（只看 start_month 那一个月）：
+//     摊销资产是**跨月逐月生效**的 —— 它从 start_month 起，每个月都会产生一笔摊销。
+//     所以「删它 / 改它」在语义上等于「改动它覆盖到的每一个月的账」。
+//   判据：该店**已归档月里存在 month >= start_month** 的（YYYY-MM 字典序即时间序）⇒ 拒。
+//   ⚠️ 为什么不只看 start_month：归档不强制按时间顺序做（可以先归档 10 月、再回头归档 9 月），
+//      只看 start_month 会漏掉「start_month 未归档、但它后面某月已归档」这条例外路径。
+//   ⚠️ 数据量：一个店一个月最多一条月度账，全量取回在 JS 里过滤即可（不做区间查询是为了不扩 dataAdapter 的接口面）。
+//   ⚠️ 本轮只给「删除」加锁；「编辑 / 新增摊销」的同类缺口**仍然存在**（见 §10 契约与 NOTE 的记录），
+//      不在这轮扩大改动面 —— 免得把未经前端预告的拒绝行为引进编辑路径。
+async function amortArchiveLocked(da, shopId, startMonth) {
+  if (!startMonth) return null;
+  const res = await da.list('shop_monthly_account', { shop_id: shopId });
+  const rows = (res && res.data) || [];
+  const hit = rows.find((r) => r.is_archive && String(r.month || '') >= String(startMonth));
+  if (!hit) return null;
+  return fail(ERROR_CODES.ARCHIVED_LOCKED,
+    `该资产从 ${startMonth} 起逐月摊销，而 ${hit.month} 已归档为只读；删掉它会让已封账月份的数字变化，请改用「提前报废」保留痕迹`);
+}
+
 exports.main = async (event) => {
   const ctx = cloud.getWXContext();
   const auth = await resolveAuth(ctx, db);
@@ -58,6 +78,10 @@ exports.main = async (event) => {
     if (!exist) return fail(ERROR_CODES.RESOURCE_NOT_FOUND, `资产 ${v.asset.asset_id} 不存在或已软删`);
     if ((exist.mode || 'amort') === 'lump') {
       const locked = await archiveLocked(da, shopId, exist.start_month);
+      if (locked) return locked;
+    } else {
+      // round109：摊销资产 —— 跨月生效 ⇒ 用区间锁（任一归档月 >= start_month 即拒）
+      const locked = await amortArchiveLocked(da, shopId, exist.start_month);
       if (locked) return locked;
     }
     await db.collection('shop_amortize').doc(exist._id || v.asset.asset_id)
