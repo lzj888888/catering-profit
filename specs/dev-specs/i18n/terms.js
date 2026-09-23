@@ -471,6 +471,37 @@ const TERMS = {
     marginName: '菜品毛利率',
     marginSub: '毛利率越高，需要卖出的营业额越少',
     marginTip: '不用另填食材成本，它会随毛利率自动折算',
+
+    // ===== 填表引导（round113 · 2026-09-24）=====
+    // 目的：客户多是餐饮小白，"不知道这项该填多少" ⇒ 干脆不填、不用（李老师 round113 原话）。
+    // 手段：① 逐项口径备注（这笔钱指什么）② 动态"行业参考区间"（该填多少量级）③ 最小可用集（填几项就能算）。
+    // ⚠️ 参考区间的**数值**不在本文件 —— 它是云端 indicatorRef.BANDS 单源，由 calcSandbox 的
+    //    `bands_preview` 出参下发（前端只做 key→中文名映射，不存数值，避免出现第二份真相源）。
+    bandPreviewTitle: '行业参考区间',
+    bandPreviewNote: '按你选的经营类型和城市层级给的，用来看自己填的数合不合理',
+    buildNote: '一次性投入，不是每月花掉的。右边「年限」= 这笔钱用几年，系统按它摊到每月',
+    buildItemNotes: {
+      franchise: '按合同一次性付；没加盟就留空',
+      decor: '含硬装、软装、门头招牌；不含押金',
+      equip: '厨房设备、桌椅、冷柜、收银系统等',
+      other: '转让费、证照办理、首批物料等',
+    },
+    fixedNote: '每月固定要付的，不管生意好坏都跑不掉',
+    fixedItemNotes: {
+      rent: '含物业费；季付/年付先除以月数',
+      labor: '后厨+前厅+店长，含社保；不含提成奖金',
+      utility: '看近 3 个月账单取平均；充值制按充值额算',
+      manage: '加盟管理费、总部抽成等；没有就留空',
+      other: '上面没覆盖的固定支出，如宿舍、宽带',
+    },
+    varNote: '这些是按流水抽成的，不是固定金额 —— 填百分比',
+    varItemNotes: {
+      takeawayComm: '平台抽佣，一般 15%~25%',
+      grouponComm: '团购平台的抽成比例，按合同填',
+      cardFee: '收单机构给的费率，通常不到 1%',
+      other: '会员折扣、支付通道费等其他按流水抽的',
+    },
+    marginBandLabel: '本业态参考',
     varItems: { takeawayComm: '外卖平台佣金', grouponComm: '团购佣金', cardFee: '刷卡手续费', other: '其他' },
     varTotal: '合计扣点',
     resBreakMonthly: '保本月营业额',
@@ -496,7 +527,7 @@ const TERMS = {
     addItem: '+ 加一项',
     delItem: '删除',
     autoHint: '改完自动重算，不用点按钮',
-    needFixed: '请至少填一项每月固定支出',
+    needFixed: '最少填一项每月固定支出（房租/人工/水电气/管理费任一项）就能算出保本营业额',
   },
 
   // ===== 十四、M3 成本卡页面文案 =====

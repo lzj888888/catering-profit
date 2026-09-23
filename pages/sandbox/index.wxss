@@ -71,3 +71,16 @@
 .lv-warn { color: #d68910; }
 .lv-bad { color: #c0392b; }
 .lv-na { color: #aaa; }
+
+/* ===== round113 · 填表引导（逐项口径备注 + 行业参考区间）=====
+   目的：降低"不知道这项该填多少"的门槛（客户多为餐饮小白）。
+   ⚠️ 无障碍硬约束（selftest_ad_gates G1/G2）：字号一律 ≥28rpx；min-height 只在 88rpx 用。 */
+.rw { display: block; }
+.row-note { font-size: 28rpx; color: #9aa4b2; line-height: 1.4; padding: 0 0 12rpx; }
+.bp-grid { display: flex; flex-wrap: wrap; }
+.bp-item {
+  flex: 0 0 50%; box-sizing: border-box; padding-right: 20rpx;
+  display: flex; align-items: center; justify-content: space-between; min-height: 88rpx;
+}
+.bp-name { font-size: 28rpx; color: #333; }
+.bp-band { font-size: 28rpx; font-weight: 700; color: #1e3a5f; }

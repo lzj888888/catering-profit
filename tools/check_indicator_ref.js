@@ -242,13 +242,17 @@ for (const ind of ['rent', 'labor']) {
   check(`C-③ ${ind} 三档均乘城市系数`, bad.length === 0, bad.length ? bad.join('；') : '4 业态 × 3 档全等');
 }
 
-// C-④ 浮点容差钉死样本（round110 E3：25 × 1.15 的二进制表示是 28.749999999999996）
-//      规范值 dining.labor = [25,35]；tier1 系数 1.15 ⇒ lo 必须 28.8（裸 round 会给 28.7）。
+// C-④ 浮点容差钉死样本（round110 立 · round113 **换样本**）
+//      25 × 1.15 的二进制表示是 28.749999999999996（×10 = 287.49999999999994 ⇒ 裸 round 得 28.7）。
+//      round113 把 dining.labor 从 [25,35] 改成 [17,22] 后，"25"这个锚点没了 ⇒ 换成 17：
+//      17 × 1.15 = 19.549999999999997（×10 = 195.49999999999997 ⇒ 裸 round 得 19.5）⇒ **陷阱形态完全一致**。
+//      ⚠️ 换样本时必须重新验算"裸 round 真的会错"，否则这条断言会**退化成恒真**
+//        （记忆纪律「守卫四反恒真要件」：判据须有鉴别力，正负样本互证）。
 {
   const b = code.bandOf('dining', 'labor', 'tier1');
-  const naked = Math.round(25 * 1.15 * 10) / 10;   // 反面样本：不带 1e-9 容差
-  check('C-④ 浮点容差：dining.labor@tier1 下限 = 28.8（裸 round 会得 28.7）',
-    b && b.lo === 28.8 && naked === 28.7,
+  const naked = Math.round(17 * 1.15 * 10) / 10;   // 反面样本：不带 1e-9 容差
+  check('C-④ 浮点容差：dining.labor@tier1 下限 = 19.6（裸 round 会得 19.5）',
+    b && b.lo === 19.6 && naked === 19.5,
     `实得 ${b && b.lo} / 裸 round 反面样本 ${naked}`);
 }
 // C-⑤ 另一条浮点边界：fastfood.rent@county = [5,10] × 0.75 ⇒ 3.8 / 7.5
@@ -336,6 +340,32 @@ for (const ind of ['rent', 'labor']) {
     !!gm && !old && gm.pct === 65 && gainKeys === 'grossMargin',
     gm ? `pct=${gm.pct}（应 65）· 旧键 food ${old ? '仍存在 ⚠️' : '已废'} · gain 项 [${gainKeys}]`
       : '未产出 grossMargin 行');
+}
+
+// C-⑫ 🔴 参考带 ↔ 警戒线**不得自相矛盾**（round113 立）
+//   由来：round113 复核发现 dining.labor 原为 [25,35]，而本仓 REDLINE.labor = 20
+//        ⇒ 人工 25% 的正餐店 `level=good`（≤ lo）**且** `redlineHit=true`（> 20）—— 同一条指标两个相反结论。
+//   判据（纯函数级，不依赖任何数值表）：
+//     · cost 类：good 的门槛是 `pct ≤ lo`，命中警戒是 `pct > REDLINE`
+//               ⇒ 若 `lo > REDLINE`，取 pct = lo 即两结论并存 ⇒ **必须 lo ≤ REDLINE**。
+//     · gain 类：good 的门槛是 `pct ≥ hi`，命中警戒是 `pct < REDLINE`
+//               ⇒ 若 `hi < REDLINE`，取 pct = hi 即并存 ⇒ **必须 hi ≥ REDLINE**。
+//   ⚠️ 只对**基准档（tier23，系数 1）**成立：tier1 的 labor 系数 1.15 会合法地把 hi 抬过通用警戒线
+//      （一线人工绝对成本高，[E1] 待校准），那不是矛盾 —— 故本断言只用基准档 BANDS 原值。
+{
+  const bad = [];
+  for (const biz of code.BIZ_KEYS) {
+    for (const ind of code.INDICATORS) {
+      const rl = code.redlineOf(ind.key);
+      const band = code.BANDS[biz][ind.key];
+      if (rl == null || !band) continue;            // 无警戒线的指标（energy/manage/mkt）不适用
+      const lo = band[0], hi = band[1];
+      if (ind.dir === 'cost' && lo > rl) bad.push(`${biz}.${ind.key} lo ${lo} > 警戒 ${rl}`);
+      if (ind.dir === 'gain' && hi < rl) bad.push(`${biz}.${ind.key} hi ${hi} < 警戒 ${rl}`);
+    }
+  }
+  check('C-⑫ 🔴 带 vs 警戒线不自相矛盾（cost 类 lo ≤ 警戒 · gain 类 hi ≥ 警戒）',
+    bad.length === 0, bad.length ? '矛盾：' + bad.join('；') : '四业态 × 3 个有警戒线的指标全过');
 }
 
 // ============ E 对外文案面（round111：客户看不懂「食材成本率」）============

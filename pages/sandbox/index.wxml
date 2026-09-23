@@ -17,20 +17,36 @@
     <view class="hint">{{t.autoHint}}</view>
   </view>
 
+  <!-- ⓪ 行业参考区间（round113）—— 用户"还没填"时就知道该填多少量级（本页主要流失点） -->
+  <view class="card2" wx:if="{{bands.length}}">
+    <view class="sec">{{t.bandPreviewTitle}}</view>
+    <view class="hint">{{t.bandPreviewNote}}</view>
+    <view class="bp-grid">
+      <view class="bp-item" wx:for="{{bands}}" wx:key="key">
+        <text class="bp-name">{{item.name}}</text>
+        <text class="bp-band">{{item.band}}</text>
+      </view>
+    </view>
+  </view>
+
   <!-- ① 开店投入（一次性）—— 按年限摊到每月 -->
   <view class="card2">
     <view class="sec">{{t.secBuild}}</view>
-    <view class="row" wx:for="{{buildRows}}" wx:key="key">
-      <text class="row-name">{{item.name}}</text>
-      <view class="row-in-wrap">
-        <input class="row-in" type="digit" placeholder="{{t.buildPh}}" value="{{item.yuan}}" data-idx="{{index}}" bindinput="onBuildYuan" adjust-position="{{true}}" cursor-spacing="20" />
-        <text class="row-unit">元</text>
+    <view class="hint">{{t.buildNote}}</view>
+    <view class="rw" wx:for="{{buildRows}}" wx:key="key">
+      <view class="row">
+        <text class="row-name">{{item.name}}</text>
+        <view class="row-in-wrap">
+          <input class="row-in" type="digit" placeholder="{{t.buildPh}}" value="{{item.yuan}}" data-idx="{{index}}" bindinput="onBuildYuan" adjust-position="{{true}}" cursor-spacing="20" />
+          <text class="row-unit">元</text>
+        </view>
+        <view class="row-in-wrap yr">
+          <input class="row-in" type="number" value="{{item.years}}" data-idx="{{index}}" bindinput="onBuildYears" adjust-position="{{true}}" cursor-spacing="20" />
+          <text class="row-unit">{{t.yearsSuffix}}</text>
+        </view>
+        <text class="row-del" data-idx="{{index}}" bindtap="onDelBuild">{{t.delItem}}</text>
       </view>
-      <view class="row-in-wrap yr">
-        <input class="row-in" type="number" value="{{item.years}}" data-idx="{{index}}" bindinput="onBuildYears" adjust-position="{{true}}" cursor-spacing="20" />
-        <text class="row-unit">{{t.yearsSuffix}}</text>
-      </view>
-      <text class="row-del" data-idx="{{index}}" bindtap="onDelBuild">{{t.delItem}}</text>
+      <view class="row-note" wx:if="{{item.note}}">{{item.note}}</view>
     </view>
     <view class="add-row" wx:if="{{buildRows.length < 4}}" bindtap="onAddBuild">{{t.addItem}}</view>
   </view>
@@ -38,13 +54,17 @@
   <!-- ② 每月固定支出 -->
   <view class="card2">
     <view class="sec">{{t.secFixed}}</view>
-    <view class="row" wx:for="{{fixedRows}}" wx:key="key">
-      <text class="row-name">{{item.name}}</text>
-      <view class="row-in-wrap">
-        <input class="row-in" type="digit" placeholder="{{t.buildPh}}" value="{{item.yuan}}" data-idx="{{index}}" bindinput="onFixedYuan" adjust-position="{{true}}" cursor-spacing="20" />
-        <text class="row-unit">元</text>
+    <view class="hint">{{t.fixedNote}}</view>
+    <view class="rw" wx:for="{{fixedRows}}" wx:key="key">
+      <view class="row">
+        <text class="row-name">{{item.name}}</text>
+        <view class="row-in-wrap">
+          <input class="row-in" type="digit" placeholder="{{t.buildPh}}" value="{{item.yuan}}" data-idx="{{index}}" bindinput="onFixedYuan" adjust-position="{{true}}" cursor-spacing="20" />
+          <text class="row-unit">元</text>
+        </view>
+        <text class="row-del" data-idx="{{index}}" bindtap="onDelFixed">{{t.delItem}}</text>
       </view>
-      <text class="row-del" data-idx="{{index}}" bindtap="onDelFixed">{{t.delItem}}</text>
+      <view class="row-note" wx:if="{{item.note}}">{{item.note}}</view>
     </view>
     <view class="add-row" wx:if="{{fixedRows.length < 5}}" bindtap="onAddFixed">{{t.addItem}}</view>
   </view>
@@ -59,18 +79,23 @@
     <slider min="0" max="100" step="1" value="{{marginPct}}" activeColor="#1e3a5f" block-size="22"
             bindchanging="onMarginChanging" bindchange="onMarginChange" />
     <view class="hint">{{t.marginTip}}</view>
+    <view class="hint" wx:if="{{marginBand}}">{{t.marginBandLabel}} {{marginBand}}</view>
   </view>
 
   <!-- ④ 跟营业额挂钩的费用（是"率"不是"额"：流水越高，这笔钱越多） -->
   <view class="card2">
     <view class="sec">{{t.secVar}}</view>
-    <view class="row" wx:for="{{varRows}}" wx:key="key">
-      <text class="row-name">{{item.name}}</text>
-      <view class="row-in-wrap">
-        <input class="row-in" type="digit" value="{{item.pct}}" data-idx="{{index}}" bindinput="onVarPct" adjust-position="{{true}}" cursor-spacing="20" />
-        <text class="row-unit">%</text>
+    <view class="hint">{{t.varNote}}</view>
+    <view class="rw" wx:for="{{varRows}}" wx:key="key">
+      <view class="row">
+        <text class="row-name">{{item.name}}</text>
+        <view class="row-in-wrap">
+          <input class="row-in" type="digit" value="{{item.pct}}" data-idx="{{index}}" bindinput="onVarPct" adjust-position="{{true}}" cursor-spacing="20" />
+          <text class="row-unit">%</text>
+        </view>
+        <text class="row-del" data-idx="{{index}}" bindtap="onDelVar">{{t.delItem}}</text>
       </view>
-      <text class="row-del" data-idx="{{index}}" bindtap="onDelVar">{{t.delItem}}</text>
+      <view class="row-note" wx:if="{{item.note}}">{{item.note}}</view>
     </view>
     <view class="add-row" wx:if="{{varRows.length < 4}}" bindtap="onAddVar">{{t.addItem}}</view>
   </view>

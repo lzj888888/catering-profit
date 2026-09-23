@@ -21,7 +21,10 @@ const DEBOUNCE_MS = 700;
 
 // 行工厂：把「术语里的中文名」直接塞进行对象，wxml 只渲染 {{item.name}} ——
 // 避免在 WXML 里写动态键（{{t.xxx[item.key]}}）这种解析边界写法。
-const mkRow = (k, nameMap, extra) => Object.assign({ key: k, name: nameMap[k] }, extra || {});
+// round113：行对象多带一个 note（逐项口径备注）—— 让"这笔钱指什么"就贴在输入框旁边，
+// 解决"不知道各种费用是什么"（李老师 round113 原话：很多用户不知道，就不会填、不会用）。
+const mkRow = (k, nameMap, noteMap, extra) =>
+  Object.assign({ key: k, name: nameMap[k], note: (noteMap && noteMap[k]) || '' }, extra || {});
 
 Page({
   data: {
@@ -64,6 +67,12 @@ Page({
       delItem: M.delItem,
       autoHint: M.autoHint,
       needFixed: M.needFixed,
+      bandPreviewTitle: M.bandPreviewTitle,
+      bandPreviewNote: M.bandPreviewNote,
+      buildNote: M.buildNote,
+      fixedNote: M.fixedNote,
+      varNote: M.varNote,
+      marginBandLabel: M.marginBandLabel,
       calc: M.calc,
       redAlert: M.redAlert,
       redAlertHint: M.redAlertHint,
@@ -75,22 +84,24 @@ Page({
     cityIdx: 1, bizIdx: 1,          // 默认「二三线 / 中式正餐」
     // 各行（yuan / pct 保存**字符串**，与输入框语义一致；提交时才转分）
     buildRows: [
-      mkRow('decor', M.buildItems, { yuan: '', years: 3 }),
-      mkRow('equip', M.buildItems, { yuan: '', years: 5 }),
-      mkRow('franchise', M.buildItems, { yuan: '', years: 3 }),
+      mkRow('decor', M.buildItems, M.buildItemNotes, { yuan: '', years: 3 }),
+      mkRow('equip', M.buildItems, M.buildItemNotes, { yuan: '', years: 5 }),
+      mkRow('franchise', M.buildItems, M.buildItemNotes, { yuan: '', years: 3 }),
     ],
     fixedRows: [
-      mkRow('rent', M.fixedItems, { yuan: '' }),
-      mkRow('labor', M.fixedItems, { yuan: '' }),
-      mkRow('utility', M.fixedItems, { yuan: '' }),
-      mkRow('manage', M.fixedItems, { yuan: '' }),
+      mkRow('rent', M.fixedItems, M.fixedItemNotes, { yuan: '' }),
+      mkRow('labor', M.fixedItems, M.fixedItemNotes, { yuan: '' }),
+      mkRow('utility', M.fixedItems, M.fixedItemNotes, { yuan: '' }),
+      mkRow('manage', M.fixedItems, M.fixedItemNotes, { yuan: '' }),
     ],
-    varRows: [mkRow('takeawayComm', M.varItems, { pct: '' })],
+    varRows: [mkRow('takeawayComm', M.varItems, M.varItemNotes, { pct: '' })],
     marginPct: 65,
     targetYuan: '',
     // 结果（全部来自后端）
     result: null,
     indicators: [],
+    bands: [],            // 行业参考区间预览（round113 · 来自云端 bands_preview）
+    marginBand: '',       // 本业态毛利率参考带（同上，取 grossMargin 那一项）
     indTab: 'break',
     calcError: '',
     loading: true,
@@ -106,6 +117,9 @@ Page({
       await api.ensureShop();
       ui.setTitle(TERMS.modules.m2.navTitle);
       this.setData({ loading: false });
+      // round113：进页面先拿一次"行业参考区间" —— 用户**还没填任何数**就能看到该填多少量级
+      //（开店前手里没数字，是本页的主要流失点）
+      this.onCalc();
     } catch (e) {
       this.setData({ loading: false });
       api.toastError(e);
@@ -143,7 +157,7 @@ Page({
     const used = this.data.buildRows.map((r) => r.key);
     const k = BUILD_ALL.filter((x) => used.indexOf(x) < 0)[0];
     if (!k) return;
-    const rows = this.data.buildRows.concat([mkRow(k, M.buildItems, { yuan: '', years: 3 })]);
+    const rows = this.data.buildRows.concat([mkRow(k, M.buildItems, M.buildItemNotes, { yuan: '', years: 3 })]);
     this.setData({ buildRows: rows });
     this.scheduleCalc();
   },
@@ -167,7 +181,7 @@ Page({
     const used = this.data.fixedRows.map((r) => r.key);
     const k = FIXED_ALL.filter((x) => used.indexOf(x) < 0)[0];
     if (!k) return;
-    const rows = this.data.fixedRows.concat([mkRow(k, M.fixedItems, { yuan: '' })]);
+    const rows = this.data.fixedRows.concat([mkRow(k, M.fixedItems, M.fixedItemNotes, { yuan: '' })]);
     this.setData({ fixedRows: rows });
     this.scheduleCalc();
   },
@@ -203,7 +217,7 @@ Page({
     const used = this.data.varRows.map((r) => r.key);
     const k = VAR_ALL.filter((x) => used.indexOf(x) < 0)[0];
     if (!k) return;
-    const rows = this.data.varRows.concat([mkRow(k, M.varItems, { pct: '' })]);
+    const rows = this.data.varRows.concat([mkRow(k, M.varItems, M.varItemNotes, { pct: '' })]);
     this.setData({ varRows: rows });
     this.scheduleCalc();
   },
@@ -231,11 +245,9 @@ Page({
     const fixedItems = this.data.fixedRows
       .map((r) => ({ key: r.key, fen: api.yuanToFen(r.yuan) }))
       .filter((x) => x.fen > 0);
-    if (!fixedItems.length) {
-      // 一条固定支出都没有 ⇒ 保本点无意义；提示但不判错（用户可能正在填）
-      this.setData({ calcError: M.needFixed });
-      return;
-    }
+    // ⚠️ round113：**不再**在"无固定支出"时提前 return —— 因为"行业参考区间"与用户填了什么无关，
+    //    进页面 / 换业态城市时就该显示。改为照常请求后端，只是**不展示测算结果**（保本点此时无意义）。
+    const hasFixed = fixedItems.length > 0;
     this.setData({ loading: true, calcError: '' });
     try {
       const d = await api.call('calcSandbox', {
@@ -254,7 +266,10 @@ Page({
       });
       const fen = (v) => (v == null ? null : api.fenToYuan(v, 2));
       this.setData({
-        result: {
+        // 行业参考区间（round113）：与"填了多少"无关，红警时也在
+        bands: this.decorateBands(d.bands_preview || []),
+        marginBand: this.pickBand(d.bands_preview, 'grossMargin'),
+        result: !hasFixed ? null : {
           red_alert: !!d.red_alert,
           build_total: fen(d.build_total_fen),
           build_amort: fen(d.build_amort_monthly_fen),
@@ -271,8 +286,10 @@ Page({
           payback_months: d.payback_months,
           _ind: { break: d.indicators_at_breakeven || [], target: d.indicators_at_target || [] },
         },
-        indicators: this.decorate(d.indicators_at_breakeven || []),
+        indicators: hasFixed ? this.decorate(d.indicators_at_breakeven || []) : [],
         indTab: 'break',
+        // 未达最小可算条件 ⇒ 用温和引导语代替报错（不是错误，是"还没填够"）
+        calcError: hasFixed ? '' : M.needFixed,
         loading: false,
         dirty: false,
       });
@@ -285,6 +302,23 @@ Page({
         api.toastError(e);
       }
     }
+  },
+
+  // 行业参考区间（round113）：key → 中文名 + "lo~hi%"。
+  // ⚠️ 本函数**不含任何数值常量** —— 参考带单源仍是云端 indicatorRef.BANDS（经 bands_preview 下发）。
+  decorateBands(list) {
+    const names = M.indNames;
+    return (list || []).map((x) => ({
+      key: x.key,
+      name: names[x.key] || x.key,
+      band: x.lo == null ? '—' : x.lo + '~' + x.hi + '%',
+    }));
+  },
+
+  /** 取某一项参考带的展示串（如毛利率 55~65%）；没有则空串。 */
+  pickBand(list, key) {
+    const it = (list || []).filter((x) => x.key === key)[0];
+    return it && it.lo != null ? it.lo + '~' + it.hi + '%' : '';
   },
 
   // 指标对照：把后端 key/level 枚举 → 中文（术语单源在 terms，后端不存中文）

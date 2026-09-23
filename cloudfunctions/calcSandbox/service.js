@@ -128,6 +128,12 @@ function calcSandbox(clean) {
     // 指标对照（无红警时才有意义）
     indicators_at_breakeven: indAtBreakEven,
     indicators_at_target: indAtTarget,
+    // 参考带**预览**（round113）：只依赖 业态 × 城市，与用户填了什么**无关**，红警时也返回。
+    // 用途：填表页在用户**还没填**时就显示"行业参考区间" —— 解决"不知道这项该填多少"的门槛
+    //（M2 的主要流失点：开店前用户手里没有任何数字）。
+    // ⚠️ 与 indicators_* 的区别：那两份是"你的值 vs 参考带"（需分母），本份只有参考带本身。
+    // ⚠️ 中文名仍由前端 terms 映射（key → 名），本层只回 key / 数值 / 方向。
+    bands_preview: indicatorRef.listBands(bizType, cityTier),
   };
 }
 

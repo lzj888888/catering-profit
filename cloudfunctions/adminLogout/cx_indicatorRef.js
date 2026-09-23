@@ -64,11 +64,27 @@ const BIZ_KEYS = ['fastfood', 'dining', 'hotpot', 'cafe'];
 //   · cafe     [62,72]：[D4] 65（食材35）在带内；[D5] 茶饮 60-75 中段
 //   （原 [D1] 成本率带换算成毛利率后为 快餐65-75/正餐55-65/火锅60-70/茶饮70-80 ——
 //     快餐、火锅、茶饮三项**偏高**，会把行业正常水平误判成"偏低"，故按 [D5] 校准下移。）
+// ---- labor 段的定法（round113 · 2026-09-24）----
+// 依据 [D4] 参数库「人工成本率-警戒上限」：fastfood 20% / dining 22% / hotpot 18% / cafe 18%
+// 定法：**hi = 警戒线**（到达警戒即不再算"合理"）、**lo = floor(警戒 × 0.8)**（优秀线须显著优于警戒）
+//   ⇒ fastfood [16,20] / dining [17,22] / hotpot [14,18] / cafe [14,18]
+//
+// 🔴 为什么改（原值的病）：原 dining [25,35]、cafe [20,30] 的 **lo 竟高于警戒线**（25>22 / 20>18）
+//    ⇒ 人工 23% 的正餐店（[D4] 已判"警戒"）在本库被判 `good`；更硬的是 dining lo=25 还高于
+//    本仓 REDLINE.labor=20 ⇒ 同一条指标会**同时** `level=good` 与 `redlineHit=true`（自相矛盾）。
+//    同类隐患：fastfood [20,25] 与 hotpot [18,24] 的 lo 恰好**等于**警戒线（零余量）——
+//    "优秀线 == 警戒线"在语义上不成立（若 20% 就是警戒，20% 不能叫"优秀"）⇒ 一并下移。
+//    ⚠️ 病根：round111 只按 [D5] **行业常见区间**定 labor，**没与 [D4] 警戒线对表** ——
+//       "行业常见区间"（宽）与"警戒线"（严）是两个不同的东西，不可混用。
+// ⚠️ 城市系数会再放大（tier1 ×1.15）：dining.labor@tier1 = [19.6, 25.3]，其 hi 超通用警戒线 20
+//    属**允许**（一线人工绝对成本高；系数本身是 [E1] 待校准项，见 CITY_TIERS 注）。
+// ⚠️ 不变式（由 tools/check_indicator_ref.js C-⑫ 守）：基准档 cost 类 **lo ≤ REDLINE**、
+//    gain 类 **hi ≥ REDLINE** —— 否则会出现「既优秀又命中警戒线」这种自相矛盾。
 const BANDS = {
-  fastfood: { grossMargin: [58, 68], labor: [20, 25], rent: [5, 10], mkt: [3, 8], energy: [2, 4], manage: [5, 10] },
-  dining: { grossMargin: [55, 65], labor: [25, 35], rent: [8, 15], mkt: [5, 10], energy: [3, 5], manage: [5, 10] },
-  hotpot: { grossMargin: [52, 67], labor: [18, 24], rent: [8, 15], mkt: [5, 10], energy: [4, 6], manage: [5, 10] },
-  cafe: { grossMargin: [62, 72], labor: [20, 30], rent: [5, 12], mkt: [3, 8], energy: [1, 3], manage: [5, 10] },
+  fastfood: { grossMargin: [58, 68], labor: [16, 20], rent: [5, 10], mkt: [3, 8], energy: [2, 4], manage: [5, 10] },
+  dining: { grossMargin: [55, 65], labor: [17, 22], rent: [8, 15], mkt: [5, 10], energy: [3, 5], manage: [5, 10] },
+  hotpot: { grossMargin: [52, 67], labor: [14, 18], rent: [8, 15], mkt: [5, 10], energy: [4, 6], manage: [5, 10] },
+  cafe: { grossMargin: [62, 72], labor: [14, 18], rent: [5, 12], mkt: [3, 8], energy: [1, 3], manage: [5, 10] },
 };
 const BAND_KEYS = ['grossMargin', 'labor', 'rent', 'mkt', 'energy', 'manage'];
 
@@ -191,6 +207,23 @@ function evaluateIndicators(o) {
   return out;
 }
 
+/**
+ * 列出某业态 × 城市下的**全项参考带**（供填表页"行业参考"预览）。
+ * ⚠️ 与 evaluateIndicators 的关键区别：本函数**只依赖 业态 × 城市**，与用户填了什么（金额/毛利率）**无关**
+ *    ⇒ 页面一打开、用户还没填任何数时就能显示"行业参考区间" —— 这正是 M2 的主要流失点
+ *      （开店前用户手里没有任何数字，"不知道这项该填多少"⇒ 干脆不填、不用）。
+ * @returns {Array<{key,dir,lo,hi,redline}>} 中文名由前端 terms 映射（本层不存中文）
+ */
+function listBands(bizKey, cityKey) {
+  const out = [];
+  for (const ind of INDICATORS) {
+    const b = bandOf(bizKey, ind.key, cityKey);
+    if (!b) continue;
+    out.push({ key: ind.key, dir: ind.dir, lo: b.lo, hi: b.hi, redline: redlineOf(ind.key) });
+  }
+  return out;
+}
+
 /** 取某指标对应的警戒线（rent/labor/grossMargin 有值；其余返回 null）。 */
 function redlineOf(indKey) {
   if (indKey === 'rent') return REDLINE.rent;
@@ -206,5 +239,5 @@ module.exports = {
   INDICATORS, IND_KEYS,
   REDLINE, REDLINE_KEYS,
   FIXED_KEYS, VAR_KEYS, BUILD_KEYS, BUILD_DEFAULT_YEARS,
-  bandOf, levelOf, evaluateIndicators, redlineOf,
+  bandOf, levelOf, evaluateIndicators, redlineOf, listBands,
 };

@@ -90,9 +90,18 @@ check('D13 未填的能耗项占比 = null（未填 ≠ 0 元，前端渲染「�
 check('D14 🔴 方向分区：毛利率 50%（正餐带 55~65）⇒ warn，**不是 good**',
   indicatorRef.levelOf(50, 55, 65, 'gain') === 'warn' && indicatorRef.levelOf(65, 55, 65, 'gain') === 'good',
   `50⇒${indicatorRef.levelOf(50, 55, 65, 'gain')} / 65⇒${indicatorRef.levelOf(65, 55, 65, 'gain')}`);
-check('D15 🔴 火锅烧烤人工带 = 18%~24%（原 [30,40] 偏高 12pp 的真错 · round111 修）',
-  indicatorRef.BANDS.hotpot.labor[0] === 18 && indicatorRef.BANDS.hotpot.labor[1] === 24,
-  `=${JSON.stringify(indicatorRef.BANDS.hotpot.labor)}`);
+// ---- round113（2026-09-24）：labor 四业态带按 [D4] 警戒线重定（hi=警戒 / lo=floor(警戒×0.8)）----
+// ⚠️ 本条**替换**了 round111 的 D15（原钉 hotpot [18,24]）—— 那组值自身有真错：lo(18) 恰等于警戒线(18)，
+//    零余量，"优秀线 == 警戒线"语义不成立；且 dining/cafe 的 lo 更是**高于**警戒线。见 indicatorRef 注。
+check('D15 🔴 人工带四业态 = 快餐16~20 / 正餐17~22 / 火锅14~18 / 茶饮14~18（[D4] 警戒线派生 · round113）',
+  JSON.stringify(indicatorRef.BANDS.fastfood.labor) === '[16,20]'
+  && JSON.stringify(indicatorRef.BANDS.dining.labor) === '[17,22]'
+  && JSON.stringify(indicatorRef.BANDS.hotpot.labor) === '[14,18]'
+  && JSON.stringify(indicatorRef.BANDS.cafe.labor) === '[14,18]',
+  Object.keys(indicatorRef.BANDS).map((b) => b + ':' + indicatorRef.BANDS[b].labor.join('~')).join(' '));
+check('D17 🔴 labor 的 lo ≤ 本仓警戒线 20%（否则"优秀"与"命中警戒"会同时成立）',
+  Object.keys(indicatorRef.BANDS).every((b) => indicatorRef.BANDS[b].labor[0] <= indicatorRef.REDLINE.labor),
+  Object.keys(indicatorRef.BANDS).map((b) => b + ':lo' + indicatorRef.BANDS[b].labor[0]).join(' '));
 check('D16 四业态毛利率带（快餐58~68 / 正餐55~65 / 火锅52~67 / 茶饮62~72 · [D5] 校准）',
   JSON.stringify(indicatorRef.BANDS.fastfood.grossMargin) === '[58,68]'
   && JSON.stringify(indicatorRef.BANDS.dining.grossMargin) === '[55,65]'
@@ -104,7 +113,7 @@ console.log('\n===== E 城市层级只调「有据可依」的项 =====');
 const g = (biz, ind, city) => indicatorRef.bandOf(biz, ind, city);
 check('E1 正餐·一线 房租带 = 9.6%~18%（×1.2）', g('dining', 'rent', 'tier1').lo === 9.6 && g('dining', 'rent', 'tier1').hi === 18, JSON.stringify(g('dining', 'rent', 'tier1')));
 check('E2 正餐·县城 房租带 = 6%~11.3%（×0.75）', g('dining', 'rent', 'county').lo === 6 && g('dining', 'rent', 'county').hi === 11.3, JSON.stringify(g('dining', 'rent', 'county')));
-check('E3 正餐·一线 人工带 = 28.8%~40.3%（×1.15）', g('dining', 'labor', 'tier1').lo === 28.8 && g('dining', 'labor', 'tier1').hi === 40.3, JSON.stringify(g('dining', 'labor', 'tier1')));
+check('E3 正餐·一线 人工带 = 19.6%~25.3%（[17,22]×1.15 · 17×1.15 的浮点边界由 check_indicator_ref C-④ 钉死）', g('dining', 'labor', 'tier1').lo === 19.6 && g('dining', 'labor', 'tier1').hi === 25.3, JSON.stringify(g('dining', 'labor', 'tier1')));
 check('E4 毛利率带**不随城市变**（一线采购贵但售价同步高）', g('dining', 'grossMargin', 'tier1').hi === g('dining', 'grossMargin', 'county').hi && g('dining', 'grossMargin', 'tier1').hi === 65, `一线 ${g('dining', 'grossMargin', 'tier1').hi} / 县城 ${g('dining', 'grossMargin', 'county').hi}`);
 
 console.log('\n===== F 红警与边界（不编造数据）=====');
@@ -119,6 +128,26 @@ check('F6 目标利润 = 0 ⇒ 目标月营收 = 保本月营收', noProfit.targ
 const noBuild = calcSandbox({ ...base, buildItems: [] });
 check('F7 无建店投入 ⇒ 月摊销 = 0、固定合计 = 21,000', noBuild.build_amort_monthly_fen === 0 && noBuild.fixed_total_fen === 2100000, `${noBuild.build_amort_monthly_fen} / ${noBuild.fixed_total_fen}`);
 check('F8 空入参不崩且全零', (() => { const z = calcSandbox({}); return z.fixed_total_fen === 0 && z.build_total_fen === 0; })());
+
+console.log('\n===== G 参考带预览 bands_preview（round113：填表页"行业参考"的数据源）=====');
+check('G1 标准工况返回 6 项参考带（与用户填了什么无关）', r.bands_preview.length === 6, `=${r.bands_preview.length} 项`);
+const pv = {};
+r.bands_preview.forEach((x) => { pv[x.key] = x; });
+check('G2 预览带 ≡ indicators 的带（同一 bandOf 单源，不允许两套数）',
+  pv.rent.lo === irent.lo && pv.rent.hi === irent.hi
+  && pv.labor.lo === ilabor.lo && pv.labor.hi === ilabor.hi,
+  `rent ${pv.rent.lo}~${pv.rent.hi} / labor ${pv.labor.lo}~${pv.labor.hi}`);
+check('G3 预览带含方向（grossMargin=gain / 其余 cost）—— 前端据此选"偏高/偏低"文案表',
+  pv.grossMargin.dir === 'gain' && pv.rent.dir === 'cost' && pv.labor.dir === 'cost',
+  `gm=${pv.grossMargin.dir} rent=${pv.rent.dir} labor=${pv.labor.dir}`);
+check('G4 预览带带出警戒线（与 M1.6 并列展示，不互覆盖）',
+  pv.rent.redline === 15 && pv.labor.redline === 20 && pv.grossMargin.redline === 55,
+  `rent=${pv.rent.redline} labor=${pv.labor.redline} gm=${pv.grossMargin.redline}`);
+check('G5 🔴 红警时预览带仍在（红警=算不出保本点，不等于"没有行业参考"）',
+  !!red.bands_preview && red.bands_preview.length === 6,
+  red.bands_preview ? `${red.bands_preview.length} 项` : 'null（缺失 ⚠️）');
+check('G6 空入参也给默认业态（dining）的参考带，不崩',
+  (() => { const z = calcSandbox({}); return Array.isArray(z.bands_preview) && z.bands_preview.length === 6; })());
 
 console.log(`\n==== calcSandbox M2 v2 自测结果：${pass} 通过 / ${failN} 失败 ====`);
 process.exit(failN === 0 ? 0 : 1);
