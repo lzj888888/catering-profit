@@ -1,0 +1,6 @@
+{
+ "ts": "13:28:00",
+ "sample1": [],
+ "sample2": [],
+ "concurrent": false
+}

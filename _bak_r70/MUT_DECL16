@@ -1,0 +1,106 @@
+# 店算 · 后台鉴权规范（写码强制项）
+
+> 创建：2026-09-11（响应用户审查 P1-11：后台鉴权缺口）
+> 用途：补齐 `core/10 §6 管理后台 H5` 引用的 `adminAuth` 的**具体实现契约**。原核对清单只列了 admin 云函数与错误码（`core/09 §1.6`），但 `adminAuth` 本身未定义，属真实缺口。
+> 范围：仅后台管理端（批次 6 独立 H5 + 独立 admin 云函数），**与用户端 user 鉴权无关**。
+> ⚠️ **函数名以 `10_云函数清单与接口契约.md` §6 为准**（该函数清单是唯一权威）；本文档只定义 `adminAuth` 的**实现契约**。本 §7/§8 涉及的 `adminInit` / `adminRefreshToken` / `adminLogout` / `adminRevokeToken` 四个函数，均须同时登记于 core/10 §6（已同步，2026-09-12）。
+
+---
+
+## 1. 总体约束
+
+> 🔐 **后台鉴权参数口径（唯一声明处）**：锁阈值 **5** 次 / 锁时长 **30** 分钟 / token 有效期 **7** 天。
+> 实算单源 = `cloudfunctions/_adminCore/adminAuth.js` 的 `LOCK_AFTER_FAILS` / `LOCK_DURATION_MS` / `TOKEN_TTL_MS`；
+> 由 `tools/check_admin_auth_params.js`（R106）守「声明 ≡ 实算 ≡ 全仓当前态引用」。改常量**必须**同步本行。
+
+- 所有 `core/10 §6` 的 admin 云函数（除 `adminLogin`）**必须在请求头带 `Authorization: Bearer <token>`**，否则直接返回 `ADMIN_AUTH_FAILED`。
+- 客户端（H5 后台）**不得直连数据库**；全部经 admin 云函数，云函数以管理端权限执行。
+- 所有 admin **写操作**必须写 `audit_log`，`action` 前缀 `ADMIN_`，含操作人 / 前后值 / 原因；退款 `action=ADMIN_REFUND`。
+
+---
+
+## 2. `adminLogin` 登录契约
+
+| 项 | 规定 |
+|---|---|
+| 入参 | `{ username, password }` |
+| 校验 | 取 `admin_user` 记录，用 **bcrypt / scrypt 加盐哈希**比对 `password_hash`（明文密码**不落库**） |
+| 失败锁定 | 连续 **5 次**密码错误 → 置 `admin_user.locked_until = now + 30min`，返回 `ADMIN_LOCKED`；解锁前拒绝登录 |
+| 成功 | 生成 `token = crypto.randomBytes(32).toString('hex')`；写入会话（见 §3），返回 `{ token, role, expiresAt }` |
+| 角色 | `super`（超管，可全量导出 / 手动调权）/ `op`（运营，订单/退款等日常） |
+
+---
+
+## 3. 会话（token）存储与校验
+
+- `token` 存于 `admin_login_log`（或独立 session 集合）：`{ token, admin_id, role, created_at, expires_at }`，`expires_at = now + 7天`。
+- `adminAuth` 中间件流程：
+  1. 取 `Authorization` 头，解析 Bearer token；
+  2. 查会话：不存在 → `ADMIN_AUTH_FAILED`；`expires_at < now` → `ADMIN_TOKEN_EXPIRED`；
+  3. 注入 `ctx.adminId` / `ctx.role` 供后续逻辑使用；
+  4. 超管专属接口（`adminGrantEntitlement` / `adminExport` 全量）校验 `role=super`，否则 `ADMIN_PERMISSION_DENIED`。
+- token 不进 URL、不进日志明文。
+
+---
+
+## 4. 防暴破与限流
+
+- 复用 `core/09` 的 `RATE_LIMITED`：admin 登录 / 写操作按 IP + admin_id 维度限流（建议 >60 次/分钟触发）。
+- 5 错锁 30 分为**账号级**防暴破；IP 级为**补充**。
+
+---
+
+## 5. 与错误码表映射（core/09 §1.6）
+
+| 场景 | 错误码 |
+|---|---|
+| token 无效 / 角色不足 | `ADMIN_AUTH_FAILED` → `ERR.ADMIN_AUTH` |
+| token 超 7 天 | `ADMIN_TOKEN_EXPIRED` → `ERR.ADMIN_TOKEN_EXPIRED` |
+| 连续 5 次密码错 | `ADMIN_LOCKED` → `ERR.ADMIN_LOCKED` |
+| 运营访问超管功能 | `ADMIN_PERMISSION_DENIED` → `ERR.ADMIN_PERM` |
+| 同 `client_request_id` 重复提交 | `ADMIN_OP_IDEMPOTENT` → `OK`（不重复处理） |
+
+---
+
+## 6. 上线前校验
+
+- [ ] `adminAuth` 中间件已接入所有 admin 云函数（除 `adminLogin`）。
+- [ ] `admin_user.password_hash` 为加盐哈希（非明文 / 非单纯 md5）。
+- [ ] 5 错锁 30 分、7 天 token 过期均已实现。
+- [ ] 所有 admin 写操作留 `audit_log`（含 `ADMIN_` 前缀）。
+- [ ] 后台 H5 无 `wx.cloud.database()` 直连。
+
+---
+
+## 7. 首超管引导（bootstrap）
+
+- 首个 `super` 超管**不可由代码自动建**（避免任何人首次登录即超管）。提供一次性引导：
+  - 部署后由运维执行 `adminInit` 一次性云函数（或控制台脚本），传入**预共享 setup token**（仅首次有效、用后即焚），创建首个 `super` 并写入 `admin_user`。
+  - `adminInit` 须带 env 门禁（仅 dev / 首次运行），重复调用返回 `ADMIN_ALREADY_INIT`。
+  - setup token 通过**线下渠道**（如加密文档）交付，不入代码、不入仓库、不进日志。
+- **prod 首超管通道（R58 定案）**：`adminInit` 的 env 门禁对 `/prod/` **恒拒** ⇒ prod 无云函数引导通道。prod 首个超管**唯一推荐路径**为离线生成文档后由控制台插入：
+  - 用 `tools/gen_admin_bootstrap.js` 生成 `admin_user` 文档（算法与 `cloudfunctions/_adminCore/adminAuth.js` **同源**、字段集由 `adminInit/index.js` 源码解析**防漂移断言**、并做哈希回环自检），产出 JSON 后经控制台批量导入。
+  - 🚫 **禁止手工拼 `admin_user` 文档**：scrypt 哈希算不出、`salt` 列易漏，且 `status` 漏写会被 fail-closed（R48）**永久拒登且无法自愈**（`adminInit` 见已有记录即拒）。
+  - 引导完成后用 `--verify` 复核哈希与 `status`。
+- **setup token 使用规矩（复审方判据，2026-09-17 采纳）**：
+  1. **只放云函数环境变量**（控制台配置），**绝不进仓库/不进代码/不进日志/不进回执**；
+  2. 长度 **≥32 位随机**（`crypto` 生成，禁人工拟造、禁可猜串）；
+  3. **dev 与 prod 用不同值**（禁用同一个 token 贯通两环境）；
+  4. **一次性**：首次创建成功后立即**轮换或删除**该环境变量；
+  5. 回执/汇报**不得回显实际值**，只记「是否已配置」「用过是否已轮换」；
+  6. 取值方 = `adminInit` 入参 `setup_token`（对比 `process.env.ADMIN_SETUP_TOKEN`）；`tools/gen_admin_bootstrap.js` **不读该环境变量**（离线生成器，与 token 无取值关系）。
+- 后续超管由现有 `super` 在后台「新增管理员」创建（写 `audit_log`，action=ADMIN_CREATE_ADMIN）。
+
+## 8. token 刷新与吊销
+
+- **刷新**：`expires_at` 临近（如剩 <24h）且用户活跃，由 `adminRefreshToken` 签发新 token（旧 token 立即失效，写入新会话）。前端静默刷新，不强制重登。
+- **吊销**：提供 `adminLogout`（主动吊销当前 token）+ `adminRevokeToken(admin_id)`（超管吊销指定会话）；吊销即从会话集合删除该 token，使其立即 `ADMIN_AUTH_FAILED`。
+- 所有 token 失效事件写 `audit_log`（action=ADMIN_TOKEN_REVOKE）。
+
+## 9. CSRF 防护（后台 H5 专有）
+
+- 后台 H5 跑在浏览器，**必须**防 CSRF：
+  - 所有写操作请求带 `X-Requested-With: XMLHttpRequest` + 同源校验（`Origin`/`Referer` 必须匹配后台域名白名单）；
+  - 敏感写操作（退款/调权/导出）额外要求**二次确认因子**（如短信/邮箱验证码或交易密码），不单靠 token；
+  - Cookie（若用）设 `SameSite=Strict` + `HttpOnly`；
+  - 禁止 `GET` 请求触发任何写操作。

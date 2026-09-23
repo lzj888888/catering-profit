@@ -1,0 +1,21 @@
+M1    单源 LOCK_AFTER_FAILS 5→10（放松锁阈值）                expect=RED   got=RED   OK
+        ❌ P2-② fails 声明 5 ≠ 实算 10
+        ❌ P3-④ 4 处当前态引用与实算不符
+M2    单源 TOKEN_TTL_MS 7→30 天（放松有效期）                  expect=RED   got=RED   OK
+        ❌ P2-② ttlDay 声明 7 ≠ 实算 30
+        ❌ P3-④ 8 处当前态引用与实算不符
+M3    单源 LOCK_DURATION_MS 30→15 分钟                   expect=RED   got=RED   OK
+        ❌ P2-② lockMin 声明 30 ≠ 实算 15
+        ❌ P3-④ 6 处当前态引用与实算不符
+M4    换另一文件写旧值（core/09 改 3 次/15 分钟）                  expect=RED   got=RED   OK
+        ❌ P3-④ 2 处当前态引用与实算不符
+M5    删唯一声明行（fail-closed）                            expect=RED   got=RED   OK
+        ❌ P2-② 「后台鉴权参数口径（唯一声明处）」声明行缺失（fail-closed）—— 口径无人声明，全仓引用无锚点可校
+M6    声明换措辞「输错即锁 / 有效」（不错杀）                          expect=GREEN got=GREEN OK
+M7    无关计数（导出文件保留 7 天）·不错杀                           expect=GREEN got=GREEN OK
+M8    扫描面根路径写错（前提守卫非恒真）                              expect=RED   got=GREEN MISMATCH
+M9    P4 排除面写错（前提守卫非恒真）                              expect=RED   got=RED   OK
+        ❌ P4-① review/ 零命中同类陈述 —— 要么已清干净，要么排除面写错（前提守卫）
+=== 还原后 ===
+  rc=0  ===== 后台鉴权安全参数口径守卫结果：8 通过 / 0 失败 =====
+HAS_MISMATCH

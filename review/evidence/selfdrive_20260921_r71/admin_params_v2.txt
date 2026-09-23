@@ -1,0 +1,33 @@
+
+===== P1 实算单源：_adminCore/adminAuth.js 常量解析 =====
+  ✅ P1-① 实算解析成功（不抄字面量） —— 锁阈值 5 次 / 锁时长 30 分钟 / token 7 天
+
+===== P2 唯一声明处（core/16 语义标记）≡ 实算 =====
+  ✅ P2-② 声明 ≡ 实算（5/30/7）
+
+===== P3 全仓当前态引用 ≡ 实算（锚点就近 ≤40 字符） =====
+  ✅ P3-① 扫描面 140 个 .md（index ∪ 工作树，无八进制转义）
+  ✅ P3-② 扫描面文件数 140 ≥ 30（前提守卫，非恒真）
+  ✅ P3-③ 强面（可判红的当前态陈述）18 处 ≥ 5（扫描面/句式写错即零命中，非恒真）
+  ✅ P3-④ 全部 18 处当前态引用 ≡ 实算（5/30/7）
+
+===== P4 排除面前提（review/ 确有同类陈述，证明排除没打错） =====
+  ✅ P4-① review/ 下确有 8 处同类陈述被排除（前提守卫，非恒真）
+     [已排除] review/evidence/batch6_feed/_README.md:27 fails=5
+     [已排除] review/evidence/batch6_feed/_README.md:27 lockMin=30
+     [已排除] review/evidence/batch6_feed/_README.md:27 fails=5
+     [已排除] review/evidence/batch6_feed/_README.md:28 ttlDay=7
+
+===== P5 口径单源不扩散 =====
+  ✅ P5-① 仅 core/16 一处自称本口径单源
+  ⚠️ 弱面（类别锚点/admin 锚点够不着，只明示不判红）9 处：
+     review/NOTE_2026-09-21_round69-验收自检通过数口径守卫.md:54 写 0次 —— 0 次  11_微信审核自查清单 / 13_上线前查缺补漏 / 14_种子数据与验收脚本规范 / 16_后台鉴权规范
+     review/REVIEW_2026-09-15_round26-verify.md:154 写 63分 —— | **待执行侧** | ① 🟡 **R62** `adminLogin/index.js:52` 判据单源化（`!== ADMIN_STATUS_ACTIVE`）+ 补"未知状
+     review/REVIEW_2026-09-15_round26-verify.md:154 写 3次 —— | **待执行侧** | ① 🟡 **R62** `adminLogin/index.js:52` 判据单源化（`!== ADMIN_STATUS_ACTIVE`）+ 补"未知状
+     review/REVIEW_2026-09-15_round26-verify.md:154 写 2次 —— | **待执行侧** | ① 🟡 **R62** `adminLogin/index.js:52` 判据单源化（`!== ADMIN_STATUS_ACTIVE`）+ 补"未知状
+     review/REVIEW_2026-09-15_round26-verify.md:154 写 1次 —— | **待执行侧** | ① 🟡 **R62** `adminLogin/index.js:52` 判据单源化（`!== ADMIN_STATUS_ACTIVE`）+ 补"未知状
+     specs/dev-specs/core/16_后台鉴权规范.md:12 写 5次 —— > 🔐 **后台鉴权参数口径（唯一声明处）**：锁阈值 **5** 次 / 锁时长 **30** 分钟 / token 有效期 **7** 天。
+     specs/dev-specs/core/16_后台鉴权规范.md:36 写 7天 —— - `token` 存于 `admin_login_log`（或独立 session 集合）：`{ token, admin_id, role, created_at, expir
+     specs/dev-specs/★知识存储点_2026-09-10.md:614 写 3分 —— - **套件数会漂**：`verify_all.js` 增删套件后必须同步头部注释里的数量（现 **78**；2026-09-17 由 41 → 45（新增 batch7 四组自测
+
+===== 后台鉴权安全参数口径守卫结果：8 通过 / 0 失败 =====

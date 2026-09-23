@@ -12,3 +12,15 @@ project.private.config.json
 # InsCode 新版本地元数据目录（.atomcode/，含 memory.md 等）；同时已加进 packOptions.ignore，
 # 不进版本库也不进小程序包（此前仅靠 .md 后缀规则偶然挡住，出现 .json/.png 就会漏）。
 .atomcode/
+
+# r86 云函数超时排障的「过程截图」（1033 张 / 86 MB · round110 补规则）：
+# 该批次的说明档 `review/evidence/r86_timeout_20260919/README.md`（**已入库**）第 30 行明写——
+# 「过程调试截图 1033 张留在工作区 _gui/，不入仓库」。本条把该**既有决定**从
+# 「靠人记得别 git add」变成机械保证（此前它们一直以 `??` 悬挂在 git status 里，噪声 1033 条）。
+#   · 核心证据（README + 3 张 `evidence_*.png` 判据截图 + 3 个 json）**已入库**；
+#     gitignore 只作用于**未跟踪**件 ⇒ 对本条不敏感，仍随包走。
+#   · 末行**反排除** `evidence_*.png`，使**将来新增的判据截图**仍能被纳入；过程件命名族
+#     （adv_ / cfg_ / dlg_ / filt_ / reset_ / typed_ / vp_ / search* 等）一律挡住。
+#   · 实证（round110）：该目录 1036 张 png 中未跟踪 1033 张，**无一张**以 `evidence_` 开头。
+/review/evidence/r86_timeout_20260919/*.png
+!/review/evidence/r86_timeout_20260919/evidence_*.png

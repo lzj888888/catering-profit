@@ -1,0 +1,5 @@
+--- sample1 pid=49072 ---
+(none)
+--- sample2 (after 75s) ---
+(none)
+CONCURRENT_REPO_WRITER=False

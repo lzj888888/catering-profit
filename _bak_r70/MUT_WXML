@@ -1,0 +1,209 @@
+<view class="form safe-bottom" wx:if="{{!loading}}">
+  <!-- 归档状态条 -->
+  <view class="archived-bar" wx:if="{{isArchive}}">
+    {{t.archiveReadonly}}<text wx:if="{{inGrace}}"> · {{t.graceNote}}</text>
+  </view>
+
+  <!-- E2（批次 8c）：顶部「填写口径」折叠块（默认收起）—— 防重填漏填 -->
+  <view class="fill-guide">
+    <view class="fill-guide-head" bindtap="onToggleFillGuide">
+      <text class="fg-title">{{t.fillGuideTitle}}</text>
+      <text class="fg-toggle">{{fillGuideOpen ? '▾' : '▸'}}</text>
+    </view>
+    <view class="fill-guide-body" wx:if="{{fillGuideOpen}}">
+      <view class="fg-line" wx:for="{{t.fillGuide}}" wx:key="index" wx:for-item="line">{{line}}</view>
+    </view>
+  </view>
+
+  <!-- 收入（A2：大类 → 二级细项；E1：引导文案） -->
+  <view class="sec">{{t.incomeTitle}}</view>
+  <view class="hint">{{t.incomeHint}}</view>
+
+  <view class="group" wx:for="{{incomeGroups}}" wx:key="category" wx:for-item="g" wx:for-index="gi">
+    <!-- 堂食由「快速 / 分项」模式开关接管，不再用手风琴展开 -->
+    <view class="group-head" wx:if="{{g.category === 'dine_in'}}">
+      <text class="g-label">{{g.label}}</text>
+    </view>
+    <view class="group-head" wx:else data-kind="income" data-idx="{{gi}}" bindtap="onToggleGroup">
+      <text class="g-label">{{g.label}}</text>
+      <text class="g-toggle">{{g.expanded ? '▾' : '▸'}}</text>
+    </view>
+    <!-- E2 + 2026-09-21：该类的「包括 / 不包括」口径 —— 收进折叠块，默认只留一行引导语 -->
+    <view class="scope-fold" wx:if="{{g.scope}}">
+      <view class="scope-head" data-kind="income" data-idx="{{gi}}" bindtap="onToggleScope">
+        <text class="scope-guide">{{g.scopeOpen ? t.scopeHide : t.scopeShow}}</text>
+        <text class="scope-arrow">{{g.scopeOpen ? '▾' : '▸'}}</text>
+      </view>
+      <view class="scope" wx:if="{{g.scopeOpen}}">{{g.scope}}</view>
+    </view>
+
+    <!-- ===== 堂食·模式开关（严格互斥二选一）===== -->
+    <view class="dm-wrap" wx:if="{{g.category === 'dine_in'}}">
+      <view class="dm-sec">{{t.dmSecTitle}}</view>
+      <view class="dm-opts">
+        <view class="dm-opt {{dineMode === 'fast' ? 'on' : ''}}" data-val="fast" bindtap="onPickDineMode">
+          <view class="dm-h">{{dineMode === 'fast' ? '✓ ' : ''}}{{t.dmFast}}</view>
+          <view class="dm-d">{{t.dmFastDesc}}</view>
+        </view>
+        <view class="dm-opt {{dineMode === 'detail' ? 'on' : ''}}" data-val="detail" bindtap="onPickDineMode">
+          <view class="dm-h">{{dineMode === 'detail' ? '✓ ' : ''}}{{t.dmDetail}}</view>
+          <view class="dm-d">{{t.dmDetailDesc}}</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 堂食·快速录入：只填一个总额 -->
+    <view class="dine-fast" wx:if="{{g.category === 'dine_in' && dineMode === 'fast'}}">
+      <view class="dine-fast-line">
+        <text class="sub-amt-lbl">{{t.dmFastField}}</text>
+        <input class="val-input dine-fast-inp" type="digit" confirm-type="done" value="{{g.rows[0].amountYuan}}"
+          data-kind="income" data-gidx="{{gi}}" data-ridx="0" bindinput="onSubAmount" disabled="{{readOnly}}"
+          adjust-position="{{true}}" cursor-spacing="20" />
+      </view>
+      <view class="hint">{{t.dmFastHint}}</view>
+    </view>
+
+    <!-- 堂食·分项渠道录入：两行（行①渠道名+× / 行②金额整行宽）+ 合计自动算 -->
+    <block wx:elif="{{g.category === 'dine_in'}}">
+      <view class="hint">{{t.dmDetailHint}}</view>
+      <view class="dine-item" wx:for="{{g.rows}}" wx:key="index" wx:for-item="r" wx:for-index="ri">
+        <!-- 2026-09-21 李老师真机反馈：原一行三列把渠道名挤成竖排、金额框只剩 240rpx
+             ⇒ 改两行：行① 渠道名（整行，永不竖排）+ ×；行② 金额（整行宽，好点好改） -->
+        <view class="dine-line1">
+          <input wx:if="{{!r.fixed}}" class="dine-name inp" value="{{r.subItem}}" placeholder="{{t.dmChannelPh}}"
+            data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubItem" disabled="{{readOnly}}" />
+          <text wx:else class="dine-name">{{r.subItem}}</text>
+          <button class="btn-del" wx:if="{{g.rows.length > 1}}"
+            data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" catchtap="delRow">{{t.delSubItem}}</button>
+        </view>
+        <view class="dine-note" wx:if="{{r.note}}">{{r.note}}</view>
+        <view class="dine-line2">
+          <input class="val-input dine-amt" type="digit" confirm-type="done" value="{{r.amountYuan}}"
+            placeholder="{{t.dmAmtPh}}" data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}"
+            bindinput="onSubAmount" disabled="{{readOnly}}"
+            adjust-position="{{true}}" cursor-spacing="20" />
+        </view>
+      </view>
+      <view class="dine-sum">
+        <text class="dine-sum-lbl">{{t.dmSumLabel}}</text>
+        <text class="dine-sum-val">{{dineSumYuan}}</text>
+      </view>
+      <view class="hint">{{t.dmSumAutoHint}}</view>
+      <view class="group-ops">
+        <button class="btn-small ghost" data-kind="income" data-gidx="{{gi}}" catchtap="addRow">{{t.dmAddChannel}}</button>
+      </view>
+    </block>
+
+    <!-- 非堂食（外卖等）：保持原两行细项，待单独调整 -->
+    <block wx:else>
+      <view class="sub-block" wx:for="{{g.expanded ? g.rows : g.rows.slice(0, 1)}}" wx:key="index"
+        wx:for-item="r" wx:for-index="ri">
+        <view class="sub-line1">
+          <input class="sub-item-inp" wx:if="{{g.expanded}}" value="{{r.subItem}}" placeholder="{{t.subItemPh}}"
+            data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubItem" disabled="{{readOnly}}" />
+          <button class="btn-del" wx:if="{{g.expanded && g.rows.length > 1}}"
+            data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" catchtap="delRow">{{t.delSubItem}}</button>
+        </view>
+        <view class="sub-line2">
+          <text class="sub-amt-lbl">{{g.expanded ? t.amount : g.label + t.classTotalSuffix}}</text>
+          <input class="val-input" type="digit" confirm-type="done" value="{{r.amountYuan}}"
+            data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubAmount" disabled="{{readOnly}}"  adjust-position="{{true}}" cursor-spacing="20" />
+        </view>
+      </view>
+      <view class="group-ops" wx:if="{{g.expanded}}">
+        <button class="btn-small ghost" data-kind="income" data-gidx="{{gi}}" catchtap="addRow">{{t.addSubItem}}</button>
+      </view>
+    </block>
+  </view>
+
+  <!-- 费用（A2：四大类；E1：引导文案） -->
+  <view class="sec">{{t.expenseTitle}}</view>
+  <view class="hint">{{t.expenseHint}}</view>
+
+  <view class="group" wx:for="{{expenseGroups}}" wx:key="category" wx:for-item="g" wx:for-index="gi">
+    <view class="group-head" data-kind="expense" data-idx="{{gi}}" bindtap="onToggleGroup">
+      <text class="g-label">{{g.label}}</text>
+      <text class="g-toggle">{{g.expanded ? '▾' : '▸'}}</text>
+    </view>
+    <!-- E2 + 2026-09-21：该类的「包括 / 不包括」口径 —— 收进折叠块，默认只留一行引导语 -->
+    <view class="scope-fold" wx:if="{{g.scope}}">
+      <view class="scope-head" data-kind="expense" data-idx="{{gi}}" bindtap="onToggleScope">
+        <text class="scope-guide">{{g.scopeOpen ? t.scopeHide : t.scopeShow}}</text>
+        <text class="scope-arrow">{{g.scopeOpen ? '▾' : '▸'}}</text>
+      </view>
+      <view class="scope" wx:if="{{g.scopeOpen}}">{{g.scope}}</view>
+    </view>
+
+    <view class="sub-block" wx:for="{{g.expanded ? g.rows : g.rows.slice(0, 1)}}" wx:key="index"
+      wx:for-item="r" wx:for-index="ri">
+      <view class="sub-line1">
+        <input class="sub-item-inp" wx:if="{{g.expanded}}" value="{{r.subItem}}" placeholder="{{t.subItemPh}}"
+          data-kind="expense" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubItem" disabled="{{readOnly}}" />
+        <button class="btn-del" wx:if="{{g.expanded && g.rows.length > 1}}"
+          data-kind="expense" data-gidx="{{gi}}" data-ridx="{{ri}}" catchtap="delRow">{{t.delSubItem}}</button>
+      </view>
+      <view class="sub-line2">
+        <text class="sub-amt-lbl">{{g.expanded ? t.amount : g.label + t.classTotalSuffix}}</text>
+        <input class="val-input" type="digit" confirm-type="done" value="{{r.amountYuan}}"
+          data-kind="expense" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubAmount" disabled="{{readOnly}}"  adjust-position="{{true}}" cursor-spacing="20" />
+      </view>
+    </view>
+
+    <view class="group-ops" wx:if="{{g.expanded}}">
+      <button class="btn-small ghost" data-kind="expense" data-gidx="{{gi}}" catchtap="addRow">{{t.addSubItem}}</button>
+    </view>
+  </view>
+
+  <!-- 核算方式（2026-09-20：库存/摊销开关从店铺设置页迁入此处，就地二选一） -->
+  <view class="sec">{{t.cmSecTitle}}</view>
+  <view class="hint">{{t.cmSecHint}}</view>
+
+  <!-- ① 食材消耗 -->
+  <view class="cm-sub">{{t.cmConsumeTitle}}</view>
+  <view class="cm-card">
+    <view class="cm-opt {{inventoryOn ? '' : 'on'}}" data-kind="inventory" data-val="0" bindtap="onPickMethod">
+      <view class="cm-opt-h"><text wx:if="{{!inventoryOn}}">✓ </text>{{t.cmConsumeDirect}}</view>
+      <view class="cm-opt-d">{{t.cmConsumeDirectDesc}}</view>
+    </view>
+    <view class="cm-opt {{inventoryOn ? 'on' : ''}}" data-kind="inventory" data-val="1" bindtap="onPickMethod">
+      <view class="cm-opt-h"><text wx:if="{{inventoryOn}}">✓ </text>{{t.cmConsumeInv}}</view>
+      <view class="cm-opt-d">{{t.cmConsumeInvDesc}}</view>
+    </view>
+  </view>
+  <block wx:if="{{inventoryOn}}">
+    <button class="btn ghost" bindtap="goInventory">{{t.cmConsumeInvGo}}</button>
+    <view class="cm-state">{{invSummary || t.cmConsumeInvEmpty}}</view>
+    <view class="hint">{{t.cmConsumeInvHint}}</view>
+  </block>
+  <block wx:else>
+    <view class="field">
+      <text class="lbl">{{t.cmConsumeDirectField}}</text>
+      <input class="val-input" type="digit" confirm-type="done" disabled="{{readOnly}}"
+        value="{{directConsumeYuan}}" bindinput="onDirectConsume"  adjust-position="{{true}}" cursor-spacing="20" />
+    </view>
+    <view class="hint">{{t.cmConsumeDirectHint}}</view>
+  </block>
+
+  <!-- ② 装修设备 -->
+  <view class="cm-sub">{{t.cmAssetTitle}}</view>
+  <view class="cm-card">
+    <view class="cm-opt {{amortizeOn ? '' : 'on'}}" data-kind="amortize" data-val="0" bindtap="onPickMethod">
+      <view class="cm-opt-h"><text wx:if="{{!amortizeOn}}">✓ </text>{{t.cmAssetOnce}}</view>
+      <view class="cm-opt-d">{{t.cmAssetOnceDesc}}</view>
+    </view>
+    <view class="cm-opt {{amortizeOn ? 'on' : ''}}" data-kind="amortize" data-val="1" bindtap="onPickMethod">
+      <view class="cm-opt-h"><text wx:if="{{amortizeOn}}">✓ </text>{{t.cmAssetAmortize}}</view>
+      <view class="cm-opt-d">{{t.cmAssetAmortizeDesc}}</view>
+    </view>
+  </view>
+  <block wx:if="{{amortizeOn}}">
+    <button class="btn ghost" bindtap="goAmortize">{{t.cmAssetGo}}</button>
+    <view class="cm-state">{{assetSummary || t.cmAssetEmpty}}</view>
+    <view class="hint">{{t.cmAssetHint}}</view>
+  </block>
+
+  <view style="height:20rpx;"></view>
+  <button class="btn primary" style="margin-top:0;" bindtap="onSave"
+    disabled="{{readOnly}}">{{isArchive ? t.saveArchiveOverride : t.save}}</button>
+</view>
+<view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

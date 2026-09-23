@@ -1,0 +1,109 @@
+/* pages/month/input.wxss —— M1 收入/费用/消耗录入页 */
+.val-input { text-align: right; font-size: 32rpx; width: 320rpx;
+  padding: 14rpx 18rpx; border: 2rpx solid #cfdae8; border-radius: 10rpx; background: #fff; }
+.sec { font-size: 30rpx; font-weight: 700; color: #333; margin: 28rpx 8rpx 14rpx; }
+
+/* A2：大类组（收入/费用二级细项） */
+.group { background: #fff; border-radius: 12rpx; margin-bottom: 16rpx; padding: 8rpx 24rpx; }
+.group-head { display: flex; justify-content: space-between; align-items: center; padding: 20rpx 0; }
+.g-label { font-size: 30rpx; font-weight: 600; color: #222; }
+.g-toggle { font-size: 28rpx; color: #1e3a5f; }
+/* 2026-09-20 改两行：行①细项名 + ×；行②金额（整行宽、带边框）
+   原一行三控件时金额框仅 220rpx，点中间数字易误删、边框不明显 —— 李老师真机反馈。 */
+.sub-block { padding: 14rpx 0; border-top: 1rpx solid #f5f5f5; }
+.sub-line1 { display: flex; align-items: center; gap: 10rpx; }
+.sub-item-inp {
+  flex: 1; min-width: 0; font-size: 30rpx; color: #222;
+  padding: 14rpx 18rpx; background: #f7f9fc; border-radius: 10rpx;
+}
+/* ⚠️ AD 规范（ad-gates G2 硬守）：可点元素 min-height ≥ 88rpx —— **不可下调**。
+   2026-09-21 李老师反馈「删除键太大、占地」⇒ 收窄 width + 去掉红底方块：
+   视觉上只剩一个 × 字符（不占视觉面积），但**点击热区仍是 88rpx**。
+   ⚠️ 守卫只看 min-height 不看 width，所以「视觉小 / 热区够」两者可兼得；
+      真把 min-height 调小会让门禁 77/77 转红。 */
+.btn-del {
+  flex: 0 0 auto; width: 72rpx; min-height: 88rpx; height: 88rpx; line-height: 84rpx;
+  padding: 0; margin: 0; font-size: 30rpx; color: #c0392b; background: none;
+}
+.btn-del::after { display: none; }         /* 去掉小程序 button 默认边框 */
+.sub-line2 { display: flex; align-items: center; gap: 14rpx; margin-top: 12rpx; }
+.sub-amt-lbl { flex: 0 0 auto; font-size: 28rpx; color: #6b7a8d; }
+.sub-line2 .val-input {
+  flex: 1; width: auto; text-align: right; font-size: 34rpx;
+  padding: 16rpx 20rpx; border: 2rpx solid #cfdae8; border-radius: 10rpx; background: #fff;
+}
+.group-ops { padding: 8rpx 0 16rpx; }
+.group-ops .btn-small { margin-top: 0; }
+
+/* ===== E2（批次 8c）：填写口径折叠块 + 每类口径句 ===== */
+.fill-guide {
+  margin: 16rpx 24rpx 8rpx;
+  border: 1rpx solid #e5e5e5;
+  border-radius: 12rpx;
+  background: #fafafa;
+  overflow: hidden;
+}
+.fill-guide-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20rpx 24rpx;
+}
+.fg-title { font-size: 28rpx; color: #555; }
+.fg-toggle { font-size: 28rpx; color: #999; }
+.fill-guide-body {
+  border-top: 1rpx solid #ececec;
+  padding: 8rpx 24rpx 16rpx;
+  background: #fff;
+}
+.fg-line { font-size: 28rpx; color: #777; line-height: 1.6; padding: 6rpx 0; }
+/* 2026-09-21 李老师反馈：口径句原样展开太占地方 ⇒ 收进折叠块，默认只留一行引导语。
+   ⚠️ 类名仍叫 .scope（ad-gates G1 按它查字号 ≥28rpx，改名会让那条守卫静默失守）。 */
+.scope-fold { padding: 0 0 6rpx; }
+.scope-head { display: flex; align-items: center; justify-content: space-between; padding: 14rpx 8rpx; }
+.scope-guide { font-size: 28rpx; color: #1e3a5f; }
+.scope-arrow { font-size: 28rpx; color: #1e3a5f; }
+.scope { font-size: 28rpx; color: #6b7a8d; line-height: 1.6; padding: 12rpx 16rpx;
+  background: #f5f8fc; border-radius: 10rpx; margin: 0 0 12rpx; }
+
+/* ===== 2026-09-21 堂食录入模式（快速 / 分项 · 严格互斥 · 方案 A）=====
+   ⚠️ 方案 A：选「分项」时总额由各渠道相加自动算出、不可手填 ⇒ 单一数据源，无需校验。
+   ⚠️ 预设渠道名是**固定标签不可编辑**（省出的宽度全给金额框），只有「+ 添加渠道」的自定义行才可编辑。 */
+.dm-wrap { padding: 4rpx 0 8rpx; }
+.dm-sec { font-size: 28rpx; color: #6b7a8d; padding: 0 0 10rpx 8rpx; }
+.dm-opts { display: flex; gap: 12rpx; }
+.dm-opt {
+  flex: 1; min-width: 0; padding: 16rpx 14rpx; border-radius: 12rpx;
+  border: 2rpx solid #e3eaf2; background: #fff;
+}
+.dm-opt.on { border: 2rpx solid #1e3a5f; background: #e8eff7; }
+.dm-h { font-size: 28rpx; font-weight: 600; color: #1e3a5f; }
+.dm-d { font-size: 28rpx; color: #6b7a8d; margin-top: 6rpx; }
+
+/* 快速录入：一个总额框 */
+.dine-fast { padding: 12rpx 0; border-top: 1rpx solid #f5f5f5; }
+.dine-fast-line { display: flex; align-items: center; gap: 14rpx; }
+.dine-fast-inp { flex: 1; width: auto; font-size: 34rpx; }
+
+/* 分项渠道：两行（行①渠道名+× / 行②金额整行宽）
+   ⚠️ 不要退回「一行三列」：渠道名最长 9 字（个人/单位挂账消费），与金额框抢宽度会被挤成竖排；
+      两行后金额框 ≈ 满宽，也解决「输入框太窄、点中间数字容易误删」。 */
+.dine-item { padding: 10rpx 0; border-top: 1rpx solid #f5f5f5; }
+.dine-line1 { display: flex; align-items: center; }
+.dine-name {
+  flex: 1 1 auto; min-width: 0; font-size: 30rpx; color: #222; line-height: 1.5;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.dine-name.inp { padding: 12rpx 16rpx; background: #f7f9fc; border-radius: 10rpx; }
+.dine-note { font-size: 28rpx; color: #8a97a6; line-height: 1.5; padding: 2rpx 0 6rpx 2rpx; }
+.dine-line2 { display: flex; align-items: center; margin-top: 8rpx; }
+.dine-line2 .val-input { flex: 1 1 auto; width: auto; text-align: right; font-size: 34rpx; }
+.dine-amt { flex: 1 1 auto; width: auto; font-size: 34rpx; text-align: right; }
+
+/* 合计：由各渠道相加自动算出，不可手填 */
+.dine-sum {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 18rpx 8rpx 6rpx; margin-top: 8rpx; border-top: 2rpx solid #e3eaf2;
+}
+.dine-sum-lbl { font-size: 28rpx; color: #6b7a8d; }
+.dine-sum-val { font-size: 34rpx; font-weight: 600; color: #1e3a5f; }

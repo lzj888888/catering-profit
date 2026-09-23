@@ -1,0 +1,40 @@
+--- M1 口径句退回常展开 applied=[('pages/month/input.wxml', 2)]
+M1     expect=RED   got=RED   OK  ['tools/selftest_batch8b.js', 'tools/selftest_batch8c.js']
+        tools/selftest_batch8b.js rc=1 ==== 批次 8b 功能补齐自测：77 通过 / 2 失败 ====
+        tools/selftest_batch8c.js rc=1 ==== 批次 8c 自测：55 通过 / 2 失败 ====
+        tools/selftest_ad_gates.js rc=0 ==== 上线前 AD 缺口自测：24 通过 / 0 失败 ====
+--- M2 金额框挪回行①（与渠道名抢宽） applied=[('pages/month/input.wxml', 1)]
+M2     expect=RED   got=RED   OK  ['tools/selftest_batch8b.js']
+        tools/selftest_batch8b.js rc=1 ==== 批次 8b 功能补齐自测：78 通过 / 1 失败 ====
+        tools/selftest_batch8c.js rc=0 ==== 批次 8c 自测：57 通过 / 0 失败 ====
+        tools/selftest_ad_gates.js rc=0 ==== 上线前 AD 缺口自测：24 通过 / 0 失败 ====
+--- M3 × 触控高度 88→60rpx（G2 硬约束） applied=[('pages/month/input.wxss', 1)]
+M3     expect=RED   got=RED   OK  ['tools/selftest_batch8b.js', 'tools/selftest_ad_gates.js']
+        tools/selftest_batch8b.js rc=1 ==== 批次 8b 功能补齐自测：78 通过 / 1 失败 ====
+        tools/selftest_batch8c.js rc=0 ==== 批次 8c 自测：57 通过 / 0 失败 ====
+        tools/selftest_ad_gates.js rc=1 ==== 上线前 AD 缺口自测：23 通过 / 1 失败 ====
+--- M4 仅换类名（两行结构不变）·判据强度 applied=[('pages/month/input.wxml', 1), ('pages/month/input.wxml', 1)]
+M4     expect=GREEN got=RED   MISMATCH  ['tools/selftest_batch8b.js']
+        tools/selftest_batch8b.js rc=1 ==== 批次 8b 功能补齐自测：77 通过 / 2 失败 ====
+        tools/selftest_batch8c.js rc=0 ==== 批次 8c 自测：57 通过 / 0 失败 ====
+        tools/selftest_ad_gates.js rc=0 ==== 上线前 AD 缺口自测：24 通过 / 0 失败 ====
+--- M5 正确实现换箭头字形（折叠机制不变）·不错杀 applied=[('pages/month/input.wxml', 2)]
+M5     expect=GREEN got=GREEN OK  []
+        tools/selftest_batch8b.js rc=0 ==== 批次 8b 功能补齐自测：79 通过 / 0 失败 ====
+        tools/selftest_batch8c.js rc=0 ==== 批次 8c 自测：57 通过 / 0 失败 ====
+        tools/selftest_ad_gates.js rc=0 ==== 上线前 AD 缺口自测：24 通过 / 0 失败 ====
+--- M6 口径样式加间距（不改折叠结构）·不错杀 applied=[('pages/month/input.wxss', 1)]
+M6     expect=GREEN got=GREEN OK  []
+        tools/selftest_batch8b.js rc=0 ==== 批次 8b 功能补齐自测：79 通过 / 0 失败 ====
+        tools/selftest_batch8c.js rc=0 ==== 批次 8c 自测：57 通过 / 0 失败 ====
+        tools/selftest_ad_gates.js rc=0 ==== 上线前 AD 缺口自测：24 通过 / 0 失败 ====
+--- M7 scopeOpen 初值改 true（默认展开） applied=[('pages/month/input.js', 2)]
+M7     expect=RED   got=RED   OK  ['tools/selftest_batch8b.js']
+        tools/selftest_batch8b.js rc=1 ==== 批次 8b 功能补齐自测：78 通过 / 1 失败 ====
+        tools/selftest_batch8c.js rc=0 ==== 批次 8c 自测：57 通过 / 0 失败 ====
+        tools/selftest_ad_gates.js rc=0 ==== 上线前 AD 缺口自测：24 通过 / 0 失败 ====
+=== 还原后 ===
+  tools/selftest_batch8b.js rc=0 ==== 批次 8b 功能补齐自测：79 通过 / 0 失败 ====
+  tools/selftest_batch8c.js rc=0 ==== 批次 8c 自测：57 通过 / 0 失败 ====
+  tools/selftest_ad_gates.js rc=0 ==== 上线前 AD 缺口自测：24 通过 / 0 失败 ====
+ALL_OK

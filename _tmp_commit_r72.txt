@@ -1,0 +1,19 @@
+round71/72 堂食渠道全集常在 + 装配单一入口（挂账/团购不再消失）
+
+round71（补记重启键）：分项→快速→分项 来回切不再丢值
+- 根因：切快速时 g.rows 被整体覆盖成单行总额，原分项各渠道值被销毁
+- 修法：新增 dineDetailRows 快照，切回分项非空即原样恢复；守卫 batch8b G9
+
+round72：渠道「后端存过什么渲染什么」→ 全集常在
+- 根因①：没填过的预设渠道（挂账/团购/POS/储值卡）压根不出现（terms 里 7 条一条没少）
+- 根因②（李老师点名）：产出渠道行的路径有 5 条各拼一遍 ⇒ 改一处漏三处
+- 修法：新增 utils/dineChannels.js::normalizeDineRows 作唯一装配口
+  （预设全集常在 + 金额按名回填 + 自定义留末尾 + 幂等），页面 decorateDineRows 转调，5 路收口
+- 清单只认 terms.js → ledger.income[dine_in].items，页面零硬编码
+- 配套：addRow 带 custom:true（否则点添加没反应）；buildItems 只提交填了金额的行
+  （看金额不看名字，快速模式单行无名有额要留）；预设行不给删除键
+
+验证
+- selftest_batch8b：104/104（新增 G10 共 20 条，直接 require 真模块跑用例）
+- verify_all：79/79 RC=0
+- 变异回灌 6/6 抓到，并因此修掉 2 条假绿（G10i 恒真、G10k 缺失）
