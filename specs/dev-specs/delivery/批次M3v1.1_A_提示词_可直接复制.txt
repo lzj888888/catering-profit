@@ -1,161 +1,162 @@
 ═══════════════════════════════════════════════════════════════════
-店算 · M3 v1.1 投喂包 · 批次 A（P0）
+店算 · M3 v1.1 投喂包 · 批次 A1（P0 · 写码方）
 主题：免费配额「配置化 + 写侧真拦截」+ 成本卡免费额度 3 → 5
 规范依据：specs/dev-specs/core/开发规范v1.1_ModuleM3增量_套餐外卖多规格与留存对照.md §M3.22
+         （对应改造清单 #1~#7 与 #12；#8/#9/#10/#11 不在本批次）
 ═══════════════════════════════════════════════════════════════════
 
 【你要改的仓库】
 C:\Users\lzj\WorkBuddy\Claw\catering-profit
-你只改 cloudfunctions/ 与 tools/ 与 pages/ 下的代码，**不要改 specs/ 下任何文件**（规范由门禁方维护）。
+
+🔴 **角色边界（本批次最重要的约束）**
+你**只改**这三个目录：`cloudfunctions/`、`pages/`、`miniprogram/`。
+你**绝对不要改** `tools/` 下任何文件，也**绝对不要改** `specs/` 下任何文件
+（守卫与规范由门禁方维护；越界改动会被直接打回）。
+⇒ 改造清单里的 #8、#9（`tools/` 守卫）、#10、#11（`specs/` 文档面）**不是你的活**，
+   由门禁方在你这批落地后另行完成。
+
+⚠️ **预期中的"暂时红灯"**：你改完 `checkQuota/service.js` 后，守卫
+`tools/check_quota_limits.js`（R102）仍按旧常量解析 ⇒ 会转红。**这是预期的**，
+由门禁方收口。**不得**为了"让门禁变绿"而回退你的改动，也不得去改那个守卫文件。
 
 ───────────────────────────────────────────────────────────────────
 一、先讲清"为什么改"（不改会怎样）
 ───────────────────────────────────────────────────────────────────
 现状（全部已实扫，行号可核）：
-1. 额度值硬编码在 cloudfunctions/checkQuota/service.js:17
+1. 额度值硬编码在 `cloudfunctions/checkQuota/service.js:17`
    `const FREE_LIMIT = { shop: 1, cost_card: 3 };`
 2. 写码基线 M3.7 明写「上限数值禁硬编码，必须读配置集合」—— 与实现矛盾。
-3. **写侧零拦截**：cloudfunctions/saveCostCard/index.js 全文没有
+3. **写侧零拦截**：`cloudfunctions/saveCostCard/index.js` 全文没有
    FREE_LIMIT / checkQuota / activeCount / count( ⇒ 免费用户可无限建成本卡。
-4. 全仓 `checkQuota` 只有一处调用：pages/card/index.js:62（前端预检）。
-   ⇒ 付费墙目前**只提示、不拦截**。
-5. 守卫 tools/check_quota_limits.js 把上面那个硬编码常量当成"单源"，
-   所以"改对"反而会让守卫转红 —— 本批次必须同时改守卫。
-6. cloudfunctions/checkQuota/selftest.js:14 把 3/1 钉成断言 ⇒ 假绿，必须拆。
+4. 全仓 `checkQuota` 只有一处调用：`pages/card/index.js:62`（前端预检）。
+   ⇒ 付费墙目前**只提示、不拦截**；绕过前端即可无限建卡。
+5. `cloudfunctions/checkQuota/selftest.js:14` 把 `3 / 1` 钉成断言 ⇒ 假绿，必须拆。
+6. `cloudfunctions/checkQuota/index.js:5` 头注写「计数维度 = user_id（跨店共享）」，
+   而函数体第 41 行实际按 `shop_id` 查 `shop_cost_card` ⇒ **同文件自相矛盾**，须改正。
 
 ───────────────────────────────────────────────────────────────────
 二、配置落点（唯一真相源）
 ───────────────────────────────────────────────────────────────────
-集合 feature_permissions（**不新建集合**），新增一行：
+集合 `feature_permissions`（**不新建集合**），新增一行：
   plan_id     = 'plan_free'
   limits      = { shop: 1, cost_card: 5, hard_shop: 200, hard_card: 2000 }
   enabled     = true
-种子写在 cloudfunctions/initDb/collections.js 的 feature_permissions 种子里
-（该文件是"纯数据 + 纯函数"，不许 require wx-server-sdk）。
+注意：该集合**现有种子的形状只是** `plan_id / feature_key / enabled`
+（见 `cloudfunctions/initDb/collections.js:132` 的 `SEED_FEATURES`），
+**不含 `limits`** ⇒ 本批次是**新增一个字段**，不是"零变更"。
 
-🔴 不许把额度写进 subscription_plan —— 那里是付费套餐价格表，
-   而 payCreateOrder 按 plan_id 读它下单 ⇒ 塞免费档会让免费档变成可下单的付费档。
+🔴 不许把额度写进 `subscription_plan` —— 那里是付费套餐价格表（4 档种子全是付费档），
+   而 `payCreateOrder` 按 plan_id 读它下单 ⇒ 塞免费档会让免费档变成可下单的付费档。
 
 ───────────────────────────────────────────────────────────────────
-三、逐文件要求（12 项，缺一即半成品）
+三、逐文件要求（#1~#7、#12，缺一即半成品）
 ───────────────────────────────────────────────────────────────────
-1) cloudfunctions/initDb/collections.js
-   · feature_permissions 种子新增 plan_free 行（含 limits 四个数）。
-   · COLLECTIONS 清单**一个字不改**（仍是 25 张集合）、索引清单不改。
+1) `cloudfunctions/initDb/collections.js`
+   · `feature_permissions` 种子新增 `plan_free` 行（含 `limits` 四个数）。
+   · `COLLECTIONS` 清单**一个字不改**（仍是 25 张集合）、索引清单**一个字不改**（仍 40 条）。
+   · 该文件是"纯数据 + 纯函数"，**不许 require wx-server-sdk**。
 
-2) cloudfunctions/checkQuota/service.js
-   · 删除 `const FREE_LIMIT = {...}` / `const HARD_LIMIT = {...}` 两个字面量常量。
-   · 改成 **入参注入**：checkQuota({ userId, scope, activeCount, limits })，
-     limits 形如 { shop, cost_card, hard_shop, hard_card }。
-   · **不得保留任何额度字面量兜底**。取不到 limits ⇒ 抛/返回
-     错误码 'QUOTA_CONFIG_MISSING'（响亮失败，不许静默放行）。
-   · 返回结构保持兼容：user_id / scope / used / free_limit / hard_limit /
-     hit_free_limit / hit_hard_limit（core/10:176 是已登记对外契约，不许改字段名）。
+2) `cloudfunctions/checkQuota/service.js`
+   · 删除 `const FREE_LIMIT = {...}` 与 `const HARD_LIMIT = {...}` 两个字面量常量。
+   · 改成 **入参注入**：`checkQuota({ userId, scope, activeCount, limits })`，
+     `limits` 形如 `{ shop, cost_card, hard_shop, hard_card }`。
+   · **不得保留任何额度字面量兜底**。取不到 `limits` ⇒ 抛/返回错误码
+     `SYSTEM_ERROR` 并带明确 msg（例如 `'配额配置缺失（plan_id=plan_free）'`）。
+     ⚠️ **本批次不新增错误码**（新增码需 4 处同步：core/09 §1 + §3 + 双副本 terms.js
+     的 ERROR_MESSAGES 与 CODE_TO_I18N，属门禁方范围）⇒ 统一用既有 `SYSTEM_ERROR` 响亮失败。
+     既有先例：`cloudfunctions/adminQueryUser/service.js:5`「复用 HARD_CAP_EXCEEDED，不新增错误码」。
+   · 返回结构保持兼容：`user_id / scope / used / free_limit / hard_limit /
+     hit_free_limit / hit_hard_limit`（`core/10` 是已登记对外契约，**不许改字段名**）。
    · 文件头注释同步更新（现在那句"常量定义于 Service"要改掉）。
 
-3) cloudfunctions/checkQuota/index.js
-   · 从 feature_permissions 读 plan_id='plan_free' 的 limits，注入 Service。
-   · 读不到 ⇒ 返回 QUOTA_CONFIG_MISSING（带上下文：plan_id）。
+3) `cloudfunctions/checkQuota/index.js`
+   · 从 `feature_permissions` 读 `plan_id='plan_free'` 的 `limits`，注入 Service。
+   · 读不到 ⇒ 返回 `SYSTEM_ERROR` + 明确 msg（带上下文：plan_id）。
+   · **修正头注第 5 行**：现写「计数维度 = user_id（跨店共享）」，而函数体第 41 行
+     实际按 `shop_id` 查 `shop_cost_card`（该集合**无 `user_id` 字段**，只有 `created_by`）。
+     ⇒ 头注改为实测口径：**店铺维度按 user_id；成本卡维度按 shop_id**
+     （免费档仅 1 账套 ⇒ 两者等价；跨店维度需 `created_by` 索引，本批次不引入）。
 
-4) cloudfunctions/checkQuota/selftest.js
-   · **删掉** `check('FREE_LIMIT.shop=1 / cost_card=3', ...)` 这类把值钉死的断言。
-   · 改为**正负互证**：注入不同 limits（如 cost_card: 5 与 cost_card: 2），
-     断言判定随注入值变化；并补一条"不传 limits ⇒ QUOTA_CONFIG_MISSING"。
+4) `cloudfunctions/checkQuota/selftest.js`
+   · **删掉** `check('FREE_LIMIT.shop=1 / cost_card=3', ...)` 这类把值钉死的断言（含 HARD_LIMIT 那条）。
+   · 改为**正负互证**：注入不同 `limits`（如 `cost_card: 5` 与 `cost_card: 2`），
+     断言判定**随注入值变化**（同一 activeCount 在两组 limits 下结论必须不同）；
+     并补一条"**不传 limits ⇒ 响亮失败（SYSTEM_ERROR）**"。
 
-5) cloudfunctions/saveCostCard/service.js
-   · 新增纯函数 judgeCardQuota(limits, activeCount) → { hit_free_limit, hit_hard_limit, free_limit, hard_limit }
-     （纯逻辑，不引 SDK，便于单测）。
+5) `cloudfunctions/saveCostCard/service.js`
+   · 新增纯函数 `judgeCardQuota(limits, activeCount)` →
+     `{ hit_free_limit, hit_hard_limit, free_limit, hard_limit }`（纯逻辑，不引 SDK，便于单测）。
+   · 🔴 **只允许新增这个函数**：该文件里的**引擎段（具名函数 `netUnitCostWan` /
+     `buildSnapshotLines` / `calcCostCard` / `wouldCreateCycle`）一字不改**，
+     且 `module.exports` 只做**追加**（不许改动或重排既有导出）。
 
-6) cloudfunctions/saveCostCard/index.js  ★本批次的核心
-   · **新增写侧拦截**（在"新建成本卡"路径上）：
-     统计该 user 的**活跃**成本卡数（is_deleted=false，按逻辑卡号去重，版本不计）
-     → judgeCardQuota → 超免费额返回 FREE_LIMIT_EXCEEDED，
-       超硬上限返回 HARD_CAP_EXCEEDED。
-   · 编辑/生成新版本**不占新额度**（同逻辑卡号，版本不计）。
-   · 错误码文案走术语表，不许硬编码中文。
-   · 注意：额度维度是 **user_id**（跨该用户所有店铺共享），不是 shop_id。
+6) `cloudfunctions/saveCostCard/index.js`  ★本批次的核心
+   · **新增写侧拦截**，插入位置在"确定 version 之后、真正 INSERT 之前"：
+     · 判定是否**新逻辑卡**：`card_code` 为空（服务端将 `genId('cc_')`），
+       **或** 该 `shop_id` 下该 `card_code` 尚不存在任何在库版本（即即将写入 version=1）。
+     · **只有新逻辑卡才占额度**；已存在卡号的"追加新版本"（version≥2）**不占额度**。
+     · 统计该 `shop_id` 的**活跃逻辑卡号数**：取 `da.list('shop_cost_card', { shop_id })`
+       （DataAdapter 已过滤 `is_deleted=false`），用 `new Set(card_code).size`
+       —— **按 `card_code` 去重、版本不计**（与 `checkQuota/index.js:41-44` 完全同口径）。
+     · 调 `judgeCardQuota(limits, activeCount)`：
+       超免费额 ⇒ `FREE_LIMIT_EXCEEDED`；超硬上限 ⇒ `HARD_CAP_EXCEEDED`（**均为既有码，直接复用**）。
+     · 错误文案走术语表（`msgOf`），**不许硬编码中文**。
+   · 🔴 维度必须是 `shop_id`（不是 `user_id`、不是 `created_by`）。
+   · 🔴 拦截必须真的 `return fail(...)` **提前返回**，不得只记日志继续写。
 
-7) cloudfunctions/getShopList/index.js + getShopList/selftest.js
-   · 现状：index.js:38 `const FREE_SHOP_LIMIT = 1`，selftest.js:11 又抄一份。
-   · 改为读同一份配置（feature_permissions.plan_free.limits.shop）。
-   · **局部变量名可以留，但不许再出现裸数字字面量**。
+7) `cloudfunctions/getShopList/index.js` + `cloudfunctions/getShopList/selftest.js`
+   · 现状：`index.js:38` 是 `const FREE_SHOP_LIMIT = 1;`，`selftest.js:11` 又抄一份。
+   · 改为读同一份配置（`feature_permissions.plan_free.limits.shop`）。
+   · **局部变量名可以保留，但不许再出现额度裸数字字面量**。
+   · 出参契约不许改：必须仍带 `free_limit` 与 `hit_free_limit`（`core/10:171`）。
 
-8) tools/check_quota_limits.js（R102）
-   · SRC_REL 不再指向"含硬编码常量的那份文件"；改为解析
-     feature_permissions 的 plan_free.limits 作为单源数。
-   · **新增反向断言**：若 checkQuota/service.js 里再出现额度字面量
-     （形如 free_limit = 数字 / FREE_LIMIT = { ... 数字 ... }）⇒ **判红**。
-   · 保留原有 L1~L9 的扫描面/fail-closed/下界守卫（尤其 L1-② 工作树补面、L8 命中下界）。
-
-9) tools/check_free_shop_limit.js（R117）
-   · A2/A4/A5 改为读配置。
-   · **修正头注第 7~9 行的事实错误**：现在写"checkQuota 是真正执行付费墙拦截的那一个"
-     —— 实测它此前根本没有写侧调用；改为如实描述"本守卫守的是
-     配置单源 ≡ getShopList 出参 ≡ 测试镜像"。
-
-10) 文档面（这些文件里的"当前态额度陈述"会被 R102 L4/L5/L6 当场校验，必须同步为 5）：
-    · specs/dev-specs/商业化方案_v1.4_融合版.md（语义标记「商业化额度口径（唯一声明处）」那一行，四个数）
-    · specs/dev-specs/core/04_核对清单.md
-    · specs/dev-specs/core/01_架构总览.md
-    · specs/dev-specs/core/03_写码提示词.md
-    · specs/dev-specs/delivery/inscode喂投包_8批_自包含完整版.md（及同源 .html）
-    · specs/dev-specs/★知识存储点_2026-09-10.md
-    · specs/dev-specs/core/09_统一错误码表.md（FREE_LIMIT_EXCEEDED 的触发场景文字）
-    · specs/dev-specs/core/10_云函数清单与接口契约.md（checkQuota 契约行）
-    ⚠️ 上面这些文件**只许改额度数字与"读哪张配置表"的措辞**，其它一字不动。
-    ⚠️ 历史/演进类陈述（"v1.3 曾把 8 改为 3"之类）**保留不改**。
-
-11) specs/dev-specs/core/13_上线前查缺补漏_决策与待办总览.md
-    · 把 §「待裁决 · 写码基线 M3.7 的配额实现指令与权威单源不一致」标记为
-      **已裁决（路线②：配置化）**，并注明裁决日期与依据。
-    （本项是文档，属于本批次必须闭环的一环。）
-
-12) pages/card/index.js
-    · 配额提示的阈值**一律用 checkQuota 的出参**（free_limit/used/hit_free_limit），
-      前端**零硬编码数字**。
-    · 文案走术语表（terms.js 双副本 + input.js 的 t 三处同步）。
+12) `pages/card/index.js`
+   · 配额提示的阈值**一律用 `checkQuota` 的出参**（`free_limit` / `used` / `hit_free_limit`），
+     前端**零硬编码数字**（现在第 59 行注释里的「免费 3 张」要改成不带数字的表述）。
+   · 文案走术语表；**本批次不新增任何文案键**（沿用既有付费墙文案即可）。
 
 ───────────────────────────────────────────────────────────────────
-四、新增错误码（本批次随代码原子落地，不要提前写进 09 表）
+四、绝对禁止（违反即打回）
 ───────────────────────────────────────────────────────────────────
-· QUOTA_CONFIG_MISSING —— 读不到 plan_free.limits
-  同步加：specs/dev-specs/core/09_统一错误码表.md 一行 + i18n/terms.js 双副本的 ERR.QUOTA_CONFIG
-  （terms.js 有两份：miniprogram/i18n/terms.js 与 specs/dev-specs/i18n/terms.js，改后必须 cp + diff -q 校验一致）
+· 不许改 `tools/` 与 `specs/` 下任何文件（含 `tools/sync_common.js`）。
+· 不许新建集合、不许新增索引。
+· 不许改 `calcBom` / `syncCostCard` / `getCostCard` / `getCardVersions` 的 `service.js`；
+  `saveCostCard/service.js` 只许**新增** `judgeCardQuota`，**不许动引擎段**。
+· 不许改 `specs/dev-specs/core/开发规范v1.0_ModuleM3_菜品成本卡.md`（锁定版）。
+· 不许新增错误码、不许改 `09_统一错误码表.md`、不许新增 terms.js 键。
+· 不许把额度数字写进任何业务逻辑（守卫 R102 的反向断言会判红）。
+· 不许用"没抛异常"当作"写成功了" —— `update()` 必须读 `stats.updated` 判 0 行。
+· 不许只改前端提示而不改后端拦截；反之亦然。
+
+⚠️ 如果你确实需要改 `cloudfunctions/common/`（单源）：改完**必须运行**
+   `node tools/sync_common.js` 重新生成派生副本（该脚本只读、请勿修改它）。
+   本批次按设计**不需要**改 `common/`。
 
 ───────────────────────────────────────────────────────────────────
 五、自测要求（每改一个文件都要有对应 selftest，不许"改完就跑门禁"）
 ───────────────────────────────────────────────────────────────────
-· checkQuota/selftest.js：注入值驱动 + 缺配置响亮失败（正负互证）
-· saveCostCard/selftest.js：新增至少 3 条
-  ① 第 5 张（used=4）不超限；② 第 6 张（used=5）⇒ FREE_LIMIT_EXCEEDED；
-  ③ 已达硬上限 ⇒ HARD_CAP_EXCEEDED；④ 编辑同卡不新增额度
-· getShopList/selftest.js：删掉裸字面量断言，改读配置
-· 运行 `node cloudfunctions/<fn>/selftest.js` 全部 RC=0
+· `checkQuota/selftest.js`：注入值驱动 + 缺配置响亮失败（正负互证）
+· `saveCostCard/selftest.js`：新增至少 4 条
+  ① 活跃逻辑卡数 = 4（额度 5）⇒ 放行；
+  ② 活跃逻辑卡数 = 5 ⇒ `FREE_LIMIT_EXCEEDED`（第 6 张被拦）；
+  ③ 达到硬上限 ⇒ `HARD_CAP_EXCEEDED`；
+  ④ 对**已存在 card_code 追加新版本**（version≥2）⇒ **不占额度、放行**。
+· `getShopList/selftest.js`：删掉裸字面量断言，改读配置
+· 运行 `node cloudfunctions/<fn>/selftest.js` 全部 RC=0（逐个贴出输出）
 
 ───────────────────────────────────────────────────────────────────
-六、绝对禁止（违反即打回）
+六、交付物
 ───────────────────────────────────────────────────────────────────
-· 不许新建集合、不许新增索引。
-· 不许改 calcBom / syncCostCard / getCostCard / getCardVersions 的 service.js。
-· 不许改 specs/dev-specs/core/开发规范v1.0_ModuleM3_菜品成本卡.md（锁定版）。
-· 不许把额度数字写进任何业务逻辑（R102 反向断言会判红）。
-· 不许用"没抛异常"当作"写成功了" —— update() 必须读 stats.updated 判 0 行。
-· 不许只改前端提示而不改后端拦截。
-· 不许在错误文案里硬编码中文（走 terms.js）。
-
-───────────────────────────────────────────────────────────────────
-七、交付物
-───────────────────────────────────────────────────────────────────
-1. 上述 12 项代码/文档改动（逐个文件，按 pathspec 提交，**一次一个 commit**）
+1. 上述 #1~#7、#12 的代码改动（**逐个文件，按 pathspec 提交，一次一个 commit**）
 2. 每条自测的运行输出（RC=0）
 3. 一份改动清单（文件 → 行号 → 改了什么 → 为什么）
 
 ───────────────────────────────────────────────────────────────────
-八、验收判据（门禁方会独立复核，不采信自述）
+七、验收判据（门禁方独立复核，不采信自述）
 ───────────────────────────────────────────────────────────────────
-· `node verify_all.js` → 全部套件通过、RC=0
-· `node tools/check_quota_limits.js` → 通过，且**故意**在
-  checkQuota/service.js 里插回一个额度字面量 ⇒ **必须转红**（反向回灌）
-· 真云验证：真机连续建第 6 张成本卡 ⇒ 必须被拦（本地 selftest 不算闭环）
-· 既有锚点不许漂：宫保鸡丁 876 / 975 / 65.18
+· `node cloudfunctions/<每个改过的函数>/selftest.js` → RC=0
+· 既有锚点不许漂：宫保鸡丁 `876` / `975` / `65.18`
+· 真云验证（门禁方做）：真机连续建第 6 张成本卡 ⇒ 必须被拦（本地 selftest 不算闭环）
+· `tools/check_quota_limits.js` 此刻**允许为红**（门禁方随后收口）；你只需保证
+  它红的**唯一原因**是"旧常量已删除"，而不是你改了别的东西。
 ═══════════════════════════════════════════════════════════════════
