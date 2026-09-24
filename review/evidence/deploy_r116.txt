@@ -1,0 +1,31 @@
+round116 部署证据（saveShopSetting 修复版 + 同族 3 处）
+命令：cli.bat cloud functions deploy --project <repo> -e cloud1-d4gphpoxy337f2a25 --names <单函数> -r
+纪律：一次一个 + 必带 -r（漏 -r 会覆盖云端 wx-server-sdk ⇒ 前端「网络不可用」）
+
+===== _deploy_20260924_160105.log =====
+  $ C:/Program Files (x86)/Tencent/微信web开发者工具/cli.bat cloud functions deploy --project C:/Users/lzj/WorkBuddy/Claw/catering-profit -e cloud1-d4gphpoxy337f2a25 --names saveShopSetting -r
+  - deploy cloudfunctions
+  √ [saveShopSetting] upload cloud function saveShopSetting - deploy
+  √ deploy cloudfunctions
+  ALL_OK = True
+
+===== _deploy_20260924_161746.log =====
+  $ C:/Program Files (x86)/Tencent/微信web开发者工具/cli.bat cloud functions deploy --project C:/Users/lzj/WorkBuddy/Claw/catering-profit -e cloud1-d4gphpoxy337f2a25 --names saveMaterial -r
+  - deploy cloudfunctions
+  √ [saveMaterial] upload cloud function saveMaterial - deploy
+  √ deploy cloudfunctions
+  ALL_OK = True
+
+===== _deploy_20260924_161856.log =====
+  $ C:/Program Files (x86)/Tencent/微信web开发者工具/cli.bat cloud functions deploy --project C:/Users/lzj/WorkBuddy/Claw/catering-profit -e cloud1-d4gphpoxy337f2a25 --names saveCostCard -r
+  - deploy cloudfunctions
+  √ [saveCostCard] upload cloud function saveCostCard - deploy
+  √ deploy cloudfunctions
+  ALL_OK = True
+
+===== _deploy_20260924_161927.log =====
+  $ C:/Program Files (x86)/Tencent/微信web开发者工具/cli.bat cloud functions deploy --project C:/Users/lzj/WorkBuddy/Claw/catering-profit -e cloud1-d4gphpoxy337f2a25 --names syncCostCard -r
+  - deploy cloudfunctions
+  √ [syncCostCard] upload cloud function syncCostCard - deploy
+  √ deploy cloudfunctions
+  ALL_OK = True

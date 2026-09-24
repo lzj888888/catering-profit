@@ -158,6 +158,10 @@ const A15_EXEMPT = [
   /^cloudfunctions\/common\/indicatorRef\.js$/,        // round110：新增指标参考库单源
   /^cloudfunctions\/common\/index\.js$/,               // round110：聚合入口挂载 indicatorRef
   /^cloudfunctions\/saveShopSetting\//,               // round115：M1 指标对照（validate 业态/城市白名单 + index 出参回读）
+  // round116：写库主键修复（doc(业务键) → doc(_id 优先)）—— 真云静默 0 行导致功能失效，属缺陷修复而非同步动作
+  /^cloudfunctions\/saveMaterial\//,               // round116：doc(m.id) → doc(exist._id || m.id)
+  /^cloudfunctions\/saveCostCard\//,               // round116：doc(vm.id||vm.material_id) → 优先 _id
+  /^cloudfunctions\/syncCostCard\//,               // round116：同上
   // round110：以下三条是 sync_common 的**派生产物**（非云函数自有逻辑）——
   //   common/index.js 加一个导出，就会让全部 42 个函数的 cx_index.js 同步变动；
   //   新增单源文件则派生 cx_indicatorRef.js。精确到文件名登记，不做 cx_*.js 泛化豁免。

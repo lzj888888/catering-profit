@@ -59,7 +59,11 @@ exports.main = async (event) => {
     if (exist.is_virtual && !m.is_virtual) {
       // 虚拟半成品不可手动改回普通原料（M3：虚拟原料不可手动编辑基本资料）—— 保留 is_virtual
     }
-    await db.collection('shop_material').doc(m.id).update({
+    // 🔴 round116 同族修复：写库必须用权威主键 `_id`，不得用业务 id。
+    //   `da.get()` 有业务主键兜底（2026-09-19 只修了**读**）⇒ 命中时文档的 `_id` 未必
+    //   等于业务 id；而 `doc(<不存在的 _id>).update()` 在真云上**静默 0 行、不抛异常**
+    //   ⇒ 接口回 SUCCESS 但库里没改（round116 真云实证，详见 saveShopSetting/index.js 注）。
+    await db.collection('shop_material').doc(exist._id || m.id).update({
       data: {
         name: m.name,
         brand_spec: m.brand_spec,

@@ -150,7 +150,8 @@ exports.main = async (event) => {
     const vm = ((virtRes && virtRes.data) || []).find((x) => String(x.parent_card_id) === String(cardCode)) || null;
     const unitWan = Math.round(result.unit_cost_fen * 100);
     if (vm) {
-      await db.collection('shop_material').doc(vm.id || vm.material_id).update({
+      // 🔴 round116 同族修复：同 saveCostCard —— `_id` 优先（原写法真云静默 0 行）。
+      await db.collection('shop_material').doc(vm._id || vm.id || vm.material_id).update({
         data: { purchase_price: result.unit_cost_fen, net_unit_cost: unitWan, updated_at: now },
       });
       virtualMaterialId = String(vm.material_id || vm.id);

@@ -1,0 +1,32 @@
+round116 R130 写库主键守卫 变异回灌证据
+命令：python _mut_r130.py（逐条把修复改回旧写法 → 跑 tools/check_doc_id_write.js → 还原）
+判读：每个变异必须让守卫 RC=1，且红的断言含 A-④（违规数==0）与 A-⑥（修复点仍安全）
+
+== 基线：RC=0  ==== R130 写库主键守卫：36 通过 / 0 失败 ====
+✅  M1 saveShopSetting 用业务 id 当 _id
+     RC=1  ==== R130 写库主键守卫：34 通过 / 2 失败 ====
+     ❌ A-④ 🔴 违规数 == 0（写库一律用 _id 或显式白名单）
+     ❌ A-⑥ 本轮修复点已是安全写法：saveShopSetting/index.js ← doc(shopRid)
+     红的断言包含 A-④ 与 A-⑥：是
+✅  M2 saveMaterial 用入参 m.id
+     RC=1  ==== R130 写库主键守卫：34 通过 / 2 失败 ====
+     ❌ A-④ 🔴 违规数 == 0（写库一律用 _id 或显式白名单）
+     ❌ A-⑥ 本轮修复点已是安全写法：saveMaterial/index.js ← doc(exist._id || m.id)
+     红的断言包含 A-④ 与 A-⑥：是
+✅  M3 saveCostCard 漏 _id 优先
+     RC=1  ==== R130 写库主键守卫：34 通过 / 2 失败 ====
+     ❌ A-④ 🔴 违规数 == 0（写库一律用 _id 或显式白名单）
+     ❌ A-⑥ 本轮修复点已是安全写法：saveCostCard/index.js ← doc(vm._id || vm.id || vm.material_id)
+     红的断言包含 A-④ 与 A-⑥：是
+✅  M4 syncCostCard 漏 _id 优先
+     RC=1  ==== R130 写库主键守卫：34 通过 / 2 失败 ====
+     ❌ A-④ 🔴 违规数 == 0（写库一律用 _id 或显式白名单）
+     ❌ A-⑥ 本轮修复点已是安全写法：syncCostCard/index.js ← doc(vm._id || vm.id || vm.material_id)
+     红的断言包含 A-④ 与 A-⑥：是
+
+== 回灌结果：4/4 如期转红
+== 还原后逐字节 md5 全等：是
+== 还原后复绿：RC=0  ==== R130 写库主键守卫：36 通过 / 0 失败 ====
+DONE —— R130 非假绿（每个变异都能被捕到，且还原干净）
+
+--- stderr ---

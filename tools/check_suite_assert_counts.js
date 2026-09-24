@@ -93,6 +93,7 @@ const CASES = [
   //   （引号感知剥注释器 / 硬编码百分比判别器 / 细项名漏名比对器）与 E 段断言数下界正是「非恒真」的凭据；
   //   断言数不受守则「删掉几组样本 + 调低下界」就等于把守卫惄惄改小（判据仍全绿而证明力归零）。
   { key: 'check_m1_indicator_view', rel: 'tools/check_m1_indicator_view.js' },
+  { key: 'check_doc_id_write', rel: 'tools/check_doc_id_write.js' },
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

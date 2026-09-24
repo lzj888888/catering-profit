@@ -225,7 +225,9 @@ exports.main = async (event) => {
     }
     const unitWan = Math.round(result.unit_cost_fen * 100); // 单份半成品成本：分→万分（1分=100万分）
     if (vm) {
-      await db.collection('shop_material').doc(vm.id || vm.material_id).update({
+      // 🔴 round116 同族修复：`vm` 来自 `da.list()`（含 `_id`）⇒ 必须优先用 `_id`；
+      //   原写法用业务 `id` ⇒ 真云静默 0 行。
+      await db.collection('shop_material').doc(vm._id || vm.id || vm.material_id).update({
         data: {
           name: card.name,
           purchase_unit: '份',

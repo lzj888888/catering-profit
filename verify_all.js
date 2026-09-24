@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：102 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：103 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -134,6 +134,8 @@
 //         + C 正向（确实写 `ph` / 参考值仍有出口）+ D 四组正负样本互证（剥注释器 / 判别器 /
 //         `bodyOf` 锚定义不锚调用 / value 提取器）+ E 断言数下界）
 //       + M1「台账细项 → 指标归属」守卫（tools/check_m1_indicator_view.js，R129：round115 M1 结果页加「行业对照」时曝露的**静默失效面** —— M1 台账把库存里的**支出细项名字符串**（`sub_item`）当作机器匹配键去汇总 `rent`/`energy`/`labor`/`mkt`；
+//       + 写库主键守卫（tools/check_doc_id_write.js，R130：round116 真云暴露的**静默失败** —— `dataAdapter.get()` 在 2026-09-19 只修了**读**（业务主键兜底查），
+//         **写仍用业务键**；而真云 `doc(<不存在的 _id>).update()` **静默 0 行不报错** ⇒ 接口回 SUCCESS、库里没改、两端都看不见错）
 //         若哪天把 terms 里「房租」改成「租金」，归属表就**匹配不上、指标静默少一项且不报错**（用户可自定义细项名 ⇒ 名字本就不是稳定键）。
 //         且 `Number(null) === 0` ⇒ 没填的月会被算成「0%」而判 `bad`/`good`（缺项 ≠ 0，与 round114 的「参考值不预填」同族）。
 //         判据 = P 前置 / A 归属表名字**必须真实存在于 terms 支出细项**（改名即转红 —— 本守卫存在理由）+ 不含 `manage` + `energy` 恰三项
@@ -449,6 +451,14 @@ const SUITES = [
   //   判据 A = 归属表每个名字**必须真实存在于 terms 支出细项**（改名即红）；
   //   另守 `manage` 不进 M1 + `energy` 恰三项 + 结果页零硬编码阈值 + 出参契约。
   ['m1-indicator-view', 'tools/check_m1_indicator_view.js'],
+  // R130（round116）：**写库必须用权威主键 `_id`** —— round116 真云实测抠出的**静默失败**。
+  //   起因：用户报「M1 行业对照里行业选了没变化」。查下去发现 `saveShopSetting` 的
+  //   `doc(shopDoc.id || shopId).update()` 打到了**不存在的 `_id`**：真云 `update()` 对不存在文档
+  //   **静默返回 0 行、不抛异常** ⇒ 接口回 SUCCESS、库里一个字没改。
+  //   判据：扫全部云函数的 `.doc(<arg>).update|set|remove(`，要求 arg 含 `_id`
+  //   或在**所在函数体内**回溯到含 `_id` 的赋值；例外必须白名单且写理由。
+  //   同时守：解析器自带钉死样本（含“跨函数同名不串”）+ 白名单无死条目 + 断言数下界。
+  ['doc-id-write', 'tools/check_doc_id_write.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
