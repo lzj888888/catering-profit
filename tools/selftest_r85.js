@@ -157,6 +157,11 @@ const A15_EXEMPT = [
   /^cloudfunctions\/calcSandbox\//,                    // round110：M2 契约 v2（service/validate/selftest）
   /^cloudfunctions\/common\/indicatorRef\.js$/,        // round110：新增指标参考库单源
   /^cloudfunctions\/common\/index\.js$/,               // round110：聚合入口挂载 indicatorRef
+  // M3 v1.1 批次 A1（round120 登记）：免费配额「配置化 + 写侧真拦截」——
+  //   额度由 checkQuota/service.js 常量迁至 feature_permissions 种子；saveCostCard 新增写侧拦截；
+  //   getShopList 删第二硬编码点改读同一配置。**仍按白名单式登记，不放宽成全豁免**：
+  /^cloudfunctions\/checkQuota\//,
+  /^cloudfunctions\/getShopList\//,
   /^cloudfunctions\/saveShopSetting\//,               // round115：M1 指标对照（validate 业态/城市白名单 + index 出参回读）
   // round116：写库主键修复（doc(业务键) → doc(_id 优先)）—— 真云静默 0 行导致功能失效，属缺陷修复而非同步动作
   /^cloudfunctions\/saveMaterial\//,               // round116：doc(m.id) → doc(exist._id || m.id)

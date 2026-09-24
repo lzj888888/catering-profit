@@ -11,7 +11,7 @@
 //
 // ⚠️ 判据：金额锚点整数分严格相等（===），无容差；total_cost 必须存储整数分（975 而非 9.75）。
 
-const { buildSnapshotLines, calcCostCard, wouldCreateCycle, netUnitCostWan } = require('./service');
+const { buildSnapshotLines, calcCostCard, wouldCreateCycle, netUnitCostWan, judgeCardQuota } = require('./service');
 const { validateInput } = require('./validate');
 
 let pass = 0, failN = 0;
@@ -116,5 +116,24 @@ check('引擎：mode 缺失 → 抛 INVALID_PARAM', modeCode(undefined) === 'INV
 check("引擎反向：mode='A' 不抛", modeCode('A') === null);
 check("引擎反向：mode='B' 不抛", modeCode('B') === null);
 
-console.log(`\n==== saveCostCard 批次 3 自测结果：${pass} 通过 / ${failN} 失败 ====`);
+console.log('');
+console.log('===== M3.22（批次 A1）· judgeCardQuota 写侧配额判定 =====');
+const LIMITS5 = { shop: 1, cost_card: 5, hard_shop: 200, hard_card: 2000 };
+// ① 活跃逻辑卡数 = 4（额度 5）⇒ 放行
+check('① 活跃逻辑卡数 4（额度 5）⇒ 放行', judgeCardQuota(LIMITS5, 4).hit_free_limit === false);
+// ② 活跃逻辑卡数 = 5 ⇒ FREE_LIMIT_EXCEEDED（第 6 张被拦）
+check('② 活跃逻辑卡数 5（额度 5）⇒ 超免费额', judgeCardQuota(LIMITS5, 5).hit_free_limit === true);
+// ③ 达硬上限 hard_card=2000 ⇒ 超硬上限
+check('③ 活跃逻辑卡数 2000 ⇒ 超硬上限', judgeCardQuota(LIMITS5, 2000).hit_hard_limit === true);
+// ④ 对已存在 card_code 追加新版本（version≥2）不占额度 —— 语义由 index.js 判 nextVersion===1 决定，
+//    这里验证「计数只按 card_code 去重（版本不计）」这一口径的纯逻辑等价物：
+check('④ 版本不计：judgeCardQuota 只认 activeCount（card_code 去重后大小），无版本维度',
+  judgeCardQuota(LIMITS5, 4).hit_free_limit === false, 'activeCount=4 即 4 个逻辑卡号，无论各卡多少版本');
+check('④ 出参含 free_limit/hard_limit 供前端取用', judgeCardQuota(LIMITS5, 4).free_limit === 5 && judgeCardQuota(LIMITS5, 4).hard_limit === 2000);
+// 缺配置 → 响亮失败
+let threwMiss = false;
+try { judgeCardQuota(null, 3); } catch (e) { threwMiss = (e && e.code === 'SYSTEM_ERROR'); }
+check('缺 limits ⇒ 抛 SYSTEM_ERROR', threwMiss);
+
+console.log(`\n==== saveCostCard 批次 3/A1 自测结果：${pass} 通过 / ${failN} 失败 ====`);
 process.exit(failN === 0 ? 0 : 1);

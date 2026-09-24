@@ -22,7 +22,7 @@ const { resolveAuth, assertShopOwner, genId } = common;
 const { ERROR_CODES, ok, fail } = common;
 const { makeAdapter } = common.dataAdapter;
 const { nowUtc } = common.utilTime;
-const { buildSnapshotLines, calcCostCard, wouldCreateCycle } = require('./service');
+const { buildSnapshotLines, calcCostCard, wouldCreateCycle, judgeCardQuota } = require('./service');
 const { validateInput } = require('./validate');
 
 // 🔒 R73：重放形态的幂等实现已收回单源 common/idempotency.js::findPriorResult
@@ -161,6 +161,38 @@ exports.main = async (event) => {
     }
   } else {
     cardCode = cardCode || genId('cc_'); // 新卡：新 card_code，version=1
+  }
+
+  // ===== 8.5. M3.22（批次 A1）写侧真拦截：免费配额/硬上限 =====
+  // 只有**新逻辑卡**才占额度（card_code 为空 = 新卡；或该 shop_id 下该 card_code 无在库版本 = version=1）；
+  // 已存在卡号的「追加新版本」（version≥2）不占额度。
+  // 维度 = shop_id（与 checkQuota/index.js 成本卡维度同口径：card_code 去重、版本不计、软删由 DataAdapter 过滤）。
+  if (!card.card_code || nextVersion === 1) {
+    let limits = null;
+    try {
+      const fpRes = await db.collection('feature_permissions').where({ plan_id: 'plan_free' }).limit(1).get();
+      const fp = fpRes && fpRes.data && fpRes.data[0];
+      limits = fp && fp.limits;
+    } catch (e) { /* 读配置异常 → 视为缺失，走下方 SYSTEM_ERROR 响亮失败 */ }
+    if (!limits || typeof limits !== 'object') {
+      return fail(ERROR_CODES.SYSTEM_ERROR, '配额配置缺失（plan_id=plan_free）');
+    }
+    const cardsRes = await da.list('shop_cost_card', { shop_id: shopId });
+    const codes = new Set();
+    for (const c of ((cardsRes && cardsRes.data) || [])) if (c.card_code) codes.add(c.card_code);
+    const activeCount = codes.size;
+    let verdict;
+    try {
+      verdict = judgeCardQuota(limits, activeCount);
+    } catch (e) {
+      return fail(ERROR_CODES.SYSTEM_ERROR, (e && e.message) || '配额判定失败');
+    }
+    if (verdict.hit_hard_limit) {
+      return fail(ERROR_CODES.HARD_CAP_EXCEEDED);   // 文案由前端 msgOf(code) 映射（禁硬编码中文）
+    }
+    if (verdict.hit_free_limit) {
+      return fail(ERROR_CODES.FREE_LIMIT_EXCEEDED); // 文案由前端 msgOf(code) 映射（禁硬编码中文）
+    }
   }
 
   const createdBy = userId;

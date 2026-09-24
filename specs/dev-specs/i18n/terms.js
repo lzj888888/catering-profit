@@ -55,7 +55,7 @@ const TERMS = {
   // ===== 三、按钮文案 =====
   buttons: {
     addShop: '+ 新增店铺', // M1，免费限 1 家，第 2 家触发 paywall.saveLimit
-    addCostCard: '+ 新增菜品', // M3，免费限 3 张，第 4 张触发 paywall.saveLimit
+    addCostCard: '+ 新增菜品', // M3，免费张数由配置下发（plan_free.limits），超限触发 paywall.saveLimit
     save: '保存',
     calc: '算一算', // 不叫"计算盈利"
     export: '导出 / 打印', // 免费禁，触发 paywall.export
@@ -70,7 +70,7 @@ const TERMS = {
     saveLimit: {
       title: '已达免费上限',
       content:
-        '免费版可建 1 家店铺 / 3 个菜品。开通真实利润后不限数量，还能用库存倒轧算真实消耗，结果更准。',
+        '免费版可建 1 家店铺、菜品数量有限。开通真实利润后不限数量，还能用库存倒轧算真实消耗，结果更准。',
       primary: '开通真实利润', // 跳套餐页
       secondary: '再想想',
     },

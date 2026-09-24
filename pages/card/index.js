@@ -1,6 +1,7 @@
 // pages/card/index.js —— 批次 4/5 · M3 成本卡列表
-// ⚠️ 批次 5 付费边界：只有「保存超限（第 4 张卡）」「导出」才触发付费弹窗；
+// ⚠️ 批次 5 付费边界：只有「保存超限」「导出」才触发付费弹窗；
 //   进入页面/查看历史/点开卡片**不弹**；M2 永不弹（本页即 M3，仅上述两类）。
+// ⚠️ M3.22（批次 A1）：免费张数不再硬编码，一律取 checkQuota 出参（free_limit / used / hit_free_limit）。
 const api = require('../../utils/api.js');
 const ui = require('../../utils/ui.js');
 const { openPaywall } = require('../../utils/paywall.js');
@@ -56,7 +57,7 @@ Page({
     }
   },
 
-  // 新增：先配额预检（免费 3 张，第 4 张触发付费墙；进列表不弹）
+  // 新增：先配额预检（免费张数由后端 checkQuota 出参决定；进列表不弹）
   async goAdd() {
     try {
       const q = await api.call('checkQuota', { scope: 'cost_card' });

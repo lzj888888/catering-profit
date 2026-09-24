@@ -137,4 +137,34 @@ function wouldCreateCycle(outputId, childVirtualIds, edgesFromVirtual) {
   return false;
 }
 
-module.exports = { netUnitCostWan, buildSnapshotLines, calcCostCard, wouldCreateCycle, MAX_DEPTH };
+module.exports = { netUnitCostWan, buildSnapshotLines, calcCostCard, wouldCreateCycle, MAX_DEPTH, judgeCardQuota };
+
+// ===================== M3.22（批次 A1）· 成本卡配额判定（纯函数，可独立单测）=====================
+// 🔴 引擎段（netUnitCostWan / buildSnapshotLines / calcCostCard / wouldCreateCycle）一字未改；
+//   本函数**只新增**、不碰引擎，module.exports 仅追加 judgeCardQuota（不改动/重排既有导出）。
+// 额度唯一真相源 = feature_permissions.plan_free.limits（Controller 读入后注入）。
+// 维度铁律：按 shop_id 统计活跃逻辑卡号数（card_code 去重、版本不计、is_deleted=false 由 DataAdapter 过滤）。
+
+/**
+ * 成本卡配额判定（纯逻辑，不引 SDK）。
+ * @param {object} limits { shop, cost_card, hard_shop, hard_card }（缺失/该 scope 值缺失 ⇒ 抛 SYSTEM_ERROR）
+ * @param {number} activeCount 该 shop_id 下活跃逻辑卡号数（card_code 去重后的大小）
+ * @returns {{ hit_free_limit:boolean, hit_hard_limit:boolean, free_limit:number, hard_limit:number }}
+ * @throws {{code:'SYSTEM_ERROR'}} limits 缺失或 cost_card/hard_card 缺失
+ */
+function judgeCardQuota(limits, activeCount) {
+  const used = Number(activeCount) || 0;
+  const freeLimit = limits && limits.cost_card;
+  const hardLimit = limits && limits.hard_card;
+  if (freeLimit === undefined || freeLimit === null || hardLimit === undefined || hardLimit === null) {
+    const e = new Error('配额配置缺失（plan_id=plan_free，scope=cost_card）');
+    e.code = 'SYSTEM_ERROR'; // 与 common/errors.js::ERROR_CODES.SYSTEM_ERROR 同值（本 Service 层零依赖，不 require common）
+    throw e;
+  }
+  return {
+    free_limit: freeLimit,
+    hard_limit: hardLimit,
+    hit_free_limit: used >= freeLimit,
+    hit_hard_limit: used >= hardLimit,
+  };
+}

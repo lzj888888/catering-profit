@@ -11,7 +11,7 @@ const db = cloud.database();
 
 const common = require('./common');                 // 扁平派生副本（sync_common 生成）
 const { resolveAuth } = common;
-const { ok, fail } = common;
+const { ok, fail, ERROR_CODES } = common;
 const { makeAdapter } = common.dataAdapter;
 
 exports.main = async (event) => {
@@ -34,14 +34,20 @@ exports.main = async (event) => {
     remark: s.remark || '',
   }));
 
-  // 免费配额：1 家免费账套（user_id 维度；软删已被过滤，不占额）
-  const FREE_SHOP_LIMIT = 1;
-  const hitFreeLimit = shops.length >= FREE_SHOP_LIMIT;
+  // M3.22（批次 A1）：免费额度唯一真相源 = feature_permissions.plan_free.limits.shop（不再硬编码 1）
+  const fpRes = await db.collection('feature_permissions').where({ plan_id: 'plan_free' }).limit(1).get();
+  const fp = fpRes && fpRes.data && fpRes.data[0];
+  const limits = fp && fp.limits;
+  const freeShopLimit = limits && limits.shop;
+  if (freeShopLimit === undefined || freeShopLimit === null) {
+    return fail(ERROR_CODES.SYSTEM_ERROR, '配额配置缺失（plan_id=plan_free）');
+  }
+  const hitFreeLimit = shops.length >= freeShopLimit;
 
   return ok({
     shop_id: (event && event.shop_id) || '',
     list,
-    free_limit: FREE_SHOP_LIMIT,
+    free_limit: freeShopLimit,
     used: shops.length,
     hit_free_limit: hitFreeLimit,
     client_request_id: (event && event.input && event.input.client_request_id) || '',

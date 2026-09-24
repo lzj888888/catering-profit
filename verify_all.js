@@ -291,11 +291,11 @@ const SUITES = [
   //       裸扫「N 页」会误杀导出分页页数与子集页数，故判据用「全集语义锚点就近」两条腿。
   ['page-manifest',          'tools/check_page_manifest.js'],
   // 第 75 套件（round66 新增，R102）：商业化额度口径守卫 tools/check_quota_limits.js
-  //       同族病第 10 例：免费/硬上限额度是**收钱口径**，单源 = checkQuota/service.js 的
-  //       FREE_LIMIT{shop:1,cost_card:3} / HARD_LIMIT{shop:200,cost_card:2000}，
+  //       同族病第 10 例：免费/硬上限额度是**收钱口径**，单源 = initDb/collections.js 的
+  //       SEED_FEATURES 中 plan_id='plan_free' 行 limits{shop:1,cost_card:5,hard_shop:200,hard_card:2000}（round121 起**配置化**），
   //       却被抄进 6 份 .md。实扫发现 core/04_核对清单.md:70 仍写「M3 成本卡免费上限 8」（v1.1 旧值，
-  //       v1.3 已改 3），而**同文件** :55/:64/:117 三处写 3、代码也是 3 ⇒ 上线前核对清单自相矛盾。
-  //       裸扫「N 张」必误杀（OBSOLETE 历史版、演进链「8→3」、「第 4 张触发」序号、core/12 的云资源「硬上限」）
+  //       v1.3 改 3、2026-09-24 M3 v1.1 · D12 再调 5），而**同文件** :55/:64/:117 三处已同步 5 ⇒ 上线前核对清单与配置不一致即红。
+  //       裸扫「N 张」必误杀（OBSOLETE 历史版、演进链「8→3→5」、「第 6 张触发」序号、core/12 的云资源「硬上限」）
   //       ⇒ 判据用「类别锚点就近 + 额度语义 + 版本号/单位数排除」三条腿。
   ['quota-limits',           'tools/check_quota_limits.js'],
   // 第 76 套件（round67 新增，R103）：集合权限矩阵口径守卫 tools/check_collection_perms.js
@@ -376,8 +376,8 @@ const SUITES = [
   //   round86 R85 当场复发（input.wxss 新引入旧橘黄且门禁 88/88 全绿）⇒ 去注释后扫全仓生效样式。
   ['theme-color', 'tools/check_theme_color.js'],
   // ===== R117 免费店铺数口径穿透守卫（同族病第 21 例，round88）：「M1 免费 1 个账套」在代码侧有
-  //   两个互不引用的硬编码点（checkQuota::FREE_LIMIT.shop 与 getShopList::FREE_SHOP_LIMIT），
-  //   R102 的 SRC_REL 写死 checkQuota ⇒ 第二点零守卫 ⇒ 改一侧门禁全绿而展示与拦截分叉。
+  //   两个互不引用的硬编码点（checkQuota::FREE_LIMIT.shop 与 getShopList::FREE_SHOP_LIMIT）；批次 A1 配置化后两者都读 feature_permissions.plan_free.limits ⇒ 旧判据退化为恒真，
+  //   故 R117 改为「三处消费者必须引用同一配置键」+ 反向断言「不得再现额度字面量」（M3.22#9）。
   ['free-shop-limit', 'tools/check_free_shop_limit.js'],
   // ===== R118 归档补录宽限期口径穿透守卫（同族病第 22 例，round89）：「归档后 7 天内可补录、超过 7 天硬锁」
   //       是 core/13 §3 已锁死决策 + 用户可见承诺 + 写操作拦截边界，实扫却有四类互不引用的落点

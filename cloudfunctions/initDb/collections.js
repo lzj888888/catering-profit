@@ -130,7 +130,15 @@ const SEED_PLANS = [
   { plan_id: 'plan_auto_subscribe', name: '真实利润·自动续费(月)', price: 1990, days: 31, type: 'auto_subscribe', enabled: true, sort: 4 },
 ];
 const SEED_FEATURES = SEED_PLANS.map((p) => ({ plan_id: p.plan_id, feature_key: 'real_profit', enabled: true }))
-  .concat(SEED_PLANS.map((p) => ({ plan_id: p.plan_id, feature_key: 'export', enabled: true })));
+  .concat(SEED_PLANS.map((p) => ({ plan_id: p.plan_id, feature_key: 'export', enabled: true })))
+  // M3.22（批次 A1）：免费档配额配置（plan_free，载 limits）。⚠️ 免费档不在 subscription_plan 价格表里，
+  //   否则 payCreateOrder 按 plan_id 读它会变成可下单的付费档；额度唯一真相源就是这一行 limits。
+  .concat([{
+    plan_id: 'plan_free',
+    feature_key: 'free_quota',
+    enabled: true,
+    limits: { shop: 1, cost_card: 5, hard_shop: 200, hard_card: 2000 },
+  }]);
 
 // ===== A3（批次 8）：收入/费用分类配置种子（shop_income_item / shop_expense_item）=====
 // 结构对齐 A1（费用四大类 = 运营/人工/营销/其他）与 02 数据集 S1；
