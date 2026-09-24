@@ -1,0 +1,27 @@
+# round116 bundle 重建 Thu Sep 24 2026 18:46:06 GMT+0800 (中国标准时间)
+HEAD=49b98ef66c6fd26ed1816d831b0ed5d303e43db7
+create_exit=0
+create_out=""
+verify_exit=0
+verify_out=The bundle contains these 8 refs:
+49b98ef66c6fd26ed1816d831b0ed5d303e43db7 refs/heads/dev
+af508c80fbcb0f68a9354c935bb2ca028e66cfb3 refs/heads/main
+49b98ef66c6fd26ed1816d831b0ed5d303e43db7 refs/remotes/origin/dev
+448f3f2fa134dc266e8d1f2e1089c9ccfa69b010 refs/tags/wdc-v1.0
+0b4b56080a2f863b446e33b3379f3ebc7d4a28cc refs/tags/wdc-v1.4
+939b1a83778d52db8dd3fdafad28708d0c0e8c44 refs/tags/wdc-v1.5
+a289544c4cb1a39ad2e24b03a8d29338852c6058 refs/tags/wdc-v1.6
+49b98ef66c6fd26ed1816d831b0ed5d303e43db7 HEAD
+The bundle records a complete history.
+The bundle uses this hash algorithm: sha1
+size=25991075
+md5=08f9cc145f04620a5b6d51777bbaf428
+list_heads_exit=0
+list_heads=49b98ef66c6fd26ed1816d831b0ed5d303e43db7 refs/heads/dev
+af508c80fbcb0f68a9354c935bb2ca028e66cfb3 refs/heads/main
+49b98ef66c6fd26ed1816d831b0ed5d303e43db7 refs/remotes/origin/dev
+448f3f2fa134dc266e8d1f2e1089c9ccfa69b010 refs/tags/wdc-v1.0
+0b4b56080a2f863b446e33b3379f3ebc7d4a28cc refs/tags/wdc-v1.4
+939b1a83778d52db8dd3fdafad28708d0c0e8c44 refs/tags/wdc-v1.5
+a289544c4cb1a39ad2e24b03a8d29338852c6058 refs/tags/wdc-v1.6
+49b98ef66c6fd26ed1816d831b0ed5d303e43db7 HEAD
