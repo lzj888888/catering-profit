@@ -87,5 +87,56 @@ check('无记录返回空账而非报错（RESOURCE_NOT_FOUND 不得出现）', 
 check('读账走 DataAdapter（软删过滤）', /da\.list\('shop_monthly_account'/.test(body));
 check('出参金额字段名与 service 一致（snake_case 契约）', body.includes('operation_ref_profit_fen: result.operationRefProfitFen') && body.includes('total_factor_real_profit_fen: result.totalFactorRealProfitFen'));
 
+console.log('===== 5. round115 · M1 行业指标对照（细项归属 + 缺项不评级）=====');
+const ir = require('./cx_indicatorRef');
+const EXP_TAGGED = [
+  { category: 'operation', name: '运营费用', amountFen: 1350000, subItems: [
+    { subItem: '房租', amountFen: 1000000 }, { subItem: '水费', amountFen: 100000 },
+    { subItem: '电费', amountFen: 200000 }, { subItem: '垃圾清运费', amountFen: 50000 }] },
+  { category: 'labor', name: '人工费用', amountFen: 1500000, subItems: [{ subItem: '工资绩效', amountFen: 1500000 }] },
+  { category: 'marketing', name: '营销费用', amountFen: 700000, subItems: [{ subItem: '外卖平台佣金', amountFen: 700000 }] },
+];
+const byInd = ir.sumByTag(EXP_TAGGED);
+check('细项归属：rent = 10,000 元（从 operation 大类里拆出）', byInd.rent === 1000000, `=${byInd.rent}`);
+check('细项归属：energy = 3,000 元（水费+电费合并）', byInd.energy === 300000, `=${byInd.energy}`);
+check('细项归属：labor = 15,000 元（细项名命中）', byInd.labor === 1500000, `=${byInd.labor}`);
+check('细项归属：mkt = 7,000 元（细项名命中）', byInd.mkt === 700000, `=${byInd.mkt}`);
+// 总额 3,550,000 分（13,500+15,000+7,000 元）；认领 3,500,000 ⇒ 未认领恰为「垃圾清运费」500 元
+check('🔴 未识别细项无人认领（垃圾清运费 500 元不计入任何指标）',
+  (byInd.rent + byInd.energy + byInd.labor + byInd.mkt) === 3500000
+  && (3550000 - (byInd.rent + byInd.energy + byInd.labor + byInd.mkt)) === 50000,
+  `Σ=${byInd.rent + byInd.energy + byInd.labor + byInd.mkt} 未认领=${3550000 - (byInd.rent + byInd.energy + byInd.labor + byInd.mkt)}`);
+check('🔴 缺项**不出键**（而不是出 0 —— 0 会被当成「占比 0%，优秀」）',
+  ir.sumByTag([{ category: 'labor', name: '人工', amountFen: 100, subItems: [] }]).rent === undefined);
+check('🔴 operation 大类整额未拆细项 ⇒ rent/energy 均不出（不猜）', (() => {
+  const r = ir.sumByTag([{ category: 'operation', name: '运营', amountFen: 1200000, subItems: [] }]);
+  return r.rent === undefined && r.energy === undefined;
+})());
+check('自定义细项回落到大类归属（labor 下自建「临时工」不漏算）',
+  ir.sumByTag([{ category: 'labor', name: '人工', amountFen: 1500000, subItems: [{ subItem: '临时工', amountFen: 500000 }, { subItem: '工资绩效', amountFen: 1000000 }] }]).labor === 1500000);
+check('键映射 energy → utility（fixedFen 入参键，单源出，不靠调用方猜）', ir.toFixedFen({ energy: 300 }).utility === 300);
+check('M1 口径 = 5 项且**不含 manage**（李老师 2026-09-24 拍板）',
+  ir.M1_IND_KEYS.length === 5 && ir.M1_IND_KEYS.indexOf('manage') < 0, ir.M1_IND_KEYS.join(','));
+
+const IND_PARTIAL = ir.evaluateIndicators({
+  bizKey: 'dining', cityKey: 'tier23', revenueFen: 10000000,
+  fixedFen: ir.toFixedFen(byInd), grossMarginPct: null, platformPct: null,
+});
+const gmItem = IND_PARTIAL.find((x) => x.key === 'grossMargin');
+const mktItem = IND_PARTIAL.find((x) => x.key === 'mkt');
+check('🔴 缺项 ⇒ 毛利率 pct=null（**不得**变成 0%/bad —— round115 实测抓过的真 bug）', gmItem.pct === null, `=${gmItem.pct}`);
+check('🔴 缺项 ⇒ level=na（不评级）', gmItem.level === 'na' && mktItem.level === 'na');
+check('有数据的项照常评级（labor 15% 低于 dining 带下限 17% ⇒ good，且不得为 na）', IND_PARTIAL.find((x) => x.key === 'labor').level === 'good');
+check('过滤后 5 项、无 manage', ir.m1IndicatorsOf(IND_PARTIAL).length === 5 && !ir.m1IndicatorsOf(IND_PARTIAL).some((x) => x.key === 'manage'));
+
+check('🔴 出参经 M1 口径过滤（m1IndicatorsOf，不在前端/controller 里手筛）', /m1IndicatorsOf\(/.test(body));
+check('🔴 细项归属走单源 sumByTag（controller 不自己写映射表）', /indicatorRef\.sumByTag\(/.test(body));
+check('🔴 fixedFen 键由 toFixedFen 转换（energy→utility 不靠猜）', /toFixedFen\(/.test(body));
+check('出参含 indicator_scope（业态/城市回显 + 是否默认口径）', /indicator_scope/.test(body) && /is_default_scope/.test(body));
+check('🔴 分母与 result **同源**（revenueFen 取 result.incomeTotalFen，不另立口径）',
+  /const incomeTotal = result\.incomeTotalFen/.test(body) && /revenueFen: incomeTotal/.test(body));
+check('读 shop 取业态 / 城市层级（参考带的前提输入）',
+  /da\.get\('shop'/.test(body) && /biz_type/.test(body) && /city_tier/.test(body));
+
 console.log(`\n==== getLedger 自测结果：${pass} 通过 / ${failN} 失败 ====`);
 process.exit(failN === 0 ? 0 : 1);

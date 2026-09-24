@@ -9,6 +9,7 @@ const db = cloud.database();
 const common = require('./common');                 // 扁平派生副本（sync_common 生成）
 const { resolveAuth, assertShopOwner } = common;
 const { ERROR_CODES, ok, fail } = common;
+const { indicatorRef } = common;                    // round115：M1 行业指标对照（口径单源，见 common/indicatorRef.js §七）
 const { makeAdapter } = common.dataAdapter;
 const { calcMonthlyProfit } = require('./service');
 const { validateInput } = require('./validate');
@@ -104,9 +105,17 @@ exports.main = async (event) => {
   const incomeItems = normalizeToCamel(rawIncome);
   const expenseItems = normalizeToCamel(rawExpense);
 
+  // ===== round115：店铺设置（业态 / 城市层级）=====
+  // 指标参考带是**分业态 × 分城市层级**的（火锅店的房租带与正餐不同），而 M1 此前
+  // **完全没有**这两个值 ⇒ 必须取（否则对照只能瞎给）。
+  // ⚠️ 未设置（''）时回落：bandOf 内置 `BANDS[bizKey] || BANDS.dining` + 默认 tier23
+  //    ⇒ 等价于「正餐 × 二三线」，由前端明示「按正餐·二三线估算，可改」。
+  const shopDoc = await da.get('shop', shopId);
+  const bizType = (shopDoc && shopDoc.biz_type) || '';
+  const cityTier = (shopDoc && shopDoc.city_tier) || '';
+
   // ===== 服务端权威开关 =====
-  const swRes = await da.list('shop_switch', { shop_id: shopId });
-  const swRows = (swRes && swRes.data) || [];
+  const swRes = await da.list('shop_switch', { shop_id: shopId });  const swRows = (swRes && swRes.data) || [];
   const swGet = (key) => { const r = swRows.find((x) => x.switch_key === key); return r ? !!r.enabled : false; };
   const inventorySwitchOn = swGet('inventory_switch');
   const amortizeSwitchOn = swGet('amortize_switch');
@@ -117,6 +126,27 @@ exports.main = async (event) => {
     inventory, amortizeSwitchOn, inventorySwitchOn,
     lumpSumFen,
   });
+
+  // ===== round115：M1 行业指标对照 =====
+  // 口径（李老师 2026-09-24 拍板 + 本仓既立红线）：
+  //   · 分母 = M1 自己的**权责发生制收入**（incomeTotalFen），与上方 result **同源** ——
+  //     不另立"实收现金"口径，否则页面上的毛利率会与下面的占比互相矛盾（客户一算就发现）。
+  //   · 缺项**不出键**（sumByTag 保证）⇒ pct=null ⇒ level='na'（**不评级**）。
+  //     绝不算成 0% —— 那会得出「房租占比 0%，优秀」这种荒谬结论（round115 实测抓过该 bug）。
+  //   · 不含 manage（M1 无对应科目，硬凑会把房租或人工重复计入）。
+  const byInd = indicatorRef.sumByTag(expenseItems);
+  const incomeTotal = result.incomeTotalFen;
+  const indicators = indicatorRef.m1IndicatorsOf(indicatorRef.evaluateIndicators({
+    bizKey: bizType,
+    cityKey: cityTier,
+    revenueFen: incomeTotal,
+    fixedFen: indicatorRef.toFixedFen(byInd),
+    // ⚠️ M1 的毛利率是**整店**口径（含外卖），与 M2 的「菜品毛利率」不完全同义 ⇒ 前端须标注
+    grossMarginPct: incomeTotal > 0 ? result.grossMarginRatePctDisplay : null,
+    // ⚠️ 推广费在 M1 是**金额**（营销费用大类，含外卖佣金/补贴/推广），与 M2 的「挂钩费率」
+    //    不同义 ⇒ 前端须标注；转成占比后与 M2 同量纲但口径不同。
+    platformPct: (byInd.mkt != null && incomeTotal > 0) ? (byInd.mkt / incomeTotal) * 100 : null,
+  }));
 
   return ok({
     shop_id: shopId, month: v.month,
@@ -146,6 +176,16 @@ exports.main = async (event) => {
       profit_diff_fen: result.profitDiffFen,
       real_consume_fen: result.realConsumeFen,
       effective_amortize_fen: result.effectiveAmortizeFen,
+    },
+    // round115：M1 行业指标对照（5 项：毛利率 / 房租 / 人工 / 能耗 / 推广费；**不含 manage**）
+    //   每项含 { key, pct, lo, hi, level, redline, redlineHit }；**pct=null 表示该项没数据（不评级）**
+    //   —— 前端遇到 null 必须显示「—」，不得显示 0%
+    indicators,
+    // 参考带所依据的范围（供前端 picker 回显 + 明示「是否用的是默认口径」）
+    indicator_scope: {
+      biz_type: bizType,
+      city_tier: cityTier,
+      is_default_scope: !bizType || !cityTier,
     },
     client_request_id: v.input.client_request_id || '',
   });

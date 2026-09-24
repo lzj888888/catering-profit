@@ -43,6 +43,9 @@ exports.main = async (event) => {
     //    显式 '' 仍需生效（= 清空），故用 !== undefined 判定，不可用真假值判定。
     if (v.name !== undefined && Array.isArray(v.name) === false) patch.name = v.name;
     if (v.remark !== undefined && Array.isArray(v.remark) === false) patch.remark = v.remark;
+    // round115：业态 / 城市层级（M1 结果页取「行业参考带」的输入）—— 同样只在「真的传了」时才写
+    if (v.biz_type !== undefined) patch.biz_type = v.biz_type;
+    if (v.city_tier !== undefined) patch.city_tier = v.city_tier;
     await db.collection('shop').doc(shopDoc.id || shopId).update({ data: patch });
   }
 
@@ -68,6 +71,9 @@ exports.main = async (event) => {
     shop_id: shopId,
     name: v.name || (shopDoc ? shopDoc.name : ''),
     remark: v.remark,
+    // round115：回读当前值（未传时回库里的，供前端 picker 回显）
+    biz_type: v.biz_type !== undefined ? v.biz_type : ((shopDoc && shopDoc.biz_type) || ''),
+    city_tier: v.city_tier !== undefined ? v.city_tier : ((shopDoc && shopDoc.city_tier) || ''),
     switches: { inventory: v.switches.inventory !== null ? v.switches.inventory : undefined, amortize: v.switches.amortize !== null ? v.switches.amortize : undefined },
     client_request_id: v.input.client_request_id || '',
   });

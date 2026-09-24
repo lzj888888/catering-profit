@@ -42,6 +42,21 @@ Page({
       resultEmpty: TERMS.uiFix.resultEmpty,
       resultEmptyGoInput: TERMS.uiFix.resultEmptyGoInput,
       subItem: TERMS.ledger.subItem,
+      // round115：行业指标对照 —— 文案复用 M2 术语（indNames/indLevels/indLevelsGain/indBand/indMine），
+      // 本页只新增「区块标题 + 缺项说明 + 两项口径小字 + 默认范围提示」这几条 M1 特有文案。
+      indTitle: TERMS.resultPage.indTitle,
+      indSub: TERMS.resultPage.indSub,
+      indMissing: TERMS.resultPage.indMissing,
+      indMarginNote: TERMS.resultPage.indMarginNote,
+      indMktNote: TERMS.resultPage.indMktNote,
+      indScopeTip: TERMS.resultPage.indScopeTip,
+      indScopeChange: TERMS.resultPage.indScopeChange,
+      indBand: TERMS.m2.indBand,
+      indMine: TERMS.m2.indMine,
+      indNames: TERMS.m2.indNames,
+      indLevels: TERMS.m2.indLevels,
+      indLevelsGain: TERMS.m2.indLevelsGain,
+      indGainKey: TERMS.m2.indGainKey,
     },
     month: '',
     isArchive: false,
@@ -54,6 +69,15 @@ Page({
     expireSoonDays: 0,
     expireSoonText: '',
     subscribeAsked: false,
+    // round115：行业指标对照（后端出 pct/lo/hi/level，中文名与评级文案在前端补）
+    inds: [],
+    scope: {},
+    bizTypes: TERMS.m2.bizTypes,
+    cityTiers: TERMS.m2.cityTiers,
+    bizIdx: 1,      // 默认「中式正餐」（bizTypes[1]），与后端 bandOf 的兜底口径一致
+    cityIdx: 1,     // 默认「二三线」（cityTiers[1]）
+    bizText: '',
+    cityText: '',
   },
 
   onLoad(q) {
@@ -73,6 +97,10 @@ Page({
       // D1：保存原始明细（snake_case，含 sub_items），供下钻面板展示（前端不重算金额）
       const incDetail = this.buildDetail(d.income_items || []);
       const expDetail = this.buildDetail(d.expense_items || []);
+      // round115：行业指标对照 —— 后端只回 key/数值/level 枚举，中文名与评级文案在前端补齐（术语单源在前端）
+      const inds = this.decorateInds(d.indicators || []);
+      const scope = d.indicator_scope || {};
+      const sv = this.scopeView(scope);
       this.setData({
         isArchive: !!d.is_archive,
         incDetail,
@@ -90,6 +118,8 @@ Page({
           profitDiff: fen(res.profit_diff_fen),
         },
         loading: false,
+        inds, scope,
+        bizIdx: sv.bizIdx, cityIdx: sv.cityIdx, bizText: sv.bizText, cityText: sv.cityText,
       });
       // 批次 5：到期前 7 天常驻提示条（双渠道兜底）
       try {
@@ -99,6 +129,55 @@ Page({
       } catch (e) { /* 权限查询失败不阻断结果页 */ }
     } catch (e) {
       this.setData({ loading: false });
+      api.toastError(e);
+    }
+  },
+
+  // ===== round115：行业指标对照 =====
+
+  // 后端只回 { key, pct, lo, hi, level, redline, redlineHit }；中文名与评级文案在前端补（术语单源在前端）。
+  // 🔴 pct === null 表示「这项没数据」⇒ has=false ⇒ 页面显示「本月没填」，**绝不显示 0%**
+  //    （算成 0% 会得出「房租占比 0%，优秀」这种荒谬结论 —— round115 后端真有此 bug，已修并被 selftest 钉住）。
+  decorateInds(list) {
+    const lvCost = TERMS.m2.indLevels, lvGain = TERMS.m2.indLevelsGain;
+    const names = TERMS.m2.indNames, gainKey = TERMS.m2.indGainKey;
+    return (list || []).map((it) => {
+      const has = it.pct !== null && it.pct !== undefined;
+      return {
+        key: it.key,
+        name: names[it.key] || it.key,
+        pct: it.pct,
+        lo: it.lo,
+        hi: it.hi,
+        level: it.level,
+        has,
+        lvText: (it.key === gainKey ? lvGain : lvCost)[it.level] || '',
+      };
+    });
+  },
+
+  // 业态/城市 → picker 索引与显示文案；库里没存过则回落「中式正餐 × 二三线」
+  //（与后端 bandOf 的兜底一致：`BANDS[bizKey] || BANDS.dining` + CITY_TIERS[1]）
+  scopeView(scope) {
+    const bs = TERMS.m2.bizTypes, cs = TERMS.m2.cityTiers;
+    let bi = bs.findIndex((x) => x.key === (scope && scope.biz_type));
+    let ci = cs.findIndex((x) => x.key === (scope && scope.city_tier));
+    if (bi < 0) bi = 1;
+    if (ci < 0) ci = 1;
+    return { bizIdx: bi, cityIdx: ci, bizText: bs[bi].name, cityText: cs[ci].name };
+  },
+
+  onBiz(e) { this.saveScope({ biz_type: TERMS.m2.bizTypes[Number(e.detail.value)].key }); },
+  onCity(e) { this.saveScope({ city_tier: TERMS.m2.cityTiers[Number(e.detail.value)].key }); },
+
+  // 业态/城市是「你的店是什么」，一次设定长期有效 ⇒ 落库（shop 集合）；改完重拉，参考带跟着变
+  async saveScope(patch) {
+    try {
+      await api.call('saveShopSetting', Object.assign({
+        shop_id: (getApp().globalData && getApp().globalData.shop_id) || '',
+      }, patch));
+      await this.load();
+    } catch (e) {
       api.toastError(e);
     }
   },

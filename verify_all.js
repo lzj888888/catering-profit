@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：101 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：102 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -133,6 +133,12 @@
 //         + B wxml 每个 `<input>` 的 `value` 必须在**用户值白名单**内
 //         + C 正向（确实写 `ph` / 参考值仍有出口）+ D 四组正负样本互证（剥注释器 / 判别器 /
 //         `bodyOf` 锚定义不锚调用 / value 提取器）+ E 断言数下界）
+//       + M1「台账细项 → 指标归属」守卫（tools/check_m1_indicator_view.js，R129：round115 M1 结果页加「行业对照」时曝露的**静默失效面** —— M1 台账把库存里的**支出细项名字符串**（`sub_item`）当作机器匹配键去汇总 `rent`/`energy`/`labor`/`mkt`；
+//         若哪天把 terms 里「房租」改成「租金」，归属表就**匹配不上、指标静默少一项且不报错**（用户可自定义细项名 ⇒ 名字本就不是稳定键）。
+//         且 `Number(null) === 0` ⇒ 没填的月会被算成「0%」而判 `bad`/`good`（缺项 ≠ 0，与 round114 的「参考值不预填」同族）。
+//         判据 = P 前置 / A 归属表名字**必须真实存在于 terms 支出细项**（改名即转红 —— 本守卫存在理由）+ 不含 `manage` + `energy` 恰三项
+//         + B 结果页零硬编码阈值（引号感知剥注释）
+//         + C 出参契约（`indicators` / `indicator_scope` 十项）+ D 工具自证（8 组正负样本互证）+ E 断言数下界）
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -436,6 +442,13 @@ const SUITES = [
   // R128（round114）：M2「参考值只作提示·绝不自动填值」—— round114 的锚点功能把参考金额
   //   显示成输入框灰字起点，而「不自动填值」这条边界当时**零守卫**（回灌 A10/A11 实证）。
   ['ref-not-prefill', 'tools/check_m2_ref_not_prefill.js'],
+  // R129（round115）：M1 结果页「行业对照」—— 台账细项 → 指标归属的**静默失效面**。
+  //   M1 只有 4 个支出大类（operation/labor/marketing/other），M2 要 5 个成本项 ⇒ 错位；归属靠
+  //   `common/indicatorRef.js::ITEM_TAGS` 把**细项名字符串**映射到指标键。
+  //   而名字既是可见文案、也是用户可自定义值 ⇒ **用可见文案当机器键 = 改名即静默失效**。
+  //   判据 A = 归属表每个名字**必须真实存在于 terms 支出细项**（改名即红）；
+  //   另守 `manage` 不进 M1 + `energy` 恰三项 + 结果页零硬编码阈值 + 出参契约。
+  ['m1-indicator-view', 'tools/check_m1_indicator_view.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

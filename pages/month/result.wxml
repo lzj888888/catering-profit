@@ -91,6 +91,42 @@
     </view>
   </view>
 
+  <!-- round115：行业对照（李老师「让客户找到方向」的第一步）-->
+  <!-- 🔴 本页**零阈值**：所有行业数值都来自 getLedger 出参，页面不得写死任何数字 -->
+  <view class="card2" wx:if="{{inds.length}}">
+    <view class="ind-head">
+      <text class="ind-title">{{t.indTitle}}</text>
+      <text class="ind-sub">{{t.indSub}}</text>
+    </view>
+
+    <!-- 业态 / 地区：参考带是分业态 × 分地区的，选错了对照就没意义 -->
+    <view class="ind-scope">
+      <picker mode="selector" range="{{bizTypes}}" range-key="name" value="{{bizIdx}}" bindchange="onBiz">
+        <view class="ind-pk">{{bizText}} ▾</view>
+      </picker>
+      <picker mode="selector" range="{{cityTiers}}" range-key="name" value="{{cityIdx}}" bindchange="onCity">
+        <view class="ind-pk">{{cityText}} ▾</view>
+      </picker>
+      <text class="ind-scope-tip" wx:if="{{scope.is_default_scope}}">{{t.indScopeTip}}</text>
+    </view>
+
+    <view class="ind-row" wx:for="{{inds}}" wx:key="key">
+      <view class="ind-line1">
+        <text class="ind-name">{{item.name}}</text>
+        <text class="ind-lv lv-{{item.level}}" wx:if="{{item.has}}">{{item.lvText}}</text>
+        <text class="ind-lv" wx:else>—</text>
+      </view>
+      <view class="ind-line2">
+        <text class="ind-mine" wx:if="{{item.has}}">{{t.indMine}} {{item.pct}}%</text>
+        <text class="ind-missing" wx:else>{{t.indMissing}}</text>
+        <text class="ind-band" wx:if="{{item.lo !== null && item.lo !== undefined}}">　{{t.indBand}} {{item.lo}}~{{item.hi}}%</text>
+      </view>
+    </view>
+
+    <!-- 两项口径与 M2 不同义，必须明示（否则客户跨模块对比会误判） -->
+    <view class="ind-note">{{t.indMarginNote}} · {{t.indMktNote}}</view>
+  </view>
+
   <button class="btn ghost" bindtap="onExport">{{t.exportBtn}}</button>
 </view>
 

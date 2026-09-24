@@ -117,6 +117,109 @@ const BUILD_KEYS = ['franchise', 'decor', 'equip', 'other'];
 // 摊销年限默认值（[E1] 经验值：加盟按合同期、装修按翻新周期、设备按直线折旧）
 const BUILD_DEFAULT_YEARS = { franchise: 3, decor: 3, equip: 5, other: 3 };
 
+// ===== 七、M1 台账细项 → 指标归属（round115 · 2026-09-24）=====
+//
+// 为什么需要这一段（李老师当轮原话：「这些指标后期要变动，所以看小程序怎么写方便以后变更升级」）：
+//   M1 台账的支出**只有 4 个大类**（operation 运营 / labor 人工 / marketing 营销 / other 其他），
+//   而指标要把「房租」「水电气」从 operation 里**拆出来** —— 大类与指标是**错位**的。
+//   台账落库存的是**细项名字符串**（`sub_item`），所以归属只能按名字建映射。
+//
+// 🔴 本表最大的风险：**名字是用户可见文案**（terms.js 里改一个字，这里就静默失配，且不会报错）。
+//   ⇒ 由守卫 `tools/check_m1_indicator_view.js` 强制校验「本表每个名字都真实存在于
+//     terms.js 对应大类的 items 中」—— 改名会让守卫**转红**，而不是悄悄算不出数。
+//   ⇒ 改文案时的正确动作：改 terms.js **同时**改本表（漏改会被守卫拦下）。
+//
+// 归属规则（按优先级）：
+//   ① 细项名命中本表 ⇒ 按本表归属；
+//   ② 细项名**未**命中 ⇒ 回落到**大类归属**（CATEGORY_TAG）——
+//      例：用户在「人工费用」下自建细项「临时工」，仍应计入 labor，不能漏算；
+//   ③ 大类也无归属（operation / other）⇒ **不归属**。代价是该细项不参与对照
+//      （例：「垃圾清运费」「宽带网费」「代账费」本就不属于 rent/energy/labor/mkt 任一项）。
+//
+// ⚠️ **operation 大类整额未拆细项时不猜**：该大类混着房租+水电+物业，拆不出单项
+//   ⇒ rent / energy 一律**不出数**（前端显示「—」）。宁可少一项，
+//   也不能把 15000 的运营费用整笔当成房租算 —— 那会直接给出错误的警戒线结论。
+const ITEM_TAGS = {
+  rent: ['房租'],
+  labor: ['工资绩效', '社保', '员工宿舍', '员工餐', '工装福利'],
+  energy: ['水费', '电费', '燃气费'],
+  mkt: [
+    '外卖平台佣金', '外卖配送服务费', '外卖活动补贴', '外卖配送补贴', '外卖推广费',
+    '团购平台佣金', '线上广告推广', '宣传物料印刷', '其他营销费',
+  ],
+  // ⚠️ 故意**无 manage**：李老师 2026-09-24 拍板「M1 不做管理费这一项」
+  //    （M1 无对应科目，硬凑会把房租或人工重复计入，比少一项更糟）
+};
+// 大类级归属：只有 labor / marketing 是**单项大类**，可整额归属；
+// operation（房租+水电+物业混装）与 other 不可整额归属 ⇒ 故意不列在此表。
+const CATEGORY_TAG = { labor: 'labor', marketing: 'mkt' };
+
+// 反向索引：细项名 → 指标 key（构建期展开一次，避免每次逐项遍历）
+const TAG_BY_ITEM = (() => {
+  const m = {};
+  for (const k of Object.keys(ITEM_TAGS)) for (const n of ITEM_TAGS[k]) m[n] = k;
+  return m;
+})();
+
+// M1 口径的指标集合（**5 项**）：排除 manage —— 见上方拍板注释。
+// 出参按本集合过滤（单源），前端不自己筛。
+const M1_IND_KEYS = ['grossMargin', 'rent', 'labor', 'energy', 'mkt'];
+
+// 指标 key → evaluateIndicators 的 `fixedFen` 入参键。
+// ⚠️ 唯一陷阱：指标叫 `energy`，而 fixedFen 的键是 `utility`（见 INDICATORS.from: 'fixed:utility'）。
+//    这层映射**必须在单源里出**，调用方**不许自己猜**（猜错会静默算成 null，表现为"这项永远没评级"）。
+const FIXED_FEN_KEY = { rent: 'rent', labor: 'labor', energy: 'utility', manage: 'manage' };
+function indFenKeyOf(indKey) { return FIXED_FEN_KEY[indKey] || null; }
+
+const num0 = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+
+/** 按优先级定归属：细项名优先，未识别则回落到大类（见 ITEM_TAGS 注）。*/
+function tagOfItem(name, category) {
+  const t = TAG_BY_ITEM[name];
+  if (t) return t;
+  return CATEGORY_TAG[category] || null;
+}
+
+/**
+ * 按指标归属汇总 M1 台账支出（单位：**分**）。
+ * @param {Array} expenseItems [{ category, name, amountFen, subItems:[{subItem, amountFen}] }]
+ * @returns {object} { rent: 分, labor: 分, energy: 分, mkt: 分 }
+ *   ⚠️ **没有数据的项不出键**（而不是出 0）：0 会被当成「占比 0%」⇒ 判成"优秀"，
+ *      而真实含义是"这项没填"。二者的区别**必须由「键是否存在」承载**，
+ *      否则会得出「房租占比 0%，优秀」这种荒谬且危险的结论。
+ */
+function sumByTag(expenseItems) {
+  const out = {};
+  const add = (k, fen) => { if (k) out[k] = (out[k] || 0) + num0(fen); };
+  for (const cat of (expenseItems || [])) {
+    const category = (cat && cat.category) || '';
+    const subs = (cat && cat.subItems) || [];
+    if (subs.length) {
+      for (const si of subs) add(tagOfItem((si && si.subItem) || '', category), si && si.amountFen);
+    } else {
+      add(CATEGORY_TAG[category] || null, cat && cat.amountFen);   // operation / other 不猜
+    }
+  }
+  return out;
+}
+
+/** 把 sumByTag 结果转成 evaluateIndicators 需要的 `fixedFen` 键（energy → utility）。*/
+function toFixedFen(byTag) {
+  const src = byTag || {};
+  const out = {};
+  for (const k of Object.keys(src)) {
+    const fk = indFenKeyOf(k);
+    if (fk) out[fk] = src[k];
+  }
+  return out;
+}
+
+/** M1 结果页用：只取 M1 口径的指标（过滤掉 manage）。*/
+function m1IndicatorsOf(list) {
+  const allow = M1_IND_KEYS;
+  return (list || []).filter((r) => r && allow.indexOf(r.key) >= 0);
+}
+
 // ⚠️ 保留 1 位小数必须带**十进制容差** —— 纯 Math.round(n*10)/10 会栽在浮点表示上：
 //    25 × 1.15 = 28.749999999999996（不是 28.75）⇒ 裸 round 得 28.7，与手算 28.8 差 0.1。
 //    加 1e-9（远小于 0.1 的精度步长、远大于双精度误差 3.6e-15）即可修正方向，且不误伤正常值。
@@ -160,6 +263,23 @@ function levelOf(pct, lo, hi, dir) {
 }
 
 /**
+ * 严格取百分比：**区分「没填」与「填了 0」**。
+ *
+ * 🔴 为什么不能直接用 `Number()`：`Number(null)` 与 `Number(undefined)` **都等于 0**
+ *    ⇒ 没填的指标会被算成「0%」⇒ 毛利率判 `bad`（过低）、推广费判 `good`（0% 最低 = 优秀），
+ *    而真实含义是"这项没数据"。这就是「**缺项 ≠ 0**」这条红线在**入参层**的落点。
+ *    （2026-09-24 round115 由 `_probe_r115.js` 用例 9 实测抓出：不传 grossMarginPct ⇒ 得 0%/bad。
+ *      同族于 round114 的 P0 —— 都是"没填"被当成了"填了 0"。）
+ * ⚠️ 注意 `fixedFen` 各项与 `revenueFen` **不受影响**：它们走 `Number(x)` 后还有
+ *    `isFinite` / `rev > 0` 兜底，`undefined → NaN → null` 本来就安全。
+ */
+function pctOrNull(v) {
+  if (v === null || v === undefined || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
  * 生成指标对照表。
  * @param {object} o
  *   - bizKey / cityKey
@@ -173,16 +293,16 @@ function evaluateIndicators(o) {
   const opt = o || {};
   const rev = Number(opt.revenueFen);
   const fixed = opt.fixedFen || {};
-  const gm = Number(opt.grossMarginPct);
-  const plat = Number(opt.platformPct);
+  const gm = pctOrNull(opt.grossMarginPct);
+  const plat = pctOrNull(opt.platformPct);
   const out = [];
   for (const ind of INDICATORS) {
     let pct = null;
     if (ind.from === 'grossMargin') {
       // 毛利率：直接用用户填的值对照毛利率带（口径统一，不做 100−x 换算）
-      pct = isFinite(gm) ? gm : null;
+      pct = gm;
     } else if (ind.from === 'var:platform') {
-      pct = isFinite(plat) ? plat : null;
+      pct = plat;
     } else if (ind.from.indexOf('fixed:') === 0) {
       const k = ind.from.slice(6);
       const fen = Number(fixed[k]);
@@ -281,4 +401,7 @@ module.exports = {
   REDLINE, REDLINE_KEYS,
   FIXED_KEYS, VAR_KEYS, BUILD_KEYS, BUILD_DEFAULT_YEARS,
   bandOf, levelOf, evaluateIndicators, redlineOf, listBands, suggestAmounts,
+  // round115：M1 台账细项归属（见 §七）
+  ITEM_TAGS, CATEGORY_TAG, M1_IND_KEYS, FIXED_FEN_KEY,
+  indFenKeyOf, tagOfItem, sumByTag, toFixedFen, m1IndicatorsOf,
 };

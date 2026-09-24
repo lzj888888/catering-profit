@@ -157,6 +157,7 @@ const A15_EXEMPT = [
   /^cloudfunctions\/calcSandbox\//,                    // round110：M2 契约 v2（service/validate/selftest）
   /^cloudfunctions\/common\/indicatorRef\.js$/,        // round110：新增指标参考库单源
   /^cloudfunctions\/common\/index\.js$/,               // round110：聚合入口挂载 indicatorRef
+  /^cloudfunctions\/saveShopSetting\//,               // round115：M1 指标对照（validate 业态/城市白名单 + index 出参回读）
   // round110：以下三条是 sync_common 的**派生产物**（非云函数自有逻辑）——
   //   common/index.js 加一个导出，就会让全部 42 个函数的 cx_index.js 同步变动；
   //   新增单源文件则派生 cx_indicatorRef.js。精确到文件名登记，不做 cx_*.js 泛化豁免。

@@ -89,6 +89,10 @@ const CASES = [
   //   「非恒真」的凭据；断言数不受守则「删掉两组正负样本」就等于把守卫悄悄改小
   //   （判据仍全绿而证明力归零），与 round73 立本守卫的根因同族。
   { key: 'check_m2_ref_not_prefill', rel: 'tools/check_m2_ref_not_prefill.js' },
+  // R129 扩面（round115）：M1「台账细项 → 指标归属」守卫同批纳入 —— 它的 D 段 8 组正负样本互证
+  //   （引号感知剥注释器 / 硬编码百分比判别器 / 细项名漏名比对器）与 E 段断言数下界正是「非恒真」的凭据；
+  //   断言数不受守则「删掉几组样本 + 调低下界」就等于把守卫惄惄改小（判据仍全绿而证明力归零）。
+  { key: 'check_m1_indicator_view', rel: 'tools/check_m1_indicator_view.js' },
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

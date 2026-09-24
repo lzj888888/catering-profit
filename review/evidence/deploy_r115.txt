@@ -1,0 +1,65 @@
+round115 部署证据（getLedger + saveShopSetting）
+命令：cli.bat cloud functions deploy --project <repo> -e <ENV现读> --names <单函数> -r
+ENV = cloud1-d4gphpoxy337f2a25（现读 cloudfunctions/initDb/config.json）
+时刻 = 2026-09-24 14:46~14:47
+
+===== _deploy_20260924_144652.log =====
+===== 2026-09-24 14:46:52  目标：getLedger  ENV=cloud1-d4gphpoxy337f2a25 =====
+
+--- [1/1] getLedger ---
+$ C:/Program Files (x86)/Tencent/微信web开发者工具/cli.bat cloud functions deploy --project C:/Users/lzj/WorkBuddy/Claw/catering-profit -e cloud1-d4gphpoxy337f2a25 --names getLedger -r
+- initialize
+
+(node:25204) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)
+√ IDE server has started, listening on http://127.0.0.1:35237
+- deploy cloudfunctions
+- fetching cloud env list
+- [getLedger] Fetching info of cloudfunction getLedger
+√ [getLedger] cloudfunction getLedger exists in the cloud, will update it
+- [getLedger] upload cloud function getLedger - preparing
+√ [getLedger] upload cloud function getLedger - deploy
+√ deploy cloudfunctions
+
+┌───────────┬─────────┬────────────┬───────────┐
+│ (index)   │ success │ filesCount │ packSize  │
+├───────────┼─────────┼────────────┼───────────┤
+│ getLedger │ true    │ 16         │ '36.7 KB' │
+└───────────┴─────────┴────────────┴───────────┘
+
+>>> rc=0 用时=18.8s 
+
+===== 汇总 =====
+getLedger            rc=0  用时=18.8s
+ALL_OK = True
+
+===== _deploy_20260924_144723.log =====
+===== 2026-09-24 14:47:23  目标：saveShopSetting  ENV=cloud1-d4gphpoxy337f2a25 =====
+
+--- [1/1] saveShopSetting ---
+$ C:/Program Files (x86)/Tencent/微信web开发者工具/cli.bat cloud functions deploy --project C:/Users/lzj/WorkBuddy/Claw/catering-profit -e cloud1-d4gphpoxy337f2a25 --names saveShopSetting -r
+- initialize
+
+(node:20664) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)
+√ IDE server has started, listening on http://127.0.0.1:35237
+- deploy cloudfunctions
+- fetching cloud env list
+- [saveShopSetting] Fetching info of cloudfunction saveShopSetting
+√ [saveShopSetting] cloudfunction saveShopSetting exists in the cloud, will update it
+- [saveShopSetting] upload cloud function saveShopSetting - preparing
+√ [saveShopSetting] upload cloud function saveShopSetting - deploy
+√ deploy cloudfunctions
+
+┌─────────────────┬─────────┬────────────┬───────────┐
+│ (index)         │ success │ filesCount │ packSize  │
+├─────────────────┼─────────┼────────────┼───────────┤
+│ saveShopSetting │ true    │ 16         │ '31.7 KB' │
+└─────────────────┴─────────┴────────────┴───────────┘
+
+>>> rc=0 用时=17.2s 
+
+===== 汇总 =====
+saveShopSetting      rc=0  用时=17.2s
+ALL_OK = True
+

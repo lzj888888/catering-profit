@@ -713,6 +713,19 @@ const TERMS = {
     refNote: '按直接填写的消耗估算',
     trueNote: '按库存倒轧 + 摊销核算',
     archiveLocked: '归档月只读，无法修改',
+    // ===== round115：行业指标对照（李老师 2026-09-24「让客户找到方向」的第一步）=====
+    // ⚠️ 指标名 / 评级表 / 业态与城市清单**全部复用 M2 的术语**（单一来源，不另抄一份）：
+    //    TERMS.m2.indNames / indLevels / indLevelsGain / indBand / indMine / bizLabel / bizTypes / cityLabel / cityTiers
+    indTitle: '行业对照',
+    indSub: '跟同类型的常见区间比一比，看哪项偏得多',
+    // 🔴 缺项显示「本月没填」而不是「0%」—— 算 0% 会得出「房租占比 0%，优秀」这种荒谬结论
+    indMissing: '本月没填',
+    // 两项口径与 M2 不同义，必须标注，否则客户跨模块对比会误判
+    indMarginNote: '整店口径（含外卖）',
+    indMktNote: '含佣金、推广费、活动补贴',
+    // 未设置业态/地区时的兜底说明（bandOf 回落 正餐 × 二三线）
+    indScopeTip: '按「正餐 · 二三线」估算',
+    indScopeChange: '可改',
   },
 
   // ===== 十八、核算方式（录入页就地二选一 · 2026-09-20 从店铺设置页迁入）=====

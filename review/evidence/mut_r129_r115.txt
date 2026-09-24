@@ -1,0 +1,26 @@
+原始 md5：
+  cloudfunctions/common/indicatorRef.js      b894953533ab1d4998a0a63c88180043
+  pages/month/result.js                      d051afa8cd49b23d14c7a105902ef328
+  pages/month/result.wxml                    c549b845dc26e8433feb2f7616e5f210
+  cloudfunctions/getLedger/index.js          312ae9e703a0fcd2d0bc58a88fca8f8d
+
+--- 变异回灌 ---
+[OK ] M1   A-①                        rc=1  转红断言=1  ✅ 命中 A-①
+[OK ] M2   A-③                        rc=1  转红断言=2  ✅ 命中 A-③
+[OK ] M3   A-④                        rc=1  转红断言=1  ✅ 命中 A-④
+[OK ] M4   B-①                        rc=1  转红断言=1  ✅ 命中 B-①
+[OK ] M5   B-④                        rc=1  转红断言=1  ✅ 命中 B-④
+[OK ] M6   C-③                        rc=1  转红断言=1  ✅ 命中 C-③
+[OK ] M7   C-⑤                        rc=1  转红断言=1  ✅ 命中 C-⑤
+[OK ] M8   C-⑦                        rc=1  转红断言=1  ✅ 命中 C-⑦
+
+--- 还原自证（逐字节 md5 必须全等）---
+  cloudfunctions/common/indicatorRef.js      b894953533ab  ✅ 相等
+  pages/month/result.js                      d051afa8cd49  ✅ 相等
+  pages/month/result.wxml                    c549b845dc26  ✅ 相等
+  cloudfunctions/getLedger/index.js          312ae9e703a0  ✅ 相等
+
+--- 还原后实跑 ---
+  rc=0  ['===== M1 行业指标对照守卫结果：31 通过 / 0 失败 =====']
+
+结论：8/8 个变异如期转红；还原 md5 全等=True；还原后 rc=0

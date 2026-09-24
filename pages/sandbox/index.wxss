@@ -66,11 +66,7 @@
 .ind-head .ind-c1, .ind-head .ind-c2, .ind-head .ind-c3, .ind-head .ind-c4 {
   font-size: 28rpx; font-weight: 400; color: #888;
 }
-.lv-good { color: #1e8e5a; }
-.lv-ok { color: #1e3a5f; }
-.lv-warn { color: #d68910; }
-.lv-bad { color: #c0392b; }
-.lv-na { color: #aaa; }
+/* 评级配色已上提到全局 app.wxss（单源）——本页不再重复定义，跨模块同色同义（round115） */
 
 /* ===== round113 · 填表引导（逐项口径备注 + 行业参考区间）=====
    目的：降低"不知道这项该填多少"的门槛（客户多为餐饮小白）。

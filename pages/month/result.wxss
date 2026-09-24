@@ -12,3 +12,31 @@
 .drill-gamt { color: #222; font-weight: 600; }
 .drill-sub { display: flex; justify-content: space-between; padding: 6rpx 0 0 16rpx; font-size: 28rpx; color: #666; }
 .drill-samt { color: #444; }
+
+
+/* ===== round115：行业对照（指标对照 + 业态/地区选择）===== */
+/* 🔴 字号下界 28rpx（26rpx 会被守卫判红）；色值单源 app.wxss */
+.ind-head { padding: 4rpx 0 12rpx; }
+.ind-title { font-size: 30rpx; font-weight: 500; color: #1e3a5f; }
+.ind-sub { display: block; font-size: 28rpx; color: #8a94a6; margin-top: 6rpx; }
+
+.ind-scope { display: flex; align-items: center; flex-wrap: wrap; padding-bottom: 8rpx; }
+.ind-pk { font-size: 28rpx; color: #1e3a5f; border: 2rpx solid #dfe4ec; border-radius: 8rpx; padding: 6rpx 16rpx; margin-right: 16rpx; }
+.ind-scope-tip { font-size: 28rpx; color: #d68910; }
+
+.ind-row { padding: 16rpx 0; border-top: 2rpx solid #f2f4f8; }
+.ind-line1 { display: flex; align-items: center; justify-content: space-between; }
+.ind-name { font-size: 30rpx; color: #333; }
+.ind-line2 { display: flex; align-items: baseline; margin-top: 6rpx; flex-wrap: wrap; }
+.ind-mine { font-size: 28rpx; color: #1e3a5f; }
+.ind-missing { font-size: 28rpx; color: #b6bcc8; }
+.ind-band { font-size: 28rpx; color: #8a94a6; }
+
+.ind-lv { font-size: 28rpx; padding: 2rpx 14rpx; border-radius: 20rpx; }
+.ind-lv.lv-good { background: #eaf6f0; }
+.ind-lv.lv-ok { background: #eaf0f7; }
+.ind-lv.lv-warn { background: #fdf4e7; }
+.ind-lv.lv-bad { background: #fdecea; }
+.ind-lv.lv-na { background: #f2f4f8; }
+
+.ind-note { font-size: 28rpx; color: #8a94a6; padding-top: 12rpx; line-height: 1.5; }
