@@ -172,3 +172,5 @@ _deploy_one.py saveShopSetting  → success=true · filesCount=16 · packSize=31
 - [2026-09-24 14:55] round115 功能+守卫已落 · 证据：`node verify_all.js` → `102/102 套件通过 RC=0`；
   `_mut_r129.py` → `8/8 变异转红 + 还原 md5 全等`；`_deploy_one.py getLedger/saveShopSetting` →
   `success=true · filesCount=16` · commit 见下条补录
+
+- [2026-09-24 15:02] round115 已推 dev 并核验 · 证据：`git ls-remote origin refs/heads/dev` → `2d14424b68bf27fbc726f089dbb57fcd039e9266` == `git rev-parse HEAD` · commit `2d14424`
