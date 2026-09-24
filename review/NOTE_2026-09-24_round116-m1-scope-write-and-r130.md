@@ -4,7 +4,7 @@
 - 触发：李老师真机反馈两条（原话）
   ① 「模块一 行业对比 里面 行业选择，没有变化。」
   ② 「点击 导出月度报表，提示错误，是现在不能验证这个功能还是这块还没有写好？」
-- 分支：`dev`；commit：`待回填`
+- 分支：`dev`；commit：`b6f10fb`（已推 `origin/dev`，`ls-remote` 核对 ≡ HEAD）
 
 ## 一句话结论
 
@@ -150,6 +150,8 @@ _probe_r116.js restore '默认店铺' ''  → 回读确认已还原 ✅
 
 ## 七、执行回执
 
-- [2026-09-24 16:20] round116 **已落** · 证据：`_probe_r116.js proof/rd/restore` → 写入真落库 + 参考带随业态切换 + 已还原；`verify_all.js` → `103/103 RC=0`；`_mut_r130.py` → 4/4 转红且还原 md5 全等 · commit `待回填`
+- [2026-09-24 16:20] round116 **已落** · 证据：`_probe_r116.js proof/rd/restore` → 写入真落库 + 参考带随业态切换 + 已还原；`verify_all.js` → `103/103 RC=0`；`_mut_r130.py` → 4/4 转红且还原 md5 全等 · commit `b6f10fb`
 - [2026-09-24 16:30] **提交前一刻复跑门禁**（不采信上一轮自述）：`verify_all.js` → `103/103 套件通过` · RC=0，原始输出 3602 行落盘
   `review/evidence/gate_103_r116_recheck.txt`（含 `[doc-id-write] ✅ PASS (✅ 36 条 / 段 6)` 与段 A-⑥ 三处修复点回归）。
+- [2026-09-24 17:27] **已推送 `origin/dev`**：`88ab2fc..b6f10fb  HEAD -> dev`；`git ls-remote origin refs/heads/dev` ≡ `git rev-parse HEAD` = `b6f10fb3d823fdb597d82b6dc783c06464b8f880`（远程 `origin` 已是 SSH 形式 `git@github.com:lzj888888/catering-profit.git`，无需 `insteadOf` 改写）；推送后工作区 clean。
+- [2026-09-24 17:28] 回执补录 commit sha（`b6f10fb`）+ 推送核验（本条），NOTE 内 `待回填` 占位已全部清零。
