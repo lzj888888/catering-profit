@@ -131,4 +131,4 @@
 
 ## 七 执行回执
 
-- [2026-09-24 21:40] round118 **规范已落** · 证据：`review/evidence/m3v11_anchor_recalc.txt`（27/27 断言）· 新增文件 `specs/dev-specs/core/开发规范v1.1_ModuleM3增量_套餐外卖多规格与留存对照.md`（582 行）· commit `待回填`
+- [2026-09-24 21:40] round118 **规范已落 + 已推送** · 证据：`review/evidence/m3v11_anchor_recalc.txt`（27/27 断言）· 门禁 `103/103 RC=0`（`review/evidence/gate_r118.txt`）· 新增 `specs/dev-specs/core/开发规范v1.1_ModuleM3增量_套餐外卖多规格与留存对照.md`（582 行）· commit `49481f5`（远端 `dev` ≡ 本地）
