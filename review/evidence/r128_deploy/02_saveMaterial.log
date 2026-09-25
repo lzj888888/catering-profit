@@ -1,0 +1,30 @@
+===== 2026-09-26 00:26:49  目标：saveMaterial  ENV=cloud1-d4gphpoxy337f2a25 =====
+
+--- [1/1] saveMaterial ---
+$ C:/Program Files (x86)/Tencent/微信web开发者工具/cli.bat cloud functions deploy --project C:/Users/lzj/WorkBuddy/Claw/catering-profit -e cloud1-d4gphpoxy337f2a25 --names saveMaterial -r
+- initialize
+
+(node:69800) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)
+× IDE may already started at port 35237, trying to connect
+
+√ IDE server started successfully, listening on http://127.0.0.1:35237
+- deploy cloudfunctions
+- fetching cloud env list
+- [saveMaterial] Fetching info of cloudfunction saveMaterial
+√ [saveMaterial] cloudfunction saveMaterial exists in the cloud, will update it
+- [saveMaterial] upload cloud function saveMaterial - preparing
+√ [saveMaterial] upload cloud function saveMaterial - deploy
+√ deploy cloudfunctions
+
+┌──────────────┬─────────┬────────────┬───────────┐
+│ (index)      │ success │ filesCount │ packSize  │
+├──────────────┼─────────┼────────────┼───────────┤
+│ saveMaterial │ true    │ 16         │ '30.9 KB' │
+└──────────────┴─────────┴────────────┴───────────┘
+
+>>> rc=0 用时=59.3s 
+
+===== 汇总 =====
+saveMaterial         rc=0  用时=59.3s
+ALL_OK = True

@@ -1,0 +1,30 @@
+===== 2026-09-26 00:28:59  目标：syncCostCard  ENV=cloud1-d4gphpoxy337f2a25 =====
+
+--- [1/1] syncCostCard ---
+$ C:/Program Files (x86)/Tencent/微信web开发者工具/cli.bat cloud functions deploy --project C:/Users/lzj/WorkBuddy/Claw/catering-profit -e cloud1-d4gphpoxy337f2a25 --names syncCostCard -r
+- initialize
+
+(node:56160) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)
+× IDE may already started at port 35237, trying to connect
+
+√ IDE server started successfully, listening on http://127.0.0.1:35237
+- deploy cloudfunctions
+- fetching cloud env list
+- [syncCostCard] Fetching info of cloudfunction syncCostCard
+√ [syncCostCard] cloudfunction syncCostCard exists in the cloud, will update it
+- [syncCostCard] upload cloud function syncCostCard - preparing
+√ [syncCostCard] upload cloud function syncCostCard - deploy
+√ deploy cloudfunctions
+
+┌──────────────┬─────────┬────────────┬───────────┐
+│ (index)      │ success │ filesCount │ packSize  │
+├──────────────┼─────────┼────────────┼───────────┤
+│ syncCostCard │ true    │ 16         │ '33.3 KB' │
+└──────────────┴─────────┴────────────┴───────────┘
+
+>>> rc=0 用时=48.5s 
+
+===== 汇总 =====
+syncCostCard         rc=0  用时=48.5s
+ALL_OK = True
