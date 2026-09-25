@@ -167,6 +167,13 @@ const A15_EXEMPT = [
   /^cloudfunctions\/saveMaterial\//,               // round116：doc(m.id) → doc(exist._id || m.id)
   /^cloudfunctions\/saveCostCard\//,               // round116：doc(vm.id||vm.material_id) → 优先 _id
   /^cloudfunctions\/syncCostCard\//,               // round116：同上
+  /^cloudfunctions\/getMaterial\//,                // round127（M3 v1.2 批次 P0）授权：原料档案三可选字段出参（category/aliases/remark）
+  // ⚠️ 2026-09-25（round127/r128）**八次触发** —— 同一时机关卡第 8 次：M3 v1.2 批次 P0 授权改
+  //   saveCostCard / saveMaterial / syncCostCard（**已在 round116 白名单内**）+ getMaterial（新增登记）。
+  //   本批改动内容：M3.2 原料软删分支、M3.3 临时手工行（input_type=2）、M3.7 成本卡软删（按 card_code 全版本）、
+  //   M3.30 原料三可选字段出参。均为**投喂包显式授权**的后端改动，非「顺手改云函数逻辑」。
+  //   仍按 round103 的**白名单式**登记（精确到目录），**绝不放宽成 `cloudfunctions/` 全豁免**：
+  //   by=WorkBuddy / date=2026-09-25 / reason=round127 授权 M3 v1.2 P0（原料档案页 + 手工行 + 软删）
   // round110：以下三条是 sync_common 的**派生产物**（非云函数自有逻辑）——
   //   common/index.js 加一个导出，就会让全部 42 个函数的 cx_index.js 同步变动；
   //   新增单源文件则派生 cx_indicatorRef.js。精确到文件名登记，不做 cx_*.js 泛化豁免。

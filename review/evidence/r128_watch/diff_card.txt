@@ -1,0 +1,727 @@
+diff --git a/pages/card/edit.js b/pages/card/edit.js
+index e5d13bf..83d47e1 100644
+--- a/pages/card/edit.js
++++ b/pages/card/edit.js
+@@ -1,32 +1,37 @@
+-// pages/card/edit.js —— M3 成本卡新建 / 编辑（另存新版本）+ 反算售价
++// pages/card/edit.js —— M3 成本卡新建 / 编辑（另存新版本）+ 反算售价 + 批次 P0 补全
+ //
+ // ⚠️ 计算下沉：本页**不做任何金额/成本/反算计算**。
+ //   · 保存 → saveCostCard（后端内嵌引擎算 total_cost 落库）
+ //   · 反算售价 / 预览成本 → calcBom（纯计算云函数，返回 reverse_price_fen / unit_cost_fen）
++// ⚠️ 批次 P0（任务 3）补全：① 明细行临时手工录入（input_type=2，仅本卡生效）；
++//   ② 分类 + 标签字段；③ 活动特价（第二条毛利率）；④ 售价低于成本预警；⑤ 反算结果填入建议售价。
++//   · 手工行净料单位成本（万分）= round(单价元 × 10000 ÷ (出成率/100))，前端算一次（录入换算），
++//     保存传 net_unit_cost 快照、反算传同一值 —— 单源，不做第二份真相源。
+ const api = require('../../utils/api.js');
+ const ui = require('../../utils/ui.js');
+ const { TERMS } = require('../../miniprogram/i18n/terms.js');
+ 
+-// 明细行空行工厂（不携带 idx，索引唯一性统一由 renumber 维护）
+-function emptyLine() { return { material_id: '', material_name: '', qty: '' }; }
++// 明细行空行工厂（档案行）
++function emptyLine() { return { input_type: 1, material_id: '', material_name: '', qty: '' }; }
++// 手工行工厂
++function emptyManualLine() { return { input_type: 2, material_id: '', material_name: '', qty: '', unit_price_yuan: '', yield_rate: '100' }; }
+ 
+-// 🔴 修复（round123，李老师真机反馈）——`wx:key="idx"` 的唯一性维护。
+-// 现象：打开**已有多个原料**的菜品后，「添加明细行」/数量栏「输入不进去，一点就被清空或删行」。
+-// 根因：onLoad 预填时 `.map(() => ({ idx: 0, ... }))` 把**每一行的 idx 都写死成 0**
+-//   ⇒ wxml 的 `wx:key="idx"` 全部重复（微信告警 `Do not set same key`）
+-//   ⇒ 列表节点复用错乱：一次 setData 后输入框被错误复用/回写 ⇒ 表现为「输入即丢」。
+-//   旧 delLine 只 filter、不重排 idx（3 行删 1 行 ⇒ idx 变 0,2；再新增 ⇒ 0,2,2）会再制造重复键。
+-// 修法：凡改动 lines 的路径，末了都过一遍 renumber，保证 `idx === 数组下标`（唯一且稳定）。
+-//   业务侧仍以**数组下标**为准（wxml 用 `index` 取 data-idx），idx 字段只服务 wx:key。
+ function renumber(lines) {
+   return lines.map((l, i) => Object.assign({}, l, { idx: i }));
+ }
+ 
++// 手工行净料单位成本（万分）：round(单价元 × 10000 ÷ (出成率/100))
++function manualNetUnitWan(unitPriceYuan, yieldRate) {
++  const p = Number(unitPriceYuan) || 0;
++  const y = Number(yieldRate) || 100;
++  if (p <= 0) return 0;
++  return Math.round((p * 10000) / (y / 100));
++}
++
+ Page({
+   data: {
+     t: {
+       dishName: TERMS.card.dishName,
+-      // round108 修复：菜品名输入框的 placeholder（「如 宫保鸡丁」）此前没映射 ⇒ 取到 undefined ⇒ 空白
+       dishNamePh: TERMS.card.dishNamePh,
+       calcMode: TERMS.card.calcMode,
+       calcModeA: TERMS.card.calcModeA,
+@@ -48,6 +53,20 @@ Page({
+       cancel: TERMS.buttons.cancel,
+       loading: TERMS.ui.loading,
+       copyVersion: TERMS.card.copyVersion,
++      // 批次 P0（任务 3）
++      inputType: TERMS.card.inputType,
++      inputTypeArchive: TERMS.card.inputTypeArchive,
++      inputTypeManual: TERMS.card.inputTypeManual,
++      manualName: TERMS.card.manualName,
++      manualNamePh: TERMS.card.manualNamePh,
++      manualUnitPrice: TERMS.card.manualUnitPrice,
++      manualYield: TERMS.card.manualYield,
++      activityPrice: TERMS.card.activityPrice,
++      activityPriceHint: TERMS.card.activityPriceHint,
++      warnPriceBelowCost: TERMS.card.warnPriceBelowCost,
++      reverseApply: TERMS.card.reverseApply,
++      category: TERMS.card.category,
++      tags: TERMS.card.tags,
+     },
+     card_code: '',
+     isEdit: false,
+@@ -57,6 +76,9 @@ Page({
+     lossRate: 0,
+     auxYuan: 0,
+     priceYuan: 0,
++    activityPriceYuan: '',
++    category: '',
++    tags: '',
+     targetMargin: 60,
+     reversePriceFen: 0,
+     previewCostFen: 0,
+@@ -79,7 +101,6 @@ Page({
+       const mat = await api.call('getMaterial', {});
+       const materials = (mat.list || []).map((m) => ({ id: m.id, name: m.name, is_virtual: m.is_virtual, net_unit_cost: m.net_unit_cost }));
+       const init = { materials, loading: false };
+-      // 编辑：预填最新版本（另存新版本）
+       if (this.data.isEdit) {
+         const d = await api.call('getCostCard', { card_code: this.data.card_code });
+         const c = d.list && d.list[0];
+@@ -90,14 +111,20 @@ Page({
+           init.lossRate = c.loss_rate || 0;
+           init.auxYuan = api.fenToYuan(c.aux_fen, 2);
+           init.priceYuan = c.price_fen > 0 ? api.fenToYuan(c.price_fen, 2) : '';
+-          init.lines = renumber((c.lines || []).map((l) => ({ material_id: l.material_id, material_name: l.material_name, qty: String(l.quantity) })));
++          init.category = c.category || '';
++          init.tags = c.tags || '';
++          init.lines = renumber((c.lines || []).map((l) => {
++            if (l.material_id) {
++              return { input_type: 1, material_id: l.material_id, material_name: l.material_name, qty: String(l.quantity) };
++            }
++            // 手工行（material_id 空）：从快照反推净料单价（元/克），出成率固定 100（快照已是净料）
++            const unitPriceYuan = l.net_unit_cost ? (l.net_unit_cost / 10000).toFixed(4) : '';
++            return { input_type: 2, material_id: '', material_name: l.material_name, qty: String(l.quantity), unit_price_yuan: unitPriceYuan, yield_rate: '100' };
++          }));
+           init.previewCostFen = c.total_cost_fen || 0;
+           init.copyVersion = TERMS.card.copyVersion;
+         }
+       }
+-      // 🔴 修复（round123）：非编辑（新增）路径下 init.lines **从未被赋值**（只有 isEdit 分支里才赋）
+-      //   ⇒ 旧代码 `init.lines.length` 抛 TypeError ⇒ 被外层 catch 吞掉 ⇒ toast「系统异常，请稍后重试」
+-      //   ⇒ 这正是「点新增菜品就报系统异常」的真凶之一（纯前端、必现、与云端配额配置无关）。
+       if (!init.lines || init.lines.length === 0) init.lines = renumber([emptyLine()]);
+       this.setData(init);
+     } catch (e) {
+@@ -112,15 +139,46 @@ Page({
+   onLoss(e) { this.setData({ lossRate: e.detail.value }); },
+   onAux(e) { this.setData({ auxYuan: e.detail.value }); },
+   onPrice(e) { this.setData({ priceYuan: e.detail.value }); },
++  onActivityPrice(e) { this.setData({ activityPriceYuan: e.detail.value }); },
++  onCategory(e) { this.setData({ category: e.detail.value }); },
++  onTags(e) { this.setData({ tags: e.detail.value }); },
+   onTargetMargin(e) { this.setData({ targetMargin: e.detail.value }); },
+ 
++  // ===== 明细行 =====
+   onMaterialChange(e) {
+     const idx = e.currentTarget.dataset.idx;
+     const mi = Number(e.detail.value);
+     const m = this.data.materials[mi];
+     if (!m) return;
+     const lines = this.data.lines.slice();
+-    lines[idx] = Object.assign({}, lines[idx], { material_id: m.id, material_name: m.name });
++    lines[idx] = Object.assign({}, lines[idx], { input_type: 1, material_id: m.id, material_name: m.name });
++    this.setData({ lines });
++  },
++  // 切换录入方式（档案 ↔ 手工）
++  onLineType(e) {
++    const idx = Number(e.currentTarget.dataset.idx);
++    const val = e.currentTarget.dataset.val;   // 'archive' | 'manual'
++    const lines = this.data.lines.slice();
++    lines[idx] = val === 'manual' ? emptyManualLine() : emptyLine();
++    this.setData({ lines: renumber(lines) });
++  },
++  // 手工行：名称 / 单价 / 出成率
++  onManualName(e) {
++    const idx = Number(e.currentTarget.dataset.idx);
++    const lines = this.data.lines.slice();
++    lines[idx] = Object.assign({}, lines[idx], { material_name: e.detail.value });
++    this.setData({ lines });
++  },
++  onManualPrice(e) {
++    const idx = Number(e.currentTarget.dataset.idx);
++    const lines = this.data.lines.slice();
++    lines[idx] = Object.assign({}, lines[idx], { unit_price_yuan: e.detail.value });
++    this.setData({ lines });
++  },
++  onManualYield(e) {
++    const idx = Number(e.currentTarget.dataset.idx);
++    const lines = this.data.lines.slice();
++    lines[idx] = Object.assign({}, lines[idx], { yield_rate: e.detail.value });
+     this.setData({ lines });
+   },
+   onQty(e) {
+@@ -129,14 +187,10 @@ Page({
+     lines[idx] = Object.assign({}, lines[idx], { qty: e.detail.value });
+     this.setData({ lines });
+   },
+-  addLine() {
+-    // 末尾追加后整体重排 idx，保证「新增行」不会与残留 idx 撞键
+-    this.setData({ lines: renumber(this.data.lines.concat([emptyLine()])) });
+-  },
++  addLine() { this.setData({ lines: renumber(this.data.lines.concat([emptyLine()])) }); },
+   delLine(e) {
+     const idx = Number(e.currentTarget.dataset.idx);
+     const rest = this.data.lines.filter((l, i) => i !== idx);
+-    // 删中间行会让后续 idx 断号（如 0,2），再新增即撞键 ⇒ 必须重排；删空则保留一行空行
+     this.setData({ lines: renumber(rest.length ? rest : [emptyLine()]) });
+   },
+ 
+@@ -167,14 +221,27 @@ Page({
+     } catch (e) { api.toastError(e); }
+   },
+ 
++  // 反算结果填入建议售价（用户可再手改）
++  applyReverse() {
++    if (!this.data.reversePriceFen) { this.reverseCalc(); return; }
++    this.setData({ priceYuan: api.fenToYuan(this.data.reversePriceFen, 2) });
++  },
++
+   buildCalcLines() {
+-    // 由选中的原料 net_unit_cost（万分快照）构 calcBom 入参 lines
+     const out = [];
+     for (const l of this.data.lines) {
+-      if (!l.material_id || !l.qty) continue;
+-      const m = this.data.materials.find((x) => x.id === l.material_id);
+-      if (!m) continue;
+-      out.push({ quantity: Number(l.qty), net_unit_cost: m.net_unit_cost });
++      if (!l.qty) continue;
++      if (l.input_type === 2) {
++        // 手工行：前端算净料单位成本（录入换算），反算与保存用同一值（单源）
++        const wan = manualNetUnitWan(l.unit_price_yuan, l.yield_rate);
++        if (wan <= 0) continue;
++        out.push({ quantity: Number(l.qty), net_unit_cost: wan });
++      } else {
++        if (!l.material_id) continue;
++        const m = this.data.materials.find((x) => x.id === l.material_id);
++        if (!m) continue;
++        out.push({ quantity: Number(l.qty), net_unit_cost: m.net_unit_cost });
++      }
+     }
+     if (out.length === 0) { wx.showToast({ title: TERMS.card.qty, icon: 'none' }); return null; }
+     return out;
+@@ -183,18 +250,65 @@ Page({
+   // 保存 → saveCostCard（后端重算落库；编辑 = 带 card_code 另存新版本）
+   async onSave() {
+     if (!this.data.name.trim()) { wx.showToast({ title: TERMS.card.dishName, icon: 'none' }); return; }
+-    const lines = this.data.lines.filter((l) => l.material_id && l.qty);
++    // 售价低于成本预警（M3.7 #15）：先反算拿成本对比，不阻断保存
++    const priceFen = Math.round((Number(this.data.priceYuan) || 0) * 100);
++    if (priceFen > 0) {
++      const linesInput = this.buildCalcLines();
++      if (linesInput) {
++        let costFen = 0;
++        try {
++          const d = await api.call('calcBom', {
++            lines: linesInput,
++            mode: this.data.calcMode,
++            batch_output: this.data.calcMode === 'B' ? Number(this.data.batchOutput) : 0,
++            loss_pct: Number(this.data.lossRate) || 0,
++            auxYuan: Number(this.data.auxYuan) || 0,
++            target_margin_pct: 0,
++          });
++          costFen = d.unit_cost_fen || 0;
++        } catch (e) { /* 预警失败不阻断 */ }
++        if (costFen > 0 && priceFen < costFen) {
++          wx.showModal({
++            title: TERMS.card.warnPriceBelowCost,
++            content: TERMS.card.warnPriceBelowCost,
++            confirmColor: '#e74c3c',
++            cancelText: TERMS.buttons.cancel,
++            success: (r) => { if (r.confirm) this.doSave(); },
++          });
++          return;
++        }
++      }
++    }
++    this.doSave();
++  },
++
++  async doSave() {
++    const lines = [];
++    for (const l of this.data.lines) {
++      if (!l.qty) continue;
++      if (l.input_type === 2) {
++        const wan = manualNetUnitWan(l.unit_price_yuan, l.yield_rate);
++        if (wan <= 0) { wx.showToast({ title: TERMS.card.manualUnitPrice, icon: 'none' }); return; }
++        lines.push({ input_type: 2, name: (l.material_name || '').trim(), qty: Number(l.qty), net_unit_cost: wan });
++      } else {
++        if (!l.material_id) continue;
++        lines.push({ material_id: l.material_id, qty: Number(l.qty) });
++      }
++    }
+     if (lines.length === 0) { wx.showToast({ title: TERMS.card.material, icon: 'none' }); return; }
+     const card = {
+       name: this.data.name.trim(),
+       mode: this.data.calcMode,
+-      lines: lines.map((l) => ({ material_id: l.material_id, qty: Number(l.qty) })),
++      lines,
+       loss_pct: Number(this.data.lossRate) || 0,
+       auxYuan: Number(this.data.auxYuan) || 0,
+       priceYuan: Number(this.data.priceYuan) || 0,
++      category: this.data.category,
++      tags: this.data.tags,
++      activity_price_yuan: Number(this.data.activityPriceYuan) || 0,
+     };
+     if (this.data.calcMode === 'B') card.batch_output = Number(this.data.batchOutput) || 0;
+-    if (this.data.card_code) card.card_code = this.data.card_code; // 编辑 → 另存新版本
++    if (this.data.card_code) card.card_code = this.data.card_code;
+     try {
+       ui.setTitle(TERMS.buttons.save);
+       await api.call('saveCostCard', { card, client_request_id: 'cc_' + Date.now() });
+@@ -204,4 +318,4 @@ Page({
+   },
+ 
+   onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()); },
+-});
+\ No newline at end of file
++});
+diff --git a/pages/card/edit.wxml b/pages/card/edit.wxml
+index 64774af..b7630d9 100644
+--- a/pages/card/edit.wxml
++++ b/pages/card/edit.wxml
+@@ -19,22 +19,63 @@
+     <input class="val-input" type="number" value="{{batchOutput}}" bindinput="onBatch"  adjust-position="{{true}}" cursor-spacing="20" />
+   </view>
+ 
+-  <!-- 明细行 -->
++  <!-- 明细行（录入方式：档案选择 / 临时手工） -->
+   <view class="line" wx:for="{{lines}}" wx:key="idx">
+     <view class="cell2">
+-      <text class="lbl">{{t.material}}</text>
+-      <picker mode="selector" range="{{materials}}" range-key="name" data-idx="{{index}}" bindchange="onMaterialChange">
+-        <view class="picker">{{lines[index].material_name ? lines[index].material_name : t.material}}</view>
+-      </picker>
++      <text class="lbl">{{t.inputType}}</text>
++      <radio-group class="mode-group" data-idx="{{index}}" bindchange="onLineType">
++        <label class="mode-item"><radio value="archive" checked="{{lines[index].input_type !== 2}}" color="#1e3a5f"/>{{t.inputTypeArchive}}</label>
++        <label class="mode-item"><radio value="manual" checked="{{lines[index].input_type === 2}}" color="#1e3a5f"/>{{t.inputTypeManual}}</label>
++      </radio-group>
+       <button class="btn-small" style="background:none;color:#e74c3c;min-height:88rpx;" data-idx="{{index}}" catchtap="delLine">×</button>
+     </view>
+-    <view class="cell2">
+-      <text class="lbl">{{t.qty}}</text>
+-      <input class="val-input" type="digit" value="{{lines[index].qty}}" data-idx="{{index}}" bindinput="onQty"  adjust-position="{{true}}" cursor-spacing="20" />
+-    </view>
++
++    <!-- 档案选择行 -->
++    <block wx:if="{{lines[index].input_type !== 2}}">
++      <view class="cell2">
++        <text class="lbl">{{t.material}}</text>
++        <picker mode="selector" range="{{materials}}" range-key="name" data-idx="{{index}}" bindchange="onMaterialChange">
++          <view class="picker">{{lines[index].material_name ? lines[index].material_name : t.material}}</view>
++        </picker>
++      </view>
++      <view class="cell2">
++        <text class="lbl">{{t.qty}}</text>
++        <input class="val-input" type="digit" value="{{lines[index].qty}}" data-idx="{{index}}" bindinput="onQty"  adjust-position="{{true}}" cursor-spacing="20" />
++      </view>
++    </block>
++
++    <!-- 临时手工录入行（仅本卡生效） -->
++    <block wx:else>
++      <view class="cell2">
++        <text class="lbl">{{t.manualName}}</text>
++        <input class="val-input" value="{{lines[index].material_name}}" placeholder="{{t.manualNamePh}}" data-idx="{{index}}" bindinput="onManualName" />
++      </view>
++      <view class="cell2">
++        <text class="lbl">{{t.manualUnitPrice}}</text>
++        <input class="val-input" type="digit" value="{{lines[index].unit_price_yuan}}" data-idx="{{index}}" bindinput="onManualPrice"  adjust-position="{{true}}" cursor-spacing="20" />
++      </view>
++      <view class="cell2">
++        <text class="lbl">{{t.manualYield}}</text>
++        <input class="val-input" type="digit" value="{{lines[index].yield_rate}}" data-idx="{{index}}" bindinput="onManualYield"  adjust-position="{{true}}" cursor-spacing="20" />
++      </view>
++      <view class="cell2">
++        <text class="lbl">{{t.qty}}</text>
++        <input class="val-input" type="digit" value="{{lines[index].qty}}" data-idx="{{index}}" bindinput="onQty"  adjust-position="{{true}}" cursor-spacing="20" />
++      </view>
++    </block>
+   </view>
+   <button class="btn ghost btn-small" style="min-height:88rpx;" bindtap="addLine">{{t.addLine}}</button>
+ 
++  <!-- 分类 / 标签（后端 cardDoc 已有字段，本次真正传上去） -->
++  <view class="field">
++    <text class="lbl">{{t.category}}</text>
++    <input class="val-input" value="{{category}}" bindinput="onCategory" />
++  </view>
++  <view class="field">
++    <text class="lbl">{{t.tags}}</text>
++    <input class="val-input" value="{{tags}}" bindinput="onTags" />
++  </view>
++
+   <!-- 成本参数 -->
+   <view class="field">
+     <text class="lbl">{{t.lossRate}}</text>
+@@ -48,6 +89,11 @@
+     <text class="lbl">{{t.price}}</text>
+     <input class="val-input" type="digit" value="{{priceYuan}}" bindinput="onPrice"  adjust-position="{{true}}" cursor-spacing="20" />
+   </view>
++  <view class="field">
++    <text class="lbl">{{t.activityPrice}}</text>
++    <input class="val-input" type="digit" value="{{activityPriceYuan}}" bindinput="onActivityPrice"  adjust-position="{{true}}" cursor-spacing="20" />
++  </view>
++  <view class="hint">{{t.activityPriceHint}}</view>
+ 
+   <!-- 反算售价 -->
+   <view class="reverse">
+@@ -56,6 +102,7 @@
+       <input class="val-input" type="digit" value="{{targetMargin}}" bindinput="onTargetMargin"  adjust-position="{{true}}" cursor-spacing="20" />
+     </view>
+     <button class="btn ghost btn-small" style="min-height:88rpx;" bindtap="reverseCalc">{{t.reverseTitle}}</button>
++    <button class="btn-small" style="min-height:88rpx;margin-left:12rpx;" wx:if="{{reversePriceFen > 0}}" bindtap="applyReverse">{{t.reverseApply}}</button>
+     <view class="muted" wx:if="{{reversePriceFen > 0}}">{{t.reverseResult}}：{{t.cur}}{{reverseResultPreview}}</view>
+     <view class="muted" wx:if="{{previewCostFen > 0}}">{{t.totalCost}}：<text style="color:#1e3a5f;">{{t.cur}}{{previewCost}}</text></view>
+   </view>
+diff --git a/pages/card/index.js b/pages/card/index.js
+index 9b8d83a..1a370d8 100644
+--- a/pages/card/index.js
++++ b/pages/card/index.js
+@@ -1,12 +1,21 @@
+-// pages/card/index.js —— 批次 4/5 · M3 成本卡列表
+-// ⚠️ 批次 5 付费边界：只有「保存超限」「导出」才触发付费弹窗；
+-//   进入页面/查看历史/点开卡片**不弹**；M2 永不弹（本页即 M3，仅上述两类）。
+-// ⚠️ M3.22（批次 A1）：免费张数不再硬编码，一律取 checkQuota 出参（free_limit / used / hit_free_limit）。
++// pages/card/index.js —— 批次 4/5 / 批次 P0（M3 v1.2）· M3 成本卡列表
++// ⚠️ 批次 5 付费边界：只有「保存超限」「导出」才触发付费弹窗；M2 永不弹。
++// ⚠️ M3.22（批次 A1）：免费张数不再硬编码，一律取 checkQuota 出参。
++// ⚠️ 批次 P0（任务 2）：补齐搜索/筛选/删除（软删全部版本）/复制（新 card_code）/
++//   同步至原料最新价（接 syncCostCard，单张+批量）；加「原料档案」入口。
+ const api = require('../../utils/api.js');
+ const ui = require('../../utils/ui.js');
+ const { openPaywall } = require('../../utils/paywall.js');
+ const { TERMS } = require('../../miniprogram/i18n/terms.js');
+ 
++// 毛利率区间筛选项（v1.0 M3.8：≥60% 绿 / 40%~60% 黄 / <40% 红，未定价灰）
++const MARGIN_OPTIONS = [
++  { value: 'all', label: TERMS.card.marginAll },
++  { value: 'high', label: TERMS.card.marginHigh },
++  { value: 'mid', label: TERMS.card.marginMid },
++  { value: 'low', label: TERMS.card.marginLow },
++];
++
+ Page({
+   data: {
+     t: {
+@@ -28,8 +37,33 @@ Page({
+       goOrders: TERMS.pay.goOrders,
+       exportIng: TERMS.exp.exportIng,
+       exportDone: TERMS.exp.exportDone,
++      // 批次 P0（任务 2）
++      searchPh: TERMS.card.searchPh,
++      filterMargin: TERMS.card.filterMargin,
++      marginAll: TERMS.card.marginAll,
++      marginHigh: TERMS.card.marginHigh,
++      marginMid: TERMS.card.marginMid,
++      marginLow: TERMS.card.marginLow,
++      deleteCard: TERMS.card.deleteCard,
++      deleteCardConfirm: TERMS.card.deleteCardConfirm,
++      copyCard: TERMS.card.copyCard,
++      copyCardConfirm: TERMS.card.copyCardConfirm,
++      syncCard: TERMS.card.syncCard,
++      batchSync: TERMS.card.batchSync,
++      batchSyncConfirm: TERMS.card.batchSyncConfirm,
++      syncDone: TERMS.card.syncDone,
++      selectSync: TERMS.card.selectSync,
++      cancel: TERMS.buttons.cancel,
++      materialArchive: TERMS.card.materialListTitle,
+     },
++    all: [],           // 全量列表（前端过滤）
+     list: [],
++    keyword: '',
++    marginFilter: 'all',
++    marginLabel: '',   // 当前选中毛利率区间展示名
++    marginOptions: MARGIN_OPTIONS,
++    selectMode: false, // 批量同步选择模式
++    selected: {},      // { card_code: true }
+     loading: true,
+   },
+ 
+@@ -41,22 +75,50 @@ Page({
+       await api.ensureShop();
+       ui.setTitle(TERMS.card.listTitle);
+       const d = await api.call('getCostCard', {});
+-      const list = (d.list || []).map((c) => ({
++      const all = (d.list || []).map((c) => ({
+         card_code: c.card_code,
+         version: c.version,
+         name: c.name || '',
++        category: c.category || '',
++        tags: c.tags || '',
+         total_cost: api.fenToYuan(c.total_cost_fen, 2),
+         price: c.price_fen > 0 ? api.fenToYuan(c.price_fen, 2) : '—',
++        price_fen: c.price_fen,
+         margin: c.price_fen > 0 ? c.gross_margin_pct : null,
+         calc_mode: c.calc_mode,
+       }));
+-      this.setData({ list, loading: false });
++      this.setData({ all, loading: false });
++      this.applyFilter();
+     } catch (e) {
+       this.setData({ loading: false });
+       api.toastError(e);
+     }
+   },
+ 
++  onKeyword(e) { this.setData({ keyword: e.detail.value }); this.applyFilter(); },
++  onMarginFilter(e) {
++    const opt = this.data.marginOptions[Number(e.detail.value)];
++    this.setData({ marginFilter: opt ? opt.value : 'all', marginLabel: opt ? opt.label : '' });
++    this.applyFilter();
++  },
++
++  // 名称模糊 + 毛利率区间 前端过滤
++  applyFilter() {
++    const kw = this.data.keyword.trim().toLowerCase();
++    const mf = this.data.marginFilter;
++    const list = this.data.all.filter((c) => {
++      if (kw && !c.name.toLowerCase().includes(kw)) return false;
++      if (mf === 'high') return c.margin !== null && c.margin >= 60;
++      if (mf === 'mid') return c.margin !== null && c.margin >= 30 && c.margin < 60;
++      if (mf === 'low') return c.margin !== null && c.margin < 30;
++      return true;
++    });
++    this.setData({ list });
++  },
++
++  // 原料档案入口
++  goMaterial() { wx.navigateTo({ url: '/pages/material/index' }); },
++
+   // 新增：先配额预检（免费张数由后端 checkQuota 出参决定；进列表不弹）
+   async goAdd() {
+     try {
+@@ -81,7 +143,111 @@ Page({
+     wx.navigateTo({ url: '/pages/card/version?card_code=' + (cc || '') });
+   },
+   goOrders() { wx.navigateTo({ url: '/pages/pay/orders' }); },
+-  // 导出：付费功能，免费触发付费墙（M3 导出全禁）；权限判定只读 expire_at（前端先查 + 后端 exportData 兜底）
++
++  // ===== 批次 P0（任务 2）· 删除 / 复制 / 同步 =====
++  // 删除 = 软删该 card_code 所有版本（二次确认；历史版本不物理删）
++  onDelete(e) {
++    const cc = e.currentTarget.dataset.code;
++    wx.showModal({
++      title: TERMS.card.deleteCard,
++      content: TERMS.card.deleteCardConfirm,
++      confirmColor: '#e74c3c',
++      cancelText: TERMS.buttons.cancel,
++      success: async (r) => {
++        if (!r.confirm) return;
++        try {
++          await api.call('saveCostCard', { card: { _delete: true, card_code: cc }, client_request_id: 'ccd_' + Date.now() });
++          wx.showToast({ title: TERMS.card.deleteCard, icon: 'success' });
++          this.load();
++        } catch (err) { api.toastError(err); }
++      },
++    });
++  },
++
++  // 复制 = 基于最新版生成全新 card_code（复用 saveCostCard 不带 card_code → 新卡）
++  async onCopy(e) {
++    const cc = e.currentTarget.dataset.code;
++    wx.showModal({
++      title: TERMS.card.copyCard,
++      content: TERMS.card.copyCardConfirm,
++      confirmColor: '#1e3a5f',
++      cancelText: TERMS.buttons.cancel,
++      success: async (r) => {
++        if (!r.confirm) return;
++        try {
++          const d = await api.call('getCostCard', { card_code: cc });
++          const src = d.list && d.list[0];
++          if (!src) { api.toastError({ msg: TERMS.card.empty }); return; }
++          // 复制明细行：档案行 material_id+qty；手工行（material_id 空）→ input_type=2 + net_unit_cost 快照
++          const lines = (src.lines || []).map((l) => {
++            if (l.material_id) return { material_id: l.material_id, qty: l.quantity };
++            return { input_type: 2, name: l.material_name || '', qty: l.quantity, net_unit_cost: l.net_unit_cost };
++          });
++          const card = {
++            name: (src.name || '') + '',
++            mode: src.calc_mode || 'A',
++            lines,
++            loss_pct: src.loss_rate || 0,
++            aux_fen: src.aux_fen || 0,
++            price_fen: src.price_fen || 0,
++            category: src.category || '',
++            tags: src.tags || '',
++          };
++          if (card.mode === 'B') card.batch_output = src.batch_output || 0;
++          await api.call('saveCostCard', { card, client_request_id: 'ccc_' + Date.now() });
++          wx.showToast({ title: TERMS.card.copyCard, icon: 'success' });
++          this.load();
++        } catch (err) { api.toastError(err); }
++      },
++    });
++  },
++
++  // 同步单张至原料最新价（生成新版本，旧版本保留）
++  async onSync(e) {
++    const cc = e.currentTarget.dataset.code;
++    try {
++      wx.showLoading({ title: TERMS.exp.exportIng, mask: true });
++      await api.call('syncCostCard', { card_code: cc, client_request_id: 'ccs_' + Date.now() });
++      wx.hideLoading();
++      wx.showToast({ title: TERMS.card.syncDone, icon: 'success' });
++      this.load();
++    } catch (err) { wx.hideLoading(); api.toastError(err); }
++  },
++
++  // 批量同步：进入选择模式 → 多选 → 执行
++  onBatchSyncEnter() { this.setData({ selectMode: true, selected: {} }); },
++  onBatchSyncCancel() { this.setData({ selectMode: false, selected: {} }); },
++  onSelect(e) {
++    const cc = e.currentTarget.dataset.code;
++    const selected = Object.assign({}, this.data.selected);
++    if (selected[cc]) delete selected[cc]; else selected[cc] = true;
++    this.setData({ selected });
++  },
++  onBatchSyncRun() {
++    const codes = Object.keys(this.data.selected).filter((k) => this.data.selected[k]);
++    if (codes.length === 0) { wx.showToast({ title: TERMS.card.selectSync, icon: 'none' }); return; }
++    wx.showModal({
++      title: TERMS.card.batchSync,
++      content: TERMS.card.batchSyncConfirm,
++      confirmColor: '#1e3a5f',
++      cancelText: TERMS.buttons.cancel,
++      success: async (r) => {
++        if (!r.confirm) return;
++        wx.showLoading({ title: TERMS.exp.exportIng, mask: true });
++        try {
++          for (const cc of codes) {
++            await api.call('syncCostCard', { card_code: cc, client_request_id: 'ccb_' + cc + '_' + Date.now() });
++          }
++          wx.hideLoading();
++          wx.showToast({ title: TERMS.card.syncDone, icon: 'success' });
++          this.setData({ selectMode: false, selected: {} });
++          this.load();
++        } catch (err) { wx.hideLoading(); api.toastError(err); }
++      },
++    });
++  },
++
++  // 导出：付费功能，免费触发付费墙
+   async onExport() {
+     const ent = await require('../../utils/entitlement.js').fetchEntitlement().catch(() => null);
+     if (!ent || !ent.is_active) {
+@@ -92,23 +258,15 @@ Page({
+   },
+ 
+   async doExport() {
+-    wx.showLoading({ title: TERMS.exp.exportIng, mask: true });   // 进度提示：生成中不阻塞
++    wx.showLoading({ title: TERMS.exp.exportIng, mask: true });
+     try {
+-      const d = await api.call('exportData', {
+-        scope: 'm3_cards',
+-        format: 'excel',
+-        client_request_id: 'ex3_' + Date.now(),
+-      });
++      const d = await api.call('exportData', { scope: 'm3_cards', format: 'excel', client_request_id: 'ex3_' + Date.now() });
+       wx.hideLoading();
+       this.downloadContent(d.filename, d.content, d.format);
+       wx.showToast({ title: TERMS.exp.exportDone, icon: 'success' });
+-    } catch (e) {
+-      wx.hideLoading();
+-      api.toastError(e);
+-    }
++    } catch (e) { wx.hideLoading(); api.toastError(e); }
+   },
+ 
+-  // 落本地文件 + openDocument 预览（v1.0 简版导出）
+   downloadContent(filename, content, format) {
+     const fs = wx.getFileSystemManager();
+     const tmp = `${wx.env.USER_DATA_PATH}/${filename}`;
+@@ -118,4 +276,4 @@ Page({
+     } catch (e) { api.toastError(e); }
+   },
+   onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()); },
+-});
+\ No newline at end of file
++});
+diff --git a/pages/card/index.wxml b/pages/card/index.wxml
+index d71924b..a0c6db3 100644
+--- a/pages/card/index.wxml
++++ b/pages/card/index.wxml
+@@ -1,8 +1,26 @@
+ <view class="container safe-bottom">
+   <view class="hint">{{t.hintAlways}}</view>
+ 
+-  <view class="card2" wx:for="{{list}}" wx:key="card_code" bindtap="goEdit" data-code="{{item.card_code}}">
++  <!-- 搜索 + 筛选 + 原料档案入口 -->
++  <view class="inp"><input value="{{keyword}}" placeholder="{{t.searchPh}}" bindinput="onKeyword" /></view>
++  <view class="toolbar">
++    <picker mode="selector" range="{{marginOptions}}" range-key="label" bindchange="onMarginFilter">
++      <view class="tool-btn">{{t.filterMargin}}：{{marginLabel || t.marginAll}}</view>
++    </picker>
++    <button class="btn-small ghost tool-btn" bindtap="goMaterial">{{t.materialArchive}}</button>
++    <button class="btn-small ghost tool-btn" wx:if="{{!selectMode}}" bindtap="onBatchSyncEnter">{{t.batchSync}}</button>
++    <button class="btn-small tool-btn" wx:if="{{selectMode}}" bindtap="onBatchSyncCancel">{{t.cancel}}</button>
++  </view>
++
++  <!-- 批量同步：执行按钮 -->
++  <view wx:if="{{selectMode}}" class="batch-bar">
++    <text class="muted">{{t.selectSync}}</text>
++    <button class="btn-small" bindtap="onBatchSyncRun">{{t.batchSync}}</button>
++  </view>
++
++  <view class="card2" wx:for="{{list}}" wx:key="card_code" bindtap="{{selectMode ? 'onSelect' : 'goEdit'}}" data-code="{{item.card_code}}">
+     <view class="card-title">
++      <checkbox wx:if="{{selectMode}}" checked="{{selected[item.card_code]}}" data-code="{{item.card_code}}" catchtap="onSelect" />
+       {{item.name}}
+       <text class="tag">{{item.calc_mode === 'A' ? t.calcModeA : t.calcModeB}}</text>
+     </view>
+@@ -11,13 +29,16 @@
+       <text class="val">{{t.cur}}{{item.total_cost}}</text>
+     </view>
+     <view class="cell">
+-      <text class="lbl">{{t.price}}</text>
+-      <text class="val">{{item.margin === null ? '—' : (item.margin) + '%'}}</text>
++      <text class="lbl">{{t.grossMargin}}</text>
++      <text class="val" style="color:{{item.margin === null ? '#999' : (item.margin >= 60 ? '#22a06b' : (item.margin >= 40 ? '#b45309' : '#e74c3c'))}};">{{item.margin === null ? '—' : (item.margin) + '%'}}</text>
+     </view>
+-    <view class="row-ops">
++    <view class="row-ops" wx:if="{{!selectMode}}">
+       <button class="btn-small ghost" catchtap="goVersion" data-code="{{item.card_code}}">{{t.viewVersion}}</button>
+-      <text class="muted">{{t.version}} {{item.version}}</text>
++      <button class="btn-small ghost" catchtap="onCopy" data-code="{{item.card_code}}">{{t.copyCard}}</button>
++      <button class="btn-small ghost" catchtap="onSync" data-code="{{item.card_code}}">{{t.syncCard}}</button>
++      <button class="btn-small" style="background:none;color:#e74c3c;min-height:88rpx;" catchtap="onDelete" data-code="{{item.card_code}}">{{t.deleteCard}}</button>
+     </view>
++    <view class="muted" wx:if="{{!selectMode}}">{{t.version}} {{item.version}}</view>
+   </view>
+ 
+   <view wx:if="{{list.length === 0 && !loading}}" class="empty">{{t.empty}}</view>
+diff --git a/pages/card/index.wxss b/pages/card/index.wxss
+index 3039d8b..9330d7d 100644
+--- a/pages/card/index.wxss
++++ b/pages/card/index.wxss
+@@ -1,3 +1,9 @@
+-.row-ops { display: flex; justify-content: space-between; align-items: center; margin-top: 16rpx; }
++/* pages/card/index.wxss —— M3 成本卡列表 */
++.row-ops { display: flex; justify-content: space-between; align-items: center; margin-top: 16rpx; gap: 8rpx; flex-wrap: wrap; }
+ .row-ops .btn-small { margin-top: 0; }
+-.ops-row { display: flex; align-items: center; }
+\ No newline at end of file
++.ops-row { display: flex; align-items: center; }
++.toolbar { display: flex; align-items: center; gap: 12rpx; margin: 16rpx 0; flex-wrap: wrap; }
++.tool-btn { margin-top: 0; }
++.batch-bar { display: flex; justify-content: space-between; align-items: center; background: #e8eff7; border-radius: 12rpx; padding: 16rpx 24rpx; margin-bottom: 12rpx; }
++.batch-bar .btn-small { margin-top: 0; }
++.card-title checkbox { margin-right: 12rpx; }
+warning: in the working copy of 'pages/card/edit.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'pages/card/edit.wxml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'pages/card/index.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'pages/card/index.wxml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'pages/card/index.wxss', LF will be replaced by CRLF the next time Git touches it

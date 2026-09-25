@@ -1,0 +1,11 @@
+[    0s] inflight=1 msg=1771 upd=1790352065591
+[   30s] inflight=1 msg=1771 upd=1790352095570
+[   60s] inflight=1 msg=1771 upd=1790352114893
+[   90s] inflight=1 msg=1771 upd=1790352156645
+[  120s] inflight=1 msg=1771 upd=1790352186508
+[  150s] inflight=1 msg=1771 upd=1790352216514
+[  180s] inflight=1 msg=1771 upd=1790352217578
+[  210s] inflight=0 msg=1998 upd=1790352250069
+[  240s] inflight=0 msg=1998 upd=1790352250069
+[  270s] inflight=0 msg=1998 upd=1790352250069
+VERDICT=idle

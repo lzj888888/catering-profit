@@ -1,0 +1,13 @@
+diff --git a/app.json b/app.json
+index 1d410dd..1a90d30 100644
+--- a/app.json
++++ b/app.json
+@@ -12,6 +12,8 @@
+     "pages/card/index",
+     "pages/card/edit",
+     "pages/card/version",
++    "pages/material/index",
++    "pages/material/edit",
+     "pages/pay/orders",
+     "pages/shop/switch",
+     "pages/mine/index"
