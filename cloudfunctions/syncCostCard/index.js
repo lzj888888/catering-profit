@@ -69,12 +69,33 @@ exports.main = async (event) => {
   }
 
   // ===== 6. 用最新价重建快照明细 + 重算成本 =====
+  // M3.3（批次 P0）：input_type=1 行走 rebuildSnapshotLines（取原料**最新**价重算）；
+  //   input_type=2 临时手工行**原样保留快照**（不随原料价变、不查档案）。
+  //   ⚠️ 不改 rebuildSnapshotLines 具名函数，仅在 Controller 层分流合并。
   let newLines;
   try {
-    newLines = rebuildSnapshotLines(existingLines, materialsById);
+    newLines = rebuildSnapshotLines(existingLines.filter((l) => l.input_type !== 2), materialsById);
   } catch (e) {
     return fail(e.code || ERROR_CODES.SYSTEM_ERROR, e.message);
   }
+  // 手工行原样快照（material_id 空、保留原 net_unit_cost）
+  const manualLines = existingLines.filter((l) => l.input_type === 2).map((l) => ({
+    material_id: '',
+    material_name: l.material_name || '',
+    quantity: l.quantity || 0,
+    net_unit_cost: l.net_unit_cost || 0,
+    input_type: 2,
+  }));
+  const mergedNewLines = [];
+  let archiveCursor = 0;
+  for (const ln of existingLines) {
+    if (ln.input_type === 2) {
+      mergedNewLines.push(manualLines.shift());
+    } else {
+      mergedNewLines.push(Object.assign({}, newLines[archiveCursor++], { input_type: 1 }));
+    }
+  }
+  newLines = mergedNewLines;
   const p = cardParamFromDoc(latestCard);
   let result;
   try {
@@ -136,7 +157,7 @@ exports.main = async (event) => {
         quantity: ln.quantity,
         net_unit_cost: ln.net_unit_cost,   // 快照：原料最新净料单位成本
         line_net_cost: result.lines[i].line_net_cost_fen,
-        input_type: 1,
+        input_type: ln.input_type || 1,    // M3.3：按行真实值（1=档案 / 2=临时手工）
         sort_order: i + 1,
       });
       lineRows.push({ material_id: ln.material_id, net_unit_cost: ln.net_unit_cost, line_net_cost_fen: result.lines[i].line_net_cost_fen });

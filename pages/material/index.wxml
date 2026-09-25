@@ -1,0 +1,40 @@
+<view class="container safe-bottom" wx:if="{{!loading}}">
+  <!-- 搜索 + 分类筛选 -->
+  <view class="inp"><input value="{{keyword}}" placeholder="{{t.matSearchPh}}" bindinput="onKeyword" /></view>
+  <picker mode="selector" range="{{catOptions}}" range-key="label" bindchange="onCatFilter">
+    <view class="cell cat-picker">
+      <text class="lbl">{{t.filterCategory}}</text>
+      <text class="val">{{catLabel || t.marginAll}}</text>
+    </view>
+  </picker>
+
+  <!-- 原料列表 -->
+  <view class="card2" wx:for="{{list}}" wx:key="id" data-m="{{item}}" bindtap="goEdit">
+    <view class="card-title">
+      {{item.name}}
+      <text class="tag" wx:if="{{item.is_virtual}}">{{t.matVirtual}}</text>
+      <text class="tag" wx:else>{{item.category_label}}</text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.matBrand}}</text>
+      <text class="val">{{item.brand_spec || '—'}}</text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.matUnit}} / {{t.matPrice}}</text>
+      <text class="val">{{item.purchase_unit}} · {{t.cur}}{{item.purchase_price}}</text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.matNetCost}}</text>
+      <text class="val" style="color:#1e3a5f;">{{t.cur}}{{item.net_cost}}</text>
+    </view>
+    <view class="row-ops">
+      <button class="btn-small ghost" wx:if="{{!item.is_virtual}}" data-m="{{item}}" catchtap="goEdit">{{t.matEdit}}</button>
+      <button class="btn-small" style="background:none;color:#e74c3c;min-height:88rpx;" wx:if="{{!item.is_virtual}}" data-m="{{item}}" catchtap="onDelete">{{t.matDelete}}</button>
+    </view>
+  </view>
+
+  <view wx:if="{{list.length === 0 && !loading}}" class="empty">{{t.matEmpty}}</view>
+
+  <button class="btn primary" bindtap="goAdd">{{t.matAdd}}</button>
+</view>
+<view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

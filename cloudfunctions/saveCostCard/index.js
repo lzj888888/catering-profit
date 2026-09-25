@@ -22,7 +22,7 @@ const { resolveAuth, assertShopOwner, genId } = common;
 const { ERROR_CODES, ok, fail } = common;
 const { makeAdapter } = common.dataAdapter;
 const { nowUtc } = common.utilTime;
-const { buildSnapshotLines, calcCostCard, wouldCreateCycle, judgeCardQuota } = require('./service');
+const { buildSnapshotLines, calcCostCard, wouldCreateCycle, judgeCardQuota, netUnitCostWan } = require('./service');
 const { validateInput } = require('./validate');
 
 // 🔒 R73：重放形态的幂等实现已收回单源 common/idempotency.js::findPriorResult
@@ -93,12 +93,23 @@ exports.main = async (event) => {
     if (prior) return ok(prior); // 重复调用：直接返回首次结果，不重复落库
   }
 
-  // ===== 4. 读本卡引用的原料（DataAdapter.get 过滤软删）=====
+  // ===== 3.5. M3.7（批次 P0）软删分支：软删该 card_code 所有版本（is_deleted=true，历史版本不物理删）=====
+  if (v.card._delete) {
+    const cardsRes = await da.listIncludingDeleted('shop_cost_card', { shop_id: shopId, card_code: v.card.card_code });
+    const versions = (cardsRes && cardsRes.data) || [];
+    if (versions.length === 0) return fail(ERROR_CODES.RESOURCE_NOT_FOUND, `成本卡 ${v.card.card_code} 不存在`);
+    for (const c of versions) {
+      await da.softDelete('shop_cost_card', c._id || c.id, userId);
+    }
+    return ok({ shop_id: shopId, card_code: v.card.card_code, deleted: true, versions: versions.length, client_request_id: clientRequestId || '' });
+  }
+
+  // ===== 4. 读本卡引用的原料（仅 input_type=1 行；input_type=2 临时手工行不查档案）=====
   const card = v.card;
   const materialsById = new Map();
   let missing = null;
-  for (let pass = 0; pass < 2 && materialsById.size < card.lines.length; pass++) { /* no-op */ }
   for (const ln of card.lines) {
+    if (ln.input_type === 2) continue;               // 手工行无 material_id，不查档案
     if (materialsById.has(String(ln.material_id))) continue;
     const mat = await da.get('shop_material', String(ln.material_id));
     if (!mat) { missing = ln.material_id; break; }
@@ -107,13 +118,42 @@ exports.main = async (event) => {
   if (missing) return fail(ERROR_CODES.RESOURCE_NOT_FOUND, `引用的原料 ${missing} 不存在或已软删`);
 
   // ===== 5. 构建快照明细（含净料单位成本快照）+ 收集引用的虚拟 id =====
+  // M3.3（批次 P0）：input_type=1 行走 buildSnapshotLines（从原料档案取快照）；
+  //   input_type=2 行用 netUnitCostWan(单价分, 换算=1, 出成率) 就地算净料单位成本（不查档案、不落档案）。
+  //   ⚠️ 不改 buildSnapshotLines / netUnitCostWan 两具名函数，仅在 Controller 层分流合并。
   let snap;
   try {
-    snap = buildSnapshotLines(card.lines, materialsById);
+    snap = buildSnapshotLines(card.lines.filter((l) => l.input_type !== 2), materialsById);
   } catch (e) {
     if (e && e.code) return fail(e.code, e.message);
     return fail(ERROR_CODES.SYSTEM_ERROR, e && e.message);
   }
+  // 手工行快照（按 card.lines 原始顺序与档案行交错合并，保持 sort_order 稳定）
+  const manualLines = [];
+  for (const ln of card.lines) {
+    if (ln.input_type !== 2) continue;
+    // 净料单位成本：有 net_unit_cost 快照（复制/回填）直接用；否则 netUnitCostWan(单价分, 1, 出成率) 算
+    const nuc = (ln.net_unit_cost !== undefined)
+      ? ln.net_unit_cost
+      : netUnitCostWan(ln.unit_price_fen, 1, ln.yield_rate);
+    manualLines.push({
+      material_id: '',
+      material_name: ln.name,
+      quantity: ln.quantity,
+      net_unit_cost: nuc,
+      input_type: 2,
+    });
+  }
+  const mergedLines = [];
+  let archiveCursor = 0;
+  for (const ln of card.lines) {
+    if (ln.input_type === 2) {
+      mergedLines.push(manualLines.shift());
+    } else {
+      mergedLines.push(Object.assign({}, snap.lines[archiveCursor++], { input_type: 1 }));
+    }
+  }
+  snap.lines = mergedLines;
 
   // ===== 6. 循环引用预检（仅半成品"生产/引用半成品"参与；命中即拒、不入库）=====
   if (card.mode === 'B') {
@@ -208,6 +248,7 @@ exports.main = async (event) => {
     loss_rate: card.lossPct,
     aux_cost: card.auxFen,
     price_list: card.priceFen,
+    price_promo: card.activityPriceFen || 0,   // M3.3：活动特价（分，0=未设）
     total_cost: result.unit_cost_fen, // 落库必须为整数分（INT）
     material_total_fen: result.material_total_fen,
     gross_profit_fen: result.gross_profit_fen,
@@ -235,7 +276,7 @@ exports.main = async (event) => {
         quantity: ln.quantity,               // 用量（g 或 份）
         net_unit_cost: ln.net_unit_cost,     // 快照：净料单位成本（万分整数）★快照隔离本体
         line_net_cost: result.lines[i].line_net_cost_fen,
-        input_type: 1,
+        input_type: ln.input_type || 1,      // M3.3：按行真实值（1=档案 / 2=临时手工）
         sort_order: i + 1,
       });
       lineRows.push({

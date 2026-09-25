@@ -46,9 +46,19 @@ exports.main = async (event) => {
 
   // ===== 4. Service 计算净料单位成本（万分整数，4 位精度）=====
   const m = v.material;
+  const da = makeAdapter(db);
+
+  // ===== 4.5. M3.2（批次 P0）软删分支：虚拟原料不可删；普通原料软删（is_deleted=true）=====
+  if (m._delete) {
+    const exist = await da.get('shop_material', m.id);
+    if (!exist) return fail(ERROR_CODES.RESOURCE_NOT_FOUND, `原料 ${m.id} 不存在或已软删`);
+    if (exist.is_virtual) return fail(ERROR_CODES.INVALID_PARAM, '虚拟原料不可手动删除');
+    await da.softDelete('shop_material', exist._id || m.id, userId);
+    return ok({ shop_id: shopId, id: m.id, deleted: true, client_request_id: clientRequestId || '' });
+  }
+
   const netCostWan = netUnitCostWan(m.purchase_price_fen, m.convert_factor, m.yield_rate);
 
-  const da = makeAdapter(db);
   const now = nowUtc();
 
   let out;
@@ -74,6 +84,10 @@ exports.main = async (event) => {
         net_unit_cost: netCostWan,
         updated_at: now,
         is_deleted: false,
+        // M3.30（批次 P0）：三可选字段（category/aliases/remark）一并 update
+        category: m.category,
+        aliases: m.aliases,
+        remark: m.remark,
       },
     });
     out = { shop_id: shopId, id: m.id, client_request_id: clientRequestId || '' };
@@ -92,6 +106,10 @@ exports.main = async (event) => {
       yield_rate: m.yield_rate,
       net_unit_cost: netCostWan,
       is_virtual: m.is_virtual,
+      // M3.30（批次 P0）：三可选字段（category/aliases/remark）
+      category: m.category,
+      aliases: m.aliases,
+      remark: m.remark,
     });
     out = { shop_id: shopId, id, client_request_id: clientRequestId || '' };
   }

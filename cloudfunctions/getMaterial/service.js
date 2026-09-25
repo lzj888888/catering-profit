@@ -25,6 +25,10 @@ function docToOutput(doc) {
     is_virtual: !!doc.is_virtual,
     net_unit_cost: costWan,                 // 万分整数（0.0001元），精确快照值
     unit_cost_fen: unitCostFen,             // 分整数（用万分换算）
+    // M3.30（批次 P0）：三可选字段（供列表搜索/分类筛选；aliases 为 JSON 数组字符串，仅检索用）
+    category: doc.category || '',
+    aliases: doc.aliases || '[]',
+    remark: doc.remark || '',
   };
 }
 

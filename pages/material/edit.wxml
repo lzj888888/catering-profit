@@ -1,0 +1,52 @@
+<view class="form safe-bottom" wx:if="{{!loading}}">
+  <view class="field">
+    <text class="lbl">{{t.matName}}</text>
+    <input class="val-input" value="{{name}}" placeholder="{{t.matNamePh}}" bindinput="onName" />
+  </view>
+  <view class="field">
+    <text class="lbl">{{t.matBrand}}</text>
+    <input class="val-input" value="{{brand_spec}}" bindinput="onBrand" />
+  </view>
+  <view class="field">
+    <text class="lbl">{{t.matUnit}}</text>
+    <input class="val-input" value="{{purchase_unit}}" bindinput="onUnit" />
+  </view>
+  <view class="field">
+    <text class="lbl">{{t.matPrice}}</text>
+    <input class="val-input" type="digit" value="{{priceYuan}}" bindinput="onPrice"  adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+  <view class="field">
+    <text class="lbl">{{t.matConvert}}</text>
+    <input class="val-input" type="number" value="{{convert_factor}}" bindinput="onConvert"  adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+  <view class="hint">{{t.matConvertHint}}</view>
+  <view class="field">
+    <text class="lbl">{{t.matYield}}</text>
+    <input class="val-input" type="digit" value="{{yield_rate}}" bindinput="onYield"  adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+
+  <!-- 分类（下拉 6 类，采购视角） -->
+  <view class="field">
+    <text class="lbl">{{t.matCategory}}</text>
+    <picker mode="selector" range="{{categoryOptions}}" range-key="label" value="{{categoryIndex}}" bindchange="onCategory">
+      <view class="picker">{{categoryOptions[categoryIndex].label}}</view>
+    </picker>
+  </view>
+
+  <!-- 别名（逗号分隔，仅检索） -->
+  <view class="field">
+    <text class="lbl">{{t.matAliases}}</text>
+    <input class="val-input" value="{{aliasesYuan}}" bindinput="onAliases" />
+  </view>
+  <view class="hint">{{t.matAliasesHint}}</view>
+
+  <!-- 备注 -->
+  <view class="field">
+    <text class="lbl">{{t.matRemark}}</text>
+    <input class="val-input" value="{{remark}}" bindinput="onRemark" />
+  </view>
+
+  <view style="height:20rpx;"></view>
+  <button class="btn primary" style="margin-top:0;" bindtap="onSave">{{t.save}}</button>
+</view>
+<view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

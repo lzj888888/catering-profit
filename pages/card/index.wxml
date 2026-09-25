@@ -1,8 +1,26 @@
 <view class="container safe-bottom">
   <view class="hint">{{t.hintAlways}}</view>
 
-  <view class="card2" wx:for="{{list}}" wx:key="card_code" bindtap="goEdit" data-code="{{item.card_code}}">
+  <!-- 搜索 + 筛选 + 原料档案入口 -->
+  <view class="inp"><input value="{{keyword}}" placeholder="{{t.searchPh}}" bindinput="onKeyword" /></view>
+  <view class="toolbar">
+    <picker mode="selector" range="{{marginOptions}}" range-key="label" bindchange="onMarginFilter">
+      <view class="tool-btn">{{t.filterMargin}}：{{marginLabel || t.marginAll}}</view>
+    </picker>
+    <button class="btn-small ghost tool-btn" bindtap="goMaterial">{{t.materialArchive}}</button>
+    <button class="btn-small ghost tool-btn" wx:if="{{!selectMode}}" bindtap="onBatchSyncEnter">{{t.batchSync}}</button>
+    <button class="btn-small tool-btn" wx:if="{{selectMode}}" bindtap="onBatchSyncCancel">{{t.cancel}}</button>
+  </view>
+
+  <!-- 批量同步：执行按钮 -->
+  <view wx:if="{{selectMode}}" class="batch-bar">
+    <text class="muted">{{t.selectSync}}</text>
+    <button class="btn-small" bindtap="onBatchSyncRun">{{t.batchSync}}</button>
+  </view>
+
+  <view class="card2" wx:for="{{list}}" wx:key="card_code" bindtap="{{selectMode ? 'onSelect' : 'goEdit'}}" data-code="{{item.card_code}}">
     <view class="card-title">
+      <checkbox wx:if="{{selectMode}}" checked="{{selected[item.card_code]}}" data-code="{{item.card_code}}" catchtap="onSelect" />
       {{item.name}}
       <text class="tag">{{item.calc_mode === 'A' ? t.calcModeA : t.calcModeB}}</text>
     </view>
@@ -11,13 +29,16 @@
       <text class="val">{{t.cur}}{{item.total_cost}}</text>
     </view>
     <view class="cell">
-      <text class="lbl">{{t.price}}</text>
-      <text class="val">{{item.margin === null ? '—' : (item.margin) + '%'}}</text>
+      <text class="lbl">{{t.grossMargin}}</text>
+      <text class="val" style="color:{{item.margin === null ? '#999' : (item.margin >= 60 ? '#22a06b' : (item.margin >= 40 ? '#b45309' : '#e74c3c'))}};">{{item.margin === null ? '—' : (item.margin) + '%'}}</text>
     </view>
-    <view class="row-ops">
+    <view class="row-ops" wx:if="{{!selectMode}}">
       <button class="btn-small ghost" catchtap="goVersion" data-code="{{item.card_code}}">{{t.viewVersion}}</button>
-      <text class="muted">{{t.version}} {{item.version}}</text>
+      <button class="btn-small ghost" catchtap="onCopy" data-code="{{item.card_code}}">{{t.copyCard}}</button>
+      <button class="btn-small ghost" catchtap="onSync" data-code="{{item.card_code}}">{{t.syncCard}}</button>
+      <button class="btn-small" style="background:none;color:#e74c3c;min-height:88rpx;" catchtap="onDelete" data-code="{{item.card_code}}">{{t.deleteCard}}</button>
     </view>
+    <view class="muted" wx:if="{{!selectMode}}">{{t.version}} {{item.version}}</view>
   </view>
 
   <view wx:if="{{list.length === 0 && !loading}}" class="empty">{{t.empty}}</view>

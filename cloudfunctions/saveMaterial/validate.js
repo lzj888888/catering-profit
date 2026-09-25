@@ -11,6 +11,18 @@ function validateInput(event) {
 
   const m = src.material;
   if (!m || typeof m !== 'object') return err('material 必须是对象');
+
+  // M3.7/M3.2（批次 P0）：软删分支 —— _delete=true 时只校验 id，跳过 name/价格等必填。
+  if (m._delete === true) {
+    if (typeof m.id !== 'string' || !m.id) return err('删除原料需提供 material.id');
+    return {
+      error: null,
+      shop_id: src.shop_id,
+      material: { id: m.id, _delete: true, name: '', purchase_price_fen: 0, convert_factor: 1, yield_rate: 100, is_virtual: false },
+      input: { client_request_id: src.client_request_id || '' },
+    };
+  }
+
   if (typeof m.name !== 'string' || !m.name.trim()) return err('material.name 必须是非空字符串');
 
   // 采购单价：分整数
@@ -41,6 +53,10 @@ function validateInput(event) {
       convert_factor: convertFactor,
       yield_rate: yieldRate,
       is_virtual: !!m.is_virtual,
+      // M3.30（批次 P0）：三可选字段，类型兜底，不设必填
+      category: (typeof m.category === 'string') ? m.category : '',
+      aliases: (typeof m.aliases === 'string') ? m.aliases : '[]',
+      remark: (typeof m.remark === 'string') ? m.remark : '',
     },
     input: { client_request_id: src.client_request_id || '' },
   };

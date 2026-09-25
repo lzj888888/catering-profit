@@ -1,0 +1,3 @@
+/* pages/material/edit.wxss —— 原料新增/编辑表单页 */
+.val-input { text-align: right; font-size: 30rpx; width: 320rpx; }
+.picker { color: #1e3a5f; font-size: 30rpx; min-height: 88rpx; line-height: 88rpx; }

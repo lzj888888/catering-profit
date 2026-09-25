@@ -11,6 +11,18 @@ function validateInput(event) {
 
   const card = src.card;
   if (!card || typeof card !== 'object') return err('card 必须是对象');
+
+  // M3.7（批次 P0）软删分支：card._delete=true 时只校验 card_code，跳过 name/lines 必填。
+  if (card._delete === true) {
+    if (typeof card.card_code !== 'string' || !card.card_code) return err('删除菜品需提供 card.card_code');
+    return {
+      error: null,
+      shop_id: src.shop_id,
+      card: { _delete: true, card_code: card.card_code, name: '', mode: 'A', lines: [], auxFen: 0, lossPct: 0, batchOutput: 0, priceFen: 0, targetMarginPct: 0 },
+      input: { client_request_id: src.client_request_id || '' },
+    };
+  }
+
   if (typeof card.name !== 'string' || !card.name.trim()) return err('card.name 必须是非空字符串');
 
   const lines = card.lines || [];
@@ -18,14 +30,39 @@ function validateInput(event) {
   if (lines.length === 0) return err('card.lines 不能为空');
   const cLines = [];
   for (const ln of lines) {
-    if (!ln || typeof ln.material_id !== 'string' || !ln.material_id) {
-      return err('明细行 material_id 必须是非空字符串');
-    }
+    if (!ln || typeof ln !== 'object') return err('明细行必须是对象');
     const qty = ln.qty != null ? ln.qty : ln.quantity;
     if (typeof qty !== 'number' || !isFinite(qty) || qty <= 0) {
-      return err(`明细行 ${ln.material_id} 的 qty/quantity 必须是 >0 的 number（克或份）`);
+      return err(`明细行的 qty/quantity 必须是 >0 的 number（克或份）`);
     }
-    cLines.push({ material_id: ln.material_id, quantity: qty });
+    // M3.3（批次 P0）：录入方式 1=从原料档案选择 / 2=临时手工录入（默认 1）
+    const inputType = (ln.input_type === 2) ? 2 : 1;
+    if (inputType === 2) {
+      // 临时手工录入：material_id 为空、不存原料档案；须填名称。
+      // 净料单位成本二选一：① 录入时传 unit_price_fen + yield_rate（后端 netUnitCostWan 算）；
+      //   ② 复制/编辑回填时传 net_unit_cost（万分整数快照，直接落库，不再重算）。
+      if (typeof ln.name !== 'string' || !ln.name.trim()) return err('手工录入行 name 必须是非空字符串');
+      const upf = ln.unit_price_fen;
+      const yr = ln.yield_rate;
+      const nuc = ln.net_unit_cost;
+      const hasInput = (upf !== undefined && yr !== undefined);
+      const hasSnapshot = (nuc !== undefined);
+      if (hasInput && hasSnapshot) return err('手工录入行 unit_price_fen/yield_rate 与 net_unit_cost 二选一，不能同时传');
+      if (hasInput) {
+        if (typeof upf !== 'number' || !Number.isInteger(upf) || upf < 0) return err('手工录入行 unit_price_fen 必须是非负整数分（JSON number）');
+        if (typeof yr !== 'number' || !(yr > 0) || !isFinite(yr) || yr > 100) return err('手工录入行 yield_rate 必须是 (0,100] 的 number');
+      } else if (hasSnapshot) {
+        if (typeof nuc !== 'number' || !Number.isInteger(nuc) || nuc < 0) return err('手工录入行 net_unit_cost 必须是非负整数（万分快照）');
+      } else {
+        return err('手工录入行需传 unit_price_fen+yield_rate 或 net_unit_cost（二选一）');
+      }
+      cLines.push({ material_id: '', input_type: 2, name: ln.name.trim(), quantity: qty, unit_price_fen: hasInput ? upf : undefined, yield_rate: hasInput ? yr : undefined, net_unit_cost: hasSnapshot ? nuc : undefined });
+    } else {
+      if (typeof ln.material_id !== 'string' || !ln.material_id) {
+        return err('明细行 material_id 必须是非空字符串');
+      }
+      cLines.push({ material_id: ln.material_id, input_type: 1, quantity: qty });
+    }
   }
 
   // R81：mode 白名单 —— 非法值一律**响亮拒**，禁止静默兜底 A。
@@ -51,6 +88,11 @@ function validateInput(event) {
     : (typeof card.priceYuan === 'number' ? Math.round(card.priceYuan * 100) : 0);
   if (!Number.isInteger(priceFen) || priceFen < 0) return err('card.price_fen/priceYuan 建议售价必须是非负值');
 
+  // M3.3（批次 P0）活动特价：可选，非负分（或元 → 分）
+  const activityPriceFen = (typeof card.activity_price_fen === 'number') ? card.activity_price_fen
+    : (typeof card.activity_price_yuan === 'number' ? Math.round(card.activity_price_yuan * 100) : 0);
+  if (!Number.isInteger(activityPriceFen) || activityPriceFen < 0) return err('card.activity_price_* 活动特价必须是非负值');
+
   const targetMarginPct = (typeof card.target_margin_pct === 'number') ? card.target_margin_pct : 0;
 
   return {
@@ -64,6 +106,7 @@ function validateInput(event) {
       lossPct,
       batchOutput,
       priceFen,
+      activityPriceFen,
       targetMarginPct,
       card_code: (typeof card.card_code === 'string' && card.card_code) ? card.card_code : '',
       category: (typeof card.category === 'string') ? card.category : '',

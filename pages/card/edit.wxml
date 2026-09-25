@@ -19,21 +19,62 @@
     <input class="val-input" type="number" value="{{batchOutput}}" bindinput="onBatch"  adjust-position="{{true}}" cursor-spacing="20" />
   </view>
 
-  <!-- 明细行 -->
+  <!-- 明细行（录入方式：档案选择 / 临时手工） -->
   <view class="line" wx:for="{{lines}}" wx:key="idx">
     <view class="cell2">
-      <text class="lbl">{{t.material}}</text>
-      <picker mode="selector" range="{{materials}}" range-key="name" data-idx="{{index}}" bindchange="onMaterialChange">
-        <view class="picker">{{lines[index].material_name ? lines[index].material_name : t.material}}</view>
-      </picker>
+      <text class="lbl">{{t.inputType}}</text>
+      <radio-group class="mode-group" data-idx="{{index}}" bindchange="onLineType">
+        <label class="mode-item"><radio value="archive" checked="{{lines[index].input_type !== 2}}" color="#1e3a5f"/>{{t.inputTypeArchive}}</label>
+        <label class="mode-item"><radio value="manual" checked="{{lines[index].input_type === 2}}" color="#1e3a5f"/>{{t.inputTypeManual}}</label>
+      </radio-group>
       <button class="btn-small" style="background:none;color:#e74c3c;min-height:88rpx;" data-idx="{{index}}" catchtap="delLine">×</button>
     </view>
-    <view class="cell2">
-      <text class="lbl">{{t.qty}}</text>
-      <input class="val-input" type="digit" value="{{lines[index].qty}}" data-idx="{{index}}" bindinput="onQty"  adjust-position="{{true}}" cursor-spacing="20" />
-    </view>
+
+    <!-- 档案选择行 -->
+    <block wx:if="{{lines[index].input_type !== 2}}">
+      <view class="cell2">
+        <text class="lbl">{{t.material}}</text>
+        <picker mode="selector" range="{{materials}}" range-key="name" data-idx="{{index}}" bindchange="onMaterialChange">
+          <view class="picker">{{lines[index].material_name ? lines[index].material_name : t.material}}</view>
+        </picker>
+      </view>
+      <view class="cell2">
+        <text class="lbl">{{t.qty}}</text>
+        <input class="val-input" type="digit" value="{{lines[index].qty}}" data-idx="{{index}}" bindinput="onQty"  adjust-position="{{true}}" cursor-spacing="20" />
+      </view>
+    </block>
+
+    <!-- 临时手工录入行（仅本卡生效） -->
+    <block wx:else>
+      <view class="cell2">
+        <text class="lbl">{{t.manualName}}</text>
+        <input class="val-input" value="{{lines[index].material_name}}" placeholder="{{t.manualNamePh}}" data-idx="{{index}}" bindinput="onManualName" />
+      </view>
+      <view class="cell2">
+        <text class="lbl">{{t.manualUnitPrice}}</text>
+        <input class="val-input" type="digit" value="{{lines[index].unit_price_yuan}}" data-idx="{{index}}" bindinput="onManualPrice"  adjust-position="{{true}}" cursor-spacing="20" />
+      </view>
+      <view class="cell2">
+        <text class="lbl">{{t.manualYield}}</text>
+        <input class="val-input" type="digit" value="{{lines[index].yield_rate}}" data-idx="{{index}}" bindinput="onManualYield"  adjust-position="{{true}}" cursor-spacing="20" />
+      </view>
+      <view class="cell2">
+        <text class="lbl">{{t.qty}}</text>
+        <input class="val-input" type="digit" value="{{lines[index].qty}}" data-idx="{{index}}" bindinput="onQty"  adjust-position="{{true}}" cursor-spacing="20" />
+      </view>
+    </block>
   </view>
   <button class="btn ghost btn-small" style="min-height:88rpx;" bindtap="addLine">{{t.addLine}}</button>
+
+  <!-- 分类 / 标签（后端 cardDoc 已有字段，本次真正传上去） -->
+  <view class="field">
+    <text class="lbl">{{t.category}}</text>
+    <input class="val-input" value="{{category}}" bindinput="onCategory" />
+  </view>
+  <view class="field">
+    <text class="lbl">{{t.tags}}</text>
+    <input class="val-input" value="{{tags}}" bindinput="onTags" />
+  </view>
 
   <!-- 成本参数 -->
   <view class="field">
@@ -48,6 +89,11 @@
     <text class="lbl">{{t.price}}</text>
     <input class="val-input" type="digit" value="{{priceYuan}}" bindinput="onPrice"  adjust-position="{{true}}" cursor-spacing="20" />
   </view>
+  <view class="field">
+    <text class="lbl">{{t.activityPrice}}</text>
+    <input class="val-input" type="digit" value="{{activityPriceYuan}}" bindinput="onActivityPrice"  adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+  <view class="hint">{{t.activityPriceHint}}</view>
 
   <!-- 反算售价 -->
   <view class="reverse">
@@ -56,6 +102,7 @@
       <input class="val-input" type="digit" value="{{targetMargin}}" bindinput="onTargetMargin"  adjust-position="{{true}}" cursor-spacing="20" />
     </view>
     <button class="btn ghost btn-small" style="min-height:88rpx;" bindtap="reverseCalc">{{t.reverseTitle}}</button>
+    <button class="btn-small" style="min-height:88rpx;margin-left:12rpx;" wx:if="{{reversePriceFen > 0}}" bindtap="applyReverse">{{t.reverseApply}}</button>
     <view class="muted" wx:if="{{reversePriceFen > 0}}">{{t.reverseResult}}：{{t.cur}}{{reverseResultPreview}}</view>
     <view class="muted" wx:if="{{previewCostFen > 0}}">{{t.totalCost}}：<text style="color:#1e3a5f;">{{t.cur}}{{previewCost}}</text></view>
   </view>
