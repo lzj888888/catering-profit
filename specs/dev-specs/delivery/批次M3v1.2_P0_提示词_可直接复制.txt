@@ -10,9 +10,12 @@
 C:\Users\lzj\WorkBuddy\Claw\catering-profit
 
 🔴 **角色边界（本批次最重要的约束）**
-你**只改**这三个目录：`cloudfunctions/`、`pages/`、`app.json`。
-你**绝对不要改** `tools/` 下任何文件，也**绝对不要改** `specs/` 下任何文件
-（守卫与规范由门禁方维护；越界改动会被直接打回）。
+**可以改**：`cloudfunctions/`、`pages/`、`app.json`。
+**另有一处规范侧例外（唯一）**：术语双副本 `miniprogram/i18n/terms.js` 与
+`specs/dev-specs/i18n/terms.js` —— K11 守卫强制这两份**逐字一致**，而任何新可见文案都必须经它，
+所以本批次允许（且要求）你改这两个文件，改完必须 `diff -q` 自证一致。
+🔴 **绝对不要改**：`tools/` 下任何文件；`specs/` 下**除上述术语双副本之外**的任何文件。
+（守卫与规范由门禁方维护；越界改动会被直接打回。）
 
 ⚠️ **不得回退已落地的批次 A**：免费配额已改为"读 `feature_permissions.plan_free.limits` +
 写侧真拦截"（`saveCostCard/index.js`）。本批次**不得**把额度字面量写回业务代码，
@@ -148,10 +151,13 @@ M3 的**引擎是好的**：round125 实测双引擎对拍 5000 组零差异、S
    **禁止字符串传金额**。
 4. **R128 不预填**：任何"参考值/行业区间/模板默认值"**只准出现在 placeholder 或灰字提示**，
    **绝不预填进输入框、绝不自动写进字段**。
-5. **术语三处同步**：任何新的可见文案必须同时加到
-   ① `i18n/terms.js` ② `specs/dev-specs/i18n/terms.js`（双副本）③ `miniprogram/utils/input.js` 的 `t`
-   —— 否则 wxml 会取到**空串**。新增键统一挂 `card` 命名空间（如 `card.material.*`），
-   **不新建顶层命名空间**。
+5. **术语三处同步**（漏一处 ⇒ 页面渲染成**空白**；round108 实际翻车过）：
+   ① `miniprogram/i18n/terms.js` 的 `TERMS.card.*` —— 新增键统一挂 **`card`** 命名空间
+      （如 `TERMS.card.matName`），**不新建顶层命名空间**；
+   ② `specs/dev-specs/i18n/terms.js` —— **双副本，必须与 ① 逐字一致**（改完 `diff -q` 自证）；
+   ③ **每个新页面自己的 `data.t` 块** —— 页面 wxml 里用到的 `t.<键>`，必须在页面 js 里
+      显式映射一遍（`const { TERMS } = require('../../miniprogram/i18n/terms.js');`
+      ⇒ `data.t.xxx = TERMS.card.xxx`）。**wxml 里的 `t.x` 若在 `data.t` 没有对应项，取到的是空串。**
 6. **页面零硬编码**：文案、阈值、枚举一律取自单源（`terms.js` / 云端出参），不写死在 wxml。
 7. **新增字号下界 28rpx**（`26rpx` 会被守卫判红）。
 8. **错误码必须走 `msgOf()`**：不得把错误码原文直接弹给用户。
@@ -178,6 +184,36 @@ M3 的**引擎是好的**：round125 实测双引擎对拍 5000 组零差异、S
 ───────────────────────────────────────────────────────────────────
 · 不做套餐（v1.1 M3.16）· 不做外卖（M3.17）· 不做多规格（M3.15）· 不做词库/模板（M3.20）
 · 不做菜品毛利复盘（v1.2 M3.33，存储落法待裁决）
-· 不改 `tools/`（守卫）、不改 `specs/`（规范）—— 那是门禁方的活
+· 不改 `tools/`（守卫）；不改 `specs/`（**除术语双副本 `specs/dev-specs/i18n/terms.js` 外**）
+  —— 守卫与规范是门禁方的活
 · 不部署（部署由门禁方按 `-r` 铁律逐个执行）
+
+───────────────────────────────────────────────────────────────────
+八、已知会变红的门禁项（**看到了不要修**，那是门禁方的活）
+───────────────────────────────────────────────────────────────────
+**R101 `tools/check_page_manifest.js` 必然变红**。它的单源是
+`specs/dev-specs/上线材料_提审材料包_v1.md` §4「功能页面清单」，判据是
+「提审材料 ≡ `app.json::pages`」**双向逐条比对**（还含全仓「N 个页面」全集陈述）。
+你往 `app.json` 加 2 个页面后：声明条数 N 会与实算不符、§4 表格会缺这 2 行 —— **这是预期内的**，
+由门禁方在收码后同步。你**不要**改 `specs/` 下那个文件、**不要**改 `tools/`，
+**更不要**为了让门禁变绿而少登记页面或伪造空文件。
+
+**其它守卫要求你顺带满足（这些必须绿，属于你本批次的交付面）**：
+· **R44 `tools/check_pages.js`**：`app.json` 声明的每个页面，`pages/<路径>.js` 与 `.wxml`
+  **必须存在**；反之 `pages/` 下有 `.js` 而 `app.json` 未声明 = **孤儿页，判红**
+  ⇒ 新增的两页**必须登记进 `app.json`**，且四件套（`.js/.wxml/.json/.wxss`）请与 `pages/card/*` 同构。
+· **跳转目标必须在册**：页面里 `wx.navigateTo` 等解析出的目标页，必须已登记进 `app.json::pages`
+  （`tools/check_flow_entry_and_fold.js` 的 B3-① 会反查 app.json，跳不存在的页只报错不提示）。
+· **🔴 这一行写法一字不能改**：`cloudfunctions/saveMaterial/index.js` 里的
+  `await db.collection('shop_material').doc(exist._id || m.id).update({` ——
+  `tools/check_doc_id_write.js` 拿它当锚点（写库必须用权威主键 `_id`）。
+  你可以往它的 `data` 里加字段，但**这个取主键的写法不许动**。
+· **不要新增 `tools/` 下任何文件**（含 selftest）——套件数与断言数的声明处由门禁方维护，
+  你加文件会让「套件数/断言数一致性」类守卫判红，而修它又要动 `tools/` ⇒ 连环越界。
+· **新 `.wxss` 不得引入已下线色值**（旧橘黄 `#ff6b35` 等）；色值取 `app.wxss` 单源
+  （`tools/check_theme_color.js` 会判红）。
+· **`.wxml` 结构**：`<input>` 这类自闭合标签**不得写在属性集合中间**被 `/>` 提前收掉
+  （`tools/check_wxml_structure.js` 会判红）。
+· 新增文案**不得含禁用词**（`TERMS.forbidden`），也**不得把中文硬编码进 `.wxml`**
+  （`tools/check_terms_forbidden.js` 剥注释后扫描可见文案）。
 ═══════════════════════════════════════════════════════════════════
