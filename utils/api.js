@@ -45,6 +45,14 @@ module.exports = {
       // 此时 msgOf(undefined) 会统统显示「系统异常」，掩盖真实原因 → 打印原文供定位。
       if (r.error) console.error('[api.call] 云函数执行异常:', name, '| error =', r.error);
       const msg = (terms && terms.msgOf) ? terms.msgOf(r.code) : (r.msg || '操作失败');
+      // 2026-09-25 加固：后端 `fail(code, msg)` 携带的具体 msg 此前被「code → i18n 文案」映射**整条覆盖**。
+      //   实例：checkQuota 返回 {code:'SYSTEM_ERROR', msg:'配额配置缺失（plan_id=plan_free）'}
+      //   ⇒ 前端只显示「系统异常，请稍后重试」，且 r.error 为空 ⇒ 连上一条 console.error 都不触发
+      //   ⇒ 真机事故时排障信息归零（本次「点新增菜品报系统异常」即被此掩盖）。
+      //   此处**不改 UI 文案口径**（仍统一走 msgOf/i18n），只把后端原始 msg 落日志供真机调试查看。
+      if (r.msg && r.msg !== msg) {
+        console.warn('[api.call] 后端原始 msg:', name, '| code =', r.code, '| msg =', r.msg);
+      }
       throw { code: r.code || 'SYSTEM_ERROR', msg };
     }
     return r.data || {};

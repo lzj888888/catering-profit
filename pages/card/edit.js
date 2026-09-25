@@ -7,6 +7,21 @@ const api = require('../../utils/api.js');
 const ui = require('../../utils/ui.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 
+// 明细行空行工厂（不携带 idx，索引唯一性统一由 renumber 维护）
+function emptyLine() { return { material_id: '', material_name: '', qty: '' }; }
+
+// 🔴 修复（round123，李老师真机反馈）——`wx:key="idx"` 的唯一性维护。
+// 现象：打开**已有多个原料**的菜品后，「添加明细行」/数量栏「输入不进去，一点就被清空或删行」。
+// 根因：onLoad 预填时 `.map(() => ({ idx: 0, ... }))` 把**每一行的 idx 都写死成 0**
+//   ⇒ wxml 的 `wx:key="idx"` 全部重复（微信告警 `Do not set same key`）
+//   ⇒ 列表节点复用错乱：一次 setData 后输入框被错误复用/回写 ⇒ 表现为「输入即丢」。
+//   旧 delLine 只 filter、不重排 idx（3 行删 1 行 ⇒ idx 变 0,2；再新增 ⇒ 0,2,2）会再制造重复键。
+// 修法：凡改动 lines 的路径，末了都过一遍 renumber，保证 `idx === 数组下标`（唯一且稳定）。
+//   业务侧仍以**数组下标**为准（wxml 用 `index` 取 data-idx），idx 字段只服务 wx:key。
+function renumber(lines) {
+  return lines.map((l, i) => Object.assign({}, l, { idx: i }));
+}
+
 Page({
   data: {
     t: {
@@ -75,12 +90,15 @@ Page({
           init.lossRate = c.loss_rate || 0;
           init.auxYuan = api.fenToYuan(c.aux_fen, 2);
           init.priceYuan = c.price_fen > 0 ? api.fenToYuan(c.price_fen, 2) : '';
-          init.lines = (c.lines || []).map((l) => ({ idx: 0, material_id: l.material_id, material_name: l.material_name, qty: String(l.quantity) }));
+          init.lines = renumber((c.lines || []).map((l) => ({ material_id: l.material_id, material_name: l.material_name, qty: String(l.quantity) })));
           init.previewCostFen = c.total_cost_fen || 0;
           init.copyVersion = TERMS.card.copyVersion;
         }
       }
-      if (init.lines.length === 0) init.lines = [{ idx: 0, material_id: '', material_name: '', qty: '' }];
+      // 🔴 修复（round123）：非编辑（新增）路径下 init.lines **从未被赋值**（只有 isEdit 分支里才赋）
+      //   ⇒ 旧代码 `init.lines.length` 抛 TypeError ⇒ 被外层 catch 吞掉 ⇒ toast「系统异常，请稍后重试」
+      //   ⇒ 这正是「点新增菜品就报系统异常」的真凶之一（纯前端、必现、与云端配额配置无关）。
+      if (!init.lines || init.lines.length === 0) init.lines = renumber([emptyLine()]);
       this.setData(init);
     } catch (e) {
       this.setData({ loading: false });
@@ -112,14 +130,14 @@ Page({
     this.setData({ lines });
   },
   addLine() {
-    const lines = this.data.lines.slice();
-    lines.push({ idx: lines.length, material_id: '', material_name: '', qty: '' });
-    this.setData({ lines });
+    // 末尾追加后整体重排 idx，保证「新增行」不会与残留 idx 撞键
+    this.setData({ lines: renumber(this.data.lines.concat([emptyLine()])) });
   },
   delLine(e) {
-    const idx = e.currentTarget.dataset.idx;
-    const lines = this.data.lines.filter((l, i) => i !== idx);
-    this.setData({ lines: lines.length ? lines : [{ idx: 0, material_id: '', material_name: '', qty: '' }] });
+    const idx = Number(e.currentTarget.dataset.idx);
+    const rest = this.data.lines.filter((l, i) => i !== idx);
+    // 删中间行会让后续 idx 断号（如 0,2），再新增即撞键 ⇒ 必须重排；删空则保留一行空行
+    this.setData({ lines: renumber(rest.length ? rest : [emptyLine()]) });
   },
 
   // 反算售价 / 预览成本：调 calcBom（后端纯计算），不本地算
