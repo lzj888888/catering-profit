@@ -63,16 +63,17 @@ key(VK['B'], ctrl=True)          # Ctrl+B 编译
 
 | 路径 | 内容 |
 |---|---|
-| `SKILL.md` | 技能入口（触发词 / 能力速查 / 15 条硬教训 / 安全护栏） |
+| `SKILL.md` | 技能入口（触发词 / 能力速查 / 29 条硬教训 / 安全护栏） |
 | `scripts/win_gui.py` | 核心驱动，模块 + CLI 双形态 |
 | `scripts/ocr_screen.py` | OCR 读屏/读图（list/read/find/shot/watch），依赖在 `vendor/ocrlibs/` |
 | `scripts/bootstrap.py` | 换机体检 + `--install` 装依赖 + `--hint` 打印提醒词 |
 | `scripts/hook_reminder.py` | **常驻提醒钩子本体**（SessionStart 注入定位 / UserPromptSubmit 命中关键词注入避坑） |
 | `scripts/install_hooks.py` | 把钩子幂等装进 `~/.workbuddy/settings.json`（含 `--status` / `--remove`） |
 | `scripts/pack.py` | 打包成 zip，便于拷贝到别的电脑 |
+| `scripts/examples/` | 实战脚本族：`cloudbase_index`（批量建索引）/ `cloudbase_deploy`（云函数部署 runbook）/ `cloudbase_smoketest`（冒烟） |
 | `vendor/ocrlibs/` | OCR 依赖自带（winocr + winrt-*），离线可用 |
-| `references/pitfalls.md` | **26 条踩坑全集**（症状 → 真因 → 对策） |
-| `references/recipes.md` | 13 个照抄配方（DevTools 验收、控制台日志导出、OCR 读屏、锚点/颜色定位按钮、哨兵法…） |
+| `references/pitfalls.md` | **35 条踩坑全集**（症状 → 真因 → 对策；P21 起为持续追加，以标题判断类目） |
+| `references/recipes.md` | 15 个照抄配方（DevTools 验收、控制台日志导出、OCR 读屏、锚点/颜色定位按钮、哨兵法、**云开发控制台建索引 14/14.1 + 跑云函数/云端测试 15**…） |
 | `references/playbook.md` | **装配图**：统一前置 + 标准闭环七步 + 能力搭配决策树 + 与既有方法学嫁接 |
 | `references/install.md` | 换电脑 / 给别人安装的完整步骤（含 OCR 语言包说明） |
 | `references/reminder.md` | 给新会话的「提醒词」，复制发给 Agent 即可唤醒能力 |

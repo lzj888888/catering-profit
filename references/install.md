@@ -17,11 +17,12 @@ win-desktop-control/
 │  ├─ hook_reminder.py      常驻提醒钩子本体（SessionStart / UserPromptSubmit 调用）
 │  ├─ install_hooks.py      把钩子装进 WorkBuddy 全局设置（幂等，含 --remove/--status）
 │  └─ pack.py               打包成 zip
+│  （scripts/examples/ 为实战脚本族：cloudbase_index 建索引 / cloudbase_deploy 部署 / cloudbase_smoketest 冒烟）
 ├─ vendor/
 │  └─ ocrlibs/              OCR 依赖自带（winocr + winrt-*，约 3.5 MB，离线可用）
 └─ references/
-   ├─ pitfalls.md           踩坑全集（26 条）
-   ├─ recipes.md            实战配方（13 个）
+   ├─ pitfalls.md           踩坑全集（35 条；P21 起为持续追加，以标题判断类目）
+   ├─ recipes.md            实战配方（15 个）
    ├─ playbook.md           装配图（统一前置 / 闭环七步 / 决策树 / 方法学嫁接）
    ├─ install.md            本文件
    └─ reminder.md           给新会话的提醒词
