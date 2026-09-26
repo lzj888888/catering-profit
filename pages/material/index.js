@@ -6,6 +6,7 @@
 // ⚠️ 删除 = 软删除；被成本卡引用时提示但允许删（快照不受影响）。
 const api = require('../../utils/api.js');
 const ui = require('../../utils/ui.js');
+const units = require('../../utils/units.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 
 // category 枚举 → 展示名（单源映射：值域 meat/veg/dry/season/pack/other）
@@ -75,7 +76,9 @@ Page({
         //   列表里一眼看清"这价是按什么单位报的"，而不是只看到一个裸数字）
         convert_factor: m.convert_factor || 0,
         yield_rate: m.yield_rate || 0,
-        spec_line: '1 ' + (m.purchase_unit || TERMS.card.matUnitDefault) + ' = ' + (m.convert_factor || 0) + ' 克'
+        // round151：基准单位词随计量族走（重量→克 / 体积→毫升 / 计数→个）—— 由 units.baseWordOf 单源给出。
+        //   改前写死「克」⇒ 按「箱/个」采购的原料会显示成「1 箱 = 24 克」，纯误导。
+        spec_line: '1 ' + (m.purchase_unit || TERMS.card.matUnitDefault) + ' = ' + (m.convert_factor || 0) + ' ' + units.baseWordOf(m.purchase_unit || TERMS.card.matUnitDefault)
           + (m.yield_rate ? ' · ' + TERMS.card.matYield.replace(/（%）$/, '') + ' ' + m.yield_rate + '%' : ''),
         net_cost: m.net_unit_cost > 0 ? (m.net_unit_cost / 10000).toFixed(4) : '0.0000',
         is_virtual: !!m.is_virtual,

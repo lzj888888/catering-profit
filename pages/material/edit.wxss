@@ -6,3 +6,13 @@
 .chip-row { display: flex; flex-wrap: wrap; margin-top: 12rpx; }
 .chip { font-size: 28rpx; padding: 10rpx 22rpx; margin: 0 12rpx 12rpx 0; border-radius: 24rpx; background: #e8eff7; color: #1e3a5f; }
 .chip-on { background: #1e3a5f; color: #fff; }
+
+/* round151：采购单位改成「输入框 + ▾」包裹层 —— 箭头让"能选、能改"看得见（真机实测反馈：
+   改前是裸 input，老板以为那一格只是显示了个字）。⚠️ 仍保留 input 自由填「箱/桶/提」，
+   不改成纯 picker：picker 选不出这些，且弹层×键盘在真机上是死结（PITFALLS §6）。 */
+.pick-wrap { display: flex; align-items: center; }
+.pick-input { flex: 1; width: auto; }
+.pick-caret { flex: none; min-width: 44rpx; margin-left: 12rpx; text-align: center; font-size: 28rpx; color: #1e3a5f; }
+
+/* round151：picker 补下拉箭头。改前 `.picker` 只有文字样式，真机上看着不像可点。 */
+.picker::after { content: '▾'; margin-left: 12rpx; font-size: 28rpx; color: #1e3a5f; }

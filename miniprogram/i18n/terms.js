@@ -615,7 +615,11 @@ const TERMS = {
     matDeleteConfirm: '删除后该原料不再出现在列表，但已保存成本卡的快照不受影响。确定删除？',
     matVirtual: '虚拟原料',
     matVirtualReadonly: '虚拟原料由半成品卡自动生成，不可手动编辑或删除',
-    matConvert: '换算系数（→克）',
+    // round151：基准单位词随**采购单位的计量族**走（重量→克 / 体积→毫升 / 计数→个）。
+    //   改前恒为「→克」，按「个/箱」买的老板看到的字面量根本没有对应含义。
+    //   ⚠️ 族表单源在 `utils/units.js::UNIT_FAMILY`，本处**只拼串、不抄表**。
+    matConvert: '换算系数',
+    matConvertOf: (w) => `换算系数（→${w}）`,
     matConvertHint: '1 斤 = 500 克',
     matYield: '出成率（%）',
     catMeat: '肉类',
@@ -647,7 +651,10 @@ const TERMS = {
     inputTypeManual: '临时手工录入',
     manualName: '原料名称',
     manualNamePh: '临时原料名，仅本卡生效',
-    manualUnitPrice: '单价（元/克）',
+    // round151：单价**单位可选**（元/斤、元/个…）—— 改前写死「元/克」，老板买 6 元/斤的肉
+    //   得自己心算成 0.012 才敢填。现在选「斤」直接填 6，提交前由 `units.priceToBase` 折算回元/克。
+    //   ⚠️ 单位**由右侧 picker 显示**，label 保持中性的「单价」⇒ 不再把单位拼进标签（不做第二份口径）。
+    manualUnitPrice: '单价',
     manualYield: '出成率（%）',
     activityPrice: '活动特价（元）',
     activityPriceHint: '活动期间的挂牌价，用于计算第二条毛利率',
@@ -668,7 +675,11 @@ const TERMS = {
     //   参考外部产品：采购单价 + 采购单位 / 单次用量 + 用量单位，各自独立可选。
     //   ⚠️ 数值（单位倍率 + 建议换算系数）单源在 `utils/units.js`，本处**只放文案**，不许抄表。
     matUnitHint: '点一下填常用单位；换算系数会自动带出建议值，可再手改',
-    matConvertHintOf: (u, f) => `1 ${u} = ${f} 克（净料口径）`,
+    // round151：第三参 = 基准单位词（由 `units.baseWordOf()` 给出，页面传进来；本处不抄表）
+    matConvertHintOf: (u, f, w) => `1 ${u} = ${f} ${w}（净料口径）`,
+    // round151：跨计量族提示（不拦截）。参考产品在这里栽过 —— 采购「个」× 用量「千克」
+    //   它静默按 1:1 硬算，界面跳出 ¥6,000,000.00 一个字都不提示（实测）。
+    unitCrossWarn: (pu, qu) => `该原料按「${pu}」采购，这里按「${qu}」用：两者没有通用换算，成本会失真`,
     qtyUnit: '用量单位',
     qtyUnitHint: '按做菜手感选；换单位会自动换算数量，成本不变',
     matSpecHintOf: (p, u, f, yr, net) => `${p} 元/${u} ÷ ${f} ÷ 出成率 ${yr}% ⇒ 净料 ${net} 元/克`,

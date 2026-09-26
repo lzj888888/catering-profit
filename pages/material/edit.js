@@ -51,7 +51,12 @@ Page({
     purchase_unit: TERMS.card.matUnitDefault,
     // 采购单位建议池：**只许追加**（旧档案里是自由文本，删值会让老数据找不到对应项）
     unitChips: units.PURCHASE_UNITS.slice(),
-    convertHint: '',    // 动态：1 <采购单位> = <换算系数> 克（净料口径）
+    // round151：建议池 chips 的展开态。默认展开 —— 改前 chips 就是常驻可见的，保持既有观感（▾ 只用来收起）
+    unitChipsOpen: true,
+    convertHint: '',    // 动态：1 <采购单位> = <换算系数> <基准单位词>（净料口径）
+    // round151：换算系数标签的基准词随**计量族**走（→克 / →毫升 / →个）。
+    //   ⚠️ 改前恒为「换算系数（→克）」⇒ 按「个/箱」采购的老板看到的字面量根本没有对应含义。
+    convertLabel: '',
     priceYuan: '',
     // 默认换算系数 = 「默认采购单位（斤）」的建议值，取自单源 units.js（页面不写死 500）
     convert_factor: String(units.suggestConvert(TERMS.card.matUnitDefault) || 1),
@@ -118,11 +123,19 @@ Page({
     if (sug != null) patch.convert_factor = String(sug);
     this.setData(patch, () => this.refreshUnitHint());
   },
-  // 动态换算说明：1 <采购单位> = <换算系数> 克（把口径写在用户眼前，不靠他猜）
+  // round151：▾ 展开/收起建议池。与 pickUnit 分开两件事 —— 点单位是选中，点箭头是收放。
+  toggleUnitChips() { this.setData({ unitChipsOpen: !this.data.unitChipsOpen }); },
+  // 动态换算说明：1 <采购单位> = <换算系数> <基准单位词>（把口径写在用户眼前，不靠他猜）
+  //   round151：基准词由 `units.baseWordOf()` 单源给出（重量→克 / 体积→毫升 / 计数→个）。
+  //   页面**不得**自己写「克」—— 那是第二份口径表（守卫 tools/check_unit_family.js 反查）。
   refreshUnitHint() {
     const u = String(this.data.purchase_unit || TERMS.card.matUnitDefault).trim() || TERMS.card.matUnitDefault;
     const f = Number(this.data.convert_factor) || 0;
-    this.setData({ convertHint: TERMS.card.matConvertHintOf(u, f) });
+    const w = units.baseWordOf(u);
+    this.setData({
+      convertLabel: TERMS.card.matConvertOf(w),
+      convertHint: TERMS.card.matConvertHintOf(u, f, w),
+    });
   },
   onYield(e) { this.setData({ yield_rate: e.detail.value }); },
   onCategory(e) { this.setData({ categoryIndex: Number(e.detail.value) }); },

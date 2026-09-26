@@ -1,0 +1,17 @@
+===== R151 变异回灌（守卫 tools/check_unit_family.js）=====
+[基线] rc=0 | ❌ 0 条
+✅ M1 用量池改回 4 项（池漂移） | rc=1 | 期望红 | 点名=❌ L3 单位池漂移 —— 两池长度不等：用量 4 / 采购 14 | 命中关键词[L3 单位池漂移]=true | 还原md5全等=true
+✅ M2 倍率表删掉「箱」 | rc=1 | 期望红 | 点名=❌ L3 倍率表 QTY_FACTOR 缺 箱 ⇒ 这些单位会静默走兜底值 | 命中关键词[QTY_FACTOR]=true | 还原md5全等=true
+✅ M3 族表删掉「个」 | rc=1 | 期望红 | 点名=❌ L2 familyOf 判定不符：个 期望count 实际weight | 命中关键词[familyOf 判定不符]=true | 还原md5全等=true
+✅ M4 计数族基准词改回「克」 | rc=1 | 期望红 | 点名=❌ L2 baseWordOf 不符：个 期望个 实际克；箱 期望个 实际克 | 命中关键词[baseWordOf]=true | 还原md5全等=true
+✅ M5 手工行单价不折算 | rc=1 | 期望红 | 点名=❌ L4 手工行净料成本 —— 没有走 units.priceToBase ⇒ 非「元/克」的单价会被当成元/克，成本差倍率 | 命中关键词[L4 手工行净料成本]=true | 还原md5全等=true
+✅ M6 列表页 spec_line 写死「克」 | rc=1 | 期望红 | 点名=❌ L4 原料列表页 spec_line —— spec_line 的基准单位词不来自 units.baseWordOf ⇒ 页面自写了一份口径 | 命中关键词[L4 原料列表页]=true | 还原md5全等=true
+✅ M7 跨族判据改回页面自写 | rc=1 | 期望红 | 点名=❌ L4 跨族判据没走 units.isCrossFamily ⇒ 页面自写族表会与单源漂移 | 命中关键词[isCrossFamily]=true | 还原md5全等=true
+✅ M8 删掉 onManualPriceUnit | rc=1 | 期望红 | 点名=❌ L4 手工行没有 onManualPriceUnit（单价单位改了不落数据） | 命中关键词[onManualPriceUnit]=true | 还原md5全等=true
+✅ M9 术语表 matConvert 改回写死「→克」 | rc=1 | 期望红 | 点名=❌ L4 术语表 matConvert 仍写死「（→克）」 | 命中关键词[matConvert]=true | 还原md5全等=true
+✅ M10 isCrossFamily 恒 false（永不提示） | rc=1 | 期望红 | 点名=❌ L2 isCrossFamily 真值表不符：个×千克 期望true 实际false；箱×克 期望true 实际false；斤×个 期望true 实际false | 命中关键词[isCrossFamily]=true | 还原md5全等=true
+✅ B1 baseWordOf 等价改写（不走 familyOf） | rc=0 | 期望绿 | 点名=(无) | 命中关键词[]=false | 还原md5全等=true
+[还原后基线] rc=0 | ❌ 0 条
+全部受改文件 md5 全等 = true
+
+===== 变异回灌结果：11 通过 / 0 失败 =====

@@ -22,17 +22,22 @@ const EDIT_CATS_KEY = 'm3_dish_cats';
 // round150：新增 `line_kind`（组件类型，M3.14）—— 它**要**上云（是规格缩放的唯一依据）。
 function emptyLine() { return { input_type: 1, material_id: '', material_name: '', qty: '', qty_unit: units.BASE_UNIT, spec_hint: '', line_kind: 'main' }; }
 // 手工行工厂
-function emptyManualLine() { return { input_type: 2, material_id: '', material_name: '', qty: '', qty_unit: units.BASE_UNIT, spec_hint: '', unit_price_yuan: '', yield_rate: '100', line_kind: 'main' }; }
+// round151：新增 `price_unit`（**单价单位**，读作「元/X」）。改前单价恒被读作「元/克」——
+//   老板买 6 元/斤的肉，得自己心算成 0.012 才敢填。现在选「斤」直接填 6，
+//   提交前由 `units.priceToBase` 折算回元/克（折算只发生在录入层）。
+function emptyManualLine() { return { input_type: 2, material_id: '', material_name: '', qty: '', qty_unit: units.BASE_UNIT, price_unit: units.BASE_UNIT, spec_hint: '', unit_warn: '', unit_price_yuan: '', yield_rate: '100', line_kind: 'main' }; }
 
 function renumber(lines) {
   return lines.map((l, i) => Object.assign({}, l, { idx: i }));
 }
 
-// 手工行净料单位成本（万分）：round(单价元 × 10000 ÷ (出成率/100))
-function manualNetUnitWan(unitPriceYuan, yieldRate) {
-  const p = Number(unitPriceYuan) || 0;
+// 手工行净料单位成本（万分）：round(单价元/基准单位 × 10000 ÷ (出成率/100))
+//   round151：加第三参 `priceUnit` —— 单价先折算到基准单位（元/克）再进这条**既有公式**。
+//   ⚠️ 公式本体一字不改（引擎口径）；折算只发生在录入层，云端契约与快照格式零改动。
+function manualNetUnitWan(unitPriceYuan, yieldRate, priceUnit) {
+  const p = units.priceToBase(unitPriceYuan, priceUnit || units.BASE_UNIT);
   const y = Number(yieldRate) || 100;
-  if (p <= 0) return 0;
+  if (!(p > 0)) return 0;
   return Math.round((p * 10000) / (y / 100));
 }
 
@@ -118,8 +123,10 @@ Page({
     reverseResultPreview: '',
     previewCost: '',
     materials: [],
-    // 用量单位枚举（单源 utils/units.js；基准单位恒为克）
+    // 用量单位枚举（单源 utils/units.js；round151 起 = 与采购单位同池，基准单位仍恒为克）
     qtyUnits: units.QTY_UNITS.slice(),
+    // round151：单价单位枚举 —— 与用量单位同池（老板按什么单位报的价，就该能选什么）
+    priceUnits: units.QTY_UNITS.slice(),
     // round150（M3.14）组件类型 chips：**只有键 + 中文名**，键集 ≡ 服务端 LINE_KINDS。
     kindChips: Object.keys(TERMS.card.lineKind).map((k) => ({ key: k, label: TERMS.card.lineKind[k] })),
     // round150（M3.15）规格行：**只有键 + 中文名**（系数单源在服务端 ⇒ 页面只送 spec_key + 售价）。
@@ -250,11 +257,24 @@ Page({
     const src = lines || this.data.lines;
     const mats = this.data.materials || [];
     const out = src.map((l) => {
-      if (l.input_type === 2) return Object.assign({}, l, { spec_hint: '' });
+      if (l.input_type === 2) return Object.assign({}, l, { spec_hint: '', unit_warn: '' });
       const m = l.material_id ? mats.find((x) => x.id === l.material_id) : null;
-      return Object.assign({}, l, { spec_hint: m ? this.specHintOf(m) : TERMS.card.matSpecHintEmpty });
+      return Object.assign({}, l, {
+        spec_hint: m ? this.specHintOf(m) : TERMS.card.matSpecHintEmpty,
+        unit_warn: m ? this.unitWarnOf(m, l) : '',
+      });
     });
     this.setData({ lines: out });
+  },
+  // round151：跨计量族提示（**只提示、不拦截**）。
+  //   由来：参考产品在这里栽过 —— 采购单位选「个」、用量单位选「千克」，它静默按 1:1 硬算，
+  //   界面直接跳出 ¥6,000,000.00，**一个字都不提示**（2026-09-26 键鼠实测）。
+  //   规则：只有「计数族 ↔ 计量族」才算跨族。重量↔体积**不算** —— 既有口径就是 1 毫升≈1 克
+  //   （水/油/酱油密度≈1），那是**有意支持**的换算，不该报警。
+  unitWarnOf(m, l) {
+    const pu = m.purchase_unit || TERMS.card.matUnitDefault;
+    const qu = l.qty_unit || units.BASE_UNIT;
+    return units.isCrossFamily(pu, qu) ? TERMS.card.unitCrossWarn(pu, qu) : '';
   },
   // 换用量单位：**必须同步换算数值**（1000 克 → 1 千克），否则同一个菜换个单位成本差 1000 倍。
   //   ⚠️ 这是本页最容易写错的一格，守卫 tools/check_unit_convert.js 专盯「只改标签不改数」。
@@ -267,6 +287,9 @@ Page({
     if (from === next) return;
     lines[idx] = Object.assign({}, cur, { qty_unit: next, qty: units.convertQtyText(cur.qty, from, next) });
     this.setData({ lines: renumber(lines) });
+    // round151：跨族提示是「用量单位 × 原料采购单位」的函数 ⇒ 换完单位必须重算，
+    //   否则提示停在换单位之前的状态（用户看到的是过期提示）。
+    this.refreshSpecHints(this.data.lines);
   },
 
   // ===== 明细行 =====
@@ -281,6 +304,8 @@ Page({
       material_id: m.id,
       material_name: m.name,
       spec_hint: this.specHintOf(m),
+      // round151：换原料 ⇒ 跨族提示要跟着换（提示取决于该原料的采购单位）
+      unit_warn: this.unitWarnOf(m, lines[idx]),
     });
     this.setData({ lines });
   },
@@ -308,6 +333,18 @@ Page({
     const idx = Number(e.currentTarget.dataset.idx);
     const lines = this.data.lines.slice();
     lines[idx] = Object.assign({}, lines[idx], { unit_price_yuan: e.detail.value });
+    this.setData({ lines });
+  },
+  // round151：手工行的**单价单位**（元/X）。
+  //   ⚠️ 与「用量单位」是两件事，且**故意不做数值换算**（与 onQtyUnit 相反）：
+  //     用量单位变了必须换数（否则同一个菜成本差 1000 倍）；单价单位变了则是
+  //     「我报的价本来就按这个单位」—— 老板要的是保住他敲的那个数字
+  //     （6 元/斤 改成 6 元/千克 = 我报的就是 6，别替我算成 12）。
+  onManualPriceUnit(e) {
+    const idx = Number(e.currentTarget.dataset.idx);
+    const next = this.data.priceUnits[Number(e.detail.value)] || units.BASE_UNIT;
+    const lines = this.data.lines.slice();
+    lines[idx] = Object.assign({}, lines[idx], { price_unit: next });
     this.setData({ lines });
   },
   onManualYield(e) {
@@ -371,7 +408,7 @@ Page({
       if (!(qtyBase > 0)) continue;
       if (l.input_type === 2) {
         // 手工行：前端算净料单位成本（录入换算），反算与保存用同一值（单源）
-        const wan = manualNetUnitWan(l.unit_price_yuan, l.yield_rate);
+        const wan = manualNetUnitWan(l.unit_price_yuan, l.yield_rate, l.price_unit);
         if (wan <= 0) continue;
         out.push({ quantity: qtyBase, net_unit_cost: wan, line_kind: l.line_kind || 'main' });
       } else {
@@ -524,7 +561,7 @@ Page({
       // round150：组件类型随行上云（规格缩放的唯一依据）；缺省 main（服务端同样兜底）
       const kind = l.line_kind || 'main';
       if (l.input_type === 2) {
-        const wan = manualNetUnitWan(l.unit_price_yuan, l.yield_rate);
+        const wan = manualNetUnitWan(l.unit_price_yuan, l.yield_rate, l.price_unit);
         if (wan <= 0) { wx.showToast({ title: TERMS.card.manualUnitPrice, icon: 'none' }); return; }
         lines.push({ input_type: 2, name: (l.material_name || '').trim(), qty: qtyBase, net_unit_cost: wan, line_kind: kind });
       } else {

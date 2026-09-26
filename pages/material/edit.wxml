@@ -8,12 +8,17 @@
     <input class="val-input" value="{{brand_spec}}" bindinput="onBrand" />
   </view>
   <!-- round149：采购单位仍可自由填（箱/件/提 这类没有通用换算），但给一排**建议池** chips
-       —— 点一下填入，并**自动带出建议换算系数**。chips 而非 picker：picker 选不出"箱/桶"，
-       且弹层×键盘在真机上是死结（见 PITFALLS §6）。 -->
+       —— 点一下填入，并**自动带出建议换算系数**。
+       round151：外面套「输入框 + ▾」——改前是裸 input，真机上看着像"只是显示了个字"，
+       用户不知道能改、更不知道有建议池。点 ▾ 可收起/展开 chips。
+       ⚠️ 仍不改成纯 picker：picker 选不出「箱/桶/提」，且弹层×键盘在真机上是死结（PITFALLS §6）。 -->
   <view class="field">
     <text class="lbl">{{t.matUnit}}</text>
-    <input class="val-input" value="{{purchase_unit}}" placeholder="{{t.matUnitDefault}}" bindinput="onUnit" />
-    <view class="chip-row">
+    <view class="pick-wrap">
+      <input class="val-input pick-input" value="{{purchase_unit}}" placeholder="{{t.matUnitDefault}}" bindinput="onUnit" />
+      <text class="pick-caret" bindtap="toggleUnitChips">▾</text>
+    </view>
+    <view class="chip-row" wx:if="{{unitChipsOpen}}">
       <block wx:for="{{unitChips}}" wx:key="*this">
         <view class="chip {{item === purchase_unit ? 'chip-on' : ''}}" data-unit="{{item}}" bindtap="pickUnit">{{item}}</view>
       </block>
@@ -25,7 +30,7 @@
     <input class="val-input" type="digit" value="{{priceYuan}}" bindinput="onPrice"  adjust-position="{{true}}" cursor-spacing="20" />
   </view>
   <view class="field">
-    <text class="lbl">{{t.matConvert}}</text>
+    <text class="lbl">{{convertLabel || t.matConvert}}</text>
     <input class="val-input" type="number" value="{{convert_factor}}" bindinput="onConvert"  adjust-position="{{true}}" cursor-spacing="20" />
   </view>
   <view class="hint">{{convertHint}}</view>

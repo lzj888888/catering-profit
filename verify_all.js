@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：108 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：109 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -184,6 +184,19 @@
 //         + L4 契约落点（calcBom 保留 line_kind 且出 spec_results / saveCostCard 落 specs_json 且 total_cost 零污染 / getCostCard 往返不丢字段）
 //         + L5 键集一致（terms.lineKind ≡ LINE_KINDS、terms.specLabel ≡ SPEC_PRESETS、页面不自抄系数）
 //         + S1~S2 自失效护栏 + C1~C4 反恒真（一律 round / 忽略 line_kind / 缺省按 0 三类影子必红 + 真派生必绿））
+//       + 单位池 / 计量族 / 单价单位守卫（tools/check_unit_family.js，R151）—— 根因＝2026-09-26 李老师真机三问：
+//         ①「换算系数一定是 g 吗」②「采购单位和用量单位那里不是应该带下拉箭头吗」③「临时录入单价还是元/克，不能选吗」；
+//         并当场用键鼠实测了参考产品「楠哥餐饮计算器」（证据 _gui/_calc_*.png + review/PLAN_2026-09-26_*）。事故模型五条：
+//         ① 单位池漂移（用量池 4 项 vs 采购池 13 项 ⇒「按斤买、按斤用」选不出来）
+//         ② 族表缺失 ⇒ familyOf 兜底 weight，非重量单位被当重量算（静默）
+//         ③ 基准词写死「→克」⇒ 按「个/箱」采购的老板看到的字面量没有对应含义
+//         ④ 单价单位不折算 ⇒ 填「6」（元/斤）被当成 6 元/克，成本差 500 倍
+//         ⑤ 跨族无提示 ⇒ 采购「个」× 用量「千克」按 1:1 硬算（参考产品实测跳出 ¥6,000,000 且零告警）
+//         判据 = L1 单源在场（UNIT_FAMILY / FAMILY_BASE_WORD / familyOf / baseWordOf / isCrossFamily / priceToBase）
+//         + L2 行为（族判定 12 例 / 基准词 4 例 / 跨族真值表 8 例 / 单价折算 6 例）
+//         + L3 单源自洽（两池逐项同源 + 倍率表全覆盖 + 族表全覆盖 + 重量族倍率自洽）
+//         + L4 落点 9 条（档案页动态标签 / 列表页 spec_line / 手工行折算与单价单位 / 跨族提示 / 术语表中性化）
+//         + S1~S2 自失效护栏 + C1~C6 反恒真（写死克 / 池长度不等 / 单价不折算 / 页面自写族判据 四类影子必红 + 真写法必绿）
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -512,6 +525,8 @@ const SUITES = [
   ['unit-convert', 'tools/check_unit_convert.js'],
   // R150（round150 李老师反馈）：M3.14 组件分类 + M3.15 多规格派生层守卫 —— 详见头注 R150 段。
   ['spec-derive', 'tools/check_spec_derive.js'],
+  // R151（round151 李老师反馈）：单位池 / 计量族 / 单价单位守卫 —— 详见头注 R151 段。
+  ['unit-family', 'tools/check_unit_family.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

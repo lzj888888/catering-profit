@@ -41,6 +41,8 @@
       <!-- round149：把「买」与「用」的换算摆在眼前（采购价 ÷ 换算系数 ÷ 出成率 ⇒ 净料元/克），
            老板不用去档案页心算，也不会把「按斤买」的价当成「按克」的价填。 -->
       <view class="muted spec-hint">{{lines[index].spec_hint || t.matSpecHintEmpty}}</view>
+      <!-- round151：跨计量族提示（只提示、不拦截）。参考产品在同样情形下静默算出 ¥6,000,000 无告警 -->
+      <view class="warn-hint" wx:if="{{lines[index].unit_warn}}">{{lines[index].unit_warn}}</view>
       <view class="cell2">
         <text class="lbl">{{t.qty}}</text>
         <input class="val-input" type="digit" value="{{lines[index].qty}}" data-idx="{{index}}" bindinput="onQty"  adjust-position="{{true}}" cursor-spacing="20" />
@@ -59,9 +61,16 @@
         <text class="lbl">{{t.manualName}}</text>
         <input class="val-input" value="{{lines[index].material_name}}" placeholder="{{t.manualNamePh}}" data-idx="{{index}}" bindinput="onManualName" />
       </view>
+      <!-- round151：单价 = 「输入框 + 单位 ▾」并排（对齐参考产品实测布局）。
+           改前单位写死在 label 里（「单价（元/克）」）⇒ 老板买 6 元/斤的肉，得先心算 0.012 才敢填。 -->
       <view class="cell2">
         <text class="lbl">{{t.manualUnitPrice}}</text>
-        <input class="val-input" type="digit" value="{{lines[index].unit_price_yuan}}" data-idx="{{index}}" bindinput="onManualPrice"  adjust-position="{{true}}" cursor-spacing="20" />
+        <view class="price-wrap">
+          <input class="val-input price-input" type="digit" value="{{lines[index].unit_price_yuan}}" data-idx="{{index}}" bindinput="onManualPrice"  adjust-position="{{true}}" cursor-spacing="20" />
+          <picker mode="selector" range="{{priceUnits}}" data-idx="{{index}}" bindchange="onManualPriceUnit">
+            <view class="picker price-unit">{{lines[index].price_unit || '克'}}</view>
+          </picker>
+        </view>
       </view>
       <view class="cell2">
         <text class="lbl">{{t.manualYield}}</text>
