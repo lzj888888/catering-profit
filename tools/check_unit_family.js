@@ -16,13 +16,21 @@
 //   F5 **跨族无提示**：采购「个」× 用量「千克」按 1:1 硬算 —— 这不是假想，参考产品实测就是
 //      界面直接跳出 ¥6,000,000.00 且**一个字都不提示**。
 //
+// round152 追加（李老师扫 R151 码真机实测反馈，同一形态病）：
+//   F6 **chips 常驻展开**：R151 把池从 4 项扩到 14 项 ⇒ chips 由 1 行涨到 2~3 行，把下方
+//      「换算系数 / 出成率」顶下去（扩池带出来的**自伤回归**）。
+//   F7 **选完不收起**：选了单位还要再点一次 ▾（多余的一步）。
+//   F8 **手改值被冲掉**：手改 480 → 再点单位「斤」⇒ 被建议值 500 覆盖，表现为"改了存不住"。
+//   F9 **缺可改信号**：「可再手改」写在采购单位那行的 hint 里，离换算系数太远 ⇒ 没人看见。
+//
 // 判据（纯函数化 + 正负互证 + 反查真实单源 + 解析器自带钉死样本）：
 //   L1 单源在场：units.js 导出 UNIT_FAMILY/FAMILY_BASE_WORD/familyOf/baseWordOf/isCrossFamily/priceToBase
 //   L2 行为正确（require 真源码实跑，不比字面量副本）：族判定 / 基准词 / 跨族真值表 / 单价折算
 //   L3 单源自洽：两池逐项同源、倍率表全覆盖、族表全覆盖、重量族倍率自洽
-//   L4 落点：页面用单源、不自抄口径（反查写死「克」与旧折算写法）
+//   L4 落点：页面用单源、不自抄口径（反查写死「克」与旧折算写法）；
+//      ⑩~⑬ 为 round152 追加（chips 默认收起 / 选完自动收起 / 手改保护 / 可手改可见信号）
 //   S1~S2 自失效护栏（扫描面完整 / 命中数下界，防"扫了空集所以全绿"）
-//   C1~C5 反恒真：把坏样本喂给同一条判据 ⇒ 必须判红；好样本 ⇒ 判绿
+//   C1~C12 反恒真：把坏样本喂给同一条判据 ⇒ 必须判红；好样本 ⇒ 判绿
 //
 // ⚠️ 输出纪律（R145 教训）：中间行不得出现「N 通过 / M 失败」字样，
 //   否则 check_suite_assert_counts 会把第一条中间文案当成套件总口径。
@@ -102,6 +110,50 @@ function judgeCrossWarn(body) {
   return { ok: true, why: '跨族判据取自单源 units.isCrossFamily' };
 }
 
+// ---- round152 追加：单位 chips 收放 + 换算系数手改（李老师真机实测反馈） ----
+// 事故模型：
+//   F6 **chips 常驻展开**：round151 把池从 4 项扩到 14 项 ⇒ chips 由 1 行涨到 2~3 行，
+//      把下方「换算系数 / 出成率」顶下去，老板以为换算系数是系统算出的死值。
+//   F7 **选完不收起**：选了单位还要再点一次 ▾ 才收起（多余的一步）。
+//   F8 **手改值被冲掉**：手改换算系数 480 → 再点单位「斤」 ⇒ 被建议值 500 覆盖，
+//      表现为"改了存不住"（与「不许静默改掉老板敲的数」同一条纪律）。
+//   F9 **缺可改信号**：「可再手改」写在采购单位那行的 hint 里，离换算系数太远 ⇒ 没人看见。
+
+// 判据 F6：chips 默认是否收起
+function judgeChipsDefault(src) {
+  if (!src) return { ok: false, why: '取不到原料档案页源码（fail-closed）' };
+  if (/unitChipsOpen\s*:\s*true/.test(src)) return { ok: false, why: '出现 unitChipsOpen: true ⇒ 14 项 chips 会展开占屏' };
+  if (!/unitChipsOpen\s*:\s*false/.test(src)) return { ok: false, why: '找不到 unitChipsOpen 初始化（字段被删）' };
+  return { ok: true, why: 'chips 默认收起（不占屏，▾ 可随时展开）' };
+}
+
+// 判据 F7：选完单位是否自动收起
+function judgePickUnitCollapse(body) {
+  if (!body) return { ok: false, why: '取不到 pickUnit 函数体（fail-closed）' };
+  if (!/unitChipsOpen\s*:\s*false/.test(body)) return { ok: false, why: 'pickUnit 选完不收起 chips（要用户再点一次 ▾）' };
+  return { ok: true, why: 'pickUnit 选完自动收起 chips' };
+}
+
+// 判据 F8：手改过的换算系数会不会被建议值冲掉
+function judgeConvertTouched(body) {
+  if (!body) return { ok: false, why: '取不到 pickUnit 函数体（fail-closed）' };
+  const lines = body.split('\n');
+  const assign = lines.filter((l) => /convert_factor\s*=/.test(l));
+  if (!assign.length) return { ok: false, why: 'pickUnit 里没有 convert_factor 赋值（建议系数带不出来）' };
+  const unguarded = assign.filter((l) => !/convertTouched/.test(l));
+  if (unguarded.length) return { ok: false, why: 'convert_factor 赋值未受 convertTouched 保护 ⇒ 手改值会被建议值冲掉' };
+  return { ok: true, why: '手改保护在位（convertTouched 守着 convert_factor 赋值）' };
+}
+
+// 判据 F9：换算系数那行有没有「可手改」的可见信号
+function judgeConvertHintEditable(src) {
+  if (!src) return { ok: false, why: '取不到术语表（fail-closed）' };
+  const m = /matConvertHintOf\s*:\s*\([^)]*\)\s*=>\s*`([^`]*)`/.exec(src);
+  if (!m) return { ok: false, why: '取不到 matConvertHintOf 模板（fail-closed）' };
+  if (!/手改/.test(m[1])) return { ok: false, why: '换算系数提示缺「可手改」信号 ⇒ 老板以为那是系统死值' };
+  return { ok: true, why: '换算系数提示带「可手改」可见信号' };
+}
+
 // 本轮受管源码
 const UNITS_SRC = read('utils/units.js') || '';
 const CARDJS = read('pages/card/edit.js') || '';
@@ -112,7 +164,7 @@ const MATIDX = read('pages/material/index.js') || '';
 const TERMS_A = read('miniprogram/i18n/terms.js') || '';
 const TERMS_B = read('specs/dev-specs/i18n/terms.js') || '';
 
-console.log('===== R151 · 单位池 / 计量族 / 单价单位守卫 =====');
+console.log('===== R151/R152 · 单位池 / 计量族 / 单价单位 / chips 收放与手改 守卫 =====');
 
 // ---------- L1 单源在场 ----------
 const L1_NEED = ['UNIT_FAMILY', 'FAMILY_BASE_WORD', 'familyOf', 'baseWordOf', 'isCrossFamily', 'priceToBase'];
@@ -253,6 +305,25 @@ else if (!/matConvertHintOf\s*:\s*\(\s*u\s*,\s*f\s*,\s*w\s*\)/.test(TERMS_A)) ba
 else if (!/unitCrossWarn\s*:/.test(TERMS_A)) bad('L4 术语表缺 unitCrossWarn（跨族提示文案）');
 else ok('L4 术语表口径已中性化（matConvert + matConvertOf + matConvertHintOf(u,f,w) + unitCrossWarn）');
 
+// ⑩ chips 默认收起（round152：R151 扩池到 14 项后的占屏回归，反恒真样本见 C7）
+const rCd = judgeChipsDefault(MATEJS);
+if (rCd.ok) ok('L4 ' + rCd.why); else bad('L4 ' + rCd.why);
+
+// ⑪ 选完单位自动收起（反恒真样本见 C8）
+const PU_BODY = fnBody(MATEJS, 'pickUnit');
+const rPu = judgePickUnitCollapse(PU_BODY);
+if (rPu.ok) ok('L4 ' + rPu.why); else bad('L4 ' + rPu.why);
+
+// ⑫ 换算系数手改保护（反恒真样本见 C9/C10）
+const rCt = judgeConvertTouched(PU_BODY);
+if (rCt.ok) ok('L4 ' + rCt.why); else bad('L4 ' + rCt.why);
+
+// ⑬ 换算系数「可手改」可见信号 —— 术语**双副本**都要有（只改一份 ⇒ 一边绿一边红）
+const rHeA = judgeConvertHintEditable(TERMS_A);
+const rHeB = judgeConvertHintEditable(TERMS_B);
+if (rHeA.ok && rHeB.ok) ok('L4 ' + rHeA.why + '（术语双副本一致）');
+else bad('L4 ' + (rHeA.ok ? '' : 'A 副本：' + rHeA.why + '；') + (rHeB.ok ? '' : 'B 副本：' + rHeB.why));
+
 // ---------- S1~S2 自失效护栏 ----------
 const scanFiles = ['utils/units.js', 'pages/card/edit.js', 'pages/card/edit.wxml', 'pages/material/edit.js', 'pages/material/edit.wxml', 'pages/material/index.js', 'miniprogram/i18n/terms.js', 'specs/dev-specs/i18n/terms.js'];
 const scanned = scanFiles.filter((f) => read(f) != null).length;
@@ -291,6 +362,35 @@ else ok('C5 影子样本「页面自写族判据」被判红 —— ' + c5.why);
 const sampleBody = fnBody(CARDJS, 'manualNetUnitWan');
 if (!sampleBody || sampleBody.length < 40) bad('C6 函数体切分失效（fnBody 拿不到 manualNetUnitWan 主体）⇒ L4-④ 会是空跑');
 else ok('C6 函数体切分器自检通过（manualNetUnitWan 主体 ' + sampleBody.length + ' 字符）');
+
+// ---- round152 反恒真：把坏样本喂给同一条判据 ⇒ 必须判红 ----
+const CHIPS_BAD = 'unitChipsOpen: true,';
+const c7 = judgeChipsDefault(CHIPS_BAD);
+if (c7.ok) bad('C7 影子样本「chips 默认展开」被判绿 ⇒ 判据无分辨力（假绿）');
+else ok('C7 影子样本「chips 默认展开」被判红 —— ' + c7.why);
+
+const PU_BAD = 'pickUnit(e) { const u = e.currentTarget.dataset.unit; const sug = units.suggestConvert(u); const patch = { purchase_unit: u }; if (sug != null) patch.convert_factor = String(sug); this.setData(patch); }';
+const c8 = judgePickUnitCollapse(PU_BAD);
+if (c8.ok) bad('C8 影子样本「选完不收起」被判绿 ⇒ 假绿');
+else ok('C8 影子样本「选完不收起」被判红 —— ' + c8.why);
+
+const c9 = judgeConvertTouched(PU_BAD);
+if (c9.ok) bad('C9 影子样本「手改值会被冲掉」被判绿 ⇒ 假绿');
+else ok('C9 影子样本「手改值会被冲掉」被判红 —— ' + c9.why);
+
+const PU_GOOD = 'pickUnit(e) { const u = e.currentTarget.dataset.unit; const sug = units.suggestConvert(u); const patch = { purchase_unit: u, unitChipsOpen: false }; if (sug != null && !this.data.convertTouched) patch.convert_factor = String(sug); this.setData(patch); }';
+const c10 = judgeConvertTouched(PU_GOOD);
+if (!c10.ok) bad('C10 影子样本「带手改保护」被判红 ⇒ 判据过严（假红）—— ' + c10.why);
+else ok('C10 影子样本「带手改保护」被判绿（不假红）');
+
+const HINT_BAD = 'matConvertHintOf: (u, f, w) => `1 ${u} = ${f} ${w}（净料口径）`';
+const c11 = judgeConvertHintEditable(HINT_BAD);
+if (c11.ok) bad('C11 影子样本「提示无手改信号」被判绿 ⇒ 假绿');
+else ok('C11 影子样本「提示无手改信号」被判红 —— ' + c11.why);
+
+// 解析器钉死样本：pickUnit 主体切不出来 ⇒ L4-⑪⑫ 会变成空跑
+if (!PU_BODY || PU_BODY.length < 40) bad('C12 函数体切分失效（fnBody 拿不到 pickUnit 主体）⇒ L4-⑪⑫ 会是空跑');
+else ok('C12 函数体切分器自检通过（pickUnit 主体 ' + PU_BODY.length + ' 字符）');
 
 console.log('');
 console.log('===== 单位池 / 计量族 / 单价单位守卫结果：' + pass + ' 通过 / ' + fail + ' 失败 =====');

@@ -108,7 +108,7 @@ const CASES = [
   // R151 扩面（round151）：单位池 / 计量族 / 单价单位守卫同批纳入 —— 它的 L3 单源自洽
   //   （两池逐项同源 / 倍率表全覆盖 / 族表全覆盖）与 C1~C6 反恒真正是「非恒真」的凭据；
   //   断言数不受守则「删掉一条影子 + 调低下界」就等于把守卫悄悄改小（判据仍全绿而证明力归零）。
-  { key: 'check_unit_family', rel: 'tools/check_unit_family.js' },     // 27 条（含 C1~C6 影子）
+  { key: 'check_unit_family', rel: 'tools/check_unit_family.js' },     // 37 条（含 C1~C12 影子；round152 加 ⑩~⑬ 与 C7~C12）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

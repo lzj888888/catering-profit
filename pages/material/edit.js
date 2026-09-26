@@ -51,8 +51,13 @@ Page({
     purchase_unit: TERMS.card.matUnitDefault,
     // 采购单位建议池：**只许追加**（旧档案里是自由文本，删值会让老数据找不到对应项）
     unitChips: units.PURCHASE_UNITS.slice(),
-    // round151：建议池 chips 的展开态。默认展开 —— 改前 chips 就是常驻可见的，保持既有观感（▾ 只用来收起）
-    unitChipsOpen: true,
+    // round152：建议池 chips 的展开态。**默认收起** —— round151 把池从 4 项扩到 14 项 ⇒
+    //   chips 由 1 行涨到 2~3 行，常驻展开会把下方「换算系数 / 出成率」顶下去（真机实测反馈：
+    //   老板以为换算系数是系统算出的死值）。收起后由 ▾ 随时展开，选完即收。
+    unitChipsOpen: false,
+    // round152：换算系数**是否已被手改**。立起后 pickUnit 不再用建议值覆盖老板敲的数
+    //   （改前：手改 480 → 再点单位「斤」 ⇒ 被 500 冲掉，表现为"改了存不住"）。
+    convertTouched: false,
     convertHint: '',    // 动态：1 <采购单位> = <换算系数> <基准单位词>（净料口径）
     // round151：换算系数标签的基准词随**计量族**走（→克 / →毫升 / →个）。
     //   ⚠️ 改前恒为「换算系数（→克）」⇒ 按「个/箱」采购的老板看到的字面量根本没有对应含义。
@@ -110,17 +115,25 @@ Page({
   onBrand(e) { this.setData({ brand_spec: e.detail.value }); },
   onUnit(e) { this.setData({ purchase_unit: e.detail.value }, () => this.refreshUnitHint()); },
   onPrice(e) { this.setData({ priceYuan: e.detail.value }); },
-  onConvert(e) { this.setData({ convert_factor: e.detail.value }, () => this.refreshUnitHint()); },
+  // round152：手改换算系数 ⇒ 立 `convertTouched`（此后换单位也不再被建议值覆盖）
+  onConvert(e) {
+    this.setData({ convert_factor: e.detail.value, convertTouched: true }, () => this.refreshUnitHint());
+  },
 
   // 采购单位 chips（round149）：点一下填入 + **自动带出建议换算系数**（斤→500 / 千克→1000 / 克→1）。
   //   ⚠️ 只对建议池里有的单位带出；「箱/桶/件」这类没有通用换算 ⇒ 不动用户已填的值（不许瞎猜）。
   //   带出的是**建议值**，用户随后可在换算系数里手改（仍是原料档案里那个可编辑数字，引擎口径不变）。
+  // round152 两处修正（真机实测反馈）：
+  //   ① 选完**立即收起** chips —— 14 项常驻会把下方字段顶下去，且收起动作不该让用户再做一遍。
+  //   ② 已手改过系数（convertTouched）⇒ **不再覆盖**，与「不许静默改掉老板敲的数」同一条纪律
+  //      （对齐 `onManualPriceUnit` 只换标签不反算）。此时 hint 会显示成「1 千克 = 500 克」这种
+  //      自相矛盾的口径，反而提醒他该改 —— 这正是我们要的可见信号，不是 bug。
   pickUnit(e) {
     const u = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.unit) || '';
     if (!u) return;
     const sug = units.suggestConvert(u);
-    const patch = { purchase_unit: u };
-    if (sug != null) patch.convert_factor = String(sug);
+    const patch = { purchase_unit: u, unitChipsOpen: false };
+    if (sug != null && !this.data.convertTouched) patch.convert_factor = String(sug);
     this.setData(patch, () => this.refreshUnitHint());
   },
   // round151：▾ 展开/收起建议池。与 pickUnit 分开两件事 —— 点单位是选中，点箭头是收放。
