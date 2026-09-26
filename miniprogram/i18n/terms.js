@@ -572,7 +572,8 @@ const TERMS = {
     auxAmount: '辅料分摊（元）',
     calcMode: '核算模式',
     material: '原料',
-    qty: '用量（g/份）',
+    // round149：用量单位改为**可选**（克/千克/毫升/升）⇒ 标签不再写死 "g"，单位由「用量单位」那一行给。
+    qty: '用量',
     delete: '删除',
     save: '保存菜品核算',
     addLine: '+ 添加明细行',
@@ -600,7 +601,8 @@ const TERMS = {
     matUnit: '采购单位',
     matUnitDefault: '斤',
     matPrice: '采购单价（元）',
-    matNetCost: '净料单位成本（元）',
+    // round149：把单位写进标签（净料成本恒为「元/克」，与引擎口径一致；不写单位时老板会以为是"元/斤"）
+    matNetCost: '净料单位成本（元/克）',
     matCategory: '分类',
     matAliases: '别名',
     matAliasesHint: '逗号分隔，仅用于搜索提示，不会替换原料名',
@@ -662,6 +664,15 @@ const TERMS = {
     snapshotPrice: '采购价',
     snapshotConvert: '换算系数',
     snapshotYield: '出成率',
+    // ===== round149 · 采购单位 / 用量单位：同一原料「买」与「用」可以是不同单位 =====
+    //   参考外部产品：采购单价 + 采购单位 / 单次用量 + 用量单位，各自独立可选。
+    //   ⚠️ 数值（单位倍率 + 建议换算系数）单源在 `utils/units.js`，本处**只放文案**，不许抄表。
+    matUnitHint: '点一下填常用单位；换算系数会自动带出建议值，可再手改',
+    matConvertHintOf: (u, f) => `1 ${u} = ${f} 克（净料口径）`,
+    qtyUnit: '用量单位',
+    qtyUnitHint: '按做菜手感选；换单位会自动换算数量，成本不变',
+    matSpecHintOf: (p, u, f, yr, net) => `${p} 元/${u} ÷ ${f} ÷ 出成率 ${yr}% ⇒ 净料 ${net} 元/克`,
+    matSpecHintEmpty: '选好原料后显示：采购价 ÷ 换算系数 ÷ 出成率 = 净料单价（元/克）',
   },
 
   // ===== 十五、M1 库存录入页（shop_inventory）=====

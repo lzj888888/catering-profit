@@ -7,9 +7,18 @@
     <text class="lbl">{{t.matBrand}}</text>
     <input class="val-input" value="{{brand_spec}}" bindinput="onBrand" />
   </view>
+  <!-- round149：采购单位仍可自由填（箱/件/提 这类没有通用换算），但给一排**建议池** chips
+       —— 点一下填入，并**自动带出建议换算系数**。chips 而非 picker：picker 选不出"箱/桶"，
+       且弹层×键盘在真机上是死结（见 PITFALLS §6）。 -->
   <view class="field">
     <text class="lbl">{{t.matUnit}}</text>
-    <input class="val-input" value="{{purchase_unit}}" bindinput="onUnit" />
+    <input class="val-input" value="{{purchase_unit}}" placeholder="{{t.matUnitDefault}}" bindinput="onUnit" />
+    <view class="chip-row">
+      <block wx:for="{{unitChips}}" wx:key="*this">
+        <view class="chip {{item === purchase_unit ? 'chip-on' : ''}}" data-unit="{{item}}" bindtap="pickUnit">{{item}}</view>
+      </block>
+    </view>
+    <text class="muted">{{t.matUnitHint}}</text>
   </view>
   <view class="field">
     <text class="lbl">{{t.matPrice}}</text>
@@ -19,7 +28,7 @@
     <text class="lbl">{{t.matConvert}}</text>
     <input class="val-input" type="number" value="{{convert_factor}}" bindinput="onConvert"  adjust-position="{{true}}" cursor-spacing="20" />
   </view>
-  <view class="hint">{{t.matConvertHint}}</view>
+  <view class="hint">{{convertHint}}</view>
   <view class="field">
     <text class="lbl">{{t.matYield}}</text>
     <input class="val-input" type="digit" value="{{yield_rate}}" bindinput="onYield"  adjust-position="{{true}}" cursor-spacing="20" />

@@ -100,6 +100,7 @@ const CASES = [
   { key: 'check_m3_engine_parity', rel: 'tools/check_m3_engine_parity.js' },
   { key: 'check_modal_button_len', rel: 'tools/check_modal_button_len.js' },
   { key: 'check_dish_category_free', rel: 'tools/check_dish_category_free.js' },
+  { key: 'check_unit_convert', rel: 'tools/check_unit_convert.js' },   // 17 条（含 C2b 语义等价影子）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

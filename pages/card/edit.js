@@ -9,15 +9,19 @@
 //     保存传 net_unit_cost 快照、反算传同一值 —— 单源，不做第二份真相源。
 const api = require('../../utils/api.js');
 const ui = require('../../utils/ui.js');
+const units = require('../../utils/units.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 
 // 本店填过的菜品分类（本地记忆，供下次点选；不新建集合、不上云 —— M3 v1.1 零新建集合红线）
 const EDIT_CATS_KEY = 'm3_dish_cats';
 
 // 明细行空行工厂（档案行）
-function emptyLine() { return { input_type: 1, material_id: '', material_name: '', qty: '' }; }
+// round149：新增 `qty_unit`（用量单位，枚举见 utils/units.js）+ `spec_hint`（该原料的换算说明）。
+//   两者都是**本页展示/录入层**的东西 —— 提交给云端时 qty 一律换算成基准单位(克)，
+//   ⚠️ 不新增云函数字段、不改快照契约、不碰引擎（红线段）。
+function emptyLine() { return { input_type: 1, material_id: '', material_name: '', qty: '', qty_unit: units.BASE_UNIT, spec_hint: '' }; }
 // 手工行工厂
-function emptyManualLine() { return { input_type: 2, material_id: '', material_name: '', qty: '', unit_price_yuan: '', yield_rate: '100' }; }
+function emptyManualLine() { return { input_type: 2, material_id: '', material_name: '', qty: '', qty_unit: units.BASE_UNIT, spec_hint: '', unit_price_yuan: '', yield_rate: '100' }; }
 
 function renumber(lines) {
   return lines.map((l, i) => Object.assign({}, l, { idx: i }));
@@ -75,6 +79,9 @@ Page({
       tagsHint: TERMS.card.tagsHint,
       materialArchive: TERMS.card.materialListTitle,
       tags: TERMS.card.tags,
+      qtyUnit: TERMS.card.qtyUnit,
+      qtyUnitHint: TERMS.card.qtyUnitHint,
+      matSpecHintEmpty: TERMS.card.matSpecHintEmpty,
     },
     card_code: '',
     isEdit: false,
@@ -98,6 +105,8 @@ Page({
     reverseResultPreview: '',
     previewCost: '',
     materials: [],
+    // 用量单位枚举（单源 utils/units.js；基准单位恒为克）
+    qtyUnits: units.QTY_UNITS.slice(),
     lines: [],
     loading: true,
   },
@@ -112,7 +121,18 @@ Page({
       await api.ensureShop();
       ui.setTitle(TERMS.card.listTitle);
       const mat = await api.call('getMaterial', {});
-      const materials = (mat.list || []).map((m) => ({ id: m.id, name: m.name, is_virtual: m.is_virtual, net_unit_cost: m.net_unit_cost }));
+      // round149：把「买」的那一侧也带进来（采购单位/换算系数/出成率/采购价），
+      //   好让老板在明细行直接看见「36 元/斤 ÷ 500 ÷ 92% ⇒ 0.0783 元/克」，不用去档案页心算。
+      const materials = (mat.list || []).map((m) => ({
+        id: m.id,
+        name: m.name,
+        is_virtual: m.is_virtual,
+        net_unit_cost: m.net_unit_cost,
+        purchase_unit: m.purchase_unit || '',
+        purchase_price_fen: m.purchase_price_fen || 0,
+        convert_factor: m.convert_factor || 0,
+        yield_rate: m.yield_rate || 0,
+      }));
       const init = { materials, loading: false };
       if (this.data.isEdit) {
         const d = await api.call('getCostCard', { card_code: this.data.card_code });
@@ -126,13 +146,15 @@ Page({
           init.priceYuan = c.price_fen > 0 ? api.fenToYuan(c.price_fen, 2) : '';
           init.category = c.category || '';
           init.tags = c.tags || '';
+          // ⚠️ 回填的单位口径：库里存的 quantity **恒为基准单位(克)**（round149 起前端提交前已换算），
+          //   故回填一律按「克」显示 —— 这是**确定**的，不做"猜你原来填的是千克"（猜错会显示错数）。
           init.lines = renumber((c.lines || []).map((l) => {
             if (l.material_id) {
-              return { input_type: 1, material_id: l.material_id, material_name: l.material_name, qty: String(l.quantity) };
+              return { input_type: 1, material_id: l.material_id, material_name: l.material_name, qty: String(l.quantity), qty_unit: units.BASE_UNIT };
             }
             // 手工行（material_id 空）：从快照反推净料单价（元/克），出成率固定 100（快照已是净料）
             const unitPriceYuan = l.net_unit_cost ? (l.net_unit_cost / 10000).toFixed(4) : '';
-            return { input_type: 2, material_id: '', material_name: l.material_name, qty: String(l.quantity), unit_price_yuan: unitPriceYuan, yield_rate: '100' };
+            return { input_type: 2, material_id: '', material_name: l.material_name, qty: String(l.quantity), qty_unit: units.BASE_UNIT, unit_price_yuan: unitPriceYuan, yield_rate: '100' };
           }));
           init.previewCostFen = c.total_cost_fen || 0;
           init.copyVersion = TERMS.card.copyVersion;
@@ -142,6 +164,8 @@ Page({
       // 分类回显：自由文本，直接回显；候选 chips = 本店填过的 + 建议池（不再做"补进枚举"）
       init.catChips = this.buildCatChips(init.category);
       this.setData(init);
+      // 明细行的原料换算说明（须在 setData(materials) 之后算，否则找不到原料）
+      this.refreshSpecHints();
     } catch (e) {
       this.setData({ loading: false });
       api.toastError(e);
@@ -181,6 +205,43 @@ Page({
   // 真机反馈：改第 N 道菜的原料必须回列表页最顶部 ⇒ 编辑页给直达入口
   goMaterial() { wx.navigateTo({ url: '/pages/material/index' }); },
 
+  // ===== round149：用量单位 / 原料换算说明 =====
+  // 单条原料的换算说明：采购价 ÷ 换算系数 ÷ 出成率 ⇒ 净料单价（元/克）。
+  //   这几步都是**原料档案里已存的**，此处只做展示串联，不重算成本、不改任何落库值。
+  specHintOf(m) {
+    const f = Number(m.convert_factor) || 0;
+    const yr = Number(m.yield_rate) || 0;
+    if (!m || !f || !yr) return TERMS.card.matSpecHintEmpty;
+    return TERMS.card.matSpecHintOf(
+      api.fenToYuan(m.purchase_price_fen || 0, 2),
+      m.purchase_unit || TERMS.card.matUnitDefault,
+      f, yr,
+      ((Number(m.net_unit_cost) || 0) / 10000).toFixed(4)
+    );
+  },
+  refreshSpecHints(lines) {
+    const src = lines || this.data.lines;
+    const mats = this.data.materials || [];
+    const out = src.map((l) => {
+      if (l.input_type === 2) return Object.assign({}, l, { spec_hint: '' });
+      const m = l.material_id ? mats.find((x) => x.id === l.material_id) : null;
+      return Object.assign({}, l, { spec_hint: m ? this.specHintOf(m) : TERMS.card.matSpecHintEmpty });
+    });
+    this.setData({ lines: out });
+  },
+  // 换用量单位：**必须同步换算数值**（1000 克 → 1 千克），否则同一个菜换个单位成本差 1000 倍。
+  //   ⚠️ 这是本页最容易写错的一格，守卫 tools/check_unit_convert.js 专盯「只改标签不改数」。
+  onQtyUnit(e) {
+    const idx = Number(e.currentTarget.dataset.idx);
+    const next = this.data.qtyUnits[Number(e.detail.value)] || units.BASE_UNIT;
+    const lines = this.data.lines.slice();
+    const cur = lines[idx] || {};
+    const from = cur.qty_unit || units.BASE_UNIT;
+    if (from === next) return;
+    lines[idx] = Object.assign({}, cur, { qty_unit: next, qty: units.convertQtyText(cur.qty, from, next) });
+    this.setData({ lines: renumber(lines) });
+  },
+
   // ===== 明细行 =====
   onMaterialChange(e) {
     const idx = e.currentTarget.dataset.idx;
@@ -188,7 +249,12 @@ Page({
     const m = this.data.materials[mi];
     if (!m) return;
     const lines = this.data.lines.slice();
-    lines[idx] = Object.assign({}, lines[idx], { input_type: 1, material_id: m.id, material_name: m.name });
+    lines[idx] = Object.assign({}, lines[idx], {
+      input_type: 1,
+      material_id: m.id,
+      material_name: m.name,
+      spec_hint: this.specHintOf(m),
+    });
     this.setData({ lines });
   },
   // 切换录入方式（档案 ↔ 手工）
@@ -273,16 +339,19 @@ Page({
     const out = [];
     for (const l of this.data.lines) {
       if (!l.qty) continue;
+      // round149：用量一律换算成**基准单位(克)**再送引擎（引擎口径一字不改）
+      const qtyBase = units.toBase(l.qty, l.qty_unit);
+      if (!(qtyBase > 0)) continue;
       if (l.input_type === 2) {
         // 手工行：前端算净料单位成本（录入换算），反算与保存用同一值（单源）
         const wan = manualNetUnitWan(l.unit_price_yuan, l.yield_rate);
         if (wan <= 0) continue;
-        out.push({ quantity: Number(l.qty), net_unit_cost: wan });
+        out.push({ quantity: qtyBase, net_unit_cost: wan });
       } else {
         if (!l.material_id) continue;
         const m = this.data.materials.find((x) => x.id === l.material_id);
         if (!m) continue;
-        out.push({ quantity: Number(l.qty), net_unit_cost: m.net_unit_cost });
+        out.push({ quantity: qtyBase, net_unit_cost: m.net_unit_cost });
       }
     }
     if (out.length === 0) { wx.showToast({ title: TERMS.card.qty, icon: 'none' }); return null; }
@@ -328,13 +397,16 @@ Page({
     const lines = [];
     for (const l of this.data.lines) {
       if (!l.qty) continue;
+      // round149：同 buildCalcLines —— 提交前换算到基准单位(克)，云端契约与引擎零改动
+      const qtyBase = units.toBase(l.qty, l.qty_unit);
+      if (!(qtyBase > 0)) continue;
       if (l.input_type === 2) {
         const wan = manualNetUnitWan(l.unit_price_yuan, l.yield_rate);
         if (wan <= 0) { wx.showToast({ title: TERMS.card.manualUnitPrice, icon: 'none' }); return; }
-        lines.push({ input_type: 2, name: (l.material_name || '').trim(), qty: Number(l.qty), net_unit_cost: wan });
+        lines.push({ input_type: 2, name: (l.material_name || '').trim(), qty: qtyBase, net_unit_cost: wan });
       } else {
         if (!l.material_id) continue;
-        lines.push({ material_id: l.material_id, qty: Number(l.qty) });
+        lines.push({ material_id: l.material_id, qty: qtyBase });
       }
     }
     if (lines.length === 0) { wx.showToast({ title: TERMS.card.material, icon: 'none' }); return; }

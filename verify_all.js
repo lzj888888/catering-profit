@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：106 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：107 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -161,6 +161,15 @@
 //         ⇒ 规范与实现不符。根因=分类横跨 4 个正交维度（出品形态/食材属性/业态专属/营销栏目），
 //         加选项永远补不完 ⇒ 只能自由输入。判据 = L1 必须可输入且不得被 picker 锁死
 //         + L2 建议池包含基线 7 项（只许追加）+ L3 保存过 trim + L4 原料分类**保持枚举**不许跟着自由化）
+//       + 单位换算守卫（tools/check_unit_convert.js，R149：李老师反馈 2026-09-26「菜品和原材料有不同规格」——
+//         参考产品把「采购单位」与「用量单位」拆成两个可选下拉（克/千克/毫升/升），同一原料买按斤、用按克。
+//         查证：原料侧 brand_spec/convert_factor/yield_rate 已落地，但**成本卡明细行没有单位概念**
+//         （用量裸数字、隐含克），且采购单位是自由文本、换算系数得靠老板自己知道填 500。
+//         本轮把「买→用」的换算做成可见+可点选，**引擎与云端契约零改动**（单位换算只发生在录入层）。
+//         判据 = L1 倍率单源在场 + L2 倍率**行为**正确（实跑真源码，含 0.7 千克浮点回归）
+//         + L3 页面不得自抄倍率表 + **L4 换单位必须换数**（只改标签不改数 ⇒ 成本差倍率，界面看不出来）
+//         + L5 提交前归一 toBase() + L6 换算关系露在明细行 + L7 采购单位可选
+//         + S1~S3 自失效护栏 + C1~C3 反恒真（「只换标签不换数」影子必红、真写法必绿、切分器自检））
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -485,6 +494,8 @@ const SUITES = [
   ['modal-btn-len', 'tools/check_modal_button_len.js'],
   // R148（round148 李老师反馈）：菜品分类「自由定义」守卫 —— 详见头注 R148 段。
   ['dish-cat-free', 'tools/check_dish_category_free.js'],
+  // R149（round149 李老师反馈）：采购单位 / 用量单位换算守卫 —— 详见头注 R149 段。
+  ['unit-convert', 'tools/check_unit_convert.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

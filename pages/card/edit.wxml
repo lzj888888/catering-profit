@@ -38,9 +38,18 @@
           <view class="picker">{{lines[index].material_name ? lines[index].material_name : t.material}}</view>
         </picker>
       </view>
+      <!-- round149：把「买」与「用」的换算摆在眼前（采购价 ÷ 换算系数 ÷ 出成率 ⇒ 净料元/克），
+           老板不用去档案页心算，也不会把「按斤买」的价当成「按克」的价填。 -->
+      <view class="muted spec-hint">{{lines[index].spec_hint || t.matSpecHintEmpty}}</view>
       <view class="cell2">
         <text class="lbl">{{t.qty}}</text>
         <input class="val-input" type="digit" value="{{lines[index].qty}}" data-idx="{{index}}" bindinput="onQty"  adjust-position="{{true}}" cursor-spacing="20" />
+      </view>
+      <view class="cell2">
+        <text class="lbl">{{t.qtyUnit}}</text>
+        <picker mode="selector" range="{{qtyUnits}}" data-idx="{{index}}" bindchange="onQtyUnit">
+          <view class="picker">{{lines[index].qty_unit || '克'}}</view>
+        </picker>
       </view>
     </block>
 
@@ -62,8 +71,15 @@
         <text class="lbl">{{t.qty}}</text>
         <input class="val-input" type="digit" value="{{lines[index].qty}}" data-idx="{{index}}" bindinput="onQty"  adjust-position="{{true}}" cursor-spacing="20" />
       </view>
+      <view class="cell2">
+        <text class="lbl">{{t.qtyUnit}}</text>
+        <picker mode="selector" range="{{qtyUnits}}" data-idx="{{index}}" bindchange="onQtyUnit">
+          <view class="picker">{{lines[index].qty_unit || '克'}}</view>
+        </picker>
+      </view>
     </block>
   </view>
+  <view class="muted" style="margin:-8rpx 0 12rpx 4rpx;">{{t.qtyUnitHint}}</view>
   <button class="btn ghost btn-small" style="min-height:88rpx;" bindtap="addLine">{{t.addLine}}</button>
   <button class="btn ghost btn-small" style="min-height:88rpx;" bindtap="goMaterial">{{t.materialArchive}}</button>
 

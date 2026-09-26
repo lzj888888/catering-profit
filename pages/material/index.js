@@ -32,6 +32,8 @@ Page({
       matUnit: TERMS.card.matUnit,
       matPrice: TERMS.card.matPrice,
       matNetCost: TERMS.card.matNetCost,
+      matConvert: TERMS.card.matConvert,
+      matUnitDefault: TERMS.card.matUnitDefault,
       matCategory: TERMS.card.matCategory,
       matSearchPh: TERMS.card.matSearchPh,
       matAdd: TERMS.card.matAdd,
@@ -69,6 +71,12 @@ Page({
         brand_spec: m.brand_spec || '',
         purchase_unit: m.purchase_unit || '',
         purchase_price: m.purchase_price_fen > 0 ? api.fenToYuan(m.purchase_price_fen, 2) : '—',
+        // round149：把「买→用」的换算关系摆出来（同一原料可以有不同规格/单位，
+        //   列表里一眼看清"这价是按什么单位报的"，而不是只看到一个裸数字）
+        convert_factor: m.convert_factor || 0,
+        yield_rate: m.yield_rate || 0,
+        spec_line: '1 ' + (m.purchase_unit || TERMS.card.matUnitDefault) + ' = ' + (m.convert_factor || 0) + ' 克'
+          + (m.yield_rate ? ' · ' + TERMS.card.matYield.replace(/（%）$/, '') + ' ' + m.yield_rate + '%' : ''),
         net_cost: m.net_unit_cost > 0 ? (m.net_unit_cost / 10000).toFixed(4) : '0.0000',
         is_virtual: !!m.is_virtual,
         category: m.category || 'other',
