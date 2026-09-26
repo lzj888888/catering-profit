@@ -142,6 +142,12 @@ exports.main = async (event) => {
       quantity: ln.quantity,
       net_unit_cost: nuc,
       input_type: 2,
+      // 任务1（S0）：手工行无原料可查，5 字段按缺省值；yield_rate 有真值就存真值
+      brand_spec: '',
+      purchase_unit: '',
+      purchase_price: 0,
+      convert_factor: 0,
+      yield_rate: Number(ln.yield_rate) || 0,
     });
   }
   const mergedLines = [];
@@ -275,6 +281,12 @@ exports.main = async (event) => {
         material_name: ln.material_name,     // 快照：名称
         quantity: ln.quantity,               // 用量（g 或 份）
         net_unit_cost: ln.net_unit_cost,     // 快照：净料单位成本（万分整数）★快照隔离本体
+        // 任务1（S0）：快照补 5 字段（brand_spec/purchase_unit/purchase_price 分/convert_factor/yield_rate）
+        brand_spec: ln.brand_spec || '',
+        purchase_unit: ln.purchase_unit || '',
+        purchase_price: ln.purchase_price || 0,
+        convert_factor: ln.convert_factor || 0,
+        yield_rate: ln.yield_rate || 0,
         line_net_cost: result.lines[i].line_net_cost_fen,
         input_type: ln.input_type || 1,      // M3.3：按行真实值（1=档案 / 2=临时手工）
         sort_order: i + 1,

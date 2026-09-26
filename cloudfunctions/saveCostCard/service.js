@@ -44,6 +44,12 @@ function buildSnapshotLines(cardLines, materialsById) {
       material_name: mat.name || '',
       quantity: Number(ln.quantity) || 0,
       net_unit_cost: Number(mat.net_unit_cost) || 0, // 万分快照（保存时上手复制）
+      // 任务1（S0）：快照补 5 字段（v1.0 M3.3 保存快照机制要求 7 项，连同上面的 name/net_unit_cost 共 7 项）
+      brand_spec: mat.brand_spec || '',
+      purchase_unit: mat.purchase_unit || '',
+      purchase_price: mat.purchase_price != null ? mat.purchase_price : 0, // 整数分，直接取不换算
+      convert_factor: mat.convert_factor != null ? mat.convert_factor : 0,
+      yield_rate: mat.yield_rate != null ? mat.yield_rate : 0,
     });
   }
   return { lines, childVirtualIds };

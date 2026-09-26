@@ -637,6 +637,17 @@ const TERMS = {
     activityPriceHint: '活动期间的挂牌价，用于计算第二条毛利率',
     warnPriceBelowCost: '售价低于成本，确定保存吗？',
     reverseApply: '填入建议售价',
+    // ===== 批次 S0 · 版本恢复 / 标签筛选 / 快照明细 =====
+    filterTags: '标签',
+    restoreVersion: '恢复此版本',
+    restoreVersionConfirm: '恢复后将生成一个新版本，历史版本原样保留。确定恢复？',
+    restoreDone: '已恢复为新版本',
+    restoring: '正在恢复…',
+    snapshotBrand: '品牌规格',
+    snapshotUnit: '采购单位',
+    snapshotPrice: '采购价',
+    snapshotConvert: '换算系数',
+    snapshotYield: '出成率',
   },
 
   // ===== 十五、M1 库存录入页（shop_inventory）=====
@@ -1028,6 +1039,8 @@ const ERROR_MESSAGES = {
   'ERR.BOM_CYCLE': '检测到循环引用，请调整配方',
   'ERR.BOM_DEPTH': '配方嵌套层数过多',
   'ERR.M2_RED_ALERT': '当前结构下难以盈利，请调整方案',
+  'ERR.COMBO_NEST': '套餐里不能再包含另一个套餐',
+  'ERR.SUB_CARD_VERSION': '引用的菜品版本已失效，请重新选择',
   'ERR.PAY_FAILED': '支付失败，请重试',
   'ERR.PAY_PENDING': '支付处理中，请稍候',
   'ERR.ORDER_NOT_FOUND': '订单不存在',
@@ -1070,6 +1083,8 @@ const CODE_TO_I18N = {
   BOM_CYCLE_DETECTED: 'ERR.BOM_CYCLE',
   BOM_DEPTH_EXCEEDED: 'ERR.BOM_DEPTH',
   M2_RED_ALERT: 'ERR.M2_RED_ALERT',
+  COMBO_NEST_NOT_ALLOWED: 'ERR.COMBO_NEST',
+  SUB_CARD_VERSION_INVALID: 'ERR.SUB_CARD_VERSION',
   AMORT_TERMINATED: 'OK',
   // 1.5 支付 / 订单 / 退款
   PAY_FAILED: 'ERR.PAY_FAILED',

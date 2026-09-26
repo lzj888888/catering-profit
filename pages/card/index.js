@@ -40,6 +40,7 @@ Page({
       // 批次 P0（任务 2）
       searchPh: TERMS.card.searchPh,
       filterMargin: TERMS.card.filterMargin,
+      filterCategory: TERMS.card.filterCategory,
       marginAll: TERMS.card.marginAll,
       marginHigh: TERMS.card.marginHigh,
       marginMid: TERMS.card.marginMid,
@@ -55,6 +56,7 @@ Page({
       selectSync: TERMS.card.selectSync,
       cancel: TERMS.buttons.cancel,
       materialArchive: TERMS.card.materialListTitle,
+      filterTags: TERMS.card.filterTags,
     },
     all: [],           // 全量列表（前端过滤）
     list: [],
@@ -62,6 +64,12 @@ Page({
     marginFilter: 'all',
     marginLabel: '',   // 当前选中毛利率区间展示名
     marginOptions: MARGIN_OPTIONS,
+    categoryFilter: '',   // S0（任务 3）：分类筛选（''=全部）
+    categoryLabel: '',
+    categoryOptions: [],  // [{ value, label }]（从数据去重，不写死枚举）
+    tagFilter: '',        // S0：标签筛选
+    tagLabel: '',
+    tagOptions: [],
     selectMode: false, // 批量同步选择模式
     selected: {},      // { card_code: true }
     loading: true,
@@ -87,7 +95,18 @@ Page({
         margin: c.price_fen > 0 ? c.gross_margin_pct : null,
         calc_mode: c.calc_mode,
       }));
-      this.setData({ all, loading: false });
+      // S0（任务 3）：分类/标签筛选选项 —— 从数据去重（不写死枚举；tag 按逗号分隔后取单项去重）
+      const catSeen = new Set();
+      const tagSeen = new Set();
+      const categoryOptions = [{ value: '', label: TERMS.card.marginAll }];
+      const tagOptions = [{ value: '', label: TERMS.card.marginAll }];
+      for (const c of all) {
+        if (c.category && !catSeen.has(c.category)) { catSeen.add(c.category); categoryOptions.push({ value: c.category, label: c.category }); }
+        for (const t of c.tags.split(/[,，]/).map((x) => x.trim()).filter(Boolean)) {
+          if (!tagSeen.has(t)) { tagSeen.add(t); tagOptions.push({ value: t, label: t }); }
+        }
+      }
+      this.setData({ all, categoryOptions, tagOptions, loading: false });
       this.applyFilter();
     } catch (e) {
       this.setData({ loading: false });
@@ -101,13 +120,30 @@ Page({
     this.setData({ marginFilter: opt ? opt.value : 'all', marginLabel: opt ? opt.label : '' });
     this.applyFilter();
   },
+  onCategoryFilter(e) {
+    const opt = this.data.categoryOptions[Number(e.detail.value)];
+    this.setData({ categoryFilter: opt ? opt.value : '', categoryLabel: opt ? opt.label : '' });
+    this.applyFilter();
+  },
+  onTagFilter(e) {
+    const opt = this.data.tagOptions[Number(e.detail.value)];
+    this.setData({ tagFilter: opt ? opt.value : '', tagLabel: opt ? opt.label : '' });
+    this.applyFilter();
+  },
 
-  // 名称模糊 + 毛利率区间 前端过滤
+  // 名称模糊 + 分类 + 标签 + 毛利率区间（「与」关系，统一在此过滤）
   applyFilter() {
     const kw = this.data.keyword.trim().toLowerCase();
     const mf = this.data.marginFilter;
+    const cat = this.data.categoryFilter;
+    const tag = this.data.tagFilter;
     const list = this.data.all.filter((c) => {
       if (kw && !c.name.toLowerCase().includes(kw)) return false;
+      if (cat && c.category !== cat) return false;
+      if (tag) {
+        const tags = c.tags.split(/[,，]/).map((x) => x.trim());
+        if (!tags.includes(tag)) return false;
+      }
       if (mf === 'high') return c.margin !== null && c.margin >= 60;
       if (mf === 'mid') return c.margin !== null && c.margin >= 30 && c.margin < 60;
       if (mf === 'low') return c.margin !== null && c.margin < 30;
@@ -190,6 +226,7 @@ Page({
             loss_pct: src.loss_rate || 0,
             aux_fen: src.aux_fen || 0,
             price_fen: src.price_fen || 0,
+            activity_price_fen: src.price_promo_fen || 0,   // 任务4：复制带活动特价（分，validate 认 activity_price_fen）
             category: src.category || '',
             tags: src.tags || '',
           };
@@ -270,9 +307,12 @@ Page({
   downloadContent(filename, content, format) {
     const fs = wx.getFileSystemManager();
     const tmp = `${wx.env.USER_DATA_PATH}/${filename}`;
+    // S0（任务4）：exportData 声明的 format='excel' 实际落盘为 CSV 内容（带 BOM，Excel 可开），
+    //   fileType 按「json / csv」二选一，'excel' 显式映射为 'csv'（避免隐式 else 碰巧对）。
+    const fileType = format === 'json' ? 'json' : 'csv';
     try {
       fs.writeFileSync(tmp, format === 'json' ? JSON.stringify(content) : String(content), 'utf8');
-      wx.openDocument({ filePath: tmp, showMenu: true, fileType: format === 'json' ? 'json' : 'csv', fail: () => {} });
+      wx.openDocument({ filePath: tmp, showMenu: true, fileType, fail: () => {} });
     } catch (e) { api.toastError(e); }
   },
   onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()); },

@@ -20,10 +20,23 @@
     </view>
 
     <view class="lines-title">{{t.versionLines}}</view>
-    <view class="line-row" wx:for="{{v.lines}}" wx:key="material_id" wx:for-item="l">
-      <text class="lbl">{{l.material_name}} × {{l.quantity}}</text>
-      <text class="val muted">{{t.cur}}{{l.line_net_cost}}</text>
+    <view class="line-row" wx:for="{{v.lines}}" wx:key="index" wx:for-item="l">
+      <view class="line-main">
+        <text class="lbl">{{l.material_name}} × {{l.quantity}}</text>
+        <text class="val muted">{{t.cur}}{{l.line_net_cost}}</text>
+      </view>
+      <!-- S0 快照 5 字段（只读灰字） -->
+      <view class="snapshot" wx:if="{{l.brand_spec || l.purchase_unit || l.purchase_price || l.convert_factor || l.yield_rate}}">
+        <text wx:if="{{l.brand_spec}}">{{t.snapshotBrand}}：{{l.brand_spec}}</text>
+        <text wx:if="{{l.purchase_unit}}">{{t.snapshotUnit}}：{{l.purchase_unit}}</text>
+        <text wx:if="{{l.purchase_price}}">{{t.snapshotPrice}}：{{t.cur}}{{l.purchase_price}}</text>
+        <text wx:if="{{l.convert_factor}}">{{t.snapshotConvert}}：{{l.convert_factor}}</text>
+        <text wx:if="{{l.yield_rate}}">{{t.snapshotYield}}：{{l.yield_rate}}%</text>
+      </view>
     </view>
+
+    <!-- S0（任务 2）恢复此版本 -->
+    <button class="btn ghost btn-small" style="min-height:88rpx;" data-v="{{v}}" bindtap="onRestore">{{t.restoreVersion}}</button>
   </view>
 
   <view wx:if="{{list.length === 0 && !loading}}" class="empty">{{t.oldVersionNote}}</view>

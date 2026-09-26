@@ -15,6 +15,7 @@ function cardToOutput(doc) {
     loss_rate: doc.loss_rate != null ? doc.loss_rate : 0,
     aux_fen: doc.aux_cost != null ? doc.aux_cost : 0,
     price_fen: doc.price_list != null ? doc.price_list : 0,
+    price_promo_fen: doc.price_promo != null ? doc.price_promo : 0,
     total_cost_fen: doc.total_cost != null ? doc.total_cost : 0,
     material_total_fen: doc.material_total_fen != null ? doc.material_total_fen : 0,
     gross_profit_fen: doc.gross_profit_fen != null ? doc.gross_profit_fen : 0,
@@ -33,6 +34,12 @@ function lineToOutput(doc) {
     quantity: doc.quantity != null ? doc.quantity : 0,
     net_unit_cost: doc.net_unit_cost != null ? doc.net_unit_cost : 0, // 万分整数快照
     line_net_cost_fen: doc.line_net_cost != null ? doc.line_net_cost : 0,
+    // 任务1（S0）：快照 5 字段出参（fail-soft：存量行缺这 5 字段 ⇒ 给缺省值，不报错不回填）
+    brand_spec: doc.brand_spec || '',
+    purchase_unit: doc.purchase_unit || '',
+    purchase_price: doc.purchase_price != null ? doc.purchase_price : 0,
+    convert_factor: doc.convert_factor != null ? doc.convert_factor : 0,
+    yield_rate: doc.yield_rate != null ? doc.yield_rate : 0,
   };
 }
 

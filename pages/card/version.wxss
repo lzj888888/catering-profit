@@ -1,4 +1,7 @@
 /* pages/card/version.wxss —— M3 成本卡版本历史 */
 .lines-title { font-size: 28rpx; font-weight: 700; color: #666; margin: 20rpx 0 8rpx; }
-.line-row { display: flex; justify-content: space-between; align-items: center; padding: 8rpx 0; font-size: 28rpx; }
+.line-row { display: flex; flex-direction: column; padding: 8rpx 0; font-size: 28rpx; }
+.line-main { display: flex; justify-content: space-between; align-items: center; }
 .line-row .lbl { color: #444; }
+/* S0 快照 5 字段（只读灰字） */
+.snapshot { display: flex; flex-wrap: wrap; gap: 4rpx 24rpx; margin-top: 6rpx; padding-left: 8rpx; font-size: 28rpx; color: #999; }

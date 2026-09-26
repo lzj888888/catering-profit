@@ -7,6 +7,14 @@
     <picker mode="selector" range="{{marginOptions}}" range-key="label" bindchange="onMarginFilter">
       <view class="tool-btn">{{t.filterMargin}}：{{marginLabel || t.marginAll}}</view>
     </picker>
+    <picker mode="selector" range="{{categoryOptions}}" range-key="label" bindchange="onCategoryFilter">
+      <view class="tool-btn">{{t.filterCategory}}：{{categoryLabel || t.marginAll}}</view>
+    </picker>
+    <picker mode="selector" range="{{tagOptions}}" range-key="label" bindchange="onTagFilter">
+      <view class="tool-btn">{{t.filterTags}}：{{tagLabel || t.marginAll}}</view>
+    </picker>
+  </view>
+  <view class="toolbar">
     <button class="btn-small ghost tool-btn" bindtap="goMaterial">{{t.materialArchive}}</button>
     <button class="btn-small ghost tool-btn" wx:if="{{!selectMode}}" bindtap="onBatchSyncEnter">{{t.batchSync}}</button>
     <button class="btn-small tool-btn" wx:if="{{selectMode}}" bindtap="onBatchSyncCancel">{{t.cancel}}</button>

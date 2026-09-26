@@ -26,6 +26,12 @@ function rebuildSnapshotLines(existingLines, materialsById) {
       material_name: mat.name || ln.material_name || '',
       quantity: Number(ln.quantity) || 0,
       net_unit_cost: Number(mat.net_unit_cost) || 0, // 快照：取原料**当前**净料单位成本
+      // 任务1（S0）：快照补 5 字段（与 saveCostCard.buildSnapshotLines 同字段集）
+      brand_spec: mat.brand_spec || '',
+      purchase_unit: mat.purchase_unit || '',
+      purchase_price: mat.purchase_price != null ? mat.purchase_price : 0, // 整数分
+      convert_factor: mat.convert_factor != null ? mat.convert_factor : 0,
+      yield_rate: mat.yield_rate != null ? mat.yield_rate : 0,
     });
   }
   return lines;
