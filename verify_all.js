@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：103 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：104 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -141,6 +141,13 @@
 //         判据 = P 前置 / A 归属表名字**必须真实存在于 terms 支出细项**（改名即转红 —— 本守卫存在理由）+ 不含 `manage` + `energy` 恰三项
 //         + B 结果页零硬编码阈值（引号感知剥注释）
 //         + C 出参契约（`indicators` / `indicator_scope` 十项）+ D 工具自证（8 组正负样本互证）+ E 断言数下界）
+//       + M3 计算引擎多副本行为等价守卫（tools/check_m3_engine_parity.js，R131：round129 全量梳理 M3 时暴露的**零覆盖区** ——
+//         M3 的计算内核在 calcBom / saveCostCard / syncCostCard 三处**各有一份副本**，本机一直默认「它们应当一致」，
+//         但**没有任何套件真跑三份做比对**；且三份**文本并不逐字等价**（calcBom 抽了 `purchasePerGramYuan` /
+//         `lineNetCostYuan` 两个辅助函数、另两份是内联的等价式）⇒「逐字节相等」类判据会误伤，只能判**行为等价**。
+//         判据 = A 三副本均可加载（另两份纯映射层已登记）/ B 确定性随机 3000 组 × 三副本 ⇒ 6000 次比对零不一致
+//         + C 锚点回归（宫保鸡丁 / 红油底料两组锚点值在三副本上同时成立）
+//         + D 反恒真四条（输入敏感 ×2 / 变体引擎偏移 1 分必须判为不等 / mode 非法三副本均抛错）+ E 断言数下界）
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -459,6 +466,8 @@ const SUITES = [
   //   或在**所在函数体内**回溯到含 `_id` 的赋值；例外必须白名单且写理由。
   //   同时守：解析器自带钉死样本（含“跨函数同名不串”）+ 白名单无死条目 + 断言数下界。
   ['doc-id-write', 'tools/check_doc_id_write.js'],
+  // R131 扩面（round129）：M3 计算引擎多副本行为等价守卫 —— 详见头注 R131 段。
+  ['m3-engine-parity', 'tools/check_m3_engine_parity.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

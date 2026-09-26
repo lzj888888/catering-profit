@@ -1,0 +1,74 @@
+==== R131 变异回灌原始输出（_mut_r131.js 逐条独立 + md5 还原自证）====
+
+===== 第 0 步：基线 =====
+  RC=0  ❌=0
+
+===== 第 1 步：锚点预检（--dry，任何写入之前，坑 6/铁律 6）=====
+  OK   A1 单副本被改坏：saveCostCard 的 unit_cost_fen 偏移 1 分
+  OK   A2 三副本同步改坏：损耗除数 100→1000（副本间仍一致，锚点漂）
+  OK   A3 改小比较面：从 KEYS 里删掉 unit_cost_fen 字段
+  OK   A4 抬高断言数下界 18→999
+  OK   B1 组B·等价改写：auxFen 三元判空改成等价形式（三副本同步）
+  OK   B2 组B·数学恒等改写：*100 → *100 + 0（文本变了、行为没变）
+
+===== 第 2 步：逐条变异（每条独立 + 还原）=====
+  A1 ✅抓到(点名)  RC=1 ❌=2
+        ❌ B-② 三副本输出不一致数 = 0（实测 3000）
+        ❌ C-⑧ 锚点回归在三份副本上同时成立（任一副本漂了即红）
+  A2 ✅抓到(点名)  RC=1 ❌=5
+        ❌ C-① 宫保鸡丁 unit_cost_fen = 975（实测 931）
+        ❌ C-③ 宫保鸡丁 gross_profit_fen = 1825（实测 1869）
+        ❌ C-④ 宫保鸡丁 gross_margin_pct = 65.18（实测 66.75）
+        ❌ C-⑤ 宫保鸡丁 reverse_price_fen = 2438（目标毛利率 60%，实测 2328）
+  A3 ✅抓到(点名)  RC=1 ❌=1
+        ❌ D-③ 变体实现（unit_cost_fen 偏移 1 分）必须被对拍判为不等
+  A4 ✅抓到(点名)  RC=1 ❌=1
+        ❌ E-① 断言数 ≥ 18（实测 22 的保守下沿）
+  B1 ✅保持绿（不假红）  RC=0 ❌=0
+  B2 ✅保持绿（不假红）  RC=0 ❌=0
+
+===== 第 3 步：还原 + md5 逐字节比对 + 复跑 =====
+  OK  cloudfunctions/calcBom/service.js  43acba38611c
+  OK  cloudfunctions/saveCostCard/service.js  d4aec49a491e
+  OK  cloudfunctions/syncCostCard/service.js  cd5a5ac051f6
+  OK  tools/check_m3_engine_parity.js  bb6c4e63688c
+  还原后：RC=0 ❌=0
+
+==== 汇总：变异 6 条 / 未达预期 0 条  / md5 不一致 0 个 ====
+
+
+==== 副本等价性首次单跑输出 ====
+
+===== A. 副本可加载（非退化）=====
+✅ A 副本 calcBom/service.js 可 require 且 calcCostCard 是函数
+✅ A 副本 saveCostCard/service.js 可 require 且 calcCostCard 是函数
+✅ A 副本 syncCostCard/service.js 可 require 且 calcCostCard 是函数
+✅ A-非退化：三份副本全部载入（0 份 = 判据没跑起来）
+✅ A-登记：getCostCard/service.js 为纯映射层（不含 calcCostCard，故不参与对拍）
+✅ A-登记：getCardVersions/service.js 为纯映射层（不含 calcCostCard，故不参与对拍）
+
+===== B. 三副本行为对拍（确定性 3000 组）=====
+✅ B-① 对拍组数 ≥ 5000（非退化：真的比了这么多）
+✅ B-② 三副本输出不一致数 = 0（实测 0）
+✅ B-③ 非退化：受测输出里 unit_cost_fen 非空计数 > 0（实测 9000）
+
+===== C. S3 既有锚点回归（生产引擎实算）=====
+✅ C-① 宫保鸡丁 unit_cost_fen = 975（实测 975）
+✅ C-② 宫保鸡丁 material_total_fen = 876（实测 876）
+✅ C-③ 宫保鸡丁 gross_profit_fen = 1825（实测 1825）
+✅ C-④ 宫保鸡丁 gross_margin_pct = 65.18（实测 65.18）
+✅ C-⑤ 宫保鸡丁 reverse_price_fen = 2438（目标毛利率 60%，实测 2438）
+✅ C-⑥ 红油底料（模式 B）batch_total_fen = 4480（实测 4480）
+✅ C-⑦ 红油底料 单份 unit_cost_fen = 448（实测 448）
+✅ C-⑧ 锚点回归在三份副本上同时成立（任一副本漂了即红）
+
+===== D. 反恒真（对拍必须能分辨差异）=====
+✅ D-① 输入敏感：lossPct 5→6 时输出必须不同（对拍有分辨力）
+✅ D-② 输入敏感：明细用量 200→201 时输出必须不同
+✅ D-③ 变体实现（unit_cost_fen 偏移 1 分）必须被对拍判为不等
+✅ D-④ mode 非法值时三副本均抛错（R81 一致性）
+
+===== E. 覆盖度 =====
+✅ E-① 断言数 ≥ 18（实测 22 的保守下沿）
+
+==== R131 M3 引擎多副本行为等价守卫：22 通过 / 0 失败 ====

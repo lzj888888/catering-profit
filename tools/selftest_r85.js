@@ -180,6 +180,14 @@ const A15_EXEMPT = [
   /^cloudfunctions\/[^/]+\/cx_indicatorRef\.js$/,      // round110：sync_common 派生（全函数）
   /^cloudfunctions\/[^/]+\/cx_index\.js$/,             // round110：sync_common 派生（全函数，本轮 35 个变动）
   /^cloudfunctions\/[^/]+\/common\.js$/,               // round110：sync_common 派生入口
+  // ⚠️ 2026-09-26（round129）**九次触发** —— M3 v1.2 批次 **S0** 授权快马（InsCode）写码：
+  //   任务1「明细行快照补 5 字段」触及 saveCostCard / syncCostCard（**已在 round116 白名单内**）、
+  //   新增登记 **getCostCard / getCardVersions** 两处读侧出参（price_promo_fen + 快照 5 字段，fail-soft 缺省）。
+  //   本批属**投喂包显式授权**的后端改动，非「顺手改云函数逻辑」；仍按 round103 的**白名单式**登记
+  //   （精确到目录），**绝不放宽成 `cloudfunctions/` 全豁免**（那样等于守卫作废）：
+  //   by=WorkBuddy / date=2026-09-26 / reason=round129 授权 M3 v1.2 S0（快照 5 字段 + 活动特价出参）
+  /^cloudfunctions\/getCostCard\//,
+  /^cloudfunctions\/getCardVersions\//,
 ];
 check('A15 云函数逻辑零改动（仅 initDb 建库单源 + 本批授权函数豁免）', (() => {
   const { execFileSync } = require('child_process');

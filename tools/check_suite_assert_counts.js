@@ -94,6 +94,10 @@ const CASES = [
   //   断言数不受守则「删掉几组样本 + 调低下界」就等于把守卫惄惄改小（判据仍全绿而证明力归零）。
   { key: 'check_m1_indicator_view', rel: 'tools/check_m1_indicator_view.js' },
   { key: 'check_doc_id_write', rel: 'tools/check_doc_id_write.js' },
+  // R131 扩面（round129）：M3 引擎副本等价守卫纳入下界保护 —— 它的 D 段四条反恒真
+  //   （输入敏感 ×2 / 变体偏移 1 分必须判不等 / mode 非法三副本均抛错）正是「非恒真」的凭据；
+  //   断言数不受守则「删掉反恒真段 + 调低下界」就等于把守卫悄悄改小（判据仍全绿而证明力归零）。
+  { key: 'check_m3_engine_parity', rel: 'tools/check_m3_engine_parity.js' },
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];
