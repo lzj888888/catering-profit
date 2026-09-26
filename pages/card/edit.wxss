@@ -1,4 +1,10 @@
 .val-input { text-align: right; font-size: 30rpx; width: 260rpx; }
+/* 菜品分类：自由输入 + 候选 chips。色值取 app.wxss 头注单源（墨蓝 #1e3a5f / 浅底 #e8eff7）；
+   字号 28rpx = 新增字号下界（26rpx 必红）。 */
+.cat-input { width: 100%; box-sizing: border-box; text-align: left; font-size: 30rpx; padding: 14rpx 18rpx; background: #f3f7fb; border-radius: 10rpx; min-height: 88rpx; }
+.chip-row { display: flex; flex-wrap: wrap; margin-top: 12rpx; }
+.chip { font-size: 28rpx; padding: 10rpx 22rpx; margin: 0 12rpx 12rpx 0; border-radius: 24rpx; background: #e8eff7; color: #1e3a5f; }
+.chip-on { background: #1e3a5f; color: #fff; }
 .mode-group { display: flex; align-items: center; }
 .mode-item { font-size: 30rpx; margin-right: 32rpx; display: flex; align-items: center; }
 .line { background: #fff; border-radius: 12rpx; padding: 16rpx 24rpx; margin-bottom: 16rpx; }

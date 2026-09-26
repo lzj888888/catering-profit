@@ -68,11 +68,17 @@
   <button class="btn ghost btn-small" style="min-height:88rpx;" bindtap="goMaterial">{{t.materialArchive}}</button>
 
   <!-- 分类 / 标签（后端 cardDoc 已有字段，本次真正传上去） -->
-  <view class="field">
+  <!-- 分类：**自由填写**（火锅的锅底/荤菜/素菜、营销栏目"大口吃肉"都选不出来 ⇒ 不能只给下拉）。
+       组件用 input + chips 而非 picker 弹层：弹层×键盘在真机上是死结（见 PITFALLS §6）。 -->
+  <view class="line">
     <text class="lbl">{{t.category}}</text>
-    <picker mode="selector" range="{{categoryOptions}}" bindchange="onCategory">
-      <view class="val-input">{{category || t.categoryPh}}</view>
-    </picker>
+    <input class="cat-input" value="{{category}}" placeholder="{{t.categoryPh}}" bindinput="onCategoryInput" adjust-position="{{true}}" cursor-spacing="20" />
+    <view class="chip-row" wx:if="{{catChips.length}}">
+      <block wx:for="{{catChips}}" wx:key="*this">
+        <view class="chip {{item === category ? 'chip-on' : ''}}" data-cat="{{item}}" bindtap="pickCat">{{item}}</view>
+      </block>
+    </view>
+    <text class="muted">{{t.categoryHint}}</text>
   </view>
   <view class="field">
     <text class="lbl">{{t.tags}}</text>

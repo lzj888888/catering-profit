@@ -11,6 +11,9 @@ const api = require('../../utils/api.js');
 const ui = require('../../utils/ui.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 
+// 本店填过的菜品分类（本地记忆，供下次点选；不新建集合、不上云 —— M3 v1.1 零新建集合红线）
+const EDIT_CATS_KEY = 'm3_dish_cats';
+
 // 明细行空行工厂（档案行）
 function emptyLine() { return { input_type: 1, material_id: '', material_name: '', qty: '' }; }
 // 手工行工厂
@@ -67,6 +70,7 @@ Page({
       reverseApply: TERMS.card.reverseApply,
       category: TERMS.card.category,
       categoryPh: TERMS.card.categoryPh,
+      categoryHint: TERMS.card.categoryHint,
       tagsPh: TERMS.card.tagsPh,
       tagsHint: TERMS.card.tagsHint,
       materialArchive: TERMS.card.materialListTitle,
@@ -82,8 +86,11 @@ Page({
     priceYuan: 0,
     activityPriceYuan: '',
     category: '',
+    // 分类是**自由文本**（v1.0 §菜品分类 明写"支持自定义"）；下列只是冷启动建议 + 本店历史。
+    // 组件已从 picker 改为「input + chips」（picker 只能选预设，火锅的锅底/荤菜/素菜、营销栏目
+    // "大口吃肉"这类根本选不出来）。categoryOptions 保留变量名为兼容既有引用，语义=建议池。
     categoryOptions: TERMS.card.dishCats.slice(),
-    categoryIndex: -1,
+    catChips: [],
     tags: '',
     targetMargin: 60,
     reversePriceFen: 0,
@@ -132,15 +139,8 @@ Page({
         }
       }
       if (!init.lines || init.lines.length === 0) init.lines = renumber([emptyLine()]);
-      // 分类回显：旧数据是自由输入的，若不在枚举内则补进选项，避免回显丢失
-      if (init.category) {
-        const opts = (init.categoryOptions || this.data.categoryOptions || TERMS.card.dishCats).slice();
-        if (opts.indexOf(init.category) < 0) opts.push(init.category);
-        init.categoryOptions = opts;
-        init.categoryIndex = opts.indexOf(init.category);
-      } else {
-        init.categoryIndex = -1;
-      }
+      // 分类回显：自由文本，直接回显；候选 chips = 本店填过的 + 建议池（不再做"补进枚举"）
+      init.catChips = this.buildCatChips(init.category);
       this.setData(init);
     } catch (e) {
       this.setData({ loading: false });
@@ -155,9 +155,26 @@ Page({
   onAux(e) { this.setData({ auxYuan: e.detail.value }); },
   onPrice(e) { this.setData({ priceYuan: e.detail.value }); },
   onActivityPrice(e) { this.setData({ activityPriceYuan: e.detail.value }); },
-  onCategory(e) {
-    const i = Number(e.detail.value);
-    this.setData({ categoryIndex: i, category: this.data.categoryOptions[i] || '' });
+  onCategoryInput(e) { this.setData({ category: e.detail.value }); },
+  pickCat(e) {
+    const ds = (e && e.currentTarget && e.currentTarget.dataset) || {};
+    if (!ds.cat) return;
+    this.setData({ category: ds.cat });
+  },
+  // 候选分类 = 当前值 + **本店填过的**（记住即复用，火锅店不会每次重打"锅底"）+ 建议池补齐。
+  // 上限 14：再多会刷屏，且老板实际用的分类就那么几个。
+  buildCatChips(cur) {
+    const seen = [];
+    const push = (v) => {
+      const s = String(v == null ? '' : v).trim();
+      if (s && seen.indexOf(s) < 0) seen.push(s);
+    };
+    push(cur);
+    let hist = [];
+    try { hist = wx.getStorageSync(EDIT_CATS_KEY) || []; } catch (err) { hist = []; }
+    if (Array.isArray(hist)) hist.forEach(push);
+    (this.data.categoryOptions || TERMS.card.dishCats).forEach(push);
+    return seen.slice(0, 14);
   },
   onTags(e) { this.setData({ tags: e.detail.value }); },
   onTargetMargin(e) { this.setData({ targetMargin: e.detail.value }); },
@@ -334,6 +351,17 @@ Page({
     };
     if (this.data.calcMode === 'B') card.batch_output = Number(this.data.batchOutput) || 0;
     if (this.data.card_code) card.card_code = this.data.card_code;
+    // 分类归一化：只 trim（去首尾空格）。⚠️ 不做"折叠中间空格/同义词归并"——
+    //   老板填"大口吃肉"是有意的营销栏目名，程序替他改字会造成"我明明填了却变了"。
+    card.category = String(this.data.category || '').trim();
+    if (card.category) {
+      try {
+        const hist = wx.getStorageSync(EDIT_CATS_KEY) || [];
+        const arr = Array.isArray(hist) ? hist.slice() : [];
+        if (arr.indexOf(card.category) < 0) arr.push(card.category);
+        wx.setStorageSync(EDIT_CATS_KEY, arr.slice(-40));
+      } catch (err) { /* 本地字典失败不影响保存 */ }
+    }
     try {
       ui.setTitle(TERMS.buttons.save);
       await api.call('saveCostCard', { card, client_request_id: 'cc_' + Date.now() });

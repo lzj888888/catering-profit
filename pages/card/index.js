@@ -8,6 +8,9 @@ const ui = require('../../utils/ui.js');
 const { openPaywall } = require('../../utils/paywall.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 
+// 本店用过的菜品分类（本地字典，与 edit.js 同一 key；不新建集合 —— M3 v1.1 零新建集合红线）
+const LIST_CATS_KEY = 'm3_dish_cats';
+
 // 毛利率区间筛选项（v1.0 M3.8：≥60% 绿 / 40%~60% 黄 / <40% 红，未定价灰）
 const MARGIN_OPTIONS = [
   { value: 'all', label: TERMS.card.marginAll },
@@ -107,6 +110,8 @@ Page({
           if (!tagSeen.has(t)) { tagSeen.add(t); tagOptions.push({ value: t, label: t }); }
         }
       }
+      // 本店用过的分类写进本地字典 ⇒ 编辑页 chips 直接可点（新建卡也不用重打"锅底"）
+      try { wx.setStorageSync(LIST_CATS_KEY, Array.from(catSeen).slice(0, 40)); } catch (err) { /* 忽略 */ }
       this.setData({ all, categoryOptions, tagOptions, loading: false });
       this.applyFilter();
     } catch (e) {

@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：105 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：106 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -155,6 +155,12 @@
 //         判据 = A 解析器钉死样本 5 条（先证解析器有效）
 //         + B 扫 pages/utils/app.js 全部 confirmText|cancelText，按 `||` 拆候选、`def.`/`buttons.` 别名展开后逐个查 TERMS 实际值判 ≤4 字
 //         + C 反恒真五条（6/5 字影子必红、3 字必绿、别名表防腐化 ×2）+ D 断言数下界）
+//       + 菜品分类「自由定义」守卫（tools/check_dish_category_free.js，R148：李老师反馈 2026-09-26 ——
+//         分类按热菜/凉菜分，但火锅要分荤菜/素菜、还有「大口吃肉」这类营销栏目名。查证：
+//         v1.0 规范 §菜品分类 明写「支持自定义」，而 edit.wxml 实现是 picker（**只能选 7 个预设**）
+//         ⇒ 规范与实现不符。根因=分类横跨 4 个正交维度（出品形态/食材属性/业态专属/营销栏目），
+//         加选项永远补不完 ⇒ 只能自由输入。判据 = L1 必须可输入且不得被 picker 锁死
+//         + L2 建议池包含基线 7 项（只许追加）+ L3 保存过 trim + L4 原料分类**保持枚举**不许跟着自由化）
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -477,6 +483,8 @@ const SUITES = [
   ['m3-engine-parity', 'tools/check_m3_engine_parity.js'],
   // R145（round130 真机反馈）：showModal 按钮文案长度守卫 —— 详见头注 R145 段。
   ['modal-btn-len', 'tools/check_modal_button_len.js'],
+  // R148（round148 李老师反馈）：菜品分类「自由定义」守卫 —— 详见头注 R148 段。
+  ['dish-cat-free', 'tools/check_dish_category_free.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

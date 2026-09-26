@@ -99,6 +99,7 @@ const CASES = [
   //   断言数不受守则「删掉反恒真段 + 调低下界」就等于把守卫悄悄改小（判据仍全绿而证明力归零）。
   { key: 'check_m3_engine_parity', rel: 'tools/check_m3_engine_parity.js' },
   { key: 'check_modal_button_len', rel: 'tools/check_modal_button_len.js' },
+  { key: 'check_dish_category_free', rel: 'tools/check_dish_category_free.js' },
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];
