@@ -29,9 +29,18 @@
     <text class="lbl">{{t.matPrice}}</text>
     <input class="val-input" type="digit" value="{{priceYuan}}" bindinput="onPrice"  adjust-position="{{true}}" cursor-spacing="20" />
   </view>
+  <!-- round153：句子式换算系数 —— 「1 斤 = [ 500 ] 克」。
+       改前只有一个孤零零写着 500 的框 + 下一行浅底说明，真机上被读成"系统替我算好的结果值"
+       ⇒ 老板找不到能下手的地方（实测反馈）。把等式摊开写在控件两侧，中间那个框自然就是待填项。
+       ⚠️ 数字仍可手改（saveMaterial 只校验 >0 就原样落库）；手改后 convertTouched 立起，
+       后续换单位不再被建议值冲掉（round152）。 -->
   <view class="field">
     <text class="lbl">{{convertLabel || t.matConvert}}</text>
-    <input class="val-input" type="number" value="{{convert_factor}}" bindinput="onConvert"  adjust-position="{{true}}" cursor-spacing="20" />
+    <view class="conv-wrap">
+      <text class="conv-eq">{{convertLeft}}</text>
+      <input class="val-input conv-input" type="number" value="{{convert_factor}}" bindinput="onConvert"  adjust-position="{{true}}" cursor-spacing="20" />
+      <text class="conv-eq conv-word">{{convBaseWord}}</text>
+    </view>
   </view>
   <view class="hint">{{convertHint}}</view>
   <view class="field">

@@ -14,5 +14,10 @@
 .pick-input { flex: 1; width: auto; }
 .pick-caret { flex: none; min-width: 44rpx; margin-left: 12rpx; text-align: center; font-size: 28rpx; color: #1e3a5f; }
 
-/* round151：picker 补下拉箭头。改前 `.picker` 只有文字样式，真机上看着不像可点。 */
-.picker::after { content: '▾'; margin-left: 12rpx; font-size: 28rpx; color: #1e3a5f; }
+/* round153：换算系数句子式组合行「1 斤 = [ 500 ] 克」。
+   ⚠️ 选择器带 `.conv-wrap` 前缀提高权重 —— 否则被 app.wxss 的 `.field input{min-width:320rpx}` 压过去，
+   输入框会被撑到 320rpx，句子被挤断行。边框/背景继承 app.wxss `.field input`，不另起一套样式。 */
+.conv-wrap { display: flex; align-items: center; }
+.conv-wrap .conv-input { width: 180rpx; min-width: 180rpx; text-align: center; }
+.conv-eq { flex: none; font-size: 30rpx; color: #4a5b70; }
+.conv-word { margin-left: 14rpx; color: #1e3a5f; }

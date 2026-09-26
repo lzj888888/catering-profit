@@ -70,6 +70,8 @@ Page({
       inputType: TERMS.card.inputType,
       inputTypeArchive: TERMS.card.inputTypeArchive,
       inputTypeManual: TERMS.card.inputTypeManual,
+      // round153：删行按钮文案（挪到明细行末尾后的新语义）
+      delLine: TERMS.card.delLine,
       manualName: TERMS.card.manualName,
       manualNamePh: TERMS.card.manualNamePh,
       manualUnitPrice: TERMS.card.manualUnitPrice,
@@ -125,6 +127,9 @@ Page({
     materials: [],
     // 用量单位枚举（单源 utils/units.js；round151 起 = 与采购单位同池，基准单位仍恒为克）
     qtyUnits: units.QTY_UNITS.slice(),
+    // round153：wxml 兜底用的基准单位词 —— 改前在模板里写死 `'克'`，那等于在页面存了第二份单位口径。
+    //   ⚠️ 只作 `|| baseUnit` 兜底，真正的枚举值一律来自 qtyUnits / priceUnits（单源 units.js）。
+    baseUnit: units.BASE_UNIT,
     // round151：单价单位枚举 —— 与用量单位同池（老板按什么单位报的价，就该能选什么）
     priceUnits: units.QTY_UNITS.slice(),
     // round150（M3.14）组件类型 chips：**只有键 + 中文名**，键集 ≡ 服务端 LINE_KINDS。
@@ -360,10 +365,27 @@ Page({
     this.setData({ lines });
   },
   addLine() { this.setData({ lines: renumber(this.data.lines.concat([emptyLine()])) }); },
+  // round153：删行按钮从「录入方式」那行的红 × 挪到行尾并改名 ⇒ 顺手补上防误触。
+  //   规则：**只有这行已经填了东西才问一句**，空行直接删 —— 不为没内容的东西增加摩擦。
+  //   ⚠️ wx.showModal 的 confirmText/cancelText 上限 4 字符（真机事故见 terms.js paywall 注释）
+  //      ⇒ 「删除」「取消」都在限内，长文案只放 title/content。
   delLine(e) {
     const idx = Number(e.currentTarget.dataset.idx);
-    const rest = this.data.lines.filter((l, i) => i !== idx);
-    this.setData({ lines: renumber(rest.length ? rest : [emptyLine()]) });
+    const cur = this.data.lines[idx] || {};
+    const name = String(cur.material_name || '').trim();
+    const filled = !!cur.material_id || !!name || Number(cur.qty) > 0 || Number(cur.unit_price_yuan) > 0;
+    const doDel = () => {
+      const rest = this.data.lines.filter((l, i) => i !== idx);
+      this.setData({ lines: renumber(rest.length ? rest : [emptyLine()]) });
+    };
+    if (!filled) { doDel(); return; }
+    wx.showModal({
+      title: TERMS.card.delLineTitle,
+      content: name ? TERMS.card.delLineConfirmOf(name) : TERMS.card.delLineConfirmBare,
+      confirmText: TERMS.card.delLineConfirmOk,
+      cancelText: TERMS.buttons.cancel,
+      success: (r) => { if (r.confirm) doDel(); },
+    });
   },
 
   // 反算售价 / 预览成本：调 calcBom（后端纯计算），不本地算

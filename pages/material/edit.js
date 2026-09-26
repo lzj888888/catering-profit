@@ -62,6 +62,11 @@ Page({
     // round151：换算系数标签的基准词随**计量族**走（→克 / →毫升 / →个）。
     //   ⚠️ 改前恒为「换算系数（→克）」⇒ 按「个/箱」采购的老板看到的字面量根本没有对应含义。
     convertLabel: '',
+    // round153：换算系数组合行的左右陪衬字 —— 「1 斤 = [ 500 ] 克」。
+    //   左取 `terms.matConvertLeftOf(u)`（拼串在术语表），右取 `units.baseWordOf()` 单源。
+    //   ⚠️ 页面不自己写死单位词 —— 那是第二份口径（守卫 check_unit_family.js 反查）。
+    convertLeft: TERMS.card.matConvertLeftOf(TERMS.card.matUnitDefault),
+    convBaseWord: units.baseWordOf(TERMS.card.matUnitDefault),
     priceYuan: '',
     // 默认换算系数 = 「默认采购单位（斤）」的建议值，取自单源 units.js（页面不写死 500）
     convert_factor: String(units.suggestConvert(TERMS.card.matUnitDefault) || 1),
@@ -148,6 +153,8 @@ Page({
     this.setData({
       convertLabel: TERMS.card.matConvertOf(w),
       convertHint: TERMS.card.matConvertHintOf(u, f, w),
+      convertLeft: TERMS.card.matConvertLeftOf(u),
+      convBaseWord: w,
     });
   },
   onYield(e) { this.setData({ yield_rate: e.detail.value }); },

@@ -154,10 +154,92 @@ function judgeConvertHintEditable(src) {
   return { ok: true, why: '换算系数提示带「可手改」可见信号' };
 }
 
+// ===== round153 判据 =====
+// F10 换算系数是否**句子式**组合行：「1 斤 = [ 500 ] 克」。
+//   由来（真机实测）：哪怕 hint 已写「可手改」，一个孤零零的框仍被读成"系统替我算好的结果值"
+//   ⇒ 文字说不清的事必须交给**控件形态**说。组合行 = 左短句 + 输入框 + 右基准词。
+function judgeConvRow(wxml, js) {
+  if (!wxml || !js) return { ok: false, why: '取不到原料档案页源码（fail-closed）' };
+  if (!/conv-wrap/.test(wxml)) return { ok: false, why: '换算系数不是组合行（缺 conv-wrap）⇒ 又退回孤零零一个框' };
+  if (!/\{\{convertLeft\}\}/.test(wxml)) return { ok: false, why: '组合行缺左侧短句 {{convertLeft}}（等式没摊开）' };
+  if (!/\{\{convBaseWord\}\}/.test(wxml)) return { ok: false, why: '组合行缺右侧基准词 {{convBaseWord}}' };
+  // ⚠️ 类名用 `[^"]*` 而不是精确字面量：否则页面给 conv-wrap 加一个无关 class（等价改写）
+  //    ⇒ 这里提取不到片段 ⇒ 按 fail-closed 判成假红（round153 变异 B1 实测到的真问题）。
+  const wrap = /<view class="conv-wrap[^"]*">[\s\S]*?<\/view>/.exec(wxml);
+  if (wrap && /[克毫升个]/.test(wrap[0])) return { ok: false, why: 'conv-wrap 块内写死了单位词（第二份口径）' };
+  if (!/convertLeft\s*:\s*TERMS\.card\.matConvertLeftOf/.test(js)) return { ok: false, why: 'convertLeft 未走术语表单源' };
+  if (!/convBaseWord\s*:\s*units\.baseWordOf|convBaseWord\s*:\s*w\b/.test(js)) return { ok: false, why: 'convBaseWord 未取自 units.baseWordOf（基准词被页面自算）' };
+  return { ok: true, why: '换算系数为句子式组合行（conv-wrap + convertLeft + convBaseWord，块内无写死单位）' };
+}
+
+// F11 删行按钮是否离开了「录入方式」那一行
+function judgeDeleteRowPlacement(wxml) {
+  if (!wxml) return { ok: false, why: '取不到菜品卡编辑页 wxml（fail-closed）' };
+  if (/catchtap="delLine"[^>]*>×<\/button>/.test(wxml)) return { ok: false, why: '红「×」删行按钮还在（被读成"取消录入方式"）' };
+  if (!/class="del-row"[^>]*bindtap="delLine"/.test(wxml)) return { ok: false, why: '找不到行尾「删除本行」按钮（del-row 被删）' };
+  const iMode = wxml.indexOf('mode-group');
+  const iDel = wxml.indexOf('del-row');
+  if (iMode < 0 || iDel < 0 || iDel < iMode) return { ok: false, why: '删除按钮不在录入方式之后（语义又打架了）' };
+  return { ok: true, why: '删行按钮挪到行尾（在录入方式之后，不再是红叉）' };
+}
+
+// F12 删行有没有「填了才确认」的防误触（+ showModal 按钮 ≤4 字 —— 真机事故条款）
+function judgeDeleteGuard(body) {
+  if (!body) return { ok: false, why: '取不到 delLine 函数体（fail-closed）' };
+  if (!/wx\.showModal/.test(body)) return { ok: false, why: 'delLine 没有二次确认 ⇒ 误触直接删掉一整行' };
+  const lit = /confirmText\s*:\s*'([^']*)'/.exec(body);
+  const ref = /confirmText\s*:\s*[^,]*TERMS\.card\.delLineConfirmOk/.test(body);
+  if (!lit && !ref) return { ok: false, why: '确认弹窗缺 confirmText' };
+  if (lit && lit[1].length > 4) return { ok: false, why: 'confirmText「' + lit[1] + '」超 4 字 ⇒ 真机 showModal 直接 fail' };
+  return { ok: true, why: '删行有确认（confirmText 在 4 字上限内）' };
+}
+
+// F13 单位格与数值有没有视觉区隔（否则 50 与 克 连读成「50 克」）
+function judgeUnitCellSeparation(wxss, wxml) {
+  if (!wxss || !wxml) return { ok: false, why: '取不到卡片页源码（fail-closed）' };
+  const m = /\.unit-pick\s*\{([^}]*)\}/.exec(wxss);
+  if (!m) return { ok: false, why: 'wxss 没有 .unit-pick（单位格跟数字框连成一片 ⇒ 50 读作 50 克）' };
+  if (!/background\s*:/.test(m[1])) return { ok: false, why: '.unit-pick 没有底色 ⇒ 数字与单位视觉上仍是一段' };
+  const uses = (wxml.match(/class="picker unit-pick/g) || []).length;
+  if (uses < 2) return { ok: false, why: '只有 ' + uses + ' 处用了 unit-pick（用量/单价的单位格没都套上）' };
+  return { ok: true, why: '单位格有独立底色，页面 ' + uses + ' 处套用' };
+}
+
+// F14 用量与其单位是否同一排（数字与单位是同一个量的两半，拆行会视觉断句）
+function judgeQtySameRow(wxml) {
+  if (!wxml) return { ok: false, why: '取不到菜品卡编辑页 wxml（fail-closed）' };
+  const wraps = (wxml.match(/class="qty-wrap"/g) || []).length;
+  if (wraps < 2) return { ok: false, why: 'qty-wrap 只有 ' + wraps + ' 处（档案行/手工行没都合并 ⇒ 用量与单位又拆成两行）' };
+  const lbl = (wxml.match(/\{\{t\.qtyUnit\}\}/g) || []).length;
+  if (lbl > 0) return { ok: false, why: '仍有独立的「用量单位」标签行 ' + lbl + ' 处（排版回到拆行）' };
+  return { ok: true, why: '用量与单位同一排（' + wraps + ' 处 qty-wrap，无独立单位标签行）' };
+}
+
+// F15 卡片页不再写死「克」兜底
+function judgeCardNoHardcodedGram(wxml, js) {
+  if (!wxml || !js) return { ok: false, why: '取不到卡片页源码（fail-closed）' };
+  if (/\|\|\s*'克'/.test(wxml)) return { ok: false, why: 'wxml 仍有写死兜底「克」（页面存了第二份单位口径）' };
+  if (!/baseUnit\s*:\s*units\.BASE_UNIT/.test(js)) return { ok: false, why: 'data 缺 baseUnit（兜底仍来自页面硬编码）' };
+  return { ok: true, why: '卡片页兜底单位取自 units.BASE_UNIT（无写死「克」）' };
+}
+
+// F16 showModal 确认键 ≤4 字符
+//   平台限制：wx.showModal 的 confirmText 超 4 字符 ⇒ 整个弹窗 fail（真机事故见 terms.js paywall 注释）。
+//   ⇒ 所以删行确认键必须单独存在术语表里，不许内联写长句。
+function judgeConfShort(src) {
+  if (!src) return { ok: false, why: '取不到术语表（fail-closed）' };
+  const m = /delLineConfirmOk\s*:\s*'([^']*)'/.exec(src);
+  if (!m) return { ok: false, why: '缺 delLineConfirmOk（确认键内联写 ⇒ 迟早超 4 字）' };
+  if (m[1].length > 4) return { ok: false, why: 'delLineConfirmOk「' + m[1] + '」超 4 字 ⇒ 真机 showModal 直接 fail' };
+  return { ok: true, why: '删除确认键「' + m[1] + '」≤4 字' };
+}
+
 // 本轮受管源码
 const UNITS_SRC = read('utils/units.js') || '';
 const CARDJS = read('pages/card/edit.js') || '';
 const CARDWXML = read('pages/card/edit.wxml') || '';
+// round153：样式也是**行为**（单位格的视觉区隔靠 background，不是靠注释）⇒ 纳入扫描面
+const CARDWXSS = read('pages/card/edit.wxss') || '';
 const MATEJS = read('pages/material/edit.js') || '';
 const MATEWXML = read('pages/material/edit.wxml') || '';
 const MATIDX = read('pages/material/index.js') || '';
@@ -324,8 +406,39 @@ const rHeB = judgeConvertHintEditable(TERMS_B);
 if (rHeA.ok && rHeB.ok) ok('L4 ' + rHeA.why + '（术语双副本一致）');
 else bad('L4 ' + (rHeA.ok ? '' : 'A 副本：' + rHeA.why + '；') + (rHeB.ok ? '' : 'B 副本：' + rHeB.why));
 
+// ⑭ 换算系数是句子式组合行（反恒真样本见 C13/C14）
+const rCv = judgeConvRow(MATEWXML, MATEJS);
+if (rCv.ok) ok('L4 ' + rCv.why); else bad('L4 ' + rCv.why);
+
+// ⑮ 删行按钮离开「录入方式」那行（反恒真见 C15/C16）
+const rDp = judgeDeleteRowPlacement(CARDWXML);
+if (rDp.ok) ok('L4 ' + rDp.why); else bad('L4 ' + rDp.why);
+
+// ⑯ 删行有防误触确认（反恒真见 C17）
+const DL_BODY = fnBody(CARDJS, 'delLine');
+const rDg = judgeDeleteGuard(DL_BODY);
+if (rDg.ok) ok('L4 ' + rDg.why); else bad('L4 ' + rDg.why);
+
+// ⑰ showModal 短键 ≤4 字（术语双副本都要符合 —— 只改一份就会一边绿一边红）
+const okA = judgeConfShort(TERMS_A);
+const okB = judgeConfShort(TERMS_B);
+if (okA.ok && okB.ok) ok('L4 ' + okA.why + '（术语双副本一致）');
+else bad('L4 ' + (okA.ok ? '' : 'A 副本：' + okA.why + '；') + (okB.ok ? '' : 'B 副本：' + okB.why));
+
+// ⑱ 单位格与数值有视觉区隔（反恒真见 C18）
+const rUs = judgeUnitCellSeparation(CARDWXSS, CARDWXML);
+if (rUs.ok) ok('L4 ' + rUs.why); else bad('L4 ' + rUs.why);
+
+// ⑲ 用量与单位同一排（反恒真见 C19）
+const rQs = judgeQtySameRow(CARDWXML);
+if (rQs.ok) ok('L4 ' + rQs.why); else bad('L4 ' + rQs.why);
+
+// ⑳ 卡片页不写死「克」兜底（反恒真见 C20）
+const rHg = judgeCardNoHardcodedGram(CARDWXML, CARDJS);
+if (rHg.ok) ok('L4 ' + rHg.why); else bad('L4 ' + rHg.why);
+
 // ---------- S1~S2 自失效护栏 ----------
-const scanFiles = ['utils/units.js', 'pages/card/edit.js', 'pages/card/edit.wxml', 'pages/material/edit.js', 'pages/material/edit.wxml', 'pages/material/index.js', 'miniprogram/i18n/terms.js', 'specs/dev-specs/i18n/terms.js'];
+const scanFiles = ['utils/units.js', 'pages/card/edit.js', 'pages/card/edit.wxml', 'pages/card/edit.wxss', 'pages/material/edit.js', 'pages/material/edit.wxml', 'pages/material/index.js', 'miniprogram/i18n/terms.js', 'specs/dev-specs/i18n/terms.js'];
 const scanned = scanFiles.filter((f) => read(f) != null).length;
 if (scanned >= scanFiles.length) ok('S1 扫描面完整（' + scanned + '/' + scanFiles.length + ' 个文件在位，改小扫描面即转红）');
 else bad('S1 扫描面缺失：仅 ' + scanned + '/' + scanFiles.length + ' 个文件可读');
@@ -391,6 +504,64 @@ else ok('C11 影子样本「提示无手改信号」被判红 —— ' + c11.why
 // 解析器钉死样本：pickUnit 主体切不出来 ⇒ L4-⑪⑫ 会变成空跑
 if (!PU_BODY || PU_BODY.length < 40) bad('C12 函数体切分失效（fnBody 拿不到 pickUnit 主体）⇒ L4-⑪⑫ 会是空跑');
 else ok('C12 函数体切分器自检通过（pickUnit 主体 ' + PU_BODY.length + ' 字符）');
+
+// ---- round153 反恒真：同上，坏样本必须红、好样本必须绿 ----
+const CONV_BAD = '<view class="field"><text class="lbl">{{convertLabel}}</text><input class="val-input" type="number" value="{{convert_factor}}" bindinput="onConvert" /></view>';
+const CONV_BAD_JS = 'convertLabel: "", convertHint: "",';
+const c13 = judgeConvRow(CONV_BAD, CONV_BAD_JS);
+if (c13.ok) bad('C13 影子样本「换算系数退回裸 input」被判绿 ⇒ 判据无分辨力（假绿）');
+else ok('C13 影子样本「换算系数退回裸 input」被判红 —— ' + c13.why);
+
+// ⚠️ 样本必须**只**缺"写死单位"这一项（前三项都给对），否则红在别的分支 ⇒ 这条证据是错的。
+//   2026-09-27：初版样本连 {{convertLeft}} 都没给 ⇒ 报的是"缺左短句"，等于写死分支从没被验过。
+const CONV_WRAP_BAD = '<view class="conv-wrap"><text class="conv-eq">{{convertLeft}}</text><input class="val-input conv-input" value="{{convert_factor}}" /><text class="conv-eq">{{convBaseWord}}</text><text class="conv-note">克</text></view>';
+const c14 = judgeConvRow(CONV_WRAP_BAD, MATEJS);
+if (c14.ok) bad('C14 影子样本「组合行里写死「克」」被判绿 ⇒ 第二份口径抓不到');
+else if (!/写死/.test(c14.why)) bad('C14 影子样本虽红但没命中「写死单位」分支（证据错位：' + c14.why + '）⇒ 样本要重写');
+else ok('C14 影子样本「组合行里写死「克」」判红且命中写死分支 —— ' + c14.why);
+
+const c15 = judgeDeleteRowPlacement('<radio-group class="mode-group"></radio-group><button class="btn-small" style="background:none;color:#e74c3c;" data-idx="{{index}}" catchtap="delLine">×</button><view class="del-row" data-idx="{{index}}" bindtap="delLine">{{t.delLine}}</view>');
+if (c15.ok) bad('C15 影子样本「红叉还在」被判绿 ⇒ 语义打架抓不到');
+else ok('C15 影子样本「红叉还在」被判红 —— ' + c15.why);
+
+const DELPOS_BAD = '<view class="del-row" data-idx="{{index}}" bindtap="delLine">{{t.delLine}}</view><radio-group class="mode-group"></radio-group>';
+const c16 = judgeDeleteRowPlacement(DELPOS_BAD);
+if (c16.ok) bad('C16 影子样本「删除按钮排在录入方式之前」被判绿 ⇒ 位置判据是空跑');
+else ok('C16 影子样本「删除按钮排在录入方式之前」被判红 —— ' + c16.why);
+
+const DEL_NOGUARD = 'delLine(e) { const idx = Number(e.currentTarget.dataset.idx); const rest = this.data.lines.filter((l, i) => i !== idx); this.setData({ lines: renumber(rest.length ? rest : [emptyLine()]) }); }';
+const c17 = judgeDeleteGuard(DEL_NOGUARD);
+if (c17.ok) bad('C17 影子样本「删行无确认」被判绿 ⇒ 误触保护抓不到');
+else ok('C17 影子样本「删行无确认」被判红 —— ' + c17.why);
+
+const CELL_NOSAP = '.unit-pick { margin-left: 12rpx; padding: 0 24rpx; color: #1e3a5f; }';
+const c18 = judgeUnitCellSeparation(CELL_NOSAP, CARDWXML);
+if (c18.ok) bad('C18 影子样本「单位格无底色」被判绿 ⇒ 50 读作 50 克 的坑又要回来');
+else ok('C18 影子样本「单位格无底色」被判红 —— ' + c18.why);
+
+const QTY_SPLIT = '<view class="cell2"><text class="lbl">{{t.qty}}</text><input class="val-input" /></view><view class="cell2"><text class="lbl">{{t.qtyUnit}}</text><picker><view class="picker">{{lines[index].qty_unit || baseUnit}}</view></picker></view>';
+const c19 = judgeQtySameRow(QTY_SPLIT);
+if (c19.ok) bad('C19 影子样本「用量与单位拆两行」被判绿 ⇒ 排版判据无分辨力');
+else ok('C19 影子样本「用量与单位拆两行」被判红 —— ' + c19.why);
+
+const GRAM_BAD = '<view class="picker unit-pick">{{lines[index].qty_unit || \'克\'}}</view>';
+const c20 = judgeCardNoHardcodedGram(GRAM_BAD, CARDJS);
+if (c20.ok) bad('C20 影子样本「写死克兜底」被判绿 ⇒ 页面第二份口径抓不到');
+else ok('C20 影子样本「写死克兜底」被判红 —— ' + c20.why);
+
+// 正样本必绿（防判据过严 ⇒ 改对了却转红，那是"守卫反向伤害"）
+const CONV_GOOD = /<view class="conv-wrap[^"]*">[\s\S]*?<\/view>/.exec(MATEWXML);
+const c21 = judgeConvRow(CONV_GOOD ? CONV_GOOD[0] : '', MATEJS);
+if (!c21.ok) bad('C21 真实源码片段被判红 ⇒ 判据过严（假红）—— ' + c21.why);
+else ok('C21 真实源码片段判绿（不假红）—— ' + c21.why);
+
+const c22 = judgeConfShort(TERMS_A);
+if (!c22.ok) bad('C22 术语表真实 delLineConfirmOk 被判红 ⇒ 判据过严（假红）—— ' + c22.why);
+else ok('C22 术语表真实 delLineConfirmOk 判绿（不假红）—— ' + c22.why);
+
+// 解析器钉死样本：delLine 主体切不出来 ⇒ L4-⑯ 会变成空跑
+if (!DL_BODY || DL_BODY.length < 40) bad('C23 函数体切分失效（fnBody 拿不到 delLine 主体）⇒ L4-⑯ 会是空跑');
+else ok('C23 函数体切分器自检通过（delLine 主体 ' + DL_BODY.length + ' 字符）');
 
 console.log('');
 console.log('===== 单位池 / 计量族 / 单价单位守卫结果：' + pass + ' 通过 / ' + fail + ' 失败 =====');

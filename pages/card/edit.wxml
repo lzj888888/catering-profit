@@ -23,11 +23,12 @@
   <view class="line" wx:for="{{lines}}" wx:key="idx">
     <view class="cell2">
       <text class="lbl">{{t.inputType}}</text>
+      <!-- round153：红「×」删行按钮原本挂在这一行的最右边 ⇒ 实测被读成"取消临时手工录入"
+           （这行本来就是「二选一」，旁边杵个红叉语义打架）。已挪到明细行末尾「删除本行」。 -->
       <radio-group class="mode-group" data-idx="{{index}}" value="{{lines[index].input_type === 2 ? 'manual' : 'archive'}}" bindchange="onLineType">
         <label class="mode-item"><radio value="archive" checked="{{lines[index].input_type !== 2}}" color="#1e3a5f"/>{{t.inputTypeArchive}}</label>
         <label class="mode-item"><radio value="manual" checked="{{lines[index].input_type === 2}}" color="#1e3a5f"/>{{t.inputTypeManual}}</label>
       </radio-group>
-      <button class="btn-small" style="background:none;color:#e74c3c;min-height:88rpx;" data-idx="{{index}}" catchtap="delLine">×</button>
     </view>
 
     <!-- 档案选择行 -->
@@ -43,15 +44,15 @@
       <view class="muted spec-hint">{{lines[index].spec_hint || t.matSpecHintEmpty}}</view>
       <!-- round151：跨计量族提示（只提示、不拦截）。参考产品在同样情形下静默算出 ¥6,000,000 无告警 -->
       <view class="warn-hint" wx:if="{{lines[index].unit_warn}}">{{lines[index].unit_warn}}</view>
+      <!-- round153：用量 + 单位**同一排** —— 数字与单位是同一个量的两半，拆两行会视觉断句。 -->
       <view class="cell2">
         <text class="lbl">{{t.qty}}</text>
-        <input class="val-input" type="digit" value="{{lines[index].qty}}" data-idx="{{index}}" bindinput="onQty"  adjust-position="{{true}}" cursor-spacing="20" />
-      </view>
-      <view class="cell2">
-        <text class="lbl">{{t.qtyUnit}}</text>
-        <picker mode="selector" range="{{qtyUnits}}" data-idx="{{index}}" bindchange="onQtyUnit">
-          <view class="picker">{{lines[index].qty_unit || '克'}}</view>
-        </picker>
+        <view class="qty-wrap">
+          <input class="val-input qty-input" type="digit" value="{{lines[index].qty}}" data-idx="{{index}}" bindinput="onQty"  adjust-position="{{true}}" cursor-spacing="20" />
+          <picker mode="selector" range="{{qtyUnits}}" data-idx="{{index}}" bindchange="onQtyUnit">
+            <view class="picker unit-pick">{{lines[index].qty_unit || baseUnit}}</view>
+          </picker>
+        </view>
       </view>
     </block>
 
@@ -63,12 +64,16 @@
       </view>
       <!-- round151：单价 = 「输入框 + 单位 ▾」并排（对齐参考产品实测布局）。
            改前单位写死在 label 里（「单价（元/克）」）⇒ 老板买 6 元/斤的肉，得先心算 0.012 才敢填。 -->
+      <!-- round153：单价 = 「[数字框] ｜ 元/斤」—— 单位格带独立浅底 + 左侧留白，
+           把"这是单位、不是数字的一部分"在视觉上切开。改前二者紧挨着，实测被连读成
+           「50 克」（老板在疑惑自己是不是在填 50 克的数量）。
+           ⚠️ 显示用 t.cur 拼，不写死货币符；单位值仍由 price_unit 驱动。 -->
       <view class="cell2">
         <text class="lbl">{{t.manualUnitPrice}}</text>
         <view class="price-wrap">
           <input class="val-input price-input" type="digit" value="{{lines[index].unit_price_yuan}}" data-idx="{{index}}" bindinput="onManualPrice"  adjust-position="{{true}}" cursor-spacing="20" />
           <picker mode="selector" range="{{priceUnits}}" data-idx="{{index}}" bindchange="onManualPriceUnit">
-            <view class="picker price-unit">{{lines[index].price_unit || '克'}}</view>
+            <view class="picker unit-pick price-unit">{{t.cur}}/{{lines[index].price_unit || baseUnit}}</view>
           </picker>
         </view>
       </view>
@@ -76,15 +81,15 @@
         <text class="lbl">{{t.manualYield}}</text>
         <input class="val-input" type="digit" value="{{lines[index].yield_rate}}" data-idx="{{index}}" bindinput="onManualYield"  adjust-position="{{true}}" cursor-spacing="20" />
       </view>
+      <!-- round153：用量 + 单位同一排（同上，档案行）。 -->
       <view class="cell2">
         <text class="lbl">{{t.qty}}</text>
-        <input class="val-input" type="digit" value="{{lines[index].qty}}" data-idx="{{index}}" bindinput="onQty"  adjust-position="{{true}}" cursor-spacing="20" />
-      </view>
-      <view class="cell2">
-        <text class="lbl">{{t.qtyUnit}}</text>
-        <picker mode="selector" range="{{qtyUnits}}" data-idx="{{index}}" bindchange="onQtyUnit">
-          <view class="picker">{{lines[index].qty_unit || '克'}}</view>
-        </picker>
+        <view class="qty-wrap">
+          <input class="val-input qty-input" type="digit" value="{{lines[index].qty}}" data-idx="{{index}}" bindinput="onQty"  adjust-position="{{true}}" cursor-spacing="20" />
+          <picker mode="selector" range="{{qtyUnits}}" data-idx="{{index}}" bindchange="onQtyUnit">
+            <view class="picker unit-pick">{{lines[index].qty_unit || baseUnit}}</view>
+          </picker>
+        </view>
       </view>
     </block>
 
@@ -96,6 +101,10 @@
         <text class="kind-chip {{lines[index].line_kind === kc.key ? 'kind-on' : ''}}" data-idx="{{index}}" data-kind="{{kc.key}}" bindtap="pickKind">{{kc.label}}</text>
       </block>
     </view>
+    <!-- round153：删行操作放到**整行的最末尾**并写明语义 —— 它是"删掉这一整行原料"，
+         不是"取消某个选项"（改前是行首那排单选旁边的红叉，语义打架）。
+         误触保护：只有这行**已经填了东西**才弹确认，空行直接删（见 edit.js::delLine）。 -->
+    <view class="del-row" data-idx="{{index}}" bindtap="delLine">{{t.delLine}}</view>
   </view>
   <view class="muted" style="margin:-8rpx 0 12rpx 4rpx;">{{t.qtyUnitHint}}</view>
   <view class="muted" style="margin:-4rpx 0 12rpx 4rpx;">{{t.lineKindHint}}</view>
