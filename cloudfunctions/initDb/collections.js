@@ -133,11 +133,13 @@ const SEED_FEATURES = SEED_PLANS.map((p) => ({ plan_id: p.plan_id, feature_key: 
   .concat(SEED_PLANS.map((p) => ({ plan_id: p.plan_id, feature_key: 'export', enabled: true })))
   // M3.22（批次 A1）：免费档配额配置（plan_free，载 limits）。⚠️ 免费档不在 subscription_plan 价格表里，
   //   否则 payCreateOrder 按 plan_id 读它会变成可下单的付费档；额度唯一真相源就是这一行 limits。
+  // M3.28（批次 Q1）：cost_card 由 5 → 20（「M3 免费额度决策」五轮交叉核验定案 q=20）。
+  //   ⚠️ 口径：20 计的是**可算数**（算过成本的 dish 去重数），不是档案行数 —— 计数语义见 checkQuota/index.js。
   .concat([{
     plan_id: 'plan_free',
     feature_key: 'free_quota',
     enabled: true,
-    limits: { shop: 1, cost_card: 5, hard_shop: 200, hard_card: 2000 },
+    limits: { shop: 1, cost_card: 20, hard_shop: 200, hard_card: 2000 },
   }]);
 
 // ===== A3（批次 8）：收入/费用分类配置种子（shop_income_item / shop_expense_item）=====

@@ -37,6 +37,13 @@
 //                              改配置不转红会漏改（round118 实扫：L44/L148/L199/L218 四处旧值 3 张全在弱面）。
 //                              豁免硬上限行 / 声明行本身 / HIST 历史行；另配命中数下界防"补口失效"。
 //
+//   L12 键名白名单（round146 新）`plan_free.limits` 对象内**只允许**这 4 个键：
+//                             shop / cost_card / hard_shop / hard_card。
+//                             根因：r146 变异回灌 V5「同义键扩散」（塞进 cost_card_free: 20）**不转红**；
+//                             而 checkQuota 只读 limits[scope] ⇒ 多出来的键既没人读、又让人误以为有字
+//                             段可用（2026-09-26 交叉核验中复审方就把键名写成 limits.cost_card_free）。
+//                             附下界断言防「解析失效 ⇒ 零命中假绿」。
+//
 // 运行：node tools/check_quota_limits.js
 
 const fs = require('fs');
@@ -308,6 +315,22 @@ if (weak.length) {
   console.log(`  ⚠️ 弱面（无类别锚点，` + '`N 张/个/套`' + ` 只明示不判红，避免误杀无关计数）${weak.length} 处：`);
   weak.slice(0, 8).forEach((c) => console.log(`     ${c.f}:${c.line} 写 ${c.v} —— ${c.txt}`));
 }
+
+// —— L12 键名白名单（round146）：plan_free.limits 只允许 4 个约定键
+const ALLOWED_KEYS = ['shop', 'cost_card', 'hard_shop', 'hard_card'];
+const mLim = srcRaw.match(/plan_id:\s*['"]plan_free['"][\s\S]{0,400}?limits:\s*\{([^}]*)\}/);
+const KNOWN_RE = /(?:^|[,{\s])([A-Za-z_][A-Za-z0-9_]*)\s*:/g;
+const limKeys = [];
+if (mLim) {
+  KNOWN_RE.lastIndex = 0;
+  let km;
+  while ((km = KNOWN_RE.exec(mLim[1])) !== null) limKeys.push(km[1]);
+}
+const strayKeys = Array.from(new Set(limKeys.filter((k) => ALLOWED_KEYS.indexOf(k) < 0)));
+check('L12-① 单源 limits 键名 ⊆ 白名单（防同义键扩散 / 手滑写错键名）', strayKeys.length === 0,
+  strayKeys.length ? `多余键 ${strayKeys.join(' / ')}` : `${limKeys.length} 个键全部 ∈ {${ALLOWED_KEYS.join(', ')}}`);
+check('L12-② 前提：键名解析命中数 ≥ 4（正则/单源结构变动即零命中假绿）', limKeys.length >= ALLOWED_KEYS.length,
+  `${limKeys.length} 个`);
 
 console.log(`\n===== 商业化额度口径守卫结果：${pass} 通过 / ${fails.length} 失败 =====`);
 process.exit(fails.length === 0 ? 0 : 1);

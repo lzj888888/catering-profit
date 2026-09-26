@@ -1,0 +1,23 @@
+=== 锚点复算 r146 · M3 免费额度 ===
+单源 cloudfunctions\initDb\collections.js plan_free.limits = {"shop":1,"cost_card":5,"hard_shop":200,"hard_card":2000}
+
+① 旧锚点回归（OLD=5，证明本次没动判定语义）
+  ✅ used=4 / 旧5 ⇒ 放行 —— got=false
+  ✅ used=5 / 旧5 ⇒ 第6张触发付费墙 —— got=true
+  ✅ 旧5 下 free_limit 回传=5 —— got=5
+
+② 新锚点（单源现值 cost_card=5）
+  ✅ used=4 ⇒ 放行 —— got=false
+  ✅ used=5 ⇒ 第 6 张触发 —— got=true
+  ✅ used=5 时仅超免费额、未触硬上限 —— got=[true,false]
+  ✅ M1 账套维度未受影响（仍 1） —— got=true
+
+③ 反例（证明「档案数不计、可算数才计」这条规则有必要）
+  ✅ ❌ 按档案数计数 used=100 ⇒ 第9道菜刚建档就被拒（未算即死） —— got=true
+  ✅ ✅ 按可算数计数 used=8 ⇒ 正常放行（这才是要的语义） —— got=false
+
+④ fail-closed（缺配置 ⇒ SYSTEM_ERROR，不静默放行）
+  ✅ limits 缺失 —— got="SYSTEM_ERROR"
+  ✅ limits=partial（缺 hard_card） —— got="SYSTEM_ERROR"
+
+===== 锚点复算结果：11 通过 / 0 失败 =====
