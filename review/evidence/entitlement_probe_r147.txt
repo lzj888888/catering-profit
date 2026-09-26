@@ -1,0 +1,18 @@
+===== Q3 · 付费判定单源 hasFeature 行为级取证 =====
+付费域清单 PAID_FEATURES = [m3_combo, m3_takeaway]
+✅ 付费（到期未到）→ true  (export=true)
+❌ 免费（expire_at=0）→ false  (export=true)
+❌ 已过期（到期时刻早于现在）→ false  (export=true)
+❌ 三者结论非恒真/恒假（证明判定真的读了时间）  (paid=true free=true expired=true)
+❌ 无 shop_entitlement 档 → 按免费（fail-closed 到"不许用"，不是"随便用"）
+✅ m3_combo 走付费域（S1 落地即被墙）
+✅ m3_takeaway 走付费域（S2 落地即被墙）
+✅ 未登记能力恒开放（漏登记不该锁死用户）
+✅ isPaid 边界：恰好等于 now ⇒ false（不给自己留学号"正好到期还能用"）
+✅ isPaid 脏数据：NaN / undefined ⇒ false（不因类型脏而放行）
+
+===== Q2 · calc_status 写侧赋值（静态取证，补充 L13 的动态口径判据）=====
+✅ saveCostCard 落库显式写 calc_status: 'calculated'
+✅ 两处计数均排除 draft（读侧 checkQuota / 写侧 saveCostCard）
+
+===== 取证结果：8 通过 / 4 失败 =====

@@ -39,4 +39,12 @@ module.exports = {
   // ⚠️ 同 genId 的教训：新增单源符号务必在此聚合入口导出，否则云端 `const { indicatorRef } = common` 会 TypeError。
   //    伴侣守卫：tools/check_requires.js §2。
   indicatorRef: require('./indicatorRef'),
+
+  // M3.28（批次 Q3）：付费判定单源 —— exportData 已切到此处；S1 套餐 / S2 外卖必须复用同一入口，
+  //   **严禁在函数体内再写一遍 `expireAt > nowUtc()`**（写第 2 遍那天就是"哪个能力算付费"出现双源的那天）。
+  //   ⚠️ 同 genId 教训：新符号务必在此聚合入口导出，否则云端 `const { hasFeature } = common` 会 TypeError。
+  entitlement: require('./entitlement'),
+  hasFeature: require('./entitlement').hasFeature,
+  isPaid: require('./entitlement').isPaid,
+  PAID_FEATURES: require('./entitlement').PAID_FEATURES,
 };

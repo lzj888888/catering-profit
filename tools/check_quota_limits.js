@@ -332,5 +332,53 @@ check('L12-① 单源 limits 键名 ⊆ 白名单（防同义键扩散 / 手滑�
 check('L12-② 前提：键名解析命中数 ≥ 4（正则/单源结构变动即零命中假绿）', limKeys.length >= ALLOWED_KEYS.length,
   `${limKeys.length} 个`);
 
+// —— L13 可算数口径（round147 批次 Q2）：额度计的是「算过成本的卡」，草稿不占；且必须兼容无字段的存量行
+// 背景：配额计数有两处实现 —— 读侧 checkQuota 与写侧 saveCostCard。
+//   两边口径漂移 ⇒ 「看得见的配额」与「拦得住的配额」不再是一回事（属于 R66 那类"终于boro性的同族缺陷"）。
+// 判据设计：从**真实源码**里截出计数循环并在沙箱实跑 fixture —— 静态 `includes` **看不出语义差**：
+//   `calc_status === 'calculated'` 与 `calc_status !== 'draft'` 字面都含 calc_status，
+//   但前者会把上线前落库的存量行（无该字段）全部排除 ⇒ 老用户额度瞬间清零（放大泄漏，不是收紧）。
+const COUNT_SRC = [
+  ['读侧', 'cloudfunctions/checkQuota/index.js', 'res'],
+  ['写侧', 'cloudfunctions/saveCostCard/index.js', 'cardsRes'],
+];
+const CK_TAG = 'activeCount = codes.size;';
+function extractCounter(text, resVar) {
+  const from = text.indexOf('const codes = new Set();');
+  const to = text.indexOf(CK_TAG);
+  if (from < 0 || to < 0 || to <= from) return null;
+  const body = text.slice(from, to + CK_TAG.length).replace(new RegExp('\\b' + resVar + '\\b', 'g'), '__IN__');
+  try { return new Function('__IN__', body + '\n return codes.size;'); } catch (e) { return null; }
+}
+const counters = COUNT_SRC.map(([label, rel, resVar]) => {
+  let t = '';
+  try { t = fs.readFileSync(path.join(ROOT, rel), 'utf8'); } catch (_) { return { label, rel, err: '读不到文件' }; }
+  const fn = extractCounter(t, resVar);
+  // n = 未取器失败时 -1；成功则跑混合 fixture
+  if (!fn) return { label, rel, err: '未截到计数循环（源码结构变动 ⇒ 本判据需重估）' };
+  return { label, rel, fn };
+});
+const runCounter = (c, rows) => (c.fn ? c.fn({ data: rows }) : -1);
+const MIXED = [
+  { card_code: 'a' },                             // 存量行：无 calc_status ⇒ 必须计
+  { card_code: 'a', calc_status: 'calculated' },  // 同卡第二版本 ⇒ 去重后仍算 1
+  { card_code: 'b', calc_status: 'calculated' },  // 正常已算
+  { card_code: 'c', calc_status: 'draft' },       // 草稿 ⇒ 不计
+  { card_code: '', calc_status: 'calculated' },   // 空 card_code ⇒ 不计
+];
+const LEGACY_ONLY = [{ card_code: 'x' }, { card_code: 'y' }];            // 全存量（无字段）
+const DRAFT_ONLY = [{ card_code: 'x', calc_status: 'draft' }];           // 全草稿
+check('L13-① 计数循环可从两处源码实跑（结构变动即判红，防零命中假绿）',
+  counters.every((c) => !c.err), counters.map((c) => `${c.label} ${c.err || 'ok'}`).join(' | '));
+check('L13-② 两处口径一致 = 2（草稿排除 + 版本去重 + 空号排除）',
+  counters.every((c) => runCounter(c, MIXED) === 2),
+  counters.map((c) => `${c.label}=${runCounter(c, MIXED)}`).join(' | '));
+check("L13-③ 存量兼容：无 calc_status 的老行必须计入（写成 === 'calculated' 会让老用户额度清零）",
+  counters.every((c) => runCounter(c, LEGACY_ONLY) === 2),
+  counters.map((c) => `${c.label}=${runCounter(c, LEGACY_ONLY)}`).join(' | '));
+check('L13-④ 全草稿 ⇒ 计数 0（草稿真不占额度，而非判定没接上）',
+  counters.every((c) => runCounter(c, DRAFT_ONLY) === 0),
+  counters.map((c) => `${c.label}=${runCounter(c, DRAFT_ONLY)}`).join(' | '));
+
 console.log(`\n===== 商业化额度口径守卫结果：${pass} 通过 / ${fails.length} 失败 =====`);
 process.exit(fails.length === 0 ? 0 : 1);

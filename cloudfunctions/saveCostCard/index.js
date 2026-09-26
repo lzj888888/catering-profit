@@ -223,9 +223,14 @@ exports.main = async (event) => {
     if (!limits || typeof limits !== 'object') {
       return fail(ERROR_CODES.SYSTEM_ERROR, '配额配置缺失（plan_id=plan_free）');
     }
+    // M3.28（批次 Q2）：同上口径（只计可算数，草稿不占额度；`!== 'draft'` 兼容无该字段的存量行）
     const cardsRes = await da.list('shop_cost_card', { shop_id: shopId });
     const codes = new Set();
-    for (const c of ((cardsRes && cardsRes.data) || [])) if (c.card_code) codes.add(c.card_code);
+    for (const c of ((cardsRes && cardsRes.data) || [])) {
+      if (!c.card_code) continue;
+      if (c.calc_status === 'draft') continue;
+      codes.add(c.card_code);
+    }
     const activeCount = codes.size;
     let verdict;
     try {
@@ -246,6 +251,10 @@ exports.main = async (event) => {
     card_code: cardCode,
     version: nextVersion,
     shop_id: shopId,
+    // M3.28（批次 Q2）：可算状态位。本函数是"先算后插"，故所有经此落库的行必然是 'calculated'。
+    //   'draft' 目前**无任何生产者**（尚无"只存不算"的入口），此字段是为将来草稿态预留的空间 + 计数口径的锚点。
+    //   ⚠️ 计数侧按 `!== 'draft'` 兼容存量（见 checkQuota/index.js 注释），新增也必须显式赋值，不可依赖默认值。
+    calc_status: 'calculated',
     name: card.name,
     category: card.category || '',
     tags: card.tags || '',

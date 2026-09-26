@@ -47,9 +47,16 @@ exports.main = async (event) => {
     activeCount = ((res && res.data) || []).length;
   } else {
     // M3 成本卡按 card_code 去重计数（版本不计）；DataAdapter 已过滤 is_deleted=false
+    // M3.28（批次 Q2）：额度计的是**可算数** —— 只统计算过成本的卡，草稿（calc_status='draft'）不占额度。
+    //   ⚠️ 存量兼容铁律：本批次上线前落库的行**没有 calc_status 字段**，故判定必须写 `!== 'draft'`（缺字段视为已算），
+    //      绝不能写 `=== 'calculated'` —— 那样会把全部存量排除在计数外 ⇒ 免费额度形同失效（放大泄漏，不是收紧）。
     const res = await da.list('shop_cost_card', { shop_id: shopId });
     const codes = new Set();
-    for (const c of ((res && res.data) || [])) if (c.card_code) codes.add(c.card_code);
+    for (const c of ((res && res.data) || [])) {
+      if (!c.card_code) continue;
+      if (c.calc_status === 'draft') continue; // 草稿：仅建档/保存，未出成本 ⇒ 不占额度
+      codes.add(c.card_code);
+    }
     activeCount = codes.size;
   }
 

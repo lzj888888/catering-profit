@@ -16,6 +16,7 @@ const { resolveAuth, assertShopOwner } = common;
 const { ERROR_CODES, ok, fail } = common;
 const { makeAdapter } = common.dataAdapter;
 const { nowUtc } = common.utilTime;
+const { hasFeature } = common;                      // 付费判定单源（M3.28 批次 Q3）
 
 // ===================== CSV 纯函数（可单测）=====================
 function csvEscape(v) {
@@ -52,11 +53,10 @@ exports.main = async (event) => {
   if (scope === 'm1_report' && !month) return fail(ERROR_CODES.INVALID_PARAM, 'm1_report 需提供 month（YYYY-MM）');
 
   // ===== 2. 导出权限（只读 expire_at）=====
-  const entRes = await db.collection('shop_entitlement').where({ user_id: userId }).limit(1).get();
-  const ent = entRes && entRes.data && entRes.data[0];
-  const expireAt = ent ? (ent.expire_at || 0) : 0;
-  const isPaid = expireAt > nowUtc();
-  if (!isPaid) return fail(ERROR_CODES.FEATURE_LOCKED, '导出需开通真实利润');
+  // M3.28（批次 Q3）：判定下沉到单源 common/entitlement.js —— 理由见该文件头注。
+  //   ⚠️ 不许在本函数里写第二遍 `expireAt > nowUtc()`：付费语义一旦分叉，"导出"与"S1 套餐"就会给出两个答案。
+  const canExport = await hasFeature(db, userId, 'export');
+  if (!canExport) return fail(ERROR_CODES.FEATURE_LOCKED, '导出需开通真实利润');
 
   const da = makeAdapter(db);
   const shopDoc = await da.get('shop', shopId);

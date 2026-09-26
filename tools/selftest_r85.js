@@ -188,6 +188,18 @@ const A15_EXEMPT = [
   //   by=WorkBuddy / date=2026-09-26 / reason=round129 授权 M3 v1.2 S0（快照 5 字段 + 活动特价出参）
   /^cloudfunctions\/getCostCard\//,
   /^cloudfunctions\/getCardVersions\//,
+  // ⚠️ 2026-09-26（round147）**十次触发** —— 同一时机关卡第 10 次：M3.28 批次 **Q2/Q3** 授权改后端：
+  //   ① Q2 计数口径：`checkQuota/` `saveCostCard/`（**均已在 round120/round116 白名单内**）新增 `calc_status` 过滤，
+  //      额度由「档案数」改计「可算数」；
+  //   ② Q3 付费判定单源：新增 `common/entitlement.js` + `common/index.js` 补导出，并把唯一消费者
+  //      `exportData/` 切到单源（**禁止在函数体里再写一遍 expireAt > now**）。
+  //   ③ 派生面：`sync_common` 因新增单源文件产出 `cx_entitlement.js`（同 round110 的 cx_indicatorRef.js 性质）。
+  //   均为**本批显式授权**的后端改动，非「顺手改云函数逻辑」；沿用**白名单式**登记（精确到目录/文件名），
+  //   **绝不放宽成 `cloudfunctions/` 全豁免**（那样等于守卫作废）：
+  //   by=WorkBuddy / date=2026-09-26 / reason=round147 授权 M3.28 Q2 计数口径 + Q3 付费判定单源
+  /^cloudfunctions\/common\//,                          // round147：付费判定单源本体（entitlement.js + 聚合入口补齐导出）
+  /^cloudfunctions\/exportData\//,                      // round147：唯一既有付费消费者，切到判定单源（避免第二份 `expireAt > now`）
+  /^cloudfunctions\/[^/]+\/cx_entitlement\.js$/,        // round147：sync_common 派生（全函数，同 cx_indicatorRef.js 性质）
 ];
 check('A15 云函数逻辑零改动（仅 initDb 建库单源 + 本批授权函数豁免）', (() => {
   const { execFileSync } = require('child_process');
