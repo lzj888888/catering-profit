@@ -155,9 +155,14 @@ Page({
     this.setData({ lines });
   },
   // 切换录入方式（档案 ↔ 手工）
+  // 🔴 round129 修复（真机「临时手工录入点不了」根因）：
+  //   `radio-group` 的选中值在 `e.detail.value`，而此前读的是 `e.currentTarget.dataset.val`
+  //   —— wxml 从未传过 `data-val` ⇒ 恒为 undefined ⇒ 每次都走 else 分支重建为**档案行**，
+  //   用户点「临时手工录入」界面毫无变化（看起来就是"点不了"）。
+  //   ⚠️ 配套：wxml 的 radio-group 必须带受控 `value`（子 radio 的 checked 仅认初始值）。
   onLineType(e) {
     const idx = Number(e.currentTarget.dataset.idx);
-    const val = e.currentTarget.dataset.val;   // 'archive' | 'manual'
+    const val = (e && e.detail && e.detail.value) || 'archive';   // 'archive' | 'manual'
     const lines = this.data.lines.slice();
     lines[idx] = val === 'manual' ? emptyManualLine() : emptyLine();
     this.setData({ lines: renumber(lines) });

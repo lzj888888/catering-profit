@@ -23,7 +23,7 @@
   <view class="line" wx:for="{{lines}}" wx:key="idx">
     <view class="cell2">
       <text class="lbl">{{t.inputType}}</text>
-      <radio-group class="mode-group" data-idx="{{index}}" bindchange="onLineType">
+      <radio-group class="mode-group" data-idx="{{index}}" value="{{lines[index].input_type === 2 ? 'manual' : 'archive'}}" bindchange="onLineType">
         <label class="mode-item"><radio value="archive" checked="{{lines[index].input_type !== 2}}" color="#1e3a5f"/>{{t.inputTypeArchive}}</label>
         <label class="mode-item"><radio value="manual" checked="{{lines[index].input_type === 2}}" color="#1e3a5f"/>{{t.inputTypeManual}}</label>
       </radio-group>
