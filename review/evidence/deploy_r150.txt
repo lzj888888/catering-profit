@@ -1,0 +1,44 @@
+# R150 云函数部署证据（2026-09-26 21:44 ~ 21:46）
+
+- 环境：`cloud1-d4gphpoxy337f2a25`（**现读** `cloudfunctions/initDb/config.json::envVariables.DEV_ENV_ID`，未硬编码）
+- 命令：`cli.bat cloud functions deploy --project <REPO> -e <ENV> --names <单个函数> -r`
+  （🔴 `-r` 必带：漏了会覆盖云端 `wx-server-sdk` ⇒ 前端全站「网络不可用」；一次一个函数名）
+- 日志：
+  - `_gui/_deploy_20260926_214418.log` → calcBom
+  - `_gui/_deploy_20260926_214513.log` → saveCostCard / getCostCard / getCardVersions
+
+## 结果表
+
+| 函数 | success | filesCount | packSize |
+|---|---|---|---|
+| calcBom | true | 18 | 44.2 KB |
+| saveCostCard | true | 18 | 50.2 KB |
+| getCostCard | true | 18 | 35.8 KB |
+| getCardVersions | true | 18 | 37.5 KB |
+
+## 判据（**不采信 `rc`** —— `cli.bat` 部署失败也返回 `rc=0`，round122 实测两连败仍 rc=0）
+
+```
+node review/evidence/_judge_deploy.js <log> <fn> [<fn>...]
+  → calcBom                        : ALL_ROWS_HIT=true | DONE=true
+  → saveCostCard/getCostCard/getCardVersions : ALL_ROWS_HIT=true | DONE=true
+```
+
+判据实现只匹配 **ASCII 子串**（函数名 + `true` + 完成行 `deploy cloudfunctions`），
+读日志走 `latin1` 单字节映射 ⇒ 与 cli 输出编码（GBK/UTF-8 争议）无关。
+
+⚠️ **本次实测又踩到那条编码坑的"现场"**：判据脚本把表格竖线显示成 `â`（即 `│` U+2502 的 UTF-8 字节
+`E2 94 82` 被 latin1 逐字节摊开）—— 正是 round147 记录的 mojibake 现象。
+⇒ 再次坐实「**别拿 `│` 做判据**」这条纪律。
+
+## `filesCount` 对账（别被"上轮 17 个"骗）
+
+上轮（r147）各函数目录 **17** 个文件；本轮 `sync_common` 因新增公共层单源 `common/specDerive.js`
+向**全部 42 个函数目录**派生了 `cx_specDerive.js` ⇒ 每个目录 **+1 = 18**。✅ 与部署日志一致。
+
+## 未覆盖 / 边界
+
+- `cli cloud functions` **没有 `invoke`** ⇒ 命令行拿不到运行结果；「能跑」的唯一硬判据 = **真机点一次**（待李老师）。
+- 本轮新增的 `common/specDerive.js` 是**公共层单源** ⇒ 只有被部署的这 4 个函数包内含新副本；
+  其余 38 个函数包内 `common.js` 仍是旧版，但它们**不 require `specDerive`** ⇒ 不受影响，
+  **无需也不应**全量部署。
