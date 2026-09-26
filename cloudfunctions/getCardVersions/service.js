@@ -1,6 +1,7 @@
 // cloudfunctions/getCardVersions/service.js —— 批次 4 · M3 成本卡版本历史出参映射（纯函数）
 // 与 getCostCard/service.js 同口径：DB 成本卡/明细行 doc → 出参（snake_case，金额均为整数「分」）。
 const { ERROR_CODES } = require('./common');
+const { specsFromJson } = require('./common');
 
 // 成本卡版本行（shop_cost_card）doc → 出参条目（不含明细，明细另行装配）
 function cardToOut(doc) {
@@ -22,6 +23,9 @@ function cardToOut(doc) {
     gross_margin_pct: doc.gross_margin_pct != null ? doc.gross_margin_pct : 0,
     reverse_price_fen: doc.reverse_price_fen != null ? doc.reverse_price_fen : 0,
     created_at: doc.created_at != null ? doc.created_at : 0,
+    // M3.15（R150）：多规格定义快照（与 getCostCard.cardToOutput **同字段集**；
+    //   本文件与本字段由 getCardVersions/selftest.js 的「逐字段 ≡ getCostCard」断言守着）
+    specs: specsFromJson(doc.specs_json),
     lines: [],
   };
 }
@@ -40,6 +44,10 @@ function lineToOut(doc) {
     purchase_price: doc.purchase_price != null ? doc.purchase_price : 0,
     convert_factor: doc.convert_factor != null ? doc.convert_factor : 0,
     yield_rate: doc.yield_rate != null ? doc.yield_rate : 0,
+    // M3.14（R150）：组件分类 + 分组名（与 getCostCard.lineToOutput 同字段集）
+    input_type: doc.input_type === 2 ? 2 : 1,
+    line_kind: doc.line_kind || 'main',
+    group_name: doc.group_name || '',
   };
 }
 

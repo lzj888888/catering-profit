@@ -47,4 +47,16 @@ module.exports = {
   hasFeature: require('./entitlement').hasFeature,
   isPaid: require('./entitlement').isPaid,
   PAID_FEATURES: require('./entitlement').PAID_FEATURES,
+
+  // M3.14/M3.15（R150）：组件分类 + 多规格**派生层单源** —— 入参变换，5 份引擎副本一个不碰。
+  //   ⚠️ 同 genId 教训：新符号务必在此聚合入口导出，否则云端 `const { deriveSpec } = common` 会 TypeError。
+  //   伴侣守卫：tools/check_spec_derive.js（L1 符号齐备）+ tools/check_requires.js §2。
+  specDerive: require('./specDerive'),
+  LINE_KINDS: require('./specDerive').LINE_KINDS,
+  SPEC_PRESETS: require('./specDerive').SPEC_PRESETS,
+  deriveSpec: require('./specDerive').deriveSpec,
+  kindOf: require('./specDerive').kindOf,
+  specsToJson: require('./specDerive').specsToJson,
+  specsFromJson: require('./specDerive').specsFromJson,
+  sanitizeSpecs: require('./specDerive').sanitizeSpecs,
 };

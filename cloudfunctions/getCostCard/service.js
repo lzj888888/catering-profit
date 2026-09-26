@@ -1,6 +1,7 @@
 // cloudfunctions/getCostCard/service.js —— 纯函数：成本卡/明细行 doc → 出参（snake_case 契约形态）。
 // 最新版本判定（默认返回最新）= card_code 下 version 最大者（版本自然数递增，只 INSERT 不 UPDATE）。
 const { ERROR_CODES } = require('./common');
+const { specsFromJson } = require('./common');
 
 // 版本行 doc → 出参条目（不含明细行，明细另行装配）
 function cardToOutput(doc) {
@@ -22,6 +23,9 @@ function cardToOutput(doc) {
     gross_margin_pct: doc.gross_margin_pct != null ? doc.gross_margin_pct : 0,
     reverse_price_fen: doc.reverse_price_fen != null ? doc.reverse_price_fen : 0,
     created_at: doc.created_at != null ? doc.created_at : 0,
+    // M3.15（R150）：多规格定义快照（TEXT/JSON ⇒ 出参一律**数组**）。
+    //   存量卡无此字段 ⇒ `specsFromJson(undefined)` 返回 []（fail-soft，不报错不回填）。
+    specs: specsFromJson(doc.specs_json),
     lines: [],
   };
 }
@@ -40,6 +44,10 @@ function lineToOutput(doc) {
     purchase_price: doc.purchase_price != null ? doc.purchase_price : 0,
     convert_factor: doc.convert_factor != null ? doc.convert_factor : 0,
     yield_rate: doc.yield_rate != null ? doc.yield_rate : 0,
+    // M3.14（R150）：组件分类 + 分组名出参（存量行缺字段 ⇒ 'main' / ''）
+    input_type: doc.input_type === 2 ? 2 : 1,
+    line_kind: doc.line_kind || 'main',
+    group_name: doc.group_name || '',
   };
 }
 

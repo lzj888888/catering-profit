@@ -101,6 +101,10 @@ const CASES = [
   { key: 'check_modal_button_len', rel: 'tools/check_modal_button_len.js' },
   { key: 'check_dish_category_free', rel: 'tools/check_dish_category_free.js' },
   { key: 'check_unit_convert', rel: 'tools/check_unit_convert.js' },   // 17 条（含 C2b 语义等价影子）
+  // R150 扩面（round150）：多规格派生层守卫同批纳入 —— 它的 L3 三条腿恒等（全 1 / 压力样本 / 空系数表）、
+  //   A-e 半份五项锚点与 C1~C4 反恒真正是「非恒真」的凭据；断言数不受守则「删掉压力样本腿 +
+  //   删掉一条影子」就等于把守卫悄悄改小（判据仍全绿而证明力归零），与 round73 立本守卫的根因同族。
+  { key: 'check_spec_derive', rel: 'tools/check_spec_derive.js' },     // 24 条（含 C1~C4 影子）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

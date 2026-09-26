@@ -148,6 +148,9 @@ exports.main = async (event) => {
       purchase_price: 0,
       convert_factor: 0,
       yield_rate: Number(ln.yield_rate) || 0,
+      // M3.14（R150）：组件分类 + 分组名（引擎不认识 ⇒ 对成本零影响；在此**只做搬运**）
+      line_kind: ln.line_kind || 'main',
+      group_name: ln.group_name || '',
     });
   }
   const mergedLines = [];
@@ -156,7 +159,13 @@ exports.main = async (event) => {
     if (ln.input_type === 2) {
       mergedLines.push(manualLines.shift());
     } else {
-      mergedLines.push(Object.assign({}, snap.lines[archiveCursor++], { input_type: 1 }));
+      // M3.14：档案行的 line_kind/group_name 由**入参**带过来（buildSnapshotLines 是引擎段，一字不改
+      //   ⇒ 与手工行同样在本层"搬运"，不在引擎里加字段）
+      mergedLines.push(Object.assign({}, snap.lines[archiveCursor++], {
+        input_type: 1,
+        line_kind: ln.line_kind || 'main',
+        group_name: ln.group_name || '',
+      }));
     }
   }
   snap.lines = mergedLines;
@@ -272,6 +281,10 @@ exports.main = async (event) => {
     parent_card_id: card.parent_card_code || '',
     created_by: createdBy,
     client_request_id: clientRequestId || '',
+    // M3.15（R150）：多规格定义**快照**落库（TEXT/JSON 数组）。
+    //   🔴 只存「定义」（name/coef/price_fen），**不存规格成本** —— 规格成本是展示/试算值，
+    //      绝不写进 total_cost（规范 M3.15 硬约束 ②）。
+    specs_json: common.specsToJson(card.specs),
   };
 
   // ===== 9. 落库（只 INSERT）=====
@@ -298,6 +311,9 @@ exports.main = async (event) => {
         yield_rate: ln.yield_rate || 0,
         line_net_cost: result.lines[i].line_net_cost_fen,
         input_type: ln.input_type || 1,      // M3.3：按行真实值（1=档案 / 2=临时手工）
+        // M3.14（R150）：组件分类 + 分组名（**引擎不读**；成本合计一分不变，分组只是视图）
+        line_kind: ln.line_kind || 'main',
+        group_name: ln.group_name || '',
         sort_order: i + 1,
       });
       lineRows.push({

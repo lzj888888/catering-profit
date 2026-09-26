@@ -2,6 +2,7 @@
 // 契约（core/10 §3）：saveCostCard 入参 { shop_id, card:{name,lines:[{material_id,qty}]}, client_request_id }。
 // 金额铁律（R27）：*_fen 必须 JSON number（整数分）；字符串一律 INVALID_PARAM。
 const { ERROR_CODES } = require('./common');
+const { LINE_KINDS, sanitizeSpecs } = require('./common');
 
 function validateInput(event) {
   const err = (m) => ({ error: ERROR_CODES.INVALID_PARAM, msg: m });
@@ -18,7 +19,7 @@ function validateInput(event) {
     return {
       error: null,
       shop_id: src.shop_id,
-      card: { _delete: true, card_code: card.card_code, name: '', mode: 'A', lines: [], auxFen: 0, lossPct: 0, batchOutput: 0, priceFen: 0, targetMarginPct: 0 },
+      card: { _delete: true, card_code: card.card_code, name: '', mode: 'A', lines: [], auxFen: 0, lossPct: 0, batchOutput: 0, priceFen: 0, targetMarginPct: 0, specs: [] },
       input: { client_request_id: src.client_request_id || '' },
     };
   }
@@ -37,6 +38,16 @@ function validateInput(event) {
     }
     // M3.3（批次 P0）：录入方式 1=从原料档案选择 / 2=临时手工录入（默认 1）
     const inputType = (ln.input_type === 2) ? 2 : 1;
+    // M3.14（R150）：组件类型 line_kind（主料/辅料/调料/半成品/耗材包装）——
+    //   · 缺字段 / 空串 ⇒ 按 `main` 兜底（**存量行**没有这个字段，fail-soft；兜底只作用于入参，不回写存量数据）
+    //   · 给了**非法值** ⇒ 响亮拒（那是前端 bug；静默降级会让"半份缩放"按错的口径生效）
+    // M3.14：分组名 group_name（自由文本，**仅展示折叠用**，引擎不认识 ⇒ 对成本零影响）
+    const rawKind = (ln.line_kind === undefined || ln.line_kind === null) ? '' : String(ln.line_kind);
+    if (rawKind && LINE_KINDS.indexOf(rawKind) < 0) {
+      return err(`明细行 line_kind 非法（当前值：${JSON.stringify(rawKind)}；合法值：${LINE_KINDS.join('/')}）`);
+    }
+    const lineKind = rawKind || 'main';
+    const groupName = (typeof ln.group_name === 'string') ? ln.group_name.trim().slice(0, 20) : '';
     if (inputType === 2) {
       // 临时手工录入：material_id 为空、不存原料档案；须填名称。
       // 净料单位成本二选一：① 录入时传 unit_price_fen + yield_rate（后端 netUnitCostWan 算）；
@@ -56,12 +67,12 @@ function validateInput(event) {
       } else {
         return err('手工录入行需传 unit_price_fen+yield_rate 或 net_unit_cost（二选一）');
       }
-      cLines.push({ material_id: '', input_type: 2, name: ln.name.trim(), quantity: qty, unit_price_fen: hasInput ? upf : undefined, yield_rate: hasInput ? yr : undefined, net_unit_cost: hasSnapshot ? nuc : undefined });
+      cLines.push({ material_id: '', input_type: 2, name: ln.name.trim(), quantity: qty, unit_price_fen: hasInput ? upf : undefined, yield_rate: hasInput ? yr : undefined, net_unit_cost: hasSnapshot ? nuc : undefined, line_kind: lineKind, group_name: groupName });
     } else {
       if (typeof ln.material_id !== 'string' || !ln.material_id) {
         return err('明细行 material_id 必须是非空字符串');
       }
-      cLines.push({ material_id: ln.material_id, input_type: 1, quantity: qty });
+      cLines.push({ material_id: ln.material_id, input_type: 1, quantity: qty, line_kind: lineKind, group_name: groupName });
     }
   }
 
@@ -95,6 +106,12 @@ function validateInput(event) {
 
   const targetMarginPct = (typeof card.target_margin_pct === 'number') ? card.target_margin_pct : 0;
 
+  // M3.15（R150）多规格：`card.specs` = [{spec_key, price_fen?, name?, coef?, enabled?}]。
+  //   系数与可读名缺省由 common/specDerive.js::SPEC_PRESETS 补齐（**单源**），落库**快照**。
+  //   ⚠️ 合法域见规范 §M3.26 错误表（系数 0~1；spec_key 非空且不重复）。
+  const specsCheck = sanitizeSpecs(card.specs);
+  if (specsCheck.error) return err(specsCheck.error);
+
   return {
     error: null,
     shop_id: src.shop_id,
@@ -108,6 +125,7 @@ function validateInput(event) {
       priceFen,
       activityPriceFen,
       targetMarginPct,
+      specs: specsCheck.value,
       card_code: (typeof card.card_code === 'string' && card.card_code) ? card.card_code : '',
       category: (typeof card.category === 'string') ? card.category : '',
       tags: (typeof card.tags === 'string') ? card.tags : '',

@@ -19,9 +19,10 @@ const EDIT_CATS_KEY = 'm3_dish_cats';
 // round149：新增 `qty_unit`（用量单位，枚举见 utils/units.js）+ `spec_hint`（该原料的换算说明）。
 //   两者都是**本页展示/录入层**的东西 —— 提交给云端时 qty 一律换算成基准单位(克)，
 //   ⚠️ 不新增云函数字段、不改快照契约、不碰引擎（红线段）。
-function emptyLine() { return { input_type: 1, material_id: '', material_name: '', qty: '', qty_unit: units.BASE_UNIT, spec_hint: '' }; }
+// round150：新增 `line_kind`（组件类型，M3.14）—— 它**要**上云（是规格缩放的唯一依据）。
+function emptyLine() { return { input_type: 1, material_id: '', material_name: '', qty: '', qty_unit: units.BASE_UNIT, spec_hint: '', line_kind: 'main' }; }
 // 手工行工厂
-function emptyManualLine() { return { input_type: 2, material_id: '', material_name: '', qty: '', qty_unit: units.BASE_UNIT, spec_hint: '', unit_price_yuan: '', yield_rate: '100' }; }
+function emptyManualLine() { return { input_type: 2, material_id: '', material_name: '', qty: '', qty_unit: units.BASE_UNIT, spec_hint: '', unit_price_yuan: '', yield_rate: '100', line_kind: 'main' }; }
 
 function renumber(lines) {
   return lines.map((l, i) => Object.assign({}, l, { idx: i }));
@@ -82,6 +83,18 @@ Page({
       qtyUnit: TERMS.card.qtyUnit,
       qtyUnitHint: TERMS.card.qtyUnitHint,
       matSpecHintEmpty: TERMS.card.matSpecHintEmpty,
+      // round150（M3.14/M3.15）
+      lineKindTitle: TERMS.card.lineKindTitle,
+      lineKindHint: TERMS.card.lineKindHint,
+      specTitle: TERMS.card.specTitle,
+      specHint: TERMS.card.specHint,
+      specEnable: TERMS.card.specEnable,
+      specPriceLabel: TERMS.card.specPriceLabel,
+      specCostLabel: TERMS.card.specCostLabel,
+      specMarginLabel: TERMS.card.specMarginLabel,
+      specSuggestLabel: TERMS.card.specSuggestLabel,
+      specCalc: TERMS.card.specCalc,
+      specEmpty: TERMS.card.specEmpty,
     },
     card_code: '',
     isEdit: false,
@@ -107,6 +120,10 @@ Page({
     materials: [],
     // 用量单位枚举（单源 utils/units.js；基准单位恒为克）
     qtyUnits: units.QTY_UNITS.slice(),
+    // round150（M3.14）组件类型 chips：**只有键 + 中文名**，键集 ≡ 服务端 LINE_KINDS。
+    kindChips: Object.keys(TERMS.card.lineKind).map((k) => ({ key: k, label: TERMS.card.lineKind[k] })),
+    // round150（M3.15）规格行：**只有键 + 中文名**（系数单源在服务端 ⇒ 页面只送 spec_key + 售价）。
+    specRows: Object.keys(TERMS.card.specLabel).map((k) => ({ spec_key: k, name: TERMS.card.specLabel[k], enabled: false, priceYuan: '', result: null })),
     lines: [],
     loading: true,
   },
@@ -150,12 +167,22 @@ Page({
           //   故回填一律按「克」显示 —— 这是**确定**的，不做"猜你原来填的是千克"（猜错会显示错数）。
           init.lines = renumber((c.lines || []).map((l) => {
             if (l.material_id) {
-              return { input_type: 1, material_id: l.material_id, material_name: l.material_name, qty: String(l.quantity), qty_unit: units.BASE_UNIT };
+              return { input_type: 1, material_id: l.material_id, material_name: l.material_name, qty: String(l.quantity), qty_unit: units.BASE_UNIT, line_kind: l.line_kind || 'main' };
             }
             // 手工行（material_id 空）：从快照反推净料单价（元/克），出成率固定 100（快照已是净料）
             const unitPriceYuan = l.net_unit_cost ? (l.net_unit_cost / 10000).toFixed(4) : '';
-            return { input_type: 2, material_id: '', material_name: l.material_name, qty: String(l.quantity), qty_unit: units.BASE_UNIT, unit_price_yuan: unitPriceYuan, yield_rate: '100' };
+            return { input_type: 2, material_id: '', material_name: l.material_name, qty: String(l.quantity), qty_unit: units.BASE_UNIT, unit_price_yuan: unitPriceYuan, yield_rate: '100', line_kind: l.line_kind || 'main' };
           }));
+          // round150：规格快照回填（specs_json ⇒ 数组）。存量卡无此字段 ⇒ []。
+          init.specRows = this.data.specRows.map((r) => {
+            const hit = (c.specs || []).find((s) => s && s.spec_key === r.spec_key);
+            if (!hit) return r;
+            return Object.assign({}, r, {
+              enabled: hit.enabled !== false,
+              name: hit.name || r.name,
+              priceYuan: hit.price_fen > 0 ? api.fenToYuan(hit.price_fen, 2) : '',
+            });
+          });
           init.previewCostFen = c.total_cost_fen || 0;
           init.copyVersion = TERMS.card.copyVersion;
         }
@@ -346,16 +373,110 @@ Page({
         // 手工行：前端算净料单位成本（录入换算），反算与保存用同一值（单源）
         const wan = manualNetUnitWan(l.unit_price_yuan, l.yield_rate);
         if (wan <= 0) continue;
-        out.push({ quantity: qtyBase, net_unit_cost: wan });
+        out.push({ quantity: qtyBase, net_unit_cost: wan, line_kind: l.line_kind || 'main' });
       } else {
         if (!l.material_id) continue;
         const m = this.data.materials.find((x) => x.id === l.material_id);
         if (!m) continue;
-        out.push({ quantity: qtyBase, net_unit_cost: m.net_unit_cost });
+        out.push({ quantity: qtyBase, net_unit_cost: m.net_unit_cost, line_kind: l.line_kind || 'main' });
       }
     }
     if (out.length === 0) { wx.showToast({ title: TERMS.card.qty, icon: 'none' }); return null; }
     return out;
+  },
+
+  // ===== round150（M3.14）组件类型 =====
+  pickKind(e) {
+    const idx = Number(e.currentTarget.dataset.idx);
+    const key = e.currentTarget.dataset.kind;
+    if (!key) return;
+    const lines = this.data.lines.slice();
+    lines[idx] = Object.assign({}, lines[idx], { line_kind: key });
+    this.setData({ lines });
+  },
+
+  // ===== round150（M3.15）规格 =====
+  toggleSpec(e) {
+    const key = e.currentTarget.dataset.spec;
+    this.setData({
+      specRows: this.data.specRows.map((r) => (r.spec_key === key ? Object.assign({}, r, { enabled: !r.enabled, result: r.enabled ? null : r.result }) : r)),
+    });
+  },
+  onSpecPrice(e) {
+    const key = e.currentTarget.dataset.spec;
+    const v = e.detail.value;
+    this.setData({
+      specRows: this.data.specRows.map((r) => (r.spec_key === key ? Object.assign({}, r, { priceYuan: v }) : r)),
+    });
+  },
+  // 把某规格行的输入拼成 spec_prices（整数分）；空/非法 ⇒ 该规格不带价（只出成本与建议价）
+  specPriceFen(r) {
+    const yuan = Number(r.priceYuan);
+    if (!isFinite(yuan) || yuan <= 0) return null;
+    return Math.round(yuan * 100);
+  },
+  // 提交给云端的规格列表：**只送键 + 售价**（系数/名称由服务端单源补齐）
+  collectSpecs() {
+    return this.data.specRows
+      .filter((r) => r.enabled)
+      .map((r) => {
+        const pf = this.specPriceFen(r);
+        return pf == null ? { spec_key: r.spec_key } : { spec_key: r.spec_key, price_fen: pf };
+      });
+  },
+  // 规格试算：一次调用把启用的规格全部算回来（成本 / 毛利率 / 建议价），并刷新原成本预览
+  async calcSpecs() {
+    const linesInput = this.buildCalcLines();
+    if (!linesInput) return;
+    const rows = this.data.specRows.filter((r) => r.enabled);
+    if (rows.length === 0) { wx.showToast({ title: TERMS.card.specEmpty, icon: 'none' }); return; }
+    const specPrices = {};
+    for (const r of rows) {
+      const pf = this.specPriceFen(r);
+      if (pf != null) specPrices[r.spec_key] = pf;
+    }
+    try {
+      ui.setTitle(TERMS.card.specCalc);
+      const d = await api.call('calcBom', {
+        lines: linesInput,
+        mode: this.data.calcMode,
+        batch_output: this.data.calcMode === 'B' ? Number(this.data.batchOutput) : 0,
+        loss_pct: Number(this.data.lossRate) || 0,
+        auxYuan: Number(this.data.auxYuan) || 0,
+        target_margin_pct: Number(this.data.targetMargin) || 0,
+        spec_keys: rows.map((r) => r.spec_key),
+        spec_prices: specPrices,
+      });
+      const byKey = {};
+      for (const s of (d.spec_results || [])) {
+        // 出参 → 展示字段（页面零计算：元/百分号都在这里格式化，wxml 只摆位）
+        byKey[s.spec_key] = {
+          spec_key: s.spec_key,
+          name: s.name,
+          coef: s.coef,
+          price_fen: s.price_fen,
+          unit_cost_fen: s.unit_cost_fen,
+          costYuan: api.fenToYuan(s.unit_cost_fen || 0, 2),
+          marginPct: s.gross_margin_pct,
+          suggestYuan: s.reverse_price_fen > 0 ? api.fenToYuan(s.reverse_price_fen, 2) : '',
+        };
+      }
+      this.setData({
+        previewCostFen: d.unit_cost_fen || 0,
+        previewCost: d.unit_cost_fen ? api.fenToYuan(d.unit_cost_fen, 2) : '',
+        specRows: this.data.specRows.map((r) => (r.enabled && byKey[r.spec_key] ? Object.assign({}, r, { result: byKey[r.spec_key] }) : r)),
+      });
+    } catch (e) { api.toastError(e); }
+  },
+  // 用「按目标毛利率的建议价」回填该规格售价（老板可再手改）
+  useSpecSuggest(e) {
+    const key = e.currentTarget.dataset.spec;
+    this.setData({
+      specRows: this.data.specRows.map((r) => {
+        if (r.spec_key !== key || !r.result || !(r.result.reverse_price_fen > 0)) return r;
+        return Object.assign({}, r, { priceYuan: api.fenToYuan(r.result.reverse_price_fen, 2) });
+      }),
+    });
   },
 
   // 保存 → saveCostCard（后端重算落库；编辑 = 带 card_code 另存新版本）
@@ -400,13 +521,15 @@ Page({
       // round149：同 buildCalcLines —— 提交前换算到基准单位(克)，云端契约与引擎零改动
       const qtyBase = units.toBase(l.qty, l.qty_unit);
       if (!(qtyBase > 0)) continue;
+      // round150：组件类型随行上云（规格缩放的唯一依据）；缺省 main（服务端同样兜底）
+      const kind = l.line_kind || 'main';
       if (l.input_type === 2) {
         const wan = manualNetUnitWan(l.unit_price_yuan, l.yield_rate);
         if (wan <= 0) { wx.showToast({ title: TERMS.card.manualUnitPrice, icon: 'none' }); return; }
-        lines.push({ input_type: 2, name: (l.material_name || '').trim(), qty: qtyBase, net_unit_cost: wan });
+        lines.push({ input_type: 2, name: (l.material_name || '').trim(), qty: qtyBase, net_unit_cost: wan, line_kind: kind });
       } else {
         if (!l.material_id) continue;
-        lines.push({ material_id: l.material_id, qty: qtyBase });
+        lines.push({ material_id: l.material_id, qty: qtyBase, line_kind: kind });
       }
     }
     if (lines.length === 0) { wx.showToast({ title: TERMS.card.material, icon: 'none' }); return; }
@@ -420,6 +543,8 @@ Page({
       category: this.data.category,
       tags: this.data.tags,
       activity_price_yuan: Number(this.data.activityPriceYuan) || 0,
+      // round150：规格只送 **键 + 售价**（系数与可读名由服务端单源补齐并**快照**落库）
+      specs: this.collectSpecs(),
     };
     if (this.data.calcMode === 'B') card.batch_output = Number(this.data.batchOutput) || 0;
     if (this.data.card_code) card.card_code = this.data.card_code;

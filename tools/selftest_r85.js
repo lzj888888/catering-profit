@@ -200,6 +200,17 @@ const A15_EXEMPT = [
   /^cloudfunctions\/common\//,                          // round147：付费判定单源本体（entitlement.js + 聚合入口补齐导出）
   /^cloudfunctions\/exportData\//,                      // round147：唯一既有付费消费者，切到判定单源（避免第二份 `expireAt > now`）
   /^cloudfunctions\/[^/]+\/cx_entitlement\.js$/,        // round147：sync_common 派生（全函数，同 cx_indicatorRef.js 性质）
+  // ⚠️ 2026-09-26（round150）**十一次触发** —— 同一时机关卡第 11 次：M3 v1.3 批次 **R150** 授权落地
+  //   ① M3.14 组件分类：明细行新增 `line_kind`（主/辅/调/半/耗）——落库侧 `saveCostCard/`（已在内）、
+  //      读侧 `getCostCard/` `getCardVersions/`（已在内）；
+  //   ② M3.15 多规格派生：新增**公共层单源** `common/specDerive.js`（派生层本体，5 份引擎副本零改动），
+  //      消费侧 `calcBom/`（validate 保留 line_kind 防静默退化 + index 返回 spec_results）⇒ 新增登记；
+  //   ③ 派生面：sync_common 因新增单源文件产出 `cx_specDerive.js`（同 round110/147 的 cx_* 性质）。
+  //   均为**本批显式授权**的后端改动，非「顺手改云函数逻辑」；沿用**白名单式**登记（精确到目录/文件名），
+  //   **绝不放宽成 `cloudfunctions/` 全豁免**（那样等于守卫作废）：
+  //   by=WorkBuddy / date=2026-09-26 / reason=round150 授权 M3.14 组件分类 + M3.15 多规格派生层
+  /^cloudfunctions\/calcBom\//,                         // round150：M3.15 派生消费侧（validate 保 line_kind + index 出 spec_results）
+  /^cloudfunctions\/[^/]+\/cx_specDerive\.js$/,         // round150：sync_common 派生（全函数，同 cx_indicatorRef.js 性质）
 ];
 check('A15 云函数逻辑零改动（仅 initDb 建库单源 + 本批授权函数豁免）', (() => {
   const { execFileSync } = require('child_process');

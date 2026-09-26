@@ -1,0 +1,20 @@
+
+鈹屸攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹�
+鈹� (index)    鈹� success 鈹� filesCount 鈹� packSize  鈹�
+鈹溾攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹尖攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹尖攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹尖攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹�
+鈹� checkQuota 鈹� true    鈹� 17         鈹� '33.2 KB' 鈹�
+鈹斺攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹粹攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹粹攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹粹攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹�
+- initialize
+
+(node:75484) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `寰俊寮€鍙戣€呭伐鍏� --trace-deprecation ...` to show where the warning was created)
+脳 IDE may already started at port 35237, trying to connect
+
+鈭� IDE server started successfully, listening on http://127.0.0.1:35237
+- deploy cloudfunctions
+- fetching cloud env list
+- [checkQuota] Fetching info of cloudfunction checkQuota
+鈭� [checkQuota] cloudfunction checkQuota exists in the cloud, will update it
+- [checkQuota] upload cloud function checkQuota - preparing
+鈭� [checkQuota] upload cloud function checkQuota - deploy
+鈭� deploy cloudfunctions

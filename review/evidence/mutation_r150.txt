@@ -1,0 +1,36 @@
+# R150/R132 变异回灌（守卫：tools/check_spec_derive.js）
+
+基线：rc=0（期望 0）
+✅ M1 恒等分支被删（系数全 1 也走 round） ⇒ 判红（期望红）rc=1
+      点名：❌ L3-② A-d 恒等失败 —— 压力样本下 lines 与原入参不逐字节相同 | ❌ C4 正样本互证失败：恒等 false / 半份 true —— 压力样本下 lines 与原入参不逐字节相同 | 用量/辅料/567/1253/68.85 五项全中
+✅ M2 kindOf 恒返回 main（「调料不减半」失效） ⇒ 判红（期望红）rc=1
+      点名：❌ L3-④ A-e 半份锚点失败 —— 缩放后用量 = [100,25,5,15,10] | ❌ L3-⑤ 反例不符：50% 定价毛利率 = 64.43（应 59.5） | ❌ S2 断言数仅 17 条（< 18，判据面被写窄）
+✅ M3 coefOf 缺省按 0（漏配一类的成本归零） ⇒ 判红（期望红）rc=1
+      点名：❌ L3-② A-d 恒等失败 —— 空系数表下 lines 与原入参不逐字节相同（缺配须按 1） | ❌ C4 正样本互证失败：恒等 false / 半份 true —— 空系数表下 lines 与原入参不逐字节相同（缺配须按 1） | 用量/辅料/567/1253/68.85 五项全中
+✅ M4 calcBom/validate 把 line_kind 洗掉（回到只保 {quantity,net_unit_cost}） ⇒ 判红（期望红）rc=1
+      点名：❌ L4-① calcBom/validate 提到 line_kind 但没进清洗后的行（等于没保留）
+✅ M5 保存路径上做规格派生（规格成本可能进 total_cost） ⇒ 判红（期望红）rc=1
+      点名：❌ L4-③ saveCostCard 在保存路径上做了规格派生（规格成本不得进 total_cost —— 硬约束②）
+✅ M6 getCostCard 出参丢掉 line_kind（编辑-保存往返丢组件类型） ⇒ 判红（期望红）rc=1
+      点名：❌ L4-④ getCostCard 出参缺 line_kind（编辑页回填拿不到组件类型 ⇒ 规缩放悄悄变全 main）
+✅ M7 前端组件键漂移（season → seasoning） ⇒ 判红（期望红）rc=1
+      点名：❌ L5-① 组件键集 ≠ 后端 LINE_KINDS：miniprogram：["aux","main","pack","seasoning","semi"] ≠ LINE_KINDS ["aux","main","pack","season","semi"]（键名漂了 ⇒ 系数查不到、规格试算恒等于全份）
+✅ M8 把派生内联一份进引擎副本（calcBom/service.js） ⇒ 判红（期望红）rc=1
+      点名：❌ L2-① 派生被内联进 service：cloudfunctions/calcBom/service.js（规范 M3.15 硬约束①：5 份引擎副本都不碰）
+✅ M9 语义等价改写（预设 season/pack 写 1.0 而非 1） ⇒ 保持绿（期望绿）rc=0
+✅ M10 语义等价改写（恒等分支换成 if 语句） ⇒ 保持绿（期望绿）rc=0
+
+## 还原校验（md5 逐字节回到基线）
+✅ cloudfunctions/common/specDerive.js md5 f253811179efe4e9ffd360dd075885ab ≡ 基线
+✅ cloudfunctions/calcBom/cx_specDerive.js md5 f253811179efe4e9ffd360dd075885ab ≡ 基线
+✅ cloudfunctions/saveCostCard/cx_specDerive.js md5 f253811179efe4e9ffd360dd075885ab ≡ 基线
+✅ cloudfunctions/getCostCard/cx_specDerive.js md5 f253811179efe4e9ffd360dd075885ab ≡ 基线
+✅ cloudfunctions/calcBom/service.js md5 43acba38611cf4ce7640e647f6907fae ≡ 基线
+✅ cloudfunctions/calcBom/validate.js md5 44d16de74dcaf4afdd23085560b4355a ≡ 基线
+✅ cloudfunctions/saveCostCard/index.js md5 b9a4c4c47649750ccb09deb6906d6adb ≡ 基线
+✅ cloudfunctions/getCostCard/service.js md5 31642ab98017a7ca5ce4b28db2b39d41 ≡ 基线
+✅ miniprogram/i18n/terms.js md5 fd5b2ef4d6f65a71a3b20a9a25b0d06c ≡ 基线
+
+还原后复跑：rc=0（期望 0）
+
+===== 变异回灌结果：13 通过 / 0 失败 =====

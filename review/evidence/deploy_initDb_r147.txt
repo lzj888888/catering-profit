@@ -1,0 +1,18 @@
+
+鈹屸攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹�
+鈹� (index) 鈹� success 鈹� filesCount 鈹� packSize  鈹�
+鈹溾攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹尖攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹尖攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹尖攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹�
+鈹� initDb  鈹� true    鈹� 16         鈹� '35.4 KB' 鈹�
+鈹斺攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹粹攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹粹攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹粹攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹�
+- initialize
+
+(node:68168) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `寰俊寮€鍙戣€呭伐鍏� --trace-deprecation ...` to show where the warning was created)
+鈭� IDE server has started, listening on http://127.0.0.1:35237
+- deploy cloudfunctions
+- fetching cloud env list
+- [initDb] Fetching info of cloudfunction initDb
+鈭� [initDb] cloudfunction initDb exists in the cloud, will update it
+- [initDb] upload cloud function initDb - preparing
+鈭� [initDb] upload cloud function initDb - deploy
+鈭� deploy cloudfunctions

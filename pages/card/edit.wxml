@@ -78,8 +78,18 @@
         </picker>
       </view>
     </block>
+
+    <!-- round150（M3.14）组件类型：**只影响规格试算，不影响这份成本**。
+         为什么必须有它：半份菜的「调料不减半」（否则没味）、耗材也不减半 ⇒ 分类错了半份成本就错。 -->
+    <view class="kind-row">
+      <text class="kind-lbl">{{t.lineKindTitle}}</text>
+      <block wx:for="{{kindChips}}" wx:for-item="kc" wx:for-index="ki" wx:key="key">
+        <text class="kind-chip {{lines[index].line_kind === kc.key ? 'kind-on' : ''}}" data-idx="{{index}}" data-kind="{{kc.key}}" bindtap="pickKind">{{kc.label}}</text>
+      </block>
+    </view>
   </view>
   <view class="muted" style="margin:-8rpx 0 12rpx 4rpx;">{{t.qtyUnitHint}}</view>
+  <view class="muted" style="margin:-4rpx 0 12rpx 4rpx;">{{t.lineKindHint}}</view>
   <button class="btn ghost btn-small" style="min-height:88rpx;" bindtap="addLine">{{t.addLine}}</button>
   <button class="btn ghost btn-small" style="min-height:88rpx;" bindtap="goMaterial">{{t.materialArchive}}</button>
 
@@ -131,6 +141,39 @@
     <button class="btn-small" style="min-height:88rpx;margin-left:12rpx;" wx:if="{{reversePriceFen > 0}}" bindtap="applyReverse">{{t.reverseApply}}</button>
     <view class="muted" wx:if="{{reversePriceFen > 0}}">{{t.reverseResult}}：{{t.cur}}{{reverseResultPreview}}</view>
     <view class="muted" wx:if="{{previewCostFen > 0}}">{{t.totalCost}}：<text style="color:#1e3a5f;">{{t.cur}}{{previewCost}}</text></view>
+  </view>
+
+  <!-- round150（M3.15）规格（大小份）：成本按组件类型缩放后**单独试算**。
+       ⚠️ 页面**不抄系数**（系数单源在服务端 SPEC_PRESETS）—— 只送规格键 + 售价，
+       试算结果由云端返回（含它是用哪套系数算的）。主成本口径完全不受影响。 -->
+  <view class="spec-box">
+    <view class="spec-title">{{t.specTitle}}</view>
+    <view class="muted">{{t.specHint}}</view>
+    <block wx:for="{{specRows}}" wx:for-item="sp" wx:for-index="si" wx:key="spec_key">
+      <view class="spec-row">
+        <view class="spec-head">
+          <text class="spec-name {{sp.enabled ? 'spec-on' : ''}}" data-spec="{{sp.spec_key}}" bindtap="toggleSpec">{{sp.name}}</text>
+          <text class="muted">{{sp.enabled ? t.specEnable : ''}}</text>
+        </view>
+        <block wx:if="{{sp.enabled}}">
+          <view class="cell2">
+            <text class="lbl">{{t.specPriceLabel}}</text>
+            <input class="val-input" type="digit" value="{{sp.priceYuan}}" data-spec="{{sp.spec_key}}" bindinput="onSpecPrice"  adjust-position="{{true}}" cursor-spacing="20" />
+          </view>
+        </block>
+      </view>
+    </block>
+    <button class="btn ghost btn-small" style="min-height:88rpx;" bindtap="calcSpecs">{{t.specCalc}}</button>
+    <block wx:for="{{specRows}}" wx:for-item="sp" wx:for-index="si" wx:key="spec_key">
+      <view class="spec-res" wx:if="{{sp.enabled && sp.result}}">
+        <view class="spec-res-name">{{sp.result.name}}</view>
+        <view class="muted">{{t.specCostLabel}}：<text style="color:#1e3a5f;">{{t.cur}}{{sp.result.costYuan}}</text></view>
+        <view class="muted" wx:if="{{sp.result.price_fen > 0}}">{{t.specMarginLabel}}：{{sp.result.marginPct}}%</view>
+        <view class="muted" wx:if="{{sp.result.suggestYuan}}">{{t.specSuggestLabel}}：{{t.cur}}{{sp.result.suggestYuan}}
+          <text class="spec-apply" data-spec="{{sp.spec_key}}" bindtap="useSpecSuggest">（{{t.reverseApply}}）</text>
+        </view>
+      </view>
+    </block>
   </view>
 
   <view style="height:20rpx;"></view>

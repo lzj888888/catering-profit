@@ -8,6 +8,23 @@
 /* round149：明细行里的「买→用」换算说明（一行小字，避免把采购价当成净料价填） */
 .spec-hint { margin: 0 0 8rpx 4rpx; line-height: 1.5; }
 .mode-group { display: flex; align-items: center; }
+
+/* round150（M3.14）组件类型 chips —— 字号 28rpx 起（上线前 AD 缺口 G1 下界） */
+.kind-row { display: flex; flex-wrap: wrap; align-items: center; margin-top: 8rpx; }
+.kind-lbl { font-size: 28rpx; color: #6b7a8c; margin-right: 12rpx; }
+.kind-chip { font-size: 28rpx; padding: 8rpx 20rpx; margin: 0 12rpx 8rpx 0; border-radius: 22rpx; background: #e8eff7; color: #1e3a5f; }
+.kind-on { background: #1e3a5f; color: #ffffff; }
+
+/* round150（M3.15）规格（大小份）小节 */
+.spec-box { margin: 8rpx 0 4rpx; padding: 16rpx 20rpx 20rpx; background: #f5f8fc; border-radius: 12rpx; }
+.spec-title { font-size: 30rpx; color: #1e3a5f; font-weight: 600; margin-bottom: 6rpx; }
+.spec-row { margin-top: 12rpx; }
+.spec-head { display: flex; align-items: center; }
+.spec-name { font-size: 30rpx; padding: 8rpx 24rpx; border-radius: 24rpx; background: #e8eff7; color: #1e3a5f; margin-right: 12rpx; }
+.spec-on { background: #1e3a5f; color: #ffffff; }
+.spec-res { margin-top: 10rpx; padding: 12rpx 16rpx; background: #ffffff; border-radius: 10rpx; }
+.spec-res-name { font-size: 28rpx; color: #1e3a5f; font-weight: 600; }
+.spec-apply { color: #2b7de9; font-size: 28rpx; }
 .mode-item { font-size: 30rpx; margin-right: 32rpx; display: flex; align-items: center; }
 .line { background: #fff; border-radius: 12rpx; padding: 16rpx 24rpx; margin-bottom: 16rpx; }
 .cell2 { display: flex; justify-content: space-between; align-items: center; padding: 12rpx 0; }

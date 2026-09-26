@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：107 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：108 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -170,6 +170,20 @@
 //         + L3 页面不得自抄倍率表 + **L4 换单位必须换数**（只改标签不改数 ⇒ 成本差倍率，界面看不出来）
 //         + L5 提交前归一 toBase() + L6 换算关系露在明细行 + L7 采购单位可选
 //         + S1~S3 自失效护栏 + C1~C3 反恒真（「只换标签不换数」影子必红、真写法必绿、切分器自检））
+//       + 多规格派生层守卫（tools/check_spec_derive.js，R150（= R132 编号）—— M3.14 组件分类 + M3.15 多规格：
+//         规范 v1.1 早已定案「多规格 = 入参变换派生」（按 line_kind 缩放用量后喂**同一个** calcCostCard），
+//         但**判据一直只写在纸上**：恒等性（系数全 1 ⇒ 派生结果 ≡ 原入参）没有任何机器在守。
+//         本轮把「组件分类」与「多规格」一起落地，并立守卫。事故模型五条：
+//         ① 系数抄两份（页面 + 服务端）② 派生被内联进某份 service.js（5 副本分叉）
+//         ③ 规格成本污染 total_cost ④ line_kind 在入参清洗时被洗掉（「调料不减半」静默退化）
+//         ⑤ 前后端键名漂移（系数查不到 ⇒ 规格试算恒等于全份）。
+//         判据 = L1 单源在场（specDerive 导出 / 聚合入口 / 扁平副本≡单源）
+//         + L2 引擎不被污染（零内联 deriveSpec、引擎副本源码零命中 line_kind·spec_key）
+//         + L3 **真跑生产件**：A-d 恒等三条腿（全 1 / 压力样本 / 空系数表）+ A-e 半份五项（用量 100/35/10/21/20、辅料 35、成本 567、毛利 1253、毛利率 68.85）
+//         + 反例（半份按 50% 定价 ⇒ 59.5% < 全份 65.18%，坐实「固定成本不减半」）
+//         + L4 契约落点（calcBom 保留 line_kind 且出 spec_results / saveCostCard 落 specs_json 且 total_cost 零污染 / getCostCard 往返不丢字段）
+//         + L5 键集一致（terms.lineKind ≡ LINE_KINDS、terms.specLabel ≡ SPEC_PRESETS、页面不自抄系数）
+//         + S1~S2 自失效护栏 + C1~C4 反恒真（一律 round / 忽略 line_kind / 缺省按 0 三类影子必红 + 真派生必绿））
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -496,6 +510,8 @@ const SUITES = [
   ['dish-cat-free', 'tools/check_dish_category_free.js'],
   // R149（round149 李老师反馈）：采购单位 / 用量单位换算守卫 —— 详见头注 R149 段。
   ['unit-convert', 'tools/check_unit_convert.js'],
+  // R150（round150 李老师反馈）：M3.14 组件分类 + M3.15 多规格派生层守卫 —— 详见头注 R150 段。
+  ['spec-derive', 'tools/check_spec_derive.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

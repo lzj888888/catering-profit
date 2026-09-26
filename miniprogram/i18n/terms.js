@@ -673,6 +673,25 @@ const TERMS = {
     qtyUnitHint: '按做菜手感选；换单位会自动换算数量，成本不变',
     matSpecHintOf: (p, u, f, yr, net) => `${p} 元/${u} ÷ ${f} ÷ 出成率 ${yr}% ⇒ 净料 ${net} 元/克`,
     matSpecHintEmpty: '选好原料后显示：采购价 ÷ 换算系数 ÷ 出成率 = 净料单价（元/克）',
+    // ===== round150 · M3.14 组件分类 + M3.15 多规格（大小份）=====
+    //   ⚠️ 组件类型的**机器键**单源在 `cloudfunctions/common/specDerive.js::LINE_KINDS`；
+    //     本处是**中文文案**，键集必须与之一致（守卫 `tools/check_spec_derive.js` L5 逐键比对 —— 键名漂了就静默不缩放）。
+    //   规格**系数**单源在服务端（`SPEC_PRESETS`）⇒ 页面**不抄系数**、只送 `spec_key`（不做第二份真相源）。
+    lineKindTitle: '组件',
+    lineKind: { main: '主料', aux: '辅料', season: '调料', semi: '半成品', pack: '耗材' },
+    lineKindHint: '半份菜里「调料 / 耗材」不减半（否则没味、包装也省不了）—— 分类只影响规格试算，不影响这份成本',
+    specTitle: '规格（大小份）',
+    specHint: '同一道菜挂多个规格：成本按组件类型缩放后**单独试算**，主成本口径不变',
+    specEnable: '记入本卡',
+    specPriceLabel: '规格售价（元）',
+    specCostLabel: '规格成本',
+    specMarginLabel: '规格毛利率',
+    specSuggestLabel: '建议价（按目标毛利率）',
+    specCalc: '规格试算',
+    specEmpty: '选好规格后点「规格试算」',
+    // 规格 chips 的显示名：**只有键 + 中文名，没有系数**（系数单源在服务端 SPEC_PRESETS）。
+    //   键集必须 ≡ 服务端 SPEC_PRESETS 的 spec_key 集合（守卫 L5 逐键比对）。
+    specLabel: { half: '半份', small: '小份' },
   },
 
   // ===== 十五、M1 库存录入页（shop_inventory）=====
