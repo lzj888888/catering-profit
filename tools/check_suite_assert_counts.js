@@ -98,6 +98,7 @@ const CASES = [
   //   （输入敏感 ×2 / 变体偏移 1 分必须判不等 / mode 非法三副本均抛错）正是「非恒真」的凭据；
   //   断言数不受守则「删掉反恒真段 + 调低下界」就等于把守卫悄悄改小（判据仍全绿而证明力归零）。
   { key: 'check_m3_engine_parity', rel: 'tools/check_m3_engine_parity.js' },
+  { key: 'check_modal_button_len', rel: 'tools/check_modal_button_len.js' },
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

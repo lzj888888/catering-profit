@@ -31,7 +31,8 @@ function openPaywall(type, opts) {
     title: def.title,
     content: def.content,
     cancelText: def.secondary || buttons.cancel,
-    confirmText: def.primary || buttons.unlockPro,
+    // ⚠️ 平台限制：confirmText ≤4 字符 —— 用 paywall.ctaShort，不用 primary（6 字会 fail）
+    confirmText: TERMS.paywall.ctaShort || def.primary,
     confirmColor: '#1e3a5f',
     success(res) {
       if (res.confirm) {

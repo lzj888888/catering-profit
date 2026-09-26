@@ -71,15 +71,19 @@ const TERMS = {
       title: '已达免费上限',
       content:
         '免费版可建 1 家店铺、菜品数量有限。开通真实利润后不限数量，还能用库存倒轧算真实消耗，结果更准。',
-      primary: '开通真实利润', // 跳套餐页
+      primary: '去开通', // ⚠️ 只用于 showModal confirmText，平台上限 4 字符 // 跳套餐页
       secondary: '再想想',
     },
     export: {
       title: '导出需开通',
       content: '开通真实利润后可导出 / 打印菜品成本与经营报表。',
-      primary: '开通真实利润',
+      primary: '去开通', // ⚠️ 只用于 showModal confirmText，平台上限 4 字符
       secondary: '取消',
     },
+    // ⚠️ 平台限制：wx.showModal 的 confirmText / cancelText **最多 4 个字符**，超了弹窗直接 fail
+    //   （真机事故 2026-09-26：primary「开通真实利润」6 字 ⇒ showmodal:fail confirm text length）。
+    //   故弹窗按钮**单独**用 ctaShort（≤4）；带功能名的长文案留给页面按钮（buttons.unlockPro）。
+    ctaShort: '去开通',
     // 内部/开发读：弹窗逻辑内部叫"付费墙"，界面只说"开通/升级解锁"。
     // M2 永不弹窗。按钮必须带功能名（铁律4）。
   },
@@ -546,8 +550,14 @@ const TERMS = {
   card: {
     listTitle: '菜品成本毛利核算',
     dishName: '菜品名称',
-    category: '成本分类',
+    category: '菜品分类',
     tags: '标签',
+    categoryPh: '请选择分类',
+    tagsPh: '如 招牌、辣、时令',
+    tagsHint: '多个标签用逗号隔开，列表里可按标签筛选',
+    // 菜品分类枚举 —— 编辑页 picker 与列表页筛选项共用同一套单源；
+    //   历史自由输入值不丢弃（edit.js::load 会把它补进选项再回显）。
+    dishCats: ['热菜', '凉菜', '主食', '汤羹', '饮品', '小吃', '其他'],
     totalCost: '单份成本',
     price: '建议售价',
     grossMargin: '毛利率',
@@ -639,9 +649,9 @@ const TERMS = {
     reverseApply: '填入建议售价',
     // ===== 批次 S0 · 版本恢复 / 标签筛选 / 快照明细 =====
     filterTags: '标签',
-    restoreVersion: '恢复此版本',
-    restoreVersionConfirm: '恢复后将生成一个新版本，历史版本原样保留。确定恢复？',
-    restoreDone: '已恢复为新版本',
+    restoreVersion: '按此版本新建',
+    restoreVersionConfirm: '将按此版本内容生成一个新版本，现有版本全部保留可查。确定？',
+    restoreDone: '已按此版本新建',
     restoring: '正在恢复…',
     snapshotBrand: '品牌规格',
     snapshotUnit: '采购单位',
@@ -939,7 +949,7 @@ const TERMS = {
     exportNeedPaid: '导出需开通真实利润',
     // 隐私合规
     privacyTitle: '用户隐私保护指引',
-    privacyAgree: '同意并继续',
+    privacyAgree: '同意继续', // ⚠️ showModal confirmText ≤4 字符（原 5 字会 fail）
     privacyDisagree: '暂不同意',
     privacyOpen: '查看隐私协议',
     privacyRevoke: '撤回授权',

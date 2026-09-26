@@ -66,6 +66,10 @@ Page({
       warnPriceBelowCost: TERMS.card.warnPriceBelowCost,
       reverseApply: TERMS.card.reverseApply,
       category: TERMS.card.category,
+      categoryPh: TERMS.card.categoryPh,
+      tagsPh: TERMS.card.tagsPh,
+      tagsHint: TERMS.card.tagsHint,
+      materialArchive: TERMS.card.materialListTitle,
       tags: TERMS.card.tags,
     },
     card_code: '',
@@ -78,6 +82,8 @@ Page({
     priceYuan: 0,
     activityPriceYuan: '',
     category: '',
+    categoryOptions: TERMS.card.dishCats.slice(),
+    categoryIndex: -1,
     tags: '',
     targetMargin: 60,
     reversePriceFen: 0,
@@ -126,6 +132,15 @@ Page({
         }
       }
       if (!init.lines || init.lines.length === 0) init.lines = renumber([emptyLine()]);
+      // 分类回显：旧数据是自由输入的，若不在枚举内则补进选项，避免回显丢失
+      if (init.category) {
+        const opts = (init.categoryOptions || this.data.categoryOptions || TERMS.card.dishCats).slice();
+        if (opts.indexOf(init.category) < 0) opts.push(init.category);
+        init.categoryOptions = opts;
+        init.categoryIndex = opts.indexOf(init.category);
+      } else {
+        init.categoryIndex = -1;
+      }
       this.setData(init);
     } catch (e) {
       this.setData({ loading: false });
@@ -140,9 +155,14 @@ Page({
   onAux(e) { this.setData({ auxYuan: e.detail.value }); },
   onPrice(e) { this.setData({ priceYuan: e.detail.value }); },
   onActivityPrice(e) { this.setData({ activityPriceYuan: e.detail.value }); },
-  onCategory(e) { this.setData({ category: e.detail.value }); },
+  onCategory(e) {
+    const i = Number(e.detail.value);
+    this.setData({ categoryIndex: i, category: this.data.categoryOptions[i] || '' });
+  },
   onTags(e) { this.setData({ tags: e.detail.value }); },
   onTargetMargin(e) { this.setData({ targetMargin: e.detail.value }); },
+  // 真机反馈：改第 N 道菜的原料必须回列表页最顶部 ⇒ 编辑页给直达入口
+  goMaterial() { wx.navigateTo({ url: '/pages/material/index' }); },
 
   // ===== 明细行 =====
   onMaterialChange(e) {

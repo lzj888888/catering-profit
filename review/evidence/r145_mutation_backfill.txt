@@ -1,0 +1,38 @@
+===== 基线（未变异）=====
+基线 rc=0 首个口径: 14 通过 / 0 失败
+
+✅ M1 隐私弹窗文案回到 5 字「同意并继续」
+   期望 转红 / 实际 rc=1 / 点名命中=true
+   ↳ ❌ B 超长：app.js:118 confirmText → exp.privacyAgree=同意并继续(5字)（上限 4 字）
+   ↳ ❌ B-③ 全部按钮文案 ≤ 4 字（实际检查 22 条引用）
+   ↳ ✅ D-① 断言数 ≥ 12（累计 ✅ 12 条 / ❌ 2 条）
+
+✅ M2 付费墙 primary 回到 6 字「开通真实利润」
+   期望 转红 / 实际 rc=1 / 点名命中=true
+   ↳ ❌ B 超长：utils\paywall.js:35 confirmText → paywall.saveLimit.primary=开通真实利润(6字)、paywall.export.primary=开通真实利润(6字)（上限 4 字）
+   ↳ ❌ B-③ 全部按钮文案 ≤ 4 字（实际检查 22 条引用）
+   ↳ ✅ D-① 断言数 ≥ 12（累计 ✅ 12 条 / ❌ 2 条）
+
+✅ M3 别名表腐化：paywall.js 的 def 不再来自 TERMS.paywall
+   期望 转红 / 实际 rc=1 / 点名命中=true
+   ↳ ❌ C-④ 别名表防腐化：paywall.js 内 def 仍来自 TERMS.paywall
+   ↳ ✅ D-① 断言数 ≥ 12（累计 ✅ 12 条 / ❌ 1 条）
+   ↳ ❌ R145 失败：1 条
+
+✅ M4 守卫判据削弱：LIMIT 4 → 99（应被影子断言抓住）
+   期望 转红 / 实际 rc=1 / 点名命中=true
+   ↳ ❌ C-① 影子：6 字 / 5 字文案必须判红（证明有分辨力）
+   ↳ ❌ C-③ 影子：真实超长键 paywall.saveLimit.primary 若回到 6 字会被判红（用同长度字面量代理）
+   ↳ ❌ D-① 断言数 ≥ 12（累计 ✅ 11 条 / ❌ 2 条）
+
+✅ M5 语义等价：合规文案改短（知道了 → OK）
+   期望 保持绿 / 实际 rc=0
+   ↳ ✅ D-① 断言数 ≥ 12（累计 ✅ 13 条 / ❌ 0 条）
+
+===== 还原校验 =====
+✅ 逐字节还原 /miniprogram/i18n/terms.js
+✅ 逐字节还原 /utils/paywall.js
+✅ 逐字节还原 /tools/check_modal_button_len.js
+还原后 rc=0
+
+✅ 变异回灌通过（R145 非假绿）

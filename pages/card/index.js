@@ -99,6 +99,7 @@ Page({
       const catSeen = new Set();
       const tagSeen = new Set();
       const categoryOptions = [{ value: '', label: TERMS.card.marginAll }];
+      for (const c of TERMS.card.dishCats) categoryOptions.push({ value: c, label: c });
       const tagOptions = [{ value: '', label: TERMS.card.marginAll }];
       for (const c of all) {
         if (c.category && !catSeen.has(c.category)) { catSeen.add(c.category); categoryOptions.push({ value: c.category, label: c.category }); }

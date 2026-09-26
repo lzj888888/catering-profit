@@ -65,15 +65,19 @@
     </block>
   </view>
   <button class="btn ghost btn-small" style="min-height:88rpx;" bindtap="addLine">{{t.addLine}}</button>
+  <button class="btn ghost btn-small" style="min-height:88rpx;" bindtap="goMaterial">{{t.materialArchive}}</button>
 
   <!-- 分类 / 标签（后端 cardDoc 已有字段，本次真正传上去） -->
   <view class="field">
     <text class="lbl">{{t.category}}</text>
-    <input class="val-input" value="{{category}}" bindinput="onCategory" />
+    <picker mode="selector" range="{{categoryOptions}}" bindchange="onCategory">
+      <view class="val-input">{{category || t.categoryPh}}</view>
+    </picker>
   </view>
   <view class="field">
     <text class="lbl">{{t.tags}}</text>
-    <input class="val-input" value="{{tags}}" bindinput="onTags" />
+    <input class="val-input" value="{{tags}}" placeholder="{{t.tagsPh}}" bindinput="onTags" />
+    <text class="muted">{{t.tagsHint}}</text>
   </view>
 
   <!-- 成本参数 -->
