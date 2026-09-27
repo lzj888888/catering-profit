@@ -1,0 +1,18 @@
+- initialize
+
+(node:13008) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)
+√ IDE server has started, listening on http://127.0.0.1:35237
+- deploy cloudfunctions
+- fetching cloud env list
+- [adminLogin] Fetching info of cloudfunction adminLogin
+√ [adminLogin] cloudfunction adminLogin exists in the cloud, will update it
+- [adminLogin] upload cloud function adminLogin - preparing
+√ [adminLogin] upload cloud function adminLogin - deploy
+√ deploy cloudfunctions
+
+┌────────────┬─────────┬────────────┬───────────┐
+│ (index)    │ success │ filesCount │ packSize  │
+├────────────┼─────────┼────────────┼───────────┤
+│ adminLogin │ true    │ 17         │ '43.4 KB' │
+└────────────┴─────────┴────────────┴───────────┘

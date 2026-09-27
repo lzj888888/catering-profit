@@ -1,0 +1,45 @@
+部署汇总 2026-09-27T16:00:32
+ENV=cloud1-d4gphpoxy337f2a25
+adminExport          OK   17s
+adminGrantEntitlement OK   17s
+adminInit            OK   17s
+adminLogin           OK   17s
+adminLogout          OK   20s
+adminManualOrder     OK   17s
+adminOrderList       OK   16s
+adminQueryUser       OK   18s
+adminRefreshToken    OK   17s
+adminRefundMark      OK   17s
+adminRevokeToken     OK   19s
+archiveMonth         OK   18s
+calcAmortize         OK   18s
+calcBom              OK   18s
+calcMonthlyProfit    OK   16s
+calcSandbox          OK   17s
+checkQuota           OK   19s
+deleteAccount        OK   16s
+detectCycle          OK   16s
+exportData           OK   17s
+getAmortSchedule     OK   16s
+getCardVersions      OK   24s
+getCostCard          OK   19s
+getLedger            OK   18s
+getMaterial          OK   16s
+getMonthList         OK   17s
+getShopContext       OK   16s
+getShopList          OK   19s
+initDb               OK   17s
+payCallback          OK   17s
+payCreateOrder       OK   16s
+payExpireNotify      OK   17s
+payOrderList         OK   17s
+payQueryEntitlement  OK   16s
+payRenew             OK   15s
+saveAsset            OK   16s
+saveCostCard         OK   17s
+saveLedger           OK   136s
+saveMaterial         OK   17s
+saveShopSetting      OK   16s
+smokeTest            OK   17s
+syncCostCard         OK   17s
+---- 42/42 OK ----
