@@ -508,5 +508,34 @@ check('A26-9 回读带 qty（rebuildFromItems / restoreDetail 两处）',
   /qty: \(si\.qty === undefined \|\| si\.qty === null\) \? '' : String\(si\.qty\)/.test(inputJs)
   && /qty: \(r\.qty === undefined \|\| r\.qty === null\) \? '' : String\(r\.qty\)/.test(inputJs));
 
+console.log('—— A26-10 R161-6 归月口径句（账期 3 天，按结算日导月必串月）——');
+check('A26-10 periodNote 点名归月判据与 3 天账期', (() => {
+  const n = TERMS.ledger.takeawayMode.periodNote || '';
+  // 非退化：必须同时点名「账单日期」「订单完成时间」「结算日期」「3 天」四要素
+  return n.includes('账单日期') && n.includes('订单完成时间') && n.includes('结算日期') && n.includes('3 天');
+})());
+check('A26-10 periodNote 说清后果（串到上个月）', (TERMS.ledger.takeawayMode.periodNote || '').includes('上个月'));
+check('A26-10 页面渲染归月句（wxml 有 twPeriodNote + input.js 注入）',
+  inputWxml.includes('{{t.twPeriodNote}}') && /twPeriodNote: TERMS\.ledger\.takeawayMode\.periodNote/.test(inputJs));
+check('A26-10 归月句排在口径句之后、模式区之外（两条都不在金额框内 ⇒ 不干扰输入）', (() => {
+  const g = inputWxml.indexOf('twScopeGuide');
+  const p = inputWxml.indexOf('twPeriodNote');
+  const f = inputWxml.indexOf('twFastHint');
+  return g > 0 && p > g && f > p;
+})());
+check('A26-10 归月句只是提示，不参与金额（utils/takeaway.js 里不得出现 periodNote）',
+  !/periodNote/.test(fs.readFileSync(path.join(ROOT, 'utils/takeaway.js'), 'utf8')));
+
+console.log('—— A26-11 R161-4 补贴框防多填（平台承担部分不得抄进来）——');
+check('A26-11 口径小字同时防「少抄」与「多填」两侧', (() => {
+  const n = TERMS.ledger.takeawayMode.subsidyNote || '';
+  // 少抄侧：点名三项；多填侧：点名平台承担不要填
+  return n.includes('不要只抄') && n.includes('平台承担') && n.includes('不要填进来');
+})());
+check('A26-11 多填侧说清后果（不进商家到手，填了会多扣）', (() => {
+  const n = TERMS.ledger.takeawayMode.subsidyNote || '';
+  return n.includes('不进商家到手') || n.includes('多扣');
+})());
+
 console.log(`\n==== R85 外卖段自测：${pass} 通过 / ${failN} 失败 ====`);
 process.exit(failN === 0 ? 0 : 1);

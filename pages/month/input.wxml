@@ -125,6 +125,9 @@
       <!-- 平台口径句（A.11.2：这一个数 = 商品总价+打包费+活动补贴；非实付/非到账/非应收款） -->
       <view class="hint">{{t.twScopeGuide}}</view>
 
+      <!-- 🔴 R161-6 归月口径句：结算日 = 账单日 + 3 天，按结算日导月必然串月 -->
+      <view class="tw-period">{{t.twPeriodNote}}</view>
+
       <!-- 快速录入：每平台 1 个金额框（默认） -->
       <block wx:if="{{takeoutMode === 'fast'}}">
         <view class="hint">{{t.twFastHint}}</view>

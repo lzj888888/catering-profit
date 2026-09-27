@@ -149,6 +149,8 @@ Page({
       twPasteEmpty: TERMS.ledger.takeawayMode.pasteEmpty,
       twPasteRawKept: TERMS.ledger.takeawayMode.pasteRawKept,
       twScopeGuide: TERMS.ledger.takeawayMode.scopeGuide,
+      // R161-6：归月口径句（按账单日/订单完成时间归月，不要按结算日）—— 结算日通常晚 3 天会串月
+      twPeriodNote: TERMS.ledger.takeawayMode.periodNote,
       twRecTitle: TERMS.ledger.takeawayMode.reconcileTitle,
       twRecField: TERMS.ledger.takeawayMode.recField,
       twRecPh: TERMS.ledger.takeawayMode.recPh,

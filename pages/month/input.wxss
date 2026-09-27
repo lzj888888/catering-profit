@@ -96,6 +96,8 @@
 .tw-boundary { font-size: 28rpx; color: #1e3a5f; background: #e8eff7; border-radius: 8rpx; padding: 12rpx 14rpx; margin-bottom: 12rpx; line-height: 1.6; }
 /* R162（R161-2）：补贴框下的**固定口径小字** —— 抄数规则钉在框边，抄错一眼能看见（字号同样守 ≥28rpx） */
 .tw-field-note { font-size: 28rpx; color: #8a97a6; line-height: 1.5; padding: 4rpx 0 2rpx; }
+/* R163（R161-6）：归月口径句 —— 与边界句同底色但更浅，避免两条蓝块撞脸 */
+.tw-period { font-size: 28rpx; color: #5b6b7f; background: #f2f5f9; border-radius: 8rpx; padding: 10rpx 14rpx; margin-bottom: 12rpx; line-height: 1.6; }
 
 /* R85 · 费用侧营销项「取数路径」标注 */
 .exp-note { font-size: 28rpx; color: #999; padding: 2rpx 0 6rpx 20rpx; line-height: 1.5; }
