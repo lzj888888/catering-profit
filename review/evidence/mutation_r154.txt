@@ -1,0 +1,15 @@
+===== R154 变异回灌（守卫 tools/check_list_query_limit.js）=====
+[基线] rc=0 | ❌ 0 条
+✅ M1 list() 去掉 .limit（回到截断 100 条的原始缺陷） | rc=1 | 期望红 | 点名=❌ L2 list() —— list 取值没带 .limit(LIST_LIMIT) | 命中关键词[list 取值没带 .limit(LIST_LIMIT)]=true | 还原md5全等=true
+✅ M2 LIST_LIMIT 改成 10003（超平台硬上限，真云直接报错） | rc=1 | 期望红 | 点名=❌ L1 LIST_LIMIT=10003 超过平台硬上限 1000 ⇒ 运行时会直接报错 | 命中关键词[超过平台硬上限 1000]=true | 还原md5全等=true
+✅ M3 LIST_LIMIT 改成 100（等于没修，仍是默认值） | rc=1 | 期望红 | 点名=❌ L1 LIST_LIMIT=100 不大于默认值 100 ⇒ 等于没修（云函数端默认就是 100） | 命中关键词[不大于默认值 100]=true | 还原md5全等=true
+✅ M4 单份副本回退 ⇒ 42 份不再同源（改一漏 41） | rc=1 | 期望红 | 点名=❌ L3 cx_dataAdapter.js 副本漂移：2 种内容（改动 cloudfunctions/common/dataAdapter.js 后必须跑 tools/sync_common.js）—— 41份 / 1份 | 命中关键词[副本漂移]=true | 还原md5全等=true
+✅ M5 dataAdapter 新增一条裸 .get() 的列表出口（L4 必须抓到） | rc=1 | 期望红 | 点名=❌ L4 有 1 处集合查询没带上限（第 101 条起静默消失）： | 命中关键词[没带上限]=true | 还原md5全等=true
+✅ M6 本地替身去掉 limit 实现（回到 TypeError / 本地比平台宽容） | rc=1 | 期望红 | 点名=❌ L5 有 1 个本地替身没实现 limit(n)（本地比平台宽容 ⇒ 截断类缺陷本地测不出）：cloudfunctions/calcAmortize/selftest.js | 命中关键词[替身没有实现 limit(n)]=true | 还原md5全等=true
+✅ B1 limit 括号里加空格（等价排版） | rc=0 | 期望绿 | 点名=(无) | 命中关键词[]=false | 还原md5全等=true
+✅ B2 LIST_LIMIT 声明加尾注释（等价） | rc=0 | 期望绿 | 点名=(无) | 命中关键词[]=false | 还原md5全等=true
+✅ B3 替身用另一种写法实现 limit（等价行为） | rc=0 | 期望绿 | 点名=(无) | 命中关键词[]=false | 还原md5全等=true
+[还原后基线] rc=0 | ❌ 0 条
+全部受改文件 md5 全等 = true
+
+===== R154 变异回灌结果：9 通过 / 0 失败 =====

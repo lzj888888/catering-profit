@@ -211,6 +211,13 @@ const A15_EXEMPT = [
   //   by=WorkBuddy / date=2026-09-26 / reason=round150 授权 M3.14 组件分类 + M3.15 多规格派生层
   /^cloudfunctions\/calcBom\//,                         // round150：M3.15 派生消费侧（validate 保 line_kind + index 出 spec_results）
   /^cloudfunctions\/[^/]+\/cx_specDerive\.js$/,         // round150：sync_common 派生（全函数，同 cx_indicatorRef.js 性质）
+  // ⚠️ 2026-09-27（round154）**十二次触发** —— 同一时机关卡第 12 次：修复「列表静默截断 100 条」。
+  //   改动面 = 单源 `cloudfunctions/common/dataAdapter.js` 两个列表出口补 `.limit(LIST_LIMIT)`，
+  //   `sync_common` 派生到全部 42 个函数目录的 `cx_dataAdapter.js`（**同步动作**，非各函数自有逻辑）。
+  //   仍按 round103 的**白名单式**登记（精确到文件名），**绝不放宽成 `cloudfunctions/` 全豁免**：
+  //   by=WorkBuddy / date=2026-09-27 / reason=round154 列表查询条数上限修复（数据正确性缺陷）
+  /^cloudfunctions\/[^/]+\/cx_dataAdapter\.js$/,         // round154：sync_common 派生（全函数，同 cx_indicatorRef.js 性质）
+  /^cloudfunctions\/calcAmortize\//,                     // round154：本地替身 fakeDb 补 .limit()（对齐真云形状）
 ];
 check('A15 云函数逻辑零改动（仅 initDb 建库单源 + 本批授权函数豁免）', (() => {
   const { execFileSync } = require('child_process');

@@ -109,6 +109,7 @@ const CASES = [
   //   （两池逐项同源 / 倍率表全覆盖 / 族表全覆盖）与 C1~C6 反恒真正是「非恒真」的凭据；
   //   断言数不受守则「删掉一条影子 + 调低下界」就等于把守卫悄悄改小（判据仍全绿而证明力归零）。
   { key: 'check_unit_family', rel: 'tools/check_unit_family.js' },     // 55 条（含 C1~C23 影子；round152 加 ⑩~⑬ 与 C7~C12；round153 加 ⑭~⑳ 与 C13~C23）
+  { key: 'check_list_query_limit', rel: 'tools/check_list_query_limit.js' }, // 16 条（R154：L1~L5 + S1~S3 + C1~C7 反恒真含替身正负样本）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

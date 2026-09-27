@@ -7,20 +7,30 @@
 
 const { nowUtc } = require('./cx_utilTime');
 
+// 🔴 round154：**列表查询必须显式带上限**。
+//   微信云开发官方口径（cloud.tencent.com/document/product/590/19368）：
+//     小程序端默认且**最多** 20 条；**云函数端默认 100 条、最多 1000 条**。
+//   ⇒ 不写 `.limit()` 时，**第 101 条记录起被静默截断**，且不报错、不告警。
+//   本仓实测后果：菜品超过 100 道 / 原料超过 100 种 ⇒ 列表里"少了几道"，老板以为数据丢了。
+//   ⚠️ 1000 是**平台硬上限**，写成更大值会在运行时直接抛错 —— 不要"顺手加大"。
+//   ⚠️ 这是**正确性修复，不是性能优化**：条数不是省了，是要拿全由前端 filters 决定展示。
+const LIST_LIMIT = 1000;
+
 function makeAdapter(db) {
   if (!db) throw new Error('DataAdapter requires a db handle');
 
   // 列表：is_deleted=false 是铁律 —— 放在 Object.assign 最后，不接受 extra 覆盖（A3 修复）。
   // ⚠️ extra 仅承载"过滤条件"，禁止塞 limit/orderBy 等查询选项（会变成字段过滤 → 静默空集）；
   //    需要分页/排序请走批次 4 的 opts 参数，本批次不做。
+  // round154：末尾补 `.limit(LIST_LIMIT)` —— 把云函数端默认的 100 条抬到平台最大值 1000。
   async function list(coll, where, extra) {
     const cond = Object.assign({}, extra || {}, where || {}, { is_deleted: false });
-    return db.collection(coll).where(cond).get();
+    return db.collection(coll).where(cond).limit(LIST_LIMIT).get();
   }
 
   // 管理端/审计需看软删数据时走此函数（显式命名，便于审计与 code review；普通列表一律用 list）
   async function listIncludingDeleted(coll, where) {
-    return db.collection(coll).where(Object.assign({}, where || {})).get();
+    return db.collection(coll).where(Object.assign({}, where || {})).limit(LIST_LIMIT).get();
   }
 
   // 🔴 2026-09-19 真云缺陷修复（**本轮最大发现**）：**业务主键 ≠ `_id`**

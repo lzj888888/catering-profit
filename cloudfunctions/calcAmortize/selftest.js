@@ -176,12 +176,20 @@ console.log('--- DataAdapter 软删过滤（读台账自动排除 is_deleted=tru
     ],
   };
   const match = (doc, cond) => Object.entries(cond || {}).every(([k, v]) => doc[k] === v);
+  // round154：补 `limit(n)`。改前本替身**只实现了 where/get**，而common/dataAdapter.js 的两个列表出口
+  //   本轮起会链式调用 `.limit(LIST_LIMIT)` ⇒ 本地自测直接 `TypeError: limit is not a function`。
+  //   ⚠️ 替身必须与真云 Playground 形状一致（缺 = 本地绿而真云红/或反之），这是本轮缺陷（列表默认只返
+  //   100 条）长期隐身的根因之一：**本地替身比平台宽容**。工具守卫 tools/check_list_query_limit.js
+  //   的 L5 会扫本仓所有替身定义，缺 `limit` 即红。
   const fakeDb = {
     collection(name) {
       return {
         where(cond) {
           const arr = store[name].filter((d) => match(d, cond));
-          return { get() { return Promise.resolve({ data: arr }); } };
+          return {
+            get() { return Promise.resolve({ data: arr }); },
+            limit(n) { return { get() { return Promise.resolve({ data: arr.slice(0, n) }); } }; },
+          };
         },
         add({ data }) { store[name].push(Object.assign({ _id: 'g' + store[name].length }, data)); return Promise.resolve({}); },
         doc(id) { return { get() { const d = store[name].find((x) => x.id === id || x._id === id); return Promise.resolve({ data: d }); } }; },

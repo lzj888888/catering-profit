@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：109 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：110 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -197,6 +197,18 @@
 //         + L3 单源自洽（两池逐项同源 + 倍率表全覆盖 + 族表全覆盖 + 重量族倍率自洽）
 //         + L4 落点 9 条（档案页动态标签 / 列表页 spec_line / 手工行折算与单价单位 / 跨族提示 / 术语表中性化）
 //         + S1~S2 自失效护栏 + C1~C6 反恒真（写死克 / 池长度不等 / 单价不折算 / 页面自写族判据 四类影子必红 + 真写法必绿）
+//       + 列表查询条数上限守卫（tools/check_list_query_limit.js，R154）—— 根因＝2026-09-27 李老师「100 道菜来回查找」追问触发的自查：
+//         微信云开发官方口径（ cloud.tencent.com/document/product/590/19368 ）—— 小程序端默认且最多 20 条，
+//         **云函数端默认 100 条、最多 1000 条**，必须显式 `.limit()` 才能超过 100。
+//         而本仓 `cx_dataAdapter.js` 两个列表出口写的是 `db.collection(coll).where(cond).get()`
+//         ⇒ **第 101 道菜 / 第 101 种原料静默消失，不报错、不告警、日志无线索**。
+//         它不是性能问题而是**数据正确性缺陷**，且此前 109 个套件**一条都没覆盖**（它们守「文档≡代码」、
+//         不守「查询有没有带 limit」）⇒ 属**门禁盲区**。
+//         判据 = L1 单源在位（common/dataAdapter.js 声明 LIST_LIMIT 且 >默认100、≤平台硬上限1000）
+//         + L2 行为（list / listIncludingDeleted 两个出口都带 .limit(LIST_LIMIT)）
+//         + L3 副本同源（42 份 cx_dataAdapter.js md5 一致且都含 limit，改一漏 41 即红）
+//         + L4 全仓扫描（每条 collection(...).get() 要么带 .limit() 要么是 .doc() 单条取）
+//         + S1~S2 自失效护栏 + C1~C5 反恒真（裸 get 必红 / 常量与字面量两种写法均绿 / .doc() 单条取豁免 / 解析器自检）
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -527,6 +539,8 @@ const SUITES = [
   ['spec-derive', 'tools/check_spec_derive.js'],
   // R151（round151 李老师反馈）：单位池 / 计量族 / 单价单位守卫 —— 详见头注 R151 段。
   ['unit-family', 'tools/check_unit_family.js'],
+  // R154（round154 李老师「100 道菜」追问触发的自查）：列表查询必须有显式条数上限 —— 详见头注 R154 段。
+  ['list-query-limit', 'tools/check_list_query_limit.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
