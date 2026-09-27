@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：112 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：113 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -228,6 +228,15 @@
 //         判据 = L1 化石索引（索引字段必须在云函数源码**词表**里以独立标识符出现；**挖掉索引定义段**防"自证"假绿）
 //         + L2 锚点精确对齐（shop_cost_card_line 索引字段 ≡ {shop_id, cost_card_row_id} 且不含 card_id）
 //         + L3 字段真在用（写入点与查询点都在） + S1~S3 自失效护栏 + C1~C3 反恒真影子样本。
+//       + 快照字段完整性守卫（tools/check_snapshot_fields.js，R144）—— S0（round129）在明细行落库了原料侧的 5 个
+//         **快照**字段 brand_spec / purchase_unit / purchase_price / convert_factor / yield_rate
+//         （意义＝原料后来改价，历史版本仍按当时价算），但**一直没有任何守卫盯它们**（自 round129 挂账至今）。
+//         同类事故在 R150 **真实发生过**：getCardVersions 出参漏了 4 个字段 ⇒ 用户从版本历史恢复会**静默丢规格**。
+//         ⇒ 判据 = L1 两处读侧映射函数各含 5 字段全集 + L2 两处写侧落库含全集 + L3 **两读侧字段集合 ≡**（专守 R150 形态）
+//         + L4 读侧 fail-soft（存量行缺字段给缺省值，不崩）+ L5 写侧 Controller + L6 validate 对 yield_rate 有区间校验
+//         + S1~S2 自失效护栏 + C1~C3 反恒真影子样本。
+//         ⚠️ 两处读侧的映射函数**名字不同**（getCostCard=lineToOutput / getCardVersions=lineToOut，历史形成），
+//         守卫按**各自名字**取；写成同一个名字会取到 null ⇒ 把正确的代码判成"缺 5 字段"（本轮首跑即踩，已修）。
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -564,6 +573,8 @@ const SUITES = [
   ['list-ux', 'tools/check_list_ux.js'],
   // R157（round157 容量审计触发的自查）：索引字段必须 ≡ 代码里真在用的字段 + 「要全部行」的读取必须分页 —— 详见头注 R157 段。
   ['index-field-alignment', 'tools/check_index_field_alignment.js'],
+  // R144（round158 补挂，自 round129 挂账至今）：S0 落库的快照 5 字段在读写两侧必须齐全 —— 详见头注 R144 段。
+  ['snapshot-fields', 'tools/check_snapshot_fields.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

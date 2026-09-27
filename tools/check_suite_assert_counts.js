@@ -112,6 +112,7 @@ const CASES = [
   { key: 'check_list_query_limit', rel: 'tools/check_list_query_limit.js' }, // 22 条（R154：L1~L5 + S1~S3 + C1~C7 反恒真含替身正负样本；R157 加 L6/L7 + C8~C11：listAll 必须真的分页取全 + 调用点不得回退 list）
   { key: 'check_list_ux', rel: 'tools/check_list_ux.js' },               // 32 条（R156：L1~L6 + S1~S3 + C1~C6 反恒真影子样本）
   { key: 'check_index_field_alignment', rel: 'tools/check_index_field_alignment.js' }, // 11 条（R157：L1 化石索引 + L2 锚点对齐 + L3 字段真在用 + S1~S3 + C1~C3 反恒真）
+  { key: 'check_snapshot_fields', rel: 'tools/check_snapshot_fields.js' }, // 16 条（R144：L1 读侧全集 + L2 写侧全集 + L3 两读侧集合≡ + L4 fail-soft + L5 Controller + L6 validate 区间 + S1~S2 + C1~C3 反恒真）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

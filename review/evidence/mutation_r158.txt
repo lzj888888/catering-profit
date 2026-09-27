@@ -1,0 +1,14 @@
+===== R144 快照字段守卫 · 变异回灌 =====
+  ✅ M1 读侧 getCostCard 删掉 brand_spec — rc=1（期望非0） 点名brand_spec=true 还原md5一致
+  ✅ M2 读侧 getCardVersions 删掉 yield_rate（L3 也应红） — rc=1（期望非0） 点名yield_rate=true 还原md5一致
+  ✅ M3 写侧 saveCostCard/service 删掉 purchase_unit — rc=1（期望非0） 点名purchase_unit=true 还原md5一致
+  ✅ M4 读侧 fail-soft 去掉兜底（直接取 doc.brand_spec） — rc=1（期望非0） 点名L4=true 还原md5一致
+  ✅ M5 S1 扫描面阈值抬高到不可能（自失效护栏） — rc=1（期望非0） 点名S1=true 还原md5一致
+  ✅ B1 读侧字段顺序颠倒（语义等价） — rc=0（期望0） 还原md5一致
+  ✅ B2 字段名出现在注释里（等价噪声） — rc=0（期望0） 还原md5一致
+变异回灌结果：7 通过 / 0 失败
+
+说明：
+- 双向都测：① 错误写法必红**且点名到目标字段/判据**；② 语义等价改写必绿（判行为不判字面）。
+- 每条改完立刻还原，并校验受改文件 md5 与基线逐字节相等（防"改了没还原"污染工作区）。
+- 脚本：review/evidence/_mut_r158.js
