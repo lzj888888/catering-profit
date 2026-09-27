@@ -61,6 +61,9 @@ exports.main = async (event) => {
     // round115：业态 / 城市层级（M1 结果页取「行业参考带」的输入）—— 同样只在「真的传了」时才写
     if (v.biz_type !== undefined) patch.biz_type = v.biz_type;
     if (v.city_tier !== undefined) patch.city_tier = v.city_tier;
+    // round156：列表置顶（店铺级偏好，零新建集合）—— 同样只在「真的传了」时才写
+    if (v.pinned_cards !== undefined) patch.pinned_cards = v.pinned_cards;
+    if (v.pinned_materials !== undefined) patch.pinned_materials = v.pinned_materials;
     const upRes = await db.collection('shop').doc(shopRid).update({ data: patch });
     const updated = (upRes && upRes.stats && upRes.stats.updated) || 0;
     if (!updated) return fail(ERROR_CODES.SYSTEM_ERROR, '店铺设置未写入（target=' + shopRid + '）');
@@ -92,6 +95,9 @@ exports.main = async (event) => {
     biz_type: v.biz_type !== undefined ? v.biz_type : ((shopDoc && shopDoc.biz_type) || ''),
     city_tier: v.city_tier !== undefined ? v.city_tier : ((shopDoc && shopDoc.city_tier) || ''),
     switches: { inventory: v.switches.inventory !== null ? v.switches.inventory : undefined, amortize: v.switches.amortize !== null ? v.switches.amortize : undefined },
+    // round156：回读置顶（未传时回库里的，供列表页重排后立即回显）
+    pinned_cards: v.pinned_cards !== undefined ? v.pinned_cards : ((shopDoc && shopDoc.pinned_cards) || []),
+    pinned_materials: v.pinned_materials !== undefined ? v.pinned_materials : ((shopDoc && shopDoc.pinned_materials) || []),
     client_request_id: v.input.client_request_id || '',
   });
 };

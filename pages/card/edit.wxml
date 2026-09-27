@@ -1,4 +1,11 @@
 <view class="form safe-bottom" wx:if="{{!loading}}">
+  <!-- round156：连续录入 —— 保存成功后**留在本页**，这条横幅是"存到哪了"的凭证 + 显式返回出口。
+       改前每存一道菜就 navigateBack 回列表，录 30 道菜要来回 60 次。 -->
+  <view class="saved-bar" wx:if="{{savedName}}">
+    <text class="saved-txt">{{t.savedOk}}「{{savedName}}」· {{t.savedHint}}</text>
+    <view class="saved-go" bindtap="backToList">{{t.backToList}}</view>
+  </view>
+
   <view class="field">
     <text class="lbl">{{t.dishName}}</text>
     <input class="val-input" value="{{name}}" placeholder="{{t.dishNamePh}}" bindinput="onName" />
@@ -35,9 +42,10 @@
     <block wx:if="{{lines[index].input_type !== 2}}">
       <view class="cell2">
         <text class="lbl">{{t.material}}</text>
-        <picker mode="selector" range="{{materials}}" range-key="name" data-idx="{{index}}" bindchange="onMaterialChange">
-          <view class="picker">{{lines[index].material_name ? lines[index].material_name : t.material}}</view>
-        </picker>
+        <!-- round156：原生 `<picker>`（只能滚）→ **独立选择页**（搜索 + 按分类分组）。
+             100 个原料在原 picker 里要滚十几屏 ⇒ 换成跳 `pages/material/pick`。
+             为什么不用弹层：弹层 × 键盘是死结（PITFALLS §6）。 -->
+        <view class="picker" data-idx="{{index}}" bindtap="goPickMaterial">{{lines[index].material_name ? lines[index].material_name : t.material}}</view>
       </view>
       <!-- round149：把「买」与「用」的换算摆在眼前（采购价 ÷ 换算系数 ÷ 出成率 ⇒ 净料元/克），
            老板不用去档案页心算，也不会把「按斤买」的价当成「按克」的价填。 -->

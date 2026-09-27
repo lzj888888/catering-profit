@@ -1,0 +1,16 @@
+/* pages/material/pick.wxss —— round156 · 原料选择页 */
+/* 分组标题：给「100 项只能滚」一个结构感 —— 老板先扫组，再在组里找。
+   ⚠️ 字号下界 28rpx（本仓 UI 纪律），不再往小走。 */
+.group-head {
+  display: flex;
+  align-items: center;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #5a6b7f;
+  margin: 24rpx 0 12rpx 4rpx;
+}
+/* 「常用（置顶）」组用主色，一眼可辨 */
+.group-pin { color: #1e3a5f; }
+.pick-item { margin-bottom: 12rpx; }
+/* 分类标签用弱色，避免与「虚拟原料」这种警示性 tag 抢注意力 */
+.tag-soft { background: #eef2f7; color: #5a6b7f; }

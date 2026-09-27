@@ -30,6 +30,8 @@
     <view class="card-title">
       <checkbox wx:if="{{selectMode}}" checked="{{selected[item.card_code]}}" data-code="{{item.card_code}}" catchtap="onSelect" />
       {{item.name}}
+      <!-- round156：置顶标记（排序会把它们排到最前，但必须"看得出为什么在前面"） -->
+      <text class="tag tag-pin" wx:if="{{item.pinned}}">{{t.pinTag}}</text>
       <text class="tag">{{item.calc_mode === 'A' ? t.calcModeA : t.calcModeB}}</text>
     </view>
     <view class="cell">
@@ -41,6 +43,8 @@
       <text class="val" style="color:{{item.margin === null ? '#999' : (item.margin >= 60 ? '#22a06b' : (item.margin >= 40 ? '#b45309' : '#e74c3c'))}};">{{item.margin === null ? '—' : (item.margin) + '%'}}</text>
     </view>
     <view class="row-ops" wx:if="{{!selectMode}}">
+      <!-- round156：置顶开关（店铺级偏好，存 shop 文档）。catchtap = 不冒泡到卡片的"进入编辑" -->
+      <button class="btn-small ghost" catchtap="onPin" data-code="{{item.card_code}}">{{item.pinned ? t.pinOff : t.pinOn}}</button>
       <button class="btn-small ghost" catchtap="goVersion" data-code="{{item.card_code}}">{{t.viewVersion}}</button>
       <button class="btn-small ghost" catchtap="onCopy" data-code="{{item.card_code}}">{{t.copyCard}}</button>
       <button class="btn-small ghost" catchtap="onSync" data-code="{{item.card_code}}">{{t.syncCard}}</button>

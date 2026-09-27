@@ -65,6 +65,10 @@ exports.main = async (event) => {
     shop_name: shop.name || '',
     shop_remark: shop.remark || '',
     switches,
+    // round156：列表置顶（店铺级偏好，同 biz_type/city_tier 一样随上下文下发）。
+    //   存量店铺没有这两个字段 ⇒ 给 []（fail-soft，不回填、不报错）。
+    pinned_cards: Array.isArray(shop.pinned_cards) ? shop.pinned_cards : [],
+    pinned_materials: Array.isArray(shop.pinned_materials) ? shop.pinned_materials : [],
     is_new_shop: created,
     client_request_id: v.input.client_request_id || '',
   });

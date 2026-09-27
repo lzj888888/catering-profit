@@ -60,9 +60,15 @@ Page({
       cancel: TERMS.buttons.cancel,
       materialArchive: TERMS.card.materialListTitle,
       filterTags: TERMS.card.filterTags,
+      // round156：列表排序/置顶
+      pinOn: TERMS.card.pinOn,
+      pinOff: TERMS.card.pinOff,
+      pinTag: TERMS.card.pinTag,
     },
     all: [],           // 全量列表（前端过滤）
     list: [],
+    // round156：置顶的 card_code（顺序 = 老板点选先后）。店铺级偏好，存 shop 文档 ⇒ 零新建集合。
+    pinned: [],
     keyword: '',
     marginFilter: 'all',
     marginLabel: '',   // 当前选中毛利率区间展示名
@@ -86,6 +92,12 @@ Page({
       await api.ensureShop();
       ui.setTitle(TERMS.card.listTitle);
       const d = await api.call('getCostCard', {});
+      // round156：置顶（店铺级偏好）—— 读失败**不阻断列表**：它只是排序偏好，不是数据。
+      let pinned = [];
+      try {
+        const sc = await api.call('getShopContext', {});
+        pinned = Array.isArray(sc.pinned_cards) ? sc.pinned_cards : [];
+      } catch (err) { pinned = []; }
       const all = (d.list || []).map((c) => ({
         card_code: c.card_code,
         version: c.version,
@@ -97,6 +109,8 @@ Page({
         price_fen: c.price_fen,
         margin: c.price_fen > 0 ? c.gross_margin_pct : null,
         calc_mode: c.calc_mode,
+        // round156：排序键（「最近编辑在前」）。存量卡没有 updated_at ⇒ 0（排最后，不插队到新卡前面）
+        updated_at: Number(c.updated_at) || 0,
       }));
       // S0（任务 3）：分类/标签筛选选项 —— 从数据去重（不写死枚举；tag 按逗号分隔后取单项去重）
       const catSeen = new Set();
@@ -112,7 +126,7 @@ Page({
       }
       // 本店用过的分类写进本地字典 ⇒ 编辑页 chips 直接可点（新建卡也不用重打"锅底"）
       try { wx.setStorageSync(LIST_CATS_KEY, Array.from(catSeen).slice(0, 40)); } catch (err) { /* 忽略 */ }
-      this.setData({ all, categoryOptions, tagOptions, loading: false });
+      this.setData({ all, categoryOptions, tagOptions, pinned, loading: false });
       this.applyFilter();
     } catch (e) {
       this.setData({ loading: false });
@@ -155,7 +169,53 @@ Page({
       if (mf === 'low') return c.margin !== null && c.margin < 30;
       return true;
     });
-    this.setData({ list });
+    // round156：过滤完再排序（置顶在前 + 最近编辑在前），并给每条打 `pinned` 标记
+    //   ⚠️ 标记必须在这里打：WXML 表达式**不支持方法调用**（写 `pinned.indexOf(...)` 是无效的）。
+    const pins = this.data.pinned || [];
+    const marked = list.map((c) => Object.assign({}, c, { pinned: pins.indexOf(c.card_code) >= 0 }));
+    this.setData({ list: this.sortList(marked) });
+  },
+
+  // round156：列表排序 —— ① 置顶的在前（顺序 = 老板点选先后）② 其余「最近编辑在前」。
+  //   ⚠️ 为什么在**前端**排、不做服务端 orderBy：本页本就持有**全量**列表做搜索/筛选（`all`），
+  //     排序只是把已到手的数据再排一次 —— 不新增查询、不改 DataAdapter、不动 42 份派生副本。
+  //   ⚠️ 排序键 missing（存量卡没有 updated_at）按 0 ⇒ 排最后，不会插队到新卡前面。
+  sortList(list) {
+    const pins = this.data.pinned || [];
+    const rank = (c) => {
+      const i = pins.indexOf(c.card_code);
+      return i < 0 ? pins.length + 1 : i;
+    };
+    return list.slice().sort((a, b) => {
+      const ra = rank(a), rb = rank(b);
+      if (ra !== rb) return ra - rb;
+      return (Number(b.updated_at) || 0) - (Number(a.updated_at) || 0);
+    });
+  },
+
+  // round156：置顶 / 取消置顶（店铺级偏好，复用 saveShopSetting ⇒ 零新建集合、零新云函数。
+  //   ⚠️ 为什么不存在成本卡记录上：M3 成本卡是**版本模型（只 INSERT 不 UPDATE）**，
+  //     置顶写进卡记录就得插新版本 ⇒ 每置顶一次多一版历史，纯污染）。
+  //   乐观更新：点击立刻有反馈；**失败必须回滚** —— 界面不能停在"看起来成功"的状态。
+  async onPin(e) {
+    const cc = e.currentTarget.dataset.code;
+    if (!cc) return;
+    const backup = (this.data.pinned || []).slice();
+    const pins = backup.slice();
+    const i = pins.indexOf(cc);
+    const wasPinned = i >= 0;
+    if (wasPinned) pins.splice(i, 1);
+    else pins.unshift(cc);        // 新置顶的排最前（刚点的就是最想要的）
+    this.setData({ pinned: pins });
+    this.applyFilter();
+    try {
+      await api.call('saveShopSetting', { pinned_cards: pins, client_request_id: 'pc_' + Date.now() });
+      wx.showToast({ title: wasPinned ? TERMS.card.unpinnedDone : TERMS.card.pinnedDone, icon: 'none' });
+    } catch (err) {
+      this.setData({ pinned: backup });
+      this.applyFilter();
+      api.toastError(err);
+    }
   },
 
   // 原料档案入口

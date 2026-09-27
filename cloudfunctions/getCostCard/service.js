@@ -23,6 +23,9 @@ function cardToOutput(doc) {
     gross_margin_pct: doc.gross_margin_pct != null ? doc.gross_margin_pct : 0,
     reverse_price_fen: doc.reverse_price_fen != null ? doc.reverse_price_fen : 0,
     created_at: doc.created_at != null ? doc.created_at : 0,
+    // round156：列表排序用（「最近编辑在前」）。改前只出 created_at ⇒ 老板改完一道菜回到列表，
+    //   它仍停在原位（"看着乱"的直接来源）。存量卡可能没有 updated_at ⇒ 退回 created_at（fail-soft）。
+    updated_at: doc.updated_at != null ? doc.updated_at : (doc.created_at != null ? doc.created_at : 0),
     // M3.15（R150）：多规格定义快照（TEXT/JSON ⇒ 出参一律**数组**）。
     //   存量卡无此字段 ⇒ `specsFromJson(undefined)` 返回 []（fail-soft，不报错不回填）。
     specs: specsFromJson(doc.specs_json),

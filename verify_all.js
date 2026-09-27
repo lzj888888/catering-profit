@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：110 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：111 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -200,6 +200,14 @@
 //       + 列表查询条数上限守卫（tools/check_list_query_limit.js，R154）—— 根因＝2026-09-27 李老师「100 道菜来回查找」追问触发的自查：
 //         微信云开发官方口径（ cloud.tencent.com/document/product/590/19368 ）—— 小程序端默认且最多 20 条，
 //         **云函数端默认 100 条、最多 1000 条**，必须显式 `.limit()` 才能超过 100。
+//       + 列表排序/置顶 · 原料选择页 · 连续录入守卫（tools/check_list_ux.js，R156）—— 根因＝李老师点单的四项优化之第 1 项
+//         （「两个列表加 orderBy（最近编辑在前）+ 常用置顶」）与第 2 项（「原料选择器 100 项只能滚」）：
+//         四类**静默失效**路径此前零覆盖 —— ① 排序键不由云函数出参带出 ⇒ 前端排序键恒为 undefined、退化成自然序；
+//         ② 连续录入不清 `id`/`card_code` ⇒ 第二道被当成「编辑第一道」、**第一道的内容被静默覆盖**（数据正确性）；
+//         ③ 原料回退原生 picker ⇒ 搜索/分组全失效；④ WXML 内调方法 ⇒ 置顶标记恒 false。
+//         判据 = L1 排序在位（含 applyFilter 真的调它）/ L2 三处出参带 updated_at 且 fail-soft 退回 created_at /
+//         L3 置顶落**既有** shop 文档（零新建集合红线）/ L4 选择页四件套+搜索+分组 / L5 按 isEdit 分支+清主键 /
+//         L6 模板不得调方法 + S1~S3 自失效护栏 + C1~C6 反恒真影子样本。
 //         而本仓 `cx_dataAdapter.js` 两个列表出口写的是 `db.collection(coll).where(cond).get()`
 //         ⇒ **第 101 道菜 / 第 101 种原料静默消失，不报错、不告警、日志无线索**。
 //         它不是性能问题而是**数据正确性缺陷**，且此前 109 个套件**一条都没覆盖**（它们守「文档≡代码」、
@@ -541,6 +549,8 @@ const SUITES = [
   ['unit-family', 'tools/check_unit_family.js'],
   // R154（round154 李老师「100 道菜」追问触发的自查）：列表查询必须有显式条数上限 —— 详见头注 R154 段。
   ['list-query-limit', 'tools/check_list_query_limit.js'],
+  // R156（round156 李老师点单的四项优化之第 1 项）：列表排序（置顶 + 最近编辑在前）· 原料选择独立页 · 连续录入 —— 详见头注 R156 段。
+  ['list-ux', 'tools/check_list_ux.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

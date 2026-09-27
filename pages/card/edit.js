@@ -27,6 +27,12 @@ function emptyLine() { return { input_type: 1, material_id: '', material_name: '
 //   提交前由 `units.priceToBase` 折算回元/克（折算只发生在录入层）。
 function emptyManualLine() { return { input_type: 2, material_id: '', material_name: '', qty: '', qty_unit: units.BASE_UNIT, price_unit: units.BASE_UNIT, spec_hint: '', unit_warn: '', unit_price_yuan: '', yield_rate: '100', line_kind: 'main' }; }
 
+// round156：规格行的「全新空态」工厂。抽成函数是为了让 data 初始化与「连续录入重置」共用**同一份**定义
+//   —— 否则第二处手抄一遍，将来加一个规格键就会漏掉一处（抄一份必漂）。
+function freshSpecRows() {
+  return Object.keys(TERMS.card.specLabel).map((k) => ({ spec_key: k, name: TERMS.card.specLabel[k], enabled: false, priceYuan: '', result: null }));
+}
+
 function renumber(lines) {
   return lines.map((l, i) => Object.assign({}, l, { idx: i }));
 }
@@ -102,6 +108,10 @@ Page({
       specSuggestLabel: TERMS.card.specSuggestLabel,
       specCalc: TERMS.card.specCalc,
       specEmpty: TERMS.card.specEmpty,
+      // round156：连续录入横幅
+      savedOk: TERMS.card.savedOk,
+      savedHint: TERMS.card.savedHint,
+      backToList: TERMS.card.backToList,
     },
     card_code: '',
     isEdit: false,
@@ -135,14 +145,60 @@ Page({
     // round150（M3.14）组件类型 chips：**只有键 + 中文名**，键集 ≡ 服务端 LINE_KINDS。
     kindChips: Object.keys(TERMS.card.lineKind).map((k) => ({ key: k, label: TERMS.card.lineKind[k] })),
     // round150（M3.15）规格行：**只有键 + 中文名**（系数单源在服务端 ⇒ 页面只送 spec_key + 售价）。
-    specRows: Object.keys(TERMS.card.specLabel).map((k) => ({ spec_key: k, name: TERMS.card.specLabel[k], enabled: false, priceYuan: '', result: null })),
+    specRows: freshSpecRows(),
     lines: [],
     loading: true,
+    // round156：连续录入 —— 顶部「已保存」横幅记录刚存下的菜名；非空即显示（含返回列表出口）
+    savedName: '',
+    saving: false,   // 防重复提交（连击保存会生成两个版本）
   },
 
   onLoad(q) {
+    // round156：本页进入时刻 —— 用作「原料选择页回传」的哨兵（见 onShow）
+    this._loadedAt = Date.now();
     this.setData({ card_code: (q && q.card_code) || '', isEdit: !!((q && q.card_code) || '').length > 0 });
     this.load();
+  },
+
+  // round156：从「原料选择页」返回 → 消费回传。
+  //   哨兵 `at`：进选择页**没选就返回**时，globalData 里没有新值（或还是上一轮的旧值），
+  //   靠 `at < this._loadedAt` 丢弃旧值，避免"我只是点进去看了一眼"就把某一行原料换掉。
+  onShow() {
+    const app = getApp();
+    const p = app && app.globalData && app.globalData.pickMaterial;
+    if (!p || !p.at) return;
+    app.globalData.pickMaterial = null;
+    if (this._loadedAt && p.at < this._loadedAt) return;   // 上一轮遗留 ⇒ 丢弃
+    // 原料表还没到（load 尚未返回）⇒ 挂起，等 load 末尾补做，避免"选了却没填上"
+    if ((this.data.materials || []).length) this.applyPickedMaterial(Number(p.idx), p.id);
+    else this._pendingPick = p;
+  },
+
+  // round156：原料选择改为**独立页**（`pages/material/pick`）。
+  //   改前是原生 `<picker mode="selector" range="{{materials}}">` —— 100 个原料只能靠手指滚，
+  //   没有搜索、没有分组（李老师真机反馈：「如果有 100 道菜品，来回查找会很麻烦」）。
+  goPickMaterial(e) {
+    const idx = Number(e.currentTarget.dataset.idx);
+    wx.navigateTo({ url: '/pages/material/pick?idx=' + idx });
+  },
+
+  // 把选中的原料填进第 idx 行（原 onMaterialChange 的语义；改为按 **id** 取而非按下标取 ——
+  //   独立页回传的是 id，比下标稳：中途列表顺序变了也不会填错行）。
+  applyPickedMaterial(idx, materialId) {
+    if (!(idx >= 0)) return;
+    const lines = this.data.lines.slice();
+    if (!lines[idx]) return;
+    const m = (this.data.materials || []).find((x) => x.id === materialId);
+    if (!m) return;
+    lines[idx] = Object.assign({}, lines[idx], {
+      input_type: 1,
+      material_id: m.id,
+      material_name: m.name,
+      spec_hint: this.specHintOf(m),
+      // round151：换原料 ⇒ 跨族提示要跟着换（提示取决于该原料的采购单位）
+      unit_warn: this.unitWarnOf(m, lines[idx]),
+    });
+    this.setData({ lines });
   },
 
   async load() {
@@ -205,6 +261,13 @@ Page({
       this.setData(init);
       // 明细行的原料换算说明（须在 setData(materials) 之后算，否则找不到原料）
       this.refreshSpecHints();
+      // round156：从原料选择页返回时原料表还没到 ⇒ 在此补做（见 onShow 的 _pendingPick）。
+      //   没有它就会出现"明明选了原料、界面却没填上"这种最气人的静默失败。
+      if (this._pendingPick) {
+        const p = this._pendingPick;
+        this._pendingPick = null;
+        this.applyPickedMaterial(Number(p.idx), p.id);
+      }
     } catch (e) {
       this.setData({ loading: false });
       api.toastError(e);
@@ -298,22 +361,9 @@ Page({
   },
 
   // ===== 明细行 =====
-  onMaterialChange(e) {
-    const idx = e.currentTarget.dataset.idx;
-    const mi = Number(e.detail.value);
-    const m = this.data.materials[mi];
-    if (!m) return;
-    const lines = this.data.lines.slice();
-    lines[idx] = Object.assign({}, lines[idx], {
-      input_type: 1,
-      material_id: m.id,
-      material_name: m.name,
-      spec_hint: this.specHintOf(m),
-      // round151：换原料 ⇒ 跨族提示要跟着换（提示取决于该原料的采购单位）
-      unit_warn: this.unitWarnOf(m, lines[idx]),
-    });
-    this.setData({ lines });
-  },
+  // round156：原 `onMaterialChange`（原生 picker 的 bindchange，按下标取）已由
+  //   `goPickMaterial` + `onShow` + `applyPickedMaterial` 取代。**不保留死代码**：
+  //   留着会让下一个人以为还有第二条选原料的路径（两条路径 = 两份真相）。
   // 切换录入方式（档案 ↔ 手工）
   // 🔴 round129 修复（真机「临时手工录入点不了」根因）：
   //   `radio-group` 的选中值在 `e.detail.value`，而此前读的是 `e.currentTarget.dataset.val`
@@ -618,13 +668,54 @@ Page({
         wx.setStorageSync(EDIT_CATS_KEY, arr.slice(-40));
       } catch (err) { /* 本地字典失败不影响保存 */ }
     }
+    if (this.data.saving) return;   // 连击保护：重复提交会生成两个版本
+    // ⚠️ 必须在 afterSaved 之前取：afterSaved 会把 isEdit 清成 false（转新建态）
+    const wasEdit = this.data.isEdit;
+    this.setData({ saving: true });
     try {
       ui.setTitle(TERMS.buttons.save);
       await api.call('saveCostCard', { card, client_request_id: 'cc_' + Date.now() });
-      wx.showToast({ title: TERMS.buttons.save, icon: 'success' });
-      setTimeout(() => wx.navigateBack(), 600);
-    } catch (e) { api.toastError(e); }
+      if (wasEdit) {
+        // 编辑态：**改完即走**（老板改的是一道具体的菜，不是要连录一批）。
+        //   ⚠️ 这里**不能**走 afterSaved —— 那会把 card_code 清掉，老板以为还在改这道菜。
+        wx.showToast({ title: TERMS.buttons.save, icon: 'success' });
+        setTimeout(() => wx.navigateBack(), 600);
+      } else {
+        // round156（新增态）：**不跳走**。改前是 `setTimeout(navigateBack, 600)` —— 存一道菜就被踢回列表，
+        //   录 30 道菜要来回 60 次（李老师「100 道菜品，来回查找会很麻烦」的痛点之一）。
+        this.afterSaved(card.name);
+      }
+    } catch (e) { this.setData({ saving: false }); api.toastError(e); }
   },
+
+  // round156：连续录入 —— 保存成功后**留在本页**，清掉这道菜特有的字段，接着录下一道。
+  //   🔴 必须清 `card_code` + `isEdit`：否则第二道菜会被当成「编辑第一道」⇒ 后端按同一 card_code
+  //      **另存新版本**，第一道菜的内容被静默顶掉。这是**数据正确性**问题，不是手感问题。
+  //   ✅ **刻意保留门店级默认**（核算模式 / 损耗率 / 辅料 / 分类 / 标签 / 目标毛利率）：
+  //      连续录同一家店的同类菜时这些大概率一样，留着才叫"连续"。
+  afterSaved(name) {
+    this.setData({
+      savedName: name || '',
+      saving: false,
+      // —— 这道菜特有的：清 ——
+      name: '',
+      lines: renumber([emptyLine()]),
+      priceYuan: '',
+      activityPriceYuan: '',
+      batchOutput: '',
+      reversePriceFen: 0, previewCostFen: 0, reverseResultPreview: '', previewCost: '',
+      specRows: freshSpecRows(),
+      // —— 编辑态 → 新建态（见上 🔴）——
+      isEdit: false,
+      card_code: '',
+      catChips: this.buildCatChips(this.data.category),
+    });
+    wx.showToast({ title: TERMS.card.savedOk, icon: 'success' });
+    wx.pageScrollTo({ scrollTop: 0, duration: 200 });
+  },
+
+  // 连续录入的显式出口（横幅上的「返回列表」）——不打断，也不把人困在本页
+  backToList() { wx.navigateBack(); },
 
   onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()); },
 });

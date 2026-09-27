@@ -41,11 +41,35 @@ function validateInput(event) {
     else return err('city_tier 必须是 ' + indicatorRef.CITY_KEYS.join(' / ') + ' 之一');
   }
 
+  // round156：列表置顶（店铺级偏好）。
+  //   🔴 落点为什么是 `shop` 文档：M3 v1.1 红线「**零新建集合**」。置顶是"这家店的偏好"，
+  //     与 name/biz_type/city_tier 同为店铺级配置 —— 复用既有单条文档，不新增集合、不新增云函数。
+  //   ⚠️ 为什么不把 pinned 写在成本卡记录上：M3 成本卡是**版本模型（只 INSERT 不 UPDATE）**，
+  //     置顶若写进卡记录就得插一个新版本 ⇒ 每置顶一次多一版历史，纯污染。
+  //   三态语义与 name 一致：undefined = 调用方没传 → **不动库**；[] = 显式清空；非数组 = 报错。
+  const PIN_LIMIT = 50;   // 置顶是偏好不是数据：超上限**截断**而不是报错（老板不该为此看到红字）
+  function normPinList(v, field) {
+    if (v === undefined) return { ok: true, value: undefined };
+    if (v === null || !Array.isArray(v)) return { ok: false, msg: field + ' 必须是字符串数组' };
+    const seen = [];
+    for (let i = 0; i < v.length; i++) {
+      if (typeof v[i] !== 'string') return { ok: false, msg: field + ' 的元素必须是字符串' };
+      const s = v[i].trim();
+      if (s && seen.indexOf(s) < 0) seen.push(s);   // 去重 + 去空（顺序 = 用户点选的先后）
+    }
+    return { ok: true, value: seen.slice(0, PIN_LIMIT) };
+  }
+  const pc = normPinList(src.pinned_cards, 'pinned_cards');
+  if (!pc.ok) return err(pc.msg);
+  const pm = normPinList(src.pinned_materials, 'pinned_materials');
+  if (!pm.ok) return err(pm.msg);
+
   return {
     error: null,
     shop_id: src.shop_id,
     name, remark, switches,
     biz_type: bizType, city_tier: cityTier,
+    pinned_cards: pc.value, pinned_materials: pm.value,
     input: { client_request_id: src.client_request_id || '' },
   };
 }

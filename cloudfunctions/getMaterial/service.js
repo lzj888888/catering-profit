@@ -29,6 +29,9 @@ function docToOutput(doc) {
     category: doc.category || '',
     aliases: doc.aliases || '[]',
     remark: doc.remark || '',
+    // round156：列表排序用（「最近编辑在前」）。**原料列表此前一个时间字段都没有** ⇒ 排序无从谈起。
+    //   存量原料可能没有 updated_at ⇒ 退回 created_at（fail-soft，不回填）。
+    updated_at: doc.updated_at != null ? doc.updated_at : (doc.created_at != null ? doc.created_at : 0),
   };
 }
 

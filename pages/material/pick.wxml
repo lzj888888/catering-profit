@@ -1,0 +1,31 @@
+<view class="container safe-bottom" wx:if="{{!loading}}">
+  <!-- 搜索框放在**页面级**（不在弹层里）—— 弹层 × 键盘是死结（见 pick.js 头注） -->
+  <view class="inp"><input value="{{keyword}}" placeholder="{{t.searchPh}}" bindinput="onKeyword" confirm-type="search" /></view>
+
+  <block wx:for="{{groups}}" wx:key="key" wx:for-item="g" wx:for-index="gi">
+    <view class="group-head {{g.key === '__pin__' ? 'group-pin' : ''}}">
+      {{g.label}}<text class="muted">（{{g.items.length}}）</text>
+    </view>
+    <view class="card2 pick-item" wx:for="{{g.items}}" wx:key="id" wx:for-item="m" data-m="{{m}}" bindtap="onPick">
+      <view class="card-title">
+        {{m.name}}
+        <text class="tag" wx:if="{{m.is_virtual}}">{{t.matVirtual}}</text>
+        <text class="tag tag-soft" wx:else>{{m.category_label}}</text>
+      </view>
+      <view class="cell">
+        <text class="lbl">{{t.matUnit}} / {{t.matPrice}}</text>
+        <text class="val">{{m.purchase_unit}} · {{t.cur}}{{m.purchase_price}}</text>
+      </view>
+      <view class="cell">
+        <text class="lbl">{{t.matNetCost}}</text>
+        <text class="val" style="color:#1e3a5f;">{{t.cur}}{{m.net_cost}}</text>
+      </view>
+    </view>
+  </block>
+
+  <view wx:if="{{groups.length === 0}}" class="empty">
+    {{t.empty}}
+    <view class="muted" style="margin-top:12rpx;">{{t.emptyHint}}</view>
+  </view>
+</view>
+<view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

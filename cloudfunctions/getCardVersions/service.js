@@ -23,6 +23,9 @@ function cardToOut(doc) {
     gross_margin_pct: doc.gross_margin_pct != null ? doc.gross_margin_pct : 0,
     reverse_price_fen: doc.reverse_price_fen != null ? doc.reverse_price_fen : 0,
     created_at: doc.created_at != null ? doc.created_at : 0,
+    // round156：与 getCostCard.cardToOutput **同字段集**（本文件跨函数逐字段断言守着）——
+    //   列表排序键（「最近编辑在前」）。存量卡缺 updated_at ⇒ 退回 created_at（fail-soft）。
+    updated_at: doc.updated_at != null ? doc.updated_at : (doc.created_at != null ? doc.created_at : 0),
     // M3.15（R150）：多规格定义快照（与 getCostCard.cardToOutput **同字段集**；
     //   本文件与本字段由 getCardVersions/selftest.js 的「逐字段 ≡ getCostCard」断言守着）
     specs: specsFromJson(doc.specs_json),

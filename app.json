@@ -14,6 +14,7 @@
     "pages/card/version",
     "pages/material/index",
     "pages/material/edit",
+    "pages/material/pick",
     "pages/pay/orders",
     "pages/shop/switch",
     "pages/mine/index"

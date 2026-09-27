@@ -48,9 +48,15 @@ Page({
       cur: '¥',
       loading: TERMS.ui.loading,
       cancel: TERMS.buttons.cancel,
+      // round156：列表排序/置顶
+      pinOn: TERMS.card.pinOn,
+      pinOff: TERMS.card.pinOff,
+      pinTag: TERMS.card.pinTag,
     },
     all: [],           // 全量列表（前端过滤）
     list: [],          // 过滤后展示
+    // round156：置顶的原料 id（顺序 = 老板点选先后）。店铺级偏好，存 shop 文档 ⇒ 零新建集合。
+    pinned: [],
     keyword: '',
     catFilter: '',     // '' = 全部
     catLabel: '',      // 当前选中分类展示名
@@ -66,8 +72,16 @@ Page({
       await api.ensureShop();
       ui.setTitle(TERMS.card.materialListTitle);
       const d = await api.call('getMaterial', {});
+      // round156：置顶（店铺级偏好）—— 读失败**不阻断列表**：它只是排序偏好，不是数据。
+      let pinned = [];
+      try {
+        const sc = await api.call('getShopContext', {});
+        pinned = Array.isArray(sc.pinned_materials) ? sc.pinned_materials : [];
+      } catch (err) { pinned = []; }
       const all = (d.list || []).map((m) => ({
         id: m.id,
+        // round156：排序键（「最近编辑在前」）。存量原料没有 updated_at ⇒ 0（排最后）
+        updated_at: Number(m.updated_at) || 0,
         name: m.name || '',
         brand_spec: m.brand_spec || '',
         purchase_unit: m.purchase_unit || '',
@@ -92,7 +106,7 @@ Page({
       for (const m of all) {
         if (m.category && !seen.has(m.category)) { seen.add(m.category); catOptions.push({ value: m.category, label: m.category_label }); }
       }
-      this.setData({ all, catOptions, loading: false });
+      this.setData({ all, catOptions, pinned, loading: false });
       this.applyFilter();
     } catch (e) {
       this.setData({ loading: false });
@@ -117,7 +131,52 @@ Page({
       if (m.name.toLowerCase().includes(kw)) return true;
       return m.aliases.some((a) => a.toLowerCase().includes(kw));
     });
-    this.setData({ list });
+    // round156：过滤完再排序（置顶在前 + 最近编辑在前），并给每条打 `pinned` 标记
+    //   ⚠️ 标记必须在这里打：WXML 表达式**不支持方法调用**（写 `pinned.indexOf(...)` 是无效的）。
+    const pins = this.data.pinned || [];
+    const marked = list.map((m) => Object.assign({}, m, { pinned: pins.indexOf(m.id) >= 0 }));
+    this.setData({ list: this.sortList(marked) });
+  },
+
+  // round156：列表排序 —— ① 置顶的在前（顺序 = 老板点选先后）② 其余「最近编辑在前」。
+  //   ⚠️ 为什么在**前端**排、不做服务端 orderBy：本页本就持有**全量**列表做搜索/筛选（`all`），
+  //     排序只是把已到手的数据再排一次 —— 不新增查询、不改 DataAdapter、不动 42 份派生副本。
+  sortList(list) {
+    const pins = this.data.pinned || [];
+    const rank = (m) => {
+      const i = pins.indexOf(m.id);
+      return i < 0 ? pins.length + 1 : i;
+    };
+    return list.slice().sort((a, b) => {
+      const ra = rank(a), rb = rank(b);
+      if (ra !== rb) return ra - rb;
+      return (Number(b.updated_at) || 0) - (Number(a.updated_at) || 0);
+    });
+  },
+
+  // round156：置顶 / 取消置顶（店铺级偏好，复用 saveShopSetting ⇒ 零新建集合、零新云函数）。
+  //   为什么不存在原料记录上：置顶是**这家店的偏好**，跟着店铺走才在换手机后还在；
+  //   写进原料记录则要把「偏好」混进「档案」，且删档就丢置顶。
+  //   乐观更新：点击立刻有反馈；**失败必须回滚** —— 界面不能停在"看起来成功"的状态。
+  async onPin(e) {
+    const id = e.currentTarget.dataset.id;
+    if (!id) return;
+    const backup = (this.data.pinned || []).slice();
+    const pins = backup.slice();
+    const i = pins.indexOf(id);
+    const wasPinned = i >= 0;
+    if (wasPinned) pins.splice(i, 1);
+    else pins.unshift(id);        // 新置顶的排最前（刚点的就是最想要的）
+    this.setData({ pinned: pins });
+    this.applyFilter();
+    try {
+      await api.call('saveShopSetting', { pinned_materials: pins, client_request_id: 'pm_' + Date.now() });
+      wx.showToast({ title: wasPinned ? TERMS.card.unpinnedDone : TERMS.card.pinnedDone, icon: 'none' });
+    } catch (err) {
+      this.setData({ pinned: backup });
+      this.applyFilter();
+      api.toastError(err);
+    }
   },
 
   goAdd() { wx.navigateTo({ url: '/pages/material/edit?id=' }); },

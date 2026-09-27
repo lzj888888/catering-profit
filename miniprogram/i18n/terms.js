@@ -614,6 +614,26 @@ const TERMS = {
     matEdit: '编辑原料',
     matSearchPh: '搜索名称或别名',
     matEmpty: '还没有原料，点下方新增',
+    // ===== round156 · 原料选择页（**独立页**，不用弹层）=====
+    //   为什么独立成页：弹层里放搜索框 ⇒ 弹层 × 键盘是死结（见 PITFALLS §6/§8），
+    //   且原生 `<picker mode="selector">` 只能滚、没有搜索与分组 ⇒ 100 个原料要滚十几屏。
+    matPickTitle: '选择原料',
+    matPickSearchPh: '搜索名称或别名',
+    matPickAll: '全部',
+    matPickEmpty: '没找到匹配的原料',
+    matPickEmptyHint: '换个词试试，或先去原料档案新增',
+    // ===== round156 · 列表置顶（店铺级偏好，存 shop 文档 ⇒ 零新建集合）=====
+    pinOn: '置顶',
+    pinOff: '取消置顶',
+    pinTag: '置顶',
+    pinnedDone: '已置顶',
+    unpinnedDone: '已取消置顶',
+    // ===== round156 · 连续录入（保存后**不跳走**，接着录下一道）=====
+    //   改前每存一道菜都 navigateBack 回列表 ⇒ 录 30 道菜要来回 60 次。
+    //   改后原地清空表单 + 顶部留一条「已保存」横幅 + 显式「返回列表」出口（不打断、也不困住人）。
+    savedOk: '已保存',
+    savedHint: '可以接着录入下一道',
+    backToList: '返回列表',
     matDelete: '删除',
     matDeleteConfirm: '删除后该原料不再出现在列表，但已保存成本卡的快照不受影响。确定删除？',
     matVirtual: '虚拟原料',

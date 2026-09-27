@@ -43,6 +43,10 @@ Page({
       cancel: TERMS.buttons.cancel,
       cur: '¥',
       loading: TERMS.ui.loading,
+      // round156：连续录入横幅
+      savedOk: TERMS.card.savedOk,
+      savedHint: TERMS.card.savedHint,
+      backToList: TERMS.card.backToList,
     },
     id: '',            // '' = 新增；非空 = 编辑
     isEdit: false,
@@ -87,6 +91,9 @@ Page({
     aliasesYuan: '',    // 逗号分隔原始输入
     remark: '',
     loading: true,
+    // round156：连续录入 —— 顶部「已保存」横幅记录刚存下的原料名；非空即显示（含返回列表出口）
+    savedName: '',
+    saving: false,      // 防重复提交
   },
 
   onLoad(q) {
@@ -226,10 +233,59 @@ Page({
       aliases: JSON.stringify(aliases),
       remark: this.data.remark,
     };
+    if (this.data.saving) return;   // 连击保护
+    // ⚠️ 必须在 afterSaved 之前取：afterSaved 会把 isEdit 清成 false（转新建态）
+    const wasEdit = this.data.isEdit;
+    this.setData({ saving: true });
     try {
       await api.call('saveMaterial', { material, client_request_id: 'mat_' + Date.now() });
-      wx.showToast({ title: TERMS.buttons.save, icon: 'success' });
-      setTimeout(() => wx.navigateBack(), 600);
-    } catch (e) { api.toastError(e); }
+      if (wasEdit) {
+        // 编辑态：**改完即走**。老板修的是一个具体的原料（改个价、补个别名），不是要连录一批；
+        //   停下来反而让他对着一个不该再填的表单发愣。
+        wx.showToast({ title: TERMS.buttons.save, icon: 'success' });
+        setTimeout(() => wx.navigateBack(), 600);
+      } else {
+        // round156（新增态）：**不跳走**。改前 `setTimeout(navigateBack, 600)` 每存一个原料就回列表。
+        //   原料页尤其需要连续录入：进价表一次要录一批（"一件 20 公斤 195 元"这种整包采买），
+        //   来回跳转是最费手的一环。
+        this.afterSaved(material.name);
+      }
+    } catch (e) { this.setData({ saving: false }); api.toastError(e); }
   },
+
+  // round156：连续录入 —— 保存成功后**留在本页**，清掉这个原料特有的字段，接着录下一个。
+  //   🔴 必须清 `id` + `isEdit`：否则第二个原料会被当成「编辑第一个」⇒ **把第一个原料覆盖掉**。
+  //      这是数据正确性问题，不是手感问题。
+  //   ✅ 刻意保留 `categoryIndex`（同一批原料分类往往相同，连续录入时不用重选）。
+  afterSaved(name) {
+    this.setData({
+      savedName: name || '',
+      saving: false,
+      // —— 这个原料特有的：清 ——
+      name: '',
+      brand_spec: '',
+      priceYuan: '',
+      aliasesYuan: '',
+      remark: '',
+      // 换算/单位回默认。新原料的采购单位大概率与上一条不同 ⇒ 留着是最容易填错的一格，
+      //   宁可让老板重选（单位池 chips 就在手边），也不让他在"上一条的单位"上填下一条的数。
+      //   ⚠️ 表达式与 data 初值同源（都取 units/TERMS 单源，页面不写死 500 /「斤」）。
+      purchase_unit: TERMS.card.matUnitDefault,
+      convert_factor: String(units.suggestConvert(TERMS.card.matUnitDefault) || 1),
+      convQty: String(units.suggestConvert(TERMS.card.matUnitDefault) || 1),
+      convUnit: units.baseWordOf(TERMS.card.matUnitDefault),
+      convUnitIndex: Math.max(0, units.QTY_UNITS.indexOf(units.baseWordOf(TERMS.card.matUnitDefault))),
+      convertTouched: false,
+      yield_rate: '100',
+      unitChipsOpen: false,
+      // —— 编辑态 → 新建态（见上 🔴）——
+      id: '',
+      isEdit: false,
+    }, () => this.refreshUnitHint());   // 换算提示/标签依赖采购单位与所选单位 ⇒ 重置后必须重算
+    wx.showToast({ title: TERMS.card.savedOk, icon: 'success' });
+    wx.pageScrollTo({ scrollTop: 0, duration: 200 });
+  },
+
+  // 连续录入的显式出口（横幅上的「返回列表」）
+  backToList() { wx.navigateBack(); },
 });

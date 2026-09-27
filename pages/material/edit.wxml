@@ -1,4 +1,11 @@
 <view class="form safe-bottom" wx:if="{{!loading}}">
+  <!-- round156：连续录入 —— 新增态保存成功后**留在本页**，这条横幅是"存到哪了"的凭证 + 显式返回出口。
+       （编辑态不走这里：改完一个具体的原料就回列表，见 edit.js::onSave） -->
+  <view class="saved-bar" wx:if="{{savedName}}">
+    <text class="saved-txt">{{t.savedOk}}「{{savedName}}」· {{t.savedHint}}</text>
+    <view class="saved-go" bindtap="backToList">{{t.backToList}}</view>
+  </view>
+
   <view class="field">
     <text class="lbl">{{t.matName}}</text>
     <input class="val-input" value="{{name}}" placeholder="{{t.matNamePh}}" bindinput="onName" />

@@ -218,6 +218,20 @@ const A15_EXEMPT = [
   //   by=WorkBuddy / date=2026-09-27 / reason=round154 列表查询条数上限修复（数据正确性缺陷）
   /^cloudfunctions\/[^/]+\/cx_dataAdapter\.js$/,         // round154：sync_common 派生（全函数，同 cx_indicatorRef.js 性质）
   /^cloudfunctions\/calcAmortize\//,                     // round154：本地替身 fakeDb 补 .limit()（对齐真云形状）
+  // ⚠️ 2026-09-27（round156）**十三次触发** —— 同一时机关卡第 13 次：列表排序 + 常用置顶
+  //   （李老师点单的四项优化之第 1 项：「两个列表加 orderBy（最近编辑在前）+ 常用置顶」）。
+  //   ① 排序出参：`getCostCard/` `getMaterial/` `getCardVersions/`（**均已在 round129/127 白名单内**）
+  //      各补一个 `updated_at` —— 这是「最近编辑在前」的**排序键**（原料列表此前一个时间字段都没有），
+  //      存量数据缺该字段 ⇒ 退回 created_at（fail-soft，不回填、不报错）。
+  //   ② 置顶落点：`saveShopSetting/`（**已在 round115 白名单内**：validate 加两数组字段 + index 写 patch/出参回读）
+  //      与 **getShopContext/**（**新增登记**：出参下发 pinned_cards / pinned_materials）。
+  //      ⚠️ 为什么置顶存 `shop` 文档、不存成本卡记录：M3 成本卡是**版本模型（只 INSERT 不 UPDATE）**，
+  //      置顶写进卡记录就得插新版本 ⇒ 每置顶一次多一版历史；而 M3 v1.1 红线是**零新建集合**
+  //      ⇒ 复用既有 shop 文档（同 biz_type / city_tier 的性质）。
+  //   均为**本批显式授权**的后端改动，非「顺手改云函数逻辑」；沿用**白名单式**登记（精确到目录/文件名），
+  //   **绝不放宽成 `cloudfunctions/` 全豁免**（那样等于守卫作废）：
+  //   by=WorkBuddy / date=2026-09-27 / reason=round156 授权列表排序（updated_at 出参）+ 店铺级置顶字段
+  /^cloudfunctions\/getShopContext\//,                   // round156：出参下发店铺级置顶（pinned_cards / pinned_materials）
 ];
 check('A15 云函数逻辑零改动（仅 initDb 建库单源 + 本批授权函数豁免）', (() => {
   const { execFileSync } = require('child_process');

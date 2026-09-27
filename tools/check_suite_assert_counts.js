@@ -110,6 +110,7 @@ const CASES = [
   //   断言数不受守则「删掉一条影子 + 调低下界」就等于把守卫悄悄改小（判据仍全绿而证明力归零）。
   { key: 'check_unit_family', rel: 'tools/check_unit_family.js' },     // 75 条（含 C1~C37 影子；round152 加 ⑩~⑬ 与 C7~C12；round153 加 ⑭~⑳ 与 C13~C23；round155 加 ㉑~㉕/整包口径 与 C24~C37）
   { key: 'check_list_query_limit', rel: 'tools/check_list_query_limit.js' }, // 16 条（R154：L1~L5 + S1~S3 + C1~C7 反恒真含替身正负样本）
+  { key: 'check_list_ux', rel: 'tools/check_list_ux.js' },               // 32 条（R156：L1~L6 + S1~S3 + C1~C6 反恒真影子样本）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

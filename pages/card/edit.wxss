@@ -52,3 +52,12 @@
 /* round151：跨计量族提示条。字号 28rpx = 新增下界；告警色不入品牌色单源（单源只管墨蓝/浅底） */
 .warn-hint { margin: 0 0 8rpx 4rpx; font-size: 28rpx; line-height: 1.5; color: #b45309; }
 .reverse { background: #fff; border-radius: 12rpx; padding: 16rpx 24rpx; margin-bottom: 16rpx; }
+
+/* round156：连续录入横幅 —— 保存成功后就地显示"存的是哪道菜" + 显式返回出口。
+   改前存完立刻 navigateBack 把人踢回列表（录 30 道菜来回 60 次）。
+   色沿用主色系 #1e3a5f / #e8eff7（不新增品牌色）；字号 28rpx 起（新增下界）。
+   触摸下界 88rpx —— 「返回列表」是唯一出口，必须够大够好点。 */
+.saved-bar { display: flex; align-items: center; justify-content: space-between;
+  background: #e8eff7; border-radius: 12rpx; padding: 8rpx 24rpx; margin-bottom: 16rpx; }
+.saved-txt { flex: 1; font-size: 28rpx; color: #1e3a5f; line-height: 1.5; padding: 12rpx 0; }
+.saved-go { font-size: 28rpx; color: #2b7de9; min-height: 88rpx; line-height: 88rpx; padding-left: 16rpx; }

@@ -1,0 +1,21 @@
+R156 变异回灌证据（2026-09-27T06:09:57.688Z）
+守卫：tools/check_list_ux.js
+基线：rc=0 / ===== R156 列表排序/置顶·原料选择·连续录入 守卫结果：32 通过 / 0 失败 =====
+
+OK M1 必红且点名 L1-① —— sortList 不再按「最近编辑在前」（比较器恒 0）
+OK M2 必红且点名 L1-③ —— applyFilter 直接 setData(list)，绕开 sortList（排序写了不生效）
+OK M3 必红且点名 L2-3 —— getMaterial 出参把 updated_at 改名（原料列表排序键消失）
+OK M4 必红且点名 L2-1 —— getCostCard 出参去掉 created_at 兜底（存量卡排序全为 0）
+OK M5 必红且点名 L3-① —— saveShopSetting/validate 不再校验 pinned_materials
+OK M6 必红且点名 L3-① —— getShopContext 不再下发 pinned_cards（列表页读不到置顶）
+OK M7 必红且点名 L4-① —— 原料选择回退原生 picker（100 项只能滚）
+OK M8 必红且点名 L5-③ —— 🔴 菜品卡 afterSaved 不清 card_code ⇒ 第二道覆盖第一道
+OK M9 必红且点名 L5-④ —— 🔴 原料 afterSaved 不清 id ⇒ 第二个覆盖第一个
+OK M10 必红且点名 L6-② —— 原料列表模板改在 {{}} 内调 indexOf（恒 false、静默失效）
+OK M11 必红且点名 L5-① —— 保存路径不取 isEdit（编辑态与新增态走同一条收尾）
+OK M12 必红且点名 L4-④ —— 选择页去掉 buildGroups（分组消失）
+OK B1 等价改写仍绿 —— sortList 比较器抽成临时变量（行为等价）
+OK B2 等价改写仍绿 —— getMaterial 出参行前加注释（行为等价）
+OK B3 等价改写仍绿 —— sortList 里 pins 取副本（行为等价）
+
+合计：15 / 15 通过
