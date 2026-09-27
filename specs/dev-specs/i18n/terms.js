@@ -601,6 +601,9 @@ const TERMS = {
     matUnit: '采购单位',
     matUnitDefault: '斤',
     matPrice: '采购单价（元）',
+    // round155：「一件多少钱」——单价标签带上采购单位，老板不必自己记单位。
+    //   与 matConvertOf 同族：同一个「随单位变」的可见文案，页面不自己拼串。
+    matPriceOf: (u) => `采购单价（元/${u}）`,
     // round149：把单位写进标签（净料成本恒为「元/克」，与引擎口径一致；不写单位时老板会以为是"元/斤"）
     matNetCost: '净料单位成本（元/克）',
     matCategory: '分类',

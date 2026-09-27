@@ -20,4 +20,11 @@
 .conv-wrap { display: flex; align-items: center; }
 .conv-wrap .conv-input { width: 180rpx; min-width: 180rpx; text-align: center; }
 .conv-eq { flex: none; font-size: 30rpx; color: #4a5b70; }
-.conv-word { margin-left: 14rpx; color: #1e3a5f; }
+/* round155：右侧由静态基准词改为**单位 picker**（「1 件 = [ 20 ] [ 公斤 ▾ ]」）。
+   沿用 R153 的「单位格」纪律：浅底 + 自身圆角 + 左侧留白 —— 否则「20」与「公斤」连读，
+   且看不出这一格可点。色值取 app.wxss 头注单源（浅底 #e8eff7 / 边框 #cfdae8 / 墨蓝 #1e3a5f）；
+   字号 28rpx 起 = 新增字号下界。 */
+.conv-unit { margin-left: 14rpx; padding: 14rpx 18rpx; box-sizing: border-box; min-width: 96rpx;
+  text-align: center; background: #e8eff7; border: 2rpx solid #cfdae8; border-radius: 10rpx;
+  color: #1e3a5f; font-size: 30rpx; }
+.conv-unit::after { content: '▾'; margin-left: 10rpx; font-size: 28rpx; }

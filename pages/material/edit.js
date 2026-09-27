@@ -58,15 +58,26 @@ Page({
     // round152：换算系数**是否已被手改**。立起后 pickUnit 不再用建议值覆盖老板敲的数
     //   （改前：手改 480 → 再点单位「斤」 ⇒ 被 500 冲掉，表现为"改了存不住"）。
     convertTouched: false,
-    convertHint: '',    // 动态：1 <采购单位> = <换算系数> <基准单位词>（净料口径）
-    // round151：换算系数标签的基准词随**计量族**走（→克 / →毫升 / →个）。
-    //   ⚠️ 改前恒为「换算系数（→克）」⇒ 按「个/箱」采购的老板看到的字面量根本没有对应含义。
+    convertHint: '',    // 动态：1 <采购单位> = <换算系数> <基准单位词>（归一化口径，恒回克/毫升/个）
+    // round151：换算系数标签的基准词随**计量族**走。
+    // round155：改为随**右侧所选单位**走 —— 「1 件 = [20] [公斤▾]」时标签读作「换算系数（→公斤）」，
+    //   它现在真的在说"这个系数用哪个单位表达"（改前恒回克 ⇒ 按个/箱买的老板字面上对不上）。
     convertLabel: '',
-    // round153：换算系数组合行的左右陪衬字 —— 「1 斤 = [ 500 ] 克」。
-    //   左取 `terms.matConvertLeftOf(u)`（拼串在术语表），右取 `units.baseWordOf()` 单源。
+    // round153：句子式组合行的左短句「1 斤 =」。取 `terms.matConvertLeftOf(u)`（拼串在术语表），
     //   ⚠️ 页面不自己写死单位词 —— 那是第二份口径（守卫 check_unit_family.js 反查）。
     convertLeft: TERMS.card.matConvertLeftOf(TERMS.card.matUnitDefault),
-    convBaseWord: units.baseWordOf(TERMS.card.matUnitDefault),
+    // round155：右侧 =「值 + 单位」二元组 —— 「1 件 = [ 20 ] [ 公斤 ▾ ]」。
+    //   由来（李老师真机反馈）：店里大量按**整包**采买（一件 20 公斤 195 元），而换算系数原只收克数
+    //   ⇒ 老板被迫先心算 20×1000=20000。右侧给出单位后直接填「20 公斤」，零心算。
+    //   ⚠️ 落库口径**一字不改**：convert_factor 仍是「1 个采购单位 = ? 克」那个数（引擎不动）。
+    convQty: String(units.suggestConvert(TERMS.card.matUnitDefault) || 1),
+    convUnit: units.baseWordOf(TERMS.card.matUnitDefault),
+    convUnits: units.QTY_UNITS.slice(),
+    // ⚠️ picker 的 `value` 只决定**展开时的选中项**，显示的字仍是 {{convUnit}}
+    //   ⇒ 索引必须与 convUnit **同源派生**；写死 0 时格子显示「克」而展开高亮「斤」（round155 自查抓到的自伤）。
+    convUnitIndex: Math.max(0, units.QTY_UNITS.indexOf(units.baseWordOf(TERMS.card.matUnitDefault))),
+    // round155：单价标签带上采购单位（「采购单价（元/件）」）—— 一件多少钱，一眼看清。
+    priceLabel: TERMS.card.matPriceOf(TERMS.card.matUnitDefault),
     priceYuan: '',
     // 默认换算系数 = 「默认采购单位（斤）」的建议值，取自单源 units.js（页面不写死 500）
     convert_factor: String(units.suggestConvert(TERMS.card.matUnitDefault) || 1),
@@ -95,12 +106,20 @@ Page({
           let aliasesYuan = '';
           try { aliasesYuan = (JSON.parse(m.aliases || '[]') || []).join(','); } catch (e) { aliasesYuan = ''; }
           const ci = CATEGORY_OPTIONS.findIndex((c) => c.value === m.category);
+          const pu = m.purchase_unit || TERMS.card.matUnitDefault;
+          const cf = String(m.convert_factor || units.suggestConvert(pu) || 1);
+          // round155：把库里存的「克数」还原成右侧二元组（右单位默认取该采购单位的基准词）
+          const cw = units.baseWordOf(pu);
           this.setData({
             name: m.name || '',
             brand_spec: m.brand_spec || '',
-            purchase_unit: m.purchase_unit || TERMS.card.matUnitDefault,
+            purchase_unit: pu,
             priceYuan: m.purchase_price_fen > 0 ? api.fenToYuan(m.purchase_price_fen, 2) : '',
-            convert_factor: String(m.convert_factor || units.suggestConvert(m.purchase_unit || TERMS.card.matUnitDefault) || 1),
+            convert_factor: cf,
+            convUnit: cw,
+            convQty: cf,
+            convUnitIndex: Math.max(0, units.QTY_UNITS.indexOf(cw)),
+            priceLabel: TERMS.card.matPriceOf(pu),
             yield_rate: String(m.yield_rate || 100),
             categoryIndex: ci >= 0 ? ci : 5,
             aliasesYuan,
@@ -120,9 +139,22 @@ Page({
   onBrand(e) { this.setData({ brand_spec: e.detail.value }); },
   onUnit(e) { this.setData({ purchase_unit: e.detail.value }, () => this.refreshUnitHint()); },
   onPrice(e) { this.setData({ priceYuan: e.detail.value }); },
-  // round152：手改换算系数 ⇒ 立 `convertTouched`（此后换单位也不再被建议值覆盖）
-  onConvert(e) {
-    this.setData({ convert_factor: e.detail.value, convertTouched: true }, () => this.refreshUnitHint());
+  // round152/155：手改右侧的**值** ⇒ 立 `convertTouched`（此后换采购单位也不再被建议值覆盖），
+  //   并把「值 × 单位」折算回 `convert_factor`（引擎口径仍是克数）。
+  onConvQty(e) {
+    const q = e.detail.value;
+    this.setData({ convQty: q, convertTouched: true, convert_factor: String(units.toBase(q, this.data.convUnit)) },
+      () => this.refreshUnitHint());
+  },
+  // round155：右侧**单位**改动 ⇒ **保住物理量**（20000 克 → 20 公斤）：换的是说法、不是数。
+  //   ⚠️ 与卡片页 onQtyUnit 同一条纪律；对照 onManualPriceUnit「只换标签不反算」——
+  //   这里是"同一个包装重量的两种表达"，反算才对；单价那里是"老板敲的数"，反算会篡改它。
+  onConvUnit(e) {
+    const i = Number(e.detail.value);
+    const u = this.data.convUnits[i] || this.data.convUnit;
+    const q = units.convertQtyText(this.data.convQty, this.data.convUnit, u);
+    this.setData({ convUnit: u, convUnitIndex: i, convQty: q, convertTouched: true,
+      convert_factor: String(units.toBase(q, u)) }, () => this.refreshUnitHint());
   },
 
   // 采购单位 chips（round149）：点一下填入 + **自动带出建议换算系数**（斤→500 / 千克→1000 / 克→1）。
@@ -138,7 +170,13 @@ Page({
     if (!u) return;
     const sug = units.suggestConvert(u);
     const patch = { purchase_unit: u, unitChipsOpen: false };
-    if (sug != null && !this.data.convertTouched) patch.convert_factor = String(sug);
+    if (sug != null && !this.data.convertTouched) {
+      // round155：带出建议值的同时，右侧二元组一并归位（值 = 建议克数、单位 = 该族基准词）
+      patch.convert_factor = String(sug);
+      patch.convQty = String(sug);
+      patch.convUnit = units.baseWordOf(u);
+      patch.convUnitIndex = Math.max(0, units.QTY_UNITS.indexOf(patch.convUnit));
+    }
     this.setData(patch, () => this.refreshUnitHint());
   },
   // round151：▾ 展开/收起建议池。与 pickUnit 分开两件事 —— 点单位是选中，点箭头是收放。
@@ -150,11 +188,14 @@ Page({
     const u = String(this.data.purchase_unit || TERMS.card.matUnitDefault).trim() || TERMS.card.matUnitDefault;
     const f = Number(this.data.convert_factor) || 0;
     const w = units.baseWordOf(u);
+    const cu = this.data.convUnit || w;
     this.setData({
-      convertLabel: TERMS.card.matConvertOf(w),
+      // 标签说「这个系数用哪个单位表达」（round155 起随右侧所选单位走，不再恒为克）
+      convertLabel: TERMS.card.matConvertOf(cu),
+      // 提示说**归一化后**的口径：1 件 = 20000 克（净料口径 · 可手改）—— 老板据此复核
       convertHint: TERMS.card.matConvertHintOf(u, f, w),
       convertLeft: TERMS.card.matConvertLeftOf(u),
-      convBaseWord: w,
+      priceLabel: TERMS.card.matPriceOf(u),
     });
   },
   onYield(e) { this.setData({ yield_rate: e.detail.value }); },
@@ -164,6 +205,10 @@ Page({
 
   async onSave() {
     if (!this.data.name.trim()) { wx.showToast({ title: TERMS.card.matName, icon: 'none' }); return; }
+    // round155：换算系数必须 >0 —— **不再静默兜底**（改前 `|| suggestConvert() || 1` 会把老板
+    //   清空的系数悄悄换回 500，正是「不许静默改掉老板敲的数」要禁的行为）。
+    const cf = Number(this.data.convert_factor) || 0;
+    if (!(cf > 0)) { wx.showToast({ title: TERMS.card.matConvert, icon: 'none' }); return; }
     // 元 → 分整数（前端换算，禁止字符串/小数元透传）
     const purchasePriceFen = Math.round((Number(this.data.priceYuan) || 0) * 100);
     // aliases：逗号分隔 → JSON 数组字符串（仅检索，不替换原料名）
@@ -174,7 +219,7 @@ Page({
       brand_spec: this.data.brand_spec,
       purchase_unit: String(this.data.purchase_unit || '').trim() || TERMS.card.matUnitDefault,
       purchase_price_fen: purchasePriceFen,
-      convert_factor: Number(this.data.convert_factor) || units.suggestConvert(TERMS.card.matUnitDefault) || 1,
+      convert_factor: cf,
       yield_rate: Number(this.data.yield_rate) || 100,
       is_virtual: false,
       category: this.data.categoryOptions[this.data.categoryIndex].value,

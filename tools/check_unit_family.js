@@ -26,11 +26,15 @@
 // 判据（纯函数化 + 正负互证 + 反查真实单源 + 解析器自带钉死样本）：
 //   L1 单源在场：units.js 导出 UNIT_FAMILY/FAMILY_BASE_WORD/familyOf/baseWordOf/isCrossFamily/priceToBase
 //   L2 行为正确（require 真源码实跑，不比字面量副本）：族判定 / 基准词 / 跨族真值表 / 单价折算
-//   L3 单源自洽：两池逐项同源、倍率表全覆盖、族表全覆盖、重量族倍率自洽
+//   L3 单源自洽：两池逐项同源、倍率表全覆盖、族表全覆盖、重量族倍率自洽、
+//      整包采买口径的词（件/箱/桶/公斤/千克）必须在池里
 //   L4 落点：页面用单源、不自抄口径（反查写死「克」与旧折算写法）；
 //      ⑩~⑬ 为 round152 追加（chips 默认收起 / 选完自动收起 / 手改保护 / 可手改可见信号）
+//      ⑭~⑳ 为 round153 追加（句子式换算系数 / 删行挪位+确认 / 单位格区隔 / 用量同排 / 不写死克）
+//      ㉑~㉕ 为 round155 追加（整包采购：换单位保物理量 / 值折算回克拉 / 单价标签带单位 /
+//           保存不静默兜底 / picker 索引与显示单位同源——后者是 round155 自查抓到的自伤）
 //   S1~S2 自失效护栏（扫描面完整 / 命中数下界，防"扫了空集所以全绿"）
-//   C1~C12 反恒真：把坏样本喂给同一条判据 ⇒ 必须判红；好样本 ⇒ 判绿
+//   C1~C37 反恒真：把坏样本喂给同一条判据 ⇒ 必须判红；好样本 ⇒ 判绿
 //
 // ⚠️ 输出纪律（R145 教训）：中间行不得出现「N 通过 / M 失败」字样，
 //   否则 check_suite_assert_counts 会把第一条中间文案当成套件总口径。
@@ -134,15 +138,74 @@ function judgePickUnitCollapse(body) {
   return { ok: true, why: 'pickUnit 选完自动收起 chips' };
 }
 
+// 辅助：取「条件命中 key 的 if 语句」的**大括号块**字面量区间。
+//   ⚠️ key 必须是非全局正则（带 g 会因 lastIndex 漂移而漏判）。
+//   ⚠️ 只认带 `{ }` 的块级 if；单语句 if（`if (c) x = 1;`）由「同行含 key」分支覆盖 ——
+//      两种写法都算守住了，不能只认一种（否则就是 R152/R155 反复踩的"守卫反向伤害"）。
+function guardBlockRanges(body, key) {
+  const ranges = [];
+  const kw = /if\s*\(/g;
+  let m;
+  while ((m = kw.exec(body))) {
+    const open = body.indexOf('(', m.index);
+    let i = open + 1;
+    let depth = 1;
+    while (i < body.length && depth > 0) {
+      const c = body[i];
+      if (c === '(') depth++;
+      else if (c === ')') depth--;
+      i++;
+    }
+    const cond = body.slice(open + 1, i - 1);
+    let j = i;
+    while (j < body.length && /\s/.test(body[j])) j++;
+    if (body[j] !== '{') continue;
+    let k = j;
+    let bd = 0;
+    while (k < body.length) {
+      const c = body[k];
+      if (c === '{') bd++;
+      else if (c === '}') { bd--; if (bd === 0) { k++; break; } }
+      k++;
+    }
+    if (key.test(cond)) ranges.push({ start: j, end: k });
+  }
+  return ranges;
+}
+
 // 判据 F8：手改过的换算系数会不会被建议值冲掉
+//   round155 加严：除 `convert_factor`，`convQty` / `convUnit` 这对**右侧二元组**也必须同受保护
+//   （否则「手改过 20 公斤」再点单位，右侧仍会被建议值 500 冲掉 —— 只是换个字段被冲而已）。
+//   round155 修判据：R155 把赋值写成**多行块**（`if (...) {` 换行后逐个赋值）⇒ 原「按行找同行
+//     是否含 convertTouched」会把**正确的块写法**判红（真机改动被守卫拦下 = 守卫反向伤害）。
+//     ⇒ 改为「块级区间命中 OR 同行内联」双形态识别；正样本见 C32，负样本见 C9/C33。
 function judgeConvertTouched(body) {
   if (!body) return { ok: false, why: '取不到 pickUnit 函数体（fail-closed）' };
-  const lines = body.split('\n');
-  const assign = lines.filter((l) => /convert_factor\s*=/.test(l));
-  if (!assign.length) return { ok: false, why: 'pickUnit 里没有 convert_factor 赋值（建议系数带不出来）' };
-  const unguarded = assign.filter((l) => !/convertTouched/.test(l));
-  if (unguarded.length) return { ok: false, why: 'convert_factor 赋值未受 convertTouched 保护 ⇒ 手改值会被建议值冲掉' };
-  return { ok: true, why: '手改保护在位（convertTouched 守着 convert_factor 赋值）' };
+  if (!/convert_factor\s*=/.test(body)) {
+    return { ok: false, why: 'pickUnit 里没有 convert_factor 赋值（建议系数带不出来）' };
+  }
+  const guards = guardBlockRanges(body, /convertTouched/);
+  const unguarded = [];
+  ['convert_factor', 'convQty', 'convUnit'].forEach((key) => {
+    const re = new RegExp('\\b' + key + '\\s*=(?!=)', 'g');
+    let m;
+    while ((m = re.exec(body))) {
+      const pos = m.index;
+      const lineStart = body.lastIndexOf('\n', pos) + 1;
+      const nl = body.indexOf('\n', pos);
+      const line = body.slice(lineStart, nl === -1 ? body.length : nl);
+      const inline = /convertTouched/.test(line);
+      const inGuard = guards.some((r) => pos >= r.start && pos < r.end);
+      if (!inline && !inGuard && unguarded.indexOf(key) === -1) unguarded.push(key);
+    }
+  });
+  if (unguarded.length) {
+    return {
+      ok: false,
+      why: unguarded.join('、') + ' 赋值未受 convertTouched 保护 ⇒ 手改值会被建议值冲掉',
+    };
+  }
+  return { ok: true, why: '手改保护在位（convertTouched 守着换算系数与「值+单位」二元组的赋值）' };
 }
 
 // 判据 F9：换算系数那行有没有「可手改」的可见信号
@@ -155,21 +218,27 @@ function judgeConvertHintEditable(src) {
 }
 
 // ===== round153 判据 =====
-// F10 换算系数是否**句子式**组合行：「1 斤 = [ 500 ] 克」。
+// F10 换算系数是否**句子式**组合行：「1 件 = [ 20 ] [ 公斤 ▾ ]」。
 //   由来（真机实测）：哪怕 hint 已写「可手改」，一个孤零零的框仍被读成"系统替我算好的结果值"
-//   ⇒ 文字说不清的事必须交给**控件形态**说。组合行 = 左短句 + 输入框 + 右基准词。
+//   ⇒ 文字说不清的事必须交给**控件形态**说。组合行 = 左短句 + 数值框 + 右侧**可选**单位。
+//   round155 升级：右侧由静态基准词 → picker。判据随之**加严**（原来只要求一个静态词）——
+//     店里按整包采买（一件 20 公斤 195 元）时，老板不必再自己先算成 20000 克。
 function judgeConvRow(wxml, js) {
   if (!wxml || !js) return { ok: false, why: '取不到原料档案页源码（fail-closed）' };
   if (!/conv-wrap/.test(wxml)) return { ok: false, why: '换算系数不是组合行（缺 conv-wrap）⇒ 又退回孤零零一个框' };
   if (!/\{\{convertLeft\}\}/.test(wxml)) return { ok: false, why: '组合行缺左侧短句 {{convertLeft}}（等式没摊开）' };
-  if (!/\{\{convBaseWord\}\}/.test(wxml)) return { ok: false, why: '组合行缺右侧基准词 {{convBaseWord}}' };
+  if (!/\{\{convQty\}\}/.test(wxml)) return { ok: false, why: '组合行缺数值框 {{convQty}}（右侧值没接上）' };
+  if (!/bindchange="onConvUnit"/.test(wxml)) return { ok: false, why: '组合行右侧单位不是 picker（round155 起应可选，否则整包采购又要心算）' };
+  if (!/\{\{convUnit\}\}/.test(wxml)) return { ok: false, why: '组合行缺右侧单位格 {{convUnit}}' };
   // ⚠️ 类名用 `[^"]*` 而不是精确字面量：否则页面给 conv-wrap 加一个无关 class（等价改写）
   //    ⇒ 这里提取不到片段 ⇒ 按 fail-closed 判成假红（round153 变异 B1 实测到的真问题）。
   const wrap = /<view class="conv-wrap[^"]*">[\s\S]*?<\/view>/.exec(wxml);
   if (wrap && /[克毫升个]/.test(wrap[0])) return { ok: false, why: 'conv-wrap 块内写死了单位词（第二份口径）' };
   if (!/convertLeft\s*:\s*TERMS\.card\.matConvertLeftOf/.test(js)) return { ok: false, why: 'convertLeft 未走术语表单源' };
-  if (!/convBaseWord\s*:\s*units\.baseWordOf|convBaseWord\s*:\s*w\b/.test(js)) return { ok: false, why: 'convBaseWord 未取自 units.baseWordOf（基准词被页面自算）' };
-  return { ok: true, why: '换算系数为句子式组合行（conv-wrap + convertLeft + convBaseWord，块内无写死单位）' };
+  if (!/convUnit\s*:\s*units\.baseWordOf/.test(js)) return { ok: false, why: 'convUnit 初值未取自 units.baseWordOf（单位格被页面自算）' };
+  if (!/convUnits\s*:\s*units\.QTY_UNITS/.test(js)) return { ok: false, why: 'convUnits 枚举未取自 units.QTY_UNITS（页面自抄枚举）' };
+  if (!/onConvUnit\s*\(/.test(js)) return { ok: false, why: 'onConvUnit 未实现（单位可选但改了不生效）' };
+  return { ok: true, why: '换算系数为句子式组合行（数值 + 单位 picker，块内无写死单位）' };
 }
 
 // F11 删行按钮是否离开了「录入方式」那一行
@@ -232,6 +301,69 @@ function judgeConfShort(src) {
   if (!m) return { ok: false, why: '缺 delLineConfirmOk（确认键内联写 ⇒ 迟早超 4 字）' };
   if (m[1].length > 4) return { ok: false, why: 'delLineConfirmOk「' + m[1] + '」超 4 字 ⇒ 真机 showModal 直接 fail' };
   return { ok: true, why: '删除确认键「' + m[1] + '」≤4 字' };
+}
+
+// ===== round155 判据（原料档案「整包采购」录入：换算系数右侧 = 值 + 单位） =====
+// F17 右侧单位切换必须**保住物理量**（20000 克 → 20 公斤）：
+//   老板改的是"这个包装用哪个单位说"，不是"包装变重了"。若不换算 ⇒ 同一件货的成本差倍率。
+function judgeConvUnitKeepsQty(body) {
+  if (!body) return { ok: false, why: '取不到 onConvUnit 函数体（fail-closed）' };
+  if (!/convertQtyText\s*\(/.test(body)) return { ok: false, why: 'onConvUnit 没走 units.convertQtyText ⇒ 换单位会静默改掉物理量' };
+  if (!/convert_factor\s*:/.test(body)) return { ok: false, why: 'onConvUnit 没同步 convert_factor（引擎拿到的还是旧系数）' };
+  return { ok: true, why: '换右侧单位时保住物理量并回写 convert_factor' };
+}
+// F18 右侧「值」改动必须折算回 convert_factor（引擎口径恒为「1 采购单位 = ? 克」）
+function judgeConvQtyNormalize(body) {
+  if (!body) return { ok: false, why: '取不到 onConvQty 函数体（fail-closed）' };
+  if (!/units\.toBase\s*\(/.test(body)) return { ok: false, why: 'onConvQty 没走 units.toBase ⇒ 「值×单位」没折算回克数（落库口径会漂）' };
+  if (!/convert_factor\s*:/.test(body)) return { ok: false, why: 'onConvQty 没写 convert_factor（引擎拿到的还是旧系数）' };
+  return { ok: true, why: '右侧值经 units.toBase 折算回 convert_factor' };
+}
+// F19 单价标签是否带采购单位（「采购单价（元/件）」）—— 「一件多少钱」不靠老板自己记
+function judgePriceLabel(src) {
+  if (!src) return { ok: false, why: '取不到术语表（fail-closed）' };
+  if (!/matPriceOf\s*:\s*\([^)]*\)\s*=>/.test(src)) return { ok: false, why: '缺 matPriceOf（单价标签不带采购单位 ⇒ 「195」是元/件还是元/斤全靠猜）' };
+  return { ok: true, why: '术语表有 matPriceOf（单价标签可带采购单位）' };
+}
+// F20 保存时不得**静默兜底**换算系数
+//   （改前 `|| suggestConvert() || 1` 会把老板清空的系数悄悄换回 500 —— 同「不许静默改掉老板敲的数」）
+function judgeNoSilentFallback(body) {
+  if (!body) return { ok: false, why: '取不到 onSave 函数体（fail-closed）' };
+  const m = /convert_factor\s*:\s*([^\n,]*)/.exec(body);
+  if (!m) return { ok: false, why: 'onSave 里找不到 convert_factor 赋值（判据面被写窄）' };
+  if (/suggestConvert/.test(m[1])) return { ok: false, why: 'convert_factor 仍在静默兜底（清空的值会被悄悄换成建议值）' };
+  return { ok: true, why: 'convert_factor 无静默兜底（无效值走显式报错）' };
+}
+// F21 picker 的 `value`（选中索引）必须与格子**显示的单位**同源派生。
+//   由来（round155 自查）：`<picker value="{{convUnitIndex}}">` 里的 value **只决定展开时高亮哪一项**，
+//   显示的字仍是 `{{convUnit}}`。初值写死 `convUnitIndex: 0` ⇒ 格子显示「克」、展开后高亮「斤」
+//   （QTY_UNITS 里「斤」在第 0 位、「克」在第 3 位）⇒ 老板不改直接点完成，值就被静默换成斤了。
+//   ⚠️ 只查**字面量**与**派生处下界**：`convUnitIndex: i`（i 来自 bindchange 的 detail.value）
+//      是 picker 自己给的索引，本就无需派生 —— 去判它 = 假红。
+function judgeUnitIndexDerived(src) {
+  if (!src) return { ok: false, why: '取不到原料档案页源码（fail-closed）' };
+  if (/convUnitIndex\s*:\s*\d/.test(src)) {
+    return { ok: false, why: 'convUnitIndex 初值写成字面量 ⇒ 展开时的高亮项与格子显示的单位不一致' };
+  }
+  const n = (src.match(/convUnitIndex[^\n]*QTY_UNITS\s*\.\s*indexOf\s*\(/g) || []).length;
+  if (n < 2) {
+    return { ok: false, why: 'convUnitIndex 由 units.QTY_UNITS.indexOf 派生的赋值仅 ' + n + ' 处（< 2）⇒ picker 索引与显示单位可能各自漂' };
+  }
+  return { ok: true, why: 'convUnitIndex 无字面量写法，' + n + ' 处取自 units.QTY_UNITS.indexOf（与显示单位同源）' };
+}
+// F22 **整包采买的口径必须在池里可表达**（李老师原话：「很多采买都是一件为单位，一件多少公斤
+//   一件多少钱」）。整包口径 = 采购单位填「件」（单价 = 一件多少钱、系数 = 一件折多少）⇒
+//   池里没有「件」这个字，整包采买在 chips 上**无处落**；池里没有「公斤」则只能说「千克」，
+//   老板按自己的话说时得先拐个弯（而 QTY_FACTOR/UNIT_FAMILY 本来就认这两个字）。
+//   ⚠️ 这与 L3 覆盖判据**方向相反**：覆盖判据保证「池里的项都有表」，本判据保证「要用的项在池里」。
+function judgePackUnits(pool) {
+  if (!Array.isArray(pool) || !pool.length) return { ok: false, why: '取不到采购单位池（fail-closed）' };
+  const need = ['件', '箱', '桶', '公斤', '千克'];
+  const missing = need.filter((u) => pool.indexOf(u) === -1);
+  if (missing.length) {
+    return { ok: false, why: '采购单位池缺 ' + missing.join('、') + ' ⇒ 整包采买（一件 N 公斤 / 一箱 N 个）在 chips 上无处落' };
+  }
+  return { ok: true, why: '整包采买口径可表达（件/箱/桶 + 公斤/千克 均在池里）' };
 }
 
 // 本轮受管源码
@@ -321,6 +453,11 @@ if (U) {
   if (r1.ok) ok('L3 ' + r1.why + '（用量池 ≡ 采购池，构造上不可能漂移）');
   else bad('L3 单位池漂移 —— ' + r1.why);
 
+  // 整包采买口径的词必须在池里（反恒真见 C36/C37）
+  const rPk = judgePackUnits(U.PURCHASE_UNITS);
+  if (rPk.ok) ok('L3 ' + rPk.why + '（池 ' + U.PURCHASE_UNITS.length + ' 项）');
+  else bad('L3 ' + rPk.why);
+
   const r2 = judgeCoverage(U.QTY_UNITS, U.QTY_FACTOR, '倍率表 QTY_FACTOR');
   if (r2.ok) ok('L3 ' + r2.why);
   else bad('L3 ' + r2.why);
@@ -335,6 +472,7 @@ if (U) {
   else ok('L3 重量/体积族倍率自洽（' + wf.length + ' 例：斤500 两50）');
 } else {
   bad('L3 单源自洽判据无法执行：units.js 未加载（fail-closed）');
+  bad('L3 整包采买口径判据无法执行：units.js 未加载（fail-closed）');
   bad('L3 倍率表覆盖判据无法执行：units.js 未加载（fail-closed）');
   bad('L3 族表覆盖判据无法执行：units.js 未加载（fail-closed）');
   bad('L3 族倍率判据无法执行：units.js 未加载（fail-closed）');
@@ -437,6 +575,28 @@ if (rQs.ok) ok('L4 ' + rQs.why); else bad('L4 ' + rQs.why);
 const rHg = judgeCardNoHardcodedGram(CARDWXML, CARDJS);
 if (rHg.ok) ok('L4 ' + rHg.why); else bad('L4 ' + rHg.why);
 
+// ㉑ 右侧单位切换保住物理量（反恒真见 C24/C28）
+const rUk = judgeConvUnitKeepsQty(fnBody(MATEJS, 'onConvUnit'));
+if (rUk.ok) ok('L4 ' + rUk.why); else bad('L4 ' + rUk.why);
+
+// ㉒ 右侧值折算回 convert_factor（反恒真见 C25）
+const rQn = judgeConvQtyNormalize(fnBody(MATEJS, 'onConvQty'));
+if (rQn.ok) ok('L4 ' + rQn.why); else bad('L4 ' + rQn.why);
+
+// ㉓ 单价标签带采购单位（术语**双副本**都要有 —— 只改一份就一边绿一边红）
+const rPlA = judgePriceLabel(TERMS_A);
+const rPlB = judgePriceLabel(TERMS_B);
+if (rPlA.ok && rPlB.ok) ok('L4 ' + rPlA.why + '（术语双副本一致）');
+else bad('L4 ' + (rPlA.ok ? '' : 'A 副本：' + rPlA.why + '；') + (rPlB.ok ? '' : 'B 副本：' + rPlB.why));
+
+// ㉔ 保存不静默兜底（反恒真见 C27/C29）
+const rNs = judgeNoSilentFallback(fnBody(MATEJS, 'onSave'));
+if (rNs.ok) ok('L4 ' + rNs.why); else bad('L4 ' + rNs.why);
+
+// ㉕ picker 选中索引与显示单位同源（反恒真见 C34/C35）
+const rUi = judgeUnitIndexDerived(MATEJS);
+if (rUi.ok) ok('L4 ' + rUi.why); else bad('L4 ' + rUi.why);
+
 // ---------- S1~S2 自失效护栏 ----------
 const scanFiles = ['utils/units.js', 'pages/card/edit.js', 'pages/card/edit.wxml', 'pages/card/edit.wxss', 'pages/material/edit.js', 'pages/material/edit.wxml', 'pages/material/index.js', 'miniprogram/i18n/terms.js', 'specs/dev-specs/i18n/terms.js'];
 const scanned = scanFiles.filter((f) => read(f) != null).length;
@@ -506,7 +666,7 @@ if (!PU_BODY || PU_BODY.length < 40) bad('C12 函数体切分失效（fnBody 拿
 else ok('C12 函数体切分器自检通过（pickUnit 主体 ' + PU_BODY.length + ' 字符）');
 
 // ---- round153 反恒真：同上，坏样本必须红、好样本必须绿 ----
-const CONV_BAD = '<view class="field"><text class="lbl">{{convertLabel}}</text><input class="val-input" type="number" value="{{convert_factor}}" bindinput="onConvert" /></view>';
+const CONV_BAD = '<view class="field"><text class="lbl">{{convertLabel}}</text><input class="val-input" type="number" value="{{convert_factor}}" bindinput="onConvQty" /></view>';
 const CONV_BAD_JS = 'convertLabel: "", convertHint: "",';
 const c13 = judgeConvRow(CONV_BAD, CONV_BAD_JS);
 if (c13.ok) bad('C13 影子样本「换算系数退回裸 input」被判绿 ⇒ 判据无分辨力（假绿）');
@@ -514,7 +674,7 @@ else ok('C13 影子样本「换算系数退回裸 input」被判红 —— ' + c
 
 // ⚠️ 样本必须**只**缺"写死单位"这一项（前三项都给对），否则红在别的分支 ⇒ 这条证据是错的。
 //   2026-09-27：初版样本连 {{convertLeft}} 都没给 ⇒ 报的是"缺左短句"，等于写死分支从没被验过。
-const CONV_WRAP_BAD = '<view class="conv-wrap"><text class="conv-eq">{{convertLeft}}</text><input class="val-input conv-input" value="{{convert_factor}}" /><text class="conv-eq">{{convBaseWord}}</text><text class="conv-note">克</text></view>';
+const CONV_WRAP_BAD = '<view class="conv-wrap"><text class="conv-eq">{{convertLeft}}</text><text class="conv-note">克</text><input class="val-input conv-input" value="{{convQty}}" /><picker range="{{convUnits}}" bindchange="onConvUnit"><view class="conv-unit">{{convUnit}}</view></picker></view>';
 const c14 = judgeConvRow(CONV_WRAP_BAD, MATEJS);
 if (c14.ok) bad('C14 影子样本「组合行里写死「克」」被判绿 ⇒ 第二份口径抓不到');
 else if (!/写死/.test(c14.why)) bad('C14 影子样本虽红但没命中「写死单位」分支（证据错位：' + c14.why + '）⇒ 样本要重写');
@@ -562,6 +722,110 @@ else ok('C22 术语表真实 delLineConfirmOk 判绿（不假红）—— ' + c2
 // 解析器钉死样本：delLine 主体切不出来 ⇒ L4-⑯ 会变成空跑
 if (!DL_BODY || DL_BODY.length < 40) bad('C23 函数体切分失效（fnBody 拿不到 delLine 主体）⇒ L4-⑯ 会是空跑');
 else ok('C23 函数体切分器自检通过（delLine 主体 ' + DL_BODY.length + ' 字符）');
+
+// ---- round155 反恒真 ----
+const CU_NOQTY = 'onConvUnit(e) { const u = this.data.convUnits[Number(e.detail.value)]; this.setData({ convUnit: u }); }';
+const c24 = judgeConvUnitKeepsQty(CU_NOQTY);
+if (c24.ok) bad('C24 影子样本「换单位不保物理量」被判绿 ⇒ 包装重量会被静默改掉');
+else ok('C24 影子样本「换单位不保物理量」被判红 —— ' + c24.why);
+
+const CQ_NONORM = 'onConvQty(e) { this.setData({ convQty: e.detail.value }); }';
+const c25 = judgeConvQtyNormalize(CQ_NONORM);
+if (c25.ok) bad('C25 影子样本「值不折算回克数」被判绿 ⇒ 落库口径会漂');
+else ok('C25 影子样本「值不折算回克数」被判红 —— ' + c25.why);
+
+const c26 = judgePriceLabel("matPrice: '采购单价（元）',");
+if (c26.ok) bad('C26 影子样本「单价标签不带单位」被判绿 ⇒ 195 是元/件还是元/斤全靠猜');
+else ok('C26 影子样本「单价标签不带单位」被判红 —— ' + c26.why);
+
+const SV_FALLBACK = 'async onSave() { const material = { name: this.data.name, convert_factor: Number(this.data.convert_factor) || units.suggestConvert(this.data.purchase_unit) || 1 }; }';
+const c27 = judgeNoSilentFallback(SV_FALLBACK);
+if (c27.ok) bad('C27 影子样本「保存静默兜底」被判绿 ⇒ 老板清空的系数会被悄悄换掉');
+else ok('C27 影子样本「保存静默兜底」被判红 —— ' + c27.why);
+
+// 正样本必绿（防判据过严 ⇒ 改对了却转红，那是"守卫反向伤害"）
+const c28 = judgeConvUnitKeepsQty(fnBody(MATEJS, 'onConvUnit'));
+const c29 = judgeNoSilentFallback(fnBody(MATEJS, 'onSave'));
+if (!c28.ok) bad('C28 真实 onConvUnit 被判红 ⇒ 判据过严（假红）—— ' + c28.why);
+else ok('C28 真实 onConvUnit 判绿（不假红）');
+if (!c29.ok) bad('C29 真实 onSave 被判红 ⇒ 判据过严（假红）—— ' + c29.why);
+else ok('C29 真实 onSave 判绿（不假红）');
+
+// 解析器钉死样本：onConvUnit / onSave 主体切不出来 ⇒ L4-㉑㉔ 会变成空跑
+const UK_BODY = fnBody(MATEJS, 'onConvUnit');
+const SV_BODY = fnBody(MATEJS, 'onSave');
+if (!UK_BODY || UK_BODY.length < 40) bad('C30 函数体切分失效（fnBody 拿不到 onConvUnit 主体）⇒ L4-㉑ 会是空跑');
+else ok('C30 函数体切分器自检通过（onConvUnit 主体 ' + UK_BODY.length + ' 字符）');
+if (!SV_BODY || SV_BODY.length < 40) bad('C31 函数体切分失效（fnBody 拿不到 onSave 主体）⇒ L4-㉔ 会是空跑');
+else ok('C31 函数体切分器自检通过（onSave 主体 ' + SV_BODY.length + ' 字符）');
+
+// round155 判据修正的反恒真（同一个 F8 判据，两种形态都要认）：
+//   C32 正样本：**多行块**写法（真源码就是这个形态）必须判绿 —— 若判红即"守卫反向伤害"复发。
+//   C33 负样本：块写法里**漏了**右侧二元组的保护 ⇒ 必须判红且命中 convQty 分支（防证据错位）。
+const PU_BLOCK_GOOD = [
+  'pickUnit(e) {',
+  '  const u = (e.currentTarget.dataset.unit) || "";',
+  '  const sug = units.suggestConvert(u);',
+  '  const patch = { purchase_unit: u, unitChipsOpen: false };',
+  '  if (sug != null && !this.data.convertTouched) {',
+  '    patch.convert_factor = String(sug);',
+  '    patch.convQty = String(sug);',
+  '    patch.convUnit = units.baseWordOf(u);',
+  '  }',
+  '  this.setData(patch);',
+  '}',
+].join('\n');
+const c32 = judgeConvertTouched(PU_BLOCK_GOOD);
+if (!c32.ok) bad('C32 影子样本「多行块写法的手改保护」被判红 ⇒ 判据只认按行形态（假红/守卫反向伤害）—— ' + c32.why);
+else ok('C32 影子样本「多行块写法的手改保护」被判绿（不假红）');
+
+const PU_PAIR_UNGUARDED = [
+  'pickUnit(e) {',
+  '  const u = (e.currentTarget.dataset.unit) || "";',
+  '  const sug = units.suggestConvert(u);',
+  '  const patch = { purchase_unit: u, unitChipsOpen: false };',
+  '  patch.convQty = String(sug);',
+  '  if (sug != null && !this.data.convertTouched) {',
+  '    patch.convert_factor = String(sug);',
+  '  }',
+  '  this.setData(patch);',
+  '}',
+].join('\n');
+const c33 = judgeConvertTouched(PU_PAIR_UNGUARDED);
+if (c33.ok) bad('C33 影子样本「右侧值未受手改保护」被判绿 ⇒ 手改过的值仍会被建议值冲掉');
+else if (!/convQty/.test(c33.why)) bad('C33 虽红但没命中 convQty 分支（证据错位：' + c33.why + '）⇒ 样本要重写');
+else ok('C33 影子样本「右侧值未受手改保护」判红且命中 convQty 分支 —— ' + c33.why);
+
+// F21 的反恒真：字面量必然红、派生必然绿（且**不误伤** `convUnitIndex: i` 这个合法写法）
+const UI_BARE = [
+  '    convUnitIndex: 0,',
+  '      convUnitIndex: i,',
+  '      patch.convUnitIndex = Math.max(0, units.QTY_UNITS.indexOf(patch.convUnit));',
+].join('\n');
+const c34 = judgeUnitIndexDerived(UI_BARE);
+if (c34.ok) bad('C34 影子样本「convUnitIndex 写死 0」被判绿 ⇒ 展开高亮与格子显示不一致的坑又要回来');
+else if (!/字面量/.test(c34.why)) bad('C34 虽红但没命中「字面量」分支（证据错位：' + c34.why + '）⇒ 样本要重写');
+else ok('C34 影子样本「convUnitIndex 写死 0」判红且命中字面量分支 —— ' + c34.why);
+
+const UI_GOOD = [
+  '    convUnitIndex: Math.max(0, units.QTY_UNITS.indexOf(units.baseWordOf(TERMS.card.matUnitDefault))),',
+  '            convUnitIndex: Math.max(0, units.QTY_UNITS.indexOf(cw)),',
+  '      convUnitIndex: i,',
+  '      patch.convUnitIndex = Math.max(0, units.QTY_UNITS.indexOf(patch.convUnit));',
+].join('\n');
+const c35 = judgeUnitIndexDerived(UI_GOOD);
+if (!c35.ok) bad('C35 影子样本「派生索引 + 合法的 convUnitIndex: i」被判红 ⇒ 判据过严（假红）—— ' + c35.why);
+else ok('C35 影子样本「派生索引 + 合法的 convUnitIndex: i」判绿（不误伤事件索引）');
+
+// F22 的反恒真：池里缺整包口径的词 ⇒ 必红（且点名缺哪个字）
+const c36 = judgePackUnits(['斤', '千克', '克', '个', '箱']);
+if (c36.ok) bad('C36 影子样本「池里没有『件』」被判绿 ⇒ 整包采买在 chips 上无处落的坑抓不到');
+else if (!/件/.test(c36.why)) bad('C36 虽红但没点名缺「件」（证据错位：' + c36.why + '）⇒ 样本要重写');
+else ok('C36 影子样本「池里没有『件』」判红且点名 —— ' + c36.why);
+
+const c37 = judgePackUnits(['斤', '千克', '公斤', '克', '个', '箱', '桶', '件']);
+if (!c37.ok) bad('C37 影子样本「整包口径齐备」被判红 ⇒ 判据过严（假红）—— ' + c37.why);
+else ok('C37 影子样本「整包口径齐备」判绿（不假红）');
 
 console.log('');
 console.log('===== 单位池 / 计量族 / 单价单位守卫结果：' + pass + ' 通过 / ' + fail + ' 失败 =====');
