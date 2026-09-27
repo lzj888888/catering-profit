@@ -1,0 +1,38 @@
+R159 · 付费墙覆盖面守卫（tools/check_paywall_coverage.js）双向变异回灌
+运行：node review/evidence/_mut_r159.js        （脚本自带还原与自证）
+采集：2026-09-27 · round159
+
+================================================================
+✅ B0 基线：未变异时守卫 rc=0 且 13 通过/0 失败 —— rc=0
+===== M 组：错误写法必红（点名到具体能力键/判据）=====
+✅ M1 PAYWALL_TYPES 删掉 'combo' ⇒ L2 判红且点名 combo —— rc=1 / 点名=true / 还原 md5 全等=true
+✅ M2 PAYWALL_TYPES 删掉 'takeaway' ⇒ L2 判红且点名 takeaway —— rc=1 / 点名=true / 还原 md5 全等=true
+✅ M3 PAID_FEATURES 把 m3_combo 改成 m3_foobar ⇒ L2 判红且点名 foobar —— rc=1 / 点名=true / 还原 md5 全等=true
+✅ M4 TERMS.paywall.combo.content 置空 ⇒ L4 判红 —— rc=1 / 点名=true / 还原 md5 全等=true
+✅ M5 TERMS.paywall.takeaway.content 置空 ⇒ L4 判红且点名 takeaway —— rc=1 / 点名=true / 还原 md5 全等=true
+✅ M6 exportData 把 hasFeature 的键改成未登记的 'm3_secret' ⇒ L6-① 判红 —— rc=1 / 点名=true / 还原 md5 全等=true
+✅ M7 造 saveComboCard 云函数但不调 hasFeature ⇒ L6-② 判红且点名函数 —— rc=1 / 点名=true
+✅ M7-清理 探针目录已移出 cloudfunctions/（改名归档，现场还原） —— cloudfunctions/saveComboCard 已不存在
+
+===== B 组：等价改写必须仍绿（判行为不判写法）=====
+✅ B1 双引号写法（语义等价）仍绿 —— rc=0 / 还原 md5 全等=true
+✅ B2 PAID_FEATURES 换成多行数组（语义等价）仍绿 —— rc=0 / 还原 md5 全等=true
+✅ B3 PAYWALL_TYPES 数组内多余空格（语义等价）仍绿 —— rc=0 / 还原 md5 全等=true
+
+===== 还原自证（本轮未真实改动的文件必须「无残留」）=====
+  ✅ cloudfunctions/common/entitlement.js 无残留
+  ✅ cloudfunctions/exportData/index.js 无残留
+
+===== 变异回灌结果：14 通过 / 0 失败 =====
+
+================================================================
+【本轮变异过程中踩到并已修的坑】
+1. M5 首版锚点写的是「primary + secondary + `},` + `  },`」多行块 —— 而 takeaway 之后紧跟的是
+   注释行与 ctaShort，**没有那个 `},`** ⇒ 锚点不存在，判据报「原文未找到锚点」。
+   修法：改用 **takeaway 独有的 content 行**作锚点（唯一命中）。教训：多行锚点必须先核对真实结构。
+2. M7 首版用 `fs.rmSync(PROBE_DIR, {recursive:true, force:true})` 清理探针目录 —— **本机删除被拦、目录残留**
+   ⇒ 守卫 L6-② 一直红 ⇒ **B1/B2/B3 连带假红 3 条**（表现为"等价改写也红了"，
+   极易误判成"判据太严"，真因是现场没还原干净）。
+   修法：一律**改名归档**（`fs.renameSync` → `_m3/_debug/saveComboCard_probe_<ts>`），
+   与项目既有纪律一致（收尾用改名，不用删除）。已确认 `cloudfunctions/saveComboCard` 不存在。
+   ⚠️ 该坑与 round157 记忆里的「删文件别用 os.remove / Remove-Item」同族，本轮在 Node 侧再现。

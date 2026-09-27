@@ -1,9 +1,12 @@
 // utils/paywall.js —— 批次 5 · 付费弹窗（仅「保存超限 / 导出」两类触发 + 接真实下单流）
 //
-// ⚠️ 交互边界（批次 5 §2.1）：
-//   · 只在「保存数量超限 FREE_LIMIT_EXCEEDED」「导出操作」时触发；
-//   · 进入页面 / 录入 / 试算 / 查看历史 **均不触发**；
+// ⚠️ 交互边界（批次 5 §2.1；R159 扩了触发面）：
+//   · 只在「保存数量超限 FREE_LIMIT_EXCEEDED」「导出操作」「套餐 / 外卖 点计算时」触发；
+//   · 进入页面 / 录入 / 试算 / 查看历史 **均不触发**（付费能力"可录入、算钱才拦"）；
 //   · **M2 模块永不触发**。
+// ⚠️ R159：放行类型集合 = `PAYWALL_TYPES`（下方常量）。它与云端 `PAID_FEATURES`
+//   派生出的键集合**必须一致**，由 `tools/check_paywall_coverage.js` 强制
+//   —— 防「云端登记了付费能力、前端却弹不出墙」（本仓 m3_combo / m3_takeaway 曾长期如此）。
 // ⚠️ 文案全部来自 miniprogram/i18n/terms.js（terms.paywall / terms.buttons / terms.pay），禁止 wxml 硬编码。
 // ⚠️ 当前阶段 enable_real_payment=false：主按钮走 payCreateOrder 生成订单 → 提示「联系客服开通」；
 //   执照下来改后端配置即接真实支付，**前端一行不改**（§2.6）。
@@ -13,8 +16,15 @@ const api = require('./api.js');
 const { isIOS } = require('./platform.js');
 
 /**
+ * 允许的触发类型。**新增付费能力时只改这一处**（配 terms.paywall 同名键 + 守卫 check_paywall_coverage）。
+ * 用常量数组，而不是 `type !== 'a' && type !== 'b'` —— 后者每加一个能力就多一截 `&&`，
+ * 漏加的表现是"点了没反应"（静默），正是 R159 要根治的形态。
+ */
+const PAYWALL_TYPES = ['saveLimit', 'export', 'combo', 'takeaway'];
+
+/**
  * 打开付费弹窗。
- * @param {'saveLimit'|'export'} type 触发类型（仅允许这两种；其他值直接忽略 = 防误触发）
+ * @param {'saveLimit'|'export'|'combo'|'takeaway'} type 触发类型（不在集合内直接忽略 = 防误触发）
  * @param {object} opts
  *   - shopId: 下单来源店铺
  *   - planId: 默认套餐（可选）
@@ -22,7 +32,7 @@ const { isIOS } = require('./platform.js');
  *   - onCancel: 用户点「再想想/取消」回调（可选）
  */
 function openPaywall(type, opts) {
-  if (type !== 'saveLimit' && type !== 'export') return; // 防误触发
+  if (PAYWALL_TYPES.indexOf(type) < 0) return; // 防误触发
   // R45：iOS 端不得提供虚拟商品购买入口 ⇒ 弹窗改为纯提示，**不给确认下单按钮**
   if (isIOS()) return showIOSBlocked();
   const def = TERMS.paywall[type];

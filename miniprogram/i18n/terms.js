@@ -65,7 +65,7 @@ const TERMS = {
     gotIt: '知道了', // R45：iOS 拦截提示的唯一按钮（不给"去开通"动作）
   },
 
-  // ===== 四、付费弹窗（仅两类触发：保存超限 / 导出）=====
+  // ===== 四、付费弹窗（触发面 = 保存超限 / 导出 / 套餐 / 外卖，与 PAID_FEATURES 对齐 · R159）=====
   paywall: {
     saveLimit: {
       title: '已达免费上限',
@@ -79,6 +79,22 @@ const TERMS = {
       content: '开通真实利润后可导出 / 打印菜品成本与经营报表。',
       primary: '去开通', // ⚠️ 只用于 showModal confirmText，平台上限 4 字符
       secondary: '取消',
+    },
+    // R159：M3 付费域（云端 PAID_FEATURES 登记 m3_combo / m3_takeaway ⇒ 此处必须有对应文案，
+    //   否则「登记了能力却没有墙」—— 由 tools/check_paywall_coverage.js 强制）。
+    // ⚠️ 交互边界：**进页面与录入都不拦**，只在点「计算 / 生成利润报表」时拦；
+    //   故 content 明写"录入可免费保存"，避免用户录完才被拦、觉得被钓。
+    combo: {
+      title: '套餐需开通',
+      content: '套餐利润测算为专业版功能：录入可免费保存，开通后解锁计算与报表。',
+      primary: '去开通', // ⚠️ ≤4 字符（平台硬限制）
+      secondary: '再想想',
+    },
+    takeaway: {
+      title: '外卖需开通',
+      content: '外卖利润核算为专业版功能：录入可免费保存，开通后解锁到手率与毛利测算。',
+      primary: '去开通', // ⚠️ ≤4 字符（平台硬限制）
+      secondary: '再想想',
     },
     // ⚠️ 平台限制：wx.showModal 的 confirmText / cancelText **最多 4 个字符**，超了弹窗直接 fail
     //   （真机事故 2026-09-26：primary「开通真实利润」6 字 ⇒ showmodal:fail confirm text length）。

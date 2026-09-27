@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：113 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：114 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -237,6 +237,19 @@
 //         + S1~S2 自失效护栏 + C1~C3 反恒真影子样本。
 //         ⚠️ 两处读侧的映射函数**名字不同**（getCostCard=lineToOutput / getCardVersions=lineToOut，历史形成），
 //         守卫按**各自名字**取；写成同一个名字会取到 null ⇒ 把正确的代码判成"缺 5 字段"（本轮首跑即踩，已修）。
+//       + 付费墙覆盖面守卫（tools/check_paywall_coverage.js，R159）—— 规范铁律「**付费墙必须先于付费功能落地**」
+//         在工程上一直**无人强制**：common/entitlement.js 登记了 export / m3_combo(套餐) / m3_takeaway(外卖)，
+//         而全树**真实调用 hasFeature 的只有 1 处**（exportData/index.js:58，且是 export）；前端 utils/paywall.js
+//         此前只放行 saveLimit / export 两类 ⇒ 即便有人调 openPaywall('combo') 也会**静默 return**（表现＝「点了没反应」，
+//         与 R145「4 字按钮 fail」同族的**静默**形态）。⇒ 本轮把前端放行集合显式化为 PAYWALL_TYPES、
+//         i18n 双副本补 paywall.combo / paywall.takeaway，并把「登记能力 ⇒ 必须配墙」变成机器判据：
+//         判据 = L1 三单源可解析（各带下界）+ L2 能力派生键 ⊆ PAYWALL_TYPES（登记即必须弹得出墙）
+//         + L3 PAYWALL_TYPES 每键都有 TERMS.paywall[键]（否则 def undefined ⇒ 弹窗崩）+ L4 四字段非空
+//         + L5 影子样本（虚构 m3_foobar 塞进清单 ⇒ 必红）+ L6 云函数侧**双向**（代码里拦的能力必须已登记 /
+//         清单能力若已存在同名云函数目录则必须接 hasFeature）+ L7 自失效护栏。
+//         派生规则 = 去掉 m3_ 前缀（m3_combo → combo），**刻意不写手写映射表**（表本身会与两处清单漂移）。
+//         ⚠️ 联动：tools/check_modal_button_len.js 的 ALIASES 必须同步，否则新类型按钮文案超长会漏判；
+//         其 A-③/A-④ 已改为**从 ALIASES 派生**断言（写死候选数会逼后人「改断言迎合代码」）。
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -575,6 +588,8 @@ const SUITES = [
   ['index-field-alignment', 'tools/check_index_field_alignment.js'],
   // R144（round158 补挂，自 round129 挂账至今）：S0 落库的快照 5 字段在读写两侧必须齐全 —— 详见头注 R144 段。
   ['snapshot-fields', 'tools/check_snapshot_fields.js'],
+  // R159（round159 盘点套餐/外卖时发现）：云端登记了付费能力、前端却弹不出墙 —— 付费能力清单 ≡ 墙的落地面，详见头注 R159 段。
+  ['paywall-coverage', 'tools/check_paywall_coverage.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

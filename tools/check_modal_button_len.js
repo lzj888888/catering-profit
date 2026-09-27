@@ -13,6 +13,11 @@
 //    · 门禁此前 104 个套件**没有任何一条**管按钮长度 ⇒ 全绿也照样上线翻车。
 //   ⇒ 形态类缺陷必须立用例表单源，否则同样的事故会以别的文案重现。
 //
+// ===== R159 增补 =====
+//   paywall 触发面由「保存超限 / 导出」扩到 4 类（+ 套餐 `combo` / 外卖 `takeaway`）。
+//   `ALIASES` 表同步；A-③/A-④ 改为**从 ALIASES 派生**（候选数、展开键都不再写死），
+//   使"新加一类触发"只需改 ALIASES 一处，且新类型的按钮文案**自动纳入 4 字检查**。
+//
 // ===== 判据 =====
 // A. 解析器自带**钉死样本**（先证明解析器真的会解析，再看真实扫描结果）：
 //    · 单键表达式解析出 1 条 1 个候选
@@ -39,10 +44,13 @@ const TERMS = (function () {
 
 const LIMIT = 4;
 
-// 局部别名 → TERMS 键路径（def = TERMS.paywall[type]，type 两类都要判）
+// 局部别名 → TERMS 键路径（def = TERMS.paywall[type]；paywall 有几类触发就展开几类）
+// 🔴 R159：paywall 触发面由 2 类扩到 4 类（+ combo / takeaway）⇒ 本表**必须同步**，
+//    否则新类型的 primary/secondary 超长不会被判红 = 假绿（正是 R145 事故的再现路径）。
+//    ⇒ 下方 A-③/A-④ 已改成**从本表派生**断言，以后加类型只改这一处。
 const ALIASES = {
-  'def.primary': ['paywall.saveLimit.primary', 'paywall.export.primary'],
-  'def.secondary': ['paywall.saveLimit.secondary', 'paywall.export.secondary'],
+  'def.primary': ['paywall.saveLimit.primary', 'paywall.export.primary', 'paywall.combo.primary', 'paywall.takeaway.primary'],
+  'def.secondary': ['paywall.saveLimit.secondary', 'paywall.export.secondary', 'paywall.combo.secondary', 'paywall.takeaway.secondary'],
   'buttons.cancel': ['buttons.cancel'],
   'buttons.gotIt': ['buttons.gotIt'],
   'buttons.thinkAgain': ['buttons.thinkAgain'],
@@ -113,10 +121,13 @@ check('A-② 单键候选数 = 1 且键名正确', s1.length === 1 && candidates
 
 const s2 = parseButtons("    confirmText: TERMS.paywall.ctaShort || def.primary,", 'sample2');
 const c2 = s2.length === 1 ? candidatesOf(s2[0].expr) : { cands: [], unknown: [] };
-check('A-③ `||` 表达式候选数 = 3（ctaShort + def.primary 展开两类）', c2.cands.length === 3);
-check('A-④ 别名 def.primary 被展开为 saveLimit/export 两个键',
-  c2.cands.filter((c) => c.key === 'paywall.saveLimit.primary').length === 1 &&
-  c2.cands.filter((c) => c.key === 'paywall.export.primary').length === 1);
+// ⚠️ R159：候选数与展开键**从 ALIASES 派生**（不写死 3 / 两个键）——
+//   写死的话，每加一类 paywall 触发这条就会转红，逼后人"改断言迎合代码"（反向伤害）。
+const wantP = ALIASES['def.primary'];
+check('A-③ `||` 表达式候选数 = 1 + ALIASES[def.primary] 长度（= ' + (1 + wantP.length) + '）',
+  c2.cands.length === 1 + wantP.length, `实际 ${c2.cands.length}`);
+check('A-④ 别名 def.primary 被逐个展开为 ' + wantP.length + ' 个键',
+  wantP.every((k) => c2.cands.filter((c) => c.key === k).length === 1));
 
 const s3 = parseButtons("    title: TERMS.exp.privacyTitle,\n    content: TERMS.exp.privacyDesc,", 'sample3');
 check('A-⑤ 非按钮行不误抓', s3.length === 0);
