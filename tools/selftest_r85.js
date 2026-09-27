@@ -4,7 +4,8 @@
 //      手写路径 / 自动带出 / 配平四态 / 不阻断 / 平台名单源 / 双副本一致 /
 //      账期与长单号不误算金额(A16) / 带出误锁回归(A17) / 配平角色单源(A18) / 主题色单源(A19) /
 //      粘贴到 0 不被吞(A20) / 快速录入汇总(A21) / 快速框占位不串线(A22) / 已填平台数 M≤1 不显示(A23) /
-//      账单形态用例表：换行合计不翻倍 + 只有合计兜底填入(A24, R120)。
+//      账单形态用例表：换行合计不翻倍 + 只有合计兜底填入(A24, R120) /
+//      R162：有效订单数第 4 必填 + 补贴三项合计口径 + 防双记边界 + 列名双名(A25~A30)。
 const fs = require("fs"), path = require("path");
 const ROOT = path.resolve(__dirname, "..");
 let pass = 0, failN = 0;
@@ -16,8 +17,10 @@ function check(name, cond, detail) {
 const takeaway = require("../utils/takeaway.js");
 const {
   pickTakeawayMode, restoreDetail, subtotalOf, extractPaste, pasteFillValue, pasteFilledFromTotal, filledLabel,
+  snapshotDetail,   // R162：切模式快照（qty round-trip 用）
   subsidyTotal, reconcile, RECONCILE_THRESHOLD,
   mkByPlatTotal, mkByPlatFilled,
+  qtyTotal, perOrderYuan,   // R162：有效订单数（只回显，不进金额）
 } = takeaway;
 const TERMS = require("../miniprogram/i18n/terms.js").TERMS;
 const PLATFORMS = TERMS.ledger.income.find((g) => g.category === "takeaway").items;
@@ -66,7 +69,9 @@ console.log('===== A7 · 手写路径（粘贴非唯一入口：金额框直接�
 const inputJs = fs.readFileSync(path.join(ROOT, 'pages/month/input.js'), 'utf8');
 const inputWxml = fs.readFileSync(path.join(ROOT, 'pages/month/input.wxml'), 'utf8');
 check('A7 快速模式有 4 个金额框（手写可用）', /快速录入：每平台 1 个金额框/.test(inputWxml) && inputWxml.includes('bindinput="onSubAmount"'));
-check('A7 分项模式金额框仍绑 onTwDetail（wx:for 模板 3 处 → 4 平台 × 3 框 = 12 输入框，手写可用）', (inputWxml.match(/bindinput="onTwDetail"/g) || []).length === 3, `onTwDetail 模板 ${(inputWxml.match(/bindinput="onTwDetail"/g) || []).length} 处`);
+// ⚠️ R162：分项由 3 框变 4 框（加「有效订单数」）⇒ 模板处数 3 → 4。
+//   这条断言正是「加框但忘了同步守卫」的报警器：不同步就当场红。
+check('A7 分项模式金额框仍绑 onTwDetail（wx:for 模板 4 处 → 4 平台 × 4 框，手写可用）', (inputWxml.match(/bindinput="onTwDetail"/g) || []).length === 4, `onTwDetail 模板 ${(inputWxml.match(/bindinput="onTwDetail"/g) || []).length} 处`);
 check('A7 buildItems 快速模式按金额行提交（非粘贴专属）', /takeoutMode === 'fast'/.test(inputJs) && /sub_items: g.rows/.test(inputJs));
 
 console.log('===== A8 · 自动带出（活动补贴合计 → 费用侧外卖活动补贴）=====');
@@ -147,6 +152,11 @@ check('A15 推广费取数路径标注存在', /twPromoPathHint/.test(inputWxml)
 //   必然转红（那是「同步动作」而非「顺手改云函数逻辑」）。
 //   仍按 round103 的**白名单式**登记，**绝不放宽成 `cloudfunctions/` 全豁免**（那样等于守卫作废）：
 //   by=WorkBuddy / date=2026-09-23 / reason=round110 授权 M2 契约 v2（calcSandbox）+ 新增公共层单源 indicatorRef
+// ⚠️ 2026-09-27（round162）**七次触发** —— 同一时机关卡第 7 次：李老师授权落地 R161-1
+//   （外卖补第 4 必填「有效订单数」），该字段**必须落库**才不会「保存即丢」 ⇒ 后端要动
+//   saveLedger（入参校验 + 落库映射）与 getLedger（出参回读）。两者**均已在白名单内**
+//   （round103 登记）⇒ 本轮**沿用既有条目、不新增白名单**（避免把豁免面撑大），按纪律记明时点与理由：
+//   by=WorkBuddy / date=2026-09-27 / reason=round162 授权：外卖有效订单数 qty 落库（saveLedger 校验+映射 / getLedger 出参回读）
 const A15_EXEMPT = [
   /^cloudfunctions\/initDb\//,
   /^cloudfunctions\/getLedger\//,
@@ -388,6 +398,115 @@ check('A25 页面：全空即早退不碰行 + 项名走 reconcileRoles 单源',
   /if \(!active \|\| mk < 0 \|\| !name\)/.test(mkBody)
   && /reconcileRoles[\s\S]{0,140}commission/.test(mkBody)
   && mkBody.indexOf('expenseGroups = groups') > 0);
+
+console.log('===== A26 · R162 有效订单数（qty）与补贴三项合计口径 =====');
+// 数据基础：review/evidence/r161_waimai/agg_taobao_shangou_2026-08.json
+//   淘宝闪购 2026-08：优惠前总额 6585.08 / 有效订单 150 / 商家到手 3779.65
+//   ⇒ 单均优惠前 = 43.90（本组锚点用真值，不用随手编的数）
+console.log('—— A26-1 qty 求和（空值按 0，0 是合法值）——');
+check('A26-1 qtyTotal 求和（含空串 / 缺行 / 字符串数字）',
+  qtyTotal([{ qty: '150' }, { qty: '' }, { qty: 0 }, {}]) === 150, String(qtyTotal([{ qty: '150' }, { qty: '' }, { qty: 0 }, {}])));
+check('A26-1 qtyTotal 空数组 / null ⇒ 0（不得 NaN）', qtyTotal([]) === 0 && qtyTotal(null) === 0);
+check('A26-1 真值锚点：150 单 ⇒ 单均优惠前 43.90（6585.08 ÷ 150）',
+  perOrderYuan(6585.08, 150) === '43.90', perOrderYuan(6585.08, 150));
+
+console.log('—— A26-2 perOrderYuan 边界（除零 / 零元）——');
+check('A26-2 订单数为 0 / 空 ⇒ 返回空串（不得渲染 NaN）',
+  perOrderYuan(6585.08, 0) === '' && perOrderYuan(6585.08, '') === '' && perOrderYuan(6585.08, undefined) === '');
+check('A26-2 总额 0 但订单数 > 0 ⇒ 0.00（0 元是算出来的，不是没算）', perOrderYuan(0, 150) === '0.00');
+check('A26-2 真值锚点：单均到手 25.20（3779.65 ÷ 150）', perOrderYuan(3779.65, 150) === '25.20', perOrderYuan(3779.65, 150));
+
+console.log('—— A26-3 qty 随快照 round-trip（切模式来回不得丢）——');
+const r162snap = snapshotDetail([{ platform: PLATFORMS[0], goods: '100', pack: '20', subsidy: '30', qty: '150' }]);
+check('A26-3 snapshotDetail 带 qty', r162snap[0].qty === '150', String(r162snap[0].qty));
+const r162restored = restoreDetail(r162snap, PLATFORMS);
+check('A26-3 restoreDetail 回填 qty（非空原样回）', r162restored[0].qty === '150', String(r162restored[0].qty));
+check('A26-3 回填后小计仍按三框算（150 不得混进金额）', r162restored[0].subtotal === '150.00', r162restored[0].subtotal);
+const r162zero = restoreDetail([{ platform: PLATFORMS[0], qty: '0' }], PLATFORMS);
+check('A26-3 qty 填 0 不被当空吃掉（字符串形态，用 || 会丢）', r162zero[0].qty === '0', JSON.stringify(r162zero[0].qty));
+// ⚠️ 加严（R162 变异回灌 M2 抓出来的假绿）：上面那条用**字符串** '0'，而字符串 '0' 是 truthy
+//   ⇒ 即便实现写成 `s.qty || ...` 也照样通过（守卫看不见这个坑）。
+//   **数字 0 才是真会丢的形态**（0 是 falsy）⇒ 必须单独断言，否则 M2 恒绿。
+check('A26-3 qty 为**数字 0** 同样不得被吃掉（falsy 形态，本条才是 M2 的靶心）',
+  restoreDetail([{ platform: PLATFORMS[0], qty: 0 }], PLATFORMS)[0].qty === '0',
+  JSON.stringify(restoreDetail([{ platform: PLATFORMS[0], qty: 0 }], PLATFORMS)[0].qty));
+check('A26-3 老数据（无 qty）⇒ 空串而非 undefined', restoreDetail([{ platform: PLATFORMS[0] }], PLATFORMS)[0].qty === '');
+
+console.log('—— A26-4 qty 绝不进金额（本组最硬的一条）——');
+check('A26-4 subtotalOf 只吃三框：qty 不参与小计',
+  subtotalOf('100', '20', '30') === '150.00' && (() => {
+    const src = fs.readFileSync(path.join(ROOT, 'utils/takeaway.js'), 'utf8');
+    const body = (src.match(/function subtotalOf\([^)]*\) \{[\s\S]{0,400}?\n\}/) || [''])[0];
+    return body.length > 0 && !/\bqty\b/.test(body);
+  })());
+check('A26-4 utils 源码里 qty 只出现在 qtyTotal/perOrderYuan/快照 四处（不得进 reconcile）',
+  (() => {
+    const src = fs.readFileSync(path.join(ROOT, 'utils/takeaway.js'), 'utf8');
+    const recBody = (src.match(/function reconcile\(p\) \{[\s\S]*?\n\}/) || [''])[0];
+    return recBody.length > 0 && !/\bqty\b/.test(recBody);
+  })());
+
+console.log('—— A26-5 页面：第 4 框 + 快速模式订单数 + 单均回显 ——');
+check('A26-5 分项有第 4 框（data-field="qty" 且绑 onTwDetail）',
+  /data-field="qty"/.test(inputWxml) && /value="\{\{r\.qty\}\}"/.test(inputWxml));
+check('A26-5 快速模式也有订单数框（onFastQty）', /onFastQty/.test(inputWxml) && /onFastQty\(e\)/.test(inputJs));
+check('A26-5 订单合计 / 单均只回显（takeoutQtyTotal、takeoutPerOrder 由 syncTakeoutSum 算）',
+  /takeoutQtyTotal/.test(inputWxml) && /takeoutPerOrder/.test(inputWxml) && /takeoutPerOrder: perOrder/.test(inputJs));
+check('A26-5 术语键齐备（ordersField/ordersPh/ordersHint/ordersTotalLabel/perOrderLabel/perOrderHint）',
+  ['ordersField', 'ordersPh', 'ordersHint', 'ordersTotalLabel', 'perOrderLabel', 'perOrderHint']
+    .every((k) => typeof TERMS.ledger.takeawayMode[k] === 'string' && TERMS.ledger.takeawayMode[k].length > 0));
+
+console.log('—— A26-6 R161-2 补贴三项合计口径（防少抄两列）——');
+check('A26-6 补贴字段显示名 = 商家承担全部补贴（合计）',
+  TERMS.ledger.takeawayMode.subsidyField === '商家承担全部补贴（合计）', TERMS.ledger.takeawayMode.subsidyField);
+check('A26-6 口径小字点名三项（活动 / 代金券 / 配送费活动）', (() => {
+  const n = TERMS.ledger.takeawayMode.subsidyNote || '';
+  return n.includes('商家活动补贴') && n.includes('商家代金券补贴') && n.includes('商家配送费活动补贴');
+})());
+check('A26-6 口径小字渲染在补贴框下（twSubsidyNote 出现在补贴字段块内）', (() => {
+  const i = inputWxml.indexOf('twSubsidyField');
+  const j = inputWxml.indexOf('twSubsidyNote');
+  const k = inputWxml.indexOf('twOrdersField');
+  return i > 0 && j > i && k > j;
+})());
+
+console.log('—— A26-7 R161-3 防双记边界句 ——');
+check('A26-7 boundaryNote 文案存在且点名两项不可重复录入', (() => {
+  const n = TERMS.ledger.takeawayMode.boundaryNote || '';
+  return n.includes('外卖活动补贴') && n.includes('外卖配送补贴') && n.includes('不能二次计入');
+})());
+check('A26-7 边界句挂在展开块最上方（先于模式开关与口径句）', (() => {
+  const b = inputWxml.indexOf('twBoundaryNote');
+  const s = inputWxml.indexOf('twSecTitle');
+  const g = inputWxml.indexOf('twScopeGuide');
+  return b > 0 && b < s && s < g;
+})());
+
+console.log('—— A26-8 R161-9 费用项注列名双名对照 ——');
+check('A26-8 外卖配送服务费注含「配送服务费」且点出美团别名',
+  /配送服务费/.test(TERMS.ledger.expenseItemNotes['外卖配送服务费'])
+  && /履约服务费/.test(TERMS.ledger.expenseItemNotes['外卖配送服务费']),
+  TERMS.ledger.expenseItemNotes['外卖配送服务费']);
+
+console.log('—— A26-9 落库链路（qty 可选、不参与金额、老数据无感）——');
+const vSrc = fs.readFileSync(path.join(ROOT, 'cloudfunctions/saveLedger/validate.js'), 'utf8');
+const sSrc = fs.readFileSync(path.join(ROOT, 'cloudfunctions/saveLedger/index.js'), 'utf8');
+const gSrc = fs.readFileSync(path.join(ROOT, 'cloudfunctions/getLedger/index.js'), 'utf8');
+check('A26-9 validate 接受可选 qty 且做非负整数校验',
+  /si\.qty !== undefined && si\.qty !== null/.test(vSrc) && /qty 必须是非负整数/.test(vSrc));
+check('A26-9 qty 不进大类金额汇总（sum += amt 仍在，qty 不累加）',
+  /sum \+= amt;/.test(vSrc) && !/\bsum \+= .*qty/.test(vSrc));
+check('A26-9 落库带 qty（saveLedger toSnake）', /o\.qty = si\.qty/.test(sSrc));
+check('A26-9 出参带 qty（getLedger toSnake + normalizeToCamel）',
+  (gSrc.match(/o\.qty = si\.qty/g) || []).length >= 2, `命中 ${(gSrc.match(/o\.qty = si\.qty/g) || []).length} 处`);
+check('A26-9 前端 buildItems 只在合法非负整数时提交 qty',
+  /Number\.isInteger\(q\) && q >= 0/.test(inputJs));
+check('A26-9 buildItems 过滤判据放宽为「金额 或 订单数」（只填订单数不得被滤掉）',
+  /this\._hasVal\(r\.subtotal\) \|\| this\._hasVal\(r\.qty\)/.test(inputJs)
+  && /this\._hasVal\(r\.amountYuan\) \|\| this\._hasVal\(r\.qty\)/.test(inputJs));
+check('A26-9 回读带 qty（rebuildFromItems / restoreDetail 两处）',
+  /qty: \(si\.qty === undefined \|\| si\.qty === null\) \? '' : String\(si\.qty\)/.test(inputJs)
+  && /qty: \(r\.qty === undefined \|\| r\.qty === null\) \? '' : String\(r\.qty\)/.test(inputJs));
 
 console.log(`\n==== R85 外卖段自测：${pass} 通过 / ${failN} 失败 ====`);
 process.exit(failN === 0 ? 0 : 1);

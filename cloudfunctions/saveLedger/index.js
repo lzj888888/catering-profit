@@ -120,7 +120,12 @@ exports.main = async (event) => {
     category: it.category || '',
     name: it.name || '',
     amount_fen: it.amountFen,            // 云函数汇总后的大类金额（分）
-    sub_items: (it.subItems || []).map((si) => ({ sub_item: si.subItem, amount_fen: si.amountFen })),
+    // R162：qty（有效订单数）随细项落库；**没有该字段的行不补 qty**（老数据保持原样）
+    sub_items: (it.subItems || []).map((si) => {
+      const o = { sub_item: si.subItem, amount_fen: si.amountFen };
+      if (typeof si.qty === 'number' && Number.isInteger(si.qty) && si.qty >= 0) o.qty = si.qty;
+      return o;
+    }),
   }));
   const incomeItemsSnake = toSnake(v.incomeItems);
   const expenseItemsSnake = toSnake(v.expenseItems);

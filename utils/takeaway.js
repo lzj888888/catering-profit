@@ -1,6 +1,9 @@
 // utils/takeaway.js —— R85 · 外卖段取数与录入（纯函数，可单测；页面 input.js 调用）
 //
 // 规范依据：specs/dev-specs/core/开发规范v1.0_ModuleA_收入费用核算.md §A.11（2026-09-22 锁定，不改口径）。
+// 🔴 R162 补充（规范依据：开发规范v1.1_ModuleA增量_外卖有效订单数与补贴口径.md）：
+//   分项行新增第 4 个输入「有效订单数 qty」—— **它不参与任何金额计算**（见 qtyTotal / perOrderYuan 注释），
+//   只用于回显单均指标；金额口径（收入 = 商品总价 + 打包费 + 补贴）一字未动。
 // 🔒 单一数据源：平台名与顺序只来自 terms.js::ledger.income[takeaway].items；
 //   营销项名来自 collections.js::SEED_EXPENSE_ITEMS(marketing)（terms 的 expenseItemNotes 按展示名挂）。
 // 🔴 纪律（A.11.7 V1-V3 未验证）：配平校验**只做软提示** —— 不阻断保存、不参与利润、不写入任何金额。
@@ -27,9 +30,11 @@ function takeawayModeKey(shopId, month, prefix) {
 }
 
 /**
- * 快速 → 分项快照保留：切模式前把当前分项行（平台名 + 三个数）存快照；
+ * 快速 → 分项快照保留：切模式前把当前分项行（平台名 + 四个数）存快照；
  * 切回分项时原样恢复，不丢值。
- * 快照结构：[{ platform, goods, pack, subsidy }]
+ * 快照结构：[{ platform, goods, pack, subsidy, qty }]
+ * ⚠️ R162：qty（有效订单数）必须一起快照 —— 切模式来回一趟把订单数丢了，
+ *   等于当着用户的面吃掉他刚填的第 4 个必填（同族：round-trip 丢值）。
  */
 function snapshotDetail(rows) {
   return (Array.isArray(rows) ? rows : []).map((r) => ({
@@ -37,24 +42,30 @@ function snapshotDetail(rows) {
     goods: (r && r.goods) || '',
     pack: (r && r.pack) || '',
     subsidy: (r && r.subsidy) || '',
+    qty: (r && r.qty) || '',
   }));
 }
 
 /**
  * 用快照恢复分项行（平台名按预设清单铺全，金额按平台名回填）。
- * @param {Array} snap 快照 [{platform,goods,pack,subsidy}]
+ * @param {Array} snap 快照 [{platform,goods,pack,subsidy,qty}]
  * @param {Array} presets 平台名清单（terms takeaway items）
- * @returns {Array} [{ platform, goods, pack, subsidy, subtotal, fixed:true }]
+ * @returns {Array} [{ platform, goods, pack, subsidy, qty, subtotal, fixed:true }]
  */
 function restoreDetail(snap, presets) {
   const src = Array.isArray(snap) ? snap : [];
   const byName = {};
   for (const s of src) {
     if (s && s.platform) {
-      byName[s.platform] = byName[s.platform] || { goods: '', pack: '', subsidy: '' };
+      byName[s.platform] = byName[s.platform] || { goods: '', pack: '', subsidy: '', qty: '' };
       byName[s.platform].goods = s.goods || byName[s.platform].goods;
       byName[s.platform].pack = s.pack || byName[s.platform].pack;
       byName[s.platform].subsidy = s.subsidy || byName[s.platform].subsidy;
+      // 🔴 R162：只回填**非空**的 qty —— 用 `||` 会把合法的 '0' 也当成空吃掉；
+      //   而 qty 为 0 是平台账单里真实存在且必须能存的值（当月一单没出）。
+      if (s.qty !== undefined && s.qty !== null && String(s.qty).trim() !== '') {
+        byName[s.platform].qty = String(s.qty);
+      }
     }
   }
   return (Array.isArray(presets) ? presets : []).map((name) => {
@@ -67,16 +78,48 @@ function restoreDetail(snap, presets) {
       goods,
       pack,
       subsidy,
+      qty: (v.qty === undefined || v.qty === null) ? '' : String(v.qty),
       subtotal: subtotalOf(goods, pack, subsidy),
       fixed: true,
     };
   });
 }
 
-/** 分项小计（元，字符串）：三项相加（前端预计算，WXML 不支持方法调用）。 */
+/** 分项小计（元，字符串）：三项相加（前端预计算，WXML 不支持方法调用）。
+ *  ⚠️ R162：**qty 不进小计** —— 有效订单数是数量、不是钱，混进来就是凭空多出一笔收入。 */
 function subtotalOf(goods, pack, subsidy) {
   const s = (Number(goods) || 0) + (Number(pack) || 0) + (Number(subsidy) || 0);
   return s ? s.toFixed(2) : '';
+}
+
+// ===================== R162 · 有效订单数（qty）—— 只回显，不进任何金额 =====================
+
+/**
+ * 各平台「有效订单数」求和（单）。
+ * 🔴 硬约束：qty **只用于派生指标回显**（单均），不得进入 subtotalOf / reconcile / 任何金额求和 ——
+ *   订单数是一维数量，与金额相加没有意义，混进去就是静默算错钱（R161 实测：三平台账单都有该列，
+ *   且缺了它所有单均指标算不出来）。
+ * @param {Array} rows [{qty}]
+ * @returns {number} 有效订单合计（单）
+ */
+function qtyTotal(rows) {
+  return (Array.isArray(rows) ? rows : []).reduce((s, r) => s + (Number(r && r.qty) || 0), 0);
+}
+
+/**
+ * 单均值（元，两位小数字符串）：totalYuan ÷ count。
+ * ⚠️ count ≤ 0 返回 ''（除零 ⇒ NaN 会渲染成 "NaN"，比留空更糟）；
+ *   总额为 0 时返回 '0.00'（0 元是合法结果，不是没算出来）。
+ * @param {number|string} totalYuan 金额合计（元）
+ * @param {number|string} count 有效订单数（单）
+ * @returns {string} '' = 算不出来（没订单数）；否则两位小数
+ */
+function perOrderYuan(totalYuan, count) {
+  const n = Number(count);
+  const t = Number(totalYuan);
+  if (!(n > 0)) return '';
+  if (!Number.isFinite(t)) return '';
+  return (t / n).toFixed(2);
 }
 
 // ===================== 粘贴提取（A.11.5：只提取数字并求和） =====================
@@ -300,4 +343,6 @@ module.exports = {
   extractPaste, firstNumber, stripNonMoney, pasteFillValue, pasteFilledFromTotal, filledLabel,
   subsidyTotal, reconcile, RECONCILE_THRESHOLD,
   mkByPlatTotal, mkByPlatFilled,
+  // R162：有效订单数（只回显，不进金额）
+  qtyTotal, perOrderYuan,
 };

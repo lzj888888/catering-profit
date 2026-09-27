@@ -25,7 +25,12 @@ function normalizeToCamel(rawItems) {
       category: it.category || '',
       name: it.name || '',
       amountFen: amt != null ? amt : 0,
-      subItems: subRaw.map((si) => ({ subItem: si.sub_item !== undefined ? si.sub_item : si.subItem || '', amountFen: si.amount_fen !== undefined ? si.amount_fen : si.amountFen })),
+      // R162：qty（有效订单数）回读 —— 库内没有该字段的老数据 ⇒ 不带该键（前端按 undefined 处理为未填）
+      subItems: subRaw.map((si) => {
+        const o = { subItem: si.sub_item !== undefined ? si.sub_item : si.subItem || '', amountFen: si.amount_fen !== undefined ? si.amount_fen : si.amountFen };
+        if (typeof si.qty === 'number' && Number.isInteger(si.qty) && si.qty >= 0) o.qty = si.qty;
+        return o;
+      }),
     };
   });
 }
@@ -34,7 +39,12 @@ function toSnake(items) {
     category: it.category || '',
     name: it.name || '',
     amount_fen: it.amountFen,
-    sub_items: (it.subItems || []).map((si) => ({ sub_item: si.subItem, amount_fen: si.amountFen })),
+    // R162：qty 出参（契约层 snake_case 与入参同名）；无 qty 的行不补键
+    sub_items: (it.subItems || []).map((si) => {
+      const o = { sub_item: si.subItem, amount_fen: si.amountFen };
+      if (typeof si.qty === 'number' && Number.isInteger(si.qty) && si.qty >= 0) o.qty = si.qty;
+      return o;
+    }),
   }));
 }
 

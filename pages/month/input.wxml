@@ -103,6 +103,10 @@
          现在接上真折叠：展开 = 完整录入（本块）；折叠 = 只读摘要（紧随其后的 elif 分支）。
          ⚠️ 条件必须写成「takeaway && g.expanded」并**排在摘要分支之前** —— wx:elif 按顺序匹配。 -->
     <block wx:elif="{{g.category === 'takeaway' && g.expanded}}">
+      <!-- 🔴 R161-3 防双记边界句（固定，挂在整段最上方、先于模式开关）：
+           平台的「商家配送费活动补贴」已含在补贴合计里 ⇒ 费用侧两项不得再记一次。 -->
+      <view class="tw-boundary">{{t.twBoundaryNote}}</view>
+
       <!-- 模式开关（复用堂食 dineMode 约定：仅存本地、默认按数据推断、快照恢复） -->
       <view class="dm-wrap">
         <view class="dm-sec">{{t.twSecTitle}}</view>
@@ -131,6 +135,11 @@
               placeholder="{{t.twFastPh}}" data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}"
               bindinput="onSubAmount" disabled="{{readOnly}}"
               adjust-position="{{true}}" cursor-spacing="20" />
+            <!-- 🔴 R161-1：快速模式也要能填有效订单数（否则单均指标在默认模式下永远算不出来） -->
+            <input class="val-input dine-qty" type="number" confirm-type="done" value="{{r.qty}}"
+              placeholder="{{t.twOrdersPh}}" data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}"
+              bindinput="onFastQty" disabled="{{readOnly}}"
+              adjust-position="{{true}}" cursor-spacing="20" />
           </view>
         </view>
         <!-- 汇总（R119：各平台填完后给「合计 + 已填平台数」；合计只回显，不写入金额） -->
@@ -138,6 +147,17 @@
           <text class="dine-sum-lbl">{{t.twTotalLabel}}</text>
           <text class="dine-sum-val">{{takeoutSumYuan}}</text>
         </view>
+        <!-- R162：有效订单合计 + 单均（只回显，不写入任何金额） -->
+        <view class="dine-sum">
+          <text class="dine-sum-lbl">{{t.twOrdersTotalLabel}}</text>
+          <text class="dine-sum-val">{{takeoutQtyTotal}}</text>
+        </view>
+        <view class="dine-sum" wx:if="{{takeoutPerOrder}}">
+          <text class="dine-sum-lbl">{{t.twPerOrderLabel}}</text>
+          <text class="dine-sum-val">{{takeoutPerOrder}}</text>
+        </view>
+        <view class="hint" wx:if="{{!takeoutQtyTotal}}">{{t.twOrdersHint}}</view>
+        <view class="hint" wx:else>{{t.twPerOrderHint}}</view>
         <view class="hint">{{takeoutFilledText}}</view>
         <view class="hint">{{t.twTotalAutoHint}}</view>
         <!-- T3′（round97）：快速模式轻量自查 —— 零依赖判据（不看补贴，只看营销段是否记了佣金/配送费） -->
@@ -176,6 +196,17 @@
               <input class="val-input" type="digit" confirm-type="done" value="{{r.subsidy}}" placeholder="{{t.twSubsidyPh}}"
                 data-field="subsidy" data-idx="{{ri}}" bindinput="onTwDetail" disabled="{{readOnly}}"
                 adjust-position="{{true}}" cursor-spacing="20" />
+              <!-- 🔴 R161-2：口径钉死在框下（商家承担补贴在账单里是三列，只抄一列会少扣钱） -->
+              <view class="tw-field-note">{{t.twSubsidyNote}}</view>
+            </view>
+            <!-- 🔴 R161-1：第 4 个必填 —— 有效订单数（只用于单均，不进金额） -->
+            <view class="tw-field">
+              <view class="tw-field-head">
+                <text class="tw-field-lbl">{{t.twOrdersField}}</text>
+              </view>
+              <input class="val-input" type="number" confirm-type="done" value="{{r.qty}}" placeholder="{{t.twOrdersPh}}"
+                data-field="qty" data-idx="{{ri}}" bindinput="onTwDetail" disabled="{{readOnly}}"
+                adjust-position="{{true}}" cursor-spacing="20" />
             </view>
           </view>
           <view class="tw-subtotal">{{t.twSumLabel}}：{{r.subtotal || '0.00'}}</view>
@@ -185,6 +216,16 @@
           <text class="dine-sum-val">{{takeoutSumYuan}}</text>
         </view>
         <view class="hint">{{t.twSumAutoHint}}</view>
+        <!-- R162：有效订单合计 + 单均（只回显，不写入任何金额） -->
+        <view class="dine-sum">
+          <text class="dine-sum-lbl">{{t.twOrdersTotalLabel}}</text>
+          <text class="dine-sum-val">{{takeoutQtyTotal}}</text>
+        </view>
+        <view class="dine-sum" wx:if="{{takeoutPerOrder}}">
+          <text class="dine-sum-lbl">{{t.twPerOrderLabel}}</text>
+          <text class="dine-sum-val">{{takeoutPerOrder}}</text>
+        </view>
+        <view class="hint">{{t.twOrdersHint}}</view>
 
         <!-- 配平校验（A.11.4 · 只做软提示：不阻断保存、不参与利润、不写入金额） -->
         <view class="tw-rec">

@@ -11,7 +11,9 @@ const ui = require('../../utils/ui.js');
 const { normalizeDineRows, markFixedRows } = require('../../utils/dineChannels.js');
 const { pickTakeawayMode, takeawayModeKey, snapshotDetail, restoreDetail, subtotalOf,
   extractPaste, pasteFillValue, pasteFilledFromTotal, filledLabel, subsidyTotal, reconcile,
-  mkByPlatTotal, mkByPlatFilled } = require('../../utils/takeaway.js');
+  mkByPlatTotal, mkByPlatFilled,
+  // R162：有效订单数（qty）—— 只用于单均回显，绝不进金额
+  qtyTotal, perOrderYuan } = require('../../utils/takeaway.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 
 const DRAFT_KEY = 'draft_month_input_';
@@ -117,6 +119,17 @@ Page({
       twGoodsPh: TERMS.ledger.takeawayMode.goodsPh,
       twPackPh: TERMS.ledger.takeawayMode.packPh,
       twSubsidyPh: TERMS.ledger.takeawayMode.subsidyPh,
+      // R161-2：补贴框下的固定口径小字（商家承担补贴 = 三列相加，只抄一列会少扣钱）
+      twSubsidyNote: TERMS.ledger.takeawayMode.subsidyNote,
+      // R161-3：外卖专段顶部的防双记边界句
+      twBoundaryNote: TERMS.ledger.takeawayMode.boundaryNote,
+      // R161-1：第 4 个必填「有效订单数」+ 单均回显
+      twOrdersField: TERMS.ledger.takeawayMode.ordersField,
+      twOrdersPh: TERMS.ledger.takeawayMode.ordersPh,
+      twOrdersHint: TERMS.ledger.takeawayMode.ordersHint,
+      twOrdersTotalLabel: TERMS.ledger.takeawayMode.ordersTotalLabel,
+      twPerOrderLabel: TERMS.ledger.takeawayMode.perOrderLabel,
+      twPerOrderHint: TERMS.ledger.takeawayMode.perOrderHint,
       twPasteBtn: TERMS.ledger.takeawayMode.pasteBtn,
       twPasteAreaTitle: TERMS.ledger.takeawayMode.pasteAreaTitle,
       twPasteAreaPh: TERMS.ledger.takeawayMode.pasteAreaPh,
@@ -163,9 +176,12 @@ Page({
     dineSumYuan: '0.00',       // 分项模式：各渠道相加**自动算出**（预计算，WXML 不支持方法调用）
     // R85：外卖录入模式（'fast' | 'detail'，同堂食方案 A 严格互斥）
     takeoutMode: 'fast',
-    takeoutDetailRows: [],     // 分项模式行快照 [{platform,goods,pack,subsidy}]（切模式/草稿留存）
+    takeoutDetailRows: [],     // 分项模式行快照 [{platform,goods,pack,subsidy,qty}]（切模式/草稿留存）
     takeoutSumYuan: '0.00',    // 外卖收入合计（预计算；按模式取数：快速=Σ平台单值 / 分项=Σ小计）
     takeoutFilledText: '',     // 「已填 N / M 个平台」预计算串（WXML 不支持方法调用）
+    // R162：有效订单数合计（单）与单均（元）—— **只回显**，不进任何金额、不参与利润
+    takeoutQtyTotal: '0',
+    takeoutPerOrder: '',
     twPasteFor: '',            // 当前粘贴目标（'goods'|'pack'|'subsidy'|'platform' + idx）
     twPasteText: '',           // 粘贴区文本（textarea v-model）
     twPasteOpen: false,        // 粘贴面板是否打开
@@ -310,7 +326,12 @@ Page({
       if (found) {
         const subs = found.sub_items || [];
         if (subs.length > 0) {
-          rows = subs.map((si) => ({ subItem: si.sub_item || '', amountYuan: si.amount_fen ? api.fenToYuan(si.amount_fen) : '' }));
+          // R162：有效订单数（qty）随细项一起回读；没有该字段的老数据 ⇒ ''（不填，不臆造）
+          rows = subs.map((si) => ({
+            subItem: si.sub_item || '',
+            amountYuan: si.amount_fen ? api.fenToYuan(si.amount_fen) : '',
+            qty: (si.qty === undefined || si.qty === null) ? '' : String(si.qty),
+          }));
         } else if (found.amount_fen) {
           rows = [{ subItem: '', amountYuan: api.fenToYuan(found.amount_fen) }];
         }
@@ -357,7 +378,12 @@ Page({
       //   （分项三明细不落库，只有小计回后端；切分项时按小计铺 goods，用户可继续拆）
       const twG = incomeGroups.find((x) => x.category === 'takeaway');
       const takeoutDetailRows = restoreDetail(
-        (twG && twG.rows || []).map((r) => ({ platform: r.subItem || '', goods: r.amountYuan || '' })),
+        // R162：回读时把 qty 一起带进分项行（否则保存过的订单数一进页面就"丢"了）
+        (twG && twG.rows || []).map((r) => ({
+          platform: r.subItem || '',
+          goods: r.amountYuan || '',
+          qty: (r.qty === undefined || r.qty === null) ? '' : String(r.qty),
+        })),
         TERMS.ledger.income.find((g) => g.category === 'takeaway') ? TERMS.ledger.income.find((g) => g.category === 'takeaway').items : [],
       );
       // 核算方式读回（服务端权威；口径锁：经营参考利润用直接填值，真实利润才倒轧）
@@ -446,6 +472,18 @@ Page({
   onSubAmount(e) {
     const { kind, gidx, ridx } = e.currentTarget.dataset;
     this.updateRow(kind, Number(gidx), Number(ridx), { amountYuan: e.detail.value });
+  },
+  // 🔴 R162（R161-1）：快速模式的「有效订单数」框。
+  //   ⚠️ 与金额框并列但**不同字段**：qty 是数量，不进金额、不进小计、不进利润（见 utils/takeaway.js qtyTotal 注释）。
+  onFastQty(e) {
+    const { kind, gidx, ridx } = e.currentTarget.dataset;
+    this.updateRow(kind, Number(gidx), Number(ridx), { qty: e.detail.value });
+    this.syncTakeoutSum();   // 订单数变了 ⇒ 合计/单均都要重算
+  },
+  // 「这一格算不算填了」的统一判据（R162 引入，供 buildItems 两个分支共用）。
+  //   ⚠️ 只看"有没有输入"，不看数值大小 ⇒ 填 0 也算填过（与 mkByPlatFilled 同语义，防"填了 0 被当空丢掉"）。
+  _hasVal(v) {
+    return String(v === undefined || v === null ? '' : v).trim() !== '';
   },
   updateRow(kind, gidx, ridx, patch) {
     const key = kind === 'income' ? 'incomeGroups' : 'expenseGroups';
@@ -748,11 +786,17 @@ Page({
     const filled = isFast
       ? platforms.filter((r) => Number(r.amountYuan) > 0).length
       : detail.filter((r) => Number(r.goods) > 0 || Number(r.pack) > 0 || Number(r.subsidy) > 0).length;
+    // 🔴 R162：有效订单数按**当前模式**取数（与金额同源同模式，避免两处各写一份 ⇒ 改一眼漏一眼）。
+    //   ⚠️ qty 只喂给 qtyTotal / perOrderYuan，**绝不进 sum**（数量与金额相加没有意义）。
+    const qty = qtyTotal(isFast ? platforms : detail);
+    const perOrder = perOrderYuan(sum, qty);
     const t = TERMS.ledger.takeawayMode || {};
     this.setData({
       takeoutSumYuan: sum ? sum.toFixed(2) : '0.00',
       // 只有 1 个平台行（整类总额）时不给这句，避免噪音（见 filledLabel 注释）
       takeoutFilledText: filledLabel(t.filledTpl || '已填 {n} / {m} 个平台', filled, platforms.length),
+      takeoutQtyTotal: String(qty),
+      takeoutPerOrder: perOrder,
     });
     this.syncSubsidyCarry();   // 带出联动：活动补贴合计 → 费用侧（仅分项模式生效）
     this.syncTakeoutSelfCheck();   // T3′：外卖收入变了 → 重算轻量自查提示
@@ -789,11 +833,13 @@ Page({
       // 快速 → 分项：把快速模式的各平台金额铺到分项「商品总价」行（单一数据源，不重铺、不丢数）
       const groups = this.data.incomeGroups.slice();
       const g = Object.assign({}, groups[gi]);
+      // ⚠️ R162：qty 必须跟着走 —— 快速模式填的订单数切到分项要还在（反之亦然）。
       const snap = (g.rows || []).map((r) => ({
         platform: r.subItem || '',
         goods: r.amountYuan || '',
         pack: '',
         subsidy: '',
+        qty: r.qty === undefined || r.qty === null ? '' : String(r.qty),
       }));
       this.setData({ takeoutMode: val, takeoutDetailRows: restoreDetail(snap, this.takeoutPlatforms()) });
       this.saveTakeoutMode(val);
@@ -802,10 +848,16 @@ Page({
       // 分项 → 快速：先快照（草稿留存），再按平台小计收拢为单行总额
       const snap = (this.data.takeoutDetailRows || []).map((r) => ({
         platform: r.platform || '', goods: r.goods || '', pack: r.pack || '', subsidy: r.subsidy || '',
+        qty: r.qty === undefined || r.qty === null ? '' : String(r.qty),
       }));
       const groups = this.data.incomeGroups.slice();
       const g = Object.assign({}, groups[gi]);
-      g.rows = this.decorateRows(g, snap.map((r) => ({ subItem: r.platform, amountYuan: subtotalOf(r.goods, r.pack, r.subsidy) })));
+      // ⚠️ R162：收拢成单行总额时 qty 一并带回 g.rows（快速模式的订单数就存在这里）
+      g.rows = this.decorateRows(g, snap.map((r) => ({
+        subItem: r.platform,
+        amountYuan: subtotalOf(r.goods, r.pack, r.subsidy),
+        qty: r.qty,
+      })));
       groups[gi] = g;
       this.setData({ incomeGroups: groups, takeoutMode: val, takeoutDetailRows: snap });
       this.saveTakeoutMode(val);
@@ -1155,9 +1207,17 @@ Page({
         return {
           category: g.category,
           name: g.label,
+          // 🔴 R162：过滤判据由「只看了金额」放宽为「有金额 **或** 有有效订单数」——
+          //   只填了订单数、金额还没填的行若被滤掉 ⇒ 用户刚填的第 4 个必填**保存即丢**。
+          //   amount_fen 补 0（api.yuanToFen('') === 0，合法非负整数）。
           sub_items: rows
-            .filter((r) => String(r.subtotal === undefined || r.subtotal === null ? '' : r.subtotal).trim() !== '')
-            .map((r) => ({ sub_item: (r.platform || '').trim(), amount_fen: api.yuanToFen(r.subtotal) })),
+            .filter((r) => this._hasVal(r.subtotal) || this._hasVal(r.qty))
+            .map((r) => {
+              const it = { sub_item: (r.platform || '').trim(), amount_fen: api.yuanToFen(r.subtotal) };
+              const q = Number(r.qty);
+              if (Number.isInteger(q) && q >= 0) it.qty = q;   // 只提交合法非负整数；其余不提交（云端严校验会拒）
+              return it;
+            }),
         };
       }
       return {
@@ -1166,9 +1226,16 @@ Page({
         // ⚠️ 堂食预设渠道是「全集常驻」，多数行是空的 ⇒ 只提交**填了金额**的行，
         //    否则每保存一次就往后端塞一堆空 sub_item（G10i 守）。
         //    注意：快速模式单行（无名、有金额）必须保留 ⇒ 判据看金额，不看名字。
+        // 🔴 R162：外卖快速模式的行**可能只有订单数、还没填金额** ⇒ 判据同样放宽为「金额 或 订单数」。
+        //   堂食/费用类行没有 qty ⇒ `_hasVal(r.qty)` 恒 false，行为与改动前**逐行等价**（无回归）。
         sub_items: g.rows
-          .filter((r) => String(r.amountYuan === undefined || r.amountYuan === null ? '' : r.amountYuan).trim() !== '')
-          .map((r) => ({ sub_item: (r.subItem || '').trim(), amount_fen: api.yuanToFen(r.amountYuan) })),
+          .filter((r) => this._hasVal(r.amountYuan) || this._hasVal(r.qty))
+          .map((r) => {
+            const it = { sub_item: (r.subItem || '').trim(), amount_fen: api.yuanToFen(r.amountYuan) };
+            const q = Number(r.qty);
+            if (Number.isInteger(q) && q >= 0) it.qty = q;
+            return it;
+          }),
       };
     });
   },

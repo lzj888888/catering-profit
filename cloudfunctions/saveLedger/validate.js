@@ -46,7 +46,18 @@ function cleanItems(list) {
         if (subItem.length > SUB_ITEM_MAX_LEN) return { error: ERROR_CODES.INVALID_PARAM, msg: `sub_item 长度不能超过 ${SUB_ITEM_MAX_LEN} 字` };
         const amt = si.amount_fen;
         if (!isFenNonNeg(amt)) return { error: ERROR_CODES.INVALID_PARAM, msg: 'sub_items 的 amount_fen 必须是非负整数分（JSON number）' };
-        subItems.push({ subItem, amountFen: amt });
+        const item = { subItem, amountFen: amt };
+        // 🔴 R162：有效订单数 qty —— **可选、且不参与任何金额计算**（不进 sum、不进大类金额）。
+        //   语义：**不传 = 不存**（老客户端零改动兼容）；**传了就必须是非负整数**（不接受字符串，
+        //   与 amount_fen 同严）—— 静默丢弃用户填的订单数比报错更糟（他会以为存住了）。
+        if (si.qty !== undefined && si.qty !== null) {
+          const q = si.qty;
+          if (typeof q !== 'number' || !Number.isInteger(q) || q < 0) {
+            return { error: ERROR_CODES.INVALID_PARAM, msg: 'sub_items 的 qty 必须是非负整数' };
+          }
+          item.qty = q;
+        }
+        subItems.push(item);
         sum += amt;
       }
       out.push({ category, name, amountFen: sum, subItems }); // 云函数汇总大类金额（不采信前端）

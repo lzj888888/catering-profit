@@ -90,6 +90,12 @@
 .tw-rec-field { display: flex; align-items: center; gap: 10rpx; }
 .tw-rec-hint { font-size: 28rpx; color: #888; margin-top: 8rpx; line-height: 1.5; }
 .tw-rec-msg { font-size: 28rpx; color: #b45309; background: #fef3c7; border-radius: 8rpx; padding: 10rpx 14rpx; margin-top: 10rpx; line-height: 1.5; }
+/* R162（R161-3）：外卖专段顶部的**防双记边界句** —— 常驻说明（不是触发式告警），
+   故用中性品牌色底而非告警黄：常驻黄块会盖过真正的配平提示，反而让人不看。 */
+/*   ⚠️ 字号一律 ≥28rpx（AD-G1 硬规，门禁 selftest_ad_gates 的 G1 当场判红）。 */
+.tw-boundary { font-size: 28rpx; color: #1e3a5f; background: #e8eff7; border-radius: 8rpx; padding: 12rpx 14rpx; margin-bottom: 12rpx; line-height: 1.6; }
+/* R162（R161-2）：补贴框下的**固定口径小字** —— 抄数规则钉在框边，抄错一眼能看见（字号同样守 ≥28rpx） */
+.tw-field-note { font-size: 28rpx; color: #8a97a6; line-height: 1.5; padding: 4rpx 0 2rpx; }
 
 /* R85 · 费用侧营销项「取数路径」标注 */
 .exp-note { font-size: 28rpx; color: #999; padding: 2rpx 0 6rpx 20rpx; line-height: 1.5; }
@@ -188,6 +194,9 @@
 .dine-line2 { display: flex; align-items: center; margin-top: 8rpx; }
 .dine-line2 .val-input { flex: 1 1 auto; width: auto; text-align: right; font-size: 34rpx; }
 .dine-amt { flex: 1 1 auto; width: auto; font-size: 34rpx; text-align: right; }
+/* R162（R161-1）：快速模式的「有效订单数」框 —— 与金额框同排，固定窄宽（单量最多 5 位），
+   热区高度沿用 .val-input（守 AD-G2 ≥88rpx，不另起小尺寸）。 */
+.dine-qty { flex: 0 0 200rpx; width: 200rpx; font-size: 30rpx; text-align: right; margin-left: 12rpx; }
 
 /* 合计：由各渠道相加自动算出，不可手填 */
 .dine-sum {
