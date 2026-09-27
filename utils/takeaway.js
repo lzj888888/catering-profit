@@ -266,11 +266,18 @@ function subsidyTotal(detailRows) {
 const RECONCILE_THRESHOLD = 50; // 元
 
 /**
- * 机器近似校验式（A.11.4 b）：
- *   应有商家应收款 ≈ 外卖收入合计 − 商家活动补贴 − 佣金 − 配送服务费 − 配送补贴
+ * 机器近似校验式（A.11.4 b，🔴 R164 修正实现）：
+ *   应有商家应收款 ≈ 优惠前总额 − 商家承担补贴 − 佣金 − 配送服务费 − 配送补贴
+ *
+ * 🔴 为什么不是规范字面那一行（R164 · 用真值证伪，见 NOTE_2026-09-28_round164）：
+ *   收入侧「外卖收入合计」是三框相加 ⇒ **本身就含补贴框的值**（符号随客户填法：填正数则加、填负数则减）。
+ *   按规范字面只减一次补贴，结果恒等于「优惠前总额 − 佣金 − 配送」⇒ **补贴被完全抵消、一次都没扣**。
+ *   真值验算（8 月实测账单 156 行，见 review/evidence/r161_waimai）：expected 恒 = 5849.35，而真实到手 3779.65，
+ *   **差恰好 = 商家承担补贴 2069.70 ⇒ 恒定误报「漏填 2069.70」，客户改无可改**。
+ *   正确做法两步走：① `incomeTotal − subsidy` 还原优惠前总额；② 再**真实扣一次**补贴（取绝对值 ⇒ 正负号都算对）。
  * @param {object} p {
- *   incomeTotal,     // 外卖收入合计（快速模式 = 各平台总额之和；分项模式 = 各平台小计之和）（元）
- *   subsidy,         // 商家活动补贴（元）
+ *   incomeTotal,     // 外卖收入合计（快速模式 = 各平台总额之和；分项模式 = 各平台小计之和）（元，含补贴框的值）
+ *   subsidy,         // 商家承担补贴合计（元，符号随客户填法，取绝对值参与扣减）
  *   commission,      // 外卖平台佣金（元）
  *   deliveryFee,     // 外卖配送服务费（元）
  *   deliverySubsidy, // 外卖配送补贴（元）
@@ -289,7 +296,10 @@ function reconcile(p) {
   const commission = Number(p && p.commission) || 0;
   const deliveryFee = Number(p && p.deliveryFee) || 0;
   const deliverySubsidy = Number(p && p.deliverySubsidy) || 0;
-  const expected = incomeTotal - subsidy - commission - deliveryFee - deliverySubsidy;
+  // R164：两步走。① 还原优惠前总额（收入合计里含了补贴框的值，先按原符号抵消掉）；
+  //          ② 真实扣一次补贴（取绝对值 ⇒ 客户填正数/负数都得同一个正确答案）。
+  const gross = incomeTotal - subsidy;
+  const expected = gross - Math.abs(subsidy) - commission - deliveryFee - deliverySubsidy;
   const diff = Math.round((actual - expected) * 100) / 100;
   const absDiff = Math.abs(diff);
 

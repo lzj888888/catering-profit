@@ -84,14 +84,17 @@ check('A8 手改后不覆盖（twCarryLock 守卫）', /twCarryLock/.test(inputJ
 
 console.log('===== A9~A12 · 配平校验（只做软提示：不阻断、不参与利润、不写入）=====');
 // 应有应收 = 收入合计 − 补贴 − 佣金 − 配送服务费 − 配送补贴
+// ⚠ R164 改了配平式：expected = (incomeTotal − subsidy) − |subsidy| − 佣金 − 配送 − 配送补贴
+//   本基准 expected = (5000−300) − 300 − 200 − 100 − 50 = 4050（改前是 4350，差恰为一个补贴额 300）
 const recBase = { incomeTotal: 5000, subsidy: 300, commission: 200, deliveryFee: 100, deliverySubsidy: 50, packTotal: 60 };
+const REC_EXPECTED = 4050;
 check('A9 未填应收款 → null（跳过，不误报）', reconcile(Object.assign({}, recBase, { actualReceivable: 0 })) === null);
-check('A9 两侧一致（差额 0 ≤ 50）→ pass', reconcile(Object.assign({}, recBase, { actualReceivable: 4350 })).status === 'pass');
-check('A9 差额 30 ≤ 50 → pass', reconcile(Object.assign({}, recBase, { actualReceivable: 4380 })).status === 'pass');
-check('A10 差额 >50 → miss 且报漏填', reconcile(Object.assign({}, recBase, { actualReceivable: 4200 })).status === 'miss');
-check('A11 差额恰等于打包费 → packaging 专项', reconcile(Object.assign({}, recBase, { actualReceivable: 4290 })).status === 'packaging'); // 4350-60
-check('A11 专项非笼统 miss', reconcile(Object.assign({}, recBase, { actualReceivable: 4290 })).status !== 'miss');
-check('A11 差额恰等于配送服务费 → delivery（用户配送费未纳入，不判错）', reconcile(Object.assign({}, recBase, { actualReceivable: 4250 })).status === 'delivery'); // 4350-100
+check('A9 两侧一致（差额 0 ≤ 50）→ pass', reconcile(Object.assign({}, recBase, { actualReceivable: REC_EXPECTED })).status === 'pass');
+check('A9 差额 30 ≤ 50 → pass', reconcile(Object.assign({}, recBase, { actualReceivable: REC_EXPECTED + 30 })).status === 'pass');
+check('A10 差额 >50 → miss 且报漏填', reconcile(Object.assign({}, recBase, { actualReceivable: REC_EXPECTED - 150 })).status === 'miss');
+check('A11 差额恰等于打包费 → packaging 专项', reconcile(Object.assign({}, recBase, { actualReceivable: REC_EXPECTED - 60 })).status === 'packaging');
+check('A11 专项非笼统 miss', reconcile(Object.assign({}, recBase, { actualReceivable: REC_EXPECTED - 60 })).status !== 'miss');
+check('A11 差额恰等于配送服务费 → delivery（用户配送费未纳入，不判错）', reconcile(Object.assign({}, recBase, { actualReceivable: REC_EXPECTED - 100 })).status === 'delivery');
 check('A12 配平不写入金额：reconcile 纯计算无副作用', reconcile.length >= 1 && typeof reconcile(Object.assign({}, recBase, { actualReceivable: 4200 })) === 'object');
 check('A12 阈值 = 50（规范默认）', RECONCILE_THRESHOLD === 50);
 check('A12 页面提示不阻断（配平文案为软提示）', /配平校验（A.11.4 · 只做软提示：不阻断保存、不参与利润、不写入金额）/.test(inputWxml));
@@ -536,6 +539,28 @@ check('A26-11 多填侧说清后果（不进商家到手，填了会多扣）', 
   const n = TERMS.ledger.takeawayMode.subsidyNote || '';
   return n.includes('不进商家到手') || n.includes('多扣');
 })());
+
+console.log('—— A26-12 R164 配平式修正（补贴被抵消 ⇒ 恒定误报）——');
+// 真值锚点：8 月实测账单 —— 商品 6418.08 / 打包 167.00 / 商家补贴 2069.70 / 佣金 158.71 / 配送 577.02 / 到手 3779.65
+const R164 = { commission: 158.71, deliveryFee: 577.02, deliverySubsidy: 0, packTotal: 167.00, actualReceivable: 3779.65 };
+const r164pos = reconcile(Object.assign({}, R164, {
+  incomeTotal: Number(subtotalOf('6418.08', '167.00', '2069.70')), subsidy: 2069.70 }));
+const r164neg = reconcile(Object.assign({}, R164, {
+  incomeTotal: Number(subtotalOf('6418.08', '167.00', '-2069.70')), subsidy: -2069.70 }));
+// ⚠ 用容差比较：expected 是浮点连算（3779.650000000001），严格 === 会被精度坑成假红
+const near = (a, b) => Math.abs(a - b) < 0.01;
+check('A26-12 补贴填**正数**：expected = 真实到手 3779.65（status=pass，不得误报漏填）',
+  near(r164pos.expected, 3779.65) && r164pos.status === 'pass', `expected=${r164pos.expected} status=${r164pos.status}`);
+check('A26-12 补贴填**负数**：同一个正确答案（符号无关 —— 客户按账单抄负数也不该算错）',
+  near(r164neg.expected, 3779.65) && r164neg.status === 'pass', `expected=${r164neg.expected} status=${r164neg.status}`);
+check('A26-12 改前行为已证伪：只减一次补贴 ⇒ expected 会多出一个补贴额（2069.70）',
+  Math.abs((6418.08 + 167.00 - 158.71 - 577.02) - 3779.65 - 2069.70) < 0.01);
+check('A26-12 真漏填补贴仍要报 miss（修公式不得把漏填检测一起修没）', (() => {
+  const r = reconcile(Object.assign({}, R164, { incomeTotal: 6585.08, subsidy: 0 }));
+  return r.status === 'miss' && Math.abs(Math.abs(r.diff) - 2069.70) < 0.01;
+})());
+check('A26-12 源码级：reconcile 内补贴取绝对值参与扣减（防回退到只减一次）',
+  /Math\.abs\(subsidy\)/.test(fs.readFileSync(path.join(ROOT, 'utils/takeaway.js'), 'utf8')));
 
 console.log(`\n==== R85 外卖段自测：${pass} 通过 / ${failN} 失败 ====`);
 process.exit(failN === 0 ? 0 : 1);
