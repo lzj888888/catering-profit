@@ -12,6 +12,12 @@
 //   · 明细行必须**完整存储当时的净料单位成本快照值**，不得仅存 material_id 做关联（快照隔离本质）。
 //   · 循环引用：保存半成品（模式 B）前用 detectCycle 同款 DFS 预检，命中抛 BOM_CYCLE_DETECTED、**数据不入库**。
 //   · 幂等：同一 shop_id + client_request_id 重复调用不重复落库，直接返回首次结果。
+//
+// 🔴 R157：本文件有**两处**「读该店全部成本卡」——第 4 步判环的 loadEdgesFromVirtual（要按 card_code
+//   取每张半成品卡的最新版本）与第 8.5 步的免费配额计数（要按 card_code 去重）。两处都必须走
+//   `da.listAll()`（分页取全），理由与 getCostCard/checkQuota 相同：`shop_cost_card` 是版本模型
+//   （只 INSERT 不 UPDATE），行数 = Σ(各 card_code 的版本数)；用 `da.list()` 时总行数一旦 > 1000，
+//   被截断的部分会让**判环漏边**（可能放过 A→B→A 循环引用）与**配额少算**（放大免费档泄漏）。
 
 const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
@@ -40,7 +46,7 @@ async function loadEdgesFromVirtual(da, shopId) {
   }
   const edges = new Map(); // virtualId -> [referenced virtualId...]
   // 一次拉全该店所有成本卡，内存里去重按 card_code 取最新版本
-  const cardsRes = await da.list('shop_cost_card', { shop_id: shopId });
+  const cardsRes = await da.listAll('shop_cost_card', { shop_id: shopId });
   const latestByCode = new Map();
   for (const c of (cardsRes && cardsRes.data) || []) {
     const cc = c.card_code;
@@ -233,7 +239,7 @@ exports.main = async (event) => {
       return fail(ERROR_CODES.SYSTEM_ERROR, '配额配置缺失（plan_id=plan_free）');
     }
     // M3.28（批次 Q2）：同上口径（只计可算数，草稿不占额度；`!== 'draft'` 兼容无该字段的存量行）
-    const cardsRes = await da.list('shop_cost_card', { shop_id: shopId });
+    const cardsRes = await da.listAll('shop_cost_card', { shop_id: shopId });
     const codes = new Set();
     for (const c of ((cardsRes && cardsRes.data) || [])) {
       if (!c.card_code) continue;

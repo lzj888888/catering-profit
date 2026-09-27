@@ -37,7 +37,10 @@ exports.main = async (event) => {
 
   // ===== 3. 读该店成本卡（软删自动过滤）=====
   const da = makeAdapter(db);
-  const cardsRes = await da.list('shop_cost_card', { shop_id: shopId });
+  // R157：**必须是 listAll（分页取全）** —— `shop_cost_card` 是版本模型（只 INSERT 不 UPDATE），
+  //   行数 = Σ(各 card_code 的版本数)。用 list() 时一旦总行数 > 1000（免费档 20 卡 × 50 版即满），
+  //   后面的卡会被**静默丢掉**，而列表无排序 ⇒ 丢哪张随机、老板以为数据没了。
+  const cardsRes = await da.listAll('shop_cost_card', { shop_id: shopId });
 
   // 按 card_code 分组，etake version 最大者
   const latestByCode = new Map();
@@ -65,6 +68,10 @@ exports.main = async (event) => {
 
   return ok({
     shop_id: shopId,
+    // R157：可见降级标记 —— 达到 LIST_TOTAL_CAP（2 万行）仍有剩余时为 true。
+    //   正常店铺恒为 false；一旦为 true，说明该店数据量已触护栏 ⇒ 前端可据此提示，
+    //   而不是像以前那样"看着少了几张卡"却无从判断。
+    truncated: !!cardsRes.truncated,
     client_request_id: v.input.client_request_id || '',
     list,
   });

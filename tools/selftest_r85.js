@@ -232,6 +232,15 @@ const A15_EXEMPT = [
   //   **绝不放宽成 `cloudfunctions/` 全豁免**（那样等于守卫作废）：
   //   by=WorkBuddy / date=2026-09-27 / reason=round156 授权列表排序（updated_at 出参）+ 店铺级置顶字段
   /^cloudfunctions\/getShopContext\//,                   // round156：出参下发店铺级置顶（pinned_cards / pinned_materials）
+  // ⚠️ 2026-09-27（round157）**十四次触发** —— 同一时机关卡第 14 次：容量审计修复（索引字段对齐 + 分页取全）。
+  //   ① 索引单源：`common/initDb/collections.js`（`idx_line_card`→`idx_line_row`）—— 已在 `initDb/` 条目内；
+  //   ② 分页取全：单源 `common/dataAdapter.js` 新增 `listAll()`（**已在 `common/` 条目内**），
+  //      消费侧 `getCostCard/` `checkQuota/` `saveCostCard/`（**三者均已在 round129/120/116 白名单内**）切到该入口；
+  //   ③ 派生面：`sync_common` 把新 dataAdapter 派生到全部 42 个函数目录的 `cx_dataAdapter.js`
+  //      （**已在 round154 条目 `/^cloudfunctions\/[^/]+\/cx_dataAdapter\.js$/` 内**）。
+  //   ⇒ 本轮**无需新增白名单条目**（沿用既有），但按纪律把时点与理由记明；
+  //   仍按 round103 的**白名单式**登记，**绝不放宽成 `cloudfunctions/` 全豁免**（那样等于守卫作废）：
+  //   by=WorkBuddy / date=2026-09-27 / reason=round157 容量审计授权（索引字段对齐 + listAll 分页取全）
 ];
 check('A15 云函数逻辑零改动（仅 initDb 建库单源 + 本批授权函数豁免）', (() => {
   const { execFileSync } = require('child_process');

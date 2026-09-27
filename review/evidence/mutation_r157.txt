@@ -1,0 +1,21 @@
+  ✅ M1 索引整体改回旧化石写法（idx_line_card ← card_id） —— 如期转红：check_index_field_alignment
+  ✅ M2 索引漏掉 cost_card_row_id（只剩 shop_id） —— 如期转红：check_index_field_alignment
+  ✅ M3 索引多带一个化石字段 card_id —— 如期转红：check_index_field_alignment
+  ✅ M4 镜像 init_db.js 漂回旧定义（单源改了、镜像没跟） —— 如期转红：check_schema_sync
+  ✅ M5 工序清单逐条对照表漂回旧值 —— 如期转红：check_schema_sync
+  ✅ M6 listAll 的 skip 写死 0（退化成只取一页） —— 如期转红：check_list_query_limit
+  ✅ M7 listAll 去掉循环（不再翻页） —— 如期转红：check_list_query_limit
+  ✅ M9 getCostCard 调用点回退到 list（截断回归） —— 如期转红：check_list_query_limit
+  ✅ M10 checkQuota 调用点回退到 list（额度少算） —— 如期转红：check_list_query_limit
+  ✅ B1 等价改写：括号包裹调用（(da.listAll)(...)） —— 等价改写仍绿（未误伤）
+  ✅ B2 等价改写：下标调用 da['listAll'](...) —— 等价改写仍绿（未误伤）
+
+受改文件 md5 还原自证：
+  · cloudfunctions/initDb/collections.js 现 md5 = f3d3e6bdc6f64ff844ce1655ce8909bb
+  · specs/dev-specs/prototype/init_db.js 现 md5 = 0eb8e1b6681cc984914561333880619e
+  · 下一步工序清单.md 现 md5 = 485345c85640936f768abedc3f134b07
+  · cloudfunctions/common/dataAdapter.js 现 md5 = a6b2b9e7e696c3d26c793d99c320c1e3
+  · cloudfunctions/getCostCard/index.js 现 md5 = fd47353c95699af0d443f35ea5071b3f
+  · cloudfunctions/checkQuota/index.js 现 md5 = a5a5ac319e1a0f7b13240f652cf018f0
+
+===== R157 变异回灌结果：11 通过 / 0 失败 =====

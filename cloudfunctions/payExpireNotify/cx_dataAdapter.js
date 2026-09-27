@@ -16,6 +16,21 @@ const { nowUtc } = require('./cx_utilTime');
 //   ⚠️ 这是**正确性修复，不是性能优化**：条数不是省了，是要拿全由前端 filters 决定展示。
 const LIST_LIMIT = 1000;
 
+// 🔴 round157：**"要全部行"的读取必须分页 —— 1000 是单页上限，不是"该集合最多 1000 条"**。
+//   为什么需要（与 round154 是**同一个缺陷换马甲**）：
+//     round154 修的是「`list()` 不写 .limit() ⇒ 默认只返 100 条」；但抬到 1000 之后还有第二层同族截断 ——
+//     凡是需要**该店全部行**的读取（成本卡列表要按 card_code 分组取最新版本、免费配额要按 card_code
+//     去重计数、半成品判环要遍历全店），只要**总行数 > 1000**，第 1001 条起**照样被静默截断**。
+//     `shop_cost_card` 是**版本模型（只 INSERT 不 UPDATE）** ⇒ 每保存一次就多一行（同一道菜改 50 次 = 50 行）：
+//     免费档 20 张卡 × 每卡 50 版 = 1000 行 ⇒ **版本膨胀正好把 1000 条吃满**，菜品卡列表开始"静默少卡"，
+//     且因为列表无排序，**丢哪张随机**。
+//   ⇒ 修法：`listAll()` 用 skip/limit 循环取全。`list()` 保持原样 —— 它的语义是「展示用列表」，
+//     上限就是展示上限（round154 已定案），不该为少数"要全量"的场景把成本转嫁给所有列表调用。
+//   ⚠️ LIST_TOTAL_CAP 是**防爆护栏**，不是业务额度：达上限仍有剩余时返回 `truncated:true`
+//      —— **显式降级，绝不静默少给**（静默才是本缺陷真正的恶）。
+//      取值依据：云函数最长 20s、单页 1000 行约 0.2~0.5s ⇒ 20 页（2 万行）约 4~10s，留足余量。
+const LIST_TOTAL_CAP = 20000;
+
 function makeAdapter(db) {
   if (!db) throw new Error('DataAdapter requires a db handle');
 
@@ -23,9 +38,30 @@ function makeAdapter(db) {
   // ⚠️ extra 仅承载"过滤条件"，禁止塞 limit/orderBy 等查询选项（会变成字段过滤 → 静默空集）；
   //    需要分页/排序请走批次 4 的 opts 参数，本批次不做。
   // round154：末尾补 `.limit(LIST_LIMIT)` —— 把云函数端默认的 100 条抬到平台最大值 1000。
+  // round157：**语义边界** —— 本函数是「展示用列表」，返回条数上限 = LIST_LIMIT（这是特性，不是缺陷）。
+  //   需要"该店全部行"（分组取最新 / 去重计数 / 全店遍历）请显式改用 listAll()。
   async function list(coll, where, extra) {
     const cond = Object.assign({}, extra || {}, where || {}, { is_deleted: false });
     return db.collection(coll).where(cond).limit(LIST_LIMIT).get();
+  }
+
+  // round157：**分页取全**（突破单页 1000 的静默截断）。软删过滤与 list() 同律。
+  //   返回 { data, truncated }：
+  //     · truncated === false ⇒ data 就是**全部**命中行（用"短页"判据确认已取完）；
+  //     · truncated === true  ⇒ data 已达 LIST_TOTAL_CAP 且仍有剩余 ⇒ 调用方**必须**把这个事实
+  //       透传到出参（可见降级），不得当作"取全了"继续算。
+  async function listAll(coll, where, extra) {
+    const cond = Object.assign({}, extra || {}, where || {}, { is_deleted: false });
+    const out = [];
+    let truncated = false;
+    for (let skip = 0; ; skip += LIST_LIMIT) {
+      const r = await db.collection(coll).where(cond).skip(skip).limit(LIST_LIMIT).get();
+      const rows = (r && r.data) || [];
+      out.push(...rows);
+      if (rows.length < LIST_LIMIT) break;                 // 短页 ⇒ 该条件已取完（唯一可信的"到底"判据）
+      if (out.length >= LIST_TOTAL_CAP) { truncated = true; break; }
+    }
+    return { data: out, truncated };
   }
 
   // 管理端/审计需看软删数据时走此函数（显式命名，便于审计与 code review；普通列表一律用 list）
@@ -85,7 +121,7 @@ function makeAdapter(db) {
     });
   }
 
-  return { list, listIncludingDeleted, get, countActive, softDelete, insert };
+  return { list, listAll, listIncludingDeleted, get, countActive, softDelete, insert };
 }
 
-module.exports = { makeAdapter };
+module.exports = { makeAdapter, LIST_LIMIT, LIST_TOTAL_CAP };

@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：111 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：112 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -217,6 +217,17 @@
 //         + L3 副本同源（42 份 cx_dataAdapter.js md5 一致且都含 limit，改一漏 41 即红）
 //         + L4 全仓扫描（每条 collection(...).get() 要么带 .limit() 要么是 .doc() 单条取）
 //         + S1~S2 自失效护栏 + C1~C5 反恒真（裸 get 必红 / 常量与字面量两种写法均绿 / .doc() 单条取豁免 / 解析器自检）
+//       + 索引字段对齐守卫（tools/check_index_field_alignment.js，R157）—— 根因＝李老师「1 万用户时版本历史数据量会不会压崩」追问触发的容量审计：
+//         自查发现 `shop_cost_card_line` 的索引 `idx_line_card` 建在 `card_id` 上，而生产**写入与查询一律用
+//         `cost_card_row_id`**（写入 saveCostCard / 查询 getCostCard）⇒ `card_id` 除索引定义自身外**全树零出现**
+//         ⇒ 该索引**从未生效**，每次按卡查配方明细都是全集合扫描（随数据量线性恶化，最终撞云函数 20s 超时）。
+//         同根因第二层（与 R154 是同一缺陷换马甲）：**1000 是单页上限，不是「该集合最多 1000 条」** ——
+//         成本卡是版本模型（只 INSERT 不 UPDATE）⇒ 每保存一次多一行 ⇒ 版本膨胀把 1000 吃满 ⇒ 列表**静默少卡**。
+//         故 `common/dataAdapter.js` 新增 `listAll()`（skip/limit 分页取全）+ `truncated` 可见降级标记，
+//         三处「读该店全部成本卡」的调用点（getCostCard / checkQuota / saveCostCard×2）全部切过去。
+//         判据 = L1 化石索引（索引字段必须在云函数源码**词表**里以独立标识符出现；**挖掉索引定义段**防"自证"假绿）
+//         + L2 锚点精确对齐（shop_cost_card_line 索引字段 ≡ {shop_id, cost_card_row_id} 且不含 card_id）
+//         + L3 字段真在用（写入点与查询点都在） + S1~S3 自失效护栏 + C1~C3 反恒真影子样本。
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -551,6 +562,8 @@ const SUITES = [
   ['list-query-limit', 'tools/check_list_query_limit.js'],
   // R156（round156 李老师点单的四项优化之第 1 项）：列表排序（置顶 + 最近编辑在前）· 原料选择独立页 · 连续录入 —— 详见头注 R156 段。
   ['list-ux', 'tools/check_list_ux.js'],
+  // R157（round157 容量审计触发的自查）：索引字段必须 ≡ 代码里真在用的字段 + 「要全部行」的读取必须分页 —— 详见头注 R157 段。
+  ['index-field-alignment', 'tools/check_index_field_alignment.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

@@ -64,7 +64,17 @@ const INDEXES = {
     { name: 'idx_card_code_version', unique: true, keys: { shop_id: 1, card_code: 1, version: 1 } },
   ],
   shop_cost_card_line: [
-    { name: 'idx_line_card', keys: { card_id: 1 } },
+    // 🔴 R157 修复：原为 `{ name: 'idx_line_card', keys: { card_id: 1 } }` —— 建在 `card_id` 上，
+    //   而**生产写入与查询从来用的是 `cost_card_row_id`**（写入 saveCostCard:298 / 查询 getCostCard:18、
+    //   saveCostCard:59），`card_id` 这个字段**全树不存在** ⇒ 该索引**从未生效**，
+    //   每次按卡查配方明细都是**全集合扫描**（随数据量线性恶化，最终撞云函数 20s 超时）。
+    //   根因：v1.0 规范写的是 `card_id`，实现改成了 `cost_card_row_id` 系（v1.1:166 已把该不一致
+    //   登记为"命名不一致·待裁决"），索引就跟着旧名成了化石 —— 「文档与代码各说各话」的典型。
+    //   ⚠️ **改名而非原地改 keys**：`createIndex` 遇同名索引会报错、**不会更新已有定义**
+    //     （与 initDb「补种只补缺失行」同族）⇒ 原地改 keys 云端永远不生效。改名后可幂等创建。
+    //   ⚠️ 云端旧索引 `idx_line_card` 需**显式删除**（否则每次写明细行都要多维护一个无用索引）；
+    //     单源内已不再声明它，删除动作用 tools/apply_indexes.js 的 drop_indexes（用法见该文件头）。
+    { name: 'idx_line_row', keys: { shop_id: 1, cost_card_row_id: 1 } },
   ],
   shop_material: [
     { name: 'idx_mat_shop', keys: { shop_id: 1 } },

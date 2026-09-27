@@ -50,7 +50,10 @@ exports.main = async (event) => {
     // M3.28（批次 Q2）：额度计的是**可算数** —— 只统计算过成本的卡，草稿（calc_status='draft'）不占额度。
     //   ⚠️ 存量兼容铁律：本批次上线前落库的行**没有 calc_status 字段**，故判定必须写 `!== 'draft'`（缺字段视为已算），
     //      绝不能写 `=== 'calculated'` —— 那样会把全部存量排除在计数外 ⇒ 免费额度形同失效（放大泄漏，不是收紧）。
-    const res = await da.list('shop_cost_card', { shop_id: shopId });
+    // R157：**必须是 listAll（分页取全）** —— 计数口径是"按 card_code 去重"，而 `shop_cost_card`
+    //   是版本模型（只 INSERT 不 UPDATE）⇒ 行数 = Σ各卡版本数。用 list() 时总行数一旦 > 1000，
+    //   被截断掉的那些卡就**不计入额度** ⇒ 免费档可建的卡数被静默放大（是泄漏，不是收紧）。
+    const res = await da.listAll('shop_cost_card', { shop_id: shopId });
     const codes = new Set();
     for (const c of ((res && res.data) || [])) {
       if (!c.card_code) continue;

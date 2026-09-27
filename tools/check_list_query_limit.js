@@ -17,8 +17,13 @@
 //   L3 副本同源：全部 cx_dataAdapter.js 副本 md5 一致且都含 limit（改一漏 41 即红）
 //   L4 全仓扫描：cloudfunctions/**/*.js 里每条 collection(...).get() 要么有 .limit() 要么是 .doc() 单条取
 //   L5 替身保真：本地 mock db 必须实现 limit —— 替身比平台宽容正是本缺陷长期隐身的根因之一
+//   L6（R157）分页取全：`listAll()` 必须**真的循环取全**（skip 变量 + 循环 + limit(LIST_LIMIT) + CAP 护栏）
+//      —— 否则它退化成 list()，"1000 是单页上限而非集合上限"的第二层截断原样复活。
+//   L7（R157）调用点在位：`getCostCard` / `checkQuota` / `saveCostCard` 三处「读该店全部成本卡」
+//      必须走 `listAll` —— L1~L6 判的是「入口本身」，本条判「**调用点用没用它**」（防静默回退）。
 //   S1~S3 自失效护栏（扫描面 / 命中数 / 替身注册数下界，防"扫了空集所以全绿"）
-//   C1~C6 反恒真：喂「不带 limit 的列表查询」与「缺 limit 的替身」必红；「单条 .doc().get()」「等价改写」必绿
+//   C1~C11 反恒真：喂「不带 limit 的列表查询」「缺 limit 的替身」「退化成只取一页的 listAll」
+//      「用 list 读全店成本卡」四类影子必红；「.doc() 单条取」「等价改写」「while 版分页取全」必绿
 //
 // ⚠️ 输出纪律（R145 教训）：中间行不得出现「N 通过 / M 失败」字样，
 //   否则 check_suite_assert_counts 会把第一条中间文案当成套件总口径。
@@ -79,6 +84,42 @@ function judgeDouble(src) {
   const hasLimit = /limit\s*\(\s*\w+\s*\)\s*\{/.test(src);
   if (!hasLimit) return { ok: false, why: '替身没有实现 limit(n) ⇒ 链式调用会 TypeError，且本地测不出平台默认上限的差异' };
   return { ok: true, why: '替身实现了 limit(n)' };
+}
+
+// 判据 L6（R157）：**"要全部行"的入口 `listAll` 必须真的分页取全**。
+//   为什么补它：R157 新增 listAll() 之后，"单页 1000" 的第二层截断才被解除；但 listAll 的**价值全在
+//   「循环 skip 直到短页」**这一行为上 —— 若它被改回"只取一页"（例如把 skip 写死 0、或删掉循环），
+//   行为就与 list() 无异，而**没有任何守卫会转红**（L1~L4 只判"有没有 limit"，不判"有没有循环取全"）。
+//   ⇒ 三要素缺一不可：`.skip(变量)` + 循环 + `.limit(LIST_LIMIT)`，另须带 LIST_TOTAL_CAP 护栏
+//      （防"取全"退化成"无限拉取"）。
+function judgeListAll(src) {
+  if (src == null) return { ok: false, why: '单源读不到（fail-closed）' };
+  const body = fnBody(src, 'async function listAll');
+  if (!body) return { ok: false, why: 'listAll 函数体解析不到（不存在或被改名 ⇒ 分页取全能力消失）' };
+  const miss = [];
+  // ⚠️ 判「行为」不判「写法」（R155「守卫反向伤害第二型」教训：判据按字面 ⇒ 正确改动反被判红）：
+  //   常量名可以换（LIST_LIMIT → PAGE / 甚至写死 1000），总量护栏也可另起名 ⇒ 只判"三件事在不在"。
+  if (!/\.skip\s*\(\s*[A-Za-z_$][\w$]*\s*\)/.test(body)) miss.push('.skip(变量)');
+  if (!/\b(?:for|while)\s*\(/.test(body)) miss.push('循环');
+  if (!/\.limit\s*\(\s*(?:[A-Za-z_$][\w$]*|\d+)\s*\)/.test(body)) miss.push('.limit(变量或字面量)');
+  if (!/CAP/i.test(body)) miss.push('总量护栏常量（*CAP*）');
+  if (miss.length) return { ok: false, why: 'listAll 缺 ' + miss.join(' / ') + ' ⇒ 退化成"只取一页"或"无限拉取"' };
+  return { ok: true, why: 'listAll 分页取全三要素齐备（skip 变量 + 循环 + limit + 总量护栏）' };
+}
+
+// 判据 L7（R157）：**"读该店全部成本卡"必须走 listAll** —— 不得退回 list（截断回归）。
+//   为什么补它（这是本轮的**第三层**缺口）：L1~L6 判的都是「**入口本身**对不对」，
+//   没有一个判「**调用点用没用它**」—— 于是把调用点从 `da.listAll(` 改回 `da.list(` 这类**回退**，
+//   全体守卫照样全绿，而"总行数 > 1000 时静默丢卡"的缺陷原样复活（同 R156「改对了反而转红」的反面：
+//   这里是**改错了也没人红**）。⇒ 钉住"要全部行"的那三处语义：全店查询只带 shop_id 一个键即为该形态。
+//   ⚠️ 只禁**只带 shop_id 的** `da.list('shop_cost_card', …)`；带 card_code 的按卡查询（getCardVersions）
+//      与 `listIncludingDeleted`（软删管理分支）都合法，不在此列。
+const RE_SHOP_CARD_FULLLIST = /\.list\s*\(\s*['"]shop_cost_card['"]\s*,\s*\{\s*shop_id\s*:\s*[A-Za-z_$][\w$]*\s*\}\s*\)/;
+function judgeFullShopCardQuery(flatSrc) {
+  if (flatSrc == null) return { ok: false, why: '源码读不到（fail-closed）' };
+  const m = RE_SHOP_CARD_FULLLIST.exec(flatSrc);
+  if (m) return { ok: false, why: '用 list() 读「该店全部成本卡」⇒ 总版本数 > 1000 时静默丢卡', snippet: m[0] };
+  return { ok: true, why: '无 list() 读全店成本卡的调用点' };
 }
 
 const CF = 'cloudfunctions';
@@ -188,6 +229,29 @@ if (doubles.length === 0) {
   else ok('L5 ' + doubles.length + ' 个本地替身均已实现 limit(n)（' + doubles.map((d) => d.rel.split('/').slice(-2).join('/')).join('、') + '）');
 }
 
+// ---------- L6 "要全部行"的入口必须真的分页取全（R157） ----------
+if (commonSrc) {
+  const r = judgeListAll(commonSrc);
+  if (r.ok) ok('L6 listAll() —— ' + r.why);
+  else bad('L6 listAll() —— ' + r.why);
+}
+
+// ---------- L7 「读该店全部成本卡」必须走 listAll（R157，防"调用点回退"） ----------
+{
+  const targets = ['getCostCard', 'checkQuota', 'saveCostCard'];
+  const bads = [];
+  const missing = [];
+  for (const fn of targets) {
+    const src = read(CF + '/' + fn + '/index.js');
+    if (src == null) { missing.push(fn); continue; }
+    const r = judgeFullShopCardQuery(flatten(src));
+    if (!r.ok) bads.push(fn + '：' + r.snippet);
+  }
+  if (missing.length) bad('L7 目标文件读不到（fail-closed）：' + missing.join(' / '));
+  else if (bads.length) bad('L7 有 ' + bads.length + ' 处仍用 list() 读全店成本卡（应走 listAll）：\n     ' + bads.join('\n     '));
+  else ok('L7 三处「读该店全部成本卡」均走 listAll（' + targets.join(' / ') + '）—— 无截断回归');
+}
+
 // ---------- S1~S3 自失效护栏 ----------
 if (scannedFiles >= 200) ok('S1 扫描面完整（云函数侧 ' + scannedFiles + ' 个含数据库访问的文件，缩到 <200 即转红）');
 else bad('S1 扫描面只有 ' + scannedFiles + ' 个文件（< 200 ⇒ 路径变了或被写窄）');
@@ -235,6 +299,24 @@ else ok('C6 影子替身「缺 limit」被判红（判据有分辨力）—— '
 if (!dblDiffers) bad('C7 影子样本不可用（同上）');
 else if (!c7.ok) bad('C7 影子替身「带 limit」被判红 ⇒ 替身判据过严（假红）—— ' + c7.why);
 else ok('C7 影子替身「带 limit」判绿（正常替身不受伤）');
+
+// ---------- C8~C9 listAll 判据的正负样本（R157） ----------
+const LA_BAD = "async function listAll(coll, where, extra) { const r = await db.collection(coll).where(where).limit(LIST_LIMIT).get(); return { data: (r && r.data) || [] }; }";
+const LA_GOOD = "async function listAll(coll, where, extra) { const out = []; let skip = 0; while (true) { const r = await db.collection(coll).where(where).skip(skip).limit(LIST_LIMIT).get(); const rows = (r && r.data) || []; out.push(...rows); if (out.length >= LIST_TOTAL_CAP) break; skip += LIST_LIMIT; if (rows.length < LIST_LIMIT) break; } return { data: out, truncated: false }; }";
+const c8 = judgeListAll(LA_BAD);
+const c9 = judgeListAll(LA_GOOD);
+if (c8.ok) bad('C8 影子样本「listAll 只取一页（无 skip/循环/CAP）」被判绿 ⇒ 判据无分辨力（假绿）');
+else ok('C8 影子样本「listAll 退化成只取一页」被判红（判据有分辨力）—— ' + c8.why);
+if (!c9.ok) bad('C9 等价改写（while 循环 + skip 变量 + CAP 护栏）被判红 ⇒ 判据过严（假红）—— ' + c9.why);
+else ok('C9 等价改写「while 版分页取全」判绿（正常写法不受伤）');
+
+// ---------- C10~C11 全店查询入口判据的正负样本（R157） ----------
+const c10 = judgeFullShopCardQuery("const r = await da.list('shop_cost_card', { shop_id: shopId });");
+const c11 = judgeFullShopCardQuery("const r = await da.listAll('shop_cost_card', { shop_id: shopId });");
+if (c10.ok) bad('C10 影子样本「用 list 读全店成本卡」被判绿 ⇒ 判据无分辨力（回退无人抓）');
+else ok('C10 影子样本「用 list 读全店成本卡」被判红（判据有分辨力）—— ' + c10.why);
+if (!c11.ok) bad('C11 影子样本「走 listAll」被判红 ⇒ 判据过严（假红）—— ' + c11.why);
+else ok('C11 影子样本「走 listAll」判绿（正常写法不受伤）');
 
 // 具名函数体切分（与 check_unit_convert.js 同一套；L2 依赖它）
 function fnBody(src, name) {

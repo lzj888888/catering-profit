@@ -76,7 +76,9 @@ const INDEXES = {
     { name: 'idx_card_code_version', unique: true, keys: { shop_id: 1, card_code: 1, version: 1 } },
   ],
   shop_cost_card_line: [
-    { name: 'idx_line_card', keys: { card_id: 1 } },
+    // R157：原 `idx_line_card` 建在 `card_id`（该字段全树不存在）⇒ 从未生效、明细查询全表扫描。
+    //   改为按**实际查询字段**建 `idx_line_row`；改名（而非原地改 keys）是为了让 createIndex 能幂等创建。
+    { name: 'idx_line_row', keys: { shop_id: 1, cost_card_row_id: 1 } },
   ],
   shop_material: [
     { name: 'idx_mat_shop', keys: { shop_id: 1 } },
