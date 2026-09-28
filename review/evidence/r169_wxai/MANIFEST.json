@@ -1,0 +1,132 @@
+{
+ "round": "R169",
+ "when": "2026-09-28",
+ "manifest": [
+  {
+   "src": "u2__wxamp_basicprofile_index.png",
+   "dst": "01_账号设置_AppID与主体与类目.png",
+   "bytes": 135725,
+   "md5": "58258d435c169ed0c5a5c0d7c85bd96b",
+   "status": "ok"
+  },
+  {
+   "src": "u2__wxamp_basicprofile_index_text.txt",
+   "dst": "01_账号设置_正文.txt",
+   "bytes": 4127,
+   "md5": "05f1c43a6e804842528ad22945007975",
+   "status": "ok"
+  },
+  {
+   "src": "u3__wxamp_category_get.png",
+   "dst": "02_服务类目_工具计算器.png",
+   "bytes": 92495,
+   "md5": "5217cdfe7084981f99b26d9d1653cd88",
+   "status": "ok"
+  },
+  {
+   "src": "u3__wxamp_category_get_text.txt",
+   "dst": "02_服务类目_正文.txt",
+   "bytes": 1112,
+   "md5": "56de006b9a33362444c05462d53a65f8",
+   "status": "ok"
+  },
+  {
+   "src": "u1__wxamp_subApp_devplan.png",
+   "dst": "03_成长计划介绍页.png",
+   "bytes": 320270,
+   "md5": "b897f9c75b443ef1ccf1a6406b53a531",
+   "status": "ok"
+  },
+  {
+   "src": "u1__wxamp_subApp_devplan_text.txt",
+   "dst": "03_成长计划介绍页_正文.txt",
+   "bytes": 2732,
+   "md5": "ce2056192dcfcbe0ac97ae8d3427130f",
+   "status": "ok"
+  },
+  {
+   "src": "dp_filled_pre.png",
+   "dst": "04_报名表单_已填.png",
+   "bytes": 210059,
+   "md5": "8e35682021eda2ba2128390143d6a0ce",
+   "status": "ok"
+  },
+  {
+   "src": "dp_filled_pre_text.txt",
+   "dst": "04_报名表单_正文.txt",
+   "bytes": 2980,
+   "md5": "0633470c7f00528f1c0fbe334f24b0a8",
+   "status": "ok"
+  },
+  {
+   "src": "dp_submitted.png",
+   "dst": "05_报名成功_权益工作台.png",
+   "bytes": 185548,
+   "md5": "5a6ca0b3eb81afa04071d774261238c9",
+   "status": "ok"
+  },
+  {
+   "src": "dp_submitted_text.txt",
+   "dst": "05_权益工作台_正文.txt",
+   "bytes": 2962,
+   "md5": "b9d8be8d37e369106427c4d7d2e36913",
+   "status": "ok"
+  },
+  {
+   "src": "c2_dialog.png",
+   "dst": "06_领取混元Token_弹窗.png",
+   "bytes": 139158,
+   "md5": "0034c002e01304946b4dca686c73afdd",
+   "status": "ok"
+  },
+  {
+   "src": "c2_dialog_text.txt",
+   "dst": "06_领取混元Token_弹窗正文.txt",
+   "bytes": 3081,
+   "md5": "a2a92f6c8e2694c233f67f00bfe58191",
+   "status": "ok"
+  },
+  {
+   "src": "cf_done.png",
+   "dst": "07_混元Token已领取_按钮变去使用.png",
+   "bytes": 190608,
+   "md5": "69b5f844f2aa2fc1d829574a9e75ecf6",
+   "status": "ok"
+  },
+  {
+   "src": "cf_opened.png",
+   "dst": "08_领取We分析专业版_确认弹窗.png",
+   "bytes": 133750,
+   "md5": "6e1de814f0e33c474cf7d60139b436bd",
+   "status": "ok"
+  },
+  {
+   "src": "we_done.png",
+   "dst": "09_We分析专业版已领取.png",
+   "bytes": 188328,
+   "md5": "97ae059c9022837667352c61b1bd0ea8",
+   "status": "ok"
+  },
+  {
+   "src": "we_result_text.txt",
+   "dst": "09_领取后工作台_正文.txt",
+   "bytes": 2968,
+   "md5": "7784131cbc140c71b30afd0fc713e6f8",
+   "status": "ok"
+  },
+  {
+   "src": "tcb_ai2.png",
+   "dst": "10_云开发控制台_AI页_成长计划专区.png",
+   "bytes": 164357,
+   "md5": "065880e2ae4e4523d2040bd6d0dc3174",
+   "status": "ok"
+  },
+  {
+   "src": "tcb_ai2_text.txt",
+   "dst": "10_云开发控制台AI页_正文.txt",
+   "bytes": 2087,
+   "md5": "c3aa88964f914f9e96efab8ed83a6cca",
+   "status": "ok"
+  }
+ ]
+}
