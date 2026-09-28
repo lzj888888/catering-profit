@@ -562,5 +562,21 @@ check('A26-12 真漏填补贴仍要报 miss（修公式不得把漏填检测一�
 check('A26-12 源码级：reconcile 内补贴取绝对值参与扣减（防回退到只减一次）',
   /Math\.abs\(subsidy\)/.test(fs.readFileSync(path.join(ROOT, 'utils/takeaway.js'), 'utf8')));
 
+// ===== A27 · R166 文案不得与已修算法脱节（"实现改了、说明没跟上" 是静默误导，客户照样算错）=====
+// 背景：R164 修了配平式（只减一次补贴 ⇒ 两步走），但界面上那句「按外卖收入−活动补贴…」仍在描述旧算法。
+//      这类漂移**不影响计算结果**，故不会有任何现有断言变红 —— 只能靠显式语义断言钉住。
+console.log('—— A27 R166 配平/带出文案不得回退到已证伪的旧说明 ——');
+const twTerms = require(path.join(ROOT, 'miniprogram/i18n/terms.js')).TERMS.ledger.takeawayMode;
+check('A27-1 recCalcHint 不得残留旧算法描述「外卖收入 − 活动补贴」（该式已被 R164 真值证伪）',
+  !/外卖收入\s*[−\-]\s*活动补贴/.test(twTerms.recCalcHint), twTerms.recCalcHint);
+check('A27-2 recCalcHint 必须说清「还原优惠前总额」这一步（两步走的第①步，缺了它等式就不成立）',
+  /还原/.test(twTerms.recCalcHint) && /优惠前/.test(twTerms.recCalcHint), twTerms.recCalcHint);
+check('A27-3 autoCarryHint 不得再写「配平相抵」（修好后配平已不依赖费用侧那一行，留着会诱导重复记账）',
+  !/配平相抵/.test(twTerms.autoCarryHint), twTerms.autoCarryHint);
+check('A27-4 费用项注「外卖活动补贴」引用的是**新字段名**（R161-2 已改名，旧名两边对不上号）',
+  /商家承担全部补贴/.test(require(path.join(ROOT, 'miniprogram/i18n/terms.js')).TERMS.ledger.expenseItemNotes['外卖活动补贴']),
+  require(path.join(ROOT, 'miniprogram/i18n/terms.js')).TERMS.ledger.expenseItemNotes['外卖活动补贴']);
+// ⚠️ 不再额外加「terms 双副本一致」—— A14（K11）已守，重复判据会两处漂移。
+
 console.log(`\n==== R85 外卖段自测：${pass} 通过 / ${failN} 失败 ====`);
 process.exit(failN === 0 ? 0 : 1);
