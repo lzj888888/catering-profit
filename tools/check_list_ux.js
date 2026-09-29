@@ -121,10 +121,15 @@ function judgePinPersist(validateSrc, indexSrc, ctxSrc) {
 }
 
 // 判据 L3b：置顶不得靠新建集合实现（集合单源里不得冒出 pin 系列集合）。
+// ⚠️ R181 修假阳性：旧实现用裸子串 `/['"][a-z_]*pin[a-z_]*['"]/i`，
+//    而 `shop_dish_mapping`（R174 入站接入缝，v1.4 §6.2 定名）的 `mapping` 里就含 "pin"（ma-pin-g）
+//    ⇒ 被误判成「置顶相关集合」⇒ 假红。**判据改为「按下划线分段后存在独立的 `pin` 段」**：
+//    `shop_pin_card` / `pin_cards` / `shop_cards_pin` ⇒ 命中；`shop_dish_mapping` / `shopping` ⇒ 不命中。
 function judgeNoPinCollection(collectionsSrc) {
   if (!collectionsSrc) return { ok: false, why: '取不到 initDb/collections.js（fail-closed）' };
-  const hit = collectionsSrc.match(/['"][a-z_]*pin[a-z_]*['"]/i);
-  if (hit) return { ok: false, why: '集合单源里出现置顶相关集合 ' + hit[0] + ' ⇒ 违反 M3 v1.1「零新建集合」红线' };
+  const ids = [...collectionsSrc.matchAll(/['"]([A-Za-z_][A-Za-z0-9_]*)['"]/g)].map(m => m[1]);
+  const hit = ids.find(id => id.toLowerCase().split('_').includes('pin'));
+  if (hit) return { ok: false, why: '集合单源里出现置顶相关集合 ' + hit + ' ⇒ 违反 M3 v1.1「零新建集合」红线' };
   return { ok: true, why: '集合单源里无置顶新集合（复用 shop 文档）' };
 }
 

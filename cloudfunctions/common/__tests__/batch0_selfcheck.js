@@ -236,9 +236,12 @@ function check(name, cond, detail) {
     }
   }
 
-  // ===== 点5：initDb 25 集合 + dev 门禁 blocked===undefined =====
+  // ===== 点5：initDb 27 集合 + dev 门禁 blocked===undefined =====
   {
-    check('点5·集合数=25', COLLECTIONS.length === 25, `len=${COLLECTIONS.length}`);
+    // ⚠️ 这里的 27 是**故意写死**的期望值（不是派生）：它要与 `COLLECTIONS` 实长对撞，
+    //    加/删集合却忘了同步别处时本条转红 —— 派生成 `=== COLLECTIONS.length` 就永远绿、等于没守。
+    //    R174（2026-09-30）新增 external_sales_daily / shop_dish_mapping ⇒ 25 → 27。
+    check('点5·集合数=27', COLLECTIONS.length === 27, `len=${COLLECTIONS.length}`);
     const gDev = gate('catering-dev-xxxxxx', '');
     const gProd = gate('catering-prod-xxxxxx', '');
     const gWhiteOk = gate('catering-dev-abc', 'catering-dev-abc');

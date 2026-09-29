@@ -26,6 +26,8 @@ const COLLECTIONS = [
   'shop_income_item', 'shop_expense_item', 'shop_subscription', 'shop_payment_flow',
   // 补充表
   'user', 'shop', 'shop_entitlement', 'order_refund', 'admin_user', 'admin_login_log',
+  // R174（2026-09-30 批次 B）：入站数据接入缝预埋 —— 纯 schema 空表（与单源 collections.js 同步）
+  'external_sales_daily', 'shop_dish_mapping',
 ];
 
 // ===== 2. 索引定义（复合/唯一按批次 0 §2.4 索引段）=====
@@ -134,6 +136,17 @@ const INDEXES = {
   ],
   shop_expense_item: [
     { name: 'idx_ei_shop_month', keys: { shop_id: 1, month: 1 } },
+  ],
+  // R174（批次 B）：入站日销量流水 —— 唯一键防重放重复写；辅助索引供「按菜品跨平台查销量」。
+  external_sales_daily: [
+    { name: 'idx_esd_uniq', unique: true, keys: { shop_id: 1, biz_date: 1, external_ref_id: 1 } },
+    { name: 'idx_esd_shop_date', keys: { shop_id: 1, biz_date: 1 } },
+    { name: 'idx_esd_dish_key', keys: { shop_id: 1, dish_key: 1 } },
+  ],
+  // R174（批次 B）：平台菜品 ↔ 我方成本卡映射（v1.4 §6.2）。
+  shop_dish_mapping: [
+    { name: 'idx_dm_uniq', unique: true, keys: { shop_id: 1, platform: 1, external_ref_id: 1 } },
+    { name: 'idx_dm_card_code', keys: { shop_id: 1, card_code: 1 } },
   ],
 };
 
