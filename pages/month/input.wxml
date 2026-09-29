@@ -144,6 +144,13 @@
               bindinput="onFastQty" disabled="{{readOnly}}"
               adjust-position="{{true}}" cursor-spacing="20" />
           </view>
+          <!-- 🔴 R170（方案1）：快速模式新增「其中：商家承担补贴」可选框 —— 填了就带出到费用侧外卖活动补贴 -->
+          <view class="dine-line2">
+            <input class="val-input dine-subsidy" type="digit" confirm-type="done" value="{{r.subsidy}}"
+              placeholder="{{t.twSubsidyField}}" data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}"
+              bindinput="onFastSubsidy" disabled="{{readOnly}}"
+              adjust-position="{{true}}" cursor-spacing="20" />
+          </view>
         </view>
         <!-- 汇总（R119：各平台填完后给「合计 + 已填平台数」；合计只回显，不写入金额） -->
         <view class="dine-sum">

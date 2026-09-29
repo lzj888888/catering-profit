@@ -482,6 +482,14 @@ Page({
     this.updateRow(kind, Number(gidx), Number(ridx), { qty: e.detail.value });
     this.syncTakeoutSum();   // 订单数变了 ⇒ 合计/单均都要重算
   },
+
+  // 🔴 R170（方案1）：快速模式「其中：商家承担补贴」输入 → 写 g.rows[i].subsidy。
+  //   updateRow 内部对 income+takeaway 行已自动调 syncTakeoutSum（→ syncSubsidyCarry 带出到费用侧），
+  //   这里**不重复调用**，避免双重 setData。
+  onFastSubsidy(e) {
+    const { kind, gidx, ridx } = e.currentTarget.dataset;
+    this.updateRow(kind, Number(gidx), Number(ridx), { subsidy: e.detail.value });
+  },
   // 「这一格算不算填了」的统一判据（R162 引入，供 buildItems 两个分支共用）。
   //   ⚠️ 只看"有没有输入"，不看数值大小 ⇒ 填 0 也算填过（与 mkByPlatFilled 同语义，防"填了 0 被当空丢掉"）。
   _hasVal(v) {
@@ -836,11 +844,12 @@ Page({
       const groups = this.data.incomeGroups.slice();
       const g = Object.assign({}, groups[gi]);
       // ⚠️ R162：qty 必须跟着走 —— 快速模式填的订单数切到分项要还在（反之亦然）。
+      // ⚠️ R170：subsidy 也必须跟着走 —— 快速模式填的「其中商家承担补贴」切到分项要还在（同族病防丢值）。
       const snap = (g.rows || []).map((r) => ({
         platform: r.subItem || '',
         goods: r.amountYuan || '',
         pack: '',
-        subsidy: '',
+        subsidy: r.subsidy || '',
         qty: r.qty === undefined || r.qty === null ? '' : String(r.qty),
       }));
       this.setData({ takeoutMode: val, takeoutDetailRows: restoreDetail(snap, this.takeoutPlatforms()) });
@@ -855,9 +864,11 @@ Page({
       const groups = this.data.incomeGroups.slice();
       const g = Object.assign({}, groups[gi]);
       // ⚠️ R162：收拢成单行总额时 qty 一并带回 g.rows（快速模式的订单数就存在这里）
+      // ⚠️ R170：subsidy 独立带回 g.rows[].subsidy（与 amountYuan 并存互不干扰 —— 收入侧那一个数继续含补贴，费用侧出账口单独取 subsidy）。
       g.rows = this.decorateRows(g, snap.map((r) => ({
         subItem: r.platform,
         amountYuan: subtotalOf(r.goods, r.pack, r.subsidy),
+        subsidy: r.subsidy,
         qty: r.qty,
       })));
       groups[gi] = g;
@@ -950,7 +961,10 @@ Page({
     const mk = (this.data.expenseGroups || []).find((x) => x.category === 'marketing');
     const roles = (TERMS.ledger.takeawayMode && TERMS.ledger.takeawayMode.reconcileRoles) || {};
     const mrow = (name) => { if (!name) return 0; const r = (mk && mk.rows || []).find((x) => x.subItem === name); return r ? (Number(r.amountYuan) || 0) : 0; };
-    const subsidy = rows.reduce((s, r) => s + (Number(r.subsidy) || 0), 0);
+    // 🔴 R170：subsidy 取数与收入合计同模式 —— 快速模式用 g.rows[].subsidy 求和（配平差额才正确）。
+    const subsidy = (g && this.data.takeoutMode === 'fast')
+      ? (g.rows || []).reduce((s, r) => s + (Number(r.subsidy) || 0), 0)
+      : rows.reduce((s, r) => s + (Number(r.subsidy) || 0), 0);
     const packTotal = rows.reduce((s, r) => s + (Number(r.pack) || 0), 0);
     const rec = reconcile({
       incomeTotal,
@@ -974,28 +988,35 @@ Page({
   // ===== 自动带出（A.11.3 sort 30：外卖活动补贴 = 收入侧补贴合计；手改后不覆盖）=====
   // ⚠️ 语义：仅当费用侧该行**为空**时带出；已有值且与合计不同 = 用户手改过 → 加锁不再覆盖
   //   （回读加载时若两边恰好一致也保持幂等不重写）。
+  // 🔴 R170（方案1）：快速模式也走这条带出 —— 老板填「一个数（含补贴）」时，若额外填了
+  //   「其中：商家承担补贴」，就把它带出到费用侧「外卖活动补贴」（补贴一进一出净额为零，利润才准）。
+  //   · 分项：subsidyTotal(takeoutDetailRows)（现状）
+  //   · 快速：g.rows[].subsidy 求和（新增出账口）
+  //   · 空值兼容：快速模式 subsidy 全空 ⇒ total=0 ⇒ target='' ⇒ 不写费用侧（老用户不回归）。
   syncSubsidyCarry() {
-    if (this.data.takeoutMode !== 'detail') return;   // 仅分项模式带出
-    const rows = this.data.takeoutDetailRows || [];
-    const total = subsidyTotal(rows);
+    const g = this.data.incomeGroups.find((x) => x.category === 'takeaway');
+    const isFast = this.data.takeoutMode === 'fast';
+    const total = isFast
+      ? ((g && g.rows) || []).reduce((s, r) => s + (Number(r.subsidy) || 0), 0)
+      : subsidyTotal(this.data.takeoutDetailRows || []);
     const groups = this.data.expenseGroups.slice();
     const mk = groups.findIndex((x) => x.category === 'marketing');
     if (mk < 0) return;
-    const g = Object.assign({}, groups[mk]);
-    const ri = g.rows.findIndex((r) => r.subItem === '外卖活动补贴');
+    const mg = Object.assign({}, groups[mk]);
+    const ri = mg.rows.findIndex((r) => r.subItem === '外卖活动补贴');
     if (ri < 0) return;
-    const cur = (g.rows[ri] && g.rows[ri].amountYuan) || '';
+    const cur = (mg.rows[ri] && mg.rows[ri].amountYuan) || '';
     const target = total ? total.toFixed(2) : '';
-    if (g.rows[ri].twCarryLock) return;              // 仅「本会话手改过费用侧」→ 不覆盖
+    if (mg.rows[ri].twCarryLock) return;              // 仅「本会话手改过费用侧」→ 不覆盖
     // 🔴 R85 修复：**不得**把「回读旧值 ≠ 当前合计」判为用户手改 —— 那是**用户改了收入侧**的
     //    正常信号，判错会锁死旧值 ⇒ 费用侧不跟随、配平与利润都错（跨月二次录入必踩）。
     if (!cur && !target) return;                     // 两边都空，无事可做
     if (cur === target) return;                      // 已一致 → 幂等不重写（省一次 setData）
-    const nr = Object.assign({}, g.rows[ri], { amountYuan: target, twCarryLock: false });
-    const rows2 = g.rows.slice();
+    const nr = Object.assign({}, mg.rows[ri], { amountYuan: target, twCarryLock: false });
+    const rows2 = mg.rows.slice();
     rows2[ri] = nr;
-    g.rows = rows2;
-    groups[mk] = g;
+    mg.rows = rows2;
+    groups[mk] = mg;
     this.setData({ expenseGroups: groups });
   },
 

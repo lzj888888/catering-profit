@@ -82,6 +82,36 @@ const inputJsSync = inputJs.slice(inputJs.indexOf('syncSubsidyCarry'));
 check('A8 带出实现存在（syncSubsidyCarry）', /syncSubsidyCarry/.test(inputJsSync));
 check('A8 手改后不覆盖（twCarryLock 守卫）', /twCarryLock/.test(inputJs) && /已有值且与合计不同 = 用户手改/.test(inputJs));
 
+console.log('===== A8b · R170 快速模式「其中商家承担补贴」带出 =====');
+// 🔴 R170（方案1）：syncSubsidyCarry 不再对快速模式提前 return；快速模式取 g.rows[].subsidy 求和。
+check('A8b 已删「快速模式直接 return」（首行不再有 takeoutMode !== detail）',
+  !/if \(this\.data\.takeoutMode !== 'detail'\) return;/.test(inputJs));
+check('A8b 快速模式 subsidy 取数 = g.rows[].subsidy 求和',
+  /isFast\s*\?\s*\(\(g && g\.rows\) \|\| \[\]\)\.reduce\(\(s, r\) => s \+ \(Number\(r\.subsidy\) \|\| 0\), 0\)/.test(inputJs));
+check('A8b 带出结果 twCarryLock=false（不锁，跟随收入侧）', /twCarryLock: false/.test(inputJs));
+// R170 真值复算（8 月淘宝闪购）：收入(含补贴)6585.08 − 补贴2069.70 − 佣金158.71 − 配送577.02 = 到手3779.65
+const R170_INCOME = 6585.08, R170_SUBSIDY = 2069.70, R170_COMM = 158.71, R170_DELIV = 577.02;
+const fastSubsidyTotal = [{ amountYuan: '6585.08', subsidy: '2069.70' }].reduce((s, r) => s + (Number(r.subsidy) || 0), 0);
+check('A8b 真值：快速模式补贴合计 = 2069.70', Math.abs(fastSubsidyTotal - R170_SUBSIDY) < 0.001, `sum=${fastSubsidyTotal}`);
+const R170_PROFIT = R170_INCOME - R170_SUBSIDY - R170_COMM - R170_DELIV;
+check('A8b 真值复算：6585.08−2069.70−158.71−577.02 = 3779.65（与分项模式一致）',
+  Math.abs(R170_PROFIT - 3779.65) < 0.001, `profit=${R170_PROFIT.toFixed(2)}`);
+
+console.log('===== A8c · R170 空值兼容（老用户不回归）=====');
+// 快速模式 subsidy 全空 ⇒ total=0 ⇒ target='' ⇒ 走「两边都空，无事可做」不写费用侧。
+check('A8c 空值守卫存在（!cur && !target 直接 return）', /if \(!cur && !target\) return;/.test(inputJs));
+check('A8c 快速模式 subsidy 全空 ⇒ 合计 0（不强制带出）',
+  (() => { const total = [{ amountYuan: '6585.08', subsidy: '' }].reduce((s, r) => s + (Number(r.subsidy) || 0), 0); return total === 0; })(),
+  'total=0 ⇒ target=空 ⇒ 不写费用侧');
+check('A8c 模式切换搬运 subsidy（快速→分项 r.subsidy||"" / 分项→快速收进 g.rows）',
+  /subsidy: r\.subsidy \|\| ''/.test(inputJs) && /subsidy: r\.subsidy,/.test(inputJs));
+
+console.log('===== A17b · R170 runReconcile 快速模式 subsidy 取数 =====');
+check('A17b runReconcile 快速模式用 g.rows[].subsidy（非 0 参与差额）',
+  /const subsidy = \(g && this\.data\.takeoutMode === 'fast'\)/.test(inputJs));
+check('A17b 分项模式 subsidy 仍取 takeoutDetailRows（不回归）',
+  /rows\.reduce\(\(s, r\) => s \+ \(Number\(r\.subsidy\) \|\| 0\), 0\)/.test(inputJs));
+
 console.log('===== A9~A12 · 配平校验（只做软提示：不阻断、不参与利润、不写入）=====');
 // 应有应收 = 收入合计 − 补贴 − 佣金 − 配送服务费 − 配送补贴
 // ⚠ R164 改了配平式：expected = (incomeTotal − subsidy) − |subsidy| − 佣金 − 配送 − 配送补贴
@@ -278,7 +308,7 @@ check('A16 账单两列（账期+金额）只取金额', Math.abs(extractPaste('
 
 console.log('===== A17 · 补贴带出不得因回读旧值误锁（P5 回归）=====');
 check('A17 无「cur !== target ⇒ 视为手改加锁」误判', !/cur && cur !== target/.test(inputJs));
-check('A17 仍有 twCarryLock 短路（本会话手改优先）', /if \(g\.rows\[ri\]\.twCarryLock\) return;/.test(inputJs));
+check('A17 仍有 twCarryLock 短路（本会话手改优先）', /if \(mg\.rows\[ri\]\.twCarryLock\) return;/.test(inputJs));
 check('A17 回读旧值≠合计时仍会跟随更新（cur === target 才幂等返回）', /if \(cur === target\) return;/.test(inputJs));
 
 console.log('===== A18 · 配平角色单源（P2/P4 回归）=====');

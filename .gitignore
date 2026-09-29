@@ -24,3 +24,9 @@ project.private.config.json
 #   · 实证（round110）：该目录 1036 张 png 中未跟踪 1033 张，**无一张**以 `evidence_` 开头。
 /review/evidence/r86_timeout_20260919/*.png
 !/review/evidence/r86_timeout_20260919/evidence_*.png
+
+# 工作区临时脚本/截图堆 `_m3/`（round179 补规则）：2026-09-27~28 我方调试脚本 + 大量截图，
+#   **119 MB**、**全未跟踪**，一直以 `??` 悬挂污染 git status（此前还被误估为 7MB）。
+#   性质 = 过程件（同 r86 `_gui/` 的既有决定：过程件不进库、说明档进库）。
+#   本条只做「不误提交」的机械保证；**未删除、未移动**原目录（数据零损失，李老师可随时自行清理）。
+_m3/
