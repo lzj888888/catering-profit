@@ -1,0 +1,46 @@
+【批次 B · 入站数据接入缝预埋（R174）】仓库 C:\Users\lzj\WorkBuddy\Claw\catering-profit，分支 dev。开工前先 git log --oneline -3 确认 HEAD，再 git status 确认工作区干净。
+
+一、目的（一句话）
+为将来链接收银端（美团收银等 OAuth 授权）拿单品销量，预留最小入站数据骨架。只建空表 + 定义 schema + 加一个关联字段。引擎计算逻辑零改动、零业务逻辑。将来 OAuth 落地时，只做「对方 payload → 此 schema」的映射。
+
+二、改动点（照此落地，不要扩大范围）
+
+1. 在 initDb/collections.js（集合定义单源）新增集合 external_sales_daily：只建空表 + 定义字段，现在不写任何写入/读取逻辑、不写映射函数、不接任何平台。
+字段：
+- shop_id string 门店 ID
+- biz_date string 营业日期 YYYY-MM-DD
+- external_ref_id string 平台菜品 ID
+- dish_key string 关联本系统成本卡行 ID（cost_card_row_id）
+- qty number 当日销量
+- amount number 当日销售额（元）
+- platform string 枚举 meituan_pos / other
+- source string 枚举 oauth / manual
+- created_at date 写入时间
+唯一键：(shop_id, biz_date, external_ref_id)
+
+2. shop_dish_mapping 模型新增字段 external_ref_id：string，可选，默认空。含义是平台菜品 ID（如美团收银菜品 ID），用于关联「收银平台菜品 ↔ 本系统成本卡」。动机是"关联收银销量"，不是"对外曝光档案"。不动该集合任何现有字段与读写逻辑。
+
+三、红线（违反即退回）
+- 不改动任何引擎计算逻辑（成本/毛利/盈亏公式）。
+- 不新增 OAuth / 授权流程代码。
+- 不新增任何出站对外接口；旧 outbound 方案（shop_public_profile 等）已作废，不建。
+- 不新增 LLM / AI 调用。
+- 不修改 specs/ 目录下任何文件（规范归 WorkBuddy）。
+- 金额单位一律元；qty 是数量，绝不参与金额计算。
+- 列表查询必须有显式上限（沿用 common/dataAdapter.js::LIST_LIMIT 单源，不要另立常量）。
+- 写库主键必须用 _id（doc(业务键).update() 在真云会静默 0 行，必须读 stats.updated 判成败）。
+
+四、守卫扫描面预警（重要，踩过两次）
+- tools/check_collection_perms.js 的 P5-② 会禁止 core/15 集合权限矩阵出现单源之外的集合。external_sales_daily 是"计划新增、尚未落库"，不要把它写进 core/15 权限矩阵，否则守卫必红。
+- 新集合如需登记，只标"计划新增、尚未落库"。
+
+五、门禁与验收
+- 复跑集合定义自检（确认 external_sales_daily 已注册、唯一键正确）。
+- 新增断言：shop_dish_mapping 文档可写入 external_ref_id 字段（可选、默认空）。
+- 真值验收：向 external_sales_daily 插入一条 (shop_id, biz_date, external_ref_id) 记录，按唯一键二次插入应被拒（证明唯一约束真生效）。本地模拟不出来的部分就明确写"本地无法验证"，不要伪造通过。
+- 你上次反馈过"114 套件在 300s 工具上限内跑不完"。这次请分块跑：先跑与本次改动相关的套件，再分块补跑其余，不要一次性全量。跑不完的部分如实报"未跑"，不要写成"通过"。
+
+六、收尾
+- 提交必须带 pathspec（只 add 你实际改的文件），不要 git add .，不要推远端。
+- commit message 写清改了什么、验收判据、哪些没跑到。
+- 回执里列出：改动文件清单 + 增删行数 + 门禁结果 + 未跑/存疑项。
