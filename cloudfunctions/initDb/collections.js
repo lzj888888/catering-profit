@@ -3,7 +3,7 @@
 // 本文件为**纯数据/纯函数**，不依赖 wx-server-sdk，供云函数与自测脚本共同引用（避免漂移）。
 // 与 specs/dev-specs/prototype/init_db.js 及 core/10 云函数清单同步锁死。
 
-// ===== 1. 集合清单（25 张，严格对应批次 0 §2.4）=====
+// ===== 1. 集合清单（27 张 = 批次 0 锁定 25 张 + R174 入站预留 2 张）=====
 const COLLECTIONS = [
   // A 类 · 已锁定表
   'shop_material', 'shop_cost_card', 'shop_cost_card_line', 'shop_sandbox',
@@ -15,6 +15,11 @@ const COLLECTIONS = [
   'shop_income_item', 'shop_expense_item', 'shop_subscription', 'shop_payment_flow',
   // 补充表
   'user', 'shop', 'shop_entitlement', 'order_refund', 'admin_user', 'admin_login_log',
+  // R174（2026-09-30 批次 B）：入站数据接入缝预埋 —— 纯 schema 空表，零业务逻辑、零 OAuth、零出站。
+  // · external_sales_daily：收银端/外卖平台日销量流水（OAuth 落地时再写 payload→schema 映射）
+  // · shop_dish_mapping：平台菜品 ID ↔ 我方成本卡 card_code 的多对多映射（v1.4 §6.2 定名）
+  // ⛔ 引擎/毛利/盈亏公式零改动；金额单位一律元；qty 为数量、不参与金额计算。
+  'external_sales_daily', 'shop_dish_mapping',
 ];
 
 // ===== 2. 索引定义 =====
@@ -128,6 +133,20 @@ const INDEXES = {
   ],
   shop_expense_item: [
     { name: 'idx_ei_shop_month', keys: { shop_id: 1, month: 1 } },
+  ],
+  // R174（批次 B）：入站日销量流水 —— 唯一键 (shop_id, biz_date, external_ref_id) 防重放重复写；
+  //   辅助索引 (shop_id, dish_key) 供「按菜品查所有平台销量」与「按门店+日期拉销量」。
+  external_sales_daily: [
+    { name: 'idx_esd_uniq', unique: true, keys: { shop_id: 1, biz_date: 1, external_ref_id: 1 } },
+    { name: 'idx_esd_shop_date', keys: { shop_id: 1, biz_date: 1 } },
+    { name: 'idx_esd_dish_key', keys: { shop_id: 1, dish_key: 1 } },
+  ],
+  // R174（批次 B）：平台菜品 ↔ 我方成本卡映射（v1.4 §6.2）。
+  //   唯一键 (shop_id, platform, external_ref_id) 防重复映射；辅助索引 (shop_id, card_code) 供反查。
+  //   external_ref_id 可选、默认空：未在平台建档/未绑映射的菜品不强制填；空值无唯一冲突。
+  shop_dish_mapping: [
+    { name: 'idx_dm_uniq', unique: true, keys: { shop_id: 1, platform: 1, external_ref_id: 1 } },
+    { name: 'idx_dm_card_code', keys: { shop_id: 1, card_code: 1 } },
   ],
 };
 
