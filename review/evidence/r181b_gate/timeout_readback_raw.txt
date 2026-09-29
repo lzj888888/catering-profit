@@ -1,0 +1,8 @@
+
+- initialize
+
+(node:20600) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)
+× IDE may already started at port 39721, trying to connect
+
+× initialize error: wait IDE port timeout, undefined
