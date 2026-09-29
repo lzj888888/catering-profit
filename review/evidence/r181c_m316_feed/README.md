@@ -1,0 +1,45 @@
+# R181c · M3.16 套餐投喂证据（2026-09-30 08:0x）
+
+## 投了什么
+
+| 项 | 值 |
+|---|---|
+| 批次 | **C · M3.16 套餐成本卡（引用型卡）** |
+| 载荷 | `feed_m316.txt`（64 行 / 5439 字节 / **3130 字符**）|
+| 依据 | `specs/dev-specs/core/开发规范v1.1_ModuleM3增量_*.md` §2 / §M3.16 / §M3.24 / §M3.25 / §M3.26 |
+| 范围 | `initDb/collections.js` 字段登记（`card_type` / `line_type` / `sub_card_ref` / `sub_version`）+ 新建单源 `common/comboDerive.js` + `saveCostCard`/`getCostCard` 套餐校验与返回 + `pages/card/edit` 子卡行 UI + 接 `m3_combo` 付费墙 |
+
+## 投喂判据（全部机器可读，不用截图）
+
+| 步骤 | 判据 | 实测 |
+|---|---|---|
+| 粘贴 | UIA `GetValuePattern().Value` 长度 == 载荷长度 | **3130 == 3130 ⇒ PASTE-OK** |
+| 发送 | 点发送钮 `(1411,981)` 后读 `inscode.db::inflight_turn` | **0 → 1** ⇒ 已送达并开工 |
+| 模型池 | `ui_preferences.json::last_model_selection` | `doubao-seed-2.1-pro` / `tier=pro`（**非 flash**）|
+
+## 🔴 本轮新实测的坑（已回写技能）
+
+1. **`paste` 会偶发失败，且必须"重试一次"再换方案**。
+   首次跑 `paste_uia3.py` ⇒ `click n = 2` / `ctrl+v n = 4` / **`after len = 55`（占位符）/ PASTE-FAILED**；
+   原样重跑**一次** ⇒ **`after len = 3130` / PASTE-OK**。
+   ⇒ 判据失败时先**原样重跑**，不要立刻改坐标/改投递方式（本轮在坐标上白绕了数轮）。
+
+2. **`EditControl` 的 UIA 引用会 stale**。`doc.EditControl(searchDepth=25)` 可能抛
+   `COMError (-2146233083)`（元素已失效）⇒ 必须**每次调用前重新取 doc/edit**，不要把引用跨步骤缓存。
+
+3. **`python` 输出到管道是块缓冲，SIGTERM 会整段丢输出**。诊断脚本被工具超时杀掉时**看不到任何 print**
+   （本轮两次"无输出 + SIGTERM"的真因）⇒ 一律加 **`python -u`**。
+
+4. **截图再次被骗**（第三次）：`shot1_oldframe.png` 显示"输入框浮在窗口中央、且里面已有 M3.16 全文"，
+   而 UIA 事实是"输入框在底部 `(1021,945)`、当时为空" ⇒ **截图是旧帧，不可作任何判据**。
+
+5. **发送钮的权威坐标** = UIA `ButtonControl '发送'` rect `(1395,965,1428,997)` ⇒ 中心 **`(1411,981)`**
+   （与技能记的 `(1409,985)` 一致）。点它之前**输入框必须非空**，否则钮为禁用态、点了 `inflight` 不变。
+
+## 文件
+
+- `feed_m316.txt` —— 投喂载荷原文（自包含：目的 / 依据 / 7 条改动点 / 4 个复算锚点 / 红线 / 门禁要求 / 回执格式）
+- `send_m316.py` —— 点发送钮 + 读 `inflight` 判据
+- `try_setvalue.py` —— 诊断脚本（暴露 stale element 的 COMError；`-u` 才看得到输出）
+- `find_send.py` —— UIA 定位发送钮（`ButtonControl '发送'`）
+- `shot1_oldframe.png` —— **反例留存**：旧帧截图，证明"截图不可作判据"

@@ -1,0 +1,64 @@
+【批次 C · M3.16 套餐成本卡（引用型卡）】仓库 C:\Users\lzj\WorkBuddy\Claw\catering-profit，分支 dev。开工前先 git log --oneline -3 确认 HEAD，再 git status 确认工作区干净。
+
+一、目的（一句话）
+把「套餐」做成引用型成本卡：套餐能引用其它成本卡（子卡）、但**不被任何卡引用**；子卡**锁版本**；给老板看三个数 —— 顾客省了多少 / 我少赚了多少 / 成本结构。引擎计算逻辑零改动。
+
+二、依据（开工前必读）
+specs/dev-specs/core/开发规范v1.1_ModuleM3增量_套餐外卖多规格与留存对照.md 的 §2 统一设计原则 / §M3.16 / §M3.24 / §M3.25 / §M3.26。
+核心思想（照 §2）：套餐行在引擎眼里与原料行**形状相同** ⇒ 把「子卡单份成本(分) × 100」当作 net_unit_cost、quantity = 份数，喂**同一个** calcCostCard。**引擎一行不改。**
+
+三、改动点（照此落地，不要扩大范围）
+
+1) cloudfunctions/initDb/collections.js 字段登记（**不新建集合、不新增索引**）
+- shop_cost_card 新增 card_type（整数，默认 1；**1 = 单品、3 = 套餐**，2 空置不用）
+- shop_cost_card_line 新增 line_type（整数，默认 1；**1 = 原料行、2 = 子卡行**）
+- shop_cost_card_line 新增 sub_card_ref（字符串，子卡逻辑卡号 = 实现里的 card_code）
+- shop_cost_card_line 新增 sub_version（整数，锁定的版本号）
+
+2) 新建单源 cloudfunctions/common/comboDerive.js（再由 tools/sync_common.js 派生扁平副本）
+- 纯函数 buildComboLines(subCards) → lines：每行 { quantity: 份数, net_unit_cost: 子卡单份成本(分) × 100, ... }
+- 纯函数 comboInsight(subCards, comboPriceFen) → { customerSaveFen, merchantLoseFen, costShare[] }
+- 三条硬约束（与同目录 specDerive.js 同族）：① 不得内联进任何 service.js；② 不得返回要落库的成本；③ 纯函数、无 IO
+
+3) saveCostCard：card_type=3 时先校验引用
+- 引用对象必须**同店**、**最新版本**、且 card_type ≠ 3（**禁套餐含套餐**）
+- 违规抛 COMBO_NEST_NOT_ALLOWED（引套餐 / 被套餐引）或 SUB_CARD_VERSION_INVALID（版本不存在 / 已软删 / 非本店）
+- 保存时**记录 sub_version**（锁版本）；子卡后续升版**不影响**本套餐
+
+4) getCostCard / getCardVersions：返回套餐结构 + 三个显示信息（顾客省 / 我少赚 / 成本结构）。我少赚为负 ⇒ 前端红字提示「这个套餐在拉低你的毛利」
+
+5) 页面 pages/card/edit.*：支持 card_type 切换 + 子卡选择行（选卡 + 填份数）。UI 照该页既有风格，不新造组件
+
+6) 付费墙（**必须同步接上** —— 铁律「付费墙必须先于付费功能落地」）
+- 云函数侧：保存 / 读取套餐时调 hasFeature(db, userId, 'm3_combo')（该能力**已登记**在 common/entitlement.js::PAID_FEATURES，直接用，**不要改那份清单**）
+- 前端侧：新建套餐入口用 openPaywall('combo')（'combo' **已在** utils/paywall.js::PAYWALL_TYPES 里，直接用）
+- ⚠️ **不要新建**含 "combo" 字样的云函数目录（会触发付费墙守卫 L6-②：目录内必须出现 hasFeature( ）；复用现有 costCard 云函数
+
+7) 错误码 2 个：COMBO_NEST_NOT_ALLOWED / SUB_CARD_VERSION_INVALID
+- 你只改 miniprogram/i18n/terms.js 与其错误码映射；**specs/ 下任何文件都不许改**（含 specs/dev-specs/i18n/terms.js 与 specs/dev-specs/core/09_统一错误码表.md）—— 那两处由 WorkBuddy 同步，你改完在回执里列出新增的键名即可
+
+四、复算锚点（**必须 require 生产引擎 cloudfunctions/calcBom/service.js 实算，不许重写一份**）
+- A-a 套餐成本：宫保(975) + 米饭(120) + 例汤(180) ⇒ **1275 分**；售 25 元 ⇒ 毛利 **1225**、毛利率 **49%**
+- A-a 对比：单点毛利合计 2425 ⇒ **少赚 1200**、顾客省 **1200**
+- A-b 锁版本：鸡胸肉 15→20 元/斤（宫保 → 1208）⇒ 套餐**仍 1275**（不回溯）；「同步至最新」后 ⇒ **1508**（毛利率 39.68%）
+- A-c 禁嵌套：套餐引用套餐 ⇒ COMBO_NEST_NOT_ALLOWED
+
+五、红线（违反即退回）
+- **引擎段一字不改**：netUnitCostWan / buildSnapshotLines / calcCostCard / wouldCreateCycle
+- **不新建集合、不新增索引**；**不改** core/15_集合权限矩阵.md
+- **不改 specs/ 下任何文件**（规范归 WorkBuddy）
+- 套餐**不进 BOM 链**；禁套餐含套餐
+- 子卡**锁版本**（跟最新会让历史套餐成本回溯变化）
+- 套餐试算值**不得**写入 total_cost
+- 金额一律**分**；写库主键用 _id；列表查询走 common/dataAdapter.js::LIST_LIMIT，要全部行用 da.listAll()
+- 新可见文案 = 三处同步（miniprogram/i18n/terms.js + 页面 + 回执里列明新增键）
+
+六、门禁与验收
+- **分块跑**，不要一次性全量（工具 300s 上限）
+- 相关套件要绿；**跑不完的如实报「未跑」，不要写成「通过」**
+- 新增断言：① 套餐成本 = 1275（A-a）② 子卡涨价后套餐不变（A-b）③ 套餐引用套餐被拒（A-c）
+
+七、收尾
+- 提交**带 pathspec**（只 add 你实际改的文件），不要 git add .，**不要推远端**
+- commit message 写清改了什么 + 验收判据 + 哪些没跑到
+- 回执列出：改动文件清单 + 增删行数 + 门禁结果 + 未跑 / 存疑项 + **新增的 terms 键名**
