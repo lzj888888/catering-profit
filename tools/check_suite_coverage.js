@@ -60,6 +60,10 @@ const EXEMPT = {
     { by: 'round60', date: '2026-09-20', reason: '索引建库期字段核对的一次性取证脚本，非生产判据' },
   'review/evidence/index_buildout_20260917/scripts/verify_indexes2.py':
     { by: 'round60', date: '2026-09-20', reason: '索引建库期索引核对的一次性取证脚本，非生产判据' },
+  // r181d 补：R181b 归档的 R86 timeout 真云回读取证脚本 —— 沙箱内 cli 通道被
+  //   reg.exe 黑名单拦断（wait IDE port timeout），该脚本未产出任何数据，纯一次性取证件。
+  'review/evidence/r181b_gate/check_timeout.py':
+    { by: 'r181d', date: '2026-09-30', reason: 'R86 timeout 真云回读的一次性取证脚本（通道被安全策略拦断、未产出数据），非生产判据' },
 };
 
 function gitTracked() {
