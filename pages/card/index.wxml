@@ -15,6 +15,7 @@
     </picker>
   </view>
   <view class="toolbar">
+    <button class="btn-small ghost tool-btn" bindtap="goTakeaway">{{t.takeawayTitle}}</button>
     <button class="btn-small ghost tool-btn" bindtap="goMaterial">{{t.materialArchive}}</button>
     <button class="btn-small ghost tool-btn" wx:if="{{!selectMode}}" bindtap="onBatchSyncEnter">{{t.batchSync}}</button>
     <button class="btn-small tool-btn" wx:if="{{selectMode}}" bindtap="onBatchSyncCancel">{{t.cancel}}</button>

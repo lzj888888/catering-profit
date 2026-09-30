@@ -67,6 +67,8 @@ Page({
       // M3.16（批次 C）套餐标记
       cardTypeCombo: TERMS.card.cardTypeCombo,
       comboInsightLoseWarn: TERMS.card.comboInsightLoseWarn,
+      // M3.17（批次 D）外卖单均入口
+      takeawayTitle: TERMS.ledger.takeaway.title,
     },
     all: [],           // 全量列表（前端过滤）
     list: [],
@@ -226,6 +228,8 @@ Page({
 
   // 原料档案入口
   goMaterial() { wx.navigateTo({ url: '/pages/material/index' }); },
+  // M3.17（批次 D）：外卖单均试算页入口（复用现有导航，不新造体系）
+  goTakeaway() { wx.navigateTo({ url: '/pages/takeaway/index' }); },
 
   // 新增：先配额预检（免费张数由后端 checkQuota 出参决定；进列表不弹）
   async goAdd() {

@@ -1,0 +1,34 @@
+/* pages/takeaway/index.wxss —— M3.17 外卖单均试算页。色沿用主色系 #1e3a5f / #e8eff7，不新增品牌色。 */
+
+/* 口径切换 */
+.mode-switch { display: flex; background: #eef2f7; border-radius: 12rpx; padding: 6rpx; margin-bottom: 10rpx; }
+.mode-tab { flex: 1; text-align: center; font-size: 28rpx; color: #6b7a90; min-height: 72rpx; line-height: 72rpx; border-radius: 10rpx; }
+.mode-tab.on { background: #1e3a5f; color: #fff; font-weight: 600; }
+.mode-desc { font-size: 26rpx; color: #6b7a90; line-height: 1.5; margin: 6rpx 4rpx 12rpx; }
+.base-note { font-size: 26rpx; color: #b45309; line-height: 1.5; margin: 0 4rpx 16rpx; padding: 10rpx 16rpx; background: #fdf6ec; border-radius: 10rpx; }
+
+/* 区块标题 */
+.sec { font-size: 30rpx; color: #1e3a5f; font-weight: 600; margin: 24rpx 0 10rpx; }
+
+/* 行（菜品 / 包材） */
+.row { display: flex; align-items: center; margin-bottom: 10rpx; }
+.pick-grow { flex: 1; }
+.pick { padding: 0 24rpx; background: #fff; border: 1rpx solid #e8eff7; border-radius: 10rpx; color: #1e3a5f; font-size: 28rpx; min-height: 88rpx; line-height: 88rpx; }
+.qty-input, .price-input { width: 160rpx; margin-left: 12rpx; padding: 0 16rpx; background: #fff; border: 1rpx solid #e8eff7; border-radius: 10rpx; min-height: 88rpx; font-size: 28rpx; }
+.del { margin-left: 12rpx; color: #e74c3c; font-size: 40rpx; min-width: 64rpx; text-align: center; }
+
+/* 字段 */
+.field { display: flex; align-items: center; margin-bottom: 12rpx; flex-wrap: wrap; }
+.lbl { font-size: 28rpx; color: #1e3a5f; width: 220rpx; flex-shrink: 0; }
+.val-input { flex: 1; padding: 0 20rpx; background: #fff; border: 1rpx solid #e8eff7; border-radius: 10rpx; min-height: 88rpx; font-size: 28rpx; }
+.mode-group { display: flex; }
+.mode-item { margin-right: 24rpx; font-size: 28rpx; color: #333; display: flex; align-items: center; }
+.payer-pick { padding: 0 24rpx; background: #e8eff7; border-radius: 10rpx; color: #1e3a5f; font-size: 26rpx; min-height: 72rpx; line-height: 72rpx; margin-left: 12rpx; }
+
+/* 结果 */
+.cell { display: flex; justify-content: space-between; padding: 12rpx 4rpx; border-bottom: 1rpx solid #eef2f7; }
+.val { font-size: 30rpx; color: #1e3a5f; }
+.val.strong { font-weight: 700; }
+.warn { font-size: 26rpx; color: #e74c3c; line-height: 1.5; margin: 10rpx 4rpx; }
+
+.btn { margin-top: 12rpx; }

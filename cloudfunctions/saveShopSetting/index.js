@@ -87,6 +87,23 @@ exports.main = async (event) => {
     }
   }
 
+  // ===== 5. M3.17（批次 D）：外卖平台参数默认值（switch_key='m3_takeaway_params'，value=JSON 字符串）=====
+  //   试算结果不落库；只存「平台参数默认值」—— 那是设置、不是单据。
+  //   🔴 沿用 shop_switch 既有集合与唯一索引 idx_switch_shop_key，不新增集合/索引；值存 `value` 字段（字符串）。
+  if (v.takeaway_params !== undefined) {
+    const key = SWITCH_KEYS.takeawayParams;
+    const tpRes = await da.list('shop_switch', { shop_id: shopId, switch_key: key });
+    const tpRow = (tpRes && tpRes.data && tpRes.data[0]) || null;
+    if (v.takeaway_params === null) {
+      // 显式清空（回退 = 清掉该 switch 行）
+      if (tpRow) await db.collection('shop_switch').doc(tpRow._id || tpRow.id).remove();
+    } else if (tpRow) {
+      await db.collection('shop_switch').doc(tpRow._id || tpRow.id).update({ data: { value: v.takeaway_params, updated_at: now } });
+    } else {
+      await da.insert('shop_switch', { shop_id: shopId, switch_key: key, value: v.takeaway_params });
+    }
+  }
+
   return ok({
     shop_id: shopId,
     name: v.name || (shopDoc ? shopDoc.name : ''),
@@ -98,6 +115,8 @@ exports.main = async (event) => {
     // round156：回读置顶（未传时回库里的，供列表页重排后立即回显）
     pinned_cards: v.pinned_cards !== undefined ? v.pinned_cards : ((shopDoc && shopDoc.pinned_cards) || []),
     pinned_materials: v.pinned_materials !== undefined ? v.pinned_materials : ((shopDoc && shopDoc.pinned_materials) || []),
+    // M3.17：回读外卖平台参数（传了返回传的；不传返回 undefined 表示不动）
+    takeaway_params: v.takeaway_params !== undefined ? v.takeaway_params : undefined,
     client_request_id: v.input.client_request_id || '',
   });
 };

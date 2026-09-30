@@ -417,6 +417,65 @@ const TERMS = {
       promoItem: '外卖推广费',
       promoPathHint: '外卖推广费不在订单结算单里，钱从推广账户余额单独扣。只对结算账单核对一定会漏，利润会虚高。',
     },
+    // ===== M3.17（批次 D）· 外卖单均试算页（纯试算，不落库）=====
+    takeaway: {
+      title: '外卖单均测算',
+      // 双口径（顶部显示口径名 + 一句人话解释；两套数字不混）
+      modeCash: '到手口径',
+      modeAccrual: '总额法口径',
+      modeCashDesc: '现金视角：老板实际到手多少，减掉菜品和包材成本就是赚的。',
+      modeAccrualDesc: '会计视角：收入与费用分开记，和月度核算对得上（补贴既进收入又进费用）。',
+      commissionBaseNote: '佣金（技术服务费）的计费基数是商品总价，不含打包费。',
+      // 菜品 / 套餐
+      dishTitle: '本单菜品',
+      dishPick: '选菜品 / 套餐',
+      dishPickPh: '点选一个菜品或套餐',
+      qty: '份数',
+      addDish: '+ 加一道',
+      // 包材
+      packTitle: '包材',
+      packTempPh: '临时包材金额（元）',
+      packQty: '数量',
+      addPack: '+ 加包材',
+      // 平台参数
+      paramsTitle: '平台参数',
+      commissionMode: '佣金方式',
+      commissionModeRate: '按比例',
+      commissionModeFixed: '固定金额',
+      commissionRate: '佣金率（%）',
+      commissionMin: '佣金保底（元）',
+      commissionFixed: '固定佣金（元）',
+      deliveryFee: '配送服务费（元）',
+      deliverySubsidy: '配送补贴（元）',
+      promoFee: '推广费（元）',
+      packFee: '打包费（元）',
+      deliveryCustomer: '配送费·顾客承担（元）',
+      // 补贴拆行（承担方未选 ⇒ 不计入，fail-closed）
+      subsidyTitle: '补贴（承担方未选则不计入）',
+      subsidyUser: '用户券补贴',
+      subsidyMerchant: '商家满减补贴',
+      payer: '承担方',
+      payerUnset: '未选',
+      payerMerchant: '商家',
+      payerPlatform: '平台',
+      // 结果（双口径分别展示）
+      resultTitle: '测算结果',
+      payment: '顾客支付',
+      receipt: '商家实收',
+      profit: '单均理论利润',
+      receiptRate: '到手率',
+      dishCost: '菜品成本',
+      packCost: '包材成本',
+      revenue: '收入',
+      expense: '费用',
+      // 挂牌价反算
+      reverseTitle: '挂牌价反算',
+      targetProfit: '目标到手利润（元）',
+      reverseBtn: '反算',
+      reverseResult: '商品挂牌总价',
+      // 软提示（不阻断）
+      rateLowHint: '到手率偏低（行业约 70%~75%），平台扣项可能吃掉了利润。',
+    },
     // 费用侧营销项「取数路径」标注（⚠️ 按营销项**显示名**（与 collections.js item_name 一致）挂，随 terms 双副本走）
     expenseItemNotes: {
       '外卖平台佣金': '账单「技术服务费」列求和',

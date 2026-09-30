@@ -12,7 +12,7 @@ const { resolveAuth, genId, defaultShopId, isDuplicateKeyError } = common;
 const { ERROR_CODES, ok, fail } = common;
 const { makeAdapter } = common.dataAdapter;
 const { nowUtc } = common.utilTime;
-const { switchesFromRows } = require('./service');
+const { switchesFromRows, takeawayParamsFromRows } = require('./service');
 const { validateInput } = require('./validate');
 
 exports.main = async (event) => {
@@ -58,13 +58,17 @@ exports.main = async (event) => {
 
   // ===== 3. 读服务端权威开关 =====
   const swRes = await da.list('shop_switch', { shop_id: shopId });
-  const switches = switchesFromRows((swRes && swRes.data) || []);
+  const swRows = (swRes && swRes.data) || [];
+  const switches = switchesFromRows(swRows);
+  const takeawayParams = takeawayParamsFromRows(swRows);
 
   return ok({
     shop_id: shopId,
     shop_name: shop.name || '',
     shop_remark: shop.remark || '',
     switches,
+    // M3.17（批次 D）：外卖平台参数默认值（JSON 字符串；缺省 '' 由前端 parse 兜底）
+    takeaway_params: takeawayParams,
     // round156：列表置顶（店铺级偏好，同 biz_type/city_tier 一样随上下文下发）。
     //   存量店铺没有这两个字段 ⇒ 给 []（fail-soft，不回填、不报错）。
     pinned_cards: Array.isArray(shop.pinned_cards) ? shop.pinned_cards : [],

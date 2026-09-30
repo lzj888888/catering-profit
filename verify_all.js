@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：117 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：118 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -599,6 +599,9 @@ const SUITES = [
   // M3.20（批次 B 收尾 · 标准原料词库 + 菜品模板）：L-a~L-g 七组锚点。
   //   只建议绝不替换、绝不带价格、单位池 ∈ PURCHASE_UNITS；模板保存走既有 saveCostCard 配额照扣。
   ['m3-lexicon', 'tools/selftest_m3_lexicon.js'],
+  // M3.17 + M3.32（批次 D · 外卖单均 + 补贴拆行/固定佣金）：T-a~T-g 七组锚点。
+  //   佣金基数恒为商品总价（不含打包费）；双口径不混；补贴承担方未选不计入（fail-closed）；输出不含 M1 字段。
+  ['m3-takeaway', 'tools/selftest_m3_takeaway.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

@@ -64,12 +64,22 @@ function validateInput(event) {
   const pm = normPinList(src.pinned_materials, 'pinned_materials');
   if (!pm.ok) return err(pm.msg);
 
+  // M3.17（批次 D）：外卖平台参数默认值（JSON 字符串，可选）。
+  //   三态：undefined = 不传不动库；null = 清掉该 switch 行；字符串 = 存 shop_switch.value。
+  let takeawayParams;
+  if (src.takeaway_params !== undefined) {
+    if (src.takeaway_params === null) takeawayParams = null;
+    else if (typeof src.takeaway_params === 'string') takeawayParams = src.takeaway_params;
+    else return err('takeaway_params 必须是 JSON 字符串');
+  }
+
   return {
     error: null,
     shop_id: src.shop_id,
     name, remark, switches,
     biz_type: bizType, city_tier: cityTier,
     pinned_cards: pc.value, pinned_materials: pm.value,
+    takeaway_params: takeawayParams,
     input: { client_request_id: src.client_request_id || '' },
   };
 }

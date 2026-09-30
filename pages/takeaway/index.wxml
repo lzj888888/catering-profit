@@ -1,0 +1,119 @@
+<view class="container safe-bottom" wx:if="{{!loading}}">
+  <!-- 口径切换 + 顶部口径名 + 人话解释（两套数字不混） -->
+  <view class="mode-switch">
+    <view class="mode-tab {{mode === 'cash' ? 'on' : ''}}" data-mode="cash" bindtap="onMode">{{t.modeCash}}</view>
+    <view class="mode-tab {{mode === 'accrual' ? 'on' : ''}}" data-mode="accrual" bindtap="onMode">{{t.modeAccrual}}</view>
+  </view>
+  <view class="mode-desc">{{mode === 'cash' ? t.modeCashDesc : t.modeAccrualDesc}}</view>
+  <view class="base-note">{{t.commissionBaseNote}}</view>
+
+  <!-- 本单菜品 -->
+  <view class="sec">{{t.dishTitle}}</view>
+  <view class="row" wx:for="{{items}}" wx:key="index">
+    <picker class="pick-grow" mode="selector" range="{{dishes}}" range-key="name" data-idx="{{index}}" bindchange="onItemPick">
+      <view class="pick">{{items[index].card_name || t.dishPickPh}}</view>
+    </picker>
+    <input class="qty-input" type="number" value="{{items[index].qty}}" data-idx="{{index}}" bindinput="onItemQty" placeholder="{{t.qty}}" adjust-position="{{true}}" cursor-spacing="20" />
+    <view class="del" data-idx="{{index}}" bindtap="delItem">×</view>
+  </view>
+  <button class="btn ghost btn-small" bindtap="addItem">{{t.addDish}}</button>
+
+  <!-- 包材 -->
+  <view class="sec">{{t.packTitle}}</view>
+  <view class="row" wx:for="{{packs}}" wx:key="index">
+    <input class="price-input" type="digit" value="{{packs[index].unit_price_yuan}}" data-idx="{{index}}" bindinput="onPackPrice" placeholder="{{t.packTempPh}}" adjust-position="{{true}}" cursor-spacing="20" />
+    <input class="qty-input" type="number" value="{{packs[index].qty}}" data-idx="{{index}}" bindinput="onPackQty" placeholder="{{t.packQty}}" adjust-position="{{true}}" cursor-spacing="20" />
+    <view class="del" data-idx="{{index}}" bindtap="delPack">×</view>
+  </view>
+  <button class="btn ghost btn-small" bindtap="addPack">{{t.addPack}}</button>
+
+  <!-- 平台参数 -->
+  <view class="sec">{{t.paramsTitle}}</view>
+  <view class="field">
+    <text class="lbl">{{t.commissionMode}}</text>
+    <radio-group class="mode-group" bindchange="onCommissionMode">
+      <label class="mode-item"><radio value="rate" checked="{{params.commission_mode === 'rate'}}" color="#1e3a5f"/>{{t.commissionModeRate}}</label>
+      <label class="mode-item"><radio value="fixed" checked="{{params.commission_mode === 'fixed'}}" color="#1e3a5f"/>{{t.commissionModeFixed}}</label>
+    </radio-group>
+  </view>
+  <view class="field" wx:if="{{params.commission_mode === 'rate'}}">
+    <text class="lbl">{{t.commissionRate}}</text>
+    <input class="val-input" type="digit" value="{{params.commission_rate}}" data-field="commission_rate" bindinput="onParam" adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+  <view class="field" wx:if="{{params.commission_mode === 'rate'}}">
+    <text class="lbl">{{t.commissionMin}}</text>
+    <input class="val-input" type="digit" value="{{params.commission_min_yuan}}" data-field="commission_min_yuan" bindinput="onParam" adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+  <view class="field" wx:if="{{params.commission_mode === 'fixed'}}">
+    <text class="lbl">{{t.commissionFixed}}</text>
+    <input class="val-input" type="digit" value="{{params.commission_fixed_yuan}}" data-field="commission_fixed_yuan" bindinput="onParam" adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+  <view class="field">
+    <text class="lbl">{{t.deliveryFee}}</text>
+    <input class="val-input" type="digit" value="{{params.delivery_fee_yuan}}" data-field="delivery_fee_yuan" bindinput="onParam" adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+  <view class="field">
+    <text class="lbl">{{t.deliverySubsidy}}</text>
+    <input class="val-input" type="digit" value="{{params.delivery_subsidy_yuan}}" data-field="delivery_subsidy_yuan" bindinput="onParam" adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+  <view class="field">
+    <text class="lbl">{{t.promoFee}}</text>
+    <input class="val-input" type="digit" value="{{params.promo_yuan}}" data-field="promo_yuan" bindinput="onParam" adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+  <view class="field">
+    <text class="lbl">{{t.packFee}}</text>
+    <input class="val-input" type="digit" value="{{params.pack_fee_yuan}}" data-field="pack_fee_yuan" bindinput="onParam" adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+  <view class="field">
+    <text class="lbl">{{t.deliveryCustomer}}</text>
+    <input class="val-input" type="digit" value="{{params.delivery_customer_yuan}}" data-field="delivery_customer_yuan" bindinput="onParam" adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+
+  <!-- 补贴拆两行（承担方未选 ⇒ 不计入） -->
+  <view class="sec">{{t.subsidyTitle}}</view>
+  <view class="field">
+    <text class="lbl">{{t.subsidyUser}}</text>
+    <input class="val-input" type="digit" value="{{params.s_user.amount_yuan}}" data-which="s_user" bindinput="onSubsidyAmount" adjust-position="{{true}}" cursor-spacing="20" />
+    <picker mode="selector" range="{{payerLabels}}" value="{{params.s_user.payer === 'merchant' ? 1 : (params.s_user.payer === 'platform' ? 2 : 0)}}" data-which="s_user" bindchange="onPayer">
+      <view class="payer-pick">{{payerLabels[params.s_user.payer === 'merchant' ? 1 : (params.s_user.payer === 'platform' ? 2 : 0)]}}</view>
+    </picker>
+  </view>
+  <view class="field">
+    <text class="lbl">{{t.subsidyMerchant}}</text>
+    <input class="val-input" type="digit" value="{{params.s_merchant.amount_yuan}}" data-which="s_merchant" bindinput="onSubsidyAmount" adjust-position="{{true}}" cursor-spacing="20" />
+    <picker mode="selector" range="{{payerLabels}}" value="{{params.s_merchant.payer === 'merchant' ? 1 : (params.s_merchant.payer === 'platform' ? 2 : 0)}}" data-which="s_merchant" bindchange="onPayer">
+      <view class="payer-pick">{{payerLabels[params.s_merchant.payer === 'merchant' ? 1 : (params.s_merchant.payer === 'platform' ? 2 : 0)]}}</view>
+    </picker>
+  </view>
+
+  <button class="btn primary" style="margin-top:24rpx;" bindtap="onCalc">{{t.resultTitle}}</button>
+
+  <!-- 结果区（双口径分别展示） -->
+  <view class="sec" wx:if="{{result}}">{{t.resultTitle}}</view>
+  <block wx:if="{{result && mode === 'cash'}}">
+    <view class="cell"><text class="lbl">{{t.payment}}</text><text class="val">{{t.cur}}{{view.payment}}</text></view>
+    <view class="cell"><text class="lbl">{{t.receipt}}</text><text class="val">{{t.cur}}{{view.receipt}}</text></view>
+    <view class="cell"><text class="lbl">{{t.dishCost}}</text><text class="val">{{t.cur}}{{view.dish_cost}}</text></view>
+    <view class="cell"><text class="lbl">{{t.packCost}}</text><text class="val">{{t.cur}}{{view.pack_cost}}</text></view>
+    <view class="cell"><text class="lbl">{{t.profit}}</text><text class="val strong">{{t.cur}}{{view.profit}}</text></view>
+    <view class="cell"><text class="lbl">{{t.receiptRate}}</text><text class="val">{{view.receipt_rate}}%</text></view>
+    <view class="warn" wx:if="{{view.rate_low}}">{{t.rateLowHint}}</view>
+  </block>
+  <block wx:if="{{result && mode === 'accrual'}}">
+    <view class="cell"><text class="lbl">{{t.revenue}}</text><text class="val">{{t.cur}}{{view.revenue}}</text></view>
+    <view class="cell"><text class="lbl">{{t.expense}}</text><text class="val">{{t.cur}}{{view.expense}}</text></view>
+    <view class="cell"><text class="lbl">{{t.profit}}</text><text class="val strong">{{t.cur}}{{view.profit_accrual}}</text></view>
+  </block>
+
+  <!-- 挂牌价反算 -->
+  <view class="sec">{{t.reverseTitle}}</view>
+  <view class="field">
+    <text class="lbl">{{t.targetProfit}}</text>
+    <input class="val-input" type="digit" value="{{targetProfitYuan}}" bindinput="onTargetProfit" adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+  <button class="btn ghost btn-small" bindtap="onReverse">{{t.reverseBtn}}</button>
+  <view class="muted" wx:if="{{reverseResultYuan}}">{{t.reverseResult}}：{{t.cur}}{{reverseResultYuan}}</view>
+
+  <button class="btn ghost" style="margin-top:24rpx;" bindtap="onSaveParams">{{t.save}}</button>
+</view>
+<view wx:else class="container"><view class="muted">{{t.loading}}</view></view>
