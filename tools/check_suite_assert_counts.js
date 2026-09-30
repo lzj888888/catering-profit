@@ -114,6 +114,11 @@ const CASES = [
   { key: 'check_index_field_alignment', rel: 'tools/check_index_field_alignment.js' }, // 11 条（R157：L1 化石索引 + L2 锚点对齐 + L3 字段真在用 + S1~S3 + C1~C3 反恒真）
   { key: 'check_snapshot_fields', rel: 'tools/check_snapshot_fields.js' }, // 16 条（R144：L1 读侧全集 + L2 写侧全集 + L3 两读侧集合≡ + L4 fail-soft + L5 Controller + L6 validate 区间 + S1~S2 + C1~C3 反恒真）
   { key: 'check_paywall_coverage', rel: 'tools/check_paywall_coverage.js' }, // 13 条（R159：L1 三单源解析 + L2 能力⊆放行 + L3 放行有文案 + L4 四字段非空 + L5 影子正负 + L6 云函数双向 + L7 自失效护栏）
+  // round181c 扩面：M3.16 套餐（引用型卡）守卫同批纳入 —— 它的 A-a/A-b/A-c 三锚点（成本 1275 分 /
+  //   锁子卡版本 1275→1508 / 禁嵌套与版本无效）与「把子卡成本当 net_unit_cost 喂同一个 `calcCostCard`、
+  //   引擎一字不改」的入参变换证明，正是本守卫要求的「非恒真」凭据；而 17 条断言删掉一批仍 > 0
+  //   ⇒ A0-② 的「通过数为 0」下界抓不到，只有 A2「声明 ≡ 实跑」能发现 ⇒ 断言数必须受守（与 round73 同族）。
+  { key: 'selftest_m3_combo', rel: 'tools/selftest_m3_combo.js' },
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];
