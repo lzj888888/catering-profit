@@ -52,7 +52,7 @@ node verify_all.js   →   ===== 总览：117/117 套件通过 =====   RC=0
 | 1 | `specs/dev-specs/i18n/terms.js` ← `cp -f miniprogram/i18n/terms.js` | InsCode 守红线不改 `specs/`，新增 4 键（`matLexiconHint` / `templateFrom` / `templatePickPh` / `templateHint`）⇒ T1b/A-③/K11 三处「双副本逐字一致」预期内红。同步后 md5 全等（`306ddf24…`）⇒ 三处转绿 |
 | 2 | 重启键 §1.1 套件数 `116`→`117` | 同步面（被 `check_suite_count_claims` 强制） |
 | 3 | 重启键「套件数会漂」段 `现 **116**`→`117` | 同上 |
-| 4 | 重启键「套件断言数口径（唯一声明处）」追加 `selftest_m3_lexicon`=21，三十二者→**三十三者**；`check_suite_assert_counts.js::CASES` 纳入该套件 | 同上（断言数下界保护） |
+| 4 | 重启键内「断言数口径」声明行追加 `selftest_m3_lexicon`=21（三十二者→**三十三者**）；`check_suite_assert_counts.js::CASES` 纳入该套件 | 同上（断言数下界保护）。⚠️ 表中**刻意不照抄该标记全文** —— `check_suite_assert_counts` 的 A7-① 判「单源不扩散」，照抄即转红（本轮首跑 116/117 就栽在这；同族教训见 `review/NOTE_2026-09-23_round111-r127-no-cost-rate-guard.md:80`） |
 | 5 | 🔴 **`tools/selftest_m3_lexicon.js` L-d 判据加固** | 变异回灌 M5 实测**漏判**，见下 |
 
 ---
