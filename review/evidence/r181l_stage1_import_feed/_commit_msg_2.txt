@@ -1,0 +1,15 @@
+r181l-2: 证据 README + 送达判据脚本 + r181l 截图忽略规则
+
+- README.md：本轮全记录（P1–P4 定案 / PLAN §四-bis 口径空白补齐 / 测试策略 / 投喂与送达判据 / 验收待办）
+- readback_sent.py：投喂送达判据脚本（末条 User 逐字 == 载荷.rstrip('\n')，并排除「粘了两遍」）
+- .gitignore：R181l 过程截图整目录挡（判据均为文本级；同 r181j / r181h 的既有决定）
+
+【投喂状态】批次 F 已送达并按包开工 —— InsCode 已落盘它那侧四个文件（未跟踪）：
+  utils/billParse.js · utils/gradeGate.js · tools/selftest_bill_parse.js · tools/selftest_grade_gate.js
+
+【门禁说明 · 如实记录】本次提交**未复跑全量门禁**，理由：
+  InsCode 在飞（inflight=1）且已开始落盘 ⇒ 此时跑全量门禁会扫到它**尚未登记**的 selftest（面 B 判红），
+  且基线本身在动、结果不可信。投喂前干净基线 `ad17129` 的门禁为 **120/120 · RC=0 · 真 FAIL=0**（见 gate_181l_1.txt）；
+  本提交**仅含文档与忽略规则，零代码**。
+
+【未做】未改任何生产代码 · 未动 specs/ · 未提交 InsCode 那侧的文件（待其交付后走五件套验收）

@@ -47,3 +47,10 @@ _m3/
 #   ⇒ 整目录 `*.png` 一律挡，**不设** `!evidence_*.png` 反排除（没有该命名的文件）。
 #   本条只做「不误提交」的机械保证（**未删除、未移动**任何文件）。
 /review/evidence/r181j_m319_m321_feed/*.png
+
+# R181l（批次 F 阶段① 账单导入投喂）的过程截图：同 r181j 的既有决定 —— **过程件不入库**。
+#   判据同样是**文本级**的（`sessions.body` 末条 User 长度/逐字比对、`inflight_turn`、粘贴 diff），
+#   截图（e0_base / e1_cleared / s1_pre / s1_pasted / s3_sent / s4_sent16 等）只用于**排障**。
+#   ⇒ 整目录 `*.png` 一律挡，**不设** `!evidence_*.png` 反排除。
+#   本条只做「不误提交」的机械保证（**未删除、未移动**任何文件）。
+/review/evidence/r181l_stage1_import_feed/*.png
