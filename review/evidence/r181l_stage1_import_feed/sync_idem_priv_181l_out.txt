@@ -1,0 +1,9 @@
+阶段一 OK：4 处锚点全部命中唯一
+  落盘 上线材料_隐私政策_v1.md：3312 字符
+  落盘 check_privacy_collection.js：11830 字符
+  落盘 index.js：4525 字符
+
+回读自证：
+  priv 声明 **7** 1 次
+  pc 白名单含 chooseMessageFile 2 / uploadFile 1
+  isb 含 findPriorResult 1 / writeAudit 1 / shopKey 2

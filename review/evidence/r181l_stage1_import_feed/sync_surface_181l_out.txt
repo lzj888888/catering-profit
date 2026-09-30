@@ -1,0 +1,9 @@
+阶段一 OK：8 处锚点全部命中唯一
+  落盘 verify_all.js：48840 → 49648 字符
+  落盘 ★知识存储点_2026-09-10.md：149195 → 149520 字符
+  落盘 check_suite_assert_counts.js：13676 → 13862 字符
+
+回读自证：
+  verify_all 串联：122 出现 1 次 / SUITES 含 bill-parse 1 / grade-gate 1
+  重启键 串**122** 1 / 现**122** 1 / 三十八者 1 / 演进链含 121 \u2192 122 2
+  CASES 含 selftest_bill_parse 1 / selftest_grade_gate 1

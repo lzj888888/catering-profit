@@ -1,0 +1,9 @@
+阶段一 OK：6 处锚点全部命中唯一
+  落盘 selftest_r85.js：40683 字符
+  落盘 10_云函数清单与接口契约.md：17752 字符
+  落盘 上线材料_隐私政策_v1.md：3312 字符
+
+回读自证：
+  r85 含 importSalesBill 2 次
+  core10 全集声明 43 1 次 / 契约行 importSalesBill 1 次
+  priv 第7行 1 / chooseMessageFile 2 / 旧不收集句残留 0

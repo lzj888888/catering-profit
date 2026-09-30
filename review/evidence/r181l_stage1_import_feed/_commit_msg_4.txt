@@ -1,0 +1,36 @@
+r181l-4：阶段① 账单导入（批次 F）验收闭环 —— 门禁 122/122 · 变异 4/4 有效红
+
+InsCode 交付（批次 F · 回执见 inscode_receipt_f.txt）：
+  · utils/billParse.js（纯函数·零 require·148 行）
+  · utils/gradeGate.js（甲级三门 fail-closed·79 行）
+  · cloudfunctions/importSalesBill/（4 源文件 + 14 cx_* 派生副本；
+    package.json 增 xlsx ^0.18.5 —— 本项目首个非 wx-server-sdk 依赖）
+  · pages/takeaway/index.{js,wxml,wxss}（账单导入第二 tab；未动 app.json，符合 P2 定案）
+  · tools/selftest_bill_parse.js（15 断言）/ tools/selftest_grade_gate.js（11 断言）
+
+我方验收（五件套）：
+  ① 红线三条全过：initDb/ 与 tools/check_collection_perms.js 零改动（集合仍 27 / 索引仍 45）、
+     common/** 零改动、specs/ 仅 5 处我方同步面
+  ② 门禁 122/122 · RC=0 · 真 FAIL=0（gate_181l_9.txt；投喂前基线 120/120 见 gate_181l_1.txt）
+  ③ 同步面三组共 18 处：
+     · 套件数级联 8（verify_all.js 头注×2 + SUITES + 重启键 §1.1/漂移行/演进链尾部/
+       断言数声明「三十六者」→「三十八者」+ check_suite_assert_counts::CASES）
+     · 新增云函数 6（A15 白名单 / core10 全集 42→43 与契约行 / 隐私收集项第 7 行 /
+       不收集段 / 取证段）
+     · 收尾 4（隐私声明 6→7 / 守卫 TOKEN_WHITELIST + chooseMessageFile·uploadFile /
+       提审材料包 6→7 / importSalesBill 补 idempotency 预检 + audit 登记）
+  ④ 锚点独立复算（不抄 InsCode 自测）：Python 侧自实现口径 + JS 侧 require 生产单源 ⇒ 10/0
+     淘宝 2026-08 → 156 行 / 377965 分 / qty 150
+     美团 2026-08 → 97 行筛至 50 行 / 182664 分（陷阱值 1747.95 已避开）
+  ⑤ 变异回灌 4/4 有效红 —— 均红在目标断言名上、无崩溃红；
+     终态用 git blob 对账（md5 相等只是归一化后假相等）⇒ 三份源文件逐字节还原、status 为 A 非 AM
+
+反证留存：
+  · gate_181l_2.txt = 投喂后在飞期间跑门禁的实测反面证据（19 分 41 秒 / 118/120，
+    三处红全因在飞）⇒ 已把「跑门禁前先确认 InsCode 已停」固化进 inscode-batch-accept 技能
+  · gate_181l_5.txt = suite-tracked(R92) 红 —— 新登记套件未入 git 索引
+    （印证「新守卫先 git add 再跑门禁」）
+
+证据目录：review/evidence/r181l_stage1_import_feed/
+待办（非本轮范围）：importSalesBill 未上云部署 —— xlsx 是首个外部依赖，
+部署时必须勾「云端安装依赖」，留给部署轮执行。

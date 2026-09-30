@@ -1,0 +1,53 @@
+{
+ "results": [
+  {
+   "tag": "M1",
+   "target": "detectPlatform 淘宝表头 → taobao",
+   "rc": 1,
+   "hit_target": true,
+   "crashed": false,
+   "valid": true,
+   "line": [
+    "❌ detectPlatform 淘宝表头 → taobao  (meituan)"
+   ]
+  },
+  {
+   "tag": "M2",
+   "target": "淘宝 行数 156",
+   "rc": 1,
+   "hit_target": true,
+   "crashed": false,
+   "valid": true,
+   "line": [
+    "❌ 淘宝 行数 156（totals.rowCount）  (got 0)"
+   ]
+  },
+  {
+   "tag": "M3",
+   "target": "① rows 空 → pass=false",
+   "rc": 1,
+   "hit_target": true,
+   "crashed": false,
+   "valid": true,
+   "line": [
+    "❌ ① rows 空 → pass=false 且报 CHANNEL_EMPTY  ([])"
+   ]
+  },
+  {
+   "tag": "M4",
+   "target": "importSalesBill 含幂等预检",
+   "rc": 1,
+   "hit_target": true,
+   "crashed": false,
+   "valid": true,
+   "line": [
+    "❌ importSalesBill 含幂等预检（契约 L68 标 +幂等）  (未检出任何幂等调用)"
+   ]
+  }
+ ],
+ "final_md5": {
+  "billParse.js": "d8d698c8736195a38409f55d0b49e94b",
+  "gradeGate.js": "84415646457b4e60f1a7f456ecc22680",
+  "index.js": "8417721e6ab3d0ba71f42e6d9233875e"
+ }
+}

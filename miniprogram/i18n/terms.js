@@ -475,6 +475,21 @@ const TERMS = {
       reverseResult: '商品挂牌总价',
       // 软提示（不阻断）
       rateLowHint: '到手率偏低（行业约 70%~75%），平台扣项可能吃掉了利润。',
+      // ===== M3.17 账单导入（批次 F 阶段① 第二 tab）=====
+      importTab: '账单导入',
+      importPick: '选择账单文件',
+      importPickHint: '支持淘宝闪购 / 美团外卖的 xlsx 账单',
+      importPlatformLabel: '平台',
+      importRowsLabel: '识别到',
+      importMonthsLabel: '归月到',
+      importTotalLabel: '合计',
+      importExcludedLabel: '已排除',
+      importRowUnit: '行',
+      importConfirm: '确认导入',
+      importSuccess: '导入成功',
+      importFail: '门禁未通过，已阻断导入',
+      importNoFile: '请先选择账单文件',
+      importEmpty: '先选文件，解析后在此预览',
     },
     // 费用侧营销项「取数路径」标注（⚠️ 按营销项**显示名**（与 collections.js item_name 一致）挂，随 terms 双副本走）
     expenseItemNotes: {

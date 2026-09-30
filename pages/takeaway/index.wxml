@@ -1,4 +1,12 @@
 <view class="container safe-bottom" wx:if="{{!loading}}">
+  <!-- 顶层 tab：单均测算 / 账单导入（批次 F 阶段① 加第二 tab） -->
+  <view class="tab-bar">
+    <view class="tab-item {{tab === 'calc' ? 'on' : ''}}" data-tab="calc" bindtap="onTab">{{t.title}}</view>
+    <view class="tab-item {{tab === 'import' ? 'on' : ''}}" data-tab="import" bindtap="onTab">{{t.importTab}}</view>
+  </view>
+
+  <!-- ===== tab 1：单均测算（现有内容）===== -->
+  <block wx:if="{{tab === 'calc'}}">
   <!-- 口径切换 + 顶部口径名 + 人话解释（两套数字不混） -->
   <view class="mode-switch">
     <view class="mode-tab {{mode === 'cash' ? 'on' : ''}}" data-mode="cash" bindtap="onMode">{{t.modeCash}}</view>
@@ -115,5 +123,41 @@
   <view class="muted" wx:if="{{reverseResultYuan}}">{{t.reverseResult}}：{{t.cur}}{{reverseResultYuan}}</view>
 
   <button class="btn ghost" style="margin-top:24rpx;" bindtap="onSaveParams">{{t.save}}</button>
+  </block>
+
+  <!-- ===== tab 2：账单导入（批次 F 阶段①）===== -->
+  <block wx:if="{{tab === 'import'}}">
+    <view class="hint">{{t.importPickHint}}</view>
+    <button class="btn primary" bindtap="onChooseFile">{{t.importPick}}</button>
+
+    <!-- 预览（解析 + 甲级门禁后展示；确认后才落库） -->
+    <view class="card2" wx:if="{{importPreview}}">
+      <view class="cell">
+        <text class="lbl">{{t.importPlatformLabel}}</text>
+        <text class="val">{{importPlatform}}</text>
+      </view>
+      <view class="cell">
+        <text class="lbl">{{t.importRowsLabel}}</text>
+        <text class="val">{{importPreview.rowCount}} {{t.importRowUnit}}</text>
+      </view>
+      <view class="cell">
+        <text class="lbl">{{t.importMonthsLabel}}</text>
+        <text class="val">{{importPreview.monthsText}}</text>
+      </view>
+      <view class="cell">
+        <text class="lbl">{{t.importTotalLabel}}</text>
+        <text class="val">{{t.cur}}{{importPreview.amountYuan}}</text>
+      </view>
+      <view class="cell" wx:if="{{importPreview.excludedRows > 0}}">
+        <text class="lbl">{{t.importExcludedLabel}}</text>
+        <text class="val">{{importPreview.excludedRows}} {{t.importRowUnit}}</text>
+      </view>
+
+      <!-- 甲级门禁结果 -->
+      <view class="warn" wx:if="{{importGrade && !importGrade.pass}}">{{t.importFail}}</view>
+      <button class="btn primary" wx:if="{{importGrade && importGrade.pass}}" style="margin-top:24rpx;" bindtap="onConfirmImport">{{t.importConfirm}}</button>
+    </view>
+    <view class="muted" wx:else>{{t.importEmpty}}</view>
+  </block>
 </view>
 <view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

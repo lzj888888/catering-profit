@@ -1,5 +1,11 @@
 /* pages/takeaway/index.wxss —— M3.17 外卖单均试算页。色沿用主色系 #1e3a5f / #e8eff7，不新增品牌色。 */
 
+/* 顶层 tab（单均测算 / 账单导入） */
+.tab-bar { display: flex; background: #eef2f7; border-radius: 12rpx; padding: 6rpx; margin-bottom: 16rpx; }
+.tab-item { flex: 1; text-align: center; font-size: 28rpx; color: #6b7a90; min-height: 88rpx; line-height: 88rpx; border-radius: 10rpx; }
+.tab-item.on { background: #1e3a5f; color: #fff; font-weight: 600; }
+.hint { font-size: 28rpx; color: #6b7a90; line-height: 1.5; margin: 8rpx 4rpx 16rpx; }
+
 /* 口径切换 */
 .mode-switch { display: flex; background: #eef2f7; border-radius: 12rpx; padding: 6rpx; margin-bottom: 10rpx; }
 .mode-tab { flex: 1; text-align: center; font-size: 28rpx; color: #6b7a90; min-height: 88rpx; line-height: 88rpx; border-radius: 10rpx; }

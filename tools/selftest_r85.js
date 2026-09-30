@@ -211,6 +211,9 @@ const A15_EXEMPT = [
   /^cloudfunctions\/saveCostCard\//,               // round116：doc(vm.id||vm.material_id) → 优先 _id
   /^cloudfunctions\/syncCostCard\//,               // round116：同上
   /^cloudfunctions\/getMaterial\//,                // round127（M3 v1.2 批次 P0）授权：原料档案三可选字段出参（category/aliases/remark）
+  // R181l（批次 F 阶段①）：新增授权云函数 importSalesBill（账单导入：xlsx → 解析 → 甲级门禁 →
+  //   落 external_sales_daily）。按 round103 白名单式登记，**不放宽成全豁免**：
+  /^cloudfunctions\/importSalesBill\//,
   // ⚠️ 2026-09-25（round127/r128）**八次触发** —— 同一时机关卡第 8 次：M3 v1.2 批次 P0 授权改
   //   saveCostCard / saveMaterial / syncCostCard（**已在 round116 白名单内**）+ getMaterial（新增登记）。
   //   本批改动内容：M3.2 原料软删分支、M3.3 临时手工行（input_type=2）、M3.7 成本卡软删（按 card_code 全版本）、

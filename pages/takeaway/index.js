@@ -83,11 +83,27 @@ Page({
       reverseBtn: TK.reverseBtn,
       reverseResult: TK.reverseResult,
       rateLowHint: TK.rateLowHint,
+      // M3.17 账单导入（批次 F 阶段① 第二 tab）
+      importTab: TK.importTab,
+      importPick: TK.importPick,
+      importPickHint: TK.importPickHint,
+      importPlatformLabel: TK.importPlatformLabel,
+      importRowsLabel: TK.importRowsLabel,
+      importMonthsLabel: TK.importMonthsLabel,
+      importTotalLabel: TK.importTotalLabel,
+      importExcludedLabel: TK.importExcludedLabel,
+      importRowUnit: TK.importRowUnit,
+      importConfirm: TK.importConfirm,
+      importSuccess: TK.importSuccess,
+      importFail: TK.importFail,
+      importNoFile: TK.importNoFile,
+      importEmpty: TK.importEmpty,
       save: TERMS.buttons.save,
       cancel: TERMS.buttons.cancel,
       cur: '¥',
       loading: TERMS.ui.loading,
     },
+    tab: 'calc',          // 'calc' 单均测算 | 'import' 账单导入
     mode: 'cash',          // 'cash' 到手口径 | 'accrual' 总额法口径
     dishes: [],            // 候选卡/套餐（含 card_type）
     items: [newItem()],
@@ -101,6 +117,12 @@ Page({
     targetProfitYuan: '',
     loading: true,
     saving: false,
+    // M3.17 账单导入（批次 F 阶段①）
+    importFileID: '',      // 云存储 fileID
+    importPlatform: '',    // 检测到的平台
+    importGrade: null,     // 甲级门禁结果
+    importPreview: null,   // 预览 { rows, totals, months, excluded }
+    importing: false,      // 防重复提交
   },
 
   onLoad() { this.load(); },
@@ -285,6 +307,66 @@ Page({
       wx.showToast({ title: TERMS.buttons.save, icon: 'success' });
     } catch (e) { api.toastError(e); }
     this.setData({ saving: false });
+  },
+
+  // ===== M3.17 账单导入（批次 F 阶段① 第二 tab）=====
+  onTab(e) { this.setData({ tab: e.currentTarget.dataset.tab }); },
+
+  // 选文件 → 上传云存储 → importSalesBill(confirm=false) 预览（不落库）
+  async onChooseFile() {
+    if (this.data.importing) return;
+    try {
+      const res = await wx.chooseMessageFile({ count: 1, type: 'file', extension: ['xlsx'] });
+      const file = res.tempFiles && res.tempFiles[0];
+      if (!file) return;
+      this.setData({ importing: true });
+      wx.showLoading({ title: TERMS.ui.loading, mask: true });
+      // 上传到云存储（路径带时间戳，防同名覆盖）
+      const cloudPath = 'sales_bills/' + Date.now() + '_' + (file.name || 'bill.xlsx');
+      const up = await wx.cloud.uploadFile({ cloudPath, filePath: file.path });
+      const fileID = up.fileID;
+      // 调云函数解析 + 甲级门禁，confirm=false 只预览
+      const d = await api.call('importSalesBill', { fileID, confirm: false });
+      wx.hideLoading();
+      // 预览格式化（wxml 不做法调用 / 浮点除法；amount 分→元、months join 都在这里做）
+      const p = d.preview || null;
+      const preview = p ? {
+        rowCount: p.totals.rowCount,
+        amountYuan: (p.totals.amountFen / 100).toFixed(2),
+        monthsText: (p.months || []).join('、'),
+        excludedRows: (p.excluded && p.excluded.rows) || 0,
+      } : null;
+      this.setData({
+        importing: false,
+        importFileID: fileID,
+        importPlatform: d.platform || '',
+        importGrade: d.grade || null,
+        importPreview: preview,
+      });
+    } catch (e) {
+      wx.hideLoading();
+      this.setData({ importing: false });
+      api.toastError(e);
+    }
+  },
+
+  // 用户确认 → importSalesBill(confirm=true) 落库
+  async onConfirmImport() {
+    if (!this.data.importFileID) { wx.showToast({ title: TK.importNoFile, icon: 'none' }); return; }
+    if (this.data.importing) return;
+    this.setData({ importing: true });
+    try {
+      wx.showLoading({ title: TK.importConfirm, mask: true });
+      await api.call('importSalesBill', { fileID: this.data.importFileID, platform: this.data.importPlatform, confirm: true });
+      wx.hideLoading();
+      wx.showToast({ title: TK.importSuccess, icon: 'success' });
+      // 导入成功后清空预览态
+      this.setData({ importing: false, importFileID: '', importPlatform: '', importGrade: null, importPreview: null });
+    } catch (e) {
+      wx.hideLoading();
+      this.setData({ importing: false });
+      api.toastError(e);
+    }
   },
 
   onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()); },

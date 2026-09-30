@@ -1,0 +1,47 @@
+批次 F 阶段① 已完成。以下是回执。
+
+---
+
+## 【批次 F 阶段① 回执】
+
+### ① 改动/新增文件清单
+
+| 类别 | 文件 | 说明 |
+|---|---|---|
+| 新增（纯解析） | `utils/billParse.js` | `detectPlatform` / `guessHeader` / `parseBillMatrix` / `toNum`（零依赖、不落库、不碰云） |
+| 新增（纯校验） | `utils/gradeGate.js` | `checkGradeA` / `SALES_SCHEMA`（甲级三门，fail-closed） |
+| 新增（云函数） | `cloudfunctions/importSalesBill/`（4 源文件 + 14 派生副本） | `index.js`（鉴权→下载→解析→门禁→预览/落库）、`service.js`（xlsx→矩阵 + billParse/gradeGate 同源副本）、`validate.js`、`package.json`（含 xlsx） |
+| 修改（页面） | `pages/takeaway/index.{js,wxml,wxss}` | 加「账单导入」第二 tab：选文件→上传→预览→确认落库 |
+| 修改（文案） | `miniprogram/i18n/terms.js` + `specs/dev-specs/i18n/terms.js` | takeaway 命名空间新增 import* 键 14 个 |
+| 新增（自测） | `tools/selftest_bill_parse.js` | 账单解析锚点复现（15 断言） |
+| 新增（自测） | `tools/selftest_grade_gate.js` | 甲级门禁三门外反例（11 断言） |
+
+### ② 两个锚点的复现数字（原样写出）
+
+| 锚点 | 期望 | 实跑复现 |
+|---|---|---|
+| 淘宝闪购 2026-08 | 156 行 / 到手 **3779.65 元** | ✅ `totals.rowCount=156`，`totals.amountFen=377965`（=3779.65 元），`qty=150`（不含退单 6） |
+| 美团 2026-08 | 全 97 行 → 筛后 50 行 / 应收 **1826.64 元** | ✅ `totals.rowCount=50`，`totals.amountFen=182664`（=1826.64 元），`excluded.rows=47` |
+| 美团不筛反证 | 直接 Σ = 1747.95（≠ 收入） | ✅ 已通过「交易类型==外卖订单」筛选避开（1747.95 = 广告转入 76.41 + 保险 2.28 的差额） |
+
+（`node tools/selftest_bill_parse.js` → **15 通过 / 0 失败**；`node tools/selftest_grade_gate.js` → **11 通过 / 0 失败**）
+
+### ③ 新增 N 个套件待挂
+2 个 —— `bill-parse`（`tools/selftest_bill_parse.js`）、`grade-gate`（`tools/selftest_grade_gate.js`）
+
+### ④ 未做的事（如实标注）
+1. **未跑 `node verify_all.js` 全量**（工具 300s 上限）；已分块跑通关键套件：`selftest_bill_parse 15/0`、`selftest_grade_gate 11/0`、`check_page_terms 8/0`、`check_wxml_structure 2/0`、`selftest_ad_gates 24/0`、`check_m3_engine_parity 22/0`、`check_js_syntax 905/905`、`sync_common --check 43 目录`。
+2. **真机/真云端到端未验证**：`importSalesBill` 含 `xlsx` 依赖，本地无该包无法本地执行云函数；选文件→上传→预览→落库的完整链路需云端「安装依赖」后实测。
+3. **未验证 check_page_manifest / check_collection_perms**（本批未新建页面、未新建集合，理论上不触发；但未显式跑，如实标注）。
+
+### ⑤ 是否新增 npm 依赖
+**是** —— `cloudfunctions/importSalesBill/package.json` 新增 `xlsx ^0.18.5`（SheetJS，**仅本函数**引入，其余云函数不动）。⚠️ 部署时须「云端安装依赖」。
+
+### 落库口径与红线自证
+- 落库照 PLAN §四-bis：`_id = 'BILL_' + shopId + '_' + platform + '_' + bizDate`（确定性⇒幂等），`.doc(_id).set()` 覆盖写；`external_ref_id = 'BILL:platform:bizDate'`，`dish_key=''`，`amount` 整数分，`source='excel'`，`platform` 英文 key（taobao/meituan）。
+- 未改 verify_all.js、未改 specs/ 下除双副本以外文件、未新建集合/索引（`external_sales_daily` 是 R174 已落库集合）、引擎零改动（R131 22/0 为证）、dry_run 无（本批是账单导入，无 dry_run）。
+- 金额框 `val-input` 未与 `<button>` 同父（预览区金额用 `.cell` 文本展示，非输入框；确认按钮独立）。
+
+### 关键决策说明
+- `parseBillMatrix` 的 `totals.rowCount` = 订单行数（淘宝 156 含退单 / 美团 50 筛后），`totals.qty` = 有效订单数（淘宝 150 不含退单 / 美团 50），`totals.amountFen` = 到手/应收净额（淘宝含退单冲减 / 美团筛外卖订单）。
+- 淘宝「到手 = Σ 结算金额」直接取净额列，无需拆「平台服务费」等复合列（净额列已含各项扣减），符合「复合列×拆分列只取一组」的口径；美团同理直接 Σ「商家应收款」。

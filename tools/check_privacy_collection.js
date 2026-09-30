@@ -55,6 +55,8 @@ const PRIV_APIS = [
 // 表内「代码出处」列允许出现的非云函数标识符（云函数之外的合法出处）
 const TOKEN_WHITELIST = new Set([
   'shop_entitlement', 'name', 'remark', 'chooseAvatar',
+  // R181l：批次 F 账单导入引入的小程序 API（读用户**主动选中**的文件，非自动收集）
+  'chooseMessageFile', 'uploadFile',
   'onNetworkStatusChange', 'getUpdateManager', 'recordScene',
   'OPENID', 'openid',
 ]);

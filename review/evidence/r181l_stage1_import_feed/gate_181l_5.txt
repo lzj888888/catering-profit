@@ -1,0 +1,7 @@
+
+✅ [suite-count] 头部注释 ≡ SUITES.length = 122（R59 守卫）
+
+❌ [suite-tracked] 以下 2 个已登记套件**未纳入 git 索引**（R92：登记了没提交 ⇒ 远端复现不出这些成绩，且 R59 不会红）：
+   tools/selftest_bill_parse.js
+   tools/selftest_grade_gate.js
+   处置：先 `git add` 并提交这些文件，再跑本校验器。
