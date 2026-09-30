@@ -1,0 +1,156 @@
+{
+ "orig_md5": "25f79f15c23d2aceb9538ce0241251d2",
+ "restored": true,
+ "n_effective": 7,
+ "total": 7,
+ "results": [
+  {
+   "tag": "M1",
+   "desc": "佣金基数改成「含打包费的支付额」（破铁律②）",
+   "crash": false,
+   "rc": [
+    1,
+    1
+   ],
+   "nfail": 19,
+   "hit": [
+    "anchor:❌ B3 佣金 = 150  (got 162 ≠ want 150)"
+   ],
+   "effective": true,
+   "sample": [
+    "❌ T-b 实收 1800（P=2700 − s300 − 佣金150 − d450）  (got 1788)",
+    "❌ T-b 单均利润 365（1800 − Cf1275 − Cp160）  (got 353)",
+    "❌ T-b 到手率 66.67%  (got 66.22)"
+   ]
+  },
+  {
+   "tag": "M2",
+   "desc": "fixed 模式下让保底 min 也生效（破红线⑦）",
+   "crash": false,
+   "rc": [
+    1,
+    1
+   ],
+   "nfail": 2,
+   "hit": [
+    "selftest:❌ T-d fixed 模式下保底 min 不生效（fixed=100、min=130 ⇒ 100 而非 max 130）  (got 130)",
+    "anchor:❌ E2 🔴 fixed 下保底不生效（fixed=100, min=130 ⇒ 100）  (got 130 ≠ want 100)"
+   ],
+   "effective": true,
+   "sample": [
+    "❌ T-d fixed 模式下保底 min 不生效（fixed=100、min=130 ⇒ 100 而非 max 130）  (got 130)",
+    "❌ E2 🔴 fixed 下保底不生效（fixed=100, min=130 ⇒ 100）  (got 130 ≠ want 100)"
+   ]
+  },
+  {
+   "tag": "M3",
+   "desc": "补贴承担方未选 ⇒ 默认算商家（破 fail-closed）",
+   "crash": false,
+   "rc": [
+    1,
+    0
+   ],
+   "nfail": 3,
+   "hit": [
+    "selftest:❌ T-f 承担方未选（payer=null）⇒ 补贴不计入（subsidy=300 而非 800）  (got 800)",
+    "selftest:❌ T-f 承担方=platform ⇒ 不计入商家成本（subsidy=300）  (got 800)",
+    "selftest:❌ T-f 未选 vs 商家承担实收差一个补贴额（500）  (none=1300 merchant=1300)"
+   ],
+   "effective": true,
+   "sample": [
+    "❌ T-f 承担方未选（payer=null）⇒ 补贴不计入（subsidy=300 而非 800）  (got 800)",
+    "❌ T-f 承担方=platform ⇒ 不计入商家成本（subsidy=300）  (got 800)",
+    "❌ T-f 未选 vs 商家承担实收差一个补贴额（500）  (none=1300 merchant=1300)"
+   ]
+  },
+  {
+   "tag": "M4",
+   "desc": "到手口径漏扣商家补贴 s（破口径①）",
+   "crash": false,
+   "rc": [
+    1,
+    1
+   ],
+   "nfail": 15,
+   "hit": [
+    "selftest:❌ T-b 实收 1800（P=2700 − s300 − 佣金150 − d450）  (got 2100)",
+    "selftest:❌ T-b 单均利润 365（1800 − Cf1275 − Cp160）  (got 665)",
+    "selftest:❌ T-b 到手率 66.67%  (got 77.78)",
+    "selftest:❌ T-b 到手率 <70% ⇒ 软提示触发条件成立",
+    "anchor:❌ B6 商家实收 R = 1800  (got 2100 ≠ want 1800 · P − s − 佣金 − d)"
+   ],
+   "effective": true,
+   "sample": [
+    "❌ T-b 实收 1800（P=2700 − s300 − 佣金150 − d450）  (got 2100)",
+    "❌ T-b 单均利润 365（1800 − Cf1275 − Cp160）  (got 665)",
+    "❌ T-b 到手率 66.67%  (got 77.78)"
+   ]
+  },
+  {
+   "tag": "M5",
+   "desc": "两套口径混数：cash.profit 直接抄总额法（破红线③）",
+   "crash": false,
+   "rc": [
+    1,
+    1
+   ],
+   "nfail": 4,
+   "hit": [
+    "anchor:❌ B7 单均理论利润 = 365  (got 665 ≠ want 365 · R − Cf − Cp)",
+    "anchor:❌ C4 两口径利润差 = s = 300（到手扣 s 一次，总额法两侧各一次⇒净 0）  (got 0 ≠ want 300)"
+   ],
+   "effective": true,
+   "sample": [
+    "❌ T-b 单均利润 365（1800 − Cf1275 − Cp160）  (got 665)",
+    "❌ B7 单均理论利润 = 365  (got 665 ≠ want 365 · R − Cf − Cp)",
+    "❌ C4 两口径利润差 = s = 300（到手扣 s 一次，总额法两侧各一次⇒净 0）  (got 0 ≠ want 300)"
+   ]
+  },
+  {
+   "tag": "M6",
+   "desc": "反算分母丢掉 (1−c)，佣金不再进反算（破 M3.17 反算公式）",
+   "crash": false,
+   "rc": [
+    1,
+    1
+   ],
+   "nfail": 11,
+   "hit": [
+    "selftest:❌ T-c 反算 P* = 2963 分（目标到手利润 800）  (got 2785)",
+    "selftest:❌ T-c 顾客支付 3163（P*2963 + 打包费200）  (got 2985)",
+    "selftest:❌ T-c 佣金 178（round(2963×6%)）  (got 167)",
+    "selftest:❌ T-c 实收 2235（3163 − s300 − 佣金178 − d450）  (got 2068)",
+    "selftest:❌ T-c 到手率 70.66%  (got 69.28)",
+    "anchor:❌ D1 B-b 挂牌总价 P* = 2963  (got 2785 ≠ want 2963)"
+   ],
+   "effective": true,
+   "sample": [
+    "❌ T-c 反算 P* = 2963 分（目标到手利润 800）  (got 2785)",
+    "❌ T-c 顾客支付 3163（P*2963 + 打包费200）  (got 2985)",
+    "❌ T-c 佣金 178（round(2963×6%)）  (got 167)"
+   ]
+  },
+  {
+   "tag": "M7",
+   "desc": "保底从 max 改成 min（率算值高于保底时反而取保底）",
+   "crash": false,
+   "rc": [
+    1,
+    1
+   ],
+   "nfail": 22,
+   "hit": [
+    "selftest:❌ T-a 商品总价 2500、c=6%、保底 130 ⇒ 佣金 150 分  (got 130)",
+    "selftest:❌ T-a 基数不含打包费（商品总价 2500 而非含打包费的 2700）  (got 130（2500→150 vs 2700→162）)",
+    "anchor:❌ A1 B-a 佣金 = 150（商品总价 2500 × 6%）  (got 130 ≠ want 150 · 基数不含打包费)",
+    "anchor:❌ A3 保底生效（率算 50 < 保底 130）  (got 50 ≠ want 130 · max(50,130))"
+   ],
+   "effective": true,
+   "sample": [
+    "❌ T-a 商品总价 2500、c=6%、保底 130 ⇒ 佣金 150 分  (got 130)",
+    "❌ T-a 基数不含打包费（商品总价 2500 而非含打包费的 2700）  (got 130（2500→150 vs 2700→162）)",
+    "❌ T-b 实收 1800（P=2700 − s300 − 佣金150 − d450）  (got 1820)"
+   ]
+  }
+ ]
+}

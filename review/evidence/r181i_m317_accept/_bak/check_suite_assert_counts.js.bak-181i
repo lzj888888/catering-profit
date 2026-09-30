@@ -124,11 +124,6 @@ const CASES = [
   //   模板 20 道无价格 / applyTemplate 只返回行名·用量·单位）是「非恒真」凭据；而 21 条删一批仍 > 0
   //   ⇒ A0-② 的「通过数为 0」下界抓不到，只有 A2「声明 ≡ 实跑」能发现。
   { key: 'selftest_m3_lexicon', rel: 'tools/selftest_m3_lexicon.js' }, // 21 条（M3.20：L-a~L-g）
-  // round181h 扩面：M3.17 外卖单均试算（v1.2 批次 D）守卫同批纳入 —— 与 m3-combo / m3-lexicon 同族理由：
-  //   T-a~T-g 七组锚点（佣金基数不含打包费 / 固定佣金保底不生效 / 到手≠总额双口径 / 反算挂牌价 /
-  //   输出隔离 M1 月度字段）是「非恒真」凭据；而 21 条删掉一批仍 > 0
-  //   ⇒ A0-② 的「通过数为 0」下界抓不到，只有 A2「声明 ≡ 实跑」能发现。
-  { key: 'selftest_m3_takeaway', rel: 'tools/selftest_m3_takeaway.js' }, // 21 条（M3.17：T-a~T-g）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];
