@@ -1,0 +1,25 @@
+LTRB = (20, 20, 1640, 1020)
+点「搜索」(60,133) ret=2  diff=(1000559, (1, 0, 1619, 999))
+点「插件」(60,65) ret=2  diff=(137411, (1, 0, 1405, 910))
+点「新建任务」(60,32) ret=2  diff=(0, (622, 836, 700, 906))
+点「会话项」(100,180) ret=2  diff=(0, (608, 836, 700, 906))
+
+=== 窗口缩放重排测试（活体会重排；冻体会留残影/黑块）===
+resize ok
+
+=== InsCode 进程树 CPU 时间（判冻）===
+Traceback (most recent call last):
+  File "C:\Users\lzj\WorkBuddy\Claw\catering-profit\review\evidence\r181h_m317\probe_dead.py", line 90, in <module>
+    out = subprocess.run(['powershell', '-NoProfile', '-Command',
+                          "Get-CimInstance Win32_Process | Where-Object { $_.Name -match 'inscode|msedgewebview2' } | "
+                          "Select-Object ProcessId,ParentProcessId,Name,UserModeTime | ConvertTo-Csv -NoTypeInformation"],
+                         capture_output=True, text=True, timeout=60)
+  File "C:\Users\lzj\.workbuddy\binaries\python\versions\3.13.12\Lib\subprocess.py", line 556, in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+                     ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\lzj\.workbuddy\binaries\python\versions\3.13.12\Lib\subprocess.py", line 1222, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+                     ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\lzj\.workbuddy\binaries\python\versions\3.13.12\Lib\subprocess.py", line 1665, in _communicate
+    raise TimeoutExpired(self.args, orig_timeout)
+subprocess.TimeoutExpired: Command '['powershell', '-NoProfile', '-Command', "Get-CimInstance Win32_Process | Where-Object { $_.Name -match 'inscode|msedgewebview2' } | Select-Object ProcessId,ParentProcessId,Name,UserModeTime | ConvertTo-Csv -NoTypeInformation"]' timed out after 60 seconds
