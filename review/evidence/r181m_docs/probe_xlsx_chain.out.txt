@@ -1,0 +1,20 @@
+===== R181m · xlsx 链路本地探针（require 生产 service.js）=====
+service.js = C:\Users\lzj\WorkBuddy\Claw\catering-profit\cloudfunctions\importSalesBill\service.js
+
+[淘宝闪购 2026-08] 淘宝闪购.xlsx
+  源文件 97297 字节
+  sheets(6)：外卖账单明细 / 推广账单明细 / 保障服务费账单明细 / 余额变动账单明细 / 补发配送费 / 对账指引
+  认到平台：taobao（明细表 = 外卖账单明细）
+  ✅ 淘宝闪购 2026-08 rowCount = 156
+  ✅ 淘宝闪购 2026-08 amountFen = 377965
+  ✅ 淘宝闪购 2026-08 qty = 150
+
+[美团 2026-08（须按交易类型筛）] 09bbd01042244a1fa98e0d0f1963211b.xlsx
+  源文件 38340 字节
+  sheets(4)：账单明细 / 订单明细 / 汇总信息 / 账户余额流水
+  认到平台：meituan（明细表 = 订单明细）
+  ✅ 美团 2026-08（须按交易类型筛） rowCount = 50
+  ✅ 美团 2026-08（须按交易类型筛） amountFen = 182664
+  ✅ 美团 2026-08（须按交易类型筛） qty = 50
+
+===== 结果：6 通过 / 0 失败 =====
