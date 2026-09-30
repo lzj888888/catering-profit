@@ -1,0 +1,78 @@
+【批次 B 收尾 · M3.20 标准原料词库 + 菜品模板（治“录入门槛”）】
+仓库 C:\Users\lzj\WorkBuddy\Claw\catering-profit，分支 dev。
+开工前先 `git log --oneline -3` 确认 HEAD 是 e891b3b，再 `git status` 确认工作区干净。
+
+一、目的（一句话）
+把“新建原料 / 新建菜品卡”的录入成本打下来：内置 60~80 条高频标准原料词库（带别名）做**搜索建议**，
+内置 20 道菜品模板做**一键起行**。🔴 只建议、绝不自动替换；🔴 绝不预填价格。
+（行业判断：所有餐饮成本工具的头号死亡原因不是算不准，是老板录了 3 张卡就放弃 ⇒ 录入门槛是生死线。）
+
+二、依据（开工前必读）
+specs/dev-specs/core/开发规范v1.1_ModuleM3增量_套餐外卖多规格与留存对照.md 的 §M3.20（约第 315 行起）。
+另见 v1.2 §“aliases 只用于检索建议，绝不自动匹配替换”。
+
+三、改动点（照此落地，不要扩大范围）
+
+1) 新建 `utils/materialLexicon.js`（纯数据单源，**不落库、不进云函数、不需要派生副本**）
+- 导出固定三项：`LEXICON`（数组）+ `suggestByName(name, limit=5)` + `getByKey(key)`
+- 每条**只允许 4 个键**：`std_key` / `std_name` / `aliases`（数组）/ `default_unit`
+- 规模 60~80 条；**必须包含**这 8 条（锚点要用）：鸡胸肉、土豆、干辣椒、花椒、生抽、老抽、菜籽油、豆瓣酱
+- 🔴 **绝不带价格**（R138）；🔴 **不带分类**（避免与 M1 的 ITEM_TAGS 归属体系打架）
+- `default_unit` 必须 ∈ `utils/units.js::PURCHASE_UNITS`（16 项）
+- 🔴 **不导出任何写类函数**：导出名不得出现 auto* / replace* / apply* / normalize* 前缀；模块源码内不得出现 `setData`
+
+2) 新建 `utils/dishTemplates.js`（纯数据单源）
+- 导出：`TEMPLATES`（数组，20 道）+ `getTemplate(key)` + `applyTemplate(tpl)`（返回行数组，**不写库**）
+- 每道结构：`{ tpl_key, dish_name, lines: [{ line_name, qty, unit }] }`
+- 🔴 **不预填价格**（R138）；所有 `unit` ∈ PURCHASE_UNITS
+- `applyTemplate` 返回的行**不得含** price / unit_cost / cost 类键
+
+3) `cloudfunctions/initDb/collections.js` 字段登记（**不新建集合、不新增索引**）
+- `shop_material` 新增可选字段 `std_key`（字符串，默认 `''`，可空）—— 只记“本料取自词库哪一条”，
+  **云端不校验**（词库在前端，云侧不复制一份 ⇒ 不制造漂移点）
+
+4) `cloudfunctions/saveMaterial/validate.js` + `service.js`：`std_key` 原样接受并落库
+   `cloudfunctions/getMaterial/service.js`：原样返回
+- 不新增错误码（云端不校验 ⇒ 不存在失败分支）
+
+5) `pages/material/edit.*`：名称输入框下方给建议 chips
+- 输入过程中**绝不自动改写** `name`；只有**用户点 chip** 才把 `std_name` 填进输入框并记下 `std_key`
+- 建议 ≤5 条；UI 照该页既有 chips 风格，不新造组件
+
+6) `pages/card/edit.*`（或 index，你选最顺手的入口）：加「从模板新建」
+- 选模板 → 预填行名 + 用量 + 单位，**价格全部留空**等用户填
+- 🔴 **必须仍走既有 `api.call('saveCostCard')` 保存路径**，不得新增绕过分支、不得新建云函数目录
+  ⇒ 免费档 q=20（cost_card）配额**照扣**；模板只是省打字，不是绕过配额
+
+7) 术语：所有新可见文案加到 `miniprogram/i18n/terms.js`（`card.*` 或 `material.*` 命名空间），页面用 `TERMS.x.y` 引用
+- 🚫 **不许改** `specs/dev-specs/i18n/terms.js`（那处由 WorkBuddy 同步）—— 回执里列明新增键名即可
+
+四、复算锚点（**必须 require 真实单源实算，不许重写一份**）
+新建 `tools/selftest_m3_lexicon.js`（形态照 `tools/selftest_m3_combo.js`：`check(name, cond, detail)`、结尾打印 pass/fail、非 0 退出）：
+- L-a 规模与形状：`60 <= LEXICON.length <= 80`；每条键集合**恰好** = {std_key, std_name, aliases, default_unit}
+- L-b 必含 8 条：鸡胸肉 / 土豆 / 干辣椒 / 花椒 / 生抽 / 老抽 / 菜籽油 / 豆瓣酱
+- L-c `suggestByName('生抽')[0].std_name === '生抽'`；`suggestByName('辣椒')[0].std_name === '干辣椒'`（走别名命中）；
+      `suggestByName('不存在的东西xyz')` → `[]`
+- L-d **不自动替换**：调 `suggestByName` 前后入参字符串不变；导出名无 auto/replace/apply/normalize 前缀；源码无 `setData`
+- L-e 单位池：全部 `default_unit` ∈ `utils/units.js::PURCHASE_UNITS`
+- L-f 模板 20 道：每条行结构完整；全表无价格类键；`unit` ∈ PURCHASE_UNITS
+- L-g `applyTemplate(tpl)` 返回行数 === `tpl.lines.length`，且返回行不含 price / unit_cost / cost 键
+
+五、红线（违反即退回）
+- **引擎段一字不改**：netUnitCostWan / buildSnapshotLines / calcCostCard / wouldCreateCycle
+- **不新建集合、不新增索引**；**不改** `specs/dev-specs/core/15_集合权限矩阵.md`
+- **不改 specs/ 下任何文件**（规范归 WorkBuddy）
+- 🔴 **绝不自动匹配替换** —— “辣椒”被静默换成“干辣椒”= 成本**静默变错**（与 round116「静默 0 行」同一种病）
+- 🔴 **绝不带价格** —— 词库与模板都不许出现任何价格字段
+- 🔴 **不新建云函数目录**；模板保存走既有 saveCostCard，配额照扣
+- 金额一律**分**；写库主键用 `_id`；列表查询走 `common/dataAdapter.js::LIST_LIMIT`，要全部行用 `da.listAll()`
+- 新可见文案 = 三处同步（terms.js + 页面 + 回执列明新增键）
+
+六、门禁与验收
+- **分块跑**，不要一次性全量（工具 300s 上限）
+- `node tools/selftest_m3_lexicon.js` 必须全绿；相关套件要绿；**跑不完的如实报「未跑」，不要写成「通过」**
+
+七、收尾
+- 提交**带 pathspec**（只 add 你实际改过的文件），不要 `git add .`，**不要推远端**
+- commit message 写清改了什么 + 验收判据 + 哪些没跑到
+- 回执列出：改动文件清单 + 增删行数 + 门禁结果 + 未跑 / 存疑项 + **新增的 terms 键名**
