@@ -1,0 +1,2 @@
+PREFLIGHT_FAIL: FAIL: Cannot destructure property 'rawPath' of 't.getPageMetaByWebviewId(...)' as it is null.
+=> 先修通道（重跑 cli auto），不要盲跑整轮。

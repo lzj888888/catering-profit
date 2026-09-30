@@ -1,0 +1,41 @@
+r181n：模拟器走查未通过（通道侧阻塞）· 留档 3 条工具侧新事实 + 回写技能
+
+一 做了什么（纯证据 + 文档，零业务代码）
+
+  1 尝试用「模拟器自动化通道」替代真机，验证阶段① 第二 tab 的动态可点性 + 21 页 UI 走查
+    → **未成功**，卡在通道绑定层。全程留档 review/evidence/r181n_pagewalk/
+
+  2 三条工具侧新事实（已回写技能 miniprogram-page-review）
+    · 非沙箱 `cli.bat open --project` **能直接拉起 IDE GUI**（推翻技能旧表「只起 headless server、GUI 为 0」）
+    · IDE 项目窗口被挤成 630×1034 时模拟器会废 ⇒ MoveWindow 拉回 1875×1034（**必须 DPI-aware**）
+    · 「模拟器长时间没有响应」模态框恢复配方 + **实测按钮坐标**
+      （终止模拟器 918,326 → 普通编译 1706,152）；并附判据：该框**不代表产品有死循环**
+      （它在 Connect 之前就已存在，恢复后首页渲染正常）—— 差点被误报成产品缺陷
+
+  3 通道阻塞的**区分判据**（把「工具态」与「产品缺陷」分开）
+    connect ok · systemInfo ok · evaluate(1+1)=2 · **getCurrentPages()=0** · currentPage/reLaunch 报 rawPath null
+    ⇒ 服务绑到「没有页面的上下文」= 工具态问题
+    已排除五因：旧实例占端口 / 预热不足 / automator 版本旧（0.12.1 = npm 最新）/ 模拟器托管关系 / 产品死循环
+    根因**未定**，未做任何猜测性结论
+
+二 判据（全部机器判定）
+
+  · node verify_all.js                  → 总览：122/122 套件通过（RC=0 · 真 FAIL=0）⇒ gate_181n_1.txt
+  · node tools/check_evidence_meta.js   → 2 通过 / 0 失败
+  · node tools/check_suite_coverage.js  → 10 通过 / 0 失败（面 A 122 零漏网 · 面 B 5 豁免无僵尸 · S8 前提成立）
+  · node tools/check_js_syntax.js       → 905 个 .js 全部可编译
+
+三 未验（不许当已完成）
+
+  · 21 页截图 / 按钮文案 / actualPath —— **一张都没拿到**
+    （report_channel_blocked.json 是**失败预检**的产物，不是走查结果）
+  · 阶段① 第二 tab **动态可点性** —— 仍只有静态闭环
+  · 阶段② 硬前置 ② **未解除**
+
+四 回执
+
+- [2026-10-01 03:2x] R181n 未落 · 证据：channel_diag_9432.log → connect ok / evaluate 2 / getCurrentPages 0 /
+  reLaunch FAIL（rc=1）· channel_preflight.log → PREFLIGHT_FAIL rawPath null（rc=4）· 21 页截图 0 张 ·
+  node verify_all.js → 总览：122/122 套件通过 rc=0
+- 存疑：通道为何绑不到页面**根因未定**；候选 = IDE 版本与 automator 协议不匹配 / 本机 IDE 残留态
+  （可选下一步：升级 IDE，或 `cli cache` 清缓存（有副作用），或换机以分离「机器态 vs 版本缺陷」）

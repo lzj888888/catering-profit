@@ -1,0 +1,15 @@
+===== attempt 1 =====
+  connect: ok
+  systemInfo: ok platform=devtools
+  evaluate(1+1): 2
+  getCurrentPages().length: 0
+  currentPage: FAIL Cannot destructure property 'rawPath' of 't.getPageMetaByWebviewId(...)' as it is null.
+  reLaunch: FAIL Cannot destructure property 'rawPath' of 't.getPageMetaByWebviewId(...)' as it is null.
+===== attempt 2 =====
+  connect: ok
+  systemInfo: ok platform=devtools
+  evaluate(1+1): 2
+  getCurrentPages().length: 0
+  currentPage: FAIL Cannot destructure property 'rawPath' of 't.getPageMetaByWebviewId(...)' as it is null.
+  reLaunch: FAIL Cannot destructure property 'rawPath' of 't.getPageMetaByWebviewId(...)' as it is null.
+=> CHANNEL_BAD (2 attempts)
