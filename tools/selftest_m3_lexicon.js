@@ -58,8 +58,11 @@ suggestByName(probe);
 check('L-d 调 suggestByName 前后入参字符串不变', probe === before, `'${probe}'`);
 const lexSrc = fs.readFileSync(path.join(__dirname, '..', 'utils', 'materialLexicon.js'), 'utf8');
 const exportsLine = (lexSrc.match(/module\.exports\s*=\s*\{[^}]+\}/) || [''])[0];
+// ⚠️ round181g 变异回灌实测：原正则只认 `name:` 带冒号形式，
+//   `module.exports = { LEXICON, suggestByName, getByKey, autoReplace }` 这种**简写**导出（无冒号）
+//   会被漏判 ⇒ 判据改「带冒号 **或** 简写后跟 , / }」两种形态都算命中。
 check('L-d 导出名无 auto/replace/apply/normalize 前缀',
-  !/\b(auto|replace|apply|normalize)[A-Za-z0-9_]*\s*[:]/.test(exportsLine), exportsLine.trim());
+  !/\b(auto|replace|apply|normalize)[A-Za-z0-9_]*\s*(?::|[,}])/.test(exportsLine), exportsLine.trim());
 check('L-d 源码无 setData', !/setData/.test(lexSrc), '');
 
 console.log('===== L-e · 单位池 =====');

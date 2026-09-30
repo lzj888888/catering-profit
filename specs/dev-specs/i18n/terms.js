@@ -801,6 +801,12 @@ const TERMS = {
     comboInsightMerchantLose: '我少赚了',
     comboInsightLoseWarn: '这个套餐在拉低你的毛利',
     comboInsightCostShare: '成本结构',
+    // ===== M3.20（批次 B 收尾）· 标准原料词库 + 菜品模板 =====
+    //   只做搜索建议 + 一键起行，**绝不自动替换、绝不预填价格**。
+    matLexiconHint: '试试这些常用原料（点一下填入，不会自动改名）',
+    templateFrom: '从模板新建',
+    templatePickPh: '选一道模板，预填配方（价格留空）',
+    templateHint: '模板只预填行名 / 用量 / 单位，价格请自行填写',
   },
 
   // ===== 十五、M1 库存录入页（shop_inventory）=====

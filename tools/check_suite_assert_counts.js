@@ -119,6 +119,11 @@ const CASES = [
   //   引擎一字不改」的入参变换证明，正是本守卫要求的「非恒真」凭据；而 17 条断言删掉一批仍 > 0
   //   ⇒ A0-② 的「通过数为 0」下界抓不到，只有 A2「声明 ≡ 实跑」能发现 ⇒ 断言数必须受守（与 round73 同族）。
   { key: 'selftest_m3_combo', rel: 'tools/selftest_m3_combo.js' },
+  // round181g 扩面：M3.20 词库/模板（批次 B 收尾）守卫同批纳入 —— 与 m3-combo 同族理由：
+  //   L-a~L-g 七组锚点（规模 67 / 必含 8 条 / 别名命中 / 绝不自动替换 / 单位池 ∈ PURCHASE_UNITS /
+  //   模板 20 道无价格 / applyTemplate 只返回行名·用量·单位）是「非恒真」凭据；而 21 条删一批仍 > 0
+  //   ⇒ A0-② 的「通过数为 0」下界抓不到，只有 A2「声明 ≡ 实跑」能发现。
+  { key: 'selftest_m3_lexicon', rel: 'tools/selftest_m3_lexicon.js' }, // 21 条（M3.20：L-a~L-g）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];
