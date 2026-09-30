@@ -24,9 +24,9 @@ dev 库里的任何账套 / 台账 / 测试数据**不会**流到正式版。
 | prod 环境 | **不存在** | 同上，列表里没有第二个环境 |
 | 前端 prod 槽 | 仍是占位符 `catering-prod-xxxxxxxx` | `miniprogram/config/env.js` `ENV_MAP.prod` |
 | 前端当前激活环境 | `ACTIVE_ENV: 'dev'` | 同上（写死，不会自动切） |
-| 云函数 | **42 个**（44 个目录 − `common` / `_adminCore` 两个库目录） | `ls -d cloudfunctions/*/` |
-| 库结构 | **25 集合 / 40 索引** | `cloudfunctions/initDb/collections.js` |
-| 已建成索引 | dev 侧已建 | `tools/apply_indexes.js` |
+| 云函数 | **43 个**（45 个目录 − `common` / `_adminCore` 两个库目录） | `ls -d cloudfunctions/*/`（R181m 复核；与云端 `list` 零差异） |
+| 库结构 | **27 集合 / 45 索引**（12 unique） | `cloudfunctions/initDb/collections.js` |
+| 已建成索引 | dev 侧 **45/45 已追平** | `tools/apply_indexes.js` |
 
 ---
 
@@ -54,14 +54,17 @@ dev 库里的任何账套 / 台账 / 测试数据**不会**流到正式版。
 
 > ⚠️ **别把 dev 改名成 prod 当正式环境**。那样 dev 里的测试数据就原地"转正"了 —— 这是唯一会踩中您担心的那件事的做法。
 
-### B. prod 库结构（25 集合 + 40 索引）
+### B. prod 库结构（27 集合 + 45 索引）
 
 | # | 动作 | 说明 | 谁做 |
 |---|---|---|---|
 | B1 | 建 25 张集合 | 🔴 **政策（非能力限制）**：`initDb` 有环境门禁 `gate()`，含 `prod` 子串一律拒绝 ⇒ **prod 集合由控制台手工创建**，`initDb` **绝不部署到 prod** | 李老师 / 我 |
 | B2 | 建 40 条索引 | **已可脚本化，零改造**：`node tools/apply_indexes.js --env <prod_id> --apply --secret-file <文件>`。该脚本走官方 HTTP API（幂等、可回读校验），`--env` 参数**已支持**（`tools/apply_indexes.js:60`：`valOf('--env') \|\| initDb/config.json::DEV_ENV_ID`，无 `--env` 时仍从单源现读、不手抄）。⚠️ 默认 dry-run，必须显式 `--apply`；AppSecret **用后即轮换**（账号级凭证） | 我 |
 
-### C. prod 种子数据 —— 🔴 **真缺口，目前无落地路径**
+### C. prod 种子数据 —— ✅ **落地路径已补**（见 `review/PLAN_2026-10-01_prod环境播种方案.md`）
+
+> **补法**：不走 `initDb`（门禁拒绝 prod，且是刻意政策），改走
+> **「dev 控制台导出种子 JSON → prod 控制台导入」** —— 零代码、零凭证、可审计。详见该方案 §四 S5。
 
 | 数据 | dev 里谁插的 | prod 怎么办 |
 |---|---|---|
@@ -75,7 +78,7 @@ dev 库里的任何账套 / 台账 / 测试数据**不会**流到正式版。
 
 | # | 动作 | 判据 |
 |---|---|---|
-| D1 | 全量部署 **41 个函数**（42 − `initDb`） | `cli cloud functions deploy --names <fn> -r`，**一次一个、必带 `-r`**（漏 `-r` = 覆盖云端 `wx-server-sdk` ⇒ 前端「网络不可用」） |
+| D1 | 全量部署 **42 个函数**（43 − `initDb`） | `cli cloud functions deploy --names <fn> -r`，**一次一个、必带 `-r`**（漏 `-r` = 覆盖云端 `wx-server-sdk` ⇒ 前端「网络不可用」） |
 | D2 | 🔴 **先在控制台定 all 函数 timeout 值，再全量部署** | 实测：`config.json` 的 `timeout` **不被采纳**（重启键 §该条），值只存在于控制台。**dev 定过 ≠ prod 生效**，必须重走「定值 → 部署 → `cli cloud functions info` 逐个回读」 |
 | D3 | `ADMIN_SETUP_TOKEN` 等凭证重配 | 凭证**不随环境走** |
 

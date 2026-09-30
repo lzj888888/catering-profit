@@ -1,0 +1,22 @@
+- initialize
+
+(node:23268) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)
+× IDE may already started at port 39721, trying to connect
+
+√ IDE server started successfully, listening on http://127.0.0.1:39721
+- deploy cloudfunctions
+- fetching cloud env list
+- [importSalesBill] Fetching info of cloudfunction importSalesBill
+√ [importSalesBill] cloudfunction importSalesBill doesn't exist in the cloud, will create it
+- [importSalesBill] upload cloud function importSalesBill - preparing
+× [importSalesBill] upload cloud function importSalesBill - deploy
+× deploy cloudfunctions
+
+┌─────────────────┬─────────┐
+│ (index)         │ success │
+├─────────────────┼─────────┤
+│ importSalesBill │ false   │
+└─────────────────┴─────────┘
+[error] fail to deploy cloudfunction importSalesBill :
+{"message":"Error: TencentCloud API error: {\n    \"Response\": {\n        \"Error\": {\n            \"Code\": \"FailedOperation.UpdateFunctionCode\",\n            \"Message\": \"当前函数处于Creating状态，无法进行此操作，请稍后重试。\"\n        },\n        \"RequestId\": \"caac6ae3-6773-4333-8259-91330120c2ff\"\n    }\n}"}

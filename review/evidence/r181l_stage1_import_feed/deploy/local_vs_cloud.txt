@@ -1,0 +1,35 @@
+# 本地 ≡ 云端 · 云函数双向对账（2026-10-01 R181m）
+
+**判据**：`cli.bat cloud functions list --project <REPO> -e <DEV_ENV_ID>`
+（⚠️ 技能 §7 已登记：**必须带 `-e`**，漏了它会直接打 help，但 **`rc` 仍为 0** ⇒ 又一处「rc 不可作判据」）。
+
+## 计数对账
+
+| 项 | 数 | 说明 |
+|---|---|---|
+| 本地 `cloudfunctions/` 顶层目录 | **45** | `ls -d cloudfunctions/*/` |
+| 减：非函数目录 | **2** | `common`、`_adminCore` |
+| ⇒ 本地函数 | **43** | |
+| **云端函数** | **43** | `cli cloud functions list` |
+| **`diff` 结果** | **零差异** ✅ | |
+
+## 云端完整列表（43）
+
+```
+adminExport            adminGrantEntitlement  adminInit              adminLogin
+adminLogout            adminManualOrder       adminOrderList         adminQueryUser
+adminRefreshToken      adminRefundMark        adminRevokeToken       archiveMonth
+calcAmortize           calcBom                calcMonthlyProfit      calcSandbox
+checkQuota             deleteAccount          detectCycle            exportData
+getAmortSchedule       getCardVersions        getCostCard            getLedger
+getMaterial            getMonthList           getShopContext         getShopList
+importSalesBill   ← 本批新增（R181l/181m）    initDb                 payCallback
+payCreateOrder         payExpireNotify        payOrderList           payQueryEntitlement
+payRenew               saveAsset              saveCostCard           saveLedger
+saveMaterial           saveShopSetting        smokeTest              syncCostCard
+```
+
+## 与规范声明的一致性
+
+`specs/dev-specs/core/10_云函数清单与接口契约.md` 的全集声明本批已由 **42 → 43** ⇒ 与**云端实测 43** 一致 ✅。
+（三方一致：规范声明 ≡ 本地目录 ≡ 云端实际。）
