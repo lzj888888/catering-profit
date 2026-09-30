@@ -1,0 +1,86 @@
+【批次 F】阶段① 账单导入（门店级营收）＋ 数据可信度甲级门禁（同批）
+
+【配套材料（先读，别猜）】
+- 规范：specs/dev-specs/core/开发规范v1.4_AI预留与入站接入缝.md —— §5.2 三级门禁、§6.1 external_sales_daily schema
+- 方案：review/PLAN_2026-10-01_销量数据替代方案_去开放平台.md —— §四（阶段①）、**§四-bis（落库口径·硬约束）**、§八（P1–P4 已定案）
+- 已实证口径源：review/evidence/r163_waimai/parse_bill.py（双平台别名表 + guess_header + 淘宝口径）
+                review/evidence/r177_meituan/mt_check.py（美团口径）
+- 测试 fixture（**本轮已入库**）：review/evidence/r181l_stage1_import_feed/fixtures/taobao_2026-08.matrix.json
+                                review/evidence/r181l_stage1_import_feed/fixtures/meituan_2026-08.matrix.json
+
+═══ 0 目标 ═══
+做通「微信选 xlsx → 上传云存储 → 云函数解析 → 甲级门禁 → 预览确认 → 落 external_sales_daily」，
+让外卖营收**不再手敲**；同批落地**甲级门禁**（外部数据第一次进门，无门禁＝脏数据直灌 M1/M3）。
+
+═══ 1 分工与红线（违反即返工）═══
+- 🚫 不许改 verify_all.js（挂套件由门禁方做 —— 你只在回执里写「新增 N 个套件待挂」）
+- 🚫 不许改 specs/ 下任何文件
+- 🚫 不许新建集合、不许新增索引（27 集合 45 索引已与线上追平）
+- 🚫 引擎零改动（calcBom / calcCostCard / calcMonthlyProfit 等只读调用，不改源码）
+- 🔴 新 tab 必过三关：① 提审材料五处同改（**本批并入既有页、不新建页**，故免）② **必须有入口**（上批 pages/recon 因漏写入口成孤岛页）③ 金额框 val-input **不得与 `<button>` 同父**
+- 🔴 写库主键必用 `_id`（显式 `.doc(_id).set()`；`.update()` 会静默 0 行）
+- 🔴 列表查询必须有显式上限；要「全部行」必须 da.listAll()
+- 🔴 新增可见文案＝三处（miniprogram/i18n/terms.js ＋ specs/dev-specs/i18n/terms.js ＋ 使用处）；错误码必走 msgOf()
+
+═══ 2 任务 A · 纯解析模块 `utils/billParse.js`（零依赖 · 不落库 · 不碰云）═══
+导出三个函数：
+  detectPlatform(header) -> 'taobao' | 'meituan' | null
+    🔴 按**列名**判定，**禁止看文件名**（fixture 里美团文件名是 09bbd0104…xlsx、淘宝是「淘宝闪购.xlsx」——正是反例）
+  guessHeader(rows) -> 表头行下标（移植 parse_bill.py：**前 5 行里非空文本格最多**的那一行）
+  parseBillMatrix(matrix, {platform}) -> {
+      platform, headerRow,
+      rows: [{bizDate, qty, amountFen}],
+      totals: {amountFen, qty, rowCount},
+      months: ['YYYY-MM', ...],
+      excluded: {rows, reason}
+  }
+
+取数与口径（🔴 逐条实现，全部来自已实证口径）：
+  1) 淘宝：只取 sheet「外卖账单明细」；**到手 = Σ「结算金额」**（该列已含各项扣减）
+     🔴 复合列×拆分列并存 ⇒ **只取一组**（淘宝「平台服务费」＝技术服务费＋配送服务费；同抄必双扣）
+  2) 美团：只取 sheet「订单明细」；**收入 = 先按「交易类型==外卖订单」筛行，再 Σ「商家应收款」**
+     🔴🔴 不筛、直接 Σ 全表「商家应收款」＝1747.95（＝账单金额，**不是收入**；差＝广告转入 76.41＋保险 2.28）
+     🔴 **不许按「订单状态」筛**（广告行/保险行的状态也是「订单完成/已处理/取消」）
+     🔴 行键不能用「订单号」（同一单号会重复出现在外卖/广告/保险行上）
+     🔴 美团「平台服务费(含佣金和配送服务费)」＝佣金(实付)＋配送服务费(含补贴)（复合列，与拆分列只取一组）
+  3) 归月按**账单日期**；有效订单**不含退单**；**打包费是加项**（不是减项）
+  4) qty ＝ 有效订单数（美团＝筛后 50；淘宝＝有效行数）；🔴 **绝不进金额计算**
+  5) 金额全部转**分**（round 到整数）
+
+═══ 3 任务 B · 甲级门禁 `utils/gradeGate.js`（纯校验 · 不落库）═══
+  checkGradeA({platform, header, rows, totals}, schema) -> {pass, level:'A', failures:[{code, field, msg}]}
+  三门（v1.4 §5.2）：① 通道连通（rows 非空、无异常）② Schema 校验（字段名/类型/**数值范围**双向匹配）
+                    ③ 关键指标非空（shop_id / biz_date / amount 全非空）
+  🔴 不通过**直接阻断**（fail-closed），不进入落库；失败清单要能直接喂前端显示
+
+═══ 4 任务 C · 云函数 `cloudfunctions/importSalesBill/` ═══
+  文件：index.js / service.js / validate.js / package.json
+  package.json 依赖：wx-server-sdk ~2.6.3 ＋ **xlsx ^0.18.5**（SheetJS，**仅本函数**引入；其余函数不动）
+  入参：{ fileID, shopId, platform?, confirm? }
+  confirm 缺省或 false：cloud.downloadFile 取文件 → xlsx 转矩阵 → billParse → gradeGate → 返回**预览**（不落库）
+  confirm === true：同上 → **甲级通过才**落库 → 返回写入条数
+  落库（🔴 照 PLAN §四-bis，**不许自创**）：
+    集合 external_sales_daily
+    _id = 'BILL_' + shopId + '_' + platform + '_' + bizDate（确定性 ⇒ 幂等）
+    .doc(_id).set({ shop_id, biz_date, external_ref_id: 'BILL:' + platform + ':' + bizDate, dish_key: '',
+                    qty, amount /*分*/, platform, source: 'excel', created_at })
+  🔴 幂等：同店同平台同账单日重复导入 ⇒ 覆盖同一 _id，零重复行
+  ⚠️ 本函数带 npm 依赖 ⇒ 部署时须「云端安装依赖」（我方/李老师做；你只在回执写明需要）
+
+═══ 5 任务 D · 入口 `pages/takeaway` 第二 tab（P2 定案，不新建页）═══
+  先读 pages/takeaway/index.{js,wxml,wxss,json} 弄清现有 tab 结构，再加「账单导入」tab：
+  wx.chooseMessageFile(选 xlsx) → wx.cloud.uploadFile → 调 importSalesBill(confirm=false) → 展示预览
+  → 用户点确认 → 调 importSalesBill(confirm=true) → 成功提示
+  🔴 预览必须显示「平台＝X / 识别到 N 行 / 归月到 M 月 / 合计 ¥X / 已排除 Y 行」，**用户确认后才落库**
+  🔴 预览页的金额展示框不得与按钮同父（三关③）
+
+═══ 6 任务 E · 自测（🔴 零依赖，只用仓库内 fixture）═══
+  tools/selftest_bill_parse.js：读 fixtures/{taobao,meituan}_2026-08.matrix.json → parseBillMatrix
+     **必须复现**：淘宝 → 行数 **156** / 到手 **3779.65 元**；美团 → 全 **97** 行 → 筛后 **50 行** / 应收 **1826.64 元**
+     ⚠️ 不相等时**不许改期望值**，要改你的实现
+  tools/selftest_grade_gate.js：≥8 条（正常通过 ＋ 每门各一个反例）
+  两个脚本末尾打印 `N/M`，每条 `✅/❌`
+
+═══ 7 回执（必须逐项写）═══
+  ① 改动/新增文件清单 ② **两个锚点的复现数字（原样写出）** ③ **新增 N 个套件待挂** ④ 未做的事（如实标注）⑤ 是否新增 npm 依赖
+  🚫 不要 commit（我方提交）；🚫 不要改 verify_all.js

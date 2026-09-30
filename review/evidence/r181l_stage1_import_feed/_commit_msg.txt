@@ -1,0 +1,23 @@
+r181l: 阶段① 账单导入投喂包（批次 F）＋ PLAN 定案与落库口径 ＋ 测试 fixture
+
+【定案】P1–P4 依 2026-10-01 李老师「听你的」授权逐项定：
+  P1 走替代路线（阶段①→②，③ 挂起待公司主体）
+  P2 阶段① 入口并入 pages/takeaway 第二 tab（不新建页）
+  P3 K3 采候选③（external_sales_daily 明细 + shop_switch.m3_review_last 摘要；零新建集合）
+  P4 阶段① 与甲级门禁同批投喂
+
+【口径空白补齐】PLAN 新增 §四-bis —— 账单级 → external_sales_daily 的映射（本方案自查发现的空白：
+  该集合是按菜品级销量设计的，而阶段① 拿到的是账单级营收，无菜品 ID）：
+    external_ref_id = 'BILL:<platform>:<bizDate>'（合成键，不与阶段② 菜品级键空间冲突）
+    dish_key = ''（账单级无菜品身份）· qty = 有效订单数（绝不进金额）· amount = 到手分
+    _id = 'BILL_<shop_id>_<platform>_<bizDate>' 确定性主键 + .doc(_id).set() ⇒ 幂等，零重复行
+  与 v1.4 §6.1 唯一键同构 ⇒ 规范无需修订。
+
+【本批新增】review/evidence/r181l_stage1_import_feed/
+  · feed_f_stage1.txt（投喂包，7226 字符 / 86 行）：任务 A 纯解析 utils/billParse.js · B 甲级门禁 utils/gradeGate.js
+    · C 云函数 importSalesBill（引入 xlsx 依赖）· D pages/takeaway 第二 tab · E 零依赖自测（复现两锚点）
+  · fixtures/：源账单 2 份（淘宝闪购 2026-08 / 美团 2026-08）+ JSON 矩阵 2 份（离线自测用，零依赖）
+  · mk_fixtures.py：openpyxl read_only=False 口径（规避「read_only=True 少算 1 行」红线）
+  · gate_181l_1.txt：门禁 120/120 · RC=0 · 真 FAIL=0
+
+【未做】未投喂 InsCode（本提交是投喂前基线）· 未改任何生产代码（cloudfunctions/ miniprogram/ 零改动）· 未动 specs/
