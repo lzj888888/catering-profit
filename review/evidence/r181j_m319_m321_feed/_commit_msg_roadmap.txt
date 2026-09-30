@@ -1,0 +1,15 @@
+r181j-roadmap: 路线单刷到 R181j 现状（批次 E 已消化，门禁 120/120）+ 回执归档与提交收口
+
+- review/ROADMAP_2026-09-30_下一步总览.md：基线 `dev@7de3d7e` / 门禁 **120/120 · 真 FAIL=0**；
+  M3.19+M3.21 标 🟢；页面清单含 21 页（新增 metrics / recon）；
+  B 线序号推进（7 甲级门禁 / 8 二期规则 / 附 M3.33）；下一批候选三条；
+  §六 环境事实补 R181j 复核（原生门禁可直接跑，绕行一次未用）。
+  补丁走脚本 `roadmap_patch_181j.py`（两阶段：19 处锚点全部断言「命中 == 1」后才统一落盘，8328 → 9339 字符）。
+- 证据补：
+  · `inscode_receipt_db.txt` —— InsCode 回执**原文**从 `~/.config/inscode/inscode.db` 直读归档
+    （会话 `831bd65c-…`；`inflight_turn` = 0）；导出脚本 `dump_receipt.py` + 结构探针 `readback_receipt.py`
+    （🔴 消息字段名是 `text` 不是 `content` —— 用错只得到 662 字节空壳）。
+  · README §8.8「回执对照表」：逐条核对自述与我方实跑，含关键结论
+    ——「`pages/recon` 无入口」**不是 InsCode 的错**：`feed_e.txt` 任务 B 漏写入口要求 ⇒ 回执只对清单负责，
+    清单本身漏项由投喂方担；教训「投喂包红线段须把『新页必须有入口』『金额框不得与按钮同层』固化」。
+  · README §8.9「提交与推送收口表」+ `gate_181j_4_postroadmap.txt`（刷路线单后复跑 **120/120 · RC=0**）。

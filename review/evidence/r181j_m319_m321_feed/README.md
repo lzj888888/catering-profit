@@ -353,3 +353,42 @@ M3.21 reconcile(64.92, 54.08, cov=1, income=100000)：diffPp = −10.84、diffFe
 反证（裸比较必误标）+ 3 条 dry-run 静态抑制（`noPrice` / `below_band: !noPrice &&` / `new_gross_margin_pct: noPrice ? null :`）。
 断言数声明与 `CASES` 已同步（重启键「三十六者」，实跑 17 ≡ 声明 17）。
 
+### 8.8 回执归档（DB 直读，非转述）
+
+InsCode 的**回执原文**从 `~/.config/inscode/inscode.db` 直读归档为 `inscode_receipt_db.txt`
+（会话 `831bd65c-70cb-4600-8fb6-7ebe07886768`，`message_count=1013`，`updated_at=2026-09-30 23:22:09`，
+`inflight_turn` 行数 = **0** ⇒ 空闲）。导出脚本 `dump_receipt.py`、结构探针 `readback_receipt.py`。
+🔴 **踩过一坑**：消息体字段名是 **`text`**（不是 `content`）—— 用 `content` 导出只得到 662 字节空壳。
+
+**对照表**（纪律「不采信自述」：自述只作对照物，判据一律是我方独立跑的）：
+
+| InsCode 自述 | 我方独立核对 | 判定 |
+|---|---|---|
+| 「清单已全部落地」 | 任务 A（dry-run 分支 / 影响面页 **+ 入口** / 趋势折线）全在；任务 B（`reconDerive` / 对账页）也在 | ✅ 属实 |
+| `pages/recon/index` 无入口 | 全仓**零跳转** ⇒ §8.6 缺陷② | ⚠️ **不是它的错**：`feed_e.txt` 只在**任务 A** 写了「必须有入口」（第 33 行），**任务 B 漏写**（第 49 行起无该要求）⇒ 回执只对「清单」负责，**清单本身漏项由投喂方担** |
+| dry_run 出参列表（`…old_gross_margin_pct / band_floor_pct / below_band`） | 与源码 `index.js:118-121` 一致 | ✅ 属实；**但缺 `no_price`** ⇒ 正是 §8.6 缺陷①（无牌价卡被误标跌破）的暴露点 |
+| `selftest_m3_impact` **12/0** | 实跑 12/0（基线）⇒ 我方加 C-b 段后 **17/0** | ✅ 属实 |
+| `check_page_manifest` **预期判红**（新页未登记 specs） | 确认为**连锁红**，归我方补（§8.3 已补 19→21 页） | ✅ **如实申报，非隐瞒** |
+| 「未跑全量门禁」（工具 300s 上限） | 我方补跑 **120/120 · RC=0** | ✅ 如实申报 |
+| 「本轮未做 commit，文件保持 unstage」 | 复读其末条 tool_call：`git reset -q` 确已 unstage；最终改动由我方提交 | ✅ 属实 |
+
+**教训（写进下一批投喂包模板）**：投喂包的**红线段**须把「**新页必须有入口**」「**金额框不得与按钮同层**」
+当**固化清单**逐条写死 —— 这两条本轮都落在「建好了但过不去 / 过不去却没人报」的缝里。
+另：**回执口径要与投喂包口径同源** —— 我漏写要求，就不能拿回执去追责。
+
+### 8.9 提交与推送（收口）
+
+| 步骤 | 命令 / 判据 | 结果 |
+|---|---|---|
+| 提交 | `git add -- <pathspec>`（**不带 `git add .`**）+ `git commit -F _commit_msg.txt` | `7de3d7e`（58 文件 / +15785 −18） |
+| 提交前门禁 | `node verify_all.js` → `gate_181j_3_precommit.txt` | **120/120 · RC=0 · 真 FAIL=0** |
+| 刷路线单后门禁 | `node verify_all.js` → `gate_181j_4_postroadmap.txt` | **120/120 · RC=0** |
+| 推送 | `git -c url."ssh://git@ssh.github.com:443/".insteadOf="git@github.com:" push origin dev` | `27ae4b4..7de3d7e  dev -> dev` |
+| 一致性 | `git rev-parse HEAD` ≡ `git ls-remote origin refs/heads/dev` | 两侧同为 `7de3d7e84f9b1324845f4cce8d4b61c00f8e628e` |
+| png 白名单 | `git check-ignore` 抽样 + `git add -A --dry-run \| grep -c "\.png"` → **0** | 17 张截图全部挡在库外（判据均为文本级，无需入库） |
+
+路线单已刷新：`review/ROADMAP_2026-09-30_下一步总览.md`（基线 `7de3d7e` / 门禁 **120/120** /
+M3.19+M3.21 标 🟢 / B 线序号推进 / 下一批候选三条）。补丁脚本 `roadmap_patch_181j.py`
+（两阶段：19 处锚点全部断言「命中 == 1」后才统一落盘；8328 → 9339 字符）。
+
+

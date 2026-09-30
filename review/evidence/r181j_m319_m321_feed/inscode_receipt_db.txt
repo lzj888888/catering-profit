@@ -1,0 +1,182 @@
+# InsCode 回执 · DB 直读归档（R181j 批次 E）
+- 会话 id: `831bd65c-70cb-4600-8fb6-7ebe07886768`
+- working_dir: `C:\Users\lzj\WorkBuddy\Claw\catering-profit`
+- message_count: 1013 · updated_at: 2026-09-30 23:22:09
+- inflight_turn 行数: 0（0 = 空闲）
+
+> 用途：纪律「不采信任何自述」——此处仅**留档** InsCode 的原始回执文本，作为对照物；
+> 真判据一律是我方独立跑出来的门禁 / 锚点复算 / 变异结论。
+
+---
+
+## [1] role=Tool · len=2636 · tool_calls=0
+
+73	- 归因清单（**只列方向，不下结论**）：① 有菜没建卡（覆盖率缺口）② 卡内价 ≠ 原料现价（多少张卡用旧价）③ 出品超耗 / 损耗 / 报废 / 赠送 ④ 口径差异（外卖到手 vs 总额法）。文案里**不许**出现「你被偷了」「有人在贪」这类结论句。
+74	- `includeCombo` 切换开关（默认关）。
+75	- 登记进 `app.json` 的 pages 数组。
+76	
+77	五、复算锚点（**必须 require 真实单源实算，不许把期望值写死在断言里再自证**）
+78	把下面两组写进对应的 selftest 文件：
+79	M3.19（`tools/selftest_m3_impact.js`）——规范 v1.1 §M3.19「复算锚点（已实测）」：
+80	· C-a：鸡胸肉 15 → 20 元/斤 ⇒ 宫保鸡丁成本 **975 → 1208 分**；毛利率 **65.18% → 56.86%**（掉 8.32pp，**未破** 55% 红线）
+81	· C-a2：鸡胸肉 15 → 25 元/斤 ⇒ 成本 **1444 分**；毛利率 **48.43%** ⇒ **跌破** 55% ⇒ 该行必须 `below_band === true`
+82	· 两次都**不自动改卡**：dry_run 跑完后 `shop_cost_card` 的版本数与 total_cost 必须一字不变（在自测里断言这点，用「跑前跑后读同一份数据」的方式）
+83	M3.21（`tools/selftest_m3_recon.js`）——规范 v1.1 §M3.21「复算锚点（已实测）」：
+84	· D 标准菜单毛利率：宫保 2800/975 + 糖醋里脊 3200/1120 + 米饭 300/120 ⇒ (6300−2215)/6300 = **64.84%**
+85	· D 差值：M1 实际 55% ⇒ **9.84pp** ⇒ 折算 **9840 元**（菜品口径收入 10 万）
+86	· D 抑制：覆盖率 3/12 = 25% ⇒ 25% < 60% ⇒ **抑制生效**，只回两个数、diffPp/diffFen 为 null
+87	· 细项名单源：断言 `'商品总价'` 是从 `TERMS.ledger.takeawayMode.goodsField` 取的（防改名静默失效）
+88	· 套餐默认排除：同一组卡加一张 `card_type === 3` 的套餐，默认口径结果**不变**，`includeCombo: true` 时**变**（正负互证）
+89	· 除零与空账：`price_fen` 全 0 ⇒ `pct === null` 且 `reason === 'no_price'`；空账 ⇒ `pct === null`，**不许是 0**
+90	
+91	六、红线（违反即退回）
+92	· 引擎函数一字不改（见二）；不新建集合、不新增索引、不改权限矩阵
+93	· 🔴 **M3 绝不写 M1**：本批新增/改动的代码**不得**调用 `saveLedger` / `archiveMonth` / `saveAsset` 等 M1 写路径；对 `getLedger` 只读
+94	· 🔴 **dry_run 绝不写库**（写一次 = 用户没点就改了卡 = 静默错）
+95	· 🔴 `syncCostCard` 非 dry_run 路径行为不变（回归：`pages/card/index.js` 的两处调用照旧可用）
+96	· 🔴 **细项名不写字面量**（从 terms 单源取）；**套餐默认排除**（同一道菜不许计两次）
+97	· 🔴 **无分母不硬凑**：覆盖率缺失 ⇒ 抑制；外卖快速录入 ⇒ 抑制；缺项**不出键 / 不出 0**
+98	· 金额一律**分**（展示层才转元）；比例一律**百分数**（65 表示 65%），展示保留 1 位小数
+99	· 列表查询走 `common/dataAdapter.js::LIST_LIMIT` 上限；「要全部行」用 `da.listAll()`
+100	· 新可见文案 = **三处同步**（`miniprogram/i18n/terms.js` + 页面 `.js` 的 `t:{...}` 视图映射 + 回执里列明新增键名）；新增键**挂 `card` 命名空间**、用 `impact` / `recon` 前缀，**不新建顶层命名空间**
+101	· 新页面 CSS 必须过 AD 门禁（字号 ≥28rpx、min-height ≥88rpx）
+102	· `wx.showModal` 按钮文案 ≤4 字符（超了整窗静默失败）
+103	
+104	七、门禁与验收
+105	· **分块跑，不要一次性全量**（工具 300s 上限）。至少跑：两个新 selftest + `tools/selftest_ad_gates.js` + `tools/check_m3_engine_parity.js` + `tools/check_page_terms.js` + `tools/check_list_query_limit.js` + `tools/check_paywall_coverage.js`
+106	· 新页面会触发 `check_page_manifest` 判红（提审材料 §4 未登记）—— **这是预期的、归门禁方补**，不要为了变绿去改 specs/
+107	· **跑不完的如实写「未跑」，不要写成「通过」**；数字必须是你真跑出来的
+108	
+109	八、收尾
+110	· 提交**带 pathspec**（只 add 你实际改过的文件），不要 `git add .`，**不要推远端**
+111	· commit message 写清：改了什么 + 验收判据 + 哪些没跑到
+112	· 回执必须列：改动文件清单 + 增删行数 + 两个 selftest 的 通过/失败 数 + 各套件结果 + **未跑 / 存疑项** + **新增 terms 键名** + **新增套件名（待门禁方挂）** + 一句「本轮是否触碰任何 M1 写路径」（要答「否」）
+[Showing lines 73-112 of 112 (end)]
+## [2] role=Assistant · len=0 · tool_calls=1
+
+
+
+```
+[{"id": "call_8sakf2flf3ekqrmyyzxmo9hq", "name": "bash", "arguments": "{\"command\": \"cd /c/Users/lzj/WorkBuddy/Claw/catering-profit && node tools/check_list_query_limit.js < /dev/null 2>&1 | tail -1; node tools/check_paywall_coverage.js < /dev/null 2>&1 | tail -1; echo \\\"=== 确认 verify_all.js 未被改 ===\\\"; git status --short verify_all.js | head; echo \\\"=== 确认 dry_run affected 出参字段 ===\\\"; grep -n \\\"band_floor_pct\\\\|below_band\\\\|old_gross_margin_pct\\\\|scanned_cards\\\" cloudfunctions/syncCostCard/index.js | head\"}"}]
+```
+## [3] role=Tool · len=332 · tool_calls=0
+
+===== 列表查询条数上限守卫结果：22 通过 / 0 失败 =====
+===== R159 付费墙覆盖面守卫结果：13 通过 / 0 失败 =====
+=== 确认 verify_all.js 未被改 ===
+=== 确认 dry_run affected 出参字段 ===
+118:        old_gross_margin_pct: oldGross,
+120:        band_floor_pct: bandFloor,
+121:        below_band: newResult.gross_margin_pct < bandFloor,
+129:      scanned_cards: latestByCode.size,
+
+## [4] role=Assistant · len=0 · tool_calls=1
+
+
+
+```
+[{"id": "call_bg5whz6shvahu26o6ttbavbw", "name": "bash", "arguments": "{\"command\": \"cd /c/Users/lzj/WorkBuddy/Claw/catering-profit && git add -A -- ':!review/evidence' 2>/dev/null; git diff --cached --stat 2>/dev/null | tail -25\"}"}]
+```
+## [5] role=Tool · len=1456 · tool_calls=0
+
+ cloudfunctions/getShopContext/service.js   |  12 ++-
+ cloudfunctions/saveShopSetting/index.js    |  17 ++++
+ cloudfunctions/saveShopSetting/service.js  |   2 +
+ cloudfunctions/saveShopSetting/validate.js |  10 ++
+ cloudfunctions/syncCostCard/index.js       |  92 ++++++++++++++++++
+ cloudfunctions/syncCostCard/validate.js    |  20 +++-
+ miniprogram/i18n/terms.js                  |  30 ++++++
+ pages/card/version.js                      |  16 ++++
+ pages/card/version.wxml                    |  15 +++
+ pages/card/version.wxss                    |  11 +++
+ pages/material/index.js                    |   8 ++
+ pages/material/index.wxml                  |   1 +
+ pages/metrics/impact.js                    |  65 +++++++++++++
+ pages/metrics/impact.json                  |   5 +
+ pages/metrics/impact.wxml                  |  23 +++++
+ pages/metrics/impact.wxss                  |   8 ++
+ pages/recon/index.js                       | 147 +++++++++++++++++++++++++++++
+ pages/recon/index.json                     |   5 +
+ pages/recon/index.wxml                     |  51 ++++++++++
+ pages/recon/index.wxss                     |  10 ++
+ specs/dev-specs/i18n/terms.js              |  30 ++++++
+ tools/selftest_m3_impact.js                |  96 +++++++++++++++++++
+ tools/selftest_m3_recon.js                 |  88 +++++++++++++++++
+ utils/reconDerive.js                       | 120 +++++++++++++++++++++++
+ 26 files changed, 885 insertions(+), 4 deletions(-)
+
+## [6] role=Assistant · len=0 · tool_calls=1
+
+
+
+```
+[{"id": "call_kbf2q0nac71zlkyusddjdv9d", "name": "bash", "arguments": "{\"command\": \"cd /c/Users/lzj/WorkBuddy/Claw/catering-profit && git reset -q 2>/dev/null; git status --short 2>&1 | grep -vE \\\"cx_|review/evidence\\\" | wc -l; echo \\\"已恢复 unstage\\\"\"}"}]
+```
+## [7] role=Tool · len=15 · tool_calls=0
+
+20
+已恢复 unstage
+
+## [8] role=Assistant · len=3285 · tool_calls=0
+
+清单已全部落地。以下是回执。
+
+---
+
+## 【批次 E 回执】
+
+- **改动文件清单**（26 文件，+885 / −4 行）：
+
+| 文件 | 说明 |
+|---|---|
+| `app.json` | 注册 `pages/metrics/impact` + `pages/recon/index`（19→21 页） |
+| `utils/reconDerive.js`（新增） | `calcMenuMargin` / `calcActualDishMargin` / `reconcile` + `GOODS_FIELD` 单源 |
+| `cloudfunctions/syncCostCard/index.js` | 只读 dry-run 影响面分支（零写库） |
+| `cloudfunctions/syncCostCard/validate.js` | 入参加 `material_id` / `dry_run`（dry_run 时 card_code 不再必填） |
+| `cloudfunctions/saveShopSetting/{index,service,validate}.js` | `menu_dish_count` 存 shop_switch（`m3_menu_dish_count`，value 数字字符串） |
+| `cloudfunctions/getShopContext/{index,service}.js` | 读回 `menu_dish_count`（number/null） |
+| `pages/metrics/impact/{js,json,wxml,wxss}`（新增） | 影响面页（只展示、无「一键改卡」按钮） |
+| `pages/material/{index.js,index.wxml}` | 原料行加「看影响面」入口 `goImpact` |
+| `pages/recon/{index.js,json,wxml,wxss}`（新增） | M1↔M3 对账页（月份 + 在售数 + includeCombo + 归因清单） |
+| `pages/card/version.{js,wxml,wxss}` | 成本趋势折线（chartRows/showChart 前端算） |
+| `miniprogram/i18n/terms.js` + `specs/dev-specs/i18n/terms.js` | 双副本新增 impact/recon 前缀键 |
+| `tools/selftest_m3_impact.js`（新增） | C-a/C-a2 + dry_run 零写库静态断言 |
+| `tools/selftest_m3_recon.js`（新增） | D 锚点 + 名单源 + 套餐排除 + 除零/空账 |
+
+- **云函数入参/出参变化**：
+  - `syncCostCard`：入参新增 `material_id`（string）、`dry_run`（bool）；dry_run 时出参 `{ shop_id, material_id, dry_run:true, scanned_cards, affected:[{card_code,name,price_fen,old_total_cost_fen,new_total_cost_fen,old_gross_margin_pct,new_gross_margin_pct,band_floor_pct,below_band}], client_request_id }`；非 dry_run 出参**不变**。
+  - `saveShopSetting`：入参新增 `menu_dish_count`（非负整数）；出参新增 `menu_dish_count`。
+  - `getShopContext`：出参新增 `menu_dish_count`（number | null）。
+
+- **terms 双副本 md5**：`f2665319eb0fdf03ef415c85cdad8e19`（两份一致，Y）
+
+- **AD 门禁自检**（本轮新增/改动 wxss 的 font-size / min-height）：
+  - font-size：全部 28rpx / 30rpx（≥28 ✅）
+  - min-height：`val-input` 88rpx、`picker` 88rpx、`warn`(impact) 88rpx（≥88 ✅）
+  - 柱条容器 `height: 240rpx`（height，非 min-height，不受 AD 约束）
+  - `selftest_ad_gates` 24/0 绿为证。
+
+- **自测结果**：`selftest_m3_impact` **12/0** · `selftest_m3_recon` **16/0** · `selftest_ad_gates` **24/0** · `check_page_terms` **8/0**（另 `check_m3_engine_parity` 22/0、`check_list_query_limit` 22/0、`check_paywall_coverage` 13/0，全 RC=0）
+
+- **是否新建集合 / 新增索引**：无
+
+- **是否改动引擎五函数（netUnitCostWan / purchasePerGramYuan / lineNetCostYuan / calcCostCard / calcReversePrice）**：无（仅调用 `calcCostCard` / `rebuildSnapshotLines` / `cardParamFromDoc`，R131 22/0 绿为证）
+
+- **是否改动 verify_all.js**：无（挂套件归门禁方）
+
+- **是否改动 specs/ 下除 i18n/terms.js 双副本以外的文件**：无（仅 `specs/dev-specs/i18n/terms.js` 双副本，md5 已证一致）
+
+- **新增 N 个套件待门禁方挂载**：2 个 —— `m3-impact`（tools/selftest_m3_impact.js）、`m3-recon`（tools/selftest_m3_recon.js）
+
+- **本轮是否触碰任何 M1 写路径**：否（对 `getLedger` 只读；未调用 `saveLedger` / `archiveMonth` / `saveAsset`）
+
+- **未完成 / 存疑项**：
+  1. `node verify_all.js` 全量未跑（工具 300s 上限，且挂套件由门禁方做；已分块跑通关键套件，含两个新自测全绿）。
+  2. 真机/真云端到端未验证（dry_run 影响面、对账页的 DB 读写与交互，本地无 wx-server-sdk 运行时）。
+  3. `check_page_manifest` 预期判红（新增两页未登记进 specs 提审材料 §4，归门禁方补，未为变绿改 specs/）。
+
+---
+
+**清单对照结论**：feed_e.txt 任务 A（A1 dry-run 分支 / A2 影响面页 + 入口 / A3 趋势折线）与任务 B（B1 reconDerive / B2 覆盖率分母落法 / B3 对账页）**已全部落地**，复算锚点 C-a/C-a2/D 均命中，红线逐条遵守（引擎未改、零写库 dry_run、M3 不写 M1、细项名单源、套餐默认排除、无分母不硬凑、文案三处同步、AD 门禁全过）。
+
+本轮未做 commit（收尾轮指令为「做完即停 + 出回执」，未要求提交；文件保持 unstage 状态，待门禁方挂载套件后统一收口）。
