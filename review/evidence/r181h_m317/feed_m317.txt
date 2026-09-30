@@ -1,0 +1,94 @@
+【批次 D · M3.17 外卖单均 + M3.32 外卖补丁（补贴拆行 / 固定佣金）】
+仓库 C:\Users\lzj\WorkBuddy\Claw\catering-profit，分支 dev。
+开工前先 `git log --oneline -3` 确认 HEAD 是 db449ca，再 `git status` 确认工作区干净。
+
+一、目的（一句话）
+把"外卖一单到底赚不赚"算清楚：一单 = [卡或套餐 × 份数] + 包材 + 平台参数。
+两种口径并列（到手口径 / 总额法口径），🔴 两套数字绝不混进同一个总数。
+M3.32 补丁：补贴拆 `s_user` / `s_merchant` 两行；佣金支持 `rate` / `fixed` 两模式。
+🔴 试算结果**不落库**，只把平台参数默认值存 `shop_switch`。
+
+二、依据（开工前必读）
+- specs/dev-specs/core/开发规范v1.1_ModuleM3增量_套餐外卖多规格与留存对照.md 的 §M3.17（约第 198~266 行，含三个锚点）
+- specs/dev-specs/core/开发规范v1.2_ModuleM3增量_三块测算口径统一与外部补丁.md 的 §M3.32（约第 146~173 行）+ §M3.39 红线 14~17（约第 294~299 行）
+
+三、改动点（照此落地，不要扩大范围）
+
+1) 新建 `utils/takeawayDerive.js`（**纯计算单源，不落库、不进云函数**）
+- 一单结构：`{ items: [{ card_id | combo_id, qty }], packs: [{ material_id?, qty, unit_price_fen? }], params: {...} }`
+- 导出三项：
+  · `calcTakeawayOrder(order, lookup)` → 返回**两套口径**结果（`{ cash: {...}, accrual: {...} }`）
+  · `resolveCommission(params, goodsTotalFen)` → 佣金（`rate` / `fixed` 两模式）
+  · `reverseListedPrice(input)` → 挂牌价反算 `P*`
+- 🔴 **佣金基数恒为「商品总价」，不含打包费**
+- 🔴 `commission_mode === 'fixed'` 时**保底 min 不生效**（避免两条规则打架）
+- 🔴 `s_user` / `s_merchant` **承担方未选 ⇒ 该行不计入任何计算**（fail-closed，不是"默认算商家"）
+
+2) 口径（照规范，别自创）
+① 到手口径（默认 · 现金视角）
+   顾客支付 P = Σ(商品标价 × 份数) + 打包费 + 配送费(顾客承担)
+   平台扣项 = 佣金 + 配送服务费 d + 配送补贴 + s_user + s_merchant + 推广费
+   商家实收 R = P − s_user − s_merchant − 佣金 − d − 配送补贴
+   菜品成本 Cf = Σ(卡/套餐 unit_cost_fen × 份数)；包材 Cp = Σ(包材单价 × 数量)
+   单均理论利润 = R − Cf − Cp；到手率 = R ÷ P（行业 70%~75% 仅作**软提示、不阻断**）
+② 总额法口径（会计视角 · 与 M1 对得上）
+   收入 = 商品总价 + 打包费 + 商家活动补贴；费用 = 佣金 + 配送服务费 + 补贴 + 推广
+- 🔴 页面**顶部必须显示当前口径名 + 一句人话解释**；两套数字**不得混进同一个总数**
+- 🔴 页面口径说明里**点名一句**："佣金（技术服务费）的计费基数是商品总价，不含打包费"
+
+3) 挂牌价反算
+`P* = (Cf + Cp + M + s_user + s_merchant + d − 打包费收入) ÷ (1 − c)`
+`P*` 是**商品挂牌总价**（不含打包费）；分母 `(1 − c)` 体现佣金按商品总价计。
+若配送费由顾客承担，须**同侧一致**（分子补 `+ 配送费(顾客承担)`）。
+
+4) 包材
+- 允许一条**临时包材行**（无 `material_id`，当场填金额）
+- 🔴 **打包费（收入）与包材成本（成本）两条腿都走、不得相抵**
+- 包材占比档位只做**灰字软提示**（客单 ≥70 元 <5%；20~30 元 20%~25%），不阻断
+
+5) 落库（**不新建集合、不新增索引**）
+- 只把**平台参数默认值**存 `shop_switch`：`switch_key='m3_takeaway_params'`，值 = **JSON 字符串**
+- 🔴 **沿用 `shop_switch` 既有字段，不新增字段**；🔴 **试算结果不落库**（不新建 shop_takeaway_plan）
+- 🔴 **外卖单均利润不得出现在 M1 月度盈利计算的任何输入或输出中**（守卫 R135）
+
+6) 页面
+- 新建 `pages/takeaway/`（试算页：选卡/套餐 + 份数 + 包材 + 平台参数 → 双口径结果 + 挂牌价反算）
+- 入口挂到既有页面（`pages/card/index` 或你认为最顺手的入口），**不新造导航体系**
+- 🔴 M3 外卖属**付费域**（`m3_takeaway` 已在 `PAID_FEATURES`）⇒ 必须走**既有付费墙口径**
+  （`tools/check_paywall_coverage.js` 会查），**不得自造付费判断分支**
+- 新增页面要登记 `app.json` + 页面 manifest（`tools/check_page_manifest.js` / `tools/check_pages.js` 会查）
+
+7) 术语：所有新可见文案加到 `miniprogram/i18n/terms.js`（`takeaway.*` 命名空间），页面用 `TERMS.x.y` 引用
+- 🚫 **不许改** `specs/dev-specs/i18n/terms.js`（那处由 WorkBuddy 同步）—— 回执里列明新增键名即可
+- 🔴 `wx.showModal` 按钮文案**上限 4 字符**（超了整窗 fail 且静默）
+
+四、复算锚点（**必须 require 真实单源实算，不许重写一份**）
+新建 `tools/selftest_m3_takeaway.js`（形态照 `tools/selftest_m3_combo.js`：`check(name, cond, detail)`、结尾打印 pass/fail、非 0 退出）：
+- T-a 佣金锚点 B-a：商品总价 2500、c=6%、保底 130 ⇒ **150 分**（基数不含打包费）
+- T-b 实收/利润锚点：P=2700、s=300、d=450、包材 160 ⇒ 实收 **1800 分**、单均利润 **365 分**、到手率 **66.67%**（<70% ⇒ 触发软提示）
+- T-c 反算锚点 B-b：目标到手利润 800 分 ⇒ `P* = 2963 分`（顾客支付 3163、佣金 178、实收 2235、到手率 70.66%）
+- T-d 两模式：`rate` 与 `fixed` 各跑一例；`fixed` 模式下保底 min **不生效**
+- T-e 拆分等价：`s_user` + `s_merchant` 都记为商家承担时，与原来的单 `s` **算术等价**
+- T-f fail-closed：承担方未选的补贴行**不进计算**
+- T-g 隔离：`calcTakeawayOrder` 输出对象**不含**任何 M1 月度字段（如 `monthly_profit` 类）
+
+五、红线（违反即退回）
+- **引擎段一字不改**：netUnitCostWan / buildSnapshotLines / calcCostCard / wouldCreateCycle（✅ **调用可以，改不行**）
+- **不新建集合、不新增索引**；**不改** `specs/dev-specs/core/15_集合权限矩阵.md`；**不改 specs/ 下任何文件**
+- 🔴 **佣金基数恒为商品总价**（误用含打包费的支付额作基数 = 系统性偏差）
+- 🔴 **两套口径数字不混**；🔴 **承担方未选 ⇒ 不计入**（fail-closed）
+- 🔴 **打包费与包材成本不得相抵**；🔴 **外卖单均利润不得进 M1**
+- 金额一律**分**；写库主键用 `_id`；列表查询走 `common/dataAdapter.js::LIST_LIMIT`
+- 新可见文案 = 三处同步（terms.js + 页面 + 回执列明新增键）
+- 🔴 若改了 `common/` 下任何文件 ⇒ 必跑 `tools/sync_common.js`（`cx_*.js` 是派生副本）
+
+六、门禁与验收
+- **分块跑**，不要一次性全量（工具 300s 上限）
+- `node tools/selftest_m3_takeaway.js` 必须全绿；新套件挂进 `verify_all.js::SUITES`
+- `node verify_all.js` 目标 **≥117/117**（挂上新套件后总数会涨，如实报数）
+- 跑不完的**如实报「未跑」，不要写成「通过」**
+
+七、收尾
+- 提交**带 pathspec**（只 add 你实际改过的文件），不要 `git add .`，**不要推远端**
+- commit message 写清改了什么 + 验收判据 + 哪些没跑到
+- 回执列出：改动文件清单 + 增删行数 + 门禁结果 + 未跑 / 存疑项 + **新增的 terms 键名**
