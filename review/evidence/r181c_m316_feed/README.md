@@ -43,3 +43,37 @@
 - `try_setvalue.py` —— 诊断脚本（暴露 stale element 的 COMError；`-u` 才看得到输出）
 - `find_send.py` —— UIA 定位发送钮（`ButtonControl '发送'`）
 - `shot1_oldframe.png` —— **反例留存**：旧帧截图，证明"截图不可作判据"
+
+---
+
+## 第二轮（08:1x–08:2x）· 切模型 + 重新投喂
+
+### 🔴 第一轮投喂其实**失败了**（原因：欠费，不是模型）
+
+`turn_telemetry` 铁证（`inscode.db`）：
+
+| turn | 起 | 时长 | stop_reason | rounds | model |
+|---|---|---|---|---|---|
+| 22（R174 那次） | 01:51 | **2833 s** | `Stopped` | 79 | doubao-seed-2.1-pro |
+| 23 | 07:35 | 604 s | `ProviderError` | 15 | doubao-seed-2.1-pro |
+| **24（本轮第一投）** | 07:56 | **9.4 s** | `ProviderError` | 1 | doubao-seed-2.1-pro |
+
+turn 24 `error_detail` = `HTTP 429: insufficient_quota / Free quota exhausted and balance too low`。
+⇒ 当时看到的 `inflight 0→1` 只代表"送进去了"，**随即因余额不足失败**。
+
+`probe_pro2.py` 实测（充值后）：`pros[0].api_key` + `https://api.taotoken.net/v1` + `deepseek-v4-pro` → **200 ✅**。
+
+### 模型切换：`doubao-seed-2.1-pro` → `deepseek-v4-pro`
+
+- 浮层打开：**`Ctrl+M`**（点工具栏 `ButtonControl '切换模型 (Ctrl+M)'`（rect `(1207,965,1390,997)`）**不必然打开**）
+- 目标条目：`MenuItemControl 'deepseek-v4-pro'`，rect `(1212,520,1474,561)`，中心 **`(1343,540)`**
+- 🔴 **落盘很慢**：点击后 **3.5 s** 读 `ui_preferences.json` **仍是旧值**，>10 s 才变 ⇒ 别急着判"没切成功"
+- 判据：`ui_preferences.json::last_model_selection.model == 'deepseek-v4-pro'` ✅
+
+### 重新投喂（成功）
+
+- `paste_uia4.py`（**`RootWebArea` 优先选 doc** + EditControl rect 非零校验 + 3 次重试）⇒ 一次 **PASTE-OK（len 3130）**
+  ⚠️ 关键修复：`EnumChildWindows` 会先捞到 `Chrome_RenderWidgetHostHWND` 那个 DocumentControl，
+  其 `EditControl` rect = `(0,0,0,0)` ⇒ 旧脚本因此判 `PASTE-FAILED`
+- 点发送钮 `(1411,981)` ⇒ `inflight = 1`，**起跑 08:18:05**（对比失败那次仅 9.4 s）
+- 旁证：`git status` 显示 `M cloudfunctions/common/errors.js` ⇒ 写码方已在动工
