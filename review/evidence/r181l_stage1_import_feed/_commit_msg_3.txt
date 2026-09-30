@@ -1,0 +1,10 @@
+r181l-3: 归档「投喂后在飞期间跑门禁」的实测反面证据
+
+在 InsCode 在飞时跑全量门禁的实测结果：**耗时 19 分 41 秒**、**118/120**（rc=1）。
+三处红**全部源自在飞的 InsCode、与我方改动无关**：
+  ① `check_suite_coverage` 报它尚未登记的 tools/selftest_bill_parse.js / selftest_grade_gate.js（面 B 正则）
+  ② `r85-takeaway` 因 pages/takeaway 正被改到一半
+  ③ `A15 云函数逻辑零改动` 因它正在新建云函数
+
+⇒ 流程结论：**投喂后只提交我方文档侧，门禁留到 InsCode 交付后再跑**。
+已回写技能 `inscode-batch-accept`（新增「前置 · 跑门禁前先确认 InsCode 已停」）。
