@@ -141,7 +141,7 @@ db.collection('external_sales_daily').doc(_id).set({ data: {
 
 ## 七 回执
 
-- [2026-10-01 01:4x] **R181l 已落 · 证据：** `git status --short -- common/` → 空 · `initDb/` → 空 · `gate_181l_9.txt` → `122/122 套件通过` · `mut_181l.py` → `4/4 有效红` ＋ 三份源文件 git blob 逐字节还原 · commit `<待填>`
+- [2026-10-01 01:5x] **R181l 已落 · 证据：** `git status --short -- common/` → 空 · `initDb/` → 空 · `gate_181l_9.txt` → `122/122 套件通过` · `mut_181l.py` → `4/4 有效红` ＋ 三份源文件 git blob 逐字节还原 · commit `72f22af`
 - **未落**：`importSalesBill` **未上云部署**（须「云端安装依赖」，`xlsx` 是首个外部依赖）—— 留给部署轮，非本轮范围。
 - **存疑**：无。
 
