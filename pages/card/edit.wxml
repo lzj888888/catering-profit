@@ -11,6 +11,15 @@
     <input class="val-input" value="{{name}}" placeholder="{{t.dishNamePh}}" bindinput="onName" />
   </view>
 
+  <!-- M3.20（批次 B 收尾）从模板新建：一键预填行名/用量/单位，价格全部留空。仅新建态显示。 -->
+  <view class="field" wx:if="{{!isEdit}}">
+    <text class="lbl">{{t.templateFrom}}</text>
+    <picker mode="selector" range="{{tplNames}}" value="{{tplPicked}}" bindchange="onPickTemplate">
+      <view class="picker">{{tplPicked >= 0 ? tplNames[tplPicked] : t.templatePickPh}}</view>
+    </picker>
+    <text class="muted">{{t.templateHint}}</text>
+  </view>
+
   <!-- 核算模式 -->
   <view class="field">
     <text class="lbl">{{t.calcMode}}</text>

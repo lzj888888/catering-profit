@@ -29,6 +29,8 @@ function docToOutput(doc) {
     category: doc.category || '',
     aliases: doc.aliases || '[]',
     remark: doc.remark || '',
+    // M3.20（批次 B 收尾）：std_key 原样返回（本料取自词库哪一条；只读提示用，云端不校验）
+    std_key: doc.std_key || '',
     // round156：列表排序用（「最近编辑在前」）。**原料列表此前一个时间字段都没有** ⇒ 排序无从谈起。
     //   存量原料可能没有 updated_at ⇒ 退回 created_at（fail-soft，不回填）。
     updated_at: doc.updated_at != null ? doc.updated_at : (doc.created_at != null ? doc.created_at : 0),

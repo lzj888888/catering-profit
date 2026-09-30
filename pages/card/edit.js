@@ -12,6 +12,7 @@ const ui = require('../../utils/ui.js');
 const units = require('../../utils/units.js');
 const { openPaywall } = require('../../utils/paywall.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
+const { TEMPLATES, applyTemplate } = require('../../utils/dishTemplates.js');   // M3.20 菜品模板（只预填，不写库）
 
 // 本店填过的菜品分类（本地记忆，供下次点选；不新建集合、不上云 —— M3 v1.1 零新建集合红线）
 const EDIT_CATS_KEY = 'm3_dish_cats';
@@ -126,6 +127,10 @@ Page({
       comboInsightMerchantLose: TERMS.card.comboInsightMerchantLose,
       comboInsightLoseWarn: TERMS.card.comboInsightLoseWarn,
       comboInsightCostShare: TERMS.card.comboInsightCostShare,
+      // M3.20（批次 B 收尾）菜品模板
+      templateFrom: TERMS.card.templateFrom,
+      templatePickPh: TERMS.card.templatePickPh,
+      templateHint: TERMS.card.templateHint,
     },
     card_code: '',
     isEdit: false,
@@ -171,6 +176,9 @@ Page({
     subCardOptions: [], // picker range（[{ card_code, label }]）
     comboLines: [],     // 子卡行：[{ sub_card_ref, sub_card_name, qty }]
     comboInsight: null, // 回填的套餐三数（{ customer_save_fen, merchant_lose_fen, cost_share }）
+    // M3.20（批次 B 收尾）菜品模板：picker range（20 道菜名）+ 当前选中项（-1 = 未选）
+    tplNames: TEMPLATES.map((t) => t.dish_name),
+    tplPicked: -1,
   },
 
   onLoad(q) {
@@ -337,6 +345,23 @@ Page({
       if (!this.data.comboLines.length) patch.comboLines = [{ sub_card_ref: '', sub_card_name: '', qty: '1' }];
     }
     this.setData(patch);
+  },
+
+  // ===== M3.20（批次 B 收尾）菜品模板：一键起行 =====
+  // 选模板 → 预填行名 + 用量 + 单位（**价格全部留空**）；模板只省打字，保存仍走 saveCostCard、配额照扣。
+  onPickTemplate(e) {
+    const i = Number(e.detail.value);
+    const tpl = TEMPLATES[i];
+    if (!tpl) return;
+    const rows = applyTemplate(tpl);
+    // 模板行 → 手工行（input_type=2）：行名 + 用量 + 单位预填，单价留空等用户填
+    const lines = rows.map((r) => Object.assign({}, emptyManualLine(), {
+      material_name: r.line_name,
+      qty: String(r.qty),
+      qty_unit: r.unit,
+    }));
+    this.setData({ name: tpl.dish_name, lines: renumber(lines), tplPicked: i, cardType: '1', calcMode: 'A' });
+    this.refreshSpecHints();
   },
   // 子卡选择（picker 按 index 取）
   onComboSubCard(e) {
@@ -812,6 +837,8 @@ Page({
       cardType: '1',
       comboLines: [],
       comboInsight: null,
+      // M3.20（批次 B 收尾）模板：清空选中项（连续录入下一道回到空模板态）
+      tplPicked: -1,
       // —— 编辑态 → 新建态（见上 🔴）——
       isEdit: false,
       card_code: '',

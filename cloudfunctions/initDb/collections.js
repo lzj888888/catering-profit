@@ -92,6 +92,9 @@ const INDEXES = {
   shop_material: [
     { name: 'idx_mat_shop', keys: { shop_id: 1 } },
     { name: 'idx_mat_shop_virtual', keys: { shop_id: 1, is_virtual: 1 } },
+    // M3.20（批次 B 收尾）：shop_material 新增可选字段 std_key（字符串，默认 ''，可空）——
+    //   只记「本料取自标准词库哪一条」（前端 utils/materialLexicon.js 的 std_key），云端**不校验**。
+    //   ⚠️ 词库只在前端、云侧不复制一份 ⇒ 不制造漂移点；std_key 仅用于只读的「同 std_key 不同名」提示。
   ],
   shop_sandbox: [
     { name: 'idx_sb_shop', keys: { shop_id: 1 } },

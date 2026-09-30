@@ -88,6 +88,8 @@ exports.main = async (event) => {
         category: m.category,
         aliases: m.aliases,
         remark: m.remark,
+        // M3.20（批次 B 收尾）：std_key 原样落库（云端不校验，词库在前端）
+        std_key: m.std_key,
       },
     });
     out = { shop_id: shopId, id: m.id, client_request_id: clientRequestId || '' };
@@ -110,6 +112,8 @@ exports.main = async (event) => {
       category: m.category,
       aliases: m.aliases,
       remark: m.remark,
+      // M3.20（批次 B 收尾）：std_key 原样落库
+      std_key: m.std_key,
     });
     out = { shop_id: shopId, id, client_request_id: clientRequestId || '' };
   }

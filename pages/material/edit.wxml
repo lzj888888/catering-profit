@@ -9,6 +9,13 @@
   <view class="field">
     <text class="lbl">{{t.matName}}</text>
     <input class="val-input" value="{{name}}" placeholder="{{t.matNamePh}}" bindinput="onName" />
+    <!-- M3.20：词库建议 chips —— 只建议、绝不自动改写 name（只有点 chip 才填） -->
+    <view class="chip-row" wx:if="{{lexiconSuggests.length}}">
+      <block wx:for="{{lexiconSuggests}}" wx:key="std_key">
+        <view class="chip" data-key="{{item.std_key}}" data-name="{{item.std_name}}" bindtap="pickLexicon">{{item.std_name}}</view>
+      </block>
+    </view>
+    <text class="muted" wx:if="{{lexiconSuggests.length}}">{{t.matLexiconHint}}</text>
   </view>
   <view class="field">
     <text class="lbl">{{t.matBrand}}</text>

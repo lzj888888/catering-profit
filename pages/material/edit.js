@@ -8,6 +8,7 @@ const api = require('../../utils/api.js');
 const ui = require('../../utils/ui.js');
 const units = require('../../utils/units.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
+const { suggestByName } = require('../../utils/materialLexicon.js');   // M3.20 词库（只读建议）
 
 // category 枚举（采购视角，独立于 M1 ITEM_TAGS，不建映射）
 const CATEGORY_OPTIONS = [
@@ -47,6 +48,8 @@ Page({
       savedOk: TERMS.card.savedOk,
       savedHint: TERMS.card.savedHint,
       backToList: TERMS.card.backToList,
+      // M3.20 词库建议
+      matLexiconHint: TERMS.card.matLexiconHint,
     },
     id: '',            // '' = 新增；非空 = 编辑
     isEdit: false,
@@ -94,6 +97,9 @@ Page({
     // round156：连续录入 —— 顶部「已保存」横幅记录刚存下的原料名；非空即显示（含返回列表出口）
     savedName: '',
     saving: false,      // 防重复提交
+    // M3.20（批次 B 收尾）：词库建议 chips（只建议、绝不自动改写 name）+ 选中的词库条目 key
+    lexiconSuggests: [],
+    std_key: '',
   },
 
   onLoad(q) {
@@ -131,6 +137,7 @@ Page({
             categoryIndex: ci >= 0 ? ci : 5,
             aliasesYuan,
             remark: m.remark || '',
+            std_key: m.std_key || '',
           });
         }
       }
@@ -142,7 +149,17 @@ Page({
     }
   },
 
-  onName(e) { this.setData({ name: e.detail.value }); },
+  onName(e) {
+    const v = e.detail.value;
+    // M3.20：输入过程中**绝不自动改写 name**，只更新建议 chips；手改名字 ⇒ 清掉 std_key（不再是词库条目）
+    this.setData({ name: v, std_key: '', lexiconSuggests: suggestByName(v, 5).map((it) => ({ std_key: it.std_key, std_name: it.std_name })) });
+  },
+  // M3.20：点 chip 才把标准名填进输入框并记下 std_key（**只建议、绝不自动替换**）
+  pickLexicon(e) {
+    const ds = (e && e.currentTarget && e.currentTarget.dataset) || {};
+    if (!ds.name) return;
+    this.setData({ name: ds.name, std_key: ds.key || '', lexiconSuggests: [] });
+  },
   onBrand(e) { this.setData({ brand_spec: e.detail.value }); },
   onUnit(e) { this.setData({ purchase_unit: e.detail.value }, () => this.refreshUnitHint()); },
   onPrice(e) { this.setData({ priceYuan: e.detail.value }); },
@@ -232,6 +249,8 @@ Page({
       category: this.data.categoryOptions[this.data.categoryIndex].value,
       aliases: JSON.stringify(aliases),
       remark: this.data.remark,
+      // M3.20：本料取自词库哪一条（可选，空 = 未取自词库）
+      std_key: this.data.std_key,
     };
     if (this.data.saving) return;   // 连击保护
     // ⚠️ 必须在 afterSaved 之前取：afterSaved 会把 isEdit 清成 false（转新建态）
@@ -267,6 +286,8 @@ Page({
       priceYuan: '',
       aliasesYuan: '',
       remark: '',
+      lexiconSuggests: [],
+      std_key: '',
       // 换算/单位回默认。新原料的采购单位大概率与上一条不同 ⇒ 留着是最容易填错的一格，
       //   宁可让老板重选（单位池 chips 就在手边），也不让他在"上一条的单位"上填下一条的数。
       //   ⚠️ 表达式与 data 初值同源（都取 units/TERMS 单源，页面不写死 500 /「斤」）。

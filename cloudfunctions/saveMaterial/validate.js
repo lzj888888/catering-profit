@@ -57,6 +57,8 @@ function validateInput(event) {
       category: (typeof m.category === 'string') ? m.category : '',
       aliases: (typeof m.aliases === 'string') ? m.aliases : '[]',
       remark: (typeof m.remark === 'string') ? m.remark : '',
+      // M3.20（批次 B 收尾）：std_key 可选、原样接受（云端不校验词库；类型兜底，不设必填）
+      std_key: (typeof m.std_key === 'string') ? m.std_key : '',
     },
     input: { client_request_id: src.client_request_id || '' },
   };
