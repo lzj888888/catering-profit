@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：115 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：116 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -593,6 +593,9 @@ const SUITES = [
   // R174（批次 B · 2026-09-30 入站数据接入缝预埋）：external_sales_daily / shop_dish_mapping 纯 schema 空表
   //   + 唯一键 + external_ref_id 字段。零业务逻辑、零 OAuth、零出站、零引擎改动。
   ['r174-inbound', 'tools/selftest_r174_inbound.js'],
+  // M3.16（批次 C · 套餐成本卡）：A-a 套餐成本 1275 / A-b 锁版本 1508 / A-c 禁嵌套。
+  //   必须 require 生产引擎 calcBom/service.js 实算（引擎一行不改）；套餐 = 引用型卡，站在 BOM 之外。
+  ['m3-combo', 'tools/selftest_m3_combo.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

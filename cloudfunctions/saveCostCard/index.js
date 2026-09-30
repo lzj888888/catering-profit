@@ -28,6 +28,7 @@ const { resolveAuth, assertShopOwner, genId } = common;
 const { ERROR_CODES, ok, fail } = common;
 const { makeAdapter } = common.dataAdapter;
 const { nowUtc } = common.utilTime;
+const { buildComboLines, judgeComboRef } = common.comboDerive;   // M3.16 套餐（派生层单源）
 const { buildSnapshotLines, calcCostCard, wouldCreateCycle, judgeCardQuota, netUnitCostWan } = require('./service');
 const { validateInput } = require('./validate');
 
@@ -110,71 +111,112 @@ exports.main = async (event) => {
     return ok({ shop_id: shopId, card_code: v.card.card_code, deleted: true, versions: versions.length, client_request_id: clientRequestId || '' });
   }
 
-  // ===== 4. 读本卡引用的原料（仅 input_type=1 行；input_type=2 临时手工行不查档案）=====
+  // ===== 4. M3.16 套餐（card_type=3）：付费墙 + 读子卡 + 校验引用 =====
   const card = v.card;
+  const isCombo = card.card_type === 3;
+  let comboSnapLines = null;   // 套餐快照明细（喂引擎；非套餐为 null）
+  if (isCombo) {
+    // 付费墙（铁律：付费墙必须先于付费功能落地）—— m3_combo 已登记在 common/entitlement.js::PAID_FEATURES
+    const unlocked = await common.hasFeature(db, userId, 'm3_combo');
+    if (!unlocked) return fail(ERROR_CODES.FEATURE_LOCKED);
+
+    // 读每个子卡的最新版本（同店 card_code 下 version 最大者；软删由 DataAdapter 过滤）
+    const comboSubCards = [];
+    for (const ln of card.lines) {
+      const ref = ln.sub_card_ref;
+      const cardsRes = await da.list('shop_cost_card', { shop_id: shopId, card_code: ref });
+      const vers = (cardsRes && cardsRes.data) || [];
+      let sub = null;
+      for (const c of vers) if ((c.version || 0) > (sub ? (sub.version || 0) : -1)) sub = c;
+      // 引用校验：版本不存在/已软删/非本店 → SUB_CARD_VERSION_INVALID；子卡是套餐 → COMBO_NEST_NOT_ALLOWED
+      const verdict = judgeComboRef(ln, sub);
+      if (!verdict.ok) {
+        return fail(ERROR_CODES[verdict.code] || verdict.code,
+          verdict.code === 'COMBO_NEST_NOT_ALLOWED' ? '套餐里不能引用另一个套餐' : '引用的菜品版本已失效，请重新选择');
+      }
+      comboSubCards.push({
+        card_code: sub.card_code,
+        name: sub.name,
+        unit_cost_fen: sub.total_cost || 0,   // 子卡单份成本（整数分，该版本锁定值）
+        quantity: ln.quantity,
+        version: sub.version,
+      });
+    }
+    // 入参变换：子卡成本(分) × 100 → 万分 net_unit_cost，喂同一个 calcCostCard
+    comboSnapLines = buildComboLines(comboSubCards);
+  }
+
+  // ===== 4b. 读本卡引用的原料（仅非套餐；input_type=1 行；input_type=2 临时手工行不查档案）=====
   const materialsById = new Map();
   let missing = null;
-  for (const ln of card.lines) {
-    if (ln.input_type === 2) continue;               // 手工行无 material_id，不查档案
-    if (materialsById.has(String(ln.material_id))) continue;
-    const mat = await da.get('shop_material', String(ln.material_id));
-    if (!mat) { missing = ln.material_id; break; }
-    materialsById.set(String(ln.material_id), mat);
+  if (!isCombo) {
+    for (const ln of card.lines) {
+      if (ln.input_type === 2) continue;               // 手工行无 material_id，不查档案
+      if (materialsById.has(String(ln.material_id))) continue;
+      const mat = await da.get('shop_material', String(ln.material_id));
+      if (!mat) { missing = ln.material_id; break; }
+      materialsById.set(String(ln.material_id), mat);
+    }
+    if (missing) return fail(ERROR_CODES.RESOURCE_NOT_FOUND, `引用的原料 ${missing} 不存在或已软删`);
   }
-  if (missing) return fail(ERROR_CODES.RESOURCE_NOT_FOUND, `引用的原料 ${missing} 不存在或已软删`);
 
   // ===== 5. 构建快照明细（含净料单位成本快照）+ 收集引用的虚拟 id =====
+  // M3.16：套餐走 buildComboLines 的入参变换（引擎眼里与原料行同形状，引擎一行不改）。
   // M3.3（批次 P0）：input_type=1 行走 buildSnapshotLines（从原料档案取快照）；
   //   input_type=2 行用 netUnitCostWan(单价分, 换算=1, 出成率) 就地算净料单位成本（不查档案、不落档案）。
   //   ⚠️ 不改 buildSnapshotLines / netUnitCostWan 两具名函数，仅在 Controller 层分流合并。
   let snap;
-  try {
-    snap = buildSnapshotLines(card.lines.filter((l) => l.input_type !== 2), materialsById);
-  } catch (e) {
-    if (e && e.code) return fail(e.code, e.message);
-    return fail(ERROR_CODES.SYSTEM_ERROR, e && e.message);
-  }
-  // 手工行快照（按 card.lines 原始顺序与档案行交错合并，保持 sort_order 稳定）
-  const manualLines = [];
-  for (const ln of card.lines) {
-    if (ln.input_type !== 2) continue;
-    // 净料单位成本：有 net_unit_cost 快照（复制/回填）直接用；否则 netUnitCostWan(单价分, 1, 出成率) 算
-    const nuc = (ln.net_unit_cost !== undefined)
-      ? ln.net_unit_cost
-      : netUnitCostWan(ln.unit_price_fen, 1, ln.yield_rate);
-    manualLines.push({
-      material_id: '',
-      material_name: ln.name,
-      quantity: ln.quantity,
-      net_unit_cost: nuc,
-      input_type: 2,
-      // 任务1（S0）：手工行无原料可查，5 字段按缺省值；yield_rate 有真值就存真值
-      brand_spec: '',
-      purchase_unit: '',
-      purchase_price: 0,
-      convert_factor: 0,
-      yield_rate: Number(ln.yield_rate) || 0,
-      // M3.14（R150）：组件分类 + 分组名（引擎不认识 ⇒ 对成本零影响；在此**只做搬运**）
-      line_kind: ln.line_kind || 'main',
-      group_name: ln.group_name || '',
-    });
-  }
-  const mergedLines = [];
-  let archiveCursor = 0;
-  for (const ln of card.lines) {
-    if (ln.input_type === 2) {
-      mergedLines.push(manualLines.shift());
-    } else {
-      // M3.14：档案行的 line_kind/group_name 由**入参**带过来（buildSnapshotLines 是引擎段，一字不改
-      //   ⇒ 与手工行同样在本层"搬运"，不在引擎里加字段）
-      mergedLines.push(Object.assign({}, snap.lines[archiveCursor++], {
-        input_type: 1,
+  if (isCombo) {
+    snap = { lines: comboSnapLines, childVirtualIds: [] };
+  } else {
+    try {
+      snap = buildSnapshotLines(card.lines.filter((l) => l.input_type !== 2), materialsById);
+    } catch (e) {
+      if (e && e.code) return fail(e.code, e.message);
+      return fail(ERROR_CODES.SYSTEM_ERROR, e && e.message);
+    }
+    // 手工行快照（按 card.lines 原始顺序与档案行交错合并，保持 sort_order 稳定）
+    const manualLines = [];
+    for (const ln of card.lines) {
+      if (ln.input_type !== 2) continue;
+      // 净料单位成本：有 net_unit_cost 快照（复制/回填）直接用；否则 netUnitCostWan(单价分, 1, 出成率) 算
+      const nuc = (ln.net_unit_cost !== undefined)
+        ? ln.net_unit_cost
+        : netUnitCostWan(ln.unit_price_fen, 1, ln.yield_rate);
+      manualLines.push({
+        material_id: '',
+        material_name: ln.name,
+        quantity: ln.quantity,
+        net_unit_cost: nuc,
+        input_type: 2,
+        // 任务1（S0）：手工行无原料可查，5 字段按缺省值；yield_rate 有真值就存真值
+        brand_spec: '',
+        purchase_unit: '',
+        purchase_price: 0,
+        convert_factor: 0,
+        yield_rate: Number(ln.yield_rate) || 0,
+        // M3.14（R150）：组件分类 + 分组名（引擎不认识 ⇒ 对成本零影响；在此**只做搬运**）
         line_kind: ln.line_kind || 'main',
         group_name: ln.group_name || '',
-      }));
+      });
     }
+    const mergedLines = [];
+    let archiveCursor = 0;
+    for (const ln of card.lines) {
+      if (ln.input_type === 2) {
+        mergedLines.push(manualLines.shift());
+      } else {
+        // M3.14：档案行的 line_kind/group_name 由**入参**带过来（buildSnapshotLines 是引擎段，一字不改
+        //   ⇒ 与手工行同样在本层"搬运"，不在引擎里加字段）
+        mergedLines.push(Object.assign({}, snap.lines[archiveCursor++], {
+          input_type: 1,
+          line_kind: ln.line_kind || 'main',
+          group_name: ln.group_name || '',
+        }));
+      }
+    }
+    snap.lines = mergedLines;
   }
-  snap.lines = mergedLines;
 
   // ===== 6. 循环引用预检（仅半成品"生产/引用半成品"参与；命中即拒、不入库）=====
   if (card.mode === 'B') {
@@ -273,6 +315,8 @@ exports.main = async (event) => {
     name: card.name,
     category: card.category || '',
     tags: card.tags || '',
+    // M3.16（批次 C）：卡片类型（1=单品 / 3=套餐）。存量卡缺字段时 getCostCard 按 1 兜底（fail-soft）。
+    card_type: card.card_type || 1,
     calc_mode: card.mode === 'B' ? 2 : 1,
     batch_output: card.mode === 'B' ? card.batchOutput : null,
     loss_rate: card.lossPct,
@@ -317,6 +361,11 @@ exports.main = async (event) => {
         yield_rate: ln.yield_rate || 0,
         line_net_cost: result.lines[i].line_net_cost_fen,
         input_type: ln.input_type || 1,      // M3.3：按行真实值（1=档案 / 2=临时手工）
+        // M3.16（批次 C）：套餐子卡行（line_type=2）—— 记录 sub_card_ref（子卡逻辑卡号）+ sub_version（锁定版本）。
+        //   子卡后续升版不影响本套餐（锁版本 D5）；原料行/手工行落 line_type=1 / 空引用。
+        line_type: ln.line_type || 1,        // 1 = 原料行 / 2 = 子卡行
+        sub_card_ref: ln.sub_card_ref || '',
+        sub_version: ln.sub_version || 0,
         // M3.14（R150）：组件分类 + 分组名（**引擎不读**；成本合计一分不变，分组只是视图）
         line_kind: ln.line_kind || 'main',
         group_name: ln.group_name || '',

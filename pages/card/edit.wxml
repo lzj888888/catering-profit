@@ -20,13 +20,23 @@
     </radio-group>
   </view>
 
+  <!-- M3.16（批次 C）卡片类型：单品 / 套餐（引用型成本卡） -->
+  <view class="field">
+    <text class="lbl">{{t.cardTypeLabel}}</text>
+    <radio-group class="mode-group" bindchange="onCardType">
+      <label class="mode-item"><radio value="1" checked="{{cardType === '1'}}" color="#1e3a5f"/>{{t.cardTypeDish}}</label>
+      <label class="mode-item"><radio value="3" checked="{{cardType === '3'}}" color="#1e3a5f"/>{{t.cardTypeCombo}}</label>
+    </radio-group>
+  </view>
+
   <!-- 批量模式：产出份数 -->
   <view class="field" wx:if="{{calcMode === 'B'}}">
     <text class="lbl">{{t.batchOutput}}</text>
     <input class="val-input" type="number" value="{{batchOutput}}" bindinput="onBatch"  adjust-position="{{true}}" cursor-spacing="20" />
   </view>
 
-  <!-- 明细行（录入方式：档案选择 / 临时手工） -->
+  <!-- 明细行（录入方式：档案选择 / 临时手工）—— 仅单品 -->
+  <block wx:if="{{cardType === '1'}}">
   <view class="line" wx:for="{{lines}}" wx:key="idx">
     <view class="cell2">
       <text class="lbl">{{t.inputType}}</text>
@@ -118,6 +128,39 @@
   <view class="muted" style="margin:-4rpx 0 12rpx 4rpx;">{{t.lineKindHint}}</view>
   <button class="btn ghost btn-small" style="min-height:88rpx;" bindtap="addLine">{{t.addLine}}</button>
   <button class="btn ghost btn-small" style="min-height:88rpx;" bindtap="goMaterial">{{t.materialArchive}}</button>
+  </block>
+
+  <!-- M3.16（批次 C）套餐：子卡选择行（选卡 + 份数）+ 三个显示数 -->
+  <block wx:if="{{cardType === '3'}}">
+    <view class="combo-box">
+      <view class="spec-title">{{t.comboSubCardTitle}}</view>
+      <view class="muted" wx:if="{{subCardOptions.length === 0}}">{{t.comboPickEmpty}}</view>
+      <block wx:for="{{comboLines}}" wx:for-item="cl" wx:for-index="ci" wx:key="index">
+        <view class="combo-row">
+          <picker mode="selector" range="{{subCardOptions}}" range-key="label" data-idx="{{ci}}" bindchange="onComboSubCard">
+            <view class="picker combo-pick">{{comboLines[ci].sub_card_name || t.comboSubCardPh}}</view>
+          </picker>
+          <view class="qty-wrap">
+            <input class="val-input qty-input" type="number" value="{{comboLines[ci].qty}}" data-idx="{{ci}}" bindinput="onComboQty" adjust-position="{{true}}" cursor-spacing="20" />
+            <text class="unit-pick">{{t.comboSubCardQty}}</text>
+          </view>
+          <view class="del-row" data-idx="{{ci}}" bindtap="delComboLine">{{t.delLine}}</view>
+        </view>
+      </block>
+      <button class="btn ghost btn-small" style="min-height:88rpx;" bindtap="addComboLine">{{t.comboAddSubCard}}</button>
+
+      <!-- 三个显示数：顾客省 / 我少赚 / 成本结构 -->
+      <block wx:if="{{comboInsight}}">
+        <view class="muted">{{t.comboInsightCustomerSave}}：{{t.cur}}{{comboInsight.customer_save_yuan}}</view>
+        <view class="muted" wx:if="{{comboInsight.merchant_lose_neg}}" style="color:#e74c3c;">{{t.comboInsightMerchantLose}}：{{t.cur}}{{comboInsight.merchant_lose_yuan}}（{{t.comboInsightLoseWarn}}）</view>
+        <view class="muted" wx:else>{{t.comboInsightMerchantLose}}：{{t.cur}}{{comboInsight.merchant_lose_yuan}}</view>
+        <view class="muted">{{t.comboInsightCostShare}}：</view>
+        <block wx:for="{{comboInsight.cost_share}}" wx:key="name">
+          <view class="muted" style="padding-left:24rpx;">{{item.name}} {{item.share_pct}}%</view>
+        </block>
+      </block>
+    </view>
+  </block>
 
   <!-- 分类 / 标签（后端 cardDoc 已有字段，本次真正传上去） -->
   <!-- 分类：**自由填写**（火锅的锅底/荤菜/素菜、营销栏目"大口吃肉"都选不出来 ⇒ 不能只给下拉）。
@@ -157,8 +200,8 @@
   </view>
   <view class="hint">{{t.activityPriceHint}}</view>
 
-  <!-- 反算售价 -->
-  <view class="reverse">
+  <!-- 反算售价（仅单品） -->
+  <view class="reverse" wx:if="{{cardType === '1'}}">
     <view class="cell">
       <text class="lbl">{{t.targetMargin}}</text>
       <input class="val-input" type="digit" value="{{targetMargin}}" bindinput="onTargetMargin"  adjust-position="{{true}}" cursor-spacing="20" />
@@ -171,8 +214,9 @@
 
   <!-- round150（M3.15）规格（大小份）：成本按组件类型缩放后**单独试算**。
        ⚠️ 页面**不抄系数**（系数单源在服务端 SPEC_PRESETS）—— 只送规格键 + 售价，
-       试算结果由云端返回（含它是用哪套系数算的）。主成本口径完全不受影响。 -->
-  <view class="spec-box">
+       试算结果由云端返回（含它是用哪套系数算的）。主成本口径完全不受影响。
+       ⚠️ 套餐（引用型卡）无规格概念 ⇒ 仅单品显示。 -->
+  <view class="spec-box" wx:if="{{cardType === '1'}}">
     <view class="spec-title">{{t.specTitle}}</view>
     <view class="muted">{{t.specHint}}</view>
     <block wx:for="{{specRows}}" wx:for-item="sp" wx:for-index="si" wx:key="spec_key">

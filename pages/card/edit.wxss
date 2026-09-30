@@ -61,3 +61,9 @@
   background: #e8eff7; border-radius: 12rpx; padding: 8rpx 24rpx; margin-bottom: 16rpx; }
 .saved-txt { flex: 1; font-size: 28rpx; color: #1e3a5f; line-height: 1.5; padding: 12rpx 0; }
 .saved-go { font-size: 28rpx; color: #2b7de9; min-height: 88rpx; line-height: 88rpx; padding-left: 16rpx; }
+
+/* M3.16（批次 C）套餐：子卡选择行 + 三个显示数。色/字号沿用既有 spec-box / del-row / unit-pick 风格，不新增品牌色。 */
+.combo-box { margin: 8rpx 0 4rpx; padding: 16rpx 20rpx 20rpx; background: #f5f8fc; border-radius: 12rpx; }
+.combo-row { display: flex; align-items: center; margin-top: 8rpx; }
+.combo-pick { flex: 1; padding: 0 24rpx; background: #fff; border-radius: 10rpx; color: #1e3a5f;
+  font-size: 30rpx; min-height: 88rpx; line-height: 88rpx; border: 1rpx solid #e8eff7; }

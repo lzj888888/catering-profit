@@ -10,6 +10,7 @@
 const api = require('../../utils/api.js');
 const ui = require('../../utils/ui.js');
 const units = require('../../utils/units.js');
+const { openPaywall } = require('../../utils/paywall.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 
 // 本店填过的菜品分类（本地记忆，供下次点选；不新建集合、不上云 —— M3 v1.1 零新建集合红线）
@@ -112,6 +113,19 @@ Page({
       savedOk: TERMS.card.savedOk,
       savedHint: TERMS.card.savedHint,
       backToList: TERMS.card.backToList,
+      // M3.16（批次 C）套餐
+      cardTypeLabel: TERMS.card.cardType,
+      cardTypeDish: TERMS.card.cardTypeDish,
+      cardTypeCombo: TERMS.card.cardTypeCombo,
+      comboSubCardTitle: TERMS.card.comboSubCardTitle,
+      comboSubCardPh: TERMS.card.comboSubCardPh,
+      comboSubCardQty: TERMS.card.comboSubCardQty,
+      comboAddSubCard: TERMS.card.comboAddSubCard,
+      comboPickEmpty: TERMS.card.comboPickEmpty,
+      comboInsightCustomerSave: TERMS.card.comboInsightCustomerSave,
+      comboInsightMerchantLose: TERMS.card.comboInsightMerchantLose,
+      comboInsightLoseWarn: TERMS.card.comboInsightLoseWarn,
+      comboInsightCostShare: TERMS.card.comboInsightCostShare,
     },
     card_code: '',
     isEdit: false,
@@ -151,6 +165,12 @@ Page({
     // round156：连续录入 —— 顶部「已保存」横幅记录刚存下的菜名；非空即显示（含返回列表出口）
     savedName: '',
     saving: false,   // 防重复提交（连击保存会生成两个版本）
+    // M3.16（批次 C）套餐：卡片类型（'1'=单品 / '3'=套餐）+ 子卡选择行 + 三个显示数。
+    cardType: '1',
+    subCards: [],       // 候选子卡（非套餐的最新版本卡）：[{ card_code, name, total_cost_fen, price_fen }]
+    subCardOptions: [], // picker range（[{ card_code, label }]）
+    comboLines: [],     // 子卡行：[{ sub_card_ref, sub_card_name, qty }]
+    comboInsight: null, // 回填的套餐三数（{ customer_save_fen, merchant_lose_fen, cost_share }）
   },
 
   onLoad(q) {
@@ -218,41 +238,70 @@ Page({
         convert_factor: m.convert_factor || 0,
         yield_rate: m.yield_rate || 0,
       }));
-      const init = { materials, loading: false };
+      // M3.16（批次 C）：拉一次成本卡列表 —— 候选子卡（非套餐）+ 编辑回填（单品/套餐都用它）。
+      let cardList = [];
+      try {
+        const cd = await api.call('getCostCard', {});
+        cardList = cd.list || [];
+      } catch (e) { cardList = []; }
+      const subCards = cardList
+        .filter((x) => x.card_type !== 3)
+        .map((x) => ({ card_code: x.card_code, name: x.name, total_cost_fen: x.total_cost_fen, price_fen: x.price_fen }));
+      const subCardOptions = subCards.map((x) => ({ card_code: x.card_code, label: x.name }));
+      const init = { materials, subCards, subCardOptions, loading: false };
       if (this.data.isEdit) {
-        const d = await api.call('getCostCard', { card_code: this.data.card_code });
-        const c = d.list && d.list[0];
+        const c = cardList.find((x) => x.card_code === this.data.card_code);
         if (c) {
           init.name = c.name || '';
-          init.calcMode = c.calc_mode;
-          init.batchOutput = c.batch_output || '';
           init.lossRate = c.loss_rate || 0;
           init.auxYuan = api.fenToYuan(c.aux_fen, 2);
           init.priceYuan = c.price_fen > 0 ? api.fenToYuan(c.price_fen, 2) : '';
           init.category = c.category || '';
           init.tags = c.tags || '';
-          // ⚠️ 回填的单位口径：库里存的 quantity **恒为基准单位(克)**（round149 起前端提交前已换算），
-          //   故回填一律按「克」显示 —— 这是**确定**的，不做"猜你原来填的是千克"（猜错会显示错数）。
-          init.lines = renumber((c.lines || []).map((l) => {
-            if (l.material_id) {
-              return { input_type: 1, material_id: l.material_id, material_name: l.material_name, qty: String(l.quantity), qty_unit: units.BASE_UNIT, line_kind: l.line_kind || 'main' };
-            }
-            // 手工行（material_id 空）：从快照反推净料单价（元/克），出成率固定 100（快照已是净料）
-            const unitPriceYuan = l.net_unit_cost ? (l.net_unit_cost / 10000).toFixed(4) : '';
-            return { input_type: 2, material_id: '', material_name: l.material_name, qty: String(l.quantity), qty_unit: units.BASE_UNIT, unit_price_yuan: unitPriceYuan, yield_rate: '100', line_kind: l.line_kind || 'main' };
-          }));
-          // round150：规格快照回填（specs_json ⇒ 数组）。存量卡无此字段 ⇒ []。
-          init.specRows = this.data.specRows.map((r) => {
-            const hit = (c.specs || []).find((s) => s && s.spec_key === r.spec_key);
-            if (!hit) return r;
-            return Object.assign({}, r, {
-              enabled: hit.enabled !== false,
-              name: hit.name || r.name,
-              priceYuan: hit.price_fen > 0 ? api.fenToYuan(hit.price_fen, 2) : '',
-            });
-          });
           init.previewCostFen = c.total_cost_fen || 0;
           init.copyVersion = TERMS.card.copyVersion;
+          if (c.card_type === 3) {
+            // M3.16 套餐：回填子卡行 + 三个显示数（顾客省 / 我少赚 / 成本结构）
+            init.cardType = '3';
+            init.calcMode = 'A';
+            init.comboLines = (c.lines || [])
+              .filter((l) => l.line_type === 2 && l.sub_card_ref)
+              .map((l) => ({
+                sub_card_ref: l.sub_card_ref,
+                sub_card_name: (subCards.find((s) => s.card_code === l.sub_card_ref) || {}).name || l.material_name || '',
+                qty: String(l.quantity),
+              }));
+            init.comboInsight = c.combo ? {
+              customer_save_yuan: api.fenToYuan(c.combo.customerSaveFen, 2),
+              merchant_lose_yuan: api.fenToYuan(Math.abs(c.combo.merchantLoseFen), 2),
+              merchant_lose_neg: c.combo.merchantLoseFen < 0,
+              cost_share: (c.combo.costShare || []).map((s) => ({ name: s.name, share_pct: s.share_pct })),
+            } : null;
+          } else {
+            // 单品：现有原料 / 手工行回填
+            init.calcMode = c.calc_mode;
+            init.batchOutput = c.batch_output || '';
+            // ⚠️ 回填的单位口径：库里存的 quantity **恒为基准单位(克)**（round149 起前端提交前已换算），
+            //   故回填一律按「克」显示 —— 这是**确定**的，不做"猜你原来填的是千克"（猜错会显示错数）。
+            init.lines = renumber((c.lines || []).map((l) => {
+              if (l.material_id) {
+                return { input_type: 1, material_id: l.material_id, material_name: l.material_name, qty: String(l.quantity), qty_unit: units.BASE_UNIT, line_kind: l.line_kind || 'main' };
+              }
+              // 手工行（material_id 空）：从快照反推净料单价（元/克），出成率固定 100（快照已是净料）
+              const unitPriceYuan = l.net_unit_cost ? (l.net_unit_cost / 10000).toFixed(4) : '';
+              return { input_type: 2, material_id: '', material_name: l.material_name, qty: String(l.quantity), qty_unit: units.BASE_UNIT, unit_price_yuan: unitPriceYuan, yield_rate: '100', line_kind: l.line_kind || 'main' };
+            }));
+            // round150：规格快照回填（specs_json ⇒ 数组）。存量卡无此字段 ⇒ []。
+            init.specRows = this.data.specRows.map((r) => {
+              const hit = (c.specs || []).find((s) => s && s.spec_key === r.spec_key);
+              if (!hit) return r;
+              return Object.assign({}, r, {
+                enabled: hit.enabled !== false,
+                name: hit.name || r.name,
+                priceYuan: hit.price_fen > 0 ? api.fenToYuan(hit.price_fen, 2) : '',
+              });
+            });
+          }
         }
       }
       if (!init.lines || init.lines.length === 0) init.lines = renumber([emptyLine()]);
@@ -277,6 +326,42 @@ Page({
   onName(e) { this.setData({ name: e.detail.value }); },
   onMode(e) { this.setData({ calcMode: e.detail.value }); },
   onBatch(e) { this.setData({ batchOutput: e.detail.value }); },
+
+  // ===== M3.16（批次 C）套餐 =====
+  // 切换卡片类型（单品 / 套餐）。切到套餐时，付费墙在**保存**时由后端拦（FEATURE_LOCKED → openPaywall('combo')）。
+  onCardType(e) {
+    const val = e.detail.value;   // '1' | '3'
+    const patch = { cardType: val };
+    if (val === '3') {
+      patch.calcMode = 'A';   // 套餐固定按份聚合
+      if (!this.data.comboLines.length) patch.comboLines = [{ sub_card_ref: '', sub_card_name: '', qty: '1' }];
+    }
+    this.setData(patch);
+  },
+  // 子卡选择（picker 按 index 取）
+  onComboSubCard(e) {
+    const idx = Number(e.currentTarget.dataset.idx);
+    const opt = this.data.subCardOptions[Number(e.detail.value)];
+    if (!opt) return;
+    const comboLines = this.data.comboLines.slice();
+    comboLines[idx] = Object.assign({}, comboLines[idx], { sub_card_ref: opt.card_code, sub_card_name: opt.label });
+    this.setData({ comboLines });
+  },
+  onComboQty(e) {
+    const idx = Number(e.currentTarget.dataset.idx);
+    const comboLines = this.data.comboLines.slice();
+    comboLines[idx] = Object.assign({}, comboLines[idx], { qty: e.detail.value });
+    this.setData({ comboLines });
+  },
+  addComboLine() {
+    this.setData({ comboLines: this.data.comboLines.concat([{ sub_card_ref: '', sub_card_name: '', qty: '1' }]) });
+  },
+  delComboLine(e) {
+    const idx = Number(e.currentTarget.dataset.idx);
+    const rest = this.data.comboLines.filter((l, i) => i !== idx);
+    this.setData({ comboLines: rest.length ? rest : [{ sub_card_ref: '', sub_card_name: '', qty: '1' }] });
+  },
+
   onLoss(e) { this.setData({ lossRate: e.detail.value }); },
   onAux(e) { this.setData({ auxYuan: e.detail.value }); },
   onPrice(e) { this.setData({ priceYuan: e.detail.value }); },
@@ -625,23 +710,34 @@ Page({
 
   async doSave() {
     const lines = [];
-    for (const l of this.data.lines) {
-      if (!l.qty) continue;
-      // round149：同 buildCalcLines —— 提交前换算到基准单位(克)，云端契约与引擎零改动
-      const qtyBase = units.toBase(l.qty, l.qty_unit);
-      if (!(qtyBase > 0)) continue;
-      // round150：组件类型随行上云（规格缩放的唯一依据）；缺省 main（服务端同样兜底）
-      const kind = l.line_kind || 'main';
-      if (l.input_type === 2) {
-        const wan = manualNetUnitWan(l.unit_price_yuan, l.yield_rate, l.price_unit);
-        if (wan <= 0) { wx.showToast({ title: TERMS.card.manualUnitPrice, icon: 'none' }); return; }
-        lines.push({ input_type: 2, name: (l.material_name || '').trim(), qty: qtyBase, net_unit_cost: wan, line_kind: kind });
-      } else {
-        if (!l.material_id) continue;
-        lines.push({ material_id: l.material_id, qty: qtyBase, line_kind: kind });
+    // M3.16（批次 C）套餐：明细行 = 子卡引用行（sub_card_ref + 份数），不走原料/手工分支。
+    if (this.data.cardType === '3') {
+      for (const cl of this.data.comboLines) {
+        if (!cl.sub_card_ref) { wx.showToast({ title: TERMS.card.comboSubCardPh, icon: 'none' }); return; }
+        const qty = Number(cl.qty);
+        if (!isFinite(qty) || qty <= 0) { wx.showToast({ title: TERMS.card.comboSubCardQty, icon: 'none' }); return; }
+        lines.push({ sub_card_ref: cl.sub_card_ref, qty: qty });
       }
+      if (lines.length === 0) { wx.showToast({ title: TERMS.card.comboSubCardPh, icon: 'none' }); return; }
+    } else {
+      for (const l of this.data.lines) {
+        if (!l.qty) continue;
+        // round149：同 buildCalcLines —— 提交前换算到基准单位(克)，云端契约与引擎零改动
+        const qtyBase = units.toBase(l.qty, l.qty_unit);
+        if (!(qtyBase > 0)) continue;
+        // round150：组件类型随行上云（规格缩放的唯一依据）；缺省 main（服务端同样兜底）
+        const kind = l.line_kind || 'main';
+        if (l.input_type === 2) {
+          const wan = manualNetUnitWan(l.unit_price_yuan, l.yield_rate, l.price_unit);
+          if (wan <= 0) { wx.showToast({ title: TERMS.card.manualUnitPrice, icon: 'none' }); return; }
+          lines.push({ input_type: 2, name: (l.material_name || '').trim(), qty: qtyBase, net_unit_cost: wan, line_kind: kind });
+        } else {
+          if (!l.material_id) continue;
+          lines.push({ material_id: l.material_id, qty: qtyBase, line_kind: kind });
+        }
+      }
+      if (lines.length === 0) { wx.showToast({ title: TERMS.card.material, icon: 'none' }); return; }
     }
-    if (lines.length === 0) { wx.showToast({ title: TERMS.card.material, icon: 'none' }); return; }
     const card = {
       name: this.data.name.trim(),
       mode: this.data.calcMode,
@@ -655,6 +751,8 @@ Page({
       // round150：规格只送 **键 + 售价**（系数与可读名由服务端单源补齐并**快照**落库）
       specs: this.collectSpecs(),
     };
+    // M3.16：套餐卡类型（3）上云
+    if (this.data.cardType === '3') card.card_type = 3;
     if (this.data.calcMode === 'B') card.batch_output = Number(this.data.batchOutput) || 0;
     if (this.data.card_code) card.card_code = this.data.card_code;
     // 分类归一化：只 trim（去首尾空格）。⚠️ 不做"折叠中间空格/同义词归并"——
@@ -685,7 +783,12 @@ Page({
         //   录 30 道菜要来回 60 次（李老师「100 道菜品，来回查找会很麻烦」的痛点之一）。
         this.afterSaved(card.name);
       }
-    } catch (e) { this.setData({ saving: false }); api.toastError(e); }
+    } catch (e) {
+      this.setData({ saving: false });
+      // M3.16（批次 C）：套餐未开通 → 弹付费墙（openPaywall('combo')，与云端 PAID_FEATURES.m3_combo 对齐）。
+      if (e && e.code === 'FEATURE_LOCKED' && this.data.cardType === '3') { openPaywall('combo'); return; }
+      api.toastError(e);
+    }
   },
 
   // round156：连续录入 —— 保存成功后**留在本页**，清掉这道菜特有的字段，接着录下一道。
@@ -705,6 +808,10 @@ Page({
       batchOutput: '',
       reversePriceFen: 0, previewCostFen: 0, reverseResultPreview: '', previewCost: '',
       specRows: freshSpecRows(),
+      // M3.16（批次 C）套餐：清空套餐特有字段（连续录入下一道默认回到单品）
+      cardType: '1',
+      comboLines: [],
+      comboInsight: null,
       // —— 编辑态 → 新建态（见上 🔴）——
       isEdit: false,
       card_code: '',

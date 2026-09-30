@@ -16,6 +16,7 @@ const { resolveAuth, assertShopOwner, genId } = common;
 const { ERROR_CODES, ok, fail } = common;
 const { makeAdapter } = common.dataAdapter;
 const { nowUtc } = common.utilTime;
+const { buildComboLines, judgeComboRef } = common.comboDerive;   // M3.16 套餐（派生层单源）
 const { rebuildSnapshotLines, calcCostCard, cardParamFromDoc } = require('./service');
 const { validateInput } = require('./validate');
 
@@ -59,50 +60,88 @@ exports.main = async (event) => {
   const existingLines = (lineRes && lineRes.data) || [];
   if (existingLines.length === 0) return fail(ERROR_CODES.INVALID_PARAM, '该成本卡没有明细行，无法同步');
 
+  // ===== 4.5. M3.16 套餐：付费墙 + 按子卡**最新版本**重建（锁版本 → 升到最新）=====
+  const isCombo = latestCard.card_type === 3;
+  let newLines;
+  if (isCombo) {
+    const unlocked = await common.hasFeature(db, userId, 'm3_combo');
+    if (!unlocked) return fail(ERROR_CODES.FEATURE_LOCKED);
+
+    const comboSubCards = [];
+    for (const ln of existingLines) {
+      if (ln.line_type !== 2 || !ln.sub_card_ref) continue;
+      const subRes = await da.list('shop_cost_card', { shop_id: shopId, card_code: ln.sub_card_ref });
+      const subVers = (subRes && subRes.data) || [];
+      let sub = null;
+      for (const c of subVers) if ((c.version || 0) > (sub ? (sub.version || 0) : -1)) sub = c;
+      const verdict = judgeComboRef(ln, sub);
+      if (!verdict.ok) {
+        return fail(ERROR_CODES[verdict.code] || verdict.code,
+          verdict.code === 'COMBO_NEST_NOT_ALLOWED' ? '套餐里不能引用另一个套餐' : '引用的菜品版本已失效，请重新选择');
+      }
+      comboSubCards.push({
+        card_code: sub.card_code,
+        name: sub.name,
+        unit_cost_fen: sub.total_cost || 0,   // 子卡**最新版本**成本（分）
+        quantity: ln.quantity,
+        version: sub.version,
+      });
+    }
+    if (comboSubCards.length === 0) return fail(ERROR_CODES.INVALID_PARAM, '套餐没有子卡行，无法同步');
+    // 入参变换：子卡最新成本(分) × 100 → 万分 net_unit_cost，喂同一个 calcCostCard
+    newLines = buildComboLines(comboSubCards);
+  }
+
   // ===== 5. 读这些原料的**当前**净料单位成本快照 =====
   const materialsById = new Map();
-  for (const ln of existingLines) {
-    if (!ln.material_id || materialsById.has(String(ln.material_id))) continue;
-    const mat = await da.get('shop_material', String(ln.material_id));
-    if (!mat) return fail(ERROR_CODES.RESOURCE_NOT_FOUND, `原料 ${ln.material_id} 不存在或已软删，无法同步`);
-    materialsById.set(String(ln.material_id), mat);
+  if (!isCombo) {
+    for (const ln of existingLines) {
+      if (!ln.material_id || materialsById.has(String(ln.material_id))) continue;
+      const mat = await da.get('shop_material', String(ln.material_id));
+      if (!mat) return fail(ERROR_CODES.RESOURCE_NOT_FOUND, `原料 ${ln.material_id} 不存在或已软删，无法同步`);
+      materialsById.set(String(ln.material_id), mat);
+    }
   }
 
   // ===== 6. 用最新价重建快照明细 + 重算成本 =====
   // M3.3（批次 P0）：input_type=1 行走 rebuildSnapshotLines（取原料**最新**价重算）；
   //   input_type=2 临时手工行**原样保留快照**（不随原料价变、不查档案）。
   //   ⚠️ 不改 rebuildSnapshotLines 具名函数，仅在 Controller 层分流合并。
-  let newLines;
-  try {
-    newLines = rebuildSnapshotLines(existingLines.filter((l) => l.input_type !== 2), materialsById);
-  } catch (e) {
-    return fail(e.code || ERROR_CODES.SYSTEM_ERROR, e.message);
-  }
-  // 手工行原样快照（material_id 空、保留原 net_unit_cost）
-  const manualLines = existingLines.filter((l) => l.input_type === 2).map((l) => ({
-    material_id: '',
-    material_name: l.material_name || '',
-    quantity: l.quantity || 0,
-    net_unit_cost: l.net_unit_cost || 0,
-    input_type: 2,
-    // 任务1（S0）：手工行无原料可查，5 字段按缺省值；yield_rate 有真值（S0 后保存的）就存真值
-    brand_spec: l.brand_spec || '',
-    purchase_unit: l.purchase_unit || '',
-    purchase_price: l.purchase_price || 0,
-    convert_factor: l.convert_factor || 0,
-    yield_rate: l.yield_rate || 0,
-  }));
-  const mergedNewLines = [];
-  let archiveCursor = 0;
-  for (const ln of existingLines) {
-    if (ln.input_type === 2) {
-      mergedNewLines.push(manualLines.shift());
-    } else {
-      mergedNewLines.push(Object.assign({}, newLines[archiveCursor++], { input_type: 1 }));
+  //   M3.16：套餐已在 4.5 走 buildComboLines 重建（跳过原料分支）。
+  if (!isCombo) {
+    let newLinesTmp;
+    try {
+      newLinesTmp = rebuildSnapshotLines(existingLines.filter((l) => l.input_type !== 2), materialsById);
+    } catch (e) {
+      return fail(e.code || ERROR_CODES.SYSTEM_ERROR, e.message);
     }
+    // 手工行原样快照（material_id 空、保留原 net_unit_cost）
+    const manualLines = existingLines.filter((l) => l.input_type === 2).map((l) => ({
+      material_id: '',
+      material_name: l.material_name || '',
+      quantity: l.quantity || 0,
+      net_unit_cost: l.net_unit_cost || 0,
+      input_type: 2,
+      // 任务1（S0）：手工行无原料可查，5 字段按缺省值；yield_rate 有真值（S0 后保存的）就存真值
+      brand_spec: l.brand_spec || '',
+      purchase_unit: l.purchase_unit || '',
+      purchase_price: l.purchase_price || 0,
+      convert_factor: l.convert_factor || 0,
+      yield_rate: l.yield_rate || 0,
+    }));
+    const mergedNewLines = [];
+    let archiveCursor = 0;
+    for (const ln of existingLines) {
+      if (ln.input_type === 2) {
+        mergedNewLines.push(manualLines.shift());
+      } else {
+        mergedNewLines.push(Object.assign({}, newLinesTmp[archiveCursor++], { input_type: 1 }));
+      }
+    }
+    newLines = mergedNewLines;
   }
-  newLines = mergedNewLines;
   const p = cardParamFromDoc(latestCard);
+  if (isCombo) p.mode = 'A';   // 套餐固定按份聚合
   let result;
   try {
     result = calcCostCard({
@@ -131,6 +170,8 @@ exports.main = async (event) => {
     name: latestCard.name || '',
     category: latestCard.category || '',
     tags: latestCard.tags || '',
+    // M3.16（批次 C）：卡片类型随版本透传（套餐同步后仍是套餐）。
+    card_type: latestCard.card_type === 3 ? 3 : 1,
     calc_mode: latestCard.calc_mode === 2 ? 2 : 1,
     batch_output: latestCard.calc_mode === 2 ? p.batchOutput : null,
     loss_rate: p.lossPct,
@@ -170,6 +211,10 @@ exports.main = async (event) => {
         yield_rate: ln.yield_rate || 0,
         line_net_cost: result.lines[i].line_net_cost_fen,
         input_type: ln.input_type || 1,    // M3.3：按行真实值（1=档案 / 2=临时手工）
+        // M3.16（批次 C）：套餐子卡行（line_type=2）—— sub_card_ref + sub_version（同步后升到子卡最新版本）。
+        line_type: ln.line_type || 1,
+        sub_card_ref: ln.sub_card_ref || '',
+        sub_version: ln.sub_version || 0,
         sort_order: i + 1,
       });
       lineRows.push({ material_id: ln.material_id, net_unit_cost: ln.net_unit_cost, line_net_cost_fen: result.lines[i].line_net_cost_fen });

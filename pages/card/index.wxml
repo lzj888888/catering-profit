@@ -33,7 +33,11 @@
       <!-- round156：置顶标记（排序会把它们排到最前，但必须"看得出为什么在前面"） -->
       <text class="tag tag-pin" wx:if="{{item.pinned}}">{{t.pinTag}}</text>
       <text class="tag">{{item.calc_mode === 'A' ? t.calcModeA : t.calcModeB}}</text>
+      <!-- M3.16（批次 C）：套餐标记 -->
+      <text class="tag" wx:if="{{item.card_type === 3}}">{{t.cardTypeCombo}}</text>
     </view>
+    <!-- M3.16 套餐：我少赚为负 ⇒ 红字提示「这个套餐在拉低你的毛利」 -->
+    <view class="muted" wx:if="{{item.card_type === 3 && item.combo_lose_neg}}" style="color:#e74c3c;font-size:26rpx;">{{t.comboInsightLoseWarn}}</view>
     <view class="cell">
       <text class="lbl">{{t.totalCost}}</text>
       <text class="val">{{t.cur}}{{item.total_cost}}</text>

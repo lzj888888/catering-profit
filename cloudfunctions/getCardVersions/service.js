@@ -11,6 +11,8 @@ function cardToOut(doc) {
     name: doc.name || '',
     category: doc.category || '',
     tags: doc.tags || '',
+    // M3.16（批次 C）：卡片类型（与 getCostCard.cardToOutput 同字段集；存量卡缺字段 ⇒ 1）
+    card_type: doc.card_type === 3 ? 3 : 1,
     calc_mode: doc.calc_mode === 2 ? 'B' : 'A',
     batch_output: doc.batch_output != null ? doc.batch_output : null,
     loss_rate: doc.loss_rate != null ? doc.loss_rate : 0,
@@ -51,6 +53,10 @@ function lineToOut(doc) {
     input_type: doc.input_type === 2 ? 2 : 1,
     line_kind: doc.line_kind || 'main',
     group_name: doc.group_name || '',
+    // M3.16（批次 C）：套餐子卡行出参（与 getCostCard.lineToOutput 同字段集）
+    line_type: doc.line_type === 2 ? 2 : 1,
+    sub_card_ref: doc.sub_card_ref || '',
+    sub_version: doc.sub_version != null ? doc.sub_version : 0,
   };
 }
 

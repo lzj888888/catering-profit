@@ -787,6 +787,20 @@ const TERMS = {
     // 规格 chips 的显示名：**只有键 + 中文名，没有系数**（系数单源在服务端 SPEC_PRESETS）。
     //   键集必须 ≡ 服务端 SPEC_PRESETS 的 spec_key 集合（守卫 L5 逐键比对）。
     specLabel: { half: '半份', small: '小份' },
+    // ===== M3.16（批次 C）· 套餐（引用型成本卡）=====
+    //   套餐能引用其它成本卡（子卡）但不被引用；子卡锁版本；给老板看「顾客省 / 我少赚 / 成本结构」。
+    cardType: '卡片类型',
+    cardTypeDish: '单品菜品',
+    cardTypeCombo: '套餐',
+    comboSubCardTitle: '套餐包含的子菜',
+    comboSubCardPh: '选择子菜',
+    comboSubCardQty: '份数',
+    comboAddSubCard: '+ 添加子菜',
+    comboPickEmpty: '暂无可用子菜（先建单品菜品）',
+    comboInsightCustomerSave: '顾客省了',
+    comboInsightMerchantLose: '我少赚了',
+    comboInsightLoseWarn: '这个套餐在拉低你的毛利',
+    comboInsightCostShare: '成本结构',
   },
 
   // ===== 十五、M1 库存录入页（shop_inventory）=====

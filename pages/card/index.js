@@ -64,6 +64,9 @@ Page({
       pinOn: TERMS.card.pinOn,
       pinOff: TERMS.card.pinOff,
       pinTag: TERMS.card.pinTag,
+      // M3.16（批次 C）套餐标记
+      cardTypeCombo: TERMS.card.cardTypeCombo,
+      comboInsightLoseWarn: TERMS.card.comboInsightLoseWarn,
     },
     all: [],           // 全量列表（前端过滤）
     list: [],
@@ -109,6 +112,9 @@ Page({
         price_fen: c.price_fen,
         margin: c.price_fen > 0 ? c.gross_margin_pct : null,
         calc_mode: c.calc_mode,
+        // M3.16（批次 C）：卡片类型（1=单品 / 3=套餐）；套餐「我少赚」为负 ⇒ 红字提示。
+        card_type: c.card_type,
+        combo_lose_neg: !!(c.combo && c.combo.merchantLoseFen < 0),
         // round156：排序键（「最近编辑在前」）。存量卡没有 updated_at ⇒ 0（排最后，不插队到新卡前面）
         updated_at: Number(c.updated_at) || 0,
       }));

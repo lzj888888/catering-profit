@@ -59,4 +59,11 @@ module.exports = {
   specsToJson: require('./cx_specDerive').specsToJson,
   specsFromJson: require('./cx_specDerive').specsFromJson,
   sanitizeSpecs: require('./cx_specDerive').sanitizeSpecs,
+
+  // M3.16（批次 C）：套餐引用型成本卡**派生层单源** —— 入参变换，5 份引擎副本一个不碰。
+  //   ⚠️ 同 genId 教训：新符号务必在此聚合入口导出，否则云端 `const { buildComboLines } = common` 会 TypeError。
+  comboDerive: require('./cx_comboDerive'),
+  buildComboLines: require('./cx_comboDerive').buildComboLines,
+  comboInsight: require('./cx_comboDerive').comboInsight,
+  judgeComboRef: require('./cx_comboDerive').judgeComboRef,
 };

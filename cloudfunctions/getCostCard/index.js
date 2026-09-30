@@ -11,6 +11,7 @@ const common = require('./common');                 // 扁平派生副本（sync
 const { resolveAuth, assertShopOwner } = common;
 const { ok, fail } = common;
 const { makeAdapter } = common.dataAdapter;
+const { comboInsight } = common.comboDerive;         // M3.16 套餐（派生层单源）
 const { cardToOutput, lineToOutput } = require('./service');
 const { validateInput } = require('./validate');
 
@@ -59,10 +60,33 @@ exports.main = async (event) => {
     targets = Array.from(latestByCode.values());
   }
 
+  // M3.16（批次 C）：全版本映射（card_code#version → card），套餐装配子卡版本用。
+  const byVersion = new Map();
+  for (const c of ((cardsRes && cardsRes.data) || [])) {
+    if (!c.card_code) continue;
+    byVersion.set(String(c.card_code) + '#' + (c.version || 0), c);
+  }
+
   const list = [];
   for (const card of targets) {
     const out = cardToOutput(card);
     out.lines = await loadLines(da, shopId, card);
+    // M3.16 套餐：装配三个显示信息（顾客省 / 我少赚 / 成本结构）。
+    //   子卡单份成本与挂牌价取**锁定版本**（sub_version）的子卡 doc；子卡已软删 ⇒ 回退明细行快照。
+    if (out.card_type === 3) {
+      const subCards = out.lines
+        .filter((l) => l.line_type === 2 && l.sub_card_ref)
+        .map((l) => {
+          const sub = byVersion.get(String(l.sub_card_ref) + '#' + (l.sub_version || 0));
+          return {
+            name: (sub && sub.name) || (l.material_name || ''),
+            unit_cost_fen: (sub && sub.total_cost != null) ? sub.total_cost : Math.round((l.net_unit_cost || 0) / 100),
+            price_fen: (sub && sub.price_list != null) ? sub.price_list : 0,
+            quantity: l.quantity,
+          };
+        });
+      out.combo = comboInsight(subCards, out.price_fen, out.total_cost_fen);
+    }
     list.push(out);
   }
 

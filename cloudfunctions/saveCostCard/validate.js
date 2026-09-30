@@ -26,6 +26,15 @@ function validateInput(event) {
 
   if (typeof card.name !== 'string' || !card.name.trim()) return err('card.name 必须是非空字符串');
 
+  // M3.16（批次 C）：卡片类型 card_type —— 1 = 单品（默认）/ 3 = 套餐（2 空置不用）。
+  //   ⚠️ 套餐（3）时：明细行是**子卡行**（line_type=2，带 sub_card_ref + 份数），
+  //     不是原料行（material_id）；核算模式固定 mode='A'（份聚合）。
+  const rawCardType = (card.card_type === undefined || card.card_type === null) ? 1 : Number(card.card_type);
+  if (rawCardType !== 1 && rawCardType !== 3) {
+    return err('card.card_type 非法（当前值：' + JSON.stringify(card.card_type) + '；合法值：1=单品 / 3=套餐）');
+  }
+  const cardType = rawCardType;
+
   const lines = card.lines || [];
   if (!Array.isArray(lines)) return err('card.lines 必须是数组');
   if (lines.length === 0) return err('card.lines 不能为空');
@@ -35,6 +44,13 @@ function validateInput(event) {
     const qty = ln.qty != null ? ln.qty : ln.quantity;
     if (typeof qty !== 'number' || !isFinite(qty) || qty <= 0) {
       return err(`明细行的 qty/quantity 必须是 >0 的 number（克或份）`);
+    }
+    // M3.16：套餐子卡行 —— 只认 sub_card_ref + quantity，无 material_id / name
+    if (cardType === 3) {
+      const ref = (typeof ln.sub_card_ref === 'string') ? ln.sub_card_ref.trim() : '';
+      if (!ref) return err('套餐明细行必须提供 sub_card_ref（被引用菜品卡号）');
+      cLines.push({ input_type: 1, line_type: 2, sub_card_ref: ref, quantity: qty, line_kind: 'main', group_name: '' });
+      continue;
     }
     // M3.3（批次 P0）：录入方式 1=从原料档案选择 / 2=临时手工录入（默认 1）
     const inputType = (ln.input_type === 2) ? 2 : 1;
@@ -117,7 +133,8 @@ function validateInput(event) {
     shop_id: src.shop_id,
     card: {
       name: card.name.trim(),
-      mode,
+      mode: cardType === 3 ? 'A' : mode,   // 套餐固定按份聚合（mode 无意义）
+      card_type: cardType,
       lines: cLines,
       auxFen,
       lossPct,

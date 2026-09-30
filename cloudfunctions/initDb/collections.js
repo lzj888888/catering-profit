@@ -67,6 +67,9 @@ const INDEXES = {
     // 改复合唯一 (shop_id, card_code, version)：允许多版本、防同版本重复，并充当并发守卫
     //  （saveCostCard 是"读最大版本+1"的非原子写，唯一索引让撞车变成响亮失败）。
     { name: 'idx_card_code_version', unique: true, keys: { shop_id: 1, card_code: 1, version: 1 } },
+    // M3.16（批次 C）：套餐字段登记（**只登记、不新建集合、不新增索引**）——
+    //   · shop_cost_card.card_type  TINYINT 默认 1：1 = 单品 / 3 = 套餐（2 空置不用）
+    //   · 套餐 = 引用型卡（终端聚合），不进 BOM 链、不被任何卡引用；子卡锁版本（sub_version）。
   ],
   shop_cost_card_line: [
     // 🔴 R157 修复：原为 `{ name: 'idx_line_card', keys: { card_id: 1 } }` —— 建在 `card_id` 上，
@@ -80,6 +83,11 @@ const INDEXES = {
     //   ⚠️ 云端旧索引 `idx_line_card` 需**显式删除**（否则每次写明细行都要多维护一个无用索引）；
     //     单源内已不再声明它，删除动作用 tools/apply_indexes.js 的 drop_indexes（用法见该文件头）。
     { name: 'idx_line_row', keys: { shop_id: 1, cost_card_row_id: 1 } },
+    // M3.16（批次 C）：套餐明细行字段登记（**只登记、不新建集合、不新增索引**）——
+    //   · shop_cost_card_line.line_type     TINYINT 默认 1：1 = 原料行 / 2 = 子卡行
+    //   · shop_cost_card_line.sub_card_ref  VARCHAR：line_type=2 时 = 被引用卡逻辑卡号（实现字段名 card_code）
+    //   · shop_cost_card_line.sub_version   INT：line_type=2 时 = 锁定版本号（D5 锁版本）
+    //   · 子卡行的 net_unit_cost = 子卡单份成本(分) × 100（万分快照）；quantity = 份数。
   ],
   shop_material: [
     { name: 'idx_mat_shop', keys: { shop_id: 1 } },
