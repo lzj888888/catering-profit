@@ -40,6 +40,108 @@ exports.main = async (event) => {
 
   const da = makeAdapter(db);
 
+  // ===== 2.5. M3.19（批次 E）：dry_run 影响面预览（🔴 只读、零写库）=====
+  //   语义：原料改价后，列出所有「用到了该原料」的成本卡，按原料**最新价**重建（同一份 rebuildSnapshotLines）
+  //   重算新成本/新毛利率，并标出是否跌破该业态毛利率参考带下限。**绝不 insert/update/remove，不生成新版本。**
+  if (v.dry_run) {
+    const materialId = v.material_id;
+    // 业态参考带下限（shop.biz_type；未设置回落 dining，与 indicatorRef.bandOf 同口径）
+    let bizType = '';
+    try {
+      const shopDoc = await da.get('shop', shopId);
+      bizType = (shopDoc && shopDoc.biz_type) || '';
+    } catch (e) { bizType = ''; }
+    const bandFloor = (common.indicatorRef.BANDS[bizType] || common.indicatorRef.BANDS.dining).grossMargin[0];
+
+    // 读全部卡（取 card_code 最新版本；套餐 card_type===3 不含原料行，跳过）
+    const allRes = await da.listAll('shop_cost_card', { shop_id: shopId });
+    const latestByCode = new Map();
+    for (const c of (allRes && allRes.data) || []) {
+      if (!c.card_code || c.card_type === 3) continue;
+      const cur = latestByCode.get(c.card_code);
+      if (!cur || (c.version || 0) > (cur.version || 0)) latestByCode.set(c.card_code, c);
+    }
+
+    const affected = [];
+    for (const [cc, card] of latestByCode) {
+      const lineRes = await da.list('shop_cost_card_line', { shop_id: shopId, cost_card_row_id: card._id });
+      const lines = (lineRes && lineRes.data) || [];
+      const uses = lines.some((l) => l.input_type !== 2 && String(l.material_id) === String(materialId));
+      if (!uses) continue;
+
+      // 读这些原料的**当前**净料成本（含改价后的目标原料）
+      const materialsById = new Map();
+      for (const ln of lines) {
+        if (ln.input_type === 2 || !ln.material_id) continue;
+        if (materialsById.has(String(ln.material_id))) continue;
+        const mat = await da.get('shop_material', String(ln.material_id));
+        if (mat) materialsById.set(String(ln.material_id), mat);
+      }
+
+      // 用同一份 rebuildSnapshotLines 按最新价重建（引擎只调用不修改）
+      let merged;
+      try {
+        const rebuilt = rebuildSnapshotLines(lines.filter((l) => l.input_type !== 2), materialsById);
+        const manual = lines.filter((l) => l.input_type === 2).map((l) => ({
+          material_id: '', material_name: l.material_name || '', quantity: l.quantity || 0,
+          net_unit_cost: l.net_unit_cost || 0, input_type: 2,
+          brand_spec: l.brand_spec || '', purchase_unit: l.purchase_unit || '',
+          purchase_price: l.purchase_price || 0, convert_factor: l.convert_factor || 0,
+          yield_rate: l.yield_rate || 0,
+        }));
+        const out = [];
+        let cursor = 0;
+        for (const ln of lines) {
+          if (ln.input_type === 2) out.push(manual.shift());
+          else out.push(Object.assign({}, rebuilt[cursor++], { input_type: 1 }));
+        }
+        merged = out;
+      } catch (e) { continue; }
+
+      const p = cardParamFromDoc(card);
+      const newResult = calcCostCard({ mode: p.mode, lines: merged, auxFen: p.auxFen, lossPct: p.lossPct, batchOutput: p.batchOutput, priceFen: p.priceFen });
+
+      // 🔴 R181j 门禁方验收修正：**未挂牌价 ⇒ 毛利率不可算**，一律回 null（不是 0）。
+      //   理由① 与同批 `utils/reconDerive.js` 的既定口径一致（该处明写「priceFen === 0 ⇒ { pct: null, reason: 'no_price' }，不许返回 0」），
+      //          同批次内两处对「无价」必须同口径；
+      //   理由② 前端 `pages/metrics/impact.js:49-50` 已按 `xx != null ? toFixed(1) : '—'` 写好，后端若恒返 0，该分支即死代码；
+      //   理由③ priceFen = 0 时 `calcCostCard` 返回 gross_margin_pct = **0**（实测），`0 < bandFloor` 恒真
+      //          ⇒ 会把「还没定价的卡」误标成「已跌破业态参考带下限」并在 `impact.wxml:20` 渲染红字警告。
+      //   ⚠️ priceFen = 0 是**合法值**（`saveCostCard/validate.js:116` 只要求「非负」），该状态真实可达 ⇒ 不是理论缺陷。
+      const noPrice = !(Number(p.priceFen) > 0);
+
+      // 旧毛利率：库内 gross_margin_pct 有则用；否则用旧行快照算一次（同一份 calcCostCard）
+      let oldGross = (card.gross_margin_pct != null && card.gross_margin_pct !== undefined) ? card.gross_margin_pct : null;
+      if (oldGross == null) {
+        const oldLines = lines.map((l) => ({ quantity: Number(l.quantity) || 0, net_unit_cost: Number(l.net_unit_cost) || 0 }));
+        const oldResult = calcCostCard({ mode: p.mode, lines: oldLines, auxFen: p.auxFen, lossPct: p.lossPct, batchOutput: p.batchOutput, priceFen: p.priceFen });
+        oldGross = oldResult.gross_margin_pct;
+      }
+
+      affected.push({
+        card_code: cc,
+        name: card.name || '',
+        price_fen: card.price_list != null ? card.price_list : 0,
+        old_total_cost_fen: card.total_cost != null ? card.total_cost : 0,
+        new_total_cost_fen: newResult.unit_cost_fen,
+        no_price: noPrice,
+        old_gross_margin_pct: noPrice ? null : oldGross,
+        new_gross_margin_pct: noPrice ? null : newResult.gross_margin_pct,
+        band_floor_pct: bandFloor,
+        below_band: !noPrice && newResult.gross_margin_pct < bandFloor,
+      });
+    }
+
+    return ok({
+      shop_id: shopId,
+      material_id: materialId,
+      dry_run: true,
+      scanned_cards: latestByCode.size,
+      affected,
+      client_request_id: clientRequestId || '',
+    });
+  }
+
   // ===== 幂等预检（契约 §10：syncCostCard = user+shop+幂等）=====
   // 🔒 R73：本函数此前**把 client_request_id 读进变量却从未使用**（死读，纯回显）—— 而第 8 步每次都
   //   INSERT 新版本，天然**非**幂等：重复提交（网络重试 / 双击）会让版本号连跳（1→2→3），

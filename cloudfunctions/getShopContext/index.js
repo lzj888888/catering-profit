@@ -12,7 +12,7 @@ const { resolveAuth, genId, defaultShopId, isDuplicateKeyError } = common;
 const { ERROR_CODES, ok, fail } = common;
 const { makeAdapter } = common.dataAdapter;
 const { nowUtc } = common.utilTime;
-const { switchesFromRows, takeawayParamsFromRows } = require('./service');
+const { switchesFromRows, takeawayParamsFromRows, menuDishCountFromRows } = require('./service');
 const { validateInput } = require('./validate');
 
 exports.main = async (event) => {
@@ -61,6 +61,7 @@ exports.main = async (event) => {
   const swRows = (swRes && swRes.data) || [];
   const switches = switchesFromRows(swRows);
   const takeawayParams = takeawayParamsFromRows(swRows);
+  const menuDishCount = menuDishCountFromRows(swRows);
 
   return ok({
     shop_id: shopId,
@@ -69,6 +70,8 @@ exports.main = async (event) => {
     switches,
     // M3.17（批次 D）：外卖平台参数默认值（JSON 字符串；缺省 '' 由前端 parse 兜底）
     takeaway_params: takeawayParams,
+    // M3.21（批次 E）：本月在售菜品数（缺省 null = 未填）
+    menu_dish_count: menuDishCount,
     // round156：列表置顶（店铺级偏好，同 biz_type/city_tier 一样随上下文下发）。
     //   存量店铺没有这两个字段 ⇒ 给 []（fail-soft，不回填、不报错）。
     pinned_cards: Array.isArray(shop.pinned_cards) ? shop.pinned_cards : [],

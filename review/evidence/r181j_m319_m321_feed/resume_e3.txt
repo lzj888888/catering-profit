@@ -1,0 +1,11 @@
+继续 · 批次 E 剩余项（**从断点接着做，已完成的不重做**）：
+
+1. pages/recon/index.js —— 你上轮正在写、**尚未落盘**（目录里只有 index.json）⇒ 补完
+2. pages/recon/index.wxml / index.wxss
+3. app.json 注册 pages/metrics/impact 与 pages/recon/index（19 → 21 页）
+4. verify_all.js 的 SUITES 挂 m3-impact / m3-recon
+5. 跑 node verify_all.js 直到全绿，然后按回执格式汇报（已落 / 未落 / 存疑 · 证据 · 涉及文件）
+
+⚠️ 请**连续做完再停**，不要在子任务之间结束回合；若被单轮步数上限中断，下一次从断点继续、不要重做已完成项。
+
+边界不变：可改 pages/**、app.json、cloudfunctions/**、miniprogram/i18n/terms.js、根目录 verify_all.js、新建 tools/selftest_m3_*.js；禁改 tools/ 下既有文件与 specs/**；不新建集合、不新增索引。

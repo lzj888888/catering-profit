@@ -1,0 +1,12 @@
+继续 · 批次 E（M3.19 + M3.21）还剩三项：
+
+1. pages/recon/ 目录仍不存在 —— M3.21 页面全套（index.js / .json / .wxml / .wxss）未建
+2. app.json 仍为 19 页 —— 未注册 pages/metrics/impact 与 pages/recon/index（注册后应为 21）
+3. verify_all.js 的 SUITES 未挂 m3-impact / m3-recon
+
+（已完成部分不用重做：pages/metrics/impact 的 .wxml/.wxss 已补齐；getShopContext / saveShopSetting 的 menu_dish_count 存取已改。）
+
+请做完这三项，执行 node verify_all.js 直到全绿（含新增两项），然后按回执格式汇报：
+- [YYYY-MM-DD HH:MM] R<n> 已落 / 未落 / 存疑 · 证据：<命令> → <输出摘要> · 涉及文件清单
+
+边界不变：可改 pages/**、app.json、cloudfunctions/**、miniprogram/i18n/terms.js、根目录 verify_all.js、新建 tools/selftest_m3_*.js；禁改 tools/ 下既有文件与 specs/**；不新建集合、不新增索引。

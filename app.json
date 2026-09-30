@@ -16,6 +16,8 @@
     "pages/material/edit",
     "pages/material/pick",
     "pages/takeaway/index",
+    "pages/metrics/impact",
+    "pages/recon/index",
     "pages/pay/orders",
     "pages/shop/switch",
     "pages/mine/index"

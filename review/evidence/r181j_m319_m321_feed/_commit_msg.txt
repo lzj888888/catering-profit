@@ -1,0 +1,29 @@
+feat(M3.19/M3.21): 批次E 原料变动影响面 + M1↔M3 率对率对账（含门禁方验收闭环）
+
+【InsCode 交付】（快马按批次包 feed_e.txt 写码）
+- M3.19 原料变动与影响面：复用 syncCostCard 加**只读 dry-run 分支**（material_id + dry_run）
+  ⇒ 扫全店卡按最新价复算新成本/新毛利率 + 标出是否跌破业态参考带下限（下限取 common/indicatorRef.js::BANDS）
+  新页 pages/metrics/impact（只展示，无「一键改卡」按钮）+ pages/card/version 成本趋势折线（纯前端，零新调用）
+- M3.21 M1↔M3 率对率对账：新单源 utils/reconDerive.js（纯计算，不落库、不进云函数、无 specs 副本）
+  + 新页 pages/recon/index；覆盖率闸门 fail-closed；套餐默认排除；细项名取 TERMS 单源
+- 两个自测：tools/selftest_m3_impact.js / tools/selftest_m3_recon.js
+
+【门禁方验收与修复】（五件套）
+- 全量门禁 120/120 · RC=0 · 真 FAIL=0（118 → 120：SUITES 末尾挂 m3-impact / m3-recon）
+- 三处同步面：terms 双副本 md5 一致 · 提审材料 §4 19→21 页（含跳转统计 35处/19目标 → 37处/21目标）
+  · 套件数级联五处（verify_all 头注+SUITES / 重启键入口行+套件数会漂+演进链+断言数声明 / CASES）
+- 锚点独立复算 31/0（期望值自己手推，require 生产单源）
+- 变异回灌 8/8 有效红（硬判据：每条红在目标断言名上；终态 md5 与基线全等）
+- 修真缺陷 3 个：
+  ① syncCostCard dry-run 未挂牌价卡被误标「已跌破参考带下限」——与同批 reconDerive 的 no_price 口径冲突，
+     前端 impact.js:49-50 已按 null→'—' 写好而后端恒返 0 ⇒ 该分支成死代码 + 页面渲染红字误报
+     ⇒ 加 noPrice 判定（无价 ⇒ 两个毛利率回 null、below_band=false、新增 no_price 字段）
+  ② pages/recon/index 是孤岛页（全仓无任何跳转到它；投喂包任务 B 漏写入口要求）
+     ⇒ 在 pages/card/index 既有工具条补「对账」入口（复用既有 t.reconTitle，零新增文案）
+  ③ pages/recon/index.wxml 的 val-input 与 button 同父（破 check_amount_input_row A1：金额框被挤窄）
+     ⇒ button 挪出 .field，独立 .field-save 层
+- 我方补守卫断言：selftest_m3_impact 新增 C-b 段 5 条（12→17 条），断言数声明与 CASES 已同步
+
+【本轮固化】inscode-desktop-feed 技能 +4 条（窗口最小化 −32000 / 探针截旧帧 / 清空判据须幂等 / 一轮≠干完一批）
++ scripts/inscode_send_v2.py + scripts/inscode_fix_window.py
+证据：review/evidence/r181j_m319_m321_feed/（gate 落盘 · 变异结果 JSON · 锚点复算脚本 · 投喂载荷与判据）

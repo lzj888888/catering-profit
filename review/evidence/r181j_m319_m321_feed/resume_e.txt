@@ -1,0 +1,17 @@
+【续做 · 批次 E（M3.19 + M3.21）】
+
+你上一轮在第 37 回合自行停止（stop_reason=Stopped，非欠费），批次 E 尚未完成。
+
+验收方实扫仓库（git status / app.json / verify_all.js）后的客观缺口：
+
+1. pages/metrics/impact 只有 .js / .json —— 缺 .wxml / .wxss
+2. pages/recon/ 目录不存在 —— M3.21 页面全套未建
+3. app.json 的 pages 仍为 19 项 —— 未注册新增页面（注册后应为 21）
+4. verify_all.js 的 SUITES 未挂 m3-impact / m3-recon（现有 m3-combo / m3-lexicon / m3-takeaway）
+5. tools/selftest_m3_impact.js 已落盘但不在门禁内，需挂上并跑通
+
+请接着做完，执行 node verify_all.js 直到全绿（含新增两项），完成后按回执格式汇报：
+
+- [YYYY-MM-DD HH:MM] R<n> 已落 / 未落 / 存疑 · 证据：<命令> → <输出摘要> · 涉及文件清单
+
+边界不变：可改 pages/**、app.json、cloudfunctions/**（syncCostCard 只加只读 dry-run 分支；calcBom 等引擎函数只调用不改）、miniprogram/i18n/terms.js、根目录 verify_all.js、新建 tools/selftest_m3_*.js；禁改 tools/ 下既有文件与 specs/**；不新建集合、不新增索引。

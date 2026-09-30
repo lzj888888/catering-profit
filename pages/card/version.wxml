@@ -1,6 +1,21 @@
 <view class="container safe-bottom" wx:if="{{!loading}}">
   <view class="hint">{{t.versionReadonly}}</view>
 
+  <!-- M3.19（A3）成本趋势折线：数据全来自 list，前端算；≥2 版本才画，否则给空态文案 -->
+  <view class="trend" wx:if="{{showChart}}">
+    <view class="trend-title">{{t.impactTrend}}</view>
+    <view class="trend-bars">
+      <view class="trend-col" wx:for="{{chartRows}}" wx:key="version">
+        <view class="trend-cost">{{item.costText}}</view>
+        <view class="trend-bar-wrap">
+          <view class="trend-bar" style="height:{{item.heightPct}}%;"></view>
+        </view>
+        <view class="trend-ver">v{{item.version}}</view>
+      </view>
+    </view>
+  </view>
+  <view class="trend-empty" wx:else>{{t.impactTrendSingle}}</view>
+
   <view class="card2" wx:for="{{list}}" wx:key="version" wx:for-item="v">
     <view class="card-title">
       {{v.name}} <text class="tag">{{t.version}} {{v.version}}</text>

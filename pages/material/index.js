@@ -52,6 +52,8 @@ Page({
       pinOn: TERMS.card.pinOn,
       pinOff: TERMS.card.pinOff,
       pinTag: TERMS.card.pinTag,
+      // M3.19（批次 E）影响面入口
+      impactTitle: TERMS.card.impactTitle,
     },
     all: [],           // 全量列表（前端过滤）
     list: [],          // 过滤后展示
@@ -180,6 +182,12 @@ Page({
   },
 
   goAdd() { wx.navigateTo({ url: '/pages/material/edit?id=' }); },
+  // M3.19（批次 E）：看影响面（只读预览，绝不自动改卡）
+  goImpact(e) {
+    const m = e.currentTarget.dataset.m;
+    if (!m || !m.id) return;
+    wx.navigateTo({ url: '/pages/metrics/impact?material_id=' + m.id + '&name=' + encodeURIComponent(m.name || '') });
+  },
   goEdit(e) {
     const m = e.currentTarget.dataset.m;
     if (m.is_virtual) { wx.showToast({ title: TERMS.card.matVirtual, icon: 'none' }); return; } // 虚拟只读

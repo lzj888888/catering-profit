@@ -129,6 +129,8 @@ const CASES = [
   //   输出隔离 M1 月度字段）是「非恒真」凭据；而 21 条删掉一批仍 > 0
   //   ⇒ A0-② 的「通过数为 0」下界抓不到，只有 A2「声明 ≡ 实跑」能发现。
   { key: 'selftest_m3_takeaway', rel: 'tools/selftest_m3_takeaway.js' }, // 21 条（M3.17：T-a~T-g）
+  { key: 'selftest_m3_impact', rel: 'tools/selftest_m3_impact.js' }, // 17 条（M3.19：C-a/C-a2/C-b/dry-run）
+  { key: 'selftest_m3_recon', rel: 'tools/selftest_m3_recon.js' }, // 16 条（M3.21：D 锚点 + 闸门）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

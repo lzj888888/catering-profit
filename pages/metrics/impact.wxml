@@ -1,0 +1,23 @@
+<view class="container safe-bottom" wx:if="{{!loading}}">
+  <view class="hint" wx:if="{{material_name}}">{{material_name}} · {{t.impactTitle}}</view>
+
+  <view class="empty" wx:if="{{affected.length === 0}}">{{t.impactEmpty}}</view>
+
+  <view class="card2" wx:for="{{affected}}" wx:key="card_code">
+    <view class="card-title">{{item.name}}</view>
+    <view class="cell">
+      <text class="lbl">{{t.impactPrice}}</text>
+      <text class="val">{{t.cur}}{{item.price}}</text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.impactCostChange}}</text>
+      <text class="val">{{t.cur}}{{item.old_cost}} → {{t.cur}}{{item.new_cost}}</text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.impactMargin}}</text>
+      <text class="val">{{item.old_margin}}% → {{item.new_margin}}%（{{item.margin_delta}}pp）</text>
+    </view>
+    <view class="warn" wx:if="{{item.below_band}}">{{item.band_hint}}</view>
+  </view>
+</view>
+<view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

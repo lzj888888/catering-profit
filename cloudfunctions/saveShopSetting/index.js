@@ -104,6 +104,21 @@ exports.main = async (event) => {
     }
   }
 
+  // ===== 5.5. M3.21（批次 E）：本月在售菜品数（switch_key='m3_menu_dish_count'，value=数字字符串）=====
+  //   对账覆盖率分母；零新建集合/索引，沿用 shop_switch + idx_switch_shop_key。
+  if (v.menu_dish_count !== undefined) {
+    const key = SWITCH_KEYS.menuDishCount;
+    const mdRes = await da.list('shop_switch', { shop_id: shopId, switch_key: key });
+    const mdRow = (mdRes && mdRes.data && mdRes.data[0]) || null;
+    if (v.menu_dish_count === null) {
+      if (mdRow) await db.collection('shop_switch').doc(mdRow._id || mdRow.id).remove();
+    } else if (mdRow) {
+      await db.collection('shop_switch').doc(mdRow._id || mdRow.id).update({ data: { value: v.menu_dish_count, updated_at: now } });
+    } else {
+      await da.insert('shop_switch', { shop_id: shopId, switch_key: key, value: v.menu_dish_count });
+    }
+  }
+
   return ok({
     shop_id: shopId,
     name: v.name || (shopDoc ? shopDoc.name : ''),
@@ -117,6 +132,8 @@ exports.main = async (event) => {
     pinned_materials: v.pinned_materials !== undefined ? v.pinned_materials : ((shopDoc && shopDoc.pinned_materials) || []),
     // M3.17：回读外卖平台参数（传了返回传的；不传返回 undefined 表示不动）
     takeaway_params: v.takeaway_params !== undefined ? v.takeaway_params : undefined,
+    // M3.21：回读在售菜品数
+    menu_dish_count: v.menu_dish_count !== undefined ? v.menu_dish_count : undefined,
     client_request_id: v.input.client_request_id || '',
   });
 };

@@ -1,0 +1,30 @@
+【批次 E 续做 · 第 4 轮】本轮只做「补 version 页趋势渲染」+ 回执，做完即停。
+
+## 断点现状（我方实扫，勿推翻、勿重做）
+- `pages/card/version.js` 已算好 `chartRows`（每项 `{version, costText, heightPct}`）与 `showChart`（`chart.length >= 2`）并入 data（第 44–45 行声明），**但 `pages/card/version.wxml` 没有消费它们** ⇒ 成本趋势区根本没渲染（A3 只做了一半，这就是本轮的活）。
+- 以下均已落盘，**不要重做**：`pages/recon/` 四件套、`pages/metrics/impact/` 四件套、`app.json`（已 21 页含两新页）、`utils/reconDerive.js`、`tools/selftest_m3_impact.js`、`tools/selftest_m3_recon.js`。
+- 两个自测我方已实跑通过：`selftest_m3_impact` **12 通过 / 0 失败**、`selftest_m3_recon` **16 通过 / 0 失败**。你不必再改它们。
+
+## 任务 A（唯一编码任务）：`pages/card/version.wxml` 的成本趋势区
+1. `miniprogram/i18n/terms.js`：在 `impactTrendSingle`（约第 878 行）这一族里**新增一个标题键** `impactTrend: '成本趋势',`；然后执行 `cp -f miniprogram/i18n/terms.js specs/dev-specs/i18n/terms.js`，两文件 md5 必须一致（`md5sum` 自证）。
+2. `pages/card/version.wxml`：在 `<view class="hint">{{t.versionReadonly}}</view>`（第 3 行）之后、`wx:for="{{list}}"`（第 4 行）之前，插入趋势区，要求：
+   - 外层 `wx:if="{{showChart}}"`：区块标题用 `{{t.impactTrend}}`；一排柱条 `wx:for="{{chartRows}}" wx:key="version"`，每根柱 `style="height:{{item.heightPct}}%;"`，柱下标注 `v{{item.version}}`，柱上/旁标 `{{item.costText}}`。
+   - `wx:else`：显示 `{{t.impactTrendSingle}}`（即「只有 1 个版本，暂无成本趋势」）。
+   - 🔴 页面零硬编码中文，全部走 `t.*`。
+3. `pages/card/version.wxss`：新增上述区块样式。柱条容器给固定高度（如 `height: 240rpx`）、柱条底部对齐（`display:flex; align-items:flex-end;`）。
+   - 🔴 AD 门禁铁律：**新增字号一律 ≥28rpx**；**用到的 `min-height` 一律 ≥88rpx**（`tools/selftest_ad_gates.js` 扫 `pages/**/*.wxss` + `app.wxss` 的全部 `font-size` 与 `min-height`，20/40rpx 占位豁免）。
+4. 🚫 不要改 `pages/card/version.js` 的取数逻辑（`chartRows`/`showChart` 字段名已定，改了会与 data 声明不一致）。
+
+## 任务 B：回执（做完 A 后只回这一段，不要顺手做别的）
+```
+【批次 E 回执 · 第4轮】
+- 改动文件：<逐个列全路径>
+- terms 双副本 md5：<两个值>，一致 Y/N
+- AD 门禁自检：本轮新增/改动 font-size = <逐个值>；min-height = <逐个值>（须全部 ≥28 / ≥88）
+- 自测：node tools/selftest_m3_impact.js → ?/? ；node tools/selftest_m3_recon.js → ?/?
+- 新增 N 个套件待门禁方挂载：m3-impact、m3-recon（verify_all.js 归门禁方，你不要动）
+- 批次整体未完成 / 存疑项：<如实写，没有就写"无">
+```
+
+## 红线（复述，务必遵守）
+🚫 不改 `verify_all.js`；🚫 不改 `specs/` 下除 `specs/dev-specs/i18n/terms.js` 双副本以外任何文件；🚫 引擎五函数 `netUnitCostWan` / `purchasePerGramYuan` / `lineNetCostYuan` / `calcCostCard` / `calcReversePrice` 只调用不修改（`tools/check_m3_engine_parity.js` R131 对拍三副本，改坏必红）。

@@ -69,6 +69,8 @@ Page({
       comboInsightLoseWarn: TERMS.card.comboInsightLoseWarn,
       // M3.17（批次 D）外卖单均入口
       takeawayTitle: TERMS.ledger.takeaway.title,
+      // M3.21（批次 E）：对账页入口文案（复用既有键，零新增文案）
+      reconTitle: TERMS.card.reconTitle,
     },
     all: [],           // 全量列表（前端过滤）
     list: [],
@@ -230,6 +232,10 @@ Page({
   goMaterial() { wx.navigateTo({ url: '/pages/material/index' }); },
   // M3.17（批次 D）：外卖单均试算页入口（复用现有导航，不新造体系）
   goTakeaway() { wx.navigateTo({ url: '/pages/takeaway/index' }); },
+  // M3.21（批次 E）：M1↔M3 对账页入口。
+  // 🔴 R181j 门禁方补：投喂包任务 B 漏写入口要求 ⇒ 该页建好后是**孤岛**（全仓无任何跳转到它），
+  //    用户根本到不了。此处补在既有的「工具条」里，与外卖单均/原料档案并列（不新造体系）。
+  goRecon() { wx.navigateTo({ url: '/pages/recon/index' }); },
 
   // 新增：先配额预检（免费张数由后端 checkQuota 出参决定；进列表不弹）
   async goAdd() {

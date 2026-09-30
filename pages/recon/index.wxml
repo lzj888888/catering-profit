@@ -1,0 +1,56 @@
+<view class="container safe-bottom" wx:if="{{!loading}}">
+  <!-- 月份 + 在售菜品数 + 含套餐开关 -->
+  <view class="field">
+    <text class="lbl">{{t.reconMonth}}</text>
+    <picker mode="selector" range="{{months}}" value="{{monthIndex}}" bindchange="onMonthChange">
+      <view class="picker">{{months[monthIndex] || curMonth}}</view>
+    </picker>
+  </view>
+  <view class="field">
+    <text class="lbl">{{t.reconCoverage}}</text>
+    <input class="val-input" type="number" value="{{menuDishCount}}" placeholder="{{t.reconCoveragePh}}" bindinput="onDishCount" adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+  <!-- 🔴 R181j 门禁方修：保存按钮**不得与 `val-input` 同父** —— 同层 = 同行 = 金额框被挤窄
+       （`tools/check_amount_input_row.js` A1 硬判据：全仓「val-input 与 button 同父」块数必须 = 0）。
+       原写法把 button 放在上面那个 .field 里 ⇒ A1 实测 1 处、门禁转红。此处独立成层。 -->
+  <view class="field-save">
+    <button class="btn-small ghost" bindtap="onSaveCount">{{t.reconSave}}</button>
+  </view>
+  <view class="field">
+    <text class="lbl">{{t.reconIncludeCombo}}</text>
+    <switch checked="{{includeCombo}}" bindchange="onIncludeCombo" color="#1e3a5f" />
+  </view>
+
+  <!-- 结果区（抑制时只显示两个数 + 原因，不显示差值/金额/归因） -->
+  <view class="card2" wx:if="{{result}}">
+    <view class="cell">
+      <text class="lbl">{{t.reconMenuMargin}}</text>
+      <text class="val">{{result.menuPctText}}</text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.reconActualMargin}}</text>
+      <text class="val">{{result.actualPctText}}</text>
+    </view>
+    <block wx:if="{{!result.suppressed}}">
+      <view class="cell">
+        <text class="lbl">{{t.reconDiffPp}}</text>
+        <text class="val">{{result.diffPpText}}</text>
+      </view>
+      <view class="cell">
+        <text class="lbl">{{t.reconDiffFen}}</text>
+        <text class="val">{{t.cur}}{{result.diffFenText}}</text>
+      </view>
+    </block>
+    <view class="warn" wx:if="{{result.suppressed}}">{{result.suppressText}}</view>
+  </view>
+
+  <!-- 归因清单（只列方向，不下结论；抑制时不给） -->
+  <view class="card2" wx:if="{{result && !result.suppressed}}">
+    <view class="attr-title">{{t.reconAttributionTitle}}</view>
+    <view class="muted">{{t.reconAttr1}}</view>
+    <view class="muted">{{t.reconAttr2}}</view>
+    <view class="muted">{{t.reconAttr3}}</view>
+    <view class="muted">{{t.reconAttr4}}</view>
+  </view>
+</view>
+<view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

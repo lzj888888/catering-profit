@@ -1,0 +1,71 @@
+{
+  "results": [
+    {
+      "id": "M1",
+      "rc": 1,
+      "valid_red": true,
+      "hit": "❌ price_fen 全 0 ⇒ pct === null 且 reason === no_price（不许除零/不许返回 0）  ({\"pct\":0,\"reason\":\"\"})",
+      "crash": false
+    },
+    {
+      "id": "M2",
+      "rc": 1,
+      "valid_red": true,
+      "hit": "❌ 套餐默认排除：加套餐后默认口径与不含套餐一致（64.84）  (got 60.34)",
+      "crash": false
+    },
+    {
+      "id": "M3",
+      "rc": 1,
+      "valid_red": true,
+      "hit": "❌ D 覆盖率 3/12 = 25% < 60% ⇒ 抑制生效  ({\"suppressed\":false,\"menuPct\":64.84,\"actualPct\":55,\"diffPp\":-9.84,\"diffFen\":-9840,\"reason\":\"\"})",
+      "crash": false
+    },
+    {
+      "id": "M4",
+      "rc": 1,
+      "valid_red": true,
+      "hit": "❌ 细项名取自单源（GOODS_FIELD === TERMS.ledger.takeawayMode.goodsField）  (商品总价X)",
+      "crash": false
+    },
+    {
+      "id": "M5",
+      "rc": 1,
+      "valid_red": true,
+      "hit": "❌ 菜品口径收入 = dine_in 70000 + 外卖商品总价 28000 = 98000  (got 102000)",
+      "crash": false
+    },
+    {
+      "id": "M6",
+      "rc": 1,
+      "valid_red": true,
+      "hit": "❌ C-b[dry-run] below_band 形如 `!noPrice && …`（不许裸比较）",
+      "crash": false
+    },
+    {
+      "id": "M7",
+      "rc": 1,
+      "valid_red": true,
+      "hit": "❌ C-b[dry-run] new_gross_margin_pct 形如 `noPrice ? null : …`（与 reconDerive 的 no_price 同口径）",
+      "crash": false
+    },
+    {
+      "id": "M8",
+      "rc": 1,
+      "valid_red": true,
+      "hit": "❌ dry_run 分支零写库（无 da.insert / doc.update / doc.remove / collection.add）  (命中写方法：da.insert)",
+      "crash": false
+    }
+  ],
+  "n_valid": 8,
+  "total": 8,
+  "base_md5": {
+    "C:/Users/lzj/WorkBuddy/Claw/catering-profit/utils/reconDerive.js": "e5b14740be3de61ddddf31bfe014a73f",
+    "C:/Users/lzj/WorkBuddy/Claw/catering-profit/cloudfunctions/syncCostCard/index.js": "a4816c72e5826604c5ec4a51cb08a4f0"
+  },
+  "final_md5": {
+    "C:/Users/lzj/WorkBuddy/Claw/catering-profit/utils/reconDerive.js": "e5b14740be3de61ddddf31bfe014a73f",
+    "C:/Users/lzj/WorkBuddy/Claw/catering-profit/cloudfunctions/syncCostCard/index.js": "a4816c72e5826604c5ec4a51cb08a4f0"
+  },
+  "restored": true
+}

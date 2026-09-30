@@ -37,6 +37,7 @@
     <view class="row-ops">
       <!-- round156：置顶开关（店铺级偏好，存 shop 文档）。catchtap = 不冒泡到卡片的"进入编辑" -->
       <button class="btn-small ghost" data-id="{{item.id}}" catchtap="onPin">{{item.pinned ? t.pinOff : t.pinOn}}</button>
+      <button class="btn-small ghost" wx:if="{{!item.is_virtual}}" data-m="{{item}}" catchtap="goImpact">{{t.impactTitle}}</button>
       <button class="btn-small ghost" wx:if="{{!item.is_virtual}}" data-m="{{item}}" catchtap="goEdit">{{t.matEdit}}</button>
       <button class="btn-small" style="background:none;color:#e74c3c;min-height:88rpx;" wx:if="{{!item.is_virtual}}" data-m="{{item}}" catchtap="onDelete">{{t.matDelete}}</button>
     </view>

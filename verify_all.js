@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：118 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：120 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -250,6 +250,15 @@
 //         派生规则 = 去掉 m3_ 前缀（m3_combo → combo），**刻意不写手写映射表**（表本身会与两处清单漂移）。
 //         ⚠️ 联动：tools/check_modal_button_len.js 的 ALIASES 必须同步，否则新类型按钮文案超长会漏判；
 //         其 A-③/A-④ 已改为**从 ALIASES 派生**断言（写死候选数会逼后人「改断言迎合代码」）。
+//       + M3.19 原料变动影响面守卫（tools/selftest_m3_impact.js，R181j：**只读 dry-run 预览**）——
+//         原料改价 ⇒ 用同一份 rebuildSnapshotLines + calcCostCard 复算「用到该原料的卡」的新成本/新毛利率，
+//         并标出是否跌破该业态参考带下限（下限取自 common/indicatorRef.js::BANDS）。
+//         判据 = C-a/C-a2 两组锚点（鸡胸肉 15→20/25 元每斤 ⇒ 976…1208…1444 分）+ dry_run 分支**零写库**（静态扫，
+//         排除内存 Map.set）+ C-b **未挂牌价必须回 null 且抑制 below_band**（引擎在 priceFen=0 时返 0，裸比较必误标）。
+//       + M3.21 M1↔M3 率对率对账守卫（tools/selftest_m3_recon.js，R181j）——
+//         新单源 utils/reconDerive.js（纯计算，不落库、不进云函数、无 specs 副本）：菜单毛利率 / 实际菜品毛利率 / 对账。
+//         判据 = D 锚点（菜单 64.84% / 实际 54.08% / 差 −9.84pp）+ **覆盖率闸门 fail-closed**（<60% 或缺分母 ⇒ 抑制差值）
+//         + 套餐默认排除 + 细项名取 TERMS 单源（防改名静默失效）+ 除零/空账回 null（不许返回 0）。
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -602,6 +611,10 @@ const SUITES = [
   // M3.17 + M3.32（批次 D · 外卖单均 + 补贴拆行/固定佣金）：T-a~T-g 七组锚点。
   //   佣金基数恒为商品总价（不含打包费）；双口径不混；补贴承担方未选不计入（fail-closed）；输出不含 M1 字段。
   ['m3-takeaway', 'tools/selftest_m3_takeaway.js'],
+  // M3.19（批次 E · 原料变动与影响面）：C-a/C-a2 两组锚点 + dry_run 零写库 + 未挂牌价抑制。
+  ['m3-impact', 'tools/selftest_m3_impact.js'],
+  // M3.21（批次 E · M1↔M3 率对率对账）：D 锚点 + 覆盖率闸门 + 套餐排除 + 细项名单源。
+  ['m3-recon', 'tools/selftest_m3_recon.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

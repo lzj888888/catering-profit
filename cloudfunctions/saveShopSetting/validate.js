@@ -73,6 +73,15 @@ function validateInput(event) {
     else return err('takeaway_params 必须是 JSON 字符串');
   }
 
+  // M3.21（批次 E）：本月在售菜品数（对账覆盖率分母，可选）。
+  //   三态：undefined = 不传不动库；null = 清掉该 switch 行；非负整数 = 存 shop_switch.value（数字字符串）。
+  let menuDishCount;
+  if (src.menu_dish_count !== undefined) {
+    if (src.menu_dish_count === null) menuDishCount = null;
+    else if (Number.isInteger(src.menu_dish_count) && src.menu_dish_count >= 0) menuDishCount = String(src.menu_dish_count);
+    else return err('menu_dish_count 必须是非负整数');
+  }
+
   return {
     error: null,
     shop_id: src.shop_id,
@@ -80,6 +89,7 @@ function validateInput(event) {
     biz_type: bizType, city_tier: cityTier,
     pinned_cards: pc.value, pinned_materials: pm.value,
     takeaway_params: takeawayParams,
+    menu_dish_count: menuDishCount,
     input: { client_request_id: src.client_request_id || '' },
   };
 }

@@ -1,0 +1,112 @@
+【批次 E · M3.19 原料变动与影响面 + M3.21 M1↔M3 率对率对账】
+仓库 C:\Users\lzj\WorkBuddy\Claw\catering-profit，分支 dev。
+开工前先 `git log --oneline -3`（HEAD 应为 27ae4b4）与 `git status`（工作区应干净）；不一致就在回执里写明，不要硬做。
+
+一、依据（开工前必读，别只看本包）
+· specs/dev-specs/core/开发规范v1.1_ModuleM3增量_套餐外卖多规格与留存对照.md  §M3.19（约 293 行起）、§M3.21（约 334 行起）
+· specs/dev-specs/core/开发规范v1.2_ModuleM3增量_三块测算口径统一与外部补丁.md  §M3.38（分期表：M3.19 属批次 C，M3.21 属批次 E）、§M3.39（红线 14~17）、§M3.37
+· 已落地同类参考：M3.17/M3.32 的「页面只录入，纯计算下沉 utils 单源」分层（utils/takeawayDerive.js + pages/takeaway/index.js）
+
+二、角色边界（越界直接打回）
+可改：`pages/`、`utils/`、`cloudfunctions/`、`app.json`、`miniprogram/i18n/terms.js`。
+可新建：`tools/selftest_m3_impact.js`、`tools/selftest_m3_recon.js`（形态照 tools/selftest_m3_takeaway.js：`check(name,cond,detail)`、结尾打印 通过/失败 计数、非 0 退出）。
+🚫 **不许改**：`verify_all.js`（挂套件由门禁方做 —— 你只在回执里写「新增 N 个套件待挂」）、`specs/` 下除术语双副本 `specs/dev-specs/i18n/terms.js` 以外的一切文件、`cloudfunctions/common/**` 以外的公共派生副本由 tools/sync_common.js 生成（若动了 common/ 必须在回执里声明）。
+🚫 **不许改 `cloudfunctions/getLedger/**`**（M1 函数，本轮只读调用）。
+🔴 **引擎源码一字不改**：`cloudfunctions/calcBom/service.js`、`cloudfunctions/saveCostCard/service.js`、`cloudfunctions/syncCostCard/service.js` 里的 `netUnitCostWan` / `purchasePerGramYuan` / `lineNetCostYuan` / `calcCostCard` / `calcReversePrice` / `rebuildSnapshotLines` 全部**只调用、不修改**（tools/check_m3_engine_parity.js R131 会对拍三副本，改坏必红）。
+🔴 **不新建集合、不新增索引、不动 specs/dev-specs/core/15_集合权限矩阵.md**。
+
+三、任务 A｜M3.19 原料变动与影响面（只提示，绝不自动改卡）
+
+A1. 复用既有云函数 `syncCostCard` 新增**只读 dry-run 分支**（不新建云函数目录、不动引擎函数）
+- 现状（已实扫，可直接核）：`cloudfunctions/syncCostCard/index.js:31-39` 取 `event.shop_id`/`v.card_code`/`v.input.client_request_id`；行 51-56 找最新版本；行 111-142 `rebuildSnapshotLines(...)` 重建档案行；行 143-159 `cardParamFromDoc` + `calcCostCard`；行 161-163 算 nextVersion；行 166-191 `da.insert('shop_cost_card', cardDoc)`；行 194-222 insert 明细行；行 240-253 出参。
+- 新增入参（与 `card_code` 并列，**最多只许加这两个**）：`event.material_id`（字符串）、`event.dry_run`（布尔）。
+- 语义：当 `dry_run === true` 时走**影响面预览**路径，且 `card_code` 不再必填。
+  · 读原料档案与全部卡：沿用该函数已有的取数方式（`da.list('shop_cost_card', { shop_id })` 走既有索引 idx_card_shop；原料走该函数已有的 `getMaterial` 等价读法）。
+  · 对**每一张卡**：用**同一份** `rebuildSnapshotLines(...)` 按原料最新价重建行 → 若重建后的任一行 `material_id === event.material_id` ⇒ 该卡受影响 → 用**同一份** `cardParamFromDoc` + `calcCostCard` 算出新成本/新毛利率；旧值取该卡落库的 `total_cost` 与（若库内无毛利率则用同一份 calcCostCard 对旧行算一次）。
+  · 业态参考带下限：用 `cloudfunctions/common/indicatorRef.js`（该函数目录已有派生副本 `cx_indicatorRef.js`）取该店业态的 `grossMargin` 区间下限；`below_band = new_gross_margin_pct < band_floor_pct`。业态取 `shop.biz_type`，未设置按该文件既有的回落规则（`BANDS[bizKey] || BANDS.dining`）。
+- 出参（dry_run 路径）：
+  `{ shop_id, material_id, dry_run: true, scanned_cards, affected: [{ card_code, name, price_fen, old_total_cost_fen, new_total_cost_fen, old_gross_margin_pct, new_gross_margin_pct, band_floor_pct, below_band }], client_request_id }`
+- 🔴🔴 **dry_run 路径必须零写库**：不得 `insert` / `update` / `remove` 任何集合；不得创建新版本。回执里贴出该分支的代码，并说明它没有调用任何写方法。
+- 🔴 非 dry_run 路径（既有「同步至最新价」单张/批量）**行为逐字不变**（`pages/card/index.js:323`、`:352` 两处调用照旧）。
+
+A2. 新页面 `pages/metrics/impact`（名称固定，别改）——只展示、不落库
+- 入口：`pages/material/index.*` 的原料行加一个「看影响面」按钮（不新造组件，照该页既有按钮风格）。
+- 进入后：`api.call('syncCostCard', { material_id, dry_run: true, client_request_id: 'mimp_' + Date.now() })`。
+- 展示：受影响卡清单（卡名 / 现售价 / 原成本 → 新成本 / 毛利率 原→新 / 涨跌 pp）；`below_band === true` 的行加**红标**并写「已跌破本业态参考带下限（X%）」；无受影响卡时给空态文案。
+- 🔴 页面**不得**出现「一键改卡」「应用新价」之类按钮 —— 改卡只能由用户在列表页手动走既有「同步至最新价」。
+- 登记进 `app.json` 的 pages 数组。
+
+A3. 成本变动趋势折线（纯前端，零新云函数）
+- 现状：`pages/card/version.js:55` 调 `getCardVersions`，`version.wxml` 只有列表（`wx:for="{{list}}"`），**没有折线**。
+- 在 `version.wxml` 列表上方加一条横向折线/点阵，X = 版本（序号或 created_at），Y = `total_cost_fen`（元）；点/柱上标成本值。数据**全部来自已有 list**，前端算，不新增调用、不落库。
+- 若列表为空或只有 1 个版本 ⇒ 不画图、给一句文案（不要画一个恒等的点还自称趋势）。
+- 🔴 样式须过 AD 门禁：字号 ≥28rpx、`min-height` ≥88rpx（仅 20/40rpx 占位可豁免）；`tools/selftest_ad_gates.js` 会扫 `pages/**/*.wxss` 与 `app.wxss` 的全部 `font-size` 与 `min-height`。
+
+四、任务 B｜M3.21 M1↔M3 率对率对账（只读对照，绝不写 M1）
+
+B1. 新建 `utils/reconDerive.js`（纯计算单源，**不落库、不进云函数、不需要 specs 派生副本**）
+导出：`calcMenuMargin(cards, opts)` / `calcActualDishMargin(ledger)` / `reconcile(input)`。
+- `calcMenuMargin(cards, { includeCombo = false })`
+  · 权重 = 售价（`price_fen`）；`1 − Σ(card.total_cost_fen) ÷ Σ(card.price_fen)`，返回百分数
+  · 🔴 **默认排除套餐**（`card_type === 3`），避免同一道菜被计两次；`includeCombo` 为 true 时含
+  · `Σ price_fen === 0` ⇒ 返回 `{ pct: null, reason: 'no_price' }`（**不许除零、不许返回 0**）
+- `calcActualDishMargin(ledger)`
+  · 菜品口径收入（分）= Σ(`income_items[].category === 'dine_in'` 的 `amount_fen`) ＋ Σ(外卖行 `category === 'takeaway'` 的 `sub_items` 中 `sub_item === 商品总价` 的 `amount_fen`)
+  · 🔴 细项名**不许在 utils 里写死字面量**：从 `require('../miniprogram/i18n/terms.js').TERMS.ledger.takeawayMode.goodsField` 取（当前值 `'商品总价'`），并在 selftest 里断言它取自该单源
+  · 食材成本（分）用 `ledger` 里既有的食材成本字段（**只读**，字段名以 getLedger 出参为准，实扫后写死在注释里）
+  · 返回 `{ income_fen, food_cost_fen, pct }`
+  · 🔴 **外卖走「快速录入」（该月外卖行无 `sub_items`）时取不到商品总价 ⇒ 返回 `{ pct: null, reason: 'need_detail_income' }`**，不许用整类外卖额硬凑
+- `reconcile({ menuPct, actualPct, coverage })`
+  · `diffPp = actualPct − menuPct`（保留 1 位小数）；`diffFen = Math.round(diffPp / 100 * income_fen)`
+  · 🔴 **覆盖率闸门（fail-closed）**：`coverage < 0.6` 或 `coverage` 为 null（未填在售菜品数）或任一 `pct === null` ⇒ `suppressed: true`，**只回两个 pct，`diffPp`/`diffFen`/归因一律置 null**（样本偏差会让差值失真）
+  · 覆盖率 = 已建卡菜品数 ÷ 在售菜品数
+
+B2. 覆盖率分母的落法（**本批裁定，理由随包给出**）
+规范 v1.1 §M3.21 定义了「覆盖率 = 已建卡菜品数 ÷ 菜单菜品数」，但**实扫确认：全仓没有任何「菜单」集合或字段，M1 也没有菜品级销量** ⇒ 分母无来源。
+本批裁定：**由用户在页面上填一个「本月在售菜品数」**，存进**既有** `shop_switch`（`switch_key = 'm3_menu_dish_count'`，**零新建集合、零新增索引**），保存路径走**既有** `api.call('saveShopSetting', {...})`。未填 ⇒ 覆盖率视为 null ⇒ 按上面 fail-closed 抑制。
+（理由：① 零新建集合，符合 v1.1「零新建集合」约束；② 分母由老板自己给，不假装我们知道他的菜单；③ 不填就抑制，宁可不说也不说错。）
+
+B3. 新页面 `pages/recon/index`（名称固定）
+- 一个月份选择（复用 M1 已有的月份列表取法）+「在售菜品数」输入 + 保存按钮（走 saveShopSetting）。
+- 数据：`api.call('getLedger', { month })` 拿 M1 实际 + `api.call('getCostCard', {})` 拿全部卡 → 喂 `utils/reconDerive.js`。
+- 展示：M3 标准菜单毛利率 / M1 实际菜品毛利率 / 差值 pp / 折算金额（元）；抑制时只显示两个数 + 一句原因文案（覆盖率不足 / 请用外卖分项录入 / 尚未填在售菜品数，三种原因分别给文案）。
+- 归因清单（**只列方向，不下结论**）：① 有菜没建卡（覆盖率缺口）② 卡内价 ≠ 原料现价（多少张卡用旧价）③ 出品超耗 / 损耗 / 报废 / 赠送 ④ 口径差异（外卖到手 vs 总额法）。文案里**不许**出现「你被偷了」「有人在贪」这类结论句。
+- `includeCombo` 切换开关（默认关）。
+- 登记进 `app.json` 的 pages 数组。
+
+五、复算锚点（**必须 require 真实单源实算，不许把期望值写死在断言里再自证**）
+把下面两组写进对应的 selftest 文件：
+M3.19（`tools/selftest_m3_impact.js`）——规范 v1.1 §M3.19「复算锚点（已实测）」：
+· C-a：鸡胸肉 15 → 20 元/斤 ⇒ 宫保鸡丁成本 **975 → 1208 分**；毛利率 **65.18% → 56.86%**（掉 8.32pp，**未破** 55% 红线）
+· C-a2：鸡胸肉 15 → 25 元/斤 ⇒ 成本 **1444 分**；毛利率 **48.43%** ⇒ **跌破** 55% ⇒ 该行必须 `below_band === true`
+· 两次都**不自动改卡**：dry_run 跑完后 `shop_cost_card` 的版本数与 total_cost 必须一字不变（在自测里断言这点，用「跑前跑后读同一份数据」的方式）
+M3.21（`tools/selftest_m3_recon.js`）——规范 v1.1 §M3.21「复算锚点（已实测）」：
+· D 标准菜单毛利率：宫保 2800/975 + 糖醋里脊 3200/1120 + 米饭 300/120 ⇒ (6300−2215)/6300 = **64.84%**
+· D 差值：M1 实际 55% ⇒ **9.84pp** ⇒ 折算 **9840 元**（菜品口径收入 10 万）
+· D 抑制：覆盖率 3/12 = 25% ⇒ 25% < 60% ⇒ **抑制生效**，只回两个数、diffPp/diffFen 为 null
+· 细项名单源：断言 `'商品总价'` 是从 `TERMS.ledger.takeawayMode.goodsField` 取的（防改名静默失效）
+· 套餐默认排除：同一组卡加一张 `card_type === 3` 的套餐，默认口径结果**不变**，`includeCombo: true` 时**变**（正负互证）
+· 除零与空账：`price_fen` 全 0 ⇒ `pct === null` 且 `reason === 'no_price'`；空账 ⇒ `pct === null`，**不许是 0**
+
+六、红线（违反即退回）
+· 引擎函数一字不改（见二）；不新建集合、不新增索引、不改权限矩阵
+· 🔴 **M3 绝不写 M1**：本批新增/改动的代码**不得**调用 `saveLedger` / `archiveMonth` / `saveAsset` 等 M1 写路径；对 `getLedger` 只读
+· 🔴 **dry_run 绝不写库**（写一次 = 用户没点就改了卡 = 静默错）
+· 🔴 `syncCostCard` 非 dry_run 路径行为不变（回归：`pages/card/index.js` 的两处调用照旧可用）
+· 🔴 **细项名不写字面量**（从 terms 单源取）；**套餐默认排除**（同一道菜不许计两次）
+· 🔴 **无分母不硬凑**：覆盖率缺失 ⇒ 抑制；外卖快速录入 ⇒ 抑制；缺项**不出键 / 不出 0**
+· 金额一律**分**（展示层才转元）；比例一律**百分数**（65 表示 65%），展示保留 1 位小数
+· 列表查询走 `common/dataAdapter.js::LIST_LIMIT` 上限；「要全部行」用 `da.listAll()`
+· 新可见文案 = **三处同步**（`miniprogram/i18n/terms.js` + 页面 `.js` 的 `t:{...}` 视图映射 + 回执里列明新增键名）；新增键**挂 `card` 命名空间**、用 `impact` / `recon` 前缀，**不新建顶层命名空间**
+· 新页面 CSS 必须过 AD 门禁（字号 ≥28rpx、min-height ≥88rpx）
+· `wx.showModal` 按钮文案 ≤4 字符（超了整窗静默失败）
+
+七、门禁与验收
+· **分块跑，不要一次性全量**（工具 300s 上限）。至少跑：两个新 selftest + `tools/selftest_ad_gates.js` + `tools/check_m3_engine_parity.js` + `tools/check_page_terms.js` + `tools/check_list_query_limit.js` + `tools/check_paywall_coverage.js`
+· 新页面会触发 `check_page_manifest` 判红（提审材料 §4 未登记）—— **这是预期的、归门禁方补**，不要为了变绿去改 specs/
+· **跑不完的如实写「未跑」，不要写成「通过」**；数字必须是你真跑出来的
+
+八、收尾
+· 提交**带 pathspec**（只 add 你实际改过的文件），不要 `git add .`，**不要推远端**
+· commit message 写清：改了什么 + 验收判据 + 哪些没跑到
+· 回执必须列：改动文件清单 + 增删行数 + 两个 selftest 的 通过/失败 数 + 各套件结果 + **未跑 / 存疑项** + **新增 terms 键名** + **新增套件名（待门禁方挂）** + 一句「本轮是否触碰任何 M1 写路径」（要答「否」）

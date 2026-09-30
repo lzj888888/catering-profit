@@ -35,9 +35,15 @@ Page({
       snapshotPrice: TERMS.card.snapshotPrice,
       snapshotConvert: TERMS.card.snapshotConvert,
       snapshotYield: TERMS.card.snapshotYield,
+      // M3.19（批次 E）成本趋势折线
+      impactTrend: TERMS.card.impactTrend,
+      impactTrendSingle: TERMS.card.impactTrendSingle,
     },
     card_code: '',
     list: [],
+    // M3.19（A3）：成本趋势（数据全来自 list，前端算，不新增调用、不落库）
+    chartRows: [],
+    showChart: false,
     loading: true,
   },
 
@@ -87,6 +93,16 @@ Page({
         })),
       }));
       this.setData({ list, loading: false });
+      // M3.19（A3）：成本趋势（数据全来自 list，前端算，不新增调用、不落库）
+      const raw = d.list || [];
+      const chart = raw.slice().sort((a, b) => (a.version || 0) - (b.version || 0));
+      const maxCost = Math.max.apply(null, chart.map((v) => Number(v.total_cost_fen) || 0).concat([1]));
+      const chartRows = chart.map((v) => ({
+        version: v.version,
+        costText: api.fenToYuan(v.total_cost_fen || 0, 2),
+        heightPct: Math.round(((Number(v.total_cost_fen) || 0) / maxCost) * 100),
+      }));
+      this.setData({ chartRows, showChart: chart.length >= 2 });
     } catch (e) {
       this.setData({ loading: false });
       api.toastError(e);

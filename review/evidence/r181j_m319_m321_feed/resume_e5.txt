@@ -1,0 +1,32 @@
+【批次 E 收尾轮】只做两件事：① 对照投喂包清单，**只补真缺的**；② 出回执。做完即停，不要新增包里没要求的功能、不要重构已完成件。
+
+## 断点现状（我方实扫，勿推翻）
+以下均已落位，**不要重做**：
+- `utils/reconDerive.js`、`pages/recon/{index.js,index.json,index.wxml,index.wxss}`、`pages/metrics/impact/{impact.js,impact.json,impact.wxml,impact.wxss}`
+- `app.json` 已 21 页（含 `pages/metrics/impact`、`pages/recon/index`）
+- `cloudfunctions/syncCostCard/` 的只读 dry-run 分支、`getShopContext` + `saveShopSetting` 的 `menu_dish_count` 存取
+- `tools/selftest_m3_impact.js`、`tools/selftest_m3_recon.js`
+- `pages/card/version.wxml` 折线区（第 5–17 行）+ `version.wxss`；terms 新增 `impactTrend`，双副本 **md5 一致**（`f2665319eb0fdf03ef415c85cdad8e19`）
+
+我方**已实跑**（第一手，不是你的转述）：`selftest_m3_impact` **12/0** · `selftest_m3_recon` **16/0** · `selftest_ad_gates` **24/0** · `check_page_terms` **8/0**，全部 RC=0。
+
+## 任务 A：对照清单自查，只补真缺项
+逐条对照 `feed_e.txt` 任务 A（M3.19）/ 任务 B（M3.21）的要求，指出并补齐**确实还缺**的部分。
+如果你认为已全部完成，就**明确写一句"清单已全部落地"**并列出你据以判断的证据（文件 + 关键行）。
+🔴 不许顺手加包里没要求的功能；🔴 不许改已完成件的既有行为。
+
+## 任务 B：回执（本轮最要紧的产物，请严格按此格式，逐项如实填）
+```
+【批次 E 回执】
+- 改动文件清单：<全路径，逐个列>
+- 云函数入参/出参变化：<逐个列；无变化写"无">
+- terms 双副本 md5：<两个值>，一致 Y/N
+- AD 门禁自检：本轮新增/改动的 font-size = <逐个值>；min-height = <逐个值>
+- 自测结果：selftest_m3_impact ?/? ；selftest_m3_recon ?/? ；selftest_ad_gates ?/? ；check_page_terms ?/?
+- 是否新建集合 / 新增索引：<有则列集合名与索引名；无则写"无">
+- 是否改动引擎五函数（netUnitCostWan / purchasePerGramYuan / lineNetCostYuan / calcCostCard / calcReversePrice）：<如实，无写"无">
+- 是否改动 verify_all.js：<如实，无写"无">
+- 是否改动 specs/ 下除 i18n/terms.js 双副本以外的文件：<如实，无写"无">
+- 新增 N 个套件待门禁方挂载：m3-impact、m3-recon
+- 未完成 / 存疑项：<如实写；没有写"无">
+```

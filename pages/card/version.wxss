@@ -5,3 +5,14 @@
 .line-row .lbl { color: #444; }
 /* S0 快照 5 字段（只读灰字） */
 .snapshot { display: flex; flex-wrap: wrap; gap: 4rpx 24rpx; margin-top: 6rpx; padding-left: 8rpx; font-size: 28rpx; color: #999; }
+
+/* M3.19（A3）成本趋势折线。字号 ≥28rpx（AD 门禁）；柱条容器固定高度、柱底对齐。 */
+.trend { margin: 8rpx 0 16rpx; padding: 16rpx 20rpx; background: #f5f8fc; border-radius: 12rpx; }
+.trend-title { font-size: 28rpx; color: #1e3a5f; font-weight: 600; margin-bottom: 12rpx; }
+.trend-bars { display: flex; align-items: flex-end; }
+.trend-col { flex: 1; display: flex; flex-direction: column; align-items: center; }
+.trend-cost { font-size: 28rpx; color: #1e3a5f; margin-bottom: 6rpx; }
+.trend-bar-wrap { height: 240rpx; display: flex; align-items: flex-end; }
+.trend-bar { width: 36rpx; background: #1e3a5f; border-radius: 6rpx 6rpx 0 0; }
+.trend-ver { font-size: 28rpx; color: #6b7a90; margin-top: 6rpx; }
+.trend-empty { font-size: 28rpx; color: #6b7a90; text-align: center; padding: 20rpx 0; }
