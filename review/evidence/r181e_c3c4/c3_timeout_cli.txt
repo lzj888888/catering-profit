@@ -1,0 +1,16 @@
+- initialize
+
+(node:8884) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)
+√ IDE server has started, listening on http://127.0.0.1:39721
+- query cloudfunctions info
+- Preparing to fetch cloudfunctions info
+- Fetching info of cloudfunction adminExport,adminGrantEntitlement,adminInit,adminLogin,adminLogout,adminManualOrder,adminOrderList,adminQueryUser,adminRefreshToken,adminRefundMark,adminRevokeToken,archiveMonth,calcAmortize,calcBom,calcMonthlyProfit,calcSandbox,checkQuota,deleteAccount,detectCycle,exportData,getAmortSchedule,getCardVersions,getCostCard,getLedger,getMaterial,getMonthList,getShopContext,getShopList,initDb,payCallback,payCreateOrder,payExpireNotify,payOrderList,payQueryEntitlement,payRenew,saveAsset,saveCostCard,saveLedger,saveMaterial,saveShopSetting,smokeTest,syncCostCard
+× query cloudfunctions info
+
+┌─────────┐
+│ (index) │
+├─────────┤
+└─────────┘
+[error] fail to get info of cloudfunction adminExport,adminGrantEntitlement,adminInit,adminLogin,adminLogout,adminManualOrder,adminOrderList,adminQueryUser,adminRefreshToken,adminRefundMark,adminRevokeToken,archiveMonth,calcAmortize,calcBom,calcMonthlyProfit,calcSandbox,checkQuota,deleteAccount,detectCycle,exportData,getAmortSchedule,getCardVersions,getCostCard,getLedger,getMaterial,getMonthList,getShopContext,getShopList,initDb,payCallback,payCreateOrder,payExpireNotify,payOrderList,payQueryEntitlement,payRenew,saveAsset,saveCostCard,saveLedger,saveMaterial,saveShopSetting,smokeTest,syncCostCard :
+{"code":"InvalidParameterValue.FunctionName"}

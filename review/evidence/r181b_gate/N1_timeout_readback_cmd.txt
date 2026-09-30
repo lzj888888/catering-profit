@@ -1,10 +1,25 @@
 N1 · R86 云函数 timeout 复验（只读 · 约 45 秒 · 不改任何东西）
 ========================================================================
+🔴 2026-09-30 实测更正（本条命令此前**跑不通**，真因已定位）：
+   `--names` 是 [array] 类型，**必须空格分隔**。原版本用逗号分隔 ⇒ 整串被当作
+   一个函数名 ⇒ 云端返回 {"code":"InvalidParameterValue.FunctionName"}。
+   权威依据：`cli.bat cloud functions info --help` 输出写着
+     --names, -n  Names of cloud functions seperated by space, e.g.:
+                  cli cloud functions info --names func_a func_b   [array] [required]
+
+✅ 2026-09-30 已执行（WorkBuddy 走「用户态 cmd」跑的）：42/42 与期望值逐条一致，
+   timeout 分布 {60:2, 30:1, 20:38, 15:1}，**无 ==3**。
+   证据：review/evidence/r181e_c3c4/c3_timeout_final.txt（原始输出）
+         review/evidence/r181e_c3c4/c3_verify.json（机器比对，VERDICT=PASS）
+    ⇒ 「R86 云函数 timeout」这条待办可以划掉。
+
 用法：把下面【一条命令】整行复制，粘到 Windows 的 cmd 窗口里回车。
-⚠️ 请在你自己桌面的 cmd 跑 —— WorkBuddy 沙箱里 reg.exe 被程序黑名单拦，跑不动。
+⚠️ 两种跑法都行：① 你自己桌面的 cmd；② 由 WorkBuddy 用键鼠开「用户态 cmd」代跑
+   （实测可行 —— Win+R 启动的 cmd 由 explorer 创建，不受沙箱 reg.exe 黑名单限制）。
+⚠️ 前提：微信开发者工具必须**已经打开**（CLI 连的是 IDE 的 127.0.0.1 服务端口）。
 
 【一条命令】
-"C:\Program Files (x86)\Tencent\微信web开发者工具\cli.bat" cloud functions info --project "C:\Users\lzj\WorkBuddy\Claw\catering-profit" -e cloud1-d4gphpoxy337f2a25 --names adminExport,adminGrantEntitlement,adminInit,adminLogin,adminLogout,adminManualOrder,adminOrderList,adminQueryUser,adminRefreshToken,adminRefundMark,adminRevokeToken,archiveMonth,calcAmortize,calcBom,calcMonthlyProfit,calcSandbox,checkQuota,deleteAccount,detectCycle,exportData,getAmortSchedule,getCardVersions,getCostCard,getLedger,getMaterial,getMonthList,getShopContext,getShopList,initDb,payCallback,payCreateOrder,payExpireNotify,payOrderList,payQueryEntitlement,payRenew,saveAsset,saveCostCard,saveLedger,saveMaterial,saveShopSetting,smokeTest,syncCostCard
+"C:\Program Files (x86)\Tencent\微信web开发者工具\cli.bat" cloud functions info --project "C:\Users\lzj\WorkBuddy\Claw\catering-profit" -e cloud1-d4gphpoxy337f2a25 --names adminExport adminGrantEntitlement adminInit adminLogin adminLogout adminManualOrder adminOrderList adminQueryUser adminRefreshToken adminRefundMark adminRevokeToken archiveMonth calcAmortize calcBom calcMonthlyProfit calcSandbox checkQuota deleteAccount detectCycle exportData getAmortSchedule getCardVersions getCostCard getLedger getMaterial getMonthList getShopContext getShopList initDb payCallback payCreateOrder payExpireNotify payOrderList payQueryEntitlement payRenew saveAsset saveCostCard saveLedger saveMaterial saveShopSetting smokeTest syncCostCard
 
 【怎么判】只看输出表里每个函数的 timeout 列：
   · 列里没有 3  → ✅ 与 2026-09-19 的三方独立回读一致 ⇒ 这条待办可以划掉
