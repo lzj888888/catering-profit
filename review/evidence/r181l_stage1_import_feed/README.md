@@ -139,8 +139,19 @@ db.collection('external_sales_daily').doc(_id).set({ data: {
 
 `git hash-object` ≡ `git ls-files -s` ⇒ `utils/billParse.js` / `utils/gradeGate.js` / `cloudfunctions/importSalesBill/index.js` **三份逐字节还原**、`git status` 为 `A` 而非 `AM`。
 
-## 七 回执
+### ⑥ 提交后复跑（git 类判据读的是**提交后**状态）
 
+`gate_181l_post.txt`：**rc=0 · 122/122 套件通过 · 真 FAIL=0**
+（日志里 2 处 `❌` 全是「零 ❌」「累计 ❌ 0 条」这类**断言描述字面量**，仓内固定 2 条，非失败。）
+
+⚠️ **一处状态变化需说明（非缺陷）**：`stale-status-guard` 的 **W 弱面**（设计上「只明示、不判红」）里，
+路线单那条的行号由 `:90` → `:101`（本轮在路线单前部插入内容，使 B 线标题下移）。
+**改前 `gate_181l_9.txt` 与改后 `gate_181l_post.txt` 同为 4 条、文案一字不差（仅行号不同）**
+⇒ 该守卫仍 `12 通过 / 0 失败`、rc=0 ⇒ **属既有形态，非本轮引入的告警**。
+
+---
+
+## 七 回执
 - [2026-10-01 01:5x] **R181l 已落 · 证据：** `git status --short -- common/` → 空 · `initDb/` → 空 · `gate_181l_9.txt` → `122/122 套件通过` · `mut_181l.py` → `4/4 有效红` ＋ 三份源文件 git blob 逐字节还原 · commit `72f22af`
 - **未落**：`importSalesBill` **未上云部署**（须「云端安装依赖」，`xlsx` 是首个外部依赖）—— 留给部署轮，非本轮范围。
 - **存疑**：无。
@@ -157,6 +168,7 @@ db.collection('external_sales_daily').doc(_id).set({ data: {
 | `gate_181l_1.txt` | 投喂前门禁（120/120 · RC=0 · 真 FAIL=0） |
 | `gate_181l_2.txt` | **反面证据**：投喂后在飞期间跑门禁 ⇒ 19分41秒 / 118/120（三处红全因在飞）⇒ 已固化进技能 |
 | `gate_181l_9.txt` | **终态门禁**（122/122 · RC=0 · 真 FAIL=0） |
+| `gate_181l_post.txt` | **提交后复跑**（rc=0 · 122/122 · 真 FAIL=0；含 W 弱面行号变化的说明） |
 | `anchor_indep_181l.py` · `anchor_run_181l.js` | 锚点独立复算（Python 侧 / JS 侧，JS 10/0） |
 | `sync_surface_181l.py` · `sync_fn_181l.py` · `sync_idem_priv_181l.py`（＋ `*_out.txt`） | 三组同步面补丁脚本（8 / 6 / 4 处） |
 | `mut_181l.py` · `mut_181l_result.json` | 变异回灌（4 变异体，4/4 有效红） |
