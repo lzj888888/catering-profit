@@ -1,0 +1,17 @@
+fix(r181d): S6 补豁免 —— R181b 归档的取证脚本 check_timeout.py 未登记
+
+真红取证（非猜）：
+  node tools/check_suite_coverage.js → rc=1
+  ❌ S6 面 B 5 个取证脚本全部在豁免清单内 · 未登记豁免：review/evidence/r181b_gate/check_timeout.py
+
+根因：R181b 把 R86 timeout 真云回读脚本归档进 review/evidence/r181b_gate/，
+而它的文件名命中面 B 正则（^(check_|verify_|selftest_|test_)）⇒ 未登记豁免即判红。
+该脚本确为一次性取证件（cli 通道被 reg.exe 黑名单拦断，未产出任何数据）⇒ 补 EXEMPT 正确，
+不属 S8 所指「已被当生产判据用」（它不在 SUITES 里）。
+
+其余归档脚本（mk_*.py / run_gate3.py / paste_uia4.py / send_m316.py / find_send.py 等）
+文件名不命中面 B 正则 ⇒ 无需登记（实测 S6 只报 1 条）。
+
+判据：补后 node tools/check_suite_coverage.js → S6 绿（9 通过 / 0 失败）
+
+Co-Authored-By: WorkBuddy (巴迪) <wb@local>

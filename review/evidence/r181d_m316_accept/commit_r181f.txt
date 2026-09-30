@@ -1,0 +1,20 @@
+chore(r181d): M3.16 落库后的声明面同步（套件数 115→116）+ 新守卫纳入断言数受守
+
+InsCode 提交 f3f768f 新增第 116 个套件（selftest_m3_combo）—— R174 那次「只改单源、
+声明面一格没跟 ⇒ 首跑 108/115」的教训不能重演，本轮把声明面补齐：
+
+- 重启键 §1.1 一键校验入口行：套件数 115 → 116（check_suite_count_claims C2-②）
+- 重启键「套件数会漂」行：当前值 115 → 116，并在演进链追加第 116 条
+  （selftest_m3_combo，M3.16 套餐成本卡守卫 17 断言）（C2-③）
+- check_suite_assert_counts.js::CASES 纳入 selftest_m3_combo：
+  它满足「非恒真」条件（17 条断言删一批仍 > 0 ⇒ A0-② 的「通过数为 0」下界抓不到），
+  且 A-a/A-b/A-c 三锚点正是它的证明力凭据 ⇒ 断言数必须受守（与 round73 同族）
+- 重启键 §1.1 断言数唯一声明处：加 `selftest_m3_combo`=17，「三十一者」→「三十二者」
+
+判据：
+- check_suite_count_claims：C1/C2-①/C2-②/C2-③ 全绿（实算 N=116）
+- check_suite_assert_counts：A2-selftest_m3_combo 声明 17 ≡ 实跑 17、A5-① 受守 32 个 ≥ 6
+- check_schema_sync 66/0、check_collection_perms 22/0、check_list_ux 32/0、
+  check_spec_derive 24/0、check_paywall_coverage 13/0（均 0 红）
+
+Co-Authored-By: WorkBuddy (巴迪) <wb@local>

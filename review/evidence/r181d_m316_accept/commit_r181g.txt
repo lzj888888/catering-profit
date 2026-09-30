@@ -1,0 +1,19 @@
+fix(r181d): 同步 terms 双副本镜像（K11）—— InsCode 改 miniprogram 侧后由我方 cp
+
+InsCode 提交 f3f768f 按投喂包第 38 行约定（「specs/ 下任何文件都不许改，那两处由 WorkBuddy
+同步」）只改了 miniprogram/i18n/terms.js，未碰 specs 镜像 —— 行为正确，但 K11 等式断言
+（specs/dev-specs/prototype/check_error_codes.js:527，逐字 + CRLF 归一）据此转红，须由我方补。
+
+证据（git 取证，非目视）：
+- f3f768f~1：miniprogram/i18n/terms.js 与 specs/dev-specs/i18n/terms.js
+  md5 均 d1e835fe7556c603d347c966c0698ef2 / 74337B ⇒ 两副本**本就该逐字节等价**
+- f3f768f：miniprogram 变为 1794aece…/75064B，specs 仍 d1e835fe…/74337B ⇒ 漂移 727B
+
+修复：cp -f miniprogram/i18n/terms.js specs/dev-specs/i18n/terms.js ⇒ 两副本
+md5 均 1794aece1dbe545804db23587d0ec5c4 / 75064B（MD5_EQ True）
+
+新增术语键（card 命名空间，13 键）：cardType / cardTypeDish / cardTypeCombo /
+comboSubCardTitle / comboSubCardPh / comboSubCardQty / comboAddSubCard / comboPickEmpty /
+comboInsightCustomerSave / comboInsightMerchantLose / comboInsightLoseWarn / comboInsightCostShare
+
+Co-Authored-By: WorkBuddy (巴迪) <wb@local>
