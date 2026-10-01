@@ -1,0 +1,44 @@
+r182：规范承诺守卫对账 + M3.31「每100g」缺口审计 + 补做投喂包
+
+## 一 为什么做（触发）
+R181p 收口后自检「规范里承诺过、但可能没落地的条目」——不靠印象，只读规范 + 只读代码，逐条给可复现证据。
+
+## 二 发现一：承诺的守卫「文件名对不上」（不是功能缺口，是文档口径过期）
+v1.1 §M3.27 / v1.2 §M3.37 写下 10 个守卫文件名，仓库里只有 1 个同名存在。
+⚠️ 但「文件名不存在 ≠ 零覆盖」——按内容找，**6 条已在别处落地**：
+  · R132 -> tools/check_spec_derive.js（24 断言，含 L5-② 键集比对）
+  · R133 -> tools/selftest_m3_takeaway.js「T-a 基数不含打包费（2500 vs 含打包费 2700）」
+  · R134 -> tools/selftest_m3_combo.js「A-c 套餐引用套餐 => COMBO_NEST_NOT_ALLOWED」
+  · R138 -> tools/selftest_m3_lexicon.js「L-f 全表无价格类键」/「L-g 返回行不含 price 类键」
+  · R140 -> tools/check_dish_category_free.js L4 段（文件头明写「R140 把守」）
+  · R142/R143 -> tools/selftest_m3_takeaway.js「T-f 承担方未选不计入」/「T-d fixed 保底不生效」
+**确有缺口 2 条**：
+  · R135（M3 云函数不得写 M1 集合）—— 现只有派生层出参形状的 T-g，云函数写库面无守卫（已登记，待定"哪些算 M3 云函数"的稳定清单）
+  · R141（per100g 系数全 1）—— **无从挂**，被测对象不存在（见发现二）
+
+## 三 发现二（真缺口）：M3.31「每100g」计价 —— 定案「做」，实际零代码
+事实（`probe_r182_gap_audit.py` 三段，输出留档）：
+  · 服务端 SPEC_PRESETS spec_key = ['half','small'] —— 无 per100g
+  · miniprogram/i18n/terms.js::specLabel = {half, small}；与 specs 副本 md5 相同（47e8f678...）
+  · 全仓 .js 里 per100g = 0 命中；commission_base = 0 命中
+判为「静默漏做」而非「已登记延后」的依据：review/PLAN_2026-09-26_M3整体搭建方案_按入口反推.md 的同一张
+缺口表里 combo / specs_json / s_user·s_merchant 三项后来都补上了，**只有 per100g 被落下**，
+且 review/ 下无任何"延后/不做"的登记。
+
+## 四 本提交做了什么
+  · 新增 review/NOTE_2026-10-01_规范承诺守卫与M3.31缺口审计.md（对账件 + 缺口论证 + 处置）
+  · 新增 review/evidence/r182_m331_gap/（probe_r182_gap_audit.py + .out.txt + README.md）
+  · 新增 specs/dev-specs/delivery/批次M3v1.2_B补_每100g计价_提示词_可直接复制.txt（**可直接投喂**）
+  · 更新 review/ROADMAP_2026-09-30_下一步总览.md（§〇 新增缺口条 / §一 新增"承诺守卫对账"行并订正 M3.14/15 表述
+    / B 线新增序 2b 排程 / §四 新增 item 4b）
+
+## 五 明确没做（如实标注）
+  · 未改任何生产代码（M3.31 的改动落在投喂包，由批次承载 —— 它要改单源 + 45 派生副本 + 前端 + 双副本文案）
+  · 未改 v1.1 / v1.2 一个字（均定案/锁定；文件名对账以 NOTE 件承担，不改写历史）
+  · 未提前挂 R135 / R141（前者定义面待定；后者被测对象不存在 => 会写成恒绿假守卫）
+  · 未投喂（投喂与否见下一提交/回执；投喂包本身已就绪）
+
+## 六 回执
+- [2026-10-01 12:2x] 已落 · 证据：`python review/evidence/r182_m331_gap/probe_r182_gap_audit.py` → A~E 五段结论（同名存在 1 / 等效覆盖 6 / per100g 零命中）
+- [2026-10-01 12:2x] 已落 · 证据：`node tools/check_evidence_meta.js` → 2/0 · `check_suite_coverage` → 10/0 · `check_js_syntax` → 906 个 .js 全过 · `check_redline_inventory` → 11/0 · `check_stale_claims` → 3/0 · `check_stale_status` → 12/0
+- [2026-10-01 12:2x] 已落 · 证据：`node verify_all.js` → 见 review/evidence/r182_m331_gap/gate_182_1.txt

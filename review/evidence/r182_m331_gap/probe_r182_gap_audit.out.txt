@@ -1,0 +1,40 @@
+repo = C:\Users\lzj\WorkBuddy\Claw\catering-profit
+
+====================== A · 规范承诺的守卫文件名 vs 实际存在 ======================
+  R131  tools/check_m3_engine_parity.js                      存在
+  R132  tools/check_spec_derive_identity.js                  不存在
+  R133  tools/check_takeaway_commission_base.js              不存在
+  R134  tools/check_combo_no_nest.js                         不存在
+  R135  tools/check_m3_no_m1_write.js                        不存在
+  R138  tools/check_template_no_price.js                     不存在
+  R140  tools/check_material_category_enum.js                不存在
+  R141  tools/check_spec_per100g_identity.js                 不存在
+  R142  tools/check_takeaway_subsidy_split.js                不存在
+  R143  tools/check_commission_mode.js                       不存在
+  小结：承诺 10 个文件名，实际同名存在 1，同名缺失 9（缺失≠零覆盖，见 E）
+
+====================== B · 服务端 SPEC_PRESETS 的 spec_key 集合 ======================
+  SPEC_PRESETS spec_key = ['half', 'small']
+  是否含 per100g = False
+
+====================== C · 前端 terms.specLabel 键集 + 双副本一致性 ======================
+  miniprogram/i18n/terms.js              specLabel = { half: '半份', small: '小份' }
+                                         md5 = 47e8f67852d5b67d1fdeb40c51324ca4  (80286 B)
+  specs/dev-specs/i18n/terms.js          specLabel = { half: '半份', small: '小份' }
+                                         md5 = 47e8f67852d5b67d1fdeb40c51324ca4  (80286 B)
+  双副本一致 = True
+
+====================== D · 全仓 .js 里 per100g / commission_base 的命中文件 ======================
+  per100g          命中 0 个 .js 文件（全仓零命中）
+  commission_base  命中 0 个 .js 文件（全仓零命中）
+
+====================== E · 承诺守卫的「等效落点」抽查（按内容找，不按文件名找） ======================
+  R133 佣金基数不含打包费               tools/selftest_m3_takeaway.js 命中「基数不含打包费」= True
+  R134 套餐不得嵌套                  tools/selftest_m3_combo.js 命中「COMBO_NEST_NOT_ALLOWED」= True
+  R138 模板不得含价格                 tools/selftest_m3_lexicon.js 命中「全表无价格类键」= True
+  R140 原料分类枚举（L4）              tools/check_dish_category_free.js 命中「R140」= True
+  R142 补贴承担方 fail-closed       tools/selftest_m3_takeaway.js 命中「承担方」= True
+  R143 fixed 不叠加保底             tools/selftest_m3_takeaway.js 命中「commission_fixed_fen」= True
+  R135 云函数层（应缺）                在 tools/ 下命中：（无）
+
+====================== 完 ======================
