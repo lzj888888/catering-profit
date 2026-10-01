@@ -14,6 +14,7 @@
 | 3 | 环境 ID 现读（不抄记忆） | `cloudfunctions/initDb/config.json::envVariables.DEV_ENV_ID = cloud1-d4gphpoxy337f2a25` |
 | 4 | 部署器改向本目录（不往 `_m3/` 再塞文件） | `_deploy_fns.py` 的 `OUT`/`JUDGE` 已改指 `review/evidence/r187_deploy_per100g/` |
 | 5 | 新编号先查占用 | `grep -rn "R187\|r187"` ⇒ **空**（R186 已用、R187 未用） |
+| 6 | 门禁两轮全绿 | 提交前 `gate/gate_187_1.txt`：**125/125 · RC=0 · MISS=0 · ❌=0**（191.1s）；提交后 `gate/gate_187_2_postcommit.txt`：**125/125 · RC=0 · MISS=0 · ❌=0**（186.0s）；`R92 ✅`、索引 2843 项 |
 
 ---
 
@@ -110,7 +111,8 @@ grep -rl "cx_specDerive" --include="*.js" cloudfunctions/ \
 |---|---|
 | `_deploy_fns.py` | 部署器副本（已把 `OUT`/`JUDGE` 改指本目录；一次一个、必带 `-r`、失败自动重跑一次） |
 | `_judge_deploy.js` | 判据器副本（latin1 读原始字节，只匹配 ASCII，**绝不比 `│`**） |
-| `logs/` | 烟测日志（`deploy_smokeTest_1.log` / `_2.log`） |
+| `logs/` | 烟测日志（`deploy_smokeTest_1.log` / `_2.log`，两轮均 `MISS`）+ `_summary.txt` |
+| `gate/` | 沙箱通道门禁驱动脚本 + 两轮门禁输出（`gate_187_1.txt` / `gate_187_2_postcommit.txt`） |
 | `README.md` | 本文件 |
 
 ---
