@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：123 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：125 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -272,6 +272,14 @@
 //         判据 = S 自失效护栏（扫描面非退化 / 关键入口在包内 / 匹配器四类正负样本互证）
 //         + P 体积三维（总量 ≤ 预算 / 预算常量 < 硬上限 / 单顶层条目顶格并点名罪魁）
 //         + G 规则完整性（必备 20 条逐条在位 / 条数下界 / type ∈ 官方六种 / 未用 regexp·glob）。
+//       + 「每100g」计价规格守卫（tools/check_spec_per100g_identity.js，R141）+ 同族锚点自测
+//         （tools/selftest_m3_per100g.js）—— M3.31（v1.2 §0 D21 定案「做」却**静默漏做**：全仓 .js
+//         的 `per100g` 零命中、`SPEC_PRESETS` 只有 half/small，而同缺口表内 combo / specs_json /
+//         s_user·s_merchant 三项都补了、只漏它，且 review/ 无任何「延后/不做」登记）。
+//         判据＝P1 存在性 + P2 coef 五项全 === 1（恒等）+ P3 **反恒真**（合成 coef.main=0.9 必须判不合规
+//         ⇒ 只写存在性检查会恒绿）+ P4 unit_label === '100g' + 反向（half/small 未被误改成全 1）；
+//         自测侧 require **生产单源 specDerive + 生产引擎 calcBom** 实算，锚点 unit_cost_fen=975 /
+//         material_total_fen=876 必须原样复现，且 per100g ≡ 全份（恒等语义）。
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -632,8 +640,13 @@ const SUITES = [
   ['bill-parse', 'tools/selftest_bill_parse.js'],
   // 批次 F 甲级门禁（数据可信度 · v1.4 §5.2）：通道连通 / Schema 校验 / 关键指标非空，三门 fail-closed。
   ['grade-gate', 'tools/selftest_grade_gate.js'],
-  // 末位套件（round181p 新增，R182）：打包体积 / ignore 规则守卫 tools/check_pack_size.js
+  // round181p 新增，R182：打包体积 / ignore 规则守卫 tools/check_pack_size.js
   ['pack-size', 'tools/check_pack_size.js'],
+  // M3.31 / R141（round185 新增 · 补做批次 M3v1.2_B）：「每100g」计价规格 —— 恒等系数守卫 + 锚点自测。
+  //   根因＝v1.2 §0 D21 定案「做」而实现零落地（全仓 per100g 零命中、SPEC_PRESETS 只有 half/small），
+  //   同表 combo / specs_json / s_user·s_merchant 三项都补了只漏它 ⇒ **静默漏做**。
+  ['m3-per100g', 'tools/selftest_m3_per100g.js'],
+  ['spec-per100g-identity', 'tools/check_spec_per100g_identity.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
