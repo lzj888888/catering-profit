@@ -1,0 +1,7 @@
+源图 = C:/Users/lzj/WorkBuddy/2026-09-08-22-08-11/_gui/qr_now.jpg
+尺寸 = 470x470   实印宽 8.4cm @96dpi
+✅  317px  实印尺寸 8.4cm@96dpi         解出=https://mp.weixin.qq.com/a/~~xU5X-h-gWyw~QWE-LkhLO_Ma1j5xxDrPiA~~
+✅  250px  余量 -21%                  解出=https://mp.weixin.qq.com/a/~~xU5X-h-gWyw~QWE-LkhLO_Ma1j5xxDrPiA~~
+✅  199px  余量 -37%                  解出=https://mp.weixin.qq.com/a/~~xU5X-h-gWyw~QWE-LkhLO_Ma1j5xxDrPiA~~
+----
+结论 = 该码在实印尺寸下仍可解（含 37% 余量）

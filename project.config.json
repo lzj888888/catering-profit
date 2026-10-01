@@ -36,6 +36,7 @@
     "ignore": [
       { "type": "folder", "value": "specs" },
       { "type": "folder", "value": "review" },
+      { "type": "folder", "value": "_m3" },
       { "type": "folder", "value": "cloudfunctions" },
       { "type": "folder", "value": "tools" },
       { "type": "folder", "value": "web-preview" },

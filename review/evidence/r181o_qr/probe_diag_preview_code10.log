@@ -1,0 +1,41 @@
+===== diag preview R181o  本机时钟 2026-10-01 09:41:48 =====
+目标输出 = C:/Users/lzj/WorkBuddy/2026-09-08-22-08-11/_gui\diag_R181o_20261001_094148.jpg
+port_open(35237, 起前) = False
+
+---------- rc = 0  用时 69.3s  port_open(后) = False ----------
+
+========== STDOUT (2614 chars) ==========
+[error] {
+  code: 10,
+  message: 'Error: 错误 Error: 源码包超出最大限制,source size 118969KB exceed max limit 2MB [20261001 09:42:58]\n' +
+    '    at t.doParseAndCheckErrorCode (C:\\Program Files (x86)\\Tencent\\微信web开发者工具\\resources\\app.asar\\js\\bd158e2d35d249528e3eeb03308bdcaf.js:2:3439)\n' +
+    '    at async t.request (C:\\Program Files (x86)\\Tencent\\微信web开发者工具\\resources\\app.asar\\js\\bd158e2d35d249528e3eeb03308bdcaf.js:2:6446)\n' +
+    '    at async u.getCosAsyncResult (C:\\Program Files (x86)\\Tencent\\微信web开发者工具\\resources\\app.asar\\js\\875ea089ff4e10f52ccd825f6970513d.js:2:4346)\n' +
+    '    at async u.queryAsyncUploadTaskResult (C:\\Program Files (x86)\\Tencent\\微信web开发者工具\\resources\\app.asar\\js\\875ea089ff4e10f52ccd825f6970513d.js:2:5765) (code 10)Error: 错误 Error: 源码包超出最大限制,source size 118969KB exceed max limit 2MB [20261001 09:42:58]\n' +
+    '    at t.doParseAndCheckErrorCode (C:\\Program Files (x86)\\Tencent\\微信web开发者工具\\resources\\app.asar\\js\\bd158e2d35d249528e3eeb03308bdcaf.js:2:3439)\n' +
+    '    at async t.request (C:\\Program Files (x86)\\Tencent\\微信web开发者工具\\resources\\app.asar\\js\\bd158e2d35d249528e3eeb03308bdcaf.js:2:6446)\n' +
+    '    at async u.getCosAsyncResult (C:\\Program Files (x86)\\Tencent\\微信web开发者工具\\resources\\app.asar\\js\\875ea089ff4e10f52ccd825f6970513d.js:2:4346)\n' +
+    '    at async u.queryAsyncUploadTaskResult (C:\\Program Files (x86)\\Tencent\\微信web开发者工具\\resources\\app.asar\\js\\875ea089ff4e10f52ccd825f6970513d.js:2:5765) (code 10)\n' +
+    '    at Object.GENERIC_ERROR (C:\\Program Files (x86)\\Tencent\\微信web开发者工具\\resources\\app.asar\\js\\3ba8bc345a8182e8a1671d05df413e7d.js:2:93)\n' +
+    '    at project (C:\\Program Files (x86)\\Tencent\\微信web开发者工具\\resources\\app.asar\\js\\1a64ed4bad314392fa8e397336cf2192.js:2:2336)\n' +
+    '    at async exports.preview [as method] (C:\\Program Files (x86)\\Tencent\\微信web开发者工具\\resources\\app.asar\\js\\13ff54aebf81f1760f82320713227f2b.js:2:452)\n' +
+    '    at async exports.execV2WSAPI (C:\\Program Files (x86)\\Tencent\\微信web开发者工具\\resources\\app.asar\\js\\1c52e22ebb880937c313e2cce3a5b7d2.js:2:1318)\n' +
+    '    at async exports.handleWsApiMessage (C:\\Program Files (x86)\\Tencent\\微信web开发者工具\\resources\\app.asar\\js\\0ac94e0dd9725677f53c22067280ca25.js:2:265)\n' +
+    '    at async c._clientMessageHandler (C:\\Program Files (x86)\\Tencent\\微信web开发者工具\\resources\\app.asar\\js\\e662f33f90d7c54bd12f5b2a695fbb1d.js:2:3435)\n' +
+    '    at async c._handleClientMessage (C:\\Program Files (x86)\\Tencent\\微信web开发者工具\\resources\\app.asar\\js\\bd0bd23655b22e066b1a71c99f9c5dc6.js:2:3030)'
+}
+
+========== STDERR (377 chars) ==========
+- initialize
+
+(node:22592) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)
+√ IDE server has started, listening on http://127.0.0.1:39721
+- preparing
+- Fetching AppID () permissions
+√ Using AppID: wx33c110dc57a9c8dc
+- Preview
+× Uploading
+
+
+产出 = NO

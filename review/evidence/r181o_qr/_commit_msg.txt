@@ -1,0 +1,36 @@
+fix(devtools): 出码失败根因=源码包超限 —— packOptions.ignore 补 _m3
+
+▍真因（拿全量 stderr 才捞到，别按老经验误判）
+出码 6/6 全败，且**都死在 `× Uploading`**：
+  √ IDE server has started, listening on http://127.0.0.1:39721
+  √ Using AppID: wx33c110dc57a9c8dc
+  × Uploading
+这与历史记录的 `× wait IDE port timeout`（server 起不来）**是两类不同失败**。
+写诊断脚本把 stdout/stderr 全量落盘后一次命中：
+  code 10 · '源码包超出最大限制, source size 118969KB exceed max limit 2MB'
+⇒ 118969KB ≈ 116.2MB，超 2MB 上限 59 倍。
+
+▍定位
+按 ignore 规则实算入包体积：`_m3/` = 116.42MB（747 文件 / 115.83MB 为 .png，
+round179 起的调试截图堆）未进 `packOptions.ignore` ⇒ 被当小程序源码打包。
+🔴 `.gitignore` 不代管微信打包：`_m3/` 早在 .gitignore:32 内且未跟踪，
+但开发者工具只认 project.config.json。
+
+▍修复（一行、可逆、零删除零移动）
+project.config.json → packOptions.ignore 补 { "type": "folder", "value": "_m3" }
+（列表 12 → 14 条；R37 所立「打包防线」本应覆盖此类临时目录，此前漏项）
+入包体积：116.86MB → **0.76MB**（< 2MB）。
+
+▍回归证明
+出码一次成功（√ preview，59.5s，TOTAL 358.1KB/366698B）；
+码可解（源图 + 实印 317/250/199px 三档全过，含 37% 余量）；
+门禁 **122/122 · RC=0 · 真 FAIL=0**；
+交付三通道：对话图(x2) + 打印 1 页（实测「实打 1 页」）+ 桌面 jpg。
+
+证据：review/evidence/r181o_qr/
+（probe_diag_preview_code10.log · probe_qr_retry_R181o2.log · probe_qr_verify.txt ·
+ probe_qr_printsize.txt · probe_packcalc_after.txt · gate_181o_1/2.txt · README.md）
+
+▍附带
+_r181n_win.py 补 restore 子命令（最小化窗口 rect 为 -32000，MoveWindow 无效，
+须先 ShowWindow(SW_RESTORE)）。该脚本在工作区，不在本仓。

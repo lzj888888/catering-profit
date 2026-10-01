@@ -1,0 +1,35 @@
+ignore folders = ['.atomcode', '.inscode', '_m3', 'cloudfunctions', 'node_modules', 'review', 'specs', 'tools', 'web-preview']
+ignore suffix  = ['.docx', '.md', '.pdf', '.txt']
+ignore files   = ['verify_all.js']
+
+== 会被打进包的内容 = 0.76 MB（小程序上限 2 MB）==
+--- 未忽略目录汇总 ---
+      0.426 MB  pages
+      0.094 MB  utils
+      0.080 MB  miniprogram
+      0.074 MB  _bak_r70
+      0.016 MB  admin-h5
+      0.006 MB  _mut_r77.py
+      0.006 MB  app.wxss
+      0.006 MB  app.js
+      0.005 MB  _mut_r78.py
+      0.005 MB  _mut_r72.py
+      0.004 MB  .gitignore
+      0.004 MB  _mut_r73.py
+--- 未忽略中最大 15 个文件 ---
+      0.077 MB  miniprogram\i18n\terms.js
+      0.070 MB  pages\month\input.js
+      0.041 MB  pages\card\edit.js
+      0.030 MB  _bak_r70\MUT_VA
+      0.028 MB  pages\month\input.wxml
+      0.018 MB  utils\takeaway.js
+      0.018 MB  pages\card\index.js
+      0.017 MB  pages\material\edit.js
+      0.017 MB  pages\sandbox\index.js
+      0.016 MB  admin-h5\index.html
+      0.016 MB  pages\card\edit.wxml
+      0.015 MB  pages\takeaway\index.js
+      0.014 MB  pages\month\amortize.js
+      0.014 MB  pages\month\input.wxss
+      0.011 MB  pages\month\result.js
+未忽略文件数 = 137

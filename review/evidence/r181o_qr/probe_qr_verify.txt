@@ -1,0 +1,6 @@
+文件 = C:/Users/lzj/WorkBuddy/2026-09-08-22-08-11\_gui/qr_now.jpg
+字节 = 47541
+----
+✅ [img] 解出内容 = https://mp.weixin.qq.com/a/~~xU5X-h-gWyw~QWE-LkhLO_Ma1j5xxDrPiA~~
+   像素 470x470 内码区 414x409
+=> 该码完整可扫、未被裁切

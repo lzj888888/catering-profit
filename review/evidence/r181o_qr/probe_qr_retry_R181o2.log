@@ -1,0 +1,28 @@
+===== _qr_retry R181o2  本机时钟 2026-10-01 09:49:05 =====
+env 一致 = True ('cloud1-d4gphpoxy337f2a25')
+
+---- [阶段1] 直接 preview ×3 ----
+  [阶段1-1] preview → preview_R181o2_20261001_094905.jpg
+     rc=0 用时59.5s  port_open=False
+     √ IDE server has started, listening on http://127.0.0.1:39721
+     - Fetching AppID () permissions
+     √ Using AppID: wx33c110dc57a9c8dc
+     √ preview
+     产出 = ✅ 是
+
+✅ 新码产出：preview_R181o2_20261001_094905.jpg  47541 B  头4B=ffd8ffe0  md5=f72ad8ab59a9c6c737dfe2f9aaacb048
+   TOTAL = 358.1 KB / 366698 B
+
+---- 落交付件 ----
+  已归档旧短名 → R181o2_20260927_143123_qr_now_old.jpg
+  已落短名 = qr_now.jpg
+  已生成 2x = C:/Users/lzj/WorkBuddy/2026-09-08-22-08-11/_gui\qr_now_x2.png (940x940, 42685 B)
+  已落桌面 = C:/Users/lzj/Desktop\店算_真机预览码_R181o2.jpg
+
+---- 交付摘要 ----
+  短名  = C:/Users/lzj/WorkBuddy/2026-09-08-22-08-11/_gui\qr_now.jpg (47541 B)
+  桌面  = C:/Users/lzj/Desktop\店算_真机预览码_R181o2.jpg
+  出码  = 2026-10-01 09:50:07
+  失效≈ = 2026-10-01 10:15:07
+  HEAD  = 21f0e35
+===== DONE =====
