@@ -31,7 +31,8 @@ node(self)  -> ERR:EBUSY      # process.execPath —— 连 node 派生自身都
 | `mk_cache3.py` | 读 `gitcache_miss.log`，只补未命中项（不覆盖他人） |
 | `mk_force.py` | 强制重刷**全部** node/python 键（不跳过已存在） |
 | `mk_fix_py_keys.py` | 修 `mk_force` 按空格拆参跑坏的那条键（坑⑤） |
-| `gate_183d_1.txt` | **最终**门禁输出：`总览：123/123 套件通过` · `R92：✅` · 耗时 285.9s |
+| `gate_183d_1.txt` | **改 doc 后、提交前**的门禁输出：`总览：123/123 套件通过` · `R92：✅` · 耗时 285.9s |
+| `gate_183d_2_postcommit.txt` | **提交后**（技能 §⑥ 要求再刷一次缓存）的门禁输出：同上 123/123 · R92 ✅ · 耗时 231.9s |
 
 ## 三 执行顺序（技能 §⑥）与实测结果
 
@@ -54,9 +55,24 @@ python run_gate3.py        # round2 → 123/123 通过 · miss=0 · 耗时 285.9
 ## 四 判据与结论
 
 - **`总览：123/123 套件通过`**（与原生通道今天早些时候得到的三次 123/123 一致）；
-- **`R92（套件入库，真 git 判定）：✅`** —— 123 个套件文件全部在 `git ls-files`（索引 2780 项）；
+- **`R92（套件入库，真 git 判定）：✅`** —— 123 个套件文件全部在 `git ls-files`（索引 2789 项）；
 - **`miss = 0`**（`gitcache_miss.log` 未生成 ⇒ 所有被拦子进程均命中真值缓存，无跳过断言的假绿）；
-- ⚠️ `docx-derive` 的红**是缓存污染的红**，不是"门禁没过"。补齐后同一套件在同一次运行中通过。
+- ⚠️ `docx-derive` 的红**是缓存污染的红**，不是"门禁没过"。补齐后同一套件在同一次运行中通过；
+- 🔁 **提交后按 §⑥ 复刷缓存并复跑**（`gate_183d_2_postcommit.txt`）：仍 **123/123 · R92 ✅ · miss=0**
+  —— 证明提交这个动作**没有**把任何套件从绿变红（缓存里 `git status --porcelain` 由 295 B 变 0 B，即工作树已干净）。
+
+## 四-bis 🔴 缓存污染型假红的**诊断捷径**（本轮实测）
+
+**症状**：`❌ D2 python-docx 依赖可用` 转红。
+**别急着 `pip install python-docx`** —— 先直测：
+
+```bash
+"C:/Users/lzj/.workbuddy/binaries/python/envs/default/Scripts/python.exe" -c "import docx; print('OK')"
+```
+
+本轮实测输出 `docx OK 1.2.0`（**依赖是好的**）⇒ 红的真因是**缓存里那条键被跑坏了**
+（`mk_force.py` 把 `python.exe -c import docx` 按空格拆成 `-c` + `import` + `docx`）。
+⇒ **正解 = 跑 `mk_fix_py_keys.py`**（它用 `[PY,'-c','import docx']` 手工真跑写回），不是装包。
 
 ## 五 本目录**不**包含什么（如实标注）
 
