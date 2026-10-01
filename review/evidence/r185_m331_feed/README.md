@@ -81,7 +81,17 @@ v1.2 §0 缺口表的**同一张表**里有四项：`combo`（套餐）/ `specs_
 | 6 | 重启键「套件断言数口径」声明行 | 追加 `selftest_m3_per100g`=7 / `check_spec_per100g_identity`=6；**三十九者 → 四十一者** |
 | 7（按需） | `tools/check_suite_assert_counts.js::CASES` | 追加两条 |
 
-### 本轮踩到的两个坑（都已修正并留档）
+### 本轮踩到的三个坑（都已修正并留档）
+
+2.5 🔴 **回灌脚本把源文件的行尾改了** —— 变异回灌全部通过、"还原完整性"自校验也报 `True`，
+   但 `git status` 留下一条 ` M cloudfunctions/common/specDerive.js` 而 `git diff` **一行都打印不出来**。
+   真因＝Python 的 `Path.write_text()` 在 Windows 上 `newline=None`：**读**时把 `\r\n` 吃成 `\n`、
+   **写**时把 `\n` 翻译回 `\r\n` ⇒ 该仓库文件存的是 **LF**（8805 字节），被写成 **CRLF**（8979 字节），
+   **内容一字未改、字节全变**；`git diff` 因 autocrlf 归一化显示为空，`git status` 却因字节不同判 M。
+   ⚠️ 自校验抓不到是因为两边都被同样归一化（恒真）。
+   修法＝备份**字节复制**、恢复 **`write_bytes` 二进制写回**、收尾用**字节**比对 `git show HEAD:<rel>`。
+   已写入技能 `mutation-backfill` **坑 15**。
+
 
 1. 🔴 **声明行 key 不能含连字符** —— 解析正则是 `` `?([A-Za-z0-9_]+)`?\s*=\s*(\d+) ``，连字符会被当分隔符。
    我初版用了 SUITES 的 display-name（`m3-per100g`）⇒ `A2` 报「缺少 key」、`A5-②` 报「多余 key：per100g, identity」。
@@ -93,7 +103,13 @@ v1.2 §0 缺口表的**同一张表**里有四项：`combo`（套餐）/ `specs_
 
 ## 五 判据与结论
 
-- 全量门禁（沙箱通道）：见 `gate/gate_185_1.txt`（提交前）与 `gate/gate_185_2_postcommit.txt`（提交后）；
+| 轮次 | 文件 | 结果 |
+|---|---|---|
+| ① 提交前 | `gate/gate_185_1.txt` | `125/125` · RC=0 · ❌=0 · **miss=2**（正是两个新套件，缓存里还没有） |
+| ② 补缓存后 | `gate/gate_185_2.txt` | `125/125` · RC=0 · **miss=0** · 耗时 138.4s |
+| ③ 提交后（复刷缓存再跑） | `gate/gate_185_3_postcommit.txt` | `125/125` · RC=0 · **miss=0** · **❌ 计数 = 0**（无失败清单） · 144.8s |
+
+⚠️ 第 ① 轮的 `miss=2` 是**真信号** —— 若不看 miss 就收工，两个新套件其实是"被跳过"的假绿。
 - ⚠️ **本机原生通道不可用**：`git / cmd / where / node 自身` 全部 `EBUSY`（沙箱禁 node 派生子进程），走 `gate-under-sandbox` 技能的 Python 侧真跑通道。
 
 ---
