@@ -22,6 +22,9 @@ project.private.config.json
 #   · 末行**反排除** `evidence_*.png`，使**将来新增的判据截图**仍能被纳入；过程件命名族
 #     （adv_ / cfg_ / dlg_ / filt_ / reset_ / typed_ / vp_ / search* 等）一律挡住。
 #   · 实证（round110）：该目录 1036 张 png 中未跟踪 1033 张，**无一张**以 `evidence_` 开头。
+#   · r188 补记：那 1033 张**过程件**已按「零删除」原则 **move 归档**到仓外
+#     `C:/Users/lzj/WorkBuddy/Claw/_archive/r188_hygiene/review/evidence/r86_timeout_20260919/`
+#     （逐文件 md5 自证，清单 `_manifest_r188.tsv`），仓内仅剩 3 张已入库 `evidence_*.png`。
 /review/evidence/r86_timeout_20260919/*.png
 !/review/evidence/r86_timeout_20260919/evidence_*.png
 
@@ -29,6 +32,10 @@ project.private.config.json
 #   **119 MB**、**全未跟踪**，一直以 `??` 悬挂污染 git status（此前还被误估为 7MB）。
 #   性质 = 过程件（同 r86 `_gui/` 的既有决定：过程件不进库、说明档进库）。
 #   本条只做「不误提交」的机械保证；**未删除、未移动**原目录（数据零损失，李老师可随时自行清理）。
+#   · r188 补记：该目录 747 个文件 / 116.42 MB 已按「零删除」原则 **move 归档**到仓外
+#     `C:/Users/lzj/WorkBuddy/Claw/_archive/r188_hygiene/_m3/`（逐文件 md5 自证），仓内目录已空并移除。
+#     ⇒ 本条保留是为「将来若再生成同名过程件目录」仍不入库；`project.config.json::packOptions.ignore`
+#       里的 `_m3` 同理由（目录不存在时该条为无害空规则，未改动，避免动打包判据）。
 _m3/
 
 # R181h-2「打错窗口」事故排障的过程截图（152 张 / 29 MB）：同 r86 `_gui/` 与 `_m3/` 的既有决定——
@@ -37,6 +44,9 @@ _m3/
 #     WorkBuddy 抢前台 / Ctrl+K 命令面板 / Ctrl+M 模型选择器 / 模型切回 / 输入框已清空 /
 #     会话已切回 / 载荷已粘贴）；
 #   · 过程件命名族（probe_*/v*/t*/x*/y*/f_*/h*/i*/bx*/c_*/z_*/nav*/mdl*/state*/now* 的 png）一律挡住。
+#   · r188 补记：其中 128 张**未跟踪**的过程截图（23.30 MB）已按「零删除」原则 **move 归档**到仓外
+#     `C:/Users/lzj/WorkBuddy/Claw/_archive/r188_hygiene/review/evidence/r181h_m317/`（md5 自证）；
+#     另 24 张**已入库**的非 `evidence_` 前缀 png（历史误提交、**已在 git 里**）按「不动已入库件」保留。
 /review/evidence/r181h_m317/*.png
 !/review/evidence/r181h_m317/evidence_*.png
 

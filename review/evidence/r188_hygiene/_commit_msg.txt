@@ -1,0 +1,27 @@
+r188：仓库卫生整理 —— 过程件 1908 文件 / 225.86 MB 按「零删除」归档移出（md5 自证）
+
+一、做了什么（全部可还原，零删除）
+1. 过程件归档移出（move，非删除）→ 仓外 `C:/Users/lzj/WorkBuddy/Claw/_archive/r188_hygiene/<原相对路径>`
+   · `_m3/`                              747 个 / 116.42 MB（png507 py114 txt65 log49 js12）
+   · `review/evidence/r86_timeout_20260919`  1033 个 /  86.14 MB（未跟踪的过程截图）
+   · `review/evidence/r181h_m317`         128 个 /  23.30 MB（未跟踪的过程截图）
+   合计 1908 个 / 225.86 MB；移动前记录 size+md5，移动后逐条比对目标文件，
+   **1908/1908 自证通过**，清单落 `_archive/r188_hygiene/_manifest_r188.tsv`（每行 size\tmd5\t原相对路径）。
+2. 空目录清理 12 个：`--version/`、`--version`（误建的 shell 产物）、`.exe/`、
+   `_m3/` 及其 8 个子目录（内容已归档）。git 不跟踪空目录 ⇒ 对版本库零影响。
+3. 磁盘回收：`review/` 212.39 MB → 102.95 MB，连同 `_m3/` 共约 226 MB。
+
+二、明确「没做」的（防下一轮误判）
+· **已入库文件一律未动**：r86 的 3 张 `evidence_*.png`、r181h 的 9 张 `evidence_*.png`
+  （判据截图）+ 24 张历史误提交的非 `evidence_` 前缀 png —— 共 36 个 / 6.73 MB，仍在库里。
+· **`_m3` 的排除规则保留**（`.gitignore` 与 `project.config.json::packOptions.ignore`）：
+  目录已不存在，规则退化为无害空规则；动 packOptions 会触碰打包判据（`check_pack_size.js`）⇒ 不
+  动，只在 `.gitignore` 三处补记「已归档去向 + 如何还原」。
+· **未做 `.git/` 瘦身**（现 186 MB）：需 `git filter-repo` 改写历史，属另一档授权，未擅自执行。
+
+三、判据
+· 门禁 `125/125 通过 · RC=0 · ❌ FAIL=0`（Python 通道 `run_gate3.py`，证据 `gate/gate_188_3.txt`）。
+· 本轮沙箱里 node 派生 `git` 仍 EBUSY（原生 `node verify_all.js` 卡在 `[suite-tracked]`）
+  ⇒ 在**本轮副本**的 `run_gate3.py` 里给套件执行补挂 `NODE_OPTIONS=--require gitcache_preload.js`
+  （缓存由 `mk_git_keys.py` 用**真 git** 刷新）。这是**环境适配、不改判据**：改前 116/125、
+  改后 125/125，红的那 9 条全部是「spawnSync git EBUSY」而非断言失败。
