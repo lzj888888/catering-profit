@@ -1,0 +1,49 @@
+fix(devtools): 打包体积守卫 R182 + packOptions.ignore 补全（R181p）
+
+根因链（承接 r181o 出码事故）：
+  `.gitignore` 与 `packOptions.ignore` 是两套互不相干的机制。`_m3/`（116 MB 调试截图堆）
+  从未进 git、也早写在 .gitignore 里，但**微信打包只认 packOptions.ignore**
+  ⇒ 被当源码打进包 ⇒ 入包 118 MB，超 2 MB 上限 59 倍 ⇒ preview 连败 6 轮。
+  r181o 已止血（补 folder:_m3 ⇒ 116.86 → 0.76 MB）；本轮做结构性收口。
+
+一 修复面（project.config.json::packOptions.ignore，14 → 20 条）
+  + folder:_bak_r70 / folder:admin-h5 / prefix:_ / file:.gitignore / file:LICENSE
+    / file:project.private.config.json
+  · admin-h5 依据：tools/check_terms_forbidden.js:178-179 已明文声明「不进小程序审核」
+  · prefix:_ 实测零误伤（pages/ utils/ miniprogram/ 内 0 个 _ 开头文件）
+  · prefix 的匹配面官方未写死 ⇒ _ 族目录另有显式 folder 规则兜底
+  实测入包 0.7600 MB / 137 文件 → 0.6147 MB / 108 文件
+
+二 新守卫 R182（tools/check_pack_size.js，11 条断言）
+  S 自失效护栏：S1 扫描面非退化 / S2 关键入口在包内 / S3 匹配器四类正负样本互证
+  P 入包体积：P-① ≤ 预算 / P-② 预算常量 < 微信硬上限（防改大预算绕过）/ P-③ 单顶层条目顶格并点名罪魁
+  G 规则完整性：G-① 必备 20 条在位 / G-② 条数下界 / G-③ type ∈ 官方六种 / G-④ 未用 regexp·glob
+  阈值全部取实测保守侧：预算 1.5 MB / 顶格 0.8 MB / 文件下界 60 / 规则下界 16
+
+三 同步面（122 → 123，七处全改）
+  SUITES 末位 + verify_all.js 头注数量 + 头注守卫说明 + 重启键 §1.1 入口行
+  + 重启键演进行当前值 + 重启键断言数声明行（check_pack_size=11，38 → 39）
+  + check_suite_assert_counts.js::CASES
+
+四 变异回灌 5/5 有效（均点名到本守卫自己的断言）
+  M1 撤 folder:admin-h5 → G-① 红
+  M2 根下新增 2 MB 未忽略目录（= 事故形态）→ P-③ 红并点名 zzbigprobe
+  M3 等价改写（打乱 ignore 顺序）→ 保持绿（反向证据）
+  M4 削弱判据（预算 1.5 → 5）→ P-② 自反断言红
+  M5 打坏匹配器（hit 恒 null）→ S3-a 红 + 虚报 333.7 MB
+  还原核对：守卫/配置 sha256 前后全等，探针目录已移除
+
+五 门禁
+  123/123 · RC=0 · 真 FAIL=0；[pack-size] ✅ PASS (✅ 11 条 / 段 4)
+  同步面守卫单跑：suite-count-claims 11/0 · suite-assert-counts 47/0 · suite-coverage 10/0
+
+六 本轮未做（写清，不静默跳过）
+  · 零删除零移动：_m3/ _bak_r70/ 20 个 _* 脚本原样留在磁盘（只是不进包）
+  · 根下 --version/ 与 .exe/ 两个空目录未动（0 字节、不进包；性质待查）
+  · 未做真机验证（需李老师扫码；上一轮码已过期）
+
+回执：
+- [2026-10-01 10:38] R181p 已落 · 证据：node tools/check_pack_size.js → 11 通过 / 0 失败；
+  node verify_all.js → 123/123 · RC=0；python mut_r181p_pack_guard.py → 5/5 有效 · all_restored=true
+- 存疑：prefix 在 devtools 里的真实匹配面（路径 vs 文件名）官方未写死 —— 已用显式 folder 规则兜底
+  消除风险，但未在工具侧实测；验证时机 = 下一次出码。

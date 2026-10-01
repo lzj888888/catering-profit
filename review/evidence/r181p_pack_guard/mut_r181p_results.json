@@ -1,0 +1,90 @@
+{
+ "summary": "5/5 组变异有效",
+ "results": [
+  {
+   "id": "M1",
+   "desc": "撤掉必备规则 admin-h5（真缺陷：内部后台会随包发布）",
+   "expect": "RED",
+   "rc": 1,
+   "failed_asserts": [
+    "❌ G-① 必备 ignore 规则逐条在位 · 缺 1 条：folder:admin-h5（内部管理后台（check_terms_forbidden.js 已声明不进小程序审核））"
+   ],
+   "targets": [
+    "G-①"
+   ],
+   "target_hit": {
+    "G-①": true
+   },
+   "verdict": "VALID"
+  },
+  {
+   "id": "M2",
+   "desc": "仓库根新增 2MB 未忽略目录 zzbigprobe/（= round181o 事故形态）",
+   "expect": "RED",
+   "rc": 1,
+   "failed_asserts": [
+    "❌ P-① 入包总量 ≤ 预算 · 实测 2.6147 MB / 预算 1.5 MB",
+    "❌ P-③ 无单个未忽略顶层条目超顶格 · 罪魁：zzbigprobe=2 MB（> 0.8 MB） ⇒ 多半是新的临时目录 / 截图堆没进 packOptions.ignore"
+   ],
+   "targets": [
+    "P-③"
+   ],
+   "target_hit": {
+    "P-③": true
+   },
+   "verdict": "VALID"
+  },
+  {
+   "id": "M3",
+   "desc": "等价改写：打乱 packOptions.ignore 顺序（语义不变）",
+   "expect": "GREEN(等价改写须保持绿)",
+   "rc": 0,
+   "failed_asserts": [],
+   "targets": [],
+   "target_hit": {},
+   "verdict": "VALID"
+  },
+  {
+   "id": "M4",
+   "desc": "削弱判据：TOTAL_BUDGET_MB 1.5 → 5（想放宽到硬上限以上）",
+   "expect": "RED",
+   "rc": 1,
+   "failed_asserts": [
+    "❌ P-② 预算常量自洽：预算 < 微信硬上限（防「改大预算绕过」） · 预算 5 MB < 硬上限 2 MB，且单条目顶格 0.8 MB ≤ 预算"
+   ],
+   "targets": [
+    "P-②"
+   ],
+   "target_hit": {
+    "P-②": true
+   },
+   "verdict": "VALID"
+  },
+  {
+   "id": "M5",
+   "desc": "打坏匹配器：hit() 恒返回 null（判据腐化成恒真）",
+   "expect": "RED",
+   "rc": 1,
+   "failed_asserts": [
+    "❌ S3-a 匹配器正样本全部命中（folder / file / suffix / prefix 四类） · 0/6 命中",
+    "❌ P-① 入包总量 ≤ 预算 · 实测 333.7066 MB / 预算 1.5 MB",
+    "❌ P-③ 无单个未忽略顶层条目超顶格 · 罪魁：review=208.0313 MB（> 0.8 MB）；_m3=116.4175 MB（> 0.8 MB）；cloudfunctions=3.7951 MB（> 0.8 MB）；specs=1.2339 MB（> 0.8 MB）；tools=1.1019 MB（> 0.8 MB） ⇒ 多半是新的临时目录 / 截图堆没进 packOptions.ignore"
+   ],
+   "targets": [
+    "S3-a"
+   ],
+   "target_hit": {
+    "S3-a": true
+   },
+   "verdict": "VALID"
+  }
+ ],
+ "restore": {
+  "guard_sha256_before": "50a297368df49028bb221835e2862e0218e75cf7f839eddce0d8e8ab0f72e87f",
+  "guard_sha256_after": "50a297368df49028bb221835e2862e0218e75cf7f839eddce0d8e8ab0f72e87f",
+  "cfg_sha256_before": "cb3d92da4b5daddd17851f4ed2fc7d43963905f1fed1de3bc70f2597ed39d640",
+  "cfg_sha256_after": "cb3d92da4b5daddd17851f4ed2fc7d43963905f1fed1de3bc70f2597ed39d640",
+  "bigdir_exists_after": false,
+  "all_restored": true
+ }
+}

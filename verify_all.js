@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：122 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：123 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -266,6 +266,12 @@
 //       + 数据可信度甲级门禁守卫（tools/selftest_grade_gate.js，R181l）——
 //         纯校验 utils/gradeGate.js（不落库、不碰云）：checkGradeA（通道连通 / Schema 校验 / 关键指标非空，三门 fail-closed）。
 //         判据 = 正常样本通过 + 每门各一反例（CHANNEL_EMPTY / SCHEMA_PLATFORM / REQUIRED_*）。
+//       + 打包体积守卫（tools/check_pack_size.js，R182）—— 根因＝round181o 出码连败 6 轮，
+//         真因是入包 118 MB 超微信上限 2 MB（仓库根调试截图堆 `_m3/` 116 MB 未进 packOptions.ignore，
+//         而 **.gitignore 对微信打包无效** —— 开发者工具只认 packOptions.ignore）。
+//         判据 = S 自失效护栏（扫描面非退化 / 关键入口在包内 / 匹配器四类正负样本互证）
+//         + P 体积三维（总量 ≤ 预算 / 预算常量 < 硬上限 / 单顶层条目顶格并点名罪魁）
+//         + G 规则完整性（必备 20 条逐条在位 / 条数下界 / type ∈ 官方六种 / 未用 regexp·glob）。
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -626,6 +632,8 @@ const SUITES = [
   ['bill-parse', 'tools/selftest_bill_parse.js'],
   // 批次 F 甲级门禁（数据可信度 · v1.4 §5.2）：通道连通 / Schema 校验 / 关键指标非空，三门 fail-closed。
   ['grade-gate', 'tools/selftest_grade_gate.js'],
+  // 末位套件（round181p 新增，R182）：打包体积 / ignore 规则守卫 tools/check_pack_size.js
+  ['pack-size', 'tools/check_pack_size.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
