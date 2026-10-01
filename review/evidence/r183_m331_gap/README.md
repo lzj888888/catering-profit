@@ -9,13 +9,24 @@
 |---|---|
 | `probe_r183_gap_audit.py` | 审计探针（纯读；A~E 五段；可带仓库根作参数，默认指向本仓） |
 | `probe_r183_gap_audit.out.txt` | 探针输出留档（与本次提交的工作树对应） |
+| `gate_183_1.txt` | 本目录成文后、**编号纠正前**的全量门禁输出（123/123 · RC=0） |
+| `gate_183_2.txt` | **编号纠正 + 路线单补「两份账单已核」之后**的全量门禁输出（123/123 · RC=0） |
+| `_commit_msg.txt` / `_commit_msg_renumber.txt` | 两次提交的 message 留档 |
 | `README.md` | 本文件 |
 
 复现命令：
 
 ```bash
 python review/evidence/r183_m331_gap/probe_r183_gap_audit.py
+node verify_all.js          # 期望末行「总览：123/123 套件通过」· RC=0
 ```
+
+### 两点笔误更正（如实登记，不改写历史）
+
+- 本目录原名 `r182_m331_gap/` —— 🔴 **`R182` 已被 `tools/check_pack_size.js`（打包体积守卫）占用**，属**同号两名**。
+  已单独提交 `2ed3077` 用 `git mv` 改回 `r183_`（引用打包守卫的那两处 `R182` **一字未动**）。教训见技能 `gate-suite-checklist` §15.1。
+- 探针**初版**用过 `wouldCreateCycle`（当 R134 的针）/ `purchase_price`（当 R138 的针），**两者均 False** ——
+  那是**针选错了**（不是没覆盖）。已改用真实断言名（`COMBO_NEST_NOT_ALLOWED` / `全表无价格类键`）。教训见 §15.2。
 
 ## 二 结论一：承诺的 9 条守卫，**8 条实际有覆盖**（落点文件名与规范写的不一致）
 
