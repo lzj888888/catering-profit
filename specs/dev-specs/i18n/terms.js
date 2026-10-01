@@ -860,7 +860,10 @@ const TERMS = {
     specEmpty: '选好规格后点「规格试算」',
     // 规格 chips 的显示名：**只有键 + 中文名，没有系数**（系数单源在服务端 SPEC_PRESETS）。
     //   键集必须 ≡ 服务端 SPEC_PRESETS 的 spec_key 集合（守卫 L5 逐键比对）。
-    specLabel: { half: '半份', small: '小份' },
+    specLabel: { half: '半份', small: '小份', per100g: '每100g' },
+    // M3v1.2_B（D21/M3.31）：每 100g 计价规格（展示单位 + 口径说明；系数全 1，成本不缩放）
+    specPer100gUnit: '100g',
+    specPer100gNote: '按 100g 计价，实际按称重结算',
     // ===== M3.16（批次 C）· 套餐（引用型成本卡）=====
     //   套餐能引用其它成本卡（子卡）但不被引用；子卡锁版本；给老板看「顾客省 / 我少赚 / 成本结构」。
     cardType: '卡片类型',

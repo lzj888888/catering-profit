@@ -28,6 +28,10 @@ const LINE_KIND_DEFAULT = 'main';
 const SPEC_PRESETS = [
   { spec_key: 'half', name: '半份', coef: { main: 0.5, aux: 0.7, season: 1, semi: 0.5, pack: 1 } },
   { spec_key: 'small', name: '小份', coef: { main: 0.7, aux: 0.85, season: 1, semi: 0.7, pack: 1 } },
+  // M3v1.2_B（D21/M3.31）：每 100g 计价（麻辣烫/卤味/凉菜按重量卖）。
+  //   🔴 系数**全 1（恒等）**：该规格成本 ≡ 该卡标准成本（不缩放）；差异只在展示层。
+  //   unit_label 是**展示单位**（页面拼「¥X / 100g」用），不参与任何金额计算。
+  { spec_key: 'per100g', name: '每100g', coef: { main: 1, aux: 1, season: 1, semi: 1, pack: 1 }, unit_label: '100g' },
 ];
 
 const MAX_COEF = 1;      // 系数上界（见上：规范定死 0~1）
@@ -134,7 +138,9 @@ function sanitizeSpecs(raw) {
     const cs = sanitizeCoef(s.coef != null ? s.coef : (preset ? preset.coef : null));
     if (!cs.ok) return { error: `规格 ${key}：${cs.why}` };
     const name = String(s.name == null || s.name === '' ? (preset ? preset.name : key) : s.name).trim() || key;
-    out.push({ spec_key: key, name, coef: cs.value, price_fen: price, enabled: s.enabled !== false });
+    // unit_label：展示单位（per100g 预设给 '100g'）；仅展示、不参与金额计算。快照落库。
+    const unitLabel = (preset && preset.unit_label) ? preset.unit_label : '';
+    out.push({ spec_key: key, name, coef: cs.value, price_fen: price, unit_label: unitLabel, enabled: s.enabled !== false });
   }
   return { error: null, value: out };
 }

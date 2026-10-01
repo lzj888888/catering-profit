@@ -110,6 +110,9 @@ Page({
       specSuggestLabel: TERMS.card.specSuggestLabel,
       specCalc: TERMS.card.specCalc,
       specEmpty: TERMS.card.specEmpty,
+      // M3v1.2_B（D21/M3.31）：每 100g 计价规格（展示单位 + 口径说明）
+      specPer100gUnit: TERMS.card.specPer100gUnit,
+      specPer100gNote: TERMS.card.specPer100gNote,
       // round156：连续录入横幅
       savedOk: TERMS.card.savedOk,
       savedHint: TERMS.card.savedHint,

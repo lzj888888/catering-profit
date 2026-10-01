@@ -236,9 +236,10 @@
         </view>
         <block wx:if="{{sp.enabled}}">
           <view class="cell2">
-            <text class="lbl">{{t.specPriceLabel}}</text>
+            <text class="lbl">{{t.specPriceLabel}}<text wx:if="{{sp.spec_key === 'per100g'}}">（元/{{t.specPer100gUnit}}）</text></text>
             <input class="val-input" type="digit" value="{{sp.priceYuan}}" data-spec="{{sp.spec_key}}" bindinput="onSpecPrice"  adjust-position="{{true}}" cursor-spacing="20" />
           </view>
+          <view class="muted" wx:if="{{sp.spec_key === 'per100g'}}">{{t.specPer100gNote}}</view>
         </block>
       </view>
     </block>
