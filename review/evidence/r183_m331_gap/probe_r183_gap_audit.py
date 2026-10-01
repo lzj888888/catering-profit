@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-"""probe_r182_gap_audit.py —— R182 缺口审计探针（只读，不写仓库任何文件）
+"""probe_r183_gap_audit.py —— R183 缺口审计探针（只读，不写仓库任何文件）
 
 用途：把「规范承诺的守卫 vs 仓库实况」与「M3.31 per100g 是否零代码」两条结论
       变成**可复现的机器输出**，而不是靠人眼找文件名。
 
 运行：
-  python probe_r182_gap_audit.py                # 默认指向本仓根
-  python probe_r182_gap_audit.py <仓库根绝对路径>
+  python probe_r183_gap_audit.py                # 默认指向本仓根
+  python probe_r183_gap_audit.py <仓库根绝对路径>
 
 判据（每条都打印实际值，便于复核）：
   A. 规范承诺的 9 个守卫文件名，实际存在几个

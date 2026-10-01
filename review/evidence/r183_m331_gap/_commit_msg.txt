@@ -1,4 +1,4 @@
-r182：规范承诺守卫对账 + M3.31「每100g」缺口审计 + 补做投喂包
+r183：规范承诺守卫对账 + M3.31「每100g」缺口审计 + 补做投喂包
 
 ## 一 为什么做（触发）
 R181p 收口后自检「规范里承诺过、但可能没落地的条目」——不靠印象，只读规范 + 只读代码，逐条给可复现证据。
@@ -17,7 +17,7 @@ v1.1 §M3.27 / v1.2 §M3.37 写下 10 个守卫文件名，仓库里只有 1 个
   · R141（per100g 系数全 1）—— **无从挂**，被测对象不存在（见发现二）
 
 ## 三 发现二（真缺口）：M3.31「每100g」计价 —— 定案「做」，实际零代码
-事实（`probe_r182_gap_audit.py` 三段，输出留档）：
+事实（`probe_r183_gap_audit.py` 三段，输出留档）：
   · 服务端 SPEC_PRESETS spec_key = ['half','small'] —— 无 per100g
   · miniprogram/i18n/terms.js::specLabel = {half, small}；与 specs 副本 md5 相同（47e8f678...）
   · 全仓 .js 里 per100g = 0 命中；commission_base = 0 命中
@@ -27,7 +27,7 @@ v1.1 §M3.27 / v1.2 §M3.37 写下 10 个守卫文件名，仓库里只有 1 个
 
 ## 四 本提交做了什么
   · 新增 review/NOTE_2026-10-01_规范承诺守卫与M3.31缺口审计.md（对账件 + 缺口论证 + 处置）
-  · 新增 review/evidence/r182_m331_gap/（probe_r182_gap_audit.py + .out.txt + README.md）
+  · 新增 review/evidence/r183_m331_gap/（probe_r183_gap_audit.py + .out.txt + README.md）
   · 新增 specs/dev-specs/delivery/批次M3v1.2_B补_每100g计价_提示词_可直接复制.txt（**可直接投喂**）
   · 更新 review/ROADMAP_2026-09-30_下一步总览.md（§〇 新增缺口条 / §一 新增"承诺守卫对账"行并订正 M3.14/15 表述
     / B 线新增序 2b 排程 / §四 新增 item 4b）
@@ -39,6 +39,6 @@ v1.1 §M3.27 / v1.2 §M3.37 写下 10 个守卫文件名，仓库里只有 1 个
   · 未投喂（投喂与否见下一提交/回执；投喂包本身已就绪）
 
 ## 六 回执
-- [2026-10-01 12:2x] 已落 · 证据：`python review/evidence/r182_m331_gap/probe_r182_gap_audit.py` → A~E 五段结论（同名存在 1 / 等效覆盖 6 / per100g 零命中）
+- [2026-10-01 12:2x] 已落 · 证据：`python review/evidence/r183_m331_gap/probe_r183_gap_audit.py` → A~E 五段结论（同名存在 1 / 等效覆盖 6 / per100g 零命中）
 - [2026-10-01 12:2x] 已落 · 证据：`node tools/check_evidence_meta.js` → 2/0 · `check_suite_coverage` → 10/0 · `check_js_syntax` → 906 个 .js 全过 · `check_redline_inventory` → 11/0 · `check_stale_claims` → 3/0 · `check_stale_status` → 12/0
-- [2026-10-01 12:2x] 已落 · 证据：`node verify_all.js` → 见 review/evidence/r182_m331_gap/gate_182_1.txt
+- [2026-10-01 12:2x] 已落 · 证据：`node verify_all.js` → 见 review/evidence/r183_m331_gap/gate_183_1.txt
