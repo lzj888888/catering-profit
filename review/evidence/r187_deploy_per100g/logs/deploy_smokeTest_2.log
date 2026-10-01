@@ -1,0 +1,16 @@
+- initialize
+
+(node:24980) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)
+[error] connect upgrade request failed Error: ESOCKETTIMEDOUT
+
+× initialize error: Error: ESOCKETTIMEDOUT, Error: ESOCKETTIMEDOUT
+    at ClientRequest.<anonymous> (C:\Program Files (x86)\Tencent\微信web开发者工具\resources\app.asar.unpacked\js\common\cli\index.js:189:12281)
+    at Object.onceWrapper (node:events:632:28)
+    at ClientRequest.emit (node:events:518:28)
+    at Socket.emitRequestTimeout (node:_http_client:863:9)
+    at Object.onceWrapper (node:events:632:28)
+    at Socket.emit (node:events:530:35)
+    at Socket._onTimeout (node:net:609:8)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)

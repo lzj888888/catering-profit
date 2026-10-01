@@ -1,0 +1,42 @@
+r187：M3.31「每100g」上云部署 —— 范围确认 + 通道被封（如实留档，未完成部署）
+
+背景
+- R185 已在仓内完成并验收 M3.31「每100g」（specDerive.js 单源 + terms 双副本 + 门禁 125/125），
+  但该改动牵动 43 个云函数目录的派生副本 ⇒ 云端仍是旧版 ⇒ 真机上点不出「每100g」。
+- 李老师 2026-10-01 夜放行（"我现在没有做任何动作，你继续你的工作"）⇒ 本轮执行部署。
+
+做成了什么（范围与准备，非部署本身）
+1. 部署范围确认 = 43 个函数（不是猜的）：
+   cx_index.js（公共桥接层）在每个函数目录都 require('./cx_specDerive') ⇒ 43 个全部加载该模块
+   ⇒ 范围缩不了（直觉上的"只部署真用到的那几个"是错的）。
+   判据：grep -rl cx_specDerive cloudfunctions/ | grep -v /common/ | grep -v cx_specDerive.js$ ⇒ 43
+2. node tools/sync_common.js --check ⇒ ✅ 43 个目录扁平副本 ≡ 单源派生，rc=0
+3. DEV_ENV_ID 现读（不抄记忆）= cloud1-d4gphpoxy337f2a25
+4. 部署器副本改向本目录（OUT/JUDGE），不往待整理的 _m3/ 再塞文件
+5. 新编号先查占用：grep R187 ⇒ 空
+
+没做成什么（如实）
+- 🔴 部署未执行成功：按技能先做单函数烟测（_deploy_fns.py smokeTest，带 dangerouslyDisableSandbox: true），
+  Python 与 cli.bat 均起来、跑满 112s，但判据两轮均 MISS（无 success=true 行、无 deploy cloudfunctions 完成行），
+  命令返回 PROGRAM BLOCKED BY SECURITY POLICY：reg.exe / WMIC.exe 在安全中心程序黑名单，
+  "This block cannot be approved or bypassed from the current command"。
+- 🔴 关键定性：这一层不归沙箱开关管（已标 dangerouslyDisableSandbox 仍被拦）；
+  同日 R181m 上午同样姿势成功 ⇒ 属「时有时无型」阻塞（与沙箱禁 node 派生子进程同类）。
+- IDE 进程不在（Get-Process 匹配 wechatwebdevtools|nwjs|weapp ⇒ NO_IDE_PROCESS）⇒ GUI 代操也走不了。
+- 提示明确禁止重试/换 shell/脚本代调 ⇒ 未绕过、未连跑 43 个（那会白跑约 20 分钟）。
+
+顺带排除"第二个隐藏前置"
+- external_sales_daily 与 shop_dish_mapping 均已在 cloudfunctions/initDb/collections.js（27 集合）定义，
+  且索引有定义、由 tools/selftest_r174_inbound.js A3/B3 校验 ⇒ 阶段② 地基不缺，只差真实样例定表结构解析。
+
+技能同步订正（~/.workbuddy/skills/miniprogram-cloud-deploy/SKILL.md §9）
+- ⚠️ 「非沙箱跑 cli.bat 就放行」被证伪：同日上午成功、当晚同姿势被拦 ⇒ 时有时无
+- 🔴 新增通道优先级第 0 步：先单函数烟测（smokeTest 约 45s），MISS 立刻停手别放量
+- 🔴 新增范围判据：改 common/ 单源后范围是 43 个（cx_index.js 每个目录都 require）⇒ 别想当然缩范围
+
+放行后一条命令即可（脚本已就绪，见 README §二）
+  python review/evidence/r187_deploy_per100g/_deploy_fns.py <43 个函数名>
+
+门禁
+- 提交前（沙箱通道）：总览 125/125 · RC=0 · MISS=0 · ❌=0 · 耗时 191.1s（gate/gate_187_1.txt）
+- 提交后：复刷缓存再跑一次（gate/gate_187_2_postcommit.txt）
