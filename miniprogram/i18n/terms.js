@@ -849,7 +849,8 @@ const TERMS = {
     lineKindTitle: '组件',
     lineKind: { main: '主料', aux: '辅料', season: '调料', semi: '半成品', pack: '耗材' },
     lineKindHint: '半份菜里「调料 / 耗材」不减半（否则没味、包装也省不了）—— 分类只影响规格试算，不影响这份成本',
-    specTitle: '规格（大小份）',
+    //       M3.31 起含「每100g」计重规格 ⇒ 标题不能再只写「大小份」（概括不了计重），改「份量/计重」。
+    specTitle: '规格（份量/计重）',
     specHint: '同一道菜挂多个规格：成本按组件类型缩放后**单独试算**，主成本口径不变',
     specEnable: '记入本卡',
     specPriceLabel: '规格售价（元）',
