@@ -11,8 +11,20 @@
     <input class="val-input" value="{{name}}" placeholder="{{t.dishNamePh}}" bindinput="onName" />
   </view>
 
-  <!-- M3.20（批次 B 收尾）从模板新建：一键预填行名/用量/单位，价格全部留空。仅新建态显示。 -->
-  <view class="field" wx:if="{{!isEdit}}">
+  <!-- M3.16（批次 C）卡片类型：单品 / 套餐（引用型成本卡）
+       R190：提到**名字下面第一步** —— 「是录一道菜，还是组一个套餐」先定，再谈别的；
+       选套餐后隐藏「核算模式 / 批量产出 / 菜品模板」（套餐固定按「份」聚合，calc_mode 对其无意义）。 -->
+  <view class="field">
+    <text class="lbl">{{t.cardTypeLabel}}</text>
+    <radio-group class="mode-group" bindchange="onCardType">
+      <label class="mode-item"><radio value="1" checked="{{cardType === '1'}}" color="#1e3a5f"/>{{t.cardTypeDish}}</label>
+      <label class="mode-item"><radio value="3" checked="{{cardType === '3'}}" color="#1e3a5f"/>{{t.cardTypeCombo}}</label>
+    </radio-group>
+    <text class="muted">{{t.cardTypeHint}}</text>
+  </view>
+
+  <!-- M3.20（批次 B 收尾）从模板新建：一键预填行名/用量/单位，价格全部留空。仅新建态 + 单品。 -->
+  <view class="field" wx:if="{{!isEdit && cardType === '1'}}">
     <text class="lbl">{{t.templateFrom}}</text>
     <picker mode="selector" range="{{tplNames}}" value="{{tplPicked}}" bindchange="onPickTemplate">
       <view class="picker">{{tplPicked >= 0 ? tplNames[tplPicked] : t.templatePickPh}}</view>
@@ -20,8 +32,8 @@
     <text class="muted">{{t.templateHint}}</text>
   </view>
 
-  <!-- 核算模式 -->
-  <view class="field">
+  <!-- 核算模式（仅单品） -->
+  <view class="field" wx:if="{{cardType === '1'}}">
     <text class="lbl">{{t.calcMode}}</text>
     <radio-group class="mode-group" bindchange="onMode">
       <label class="mode-item"><radio value="A" checked="{{calcMode === 'A'}}" color="#1e3a5f"/>{{t.calcModeA}}</label>
@@ -29,17 +41,8 @@
     </radio-group>
   </view>
 
-  <!-- M3.16（批次 C）卡片类型：单品 / 套餐（引用型成本卡） -->
-  <view class="field">
-    <text class="lbl">{{t.cardTypeLabel}}</text>
-    <radio-group class="mode-group" bindchange="onCardType">
-      <label class="mode-item"><radio value="1" checked="{{cardType === '1'}}" color="#1e3a5f"/>{{t.cardTypeDish}}</label>
-      <label class="mode-item"><radio value="3" checked="{{cardType === '3'}}" color="#1e3a5f"/>{{t.cardTypeCombo}}</label>
-    </radio-group>
-  </view>
-
-  <!-- 批量模式：产出份数 -->
-  <view class="field" wx:if="{{calcMode === 'B'}}">
+  <!-- 批量模式：产出份数（仅单品：套餐无批量预制概念） -->
+  <view class="field" wx:if="{{cardType === '1' && calcMode === 'B'}}">
     <text class="lbl">{{t.batchOutput}}</text>
     <input class="val-input" type="number" value="{{batchOutput}}" bindinput="onBatch"  adjust-position="{{true}}" cursor-spacing="20" />
   </view>
@@ -209,8 +212,8 @@
   </view>
   <view class="hint">{{t.activityPriceHint}}</view>
 
-  <!-- 反算售价（仅单品） -->
-  <view class="reverse" wx:if="{{cardType === '1'}}">
+  <!-- 反算售价（R190：单品 / 套餐**都能用** —— 此前套餐点了没反应，规范 v1.2 早定了套餐反算口径） -->
+  <view class="reverse">
     <view class="cell">
       <text class="lbl">{{t.targetMargin}}</text>
       <input class="val-input" type="digit" value="{{targetMargin}}" bindinput="onTargetMargin"  adjust-position="{{true}}" cursor-spacing="20" />
@@ -219,6 +222,33 @@
     <button class="btn-small" style="min-height:88rpx;margin-left:12rpx;" wx:if="{{reversePriceFen > 0}}" bindtap="applyReverse">{{t.reverseApply}}</button>
     <view class="muted" wx:if="{{reversePriceFen > 0}}">{{t.reverseResult}}：{{t.cur}}{{reverseResultPreview}}</view>
     <view class="muted" wx:if="{{previewCostFen > 0}}">{{t.totalCost}}：<text style="color:#1e3a5f;">{{t.cur}}{{previewCost}}</text></view>
+  </view>
+
+  <!-- M3.37（R190）团购到手试算：
+       🔴 佣金基数 = **顾客实付的团购价**（原价 188 / 团购价 88 ⇒ 按 88 抽，不是按 188）；
+       费率店家自己填、**无默认值**（行业常见 6% 只作 placeholder，R128 同族）。 -->
+  <view class="reverse">
+    <view class="spec-title">{{t.grouponTitle}}</view>
+    <text class="muted">{{t.grouponHint}}</text>
+    <view class="cell">
+      <text class="lbl">{{t.grouponPrice}}</text>
+      <input class="val-input" type="digit" value="{{grouponPriceYuan}}" placeholder="{{t.grouponPricePh}}" bindinput="onGrouponPrice" adjust-position="{{true}}" cursor-spacing="20" />
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.grouponRate}}</text>
+      <input class="val-input" type="digit" value="{{grouponRate}}" placeholder="{{t.grouponRatePh}}" bindinput="onGrouponRate" adjust-position="{{true}}" cursor-spacing="20" />
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.grouponPromo}}</text>
+      <input class="val-input" type="digit" value="{{grouponPromoYuan}}" bindinput="onGrouponPromo" adjust-position="{{true}}" cursor-spacing="20" />
+    </view>
+    <button class="btn ghost btn-small" style="min-height:88rpx;" bindtap="calcGroupon">{{t.grouponCalc}}</button>
+    <block wx:if="{{grouponView}}">
+      <view class="muted">{{t.grouponCommission}}：{{t.cur}}{{grouponView.commission}}</view>
+      <view class="muted">{{t.grouponNet}}：{{t.cur}}{{grouponView.net}}（{{grouponView.netRate}}%）</view>
+      <view class="muted">{{t.grouponProfit}}：{{t.cur}}{{grouponView.profit}}（{{grouponView.profitRate}}%）</view>
+      <view class="muted" wx:if="{{grouponView.hasDine && grouponView.vsDineNeg}}" style="color:#e74c3c;">{{t.grouponVsDine}}：{{t.cur}}{{grouponView.vsDine}}</view>
+    </block>
   </view>
 
   <!-- round150（M3.15）规格（大小份）：成本按组件类型缩放后**单独试算**。

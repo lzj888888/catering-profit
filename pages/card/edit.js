@@ -13,6 +13,7 @@ const units = require('../../utils/units.js');
 const { openPaywall } = require('../../utils/paywall.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 const { TEMPLATES, applyTemplate } = require('../../utils/dishTemplates.js');   // M3.20 菜品模板（只预填，不写库）
+const { calcGrouponOrder } = require('../../utils/grouponDerive.js');            // M3.37 团购渠道层（纯计算，不落库）
 
 // 本店填过的菜品分类（本地记忆，供下次点选；不新建集合、不上云 —— M3 v1.1 零新建集合红线）
 const EDIT_CATS_KEY = 'm3_dish_cats';
@@ -121,6 +122,7 @@ Page({
       cardTypeLabel: TERMS.card.cardType,
       cardTypeDish: TERMS.card.cardTypeDish,
       cardTypeCombo: TERMS.card.cardTypeCombo,
+      cardTypeHint: TERMS.card.cardTypeHint,
       comboSubCardTitle: TERMS.card.comboSubCardTitle,
       comboSubCardPh: TERMS.card.comboSubCardPh,
       comboSubCardQty: TERMS.card.comboSubCardQty,
@@ -130,6 +132,20 @@ Page({
       comboInsightMerchantLose: TERMS.card.comboInsightMerchantLose,
       comboInsightLoseWarn: TERMS.card.comboInsightLoseWarn,
       comboInsightCostShare: TERMS.card.comboInsightCostShare,
+      // M3.37（R190）到店团购渠道层
+      grouponTitle: TERMS.card.grouponTitle,
+      grouponHint: TERMS.card.grouponHint,
+      grouponPrice: TERMS.card.grouponPrice,
+      grouponPricePh: TERMS.card.grouponPricePh,
+      grouponRate: TERMS.card.grouponRate,
+      grouponRatePh: TERMS.card.grouponRatePh,
+      grouponPromo: TERMS.card.grouponPromo,
+      grouponCalc: TERMS.card.grouponCalc,
+      grouponCommission: TERMS.card.grouponCommission,
+      grouponNet: TERMS.card.grouponNet,
+      grouponProfit: TERMS.card.grouponProfit,
+      grouponNetRate: TERMS.card.grouponNetRate,
+      grouponVsDine: TERMS.card.grouponVsDine,
       // M3.20（批次 B 收尾）菜品模板
       templateFrom: TERMS.card.templateFrom,
       templatePickPh: TERMS.card.templatePickPh,
@@ -156,6 +172,11 @@ Page({
     previewCostFen: 0,
     reverseResultPreview: '',
     previewCost: '',
+    // M3.37 团购试算（纯前端、不落库；费率无默认值 ⇒ 只进 placeholder）
+    grouponPriceYuan: '',
+    grouponRate: '',
+    grouponPromoYuan: '',
+    grouponView: null,
     materials: [],
     // 用量单位枚举（单源 utils/units.js；round151 起 = 与采购单位同池，基准单位仍恒为克）
     qtyUnits: units.QTY_UNITS.slice(),
@@ -557,10 +578,12 @@ Page({
     if (!linesInput) return;
     try {
       ui.setTitle(TERMS.card.reverseTitle);
+      // 套餐固定按「份」聚合（M3.16：calc_mode 对套餐无意义）⇒ 强制 mode='A'
+      const mode = this.data.cardType === '3' ? 'A' : this.data.calcMode;
       const d = await api.call('calcBom', {
         lines: linesInput,
-        mode: this.data.calcMode,
-        batch_output: this.data.calcMode === 'B' ? Number(this.data.batchOutput) : 0,
+        mode,
+        batch_output: mode === 'B' ? Number(this.data.batchOutput) : 0,
         loss_pct: Number(this.data.lossRate) || 0,
         auxYuan: Number(this.data.auxYuan) || 0,
         target_margin_pct: Number(this.data.targetMargin) || 0,
@@ -584,8 +607,70 @@ Page({
     this.setData({ priceYuan: api.fenToYuan(this.data.reversePriceFen, 2) });
   },
 
+  // ============ M3.37 团购到手试算（R190） ============
+  // 口径（李老师 2026-10-02 定）：佣金基数 = **顾客实付的团购价**（不是原价）；费率店家自己填、无默认值。
+  // 成本来自引擎 calcBom（与单品/套餐同一条路，不另算一份）；费用侧纯前端，**不落库**。
+  onGrouponPrice(e) { this.setData({ grouponPriceYuan: e.detail.value, grouponView: null }); },
+  onGrouponRate(e) { this.setData({ grouponRate: e.detail.value, grouponView: null }); },
+  onGrouponPromo(e) { this.setData({ grouponPromoYuan: e.detail.value, grouponView: null }); },
+  async calcGroupon() {
+    const priceYuan = Number(this.data.grouponPriceYuan) || 0;
+    if (!(priceYuan > 0)) { wx.showToast({ title: TERMS.card.grouponNeedPrice, icon: 'none' }); return; }
+    const linesInput = this.buildCalcLines();
+    if (!linesInput) return;
+    try {
+      ui.setTitle(TERMS.card.grouponCalc);
+      const mode = this.data.cardType === '3' ? 'A' : this.data.calcMode;
+      const d = await api.call('calcBom', {
+        lines: linesInput,
+        mode,
+        batch_output: mode === 'B' ? Number(this.data.batchOutput) : 0,
+        loss_pct: Number(this.data.lossRate) || 0,
+        auxYuan: Number(this.data.auxYuan) || 0,
+      });
+      const costFen = d.unit_cost_fen || 0;
+      if (!(costFen > 0)) { wx.showToast({ title: TERMS.card.grouponNeedCost, icon: 'none' }); return; }
+      const v = calcGrouponOrder({
+        priceFen: Math.round(priceYuan * 100),
+        costFen,
+        ratePct: Number(this.data.grouponRate) || 0,
+        promoFen: Math.round((Number(this.data.grouponPromoYuan) || 0) * 100),
+        dineFen: Math.round((Number(this.data.priceYuan) || 0) * 100),
+      });
+      // vsDineNeg = 堂食毛利 − 团购到手毛利 > 0 ⇒ 这个团购在拉低毛利 ⇒ 红字
+      this.setData({
+        grouponView: {
+          cost: api.fenToYuan(v.costFen, 2),
+          commission: api.fenToYuan(v.commissionFen, 2),
+          net: api.fenToYuan(v.netFen, 2),
+          profit: api.fenToYuan(v.profitFen, 2),
+          netRate: v.netRatePct,
+          profitRate: v.profitRatePct,
+          vsDine: api.fenToYuan(Math.abs(v.vsDineFen), 2),
+          vsDineNeg: v.vsDineFen > 0,
+          hasDine: v.hasDine,
+        },
+        previewCostFen: costFen,
+        previewCost: api.fenToYuan(costFen, 2),
+      });
+    } catch (e) { api.toastError(e); }
+  },
+
   buildCalcLines() {
     const out = [];
+    // M3.16 / R190：**套餐也能算**（此前反算区只给单品用，套餐点了没反应）
+    //   子卡行 → 引擎行：net_unit_cost = 子卡单份成本(分) × 100（与引擎「万分之一元」同尺度）；quantity = 份数。
+    if (this.data.cardType === '3') {
+      for (const l of this.data.comboLines) {
+        const qty = Number(l.qty) || 0;
+        if (!(qty > 0)) continue;
+        const sub = this.data.subCards.find((x) => x.card_code === l.sub_card_ref);
+        if (!sub || !(Number(sub.total_cost_fen) > 0)) continue;
+        out.push({ quantity: qty, net_unit_cost: Number(sub.total_cost_fen) * 100, line_kind: 'main' });
+      }
+      if (out.length === 0) { wx.showToast({ title: TERMS.card.comboSubCardPh, icon: 'none' }); return null; }
+      return out;
+    }
     for (const l of this.data.lines) {
       if (!l.qty) continue;
       // round149：用量一律换算成**基准单位(克)**再送引擎（引擎口径一字不改）
@@ -659,10 +744,12 @@ Page({
     }
     try {
       ui.setTitle(TERMS.card.specCalc);
+      // 套餐固定按「份」聚合（M3.16：calc_mode 对套餐无意义）⇒ 强制 mode='A'
+      const mode = this.data.cardType === '3' ? 'A' : this.data.calcMode;
       const d = await api.call('calcBom', {
         lines: linesInput,
-        mode: this.data.calcMode,
-        batch_output: this.data.calcMode === 'B' ? Number(this.data.batchOutput) : 0,
+        mode,
+        batch_output: mode === 'B' ? Number(this.data.batchOutput) : 0,
         loss_pct: Number(this.data.lossRate) || 0,
         auxYuan: Number(this.data.auxYuan) || 0,
         target_margin_pct: Number(this.data.targetMargin) || 0,
