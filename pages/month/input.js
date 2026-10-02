@@ -39,6 +39,13 @@ Page({
       subItem: TERMS.ledger.subItem,
       subItemPh: TERMS.ledger.subItemPh,
       addSubItem: TERMS.ledger.addSubItem,
+      // round189：常规科目预置 + 上月复制（⚠️ wxml 用到的每个 t.<键> 都必须在此映射，
+      //   否则取到空串 ⇒ 静默空白 —— guard `check_page_terms` P2-1 就是守这条）
+      copyPrevBtn: TERMS.ledger.copyPrevBtn,
+      copyPrevNone: TERMS.ledger.copyPrevNone,
+      recurringHint: TERMS.ledger.recurringHint,
+      needCheck: TERMS.ledger.needCheck,
+      fixedTag: TERMS.ledger.fixedTag,
       // T4b（round97）：预设项选择面板文案（页面零硬编码 ⇒ 必须在此映射，否则 wxml 取到空串）
       presetPickTitle: TERMS.ledger.presetPickTitle,
       presetPickCustom: TERMS.ledger.presetPickCustom,
