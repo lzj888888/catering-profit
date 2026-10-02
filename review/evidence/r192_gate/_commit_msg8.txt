@@ -1,0 +1,5 @@
+r190-evidence：M3 探讨纪要落仓后全量门禁复跑（125/125 · RC=0 · miss=0）
+
+- 改动面 = 仅 1 个 review 文档（零代码）⇒ 仍须复跑：上一轮曾因文档措辞误撞 check_stale_claims
+- gate_190_1.txt：125/125 通过（135.9s）· gitcache_miss.log 不存在 ⇒ miss=0
+- 结论：新增纪要未引入守卫回归

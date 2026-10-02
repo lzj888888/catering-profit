@@ -49,10 +49,14 @@ Page({
       marginMid: TERMS.card.marginMid,
       marginLow: TERMS.card.marginLow,
       deleteCard: TERMS.card.deleteCard,
+      // R192：「⋯」菜单里的「编辑」（卡片主体点击也是进编辑，但菜单里必须还能找到）
+      editCard: TERMS.card.editCard,
       deleteCardConfirm: TERMS.card.deleteCardConfirm,
       copyCard: TERMS.card.copyCard,
       copyCardConfirm: TERMS.card.copyCardConfirm,
       syncCard: TERMS.card.syncCard,
+      // R192：卡片按钮上的短文案（全名 8 字并排会挤到换行）
+      syncShort: TERMS.card.syncShort,
       batchSync: TERMS.card.batchSync,
       batchSyncConfirm: TERMS.card.batchSyncConfirm,
       syncDone: TERMS.card.syncDone,
@@ -228,10 +232,13 @@ Page({
     }
   },
 
-  // ===== R191：卡片操作收纳 =====
-  // 原本一张卡平铺 5 个按钮（置顶 / 版本 / 复制 / 同步 / 删除）⇒ 20 张卡 = 20 行操作区噪音。
-  // 🔴 为什么收成「⋯」而不是缩小按钮：.btn-small { min-height: 88rpx } 是触控硬红线
-  //    （老板在店里手湿、手抖、边走边点），缩小＝引入误触。⇒ 正解是**减数量**。
+  // ===== R192：卡片操作 =====
+  // 高频两项（版本历史 / 同步至原料最新价）已**常驻在卡片上**（ops-mini 行），
+  //   ⇒ 这里只收低频 + 破坏性操作：置顶 / 复制 / 删除。
+  // 🔴 R191 曾把 5 个按钮全收进「⋯」⇒ 李老师反馈「历史版本、同步最新价都丢了」。
+  //    **教训（写进红线）：高频操作不能只靠「⋯」承载 —— 藏起来的功能等于没有。**
+  // 🔴 为什么「⋯」而不是缩小按钮：.btn-small { min-height: 88rpx } 是触控硬红线
+  //    （老板在店里手湿、手抖、边走边点），缩小＝引入误触。⇒ 正解是**分级**，不是全收。
   // 🔴 为什么用原生 showActionSheet 而不是自绘浮层：触控区/安全区/取消手势全部由平台保证，
   //    自绘要自己处理遮挡与底部安全区，风险面大得多，收益只是"能给删除上红色"
   //    —— 而红色已经在删除的**二次确认弹窗**里给到了（confirmColor: #e74c3c）。
@@ -242,16 +249,17 @@ Page({
     const T = TERMS.card;
     // 置顶是**开关**，文案必须按当前状态走（否则点了像没反应）
     const pinLabel = item && item.pinned ? T.pinOff : T.pinOn;
+    // 「编辑」也列出来：卡片主体点了就是进编辑，但**按钮不能凭空消失** ——
+    //   老板的肌肉记忆在按钮上（李老师 2026-10-03：「编辑按钮也没有了」）⇒ 菜单里必须还能找到。
     wx.showActionSheet({
-      itemList: [pinLabel, T.viewVersion, T.copyCard, T.syncCard, T.deleteCard],
+      itemList: [pinLabel, T.editCard, T.copyCard, T.deleteCard],
       success: (r) => {
         const ev = { currentTarget: { dataset: { code: cc } } };
         const idx = r.tapIndex;
         if (idx === 0) this.onPin(ev);
-        else if (idx === 1) this.goVersion(ev);
+        else if (idx === 1) this.goEdit(ev);
         else if (idx === 2) this.onCopy(ev);
-        else if (idx === 3) this.onSync(ev);
-        else if (idx === 4) this.onDelete(ev);
+        else if (idx === 3) this.onDelete(ev);
       },
       fail: () => { /* 用户取消：不做任何事 */ },
     });

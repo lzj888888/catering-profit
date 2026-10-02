@@ -96,12 +96,28 @@ Page({
       // M3.19（A3）：成本趋势（数据全来自 list，前端算，不新增调用、不落库）
       const raw = d.list || [];
       const chart = raw.slice().sort((a, b) => (a.version || 0) - (b.version || 0));
-      const maxCost = Math.max.apply(null, chart.map((v) => Number(v.total_cost_fen) || 0).concat([1]));
-      const chartRows = chart.map((v) => ({
-        version: v.version,
-        costText: api.fenToYuan(v.total_cost_fen || 0, 2),
-        heightPct: Math.round(((Number(v.total_cost_fen) || 0) / maxCost) * 100),
-      }));
+      // 🔴 R192：双柱**同尺度**（李老师 2026-10-03："比较图要有价格，也要有版本"）。
+      //   R191 版只画成本一根柱 ⇒ 看不出"售价有没有跟着动"。
+      //   ⚠️ 基准取 max(成本, 售价) 而不是 max(成本)：两根柱必须**同一把尺子**，否则高度不可比
+      //      （成本按成本归一、售价按售价归一 ⇒ 两根永远一样高，图就骗人了）。
+      //   ⚠️ 只做格式化 + 等比换算（金额计算仍在后端），前端不产生新金额。
+      const vals = [];
+      chart.forEach((v) => { vals.push(Number(v.total_cost_fen) || 0, Number(v.price_fen) || 0); });
+      const maxVal = Math.max.apply(null, vals.concat([1]));
+      const pct = (n) => Math.round((n / maxVal) * 100);
+      const chartRows = chart.map((v) => {
+        const cost = Number(v.total_cost_fen) || 0;
+        const price = Number(v.price_fen) || 0;
+        return {
+          version: v.version,
+          costText: api.fenToYuan(cost, 2),
+          // 未定价（price_fen=0）⇒ 售价条长 0 且文案给「—」，不允许画一根假条
+          priceText: price > 0 ? api.fenToYuan(price, 2) : '—',
+          priceKnown: price > 0,   // wxml 据此决定要不要加「¥」前缀（「¥—」很怪）
+          heightPct: pct(cost),
+          priceHeightPct: price > 0 ? pct(price) : 0,
+        };
+      });
       this.setData({ chartRows, showChart: chart.length >= 2 });
     } catch (e) {
       this.setData({ loading: false });

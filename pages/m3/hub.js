@@ -27,6 +27,11 @@ Page({
       reconSub: TERMS.hub.reconSub,
       countPrefix: TERMS.card.countPrefix,
       countSuffix: TERMS.card.countSuffix,
+      // R192：图标块单字（wxml 用到就必须登记 —— 漏登记 ⇒ 页面静默空白，本仓 R189 P2-1 同族）
+      icoCard: TERMS.hub.icoCard,
+      icoMaterial: TERMS.hub.icoMaterial,
+      icoTakeaway: TERMS.hub.icoTakeaway,
+      icoRecon: TERMS.hub.icoRecon,
     },
     // -1 = 没取到（就不显示这行）。🔴 **绝不能默认 0**：读不到时显示「共 0 张」
     //   会让老板以为卡丢了 —— 与本仓「不替用户编数」同一条纪律（M2 参考值只提示不预填）。

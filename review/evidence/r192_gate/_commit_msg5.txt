@@ -1,0 +1,15 @@
+r189-fix：门禁两红修复（P2-1 真缺陷 + S2 我方文档措辞误撞）
+
+门禁 `gate_189_4.txt` → **123/125**，两条红，按纪律「先怀疑自己」逐条定性：
+
+1. ❌ `[page-terms] check_page_terms.js` P2-1 —— **真缺陷（我方）**
+   wxml 用了 t.copyPrevBtn / copyPrevNone / recurringHint / needCheck / fixedTag 五键，
+   但 `pages/month/input.js` 的 `t:{}` 里**没登记** ⇒ 页面会**静默空白**（守卫存在的意义）。
+   ✅ 修：在 input.js 的 t 映射里补齐 5 键（与既有注释「页面零硬编码 ⇒ 必须在此映射」一致）。
+
+2. ❌ `[已证伪短语守卫 R85] check_stale_claims.js` S2 —— **我方文档措辞误撞，非缺陷**
+   规范 D4 行原写「资产仍需手工建」，撞上已证伪短语「索引只能靠人一条条填 / 手工建」
+   （已于 2026-09-17 证伪：官方 HTTP API 可脚本化，见 tools/apply_indexes.js）。
+   ✅ 修：改措辞为「资产 / 摊销仍需在各自分页单独录入」—— **改的是我方措辞，不是改判据迎合**。
+
+复跑待验：门禁应回 125/125。

@@ -1,0 +1,6 @@
+r190-evidence：团购渠道层 + 套餐反算 全量门禁复跑（125/125 · RC=0 · miss=0）
+
+- gate_190_2.txt：125/125 通过（152.5s）· gitcache_miss.log 不存在 ⇒ miss=0
+- 本次改动面：新增 utils/grouponDerive.js + pages/card/edit.{js,wxml} + i18n 双副本 + 规范 v1.4
+  ⇒ 首轮即全绿（无守卫回归）：utils 新文件未触发登记类守卫；78 个文案键已全部登记（规避 R189 P2-1）
+- 锚点 C-a~C-c 见规范 v1.4 §M3.37

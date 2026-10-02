@@ -45,10 +45,8 @@
         <!-- M3.16（批次 C）：套餐标记 -->
         <text class="tag" wx:if="{{item.card_type === 3}}">{{t.cardTypeCombo}}</text>
       </view>
-      <!-- R191：5 个平铺按钮 → 1 个「⋯」。
-           🔴 按钮**尺寸不能缩**（.btn-small min-height 88rpx 是触控硬红线：手湿 / 手抖 / 边走边点）
-              ⇒ "松垮"的正解是**减数量**，不是排版压缩。删除仍走二次确认（红色确认键）。 -->
-      <text class="more" wx:if="{{!selectMode}}" catchtap="onMore" data-code="{{item.card_code}}">⋯</text>
+      <!-- 🔴 R192：此处**不再放「⋯」** —— 收纳过度被判「功能丢了」（李老师 2026-10-03）。
+           高频操作下移到 ops-mini 行并**可见**；标题行只留名字 + 标签，扫读更干净。 -->
     </view>
     <!-- M3.16 套餐：我少赚为负 ⇒ 红字提示「这个套餐在拉低你的毛利」 -->
     <view class="muted" wx:if="{{item.card_type === 3 && item.combo_lose_neg}}" style="color:#e74c3c;font-size:28rpx;">{{t.comboInsightLoseWarn}}</view>
@@ -61,6 +59,17 @@
       <text class="val" style="color:{{item.margin === null ? '#999' : (item.margin >= 60 ? '#22a06b' : (item.margin >= 40 ? '#b45309' : '#e74c3c'))}};">{{item.margin === null ? '—' : (item.margin) + '%'}}</text>
       <text class="dot">·</text>
       <text class="lbl">{{t.version}} {{item.version}}</text>
+    </view>
+
+    <!-- 🔴 R192：操作行 —— 「历史版本」「同步最新价」**必须看得见**。
+         R191 把 5 个按钮全收进「⋯」⇒ 李老师反馈「最重要的东西丢了」。
+         教训：藏起来的功能 = 没有的功能。⇒ 高频两项常驻，⋯ 只收低频/破坏性（置顶 / 复制 / 删除）。
+         ⚠️ 三个控件**同一行**（R191 反馈"每个按钮占一行"的根因是块级堆叠，不是按钮本身）。
+         ⚠️ 尺寸一律 ≥88rpx（触控硬红线，绝不缩）。 -->
+    <view class="ops-mini" wx:if="{{!selectMode}}">
+      <button class="btn-small ghost ops-btn" catchtap="goVersion" data-code="{{item.card_code}}">{{t.viewVersion}}</button>
+      <button class="btn-small ghost ops-btn" catchtap="onSync" data-code="{{item.card_code}}">{{t.syncShort}}</button>
+      <view class="more round" catchtap="onMore" data-code="{{item.card_code}}">⋯</view>
     </view>
   </view>
 

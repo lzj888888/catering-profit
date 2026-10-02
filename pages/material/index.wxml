@@ -22,9 +22,8 @@
         <text class="tag" wx:if="{{item.is_virtual}}">{{t.matVirtual}}</text>
         <text class="tag" wx:else>{{item.category_label}}</text>
       </view>
-      <!-- R191：4 个平铺按钮 → 1 个「⋯」。
-           🔴 虚拟原料只给「置顶」：编辑/删除/影响面本就不可做（只读），列出来点了会报错。 -->
-      <text class="more" catchtap="onMore" data-m="{{item}}">⋯</text>
+      <!-- 🔴 R192：标题行不再放「⋯」（收纳过度 ⇒ 李老师反馈「功能按钮都丢了」）；
+           操作统一走卡片底部 ops-mini 行，与成本卡列表同构。 -->
     </view>
     <view class="cell">
       <text class="lbl">{{t.matBrand}}</text>
@@ -42,6 +41,15 @@
     <view class="cell">
       <text class="lbl">{{t.matNetCost}}</text>
       <text class="val" style="color:#1e3a5f;">{{t.cur}}{{item.net_cost}}</text>
+    </view>
+
+    <!-- 🔴 R192：操作行 —— 「涨价影响面」是原料库**最高频**的动作（改价前先看影响谁），必须看得见。
+         ⚠️ 虚拟原料（只读）不给影响面：它没有价格，点了只会报错 ⇒ 只留「⋯」。 -->
+    <view class="ops-mini">
+      <button class="btn-small ghost ops-btn" wx:if="{{!item.is_virtual}}" catchtap="goImpact" data-m="{{item}}">{{t.impactTitle}}</button>
+      <!-- 虚拟原料没有价格 ⇒ 不给影响面（点了只会报错），靠这个占位把「⋯」推到右边，与其他卡对齐 -->
+      <view class="ops-spacer" wx:else></view>
+      <view class="more round" catchtap="onMore" data-m="{{item}}">⋯</view>
     </view>
   </view>
 

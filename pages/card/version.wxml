@@ -1,16 +1,31 @@
 <view class="container safe-bottom" wx:if="{{!loading}}">
   <view class="hint">{{t.versionReadonly}}</view>
 
-  <!-- M3.19（A3）成本趋势折线：数据全来自 list，前端算；≥2 版本才画，否则给空态文案 -->
+  <!-- M3.19（A3）趋势柱状图：数据全来自 list，前端只做等比换算；≥2 版本才画，否则给空态文案。
+       🔴 R192：由「只画成本」升级为**成本 + 售价双柱同尺度**
+         —— 李老师 2026-10-03："历史版本的比较图，要有价格，也要有版本"。
+         单柱只能看出成本涨跌，看不出"我涨价了没有 / 成本和售价的间距有没有被吃掉"。 -->
   <view class="trend" wx:if="{{showChart}}">
     <view class="trend-title">{{t.impactTrend}}</view>
-    <view class="trend-bars">
-      <view class="trend-col" wx:for="{{chartRows}}" wx:key="version">
-        <view class="trend-cost">{{item.costText}}</view>
-        <view class="trend-bar-wrap">
-          <view class="trend-bar" style="height:{{item.heightPct}}%;"></view>
+    <!-- 图例：两条是什么，必须写出来（只靠颜色区分 = 让用户猜） -->
+    <view class="trend-legend">
+      <view class="lg-item"><view class="lg-dot lg-cost"></view><text>{{t.totalCost}}</text></view>
+      <view class="lg-item"><view class="lg-dot lg-price"></view><text>{{t.price}}</text></view>
+    </view>
+    <!-- 🔴 R192 第二次修正：竖柱版在**版本多 + 金额位数多**时数字挤成一行还被裁掉（模拟器实测）。
+         ⇒ 改**横向条形**：每条一行，标签/数值各有其位，版本再多也不挤。
+         同尺度（都以 max(成本, 售价) 为 100%）⇒ 长短可直接比。 -->
+    <view class="trend-row" wx:for="{{chartRows}}" wx:key="version">
+      <text class="trend-ver">v{{item.version}}</text>
+      <view class="trend-lines">
+        <view class="trend-line">
+          <view class="trend-track"><view class="trend-fill trend-bar-cost" style="width:{{item.heightPct}}%;"></view></view>
+          <text class="trend-val">{{t.cur}}{{item.costText}}</text>
         </view>
-        <view class="trend-ver">v{{item.version}}</view>
+        <view class="trend-line">
+          <view class="trend-track"><view class="trend-fill trend-bar-price" style="width:{{item.priceHeightPct}}%;"></view></view>
+          <text class="trend-val">{{item.priceKnown ? t.cur + item.priceText : item.priceText}}</text>
+        </view>
       </view>
     </view>
   </view>

@@ -1,0 +1,8 @@
+r189-evidence：M1 常规科目预置 + 上月复制全量门禁复跑证据（125/125 · RC=0 · miss=0）
+
+- `gate_189_4.txt`：修复前 **123/125**，两红 =
+  ① `check_page_terms` P2-1（真缺陷：wxml 五键未在 input.js 的 t:{} 登记 ⇒ 静默空白）
+  ② `check_stale_claims` S2（我方文档措辞「资产仍需手工建」误撞已证伪短语）
+- `gate_189_5.txt`：修复后 **125/125 通过**（152.0s）· R92 ✅ · `gitcache_miss.log` 不存在 ⇒ miss=0
+- `stale_claims_1.txt`：红因原文留档（扫描面 1302 文件，下限 20 ⇒ 非退化）
+- 缓存刷新按技能 `gate-under-sandbox` 顺序：mk_git_keys → mk_force → mk_fix_py_keys → run_gate3

@@ -201,14 +201,14 @@ Page({
       });
       return;
     }
+    // R192：「涨价影响面」已在卡片上常驻可见 ⇒ 菜单里不重复，只留低频/破坏性：置顶 / 编辑 / 删除。
     wx.showActionSheet({
-      itemList: [pinLabel, T.impactTitle, T.matEdit, T.matDelete],
+      itemList: [pinLabel, T.matEdit, T.matDelete],
       success: (r) => {
         const i = r.tapIndex;
         if (i === 0) this.onPin(ev);
-        else if (i === 1) this.goImpact(ev);
-        else if (i === 2) this.goEdit(ev);
-        else if (i === 3) this.onDelete(ev);
+        else if (i === 1) this.goEdit(ev);
+        else if (i === 2) this.onDelete(ev);
       },
       fail: () => { /* 取消 */ },
     });

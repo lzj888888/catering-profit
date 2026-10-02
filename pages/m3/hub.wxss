@@ -1,6 +1,8 @@
-/* pages/m3/hub.wxss —— M3 枢纽页布局（R191）
-   ⚠️ 区隔色一律走 app.wxss 的 `.stripe-*` 类（色值单源），本文件只写布局与中性色。
-   ⚠️ 字号全部 ≥28rpx、卡片触控高度 >88rpx（本仓 AD 硬红线）。 */
+/* pages/m3/hub.wxss —— M3 枢纽页布局（R191 建页 · R192 重做视觉）
+   ⚠️ 色值一律走 app.wxss 的 `.hub-hero / .hub-ico-* / .hub-go`（色值单源），本文件只写布局与中性字色。
+   ⚠️ 字号全部 ≥28rpx、卡片触控高度 >88rpx（本仓 AD 硬红线）。
+   🔴 R192 教训：只给卡片加一条 8rpx 左侧色条 = 「像括号、前面立体、整体廉价」——
+      体积感必须由**整块**（阴影 + 图标块 + 圆角）共同给出，不能靠单条边。 */
 .hub-head { padding: 8rpx 8rpx 20rpx; }
 .hub-title { display: block; font-size: 36rpx; font-weight: 700; color: #222; }
 .hub-sub { display: block; font-size: 28rpx; color: #888; margin-top: 8rpx; }
@@ -8,10 +10,11 @@
 .hub-card {
   display: flex; align-items: center; background: #fff; border-radius: 20rpx;
   padding: 28rpx 24rpx; margin-bottom: 20rpx;
-  border-left-width: 8rpx; border-left-style: solid;
+  /* 🔴 整卡阴影 = 「整块立体」的关键（R191 版缺这一条，只有左边框有色 ⇒ 廉价）
+     两层：近距细影压边 + 远距大影托起，比单层更"厚实"（单层浅影看着像浮在纸上的白块） */
+  box-shadow: 0 4rpx 8rpx rgba(30, 58, 95, 0.06), 0 12rpx 28rpx rgba(30, 58, 95, 0.12);
 }
 .hub-main { flex: 1; min-width: 0; }
 .hub-name { display: block; font-size: 32rpx; font-weight: 700; color: #222; }
-.hub-desc { display: block; font-size: 28rpx; color: #888; margin-top: 8rpx; }
+.hub-desc { display: block; font-size: 28rpx; color: #888; margin-top: 8rpx; line-height: 1.5; }
 .hub-count { display: block; font-size: 28rpx; color: #1e3a5f; margin-top: 8rpx; }
-.hub-arrow { font-size: 44rpx; color: #bbb; margin-left: 16rpx; }

@@ -125,3 +125,45 @@ page { background: #f5f6f8; font-family: -apple-system, "PingFang SC", sans-seri
 .cell-inline .lbl { color: #555; }
 .cell-inline .val { font-weight: 600; color: #222; margin-left: 8rpx; }
 .cell-inline .dot { color: #bbb; margin: 0 16rpx; }
+
+/* ============================================================
+ * 🔴 R192：卡片操作行（ops-mini）—— R191 的「全收进 ⋯」被判定为**过度收纳**
+ *   李老师 2026-10-03 反馈：「历史版本 / 同步最新价 都丢了」。
+ *   教训：⭐ 高频单卡操作（版本历史 / 同步至原料最新价）必须**看得见**，
+ *         ⋯ 只收低频 + 破坏性操作（置顶 / 复制 / 删除）—— 藏起来的功能等于没有。
+ *   布局：两个 ghost 按钮 + 「⋯」同一行（不是各占一行：R191 反馈"每个按钮占一行"）。
+ * ============================================================ */
+.ops-mini { display: flex; align-items: center; gap: 12rpx; margin-top: 12rpx; padding-top: 12rpx; border-top: 1rpx solid #eef1f5; }
+.ops-btn { flex: 1; min-height: 88rpx; font-size: 28rpx; padding: 0 12rpx; }
+/* 虚拟原料没有可见按钮 ⇒ 用占位把「⋯」推到最右，与其它卡对齐（否则 ⋯ 会飘到左边） */
+.ops-spacer { flex: 1; }
+/* 「⋯」做成**看得见的按钮**（圆角浅底 + 边框），不再是裸的三个点 —— 裸点会被当成省略号装饰 */
+.more.round { width: 88rpx; min-width: 88rpx; border-radius: 44rpx; background: #f2f5f9; border: 2rpx solid #e3e9f2; margin-left: 0; }
+
+/* ============================================================
+ * R192：枢纽页「整块立体」卡片（色值一律在此登记，页面 wxss 只写布局）
+ * 为什么重写：R191 的卡片＝白底 + 左侧 8rpx 色条 + 右侧一个灰箭头，无阴影
+ *   ⇒ 李老师反馈「长得像括号、前面立体、整体廉价」。根因＝**只有一条边有信息**。
+ *   正解：左侧换成品牌色**渐变图标块**（96rpx，带自身投影）⇒ 整张卡有体积、有抓手。
+ * ============================================================ */
+.hub-hero { background: linear-gradient(135deg, #2a4e7c 0%, #162c49 100%); border-radius: 20rpx; padding: 28rpx 28rpx 32rpx;
+  margin-bottom: 24rpx; box-shadow: 0 10rpx 24rpx rgba(30, 58, 95, 0.22); }
+.hub-ico { width: 96rpx; height: 96rpx; border-radius: 24rpx; margin-right: 24rpx;
+  display: flex; align-items: center; justify-content: center; font-size: 40rpx; font-weight: 700; color: #fff;
+  box-shadow: 0 6rpx 14rpx rgba(30, 58, 95, 0.20); }
+.hub-ico-card { background: linear-gradient(135deg, #2a4e7c 0%, #162c49 100%); }
+.hub-ico-material { background: linear-gradient(135deg, #2fae7c 0%, #1a7d55 100%); }
+.hub-ico-takeaway { background: linear-gradient(135deg, #c2701a 0%, #8f4f08 100%); }
+.hub-ico-recon { background: linear-gradient(135deg, #8792a3 0%, #566070 100%); }
+/* hero 内的文字色（白字 + 淡蓝副文案）—— 色值单源，hub.wxss 不重复第二份 */
+.hub-hero .hub-title { color: #fff; font-size: 40rpx; }
+.hub-hero .hub-sub { color: #d7e2ef; margin-top: 10rpx; }
+.hub-go { width: 56rpx; height: 56rpx; border-radius: 28rpx; background: #f2f5f9;
+  display: flex; align-items: center; justify-content: center; font-size: 32rpx; color: #9aa4b2; margin-left: 12rpx; }
+
+/* R192：版本历史页趋势图 —— 成本 / 售价**双柱同尺度**（李老师：图上要有价格也要有版本） */
+.trend-bar-cost { background: linear-gradient(180deg, #2a4e7c 0%, #162c49 100%); }
+.trend-bar-price { background: #b9cbe0; }
+/* 图例色点（与柱子同色 ⇒ 图例才指得对） */
+.lg-cost { background: #1e3a5f; }
+.lg-price { background: #b9cbe0; }
