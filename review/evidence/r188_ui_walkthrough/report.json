@@ -1,0 +1,119 @@
+[
+ {
+  "url": "/pages/index/index",
+  "nav": "sent",
+  "state": {
+   "err": "noPage"
+  },
+  "shot": "ok"
+ },
+ {
+  "url": "/pages/month/index",
+  "nav": "sent",
+  "err": "timeout waiting for automator response"
+ },
+ {
+  "url": "/pages/month/input",
+  "nav": "TIMEOUT nav",
+  "err": "timeout waiting for automator response"
+ },
+ {
+  "url": "/pages/month/inventory",
+  "nav": "sent",
+  "err": "timeout waiting for automator response"
+ },
+ {
+  "url": "/pages/month/amortize",
+  "nav": "sent",
+  "err": "timeout waiting for automator response"
+ },
+ {
+  "url": "/pages/month/assetEdit",
+  "nav": "sent",
+  "err": "timeout waiting for automator response"
+ },
+ {
+  "url": "/pages/month/result",
+  "nav": "sent",
+  "err": "timeout waiting for automator response"
+ },
+ {
+  "url": "/pages/shop/setting",
+  "nav": "sent",
+  "err": "timeout waiting for automator response"
+ },
+ {
+  "url": "/pages/sandbox/index",
+  "nav": "sent",
+  "err": "timeout waiting for automator response"
+ },
+ {
+  "url": "/pages/card/index",
+  "nav": "sent",
+  "err": "timeout waiting for automator response"
+ },
+ {
+  "url": "/pages/card/edit",
+  "nav": "sent",
+  "state": {
+   "err": "noPage"
+  },
+  "shot": "timeout waiting for automator response"
+ },
+ {
+  "url": "/pages/card/version",
+  "nav": "sent",
+  "err": "timeout waiting for automator response"
+ },
+ {
+  "url": "/pages/material/index",
+  "nav": "sent",
+  "err": "timeout waiting for automator response"
+ },
+ {
+  "url": "/pages/material/edit",
+  "nav": "sent",
+  "err": "timeout waiting for automator response"
+ },
+ {
+  "url": "/pages/material/pick",
+  "nav": "sent",
+  "err": "timeout waiting for automator response"
+ },
+ {
+  "url": "/pages/takeaway/index",
+  "nav": "sent",
+  "err": "timeout waiting for automator response"
+ },
+ {
+  "url": "/pages/metrics/impact",
+  "nav": "sent",
+  "err": "timeout waiting for automator response"
+ },
+ {
+  "url": "/pages/recon/index",
+  "nav": "sent",
+  "err": "timeout waiting for automator response"
+ },
+ {
+  "url": "/pages/pay/orders",
+  "nav": "sent",
+  "state": {
+   "err": "noPage"
+  },
+  "shot": "timeout waiting for automator response"
+ },
+ {
+  "url": "/pages/shop/switch",
+  "nav": "TIMEOUT nav",
+  "state": {
+   "err": "noPage"
+  },
+  "shot": "ok"
+ },
+ {
+  "url": "/pages/mine/index",
+  "nav": "sent",
+  "err": "timeout waiting for automator response"
+ }
+]
