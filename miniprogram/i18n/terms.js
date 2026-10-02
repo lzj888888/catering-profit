@@ -235,6 +235,27 @@ const TERMS = {
     ],
     subItem: '细项',
     subItemPh: '细项名称（选填）',
+    // ===== round189 · 常规科目预置 + 上月一键复制 =====
+    //   常规科目 = **每月都有、且金额占比大**的科目（房租 / 水 / 电 / 燃气 / 工资）。
+    //   🔴 只预置「行」，金额一律留空 —— 与 M2「参考金额只作 placeholder、不自动填值」是同一条纪律：
+    //      **系统绝不替老板编数**。
+    //   fixed = 金额月月不变 ⇒ 复制上月后**沿用**、不标待核对；
+    //   variable = 每月必有但金额会变 ⇒ 复制上月后**带值但标待核对**（防"复制完忘了改"）。
+    recurringHint: '这几项每月都有，已经帮你列好了，金额自己填',
+    recurringFixed: ['房租', '物业费', '宽带网费', '工资绩效'],
+    recurringVariable: ['水费', '电费', '燃气费'],
+    copyPrevBtn: '复制上月',
+    copyPrevNone: '上个月还没有账，这次先填一遍，下个月就能一键带出来了',
+    copyPrevConfirmTitle: '覆盖这个月已经填的？',
+    copyPrevConfirmBody: '这个月已经填过一些了。复制上月会覆盖现在的行，确定吗？',
+    // ⚠️ wxml 不做法调用 ⇒ 横幅文案由 js 预计算成字符串后再给 wxml。
+    copyPrevBanner: (m, n, k) => `已带出 ${m} 共 ${n} 项，其中 ${k} 项要核对`,
+    needCheck: '要核对',
+    fixedTag: '沿用',
+    // ⚠️ wx.showModal 按钮文案 **≤4 字符**（记忆 §5 铁律：超了整窗 fail 且**静默**）
+    copyPrevOkBtn: '覆盖',
+    copyPrevCancelBtn: '取消',
+    copyPrevOk: '已带出上月的科目',
     // 2026-09-21 李老师真机反馈：「堂食下面那些如何填写」文字太长、占地方
     //   ⇒ 每类口径句收进折叠块，默认只留一行引导语，点开看完整口径、再点收回。
     scopeShow: '怎么填？点开看口径',

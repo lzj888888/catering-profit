@@ -15,6 +15,14 @@
     </view>
   </view>
 
+  <!-- round189：上月一键复制（有上月才显示）+ 首月常规科目说明 -->
+  <view class="copy-bar" wx:if="{{!readOnly}}">
+    <button class="btn ghost btn-small" style="min-height:88rpx;" wx:if="{{prevHasData}}" bindtap="copyPrev">{{t.copyPrevBtn}}</button>
+    <view class="muted" wx:if="{{copyBannerOn}}">{{copyBannerText}}</view>
+    <view class="muted" wx:elif="{{!prevHasData && prevMonth}}">{{t.copyPrevNone}}</view>
+    <view class="muted" wx:if="{{recurringOn}}">{{t.recurringHint}}</view>
+  </view>
+
   <!-- 收入（A2：大类 → 二级细项；E1：引导文案） -->
   <view class="sec">{{t.incomeTitle}}</view>
   <view class="hint">{{t.incomeHint}}</view>
@@ -327,6 +335,9 @@
         <input class="sub-item-inp" wx:if="{{g.expanded && !r.fixed}}" value="{{r.subItem}}" placeholder="{{t.subItemPh}}"
           data-kind="expense" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubItem" disabled="{{readOnly}}" />
         <text class="sub-item-fixed" wx:elif="{{g.expanded}}">{{r.subItem}}</text>
+        <!-- round189：复制上月带出来的行标「沿用 / 要核对」（只读派生标记，不入库） -->
+        <text class="muted" wx:if="{{g.expanded && r.tag === 'check'}}">{{t.needCheck}}</text>
+        <text class="muted" wx:elif="{{g.expanded && r.tag === 'fixed'}}">{{t.fixedTag}}</text>
         <button class="btn-del" wx:if="{{g.expanded && g.rows.length > 1}}"
           data-kind="expense" data-gidx="{{gi}}" data-ridx="{{ri}}" catchtap="delRow">{{t.delSubItem}}</button>
       </view>

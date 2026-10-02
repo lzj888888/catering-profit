@@ -1,0 +1,33 @@
+r189-feat：M1 常规科目预置 + 上月一键复制（纯前端 · 云端与引擎零改动）
+
+起因（李老师）：房租 / 水费 / 电费 / 燃气费这些**每月都有、金额占比大**的项，**首月必须手动加**。
+
+🔑 关键设计：`getLedger` 本来就支持**任意 month**（云端按 month 查账单）
+   ⇒ 「复制上月」= 再调一次 `getLedger` 传上月月份 ⇒ **云函数零改动、契约零改动、引擎零改动**
+   （增量规范铁律 3：先穷举入参变换，再考虑改引擎 ⇒ 无副本同步、无 md5 守卫、锚点零漂风险）。
+
+改动面（4 文件）：
+1. `miniprogram/i18n/terms.js` + `specs/dev-specs/i18n/terms.js`（双副本 md5 一致）
+   ledger 段新增：recurringHint / recurringFixed / recurringVariable / copyPrevBtn / copyPrevNone /
+   copyPrevConfirmTitle / copyPrevConfirmBody / copyPrevBanner / needCheck / fixedTag /
+   copyPrevOkBtn / copyPrevCancelBtn / copyPrevOk
+   （⚠️ showModal 按钮文案 ≤4 字符，记忆 §5 铁律）
+2. `pages/month/input.js`：新增 prevMonthOf / probePrevMonth / hasAnyFilled / markRecurringTags /
+   copyPrev / ensureRecurring，data 加 5 字段；load() 装配完成后串起「探测上月 → 首月铺行」
+3. `pages/month/input.wxml`：顶部复制条（按钮 + 横幅 + 首月说明）+ 细项行「沿用 / 要核对」标记
+4. 新增规范 `specs/dev-specs/core/开发规范v1.1_ModuleM1增量_常规科目预置与上月复制.md`
+
+红线遵守：
+- 🔴 **只铺行、金额一律留空** —— 与 M2「参考金额只作 placeholder」同一条纪律：**系统绝不替老板编数**
+- 🔴 只复制 income/expense 细项；**库存期初 / 摊销 / 一次性投入一律不碰**（期初已有 round103
+  自动结转，重复带入会打架；资产跨月复制 = 重复算钱）
+- 固定项（房租一类月月不变）沿用不标待核对；波动项（水/电/燃气）带值但标待核对 —— 防「复制完忘了改」
+- 本月已填 ⇒ showModal 二次确认才覆盖
+- 走既有 decorateRows 唯一装配口，未绕过 markFixedRows / unused 派生逻辑
+- 新增可见文案全部走 t.*，页面零硬编码
+
+自查：node --check input.js 通过；wxml view 标签 151/151 配平；R125 折叠守卫 C 组只验外卖组
+（本轮改的是费用组默认值）⇒ 不冲突。
+
+未做（写进规范 §七，防下轮误当缺口）：缺项提醒（二期）· 收入侧预置 · 固定支出档案 ·
+复制后 takeoutDetailRows 不重建（已知取舍）。

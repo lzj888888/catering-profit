@@ -173,6 +173,12 @@ Page({
     incomeGroups: [],          // [{ category, label, items(模板), expanded, rows }]
     expenseGroups: [],
     fillGuideOpen: false,      // E2：顶部「填写口径」折叠块（默认收起）
+    // round189：上月一键复制（prevHasData = 上月有没有账；没账 ⇒ 走首月常规科目预置）
+    prevMonth: '',
+    prevHasData: false,
+    copyBannerOn: false,
+    copyBannerText: '',
+    recurringOn: false,        // 首月已铺常规科目 ⇒ 顶部给一句说明
     dineMode: 'fast',          // 堂食录入模式：'fast' | 'detail'（严格互斥；方案 A）
     dineDetailRows: [],        // 分项行**快照**：切到快速前保留，切回分项时原样恢复（防 round-trip 丢值）
     dineSumYuan: '0.00',       // 分项模式：各渠道相加**自动算出**（预计算，WXML 不支持方法调用）
@@ -307,6 +313,125 @@ Page({
     this.setData({ fillGuideOpen: !this.data.fillGuideOpen });
   },
 
+  // ===== round189 · 常规科目预置 + 上月一键复制 =====
+  // 设计要点（为什么这样最省）：`getLedger` 本来就支持**任意 month**（云端按 month 查账单），
+  //   ⇒ 「复制上月」**不用改云端一行**：再调一次 getLedger、传上月月份即可。
+  //   （这条正是「先穷举入参变换，再考虑改引擎」：引擎零改动 ⇒ 无副本同步、无契约变更、锚点零漂风险。）
+  // 🔴 三条边界：
+  //   ① 只复制 income / expense 细项 —— **库存期初 / 摊销 / 一次性投入一律不碰**
+  //      （期初已有 round103 自动结转，重复带入会打架；资产跨月复制 = 重复算钱）；
+  //   ② 只预置「行」，**金额一律留空** —— 与 M2「参考金额只作 placeholder」同一条纪律：**系统绝不替老板编数**；
+  //   ③ fixed（房租一类月月不变）沿用不标待核对，variable（水/电/燃气会变）带值但标待核对 —— 防「复制完忘了改」。
+  prevMonthOf(m) {
+    const mt = /^(\d{4})-(\d{2})$/.exec(String(m || ''));
+    if (!mt) return '';
+    let y = Number(mt[1]);
+    let mo = Number(mt[2]) - 1;
+    if (mo === 0) { mo = 12; y -= 1; }
+    return y + '-' + String(mo).padStart(2, '0');
+  },
+
+  // 探测上月有没有账（没有 ⇒ 不显示「复制上月」，改为首月铺常规科目）
+  async probePrevMonth() {
+    const pm = this.prevMonthOf(this.data.month);
+    if (!pm) return;
+    try {
+      const pd = await api.call('getLedger', { month: pm });
+      const has = (arr) => (arr || []).some((it) => ((it.sub_items || []).length > 0) || !!it.amount_fen);
+      this.setData({ prevMonth: pm, prevHasData: has(pd.income_items) || has(pd.expense_items) });
+    } catch (e) {
+      // 上月不存在 / 读失败 ⇒ 按「没有上月」处理（不打扰用户，走首月预置路径）
+      this.setData({ prevMonth: pm, prevHasData: false });
+    }
+  },
+
+  // 本月是否已经填过（用于「复制上月会不会覆盖」的二次确认）
+  hasAnyFilled() {
+    const scan = (groups) => (groups || []).some((g) => (g.rows || []).some((r) => String(r.amountYuan || '').trim() !== ''));
+    const tw = (this.data.takeoutDetailRows || []).some((r) => String(r.goods || '').trim() !== '');
+    return scan(this.data.incomeGroups) || scan(this.data.expenseGroups) || tw;
+  },
+
+  // 给复制出来的行打「沿用 / 要核对」标记（只读派生，不入库）
+  markRecurringTags(groups) {
+    const fixed = TERMS.ledger.recurringFixed || [];
+    const variable = TERMS.ledger.recurringVariable || [];
+    return (groups || []).map((g) => {
+      const rows = (g.rows || []).map((r) => {
+        const n = (r.subItem || '').trim();
+        if (!n) return r;
+        if (fixed.indexOf(n) >= 0) return Object.assign({}, r, { tag: 'fixed' });
+        if (variable.indexOf(n) >= 0) return Object.assign({}, r, { tag: 'check', needCheck: true });
+        return r;
+      });
+      return Object.assign({}, g, { rows });
+    });
+  },
+
+  async copyPrev() {
+    const pm = this.data.prevMonth;
+    if (!pm || this.data.readOnly) return;
+    if (this.hasAnyFilled()) {
+      const go = await new Promise((res) => {
+        wx.showModal({
+          title: TERMS.ledger.copyPrevConfirmTitle,
+          content: TERMS.ledger.copyPrevConfirmBody,
+          confirmText: TERMS.ledger.copyPrevOkBtn,
+          cancelText: TERMS.ledger.copyPrevCancelBtn,
+          success: (r) => res(!!r.confirm),
+          fail: () => res(false),
+        });
+      });
+      if (!go) return;
+    }
+    wx.showLoading({ title: TERMS.ui.loading, mask: true });
+    try {
+      const pd = await api.call('getLedger', { month: pm });
+      let incomeGroups = this.rebuildFromItems(TERMS.ledger.income, pd.income_items, TERMS.ledger.incomeScope);
+      let expenseGroups = this.decorateExpenseNotes(this.rebuildFromItems(TERMS.ledger.expense, pd.expense_items, TERMS.ledger.expenseScope));
+      incomeGroups = this.markRecurringTags(incomeGroups);
+      expenseGroups = this.markRecurringTags(expenseGroups);
+      let total = 0;
+      let needCheck = 0;
+      incomeGroups.concat(expenseGroups).forEach((g) => {
+        (g.rows || []).forEach((r) => {
+          if (!(r.subItem || '').trim()) return;
+          total += 1;
+          if (r.needCheck) needCheck += 1;
+        });
+      });
+      this.setData({
+        incomeGroups,
+        expenseGroups,
+        // ⚠️ wxml 不做法调用 ⇒ 横幅文案在这里预计算成字符串
+        copyBannerText: TERMS.ledger.copyPrevBanner(pm, total, needCheck),
+        copyBannerOn: true,
+      });
+      this.syncDineSum();
+      this.syncTakeoutSum();
+      wx.showToast({ title: TERMS.ledger.copyPrevOk });
+    } catch (e) {
+      api.toastError(e);
+    }
+    wx.hideLoading();
+  },
+
+  // 首月（上月也没账、本月还没填）⇒ 把「每月都有、占比大」的常规科目**直接铺成行**，金额留空。
+  //   🔴 只铺行不填值：老板仍然要自己敲数，但不用再去 36 个预设项里「找」该加哪几项。
+  ensureRecurring() {
+    if (this.data.prevHasData || this.hasAnyFilled()) return;
+    const want = (TERMS.ledger.recurringFixed || []).concat(TERMS.ledger.recurringVariable || []);
+    const expenseGroups = (this.data.expenseGroups || []).map((g) => {
+      const pick = (g.items || []).filter((n) => want.indexOf(n) >= 0);
+      if (!pick.length) return g;
+      const ng = Object.assign({}, g, { expanded: true });
+      ng.rows = this.decorateRows(ng, pick.map((n) => ({ subItem: n, amountYuan: '', recurring: true })));
+      ng.showRows = ng.rows;
+      return ng;
+    });
+    this.setData({ expenseGroups, recurringOn: true });
+  },
+
   // 2026-09-21：每类「怎么填」口径句折叠开关（默认收起，只留一行引导语）
   //   ⚠️ 与 onToggleGroup 同为「就地改一份 + 整数组回写」，不要图省事直接改 this.data。
   onToggleScope(e) {
@@ -423,6 +548,10 @@ Page({
       if (this.data.takeoutMode === 'detail') this.runReconcile();
       this.loadAssetCount();   // round107：两行摘要与「按月分摊」开关无关（一次性投入也走这里）⇒ 无条件拉
       this.loadShopBase();                     // 切换口径时要原样回传店铺名 / 备注
+      // round189：装配完成后再判「上月有没有账」+「首月要不要铺常规科目」
+      //   ⚠️ 顺序不能反：ensureRecurring 依赖 prevHasData（有上月 ⇒ 走复制，不重复铺行）
+      await this.probePrevMonth();
+      this.ensureRecurring();
     } catch (e) {
       this.setData({ loading: false });
       api.toastError(e);
