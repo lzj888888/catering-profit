@@ -97,12 +97,15 @@ async function onConfirm(type, opts) {
     if (opts && typeof opts.onOrderCreated === 'function') opts.onOrderCreated(order);
     if (order && order.enable_real_payment === false) {
       // 私域阶段：提示联系客服（文案走 i18n）
+      // 🔴 R193：原文案叫用户「请联系客服」，但**没有任何可点的地方**（全站此前 0 处客服入口）
+      //   ⇒ 取消键留给「再想想」，确认键直接进客服会话。
       wx.showModal({
         title: TERMS.pay.contactService,
         content: TERMS.pay.contactServiceHint,
-        showCancel: false,
-        confirmText: TERMS.buttons.thinkAgain,
+        cancelText: TERMS.buttons.thinkAgain,
+        confirmText: TERMS.exp.serviceEntry,
         confirmColor: '#1e3a5f',
+        success: (r) => { if (r.confirm) openService(); },
       });
     }
     // enable_real_payment=true 后：pay_params 非空 → 拉起 wx.requestPayment（批次 5 后接真实支付）
@@ -111,4 +114,22 @@ async function onConfirm(type, opts) {
   }
 }
 
-module.exports = { openPaywall, TERMS };
+/**
+ * 拉起微信客服会话（R193）。
+ * 🔴 为什么要有它：付费墙 / 硬上限提示里写着「请联系客服」，但此前**没有可点的地方**。
+ * 🔴 fail-closed：拉不起（后台未绑客服人员 / 基础库过低）时必须给替代路径，绝不静默失败。
+ * ⚠️ 需 mp 后台「客服」里绑定客服人员，否则微信侧会话不可用（此时走兜底提示）。
+ */
+function openService() {
+  if (wx.openCustomerServiceConversation) {
+    wx.openCustomerServiceConversation({
+      sessionFrom: 'paywall',
+      fail: () => wx.showToast({ title: TERMS.exp.serviceNotOpen, icon: 'none' }),
+    });
+    return true;
+  }
+  wx.showToast({ title: TERMS.exp.serviceNotOpen, icon: 'none' });
+  return false;
+}
+
+module.exports = { openPaywall, openService, TERMS };

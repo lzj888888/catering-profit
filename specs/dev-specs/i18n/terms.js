@@ -571,6 +571,12 @@ const TERMS = {
     varOther: '其他变动率（%）',
     targetProfit: '目标月利润（元）',
     calc: '开始测算',
+    // R193：M2 算完即丢 —— 本地草稿（零云端改动）
+    draftRestored: '已载入上次填的数',
+    clearDraft: '清空重填',
+    draftClearConfirm: '清空后本次填写的数不可恢复，确定？',
+    // showModal confirmText ≤4 字符（超了整窗 fail 且静默）
+    draftClearOk: '清空',
     fixedTotal: '固定成本合计',
     compositeVar: '综合变动成本率',
     marginRate: '边际贡献率',
@@ -1305,6 +1311,15 @@ const TERMS = {
     appVersion: 'v1.0.0',
     feedback: '意见反馈',
     feedbackHint: '使用中遇到问题，点这里反馈',
+    // R193：站级兜底入口 —— 订单/订阅（此前只有到期弹条能进）、客服、使用指引
+    // ⚠️ 禁用词守卫：「订阅」属金融类目红线词（付费/订阅/会员费）⇒ 改说「订单 / 有效期」
+    ordersEntry: '我的订单 / 有效期',
+    serviceEntry: '联系客服',
+    guideEntry: '使用指引',
+    guideBody: '① 先建店铺：首页顶部店铺名，可切换或新建。\n② 再录一个月：M1 把房租、水电、食材等填进去，就能看到参考利润。\n③ 再算菜品：M3 建菜品成本卡，看每道菜赚多少、该卖多少钱。\n④ 想开店先试算：M2 填投入和每月固定支出，算保本营业额。',
+    // 客服会话拉不起时的兜底（未绑客服人员 / 基础库过低）
+    serviceNotOpen: '客服暂未开通，可先在「意见反馈」里留言',
+    guideOk: '知道了',
     disclaimerLabel: '免责声明',
     // G4/G8：热更新 + 断网提示（app.js 全局）
     updateTitle: '发现新版本',

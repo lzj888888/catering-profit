@@ -58,4 +58,7 @@ Page({
   goMaterial() { wx.navigateTo({ url: '/pages/material/index' }); },
   goTakeaway() { wx.navigateTo({ url: '/pages/takeaway/index' }); },
   goRecon() { wx.navigateTo({ url: '/pages/recon/index' }); },
+
+  // R193：全局开了下拉刷新但本页未实现 ⇒ 下拉转圈、松手没反应（假刷新）。
+  onPullDownRefresh() { this.loadCount().then(() => wx.stopPullDownRefresh()); },
 });

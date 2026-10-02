@@ -15,6 +15,11 @@
       </picker>
     </view>
     <view class="hint">{{t.autoHint}}</view>
+    <!-- R193：草稿提示行 + 清空重填（M2 此前算完即丢，退出重进要全部重填） -->
+    <view class="draft-bar" wx:if="{{draftRestored || dirty}}">
+      <text class="draft-note">{{draftRestored ? t.draftRestored : ''}}</text>
+      <button class="btn-small ghost draft-btn" bindtap="onClearDraft">{{t.clearDraft}}</button>
+    </view>
   </view>
 
   <!-- ⓪ 行业参考区间 + 参考金额（round113 立 · round114 加"预计月营业额"锚点）

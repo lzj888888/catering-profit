@@ -18,6 +18,8 @@ const BUILD_ALL = Object.keys(M.buildItems);
 const FIXED_ALL = Object.keys(M.fixedItems);
 const VAR_ALL = Object.keys(M.varItems);
 const DEBOUNCE_MS = 700;
+// R193：M2 本地草稿键（此前算完即丢 —— 不存不导不记忆，退出重进全部重填）
+const DRAFT_KEY = 'sandbox_draft_v1';
 
 // 行工厂：把「术语里的中文名」直接塞进行对象，wxml 只渲染 {{item.name}} ——
 // 避免在 WXML 里写动态键（{{t.xxx[item.key]}}）这种解析边界写法。
@@ -29,6 +31,11 @@ const mkRow = (k, nameMap, noteMap, extra) =>
 Page({
   data: {
     t: {
+      // R193：本地草稿（漏登记 ⇒ 页面静默空白，本仓 R189 P2-1 同族）
+      draftRestored: M.draftRestored,
+      clearDraft: M.clearDraft,
+      draftClearConfirm: M.draftClearConfirm,
+      draftClearOk: M.draftClearOk,
       cityLabel: M.cityLabel,
       cityTiers: M.cityTiers,
       bizLabel: M.bizLabel,
@@ -111,6 +118,8 @@ Page({
     calcError: '',
     loading: true,
     dirty: false,
+    // R193：是否从本地草稿恢复（决定顶部那行提示与「清空重填」按钮是否出现）
+    draftRestored: false,
   },
 
   onLoad() { this._seq = 0; this.bootstrap(); },
@@ -121,6 +130,8 @@ Page({
     try {
       await api.ensureShop();
       ui.setTitle(TERMS.modules.m2.navTitle);
+      // R193：首算**之前**恢复本地草稿 ⇒ 进来看到的就是上次那版结果（不用重填一遍才有数）
+      this.restoreDraft();
       // round113：进页面先拿一次"行业参考区间" —— 用户**还没填任何数**就能看到该填多少量级
       //（开店前手里没数字，是本页的主要流失点）
       // ⚠️ round114：改为 await + 首算保持整页 loading —— 拿到结果一次性渲染。
@@ -130,6 +141,67 @@ Page({
       this.setData({ loading: false });
       api.toastError(e);
     }
+  },
+
+  // ===== R193：本地草稿（M2 算完即丢 ⇒ 以前退出重进要全部重填）=====
+  // 🔴 零云端改动：只用 Storage，不新增集合 / 云函数。
+  // 🔴 只存**用户填的值**，行名由 terms 现场派生 ⇒ 术语改名不会把旧名带回来。
+  // 🔴 只在 scheduleCalc（用户真的改过）里写盘 ⇒ 从没填过的人不会看到"已载入"的假提示。
+  saveDraft() {
+    try {
+      wx.setStorageSync(DRAFT_KEY, {
+        v: 1,
+        cityIdx: this.data.cityIdx,
+        bizIdx: this.data.bizIdx,
+        marginPct: this.data.marginPct,
+        expectYuan: this.data.expectYuan,
+        targetYuan: this.data.targetYuan,
+        build: this.data.buildRows.map((r) => ({ key: r.key, yuan: r.yuan, years: r.years })),
+        fixed: this.data.fixedRows.map((r) => ({ key: r.key, yuan: r.yuan })),
+        varRows: this.data.varRows.map((r) => ({ key: r.key, pct: r.pct })),
+      });
+    } catch (e) { /* 写盘失败不影响测算：草稿只是锦上添花，不打扰用户 */ }
+  },
+
+  restoreDraft() {
+    let d = null;
+    try { d = wx.getStorageSync(DRAFT_KEY); } catch (e) { d = null; }
+    if (!d || d.v !== 1) return false;
+    const build = (d.build || []).map((x) => mkRow(x.key, M.buildItems, M.buildItemNotes, { yuan: x.yuan, years: x.years }));
+    const fixed = (d.fixed || []).map((x) => mkRow(x.key, M.fixedItems, M.fixedItemNotes, { yuan: x.yuan, ph: M.buildPh }));
+    const varRows = (d.varRows || []).map((x) => mkRow(x.key, M.varItems, M.varItemNotes, { pct: x.pct }));
+    const ci = d.cityIdx || 0;
+    const bi = d.bizIdx || 0;
+    this.setData({
+      cityIdx: ci, cityName: M.cityTiers[ci].name,
+      bizIdx: bi, bizName: M.bizTypes[bi].name,
+      buildRows: build.length ? build : this.data.buildRows,
+      fixedRows: fixed.length ? fixed : this.data.fixedRows,
+      varRows: varRows.length ? varRows : this.data.varRows,
+      marginPct: typeof d.marginPct === 'number' ? d.marginPct : this.data.marginPct,
+      expectYuan: d.expectYuan || '',
+      targetYuan: d.targetYuan || '',
+      draftRestored: true,
+    });
+    return true;
+  },
+
+  // 清空重填：清本地草稿 + 整页重进（不复制一份"初始值"代码 ⇒ 不可能与默认态不一致）
+  // ⚠️ 不用 wx.reLaunch 之外的方式：手写一遍初始行 = 两份真相源，将来改默认值必漏一处。
+  onClearDraft() {
+    wx.showModal({
+      title: M.clearDraft,
+      content: M.draftClearConfirm,
+      // ⚠️ 必须写全路径 TERMS.m2.xxx：modal 按钮长度守卫只解析 TERMS.*，别名 M.* 解析不了会判红
+      confirmText: TERMS.m2.draftClearOk,
+      cancelText: TERMS.buttons.cancel,
+      confirmColor: '#e74c3c',
+      success: (r) => {
+        if (!r.confirm) return;
+        try { wx.removeStorageSync(DRAFT_KEY); } catch (e) { /* 忽略 */ }
+        wx.reLaunch({ url: '/pages/sandbox/index' });
+      },
+    });
   },
 
   // ===== 选择器 =====
@@ -244,6 +316,8 @@ Page({
   // ===== 自动重算（防抖；AD-6/AD-7 折中）=====
   scheduleCalc() {
     this.setData({ dirty: true });
+    // R193：用户一改就存草稿（此处已是 700ms 防抖链路上，不会高频写盘）
+    this.saveDraft();
     if (this._timer) clearTimeout(this._timer);
     this._timer = setTimeout(() => { this.onCalc(); }, DEBOUNCE_MS);
   },

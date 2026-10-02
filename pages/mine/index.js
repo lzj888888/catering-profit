@@ -31,6 +31,12 @@ Page({
       appVersion: TERMS.exp.appVersion,
       feedback: TERMS.exp.feedback,
       feedbackHint: TERMS.exp.feedbackHint,
+      // R193：站级兜底入口（订单 / 客服 / 使用指引）
+      ordersEntry: TERMS.exp.ordersEntry,
+      serviceEntry: TERMS.exp.serviceEntry,
+      guideEntry: TERMS.exp.guideEntry,
+      guideBody: TERMS.exp.guideBody,
+      guideOk: TERMS.exp.guideOk,
       disclaimerLabel: TERMS.exp.disclaimerLabel,
       disclaimer: TERMS.auditSafe.disclaimer,
       // G5：头像昵称（AD-15 新能力，本地保存展示）
@@ -77,6 +83,22 @@ Page({
     } else {
       wx.showToast({ title: TERMS.exp.feedbackHint, icon: 'none' });
     }
+  },
+
+  // R193：我的订阅 / 订单 —— 此前 pay/orders 只能从「到期提醒条 / 月列表 / 成本卡列表」进，
+  //   已付费用户在「我的」里根本找不到自己的有效期与续费入口（提醒条只在快到期才出现）。
+  goOrders() { wx.navigateTo({ url: '/pages/pay/orders' }); },
+
+  // R193：使用指引 —— 新用户打开就是四张卡，M1 要填 40+ 字段，没有"第一次怎么用"。
+  // 🔴 showModal confirmText ≤4 字符（文案已按此约束给「知道了」）。
+  onGuide() {
+    wx.showModal({
+      title: TERMS.exp.guideEntry,
+      content: TERMS.exp.guideBody,
+      showCancel: false,
+      confirmText: TERMS.exp.guideOk,
+      confirmColor: '#1e3a5f',
+    });
   },
 
   // C1：免责声明弹窗

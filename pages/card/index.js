@@ -5,7 +5,7 @@
 //   同步至原料最新价（接 syncCostCard，单张+批量）；加「原料档案」入口。
 const api = require('../../utils/api.js');
 const ui = require('../../utils/ui.js');
-const { openPaywall } = require('../../utils/paywall.js');
+const { openPaywall, openService } = require('../../utils/paywall.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 
 // 本店用过的菜品分类（本地字典，与 edit.js 同一 key；不新建集合 —— M3 v1.1 零新建集合红线）
@@ -274,7 +274,16 @@ Page({
         return;
       }
       if (q.hit_hard_limit) {
-        api.toastError({ msg: TERMS.pay.contactServiceHint });
+        // R193：硬上限（2000 张）—— 原是 toast 一句「请联系客服」，**没有任何可点的地方**
+        //   ⇒ 改成可点：确认键直接进客服会话（fail-closed 兜底见 utils/paywall.js::openService）。
+        wx.showModal({
+          title: TERMS.pay.contactService,
+          content: TERMS.pay.contactServiceHint,
+          cancelText: TERMS.buttons.thinkAgain,
+          confirmText: TERMS.exp.serviceEntry,
+          confirmColor: '#1e3a5f',
+          success: (r) => { if (r.confirm) openService(); },
+        });
         return;
       }
       wx.navigateTo({ url: '/pages/card/edit?card_code=' });

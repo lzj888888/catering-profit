@@ -1,0 +1,28 @@
+r193-feat：全站兜底入口补齐（客服 / 订单有效期 / 使用指引 / 假刷新）+ M2 本地草稿
+
+背景：李老师「梳理整个小程序的功能按钮，看疏漏点和可优化的、按钮位置与操作方便性」。
+产出 22 页全量入口盘点（review/AUDIT_2026-10-03_*.md），并按最便宜的包 A + D1 直接落地。
+
+已落（零云端改动，不新增集合 / 云函数）：
+1. 客服（P0-2）：全站此前 0 处 open-type="contact"，而付费上限文案却写着「请联系客服」
+   ⇒「我的」页新增常驻「联系客服」行；utils/paywall.js 加 openService()，
+     付费墙 / 硬上限弹窗的**确认键直接进客服会话**（拉不起时 fail-closed 提示替代路径）。
+2. 订单/有效期（P0-3）：pay/orders 此前只能从到期弹条进（只在快到期才出现）
+   ⇒「我的」页新增常驻行「我的订单 / 有效期」。
+3. 使用指引（P2-10）：新用户打开就是四张卡 ⇒ 加 4 行弹窗（建店 → 录月 → 算菜品 → 开店试算）。
+4. 假刷新（P2-8）：index / m3/hub 全局开了下拉刷新但未实现 ⇒ 补 onPullDownRefresh；
+   反向一条：material/edit + card/edit 关掉下拉刷新（编辑到一半下拉会丢未保存输入，照抄 assetEdit）。
+5. M2 算完即丢（P0-4 的 D1）：sandbox 加本地草稿（只在用户真改过时写盘），
+   进来先恢复，顶部「已载入上次填的数」+「清空重填」（清空走二次确认 + reLaunch，不复制默认值）。
+
+自查（先自己跑再给人看）：
+- 门禁 review/evidence/r193_gate/gate_193_3.txt = 125/125 · RC=0 · miss=0（150.7s）
+- 模拟器走查 review/evidence/r193_shots/{mine,sandbox}.png（IDE 自动化通道）
+- 草稿往返**实测**：写 12345/8888 + saveDraft → reLaunch → 新实例 draftRestored=true 且值回来。
+  🔴 测法修正：只轮询 route 会把「没换实例」误判成「已到位」⇒ 改为哨兵标记消失才算新实例。
+
+未落：包 B（deleteShop + 店铺删除，需新增云函数并部署 ⇒ 等李老师拍板）；
+包 C（mp 后台绑客服人员，只有李老师能操作）；包 D2（M2 多方案，需先出规范增量）。
+
+同步面：无新增页面 / 无新增跳转 ⇒ app.json 页面数、提审材料 §4、跳转统计均不变；
+i18n 双副本 md5 一致（terms.js 加 m2.draft* / exp.ordersEntry|serviceEntry|guideEntry|guideBody|serviceNotOpen|guideOk）。

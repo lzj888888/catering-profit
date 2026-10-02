@@ -11,3 +11,16 @@
 .avatar-ph { color: #999; font-size: 28rpx; }
 .profile-name { flex: 1; display: flex; flex-direction: column; gap: 8rpx; }
 .nickname-inp { font-size: 30rpx; min-height: 88rpx; line-height: 88rpx; }
+
+/* R193：客服会话入口（`open-type="contact"` 只能挂在 <button> 上）
+   🔴 两次失败（R193 模拟器截图实证，别重走）：
+     ① 把 .cell 塞进 <button> + 复位 button 默认样式 ⇒ button 内置居中样式赢：
+        「联系客服」四字居中、`›` 不在最右；
+     ② 再补 `.cell-btn .cell { width: 100% }` ⇒ 仍居中（button 的 text-align 压过内部 flex 行）。
+   ⇒ 最终解：**文字与箭头由普通 .cell 渲染**（与上下行像素级一致），
+     button 只做**铺满该行的透明覆盖层**接点击。视觉 100% 等于普通 cell，能力由原生组件提供。 */
+.service-cell { position: relative; }
+.cell-btn-cover { position: absolute; top: 0; right: 0; bottom: 0; left: 0;
+  width: 100%; height: 100%; padding: 0; margin: 0; background: transparent;
+  border: none; border-radius: 0; line-height: normal; }
+.cell-btn-cover::after { border: none; }

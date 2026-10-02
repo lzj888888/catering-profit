@@ -50,4 +50,7 @@ Page({
   goSettings() { wx.navigateTo({ url: '/pages/shop/setting' }); },
   goSwitch() { wx.navigateTo({ url: '/pages/shop/switch' }); },
   goMine() { wx.navigateTo({ url: '/pages/mine/index' }); },
+
+  // R193：全局开了 enablePullDownRefresh，但本页**没实现** ⇒ 下拉转圈、松手没反应（假刷新）。
+  onPullDownRefresh() { this.bootstrap().then(() => wx.stopPullDownRefresh()); },
 });

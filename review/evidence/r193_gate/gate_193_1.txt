@@ -1,0 +1,10 @@
+SUITES = 125
+✅ [suite-tracked] 125 个套件文件全部已入库（R92 守卫 · 真 git，索引 3050 项）
+.........................................................................................................................
+============================================================
+总览：121/125 通过   耗时 92.1s
+R92: ✅
+  ❌ [ad-gates] tools/selftest_ad_gates.js :: exit=1
+  ❌ [terms-forbidden] tools/check_terms_forbidden.js :: exit=1
+  ❌ [suite-assert-counts] tools/check_suite_assert_counts.js :: exit=1
+  ❌ [modal-btn-len] tools/check_modal_button_len.js :: exit=1

@@ -17,6 +17,30 @@
     <view class="card-title">{{shopName || t.shopName}}</view>
   </view>
 
+  <!-- R193：站级兜底入口三条（此前全站缺失 / 只有到期弹条能进）
+       ① 我的订阅 / 订单：付费用户此前在「我的」里完全找不到自己的有效期与续费入口；
+       ② 联系客服：全站此前 0 处客服会话，而付费上限提示里却写着「请联系客服」；
+       ③ 使用指引：新用户打开就是四张卡，没有任何"第一次怎么用"。 -->
+  <view class="card2">
+    <view class="cell" bindtap="goOrders">
+      <text class="lbl">{{t.ordersEntry}}</text>
+      <text class="val muted">›</text>
+    </view>
+    <view class="cell" bindtap="onGuide">
+      <text class="lbl">{{t.guideEntry}}</text>
+      <text class="val muted">›</text>
+    </view>
+    <!-- 🔴 客服必须用原生 open-type="contact"（会话能力只能由 button 触发，view 点不出来）。
+         做法：**文字与箭头仍由普通 .cell 渲染**（与上下行像素级一致），button 做成铺满该行的
+         透明覆盖层只负责接点击 —— 试过"把 cell 塞进 button 里重置样式"，
+         实测（R193 模拟器截图）button 内置居中样式会赢，客服两字居中、箭头也不在最右。 -->
+    <view class="cell service-cell">
+      <text class="lbl">{{t.serviceEntry}}</text>
+      <text class="val muted">›</text>
+      <button class="cell-btn-cover" open-type="contact" session-from="mine"></button>
+    </view>
+  </view>
+
   <view class="card2">
     <view class="cell" bindtap="onOpenPrivacy">
       <text class="lbl">{{t.privacyOpen}}</text>

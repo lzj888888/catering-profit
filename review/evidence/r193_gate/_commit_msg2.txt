@@ -1,0 +1,9 @@
+r189-evidence：门禁复跑证据落盘（125/125 · RC=0 · miss=0）
+
+改动面 = 文案（i18n 双副本 specTitle）+ 文档（ROADMAP 口径订正 + 新增执行单）⇒ 按纪律复跑门禁。
+
+- 通道：本轮探针全 EBUSY（含 node 自身）⇒ 走 gate-under-sandbox 绕行
+- 顺序：提交（16762ae）→ mk_git_keys（6 条 git 键）→ mk_force（52 条 node/python）
+  → mk_fix_py_keys（修 `python -c import docx` 拆参键）→ run_gate3
+- 结果：`总览：125/125 通过   耗时 132.8s` / R92 ✅ / gitcache_miss.log 不存在 ⇒ **miss=0**
+- 另跑 `tools/check_pack_size.js`（R182）：11 通过 / 0 失败（入包未受影响）
