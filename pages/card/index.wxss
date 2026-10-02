@@ -1,6 +1,5 @@
 /* pages/card/index.wxss —— M3 成本卡列表 */
-.row-ops { display: flex; justify-content: space-between; align-items: center; margin-top: 16rpx; gap: 8rpx; flex-wrap: wrap; }
-.row-ops .btn-small { margin-top: 0; }
+/* R191：row-ops（平铺操作按钮区）已废弃 —— 5 个按钮收成卡片右上「⋯」，勿再加回。 */
 .ops-row { display: flex; align-items: center; }
 .toolbar { display: flex; align-items: center; gap: 12rpx; margin: 16rpx 0; flex-wrap: wrap; }
 .tool-btn { margin-top: 0; }
@@ -10,3 +9,9 @@
 /* round156：置顶标记 —— 与「核算模式」标签同排，用主色实底区分。
    排序把置顶项排到了最前，界面就必须说清"为什么它在前面"，否则看起来还是乱的。 */
 .tag-pin { background: #1e3a5f; color: #fff; margin-left: 12rpx; }
+
+/* ===== R191：左侧色条（形态在本页，色值一律走 app.wxss 的 .stripe-* 单源）=====
+   为什么不放 app.wxss：全局 .card2 加边框 ⇒ 没配 .stripe-* 的页面会露出默认色条。 */
+.card2 { border-left-width: 8rpx; border-left-style: solid; }
+/* 顶部「搜索 + 新增」/ 结果计数 / 卡片头部 / 「⋯」/ 三行压一行 均为**两个列表页共用**
+   ⇒ 一律定义在 app.wxss 的「R191 列表页通用布局」段，本页不复制第二份。 */

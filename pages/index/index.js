@@ -43,7 +43,10 @@ Page({
 
   goMonth() { wx.navigateTo({ url: '/pages/month/index' }); },
   goSandbox() { wx.navigateTo({ url: '/pages/sandbox/index' }); },
-  goCard() { wx.navigateTo({ url: '/pages/card/index' }); },
+  // R191：M3 入口改指向**枢纽页**（pages/m3/hub），不再直接落进成本卡列表页。
+  //   原因：原料库 / 外卖 / 对账 此前只能寄生在列表页顶部当按钮 ⇒ 分类说不明白。
+  //   枢纽页只做「去哪」，列表页只做「找东西 + 新增」。
+  goCard() { wx.navigateTo({ url: '/pages/m3/hub' }); },
   goSettings() { wx.navigateTo({ url: '/pages/shop/setting' }); },
   goSwitch() { wx.navigateTo({ url: '/pages/shop/switch' }); },
   goMine() { wx.navigateTo({ url: '/pages/mine/index' }); },

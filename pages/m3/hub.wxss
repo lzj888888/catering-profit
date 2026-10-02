@@ -1,0 +1,17 @@
+/* pages/m3/hub.wxss —— M3 枢纽页布局（R191）
+   ⚠️ 区隔色一律走 app.wxss 的 `.stripe-*` 类（色值单源），本文件只写布局与中性色。
+   ⚠️ 字号全部 ≥28rpx、卡片触控高度 >88rpx（本仓 AD 硬红线）。 */
+.hub-head { padding: 8rpx 8rpx 20rpx; }
+.hub-title { display: block; font-size: 36rpx; font-weight: 700; color: #222; }
+.hub-sub { display: block; font-size: 28rpx; color: #888; margin-top: 8rpx; }
+
+.hub-card {
+  display: flex; align-items: center; background: #fff; border-radius: 20rpx;
+  padding: 28rpx 24rpx; margin-bottom: 20rpx;
+  border-left-width: 8rpx; border-left-style: solid;
+}
+.hub-main { flex: 1; min-width: 0; }
+.hub-name { display: block; font-size: 32rpx; font-weight: 700; color: #222; }
+.hub-desc { display: block; font-size: 28rpx; color: #888; margin-top: 8rpx; }
+.hub-count { display: block; font-size: 28rpx; color: #1e3a5f; margin-top: 8rpx; }
+.hub-arrow { font-size: 44rpx; color: #bbb; margin-left: 16rpx; }

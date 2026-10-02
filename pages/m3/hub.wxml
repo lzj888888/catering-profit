@@ -1,0 +1,41 @@
+<view class="container safe-bottom">
+  <view class="hub-head">
+    <text class="hub-title">{{t.title}}</text>
+    <text class="hub-sub">{{t.subtitle}}</text>
+  </view>
+
+  <!-- 分区卡 = 标题（这件事叫什么）+ 副文案（拿它干什么）。
+       副文案不是装饰：本仓已知短板＝「术语直给无解释」，老板看名字猜不出用途。 -->
+  <view class="hub-card stripe-dish" bindtap="goCard">
+    <view class="hub-main">
+      <text class="hub-name">{{t.cardTitle}}</text>
+      <text class="hub-desc">{{t.cardSub}}</text>
+      <text class="hub-count" wx:if="{{cardCount >= 0}}">{{t.countPrefix}}{{cardCount}}{{t.countSuffix}}</text>
+    </view>
+    <text class="hub-arrow">›</text>
+  </view>
+
+  <view class="hub-card stripe-material" bindtap="goMaterial">
+    <view class="hub-main">
+      <text class="hub-name">{{t.materialTitle}}</text>
+      <text class="hub-desc">{{t.materialSub}}</text>
+    </view>
+    <text class="hub-arrow">›</text>
+  </view>
+
+  <view class="hub-card stripe-takeaway" bindtap="goTakeaway">
+    <view class="hub-main">
+      <text class="hub-name">{{t.takeawayTitle}}</text>
+      <text class="hub-desc">{{t.takeawaySub}}</text>
+    </view>
+    <text class="hub-arrow">›</text>
+  </view>
+
+  <view class="hub-card stripe-recon" bindtap="goRecon">
+    <view class="hub-main">
+      <text class="hub-name">{{t.reconTitle}}</text>
+      <text class="hub-desc">{{t.reconSub}}</text>
+    </view>
+    <text class="hub-arrow">›</text>
+  </view>
+</view>

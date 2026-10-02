@@ -182,6 +182,37 @@ Page({
   },
 
   goAdd() { wx.navigateTo({ url: '/pages/material/edit?id=' }); },
+
+  // ===== R191：操作收纳（与成本卡列表**同构**）=====
+  // 4 个平铺按钮 → 1 个「⋯」。🔴 同成本卡那条理由：按钮尺寸不能缩（88rpx 触控红线），只能减数量。
+  // 🔴 虚拟原料**只给「置顶」**：编辑 / 删除 / 影响面本就不可做（只读），列出来点了会报错。
+  onMore(e) {
+    const m = e.currentTarget.dataset.m;
+    if (!m) return;
+    const T = TERMS.card;
+    // onPin 读 dataset.id、其余读 dataset.m ⇒ 这里一次把两个都带上，避免各函数签名分叉
+    const ev = { currentTarget: { dataset: { id: m.id, m } } };
+    const pinLabel = m.pinned ? T.pinOff : T.pinOn;
+    if (m.is_virtual) {
+      wx.showActionSheet({
+        itemList: [pinLabel],
+        success: () => this.onPin(ev),
+        fail: () => { /* 取消 */ },
+      });
+      return;
+    }
+    wx.showActionSheet({
+      itemList: [pinLabel, T.impactTitle, T.matEdit, T.matDelete],
+      success: (r) => {
+        const i = r.tapIndex;
+        if (i === 0) this.onPin(ev);
+        else if (i === 1) this.goImpact(ev);
+        else if (i === 2) this.goEdit(ev);
+        else if (i === 3) this.onDelete(ev);
+      },
+      fail: () => { /* 取消 */ },
+    });
+  },
   // M3.19（批次 E）：看影响面（只读预览，绝不自动改卡）
   goImpact(e) {
     const m = e.currentTarget.dataset.m;

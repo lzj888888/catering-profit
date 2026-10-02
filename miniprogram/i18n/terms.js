@@ -55,7 +55,8 @@ const TERMS = {
   // ===== 三、按钮文案 =====
   buttons: {
     addShop: '+ 新增店铺', // M1，免费限 1 家，第 2 家触发 paywall.saveLimit
-    addCostCard: '+ 新增菜品', // M3，免费张数由配置下发（plan_free.limits），超限触发 paywall.saveLimit
+    addCostCard: '+ 新增', // M3，免费张数由配置下发（plan_free.limits），超限触发 paywall.saveLimit
+    // R191 改名：原名「+ 新增菜品」概括不了套餐（卡类型选「套餐」后建的也是卡）⇒ 去掉品类限定词。
     save: '保存',
     calc: '算一算', // 不叫"计算盈利"
     export: '导出 / 打印', // 免费禁，触发 paywall.export
@@ -734,7 +735,7 @@ const TERMS = {
     versionReadonly: '历史版本只读，不可编辑',
     dishNamePh: '如 宫保鸡丁',
     // ===== 批次 P0（M3 v1.2）· 原料档案页（任务 1）=====
-    materialListTitle: '原料档案',
+    materialListTitle: '原料库', // R191 改名：「档案」是内部说法，老板看不懂；用途另见 hub.materialSub
     matName: '原料名称',
     matNamePh: '如 鸡胸肉',
     matBrand: '品牌规格',
@@ -793,6 +794,9 @@ const TERMS = {
     catOther: '其他',
     // ===== 批次 P0 · 成本卡列表页补齐（任务 2）=====
     searchPh: '搜索菜品名称',
+    // R191：列表页顶部只留「找东西」⇒ 必须回报「找到了多少」，否则筛选后看着像没数据。
+    countPrefix: '共 ',
+    countSuffix: ' 张',
     filterCategory: '分类',
     filterMargin: '毛利率区间',
     marginAll: '全部',
@@ -953,6 +957,28 @@ const TERMS = {
     reconAttr2: '② 卡内价 ≠ 原料现价（部分卡用了旧价）',
     reconAttr3: '③ 出品超耗 / 损耗 / 报废 / 赠送',
     reconAttr4: '④ 口径差异（外卖到手 vs 总额法）',
+  },
+
+  // ===== 十四-bis、M3 模块枢纽页（pages/m3/hub）=====
+  // 为什么单独建这一页（R191）：此前首页「M3」直接落在**成本卡列表页**，
+  //   原料库 / 外卖 / 对账 只能寄生在列表页顶部当按钮 ⇒ 顶部两行里上一行是「找东西」（筛选）、
+  //   下一行是「去别处」（跳转），还共用同一个 `.tool-btn` 样式 ⇒ 分类说不明白（李老师 2026-10-02 反馈）。
+  //   ⇒ 解耦：枢纽页只做「去哪」，列表页只做「找东西 + 新增」。
+  hub: {
+    title: '菜品成本',
+    subtitle: '选一件要做的事',
+    // 每张分区卡 = 标题（这件事叫什么）+ 副文案（拿它干什么）。副文案不是装饰：
+    //   本仓已知短板＝「术语直给无解释」（权责发生制 / 出成率 / 净料率），老板看名字猜不出用途。
+    cardTitle: '菜品及套餐成本卡',
+    cardSub: '建卡 · 查卡 · 算成本与毛利',
+    materialTitle: '原料库',
+    materialSub: '改一次价，用到它的菜全部跟着变',
+    takeawayTitle: '外卖菜品成本及利润',
+    takeawaySub: '一单卖出去，到手多少、赚多少',
+    reconTitle: 'M1↔M3 对账',
+    reconSub: '账本上的数 vs 菜品卡推出来的数',
+    // 「涨价影响面」不单独占一张卡：它的入口埋在原料库每条原料上（点具体原料才谈得上影响面），
+    //   摆在枢纽页会变成「不知道先选哪个原料」的死路 —— 保持 4 张，与方案 §3.1 一致。
   },
 
   // ===== 十五、M1 库存录入页（shop_inventory）=====

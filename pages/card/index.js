@@ -58,8 +58,10 @@ Page({
       syncDone: TERMS.card.syncDone,
       selectSync: TERMS.card.selectSync,
       cancel: TERMS.buttons.cancel,
-      materialArchive: TERMS.card.materialListTitle,
       filterTags: TERMS.card.filterTags,
+      // R191：结果计数（筛选后必须回报「找到了多少」，否则看着像没数据）
+      countPrefix: TERMS.card.countPrefix,
+      countSuffix: TERMS.card.countSuffix,
       // round156：列表排序/置顶
       pinOn: TERMS.card.pinOn,
       pinOff: TERMS.card.pinOff,
@@ -67,10 +69,8 @@ Page({
       // M3.16（批次 C）套餐标记
       cardTypeCombo: TERMS.card.cardTypeCombo,
       comboInsightLoseWarn: TERMS.card.comboInsightLoseWarn,
-      // M3.17（批次 D）外卖单均入口
-      takeawayTitle: TERMS.ledger.takeaway.title,
-      // M3.21（批次 E）：对账页入口文案（复用既有键，零新增文案）
-      reconTitle: TERMS.card.reconTitle,
+      // R191：原料库 / 外卖 / 对账 的入口已从本页顶部撤走 —— 改由 pages/m3/hub 枢纽页承接
+      //   （「找东西」与「去别处」混在同一行、还共用同一个 .tool-btn 样式 ⇒ 分类说不明白）。
     },
     all: [],           // 全量列表（前端过滤）
     list: [],
@@ -228,14 +228,34 @@ Page({
     }
   },
 
-  // 原料档案入口
-  goMaterial() { wx.navigateTo({ url: '/pages/material/index' }); },
-  // M3.17（批次 D）：外卖单均试算页入口（复用现有导航，不新造体系）
-  goTakeaway() { wx.navigateTo({ url: '/pages/takeaway/index' }); },
-  // M3.21（批次 E）：M1↔M3 对账页入口。
-  // 🔴 R181j 门禁方补：投喂包任务 B 漏写入口要求 ⇒ 该页建好后是**孤岛**（全仓无任何跳转到它），
-  //    用户根本到不了。此处补在既有的「工具条」里，与外卖单均/原料档案并列（不新造体系）。
-  goRecon() { wx.navigateTo({ url: '/pages/recon/index' }); },
+  // ===== R191：卡片操作收纳 =====
+  // 原本一张卡平铺 5 个按钮（置顶 / 版本 / 复制 / 同步 / 删除）⇒ 20 张卡 = 20 行操作区噪音。
+  // 🔴 为什么收成「⋯」而不是缩小按钮：.btn-small { min-height: 88rpx } 是触控硬红线
+  //    （老板在店里手湿、手抖、边走边点），缩小＝引入误触。⇒ 正解是**减数量**。
+  // 🔴 为什么用原生 showActionSheet 而不是自绘浮层：触控区/安全区/取消手势全部由平台保证，
+  //    自绘要自己处理遮挡与底部安全区，风险面大得多，收益只是"能给删除上红色"
+  //    —— 而红色已经在删除的**二次确认弹窗**里给到了（confirmColor: #e74c3c）。
+  onMore(e) {
+    const cc = e.currentTarget.dataset.code;
+    if (!cc) return;
+    const item = (this.data.list || []).filter((x) => x.card_code === cc)[0];
+    const T = TERMS.card;
+    // 置顶是**开关**，文案必须按当前状态走（否则点了像没反应）
+    const pinLabel = item && item.pinned ? T.pinOff : T.pinOn;
+    wx.showActionSheet({
+      itemList: [pinLabel, T.viewVersion, T.copyCard, T.syncCard, T.deleteCard],
+      success: (r) => {
+        const ev = { currentTarget: { dataset: { code: cc } } };
+        const idx = r.tapIndex;
+        if (idx === 0) this.onPin(ev);
+        else if (idx === 1) this.goVersion(ev);
+        else if (idx === 2) this.onCopy(ev);
+        else if (idx === 3) this.onSync(ev);
+        else if (idx === 4) this.onDelete(ev);
+      },
+      fail: () => { /* 用户取消：不做任何事 */ },
+    });
+  },
 
   // 新增：先配额预检（免费张数由后端 checkQuota 出参决定；进列表不弹）
   async goAdd() {

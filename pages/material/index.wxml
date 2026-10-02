@@ -1,6 +1,10 @@
 <view class="container safe-bottom" wx:if="{{!loading}}">
-  <!-- 搜索 + 分类筛选 -->
-  <view class="inp"><input value="{{keyword}}" placeholder="{{t.matSearchPh}}" bindinput="onKeyword" /></view>
+  <!-- R191：与成本卡列表**同构** —— 顶部「搜索 + 新增」同一行（新增不再沉到页面最底部） -->
+  <view class="top-row">
+    <view class="inp top-inp"><input value="{{keyword}}" placeholder="{{t.matSearchPh}}" bindinput="onKeyword" /></view>
+    <button class="btn primary top-add" bindtap="goAdd">{{t.matAdd}}</button>
+  </view>
+
   <picker mode="selector" range="{{catOptions}}" range-key="label" bindchange="onCatFilter">
     <view class="cell cat-picker">
       <text class="lbl">{{t.filterCategory}}</text>
@@ -8,14 +12,19 @@
     </view>
   </picker>
 
-  <!-- 原料列表 -->
-  <view class="card2" wx:for="{{list}}" wx:key="id" data-m="{{item}}" bindtap="goEdit">
-    <view class="card-title">
-      {{item.name}}
-      <!-- round156：置顶标记（排序把它们排到最前，界面必须说清"为什么它在前面"） -->
-      <text class="tag tag-pin" wx:if="{{item.pinned}}">{{t.pinTag}}</text>
-      <text class="tag" wx:if="{{item.is_virtual}}">{{t.matVirtual}}</text>
-      <text class="tag" wx:else>{{item.category_label}}</text>
+  <!-- 原料列表（左侧色条 = 原料绿，色值走 app.wxss 的 .stripe-material 单源） -->
+  <view class="card2 stripe-material" wx:for="{{list}}" wx:key="id" data-m="{{item}}" bindtap="goEdit">
+    <view class="card-head">
+      <view class="card-title card-title-flex">
+        {{item.name}}
+        <!-- round156：置顶标记（排序把它们排到最前，界面必须说清"为什么它在前面"） -->
+        <text class="tag tag-pin" wx:if="{{item.pinned}}">{{t.pinTag}}</text>
+        <text class="tag" wx:if="{{item.is_virtual}}">{{t.matVirtual}}</text>
+        <text class="tag" wx:else>{{item.category_label}}</text>
+      </view>
+      <!-- R191：4 个平铺按钮 → 1 个「⋯」。
+           🔴 虚拟原料只给「置顶」：编辑/删除/影响面本就不可做（只读），列出来点了会报错。 -->
+      <text class="more" catchtap="onMore" data-m="{{item}}">⋯</text>
     </view>
     <view class="cell">
       <text class="lbl">{{t.matBrand}}</text>
@@ -34,17 +43,8 @@
       <text class="lbl">{{t.matNetCost}}</text>
       <text class="val" style="color:#1e3a5f;">{{t.cur}}{{item.net_cost}}</text>
     </view>
-    <view class="row-ops">
-      <!-- round156：置顶开关（店铺级偏好，存 shop 文档）。catchtap = 不冒泡到卡片的"进入编辑" -->
-      <button class="btn-small ghost" data-id="{{item.id}}" catchtap="onPin">{{item.pinned ? t.pinOff : t.pinOn}}</button>
-      <button class="btn-small ghost" wx:if="{{!item.is_virtual}}" data-m="{{item}}" catchtap="goImpact">{{t.impactTitle}}</button>
-      <button class="btn-small ghost" wx:if="{{!item.is_virtual}}" data-m="{{item}}" catchtap="goEdit">{{t.matEdit}}</button>
-      <button class="btn-small" style="background:none;color:#e74c3c;min-height:88rpx;" wx:if="{{!item.is_virtual}}" data-m="{{item}}" catchtap="onDelete">{{t.matDelete}}</button>
-    </view>
   </view>
 
   <view wx:if="{{list.length === 0 && !loading}}" class="empty">{{t.matEmpty}}</view>
-
-  <button class="btn primary" bindtap="goAdd">{{t.matAdd}}</button>
 </view>
 <view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

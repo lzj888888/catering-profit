@@ -91,3 +91,37 @@ page { background: #f5f6f8; font-family: -apple-system, "PingFang SC", sans-seri
 .lv-warn { color: #d68910; }
 .lv-bad { color: #c0392b; }
 .lv-na { color: #aaa; }
+
+/* ============================================================
+ * R191：类型区隔色条（**色值单源** —— 新增区隔色只在此登记，页面 wxss 只引类名）
+ * 为什么：李老师 2026-10-02 反馈「多张卡在一个页面上，分不清哪类是哪类」。
+ *   左侧色条解决"扫一眼分得出类型"；但色值若散在各页 ⇒ 改主题时逐页漏改（本仓既有红线）。
+ *   ⇒ 单品=墨蓝（品牌主色）/ 套餐=紫（本次新引入，只此一处）/ 原料=绿 / 外卖=琥珀 / 对账=灰蓝。
+ * ============================================================ */
+.stripe-dish { border-left-color: #1e3a5f; }
+.stripe-combo { border-left-color: #7c3aed; }
+.stripe-material { border-left-color: #22a06b; }
+.stripe-takeaway { border-left-color: #b45309; }
+.stripe-recon { border-left-color: #6b7280; }
+
+/* ============================================================
+ * R191：列表页通用布局（成本卡列表 / 原料库**同构**，故定义在全局，页面 wxss 不复制第二份）
+ * 要点：**减数量 + 压行数**，🔴 绝不缩尺寸 —— .btn-small 的 min-height 88rpx 是触控硬红线。
+ * ============================================================ */
+/* 顶部：搜索 + 新增同一行（新增不再沉到页面最底部 —— 20 张卡要翻 20 屏才能新建） */
+.top-row { display: flex; align-items: center; gap: 16rpx; }
+.top-inp { flex: 1; margin-bottom: 0; }
+.top-add { margin-top: 0; width: 200rpx; min-width: 200rpx; padding: 0 12rpx; font-size: 30rpx; }
+/* 结果计数 + 低频操作（降级为文字链，不再与筛选块抢同一行） */
+.meta-row { display: flex; align-items: center; justify-content: space-between; margin: 4rpx 0 8rpx; }
+.link { font-size: 28rpx; color: #1e3a5f; min-height: 88rpx; line-height: 88rpx; padding: 0 12rpx; }
+/* 卡片头部：标题区（占满剩余宽度）+ 右侧「⋯」 */
+.card-head { display: flex; align-items: flex-start; justify-content: space-between; }
+.card-title-flex { flex: 1; min-width: 0; margin-bottom: 0; }
+/* 「⋯」必须 ≥88rpx 触控区（与 .btn-small 同一条红线） */
+.more { min-width: 88rpx; min-height: 88rpx; font-size: 40rpx; color: #8a94a6; text-align: center; line-height: 88rpx; margin-left: 8rpx; }
+/* 成本 / 毛利 / 版本 三行压一行 */
+.cell-inline { display: flex; align-items: center; flex-wrap: wrap; font-size: 30rpx; padding: 16rpx 0 4rpx; }
+.cell-inline .lbl { color: #555; }
+.cell-inline .val { font-weight: 600; color: #222; margin-left: 8rpx; }
+.cell-inline .dot { color: #bbb; margin: 0 16rpx; }
