@@ -1,0 +1,4 @@
+文件: dl_calcBom/cx_specDerive.js (云端下载副本)
+per100g 出现次数: 2
+每100g 出现次数: 1
+上下文: D21/M3.31）：每 100g 计价（麻辣烫/卤味/凉菜按重量卖）。 |   //   🔴 系数**全 1（恒等）**：该规格成本 ≡ 该卡标准成本（不缩放）；差异只在展示层。 |   //   unit_label 是**展示单位**（页面拼「¥X / 100g」用），不参与任何金额计算。 |   { spec_key: 'per100g', name: '每100g', coef: { main: 1, aux: 1, season: 1, semi: 1, pack: 1 }, unit_label: '100g' }, | ]; |  | const MAX_COEF = 1;      // 系数上界（见上：规范定死 0~1） | const M

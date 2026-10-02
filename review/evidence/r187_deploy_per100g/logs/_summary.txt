@@ -1,4 +1,45 @@
-部署汇总 2026-10-01T21:33:54
+部署汇总 2026-10-02T01:47:52
 ENV=cloud1-d4gphpoxy337f2a25
-smokeTest            FAIL 112s
----- 0/1 OK ----
+adminExport          OK   32s
+adminGrantEntitlement OK   28s
+adminInit            OK   27s
+adminLogin           OK   33s
+adminLogout          OK   28s
+adminManualOrder     OK   30s
+adminOrderList       OK   29s
+adminQueryUser       OK   28s
+adminRefreshToken    OK   24s
+adminRefundMark      OK   22s
+adminRevokeToken     OK   21s
+archiveMonth         OK   23s
+calcAmortize         OK   21s
+calcBom              OK   21s
+calcMonthlyProfit    OK   22s
+calcSandbox          OK   21s
+checkQuota           OK   21s
+deleteAccount        OK   23s
+detectCycle          OK   20s
+exportData           OK   23s
+getAmortSchedule     OK   21s
+getCardVersions      OK   21s
+getCostCard          OK   21s
+getLedger            OK   19s
+getMaterial          OK   18s
+getMonthList         OK   19s
+getShopContext       OK   23s
+getShopList          OK   21s
+importSalesBill      OK   21s
+initDb               OK   21s
+payCallback          OK   19s
+payCreateOrder       OK   20s
+payExpireNotify      OK   19s
+payOrderList         OK   20s
+payQueryEntitlement  OK   19s
+payRenew             OK   20s
+saveAsset            OK   22s
+saveCostCard         OK   21s
+saveLedger           OK   24s
+saveMaterial         OK   20s
+saveShopSetting      OK   22s
+syncCostCard         OK   19s
+---- 42/42 OK ----

@@ -1,0 +1,18 @@
+- initialize
+
+(node:19520) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)
+√ IDE server has started, listening on http://127.0.0.1:39721
+- deploy cloudfunctions
+- fetching cloud env list
+- [getMonthList] Fetching info of cloudfunction getMonthList
+√ [getMonthList] cloudfunction getMonthList exists in the cloud, will update it
+- [getMonthList] upload cloud function getMonthList - preparing
+√ [getMonthList] upload cloud function getMonthList - deploy
+√ deploy cloudfunctions
+
+┌──────────────┬─────────┬────────────┬───────────┐
+│ (index)      │ success │ filesCount │ packSize  │
+├──────────────┼─────────┼────────────┼───────────┤
+│ getMonthList │ true    │ 18         │ '39.9 KB' │
+└──────────────┴─────────┴────────────┴───────────┘
