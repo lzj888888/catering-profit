@@ -156,10 +156,15 @@ async function autoProvision(ctx, db, audit) {
  *     存量数据零迁移；`FORBIDDEN` 越权拦截本体**一字不动**。
  *   🔴 同族坑（写侧）：`saveShopSetting` / `manageShop` 已用 `doc(shopDoc._id || shopDoc.id || shopId)`
  *     —— 正确形态是**先取行数据的 `_id`**，本仓其余 `doc()` 调用点均已是此形态。
- *   ⚠️ 本函数**只认 `shop_id` 字段**；调用点传进来的必须是**业务键**（= `getShopContext` 回的那个
- *     `shop.shop_id || shop.id`），不是库内 `_id`。
- *   ⚠️ 下方 `where` 兜底依赖 `shop` 上的 `shop_id` 索引 ⇒ 守卫 `tools/check_shop_read_by_bizkey.js`
- *     会同时核「单源里有兜底」+「单源里不再出现裸 `doc(shopId)` 形态」。
+ *   ⚠️ 调用点传进来的必须是**业务键**（= `getShopContext` 回的那个 `shop.shop_id || shop.id`），
+ *     不是库内 `_id`。
+ *   🔴 R202 更正（此前写的是「本函数只认 `shop_id` 字段」—— **错**）：存量 `shop` 文档
+ *     **没有 `shop_id` 字段**，业务键在 `id` 上。故本函数按 ① `_id` → ② `shop_id` → ③ `id`
+ *     三个候选依次查，与读侧 `shop.shop_id || shop.id` 同口径。
+ *   ⚠️ ③ 段的 `where({ id })` 若 `shop` 上没有 `id` 单键索引，dev 量级（个位数文档）无碍；
+ *     生产量级需在控制台补 `id` 索引（已在索引清单待办里登记）。
+ *   ⚠️ 守卫 `tools/check_shop_read_by_bizkey.js` 会同时核「单源里有 `shop_id` 与 `id` 两段兜底」
+ *     +「单源里不再出现裸 `doc(shopId)` 形态」。
  */
 async function assertShopOwner(db, shopId, userId) {
   if (!shopId) return { error: ERROR_CODES.INVALID_PARAM };
@@ -173,12 +178,30 @@ async function assertShopOwner(db, shopId, userId) {
     shop = null; // 文档不存在时 SDK 会 reject，属预期分支
   }
 
-  // ② 兼容路径：`_id` miss ⇒ 按 `shop_id` 业务键字段查（R201：存量店铺的真形态）
+  // ② 兼容路径 1：`_id` miss ⇒ 按 `shop_id` 业务键字段查
   if (!shop) {
     try {
       const q = await db.collection('shop').where({ shop_id: shopId, is_deleted: false }).limit(1).get();
       shop = (q && q.data && q.data[0]) || null;
     } catch (e2) {
+      shop = null;
+    }
+  }
+
+  // ③ 兼容路径 2：仍 miss ⇒ 按 `id` 业务键字段查
+  //   🔴🔴 R202 真云实锤（由 `initDb{only:'diag_shop'}` 只读诊断取得，**非推测**）：
+  //     存量 `shop` 文档真实 `keys` = [_id, id, user_id, name, remark, created_at, is_deleted, updated_at, biz_type]
+  //     —— **根本没有 `shop_id` 这个字段**。同一业务键 `shop_mu6j87v1itrs` 三路实测：
+  //       · where({ _id:     'shop_mu6j87v1itrs' }) → [] miss（`_id` 是库自动生成的 92994ce0…）
+  //       · where({ shop_id: 'shop_mu6j87v1itrs' }) → [] miss（字段不存在 ⇒ R201 的 ② 段对存量形态无效）
+  //       · where({ id:      'shop_mu6j87v1itrs' }) → ✅ 命中
+  //   ⇒ 口径依据：读侧 `getShopContext` / `getShopList` 一直是 `shop.shop_id || shop.id`，
+  //     鉴权侧必须与读侧**同候选集**，否则就是「读得到、鉴权 404」的口径分裂（本次真机现象的成因）。
+  if (!shop) {
+    try {
+      const q2 = await db.collection('shop').where({ id: shopId, is_deleted: false }).limit(1).get();
+      shop = (q2 && q2.data && q2.data[0]) || null;
+    } catch (e3) {
       shop = null;
     }
   }

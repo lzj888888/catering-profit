@@ -7,10 +7,15 @@
 //   ⇒ 真实 `_id` ≠ `shop_id` ⇒ `doc(shopId)` 必然 miss ⇒ 统一 `RESOURCE_NOT_FOUND`
 //   ⇒ 前端映射成「数据不存在或已被删除」⇒ 真机 4 条反馈同根因。
 //
-// 本守卫守三条不变式（缺一条就红）：
+// 本守卫守四条不变式（缺一条就红）：
 //   A. `assertShopOwner` 必须有「`_id` miss ⇒ 按 `shop_id` 字段 where 兜底」的路径；
 //   B. `assertShopOwner` 的**裸 `doc(shopId)` 形态不得回归**（只允许先查后兜底的快路径）；
 //   C. 建店侧不得再写「`data` 里携带 `_id` 以为生效」的形态。
+//   D. 🔴 R202 追加：**候选业务键必须 ≥ 2（`shop_id` 与 `id` 同时在场）**。
+//      —— R201 只加 `shop_id` 兜底**不足以**修复真机：真云诊断显示存量 `shop` 文档
+//         **没有 `shop_id` 字段**，业务键在 `id` 上（同一键三路实测：_id → [] · shop_id → [] · id → ✅）。
+//      —— 而读侧 `getShopContext` / `getShopList` 一直是 `shop.shop_id || shop.id`。
+//         ⇒ 鉴权侧候选集必须与读侧**一致**，否则「读得到、鉴权 404」的口径分裂会复发。
 //
 // 🔴 为什么这条必须机器守：它是**假绿型**缺陷 —— 代码读起来完全合理、单跑任何测试都过，
 //   只有真云上「按 _id 查」与「按字段查」两条路径结果相反时才暴露（R201 实测就是如此）。
@@ -130,6 +135,21 @@ check('A-⑧ 建 entitlement 侧可定位', addEntSeg !== '');
 check('A-⑨ 建 entitlement data 内不再携带 _id（同 A-⑦）',
   !dataCarriesId(addEntSeg), 'data 对象首个字段是 _id');
 
+// ===== A2. R202 追加：`id` 字段兜底必须在位（R201 只加 `shop_id` 是不够的）=====
+// 🔴 R202 真云实锤（`initDb{only:'diag_shop'}` 只读诊断）：
+//   存量 `shop` 文档真实 keys = [_id, id, user_id, name, remark, created_at, is_deleted, updated_at, biz_type]
+//   —— **没有 `shop_id` 字段** ⇒ R201 的 ② 段 where 必然 miss，23 个调用点仍全 404。
+//   同一业务键三路实测：where({_id}) → [] · where({shop_id}) → [] · where({**id**}) → ✅ 命中。
+const hasIdFallback = /collection\(\s*['"]shop['"]\s*\)\s*\.where\(\s*\{\s*id\s*:\s*shopId/.test(body);
+check('A-⑩ assertShopOwner 有「按 id 字段 where 兜底」路径（R202：存量店铺的真形态）',
+  hasIdFallback, 'body 内未见 where({ id: shopId ... })');
+
+// 抗削弱：候选键必须**同时**在位 —— 只留一个就是「读侧两候选 / 鉴权单候选」的口径分裂复发
+const keyCount = (body.match(/shop_id\s*:\s*shopId/g) || []).length
+  + (body.match(/where\(\s*\{\s*id\s*:\s*shopId/g) || []).length;
+check('A-⑪ 兜底候选键 ≥ 2（shop_id 与 id 同时在场，防「退回单键」削弱）',
+  keyCount >= 2, '实际命中 ' + keyCount + ' 处');
+
 // ===== 守卫自身的非退化：影子用例（削弱判据会自红）=====
 /** 影子用例：喂给「dataCarriesId」的必须是**真实代码片段**，不是拼出来的字符串 */
 check('S3-c 影子正样本：带 `_id:` 的 data 被判违规',
@@ -150,6 +170,16 @@ const GOOD = "await db.collection('shop').where({ shop_id: shopId }).limit(1).ge
 const BAD = "await db.collection('shop').doc(shopId).get();";
 check('S3-a 影子正样本：合规实现被判绿', judge(GOOD, 'good') === true);
 check('S3-b 影子负样本：违规实现被判红', judge(BAD, 'good') === false);
+
+/** R202 影子用例：两键兜底判据自身也要能区分「两键 / 单键」 */
+function judge2(realBody) {
+  return /collection\(\s*['"]shop['"]\s*\)\s*\.where\(\s*\{\s*id\s*:\s*shopId/.test(realBody);
+}
+const GOOD2 = "await db.collection('shop').where({ shop_id: shopId, is_deleted: false }).limit(1).get();\n"
+  + "await db.collection('shop').where({ id: shopId, is_deleted: false }).limit(1).get();";
+const BAD2 = "await db.collection('shop').where({ shop_id: shopId, is_deleted: false }).limit(1).get();";
+check('S3-e 影子正样本：两键兜底实现被判绿', judge2(GOOD2) === true);
+check('S3-f 影子负样本：只有 shop_id 单键兜底（R201 旧形态）被判红', judge2(BAD2) === false);
 
 console.log('===== R201 店铺读库口径守卫：' + pass + ' 通过 / ' + fail + ' 失败 =====');
 process.exit(fail === 0 ? 0 : 1);

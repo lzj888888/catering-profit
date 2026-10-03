@@ -46,6 +46,48 @@ exports.main = async (event, context) => {
     return result;
   }
 
+  // 🔴 R202 临时只读诊断分支（`{ only: 'diag_shop', shop_id }`）
+  //   背景：R201 已给 assertShopOwner 加 `where({shop_id})` 兜底，但真机 + IDE 实测，
+  //         用**正确**的 shop_id（getShopContext 返回的那个）调
+  //         getMonthList / getLedger / getCostCard / getMaterial / saveShopSetting
+  //         **仍全部返回 RESOURCE_NOT_FOUND** ⇒ 兜底查询本身 miss。
+  //   本分支只读、零写入、零副作用，用来一次看清 shop 文档的**真实字段形态**
+  //   （业务键到底落在 `_id` / `id` / `shop_id` 哪个字段上）。
+  //   跑完可删（临时诊断，不构成契约；不属于「新增云函数」，故不触发四处同步）。
+  if (event && event.only === 'diag_shop') {
+    const sid = (event && event.shop_id) || '';
+    const pick = (x) => ({
+      _id: x._id,
+      id: x.id,
+      shop_id: x.shop_id,
+      user_id: String(x.user_id || '').slice(0, 16),
+      is_deleted: x.is_deleted,
+      name: x.name,
+      keys: Object.keys(x),
+    });
+    const run = async (fn) => {
+      try {
+        return (await fn()).data.map(pick);
+      } catch (e) {
+        return 'ERR:' + (e && e.message);
+      }
+    };
+    const out = { env, sid, byId: null, byShopId: null, byDocId: null, all: null, owner: null };
+    if (sid) {
+      out.byId = await run(() => db.collection('shop').where({ id: sid }).limit(3).get());
+      out.byShopId = await run(() => db.collection('shop').where({ shop_id: sid }).limit(3).get());
+      out.byDocId = await run(() => db.collection('shop').where({ _id: sid }).limit(3).get());
+    }
+    out.all = await run(() => db.collection('shop').limit(10).get());
+    try {
+      const common = require('./common');
+      out.owner = await common.assertShopOwner(db, sid, (event && event.uid) || '');
+    } catch (e) {
+      out.owner = 'ERR:' + (e && e.message);
+    }
+    return { blocked: false, diag: out };
+  }
+
   // 1. 建集合（已存在则跳过）
   for (const c of COLLECTIONS) {
     try {
