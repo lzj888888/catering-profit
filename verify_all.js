@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：128 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：129 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -667,6 +667,11 @@ const SUITES = [
   //   图标在盘 / 路径不重复 / ≤5 上限）+ B 跳转方式（tabBar 页不得被 navigateTo·reLaunch·redirectTo 跳；
   //   switchTab 目标须是 tabBar 页；每 tab 至少一处 switchTab 入口）+ C 自反锚点（关键页在位 + 上限常量自证）。
   ['tabbar',            'tools/check_tabbar.js'],
+  // R201：店铺读库口径守卫 —— 根因＝`assertShopOwner` 拿**业务键**当文档 `_id` 读 `shop`（R201 真机实锤）：
+  //   `add()` 的 `_id` 由库自动生成、`data` 里写的 `_id` 不生效 ⇒ 真实 `_id` != `shop_id` ⇒ `doc(shopId)` 全 miss
+  //   ⇒ 20 个走该函数的云函数统一 `RESOURCE_NOT_FOUND` ⇒ 真机 4 条反馈（改不了店名 / 多模块提示不存在 / 月度暂无账本）同根因。
+  //   守三条：where 兜底在位 / 裸 doc 形态不回归 / 建店 data 不再携带 _id（内建影子用例防判据被削弱）。
+  ['shop-read-by-bizkey', 'tools/check_shop_read_by_bizkey.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

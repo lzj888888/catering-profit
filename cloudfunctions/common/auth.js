@@ -66,8 +66,12 @@ async function resolveAuth(ctx, db, audit) {
  *     但**并发时第二个请求会直接抛库错** ⇒ 这里捕获「唯一键冲突」并**回读采用赢家的 user_id**。
  *   · **顺序不可换**：必须先抢 `user`、拿到最终的 `user_id`，**再**建店。
  *     反过来（先建店）会给自己的临时 user_id 建出一间**孤儿店**。
- *   · `shop` / `shop_entitlement` 用 `defaultShopId()` / `defaultEntitlementId()` 的**确定性 `_id`**
- *     ⇒ 即便并发也建不出第二份（撞 `_id` 由库拒，不是靠我先查一遍）。
+ *   · `shop` / `shop_entitlement` 用**确定性业务键**（`defaultShopId()` / `defaultEntitlementId()`）
+ *     写入 `shop_id` / `id` 字段，配合**下方插入后的存在性回读**保证并发下只留一份。
+ *   🔴 R201 更正（2026-10-03）：此处原先写「用确定性 `_id` ⇒ 撞 `_id` 由库拒」——
+ *     **该前提不成立**：微信云开发 `collection.add()` 的 `_id` 由库自动生成，`data` 里带的 `_id` 不生效
+ *     ⇒ 从来没有"确定性 `_id`"这回事，幂等其实是**假象**（真云实测：读侧 `doc(shopId)` 全 miss）。
+ *     现行做法 = 插入后**回读校验**，读不到就按赢家那份走（fail-closed，不猜）。
  */
 async function autoProvision(ctx, db, audit) {
   const OPENID = ctx.OPENID;
@@ -92,7 +96,10 @@ async function autoProvision(ctx, db, audit) {
   try {
     await db.collection('shop').add({
       data: {
-        _id: shopId, id: shopId, shop_id: shopId,
+        // 🔴 R201：`data` 里**不再写 `_id`** —— 微信云开发 `add()` 的 `_id` 由库自动生成，
+        //   携带的 `_id` 不生效（旧代码写了却以为生效 ⇒ 读侧 `doc(shopId)` 全部 404，R201 实锤）。
+        //   业务键是 `shop_id` 字段；读侧由 `assertShopOwner` 的 where 兜底按它查。
+        id: shopId, shop_id: shopId,
         user_id: userId, name: '默认店铺', remark: '', created_at: nowUtc(), is_deleted: false,
       },
     });
@@ -100,7 +107,11 @@ async function autoProvision(ctx, db, audit) {
 
   try {
     await db.collection('shop_entitlement').add({
-      data: { _id: defaultEntitlementId(userId), user_id: userId, expire_at: 0, source: 'auto', updated_at: nowUtc() },
+      data: {
+        // 🔴 R201 同上：不写 `_id`，用确定性业务键 + 下方回读保证幂等
+        id: defaultEntitlementId(userId), entitlement_id: defaultEntitlementId(userId),
+        user_id: userId, expire_at: 0, source: 'auto', updated_at: nowUtc(), is_deleted: false,
+      },
     });
   } catch (e) { if (!isDuplicateKeyError(e)) throw e; }
 
@@ -133,19 +144,45 @@ async function autoProvision(ctx, db, audit) {
  *   （getLedger / exportData / saveLedger / saveCostCard / saveShopSetting … 共 20 个函数）。
  *   实证（本地探针，`node -e` 直调派生副本 cx_auth.js）：
  *     别人的店 → 返回 `{"code":"FORBIDDEN","msg":"FORBIDDEN","data":{}}`，`owner.error === undefined` ⇒ 放行。
- *   ⇒ 修法：**失败一律返回 `{ error: <code> }`**（与调用点判据同形），成功补 `error: null`。
- *   ⚠️ 同一文件里 `resolveAuth` / `autoProvision` **本来就是** `{error}` 形状 ⇒ 本函数是唯一的异形，
- *      修成同族即可；守卫 `tools/check_auth_guard_shape.js`（R194 新增）守这条不变式。
+ * 🔴🔴🔴 R201（2026-10-03）**真机实锤：「用业务键当文档主键读库」⇒ 全站 404**
+ *   现场（真云 wx.cloud.callFunction 探针实测，证据 `review/evidence/R201_*.txt`）：
+ *     `getShopList` / `getShopContext`（走 `da.list('shop',{user_id})`＝按**字段**查）→ SUCCESS；
+ *     `getMonthList` / `getLedger` / `getCostCard` / `getMaterial` / `getCardVersions` /
+ *     `getAmortSchedule`（走本函数＝按 **`_id`** 查）→ 统一 `RESOURCE_NOT_FOUND`。
+ *   真因：`autoProvision` 建店时 `add({ data: { _id: shopId, ... } })` ——
+ *     🔴 **微信云开发 `collection.add()` 的 `_id` 由库自动生成，`data` 里携带的 `_id` 不生效**
+ *     ⇒ 文档真实 `_id` ≠ `shop_id` 字段值 ⇒ `doc(shopId)` 必然 miss。
+ *   ⇒ 修法：**先按 `_id` 查（快路径，新数据直接命中），miss 再按 `shop_id` 字段查（兼容存量）**。
+ *     存量数据零迁移；`FORBIDDEN` 越权拦截本体**一字不动**。
+ *   🔴 同族坑（写侧）：`saveShopSetting` / `manageShop` 已用 `doc(shopDoc._id || shopDoc.id || shopId)`
+ *     —— 正确形态是**先取行数据的 `_id`**，本仓其余 `doc()` 调用点均已是此形态。
+ *   ⚠️ 本函数**只认 `shop_id` 字段**；调用点传进来的必须是**业务键**（= `getShopContext` 回的那个
+ *     `shop.shop_id || shop.id`），不是库内 `_id`。
+ *   ⚠️ 下方 `where` 兜底依赖 `shop` 上的 `shop_id` 索引 ⇒ 守卫 `tools/check_shop_read_by_bizkey.js`
+ *     会同时核「单源里有兜底」+「单源里不再出现裸 `doc(shopId)` 形态」。
  */
 async function assertShopOwner(db, shopId, userId) {
   if (!shopId) return { error: ERROR_CODES.INVALID_PARAM };
-  let r;
+
+  // ① 快路径：按文档 `_id` 查（新建且 `_id` 恰好等于业务键时命中）
+  let shop = null;
   try {
-    r = await db.collection('shop').doc(shopId).get();
+    const r = await db.collection('shop').doc(shopId).get();
+    shop = (r && r.data) || null;
   } catch (e) {
-    return { error: ERROR_CODES.RESOURCE_NOT_FOUND }; // 文档不存在时 SDK 可能 reject
+    shop = null; // 文档不存在时 SDK 会 reject，属预期分支
   }
-  const shop = r && r.data;                      // ⚠️ doc().get() 返回结果对象 {data}
+
+  // ② 兼容路径：`_id` miss ⇒ 按 `shop_id` 业务键字段查（R201：存量店铺的真形态）
+  if (!shop) {
+    try {
+      const q = await db.collection('shop').where({ shop_id: shopId, is_deleted: false }).limit(1).get();
+      shop = (q && q.data && q.data[0]) || null;
+    } catch (e2) {
+      shop = null;
+    }
+  }
+
   if (!shop || shop.is_deleted) return { error: ERROR_CODES.RESOURCE_NOT_FOUND };
   if (shop.user_id !== userId) return { error: ERROR_CODES.FORBIDDEN }; // 🔴 越权拦截本体，必须保留
   return { error: null, data: shop };
