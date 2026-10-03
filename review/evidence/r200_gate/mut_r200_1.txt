@@ -1,0 +1,13 @@
+基线绿OK（16 通过 / 0 失败）
+A1 用navigateTo 跳 tabBar 页（R199前的旧写法）           ✅ 有效红(点名 B1)
+A2 用 reLaunch 跳 tabBar 页（「我的」页登出回首页）           ✅ 有效红(点名 B1)
+A3 图标文件不在盘（打包漏了 images/tab）                    ✅ 有效红(点名 A4)
+A4 selectedIconPath 缺失（选中态不显示图标）               ✅ 有效红(点名 A4)
+A5 tabBar 只剩 2 项（≥2 临界值，不该红）                   ✅ 不误报
+A5b tabBar.list 写坏（残留尾项致 JSON 非法）              ✅ 有效红(点名 S0)
+A6 tabBar 路径重复（两个 tab 指同一页）                    ✅ 有效红(点名 A5)
+A7 text 为空（tab 只有图标没字）                         ✅ 有效红(点名 A3)
+B1 home 无关跳转不受影响（跳非 tabBar 页）                  ✅ 不误报
+B2 tabBar 外页面加注释（纯无害改动）                        ✅ 不误报
+还原后 失败数=0 crash=False
+还原字节 ≡ 注入前: True

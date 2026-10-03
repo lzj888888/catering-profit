@@ -140,6 +140,7 @@ const CASES = [
   // R194 扩面：鉴权返回形状守卫同批纳入 —— 它的 G1/G6 两条扫描面下界护栏正是「非恒真」凭据；
   //   断言数不受守则「把 20 处调用点判据改回 owner.code / 删掉 G2 分支遍历」同样静默通过。
   { key: 'check_auth_guard_shape', rel: 'tools/check_auth_guard_shape.js' }, // 17 条（R194：G1 扫描面非退化 / G2 分支带 error / G3 无 ok()·fail() / G4 派生同形 / G5 锚点在场 / G6 调用点形状）
+  { key: 'check_tabbar', rel: 'tools/check_tabbar.js' },
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

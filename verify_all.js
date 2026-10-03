@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：127 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：128 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -657,6 +657,16 @@ const SUITES = [
   // R194：manageShop 云函数自测（店铺增 / 改名 / 删除三 op）—— R67（check_selftest_shape）
   //   与 check_suite_coverage 的 S5 做「树内 selftest.js ↔ SUITES」双向差集，漏挂即判红（整文件静默不跑）。
   ['manageShop 自测', 'cloudfunctions/manageShop/selftest.js'],
+  // R200：底部 tabBar 守卫 —— 根因＝R199 落地了底部三入口 tabBar，但**全仓零机器判据守它**：
+  //   ① 结构层：R44（check_pages.js）虽把 tabBar.list 的 pagePath 并入 declared，
+  //     但**只查文件在不在，不查 list 少两项 / pagePath 不在 pages / 图标缺文件 / 路径重复**；
+  //   ② 跳转层（本守卫核心）：tabBar 页**只能用 wx.switchTab 跳**，
+  //     用 navigateTo / reLaunch 跳到 tabBar 页**会失败**，而既有死链检查只验「目标文件存在」、**不验跳转方式**
+  //     ⇒ 把某页改成 tabBar 页后，全部原有跳转运维静默失效、零守卫报警。
+  //   判据 = S 扫描面非退化（S1~S4 防「扫空 ⇒ 恒绿」）+ A 结构（list≥2 / pagePath ∈ pages /
+  //   图标在盘 / 路径不重复 / ≤5 上限）+ B 跳转方式（tabBar 页不得被 navigateTo·reLaunch·redirectTo 跳；
+  //   switchTab 目标须是 tabBar 页；每 tab 至少一处 switchTab 入口）+ C 自反锚点（关键页在位 + 上限常量自证）。
+  ['tabbar',            'tools/check_tabbar.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
