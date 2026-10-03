@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：129 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：130 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -285,6 +285,12 @@
 //         而 20 处调用点统一判 `owner.error` ⇒ **恒 undefined ⇒ 归属校验形同不存在**，
 //         任意用户改 shop_id 即可读写他人店铺数据（真云可达）。判据=G1 扫描面非退化 + G2 每个 return
 //         分支都带 error + G3 单源无 ok()/fail() + G4 派生副本同形 + G5 关键锚点在场 + G6 调用点判据与形状一致）
+//       + 路由编解码配对守卫（tools/check_uri_codec_pairs.js，R203：**编码了却不解码** ——
+//         跳转侧 pages/material/index.js 用 encodeURIComponent(m.name) 编过原料名，目标页
+//         pages/metrics/impact.js 直接 q.name 赋值 ⇒ 顶部渲染 %E7%82%B8%E9%B8%A1%E8%85%BF
+//         （真机反馈「涨价影响面前面很多英文和百分号」）。⚠️ 长期存在却从未暴露：上游店铺鉴权 404
+//         让这页从没真正渲染出来 —— **修好上游会把下游老毛病一并照亮**。判据=A 编码跳转的目标页必须解码
+//         + B 扫描面非退化且至少存在一处编码跳转 + C impact.js 自反锚点在位；含 5 条影子用例）
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -672,6 +678,11 @@ const SUITES = [
   //   ⇒ 20 个走该函数的云函数统一 `RESOURCE_NOT_FOUND` ⇒ 真机 4 条反馈（改不了店名 / 多模块提示不存在 / 月度暂无账本）同根因。
   //   守三条：where 兜底在位 / 裸 doc 形态不回归 / 建店 data 不再携带 _id（内建影子用例防判据被削弱）。
   ['shop-read-by-bizkey', 'tools/check_shop_read_by_bizkey.js'],
+  // R203：路由「编解码配对」守卫 —— 根因＝跳转侧 `encodeURIComponent()` 编过、目标页**没解回来**
+  //   ⇒ impact 页顶部直接渲染 `%E7%82%B8%E9%B8%A1%E8%85%BF`（真机反馈「很多英文以及百分号」）。
+  //   ⚠️ 该缺陷长期存在却从未暴露，因为上游店铺鉴权 404 让这页从没真正渲染出来 —— **修好上游会照亮下游老毛病**。
+  //   守三条：编码跳转的目标页必须解码 / 扫描面非退化 + 至少一处编码跳转 / impact.js 自反锚点在位。
+  ['uri-codec-pairs',   'tools/check_uri_codec_pairs.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
