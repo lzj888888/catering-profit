@@ -34,7 +34,7 @@
   <view class="card2" wx:if="{{mode === 'create'}}">
     <input class="edit-inp edit-inp-block" value="{{editName}}" maxlength="{{nameMax}}"
            placeholder="{{t.namePh}}" bindinput="onEditName" />
-    <view class="edit-row">
+    <view class="edit-row fill">
       <button class="btn btn-small primary edit-btn" bindtap="onCreate" disabled="{{busy}}">{{t.createOk}}</button>
       <button class="btn btn-small ghost edit-btn" bindtap="onEditCancel">{{t.cancel}}</button>
     </view>

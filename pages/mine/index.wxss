@@ -4,8 +4,13 @@
 
 /* G5：头像昵称（AD-15） */
 .profile { display: flex; align-items: center; gap: 24rpx; }
-.profile-avatar { flex: 0 0 auto; }
-.avatar-btn { width: 120rpx; height: 120rpx; border-radius: 50%; padding: 0; margin: 0;
+/* 🔴 R194 走查修正：`.profile-avatar` 必须自己做 flex 容器，按钮宽度**只能用 flex-basis 定**
+ *   —— `<button>` 带固有宽度 184px，优先级高于页面 wxss 里的普通 `width`（实测：本页 `.avatar-btn`
+ *   写 `width:120rpx; height:120rpx; border-radius:50%`，实际渲染 **184×62** ⇒ 圆变成椭圆）。
+ *   判据：`report_layout3.json` MINE 视图（`wx.createSelectorQuery` 机读）。
+ *   同根因见 `pages/shop/switch.wxss::.edit-btn`（那里也是靠 flex-basis 才定住宽度）。 */
+.profile-avatar { flex: 0 0 auto; display: flex; }
+.avatar-btn { flex: 0 0 120rpx; width: 120rpx; height: 120rpx; border-radius: 50%; padding: 0; margin: 0;
   background: #f0f0f0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .avatar-img { width: 120rpx; height: 120rpx; border-radius: 50%; }
 .avatar-ph { color: #999; font-size: 28rpx; }

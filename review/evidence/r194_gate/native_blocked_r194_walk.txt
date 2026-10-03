@@ -1,0 +1,4 @@
+
+✅ [suite-count] 头部注释 ≡ SUITES.length = 127（R59 守卫）
+
+❌ [suite-tracked] `git ls-files` 执行失败（不在 git 仓库 / git 不可用） —— 无法确认套件文件是否已入库，按 fail-closed 判红。

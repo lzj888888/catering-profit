@@ -8,11 +8,21 @@
 .shop-main .shop-name { display: flex; align-items: center; min-height: 88rpx; margin-bottom: 0; }
 
 /* R194：就地编辑行（重命名 / 新建共用）—— 输入框与按钮**同一行**，都不缩尺寸 */
-.edit-row { display: flex; align-items: center; gap: 12rpx; }
-.edit-inp { flex: 1; min-width: 0; background: #f6f8fb; border-radius: 12rpx;
+.edit-row { display: flex; align-items: center; justify-content: flex-start; gap: 12rpx; }
+.edit-inp { flex: 1 1 auto; min-width: 0; background: #f6f8fb; border-radius: 12rpx;
   padding: 0 20rpx; min-height: 88rpx; font-size: 30rpx; }
 .edit-inp-block { margin-bottom: 12rpx; }
-/* .btn 自带 margin-top:24rpx + 撑满宽 ⇒ 行内按钮要复位这两条（尺寸仍 ≥88rpx） */
-.edit-btn { flex: 0 0 auto; margin-top: 0; }
+/* 🔴 R194 实测修正（真机口径，勿凭直觉改回 `width`）：行内按钮**只能用 flex-basis 定宽**。
+ *   本基座下 `<button>` 有**固有宽度 184px**，且优先级高于页面 wxss 里的普通 `width`/`min-width`
+ *   —— 实测：写 `width:140rpx; min-width:140rpx` **完全无效**（仍 184）；
+ *          写 `width:200rpx !important; min-width:200rpx !important` 有效；
+ *          写 `flex: 0 0 160rpx`（无需 !important）有效 ⇒ **选它**。
+ *   不修的后果（修复前实测）：输入框被挤成 20px、第 2 个按钮右边界 424 > 卡片右边界 366，
+ *   **直接顶出卡片/屏幕**。取证见 review/evidence/r194_shots/report_layout.json（`wx.createSelectorQuery`）。
+ *   同根因横证：`app.wxss::.top-add` 写的是 `width:200rpx` ⇒ 实测仍 184px，静默失效（已登记待拍板）。 */
+.edit-btn { flex: 0 0 160rpx; padding: 0; margin: 0; }
+/* 新建块里按钮是**独占一行**（上方已有整行输入框）⇒ 两个按钮平分整行，不留中间空洞。
+ * 判据：`flex: 1 1 0` 的 basis 为 0，UA 的 `margin:auto` 抢不到自由空间（实测 66.5/240.5 的"飘"态就是它）。 */
+.edit-row.fill .edit-btn { flex: 1 1 0; }
 
 .more-hint { font-size: 28rpx; color: #9aa4b2; margin: 12rpx 4rpx 40rpx; line-height: 1.6; }

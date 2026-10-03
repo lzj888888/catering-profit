@@ -1,0 +1,3 @@
+ensureSwitch: {"r":"pages/shop/switch","loading":false,"n":1,"name":"默认店铺","id":"shop_mu6j87v1itrs"} errs: []
+MODAL_OPEN lastone (list=1)
+DONE3 lastone

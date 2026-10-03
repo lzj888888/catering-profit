@@ -144,7 +144,11 @@ Page({
         title: TERMS.exp.deleteShop,
         content: TERMS.exp.lastOneWarn,
         showCancel: false,
-        confirmText: TERMS.exp.createOk,
+        // 🔴 R194 走查修正：这里**不能**复用 exp.createOk（「创建」）——本弹窗不创建任何东西，
+        //    点它只关窗；按钮却写「创建」= 明确误导（桌面截屏实测抓到，见
+        //    review/evidence/r194_shots/05_desktop_lastOne.png）。
+        //    无动作信息弹窗的唯一按钮一律用 buttons.gotIt（「知道了」，R45 既有口径，3 字 ≤4 ✓）。
+        confirmText: TERMS.buttons.gotIt,
         confirmColor: '#1e3a5f',
       });
       return;
