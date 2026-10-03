@@ -1,0 +1,107 @@
+{
+ "tag": "R196_HINTTOP",
+ "ts": "2026-10-03T05:37:27.834Z",
+ "pages": [
+  {
+   "tag": "4_card",
+   "route": "pages/card/index",
+   "sel": ".hint",
+   "ok": true,
+   "navH": 91,
+   "list": [
+    {
+     "t": 12,
+     "l": 12,
+     "w": 366,
+     "h": 38
+    }
+   ],
+   "underNav": 1
+  },
+  {
+   "tag": "3_month",
+   "route": "pages/month/index",
+   "sel": ".card2",
+   "ok": true,
+   "navH": 91,
+   "list": [
+    {
+     "t": 12,
+     "l": 12,
+     "w": 366,
+     "h": 69
+    }
+   ],
+   "underNav": 1
+  },
+  {
+   "tag": "1_home",
+   "route": "pages/index/index",
+   "sel": ".card-title",
+   "ok": true,
+   "navH": 91,
+   "list": [
+    {
+     "t": 24,
+     "l": 24,
+     "w": 342,
+     "h": 25
+    },
+    {
+     "t": 107,
+     "l": 24,
+     "w": 342,
+     "h": 23
+    },
+    {
+     "t": 188,
+     "l": 24,
+     "w": 342,
+     "h": 23
+    }
+   ],
+   "underNav": 1
+  },
+  {
+   "tag": "5_mine",
+   "route": "pages/mine/index",
+   "sel": ".card-title",
+   "ok": true,
+   "navH": 91,
+   "list": [
+    {
+     "t": 128,
+     "l": 24,
+     "w": 342,
+     "h": 23
+    }
+   ],
+   "underNav": 0
+  },
+  {
+   "tag": "6_sandbox",
+   "route": "pages/sandbox/index",
+   "sel": ".container",
+   "ok": true,
+   "navH": 91,
+   "list": [
+    {
+     "t": 0,
+     "l": 0,
+     "w": 390,
+     "h": 2053
+    }
+   ],
+   "underNav": 1
+  },
+  {
+   "tag": "8_material",
+   "route": "pages/material/index",
+   "sel": ".hint",
+   "ok": true,
+   "navH": 91,
+   "list": [],
+   "underNav": 0
+  }
+ ]
+}

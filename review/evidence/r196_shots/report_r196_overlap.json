@@ -1,0 +1,266 @@
+{
+ "tag": "R196_OVERLAP",
+ "ts": "2026-10-03T05:29:19.778Z",
+ "navBandPx": 88,
+ "pages": [
+  {
+   "tag": "1_home",
+   "route": "pages/index/index",
+   "okNav": true,
+   "minTop": 0,
+   "overlap": true,
+   "count": 5,
+   "top3": [
+    {
+     "t": 0,
+     "l": 0,
+     "w": 390,
+     "h": 491
+    },
+    {
+     "t": 12,
+     "l": 12,
+     "w": 366,
+     "h": 75
+    },
+    {
+     "t": 95,
+     "l": 12,
+     "w": 366,
+     "h": 73
+    }
+   ]
+  },
+  {
+   "tag": "2_m3hub",
+   "route": "pages/m3/hub",
+   "okNav": true,
+   "minTop": 0,
+   "overlap": true,
+   "count": 6,
+   "top3": [
+    {
+     "t": 0,
+     "l": 0,
+     "w": 390,
+     "h": 502
+    },
+    {
+     "t": 12,
+     "l": 12,
+     "w": 366,
+     "h": 84
+    },
+    {
+     "t": 108,
+     "l": 12,
+     "w": 366,
+     "h": 77
+    }
+   ]
+  },
+  {
+   "tag": "3_month",
+   "route": "pages/month/index",
+   "okNav": true,
+   "minTop": 0,
+   "overlap": true,
+   "count": 3,
+   "top3": [
+    {
+     "t": 0,
+     "l": 0,
+     "w": 390,
+     "h": 329
+    },
+    {
+     "t": 12,
+     "l": 12,
+     "w": 366,
+     "h": 69
+    },
+    {
+     "t": 24,
+     "l": 24,
+     "w": 342,
+     "h": 45
+    }
+   ]
+  },
+  {
+   "tag": "4_card",
+   "route": "pages/card/index",
+   "okNav": true,
+   "minTop": 0,
+   "overlap": true,
+   "count": 2,
+   "top3": [
+    {
+     "t": 0,
+     "l": 0,
+     "w": 390,
+     "h": 380
+    },
+    {
+     "t": 56,
+     "l": 12,
+     "w": 366,
+     "h": 69
+    }
+   ]
+  },
+  {
+   "tag": "5_mine",
+   "route": "pages/mine/index",
+   "okNav": true,
+   "minTop": 0,
+   "overlap": true,
+   "count": 18,
+   "top3": [
+    {
+     "t": 0,
+     "l": 0,
+     "w": 390,
+     "h": 1030
+    },
+    {
+     "t": 12,
+     "l": 12,
+     "w": 366,
+     "h": 96
+    },
+    {
+     "t": 116,
+     "l": 12,
+     "w": 366,
+     "h": 53
+    }
+   ]
+  },
+  {
+   "tag": "6_sandbox",
+   "route": "pages/sandbox/index",
+   "okNav": true,
+   "minTop": 0,
+   "overlap": true,
+   "count": 7,
+   "top3": [
+    {
+     "t": 0,
+     "l": 0,
+     "w": 390,
+     "h": 2053
+    },
+    {
+     "t": 12,
+     "l": 12,
+     "w": 366,
+     "h": 160
+    },
+    {
+     "t": 180,
+     "l": 12,
+     "w": 366,
+     "h": 487
+    }
+   ]
+  },
+  {
+   "tag": "8_material",
+   "route": "pages/material/index",
+   "okNav": true,
+   "minTop": 0,
+   "overlap": true,
+   "count": 3,
+   "top3": [
+    {
+     "t": 0,
+     "l": 0,
+     "w": 390,
+     "h": 228
+    },
+    {
+     "t": 12,
+     "l": 12,
+     "w": 366,
+     "h": 69
+    },
+    {
+     "t": 89,
+     "l": 12,
+     "w": 366,
+     "h": 21
+    }
+   ]
+  },
+  {
+   "tag": "9_takeaway",
+   "route": "pages/takeaway/index",
+   "okNav": true,
+   "minTop": 0,
+   "overlap": true,
+   "count": 1,
+   "top3": [
+    {
+     "t": 0,
+     "l": 0,
+     "w": 390,
+     "h": 1894
+    }
+   ]
+  },
+  {
+   "tag": "10_recon",
+   "route": "pages/recon/index",
+   "okNav": true,
+   "minTop": 0,
+   "overlap": true,
+   "count": 1,
+   "top3": [
+    {
+     "t": 0,
+     "l": 0,
+     "w": 390,
+     "h": 346
+    }
+   ]
+  },
+  {
+   "tag": "11_pay",
+   "route": "pages/pay/orders",
+   "okNav": true,
+   "minTop": 0,
+   "overlap": true,
+   "count": 8,
+   "top3": [
+    {
+     "t": 0,
+     "l": 0,
+     "w": 390,
+     "h": 368
+    },
+    {
+     "t": 12,
+     "l": 12,
+     "w": 366,
+     "h": 302
+    },
+    {
+     "t": 24,
+     "l": 24,
+     "w": 342,
+     "h": 46
+    }
+   ]
+  },
+  {
+   "tag": "12_shopsetting",
+   "route": "pages/shop/setting",
+   "okNav": true,
+   "minTop": null,
+   "overlap": null,
+   "count": 0,
+   "top3": []
+  }
+ ]
+}

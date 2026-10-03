@@ -1,0 +1,42 @@
+{
+ "tag": "R196_CURRENT",
+ "ts": "2026-10-03T05:25:18.057Z",
+ "pages": [
+  {
+   "tag": "1_home",
+   "want": "pages/index/index",
+   "okNav": true,
+   "contentH": 0
+  },
+  {
+   "tag": "2_m3hub",
+   "want": "pages/m3/hub",
+   "okNav": true,
+   "contentH": 0
+  },
+  {
+   "tag": "3_month",
+   "want": "pages/month/index",
+   "okNav": true,
+   "contentH": 0
+  },
+  {
+   "tag": "4_card",
+   "want": "pages/card/index",
+   "okNav": true,
+   "contentH": 0
+  },
+  {
+   "tag": "5_mine",
+   "want": "pages/mine/index",
+   "okNav": true,
+   "contentH": 0
+  },
+  {
+   "tag": "6_sandbox",
+   "want": "pages/sandbox/index",
+   "okNav": true,
+   "contentH": 0
+  }
+ ]
+}

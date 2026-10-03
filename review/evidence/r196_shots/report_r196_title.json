@@ -1,0 +1,146 @@
+{
+ "tag": "R196_TITLE",
+ "ts": "2026-10-03T05:27:38.420Z",
+ "pages": [
+  {
+   "tag": "1_home",
+   "route": "pages/index/index",
+   "okNav": true,
+   "info": {
+    "winW": 390,
+    "statusBarH": 47,
+    "navBarH": 91,
+    "capsule": {
+     "l": 296,
+     "r": 383,
+     "t": 51,
+     "b": 82,
+     "w": 87,
+     "h": 31
+    }
+   },
+   "appTitle": "开店算账",
+   "realTitle": null,
+   "firstRow": {
+    ".card-title": {
+     "t": 24,
+     "l": 24,
+     "w": 342,
+     "h": 25
+    }
+   }
+  },
+  {
+   "tag": "3_month",
+   "route": "pages/month/index",
+   "okNav": true,
+   "info": {
+    "winW": 390,
+    "statusBarH": 47,
+    "navBarH": 91,
+    "capsule": {
+     "l": 296,
+     "r": 383,
+     "t": 51,
+     "b": 82,
+     "w": 87,
+     "h": 31
+    }
+   },
+   "appTitle": "开店算账",
+   "realTitle": null,
+   "firstRow": {}
+  },
+  {
+   "tag": "4_card",
+   "route": "pages/card/index",
+   "okNav": true,
+   "info": {
+    "winW": 390,
+    "statusBarH": 47,
+    "navBarH": 91,
+    "capsule": {
+     "l": 296,
+     "r": 383,
+     "t": 51,
+     "b": 82,
+     "w": 87,
+     "h": 31
+    }
+   },
+   "appTitle": "开店算账",
+   "realTitle": null,
+   "firstRow": {}
+  },
+  {
+   "tag": "5_mine",
+   "route": "pages/mine/index",
+   "okNav": true,
+   "info": {
+    "winW": 390,
+    "statusBarH": 47,
+    "navBarH": 91,
+    "capsule": {
+     "l": 296,
+     "r": 383,
+     "t": 51,
+     "b": 82,
+     "w": 87,
+     "h": 31
+    }
+   },
+   "appTitle": "开店算账",
+   "realTitle": null,
+   "firstRow": {
+    ".card-title": {
+     "t": 128,
+     "l": 24,
+     "w": 342,
+     "h": 23
+    }
+   }
+  },
+  {
+   "tag": "6_sandbox",
+   "route": "pages/sandbox/index",
+   "okNav": true,
+   "info": {
+    "winW": 390,
+    "statusBarH": 47,
+    "navBarH": 91,
+    "capsule": {
+     "l": 296,
+     "r": 383,
+     "t": 51,
+     "b": 82,
+     "w": 87,
+     "h": 31
+    }
+   },
+   "appTitle": "开店算账",
+   "realTitle": null,
+   "firstRow": {}
+  },
+  {
+   "tag": "7_cardedit",
+   "route": "pages/card/edit",
+   "okNav": true,
+   "info": {
+    "winW": 390,
+    "statusBarH": 47,
+    "navBarH": 91,
+    "capsule": {
+     "l": 296,
+     "r": 383,
+     "t": 51,
+     "b": 82,
+     "w": 87,
+     "h": 31
+    }
+   },
+   "appTitle": null,
+   "realTitle": null,
+   "firstRow": {}
+  }
+ ]
+}
