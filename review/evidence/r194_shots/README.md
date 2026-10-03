@@ -26,13 +26,24 @@
 
 ⇒ 修复前第 2 个按钮右边界 **424 > 366**，**溢出卡片 58px 且被屏幕右缘裁掉**（真机上更窄的机型溢出更多）。
 
-**根因（本基座实证）**：`<button>` 带**固有宽度 184px**，且其优先级**高于页面 wxss 里的普通 `width`/`min-width`**：
+**根因（R194 原始表述，保留留痕）**：`<button>` 带**固有宽度 184px**，且其优先级**高于页面 wxss 里的普通 `width`/`min-width`**：
 
 | 写法 | 实测结果 |
 |---|---|
 | `width: 140rpx; min-width: 140rpx`（无 `!important`） | ❌ 仍 **184px**（完全无效） |
 | `width: 200rpx !important; min-width: 200rpx !important` | ✅ 104px |
 | `flex: 0 0 160rpx`（**无需 `!important`**） | ✅ 83px ← **采用** |
+
+> 🔴🔴 **R195 更正（本段结论已升级，R194 原文保留不删）**：上表的「固有宽度压过普通 width」方向是对的，
+> 但**真正可操作的规则是「压过的是 _单类选择器_ 的 `width`」，且与父层是否 flex 容器无关**。
+> 反证（R195 三处同型样本，机读矩形见 `review/evidence/r195_shots/report_r195_{,pay_}{BEFORE,AFTER}.json`）：
+> - `pages/pay/orders.wxss::.btn-block` 父**非 flex** 容器，单类 `width:100%` **同样失效**（184px / 父 366px）
+>   ⇒ 推翻「只在 flex 容器内才失效」；
+> - `pages/month/index.wxss::.banner .btn-small` 父**非 flex**，但因是**双类**选择器 ⇒ **生效**（83px）。
+>
+> ⇒ **两条修法按场景选**：flex 容器内 → `flex: 0 0 <b>`（本处 `.edit-btn` 走这条）；
+> 非 flex 容器内 → **把选择器提到双类**（如 `.btn.btn-block`，R195 已用此法修 `orders.wxss`，184 → 342）。
+> ⚠️ `!important` 这条路只在 R194 的 flex 样本上验过，**非 flex 场景未验**，别当第三条路。
 
 **修法**：`pages/shop/switch.wxss::.edit-btn` 改用 `flex: 0 0 160rpx`（仓内此前**零** `!important` 先例，故不引入）；
 新建行按钮独占一行 ⇒ 加 `.edit-row.fill .edit-btn { flex: 1 1 0 }` 让两个按钮平分（否则 UA 的 `margin:auto` 会把它们推到中间留空洞）。

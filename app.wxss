@@ -111,7 +111,13 @@ page { background: #f5f6f8; font-family: -apple-system, "PingFang SC", sans-seri
 /* 顶部：搜索 + 新增同一行（新增不再沉到页面最底部 —— 20 张卡要翻 20 屏才能新建） */
 .top-row { display: flex; align-items: center; gap: 16rpx; }
 .top-inp { flex: 1; margin-bottom: 0; }
-.top-add { margin-top: 0; width: 200rpx; min-width: 200rpx; padding: 0 12rpx; font-size: 30rpx; }
+/* 🔴 R195（真机实测修正）：`.top-add` 是**单类**选择器，`<button>` 自带的默认宽度（实测恒 184px）
+ *   会压过它 ⇒ 这里原写的 `width:200rpx; min-width:200rpx` **完全无效**，
+ *   实测顶栏「+ 新增」占 184px（设计值 200rpx = 104px），把搜索框挤到 174px（应 254px）。
+ *   判据：review/evidence/r195_shots/report_r195_{BEFORE,AFTER}.json（material + card 两页同构）。
+ *   修法与 `pages/shop/switch.wxss::.edit-btn` 同源：**走 flex 布局层的 flex-basis**，不与 button 的 width 打架。
+ *   ⚠️ 别改回 `width`（R194 曾据「flex 容器内才失效」的错误结论写下 width，已由 R195 实测推翻）。 */
+.top-add { flex: 0 0 200rpx; margin-top: 0; padding: 0 12rpx; font-size: 30rpx; }
 /* 结果计数 + 低频操作（降级为文字链，不再与筛选块抢同一行） */
 .meta-row { display: flex; align-items: center; justify-content: space-between; margin: 4rpx 0 8rpx; }
 .link { font-size: 28rpx; color: #1e3a5f; min-height: 88rpx; line-height: 88rpx; padding: 0 12rpx; }

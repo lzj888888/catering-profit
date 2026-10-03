@@ -12,14 +12,17 @@
 .edit-inp { flex: 1 1 auto; min-width: 0; background: #f6f8fb; border-radius: 12rpx;
   padding: 0 20rpx; min-height: 88rpx; font-size: 30rpx; }
 .edit-inp-block { margin-bottom: 12rpx; }
-/* 🔴 R194 实测修正（真机口径，勿凭直觉改回 `width`）：行内按钮**只能用 flex-basis 定宽**。
- *   本基座下 `<button>` 有**固有宽度 184px**，且优先级高于页面 wxss 里的普通 `width`/`min-width`
- *   —— 实测：写 `width:140rpx; min-width:140rpx` **完全无效**（仍 184）；
- *          写 `width:200rpx !important; min-width:200rpx !important` 有效；
- *          写 `flex: 0 0 160rpx`（无需 !important）有效 ⇒ **选它**。
- *   不修的后果（修复前实测）：输入框被挤成 20px、第 2 个按钮右边界 424 > 卡片右边界 366，
- *   **直接顶出卡片/屏幕**。取证见 review/evidence/r194_shots/report_layout.json（`wx.createSelectorQuery`）。
- *   同根因横证：`app.wxss::.top-add` 写的是 `width:200rpx` ⇒ 实测仍 184px，静默失效（已登记待拍板）。 */
+/* 🔴 R194 实测修正（真机口径，勿凭直觉改回 `width`）：行内按钮**在本 flex 行内**用 flex-basis 定宽最稳。
+ *   R194 原始实测（`pages/shop/switch.wxss`，机读矩形）：写 `width:140rpx; min-width:140rpx` **完全无效**（仍 184）；
+ *          写 `width:200rpx !important` 有效；写 `flex: 0 0 160rpx`（无需 !important）有效 ⇒ **选它**。
+ *   🔴🔴 R195 更正（**本条比上面那段更准**）：根因**不是**「flex 容器内 width 才失效」，而是
+ *      「`<button>` 的 UA 默认宽度（实测恒 184px）压过**单类选择器**的 `width`」——
+ *      **与父层是否 flex 无关**。反证：`pages/pay/orders.wxss::.btn-block` 父**非 flex** 也失效（184/父 366），
+ *      而同为 button 的 `.banner .btn-small`（**双类**选择器）**生效**（83px）。
+ *   ⇒ 两条修法按场景选：**flex 容器内**用 `flex: 0 0 <b>`（本处）；**非 flex 容器内**把选择器**提到双类**。
+ *      判据：review/evidence/r194_shots/README.md §二 + review/evidence/r195_shots/（BEFORE/AFTER 成对）。
+ *   不修的后果（R194 实测）：输入框被挤成 20px、第 2 个按钮右边界 424 > 卡片右边界 366，
+ *   **直接顶出卡片/屏幕**。同根因的 `app.wxss::.top-add` 已由 **R195 修完**（184 → 104）。 */
 .edit-btn { flex: 0 0 160rpx; padding: 0; margin: 0; }
 /* 新建块里按钮是**独占一行**（上方已有整行输入框）⇒ 两个按钮平分整行，不留中间空洞。
  * 判据：`flex: 1 1 0` 的 basis 为 0，UA 的 `margin:auto` 抢不到自由空间（实测 66.5/240.5 的"飘"态就是它）。 */

@@ -1,2 +1,8 @@
 /* pages/pay/orders.wxss —— 订单记录页 */
-.btn-block { width: 100%; }
+/* 🔴 R195（真机实测修正）：单类 `.btn-block { width:100% }` 被 `<button>` 自带的默认宽度压过
+ *   ⇒ 实测渲染 **184px**（父 `.card2` 宽 366px），「续费」按钮**根本没满宽**，看着像留了大边。
+ *   判据：review/evidence/r195_shots/report_r195_pay_{BEFORE,AFTER}.json
+ *   （BEFORE：l=103 r=287 w=184，父 w=366）。
+ *   修法 = 选择器提到**双类** `.btn.btn-block` —— 与实测**生效**的 `.banner .btn-small`（同为双类）同档。
+ *   ⚠️ 复测若得 402 (=366+2×2×9) 则是 content-box 叠加 border/padding，届时加 `box-sizing: border-box`。 */
+.btn.btn-block { width: 100%; box-sizing: border-box; }
