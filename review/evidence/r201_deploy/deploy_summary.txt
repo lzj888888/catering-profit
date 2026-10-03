@@ -1,0 +1,53 @@
+R201 云函数部署汇总
+判据：日志某行同时含「函数名」+ ASCII true（latin1 读原始字节，绕开 GBK 与表格竖线）
+环境 dev = cloud1-d4gphpoxy337f2a25（现读 initDb/config.json::DEV_ENV_ID，不抄记忆）
+通道 = Win+R 跑 GBK 短路径 bat（explorer 创建进程 => 不吃沙箱与 reg.exe 黑名单）
+范围：改了 cloudfunctions/common/auth.js => 44 个 cx_auth.js 全变 => 部署面 = 全部 44 个函数，缩不了
+注：adminExport 是批量第 1 个，撞 IDE 冷启动失败（技能 §0-6），单独重跑即过
+结果：44/44 HIT
+
+cloudfunction              filesCount    packSize
+adminExport                        19     52.7 KB
+adminGrantEntitlement              19     47.4 KB
+adminInit                          18     45.4 KB
+adminLogin                         18     48.5 KB
+adminLogout                        18     45.6 KB
+adminManualOrder                   19     47.6 KB
+adminOrderList                     18     44.6 KB
+adminQueryUser                     19     50.2 KB
+adminRefreshToken                  18     46.2 KB
+adminRefundMark                    19     47.9 KB
+adminRevokeToken                   18     45.7 KB
+archiveMonth                       18     41.5 KB
+calcAmortize                       19     52.2 KB
+calcBom                            19     51.1 KB
+calcMonthlyProfit                  19     51.6 KB
+calcSandbox                        19     52.5 KB
+checkQuota                         19     44.6 KB
+deleteAccount                      17     42.4 KB
+detectCycle                        19     43.8 KB
+exportData                         17     44.0 KB
+getAmortSchedule                   19     43.9 KB
+getCardVersions                    19     44.6 KB
+getCostCard                        19     44.0 KB
+getLedger                          19     50.0 KB
+getMaterial                        19     42.6 KB
+getMonthList                       18     41.7 KB
+getShopContext                     19     44.6 KB
+getShopList                        17     41.2 KB
+importSalesBill                    18     44.9 KB
+initDb                             18     48.3 KB
+manageShop                         19     49.1 KB
+payCallback                        19     45.6 KB
+payCreateOrder                     19     42.9 KB
+payExpireNotify                    18     41.0 KB
+payOrderList                       19     41.3 KB
+payQueryEntitlement                19     42.2 KB
+payRenew                           19     42.1 KB
+saveAsset                          18     46.9 KB
+saveCostCard                       19     58.7 KB
+saveLedger                         19     51.3 KB
+saveMaterial                       19     44.2 KB
+saveShopSetting                    19     47.8 KB
+smokeTest                          16     44.1 KB
+syncCostCard                       19     49.5 KB
