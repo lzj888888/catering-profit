@@ -95,7 +95,8 @@
 | `report_layout3.json` | 「我的」页 `.avatar-btn` 修复后 62×62 |
 | `log_lastone.txt` / `log_confirm2.txt` / `log_sheet.txt` | 三次弹层取证脚本的原始 stdout |
 | `../r194_gate/native_blocked_r194_walk.txt` | 原生门禁被沙箱拦（`spawnSync git EBUSY`）的实录 |
-| `../r194_gate/gate_r194_walk_1.txt` | 沙箱通道跑出的 **127/127 · miss=0** |
+| `../r194_gate/gate_r194_walk_1.txt` | 沙箱通道跑出的 **127/127 · miss=0**（走查当轮 · 提交前树） |
+| `../r194_gate/gate_r194_walk_2.txt` | **提交后复跑** `dbd5836`／`56c57ed`：**127/127 · RC=0 · miss=0**（git 索引 3203 → 3204） |
 
 **脚本（仓外，不进门禁面 B）**：`C:\Users\lzj\.workbuddy\binaries\node\mpauto\` 下
 `r194_walk_switch3.js`（原生弹层取证）· `r194_layout{,2,3}.js`（机读布局）· `r194_shot_final.js` · `r194_desktop_shot.py`（桌面真截屏）。
