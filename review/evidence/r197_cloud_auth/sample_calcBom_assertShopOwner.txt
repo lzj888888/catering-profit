@@ -1,0 +1,13 @@
+async function assertShopOwner(db, shopId, userId) {
+  if (!shopId) return { error: ERROR_CODES.INVALID_PARAM };
+  let r;
+  try {
+    r = await db.collection('shop').doc(shopId).get();
+  } catch (e) {
+    return { error: ERROR_CODES.RESOURCE_NOT_FOUND }; // 文档不存在时 SDK 可能 reject
+  }
+  const shop = r && r.data;                      // ⚠️ doc().get() 返回结果对象 {data}
+  if (!shop || shop.is_deleted) return { error: ERROR_CODES.RESOURCE_NOT_FOUND };
+  if (shop.user_id !== userId) return { error: ERROR_CODES.FORBIDDEN }; // 🔴 越权拦截本体，必须保留
+  return { error: null, data: shop };
+}

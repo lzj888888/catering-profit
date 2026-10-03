@@ -1,0 +1,451 @@
+{
+ "tag": "R197_CLOUD_AUTH_VERIFY",
+ "env": "cloud1-d4gphpoxy337f2a25",
+ "ts": "2026-10-03 14:25",
+ "total": 44,
+ "all_have_cx_prefix": true,
+ "all_pass": true,
+ "bytes_uniform": true,
+ "rows": [
+  {
+   "fn": "adminExport",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "adminGrantEntitlement",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "adminInit",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "adminLogin",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "adminLogout",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "adminManualOrder",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "adminOrderList",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "adminQueryUser",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "adminRefreshToken",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "adminRefundMark",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "adminRevokeToken",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "archiveMonth",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "calcAmortize",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "calcBom",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "calcMonthlyProfit",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "calcSandbox",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "checkQuota",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "deleteAccount",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "detectCycle",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "exportData",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "getAmortSchedule",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "getCardVersions",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "getCostCard",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "getLedger",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "getMaterial",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "getMonthList",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "getShopContext",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "getShopList",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "importSalesBill",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "initDb",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "manageShop",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "payCallback",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "payCreateOrder",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "payExpireNotify",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "payOrderList",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "payQueryEntitlement",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "payRenew",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "saveAsset",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "saveCostCard",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "saveLedger",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "saveMaterial",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "saveShopSetting",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "smokeTest",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  },
+  {
+   "fn": "syncCostCard",
+   "bytes": 8351,
+   "lines": 160,
+   "has_cx_errors": true,
+   "has_cx_utilTime": true,
+   "has_ok_return": true,
+   "has_forbidden": true,
+   "r194_mark": true
+  }
+ ]
+}
