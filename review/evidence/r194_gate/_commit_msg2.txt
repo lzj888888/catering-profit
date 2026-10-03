@@ -1,0 +1,15 @@
+r194-evidence：提交后全量门禁复跑（127/127 · RC=0 · miss=0）+ 一次环境抖动取证
+
+一、第四轮（提交后首跑）：126/127
+- 唯一红 = `tools/check_m3_engine_parity.js` 的「A-登记：getCostCard / getCardVersions
+  service.js 为纯映射层」（require 返回 null 的 2 条断言）。
+
+二、定性为**环境抖动**（非缺陷），三重证据：
+1. 单跑该守卫：22/22 · rc=0（全绿）；
+2. 第五轮复跑（工作树干净）：127/127 · rc=0 · miss=0（107.5s）；
+3. `git diff HEAD~1 HEAD -- cloudfunctions/getCostCard/ cloudfunctions/getCardVersions/`
+   只有 `cx_auth.js` 两个派生副本 —— `service.js` 本轮**未改动**（全轮唯一新增的 service.js 是 manageShop/）。
+⇒ 判 Windows 杀软 / git 批量索引操作造成的瞬时文件锁（require 读取失败），非稳定缺陷。
+
+三、第五轮全文：review/evidence/r194_gate/gate_194_5_full.txt（127/127）
+- 首跑/二跑/三跑全文亦归档（gate_194_1/2/3_full.txt），可见 120/126 → 126/127 → 127/127 的收敛轨迹。
