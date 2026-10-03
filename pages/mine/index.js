@@ -163,7 +163,9 @@ Page({
         const app = getApp();
         if (app && app.globalData) app.globalData.shop_id = '';
         wx.showToast({ title: TERMS.exp.logoutDone, icon: 'none', duration: 3000 });
-        setTimeout(() => wx.reLaunch({ url: '/pages/index/index' }), 1200);
+        // 🔴 R199：`pages/index/index` 已改为**底部 tabBar 页** ⇒ `wx.reLaunch` 到 tabBar 页会失败
+        //   （微信限制：tabBar 页只能 `switchTab`）。登出后回首页同样用 `wx.switchTab`。
+        setTimeout(() => wx.switchTab({ url: '/pages/index/index' }), 1200);
       } catch (e) {
         api.toastError(e);
       }

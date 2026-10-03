@@ -22,7 +22,11 @@
     <view class="muted">{{t.m3Sub}}</view>
   </view>
 
+<!-- R199：底部 tabBar 上线后，「我的」入口已由 tabBar 承担 ⇒ 收掉此处重复按钮。
+ 「设置」**保留** —— 店铺设置没有 tabBar 替代入口，删了就少一条路。
+ 底部 tabBar 三个 tab：核算（本页）· 成本（M3 枢纽）· 我的（订阅/客服/协议），
+ 故此处只留「设置」一条，且上方加一行弱提示说明「去哪找别的功能」，避免下半屏看着像空了一段。 -->
+  <view class="idx-tip">{{t.tipMore}}</view>
   <button class="btn ghost" bindtap="goSettings">{{t.settings}}</button>
-  <button class="btn ghost" bindtap="goMine">{{t.mine}}</button>
 </view>
 <view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

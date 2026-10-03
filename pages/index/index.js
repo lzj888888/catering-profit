@@ -19,6 +19,7 @@ Page({
       defaultShopName: TERMS.ui.defaultShopName,
       settings: TERMS.ui.settings,
       loading: TERMS.ui.loading,
+      tipMore: TERMS.ui.tipMore,
       switchShop: TERMS.exp.switchTitle,
       mine: TERMS.exp.mineTitle,
     },
@@ -46,10 +47,13 @@ Page({
   // R191：M3 入口改指向**枢纽页**（pages/m3/hub），不再直接落进成本卡列表页。
   //   原因：原料库 / 外卖 / 对账 此前只能寄生在列表页顶部当按钮 ⇒ 分类说不明白。
   //   枢纽页只做「去哪」，列表页只做「找东西 + 新增」。
-  goCard() { wx.navigateTo({ url: '/pages/m3/hub' }); },
+  // 🔴 R199：`pages/m3/hub` 已改为**底部 tabBar 页** ⇒ `wx.navigateTo` 到 tabBar 页会**失败**
+  //   （微信限制：tabBar 页只能 `switchTab`，且不能带参数）。故改用 `wx.switchTab`。
+  //   同理 `goMine()`（`pages/mine/index` 也在 tabBar 里）。
+  goCard() { wx.switchTab({ url: '/pages/m3/hub' }); },
   goSettings() { wx.navigateTo({ url: '/pages/shop/setting' }); },
   goSwitch() { wx.navigateTo({ url: '/pages/shop/switch' }); },
-  goMine() { wx.navigateTo({ url: '/pages/mine/index' }); },
+  goMine() { wx.switchTab({ url: '/pages/mine/index' }); },
 
   // R193：全局开了 enablePullDownRefresh，但本页**没实现** ⇒ 下拉转圈、松手没反应（假刷新）。
   onPullDownRefresh() { this.bootstrap().then(() => wx.stopPullDownRefresh()); },

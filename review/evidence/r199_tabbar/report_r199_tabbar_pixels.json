@@ -1,0 +1,103 @@
+{
+ "round": "R199",
+ "purpose": "T1b 渲染层像素判据",
+ "all_pass": true,
+ "rows": [
+  {
+   "file": "tab1_calc.png",
+   "size": [
+    290,
+    623
+   ],
+   "band_top": 553,
+   "white_ratio": 0.647,
+   "brand_cols": [
+    57,
+    0,
+    0
+   ],
+   "grey_cols": [
+    225,
+    167,
+    219
+   ],
+   "brand_total": 57,
+   "p1_white_band": true,
+   "p2_brand_present": true,
+   "p3_three_tabs": true,
+   "active_col": 0
+  },
+  {
+   "file": "tab2_cost.png",
+   "size": [
+    290,
+    623
+   ],
+   "band_top": 553,
+   "white_ratio": 0.648,
+   "brand_cols": [
+    0,
+    64,
+    0
+   ],
+   "grey_cols": [
+    223,
+    155,
+    219
+   ],
+   "brand_total": 64,
+   "p1_white_band": true,
+   "p2_brand_present": true,
+   "p3_three_tabs": true,
+   "active_col": 1
+  },
+  {
+   "file": "tab3_mine.png",
+   "size": [
+    290,
+    623
+   ],
+   "band_top": 553,
+   "white_ratio": 0.686,
+   "brand_cols": [
+    0,
+    0,
+    20
+   ],
+   "grey_cols": [
+    223,
+    167,
+    227
+   ],
+   "brand_total": 20,
+   "p1_white_band": true,
+   "p2_brand_present": true,
+   "p3_three_tabs": true,
+   "active_col": 2
+  }
+ ],
+ "checks": [
+  {
+   "file": "tab1_calc.png",
+   "P1_white_band": true,
+   "P2_brand_present": true,
+   "P3_three_tabs": true
+  },
+  {
+   "file": "tab2_cost.png",
+   "P1_white_band": true,
+   "P2_brand_present": true,
+   "P3_three_tabs": true
+  },
+  {
+   "file": "tab3_mine.png",
+   "P1_white_band": true,
+   "P2_brand_present": true,
+   "P3_three_tabs": true
+  },
+  {
+   "file": "(cross)",
+   "P4_active_col_switches": true
+  }
+ ]
+}

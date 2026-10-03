@@ -1,0 +1,97 @@
+{
+ "round": "R199",
+ "purpose": "底部三入口 tabBar 实测",
+ "all_pass": true,
+ "note": "T1 逻辑层 getTabBar 在本机 IDE 模拟器恒 null（模拟器限制，R188 pageMeta 通道残）；真判据是 T1b 渲染层像素 + T3/T3b/T4 逻辑层落点。",
+ "checks": [
+  {
+   "name": "S1 app.json 有 tabBar 且 list 3 项",
+   "pass": true,
+   "detail": "list=3 color=#8a94a6 selected=#1e3a5f"
+  },
+  {
+   "name": "S2 六个图标文件全部在盘",
+   "pass": true,
+   "detail": "6/6 在盘"
+  },
+  {
+   "name": "S3 三个 tab页都在 pages 声明里（否则 tabBar 不生效）",
+   "pass": true,
+   "detail": "pages/index/index | pages/m3/hub | pages/mine/index"
+  },
+  {
+   "name": "T1 逻辑层 getTabBar 实例（记录用，真判据是 T1b 渲染层）",
+   "pass": false,
+   "detail": "实例方法在，但返回 null（模拟器限制）",
+   "hard": false
+  },
+  {
+   "name": "T3 wx.switchTab 切到 pages/m3/hub",
+   "pass": true,
+   "detail": "route=pages/m3/hub"
+  },
+  {
+   "name": "T3b 从成本页 switchTab 回首页（往返）",
+   "pass": true,
+   "detail": "route=pages/index/index"
+  },
+  {
+   "name": "T4 首页 goCard() 落到 pages/m3/hub（不是原地不动）",
+   "pass": true,
+   "detail": "before=pages/index/index after=pages/m3/hub"
+  }
+ ],
+ "shots": [
+  {
+   "name": "tab1_calc",
+   "url": "/pages/index/index",
+   "route": "pages/index/index",
+   "file": "tab1_calc.png"
+  },
+  {
+   "name": "tab2_cost",
+   "url": "/pages/m3/hub",
+   "route": "pages/m3/hub",
+   "file": "tab2_cost.png"
+  },
+  {
+   "name": "tab3_mine",
+   "url": "/pages/mine/index",
+   "route": "pages/mine/index",
+   "file": "tab3_mine.png"
+  }
+ ],
+ "static": {
+  "declared": [
+   "pages/index/index",
+   "pages/m3/hub",
+   "pages/mine/index"
+  ],
+  "tabbar": {
+   "color": "#8a94a6",
+   "selectedColor": "#1e3a5f",
+   "backgroundColor": "#ffffff",
+   "borderStyle": "black",
+   "list": [
+    {
+     "pagePath": "pages/index/index",
+     "text": "核算",
+     "iconPath": "images/tab/tab_calc_normal.png",
+     "selectedIconPath": "images/tab/tab_calc_active.png"
+    },
+    {
+     "pagePath": "pages/m3/hub",
+     "text": "成本",
+     "iconPath": "images/tab/tab_cost_normal.png",
+     "selectedIconPath": "images/tab/tab_cost_active.png"
+    },
+    {
+     "pagePath": "pages/mine/index",
+     "text": "我的",
+     "iconPath": "images/tab/tab_mine_normal.png",
+     "selectedIconPath": "images/tab/tab_mine_active.png"
+    }
+   ]
+  }
+ }
+}

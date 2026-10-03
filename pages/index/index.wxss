@@ -1,1 +1,12 @@
 /* index page styles inherit from app.wxss */
+
+/* R199：底部 tabBar 上线后，首页收掉「我的」按钮后下半屏偏空
+ *    ⇒ 加一行弱引导，说明底部三个 tab 各自管什么。
+ *    颜色走 .muted 那一档（#666 / 28rpx，恰好达「新增字号 ≥28rpx」红线），不引入新色值。 */
+.idx-tip {
+  color: #666;
+  font-size: 28rpx;
+  line-height: 1.6;
+  padding: 8rpx 4rpx 4rpx;
+  margin-bottom: 12rpx;
+}

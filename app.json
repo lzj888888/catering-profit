@@ -30,6 +30,32 @@
     "backgroundColor": "#f5f6f8",
     "enablePullDownRefresh": true
   },
+  "tabBar": {
+    "color": "#8a94a6",
+    "selectedColor": "#1e3a5f",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "核算",
+        "iconPath": "images/tab/tab_calc_normal.png",
+        "selectedIconPath": "images/tab/tab_calc_active.png"
+      },
+      {
+        "pagePath": "pages/m3/hub",
+        "text": "成本",
+        "iconPath": "images/tab/tab_cost_normal.png",
+        "selectedIconPath": "images/tab/tab_cost_active.png"
+      },
+      {
+        "pagePath": "pages/mine/index",
+        "text": "我的",
+        "iconPath": "images/tab/tab_mine_normal.png",
+        "selectedIconPath": "images/tab/tab_mine_active.png"
+      }
+    ]
+  },
   "style": "v2",
   "lazyCodeLoading": "requiredComponents"
 }
