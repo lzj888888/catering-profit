@@ -108,8 +108,10 @@ function check(name, cond, detail) {
     const dbinstance = { collection: db.collection };
     const attacker = await assertShopOwner(dbinstance, 's1', 'attacker');
     const owner = await assertShopOwner(dbinstance, 's1', 'owner');
-    check('点2·越权→FORBIDDEN', attacker.code === ERROR_CODES.FORBIDDEN, `code=${attacker.code}`);
-    check('点2·本人→SUCCESS', owner.code === ERROR_CODES.SUCCESS, `code=${owner.code}`);
+    // 🔴 R194：assertShopOwner 的返回契约由 `{code,msg,data}` 改为 `{error,data}` ——
+    //    旧形状无 `error` 字段，而 20 处调用点统一判 `owner.error` ⇒ **恒 undefined ⇒ 越权拦截整体失效**。
+    check('点2·越权→FORBIDDEN', attacker.error === ERROR_CODES.FORBIDDEN, `error=${attacker.error}`);
+    check('点2·本人→放行（error=null 且回带 shop）', owner.error === null && !!owner.data, `error=${owner.error}`);
   }
 
   // ===== 🔒 R72：幂等单源化后的行为契约 =====

@@ -137,6 +137,9 @@ const CASES = [
   { key: 'check_pack_size', rel: 'tools/check_pack_size.js' }, // 11 条（R182：S1~S3 + P-①~③ + G-①~④）
   { key: 'selftest_m3_per100g', rel: 'tools/selftest_m3_per100g.js' }, // 7 条（M3.31：A-d 锚点 975/876 + 反例 + findPreset 键名严格）
   { key: 'check_spec_per100g_identity', rel: 'tools/check_spec_per100g_identity.js' }, // 6 条（R141：P1 存在 + P2 全1 + P3 反恒真 + P4 unit_label + 反向×2）
+  // R194 扩面：鉴权返回形状守卫同批纳入 —— 它的 G1/G6 两条扫描面下界护栏正是「非恒真」凭据；
+  //   断言数不受守则「把 20 处调用点判据改回 owner.code / 删掉 G2 分支遍历」同样静默通过。
+  { key: 'check_auth_guard_shape', rel: 'tools/check_auth_guard_shape.js' }, // 17 条（R194：G1 扫描面非退化 / G2 分支带 error / G3 无 ok()·fail() / G4 派生同形 / G5 锚点在场 / G6 调用点形状）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

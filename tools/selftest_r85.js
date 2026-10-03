@@ -287,6 +287,12 @@ const A15_EXEMPT = [
   //   ⇒ 本轮**无需新增白名单条目**（沿用既有），但按纪律把时点与理由记明；
   //   仍按 round103 的**白名单式**登记，**绝不放宽成 `cloudfunctions/` 全豁免**（那样等于守卫作废）：
   //   by=WorkBuddy / date=2026-09-27 / reason=round157 容量审计授权（索引字段对齐 + listAll 分页取全）
+  // R194（李老师「都听你的，安排。做吧」授权）：修「越权拦截整体失效」缺陷 ——
+  //   ① 新增云函数 manageShop（店铺增 / 改名 / 删除，三 op 一体；写入走软删 + 至少保留一家）；
+  //   ② 单源 common/auth.js 的 assertShopOwner 由 {code,msg,data} 改为 {error} 形状（20 处调用点判 owner.error）；
+  //   ③ 派生面：sync_common 把新 auth 派生到全部函数目录 cx_auth.js。均为显式授权，非顺手改逻辑。
+  /^cloudfunctions\/manageShop\//,
+  /^cloudfunctions\/[^/]+\/cx_auth\.js$/,
 ];
 check('A15 云函数逻辑零改动（仅 initDb 建库单源 + 本批授权函数豁免）', (() => {
   const { execFileSync } = require('child_process');

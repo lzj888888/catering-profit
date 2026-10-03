@@ -1,0 +1,12 @@
+SUITES = 126
+✅ [suite-tracked] 126 个套件文件全部已入库（R92 守卫 · 真 git，索引 3158 项）
+........................................................................................................................
+============================================================
+总览：120/126 通过   耗时 187.4s
+R92: ✅
+  ❌ [batch0 代码自测] cloudfunctions/common/__tests__/batch0_selfcheck.js :: exit=1
+  ❌ [自测形状守卫 R66/67/68] tools/check_selftest_shape.js :: exit=1
+  ❌ [幂等覆盖守卫 R73] tools/check_idempotency.js :: exit=1
+  ❌ [suite-coverage] tools/check_suite_coverage.js :: exit=1
+  ❌ [suite-assert-counts] tools/check_suite_assert_counts.js :: exit=1
+  ❌ [modal-btn-len] tools/check_modal_button_len.js :: exit=1

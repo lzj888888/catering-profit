@@ -1,1 +1,18 @@
 /* pages/shop/switch.wxss —— 店铺切换页（继承 app.wxss 共享组件） */
+/* ⚠️ 本页只写**布局**：按钮/色值一律走 app.wxss 单源（.btn.primary / .btn.ghost / .more.round） */
+
+/* R194：一行 = 名字区（点击切店）+ 右侧「⋯」 */
+.shop-row { display: flex; align-items: center; }
+.shop-main { flex: 1; min-width: 0; }
+/* 名字区是整块点击目标 ⇒ 撑到 88rpx 触控高（与 .more.round / .btn-small 同一条红线） */
+.shop-main .shop-name { display: flex; align-items: center; min-height: 88rpx; margin-bottom: 0; }
+
+/* R194：就地编辑行（重命名 / 新建共用）—— 输入框与按钮**同一行**，都不缩尺寸 */
+.edit-row { display: flex; align-items: center; gap: 12rpx; }
+.edit-inp { flex: 1; min-width: 0; background: #f6f8fb; border-radius: 12rpx;
+  padding: 0 20rpx; min-height: 88rpx; font-size: 30rpx; }
+.edit-inp-block { margin-bottom: 12rpx; }
+/* .btn 自带 margin-top:24rpx + 撑满宽 ⇒ 行内按钮要复位这两条（尺寸仍 ≥88rpx） */
+.edit-btn { flex: 0 0 auto; margin-top: 0; }
+
+.more-hint { font-size: 28rpx; color: #9aa4b2; margin: 12rpx 4rpx 40rpx; line-height: 1.6; }

@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：125 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：127 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -280,6 +280,11 @@
 //         ⇒ 只写存在性检查会恒绿）+ P4 unit_label === '100g' + 反向（half/small 未被误改成全 1）；
 //         自测侧 require **生产单源 specDerive + 生产引擎 calcBom** 实算，锚点 unit_cost_fen=975 /
 //         material_total_fen=876 必须原样复现，且 per100g ≡ 全份（恒等语义）。
+//       + 鉴权返回形状守卫（tools/check_auth_guard_shape.js，R194：**越权拦截整体失效** ——
+//         `common/auth.js::assertShopOwner` 原用 `fail()` 返回 `{code,msg,data}`（无 error 字段），
+//         而 20 处调用点统一判 `owner.error` ⇒ **恒 undefined ⇒ 归属校验形同不存在**，
+//         任意用户改 shop_id 即可读写他人店铺数据（真云可达）。判据=G1 扫描面非退化 + G2 每个 return
+//         分支都带 error + G3 单源无 ok()/fail() + G4 派生副本同形 + G5 关键锚点在场 + G6 调用点判据与形状一致）
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -647,6 +652,11 @@ const SUITES = [
   //   同表 combo / specs_json / s_user·s_merchant 三项都补了只漏它 ⇒ **静默漏做**。
   ['m3-per100g', 'tools/selftest_m3_per100g.js'],
   ['spec-per100g-identity', 'tools/check_spec_per100g_identity.js'],
+  // R194：鉴权返回形状守卫 —— 修「20 处调用点判 owner.error 而单源返回 {code,msg,data}」导致越权拦截整体失效。
+  ['auth-guard-shape', 'tools/check_auth_guard_shape.js'],
+  // R194：manageShop 云函数自测（店铺增 / 改名 / 删除三 op）—— R67（check_selftest_shape）
+  //   与 check_suite_coverage 的 S5 做「树内 selftest.js ↔ SUITES」双向差集，漏挂即判红（整文件静默不跑）。
+  ['manageShop 自测', 'cloudfunctions/manageShop/selftest.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

@@ -1,16 +1,46 @@
 <view class="container safe-bottom" wx:if="{{!loading}}">
   <view class="hint">{{t.switchHint}}</view>
 
-  <view class="card2" wx:for="{{list}}" wx:key="shop_id" data-id="{{item.shop_id}}" bindtap="onSelect">
-    <view class="card-title">
-      {{item.name}}
-      <text class="tag" wx:if="{{item.shop_id === currentShopId}}">{{t.currentShop}}</text>
+  <!-- R194：每行「点名字 = 切店」+ 右侧「⋯ = 重命名 / 删除店铺」。
+       🔴 为什么把 bindtap 从整卡挪到名字区：⋯ 与"点卡切店"同卡，绑在整卡上会让
+          点「⋯」也触发切换（页面直接 navigateBack，菜单还没弹出来就跳走了）。
+       低频 + 破坏性操作走 ⋯ 收纳；重命名虽不算危险，但和删除同族（改店本身份）⇒ 同处收纳。 -->
+  <view class="card2" wx:for="{{list}}" wx:key="shop_id">
+    <!-- 常态行 -->
+    <view class="shop-row" wx:if="{{!(mode === 'rename' && editingId === item.shop_id)}}">
+      <view class="shop-main" data-id="{{item.shop_id}}" bindtap="onSelect">
+        <view class="card-title shop-name">
+          {{item.name}}
+          <text class="tag" wx:if="{{item.shop_id === currentShopId}}">{{t.currentShop}}</text>
+        </view>
+      </view>
+      <view class="more round" catchtap="onMore" data-id="{{item.shop_id}}">⋯</view>
     </view>
-    <view class="muted">{{item.shop_id}}</view>
+
+    <!-- R194：就地重命名（**不跳页、不弹层** —— 弹层 × 键盘是死结，见 PITFALLS §8） -->
+    <view class="edit-row" wx:else>
+      <input class="edit-inp" value="{{editName}}" maxlength="{{nameMax}}"
+             placeholder="{{t.namePh}}" bindinput="onEditName" />
+      <button class="btn btn-small primary edit-btn" catchtap="onRenameSave" disabled="{{busy}}">{{t.save}}</button>
+      <button class="btn btn-small ghost edit-btn" catchtap="onEditCancel">{{t.cancel}}</button>
+    </view>
   </view>
 
   <view wx:if="{{list.length === 0 && !loading}}" class="empty">{{t.noShop}}</view>
 
-  <button class="btn ghost" bindtap="onAdd">{{addShopLabel}}</button>
+  <!-- R194：新建店铺 —— 就地输入。
+       此前这里跳 `shop/setting`，而设置页走 saveShopSetting（只更新**当前**店）
+       ⇒ 用户以为在建店，实际把当前店改名了。 -->
+  <view class="card2" wx:if="{{mode === 'create'}}">
+    <input class="edit-inp edit-inp-block" value="{{editName}}" maxlength="{{nameMax}}"
+           placeholder="{{t.namePh}}" bindinput="onEditName" />
+    <view class="edit-row">
+      <button class="btn btn-small primary edit-btn" bindtap="onCreate" disabled="{{busy}}">{{t.createOk}}</button>
+      <button class="btn btn-small ghost edit-btn" bindtap="onEditCancel">{{t.cancel}}</button>
+    </view>
+  </view>
+  <button class="btn ghost" wx:else bindtap="onAdd">{{addShopLabel}}</button>
+
+  <view class="more-hint">{{t.moreHint}}</view>
 </view>
 <view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

@@ -8,7 +8,10 @@
 //
 // 点2（店铺归属）：assertShopOwner 校验 shop.user_id === ctx.user.id，否则 FORBIDDEN。
 
-const { ERROR_CODES, ok, fail, isDuplicateKeyError } = require('./cx_errors');
+// 🔴 R194：本文件**不再**引入 `ok` / `fail` —— 两者的返回形状是 `{code,msg,data}`（无 `error` 字段），
+//   正是「assertShopOwner 用 fail() ⇒ 调用点判 owner.error 恒假 ⇒ 越权拦截失效」的根因。
+//   本文件对外一律用 `{ error, data }` 形状（与 resolveAuth / autoProvision 一致）。
+const { ERROR_CODES, isDuplicateKeyError } = require('./cx_errors');
 const { nowUtc } = require('./cx_utilTime');
 
 // 生成短 id（演示用；真实环境可换雪花/uuid）
@@ -120,19 +123,32 @@ async function autoProvision(ctx, db, audit) {
  * @param {object} db
  * @param {string} shopId
  * @param {string} userId 当前 ctx.user.id
+ * @returns {Promise<{error:null,data:object}|{error:string}>}
+ *
+ * 🔴🔴 R194（2026-10-03）**越权拦截曾整体失效** —— 本函数原用 `fail(code)` 构造失败返回，而
+ *   `common/errors.js::fail()` 产出的是 **`{code, msg, data}`**（**没有 `error` 字段**）；
+ *   全部 **20 处**调用点却统一写成 `if (owner.error) return fail(owner.error, owner.msg);`
+ *   ⇒ `owner.error` **恒为 undefined** ⇒ 分支永不进入 ⇒ **归属校验形同不存在**。
+ *   后果（真实可达）：任意已登录用户只要把 `shop_id` 换成别人的，即可**读/写他人店铺数据**
+ *   （getLedger / exportData / saveLedger / saveCostCard / saveShopSetting … 共 20 个函数）。
+ *   实证（本地探针，`node -e` 直调派生副本 cx_auth.js）：
+ *     别人的店 → 返回 `{"code":"FORBIDDEN","msg":"FORBIDDEN","data":{}}`，`owner.error === undefined` ⇒ 放行。
+ *   ⇒ 修法：**失败一律返回 `{ error: <code> }`**（与调用点判据同形），成功补 `error: null`。
+ *   ⚠️ 同一文件里 `resolveAuth` / `autoProvision` **本来就是** `{error}` 形状 ⇒ 本函数是唯一的异形，
+ *      修成同族即可；守卫 `tools/check_auth_guard_shape.js`（R194 新增）守这条不变式。
  */
 async function assertShopOwner(db, shopId, userId) {
-  if (!shopId) return fail(ERROR_CODES.INVALID_PARAM);
+  if (!shopId) return { error: ERROR_CODES.INVALID_PARAM };
   let r;
   try {
     r = await db.collection('shop').doc(shopId).get();
   } catch (e) {
-    return fail(ERROR_CODES.RESOURCE_NOT_FOUND); // 文档不存在时 SDK 可能 reject
+    return { error: ERROR_CODES.RESOURCE_NOT_FOUND }; // 文档不存在时 SDK 可能 reject
   }
   const shop = r && r.data;                      // ⚠️ doc().get() 返回结果对象 {data}
-  if (!shop || shop.is_deleted) return fail(ERROR_CODES.RESOURCE_NOT_FOUND);
-  if (shop.user_id !== userId) return fail(ERROR_CODES.FORBIDDEN); // 🔴 越权拦截本体，必须保留
-  return ok(shop);
+  if (!shop || shop.is_deleted) return { error: ERROR_CODES.RESOURCE_NOT_FOUND };
+  if (shop.user_id !== userId) return { error: ERROR_CODES.FORBIDDEN }; // 🔴 越权拦截本体，必须保留
+  return { error: null, data: shop };
 }
 
 module.exports = {

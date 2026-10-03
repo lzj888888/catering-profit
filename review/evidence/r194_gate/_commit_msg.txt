@@ -1,0 +1,31 @@
+r194-feat：越权拦截缺陷修复（assertShopOwner → {error}）+ 包 B 店铺增删改（manageShop）
+
+一、途中发现的真缺陷（比包 B 更严重）：越权拦截整体失效
+- `common/auth.js::assertShopOwner` 原用 fail() 返回 {code,msg,data}（无 error 字段），
+  而全仓 20 处调用点统一判 `owner.error` ⇒ 恒 undefined ⇒ 归属校验形同不存在，
+  任意已登录用户改 shop_id 即可读写他人店铺数据（真云可达）。
+- 修法：失败一律 {error:<code>}、成功 {error:null,data:shop}；调用点判据不变。
+  sync_common --sync 派生到全部函数目录 cx_auth.js。
+- 新守卫 tools/check_auth_guard_shape.js（17 断言）：G1 扫描面非退化 / G2 每 return 带 error /
+  G3 无 ok()·fail() / G4 派生副本同形 / G5 锚点在场 / G6 调用点形状一致。
+
+二、包 B：店铺增 / 改名 / 删除
+- 新增 cloudfunctions/manageShop/（三 op 一体；软删；至少留一家；_id 主键 fail-loud；三 op 写 audit）。
+- pages/shop/switch.{js,wxml,wxss} 重写：点名字切店 / ⋯ 重命名·删除；就地输入（不跳页不弹层）。
+- i18n 双副本 md5 = 6875707591c4f00df07670b5a8f0f9aa。
+
+三、门禁挂套件（第 126 / 127 个）+ 同步面
+- SUITES 末尾 · verify_all 头注 · 头注注释块 · 重启键 §1.1 入口行 · 重启键「套件数会漂」行 ·
+  断言数声明行 ＋ CASES（check_auth_guard_shape）＋ A15_EXEMPT（manageShop/ + cx_auth.js）
+  ＋ core/10（全集 43→44 + manageShop 登记行 + F5 selftest 计数 40→41）。
+
+四、首跑 120/126 的四处真红（全是本轮改动引起，非沙箱假红）
+- batch0_selfcheck「点2」按旧返回形状断言 ⇒ 改 error 形状。
+- R67 / S5：manageShop/selftest.js 未挂 SUITES ⇒ 挂上（126→127）。
+- check_modal_button_len：confirmText 行尾行内注释被并进键路径 ⇒ 注释移到上一行。
+- check_idempotency I3：create 的幂等预检文本序晚于首个写 ⇒ 提到 main 里、任何业务写之前
+  （rename/delete 的预检仍在 assertShopOwner 之后，防越权重放）。
+
+五、门禁
+- review/evidence/r194_gate/gate_194_3_full.txt = 127/127 · RC=0 · miss=0（201.2s）
+- 单点：check_auth_guard_shape 17/17 · manageShop selftest 46/46 · check_idempotency 60/60 · fn_inventory 12/12
