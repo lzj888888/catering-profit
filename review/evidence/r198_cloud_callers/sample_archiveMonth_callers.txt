@@ -1,0 +1,14 @@
+云端 archiveMonth/index.js 的 assertShopOwner 生产调用点现场（R198 采证）
+==============================================================
+下载自真云；判据同 tools/check_auth_guard_shape.js::G6（剥注释后判，形态无关）
+
+--- L31 ---
+     29| 
+     30|   const shopId = event && event.shop_id;
+>>   31|   const owner = await assertShopOwner(db, shopId, userId);
+     32|   if (owner.error) return fail(owner.error, owner.msg);
+     33| 
+     34|   // ===== 2. 校验 =====
+     35|   const v = validateInput(event);
+     36|   if (v.error) return fail(v.error, v.msg);
+

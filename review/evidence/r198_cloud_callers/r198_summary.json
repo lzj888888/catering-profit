@@ -1,0 +1,581 @@
+{
+  "round": "R198",
+  "purpose": "云端 index.js 的 assertShopOwner 调用点判据核验（补 R194 守卫 G6 只扫本地源码的盲区）",
+  "dl_dir": "C:\\Users\\lzj\\WorkBuddy\\Claw\\_r197_dl",
+  "fn_count": 44,
+  "fn_with_index": 44,
+  "call_site_total": 21,
+  "called_fn_count": 21,
+  "probe_site_total": 1,
+  "local_baseline_note": "本地 G6 实测 21 个函数有生产调用点（判据 MIN_CALL_SITES=18）",
+  "checks": [
+    {
+      "name": "C0a 44 份云端包全部有 index.js",
+      "pass": true,
+      "detail": "缺 index.js：无"
+    },
+    {
+      "name": "C1 扫描面非退化：含生产调用点的函数数 ≥ 18",
+      "pass": true,
+      "detail": "实测 21 个"
+    },
+    {
+      "name": "C2 每个调用点都用 owner.error 判失败",
+      "pass": true,
+      "detail": "21 处全判"
+    },
+    {
+      "name": "C3 无 owner.code 变体（判它会恒假）",
+      "pass": true,
+      "detail": "无混用"
+    },
+    {
+      "name": "C4 探针式调用已识别并单独记录（不算漏判）",
+      "pass": true,
+      "detail": "1 处（smokeTest）"
+    }
+  ],
+  "all_pass": true,
+  "no_call_fns": [
+    "adminExport",
+    "adminGrantEntitlement",
+    "adminInit",
+    "adminLogin",
+    "adminLogout",
+    "adminManualOrder",
+    "adminOrderList",
+    "adminQueryUser",
+    "adminRefreshToken",
+    "adminRefundMark",
+    "adminRevokeToken",
+    "checkQuota",
+    "deleteAccount",
+    "getShopContext",
+    "getShopList",
+    "initDb",
+    "payCallback",
+    "payCreateOrder",
+    "payExpireNotify",
+    "payOrderList",
+    "payQueryEntitlement",
+    "payRenew",
+    "smokeTest"
+  ],
+  "per_fn": [
+    {
+      "fn": "adminExport",
+      "prod_call_sites": 0,
+      "probe_sites": 0,
+      "judge_by_error": 0,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": false
+    },
+    {
+      "fn": "adminGrantEntitlement",
+      "prod_call_sites": 0,
+      "probe_sites": 0,
+      "judge_by_error": 0,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": false
+    },
+    {
+      "fn": "adminInit",
+      "prod_call_sites": 0,
+      "probe_sites": 0,
+      "judge_by_error": 0,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": false
+    },
+    {
+      "fn": "adminLogin",
+      "prod_call_sites": 0,
+      "probe_sites": 0,
+      "judge_by_error": 0,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": false
+    },
+    {
+      "fn": "adminLogout",
+      "prod_call_sites": 0,
+      "probe_sites": 0,
+      "judge_by_error": 0,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": false
+    },
+    {
+      "fn": "adminManualOrder",
+      "prod_call_sites": 0,
+      "probe_sites": 0,
+      "judge_by_error": 0,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": false
+    },
+    {
+      "fn": "adminOrderList",
+      "prod_call_sites": 0,
+      "probe_sites": 0,
+      "judge_by_error": 0,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": false
+    },
+    {
+      "fn": "adminQueryUser",
+      "prod_call_sites": 0,
+      "probe_sites": 0,
+      "judge_by_error": 0,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": false
+    },
+    {
+      "fn": "adminRefreshToken",
+      "prod_call_sites": 0,
+      "probe_sites": 0,
+      "judge_by_error": 0,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": false
+    },
+    {
+      "fn": "adminRefundMark",
+      "prod_call_sites": 0,
+      "probe_sites": 0,
+      "judge_by_error": 0,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": false
+    },
+    {
+      "fn": "adminRevokeToken",
+      "prod_call_sites": 0,
+      "probe_sites": 0,
+      "judge_by_error": 0,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": false
+    },
+    {
+      "fn": "archiveMonth",
+      "prod_call_sites": 1,
+      "probe_sites": 0,
+      "judge_by_error": 1,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": true
+    },
+    {
+      "fn": "calcAmortize",
+      "prod_call_sites": 1,
+      "probe_sites": 0,
+      "judge_by_error": 1,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": true
+    },
+    {
+      "fn": "calcBom",
+      "prod_call_sites": 1,
+      "probe_sites": 0,
+      "judge_by_error": 1,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": true
+    },
+    {
+      "fn": "calcMonthlyProfit",
+      "prod_call_sites": 1,
+      "probe_sites": 0,
+      "judge_by_error": 1,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": true
+    },
+    {
+      "fn": "calcSandbox",
+      "prod_call_sites": 1,
+      "probe_sites": 0,
+      "judge_by_error": 1,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": true
+    },
+    {
+      "fn": "checkQuota",
+      "prod_call_sites": 0,
+      "probe_sites": 0,
+      "judge_by_error": 0,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": false
+    },
+    {
+      "fn": "deleteAccount",
+      "prod_call_sites": 0,
+      "probe_sites": 0,
+      "judge_by_error": 0,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": false
+    },
+    {
+      "fn": "detectCycle",
+      "prod_call_sites": 1,
+      "probe_sites": 0,
+      "judge_by_error": 1,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": true
+    },
+    {
+      "fn": "exportData",
+      "prod_call_sites": 1,
+      "probe_sites": 0,
+      "judge_by_error": 1,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": true
+    },
+    {
+      "fn": "getAmortSchedule",
+      "prod_call_sites": 1,
+      "probe_sites": 0,
+      "judge_by_error": 1,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": true
+    },
+    {
+      "fn": "getCardVersions",
+      "prod_call_sites": 1,
+      "probe_sites": 0,
+      "judge_by_error": 1,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": true
+    },
+    {
+      "fn": "getCostCard",
+      "prod_call_sites": 1,
+      "probe_sites": 0,
+      "judge_by_error": 1,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": true
+    },
+    {
+      "fn": "getLedger",
+      "prod_call_sites": 1,
+      "probe_sites": 0,
+      "judge_by_error": 1,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": true
+    },
+    {
+      "fn": "getMaterial",
+      "prod_call_sites": 1,
+      "probe_sites": 0,
+      "judge_by_error": 1,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": true
+    },
+    {
+      "fn": "getMonthList",
+      "prod_call_sites": 1,
+      "probe_sites": 0,
+      "judge_by_error": 1,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": true
+    },
+    {
+      "fn": "getShopContext",
+      "prod_call_sites": 0,
+      "probe_sites": 0,
+      "judge_by_error": 0,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": false
+    },
+    {
+      "fn": "getShopList",
+      "prod_call_sites": 0,
+      "probe_sites": 0,
+      "judge_by_error": 0,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": false
+    },
+    {
+      "fn": "importSalesBill",
+      "prod_call_sites": 1,
+      "probe_sites": 0,
+      "judge_by_error": 1,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": true
+    },
+    {
+      "fn": "initDb",
+      "prod_call_sites": 0,
+      "probe_sites": 0,
+      "judge_by_error": 0,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": false
+    },
+    {
+      "fn": "manageShop",
+      "prod_call_sites": 1,
+      "probe_sites": 0,
+      "judge_by_error": 1,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": true
+    },
+    {
+      "fn": "payCallback",
+      "prod_call_sites": 0,
+      "probe_sites": 0,
+      "judge_by_error": 0,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": false
+    },
+    {
+      "fn": "payCreateOrder",
+      "prod_call_sites": 0,
+      "probe_sites": 0,
+      "judge_by_error": 0,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": false
+    },
+    {
+      "fn": "payExpireNotify",
+      "prod_call_sites": 0,
+      "probe_sites": 0,
+      "judge_by_error": 0,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": false
+    },
+    {
+      "fn": "payOrderList",
+      "prod_call_sites": 0,
+      "probe_sites": 0,
+      "judge_by_error": 0,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": false
+    },
+    {
+      "fn": "payQueryEntitlement",
+      "prod_call_sites": 0,
+      "probe_sites": 0,
+      "judge_by_error": 0,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": false
+    },
+    {
+      "fn": "payRenew",
+      "prod_call_sites": 0,
+      "probe_sites": 0,
+      "judge_by_error": 0,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": false
+    },
+    {
+      "fn": "saveAsset",
+      "prod_call_sites": 1,
+      "probe_sites": 0,
+      "judge_by_error": 1,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": true
+    },
+    {
+      "fn": "saveCostCard",
+      "prod_call_sites": 1,
+      "probe_sites": 0,
+      "judge_by_error": 1,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": true
+    },
+    {
+      "fn": "saveLedger",
+      "prod_call_sites": 1,
+      "probe_sites": 0,
+      "judge_by_error": 1,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": true
+    },
+    {
+      "fn": "saveMaterial",
+      "prod_call_sites": 1,
+      "probe_sites": 0,
+      "judge_by_error": 1,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": true
+    },
+    {
+      "fn": "saveShopSetting",
+      "prod_call_sites": 1,
+      "probe_sites": 0,
+      "judge_by_error": 1,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": true
+    },
+    {
+      "fn": "smokeTest",
+      "prod_call_sites": 0,
+      "probe_sites": 1,
+      "judge_by_error": 0,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": false
+    },
+    {
+      "fn": "syncCostCard",
+      "prod_call_sites": 1,
+      "probe_sites": 0,
+      "judge_by_error": 1,
+      "missing_error_lines": [],
+      "owner_code_lines": [],
+      "pass": true
+    }
+  ],
+  "call_sites": [
+    {
+      "fn": "archiveMonth",
+      "line": 31,
+      "text": "const owner = await assertShopOwner(db, shopId, userId);"
+    },
+    {
+      "fn": "calcAmortize",
+      "line": 32,
+      "text": "const owner = await assertShopOwner(db, shopId, userId);"
+    },
+    {
+      "fn": "calcBom",
+      "line": 30,
+      "text": "const owner = await assertShopOwner(db, shopId, userId);"
+    },
+    {
+      "fn": "calcMonthlyProfit",
+      "line": 34,
+      "text": "const owner = await assertShopOwner(db, shopId, userId);"
+    },
+    {
+      "fn": "calcSandbox",
+      "line": 25,
+      "text": "const owner = await assertShopOwner(db, shopId, userId);"
+    },
+    {
+      "fn": "detectCycle",
+      "line": 25,
+      "text": "const owner = await assertShopOwner(db, shopId, userId);"
+    },
+    {
+      "fn": "exportData",
+      "line": 46,
+      "text": "const owner = await assertShopOwner(db, shopId, userId);"
+    },
+    {
+      "fn": "getAmortSchedule",
+      "line": 43,
+      "text": "const owner = await assertShopOwner(db, shopId, userId);"
+    },
+    {
+      "fn": "getCardVersions",
+      "line": 23,
+      "text": "const owner = await assertShopOwner(db, shopId, userId);"
+    },
+    {
+      "fn": "getCostCard",
+      "line": 32,
+      "text": "const owner = await assertShopOwner(db, shopId, userId);"
+    },
+    {
+      "fn": "getLedger",
+      "line": 79,
+      "text": "const owner = await assertShopOwner(db, shopId, userId);"
+    },
+    {
+      "fn": "getMaterial",
+      "line": 25,
+      "text": "const owner = await assertShopOwner(db, shopId, userId);"
+    },
+    {
+      "fn": "getMonthList",
+      "line": 21,
+      "text": "const owner = await assertShopOwner(db, shopId, userId);"
+    },
+    {
+      "fn": "importSalesBill",
+      "line": 27,
+      "text": "const owner = await assertShopOwner(db, shopId, userId);"
+    },
+    {
+      "fn": "manageShop",
+      "line": 127,
+      "text": "const owner = await assertShopOwner(db, target, userId);"
+    },
+    {
+      "fn": "saveAsset",
+      "line": 56,
+      "text": "const owner = await assertShopOwner(db, shopId, userId);"
+    },
+    {
+      "fn": "saveCostCard",
+      "line": 88,
+      "text": "const owner = await assertShopOwner(db, shopId, userId);"
+    },
+    {
+      "fn": "saveLedger",
+      "line": 39,
+      "text": "const owner = await assertShopOwner(db, shopId, userId);"
+    },
+    {
+      "fn": "saveMaterial",
+      "line": 32,
+      "text": "const owner = await assertShopOwner(db, shopId, userId);"
+    },
+    {
+      "fn": "saveShopSetting",
+      "line": 28,
+      "text": "const owner = await assertShopOwner(db, shopId, userId);"
+    },
+    {
+      "fn": "syncCostCard",
+      "line": 32,
+      "text": "const owner = await assertShopOwner(db, shopId, userId);"
+    }
+  ],
+  "probe_sites": [
+    {
+      "fn": "smokeTest",
+      "line": 111,
+      "text": "try { out.assertShopOwner = await common.assertShopOwner(db, '__no_such_shop__', 'u_probe'); }"
+    }
+  ],
+  "sample": {
+    "fn": "archiveMonth",
+    "path": "C:\\Users\\lzj\\WorkBuddy\\Claw\\_r197_dl\\archiveMonth\\index.js",
+    "line": 31
+  }
+}
