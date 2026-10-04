@@ -1,5 +1,5 @@
 ===== R144 · 快照 5 字段完整性守卫（S0 落库 ⇄ 读侧出参）=====
-  ✅ S1 扫描面完整（四侧源码合计 36702 字符 > 20000，缩到很小即转红）
+  ✅ S1 扫描面完整（四侧源码合计 37225 字符 > 20000，缩到很小即转红）
   ✅ S2 能取出读侧函数体 lineToOutput（cloudfunctions/getCostCard/service.js）—— 取不到说明改名了，守卫必须红
   ✅ S2 能取出读侧函数体 lineToOut（cloudfunctions/getCardVersions/service.js）—— 取不到说明改名了，守卫必须红
   ✅ S2 读侧函数体规模正常（>200 字符，防"取到空壳"假绿）

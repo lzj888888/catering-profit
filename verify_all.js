@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：137 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：138 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -343,6 +343,7 @@
 //         🔒 同轮：给 R113 限流守卫补 **A8「必须真接线」**判据（零件齐全 ≠ 限流生效）、给 R159 付费墙
 //           守卫补 **L6-②「穷尽分类」**修「扫描面一空即恒绿」；28 条断言，变异回灌 4/4 全部点名目标断言）
 //       + 云函数公开面守卫（tools/check_fn_public_surface.js，R215：**入口有没有鉴权/自保，必须有人守** ——
+//       + 付费档「账套/卡数不限」解锁守卫（tools/check_paid_quota_unlock.js，R215b：**付费判定必须真的接进配额链路** —— 实测付费用户仍被锁 1 家店；含反向判据「付费不得豁免硬上限」 + 剥注释后再判（JSDoc 同行会把 hit_hard_limit 与 is_paid 写在一起））
 //         R214 全链路通跑发现 `payExpireNotify` 的 exports.main **零来源校验**，
 //         而它扫 shop_entitlement **全表**并回 user_id + expire_at ⇒ 任意已登录用户
 //         在小程序端即可拉走别人的付费状态；同族 `smokeTest`（写库探针）亦然。
@@ -759,6 +760,7 @@ const SUITES = [
   ['shop-reset',           'tools/check_shop_reset.js'],
   ['entitlement-flow',     'tools/check_entitlement_flow.js'],
   ['fn-public-surface',    'tools/check_fn_public_surface.js'],
+  ['paid-quota-unlock',    'tools/check_paid_quota_unlock.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

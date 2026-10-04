@@ -39,14 +39,19 @@ function checkQuota(p) {
     e.code = ERROR_CODES.SYSTEM_ERROR;
     throw e;
   }
+  const paid = !!(p && p.isPaid);          // 缺省 false ⇒ 既有调用方行为不变
+    // 🔴 R215b：付费档解锁「账套/卡数不限」（specs 01_架构总览:167、04_核对清单:118）。
+    //   付费期 ⇒ 跳过免费额度，只留硬上限（hit_hard_limit 不受影响，付费也受 200 限制）。
+    //   权益到期后 isPaid 回落 false ⇒ 自动回到「只冻结新增、存量照常可用」（方案 A，不删任何存量）。
   return {
     user_id: (p && p.userId) || '',
     scope,
     used,
     free_limit: freeLimit,
     hard_limit: hardLimit,
-    // used >= 免费额度 → 下一次保存（第 freeLimit+1 个）超限
-    hit_free_limit: used >= freeLimit,
+    is_paid: paid,
+    // used >= 免费额度 → 下一次保存（第 freeLimit+1 个）超限；付费档跳过此限
+    hit_free_limit: !paid && used >= freeLimit,
     hit_hard_limit: used >= hardLimit,
   };
 }

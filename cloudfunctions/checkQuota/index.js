@@ -66,7 +66,9 @@ exports.main = async (event) => {
   // ===== 4. Service 判定（limits 注入）=====
   let r;
   try {
-    r = checkQuota({ userId, scope: v.scope, activeCount, limits });
+    // 🔴 R215b：付费判定走单源（只读 expire_at）
+    const paid = common.isPaid(await common.entitlement.loadExpireAt(db, userId));
+    r = checkQuota({ userId, scope: v.scope, activeCount, limits, isPaid: paid });
   } catch (e) {
     if (e && e.code === ERROR_CODES.SYSTEM_ERROR) return fail(e.code, e.message);
     return fail(ERROR_CODES.SYSTEM_ERROR, (e && e.message) || '配额判定失败');

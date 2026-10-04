@@ -26,6 +26,6 @@
   ✅ D-⑤ 本守卫断言数 ≥ 14（非恒真证明力下界） —— 当前累计 15 条
 
 ===== W 弱面（引擎自测 / 设计文档 / 守卫自身 里的正当提及） =====
-  ✅ W-① 弱面明示完成（不论命中多少均不判红） —— 938 个文件 · 32 处命中（例：cloudfunctions/calcSandbox/selftest.js、tools/check_indicator_ref.js、tools/check_m2_no_cost_rate.js） —— 三类正当面：引擎自测(内部量) / 设计文档(讨论口径) / 守卫自身(判据本体)
+  ✅ W-① 弱面明示完成（不论命中多少均不判红） —— 940 个文件 · 32 处命中（例：cloudfunctions/calcSandbox/selftest.js、tools/check_indicator_ref.js、tools/check_m2_no_cost_rate.js） —— 三类正当面：引擎自测(内部量) / 设计文档(讨论口径) / 守卫自身(判据本体)
 
 ===== 零成本率文案面守卫结果：17 通过 / 0 失败 =====

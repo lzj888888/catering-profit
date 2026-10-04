@@ -1,5 +1,5 @@
 ===== P 前置 =====
-  ✅ P-① 单源 / 术语 / 结果页 / getLedger 五文件均可读
+  ❌ P-① 单源 / 术语 / 结果页 / getLedger 五文件均可读  (有文件读不到)
   ✅ P-② terms 的支出大类存在且有细项（守卫的判据源）  (4 个大类)
   ✅ P-③ 术语细项名全集已构建（判 A-① 的基准）  (23 个细项名)
 
@@ -13,20 +13,20 @@
   ✅ B-① 结果页 .js 剥注释后无「数字+%」硬编码
   ✅ B-② 结果页 .wxml 无「数字+%」硬编码
   ✅ B-③ 结果页不引指标库（不得 require indicatorRef / 出现 BANDS / REDLINE）
-  ✅ B-④ 🔴 缺项必须走「本月没填」而非 0%（页面存在 indMissing 分支）
-  ✅ B-⑤ 页面用 has 标记区分「有值 / 没值」（防把 null 渲染成 0）
+  ❌ B-④ 🔴 缺项必须走「本月没填」而非 0%（页面存在 indMissing 分支）
+  ❌ B-⑤ 页面用 has 标记区分「有值 / 没值」（防把 null 渲染成 0）
 
 ===== C getLedger 出参契约 =====
-  ✅ C-① getLedger 调 indicatorRef.evaluateIndicators（复用单源，不自算阈值）
-  ✅ C-② 出参经 M1 口径过滤（m1IndicatorsOf，不在前端手筛）
-  ✅ C-③ 出参含 indicators 数组
-  ✅ C-④ 出参含 indicator_scope（业态/城市回显 + is_default_scope）
-  ✅ C-⑤ 🔴 分母与 result **同源**（revenueFen 取 result.incomeTotalFen）
+  ❌ C-① getLedger 调 indicatorRef.evaluateIndicators（复用单源，不自算阈值）
+  ❌ C-② 出参经 M1 口径过滤（m1IndicatorsOf，不在前端手筛）
+  ❌ C-③ 出参含 indicators 数组
+  ❌ C-④ 出参含 indicator_scope（业态/城市回显 + is_default_scope）
+  ❌ C-⑤ 🔴 分母与 result **同源**（revenueFen 取 result.incomeTotalFen）
   ✅ C-⑥ M1 口径恰为 5 项且不含 manage  (grossMargin,rent,labor,energy,mkt)
-  ✅ C-⑦ 细项归属走单源 sumByTag（controller 不自己写映射表）
+  ❌ C-⑦ 细项归属走单源 sumByTag（controller 不自己写映射表）
   ✅ C-⑧ 术语：M1 复用 M2 的指标名与两张评级表（未另造一份）
   ✅ C-⑨ 结果页新增文案已进 terms（三处同步里的术语侧）
-  ✅ C-⑩ 结果页 js 的 t 块已映射这些新文案（少一处 wxml 会取空串）
+  ❌ C-⑩ 结果页 js 的 t 块已映射这些新文案（少一处 wxml 会取空串）
 
 ===== D 工具自证（正负样本互证）=====
   ✅ D-① stripJs 正样本：行注释里的数字被剥掉
@@ -41,4 +41,4 @@
 ===== E 下界 =====
   ✅ E-① 本守卫断言数 ≥ 28（删掉判据即转红）  (含本条共 31 条)
 
-===== M1 行业指标对照守卫结果：31 通过 / 0 失败 =====
+===== M1 行业指标对照守卫结果：21 通过 / 10 失败 =====

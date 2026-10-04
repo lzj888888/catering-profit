@@ -155,10 +155,11 @@ module.exports = { netUnitCostWan, buildSnapshotLines, calcCostCard, wouldCreate
  * 成本卡配额判定（纯逻辑，不引 SDK）。
  * @param {object} limits { shop, cost_card, hard_shop, hard_card }（缺失/该 scope 值缺失 ⇒ 抛 SYSTEM_ERROR）
  * @param {number} activeCount 该 shop_id 下活跃逻辑卡号数（card_code 去重后的大小）
- * @returns {{ hit_free_limit:boolean, hit_hard_limit:boolean, free_limit:number, hard_limit:number }}
+ * @param {boolean} [isPaid] R215b：付费档 ⇒ 跳过免费额度、只留硬上限（缺省 false ⇒ 行为不变）
+ * @returns {{ hit_free_limit:boolean, hit_hard_limit:boolean, free_limit:number, hard_limit:number, is_paid:boolean }}
  * @throws {{code:'SYSTEM_ERROR'}} limits 缺失或 cost_card/hard_card 缺失
  */
-function judgeCardQuota(limits, activeCount) {
+function judgeCardQuota(limits, activeCount, isPaid) {
   const used = Number(activeCount) || 0;
   const freeLimit = limits && limits.cost_card;
   const hardLimit = limits && limits.hard_card;
@@ -167,10 +168,15 @@ function judgeCardQuota(limits, activeCount) {
     e.code = 'SYSTEM_ERROR'; // 与 common/errors.js::ERROR_CODES.SYSTEM_ERROR 同值（本 Service 层零依赖，不 require common）
     throw e;
   }
+  const paid = !!isPaid;                   // 缺省 false ⇒ 既有调用方（selftest）行为不变
+    // 🔴 R215b：付费档解锁「账套/卡数不限」（specs 01_架构总览:167、04_核对清单:118）。
+    //   付费期 ⇒ 跳过免费额度，只留硬上限（hit_hard_limit 不受影响，付费也受 200 限制）。
+    //   权益到期后 isPaid 回落 false ⇒ 自动回到「只冻结新增、存量照常可用」（方案 A，不删任何存量）。
   return {
     free_limit: freeLimit,
     hard_limit: hardLimit,
-    hit_free_limit: used >= freeLimit,
+    is_paid: paid,
+    hit_free_limit: !paid && used >= freeLimit,
     hit_hard_limit: used >= hardLimit,
   };
 }

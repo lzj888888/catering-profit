@@ -22,9 +22,9 @@
      specs/dev-specs/core/03_写码提示词.md:10 写 6（声明 7） —— 把下面 `===== 提示词开始 =====` 到 `===== 提示词结束 =====` 之间的内容**整段复制**，粘贴给写码 AI，并**同时上传以下 6 个文件**：
      specs/dev-specs/core/03_写码提示词.md:36 写 6（声明 7） —— 我已上传 6 个文件，请**全部读完**再开始：
      specs/dev-specs/core/外卖核算_专项核对.md:194 写 13（声明 7） —— - 证据包：`review/evidence/r161_waimai/`（13 个文件）、`review/evidence/r163_waimai/`、`review/eviden
-     specs/dev-specs/★知识存储点_2026-09-10.md:38 写 675（声明 7） —— - **一键校验入口（改完必跑）**：`node verify_all.js`（仓库根；串 **137** 个套件 = 门禁 A–L + `verify_seed_data` 48
+     specs/dev-specs/★知识存储点_2026-09-10.md:38 写 675（声明 7） —— - **一键校验入口（改完必跑）**：`node verify_all.js`（仓库根；串 **138** 个套件 = 门禁 A–L + `verify_seed_data` 48
      specs/dev-specs/★知识存储点_2026-09-10.md:607 写 6（声明 7） —— **R71 恒真断言**（`check(name, true, ...)` 条件为字面量真值 ⇒ **永远通过、零验证**）：R66「段内零断言计数」与 R69「收尾完整性」**都
-     specs/dev-specs/★知识存储点_2026-09-10.md:853 写 52（声明 7） —— - **套件数会漂**：`verify_all.js` 增删套件后必须同步头部注释里的数量（现 **137**；2026-09-17 由 41 → 45（新增 batch7 四组自
+     specs/dev-specs/★知识存储点_2026-09-10.md:853 写 52（声明 7） —— - **套件数会漂**：`verify_all.js` 增删套件后必须同步头部注释里的数量（现 **138**；2026-09-17 由 41 → 45（新增 batch7 四组自
      specs/dev-specs/★知识存储点_2026-09-10.md:867 写 6（声明 7） —— - ⑥ **R71 恒真断言**（`tools/check_selftest_shape.js`）—— 假绿的**第五个面**：`check(name, true, ...)` 条
      specs/dev-specs/上线材料_隐私政策_v1.md:102 写 52（声明 7） —— - 「收集项」逐条来自代码扫描（本轮已扫 `pages/` `utils/` `app.js` 共 52 个文件），**非编写者主观描述**。
 

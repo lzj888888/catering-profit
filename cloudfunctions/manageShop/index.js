@@ -87,7 +87,9 @@ async function onCreate(da, userId, v, crid, now) {
     const fpRes = await db.collection('feature_permissions').where({ plan_id: PLAN_ID }).limit(1).get();
     const fp = fpRes && fpRes.data && fpRes.data[0];
     const cnt = await da.countActive('shop', { user_id: userId });   // 软删不占额度（countActive 恒带 is_deleted=false）
-    d = S.decideCreate({ used: (cnt && cnt.total) || 0, limits: fp && fp.limits });
+    // 🔴 R215b：付费判定走单源 common/entitlement.js（只读 expire_at，不看 plan_id）
+    const paid = common.isPaid(await common.entitlement.loadExpireAt(db, userId));
+    d = S.decideCreate({ used: (cnt && cnt.total) || 0, limits: fp && fp.limits, isPaid: paid });
   } catch (e) {
     return fail(ERROR_CODES.SYSTEM_ERROR, (e && e.message) || '额度判定失败');
   }

@@ -307,7 +307,9 @@ exports.main = async (event) => {
     const activeCount = codes.size;
     let verdict;
     try {
-      verdict = judgeCardQuota(limits, activeCount);
+      // 🔴 R215b：付费判定走单源（只读 expire_at）
+      const paid = common.isPaid(await common.entitlement.loadExpireAt(db, userId));
+      verdict = judgeCardQuota(limits, activeCount, paid);
     } catch (e) {
       return fail(ERROR_CODES.SYSTEM_ERROR, (e && e.message) || '配额判定失败');
     }

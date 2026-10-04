@@ -5,8 +5,8 @@ R117 · 免费店铺数口径穿透守卫（单源配置 ≡ 各消费者；反�
 
 ===== A1 扫描面 fail-closed =====
   ✅ A1-① 单源（配置种子）存在且非空 —— 18445B
-  ✅ A1-②-1 消费者 cloudfunctions/checkQuota/index.js 存在且非空 —— 4217B
-  ✅ A1-②-2 消费者 cloudfunctions/getShopList/index.js 存在且非空 —— 2420B
+  ✅ A1-②-1 消费者 cloudfunctions/checkQuota/index.js 存在且非空 —— 4378B
+  ✅ A1-②-2 消费者 cloudfunctions/getShopList/index.js 存在且非空 —— 2646B
   ✅ A1-③ 测试镜像存在且非空 —— 2512B
   ✅ A1-④ 前端扫描面逐根达下界（坑㉛：根路径写错即红） —— pages:69/30 utils:21/5 miniprogram:2/2
   ✅ A1-⑤ 根级 app 文件 3/3 在位 —— 3 个
@@ -37,7 +37,7 @@ R117 · 免费店铺数口径穿透守卫（单源配置 ≡ 各消费者；反�
 ===== A7 前提守卫（非恒真）=====
   ✅ A7-① 前提：四份目标文件都在扫描面内（路径没写错） —— cloudfunctions/initDb/collections.js / cloudfunctions/checkQuota/index.js / cloudfunctions/getShopList/index.js / cloudfunctions/getShopList/selftest.js
   ✅ A7-② 前提：单源确含 plan_id:'plan_free' 行（本守卫的立论依据仍在） —— plan_free 行在场
-  ✅ A7-③ 前提：反向断言对象剥注释后长度达下界（防读空 ⇒ 零命中假绿） —— checkQuota=2239 getShopList=1452 getShopList=1396
+  ✅ A7-③ 前提：反向断言对象剥注释后长度达下界（防读空 ⇒ 零命中假绿） —— checkQuota=2342 getShopList=1565 getShopList=1396
 
 ===== W 弱面（只明示不判红）=====
   ⚠️ 代码侧其它 FREE_* 常量（本守卫不判红，交由 R102 守）：

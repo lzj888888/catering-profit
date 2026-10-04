@@ -42,13 +42,16 @@ exports.main = async (event) => {
   if (freeShopLimit === undefined || freeShopLimit === null) {
     return fail(ERROR_CODES.SYSTEM_ERROR, '配额配置缺失（plan_id=plan_free）');
   }
-  const hitFreeLimit = shops.length >= freeShopLimit;
+  // 🔴 R215b：付费档账套不限 ⇒ 前端「新增店铺」不再误显示已达上限、不再弹付费墙
+  const paid = common.isPaid(await common.entitlement.loadExpireAt(db, userId));
+  const hitFreeLimit = !paid && shops.length >= freeShopLimit;
 
   return ok({
     shop_id: (event && event.shop_id) || '',
     list,
     free_limit: freeShopLimit,
     used: shops.length,
+    is_paid: paid,
     hit_free_limit: hitFreeLimit,
     client_request_id: (event && event.input && event.input.client_request_id) || '',
   });
