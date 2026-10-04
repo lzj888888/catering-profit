@@ -1,0 +1,34 @@
+===== R215 探针：manageShop 账套额度（真跑生产 Controller）=====
+limits(种子) = {"shop":1,"cost_card":20,"hard_shop":200,"hard_card":2000}
+
+✅ CTRL-1 付费态 hasFeature(export)=true
+     实得: true
+     期望: true
+✅ CTRL-2 免费态 hasFeature(export)=false
+     实得: false
+     期望: false
+✅ S0 免费 used=0 → 建第1家（应 OK）
+     实得: OK
+     期望: OK
+✅ S1 免费 used=1 → 建第2家（应 FREE_LIMIT_EXCEEDED）
+     实得: FAIL:FREE_LIMIT_EXCEEDED
+     期望: FAIL:FREE_LIMIT_EXCEEDED
+❌ S2 付费 used=1 → 建第2家（specs: 账套不限 ⇒ 应 OK）
+     实得: FAIL:FREE_LIMIT_EXCEEDED
+     期望: OK
+     原始: {"code":"FREE_LIMIT_EXCEEDED","msg":"免费档最多 1 家店铺","data":{}}
+❌ S3 付费 used=5 → 建第6家（应 OK）
+     实得: FAIL:FREE_LIMIT_EXCEEDED
+     期望: OK
+     原始: {"code":"FREE_LIMIT_EXCEEDED","msg":"免费档最多 1 家店铺","data":{}}
+✅ S4 付费 used=200 → 建第201家（应 HARD_CAP_EXCEEDED）
+     实得: FAIL:HARD_CAP_EXCEEDED
+     期望: FAIL:HARD_CAP_EXCEEDED
+✅ S5 过期权益 used=1 → 建第2家（应 FREE_LIMIT_EXCEEDED）
+     实得: FAIL:FREE_LIMIT_EXCEEDED
+     期望: FAIL:FREE_LIMIT_EXCEEDED
+✅ S6 幂等：同 crid 第二次不该重复建店（行数仍为 1）
+     实得: first=OK second=OK shopRows=1 auditRows=1
+     期望: first=OK second=OK shopRows=1 auditRows=1
+
+===== 结果：7 通过 / 2 失败 =====
