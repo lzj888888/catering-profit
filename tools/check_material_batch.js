@@ -154,5 +154,25 @@ check('D-② 负样本：单价不是数字必红（不静默当 0）',
   d2.rows[0] && d2.rows[0].ok === false && d2.rows[0].errors.some((e) => e.indexOf('单价') >= 0),
   d2.rows[0] ? JSON.stringify(d2.rows[0].errors) : '零行');
 
-console.log('\n===== round204 · 原料批量录入守卫：' + pass + ' 通过 / ' + failN + ' 失败 =====');
+const r9a = batch.parsePaste('土豆,,斤,3\n,,,,,\n牛腩,42', '斤');
+check('A-⑩ 全是分隔符的逗号空行按空行跳过（不产出「缺名称」假错行）',
+  r9a.rows.length === 2 && r9a.rows.every((x) => x.ok) && r9a.blankLines === 1,
+  '行数=' + r9a.rows.length + ' 空行=' + r9a.blankLines);
+
+// ⚠️ 样本必须是**真正会走到 R211 那句排查**的形态 —— 本轮两次踩同一类坑：
+//   ① 纯 Tab 空行：被 `splitRow` 开头的 `!s.trim()` 挡掉了（`trim()` 连 \t 一起吃）；
+//   ② 「空格+Tab」空行：同样理由被挡掉。两者删掉 R211 那句都照样绿（**假绿**）。
+//   ⇒ 真正漏网的是**带可见分隔符**的空行（`,,,,,` / `;;;;;`）——分隔符不是空白，trim 吃不掉。
+//     「表格软件另存为 CSV」选分号分隔是常见选项，故 A-⑪ 取分号形态作为第二条独立通路。
+const r9b = batch.parsePaste('土豆;箱装;斤;3\n;;;;;\n牛腩;;斤;42', '斤');
+check('A-⑪ 分号空行同样跳过（有些 CSV 用分号分隔，不是只有逗号）',
+  r9b.rows.length === 2 && r9b.rows.every((x) => x.ok) && r9b.blankLines === 1,
+  '行数=' + r9b.rows.length + ' 空行=' + r9b.blankLines);
+
+const r9c = batch.parsePaste('土豆,,斤,3\n' + ' , , , , , \n'.repeat(40) + '牛腩,42', '斤');
+check('A-⑫ 模板级压力：40 行「含空格的空行」夹在中间，只留 2 条真数据且都合格（不许真数据被红海淹没）',
+  r9c.rows.length === 2 && r9c.rows.every((x) => x.ok) && r9c.blankLines === 40,
+  '行数=' + r9c.rows.length + ' 空行=' + r9c.blankLines);
+
+console.log('\n===== 原料批量录入守卫：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);

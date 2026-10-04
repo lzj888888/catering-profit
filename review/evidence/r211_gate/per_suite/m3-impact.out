@@ -1,0 +1,24 @@
+✅ C 旧成本 = 975 分（鸡胸肉 15 元/斤）  (got 975)
+✅ C 旧毛利率 = 65.18%（(2800−975)/2800）  (got 65.18)
+===== C-a · 鸡胸肉 15 → 20 元/斤 =====
+✅ C-a 新成本 = 1208 分（15→20）  (got 1208)
+✅ C-a 新毛利率 = 56.86%（(2800−1208)/2800）  (got 56.86)
+✅ C-a 未跌破 55% 下限（56.86 ≥ 55）
+✅ C-a 掉 8.32pp（65.18 − 56.86）  (got 8.32)
+===== C-a2 · 鸡胸肉 15 → 25 元/斤 =====
+✅ C-a2 新成本 = 1444 分（15→25）  (got 1444)
+✅ C-a2 新毛利率 = 48.43%（(2800−1444)/2800）  (got 48.43)
+✅ C-a2 跌破 55% ⇒ below_band === true  (48.43 < 55)
+===== dry_run 零写库（静态扫 syncCostCard/index.js）=====
+✅ dry_run 分支存在
+✅ dry_run 分支零写库（无 da.insert / doc.update / doc.remove / collection.add）  (分支只含 da.get / da.list / da.listAll 读操作 + 内存 Map.set)
+✅ dry_run 分支确有读操作（da.listAll 兜底取全卡）
+===== C-b · 未挂牌价（priceFen=0）⇒ 毛利率不可算、below_band 必须抑制 =====
+✅ C-b[引擎事实] priceFen=0 ⇒ gross_margin_pct 为数字 0（非 null）  (got 0)
+✅ C-b[反证] 0 < 55 成立 ⇒ 裸比较必然误标 below_band  (0 < 55 ⇒ 若不抑制，未定价卡会被报成"跌破")
+✅ C-b[dry-run] 分支含 noPrice 判定（未挂牌价 ⇒ 不可算）
+✅ C-b[dry-run] below_band 形如 `!noPrice && …`（不许裸比较）
+✅ C-b[dry-run] new_gross_margin_pct 形如 `noPrice ? null : …`（与 reconDerive 的 no_price 同口径）
+
+============================================================
+===== M3.19 影响面自测结果：17 通过 / 0 失败 =====

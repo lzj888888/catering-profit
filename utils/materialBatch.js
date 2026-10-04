@@ -139,6 +139,11 @@ function parsePaste(text, defaultUnit) {
   for (const line of lines) {
     const cells = splitRow(line);
     if (!cells) { blankLines += 1; continue; }
+    // 🔴 R211：**全是分隔符的空行**必须按空行跳过（`,,,,,` / `				` / `;;;`）。
+    //   起因＝给老板填的空模板：留出几十行空格让老板照着填，而老板多半整块 Ctrl+A 复制 ⇒
+    //   这些空行跟着进来。**漏这条的实测代价**：CSV 模板 40 个空行 ⇒ 预览页冒出 40 条「缺名称」红行，
+    //   把 3 条真数据淹在红海里。空行不是坏数据，**它压根不是数据** —— 不该进民法典 ERROR 清单。
+    if (cells.every((c) => String(c == null ? '' : c).trim() === '')) { blankLines += 1; continue; }
     if (first) {
       first = false;
       if (isHeaderRow(cells)) { headerSkipped = true; continue; }

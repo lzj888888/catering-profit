@@ -141,7 +141,7 @@ const CASES = [
   //   断言数不受守则「把 20 处调用点判据改回 owner.code / 删掉 G2 分支遍历」同样静默通过。
   { key: 'check_auth_guard_shape', rel: 'tools/check_auth_guard_shape.js' }, // 17 条（R194：G1 扫描面非退化 / G2 分支带 error / G3 无 ok()·fail() / G4 派生同形 / G5 锚点在场 / G6 调用点形状）
   { key: 'check_tabbar', rel: 'tools/check_tabbar.js' },
-  { key: 'check_material_batch', rel: 'tools/check_material_batch.js' }, // 23 条（R204：A 解析行为 9 / B 页面接线 8 / C 护栏 4 / D 正负样本 2）
+  { key: 'check_material_batch', rel: 'tools/check_material_batch.js' }, // 26 条（R204：A 解析行为 9 / B 页面接线 8 / C 护栏 4 / D 正负样本 2；R211 补 3：带分隔符的空行必须按空行跳过——逗号 ⑩ / 分号 ⑪ / 40 行模板压力 ⑫）
   { key: 'check_home_ui_v3', rel: 'tools/check_home_ui_v3.js' }, // 29 条（R207：S 护栏 5 / A 头卡 10 / B 口径 4 / C 模块卡与入口保全 7 / D 全局单源 3）
   { key: 'check_shop_lifecycle', rel: 'tools/check_shop_lifecycle.js' }, // 29 条（R208：S 护栏 4 / A 配额语义 5（实跑 decideDelete）/ B 删空不死锁 6 / C 入口不藏 10 / D 文案对齐 4）
   { key: 'check_month_picker', rel: 'tools/check_month_picker.js' },

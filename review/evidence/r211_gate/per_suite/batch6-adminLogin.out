@@ -1,0 +1,54 @@
+===== 密码加盐哈希（非明文 / 非裸 MD5）=====
+✅ scrypt 哈希长度 64 字节 hex(128)  (len=128)
+✅ 同一盐同一密码哈希稳定
+✅ 同一密码不同盐 → 哈希不同
+✅ verifyPassword 正确密码通过
+✅ verifyPassword 错误密码拒绝
+✅ verifyPassword 缺 salt/hash 拒绝
+✅ 盐为随机 hex（32 字符）
+===== 验收 1 · 5 次密码错误锁定 30 分钟 =====
+✅ 第 4 次失败 → 未锁定
+✅ 第 5 次失败 → 锁定截止 now+30min  (diff=1800000)
+✅ isLocked(locked_until=now+30min) → true
+✅ 锁定中（当前时间 < 截止）→ true
+✅ 已解锁（当前时间超过截止）→ false
+✅ isLocked(0/null) → false
+✅ LOCK_AFTER_FAILS=5 / LOCK_DURATION_MS=30min
+===== 验收 2 · token 7 天失效 =====
+✅ token 为 64 位 hex  (64)
+✅ TOKEN_TTL_MS = 7 天
+✅ tokenTtlMs() = 7 天
+===== adminAuth 中间件（requireAuth / parseBearer）=====
+✅ 有效 token + active 账号 → 注入 adminId/role
+✅ 过期 token → ADMIN_TOKEN_EXPIRED
+✅ 不存在 token → ADMIN_AUTH_FAILED
+✅ 空 token → ADMIN_AUTH_FAILED
+
+===== R48 · 账号状态校验（禁用旧 token 立即失效）=====
+✅ ① 禁用管理员旧 token → ADMIN_AUTH_FAILED（不等自然过期）
+✅ ② 正常管理员 token → 放行
+✅ ③ 账号记录不存在 → 拒绝（fail-closed）
+✅ ④ 账号读异常 → 拒绝（容错不放行）
+✅ ⑤ status 未知值 → 拒绝（fail-closed）
+✅ parseBearer 标准头
+✅ parseBearer 小写头
+✅ parseBearer 无 Bearer → 空串
+✅ parseBearer 缺头 → 空串
+✅ super 可访问 super 专属
+✅ op 访问 super 专属 → ADMIN_PERMISSION_DENIED
+✅ op 可访问 op 允许
+
+===== R62 · 账号状态判据单源化（登录闸门 ≡ 请求闸门）=====
+✅ R62-① isAdminActive({status:active}) → true
+✅ R62-② isAdminActive({status:disabled}) → false
+✅ R62-③ isAdminActive(未知值 pending_review) → false（fail-closed）
+✅ R62-④ isAdminActive(status 为空串) → false（此前可"登录成功"）
+✅ R62-⑤ isAdminActive(缺 status 字段) → false
+✅ R62-⑥ isAdminActive(null / undefined 行) → false
+✅ R62-⑦ ADMIN_STATUS_ACTIVE 常量已随单源导出
+✅ R62-⑧ 纯函数判据与中间件判据等价（两闸门同源）
+✅ R62-⑨ 登录闸门调用单源 isAdminActive(admin)
+✅ R62-⑩ 已无 status === 'disabled' 字面量判据（代码区）
+✅ R62-⑪ 登录闸门从 ./adminAuth 解构 isAdminActive
+
+==== adminLogin 批次 6 自测结果：44 通过 / 0 失败 ====
