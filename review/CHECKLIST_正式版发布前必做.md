@@ -81,7 +81,7 @@ dev 库里的任何账套 / 台账 / 测试数据**不会**流到正式版。
 | D1 | 全量部署 **42 个函数**（43 − `initDb`） | `cli cloud functions deploy --names <fn> -r`，**一次一个、必带 `-r`**（漏 `-r` = 覆盖云端 `wx-server-sdk` ⇒ 前端「网络不可用」） |
 | D2 | 🔴 **先在控制台定 all 函数 timeout 值，再全量部署** | 实测：`config.json` 的 `timeout` **不被采纳**（重启键 §该条），值只存在于控制台。**dev 定过 ≠ prod 生效**，必须重走「定值 → 部署 → `cli cloud functions info` 逐个回读」 |
 | D3 | `ADMIN_SETUP_TOKEN` 等凭证重配 | 凭证**不随环境走** |
-| D2-bis 🔴 | **dev 现存量缺口（R215c 巡检实测）**：`importSalesBill` 与 `manageShop` 的 `timeout` **仍是 3**，其余 42 个均为 20 | 判据 = `cli cloud functions info --names …` 的 `timeout` 列 = **20**。⚠️ 这两个现在真机必超时（`importSalesBill` 走 `cloud.downloadFile` + xlsx 解析 + 落库，3 秒绝不够）。**根因：新部署的函数 timeout 一律是平台默认 3**，故「部署完」≠「可用」，每次部署后必须回读 `timeout` 列 | **李老师**（控制台：版本管理 → 配置 → 高级配置 → 执行超时） |
+| D2-bis ✅ | **dev 存量缺口（R215c 发现 → R215d 已闭环）**：`importSalesBill` / `manageShop` 的 `timeout` 曾为 **3**，**2026-10-05 已抬到 20**；全量 44 函数回读 `timeout==3` = **0** | 判据 = `cli cloud functions info --names …`（**空格分隔**）的 `timeout` 列。**现状：`{15:1, 20:40, 30:1, 60:2}`、`status` 44/44 `Active`**（`review/evidence/r215d_timeout/cli_info_all_44fn_after.txt`）。⚠️ **可复用纪律**：**新部署的函数 timeout 一律是平台默认 3** ⇒「部署完」≠「可用」，**每次部署新函数后必须回读 `timeout` 并手工抬到 20** | ✅ 已闭环（R215d · 键鼠代操控制台，见 `review/NOTE_2026-10-05_round215d_控制台抬timeout.md`） |
 
 ### D+ 开真实支付 🔴（R215 补录 · R214 发现的清单缺口）
 
