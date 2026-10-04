@@ -70,7 +70,28 @@ check('🔴 撞唯一键后必须回读（不得直接返回假 shop_id）',
 check('🔴 回读仍为空 ⇒ fail-closed（SYSTEM_ERROR，不猜）', /fail\(ERROR_CODES\.SYSTEM_ERROR,\s*'店铺初始化失败（并发冲突后回读为空）'\)/.test(body));
 check('新建标记 is_new_shop 回传（前端可提示）', /is_new_shop:\s*created/.test(body));
 check('开关行经 service 映射（不内联 find）', /switchesFromRows\(/.test(body));
-check('出参不泄漏 user_id / openid', !/user_id:/.test(body.slice(body.indexOf('return ok'))) && !/openid/.test(body));
+// 🔴 R208 判据修正：旧写法 `body.slice(body.indexOf('return ok'))` 隐含假设「**全文只有末尾一个**
+//   return ok」。R208 加了「主动删空 ⇒ no_shop 早退」分支后文件里有**两个** return ok，
+//   于是 slice 从早退那个一路切到文末，**把后面整段 autoProvision 代码划进"出参区"**
+//   （那里当然有 `user_id:`）⇒ 假红（这一条正是本仓"守卫红先看自己"的典型）。
+//   ⇒ 改为**逐个出参块**判：每个 `return ok(` 到其后第一个 `});` 之间才是出参区。
+function outParamChunks(b) {
+  const out = [];
+  let i = 0;
+  for (;;) {
+    const j = b.indexOf('return ok(', i);
+    if (j < 0) break;
+    const k = b.indexOf('});', j);
+    out.push(b.slice(j, k < 0 ? b.length : k));
+    i = (k < 0 ? b.length : k) + 1;
+  }
+  return out.join('\n');
+}
+const outParams = outParamChunks(body);
+// 前提：出参区确实被切出来了（否则下面的"零泄漏"是零命中假绿）
+check('前提：出参区切片非空（─── ⇒ 零命中假绿）', outParams.length > 0, outParams.length + ' 字符');
+check('出参不泄漏 user_id / openid', !/user_id\s*:/.test(outParams) && !/openid/.test(body),
+  /user_id\s*:/.test(outParams) ? '出参里带了 user_id' : (/openid/.test(body) ? '正文出现 openid' : '零泄漏'));
 
 console.log(`\n==== getShopContext 自测结果：${pass} 通过 / ${failN} 失败 ====`);
 process.exit(failN === 0 ? 0 : 1);

@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：132 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：133 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -303,6 +303,14 @@
 //           + 三态 profitKnown 防闪开始 / 失败静默降级）+ C 模块卡（三个模块入口 + 🔴店铺切换与设置
 //           入口不许被 UI 改版吃掉 + .ovh 防色条尖角 + 不用颜色区分模块）
 //         + D 全局单源（.money 等宽 tabular-nums / .ovh / 原料卡自带 overflow）+ S 自失效护栏；
+//       + 店铺生命周期守卫（tools/check_shop_lifecycle.js，R208：**店铺三件事**，全是"不会报错"的缺陷 ——
+//         ① 删除配额语义（实跑 decideDelete：🔴只有 1 家时也**必须允许删**，否则免费档永久锁死、
+//            deleteConfirm 承诺的"释放额度"永远兑现不了；0 家仍 fail-closed 防幽灵删除）
+//         ② 删空不死锁（getShopContext 必须先用 listIncludingDeleted 探测历史店；
+//            autoProvision 不得先于 everHad 早退 —— 确定性 _id 撞已软删文档 ⇒ 回读为空 ⇒ **全站报错**）
+//         ③ 入口不得藏（⋯/actionSheet ⇒ 行内「改名」「删除」按钮；删空后引导新建 + 复位 shop_id；
+//            按钮守触控 ≥88rpx / 字号 ≥28rpx —— 判据**收进 .ops-btn 规则块**，全文搜会被别处同值掩盖）
+//         + D 文案口径对齐（不再留「至少要保留一家」这类过期承诺）+ S 自失效护栏）；
 //         29 条断言，变异回灌 4/4 全部点名目标断言）
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
@@ -705,6 +713,7 @@ const SUITES = [
   //   脏行默认不选 + 调纯函数不内联 + WXML 不调方法）+ 反恒真（计数族仍无建议值）。
   ['material-batch',        'tools/check_material_batch.js'],
   ['home-ui-v3',            'tools/check_home_ui_v3.js'],
+  ['shop-lifecycle',        'tools/check_shop_lifecycle.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

@@ -46,13 +46,24 @@ function decideCreate(p) {
 }
 
 /**
- * 删除店铺判定（纯函数）：删完必须还剩 ≥ 1 家 —— 否则用户把自己锁死（没有店可进，也没有店可建）。
+ * 删除店铺判定（纯函数）。
+ *
+ * 🔴 R208 语义更正（此前 `allowed: active >= 2` 是**错的**，把免费档永久锁死）：
+ *   旧判据注释称「删完必须还剩 ≥1 家，否则用户把自己锁死（没店可进、也没店可建）」——
+ *   这条理由**不成立**：软删店铺既不进列表也不占配额（`utils/shopSwitcher.js` 头注、
+ *   `getShopList` 的 `used = active 列表长度`），删光后 used 由 1 回落 0，**免费额度刚好够再建 1 家**。
+ *   真正把用户锁死的反而是旧判据本身：免费档只有 1 家店 ⇒ 永远凑不到 active>=2 ⇒ 删除键形同虚设，
+ *   而 `TERMS.exp.deleteConfirm` 却承诺「删除后…不再占用店铺额度」⇒ 文案承诺的事用户永远兑现不了。
+ *   且档位错阶：想换店 ⇒ 得先有 2 家 ⇒ 第 2 家已被付费墙拦 ⇒ 免费用户**换不了店名之外的任何东西**。
+ *
+ *   ⇒ 新语义：**只要还有 ≥1 家活跃店铺就允许删**；删到 0 家即为「额度已释放」，可调 decideCreate 再建。
+ *
  * @param {{activeCount:number}} p activeCount = 当前活跃（is_deleted=false）店铺数
- * @returns {{activeCount, remaining, allowed}}
+ * @returns {{activeCount:number, remaining:number, allowed:boolean}} remaining 为删除后的活跃数
  */
 function decideDelete(p) {
   const active = Number(p && p.activeCount) || 0;
-  return { activeCount: active, remaining: active > 0 ? active - 1 : 0, allowed: active >= 2 };
+  return { activeCount: active, remaining: active > 0 ? active - 1 : 0, allowed: active >= 1 };
 }
 
 /**

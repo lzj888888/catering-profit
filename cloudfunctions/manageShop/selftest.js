@@ -47,14 +47,16 @@ let threwNoShopKey = false;
 try { S.decideCreate({ used: 0, limits: { hard_shop: 200 } }); } catch (e) { threwNoShopKey = (e && e.code === 'SYSTEM_ERROR'); }
 check('limits 缺 shop 键 ⇒ 抛 SYSTEM_ERROR', threwNoShopKey);
 
-console.log('\n===== 删除边界（decideDelete）：删完必须还剩一家 =====');
+console.log('\n===== 删除边界（decideDelete）：只要还有活跃店就允许删，删光 = 释放额度 =====');
 const d2 = S.decideDelete({ activeCount: 2 });
 const d1 = S.decideDelete({ activeCount: 1 });
 const d3 = S.decideDelete({ activeCount: 3 });
 check('2 家 ⇒ 允许删且剩 1 家', d2.allowed === true && d2.remaining === 1);
-check('1 家 ⇒ 不允许删（否则用户把自己锁死）', d1.allowed === false, 'remaining=' + d1.remaining);
+// 🔴 R208 更正：旧断言写「1 家 ⇒ 不允许删」，与 `TERMS.exp.deleteConfirm` 承诺的「删除后不再占用额度」
+//   直接矛盾，且把免费档（限额 1 家）永久锁死 ⇒ 改判：**允许删，删完剩 0 家 = 额度已释放**。
+check('1 家 ⇒ 允许删且剩 0 家（R208：免费额度随之释放，可再建）', d1.allowed === true && d1.remaining === 0, 'remaining=' + d1.remaining);
 check('3 家 ⇒ 允许删且剩 2 家', d3.allowed === true && d3.remaining === 2);
-check('0 家（异常态）⇒ 不允许删', S.decideDelete({ activeCount: 0 }).allowed === false);
+check('0 家（异常态）⇒ 不允许删（fail-closed，避免幽灵删除）', S.decideDelete({ activeCount: 0 }).allowed === false);
 
 console.log('\n===== 构造：确定性 _id 与文档形状 =====');
 const idA1 = S.buildCreateShopId('u_1', 'crid_abc');

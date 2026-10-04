@@ -28,10 +28,43 @@ exports.main = async (event) => {
 
   const da = makeAdapter(db);
 
-  // ===== 2. 取该用户店铺（无就自动建档一个默认店铺）=====
+  // ===== 2. 取该用户店铺（**仅**「从未建过店」的新用户才自动建档）=====
   const shopsRes = await da.list('shop', { user_id: userId });
   let shop = (shopsRes && shopsRes.data && shopsRes.data[0]) || null;
   let created = false;
+
+  // 🔴 R208：**必须先分清「从未建店的新用户」与「主动删空的老用户」**，两者处理完全不同。
+  //   背景：R208 起放开「删除最后一家店」（免费档否则永久锁死，见 manageShop/service.js::decideDelete）。
+  //   放开后若这里仍无条件 autoProvision，会同时炸出两个坑：
+  //     坑 A（体验）：用户删完店，下一秒进任何页面 ⇒ 这里又插一个「我的店铺」⇒ 删除形同没删。
+  //     坑 B（🔴🔴 全站不可用 —— 这条会致命）：`defaultShopId(userId)` 是**确定性** `_id`，
+  //        而软删**不物理删文档**（`is_deleted=true` 仍在库）⇒ 同 `_id` 再 insert 必撞键
+  //        ⇒ 走下面的 catch（isDuplicateKeyError）⇒ `created=false`
+  //        ⇒ 回读仍为空（文档是软删态，不在 is_deleted=false 列表里）
+  //        ⇒ `fail('店铺初始化失败（并发冲突后回读为空）')` ⇒ **用户此后所有页面全部报错**。
+  //   ⇒ 二者用「该 user_id 名下是否**曾经存在**过店铺（含软删）」区分，**只有全新用户才兜底建店**。
+  if (!shop) {
+    const everRes = await da.listIncludingDeleted('shop', { user_id: userId });
+    const everHad = (everRes && everRes.data && everRes.data.length > 0);
+    if (everHad) {
+      // ⚠️ 用户是自己把店铺清空（或最后一家被删）⇒ **不自动建**，返回「无店铺」状态，
+      //    交前端店铺页引导新建一个，其免费额度（used=0）也正好还剩着。
+      //    出参结构与正常返回**同形**（开关/偏好给默认值），前端无需分支处理。
+      return ok({
+        shop_id: '',
+        shop_name: '',
+        shop_remark: '',
+        switches: switchesFromRows([]),
+        takeaway_params: takeawayParamsFromRows([]),
+        menu_dish_count: menuDishCountFromRows([]),
+        pinned_cards: [],
+        pinned_materials: [],
+        no_shop: true,
+        is_new_shop: false,
+        client_request_id: v.input.client_request_id || '',
+      });
+    }
+  }
   if (!shop) {
     // 🔴 A6b 兜底（2026-09-19 真云实测 `shop.idx_shop_user` **非** unique：
     //    同一 user_id 连插两次都成功 ⇒ 「先查后建」在并发下会建出两个店）。
@@ -67,6 +100,8 @@ exports.main = async (event) => {
     shop_id: shopId,
     shop_name: shop.name || '',
     shop_remark: shop.remark || '',
+    // R208：无店铺状态的显式标志（契约键**恒存在**，新用户建档路径恒为 false ⇒ 前端不必辨空）
+    no_shop: false,
     switches,
     // M3.17（批次 D）：外卖平台参数默认值（JSON 字符串；缺省 '' 由前端 parse 兜底）
     takeaway_params: takeawayParams,

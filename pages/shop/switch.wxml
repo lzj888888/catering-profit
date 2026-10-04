@@ -1,10 +1,11 @@
 <view class="container safe-bottom" wx:if="{{!loading}}">
   <view class="hint">{{t.switchHint}}</view>
 
-  <!-- R194：每行「点名字 = 切店」+ 右侧「⋯ = 重命名 / 删除店铺」。
-       🔴 为什么把 bindtap 从整卡挪到名字区：⋯ 与"点卡切店"同卡，绑在整卡上会让
-          点「⋯」也触发切换（页面直接 navigateBack，菜单还没弹出来就跳走了）。
-       低频 + 破坏性操作走 ⋯ 收纳；重命名虽不算危险，但和删除同族（改店本身份）⇒ 同处收纳。 -->
+  <!-- R208：一行 = 名字区（点击切店）+ 右侧「改名」/「删除」两个**显式按钮**。
+       🔴 为什么把原来行尾的「⋯」actionSheet 换掉：李老师实测**没找到**删除入口，以为「店铺只能改名」
+          （低频 ≠ 可藏，见 R192 红线）。现在两个动作直接摊在行内，零隐藏层级。
+       🔴 bindtap 仍**不**绑在整卡上：按钮与名字区同卡，绑整卡会让点「删除」先触发切换
+          （页面 navigateBack，确认弹窗还没弹就跳走了）⇒ 名字区独立绑, 按钮侧用 catchtap 阻断冒泡。 -->
   <view class="card2" wx:for="{{list}}" wx:key="shop_id">
     <!-- 常态行 -->
     <view class="shop-row" wx:if="{{!(mode === 'rename' && editingId === item.shop_id)}}">
@@ -14,7 +15,10 @@
           <text class="tag" wx:if="{{item.shop_id === currentShopId}}">{{t.currentShop}}</text>
         </view>
       </view>
-      <view class="more round" catchtap="onMore" data-id="{{item.shop_id}}">⋯</view>
+      <view class="row-ops">
+        <button class="ops-btn" catchtap="onRenameTap" data-id="{{item.shop_id}}">{{t.renameShort}}</button>
+        <button class="ops-btn danger" catchtap="onDeleteTap" data-id="{{item.shop_id}}">{{t.deleteShort}}</button>
+      </view>
     </view>
 
     <!-- R194：就地重命名（**不跳页、不弹层** —— 弹层 × 键盘是死结，见 PITFALLS §8） -->
@@ -26,7 +30,8 @@
     </view>
   </view>
 
-  <view wx:if="{{list.length === 0 && !loading}}" class="empty">{{t.noShop}}</view>
+  <!-- R208：删空后会自动展开下面的新建输入框 ⇒ 此时不再叠一条「还没有店铺」空态 -->
+  <view wx:if="{{list.length === 0 && mode !== 'create'}}" class="empty">{{t.noShopHint}}</view>
 
   <!-- R194：新建店铺 —— 就地输入。
        此前这里跳 `shop/setting`，而设置页走 saveShopSetting（只更新**当前**店）

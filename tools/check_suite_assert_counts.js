@@ -143,6 +143,7 @@ const CASES = [
   { key: 'check_tabbar', rel: 'tools/check_tabbar.js' },
   { key: 'check_material_batch', rel: 'tools/check_material_batch.js' }, // 23 条（R204：A 解析行为 9 / B 页面接线 8 / C 护栏 4 / D 正负样本 2）
   { key: 'check_home_ui_v3', rel: 'tools/check_home_ui_v3.js' }, // 29 条（R207：S 护栏 5 / A 头卡 10 / B 口径 4 / C 模块卡与入口保全 7 / D 全局单源 3）
+  { key: 'check_shop_lifecycle', rel: 'tools/check_shop_lifecycle.js' }, // 29 条（R208：S 护栏 4 / A 配额语义 5（实跑 decideDelete）/ B 删空不死锁 6 / C 入口不藏 10 / D 文案对齐 4）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

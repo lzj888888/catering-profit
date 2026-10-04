@@ -31,12 +31,17 @@ Page({
       noShop: TERMS.exp.noShop,
       addShop: TERMS.exp.addShop,
       switchHint: TERMS.exp.switchHint,
-      moreHint: TERMS.exp.moreHint,
+      moreHint: TERMS.exp.shopManageHint,
+      noShopHint: TERMS.exp.noShopHint,
       renameShop: TERMS.exp.renameShop,
+      renameShort: TERMS.exp.renameShort,
+      deleteShort: TERMS.exp.deleteShort,
       namePh: TERMS.settings.shopNamePh,
       createOk: TERMS.exp.createOk,
       save: TERMS.buttons.save,
       cancel: TERMS.buttons.cancel,
+      deleteLastHint: TERMS.exp.deleteLastHint,
+      noShopHint: TERMS.exp.noShopHint,
       loading: TERMS.ui.loading,
     },
     list: [],
@@ -94,21 +99,22 @@ Page({
     setTimeout(() => wx.navigateBack(), 400);
   },
 
-  // ===== R194：每行的「⋯」= 重命名 / 删除店铺（低频 + 破坏性 ⇒ 收纳，R192 分级口径）=====
-  onMore(e) {
+  // ===== R208：每行右侧两个**显式按钮**（改名 / 删除）=====
+  //   旧实现把这两个动作塞进行尾「⋯」的 actionSheet ⇒ **李老师（产品主人）都没找到删除**，
+  //   还以为「店铺只能改名」。低频 ≠ 可藏（R192 红线：藏起来的功能等于没有），
+  //   故直接摊到行内；店铺列表本身很短（免费 1 家 / 付费也就几家），摊开并不吵。
+  onRenameTap(e) {
     const id = e.currentTarget.dataset.id;
     if (!id) return;
     const item = (this.data.list || []).filter((x) => x.shop_id === id)[0] || {};
-    wx.showActionSheet({
-      // ⚠️ 删除项**总是**出现：不藏功能（R192 红线「藏起来的功能等于没有」）。
-      //    最后一家店点删除时，给**明确原因**而不是静默少一项。
-      itemList: [TERMS.exp.renameShop, TERMS.exp.deleteShop],
-      success: (r) => {
-        if (r.tapIndex === 0) this.onRenameOpen(id, item.name || '');
-        else if (r.tapIndex === 1) this.onDeleteAsk(id, item.name || '');
-      },
-      fail: () => { /* 用户取消：不做任何事 */ },
-    });
+    this.onRenameOpen(id, item.name || '');
+  },
+
+  onDeleteTap(e) {
+    const id = e.currentTarget.dataset.id;
+    if (!id) return;
+    const item = (this.data.list || []).filter((x) => x.shop_id === id)[0] || {};
+    this.onDeleteAsk(id, item.name || '');
   },
 
   onRenameOpen(id, name) {
@@ -138,24 +144,15 @@ Page({
   },
 
   onDeleteAsk(id, name) {
-    // 边界：最后一家不给删（与后端 decideDelete 同判据；前端先说清原因，不靠报错）
-    if ((this.data.list || []).length < 2) {
-      wx.showModal({
-        title: TERMS.exp.deleteShop,
-        content: TERMS.exp.lastOneWarn,
-        showCancel: false,
-        // 🔴 R194 走查修正：这里**不能**复用 exp.createOk（「创建」）——本弹窗不创建任何东西，
-        //    点它只关窗；按钮却写「创建」= 明确误导（桌面截屏实测抓到，见
-        //    review/evidence/r194_shots/05_desktop_lastOne.png）。
-        //    无动作信息弹窗的唯一按钮一律用 buttons.gotIt（「知道了」，R45 既有口径，3 字 ≤4 ✓）。
-        confirmText: TERMS.buttons.gotIt,
-        confirmColor: '#1e3a5f',
-      });
-      return;
-    }
+    // 🔴 R208：**不再禁止删除最后一家**。旧实现在这里直接 return 一个「至少要保留一家」弹窗，
+    //   与 `exp.deleteConfirm` 承诺的「不再占用店铺额度」自相矛盾 —— 免费档（限 1 家）
+    //   永远删不掉 ⇒ 额度永远腾不出来，想换店只能付费。改为**分级告知后果**：
+    //      · 删完还剩店 ⇒ 常规确认；
+    //      · 删的是最后一家 ⇒ 明说列表会清空、额度会释放、还能再建 1 家。
+    const willBeEmpty = (this.data.list || []).length <= 1;
     wx.showModal({
       title: TERMS.exp.deleteShop + ' · ' + name,
-      content: TERMS.exp.deleteConfirm,
+      content: willBeEmpty ? this.data.t.deleteLastHint : TERMS.exp.deleteConfirm,
       cancelText: TERMS.buttons.thinkAgain,
       // ⚠️ showModal 按钮文案 ≤4 字（超了整窗 fail 且静默）。
       // 🔴 本行**不得写行内注释**：`tools/check_modal_button_len.js` 的解析器按整行取值，
@@ -174,14 +171,22 @@ Page({
         op: 'delete', target_shop_id: id, client_request_id: 'sd_' + Date.now(),
       });
       wx.showToast({ title: TERMS.exp.deleted, icon: 'success' });
-      // 🔴 删掉的正是**当前店** ⇒ 必须先把当前店切到剩下任意一家：
+      // 🔴 删掉的正是**当前店** ⇒ 必须立刻改指向：
       //   否则后续所有请求继续带已软删的 shop_id（服务端一律 RESOURCE_NOT_FOUND，页面集体报错）。
-      if (id === this.data.currentShopId) {
+      if (id === (this.data.currentShopId || app.globalData.shop_id)) {
         const rest = (this.data.list || []).filter((x) => x.shop_id !== id);
-        if (rest.length) sw.switchShop(rest[0].shop_id);
+        // ⚠️ R208：删到一家不剩时 rest 为空 ⇒ 必须切到**空串**显式清空（旧实现此分支什么都不做，
+        //   留着失效 id），由 mode='create' 引导用户马上建店回填额度。
+        sw.switchShop(rest.length ? rest[0].shop_id : '');
       }
       this.setData({ mode: '', editingId: '', editName: '' });
       await this.load();
+      // 🔴 删空后的**强引导**：既然列表已经空了，就地展开新建输入 ——
+      //   一是避免用户停在「零店铺」状态不知所措，二是**抢在 getShopContext 之前**让用户建好店
+      //   （此刻 used=0，免费额度还剩 1 家 ⇒ 新建不会被付费墙拦）。
+      if ((this.data.list || []).length === 0) {
+        this.setData({ mode: 'create', editingId: '', editName: '' });
+      }
     } catch (e) { api.toastError(e); }
     this.setData({ busy: false });
   },

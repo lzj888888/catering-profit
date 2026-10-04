@@ -1,0 +1,12 @@
+git keys: 10
+  git ls-files  rc=0 len(out)=173879
+  git -c core.quotepath=false ls-files  rc=0 len(out)=151109
+  git status --porcelain cloudfunctions/  rc=0 len(out)=161
+  git status --porcelain  rc=0 len(out)=779
+  git rev-parse --is-inside-work-tree  rc=0 len(out)=5
+  git log --oneline -8  rc=0 len(out)=355
+  git.exe ls-files  rc=0 len(out)=173879
+  git.exe status --porcelain  rc=0 len(out)=779
+  git.exe -c core.quotepath=false ls-files  rc=0 len(out)=151109
+  git.exe status --porcelain cloudfunctions/  rc=0 len(out)=161
+written: C:/Users/lzj/AppData/Local/Temp/inscode/gitcache.json

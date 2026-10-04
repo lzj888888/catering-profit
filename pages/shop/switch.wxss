@@ -28,4 +28,20 @@
  * 判据：`flex: 1 1 0` 的 basis 为 0，UA 的 `margin:auto` 抢不到自由空间（实测 66.5/240.5 的"飘"态就是它）。 */
 .edit-row.fill .edit-btn { flex: 1 1 0; }
 
+/* R208：行尾操作区（改名 / 删除）—— 两个按钮**摊开**，不再收进「⋯」。
+   🔴 定宽手法沿用 R195 实测结论：`<button>` 的 UA 默认宽度（恒 184px）会压过**单类选择器**的 `width`，
+      故一是把选择器提到**双类**（`.row-ops .ops-btn`），二是用 `flex: 0 0 <basis>` 兜底。 */
+.row-ops { display: flex; align-items: center; gap: 12rpx; flex: 0 0 auto; margin-left: 16rpx; }
+.row-ops .ops-btn {
+  flex: 0 0 96rpx;
+  width: 96rpx;
+  min-height: 88rpx;              /* 🔴 触控 ≥88rpx（仓硬红线） */
+  line-height: 88rpx;
+  padding: 0; margin: 0;
+  font-size: 28rpx;               /* 🔴 字号 ≥28rpx（仓硬红线） */
+  background: #f2f5f9; color: #46536a; border-radius: 12rpx;
+}
+.row-ops .ops-btn::after { border: none; }   /* 去掉小程序 button 默认描边 */
+.row-ops .ops-btn.danger { background: #fdecea; color: #c0392b; }
+
 .more-hint { font-size: 28rpx; color: #9aa4b2; margin: 12rpx 4rpx 40rpx; line-height: 1.6; }

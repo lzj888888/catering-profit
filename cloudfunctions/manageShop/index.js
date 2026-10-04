@@ -148,10 +148,11 @@ async function onWriteExisting(da, userId, v, crid, now) {
   }
 
   // op=delete
+  // R208：只要还有 ≥1 家活跃店就允许删（删到 0 家 = 额度释放，可再建；旧判据要求剩 ≥1 家是错的）
+  //   —— 详见 service.js::decideDelete 头注的历史更正。此处仅在「已无活跃店铺」这一异常态上 fail-closed。
   const cnt = await da.countActive('shop', { user_id: userId });
   const d = S.decideDelete({ activeCount: (cnt && cnt.total) || 0 });
-  // 边界：删完必须还剩 ≥1 家（否则用户把自己锁死：没店可进、也没店可建）
-  if (!d.allowed) return fail(ERROR_CODES.INVALID_PARAM, '至少要保留一家店铺，无法删除');
+  if (!d.allowed) return fail(ERROR_CODES.RESOURCE_NOT_FOUND, '没有可删除的店铺');
 
   const res = await da.softDelete('shop', rid, userId);
   const updated = (res && res.stats && res.stats.updated) || 0;
