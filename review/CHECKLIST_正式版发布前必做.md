@@ -59,7 +59,7 @@ dev 库里的任何账套 / 台账 / 测试数据**不会**流到正式版。
 | # | 动作 | 说明 | 谁做 |
 |---|---|---|---|
 | B1 | 建 25 张集合 | 🔴 **政策（非能力限制）**：`initDb` 有环境门禁 `gate()`，含 `prod` 子串一律拒绝 ⇒ **prod 集合由控制台手工创建**，`initDb` **绝不部署到 prod** | 李老师 / 我 |
-| B2 | 建 40 条索引 | **已可脚本化，零改造**：`node tools/apply_indexes.js --env <prod_id> --apply --secret-file <文件>`。该脚本走官方 HTTP API（幂等、可回读校验），`--env` 参数**已支持**（`tools/apply_indexes.js:60`：`valOf('--env') \|\| initDb/config.json::DEV_ENV_ID`，无 `--env` 时仍从单源现读、不手抄）。⚠️ 默认 dry-run，必须显式 `--apply`；AppSecret **用后即轮换**（账号级凭证） | 我 |
+| B2 | 建 **45 条索引**（R215c 更正：原文写「40 条」是 R174 把 40→45 后的**漏改**，与本节标题/单源 `collections.js` 的 45 冲突） | **已可脚本化，零改造**：`node tools/apply_indexes.js --env <prod_id> --apply --secret-file <文件>`。该脚本走官方 HTTP API（幂等、可回读校验），`--env` 参数**已支持**（`tools/apply_indexes.js:60`：`valOf('--env') \|\| initDb/config.json::DEV_ENV_ID`，无 `--env` 时仍从单源现读、不手抄）。⚠️ 默认 dry-run，必须显式 `--apply`；AppSecret **用后即轮换**（账号级凭证）。🔴 **线上 dev 现仅 40/45**（R174 那 5 条一直没建）⇒ 脚本幂等，跑一次即补齐；其中含 R202 兜底所需的 `shop.id` 索引（已登记于 `review/NOTE_2026-10-03_round203_impact-name-decode.md` 待办 #2，**不宜单加**，随本次批量一起做） | 我 |
 
 ### C. prod 种子数据 —— ✅ **落地路径已补**（见 `review/PLAN_2026-10-01_prod环境播种方案.md`）
 
@@ -81,6 +81,7 @@ dev 库里的任何账套 / 台账 / 测试数据**不会**流到正式版。
 | D1 | 全量部署 **42 个函数**（43 − `initDb`） | `cli cloud functions deploy --names <fn> -r`，**一次一个、必带 `-r`**（漏 `-r` = 覆盖云端 `wx-server-sdk` ⇒ 前端「网络不可用」） |
 | D2 | 🔴 **先在控制台定 all 函数 timeout 值，再全量部署** | 实测：`config.json` 的 `timeout` **不被采纳**（重启键 §该条），值只存在于控制台。**dev 定过 ≠ prod 生效**，必须重走「定值 → 部署 → `cli cloud functions info` 逐个回读」 |
 | D3 | `ADMIN_SETUP_TOKEN` 等凭证重配 | 凭证**不随环境走** |
+| D2-bis 🔴 | **dev 现存量缺口（R215c 巡检实测）**：`importSalesBill` 与 `manageShop` 的 `timeout` **仍是 3**，其余 42 个均为 20 | 判据 = `cli cloud functions info --names …` 的 `timeout` 列 = **20**。⚠️ 这两个现在真机必超时（`importSalesBill` 走 `cloud.downloadFile` + xlsx 解析 + 落库，3 秒绝不够）。**根因：新部署的函数 timeout 一律是平台默认 3**，故「部署完」≠「可用」，每次部署后必须回读 `timeout` 列 | **李老师**（控制台：版本管理 → 配置 → 高级配置 → 执行超时） |
 
 ### D+ 开真实支付 🔴（R215 补录 · R214 发现的清单缺口）
 
