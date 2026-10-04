@@ -79,6 +79,7 @@
 | 4 | 证据归档 | ✅ `review/evidence/r215d_timeout/`（4 张控制台截图 + 2 份 info 原文） |
 | 5 | 记录回填 | ✅ 本 NOTE + `CHECKLIST §D2-bis` 划闭 + `NOTE_215c §四-4/§五` 追加 + `PITFALLS §R215d` + `MEMORY.md §3` |
 | 6 | 技能更正 | ✅ `miniprogram-cloud-deploy §9`（现状段：3 残留 2 → 0；编码坑 GBK → UTF-8）；`win-desktop-control` 增配方 19（改云函数 timeout） |
+| 7 | 门禁 | ✅ **138/138 通过**（R92 ✅「138 个套件全部入库」· 复跑后 `miss=0`）—— 沙箱禁 node 派生子进程 ⇒ 走 `gate-under-sandbox` 三步法；归档 `review/evidence/r215d_gate/` |
 
 ---
 
@@ -86,7 +87,9 @@
 
 - [2026-10-05 01:50] **R215d 已落** · ① `importSalesBill`/`manageShop` timeout **3 → 20**（控制台键鼠代操，李老师零操作）；
   ② 全量 44 函数 `info` 回读 `timeout==3` = **0**、`Active` 44/44；③ 证据 `review/evidence/r215d_timeout/`；
-  ④ 三处记录 + 两处技能已回填。commit `<待填>`。
+  ④ 三处记录 + 两处技能已回填；⑤ **门禁 138/138 通过**（R92 ✅「138 个套件全部入库」· 复跑后 `miss=0`）
+  ⇒ 驱动与整套 stdout 归档 `review/evidence/r215d_gate/`。
+  commit `5f83836`（记录与证据）+ `de7bce8`（门禁产物）。
 - [2026-10-05 01:50] **R215d 未落** · ① **真机验证未做** —— 本次只改配置，未在真机走一次「账单导入」/「新建店铺」；
   按纪律「配置生效 ≠ 功能可用」，`importSalesBill` 的 xlsx 路径仍待真机点一次（R181m 已埋探针，但那是本地库路径）。
   ② prod 环境不存在 ⇒ 本条只对 dev 生效。
