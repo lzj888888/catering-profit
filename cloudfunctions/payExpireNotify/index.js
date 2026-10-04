@@ -10,7 +10,17 @@
 //   守卫 = tools/check_fn_public_surface.js 的 C-②（逐条点名本函数必须自保）。
 // 🔴 R215 触发器：同目录 config.json 声明 triggers（每天 10:00）—— ⚠️ 触发器要在部署后
 //   **单独「上传触发器」**才生效（普通部署不带它）；未接订阅消息前，本函数只把扫描结果
-//   写进云端日志（不推送），供上线后核对触发器是否真的跑起来。
+//   写进云端日志（不推送）。
+// 🔴 R215 决策（2026-10-04，李老师授权）：**暂不上传触发器 · 保留本函数待命（不下线）**。
+//   四环全缺 ⇒ 配了恒扫空：① 无 `expire_at > 0` 的真实付费用户（免费档建档恒 0，见
+//   `initDb/cx_auth.js:113`；唯一写非 0 处是 `payCallback`，真实支付未开）② 本函数不推送
+//   ③ 无订阅消息模板 ID、前端无 `requestSubscribeMessage` 授权收集 ④ 前端无兜底提示条
+//   （`miniprogram/` 对 `days_left`/`entitlement` 零消费）。
+//   启用四件套（模板ID → 前端授权 → send 推送 → 前端兜底条）与触发条件（=`CHECKLIST §D+`
+//   开真实支付完成）见 `review/CHECKLIST_正式版发布前必做.md §G` +
+//   `review/NOTE_2026-10-04_round215_*.md §八-quater`。
+//   ⚠️ 因此 `config.json` 属**「已声明、未启用」**状态（文件在仓、触发器未上传）——
+//   **别误读成「到期提醒已开」**。
 const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();

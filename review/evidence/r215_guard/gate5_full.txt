@@ -232,7 +232,7 @@
 ===== 批次0 自测结果（复审节点① 五条）=====
 ✅ 点1·身份只来自OPENID(忽略伪造记录)  →  user.id=u_real
 ✅ 点1·函数不接收event(签名为 ctx,db,audit)  →  resolveAuth.length=3（参数=ctx,db,audit，无 event 入口）
-✅ 点1b·首次自动建档返回user  →  user.id=u_mutvzupi3m2r
+✅ 点1b·首次自动建档返回user  →  user.id=u_mutxy20n333s
 ✅ 点1b·建了默认shop  →  shop=1
 ✅ 点1b·建了entitlement(expire_at=0)  →  expire_at=0
 ✅ 点1b·建档写audit_log(AUTH_AUTO_PROVISION)  →  audit=1
@@ -266,8 +266,8 @@
 ✅ A6b·并发首进只建出 1 个 user  →  user=1
 ✅ A6b·并发首进只建出 1 个 shop  →  shop=1
 ✅ A6b·并发首进只建出 1 条 entitlement  →  ent=1
-✅ A6b·并发两次拿到同一个 user_id  →  ids=u_mutvzupy1kn6,u_mutvzupy1kn6
-✅ A6b·店铺 id 用单源确定性格式 shop_<user_id>  →  shop_id=shop_u_mutvzupy1kn6
+✅ A6b·并发两次拿到同一个 user_id  →  ids=u_mutxy20y9d4b,u_mutxy20y9d4b
+✅ A6b·店铺 id 用单源确定性格式 shop_<user_id>  →  shop_id=shop_u_mutxy20y9d4b
 ✅ A6b·机制级：确定性 id ⇒ 同 user 第二次建店被库拒  →  rejected=true
 ✅ A6b·机制级：仅剩 1 个店  →  shop=1
 ✅ A6b·反向证据：随机 id 两次都成功 ⇒ 2 个店（这就是旧实现能建出重复店的原因）  →  shop=2
@@ -607,7 +607,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 ✅ P4 每个报告目录均真实存在  (1 个目录全部存在)
 ✅ P4 每个提到报告路径的活文档都给出了可解析的绝对路径  (4 份：review/README.md, SMOKETEST_RUNBOOK.md, 新手上云操作手册.md, specs/dev-specs/★知识存储点_2026-09-10.md)
 ✅ P5 报告目录含 ≥1 份 `YYYY-MM-DD.md`  (27 份)
-   ℹ️ 最新报告：2026-10-04.md（30268 B，mtime 2026-10-04 12:51）
+   ℹ️ 最新报告：2026-10-04.md（37430 B，mtime 2026-10-04 14:37）
 ✅ P6 诱饵「~\.workbuddy\memory」确实存在（标注不腐）  (~\.workbuddy\memory · 云端画像缓存)
 ✅ P6 诱饵「~\.workbuddy\MEMORY.md」确实存在（标注不腐）  (~\.workbuddy\MEMORY.md · 跨项目用户级记忆)
 
@@ -1284,7 +1284,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 
 ===== [batch5-payCreateOrder] cloudfunctions/payCreateOrder/selftest.js =====
 ===== 订单生成 =====
-✅ 生成订单号（PO 前缀）  (POMUTW492GL77H)
+✅ 生成订单号（PO 前缀）  (POMUTY1CI9D3YA)
 ✅ 金额=2590 分（整数）
 ✅ plan_id/plan_name 原样携带
 ✅ status=pending
@@ -1343,7 +1343,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 
 ===== [batch5-payRenew] cloudfunctions/payRenew/selftest.js =====
 ===== 续费订单生成 =====
-✅ 生成续费订单号（PR 前缀）  (PRMUTW4L05CEWD)
+✅ 生成续费订单号（PR 前缀）  (PRMUTY1NNU98VI)
 ✅ 金额=19900 分
 ✅ plan 携带 + status=pending
 ✅ enable_real_payment=false
@@ -1564,7 +1564,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 ✅ 新用户录单 → expire_at = 今日 + 31 天
 ✅ 权益 source=manual
 ✅ 订单写入（status=paid / channel=manual / 金额分）
-✅ 订单号 MO 前缀  (MOMU2MDMO0K8CH)
+✅ 订单号 MO 前缀  (MOMU2MDMO0BJYW)
 ✅ 订单关联 plan/user
 ✅ 审计 action=ADMIN_MANUAL_ORDER 且含前后值
 ✅ 未到期续费 → 原值 + 365 天（累加非覆盖）  (diff=33264000000)
@@ -2125,7 +2125,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 
 ===== [evidence-meta] tools/check_evidence_meta.js =====
 ===== S · 自失效护栏 =====
-✅ S1 扫描面非空 · review/evidence 下 .md/.txt = 886 个
+✅ S1 扫描面非空 · review/evidence 下 .md/.txt = 887 个
 
 ===== E1 · 纯读声明 vs 写入痕迹 =====
    ↳ review/evidence/realcloud_20260917/47_timeout_all.txt:77 检出写入痕迹，但**同小节已声明例外** ⇒ 放行（正面样本）
@@ -2607,8 +2607,8 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
   ✅ P2-② 声明 ≡ 实算（5/30/7）
 
 ===== P3 全仓当前态引用 ≡ 实算（锚点就近 ≤40 字符） =====
-  ✅ P3-① 扫描面 307 个 .md（index ∪ 工作树，无八进制转义）
-  ✅ P3-② 扫描面文件数 307 ≥ 30（前提守卫，非恒真）
+  ✅ P3-① 扫描面 308 个 .md（index ∪ 工作树，无八进制转义）
+  ✅ P3-② 扫描面文件数 308 ≥ 30（前提守卫，非恒真）
   ✅ P3-⑤ 关键文件均在扫描面（3 个，fail-closed）
   ✅ P3-③ 强面（可判红的当前态陈述）18 处 ≥ 5（扫描面/句式写错即零命中，非恒真）
   ✅ P3-④ 全部 18 处当前态引用 ≡ 实算（5/30/7）
@@ -2831,7 +2831,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
   ⚠️ review/NOTE_2026-09-28_round163-归月口径与美团接数准备.md:171 「## 附：更正一条待办 —— 「A 组四项优化」其实已在 round156 落地」/ 正文 "已落地"
   ⚠️ review/REVIEW_2026-09-15_round2-verify.md:32 「## §1 待办（R12 起顺延上一份编号）」/ 正文 "已闭环"
   ⚠️ review/ROADMAP_2026-09-30_下一步总览.md:239 「### B 线 · 投喂 InsCode（**通道已就绪，可开工**；按优先级排队）」/ 正文 "已落地"
-  · 弱面共 4 条 / 扫 260 个档案文件 —— 档案里的"待办清单部分已闭环"属正常形态，只提示不判红
+  · 弱面共 4 条 / 扫 261 个档案文件 —— 档案里的"待办清单部分已闭环"属正常形态，只提示不判红
   ✅ W-① 弱面扫描完成：4 条明示（弱面只提示、不判红）
 
 ===== 状态陈述矛盾守卫结果：12 通过 / 0 失败 =====
@@ -3660,7 +3660,7 @@ R118 · 归档补录宽限期口径穿透守卫（计算常量 ≡ 服务端文�
   ✅ D-⑤ 本守卫断言数 ≥ 14（非恒真证明力下界） —— 当前累计 15 条
 
 ===== W 弱面（引擎自测 / 设计文档 / 守卫自身 里的正当提及） =====
-  ✅ W-① 弱面明示完成（不论命中多少均不判红） —— 939 个文件 · 32 处命中（例：cloudfunctions/calcSandbox/selftest.js、tools/check_indicator_ref.js、tools/check_m2_no_cost_rate.js） —— 三类正当面：引擎自测(内部量) / 设计文档(讨论口径) / 守卫自身(判据本体)
+  ✅ W-① 弱面明示完成（不论命中多少均不判红） —— 938 个文件 · 32 处命中（例：cloudfunctions/calcSandbox/selftest.js、tools/check_indicator_ref.js、tools/check_m2_no_cost_rate.js） —— 三类正当面：引擎自测(内部量) / 设计文档(讨论口径) / 守卫自身(判据本体)
 
 ===== 零成本率文案面守卫结果：17 通过 / 0 失败 =====
   [no-cost-rate] ✅ PASS  (✅ 17 条 / 段 7)
@@ -4416,7 +4416,7 @@ R118 · 归档补录宽限期口径穿透守卫（计算常量 ≡ 服务端文�
 ===== S · 自失效护栏（防「判据恒真」与「扫描面扫空」）=====
 ✅ S3-a 匹配器正样本全部命中（folder / file / suffix / prefix 四类） · 6/6 命中
 ✅ S3-b 匹配器负样本全部放行（禁「一律忽略」式恒真） · 5/5 放行
-✅ S1 扫描面非退化：未忽略文件数达下界 · 全盘 4689 个文件中未忽略 125 个（下界 60）
+✅ S1 扫描面非退化：未忽略文件数达下界 · 全盘 4690 个文件中未忽略 125 个（下界 60）
 ✅ S2 关键入口真在入包集合内（扫空 / 根路径写错即转红） · 锚点 5 个全部命中
 
 ===== P · 入包体积（微信预览 / 上传硬上限 2 MB）=====
@@ -4935,4 +4935,4 @@ R213 权益链路：免费额度阈值/到期判定/续费/后台调权四段均
 
 ===== 总览：137/137 套件通过 =====
 R92（套件入库，真 git 判定）：✅
-耗时 818.7s
+耗时 686.6s
