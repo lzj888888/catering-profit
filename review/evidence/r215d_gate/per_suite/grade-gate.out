@@ -1,0 +1,18 @@
+===== 正常通过 =====
+✅ 正常输入 → pass=true  ([])
+✅ 正常输入 → level=A
+✅ 正常输入 → failures 空
+===== ① 通道连通反例 =====
+✅ ① rows 空 → pass=false 且报 CHANNEL_EMPTY  ([{"code":"CHANNEL_EMPTY","field":"rows","msg":"未解析到任何数据行"}])
+✅ ① totals 缺失 → CHANNEL_TOTAL_MISSING
+===== ② Schema 校验反例 =====
+✅ ② platform 非法 → SCHEMA_PLATFORM
+✅ ② bizDate 格式错 → SCHEMA_BIZDATE
+✅ ② amountFen 非整数 → SCHEMA_AMOUNT
+✅ ② qty 为负 → SCHEMA_QTY
+===== ③ 关键指标非空反例 =====
+✅ ③ shop_id 空 → REQUIRED_SHOP_ID
+✅ ③ biz_date 空 → REQUIRED_BIZDATE
+
+============================================================
+===== 甲级门禁自测结果：11 通过 / 0 失败 =====
