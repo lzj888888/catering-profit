@@ -1,0 +1,15 @@
+SUITES = 135
+R92: ✅ 135 个套件全部入库
+X.........................................................XXXX.....X...................X....X......X...................................
+============================================================
+总览：126/135 通过   耗时 431.1s
+R92: ✅
+  ❌ [门禁 A-L] specs/dev-specs/prototype/check_error_codes.js :: exit=1
+  ❌ [batch8-ui-fix] tools/selftest_ui_fix.js :: exit=1
+  ❌ [batch8b-features] tools/selftest_batch8b.js :: exit=1
+  ❌ [batch8c-amort-batches] tools/selftest_batch8c.js :: exit=1
+  ❌ [ad-gates] tools/selftest_ad_gates.js :: exit=1
+  ❌ [terms-forbidden] tools/check_terms_forbidden.js :: exit=1
+  ❌ [r85-takeaway] tools/selftest_r85.js :: exit=1
+  ❌ [takeaway-paste-cases] tools/check_takeaway_paste_cases.js :: exit=1
+  ❌ [no-cost-rate] tools/check_m2_no_cost_rate.js :: exit=1

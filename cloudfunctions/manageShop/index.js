@@ -8,18 +8,23 @@
 //        `saveShopSetting`（只更新**当前**店）⇒ 用户以为在建店，实际在给当前店改名；
 //     ③ 重命名只能改「当前店」，且要先进设置页（列表里没有入口）。
 //   ⇒ 三件事合成一个函数：`op: create | rename | delete`。
+//   R210 再加两个：`op: reset`（清空这家店的月度账，**店还在**）、`op: stats`（只读清点量级）。
+//     起因 = 李老师「对于有一个店的餐饮老板，删除店铺是删除不了的」——R208 虽已放开末店可删，
+//     但老板真正想要的出口是「重做一遍账」，不该被迫把店删掉。详见 service.js 的 R210 注释段。
 //
 // 契约：
 //   入参 { op, name?, target_shop_id?, client_request_id? }
 //     ⚠️ 目标店字段**必须**叫 `target_shop_id`：`utils/api.js::call()` 会无条件注入当前店的 `shop_id`
-//        （Object.assign({shop_id}, payload)）⇒ 用 shop_id 传目标会被静默覆盖成"当前店"。
-//   出参（三 op 同形子集）{ op, shop_id, name?, used?, remaining?, free_limit?, replayed?, client_request_id }
-//   错误：INVALID_PARAM（入参 / 最后一家不可删）、FORBIDDEN（非本人店铺）、RESOURCE_NOT_FOUND（店不存在或已软删）、
-//        FREE_LIMIT_EXCEEDED（超免费额度）、HARD_CAP_EXCEEDED（超硬上限）、SYSTEM_ERROR（写库未被写入 / 配额配置缺失）
-//   权限：create 只验身份；rename / delete 另验**目标店归属**（assertShopOwner）
-//   幂等：rename / delete 走 `findPriorResult`（重放形态，同一 crid 直接回首次结果）；
+//   出参（各 op 同形子集）{ op, shop_id, name?, used?, remaining?, free_limit?, replayed?, client_request_id,
+//                          months?, rows?, income?, expense? }（后四个只有 stats / reset 回）
+//   错误：INVALID_PARAM（入参）、FORBIDDEN（非本人店铺）、RESOURCE_NOT_FOUND（店不存在或已软删）、
+//        FREE_LIMIT_EXCEEDED（超免费额度）、HARD_CAP_EXCEEDED（超硬上限）、SYSTEM_ERROR（写库未被写入 / 配额配置缺失 /
+//        清空行数超护栏 RESET_MAX_ROWS）
+//   权限：create 只验身份；rename / delete / reset / stats 另验**目标店归属**（assertShopOwner）
+//   幂等：rename / delete / reset 走 `findPriorResult`（重放形态，同一 crid 直接回首次结果）；
 //        create 走**确定性 `_id`**（同 crid 重试撞 `_id` ⇒ 回读首次结果），与 common/defaultShopId 同一手法。
-//   软删：删除只写 is_deleted=true（**绝不物理删除**），历史账本/成本卡保留可追溯。
+//        ⚠️ stats 是**纯读**，跳过幂等重放（同样不写 audit_log，否则清点一次就留一条垃圾审计）。
+//   软删：删除店铺 / 清空月度账都只写 is_deleted=true（**绝不物理删除**），历史数据保留可追溯。
 //
 // ⚠️ 本函数**不动金额引擎**（无 netUnitCostWan / calcCostCard 调用）⇒ 无锚点复算面。
 const cloud = require('wx-server-sdk');
@@ -127,6 +132,11 @@ async function onWriteExisting(da, userId, v, crid, now) {
   const owner = await assertShopOwner(db, target, userId);
   if (owner.error) return fail(owner.error, owner.msg);
 
+  // 🔴 R210：stats 是**纯读** ⇒ 必须排在 findPriorResult **之前**返回
+  //    （清点一次不该留下幂等记录、也不该进审计表），但仍排在 assertShopOwner **之后**
+  //    —— 越权者连「这家店有几条账」都不该问到。
+  if (v.op === 'stats') return onStats(da, target);
+
   // 幂等重放（同一 crid 的第二次调用 ⇒ 直接回首次结果）
   const prior = await common.idempotency.findPriorResult(db, target, crid);
   if (prior) return ok(prior);
@@ -147,6 +157,9 @@ async function onWriteExisting(da, userId, v, crid, now) {
     return ok(result);
   }
 
+  // ===== op=reset：清空这家店的月度账（店铺本身**保留**）=====
+  if (v.op === 'reset') return onReset(da, userId, target, crid);
+
   // op=delete
   // R208：只要还有 ≥1 家活跃店就允许删（删到 0 家 = 额度释放，可再建；旧判据要求剩 ≥1 家是错的）
   //   —— 详见 service.js::decideDelete 头注的历史更正。此处仅在「已无活跃店铺」这一异常态上 fail-closed。
@@ -166,6 +179,100 @@ async function onWriteExisting(da, userId, v, crid, now) {
     action: 'SHOP_DELETE', operator_type: 'user', operator_id: userId, shop_id: target,
     before_data: { name: result.name, is_deleted: false }, after_data: result,
     remark: '删除店铺（软删，不物理清除历史账本与成本卡）', idempotency_key: common.idempotency.shopKey(target, crid),
+  });
+  return ok(result);
+}
+
+// ===== R210：清点这家店的月度账量级（纯读，供 op=stats 与 op=reset 共用）=====
+// 🔴 凡「要全部行」的场景**必用 listAll**（`list()` 上限 LIST_LIMIT 且语义是"展示用列表"）：
+//    否则「到底判据」不成立 —— 漏掉的行既不会被清、也不会报错，是典型的静默半删。
+async function scanMonthly(da, target) {
+  const acc = await da.listAll('shop_monthly_account', { shop_id: target, is_deleted: false });
+  const rows = (acc && acc.data) || [];
+  const seen = {};
+  let months = 0;
+  for (let i = 0; i < rows.length; i++) {
+    const m = rows[i] && rows[i].month;
+    if (m && !seen[m]) { seen[m] = 1; months += 1; }
+  }
+  const inc = await da.countActive('shop_monthly_income', { shop_id: target });
+  const exp = await da.countActive('shop_monthly_expense', { shop_id: target });
+  const income = (inc && inc.total) || 0;
+  const expense = (exp && exp.total) || 0;
+  return {
+    months,
+    rows: rows.length + income + expense,     // 三表合计行数 ⇒ 与 RESET_MAX_ROWS 同一口径
+    income, expense,
+    truncated: !!(acc && acc.truncated),
+    detail: { account: rows.length, income, expense },
+  };
+}
+
+// ===== op=stats：只读清点（不写库、不写审计、不进幂等）=====
+async function onStats(da, target) {
+  const st = await scanMonthly(da, target);
+  return ok({
+    op: 'stats', shop_id: target,
+    months: st.months, rows: st.rows,
+    income: st.income, expense: st.expense,
+  });
+}
+
+// ===== op=reset：清空这家店的月度账（店 / 菜品卡 / 原料全保留）=====
+async function onReset(da, userId, target, crid) {
+  // 1. 先清点 ⇒ 交给 decideReset 判能不能清（没账不清、超护栏不清）
+  const st = await scanMonthly(da, target);
+  const d = S.decideReset({ months: st.months, rows: st.rows, truncated: st.truncated });
+  if (!d.allowed) {
+    if (d.reason === 'TOO_MANY_ROWS') {
+      return fail(ERROR_CODES.SYSTEM_ERROR,
+        '这家店月度账数据太多（超 ' + S.RESET_MAX_ROWS + ' 行），暂不支持一键清空');
+    }
+    return fail(ERROR_CODES.RESOURCE_NOT_FOUND, '这家店还没有月度账套，不需要清空');
+  }
+
+  // 2. 逐表软删。🔴 写库主键**必须**用 `_id`（`doc(业务键).update()` 在真云**静默 0 行**，
+  //    round116 血案）⇒ 先 listAll 拿到真实 `_id`，再按小批并发 softDelete，逐条核 stats.updated；
+  //    任一行没被写入即整体 fail —— **绝不留"半清干净"的中间态**。
+  const BATCH = 20;
+  const cleaned = {};
+  for (let i = 0; i < S.RESET_COLLECTIONS.length; i++) {
+    const coll = S.RESET_COLLECTIONS[i];
+    const all = await da.listAll(coll, { shop_id: target, is_deleted: false });
+    const list = (all && all.data) || [];
+    const ids = [];
+    for (let j = 0; j < list.length; j++) {
+      const row = list[j] || {};
+      const ridRow = row._id || row.id || '';
+      if (ridRow) ids.push(ridRow);
+    }
+    if (ids.length !== list.length) {
+      return fail(ERROR_CODES.SYSTEM_ERROR, '月度账读取不完整（' + coll + '：缺 ' + (list.length - ids.length) + ' 个主键）');
+    }
+    let done = 0;
+    for (let b = 0; b < ids.length; b += BATCH) {
+      const slice = ids.slice(b, b + BATCH);
+      const rs = await Promise.all(slice.map((ridRow) => da.softDelete(coll, ridRow, userId)));
+      for (let k = 0; k < rs.length; k++) done += (rs[k] && rs[k].stats && rs[k].stats.updated) || 0;
+    }
+    if (done !== ids.length) {
+      return fail(ERROR_CODES.SYSTEM_ERROR, '月度账未完全清空（' + coll + '：' + done + '/' + ids.length + '）');
+    }
+    cleaned[coll] = done;
+  }
+
+  const result = {
+    op: 'reset', shop_id: target,
+    months: d.months, rows: d.rows,
+    income: cleaned.shop_monthly_income || 0,
+    expense: cleaned.shop_monthly_expense || 0,
+    client_request_id: crid,
+  };
+  await writeAudit(db, {
+    action: 'SHOP_RESET', operator_type: 'user', operator_id: userId, shop_id: target,
+    before_data: st.detail, after_data: result,
+    remark: '清空月度账（软删 ' + d.months + ' 个月账套 / ' + d.rows + ' 行；店铺与菜品卡、原料保留）',
+    idempotency_key: common.idempotency.shopKey(target, crid),
   });
   return ok(result);
 }

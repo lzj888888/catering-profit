@@ -89,13 +89,53 @@ function buildShopDoc(p) {
   };
 }
 
+// ===== R210：清空这家店的月度账（op=reset）—— 比「删除店铺」轻得多的第二条出口 =====
+//
+// 为什么要它：李老师的原话是「对于有一个店的餐饮老板，删除店铺是删除不了的」。
+//   R208 已经把「最后一家也能删」放开（见 decideDelete 头注），但**放开 ≠ 合适**：
+//   只有一家店的老板点「删除」，九成想要的其实是「把账重做一遍」，而不是「店消失」。
+//   删除是**认知负担最重**的动作；把它做成唯一出口，等于用最重的锤子敲最轻的钉子。
+//   ⇒ 补一条轻得多的出口：**店铺 / 菜品成本卡 / 原料档案全部保留**，只清空月度账套。
+//
+// 🔴 清点范围严格限定为月度账**三张表**（其余集合一个都不碰）：
+//   · shop_monthly_account  月度账套主表（一行 = 一个月的账）⇒ months 就是它数出来的
+//   · shop_monthly_income   月度收入明细（按 shop_id + month 挂载）
+//   · shop_monthly_expense  月度支出明细（同上）
+//   为什么**不含** shop_cost_card / shop_material：那是老板一条条录进去的**资产**
+//   （菜品配方、原料单价），重做一个月不该赔掉整本菜谱。
+const RESET_COLLECTIONS = ['shop_monthly_account', 'shop_monthly_income', 'shop_monthly_expense'];
+
+// 护栏（不是业务额度）：单次清空的**行数**上限。超了 ⇒ fail-closed（不猜、绝不半删）。
+const RESET_MAX_ROWS = 2000;
+
+/**
+ * 清空月度账判定（纯函数，可被 selftest / 守卫直接 require）。
+ * @param {{months:number, rows:number, truncated?:boolean}} p
+ * @returns {{months, rows, truncated, too_many, allowed, reason}}
+ *   reason: ''（可清）| 'NO_MONTHLY_DATA'（本来就没账）| 'TOO_MANY_ROWS'（超护栏）
+ */
+function decideReset(p) {
+  const months = Number(p && p.months) || 0;
+  const rows = Number(p && p.rows) || 0;
+  const truncated = !!(p && p.truncated);
+  const tooMany = truncated || rows > RESET_MAX_ROWS;
+  return {
+    months, rows, truncated,
+    too_many: tooMany,
+    // 没有月度账 ⇒ **不做无意义的写库**（前端据此改提示「这家店还没有月度账」）
+    allowed: months > 0 && !tooMany,
+    reason: tooMany ? 'TOO_MANY_ROWS' : (months > 0 ? '' : 'NO_MONTHLY_DATA'),
+  };
+}
+
 /** 重命名补丁（只改名 ⇒ 不动 remark/业态等其它字段）。 */
 function buildRenamePatch(p) {
   return { name: (p && p.name) || '', updated_at: p && p.now };
 }
 
 module.exports = {
-  requireShopLimits, decideCreate, decideDelete,
+  requireShopLimits, decideCreate, decideDelete, decideReset,
   buildCreateShopId, buildShopDoc, buildRenamePatch,
   NAME_MAX, CREATE_ID_PREFIX, ERROR_CODES,
+  RESET_COLLECTIONS, RESET_MAX_ROWS,
 };

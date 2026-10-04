@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：134 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：135 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -319,7 +319,18 @@
 //         传出去的必须是 months[i] 字符串 / 重复与越界都不许发请求 / 高亮要跟随），
 //         B 组实跑生产 validate.js 证明历史月本来就放行（**不是产品限制**），
 //         C 组把全仓 17 处 selector picker 的 handler 做成同类回归 + 关键锚点在场护栏，
-//         D 组管 wxml 用 monthIndex 变量取选中项；18 条断言，变异回灌 3/3 全部点名目标断言）
+//         M3 高亮不跟随→A-⑤）**
+//       + 清空月度账守卫（tools/check_shop_reset.js，R210：**给"删除店铺"配一条轻得多的第二条出口** ——
+//         起因＝李老师「对于有一个店的餐饮老板，删除店铺是删除不了的」。R208 虽然已把末店放开，
+//         但老板点删除九成想要的是「把账重做一遍」，不该被迫把整家店删掉 ⇒ 新增 op=reset / op=stats：
+//         **店铺 / 菜品成本卡 / 原料档案全部保留**，只软删月度账三张表。
+//         🔴 本守卫最硬的一条：清空的刀必须落在月度账三表上，**绝不能碰到成本卡与原料** ——
+//           那是老板一条条录进去的资产，而「顺手再多塞两个集合名」在实现上零痛感、却永久丢数据。
+//         判据 = S 自失效护栏 + A 实跑 decideReset（边界成对 / truncated 必拦 / 脏值 fail-closed）
+//              + B 实跑 validateInput（🔴负样本必须带合法 name，否则被下一道 name 校验兜住 ⇒ 判据恒真）
+//              + C 范围恰三表且不含资产表 + D 前端三按钮与「先查量级再确认」的数据流
+//              + E 文案报的是量级不是空话 + F 后端路由与写库纪律（listAll / _id / stats.updated）；
+//         51 条断言，变异回灌 12/12 全部点名目标断言）
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -723,6 +734,7 @@ const SUITES = [
   ['home-ui-v3',            'tools/check_home_ui_v3.js'],
   ['shop-lifecycle',        'tools/check_shop_lifecycle.js'],
   ['month-picker',          'tools/check_month_picker.js'],
+  ['shop-reset',           'tools/check_shop_reset.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

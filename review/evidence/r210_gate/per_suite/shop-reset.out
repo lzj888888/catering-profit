@@ -1,0 +1,67 @@
+===== S. 自失效护栏（扫描面被扫空 ⇒ 上限类判据恒绿）=====
+✅ S-① 六个被测文件全部非空  (文件数=6 / 最短=1843)
+✅ S-② 五个关键锚点全在场（少一个 ⇒ 本守卫对它零覆盖）  (缺=)
+✅ S-③ RESET_MAX_ROWS 是正整数且不超 listAll 护栏 LIST_TOTAL_CAP  (MAX=2000)
+
+===== A. decideReset 实跑（require 生产 service.js）=====
+✅ A-① 有账可清 ⇒ 放行且 reason 为空  (months=3)
+✅ A-② 零个月 ⇒ 拦，reason=NO_MONTHLY_DATA（不做无意义写库）  (NO_MONTHLY_DATA)
+✅ A-③ 边界成对：rows 恰等于护栏 ⇒ 放行（不多拦一条）
+✅ A-④ 边界成对：rows 超护栏 1 条 ⇒ 拦且 reason=TOO_MANY_ROWS  (TOO_MANY_ROWS)
+✅ A-⑤ listAll 没拉到底（truncated）⇒ 即便行数很小也不放行（绝不半删）  (too_many=true)
+✅ A-⑥ 入参整体缺失 ⇒ months/rows 归零且拦住（不猜、不默认放行）
+✅ A-⑦ months 有值但 rows 缺失 ⇒ 仍可清（rows 只是护栏，不是许可条件）
+✅ A-⑧ 反恒真：把 months 换成 NaN 型脏值 ⇒ 必须拦住
+
+===== B. validateInput 实跑（op 白名单不许被"子串/大小写"蒙混）=====
+✅ B-① op=reset 且带目标店 ⇒ 放行
+✅ B-② op=stats 且带目标店 ⇒ 放行
+✅ B-③ op=reset 缺目标店 ⇒ INVALID_PARAM（不许对"当前店"隐式生效）
+✅ B-④ op=stats 缺目标店 ⇒ INVALID_PARAM
+✅ B-⑤ 近义拼写一概拒（clean / Reset / stats_ / resett）
+✅ B-⑥ OPS 恰好五个且含 reset/stats  (create,rename,delete,reset,stats)
+✅ B-⑦ NAMELESS_OPS 含 delete/reset/stats 且**不含** create/rename（后两者必须有名字）
+✅ B-⑧ 反恒真：白名单若退化成 `o.indexOf(op)` / 首字母 / 大小写不敏感式宽松匹配，这些非白名单 op 必被放行 ⇒ 本组守的就是这一点
+✅ B-⑨ 负样本对照：同样的入参**去掉** target 才是另一回事（证明上面不是靠缺 target 才红）
+
+===== C. 清空范围：恰三张月度账表，**绝不碰菜品卡 / 原料** =====
+✅ C-① RESET_COLLECTIONS 恰三张月度账表  (shop_monthly_account,shop_monthly_income,shop_monthly_expense)
+✅ C-② 清空范围**不含**任何资产类表（成本卡/原料/店铺本体/摊销/沙盘）  (越界=)
+✅ C-③ 三张表都在集合单源 COLLECTIONS 里（不得引入单源外的新集合）  (未登记=)
+✅ C-④ Controller 的清理循环读的就是 RESET_COLLECTIONS（不写第二份清单）
+✅ C-⑤ 清理只挑 is_deleted=false 的活跃行（软删过的不再重复写）
+✅ C-⑥ 反恒真：若把「+ S.RESET_COLLECTIONS.append('shop_cost_card')」写成第二份清单 ⇒ 本条转红  (len=3)
+
+===== D. 前端：三个行内按钮 + 先报量级再确认 =====
+✅ D-① wxml 恰好三个行内操作按钮  (onRenameTap,onResetTap,onDeleteTap)
+✅ D-② 三个按钮依次是改名 / 清空 / 删除（破坏力递增，且三个 handler 互不相同）  (onRenameTap,onResetTap,onDeleteTap)
+✅ D-③ 三个 handler 在页面里都有定义  (onRenameTap,onResetTap,onDeleteTap)
+✅ D-④ 先查量级：存在 fetchImpact 且走 op=stats（不是凭空写恐吓句）
+✅ D-⑤ fail-closed：清点失败时的哨兵值被两处调用方明判（months < 0 就不再往下走）  (2 处)
+✅ D-⑥ 没有月账时不弹危险确认窗（改弹提示直接收手）
+✅ D-⑦ 确认框文案真的把月数插进去了（resetAsk(months) 传参，不是硬编码一句）
+✅ D-⑧ 删除同理：content 走 deleteAsk(months)，不再是固定一句
+✅ D-⑨ 真正执行清空走 op=reset
+✅ D-⑩ 店名层自带截断（class="nm" + text-overflow: ellipsis），长店名不得压到三个按钮上
+
+===== E. 文案单源：报的是**量级**，不是空话 =====
+✅ E-① resetAsk(7) 文案里真出现 7（把量级写给用户看）  (清掉这家店 7 个月的月度账？店铺名、菜品成本卡、原料档案都留着，只是账本归零，可以马上重录。)
+✅ E-② deleteAsk(7) 文案里真出现 7  (这家店有 7 个月的月度账。删除后店铺不再出现在列表里，这几笔账在前台也看不到了（后台仍保留，不物理销毁）。)
+✅ E-③ deleteAsk(0) 退化为无账版退守文案（不出现"0 个月"这种废话）  (删除后该店铺不再出现在列表里，也不再占用店铺额度)
+✅ E-④ resetAsk 明确保留范围（店名 / 成本卡 / 原料至少点到两样）
+✅ E-⑤ modal 两个确认键都 ≤4 字（超了整窗 fail 且静默）  (清空/删除)
+✅ E-⑥ 行尾说明文案改口为三个动作（不再只说两个）
+✅ E-⑦ 已删掉被取代的旧键 deleteConfirm（留着就是第二份口径）
+
+===== F. 后端路由与写库纪律 =====
+✅ F-① stats 排在幂等重放**之前**（纯读不该留下幂等/审计痕迹）
+✅ F-② stats 排在归属校验**之后**（越权者连量级都不该问到）
+✅ F-③ reset 也要目标店归属校验（与 rename/delete 共用一段，不另起炉灶）
+✅ F-④ 四个写 op 都留痕（writeAudit ≥ 4 处；stats 纯读不留）  (4 处)
+✅ F-⑤ 清点/清空一律 listAll（list() 上限 LIST_LIMIT ⇒ 会静默漏行）
+✅ F-⑥ 软删按行内真实主键（row._id 优先），不是拼业务键
+✅ F-⑦ 逐行核 stats.updated 且不等即 fail-loud（绝不留下"半清干净"）
+✅ F-⑧ 没抄近路用批量 where(...).update() 掩盖写库结果
+✅ F-⑨ 无任何物理删除（全函数零 .remove(）
+
+===== 店铺清空月度账守卫结果：52 通过 / 0 失败 =====

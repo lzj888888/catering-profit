@@ -35,7 +35,16 @@ Page({
       noShopHint: TERMS.exp.noShopHint,
       renameShop: TERMS.exp.renameShop,
       renameShort: TERMS.exp.renameShort,
+      deleteShop: TERMS.exp.deleteShop,
       deleteShort: TERMS.exp.deleteShort,
+      deleteAsk: TERMS.exp.deleteAsk,
+      resetShort: TERMS.exp.resetShort,
+      resetShop: TERMS.exp.resetShop,
+      resetOk: TERMS.exp.resetOk,
+      resetAsk: TERMS.exp.resetAsk,
+      resetDone: TERMS.exp.resetDone,
+      resetNoData: TERMS.exp.resetNoData,
+      checkingImpact: TERMS.exp.checkingImpact,
       namePh: TERMS.settings.shopNamePh,
       createOk: TERMS.exp.createOk,
       save: TERMS.buttons.save,
@@ -114,7 +123,62 @@ Page({
     const id = e.currentTarget.dataset.id;
     if (!id) return;
     const item = (this.data.list || []).filter((x) => x.shop_id === id)[0] || {};
-    this.onDeleteAsk(id, item.name || '');
+    this.askDelete(id, item.name || '');
+  },
+
+  // ===== R210：清空这家店的月度账（店铺 / 菜品成本卡 / 原料档案**全保留**）=====
+  //   只有一家店的老板点「删除」，九成要的是「把账重做一遍」，而不是「店消失」。
+  //   ⇒ 给一条破坏力小得多的出口；三个动作同行平铺（改名 / 清空 / 删除），**都不藏进二级菜单**。
+  onResetTap(e) {
+    const id = e.currentTarget.dataset.id;
+    if (!id) return;
+    const item = (this.data.list || []).filter((x) => x.shop_id === id)[0] || {};
+    this.askReset(id, item.name || '');
+  },
+
+  // 🔴 后果量级必须**真去查**（op=stats），不能拿「数据将永久丢失」这类万能恐吓句糊弄。
+  //   查不到（-1）⇒ **不许往下走**（fail-closed）：宁可不给这个口子，也不让用户盲确认。
+  async fetchImpact(id) {
+    wx.showLoading({ title: this.data.t.checkingImpact, mask: true });
+    try {
+      const d = await api.call('manageShop', {
+        op: 'stats', target_shop_id: id, client_request_id: 'ss_' + Date.now(),
+      });
+      return (d && Number(d.months)) || 0;
+    } catch (e) {
+      api.toastError(e);
+      return -1;
+    } finally {
+      wx.hideLoading();
+    }
+  },
+
+  async askReset(id, name) {
+    if (this.data.busy) return;
+    const months = await this.fetchImpact(id);
+    if (months < 0) return;
+    if (months === 0) { wx.showToast({ title: this.data.t.resetNoData, icon: 'none' }); return; }
+    wx.showModal({
+      title: this.data.t.resetShop + ' · ' + name,
+      content: this.data.t.resetAsk(months),
+      cancelText: TERMS.buttons.thinkAgain,
+      confirmText: TERMS.exp.resetOk,
+      confirmColor: '#e74c3c',
+      success: (r) => { if (r.confirm) this.doReset(id); },
+    });
+  },
+
+  async doReset(id) {
+    if (this.data.busy) return;
+    this.setData({ busy: true });
+    try {
+      const d = await api.call('manageShop', {
+        op: 'reset', target_shop_id: id, client_request_id: 'srz_' + Date.now(),
+      });
+      wx.showToast({ title: this.data.t.resetDone((d && Number(d.months)) || 0), icon: 'success' });
+      await this.load();
+    } catch (e) { api.toastError(e); }
+    this.setData({ busy: false });
   },
 
   onRenameOpen(id, name) {
@@ -143,7 +207,12 @@ Page({
     this.setData({ busy: false });
   },
 
-  onDeleteAsk(id, name) {
+  async askDelete(id, name) {
+    if (this.data.busy) return;
+    // 🔴 R210：先报**后果量级**再让用户拍板 —— 真查到几个月就写几个月；
+    //   清点失败（-1）直接不开这个窗（不拿「数据可能丢失」这种万能恐吓句糊弄过去）。
+    const months = await this.fetchImpact(id);
+    if (months < 0) return;
     // 🔴 R208：**不再禁止删除最后一家**。旧实现在这里直接 return 一个「至少要保留一家」弹窗，
     //   与 `exp.deleteConfirm` 承诺的「不再占用店铺额度」自相矛盾 —— 免费档（限 1 家）
     //   永远删不掉 ⇒ 额度永远腾不出来，想换店只能付费。改为**分级告知后果**：
@@ -152,7 +221,7 @@ Page({
     const willBeEmpty = (this.data.list || []).length <= 1;
     wx.showModal({
       title: TERMS.exp.deleteShop + ' · ' + name,
-      content: willBeEmpty ? this.data.t.deleteLastHint : TERMS.exp.deleteConfirm,
+      content: this.data.t.deleteAsk(months) + (willBeEmpty ? '\n' + this.data.t.deleteLastHint : ''),
       cancelText: TERMS.buttons.thinkAgain,
       // ⚠️ showModal 按钮文案 ≤4 字（超了整窗 fail 且静默）。
       // 🔴 本行**不得写行内注释**：`tools/check_modal_button_len.js` 的解析器按整行取值，

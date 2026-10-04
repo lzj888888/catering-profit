@@ -1,0 +1,14 @@
+===== 软删过滤（切换列表只含 is_deleted=false）=====
+✅ 活跃店铺进入列表
+✅ 软删店铺不进入列表（DataAdapter 过滤）
+===== 免费配额（注入值驱动，不钉死额度值）=====
+✅ freeLimit=1：0 家未超限
+✅ freeLimit=1：1 家超限（第 2 家触发付费墙）
+✅ freeLimit=2：1 家未超限（与 freeLimit=1 结论不同）
+✅ 判定随注入值变化（正负互证）
+✅ 缺 limits.shop（undefined）→ 判定为"缺配置"（index.js 会 SYSTEM_ERROR）  (见 index.js 第 41-44 行)
+===== 软删不占额语义 =====
+✅ 软删店不占额：活跃数组只含 1 家（软删已滤）
+✅ used=活跃数
+
+==== getShopList 批次 7/A1 自测结果：9 通过 / 0 失败 ====

@@ -6,6 +6,11 @@
 .shop-main { flex: 1; min-width: 0; }
 /* 名字区是整块点击目标 ⇒ 撑到 88rpx 触控高（与 .more.round / .btn-small 同一条红线） */
 .shop-main .shop-name { display: flex; align-items: center; min-height: 88rpx; margin-bottom: 0; }
+/* R210：第三个按钮挤进来后名字区只剩约 326rpx，而店铺名的上限是 20 字
+   ⇒ 不截断就会溢出到按钮区压字（同族于 R195 实测的「按钮被顶出卡片」）。
+   名字层自己吃掉剩余宽度并省略号截断，「当前店铺」tag 不参与压缩。 */
+.shop-main .shop-name .nm { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shop-main .shop-name .tag { flex: 0 0 auto; }
 
 /* R194：就地编辑行（重命名 / 新建共用）—— 输入框与按钮**同一行**，都不缩尺寸 */
 .edit-row { display: flex; align-items: center; justify-content: flex-start; gap: 12rpx; }
@@ -29,12 +34,14 @@
 .edit-row.fill .edit-btn { flex: 1 1 0; }
 
 /* R208：行尾操作区（改名 / 删除）—— 两个按钮**摊开**，不再收进「⋯」。
+   R210：再加第三个「清空」（只清月度账）。三个动作同行平铺，破坏力从左到右递增：
+   改名（中性）→ 清空（琥珀·warn）→ 删除（红·danger）。
    🔴 定宽手法沿用 R195 实测结论：`<button>` 的 UA 默认宽度（恒 184px）会压过**单类选择器**的 `width`，
       故一是把选择器提到**双类**（`.row-ops .ops-btn`），二是用 `flex: 0 0 <basis>` 兜底。 */
 .row-ops { display: flex; align-items: center; gap: 12rpx; flex: 0 0 auto; margin-left: 16rpx; }
 .row-ops .ops-btn {
-  flex: 0 0 96rpx;
-  width: 96rpx;
+  flex: 0 0 88rpx;
+  width: 88rpx;
   min-height: 88rpx;              /* 🔴 触控 ≥88rpx（仓硬红线） */
   line-height: 88rpx;
   padding: 0; margin: 0;
@@ -42,6 +49,7 @@
   background: #f2f5f9; color: #46536a; border-radius: 12rpx;
 }
 .row-ops .ops-btn::after { border: none; }   /* 去掉小程序 button 默认描边 */
+.row-ops .ops-btn.warn { background: #fdf3e3; color: #a2681a; }
 .row-ops .ops-btn.danger { background: #fdecea; color: #c0392b; }
 
 .more-hint { font-size: 28rpx; color: #9aa4b2; margin: 12rpx 4rpx 40rpx; line-height: 1.6; }

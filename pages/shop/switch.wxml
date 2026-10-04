@@ -11,12 +11,15 @@
     <view class="shop-row" wx:if="{{!(mode === 'rename' && editingId === item.shop_id)}}">
       <view class="shop-main" data-id="{{item.shop_id}}" bindtap="onSelect">
         <view class="card-title shop-name">
-          {{item.name}}
+          <text class="nm">{{item.name}}</text>
           <text class="tag" wx:if="{{item.shop_id === currentShopId}}">{{t.currentShop}}</text>
         </view>
       </view>
+      <!-- R210：再加一个「清空」——比「删除店铺」轻得多的第二条出口（只清月度账，店还在）。
+           三个动作一行平铺，破坏力从左到右递增：改名 → 清空 → 删除。 -->
       <view class="row-ops">
         <button class="ops-btn" catchtap="onRenameTap" data-id="{{item.shop_id}}">{{t.renameShort}}</button>
+        <button class="ops-btn warn" catchtap="onResetTap" data-id="{{item.shop_id}}">{{t.resetShort}}</button>
         <button class="ops-btn danger" catchtap="onDeleteTap" data-id="{{item.shop_id}}">{{t.deleteShort}}</button>
       </view>
     </view>
