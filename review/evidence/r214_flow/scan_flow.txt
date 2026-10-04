@@ -1,0 +1,40 @@
+=== R214 全链路静态扫描 ===
+页面数(含 tab) = 23 ；tabBar = ['pages/index/index', 'pages/m3/hub', 'pages/mine/index']
+云函数数 = 44 ；调用点 = 86 处 / 去重函数 26 个
+
+[A] 调用了但**不存在**的云函数（真断链）：无
+[B] 存在但**零前端调用**的云函数（18）：['adminExport', 'adminGrantEntitlement', 'adminInit', 'adminLogin', 'adminLogout', 'adminManualOrder', 'adminOrderList', 'adminQueryUser', 'adminRefreshToken', 'adminRefundMark', 'adminRevokeToken', 'calcAmortize', 'calcMonthlyProfit', 'detectCycle', 'initDb', 'payCallback', 'payExpireNotify', 'smokeTest']
+
+[C] 跳转目标不存在的页面（真死链）：无
+[D] tabBar 页被 navigateTo/reLaunch/redirectTo 跳（应为 switchTab）：无
+[E] 孤儿页面（无任何跳转指向、非 tabBar）：无
+
+[F] 云函数引用的集合共 15 个
+
+[H] 无任何鉴权痕迹（无 assertShopOwner / resolveAuth / adminAuth）：['payCallback', 'payExpireNotify']
+[I] 仅 resolveAuth（只认身份、不校验店铺归属）：['checkQuota', 'deleteAccount', 'getShopContext', 'getShopList', 'payCreateOrder', 'payOrderList', 'payQueryEntitlement', 'payRenew']
+
+[G] 每页调用的云函数：
+   pages/card/edit.js     → calcBom, getCostCard, getMaterial, saveCostCard
+   pages/card/index.js    → checkQuota, exportData, getCostCard, getShopContext, saveCostCard, saveShopSetting, syncCostCard
+   pages/card/version.js  → getCardVersions, saveCostCard
+   pages/index/index.js   → getLedger, getShopContext
+   pages/m3/hub.js        → getCostCard
+   pages/material/batch.js → saveMaterial
+   pages/material/edit.js → getMaterial, saveMaterial
+   pages/material/index.js → getMaterial, getShopContext, saveMaterial, saveShopSetting
+   pages/material/pick.js → getMaterial, getShopContext
+   pages/metrics/impact.js → syncCostCard
+   pages/mine/index.js    → deleteAccount
+   pages/month/amortize.js → getAmortSchedule, saveAsset, saveShopSetting
+   pages/month/assetEdit.js → getAmortSchedule, saveAsset
+   pages/month/index.js   → archiveMonth, getLedger, getMonthList
+   pages/month/input.js   → getAmortSchedule, getLedger, getShopContext, saveLedger, saveShopSetting
+   pages/month/inventory.js → getLedger, saveLedger
+   pages/month/result.js  → exportData, getLedger, saveShopSetting
+   pages/pay/orders.js    → payOrderList, payRenew
+   pages/recon/index.js   → getCostCard, getLedger, getMonthList, getShopContext, saveShopSetting
+   pages/sandbox/index.js → calcSandbox
+   pages/shop/setting.js  → getShopContext, saveShopSetting
+   pages/shop/switch.js   → manageShop
+   pages/takeaway/index.js → getCostCard, getShopContext, importSalesBill, saveShopSetting

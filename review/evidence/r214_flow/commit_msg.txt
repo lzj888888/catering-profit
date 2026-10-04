@@ -1,0 +1,17 @@
+R214 未做工作汇总 + 小程序全链路通跑（10 条链路 / 5 项已核无问题 / 6 项新发现）
+
+零源码改动，仅新增 review 文档与证据脚本。
+
+- 新增 review/NOTE_2026-10-04_round214_未做汇总与全链路通跑.md（未做工作总表 A/B/C 三类 + 链路通跑表 + 漏洞清单）
+- 新增 review/evidence/r214_flow/{scan_flow.py, scan_flow.json, scan_flow.txt}（页面→云函数→集合 静态全链路扫描）
+- 扫描面：23 页 / 44 个云函数 / 86 处前端调用点
+- 已核无问题：无断链[A] · 无死链[C] · tabBar 无错跳[D] · 无孤儿页[E] · 用户维度读接口全按服务端 OPENID 的 user_id 过滤[I]
+- 新发现（详见 NOTE）：P0-1 payExpireNotify 无触发器配置 + 无来源校验（跨租户读全表）；
+  P1-2 no_shop 前端零处理（删空店铺后全站无引导）；P1-3 m3/hub 与 mine 两个 tabBar 页不加载店铺上下文；
+  P2-4 smokeTest 探针仍在云端且无鉴权；P2-5 ENABLE_REAL_PAYMENT 是代码常量 + CHECKLIST 未列"开真实支付"；
+  P3-6 三个引擎源函数与内联副本的漂移风险
+
+## §3 执行回执区（WorkBuddy 只追加）
+- [2026-10-04 21:0x] R214 已落 · 证据：`python review/evidence/r214_flow/scan_flow.py` → 23 页/44 函数/86 调用点，[A][C][D][E] 全零；
+  `grep -rn no_shop pages/ utils/ app.js miniprogram/` → 零命中；`grep -rn triggers cloudfunctions/*/*.json` → 零命中；
+  `ls cloudfunctions/payExpireNotify/` → 无 config.json；单跑守卫 `check_evidence_meta` 2/0 · `check_stale_claims` 3/0 · `check_stale_status` 12/0 · commit（本笔）

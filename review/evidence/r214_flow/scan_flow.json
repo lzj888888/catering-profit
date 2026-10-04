@@ -1,0 +1,560 @@
+{
+  "auth_guard": {
+    "no_guard_at_all": [
+      "payCallback",
+      "payExpireNotify"
+    ],
+    "reads_own_ctx_only": [
+      "checkQuota",
+      "deleteAccount",
+      "getShopContext",
+      "getShopList",
+      "payCreateOrder",
+      "payOrderList",
+      "payQueryEntitlement",
+      "payRenew"
+    ]
+  },
+  "pages_count": 23,
+  "tabbar_pages": [
+    "pages/index/index",
+    "pages/m3/hub",
+    "pages/mine/index"
+  ],
+  "cloudfunctions_count": 44,
+  "call_sites_total": 86,
+  "distinct_fns_called": 26,
+  "missing_fns__called_but_not_exists": [],
+  "unused_fns__exists_but_never_called": [
+    "adminExport",
+    "adminGrantEntitlement",
+    "adminInit",
+    "adminLogin",
+    "adminLogout",
+    "adminManualOrder",
+    "adminOrderList",
+    "adminQueryUser",
+    "adminRefreshToken",
+    "adminRefundMark",
+    "adminRevokeToken",
+    "calcAmortize",
+    "calcMonthlyProfit",
+    "detectCycle",
+    "initDb",
+    "payCallback",
+    "payExpireNotify",
+    "smokeTest"
+  ],
+  "jump_targets_total": 23,
+  "bad_jump_targets": [],
+  "tabbar_page_bad_jump": [],
+  "orphan_pages__no_inbound": [],
+  "collections_referenced": {
+    "admin_login_log": [
+      "adminExport",
+      "adminGrantEntitlement",
+      "adminInit",
+      "adminLogin",
+      "adminLogout",
+      "adminManualOrder",
+      "adminOrderList",
+      "adminQueryUser",
+      "adminRefreshToken",
+      "adminRefundMark",
+      "adminRevokeToken"
+    ],
+    "admin_user": [
+      "adminExport",
+      "adminGrantEntitlement",
+      "adminInit",
+      "adminLogin",
+      "adminLogout",
+      "adminManualOrder",
+      "adminOrderList",
+      "adminQueryUser",
+      "adminRefreshToken",
+      "adminRefundMark",
+      "adminRevokeToken"
+    ],
+    "audit_log": [
+      "adminExport",
+      "adminGrantEntitlement",
+      "adminInit",
+      "adminLogin",
+      "adminLogout",
+      "adminManualOrder",
+      "adminOrderList",
+      "adminQueryUser",
+      "adminRefreshToken",
+      "adminRefundMark",
+      "adminRevokeToken",
+      "archiveMonth",
+      "calcAmortize",
+      "calcBom",
+      "calcMonthlyProfit",
+      "calcSandbox",
+      "checkQuota",
+      "common",
+      "deleteAccount",
+      "detectCycle",
+      "exportData",
+      "getAmortSchedule",
+      "getCardVersions",
+      "getCostCard",
+      "getLedger",
+      "getMaterial",
+      "getMonthList",
+      "getShopContext",
+      "getShopList",
+      "importSalesBill",
+      "initDb",
+      "manageShop",
+      "payCallback",
+      "payCreateOrder",
+      "payExpireNotify",
+      "payOrderList",
+      "payQueryEntitlement",
+      "payRenew",
+      "saveAsset",
+      "saveCostCard",
+      "saveLedger",
+      "saveMaterial",
+      "saveShopSetting",
+      "smokeTest",
+      "syncCostCard"
+    ],
+    "external_sales_daily": [
+      "importSalesBill"
+    ],
+    "feature_permissions": [
+      "checkQuota",
+      "getShopList",
+      "initDb",
+      "manageShop",
+      "saveCostCard"
+    ],
+    "order_refund": [
+      "adminRefundMark"
+    ],
+    "shop": [
+      "adminExport",
+      "adminGrantEntitlement",
+      "adminInit",
+      "adminLogin",
+      "adminLogout",
+      "adminManualOrder",
+      "adminOrderList",
+      "adminQueryUser",
+      "adminRefreshToken",
+      "adminRefundMark",
+      "adminRevokeToken",
+      "archiveMonth",
+      "calcAmortize",
+      "calcBom",
+      "calcMonthlyProfit",
+      "calcSandbox",
+      "checkQuota",
+      "common",
+      "deleteAccount",
+      "detectCycle",
+      "exportData",
+      "getAmortSchedule",
+      "getCardVersions",
+      "getCostCard",
+      "getLedger",
+      "getMaterial",
+      "getMonthList",
+      "getShopContext",
+      "getShopList",
+      "importSalesBill",
+      "initDb",
+      "manageShop",
+      "payCallback",
+      "payCreateOrder",
+      "payExpireNotify",
+      "payOrderList",
+      "payQueryEntitlement",
+      "payRenew",
+      "saveAsset",
+      "saveCostCard",
+      "saveLedger",
+      "saveMaterial",
+      "saveShopSetting",
+      "smokeTest",
+      "syncCostCard"
+    ],
+    "shop_amortize": [
+      "saveAsset"
+    ],
+    "shop_entitlement": [
+      "adminExport",
+      "adminGrantEntitlement",
+      "adminInit",
+      "adminLogin",
+      "adminLogout",
+      "adminManualOrder",
+      "adminOrderList",
+      "adminQueryUser",
+      "adminRefreshToken",
+      "adminRefundMark",
+      "adminRevokeToken",
+      "archiveMonth",
+      "calcAmortize",
+      "calcBom",
+      "calcMonthlyProfit",
+      "calcSandbox",
+      "checkQuota",
+      "common",
+      "deleteAccount",
+      "detectCycle",
+      "exportData",
+      "getAmortSchedule",
+      "getCardVersions",
+      "getCostCard",
+      "getLedger",
+      "getMaterial",
+      "getMonthList",
+      "getShopContext",
+      "getShopList",
+      "importSalesBill",
+      "initDb",
+      "manageShop",
+      "payCallback",
+      "payCreateOrder",
+      "payExpireNotify",
+      "payOrderList",
+      "payQueryEntitlement",
+      "payRenew",
+      "saveAsset",
+      "saveCostCard",
+      "saveLedger",
+      "saveMaterial",
+      "saveShopSetting",
+      "smokeTest",
+      "syncCostCard"
+    ],
+    "shop_material": [
+      "saveCostCard",
+      "saveMaterial",
+      "syncCostCard"
+    ],
+    "shop_monthly_account": [
+      "archiveMonth",
+      "saveLedger"
+    ],
+    "shop_payment_flow": [
+      "adminExport",
+      "adminManualOrder",
+      "adminOrderList",
+      "adminRefundMark",
+      "payCallback"
+    ],
+    "shop_switch": [
+      "calcMonthlyProfit",
+      "saveShopSetting"
+    ],
+    "subscription_plan": [
+      "adminManualOrder",
+      "adminRefundMark",
+      "initDb",
+      "payCallback",
+      "payCreateOrder",
+      "payRenew"
+    ],
+    "user": [
+      "adminExport",
+      "adminGrantEntitlement",
+      "adminInit",
+      "adminLogin",
+      "adminLogout",
+      "adminManualOrder",
+      "adminOrderList",
+      "adminQueryUser",
+      "adminRefreshToken",
+      "adminRefundMark",
+      "adminRevokeToken",
+      "archiveMonth",
+      "calcAmortize",
+      "calcBom",
+      "calcMonthlyProfit",
+      "calcSandbox",
+      "checkQuota",
+      "common",
+      "deleteAccount",
+      "detectCycle",
+      "exportData",
+      "getAmortSchedule",
+      "getCardVersions",
+      "getCostCard",
+      "getLedger",
+      "getMaterial",
+      "getMonthList",
+      "getShopContext",
+      "getShopList",
+      "importSalesBill",
+      "initDb",
+      "manageShop",
+      "payCallback",
+      "payCreateOrder",
+      "payExpireNotify",
+      "payOrderList",
+      "payQueryEntitlement",
+      "payRenew",
+      "saveAsset",
+      "saveCostCard",
+      "saveLedger",
+      "saveMaterial",
+      "saveShopSetting",
+      "smokeTest",
+      "syncCostCard"
+    ]
+  },
+  "page_calls": {
+    "pages/card/edit.js": [
+      "calcBom",
+      "getCostCard",
+      "getMaterial",
+      "saveCostCard"
+    ],
+    "pages/card/index.js": [
+      "checkQuota",
+      "exportData",
+      "getCostCard",
+      "getShopContext",
+      "saveCostCard",
+      "saveShopSetting",
+      "syncCostCard"
+    ],
+    "pages/card/version.js": [
+      "getCardVersions",
+      "saveCostCard"
+    ],
+    "pages/index/index.js": [
+      "getLedger",
+      "getShopContext"
+    ],
+    "pages/m3/hub.js": [
+      "getCostCard"
+    ],
+    "pages/material/batch.js": [
+      "saveMaterial"
+    ],
+    "pages/material/edit.js": [
+      "getMaterial",
+      "saveMaterial"
+    ],
+    "pages/material/index.js": [
+      "getMaterial",
+      "getShopContext",
+      "saveMaterial",
+      "saveShopSetting"
+    ],
+    "pages/material/pick.js": [
+      "getMaterial",
+      "getShopContext"
+    ],
+    "pages/metrics/impact.js": [
+      "syncCostCard"
+    ],
+    "pages/mine/index.js": [
+      "deleteAccount"
+    ],
+    "pages/month/amortize.js": [
+      "getAmortSchedule",
+      "saveAsset",
+      "saveShopSetting"
+    ],
+    "pages/month/assetEdit.js": [
+      "getAmortSchedule",
+      "saveAsset"
+    ],
+    "pages/month/index.js": [
+      "archiveMonth",
+      "getLedger",
+      "getMonthList"
+    ],
+    "pages/month/input.js": [
+      "getAmortSchedule",
+      "getLedger",
+      "getShopContext",
+      "saveLedger",
+      "saveShopSetting"
+    ],
+    "pages/month/inventory.js": [
+      "getLedger",
+      "saveLedger"
+    ],
+    "pages/month/result.js": [
+      "exportData",
+      "getLedger",
+      "saveShopSetting"
+    ],
+    "pages/pay/orders.js": [
+      "payOrderList",
+      "payRenew"
+    ],
+    "pages/recon/index.js": [
+      "getCostCard",
+      "getLedger",
+      "getMonthList",
+      "getShopContext",
+      "saveShopSetting"
+    ],
+    "pages/sandbox/index.js": [
+      "calcSandbox"
+    ],
+    "pages/shop/setting.js": [
+      "getShopContext",
+      "saveShopSetting"
+    ],
+    "pages/shop/switch.js": [
+      "manageShop"
+    ],
+    "pages/takeaway/index.js": [
+      "getCostCard",
+      "getShopContext",
+      "importSalesBill",
+      "saveShopSetting"
+    ]
+  },
+  "calls_detail": {
+    "archiveMonth": [
+      "pages/month/index.js:169"
+    ],
+    "calcBom": [
+      "pages/card/edit.js:583",
+      "pages/card/edit.js:624",
+      "pages/card/edit.js:749",
+      "pages/card/edit.js:801"
+    ],
+    "calcSandbox": [
+      "pages/sandbox/index.js:346"
+    ],
+    "checkQuota": [
+      "pages/card/index.js:271"
+    ],
+    "deleteAccount": [
+      "pages/mine/index.js:160"
+    ],
+    "exportData": [
+      "pages/card/index.js:419",
+      "pages/month/result.js:247"
+    ],
+    "getAmortSchedule": [
+      "pages/month/amortize.js:94",
+      "pages/month/assetEdit.js:94",
+      "pages/month/input.js:1298"
+    ],
+    "getCardVersions": [
+      "pages/card/version.js:61"
+    ],
+    "getCostCard": [
+      "pages/card/edit.js:276",
+      "pages/card/index.js:105",
+      "pages/card/index.js:333",
+      "pages/m3/hub.js:50",
+      "pages/recon/index.js:92",
+      "pages/takeaway/index.js:135"
+    ],
+    "getLedger": [
+      "pages/index/index.js:73",
+      "pages/month/index.js:102",
+      "pages/month/input.js:346",
+      "pages/month/input.js:396",
+      "pages/month/input.js:497",
+      "pages/month/input.js:1328",
+      "pages/month/inventory.js:80",
+      "pages/month/inventory.js:128",
+      "pages/month/result.js:94",
+      "pages/recon/index.js:91"
+    ],
+    "getMaterial": [
+      "pages/card/edit.js:260",
+      "pages/material/edit.js:116",
+      "pages/material/index.js:3",
+      "pages/material/index.js:78",
+      "pages/material/pick.js:62"
+    ],
+    "getMonthList": [
+      "pages/month/index.js:82",
+      "pages/recon/index.js:54"
+    ],
+    "getShopContext": [
+      "pages/card/index.js:109",
+      "pages/index/index.js:55",
+      "pages/material/index.js:82",
+      "pages/material/pick.js:77",
+      "pages/month/input.js:1285",
+      "pages/recon/index.js:61",
+      "pages/shop/setting.js:39",
+      "pages/shop/setting.js:65",
+      "pages/takeaway/index.js:146",
+      "utils/api.js:89"
+    ],
+    "getShopList": [
+      "utils/shopSwitcher.js:17"
+    ],
+    "importSalesBill": [
+      "pages/takeaway/index.js:329",
+      "pages/takeaway/index.js:360"
+    ],
+    "manageShop": [
+      "pages/shop/switch.js:144",
+      "pages/shop/switch.js:175",
+      "pages/shop/switch.js:198",
+      "pages/shop/switch.js:239",
+      "pages/shop/switch.js:279"
+    ],
+    "payCreateOrder": [
+      "utils/paywall.js:91"
+    ],
+    "payOrderList": [
+      "pages/pay/orders.js:53"
+    ],
+    "payQueryEntitlement": [
+      "utils/entitlement.js:15"
+    ],
+    "payRenew": [
+      "pages/pay/orders.js:105"
+    ],
+    "saveAsset": [
+      "pages/month/amortize.js:293",
+      "pages/month/assetEdit.js:182",
+      "pages/month/assetEdit.js:208"
+    ],
+    "saveCostCard": [
+      "pages/card/edit.js:890",
+      "pages/card/index.js:314",
+      "pages/card/index.js:353",
+      "pages/card/version.js:165",
+      "utils/dishTemplates.js:9"
+    ],
+    "saveLedger": [
+      "pages/month/input.js:1405",
+      "pages/month/inventory.js:183"
+    ],
+    "saveMaterial": [
+      "pages/material/batch.js:152",
+      "pages/material/edit.js:3",
+      "pages/material/edit.js:260",
+      "pages/material/index.js:3",
+      "pages/material/index.js:244"
+    ],
+    "saveShopSetting": [
+      "pages/card/index.js:226",
+      "pages/material/index.js:177",
+      "pages/month/amortize.js:256",
+      "pages/month/input.js:1268",
+      "pages/month/result.js:176",
+      "pages/recon/index.js:140",
+      "pages/shop/setting.js:57",
+      "pages/takeaway/index.js:306"
+    ],
+    "syncCostCard": [
+      "pages/card/index.js:366",
+      "pages/card/index.js:395",
+      "pages/metrics/impact.js:3",
+      "pages/metrics/impact.js:57"
+    ]
+  }
+}
