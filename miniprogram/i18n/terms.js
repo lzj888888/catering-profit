@@ -181,6 +181,18 @@ const TERMS = {
     opFailed: '操作失败',
     noResponse: '服务无响应',
     unlockLater: '开通功能将在后续版本开放',
+    // ── R207：首页头卡 hero（v3 UI 方案落地） ────────────────────────────────
+    // 口径：这里的「经营参考利润」与 `TERMS.ui.netRef` **同口径**（= getLedger 的 operation_ref_profit_fen），
+    //       不另起别名，避免首页与月度结果页两个名字打架。
+    // 🔴 禁用词守卫（check_terms_forbidden）：本段不得出现 盈利/赚钱/投资/理财/付费/订阅。
+    //    「利润」不在禁用词表内（既有 netRef 已长期过闸），但写了就必定稳妥的说法需复查：见 check_home_ui_v3 B-④。
+    heroRefLabel: '本月经营参考利润',
+    heroFirstUse: '本月未录入',
+    heroNoData: '还没有本月数据',
+    heroNoDataHint: '把租金、人工、食材填进去，自动算出参考利润',
+    heroCtaEnter: '录入本月经营数据',
+    heroCtaDetail: '查看明细',
+    heroSwitch: '切换店铺',
   },
 
   // ===== 十一、批次 4 页面级按钮/链接（补录）=====

@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：131 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：132 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -296,6 +296,14 @@
 //         表头跳过 / 两列速记 / 元转分 / 计数族缺换算必填（绝不替老板猜）/ 非法单位不叠噪音 /
 //         出成率越界 / 名称含空格不拆 / 空行不计；接线面＝四件套 + app.json 注册 + 列表页入口 +
 //         复用 saveMaterial（不新增云函数）+ 幂等键每条唯一 + 脏行默认不选 + WXML 不调方法）
+//       + 首页 UI（v3）冻结条款守卫（tools/check_home_ui_v3.js，R207：纯视觉决策此前零套件在管 ——
+//         只改外观的改动没有类型检查也没有报错，顺手改成旧写法立刻退回老毛病而无人察觉。
+//         五组判据 = A 头卡（纯色 / min-height / 店名截断 / 🔴空态绝不显示金额 / 不叫「记一笔」）
+//         + B 数据口径（ui.nowMonth 取当月 + getLedger 的 operation_ref_profit_fen 与月度页同字段
+//           + 三态 profitKnown 防闪开始 / 失败静默降级）+ C 模块卡（三个模块入口 + 🔴店铺切换与设置
+//           入口不许被 UI 改版吃掉 + .ovh 防色条尖角 + 不用颜色区分模块）
+//         + D 全局单源（.money 等宽 tabular-nums / .ovh / 原料卡自带 overflow）+ S 自失效护栏；
+//         29 条断言，变异回灌 4/4 全部点名目标断言）
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -696,6 +704,7 @@ const SUITES = [
   //   ② 页面接线（四件套 + app.json 注册 + 列表页入口 + 复用 saveMaterial + 幂等键每条唯一 +
   //   脏行默认不选 + 调纯函数不内联 + WXML 不调方法）+ 反恒真（计数族仍无建议值）。
   ['material-batch',        'tools/check_material_batch.js'],
+  ['home-ui-v3',            'tools/check_home_ui_v3.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

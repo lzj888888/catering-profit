@@ -1,31 +1,75 @@
 <view class="container safe-bottom" wx:if="{{!loading}}">
-  <view class="card2" bindtap="goSwitch" hover-class="none">
-    <view class="card-title">
-      {{shopName || t.defaultShopName}}
-      <text class="tag">{{t.switchShop}}</text>
+  <!-- ============================================================
+       R207 · 首页头卡 hero（v3 UI 方案）
+       · 原第一张「当前店铺卡」= 唯一的店铺切换入口 ⇒ **不能删**，降级为 hero 右上「切换店铺」按钮（功能零丢失）
+       · 有本月数据 → 大数字区显示「本月经营参考利润」（口径同月度结果页 netRef）
+       · 无本月数据 → 🔴 **绝不显示 ¥0**（红队结论：老板会读成"这店没赚钱"）
+                      ⇒ 改「还没有本月数据」+ 辅助小字 + 「录入本月经营数据」按钮占住 C 位
+       · 🔴 按钮文案不叫「记一笔」（会被理解成记当日流水，点进去却是一长串月度科目 ⇒ 觉得被骗）
+       ============================================================ -->
+  <view class="hero ovh">
+    <view class="hero-top">
+      <view class="hero-shop">
+        <!-- 长店名必须截断（否则挤压下面的净利数字，见 v3 样品「XX 重庆老火锅家常菜馆」实测） -->
+        <view class="hero-name">{{shopName || t.defaultShopName}}</view>
+        <view class="hero-month">{{curMonth}}</view>
+      </view>
+      <view class="hero-switch" bindtap="goSwitch" hover-class="none">{{t.heroSwitch}} ›</view>
     </view>
-    <view class="muted">{{t.shopName}}</view>
+
+    <!-- 三态：**未确定 ≠ 无数据** —— 请求没回来时若按「无数据」渲染，
+         有数据的老用户会先闪一帧「还没有本月数据」再跳成数字，观感像抖屏 ⇒ 必须分开。 -->
+    <view class="hero-bot">
+      <view class="hero-figure" wx:if="{{hasProfit}}">
+        <view class="hero-lab">{{t.heroRefLabel}}</view>
+        <view class="hero-num money">{{t.cur}} {{refProfit}}<text class="hero-unit">元</text></view>
+      </view>
+      <view class="hero-figure" wx:elif="{{profitKnown}}">
+        <view class="hero-lab">{{t.heroNoData}}</view>
+        <view class="hero-hint">{{t.heroNoDataHint}}</view>
+      </view>
+      <view class="hero-figure" wx:else>
+        <view class="hero-lab">{{t.heroRefLabel}}</view>
+        <view class="hero-num money">{{t.loading}}</view>
+      </view>
+      <!-- 🔴 空态永远不显示 ¥0（老板会读成"这店没赚钱"）；按钮也不叫「记一笔」 -->
+      <view class="hero-cta {{hasProfit ? '' : 'solid'}}" bindtap="goMonth">{{hasProfit ? t.heroCtaDetail : t.heroCtaEnter}} ›</view>
+    </view>
   </view>
 
-  <view class="card2" bindtap="goMonth" hover-class="none">
-    <view class="card-title">{{t.m1}}</view>
-    <view class="muted">{{t.m1Sub}}</view>
+  <!-- ============================================================
+       三大模块（无序号 —— 红队判其为冗余且易发虚；区分靠**形状图标**，
+       🔴 不用颜色区分：红绿在本仓已绑定「涨/跌」语义，当模块色会被读成盈亏）
+       ============================================================ -->
+  <view class="mod ovh" bindtap="goMonth">
+    <view class="mod-ico"><view class="i i-ledger"></view></view>
+    <view class="mod-bd">
+      <view class="mod-t">{{t.m1}}</view>
+      <view class="mod-m">{{t.m1Sub}}</view>
+    </view>
+    <view class="mod-go">›</view>
   </view>
 
-  <view class="card2" bindtap="goSandbox">
-    <view class="card-title">{{t.m2}}</view>
-    <view class="muted">{{t.m2Sub}}</view>
+  <view class="mod ovh" bindtap="goSandbox">
+    <view class="mod-ico"><view class="i i-house"></view></view>
+    <view class="mod-bd">
+      <view class="mod-t">{{t.m2}}</view>
+      <view class="mod-m">{{t.m2Sub}}</view>
+    </view>
+    <view class="mod-go">›</view>
   </view>
 
-  <view class="card2" bindtap="goCard">
-    <view class="card-title">{{t.m3}}</view>
-    <view class="muted">{{t.m3Sub}}</view>
+  <view class="mod ovh" bindtap="goCard">
+    <view class="mod-ico"><view class="i i-pan"></view></view>
+    <view class="mod-bd">
+      <view class="mod-t">{{t.m3}}</view>
+      <view class="mod-m">{{t.m3Sub}}</view>
+    </view>
+    <view class="mod-go">›</view>
   </view>
 
-<!-- R199：底部 tabBar 上线后，「我的」入口已由 tabBar 承担 ⇒ 收掉此处重复按钮。
- 「设置」**保留** —— 店铺设置没有 tabBar 替代入口，删了就少一条路。
- 底部 tabBar 三个 tab：核算（本页）· 成本（M3 枢纽）· 我的（订阅/客服/协议），
- 故此处只留「设置」一条，且上方加一行弱提示说明「去哪找别的功能」，避免下半屏看着像空了一段。 -->
+  <!-- R199：底部 tabBar 上线后，「我的」入口已由 tabBar 承担 ⇒ 此处不重复。
+     「设置」保留 —— 店铺设置没有 tabBar 替代入口，删了就少一条路。 -->
   <view class="idx-tip">{{t.tipMore}}</view>
   <button class="btn ghost" bindtap="goSettings">{{t.settings}}</button>
 </view>

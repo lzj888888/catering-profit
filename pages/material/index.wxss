@@ -2,7 +2,15 @@
 .cat-picker { background: #fff; border-radius: 12rpx; margin: 16rpx 0; padding: 0 24rpx; }
 /* R191：row-ops 平铺按钮区已废弃（4 个按钮 → 卡片右上「⋯」），保留注释说明去向，勿再加回。 */
 /* 左侧色条：色值走 app.wxss 的 .stripe-material（单源），本页只给边框形态 */
-.card2 { border-left-width: 8rpx; border-left-style: solid; }
+/* R207：左侧 8rpx 色条 + 20rpx 圆角 = 小程序经典「尖角溢出」现场
+   （色条从卡片左上/左下圆角外面冒出一根尖）。必须配 overflow:hidden —— 挡这一条纯靠 CSS，零成本。 */
+.card2 { border-left-width: 8rpx; border-left-style: solid; overflow: hidden; }
+/* R207：标题行 —— 长原料名必须截断，且**不能把后面的标签挤没了**
+   （标签说的是「置顶 / 虚拟 / 分类」，丢了就不知道为什么它排在最前）。
+   做法：名称可收缩(flex:1 + min-width:0) + ellipsis，标签固定不压缩(flex:0 0 auto)。 */
+.mat-title { display: flex; flex-wrap: wrap; align-items: center; }
+.mat-name { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mat-title .tag { flex: 0 0 auto; margin: 4rpx 0 0 12rpx; }
 /* round156：置顶标记 —— 与分类标签同排，用主色实底区分。
    排序把置顶项排到了最前，界面就必须说清"为什么它在前面"，否则看起来还是乱的。 */
 .tag-pin { background: #1e3a5f; color: #fff; margin-left: 12rpx; }

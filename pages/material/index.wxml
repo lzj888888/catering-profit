@@ -18,8 +18,9 @@
   <!-- 原料列表（左侧色条 = 原料绿，色值走 app.wxss 的 .stripe-material 单源） -->
   <view class="card2 stripe-material" wx:for="{{list}}" wx:key="id" data-m="{{item}}" bindtap="goEdit">
     <view class="card-head">
-      <view class="card-title card-title-flex">
-        {{item.name}}
+      <view class="card-title card-title-flex mat-title">
+        <!-- R207：名称单独一层做 ellipsis（长名截断），标签保持可见不被挤掉 -->
+        <text class="mat-name">{{item.name}}</text>
         <!-- round156：置顶标记（排序把它们排到最前，界面必须说清"为什么它在前面"） -->
         <text class="tag tag-pin" wx:if="{{item.pinned}}">{{t.pinTag}}</text>
         <text class="tag" wx:if="{{item.is_virtual}}">{{t.matVirtual}}</text>
@@ -34,7 +35,7 @@
     </view>
     <view class="cell">
       <text class="lbl">{{t.matUnit}} / {{t.matPrice}}</text>
-      <text class="val">{{item.purchase_unit}} · {{t.cur}}{{item.purchase_price}}</text>
+      <text class="val money">{{item.purchase_unit}} · {{t.cur}}{{item.purchase_price}}</text>
     </view>
     <!-- round149：同一原料可以有不同规格/单位 ⇒ 把「买 → 用」的换算写在卡片上 -->
     <view class="cell">
@@ -43,7 +44,7 @@
     </view>
     <view class="cell">
       <text class="lbl">{{t.matNetCost}}</text>
-      <text class="val" style="color:#1e3a5f;">{{t.cur}}{{item.net_cost}}</text>
+      <text class="val money" style="color:#1e3a5f;">{{t.cur}}{{item.net_cost}}</text>
     </view>
 
     <!-- 🔴 R192：操作行 —— 「涨价影响面」是原料库**最高频**的动作（改价前先看影响谁），必须看得见。

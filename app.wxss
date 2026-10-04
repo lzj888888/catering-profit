@@ -173,3 +173,23 @@ page { background: #f5f6f8; font-family: -apple-system, "PingFang SC", sans-seri
 /* 图例色点（与柱子同色 ⇒ 图例才指得对） */
 .lg-cost { background: #1e3a5f; }
 .lg-price { background: #b9cbe0; }
+
+/* ============================================================
+ * R207：金额等宽（tabular-nums）+ 卡片圆角防溢出 —— **全局单源**
+ * 为什么不上提就必漂：这两条是**全站通病**（在哪张金额/列表卡上都成立），
+ *   若各页各写一份 `.align-cash` / `overflow:hidden`，将来调一个、漏二十处 —— 本仓既有红线。
+ * ① .money —— 金额一律等宽数字
+ *     治的是李老师的原始痛点：不同行的 ¥4.20 / ¥18.50 / ¥2.60 **小数点不在一条线上**，
+ *     眼睛要逐行移，10 行原料就移 10 次 ⇒ 这是「看着复杂」最便宜的解法之一。
+ *     兼容（诚实声明）：不支持 tabular-nums 的 webview 会**静默降级**成比例数字
+ *     ⇒ 那时不对齐、但**照样能读**，属可接受降级，**不会破版**。
+ * ② .ovh —— 有左侧竖条/色条的卡片必须带
+ *     挡的是小程序高频坑：8rpx 竖条画在 16~20rpx 圆角外面 ⇒ 卡片左上角冒出一根「尖角」。
+ * ============================================================ */
+.money {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  /* fallback 字体族：等宽数字优先取系统 UI 字体的 tabular 形态，不引外部字体（不放进包体） */
+  font-family: -apple-system, "SF Pro Text", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+}
+.ovh { overflow: hidden; }

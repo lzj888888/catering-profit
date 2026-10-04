@@ -22,12 +22,31 @@ Page({
       tipMore: TERMS.ui.tipMore,
       switchShop: TERMS.exp.switchTitle,
       mine: TERMS.exp.mineTitle,
+      // ── R207 头卡文案（新可见文案一律过 terms 单源，页面零硬编码）──
+      heroSwitch: TERMS.ui.heroSwitch,
+      heroRefLabel: TERMS.ui.heroRefLabel,
+      heroNoData: TERMS.ui.heroNoData,
+      heroNoDataHint: TERMS.ui.heroNoDataHint,
+      heroCtaEnter: TERMS.ui.heroCtaEnter,
+      heroCtaDetail: TERMS.ui.heroCtaDetail,
+      cur: TERMS.ui.currencySymbol,
     },
     shopName: '',
     loading: true,
+    // ── R207 头卡数据区 ──
+    curMonth: ui.nowMonth(),
+    refProfit: '0.00',
+    hasProfit: false,
+    // 🔴 三态标志：**未确定 ≠ 无数据**。为 false 时既不显示数字、也不显示「还没有本月数据」，
+    //    否则老用户每次进首页都会先闪一帧空态文案再跳成数字（观感像抖屏）。
+    profitKnown: false,
   },
 
-  onShow() { this.bootstrap(); },
+  onShow() {
+    this.setData({ curMonth: ui.nowMonth() });
+    this.bootstrap();
+    this.loadRefProfit();
+  },
 
   async bootstrap() {
     ui.setTitle(TERMS.app.title);
@@ -39,6 +58,29 @@ Page({
     } catch (e) {
       this.setData({ loading: false });
       wx.showToast({ title: (e && e.msg) || TERMS.ui.loadFailed, icon: 'none' });
+    }
+  },
+
+  /**
+   * R207：头卡的「本月经营参考利润」。
+   * 口径：取 getLedger 的 result.operation_ref_profit_fen —— 与月度结果页 netRef **同一字段**，
+   *       不在这里另算一遍（另算必漂）。
+   * 🔴 静默降级：本请求只服务于一块**装饰性总结**，失败/未建档一律转空态，
+   *    **不弹 toast、不阻塞主流程** —— 首页已经有一个 getShopContext 的失败提示，再加一个就是噪音。
+   */
+  async loadRefProfit() {
+    try {
+      const d = await api.call('getLedger', { month: ui.nowMonth() });
+      const fen = d && d.result && d.result.operation_ref_profit_fen;
+      if (typeof fen === 'number' && Number.isFinite(fen)) {
+        // 有建档月（含利润恰为 0 的极端情况：这里 fen===0 仍算「有数据」，因为那是一个**真实算出来的 0**，
+        // 与「没录过」是两回事 ⇒ 显示 0.00 是诚实的，不显示才是虚报）
+        this.setData({ refProfit: api.fenToYuan(fen, 2), hasProfit: true, profitKnown: true });
+      } else {
+        this.setData({ hasProfit: false, profitKnown: true });
+      }
+    } catch (e) {
+      this.setData({ hasProfit: false, profitKnown: true });
     }
   },
 
@@ -56,5 +98,7 @@ Page({
   goMine() { wx.switchTab({ url: '/pages/mine/index' }); },
 
   // R193：全局开了 enablePullDownRefresh，但本页**没实现** ⇒ 下拉转圈、松手没反应（假刷新）。
-  onPullDownRefresh() { this.bootstrap().then(() => wx.stopPullDownRefresh()); },
+  onPullDownRefresh() {
+    Promise.all([this.bootstrap(), this.loadRefProfit()]).then(() => wx.stopPullDownRefresh());
+  },
 });
