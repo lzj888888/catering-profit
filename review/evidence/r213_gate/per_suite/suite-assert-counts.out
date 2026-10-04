@@ -30,7 +30,7 @@
   · tools/check_list_ux.js → 32 通过
   · tools/check_index_field_alignment.js → 11 通过
   · tools/check_snapshot_fields.js → 16 通过
-  · tools/check_paywall_coverage.js → 13 通过
+  · tools/check_paywall_coverage.js → 17 通过
   · tools/selftest_m3_combo.js → 17 通过
   · tools/selftest_m3_lexicon.js → 21 通过
   · tools/selftest_m3_takeaway.js → 21 通过
@@ -86,7 +86,7 @@
   ✅ A2-check_list_ux 声明 32 ≡ 实跑 32
   ✅ A2-check_index_field_alignment 声明 11 ≡ 实跑 11
   ✅ A2-check_snapshot_fields 声明 16 ≡ 实跑 16
-  ❌ A2-check_paywall_coverage 声明 17 ≠ 实跑 13
+  ✅ A2-check_paywall_coverage 声明 17 ≡ 实跑 17
   ✅ A2-selftest_m3_combo 声明 17 ≡ 实跑 17
   ✅ A2-selftest_m3_lexicon 声明 21 ≡ 实跑 21
   ✅ A2-selftest_m3_takeaway 声明 21 ≡ 实跑 21
@@ -119,4 +119,4 @@
   · 弱面共 0 条（只明示，不判红 —— 可能是子集/另一口径）
   ✅ W-① 弱面扫描完成：0 条明示（弱面只提示、不判红）
 
-===== 套件断言数口径守卫结果：56 通过 / 1 失败 =====
+===== 套件断言数口径守卫结果：57 通过 / 0 失败 =====

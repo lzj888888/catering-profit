@@ -1,0 +1,15 @@
+R213 门禁闭环：全量 136/136 通过（首跑 1 红为缓存假红，已定位并修）
+
+承接 0e889b5（NOTE + R212 状态回填 + 门禁驱动脚本）。本笔只回填门禁结论，无源码改动。
+
+- 全量门禁（review/evidence/r213_gate/run_gate4.py）：总览 136/136 通过 · R92 ✅ · 耗时 701.5s · 失败清单空。
+- 首跑 135/136，唯一红 [suite-assert-counts] ⇒ "A2-check_paywall_coverage 声明 17 ≠ 实跑 13"。
+  真因 = 该套件用 process.execPath 实跑子套件，其缓存键形如 node.exe <abs>，归 mk_force 层
+  （mk_git_keys 曾跳过）⇒ 拿改动前旧输出比对。新增 refresh_node_keys.py 精准刷 6 键（均 rc=0）后复跑转绿。
+  非代码缺陷（缓存时效问题，非本轮引入）。
+- 落盘证据：review/evidence/r213_gate/gate4_full.txt + per_suite/*.out。
+- 机器核验：grep -c "❌ FAIL" gate4_full.txt → 0；含「总览：136/136 套件通过」与「R92…：✅」两行。
+- 回填：NOTE_2026-10-04_round213 §五-bis；NOTE_2026-10-04_round212 §R213 执行状态追加门禁行。
+
+## §3 执行回执区（WorkBuddy 只追加）
+- [2026-10-04 20:26] R213-gate 已落 · 证据：`python review/evidence/r213_gate/refresh_node_keys.py` → 6 键 rc=0（含 check_suite_assert_counts）；`python review/evidence/r213_gate/run_gate4.py` → `总览：136/136 通过 R92: ✅ 耗时 701.6s`；`grep -c "❌ FAIL" review/evidence/r213_gate/gate4_full.txt` → 0 · 本笔 commit（待填）

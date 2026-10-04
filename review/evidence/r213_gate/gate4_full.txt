@@ -232,7 +232,7 @@
 ===== 批次0 自测结果（复审节点① 五条）=====
 ✅ 点1·身份只来自OPENID(忽略伪造记录)  →  user.id=u_real
 ✅ 点1·函数不接收event(签名为 ctx,db,audit)  →  resolveAuth.length=3（参数=ctx,db,audit，无 event 入口）
-✅ 点1b·首次自动建档返回user  →  user.id=u_mutrkkl49tx1
+✅ 点1b·首次自动建档返回user  →  user.id=u_muts6xps5z4q
 ✅ 点1b·建了默认shop  →  shop=1
 ✅ 点1b·建了entitlement(expire_at=0)  →  expire_at=0
 ✅ 点1b·建档写audit_log(AUTH_AUTO_PROVISION)  →  audit=1
@@ -266,8 +266,8 @@
 ✅ A6b·并发首进只建出 1 个 user  →  user=1
 ✅ A6b·并发首进只建出 1 个 shop  →  shop=1
 ✅ A6b·并发首进只建出 1 条 entitlement  →  ent=1
-✅ A6b·并发两次拿到同一个 user_id  →  ids=u_mutrkkle63od,u_mutrkkle63od
-✅ A6b·店铺 id 用单源确定性格式 shop_<user_id>  →  shop_id=shop_u_mutrkkle63od
+✅ A6b·并发两次拿到同一个 user_id  →  ids=u_muts6xq4iiep,u_muts6xq4iiep
+✅ A6b·店铺 id 用单源确定性格式 shop_<user_id>  →  shop_id=shop_u_muts6xq4iiep
 ✅ A6b·机制级：确定性 id ⇒ 同 user 第二次建店被库拒  →  rejected=true
 ✅ A6b·机制级：仅剩 1 个店  →  shop=1
 ✅ A6b·反向证据：随机 id 两次都成功 ⇒ 2 个店（这就是旧实现能建出重复店的原因）  →  shop=2
@@ -1284,7 +1284,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 
 ===== [batch5-payCreateOrder] cloudfunctions/payCreateOrder/selftest.js =====
 ===== 订单生成 =====
-✅ 生成订单号（PO 前缀）  (POMUTRNUDNDFEF)
+✅ 生成订单号（PO 前缀）  (POMUTSA3IGH1L0)
 ✅ 金额=2590 分（整数）
 ✅ plan_id/plan_name 原样携带
 ✅ status=pending
@@ -1343,7 +1343,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 
 ===== [batch5-payRenew] cloudfunctions/payRenew/selftest.js =====
 ===== 续费订单生成 =====
-✅ 生成续费订单号（PR 前缀）  (PRMUTRO721KI3U)
+✅ 生成续费订单号（PR 前缀）  (PRMUTSAKVQL3RQ)
 ✅ 金额=19900 分
 ✅ plan 携带 + status=pending
 ✅ enable_real_payment=false
@@ -1564,7 +1564,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 ✅ 新用户录单 → expire_at = 今日 + 31 天
 ✅ 权益 source=manual
 ✅ 订单写入（status=paid / channel=manual / 金额分）
-✅ 订单号 MO 前缀  (MOMU2MDMO0HJX5)
+✅ 订单号 MO 前缀  (MOMU2MDMO0DV1M)
 ✅ 订单关联 plan/user
 ✅ 审计 action=ADMIN_MANUAL_ORDER 且含前后值
 ✅ 未到期续费 → 原值 + 365 天（累加非覆盖）  (diff=33264000000)
@@ -2125,7 +2125,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 
 ===== [evidence-meta] tools/check_evidence_meta.js =====
 ===== S · 自失效护栏 =====
-✅ S1 扫描面非空 · review/evidence 下 .md/.txt = 881 个
+✅ S1 扫描面非空 · review/evidence 下 .md/.txt = 882 个
 
 ===== E1 · 纯读声明 vs 写入痕迹 =====
    ↳ review/evidence/realcloud_20260917/47_timeout_all.txt:77 检出写入痕迹，但**同小节已声明例外** ⇒ 放行（正面样本）
@@ -2668,7 +2668,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
   · tools/check_list_ux.js → 32 通过
   · tools/check_index_field_alignment.js → 11 通过
   · tools/check_snapshot_fields.js → 16 通过
-  · tools/check_paywall_coverage.js → 13 通过
+  · tools/check_paywall_coverage.js → 17 通过
   · tools/selftest_m3_combo.js → 17 通过
   · tools/selftest_m3_lexicon.js → 21 通过
   · tools/selftest_m3_takeaway.js → 21 通过
@@ -2724,7 +2724,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
   ✅ A2-check_list_ux 声明 32 ≡ 实跑 32
   ✅ A2-check_index_field_alignment 声明 11 ≡ 实跑 11
   ✅ A2-check_snapshot_fields 声明 16 ≡ 实跑 16
-  ❌ A2-check_paywall_coverage 声明 17 ≠ 实跑 13
+  ✅ A2-check_paywall_coverage 声明 17 ≡ 实跑 17
   ✅ A2-selftest_m3_combo 声明 17 ≡ 实跑 17
   ✅ A2-selftest_m3_lexicon 声明 21 ≡ 实跑 21
   ✅ A2-selftest_m3_takeaway 声明 21 ≡ 实跑 21
@@ -2757,8 +2757,8 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
   · 弱面共 0 条（只明示，不判红 —— 可能是子集/另一口径）
   ✅ W-① 弱面扫描完成：0 条明示（弱面只提示、不判红）
 
-===== 套件断言数口径守卫结果：56 通过 / 1 失败 =====
-  [suite-assert-counts] ❌ FAIL (exit=1)
+===== 套件断言数口径守卫结果：57 通过 / 0 失败 =====
+  [suite-assert-counts] ✅ PASS  (✅ 57 条 / 段 7)
 
 ===== [fn-selftest-counts] tools/check_fn_selftest_counts.js =====
 
@@ -4412,7 +4412,7 @@ R118 · 归档补录宽限期口径穿透守卫（计算常量 ≡ 服务端文�
 ===== S · 自失效护栏（防「判据恒真」与「扫描面扫空」）=====
 ✅ S3-a 匹配器正样本全部命中（folder / file / suffix / prefix 四类） · 6/6 命中
 ✅ S3-b 匹配器负样本全部放行（禁「一律忽略」式恒真） · 5/5 放行
-✅ S1 扫描面非退化：未忽略文件数达下界 · 全盘 4519 个文件中未忽略 124 个（下界 60）
+✅ S1 扫描面非退化：未忽略文件数达下界 · 全盘 4535 个文件中未忽略 124 个（下界 60）
 ✅ S2 关键入口真在入包集合内（扫空 / 根路径写错即转红） · 锚点 5 个全部命中
 
 ===== P · 入包体积（微信预览 / 上传硬上限 2 MB）=====
@@ -4898,8 +4898,6 @@ R213 权益链路：免费额度阈值/到期判定/续费/后台调权四段均
 ===== R213 会员权益链路守卫结果：28 通过 / 0 失败 =====
   [entitlement-flow] ✅ PASS  (✅ 29 条 / 段 5)
 
-===== 总览：135/136 套件通过 =====
+===== 总览：136/136 套件通过 =====
 R92（套件入库，真 git 判定）：✅
-失败清单：
-  - [suite-assert-counts] tools/check_suite_assert_counts.js :: exit=1
-耗时 862.2s
+耗时 701.5s
