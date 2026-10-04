@@ -8,7 +8,7 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 
 const common = require('./common');                 // 扁平派生副本（sync_common 生成）
-const { ERROR_CODES, ok, fail } = common;
+const { ERROR_CODES, ok, fail, isPaid } = common;
 const { parseBearer, requireAuth } = require('./adminAuth');
 const { fetchShopsAll, makeShopPageQuery } = require('./service');
 
@@ -71,7 +71,7 @@ exports.main = async (event) => {
       nickname: u.nickname || '',
       shops: shops.map((s) => ({ shop_id: s.id || s.shop_id, name: s.name || '' })),
       expire_at: expireAt,
-      tier: expireAt > Date.now() ? 'paid' : 'free',   // 档位判定：只读 expire_at（解耦铁律）
+      tier: isPaid(expireAt) ? 'paid' : 'free',        // 档位判定：只读 expire_at（解耦铁律）·判定走单源
       source: ent ? (ent.source || '') : '',
     });
   }

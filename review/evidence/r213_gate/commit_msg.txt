@@ -1,0 +1,62 @@
+R213 查缺补漏三件套：限流接线 + 付费墙守卫自失效护栏 + 会员权益链路守卫
+
+（李老师「听你的，但是 D 先不做，等上线前再上。先调整细节，查缺补漏。」授权；
+  D = prod 环境建设，本轮显式跳过；A/B/C 三项动作来自 R212 对账 NOTE §六）
+
+=== A 限流「零件齐全 ≠ 限流生效」 ===
+· 根因（R212 §5-1）：单源 common/rateLimit.js + 44 份 cx_rateLimit.js 副本 + R113 守卫 + 自测全在，
+  而全仓 makeRateLimiter 只命中「定义 + 自测」——**零业务调用点** ⇒ 三个高危写接口限流恒不触发。
+· 接线：saveCostCard / syncCostCard（复制走 saveCostCard、重算走 syncCostCard）在「鉴权 + 校验」之后
+  接 common.rateLimit；syncCostCard 的 dry_run（只读预览）不计入写限额。
+  store 用**模块级单例** —— 写在 main 内 `new Map()` 会让每次调用都是新桶 ⇒ 计数恒 1（假接线）。
+· 守卫：tools/check_rate_limit_params.js 新增 **A8 组 5 条**（必须真接线 / limiter 在 exports.main 之前
+  / 无未登记接线点 / 扫描面非退化 / 目标函数在场），断言 18→23。
+· 变异回灌 **4/4 全部点名目标断言**：删调用点→A8-② / 挪进 main 建桶→A8-③ / 拒绝分支失效→A8-②
+  / 私自接线不登记→A8-④。还原后 md5 全等。
+
+=== B 付费墙守卫「扫描面一空即恒绿」 ===
+· 根因（R212 §5-2）：check_paywall_coverage L6-② 按**目录名**匹配「有同名云函数就必接墙」，
+  而仓内根本没有 combo / takeaway 目录 ⇒ 匹配面恒空 ⇒ fnWallGaps 恒空 ⇒ **断言恒绿**。
+· 改「穷尽分类」：a 有同名目录 ⇒ 目录内必接墙；b 无同名目录 ⇒ 必须在 WALL_ANCHORS 显式登记落点；
+  c `at` 指向文件时**必须可验证**（该文件真含该能力的 hasFeature 调用，防用豁免表掩盖漏接）；
+  d 登记表不得含陈旧键；e 分类不重不漏（非 export 能力 100% 落入「同名目录 ∪ 登记表」）。
+· 断言 13→17；变异回灌 **3/3 全部点名目标断言**（删登记→②b / 落点指错文件→②c / 塞陈旧键→②d）。
+
+=== C 会员权益链路守卫（豆包 P0-3 的 e2e 缺口） ===
+· 新增 tools/check_entitlement_flow.js（**28 断言**）：E-A **实跑**单源 isPaid（0/null/过期/未来/
+  注入 now/等号边界）+ E-B **实跑** checkQuota/service（20→21 翻转点/硬上限/缺配置必抛 fail-closed）
+  + E-C 链路在场穷尽（额度真相源/写侧拦截/**到期判定单源不扩散**/续费/后台调权/查询/到期通知/前端键）
+  + E-D 自失效护栏（扫描面下界/关键目录锚点/断言数下界）。
+· 🔴 E-C③ 首跑当场抓到**两处手写「到期判定」扩散** —— 而 common/entitlement.js 注释白纸黑字写着
+  「严禁在函数体内再写一遍 expireAt > nowUtc()」：
+    ① cloudfunctions/adminQueryUser/index.js  的 tier 判定（`expireAt > Date.now()`）
+    ② cloudfunctions/payQueryEntitlement/service.js 的 is_active（`expireAt > now`）
+  ⇒ 两处均**行为等价**地接回单源 `isPaid`；并连带修 `adminQueryUser/selftest.js` 里**复刻的那一份**
+  （selftest 自己造了第二源，且其一条断言反而**要求** index.js 保留手写比较 ⇒ 一修就红）。
+· 变异回灌 **4/4 全部点名目标断言**（手写比较复现→E-C③b / 删写侧拦截→E-C② / 放宽额度阈值→E-B③
+  / isPaid 边界改 >=→E-A⑨）。还原后 md5 全等。
+· 首跑 3 红全为**我方判据/样本缺陷**（hasFeature 是 async 未 await / 硬上限样本用 199-200 但 hard=2000
+  / selftest 复刻），按纪律「先怀疑自己」逐条修后转绿。
+
+=== 六处同步 + A15 ===
+· verify_all.js：SUITES 135→136（末尾追加 entitlement-flow）+ 头注「串联：136 个套件」+ 守卫说明段
+· 重启键 specs/dev-specs/★知识存储点_2026-09-10.md：§1.1 入口行 135→136 且演进链尾部追加
+  + 「套件数会漂」行 135→136 且演进链尾部追加 + 断言数声明行（check_paywall_coverage 13→17、
+  新增 check_entitlement_flow=28、「四十八者」→「四十九者」）
+· tools/check_suite_assert_counts.js：CASES 追加 check_entitlement_flow + paywall 注释 13→17
+  + **顺手修两处注释错位**（month_picker 的注释被挂到 shop_reset 上、shop_reset 缺正确注释）
+· tools/selftest_r85.js：A15_EXEMPT 登记 adminQueryUser/ 与 payQueryEntitlement/
+  （付费判定单源收口属**授权缺陷修复**，非顺手改逻辑；仍白名单式，不放宽成全豁免）
+
+=== 回执 ===
+- [2026-10-04 19:20] R213-A 已落 · 证据：`node tools/check_rate_limit_params.js` → 23 通过 / 0 失败（原 18）；
+  变异 `review/evidence/r213_gate/mutate.py` → 4/4 点名目标断言、还原 md5 全等
+- [2026-10-04 19:35] R213-B 已落 · 证据：`node tools/check_paywall_coverage.js` → 17 通过 / 0 失败（原 13）；
+  变异 `mutate_paywall.py` → 3/3 点名、md5 全等
+- [2026-10-04 19:48] R213-C 已落 · 证据：`node tools/check_entitlement_flow.js` → 28 通过 / 0 失败；
+  `node cloudfunctions/adminQueryUser/selftest.js` → 21 通过 / 0 失败（原 20/1）；
+  变异 `mutate_entitlement.py` → 4/4 点名、md5 全等
+- [2026-10-04 19:51] R213 存疑待验 · 全量门禁**本笔提交前未跑**：沙箱 `node` 派生子进程 EBUSY
+  ⇒ 必须走 `review/evidence/r213_gate/run_gate4.py`（每套件独立 python 进程 + gitcache preload），
+  而该驱动需先提交后刷新 git 缓存（否则 A15 的 `git status cloudfunctions/` 读到未提交改动会判红）。
+  下一笔提交将附门禁证据与结论。

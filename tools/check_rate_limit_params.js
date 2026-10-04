@@ -26,6 +26,12 @@
 //   A5 全仓当前态声明（行内含限流类锚点、且「N 次/分钟」就近 ±WIN 字符）全部 ≡ N，且有命中数下限（fail-closed）。
 //   A6 两条前提守卫：①扫描面确含目标文档（自指排除没误伤）②副本集确含已知函数目录（副本面没打错）。
 //   A7 唯一声明处不扩散（其它 .md 的同一行不得同时含「唯一声明处」+ 本口径标记）。
+//   A8 **接线判据（R213 新增）**：零件必须真的装上 —— 名单内每个写入口的 index.js 必须
+//      ①顶层 makeRateLimiter 建 limiter ②main 内 await 调用 ③limited→fail 拒绝分支；
+//      且 limiter 必须在 `exports.main` **之前**创建（防「每次调用 new Map()」= 计数恒 1 的假接线）；
+//      外加「无未登记接线点」与「扫描面非退化（云函数 index.js 数 ≥ 下界）」两道自失效护栏。
+//      🔴 为何必须单独有一条：R212 挖出 **单源 + 44 份副本 + 本守卫 + 自测全在，而业务调用点为零**
+//      ⇒ A1–A7 守「阈值数字对不对」，**守不到「有没有装上去」**；门禁全绿 ≠ 限流生效。
 //   W  弱面：`core/16:48` 的维度是「IP + admin_id」（admin 后台场景）而单源是「openid 维度」（C 端场景），
 //      经 round82 实读判定为**两套场景的口径**，不构成漂移 ⇒ 只明示不判红。
 //
@@ -206,6 +212,65 @@ for (const f of mdFiles) {
 }
 check('A7 唯一声明处不扩散（其它 .md 同行不得同时自称单源 + 本口径）', otherUnique.length === 0,
   otherUnique.length ? otherUnique.join(' | ') : '仅 core/09 一处');
+
+// —— A8 接线判据（R213）：零件必须真的装上（有单源、有副本、有守卫、有自测 ≠ 限流生效）
+//   🔴 根因（R212 挖出的双方盲区）：全仓 `makeRateLimiter` 只命中「定义 + 自测」，**零业务调用点**
+//      ⇒ 豆包点名的三个高危写接口当时限流恒不触发，而 A1–A7 全绿（它们守的是"阈值数字对不对"）。
+//      与 R182「上限类判据扫描面一空即恒绿」同族：判据必须能区分「真没接线」与「压根没扫到」。
+const RL_MUST = ['saveCostCard', 'syncCostCard'];   // 必须接线的写入口（含复制/重算；复制走 saveCostCard）
+const RL_EXEMPT = [];                               // 有意不接的（如纯计算锚点）在此登记并写理由；当前无
+const CF_MIN = 30;                                  // 扫描面下界（云函数 index.js 数；实测约 42）
+
+// 剥注释：防「注释里写 makeRateLimiter」冒充接线（与 tools/check_requires.js 同法）
+function stripJsComments(src) {
+  return src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:'"\\])\/\/[^\n]*/g, '$1');
+}
+
+// 按**行为**判定一个 index.js 是否真接线（不按变量名/字面量 ⇒ 改名换写法都不会误判、也不易被伪造）
+function judgeWiring(text) {
+  const t = stripJsComments(text);
+  const mv = /(?:const|let|var)\s+(\w+)\s*=\s*[^\n;]*?makeRateLimiter\s*\(/.exec(t);
+  const name = mv ? mv[1] : '';
+  const declAt = mv ? mv.index : -1;
+  const mm = /^exports\.main\s*=/m.exec(t);      // ⚠️ 用行首赋值定位，避免命中注释里的 "exports.main" 字样
+  const mainAt = mm ? mm.index : -1;
+  const called = !!(name && new RegExp('await\\s+' + name + '\\s*\\(').test(t));
+  // 🔴 拒绝分支必须与 `limited` **紧邻**（同一语句/紧随其后 ≤80 字符）——否则「删掉拒绝分支、
+  //   而文件别处仍留鉴权/校验的 return fail(」会假绿（首版判据实测就栽在这：M3 变异打不红）。
+  const typed = /limited[\s\S]{0,80}?return\s+fail\s*\(/.test(t);
+  return { name, declAt, mainAt, hasMake: declAt >= 0, called, typed,
+    wired: !!(name && called && typed), atTopLevel: declAt >= 0 && mainAt >= 0 && declAt < mainAt };
+}
+
+const cfDirs = [];
+try {
+  for (const e of fs.readdirSync(CF_DIR, { withFileTypes: true })) {
+    if (e.isDirectory() && e.name !== 'common') cfDirs.push(e.name);
+  }
+} catch (_) { /* A8-⑤ 会红 */ }
+const wiring = cfDirs.map((d) => {
+  const p = path.join(CF_DIR, d, 'index.js');
+  let t = '';
+  try { if (fs.existsSync(p)) t = fs.readFileSync(p, 'utf8'); } catch (_) { t = ''; }
+  return Object.assign({ dir: d, hasFile: !!t }, judgeWiring(t));
+});
+
+check(`A8-⑤ 扫描面非退化：云函数 index.js 数 ≥ ${CF_MIN}（扫空/路径打错即假绿）`,
+  wiring.length >= CF_MIN, `${wiring.length} 个目录（${wiring.filter((w) => w.hasFile).length} 个含 index.js）`);
+
+const must = RL_MUST.map((d) => wiring.find((w) => w.dir === d));
+check('A8-① 名单内目标函数 index.js 全部在场（锚点在场，防路径打错）',
+  must.every((w) => w && w.hasFile), RL_MUST.join(' / '));
+check('A8-② 名单内每个写入口都已接线（makeRateLimiter + await 调用 + limited→fail）',
+  must.every((w) => w && w.wired),
+  must.map((w) => `${w ? w.dir : '?'}:${w && w.wired ? '已接线' : '未接线'}`).join(' '));
+check('A8-③ limiter 在 exports.main 之前创建（防「每次调用新桶」= 计数恒 1 的假接线）',
+  must.every((w) => w && w.atTopLevel),
+  must.map((w) => `${w ? w.dir : '?'}:${w && w.atTopLevel ? '模块级单例' : '位置可疑'}`).join(' '));
+
+const unreg = wiring.filter((w) => w.hasMake && RL_MUST.indexOf(w.dir) < 0 && RL_EXEMPT.indexOf(w.dir) < 0);
+check('A8-④ 无未登记接线点（接了的都在名单里：防漏记 / 防 EXEMPT 被滥用）',
+  unreg.length === 0, unreg.length ? unreg.map((w) => w.dir).join(' | ') : `接线点 ${RL_MUST.length} 个，全部已登记`);
 
 // —— W 弱面（只明示不判红；round82 实读：core/16 是 admin 侧另一场景口径）
 console.log(`\n===== W 弱面（只明示不判红）=====`);

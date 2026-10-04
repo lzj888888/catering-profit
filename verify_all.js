@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：135 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：136 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -331,6 +331,17 @@
 //              + C 范围恰三表且不含资产表 + D 前端三按钮与「先查量级再确认」的数据流
 //              + E 文案报的是量级不是空话 + F 后端路由与写库纪律（listAll / _id / stats.updated）；
 //         51 条断言，变异回灌 12/12 全部点名目标断言）
+//       + 会员权益链路守卫（tools/check_entitlement_flow.js，R213：**收钱的那条线必须有机器判据** ——
+//         豆包把「会员权限全流程 e2e」列为 P0 阻塞项，而 R212 对账确认仓内**零权益 e2e**
+//         （73 个 check_* + 17 个 selftest_* 无一条覆盖权益链路）。判据 = E-A **实跑**单源 isPaid
+//         （0 / null / 过期 / 未来 / 注入 now / 等号边界）+ E-B **实跑**配额判定（20→21 翻转点 /
+//         硬上限 / 缺配置必抛）+ E-C 链路在场穷尽（额度真相源 / 写侧拦截 / **到期判定单源不扩散** /
+//         续费 / 后台调权 / 查询 / 到期通知 / 前端触发键）+ E-D 自失效护栏。
+//         🔴 E-C③ 首跑当场抓到**两处手写「到期判定」扩散**（adminQueryUser 的 tier、payQueryEntitlement
+//           的 is_active）—— entitlement.js 注释白纸黑字禁止「在函数体内再写一遍」，此前无守卫
+//           ⇒ 本轮接回单源；并连带修 `adminQueryUser/selftest.js` 里**复刻的那一份**（付费语义第二源）。
+//         🔒 同轮：给 R113 限流守卫补 **A8「必须真接线」**判据（零件齐全 ≠ 限流生效）、给 R159 付费墙
+//           守卫补 **L6-②「穷尽分类」**修「扫描面一空即恒绿」；28 条断言，变异回灌 4/4 全部点名目标断言）
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -735,6 +746,7 @@ const SUITES = [
   ['shop-lifecycle',        'tools/check_shop_lifecycle.js'],
   ['month-picker',          'tools/check_month_picker.js'],
   ['shop-reset',           'tools/check_shop_reset.js'],
+  ['entitlement-flow',     'tools/check_entitlement_flow.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

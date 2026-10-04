@@ -32,6 +32,15 @@ const { buildComboLines, judgeComboRef } = common.comboDerive;   // M3.16 套餐
 const { buildSnapshotLines, calcCostCard, wouldCreateCycle, judgeCardQuota, netUnitCostWan } = require('./service');
 const { validateInput } = require('./validate');
 
+// 🔒 R213 写限流（批次 0 §2.2.5 · openid 维度 60 次/分钟）
+//   单源 cloudfunctions/common/rateLimit.js —— 已挂在聚合入口 common.rateLimit 上（sync_common 派生出
+//   cx_rateLimit.js，本目录内即有），故本次接线**零 common 改动**、无需重跑 sync_common。
+//   ⚠️ store 必须放**模块级单例**：若写在 exports.main 里 `makeRateLimiter(new Map())`，每次调用都是
+//      新桶 ⇒ 计数永远为 1 ⇒ 限流恒不触发（零件齐全却等于没接线，正是 R212 挖出的那个盲区）。
+//      守卫 tools/check_rate_limit_params.js::A8 把这一点钉死（含"不得在 main 内建 store"的负判据）。
+const RATE_STORE = new Map();
+const rateLimitCheck = common.rateLimit.makeRateLimiter(RATE_STORE);
+
 // 🔒 R73：重放形态的幂等实现已收回单源 common/idempotency.js::findPriorResult
 // （此前本文件内联了一份 getIdempotent，与单源构成"同一语义两份实现"）。
 // 键格式同样由单源 shopKey() 统一产出，本文件不再自己拼字符串。
@@ -91,6 +100,13 @@ exports.main = async (event) => {
   // ===== 2. 校验 =====
   const v = validateInput(event);
   if (v.error) return fail(v.error, v.msg);
+
+  // ===== 2.5 写限流（R213）=====
+  //   本函数所有分支皆写库（只 INSERT 新版本 / 软删 / 模式 B 虚拟原料落库）⇒ 无条件计入写限额。
+  //   位置说明：放在「通过鉴权 + 通过校验」之后 —— 非法请求由鉴权/校验当场拒绝，不占用限额；
+  //   能走到这里的请求都是会真正落库的，正是限流要保护的对象。
+  const rl = await rateLimitCheck(userId);
+  if (rl.limited) return fail(rl.code);
 
   // ===== 3. 幂等预检 =====
   const da = makeAdapter(db);

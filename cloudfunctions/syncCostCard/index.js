@@ -20,6 +20,15 @@ const { buildComboLines, judgeComboRef } = common.comboDerive;   // M3.16 套餐
 const { rebuildSnapshotLines, calcCostCard, cardParamFromDoc } = require('./service');
 const { validateInput } = require('./validate');
 
+// 🔒 R213 写限流（批次 0 §2.2.5 · openid 维度 60 次/分钟）
+//   单源 cloudfunctions/common/rateLimit.js —— 已挂在聚合入口 common.rateLimit 上（sync_common 派生出
+//   cx_rateLimit.js，本目录内即有），故本次接线**零 common 改动**、无需重跑 sync_common。
+//   ⚠️ store 必须放**模块级单例**：若写在 exports.main 里 `makeRateLimiter(new Map())`，每次调用都是
+//      新桶 ⇒ 计数永远为 1 ⇒ 限流恒不触发（零件齐全却等于没接线，正是 R212 挖出的那个盲区）。
+//      守卫 tools/check_rate_limit_params.js::A8 把这一点钉死（含"不得在 main 内建 store"的负判据）。
+const RATE_STORE = new Map();
+const rateLimitCheck = common.rateLimit.makeRateLimiter(RATE_STORE);
+
 exports.main = async (event) => {
   const ctx = cloud.getWXContext();
 
@@ -37,6 +46,14 @@ exports.main = async (event) => {
   if (v.error) return fail(v.error, v.msg);
   const cardCode = v.card_code;
   const clientRequestId = v.input.client_request_id;
+
+  // ===== 2.4 写限流（R213）=====
+  //   dry_run 是「影响面预览」（M3.19）—— 只读、零写库、不产生新版本 ⇒ **不计入写限额**，
+  //   否则用户反复预览会被误拒。只有真正落库的重算才计数。
+  if (!v.dry_run) {
+    const rl = await rateLimitCheck(userId);
+    if (rl.limited) return fail(rl.code);
+  }
 
   const da = makeAdapter(db);
 

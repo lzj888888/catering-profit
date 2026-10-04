@@ -21,8 +21,15 @@
 //   L4 文案四字段     title / content / primary / secondary 齐全且非空（showModal 缺位会 fail）
 //   L5 反恒真         影子样本：虚构能力 `m3_foobar` 喂同一判据 ⇒ **必须判红**（证明有分辨力）
 //   L6 云函数侧双向   ① 反向：代码里 `hasFeature(...,'X')` 的 X 必须 ∈ PAID_FEATURES（防"未登记就拦"）
-//                     ② 正向：清单里的 `m3_*` 能力，**若已存在同名关键字的云函数目录**，
-//                        则该目录内必须出现 `hasFeature(`（防"功能上线了、墙忘了接"）
+//                     ② 正向（R213 修假绿）：非 export 能力必须**穷尽分类** ——
+//                        a) 有同名云函数目录 ⇒ 该目录内必须出现 `hasFeature(`；
+//                        b) 无同名目录 ⇒ 必须在 WALL_ANCHORS 显式登记落点；`at` 指向文件时必须
+//                           **可验证**（该文件真含此能力的 `hasFeature(...,'key')` 调用）；
+//                           `at:null` 表示「云侧确无可挂点」，必须写理由（显式设计边界，非遗漏）；
+//                        c) 登记表不得含陈旧键（键必须都还在 PAID_FEATURES 里）；
+//                        d) 分类不重不漏：非 export 能力 100% 落入「同名目录 ∪ 登记表」。
+//      🔴 原判据按**目录名**匹配，而仓内**没有 combo / takeaway 目录** ⇒ 匹配面恒空 ⇒ 断言**恒绿**
+//         （R212 §5-2 挖出；与 R182「上限类判据扫描面一空即恒绿」同族）。
 //   L7 自失效护栏     扫描面文件数下界 + 派生集大小下界（≥3）
 //
 // 运行：node tools/check_paywall_coverage.js
@@ -133,26 +140,71 @@ check('L6-① 反向：代码里 hasFeature(...,\'X\') 的 X 必须 ∈ PAID_FEA
   unregistered.length === 0,
   unregistered.length ? `未登记却已拦：${unregistered.join(', ')}` : `实调用 ${hasFeatCalls} 处 / 键 {${Array.from(usedKeys).join(', ')}}`);
 
-// ② 正向：清单里的 m3_* 能力，若已有同名云函数目录 ⇒ 该目录必须出现 hasFeature(
+// ② 正向（R213 修假绿）：非 export 能力必须**穷尽分类**。
+//   🔴 原判据按「目录名含关键字」匹配，而仓内**根本没有 combo / takeaway 目录** ⇒ 匹配面恒空
+//      ⇒ fnWallGaps 恒空 ⇒ 断言**恒绿**（R212 §5-2 挖出；与 R182「扫描面一空即恒绿」同族）。
+//   `at: null` = 「云侧确无可挂点」——必须写理由；这是**显式登记的设计边界**，不是"忘了"。
+const WALL_ANCHORS = [
+  { key: 'm3_combo', at: 'cloudfunctions/saveCostCard/index.js',
+    why: '套餐是 saveCostCard 的 card_type===3 分支（无独立云函数目录），墙接在该分支上（见 L6-① 实调用点）。' },
+  { key: 'm3_takeaway', at: null,
+    why: '外卖为纯前端试算（utils/takeawayDerive.js 纯计算、不落库、无服务端接口）⇒ 云侧无校验点可挂；'
+       + '属已知设计边界（core/13 与 NOTE_round212 已留档），非遗漏。' },
+];
 const dirs = (() => { try { return fs.readdirSync(path.join(ROOT, CF_DIR), { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name); } catch (_) { return []; } })();
+const nonExport = PAID.filter((k) => deriveKey(k) !== 'export');
+
 const fnWallGaps = [];
-const fnChecked = [];
-for (const k of PAID) {
-  const kw = deriveKey(k).replace(/_/g, '').toLowerCase();     // combo / takeaway / export
-  if (kw === 'export') continue;                              // export 的实现在 exportData（已在 L6-① 覆盖）
+const coveredByDir = [];
+for (const k of nonExport) {
+  const kw = deriveKey(k).replace(/_/g, '').toLowerCase();     // combo / takeaway
   const hit = dirs.filter((d) => d.toLowerCase().indexOf(kw) >= 0);
+  if (!hit.length) continue;
+  coveredByDir.push(k);
   for (const fn of hit) {
     const src = walk(path.join(ROOT, CF_DIR, fn), []).map((f) => {
       try { return fs.readFileSync(f, 'utf8'); } catch (_) { return ''; }
     }).join('\n');
-    fnChecked.push(fn);
     if (src.indexOf('hasFeature(') < 0) fnWallGaps.push(`${fn}(缺 ${k} 的墙)`);
   }
 }
-check('L6-② 正向：已存在同名云函数时必须接墙（现在应为空集：套餐/外卖尚无云函数）',
-  fnWallGaps.length === 0,
+check('L6-②a 有同名云函数目录的能力，该目录内必须接墙', fnWallGaps.length === 0,
   fnWallGaps.length ? fnWallGaps.join(' | ')
-    : (fnChecked.length ? `已检 ${fnChecked.length} 个：${fnChecked.join(', ')}` : '暂无同名云函数（待接入时本条自动生效）'));
+    : (coveredByDir.length ? `已检目录：${coveredByDir.join(', ')}` : '本仓暂无「同名目录」能力（其余由 ②b/②e 承接）'));
+
+const anchorByKey = new Map(WALL_ANCHORS.map((a) => [a.key, a]));
+const hasKeyRe = (k) => new RegExp("hasFeature\\s*\\([^)]*['\"]" + k + "['\"]");
+const anchorGaps = [];
+const verifiedAnchors = [];
+for (const k of nonExport) {
+  if (coveredByDir.indexOf(k) >= 0) continue;
+  const a = anchorByKey.get(k);
+  if (!a) { anchorGaps.push(`${k}(无同名目录，且未登记落点)`); continue; }
+  if (!a.why || String(a.why).trim().length < 10) { anchorGaps.push(`${k}(登记了落点但缺理由)`); continue; }
+  if (a.at) {
+    if (!hasKeyRe(k).test(read(a.at))) { anchorGaps.push(`${k}(落点 ${a.at} 内无 hasFeature(...,'${k}') 调用)`); continue; }
+    verifiedAnchors.push(`${k}→${a.at}`);
+  } else {
+    verifiedAnchors.push(`${k}→前端（云侧无可挂点，已登记边界）`);
+  }
+}
+check('L6-②b 无同名目录的能力必须显式登记落点（穷尽分类，防"扫不到就恒绿"）',
+  anchorGaps.length === 0,
+  anchorGaps.length ? anchorGaps.join(' | ') : verifiedAnchors.join(' / '));
+
+const withAt = WALL_ANCHORS.filter((a) => a.at);
+check('L6-②c 登记落点（at 非空）必须可验证：该文件真含此能力的 hasFeature 调用（防用豁免表掩盖漏接）',
+  withAt.every((a) => hasKeyRe(a.key).test(read(a.at))),
+  withAt.length ? withAt.map((a) => `${a.key}→${a.at}`).join(' / ') : '无 at 落点条目');
+
+const staleAnchors = WALL_ANCHORS.filter((a) => PAID.indexOf(a.key) < 0);
+check('L6-②d 落点登记无陈旧键（键必须仍在 PAID_FEATURES 内）', staleAnchors.length === 0,
+  staleAnchors.length ? `陈旧/错键：${staleAnchors.map((a) => a.key).join(', ')}` : `${WALL_ANCHORS.length} 条登记，键全部有效`);
+
+const classified = nonExport.filter((k) => coveredByDir.indexOf(k) >= 0 || anchorByKey.has(k));
+check('L6-②e 分类穷尽：非 export 能力 100% 落入「同名目录 ∪ 落点登记」',
+  nonExport.length > 0 && classified.length === nonExport.length,
+  `非 export 能力 ${nonExport.length} 项 → 同名目录 ${coveredByDir.length} + 落点登记 ${nonExport.filter((k) => coveredByDir.indexOf(k) < 0).length}`);
 
 // ---- L7 自失效护栏 ----
 check('L7-① 扫描面下界：cloudfunctions 下 .js 文件 ≥ 200（防遍历失效 ⇒ 零命中假绿）',

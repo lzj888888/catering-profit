@@ -293,6 +293,15 @@ const A15_EXEMPT = [
   //   ③ 派生面：sync_common 把新 auth 派生到全部函数目录 cx_auth.js。均为显式授权，非顺手改逻辑。
   /^cloudfunctions\/manageShop\//,
   /^cloudfunctions\/[^/]+\/cx_auth\.js$/,
+  // \u26a0\ufe0f 2026-10-04\uff08round213\uff09**\u5341\u4e94\u6b21\u89e6\u53d1** \u2014\u2014 \u540c\u4e00\u65f6\u673a\u5173\u5361\u7b2c 15 \u6b21\uff1aR213 \u6536\u53e3\u300c\u4ed8\u8d39\u5224\u5b9a\u5355\u6e90\u300d
+  //   \uff08\u674e\u8001\u5e08\u300c\u542c\u4f60\u7684\uff0c\u5148\u8c03\u6574\u7ec6\u8282\uff0c\u67e5\u7f3a\u8865\u6f0f\u300d\u6388\u6743\uff09\u3002\u6539\u52a8\u9762 = \u4e24\u5904**\u624b\u5199\u5230\u671f\u5224\u5b9a**\u63a5\u56de\u5355\u6e90
+  //   `common/entitlement.js::isPaid`\uff1a\u2460 `adminQueryUser/`\uff08tier \u5224\u5b9a\uff09\u2461 `payQueryEntitlement/`
+  //   \uff08is_active \u5224\u5b9a\uff09\u2014\u2014 \u4e24\u5904\u5747\u4e3a entitlement.js \u6ce8\u91ca\u660e\u6587\u7981\u6b62\u7684\u300c\u518d\u5199\u4e00\u904d expireAt > now\u300d\uff0c
+  //   \u5c5e**\u7f3a\u9677\u4fee\u590d**\uff08\u4ed8\u8d39\u8bed\u4e49\u53cc\u6e90\uff09\uff0c\u975e\u987a\u624b\u6539\u903b\u8f91\uff1b\u8fde\u5e26\u4fee `adminQueryUser/selftest.js` \u91cc\u590d\u523b\u7684\u90a3\u4e00\u4efd\u3002
+  //   \u4ecd\u6309 round103 \u7684**\u767d\u540d\u5355\u5f0f**\u767b\u8bb0\uff08\u7cbe\u786e\u5230\u76ee\u5f55\uff09\uff0c**\u7edd\u4e0d\u653e\u5bbd\u6210 `cloudfunctions/` \u5168\u8c41\u514d**\uff1a
+  //   by=WorkBuddy / date=2026-10-04 / reason=round213 \u6388\u6743\u4ed8\u8d39\u5224\u5b9a\u5355\u6e90\u6536\u53e3\uff08\u4e24\u5904\u624b\u5199\u5224\u5b9a\u63a5\u56de isPaid\uff09
+  /^cloudfunctions\/adminQueryUser\//,
+  /^cloudfunctions\/payQueryEntitlement\//,
 ];
 check('A15 云函数逻辑零改动（仅 initDb 建库单源 + 本批授权函数豁免）', (() => {
   const { execFileSync } = require('child_process');

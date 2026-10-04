@@ -113,7 +113,7 @@ const CASES = [
   { key: 'check_list_ux', rel: 'tools/check_list_ux.js' },               // 32 条（R156：L1~L6 + S1~S3 + C1~C6 反恒真影子样本）
   { key: 'check_index_field_alignment', rel: 'tools/check_index_field_alignment.js' }, // 11 条（R157：L1 化石索引 + L2 锚点对齐 + L3 字段真在用 + S1~S3 + C1~C3 反恒真）
   { key: 'check_snapshot_fields', rel: 'tools/check_snapshot_fields.js' }, // 16 条（R144：L1 读侧全集 + L2 写侧全集 + L3 两读侧集合≡ + L4 fail-soft + L5 Controller + L6 validate 区间 + S1~S2 + C1~C3 反恒真）
-  { key: 'check_paywall_coverage', rel: 'tools/check_paywall_coverage.js' }, // 13 条（R159：L1 三单源解析 + L2 能力⊆放行 + L3 放行有文案 + L4 四字段非空 + L5 影子正负 + L6 云函数双向 + L7 自失效护栏）
+  { key: 'check_paywall_coverage', rel: 'tools/check_paywall_coverage.js' }, // 17 条（R159：L1 三单源解析 + L2 能力⊆放行 + L3 放行有文案 + L4 四字段非空 + L5 影子正负 + L6 云函数双向 + L7 自失效护栏；R213 修假绿：L6-② 改「穷尽分类」+4 条）
   // round181c 扩面：M3.16 套餐（引用型卡）守卫同批纳入 —— 它的 A-a/A-b/A-c 三锚点（成本 1275 分 /
   //   锁子卡版本 1275→1508 / 禁嵌套与版本无效）与「把子卡成本当 net_unit_cost 喂同一个 `calcCostCard`、
   //   引擎一字不改」的入参变换证明，正是本守卫要求的「非恒真」凭据；而 17 条断言删掉一批仍 > 0
@@ -144,8 +144,9 @@ const CASES = [
   { key: 'check_material_batch', rel: 'tools/check_material_batch.js' }, // 26 条（R204：A 解析行为 9 / B 页面接线 8 / C 护栏 4 / D 正负样本 2；R211 补 3：带分隔符的空行必须按空行跳过——逗号 ⑩ / 分号 ⑪ / 40 行模板压力 ⑫）
   { key: 'check_home_ui_v3', rel: 'tools/check_home_ui_v3.js' }, // 29 条（R207：S 护栏 5 / A 头卡 10 / B 口径 4 / C 模块卡与入口保全 7 / D 全局单源 3）
   { key: 'check_shop_lifecycle', rel: 'tools/check_shop_lifecycle.js' }, // 29 条（R208：S 护栏 4 / A 配额语义 5（实跑 decideDelete）/ B 删空不死锁 6 / C 入口不藏 10 / D 文案对齐 4）
-  { key: 'check_month_picker', rel: 'tools/check_month_picker.js' },
-  { key: 'check_shop_reset', rel: 'tools/check_shop_reset.js' }, // 18 条（R209：S 护栏 4 / A handler 实跑 5 / B 后端实跑 4 / C 全仓回归 3 / D UI 一致 2）
+  { key: 'check_month_picker', rel: 'tools/check_month_picker.js' }, // 18 条（R209：S 护栏 4 / A handler 实跑 5 / B 后端实跑 4 / C 全仓回归 3 / D UI 一致 2）
+  { key: 'check_shop_reset', rel: 'tools/check_shop_reset.js' }, // 52 条（R210：S 护栏 / A 实跑 decideReset / B 实跑 validateInput / C 范围恰三表不含资产 / D 前端三按钮 / E 文案量级 / F 写库纪律）
+  { key: 'check_entitlement_flow', rel: 'tools/check_entitlement_flow.js' }, // 28 条（R213：E-A 实跑单源 9 / E-B 实跑配额 7 / E-C 链路在场 9 / E-D 护栏 3）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];
