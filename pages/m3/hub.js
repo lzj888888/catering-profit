@@ -11,6 +11,7 @@
 const api = require('../../utils/api.js');
 const ui = require('../../utils/ui.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
+const shopGuard = require('../../utils/shopGuard.js');
 
 Page({
   data: {
@@ -40,6 +41,14 @@ Page({
 
   onShow() {
     ui.setTitle(TERMS.hub.title);
+    this.boot();
+  },
+
+  // 🔴 R215：本页是 tabBar 页 ⇒ **冷启动直达**时 app.globalData 尚空，必须先确保店铺上下文，
+  //   否则 loadCount 的 getCostCard 会带空 shop_id 发请求（表现为「卡片数不显示」，且静默）。
+  //   上下文失败不阻塞本页导航（四个分区入口与上下文无关）。
+  async boot() {
+    try { await shopGuard.ensureShop(); } catch (e) { /* 静默：导航功能不受影响 */ }
     this.loadCount();
   },
 

@@ -83,9 +83,12 @@ module.exports = {
    */
   async ensureShop() {
     const app = getApp && getApp();
-    if (app && app.globalData && app.globalData.shop_id) {
-      return app.globalData;
-    }
+    const g = (app && app.globalData) || {};
+    // 🔴 R215：判据由「shop_id 非空」改为「本次会话是否已加载过」——
+    //   无店铺态（no_shop，用户把店删空）的 shop_id **恒为空**，旧判据把它当成「还没拉过」，
+    //   于是每进一页就重发一次 getShopContext，且调用方拿不到「已加载但无店铺」这个事实。
+    //   标志由单源 app.setShopContext 写入。
+    if (g.shopLoaded) return app.globalData;
     const ctx = await this.call('getShopContext', {});
     if (app && app.setShopContext) app.setShopContext(ctx);
     return ctx;

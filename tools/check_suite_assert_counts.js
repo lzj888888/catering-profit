@@ -147,6 +147,7 @@ const CASES = [
   { key: 'check_month_picker', rel: 'tools/check_month_picker.js' }, // 18 条（R209：S 护栏 4 / A handler 实跑 5 / B 后端实跑 4 / C 全仓回归 3 / D UI 一致 2）
   { key: 'check_shop_reset', rel: 'tools/check_shop_reset.js' }, // 52 条（R210：S 护栏 / A 实跑 decideReset / B 实跑 validateInput / C 范围恰三表不含资产 / D 前端三按钮 / E 文案量级 / F 写库纪律）
   { key: 'check_entitlement_flow', rel: 'tools/check_entitlement_flow.js' }, // 28 条（R213：E-A 实跑单源 9 / E-B 实跑配额 7 / E-C 链路在场 9 / E-D 护栏 3）
+  { key: 'check_fn_public_surface', rel: 'tools/check_fn_public_surface.js' }, // 17 条（R215：S 扫描面 5 / A 三分穷尽 2 / B 登记双向 4 / C 来源自保 4 / D 自失效 2）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

@@ -82,6 +82,22 @@ dev 库里的任何账套 / 台账 / 测试数据**不会**流到正式版。
 | D2 | 🔴 **先在控制台定 all 函数 timeout 值，再全量部署** | 实测：`config.json` 的 `timeout` **不被采纳**（重启键 §该条），值只存在于控制台。**dev 定过 ≠ prod 生效**，必须重走「定值 → 部署 → `cli cloud functions info` 逐个回读」 |
 | D3 | `ADMIN_SETUP_TOKEN` 等凭证重配 | 凭证**不随环境走** |
 
+### D+ 开真实支付 🔴（R215 补录 · R214 发现的清单缺口）
+
+> **为什么单列**：R214 通跑发现 `ENABLE_REAL_PAYMENT` 是**代码常量**（`false`），不是"控制台开关"。
+> 老注释 `utils/paywall.js:11-12` 说「执照下来改后端配置即接真实支付」——**那句话是误导**：实际要**改代码 + 重新部署 2 个函数**。
+> 不补这一步，正式版会「能点付费墙、点了却让联系客服」，**一分钱收不到**。
+
+| # | 动作 | 判据 | 谁做 |
+|---|---|---|---|
+| D+1 | **拿营业执照 + 申请微信支付商户号**（前置，周期最长，尽早启动） | 拿到 `mchid` + API 密钥 | 李老师 |
+| D+2 | 把 `cloudfunctions/payCreateOrder/service.js::ENABLE_REAL_PAYMENT` 与该常量在 `payRenew/service.js` 的同名常量改为 **`true`**（或改读环境变量/配置，避免再改代码） | 两处常量不再为 `false` | 我 |
+| D+3 | **重新部署** `payCreateOrder` + `payRenew` 两个函数（`-r`，一次一个） | 部署日志完成行 | 我 |
+| D+4 | 走一次真实下单（1 分钱档）→ 确认回调 `payCallback` 落库、权益生效 | `pay_order` 有记录且状态=已支付 | 李老师 + 我 |
+
+> ⚠️ **反向验证**：D+2 改完若**忘了 D+3 重新部署**，前端仍是旧逻辑（`ENABLE_REAL_PAYMENT=false`）⇒ 支付链路静默不通。
+> 判据 = 部署后 `cli … info --names payCreateOrder` 的**最后更新时间**为本次。
+
 ### E. 前端切换
 
 | # | 动作 | 判据 |

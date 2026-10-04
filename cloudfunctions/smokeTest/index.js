@@ -49,6 +49,13 @@ try {
 //      且 09-19 后的单函数部署是否把 timeout 冲回默认尚未复验（见重启键 §① ② 条）。
 //   默认行为与历史 runbook 完全一致（不加 ⑥），已归档的证据不受影响。
 exports.main = async (event) => {
+  // 🔴 R215 加固：本函数是**诊断探针**（会建集合、往 probe_tmp 写数据），不是业务接口 ——
+  //   此前无任何来源校验 ⇒ 任意已登录用户可从小程序端调用它写库。
+  //   判据 = **有用户 OPENID 即客户端调用 ⇒ 拒绝**；云控制台「测试」/ cli 调用无 OPENID ⇒ 放行。
+  //   守卫 = tools/check_fn_public_surface.js 的 C-②。
+  const wxCtx = cloud.getWXContext();
+  if (wxCtx && wxCtx.OPENID) return { code: 'FORBIDDEN', msg: 'smokeTest 仅限云控制台 / cli 调用（R215 加固）' };
+
   const out = {
     env: '', fsDiag, requireCommon: {}, createCollection: {}, createIndex: {}, docGet: {},
     docGetMissing: {}, uniqueEnforce: {}, assertShopOwner: {}, dataAdapterGet: {},

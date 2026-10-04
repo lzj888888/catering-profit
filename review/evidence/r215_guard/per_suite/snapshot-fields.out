@@ -1,0 +1,18 @@
+===== R144 · 快照 5 字段完整性守卫（S0 落库 ⇄ 读侧出参）=====
+  ✅ S1 扫描面完整（四侧源码合计 36702 字符 > 20000，缩到很小即转红）
+  ✅ S2 能取出读侧函数体 lineToOutput（cloudfunctions/getCostCard/service.js）—— 取不到说明改名了，守卫必须红
+  ✅ S2 能取出读侧函数体 lineToOut（cloudfunctions/getCardVersions/service.js）—— 取不到说明改名了，守卫必须红
+  ✅ S2 读侧函数体规模正常（>200 字符，防"取到空壳"假绿）
+  ✅ L1 读侧含 5 字段全集（cloudfunctions/getCostCard/service.js）
+  ✅ L1 读侧含 5 字段全集（cloudfunctions/getCardVersions/service.js）
+  ✅ L2 写侧落库含 5 字段全集（cloudfunctions/saveCostCard/service.js）
+  ✅ L2 写侧落库含 5 字段全集（cloudfunctions/syncCostCard/service.js）
+  ✅ L3 两处读侧字段集合 ≡（brand_spec,purchase_unit,purchase_price,convert_factor,yield_rate vs brand_spec,purchase_unit,purchase_price,convert_factor,yield_rate）—— 只给一处加即红（R150 事故形态）
+  ✅ L4 读侧 fail-soft（cloudfunctions/getCostCard/service.js）：5 字段均有缺省兜底，实际 5/5
+  ✅ L4 读侧 fail-soft（cloudfunctions/getCardVersions/service.js）：5 字段均有缺省兜底，实际 5/5
+  ✅ L5 写侧 Controller 含 5 字段（cloudfunctions/saveCostCard/index.js）
+  ✅ L6 validate.js 对 yield_rate 有区间校验（(0,100]）—— 快照值必须合法
+  ✅ C1 影子样本「删掉 yield_rate」判红且点名该字段（缺 yield_rate）
+  ✅ C2 影子样本「本轮真实写法」判绿（不误伤）
+  ✅ C3 等价改写（行序颠倒）仍判绿 ⇒ 判据判**字段存在**不判书写顺序
+快照字段守卫结果：16 通过 / 0 失败

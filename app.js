@@ -12,6 +12,14 @@ App({
     shop_id: '',          // 店铺 ID（页面首次 getShopContext 后写入；所有请求自动携带 commit）
     shop_name: '',
     switches: { inventorySwitchOn: false, amortizeSwitchOn: false },
+    // 🔴 R215：店铺上下文是否**已加载过**（含「已加载但无店铺」）—— 见 utils/api.js::ensureShop。
+    //   旧判据只看 shop_id 非空 ⇒ 无店铺态（no_shop）每进一页就重拉一次，且调用方无从判断
+    //   「已加载但无店铺」与「还没拉过」的区别。
+    shopLoaded: false,
+    // 🔴 R215：无店铺态（服务端 getShopContext 出参 no_shop）—— 用户把店铺**主动删空**时的状态。
+    no_shop: false,
+    // R215：本次会话是否已弹过「还没有店铺」引导（避免在三个 tab 间来回切时重复打扰）
+    noShopPrompted: false,
     privacyAsked: 0,      // 本会话已弹隐私协议次数（≤2，§2.10）
     launchScene: '',      // G7：启动场景值（扫码/分享/搜索进），留痕供来源归因
     updatePromptedVersion: '', // G4：本会话已提示更新的版本号（同一版本只提示一次）
@@ -140,5 +148,8 @@ App({
     this.globalData.shop_id = ctx.shop_id || '';
     this.globalData.shop_name = ctx.shop_name || '';
     this.globalData.switches = ctx.switches || { inventorySwitchOn: false, amortizeSwitchOn: false };
+    // R215：无店铺态与「已加载」标志 —— 单源写入点就在这里（页面不得各自判断）
+    this.globalData.no_shop = !!ctx.no_shop;
+    this.globalData.shopLoaded = true;
   },
 });

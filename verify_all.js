@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：136 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：137 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -342,6 +342,17 @@
 //           ⇒ 本轮接回单源；并连带修 `adminQueryUser/selftest.js` 里**复刻的那一份**（付费语义第二源）。
 //         🔒 同轮：给 R113 限流守卫补 **A8「必须真接线」**判据（零件齐全 ≠ 限流生效）、给 R159 付费墙
 //           守卫补 **L6-②「穷尽分类」**修「扫描面一空即恒绿」；28 条断言，变异回灌 4/4 全部点名目标断言）
+//       + 云函数公开面守卫（tools/check_fn_public_surface.js，R215：**入口有没有鉴权/自保，必须有人守** ——
+//         R214 全链路通跑发现 `payExpireNotify` 的 exports.main **零来源校验**，
+//         而它扫 shop_entitlement **全表**并回 user_id + expire_at ⇒ 任意已登录用户
+//         在小程序端即可拉走别人的付费状态；同族 `smokeTest`（写库探针）亦然。
+//         而既有守卫全抓不到：R194 只看**已有鉴权**函数的返回形状、R62 只守「函数清单
+//         ≡ 契约文档」、R68 只守隐私收集项 ⇒「入口鉴权」这一层此前零判据。
+//         判据 = S 扫描面 + A **三分穷尽**（A 用户鉴权 / B admin 鉴权 / C 免鉴权）
+//         + B C 类逐条登记且双向防腐 + C 定时/探针类必须真判来源
+//         （OPENID 后 return 拒绝，含解析器自证正负样本）+ D 自失效护栏。
+//         诚实边界：不判鉴权**强度**、不判 payCallback 验签实现、不判 admin 入口的幂等与限额。
+//         同轮：给 payExpireNotify 与 smokeTest 补来源校验；17 条断言）
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -747,6 +758,7 @@ const SUITES = [
   ['month-picker',          'tools/check_month_picker.js'],
   ['shop-reset',           'tools/check_shop_reset.js'],
   ['entitlement-flow',     'tools/check_entitlement_flow.js'],
+  ['fn-public-surface',    'tools/check_fn_public_surface.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

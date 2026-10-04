@@ -1,0 +1,14 @@
+✅ P1 协议含锚点行「WorkBuddy 报告」（fail-closed）  (第 16 行)
+✅ P1 锚点行含可解析绝对路径（盘符 + .workbuddy[/]memory）  (已给出盘符路径)
+✅ P2 协议点名诱饵「~\.workbuddy\memory」并在其后紧邻标注（云端画像缓存）  (已标注)
+✅ P2 协议点名诱饵「~\.workbuddy\MEMORY.md」并在其后紧邻标注（跨项目用户级记忆）  (已标注)
+✅ P3 活文档中报告路径的相对写法均可解析或已标注诱饵  (扫描 5 份活文档，0 处)
+✅ P4 至少解析到 1 个报告目录绝对路径（fail-closed）  (C:\Users\lzj\WorkBuddy\2026-09-08-22-08-11\.workbuddy\memory)
+✅ P4 每个报告目录均真实存在  (1 个目录全部存在)
+✅ P4 每个提到报告路径的活文档都给出了可解析的绝对路径  (4 份：review/README.md, SMOKETEST_RUNBOOK.md, 新手上云操作手册.md, specs/dev-specs/★知识存储点_2026-09-10.md)
+✅ P5 报告目录含 ≥1 份 `YYYY-MM-DD.md`  (27 份)
+   ℹ️ 最新报告：2026-10-04.md（30268 B，mtime 2026-10-04 12:51）
+✅ P6 诱饵「~\.workbuddy\memory」确实存在（标注不腐）  (~\.workbuddy\memory · 云端画像缓存)
+✅ P6 诱饵「~\.workbuddy\MEMORY.md」确实存在（标注不腐）  (~\.workbuddy\MEMORY.md · 跨项目用户级记忆)
+
+===== 交接面引用位置守卫结果：11 通过 / 0 失败 =====

@@ -6,6 +6,7 @@ const api = require('../../utils/api.js');
 const ui = require('../../utils/ui.js');
 const loading = require('../../utils/loading.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
+const shopGuard = require('../../utils/shopGuard.js');
 
 Page({
   data: {
@@ -51,8 +52,11 @@ Page({
     loadingLogout: false,
   },
 
-  onShow() {
+  // 🔴 R215：本页是 tabBar 页 ⇒ 冷启动直达时补拉店铺上下文（无店铺态会弹引导并返回 null）。
+  //   取 shop_name 前必须先 await，否则读到的是空 globalData（表现为「店铺名空白」）。
+  async onShow() {
     ui.setTitle(TERMS.exp.mineTitle);
+    try { await shopGuard.ensureShop(); } catch (e) { /* 静默：本页其余入口不依赖上下文 */ }
     const app = getApp();
     this.setData({
       shopName: (app.globalData && app.globalData.shop_name) || '',
@@ -161,7 +165,15 @@ Page({
         // 清本地缓存 + 退出
         wx.clearStorageSync();
         const app = getApp();
-        if (app && app.globalData) app.globalData.shop_id = '';
+        if (app && app.globalData) {
+          // R215：登出后会话标志必须一起清 —— 否则下次进入时 ensureShop 命中「已加载」
+          //   而返回上一账号的上下文（跨账号串档）。
+          app.globalData.shop_id = '';
+          app.globalData.shop_name = '';
+          app.globalData.shopLoaded = false;
+          app.globalData.no_shop = false;
+          app.globalData.noShopPrompted = false;
+        }
         wx.showToast({ title: TERMS.exp.logoutDone, icon: 'none', duration: 3000 });
         // 🔴 R199：`pages/index/index` 已改为**底部 tabBar 页** ⇒ `wx.reLaunch` 到 tabBar 页会失败
         //   （微信限制：tabBar 页只能 `switchTab`）。登出后回首页同样用 `wx.switchTab`。
@@ -172,5 +184,5 @@ Page({
     });
   },
 
-  onPullDownRefresh() { this.onShow(); wx.stopPullDownRefresh(); },
+  onPullDownRefresh() { this.onShow().then(() => wx.stopPullDownRefresh()); },
 });

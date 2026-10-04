@@ -302,6 +302,15 @@ const A15_EXEMPT = [
   //   by=WorkBuddy / date=2026-10-04 / reason=round213 \u6388\u6743\u4ed8\u8d39\u5224\u5b9a\u5355\u6e90\u6536\u53e3\uff08\u4e24\u5904\u624b\u5199\u5224\u5b9a\u63a5\u56de isPaid\uff09
   /^cloudfunctions\/adminQueryUser\//,
   /^cloudfunctions\/payQueryEntitlement\//,
+  // ⚠️ 2026-10-04（round215）**十六次触发** —— 同一时机关卡第 16 次：R215 修 P0 未授权访问
+  //   （R214 全链路通跑发现）。改动面 = 两个**无鉴权**云函数补来源校验：
+  //   ① `payExpireNotify/`（定时任务）—— exports.main 此前无校验，任意已登录用户可从小程序端
+  //      调用它拉走 `shop_entitlement` 全表（user_id + expire_at）；
+  //   ② `smokeTest/`（真云诊断探针）—— 会建集合/写 probe_tmp，同样可被任意用户触发。
+  //   均为**缺陷修复**（未授权访问），非顺手改逻辑；沿用**白名单式**登记（精确到目录）：
+  //   by=WorkBuddy / date=2026-10-04 / reason=round215 授权：无鉴权云函数补来源校验（定时/探针拒客户端调用）
+  /^cloudfunctions\/payExpireNotify\//,
+  /^cloudfunctions\/smokeTest\//,
 ];
 check('A15 云函数逻辑零改动（仅 initDb 建库单源 + 本批授权函数豁免）', (() => {
   const { execFileSync } = require('child_process');

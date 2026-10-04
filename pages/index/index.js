@@ -4,6 +4,7 @@ const api = require('../../utils/api.js');
 const ui = require('../../utils/ui.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 const app = getApp();
+const shopGuard = require('../../utils/shopGuard.js');
 
 Page({
   data: {
@@ -54,6 +55,10 @@ Page({
     try {
       const ctx = await api.call('getShopContext', {});
       app.setShopContext(ctx);
+      // R215：无店铺态（用户把店删空）⇒ 弹一次引导送往店铺页。
+      //   ⚠️ 本页**保持「每次 onShow 都直拉」的语义**（不切到带缓存的 ensureShop），
+      //   否则在设置页改完店铺名回首页会看到旧名 —— 那是「页面读缓存」的回退。
+      if (ctx.no_shop) shopGuard.promptNoShop();
       this.setData({ shopName: ctx.shop_name || '', loading: false });
     } catch (e) {
       this.setData({ loading: false });
