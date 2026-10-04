@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：133 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：134 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -312,6 +312,14 @@
 //            按钮守触控 ≥88rpx / 字号 ≥28rpx —— 判据**收进 .ops-btn 规则块**，全文搜会被别处同值掩盖）
 //         + D 文案口径对齐（不再留「至少要保留一家」这类过期承诺）+ S 自失效护栏）；
 //         29 条断言，变异回灌 4/4 全部点名目标断言）
+//       + 月份选择器守卫（tools/check_month_picker.js，R209：**picker 下标 ≠ 值** —— 李老师真机反馈
+//         「选月份只能停在本月、选以前月份提示填写错误」。根因是 `<picker mode="selector">` 的
+//         `e.detail.value` 是**选中项下标数字**，被直接当月份字符串传给 getLedger ⇒ 后端判
+//         INVALID_PARAM ⇒ 前端弹「填写有误」。所以 A 组**实跑抠出来的 handler**（判行为不判字面：
+//         传出去的必须是 months[i] 字符串 / 重复与越界都不许发请求 / 高亮要跟随），
+//         B 组实跑生产 validate.js 证明历史月本来就放行（**不是产品限制**），
+//         C 组把全仓 17 处 selector picker 的 handler 做成同类回归 + 关键锚点在场护栏，
+//         D 组管 wxml 用 monthIndex 变量取选中项；18 条断言，变异回灌 3/3 全部点名目标断言）
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -714,6 +722,7 @@ const SUITES = [
   ['material-batch',        'tools/check_material_batch.js'],
   ['home-ui-v3',            'tools/check_home_ui_v3.js'],
   ['shop-lifecycle',        'tools/check_shop_lifecycle.js'],
+  ['month-picker',          'tools/check_month_picker.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

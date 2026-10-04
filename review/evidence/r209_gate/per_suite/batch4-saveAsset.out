@@ -1,0 +1,50 @@
+===== 1. 合法入参 + 归一化契约 =====
+✅ 合法资产放行
+✅ shop_id 回传
+✅ asset_id 缺省 → 空串（= 新增语义）
+✅ name 已 trim
+✅ value_fen 整数分原样保留（12,000,000 分 = 12 万元）
+✅ terminate_month 缺省 → 空串（未终止）
+✅ client_request_id 回传
+✅ 有 asset_id 时原样回传（= 编辑语义）
+===== 2. 金额单位契约：整数「分」 =====
+✅ value_fen 字符串 "100" → 拒（JSON number 契约）
+✅ value_fen 0 → 拒
+✅ value_fen 负数 → 拒
+✅ value_fen 小数 1.5 → 拒（金额必须是整数分）
+✅ value_fen 缺失 → 拒
+✅ value_fen NaN → 拒
+===== 3. 月份 / 时长 =====
+✅ start_month "2026-13" → 拒
+✅ start_month "2026-1" → 拒（月份必须两位）
+✅ start_month "2026-00" → 拒
+✅ start_month "2026-09" → 放行
+✅ total_months 0 → 拒
+✅ total_months 1 → 放行（1 个月也合法）
+✅ total_months 1.5 → 拒
+✅ total_months "12" → 拒
+✅ terminate_month "2026-13" → 拒
+✅ terminate_month "2026-06" → 放行
+✅ terminate_month "" → 归一空串（未终止）
+✅ terminate_month 非字符串（null/数字）→ 归一空串（宽松归一，不报错）
+===== 4. shop_id / 事件形态 =====
+✅ shop_id 缺失 → 拒
+✅ shop_id 空串 → 拒
+✅ asset 缺失 → 拒
+✅ asset 非对象 → 拒
+✅ event 为 null → 拒
+✅ asset.name 纯空白 → 拒（trim 后非空才算）
+✅ 支持 { input: {...} } 包裹层
+✅ 错误码 = INVALID_PARAM（全局标准码，非函数私有码）
+===== 5. 静态形状守卫（写操作特有）=====
+✅ 顺序：resolveAuth（鉴权）先于 assertShopOwner（越权）
+✅ 顺序：assertShopOwner 先于 validateInput（越权优先拒）
+✅ 编辑分支读目标走 DataAdapter（软删已过滤，不可复活）
+✅ 编辑分支：目标不存在 → RESOURCE_NOT_FOUND
+✅ 编辑分支：update 显式写 is_deleted: false（保持未软删态）
+✅ 新增分支：insert shop_amortize 且必落 shop_id / shop_id 取自 event
+✅ 新增分支：服务端 genId 生成 asset_id（不信任前端 id）
+✅ 金额落库字段名 = value_fen（与 validate 输出一致，防字段漂移）
+✅ 当月摊销不在此算（口径：由 getAmortSchedule / saveLedger 引擎算）
+
+==== saveAsset 自测结果：43 通过 / 0 失败 ====

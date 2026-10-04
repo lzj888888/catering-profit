@@ -1,0 +1,7 @@
+■ 阶段 A：一上来就跑依赖 spawn 的套件
+   [suite-coverage] rc=0 EBUSY=False
+   [suite-count-claims] rc=0 EBUSY=False
+   [r85-takeaway] rc=0 EBUSY=False
+■ 阶段 B：先跑前 40 个套件（含大量 spawn 消耗），再回头跑 suite-coverage
+   [suite-coverage] rc=0 EBUSY=False
+   [suite-coverage] rc=0 EBUSY=False

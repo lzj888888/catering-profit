@@ -1,0 +1,9 @@
+### tools/check_suite_coverage.js
+   带 preload : OK OK OK OK OK
+   不带 preload: RED|EBUSY RED|EBUSY RED|EBUSY RED|EBUSY RED|EBUSY
+### tools/selftest_r85.js
+   带 preload : OK OK OK OK OK
+   不带 preload: RED|EBUSY RED|EBUSY RED|EBUSY RED|EBUSY RED|EBUSY
+### tools/check_suite_assert_counts.js
+   带 preload : OK OK OK OK OK
+   不带 preload: RED RED RED RED RED

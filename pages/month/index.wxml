@@ -10,7 +10,7 @@
 
   <!-- 月份选择 -->
   <view class="card2">
-    <picker mode="selector" range="{{months}}" value="{{months.indexOf(curMonth)}}" bindchange="onMonthChange">
+    <picker mode="selector" range="{{months}}" value="{{monthIndex}}" bindchange="onMonthChange">
       <view class="cell">
         <text class="lbl">{{t.month}}</text>
         <!-- 修 3：curMonth 为空时显示占位，不空白 -->

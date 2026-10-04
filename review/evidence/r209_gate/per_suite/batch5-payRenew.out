@@ -1,0 +1,11 @@
+===== 续费订单生成 =====
+✅ 生成续费订单号（PR 前缀）  (PRMUTDMCQ4IJTP)
+✅ 金额=19900 分
+✅ plan 携带 + status=pending
+✅ enable_real_payment=false
+✅ pay_params=null
+===== 入参校验 =====
+✅ 合法（含可选 shop_id）
+✅ 缺 plan_id → INVALID_PARAM
+
+==== payRenew 批次 5 自测结果：7 通过 / 0 失败 ====

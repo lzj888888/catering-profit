@@ -44,6 +44,7 @@ Page({
       monthEmpty: TERMS.uiFix.monthEmpty,
     },
     months: [],              // 可选月份（倒序）
+    monthIndex: 0,           // R209：picker 的选中下标（WXML 里不做 indexOf 表达式，避免依赖解析器白名单）
     curMonth: '',
     tab: 'free',
     isPaid: false,           // 权限判定（只读 expire_at / is_active）
@@ -89,7 +90,7 @@ Page({
           .filter(Boolean),
       )).sort().reverse();
       await this.loadMonth(cur);
-      this.setData({ months, curMonth: cur, loading: false });
+      this.setData({ months, curMonth: cur, monthIndex: Math.max(0, months.indexOf(cur)), loading: false });
     } catch (e) {
       this.setData({ loading: false });
       api.toastError(e);
@@ -134,8 +135,15 @@ Page({
   },
 
   onMonthChange(e) {
-    const month = e.detail.value;
-    this.setData({ loading: true });
+    // 🔴 R209：`<picker mode="selector">` 的 `e.detail.value` 是**选中项下标（数字）**，不是月份字符串。
+    //   旧实现直接 `const month = e.detail.value` 往下传 ⇒ 后端 getLedger 收到 month=0/1/2
+    //   ⇒ validate 判 INVALID_PARAM ⇒ 前端弹 ERR.INVALID_PARAM「填写有误，请检查后重试」。
+    //   真机表现正是「月份只能停在本月、点任何一个月就报错」（李老师 2026-10-04 反馈）。
+    //   ⚠️ 全站其余 12 处 selector picker 都是 `Number(e.detail.value)` 取数组元素，这里是唯一走漏的一处。
+    const i = Number(e.detail.value);
+    const month = this.data.months[i];
+    if (!month || month === this.data.curMonth) return;   // 越界/重复选择：不发起无效请求
+    this.setData({ monthIndex: i, loading: true });
     this.loadMonth(month).then(() => this.setData({ loading: false }));
   },
   switchTab(e) {

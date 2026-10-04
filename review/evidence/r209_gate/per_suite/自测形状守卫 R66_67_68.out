@@ -1,0 +1,8 @@
+
+[形状守卫 R66/R67/R68/R71] 扫描自测文件 57 个（R1 顶层 IIFE ≤1 / R2 exit 仅在末块或函数声明体内 / R3 退出码存在 / R71 无恒真断言）
+  [R67 登记完整性] 树内 57 个 ↔ SUITES 内 57 个；漏挂 0 / 孤儿 0
+  ⚠️ cloudfunctions/common/__tests__/batch0_selfcheck.js
+      ↳ R71 已豁免恒真断言 1 条（第 235 行，带 R71-ok 标记）
+  ⚠️ tools/selftest_r174_inbound.js
+      ↳ R71 已豁免恒真断言 1 条（第 131 行，带 R71-ok 标记）
+✅ 全部 57 个自测形状合规（R1/R2 通过），且 Δ(SUITES) 双向为零（R67）；另有 2 条 WARN（不阻断）：cloudfunctions/common/__tests__/batch0_selfcheck.js、tools/selftest_r174_inbound.js
