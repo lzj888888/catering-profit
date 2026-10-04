@@ -1,0 +1,122 @@
+
+===== A0 实算单源（逐个真跑套件脚本，不抄字面量） =====
+  · tools/selftest_ui_fix.js → 38 通过
+  · tools/selftest_ad_gates.js → 24 通过
+  · tools/selftest_batch8b.js → 178 通过
+  · tools/selftest_batch8c.js → 59 通过
+  · tools/check_ios_pay.js → 6 通过
+  · tools/check_env_ready.js → 11 通过
+  · tools/selftest_r85.js → 161 通过
+  · tools/check_theme_color.js → 16 通过
+  · tools/check_suite_coverage.js → 10 通过
+  · tools/check_amount_input_row.js → 15 通过
+  · tools/check_takeaway_paste_cases.js → 80 通过
+  · tools/check_expense_item_seed.js → 11 通过
+  · tools/check_wxml_structure.js → 2 通过
+  · tools/check_flow_entry_and_fold.js → 26 通过
+  · tools/check_indicator_ref.js → 52 通过
+  · tools/check_m2_no_cost_rate.js → 17 通过
+  · cloudfunctions/calcSandbox/selftest.js → 66 通过
+  · tools/check_m2_ref_not_prefill.js → 16 通过
+  · tools/check_m1_indicator_view.js → 31 通过
+  · tools/check_doc_id_write.js → 36 通过
+  · tools/check_m3_engine_parity.js → 22 通过
+  · tools/check_modal_button_len.js → 14 通过
+  · tools/check_dish_category_free.js → 6 通过
+  · tools/check_unit_convert.js → 19 通过
+  · tools/check_spec_derive.js → 24 通过
+  · tools/check_unit_family.js → 75 通过
+  · tools/check_list_query_limit.js → 22 通过
+  · tools/check_list_ux.js → 32 通过
+  · tools/check_index_field_alignment.js → 11 通过
+  · tools/check_snapshot_fields.js → 16 通过
+  · tools/check_paywall_coverage.js → 13 通过
+  · tools/selftest_m3_combo.js → 17 通过
+  · tools/selftest_m3_lexicon.js → 21 通过
+  · tools/selftest_m3_takeaway.js → 21 通过
+  · tools/selftest_m3_impact.js → 17 通过
+  · tools/selftest_m3_recon.js → 16 通过
+  · tools/selftest_bill_parse.js → 15 通过
+  · tools/selftest_grade_gate.js → 11 通过
+  · tools/check_pack_size.js → 11 通过
+  · tools/selftest_m3_per100g.js → 7 通过
+  · tools/check_spec_per100g_identity.js → 6 通过
+  · tools/check_auth_guard_shape.js → 17 通过
+  · tools/check_tabbar.js → 16 通过
+  · tools/check_material_batch.js → 26 通过
+  · tools/check_home_ui_v3.js → 29 通过
+  · tools/check_shop_lifecycle.js → 29 通过
+  · tools/check_month_picker.js → 18 通过
+  · tools/check_shop_reset.js → 52 通过
+  · tools/check_entitlement_flow.js → 28 通过
+  ✅ A0-① 49 个套件全部实跑成功（rc=0）且解析到通过数
+  ✅ A0-② 各套件通过数均 > 0（下界非空）
+
+===== A1 唯一声明处（重启键内的语义标记行） =====
+  ✅ A1-① 唯一声明处存在且仅 1 行（★知识存储点_2026-09-10.md）
+
+===== A2 声明 ≡ 实跑（逐 key 比对） =====
+  ✅ A2-selftest_ui_fix 声明 38 ≡ 实跑 38
+  ✅ A2-selftest_ad_gates 声明 24 ≡ 实跑 24
+  ✅ A2-selftest_batch8b 声明 178 ≡ 实跑 178
+  ✅ A2-selftest_batch8c 声明 59 ≡ 实跑 59
+  ✅ A2-check_ios_pay 声明 6 ≡ 实跑 6
+  ✅ A2-check_env_ready 声明 11 ≡ 实跑 11
+  ✅ A2-selftest_r85 声明 161 ≡ 实跑 161
+  ✅ A2-check_theme_color 声明 16 ≡ 实跑 16
+  ✅ A2-check_suite_coverage 声明 10 ≡ 实跑 10
+  ✅ A2-check_amount_input_row 声明 15 ≡ 实跑 15
+  ✅ A2-check_takeaway_paste_cases 声明 80 ≡ 实跑 80
+  ✅ A2-check_expense_item_seed 声明 11 ≡ 实跑 11
+  ✅ A2-check_wxml_structure 声明 2 ≡ 实跑 2
+  ✅ A2-check_flow_entry_and_fold 声明 26 ≡ 实跑 26
+  ✅ A2-check_indicator_ref 声明 52 ≡ 实跑 52
+  ✅ A2-check_m2_no_cost_rate 声明 17 ≡ 实跑 17
+  ✅ A2-calcSandbox_selftest 声明 66 ≡ 实跑 66
+  ✅ A2-check_m2_ref_not_prefill 声明 16 ≡ 实跑 16
+  ✅ A2-check_m1_indicator_view 声明 31 ≡ 实跑 31
+  ✅ A2-check_doc_id_write 声明 36 ≡ 实跑 36
+  ✅ A2-check_m3_engine_parity 声明 22 ≡ 实跑 22
+  ✅ A2-check_modal_button_len 声明 14 ≡ 实跑 14
+  ✅ A2-check_dish_category_free 声明 6 ≡ 实跑 6
+  ✅ A2-check_unit_convert 声明 19 ≡ 实跑 19
+  ✅ A2-check_spec_derive 声明 24 ≡ 实跑 24
+  ✅ A2-check_unit_family 声明 75 ≡ 实跑 75
+  ✅ A2-check_list_query_limit 声明 22 ≡ 实跑 22
+  ✅ A2-check_list_ux 声明 32 ≡ 实跑 32
+  ✅ A2-check_index_field_alignment 声明 11 ≡ 实跑 11
+  ✅ A2-check_snapshot_fields 声明 16 ≡ 实跑 16
+  ❌ A2-check_paywall_coverage 声明 17 ≠ 实跑 13
+  ✅ A2-selftest_m3_combo 声明 17 ≡ 实跑 17
+  ✅ A2-selftest_m3_lexicon 声明 21 ≡ 实跑 21
+  ✅ A2-selftest_m3_takeaway 声明 21 ≡ 实跑 21
+  ✅ A2-selftest_m3_impact 声明 17 ≡ 实跑 17
+  ✅ A2-selftest_m3_recon 声明 16 ≡ 实跑 16
+  ✅ A2-selftest_bill_parse 声明 15 ≡ 实跑 15
+  ✅ A2-selftest_grade_gate 声明 11 ≡ 实跑 11
+  ✅ A2-check_pack_size 声明 11 ≡ 实跑 11
+  ✅ A2-selftest_m3_per100g 声明 7 ≡ 实跑 7
+  ✅ A2-check_spec_per100g_identity 声明 6 ≡ 实跑 6
+  ✅ A2-check_auth_guard_shape 声明 17 ≡ 实跑 17
+  ✅ A2-check_tabbar 声明 16 ≡ 实跑 16
+  ✅ A2-check_material_batch 声明 26 ≡ 实跑 26
+  ✅ A2-check_home_ui_v3 声明 29 ≡ 实跑 29
+  ✅ A2-check_shop_lifecycle 声明 29 ≡ 实跑 29
+  ✅ A2-check_month_picker 声明 18 ≡ 实跑 18
+  ✅ A2-check_shop_reset 声明 52 ≡ 实跑 52
+  ✅ A2-check_entitlement_flow 声明 28 ≡ 实跑 28
+
+===== A5 前提守卫（证明本守卫不是恒真） =====
+  ✅ A5-① 受守套件 49 个 ≥ 6（集合被改小即转红）
+  ✅ A5-② 声明行无受守集合外的多余 key
+  ✅ A6-① 历史面命中 9 份旧值陈述（HIST 排除确实生效）
+
+===== A7 单源不扩散 =====
+  ✅ A7-① 仅重启键一处自称本口径单源
+
+===== W 弱面：specs 内当前态引用与实跑不符（明示，不判红） =====
+  （无不符）
+  · 弱面共 0 条（只明示，不判红 —— 可能是子集/另一口径）
+  ✅ W-① 弱面扫描完成：0 条明示（弱面只提示、不判红）
+
+===== 套件断言数口径守卫结果：56 通过 / 1 失败 =====
