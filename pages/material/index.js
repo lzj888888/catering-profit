@@ -54,6 +54,8 @@ Page({
       pinTag: TERMS.card.pinTag,
       // M3.19（批次 E）影响面入口
       impactTitle: TERMS.card.impactTitle,
+      // round204：批量录入入口（首建一大批走这一页，零散补录仍走「新增原料」的连续录入）
+      batchEntry: TERMS.card.matBatchEntry,
     },
     all: [],           // 全量列表（前端过滤）
     list: [],          // 过滤后展示
@@ -182,6 +184,8 @@ Page({
   },
 
   goAdd() { wx.navigateTo({ url: '/pages/material/edit?id=' }); },
+  // round204：批量录入页（非 tabBar 页 ⇒ navigateTo。返回时本页 `onShow` 会重拉列表，新原料立刻可见）
+  goBatch() { wx.navigateTo({ url: '/pages/material/batch' }); },
 
   // ===== R191：操作收纳（与成本卡列表**同构**）=====
   // 4 个平铺按钮 → 1 个「⋯」。🔴 同成本卡那条理由：按钮尺寸不能缩（88rpx 触控红线），只能减数量。

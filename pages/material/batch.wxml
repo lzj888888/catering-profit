@@ -1,0 +1,59 @@
+<view class="container safe-bottom">
+  <!-- ① 粘贴区 -->
+  <view class="card2">
+    <view class="cell"><text class="lbl">{{t.guide}}</text></view>
+    <view class="tip">{{t.cols}}</view>
+    <view class="tip">{{t.quick}}</view>
+    <view class="tip">{{t.headerAuto}}</view>
+    <textarea class="paste" value="{{text}}" placeholder="{{t.ph}}" bindinput="onText" maxlength="-1" />
+    <view class="tip">{{t.pasteTip}}</view>
+    <view class="tip">{{t.needConv}}</view>
+  </view>
+
+  <view class="top-row">
+    <button class="btn primary top-add" bindtap="onParse">{{parseBtn}}</button>
+  </view>
+
+  <!-- ② 预览区（解析后才出现） -->
+  <block wx:if="{{parsed}}">
+    <view class="sec">
+      <text class="sec-title">{{t.preview}}</text>
+      <text class="sec-count">{{countText}}</text>
+    </view>
+
+    <view wx:if="{{rows.length === 0}}" class="empty">{{t.none}}</view>
+
+    <view class="top-row" wx:else>
+      <button class="btn-small ghost ops-btn" bindtap="onSelectAll">{{t.selectAll}}</button>
+      <button class="btn-small ghost ops-btn" bindtap="onUnselect">{{t.unselect}}</button>
+    </view>
+
+    <view class="card2 stripe-material {{item.checked ? 'row-on' : ''}}" wx:for="{{rows}}" wx:key="index" data-i="{{index}}" catchtap="onToggleRow">
+      <view class="cell">
+        <text class="lbl">{{item.name}}</text>
+        <text class="val">{{t.cur}}{{item.priceText}}</text>
+      </view>
+      <view class="cell">
+        <text class="lbl">{{item.specText}}</text>
+        <text class="val" wx:if="{{item.checked}}">{{t.checked}}</text>
+      </view>
+      <view class="tip">{{item.src}}</view>
+      <view class="err-row" wx:for="{{item.errors}}" wx:for-item="e" wx:key="*this">
+        <text class="err">{{e}}</text>
+      </view>
+    </view>
+
+    <view class="top-row">
+      <button class="btn primary top-add" bindtap="onSave" disabled="{{saving || checkedCount === 0}}">{{saveBtn}}</button>
+    </view>
+  </block>
+
+  <!-- ③ 结果区 -->
+  <view class="card2" wx:if="{{doneText}}">
+    <view class="cell"><text class="val ok-text">{{doneText}}</text></view>
+    <view class="err" wx:if="{{failText}}">{{failText}}</view>
+    <view class="top-row">
+      <button class="btn-small ghost ops-btn" catchtap="backToList">{{t.back}}</button>
+    </view>
+  </view>
+</view>

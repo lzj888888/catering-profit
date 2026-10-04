@@ -141,6 +141,7 @@ const CASES = [
   //   断言数不受守则「把 20 处调用点判据改回 owner.code / 删掉 G2 分支遍历」同样静默通过。
   { key: 'check_auth_guard_shape', rel: 'tools/check_auth_guard_shape.js' }, // 17 条（R194：G1 扫描面非退化 / G2 分支带 error / G3 无 ok()·fail() / G4 派生同形 / G5 锚点在场 / G6 调用点形状）
   { key: 'check_tabbar', rel: 'tools/check_tabbar.js' },
+  { key: 'check_material_batch', rel: 'tools/check_material_batch.js' }, // 23 条（R204：A 解析行为 9 / B 页面接线 8 / C 护栏 4 / D 正负样本 2）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

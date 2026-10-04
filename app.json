@@ -16,6 +16,7 @@
     "pages/material/index",
     "pages/material/edit",
     "pages/material/pick",
+    "pages/material/batch",
     "pages/takeaway/index",
     "pages/metrics/impact",
     "pages/recon/index",

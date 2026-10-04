@@ -1,0 +1,15 @@
+SUITES = 131
+✅ [suite-tracked] 131 个套件文件全部已入库（R92 守卫 · 真 git，索引 3286 项）
+..........................................................................................................................
+============================================================
+总览：122/131 通过   耗时 284.9s
+R92: ✅
+  ❌ [docx-derive] tools/check_docx_derive.js :: exit=1
+  ❌ [suite-coverage] tools/check_suite_coverage.js :: exit=1
+  ❌ [suite-count-claims] tools/check_suite_count_claims.js :: exit=1
+  ❌ [quota-limits] tools/check_quota_limits.js :: exit=1
+  ❌ [collection-perms] tools/check_collection_perms.js :: exit=1
+  ❌ [privacy-collection] tools/check_privacy_collection.js :: exit=1
+  ❌ [acceptance-counts] tools/check_acceptance_counts.js :: exit=1
+  ❌ [suite-assert-counts] tools/check_suite_assert_counts.js :: exit=1
+  ❌ [r85-takeaway] tools/selftest_r85.js :: exit=1

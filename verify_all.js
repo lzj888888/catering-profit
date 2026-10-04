@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：130 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：131 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -291,6 +291,11 @@
 //         （真机反馈「涨价影响面前面很多英文和百分号」）。⚠️ 长期存在却从未暴露：上游店铺鉴权 404
 //         让这页从没真正渲染出来 —— **修好上游会把下游老毛病一并照亮**。判据=A 编码跳转的目标页必须解码
 //         + B 扫描面非退化且至少存在一处编码跳转 + C impact.js 自反锚点在位；含 5 条影子用例）
+//       + 原料批量录入守卫（tools/check_material_batch.js，R204：粘贴多行 → 解析 → 预览 → 导入。
+//         解析下沉为纯函数 utils/materialBatch.js（无 wx 依赖）⇒ 守卫 require 实跑判行为：六列还原 /
+//         表头跳过 / 两列速记 / 元转分 / 计数族缺换算必填（绝不替老板猜）/ 非法单位不叠噪音 /
+//         出成率越界 / 名称含空格不拆 / 空行不计；接线面＝四件套 + app.json 注册 + 列表页入口 +
+//         复用 saveMaterial（不新增云函数）+ 幂等键每条唯一 + 脏行默认不选 + WXML 不调方法）
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -683,6 +688,14 @@ const SUITES = [
   //   ⚠️ 该缺陷长期存在却从未暴露，因为上游店铺鉴权 404 让这页从没真正渲染出来 —— **修好上游会照亮下游老毛病**。
   //   守三条：编码跳转的目标页必须解码 / 扫描面非退化 + 至少一处编码跳转 / impact.js 自反锚点在位。
   ['uri-codec-pairs',   'tools/check_uri_codec_pairs.js'],
+  // R204：原料批量录入守卫 —— 起因＝李老师追问「原料库能不能导出空表让客户填、再导入」。
+  //   结论是**导入做、导出空表暂不做**：微信生态里导出要经 openDocument→转发→电脑 Excel→发回→
+  //   chooseMessageFile，五步跨设备；而「粘贴」这条链路只要复制→粘贴两步，覆盖同一场景且零新云函数。
+  //   守两类：① 解析行为（require 生产纯函数 `utils/materialBatch.js` 实跑 —— 六列/表头/两列速记/
+  //   元转分/计数族不许瞎猜/非法单位不叠噪音/出成率越界/名称含空格不拆/空行不计）
+  //   ② 页面接线（四件套 + app.json 注册 + 列表页入口 + 复用 saveMaterial + 幂等键每条唯一 +
+  //   脏行默认不选 + 调纯函数不内联 + WXML 不调方法）+ 反恒真（计数族仍无建议值）。
+  ['material-batch',        'tools/check_material_batch.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
