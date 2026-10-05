@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：138 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：139 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -354,6 +354,14 @@
 //         （OPENID 后 return 拒绝，含解析器自证正负样本）+ D 自失效护栏。
 //         诚实边界：不判鉴权**强度**、不判 payCallback 验签实现、不判 admin 入口的幂等与限额。
 //         同轮：给 payExpireNotify 与 smokeTest 补来源校验；17 条断言）
+//       + M2 选址反推「房租不重复计租」口径守卫（tools/check_m2_reverse_rent.js，R221：批次 M2v1.1 反推第一期。
+//         反推 = 一次入参变换（房租 = 营收 × 目标租金率 ⇒ 随营业额变动，与外卖佣金同性质），
+//         🔴 若用户在 fixed_items 里仍填 rent、又给了租金率 ⇒ **房租算两遍** ⇒ R 从 100,000 虚高到 125,000（+25%）。
+//         同族病：规范白纸黑字「不得含 rent」却零机器判据 ⇒ 本条按 v1.1 §11 落地（解析**函数体**防注释假绿）。
+//         判据 = P 前置（三面文件可读 + 两函数体可解析）+ A 函数体剥注释后必须含 rent 剔除 / 反推 rent 拦截
+//         + B 反恒真锚点（R=10,000,000 分 / 房租上限=1,200,000 分 / open_days=26 ⇒ 日均 = R÷26，专打「÷30 硬编码」）
+//         + C 反证（不剔 ⇒ 12,500,000 ≠ 10,000,000）+ 契约（含 rent 拒 / 缺 open_days 拒 / 红警全 null / 缺省 forward）
+//         + D 自失效护栏（剥注释器与判别器正负样本互证 + 扫描面非退化 + 断言数下界）。21 条断言）
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -761,6 +769,8 @@ const SUITES = [
   ['entitlement-flow',     'tools/check_entitlement_flow.js'],
   ['fn-public-surface',    'tools/check_fn_public_surface.js'],
   ['paid-quota-unlock',    'tools/check_paid_quota_unlock.js'],
+  // R221（批次 M2v1.1 · 选址反推第一期）：反推「房租不重复计租」口径守卫 —— 详见头注 R221 段。
+  ['m2-reverse-rent',      'tools/check_m2_reverse_rent.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

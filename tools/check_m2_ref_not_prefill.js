@@ -108,7 +108,7 @@ function inputValues(wxml) {
 // 用户输入框 `value` 的**白名单**（只看用户自己填的字段）。
 // 🔴 新增用户输入框时必须把它的绑定加进来 —— 这是刻意的：本判据要挡住"参考值悄悄进 value"，
 //    白名单比黑名单更能 fail-closed（黑名单挡不住没预料到的新变量名）。
-const OK_VALUE = /^\{\{(item\.(yuan|years|pct)|targetYuan|expectYuan)\}\}$/;
+const OK_VALUE = /^\{\{(item\.(yuan|years|pct)|targetYuan|expectYuan|revPriceYuan|revSeats|revOpenDays|revRentRate|revPixelEff)\}\}$/;
 
 const pageJsRaw = readRel(PAGE_JS);
 const pageWxmlRaw = readRel(PAGE_WXML);

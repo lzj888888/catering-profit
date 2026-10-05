@@ -733,6 +733,22 @@ const TERMS = {
     delItem: '删除',
     autoHint: '改完自动重算，不用点按钮',
     needFixed: '最少填一项每月固定支出（房租/人工/水电气/管理费任一项）就能算出保本营业额',
+    // ===== M2v1.1（选址反推 · 第一期）=====
+    tabForward: '正向测算',
+    tabReverse: '目标反推',
+    revPrice: '客单价',
+    revSeats: '座位数',
+    revOpenDays: '每月营业天数',
+    revRentRate: '目标租金率',
+    revPixelEff: '坪效（元/㎡·月）',
+    revRentHint: '反推模式下房租由目标租金率自动导出，无需另填',
+    revRevenue: '所需月营业额',
+    revRentCap: '房租上限',
+    revTraffic: '所需月客流',
+    revDailyTraffic: '所需日均客流',
+    revTurnRate: '所需翻台',
+    revAreaCap: '面积上限',
+    revWarnTurnHigh: '翻台偏高，请复核座位数或营业天数',
   },
 
   // ===== 十四、M3 成本卡页面文案 =====

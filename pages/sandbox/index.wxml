@@ -1,5 +1,11 @@
 <view class="container safe-bottom" wx:if="{{!loading}}">
 
+  <!-- M2v1.1 双 Tab：正向测算 / 目标反推（两套输入区独立缓存，切换互不覆盖） -->
+  <view class="tab-bar">
+    <view class="tab-item {{mode === 'forward' ? 'on' : ''}}" data-mode="forward" bindtap="onTab">{{t.tabForward}}</view>
+    <view class="tab-item {{mode === 'reverse' ? 'on' : ''}}" data-mode="reverse" bindtap="onTab">{{t.tabReverse}}</view>
+  </view>
+
   <!-- 0 · 前提：城市层级 + 经营类型（决定下面用的「行业参考带」是哪一套） -->
   <view class="card2">
     <view class="sel-row">
@@ -69,11 +75,12 @@
     <view class="add-row" wx:if="{{buildRows.length < 4}}" bindtap="onAddBuild">{{t.addItem}}</view>
   </view>
 
-  <!-- ② 每月固定支出 -->
+  <!-- ② 每月固定支出（反推 Tab 下房租行隐藏 —— 房租由目标租金率自动导出，不误填） -->
   <view class="card2">
     <view class="sec">{{t.secFixed}}</view>
     <view class="hint">{{t.fixedNote}}</view>
-    <view class="rw" wx:for="{{fixedRows}}" wx:key="key">
+    <view class="hint" wx:if="{{mode === 'reverse'}}">{{t.revRentHint}}</view>
+    <view class="rw" wx:for="{{fixedRows}}" wx:key="key" wx:if="{{mode === 'forward' || item.key !== 'rent'}}">
       <view class="row">
         <text class="row-name">{{item.name}}</text>
         <view class="row-in-wrap">
@@ -129,16 +136,75 @@
     </view>
   </view>
 
+  <!-- ⑥ M2v1.1 反推输入（仅反推 Tab） -->
+  <view class="card2" wx:if="{{mode === 'reverse'}}">
+    <view class="sec">{{t.tabReverse}}</view>
+    <view class="row">
+      <text class="row-name">{{t.revPrice}}</text>
+      <view class="row-in-wrap">
+        <input class="row-in" type="digit" value="{{revPriceYuan}}" bindinput="onRevPrice" adjust-position="{{true}}" cursor-spacing="20" />
+        <text class="row-unit">元</text>
+      </view>
+    </view>
+    <view class="row">
+      <text class="row-name">{{t.revSeats}}</text>
+      <view class="row-in-wrap">
+        <input class="row-in" type="number" value="{{revSeats}}" bindinput="onRevSeats" adjust-position="{{true}}" cursor-spacing="20" />
+      </view>
+    </view>
+    <view class="row">
+      <text class="row-name">{{t.revOpenDays}}</text>
+      <view class="row-in-wrap">
+        <input class="row-in" type="number" value="{{revOpenDays}}" bindinput="onRevOpenDays" adjust-position="{{true}}" cursor-spacing="20" />
+        <text class="row-unit">天</text>
+      </view>
+    </view>
+    <view class="row">
+      <text class="row-name">{{t.revRentRate}}</text>
+      <view class="row-in-wrap">
+        <input class="row-in" type="digit" value="{{revRentRate}}" bindinput="onRevRentRate" adjust-position="{{true}}" cursor-spacing="20" />
+        <text class="row-unit">%</text>
+      </view>
+    </view>
+    <view class="row">
+      <text class="row-name">{{t.revPixelEff}}</text>
+      <view class="row-in-wrap">
+        <input class="row-in" type="digit" value="{{revPixelEff}}" bindinput="onRevPixelEff" adjust-position="{{true}}" cursor-spacing="20" />
+        <text class="row-unit">元</text>
+      </view>
+    </view>
+  </view>
+
   <view class="err-hint" wx:if="{{calcError}}">{{calcError}}</view>
   <button class="btn primary calc-btn" bindtap="onCalc">{{t.calc}}</button>
 
+  <!-- M2v1.1 反推结果（仅反推 Tab；全部来自云端 reverse 块） -->
+  <block wx:if="{{mode === 'reverse' && reverseResult}}">
+    <view class="card2" wx:if="{{reverseResult.red_alert}}">
+      <view class="result-num" style="color:#e74c3c;font-size:36rpx;">{{t.redAlert}}</view>
+      <view class="hint">{{t.redAlertHint}}</view>
+    </view>
+    <view class="card2" wx:if="{{!reverseResult.red_alert}}">
+      <view class="sec">{{t.secResult}}</view>
+      <view class="cell big"><text class="lbl">{{t.revRevenue}}</text><text class="val keynum">{{t.cur}}{{reverseResult.target_monthly}}</text></view>
+      <view class="cell"><text class="lbl">{{t.revRentCap}}</text><text class="val">{{t.cur}}{{reverseResult.rent_cap}}</text></view>
+      <view class="cell"><text class="lbl">{{t.revTraffic}}</text><text class="val">{{reverseResult.monthly_traffic}}</text></view>
+      <view class="cell"><text class="lbl">{{t.revDailyTraffic}}</text><text class="val">{{reverseResult.daily_traffic}}</text></view>
+      <view class="cell"><text class="lbl">{{t.revTurnRate}}</text><text class="val">{{reverseResult.turn_rate}}</text></view>
+      <view class="cell" wx:if="{{reverseResult.area_cap_sqm != null}}">
+        <text class="lbl">{{t.revAreaCap}}</text><text class="val">{{reverseResult.area_cap_sqm}} ㎡</text>
+      </view>
+      <view class="hint" wx:if="{{reverseResult.warn_turn_high}}" style="color:#b45309;">{{t.revWarnTurnHigh}}</view>
+    </view>
+  </block>
+
   <!-- 结果（后端返回值，仅展示） -->
-  <view class="card2" wx:if="{{result && result.red_alert}}">
+  <view class="card2" wx:if="{{mode === 'forward' && result && result.red_alert}}">
     <view class="result-num" style="color:#e74c3c;font-size:36rpx;">{{t.redAlert}}</view>
     <view class="hint">{{t.redAlertHint}}</view>
   </view>
 
-  <block wx:if="{{result && !result.red_alert}}">
+  <block wx:if="{{mode === 'forward' && result && !result.red_alert}}">
     <view class="card2">
       <view class="sec">{{t.secResult}}</view>
       <view class="cell"><text class="lbl">{{t.buildTotal}}</text><text class="val">{{t.cur}}{{result.build_total}}</text></view>

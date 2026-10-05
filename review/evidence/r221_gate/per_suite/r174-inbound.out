@@ -1,0 +1,27 @@
+===== A · external_sales_daily 注册与索引 =====
+✅ A1 external_sales_daily 在 COLLECTIONS 清单中
+✅ A2 唯一键 idx_esd_uniq 存在
+✅ A2 唯一键 keys=(shop_id:1,biz_date:1,external_ref_id:1) 且 unique=true  ({"name":"idx_esd_uniq","unique":true,"keys":{"shop_id":1,"biz_date":1,"external_ref_id":1}})
+✅ A3 辅助索引 idx_esd_shop_date（按门店+日期拉销量）存在
+✅ A3 辅助索引 idx_esd_dish_key（按菜品查销量）存在
+===== B · shop_dish_mapping 注册与字段 =====
+✅ B1 shop_dish_mapping 在 COLLECTIONS 清单中
+✅ B2 唯一键 idx_dm_uniq(shop_id,platform,external_ref_id) unique=true 存在  ({"name":"idx_dm_uniq","unique":true,"keys":{"shop_id":1,"platform":1,"external_ref_id":1}})
+✅ B3 辅助索引 idx_dm_card_code(shop_id,card_code) 存在
+✅ B4 文档可写入 external_ref_id（非空字符串）
+✅ B4 external_ref_id 可为空串（兼容未绑映射）
+✅ B4 external_ref_id 可缺省（旧记录无此字段）
+===== C · schema 字段与红线 =====
+✅ C1 external_sales_daily 索引覆盖核心关联字段（shop_id/biz_date/external_ref_id/dish_key）  (covered=[shop_id,biz_date,external_ref_id,dish_key])
+✅ C2 金额单位为元（本批无金额计算函数，断言"未新增任何以 _fen 后缀的金额字段"）  (qty 为数量、amount 为元，不参与本批计算)
+✅ C3 本批改动面（collections.js + 本自测）零 OAuth/出站/LLM 调用  (无)
+✅ C4 引擎计算逻辑零改动（m3 引擎相关文件零触及 —— 见 git status）  (引擎三副本（calcBom/saveCostCard/syncCostCard）与 common/ 本批零改动，由 check_m3_engine_parity 守)
+===== D · 唯一键语义本地 mock =====
+✅ D1 首次 insert 成功
+✅ D1 同三元组二次 insert 被拒（抛 E11000）  (errCode=11000)
+✅ D1 换 external_ref_id 视为新记录，允许 insert  (count=2)
+✅ D1 集合大小 = 2（不同 external_ref_id 各 1 条）  (count=2)
+  ⚠️ 本地仅用内存 Map 模拟唯一键语义；云端唯一索引是否真正生效需线上 apply_indexes 后实测（本地无法验证 wx-server-sdk createIndex）
+
+============================================================
+===== R174 入站预埋自测结果：19 通过 / 0 失败 =====

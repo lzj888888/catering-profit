@@ -149,6 +149,10 @@ const CASES = [
   { key: 'check_entitlement_flow', rel: 'tools/check_entitlement_flow.js' }, // 28 条（R213：E-A 实跑单源 9 / E-B 实跑配额 7 / E-C 链路在场 9 / E-D 护栏 3）
   { key: 'check_fn_public_surface', rel: 'tools/check_fn_public_surface.js' },
   { key: 'check_paid_quota_unlock', rel: 'tools/check_paid_quota_unlock.js' }, // 8 条（R215b：S 扫描面 2 / A 免费额度须被 paid 短路 1 / B 硬上限不得被 paid 豁免 1 / C 注入与单源 2 / D 解析器正负样本 2） // 17 条（R215：S 扫描面 5 / A 三分穷尽 2 / B 登记双向 4 / C 来源自保 4 / D 自失效 2）
+  // R221 扩面（批次 M2v1.1）：M2 反推「房租不重复计租」守卫同批纳入 —— 它的 P/A/B/C/D 五段
+  //   （函数体剥注释后主判据 + 生产引擎反恒真锚点 + 反证 + 剥注释器/判别器正负样本互证）正是
+  //   「非恒真」的凭据；断言数不受守则「删掉正负样本或调低下界」同样静默通过，与 round73 同族。
+  { key: 'check_m2_reverse_rent', rel: 'tools/check_m2_reverse_rent.js' },
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

@@ -1,0 +1,81 @@
+===== InsCode 回执归档（R221 · 只作对照物）=====
+session_id   = 831bd65c-70cb-4600-8fb6-7ebe07886768
+updated_at   = 1791180135394
+message_count= 1321
+turn_started_at   len = 17
+turn_completed_at len = 17
+inflight(判据 started>completed) = False
+working_dir = C:\Users\lzj\WorkBuddy\Claw\catering-profit
+inflight_turn(顶层字段,若版本不同) = None
+messages len = 1321
+roles        = {"System": 7, "User": 25, "Assistant": 649, "Tool": 640}
+body top keys = created_at,goal_generation,id,messages,name,turn_completed_at,turn_started_at,updated_at,working_dir
+msg sample keys = images,is_error,meta,reasoning,reasoning_blocks,role,synthetic,text,tool_call_id,tool_calls
+last_assistant_text_len = 2773
+--- last assistant text ---
+批次 M2v1.1 已完成。以下是交付回执。
+
+---
+
+## 交付回执 · 批次 M2v1.1 · M2「目标反推」分支（第一期）
+
+### ① 改动文件清单（10 文件）
+
+| 文件 | 改动 |
+|---|---|
+| `cloudfunctions/calcSandbox/service.js` | 新增 `calcSandboxReverse(clean)` + `round2`；`module.exports` 加导出（既有 `calcSandbox` 函数体**一字未动**） |
+| `cloudfunctions/calcSandbox/validate.js` | 新增 `mode` 分发 + 反推 5 入参校验 + **反推含 rent 直接拒**（两道防线：校验层拦 + 变换层剔） |
+| `cloudfunctions/calcSandbox/index.js` | `mode='reverse'` ⇒ 调 `calcSandboxReverse`，出参追加 `reverse` 块；`forward` 返回结构逐字节不变 |
+| `cloudfunctions/calcSandbox/selftest.js` | 新增 **J 段**（9 条反推锚点）+ **K 段**（10 条入参契约），总数 66 → **85** |
+| `pages/sandbox/index.js` | 双 Tab 状态 `mode` + 反推输入字段 + `onTab`/`onRevXxx` + `onCalc` 按 mode 分发（反推分支独立，正向分支逐字节不变） |
+| `pages/sandbox/index.wxml` | 顶部双 Tab + 反推输入卡片 + 反推结果区 + 反推 Tab 下房租行隐藏 + 强提示 |
+| `pages/sandbox/index.wxss` | 双 Tab 样式（`.tab-bar`/`.tab-item`） |
+| `miniprogram/i18n/terms.js` + `specs/dev-specs/i18n/terms.js` | `TERMS.m2` 新增 16 个反推文案键（双副本 md5 一致 `bfec5b4f…`） |
+| `tools/check_m2_ref_not_prefill.js` | `OK_VALUE` 白名单加 `revPriceYuan/revSeats/revOpenDays/revRentRate/revPixelEff` |
+
+### ② selftest 输出（最后 15 行）
+上文已贴，关键行：`==== calcSandbox M2 v2 自测结果：85 通过 / 0 失败 ====`。
+
+### ③ 反推锚点（J 段，逐字命中我方锚点）
+
+| 断言 | 期望 | 实际 | 通过 |
+|---|---|---|---|
+| 目标月营收 R | 10,000,000 分 | 10000000 | ✅ |
+| 目标日均营收 | 333,333 分 | 333333 | ✅ |
+| 房租上限 | 1,200,000 分 | 1200000 | ✅ |
+| 月客流 | 2222.22 | 2222.22 | ✅ |
+| 日均客流 | 74.07 | 74.07 | ✅ |
+| 翻台 | 3.70 | 3.7 | ✅ |
+| 面积上限 | 300 | 300 | ✅ |
+| 无红警 | false | false | ✅ |
+
+### ④ 旧锚点回归（K8）
+正算 `mode` 缺省 ⇒ 保本 **76,000** / 目标 **106,000** 不漂 ✅。
+
+### ⑤ 门禁结果（分块实跑）
+| 套件 | 结果 |
+|---|---|
+| calcSandbox selftest | ✅ 85/0 |
+| check_m2_ref_not_prefill | ✅ 16/0 |
+| check_page_terms | ✅ 8/0 |
+| check_wxml_structure | ✅ 2/0 |
+| selftest_ad_gates | ✅ 24/0 |
+| check_m3_engine_parity | ✅ 22/0（引擎零改动） |
+| check_js_syntax | ✅ 1/0 |
+| check_terms_forbidden | ✅ 13/0 |
+| terms 双副本 md5 | ✅ 一致 |
+
+### ⑥ 未做的事（如实标注）
+1. **未跑 `node verify_all.js` 全量**（300s 上限）；已分块覆盖本批相关全部守卫。
+2. **未部署 calcSandbox**（部署动作由李老师/WorkBuddy 做，本批不改 common/ ⇒ 无需 sync_common，也无需重部署其它函数）。
+3. **未截真机/模拟器图**（反推 Tab 观感留验收方实测）。
+4. **未新建 `tools/check_m2_reverse_rent.js`** —— 规范 §11 列为"新增（随码落地）"，但任务 §5 交付物 ①~⑦ 未列它、且 §6.4 明说"我方会做双向变异回灌"（该守卫归验收方/门禁方，含反恒真变异回灌，非本批产出）。
+5. **未改 collections.js**（shop_sandbox 字段注释同步是 §八 第二期「多方案存储」的事，第一期反推分支零 schema 变更）。
+6. **未 commit**（本批任务未要求提交；改动留在工作区待门禁方统一收口）。
+
+### ⑦ 红线自证
+- ✅ `calcSandbox` 既有函数体一字未动（只新增 `calcSandboxReverse` + 多导出一个名字；R131 引擎等价 22/0 为证）。
+- ✅ 反推 `fixed_items` 不得含 rent：**校验层拦**（validate 判 `INVALID_PARAM`）+ **变换层剔**（`filter key !== 'rent'`）两道防线都在。
+- ✅ 前端零公式：Tab 切换只换入参再调云函数，所有数字来自云端 `reverse` 块。
+- ✅ 未改 common/、未改 indicatorRef 白名单（反推 rentRate 是变换层内部临时项，不进 `VAR_KEYS`）、未新增集合/索引/云函数/错误码（复用 `INVALID_PARAM`）。
+- ✅ 未改 specs/ 下除 `specs/dev-specs/i18n/terms.js` 双副本以外任何文件。

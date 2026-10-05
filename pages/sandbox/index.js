@@ -90,6 +90,22 @@ Page({
       noCalc: TERMS.sandboxResult.noCalc,
       loading: TERMS.ui.loading,
       cur: '¥',
+      // M2v1.1（选址反推 · 第一期）
+      tabForward: M.tabForward,
+      tabReverse: M.tabReverse,
+      revPrice: M.revPrice,
+      revSeats: M.revSeats,
+      revOpenDays: M.revOpenDays,
+      revRentRate: M.revRentRate,
+      revPixelEff: M.revPixelEff,
+      revRentHint: M.revRentHint,
+      revRevenue: M.revRevenue,
+      revRentCap: M.revRentCap,
+      revTraffic: M.revTraffic,
+      revDailyTraffic: M.revDailyTraffic,
+      revTurnRate: M.revTurnRate,
+      revAreaCap: M.revAreaCap,
+      revWarnTurnHigh: M.revWarnTurnHigh,
     },
     // 选择器
     cityIdx: 1, bizIdx: 1,          // 默认「二三线 / 中式正餐」
@@ -120,6 +136,14 @@ Page({
     dirty: false,
     // R193：是否从本地草稿恢复（决定顶部那行提示与「清空重填」按钮是否出现）
     draftRestored: false,
+    // M2v1.1（选址反推 · 第一期）
+    mode: 'forward',         // 'forward' 正向测算 | 'reverse' 目标反推
+    revPriceYuan: '',        // 客单价（元）
+    revSeats: '',            // 座位数
+    revOpenDays: '30',       // 每月营业天数
+    revRentRate: '',         // 目标租金率（%）
+    revPixelEff: '',         // 坪效（元/㎡·月，选填）
+    reverseResult: null,     // 反推结果（reverse 块）
   },
 
   onLoad() { this._seq = 0; this.bootstrap(); },
@@ -313,6 +337,20 @@ Page({
   // ===== 预计月营业额（锚点 · round114）=====
   onExpect(e) { this.setData({ expectYuan: e.detail.value }); this.scheduleCalc(); },
 
+  // ===== M2v1.1 双 Tab + 反推输入 =====
+  onTab(e) {
+    const mode = e.currentTarget.dataset.mode;
+    if (mode === this.data.mode) return;
+    this.setData({ mode });
+    // 切到反推 Tab 立即触发一次反推（复用防抖）
+    this.scheduleCalc();
+  },
+  onRevPrice(e) { this.setData({ revPriceYuan: e.detail.value }); this.scheduleCalc(); },
+  onRevSeats(e) { this.setData({ revSeats: e.detail.value }); this.scheduleCalc(); },
+  onRevOpenDays(e) { this.setData({ revOpenDays: e.detail.value }); this.scheduleCalc(); },
+  onRevRentRate(e) { this.setData({ revRentRate: e.detail.value }); this.scheduleCalc(); },
+  onRevPixelEff(e) { this.setData({ revPixelEff: e.detail.value }); this.scheduleCalc(); },
+
   // ===== 自动重算（防抖；AD-6/AD-7 折中）=====
   scheduleCalc() {
     this.setData({ dirty: true });
@@ -336,6 +374,63 @@ Page({
     const first = !!isFirst;
     if (first) this.setData({ loading: true, calcError: '' });
     const seq = ++this._seq;
+    const isReverse = this.data.mode === 'reverse';
+
+    // ===== M2v1.1 反推分支 =====
+    if (isReverse) {
+      // 固定支出剔除 rent（页面已隐藏房租行，此处保险再滤一层）
+      const fixedItems = this.data.fixedRows
+        .filter((r) => r.key !== 'rent')
+        .map((r) => ({ key: r.key, fen: api.yuanToFen(r.yuan) }))
+        .filter((x) => x.fen > 0);
+      try {
+        const d = await api.call('calcSandbox', {
+          mode: 'reverse',
+          city_tier: this.data.t.cityTiers[this.data.cityIdx].key,
+          biz_type: this.data.t.bizTypes[this.data.bizIdx].key,
+          build_items: this.data.buildRows
+            .filter((r) => api.yuanToFen(r.yuan) > 0)
+            .map((r) => ({ key: r.key, fen: api.yuanToFen(r.yuan), years: Number(r.years) || 1 })),
+          fixed_items: fixedItems,
+          var_items: this.data.varRows
+            .filter((r) => Number(r.pct) > 0)
+            .map((r) => ({ key: r.key, pct: Number(r.pct) })),
+          gross_margin_pct: Number(this.data.marginPct),
+          target_profit_fen: api.yuanToFen(this.data.targetYuan),
+          rev_price_fen: api.yuanToFen(this.data.revPriceYuan),
+          seats: Number(this.data.revSeats) || 0,
+          open_days: Number(this.data.revOpenDays) || 0,
+          target_rent_rate: Number(this.data.revRentRate) || 0,
+          pixel_eff_fen: api.yuanToFen(this.data.revPixelEff),
+          client_request_id: 'sb_' + Date.now(),
+        });
+        if (seq !== this._seq) return;
+        const fen = (v) => (v == null ? null : api.fenToYuan(v, 2));
+        const rev = d.reverse || null;
+        this.setData({
+          loading: false,
+          dirty: false,
+          reverseResult: rev ? {
+            red_alert: !!rev.red_alert,
+            target_monthly: fen(rev.target_monthly_fen),
+            rent_cap: fen(rev.rent_cap_fen),
+            monthly_traffic: rev.monthly_traffic,
+            daily_traffic: rev.daily_traffic,
+            turn_rate: rev.turn_rate,
+            area_cap_sqm: rev.area_cap_sqm,
+            warn_turn_high: Array.isArray(rev.warn_keys) && rev.warn_keys.indexOf('turnOverHigh') >= 0,
+          } : null,
+          calcError: rev ? '' : M.needFixed,
+        });
+      } catch (e) {
+        if (seq !== this._seq) return;
+        this.setData({ loading: false, dirty: false, reverseResult: null, calcError: e.msg || '' });
+        api.toastError(e);
+      }
+      return;
+    }
+
+    // ===== 正向分支（现状，逐字节不变）=====
     const fixedItems = this.data.fixedRows
       .map((r) => ({ key: r.key, fen: api.yuanToFen(r.yuan) }))
       .filter((x) => x.fen > 0);

@@ -1,0 +1,43 @@
+===== S · 自失效护栏 =====
+✅ S1 扫描面非空 · cloudfunctions/ 存在
+
+===== C1 · da.get 的业务主键兜底 =====
+✅ C1-1 dataAdapter.js 可读 · 5665 B
+✅ C1-2 get() 带业务主键兜底字段清单 · BIZ_KEY_FIELDS 在位
+✅ C1-3 get() 确实按兜底字段做 where 查询 · where 兜底在位
+✅ C1-2b 兜底字段清单非空（≥3：id + 至少两个业务主键） · 字段数 = 5
+✅ C1-4 兜底字段不含非唯一字段 · 字段 = [id, material_id, asset_id, shop_id, account_id]
+
+===== C2 · 同义字段在 DB 读取点必须兼容 =====
+   ↳ cloudfunctions/calcAmortize/validate.js「资产原值（分）」两字段名都读 ⇒ 兼容（正面样本）
+✅ S2 C2 的 DB 读取点至少命中过一次（防正则腐化） · 命中 1 处
+
+===== C3 · getLedger 出参 inventory 必须经转换 =====
+✅ S3 C3 的出参块可解析（防正则腐化） · 1831 B
+✅ C3-1 出参 inventory 经转换函数产出（禁裸透传 DB 文档） · 取值表达式 = inventoryOut
+✅ C3-2 getLedger 确实产出契约要求的 snake_case 库存字段 · opening_fen 在位
+
+===== C4 · saveLedger 的 inventory? 缺省不得覆盖库存 =====
+✅ C4-1 validate 的缺省初值为 null（= 未提供，而非全 0） · 缺省 = null
+✅ C4-2 不得退回「缺省全 0 对象」的旧写法 · 该写法会让可选入参缺省时把库存清零（round103 实测的真缺陷）
+✅ C4-3 落库侧按真值判断后才写库存字段 · 条件写入在位
+✅ C4-4 引擎用的是「本次值 or 库内现值」而不是缺失即 0 · effectiveInventory 在位
+
+===== C5 · saveLedger 可选入参缺省必须「不动」（require 真模块实跑）=====
+✅ S4 C5 能 require 到 saveLedger 校验模块（require 失败 ⇒ fail-closed） · 已加载
+✅ S5 C5 基线用例本身合法（防整段空转、恒绿） · error = null
+✅ C5-1 saveLedger 的 lump_sum_fen **入参已退休**（出参不得再有该键 ⇒ 前端传了也不生效） · lumpSumFen 键存在？false
+✅ C5-2 saveAsset.mode 缺省语义：缺省/非法一律归 amort（老数据兼容），只有显式 'lump' 才判 lump · 缺省=amort / lump=lump / 非法=amort
+✅ C5-3 删除分支：只认 asset_id + delete:true；缺 asset_id 必须响亮拒收（不得静默当成新增） · 合法删=ok / 缺 id → INVALID_PARAM
+
+===== C6 · 「一次性投入」改为台账行级 mode 后的契约（round107）=====
+✅ C6-1 saveLedger 的一次性合计从台账（shop_amortize 且 mode=lump 且 start_month=本月）求和 · 台账求和在位
+✅ C6-2 getAmortSchedule 分开返回 assets（摊销）/ lumps（一次算清）两类 · 两类已分开返回
+✅ C6-3 saveAsset 的台账增删改与 saveLedger 共用归档锁（is_archive ⇒ ARCHIVED_LOCKED） · 归档锁在位
+
+===== C7 · 开关值必须来自云函数出参（round108）=====
+✅ C7-1 getAmortSchedule 随出参返回服务端权威开关（amortize_switch_on ← shop_switch.amortize_switch） · 权威开关已在出参里
+✅ C7-2 摊销页的开关值取自云函数出参（且**不得**再出现 globalData.switches 读取） · 页面只认服务端出参
+✅ C7-3 三副本引擎都保留「关掉 ⇒ 摊销归 0」的口径腿（缺一即某条链路上开关形同虚设） · 三副本均在位
+
+===== 跨函数数据契约守卫结果：25 通过 / 0 失败 =====

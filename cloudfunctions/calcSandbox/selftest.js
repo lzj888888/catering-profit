@@ -4,7 +4,7 @@
 //
 // v2（2026-09-23）：契约由「4 金额 + 3 变效率」改为结构化清单 ⇒ 本自测同步重写。
 //   ⚠️ 标准工况**可手算**，任何人拿计算器都能复现（这是 S4 锚点的意义）。
-const { calcSandbox } = require('./service');
+const { calcSandbox, calcSandboxReverse } = require('./service');
 const { validateInput } = require('./validate');   // round114：入参契约此前零自测覆盖
 const { indicatorRef } = require('./common');
 
@@ -214,6 +214,87 @@ check('I5 fixed_items 的 key 越白名单 / 重复 ⇒ 仍拒（放宽非空 �
     fixed_items: [{ key: 'rent', fen: 1 }, { key: 'rent', fen: 2 }], build_items: [], var_items: [], gross_margin_pct: 65, target_profit_fen: 0 });
   return !!a.error && !!b.error;
 })());
+
+console.log('\n===== J 反推锚点（M2v1.1 · 目标反推）=====');
+// 输入：目标月利润 20000 元 / 客单 45 元 / 毛利率 60% / 座位 20 / 30 天 / 目标租金率 12% / 固定(不含房租) 28000 元 / 坪效 40 元
+// 变换：fixed 剔除 rent（labor 28000）+ var 追加 rentRate 12% ⇒ 边际贡献率 = 1 − (100−60+12)/100 = 0.48
+// R = (28000 + 20000) 元 ÷ 0.48 = 100,000 元
+const revBase = {
+  mode: 'reverse',
+  cityTier: 'tier23', bizType: 'dining',
+  buildItems: [],
+  fixedItems: [{ key: 'labor', fen: 2800000 }],
+  varItems: [],
+  grossMarginPct: 60,
+  targetProfitFen: 2000000,
+  rev_price_fen: 4500, seats: 20, open_days: 30, target_rent_rate: 12, pixel_eff_fen: 4000,
+};
+const rev = calcSandboxReverse(revBase);
+check('J1 目标月营收 R = 100,000（10000000分）', rev.target_monthly_fen === 10000000, `=${rev.target_monthly_fen}分`);
+check('J2 目标日均营收 = 333,333 分', rev.target_daily_fen === 333333, `=${rev.target_daily_fen}分`);
+check('J3 房租上限 = 12,000（1200000分）', rev.rent_cap_fen === 1200000, `=${rev.rent_cap_fen}分`);
+check('J4 月客流 = 2222.22', rev.monthly_traffic === 2222.22, `=${rev.monthly_traffic}`);
+check('J5 日均客流 = 74.07', rev.daily_traffic === 74.07, `=${rev.daily_traffic}`);
+check('J6 翻台 = 3.70', rev.turn_rate === 3.7, `=${rev.turn_rate}`);
+check('J7 面积上限 = 300 ㎡', rev.area_cap_sqm === 300, `=${rev.area_cap_sqm}`);
+check('J8 无红警 red_alert === false', rev.red_alert === false);
+check('J9 翻台未超阈值 ⇒ warn_keys 空', Array.isArray(rev.warn_keys) && rev.warn_keys.length === 0, JSON.stringify(rev.warn_keys));
+
+console.log('\n===== K 入参契约（M2v1.1 反推 fail-closed）=====');
+// K1：反推 + fixed_items 含 rent ⇒ 拒
+const k1 = validateInput({ shop_id: 's', mode: 'reverse', city_tier: 'tier23', biz_type: 'dining',
+  fixed_items: [{ key: 'rent', fen: 1200000 }, { key: 'labor', fen: 2800000 }], build_items: [], var_items: [],
+  gross_margin_pct: 60, target_profit_fen: 2000000,
+  rev_price_fen: 4500, seats: 20, open_days: 30, target_rent_rate: 12 });
+check('K1 反推 + fixed 含 rent ⇒ 拒（重复计租）', !!k1.error, k1.msg || 'error=null');
+// K2：反推缺 open_days ⇒ 拒
+const k2 = validateInput({ shop_id: 's', mode: 'reverse', city_tier: 'tier23', biz_type: 'dining',
+  fixed_items: [{ key: 'labor', fen: 2800000 }], build_items: [], var_items: [],
+  gross_margin_pct: 60, target_profit_fen: 2000000,
+  rev_price_fen: 4500, seats: 20, target_rent_rate: 12 });
+check('K2 反推缺 open_days ⇒ 拒', !!k2.error, k2.msg || 'error=null');
+// K3：反推 rev_price_fen = 0 ⇒ 拒
+const k3 = validateInput({ shop_id: 's', mode: 'reverse', city_tier: 'tier23', biz_type: 'dining',
+  fixed_items: [{ key: 'labor', fen: 2800000 }], build_items: [], var_items: [],
+  gross_margin_pct: 60, target_profit_fen: 2000000,
+  rev_price_fen: 0, seats: 20, open_days: 30, target_rent_rate: 12 });
+check('K3 反推 rev_price_fen = 0 ⇒ 拒', !!k3.error, k3.msg || 'error=null');
+// K4：反推 seats = 0 ⇒ 拒
+const k4 = validateInput({ shop_id: 's', mode: 'reverse', city_tier: 'tier23', biz_type: 'dining',
+  fixed_items: [{ key: 'labor', fen: 2800000 }], build_items: [], var_items: [],
+  gross_margin_pct: 60, target_profit_fen: 2000000,
+  rev_price_fen: 4500, seats: 0, open_days: 30, target_rent_rate: 12 });
+check('K4 反推 seats = 0 ⇒ 拒', !!k4.error, k4.msg || 'error=null');
+// K5：反推 + 坪效缺省 ⇒ area_cap_sqm === null（不编造）
+const revNoPixel = calcSandboxReverse(Object.assign({}, revBase, { pixel_eff_fen: 0 }));
+check('K5 坪效缺省 ⇒ area_cap_sqm === null（不编造）', revNoPixel.area_cap_sqm === null, `=${revNoPixel.area_cap_sqm}`);
+// K6：红警工况（毛利率 30% + 租金率 60% ⇒ 边际贡献率 ≤ 0）⇒ R 与派生量全 null
+const revRed = calcSandboxReverse(Object.assign({}, revBase, { grossMarginPct: 30, target_rent_rate: 60 }));
+check('K6 红警工况 ⇒ red_alert === true', revRed.red_alert === true, `=${revRed.red_alert}`);
+check('K7 红警 ⇒ R 与派生量全 null（不编造）',
+  revRed.target_monthly_fen === null && revRed.target_daily_fen === null && revRed.rent_cap_fen === null
+  && revRed.monthly_traffic === null && revRed.daily_traffic === null && revRed.turn_rate === null
+  && revRed.area_cap_sqm === null,
+  JSON.stringify([revRed.target_monthly_fen, revRed.daily_traffic, revRed.turn_rate, revRed.area_cap_sqm]));
+// K8：旧锚点回归 —— 正算 mode 缺省时 M2.10 标准工况仍是 76000 / 106000
+const fwdDefault = calcSandbox(base);
+check('K8 正算 mode 缺省 ⇒ 保本 76,000 / 目标 106,000 不漂',
+  fwdDefault.break_even_monthly_fen === 7600000 && fwdDefault.target_monthly_fen === 10600000,
+  `=${fwdDefault.break_even_monthly_fen} / ${fwdDefault.target_monthly_fen}`);
+// K9：mode 非法值 ⇒ 拒
+const k9 = validateInput({ shop_id: 's', mode: 'sideways', city_tier: 'tier23', biz_type: 'dining',
+  build_items: [], fixed_items: [], var_items: [], gross_margin_pct: 65, target_profit_fen: 0 });
+check('K9 mode 非法值 ⇒ 拒', !!k9.error, k9.msg || 'error=null');
+// K10：反推 validate 出参 clean 带 mode 与反推字段
+const k10 = validateInput(Object.assign({ shop_id: 's', mode: 'reverse', city_tier: 'tier23', biz_type: 'dining',
+  build_items: [], var_items: [], gross_margin_pct: 60, target_profit_fen: 2000000 }, {
+  fixed_items: [{ key: 'labor', fen: 2800000 }],
+  rev_price_fen: 4500, seats: 20, open_days: 30, target_rent_rate: 12, pixel_eff_fen: 4000,
+}));
+check('K10 反推 validate 出参 clean.mode === reverse 且反推字段齐备',
+  !k10.error && k10.clean.mode === 'reverse' && k10.clean.rev_price_fen === 4500 && k10.clean.seats === 20
+  && k10.clean.open_days === 30 && k10.clean.target_rent_rate === 12 && k10.clean.pixel_eff_fen === 4000,
+  k10.error ? k10.msg : JSON.stringify(k10.clean));
 
 console.log(`\n==== calcSandbox M2 v2 自测结果：${pass} 通过 / ${failN} 失败 ====`);
 process.exit(failN === 0 ? 0 : 1);

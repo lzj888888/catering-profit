@@ -10,7 +10,7 @@ const db = cloud.database();
 const common = require('./common');                 // 扁平派生副本（sync_common 生成）
 const { resolveAuth, assertShopOwner } = common;
 const { ERROR_CODES, ok, fail } = common;
-const { calcSandbox } = require('./service');
+const { calcSandbox, calcSandboxReverse } = require('./service');
 const { validateInput } = require('./validate');
 
 exports.main = async (event) => {
@@ -32,9 +32,15 @@ exports.main = async (event) => {
   // ===== 3. Service 纯计算 =====
   const r = calcSandbox(v.clean);
 
-  return ok({
+  // ===== 3.5. M2v1.1 反推分支：mode='reverse' ⇒ 调 calcSandboxReverse，出参追加 reverse 块 =====
+  const out = {
     shop_id: shopId,
     client_request_id: v.input.client_request_id || '',
     ...r,
-  });
+  };
+  if (v.clean.mode === 'reverse') {
+    out.reverse = calcSandboxReverse(v.clean);
+  }
+
+  return ok(out);
 };

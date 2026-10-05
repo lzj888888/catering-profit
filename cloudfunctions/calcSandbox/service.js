@@ -147,6 +147,8 @@ function arr(v) { return Array.isArray(v) ? v : []; }
 function num0(v) { const n = Number(v); return Number.isFinite(n) ? n : 0; }
 // 保留 1 位小数带十进制容差（见 indicatorRef.js 同处说明：25×1.15 的浮点陷阱）
 function round1(n) { return Math.round(n * 10 + 1e-9) / 10; }
+// 保留 2 位小数带十进制容差（反推派生量：月客流/日均客流/翻台）
+function round2(n) { return Math.round(n * 100 + 1e-9) / 100; }
 function mix(a, b) {
   const o = {};
   for (const k in a) if (Object.prototype.hasOwnProperty.call(a, k)) o[k] = a[k];
@@ -154,4 +156,84 @@ function mix(a, b) {
   return o;
 }
 
-module.exports = { calcSandbox };
+/**
+ * M2v1.1（选址反推·第一期）—— 目标反推（纯函数，新增，不改既有 calcSandbox）。
+ *
+ * 🔴 核心口径：反推 = 一次**入参变换**，引擎零改动。
+ *   房租在正算是固定成本；反推里「房租 = R × 目标租金率」⇒ 随营业额变动，
+ *   与外卖佣金同性质 ⇒ 把「目标租金率」当挂钩费率喂 var_items，房租从 fixed_items 剔除。
+ *
+ * 变换：fixed_items' = filter(key !== 'rent')；var_items' = concat([{key:'rentRate', pct: target_rent_rate}])
+ * 然后调 calcSandbox(变换后 clean) 得 R = fwd.target_monthly_fen。
+ *
+ * 🔴 先算后取整：派生量用未取整中间值继续算，只在输出时按各自位数取整（不进位成整数）。
+ * 🔴 边际贡献率 ≤ 0（红警）⇒ R 与全部派生量返回 null（不编造）。
+ * @param {object} clean 干净入参（validate 已清洗，含反推字段）
+ * @returns {object} reverse 块
+ */
+function calcSandboxReverse(clean) {
+  const c = clean || {};
+  const revPriceFen = num0(c.rev_price_fen);
+  const seats = num0(c.seats);
+  const openDays = num0(c.open_days);
+  const targetRentRate = num0(c.target_rent_rate);
+  const pixelEffFen = num0(c.pixel_eff_fen);
+
+  // ---- 入参变换：剔除房租 + 追加租金率（挂钩费率）----
+  const fixedItemsPrime = arr(c.fixedItems).filter((x) => x && x.key !== 'rent');
+  const varItemsPrime = arr(c.varItems).concat([{ key: 'rentRate', pct: targetRentRate }]);
+  const transformed = mix(c, { fixedItems: fixedItemsPrime, varItems: varItemsPrime });
+
+  const fwd = calcSandbox(transformed);
+  const R = fwd.target_monthly_fen;   // 目标月营收（分）
+
+  // ---- 红警：R 与全部派生量返回 null ----
+  if (fwd.red_alert || R == null) {
+    return {
+      mode: 'reverse',
+      target_monthly_fen: null,
+      target_daily_fen: null,
+      rent_cap_fen: null,
+      monthly_traffic: null,
+      daily_traffic: null,
+      turn_rate: null,
+      area_cap_sqm: null,
+      rent_rate_pct: targetRentRate,
+      rev_price_fen: revPriceFen,
+      seats,
+      open_days: openDays,
+      red_alert: true,
+      warn_keys: [],
+    };
+  }
+
+  // ---- 派生量（先算后取整，中间值不取整）----
+  const targetDailyFen = Math.round(R / openDays);
+  const rentCapFen = Math.round(R * targetRentRate / 100);
+  const monthlyTrafficRaw = R / revPriceFen;
+  const monthlyTraffic = round2(monthlyTrafficRaw);
+  const dailyTraffic = round2(monthlyTrafficRaw / openDays);
+  const turnRate = round2(monthlyTrafficRaw / (seats * openDays));
+  // 面积上限 = 房租上限 ÷ 坪效（均为分，相除得 ㎡）；坪效 ≤ 0 ⇒ null（不编造）
+  let areaCapSqm = null;
+  if (pixelEffFen > 0) areaCapSqm = round1(rentCapFen / pixelEffFen);
+
+  return {
+    mode: 'reverse',
+    target_monthly_fen: R,
+    target_daily_fen: targetDailyFen,
+    rent_cap_fen: rentCapFen,
+    monthly_traffic: monthlyTraffic,
+    daily_traffic: dailyTraffic,
+    turn_rate: turnRate,
+    area_cap_sqm: areaCapSqm,
+    rent_rate_pct: targetRentRate,
+    rev_price_fen: revPriceFen,
+    seats,
+    open_days: openDays,
+    red_alert: false,
+    warn_keys: turnRate > 8 ? ['turnOverHigh'] : [],
+  };
+}
+
+module.exports = { calcSandbox, calcSandboxReverse };

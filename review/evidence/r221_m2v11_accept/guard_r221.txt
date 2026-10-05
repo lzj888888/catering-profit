@@ -1,0 +1,33 @@
+
+===== P 前置：三个面文件可读 + 两个函数体可解析 =====
+  ✅ P-① 三个面文件均可读（service / validate / selftest）  service=9030 validate=7851 selftest=19373
+  ✅ P-② calcSandboxReverse 函数体可解析且非退化（≥400 字符）  1928 字符
+  ✅ P-③ validateInput 函数体可解析且非退化（≥800 字符）  6337 字符
+
+===== A 主判据：两道防线（变换层剔 / 校验层拦）都在函数体里 =====
+  ✅ A-① service 反推函数体（剥注释后）含 rent 剔除（filter + rent 同现）  filter=true rent=true
+  ✅ A-② validate 函数体（剥注释后）含反推 rent 拦截（isReverse + rent 同现）  isReverse=true rent=true
+
+===== B 反恒真锚点（require 生产引擎实跑，期望值我方自推） =====
+  ✅ B-⓪ 生产 service / validate 可 require
+  ✅ B-① 反推 R = 10,000,000 分（房租已被剔出固定成本）  =10000000
+  ✅ B-② 房租上限 = 1,200,000 分（= R × 12%）  =1200000
+  ✅ B-③ open_days=26 ⇒ 日均 = R/26 = 368,590 分  =368590
+  ✅ B-④ 日均**不是** ÷30 硬编码（÷30 会得 319,444）  实际 368590 vs ÷30 得 319444
+  ✅ B-⑤ open_days=26 ⇒ 日均客流 = 81.91（÷26，不是 ÷30 的 70.99）  =81.91
+  ✅ B-⑥ 变换层免疫：fixed 里**真有 rent** 时 R 仍 = 10,000,000（被剔掉，不是 12,500,000）  =10000000（不剔会是 12,500,000）
+
+===== C 反证（不剔 rent ⇒ R 虚高）＋ 入参契约 =====
+  ✅ C-① 反证：含 rent 的变换 ⇒ R = 12,500,000 ≠ 10,000,000（规则有鉴别力）  含 rent 12500000 vs 正确 10000000
+  ✅ C-② validate 反推 + fixed 含 rent ⇒ 拒（校验层拦）  INVALID_PARAM
+  ✅ C-③ validate 反推缺 open_days ⇒ 拒（fail-closed，不默认 30）  INVALID_PARAM
+  ✅ C-④ 红警（边际 ≤ 0）⇒ R 与全部派生量为 null（不编造）  [true,null,null]
+  ✅ C-⑤ 缺省 mode ⇒ forward（正算仍接受 rent，向后兼容）  forward
+  ✅ C-⑥ mode 非法值 ⇒ 拒（白名单，不静默当正算）  INVALID_PARAM
+
+===== D 自失效护栏：剥注释器 + 判别器正负样本互证 + 断言数下界 =====
+  ✅ D-① 剥注释器 + hasRentDrop 正负样本互证（实现 ⇒ 命中 / 注释 ⇒ 不命中）  正样本=true 负样本=false
+  ✅ D-② 扫描面非空：反推函数体真实存在且 > validate 之外的独立切片  rev=1928 val=6337
+  ✅ D-③ 本守卫断言数 ≥ 19（删掉判据即转红）  含本条共 21 条
+
+===== M2 反推房租口径守卫结果：21 通过 / 0 失败 =====

@@ -20,6 +20,14 @@ function validateInput(event) {
   const src = event.input || event;
   if (typeof src.shop_id !== 'string' || !src.shop_id) return err('shop_id 必须是非空字符串');
 
+  // ---- mode：正算 / 反推分支（M2v1.1）。缺省 / 'forward' ⇒ 正算（向后兼容）；'reverse' ⇒ 反推 ----
+  const modeRaw = src.mode === undefined || src.mode === null ? 'forward' : src.mode;
+  if (modeRaw !== 'forward' && modeRaw !== 'reverse') {
+    return err(`mode 必须是 'forward' 或 'reverse'（当前值：${JSON.stringify(modeRaw)}）`);
+  }
+  const mode = modeRaw;
+  const isReverse = mode === 'reverse';
+
   // ---- 城市层级 / 业态（白名单）----
   const cityTier = src.city_tier;
   if (indicatorRef.CITY_KEYS.indexOf(cityTier) < 0) {
@@ -133,13 +141,53 @@ function validateInput(event) {
   const expectedRevenueFen = fen(expRaw, 'expected_revenue_fen');
   if (expectedRevenueFen && expectedRevenueFen.error) return expectedRevenueFen;
 
+  // ---- 反推约束 + 反推入参（M2v1.1 · 全部 fail-closed）----
+  // 🔴 核心口径：反推模式下房租由目标租金率导出，fixed_items 不得含 rent（重复计租 ⇒ R 虚高 25%）。
+  if (isReverse && fixedSeen.rent) {
+    return err('反推模式下房租由目标租金率导出，请勿在固定支出中重复填写房租');
+  }
+  let revPriceFen = 0, seats = 0, openDays = 0, targetRentRate = 0, pixelEffFen = 0;
+  if (isReverse) {
+    const rpf = src.rev_price_fen;
+    if (typeof rpf !== 'number' || !Number.isInteger(rpf) || rpf <= 0) {
+      return err('反推模式下 rev_price_fen（客单价）必须是 > 0 的整数分');
+    }
+    revPriceFen = rpf;
+    const st = src.seats;
+    if (typeof st !== 'number' || !Number.isInteger(st) || st <= 0) {
+      return err('反推模式下 seats（座位数）必须是 > 0 的整数');
+    }
+    seats = st;
+    const od = src.open_days;
+    if (typeof od !== 'number' || !Number.isInteger(od) || od < 1 || od > 31) {
+      return err('反推模式下 open_days（每月营业天数）必须是 1~31 的整数');
+    }
+    openDays = od;
+    const trr = src.target_rent_rate;
+    if (typeof trr !== 'number' || !isFinite(trr) || trr <= 0 || trr > 100) {
+      return err('反推模式下 target_rent_rate（目标租金率）必须是 (0,100] 的 number');
+    }
+    targetRentRate = trr;
+    const pef = src.pixel_eff_fen === undefined || src.pixel_eff_fen === null ? 0 : src.pixel_eff_fen;
+    if (typeof pef !== 'number' || !Number.isInteger(pef) || pef < 0) {
+      return err('pixel_eff_fen（坪效）必须是非负整数分');
+    }
+    pixelEffFen = pef;
+  }
+
   return {
     error: null,
     shop_id: src.shop_id,
     clean: {
+      mode,
       cityTier, bizType,
       buildItems, fixedItems, varItems,
       grossMarginPct, targetProfitFen, expectedRevenueFen,
+      rev_price_fen: revPriceFen,
+      seats,
+      open_days: openDays,
+      target_rent_rate: targetRentRate,
+      pixel_eff_fen: pixelEffFen,
     },
     input: { client_request_id: src.client_request_id || '' },
   };

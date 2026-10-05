@@ -1,0 +1,72 @@
+===== H1 · 摊销资产多次采购（saveAsset 写入侧）=====
+✅ 普通新增（无分组字段）放行
+✅ 缺省 group_id → 空串（独立资产）
+✅ 缺省 batch_seq → 1
+✅ 追加采购（group_id + batch_seq=2）放行
+✅ group_id 原样回传
+✅ batch_seq 原样回传（第 2 笔）
+✅ batch_seq=0 → 拒（笔次从 1 起）
+✅ batch_seq 字符串 "2" → 拒（JSON number 契约）
+✅ batch_seq 小数 1.5 → 拒（笔次必须整数）
+✅ group_id 等于自身 asset_id → 拒（自指组键）
+✅ 追加采购仍守旧契约：金额必须是整数分
+✅ 新增分支落库带 group_id / batch_seq
+✅ 编辑分支仅在 group_id 有值时覆盖（不把多笔拆散）
+✅ 落库字段名仍是 value_fen（防字段漂移回归）
+
+===== H1 · 读取侧透传（getAmortSchedule）=====
+✅ 读台账时归一分组字段（老数据 → "" / 1）
+✅ 返回 assets 带 group_id
+
+===== H1 · 🔒 摊销算法零改动护栏 =====
+✅ cloudfunctions/calcAmortize/service.js 不含分组字段（引擎不动）
+✅ cloudfunctions/getAmortSchedule/service.js 不含分组字段（引擎不动）
+✅ cloudfunctions/saveLedger/service.js 不含分组字段（引擎不动）
+✅ 末月尾差倒挤仍在（calcAmortize）
+
+===== H1 · 前端（摊销页分组 + 追加采购）=====
+✅ amortize.js 有 buildGroups（按 group_id || asset_id 分组）
+✅ amortize.js 有 onToggleGroup（展开看每一笔）
+✅ amortize.js 有 onAppend（「再投一笔」跳编辑页并带组键）
+✅ 「再投一笔」写入 group_id + 组内序号（round107：随表单搬到 assetEdit）
+✅ 编辑某一笔时**不回写**组归属（只送 asset_id，组键由后端保留 ⇒ 前端写不坏）
+✅ 提前报废保留组归属（只终止该笔）
+✅ 摊销页不再直接用 assets 渲染（改走 groups）
+✅ 卡片显示「共 N 笔采购」
+✅ 卡片显示「合计原值」
+✅ 每笔显示「第 N 笔」
+✅ 每笔各自有 编辑 / 提前报废（round107 handler 改名 onEdit → onEditAsset）
+✅ 有「追加采购」按钮（data-group 定位组）
+✅ 表单标题区分 一次算清 / 分期摊销 / 再投一笔（round107：三态在 assetEdit）
+✅ 「再投一笔」时渲染提示（t.appendHint 真出现；不绑具体文案，改词不误报）
+✅ 摊销页 wxss 有分组样式
+
+===== H2 · 填表引导：每类「包括 / 不包括」+ 填写口径 =====
+✅ terms 有 incomeScope（收入三类口径）
+✅ 堂食口径含「不包括会员充值预收」
+✅ 堂食口径=折后成交（语义级：口径句须含折后锚点）  (实取 181 字 / 折后锚点=true)
+✅ ModuleA 收入口径铁律段在位（T5 决策留痕）
+✅ 外卖口径指向「费用 · 营销」（不重复扣）
+✅ terms 有 expenseScope（费用四类口径）
+✅ 运营口径含「不包括设备与装修（走摊销资产）」
+✅ 其他口径含「加盟费金额大走摊销资产」
+✅ 其他口径含「不包括食材采购」
+✅ terms 有 fillGuideTitle
+✅ 填写口径 5 条（防重填漏填）  (实际 5 条)
+✅ 口径含「同一笔钱只填一次」
+✅ 口径含「食材采购不计入费用」
+✅ input.js 折叠块状态 + 开关
+✅ input.js initGroups 给每类挂 scope
+✅ input.js 从后端重建时也挂 scope
+✅ input.wxml 渲染顶部口径折叠块
+✅ input.wxml 每类口径句收进折叠块（引导行 + 按需展开）
+✅ input.wxml 口径句未退回「常展开」形态
+✅ input.wxss 有折叠块/口径样式
+✅ 口径文案无硬编码（全部走 t.*）
+
+===== 门禁预检 =====
+✅ K11 双副本逐字一致
+✅ H1/H2 新词条双副本均有（batchTotalPrefix / appendPurchase / fillGuideTitle）
+✅ 计算下沉：页面不直连数据库（只经 api.call）
+
+==== 批次 8c 自测：59 通过 / 0 失败 ====
