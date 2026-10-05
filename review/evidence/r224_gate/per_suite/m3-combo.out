@@ -1,0 +1,24 @@
+===== A-a · 套餐成本 / 毛利 / 毛利率 =====
+✅ A-a buildComboLines 生成 3 行
+✅ A-a 子卡行 net_unit_cost = 成本分 × 100（宫保 975→97500 万分）  (97500 expected, got 97500)
+✅ A-a fenToWan(975)=97500（1 分 = 100 万分）
+✅ A-a 套餐成本 = 1275 分  (got 1275)
+✅ A-a 毛利 = 1225（2500−1275）  (got 1225)
+✅ A-a 毛利率 = 49%  (got 49)
+===== A-a 对比 · 顾客省 / 我少赚 / 成本结构 =====
+✅ A-a 顾客省 = 1200（Σ 单点 3700 − 套餐 2500）  (got 1200)
+✅ A-a 我少赚 = −1200（套餐毛利 1225 − 单点毛利 2425）  (got -1200)
+✅ A-a 成本结构 3 项
+✅ A-a 宫保成本占比 ≈ 76.47%  (got 76.47)
+===== A-b · 锁版本：子卡涨价不回溯 / 同步至最新 =====
+✅ A-b 锁版本套餐仍 1275（子卡涨价不回溯）  (got 1275)
+✅ A-b 同步至最新套餐成本 = 1508  (got 1508)
+✅ A-b 同步后毛利率 = 39.68%（2500−1508=992）  (got 39.68)
+===== A-c · 禁嵌套 / 版本无效 =====
+✅ A-c 套餐引用套餐 ⇒ COMBO_NEST_NOT_ALLOWED  ({"ok":false,"code":"COMBO_NEST_NOT_ALLOWED"})
+✅ A-c 版本不存在 ⇒ SUB_CARD_VERSION_INVALID  ({"ok":false,"code":"SUB_CARD_VERSION_INVALID"})
+✅ A-c 已软删 ⇒ SUB_CARD_VERSION_INVALID  ({"ok":false,"code":"SUB_CARD_VERSION_INVALID"})
+✅ A-c 正常单品引用 ⇒ 通过  ({"ok":true,"card":{"card_code":"cc_gongbao","card_type":1,"version":1,"is_deleted":false}})
+
+============================================================
+===== M3.16 套餐自测结果：17 通过 / 0 失败 =====

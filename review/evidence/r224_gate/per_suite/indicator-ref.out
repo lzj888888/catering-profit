@@ -1,0 +1,68 @@
+
+===== P 前置（fail-closed：读不到 / 解析不出即判红） =====
+  ✅ P-① M2 规范可读 —— specs/dev-specs/core/开发规范v1.0_ModuleM2_选址沙盘.md（16123 字符）
+  ✅ P-② M1 规范可读 —— specs/dev-specs/core/开发规范v1.0_ModuleM1_月度盈利核算.md（5153 字符）
+  ✅ P-③ 代码单源可 require —— cloudfunctions/common/indicatorRef.js
+  ✅ P-④ M2.4b 权威 JSON 块可解析 —— 键：cityCoef/bands/redline
+  ✅ P-⑤ 权威 JSON 标记在 M2 规范内恰 1 处 —— 实得 1 处
+
+===== A 双向逐项：代码单源 ≡ M2.4b 权威 JSON =====
+  ✅ A-① spec 含 cityCoef / bands / redline 三段 —— cityCoef / bands / redline
+  ✅ A-② 城市系数 tier1 双向一致 —— {"rent":1.2,"labor":1.15}
+  ✅ A-② 城市系数 tier23 双向一致 —— {"rent":1,"labor":1}
+  ✅ A-② 城市系数 county 双向一致 —— {"rent":0.75,"labor":0.85}
+  ✅ A-③ 参考带 fastfood 双向一致 —— 6 项 × [lo,hi] 全等
+  ✅ A-③ 参考带 dining 双向一致 —— 6 项 × [lo,hi] 全等
+  ✅ A-③ 参考带 hotpot 双向一致 —— 6 项 × [lo,hi] 全等
+  ✅ A-③ 参考带 cafe 双向一致 —— 6 项 × [lo,hi] 全等
+  ✅ A-④ 业态键集合双向一致 —— fastfood/dining/hotpot/cafe
+  ✅ A-⑤ 红线段双向一致 —— {"rent":15,"labor":20,"grossMargin":55,"loss":5}
+  ✅ A-⑥ INDICATORS 指标键集合 ≡ 参考带键集合 —— grossMargin/rent/labor/energy/manage/mkt
+
+===== B 三方对齐：红线 code REDLINE ≡ M2.4b JSON ≡ M1.6 唯一声明处 =====
+  ✅ B-① M1.6 声明行可解析（4 项） —— {"rent":15,"labor":20,"grossMargin":55,"loss":5}
+  ✅ B-② 红线 rent 三方一致（声明/规范/代码） —— 声明 15 / 规范 15 / 代码 15
+  ✅ B-② 红线 labor 三方一致（声明/规范/代码） —— 声明 20 / 规范 20 / 代码 20
+  ✅ B-② 红线 grossMargin 三方一致（声明/规范/代码） —— 声明 55 / 规范 55 / 代码 55
+  ✅ B-② 红线 loss 三方一致（声明/规范/代码） —— 声明 5 / 规范 5 / 代码 5
+  ✅ B-③ 毛利率警戒线 = 55（同向同值 · 无 100−x 派生桥 · 旧键 food 已废） —— redlineOf('grossMargin')=55 / REDLINE.grossMargin=55 / 旧键 'food'=null
+
+===== C 行为级口径：城市敏感性 / 浮点容差 / level 边界 / 未填 ≠ 0 =====
+  ✅ C-① 不敏感项恰为 grossMargin/energy/manage/mkt 四项 —— grossMargin/energy/manage/mkt
+  ✅ C-② fastfood 不敏感项三档同值（毛利率不随城市变） —— 4 项 × 3 档全等
+  ✅ C-② dining 不敏感项三档同值（毛利率不随城市变） —— 4 项 × 3 档全等
+  ✅ C-② hotpot 不敏感项三档同值（毛利率不随城市变） —— 4 项 × 3 档全等
+  ✅ C-② cafe 不敏感项三档同值（毛利率不随城市变） —— 4 项 × 3 档全等
+  ✅ C-③ rent 三档均乘城市系数 —— 4 业态 × 3 档全等
+  ✅ C-③ labor 三档均乘城市系数 —— 4 业态 × 3 档全等
+  ✅ C-④ 浮点容差：dining.labor@tier1 下限 = 19.6（裸 round 会得 19.5） —— 实得 19.6 / 裸 round 反面样本 19.5
+  ✅ C-⑤ 浮点容差：fastfood.rent@county = 3.8 ~ 7.5 —— 3.8 ~ 7.5
+  ✅ C-⑥ level 边界 10 例（cost 4 + gain 4 + 边界 2） —— 10/10 全中
+  ✅ C-⑦ redlineOf 映射（rent/labor/grossMargin 有值 · 其余 null · 旧键 food 已废） —— {"rent":15,"labor":20,"grossMargin":55,"energy":null,"manage":null,"mkt":null,"food":null}
+  ✅ C-⑧ evaluateIndicators 语义样本 6 项（占比 + 评级） —— 6/6 全中（含营销 15% 判 bad）
+  ✅ C-⑨ 房租 10% 未触警戒线 · 含 redline 透出 —— redline=15 / hit=false
+  ✅ C-⑩ 未填项 ⇒ pct=null / level=na（不按 0 元处理） —— pct=null / level=na
+  ✅ C-⑪ 口径统一：键=grossMargin / dir=gain / 值=直填 65（非 100−65=35）/ 旧键 food 已废 —— pct=65（应 65）· 旧键 food 已废 · gain 项 [grossMargin]
+  ✅ C-⑫ 🔴 带 vs 警戒线不自相矛盾（cost 类 lo ≤ 警戒 · gain 类 hi ≥ 警戒） —— 四业态 × 3 个有警戒线的指标全过
+  ✅ C-⑬ 🔴 参考金额正样本：正餐·二三线·10万 ⇒ 4 项且金额 = 营业额 × 中值% —— 4/4 全中 rent=1150000 labor=1950000 utility=400000 manage=750000
+  ✅ C-⑭ 🔴 键归属：key ∈ 固定项白名单 / indKey ∈ 指标白名单（utility↔energy 不得混淆） —— utility.indKey=energy · 各自在白名单=true
+  ✅ C-⑮ 未填 / 非法营业额 ⇒ 空数组（不编造 0 元） —— 0/0/0/0
+  ✅ C-⑯ 城市系数生效：一线房租 13.8%→1380000 / 人工 22.5%→2250000（先定标再算） —— rent=13.8%/1380000 labor=22.5%/2250000
+  ✅ C-⑰ pct 与 fen 可互相反算（fen == 营业额 × pct%） —— rent:13.8%→1380000 labor:22.5%→2250000 utility:4%→400000 manage:7.5%→750000
+
+===== E 对外文案面：用户可见处不得出现「食材成本率」 =====
+  ✅ E-① 四个用户可见面（剥注释后）零「食材成本率 / 食材成本占… / 食材占比」类表述 —— 4 份文件全扫，0 命中
+  ✅ E-② 剥注释器正负样本互证（行/块/html 注释被剥 · 字符串里保留） —— 行[剥] 块[剥] html[剥] 字符串[保留✅]
+  ✅ E-③ 词族判据正负样本互证 5 例（4 命中 + 1 不误杀） —— 5/5 如期
+
+===== D 自失效护栏（正负样本互证 + 下界） =====
+  ✅ D-① 比较器正负样本互证 5 组 —— 5/5 如期
+  ✅ D-② 原样本零差异 / 变异样本必报出 —— 原 0 条 · 变异 1 条（bands.dining.rent[1] 期望 16 / 实得 15）
+  ✅ D-③ 逐项比较对数 ≥ 34（系数6 + 带24 + 红线4） —— 实得 58 对
+  ✅ D-④ 扫描面含 M2/M1 两份目标规范 —— M2.4b 权威 JSON + M1.6 声明行均在面内
+  ✅ D-⑤ 本守卫断言数 ≥ 38（非恒真证明力下界） —— 当前累计 50 条
+
+===== W 弱面（其它 .md 提及本库，只明示不判红） =====
+  ✅ W-① 弱面扫描完成（提及 indicatorRef 的 .md） —— 18 份：review/ADR_2026-09-28_AI接口预留决策.md、review/evidence/r181j_m319_m321_feed/README.md、review/NOTE_2026-09-23_round110-m2-v2-and-indicator-ref-guard.md、review/NOTE_2026-09-24_round113-m2-fill-guide-and-labor-band.md …（只明示不判红）
+
+===== 餐饮指标参考库口径守卫结果：52 通过 / 0 失败 =====
