@@ -1,0 +1,216 @@
+======================== 提示词开始 ========================
+
+# 批次 M2v1.1 · M2「目标反推」分支（选址反推落地 · 第一期）· 自包含
+
+> 用法：把「提示词开始 / 结束」之间的**整段**粘进 InsCode 发送。本批**自包含**，不需要先读别的批次包。
+> 依据：`specs/dev-specs/core/开发规范v1.1_ModuleM2增量_选址反推与多方案沙盘.md`（**已定案，原样执行，不要重新设计**）。
+> 锚点已由我方用生产引擎独立复算（25/25 通过，`review/evidence/r219_m2_reverse/recalc_anchors.txt`），你只需让自测**复现**这些数字。
+
+## 0.1 部署提醒（本批**不改** `cloudfunctions/common/`）
+
+本批**不新增/修改任何 `common/` 下的文件**（`indicatorRef.js` 的白名单**不用动** —— 反推用的是一个**变换层**内部构造的临时项，不进白名单）。
+⇒ **不需要**跑 `node tools/sync_common.js`，也**不需要**重部署其它云函数。只部署 `calcSandbox` 一个。
+
+> ⚠️ 部署时**必须**勾选「云端安装依赖」的地方照旧；`-r` 参数铁律照旧（部署命令见团队既有约定）。
+
+## 0.2 三条红线（违反任一条即整批退回）
+
+1. 🔴 **`service.js` 里既有的 `calcSandbox(clean)` 函数体一个字都不许动**（正算口径必须零改动，否则旧锚点 660000/17000/38000/76000/106000 会漂）。
+   本批**只新增**函数（建议名 `calcSandboxReverse`），并在 `module.exports` 里多导出一个名字。
+2. 🔴 **反推模式下 `fixed_items` 不得含 `rent`** —— 这是本批的**核心口径**（见 §2）。**校验层拦 + 变换层剔，两道防线都要有。**
+3. 🔴 **前端不做任何公式**：Tab 切换只是"换一套入参再调云函数"，所有数字由云端返回。
+
+---
+
+## 1. 本批要解决的问题（一段话）
+
+M2 现在只有"**他填数 → 咱们出保本点**"（正算）。但老板真正的问题是反向的：
+「**我想月赚 2 万，房租最多能出多少？需要多少客流？翻台要几轮？**」
+锁定规范 §M2.12 早就规划了"反推"，但**从未实现**（`calcSandbox` 只有正算）。
+本批把反推落地：**同一页加一个「目标反推」Tab**，输入目标利润与约束条件，输出所需营收 / 房租上限 / 客流 / 翻台 / 面积上限。
+
+---
+
+## 2. 反推口径（**核心，务必逐字照做**）
+
+### 2.1 关键洞察：反推 = 一次**入参变换**，引擎零改动
+
+房租在正算是**固定成本**；但在反推里，「房租 = R × 目标租金率」使它变成**随营业额变动的项**
+（与外卖佣金同性质）。⇒ 把「目标租金率」当成一项**挂钩费率**喂进 `var_items`，房租自动从固定成本消失，
+方程与正算**完全同形**。
+
+**变换公式（第一步）**：
+
+```
+fixed_items' = fixed_items.filter(x => x.key !== 'rent')            // 剔除房租
+var_items'   = var_items.concat([{ key: 'rentRate', pct: target_rent_rate }])   // 追加租金率
+```
+
+然后把 `fixed_items'` / `var_items'` 连同其余入参喂给**既有** `calcSandbox`，取 `target_monthly_fen` = **R**。
+
+### 2.2 派生量（在 R 之上算）
+
+```
+目标日均营收 = R ÷ open_days                      → 四舍五入到**分**
+房租上限     = R × 目标租金率 ÷ 100               → 四舍五入到**分**
+月客流       = R ÷ 客单价                          → 保留 **2 位小数**
+日均客流     = 月客流 ÷ open_days                  → 保留 **2 位小数**
+翻台         = 月客流 ÷ (座位数 × open_days)        → 保留 **2 位小数**
+面积上限     = 房租上限 ÷ 坪效                      → 保留 **1 位小数**；坪效 ≤ 0 或缺省 ⇒ **null**
+```
+
+🔴 **先算后取整**：派生量一律用**未取整的中间值**继续算，**只在输出时**取整。
+🔴 **不做整数进位**（74.07 人就写 74.07，不要截成 74）。
+🔴 浮点容差：保留小数必须用 `Math.round(n * 100 + 1e-9) / 100`（本仓既有纪律，`25 × 1.15` 的坑）。
+
+### 2.3 红警
+
+边际贡献率 ≤ 0（即 `(100 − 毛利率) + Σ挂钩费率 + 目标租金率 ≥ 100`）⇒ `red_alert = true`，
+**R 与全部派生量返回 `null`**（不编造；同正算纪律）。
+
+---
+
+## 3. 精确需求（逐文件，照做）
+
+### ① `cloudfunctions/calcSandbox/validate.js`
+
+新增 `mode` 与反推入参校验（**全部 fail-closed**）：
+
+| 入参 | 校验 |
+|---|---|
+| `mode` | 缺省 / `'forward'` ⇒ 正算（**向后兼容**）；`'reverse'` ⇒ 反推；其它 ⇒ `INVALID_PARAM` |
+| `rev_price_fen` | 反推时必填：整数分，**> 0** |
+| `seats` | 反推时必填：整数，**> 0** |
+| `open_days` | 反推时必填：整数，**∈ [1,31]** |
+| `target_rent_rate` | 反推时必填：number，**∈ (0,100]** |
+| `pixel_eff_fen` | 选填：整数分，**≥ 0**（缺省 0） |
+
+🔴 **硬约束**：`mode === 'reverse'` 且 `fixed_items` 含 `key === 'rent'` ⇒ 直接 `INVALID_PARAM`，
+msg 写：「反推模式下房租由目标租金率导出，请勿在固定支出中重复填写房租」。
+（`clean` 里把反推字段一并返回，`mode` 也放进 `clean`。）
+
+### ② `cloudfunctions/calcSandbox/service.js`
+
+- 🔴 **既有 `calcSandbox` 一行不动。**
+- **新增** `function calcSandboxReverse(clean)`：
+  1. 做 §2.1 的入参变换；
+  2. 调 `calcSandbox(变换后的 clean)` 得 `fwd`；
+  3. 若 `fwd.red_alert` ⇒ 返回 `{ mode:'reverse', red_alert:true, target_monthly_fen:null, ...  全 null, warn_keys:[] }`；
+  4. 否则按 §2.2 算派生量，返回：
+     ```js
+     {
+       mode: 'reverse',
+       target_monthly_fen, target_daily_fen, rent_cap_fen,
+       monthly_traffic, daily_traffic, turn_rate, area_cap_sqm,
+       rent_rate_pct, rev_price_fen, seats, open_days,
+       red_alert: false,
+       warn_keys: turn_rate > 8 ? ['turnOverHigh'] : []
+     }
+     ```
+     （`turn_rate > 8` 的阈值 **8** 是**自定值**，**不参与计算**，只决定是否给提示句。）
+- `module.exports` 增加 `calcSandboxReverse`（**别动既有导出名**）。
+
+### ③ `cloudfunctions/calcSandbox/index.js`
+
+按 `v.clean.mode` 分发：`'reverse'` ⇒ 调 `calcSandboxReverse`，出参里**同时**带正算基础量与 `reverse` 块；
+`'forward'` ⇒ 现状不变（**逐字节不变的返回结构**）。
+出参形状：
+```js
+{ shop_id, client_request_id, ...基础量, reverse: {...} }   // reverse 仅反推模式存在
+```
+
+### ④ `cloudfunctions/calcSandbox/selftest.js`
+
+新增两段（**必须复现下面这些数字，一个都不能少**）：
+
+**J 段 · 反推锚点**（输入：目标月利润 20000 / 客单 45 / 毛利率 60% / 座位 20 / 每月营业 30 天 / 目标租金率 12% / 月固定(不含房租) 28000 / 坪效 40）：
+
+| 断言 | 期望 |
+|---|---|
+| 目标月营收 R | 10,000,000 分（100,000 元） |
+| 目标日均营收 | 333,333 分 |
+| 房租上限 | 1,200,000 分（12,000 元） |
+| 月客流 | 2222.22 |
+| **日均客流** | **74.07** |
+| **翻台** | **3.70** |
+| 面积上限 | 300 |
+| 无红警 | `red_alert === false` |
+
+**K 段 · 入参契约**：
+- 反推 + `fixed_items` 含 `rent` ⇒ **必须拒**（`INVALID_PARAM`）；
+- 反推缺 `open_days` / `rev_price_fen = 0` / `seats = 0` ⇒ **必须拒**；
+- 反推 + 坪效缺省 ⇒ `area_cap_sqm === null`（**不编造**）；
+- 红警工况（毛利率 30% + 租金率 60%）⇒ `red_alert === true` 且 R 与派生量**全为 null**；
+- **旧锚点回归**：正算 `mode` 缺省时，M2.10 标准工况仍是 76000 / 106000（原文数字不得漂）。
+
+> 自测总数从 **66** 涨到 **66 + J + K**；跑完在末尾打印 `通过 / 失败`，失败非零退出。
+
+### ⑤ `pages/sandbox/index.js` / `index.wxml` / `index.wxss`
+
+- 页面顶部加**双 Tab**：「正向测算」/「目标反推」。
+- 🔴 **两套输入区状态独立缓存**，切换**互不覆盖**。
+- 反推 Tab 的输入框：客单价 / 座位数 / 每月营业天数 / 目标租金率 / 坪效（选填）
+  ＋ 复用「固定支出（**无房租行**）/ 变动费率 / 菜品毛利率 / 目标月利润」。
+- 🔴 **反推 Tab 下 `fixed_items` 的房租行必须隐藏**（不是置灰 —— 隐藏才不会被误填），
+  并在页面上强提示一行：「反推模式下房租由目标租金率自动导出，无需另填」。
+- 结果区展示：所需月营收（明确写「这是**营业额**，不是利润」）/ 房租上限 / 所需月客流 / 日均客流 / 翻台 / 面积上限（坪效未填则不显示该行）。
+- 🔴 **页面零硬编码文案**：全部走 `t.xxx`（terms），且**新增可见文案必须三处同步**：
+  `miniprogram/i18n/terms.js` ＋ `specs/dev-specs/i18n/terms.js`（**两份逐字节一致**）＋ 页面引用。
+- 🔴 **前端不做任何公式** —— 所有数字来自云函数返回。
+
+### ⑥ `miniprogram/i18n/terms.js` ＋ `specs/dev-specs/i18n/terms.js`
+
+在 `TERMS.m2` 下**新增**建议键（文案可微调，但**必须过 `tools/check_terms_forbidden.js`**；如命中禁用词改用等价表述）：
+
+```
+tabForward: '正向测算',  tabReverse: '目标反推',
+revPrice: '客单价',  revSeats: '座位数',  revOpenDays: '每月营业天数',
+revRentRate: '目标租金率',  revPixelEff: '坪效（元/㎡·月）',
+revRentHint: '反推模式下房租由目标租金率自动导出，无需另填',
+revRevenue: '所需月营业额',  revRentCap: '房租上限',
+revTraffic: '所需月客流',  revDailyTraffic: '所需日均客流',  revTurnRate: '所需翻台',
+revAreaCap: '面积上限',  revWarnTurnHigh: '翻台偏高，请复核座位数或营业天数'
+```
+
+### ⑦ `tools/check_m2_ref_not_prefill.js`（既有守卫，**必须同步**）
+
+该守卫枚举页面里**所有** `<input>` 的 `value` 绑定，并**只放行白名单内的变量名**：
+
+```js
+const OK_VALUE = /^\{\{(item\.(yuan|years|pct)|targetYuan|expectYuan)\}\}$/;
+```
+
+⇒ 反推 Tab 新增的输入框变量名（如 `revPrice` / `revSeats` / `revOpenDays` / `revRentRate` / `revPixelEff`）
+**必须**加进这个白名单（**否则门禁直接判红**）。同时保证这些输入框的 `value` **只绑用户自己填的字段**，
+**绝不绑任何参考值**。
+
+### ⑧ `specs/dev-specs/core/10_云函数清单与接口契约.md`
+
+`calcSandbox` 契约行补：新增入参 `mode`（默认 `forward`）＋ 反推 5 个入参 ＋ 出参 `reverse` 块。**不新增云函数**。
+
+---
+
+## 4. 绝对禁止
+
+- ❌ 不许改 `calcSandbox`、`indicatorRef.js`、任何其它云函数、任何 `common/` 文件。
+- ❌ 不许把"目标租金率"塞进 `VAR_KEYS`（它是**变换层内部临时项**，不是用户可选的费用类型）。
+- ❌ 不许在反推里**保留房租行**或**让房租进固定成本**（这是本批唯一要防的重复计租）。
+- ❌ 不许前端自己算公式、不许把参考值自动填进输入框。
+- ❌ 不许新增集合 / 索引 / 云函数 / 错误码（复用 `INVALID_PARAM`）。
+- ❌ 不许把浮点数当金额直接显示（金额一律"分"转元后展示，**2 位小数**）。
+
+## 5. 交付物
+
+1. 上述 ①~⑧ 的文件改动；
+2. `cloudfunctions/calcSandbox/selftest.js` 跑通输出（贴最后 15 行）；
+3. **只部署 `calcSandbox`** 一个函数（`filesCount` 回读）；
+4. 真机/模拟器截一张反推 Tab 的图（能看清结果区数字）。
+
+## 6. 验收判据（我方会独立复核）
+
+1. `calcsandbox` selftest **全绿**且 J/K 段数字**与我方锚点逐字一致**（10,000,000 / 333,333 / 1,200,000 / 2222.22 / 74.07 / 3.70 / 300）；
+2. **旧锚点回归**：正算 76000 / 106000 **不漂**；
+3. 全量门禁通过（我方跑）；
+4. **我方会做双向变异回灌**：把"剔除 rent"改成"不剔除"必须转红；把"÷ open_days"改回"÷ 30"必须转红 —— 你若在实现里留了硬编码 30，就会在这里被抓住。
+
+======================== 提示词结束 ========================

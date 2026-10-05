@@ -1,0 +1,14 @@
+===== 无记录 / 免费档 =====
+✅ 无记录 → expire_at:0, is_active:false（不报 RESOURCE_NOT_FOUND）
+===== 有效 / 过期 =====
+✅ 有效（+30 天）→ is_active=true, days_left=30  (days_left=30)
+✅ 过期（-2 天）→ is_active=false
+✅ 到期前 5 天 → days_left=5（结果页提示条用）  (days_left=5)
+✅ 到期前 7 天边界 → days_left=7
+===== 解耦铁律（不返回 plan_id）=====
+✅ 出参不含 plan_id
+===== 入参校验 =====
+✅ 合法
+✅ 缺 shop_id → INVALID_PARAM
+
+==== payQueryEntitlement 批次 5 自测结果：8 通过 / 0 失败 ====
