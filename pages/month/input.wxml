@@ -347,8 +347,9 @@
           data-kind="expense" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubAmount"
           disabled="{{readOnly || (twMkByPlatActive && gi === twMkRowGi && ri === twMkRowRi)}}"  adjust-position="{{true}}" cursor-spacing="20" />
       </view>
-      <!-- R85：营销项「取数路径」标注（由 js 按 terms.expenseItemNotes 预计算挂到 r.note / r.promo，页面不写死项名） -->
-      <view class="exp-note {{r.promo ? 'promo' : ''}}" wx:if="{{g.category === 'marketing' && r.note}}">
+      <!-- R85 引入 / round217 放开：各费用细项的「行内说明」（由 js 按 terms.expenseItemNotes 预计算挂到 r.note / r.promo，页面不写死项名）。
+           ⚠️ 原先判据写死 `g.category === 'marketing'` ⇒ 运营类就算配了注也渲染不出来；现改为「有注就渲染」（组内无注自然不显示）。 -->
+      <view class="exp-note {{r.promo ? 'promo' : ''}}" wx:if="{{r.note}}">
         {{r.note}}
         <text wx:if="{{r.promo}}" class="promo-path">{{t.twPromoPathLabel}}</text>
         <view wx:if="{{r.promo}}" class="promo-hint">{{t.twPromoPathHint}}</view>

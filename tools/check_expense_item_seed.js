@@ -26,6 +26,16 @@
  *   E4 规范 A.2 营销表（项名归一化去括号）≡ 代码 marketing 项名（集合双向）
  *   E5 下界护栏：总项数 ≥ 20、每个 category ≥ 2（防整体缩水 / 类被清空后仍判绿）
  *   E6 前提证明（非恒真）：两侧数量相等且非空，否则判红
+ *   E7 「项名当机器键」必须命中种子（R217，round217 新增）：
+ *       recurringFixed / recurringVariable / expenseItemNotes 键 / missingWarnItems  ⊆ 种子项名；
+ *       配影子样本自证判据有分辨力 + 运营类行内注覆盖下界（防新补的文案被整段删回去）。
+ *
+ * 为什么加 E7（根因）：
+ *   `recurringFixed/Variable`（首月铺哪些行）、`expenseItemNotes`（行上挂哪句说明）、
+ *   `missingWarnItems`（保存前提示哪几项）**三者都以「费用项显示名」当机器键**
+ *   —— 改一个 `item_name`，铺行会静默少一行、说明会静默不显示、提示会静默不弹，
+ *   而门禁全绿（同族病：细项名当机器键 ⇒ 改名静默失效）。
+ *   此前这三处**零守卫**（round216 探针实测：今天全部命中，属"今天对、明天可能静默错"）。
  *
  * ⚠️ 已知坑的对应处理：
  *   · 坑⑭/⑯ 裸扫数字必误杀：本守卫**不扫任何裸数字**，只解析字面量与 markdown 表格行。
@@ -110,6 +120,36 @@ function parseSpecA2(md) {
 
 const sameSet = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
 const diff = (a, b) => a.filter((x) => !b.includes(x));
+
+// ============ E7 用的解析器与纯判据（纯函数 ⇒ 影子样本可直接证伪它）============
+
+/** terms.js::ledger.<field> ⇒ [字符串]（单行数组字面量，如 recurringFixed / missingWarnItems） */
+function parseStrList(src, field) {
+  const re = new RegExp('\\b' + field + ':\\s*\\[([^\\]]*)\\]');
+  const m = re.exec(src);
+  if (!m) return null;
+  const out = m[1].split(',').map((s) => s.trim().replace(/^'|'$/g, '').trim()).filter(Boolean);
+  return out.length ? out : null;
+}
+
+/** terms.js::ledger.expenseItemNotes ⇒ [键名]（只认行首引号形态；块内注释以 // 起头，天然不匹配） */
+function parseNoteKeys(src) {
+  const start = src.indexOf('expenseItemNotes: {');
+  if (start < 0) return null;
+  const end = src.indexOf('\n    },', start);
+  const block = src.slice(start, end < 0 ? start + 3000 : end);
+  const out = [];
+  const re = /^\s*'([^']+)':/gm;
+  let m;
+  while ((m = re.exec(block))) out.push(m[1]);
+  return out.length ? out : null;
+}
+
+/** 「名单里哪些项不在全集里」 —— 抽成纯函数，好让影子样本能直接测它（判据自证，防恒真） */
+const missingFrom = (list, universe) => (list || []).filter((n) => universe.indexOf(n) < 0);
+
+// 运营类行内注覆盖下界（实测 7，取下沿 6 —— 防新补的文案被整段删回去而无人知）
+const MIN_OPERATION_NOTES = 6;
 
 // ============ E1 前提 / fail-closed ============
 section('E1 前提与 fail-closed（三份代码源必须都可解析）');
@@ -222,6 +262,70 @@ if (cfSeed && frontExp) {
   else no('E6-①', `前端 ${total} 项 vs 种子 ${cfSeed.length} 项 —— 数量不等则逐项比对无意义`);
 } else {
   no('E6-①', '前提证明跳过（上游解析失败，fail-closed）');
+}
+
+// ============ E7 「费用项名当机器键」必须命中种子（R217） ============
+section('E7 项名当机器键：铺行名单 / 行内注键 / 缺项提示名单 必须命中种子');
+
+let termsSrc = null;
+try { termsSrc = readRel(TERMS_REL); } catch (_) { termsSrc = null; }
+const rFixed = termsSrc ? parseStrList(termsSrc, 'recurringFixed') : null;
+const rVar = termsSrc ? parseStrList(termsSrc, 'recurringVariable') : null;
+const nKeys = termsSrc ? parseNoteKeys(termsSrc) : null;
+const mWarn = termsSrc ? parseStrList(termsSrc, 'missingWarnItems') : null;
+
+if (rFixed && rVar && nKeys && mWarn) {
+  ok('E7-①', `四处名单均解析成功（固定 ${rFixed.length} / 波动 ${rVar.length} / 行内注 ${nKeys.length} / 缺项提示 ${mWarn.length}）`);
+} else {
+  no('E7-①', '名单解析失败（terms 被改名或改写法即失守 ⇒ fail-closed）');
+}
+
+if (cfSeed && rFixed && rVar) {
+  const names = cfSeed.map((x) => x.name);
+  const badRec = missingFrom(rFixed.concat(rVar), names);
+  if (badRec.length === 0) ok('E7-②', `常规科目预置名单 ${rFixed.length + rVar.length} 项全部命中种子`);
+  else no('E7-②', `预置名单未命中种子（会静默少铺行）：${badRec.join('、')}`);
+} else {
+  no('E7-②', '预置名单比对跳过（上游解析失败，fail-closed）');
+}
+
+if (cfSeed && nKeys) {
+  const names = cfSeed.map((x) => x.name);
+  const badNote = missingFrom(nKeys, names);
+  if (badNote.length === 0) ok('E7-③', `行内注 ${nKeys.length} 个键全部命中种子`);
+  else no('E7-③', `行内注键未命中种子（文案永不显示）：${badNote.join('、')}`);
+} else {
+  no('E7-③', '行内注键比对跳过（上游解析失败，fail-closed）');
+}
+
+if (cfSeed && mWarn) {
+  const names = cfSeed.map((x) => x.name);
+  const badWarn = missingFrom(mWarn, names);
+  if (badWarn.length === 0) ok('E7-④', `缺项提示名单 ${mWarn.length} 项全部命中种子`);
+  else no('E7-④', `缺项提示名单未命中种子（保存前提示会静默失效）：${badWarn.join('、')}`);
+} else {
+  no('E7-④', '缺项提示名单比对跳过（上游解析失败，fail-closed）');
+}
+
+// 判据自证（影子样本）：证明 missingFrom 真有分辨力 —— 否则上面几条可以恒真（假绿）
+if (cfSeed && cfSeed.length) {
+  const universe = cfSeed.map((x) => x.name);
+  const fakeHit = missingFrom(['__round217_假项名__'], universe).length;
+  const realHit = missingFrom([universe[0]], universe).length;
+  if (fakeHit === 1 && realHit === 0) ok('E7-⑤', '判据自证：假项名报 1 条、真项名报 0 条（missingFrom 有分辨力）');
+  else no('E7-⑤', `判据自证失败（假项名报 ${fakeHit} / 真项名报 ${realHit}）⇒ 上面几条的命中结论不可信`);
+} else {
+  no('E7-⑤', '判据自证跳过（种子解析失败）');
+}
+
+// 运营类行内注覆盖下界：防 round217 新补的可见说明被整段删回去而无人知（非退化护栏）
+if (cfSeed && nKeys) {
+  const opNames = cfSeed.filter((x) => x.category === 'operation').map((x) => x.name);
+  const covered = nKeys.filter((k) => opNames.indexOf(k) >= 0).length;
+  if (covered >= MIN_OPERATION_NOTES) ok('E7-⑥', `运营类行内注覆盖 ${covered} 项 ≥ 下界 ${MIN_OPERATION_NOTES}（实测 7 的保守下沿）`);
+  else no('E7-⑥', `运营类行内注仅 ${covered} 项 < 下界 ${MIN_OPERATION_NOTES}（新补的可见说明被删掉了）`);
+} else {
+  no('E7-⑥', '运营类行内注覆盖判定跳过（上游解析失败）');
 }
 
 console.log(`\n===== 费用项清单口径守卫结果：${pass} 通过 / ${fail} 失败 =====`);

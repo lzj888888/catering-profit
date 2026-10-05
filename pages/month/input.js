@@ -27,6 +27,9 @@ const TAKEOUT_MODE_KEY = 'takeout_mode_';
 //   ⚠️ 与 TAKEOUT_MODE_KEY 分开存：一个是「怎么填」（快速/分项），一个是「看不看」（展开/折叠），
 //      两件事。合在一个键里会让「切模式」误改「展开状态」（口径串味）。
 const TAKEOUT_FOLD_KEY = 'takeout_fold_';
+// round217：保存前「缺项软提示」的"该月已提示过"记忆键（仅存本地）。
+//   ⚠️ 与草稿/模式键一样只存本地：换设备会再提示一次 —— 可接受（提示是软的，不阻断保存）。
+const MISS_WARN_KEY = 'miss_warn_';
 
 Page({
   data: {
@@ -292,13 +295,17 @@ Page({
     const byPlat = this.buildMkByPlat(this.data.twMkByPlat);
     // ⚠️ round102：先建出**页面对象**再装配 rows —— decorateRows 会往 g 上挂只读派生字段
     //   （unused / mkPlatAfterRi），若把 terms 单源元素直接传进去会污染单源。
-    const mk = (defs, scopeMap) => defs.map((d) => {
+    // round217：第三个参数标记「这一组的细项要不要挂行内说明」——费用侧传 `TERMS.ledger.expenseItemNotes`
+    //   （只取真假，不把整张表塞进 data），收入侧不传。⚠️ 之所以挂到 g 上而不是在各条 setData 路径各补一次：
+    //   `decorateRows` 是行的**唯一装配口**，初始化 / 读回 / 复制上月 / 加行 / 删行 / 铺常规科目六条路径都过它。
+    const mk = (defs, scopeMap, notesMap) => defs.map((d) => {
       const raw = [{ subItem: '', amountYuan: '' }];
       const g = {
         category: d.category, label: d.label, items: d.items || [],
         scope: (scopeMap || {})[d.category] || '',
         scopeOpen: false,   // 2026-09-21：口径句默认收起（李老师反馈原样展开太占地方）
         expanded: false,
+        notesOn: !!notesMap,   // round217：该组细项挂不挂行内说明（收入组 false ⇒ decorateRows 里天然 no-op）
         rows: [],
         showRows: [],
       };
@@ -308,7 +315,7 @@ Page({
     });
     this.setData({
       incomeGroups: mk(TERMS.ledger.income, TERMS.ledger.incomeScope),
-      expenseGroups: this.decorateExpenseNotes(mk(TERMS.ledger.expense, TERMS.ledger.expenseScope)),
+      expenseGroups: mk(TERMS.ledger.expense, TERMS.ledger.expenseScope, TERMS.ledger.expenseItemNotes),
       twMkByPlat: byPlat,
       twMkByPlatSum: mkByPlatTotal(byPlat) ? mkByPlatTotal(byPlat).toFixed(2) : '0.00',
       twMkByPlatActive: mkByPlatFilled(byPlat),
@@ -395,7 +402,7 @@ Page({
     try {
       const pd = await api.call('getLedger', { month: pm });
       let incomeGroups = this.rebuildFromItems(TERMS.ledger.income, pd.income_items, TERMS.ledger.incomeScope);
-      let expenseGroups = this.decorateExpenseNotes(this.rebuildFromItems(TERMS.ledger.expense, pd.expense_items, TERMS.ledger.expenseScope));
+      let expenseGroups = this.rebuildFromItems(TERMS.ledger.expense, pd.expense_items, TERMS.ledger.expenseScope, TERMS.ledger.expenseItemNotes);
       incomeGroups = this.markRecurringTags(incomeGroups);
       expenseGroups = this.markRecurringTags(expenseGroups);
       let total = 0;
@@ -453,7 +460,8 @@ Page({
   },
 
   // 从后端明细（snake_case income_items/expense_items）重建组：每大类 → rows = sub_items（无细项则单行整类）
-  rebuildFromItems(defs, items, scopeMap) {
+  // round217：第四个参数同 initGroups 的 mk —— 费用侧传 `TERMS.ledger.expenseItemNotes` 以挂行内说明。
+  rebuildFromItems(defs, items, scopeMap, notesMap) {
     return defs.map((d) => {
       const found = (items || []).find((it) => (it.category || '') === d.category);
       let rows = [{ subItem: '', amountYuan: '' }];
@@ -477,6 +485,7 @@ Page({
         scope: (scopeMap || {})[d.category] || '',
         scopeOpen: false,   // 与 initGroups 一致：读回后端数据也默认收起
         expanded,
+        notesOn: !!notesMap,   // round217：见 initGroups —— 费用组挂行内说明，收入组不挂
         rows: [],
         showRows: [],
       };
@@ -501,7 +510,7 @@ Page({
       const inGrace = ui.withinGrace(archivedAtMs, Date.now());
       const readOnly = isArchive && !inGrace;   // 归档且超 7 天 → 硬锁
       const incomeGroups = this.rebuildFromItems(TERMS.ledger.income, d.income_items, TERMS.ledger.incomeScope);
-      const expenseGroups = this.decorateExpenseNotes(this.rebuildFromItems(TERMS.ledger.expense, d.expense_items, TERMS.ledger.expenseScope));
+      const expenseGroups = this.rebuildFromItems(TERMS.ledger.expense, d.expense_items, TERMS.ledger.expenseScope, TERMS.ledger.expenseItemNotes);
       const directConsumeYuan = d.direct_consume_fen ? api.fenToYuan(d.direct_consume_fen) : '';
       // 堂食分项快照：若后端已存分项（>1 行），原样带入 dineDetailRows，切回分项可恢复（防 round-trip 丢值）
       const dG = incomeGroups.find((x) => x.category === 'dine_in');
@@ -641,6 +650,10 @@ Page({
     if (kind === 'expense' && g.category === 'marketing' && rows[ridx].subItem === '外卖活动补贴' && patch.amountYuan !== undefined) {
       rows[ridx].twCarryLock = true;
     }
+    // round217：费用行**改了细项名** ⇒ 行内说明必须跟着换（否则「房租」的注会留在老板新起的名字底下）
+    if (kind === 'expense' && patch.subItem !== undefined) {
+      rows[ridx] = this.attachRowNote(rows[ridx]);
+    }
     g.rows = rows;
     g.showRows = g.expanded ? rows : rows.slice(0, 1);
     groups[gidx] = g;
@@ -737,7 +750,11 @@ Page({
   // 任意大类行装配（🔒 唯一入口）：堂食走渠道装配；其余大类只标「预设行不可删」（fixed）。
   // ⚠️ 别在这里另写分支逻辑，堂食的渠道全集/别名规则只在 dineChannels.js 里（G11 守）。
   decorateRows(g, rows) {
-    const out = g.category === 'dine_in' ? this.decorateDineRows(rows) : markFixedRows(rows, g.items);
+    let out = g.category === 'dine_in' ? this.decorateDineRows(rows) : markFixedRows(rows, g.items);
+    // round217：费用组行内说明（`g.notesOn` 由构造处置位；收入组为 false ⇒ 这里天然 no-op）。
+    //   ⚠️ 同样放在这个**唯一装配口**里 —— 初始化 / 读回 / 复制上月 / 加行 / 删行 / 铺常规科目 全过它，
+    //      若在各自的 setData 点各补一遍，必然漏一处（round102 已踩过同款）。
+    if (g.notesOn) out = out.map((r) => this.attachRowNote(r));
     // round102（2026-09-22）· 顺带算两个**只读派生字段**（挂到 g 上；不入库、不影响 fixed）：
     //   · g.unused / g.unusedText —— 该类「还没用上的预设项」（供 WXML 底部提示行）
     //   · g.mkPlatAfterRi —— 「分平台佣金小计」块该渲染在哪一行**之后**（营销组专用）
@@ -768,25 +785,26 @@ Page({
     return list.length - 1;
   },
 
-  // R85：费用侧营销行「取数路径」标注（按 terms.expenseItemNotes 预计算挂到行上；页面不写死项名）
-  // ⚠️ 项名与顺序单源 = collections.js::SEED_EXPENSE_ITEMS(marketing)；terms 的 expense.marketing.items 已对齐。
-  decorateExpenseNotes(groups) {
+  // round217：给单行挂 / 换「行内说明」（纯只读派生字段，不入库）。
+  //   · 原文案单源 = `TERMS.ledger.expenseItemNotes`，本页不写死任何项名 / 句子。
+  //   · 🔴 命中不了就**摘掉旧注** —— 老板把细项名改掉后若不摘，上一项的解释会留在新名字底下（比"没注"更误导）。
+  //   · 前身是 R85 的 `decorateExpenseNotes()`（只对 marketing 组生效）；round217 起由 decorateRows 统一调用 ⇒ 已删除。
+  attachRowNote(r) {
+    if (!r) return r;
     const notes = TERMS.ledger.expenseItemNotes || {};
-    const mkIdx = (groups || []).findIndex((x) => x.category === 'marketing');
-    if (mkIdx < 0) return groups;
-    const g = Object.assign({}, groups[mkIdx]);
-    g.rows = (g.rows || []).map((r) => {
-      const note = notes[r.subItem] || '';
-      if (!note) return r;
-      return Object.assign({}, r, {
-        note,
-        // 推广费单独高亮取数路径（项名走 terms 单源 promoItem；不用文案内容判断，避免改文案即失效）
-        promo: r.subItem === (TERMS.ledger.takeawayMode && TERMS.ledger.takeawayMode.promoItem),
-      });
-    });
-    const out = (groups || []).slice();
-    out[mkIdx] = g;
-    return out;
+    const name = (r.subItem || '').trim();
+    const note = name ? (notes[name] || '') : '';
+    // 推广费单独高亮取数路径（项名走 terms 单源 promoItem；不用文案内容判断，避免改文案即失效）
+    const promo = !!note && name === ((TERMS.ledger.takeawayMode || {}).promoItem);
+    if (!note) {
+      if (r.note === undefined && r.promo === undefined) return r;
+      const c = Object.assign({}, r);
+      delete c.note;
+      delete c.promo;
+      return c;
+    }
+    if (r.note === note && r.promo === promo) return r;
+    return Object.assign({}, r, { note, promo });
   },
 
   // 分项模式合计（预计算，WXML 不支持方法调用）
@@ -1338,6 +1356,43 @@ Page({
   goInventory() { wx.navigateTo({ url: '/pages/month/inventory?month=' + this.data.month }); },
   goAmortize() { wx.navigateTo({ url: '/pages/month/amortize?month=' + this.data.month }); },
 
+  // ===== round217 · 保存前缺项软提示（接 v1.1 §六 的二期「不硬拦」）=====
+  //   🔴 为什么做：M1 的输出是利润，「房租忘填」是**方向性错误**（利润虚高、看着赚钱其实亏），
+  //      远比「多填一项」严重；而费用侧已经铺了行，判「铺的行里有没有空值」成本极低。
+  //   🔴 为什么软：免租期 / 自有物业 / 租金已含水费都是真实情形 ⇒ 只问一句，**绝不阻断保存、不参与计算**。
+  //   🔴 项名单源 = `TERMS.ledger.missingWarnItems`（本页不写死任何项名）；命中不了种子项即失守，由 E7 守卫。
+  missingWarnKey() {
+    const app = getApp();
+    const shopId = (app && app.globalData && app.globalData.shop_id) || '';
+    return MISS_WARN_KEY + shopId + '_' + this.data.month;
+  },
+  missingWarned() { try { return !!wx.getStorageSync(this.missingWarnKey()); } catch (e) { return false; } },
+  markMissingWarned() { try { wx.setStorageSync(this.missingWarnKey(), 1); } catch (e) { /* 存不了不影响保存 */ } },
+
+  // 返回「单源点名要填、但这一行还是空的」项名清单（行被删掉也算 —— 那正是要让人确认的情形）
+  missingRecurringNames() {
+    const want = TERMS.ledger.missingWarnItems || [];
+    if (!want.length) return [];
+    const g = (this.data.expenseGroups || []).find((x) => x.category === 'operation');
+    if (!g) return [];
+    const filled = {};
+    (g.rows || []).forEach((r) => {
+      const n = (r.subItem || '').trim();
+      if (n && this._hasVal(r.amountYuan)) filled[n] = true;
+    });
+    return want.filter((n) => !filled[n]);
+  },
+  // 「去填」⇒ 把运营费用那一组展开（不保存、不跳页），让老板就地补数
+  revealMissingExpense() {
+    const gi = (this.data.expenseGroups || []).findIndex((g) => g.category === 'operation');
+    if (gi < 0) return;
+    const groups = this.data.expenseGroups.slice();
+    const g = Object.assign({}, groups[gi], { expanded: true });
+    g.showRows = g.rows;
+    groups[gi] = g;
+    this.setData({ expenseGroups: groups });
+  },
+
   // 归档守卫 + 保存（保存时带已有库存数据，避免丢失）
   onSave() {
     if (this.data.readOnly) {
@@ -1345,16 +1400,37 @@ Page({
       return;
     }
     const doSave = () => this.save(!!this.data.isArchive); // 归档补录 → archive_override
-    if (this.data.isArchive && this.data.inGrace) {
+    // 归档宽限期的二次确认（原逻辑，原样保留）
+    const proceed = () => {
+      if (this.data.isArchive && this.data.inGrace) {
+        wx.showModal({
+          title: TERMS.inputPage.saveArchiveOverride,
+          content: TERMS.inputPage.confirmGraceSave,
+          confirmColor: '#1e3a5f',
+          success: (r) => { if (r.confirm) doSave(); },
+        });
+      } else {
+        doSave();
+      }
+    };
+    // round217：先过一次「缺项软提示」（每个账套每月只问一次；问过就不再打扰）
+    const miss = this.missingRecurringNames();
+    if (miss.length && !this.missingWarned()) {
       wx.showModal({
-        title: TERMS.inputPage.saveArchiveOverride,
-        content: TERMS.inputPage.confirmGraceSave,
-        confirmColor: '#1e3a5f',
-        success: (r) => { if (r.confirm) doSave(); },
+        title: TERMS.ledger.missingWarnTitle,
+        content: TERMS.ledger.missingWarnBody(miss.join(TERMS.ledger.presetHintSep || '、')),
+        confirmText: TERMS.ledger.missingWarnGo,
+        cancelText: TERMS.ledger.missingWarnSave,
+        success: (r) => {
+          this.markMissingWarned();   // 两个分支都记：本月不再重复打扰
+          if (r.confirm) { this.revealMissingExpense(); return; }   // 「去填」⇒ 不保存
+          proceed();                                                // 「仍保存」⇒ 照常走归档确认
+        },
+        fail: () => { this.markMissingWarned(); proceed(); },       // 弹窗失败也绝不阻断保存
       });
-    } else {
-      doSave();
+      return;
     }
+    proceed();
   },
 
   // 组装提交：每大类 → sub_items（云函数汇总大类金额，前端不汇总）；旧调用兼容（无细项时也走 sub_items 单行）

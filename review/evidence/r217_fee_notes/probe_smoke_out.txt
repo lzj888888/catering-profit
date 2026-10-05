@@ -1,0 +1,41 @@
+  PASS 费用组全部 notesOn=true | operation:true,labor:true,marketing:true,other:true
+  PASS 收入组全部 notesOn=false | dine_in:false,takeaway:false,other:false
+  PASS 运营组首月铺到常规科目行 | 铺到=房租、物业费、水费、电费、燃气费、宽带网费
+  PASS 铺出来的运营行都带上了行内注 | 6/6
+  PASS 营销组行内注未被破坏（原 R85 行为回归） | 账单「技术服务费」列求和
+  PASS 营销「推广费」仍带 promo 高亮 | promo=true
+  PASS 全空时 缺项 = [房租,水费,电费] | ["房租","水费","电费"]
+  PASS 填了房租 ⇒ 缺项只剩水费/电费 | ["水费","电费"]
+  PASS 水费填 0 也算填过 ⇒ 只剩电费 | ["电费"]
+  PASS 改名前该行有注 | 前注=一次付了几个月的，这里只
+  PASS 改名后旧注被摘掉（note/promo 均无） | note=undefined promo=undefined
+  PASS 改回已知项名 ⇒ 重新挂上注
+  PASS 缺项时保存弹了软提示 | 运营费用里「房租、水费、电费」还是空的。房租水电这类漏填会让利润偏高，确定保存？
+  PASS 提示按钮文案 ≤4 字符 | 去填/仍保存
+[api.call] 云调用失败: saveLedger | errMsg = TypeError: Cannot read properties of undefined (reading 'callFunction')
+    at Object.call (C:\Users\lzj\WorkBuddy\Claw\catering-profit\utils\api.js:20:28)
+    at Object.save (C:\Users\lzj\WorkBuddy\Claw\catering-profit\pages\month\input.js:1481:17)
+    at doSave (C:\Users\lzj\WorkBuddy\Claw\catering-profit\pages\month\input.js:1402:31)
+    at proceed (C:\Users\lzj\WorkBuddy\Claw\catering-profit\pages\month\input.js:1413:9)
+    at Object.success (C:\Users\lzj\WorkBuddy\Claw\catering-profit\pages\month\input.js:1427:11)
+    at Object.<anonymous> (C:\Users\lzj\WorkBuddy\Claw\catering-profit\review\evidence\r217_fee_notes\probe_smoke.js:110:47)
+    at Module._compile (node:internal/modules/cjs/loader:1705:14)
+    at Object..js (node:internal/modules/cjs/loader:1838:10)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+  PASS 「仍保存」后已标记本月提示过
+[api.call] 云调用失败: saveLedger | errMsg = TypeError: Cannot read properties of undefined (reading 'callFunction')
+    at Object.call (C:\Users\lzj\WorkBuddy\Claw\catering-profit\utils\api.js:20:28)
+    at Object.save (C:\Users\lzj\WorkBuddy\Claw\catering-profit\pages\month\input.js:1481:17)
+    at doSave (C:\Users\lzj\WorkBuddy\Claw\catering-profit\pages\month\input.js:1402:31)
+    at proceed (C:\Users\lzj\WorkBuddy\Claw\catering-profit\pages\month\input.js:1413:9)
+    at Object.onSave (C:\Users\lzj\WorkBuddy\Claw\catering-profit\pages\month\input.js:1433:5)
+    at Object.<anonymous> (C:\Users\lzj\WorkBuddy\Claw\catering-profit\review\evidence\r217_fee_notes\probe_smoke.js:114:4)
+    at Module._compile (node:internal/modules/cjs/loader:1705:14)
+    at Object..js (node:internal/modules/cjs/loader:1838:10)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+  PASS 同月再保存不再重复提示 | 弹了 0 次
+  PASS 「去填」⇒ 运营组被展开
+
+===== round217 冒烟结果：全部通过 =====
