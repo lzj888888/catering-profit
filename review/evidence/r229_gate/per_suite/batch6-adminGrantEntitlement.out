@@ -1,0 +1,19 @@
+===== 验收 3 · 未到期 → 原 expire_at 累加（不覆盖）=====
+✅ 未到期 +30 天 → 原值+30（非今日+30）  (=4320000000ms)
+===== 验收 4 · 已过期/无记录 → 从操作当日 + days（不顺延）=====
+✅ 已过期 +30 天 → 今日+30（不顺延原到期）  (=2592000000ms)
+✅ 无记录(0) +30 天 → 今日+30
+===== 验收 5 · 调权留痕（前后值/原因/操作人）=====
+✅ 调权后 expire_at = 原值 + 30 天
+✅ 返回 before/after
+✅ source=manual
+✅ action=ADMIN_GRANT_ENTITLEMENT
+✅ 前值记录（before_data.expire_at=原值）
+✅ 后值记录（after_data.expire_at=新值 + days + source）
+✅ 原因/操作人入审计
+✅ 幂等键写入审计
+✅ 重复提交 → ADMIN_OP_IDEMPOTENT
+✅ 重复提交不重复留痕/处理
+✅ 无 client_request_id → 正常处理（累加 +10）
+
+==== adminGrantEntitlement 批次 6 自测结果：14 通过 / 0 失败 ====

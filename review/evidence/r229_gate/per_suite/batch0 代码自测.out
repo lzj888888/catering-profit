@@ -1,0 +1,46 @@
+
+===== 批次0 自测结果（复审节点① 五条）=====
+✅ 点1·身份只来自OPENID(忽略伪造记录)  →  user.id=u_real
+✅ 点1·函数不接收event(签名为 ctx,db,audit)  →  resolveAuth.length=3（参数=ctx,db,audit，无 event 入口）
+✅ 点1b·首次自动建档返回user  →  user.id=u_muvcic76l93x
+✅ 点1b·建了默认shop  →  shop=1
+✅ 点1b·建了entitlement(expire_at=0)  →  expire_at=0
+✅ 点1b·建档写audit_log(AUTH_AUTO_PROVISION)  →  audit=1
+✅ 点2·越权→FORBIDDEN  →  error=FORBIDDEN
+✅ 点2·本人→放行（error=null 且回带 shop）  →  error=null
+✅ R72·空 key → false（该调用点不做幂等约束）  →  got=false
+✅ R72·未登记 key → false  →  got=false
+✅ R72·已登记 key → true（判为重复提交）  →  got=true
+✅ R72·换店同 reqId 不误拦（靠调用方前缀隔离）  →  A=true, B=false
+✅ R73·shopKey 格式 = <shopId>__<crid>  →  =shopA__req1
+✅ R73·shopKey 空 crid → 空串（= 该调用点不做约束）
+✅ R73·未登记 → null（不误判成"已处理过"）  →  got=null
+✅ R73·空 crid → null（无键不受约束）  →  got=null
+✅ R73·空 crid 时**连库都不查**（无谓读为 0）  →  lastWhere=undefined
+✅ R73🏆 往返一致：findPriorResult 取回 writeAudit 存的首次结果  →  got={"shop_id":"shopA","asset_id":"amort_1","client_request_id":"req_rt"}
+✅ R73·换店同 crid 不误命中（shop 维度隔离）
+✅ R73·两种形态对同一行判定一致（checkIdempotent 亦命中）
+✅ R73·命中行无 after_data → null（不当成首次结果返回）  →  got=null
+✅ 点3·软删记录不出现在列表  →  len=1
+✅ 点3·查询条件注入is_deleted=false  →  cond={"shop_id":"x","is_deleted":false}
+✅ 点3b·get 活跃文档返回文档本体(非{data})  →  alive={"_id":"g1","user_id":"owner","is_deleted":false}
+✅ 点3b·get 软删文档→null  →  dead=null
+✅ 点3b·get 不存在文档(reject)→null  →  missing=null
+✅ 点5·集合数=27  →  len=27
+✅ 点5·dev 环境 gate.blocked===undefined  →  blocked=undefined
+✅ 点5·prod 环境 gate.blocked===true  →  blocked=true
+✅ 点5·白名单精确匹配dev放行  →  blocked=undefined
+✅ 点5·白名单误配prod仍拒  →  blocked=true
+✅ 限流·第61次写触发RATE_LIMITED  →  limited=true
+✅ A6b·并发首进不得硬失败（撞唯一键要容错回读）  →  errors=[]
+✅ A6b·并发首进只建出 1 个 user  →  user=1
+✅ A6b·并发首进只建出 1 个 shop  →  shop=1
+✅ A6b·并发首进只建出 1 条 entitlement  →  ent=1
+✅ A6b·并发两次拿到同一个 user_id  →  ids=u_muvcic7e1b1e,u_muvcic7e1b1e
+✅ A6b·店铺 id 用单源确定性格式 shop_<user_id>  →  shop_id=shop_u_muvcic7e1b1e
+✅ A6b·机制级：确定性 id ⇒ 同 user 第二次建店被库拒  →  rejected=true
+✅ A6b·机制级：仅剩 1 个店  →  shop=1
+✅ A6b·反向证据：随机 id 两次都成功 ⇒ 2 个店（这就是旧实现能建出重复店的原因）  →  shop=2
+🔶 点4 未完成：env.js:14-15 仍是占位符 —— 部署前置，非单测可判真；替换真实ID后重跑转 ✅（点⑤ 给 gate 喂输入属真测试，不受影响）
+
+合计：41 通过 / 0 失败（待办 1 项不计入失败）
