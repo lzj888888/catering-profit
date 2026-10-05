@@ -184,15 +184,18 @@ const OK_VALUE = /^\{\{(item\.(yuan|years|pct)|targetYuan|expectYuan)\}\}$/;
 **必须**加进这个白名单（**否则门禁直接判红**）。同时保证这些输入框的 `value` **只绑用户自己填的字段**，
 **绝不绑任何参考值**。
 
-### ⑧ `specs/dev-specs/core/10_云函数清单与接口契约.md`
+### ⑧ `specs/dev-specs/core/10_云函数清单与接口契约.md`（🔴 **由我方预置 · 你不要动**）
 
-`calcSandbox` 契约行补：新增入参 `mode`（默认 `forward`）＋ 反推 5 个入参 ＋ 出参 `reverse` 块。**不新增云函数**。
+该契约行的入参/出参订正**由 WorkBuddy 负责**（权威源由我方维护）。你只需让实现与契约一致：
+入参 `mode`（默认 `forward`）＋ 反推 5 个入参（`rev_price_fen` / `seats` / `open_days` / `target_rent_rate` / `pixel_eff_fen`）＋ 出参 `reverse` 块。
+🔴 **本批你唯一允许改的 `specs/` 文件 = `specs/dev-specs/i18n/terms.js`**（K11 守卫强制的双副本逐字一致，见 §3⑥）；其余 `specs/**` 一律不动。
 
 ---
 
 ## 4. 绝对禁止
 
-- ❌ 不许改 `calcSandbox`、`indicatorRef.js`、任何其它云函数、任何 `common/` 文件。
+- ❌ 不许改 `calcSandbox`（**既有正算函数体一个字不动**，只许新增 `calcSandboxReverse`）、`indicatorRef.js`、任何其它云函数、任何 `common/` 文件。
+- ❌ 不许改 `specs/` 下任何文件 —— **唯一例外**：`specs/dev-specs/i18n/terms.js`（K11 守卫强制的双副本逐字一致，见 §3⑥）。`specs/dev-specs/core/10_…md` 由**我方预置**，你不要动。
 - ❌ 不许把"目标租金率"塞进 `VAR_KEYS`（它是**变换层内部临时项**，不是用户可选的费用类型）。
 - ❌ 不许在反推里**保留房租行**或**让房租进固定成本**（这是本批唯一要防的重复计租）。
 - ❌ 不许前端自己算公式、不许把参考值自动填进输入框。
@@ -201,7 +204,7 @@ const OK_VALUE = /^\{\{(item\.(yuan|years|pct)|targetYuan|expectYuan)\}\}$/;
 
 ## 5. 交付物
 
-1. 上述 ①~⑧ 的文件改动；
+1. 上述 ①~⑦ 的文件改动（⑧ 由我方预置，不归你）；
 2. `cloudfunctions/calcSandbox/selftest.js` 跑通输出（贴最后 15 行）；
 3. **只部署 `calcSandbox`** 一个函数（`filesCount` 回读）；
 4. 真机/模拟器截一张反推 Tab 的图（能看清结果区数字）。
@@ -212,5 +215,6 @@ const OK_VALUE = /^\{\{(item\.(yuan|years|pct)|targetYuan|expectYuan)\}\}$/;
 2. **旧锚点回归**：正算 76000 / 106000 **不漂**；
 3. 全量门禁通过（我方跑）；
 4. **我方会做双向变异回灌**：把"剔除 rent"改成"不剔除"必须转红；把"÷ open_days"改回"÷ 30"必须转红 —— 你若在实现里留了硬编码 30，就会在这里被抓住。
+5. `specs/dev-specs/core/10_…md` 契约由**我方复核**（你不要动它，见 §0.2 / §3⑧）。
 
 ======================== 提示词结束 ========================
