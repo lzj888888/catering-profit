@@ -1,0 +1,42 @@
+
+===== ① 旧锚点回归 · M2.10 标准工况（正餐 · 二三线） =====
+  ✅ 建店总投入（分）  = 66000000
+  ✅ 月摊销（分）  = 1700000
+  ✅ 不含摊销的固定合计（分）  = 2100000
+  ✅ 含摊销固定合计（分）  = 3800000
+  ✅ 综合变动成本率（%）  = 50
+  ✅ 保本月营收（分）  = 7600000
+  ✅ 目标月营收（分）  = 10600000
+  ✅ 收回投入（月）  = 44
+  ✅ 无红警  = false
+
+===== ②-A 新锚点 · 正算 param_json 往返（全量字段 ⇒ 无损重算） =====
+  ✅ 往返后出参 === 首次出参（逐字段 JSON 全等）  = {"build_total_fen":66000000,"build_amort_monthly_fen":1700000,"fixed_ex_amort_fen":2100000,"fixed_total_fen":3800000,"food_cost_pct":35,"platform_pct":15,"composite_var_rate_pct":50,"margin_rate_ratio":0.5,"red_alert":false,"break_even_monthly_fen":7600000,"break_even_daily_fen":253333,"target_monthly_fen":10600000,"target_daily_fen":353333,"payback_months":44,"indicators_at_breakeven":[{"key":"grossMargin","pct":65,"lo":55,"hi":65,"level":"good","redline":55,"redlineHit":false},{"key":"rent","pct":15.8,"lo":8,"hi":15,"level":"warn","redline":15,"redlineHit":true},{"key":"labor","pct":9.2,"lo":17,"hi":22,"level":"good","redline":20,"redlineHit":false},{"key":"energy","pct":null,"lo":3,"hi":5,"level":"na","redline":null,"redlineHit":false},{"key":"manage","pct":2.6,"lo":5,"hi":10,"level":"good","redline":null,"redlineHit":false},{"key":"mkt","pct":15,"lo":5,"hi":10,"level":"bad","redline":null,"redlineHit":false}],"indicators_at_target":[{"key":"grossMargin","pct":65,"lo":55,"hi":65,"level":"good","redline":55,"redlineHit":false},{"key":"rent","pct":11.3,"lo":8,"hi":15,"level":"ok","redline":15,"redlineHit":false},{"key":"labor","pct":6.6,"lo":17,"hi":22,"level":"good","redline":20,"redlineHit":false},{"key":"energy","pct":null,"lo":3,"hi":5,"level":"na","redline":null,"redlineHit":false},{"key":"manage","pct":1.9,"lo":5,"hi":10,"level":"good","redline":null,"redlineHit":false},{"key":"mkt","pct":15,"lo":5,"hi":10,"level":"bad","redline":null,"redlineHit":false}],"bands_preview":[{"key":"grossMargin","dir":"gain","lo":55,"hi":65,"redline":55},{"key":"rent","dir":"cost","lo":8,"hi":15,"redline":15},{"key":"labor","dir":"cost","lo":17,"hi":22,"redline":20},{"key":"energy","dir":"cost","lo":3,"hi":5,"redline":null},{"key":"manage","dir":"cost","lo":5,"hi":10,"redline":null},{"key":"mkt","dir":"cost","lo":5,"hi":10,"redline":null}],"amount_preview":[]}
+
+===== ②-B 新锚点 · 反推 param_json 往返（目标月利润 20000 / 客单 45 / 毛利率 60 / 座位 20 / 30 天 / 租金率 12%） =====
+  ✅ 反推往返后 reverse 块 === 首次（逐字段 JSON 全等）  = {"mode":"reverse","target_monthly_fen":10000000,"target_daily_fen":333333,"rent_cap_fen":1200000,"monthly_traffic":2222.22,"daily_traffic":74.07,"turn_rate":3.7,"area_cap_sqm":300,"rent_rate_pct":12,"rev_price_fen":4500,"seats":20,"open_days":30,"red_alert":false,"warn_keys":[]}
+  ✅ 目标月营收 R（分）= 100000 元  = 10000000
+  ✅ 房租上限（分）= 12000 元  = 1200000
+  ✅ 日均客流 = 74.07  = 74.07
+  ✅ 翻台 = 3.70  = 3.7
+  ✅ 面积上限 = 300 ㎡  = 300
+
+===== ③-1 反例 · param_json 写成 camelCase（违反 core/10 §8 命名口径） =====
+  正确 snake 写法 ⇒ 目标月营收 10600000 分 · 综合变动率 50%
+  错误 camel 写法 ⇒ 目标月营收 null 分 · 综合变动率 100%
+  ✅ 两种写法结果**不同**（证明命名口径有鉴别力，不是恒真）  = true
+  ✅ camel 写法下 gross_margin_pct 取不到 ⇒ 走默认 0 ⇒ 保本额异常  = true
+
+===== ③-2 反例 · 反推 param_json 漏 seats（翻台不可算） =====
+  全量字段 ⇒ 翻台 3.7 · 面积上限 300
+  漏 seats ⇒ 翻台 null · 面积上限 300
+  ✅ 漏 seats 后翻台与首次**不同**（证明「必须存全量」有鉴别力）  = true
+  ✅ 漏 seats ⇒ 翻台非有限值（不编造，佐证字段必需）  = false
+  ✅ 漏 pixel_eff_fen ⇒ 面积上限为 null（不编造）  = null
+
+===== ④ 边界 · 红警时反推全 null（不编造数字） =====
+  ✅ 红警触发  = true
+  ✅ R = null  = null
+  ✅ 派生量全 null  = [null,null,null,null]
+
+===== M2 多方案锚点复算：24 通过 / 0 失败 =====

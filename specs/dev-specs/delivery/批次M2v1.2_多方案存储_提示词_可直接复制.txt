@@ -1,0 +1,281 @@
+======================== 提示词开始 ========================
+
+# 批次 M2v1.2 · M2「多方案存储 + 并排对比」（选址沙盘 · 第二期）· 自包含
+
+> 用法：把「提示词开始 / 结束」之间的**整段**粘进 InsCode 发送。本批**自包含**，不需要先读别的批次包。
+> 依据：`specs/dev-specs/core/开发规范v1.2_ModuleM2增量_多方案存储与并排对比.md`（**已定案，原样执行，不要重新设计**）。
+> 锚点已由我方用**生产引擎**独立复算（**24/24 通过**，`review/evidence/r229_m2_multiplan/recalc_anchors.txt`），你只需让自测**复现**这些数字。
+
+## 0.1 部署提醒（本批**不改** `cloudfunctions/common/`）
+
+本批**不新增 / 不修改任何 `common/` 下的文件** ——
+`ENGINE_VERSION` 常量放在**引擎源** `cloudfunctions/calcSandbox/service.js`，**不是** `common/indicatorRef.js`
+（放 `common/` 会牵动全部函数的派生副本 `cx_indicatorRef.js` ⇒ 要重部署 43 个函数，成本不可接受）。
+⇒ **不需要**跑 `node tools/sync_common.js`，也**不需要**重部署其它云函数。只部署**新增的两个** `savePlan` / `getPlan`。
+
+> ⚠️ 两个函数是**新部署** ⇒ 部署后 `timeout` 默认 **3**，必须回读 `info` 抬到 **20**。
+> ⚠️ `-r` 参数铁律照旧（`cli.bat cloud functions deploy --names <单个函数名> -r`，**一次一个**）。
+
+## 0.2 四条红线（违反任一条即整批退回）
+
+1. 🔴 **`calcSandbox` / `calcSandboxReverse` 任何一行不动** —— 现有 `cloudfunctions/calcSandbox/service.js` **逐字节不改**；
+   本批只**新增**两个云函数目录，并**给引擎源加一个 `ENGINE_VERSION` 常量**（只加常量，不改任何计算）。
+2. 🔴 **`savePlan/service.js` 必须是 `cloudfunctions/calcSandbox/service.js` 的逐字节副本**（`md5` 相等，含新加的 `ENGINE_VERSION`）。
+   原因：云函数**不能跨包 `require`**（本仓既有约束），而 `savePlan` 要在**服务端**算出结果快照。该引擎是**零依赖纯函数**，所以可以做到逐字节副本。
+3. 🔴 **`param_json` 一律 `snake_case`，14 个字段一个不能少**（清单见 §2）。
+   我方实测反例：写成 camelCase ⇒ 目标月营收从 `10600000` 分**直接崩成 `null`**（不是"差一点"）。
+4. 🔴 **只 INSERT 不 UPDATE**（版本化只增）：每次保存**新建一条**，绝不改旧记录，旧版本走**软删**。
+
+---
+
+## 1. 本批要解决的问题（一段话）
+
+M2 现在能"**算**"（正算 + 反推），但结果**看完就丢** —— 老板没法把"开 A 店"和"开 B 店"两套假设**存下来对比**。
+锁定规范 v1.1 早就把多方案的**数据模型**定好了（`sandbox_id` 分组键 + 版本化只增 + 快照口径 + 惰性清理），
+但**接口面和前端面从没实现**（`cloudfunctions/getPlan` / `savePlan` 目录**不存在**，全仓零调用点）。
+本批把它落地：**两个云函数 + 一个列表/对比页**。
+
+---
+
+## 2. 数据模型（`shop_sandbox` 集合**已存在**，本期**只加字段**）
+
+### 2.1 新增字段（6 个）
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `sandbox_id` | STRING | **逻辑沙盘 ID**（同一沙盘的多个版本**共享**它） |
+| `version` | INT | 版本号，同 `sandbox_id` 内从 1 递增 |
+| `sandbox_type` | STRING | `'site_select'`（选址）/ `'biz_sim'`（经营推演） |
+| `param_json` | OBJECT | **全量入参**（14 字段，见 §2.2） |
+| `result_snapshot_json` | OBJECT | 结果快照（**只作展示缓存，绝不参与计算**） |
+| `engine_version` | STRING | 产出该快照的引擎版本 |
+
+> 旧平坦字段（`fixed_rent` / `var_food_rate` / `target_profit` …）**降为历史只读兼容**，**新记录一律留空**。
+
+### 2.2 `param_json` 形状（🔴 **14 个字段一个不能少** · 一律 `snake_case`）
+
+```json
+{
+  "mode": "forward|reverse",
+  "city_tier": "tier23", "biz_type": "dining",
+  "build_items": [], "fixed_items": [], "var_items": [],
+  "gross_margin_pct": 65, "target_profit_fen": 1500000, "expected_revenue_fen": 0,
+  "rev_price_fen": 4500, "seats": 20, "open_days": 30,
+  "target_rent_rate": 12, "pixel_eff_fen": 4000
+}
+```
+
+### 2.3 `param_json` → 引擎入参 `clean` 的映射表（🔴 **唯一转换处，只在服务端**）
+
+⚠️ 引擎入参 `clean` 是**混合命名**（这是既有实现，别改）：
+`cityTier`/`bizType`/`buildItems`/`fixedItems`/`varItems`/`grossMarginPct`/`targetProfitFen`/`expectedRevenueFen` 是 **camelCase**，
+`rev_price_fen`/`seats`/`open_days`/`target_rent_rate`/`pixel_eff_fen` 是 **snake_case**。
+
+| `param_json`（存库 · snake） | 引擎入参 `clean` |
+|---|---|
+| `mode` | `mode` |
+| `city_tier` | `cityTier` |
+| `biz_type` | `bizType` |
+| `build_items` | `buildItems` |
+| `fixed_items` | `fixedItems` |
+| `var_items` | `varItems` |
+| `gross_margin_pct` | `grossMarginPct` |
+| `target_profit_fen` | `targetProfitFen` |
+| `expected_revenue_fen` | `expectedRevenueFen` |
+| `rev_price_fen` | `rev_price_fen` |
+| `seats` | `seats` |
+| `open_days` | `open_days` |
+| `target_rent_rate` | `target_rent_rate` |
+| `pixel_eff_fen` | `pixel_eff_fen` |
+
+🔴 **前端不得做这个转换**（本仓铁律：转换只在 DataAdapter / 适配层，业务层禁混用命名）。
+
+---
+
+## 3. 云函数 `savePlan`（保存 / 复制 / 软删 · **写**）
+
+### 3.1 目录结构
+
+```
+cloudfunctions/savePlan/
+  index.js          ← Controller：鉴权 → 校验 → Service → 返回
+  service.js        ← 🔴 calcSandbox/service.js 的【逐字节副本】（含 ENGINE_VERSION）
+  paramMap.js       ← §2.3 映射表（param_json → clean），唯一转换处
+  validate.js       ← 本函数入参校验（形状 + 命名口径 + 必填）
+  selftest.js       ← 自测（§7）
+  common.js + cx_*.js  ← 由 node tools/sync_common.js 生成（照其它函数的既有做法）
+  package.json
+```
+
+### 3.2 入参 / 出参
+
+```js
+// 入参
+{ shop_id, plan: { sandbox_id?, name, sandbox_type, param_json, is_copy?, _delete? }, client_request_id }
+// 出参
+{ plan_id, sandbox_id, version }
+```
+
+### 3.3 流程（逐条照做）
+
+```
+1. 鉴权：resolveAuth(ctx, db) → 取 userId；assertShopOwner(db, shop_id, userId) → 非店主即 FORBIDDEN
+2. 幂等：if (client_request_id) { const prior = await common.idempotency.findPriorResult(db, shopId, client_request_id);
+                                   if (prior) return ok(prior); }        // 重复调用直接返回首次结果
+3. 校验：validate.js —— 形状 + §2.2 的 14 字段 + 命名口径（出现 camelCase 键 ⇒ INVALID_PARAM）
+4. 分支：
+   4a. plan._delete === true  → 软删：该 sandbox_id 全部版本 is_deleted=true + delete_at=now
+   4b. is_copy === true       → 复制：新 sandbox_id（服务端生成），version = 1
+   4c. 有 sandbox_id          → 新版本：version = 同 sandbox_id 的 max(version) + 1
+                                🔴 同 sandbox_id 的【旧版本软删】（is_deleted=true + delete_at=now）
+   4d. 无 sandbox_id          → 首次保存：新 sandbox_id（服务端生成），version = 1
+5. 快照（🔴 服务端算，不接受前端传入）：
+     const clean = paramToClean(plan.param_json);
+     const snapshot = calcSandbox(clean);
+     if (clean.mode === 'reverse') snapshot.reverse = calcSandboxReverse(clean);
+     const engineVersion = E.ENGINE_VERSION;      // 来自内联副本
+6. 写库：🔴 db.add()（**绝不 update**），一条新记录
+7. 审计登记（🔴 与第 2 步【同源键】）：common.audit.writeAudit(db, { action: 'SAVE_PLAN', operator_type: 'user', ... })
+8. 返回 { plan_id: sandbox_id, sandbox_id, version }
+```
+
+🔴 **幂等两处的键必须同源**（都走单源 `shopKey()`）—— 各自拼字符串会出现"登记了却查不到"的**静默失效**。
+
+### 3.4 惰性清理（顺手做，不新增定时器）
+
+读 / 写路径上，顺手清理**同 `sandbox_id`** 中 `delete_at` **超期**（> 30 天）的旧版本（物理删）。
+零新增云函数、零定时器。
+
+---
+
+## 4. 云函数 `getPlan`（列表 / 详情 · **读**）
+
+### 4.1 目录结构：同 `savePlan` 的 `index.js / validate.js / selftest.js / common.js + cx_*.js / package.json`
+（**不需要** `service.js` —— 只读，不重算、不写快照）
+
+### 4.2 入参 / 出参
+
+```js
+// 入参
+{ shop_id, plan_id?, version? }        // plan_id 即 sandbox_id；缺 plan_id ⇒ 返回列表
+// 出参
+{ list: [ { sandbox_id, version, name, sandbox_type, param_json, result_snapshot_json, engine_version, updated_at } ] }
+```
+
+### 4.3 流程
+
+```
+1. 鉴权：同 savePlan（resolveAuth + assertShopOwner）
+2. 校验：plan_id / version 类型（缺省即列表）
+3. 查询：
+   3a. 列表：查该店 is_deleted=false 的记录，按 sandbox_id 分组取【各 sandbox_id 的最大 version】
+       🔴 必须有【显式上限】（单源 common/dataAdapter.js::LIST_LIMIT）
+   3b. 详情：按 shop_id + sandbox_id + version 取【单条】
+4. 返回（🔴 不重算 —— 重算归前端在详情/对比时另调 calcSandbox）
+```
+
+⚠️ **不要**在 `getPlan` 里重算：重算会拖慢列表。快照只用于列表卡片快速渲染，**点进详情 / 对比时才重算**。
+
+---
+
+## 5. 前端
+
+### 5.1 `pages/sandbox/index`（**已有页面**，只加两处）
+
+1. **标题栏右侧**加常驻按钮 **「我的方案 ›」** → `wx.navigateTo({ url: '/pages/sandbox/list' })`；
+2. **底部**加主按钮 **【保存沙盘】**：
+   - 弹一个小表单收 **方案名**（必填）+ **类型**（选址 / 经营推演）；
+   - 提交时：`client_request_id` 用**本次点击生成一次的 uuid**（同一次点击重试必须复用同一个，否则幂等失效）；
+   - 正算 / 反推两个 Tab **共用同一个 `sandbox_id`**（第一次保存后把返回的 `sandbox_id` 存进页面 data）。
+
+### 5.2 新增页面 `pages/sandbox/list`（**1 页，页内两视图**）
+
+| 视图 | 内容 |
+|---|---|
+| **列表**（`mode='list'`） | 全部未删方案（各 `sandbox_id` 的最新版本）。每行：方案名 · 类型标签 · 目标月营收 / 保本额（**读快照渲染**）· `v{version}` · 更新时间。每行可勾选（**最多勾 3 个**） |
+| **对比**（`mode='compare'`） | 勾选 2~3 个后点【并排对比】⇒ 并排表：**列 = 方案**，**行 = 关键指标**（保本月营收 / 目标月营收 / 回本月数 / 毛利率 / 房租占比 …） |
+
+🔴 **对比的数据来源**：点【并排对比】时，对每个选中的方案用 `param_json` **调 `calcSandbox` 实时重算**（不是读快照）。
+🔴 **最多 3 个**（前端拦，不耗云函数）。
+🔴 金额一律「分」整数，前端**只做展示**（`fen / 100` 显示元），**不做任何公式**。
+
+### 5.3 新增页面必过三关
+
+1. `app.json::pages` 加 `"pages/sandbox/list"`，且与 `core/11_微信审核自查清单` §4 的页面清单**保持一致**；
+2. **必须有入口**（§5.1 的「我的方案 ›」）；
+3. 页面内若有金额输入框 ⇒ 必须用 `val-input`，且**不得与 `<button>` 同父**（本仓已实证的静默失效形态）。
+
+### 5.4 文案
+
+新可见文案 = **三处**（`i18n/terms.js` 与 `specs/dev-specs/i18n/terms.js` **两份副本** + 页面 `t:{}` 映射）；
+页面内**零硬编码中文**；错误文案一律走 `msgOf()`。
+
+---
+
+## 6. 新增云函数牵动五处（🔴 缺一即门禁红）
+
+| # | 落点 | 动作 |
+|---|---|---|
+| 1 | `tools/selftest_r85.js::A15_EXEMPT` | **按需**登记（先跑，看 A15 判据是否扫到两个新目录） |
+| 2 | `specs/dev-specs/core/10_云函数清单与接口契约.md` | 函数**全集** + **契约行**（`getPlan` / `savePlan` 两行按本批 §3.2 / §4.2 改写；函数名不变） |
+| 3 | 隐私收集项（声明数 + 白名单） | 两函数**不采集新隐私项** ⇒ 预期声明数不变，但**必须实跑** `check_privacy_collection` 确认 |
+| 4 | 契约标「+ 幂等」⇒ 代码必须真做 | `savePlan` 必须含 `findPriorResult` + `writeAudit` |
+| 5 | `tools/check_fn_public_surface.js` | 两函数均属 **A 类**（`resolveAuth` + `= await assertShopOwner(`），无需登记 `PUBLIC_FNS`，但**必须实跑**确认 |
+
+---
+
+## 7. 自测要求（`selftest.js`，两个函数各一份）
+
+必须用**生产引擎**（内联副本 / `require('../../cloudfunctions/calcSandbox/service.js')`）实跑，**复现以下数字**：
+
+| 组 | 断言 |
+|---|---|
+| **① 旧锚点回归（正算）** | `660000 / 17000 / 21000 / 38000 / 50% / 76000 / 106000 / 44 个月`（M2.10 标准工况） |
+| **② 往返无损** | `param_json`(snake) → `clean` → `calcSandbox` ⇒ 与首次出参**逐字段 JSON 全等**；反推组同（`R=100000 元` / `房租上限 12000` / `日均客流 74.07` / `翻台 3.70` / `面积上限 300 ㎡`） |
+| **③ 反例（必须有）** | ① `param_json` 误用 camelCase ⇒ 目标月营收 **`null`**（不是 10600000）；② 反推漏 `seats` ⇒ 翻台 **`null`**；漏 `pixel_eff_fen` ⇒ 面积上限 **`null`** |
+| **④ 边界** | 边际贡献率 ≤ 0（红警）⇒ R 与**全部**派生量 `null`（不编造） |
+| **⑤ 副本保真** | `savePlan/service.js` 与 `calcSandbox/service.js` **md5 相等** |
+
+参考实现：`review/evidence/r229_m2_multiplan/recalc_anchors.js`（我方已跑通 **24/24**，可直接照搬其输入构造）。
+
+---
+
+## 8. 绝对禁止
+
+1. ❌ 改 `calcSandbox/service.js` 的**任何计算逻辑**（只允许**加** `ENGINE_VERSION` 常量）；
+2. ❌ 对 `savePlan/service.js` 副本"顺手优化"（必须逐字节相同）；
+3. ❌ `param_json` 里出现 camelCase 键；
+4. ❌ 用 `update()` 改旧记录（必须 `add()`）；
+5. ❌ 接受**前端传入**的结果快照（必须服务端算）；
+6. ❌ 前端做任何公式 / 单位换算（只展示）；
+7. ❌ 新建集合 / 新建索引（`shop_sandbox` 已在册，只加字段）；
+8. ❌ 加任何付费墙（`core/10:82` 明写 M2「不限套、永久全免费」）；
+9. ❌ 预写新错误码（全部复用既有 `INVALID_PARAM` / `RESOURCE_NOT_FOUND` / `FORBIDDEN`）。
+
+---
+
+## 9. 交付物
+
+1. `cloudfunctions/savePlan/`（`index.js` + `service.js` 副本 + `paramMap.js` + `validate.js` + `selftest.js` + `package.json`）；
+2. `cloudfunctions/getPlan/`（`index.js` + `validate.js` + `selftest.js` + `package.json`）；
+3. `cloudfunctions/calcSandbox/service.js` 加 `ENGINE_VERSION`（**只加常量**）；
+4. `pages/sandbox/list.{js,wxml,wxss,json}`（新增）+ `pages/sandbox/index.*`（加两处）；
+5. `app.json` 加页面；
+6. `cloudfunctions/initDb/collections.js` 里 `shop_sandbox` 的**字段注释同步**（`check_schema_sync` **只比对集合与索引、不比对字段** ⇒ 字段靠人改）；
+7. `core/10` 两行契约改写；
+8. `i18n/terms.js` 双副本新增文案；
+9. 自测输出贴回（§7 五组）。
+
+---
+
+## 10. 验收判据（我方复核）
+
+1. **锚点**：§7 五组全过，且 **③ 反例确实红**（不许"只跑正例"）；
+2. **副本**：`savePlan/service.js` 与 `calcSandbox/service.js` **md5 相等**；
+3. **幂等**：`findPriorResult` + `writeAudit` 两处**同源键**；
+4. **版本化只增**：全函数体无 `update(`（除软删分支的 `is_deleted` 标记）；
+5. **命名口径**：`param_json` 相关代码零 camelCase 键；
+6. **三关**：页面清单 ≡ `app.json` · 有入口 · 金额框规则；
+7. **门禁**：`总览：N/N · RC=0 · 真 FAIL=0`。
+
+======================== 提示词结束 ========================
