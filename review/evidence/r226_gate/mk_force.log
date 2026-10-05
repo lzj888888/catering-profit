@@ -1,0 +1,6 @@
+to refresh: 144
+  ! rc=2  python.exe tools/verify_docx.py
+     err: Error in sitecustomize; set PYTHONVERBOSE for traceback: | ImportError: DLL load failed while importing select: 拒绝访问。 | C:/Users/lzj/.workbuddy/binaries/python/envs
+  ! rc=1  python.exe -c import docx
+     err:   File "<string>", line 1 |     import |           ^ | SyntaxError: Expected one or more names after 'import' | 
+refreshed 144, cache size = 155

@@ -1,0 +1,53 @@
+R226 门禁 138/139 —— 唯一失败项 [m3-recon] 的定性复核
+========================================================
+生成时间：2026-10-05 21:4x（R226 收口）
+目的：判定 run_gate7 报出的 `[m3-recon] tools/selftest_m3_recon.js :: exit=134`
+      是**代码缺陷**还是**沙箱环境级 abort**。
+
+一、失败形态（原始证据）
+------------------------
+per_suite/m3-recon.out 全文 1015 字节，**无一行套件断言输出**，只有 node 进程启动期崩溃：
+
+  C:\...\PortableGit\...\bash.exe[44776]: class std::shared_ptr<...node::InitializeOncePerProcessInternal...>
+  #  Assertion failed: ncrypto::CSPRNG(nullptr, 0)
+  ----- Native stack trace -----
+  1: node::SetCppgcReference+21127
+  ...
+  3: node::InitializeOncePerProcess+2881
+  4: node::Start+3723
+
+判读：`exit=134` = 128 + 6 = **SIGABRT**，发生在 node 进程初始化阶段（CSPRNG = 密码学安全随机数
+发生器初始化失败）⇒ **根本没走到被测代码**。属沙箱对 node 启动期系统调用的拦截，非套件缺陷。
+
+二、单跑反证（决定性判据）
+--------------------------
+$ node tools/selftest_m3_recon.js
+  ...
+  ===== 实际菜品毛利率（分项录入）=====
+  ✅ 菜品口径收入 = dine_in 70000 + 外卖商品总价 28000 = 98000  (got 98000)
+  ✅ 实际菜品毛利率 = (98000−45000)/98000 = 54.08%  (got 54.08)
+  ============================================================
+  ===== M3.21 对账自测结果：16 通过 / 0 失败 =====
+rc=0
+
+⇒ **16 通过 / 0 失败，rc=0**。与 R225 门禁归档的 m3-recon.out（同为 16 通过 / 0 失败）逐条一致。
+⇒ 判定：**环境级 abort，非真 FAIL**。
+
+三、旁证
+--------
+1. R226 提交 80612e7 **零代码改动**（`git show --name-status`：仅 review/ 下
+   NOTE + ROADMAP + evidence 共 13 个文件）⇒ 物理上不可能引入该套件回归。
+2. 隔离探针（同轮同环境）：
+   $ node -e "spawnSync(process.execPath,['-e','console.log(1)'])"
+   → rc=null  err=EBUSY
+   ⇒ 该沙箱下 node 派生子进程本就不稳，启动期 abort 与环境一致。
+3. 门禁全文精确统计：
+   $ grep -c "^\s*❌" review/evidence/r226_gate/gate_full.txt
+   → 0
+   失败清单仅 1 行（`  - [m3-recon] ... exit=134`），其余 138 个套件无失败行。
+
+四、结论
+--------
+R226 门禁**实为 139/139**（138 个直接通过 + 1 个环境级 abort 经单跑复核为 16/0 PASS）。
+- 判据口径：只认「总览：N/N」行 + 失败清单，并须对失败清单逐项做**单跑复核**定性（R226 新增做法）。
+- 未改动任何代码/套件/规范，套件数保持 **139**。

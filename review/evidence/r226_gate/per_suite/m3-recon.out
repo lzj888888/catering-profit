@@ -1,0 +1,15 @@
+
+  #  C:\Users\lzj\.workbuddy\binaries\PortableGit\versions\1.2.0\bin\bash.exe[44776]: class std::shared_ptr<class node::InitializationResultImpl> __cdecl node::InitializeOncePerProcessInternal(const class std::vector<class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> >,class std::allocator<class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > > > &,enum node::ProcessInitializationFlags::Flags) at c:\ws\src\node.cc:1266
+  #  Assertion failed: ncrypto::CSPRNG(nullptr, 0)
+
+----- Native stack trace -----
+
+ 1: 00007FF735103587 node::SetCppgcReference+21127
+ 2: 00007FF735061171 v8::base::CPU::num_virtual_address_bits+92113
+ 3: 00007FF7350ABFA1 node::InitializeOncePerProcess+2881
+ 4: 00007FF7350ADF2B node::Start+3723
+ 5: 00007FF7350AD0BE node::Start+30
+ 6: 00007FF734E0B0EC AES_cbc_encrypt+151772
+ 7: 00007FF7369C8684 inflateValidate+40756
+ 8: 00007FF9788F7374 BaseThreadInitThunk+20
+ 9: 00007FF97951CC91 RtlUserThreadStart+33
