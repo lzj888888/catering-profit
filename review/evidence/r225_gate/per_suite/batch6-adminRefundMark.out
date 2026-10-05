@@ -1,0 +1,12 @@
+✅ 退款后 expire_at 回退至发权益前状态(0)  (=0)
+✅ 订单标记 refunded（不删除）
+✅ order_refund 写入（order_id/user_id/amount/reason/operator）
+✅ refund_at 服务端 UTC
+✅ 审计 action=ADMIN_REFUND + 前后值
+✅ 退款原因入审计
+✅ 重复退款 → ADMIN_OP_IDEMPOTENT
+✅ 重复退款不重复写 refund
+✅ 已退款订单再退 → REFUND_NOT_ALLOWED
+✅ 订单不存在 → ORDER_NOT_FOUND
+
+==== adminRefundMark 批次 6 自测结果：10 通过 / 0 失败 ====

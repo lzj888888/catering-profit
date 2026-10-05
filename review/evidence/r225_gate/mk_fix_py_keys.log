@@ -1,0 +1,3 @@
+python.exe tools/verify_docx.py  ->  rc=0  len(out)=409
+python.exe -c import docx  ->  rc=0  len(out)=0
+written: C:/Users/lzj/AppData/Local/Temp/inscode/gitcache.json

@@ -1,0 +1,13 @@
+git keys: 11
+  git ls-files  rc=0 len(out)=283676
+  git -c core.quotepath=false ls-files  rc=0 len(out)=248172
+  git status --porcelain cloudfunctions/  rc=0 len(out)=0
+  git status --porcelain  rc=0 len(out)=30
+  git rev-parse --is-inside-work-tree  rc=0 len(out)=5
+  git log --oneline -8  rc=0 len(out)=475
+  git.exe ls-files  rc=0 len(out)=283676
+  git.exe status --porcelain  rc=0 len(out)=30
+  git.exe -c core.quotepath=false ls-files  rc=0 len(out)=248172
+  git.exe status --porcelain cloudfunctions/  rc=0 len(out)=0
+  node C:/Users/lzj/WorkBuddy/Claw/catering-profit/tools/check_month_picker.js  rc=0 len(out)=1223
+written: C:/Users/lzj/AppData/Local/Temp/inscode/gitcache.json
