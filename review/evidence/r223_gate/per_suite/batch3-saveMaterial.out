@@ -1,0 +1,10 @@
+✅ 鸡胸肉 15元/斤 出成率90% → 万分333  (=333)
+✅ 鸡胸肉改 20元/斤 → 万分444（价变只会影响**新**快照）  (=444)
+✅ 红油底料每份 4.48 元 → 万分44800（虚拟，换算系数=1，单位=份）语义  (=44800)
+✅ 合法原料放行
+✅ purchase_price_fen 为字符串"1500" → INVALID_PARAM
+✅ convert_factor=0 → INVALID_PARAM
+✅ yield_rate=101 → INVALID_PARAM
+✅ 缺 shop_id → INVALID_PARAM
+
+==== saveMaterial 批次 3 自测结果：8 通过 / 0 失败 ====

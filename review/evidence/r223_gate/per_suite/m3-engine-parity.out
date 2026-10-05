@@ -1,0 +1,33 @@
+===== A. 副本可加载（非退化）=====
+✅ A 副本 calcBom/service.js 可 require 且 calcCostCard 是函数
+✅ A 副本 saveCostCard/service.js 可 require 且 calcCostCard 是函数
+✅ A 副本 syncCostCard/service.js 可 require 且 calcCostCard 是函数
+✅ A-非退化：三份副本全部载入（0 份 = 判据没跑起来）
+✅ A-登记：getCostCard/service.js 为纯映射层（不含 calcCostCard，故不参与对拍）
+✅ A-登记：getCardVersions/service.js 为纯映射层（不含 calcCostCard，故不参与对拍）
+
+===== B. 三副本行为对拍（确定性 3000 组）=====
+✅ B-① 对拍组数 ≥ 5000（非退化：真的比了这么多）
+✅ B-② 三副本输出不一致数 = 0（实测 0）
+✅ B-③ 非退化：受测输出里 unit_cost_fen 非空计数 > 0（实测 9000）
+
+===== C. S3 既有锚点回归（生产引擎实算）=====
+✅ C-① 宫保鸡丁 unit_cost_fen = 975（实测 975）
+✅ C-② 宫保鸡丁 material_total_fen = 876（实测 876）
+✅ C-③ 宫保鸡丁 gross_profit_fen = 1825（实测 1825）
+✅ C-④ 宫保鸡丁 gross_margin_pct = 65.18（实测 65.18）
+✅ C-⑤ 宫保鸡丁 reverse_price_fen = 2438（目标毛利率 60%，实测 2438）
+✅ C-⑥ 红油底料（模式 B）batch_total_fen = 4480（实测 4480）
+✅ C-⑦ 红油底料 单份 unit_cost_fen = 448（实测 448）
+✅ C-⑧ 锚点回归在三份副本上同时成立（任一副本漂了即红）
+
+===== D. 反恒真（对拍必须能分辨差异）=====
+✅ D-① 输入敏感：lossPct 5→6 时输出必须不同（对拍有分辨力）
+✅ D-② 输入敏感：明细用量 200→201 时输出必须不同
+✅ D-③ 变体实现（unit_cost_fen 偏移 1 分）必须被对拍判为不等
+✅ D-④ mode 非法值时三副本均抛错（R81 一致性）
+
+===== E. 覆盖度 =====
+✅ E-① 断言数 ≥ 18（实测 22 的保守下沿）
+
+==== R131 M3 引擎多副本行为等价守卫：22 通过 / 0 失败 ====

@@ -1,0 +1,4 @@
+
+[js-syntax R122] 编译 951 个 .js（扫描面：仓根 + miniprogram / pages / utils / cloudfunctions / tools / specs；排除：node_modules / .git / .workbuddy / review；已规范化 shebang 24 个）
+✅ 全部 951 个 .js 语法可编译（含锚点 6/6 个、下界 400 满足；R122）
+✅ 语法编译守卫：1 通过 / 0 失败
