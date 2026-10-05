@@ -1,5 +1,5 @@
 ===== S1 前置：git 列表可用（fail-closed）=====
-✅ S1 能在仓库根执行 git ls-files · 跟踪文件 4593 个
+✅ S1 能在仓库根执行 git ls-files · 跟踪文件 4733 个
 ✅ S1-② 面 A 工作树补面逐根达下界（根路径写错即转红） · tools:98 prototype:14 cfTests:1 cf-selftest:41
 ✅ S1-③ 面 A 工作树补面并入扫描面 · 工作树新增 0 个未入库文件（未 add 的新判据不再失明）
 
