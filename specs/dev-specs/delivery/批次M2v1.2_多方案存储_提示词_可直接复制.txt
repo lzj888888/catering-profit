@@ -201,7 +201,12 @@ cloudfunctions/savePlan/
 
 ### 5.3 新增页面必过三关
 
-1. `app.json::pages` 加 `"pages/sandbox/list"`，且与 `core/11_微信审核自查清单` §4 的页面清单**保持一致**；
+1. `app.json::pages` 加 `"pages/sandbox/list"`，并同步 `specs/dev-specs/上线材料_提审材料包_v1.md`
+   （守卫 `tools/check_page_manifest.js` **双向强制**「app.json ≡ §4 表格 ≡ 单源声明数」，只改一侧必红）：
+   - **§4 表格加一行**（三字段都不能空、序号必须连续、路径要带反引号）：
+     `| 24 | \`pages/sandbox/list\` | 选址沙盘 · 我的方案与并排对比 | ✅ |`
+   - **同文件三处「23」→「24」**：第 16 行「23 个页面」、第 64 行标题「（23 页，出处…）」、第 66 行「页面全集口径（唯一声明处）… **23** 个页面」。
+   ⚠️ 这是**我方明确授权的例外**（守卫强制、不改则全闸必红）；**除上述三处计数与 §4 表格新增行外，不得改该文件任何其它内容**。
 2. **必须有入口**（§5.1 的「我的方案 ›」）；
 3. 页面内若有金额输入框 ⇒ 必须用 `val-input`，且**不得与 `<button>` 同父**（本仓已实证的静默失效形态）。
 
@@ -260,7 +265,7 @@ cloudfunctions/savePlan/
 2. `cloudfunctions/getPlan/`（`index.js` + `validate.js` + `selftest.js` + `package.json`）；
 3. `cloudfunctions/calcSandbox/service.js` 加 `ENGINE_VERSION`（**只加常量**）；
 4. `pages/sandbox/list.{js,wxml,wxss,json}`（新增）+ `pages/sandbox/index.*`（加两处）；
-5. `app.json` 加页面；
+5. `app.json` 加页面 + `specs/dev-specs/上线材料_提审材料包_v1.md` §4 表格加行、三处计数 23→24（见 §5.3）；
 6. `cloudfunctions/initDb/collections.js` 里 `shop_sandbox` 的**字段注释同步**（`check_schema_sync` **只比对集合与索引、不比对字段** ⇒ 字段靠人改）；
 7. `core/10` 两行契约改写；
 8. `i18n/terms.js` 双副本新增文案；
