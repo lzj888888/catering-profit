@@ -1,0 +1,44 @@
+- initialize
+
+(node:4272) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)
+√ IDE server has started, listening on http://127.0.0.1:39721
+- deploy cloudfunctions
+- fetching cloud env list
+- [calcSandbox] Fetching info of cloudfunction calcSandbox
+√ [calcSandbox] cloudfunction calcSandbox exists in the cloud, will update it
+- [calcSandbox] upload cloud function calcSandbox - preparing
+√ [calcSandbox] upload cloud function calcSandbox - deploy
+√ deploy cloudfunctions
+
+┌─────────────┬─────────┬────────────┬───────────┐
+│ (index)     │ success │ filesCount │ packSize  │
+├─────────────┼─────────┼────────────┼───────────┤
+│ calcSandbox │ true    │ 19         │ '51.5 KB' │
+└─────────────┴─────────┴────────────┴───────────┘
+- initialize
+
+(node:38748) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)
+√ IDE server has started, listening on http://127.0.0.1:39721
+- deploy cloudfunctions
+- fetching cloud env list
+- [calcSandbox] Fetching info of cloudfunction calcSandbox
+√ [calcSandbox] cloudfunction calcSandbox exists in the cloud, will update it
+- [calcSandbox] upload cloud function calcSandbox - preparing
+√ [calcSandbox] upload cloud function calcSandbox - deploy
+√ deploy cloudfunctions
+
+┌─────────────┬─────────┬────────────┬───────────┐
+│ (index)     │ success │ filesCount │ packSize  │
+├─────────────┼─────────┼────────────┼───────────┤
+│ calcSandbox │ true    │ 19         │ '53.1 KB' │
+└─────────────┴─────────┴────────────┴───────────┘
+- initialize
+
+(node:35824) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)
+× IDE may already started at port 39721, trying to connect
+
+√ IDE server started successfully, listening on http://127.0.0.1:39721
+- deploy cloudfunctions
