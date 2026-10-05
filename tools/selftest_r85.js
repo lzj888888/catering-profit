@@ -311,6 +311,10 @@ const A15_EXEMPT = [
   //   by=WorkBuddy / date=2026-10-04 / reason=round215 授权：无鉴权云函数补来源校验（定时/探针拒客户端调用）
   /^cloudfunctions\/payExpireNotify\//,
   /^cloudfunctions\/smokeTest\//,
+  // ===== 批次 M2v1.2（多方案存储 期2）：本批新增两个云函数，属本批交付，豁免 =====
+  // by=WorkBuddy / date=2026-10-05 / reason=M2v1.2 多方案存储批次新增 savePlan/getPlan（§6 牵动五处 #1）
+  /^cloudfunctions\/savePlan\//,
+  /^cloudfunctions\/getPlan\//,
 ];
 check('A15 云函数逻辑零改动（仅 initDb 建库单源 + 本批授权函数豁免）', (() => {
   const { execFileSync } = require('child_process');

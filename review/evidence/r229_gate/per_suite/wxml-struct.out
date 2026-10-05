@@ -1,4 +1,4 @@
 
-[wxml-struct R123] 扫描 23 个 .wxml（判据 A 裸属性行 / 判据 B 标签配平；排除：node_modules / .git / .workbuddy / review）
-✅ 23 个 .wxml 结构完好（裸属性行 0；锚点 4/4 个、下界 10 满足；R123）
+[wxml-struct R123] 扫描 24 个 .wxml（判据 A 裸属性行 / 判据 B 标签配平；排除：node_modules / .git / .workbuddy / review）
+✅ 24 个 .wxml 结构完好（裸属性行 0；锚点 4/4 个、下界 10 满足；R123）
 ✅ WXML 结构守卫：2 通过 / 0 失败

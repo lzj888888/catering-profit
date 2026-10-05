@@ -1,6 +1,6 @@
 
 ===== P 前置：三个面文件可读 + 两个函数体可解析 =====
-  ✅ P-① 三个面文件均可读（service / validate / selftest）  service=9030 validate=7851 selftest=19373
+  ✅ P-① 三个面文件均可读（service / validate / selftest）  service=9182 validate=7851 selftest=19373
   ✅ P-② calcSandboxReverse 函数体可解析且非退化（≥400 字符）  1928 字符
   ✅ P-③ validateInput 函数体可解析且非退化（≥800 字符）  6337 字符
 

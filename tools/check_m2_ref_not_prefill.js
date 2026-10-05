@@ -108,7 +108,9 @@ function inputValues(wxml) {
 // 用户输入框 `value` 的**白名单**（只看用户自己填的字段）。
 // 🔴 新增用户输入框时必须把它的绑定加进来 —— 这是刻意的：本判据要挡住"参考值悄悄进 value"，
 //    白名单比黑名单更能 fail-closed（黑名单挡不住没预料到的新变量名）。
-const OK_VALUE = /^\{\{(item\.(yuan|years|pct)|targetYuan|expectYuan|revPriceYuan|revSeats|revOpenDays|revRentRate|revPixelEff)\}\}$/;
+// 2026-10-06（M2v1.2 多方案存储）：新增「保存沙盘」弹窗的方案名输入框 `{{planName}}`
+//   （pages/sandbox/index.wxml，用户自己填的方案名，非参考值）⇒ 按上述规则登记。
+const OK_VALUE = /^\{\{(item\.(yuan|years|pct)|targetYuan|expectYuan|revPriceYuan|revSeats|revOpenDays|revRentRate|revPixelEff|planName)\}\}$/;
 
 const pageJsRaw = readRel(PAGE_JS);
 const pageWxmlRaw = readRel(PAGE_WXML);

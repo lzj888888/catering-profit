@@ -749,6 +749,18 @@ const TERMS = {
     revTurnRate: '所需翻台',
     revAreaCap: '面积上限',
     revWarnTurnHigh: '翻台偏高，请复核座位数或营业天数',
+    // ===== M2v1.2（多方案存储 · 第二期）：保存沙盘 / 我的方案入口 =====
+    savePlanEntry: '我的方案 ›',
+    savePlanBtn: '保存沙盘',
+    savePlanModalTitle: '保存当前方案',
+    planNameLabel: '方案名',
+    planTypeLabel: '方案类型',
+    planTypeSite: '选址测算',
+    planTypeBiz: '经营推演',
+    planNameRequired: '请填写方案名',
+    planSaving: '保存中…',
+    planSavedOk: '已保存',
+    planNamePh: '给方案起个名字',
   },
 
   // ===== 十四、M3 成本卡页面文案 =====
@@ -1301,6 +1313,29 @@ const TERMS = {
     redAlert: '当前结构无法盈利',
     redAlertHint: '综合变动成本率达到或超过 100%，请调整成本结构后重试。',
     noCalc: '填写上方参数后点击测算',
+  },
+
+  // ===== M2v1.2（多方案存储 · 第二期）：我的方案列表 / 并排对比 =====
+  m2Plan: {
+    navTitle: '我的方案',
+    empty: '还没有保存的方案，回测算页保存一个吧',
+    compare: '并排对比',
+    compareHint: '勾选 2~3 个方案后可并排对比',
+    compareLoading: '对比中…',
+    compareMaxHint: '最多对比 3 个方案',
+    notSelected: '请先勾选 2~3 个方案',
+    typeSite: '选址测算',
+    typeBiz: '经营推演',
+    vers: 'v',
+    colName: '指标',
+    rowBreakEven: '保本月营收',
+    rowTarget: '目标月营收',
+    rowPayback: '回本月数',
+    rowMargin: '毛利率',
+    rowRentPct: '房租占比',
+    unitYuan: '元',
+    unitMonth: '个月',
+    back: '返回测算',
   },
 
   // ===== 二十二、批次 5 付费全流程文案 =====

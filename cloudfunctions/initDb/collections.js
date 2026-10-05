@@ -99,6 +99,14 @@ const INDEXES = {
   shop_sandbox: [
     { name: 'idx_sb_shop', keys: { shop_id: 1 } },
     { name: 'idx_sb_shop_del', keys: { shop_id: 1, is_deleted: 1 } },
+    // M2v1.2（开发规范 v1.2 · 多方案存储 期2）：shop_sandbox 只加字段、不建索引（check_schema_sync 只比对集合与索引）——
+    //   · sandbox_id            STRING  逻辑沙盘 ID（同一沙盘多版本共享；列表按它分组取最新 version）
+    //   · version               INT     版本号（同 sandbox_id 内从 1 递增，服务端算；只 INSERT 不 UPDATE）
+    //   · sandbox_type          STRING  'site_select'（选址）/ 'biz_sim'（经营推演）
+    //   · param_json            OBJECT  全量入参（14 字段 snake_case，见开发规范 v1.2 §4.2）
+    //   · result_snapshot_json  OBJECT  结果快照（只作展示缓存，绝不参与计算；由服务端生成，不接受前端传入）
+    //   · engine_version        STRING  产出该快照的引擎版本（引擎源 calcSandbox/service.js::ENGINE_VERSION）
+    //   🔴 旧平坦字段（fixed_rent / var_food_rate / target_profit …）降为历史只读兼容，新记录一律留空。
   ],
   shop_amortize: [
     { name: 'idx_amort_shop', keys: { shop_id: 1 } },

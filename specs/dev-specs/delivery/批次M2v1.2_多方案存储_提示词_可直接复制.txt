@@ -237,9 +237,15 @@ cloudfunctions/savePlan/
 |---|---|
 | **① 旧锚点回归（正算）** | `660000 / 17000 / 21000 / 38000 / 50% / 76000 / 106000 / 44 个月`（M2.10 标准工况） |
 | **② 往返无损** | `param_json`(snake) → `clean` → `calcSandbox` ⇒ 与首次出参**逐字段 JSON 全等**；反推组同（`R=100000 元` / `房租上限 12000` / `日均客流 74.07` / `翻台 3.70` / `面积上限 300 ㎡`） |
-| **③ 反例（必须有）** | ① `param_json` 误用 camelCase ⇒ 目标月营收 **`null`**（不是 10600000）；② 反推漏 `seats` ⇒ 翻台 **`null`**；漏 `pixel_eff_fen` ⇒ 面积上限 **`null`** |
+| **③ 反例（必须有）** | ① `param_json` 误用 camelCase ⇒ 目标月营收 **`null`**（不是 10600000）；② 反推漏 `seats` ⇒ 翻台 **非有限值（`Infinity`）**；漏 `pixel_eff_fen` ⇒ 面积上限 **`null`** |
 | **④ 边界** | 边际贡献率 ≤ 0（红警）⇒ R 与**全部**派生量 `null`（不编造） |
 | **⑤ 副本保真** | `savePlan/service.js` 与 `calcSandbox/service.js` **md5 相等** |
+
+> 🔧 **勘误（2026-10-06 验收时修）**：③-② 原写「漏 `seats` ⇒ 翻台 **`null`**」——**表述有误**，实测为
+> **非有限值 `Infinity`**。机理：`seats` 缺失 ⇒ 引擎 `num0(undefined) = 0` ⇒ `turnRate = 月客流 / (0 × open_days)` ⇒ 分母 0。
+> 误写来源：我方参考实现 `recalc_anchors.js` 的**打印**用了 `JSON.stringify()`，而 `JSON.stringify(Infinity) === 'null'`
+> （该文件断言本身是对的：`Number.isFinite(...) === false`）。⇒ **引擎行为一直正确**，错的是本文档表述；
+> 交付方（快马）按"非有限值"实现并经我方复算确认，**无需改代码**。
 
 参考实现：`review/evidence/r229_m2_multiplan/recalc_anchors.js`（我方已跑通 **24/24**，可直接照搬其输入构造）。
 

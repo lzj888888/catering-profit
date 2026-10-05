@@ -1,5 +1,10 @@
 <view class="container safe-bottom" wx:if="{{!loading}}">
 
+  <!-- M2v1.2：我的方案入口（标题栏右侧常驻按钮） -->
+  <view class="entry-bar">
+    <text class="entry-link" bindtap="onSaveEntry">{{t.savePlanEntry}}</text>
+  </view>
+
   <!-- M2v1.1 双 Tab：正向测算 / 目标反推（两套输入区独立缓存，切换互不覆盖） -->
   <view class="tab-bar">
     <view class="tab-item {{mode === 'forward' ? 'on' : ''}}" data-mode="forward" bindtap="onTab">{{t.tabForward}}</view>
@@ -178,6 +183,9 @@
   <view class="err-hint" wx:if="{{calcError}}">{{calcError}}</view>
   <button class="btn primary calc-btn" bindtap="onCalc">{{t.calc}}</button>
 
+  <!-- M2v1.2：保存沙盘（底部主按钮） -->
+  <button class="btn ghost save-sandbox-btn" bindtap="onOpenSave">{{t.savePlanBtn}}</button>
+
   <!-- M2v1.1 反推结果（仅反推 Tab；全部来自云端 reverse 块） -->
   <block wx:if="{{mode === 'reverse' && reverseResult}}">
     <view class="card2" wx:if="{{reverseResult.red_alert}}">
@@ -247,5 +255,27 @@
   </view>
 
   <view class="muted empty-tip" wx:if="{{!result}}">{{t.noCalc}}</view>
+
+  <!-- M2v1.2：保存沙盘弹窗（收方案名 + 类型） -->
+  <view class="mask" wx:if="{{showSave}}">
+    <view class="sheet">
+      <view class="sheet-title">{{t.savePlanModalTitle}}</view>
+      <view class="sheet-row">
+        <text class="sheet-lbl">{{t.planNameLabel}}</text>
+        <input class="sheet-in" type="text" value="{{planName}}" placeholder="{{t.planNamePh}}" bindinput="onSaveName" />
+      </view>
+      <view class="sheet-row">
+        <text class="sheet-lbl">{{t.planTypeLabel}}</text>
+        <view class="type-chips">
+          <view class="chip {{planType === 'site_select' ? 'on' : ''}}" data-type="site_select" bindtap="onSaveType">{{t.planTypeSite}}</view>
+          <view class="chip {{planType === 'biz_sim' ? 'on' : ''}}" data-type="biz_sim" bindtap="onSaveType">{{t.planTypeBiz}}</view>
+        </view>
+      </view>
+      <view class="sheet-btns">
+        <button class="btn ghost" catchtap="onCancelSave">{{t.cancel}}</button>
+        <button class="btn primary" catchtap="onSavePlan" disabled="{{planSaving}}">{{planSaving ? t.planSaving : t.savePlanBtn}}</button>
+      </view>
+    </view>
+  </view>
 </view>
 <view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

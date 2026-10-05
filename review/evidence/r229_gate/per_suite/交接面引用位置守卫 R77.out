@@ -6,8 +6,8 @@
 ✅ P4 至少解析到 1 个报告目录绝对路径（fail-closed）  (C:\Users\lzj\WorkBuddy\2026-09-08-22-08-11\.workbuddy\memory)
 ✅ P4 每个报告目录均真实存在  (1 个目录全部存在)
 ✅ P4 每个提到报告路径的活文档都给出了可解析的绝对路径  (4 份：review/README.md, SMOKETEST_RUNBOOK.md, 新手上云操作手册.md, specs/dev-specs/★知识存储点_2026-09-10.md)
-✅ P5 报告目录含 ≥1 份 `YYYY-MM-DD.md`  (28 份)
-   ℹ️ 最新报告：2026-10-05.md（41041 B，mtime 2026-10-05 14:28）
+✅ P5 报告目录含 ≥1 份 `YYYY-MM-DD.md`  (29 份)
+   ℹ️ 最新报告：2026-10-06.md（3882 B，mtime 2026-10-05 16:43）
 ✅ P6 诱饵「~\.workbuddy\memory」确实存在（标注不腐）  (~\.workbuddy\memory · 云端画像缓存)
 ✅ P6 诱饵「~\.workbuddy\MEMORY.md」确实存在（标注不腐）  (~\.workbuddy\MEMORY.md · 跨项目用户级记忆)
 

@@ -106,6 +106,19 @@ Page({
       revTurnRate: M.revTurnRate,
       revAreaCap: M.revAreaCap,
       revWarnTurnHigh: M.revWarnTurnHigh,
+      // M2v1.2（多方案存储 · 第二期）
+      savePlanEntry: M.savePlanEntry,
+      savePlanBtn: M.savePlanBtn,
+      savePlanModalTitle: M.savePlanModalTitle,
+      planNameLabel: M.planNameLabel,
+      planTypeLabel: M.planTypeLabel,
+      planTypeSite: M.planTypeSite,
+      planTypeBiz: M.planTypeBiz,
+      planNameRequired: M.planNameRequired,
+      planSaving: M.planSaving,
+      planSavedOk: M.planSavedOk,
+      planNamePh: M.planNamePh,
+      cancel: TERMS.buttons.cancel,
     },
     // 选择器
     cityIdx: 1, bizIdx: 1,          // 默认「二三线 / 中式正餐」
@@ -144,6 +157,13 @@ Page({
     revRentRate: '',         // 目标租金率（%）
     revPixelEff: '',         // 坪效（元/㎡·月，选填）
     reverseResult: null,     // 反推结果（reverse 块）
+    // M2v1.2（多方案存储 · 第二期）：保存沙盘弹窗
+    sandboxId: '',           // 正算/反推共用同一个 sandbox_id（首次保存后回填）
+    showSave: false,
+    planName: '',
+    planType: 'site_select',
+    planSaving: false,
+    saveCrid: '',            // 本次点击生成一次的 uuid；同一次点击重试复用（幂等依赖）
   },
 
   onLoad() { this._seq = 0; this.bootstrap(); },
@@ -574,4 +594,79 @@ Page({
   },
 
   onPullDownRefresh() { this.bootstrap().then(() => wx.stopPullDownRefresh()); },
+
+  // ===== M2v1.2（多方案存储 · 第二期）：我的方案入口 + 保存沙盘 =====
+  onSaveEntry() {
+    wx.navigateTo({ url: '/pages/sandbox/list' });
+  },
+
+  onOpenSave() {
+    // 每次打开弹窗生成一次 uuid；同一次点击重试必须复用（否则幂等失效）
+    this.setData({
+      showSave: true,
+      planName: '',
+      planType: this.data.mode === 'reverse' ? 'biz_sim' : 'site_select',
+      planSaving: false,
+      saveCrid: 'sd_' + Date.now() + '_' + Math.floor(Math.random() * 1e6),
+    });
+  },
+  onSaveType(e) { this.setData({ planType: e.currentTarget.dataset.type }); },
+  onSaveName(e) { this.setData({ planName: e.detail.value }); },
+  onCancelSave() { this.setData({ showSave: false, saveCrid: '' }); },
+
+  // 组装 14 字段 snake_case 的 param_json（= calcSandbox 的 wire 形态；保存与重算同源）
+  buildParam() {
+    const isRev = this.data.mode === 'reverse';
+    const fixedItems = this.data.fixedRows
+      .map((r) => ({ key: r.key, fen: api.yuanToFen(r.yuan) }))
+      .filter((x) => x.fen > 0);
+    return {
+      mode: isRev ? 'reverse' : 'forward',
+      city_tier: this.data.t.cityTiers[this.data.cityIdx].key,
+      biz_type: this.data.t.bizTypes[this.data.bizIdx].key,
+      build_items: this.data.buildRows
+        .filter((r) => api.yuanToFen(r.yuan) > 0)
+        .map((r) => ({ key: r.key, fen: api.yuanToFen(r.yuan), years: Number(r.years) || 1 })),
+      fixed_items: isRev ? fixedItems.filter((r) => r.key !== 'rent') : fixedItems,
+      var_items: this.data.varRows
+        .filter((r) => Number(r.pct) > 0)
+        .map((r) => ({ key: r.key, pct: Number(r.pct) })),
+      gross_margin_pct: Number(this.data.marginPct),
+      target_profit_fen: api.yuanToFen(this.data.targetYuan),
+      expected_revenue_fen: api.yuanToFen(this.data.expectYuan),
+      rev_price_fen: api.yuanToFen(this.data.revPriceYuan),
+      seats: Number(this.data.revSeats) || 0,
+      open_days: Number(this.data.revOpenDays) || 0,
+      target_rent_rate: Number(this.data.revRentRate) || 0,
+      pixel_eff_fen: api.yuanToFen(this.data.revPixelEff),
+    };
+  },
+
+  async onSavePlan() {
+    const name = (this.data.planName || '').trim();
+    if (!name) {
+      api.toastError({ msg: TERMS.m2.planNameRequired });
+      return;
+    }
+    if (this.data.planSaving) return;
+    this.setData({ planSaving: true });
+    const crid = this.data.saveCrid;   // 幂等键：本次点击固定，重试复用
+    const paramJson = this.buildParam();
+    try {
+      const d = await api.call('savePlan', {
+        plan: {
+          sandbox_id: this.data.sandboxId || '',
+          name,
+          sandbox_type: this.data.planType,
+          param_json: paramJson,
+        },
+        client_request_id: crid,
+      });
+      this.setData({ showSave: false, planSaving: false, saveCrid: '', sandboxId: d.sandbox_id || d.plan_id || this.data.sandboxId });
+      wx.showToast({ title: TERMS.m2.planSavedOk, icon: 'success' });
+    } catch (e) {
+      this.setData({ planSaving: false });
+      api.toastError(e);
+    }
+  },
 });

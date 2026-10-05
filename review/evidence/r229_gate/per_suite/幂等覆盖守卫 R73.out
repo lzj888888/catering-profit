@@ -9,7 +9,7 @@
 ✅ saveCostCard 含幂等预检（契约 L64 标 +幂等）  (重放形态 findPriorResult)
 ✅ syncCostCard 含幂等预检（契约 L65 标 +幂等）  (重放形态 findPriorResult)
 ✅ importSalesBill 含幂等预检（契约 L68 标 +幂等）  (重放形态 findPriorResult)
-✅ savePlan 未交付但已登记 NOT_IMPLEMENTED（契约 L83）  (已登记)
+✅ savePlan 含幂等预检（契约 L83 标 +幂等）  (重放形态 findPriorResult)
 ✅ deleteAccount 含幂等预检（契约 L180 标 +幂等）  (拒绝形态 checkIdempotent)
 ✅ manageShop 含幂等预检（契约 L182 标 +幂等）  (重放形态 findPriorResult)
 
@@ -26,6 +26,7 @@
 ✅ saveCostCard 幂等预检早于首个业务写  (预检@2808 vs 首个业务写@10397)
 ✅ saveLedger 幂等预检早于首个业务写  (预检@1156 vs 首个业务写@4873)
 ✅ saveMaterial 幂等预检早于首个业务写  (预检@976 vs 首个业务写@1967)
+✅ savePlan 幂等预检早于首个业务写  (预检@1168 vs 首个业务写@2746)
 ✅ syncCostCard 幂等预检早于首个业务写  (预检@5276 vs 首个业务写@10141)
 
 ===== I4 登记同源（重放形态必须复用单源 shopKey）=====
@@ -35,6 +36,7 @@
 ✅ saveCostCard 查重键与登记键同源（用单源 shopKey）
 ✅ saveLedger 查重键与登记键同源（用单源 shopKey）
 ✅ saveMaterial 查重键与登记键同源（用单源 shopKey）
+✅ savePlan 查重键与登记键同源（用单源 shopKey）
 ✅ syncCostCard 查重键与登记键同源（用单源 shopKey）
 
 ===== I5 全量登记（有业务写的函数必须有幂等或登记豁免）=====
@@ -44,6 +46,7 @@
 ✅ adminRefreshToken 无幂等实现但已登记豁免（含理由）  (已登记)
 ✅ adminRevokeToken 无幂等实现但已登记豁免（含理由）  (已登记)
 ✅ archiveMonth 无幂等实现但已登记豁免（含理由）  (已登记)
+✅ getPlan 无幂等实现但已登记豁免（含理由）  (已登记)
 ✅ getShopContext 无幂等实现但已登记豁免（含理由）  (已登记)
 ✅ initDb 无幂等实现但已登记豁免（含理由）  (已登记)
 ✅ payCallback 无幂等实现但已登记豁免（含理由）  (已登记)
@@ -66,10 +69,10 @@
 ✅ EXEMPT_WRITE[smokeTest] 仍然成立  (理由：探针函数：只读写自建的 PROBE 探针集合（探测完…)
 ✅ EXEMPT_WRITE[adminInit] 仍然成立  (理由：首超管引导（一次性）：靠「已存在首个 super 即…)
 ✅ EXEMPT_WRITE[adminLogin] 仍然成立  (理由：登录是**审计/会话类追加写**：每次登录都该在 a…)
+✅ EXEMPT_WRITE[getPlan] 仍然成立  (理由：只读函数；唯一写是惰性清理超期软删的旧版本（物理删已…)
 
 ===== I7 装饰性幂等键（写了非空 key 却从不查重 ⇒ 该 key 永不生效）=====
 ✅ adminExport 写了非空 idempotency_key 却无查重 ⇒ 已登记理由  (已登记)
 ✅ EXEMPT_KEY[adminExport] 仍然成立  (理由：导出是**只读**动作、无数据变更；after_da…)
-✅ NOT_IMPLEMENTED[savePlan] 仍然成立  (仍未交付)
 
-===== 幂等覆盖守卫结果：60 通过 / 0 失败 =====
+===== 幂等覆盖守卫结果：63 通过 / 0 失败 =====

@@ -158,7 +158,9 @@ sec('③-2 反例 · 反推 param_json 漏 seats（翻台不可算）');
 // 🔴 反例路径直接调**生产引擎**：漏字段 ⇒ clean.seats 为 undefined ⇒ num0 → 0
 const R3 = calcSandboxReverse(paramToClean(P_REV, ['seats']));
 say(`  全量字段 ⇒ 翻台 ${R1.turn_rate} · 面积上限 ${R1.area_cap_sqm}`);
-say(`  漏 seats ⇒ 翻台 ${JSON.stringify(R3.turn_rate)} · 面积上限 ${JSON.stringify(R3.area_cap_sqm)}`);
+// ⚠️ 2026-10-06 修正：这里**必须用 String() 而非 JSON.stringify()** ——
+//    JSON.stringify(Infinity) === 'null'，会把「非有限值」打印成 null，导致投喂包 §7 表照抄出错。
+say(`  漏 seats ⇒ 翻台 ${String(R3.turn_rate)}（JSON 序列化会显示成 null，实为 Infinity）· 面积上限 ${String(R3.area_cap_sqm)}`);
 CHK('漏 seats 后翻台与首次**不同**（证明「必须存全量」有鉴别力）',
   JSON.stringify(R3.turn_rate) !== JSON.stringify(R1.turn_rate), true);
 CHK('漏 seats ⇒ 翻台非有限值（不编造，佐证字段必需）', Number.isFinite(R3.turn_rate), false);

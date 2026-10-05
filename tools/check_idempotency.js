@@ -67,6 +67,9 @@ const EXEMPT_WRITE = new Map([
     + '而非 client_request_id；且仅 dev / 首次运行的 env 门禁下可用'],
   ['adminLogin', '登录是**审计/会话类追加写**：每次登录都该在 admin_login_log 留一条记录（审计语义要求逐次留痕），'
     + 'admin_user 上只更新 last_login_at / 失败计数 ⇒ 重复登录是正常语义，被幂等拦反而是错的'],
+  // M2v1.2（多方案存储）：getPlan 是**只读**函数，唯一写 = 惰性清理（顺手物理删同 sandbox_id 中 delete_at 超期 >30 天的软删旧版本）——
+  //   「删已标记删除的过期行」天然幂等（重复执行无害：目标行已物理删则 no-op）。契约 §4 该行鉴权 = `user+shop`（未标 +幂等）。
+  ['getPlan', '只读函数；唯一写是惰性清理超期软删的旧版本（物理删已 is_deleted 的过期行，重复执行无害）'],
 ]);
 
 // I7 用：源码里给 audit_log 写了**非空** idempotency_key、却从不查重的函数。
@@ -79,10 +82,8 @@ const EXEMPT_KEY = new Map([
 ]);
 
 // 契约已预留、但函数目录尚未交付者。不登记 ⇒ I2 判红。
-const NOT_IMPLEMENTED = new Map([
-  ['savePlan', '契约 §4 已预留入参含 client_request_id（M2 方案保存/复制），但批次 4 只交付了 calcSandbox，'
-    + '函数目录尚不存在 ⇒ 未来实现时**必须自带幂等**，否则本守卫立刻转红'],
-]);
+// 🔴 M2v1.2：savePlan 已于本批实现（含幂等 findPriorResult + 审计 writeAudit + 单源 shopKey），故从 NOT_IMPLEMENTED 移除。
+const NOT_IMPLEMENTED = new Map([]);
 
 // ===================== 工具函数 =====================
 // 去注释（保留换行数，便于定位）：块注释按字长替换成空格、行注释裁掉

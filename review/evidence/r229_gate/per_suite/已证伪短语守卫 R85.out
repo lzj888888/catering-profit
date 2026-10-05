@@ -1,5 +1,5 @@
 ===== 已证伪短语守卫 R85（概念级：已证伪说法必须带上下文标记）=====
-✅ S1 扫描面非空（读不到文件 = 判红，不许假装绿） · 1359 个文件（下限 20）
+✅ S1 扫描面非空（读不到文件 = 判红，不许假装绿） · 1414 个文件（下限 20）
 ✅ S2 活文档内无「裸的已证伪断言」 · 0 处（共 13 处命中均带上下文标记）
 
 ℹ️ 以下 8 处为**带标记的引用/留痕**（放行，但必须看得见）：
@@ -14,7 +14,7 @@
 
 ℹ️ 以下 5 处为**政策类**（非能力限制，放行）：
    BATCH0_DELIVERY.md:86  [政策]  3. **initDb 仅 dev**：`initDb` 部署到 **dev** 手动跑一次建 25 集合；**prod 的 25 张集合在控制台手工建，绝不部署 initDb 到 prod*
-   cloudfunctions/initDb/collections.js:248  [政策]  return { blocked: true, reason: 'INITDB_DEV_ONLY: initDb 仅允许 dev 环境，prod 集合请由控制台手工创建' };
+   cloudfunctions/initDb/collections.js:256  [政策]  return { blocked: true, reason: 'INITDB_DEV_ONLY: initDb 仅允许 dev 环境，prod 集合请由控制台手工创建' };
    cloudfunctions/initDb/package.json:4  [政策]  "description": "店算 · 一次性建库云函数（仅 dev，prod 集合由控制台手工创建）",
    specs/dev-specs/prototype/init_db.js:210  [政策]  // 生产环境 25 张集合由云开发控制台手工创建（一次性），本函数**绝不部署到 prod**。
    specs/dev-specs/prototype/init_db.js:232  [政策]  return { blocked: true, reason: 'INITDB_DEV_ONLY: initDb 仅允许 dev 环境，prod 集合请由控制台手工创建' };

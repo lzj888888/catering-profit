@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：139 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：141 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -771,6 +771,9 @@ const SUITES = [
   ['paid-quota-unlock',    'tools/check_paid_quota_unlock.js'],
   // R221（批次 M2v1.1 · 选址反推第一期）：反推「房租不重复计租」口径守卫 —— 详见头注 R221 段。
   ['m2-reverse-rent',      'tools/check_m2_reverse_rent.js'],
+  // ===== 批次 M2v1.2（多方案存储 · 第二期）：savePlan / getPlan 两函数自测（开发规范 v1.2 §7 五组锚点）=====
+  ['m2v1.2-savePlan',      'cloudfunctions/savePlan/selftest.js'],
+  ['m2v1.2-getPlan',       'cloudfunctions/getPlan/selftest.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

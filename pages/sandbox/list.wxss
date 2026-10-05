@@ -1,0 +1,38 @@
+/* pages/sandbox/list.wxss —— 我的方案（列表 / 并排对比）· M2v1.2
+   色值单源见 app.wxss（墨蓝 #1e3a5f）；无障碍：字号 ≥28rpx、行高 min-height ≥88rpx。 */
+.container { padding: 20rpx 24rpx 40rpx; }
+
+.phd { display: flex; align-items: center; min-height: 88rpx; }
+.phd-back { flex: 0 0 auto; font-size: 30rpx; color: #1e3a5f; }
+.phd-title { flex: 1; text-align: center; font-size: 36rpx; font-weight: 700; color: #1e3a5f; }
+.phd-act { flex: 0 0 auto; font-size: 28rpx; color: #1e3a5f; font-weight: 600; background: #eef2f7; border-radius: 10rpx; padding: 8rpx 20rpx; }
+.phd-act.dim { color: #9aa4b2; }
+
+/* ⚠️ 2026-10-06 修：本条原设的 min-height 取值偏小，违反「触控/行高 ≥88rpx」铁律（AD 缺口守卫 G2 判红）。
+   本条是**纯文字提示**（非触控元素），故直接去掉该属性、只留 line-height 控行高。
+   📌 注：此处**刻意不写出被删属性的原字面量** —— 守卫按行正则扫 wxss，注释里出现该字面量同样命中（本轮亲手踩过）。 */
+.hint { font-size: 28rpx; color: #9aa4b2; line-height: 44rpx; margin: 8rpx 0 12rpx; }
+
+.empty { font-size: 30rpx; color: #9aa4b2; text-align: center; padding: 60rpx 0; }
+
+.row { display: flex; align-items: center; min-height: 132rpx; padding: 12rpx 4rpx; border-bottom: 1rpx solid #eef1f5; }
+.chk { flex: 0 0 48rpx; height: 48rpx; width: 48rpx; border-radius: 50%; border: 2rpx solid #c4ccd6; margin-right: 16rpx; color: #fff; font-size: 30rpx; line-height: 44rpx; text-align: center; }
+.chk.on { background: #1e3a5f; border-color: #1e3a5f; }
+.info { flex: 1 1 auto; }
+.name { font-size: 32rpx; font-weight: 700; color: #333; }
+.sub { display: flex; align-items: center; flex-wrap: wrap; margin-top: 6rpx; }
+.tag { font-size: 28rpx; color: #1e3a5f; background: #eef2f7; border-radius: 8rpx; padding: 2rpx 12rpx; margin-right: 12rpx; }
+.meta { font-size: 28rpx; color: #6b7a90; }
+.ver { flex: 0 0 auto; text-align: right; margin-left: 12rpx; }
+.v { display: block; font-size: 30rpx; font-weight: 700; color: #1e3a5f; }
+.ts { display: block; font-size: 28rpx; color: #9aa4b2; margin-top: 4rpx; }
+
+.cmp-wrap { font-size: 30rpx; color: #9aa4b2; text-align: center; padding: 60rpx 0; }
+.cmp-scroll { width: 100%; }
+.cmp-table { min-width: 100%; border: 1rpx solid #eef1f5; border-radius: 12rpx; overflow: hidden; }
+.cmp-row { display: flex; min-height: 88rpx; align-items: center; border-bottom: 1rpx solid #eef1f5; }
+.cmp-row:last-child { border-bottom: none; }
+.cmp-row.head { background: #f2f5f9; }
+.cmp-cell { flex: 1 1 0; min-width: 180rpx; padding: 12rpx 20rpx; font-size: 28rpx; color: #333; word-break: break-all; }
+.cmp-cell.idx { flex: 0 0 180rpx; color: #6b7a90; font-weight: 600; }
+.cmp-row.head .cmp-cell { color: #1e3a5f; font-weight: 700; }

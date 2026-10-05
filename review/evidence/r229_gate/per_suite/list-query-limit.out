@@ -2,13 +2,13 @@
   ✅ L1 cloudfunctions/common/dataAdapter.js 声明 LIST_LIMIT=1000（>默认 100 且 ≤平台硬上限 1000）
   ✅ L2 list() 带 .limit(LIST_LIMIT) —— list 带 .limit(LIST_LIMIT)
   ✅ L2 listIncludingDeleted() 带 .limit(LIST_LIMIT) —— listIncludingDeleted 带 .limit(LIST_LIMIT)
-  ✅ L3 44 份 cx_dataAdapter.js 内容一致且都带 .limit(LIST_LIMIT)（单源同步在位）
+  ✅ L3 46 份 cx_dataAdapter.js 内容一致且都带 .limit(LIST_LIMIT)（单源同步在位）
   ✅ L4 全仓云函数集合查询均已带显式上限（含 .doc() 单条取已正确豁免）
   ✅ L5 2 个本地替身均已实现 limit(n)（calcAmortize/selftest.js、__tests__/batch0_selfcheck.js）
   ✅ L6 listAll() —— listAll 分页取全三要素齐备（skip 变量 + 循环 + limit + 总量护栏）
   ✅ L7 三处「读该店全部成本卡」均走 listAll（getCostCard / checkQuota / saveCostCard）—— 无截断回归
-  ✅ S1 扫描面完整（云函数侧 272 个含数据库访问的文件，缩到 <200 即转红）
-  ✅ S2 集合取数命中 531 处 ≥ 30（防"扫了空集所以全绿"）
+  ✅ S1 扫描面完整（云函数侧 284 个含数据库访问的文件，缩到 <200 即转红）
+  ✅ S2 集合取数命中 553 处 ≥ 30（防"扫了空集所以全绿"）
   ✅ S3 替身注册 2 个 ≥ 2（新增替身不实现 limit 即转红，删到 1 个也转红）
   ✅ C1 影子样本「裸 .get()」被判红 —— 集合查询没写 .limit() ⇒ 云函数端默认只返 100 条，第 101 条起静默消失
   ✅ C2 影子样本「.limit(LIST_LIMIT)」判绿（正常写法不受伤）

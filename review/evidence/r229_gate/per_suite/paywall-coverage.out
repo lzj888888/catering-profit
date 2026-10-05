@@ -12,7 +12,7 @@
   ✅ L6-②c 登记落点（at 非空）必须可验证：该文件真含此能力的 hasFeature 调用（防用豁免表掩盖漏接） —— m3_combo→cloudfunctions/saveCostCard/index.js
   ✅ L6-②d 落点登记无陈旧键（键必须仍在 PAID_FEATURES 内） —— 2 条登记，键全部有效
   ✅ L6-②e 分类穷尽：非 export 能力 100% 落入「同名目录 ∪ 落点登记」 —— 非 export 能力 2 项 → 同名目录 0 + 落点登记 2
-  ✅ L7-① 扫描面下界：cloudfunctions 下 .js 文件 ≥ 200（防遍历失效 ⇒ 零命中假绿） —— 785 个 .js
+  ✅ L7-① 扫描面下界：cloudfunctions 下 .js 文件 ≥ 200（防遍历失效 ⇒ 零命中假绿） —— 821 个 .js
   ✅ L7-② 派生集下界：付费能力 ≥ 3（导出/套餐/外卖） —— 3 项
   ✅ L7-③ 反恒真前提：影子判据确实能被触发（judge 非恒真）
 ✅ 付费能力清单（export/m3_combo/m3_takeaway）每一项都已配好墙：弹窗类型 + 文案四字段，且无一"登记了却弹不出"。

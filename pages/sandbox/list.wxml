@@ -1,0 +1,52 @@
+<view class="container">
+  <!-- 顶栏：返回 + 标题 + 对比按钮 -->
+  <view class="phd">
+    <view class="phd-back" bindtap="onBack">{{t.back}}</view>
+    <view class="phd-title">{{t.navTitle}}</view>
+    <view class="phd-act {{mode === 'list' ? '' : 'dim'}}" bindtap="{{mode === 'list' ? 'onCompare' : ''}}">
+      {{t.compare}}{{mode === 'compare' ? '' : selIds.length ? ' (' + selIds.length + ')' : ''}}
+    </view>
+  </view>
+
+  <view class="hint" wx:if="{{mode === 'list'}}">{{t.compareHint}}</view>
+
+  <!-- ===== 列表视图 ===== -->
+  <view wx:if="{{mode === 'list'}}">
+    <view class="empty" wx:if="{{!loading && !list.length}}">{{t.empty}}</view>
+    <view class="row" wx:for="{{list}}" wx:key="sandbox_id" bindtap="onToggle" data-id="{{item.sandbox_id}}">
+      <view class="chk {{item.checked ? 'on' : ''}}">
+        <text wx:if="{{item.checked}}">✓</text>
+      </view>
+      <view class="info">
+        <view class="name">{{item.name}}</view>
+        <view class="sub">
+          <text class="tag">{{item.typeName}}</text>
+          <text class="meta">{{t.rowTarget}} {{item.targetYuan}}{{t.unitYuan}} · {{t.rowBreakEven}} {{item.breakEvenYuan}}{{t.unitYuan}}</text>
+        </view>
+      </view>
+      <view class="ver">
+        <text class="v">{{t.vers}}{{item.version}}</text>
+        <text class="ts">{{item.updatedText}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- ===== 对比视图 ===== -->
+  <view wx:if="{{mode === 'compare'}}">
+    <view class="cmp-wrap" wx:if="{{comparing}}">{{t.compareLoading}}</view>
+    <view class="cmp" wx:else>
+      <scroll-view scroll-x class="cmp-scroll">
+        <view class="cmp-table">
+          <view class="cmp-row head">
+            <view class="cmp-cell idx">{{t.colName}}</view>
+            <view class="cmp-cell" wx:for="{{compareCols}}" wx:key="name">{{item.name}}</view>
+          </view>
+          <view class="cmp-row" wx:for="{{compareRows}}" wx:key="key">
+            <view class="cmp-cell idx">{{item.name}}</view>
+            <view class="cmp-cell" wx:for="{{item.vals}}" wx:key="*this">{{item}}</view>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+</view>

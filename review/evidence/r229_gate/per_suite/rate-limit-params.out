@@ -1,7 +1,7 @@
 ===== R113 · 限流阈值口径守卫 =====
   ✅ A1-① 代码单源存在且非空 —— cloudfunctions/common/rateLimit.js · 808B
   ✅ A1-② 声明文档存在且非空 —— specs/dev-specs/core/09_统一错误码表.md · 10320B
-  ✅ A1-③ 扁平副本数 ≥ 40（副本扫描面失效即红） —— 44 份
+  ✅ A1-③ 扁平副本数 ≥ 40（副本扫描面失效即红） —— 46 份
   ✅ A1-④ 扫描面 .md 数 ≥ 25（排除 review/，路径写错即红） —— 41 个
   ✅ A2-① 语义标记「限流阈值口径」可解析出次数 N（fail-closed） —— N=60
   ✅ A2-② 声明内可解析出窗口 W（ms，fail-closed） —— W=60000
@@ -10,13 +10,13 @@
   ✅ A3-② 声明次数 N=60 ≡ 单源 MAX_WRITES=60 —— 声明 60 / 实算 60
   ✅ A3-③ 声明窗口 W=60000 ≡ 单源 WINDOW_MS=60000 —— 声明 60000 / 实算 60000
   ✅ A3-④ 窗口恰为一分钟（60000ms，「次/分钟」口径自洽） —— 60000 ms
-  ✅ A4 全部 44 份副本 ≡ 单源（防只改一处副本） —— 44 份同值 60/60000
+  ✅ A4 全部 46 份副本 ≡ 单源（防只改一处副本） —— 46 份同值 60/60000
   ✅ A5-① 当前态声明全部 ≡ 60（共 4 处，HIST 放行 0 行） —— 4 处一致
   ✅ A5-② 当前态声明命中数 ≥ 3（正则/扫描面失效即零命中假绿） —— 4 处
   ✅ A6-① 前提：扫描面确含声明文档（自指排除没误伤） —— specs/dev-specs/core/09_统一错误码表.md
   ✅ A6-② 前提：副本集确含已知函数目录（副本面没打错） —— adminExport,adminGrantEntitlement,adminInit
   ✅ A7 唯一声明处不扩散（其它 .md 同行不得同时自称单源 + 本口径） —— 仅 core/09 一处
-  ✅ A8-⑤ 扫描面非退化：云函数 index.js 数 ≥ 30（扫空/路径打错即假绿） —— 45 个目录（44 个含 index.js）
+  ✅ A8-⑤ 扫描面非退化：云函数 index.js 数 ≥ 30（扫空/路径打错即假绿） —— 47 个目录（46 个含 index.js）
   ✅ A8-① 名单内目标函数 index.js 全部在场（锚点在场，防路径打错） —— saveCostCard / syncCostCard
   ✅ A8-② 名单内每个写入口都已接线（makeRateLimiter + await 调用 + limited→fail） —— saveCostCard:已接线 syncCostCard:已接线
   ✅ A8-③ limiter 在 exports.main 之前创建（防「每次调用新桶」= 计数恒 1 的假接线） —— saveCostCard:模块级单例 syncCostCard:模块级单例
