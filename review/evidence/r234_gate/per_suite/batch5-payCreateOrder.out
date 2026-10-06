@@ -1,0 +1,14 @@
+===== 订单生成 =====
+✅ 生成订单号（PO 前缀）  (POMUWGCLAU9F2I)
+✅ 金额=2590 分（整数）
+✅ plan_id/plan_name 原样携带
+✅ status=pending
+✅ enable_real_payment=false（私域阶段）
+✅ pay_params=null（无拉起参数，前端提示联系客服）
+✅ 订单号唯一性（两次不同）
+===== 入参校验 =====
+✅ 合法
+✅ 缺 plan_id → INVALID_PARAM
+✅ 缺 shop_id → INVALID_PARAM
+
+==== payCreateOrder 批次 5 自测结果：10 通过 / 0 失败 ====

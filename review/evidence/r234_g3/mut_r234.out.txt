@@ -1,0 +1,14 @@
+=== R234 变异回灌：A9-⑱「开库存」口径三副本对拍 ===
+  OK  M1 [RED 期望RED] rc=1 · 口径锁破：参考利润改用倒轧值（916000 -> 816000）
+      ❌ A9-⑱ 「开库存」S2 上锁样本三副本对拍（倒轧 23,000 / 参考利润仍 916,000 口径锁 / 真实 347,667 / 差异 568,333）  (未达标：saveLedger/service.js)
+  OK  M2 [RED 期望RED] rc=1 · 倒轧破：真实消耗漏减期末存货（2300000 -> 3000000）
+      ❌ A9-⑱ 「开库存」S2 上锁样本三副本对拍（倒轧 23,000 / 参考利润仍 916,000 口径锁 / 真实 347,667 / 差异 568,333）  (未达标：getLedger/service.js)
+  OK  M3 [GREEN 期望GREEN] rc=0 · 等价改写（换行改单行）：行为不变 ⇒ 必须保持绿
+      ✅ A9-⑱ 「开库存」S2 上锁样本三副本对拍（倒轧 23,000 / 参考利润仍 916,000 口径锁 / 真实 347,667 / 差异 568,333）  (三副本一致且命中上锁锚点)
+
+=== 逐字节还原自证 ===
+  OK  cloudfunctions/saveLedger/service.js 逐字节相等 = True
+  OK  cloudfunctions/getLedger/service.js 逐字节相等 = True
+  OK  cloudfunctions/calcMonthlyProfit/service.js 逐字节相等 = True
+
+结果：全部如期

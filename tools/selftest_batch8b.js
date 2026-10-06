@@ -647,6 +647,37 @@ const a9SwOffBad = A9_ENGINES.filter((f) => {
 check('A9-⑰ 开关关掉 ⇒ 摊销**不计入利润**（effAmort=0、真实利润 +摊销额；参考利润不随开关变；三副本一致）',
   a9SwOffBad.length === 0, a9SwOffBad.length ? ('未达标：' + a9SwOffBad.join(', ')) : '三副本一致');
 
+// —— A9-⑱（round234 补做 G3）行为级：**「开库存」口径三副本对拍** ——
+//   缺口（R233 审计登记）：A9-⑮⑯⑰ 的样本恒为 inventorySwitchOn:false；而 S2 口径锁锚点
+//   （916000）**只在 calcMonthlyProfit/selftest.js 里测单个引擎** ⇒ 三副本对拍**从未跑过开库存样本**，
+//   「开库存 ⇒ 三个 service.js 是否一致」是零覆盖盲区（谁改坏 saveLedger/getLedger 的倒轧分支，无人报警）。
+//   本条把 S2 上锁样本（收入 64,000 / 费用 32,840 / 直接填消耗 22,000 / 摊销 4,683.33 /
+//   库存 期初5,000 + 采购25,000 − 期末7,000 ⇒ 倒轧真实消耗 23,000）灌进三个 service.js，
+//   要求**三副本同时命中 S2 上锁锚点**（与 `calcMonthlyProfit/selftest.js` #7~#10 同值，不另立新数字）。
+//   ⚠️ 关键腿（口径锁）：倒轧 23,000 ≠ 直接填 22,000，但**参考利润必须仍是 916,000** ——
+//      谁把参考利润改成用倒轧值，本条立刻红（与 A9-⑯ 的 effectiveLumpSum 防回退腿同型）。
+//   （S2 原夹具未传 lumpSumFen ⇒ 此处显式补 0，等价）
+const a9Yuan = (arr) => arr.map((y) => ({ amountFen: Math.round(y * 100) }));
+const a9S2Lock = {
+  incomeItems: a9Yuan([8000, 25000, 5000, 3000, 2000, 18000, 500, 1500, 1000]), // 64,000
+  expenseItems: a9Yuan([8000, 500, 200, 800, 600, 100, 100, 12000, 1500, 800, 500, 200, 3600, 1200, 1500, 300, 400, 240, 300]), // 32,840
+  directConsumeFen: 22000 * 100,
+  amortizeFen: Math.round(4683.33 * 100),
+  amortizeSwitchOn: true, inventorySwitchOn: true, lumpSumFen: 0,
+  inventory: { openingFen: 5000 * 100, purchaseFen: 25000 * 100, closingFen: 7000 * 100 },
+};
+const a9InvBad = A9_ENGINES.filter((f) => {
+  const r = require(path.join(ROOT, 'cloudfunctions/' + f))
+    .calcMonthlyProfit(JSON.parse(JSON.stringify(a9S2Lock)));
+  return !(r.realConsumeFen === 2300000            // 倒轧：期初 + 采购 − 期末
+    && r.operationRefProfitFen === 916000          // 🔴 口径锁：仍用直接填 22,000，不随库存开关改成倒轧
+    && r.totalFactorRealProfitFen === 347667       // 真实利润：用倒轧 23,000 + 摊销 4,683.33
+    && r.profitDiffFen === 568333                  // 差异 = (23,000 − 22,000) + 4,683.33
+    && r.diffCheck === true);
+});
+check('A9-⑱ 「开库存」S2 上锁样本三副本对拍（倒轧 23,000 / 参考利润仍 916,000 口径锁 / 真实 347,667 / 差异 568,333）',
+  a9InvBad.length === 0, a9InvBad.length ? ('未达标：' + a9InvBad.join(', ')) : '三副本一致且命中上锁锚点');
+
 console.log('');
 console.log('===== 门禁预检 =====');
 check('K11 双副本逐字一致', terms === termsSpec);
