@@ -20,7 +20,7 @@ const { isIOS } = require('./platform.js');
  * 用常量数组，而不是 `type !== 'a' && type !== 'b'` —— 后者每加一个能力就多一截 `&&`，
  * 漏加的表现是"点了没反应"（静默），正是 R159 要根治的形态。
  */
-const PAYWALL_TYPES = ['saveLimit', 'export', 'combo', 'takeaway'];
+const PAYWALL_TYPES = ['saveLimit', 'export', 'combo', 'takeaway', 'dishreview'];
 
 /**
  * 打开付费弹窗。

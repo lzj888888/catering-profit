@@ -45,4 +45,13 @@
     </view>
     <view class="hub-go">›</view>
   </view>
+
+  <view class="hub-card" bindtap="goReview">
+    <view class="hub-ico hub-ico-review">{{t.icoReview}}</view>
+    <view class="hub-main">
+      <text class="hub-name">{{t.reviewTitle}}</text>
+      <text class="hub-desc">{{t.reviewSub}}</text>
+    </view>
+    <view class="hub-go">›</view>
+  </view>
 </view>

@@ -248,18 +248,35 @@ check('C-② schema 字段数 ≥ 9（防"两份一起被削成小 schema"仍判
     d.length ? '报 ' + d.length + ' 处，其中 platform ' + hit.length + ' 处' : '⚠️ 未报差异 ⇒ 比较器失效');
 }
 
-// 影子反例 2：行为面 —— 造一个"只在一侧加了 pos"的漂移副本，behaviorDiff **必须**报差异
+// 影子反例 2：行为面 —— 造一个"一侧 enum 少一项"的漂移副本，behaviorDiff **必须**报差异
+// ⚠️ 2026-10-06（R232 收口）**本块修订** —— 原实现用 `enum.concat(['pos'])` 造漂移，
+//   前提是「两侧都还没有 'pos'」。而 v1.6 批次**已正式**给两侧加上 `'pos'`（§5.4 目标态）⇒
+//   再 concat 就变成**重复项**（['…','pos','other','pos']），两份行为**完全一致** ⇒ d=[] ⇒
+//   本判据转红。这属于「**反向伤害二型**」：把**正确的**实现当成漂移样本 ⇒ 改对反红。
+//   🔴 修订原则 —— 漂移样本**必须与当前基线无关**：改为**从现有 enum 里删掉一项**（任何合法 enum
+//   删一项都是真实漂移形态，无论基线含不含 'pos'）；被删项**动态取**（优先 'pos'，缺失则取末项），
+//   并**断言被删项确实存在于基线**（防"删了个不存在的项 ⇒ 两份都没变 ⇒ 恒绿"的假判据）。
 {
+  const baseEnum = (front.SALES_SCHEMA.fields.platform.enum || []).slice();
+  // 动态挑一个**确实存在**的项来删（优先 'pos'：它正是本批新加的渠道，最具代表性）
+  const dropIdx = baseEnum.indexOf('pos') >= 0 ? baseEnum.indexOf('pos') : baseEnum.length - 1;
+  const dropped = baseEnum[dropIdx];
   const clone = deepClone(front.SALES_SCHEMA);
-  clone.fields.platform.enum = clone.fields.platform.enum.concat(['pos']);
+  clone.fields.platform.enum = baseEnum.filter((_, i) => i !== dropIdx);
   const drifted = {
     SALES_SCHEMA: clone,
     checkGradeA: (input, s) => front.checkGradeA(input, s || clone),
   };
   const d = behaviorDiff(front, drifted, battery);
-  // 🔴 差异必须**全部**是 SCHEMA_PLATFORM 那一支（证明确实抓到"pos 放行不一致"，而非抛错/无关差异）
+  // 🔴 差异必须**全部**是 SCHEMA_PLATFORM 那一支（证明确实抓到"渠道放行不一致"，而非抛错/无关差异）
   const onPlatform = d.filter((x) => /SCHEMA_PLATFORM/.test(x));
-  check('C-④ 影子：一侧 enum 加 pos（另一侧没加）⇒ 行为比较器必须报且只报 platform 判别差异（真实漂移形态）',
+  // 自失效护栏：被删项必须真的在基线里（否则影子样本无效 ⇒ 判据恒真）
+  const sampleValid = dropped !== undefined && baseEnum.indexOf(dropped) >= 0
+    && clone.fields.platform.enum.length === baseEnum.length - 1;
+  check('C-④a 影子样本有效（被删枚举项确实存在于基线，且影子 enum 恰好少 1 项）',
+    sampleValid,
+    '基线 enum=' + JSON.stringify(baseEnum) + '，删「' + dropped + '」⇒ 影子 ' + clone.fields.platform.enum.length + ' 项');
+  check('C-④ 影子：一侧 enum 少一项（另一侧没少）⇒ 行为比较器必须报且只报 platform 判别差异（真实漂移形态）',
     d.length >= 1 && onPlatform.length === d.length,
     d.length ? '报 ' + d.length + ' 组（其中 platform 判别 ' + onPlatform.length + ' 组）' : '⚠️ 未报差异 ⇒ 行为判据失效（改一处漏一处将静默）');
 }

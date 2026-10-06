@@ -1,0 +1,21 @@
+/* pages/m3/dishreview/index.wxss —— M3.33 单品毛利复盘页。字号 ≥28rpx、触控 ≥88rpx（AD 门禁）。 */
+.afterfact { font-size: 28rpx; color: #6b7a90; line-height: 1.6; background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 16rpx; }
+.field { display: flex; align-items: center; margin-bottom: 8rpx; }
+.lbl { font-size: 28rpx; color: #1e3a5f; width: 300rpx; flex-shrink: 0; }
+.val-input { flex: 1; padding: 0 20rpx; background: #fff; border: 1rpx solid #e8eff7; border-radius: 10rpx; min-height: 88rpx; font-size: 28rpx; }
+.field-save { display: flex; justify-content: flex-end; margin-top: 16rpx; }
+.muted { font-size: 28rpx; color: #6b7a90; line-height: 1.5; }
+.section-title { font-size: 30rpx; color: #1e3a5f; font-weight: 600; margin: 24rpx 4rpx 12rpx; }
+
+/* 排名表：自定义行（不复用全局 .row —— 那是「间隔卡」语义，这里是表行） */
+.row { display: flex; align-items: center; padding: 20rpx 8rpx; border-bottom: 1rpx solid #eef2f7; font-size: 28rpx; }
+.row.head { color: #8896ab; font-size: 28rpx; border-bottom: 2rpx solid #eef2f7; font-weight: 600; }
+.c-name { flex: 2.2; min-width: 0; display: flex; flex-direction: column; }
+.c-qty { flex: 0.9; text-align: center; }
+.c-num { flex: 1.4; text-align: right; }
+.below { background: #fdf0ee; }
+.below .c-num { color: #e74c3c; font-weight: 600; }
+.snap { font-size: 28rpx; color: #c2701a; margin-top: 4rpx; }
+
+.cell { display: flex; justify-content: space-between; padding: 12rpx 4rpx; border-bottom: 1rpx solid #eef2f7; }
+.val { font-size: 30rpx; color: #1e3a5f; }

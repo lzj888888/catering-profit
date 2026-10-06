@@ -1,0 +1,144 @@
+// pages/m3/dishreview/index.js —— M3.33 单品毛利复盘（只读排名页）
+//
+// 数据：getDishReview() 读 external_sales_daily（堂食）+ shop_cost_card → 服务端排名（§2.4 口径写死）。
+// 🔴 只读：本页只调 getDishReview，**绝不**写成本卡 / M1 / 销量。
+// 🔴 付费墙：看复盘才拦（m3_dishreview）。getDishReview 返回 FEATURE_LOCKED ⇒ openPaywall('dishreview')；
+//    导入可免费保存（见 terms.paywall.dishreview.content）。
+// 🔴 两来源分开呈现：堂食榜 + 外卖空态（红线 18：不默认外卖=0）。
+// 🔴 未匹配菜品单列 + 「去映射」入口（红线 17：不静默归零）。
+// 毛利率阈值用户自定义（默认 30 仅占位，不做成警戒线 —— R128 同族）。
+const api = require('../../../utils/api.js');
+const ui = require('../../../utils/ui.js');
+const { openPaywall } = require('../../../utils/paywall.js');
+const { TERMS } = require('../../../miniprogram/i18n/terms.js');
+
+const fenYuan = (fen) => (Number(fen) || 0) / 100;
+const fmtYuan = (fen) => fenYuan(fen).toFixed(2);
+const fmtPct = (p) => (Number(p) || 0).toFixed(2) + '%';
+
+Page({
+  data: {
+    t: {
+      reviewTitle: TERMS.card.reviewTitle,
+      reviewAfterFact: TERMS.card.reviewAfterFact,
+      reviewDineIn: TERMS.card.reviewDineIn,
+      reviewTakeaway: TERMS.card.reviewTakeaway,
+      reviewTakeawayEmpty: TERMS.card.reviewTakeawayEmpty,
+      reviewRankTitle: TERMS.card.reviewRankTitle,
+      reviewDish: TERMS.card.reviewDish,
+      reviewQty: TERMS.card.reviewQty,
+      reviewRevenue: TERMS.card.reviewRevenue,
+      reviewCost: TERMS.card.reviewCost,
+      reviewGross: TERMS.card.reviewGross,
+      reviewMargin: TERMS.card.reviewMargin,
+      reviewThreshold: TERMS.card.reviewThreshold,
+      reviewThresholdHint: TERMS.card.reviewThresholdHint,
+      reviewUnmatched: TERMS.card.reviewUnmatched,
+      reviewUnmatchedHint: TERMS.card.reviewUnmatchedHint,
+      reviewGoMap: TERMS.card.reviewGoMap,
+      reviewGoCard: TERMS.card.reviewGoCard,
+      reviewEmpty: TERMS.card.reviewEmpty,
+      reviewTotals: TERMS.card.reviewTotals,
+      reviewTotalQty: TERMS.card.reviewTotalQty,
+      reviewTotalRevenue: TERMS.card.reviewTotalRevenue,
+      reviewTotalCost: TERMS.card.reviewTotalCost,
+      reviewTotalGross: TERMS.card.reviewTotalGross,
+      cur: '¥',
+      loading: TERMS.ui.loading,
+    },
+    loading: true,
+    locked: false,
+    threshold: 30,           // 用户自定义阈值（默认占位值，非警戒线）
+    thresholdInput: '30',
+    curMonth: '',
+    dineIn: [],              // 堂食排行（已预处理展示字段）
+    takeaway: null,          // 外卖空态
+    unmatched: [],           // 未匹配菜品
+    totals: null,
+    empty: false,
+  },
+
+  onLoad() { this.init(); },
+  onShow() { if (this.data.locked) this.init(); },   // 从付费弹窗返回后重试
+
+  async init() {
+    try {
+      await api.ensureShop();
+      ui.setTitle(TERMS.card.reviewTitle);
+      this.setData({ curMonth: ui.nowMonth() });
+      await this.load();
+    } catch (e) {
+      this.setData({ loading: false });
+      if (e && e.code === 'FEATURE_LOCKED') {
+        this.setData({ locked: true });
+        openPaywall('dishreview', { shopId: (getApp().globalData && getApp().globalData.shop_id) || '' });
+        return;
+      }
+      api.toastError(e);
+    }
+  },
+
+  async load() {
+    this.setData({ loading: true });
+    const d = await api.call('getDishReview', {});
+    const curMonth = this.data.curMonth;
+
+    const dineIn = (d.dine_in || []).map((x) => {
+      const snapMonth = x.snapshot_month || '';
+      const isOld = snapMonth && snapMonth !== curMonth;
+      return {
+        name: x.name || x.dish_key,
+        qty: x.qty,
+        revenueText: fmtYuan(x.amountFen),
+        costText: fmtYuan(x.totalCostFen),
+        grossText: fmtYuan(x.grossFen),
+        marginPct: x.marginPct,
+        marginText: fmtPct(x.marginPct),
+        snapshotNote: isOld ? TERMS.card.reviewSnapshotOf(snapMonth) : '',
+        below: false,
+      };
+    });
+    const unmatched = (d.unmatched || []).map((x) => ({
+      name: x.name || x.dish_key,
+      qty: x.qty,
+      amountText: fmtYuan(x.amountFen),
+    }));
+    const totals = d.totals ? {
+      qty: d.totals.qty,
+      revenueText: fmtYuan(d.totals.amountFen),
+      costText: fmtYuan(d.totals.costFen),
+      grossText: fmtYuan(d.totals.grossFen),
+    } : null;
+
+    this.setData({
+      loading: false,
+      locked: false,
+      dineIn,
+      unmatched,
+      totals,
+      takeaway: d.takeaway,   // null ⇒ 空态
+      empty: dineIn.length === 0 && unmatched.length === 0,
+    });
+    this.markRows();
+  },
+
+  // 阈值变化 → 重标红（仅提示，不影响任何计算口径）
+  onThreshold(e) {
+    const raw = e.detail.value;
+    const n = Number(raw);
+    this.setData({
+      thresholdInput: raw,
+      threshold: isFinite(n) && n >= 0 ? n : 0,
+    });
+    this.markRows();
+  },
+
+  markRows() {
+    const th = this.data.threshold;
+    const rows = this.data.dineIn.map((x) => Object.assign({}, x, { below: x.marginPct < th }));
+    this.setData({ dineIn: rows });
+  },
+
+  // 「去映射」= 去建缺失的成本卡（未匹配菜品没有对应卡 ⇒ 建了卡即自动匹配）
+  goMap() { wx.navigateTo({ url: '/pages/card/index' }); },
+});

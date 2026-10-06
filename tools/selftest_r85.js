@@ -318,6 +318,17 @@ const A15_EXEMPT = [
   // ===== 批次 M2v1.3（业态参数包）：扩既有 exportData 加 m2_compare 分支（非新增函数）=====
   // by=WorkBuddy / date=2026-10-06 / reason=M2v1.3 对比表导出扩 exportData（§7.2）
   /^cloudfunctions\/exportData\//,
+  // ⚠️ 2026-10-06（R232 收口）**十七次触发** —— 同一时机关卡第 17 次：批次 G · M3.33 阶段②
+  //   （单品毛利复盘 / 销量导入）交付。改动面 = ① **新增云函数** `getDishReview/`（读侧：聚合
+  //   `external_sales_daily` 的菜品级销量 → 按 `shop_dish_mapping` 归位到成本卡 → 出单品毛利复盘行）；
+  //   ② 复用既有 `importSalesBill/`（**已在 R181l 条目内**）扩「堂食菜品表」解析（形态 A/B/C）；
+  //   ③ **单源** `common/entitlement.js` 的 `PAID_FEATURES` 新增付费键 `m3_dishreview`（**已在
+  //   round147 的 `/^cloudfunctions\/common\//` 条目内**）⇒ 派生 `cx_entitlement.js` 同步变动
+  //   （**已在 round147 的 `cx_entitlement.js` 条目内**）。
+  //   均为投喂包**显式授权**的后端改动（§2.6 付费墙四处联动 + §2.7 函数面同步表），非「顺手改云函数逻辑」；
+  //   沿用 round103 的**白名单式**登记（精确到目录），**绝不放宽成 `cloudfunctions/` 全豁免**：
+  //   by=WorkBuddy / date=2026-10-06 / reason=R232 授权批次 G M3.33 阶段② 新增 getDishReview（单品毛利复盘读侧）
+  /^cloudfunctions\/getDishReview\//,
 ];
 check('A15 云函数逻辑零改动（仅 initDb 建库单源 + 本批授权函数豁免）', (() => {
   const { execFileSync } = require('child_process');

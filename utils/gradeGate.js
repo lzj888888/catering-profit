@@ -15,7 +15,7 @@ const SALES_SCHEMA = {
     dish_key: { type: 'string', required: true },
     qty: { type: 'number', required: true, integer: true, min: 0 },
     amount: { type: 'number', required: true, integer: true },
-    platform: { type: 'string', required: true, enum: ['taobao', 'meituan', 'eleme', 'other'] },
+    platform: { type: 'string', required: true, enum: ['taobao', 'meituan', 'eleme', 'pos', 'other'] },
     source: { type: 'string', required: true, enum: ['oauth', 'excel', 'manual'] },
     created_at: { type: 'number', required: true, integer: true },
   },

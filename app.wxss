@@ -161,6 +161,7 @@ page { background: #f5f6f8; font-family: -apple-system, "PingFang SC", sans-seri
 .hub-ico-material { background: linear-gradient(135deg, #2fae7c 0%, #1a7d55 100%); }
 .hub-ico-takeaway { background: linear-gradient(135deg, #c2701a 0%, #8f4f08 100%); }
 .hub-ico-recon { background: linear-gradient(135deg, #8792a3 0%, #566070 100%); }
+.hub-ico-review { background: linear-gradient(135deg, #b0528a 0%, #7a345f 100%); }
 /* hero 内的文字色（白字 + 淡蓝副文案）—— 色值单源，hub.wxss 不重复第二份 */
 .hub-hero .hub-title { color: #fff; font-size: 40rpx; }
 .hub-hero .hub-sub { color: #d7e2ef; margin-top: 10rpx; }

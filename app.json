@@ -21,6 +21,7 @@
     "pages/takeaway/index",
     "pages/metrics/impact",
     "pages/recon/index",
+    "pages/m3/dishreview/index",
     "pages/pay/orders",
     "pages/shop/switch",
     "pages/mine/index"

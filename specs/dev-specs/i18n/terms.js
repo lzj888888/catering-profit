@@ -97,6 +97,12 @@ const TERMS = {
       primary: '去开通', // ⚠️ ≤4 字符（平台硬限制）
       secondary: '再想想',
     },
+    dishreview: {
+      title: '复盘需开通',
+      content: '单品毛利复盘为专业版功能：导入可免费保存，开通后解锁单品毛利排行榜。',
+      primary: '去开通', // ⚠️ ≤4 字符（平台硬限制）
+      secondary: '再想想',
+    },
     // ⚠️ 平台限制：wx.showModal 的 confirmText / cancelText **最多 4 个字符**，超了弹窗直接 fail
     //   （真机事故 2026-09-26：primary「开通真实利润」6 字 ⇒ showmodal:fail confirm text length）。
     //   故弹窗按钮**单独**用 ctaShort（≤4）；带功能名的长文案留给页面按钮（buttons.unlockPro）。
@@ -1108,6 +1114,33 @@ const TERMS = {
     reconAttr2: '② 卡内价 ≠ 原料现价（部分卡用了旧价）',
     reconAttr3: '③ 出品超耗 / 损耗 / 报废 / 赠送',
     reconAttr4: '④ 口径差异（外卖到手 vs 总额法）',
+    // ===== M3.33（批次 G） 单品毛利复盘（导入销量 → 排行榜）=====
+    //   【事后复盘】口径文案（v1.2 §M3.35 原文），落 card 命名空间、不新建顶层命名空间。
+    reviewTitle: '单品毛利复盘',
+    reviewAfterFact: '本报表基于标准成本卡 × 销售份数推演，仅作经营参考；如需门店真实账面成本，请使用 M1 月度核算。',
+    reviewDineIn: '堂食',
+    reviewTakeaway: '外卖',
+    reviewTakeawayEmpty: '本批暂不支持外卖商品销量导入（样例未到），外卖侧暂无数据，不按 0 计入。',
+    reviewRankTitle: '单品毛利排行榜',
+    reviewDish: '菜品',
+    reviewQty: '份数',
+    reviewRevenue: '营收',
+    reviewCost: '物料成本',
+    reviewGross: '毛利',
+    reviewMargin: '毛利率',
+    reviewThreshold: '毛利率标红阈值（%）',
+    reviewThresholdHint: '低于此阈值的菜品标红，仅提示、不影响核算。',
+    reviewUnmatched: '未匹配菜品',
+    reviewUnmatchedHint: '以下菜品未匹配到成本卡，无法计算毛利。请点「去映射」或新建成本卡。',
+    reviewGoMap: '去映射',
+    reviewGoCard: '新建成本卡',
+    reviewEmpty: '还没有导入堂食销量，请先在「外卖」页导入《菜品销售统计》。',
+    reviewSnapshotOf: (m) => `该卡成本为 ${m} 月快照`,
+    reviewTotals: '汇总',
+    reviewTotalQty: '总份数',
+    reviewTotalRevenue: '总营收',
+    reviewTotalCost: '总物料成本',
+    reviewTotalGross: '总毛利',
   },
 
   // ===== 十四-bis、M3 模块枢纽页（pages/m3/hub）=====
@@ -1131,14 +1164,17 @@ const TERMS = {
     takeawaySub: '一单卖出去，到手多少、赚多少',
     reconTitle: 'M1↔M3 对账',
     reconSub: '账本上的数 vs 菜品卡推出来的数',
+    reviewTitle: '单品毛利复盘',
+    reviewSub: '导入销量，看哪道菜在拖毛利后腿',
     // 「涨价影响面」不单独占一张卡：它的入口埋在原料库每条原料上（点具体原料才谈得上影响面），
-    //   摆在枢纽页会变成「不知道先选哪个原料」的死路 —— 保持 4 张，与方案 §3.1 一致。
+    //   摆在枢纽页会变成「不知道先选哪个原料」的死路 —— 保持 5 张（含单品毛利复盘）。
     // R192：分区卡左侧图标块的**单字**（不用 emoji：微信真机在部分字体下宽高不一致、会塌行）
     //   ⚠️ 这不是装饰：图标块 = 整卡体积感的抓手（替代 R191 那条被判「像括号」的左侧色条）
     icoCard: '卡',
     icoMaterial: '料',
     icoTakeaway: '外',
     icoRecon: '账',
+    icoReview: '榜',
   },
 
   // ===== 十五、M1 库存录入页（shop_inventory）=====

@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：144 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：145 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -387,6 +387,13 @@
 //         记的正是这次真机事故）。`xlsx`（R181l 引入于 importSalesBill）是全仓**唯一**非原生依赖 ⇒ 这一类风险刚变活。
 //         判据 = S 扫描面（含**锚点** importSalesBill:xlsx，扫描面被写窄即红）+ A require ⊆ deps（正向，缺声明点名）
 //         + B deps ⊆ require（反向，防僵尸依赖）+ C 合成样本自证 + 断言数下界。12 条断言）
+//       + M3.33 表形态解析守卫（tools/check_m333_parse.js，R231：批次 G 给 importSalesBill/service.js 加了「堂食菜品表」
+//         解析 —— 形态判定 A/B/C fail-closed、两行表头 R3/R4、合计行排除、单位转分、qty 取整、dish_key NFKC 归一、
+//         external_ref_id 编码 DISH:…:dish_key、幂等 _id SALE_…_seq。三条写库正确性前置（合计行不排 ⇒ qty 虚增 100% /
+//         ref_id 不含 dish_key ⇒ 同天只落得下 1 条 / qty 不取整 ⇒ 撞 SALES_SCHEMA::qty integer）此前零机器判据。
+//         判据 = S service.js 可加载（xlsx 空桩）+ R231-1 形态常量 ≡ 真表（265 行 / 合计排除 / 单位=元 / Σ锚点）
+//         + R231-2 ref_id 必含 dish_key + R231-3 qty 恒整数 + R231-5 幂等 + 未匹配不归零；配反例（纳入合计行 ⇒ 266 /
+//         BILL: 形态 ⇒ 判红 / 3280.3 未 round ⇒ 判红）。23 条断言）
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -803,6 +810,8 @@ const SUITES = [
   ['biz-preset',           'tools/check_biz_preset.js'],
   ['grade-gate-dual',      'tools/check_grade_gate_dual.js'],
   ['fn-deps',              'tools/check_fn_deps.js'],
+  // R231（批次 G · M3.33）：堂食菜品表解析守卫 —— 见头注 R231 段。
+  ['m333-parse',           'tools/check_m333_parse.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

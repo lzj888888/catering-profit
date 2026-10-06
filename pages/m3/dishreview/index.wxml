@@ -1,0 +1,75 @@
+<view class="container safe-bottom" wx:if="{{!loading}}">
+  <!-- 付费未开通态：只留提示 + 事后复盘口径（点返回后 onShow 会重试） -->
+  <block wx:if="{{locked}}">
+    <view class="card2">
+      <view class="muted">{{t.reviewAfterFact}}</view>
+    </view>
+  </block>
+
+  <block wx:else>
+    <!-- 事后复盘口径（v1.2 §M3.35 原文，落 card 命名空间） -->
+    <view class="afterfact">{{t.reviewAfterFact}}</view>
+
+    <!-- 毛利率标红阈值（用户自定义，默认占位值，非警戒线） -->
+    <view class="field">
+      <text class="lbl">{{t.reviewThreshold}}</text>
+      <input class="val-input" type="digit" value="{{thresholdInput}}" bindinput="onThreshold" adjust-position="{{true}}" cursor-spacing="20" />
+    </view>
+    <view class="muted">{{t.reviewThresholdHint}}</view>
+
+    <!-- 空态 -->
+    <view class="card2" wx:if="{{empty}}">
+      <view class="muted">{{t.reviewEmpty}}</view>
+    </view>
+
+    <!-- 堂食榜（两来源分开呈现；外卖空态另列，不混榜） -->
+    <view class="section-title">{{t.reviewDineIn}} · {{t.reviewRankTitle}}</view>
+    <view class="card2" wx:if="{{dineIn.length}}">
+      <view class="row head">
+        <text class="c-name">{{t.reviewDish}}</text>
+        <text class="c-qty">{{t.reviewQty}}</text>
+        <text class="c-num">{{t.reviewRevenue}}</text>
+        <text class="c-num">{{t.reviewGross}}</text>
+        <text class="c-num">{{t.reviewMargin}}</text>
+      </view>
+      <view class="row {{item.below ? 'below' : ''}}" wx:for="{{dineIn}}" wx:key="name">
+        <view class="c-name">
+          <text>{{item.name}}</text>
+          <text class="snap" wx:if="{{item.snapshotNote}}">{{item.snapshotNote}}</text>
+        </view>
+        <text class="c-qty">{{item.qty}}</text>
+        <text class="c-num">{{t.cur}}{{item.revenueText}}</text>
+        <text class="c-num">{{t.cur}}{{item.grossText}}</text>
+        <text class="c-num">{{item.marginText}}</text>
+      </view>
+    </view>
+
+    <!-- 汇总 -->
+    <view class="card2" wx:if="{{totals}}">
+      <view class="cell"><text class="lbl">{{t.reviewTotalQty}}</text><text class="val">{{totals.qty}}</text></view>
+      <view class="cell"><text class="lbl">{{t.reviewTotalRevenue}}</text><text class="val">{{t.cur}}{{totals.revenueText}}</text></view>
+      <view class="cell"><text class="lbl">{{t.reviewTotalCost}}</text><text class="val">{{t.cur}}{{totals.costText}}</text></view>
+      <view class="cell"><text class="lbl">{{t.reviewTotalGross}}</text><text class="val">{{t.cur}}{{totals.grossText}}</text></view>
+    </view>
+
+    <!-- 外卖空态（红线 18：不默认外卖=0） -->
+    <view class="section-title">{{t.reviewTakeaway}}</view>
+    <view class="card2">
+      <view class="muted">{{t.reviewTakeawayEmpty}}</view>
+    </view>
+
+    <!-- 未匹配菜品（红线 17：不静默归零，单列 + 去映射入口） -->
+    <view class="section-title" wx:if="{{unmatched.length}}">{{t.reviewUnmatched}}</view>
+    <view class="card2" wx:if="{{unmatched.length}}">
+      <view class="muted">{{t.reviewUnmatchedHint}}</view>
+      <view class="row" wx:for="{{unmatched}}" wx:key="name">
+        <view class="c-name"><text>{{item.name}}</text></view>
+        <text class="c-qty">{{item.qty}}</text>
+        <text class="c-num">{{t.cur}}{{item.amountText}}</text>
+      </view>
+      <view class="field-save">
+        <button class="btn-small ghost" bindtap="goMap">{{t.reviewGoMap}}</button>
+      </view>
+    </view>
+  </block>
+</view>

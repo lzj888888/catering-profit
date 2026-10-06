@@ -26,6 +26,8 @@ Page({
       takeawaySub: TERMS.hub.takeawaySub,
       reconTitle: TERMS.hub.reconTitle,
       reconSub: TERMS.hub.reconSub,
+      reviewTitle: TERMS.hub.reviewTitle,
+      reviewSub: TERMS.hub.reviewSub,
       countPrefix: TERMS.card.countPrefix,
       countSuffix: TERMS.card.countSuffix,
       // R192：图标块单字（wxml 用到就必须登记 —— 漏登记 ⇒ 页面静默空白，本仓 R189 P2-1 同族）
@@ -33,6 +35,7 @@ Page({
       icoMaterial: TERMS.hub.icoMaterial,
       icoTakeaway: TERMS.hub.icoTakeaway,
       icoRecon: TERMS.hub.icoRecon,
+      icoReview: TERMS.hub.icoReview,
     },
     // -1 = 没取到（就不显示这行）。🔴 **绝不能默认 0**：读不到时显示「共 0 张」
     //   会让老板以为卡丢了 —— 与本仓「不替用户编数」同一条纪律（M2 参考值只提示不预填）。
@@ -67,6 +70,7 @@ Page({
   goMaterial() { wx.navigateTo({ url: '/pages/material/index' }); },
   goTakeaway() { wx.navigateTo({ url: '/pages/takeaway/index' }); },
   goRecon() { wx.navigateTo({ url: '/pages/recon/index' }); },
+  goReview() { wx.navigateTo({ url: '/pages/m3/dishreview/index' }); },
 
   // R193：全局开了下拉刷新但本页未实现 ⇒ 下拉转圈、松手没反应（假刷新）。
   onPullDownRefresh() { this.loadCount().then(() => wx.stopPullDownRefresh()); },

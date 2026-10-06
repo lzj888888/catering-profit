@@ -134,7 +134,7 @@ const SALES_SCHEMA = {
     dish_key: { type: 'string', required: true },
     qty: { type: 'number', required: true, integer: true, min: 0 },
     amount: { type: 'number', required: true, integer: true },
-    platform: { type: 'string', required: true, enum: ['taobao', 'meituan', 'eleme', 'other'] },
+    platform: { type: 'string', required: true, enum: ['taobao', 'meituan', 'eleme', 'pos', 'other'] },
     source: { type: 'string', required: true, enum: ['oauth', 'excel', 'manual'] },
     created_at: { type: 'number', required: true, integer: true },
   },
@@ -185,4 +185,140 @@ function checkGradeA(input, schema) {
   return { pass: failures.length === 0, level: 'A', failures };
 }
 
-module.exports = { bufferToMatrix, detectPlatform, guessHeader, parseBillMatrix, checkGradeA, SALES_SCHEMA, toNum };
+// ===================== M3.33 单品毛利复盘（批次 G） 表形态解析 =====================
+//
+// 依据 specs/dev-specs/core/开发规范v1.6_ModuleM3增量_M3.33阶段二解析与清洗定案.md：
+//   三种表形态（§3.4 fail-closed，零命中/多命中不许猜）+ 堂食《菜品销售统计》解析（§4）。
+// 🔴 引擎四函数（netUnitCostWan / lineNetCostYuan / calcCostCard / wouldCreateCycle）零改动 —— 本段纯上层。
+
+// 表形态（§2.1.1 / §3）
+const DISH_SHAPES = {
+  A: 'dish_sales',    // 堂食《菜品销售统计》（美团收银 POS）—— 主路径
+  B: 'combo_detail',  // 团购《套餐销售明细》—— 仅交叉校验，不入库
+  C: 'waimai_goods',  // 外卖「商品销量」—— 预留，待样例
+};
+
+// 形态 A 表结构常量（§2.1.2 实测 · 六项必核）
+const DISH_A_STRUCT = {
+  headerRow1: 3,        // R3 一级表头（1-based）
+  headerRow2: 4,        // R4 二级表头（「销售额构成」/「菜品收入构成」各横跨 3 列）
+  dataStartRow: 5,      // 数据 R5 起
+  totalLabel: '合计',   // 末行首列 = 合计 ⇒ 必须排除（§4.2）
+  // 列序（1-based）：名称 / 数量 / 销售额(元) / 收入(元) / 优惠(元)
+  colName: 1, colQty: 2, colSales: 4, colIncome: 6, colDiscount: 8,
+};
+
+// 名称归一：trim + NFKC（全角字母/数字 → 半角）后作 dish_key；保留规格后缀与括号（§4.4/§4.7）
+function normalizeDishName(name) {
+  if (name == null) return '';
+  let s = String(name).trim();
+  try { s = s.normalize('NFKC'); } catch (e) { /* 老运行时无 normalize 则原样 */ }
+  return s;
+}
+
+// 单 sheet 形态判定（§3.4 fail-closed）。sheetRows：0-based 二维 cells。
+// A ← 有 '菜品名称' + '销售数量' 且 R2 含 '销售方式'；B ← 有 '套餐' + '单品名称'；C ← 有 '商品名称' + '商品销量'。
+function detectDishShape(sheetRows) {
+  const rows = sheetRows || [];
+  const hdr = (rows[2] || []).map((x) => (x == null ? '' : String(x).trim()));  // R3
+  const r2 = (rows[1] || []).map((x) => (x == null ? '' : String(x))).join('');  // R2 参数自述
+  const has = (c) => hdr.indexOf(c) >= 0;
+  if (has('菜品名称') && has('销售数量') && r2.indexOf('销售方式') >= 0) return DISH_SHAPES.A;
+  if (has('套餐') && has('单品名称')) return DISH_SHAPES.B;
+  if (has('商品名称') && has('商品销量')) return DISH_SHAPES.C;
+  return null;
+}
+
+// 从矩阵里找第一个可识别的菜品表（供入口分流用）。返回 { shape, sheet }；识别不出 ⇒ shape null。
+function detectDishMatrix(matrix) {
+  const sheets = (matrix && matrix.sheets) || {};
+  for (const name of Object.keys(sheets)) {
+    const shape = detectDishShape((sheets[name] || {}).rows);
+    if (shape) return { shape, sheet: name };
+  }
+  return { shape: null, sheet: '' };
+}
+
+// 从 R2 参数行提取营业日期（取「至」= 结束日，确定性 ⇒ 幂等）。返回 YYYY-MM-DD，取不到返回 ''。
+function extractBizDate(sheetRows) {
+  const r2 = ((sheetRows || [])[1] || []).map((x) => (x == null ? '' : String(x))).join('');
+  const dates = r2.match(/\d{4}[/\-]\d{1,2}[/\-]\d{1,2}/g) || [];
+  if (!dates.length) return '';
+  const last = dates[dates.length - 1];
+  const m = last.match(/^(\d{4})[/\-](\d{1,2})[/\-](\d{1,2})$/);
+  if (!m) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return m[1] + '-' + pad(m[2]) + '-' + pad(m[3]);
+}
+
+// external_ref_id 编码（§5.1）：必含 dish_key 段 —— 否则唯一索引 (shop_id, biz_date, external_ref_id)
+//   会让同平台同天所有菜共用同一三元组 ⇒ 只落得下 1 条。
+function dishRefId(platform, bizDate, dishKey) {
+  return 'DISH:' + platform + ':' + bizDate + ':' + dishKey;
+}
+
+// _id 确定性形态（§2.2）：SALE_<shop>_<platform>_<biz_date>_<seq> ⇒ 同表重导覆盖同一文档（幂等）。
+function saleDocId(shopId, platform, bizDate, seq) {
+  return 'SALE_' + shopId + '_' + platform + '_' + bizDate + '_' + seq;
+}
+
+const round1 = (n) => Math.round(n * 10) / 10;
+
+// 解析形态 A（堂食《菜品销售统计》）。
+// 返回 { shape, bizDate, rows, totals, nonInt, unmatched }。
+//   · rows：{ name, dishKey, qty(整数), amountFen(收入元→分整数), salesFen, discountFen, rawQty, nonInt }
+//   · amountFen 取「菜品收入(元)」列（= 销售额 − 优惠，§5.3 实际收入口径），不用毛销售额
+//   · qty = Math.round(原始 qty)（§5.2）；非整数行进 nonInt（解析报告单列，不静默）
+//   · 合计行（首列 == 合计）排除（§4.2）
+function parseDishSales(sheetRows, opts) {
+  const rows = sheetRows || [];
+  const c = DISH_A_STRUCT;
+  const out = [];
+  const nonInt = [];
+  const unmatched = [];
+  for (let i = c.dataStartRow - 1; i < rows.length; i++) {
+    const r = rows[i] || [];
+    const name0 = (r[0] == null ? '' : String(r[0])).trim();
+    if (name0 === c.totalLabel) break;                 // 合计行，排除且停（恰在末行）
+    const rawQty = toNum(r[c.colQty - 1]);
+    const income = toNum(r[c.colIncome - 1]);
+    const sales = toNum(r[c.colSales - 1]);
+    const discount = toNum(r[c.colDiscount - 1]);
+    if (name0 === '' && rawQty == null && income == null && sales == null) continue; // 全空行跳过
+    const qty = rawQty == null ? 0 : Math.round(rawQty);   // §5.2 恒整数
+    const isNonInt = rawQty != null && !Number.isInteger(rawQty);
+    if (isNonInt) nonInt.push({ name: name0, raw: rawQty, rounded: qty });
+    const amountFen = Math.round((income == null ? 0 : income) * 100);       // 收入元→分整数
+    const salesFen = Math.round((sales == null ? 0 : sales) * 100);
+    const discountFen = Math.round((discount == null ? 0 : discount) * 100);
+    const dishKey = normalizeDishName(name0);
+    // 菜名 '-' 或空（外卖未建映射 / 空行）⇒ 归未匹配（§1.3-2 / 红线 17），不落为菜名
+    if (dishKey === '' || dishKey === '-') { unmatched.push({ name: name0, dishKey, rawQty, qty, amountFen }); continue; }
+    out.push({
+      name: name0, dishKey, qty, amountFen, salesFen, discountFen,
+      rawQty: rawQty == null ? 0 : rawQty, nonInt: isNonInt,
+    });
+  }
+  const totals = {
+    qty: round1(out.reduce((s, x) => s + x.rawQty, 0)),
+    sales: round1(out.reduce((s, x) => s + x.salesFen / 100, 0)),
+    income: round1(out.reduce((s, x) => s + x.amountFen / 100, 0)),
+    discount: round1(out.reduce((s, x) => s + x.discountFen / 100, 0)),
+    amountFen: out.reduce((s, x) => s + x.amountFen, 0),
+    rowCount: out.length,
+  };
+  return {
+    shape: DISH_SHAPES.A,
+    bizDate: extractBizDate(rows),
+    rows: out,
+    totals,
+    nonInt,
+    unmatched,
+  };
+}
+
+module.exports = {
+  bufferToMatrix, detectPlatform, guessHeader, parseBillMatrix, checkGradeA, SALES_SCHEMA, toNum,
+  DISH_SHAPES, DISH_A_STRUCT, normalizeDishName, detectDishShape, detectDishMatrix,
+  extractBizDate, dishRefId, saleDocId, parseDishSales,
+};

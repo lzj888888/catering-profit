@@ -24,8 +24,8 @@ function isPaid(expireAt, now) {
   return Number(expireAt || 0) > (now == null ? nowUtc() : now);
 }
 
-/** 付费域能力清单。S1 套餐 / S2 外卖在此登记；**未登记的能力一律免费**（开放默认，不因漏登记而锁死用户）。 */
-const PAID_FEATURES = ['export', 'm3_combo', 'm3_takeaway'];
+/** 付费域能力清单。S1 套餐 / S2 外卖 / S3 单品毛利复盘在此登记；**未登记的能力一律免费**（开放默认，不因漏登记而锁死用户）。 */
+const PAID_FEATURES = ['export', 'm3_combo', 'm3_takeaway', 'm3_dishreview'];
 
 /**
  * 读取权益到期时间（无档 = 0 = 免费）。
