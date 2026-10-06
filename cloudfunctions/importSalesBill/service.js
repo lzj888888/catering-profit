@@ -7,6 +7,14 @@
 //   本份是云函数侧的等价副本（口径一致，锚点由自测守）。
 const XLSX = require('xlsx');
 
+// 🔴 R232 C-9：菜品名归一**必须**走单源 common/dishKey.js（经扁平派生件 ./common 命中）。
+//   此前本文件内联过一份 normalizeDishName，读侧 getDishReview 又内联了一份 normName，
+//   环上零守卫 ⇒ 任一侧改规则即分叉 ⇒ **全菜匹配不上**且**无报错**（失效静默）。
+//   写法与仓内其它云函数完全一致（const { ... } = require('./common')）；
+//   common/ 全层零外部依赖（已实测可直接加载），不污染本文件「纯逻辑」的定位。
+const common = require('./common');
+const { normalizeDishName } = common;
+
 // ===================== 通用：字符串 → 数值（移植 parse_bill.py::to_num）=====================
 function toNum(v) {
   if (v == null) return null;
@@ -221,13 +229,9 @@ const DISH_A_STRUCT = {
   colName: 1, colQty: 2, colSales: 4, colIncome: 6, colDiscount: 8,
 };
 
-// 名称归一：trim + NFKC（全角字母/数字 → 半角）后作 dish_key；保留规格后缀与括号（§4.4/§4.7）
-function normalizeDishName(name) {
-  if (name == null) return '';
-  let s = String(name).trim();
-  try { s = s.normalize('NFKC'); } catch (e) { /* 老运行时无 normalize 则原样 */ }
-  return s;
-}
+// 名称归一（trim + NFKC，保留规格后缀与括号 —— §4.4/§4.7）
+// 🔴 R232 C-9：实现已上提到单源 common/dishKey.js 并由顶部 require('./cx_dishKey') 引入，
+//    本文件**不得**再内联第二份。伴侣守卫：tools/check_dish_key_single_source.js。
 
 // 单 sheet 形态判定（§3.4 fail-closed）。sheetRows：0-based 二维 cells。
 // A ← 有 '菜品名称' + '销售数量' 且 R2 含 '销售方式'；B ← 有 '套餐' + '单品名称'；C ← 有 '商品名称' + '商品销量'。

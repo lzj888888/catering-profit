@@ -19,13 +19,10 @@ const { ERROR_CODES, ok, fail } = common;
 const { hasFeature } = common;
 const { makeAdapter } = common.dataAdapter;
 
-// 名称归一（与 cloudfunctions/importSalesBill/service.js::normalizeDishName 同口径）
-function normName(name) {
-  if (name == null) return '';
-  let s = String(name).trim();
-  try { s = s.normalize('NFKC'); } catch (e) { /* 老运行时无 normalize 则原样 */ }
-  return s;
-}
+// 🔴 R232 C-9：名称归一**必须**走单源 common/dishKey.js::normalizeDishName。
+//   此处原有一份内联 normName()（注释只写「与 service.js 同口径」，但**环上零守卫**）：
+//   任一侧将来改规则 ⇒ 两侧分叉 ⇒ **全菜匹配不上** ⇒ 用户看到「所有菜都没成本」且**无报错**（失效静默）。
+const { normalizeDishName } = common.dishKey;
 
 // 🔴 R232 C-10：月份格式化**必须**走单源 common/utilTime.js::toMonth（UTC 口径）。
 //   此处原有一份 monthOf() 用本地时区 getFullYear()/getMonth()，违反 utilTime 文件头明文的
@@ -66,7 +63,7 @@ exports.main = async (event) => {
     if (!cur || (c.version || 0) > (cur.version || 0)) latestByCode.set(cc, c);
   }
   for (const [cc, c] of latestByCode) {
-    const nm = normName(c.name);
+    const nm = normalizeDishName(c.name);
     if (nm) nameToCode.set(nm, cc);
   }
 
@@ -85,7 +82,7 @@ exports.main = async (event) => {
   const ranked = [];
   const unmatched = [];
   for (const [dishKey, a] of agg) {
-    const cardCode = nameToCode.get(normName(dishKey)) || '';
+    const cardCode = nameToCode.get(normalizeDishName(dishKey)) || '';
     const card = cardCode ? latestByCode.get(cardCode) : null;
     if (!card) {
       unmatched.push({ dish_key: dishKey, name: dishKey, qty: a.qty, amountFen: a.amountFen });

@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：146 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：147 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -414,6 +414,23 @@
 //         + ④ 单源仍 UTC + getDishReview **剥离注释后**确从 common.utilTime 取 toMonth（V4 实证：不剥注释会被注释骗过）
 //         + 无本地 YYYY-MM 拼装（不查函数名 —— 换名也能抓）+ 真调单源 toMonth 验 UTC 边界 + 样本区分力护栏。14 条断言；
 //         变异回灌 5/5 全有效红（含「换名重写 toMonth」「单源改本地时区」两类绕过尝试）
+//       + dish_key 单源守卫（tools/check_dish_key_single_source.js，R232 C-9：同批审查发现的**第三条同族病** ——
+//         写侧 importSalesBill/service.js 内联一份 normalizeDishName、读侧 getDishReview/index.js 又内联一份
+//         normName（注释只写「与 service.js 同口径」），**环上零守卫** ⇒ 任一侧改规则即分叉
+//         ⇒ 写进库的 dish_key ≠ 读侧拿去匹配成本卡的 key ⇒ **所有菜都匹配不上**，
+//         且**没有任何报错**（只是 unmatched 变多）—— 最坏的一类失效：**静默**。
+//         修法：上提到 cloudfunctions/common/dishKey.js，两侧一律从同一处取。
+//         🔴 **两条判据纪律（本轮实证，都是我方首跑判据错）**：
+//           ① **派生副本不能比函数引用**：守卫 require 的是单源 common/dishKey.js，而 service.js 经
+//              require('./common') 拿到的是派生副本 importSalesBill/cx_dishKey.js —— 两个独立文件
+//              ⇒ `===` **恒不成立**（首跑就红在这）。只能判**行为等价**（同组样本返回值逐一同）。
+//           ② **变体规则必须对中文有作用**：首版用 toLowerCase 做「分叉变体」，但中文无大小写
+//              ⇒ 变体结果与单源完全相同、无区分力（假绿）；改用「去括号内容」才真正有区分力。
+//         判据 = ① 单源可达 + 聚合入口已导出（genId 教训：漏导 ⇒ 真云 TypeError）+ common 全层零外部依赖
+//         + ② 剥注释后两侧均无本地内联（查算法特征串 `.normalize('NFKC')`，改名也抓得住）+ 两侧均从单源取
+//         + ③ 写侧与单源**行为等价**（8 样本）+ 聚合入口 ≡ 单源（===）+ 单源口径样本（trim/NFKC/保留括号/null）
+//         + ④ 自失效护栏（样本有区分力 / 分叉确致 key 不等 / stripComments 自证有效）。12 条断言；
+//         变异回灌 4/4 全有效红（读侧重内联 / 写侧重内联 / 单源改规则 / 聚合入口漏导）
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -835,6 +852,10 @@ const SUITES = [
   // R232（批次 G 交付后端到端审查）：时间口径守卫 —— Excel 日期单元格失准(C-11) + 月份 UTC 铁律(C-10)。
   //   判据一律「行为」而非「字面」：把真实 Excel 序列号喂进生产函数断言返回值。见头注 R232 段。
   ['excel-date-utc',       'tools/check_excel_date_utc.js'],
+  // R232 C-9：菜品名归一(dish_key)单源守卫 —— 写侧 importSalesBill 与读侧 getDishReview
+  //   曾各内联一份归一函数且环上零守卫 ⇒ 任一侧改规则即分叉 ⇒ **全菜匹配不上且不报错**（失效静默）。
+  //   ⚠️ 判据纪律：剥注释后查算法特征串（改名也抓得住）；派生副本**不能**比函数引用 `===`，只能比行为。
+  ['dish-key-single',      'tools/check_dish_key_single_source.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

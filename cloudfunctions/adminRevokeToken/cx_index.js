@@ -66,4 +66,11 @@ module.exports = {
   buildComboLines: require('./cx_comboDerive').buildComboLines,
   comboInsight: require('./cx_comboDerive').comboInsight,
   judgeComboRef: require('./cx_comboDerive').judgeComboRef,
+
+  // R232 C-9：菜品名归一（dish_key）单源 —— 写侧 importSalesBill 与读侧 getDishReview 共用同一口径，
+  //   **严禁再内联第二份**（分叉 = 全菜匹配不上且不报错）。
+  //   ⚠️ 同 genId 教训：新符号务必在此聚合入口导出，否则云端 `const { normalizeDishName } = common` 会 TypeError。
+  //   伴侣守卫：tools/check_dish_key_single_source.js。
+  dishKey: require('./cx_dishKey'),
+  normalizeDishName: require('./cx_dishKey').normalizeDishName,
 };
