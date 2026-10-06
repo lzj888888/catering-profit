@@ -184,12 +184,33 @@ idx_esd_uniq = unique( shop_id, biz_date, external_ref_id )   ← **不含 dish_
 - 未匹配菜品**单列区域**展示，带"去映射"入口；
 - 页面须带【事后复盘】口径文案（v1.2 §M3.35 已给原文，落 `terms.js` 的 `card` 命名空间，**不新建顶层命名空间**）。
 
-### 2.6 付费墙
+### 2.6 付费墙（🔴 R231b 补齐 —— **共四处，漏一处门禁必红**）
 
-- 付费键 **`m3_dishreview`**；
-- 单源 = `cloudfunctions/common/entitlement.js::PAID_FEATURES`（当前 `['export','m3_combo','m3_takeaway']`）；
-- 判定用法照抄 `saveCostCard/index.js:120` 的 `await common.hasFeature(db, userId, 'm3_combo')`；
-- ⚠️ `cloudfunctions/exportData/selftest.js:36-37` 那条是**包含式**断言（`.every`），加键不会转红 —— 但**注释里的键清单要同步**，别让下一个人读到旧清单。
+- 付费键 **`m3_dishreview`**；派生规则 = 去 `m3_` 前缀 ⇒ **弹窗键 `dishreview`**
+  （单源逻辑 = `tools/check_paywall_coverage.js:70 deriveKey`）。
+- **① 云端单源** `cloudfunctions/common/entitlement.js:28` 的 `PAID_FEATURES`
+  （当前 `['export','m3_combo','m3_takeaway']`）追加 `'m3_dishreview'`；
+  判定用法照抄 `saveCostCard/index.js:136` 的 `await common.hasFeature(db, userId, 'm3_combo')`
+  ⇒ 🔴 **本批新建的云函数里必须有这处调用**（守卫 L6-②b 要求"登记了能力必须找得到可验证落点"）。
+  ⚠️ `hasFeature` 只读 `shop_entitlement.expire_at`，**不读 `plan_id`、与 `SEED_FEATURES` 无关**
+  ⇒ 加键**不需要任何播种改动**（**别去动 `initDb/`**）。
+- **② 前端放行** `utils/paywall.js:23` 的 `PAYWALL_TYPES` 追加 `'dishreview'`
+  （🔴 是**去前缀后的** `dishreview`，**不是** `m3_dishreview`；漏 ⇒
+  `openPaywall('dishreview')` 被静默 `return` ⇒ 表现是「**点了没反应**」）。
+- **③ 文案** `miniprogram/i18n/terms.js::TERMS.paywall` 追加 `dishreview`，**四字段齐全**
+  （`title` / `content` / `primary` / `secondary`，缺 `def` 为 `undefined` ⇒ **弹窗崩**）。四条硬约束：
+  · `primary` / `secondary` 均 **≤4 字符**（平台硬限，超了 `showModal` 直接 fail —— 真机事故 2026-09-26）；
+  · `content` 明写「**导入可免费保存、看复盘才拦**」（对齐既有 `combo`/`takeaway` 的"录入免费"表述，防钓感）；
+  · 🔴 `terms.js` **双副本逐字一致**：`miniprogram/i18n/terms.js` ≡ `specs/dev-specs/i18n/terms.js`
+    ⇒ 这是**唯一允许改 `specs/` 的地方**（K11 强制），改后 `md5` 自证相同；
+  · 新页面 `.js` 若引用这些文案，必须进页面 `t:{}` 映射（漏 ⇒ WXML 取 `undefined` ⇒ **静默空白**）。
+- ⚠️ `cloudfunctions/exportData/selftest.js:36-37` 那条是**包含式**断言（`.every`），加键不会转红
+  —— 但**注释里的键清单要同步**，别让下一个人读到旧清单。
+- 🔴 **④ `tools/check_paywall_coverage.js::WALL_ANCHORS` 的落点登记由「门禁方」负责 —— 你（实现方）不要动 `tools/` 下的既有守卫**：
+  该表要求每个「无同名云函数目录」的付费能力显式登记落点。本批新云函数目录名**不含** `dishreview`
+  ⇒ 必然要走这张登记表。**门禁方会在你交付后补登记**。
+  ⇒ **若门禁报 `paywall-coverage` 红，那是预期内的、不是你改坏了** —— 在回执里如实说明即可；
+  🔴 **绝不许改 `tools/` 下的守卫、删断言、或加旁路来"修绿"**。
 
 ====================================================================
 ## §3 明确不做（做了即退回）

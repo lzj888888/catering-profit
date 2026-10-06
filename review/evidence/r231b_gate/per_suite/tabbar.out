@@ -1,0 +1,18 @@
+===== R200 · 底部 tabBar 守卫 =====
+✅ S1 app.json::pages 扫描面非退化（实到 24 页，下界 20）
+✅ S2 app.json::tabBar 结构在场（本仓已配底部三入口）
+✅ S3 tabBar.list 扫描面非退化（实到 3 项，下界 2）
+✅ A1 tabBar 至少 2 个入口（实到 3）
+✅ A2 tabBar.list[0] pagePath「pages/index/index」已在 pages 声明中
+✅ A2 tabBar.list[1] pagePath「pages/m3/hub」已在 pages 声明中
+✅ A2 tabBar.list[2] pagePath「pages/mine/index」已在 pages 声明中
+✅ A4 图标在盘核查完成（检查 6 个，实到 6）
+✅ A5 tabBar 路径互不重复
+✅ A6 tabBar 入口数 3 ≤ 5（微信上限 5）
+✅ S4 pages/ 下 .js 扫描面非退化（实到 24 个，下界 20）
+✅ B1 无「用非 switchTab 跳到 tabBar 页」的调用（检查到 0 处相关跳转）
+✅ B2 每处 wx.switchTab 的目标都在 tabBar.list 内（共 4 处）
+✅ B3 三个 tab 页都有 switchTab 入口（覆盖 3 个目标）
+✅ C1 关键锚点 pages/index/index 与 pages/mine/index 都在 tabBar.list 内（首 tab 与「我的」入口）
+✅ C2 判据自洽：上限常量 5 ≤ 微信硬上限 5
+===== R200 · 底部 tabBar 守卫：16 通过 / 0 失败 =====
