@@ -1,0 +1,47 @@
+单源(配置) cloudfunctions/initDb/collections.js
+消费者 cloudfunctions/checkQuota/index.js / cloudfunctions/getShopList/index.js / cloudfunctions/getShopList/selftest.js
+前端面 100 文件
+R117 · 免费店铺数口径穿透守卫（单源配置 ≡ 各消费者；反向断言防硬编码复发）
+
+===== A1 扫描面 fail-closed =====
+  ✅ A1-① 单源（配置种子）存在且非空 —— 19479B
+  ✅ A1-②-1 消费者 cloudfunctions/checkQuota/index.js 存在且非空 —— 4378B
+  ✅ A1-②-2 消费者 cloudfunctions/getShopList/index.js 存在且非空 —— 2646B
+  ✅ A1-③ 测试镜像存在且非空 —— 2512B
+  ✅ A1-④ 前端扫描面逐根达下界（坑㉛：根路径写错即红） —— pages:72/30 utils:23/5 miniprogram:2/2
+  ✅ A1-⑤ 根级 app 文件 3/3 在位 —— 3 个
+
+===== A2 单源（配置种子）可解析 =====
+  ✅ A2 单源 plan_free.limits.shop 可解析（fail-closed） —— shop=1
+
+===== A3 正面：消费者引用同一配置读取路径 =====
+  ✅ A3-①-1 cloudfunctions/checkQuota/index.js 剥注释后引用同一配置键（feature_permissions / plan_free / limits） —— 三键齐（语义级匹配，非裸子串）
+  ✅ A3-①-2 cloudfunctions/getShopList/index.js 剥注释后引用同一配置键（feature_permissions / plan_free / limits） —— 三键齐（语义级匹配，非裸子串）
+  ✅ A3-② 两个读配置的消费者**同源**（都读 feature_permissions.plan_free.limits，非各自常量） —— checkQuota/index.js + getShopList/index.js
+  ✅ A3-b 测试镜像明确标注口径来源（明文含 plan_free.limits） —— 注释在场
+
+===== A4 反面：消费者剥注释后零额度字面量 =====
+  ✅ A4 cloudfunctions/checkQuota/index.js 零额度字面量 —— 零命中
+  ✅ A4 cloudfunctions/getShopList/index.js 零额度字面量 —— 零命中
+  ✅ A4 cloudfunctions/getShopList/selftest.js 零额度字面量 —— 零命中
+
+===== A5 出参契约完整性（core/10:171）=====
+  ✅ A5-① getShopList 出参含 free_limit（左边界，防被 hit_free_limit 顶替） —— 在场
+  ✅ A5-② getShopList 出参含 hit_free_limit —— 在场
+  ✅ A5-③ checkQuota 出参含 hard_limit（硬上限与免费额分列） —— 在场
+
+===== A6 前端零硬编码（设计意图：后端权威，前端不硬编码）=====
+  ✅ A6-① 小程序端零命中 FREE_SHOP_LIMIT / FREE_LIMIT =（前端不得复制该口径） —— 100 个文件零命中
+  ✅ A6-② 前提：前端扫描面确含已知页面目录（扫描面没打错） —— pages/ + utils/ 在内
+
+===== A7 前提守卫（非恒真）=====
+  ✅ A7-① 前提：四份目标文件都在扫描面内（路径没写错） —— cloudfunctions/initDb/collections.js / cloudfunctions/checkQuota/index.js / cloudfunctions/getShopList/index.js / cloudfunctions/getShopList/selftest.js
+  ✅ A7-② 前提：单源确含 plan_id:'plan_free' 行（本守卫的立论依据仍在） —— plan_free 行在场
+  ✅ A7-③ 前提：反向断言对象剥注释后长度达下界（防读空 ⇒ 零命中假绿） —— checkQuota=2342 getShopList=1565 getShopList=1396
+
+===== W 弱面（只明示不判红）=====
+  ⚠️ 代码侧其它 FREE_* 常量（本守卫不判红，交由 R102 守）：
+     （无）
+  ✅ W-① 弱面已打印且扫描面非退化（消费者 + 单源均读到） —— 4/4 份已读；其它 FREE_* 常量 0 处
+
+===== 免费店铺数口径穿透守卫结果：23 通过 / 0 失败 =====

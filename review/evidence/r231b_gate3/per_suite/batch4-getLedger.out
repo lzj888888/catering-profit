@@ -1,0 +1,64 @@
+===== 1. 锚点回归（与 batch1 calcMonthlyProfit / batch4 saveLedger 同锚点）=====
+✅ S1 收入合计 = 64,000 元（6400000 分）  (=6400000)
+✅ S1 费用合计 = 32,840 元（3284000 分）  (=3284000)
+✅ 🏆 S1 经营参考利润 = 9,160（916000 分）  (=916000)
+✅ S1 全要素真实利润 = 9,160（库存关无倒轧）  (=916000)
+✅ S1 差异 = 0
+✅ S1 自洽校验位 diffCheck = true
+✅ S2 真实消耗 = 23,000（倒轧 5000+25000−7000）  (=2300000)
+✅ 🏆 S2 经营参考利润仍 = 9,160（🔴 口径锁：开库存也不改用倒轧，出 8160 即违规）  (=916000)
+✅ S2 经营参考 ≠ 816000（反面断言：防"开了开关就倒轧"回归）
+✅ 🏆 S2 全要素真实利润 = 3,476.67（347667 分）  (=347667)
+✅ S2 两利润差异 = 5,683.33（568333 分）  (=568333)
+✅ S2 毛利 = 64,000 − 23,000 = 41,000（4100000 分）  (=4100000)
+✅ S2 毛利率 = 64.0625%  (=64.06)
+===== 2. 跨函数等价（回读重算 ≡ 落库引擎，防口径漂移）=====
+✅ [S1 双关] getLedger ≡ saveLedger（逐字段 17 项）
+✅ [S2 双开] getLedger ≡ saveLedger（逐字段 17 项）
+✅ [空账（无收入无费用）] getLedger ≡ saveLedger（逐字段 17 项）
+✅ [零收入有开销（毛利率除零保护）] getLedger ≡ saveLedger（逐字段 17 项）
+✅ [仅库存开（倒轧为负：进少耗多）] getLedger ≡ saveLedger（逐字段 17 项）
+✅ [仅摊销开 + 小数摊销额] getLedger ≡ saveLedger（逐字段 17 项）
+✅ [脏输入（字符串/NaN/缺字段）] getLedger ≡ saveLedger（逐字段 17 项）
+✅ 零收入毛利率 = 0（不产生 NaN/Infinity）
+✅ 脏输入不产生 NaN（金额一律 num0 归一）
+✅ 金额出参一律整数分（Number.isInteger）
+===== 3. 入参面 =====
+✅ 合法入参放行
+✅ month "2026-13" → 拒
+✅ month "2026-1" → 拒（两位月）
+✅ month "202609" → 拒
+✅ month 缺失 → 拒（本函数 month 必填）
+✅ shop_id 缺失 → 拒
+✅ 支持 { input: {...} } 包裹层
+✅ 错误码 = INVALID_PARAM（全局标准码）
+===== 4. 静态形状守卫 =====
+✅ 顺序：resolveAuth → assertShopOwner → validateInput
+✅ 🔴 开关取服务端权威值（读 shop_switch 表，不信前端/落库快照）
+✅ 🔴 回读即重算（调 calcMonthlyProfit），不直接回吐库存值
+✅ 无记录返回空账而非报错（RESOURCE_NOT_FOUND 不得出现）
+✅ 读账走 DataAdapter（软删过滤）
+✅ 出参金额字段名与 service 一致（snake_case 契约）
+===== 5. round115 · M1 行业指标对照（细项归属 + 缺项不评级）=====
+✅ 细项归属：rent = 10,000 元（从 operation 大类里拆出）  (=1000000)
+✅ 细项归属：energy = 3,000 元（水费+电费合并）  (=300000)
+✅ 细项归属：labor = 15,000 元（细项名命中）  (=1500000)
+✅ 细项归属：mkt = 7,000 元（细项名命中）  (=700000)
+✅ 🔴 未识别细项无人认领（垃圾清运费 500 元不计入任何指标）  (Σ=3500000 未认领=50000)
+✅ 🔴 缺项**不出键**（而不是出 0 —— 0 会被当成「占比 0%，优秀」）
+✅ 🔴 operation 大类整额未拆细项 ⇒ rent/energy 均不出（不猜）
+✅ 自定义细项回落到大类归属（labor 下自建「临时工」不漏算）
+✅ 键映射 energy → utility（fixedFen 入参键，单源出，不靠调用方猜）
+✅ M1 口径 = 5 项且**不含 manage**（李老师 2026-09-24 拍板）  (grossMargin,rent,labor,energy,mkt)
+✅ 🔴 缺项 ⇒ 毛利率 pct=null（**不得**变成 0%/bad —— round115 实测抓过的真 bug）  (=null)
+✅ 🔴 缺项 ⇒ level=na（不评级）
+✅ 有数据的项照常评级（labor 15% 低于 dining 带下限 17% ⇒ good，且不得为 na）
+✅ 过滤后 5 项、无 manage
+✅ 🔴 出参经 M1 口径过滤（m1IndicatorsOf，不在前端/controller 里手筛）
+✅ 🔴 细项归属走单源 sumByTag（controller 不自己写映射表）
+✅ 🔴 fixedFen 键由 toFixedFen 转换（energy→utility 不靠猜）
+✅ 出参含 indicator_scope（业态/城市回显 + 是否默认口径）
+✅ 🔴 分母与 result **同源**（revenueFen 取 result.incomeTotalFen，不另立口径）
+✅ 读 shop 取业态 / 城市层级（参考带的前提输入）
+
+==== getLedger 自测结果：57 通过 / 0 失败 ====

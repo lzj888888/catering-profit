@@ -1,0 +1,30 @@
+===== G1 扫描面（fail-closed）=====
+✅ G1 单源 auth.js 存在  (cloudfunctions/common/auth.js)
+✅ G1 单源长度 ≥ 2000 字符（没读成空/半截文件）  (9263 字符)
+✅ G1 派生副本 cx_auth.js 数 ≥ 40（扫描面非退化）  (实测 46 个)
+
+===== G2 assertShopOwner 每个分支都带 error 字段 =====
+✅ G2 能切出 assertShopOwner 函数体
+✅ G2 return 分支数 ≥ 3（空 id / 不存在或软删 / 非本人）  (4 条)
+✅ G2 所有 return 都显式带 error 字段  (4 条全带)
+✅ G2 成功分支给 error: null（不是只给 data）
+
+===== G3 单源不得再用 ok()/fail() 构造返回（本次根因）=====
+✅ G3 无 return ok(...)
+✅ G3 无 return fail(...)
+✅ G3 也不再从 errors 引入 ok/fail（避免"留着等人再踩"）  (const { ERROR_CODES, isDuplicateKeyError } = require('./errors');)
+
+===== G4 派生副本同形（修复真的派出去了）=====
+✅ G4 至少抽到 3 个函数目录的副本  (adminExport / adminGrantEntitlement / adminInit)
+✅ G4 抽检副本的 assertShopOwner 已是 error 形状  (3 个同形)
+
+===== G5 越权拦截本体还在（关键锚点在场）=====
+✅ G5 单源含 FORBIDDEN 分支
+✅ G5 单源仍比对 shop.user_id 与传入 userId
+
+===== G6 调用点判据与返回形状一致 =====
+✅ G6 生产调用点数量 ≥ 18（扫描面非退化）  (实测 23 个函数)
+✅ G6 每个调用点都用 .error 判失败  (23 个全判)
+✅ G6 无 owner.code 变体（成功返回已无 code 字段，判它会恒假）  (无混用)
+
+==== R194 鉴权返回形状守卫：17 通过 / 0 失败 ====

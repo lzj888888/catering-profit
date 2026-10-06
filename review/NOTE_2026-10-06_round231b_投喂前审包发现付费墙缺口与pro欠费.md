@@ -185,3 +185,78 @@ R234 NOTE 的 L94 **照抄**了重启键那一行的同一短语（含括号、�
    - 📌 附注：单纯把键加进 `PAID_FEATURES` **修不好它**（无消费点仍不拦）；正解需同时在
      `saveLedger`/`getLedger` 加 `hasFeature(db, userId, 'real_profit')` 判定 —— 两层必须同时做
      （否则触发守卫 L6-①「未登记就拦」）。
+
+---
+
+## 七 R231b²（同日续做）：审包**第二处**真缺口（函数面）+ 一次自伤事故（缓存被砸）
+
+### 7.1 为什么又多一轮
+
+§2.6 补完后，按技能 `inscode-desktop-feed` 坑19 继续走查 —— 但这次不按「我想到的面」走，
+而是**按守卫会查的面**逐条走（`tools/` 下每个会读 `cloudfunctions/`、`specs/`、`.md` 的守卫）。
+⇒ 抓出**与付费墙同类的第二处缺口**（函数面），且比它更贵。
+
+### 7.2 缺口形态（三处 · 全部机器核过）
+
+| 面 | 投喂包原状 | 判据（本轮现读） | 漏了会怎样 |
+|---|---|---|---|
+| 函数面 | **零字提及**（对照：`批次M2v1.2` 有专节「新增云函数牵动五处」；`批次M2v1.3` 明写"不新增函数" ⇒ 本批两不沾） | `selftest_r85.js::A15_EXEMPT`(`:322`) · `check_fn_inventory` F2/F4/F5 · `check_fn_public_surface` · `check_idempotency` | 只要新增 1 个云函数 ⇒ **≥4 处必红** |
+| 页面面 | §0.6 只指了机器三关，**文档侧四处**未写 | `check_page_manifest`（机器）＋ 提审材料五处计数（人工） | 材料自相矛盾；清单类守卫红 |
+| `sync_common` 目录数 | 写 **43**（R188 期历史值） | `node tools/sync_common.js --check` 现读 **46** | 实现方按 43 自证 ⇒ 看着"对不上"⇒ 白跑一轮 |
+
+### 7.3 关键实测值（供验收方复算）
+
+- `cloudfunctions/` 函数目录 **46**（≡ `core/10:5` 那行全集口径）· 带 `selftest.js` **43**（≡ 重启键 `:438`）·
+  不带的三个 = `importSalesBill` / `initDb` / `smokeTest`
+- A15 判据 = `git status --porcelain cloudfunctions/` 过滤 `A15_EXEMPT`；`importSalesBill` **已在册**（`:216`）·
+  先例：M2v1.3 扩 `exportData` 也登记了一行 ⇒ **改既有函数同样要登记**
+- `check_fn_inventory`：F4 锚 `全集口径`（`:55`）· F5 锚「N 个云函数…selftest」（`:57`）· F2/F3 双向（代码↔文档）
+- **复用路径可行**：`importSalesBill` 幂等三件套已就绪（`index.js:94` `findPriorResult` /
+  `:128` `writeAudit` / `:134` 单源 `shopKey`）⇒ 复用即天然满足 `check_idempotency`
+- 页面 **24 页**：`app.json` ＋ 提审材料 `:16` / `:44` / `:64` / `:66` / `:95` / `:96`
+
+### 7.4 改动（3 处 · 纯文档 · 零代码）
+
+1. 投喂包新增 **§2.7**：A 段（首选不新增 ＋ 六处同步面表 ＋ 逐条归属）＋ B 段（页面面四处）；
+2. 投喂包 `§0.1` / `§4-1`：**43 → 46**（判据段跟现值；`★知识存储点:438` 的 43 是**另一口径**（带 selftest 数）、
+   `review/evidence/**` 的 43 是**历史快照** ⇒ **一律不动**）；
+3. 投喂包 `§4` 追加第 14 条自检：函数面必须显式声明「不新增 / 新增 N 个（目录名：…）」。
+
+### 7.5 🔴🔴 本轮自伤事故：把 preload 缓存砸了（定性 → 恢复 → 防复发）
+
+- **起因**：我按纪律「续跑前必刷 preload 缓存」跑了 `%TEMP%\inscode\mk_gitcache.py`。
+  那是 **Sep 29 的 6 键残件**，且**键格式错**：只写 args（如 `ls-files`），
+  而 preload 用 `basename(exe) + args`（`git ls-files`）命中 ⇒ **6 个键永不命中**。
+- **后果**：原 **158 键**缓存被覆盖成 6 个无效键 ⇒ 第 2 跑 **135/144**，红的 9 个套件全是
+  `spawnSync git/python EBUSY`（docx-derive / suite-coverage / suite-count-claims / quota-limits /
+  collection-perms / privacy-collection / acceptance-counts / suite-assert-counts / r85-takeaway）
+  —— **症状看着像真缺陷**，是最容易误改成"迎合"的形态。
+- **定性**：`node -e spawnSync('git',…)` = `null EBUSY`（通道确被封）＋ 缓存键格式自查（裸 args 键）⇒
+  判「缓存砸」而**非**「代码坏」。
+- **恢复**：底表 `review/evidence/r179_gate_sandbox/gitcache.json`（48 键、格式正确）＋ miss log **另存**
+  ＋ 脚本 `review/evidence/r231b_gate2/rebuild_cache.py`（🔴 **每阶段之间落盘** —— 否则 node 子进程
+  读到的还是旧缓存 ⇒ 把假红当真值 ⇒ 提前收敛）⇒ **72 键 · 全 `rc=0` · miss=0**。
+- **防复发**：`mk_gitcache.py` 正文换成 ⛔ 停用桩（运行即 `exit 2`、不碰缓存）；
+  技能 `gate-under-sandbox`：坑④ 改写（日常刷新**只用原地三件套** `mk_git_keys.py` + `mk_force.py` +
+  `mk_fix_py_keys.py`）＋ **新增坑⑪**（认症状 / 恢复手册 / 跑 `mk_*.py` 前先查它是否覆盖式）＋
+  ⑥-ter 补「阶段间必须落盘」。
+- 🔴 **教训一句**：**别把"刷新缓存"当无需审查的机械动作** —— 先看它 (a) 是不是覆盖式
+  (b) 键格式对不对；拿不准就用原地三件套，**永远不要用"从零重建"的脚本去刷新**。
+
+### 7.6 门禁与提交
+
+- 第 2 跑 **135/144**（缓存砸 · 非代码缺陷 · 已定性，见 §7.5）
+- 第 3 跑（缓存修复后）**144/144 · RC=0 · 真 FAIL=0 · miss=0 · 804.5s · R92 ✅**；
+  `❌` 计数 **2** 且**均在 ✅ 行内**（字面量）；`per_suite/` **144** 件；
+  **A7-① 门禁内 ✅**（`review/evidence/r231b_gate2/gate_full.txt:2793`）
+- 取证 `review/evidence/r231b_gate2/`（含驱动 `run_gate9.py` / 恢复脚本 `rebuild_cache.py` /
+  重建后缓存 `gitcache_rebuilt.json`）
+- 提交 **`9d92e30`**（150 files）⇒ `HEAD ≡ origin/dev ≡ 9d92e30`、工作树干净。**未部署、零生产代码改动**。
+- ⚠️ 本 §七 与第 4 跑随**同一个提交**落地（提交号见下条回填）。
+
+### 7.7 待办（在 §六 之上增量）
+
+- 🔴 承 §四：**`pro` 池欠费仍在** ⇒ 投喂仍卡着（需李老师给 `pro` 池充值 ≈20 元/批次）。
+- 🔴 投喂包 §2.7-A 要求实现方在交付说明里**显式声明函数面**（不新增 / 新增 N 个及其目录名）
+  ⇒ 门禁方据此登记 ①③④ 与 ⑥ 的登记部分。
+
