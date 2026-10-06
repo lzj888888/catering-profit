@@ -27,13 +27,11 @@ function normName(name) {
   return s;
 }
 
-function monthOf(ts) {
-  if (!ts) return '';
-  const d = new Date(Number(ts));
-  if (isNaN(d.getTime())) return '';
-  const pad = (n) => String(n).padStart(2, '0');
-  return d.getFullYear() + '-' + pad(d.getMonth() + 1);
-}
+// 🔴 R232 C-10：月份格式化**必须**走单源 common/utilTime.js::toMonth（UTC 口径）。
+//   此处原有一份 monthOf() 用本地时区 getFullYear()/getMonth()，违反 utilTime 文件头明文的
+//   「铁律：时间统一 UTC」⇒ 每月 1 日 00:00~08:00（UTC+8）创建的成本卡会算出**上一个**月。
+//   用法与 adminExport / adminInit 等既有函数完全一致（const { ... } = common.utilTime）。
+const { toMonth } = common.utilTime;
 
 exports.main = async (event) => {
   const ctx = cloud.getWXContext();
@@ -106,7 +104,7 @@ exports.main = async (event) => {
       totalCostFen,
       grossFen,
       marginPct,
-      snapshot_month: monthOf(card.created_at),
+      snapshot_month: toMonth(card.created_at),
     });
   }
   ranked.sort((x, y) => y.grossFen - x.grossFen);   // 毛利降序

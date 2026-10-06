@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：145 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：146 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -394,6 +394,26 @@
 //         判据 = S service.js 可加载（xlsx 空桩）+ R231-1 形态常量 ≡ 真表（265 行 / 合计排除 / 单位=元 / Σ锚点）
 //         + R231-2 ref_id 必含 dish_key + R231-3 qty 恒整数 + R231-5 幂等 + 未匹配不归零；配反例（纳入合计行 ⇒ 266 /
 //         BILL: 形态 ⇒ 判红 / 3280.3 未 round ⇒ 判红）。23 条断言）
+//       + 时间口径守卫（tools/check_excel_date_utc.js，R232：批次 G **交付后**做端到端审查才发现的两条 ——
+//         门禁 145/145 全绿却漏掉它们，因为守卫只验「解析函数本身」，从没验过「导进去的能否被读出来」。
+//         C-11（**潜伏雷 · 实证修前 0/4 全错**）：Node 里 `new Date(1899, 11, 30)` 落在 **GMT+0805** ——
+//           1899 年中国尚未采用标准时区，tzdata 保留 LMT 地方平时（比 +0800 少约 5′43″），
+//           而 SheetJS(xlsx, cellDates:true) 正是用它做 setTime(serial*86400000 + basedate)
+//           ⇒ 整天时间戳落在 **23:54:17** 而非午夜 ⇒ fmtCell 取日历日**系统性早一天** ⇒ 整表 biz_date 错位且零报错。
+//           🔴 当前两张样例的日期都恰好是**文本**（形态 A 在 R2 长串里 / 形态 C 全 354 行 str + General）
+//           ⇒ 分支从未触发，**只是运气好**；Excel 导出日期列默认就是真日期格式。
+//         C-10（**现在就算错**）：getDishReview 重写了一份 monthOf()（本地时区），与单源 utilTime::toMonth(UTC)
+//           冲突，违反 utilTime 文件头明文的 UTC 铁律 ⇒ 每月 1 日 00:00~08:00 建的卡 snapshot_month 差一月。
+//         🔴 **守卫写法纪律（本轮元教训）**：不得用「扫 `getFullYear()` / `getMonth()` 字面并判红」作判据 ——
+//           两种数据来源要求**相反**的读法（created_at 真 UTC 戳必须 getUTC*；SheetJS 本地构造必须 get*）
+//           ⇒ 按字面落地会把**正确**实现改成**错误**（反向伤害二型）。本守卫改判**行为**：
+//           把真实 Excel 序列号喂进**生产函数**，断言**返回值**（期望值由 Python 侧独立算出，交叉验证）。
+//         判据 = ① 模块可达 + fmtCell 已导出（否则修了也无人可验）
+//         + ② 5 个真实序列号经 fmtCell 全部读出正确日历日 + 字符串分支不误伤
+//         + ③ 自失效护栏（样本确为 Date / 确带 23:54 偏移 / basedate 为 Date.UTC 构造）
+//         + ④ 单源仍 UTC + getDishReview **剥离注释后**确从 common.utilTime 取 toMonth（V4 实证：不剥注释会被注释骗过）
+//         + 无本地 YYYY-MM 拼装（不查函数名 —— 换名也能抓）+ 真调单源 toMonth 验 UTC 边界 + 样本区分力护栏。14 条断言；
+//         变异回灌 5/5 全有效红（含「换名重写 toMonth」「单源改本地时区」两类绕过尝试）
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -812,6 +832,9 @@ const SUITES = [
   ['fn-deps',              'tools/check_fn_deps.js'],
   // R231（批次 G · M3.33）：堂食菜品表解析守卫 —— 见头注 R231 段。
   ['m333-parse',           'tools/check_m333_parse.js'],
+  // R232（批次 G 交付后端到端审查）：时间口径守卫 —— Excel 日期单元格失准(C-11) + 月份 UTC 铁律(C-10)。
+  //   判据一律「行为」而非「字面」：把真实 Excel 序列号喂进生产函数断言返回值。见头注 R232 段。
+  ['excel-date-utc',       'tools/check_excel_date_utc.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

@@ -171,6 +171,9 @@ const CASES = [
   //   BILL 形态⇒判红 / 3280.3 未 round⇒判红）与 R231-5 幂等+未匹配不归零正是「非恒真」凭据；
   //   23 条删掉一批仍 > 0 ⇒ A0-② 的「通过数为 0」下界抓不到，只有 A2「声明 ≡ 实跑」能发现（同 round73 立本守卫根因）。
   { key: 'check_m333_parse', rel: 'tools/check_m333_parse.js' }, // 23 条（S + R231-1/2/3/5 + 反例）
+  // R232（批次 G 交付后端到端审查）：时间口径守卫 —— C-11 Excel 日期单元格失准 + C-10 月份 UTC 铁律。
+  //   14 条 = ① 模块可达 3 + ② 日期闭环 2 + ③ 自失效护栏 3 + ④ 单源/行为 6（含真调 toMonth 的 UTC 边界）。
+  { key: 'check_excel_date_utc', rel: 'tools/check_excel_date_utc.js' }, // 14 条（①+②+③+④）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

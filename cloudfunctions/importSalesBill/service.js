@@ -20,11 +20,24 @@ function toNum(v) {
 }
 
 // ===================== 单元格格式化 =====================
+
+// 🔴 Excel 日期序列号基准 —— **必须**是 Date.UTC，不能用 new Date(1899, 11, 30)。
+//   后者会落在 GMT+0805：1899 年中国尚未采用标准时区，tzdata 保留的是 LMT 地方平时
+//   （比 +0800 少约 5′43″）⇒ 给整天时间戳注入 5′43″ 偏差 ⇒ 取日历日时**系统性早一天**。
+//   SheetJS(xlsx, cellDates:true) 内部正是用它做 setTime(serial*86400000 + basedate)，
+//   所以**拿到的 Date 本身已经带偏**，必须在入口把它扳正。
+//   实证（review/evidence/r232_tz_datecell/fixcheck_datecell.js）：修前 0/4 正确 → 修后 4/4。
+const EXCEL_UTC_BASE = Date.UTC(1899, 11, 30);
+const MS_PER_DAY = 86400000;
+
 function fmtCell(cell) {
   if (cell == null) return '';
   if (cell instanceof Date) {
     const p = (n) => String(n).padStart(2, '0');
-    return `${cell.getFullYear()}-${p(cell.getMonth() + 1)}-${p(cell.getDate())}`;
+    // 反推序列号并四舍五入 ⇒ 消掉 SheetJS basedate 的历史时区偏移，再按 UTC 取日历日。
+    const serial = Math.round((cell.getTime() - EXCEL_UTC_BASE) / MS_PER_DAY);
+    const d = new Date(EXCEL_UTC_BASE + serial * MS_PER_DAY);
+    return `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())}`;
   }
   return String(cell).trim();
 }
@@ -319,6 +332,7 @@ function parseDishSales(sheetRows, opts) {
 
 module.exports = {
   bufferToMatrix, detectPlatform, guessHeader, parseBillMatrix, checkGradeA, SALES_SCHEMA, toNum,
+  fmtCell, EXCEL_UTC_BASE,   // R232 C-11：fmtCell 导出以便守卫直接验证日期口径（此前漏导，0/4 全错无人知）
   DISH_SHAPES, DISH_A_STRUCT, normalizeDishName, detectDishShape, detectDishMatrix,
   extractBizDate, dishRefId, saleDocId, parseDishSales,
 };
