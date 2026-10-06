@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：142 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：143 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -371,6 +371,17 @@
 //         + E 回本唯一出口（`paybackCash` 是仓内唯一展示派生，pages 内零复算）。
 //         + S 城市系数双副本（前端 `CITY_COEF` 逐档逐键 ≡ 生产源 `CITY_TIERS` —— R230 验收后加严，
 //           变异实测「改 tier1.rent ⇒ 双守卫全绿」坐实缺口）。15 条断言）
+//       + gradeGate 双副本等价守卫（tools/check_grade_gate_dual.js，R232：**同一份「甲级门禁」在内联体制下有两份**
+//         —— 前端 utils/gradeGate.js 与云端 cloudfunctions/importSalesBill/service.js（云函数不能 require 小程序 utils/，
+//         内联是允许的），但两份之间**零守卫** ⇒ 改 platform enum（v1.6 批次即将加 pos 堂食渠道）时**改一处漏一处＝
+//         一侧放行、另一侧拒收，且全程静默**（自测只 require utils/ 那份 ⇒ 永远绿）。
+//         判据 = S 两份副本可加载（云端 xlsx 外部依赖本地未装 ⇒ 仅注入空桩，并在输出里**明示**用的是桩）
+//         + A SALES_SCHEMA 字段名集合相等 + 逐字段逐属性**值**等价（pattern 归一化为 source+flags，不比字面）
+//           + 关键锚点在场（enum ⊇ taobao/meituan/eleme/other、qty.integer=true ⇒ 防「两份都是空壳」）
+//         + B **882 组组合电池**（7 平台 × 9 行形态 × 4 合计 × 3 shopId 主面 + 生产调用形态 self/empty）
+//           逐组比对 {pass, level, failures}；并自证电池同时产出过 pass=true 与 pass=false
+//         + C 自失效护栏（样本数下界 700 / 字段数下界 9）+ **两组影子反例**（结构面「副本 enum 少一项」、
+//           行为面「一侧加 pos 另一侧没加」⇒ 必须报差异，且差异**只落在 platform 判别**上）。12 条断言）
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -785,6 +796,7 @@ const SUITES = [
   ['m2v1.2-getPlan',       'cloudfunctions/getPlan/selftest.js'],
   // ===== 批次 M2v1.3（业态参数包 + 回本卡 第三期）：新增工具守卫 check_biz_preset（S/A/B/C/D/E 六组，13 断言）=====
   ['biz-preset',           'tools/check_biz_preset.js'],
+  ['grade-gate-dual',      'tools/check_grade_gate_dual.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

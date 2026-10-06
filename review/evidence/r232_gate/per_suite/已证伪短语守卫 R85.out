@@ -1,0 +1,24 @@
+===== 已证伪短语守卫 R85（概念级：已证伪说法必须带上下文标记）=====
+✅ S1 扫描面非空（读不到文件 = 判红，不许假装绿） · 1425 个文件（下限 20）
+✅ S2 活文档内无「裸的已证伪断言」 · 0 处（共 13 处命中均带上下文标记）
+
+ℹ️ 以下 8 处为**带标记的引用/留痕**（放行，但必须看得见）：
+   specs/dev-specs/★知识存储点_2026-09-10.md:609  [引述/留痕]  **R74 建库单源同步（本侧主动加固，R73 的溢出发现）**：`cloudfunctions/initDb/collections.js`（建库**单源**）与 `specs/dev-sp
+   specs/dev-specs/★知识存储点_2026-09-10.md:639  [引述/留痕]  脚本化走官方 HTTP API `POST /tcb/updateindex`（见 `tools/apply_indexes.js`；旧口径「索引改控制台手工建」已于 2026-09-17 *
+   tools/apply_indexes.js:9  [引述/留痕]  *   - 错的一半：**「只能手工」是假的**（**已证伪** · 2026-09-17）。官方 HTTP API 提供
+   tools/gen_index_checklist.js:21  [引述/留痕]  //      ⇒ 本单的用途随之改变：它不是"必须手工"的理由（该旧口径**已于 2026-09-17 证伪**），
+   下一步工序清单.md:147  [引述/留痕]  ⚠️ 枯燥 —— **有 AppSecret 就走 ①，别走 ③**（旧版这里写「只能手工」，已于 2026-09-17 证伪并改正）。
+   下一步工序清单.txt:147  [引述/留痕]  ⚠️ 枯燥 —— **有 AppSecret 就走 ①，别走 ③**（旧版这里写「只能手工」，已于 2026-09-17 证伪并改正）。
+   specs/dev-specs/★知识存储点_2026-09-10.md:671  [引述/留痕]  · **触发**：回查李老师 2026-09-21 那批真机反馈的闭环质量。「月份选择 只有两个月份」这一条，我在 round57 曾判成「这是设计不是 bug」⇒ 本轮回读源码实锤：**判错
+   specs/dev-specs/★知识存储点_2026-09-10.md:685  [引述/留痕]  `月份只有两个=设计`：凡把该现象判成「设计/不是 bug/正常现象」的行，必须带引述标记（如「曾」）。
+
+ℹ️ 以下 5 处为**政策类**（非能力限制，放行）：
+   BATCH0_DELIVERY.md:86  [政策]  3. **initDb 仅 dev**：`initDb` 部署到 **dev** 手动跑一次建 25 集合；**prod 的 25 张集合在控制台手工建，绝不部署 initDb 到 prod*
+   cloudfunctions/initDb/collections.js:256  [政策]  return { blocked: true, reason: 'INITDB_DEV_ONLY: initDb 仅允许 dev 环境，prod 集合请由控制台手工创建' };
+   cloudfunctions/initDb/package.json:4  [政策]  "description": "店算 · 一次性建库云函数（仅 dev，prod 集合由控制台手工创建）",
+   specs/dev-specs/prototype/init_db.js:210  [政策]  // 生产环境 25 张集合由云开发控制台手工创建（一次性），本函数**绝不部署到 prod**。
+   specs/dev-specs/prototype/init_db.js:232  [政策]  return { blocked: true, reason: 'INITDB_DEV_ONLY: initDb 仅允许 dev 环境，prod 集合请由控制台手工创建' };
+
+ℹ️ S4 防回潮保留 · 不支持代码建索引 当前 0 命中（该说法已从活文档清除）⇒ 条目**不删**，用于防回潮；其有效性判据 = **变异回灌**（塞回该说法须转红）。
+
+===== 已证伪短语守卫结果：3 通过 / 0 失败 =====

@@ -157,6 +157,10 @@ const CASES = [
   //   与 C 形态参数完备（缺一即 NaN）、D L1/L2 禁入、E 回本唯一出口正是「非恒真」的凭据；
   //   断言数不受守则「删掉反例 / 调低下界」静默通过，与 round73 立本守卫的根因同族。
   { key: 'check_biz_preset', rel: 'tools/check_biz_preset.js' }, // 15 条（S/A/B/C/D/E 六组，含城市系数双副本逐值 ≡ 生产源、断言数下界）
+  // R232 扩面：gradeGate 双副本等价守卫同批纳入 —— 它的 C 组两道自失效护栏（样本数下界 / 影子反例必须报差异）
+  //   与 B-②「电池须同时产出过 pass=true 与 pass=false」正是「非恒真」凭据；
+  //   12 条删掉一批仍 > 0 ⇒ A0-② 的「通过数为 0」下界抓不到，只有 A2「声明 ≡ 实跑」能发现（同 round73 立本守卫根因）。
+  { key: 'check_grade_gate_dual', rel: 'tools/check_grade_gate_dual.js' }, // 12 条（S1~3 + A1~3 + B1~2 + C1~4）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

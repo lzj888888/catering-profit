@@ -122,14 +122,23 @@ dev 库里的任何账套 / 台账 / 测试数据**不会**流到正式版。
 > **现状（R215 逐环实测）**：到期提醒**两条渠道全缺**，且当前**无付费用户** ⇒ 配了定时触发器也只是每天扫出空列表（窗口 `expire_at ∈ (now, now+7d]`，而免费档建档一律 `expire_at = 0`）。
 > R215 决策 = **暂不启用**（保留 `cloudfunctions/payExpireNotify` 待命，**不上传触发器**）。理由链见 `review/NOTE_2026-10-04_round215_未授权云函数与无店铺态.md §八-quater`。
 > 🔴 **触发条件 = 上面 §D+ 开真实支付完成之后**（那时才可能存在 `expire_at > 0` 的真实付费用户）。
+>
+> 🔧 **2026-10-06 R232 勘误**：上段「两条渠道全缺」是 **R215 时点值**，**已过期** —— 实测 **G2 已落地**、**G3 已接线**：
+> · **G2 ✅**：`pages/month/index.wxml`（`card2 banner warn`）与 `pages/month/result.wxml`（`expire-banner`，样式在 `pages/month/result.wxss:2-4`）
+>   均在 `expireSoonDays > 0` 时常驻渲染，值来自 `utils/entitlement.js::expireSoonDays`（== `payQueryEntitlement.days_left ∈ (0,7]`）⇒ `miniprogram/` 已非「零消费」。
+> · **G3 ⚠️ 已接线未生效**：`pages/month/result.js::onAskSubscribe` 已调 `wx.requestSubscribeMessage`，但 **`tmplIds: []` 为空**（注释明写「模板 ID 由后端配置下发；当前阶段未配置 → 直接回落兜底」）
+>   ⇒ **仍卡 G1**（mp 后台模板 ID 未申请）；空 `tmplIds` 下用户授权拿不到可推模板。
+> · **G1 / G4 仍待做**（G1 李老师；G4 需补 `openapi.subscribeMessage.send` 真推送 + 控制台 GUI 上传触发器）。
+> ⇒ **本表原来把 G2/G3 记为「我 待做」是过期陈述**，照它去做会造出重复实现。
+
 
 要做到期提醒，**四件缺一不可**（按建议优先级 —— G2 不依赖用户授权，应先做）：
 
 | # | 动作 | 说明 | 谁 |
 |---|---|---|---|
 | G1 | mp 后台申请**订阅消息模板 ID** | 类目「工具 > 计算器」下选服务到期提醒类模板 | 李老师 |
-| G2 | 前端补**兜底提示条**（`days_left ≤ 7` 常驻渲染） | 服务端 `payQueryEntitlement` **已算好并返回 `days_left`**，但 `miniprogram/` **零消费** ⇒ 只需接上；🔴 **不依赖用户授权**，应优先做 | 我 |
-| G3 | 前端在合适时机 `wx.requestSubscribeMessage` 收**用户授权** | 微信订阅消息是**一次性授权**，未授权**不可推** | 我 |
+| G2 ✅ | ~~前端补**兜底提示条**（`days_left ≤ 7` 常驻渲染）~~ **已落地（R232 实测）** | 服务端 `payQueryEntitlement` 已返回 `days_left`；前端已在 `pages/month/index.wxml`（`card2 banner warn`）+ `pages/month/result.wxml`（`expire-banner`）常驻渲染，取值 `utils/entitlement.js::expireSoonDays`，样式 `pages/month/result.wxss:2-4` | ✅ 已做 |
+| G3 ⚠️ | 前端 `wx.requestSubscribeMessage` 收**用户授权** —— **已接线，但 `tmplIds: []` 为空 ⇒ 实际推不了** | `pages/month/result.js::onAskSubscribe` 已在位（注释明写「模板 ID 由后端配置下发」）；微信订阅消息是**一次性授权**，未授权**不可推** ⇒ **须先完成 G1** | 待 G1 |
 | G4 | `payExpireNotify` 内补 `openapi.subscribeMessage.send` 真推送 + **上传触发器** | 现函数只 `return`、不推送；补发送后走 IDE 云开发控制台 GUI 上传触发器（`cli` **无**触发器子命令） | 我（GUI） |
 
 > ⚠️ G2/G3/G4 会引入**新可见文案** ⇒ 按仓规「新可见文案三处」（`miniprogram/i18n/terms.js` ≡ `specs/dev-specs/*/i18n/terms.js`，页面零硬编码）；G2 若新增页面还须过 `check_page_manifest` / 必须有入口 / 金额框不与 `<button>` 同父三关。

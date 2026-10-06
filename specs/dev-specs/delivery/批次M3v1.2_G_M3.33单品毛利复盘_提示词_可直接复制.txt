@@ -259,10 +259,11 @@ idx_esd_uniq = unique( shop_id, biz_date, external_ref_id )   ← **不含 dish_
 | **R231-1** | `tools/check_m333_parse.js` | 表形态常量 ≡ 真表结构（表头行 / 合计行 / 单位）；**反例**：把合计行纳入 ⇒ **必须转红** |
 | **R231-2** | 同上 | `external_ref_id` **必含 `dish_key` 段**；**反例**：退回 `'BILL:<platform>:<biz_date>'` 形态 ⇒ **必须转红** |
 | **R231-3** | 同上 | `qty` **恒整数**；**反例**：注入 `3280.3` ⇒ **必须转红** |
-| **R231-4** | `tools/check_grade_gate_dual.js` | 🔴 `utils/gradeGate.js` 与 `cloudfunctions/importSalesBill/service.js` 的 `SALES_SCHEMA` **逐字段相等**
-  （当前**零守卫** ⇒ 改一处漏一处**静默**）|
+| **R231-4** | ✅ **已由门禁方 R232 提前挂好**（`tools/check_grade_gate_dual.js`，12 断言，已入 `SUITES`）**⇒ 本批不得重复创建** | 原文写「`SALES_SCHEMA` 逐字段相等（当前**零守卫**）」⇒ **现已覆盖**，且不止结构：结构**值**等价（pattern 归一化，不比字面）＋ `checkGradeA` **882 组组合电池行为等价** ＋ 两组影子反例。**它守的是既有代码、与本批实现无关**（见规范 v1.6 §12 勘误）|
 | **R231-5** | 门禁用例（挂进既有套件即可）| 「同一份表导入两次 ⇒ **幂等**（行数不变）」＋「未匹配行**不静默归零**」|
 
+🔴 **本批实际须新增的守卫 = R231-1 / 2 / 3 / 5 四条**（R231-4 **已由门禁方 R232 挂好，不得重复创建** ——
+   重复会导致 `check_suite_coverage` / `check_suite_count_claims` / `check_suite_assert_counts` 三条同时转红）。
 🔴 **新增守卫必须走「六处同步面」**（漏一处门禁红）：① `verify_all.js::SUITES` 末尾 ② 头注「串联：N 个套件」
    ③ 头注守卫说明段 ④ 重启键 §1.1 入口行 ⑤ 头注「套件数会漂」行 ⑥ `check_suite_assert_counts.js::CASES`。
 🔴 **每条守卫必须做变异回灌**（故意改回错写法 ⇒ 必须红在**目标断言名**上；**只红 RC / 崩溃红不算有效红**）。
