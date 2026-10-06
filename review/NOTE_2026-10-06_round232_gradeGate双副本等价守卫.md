@@ -118,11 +118,16 @@
 
 | 项 | 值 |
 |---|---|
-| 门禁 | **143/143 通过 · RC=0 · 真 FAIL=0**（`review/evidence/r232_gate/gate_full.txt`）|
+| 门禁 | **143/143 通过 · RC=0 · 真 FAIL=0 · 耗时 733.2s**（`review/evidence/r232_gate/gate_full.txt`；末行 `总览：143/143 套件通过` + `R92 ✅`）|
+| 真 FAIL 口径 | 全文 `❌` 计数 = **2**，均为**断言描述里的字面量**（`D6 输出内零 ❌` / `D-① 断言数 ≥ 12 … ❌ 0 条`）⇒ 与仓内固定 2 条一致，**无失败清单段** |
+| 逐套件 | `per_suite/*.out` = **143** 件（≡ SUITES 数）· `gitcache_miss.log` **不存在 ⇒ miss=0** |
+| 新套件行 | gate_full 内 `[grade-gate-dual] ✅ PASS  (✅ 12 条 / 段 5)` |
+| 变异残留 | 两份副本（`utils/gradeGate.js` / `cloudfunctions/importSalesBill/service.js`）`git status` **为空 ⇒ 逐字节还原** |
 | 套件数 | **142 → 143**（本批**新增**守卫，六处同步面已改）|
 | 证据 | `review/evidence/r232_gate/`（驱动 `run_gate8.py`、刷键脚本、`mutate_r232.py` + `mut_r232.out.txt`、`per_suite/` 143 件）|
 | 环境 | 沙箱 **`spawnSync git EBUSY`**（探针实测）⇒ 走 Python 驱动逐套件真跑（技能 `gate-under-sandbox`）；**缓存按序刷新**：git 类 → 新套件键 → `mk_force` 全刷 → `mk_fix_py_keys` |
 | 未动 | 引擎 / BOM 链 / 云函数代码 / 集合 / 索引 **一律零改动**；未部署 |
+| 提交 | **`2c68c7c`**（`feat(gate): R232 gradeGate 双副本等价守卫 + 门禁 143/143`）· 已推 `origin/dev`（`6691fc0..2c68c7c`）· `HEAD ≡ origin/dev ≡ 2c68c7c` |
 
 ---
 
@@ -131,5 +136,5 @@
 - [2026-10-06] **R232 已落** ·
   - 新增 `tools/check_grade_gate_dual.js`（12 断言）· 六处同步（142 → 143）· 变异回灌 **5/5 全部红在目标断言 · md5 全等**
   - 勘误同步：v1.6 §12 · 投喂包 G §6 · R231 NOTE §3-4 · CHECKLIST §G
-  - 门禁 **143/143 · RC=0 · 真 FAIL=0**（证据 `review/evidence/r232_gate/`）
-  - 提交 = （回填）
+  - 门禁 **143/143 · RC=0 · 真 FAIL=0 · 733.2s**（证据 `review/evidence/r232_gate/`）
+  - 提交 = **`2c68c7c`** · 已推 `origin/dev`（`6691fc0..2c68c7c`）· 远端 `refs/heads/dev` 已核 = 本地 HEAD
