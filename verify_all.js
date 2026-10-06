@@ -368,7 +368,9 @@
 //         + C 形态合法性（固定须有 defaultYuan / 面积线性须 baseYuan+perSqmYuan / 人头线性须取 params.laborUnitYuan /
 //           营收率须有 pct / 阶梯须 steps 非空；缺参 ⇒ 装配出 NaN 喂引擎 ⇒ 整块结果崩）
 //         + D L1/L2 禁入项（页面折叠区块**不得**把坪效 / 目标租金率 / 翻台当输入框 —— 红线 §3.6）
-//         + E 回本唯一出口（`paybackCash` 是仓内唯一展示派生，pages 内零复算）。13 条断言）
+//         + E 回本唯一出口（`paybackCash` 是仓内唯一展示派生，pages 内零复算）。
+//         + S 城市系数双副本（前端 `CITY_COEF` 逐档逐键 ≡ 生产源 `CITY_TIERS` —— R230 验收后加严，
+//           变异实测「改 tier1.rent ⇒ 双守卫全绿」坐实缺口）。15 条断言）
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），

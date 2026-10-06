@@ -350,7 +350,7 @@ step       → fixedItems.push({key, fen: 分(按 rentYuan 查 steps 表命中�
 
 | 组 | 判据 |
 |---|---|
-| **S 扫描面（fail-closed）** | `utils/bizPreset.js` 存在 + 预设数 **≥ 4** + 断言数下界（🔴 防"扫描面扫空 ⇒ `0 ≤ 预算` 恒绿"） |
+| **S 扫描面（fail-closed）** | `utils/bizPreset.js` 存在 + 预设数 **≥ 4** + **前端 `CITY_COEF` 逐档逐键 ≡ 生产源 `CITY_TIERS`**（🔴 此项系 **R230 验收后加严**，交付方已交版本无需补做）+ 断言数下界（🔴 防"扫描面扫空 ⇒ `0 ≤ 预算` 恒绿"） |
 | **A 主分类合法性** | 每个预设的 `bizKey` ∈ `indicatorRef.js::BIZ_KEYS`（**4 类**，**从源文件解析**，不硬编码） |
 | **B 整套独立性** | 每个预设 `params` / `costMeta` **自包含**，禁止引用别的预设 |
 | **C 形态合法性** | `form` ∈ 五形态；**参数完备性**：`fixed` 且 `src≠'U'` ⇒ `defaultYuan` 在；`area_linear` ⇒ `baseYuan`+`perSqmYuan` 在；`headcount_linear` ⇒ 该预设 `params.laborUnitYuan` 在；`revenue_rate` ⇒ `pct` 在；`step` ⇒ `steps` 非空 |

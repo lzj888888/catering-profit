@@ -5,7 +5,7 @@
 // 为什么需要它（R182「判据存在 ≠ 被执行」同族）：业态参数包的取值/形态/城市系数全是
 // 契约里的硬规则（开发规范 v1.3 §三），此前零机器判据 ⇒ 写错/漏乘/自创数值无人报警。
 // 六组判据（全部 fail-closed：读不到 / 解析不到即判红）：
-//   S 扫描面   bizPreset.js 存在 + 预设数 ≥ 4 + 断言数下界（防"扫空 ⇒ 恒绿"）
+//   S 扫描面   bizPreset.js 存在 + 预设数 ≥ 4 + **城市系数双副本逐值 ≡ 生产源** + 断言数下界（防"扫空 ⇒ 恒绿"）
 //   A 主分类   每个预设 bizKey ∈ indicatorRef.js::BIZ_KEYS（4 类，从源文件解析，不硬编码）
 //   B 整套独立 每个预设 params/costMeta 自包含，禁止引用别的预设（跨业态继承会抹平差异）
 //   C 形态合法 form ∈ 五形态；参数完备：fixed(src≠U)⇒defaultYuan / area_linear⇒base+perSqm /
@@ -56,6 +56,35 @@ check('S-③ 预设数 ≥ 4', Array.isArray(BIZ_PRESETS) && BIZ_PRESETS.length 
 check('S-④ CITY_COEF 三档都带 rent+labor 双键',
   !!CITY_COEF && ['tier1', 'tier23', 'county'].every((k) => CITY_COEF[k] && CITY_COEF[k].rent != null && CITY_COEF[k].labor != null),
   'tier1/county 双键须在（漏乘 labor ⇒ 一线退回二三线）');
+
+// 🔴 S-⑤ / S-⑥ 城市系数双副本守卫（R230 验收后加严 —— 变异实测「前端 tier1.rent 1.20→1.25」时
+//   `check_biz_preset` 13/0 + `selfcheck_bizPreset` 25/0 **双双全绿** ⇒ 缺口真实存在）：
+//   前端 `CITY_COEF` 是**复刻**（前端不便 require 云函数，规范 §4.3 允许）⇒ 数值漂移必须有人守。
+//   漂移后果：前端展示的固定成本 / 保本点与云端引擎（用 `CITY_TIERS`）算的**不是同一个数**，
+//   用户看到的数是"假算"的，且**静默**（S-④ 只验双键在场，`check_indicator_ref` 只验生产源内部 code≡JSON）。
+//   判据分两条：S-⑤ 解析面非退化（解析不到即红，防"扫空 ⇒ 恒绿"）/ S-⑥ 逐档逐键相等。
+{
+  const indSrcS = readOr(INDICATOR) || '';
+  const seg = /const\s+CITY_TIERS\s*=\s*\[([\s\S]*?)\];/.exec(indSrcS);
+  const tiers = [];
+  if (seg) {
+    const re = /\{\s*key:\s*'([^']+)'\s*,\s*coef:\s*\{\s*rent:\s*([\d.]+)\s*,\s*labor:\s*([\d.]+)\s*\}\s*\}/g;
+    let m;
+    while ((m = re.exec(seg[1]))) tiers.push({ key: m[1], rent: Number(m[2]), labor: Number(m[3]) });
+  }
+  check('S-⑤ 从 indicatorRef.js 解析出 CITY_TIERS 三档（扫描面非退化）', tiers.length === 3,
+    tiers.length ? tiers.map((t) => t.key).join('/') : '解析不到 ⇒ fail-closed');
+  const drift = [];
+  for (const t of tiers) {
+    const c = CITY_COEF && CITY_COEF[t.key];
+    if (!c) { drift.push(t.key + ' 前端缺档'); continue; }
+    if (c.rent !== t.rent) drift.push(`${t.key}.rent 前端 ${c.rent} ≠ 源 ${t.rent}`);
+    if (c.labor !== t.labor) drift.push(`${t.key}.labor 前端 ${c.labor} ≠ 源 ${t.labor}`);
+  }
+  check('S-⑥ 前端 CITY_COEF 逐值 ≡ 生产源 CITY_TIERS（防复刻漂移）',
+    tiers.length === 3 && drift.length === 0,
+    drift.length ? '漂移：' + drift.join(' | ') : `${tiers.length} 档 × (rent,labor) 全等`);
+}
 
 // ============ A 主分类合法性（从 indicatorRef 解析，不硬编码）============
 sec('A · 主分类 ∈ indicatorRef.js::BIZ_KEYS');

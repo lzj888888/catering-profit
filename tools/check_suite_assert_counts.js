@@ -156,7 +156,7 @@ const CASES = [
   // M2v1.3 扩面（批次 第三期）：业态参数包守卫同批纳入 —— 它的 S 扫描面（预设数 ≥4 + 断言数下界）
   //   与 C 形态参数完备（缺一即 NaN）、D L1/L2 禁入、E 回本唯一出口正是「非恒真」的凭据；
   //   断言数不受守则「删掉反例 / 调低下界」静默通过，与 round73 立本守卫的根因同族。
-  { key: 'check_biz_preset', rel: 'tools/check_biz_preset.js' }, // 13 条（S/A/B/C/D/E 六组，含断言数下界）
+  { key: 'check_biz_preset', rel: 'tools/check_biz_preset.js' }, // 15 条（S/A/B/C/D/E 六组，含城市系数双副本逐值 ≡ 生产源、断言数下界）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];
