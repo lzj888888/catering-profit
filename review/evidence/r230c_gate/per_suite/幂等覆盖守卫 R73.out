@@ -1,0 +1,78 @@
+===== I1 契约解析（fail-closed：解析不到就红）=====
+✅ 契约表解析出「+幂等」函数 ≥5 个  (解析到 9 个：saveLedger, saveAsset, saveMaterial, saveCostCard, syncCostCard, importSalesBill, savePlan, deleteAccount, manageShop)
+✅ 契约解析含全部 5 个已交付函数  (缺：无)
+
+===== I2 契约覆盖（要求幂等的函数必须真在查重）=====
+✅ saveLedger 含幂等预检（契约 L43 标 +幂等）  (重放形态 findPriorResult)
+✅ saveAsset 含幂等预检（契约 L46 标 +幂等）  (重放形态 findPriorResult)
+✅ saveMaterial 含幂等预检（契约 L62 标 +幂等）  (重放形态 findPriorResult)
+✅ saveCostCard 含幂等预检（契约 L64 标 +幂等）  (重放形态 findPriorResult)
+✅ syncCostCard 含幂等预检（契约 L65 标 +幂等）  (重放形态 findPriorResult)
+✅ importSalesBill 含幂等预检（契约 L68 标 +幂等）  (重放形态 findPriorResult)
+✅ savePlan 含幂等预检（契约 L83 标 +幂等）  (重放形态 findPriorResult)
+✅ deleteAccount 含幂等预检（契约 L180 标 +幂等）  (拒绝形态 checkIdempotent)
+✅ manageShop 含幂等预检（契约 L182 标 +幂等）  (重放形态 findPriorResult)
+
+===== I3 顺序不变量（预检必须早于首个业务写）=====
+✅ adminGrantEntitlement 注入形态的顺序判据落在 service.js  (存在)
+✅ adminGrantEntitlement 幂等预检早于首个写型依赖调用  (预检@876 vs 首写@1186)
+✅ adminManualOrder 注入形态的顺序判据落在 service.js  (存在)
+✅ adminManualOrder 幂等预检早于首个写型依赖调用  (预检@912 vs 首写@1528)
+✅ adminRefundMark 注入形态的顺序判据落在 service.js  (存在)
+✅ adminRefundMark 幂等预检早于首个写型依赖调用  (预检@969 vs 首写@2084)
+✅ deleteAccount 幂等预检早于首个业务写  (预检@829 vs 首个业务写@1194)
+✅ manageShop 幂等预检早于首个业务写  (预检@1024 vs 首个业务写@2267)
+✅ saveAsset 幂等预检早于首个业务写  (预检@1806 vs 首个业务写@2463)
+✅ saveCostCard 幂等预检早于首个业务写  (预检@2808 vs 首个业务写@10397)
+✅ saveLedger 幂等预检早于首个业务写  (预检@1156 vs 首个业务写@4873)
+✅ saveMaterial 幂等预检早于首个业务写  (预检@976 vs 首个业务写@1967)
+✅ savePlan 幂等预检早于首个业务写  (预检@1168 vs 首个业务写@2746)
+✅ syncCostCard 幂等预检早于首个业务写  (预检@5276 vs 首个业务写@10141)
+
+===== I4 登记同源（重放形态必须复用单源 shopKey）=====
+✅ importSalesBill 查重键与登记键同源（用单源 shopKey）
+✅ manageShop 查重键与登记键同源（用单源 shopKey）
+✅ saveAsset 查重键与登记键同源（用单源 shopKey）
+✅ saveCostCard 查重键与登记键同源（用单源 shopKey）
+✅ saveLedger 查重键与登记键同源（用单源 shopKey）
+✅ saveMaterial 查重键与登记键同源（用单源 shopKey）
+✅ savePlan 查重键与登记键同源（用单源 shopKey）
+✅ syncCostCard 查重键与登记键同源（用单源 shopKey）
+
+===== I5 全量登记（有业务写的函数必须有幂等或登记豁免）=====
+✅ adminInit 无幂等实现但已登记豁免（含理由）  (已登记)
+✅ adminLogin 无幂等实现但已登记豁免（含理由）  (已登记)
+✅ adminLogout 无幂等实现但已登记豁免（含理由）  (已登记)
+✅ adminRefreshToken 无幂等实现但已登记豁免（含理由）  (已登记)
+✅ adminRevokeToken 无幂等实现但已登记豁免（含理由）  (已登记)
+✅ archiveMonth 无幂等实现但已登记豁免（含理由）  (已登记)
+✅ getPlan 无幂等实现但已登记豁免（含理由）  (已登记)
+✅ getShopContext 无幂等实现但已登记豁免（含理由）  (已登记)
+✅ initDb 无幂等实现但已登记豁免（含理由）  (已登记)
+✅ payCallback 无幂等实现但已登记豁免（含理由）  (已登记)
+✅ payCreateOrder 无幂等实现但已登记豁免（含理由）  (已登记)
+✅ payRenew 无幂等实现但已登记豁免（含理由）  (已登记)
+✅ saveShopSetting 无幂等实现但已登记豁免（含理由）  (已登记)
+✅ smokeTest 无幂等实现但已登记豁免（含理由）  (已登记)
+
+===== I6 豁免不腐（登记必须仍然成立）=====
+✅ EXEMPT_WRITE[saveShopSetting] 仍然成立  (理由：写 shop 名称/备注 + upsert shop…)
+✅ EXEMPT_WRITE[archiveMonth] 仍然成立  (理由：只翻转 is_archive 标记（true/fal…)
+✅ EXEMPT_WRITE[getShopContext] 仍然成立  (理由：读函数，唯一写是「无店铺时自动建档」（if (!sh…)
+✅ EXEMPT_WRITE[adminRevokeToken] 仍然成立  (理由：把指定管理员的**全部会话删光**（覆盖式终态）⇒ …)
+✅ EXEMPT_WRITE[adminLogout] 仍然成立  (理由：吊销**当前** token（从会话集合删除）⇒ 重…)
+✅ EXEMPT_WRITE[adminRefreshToken] 仍然成立  (理由：**有意非幂等**：每次刷新都要签发**新** to…)
+✅ EXEMPT_WRITE[payCallback] 仍然成立  (理由：契约 §5 明定幂等键 = **全局 transac…)
+✅ EXEMPT_WRITE[payCreateOrder] 仍然成立  (理由：契约 §5 鉴权列 = `user`（未标 +幂等）…)
+✅ EXEMPT_WRITE[payRenew] 仍然成立  (理由：同上（续费=再建一条 pending 订单）；exp…)
+✅ EXEMPT_WRITE[initDb] 仍然成立  (理由：仅 dev 生效（env 门禁 + blocked …)
+✅ EXEMPT_WRITE[smokeTest] 仍然成立  (理由：探针函数：只读写自建的 PROBE 探针集合（探测完…)
+✅ EXEMPT_WRITE[adminInit] 仍然成立  (理由：首超管引导（一次性）：靠「已存在首个 super 即…)
+✅ EXEMPT_WRITE[adminLogin] 仍然成立  (理由：登录是**审计/会话类追加写**：每次登录都该在 a…)
+✅ EXEMPT_WRITE[getPlan] 仍然成立  (理由：只读函数；唯一写是惰性清理超期软删的旧版本（物理删已…)
+
+===== I7 装饰性幂等键（写了非空 key 却从不查重 ⇒ 该 key 永不生效）=====
+✅ adminExport 写了非空 idempotency_key 却无查重 ⇒ 已登记理由  (已登记)
+✅ EXEMPT_KEY[adminExport] 仍然成立  (理由：导出是**只读**动作、无数据变更；after_da…)
+
+===== 幂等覆盖守卫结果：63 通过 / 0 失败 =====

@@ -1,0 +1,17 @@
+- initialize
+
+(node:23408) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)
+√ IDE server has started, listening on http://127.0.0.1:10896
+- query cloudfunctions info
+- Preparing to fetch cloudfunctions info
+- Fetching info of cloudfunction savePlan
+- Fetching info of cloudfunction getPlan
+√ query cloudfunctions info
+
+┌──────────┬──────────┬─────────┬───────────────┐
+│ (index)  │ status   │ timeout │ runtime       │
+├──────────┼──────────┼─────────┼───────────────┤
+│ savePlan │ 'Active' │ 20      │ 'Nodejs16.13' │
+│ getPlan  │ 'Active' │ 20      │ 'Nodejs16.13' │
+└──────────┴──────────┴─────────┴───────────────┘
