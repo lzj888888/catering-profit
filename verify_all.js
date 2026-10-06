@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：143 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：144 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -382,6 +382,11 @@
 //           逐组比对 {pass, level, failures}；并自证电池同时产出过 pass=true 与 pass=false
 //         + C 自失效护栏（样本数下界 700 / 字段数下界 9）+ **两组影子反例**（结构面「副本 enum 少一项」、
 //           行为面「一侧加 pos 另一侧没加」⇒ 必须报差异，且差异**只落在 platform 判别**上）。12 条断言）
+//       + 云函数外部依赖声明守卫（tools/check_fn_deps.js，R233：**云端只装 package.json 里声明的包** ⇒
+//         漏声明不是报错而是**容器起不来**（前端只看到「网络不可用」—— 本仓 utils/api.js 里段 2026-09-20 诊断注释
+//         记的正是这次真机事故）。`xlsx`（R181l 引入于 importSalesBill）是全仓**唯一**非原生依赖 ⇒ 这一类风险刚变活。
+//         判据 = S 扫描面（含**锚点** importSalesBill:xlsx，扫描面被写窄即红）+ A require ⊆ deps（正向，缺声明点名）
+//         + B deps ⊆ require（反向，防僵尸依赖）+ C 合成样本自证 + 断言数下界。12 条断言）
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -797,6 +802,7 @@ const SUITES = [
   // ===== 批次 M2v1.3（业态参数包 + 回本卡 第三期）：新增工具守卫 check_biz_preset（S/A/B/C/D/E 六组，13 断言）=====
   ['biz-preset',           'tools/check_biz_preset.js'],
   ['grade-gate-dual',      'tools/check_grade_gate_dual.js'],
+  ['fn-deps',              'tools/check_fn_deps.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

@@ -161,6 +161,7 @@ const CASES = [
   //   与 B-②「电池须同时产出过 pass=true 与 pass=false」正是「非恒真」凭据；
   //   12 条删掉一批仍 > 0 ⇒ A0-② 的「通过数为 0」下界抓不到，只有 A2「声明 ≡ 实跑」能发现（同 round73 立本守卫根因）。
   { key: 'check_grade_gate_dual', rel: 'tools/check_grade_gate_dual.js' }, // 12 条（S1~3 + A1~3 + B1~2 + C1~4）
+  { key: 'check_fn_deps', rel: 'tools/check_fn_deps.js' }, // 12 条（S1~3 + A1~4 + B1 + C1~4）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

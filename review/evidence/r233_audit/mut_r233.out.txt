@@ -1,0 +1,22 @@
+✅ 基线全绿（RC=0）
+MA1 删 importSalesBill 的 xlsx require（锚点消失）               ❌=2  目标断言 S-③ ✅点名到
+         失败行: ['❌ S-③ 非原生 require 扫描非退化（条数 ≥ 1 且含锚点 importSalesBill:xlsx）  (46 条 · ❌ 锚点缺失（扫描面可能被写窄）)', '❌ B-① 每个声明的包都被实际 require（多余声明即红）  (声明未用：importSalesBill → xlsx)']
+MA2 从 importSalesBill 依赖里删 xlsx（未声明）                     ❌=1  目标断言 A-③ ✅点名到
+         失败行: ['❌ A-③ 每个被 require 的非原生模块都在该函数 dependencies 里  (缺声明：importSalesBill → xlsx)']
+MA3 calcBom 依赖清空（wx-server-sdk 也没了）                      ❌=1  目标断言 A-③ ✅点名到
+         失败行: ['❌ A-③ 每个被 require 的非原生模块都在该函数 dependencies 里  (缺声明：calcBom → wx-server-sdk)']
+MA4 calcBom 多声明 lodash（僵尸依赖）                             ❌=1  目标断言 B-① ✅点名到
+         失败行: ['❌ B-① 每个声明的包都被实际 require（多余声明即红）  (声明未用：calcBom → lodash)']
+MA5 calcBom 新增 require('left-pad')（未声明）                  ❌=1  目标断言 A-③ ✅点名到
+         失败行: ['❌ A-③ 每个被 require 的非原生模块都在该函数 dependencies 里  (缺声明：calcBom → left-pad)']
+MA6 下界改大 MIN_FN 40→9999（证下界非恒真）                          ❌=1  目标断言 S-① ✅点名到
+         失败行: ['❌ S-① 函数目录数 ≥ 9999  (实测 46 个)']
+MB1 版本号格式等价改写 ~2.6.3→2.6.3                               ❌=0  ✅如期绿
+         失败行: 无
+MB2 注释里写 require('ghost-pkg')（应被剥掉）                      ❌=0  ✅如期绿
+         失败行: 无
+
+还原后 ❌=0 crash=False RC=0 ✅回绿
+字节级还原自证：✅ 逐字节相等
+
+=== 回灌汇总：变异 8 条 / 未达期 0 [] ===

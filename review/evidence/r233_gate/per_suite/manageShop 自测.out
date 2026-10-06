@@ -1,0 +1,78 @@
+===== 入参校验（validate，纯函数）=====
+✅ 合法 create 通过
+✅ create 缺 name → INVALID_PARAM
+✅ 非法 op → INVALID_PARAM
+✅ rename 缺 target_shop_id → INVALID_PARAM
+✅ name 超长（21 字）→ INVALID_PARAM
+✅ name 逐步退到上限内即通过（边界成对）
+✅ delete / reset / stats 都不要 name 也通过（这三个 op 已有目标店）
+✅ R210：reset / stats 缺 target_shop_id → INVALID_PARAM（不许对"当前店"隐式生效）
+✅ R210：拼错的近义 op 一律拒（防"子串/大小写"式宽松白名单）
+✅ name 首尾空格被 trim（不写进库）
+✅ 全空格 name 视为空 → INVALID_PARAM
+✅ 缺 client_request_id ⇒ 空串（不炸）
+✅ R210：OPS 恰好五个（create/rename/delete/reset/stats 不多不少）
+
+===== 新建额度判定（decideCreate，注入值驱动）=====
+✅ used=0 / free_limit=1 ⇒ 放行  (free=1)
+✅ used=1 / free_limit=1 ⇒ 拦（第 2 家触发付费墙）  (free=1)
+✅ 同一 used=1 在 free_limit=3 下放行（正负互证：结论随注入值变）
+✅ 达 hard_shop ⇒ hit_hard_limit
+✅ 未达 hard_shop 时不误报硬上限
+✅ 缺 limits ⇒ 抛 SYSTEM_ERROR（响亮失败，不静默放行）
+✅ limits 缺 shop 键 ⇒ 抛 SYSTEM_ERROR
+
+===== 删除边界（decideDelete）：只要还有活跃店就允许删，删光 = 释放额度 =====
+✅ 2 家 ⇒ 允许删且剩 1 家
+✅ 1 家 ⇒ 允许删且剩 0 家（R208：免费额度随之释放，可再建）  (remaining=0)
+✅ 3 家 ⇒ 允许删且剩 2 家
+✅ 0 家（异常态）⇒ 不允许删（fail-closed，避免幽灵删除）
+
+===== 清空月度账判定（decideReset，R210：比删店轻的第二条出口）=====
+✅ 有 3 个月账 ⇒ 允许清空且 reason 为空  (months=3)
+✅ 0 个月 ⇒ 不允许（没账就不清，避免无意义写库）
+✅ rows 超护栏 ⇒ 不允许且 reason=TOO_MANY_ROWS
+✅ truncated（listAll 没拉到底）⇒ 即便行数没超也不允许（绝不半删）
+✅ 边界成对：rows 恰好等于护栏 ⇒ 放行（不多拦一条）
+✅ 入参缺失 ⇒ months/rows 归零且不允许（不猜、默认为 0）
+✅ R210 清点范围恰三张月度账表（不多一张，成本卡/原料**不在**内）
+
+===== 构造：确定性 _id 与文档形状 =====
+✅ 同 (user, crid) ⇒ 同 _id（幂等由构造保证的基石）  (shop_u_1_crid_abc)
+✅ 不同 crid ⇒ 不同 _id
+✅ 不同 user ⇒ 不同 _id
+✅ 无 crid ⇒ 空串（调用方退化为 genId，不做幂等约束）
+✅ 文档 _id ≡ id ≡ shop_id（三键同值，防「业务主键≠_id」重演）
+✅ 文档 is_deleted=false（新建即可见）
+✅ 文档带 created_at/updated_at
+✅ 重命名补丁只含 name + updated_at（不顺手清备注/业态）
+✅ 重命名补丁值正确
+
+===== index.js 源码形状（含 wx-server-sdk，只能静态断言）=====
+✅ 目标店字段用 target_shop_id（api.js 会注入当前店 shop_id，不能拿它当目标）
+✅ rename/delete 都先做归属校验（assertShopOwner）
+✅ 归属校验失败即返回（判据用 .error，与 auth.js 返回形状一致）
+✅ 删除走软删 da.softDelete（绝不物理删除）
+✅ 无物理删除调用（collection.remove 零命中）
+✅ 写库主键优先用 _id（owner.data._id）
+✅ 写库 0 行必 fail-loud（stats.updated 判据 ≥ 2 处：rename + delete）
+✅ 创建额度计数走 countActive（软删不占额）
+✅ R210：四个**写** op 都留痕（writeAudit ≥ 4 处：create/rename/delete/reset；stats 纯读不留）
+✅ 幂等：rename/delete 走 findPriorResult + shopKey
+✅ create 幂等：撞 _id 即回读（isDuplicateKeyError）
+✅ 额度真相源读 feature_permissions 而非硬编码数字
+✅ 三个 op 的错误码语义在场（FREE_LIMIT_EXCEEDED / HARD_CAP_EXCEEDED / INVALID_PARAM）
+✅ 鉴权是本函数第一条业务动作（resolveAuth 在 validateInput 之前）
+
+===== R210 · 清空月度账的源码形状（静态断言）=====
+✅ 清点/清空一律 listAll（不用上限 1000 的 list，否则会静默半删）
+✅ 清空走软删 da.softDelete（月度账也绝不物理删除）
+✅ 月度账无物理删除（三张表都不得出现 .remove(）
+✅ 写库主键取行内真实主键 row._id（不用业务键拼接）
+✅ 逐行核 stats.updated 且不等即 fail-loud（不留半清干净态）
+✅ stats 排在 findPriorResult **之前**（纯读不该写幂等/审计痕迹）
+✅ stats 排在 assertShopOwner **之后**（越权者连量级都不该问到）
+✅ reset / stats 也要目标店（没有绕过 target_shop_id 的第二条路径）
+✅ 源码里归属校验只写一次（rename/delete 共用一段，不是两段各写一遍）  (1 处调用)
+
+==== manageShop R194 自测结果：63 通过 / 0 失败 ====
