@@ -36,13 +36,15 @@ M2 v1.3 业态参数包与回本卡 —— 锚点复算（require 生产引擎 c
 
 ===== ④ 回本两口径 · invest（引擎）vs cash（后置派生）—— R224 用例：卤鸡火锅 100㎡ =====
   引擎 build_total_fen = 262000 元 · payback_months(invest) = 16.4
-  cash 口径（后置派生）= 11.8 月
-  ✅ invest 回本 = 16.4 月（R224 反推值）  = 16.4
-  ✅ cash 回本 = 11.8 月（BP 自报值）  = 11.8
-  ✅ 两口径**不相等**且 cash < invest（39% 差）  11.8 < 16.4
+  引擎 build_amort_monthly_fen = 6100 元/月（≡ BP 明写的 0.61 万）
+  cash 口径（后置派生）= 11.9 月
+  ✅ 引擎月摊销 = 6,100 元（≡ BP 明写 0.61 万）  = 6100
+  ✅ invest 回本 = 16.4 月（引擎 payback_months）  = 16.4
+  ✅ cash 回本 = 11.9 月（26.2 ÷ 2.21 = 11.855 ⇒ 11.9）  = 11.9
+  ✅ 两口径**不相等**且 cash < invest（38% 差）  11.9 < 16.4
 
 ===== ⑤ 边界 · target_profit_fen ≤ 0 ⇒ payback_months = null（不编造） =====
   ✅ 目标利润 = 0 ⇒ payback_months  = null
 
 ===== 汇总 =====
-  通过 20 / 失败 0
+  通过 21 / 失败 0

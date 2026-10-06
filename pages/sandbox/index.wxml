@@ -33,6 +33,99 @@
     </view>
   </view>
 
+  <!-- M2v1.3 · L1 小白（必填 5 项：业态预设 / 面积 / 月租金 / 员工数 / 目标利润）-->
+  <view class="card2" id="l1l2">
+    <view class="sec">{{t.l1Title}}</view>
+    <view class="sel-row">
+      <text class="sel-lbl">{{t.presetLabel}}</text>
+      <picker class="sel-pk" range="{{presetOptions}}" range-key="name" value="{{presetIdx}}" bindchange="onPreset">
+        <view class="sel-val">{{presetName || t.presetNone}} ▾</view>
+      </picker>
+    </view>
+    <view class="hint" wx:if="{{presetPicked}}">{{t.presetPickedPre}}{{presetName}}{{t.presetPickedSuf}}</view>
+    <view class="row">
+      <text class="row-name">{{t.areaLabel}}</text>
+      <view class="row-in-wrap">
+        <input class="row-in" type="digit" value="{{areaNum}}" bindinput="onArea" adjust-position="{{true}}" cursor-spacing="20" />
+        <text class="row-unit">{{t.areaUnit}}</text>
+      </view>
+    </view>
+    <view class="row">
+      <text class="row-name">{{t.rentLabel}}</text>
+      <view class="row-in-wrap">
+        <input class="row-in" type="digit" value="{{rentYuan}}" bindinput="onRent" adjust-position="{{true}}" cursor-spacing="20" />
+        <text class="row-unit">{{t.yuanUnit}}</text>
+      </view>
+    </view>
+    <view class="row">
+      <text class="row-name">{{t.headcountLabel}}</text>
+      <view class="row-in-wrap">
+        <input class="row-in" type="number" value="{{headcountNum}}" bindinput="onHeadcount" adjust-position="{{true}}" cursor-spacing="20" />
+        <text class="row-unit">{{t.headcountUnit}}</text>
+      </view>
+    </view>
+    <!-- L2 更多设置 -->
+    <view class="fold-toggle" bindtap="onToggleL2">{{t.l2Toggle}}{{showL2 ? ' ▾' : ' ▸'}}</view>
+    <view wx:if="{{showL2}}">
+      <view class="row">
+        <text class="row-name">{{t.avgPriceLabel}}</text>
+        <view class="row-in-wrap">
+          <input class="row-in" type="digit" value="{{avgPriceYuan}}" bindinput="onAvgPrice" adjust-position="{{true}}" cursor-spacing="20" />
+          <text class="row-unit">{{t.yuanUnit}}</text>
+        </view>
+      </view>
+      <view class="row">
+        <text class="row-name">{{t.laborUnitLabel}}</text>
+        <view class="row-in-wrap">
+          <input class="row-in" type="digit" value="{{laborUnitYuan}}" bindinput="onLaborUnit" adjust-position="{{true}}" cursor-spacing="20" />
+          <text class="row-unit">{{t.yuanUnit}}</text>
+        </view>
+      </view>
+    </view>
+    <!-- L3 专业参数 -->
+    <view class="fold-toggle" bindtap="onToggleL3">{{t.l3Toggle}}{{showL3 ? ' ▾' : ' ▸'}}</view>
+    <view wx:if="{{showL3}}" id="l3-pro">
+      <view class="row">
+        <text class="row-name">{{t.openDaysLabel2}}</text>
+        <view class="row-in-wrap">
+          <input class="row-in" type="number" value="{{openDaysNum}}" bindinput="onOpenDays2" adjust-position="{{true}}" cursor-spacing="20" />
+          <text class="row-unit">{{t.dayUnit}}</text>
+        </view>
+      </view>
+      <view class="row">
+        <text class="row-name">{{t.pixelEffLabel2}}</text>
+        <view class="row-in-wrap">
+          <input class="row-in" type="digit" value="{{pixelEffYuan}}" bindinput="onPixelEff" adjust-position="{{true}}" cursor-spacing="20" />
+          <text class="row-unit">{{t.yuanUnit}}</text>
+        </view>
+      </view>
+      <view class="row">
+        <text class="row-name">{{t.turnLabel2}}</text>
+        <view class="row-in-wrap">
+          <input class="row-in" type="digit" value="{{turnNum}}" bindinput="onTurn" adjust-position="{{true}}" cursor-spacing="20" />
+          <text class="row-unit">{{t.pctUnit}}</text>
+        </view>
+      </view>
+      <view class="row" wx:for="{{feeRows}}" wx:key="key">
+        <text class="row-name">{{item.label}}</text>
+        <view class="row-in-wrap">
+          <input class="row-in" type="digit" value="{{item.pct}}" data-key="{{item.key}}" bindinput="onFeePct" adjust-position="{{true}}" cursor-spacing="20" />
+          <text class="row-unit">{{t.pctUnit}}</text>
+        </view>
+      </view>
+    </view>
+    <!-- 本次测算底层假设（默认折叠可展开） -->
+    <view class="fold-toggle" bindtap="onToggleAssumptions">{{t.assumptionsTitle}}{{showAssumptions ? ' ▾' : ' ▸'}}</view>
+    <view wx:if="{{showAssumptions}}">
+      <view class="asm" wx:for="{{presetAssumptions}}" wx:key="label">
+        <text class="asm-lbl">{{item.label}}</text>
+        <text class="asm-input">{{item.val}}</text>
+        <text class="asm-src" wx:if="{{presetPicked}}">{{item.src}}</text>
+      </view>
+      <view class="hint">{{t.assumptionsHint}}</view>
+    </view>
+  </view>
+
   <!-- ⓪ 行业参考区间 + 参考金额（round113 立 · round114 加"预计月营业额"锚点）
        —— 用户"还没填"时就知道该填多少量级；填了预计营业额后，每项再给出参考金额（起点）。
        ⚠️ 参考金额只是灰字起点（在下面各输入框的 placeholder 里），**不会自动填值**。 -->
@@ -232,6 +325,22 @@
       </view>
     </view>
   </block>
+
+  <!-- 餐饮指标对照（待下面 payback 卡前） -->
+  <view class="card2" wx:if="{{mode === 'forward' && payback}}">
+    <view class="sec">{{t.paybackTitle}}</view>
+    <view class="cell">
+      <text class="lbl">{{t.paybackInvest}}</text>
+      <text class="val {{payback.investDefault ? 'keynum' : ''}}">{{payback.hasData ? ((payback.invest != null ? payback.invest : '—') + t.months) : '—'}}</text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.paybackCash}}</text>
+      <text class="val {{!payback.investDefault ? 'keynum' : ''}}">{{payback.hasData ? ((payback.cash != null ? payback.cash : '—') + t.months) : '—'}}</text>
+    </view>
+    <view class="hint" wx:if="{{!payback.hasData}}">{{t.paybackNull}}</view>
+    <view class="hint payback-disclaimer">{{t.paybackDisclaimer}}</view>
+    <button class="btn ghost payback-m3-btn" bindtap="onGoM3">{{t.paybackSeeM3}}</button>
+  </view>
 
   <!-- 餐饮指标对照 -->
   <view class="card2" wx:if="{{indicators.length}}">

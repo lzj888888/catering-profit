@@ -33,6 +33,11 @@
 
   <!-- ===== 对比视图 ===== -->
   <view wx:if="{{mode === 'compare'}}">
+    <view class="exp-tool">
+      <button class="btn ghost exp-btn" bindtap="onExportImg">{{t.exportImg}}</button>
+      <button class="btn ghost exp-btn" bindtap="onExportExcel">{{t.exportExcel}}</button>
+    </view>
+    <view class="hint">{{t.exportImgHint}}</view>
     <view class="cmp-wrap" wx:if="{{comparing}}">{{t.compareLoading}}</view>
     <view class="cmp" wx:else>
       <scroll-view scroll-x class="cmp-scroll">
@@ -50,3 +55,4 @@
     </view>
   </view>
 </view>
+<canvas type="2d" id="compareCanvas" class="cmp-canvas"></canvas>

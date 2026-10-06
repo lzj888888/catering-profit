@@ -12,6 +12,8 @@
 const api = require('../../utils/api.js');
 const ui = require('../../utils/ui.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
+// M2v1.3：业态参数包（纯数据 + 唯一装配入口 + 回本派生，仓根 utils/）
+const { BIZ_PRESETS, CITY_COEF, assembleItems, resolveBuild, paybackCash, findPreset } = require('../../utils/bizPreset.js');
 
 const M = TERMS.m2;
 const BUILD_ALL = Object.keys(M.buildItems);
@@ -119,6 +121,39 @@ Page({
       planSavedOk: M.planSavedOk,
       planNamePh: M.planNamePh,
       cancel: TERMS.buttons.cancel,
+      // M2v1.3（业态参数包 + 回本卡）
+      presetLabel: M.presetLabel,
+      presetNone: M.presetNone,
+      presetPickedPre: M.presetPickedPre,
+      presetPickedSuf: M.presetPickedSuf,
+      bizPresets: M.bizPresets,
+      l1Title: M.l1Title,
+      areaLabel: M.areaLabel,
+      areaUnit: M.areaUnit,
+      rentLabel: M.rentLabel,
+      headcountLabel: M.headcountLabel,
+      headcountUnit: M.headcountUnit,
+      l2Toggle: M.l2Toggle,
+      l3Toggle: M.l3Toggle,
+      avgPriceLabel: M.avgPriceLabel,
+      laborUnitLabel: M.laborUnitLabel,
+      openDaysLabel2: M.openDaysLabel2,
+      dayUnit: M.dayUnit,
+      pixelEffLabel2: M.pixelEffLabel2,
+      rentRateLabel2: M.rentRateLabel2,
+      turnLabel2: M.turnLabel2,
+      pctUnit: M.pctUnit,
+      assumptionsTitle: M.assumptionsTitle,
+      assumptionsHint: M.assumptionsHint,
+      costLoss: M.costLoss,
+      paybackTitle: M.paybackTitle,
+      paybackInvest: M.paybackInvest,
+      paybackCash: M.paybackCash,
+      paybackNull: M.paybackNull,
+      paybackDisclaimer: M.paybackDisclaimer,
+      paybackSeeM3: M.paybackSeeM3,
+      months: M.months,
+      yuanUnit: M.yuanUnit,
     },
     // 选择器
     cityIdx: 1, bizIdx: 1,          // 默认「二三线 / 中式正餐」
@@ -164,6 +199,27 @@ Page({
     planType: 'site_select',
     planSaving: false,
     saveCrid: '',            // 本次点击生成一次的 uuid；同一次点击重试复用（幂等依赖）
+    // M2v1.3（业态参数包 + 回本卡）
+    presetKey: '',           // 选中的类内预设（'' = 不确定 / 手填）
+    presetName: '',
+    presetPicked: false,
+    presetIdx: -1,
+    presetOptions: [],       // 当前主分类下的类内预设 [{key,name}]
+    areaNum: '',             // 面积（㎡）
+    rentYuan: '',            // 月租金（元）
+    headcountNum: '',        // 员工数（人）
+    avgPriceYuan: '',        // 客单价（元）
+    laborUnitYuan: '',       // 单人月人工单价（元）
+    openDaysNum: '',         // 每月营业天数
+    pixelEffYuan: '',        // 坪效（元/㎡·月）
+    turnNum: '',             // 翻台率
+    feeOverrides: {},        // itemKey → pct 字符串（L3 费率覆盖）
+    feeRows: [],             // 当前预设 revenue_rate 项 [{key,label,pct}]
+    showL2: false,
+    showL3: false,
+    showAssumptions: false,
+    payback: null,           // {invest, cash, investDefault}（M2v1.3 回本卡）
+    presetAssumptions: [],   // 底部假设卡行 [{label,val,src}]
   },
 
   onLoad() { this._seq = 0; this.bootstrap(); },
@@ -174,6 +230,7 @@ Page({
     try {
       await api.ensureShop();
       ui.setTitle(TERMS.modules.m2.navTitle);
+      this.syncPresetOptions();
       // R193：首算**之前**恢复本地草稿 ⇒ 进来看到的就是上次那版结果（不用重填一遍才有数）
       this.restoreDraft();
       // round113：进页面先拿一次"行业参考区间" —— 用户**还没填任何数**就能看到该填多少量级
@@ -257,6 +314,8 @@ Page({
   onBiz(e) {
     const i = Number(e.detail.value);
     this.setData({ bizIdx: i, bizName: M.bizTypes[i].name });
+    // M2v1.3：主分类变了 ⇒ 类内预设跟着换（不同 bizKey 的预设不同）
+    this.syncPresetOptions();
     this.scheduleCalc();
   },
 
@@ -395,6 +454,11 @@ Page({
     if (first) this.setData({ loading: true, calcError: '' });
     const seq = ++this._seq;
     const isReverse = this.data.mode === 'reverse';
+
+    // M2v1.3：选了类内预设 ⇒ 走「参数包装配 → 回本卡」的预设前向分支
+    if (!isReverse && this.data.presetKey) {
+      return this.onCalcPresetFwd();
+    }
 
     // ===== M2v1.1 反推分支 =====
     if (isReverse) {
@@ -668,5 +732,186 @@ Page({
       this.setData({ planSaving: false });
       api.toastError(e);
     }
+  },
+
+  // ===== M2v1.3（业态参数包 + 回本卡 · 第三期）=====
+  // 当前主分类下的类内预设选项（主分类 4 类，类内预设由 bizPreset.js 供给）
+  syncPresetOptions() {
+    const bizKey = this.data.t.bizTypes[this.data.bizIdx].key;
+    const opts = BIZ_PRESETS
+      .filter((p) => p.bizKey === bizKey)
+      .map((p) => ({ key: p.presetKey, name: this.data.t.bizPresets[p.presetKey] || p.presetKey }));
+    // 前端先补一项「不确定」（key=''；选了它 = 不用预设，手填全部）
+    const none = { key: '', name: this.data.t.presetNone };
+    const full = [none].concat(opts);
+    // 若当前预设不属于新主分类，重置
+    const still = BIZ_PRESETS.filter((p) => p.presetKey === this.data.presetKey && p.bizKey === bizKey).length > 0;
+    const presetIdx = still ? full.findIndex((o) => o.key === this.data.presetKey) : 0;
+    this.setData({ presetOptions: full, presetIdx, presetName: still ? this.data.presetName : this.data.t.presetNone, presetPicked: still });
+  },
+
+  onPreset(e) {
+    const i = Number(e.detail.value);
+    const opt = this.data.presetOptions[i];
+    if (!opt || !opt.key) {
+      // 「不确定」：清空预设，回到手填全部
+      this.setData({ presetKey: '', presetName: this.data.t.presetNone, presetPicked: false, feeRows: [], feeOverrides: {} });
+      this.scheduleCalc();
+      return;
+    }
+    const preset = findPreset(opt.key);
+    const patch = {
+      presetKey: opt.key,
+      presetName: opt.name,
+      presetPicked: true,
+      feeRows: (preset.costMeta || [])
+        .filter((m) => m.form === 'revenue_rate')
+        .map((m) => ({ key: m.itemKey, label: m.labelKey === 'costLoss' ? this.data.t.costLoss : (this.data.t.fixedItems[m.itemKey] || m.itemKey), pct: String(m.pct) })),
+      feeOverrides: {},
+    };
+    // 自动带出参数包默认值（只覆盖还为空 / 未改的项）
+    if (preset.params && preset.params.grossMarginPct) patch.marginPct = preset.params.grossMarginPct.v;
+    if (preset.params && preset.params.openDays) patch.openDaysNum = String(preset.params.openDays.v);
+    if (preset.params && preset.params.laborUnitYuan) patch.laborUnitYuan = String(preset.params.laborUnitYuan.v);
+    if (preset.params && preset.params.avgPriceYuan) patch.avgPriceYuan = String(preset.params.avgPriceYuan.v);
+    this.setData(patch);
+    this.scheduleCalc();
+  },
+  onArea(e) { this.setData({ areaNum: e.detail.value }); this.scheduleCalc(); },
+  onRent(e) { this.setData({ rentYuan: e.detail.value }); this.scheduleCalc(); },
+  onHeadcount(e) { this.setData({ headcountNum: e.detail.value }); this.scheduleCalc(); },
+  onAvgPrice(e) { this.setData({ avgPriceYuan: e.detail.value }); this.scheduleCalc(); },
+  onLaborUnit(e) { this.setData({ laborUnitYuan: e.detail.value }); this.scheduleCalc(); },
+  onOpenDays2(e) { this.setData({ openDaysNum: e.detail.value }); this.scheduleCalc(); },
+  onPixelEff(e) { this.setData({ pixelEffYuan: e.detail.value }); this.scheduleCalc(); },
+  onTurn(e) { this.setData({ turnNum: e.detail.value }); this.scheduleCalc(); },
+  onFeePct(e) {
+    const key = e.currentTarget.dataset.key;
+    const val = e.detail.value;
+    const overrides = Object.assign({}, this.data.feeOverrides, { [key]: val });
+    const feeRows = this.data.feeRows.map((r) => (r.key === key ? Object.assign({}, r, { pct: val }) : r));
+    this.setData({ feeOverrides: overrides, feeRows });
+    this.scheduleCalc();
+  },
+  onToggleL2() { this.setData({ showL2: !this.data.showL2 }); },
+  onToggleL3() { this.setData({ showL3: !this.data.showL3 }); },
+  onToggleAssumptions() { this.setData({ showAssumptions: !this.data.showAssumptions }); },
+  onGoM3() { wx.switchTab({ url: '/pages/m3/hub' }); },
+
+  // 统一入参装配（preset 态）：cost_meta 形态运算**只在 assembleItems 内**，本方法不做任何保本/毛利率/摊销算式
+  buildPresetParam() {
+    const preset = findPreset(this.data.presetKey) || BIZ_PRESETS[0];
+    const cityKey = this.data.t.cityTiers[this.data.cityIdx].key;
+    const coef = Object.assign({ rent: 1, labor: 1 }, CITY_COEF[cityKey] || {});
+    const userBuild = this.data.buildRows
+      .filter((r) => api.yuanToFen(r.yuan) > 0)
+      .map((r) => ({ key: r.key, fen: api.yuanToFen(r.yuan), years: Number(r.years) || 1 }));
+    const input = {
+      area: Number(this.data.areaNum) || 0,
+      headcount: Number(this.data.headcountNum) || 0,
+      rentYuan: Number(this.data.rentYuan) || 0,
+      fixedYuan: { rent: this.data.rentYuan },
+      buildItems: userBuild,
+    };
+    const { fixedItems, varItems } = assembleItems(preset, input, coef);
+    const fo = this.data.feeOverrides || {};
+    const varItemsFinal = varItems.map((v) =>
+      (fo[v.key] != null && fo[v.key] !== '' ? { key: v.key, pct: Number(fo[v.key]) } : v));
+    const buildItems = resolveBuild(preset, input);
+    const openDays = (this.data.openDaysNum && this.data.openDaysNum !== '') ? Number(this.data.openDaysNum)
+      : (preset.params && preset.params.openDays ? preset.params.openDays.v : 30);
+    return {
+      mode: 'forward',
+      city_tier: cityKey,
+      biz_type: preset.bizKey,
+      build_items: buildItems,
+      fixed_items: fixedItems,
+      var_items: varItemsFinal,
+      gross_margin_pct: Number(this.data.marginPct),
+      target_profit_fen: api.yuanToFen(this.data.targetYuan),
+      expected_revenue_fen: api.yuanToFen(this.data.expectYuan),
+      rev_price_fen: api.yuanToFen(this.data.avgPriceYuan),
+      seats: 0,
+      open_days: openDays,
+      target_rent_rate: 0,
+      pixel_eff_fen: api.yuanToFen(this.data.pixelEffYuan),
+      _preset: preset,
+      _targetFen: api.yuanToFen(this.data.targetYuan),
+    };
+  },
+
+  // 预设前向测算：结果区渲染 + 回本卡（invest 读引擎，cash 走 bizPreset.paybackCash 唯一派生）
+  async onCalcPresetFwd() {
+    if (this._timer) { clearTimeout(this._timer); this._timer = null; }
+    const seq = ++this._seq;
+    const p = this.buildPresetParam();
+    const payload = {
+      city_tier: p.city_tier, biz_type: p.biz_type,
+      build_items: p.build_items, fixed_items: p.fixed_items, var_items: p.var_items,
+      gross_margin_pct: p.gross_margin_pct, target_profit_fen: p.target_profit_fen,
+      expected_revenue_fen: p.expected_revenue_fen,
+      rev_price_fen: p.rev_price_fen, seats: p.seats, open_days: p.open_days,
+      target_rent_rate: p.target_rent_rate, pixel_eff_fen: p.pixel_eff_fen,
+      client_request_id: 'sb_' + Date.now(),
+    };
+    try {
+      const d = await api.call('calcSandbox', payload);
+      if (seq !== this._seq) return;
+      const fen = (v) => (v == null ? null : api.fenToYuan(v, 2));
+      const hasFixed = p.fixed_items.length > 0;
+      // 回本卡（invest 直读引擎 payback_months；cash 唯一派生在 bizPreset）
+      const invest = d.payback_months;
+      const cash = paybackCash(d.build_total_fen, p._targetFen, d.build_amort_monthly_fen);
+      const payback = {
+        invest: invest != null ? api.fenToYuan(api.yuanToFen(invest), 0) : null,
+        cash: cash != null ? String(cash) : null,
+        investDefault: p._preset.paybackView === 'invest',
+        hasData: invest != null || cash != null,
+      };
+      const amt = this.amountMaps(d.amount_preview || []);
+      const rowsWithPh = this.applyRefAmount(this.data.fixedRows, amt);
+      this.setData({
+        bands: this.decorateBands(d.bands_preview || [], amt),
+        marginBand: this.pickBand(d.bands_preview, 'grossMargin'),
+        result: !hasFixed ? null : {
+          red_alert: !!d.red_alert,
+          build_total: fen(d.build_total_fen),
+          build_amort: fen(d.build_amort_monthly_fen),
+          fixed_total: fen(d.fixed_total_fen),
+          platform_pct: d.platform_pct,
+          margin_rate: d.margin_rate_ratio != null ? (d.margin_rate_ratio * 100).toFixed(1) : '—',
+          break_even_monthly: fen(d.break_even_monthly_fen),
+          break_even_daily: fen(d.break_even_daily_fen),
+          target_monthly: fen(d.target_monthly_fen),
+          target_daily: fen(d.target_daily_fen),
+          payback_months: d.payback_months,
+          _ind: { break: d.indicators_at_breakeven || [], target: d.indicators_at_target || [] },
+        },
+        indicators: hasFixed ? this.decorate(d.indicators_at_breakeven || []) : [],
+        indTab: 'break',
+        payback,
+        presetAssumptions: this.buildAssumptions(p._preset, d),
+        calcError: hasFixed ? '' : M.needFixed,
+        dirty: false,
+      });
+    } catch (e) {
+      if (seq !== this._seq) return;
+      if (e.code === 'M2_RED_ALERT') { this.setData({ result: { red_alert: true }, calcError: '' }); }
+      else { this.setData({ calcError: e.msg || '' }); api.toastError(e); }
+    }
+  },
+
+  // 底部假设卡（只读展示参数包默认值 + 来源；不参与计算）
+  buildAssumptions(preset, d) {
+    const rows = [];
+    if (preset.params && preset.params.grossMarginPct) rows.push({ label: M.marginName, val: preset.params.grossMarginPct.v + '%', src: preset.params.grossMarginPct.src });
+    if (preset.params && preset.params.openDays) rows.push({ label: M.revOpenDays, val: String(preset.params.openDays.v) + '天', src: preset.params.openDays.src });
+    if (preset.params && preset.params.laborUnitYuan) rows.push({ label: M.laborUnitLabel, val: preset.params.laborUnitYuan.v + '元/人·月', src: preset.params.laborUnitYuan.src });
+    if (preset.params && preset.params.avgPriceYuan) rows.push({ label: M.avgPriceLabel, val: preset.params.avgPriceYuan.v + '元', src: preset.params.avgPriceYuan.src });
+    const fee = M.varItems;
+    (preset.costMeta || []).forEach((m) => {
+      if (m.form === 'revenue_rate') rows.push({ label: m.labelKey === 'costLoss' ? M.costLoss : (fee[m.itemKey] || m.itemKey), val: m.pct + '%', src: m.src });
+    });
+    return rows;
   },
 });

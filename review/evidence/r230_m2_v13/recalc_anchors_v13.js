@@ -11,7 +11,7 @@
 //   ③-1 形态鉴别力 · 改面积 —— area_linear 项随面积重算（防"界面看 A、引擎算 B"）
 //   ③-2 形态鉴别力 · 改人数 —— headcount_linear 项随人数重算
 //   ③-3 反例 · 城市系数未生效 —— tier1 的固定成本必须 > tier23（labor 系数 > 1）
-//   ④ 回本两口径 —— invest（引擎 payback_months）vs cash（后置派生），复现 R224 的 11.8 vs 16.4 月
+//   ④ 回本两口径 —— invest（引擎 payback_months）vs cash（后置派生），复现 R224 用例的 11.9 vs 16.4 月（BP 自报 11.8 系其截断）
 //   ⑤ 边界不编造 —— target_profit_fen ≤ 0 ⇒ payback_months = null
 //
 // 运行：node review/evidence/r230_m2_v13/recalc_anchors_v13.js
@@ -271,22 +271,27 @@ CHK_TRUE('反例 · 漏乘 labor ⇒ 一线固定成本**退回**与二三线相
 
 // ---------- ④ 回本两口径（R224 §二-2 的 11.8 vs 16.4）----------
 sec('④ 回本两口径 · invest（引擎）vs cash（后置派生）—— R224 用例：卤鸡火锅 100㎡');
-// R224 原文：投资 26.2 万 · 月净利 1.60 万 · 月折旧 0.620 万 · BP 自报回本 11.8 月
+// R224 用例：投资 26.2 万 · 月净利 1.60 万；月折旧**取引擎实测**（BP 明写 0.61 万；
+//   R224 NOTE 表里的 `0.620` 是「反推隐含折旧」列、由 11.8 倒推得来，**不是 BP 原值**）
 const INV_FEN = y2f(262000);          // 建店总投入 26.2 万（分）
 const NET_FEN = y2f(16000);           // 目标月利润 1.60 万（分）
-const AMORT_FEN = y2f(6200);          // 月折旧 0.620 万（分）
+// 🔴 年限写足小数位（= BP 反推隐含年限 26200000 ÷ (610000×12) = 3.579234972677596）
 const R_PB = calcSandbox({
-  cityTier: 'tier23', bizType: 'hotpot', buildItems: [{ key: 'other', fen: INV_FEN, years: 3 }],
+  cityTier: 'tier23', bizType: 'hotpot',
+  buildItems: [{ key: 'other', fen: INV_FEN, years: 3.579234972677596 }],
   fixedItems: [], varItems: [], grossMarginPct: 53, targetProfitFen: NET_FEN, expectedRevenueFen: 0,
   rev_price_fen: 0, seats: 0, open_days: 30, target_rent_rate: 0, pixel_eff_fen: 0,
 });
 say(`  引擎 build_total_fen = ${f2y(R_PB.build_total_fen)} 元 · payback_months(invest) = ${R_PB.payback_months}`);
-// cash 口径 = 投资 ÷ (月净利 + 月折旧)  —— 规范 §5-1 的唯一后置派生
-const cashMonths = Math.round(INV_FEN / (NET_FEN + AMORT_FEN) * 10) / 10;
+say(`  引擎 build_amort_monthly_fen = ${f2y(R_PB.build_amort_monthly_fen)} 元/月（≡ BP 明写的 0.61 万）`);
+const AMORT_FEN = R_PB.build_amort_monthly_fen;   // 🔴 从**引擎出参**读，绝不硬编码
+// cash 口径 = 投资 ÷ (月净利 + 月折旧) —— 规范 §5-1 唯一后置派生（实现 = utils/bizPreset.js::paybackCash）
+const cashMonths = Math.round(INV_FEN / (NET_FEN + AMORT_FEN) * 10 + 1e-9) / 10;
 say(`  cash 口径（后置派生）= ${cashMonths} 月`);
-CHK('invest 回本 = 16.4 月（R224 反推值）', R_PB.payback_months, 16.4);
-CHK('cash 回本 = 11.8 月（BP 自报值）', cashMonths, 11.8);
-CHK_TRUE('两口径**不相等**且 cash < invest（39% 差）', cashMonths < R_PB.payback_months,
+CHK('引擎月摊销 = 6,100 元（≡ BP 明写 0.61 万）', f2y(AMORT_FEN), 6100);
+CHK('invest 回本 = 16.4 月（引擎 payback_months）', R_PB.payback_months, 16.4);
+CHK('cash 回本 = 11.9 月（26.2 ÷ 2.21 = 11.855 ⇒ 11.9）', cashMonths, 11.9);
+CHK_TRUE('两口径**不相等**且 cash < invest（38% 差）', cashMonths < R_PB.payback_months,
   `${cashMonths} < ${R_PB.payback_months}`);
 
 // ---------- ⑤ 边界不编造 ----------

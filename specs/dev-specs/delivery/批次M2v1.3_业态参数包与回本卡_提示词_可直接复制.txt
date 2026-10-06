@@ -383,7 +383,7 @@ step       → fixedItems.push({key, fen: 分(按 rentYuan 查 steps 表命中�
    - `headcount_linear`（取 `fastfood_noodle` 的 `laborUnitYuan.v = 4500`）：2 → 3 人 ⇒ 人工 **9000 → 13500**（Δ 4500）
    - `fixed` + `defaultYuan`：**用户没填** ⇒ 用 `defaultYuan`；**用户填了** ⇒ 用用户的（**不叠加**）
    - 城市系数：`tier1` 固定成本 **>** `tier23`；漏乘 labor ⇒ 两者**相等**（反例可鉴别）
-   - 回本：`invest` 16.4 月 vs `cash` 11.8 月（卤鸡火锅 100㎡ 用例），且 `cash < invest`
+   - 回本：`invest` 16.4 月 vs `cash` **11.9 月**（卤鸡火锅 100㎡ 用例；26.2 ÷ (1.60+0.61) = 11.855 ⇒ 11.9，月折旧取**引擎摊销 6,100 元**），且 `cash < invest`
 2. `node tools/check_biz_preset.js` —— 六组判据全绿（贴总览）。
 3. `node verify_all.js` —— 贴出**总览行**（`总览：N/N 通过`）+ 失败清单（若有）。
 

@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：141 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：142 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -362,6 +362,13 @@
 //         + B 反恒真锚点（R=10,000,000 分 / 房租上限=1,200,000 分 / open_days=26 ⇒ 日均 = R÷26，专打「÷30 硬编码」）
 //         + C 反证（不剔 ⇒ 12,500,000 ≠ 10,000,000）+ 契约（含 rent 拒 / 缺 open_days 拒 / 红警全 null / 缺省 forward）
 //         + D 自失效护栏（剥注释器与判别器正负样本互证 + 扫描面非退化 + 断言数下界）。21 条断言）
+//       + 业态参数包守卫（tools/check_biz_preset.js，M2v1.3：**「小白只填 5 个数」的参数包取值 / 形态 / 城市系数必须有人守** ——
+//         参数包此前零机器判据：六预设照抄规范 §3.4-bis、五形态参数完备性、城市系数必须 rent+labor 双键。
+//         判据 = S 扫描面非退化 + A 主分类（六预设 bizKey ∈ 四类）+ B 整套独立（预设互不污染）
+//         + C 形态合法性（固定须有 defaultYuan / 面积线性须 baseYuan+perSqmYuan / 人头线性须取 params.laborUnitYuan /
+//           营收率须有 pct / 阶梯须 steps 非空；缺参 ⇒ 装配出 NaN 喂引擎 ⇒ 整块结果崩）
+//         + D L1/L2 禁入项（页面折叠区块**不得**把坪效 / 目标租金率 / 翻台当输入框 —— 红线 §3.6）
+//         + E 回本唯一出口（`paybackCash` 是仓内唯一展示派生，pages 内零复算）。13 条断言）
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -774,6 +781,8 @@ const SUITES = [
   // ===== 批次 M2v1.2（多方案存储 · 第二期）：savePlan / getPlan 两函数自测（开发规范 v1.2 §7 五组锚点）=====
   ['m2v1.2-savePlan',      'cloudfunctions/savePlan/selftest.js'],
   ['m2v1.2-getPlan',       'cloudfunctions/getPlan/selftest.js'],
+  // ===== 批次 M2v1.3（业态参数包 + 回本卡 第三期）：新增工具守卫 check_biz_preset（S/A/B/C/D/E 六组，13 断言）=====
+  ['biz-preset',           'tools/check_biz_preset.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

@@ -6,7 +6,7 @@
 ✅ A-⑤ 非按钮行不误抓
 
 ===== B. 真实扫描（pages/ utils/ app.js）=====
-   扫描文件 46 个，命中按钮引用 40 条，候选 50 个
+   扫描文件 48 个，命中按钮引用 40 条，候选 50 个
    · pages\card\edit.js:569 confirmText = TERMS.card.delLineConfirmOk
    · pages\card\edit.js:570 cancelText = TERMS.buttons.cancel
    · pages\card\edit.js:816 cancelText = TERMS.buttons.cancel
@@ -30,8 +30,8 @@
    · pages\month\input.js:1423 cancelText = TERMS.ledger.missingWarnSave
    · pages\pay\orders.js:98 confirmText = TERMS.buttons.gotIt
    · pages\pay\orders.js:115 confirmText = TERMS.buttons.thinkAgain
-   · pages\sandbox\index.js:240 confirmText = TERMS.m2.draftClearOk
-   · pages\sandbox\index.js:241 cancelText = TERMS.buttons.cancel
+   · pages\sandbox\index.js:297 confirmText = TERMS.m2.draftClearOk
+   · pages\sandbox\index.js:298 cancelText = TERMS.buttons.cancel
    · pages\shop\switch.js:164 cancelText = TERMS.buttons.thinkAgain
    · pages\shop\switch.js:165 confirmText = TERMS.exp.resetOk
    · pages\shop\switch.js:225 cancelText = TERMS.buttons.thinkAgain

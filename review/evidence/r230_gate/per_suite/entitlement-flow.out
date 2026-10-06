@@ -19,7 +19,7 @@
 ===== E-C 链路在场（穷尽分类）=====
   ✅ E-C① 免费额度唯一真相源：checkQuota 读 feature_permissions.plan_free.limits
   ✅ E-C② 写侧真拦截：saveCostCard 超限即 fail（不靠前端拦）
-  ✅ E-C③a 扫描面非退化：扫描到的 .js 数 ≥ 100（防遍历失效 ⇒ 零命中假绿） —— 866 个
+  ✅ E-C③a 扫描面非退化：扫描到的 .js 数 ≥ 100（防遍历失效 ⇒ 零命中假绿） —— 868 个
   ✅ E-C③b 到期判定单源不扩散（除 common/entitlement.js 外无手写「到期比较」） —— 全仓 0 处手写（判定一律走 isPaid）
   ✅ E-C④ 续费链路在场：payRenew 存在且写 expire_at
   ✅ E-C⑤ 后台调权在场：adminGrantEntitlement 写 expire_at + 审计留痕

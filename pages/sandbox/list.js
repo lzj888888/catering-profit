@@ -9,6 +9,7 @@
 const api = require('../../utils/api.js');
 const ui = require('../../utils/ui.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
+const { openPaywall } = require('../../utils/paywall.js');
 
 const P = TERMS.m2Plan;
 const MAX_SEL = 3;
@@ -35,6 +36,12 @@ Page({
       unitYuan: P.unitYuan,
       unitMonth: P.unitMonth,
       back: P.back,
+      exportImg: P.exportImg,
+      exportExcel: P.exportExcel,
+      exportImgHint: P.exportImgHint,
+      exportExcelHint: P.exportExcelHint,
+      exportImgSaved: P.exportImgSaved,
+      exportCopied: P.exportCopied,
       loading: TERMS.ui.loading,
     },
     mode: 'list',        // 'list' | 'compare'
@@ -165,4 +172,84 @@ Page({
   },
 
   onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()); },
+
+  // ===== M2v1.3 · 对比表导出（图片免费 / Excel 付费，两出口共用同一份已算结果）=====
+  buildCompareTable() {
+    const header = [P.colName].concat(this.data.compareCols.map((c) => c.name));
+    const rows = this.data.compareRows.map((r) => [r.name].concat(r.vals));
+    return { header, rows };
+  },
+
+  // 图片（PNG）· 免费：本地 canvas → 保存相册；🔴 不进权益校验、不调云函数
+  onExportImg() {
+    if (!this.data.compareRows.length) { api.toastError({ msg: P.notSelected }); return; }
+    const { rows } = this.buildCompareTable();
+    // 画布不足即降级提示（不阻断）；小屏用两行式文本
+    const ctx = this._ctx || this.initCanvas();
+    if (!ctx) { api.toastError({ msg: P.exportImgHint }); return; }
+    try {
+      const lineH = Math.max(44, Math.floor(this._cw / rows.length));
+      ctx.clearRect(0, 0, this._cw, this._ch);
+      ctx.fillStyle = '#1e3a5f';
+      ctx.font = '16px sans-serif';
+      ctx.fillText(P.navTitle, 16, 28, this._cw - 32);
+      rows.forEach((r, i) => {
+        ctx.fillStyle = '#333';
+        ctx.fillText(String(r[0] || ''), 16, 56 + i * lineH, this._cw - 110);
+        ctx.fillStyle = '#666';
+        const extra = (r.slice(1) || []).join(' · ');
+        ctx.fillText(extra, 112, 56 + i * lineH, this._cw - 128);
+      });
+      wx.canvasToTempFilePath({
+        canvas: this._canvas,
+        success: (res) => {
+          // 免费导出：本地 canvas → 临时图片 → 预览（非相册权限 API，避免新增隐私收集项）
+          wx.previewImage({ urls: [res.tempFilePath], current: res.tempFilePath });
+        },
+        fail: () => api.toastError({ msg: P.exportImgHint }),
+      });
+    } catch (e) { api.toastError({ msg: P.exportImgHint }); }
+  },
+
+  initCanvas() {
+    try {
+      const q = wx.createSelectorQuery().in(this);
+      const that = this;
+      q.select('#compareCanvas').fields({ node: true, size: true }).exec((res) => {
+        if (!res || !res[0] || !res[0].node) return;
+        const canvas = res[0].node;
+        const dpr = (wx.getWindowInfo ? wx.getWindowInfo() : {}).pixelRatio || 2;
+        canvas.width = 720;
+        canvas.height = 300;
+        const ctx = canvas.getContext('2d');
+        ctx.scale(1, 1);
+        that._canvas = canvas;
+        that._ctx = ctx;
+        that._cw = 720;
+        that._ch = 300;
+      });
+    } catch (e) { return null; }
+    return null;
+  },
+
+  // Excel · 付费（复用 'export' 能力键）：hasFeature 假 ⇒ 弹既有 export 墙；否则调 exportData
+  async onExportExcel() {
+    if (!this.data.compareRows.length) { api.toastError({ msg: P.notSelected }); return; }
+    const planIds = this.data.selIds.slice();
+    const table = this.buildCompareTable();
+    try {
+      const d = await api.call('exportData', {
+        export_type: 'm2_compare', format: 'excel', plan_ids: planIds, table,
+      });
+      const content = d.content || '';
+      wx.setClipboardData({ data: content });
+      wx.showToast({ title: this.data.t.exportCopied, icon: 'none' });
+    } catch (e) {
+      if (e.code === 'FEATURE_LOCKED') {
+        openPaywall('export', { shopId: (getApp && getApp().globalData && getApp().globalData.shop_id) || '' });
+      } else {
+        api.toastError(e);
+      }
+    }
+  },
 });

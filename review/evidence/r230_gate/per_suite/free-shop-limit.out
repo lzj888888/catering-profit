@@ -1,6 +1,6 @@
 单源(配置) cloudfunctions/initDb/collections.js
 消费者 cloudfunctions/checkQuota/index.js / cloudfunctions/getShopList/index.js / cloudfunctions/getShopList/selftest.js
-前端面 98 文件
+前端面 100 文件
 R117 · 免费店铺数口径穿透守卫（单源配置 ≡ 各消费者；反向断言防硬编码复发）
 
 ===== A1 扫描面 fail-closed =====
@@ -8,7 +8,7 @@ R117 · 免费店铺数口径穿透守卫（单源配置 ≡ 各消费者；反�
   ✅ A1-②-1 消费者 cloudfunctions/checkQuota/index.js 存在且非空 —— 4378B
   ✅ A1-②-2 消费者 cloudfunctions/getShopList/index.js 存在且非空 —— 2646B
   ✅ A1-③ 测试镜像存在且非空 —— 2512B
-  ✅ A1-④ 前端扫描面逐根达下界（坑㉛：根路径写错即红） —— pages:72/30 utils:21/5 miniprogram:2/2
+  ✅ A1-④ 前端扫描面逐根达下界（坑㉛：根路径写错即红） —— pages:72/30 utils:23/5 miniprogram:2/2
   ✅ A1-⑤ 根级 app 文件 3/3 在位 —— 3 个
 
 ===== A2 单源（配置种子）可解析 =====
@@ -31,7 +31,7 @@ R117 · 免费店铺数口径穿透守卫（单源配置 ≡ 各消费者；反�
   ✅ A5-③ checkQuota 出参含 hard_limit（硬上限与免费额分列） —— 在场
 
 ===== A6 前端零硬编码（设计意图：后端权威，前端不硬编码）=====
-  ✅ A6-① 小程序端零命中 FREE_SHOP_LIMIT / FREE_LIMIT =（前端不得复制该口径） —— 98 个文件零命中
+  ✅ A6-① 小程序端零命中 FREE_SHOP_LIMIT / FREE_LIMIT =（前端不得复制该口径） —— 100 个文件零命中
   ✅ A6-② 前提：前端扫描面确含已知页面目录（扫描面没打错） —— pages/ + utils/ 在内
 
 ===== A7 前提守卫（非恒真）=====

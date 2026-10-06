@@ -315,6 +315,9 @@ const A15_EXEMPT = [
   // by=WorkBuddy / date=2026-10-05 / reason=M2v1.2 多方案存储批次新增 savePlan/getPlan（§6 牵动五处 #1）
   /^cloudfunctions\/savePlan\//,
   /^cloudfunctions\/getPlan\//,
+  // ===== 批次 M2v1.3（业态参数包）：扩既有 exportData 加 m2_compare 分支（非新增函数）=====
+  // by=WorkBuddy / date=2026-10-06 / reason=M2v1.3 对比表导出扩 exportData（§7.2）
+  /^cloudfunctions\/exportData\//,
 ];
 check('A15 云函数逻辑零改动（仅 initDb 建库单源 + 本批授权函数豁免）', (() => {
   const { execFileSync } = require('child_process');

@@ -47,10 +47,20 @@ exports.main = async (event) => {
   if (owner.error) return fail(owner.error, owner.msg);
 
   const v = (event && event.input) || event || {};
-  const scope = v.scope === 'm3_cards' ? 'm3_cards' : 'm1_report';
+  // M2v1.3：对比表导出（Excel 付费，复用 'export' 能力键）。前端已用 calcSandbox 重算好
+  //   compare 表（且图片/Excel 两出口共用同一份已算结果），本函数只做事后序列化 + 归属校验。
+  const isCompare = v.export_type === 'm2_compare';
+  const scope = isCompare ? 'm2_compare' : (v.scope === 'm3_cards' ? 'm3_cards' : 'm1_report');
   const format = v.format === 'json' ? 'json' : 'excel';
   const month = (typeof v.month === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(v.month)) ? v.month : '';
-  if (scope === 'm1_report' && !month) return fail(ERROR_CODES.INVALID_PARAM, 'm1_report 需提供 month（YYYY-MM）');
+  if (!isCompare && scope === 'm1_report' && !month) return fail(ERROR_CODES.INVALID_PARAM, 'm1_report 需提供 month（YYYY-MM）');
+  // M2 对比：plan_ids 必须 1~3 个非空字符串
+  if (isCompare) {
+    const planIds = Array.isArray(v.plan_ids) ? v.plan_ids.filter((s) => typeof s === 'string' && s) : [];
+    if (planIds.length === 0 || planIds.length > 3) {
+      return fail(ERROR_CODES.INVALID_PARAM, 'm2_compare 需 1~3 个 plan_ids（不泄漏他人方案是否存在）');
+    }
+  }
 
   // ===== 2. 导出权限（只读 expire_at）=====
   // M3.28（批次 Q3）：判定下沉到单源 common/entitlement.js —— 理由见该文件头注。
@@ -85,6 +95,20 @@ exports.main = async (event) => {
       ]);
     }
     filename = `${shopName || '店铺'}_${month}_月度报表.${format === 'json' ? 'json' : 'csv'}`;
+  } else if (scope === 'm2_compare') {
+    // M2 对比表：前端已用 calcSandbox 重算好 `table`（= 图片/Excel 两出口共用同一份已算结果）。
+    // 本函数只做归属校验（不泄漏他人方案）+ 序列化。
+    const planIds = v.plan_ids.filter((s) => typeof s === 'string' && s);
+    for (const pid of planIds) {
+      const r = await da.list('shop_sandbox', { shop_id: shopId, sandbox_id: pid });
+      if (!(r && r.data && r.data.length)) {
+        return fail(ERROR_CODES.RESOURCE_NOT_FOUND, `方案 ${pid} 不存在或不属于本店`);
+      }
+    }
+    const table = (v.table && Array.isArray(v.table.rows)) ? v.table : { header: [], rows: [] };
+    header = Array.isArray(table.header) ? table.header : [];
+    body = table.rows || [];
+    filename = `${shopName || '店铺'}_方案对比.${format === 'json' ? 'json' : 'csv'}`;
   } else {
     const res = await da.list('shop_cost_card', { shop_id: shopId });
     const cards = ((res && res.data) || []);
@@ -108,8 +132,15 @@ exports.main = async (event) => {
   }
 
   const payload = format === 'json'
-    // JSON 用唯一键名（CSV 表头可有重复列标签；JSON 键必须唯一，防 fromEntries 覆盖）
-    ? body.map((b) => Object.fromEntries(jsonKeys(scope).map((k, i) => [k, b[i]])))
+    ? body.map((b) => {
+      if (scope === 'm2_compare') {
+        // JSON 键必须唯一（CSV 表头可有重复列标签；JSON fromEntries 会覆盖）—— dup 时追加下标
+        const o = {};
+        header.forEach((k, i) => { let key = String(k); if (o[key]) key = key + '_' + i; o[key] = b[i]; });
+        return o;
+      }
+      return Object.fromEntries(jsonKeys(scope).map((k, i) => [k, b[i]]));
+    })
     : csvFromRows(header, body);
 
   return ok({
