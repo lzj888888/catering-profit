@@ -1,0 +1,9 @@
+  ✅ L1-a 分类字段是可输入控件（value="{{category}}" 的 input） —— pages/card/edit.wxml
+  ✅ L1-b 分类**不得**用 picker 锁死（picker 只能选预设，火锅/营销栏目选不出来） —— 无 category picker
+  ✅ L2 建议池包含基线 7 项（只许追加，删了会让旧卡回显丢失） —— 现 11 项
+  ✅ L3 保存时 category 过 .trim()（防"热菜 "与"热菜"裂成两类）
+  ✅ L4-a 原料分类仍是 picker（采购视角枚举，与菜品分类两套语义） —— material/edit.wxml
+  ✅ L4-b 原料分类枚举键完整（meat/veg/dry/season/pack/other） —— 6 键齐全
+
+[R148 dish-category-free] 菜品分类自由定义守卫
+✅ 菜品分类守卫：6 通过 / 0 失败

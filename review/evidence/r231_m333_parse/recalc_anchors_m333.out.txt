@@ -1,0 +1,55 @@
+
+=== 段一 旧锚点回归 —— 生产引擎 key anchors 必须原样复现 ===
+✅ R-1 netUnitCostWan(1500,500,90)  got=333  want=333
+✅ R-2 unit_cost_fen(90g, no loss/aux)  got=300  want=300
+✅ R-3 unit_cost_fen(90g, loss5, aux100)  got=421  want=421
+✅ R-4 gross_margin_pct(price1500, cost421)  got=71.93  want=71.93
+
+=== 段二 解析层锚点 —— 真表《菜品销售统计》（265 菜品 / 15 列） ===
+✅ N-0 dish 表头行 = [3,4]（两行表头）  got=2  want=2
+✅ N-0 dish R1 标题  got="菜品销售统计"  want="菜品销售统计"
+✅ N-1 数据行数（排除表头+合计）  got=265  want=265
+✅ N-1b 合计行 R270 标签  got="合计"  want="合计"
+✅ N-1c 合计行不在数据面内  got=false  want=false
+✅ N-2 Σ销售数量 == 合计行 3280.3  got=3280.3  want=3280.3
+✅ N-3 Σ销售额(元) == 合计行 33146.2  got=33146.2  want=33146.2
+✅ N-4 Σ菜品收入(元) == 合计行 30319.7  got=30319.7  want=30319.7
+✅ N-4b 恒等式 销售额 − 优惠 == 收入（元）  got=30319.7  want=30319.7
+✅ N-4c Σ菜品优惠 == 合计行 2826.5  got=2826.5  want=2826.5
+✅ N-5 单价反推 = 15.0000 元 ⇒ 单位=元  got=15  want=15
+✅ N-6 Σ销售额 元→分 = 3314620（整数）  got=3314620  want=3314620
+✅ N-6b Number.isInteger(分)  got=true  want=true
+✅ N-7 名称内嵌规格行数 == 6（全角+半角括号）  got=6  want=6
+✅ N-7b 半角括号样本在场（心相印小(10送2)）  got=true  want=true
+     样本: 耙牛肉（半斤） / 耙牛筋（半斤） / 耙肥肠（四两） / 心相印小(10送2) / 康师傅大食桶面（泡椒牛肉） / 康师傅大食桶面（红烧牛肉）
+✅ N-8 打包盒行存在（非菜品 SKU 样本）  got=true  want=true
+✅ N-8b 打包盒 数量 == 销售额 == 56.0  got=[56,56]  want=[56,56]
+✅ N-9 合计 qty 非整数（存在称重菜）  got=false  want=false
+
+=== 段三 重复计算 —— 菜品表已含套餐明细 ⇒ 不得与套餐表相加 ===
+✅ N-10 菜品表 R2 声明「销售方式：单品+套餐明细」  got=true  want=true
+✅ N-10b 套餐表 R2 声明「统计方式：套餐明细」  got=true  want=true
+✅ N-11 套餐组分 24 个 → 命中菜品表  got=24  want=24
+✅ N-11b 命中率 == 100%（24/24）  got=24  want=24
+✅ N-12 套餐表合计销售额 == 887.8  got=887.8  want=887.8
+✅ N-13 菜品表+套餐表 相加虚增额 == 887.8（无声错误）  got=887.8  want=887.8
+✅ N-13b 虚增占比 ≈ 2.68%  got=2.68  want=2.68
+
+=== 段四 计算层锚点 —— 份数 × unit_cost_fen（用生产引擎出参，不手写公式） ===
+✅ N-14 单品总成本 = 930 × 300 = 279000 分  got=279000  want=279000
+✅ N-15 单品毛利 = 1395000 − 279000 = 1116000 分  got=1116000  want=1116000
+✅ N-16 单品毛利率 = 80.00%  got=80  want=80
+✅ N-17 引擎单份成本(100g×300万分/g) = 300 分 ≡ unit_cost_fen 口径  got=300  want=300
+✅ N-17c 引擎单份毛利(1500分价 − 300分本) = 1200 分  got=1200  want=1200
+✅ N-17b 单份毛利 × 份数 ≡ 汇总毛利（两条路互证）  got=1116000  want=1116000
+
+=== 段五 反例 —— 去掉规则会得到「看着合理的错数」 ===
+✅ C-1 不排除合计行 ⇒ 行数 265→266  got=266  want=266
+✅ C-1b 不排除合计行 ⇒ 销售数量虚增 3280.3（+100%）  got=3280.3  want=3280.3
+✅ C-2 两表相加 ⇒ 销售额虚增 887.8 元（⚠️ 不报错）  got=887.8  want=887.8
+✅ C-3 SALES_SCHEMA.fields.qty 要求 integer（3280.3 会被 fail-closed）  got="{\"t\":\"number\",\"i\":true}"  want="{\"t\":\"number\",\"i\":true}"
+✅ C-3b amount 也要求 integer ⇒ 落库前必须转分  got="{\"t\":\"number\",\"i\":true}"  want="{\"t\":\"number\",\"i\":true}"
+✅ C-3c platform enum 已含 eleme（外卖不必扩枚举）  got=true  want=true
+
+=== 汇总 ===
+总览：41/41 通过 · FAIL=0

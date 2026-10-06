@@ -1,0 +1,18 @@
+===== 刷新窗口（剩 <24h 才刷新）=====
+✅ 剩 20h → 触发刷新
+✅ 剩 24h 边界 → 不触发
+✅ 剩 5 天 → 不触发
+✅ 已过期 → 触发刷新（前端实际会重登）
+===== 吊销语义（adminLogout / adminRevokeToken）=====
+✅ 吊销前 token 有效
+✅ 吊销后 token → ADMIN_AUTH_FAILED
+✅ super 可吊销指定管理员
+✅ op 吊销 → 拒绝
+
+===== R54 · 审计留痕失败不阻断主流程 + console.error 留痕 =====
+✅ R54 审计写入失败 → 主流程仍成功（不抛）
+✅ R54 审计失败 → console.error 被调用（不静默）
+✅ R54 告警含操作名 [AUDIT_FAILED] adminRefreshToken  ([AUDIT_FAILED] adminRefreshToken: audit db down)
+✅ R54 告警不落敏感字段（openid/手机号/支付）
+
+==== adminRefreshToken 批次 6 自测结果：12 通过 / 0 失败 ====
