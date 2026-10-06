@@ -1,0 +1,434 @@
+======================== 提示词开始 ========================
+
+# 批次 M2v1.3 · M2「业态参数包 + 回本卡」（选址沙盘 · 第三期）· 自包含
+
+> 规范出处：`specs/dev-specs/core/开发规范v1.3_ModuleM2增量_业态参数包与回本卡.md`（下称「规范 v1.3」）。
+> 本文件**自包含** —— 照本文件做即可，不必再去读规范；两者冲突时**以规范为准**并回报。
+> 前置：v1.1（反推分支，已交付）· v1.2（多方案存储，已交付 `1f4a580`）。
+
+## 0.1 部署提醒（本批**不改** `cloudfunctions/common/`）
+
+- 本批 = **新增 1 个前端数据文件 + 1 个自测 + 1 个守卫**，**改造 2 个页面**，**扩 1 个云函数**。
+- **唯一动云函数的地方** = 给既有 `cloudfunctions/exportData/index.js` **加一个分支**（§7）——
+  **不新增云函数**，函数总数不变。
+- 🔴 **绝对不要改 `cloudfunctions/common/` 下任何文件**（改了要 `sync_common` + 批量重部署，本批不需要）。
+
+## 0.2 五条红线（违反任一条即整批退回）
+
+1. 🔴 **`calcSandbox` / `calcSandboxReverse` 任何一行不动** ——
+   `cloudfunctions/calcSandbox/service.js` 与 `validate.js` **逐字节不改**（连 `ENGINE_VERSION` 都别碰）。
+   本批**只在引擎外面加一层**：参数包 → 入参装配 → 喂引擎。
+2. 🔴 **不新建集合、不新建索引、不改 `cloudfunctions/initDb/collections.js`** ——
+   参数包是**前端本地常量，不入库**；`param_json` 仍是 **14 字段**（v1.2 §4.2 不变）。
+3. 🔴 **`cost_meta` 的形态运算只允许出现在 `utils/bizPreset.js::assembleItems()` 里**（唯一入口）。
+   页面上**不得**出现任何保本 / 毛利 / 摊销的算式（前端不重算、不编公式）。
+4. 🔴 **折旧只能经 `buildItems` 进引擎**（引擎自己算摊销）。
+   **严禁**在 `costMeta` 里塞一笔"月折旧"进 `fixed_items` ⇒ 会与 `buildItems` 的摊销**双计**。
+5. 🔴 **`param_json` 一律 `snake_case`**（v1.2 §4.2 红线不变）；本批新增的**前端本地**常量用 `camelCase` 无妨
+   （它不入库），但**一旦落进 `param_json` 必须转 snake**。
+
+---
+
+## 1. 本批要解决的问题（一段话）
+
+现在 M2 沙盘对**餐饮小白**门槛太高：要填毛利率、水电占比、坪效、翻台率……他填不出来。
+本批引入 **「业态参数包」**：小白只填 **5 个数**（业态 / 面积 / 月租金 / 员工数 / 目标利润），
+其余参数**整套**由参数包供给；参数包的每一项带 **`cost_meta` 成本形态**
+（固定 / 面积线性 / 人头线性 / 营收比例 / 阶梯），由 **`assembleItems()`** 装配成**金额**喂引擎。
+
+再补两件展示物：**回本参考卡**（M2 底部只读，两口径）与 **对比表导出**（图片免费 / Excel 付费）。
+
+🔴 **引擎零改动** —— 与 v1.1「反推 = 剔 `rent` + 加租金率」完全同构。
+
+---
+
+## 2. 现状（起点 · 都已存在，别重建）
+
+| 既有件 | 位置 | 本批怎么用 |
+|---|---|---|
+| 业态选择器（4 类） | `pages/sandbox/index` + `miniprogram/i18n/terms.js::m2.bizTypes` = `fastfood`快餐小吃 / `dining`中式正餐 / `hotpot`火锅烧烤 / `cafe`茶饮咖啡 | **保留**，在其上加一层「类内预设」 |
+| 城市选择器（3 档） | `miniprogram/i18n/terms.js::m2.cityTiers` = `tier1`一线 / `tier23`二三线 / `county`县城 | 复用 |
+| 城市系数 | `cloudfunctions/common/indicatorRef.js::CITY_TIERS` | 🔴 **只读、不复刻**；见 §4.3 |
+| 引擎 | `cloudfunctions/calcSandbox/service.js`（`calcSandbox` / `calcSandboxReverse`） | **调用**，不改 |
+| 引擎出参 `payback_months` | `service.js:133`（= 建店总投入 ÷ 目标月利润） | 🔴 回本卡**直接读它**（这是"投资回本"口径） |
+| 引擎出参 `build_amort_monthly_fen` | `service.js:119` | `cash` 口径要用（§6） |
+| 三层模式命名先例 | M1.4「专业模式（真实利润）」 | 🔴 三层命名**必须**与它统一，禁止出现第三套"专业" |
+
+🔴 **目录结构（2026-10-06 实核，别类推）**：`project.config.json` **无 `miniprogramRoot`** ⇒
+**小程序根 = 仓根**。故 **`utils/` 在仓根**（`utils/api.js` / `utils/paywall.js` / `utils/units.js`…），
+而 **`i18n/` 在 `miniprogram/` 下**（`miniprogram/` 里**只有** `config/env.js` 与 `i18n/terms.js`）。
+⇒ 页面引用写法：`require('../../utils/bizPreset.js')`（**不是** `miniprogram/utils/…`）。
+
+---
+
+## 3. 新增文件 `utils/bizPreset.js`（🔴 **仓根 `utils/`**）
+
+🔴 **纯数据 + 纯函数**：零 `wx.*`、零网络、零 `getApp()`、零 `require('cloudfunctions/...')`
+（照 `utils/units.js` / `utils/materialBatch.js` 的先例）。
+
+### 3.1 数据结构
+
+```js
+const BIZ_PRESETS = [
+  {
+    presetKey: 'fastfood_noodle',            // 唯一键
+    bizKey: 'fastfood',                      // 🔴 主分类，必须 ∈ ['fastfood','dining','hotpot','cafe']
+    labelKey: 'bizPresetFastfoodNoodle',     // → i18n terms.js `m2.bizPresets`
+    paybackView: 'cash',                     // 回本默认视角：'cash' | 'invest'
+    params: {
+      grossMarginPct: { v: 55, src: 'P' },
+      laborUnitYuan:  { v: 4500, src: 'S' },
+      avgPriceYuan:   { v: 12, src: 'P' },
+      openDays:       { v: 30, src: 'P' },
+    },
+    costMeta: [ /* 见 §3.2 */ ],
+    buildRef: [ /* 见 §3.3，可选 */ ],
+  },
+  // …
+];
+```
+
+### 3.2 `costMeta` 五形态（🔴 本批最高风险点）
+
+| 形态 | 必填参数 | 装配式（`assembleItems()` 内） | 落点 |
+|---|---|---|---|
+| `fixed` | `defaultYuan`（**仅"参数包供给"的项需要**） | 用户填了 ⇒ 用它；没填 ⇒ `defaultYuan × 对应系数的 coef` | `fixed_items` |
+| `area_linear` | `baseYuan` + `perSqmYuan` | `base + perSqm × 面积`（🔴 **不乘**系数） | `fixed_items` |
+| `headcount_linear` | 无（单价取 `params.laborUnitYuan.v`） | `单价 × coef.labor × 人数` | `fixed_items` |
+| `revenue_rate` | `pct` | **直接给 `pct`**（不换算成金额） | `var_items` |
+| `step` | `steps: [{upToYuan, yuan}]` | 按**租金档**查表命中的 `yuan` | `fixed_items` |
+
+🔴 **`fixed` 必须带 `defaultYuan`** —— L1 小白只填 5 个数，`utility` / `other` / `manage` 这类
+他**不会填**，必须由参数包供给 ⇒ **参数包里得有地方存这个数**。
+取值优先级：**用户填 > `defaultYuan`**（二选一，**不叠加**）。
+
+🔴 **`area_linear` / `step` 本期「无预设使用」**（§3.4 的 6 个预设只用到前三种）——
+它们是**能力储备**，但 **`assembleItems()` 必须实现这两种形态**，且**必须自测**（§9.1）。
+
+### 3.3 `buildRef`（建店投入**参考** · 必读）
+
+```js
+buildRef: [ { key: 'other', fen: 26200000, years: 3.579234972677596, src: 'P' } ],
+```
+
+- 🔴 **折旧/建店投入只能走这里** → 装配进引擎的 `buildItems`，由**引擎**算摊销。
+- 用户填了真实建店投入 ⇒ **用用户的**；没填 ⇒ 用 `buildRef`。**两条路二选一，不得叠加**。
+- 📌 **年限必须写足小数位**：写 `3.5792` 会把摊销算成 6,101 元、保本漂 0.2 元（实测）。
+
+### 3.4 六个预设的**完整取值**（🔴 **照抄本段，不得自创数值**）
+
+```js
+const BIZ_PRESETS = [
+  // 1) 小面 / 米线 —— [P] 小面测算.xlsx；人工走人头线性 ⇒ 规模可伸缩
+  {
+    presetKey: 'fastfood_noodle', bizKey: 'fastfood', paybackView: 'cash',
+    params: { grossMarginPct: {v:55,src:'P'}, laborUnitYuan: {v:4500,src:'S'},
+              avgPriceYuan: {v:12,src:'P'},   openDays: {v:30,src:'P'} },
+    costMeta: [
+      { itemKey:'rent',    form:'fixed',            src:'U' },
+      { itemKey:'labor',   form:'headcount_linear', src:'S' },              // 单价 = 4,500 × coef.labor
+      { itemKey:'utility', form:'revenue_rate',     pct:5, src:'P' },
+      { itemKey:'manage',  form:'revenue_rate',     pct:5, src:'P' },
+      { itemKey:'other',   form:'revenue_rate',     pct:2, src:'P', labelKey:'costLoss' },
+    ],
+  },
+  // 2) 火锅浇头面 —— [P] 火锅面 BP；固定制 ⇒ 全部走 defaultYuan
+  {
+    presetKey: 'fastfood_hotpot_noodle', bizKey: 'fastfood', paybackView: 'invest',
+    params: { grossMarginPct: {v:55,src:'P'}, openDays: {v:30,src:'P'} },
+    costMeta: [
+      { itemKey:'rent',    form:'fixed',        src:'U' },
+      { itemKey:'labor',   form:'fixed',        defaultYuan:13500, src:'P' },   // 1.35 万
+      { itemKey:'utility', form:'fixed',        defaultYuan:3600,  src:'P' },   // 0.36 万
+      { itemKey:'other',   form:'fixed',        defaultYuan:2400,  src:'P' },   // 员工餐/网费/垃圾 0.24 万
+      { itemKey:'manage',  form:'revenue_rate', pct:3, src:'P' },
+    ],
+  },
+  // 3) 火锅（半自助）/ 卤鸡火锅 —— [P] 卤鸡火锅 BP；含建店投入参考
+  {
+    presetKey: 'hotpot_half_self', bizKey: 'hotpot', paybackView: 'cash',
+    params: { grossMarginPct: {v:53,src:'P'}, openDays: {v:30,src:'P'} },   // 标准 60% → 实际 53%（自助浪费）
+    costMeta: [
+      { itemKey:'rent',    form:'fixed',        src:'U' },
+      { itemKey:'labor',   form:'fixed',        defaultYuan:25000, src:'P' },   // 2.5 万
+      { itemKey:'utility', form:'fixed',        defaultYuan:7500,  src:'P' },   // 0.75 万
+      { itemKey:'other',   form:'fixed',        defaultYuan:6000,  src:'P' },   // 0.60 万
+      { itemKey:'manage',  form:'revenue_rate', pct:3, src:'P' },
+    ],
+    // 🔴 折旧只能走这里：投资 26.2 万 ÷ (0.61 万×12) = 3.579234972677596 年，**小数位写足**
+    buildRef: [ { key:'other', fen:26200000, years:3.579234972677596, src:'P' } ],
+  },
+  // 4) 烧烤 —— [D1] 参考带（BANDS.hotpot；「烧烤」**不新增第 5 类**）
+  {
+    presetKey: 'hotpot_barbecue', bizKey: 'hotpot', paybackView: 'cash',
+    params: { grossMarginPct: {v:59,src:'D1'}, laborUnitYuan: {v:5000,src:'S'}, openDays: {v:30,src:'P'} },
+    costMeta: [
+      { itemKey:'rent',    form:'fixed',            src:'U' },
+      { itemKey:'labor',   form:'headcount_linear', src:'S' },
+      { itemKey:'utility', form:'revenue_rate',     pct:5, src:'D1' },
+      { itemKey:'manage',  form:'revenue_rate',     pct:7, src:'D1' },
+      { itemKey:'other',   form:'revenue_rate',     pct:2, src:'S', labelKey:'costLoss' },
+    ],
+  },
+  // 5) 川菜 / 中餐 —— [D1] 参考带
+  {
+    presetKey: 'dining_sichuan', bizKey: 'dining', paybackView: 'invest',
+    params: { grossMarginPct: {v:60,src:'D1'}, laborUnitYuan: {v:5500,src:'S'}, openDays: {v:30,src:'P'} },
+    costMeta: [
+      { itemKey:'rent',    form:'fixed',            src:'U' },
+      { itemKey:'labor',   form:'headcount_linear', src:'S' },
+      { itemKey:'utility', form:'revenue_rate',     pct:4, src:'D1' },
+      { itemKey:'manage',  form:'revenue_rate',     pct:7, src:'D1' },
+      { itemKey:'other',   form:'revenue_rate',     pct:2, src:'S', labelKey:'costLoss' },
+    ],
+  },
+  // 6) 新式茶饮 —— [D1] 参考带
+  {
+    presetKey: 'cafe_tea', bizKey: 'cafe', paybackView: 'invest',
+    params: { grossMarginPct: {v:67,src:'D1'}, laborUnitYuan: {v:4500,src:'S'}, openDays: {v:30,src:'P'} },
+    costMeta: [
+      { itemKey:'rent',    form:'fixed',            src:'U' },
+      { itemKey:'labor',   form:'headcount_linear', src:'S' },
+      { itemKey:'utility', form:'revenue_rate',     pct:2, src:'D1' },
+      { itemKey:'manage',  form:'revenue_rate',     pct:7, src:'D1' },
+      { itemKey:'other',   form:'revenue_rate',     pct:2, src:'S', labelKey:'costLoss' },
+    ],
+  },
+];
+```
+
+> 🔴 **「烧烤」不新增第 5 类** —— `indicatorRef.js:48` 注释明写「`hotpot` 的**显示名**是"火锅烧烤"，覆盖两类」，
+> 且 `miniprogram/i18n/terms.js:647` 现文案已是「火锅烧烤」⇒ 烧烤落在 `hotpot`，`BANDS`/`BIZ_KEYS` **零改动**。
+>
+> 🔴 **「杂支损耗」归 `var_items.other`** —— 本仓 `VAR_KEYS = ['takeawayComm','grouponComm','cardFee','other']`
+> （`indicatorRef.js:115` 实核），**没有独立"损耗"科目**。用 `other` 承载 + `labelKey` 写清「杂支损耗」。
+> **不要**去给 `VAR_KEYS` 加新键（那会牵动 `common/indicatorRef.js` ⇒ 全部派生副本重部署）。
+>
+> 🔴 **`[S]` 项**（人工单价、部分杂支）**仅在 L2/L3 显示 `⚠️ 待校准`**；**L1 不显示来源标记**。
+
+---
+
+## 4. 入参装配（`assembleItems` · 🔴 唯一入口）
+
+### 4.1 签名与输出
+
+```js
+// utils/bizPreset.js
+function assembleItems(preset, input, coef) {
+  // input: { area, headcount, rentYuan, fixedYuan:{}, buildItems:[] }
+  // coef:  { rent, labor }  ← 城市系数（见 §4.3）
+  // 返回: { fixedItems: [{key, fen}], varItems: [{key, pct}] }
+}
+```
+
+🔴 **输出只有这两种形状**，与引擎入参**完全同形**。
+🔴 **本函数内不得出现任何保本 / 毛利 / 摊销算式** —— 它只做"用户输入 + 参数包 → 引擎入参"。
+
+### 4.2 形态运算规则（照抄）
+
+```
+fixed      → 用户填了 input.fixedYuan[key] ⇒ 用它的值（**不乘** coef，因 src='U'）
+             没填且该形态项有 defaultYuan ⇒ 用 defaultYuan × coef[key]（coef 无该键 ⇒ ×1）
+area_linear→ fixedItems.push({key, fen: 分(baseYuan + perSqmYuan × area)})   ← **不乘** coef
+headcount  → fixedItems.push({key, fen: 分(params.laborUnitYuan.v × coef.labor × headcount)})
+revenue_rate→ varItems.push({key, pct})            ← 直接给 pct，不换算成金额
+step       → fixedItems.push({key, fen: 分(按 rentYuan 查 steps 表命中的 yuan)})   ← **不乘** coef
+```
+
+🔴 **金额一律「分」整数**（`Math.round(元 × 100)`）；**占比一律百分数**（5 表示 5%）。
+
+### 4.3 🔴 城市系数怎么乘（**最容易写错的一条**）
+
+| 形态 / 值来源 | 乘不乘 `coef` | 例 |
+|---|---|---|
+| `fixed` · **用户填**（`src:'U'`） | ❌ **不乘** | 房租是用户所在城市的**实际值**，再乘就错了 |
+| `fixed` · **参数包供给**（走 `defaultYuan`） | ✅ **乘** `coef[对应项]` | 人工 × `coef.labor`；估算型房租 × `coef.rent` |
+| `area_linear` | ❌ **不乘** | 参数已是元/㎡ **绝对成本**；城市差异应由**分城参数包**承担，乘系数 = **双重折算** |
+| `headcount_linear` | ✅ 乘 `coef.labor` | 人工单价是**二三线基准** |
+| `revenue_rate` | ❌ 不乘 | 占比本身与城市无关 |
+| `step` | ❌ 不乘 | 档位金额已是绝对元 |
+
+🔴 **系数不得硬编码**：从 `cloudfunctions/common/indicatorRef.js::CITY_TIERS` 取
+（`tier1 {rent:1.20, labor:1.15}` / `tier23 {rent:1.00, labor:1.00}` / `county {rent:0.75, labor:0.85}`）。
+若前端不便 require 云函数代码，**允许在前端常量里复刻这三个数**，但 🔴 **必须加注释标明单源出处**，
+且**不得只写 rent 漏掉 labor**（实测：漏乘 labor ⇒ 一线固定成本退回与二三线相同，保本偏低）。
+
+---
+
+## 5. 前端改造
+
+### 5.1 业态选择：两步（**不新建选择器**）
+
+```
+第一步（保持现状）：选主分类  快餐小吃 / 中式正餐 / 火锅烧烤 / 茶饮咖啡
+第二步（本批新增）：选类内预设（**可跳过**）  小面·米线 / 火锅浇头面 / … / 不确定
+```
+
+- 选预设 ⇒ **自动带出参数包默认值**，并显示「已按「XX」预设预填」；
+- 用户手改任一项 ⇒ 该项**冻结为 L2/L3 用户值**，逐项标「已改」。
+
+### 5.2 三层披露（**同一页**，不新建页面）
+
+| 层 | 输入项 |
+|---|---|
+| **L1 小白（默认）** | 业态（选预设）· 面积 · 月租金 · 员工数 · 目标利润 |
+| **L2 进阶**（「更多设置」展开） | ＋ 客单价 · **单人月人工单价** · 菜品毛利率（各项带同业态参考区间提示） |
+| **L3 专业**（「专业参数」展开） | ＋ 全部费率 · 营业天数 · 坪效 · 翻台 |
+
+🔴 **L1/L2 严禁**把 **坪效 / 目标租金率 / 翻台率** 作为**输入项**（它们只作**输出**，仅 L3 可编辑）。
+🔴 折叠面板「本次测算底层假设」**默认折叠可展开**，展示参数包全部取值 + 来源标记（L2/L3 才显示标记）。
+🔴 **对外术语**：一律「**菜品毛利率**」；**禁止出现「食材成本率」**（它是引擎内部中间量）。
+
+### 5.3 新增 `<input>` 必登记（🔴 漏了直接判红）
+
+本批若新增任何用户输入框 ⇒ **必须**把它的 `value` 绑定
+登记进 `tools/check_m2_ref_not_prefill.js::OK_VALUE` 白名单。
+（该守卫注释**已明写**此规则；上一批 M2v1.2 就因为在保存弹窗加了 `{{planName}}` 没登记而被判红。）
+
+---
+
+## 6. 回本卡（M2 结果区**底部** · 只读预览）
+
+### 6.1 两口径（**都要显示**，默认项加粗）
+
+| 口径 | 算式 | 数据来源 | 大白话文案 |
+|---|---|---|---|
+| **投资回本** | `build_total_fen ÷ target_profit_fen` | 🔴 **直接读引擎出参 `payback_months`** | 「**几年能回本**」 |
+| **现金收回** | `build_total_fen ÷ (target_profit_fen + build_amort_monthly_fen)` | 三项**全是引擎出参/入参** | 「**几年能收回现金**」 |
+
+🔴 **禁用名词**：「会计口径 / 现金流口径」（用户听不懂）。
+🔴 `cash` 口径是**唯一**允许的展示派生（一次除法），**不回写、不参与引擎**。
+🔴 `target_profit_fen ≤ 0` ⇒ 引擎 `payback_months` 为 `null` ⇒ 显示「填了目标利润才能算回本」，**不编造**。
+
+### 6.2 强制免责文案（**持续标注**，不是弹一次）
+
+> **「行业参考假设值，非你门店真实投入」**
+
+理由：M2 的投入数据来自参数包，**不是**用户真实建店投入（真实投入归 M3）。
+
+### 6.3 跳转
+
+卡片底部按钮「**查看完整回本测算**」→ `wx.navigateTo` 跳 M3。
+
+---
+
+## 7. 对比表导出（`pages/sandbox/list` 的对比视图内）
+
+### 7.1 图片（PNG）—— **免费**
+
+本地 canvas 绘制 + `wx.canvasToTempFilePath`；🔴 **不进**权益校验、**不调**云函数。
+
+### 7.2 Excel（`.xlsx`）—— **付费**
+
+- 能力键：🔴 **复用既有 `export`**（`cloudfunctions/common/entitlement.js:28` `PAID_FEATURES` 已在册）——
+  **不得新增能力键**；
+- 前端：`hasFeature` 为假 ⇒ 弹既有 `export` 墙（`utils/paywall.js:23` `PAYWALL_TYPES` 含 `'export'`）；
+- 后端兜底：`exportData` 里 `hasFeature(db, userId, 'export')`（`index.js:58` **已存在**）；
+- 🔴 **需扩展**：`cloudfunctions/exportData/index.js` 现**不读 `plan_id`**（`index.js:4` 原文）
+  ⇒ 新增 `export_type === 'm2_compare'` + `plan_ids` 分支；
+  **函数总数不变**（是扩既有函数，不是新增）。
+
+🔴 **两个出口必须共用同一份已算结果**（同一份 `getPlan` 出参 + 同一份引擎重算结果），
+**不得为免费出口另写一套计算路径**。
+
+---
+
+## 8. 守卫同步面（🔴 缺一即门禁红）
+
+| # | 落点 | 动作 |
+|---|---|---|
+| 1 | `tools/check_m2_ref_not_prefill.js::OK_VALUE` | 新增输入框登记（§5.3） |
+| 2 | `tools/check_page_terms.js` | 新可见文案**三处齐**：`i18n/terms.js` 双副本 + **页面 `data.t` 映射**（漏了 ⇒ 页面**静默空白**） |
+| 3 | `miniprogram/i18n/terms.js` ≡ `specs/dev-specs/i18n/terms.js` | 改后 `cp` + **`md5` 校验逐字一致** |
+| 4 | `tools/check_paywall_coverage.js` | `exportData` 扩分支后**实跑**确认覆盖数**不变** |
+| 5 | `tools/check_fn_inventory.js` / `check_idempotency.js` | 扩既有函数后**实跑**确认不判红 |
+| 6 | `tools/selftest_ad_gates.js` | 新前端代码：字号 **≥28rpx**、触控行高 **≥88rpx**；⚠️ 写"修复注释"时**不要写出被禁字面量**（守卫按行正则扫） |
+| 7 | `tools/check_suite_coverage.js`（面 B） | **若本批新增归档脚本**，文件名**不得**用 `check_/verify_/selftest_/test_` 前缀 |
+| 8 | 🔴 **本批新增守卫 `tools/check_biz_preset.js`** | 见 §8.1（**本批确需新增**，不是"预期不需要"） |
+
+### 8.1 新增守卫 `tools/check_biz_preset.js`（六组判据）
+
+| 组 | 判据 |
+|---|---|
+| **S 扫描面（fail-closed）** | `utils/bizPreset.js` 存在 + 预设数 **≥ 4** + 断言数下界（🔴 防"扫描面扫空 ⇒ `0 ≤ 预算` 恒绿"） |
+| **A 主分类合法性** | 每个预设的 `bizKey` ∈ `indicatorRef.js::BIZ_KEYS`（**4 类**，**从源文件解析**，不硬编码） |
+| **B 整套独立性** | 每个预设 `params` / `costMeta` **自包含**，禁止引用别的预设 |
+| **C 形态合法性** | `form` ∈ 五形态；**参数完备性**：`fixed` 且 `src≠'U'` ⇒ `defaultYuan` 在；`area_linear` ⇒ `baseYuan`+`perSqmYuan` 在；`headcount_linear` ⇒ 该预设 `params.laborUnitYuan` 在；`revenue_rate` ⇒ `pct` 在；`step` ⇒ `steps` 非空 |
+| **D L1/L2 禁入项** | `pages/sandbox/index.wxml` 的 L1/L2 区块**不得**把 坪效 / 目标租金率 / 翻台率 作为输入框 |
+| **E 回本口径唯一出口** | `cash` 回本算式**全仓只出现一次**且在 `utils/` 内；`pages/**` 不得复算 |
+
+### 8.2 🔴 新增套件 ⇒ **`verify_all.js` 六处同步面逐条**（漏一条即红）
+
+| # | 位置 | 改法 |
+|---|---|---|
+| ① | `verify_all.js::SUITES` 数组 | **末尾追加一行**（指向 `tools/check_biz_preset.js`） |
+| ② | `verify_all.js` 头注「串联：N 个套件」 | **141 → 142** |
+| ③ | `verify_all.js` 头注守卫说明段 | 补该守卫的一句说明 |
+| ④ | 重启键 `specs/dev-specs/★知识存储点_2026-09-10.md §1.1` 入口行 | 套件数同步 |
+| ⑤ | 同文件「套件数会漂」行 **＋演进链尾部** | 🔴 **最易漏的一处** |
+| ⑥ | 头注的**断言数声明行** | 同步 |
+
+> 🔴 **数值单源 = `tools/check_suite_assert_counts.js::CASES`** —— 新守卫的断言数要**登记在那里**，
+> 其余各处的数字必须与它一致（该守卫会反向校验，不一致即红）。
+
+---
+
+## 9. 自测要求
+
+### 9.1 必须自跑并贴出原始输出
+
+1. `node utils/selfcheck_bizPreset.js`（**自建**，纯函数级，不依赖 wx）—— 至少覆盖：
+   - 每个预设的 `bizKey` ∈ 4 类；`costMeta` 五种形态**参数完备**（缺参 ⇒ `NaN` 直接暴露）
+   - `area_linear`（示例参数 `baseYuan:2600, perSqmYuan:20`，**6 预设未使用**）：面积 50 → 80 ⇒ 装饰 **3600 → 4200**（Δ 600）
+   - `headcount_linear`（取 `fastfood_noodle` 的 `laborUnitYuan.v = 4500`）：2 → 3 人 ⇒ 人工 **9000 → 13500**（Δ 4500）
+   - `fixed` + `defaultYuan`：**用户没填** ⇒ 用 `defaultYuan`；**用户填了** ⇒ 用用户的（**不叠加**）
+   - 城市系数：`tier1` 固定成本 **>** `tier23`；漏乘 labor ⇒ 两者**相等**（反例可鉴别）
+   - 回本：`invest` 16.4 月 vs `cash` 11.8 月（卤鸡火锅 100㎡ 用例），且 `cash < invest`
+2. `node tools/check_biz_preset.js` —— 六组判据全绿（贴总览）。
+3. `node verify_all.js` —— 贴出**总览行**（`总览：N/N 通过`）+ 失败清单（若有）。
+
+### 9.2 硬要求
+
+- 🔴 **未实测的数字不许写进回报**；每条判据都要能用一个**自己跑得出来**的命令复现。
+- 🔴 不能因为"我这里是沙箱跑不起来"就跳过 —— 跑不动要**如实说明卡在哪一步**，并给出你已验证到的最大范围。
+
+---
+
+## 10. 交付物清单
+
+| # | 路径 | 说明 |
+|---|---|---|
+| 1 | `utils/bizPreset.js` | **新增** · 参数包 + `assembleItems` + 城市系数常量 |
+| 2 | `utils/selfcheck_bizPreset.js` | **新增** · §9.1 的自测 |
+| 3 | `tools/check_biz_preset.js` | **新增** · §8.1 六组判据 |
+| 4 | `pages/sandbox/index.{js,wxml,wxss}` | 改：两步业态选择 + 三层披露 + 回本卡 |
+| 5 | `pages/sandbox/list.{js,wxml,wxss}` | 改：加两个导出钮（图片 / Excel） |
+| 6 | `cloudfunctions/exportData/index.js` | 改：加 `export_type='m2_compare'` 分支（**不新增函数**） |
+| 7 | `miniprogram/i18n/terms.js` ≡ `specs/dev-specs/i18n/terms.js` | 改：新增词条（**双副本逐字一致**） |
+| 8 | `tools/check_m2_ref_not_prefill.js` | 改：白名单登记新增输入框 |
+| 9 | `verify_all.js` + 重启键 | 改：§8.2 六处同步面（141 → 142） |
+| 10 | `tools/check_suite_assert_counts.js::CASES` | 改：登记新守卫断言数 |
+| 11 | 自测输出 | §9.1 的原始输出 |
+
+---
+
+## 11. 绝对禁止
+
+1. ❌ 改 `cloudfunctions/calcSandbox/` 下任何文件（含"顺手优化"）。
+2. ❌ 改 `cloudfunctions/common/` 下任何文件。
+3. ❌ 新建集合 / 索引 / 改 `collections.js`。
+4. ❌ 在 `costMeta` 里塞月折旧额（会与 `buildItems` 摊销**双计**）。
+5. ❌ 在页面 JS 里写保本 / 毛利 / 摊销算式（前端不重算、不编公式）。
+6. ❌ 给参数包新增第 5 类业态（「烧烤」属 `hotpot`）。
+7. ❌ 给 `VAR_KEYS` / `FIXED_KEYS` 加新科目（「杂支损耗」用 `other` 承载）。
+8. ❌ 让参数包跨预设继承（每个预设**整套独立**）。
+9. ❌ 把 坪效 / 目标租金率 / 翻台率 放进 L1/L2 输入项。
+10. ❌ 对外出现「食材成本率」（一律「菜品毛利率」）。
+11. ❌ 给 M2 加新付费墙 / 登记新 `PAID_FEATURES`（导出**复用** `export`）。
+12. ❌ 只改 `i18n/terms.js` 一份副本（**必须双副本 + md5 一致**）。
+13. ❌ 新增输入框不登记 `OK_VALUE` 白名单。
+14. ❌ 忘记页面 `data.t` 映射（漏了 ⇒ 页面**静默空白**，不报错）。
+15. ❌ 把新文件写到 `miniprogram/utils/`（**该目录不存在**；正确位置是**仓根 `utils/`**）。
+16. ❌ 忘记 §8.2 的六处同步面（尤其 ⑤「套件数会漂」行的**演进链尾部**）。
+
+======================== 提示词结束 ========================

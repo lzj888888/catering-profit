@@ -1,0 +1,31 @@
+
+===== P 前置：术语单源可读 / 硬面可枚举 =====
+  ✅ P-① miniprogram/i18n/terms.js 可 require —— ok
+  ✅ P-② 硬判据面可枚举且非空 —— 120 个文件 · 根 [pages / miniprogram / utils] + 术语镜像
+
+===== A 主判据：对外文案面剥注释后零「食材成本率」类表述 =====
+  ✅ A-① pages/ 全面（96 个 .js/.wxml/.json/.wxss）零命中 —— 0 命中
+  ✅ A-② miniprogram/ + utils/ + 术语镜像 零命中 —— 24 个文件 0 命中
+  ✅ A-③ 术语双副本逐字节一致（K11 同族） —— identical 98537B
+
+===== B 反向护栏：引擎中间量必须留、前端必须无 =====
+  ✅ B-① 引擎内部中间量 foodCostPct 仍声明 = 100 − 毛利率、仍是综合变动成本率的加数、仍出参 —— 声明[有] 作加数[是] 出参[有]（删了保本点会算错）
+  ✅ B-② 中间量 foodCostPct 在前端硬面（剥注释后）零出现 —— 0 处（注释里的历史说明不计）
+  ✅ B-③ 指标层回直填 65（不是 100−65=35）· 无 food 键 · gain 项仅 grossMargin —— grossMargin.pct=65（应 65）· 旧键 food 已废 · gain 项 [grossMargin]
+
+===== C 正向要求：术语必须正面用「毛利率」且方向分表 =====
+  ✅ C-① 术语 indNames 含 grossMargin=菜品毛利率 且**无 food 键** —— grossMargin="菜品毛利率" · food 键=无 · 键集 [grossMargin/rent/labor/energy/manage/mkt]
+  ✅ C-② 术语 marginName = 菜品毛利率（滑杆主标签） —— 实得 "菜品毛利率"
+  ✅ C-③ 两张方向表：成本类 warn/bad=偏高/过高 · gain 类 warn/bad=偏低/过低 · indGainKey=grossMargin —— cost[偏高/过高] gain[偏低/过低] indGainKey=grossMargin
+
+===== D 自失效护栏（证明本守卫既不恒真、也不恒红） =====
+  ✅ D-① 剥注释器正负样本互证 5 例（js 行尾剥 / js URL 不切坏 / wxml 注释剥 / wxml 属性保留 / wxss 块注释剥） —— js行尾[剥] jsURL[保留(未切坏)] wxml注释[剥] wxml属性[保留(真命中)] wxss块[剥]
+  ✅ D-② 词族判据正负样本互证 5 例（4 命中 + 1 不误杀） —— 5/5 如期
+  ✅ D-③ 扫描面下界：硬面文件 ≥ 70 个（砍根即转红） —— 实得 120 个（pages 96 + 其它 24）
+  ✅ D-④ 锚点文件在面内（sandbox wxml/js + 双术语）+ 两个引擎文件可读 —— 4 个锚点全在 · 引擎文件 可读
+  ✅ D-⑤ 本守卫断言数 ≥ 14（非恒真证明力下界） —— 当前累计 15 条
+
+===== W 弱面（引擎自测 / 设计文档 / 守卫自身 里的正当提及） =====
+  ✅ W-① 弱面明示完成（不论命中多少均不判红） —— 979 个文件 · 32 处命中（例：cloudfunctions/calcSandbox/selftest.js、tools/check_indicator_ref.js、tools/check_m2_no_cost_rate.js） —— 三类正当面：引擎自测(内部量) / 设计文档(讨论口径) / 守卫自身(判据本体)
+
+===== 零成本率文案面守卫结果：17 通过 / 0 失败 =====
