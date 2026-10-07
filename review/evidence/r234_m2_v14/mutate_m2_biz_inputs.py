@@ -17,6 +17,7 @@ FILES = [
     'pages/sandbox/index.js',
     'pages/sandbox/index.wxml',
     'miniprogram/i18n/terms.js',
+    'tools/check_m2_biz_inputs.js',   # 🔴 R234-实测：守卫**自身**也要变异 —— 证明判据不是恒绿
 ]
 
 def rd(p):
@@ -78,6 +79,28 @@ MUTATIONS = [
      "    tabForward: '已有铺面',", "    tabForward: '正向测算',", 'D-②'),
     ('⑦ 房租指标名退回无宾语', 'miniprogram/i18n/terms.js',
      "rent: '房租占营业额'", "rent: '房租占比'", 'D-③'),
+
+    # ===== R234-实测新增：针对"首版守卫全绿却漏了两个专业指标"这个洞 =====
+    # 背景：首版 BAN_INPUTS 只有 rev* 两项 ⇒ L3 里的 pixelEffYuan/turnNum 一个没被扫到，
+    #       而李老师点名的正是这两个。下面 ⑧⑨ 证明**补全后**真能抓住；⑩⑪ 变异守卫自身，
+    #       证明新判据（A-⑥/A-⑦/V-⑤）不是恒绿 —— 否则它们只是给已修的 bug 补合格证。
+    ('⑧ 把历史死输入 turnNum 塞回 input（引擎根本不收）', 'pages/sandbox/index.wxml',
+     'value="{{seatsNum}}"', 'value="{{turnNum}}"', 'A-⑥'),
+    ('⑨ 把历史坪效 pixelEffYuan 塞回 input', 'pages/sandbox/index.wxml',
+     'value="{{openDaysNum}}"', 'value="{{pixelEffYuan}}"', 'A-⑥'),
+    ('⑩ 守卫退化：BAN_INPUTS 缩回只含 rev*（首版那个洞）', 'tools/check_m2_biz_inputs.js',
+     "const BAN_INPUTS = ['revRentRate', 'revPixelEff', 'pixelEffYuan', 'turnNum'];",
+     "const BAN_INPUTS = ['revRentRate', 'revPixelEff'];", 'V-⑤'),
+    # ⚠️ ⑪ 首版我删 1 项（13→12）却期望 A-⑦ 红 —— **期望值错了，不是判据错**：
+    #    A-⑦ 的下界是 ≥10，删 1 项还剩 12 ⇒ 它本来就该绿（真红的其实是 A-⑥/V-⑦）。
+    #    要打 A-⑦ 必须**真把它打到 10 以下** ⇒ 一次性删末尾 4 项（13→9）。
+    #    （守卫红先怀疑判据；但"期望值写错"属于第三种：变异脚本自己写歪了。）
+    ('⑪ 守卫退化：ALLOW_INPUTS 砍到 9 项（自失效护栏下界）', 'tools/check_m2_biz_inputs.js',
+     "  planName: '方案名（快照用，非测算入参）',\n"
+     "  presetIdx: '业态预设 picker（枚举，非专业指标）',\n"
+     "  rentYuan: '月租金 → fixed_items.rent；房东报价，填得出',\n"
+     "  seatsNum: '座位数 → seats（反推算翻台必需）；由面积×密度估算、用户可改',\n",
+     "", 'A-⑦'),
 ]
 
 results = []

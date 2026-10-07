@@ -111,7 +111,36 @@ function m2Scalar(termsSrc, key) {
 
 // 🔴 输入区禁用的专业指标字段（R223 §3.2 明令：L1/L2 严禁作输入，只可降级为输出）。
 //    用**字段名单**而不是中文名匹配 —— 中文名会随术语改名漂移，字段名是结构事实。
-const BAN_INPUTS = ['revRentRate', 'revPixelEff'];
+//
+// 🔴🔴 R234-实测修订：首版这里只列了 `revRentRate`/`revPixelEff`（我自己删掉的那两个），
+//    结果 L3 里**原封不动**的 `pixelEffYuan`（坪效）/ `turnNum`（翻台率）一个都没扫到 ——
+//    李老师点名的三个专业指标（坪效/翻台率/客单价）里，两个**仍在输入区**，守卫却全绿。
+//    根因：**判据判的是「我改过什么」，而不是「需求要什么」**。
+//    更糟的是实测发现 `turnNum` 是**纯死输入**（引擎根本不收 turn 参数，
+//    用户填了会触发重算却对任何结果零影响）—— 这类比"填了就算错"还坏。
+// ⇒ 修法：① 名单补全历史存量字段；② 再加 A-⑥ **输入白名单**（fail-closed），
+//    让"新增任何输入框"都必须先登记用途，逼人先想清楚这数是用户填的还是咱们算的。
+const BAN_INPUTS = ['revRentRate', 'revPixelEff', 'pixelEffYuan', 'turnNum'];
+
+// 🔴 R234-实测新增：输入字段**白名单**（fail-closed）。每一项必须写明"引擎要不要它、拿去做什么"。
+//    登记新输入框前先回答一句话：**这个数是客户手里的，还是咱们算出来的？**
+//    后者一律不许进输入区（李老师原话：「这些本身是咱们计算出来的，不是让客户自己填出来的」）。
+const ALLOW_INPUTS = {
+  areaNum: '面积(㎡) → 座位估算 + 快照；客户现场量得到',
+  avgPriceYuan: '人均消费 → rev_price_fen（反推算客流必需）；老板自己定售价，填得出',
+  cityIdx: '城市层级 picker（枚举，非专业指标）',
+  expectYuan: '预计月营业额 → expected_revenue_fen（仅正向、选填）',
+  headcountNum: '员工数 → labor 固定项；老板自己排班，填得出',
+  laborUnitYuan: '单人月人工单价 → labor；当地行情，填得出',
+  marginPct: '菜品毛利率 → gross_margin_pct（核心口径，由菜品成本推出或选填）',
+  openDaysNum: '每月开门天数 → open_days（反推必需）；老板自己定',
+  planName: '方案名（快照用，非测算入参）',
+  presetIdx: '业态预设 picker（枚举，非专业指标）',
+  rentYuan: '月租金 → fixed_items.rent；房东报价，填得出',
+  seatsNum: '座位数 → seats（反推算翻台必需）；由面积×密度估算、用户可改',
+  targetYuan: '目标月利润 → target_profit_fen；老板自己定目标',
+};
+const FOR_ITEM = /^item\./;   // wx:for 里的行内输入（费用明细 / 建店投入明细），按行登记不过逐个枚举
 
 const jsRaw = readRel(PAGE_JS);
 const wxmlRaw = readRel(PAGE_WXML);
@@ -150,6 +179,19 @@ const bpp = bodyOf(js, 'buildPresetParam') || '';
 check('A-⑤ `buildPresetParam` 内 `target_rent_rate` 取自 `rentRateDefault()`（不是用户输入）',
   /target_rent_rate\s*:\s*this\.rentRateDefault\(\)/.test(bpp),
   /target_rent_rate\s*:/.test(bpp) ? (bpp.match(/target_rent_rate\s*:[^,\n]*/) || [''])[0].trim() : '未找到该字段');
+// 🔴🔴 A-⑥ 白名单制（R234-实测新增）：这是**唯一能防住「死输入」**的一道 ——
+//    BAN_INPUTS 是黑名单，只能拦"已知的历史错误"；新增一个从未见过的专用指标输入框
+//    （比如 `tableTurnoverYuan`）黑名单照样放行。白名单下，未登记即红 ⇒ 逼人先登记用途。
+const unknownInputs = binds.filter((b) => !ALLOW_INPUTS[b] && !FOR_ITEM.test(b));
+check('A-⑥ 每个输入字段都已登记用途（未登记即红 ⇒ 防"填了没用的死输入"）',
+  unknownInputs.length === 0,
+  unknownInputs.length ? `未登记：${unknownInputs.join('、')} ⇒ 先在 ALLOW_INPUTS 写明"这数是客户填的还是咱们算的"`
+    : `已登记 ${binds.filter((b) => ALLOW_INPUTS[b]).length} 项 + ${binds.filter((b) => FOR_ITEM.test(b)).length} 项行内明细`);
+// 自失效护栏 ③：白名单不能是空壳（否则 A-⑥ 会把一切判红却看起来"很严"）。
+check('A-⑦ 白名单本身非退化（条目数 ≥ 10，且与实扫绑定有交集）',
+  Object.keys(ALLOW_INPUTS).length >= 10
+  && binds.some((b) => ALLOW_INPUTS[b]),
+  `白名单 ${Object.keys(ALLOW_INPUTS).length} 项 · 命中 ${binds.filter((b) => ALLOW_INPUTS[b]).length} 项`);
 
 // ============ B 主判据：业态预设平铺 ============
 sec('B 主判据：业态预设必须平铺（不再先问"你属于哪个大类"）');
@@ -238,6 +280,21 @@ check('V-③ 正样本（BIZ_PRESETS 整体 map）**不误报**（防反向伤�
 const badVo = 'verdictOf(list) { const lv = levelOf(pct, lo, hi, "cost"); return lv; }';
 check('V-④ 负样本（verdictOf 内调 levelOf）会被 C-② 判红', /\blevelOf\s*\(/.test(badVo),
   /\blevelOf\s*\(/.test(badVo) ? '已报红' : '未报（判据失效）');
+// 🔴 V5（R234-实测新增）：**历史存量**专业指标字段塞回 input ⇒ A-① 必须红。
+//   首版没有这条负样本，所以"名单只覆盖我删过的字段"这个洞**一直没被发现** ——
+//   负样本必须覆盖"我没想到的那一类"，否则它只是给已修的 bug 补一张合格证。
+const v5Hit = inputBinds(stripWxml('<input class="row-in" value="{{pixelEffYuan}}" bindinput="onPixelEff" />'))
+  .filter((b) => BAN_INPUTS.indexOf(b) >= 0);
+check('V-⑤ 负样本（input 绑历史字段 pixelEffYuan）会被 A-① 判红', v5Hit.length === 1,
+  v5Hit.length === 1 ? `恰报 [${v5Hit.join(',')}]` : `未报（判据失效）=[${v5Hit.join(',')}]`);
+// V6：未登记的新字段 ⇒ A-⑥ 必须红（证明白名单真的是 fail-closed）
+const v6Unknown = ['tableTurnoverYuan'].filter((b) => !ALLOW_INPUTS[b] && !FOR_ITEM.test(b));
+check('V-⑥ 负样本（未登记的新字段 tableTurnoverYuan）会被 A-⑥ 判红', v6Unknown.length === 1,
+  v6Unknown.length === 1 ? '已报红' : '未报（白名单失效）');
+// V7：正样本（已登记的合法字段）⇒ A-⑥ **不得**误报（防反向伤害二型）
+const v7Ok = ['seatsNum', 'avgPriceYuan', 'rentYuan'].filter((b) => !ALLOW_INPUTS[b]);
+check('V-⑦ 正样本（已登记字段 seatsNum/avgPriceYuan/rentYuan）**不误报**', v7Ok.length === 0,
+  v7Ok.length ? `🔴 把合法字段判红了：${v7Ok.join('、')}` : '未误报');
 
 // ============ E 下界 ============
 sec('E 下界：断言数不得被悄悄删掉');

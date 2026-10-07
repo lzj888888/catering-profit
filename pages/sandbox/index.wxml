@@ -109,20 +109,12 @@
           <text class="row-unit">{{t.dayUnit}}</text>
         </view>
       </view>
-      <view class="row">
-        <text class="row-name">{{t.pixelEffLabel2}}</text>
-        <view class="row-in-wrap">
-          <input class="row-in" type="digit" value="{{pixelEffYuan}}" bindinput="onPixelEff" adjust-position="{{true}}" cursor-spacing="20" />
-          <text class="row-unit">{{t.yuanUnit}}</text>
-        </view>
-      </view>
-      <view class="row">
-        <text class="row-name">{{t.turnLabel2}}</text>
-        <view class="row-in-wrap">
-          <input class="row-in" type="digit" value="{{turnNum}}" bindinput="onTurn" adjust-position="{{true}}" cursor-spacing="20" />
-          <text class="row-unit">{{t.pctUnit}}</text>
-        </view>
-      </view>
+      <!-- 🔴 R234-实测移除：坪效 / 翻台率 两个输入框。
+           依据李老师原话「这些本身是咱们计算出来的，不是让客户自己填出来的」。
+           实测两条硬事实：
+             · 翻台率 `turnNum` 引擎**根本不收** ⇒ 填了触发重算却零影响 = 纯死输入；
+             · 坪效 `pixelEffYuan` 唯一下游 `area_cap_sqm` 因坪效不让问而恒 null ⇒ 一并移除。
+           引擎**输出**的翻台率（reverseResult.turn_rate）照常展示 —— 那是算出来的，不是填的。 -->
       <view class="row" wx:for="{{feeRows}}" wx:key="key">
         <text class="row-name">{{item.label}}</text>
         <view class="row-in-wrap">
@@ -339,9 +331,8 @@
       <view class="cell"><text class="lbl">{{t.revTraffic}}</text><text class="val">{{reverseResult.monthly_traffic}}</text></view>
       <view class="cell"><text class="lbl">{{t.revDailyTraffic}}</text><text class="val">{{reverseResult.daily_traffic}}</text></view>
       <view class="cell"><text class="lbl">{{t.revTurnRate}}</text><text class="val">{{reverseResult.turn_rate}}</text></view>
-      <view class="cell" wx:if="{{reverseResult.area_cap_sqm != null}}">
-        <text class="lbl">{{t.revAreaCap}}</text><text class="val">{{reverseResult.area_cap_sqm}} ㎡</text>
-      </view>
+      <!-- 🔴 R234-实测移除：面积上限。它 = 房租上限 ÷ 坪效，而坪效已退出输入区 ⇒ 该值恒 null。
+           留着就是一行永远不显示、却让人以为"我们能算面积"的死输出 —— 算不出来就别给（不编造）。 -->
       <view class="hint" wx:if="{{reverseResult.warn_turn_high}}" style="color:#b45309;">{{t.revWarnTurnHigh}}</view>
     </view>
   </block>

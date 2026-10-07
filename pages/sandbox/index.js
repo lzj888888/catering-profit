@@ -114,7 +114,8 @@ Page({
       revTraffic: M.revTraffic,
       revDailyTraffic: M.revDailyTraffic,
       revTurnRate: M.revTurnRate,
-      revAreaCap: M.revAreaCap,
+      // 🔴 R234-实测：`revAreaCap` 映射已随面积上限输出一并移除（坪效不让问 ⇒ 恒算不出）。
+      //    ⚠️ terms.js 里的定义**保留** —— 它是全项目共享词典（多页共用），不是"本页用到才算数"。
       revWarnTurnHigh: M.revWarnTurnHigh,
       // M2v1.2（多方案存储 · 第二期）
       savePlanEntry: M.savePlanEntry,
@@ -151,9 +152,11 @@ Page({
       laborUnitLabel: M.laborUnitLabel,
       openDaysLabel2: M.openDaysLabel2,
       dayUnit: M.dayUnit,
-      pixelEffLabel2: M.pixelEffLabel2,
+      // 🔴 R234-实测：`pixelEffLabel2`（坪效）/ `turnLabel2`（翻台率）映射已移除 ——
+      //    两者连同其输入框一起退出本页（李老师原话：「这些本身是咱们计算出来的」）。
+      //    留着孤儿映射会让下一个人以为"页面上还有这一项"，正是本轮踩的那类坑。
+      // ⚠️ terms.js 定义保留（共享词典，别处/后续可能用）。
       rentRateLabel2: M.rentRateLabel2,
-      turnLabel2: M.turnLabel2,
       pctUnit: M.pctUnit,
       assumptionsTitle: M.assumptionsTitle,
       assumptionsHint: M.assumptionsHint,
@@ -220,7 +223,8 @@ Page({
     mode: 'forward',         // 'forward' 已有铺面 | 'reverse' 寻找铺面（**值未变**，只有文案改名）
     // 🔴 R234 移除：`revRentRate`（目标租金率）与 `revPixelEff`（坪效）两个**输入字段**。
     //    · 租金率 ⇒ 改由 `rentRateDefault()` 自动取云端 BANDS 的健康上限（不再问用户）；
-    //    · 坪效   ⇒ 与 L3 已有的 `pixelEffYuan` 是同一个东西，**复用那一个**（此前同义两项并存）。
+    //    · 坪效   ⇒ 原计划"与 L3 已有的 pixelEffYuan 复用那一个" —— R234 实测已**推翻**：
+    //      坪效同属「算出来的」专业指标，L3 那一份也一并移除（见 data 处 R234-实测修复注释）。
     //    ⚠️ 云端入参 `target_rent_rate` / `pixel_eff_fen` **保留**（契约 + 快照需要），只是换了取值来源。
     reverseResult: null,     // 反推结果（reverse 块）
     rentRatePct: '',         // R234：本次采用的房租行规（%，来自云端 BANDS，**只读回显**）
@@ -245,8 +249,13 @@ Page({
     openDaysNum: '',         // 每月营业天数
     seatsNum: '',            // R234：座位数（L2；由面积 × 业态密度估算，**用户可改**）
     seatEstimated: false,    // 当前 seatsNum 是否还是"系统估的"（估的就允许再估一次；用户改过就别覆盖）
-    pixelEffYuan: '',        // 坪效（元/㎡·月）
-    turnNum: '',             // 翻台率
+    // 🔴 R234-实测修复：`pixelEffYuan`（坪效）/ `turnNum`（翻台率）**已从输入区移除**。
+    //   依据李老师原话「这些本身是咱们计算出来的，不是让客户自己填出来的」。
+    //   实测坐实的两个事实（见 review/evidence/r234_m2_v14/probe_engine.js）：
+    //     · `turnNum` 全仓只有 data 声明 + onTurn handler，**引擎根本不收 turn 参数**
+    //       ⇒ 用户填了会触发重算却对任何结果零影响 = 纯死输入（最糟的一类 UI）。
+    //     · `pixelEffYuan` 唯一下游是 `area_cap_sqm`，而坪效不让问 ⇒ 该输出恒 null ⇒ 一并移除。
+    //   ⚠️ `pixel_eff_fen` 仍是**云函数契约字段**（validate 允许 0）⇒ 保留传参、恒传 0，不删字段。
     feeOverrides: {},        // itemKey → pct 字符串（L3 费率覆盖）
     feeRows: [],             // 当前预设 revenue_rate 项 [{key,label,pct}]
     showL2: false,
@@ -534,7 +543,7 @@ Page({
           seats: Number(this.data.seatsNum) || 0,
           open_days: Number(this.data.openDaysNum) || 0,
           target_rent_rate: this.rentRateDefault(),
-          pixel_eff_fen: api.yuanToFen(this.data.pixelEffYuan),
+          pixel_eff_fen: 0,   // R234-实测：坪效退出输入区 ⇒ 恒 0 ⇒ 引擎返回 area_cap_sqm=null（不编造）
           client_request_id: 'sb_' + Date.now(),
         });
         if (seq !== this._seq) return;
@@ -761,7 +770,7 @@ Page({
       seats: Number(this.data.seatsNum) || 0,
       open_days: Number(this.data.openDaysNum) || 0,
       target_rent_rate: this.rentRateDefault(),
-      pixel_eff_fen: api.yuanToFen(this.data.pixelEffYuan),
+      pixel_eff_fen: 0,   // R234-实测：同上（契约字段保留，取值恒 0）
     };
   },
 
@@ -875,8 +884,8 @@ Page({
   onAvgPrice(e) { this.setData({ avgPriceYuan: e.detail.value }); this.scheduleCalc(); },
   onLaborUnit(e) { this.setData({ laborUnitYuan: e.detail.value }); this.scheduleCalc(); },
   onOpenDays2(e) { this.setData({ openDaysNum: e.detail.value }); this.scheduleCalc(); },
-  onPixelEff(e) { this.setData({ pixelEffYuan: e.detail.value }); this.scheduleCalc(); },
-  onTurn(e) { this.setData({ turnNum: e.detail.value }); this.scheduleCalc(); },
+  // 🔴 R234-实测修复：`onPixelEff` / `onTurn` 已随输入区一并删除（坪效/翻台率是算出来的，不是填的）。
+  //    留着 handler 会让人以为"UI 删了、逻辑还在"，下次加回输入框只要一行 —— 必须连根拔。
   onFeePct(e) {
     const key = e.currentTarget.dataset.key;
     const val = e.detail.value;
@@ -987,7 +996,7 @@ Page({
       // R234：不再来自用户输入，改由 `rentRateDefault()` 自动取本业态×本城市的健康上限。
       //   ⚠️ 字段名与形状**完全没变**（`target_rent_rate` 仍是云函数契约字段），变的只是取值来源。
       target_rent_rate: this.rentRateDefault(),
-      pixel_eff_fen: api.yuanToFen(this.data.pixelEffYuan),
+      pixel_eff_fen: 0,   // R234-实测：同上（契约字段保留，取值恒 0）
       _preset: preset,
       _targetFen: api.yuanToFen(this.data.targetYuan),
     };

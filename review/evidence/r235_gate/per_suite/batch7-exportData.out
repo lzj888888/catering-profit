@@ -1,0 +1,21 @@
+===== 导出权限（只读 expire_at，不读 plan_id）=====
+✅ 付费用户（expire_at 有效）→ 可导出
+✅ 免费用户（无/过期）→ FEATURE_LOCKED 兜底
+✅ 付费判定不读 plan_id（🔒 R71 语义延续：判定链下沉后改验单源文件）  (cx_entitlement.js 只读 shop_entitlement.expire_at，不引入 plan 维度)
+✅ index.js 已退出判定链（禁在函数内再写一遍，防复制成第二份真相源）  (判定只在 cx_entitlement.js 一处)
+✅ 付费域清单含 export / m3_combo / m3_takeaway（S1·S2 落地即有墙，不必二次接线）  (export / m3_combo / m3_takeaway / m3_dishreview)
+✅ 到期边界：恰好 == now ⇒ false（`>` 写成 `>=` 必须转红，否则到期当天还能用）  (==now:false / now+1ms:true)
+✅ 脏数据：undefined / NaN ⇒ false（不因类型脏而放行）
+===== M1 报表 CSV（字段完整 + 文件名含店铺/月份）=====
+✅ 含 BOM（Excel 可开中文）
+✅ 表头 6 字段
+✅ 数据行完整
+✅ 文件名含店铺名 + 月份  (老王川菜馆_2026-09_月度报表.csv)
+===== M3 成本卡批量 CSV =====
+✅ M3 表头 7 字段 + 数据行
+✅ M3 文件名含店铺名
+===== JSON 格式（唯一键名，防覆盖）=====
+✅ JSON 唯一键名 + 值完整
+✅ JSON 键不重复（无覆盖）
+
+==== exportData 批次 7 自测结果：15 通过 / 0 失败 ====
