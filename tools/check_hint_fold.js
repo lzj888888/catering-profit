@@ -522,8 +522,14 @@ const PAGE_CASES = [
     js: 'pages/sandbox/index.js',
     wxss: 'pages/sandbox/index.wxss',
     keys: ['sbAssumptionsHint', 'sbBandPreviewNote', 'sbExpectRevNote', 'sbBuildNote',
-           'sbFixedNote', 'sbRevRentHint', 'sbMarginTip', 'sbVarNote'],
-    keepPlain: 8,   // 本页 <18 字的提示仍有 8 处平铺（分层判据的另一侧）
+           'sbFixedNote', 'sbRevRentHint', 'sbMarginTip', 'sbVarNote',
+           // ── R234/J4f 补漏两处（26 字 redAlertHint）──
+           // 🔴 **两处必须两个独立 key**：同一句文案出现在正推 Tab 与反推 Tab 的红牌卡里。
+           //   两处虽互斥显示，但若共用一个 key，用户在正推点开后切到反推
+           //   会发现"没点它也开着"= **状态串台**（跨 Tab 泄漏）。
+           //   ⇒ 本 case 是"同文案多实例必须分键"的回归样本。
+           'sbRedAlertRev', 'sbRedAlertFwd'],
+    keepPlain: 6,   // 本页 <18 字的提示仍有 6 处平铺（分层判据的另一侧）
     // 本页另有 3 处**区段级**折叠（.fold-toggle）——必须与句级并存、不得互相吃掉
     segFolds: 3,
   },
@@ -538,8 +544,9 @@ const PAGE_CASES = [
     wxml: 'pages/month/assetEdit.wxml',
     js: 'pages/month/assetEdit.js',
     wxss: 'pages/month/assetEdit.wxss',
-    keys: ['aeMonthHint'],
-    keepPlain: 3,   // fAmountHint 13 / fStartHint 7 / fTerminateHint 14 字 ⇒ 保持平铺
+    keys: ['aeMonthHint', 'aeTotalHint'],
+    keepPlain: 2,   // fAmountHint 13 / fStartHint 7 / fTerminateHint 14 字 ⇒ 保持平铺
+                    // ⚠️ J4f 补漏 `aeTotalHint`（fTotalHint 20 字，此前被我误判为平铺）
     segFolds: 0,    // 本页无区段级折叠
   },
   {
@@ -625,6 +632,20 @@ const PAGE_CASES = [
     keepPlain: 1,   // openingNote（`{{openingNote}}` 动态值）⇒ 保持平铺
     segFolds: 0,
   },
+  {
+    // ── R234/J4f：菜品卡编辑页 —— 折 1 处（`activityPriceHint` 19 字，活动价说明）。──
+    //   ⚠️ 本页是**首个「全折页」**（keepPlain=0）：页面只有这一处 hint，折完平铺归零。
+    //      这正是 F9 下界判据要覆盖的形态 —— 若判据写成 `plain >= 1`，本页会恒红；
+    //      写成恒绿又会漏掉"该页平铺数被误改"。⇒ keepPlain 必须**逐页显式声明**（数据驱动）。
+    //   ⚠️ 本页 wxml 近 19K（全站最大），F11 下界按 keys 缩放后为 max(1500, 1×800)=1500 ⇒ 覆盖。
+    name: 'cardEdit',
+    wxml: 'pages/card/edit.wxml',
+    js: 'pages/card/edit.js',
+    wxss: 'pages/card/edit.wxss',
+    keys: ['ceActPriceHint'],
+    keepPlain: 0,   // 本页仅此一处 hint
+    segFolds: 0,
+  },
 ];
 
 for (const c of PAGE_CASES) {
@@ -706,6 +727,17 @@ for (const c of PAGE_CASES) {
   const minKeys = (c.keys.length >= 5) ? 5 : Math.max(1, c.keys.length);
   if (longPlain >= minKeys) ok('F12-' + c.name, `受守长提示 ${longPlain} 条 ≥ ${minKeys}（判据集合被改小即转红）`);
   else no('F12-' + c.name, '受守长提示过少 ⇒ 判据覆盖不足');
+
+  // F13：🔴 本页 data-key **不得重复**（R234/J4f 补缺口）。
+  //   为什么必须单列：A 组的 `A2-②`（data-key 重复）**只扫 input.wxml 一页**，
+  //   而 J4 已把折叠块铺到 11 个页面 ⇒ 那 11 页的「同页两处共用一个键」**无人守**。
+  //   危害是**可见的交互错乱**：点开上面那块，下面那块也开了（跨处状态串台）。
+  //   —— 本仓真实样本：sandbox 同页两处 `redAlertHint`，必须拆成 sbRedAlertRev / sbRedAlertFwd。
+  //   ⚠️ 判据必须**剥注释**（同 F9 理由：注释里引用旧写法会被数成实例）。
+  const kAll = parseFolds(wNC).map((f) => f.key);
+  const kDup = [...new Set(kAll.filter((k, i) => kAll.indexOf(k) !== i))];
+  if (kDup.length === 0) ok('F13-' + c.name, `${kAll.length} 处 data-key 无重复（不会互相抢状态）`);
+  else no('F13-' + c.name, `data-key 重复：${kDup.join('、')} ⇒ 点一处会连带开另一处`);
 }
 
 // F-V：负样本互证（M2 页判据非恒绿）
@@ -719,6 +751,30 @@ if (pfv.length === 1 && pfv[0].key === 'XXX' && pfv[0].guideVar === 'YYY'
   ok('F-V1', '负样本（key≠guide≠body 条件）会被 F3 判红 ⇒ M2 页判据非恒绿');
 } else {
   no('F-V1', '负样本未被 F3 识别：' + JSON.stringify(pfv));
+}
+
+// F-V2：F13（data-key 无重复）非恒绿的**双向**互证。
+//   ① 正样本（两个不同键）⇒ 重复集为空（不误报）
+//   ② 负样本（同页两处同键）⇒ 重复集恰为 {XXX}
+//   —— 只验负样本会漏掉「判据恒报重复」的反向伤害（把正确实现判红）。
+const FV2_OK = '<view class="hint-fold"><view class="hint-fold-head" data-key="AAA" bindtap="x">'
+  + '<text>{{hintFold.AAA ? t.a : t.b}}</text></view>'
+  + '<view class="hint-fold-body" wx:if="{{hintFold.AAA}}">{{t.c}}</view></view>'
+  + '<view class="hint-fold"><view class="hint-fold-head" data-key="BBB" bindtap="x">'
+  + '<text>{{hintFold.BBB ? t.a : t.b}}</text></view>'
+  + '<view class="hint-fold-body" wx:if="{{hintFold.BBB}}">{{t.c}}</view></view>';
+const FV2_BAD = FV2_OK.replace('data-key="BBB"', 'data-key="AAA"')
+  .replace('hintFold.BBB ? t.a : t.b', 'hintFold.AAA ? t.a : t.b')
+  .replace('wx:if="{{hintFold.BBB}}"', 'wx:if="{{hintFold.AAA}}"');
+const dupOf = (s) => {
+  const ks = parseFolds(s).map((f) => f.key);
+  return [...new Set(ks.filter((k, i) => ks.indexOf(k) !== i))];
+};
+const dOk = dupOf(FV2_OK), dBad = dupOf(FV2_BAD);
+if (dOk.length === 0 && dBad.length === 1 && dBad[0] === 'AAA') {
+  ok('F-V2', `F13 双向互证：两不同键 ⇒ 无重复；两处同键 ⇒ 恰报 [${dBad.join(',')}]`);
+} else {
+  no('F-V2', `F13 互证失败：正样本重复=${JSON.stringify(dOk)}（应空）负样本=${JSON.stringify(dBad)}（应["AAA"]）`);
 }
 
 console.log('\n===== 行内提示折叠守卫结果：' + pass + ' 通过 / ' + fail + ' 失败 =====');

@@ -150,7 +150,14 @@ Page({
       templateFrom: TERMS.card.templateFrom,
       templatePickPh: TERMS.card.templatePickPh,
       templateHint: TERMS.card.templateHint,
+      // ── R234/J4f 行内长提示折叠（本页 1 处）──
+      // 🔴 三处登记的第二处：漏映射 ⇒ 页面渲染成**空白**且零报错（R124 同族）
+      // ⚠️ 引导语在 `TERMS.ledger` 组（跨页复用的通用模式引导语）。
+      hintFoldShow: TERMS.ledger.hintFoldShow,
+      hintFoldHide: TERMS.ledger.hintFoldHide,
     },
+    // R234/J4f：行内长提示折叠（本页 1 处，默认收起）。仓内统一实现。
+    hintFold: {},
     card_code: '',
     isEdit: false,
     name: '',
@@ -203,6 +210,16 @@ Page({
     // M3.20（批次 B 收尾）菜品模板：picker range（20 道菜名）+ 当前选中项（-1 = 未选）
     tplNames: TEMPLATES.map((t) => t.dish_name),
     tplPicked: -1,
+  },
+
+  // R234/J4f：行内提示折叠开关（仓内统一形态 —— 多页同一实现）。
+  onToggleHintFold(e) {
+    const key = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.key) || '';
+    if (!key) return;
+    const cur = this.data.hintFold || {};
+    const next = Object.assign({}, cur);
+    next[key] = !cur[key];
+    this.setData({ hintFold: next });
   },
 
   onLoad(q) {

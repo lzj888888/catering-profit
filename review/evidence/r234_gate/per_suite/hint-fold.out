@@ -29,7 +29,7 @@
   ✅ D2-hintFoldHide hintFoldHide 在 terms 源与页面 t:{} 均登记
 
 ===== S 组 · 自失效护栏（扫描面非退化 + 关键锚点在场） =====
-  ✅ S1 wxml 非退化（31346 字节）
+  ✅ S1 wxml 非退化（31358 字节）
   ✅ S2 折叠块数 15 ≥ 目标 15
   ✅ S3 仍保有 8 处短提示（未被一刀切折叠）
   ✅ S4 本轮断言 24 条（判据集合被改小即转红）
@@ -62,32 +62,34 @@
   ✅ E-V1 负样本（body 无 wx:if）会被 E2 判红 ⇒ 首页判据非恒绿
 
 ===== F 组 · R234/J4 多页面句级折叠（数据驱动） =====
-  ✅ F1-sandbox 目标折叠项全落地（8 处）
+  ✅ F1-sandbox 目标折叠项全落地（10 处）
   ✅ F2-sandbox 无期望外的折叠块（未误改）
-  ✅ F3-sandbox 8 处折叠四要素自洽（key↔guide↔body↔wx:if）
+  ✅ F3-sandbox 10 处折叠四要素自洽（key↔guide↔body↔wx:if）
   ✅ F3b-sandbox 折叠块外层容器 class 均为 hint-fold
   ✅ F4-sandbox onToggleHintFold 在场且真取反
   ✅ F5-sandbox hintFold 默认空 map（全收起）
   ✅ F6-sandbox t:{} 两键映射齐全（hintFoldShow/Hide）
   ✅ F7-sandbox 折叠正文 28rpx ≥ 28（AD-G1）
   ✅ F8-sandbox 折叠头行 88rpx ≥ 88（AD-G2）
-  ✅ F9-sandbox 仍有 8 处短提示平铺（分层两侧都守住）
+  ✅ F9-sandbox 仍有 6 处短提示平铺（分层两侧都守住）
   ✅ F10-sandbox 区段级折叠 3 处仍在（两级并存互不吃）
-  ✅ F11-sandbox wxml 非退化（22388 字节 ≥ 6400）
-  ✅ F12-sandbox 受守长提示 8 条 ≥ 5（判据集合被改小即转红）
-  ✅ F1-assetEdit 目标折叠项全落地（1 处）
+  ✅ F11-sandbox wxml 非退化（23412 字节 ≥ 8000）
+  ✅ F12-sandbox 受守长提示 10 条 ≥ 5（判据集合被改小即转红）
+  ✅ F13-sandbox 10 处 data-key 无重复（不会互相抢状态）
+  ✅ F1-assetEdit 目标折叠项全落地（2 处）
   ✅ F2-assetEdit 无期望外的折叠块（未误改）
-  ✅ F3-assetEdit 1 处折叠四要素自洽（key↔guide↔body↔wx:if）
+  ✅ F3-assetEdit 2 处折叠四要素自洽（key↔guide↔body↔wx:if）
   ✅ F3b-assetEdit 折叠块外层容器 class 均为 hint-fold
   ✅ F4-assetEdit onToggleHintFold 在场且真取反
   ✅ F5-assetEdit hintFold 默认空 map（全收起）
   ✅ F6-assetEdit t:{} 两键映射齐全（hintFoldShow/Hide）
   ✅ F7-assetEdit 折叠正文 28rpx ≥ 28（AD-G1）
   ✅ F8-assetEdit 折叠头行 88rpx ≥ 88（AD-G2）
-  ✅ F9-assetEdit 仍有 3 处短提示平铺（分层两侧都守住）
+  ✅ F9-assetEdit 仍有 2 处短提示平铺（分层两侧都守住）
   ✅ F10-assetEdit 区段级折叠 0 处仍在（两级并存互不吃）
-  ✅ F11-assetEdit wxml 非退化（3575 字节 ≥ 1500）
-  ✅ F12-assetEdit 受守长提示 1 条 ≥ 1（判据集合被改小即转红）
+  ✅ F11-assetEdit wxml 非退化（3995 字节 ≥ 1600）
+  ✅ F12-assetEdit 受守长提示 2 条 ≥ 2（判据集合被改小即转红）
+  ✅ F13-assetEdit 2 处 data-key 无重复（不会互相抢状态）
   ✅ F1-amortize 目标折叠项全落地（2 处）
   ✅ F2-amortize 无期望外的折叠块（未误改）
   ✅ F3-amortize 2 处折叠四要素自洽（key↔guide↔body↔wx:if）
@@ -101,6 +103,7 @@
   ✅ F10-amortize 区段级折叠 0 处仍在（两级并存互不吃）
   ✅ F11-amortize wxml 非退化（7105 字节 ≥ 1600）
   ✅ F12-amortize 受守长提示 2 条 ≥ 2（判据集合被改小即转红）
+  ✅ F13-amortize 2 处 data-key 无重复（不会互相抢状态）
   ✅ F1-takeaway 目标折叠项全落地（2 处）
   ✅ F2-takeaway 无期望外的折叠块（未误改）
   ✅ F3-takeaway 2 处折叠四要素自洽（key↔guide↔body↔wx:if）
@@ -114,6 +117,7 @@
   ✅ F10-takeaway 区段级折叠 0 处仍在（两级并存互不吃）
   ✅ F11-takeaway wxml 非退化（13064 字节 ≥ 1600）
   ✅ F12-takeaway 受守长提示 2 条 ≥ 2（判据集合被改小即转红）
+  ✅ F13-takeaway 2 处 data-key 无重复（不会互相抢状态）
   ✅ F1-monthIndex 目标折叠项全落地（1 处）
   ✅ F2-monthIndex 无期望外的折叠块（未误改）
   ✅ F3-monthIndex 1 处折叠四要素自洽（key↔guide↔body↔wx:if）
@@ -127,6 +131,7 @@
   ✅ F10-monthIndex 区段级折叠 0 处仍在（两级并存互不吃）
   ✅ F11-monthIndex wxml 非退化（3584 字节 ≥ 1500）
   ✅ F12-monthIndex 受守长提示 1 条 ≥ 1（判据集合被改小即转红）
+  ✅ F13-monthIndex 1 处 data-key 无重复（不会互相抢状态）
   ✅ F1-shopSwitch 目标折叠项全落地（1 处）
   ✅ F2-shopSwitch 无期望外的折叠块（未误改）
   ✅ F3-shopSwitch 1 处折叠四要素自洽（key↔guide↔body↔wx:if）
@@ -140,6 +145,7 @@
   ✅ F10-shopSwitch 区段级折叠 0 处仍在（两级并存互不吃）
   ✅ F11-shopSwitch wxml 非退化（3219 字节 ≥ 1500）
   ✅ F12-shopSwitch 受守长提示 1 条 ≥ 1（判据集合被改小即转红）
+  ✅ F13-shopSwitch 1 处 data-key 无重复（不会互相抢状态）
   ✅ F1-materialEdit 目标折叠项全落地（1 处）
   ✅ F2-materialEdit 无期望外的折叠块（未误改）
   ✅ F3-materialEdit 1 处折叠四要素自洽（key↔guide↔body↔wx:if）
@@ -153,6 +159,7 @@
   ✅ F10-materialEdit 区段级折叠 0 处仍在（两级并存互不吃）
   ✅ F11-materialEdit wxml 非退化（4751 字节 ≥ 1500）
   ✅ F12-materialEdit 受守长提示 1 条 ≥ 1（判据集合被改小即转红）
+  ✅ F13-materialEdit 1 处 data-key 无重复（不会互相抢状态）
   ✅ F1-cardIndex 目标折叠项全落地（1 处）
   ✅ F2-cardIndex 无期望外的折叠块（未误改）
   ✅ F3-cardIndex 1 处折叠四要素自洽（key↔guide↔body↔wx:if）
@@ -166,6 +173,7 @@
   ✅ F10-cardIndex 区段级折叠 0 处仍在（两级并存互不吃）
   ✅ F11-cardIndex wxml 非退化（4840 字节 ≥ 1500）
   ✅ F12-cardIndex 受守长提示 1 条 ≥ 1（判据集合被改小即转红）
+  ✅ F13-cardIndex 1 处 data-key 无重复（不会互相抢状态）
   ✅ F1-inventory 目标折叠项全落地（1 处）
   ✅ F2-inventory 无期望外的折叠块（未误改）
   ✅ F3-inventory 1 处折叠四要素自洽（key↔guide↔body↔wx:if）
@@ -179,6 +187,22 @@
   ✅ F10-inventory 区段级折叠 0 处仍在（两级并存互不吃）
   ✅ F11-inventory wxml 非退化（2366 字节 ≥ 1500）
   ✅ F12-inventory 受守长提示 1 条 ≥ 1（判据集合被改小即转红）
+  ✅ F13-inventory 1 处 data-key 无重复（不会互相抢状态）
+  ✅ F1-cardEdit 目标折叠项全落地（1 处）
+  ✅ F2-cardEdit 无期望外的折叠块（未误改）
+  ✅ F3-cardEdit 1 处折叠四要素自洽（key↔guide↔body↔wx:if）
+  ✅ F3b-cardEdit 折叠块外层容器 class 均为 hint-fold
+  ✅ F4-cardEdit onToggleHintFold 在场且真取反
+  ✅ F5-cardEdit hintFold 默认空 map（全收起）
+  ✅ F6-cardEdit t:{} 两键映射齐全（hintFoldShow/Hide）
+  ✅ F7-cardEdit 折叠正文 28rpx ≥ 28（AD-G1）
+  ✅ F8-cardEdit 折叠头行 88rpx ≥ 88（AD-G2）
+  ✅ F9-cardEdit 仍有 0 处短提示平铺（分层两侧都守住）
+  ✅ F10-cardEdit 区段级折叠 0 处仍在（两级并存互不吃）
+  ✅ F11-cardEdit wxml 非退化（16975 字节 ≥ 1500）
+  ✅ F12-cardEdit 受守长提示 1 条 ≥ 1（判据集合被改小即转红）
+  ✅ F13-cardEdit 1 处 data-key 无重复（不会互相抢状态）
   ✅ F-V1 负样本（key≠guide≠body 条件）会被 F3 判红 ⇒ M2 页判据非恒绿
+  ✅ F-V2 F13 双向互证：两不同键 ⇒ 无重复；两处同键 ⇒ 恰报 [AAA]
 
-===== 行内提示折叠守卫结果：166 通过 / 0 失败 =====
+===== 行内提示折叠守卫结果：190 通过 / 0 失败 =====

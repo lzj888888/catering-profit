@@ -331,7 +331,16 @@
   <block wx:if="{{mode === 'reverse' && reverseResult}}">
     <view class="card2" wx:if="{{reverseResult.red_alert}}">
       <view class="result-num" style="color:#e74c3c;font-size:36rpx;">{{t.redAlert}}</view>
-      <view class="hint">{{t.redAlertHint}}</view>
+      <!-- R234/J4f：26 字（≥18）⇒ 折叠。⚠️ 同页 L353 也用了同一文案（正推 Tab 的红牌卡）——
+           **必须用两个独立 key**（sbRedAlertRev / sbRedAlertFwd）：两处虽互斥显示，
+           但若共用一个 key，用户在正推里点开、切到反推会发现「没点它也开着」= 状态串台。 -->
+      <view class="hint-fold">
+        <view class="hint-fold-head" data-key="sbRedAlertRev" bindtap="onToggleHintFold">
+          <text class="hint-fold-guide">{{hintFold.sbRedAlertRev ? t.hintFoldHide : t.hintFoldShow}}</text>
+          <text class="hint-fold-arrow">{{hintFold.sbRedAlertRev ? '▾' : '▸'}}</text>
+        </view>
+        <view class="hint-fold-body" wx:if="{{hintFold.sbRedAlertRev}}">{{t.redAlertHint}}</view>
+      </view>
     </view>
     <view class="card2" wx:if="{{!reverseResult.red_alert}}">
       <view class="sec">{{t.secResult}}</view>
@@ -350,7 +359,14 @@
   <!-- 结果（后端返回值，仅展示） -->
   <view class="card2" wx:if="{{mode === 'forward' && result && result.red_alert}}">
     <view class="result-num" style="color:#e74c3c;font-size:36rpx;">{{t.redAlert}}</view>
-    <view class="hint">{{t.redAlertHint}}</view>
+    <!-- R234/J4f：同上（26 字）⇒ 折叠。key 与反推那处**不同**（见上方说明）。 -->
+    <view class="hint-fold">
+      <view class="hint-fold-head" data-key="sbRedAlertFwd" bindtap="onToggleHintFold">
+        <text class="hint-fold-guide">{{hintFold.sbRedAlertFwd ? t.hintFoldHide : t.hintFoldShow}}</text>
+        <text class="hint-fold-arrow">{{hintFold.sbRedAlertFwd ? '▾' : '▸'}}</text>
+      </view>
+      <view class="hint-fold-body" wx:if="{{hintFold.sbRedAlertFwd}}">{{t.redAlertHint}}</view>
+    </view>
   </view>
 
   <block wx:if="{{mode === 'forward' && result && !result.red_alert}}">

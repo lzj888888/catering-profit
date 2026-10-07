@@ -210,7 +210,14 @@
     <text class="lbl">{{t.activityPrice}}</text>
     <input class="val-input" type="digit" value="{{activityPriceYuan}}" bindinput="onActivityPrice"  adjust-position="{{true}}" cursor-spacing="20" />
   </view>
-  <view class="hint">{{t.activityPriceHint}}</view>
+  <!-- R234/J4f：本句 ≥18 字 ⇒ 折叠（完整清点口径下补漏）。 -->
+  <view class="hint-fold">
+    <view class="hint-fold-head" data-key="ceActPriceHint" bindtap="onToggleHintFold">
+      <text class="hint-fold-guide">{{hintFold.ceActPriceHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+      <text class="hint-fold-arrow">{{hintFold.ceActPriceHint ? '▾' : '▸'}}</text>
+    </view>
+    <view class="hint-fold-body" wx:if="{{hintFold.ceActPriceHint}}">{{t.activityPriceHint}}</view>
+  </view>
 
   <!-- 反算售价（R190：单品 / 套餐**都能用** —— 此前套餐点了没反应，规范 v1.2 早定了套餐反算口径） -->
   <view class="reverse">

@@ -214,12 +214,12 @@
         </view>
         <view class="hint">{{takeoutFilledText}}</view>
         <view class="hint-fold">
-        <view class="hint-fold-head" data-key="twTotalAutoHint" bindtap="onToggleHintFold">
-          <text class="hint-fold-guide">{{hintFold.twTotalAutoHint ? t.hintFoldHide : t.hintFoldShow}}</text>
-          <text class="hint-fold-arrow">{{hintFold.twTotalAutoHint ? '▾' : '▸'}}</text>
+          <view class="hint-fold-head" data-key="twTotalAutoHint" bindtap="onToggleHintFold">
+            <text class="hint-fold-guide">{{hintFold.twTotalAutoHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+            <text class="hint-fold-arrow">{{hintFold.twTotalAutoHint ? '▾' : '▸'}}</text>
+          </view>
+          <view class="hint-fold-body" wx:if="{{hintFold.twTotalAutoHint}}">{{t.twTotalAutoHint}}</view>
         </view>
-        <view class="hint-fold-body" wx:if="{{hintFold.twTotalAutoHint}}">{{t.twTotalAutoHint}}</view>
-      </view>
         <!-- T3′（round97）：快速模式轻量自查 —— 零依赖判据（不看补贴，只看营销段是否记了佣金/配送费） -->
         <view class="tw-rec-msg" wx:if="{{twSelfCheck}}">{{twSelfCheck}}</view>
       </block>

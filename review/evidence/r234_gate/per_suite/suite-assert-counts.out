@@ -62,7 +62,7 @@
   · tools/check_dishreview_engine.js → 32 通过
   · tools/check_formc_parse.js → 16 通过
   · tools/check_shape_machine_value.js → 12 通过
-  · tools/check_hint_fold.js → 166 通过
+  · tools/check_hint_fold.js → 190 通过
   ✅ A0-① 63 个套件全部实跑成功（rc=0）且解析到通过数
   ✅ A0-② 各套件通过数均 > 0（下界非空）
 
@@ -132,7 +132,7 @@
   ✅ A2-check_dishreview_engine 声明 32 ≡ 实跑 32
   ✅ A2-check_formc_parse 声明 16 ≡ 实跑 16
   ✅ A2-check_shape_machine_value 声明 12 ≡ 实跑 12
-  ✅ A2-check_hint_fold 声明 166 ≡ 实跑 166
+  ✅ A2-check_hint_fold 声明 190 ≡ 实跑 190
 
 ===== A5 前提守卫（证明本守卫不是恒真） =====
   ✅ A5-① 受守套件 63 个 ≥ 6（集合被改小即转红）

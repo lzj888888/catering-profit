@@ -7,9 +7,9 @@
 
 ===== B. 真实扫描（pages/ utils/ app.js）=====
    扫描文件 49 个，命中按钮引用 40 条，候选 50 个
-   · pages\card\edit.js:569 confirmText = TERMS.card.delLineConfirmOk
-   · pages\card\edit.js:570 cancelText = TERMS.buttons.cancel
-   · pages\card\edit.js:816 cancelText = TERMS.buttons.cancel
+   · pages\card\edit.js:586 confirmText = TERMS.card.delLineConfirmOk
+   · pages\card\edit.js:587 cancelText = TERMS.buttons.cancel
+   · pages\card\edit.js:833 cancelText = TERMS.buttons.cancel
    · pages\card\index.js:299 cancelText = TERMS.buttons.thinkAgain
    · pages\card\index.js:300 confirmText = TERMS.exp.serviceEntry
    · pages\card\index.js:327 cancelText = TERMS.buttons.cancel

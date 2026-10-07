@@ -47,7 +47,10 @@ Page({
       archiveReadonly: TERMS.inputPage.archiveReadonly,
       lumpMonthLabel: T.lumpMonthLabel,
       lumpMonthHint: T.lumpMonthHint,
-      // ── R234/J4 行内长提示折叠（本页 1 处：aeMonthHint）──
+      // ── R234/J4 + J4f 行内长提示折叠（本页 **2** 处：aeMonthHint / aeTotalHint）──
+      // 🔴 J4f 补漏：`aeTotalHint`（fTotalHint 20 字）此前被误判为平铺 —— 根因是
+      //   清点用 `class="hint"` 精确匹配，而该处外层是复合 class ⇒ 匹配不上（R234 三大发现之二）。
+      //   两处折叠块共用同一个 `t:{}` 里登记的两个引导语键（引导语是**共用**的，与折叠项数量无关）。
       // 🔴 三处登记的第二处：漏映射 ⇒ 页面渲染成**空白**且零报错（R124 同族）
       // ⚠️ 引导语在 `TERMS.ledger` 组（与月录入页同一处），**不在** T(=amortizePage) 里 ——
       //   它是「行内提示折叠」这一通用模式的引导语，被多页复用 ⇒ 放 ledger 作单源。
