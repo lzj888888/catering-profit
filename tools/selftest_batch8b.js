@@ -361,7 +361,13 @@ check('R102-③ 提示行两段都有（费用 + 收入非堂食），文案走 
 check('R102-④ 提示行点击直开预设面板（onOpenPresetPick 三处：两段提示 + 费用添加按钮）',
   (dinWxml.match(/catchtap="onOpenPresetPick"/g) || []).length >= 3);
 // 反向腿：小计块必须已**移出**段末操作区 —— 取 group-ops 起 300 字符窗口，其中不得再出现 mk-plat
-const r102GoIdx = dinWxml.indexOf('<view class="group-ops" wx:if="\{\{g.expanded\}\}">\r\n      <button class="btn-small ghost" data-kind="expense"');
+// 🔴 R234 修正：原锚点把行尾硬写成 `\r\n`，而本仓 wxml 实为纯 LF（0 个 CRLF）
+//    ⇒ `indexOf` 恒 -1 ⇒ 该断言**自 R102 起从未真正生效**（恒红或恒绿，取决于写法）。
+//    改为「锚点用正则匹配 group-ops 头 + 抓取按钮 data-kind」：判**结构**不判换行字面，
+//    并保留 `r102GoIdx >= 0` 作为锚点在场性检查（防扫描面退化 ⇒ 恒绿，R182）。
+const r102GoRe = /<view class="group-ops"[^>]*>\s*<button class="btn-small ghost" data-kind="expense"/;
+const r102GoM = r102GoRe.exec(dinWxml);
+const r102GoIdx = r102GoM ? r102GoM.index : -1;
 const r102Win = r102GoIdx >= 0 ? dinWxml.slice(r102GoIdx, r102GoIdx + 300) : '';
 check('R102-⑤ 小计块已移出「段末操作区」（group-ops 首 300 字符内不含 mk-plat）',
   r102GoIdx >= 0 && r102Win.indexOf('mk-plat') < 0);
