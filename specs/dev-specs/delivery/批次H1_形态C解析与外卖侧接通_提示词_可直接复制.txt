@@ -1,0 +1,330 @@
+======================== 提示词开始 ========================
+
+# 批次 H-1 · M3.33 形态 C（外卖商品销量）解析实现 + 外卖侧接通
+
+✅ **本包已可投喂**（2026-10-07）—— 形态 C 真样例已于 2026-10-06 到货；
+   规范订正 **v1.7 已成文**（C-1~C-7 定案 + 锚点 **30/30 · RC=0**）；判定层 **C-1 已修正**。
+📖 **权威源** = `specs/dev-specs/core/开发规范v1.7_ModuleM3增量_M3.33形态C订正.md`
+   （本包是它的**执行侧**，两者已**逐条对表**；冲突以规范为准）。
+📎 **前序包** = `specs/dev-specs/delivery/批次M3v1.2_G_M3.33单品毛利复盘_提示词_可直接复制.txt`
+   （批次 G 已交付验收：堂食路径完整可用。**本批只补外卖侧，不重做堂食**。）
+
+⚠️ **本批解决什么**（一句话）：形态 C **判定能认出来了，但解析还没实现** ——
+   现在用户传外卖商品销量表，界面提示「这是外卖商品销量表，识别已支持，解析导入功能尚未上线」。
+   同时 `getDishReview` 的 `takeaway` 是**硬编码 `null`**，外卖榜永远空。
+   本批把这两处补上，让**外卖侧端到端可用**。
+
+====================================================================
+## §0 铁律（先读，违反即整批退回）
+
+**0.1 `sync_common` 铁律**：改了 `cloudfunctions/common/` 下**任何**文件后，必须跑
+  `node tools/sync_common.js`（扁平派生到各云函数目录；云函数包内禁止子目录）。
+  交付前用 `--check` 自证 **全部**函数目录 ≡ 单源（🔴 **现读值，别抄数字**）。
+
+**0.2 🔴🔴 引擎红线＝禁改源码，不是禁调用**：
+  `netUnitCostWan` / `lineNetCostYuan` / `calcCostCard` / `wouldCreateCycle` **一行都不许改**。
+  本批**不碰成本引擎**；需要防环时**应当**调用 `wouldCreateCycle`。
+
+**0.3 🔴 新可见文案 = 三处**（缺一处 ⇒ WXML 取 `undefined` ⇒ 静默渲染成空白，R124 把守）：
+  ① `miniprogram/i18n/terms.js` ② `specs/dev-specs/i18n/terms.js`（副本）
+  ③ 页面 `.js` 的 `t:{}` 映射。
+  改后两副本 **md5 必须相同**（`cp` 后自查）。
+  🔴 **第三处最容易漏** —— R189 实测被 `check_page_terms` P2-1 抓到过。
+
+**0.4 🔴 列表查询必须有显式上限**：单源 `common/dataAdapter.js::LIST_LIMIT=1000`。
+  「要全部行」**必须** `da.listAll()`（`shop_cost_card` 是版本模型，短页＝到底判据 + `LIST_TOTAL_CAP=20000`）。
+
+**0.5 🔴 写库主键必用 `_id`**：`doc(业务键).update()` 在真云会**静默 0 行** ⇒ 必读 `stats.updated` 自证。
+
+**0.6 🔴 本批零新建集合**：不碰 `initDb/collections.js`、不新增索引、不改权限矩阵。
+  形态 C 的明细同样落 **既有** `external_sales_daily`（只多一个 `platform` 值）。
+  🔴 **不使用**未落库的集合（如 v1.5 的 `external_raw_staging`）—— 用了就要同时建表+索引+权限，直接破"零新建集合"。
+
+**0.7 🔴 时间口径**：一律 **Unix 毫秒 BIGINT** + `YYYY-MM-DD` 字符串。
+  月份格式化**必须**走单源 `common/utilTime.js::toMonth`（UTC 口径），
+  🔴 **禁止**本地时区 `getFullYear()`/`getMonth()`（R232 C-10 事故：每月 1 日 00:00~08:00 差一月）。
+
+**0.8 🔴 `rc` 永不作判据**：`cli.bat` 失败也返 0。自测判据 = 脚本自己打印的 `N 通过 / M 失败` 行。
+
+====================================================================
+## §1 背景与定案
+
+### 1.1 能力定位（与批次 G 的关系）
+
+| 路径 | 来源形态 | 状态 |
+|---|---|---|
+| **堂食** | 形态 A《菜品销售统计》 | ✅ 批次 G 已交付可用 |
+| **外卖** | **形态 C「商品销量」** | 🔴 **本批实现** |
+
+🔴 **两者并存、不互替**，且**分开呈现**（红线 18：**不得默认外卖=0**）。
+   前端已按「堂食榜 + 外卖空态」实现，本批把「空态」换成「实态」。
+
+### 1.2 形态 C 定义（v1.7 §3，**实测事实，非推测**）
+
+| 项 | 实测值 |
+|---|---|
+| sheet | `data`（`A1:R355` · **18 列**）+ `meta` |
+| **表头** | 🔴 **单行 R1**（**非**形态 A 的两行表头） |
+| 数据行 | **R2–R355 = 354 行** |
+| **合计行** | **无**（**与形态 A 不同**，A 有 R270 合计） |
+| 日期跨度 | **7 天**（2026-09-07 ~ 09-13） |
+| 商品数 | **51** |
+| 网格 | 51 × 7 = 357，**实得 354 ⇒ 缺 3 格**（`粑粑肠` 缺 09-07/08/09） |
+| Σ`销量` | **118** |
+| Σ`销售额` | **1823.08** 元 |
+| 有销量行 | **49** / 354 |
+| 🔴 `销量` 列类型 | **全 354 行为文本** ⇒ **必须 `toNum()`** |
+| 🔴 零价高销量 | `来点辣椒吗`：`销量`=**43**、`销售额`=**0**（占全表销量 **36.4%**） |
+| 🔴 `销售额` vs `订单交易额` | **49/49 全不等**（Σ 1823.08 vs **2974.91**）⇒ 整单口径 |
+
+### 1.3 18 列清单与处置（**白名单取列**）
+
+`日期`✅取 · `门店名称`· `门店编号`✅取 · `商品名称`✅取 · `是否配料` · `是否售罄` · `销售额`✅取 · `销量`✅取 ·
+`下单人数` · `带来订单数` · **`订单交易额`🔴禁用** · `近30日复购人数` · `近30日复购率` · `曝光人数` ·
+`点击人数` · `加购人数` · `加购率` · `点赞数`
+
+⇒ **白名单 5 列**（`日期`/`门店编号`/`商品名称`/`销量`/`销售额`），**其余 13 列一律丢弃且不报错**。
+
+====================================================================
+## §2 逐文件要求
+
+### 2.1 `cloudfunctions/importSalesBill/service.js` —— 新增 `parseDishSalesC()`
+
+**位置**：紧邻既有 `parseDishSales()`（形态 A），风格照抄它。
+
+**签名**：`function parseDishSalesC(sheetRows, opts)`
+- `opts.platform` 🔴 **必填** —— 见 §2.2，**不许按文件名猜**。
+
+**返回**：`{ shape:'C', rows, groups, totals, nonInt, zeroAmountQty, unmatched }`
+
+| 字段 | 说明 |
+|---|---|
+| `rows` | `{ bizDate, name, dishKey, qty(整数), amountFen(整数分) }[]` |
+| `groups` | 🔴 **按 `bizDate` 分组** ⇒ `{ bizDate, rows }[]`（一表多天 ⇒ **N 组**） |
+| `totals` | `{ qty, amountFen }` |
+| `nonInt` | 非整数 qty 行（**本样例 0 行**，但保留兜底） |
+| `zeroAmountQty` | 🔴 **新增类**：`amount=0 且 qty>0` 的行 → `{ name, qty }[]` |
+| `unmatched` | 空格名/空 key 行 |
+
+**实现要点（逐条硬要求）**：
+
+1. **表头在 R1**（`sheetRows[0]`），**不是 R3**。先 `toStr()` 全部表头再 `indexOf` 定位列号。
+2. 🔴 **白名单取列**：只取上述 5 列；**其余 13 列丢弃且不报错**（不许"顺手也存进去"）。
+3. 🔴 **`销量` 必须先 `toNum()`**（全文本列）——**不许**直接用 `Number.isFinite` 判，会把 `"43"` 误杀。
+4. 🔴 **`amount_fen = Math.round(销售额 × 100)`** —— 🔴 **禁止**用 `订单交易额`
+   （它是**整单口径**，一单多菜时分摊后仍为整单额 ⇒ **重复计钱**，实测 Σ 1823.08 vs 2974.91）。
+   规范红线 **R232-1**。
+5. 🔴 **`biz_date` 按「行内 `日期`」取**（**不是** R2 参数行 —— 形态 C **无参数行**）。
+   归一成 `YYYY-MM-DD`（接受 `2026/9/7`、`2026-09-07` 等形态；月份/日补零）。
+6. 🔴 **禁止补零行**（规范红线 **R232-2**）：**无行 = 无销售**，不许按 51×7 网格补 0。
+   理由：补零会与「真卖 0 份」不可区分 ⇒ 破坏 §5.1 幂等（`_id` 序列会变）。
+7. **`dishKey` 生成**：必须走单源 `normalizeDishName()`（**从 `common/dishKey` 取，不内联副本**）。
+   🔴 C-9 事故：写侧/读侧两副本分叉 ⇒ **全菜匹配不上且无报错**。
+8. **空 `dish_key` 跳过**（不计入、不报错）—— 与形态 A 同口径。
+9. **`zeroAmountQty` 单列**，**不得**归入 `unmatched`（规范 **C-5**）。
+
+### 2.2 `cloudfunctions/importSalesBill/index.js` —— 形态 C 分支改为**真导入**
+
+**现状**（`index.js:145-147`）：
+```js
+if (dishDetect.shape === DISH_SHAPES.C) {
+  return fail(ERROR_CODES.INVALID_PARAM, '这是外卖商品销量表（形态 C），识别已支持，解析导入功能尚未上线。');
+}
+```
+
+**改为**：走与形态 A 平行的完整链路（**复用既有**幂等/门禁/落库三件套，**不新写一套**）。
+
+🔴 **`platform` 必须从 `opts` 传入，不许按文件名猜**（规范 §10 第 2 条）：
+- 枚举**已实查** = `['taobao','meituan','eleme','pos','other']`（`SALES_SCHEMA.platform.enum`）
+  ⇒ **无需新造枚举值**，**不许**改 schema。
+- 但**本张样例该传哪一个，机器判不出** —— 文件名 `商品下载_20260907至20260913__5366951484_….xlsx`
+  （门店编号 `5366951484`）只说明它是**外卖平台后台的商品报表下载**。
+- ⇒ 实现方式：`event.platform`（或 `event.opts.platform`）显式传入；
+  **前端须有平台选择**（见 §2.5）；🔴 缺值 ⇒ `fail(INVALID_PARAM, '请选择外卖平台')`，
+  **不许** fallback 到 `'other'` 静默入库。
+- ⚠️ 形态 A 的 `platform` 已是写死的 `'pos'`（`index.js:154`），**那一行不许动**。
+
+**落库（一表多天 ⇒ 多组）**：
+- 逐 `groups` 展开：每组算一次 `saleDocId(shopId, platform, bizDate, seq)` ⇒
+  `_id = SALE_<shop>_<platform>_<biz_date>_<seq>`（既有函数，**直接调用**）。
+- `dishRefId(platform, bizDate, dishKey)` ⇒ `DISH:<platform>:<bizDate>:<dishKey>`
+  🔴 **必须含 `dishKey` 段** —— 否则唯一索引 `(shop_id, biz_date, external_ref_id)`
+  会让每天只能落 1 个文档。
+- 幂等**复用** `common.idempotency.findPriorResult` + `writeAudit`（既有，照抄形态 A 调用方式）。
+- 甲级门禁 `checkGradeA` **照跑**（`platform` 换成传入值）。🔴 `platform` 必须从 `opts` 传进 `checkGradeA`（R181m 教训）。
+
+**预览分支**（`confirm=false`）：返回 `shape:'C'`、`platform`、`grade`、
+`preview: { groups, totals, nonInt, zeroAmountQty, unmatched }`。
+🔴 **`zeroAmountQty` 必须在预览里可见** —— 用户要先知道「这份表里有 43 份是 0 元的」。
+
+### 2.3 `cloudfunctions/getDishReview/service.js` —— 新增外卖侧聚合
+
+**现状**：`buildDishReview(sales, cards, deps)` 只处理堂食（`platform='pos'`），
+返回 `{ dine_in, unmatched, totals }`。
+
+**改为**：新增第二个纯函数（**不破坏既有签名**，堂食零改动）：
+
+```js
+function buildTakeawayReview(sales, cards, deps) { ... }
+```
+
+- 入参 `sales` = `platform !== 'pos'` 的销量行（多平台混合）。
+- **算法与堂食完全同构**（聚合 → 取卡最新版本 → 名称归一匹配 → 毛利 → 排名），
+  🔴 **复用同一套代码**：把堂食里那段抽成内部 helper，两条路都调它 ⇒ **不许复制一份**。
+- **返回**：`{ by_platform: { <platform>: { ranked, unmatched, totals } }, totals }`
+  —— 按平台分组（外卖可能同时有美团/饿了么/淘宝闪购）。
+- 🔴 **`zeroAmountQty` 行**（`amountFen=0 且 qty>0`）：**照常计入排名**（它确实卖了 43 份），
+  但加标记 `zeroAmount: true` ⇒ 前端可加「口味询问类 SKU，不计营收」标注。
+  🔴 **不得**剔除、**不得**归 `unmatched`。
+
+### 2.4 `cloudfunctions/getDishReview/index.js` —— 接通外卖读侧
+
+**现状**（`index.js:56` + `:73`）：
+```js
+const salesRes = await da.listAll('external_sales_daily', { shop_id: shopId, platform: 'pos' });
+...
+takeaway: null,   // 形态 C 本批不做 ⇒ 空态，不默认 0（红线 18）
+```
+
+**改为**：
+1. 读**全部**销量行（**去掉 `platform:'pos'` 过滤**，或读两次）：
+   ```js
+   const allRes = await da.listAll('external_sales_daily', { shop_id: shopId });
+   ```
+   然后**在应用层分流**：`platform === 'pos'` → 堂食；其余 → 外卖。
+   ⚠️ 分流**必须在 service 层做**（可复算），**不许**在 index 里做业务判断。
+2. `takeaway` 从 `null` 改为 `buildTakeawayReview(...)` 的返回值。
+   🔴 **无外卖数据时仍返 `null`**（**不默认 0**，红线 18 保持）——
+   「空态」与「有数据」必须**可区分**。
+3. `truncated` 仍汇总两路（`salesRes.truncated || cardsRes.truncated`）。
+
+### 2.5 `pages/m3/dishreview/*` —— 外卖实态 + 平台选择 + 零价标注
+
+**现状**（`index.wxml` 已有外卖空态位）：`data.takeaway` 恒 `null` ⇒ 永远显示空态。
+
+**改为**：
+1. **外卖榜渲染**：按平台分块（美团 / 饿了么 / 淘宝闪购），每块一张榜（列同堂食榜）。
+2. 🔴 **零价行标注**：`zeroAmount: true` 的行加提示「口味询问类 SKU，不计营收」
+   （文案进 §0.3 的**三处**）。
+3. 🔴 **平台选择（仅形态 C 导入时需要）**：导入页在识别出 `shape==='C'` 时
+   **必须让用户选平台**再提交 —— 因为 `platform` 机器判不出（§2.2）。
+   · 用既有 `picker` 枚举形态（对齐原料分类的 picker 用法，🔴 **不是**自由输入）；
+   · 选项 = `SALES_SCHEMA.platform.enum` **去掉 `pos`**（堂食不走这条路）；
+   · 🔴 未选 ⇒ 提交按钮 `disabled`，**不许**默认选第一项。
+4. `terms.js` 文案新增（三处同步，见 §0.3）：外卖榜标题、平台名、零价标注、未选平台提示。
+5. 🔴 **`wx.showModal` 按钮文案 ≤4 字符**（超了整窗 fail 且**静默**）。
+
+### 2.6 🔴 守卫（本批**需要**新增，与 §2.7 同步登记）
+
+**新增** `tools/check_formc_parse.js`（形态 C **解析层**守卫 —— v1.7 §9 已声明本批要挂）。
+
+守的判据（**判行为，不判字面**）：
+- ① **真调生产 `parseDishSalesC()`** 实跑，用**真样例 dump** 复算：
+  Σ销量=**118** / Σ销售额=**1823.08** / 行数=**354** / 天数=**7** / 商品数=**51** /
+  `zeroAmountQty` 恰 **1 条**（`来点辣椒吗` qty=**43**）。
+- ② **反例（证明规则有必要）**：
+  · 若改用 `订单交易额` ⇒ Σ 应为 **2974.91**（≠1823.08）⇒ 断言"禁用"生效；
+  · 若**补零** ⇒ 行数会变 **357** ⇒ 断言"禁止补零"生效；
+  · 若对 `销量` 不做 `toNum()` ⇒ 应抛错/NaN ⇒ 断言"必转数"生效。
+- ③ **幂等**：同表重导 ⇒ `_id` 集合**逐字节相同**。
+- ④ **自失效护栏**：扫描面非退化 + 关键锚点在场（防"扫空即恒绿"）。
+
+🔴 **零子进程**（纯 `fs` 扫描 + `require` 生产模块）⇒ 沙箱内 `node tools/check_formc_parse.js` 直接可跑。
+🔴 **顶部横幅不得用 `===` 装饰** —— R66 会判「段标题下零断言」（断言全绿也红）；
+   只有末段且形如 `N 通过 / M 失败` 才豁免。
+
+### 2.7 🔴 六处同步面（**新增守卫必做，漏一处门禁必红**）
+
+新增 `tools/check_formc_parse.js` 后，**逐条**做（🔴 **不许只说"同步了"**）：
+
+| # | 位置 | 动作 |
+|---|---|---|
+| ① | `verify_all.js::SUITES` | 追加 `['formc-parse', 'tools/check_formc_parse.js'],` |
+| ② | 同文件**头注**「串联：N 个套件」 | 数字 +1 |
+| ③ | 同文件**头注守卫说明段** | 补一句本守卫的用途 |
+| ④ | `specs/dev-specs/★知识存储点_*.md` **§1.1 入口行** | 数字 +1 |
+| ⑤ | 同文件「**套件数会漂**」行 **＋演进链尾部** | 数字 +1 **并在演进链末尾追加一条**（🔴 **最易漏**） |
+| ⑥ | **断言数声明行**（重启键内带语义标记的那一行）**＋** `tools/check_suite_assert_counts.js::CASES` | 🔴 **两半都要做**：CASES 登记 key **＋** 声明行追加 `key`=N ＋ 计数词递增 |
+
+🔴 **第 ⑥ 处是两半**（R232f 实测）：只做 CASES 一半 ⇒ 守卫当场判红
+   `❌ A2-<key> 声明行缺少 ... 的断言数`。
+
+🔴 **新守卫文件必须先 `git add`** 再跑门禁 —— `git ls-files` 类守卫**只看 index**，
+   未 `git add` ⇒ R92 `missing=1` ⇒ 门禁假红（**看着像套件失败，实则是文件没入库**）。
+
+🔴 **自己的 NOTE/汇报里不得逐字引用「单源标记词」** —— `check_suite_assert_counts.js::A7-①`
+   扫全仓 `.md`，凡含该标记且非重启键者判红（R232f 实测踩到）。
+
+====================================================================
+## §3 自测要求（**交付前必跑，结果写进回执**）
+
+按**优先级**跑，跑不动的**如实写原因**，不许跳过不说：
+
+1. **解析锚点**（新增）`review/evidence/rh1_formc_parse/recalc_anchors_formc_parse.js`
+   —— `require` **生产** `importSalesBill/service.js`，复算 §2.6-① 全部数字。
+   判据 = 末行 `N 通过 / M 失败`，**M 必须为 0**。
+2. **变异回灌**（新增）`review/evidence/rh1_formc_parse/mut_formc_parse.py`
+   —— 逐条把正确实现改回错误写法（改用 `订单交易额` / 补零 / 不转数 / `biz_date` 取 R2 / 收起白名单），
+   看守卫**是否转红**，且**必须红在「目标断言名」上**（🔴 **崩溃红不算有效红**）。
+   每条变异后**还原并 `git diff` 自证零残留**。
+3. **既有套件回归**：`node verify_all.js`（判据 `总览：N/N`，**N 必须全过**）。
+   🔴 若报 `paywall-coverage` 红、或 `spawnSync ... EBUSY` 类红，**如实写进回执**，
+   🔴 **绝不许改 `tools/` 下的既有守卫、删断言、或加旁路来"修绿"**。
+4. **规范扫描类**：新增 `specs/**/*.md` 会被额度类/套件数类/术语类守卫扫到
+   ⇒ **必须实测跑一遍**，别假设"只是加个文档"。
+   🔴 **顺序固定**：**写完先 `git add`（逐路径显式）→ 再跑门禁**。
+
+====================================================================
+## §4 绝对禁止（违反即整批退回）
+
+1. 🔴 **改 `specs/dev-specs/core/开发规范v1.6_*.md` 或 `v1.7_*.md`** —— v1.6/v1.7 是**锁定版**，
+   一字不动。**唯一允许改 `specs/` 的地方**是 `specs/dev-specs/i18n/terms.js`（文案副本，K11 强制）。
+2. 🔴 **改 `tools/` 下的既有守卫**（尤其 `check_paywall_coverage.js` / `check_suite_assert_counts.js`）
+   —— 门禁红**如实回执**，不许"修绿"。
+3. 🔴 **改成本引擎**（`netUnitCostWan` / `lineNetCostYuan` / `calcCostCard` / `wouldCreateCycle`）。
+4. 🔴 **取用 `订单交易额`** 作为 `amount` 来源（**重复计钱**，实测 Σ 差 1151.83 元）。
+5. 🔴 **补零行**（破坏 `_id` 幂等）。
+6. 🔴 **判定规则收窄回只认 `'商品销量'`**（真样例是 `'销量'` ⇒ 收窄即**硬阻断**）。
+7. 🔴 **按文件名猜 `platform`**（必须从 `opts` 传入；缺值 ⇒ fail，**不许** fallback `'other'`）。
+8. 🔴 **外卖空态改成 `0`**（红线 18：**不得默认外卖=0**；空态与有数据必须可区分）。
+9. 🔴 **新建云函数**（本批**复用** `importSalesBill` + `getDishReview`，**不新增函数**）。
+10. 🔴 **新建集合 / 新增索引 / 改权限矩阵**（本批零新建集合）。
+11. 🔴 **内联名称归一/月份格式化的第二份副本**（必须走 `common/dishKey` 与 `common/utilTime` 单源）。
+12. 🔴 **本地时区取月份**（`getFullYear()`/`getMonth()`）—— 必须 `toMonth`（UTC）。
+
+====================================================================
+## §5 交付物
+
+| # | 文件 | 说明 |
+|---|---|---|
+| 1 | `cloudfunctions/importSalesBill/service.js` | 新增 `parseDishSalesC()` + 导出 |
+| 2 | `cloudfunctions/importSalesBill/index.js` | 形态 C 分支改为真导入（含 `platform` 从 `opts`） |
+| 3 | `cloudfunctions/getDishReview/service.js` | 新增 `buildTakeawayReview()`（复用既有算法 helper） |
+| 4 | `cloudfunctions/getDishReview/index.js` | 接通外卖读侧（去掉 `platform:'pos'` 过滤） |
+| 5 | `pages/m3/dishreview/*` | 外卖实态榜 + 零价标注 + 平台选择 |
+| 6 | `pages/**`（导入页） | 形态 C 平台选择（picker，未选禁用提交） |
+| 7 | `miniprogram/i18n/terms.js` **＋** `specs/dev-specs/i18n/terms.js` | 文案（**两副本 md5 相同**） |
+| 8 | `tools/check_formc_parse.js` | **新增守卫**（⚠️ 先 `git add`） |
+| 9 | `verify_all.js` ＋ `tools/check_suite_assert_counts.js` ＋ 重启键 | **六处同步面**（§2.7） |
+| 10 | `review/evidence/rh1_formc_parse/` | 锚点脚本 + 变异脚本 + 输出证据 |
+| 11 | **交付回执** | 逐条填 §3 的实测结果（**未实测的数字不写**） |
+
+====================================================================
+## §6 验收判据（我方复核用）
+
+- [ ] 形态 C 表**能真导入**（不再是「尚未上线」提示），落 `external_sales_daily`。
+- [ ] 一表多天 ⇒ **7 组**，`_id` = `SALE_<shop>_<platform>_<biz_date>_<seq>`，**重导幂等**。
+- [ ] Σ销量 **118** · Σ销售额 **1823.08** · 行数 **354** · 天数 **7** · 商品 **51**。
+- [ ] `zeroAmountQty` 恰 **1** 条（`来点辣椒吗` / **43** 份 / 0 元），**未被剔除、未归 unmatched**。
+- [ ] `订单交易额` **零取用**（变异测试可证）。
+- [ ] 未补零行（行数不因网格补零而变 357）。
+- [ ] `getDishReview` 返 **`takeaway` 有值**（按平台分组）；**无外卖数据时仍 `null`**（不默认 0）。
+- [ ] 复盘页**外卖榜可见** + 零价行有标注。
+- [ ] 导入页形态 C **必须先选平台**（未选 `disabled`）。
+- [ ] 新增守卫 `check_formc_parse` **全绿**，且**变异 5/5 有效红**（红在目标断言名）。
+- [ ] 门禁 `verify_all.js` 末行 `总览：N/N` **N 全过**（或红项如实回执）。
+- [ ] `sync_common --check` 自证全部函数目录 ≡ 单源。
+- [ ] `terms.js` 双副本 **md5 相同**。
+- [ ] 六处同步面**逐条**打勾（§2.7）。
+
+======================== 提示词结束 ========================
