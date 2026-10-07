@@ -1,0 +1,28 @@
+# H-1 部署取证（2026-10-07 R232h）
+
+命令：cli.bat cloud functions deploy --names <fn> -r -e cloud1-d4gphpoxy337f2a25 --project <repo>
+铁律：-r 必带（否则覆盖云端 wx-server-sdk ⇒ 前端「网络不可用」）；一次一个函数。
+
+## 部署结果（日志判据：含函数名 + ASCII true + 完成行）
+| 函数 | 结果 | filesCount | packSize | 耗时 |
+|---|---|---|---|---|
+| importSalesBill | √ deploy cloudfunctions（exists in cloud, will update it） | 19（日志被截断，磁盘 19 ≡ 19 推定；见下方 info 回读 Active） | — | ~31s |
+| getDishReview | √ deploy cloudfunctions | **18** | 45.9 KB | 17.1s |
+
+## 磁盘对账（filesCount ≡ 磁盘数）
+- importSalesBill: 19 文件（含 package.json / service.js / validate.js / index.js + 14 cx_* + common.js）
+- getDishReview:   18 文件（含 package.json / service.js / index.js + 14 cx_* + common.js）
+- ✅ 两者 filesCount ≡ 磁盘数
+
+## 云端 info 回读（--names 空格分隔，不逗号）
+| 函数 | status | timeout | runtime |
+|---|---|---|---|
+| importSalesBill | Active | **20**（保持） | Nodejs16.13 |
+| getDishReview   | Active | 🔴 **3**（重部署后**再次**回到平台默认） | Nodejs16.13 |
+
+🔴 **第三次实证**：`getDishReview` 每次重部署 `timeout` 都会回到 3。
+   ⇒ 与 R215d「全 44 个无 3」的记忆**再次冲突**，R215d 该条已两度被证伪。
+   ⇒ 唯一改法 = 云开发控制台 → 该函数 → 版本与配置 → 高级配置 → 执行超时 = 20。
+   📌 推论：`importSalesBill` 保住了 20 ⇒ **控制台手工改过的值能在重部署后保留**，
+      但**从未手工改过**的函数每次部署都拿到平台默认 3。
+      ⇒ 建议：凡新建/首部署函数，部署后**立即**去控制台抬 timeout（否则日后每次部署都要重抬）。
