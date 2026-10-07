@@ -12,16 +12,28 @@
 .concl { font-size: 32rpx; font-weight: 700; color: #333; margin-bottom: 20rpx; line-height: 1.6; }
 .concl .hl { color: #1e3a5f; font-size: 36rpx; }
 
-/* ===== M2v1.1 双 Tab（正向测算 / 目标反推）===== */
+/* ===== M2v1.1 双 Tab（R234 改名：已有铺面 / 寻找铺面，并各带一句副标题）=====
+   ⚠️ G1 字号硬约束 ≥28rpx ⇒ **副标题也必须是 28rpx**（不能做成常见的 24rpx 灰字），
+      两级区分改用「字重 + 颜色」而不是字号。 */
 .tab-bar { display: flex; background: #eef2f7; border-radius: 12rpx; padding: 6rpx; margin-bottom: 16rpx; }
-.tab-item { flex: 1; text-align: center; font-size: 28rpx; color: #6b7a90; min-height: 88rpx; line-height: 88rpx; border-radius: 10rpx; }
+.tab-item {
+  flex: 1 1 0; text-align: center; min-height: 88rpx; border-radius: 10rpx;
+  padding: 10rpx 8rpx; box-sizing: border-box;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
 .tab-item.on { background: #1e3a5f; color: #fff; font-weight: 600; }
+.tab-main { font-size: 30rpx; font-weight: 600; line-height: 1.35; }
+.tab-sub { font-size: 28rpx; font-weight: 400; line-height: 1.35; margin-top: 2rpx; color: #8b97a7; }
+.tab-item.on .tab-sub { color: #c9dcf0; }
 
 /* ===== 0 · 前提选择器（城市层级 / 经营类型）===== */
 .sel-row { display: flex; align-items: center; justify-content: space-between; min-height: 88rpx; border-bottom: 1rpx solid #eef1f5; }
 .sel-lbl { font-size: 28rpx; color: #333; }
 .sel-pk { flex: 0 0 auto; }
 .sel-val { font-size: 28rpx; color: #1e3a5f; font-weight: 600; padding: 8rpx 16rpx; background: #f2f5f9; border-radius: 8rpx; }
+/* R234：业态大类改为**只读回显**（由上面「打算开什么店」自动带出）⇒ 视觉上要"点不动"：
+   降饱和 + 去加粗，避免用户把它当成还能选的第二道题。 */
+.sel-val.readonly { color: #6b7a90; background: #f7f9fc; font-weight: 400; }
 
 /* ===== 板块一级标题 ===== */
 .sec { position: relative; font-size: 40rpx; font-weight: 800; color: #1e3a5f; padding-left: 20rpx; margin: 8rpx 0 18rpx; line-height: 1.3; }
@@ -78,6 +90,36 @@
    ⚠️ 无障碍硬约束（selftest_ad_gates G1/G2）：字号一律 ≥28rpx；min-height 只在 88rpx 用。 */
 .rw { display: block; }
 .row-note { font-size: 28rpx; color: #9aa4b2; line-height: 1.4; padding: 0 0 12rpx; }
+/* ===== R234 · 「寻找铺面」Tab：行规自动带出条（房租率来自云端 BANDS，**不是用户填的**）=====
+   设计意图：这行不是输入框，是"告知"。把百分比放大到标题级字号，让它像一句结论而非一个参数。 */
+.auto-band { display: flex; align-items: baseline; flex-wrap: wrap; padding: 14rpx 0 4rpx; }
+.auto-band-txt { font-size: 28rpx; color: #4a5b70; line-height: 1.5; }
+.auto-band-num { font-size: 44rpx; font-weight: 800; color: #1e3a5f; margin: 0 6rpx; }
+
+/* ===== R234 · 主结论卡「这个铺子租金贵不贵」=====
+   放在结果区第一位 ⇒ 用左侧墨蓝竖条与上方输入区断开（与全局 .sec 同手法），
+   让用户意识到"从这儿开始是结论，不是要你填的东西"。
+   ⚠️ 配色不自造：`.lv-*` 评级色已在 app.wxss 单源，本文件不重复定义。 */
+.verdict-card { border-left: 8rpx solid #1e3a5f; padding-left: 20rpx; }
+.verdict-head { display: flex; align-items: center; justify-content: space-between; padding: 6rpx 0 12rpx; }
+.verdict-title { font-size: 32rpx; font-weight: 700; color: #1e3a5f; }
+.verdict-lv { font-size: 30rpx; font-weight: 700; padding: 6rpx 22rpx; border-radius: 8rpx; }
+.verdict-row { display: flex; align-items: center; justify-content: space-between; padding: 6rpx 0; }
+.verdict-lbl { font-size: 28rpx; color: #666; }
+.verdict-val { font-size: 34rpx; font-weight: 700; color: #1e3a5f; }
+/* 行规区间是"对照基准"，不是"你的数" ⇒ 降字重降饱和，避免与上面那行主数字抢注意力 */
+.verdict-val.sub { font-size: 28rpx; font-weight: 400; color: #888; }
+.verdict-note {
+  font-size: 28rpx; color: #4a5b70; line-height: 1.6; padding: 14rpx 20rpx;
+  background: #f3f7fb; border-radius: 12rpx; margin-top: 10rpx;
+}
+/* L1 引导句：紧贴标题下，说明"哪些该你答、哪些我们替你算" —— 降低第一次进页面的放弃率 */
+.l1-guide { padding: 10rpx 20rpx; }
+
+/* ===== R234 · 已废弃的「行业参考区间」占比网格 =====
+   R234 把这张 6 项网格从页面移除（原因见 index.wxml 同处注释：与结果区指标对照表重复）。
+   🔴 样式**先留着不删**：`bands` 数据仍要算（`rentRateDefault()` 依赖它），
+      后续若要在「我的方案」对比页恢复同类视图，可直接复用本节，不必重写。 */
 .bp-grid { display: flex; flex-wrap: wrap; }
 .bp-item {
   flex: 0 0 50%; box-sizing: border-box; padding-right: 20rpx;

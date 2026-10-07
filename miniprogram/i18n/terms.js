@@ -660,7 +660,7 @@ const TERMS = {
       { key: 'tier23', name: '二三线' },
       { key: 'county', name: '县城' },
     ],
-    bizLabel: '经营类型',
+    bizLabel: '行业标准按',
     bizTypes: [
       { key: 'fastfood', name: '快餐小吃' },
       { key: 'dining', name: '中式正餐' },
@@ -690,8 +690,12 @@ const TERMS = {
     // 手段：① 逐项口径备注（这笔钱指什么）② 动态"行业参考区间"（该填多少量级）③ 最小可用集（填几项就能算）。
     // ⚠️ 参考区间的**数值**不在本文件 —— 它是云端 indicatorRef.BANDS 单源，由 calcSandbox 的
     //    `bands_preview` 出参下发（前端只做 key→中文名映射，不存数值，避免出现第二份真相源）。
-    bandPreviewTitle: '行业参考区间',
-    bandPreviewNote: '按你选的经营类型和城市层级给的，用来看自己填的数合不合理',
+    // R234：卡名「行业参考区间」⇒「先估个数」。
+    //   为什么改：本卡原先同时放了两样东西 —— ①「预计月营业额」输入 ② 6 项占比参考带网格；
+    //   而结果区「你的经营指标对照」表**已含**同名的「行业参考」列（还带优秀/合理/偏高评级）⇒ 两张卡重复。
+    //   按 R234 §四-2：占比类**只在结果区出现一次**，本卡只留「预计月营业额」这一个输入（它是锚点）。
+    bandPreviewTitle: '先估个数（选填）',
+    bandPreviewNote: '猜个大概就行；猜不出就空着，下面的数照样能算',
     buildNote: '一次性投入，不是每月花掉的。右边「年限」= 这笔钱用几年，系统按它摊到每月',
     buildItemNotes: {
       franchise: '按合同一次性付；没加盟就留空',
@@ -722,23 +726,29 @@ const TERMS = {
     //       + 参考区间卡上的"参考 ¥X"。
     // ⚠️ 只当灰字起点，**绝不自动填值** —— 用户不核对就得到一份"自证的合理"，反而误事。
     // ⚠️ 金额数值不在本文件（云端 indicatorRef.suggestAmounts 单源 → 经 amount_preview 下发）。
-    expectRevLabel: '预计月营业额',
+    expectRevLabel: '这家店一个月大概能做多少生意',
     expectRevPh: '选填，如 150000',
-    expectRevNote: '填个大概数，上面各项就会给出行业常见的参考金额，拿去核对行情就行',
+    expectRevNote: '填个大概数，各项会给出同行常见的参考金额，拿去找当地老店核对行情就行',
     refAmtCard: '参考 ¥',
     refAmtPh: '参考 ',
     varItems: { takeawayComm: '外卖平台佣金', grouponComm: '团购佣金', cardFee: '刷卡手续费', other: '其他' },
     varTotal: '合计扣点',
-    resBreakMonthly: '保本月营业额',
-    resBreakDaily: '保本日均',
-    resTargetMonthly: '目标利润月营收',
-    resTargetDaily: '目标利润日均',
+    // R234：结论区四项全部换成**餐饮人日常说法**（李老师原话：「房租成本率，99% 的人听了都会不知所措」）。
+    //   「保本」这个词餐饮人听得懂、天天说 ⇒ 保留；删掉的是「营收」「月利润」这种财务书面词。
+    resBreakMonthly: '每月最少卖多少才不亏本',
+    resBreakDaily: '每天最少卖多少才不亏本',
+    resTargetMonthly: '想赚这么多，每月要卖多少',
+    resTargetDaily: '想赚这么多，每天要卖多少',
     resPayback: '开店投入抵完',
     targetRow: '每月想赚',
     paybackUnit: '个月',
     // ⚠️ 键名必须与 indicatorRef 的 INDICATORS 严格同名（后端只回 key，中文全在前端 —— 术语单源）。
     // grossMargin 是**菜品毛利率**（越高越好）；其余五项是成本/费用占比（越低越好）。
-    indNames: { grossMargin: '菜品毛利率', rent: '房租占比', labor: '人工占比', energy: '能耗占比', manage: '管理费占比', mkt: '平台推广费' },
+    // R234：`rent` 名从「房租占比」⇒「房租占营业额」。
+    //   理由：「占比」是个**没有宾语**的词 —— 占什么的比？餐饮人嘴里说的是「房租占营业额多少」。
+    //   ⚠️ 本表项是**表格列名**（列宽有限），故用 6 字短版；
+    //      长句版「房租吃掉你营业额的多少」用在主结论卡（`verdictRentLabel`）。
+    indNames: { grossMargin: '菜品毛利率', rent: '房租占营业额', labor: '人工占比', energy: '能耗占比', manage: '管理费占比', mkt: '平台推广费' },
     // 🔴 必须**两张**评级表：成本类"高"是坏，毛利率"低"才是坏。
     //    用一张表会把"毛利率偏低"渲染成「偏高」—— 方向相反，客户会读反。
     indLevels: { good: '优秀', ok: '合理', warn: '偏高', bad: '过高', na: '未填' },
@@ -754,21 +764,34 @@ const TERMS = {
     autoHint: '改完自动重算，不用点按钮',
     needFixed: '最少填一项每月固定支出（房租/人工/水电气/管理费任一项）就能算出保本营业额',
     // ===== M2v1.1（选址反推 · 第一期）=====
-    tabForward: '正向测算',
-    tabReverse: '目标反推',
-    revPrice: '客单价',
-    revSeats: '座位数',
-    revOpenDays: '每月营业天数',
-    revRentRate: '目标租金率',
-    revPixelEff: '坪效（元/㎡·月）',
-    revRentHint: '反推模式下房租由目标租金率自动导出，无需另填',
-    revRevenue: '所需月营业额',
-    revRentCap: '房租上限',
-    revTraffic: '所需月客流',
-    revDailyTraffic: '所需日均客流',
-    revTurnRate: '所需翻台',
-    revAreaCap: '面积上限',
-    revWarnTurnHigh: '翻台偏高，请复核座位数或营业天数',
+    // R234 · 双 Tab **语义改名**（只改文案；`mode` 值仍是 forward/reverse，后端零感知）。
+    //   旧名「正向测算 / 目标反推」是**浸在数学里的内部说法**（描述怎么算）；
+    //   新名说的是**用户手里此刻的处境**（他是谁）—— round223 已定案，本次落地。
+    tabForward: '已有铺面',
+    tabReverse: '寻找铺面',
+    tabForwardSub: '我看中了一个铺子，想知道值不值得拿',
+    tabReverseSub: '还没定铺子，想知道房租最多能扛多少',
+    // R234 · 反推输入：三项改名 + 一项不再问。
+    //   「客单价」⇒「人均消费」（大众点评就叫"人均"；"客单价"是收银系统的话）；
+    //   「座位数」⇒「店里能摆多少座位」（补上"店里"，免得理解成"总共几把椅子"）；
+    //   「每月营业天数」⇒「一个月打算开门几天」（"营业天数"太书面，"开门"才是餐饮人的词）。
+    revPrice: '人均消费',
+    revSeats: '店里能摆多少座位',
+    revOpenDays: '一个月打算开门几天',
+    // 🔴 `revRentRate`（目标租金率）**不再向用户收**：改由系统按业态 + 城市自动取健康区间上限。
+    //    ⚠️ 云端入参 `target_rent_rate` **仍然存在**（是云函数契约字段 + savePlan 快照必需），
+    //       变的只是**值的来源**、不是**接口形状** —— 详见 index.js::rentRateDefault()。
+    rentRateAutoPre: '房租按「',
+    rentRateAutoMid: '」的行规自动算：不超过营业额的 ',
+    rentRateAutoUnit: '%（同行做得稳的水平）',
+    revRevenue: '每月要卖到',
+    revRentCap: '房租最多能扛',
+    revTraffic: '每月要来多少客人',
+    revDailyTraffic: '每天要来多少客人',
+    revTurnRate: '每张桌子一天要翻几台',
+    revAreaCap: '照这个房租，最多能租多大',
+    revWarnTurnHigh: '翻台偏高，座位数或营业天数建议再复核一下',
+    revRentHint: '「寻找铺面」时房租是算出来的结果，所以这里不用填',
     // ===== M2v1.2（多方案存储 · 第二期）：保存沙盘 / 我的方案入口 =====
     savePlanEntry: '我的方案 ›',
     savePlanBtn: '保存沙盘',
@@ -782,10 +805,12 @@ const TERMS = {
     planSavedOk: '已保存',
     planNamePh: '给方案起个名字',
     // ===== M2v1.3（业态参数包 + 回本卡 · 第三期）=====
-    presetLabel: '业态预设',
-    presetNone: '不确定（手填全部）',
+    // R234：`业态预设` ⇒ `打算开什么店`。旧名是**数据名**（叫自己和 preset 打交道），
+    //   新名是**问题**（用户在回答一个问题）—— L1 里每一项都应该是一句问话。
+    presetLabel: '打算开什么店',
+    presetNone: '都不是（我自己填）',
     presetPickedPre: '已按「',
-    presetPickedSuf: '」预设预填',
+    presetPickedSuf: '」的行规预填',
     bizPresets: {
       fastfood_noodle: '小面 / 米线',
       fastfood_hotpot_noodle: '火锅浇头面',
@@ -794,18 +819,32 @@ const TERMS = {
       dining_sichuan: '川菜 / 中餐',
       cafe_tea: '新式茶饮',
     },
-    l1Title: '先填这几个',
-    areaLabel: '面积',
+    // R234：业态预设**平铺 6 项**（不再先问「你属于哪个大类」）。
+    //   旧逻辑是两级 picker：先选 4 个大类之一、再选类内预设。但 6 个预设分布是
+    //   快餐 2 / 火锅 2 / **正餐 1 / 茶饮 1** ⇒ 选「中式正餐」后下拉只剩 1 项，
+    //   李老师看到的正是这个现象（2026-10-07 原话：「业态预设里面只有川菜 中餐」）。
+    //   ⇒ 大类只该由系统用来取 `BANDS`（参考带只有 4 套），**不该让用户先答**。
+    l1Title: '先答这 5 个问题',
+    l1Guide: '这 5 个你一定答得上来',
+    bizAutoNote: '选好上面那一项，这里会自己跟上',
+    areaLabel: '铺子多少平方',
     areaUnit: '㎡',
-    rentLabel: '月租金',
-    headcountLabel: '员工数',
+    rentLabel: '每月房租多少钱',
+    headcountLabel: '打算请几个人',
     headcountUnit: '人',
-    l2Toggle: '更多设置',
-    l3Toggle: '专业参数',
-    avgPriceLabel: '客单价',
-    laborUnitLabel: '单人月人工单价',
-    openDaysLabel2: '每月营业天数',
+    l2Toggle: '还有几个能改的（选填）',
+    l3Toggle: '专业参数（老手才用）',
+    // R234：L2 三项全部换成**说明句**而不是**指标名** —— 用户是在填"这店长什么样"，
+    //   不是在给会计系统录科目。「客单价」⇒「一个人大概花多少」（不写代码就成了预算）。
+    avgPriceLabel: '一个人大概花多少',
+    laborUnitLabel: '一个人每月工资多少',
+    openDaysLabel2: '一个月打算开门几天',
     dayUnit: '天',
+    // R234 · 新增：座位密度估算（豆包建议，仓内采纳为**默认值生成器**）。
+    //   「座位数」新店答不上来 ⇒ 按「业态 × 面积」估一个塞进输入框，**用户可以改**。
+    seatLabel: '店里能摆多少座位',
+    seatPh: '填了面积会自动估一个',
+    seatNote: '这是按业态和面积估的，现场数一下再改准；我们不拿它当硬数用',
     pixelEffLabel2: '坪效',
     rentRateLabel2: '目标租金率',
     turnLabel2: '翻台率',
@@ -821,6 +860,32 @@ const TERMS = {
     paybackSeeM3: '查看完整回本测算',
     months: '个月',
     yuanUnit: '元',
+
+    // ===== R234 · 主结论卡「这个铺子租金贵不贵」=====
+    // 为什么必须有这张卡（round223/round234 两次与豆包对撞后的共识）：
+    //   小白看完「保本营业额 18 万」根本不知道下一步该干什么 —— 他脑子里只有一个问题
+    //   「**这个铺子值不值得拿**」。结论必须**先给判定**，再给数字。
+    //
+    // ⚠️ 评级**不自制**：卡片上的四级判定**直接读引擎 indicators 里 rent 那行的 `level`**
+    //    （good/ok/warn/bad 由云端 `indicatorRef.levelOf` 判），前端只做 key → 文案映射。
+    //    这样"什么叫贵"永远只有一个真相源，不会因为前端改名而悄悄换判据。
+    //
+    // ⚠️ 提示句一律 **<18 字**：≥18 字的行内提示必须进折叠块（本仓 `check_hint_fold` 判红），
+    //    这里刻意写成短句，是为了让结论**一眼看到底**、不用点开。
+    verdictTitle: '这个铺子租金贵不贵',
+    verdictGood: '划算',
+    verdictOk: '还行',
+    verdictWarn: '有点压力',
+    verdictBad: '不建议拿',
+    verdictNa: '还没填房租',
+    verdictNoteGood: '租金在安全区间，可以谈',
+    verdictNoteOk: '还在合理范围，能拿',
+    verdictNoteWarn: '偏高了，压价或换铺',
+    verdictNoteBad: '房租吃掉了太多流水',
+    verdictNoteNa: '填了上面几项就能判',
+    // 长句版说到切身亏损 —— 豆包裁定：「餐饮老板口头就这么交流，一听就懂」。
+    verdictRentLabel: '房租吃掉你营业额的多少',
+    verdictCompare: '同行做得稳的是',
   },
 
   // ===== 十四、M3 成本卡页面文案 =====

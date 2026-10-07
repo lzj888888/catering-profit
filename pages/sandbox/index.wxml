@@ -5,13 +5,19 @@
     <text class="entry-link" bindtap="onSaveEntry">{{t.savePlanEntry}}</text>
   </view>
 
-  <!-- M2v1.1 双 Tab：正向测算 / 目标反推（两套输入区独立缓存，切换互不覆盖） -->
+  <!-- M2v1.1 双 Tab（R234 改名：按**用户此刻的处境**命名，不再用「正向/反推」这种算法词） -->
   <view class="tab-bar">
-    <view class="tab-item {{mode === 'forward' ? 'on' : ''}}" data-mode="forward" bindtap="onTab">{{t.tabForward}}</view>
-    <view class="tab-item {{mode === 'reverse' ? 'on' : ''}}" data-mode="reverse" bindtap="onTab">{{t.tabReverse}}</view>
+    <view class="tab-item {{mode === 'forward' ? 'on' : ''}}" data-mode="forward" bindtap="onTab">
+      <text class="tab-main">{{t.tabForward}}</text>
+      <text class="tab-sub">{{t.tabForwardSub}}</text>
+    </view>
+    <view class="tab-item {{mode === 'reverse' ? 'on' : ''}}" data-mode="reverse" bindtap="onTab">
+      <text class="tab-main">{{t.tabReverse}}</text>
+      <text class="tab-sub">{{t.tabReverseSub}}</text>
+    </view>
   </view>
 
-  <!-- 0 · 前提：城市层级 + 经营类型（决定下面用的「行业参考带」是哪一套） -->
+  <!-- 0 · 前提：城市层级 + 业态大类（决定下面用的「行业参考带」是哪一套） -->
   <view class="card2">
     <view class="sel-row">
       <text class="sel-lbl">{{t.cityLabel}}</text>
@@ -19,13 +25,15 @@
         <view class="sel-val">{{cityName}} ▾</view>
       </picker>
     </view>
+    <!-- 🔴 R234：业态大类**不再让用户先选** —— 它由上面「打算开什么店」自动带出来。
+         为什么改成只读：以前是两级 picker（先选 4 大类、再选类内预设），而 6 个预设分布是
+         快餐 2 / 火锅 2 / **正餐 1 / 茶饮 1** ⇒ 选「中式正餐」后下拉**只剩 1 项**（李老师 2026-10-07 原话）。
+         大类只是去云端取 `BANDS` 的钥匙，不是一道需要用户回答的题。 -->
     <view class="sel-row">
       <text class="sel-lbl">{{t.bizLabel}}</text>
-      <picker class="sel-pk" range="{{t.bizTypes}}" range-key="name" value="{{bizIdx}}" bindchange="onBiz">
-        <view class="sel-val">{{bizName}} ▾</view>
-      </picker>
+      <view class="sel-val readonly">{{bizName}}</view>
     </view>
-    <view class="hint">{{t.autoHint}}</view>
+    <view class="hint">{{t.bizAutoNote}}</view>
     <!-- R193：草稿提示行 + 清空重填（M2 此前算完即丢，退出重进要全部重填） -->
     <view class="draft-bar" wx:if="{{draftRestored || dirty}}">
       <text class="draft-note">{{draftRestored ? t.draftRestored : ''}}</text>
@@ -33,9 +41,10 @@
     </view>
   </view>
 
-  <!-- M2v1.3 · L1 小白（必填 5 项：业态预设 / 面积 / 月租金 / 员工数 / 目标利润）-->
+  <!-- M2v1.3 · L1 小白（必填 5 项：打算开什么店 / 面积 / 月租金 / 员工数 / 目标利润）-->
   <view class="card2" id="l1l2">
     <view class="sec">{{t.l1Title}}</view>
+    <view class="hint l1-guide">{{t.l1Guide}}</view>
     <view class="sel-row">
       <text class="sel-lbl">{{t.presetLabel}}</text>
       <picker class="sel-pk" range="{{presetOptions}}" range-key="name" value="{{presetIdx}}" bindchange="onPreset">
@@ -67,6 +76,14 @@
     <!-- L2 更多设置 -->
     <view class="fold-toggle" bindtap="onToggleL2">{{t.l2Toggle}}{{showL2 ? ' ▾' : ' ▸'}}</view>
     <view wx:if="{{showL2}}">
+      <view class="row">
+        <text class="row-name">{{t.seatLabel}}</text>
+        <view class="row-in-wrap">
+          <input class="row-in" type="number" placeholder="{{t.seatPh}}" value="{{seatsNum}}" bindinput="onSeats" adjust-position="{{true}}" cursor-spacing="20" />
+          <text class="row-unit">{{t.headcountUnit}}</text>
+        </view>
+      </view>
+      <view class="row-note">{{t.seatNote}}</view>
       <view class="row">
         <text class="row-name">{{t.avgPriceLabel}}</text>
         <view class="row-in-wrap">
@@ -158,15 +175,12 @@
       </view>
     <view class="hint-fold-body" wx:if="{{hintFold.sbExpectRevNote}}">{{t.expectRevNote}}</view>
     </view>
-    <view class="bp-grid">
-      <view class="bp-item" wx:for="{{bands}}" wx:key="key">
-        <text class="bp-name">{{item.name}}</text>
-        <view class="bp-right">
-          <text class="bp-band">{{item.band}}</text>
-          <text class="bp-amt" wx:if="{{item.amt}}">{{t.refAmtCard}}{{item.amt}}</text>
-        </view>
-      </view>
-    </view>
+    <!-- 🔴 R234：下面这张 6 项占比网格（`bp-grid`）**整块删除**。
+         理由：结果区「你的经营指标对照」表**已经有同名的 6 项 + 行业参考列 + 评级**
+         （ `grossMargin/rent/labor/energy/manage/mkt` 完全同名同项）⇒ 两张卡重复。
+         占比类在这个页面只该出现**一次**，位置就是结果区那里。
+         ⚠️ `bands` 数据本身**仍要算**（`rentRateDefault()` 要从中取房租行规上限），
+           只是不再渲染 —— 所以上面的 `wx:if="{{bands.length}}"` 判据保留，不作改动。 -->
   </view>
 
   <!-- ① 开店投入（一次性）—— 按年限摊到每月 -->
@@ -206,13 +220,6 @@
         <text class="hint-fold-arrow">{{hintFold.sbFixedNote ? '▾' : '▸'}}</text>
       </view>
     <view class="hint-fold-body" wx:if="{{hintFold.sbFixedNote}}">{{t.fixedNote}}</view>
-    </view>
-    <view class="hint-fold">
-      <view class="hint-fold-head" data-key="sbRevRentHint" bindtap="onToggleHintFold">
-        <text class="hint-fold-guide">{{hintFold.sbRevRentHint ? t.hintFoldHide : t.hintFoldShow}}</text>
-        <text class="hint-fold-arrow">{{hintFold.sbRevRentHint ? '▾' : '▸'}}</text>
-      </view>
-    <view class="hint-fold-body" wx:if="{{hintFold.sbRevRentHint}}">{{t.revRentHint}}</view>
     </view>
     <view class="rw" wx:for="{{fixedRows}}" wx:key="key" wx:if="{{mode === 'forward' || item.key !== 'rent'}}">
       <view class="row">
@@ -282,42 +289,25 @@
     </view>
   </view>
 
-  <!-- ⑥ M2v1.1 反推输入（仅反推 Tab） -->
+  <!-- ⑥ R234 · 「寻找铺面」（reverse Tab）本不该有**任何新输入** ——
+       它问的是同一个店，只是把"已知房租"换成"求房租上限"。
+       ⇒ 以前这里另收一套「客单价/座位/天数/目标租金率/坪效」，与 L2/L3 的同义项重复，已全部删除，
+         只留一行"本次按什么行规算"（房租率来自云端 BANDS，不是用户填的）。 -->
   <view class="card2" wx:if="{{mode === 'reverse'}}">
-    <view class="sec">{{t.tabReverse}}</view>
-    <view class="row">
-      <text class="row-name">{{t.revPrice}}</text>
-      <view class="row-in-wrap">
-        <input class="row-in" type="digit" value="{{revPriceYuan}}" bindinput="onRevPrice" adjust-position="{{true}}" cursor-spacing="20" />
-        <text class="row-unit">元</text>
-      </view>
+    <view class="auto-band">
+      <text class="auto-band-txt">{{t.rentRateAutoPre}}{{bizName}}{{t.rentRateAutoMid}}</text>
+      <text class="auto-band-num">{{rentRatePct}}{{t.pctUnit}}</text>
+      <text class="auto-band-txt">{{t.rentRateAutoUnit}}</text>
     </view>
-    <view class="row">
-      <text class="row-name">{{t.revSeats}}</text>
-      <view class="row-in-wrap">
-        <input class="row-in" type="number" value="{{revSeats}}" bindinput="onRevSeats" adjust-position="{{true}}" cursor-spacing="20" />
+    <!-- R234：24 字 ⇒ 折叠。这行话原先挂在「每月固定支出」卡上（key `sbRevRentHint`），
+         但它讲的明明是"反推为什么不用填房租" ⇒ **搬回反推卡**（信息就该在被需要的位置）。
+         换用新 key `sbRevRateAuto`：与本页其它折叠块一样，一处位置一个独立键。 -->
+    <view class="hint-fold">
+      <view class="hint-fold-head" data-key="sbRevRateAuto" bindtap="onToggleHintFold">
+        <text class="hint-fold-guide">{{hintFold.sbRevRateAuto ? t.hintFoldHide : t.hintFoldShow}}</text>
+        <text class="hint-fold-arrow">{{hintFold.sbRevRateAuto ? '▾' : '▸'}}</text>
       </view>
-    </view>
-    <view class="row">
-      <text class="row-name">{{t.revOpenDays}}</text>
-      <view class="row-in-wrap">
-        <input class="row-in" type="number" value="{{revOpenDays}}" bindinput="onRevOpenDays" adjust-position="{{true}}" cursor-spacing="20" />
-        <text class="row-unit">天</text>
-      </view>
-    </view>
-    <view class="row">
-      <text class="row-name">{{t.revRentRate}}</text>
-      <view class="row-in-wrap">
-        <input class="row-in" type="digit" value="{{revRentRate}}" bindinput="onRevRentRate" adjust-position="{{true}}" cursor-spacing="20" />
-        <text class="row-unit">%</text>
-      </view>
-    </view>
-    <view class="row">
-      <text class="row-name">{{t.revPixelEff}}</text>
-      <view class="row-in-wrap">
-        <input class="row-in" type="digit" value="{{revPixelEff}}" bindinput="onRevPixelEff" adjust-position="{{true}}" cursor-spacing="20" />
-        <text class="row-unit">元</text>
-      </view>
+      <view class="hint-fold-body" wx:if="{{hintFold.sbRevRateAuto}}">{{t.revRentHint}}</view>
     </view>
   </view>
 
@@ -367,6 +357,28 @@
       </view>
       <view class="hint-fold-body" wx:if="{{hintFold.sbRedAlertFwd}}">{{t.redAlertHint}}</view>
     </view>
+  </view>
+
+  <!-- R234 · 主结论卡「这个铺子租金贵不贵」=====
+       为什么要有它：小白看完「保本营业额 18 万」不知道下一步干什么 —— 他脑子里只有一个问题
+       「**这个铺子值不值得拿**」。⇒ **先给判定，再给数字**，而不要让用户自己在表格里找结论。
+       🔴 判定**不自造**：`verdict.level` 直接读引擎 indicators 里 rent 那行的 level，
+          前端只做 key → 中文映射（见 index.js::verdictOf）。
+       放在结果区**第一位**：结论要在用户往下翻之前就看到。 -->
+  <view class="card2 verdict-card" wx:if="{{mode === 'forward' && verdict && verdict.level !== 'na'}}">
+    <view class="verdict-head">
+      <text class="verdict-title">{{t.verdictTitle}}</text>
+      <text class="verdict-lv lv-{{verdict.level}}">{{verdict.levelName}}</text>
+    </view>
+    <view class="verdict-row">
+      <text class="verdict-lbl">{{t.verdictRentLabel}}</text>
+      <text class="verdict-val">{{verdict.mine}}</text>
+    </view>
+    <view class="verdict-row">
+      <text class="verdict-lbl">{{t.verdictCompare}}</text>
+      <text class="verdict-val sub">{{verdict.band}}</text>
+    </view>
+    <view class="verdict-note">{{verdict.note}}</view>
   </view>
 
   <block wx:if="{{mode === 'forward' && result && !result.red_alert}}">

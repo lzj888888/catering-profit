@@ -112,7 +112,18 @@ function inputValues(wxml) {
 //   （pages/sandbox/index.wxml，用户自己填的方案名，非参考值）⇒ 按上述规则登记。
 // 2026-10-06（M2v1.3 业态参数包）：新增 L1/L2/L3 输入框（areaNum/rentYuan/headcountNum/
 //   avgPriceYuan/laborUnitYuan/openDaysNum/pixelEffYuan/turnNum），均为用户手填值，登记。
-const OK_VALUE = /^\{\{(item\.(yuan|years|pct)|targetYuan|expectYuan|revPriceYuan|revSeats|revOpenDays|revRentRate|revPixelEff|planName|areaNum|rentYuan|headcountNum|avgPriceYuan|laborUnitYuan|openDaysNum|pixelEffYuan|turnNum)\}\}$/;
+// 2026-10-07（R234/M2v1.4 反推小白化）：
+//   ① **移除** revPriceYuan/revSeats/revOpenDays/revRentRate/revPixelEff —— 这 5 个字段
+//      连同反推卡的对应输入框**一起删了**（与 L2/L3 的同义项重复，`buildPresetParam` 统一收口）。
+//      🔴 白名单里留着已经不存在的数据名是**危险的**：它让未来的越界可以伪装成"老登记项"。
+//   ② **新增** seatsNum —— 且必须说清它为什么**不算**"参考值"：
+//      · 参考金额（本守卫原本针对的东西）是**行业统计基准**（"这个业态一般花多少"），
+//        若自动进 value，用户不核对就会得到一份"自证的合理"（round114 的原话）；
+//      · 座位数的初值来自 `estimateSeats(业态, 面积)` —— 它是**用户自己填的面积的几何换算**
+//        （㎡ ÷ 每座占地），不是外部基准；且 switch 业态之前它是空的（不存在无中生有的注入）。
+//      ⇒ 它是"用户输入的派生"而非"注入的参考值"，可入白名单。
+//      ⚠️ 但这条口子只开到这儿：**要是哪天 seatsNum 改成从 BANDS/参谋包取**，此处必须重新审视。
+const OK_VALUE = /^\{\{(item\.(yuan|years|pct)|targetYuan|expectYuan|planName|areaNum|rentYuan|headcountNum|avgPriceYuan|laborUnitYuan|openDaysNum|seatsNum|pixelEffYuan|turnNum)\}\}$/;
 
 const pageJsRaw = readRel(PAGE_JS);
 const pageWxmlRaw = readRel(PAGE_WXML);

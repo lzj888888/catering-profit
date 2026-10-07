@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：152 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：153 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -917,6 +917,14 @@ const SUITES = [
   //   判据 = A/B/C/D 四组自洽 + S 组 5 条自失效护栏 + V 组负样本互证（旧写法必判出 0 折叠块）。
   //   详见头注 R234/J1 段。
   ['hint-fold',            'tools/check_hint_fold.js'],
+  // R234/M2v1.4（M2 小白输入面）：把 R223（2026-10-05）**定案却没落地**的那条铁律变成机器判据。
+  //   根因（本轮最痛的一点）：R223 早已定案「L1/L2 严禁以坪效/目标租金率作输入」，
+  //   但只写进了 NOTE 和代码注释，**没有任何断言在守** ⇒ 两天后李老师又原样遇到一次。
+  //   ⇒ 本套件立的规矩是：**凡写进定案的 UI 约束，必须有一条断言跟着**。
+  //   判什么：A 专业指标不得进输入区 / B 业态预设必须平铺 / C 结论先给判定且判定不自造 /
+  //           D 术语餐饮化 / V 负样本互证（8 条变异回灌实测 8/8 恰红在目标断言）。
+  //   详见 tools/check_m2_biz_inputs.js 头注。
+  ['m2-biz-inputs',        'tools/check_m2_biz_inputs.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

@@ -522,14 +522,23 @@ const PAGE_CASES = [
     js: 'pages/sandbox/index.js',
     wxss: 'pages/sandbox/index.wxss',
     keys: ['sbAssumptionsHint', 'sbBandPreviewNote', 'sbExpectRevNote', 'sbBuildNote',
-           'sbFixedNote', 'sbRevRentHint', 'sbMarginTip', 'sbVarNote',
+           'sbFixedNote', 'sbMarginTip', 'sbVarNote',
            // ── R234/J4f 补漏两处（26 字 redAlertHint）──
            // 🔴 **两处必须两个独立 key**：同一句文案出现在正推 Tab 与反推 Tab 的红牌卡里。
            //   两处虽互斥显示，但若共用一个 key，用户在正推点开后切到反推
            //   会发现"没点它也开着"= **状态串台**（跨 Tab 泄漏）。
            //   ⇒ 本 case 是"同文案多实例必须分键"的回归样本。
-           'sbRedAlertRev', 'sbRedAlertFwd'],
-    keepPlain: 6,   // 本页 <18 字的提示仍有 6 处平铺（分层判据的另一侧）
+           'sbRedAlertRev', 'sbRedAlertFwd',
+           // ── R234/M2v1.4：`sbRevRentHint` ⇒ **`sbRevRateAuto`**（位置迁移，键数不变）──
+           //   那句 24 字说明原来挂在「每月固定支出」卡上，但它讲的是"反推为什么不用填房租"
+           //   ⇒ 搬到「寻找铺面」Tab 才是它该在的位置（信息要给到正要看的人）。
+           //   ⚠️ 换了 key 但**没有改短文案** —— 用"搬"而不是"改短"来满足分层判据，
+           //      否则 L723 那条「改短回避折叠」的锚点会把这一手认成同一个规避动作。
+           'sbRevRateAuto'],
+    //   ⚠️ R234/M2v1.4：6 → 7，新增的是 L1 引导句 `l1Guide`（**10 字，合规平铺**）。
+    //      「这里多一处」是**正确的**：我们新增了一句给用户看的引导，预期就该跟着变；
+    //      若是"顺手把某处长提示展平"，那才是分层线被破坏。故改预期、不改代码。
+    keepPlain: 7,   // 本页 <18 字的提示仍有 7 处平铺（分层判据的另一侧）
     // 本页另有 3 处**区段级**折叠（.fold-toggle）——必须与句级并存、不得互相吃掉
     segFolds: 3,
   },

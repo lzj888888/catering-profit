@@ -106,6 +106,60 @@ const BIZ_PRESETS = [
 
 const FORMS = ['fixed', 'area_linear', 'headcount_linear', 'revenue_rate', 'step'];
 
+// ===== R234 · 业态预设**平铺**所需的两张派生表 =====
+//
+// 🔴 背景（李老师 2026-10-07 原话）：「业态预设里面只有川菜 中餐。还有一个不确定 手填全部。」
+//   根因不是数据少了 —— 6 个预设**都在**，而是 `syncPresetOptions()` 按上一级「经营类型」
+//   （4 大类）过滤：**快餐 2 / 火锅 2 / 正餐 1 / 茶饮 1**，选「中式正餐」后下拉自然只剩 1 项。
+//   ⇒ 治法：**大类只用于后端取 `BANDS`，不该让用户先答**（用户只想答「我开什么店」）。
+//
+// 🔴 `bizKeyOfPreset`：选完预设后由**系统**把它映射回 4 个大类之一，`BANDS` 零改动。
+//   为什么必须留这张表：**指标参考带只有 4 套**（分业态），而预设是 6 个 ——
+//   若删了映射，6 个预设就得写 6 套 BANDS，等于推翻单源。
+function bizKeyOfPreset(presetKey) {
+  const hit = BIZ_PRESETS.filter((p) => p.presetKey === presetKey)[0];
+  return hit ? hit.bizKey : null;
+}
+
+// ===== R234 · 座位密度（㎡/座）—— 「面积 → 座位数」的**默认值生成器** =====
+//
+// 🔴 src='S'（我方自定，**待真实样本校准**）：仓内**此前没有任何座位密度数据**，
+//   本表是新增自定量 ⇒ 按 R225 第 5 条「L2/L3 可见的自定量须标 ⚠️ 待校准」处理。
+//   采纳豆包建议（「座位数按业态+面积自动估算」以省掉一个小白答不上来的输入），
+//   但**降级为默认值生成器**：只能产出**会被用户手改覆盖**的初值，**不承担任何计算口径**，
+//   也不作为硬约束（没有它就跳过，不编造）。
+//
+// ⚠️ 数值取决于各业态的**就餐形态** ——
+//   快餐翻台高、过道窄 ⇒ 每座占地小；火锅桌大、走道宽 ⇒ 每座占地大；茶饮以外带为主 ⇒ 座位最少。
+const SEAT_DENSITY = {
+  fastfood_noodle:        1.6,   // 小面/米线：条凳+小桌，紧凑
+  fastfood_hotpot_noodle: 1.6,   // 火锅浇头面：同快餐形态
+  hotpot_half_self:       2.6,   // 火锅半自助：大桌+锅具+取餐动线
+  hotpot_barbecue:        2.6,   // 烧烤：桌大、排烟占地
+  dining_sichuan:         2.0,   // 川菜/中餐：圆桌为主，居中
+  cafe_tea:               3.2,   // 新式茶饮：**以外带为主**，堂食座位少
+};
+
+/**
+ * 🔴 「面积 → 座位数」估算。**只产出输入框的默认值**，不参与任何测算。
+ *
+ * ⚠️ 合规性说明（为什么这条除法**不违反**「前端不编公式」铁律）：
+ *   那条铁律约束的是**展示结论类量**（保本营业额 / 月摊销 / 各类占比）—— 它们必须与引擎一致。
+ *   本函数是**入参装配层的补全**（同 `assembleItems` 里的 `area_linear` 形态）：
+ *   它不涉及任何营收 / 成本 / 费率 / 摊销口径，产物只是「给用户的一个起步建议值」，
+ *   用户改了就以用户的为准；不回写、不参与 indicators、不影响任何展示数字。
+ *
+ * @param {string} presetKey 业态预设 key
+ * @param {number|string} area 面积（㎡）
+ * @returns {string} 估算座位数；无法估算（无密度数据 / 面积未填）⇒ 返回 ''（**不编造**）
+ */
+function estimateSeats(presetKey, area) {
+  const d = SEAT_DENSITY[presetKey];
+  const a = Number(area) || 0;
+  if (!d || a <= 0) return '';
+  return String(Math.max(1, Math.round(a / d)));
+}
+
 function fenOf(yuan) {
   const n = Number(yuan);
   return Number.isFinite(n) ? Math.round(n * 100) : 0;
@@ -201,4 +255,6 @@ function findPreset(key) {
 module.exports = {
   BIZ_PRESETS, CITY_COEF, FORMS,
   assembleItems, resolveBuild, paybackCash, findPreset, round1,
+  // R234：业态预设平铺 + L2 座位估算
+  SEAT_DENSITY, bizKeyOfPreset, estimateSeats,
 };

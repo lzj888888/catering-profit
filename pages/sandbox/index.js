@@ -13,7 +13,10 @@ const api = require('../../utils/api.js');
 const ui = require('../../utils/ui.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 // M2v1.3：业态参数包（纯数据 + 唯一装配入口 + 回本派生，仓根 utils/）
-const { BIZ_PRESETS, CITY_COEF, assembleItems, resolveBuild, paybackCash, findPreset } = require('../../utils/bizPreset.js');
+// R234：新增 `bizKeyOfPreset`（预设 → 4 大类，供"平铺业态"后自动定参考带）
+//       与 `estimateSeats`（面积 × 业态密度 → 座位默认值生成器）。
+const { BIZ_PRESETS, CITY_COEF, assembleItems, resolveBuild, paybackCash, findPreset,
+  bizKeyOfPreset, estimateSeats } = require('../../utils/bizPreset.js');
 
 const M = TERMS.m2;
 const BUILD_ALL = Object.keys(M.buildItems);
@@ -42,6 +45,7 @@ Page({
       cityTiers: M.cityTiers,
       bizLabel: M.bizLabel,
       bizTypes: M.bizTypes,
+      bizAutoNote: M.bizAutoNote,
       secBuild: M.secBuild,
       secFixed: M.secFixed,
       secMargin: M.secMargin,
@@ -95,11 +99,15 @@ Page({
       // M2v1.1（选址反推 · 第一期）
       tabForward: M.tabForward,
       tabReverse: M.tabReverse,
+      tabForwardSub: M.tabForwardSub,
+      tabReverseSub: M.tabReverseSub,
       revPrice: M.revPrice,
-      revSeats: M.revSeats,
-      revOpenDays: M.revOpenDays,
-      revRentRate: M.revRentRate,
-      revPixelEff: M.revPixelEff,
+      // 🔴 R234：`revRentRate`（目标租金率）**已从输入项移除**（不再向用户收这个数）。
+      //    它由系统自动取「本业态 × 本城市」的**健康租金上限**（云端 BANDS 单源），
+      //    界面上只告诉用户"按什么行规算的"，不给输入框。
+      rentRateAutoPre: M.rentRateAutoPre,
+      rentRateAutoMid: M.rentRateAutoMid,
+      rentRateAutoUnit: M.rentRateAutoUnit,
       revRentHint: M.revRentHint,
       revRevenue: M.revRevenue,
       revRentCap: M.revRentCap,
@@ -128,6 +136,10 @@ Page({
       presetPickedSuf: M.presetPickedSuf,
       bizPresets: M.bizPresets,
       l1Title: M.l1Title,
+      l1Guide: M.l1Guide,
+      seatLabel: M.seatLabel,
+      seatPh: M.seatPh,
+      seatNote: M.seatNote,
       areaLabel: M.areaLabel,
       areaUnit: M.areaUnit,
       rentLabel: M.rentLabel,
@@ -154,6 +166,22 @@ Page({
       paybackSeeM3: M.paybackSeeM3,
       months: M.months,
       yuanUnit: M.yuanUnit,
+      // ── R234 · 主结论卡「这个铺子租金贵不贵」──
+      // 🔴 三处登记的第二处（第一处 terms.js、第三处 index.wxml）：漏登记 ⇒ **渲染空白且零报错**。
+      // ⚠️ 判定值不自造：全部读引擎 `indicators` 里 rent 那行的 level（good/ok/warn/bad/na）。
+      verdictTitle: M.verdictTitle,
+      verdictGood: M.verdictGood,
+      verdictOk: M.verdictOk,
+      verdictWarn: M.verdictWarn,
+      verdictBad: M.verdictBad,
+      verdictNa: M.verdictNa,
+      verdictNoteGood: M.verdictNoteGood,
+      verdictNoteOk: M.verdictNoteOk,
+      verdictNoteWarn: M.verdictNoteWarn,
+      verdictNoteBad: M.verdictNoteBad,
+      verdictNoteNa: M.verdictNoteNa,
+      verdictRentLabel: M.verdictRentLabel,
+      verdictCompare: M.verdictCompare,
       // ── R234/J4 行内长提示折叠（M2 选址页 8 处 ≥18 字的提示）──
       // 🔴 三处登记的第二处：漏映射 ⇒ 页面渲染成**空白**且零报错（R124 同族）
       hintFoldShow: TERMS.ledger.hintFoldShow,
@@ -189,13 +217,13 @@ Page({
     // R193：是否从本地草稿恢复（决定顶部那行提示与「清空重填」按钮是否出现）
     draftRestored: false,
     // M2v1.1（选址反推 · 第一期）
-    mode: 'forward',         // 'forward' 正向测算 | 'reverse' 目标反推
-    revPriceYuan: '',        // 客单价（元）
-    revSeats: '',            // 座位数
-    revOpenDays: '30',       // 每月营业天数
-    revRentRate: '',         // 目标租金率（%）
-    revPixelEff: '',         // 坪效（元/㎡·月，选填）
+    mode: 'forward',         // 'forward' 已有铺面 | 'reverse' 寻找铺面（**值未变**，只有文案改名）
+    // 🔴 R234 移除：`revRentRate`（目标租金率）与 `revPixelEff`（坪效）两个**输入字段**。
+    //    · 租金率 ⇒ 改由 `rentRateDefault()` 自动取云端 BANDS 的健康上限（不再问用户）；
+    //    · 坪效   ⇒ 与 L3 已有的 `pixelEffYuan` 是同一个东西，**复用那一个**（此前同义两项并存）。
+    //    ⚠️ 云端入参 `target_rent_rate` / `pixel_eff_fen` **保留**（契约 + 快照需要），只是换了取值来源。
     reverseResult: null,     // 反推结果（reverse 块）
+    rentRatePct: '',         // R234：本次采用的房租行规（%，来自云端 BANDS，**只读回显**）
     // M2v1.2（多方案存储 · 第二期）：保存沙盘弹窗
     sandboxId: '',           // 正算/反推共用同一个 sandbox_id（首次保存后回填）
     showSave: false,
@@ -215,6 +243,8 @@ Page({
     avgPriceYuan: '',        // 客单价（元）
     laborUnitYuan: '',       // 单人月人工单价（元）
     openDaysNum: '',         // 每月营业天数
+    seatsNum: '',            // R234：座位数（L2；由面积 × 业态密度估算，**用户可改**）
+    seatEstimated: false,    // 当前 seatsNum 是否还是"系统估的"（估的就允许再估一次；用户改过就别覆盖）
     pixelEffYuan: '',        // 坪效（元/㎡·月）
     turnNum: '',             // 翻台率
     feeOverrides: {},        // itemKey → pct 字符串（L3 费率覆盖）
@@ -228,6 +258,9 @@ Page({
     hintFold: {},
     payback: null,           // {invest, cash, investDefault}（M2v1.3 回本卡）
     presetAssumptions: [],   // 底部假设卡行 [{label,val,src}]
+    bandsRaw: [],            // R234：云端 bands_preview **原样留存**（拿到 rent.hi 用，见 rentRateDefault）
+    bandsRawKey: '',         // 上面这份数据对应哪一组「城市 × 业态」（= cityIdx + ':' + bizIdx）
+    verdict: null,           // R234：主结论卡 {level, levelName, note, mine, band, rentPct}
   },
 
   onLoad() { this._seq = 0; this.bootstrap(); },
@@ -432,11 +465,10 @@ Page({
     // 切到反推 Tab 立即触发一次反推（复用防抖）
     this.scheduleCalc();
   },
-  onRevPrice(e) { this.setData({ revPriceYuan: e.detail.value }); this.scheduleCalc(); },
-  onRevSeats(e) { this.setData({ revSeats: e.detail.value }); this.scheduleCalc(); },
-  onRevOpenDays(e) { this.setData({ revOpenDays: e.detail.value }); this.scheduleCalc(); },
-  onRevRentRate(e) { this.setData({ revRentRate: e.detail.value }); this.scheduleCalc(); },
-  onRevPixelEff(e) { this.setData({ revPixelEff: e.detail.value }); this.scheduleCalc(); },
+  // 🔴 R234：删掉 `onRevRentRate` / `onRevPixelEff` 两个 handler ——
+  //    对应输入框已从 wxml 移除（R223 §3.2 明令「L1/L2 严禁以坪效/目标租金率作输入」）。
+  //    留着孤立的 handler 会让后续维护误以为还有这条路。
+  onSeats(e) { this.setData({ seatsNum: e.detail.value, seatEstimated: false }); this.scheduleCalc(); },
 
   // ===== 自动重算（防抖；AD-6/AD-7 折中）=====
   scheduleCalc() {
@@ -463,12 +495,20 @@ Page({
     const seq = ++this._seq;
     const isReverse = this.data.mode === 'reverse';
 
-    // M2v1.3：选了类内预设 ⇒ 走「参数包装配 → 回本卡」的预设前向分支
-    if (!isReverse && this.data.presetKey) {
-      return this.onCalcPresetFwd();
+    // M2v1.3：选了业态预设 ⇒ 走「参数包装配」的统一分支（两个 Tab 共用同一套 L1/L2/L3 输入）
+    if (this.data.presetKey) {
+      const needsRefresh = this.bandsStale();
+      // 🔴 R234 时序修正：反推 Tab 的 `target_rent_rate` 取自 `bandsRaw`（房租行规上限）。
+      //    换业态 / 换城市后若直接发 reverse，会拿**上一组合**的行规去判 ⇒ 数字看着正常、判据错了。
+      //    ⇒ 过期时**先补一次 forward**（只为把新行规取回来），紧接着再走 reverse。
+      if (isReverse && needsRefresh) {
+        await this.onCalcPresetFwd();
+        if (seq !== this._seq) return;
+      }
+      return isReverse ? this.onCalcPresetRev() : this.onCalcPresetFwd();
     }
 
-    // ===== M2v1.1 反推分支 =====
+    // ===== M2v1.1 反推分支（**未选预设**时的兼容路径）=====
     if (isReverse) {
       // 固定支出剔除 rent（页面已隐藏房租行，此处保险再滤一层）
       const fixedItems = this.data.fixedRows
@@ -489,11 +529,12 @@ Page({
             .map((r) => ({ key: r.key, pct: Number(r.pct) })),
           gross_margin_pct: Number(this.data.marginPct),
           target_profit_fen: api.yuanToFen(this.data.targetYuan),
-          rev_price_fen: api.yuanToFen(this.data.revPriceYuan),
-          seats: Number(this.data.revSeats) || 0,
-          open_days: Number(this.data.revOpenDays) || 0,
-          target_rent_rate: Number(this.data.revRentRate) || 0,
-          pixel_eff_fen: api.yuanToFen(this.data.revPixelEff),
+          // R234：同义字段合并 —— 人均/座位/天数/坪效一律取 L2/L3 那一份（反推卡不再另收）
+          rev_price_fen: api.yuanToFen(this.data.avgPriceYuan),
+          seats: Number(this.data.seatsNum) || 0,
+          open_days: Number(this.data.openDaysNum) || 0,
+          target_rent_rate: this.rentRateDefault(),
+          pixel_eff_fen: api.yuanToFen(this.data.pixelEffYuan),
           client_request_id: 'sb_' + Date.now(),
         });
         if (seq !== this._seq) return;
@@ -552,9 +593,13 @@ Page({
       const rowsWithPh = this.applyRefAmount(this.data.fixedRows, amt);
       const phChanged = rowsWithPh.some((r, i) => r.ph !== this.data.fixedRows[i].ph);
       this.setData({
+        // R234：`bands_preview` 原样留存（`rentRateDefault()` 要读 rent.hi，见预设前向分支同处注释）
+        bandsRaw: d.bands_preview || [],
+        bandsRawKey: this.bandsKeyNow(),
         // 行业参考区间（round113）+ 参考金额（round114）：与"填了多少"无关，红警时也在
         bands: this.decorateBands(d.bands_preview || [], amt),
         marginBand: this.pickBand(d.bands_preview, 'grossMargin'),
+        verdict: !hasFixed ? null : this.verdictOf(d.indicators_at_target || []),
         // 只在真的变了才回写（减少无谓的输入行重绘）
         fixedRows: phChanged ? rowsWithPh : this.data.fixedRows,
         result: !hasFixed ? null : {
@@ -688,6 +733,11 @@ Page({
 
   // 组装 14 字段 snake_case 的 param_json（= calcSandbox 的 wire 形态；保存与重算同源）
   buildParam() {
+    // 🔴 R234：选了业态预设 ⇒ **必须走同一套装配**（`buildPresetParam`）。
+    //   此前无论什么态都手写一份 fixedRows/varRows ⇒ 预设态下**保存的是手填那份**，
+    //   而页面显示的来自参数包 —— 同一方案保存前后对不上（重开会算出另一个保本点）。
+    //   「保存与重算同源」只有共用装配才成立。
+    if (this.data.presetKey) return this.buildPresetParam(this.data.mode);
     const isRev = this.data.mode === 'reverse';
     const fixedItems = this.data.fixedRows
       .map((r) => ({ key: r.key, fen: api.yuanToFen(r.yuan) }))
@@ -706,11 +756,12 @@ Page({
       gross_margin_pct: Number(this.data.marginPct),
       target_profit_fen: api.yuanToFen(this.data.targetYuan),
       expected_revenue_fen: api.yuanToFen(this.data.expectYuan),
-      rev_price_fen: api.yuanToFen(this.data.revPriceYuan),
-      seats: Number(this.data.revSeats) || 0,
-      open_days: Number(this.data.revOpenDays) || 0,
-      target_rent_rate: Number(this.data.revRentRate) || 0,
-      pixel_eff_fen: api.yuanToFen(this.data.revPixelEff),
+      // R234：同义字段合并 —— 一律取 L2/L3 那一份（反推卡不再另收一套）
+      rev_price_fen: api.yuanToFen(this.data.avgPriceYuan),
+      seats: Number(this.data.seatsNum) || 0,
+      open_days: Number(this.data.openDaysNum) || 0,
+      target_rent_rate: this.rentRateDefault(),
+      pixel_eff_fen: api.yuanToFen(this.data.pixelEffYuan),
     };
   },
 
@@ -743,26 +794,42 @@ Page({
   },
 
   // ===== M2v1.3（业态参数包 + 回本卡 · 第三期）=====
-  // 当前主分类下的类内预设选项（主分类 4 类，类内预设由 bizPreset.js 供给）
+  // 🔴 R234：业态预设**平铺**（背景见 terms.js 的 R234 段与本文件顶部注释）。
+  //   旧的 `filter(p => p.bizKey === bizKey)` 按上一级「经营类型」过滤，而 6 个预设分布是
+  //   快餐 2 / 火锅 2 / **正餐 1 / 茶饮 1** ⇒ 选「中式正餐」后下拉**只剩 1 项**。
+  //   ⇒ 治法：用户只需回答「我开什么店」；`bizKey`（4 大类）由**系统**反查（`bizKeyOfPreset`），
+  //     它只是去云端取 `BANDS` 的钥匙，**不是一道要用户先答的题**。
   syncPresetOptions() {
-    const bizKey = this.data.t.bizTypes[this.data.bizIdx].key;
-    const opts = BIZ_PRESETS
-      .filter((p) => p.bizKey === bizKey)
-      .map((p) => ({ key: p.presetKey, name: this.data.t.bizPresets[p.presetKey] || p.presetKey }));
-    // 前端先补一项「不确定」（key=''；选了它 = 不用预设，手填全部）
-    const none = { key: '', name: this.data.t.presetNone };
-    const full = [none].concat(opts);
-    // 若当前预设不属于新主分类，重置
-    const still = BIZ_PRESETS.filter((p) => p.presetKey === this.data.presetKey && p.bizKey === bizKey).length > 0;
-    const presetIdx = still ? full.findIndex((o) => o.key === this.data.presetKey) : 0;
-    this.setData({ presetOptions: full, presetIdx, presetName: still ? this.data.presetName : this.data.t.presetNone, presetPicked: still });
+    const opts = BIZ_PRESETS.map((p) => ({
+      key: p.presetKey,
+      name: this.data.t.bizPresets[p.presetKey] || p.presetKey,
+    }));
+    const full = [{ key: '', name: this.data.t.presetNone }].concat(opts);
+    const idx = full.findIndex((o) => o.key === this.data.presetKey);
+    const still = idx >= 0;
+    this.setData({
+      presetOptions: full,
+      presetIdx: still ? idx : 0,
+      presetName: still ? full[idx].name : this.data.t.presetNone,
+      presetPicked: still,
+    });
+  },
+
+  // R234：面积 → 座位数（**默认值生成器**，不是测算）。
+  // ⚠️ 覆盖策略：只在该字段**空着**或**上次是系统估的**时才覆盖；
+  //    用户一旦手改过（`seatEstimated=false`）就再也不碰 —— 否则改一次面积就把用户的数冲掉。
+  reestimateSeats(presetKey) {
+    if (this.data.seatsNum !== '' && !this.data.seatEstimated) return null;
+    const est = estimateSeats(presetKey, this.data.areaNum);
+    if (est === '') return null;
+    return { seatsNum: est, seatEstimated: true };
   },
 
   onPreset(e) {
     const i = Number(e.detail.value);
     const opt = this.data.presetOptions[i];
     if (!opt || !opt.key) {
-      // 「不确定」：清空预设，回到手填全部
+      // 「都不是（我自己填）」：清空预设，回到手填全部
       this.setData({ presetKey: '', presetName: this.data.t.presetNone, presetPicked: false, feeRows: [], feeOverrides: {} });
       this.scheduleCalc();
       return;
@@ -777,15 +844,32 @@ Page({
         .map((m) => ({ key: m.itemKey, label: m.labelKey === 'costLoss' ? this.data.t.costLoss : (this.data.t.fixedItems[m.itemKey] || m.itemKey), pct: String(m.pct) })),
       feeOverrides: {},
     };
+    // 🔴 R234：选完业态 ⇒ **系统**把 4 大类对齐（用户不再被问这一题）。
+    //   ⚠️ 必须真的写进 bizIdx：`bands_preview` / `indicators` 的行规都按它取，
+    //      不同步会让下面整套参考带停在旧业态上（用户看不到任何报错）。
+    const bk = bizKeyOfPreset(opt.key);
+    if (bk) {
+      const bi = this.data.t.bizTypes.findIndex((x) => x.key === bk);
+      if (bi >= 0) {
+        patch.bizIdx = bi;
+        patch.bizName = this.data.t.bizTypes[bi].name;
+      }
+    }
     // 自动带出参数包默认值（只覆盖还为空 / 未改的项）
     if (preset.params && preset.params.grossMarginPct) patch.marginPct = preset.params.grossMarginPct.v;
     if (preset.params && preset.params.openDays) patch.openDaysNum = String(preset.params.openDays.v);
     if (preset.params && preset.params.laborUnitYuan) patch.laborUnitYuan = String(preset.params.laborUnitYuan.v);
     if (preset.params && preset.params.avgPriceYuan) patch.avgPriceYuan = String(preset.params.avgPriceYuan.v);
+    const seat = this.reestimateSeats(opt.key);
+    if (seat) { patch.seatsNum = seat.seatsNum; patch.seatEstimated = true; }
     this.setData(patch);
     this.scheduleCalc();
   },
-  onArea(e) { this.setData({ areaNum: e.detail.value }); this.scheduleCalc(); },
+  onArea(e) {
+    const seats = this.reestimateSeats(this.data.presetKey);
+    this.setData(Object.assign({ areaNum: e.detail.value }, seats || {}));
+    this.scheduleCalc();
+  },
   onRent(e) { this.setData({ rentYuan: e.detail.value }); this.scheduleCalc(); },
   onHeadcount(e) { this.setData({ headcountNum: e.detail.value }); this.scheduleCalc(); },
   onAvgPrice(e) { this.setData({ avgPriceYuan: e.detail.value }); this.scheduleCalc(); },
@@ -818,11 +902,50 @@ Page({
   },
   onGoM3() { wx.switchTab({ url: '/pages/m3/hub' }); },
 
+  /**
+   * 🔴 R234：本业态 × 本城市的**健康租金上限**（%），由系统自动取，**不再向用户收这个数**。
+   *
+   * 为什么是「健康区间上限」而不是豆包那组「保本极限红线」（快餐≤15%/中餐18~20%/火锅≤20%）：
+   *   那组数据豆包已自述为「一线经验估算、非公开调研、样本仅重庆街边店」，并明确
+   *   「不适合作为健康经营标准采信，你们 5~10%/8~15% 数据源更严谨，优先采信」。
+   *   两者语义也不同：我方=健康盈利区间（有利润缓冲），它=保本临界（几无缓冲）。
+   *   且只给一个数时应取**更保守**的 —— 新手最容易高估自己，给极限红线会让他
+   *   误以为「不超过 20% 就没问题」。（同 R224 处理「火锅水电 8~12%」的套路。）
+   *
+   * ⚠️ 单源：数值来自云端 `bands_preview`（`indicatorRef.BANDS.rent` × 城市系数），
+   *    前端**不复制、不硬编码**任何一个百分比 —— 复制一份立刻就有两份真相源。
+   * @returns {number} 健康租金上限（%）；取不到 ⇒ 0（调用方按 0 处理）
+   */
+  rentRateDefault() {
+    const key = this.data.cityIdx + ':' + this.data.bizIdx;
+    // 🔴 过期保护：`bandsRaw` 是**上一组**业态/城市的结果时**不能拿来用** ——
+    //    否则换业态后头一次反推会用旧业态的行规判房租（错得很隐蔽：数字一样，判据换了）。
+    if (this.data.bandsRawKey !== key) return 0;
+    const row = (this.data.bandsRaw || []).filter((x) => x.key === 'rent')[0];
+    return row && row.hi != null ? Number(row.hi) : 0;
+  },
+
+  /** 当前「城市 × 业态」的键值（与 `bandsRawKey` 同构）。 */
+  bandsKeyNow() { return this.data.cityIdx + ':' + this.data.bizIdx; },
+
+  /**
+   * 当前这份 `bandsRaw` 是否已过期（换过业态/城市，或压根还没取到）。
+   * 🔴 反推分支必须先问这一句 —— 见 `onCalc` 里 R234 时序修正处的说明。
+   */
+  bandsStale() {
+    return this.data.bandsRawKey !== this.bandsKeyNow() || (this.data.bandsRaw || []).length === 0;
+  },
+
   // 统一入参装配（preset 态）：cost_meta 形态运算**只在 assembleItems 内**，本方法不做任何保本/毛利率/摊销算式
-  buildPresetParam() {
+  //
+  // @param {string} mode 'forward'（已有铺面）| 'reverse'（寻找铺面）
+  //   🔴 R234：两个 Tab **共用同一套 L1/L2/L3 输入**（此前反推 Tab 另有一套 revPrice/revSeats/…
+  //     与 L2 的 avgPrice 同义并存 ⇒ 用户改一处、另一处不动，是本页第二个"重复")。
+  buildPresetParam(mode) {
     const preset = findPreset(this.data.presetKey) || BIZ_PRESETS[0];
     const cityKey = this.data.t.cityTiers[this.data.cityIdx].key;
     const coef = Object.assign({ rent: 1, labor: 1 }, CITY_COEF[cityKey] || {});
+    const isReverse = mode === 'reverse';
     const userBuild = this.data.buildRows
       .filter((r) => api.yuanToFen(r.yuan) > 0)
       .map((r) => ({ key: r.key, fen: api.yuanToFen(r.yuan), years: Number(r.years) || 1 }));
@@ -830,18 +953,26 @@ Page({
       area: Number(this.data.areaNum) || 0,
       headcount: Number(this.data.headcountNum) || 0,
       rentYuan: Number(this.data.rentYuan) || 0,
-      fixedYuan: { rent: this.data.rentYuan },
+      // 🔴 R219 口径（两道防线之一·装配层）：反推模式下 `fixed_items` **不得含 rent**。
+      //    房租在此处是**求解目标**，把它当已知固定成本喂进去会**重复计租**
+      //    （R219 实测：照豆包原算式落码 ⇒ 参考利润虚高 **25%**）。
+      fixedYuan: isReverse ? {} : { rent: this.data.rentYuan },
       buildItems: userBuild,
     };
-    const { fixedItems, varItems } = assembleItems(preset, input, coef);
+    const asm = assembleItems(preset, input, coef);
+    // 第二道防线：装配产物里再滤一次（将来参数包长出别的形态也不会漏）
+    const fixedItems = isReverse ? asm.fixedItems.filter((x) => x.key !== 'rent') : asm.fixedItems;
     const fo = this.data.feeOverrides || {};
-    const varItemsFinal = varItems.map((v) =>
+    const varItemsFinal = asm.varItems.map((v) =>
       (fo[v.key] != null && fo[v.key] !== '' ? { key: v.key, pct: Number(fo[v.key]) } : v));
     const buildItems = resolveBuild(preset, input);
     const openDays = (this.data.openDaysNum && this.data.openDaysNum !== '') ? Number(this.data.openDaysNum)
       : (preset.params && preset.params.openDays ? preset.params.openDays.v : 30);
+    // 🔴 R234：座位数此前只有反推 Tab 有（`revSeats`），L2 却另有一个同义的人均/天数对 ⇒ 重复。
+    //    统一取 L2 的 `seatsNum`（由面积×业态密度估算、用户可改），反推 Tab 也不再单独收。
+    const seats = Number(this.data.seatsNum) || 0;
     return {
-      mode: 'forward',
+      mode: mode || 'forward',
       city_tier: cityKey,
       biz_type: preset.bizKey,
       build_items: buildItems,
@@ -851,9 +982,11 @@ Page({
       target_profit_fen: api.yuanToFen(this.data.targetYuan),
       expected_revenue_fen: api.yuanToFen(this.data.expectYuan),
       rev_price_fen: api.yuanToFen(this.data.avgPriceYuan),
-      seats: 0,
+      seats,
       open_days: openDays,
-      target_rent_rate: 0,
+      // R234：不再来自用户输入，改由 `rentRateDefault()` 自动取本业态×本城市的健康上限。
+      //   ⚠️ 字段名与形状**完全没变**（`target_rent_rate` 仍是云函数契约字段），变的只是取值来源。
+      target_rent_rate: this.rentRateDefault(),
       pixel_eff_fen: api.yuanToFen(this.data.pixelEffYuan),
       _preset: preset,
       _targetFen: api.yuanToFen(this.data.targetYuan),
@@ -864,7 +997,7 @@ Page({
   async onCalcPresetFwd() {
     if (this._timer) { clearTimeout(this._timer); this._timer = null; }
     const seq = ++this._seq;
-    const p = this.buildPresetParam();
+    const p = this.buildPresetParam('forward');
     const payload = {
       city_tier: p.city_tier, biz_type: p.biz_type,
       build_items: p.build_items, fixed_items: p.fixed_items, var_items: p.var_items,
@@ -890,9 +1023,15 @@ Page({
       };
       const amt = this.amountMaps(d.amount_preview || []);
       const rowsWithPh = this.applyRefAmount(this.data.fixedRows, amt);
+      const indTarget = d.indicators_at_target || [];
       this.setData({
+        // R234：`bands_preview` **原样留存** —— `rentRateDefault()` 要从这里取 rent.hi，
+        //      若只留 decorate 后的 `bands`（只剩拼好的字串），就再也拿不到原始数值了。
+        bandsRaw: d.bands_preview || [],
+        bandsRawKey: this.bandsKeyNow(),
         bands: this.decorateBands(d.bands_preview || [], amt),
         marginBand: this.pickBand(d.bands_preview, 'grossMargin'),
+        verdict: !hasFixed ? null : this.verdictOf(indTarget),
         result: !hasFixed ? null : {
           red_alert: !!d.red_alert,
           build_total: fen(d.build_total_fen),
@@ -912,13 +1051,101 @@ Page({
         payback,
         presetAssumptions: this.buildAssumptions(p._preset, d),
         calcError: hasFixed ? '' : M.needFixed,
+        loading: false,
         dirty: false,
       });
     } catch (e) {
       if (seq !== this._seq) return;
+      this.setData({ loading: false });
       if (e.code === 'M2_RED_ALERT') { this.setData({ result: { red_alert: true }, calcError: '' }); }
       else { this.setData({ calcError: e.msg || '' }); api.toastError(e); }
     }
+  },
+
+  // ===== R234 · 「寻找铺面」Tab：与上面共用同一套 L1/L2/L3 入参装配 =====
+  //
+  // 🔴 为什么必须单独写这一个分支而不再复用手写的 fixedRows 装配：
+  //    旧的 reverse 分支手工拼 fixedRows/varRows，而 forward 已走 `buildPresetParam`（参数包装配）。
+  //    ⇒ 同一个铺子在两个 Tab 里**看到的成本根本不是同一份**（一边按行规、一边按手填）。
+  //    合并成一套后，"切 Tab" 只是换了问法，输入的钱永远是同一笔钱。
+  async onCalcPresetRev() {
+    if (this._timer) { clearTimeout(this._timer); this._timer = null; }
+    const seq = ++this._seq;
+    const p = this.buildPresetParam('reverse');
+    try {
+      const d = await api.call('calcSandbox', {
+        mode: 'reverse',
+        city_tier: p.city_tier, biz_type: p.biz_type,
+        build_items: p.build_items, fixed_items: p.fixed_items, var_items: p.var_items,
+        gross_margin_pct: p.gross_margin_pct, target_profit_fen: p.target_profit_fen,
+        expected_revenue_fen: p.expected_revenue_fen,
+        rev_price_fen: p.rev_price_fen, seats: p.seats, open_days: p.open_days,
+        target_rent_rate: p.target_rent_rate, pixel_eff_fen: p.pixel_eff_fen,
+        client_request_id: 'sb_' + Date.now(),
+      });
+      if (seq !== this._seq) return;
+      const fen = (v) => (v == null ? null : api.fenToYuan(v, 2));
+      const rev = d.reverse || null;
+      this.setData({
+        bandsRaw: d.bands_preview || [],
+        bandsRawKey: this.bandsKeyNow(),
+        // R234：把"本次按什么行规算"回显给用户（数字来自云端 BANDS，我们不自造）
+        rentRatePct: String(this.rentRateDefault()),
+        reverseResult: rev ? {
+          red_alert: !!rev.red_alert,
+          target_monthly: fen(rev.target_monthly_fen),
+          rent_cap: fen(rev.rent_cap_fen),
+          monthly_traffic: rev.monthly_traffic,
+          daily_traffic: rev.daily_traffic,
+          turn_rate: rev.turn_rate,
+          area_cap_sqm: rev.area_cap_sqm,
+          warn_turn_high: Array.isArray(rev.warn_keys) && rev.warn_keys.indexOf('turnOverHigh') >= 0,
+        } : null,
+        calcError: rev ? '' : M.needFixed,
+        loading: false,
+        dirty: false,
+      });
+    } catch (e) {
+      if (seq !== this._seq) return;
+      this.setData({ loading: false, dirty: false, reverseResult: null, calcError: e.msg || '' });
+      api.toastError(e);
+    }
+  },
+
+  /**
+   * R234 · 主结论卡「这个铺子租金贵不贵」的数据组装。
+   *
+   * 🔴 **零自算**：判定等级**直接读引擎** `indicators` 里 rent 那行的 `level`
+   *    （good/ok/warn/bad/na 由云端 `indicatorRef.levelOf` 判得出）；
+   *    前端只做 `level → 中文文案` 映射 + "你的值 / 行规区间"的**原样搬运**。
+   *    这样"什么叫贵"永远只有一个真相源 —— 前端改文案不会悄悄换掉判据。
+   *
+   * ⚠️ 为什么取 `target` 那份分母：A Tab 填的是"我想月赚多少"，判定就该站在
+   *    **实现目标利润**那个营业额水位上判；用 break 那份会把目标利润漏掉。
+   *
+   * @param {Array} indTarget 后端 `indicators_at_target`（原始形态，未 decorate）
+   */
+  verdictOf(indTarget) {
+    const NAME = {
+      good: M.verdictGood, ok: M.verdictOk, warn: M.verdictWarn,
+      bad: M.verdictBad, na: M.verdictNa,
+    };
+    const NOTE = {
+      good: M.verdictNoteGood, ok: M.verdictNoteOk, warn: M.verdictNoteWarn,
+      bad: M.verdictNoteBad, na: M.verdictNoteNa,
+    };
+    const row = (indTarget || []).filter((x) => x.key === 'rent')[0];
+    if (!row || row.pct == null) {
+      return { level: 'na', levelName: NAME.na, note: NOTE.na, mine: '', band: '' };
+    }
+    const lv = row.level || 'na';
+    return {
+      level: lv,
+      levelName: NAME[lv] || '',
+      note: NOTE[lv] || '',
+      mine: String(row.pct) + '%',
+      band: row.lo == null ? '' : row.lo + '~' + row.hi + '%',
+    };
   },
 
   // 底部假设卡（只读展示参数包默认值 + 来源；不参与计算）
