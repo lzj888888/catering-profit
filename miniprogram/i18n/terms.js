@@ -533,6 +533,10 @@ const TERMS = {
       importFail: '门禁未通过，已阻断导入',
       importNoFile: '请先选择账单文件',
       importEmpty: '先选文件，解析后在此预览',
+      // v1.7 §2.5：形态 C（外卖商品销量）导入 —— platform 机器判不出 ⇒ 必须先选平台
+      importShapeCHint: '这是外卖商品销量表，请先选择平台再导入。',
+      importPickPlatform: '请选择外卖平台',
+      importZeroAmountLabel: '零元行',
     },
     // 费用侧各细项「行内说明」（⚠️ 按**显示名**（与 collections.js item_name 一致）挂，随 terms 双副本走）
     // ===== round217：运营类行内注（首次补齐 7/7）=====
@@ -1120,7 +1124,11 @@ const TERMS = {
     reviewAfterFact: '本报表基于标准成本卡 × 销售份数推演，仅作经营参考；如需门店真实账面成本，请使用 M1 月度核算。',
     reviewDineIn: '堂食',
     reviewTakeaway: '外卖',
-    reviewTakeawayEmpty: '本批暂不支持外卖商品销量导入（样例未到），外卖侧暂无数据，不按 0 计入。',
+    reviewTakeawayEmpty: '还没有导入外卖销量，导入《商品销量》表后这里显示各平台外卖毛利榜。',
+    // v1.7 C-5：零价高销量行（口味询问类 SKU，如「来点辣椒吗」）标注 —— 不剔除、不计营收口径
+    reviewZeroAmount: '口味询问类 SKU，不计营收',
+    // v1.7 §2.5：外卖平台展示名（key = SALES_SCHEMA.platform.enum，不含 pos）
+    reviewPlatformNames: { taobao: '淘宝闪购', meituan: '美团', eleme: '饿了么', other: '其他' },
     reviewRankTitle: '单品毛利排行榜',
     reviewDish: '菜品',
     reviewQty: '份数',

@@ -350,9 +350,95 @@ function parseDishSales(sheetRows, opts) {
   };
 }
 
+// ===================== M3.33 形态 C（外卖「商品销量」）解析 —— v1.7 C-2~C-7 =====================
+
+// 日期归一：接受 2026/9/7 / 2026-09-07 / 2026.9.7 等形态，统一成 YYYY-MM-DD（月/日补零）。
+// 取不到可解析形态时原样返回（由甲级门禁 fail-closed 拦，不静默改写）。
+function normalizeDate(v) {
+  if (v == null) return '';
+  const s = String(v).trim();
+  if (!s) return '';
+  const m = s.match(/^(\d{4})[/\-.](\d{1,2})[/\-.](\d{1,2})/);
+  if (!m) return s;
+  const pad = (n) => String(n).padStart(2, '0');
+  return m[1] + '-' + pad(m[2]) + '-' + pad(m[3]);
+}
+
+// 形态 C 白名单取列（v1.7 C-4）：只取这 5 列，其余 13 列一律丢弃且不报错。
+const DISH_C_COLS = ['日期', '门店编号', '商品名称', '销量', '销售额'];
+
+/**
+ * 解析形态 C（外卖「商品销量」）。v1.7 C-2~C-7。
+ * @param {Array<Array>} sheetRows 0-based 二维 cells（表头 R1 = sheetRows[0]，数据 R2 起）
+ * @param {{platform:string}} opts 🔴 opts.platform 必填（由调用方显式传入，不许按文件名猜，见 v1.7 §10-2）
+ * @returns {{shape:string, rows:Array, groups:Array, totals:{qty,amountFen}, nonInt:Array, zeroAmountQty:Array, unmatched:Array}}
+ */
+function parseDishSalesC(sheetRows, opts) {
+  const rows = sheetRows || [];
+  const hdr = (rows[0] || []).map((x) => (x == null ? '' : String(x).trim()));   // R1 单行表头（v1.7 C-2）
+
+  // 白名单列位（找不到的列记 -1，取数时按 -1 走 undefined ⇒ 归空，不报错）
+  const idx = {};
+  for (const c of DISH_C_COLS) idx[c] = hdr.indexOf(c);
+  const get = (r, col) => (idx[col] >= 0 ? r[idx[col]] : undefined);
+
+  const out = [];
+  const nonInt = [];
+  const unmatched = [];
+
+  for (let i = 1; i < rows.length; i++) {           // 数据 R2 起（单行表头）
+    const r = rows[i] || [];
+    const name0 = (get(r, '商品名称') == null ? '' : String(get(r, '商品名称')).trim());
+    const rawQty = toNum(get(r, '销量'));           // 🔴 销量列全为文本 ⇒ 必先 toNum（v1.7 C-6 / R232-4）
+    const sales = toNum(get(r, '销售额'));          // 🔴 严禁用「订单交易额」（整单口径 ⇒ 重复计钱，R232-1）
+    const qty = rawQty == null ? 0 : Math.round(rawQty);
+    const isNonInt = rawQty != null && !Number.isInteger(rawQty);
+    if (isNonInt) nonInt.push({ name: name0, raw: rawQty, rounded: qty });
+    const amountFen = Math.round((sales == null ? 0 : sales) * 100);   // amount_fen = 销售额 × 100（v1.7 C-3）
+    const bizDate = normalizeDate(get(r, '日期'));   // 行内「日期」列（v1.7 C-7：形态 C 无参数行）
+    const dishKey = normalizeDishName(name0);        // 单源 common/dishKey（R232 C-9）
+
+    // 空 dish_key（空格名/空 key）⇒ 单列 unmatched，不落 rows / 不计入 totals（与形态 A 同口径）
+    if (dishKey === '' || dishKey === '-') {
+      unmatched.push({ name: name0, dishKey, qty, amountFen, bizDate });
+      continue;
+    }
+    out.push({ bizDate, name: name0, dishKey, qty, amountFen });
+  }
+
+  // 🔴 v1.7 C-5：amount=0 且 qty>0 的行**按名称聚合**单列（口味询问类 SKU），不进 unmatched、不剔除。
+  //   聚合而非逐行：同名 SKU 多天各一行，逐行会给用户 7 条冗余告警；按名合并为 1 条（qty 累加）更清楚。
+  const zeroMap = new Map();
+  for (const r of out) {
+    if (r.amountFen === 0 && r.qty > 0) {
+      const z = zeroMap.get(r.name) || { name: r.name, qty: 0 };
+      z.qty += r.qty;
+      zeroMap.set(r.name, z);
+    }
+  }
+  const zeroAmountQty = Array.from(zeroMap.values());
+
+  // 按 bizDate 分组（一表多天 ⇒ N 组，v1.7 C-7）。🔴 禁止补零行（无行 = 无销售，v1.7 C-6 / R232-2）。
+  const groupMap = new Map();
+  for (const r of out) {
+    const g = groupMap.get(r.bizDate) || { bizDate: r.bizDate, rows: [] };
+    g.rows.push(r);
+    groupMap.set(r.bizDate, g);
+  }
+  const groups = Array.from(groupMap.values()).sort((a, b) => (a.bizDate < b.bizDate ? -1 : 1));
+
+  const totals = {
+    qty: out.reduce((s, x) => s + x.qty, 0),
+    amountFen: out.reduce((s, x) => s + x.amountFen, 0),
+  };
+
+  return { shape: DISH_SHAPES.C, rows: out, groups, totals, nonInt, zeroAmountQty, unmatched };
+}
+
 module.exports = {
   bufferToMatrix, detectPlatform, guessHeader, parseBillMatrix, checkGradeA, SALES_SCHEMA, toNum,
   fmtCell, EXCEL_UTC_BASE,   // R232 C-11：fmtCell 导出以便守卫直接验证日期口径（此前漏导，0/4 全错无人知）
   DISH_SHAPES, DISH_A_STRUCT, normalizeDishName, detectDishShape, detectDishMatrix,
   extractBizDate, dishRefId, saleDocId, parseDishSales,
+  normalizeDate, parseDishSalesC,   // v1.7 形态 C（外卖商品销量）
 };

@@ -52,11 +52,38 @@
       <view class="cell"><text class="lbl">{{t.reviewTotalGross}}</text><text class="val">{{t.cur}}{{totals.grossText}}</text></view>
     </view>
 
-    <!-- 外卖空态（红线 18：不默认外卖=0） -->
-    <view class="section-title">{{t.reviewTakeaway}}</view>
-    <view class="card2">
-      <view class="muted">{{t.reviewTakeawayEmpty}}</view>
-    </view>
+    <!-- 外卖榜（v1.7 实态：按平台分块；无数据 ⇒ 空态，红线 18 不默认 0） -->
+    <block wx:if="{{takeaway}}">
+      <block wx:for="{{takeaway}}" wx:key="platform">
+        <view class="section-title">{{t.reviewTakeaway}} · {{item.platformName}}</view>
+        <view class="card2" wx:if="{{item.ranked.length}}">
+          <view class="row head">
+            <text class="c-name">{{t.reviewDish}}</text>
+            <text class="c-qty">{{t.reviewQty}}</text>
+            <text class="c-num">{{t.reviewRevenue}}</text>
+            <text class="c-num">{{t.reviewGross}}</text>
+            <text class="c-num">{{t.reviewMargin}}</text>
+          </view>
+          <view class="row {{it.below ? 'below' : ''}}" wx:for="{{item.ranked}}" wx:for-item="it" wx:key="name">
+            <view class="c-name">
+              <text>{{it.name}}</text>
+              <text class="snap" wx:if="{{it.snapshotNote}}">{{it.snapshotNote}}</text>
+              <text class="zero" wx:if="{{it.zeroAmount}}">{{t.reviewZeroAmount}}</text>
+            </view>
+            <text class="c-qty">{{it.qty}}</text>
+            <text class="c-num">{{t.cur}}{{it.revenueText}}</text>
+            <text class="c-num">{{t.cur}}{{it.grossText}}</text>
+            <text class="c-num">{{it.marginText}}</text>
+          </view>
+        </view>
+      </block>
+    </block>
+    <block wx:else>
+      <view class="section-title">{{t.reviewTakeaway}}</view>
+      <view class="card2">
+        <view class="muted">{{t.reviewTakeawayEmpty}}</view>
+      </view>
+    </block>
 
     <!-- 未匹配菜品（红线 17：不静默归零，单列 + 去映射入口） -->
     <view class="section-title" wx:if="{{unmatched.length}}">{{t.reviewUnmatched}}</view>

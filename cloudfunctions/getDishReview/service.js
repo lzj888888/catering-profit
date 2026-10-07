@@ -18,13 +18,13 @@
 'use strict';
 
 /**
- * 构建单品毛利复盘（纯函数 · 可独立复算）
- * @param {Array<{dish_key:string, qty:*, amount:*}>} sales 堂食销量行（platform='pos'）
+ * 核心：把一组销量行聚合 → 匹配成本卡 → 算毛利 → 排名 → 合计（两条路共用，不复制）。
+ * @param {Array<{dish_key:string, qty:*, amount:*}>} sales 一组销量行
  * @param {Array<{card_code:string, version:number, name:string, total_cost:*, created_at:*}>} cards 成本卡（全版本）
- * @param {{normalizeDishName:Function, toMonth:Function}} deps 单源注入（dishKey / utilTime）
- * @returns {{dine_in:Array, unmatched:Array, totals:Object}}
+ * @param {{normalizeDishName:Function, toMonth:Function}} deps 单源注入
+ * @returns {{ranked:Array, unmatched:Array, totals:Object}}
  */
-function buildDishReview(sales, cards, deps) {
+function rankReview(sales, cards, deps) {
   const normalizeDishName = deps.normalizeDishName;
   const toMonth = deps.toMonth;
 
@@ -93,7 +93,73 @@ function buildDishReview(sales, cards, deps) {
     unmatchedCount: unmatched.length,
   };
 
+  return { ranked, unmatched, totals };
+}
+
+/**
+ * 构建堂食单品毛利复盘（platform='pos'）。
+ * @param {Array} sales 堂食销量行
+ * @param {Array} cards 成本卡（全版本）
+ * @param {{normalizeDishName:Function, toMonth:Function}} deps
+ * @returns {{dine_in:Array, unmatched:Array, totals:Object}}
+ */
+function buildDishReview(sales, cards, deps) {
+  const { ranked, unmatched, totals } = rankReview(sales, cards, deps);
   return { dine_in: ranked, unmatched, totals };
 }
 
-module.exports = { buildDishReview };
+/**
+ * 构建外卖单品毛利复盘（platform !== 'pos'，多平台混合）。
+ * 🔴 与堂食**同构**：复用 rankReview，按平台分组各跑一遍，不复制算法。
+ * 🔴 zeroAmount 标记：amountFen=0 且 qty>0 的行照常计入排名（确实卖了），但加 `zeroAmount:true`
+ *    供前端加「口味询问类 SKU，不计营收」标注（v1.7 C-5）；不剔除、不归 unmatched。
+ * @param {Array<{dish_key:string, qty:*, amount:*, platform:string}>} sales 非 pos 销量行
+ * @param {Array} cards 成本卡（全版本）
+ * @param {{normalizeDishName:Function, toMonth:Function}} deps
+ * @returns {{by_platform:Object<string,{ranked,unmatched,totals}>, totals:Object}}
+ */
+function buildTakeawayReview(sales, cards, deps) {
+  // 按 platform 分组（外卖可能同时有美团/饿了么/淘宝闪购）
+  const byPlatform = new Map();
+  for (const s of (sales || [])) {
+    const p = (s.platform == null ? '' : String(s.platform)).trim();
+    if (!p || p === 'pos') continue;
+    const list = byPlatform.get(p) || [];
+    list.push(s);
+    byPlatform.set(p, list);
+  }
+
+  const by_platform = {};
+  const totals = { qty: 0, amountFen: 0, costFen: 0, grossFen: 0, dishCount: 0, unmatchedCount: 0 };
+  for (const [p, list] of byPlatform) {
+    const { ranked, unmatched, totals: t } = rankReview(list, cards, deps);
+    // v1.7 C-5：零价高销量行照常入榜，仅加标记
+    for (const r of ranked) r.zeroAmount = (r.amountFen === 0 && r.qty > 0);
+    by_platform[p] = { ranked, unmatched, totals: t };
+    totals.qty += t.qty;
+    totals.amountFen += t.amountFen;
+    totals.costFen += t.costFen;
+    totals.grossFen += t.grossFen;
+    totals.dishCount += t.dishCount;
+    totals.unmatchedCount += t.unmatchedCount;
+  }
+  return { by_platform, totals };
+}
+
+/**
+ * 把全量销量行**在 service 层**分流（可复算；不在 index 做业务判断）。
+ * @param {Array<{platform:string}>} sales
+ * @returns {{dineIn:Array, takeaway:Array}} dineIn = platform==='pos'；takeaway = 其余非空平台
+ */
+function splitSales(sales) {
+  const dineIn = [];
+  const takeaway = [];
+  for (const s of (sales || [])) {
+    const p = (s.platform == null ? '' : String(s.platform)).trim();
+    if (p === 'pos') dineIn.push(s);
+    else if (p) takeaway.push(s);
+  }
+  return { dineIn, takeaway };
+}
+
+module.exports = { buildDishReview, buildTakeawayReview, rankReview, splitSales };

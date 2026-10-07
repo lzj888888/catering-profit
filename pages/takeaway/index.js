@@ -14,6 +14,10 @@ const { calcTakeawayOrder, reverseListedPrice } = require('../../utils/takeawayD
 
 const TK = TERMS.ledger.takeaway;
 
+// v1.7 形态 C（外卖商品销量）：外卖平台选择项（label 来自 terms 单源；不含 pos —— 堂食不走这条路）
+const IMPORT_PLATFORM_OPTIONS = ['meituan', 'eleme', 'taobao', 'other']
+  .map((v) => ({ value: v, label: (TERMS.card.reviewPlatformNames[v] || v) }));
+
 function newItem() { return { card_id: '', card_name: '', qty: '1' }; }
 function newPack() { return { material_id: '', qty: '1', unit_price_yuan: '' }; }
 function defaultParams() {
@@ -98,6 +102,10 @@ Page({
       importFail: TK.importFail,
       importNoFile: TK.importNoFile,
       importEmpty: TK.importEmpty,
+      // v1.7 形态 C（外卖商品销量）：平台机器判不出 ⇒ 必须选平台
+      importShapeCHint: TK.importShapeCHint,
+      importPickPlatform: TK.importPickPlatform,
+      importZeroAmountLabel: TK.importZeroAmountLabel,
       save: TERMS.buttons.save,
       cancel: TERMS.buttons.cancel,
       cur: '¥',
@@ -123,6 +131,13 @@ Page({
     importGrade: null,     // 甲级门禁结果
     importPreview: null,   // 预览 { rows, totals, months, excluded }
     importing: false,      // 防重复提交
+    // v1.7 形态 C（外卖商品销量）：platform 机器判不出 ⇒ 必须选平台
+    importShape: '',                    // '' | 'A' | 'C'
+    importPlatformOptions: IMPORT_PLATFORM_OPTIONS,   // [{ value, label }]（label 来自 terms 单源）
+    importPlatformIndex: -1,            // -1 = 未选
+    importPlatformChoice: '',           // 提交值（形态 C 落库用）
+    importPlatformChoiceLabel: '',      // picker 显示名
+    importZeroAmountQty: [],            // 预览：零元行（v1.7 C-5）
   },
 
   onLoad() { this.load(); },
@@ -328,20 +343,36 @@ Page({
       // 调云函数解析 + 甲级门禁，confirm=false 只预览
       const d = await api.call('importSalesBill', { fileID, confirm: false });
       wx.hideLoading();
-      // 预览格式化（wxml 不做法调用 / 浮点除法；amount 分→元、months join 都在这里做）
       const p = d.preview || null;
-      const preview = p ? {
-        rowCount: p.totals.rowCount,
-        amountYuan: (p.totals.amountFen / 100).toFixed(2),
-        monthsText: (p.months || []).join('、'),
-        excludedRows: (p.excluded && p.excluded.rows) || 0,
-      } : null;
+      const isC = d.shape === 'C';
+      let preview = null;
+      if (isC) {
+        // 形态 C：按平台分块，无 months/excluded；零元行必须可见（v1.7 C-5）
+        preview = {
+          groupCount: (p && p.groups) ? p.groups.length : 0,
+          amountYuan: ((p && p.totals && p.totals.amountFen) || 0 / 100).toFixed(2),
+        };
+      } else {
+        // 账单（批次 F）：amount 分→元、months join 都在这里做（wxml 不做法调用 / 浮点除法）
+        preview = p ? {
+          rowCount: p.totals.rowCount,
+          amountYuan: (p.totals.amountFen / 100).toFixed(2),
+          monthsText: (p.months || []).join('、'),
+          excludedRows: (p.excluded && p.excluded.rows) || 0,
+        } : null;
+      }
       this.setData({
         importing: false,
         importFileID: fileID,
+        importShape: d.shape || '',
         importPlatform: d.platform || '',
         importGrade: d.grade || null,
         importPreview: preview,
+        importZeroAmountQty: (isC && p && p.zeroAmountQty) ? p.zeroAmountQty : [],
+        // 形态 C 平台选择重置
+        importPlatformIndex: -1,
+        importPlatformChoice: '',
+        importPlatformChoiceLabel: '',
       });
     } catch (e) {
       wx.hideLoading();
@@ -350,18 +381,38 @@ Page({
     }
   },
 
+  // 形态 C 平台选择（v1.7 §2.5：platform 机器判不出 ⇒ 必须选平台；未选 ⇒ 提交禁用）
+  onImportPlatformPick(e) {
+    const i = Number(e.detail.value);
+    const opt = this.data.importPlatformOptions[i];
+    this.setData({
+      importPlatformIndex: i,
+      importPlatformChoice: opt ? opt.value : '',
+      importPlatformChoiceLabel: opt ? opt.label : '',
+    });
+  },
+
   // 用户确认 → importSalesBill(confirm=true) 落库
   async onConfirmImport() {
     if (!this.data.importFileID) { wx.showToast({ title: TK.importNoFile, icon: 'none' }); return; }
     if (this.data.importing) return;
+    // 形态 C：必须先选平台（缺值云函数也会 fail，此处前端兜底拦住，避免白跑一趟）
+    const platform = this.data.importShape === 'C' ? this.data.importPlatformChoice : this.data.importPlatform;
+    if (this.data.importShape === 'C' && !platform) {
+      wx.showToast({ title: this.data.t.importPickPlatform, icon: 'none' });
+      return;
+    }
     this.setData({ importing: true });
     try {
       wx.showLoading({ title: TK.importConfirm, mask: true });
-      await api.call('importSalesBill', { fileID: this.data.importFileID, platform: this.data.importPlatform, confirm: true });
+      await api.call('importSalesBill', { fileID: this.data.importFileID, platform, confirm: true });
       wx.hideLoading();
       wx.showToast({ title: TK.importSuccess, icon: 'success' });
-      // 导入成功后清空预览态
-      this.setData({ importing: false, importFileID: '', importPlatform: '', importGrade: null, importPreview: null });
+      // 导入成功后清空预览态（含形态 C 的平台选择）
+      this.setData({
+        importing: false, importFileID: '', importShape: '', importPlatform: '', importGrade: null,
+        importPreview: null, importPlatformIndex: -1, importPlatformChoice: '', importPlatformChoiceLabel: '', importZeroAmountQty: [],
+      });
     } catch (e) {
       wx.hideLoading();
       this.setData({ importing: false });

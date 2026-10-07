@@ -18,7 +18,7 @@ const { ERROR_CODES, ok, fail } = common;
 const { nowUtc } = common.utilTime;
 const {
   bufferToMatrix, detectPlatform, guessHeader, parseBillMatrix, checkGradeA, SALES_SCHEMA,
-  DISH_SHAPES, detectDishMatrix, parseDishSales, dishRefId, saleDocId,
+  DISH_SHAPES, detectDishMatrix, parseDishSales, parseDishSalesC, dishRefId, saleDocId,
 } = require('./service');
 const { validateInput } = require('./validate');
 
@@ -55,7 +55,7 @@ exports.main = async (event) => {
   // ===== 5. 分流：堂食菜品销售表（批次 G）优先，识别不出再走外卖账单（批次 F）=====
   const dishDetect = detectDishMatrix(matrix);
   if (dishDetect.shape) {
-    return handleDishImport({ shopId, userId, clientRequestId, dishDetect, matrix, confirm: v.confirm });
+    return handleDishImport({ shopId, userId, clientRequestId, dishDetect, matrix, confirm: v.confirm, platform: v.platform });
   }
 
   // ===== 6. 外卖账单（批次 F 原路径）=====
@@ -135,15 +135,14 @@ exports.main = async (event) => {
  * 堂食《菜品销售统计》（形态 A）导入：解析 → 甲级门禁 → 落库 → 摘要写 shop_switch.m3_review_last。
  * 🔴 形态 B（套餐明细）不入库（套餐组分已并入菜品表，§6 重复计算禁令）；形态 C 预留（待样例）。
  */
-async function handleDishImport({ shopId, userId, clientRequestId, dishDetect, matrix, confirm }) {
+async function handleDishImport({ shopId, userId, clientRequestId, dishDetect, matrix, confirm, platform }) {
   // 形态 B：套餐明细表 —— 不入库（组分已并入菜品表，禁止两表相加）
   if (dishDetect.shape === DISH_SHAPES.B) {
     return fail(ERROR_CODES.INVALID_PARAM, '这是套餐销售明细表，套餐组分已并入菜品销售表，本表仅作交叉校验、不单独导入。');
   }
-  // 形态 C：外卖商品销量 —— 样例已到货、判定已按 v1.7 C-1 修正（此前因列名写死 '商品销量' 而永远判不出），
-  //   但**解析能力尚未实现**（v1.7 C-2~C-7 落实现批次）。此处给明确提示，而非「这张表不认识」。
+  // 形态 C：外卖商品销量 —— v1.7 C-2~C-7 本批实现真导入（platform 由调用方显式传入）
   if (dishDetect.shape === DISH_SHAPES.C) {
-    return fail(ERROR_CODES.INVALID_PARAM, '这是外卖商品销量表（形态 C），识别已支持，解析导入功能尚未上线。');
+    return handleFormCImport({ shopId, userId, clientRequestId, dishDetect, matrix, confirm, platform });
   }
   // 仅形态 A 走主路径
   const sheetRows = matrix.sheets[dishDetect.sheet].rows;
@@ -229,6 +228,94 @@ async function handleDishImport({ shopId, userId, clientRequestId, dishDetect, m
     try {
       await common.audit.writeAudit(db, {
         action: 'IMPORT_DISH_SALES', operator_type: 'user', operator_id: userId, shop_id: shopId,
+        after_data: out,
+        idempotency_key: common.idempotency.shopKey(shopId, clientRequestId),
+      });
+    } catch (e) { /* 审计失败不阻断主流程 */ }
+  }
+  return ok(out);
+}
+
+/**
+ * 形态 C（外卖「商品销量」）导入：解析 → 甲级门禁 → 落库（一表多天 ⇒ 多组，v1.7 C-7）。
+ * 🔴 platform 必须由调用方显式传入（不许按文件名猜）；落库时缺值 ⇒ fail('请选择外卖平台')，不许 fallback 'other'。
+ */
+async function handleFormCImport({ shopId, userId, clientRequestId, dishDetect, matrix, confirm, platform }) {
+  const sheetRows = matrix.sheets[dishDetect.sheet].rows;
+  const parsed = parseDishSalesC(sheetRows, { platform });
+
+  // 甲级门禁（fail-closed）：逐组展开成行喂 checkGradeA；platform 由 opts 传入（R181m）
+  const gradeRows = [];
+  for (const g of parsed.groups) {
+    for (const r of g.rows) gradeRows.push({ bizDate: g.bizDate, qty: r.qty, amountFen: r.amountFen });
+  }
+  const grade = checkGradeA({ platform: platform || '', shopId, header: [], rows: gradeRows, totals: parsed.totals }, SALES_SCHEMA);
+
+  // 预览（不落库）：zeroAmountQty 必须可见（用户要先知道「这份表里有 N 份是 0 元的」）
+  if (!confirm) {
+    return ok({
+      shop_id: shopId,
+      platform: platform || '',
+      shape: DISH_SHAPES.C,
+      grade,
+      preview: {
+        groups: parsed.groups,
+        totals: parsed.totals,
+        nonInt: parsed.nonInt,
+        zeroAmountQty: parsed.zeroAmountQty,
+        unmatched: parsed.unmatched,
+      },
+      client_request_id: clientRequestId || '',
+    });
+  }
+
+  // 🔴 落库：platform 必填，缺值 fail（不许 fallback 'other' 静默入库）
+  if (!platform) return fail(ERROR_CODES.INVALID_PARAM, '请选择外卖平台');
+  if (!grade.pass) return fail(ERROR_CODES.INVALID_PARAM, '甲级门禁未通过，已阻断落库');
+
+  // 🔒 幂等（重放形态）：命中即返回首次结果、不重复写入。
+  const prior = await common.idempotency.findPriorResult(db, shopId, clientRequestId);
+  if (prior) return ok(prior);
+
+  const now = nowUtc();
+  let written = 0;
+  for (const g of parsed.groups) {
+    for (let seq = 0; seq < g.rows.length; seq++) {
+      const r = g.rows[seq];
+      const _id = saleDocId(shopId, platform, g.bizDate, seq);
+      await db.collection('external_sales_daily').doc(_id).set({
+        data: {
+          shop_id: shopId,
+          biz_date: g.bizDate,
+          external_ref_id: dishRefId(platform, g.bizDate, r.dishKey),
+          dish_key: r.dishKey,
+          qty: r.qty,
+          amount: r.amountFen,          // 销售额(元) → 分整数（🔴 非订单交易额）
+          platform,
+          source: 'excel',
+          created_at: now,
+        },
+      });
+      written++;
+    }
+  }
+
+  const out = {
+    shop_id: shopId,
+    platform,
+    shape: DISH_SHAPES.C,
+    written,
+    groups: parsed.groups.map((g) => ({ bizDate: g.bizDate, count: g.rows.length })),
+    totals: parsed.totals,
+    zeroAmountQty: parsed.zeroAmountQty,
+    unmatched: parsed.unmatched,
+    client_request_id: clientRequestId || '',
+  };
+
+  if (clientRequestId) {
+    try {
+      await common.audit.writeAudit(db, {
+        action: 'IMPORT_DISH_SALES_C', operator_type: 'user', operator_id: userId, shop_id: shopId,
         after_data: out,
         idempotency_key: common.idempotency.shopKey(shopId, clientRequestId),
       });

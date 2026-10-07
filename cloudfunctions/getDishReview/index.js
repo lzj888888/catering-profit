@@ -32,7 +32,7 @@ const { toMonth } = common.utilTime;
 
 // 🔴 R232f：算法层已外提到 service.js（纯函数 · 零 db）⇒ 6 处口径首次可被独立复算。
 //   本文件只负责：鉴权 → 付费墙 → 取数 → 调 service → 返回。
-const { buildDishReview } = require('./service');
+const { buildDishReview, buildTakeawayReview, splitSales } = require('./service');
 
 exports.main = async (event) => {
   const ctx = cloud.getWXContext();
@@ -52,25 +52,25 @@ exports.main = async (event) => {
 
   const da = makeAdapter(db);
 
-  // ===== 3. 读堂食销量（platform='pos'；listAll 分页取全，突破单页 1000）=====
-  const salesRes = await da.listAll('external_sales_daily', { shop_id: shopId, platform: 'pos' });
-  const sales = (salesRes && salesRes.data) || [];
+  // ===== 3. 读全部销量行（去掉 platform 过滤；listAll 分页取全，突破单页 1000）=====
+  const salesRes = await da.listAll('external_sales_daily', { shop_id: shopId });
+  const allSales = (salesRes && salesRes.data) || [];
 
   // ===== 4. 读成本卡（listAll，取各 card_code 最新版本；软删自动过滤）=====
   const cardsRes = await da.listAll('shop_cost_card', { shop_id: shopId });
+  const cards = (cardsRes && cardsRes.data) || [];
 
-  // ===== 5~6. 聚合 + 匹配 + 毛利计算 + 排名 + 合计（纯函数 · 见 service.js）=====
-  //   🔴 口径一字未改，仅从内联外提；单源依赖由此处注入（不扩散）。
-  const { dine_in: ranked, unmatched, totals } = buildDishReview(
-    sales,
-    (cardsRes && cardsRes.data) || [],
-    { normalizeDishName, toMonth },
-  );
+  // ===== 5~6. 分流 + 聚合 + 匹配 + 毛利计算 + 排名 + 合计（纯函数 · 见 service.js）=====
+  //   🔴 分流在 service 层做（splitSales 可复算），不在 index 做业务判断。
+  const { dineIn, takeaway: takeawaySales } = splitSales(allSales);
+  const { dine_in: ranked, unmatched, totals } = buildDishReview(dineIn, cards, { normalizeDishName, toMonth });
+  const takeawayResult = buildTakeawayReview(takeawaySales, cards, { normalizeDishName, toMonth });
 
   return ok({
     shop_id: shopId,
     dine_in: ranked,        // 堂食排行
-    takeaway: null,         // 形态 C（外卖商品销量）本批不做 ⇒ 空态，不默认 0（红线 18）
+    // 无外卖数据 ⇒ null（空态，不默认 0，红线 18）；有数据 ⇒ { by_platform, totals }
+    takeaway: Object.keys(takeawayResult.by_platform).length ? takeawayResult : null,
     unmatched,
     totals,
     truncated: !!(salesRes.truncated || cardsRes.truncated),

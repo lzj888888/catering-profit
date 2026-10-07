@@ -9,8 +9,10 @@ function validateInput(event) {
 
   if (typeof src.fileID !== 'string' || !src.fileID) return err('fileID 必须是非空字符串');
 
-  // platform 可选：不传则云函数按表头自动检测；传了必须是 taobao / meituan
-  const platform = (src.platform === 'taobao' || src.platform === 'meituan') ? src.platform : '';
+  // platform 可选：不传则云函数按表头自动检测；传了必须是外卖平台枚举（不含 pos —— 堂食不走这条路）。
+  // 🔴 v1.7 §10-2：形态 C 的 platform 必须由调用方显式传入（不许按文件名猜）；此处放宽以放行 eleme/other。
+  const PLATFORMS = ['taobao', 'meituan', 'eleme', 'other'];
+  const platform = PLATFORMS.indexOf(src.platform) >= 0 ? src.platform : '';
 
   const confirm = src.confirm === true;
 

@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：149 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：150 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -445,6 +445,12 @@
 //         + ③ 构造表四条边界（仅「销量」判出 / R2 含销售方式不得判 / 旧列名仍判出 / 缺销售额不得判）
 //         + ④ 规范条款锚点（§5.2「严禁取用」+ 红线 R232-1，任一被删即红）。15 条断言；
 //         变异回灌 6/6 全有效红（收窄列名 / 只扫 R3 / 去销售额条件 / 去区分项 / 删§5.2 / 删红线）
+//       + 形态C 解析守卫（tools/check_formc_parse.js，H-1 批次：v1.7 判定已认得出，但**解析尚未实现** ⇒
+//         本批补 parseDishSalesC —— 单行表头 R1、白名单取列（13 列丢弃不报错）、行内 biz_date、qty 先 toNum
+//         （销量列全文本）、amount=销售额转分（🔴 严禁「订单交易额」）、禁止补零、zeroAmountQty 单列。
+//         判据 = S service.js 可加载（xlsx 空桩）+ R-C1 真样例复算（354 行/118 份/1823.08 元/7 组/51 商品/
+//         zeroAmountQty 恰 1 条 来点辣椒吗 43）+ R-C2 反例（订单交易额 2974.91≠1823.08 / 补零 357≠354 /
+//         销量文本 isFinite("43")=false）+ R-C3 幂等（同表重导 _id 集合逐字节相同）+ R-C4 自失效护栏。16 条断言）
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -878,6 +884,8 @@ const SUITES = [
   //   原全内联在 `exports.main` 里 ⇒ **环上零判据**（C-10 就出在这个函数，靠人工审查才发现）。
   //   R232f 把算法外提为 `service.js::buildDishReview`（纯函数·零 db）⇒ 守卫直接 require 它复算 6 处口径 + C-10 回归。
   ['dishreview-engine',    'tools/check_dishreview_engine.js'],
+  // H-1（M3.33 形态 C 解析层）：parseDishSalesC 守卫 —— 见头注 H-1 段。
+  ['formc-parse',          'tools/check_formc_parse.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

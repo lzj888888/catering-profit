@@ -130,8 +130,29 @@
     <view class="hint">{{t.importPickHint}}</view>
     <button class="btn primary" bindtap="onChooseFile">{{t.importPick}}</button>
 
-    <!-- 预览（解析 + 甲级门禁后展示；确认后才落库） -->
-    <view class="card2" wx:if="{{importPreview}}">
+    <!-- 预览（解析 + 甲级门禁后展示；确认后才落库）—— 形态 C 与账单分开展示 -->
+    <!-- 形态 C（外卖商品销量）：platform 机器判不出 ⇒ 必须选平台 -->
+    <view class="card2" wx:if="{{importPreview && importShape === 'C'}}">
+      <view class="hint">{{t.importShapeCHint}}</view>
+      <view class="field">
+        <text class="lbl">{{t.importPlatformLabel}}</text>
+        <picker mode="selector" range="{{importPlatformOptions}}" range-key="label" value="{{importPlatformIndex}}" bindchange="onImportPlatformPick">
+          <view class="pick">{{importPlatformChoiceLabel || t.importPickPlatform}}</view>
+        </picker>
+      </view>
+      <view class="cell">
+        <text class="lbl">{{t.importTotalLabel}}</text>
+        <text class="val">{{t.cur}}{{importPreview.amountYuan}}</text>
+      </view>
+      <view class="cell" wx:if="{{importZeroAmountQty.length}}">
+        <text class="lbl">{{t.importZeroAmountLabel}}</text>
+        <text class="val">{{importZeroAmountQty.length}} {{t.importRowUnit}}</text>
+      </view>
+      <view class="warn" wx:if="{{importGrade && !importGrade.pass}}">{{t.importFail}}</view>
+      <button class="btn primary" wx:if="{{importGrade && importGrade.pass}}" style="margin-top:24rpx;" disabled="{{!importPlatformChoice}}" bindtap="onConfirmImport">{{t.importConfirm}}</button>
+    </view>
+    <!-- 账单（批次 F）预览 -->
+    <view class="card2" wx:elif="{{importPreview}}">
       <view class="cell">
         <text class="lbl">{{t.importPlatformLabel}}</text>
         <text class="val">{{importPlatform}}</text>

@@ -180,6 +180,10 @@ const CASES = [
   //   32 条 = ⓪ 模块在场 4 + ① 真调生产 buildDishReview 16（含 C-10 回归 + 反恒真）+ ② 架构防退化 5 + ③ 单源 3 + ④ 自失效护栏 4。
   //   变异回灌 6/6 有效红（版本选取/未匹配归零/零除/漏项/本地时区/聚合覆盖），全部命中目标断言名。
   { key: 'check_dishreview_engine', rel: 'tools/check_dishreview_engine.js' }, // 32 条（⓪+①+②+③+④）
+  // H-1 扩面（M3.33 形态 C 解析层）：parseDishSalesC 守卫同批纳入 —— 它的 R-C2 三组反例（订单交易额 2974.91≠1823.08 /
+  //   补零 357≠354 / 销量文本 isFinite("43")=false）与 R-C4 自失效护栏正是「非恒真」凭据；
+  //   16 条删掉一批仍 > 0 ⇒ A0-② 的「通过数为 0」下界抓不到，只有 A2「声明 ≡ 实跑」能发现（同 round73 立本守卫根因）。
+  { key: 'check_formc_parse', rel: 'tools/check_formc_parse.js' }, // 16 条（S + R-C1/2/3/4）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];
