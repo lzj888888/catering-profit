@@ -252,12 +252,27 @@ async function handleFormCImport({ shopId, userId, clientRequestId, dishDetect, 
   const grade = checkGradeA({ platform: platform || '', shopId, header: [], rows: gradeRows, totals: parsed.totals }, SALES_SCHEMA);
 
   // 预览（不落库）：zeroAmountQty 必须可见（用户要先知道「这份表里有 N 份是 0 元的」）
+  //
+  // 🔴 预览**不因缺 platform 而阻断**（R232j 修订）：形态 C 的平台机器判不出，必须由用户在
+  //   预览之后选（页面上 picker 就长在预览卡里）⇒ 首次预览时 platform 必然为空。
+  //   若此处按 `grade.pass` 决定界面上是否给「确认导入」按钮，就会形成**死锁**：
+  //     没按钮 → 用户选不了平台 → 平台永远空 → 门禁永远不过 → 按钮永远不出现。
+  //   ⇒ 预览回一个 `platform_missing: true` 的**提示位**（界面照常渲染 picker + 合计），
+  //     **真正阻断只发生在本函数 confirm=true 分支**（下方 `if (!platform) return fail`）。
+  //   门禁里的非-platform 项（日期/金额/qty/门店）与 platform 无关，照常在预览里如实上报。
+  const gradeNonPlatform = {
+    pass: grade.failures.every((f) => f.code === 'SCHEMA_PLATFORM'),
+    level: grade.level,
+    failures: grade.failures.filter((f) => f.code !== 'SCHEMA_PLATFORM'),
+  };
   if (!confirm) {
     return ok({
       shop_id: shopId,
       platform: platform || '',
       shape: DISH_SHAPES.C,
-      grade,
+      // 预览期门禁：剔掉 platform 项（平台的阻断留给 confirm；见上方注释）
+      grade: platform ? grade : gradeNonPlatform,
+      platform_missing: !platform,
       preview: {
         groups: parsed.groups,
         totals: parsed.totals,

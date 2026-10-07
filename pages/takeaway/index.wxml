@@ -132,13 +132,21 @@
 
     <!-- 预览（解析 + 甲级门禁后展示；确认后才落库）—— 形态 C 与账单分开展示 -->
     <!-- 形态 C（外卖商品销量）：platform 机器判不出 ⇒ 必须选平台 -->
-    <view class="card2" wx:if="{{importPreview && importShape === 'C'}}">
+    <view class="card2" wx:if="{{importPreview && importShape === shapeC}}">
       <view class="hint">{{t.importShapeCHint}}</view>
       <view class="field">
         <text class="lbl">{{t.importPlatformLabel}}</text>
         <picker mode="selector" range="{{importPlatformOptions}}" range-key="label" value="{{importPlatformIndex}}" bindchange="onImportPlatformPick">
           <view class="pick">{{importPlatformChoiceLabel || t.importPickPlatform}}</view>
         </picker>
+      </view>
+      <view class="cell">
+        <text class="lbl">{{t.importRowsLabel}}</text>
+        <text class="val">{{importPreview.groupCount}} {{t.importDaysUnit}}</text>
+      </view>
+      <view class="cell">
+        <text class="lbl">{{t.importMonthsLabel}}</text>
+        <text class="val">{{importPreview.dateRangeText}}</text>
       </view>
       <view class="cell">
         <text class="lbl">{{t.importTotalLabel}}</text>
@@ -149,7 +157,11 @@
         <text class="val">{{importZeroAmountQty.length}} {{t.importRowUnit}}</text>
       </view>
       <view class="warn" wx:if="{{importGrade && !importGrade.pass}}">{{t.importFail}}</view>
-      <button class="btn primary" wx:if="{{importGrade && importGrade.pass}}" style="margin-top:24rpx;" disabled="{{!importPlatformChoice}}" bindtap="onConfirmImport">{{t.importConfirm}}</button>
+      <!-- 🔴 确认按钮**不看 grade.pass 里的 platform 项**（云函数预览期已剔掉它）：形态 C 的
+           平台由用户在下面 picker 里选，若这里按 grade 拦，picker 与按钮同屏却永远点不到 = 死锁。
+           未选平台时按钮**可见但禁用**（disabled 绑定 importPlatformChoice），提示语在按钮下方。 -->
+      <button class="btn primary" wx:if="{{!importGrade || importGrade.pass}}" style="margin-top:24rpx;" disabled="{{!importPlatformChoice}}" bindtap="onConfirmImport">{{t.importConfirm}}</button>
+      <view class="hint" wx:if="{{!importGrade || importGrade.pass}}">{{t.importPickPlatformHint}}</view>
     </view>
     <!-- 账单（批次 F）预览 -->
     <view class="card2" wx:elif="{{importPreview}}">

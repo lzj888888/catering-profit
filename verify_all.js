@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：150 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：151 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -451,6 +451,14 @@
 //         判据 = S service.js 可加载（xlsx 空桩）+ R-C1 真样例复算（354 行/118 份/1823.08 元/7 组/51 商品/
 //         zeroAmountQty 恰 1 条 来点辣椒吗 43）+ R-C2 反例（订单交易额 2974.91≠1823.08 / 补零 357≠354 /
 //         销量文本 isFinite("43")=false）+ R-C3 幂等（同表重导 _id 集合逐字节相同）+ R-C4 自失效护栏。16 条断言）
+//       + 形态机器值契约守卫（tools/check_shape_machine_value.js，R232j：真机实测 P0 —— 云函数返回
+//         `shape='waimai_goods'`，而 page/wxml 曾按字母 `'C'` 比对 ⇒ isC 恒 false ⇒ 形态 C 卡被当账单渲染
+//         ⇒ 平台/识别到/归月到全空白 + 无平台 picker + 门禁因 platform 空而必挂「门禁未通过，已阻断导入」
+//         （**合计 1823.08 正确 ⇒ 解析层无辜，纯前端契约错位**）。同批修：分→元 `(x||0/100)` 只在假值
+//         分支除 100（真值放大 100 倍）；预览期 platform 必空 ⇒ 云函数改回 `platform_missing` 提示位、
+//         阻断只留 confirm 分支（否则 picker 与按钮同屏却永远点不到 = 死锁）。
+//         判据 = V-1 两侧取值非退化 + V-2 三值逐字相等（契约本身）+ V-3 行为判据（云函数返回 C ⇒ 页面判得出）
+//         + V-3-② 自失效护栏（字母 'C' 必须判不出）+ V-4 去注释后源码零残留。12 条断言）
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -886,6 +894,9 @@ const SUITES = [
   ['dishreview-engine',    'tools/check_dishreview_engine.js'],
   // H-1（M3.33 形态 C 解析层）：parseDishSalesC 守卫 —— 见头注 H-1 段。
   ['formc-parse',          'tools/check_formc_parse.js'],
+  // R232j（形态机器值契约）：云函数 shape 返回机器值（waimai_goods），前端曾按字母 'C' 比对
+  //   ⇒ 形态 C 表格恒走账单分支（全空白 + 门禁必挂）。本守卫钉死两侧 DISH_SHAPES 逐字相等。
+  ['shape-machine-value',  'tools/check_shape_machine_value.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

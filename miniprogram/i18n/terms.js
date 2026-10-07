@@ -528,6 +528,7 @@ const TERMS = {
       importTotalLabel: '合计',
       importExcludedLabel: '已排除',
       importRowUnit: '行',
+      importDaysUnit: '天',
       importConfirm: '确认导入',
       importSuccess: '导入成功',
       importFail: '门禁未通过，已阻断导入',
@@ -536,6 +537,7 @@ const TERMS = {
       // v1.7 §2.5：形态 C（外卖商品销量）导入 —— platform 机器判不出 ⇒ 必须先选平台
       importShapeCHint: '这是外卖商品销量表，请先选择平台再导入。',
       importPickPlatform: '请选择外卖平台',
+      importPickPlatformHint: '选好平台后点「确认导入」即可落库。',
       importZeroAmountLabel: '零元行',
     },
     // 费用侧各细项「行内说明」（⚠️ 按**显示名**（与 collections.js item_name 一致）挂，随 terms 双副本走）

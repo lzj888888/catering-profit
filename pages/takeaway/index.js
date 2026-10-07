@@ -14,6 +14,17 @@ const { calcTakeawayOrder, reverseListedPrice } = require('../../utils/takeawayD
 
 const TK = TERMS.ledger.takeaway;
 
+// 🔴 表形态**机器值**（必须与云函数 cloudfunctions/importSalesBill/service.js::DISH_SHAPES 逐字一致）。
+//   契约：云函数返回的 `shape` 是 **机器值**（'dish_sales' / 'combo_detail' / 'waimai_goods'），
+//   不是字母序号。曾在此写 `d.shape === 'C'` ⇒ 与 'waimai_goods' 永不相等 ⇒ **恒走账单分支**
+//   （真实缺陷：形态 C 表格渲染出「平台/识别到/归月到」全空白、无平台 picker、门禁必挂）。
+//   伴侣守卫：tools/check_shape_machine_value.js。
+const DISH_SHAPES = {
+  A: 'dish_sales',
+  B: 'combo_detail',
+  C: 'waimai_goods',
+};
+
 // v1.7 形态 C（外卖商品销量）：外卖平台选择项（label 来自 terms 单源；不含 pos —— 堂食不走这条路）
 const IMPORT_PLATFORM_OPTIONS = ['meituan', 'eleme', 'taobao', 'other']
   .map((v) => ({ value: v, label: (TERMS.card.reviewPlatformNames[v] || v) }));
@@ -97,6 +108,7 @@ Page({
       importTotalLabel: TK.importTotalLabel,
       importExcludedLabel: TK.importExcludedLabel,
       importRowUnit: TK.importRowUnit,
+      importDaysUnit: TK.importDaysUnit,
       importConfirm: TK.importConfirm,
       importSuccess: TK.importSuccess,
       importFail: TK.importFail,
@@ -105,6 +117,7 @@ Page({
       // v1.7 形态 C（外卖商品销量）：平台机器判不出 ⇒ 必须选平台
       importShapeCHint: TK.importShapeCHint,
       importPickPlatform: TK.importPickPlatform,
+      importPickPlatformHint: TK.importPickPlatformHint,
       importZeroAmountLabel: TK.importZeroAmountLabel,
       save: TERMS.buttons.save,
       cancel: TERMS.buttons.cancel,
@@ -132,12 +145,14 @@ Page({
     importPreview: null,   // 预览 { rows, totals, months, excluded }
     importing: false,      // 防重复提交
     // v1.7 形态 C（外卖商品销量）：platform 机器判不出 ⇒ 必须选平台
-    importShape: '',                    // '' | 'A' | 'C'
+    importShape: '',                    // 机器值：'' | 'dish_sales' | 'waimai_goods'（见顶部 DISH_SHAPES）
+    shapeC: DISH_SHAPES.C,              // wxml 不读 JS 常量 ⇒ 单源经 data 下发（禁止在 wxml 里写字面量）
     importPlatformOptions: IMPORT_PLATFORM_OPTIONS,   // [{ value, label }]（label 来自 terms 单源）
     importPlatformIndex: -1,            // -1 = 未选
     importPlatformChoice: '',           // 提交值（形态 C 落库用）
     importPlatformChoiceLabel: '',      // picker 显示名
     importZeroAmountQty: [],            // 预览：零元行（v1.7 C-5）
+    importPlatformMissing: false,       // 预览期平台必空（云函数回该标志）⇒ 不据此禁用「确认导入」
   },
 
   onLoad() { this.load(); },
@@ -344,13 +359,21 @@ Page({
       const d = await api.call('importSalesBill', { fileID, confirm: false });
       wx.hideLoading();
       const p = d.preview || null;
-      const isC = d.shape === 'C';
+      const isC = d.shape === DISH_SHAPES.C;
       let preview = null;
       if (isC) {
-        // 形态 C：按平台分块，无 months/excluded；零元行必须可见（v1.7 C-5）
+        // 形态 C：按天分组（groups），无 months/excluded；零元行必须可见（v1.7 C-5）。
+        // 🔴 分 → 元 必须**在括号外**除（R232j 修）：原写法 `(x || 0 / 100).toFixed(2)`
+        //   把 `/100` 放进了 `||` 右支 ⇒ 只在 x 为假时才除，真值时原样输出分值（182308.00，放大 100 倍）。
+        const amtFen = (p && p.totals && typeof p.totals.amountFen === 'number') ? p.totals.amountFen : 0;
+        // 日期范围（首日 ~ 末日）：groups 已按 bizDate 升序排（云函数 sort 保证）
+        const gs = (p && p.groups) ? p.groups : [];
+        const first = gs.length ? String(gs[0].bizDate || '') : '';
+        const last = gs.length ? String(gs[gs.length - 1].bizDate || '') : '';
         preview = {
-          groupCount: (p && p.groups) ? p.groups.length : 0,
-          amountYuan: ((p && p.totals && p.totals.amountFen) || 0 / 100).toFixed(2),
+          groupCount: gs.length,
+          dateRangeText: (first && last) ? (first === last ? first : (first + ' ~ ' + last)) : '',
+          amountYuan: (amtFen / 100).toFixed(2),
         };
       } else {
         // 账单（批次 F）：amount 分→元、months join 都在这里做（wxml 不做法调用 / 浮点除法）
@@ -367,6 +390,11 @@ Page({
         importShape: d.shape || '',
         importPlatform: d.platform || '',
         importGrade: d.grade || null,
+        // 🔴 形态 C：预览期 platform 必空（用户还没选）⇒ 云函数回 platform_missing，
+        //   此时**不能**用 grade.pass 挡住确认按钮（否则 picker 在按钮旁边却永远点不到 = 死锁）。
+        //   平台的阻断在 confirm 分支（云函数 `if (!platform) return fail`）+ 前端
+        //   `onConfirmImport` 的 picker 兜底，两处都拦得住，不必在预览期拦。
+        importPlatformMissing: !!d.platform_missing,
         importPreview: preview,
         importZeroAmountQty: (isC && p && p.zeroAmountQty) ? p.zeroAmountQty : [],
         // 形态 C 平台选择重置
@@ -397,8 +425,8 @@ Page({
     if (!this.data.importFileID) { wx.showToast({ title: TK.importNoFile, icon: 'none' }); return; }
     if (this.data.importing) return;
     // 形态 C：必须先选平台（缺值云函数也会 fail，此处前端兜底拦住，避免白跑一趟）
-    const platform = this.data.importShape === 'C' ? this.data.importPlatformChoice : this.data.importPlatform;
-    if (this.data.importShape === 'C' && !platform) {
+    const platform = this.data.importShape === DISH_SHAPES.C ? this.data.importPlatformChoice : this.data.importPlatform;
+    if (this.data.importShape === DISH_SHAPES.C && !platform) {
       wx.showToast({ title: this.data.t.importPickPlatform, icon: 'none' });
       return;
     }

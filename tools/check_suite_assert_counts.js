@@ -184,6 +184,7 @@ const CASES = [
   //   补零 357≠354 / 销量文本 isFinite("43")=false）与 R-C4 自失效护栏正是「非恒真」凭据；
   //   16 条删掉一批仍 > 0 ⇒ A0-② 的「通过数为 0」下界抓不到，只有 A2「声明 ≡ 实跑」能发现（同 round73 立本守卫根因）。
   { key: 'check_formc_parse', rel: 'tools/check_formc_parse.js' }, // 16 条（S + R-C1/2/3/4）
+  { key: 'check_shape_machine_value', rel: 'tools/check_shape_machine_value.js' }, // 12 条（V-1/2/3/4）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];
