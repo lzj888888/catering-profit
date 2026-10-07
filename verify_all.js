@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：148 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：149 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -874,6 +874,10 @@ const SUITES = [
   //   而真样例是「销量」⇒ 形态 C **永远判不出**（硬阻断）。v1.7 C-1/C-2 已勘误。
   //   判据一律判行为：拿真样例矩阵 + 构造最小表喂进**生产** detectDishShape。
   ['formc-shape',          'tools/check_formc_shape.js'],
+  // R232f（M3.33 阶段② 读侧）getDishReview 算法层守卫 —— 该函数的「聚合/最新版本/匹配/毛利/排名/totals/未匹配」
+  //   原全内联在 `exports.main` 里 ⇒ **环上零判据**（C-10 就出在这个函数，靠人工审查才发现）。
+  //   R232f 把算法外提为 `service.js::buildDishReview`（纯函数·零 db）⇒ 守卫直接 require 它复算 6 处口径 + C-10 回归。
+  ['dishreview-engine',    'tools/check_dishreview_engine.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

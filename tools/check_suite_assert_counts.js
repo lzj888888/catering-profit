@@ -176,6 +176,10 @@ const CASES = [
   { key: 'check_excel_date_utc', rel: 'tools/check_excel_date_utc.js' }, // 14 条（①+②+③+④）
   { key: 'check_dish_key_single_source', rel: 'tools/check_dish_key_single_source.js' }, // 12 条（①+②+③+④）
   { key: 'check_formc_shape', rel: 'tools/check_formc_shape.js' }, // 15 条（①+②+③+④）
+  // R232f：getDishReview 算法层守卫 —— 阶段②读侧原「零判据」（算法内联在 exports.main 里，无法 require）。
+  //   32 条 = ⓪ 模块在场 4 + ① 真调生产 buildDishReview 16（含 C-10 回归 + 反恒真）+ ② 架构防退化 5 + ③ 单源 3 + ④ 自失效护栏 4。
+  //   变异回灌 6/6 有效红（版本选取/未匹配归零/零除/漏项/本地时区/聚合覆盖），全部命中目标断言名。
+  { key: 'check_dishreview_engine', rel: 'tools/check_dishreview_engine.js' }, // 32 条（⓪+①+②+③+④）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

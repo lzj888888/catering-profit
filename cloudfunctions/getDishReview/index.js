@@ -30,6 +30,10 @@ const { normalizeDishName } = common.dishKey;
 //   用法与 adminExport / adminInit 等既有函数完全一致（const { ... } = common.utilTime）。
 const { toMonth } = common.utilTime;
 
+// 🔴 R232f：算法层已外提到 service.js（纯函数 · 零 db）⇒ 6 处口径首次可被独立复算。
+//   本文件只负责：鉴权 → 付费墙 → 取数 → 调 service → 返回。
+const { buildDishReview } = require('./service');
+
 exports.main = async (event) => {
   const ctx = cloud.getWXContext();
 
@@ -54,66 +58,14 @@ exports.main = async (event) => {
 
   // ===== 4. 读成本卡（listAll，取各 card_code 最新版本；软删自动过滤）=====
   const cardsRes = await da.listAll('shop_cost_card', { shop_id: shopId });
-  const latestByCode = new Map();
-  const nameToCode = new Map();   // 归一名称 → card_code（最新版本）
-  for (const c of ((cardsRes && cardsRes.data) || [])) {
-    const cc = c.card_code;
-    if (!cc) continue;
-    const cur = latestByCode.get(cc);
-    if (!cur || (c.version || 0) > (cur.version || 0)) latestByCode.set(cc, c);
-  }
-  for (const [cc, c] of latestByCode) {
-    const nm = normalizeDishName(c.name);
-    if (nm) nameToCode.set(nm, cc);
-  }
 
-  // ===== 5. 按 dish_key 聚合销量 =====
-  const agg = new Map();
-  for (const s of sales) {
-    const k = (s.dish_key == null ? '' : String(s.dish_key)).trim();
-    if (!k) continue;
-    const a = agg.get(k) || { qty: 0, amountFen: 0 };
-    a.qty += (Number(s.qty) || 0);
-    a.amountFen += (Number(s.amount) || 0);
-    agg.set(k, a);
-  }
-
-  // ===== 6. 计算排名（全量明细，不截断）=====
-  const ranked = [];
-  const unmatched = [];
-  for (const [dishKey, a] of agg) {
-    const cardCode = nameToCode.get(normalizeDishName(dishKey)) || '';
-    const card = cardCode ? latestByCode.get(cardCode) : null;
-    if (!card) {
-      unmatched.push({ dish_key: dishKey, name: dishKey, qty: a.qty, amountFen: a.amountFen });
-      continue;
-    }
-    const unitCostFen = Number(card.total_cost) || 0;
-    const totalCostFen = Math.round(a.qty * unitCostFen);
-    const grossFen = a.amountFen - totalCostFen;
-    const marginPct = a.amountFen > 0 ? Math.round((grossFen / a.amountFen) * 10000) / 100 : 0;
-    ranked.push({
-      dish_key: dishKey,
-      name: card.name || dishKey,
-      card_code: cardCode,
-      qty: a.qty,
-      amountFen: a.amountFen,
-      totalCostFen,
-      grossFen,
-      marginPct,
-      snapshot_month: toMonth(card.created_at),
-    });
-  }
-  ranked.sort((x, y) => y.grossFen - x.grossFen);   // 毛利降序
-
-  const totals = {
-    qty: ranked.reduce((s, x) => s + x.qty, 0) + unmatched.reduce((s, x) => s + x.qty, 0),
-    amountFen: ranked.reduce((s, x) => s + x.amountFen, 0) + unmatched.reduce((s, x) => s + x.amountFen, 0),
-    costFen: ranked.reduce((s, x) => s + x.totalCostFen, 0),
-    grossFen: ranked.reduce((s, x) => s + x.grossFen, 0),
-    dishCount: ranked.length,
-    unmatchedCount: unmatched.length,
-  };
+  // ===== 5~6. 聚合 + 匹配 + 毛利计算 + 排名 + 合计（纯函数 · 见 service.js）=====
+  //   🔴 口径一字未改，仅从内联外提；单源依赖由此处注入（不扩散）。
+  const { dine_in: ranked, unmatched, totals } = buildDishReview(
+    sales,
+    (cardsRes && cardsRes.data) || [],
+    { normalizeDishName, toMonth },
+  );
 
   return ok({
     shop_id: shopId,
