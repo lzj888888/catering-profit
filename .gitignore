@@ -68,3 +68,12 @@ _m3/
 # `_peek.txt` = `peek_tail.py` 的临时输出，内容是重启键两处长行的**片段原文** ——
 #   入 `review/evidence/**` 会构成「单源标记词全文照抄」（A7 单源不扩散）⇒ **不入库**（文件保留在磁盘）。
 /review/evidence/r181l_stage1_import_feed/_peek.txt
+
+# R235：`gitcache_rebuilt.json` = `rebuild_cache.py` 的**派生产物**（它自己写、**全仓无人读**
+#   —— 已核实：只有 3 个 `rebuild_cache.py` 各写自己目录下的那一份，NOTE 里仅一句提及）。
+#   每轮约 **1.2 MB**，且**每次跑门禁都会重新生成**⇒ 混进提交就是纯体积负担、零证据价值
+#   （真正的证据是 `gate_full.txt` 与 rebuild 脚本打印的收敛行）。
+#   ⚠️ 与 r188 同例：**已入库的 r231b/r234/r235 三份保留不动**（历史误提交，不删不改）。
+#      本条只做**「将来新增不误提交」**的机械保证。注意 gitignore 的**固有语义**：该规则**同样匹配**
+#      那三份已入库件，但 git **对已跟踪文件不适用 ignore** ⇒ 三份仍在索引中、其改动照常可见。
+/review/evidence/**/gitcache_rebuilt.json
