@@ -1,0 +1,40 @@
+# H-1 真机预览码 · 出码取证（2026-10-07）
+
+- 出码命令：cli.bat preview --project <repo> --qr-format image --qr-output <唯一名>
+- 结果：rc=0 · 54.3s · `√ IDE server has started (127.0.0.1:10896)` · `√ Using AppID: wx33c110dc57a9c8dc` · `√ preview`
+- 源码包：TOTAL **471.8 KB**（483083 B）—— 远低于 2MB 硬上限
+- 出码时刻 **11:58:39** → 失效 **12:23:39**（+25 分钟）
+- 版本：`1c57aee`（含 H-1 批次）
+- 前置校验：env.js dev ≡ initDb DEV_ENV_ID = `cloud1-d4gphpoxy337f2a25` ✅
+
+## 机器验码（cv2 解码，非肉眼）
+| 对象 | 结果 |
+|---|---|
+| `qr_now_x2.png`（940×940 无损） | ✅ 解出 |
+| `qr_now.jpg`（470×470 JPEG） | ✅ 解出 |
+| 实印尺寸 317px / 250px / 199px | ✅ 三档全过（含 **37% 余量**） |
+
+解码内容（两图一致 ⇒ 单源）：
+`https://mp.weixin.qq.com/a/~~G1_LM8crfTQ~E2qsB35kUnALMCo8o79aHQ~~`
+
+## 交付通道
+1. 对话内 2x 码图（Read，零进程依赖）
+2. 桌面副本：`C:/Users/lzj/Desktop/店算_真机预览码_h1_20261007_115745.jpg`
+3. 本目录归档：`preview_qr_h1_x2.png`
+（按 §0 用户指示：**不弹窗**；用户明说"放屏幕"才走 qr_topwin.py）
+
+## 打印通道（§5）
+- PDF：`_gui/_qr_print_h1.pdf`（1 页 / 145 KB，Edge 无头）
+- **PDF 内码 cv2 解码 OK**（送纸前已验，非事后补验）
+- 送纸结果：**[SENT_UNCONFIRMED]** —— 已发送，但 120s 内未查到出纸事件；
+  且打印机状态查询本身 `PS_ERROR` 超时 ⇒ 疑似打印机侧状态（离线/缺纸/未开机）。
+- 🔴 **按脚本自身建议未重发**（重发会重复出纸）。
+
+## 交付通道实际状态
+| 通道 | 状态 |
+|---|---|
+| ① 对话内 2x 码图 | ✅ 已 Read 进对话（零进程依赖，首选） |
+| ② 桌面副本 | ✅ `C:/Users/lzj/Desktop/店算_真机预览码_h1_20261007_115745.jpg` |
+| ③ 仓库归档 | ✅ `review/evidence/rh1_formc_parse/preview_qr_h1_x2.png` |
+| ④ 打印 | ⚠️ 已发送未确认（打印机疑似离线） |
+| ⑤ 屏幕弹窗 | ⏭ **未做**（按 §0 用户指示：不默认弹窗；用户明说才走） |
