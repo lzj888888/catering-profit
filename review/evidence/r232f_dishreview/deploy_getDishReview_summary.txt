@@ -1,0 +1,39 @@
+R232f · getDishReview 重部署实测记录
+时间：2026-10-07
+============================================================
+
+【部署】
+调用：cli.bat cloud functions deploy --names getDishReview -r -e cloud1-d4gphpoxy337f2a25 --project <repo>
+耗时：19.5s
+结果：success=true / filesCount=18 / packSize=45.0 KB
+日志关键行：
+  √ [getDishReview] cloudfunction getDishReview exists in the cloud, will update it
+  √ [getDishReview] upload cloud function getDishReview - deploy
+  √ deploy cloudfunctions
+
+【filesCount 三方对账】（判据：磁盘数 ≡ filesCount）
+磁盘 find . -type f | wc -l = 18
+  common.js / cx_audit.js / cx_auth.js / cx_comboDerive.js / cx_dataAdapter.js
+  cx_dishKey.js / cx_entitlement.js / cx_errors.js / cx_idempotency.js / cx_index.js
+  cx_indicatorRef.js / cx_money.js / cx_rateLimit.js / cx_specDerive.js / cx_utilTime.js
+  index.js / package.json / service.js
+filesCount（部署回执） = 18
+⇒ 18 ≡ 18 ✅
+
+注：上轮（R232e 首次部署）为 17 个，本轮 +service.js ⇒ 18，与重构一致。
+
+【云端 info 回读】
+status  = 'Active'
+timeout = 3        ← 🔴 平台默认值，重部署后再次重生
+runtime = 'Nodejs16.13'
+
+🔴 R215d 曾声称「全 44 个无 3」 —— 本次实测**证伪**：
+   每次首次部署（含重部署）都会重新长出 timeout=3。
+   必须在 云开发控制台 → 版本与配置 → 高级配置 → 执行超时 抬到 20。
+   （cli 无此子命令；config.json 写入不生效。）
+
+【判据口径】
+✅ 日志同时含函数名 + ASCII 'true' + 完成行
+✅ filesCount 必回磁盘数
+🚫 绝不按 │（U+2502）匹配 —— GBK 下会误判
+🚫 rc 永不作判据（cli.bat 失败也返 0）
