@@ -154,6 +154,10 @@ Page({
       paybackSeeM3: M.paybackSeeM3,
       months: M.months,
       yuanUnit: M.yuanUnit,
+      // ── R234/J4 行内长提示折叠（M2 选址页 8 处 ≥18 字的提示）──
+      // 🔴 三处登记的第二处：漏映射 ⇒ 页面渲染成**空白**且零报错（R124 同族）
+      hintFoldShow: TERMS.ledger.hintFoldShow,
+      hintFoldHide: TERMS.ledger.hintFoldHide,
     },
     // 选择器
     cityIdx: 1, bizIdx: 1,          // 默认「二三线 / 中式正餐」
@@ -218,6 +222,10 @@ Page({
     showL2: false,
     showL3: false,
     showAssumptions: false,
+    // R234/J4：行内长提示折叠（与月录入页同一套 `hintFold` map 模式，默认全收起）。
+    //   ⚠️ 与上面三个区段级折叠（showL2/showL3/showAssumptions，走 .fold-toggle）**语义不同**：
+    //      那三个收的是**整块参数区**，本 map 收的是**一句说明文案**。两者并存、互不干扰。
+    hintFold: {},
     payback: null,           // {invest, cash, investDefault}（M2v1.3 回本卡）
     presetAssumptions: [],   // 底部假设卡行 [{label,val,src}]
   },
@@ -796,6 +804,18 @@ Page({
   onToggleL2() { this.setData({ showL2: !this.data.showL2 }); },
   onToggleL3() { this.setData({ showL3: !this.data.showL3 }); },
   onToggleAssumptions() { this.setData({ showAssumptions: !this.data.showAssumptions }); },
+
+  // R234/J4：**通用「行内提示折叠」开关**（与月录入页 `pages/month/input.js` 同一实现，
+  //   保持仓内单一形态 —— 两页若各写一套，将来改判据要改两处）。
+  //   一个 handler 服务本页 8 处，折叠态集中在 `hintFold` 一个 map 里，新增位置只是加一个键。
+  onToggleHintFold(e) {
+    const key = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.key) || '';
+    if (!key) return;                       // 无 key ⇒ 静默返回（不误翻别人的状态）
+    const cur = this.data.hintFold || {};
+    const next = Object.assign({}, cur);
+    next[key] = !cur[key];
+    this.setData({ hintFold: next });
+  },
   onGoM3() { wx.switchTab({ url: '/pages/m3/hub' }); },
 
   // 统一入参装配（preset 态）：cost_meta 形态运算**只在 assembleItems 内**，本方法不做任何保本/毛利率/摊销算式

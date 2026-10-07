@@ -68,6 +68,22 @@
     <view class="mod-go">›</view>
   </view>
 
+  <!-- ============================================================
+       R234/J3 · 首页常驻折叠引导条（第一次用？看这里）
+       · 放在三张模块卡**之后**：老板打开 App 先看到「能做什么」，再看到「怎么用」；
+         反过来会挡住三个入口（红队：首屏本来就紧，hero 200 + 3×模块卡 ≈ 608rpx）。
+       · **默认收起** ⇒ 收起时只占一行 88rpx，展开才铺开四步。
+       · 复用 exp.guideBody（与「我的 → 使用指引」同一份文案）⇒ 零新文案、不会两处漂移。
+       · 🔴 不是替代 mine 页的弹窗：弹窗关掉就不再出现，这条是**随时能看的回程路**。
+       ============================================================ -->
+  <view class="guide-fold">
+    <view class="guide-fold-head" bindtap="onToggleGuide">
+      <text class="guide-fold-guide">{{guideOpen ? t.guideFoldHide : t.guideFoldShow}}</text>
+      <text class="guide-fold-arrow">{{guideOpen ? '▾' : '▸'}}</text>
+    </view>
+    <view class="guide-fold-body" wx:if="{{guideOpen}}">{{t.guideBody}}</view>
+  </view>
+
   <!-- R199：底部 tabBar 上线后，「我的」入口已由 tabBar 承担 ⇒ 此处不重复。
      「设置」保留 —— 店铺设置没有 tabBar 替代入口，删了就少一条路。 -->
   <view class="idx-tip">{{t.tipMore}}</view>

@@ -15,3 +15,15 @@
 .card2 { border-left-width: 8rpx; border-left-style: solid; }
 /* 顶部「搜索 + 新增」/ 结果计数 / 卡片头部 / 「⋯」/ 三行压一行 均为**两个列表页共用**
    ⇒ 一律定义在 app.wxss 的「R191 列表页通用布局」段，本页不复制第二份。 */
+
+/* ===== R234/J4e · 行内长提示折叠（句级，与月录入页 / M2 / assetEdit / amortize / takeaway 同形）=====
+ * body 底色 #f3f7fb 与全局 `.hint` 同色 ⇒ 折叠前后视觉连贯。
+ * 🔴 字号一律 ≥28rpx（AD-G1）、头行 min-height ≥88rpx（AD-G2）。
+ * ⚠️ **不套外层白卡**（R234/J3 首版自伤教训）：外层只留间距，否则 body 嵌白卡 = 双层圆角。 */
+.hint-fold { padding: 0 0 6rpx; }
+.hint-fold-head { display: flex; align-items: center; justify-content: space-between;
+  min-height: 88rpx; padding: 14rpx 8rpx; }
+.hint-fold-guide { font-size: 28rpx; color: #1e3a5f; }
+.hint-fold-arrow { font-size: 28rpx; color: #1e3a5f; }
+.hint-fold-body { font-size: 28rpx; color: #4a5b70; line-height: 1.6; padding: 16rpx 20rpx;
+  background: #f3f7fb; border-radius: 12rpx; margin: 0 0 12rpx; }

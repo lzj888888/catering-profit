@@ -79,7 +79,14 @@
     <text class="lbl">{{t.matAliases}}</text>
     <input class="val-input" value="{{aliasesYuan}}" bindinput="onAliases" />
   </view>
-  <view class="hint">{{t.matAliasesHint}}</view>
+  <!-- R234/J4e：本句 ≥18 字 ⇒ 折叠（R234 完整清点口径：剥注释 + 含复合 class）。 -->
+  <view class="hint-fold">
+    <view class="hint-fold-head" data-key="matAliasesHint" bindtap="onToggleHintFold">
+      <text class="hint-fold-guide">{{hintFold.matAliasesHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+      <text class="hint-fold-arrow">{{hintFold.matAliasesHint ? '▾' : '▸'}}</text>
+    </view>
+    <view class="hint-fold-body" wx:if="{{hintFold.matAliasesHint}}">{{t.matAliasesHint}}</view>
+  </view>
 
   <!-- 备注 -->
   <view class="field">

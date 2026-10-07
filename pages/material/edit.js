@@ -50,7 +50,14 @@ Page({
       backToList: TERMS.card.backToList,
       // M3.20 词库建议
       matLexiconHint: TERMS.card.matLexiconHint,
+      // ── R234/J4e 行内长提示折叠（本页 1 处）──
+      // 🔴 三处登记的第二处：漏映射 ⇒ 页面渲染成**空白**且零报错（R124 同族）
+      // ⚠️ 引导语在 `TERMS.ledger` 组（跨页复用的通用模式引导语）。
+      hintFoldShow: TERMS.ledger.hintFoldShow,
+      hintFoldHide: TERMS.ledger.hintFoldHide,
     },
+    // R234/J4e：行内长提示折叠（本页 1 处，默认收起）。仓内统一实现。
+    hintFold: {},
     id: '',            // '' = 新增；非空 = 编辑
     isEdit: false,
     name: '',
@@ -100,6 +107,16 @@ Page({
     // M3.20（批次 B 收尾）：词库建议 chips（只建议、绝不自动改写 name）+ 选中的词库条目 key
     lexiconSuggests: [],
     std_key: '',
+  },
+
+  // R234/J4e：行内提示折叠开关（仓内统一形态 —— 多页同一实现，不各写一套）。
+  onToggleHintFold(e) {
+    const key = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.key) || '';
+    if (!key) return;                       // 无 key ⇒ 静默返回（不误翻别人的状态）
+    const cur = this.data.hintFold || {};
+    const next = Object.assign({}, cur);
+    next[key] = !cur[key];
+    this.setData({ hintFold: next });
   },
 
   onLoad(q) {

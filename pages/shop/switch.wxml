@@ -1,5 +1,12 @@
 <view class="container safe-bottom" wx:if="{{!loading}}">
-  <view class="hint">{{t.switchHint}}</view>
+  <!-- R234/J4e：本句 ≥18 字 ⇒ 折叠（R234 完整清点口径：剥注释 + 含复合 class）。 -->
+  <view class="hint-fold">
+    <view class="hint-fold-head" data-key="swSwitchHint" bindtap="onToggleHintFold">
+      <text class="hint-fold-guide">{{hintFold.swSwitchHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+      <text class="hint-fold-arrow">{{hintFold.swSwitchHint ? '▾' : '▸'}}</text>
+    </view>
+    <view class="hint-fold-body" wx:if="{{hintFold.swSwitchHint}}">{{t.switchHint}}</view>
+  </view>
 
   <!-- R208：一行 = 名字区（点击切店）+ 右侧「改名」/「删除」两个**显式按钮**。
        🔴 为什么把原来行尾的「⋯」actionSheet 换掉：李老师实测**没找到**删除入口，以为「店铺只能改名」

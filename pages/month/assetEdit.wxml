@@ -32,7 +32,15 @@
       <view class="picker-val {{startMonth ? '' : 'ph'}}">{{startMonth || t.fStartPh}}</view>
     </picker>
   </view>
-  <view class="hint">{{kind === 'lump' ? t.lumpMonthHint : t.fStartHint}}</view>
+  <!-- R234/J4：本句 21 字（≥18）⇒ 折叠。⚠️ 随 kind 切换两种文案（lumpMonthHint 21 / fStartHint 7），
+       但 data-key 只有一个：同一个位置的开关，不因文案长短换 key（否则两态各一个键、用户切 kind 时状态跳变）。 -->
+  <view class="hint-fold">
+    <view class="hint-fold-head" data-key="aeMonthHint" bindtap="onToggleHintFold">
+      <text class="hint-fold-guide">{{hintFold.aeMonthHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+      <text class="hint-fold-arrow">{{hintFold.aeMonthHint ? '▾' : '▸'}}</text>
+    </view>
+    <view class="hint-fold-body" wx:if="{{hintFold.aeMonthHint}}">{{kind === 'lump' ? t.lumpMonthHint : t.fStartHint}}</view>
+  </view>
 
   <!-- 摊销专属：总月数 / 终止月份 -->
   <block wx:if="{{kind === 'amort'}}">

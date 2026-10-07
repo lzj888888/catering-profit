@@ -47,6 +47,12 @@ Page({
       archiveReadonly: TERMS.inputPage.archiveReadonly,
       lumpMonthLabel: T.lumpMonthLabel,
       lumpMonthHint: T.lumpMonthHint,
+      // ── R234/J4 行内长提示折叠（本页 1 处：aeMonthHint）──
+      // 🔴 三处登记的第二处：漏映射 ⇒ 页面渲染成**空白**且零报错（R124 同族）
+      // ⚠️ 引导语在 `TERMS.ledger` 组（与月录入页同一处），**不在** T(=amortizePage) 里 ——
+      //   它是「行内提示折叠」这一通用模式的引导语，被多页复用 ⇒ 放 ledger 作单源。
+      hintFoldShow: TERMS.ledger.hintFoldShow,
+      hintFoldHide: TERMS.ledger.hintFoldHide,
     },
     kind: 'lump',        // 'lump'（一次算清）| 'amort'（分期摊销）
     month: '',
@@ -62,6 +68,18 @@ Page({
     readOnly: false,
     loading: true,
     saving: false,
+    // R234/J4：行内长提示折叠（本页仅 1 处，默认收起）。与月录入页 / M2 选址页**同一实现**。
+    hintFold: {},
+  },
+
+  // R234/J4：行内提示折叠开关（仓内统一形态 —— 月录入页 / M2 选址页 / 本页同一实现）。
+  onToggleHintFold(e) {
+    const key = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.key) || '';
+    if (!key) return;                       // 无 key ⇒ 静默返回（不误翻别人的状态）
+    const cur = this.data.hintFold || {};
+    const next = Object.assign({}, cur);
+    next[key] = !cur[key];
+    this.setData({ hintFold: next });
   },
 
   onLoad(q) {

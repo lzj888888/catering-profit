@@ -8,11 +8,23 @@
     <view class="result-num">{{t.cur}}{{totalYuan}}</view>
   </view>
 
-  <!-- 口径说明：两类投入都能记 -->
-  <view class="hint scope-hint">{{t.scopeHint}}</view>
+  <!-- R234/J4c：🔴 **本句 134 字 —— 全站最长的一条提示**，原先以 `class="hint scope-hint"`（复合 class）
+       平铺在页面最上方，独占约 6 行、把「本月摊销合计」和两个区块标题全推到屏外。
+       ⚠️ 它此前逃过了多次清点：清点脚本按 `class="hint"` **精确匹配**，复合 class 匹配不上。
+       这正是「按字面形态匹配会漏」的又一例（同 R102-⑤ 的 \r\n、变异锚点的写死缩进）。
+       它讲的是「装修/设备/加盟费怎么记、一次算清 vs 分期摊销怎么选」—— 属于**首次使用看一次**的信息。 -->
+  <view class="hint-fold">
+    <view class="hint-fold-head" data-key="amScopeHint" bindtap="onToggleHintFold">
+      <text class="hint-fold-guide">{{hintFold.amScopeHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+      <text class="hint-fold-arrow">{{hintFold.amScopeHint ? '▾' : '▸'}}</text>
+    </view>
+    <view class="hint-fold-body" wx:if="{{hintFold.amScopeHint}}">{{t.scopeHint}}</view>
+  </view>
 
   <!-- ===== ① 本月一次算清（mode='lump'）===== -->
   <view class="cm-sub">{{t.lumpSectionTitle}}</view>
+  <!-- R234/J4c：本句 16 字 —— ⚠️ **保持平铺**（<18 字分层线下），不要顺手折。
+       本页另有 `amortSwitchHint`（18 字）走折叠 ⇒ 同页两级并存，正是分层判据的样本。 -->
   <view class="card2">
     <view class="hint">{{t.lumpSectionHint}}</view>
 
@@ -41,7 +53,15 @@
     <view class="lbl2">{{t.amortSwitchLabel}}</view>
     <switch checked="{{amortizeOn}}" color="#1e3a5f" bindchange="onToggleAmortize" />
   </view>
-  <view class="hint">{{t.amortSwitchHint}}</view>
+  <!-- R234/J4c：本句 18 字（≥18）⇒ 折叠。说明「关掉开关的后果」，属于**改设置前必须先看**的提示，
+       平铺时它紧跟在 switch 下面、会把「分期摊销」整块往下推 ⇒ 折起来。 -->
+  <view class="hint-fold">
+    <view class="hint-fold-head" data-key="amSwitchHint" bindtap="onToggleHintFold">
+      <text class="hint-fold-guide">{{hintFold.amSwitchHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+      <text class="hint-fold-arrow">{{hintFold.amSwitchHint ? '▾' : '▸'}}</text>
+    </view>
+    <view class="hint-fold-body" wx:if="{{hintFold.amSwitchHint}}">{{t.amortSwitchHint}}</view>
+  </view>
 
   <view class="card2" wx:for="{{groups}}" wx:key="key" wx:for-item="g">
     <view class="card-title" bindtap="onToggleGroup" data-group="{{g.key}}">

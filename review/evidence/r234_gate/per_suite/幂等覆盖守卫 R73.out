@@ -9,9 +9,9 @@
 ✅ saveCostCard 含幂等预检（契约 L64 标 +幂等）  (重放形态 findPriorResult)
 ✅ syncCostCard 含幂等预检（契约 L65 标 +幂等）  (重放形态 findPriorResult)
 ✅ importSalesBill 含幂等预检（契约 L68 标 +幂等）  (重放形态 findPriorResult)
-✅ savePlan 含幂等预检（契约 L83 标 +幂等）  (重放形态 findPriorResult)
-✅ deleteAccount 含幂等预检（契约 L180 标 +幂等）  (拒绝形态 checkIdempotent)
-✅ manageShop 含幂等预检（契约 L182 标 +幂等）  (重放形态 findPriorResult)
+✅ savePlan 含幂等预检（契约 L84 标 +幂等）  (重放形态 findPriorResult)
+✅ deleteAccount 含幂等预检（契约 L181 标 +幂等）  (拒绝形态 checkIdempotent)
+✅ manageShop 含幂等预检（契约 L183 标 +幂等）  (重放形态 findPriorResult)
 
 ===== I3 顺序不变量（预检必须早于首个业务写）=====
 ✅ adminGrantEntitlement 注入形态的顺序判据落在 service.js  (存在)
@@ -21,6 +21,7 @@
 ✅ adminRefundMark 注入形态的顺序判据落在 service.js  (存在)
 ✅ adminRefundMark 幂等预检早于首个写型依赖调用  (预检@969 vs 首写@2084)
 ✅ deleteAccount 幂等预检早于首个业务写  (预检@829 vs 首个业务写@1194)
+✅ importSalesBill 幂等预检早于首个业务写  (预检@2771 vs 首个业务写@10278)
 ✅ manageShop 幂等预检早于首个业务写  (预检@1024 vs 首个业务写@2267)
 ✅ saveAsset 幂等预检早于首个业务写  (预检@1806 vs 首个业务写@2463)
 ✅ saveCostCard 幂等预检早于首个业务写  (预检@2808 vs 首个业务写@10397)
@@ -75,4 +76,4 @@
 ✅ adminExport 写了非空 idempotency_key 却无查重 ⇒ 已登记理由  (已登记)
 ✅ EXEMPT_KEY[adminExport] 仍然成立  (理由：导出是**只读**动作、无数据变更；after_da…)
 
-===== 幂等覆盖守卫结果：63 通过 / 0 失败 =====
+===== 幂等覆盖守卫结果：64 通过 / 0 失败 =====

@@ -75,7 +75,14 @@ Page({
       comboInsightLoseWarn: TERMS.card.comboInsightLoseWarn,
       // R191：原料库 / 外卖 / 对账 的入口已从本页顶部撤走 —— 改由 pages/m3/hub 枢纽页承接
       //   （「找东西」与「去别处」混在同一行、还共用同一个 .tool-btn 样式 ⇒ 分类说不明白）。
+      // ── R234/J4e 行内长提示折叠（本页 1 处）──
+      // 🔴 三处登记的第二处：漏映射 ⇒ 页面渲染成**空白**且零报错（R124 同族）
+      // ⚠️ 引导语在 `TERMS.ledger` 组（跨页复用的通用模式引导语）。
+      hintFoldShow: TERMS.ledger.hintFoldShow,
+      hintFoldHide: TERMS.ledger.hintFoldHide,
     },
+    // R234/J4e：行内长提示折叠（本页 1 处，默认收起）。仓内统一实现。
+    hintFold: {},
     all: [],           // 全量列表（前端过滤）
     list: [],
     // round156：置顶的 card_code（顺序 = 老板点选先后）。店铺级偏好，存 shop 文档 ⇒ 零新建集合。
@@ -93,6 +100,16 @@ Page({
     selectMode: false, // 批量同步选择模式
     selected: {},      // { card_code: true }
     loading: true,
+  },
+
+  // R234/J4e：行内提示折叠开关（仓内统一形态 —— 多页同一实现，不各写一套）。
+  onToggleHintFold(e) {
+    const key = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.key) || '';
+    if (!key) return;                       // 无 key ⇒ 静默返回（不误翻别人的状态）
+    const cur = this.data.hintFold || {};
+    const next = Object.assign({}, cur);
+    next[key] = !cur[key];
+    this.setData({ hintFold: next });
   },
 
   onShow() { this.load(); },

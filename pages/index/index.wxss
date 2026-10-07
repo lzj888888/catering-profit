@@ -117,6 +117,38 @@
 .mod-m { font-size: 28rpx; color: #666; margin-top: 4rpx; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mod-go { flex: 0 0 auto; font-size: 36rpx; color: #b6c0cf; margin-left: 12rpx; }
 
+/* ============================================================
+ * R234/J3 · 首页常驻折叠引导条
+ * 设计取舍（为什么要「弱」）：
+ *   · 它是**弱化元素** —— 用途是「补齐第一次用的回程路」，不能抢三张模块卡的视线。
+ *   · 🔴 **不套外层白卡**（首版套了，是错的）：`.guide-fold` 若给白底+圆角，
+ *     展开时 body 的浅蓝块就成了「白卡里再套一个圆角色块」⇒ 双层圆角、像两个控件；
+ *     且收起时白卡只有一行字、显得空。**与月录入页 `.hint-fold` 同构**：外层只留间距，
+ *     头行直接贴在页面底色上、body 才是有底色的块 ⇒ 收起时几乎不占视觉重量。
+ *   · 收起态只占一行：min-height 88rpx 保触控红线（AD-G2）。
+ *   · 展开态浅蓝底取 #f5f8fc，与月录入页 `.hint-fold-body` **同色**（本仓同一语义用同一色值）。
+ *   · 🔴 字号一律 ≥28rpx（AD-G1）。
+ * ============================================================ */
+.guide-fold { padding: 0 0 6rpx; }
+.guide-fold-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 88rpx;
+  padding: 20rpx 24rpx;
+}
+.guide-fold-guide { font-size: 28rpx; color: #1e3a5f; }
+.guide-fold-arrow { font-size: 28rpx; color: #1e3a5f; flex: 0 0 auto; margin-left: 12rpx; }
+.guide-fold-body {
+  font-size: 28rpx;
+  color: #6b7a8d;
+  line-height: 1.6;
+  padding: 16rpx 24rpx;
+  background: #f5f8fc;
+  border-radius: 12rpx;
+  margin-bottom: 12rpx;
+}
+
 /* 形状图标（CSS 画，**不引入 PNG** ⇒ 不加包体、不改 pages 清单；
  *  三个形状各自可辨：账本=三条横线 / 房子=三角屋顶+屋身 / 炒锅=半圆锅体+手柄） */
 .i { width: 72rpx; height: 72rpx; position: relative; }

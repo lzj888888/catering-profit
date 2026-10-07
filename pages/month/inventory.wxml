@@ -33,7 +33,14 @@
       value="{{closingYuan}}" bindinput="onClosing"  adjust-position="{{true}}" cursor-spacing="20" />
   </view>
 
-  <view class="hint">{{t.hintFormula}}</view>
+  <!-- R234/J4e：本句 ≥18 字 ⇒ 折叠（R234 完整清点口径：剥注释 + 含复合 class）。 -->
+  <view class="hint-fold">
+    <view class="hint-fold-head" data-key="invHintFormula" bindtap="onToggleHintFold">
+      <text class="hint-fold-guide">{{hintFold.invHintFormula ? t.hintFoldHide : t.hintFoldShow}}</text>
+      <text class="hint-fold-arrow">{{hintFold.invHintFormula ? '▾' : '▸'}}</text>
+    </view>
+    <view class="hint-fold-body" wx:if="{{hintFold.invHintFormula}}">{{t.hintFormula}}</view>
+  </view>
 
   <view style="height:20rpx;"></view>
   <button class="btn primary" style="margin-top:0;" bindtap="onSave" disabled="{{readOnly}}">{{t.save}}</button>

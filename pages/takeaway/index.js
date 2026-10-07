@@ -123,9 +123,16 @@ Page({
       cancel: TERMS.buttons.cancel,
       cur: '¥',
       loading: TERMS.ui.loading,
+      // ── R234/J4d 行内长提示折叠（本页 2 处：importPickHint 22 字 / importShapeCHint 20 字）──
+      // 🔴 三处登记的第二处：漏映射 ⇒ 页面渲染成**空白**且零报错（R124 同族）
+      // ⚠️ 引导语在 `TERMS.ledger` 组（跨页复用的通用模式引导语），**不在** TK(takeaway) 里。
+      hintFoldShow: TERMS.ledger.hintFoldShow,
+      hintFoldHide: TERMS.ledger.hintFoldHide,
     },
     tab: 'calc',          // 'calc' 单均测算 | 'import' 账单导入
     mode: 'cash',          // 'cash' 到手口径 | 'accrual' 总额法口径
+    // R234/J4d：行内长提示折叠（本页 2 处，默认收起）。与月录入页 / M2 / assetEdit / amortize **同一实现**。
+    hintFold: {},
     dishes: [],            // 候选卡/套餐（含 card_type）
     items: [newItem()],
     packs: [newPack()],
@@ -156,6 +163,16 @@ Page({
   },
 
   onLoad() { this.load(); },
+
+  // R234/J4d：行内提示折叠开关（仓内统一形态，五页同一实现 —— 不各写一套，否则改判据要改五处）。
+  onToggleHintFold(e) {
+    const key = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.key) || '';
+    if (!key) return;                       // 无 key ⇒ 静默返回（不误翻别人的状态）
+    const cur = this.data.hintFold || {};
+    const next = Object.assign({}, cur);
+    next[key] = !cur[key];
+    this.setData({ hintFold: next });
+  },
 
   async load() {
     try {

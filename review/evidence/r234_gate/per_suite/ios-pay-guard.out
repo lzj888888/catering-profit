@@ -3,7 +3,7 @@
 ✅ N2 负面样本（无 isIOS 判定）应判红 · 理由：payRenew 调用于第 3 行，其所在函数体（第 2~3 行）内未见 isIOS() 判定，也无 ios-pay-ok 豁免
 
 ===== S · 自失效护栏 =====
-✅ S1 扫描面非空 · pages/ + utils/ + app.js 共 96 个文件
+✅ S1 扫描面非空 · pages/ + utils/ + app.js 共 99 个文件
 ✅ S2 支付入口命中数 ≥ 2（防支付动作改名/被删导致守卫空跑） · 实测命中 2 个文件：pages/pay/orders.js , utils/paywall.js
 
 ===== P1 · 支付入口须做 iOS 过滤 =====

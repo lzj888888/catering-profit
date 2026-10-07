@@ -37,7 +37,14 @@
       <view class="result-num">{{t.cur}}{{result.ref_profit}}</view>
     </block>
     <block wx:else>
-      <view class="hint">{{t.freeHint}}</view>
+      <!-- R234/J4e：本句 ≥18 字 ⇒ 折叠（R234 完整清点口径：剥注释 + 含复合 class）。 -->
+      <view class="hint-fold">
+        <view class="hint-fold-head" data-key="moFreeHint" bindtap="onToggleHintFold">
+          <text class="hint-fold-guide">{{hintFold.moFreeHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+          <text class="hint-fold-arrow">{{hintFold.moFreeHint ? '▾' : '▸'}}</text>
+        </view>
+        <view class="hint-fold-body" wx:if="{{hintFold.moFreeHint}}">{{t.freeHint}}</view>
+      </view>
       <view class="muted">{{t.netTrue}}</view>
       <view class="result-num">{{t.cur}}{{result.true_profit}}</view>
     </block>

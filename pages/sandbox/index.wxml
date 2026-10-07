@@ -122,7 +122,13 @@
         <text class="asm-input">{{item.val}}</text>
         <text class="asm-src" wx:if="{{presetPicked}}">{{item.src}}</text>
       </view>
-      <view class="hint">{{t.assumptionsHint}}</view>
+      <view class="hint-fold">
+        <view class="hint-fold-head" data-key="sbAssumptionsHint" bindtap="onToggleHintFold">
+          <text class="hint-fold-guide">{{hintFold.sbAssumptionsHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+          <text class="hint-fold-arrow">{{hintFold.sbAssumptionsHint ? '▾' : '▸'}}</text>
+        </view>
+      <view class="hint-fold-body" wx:if="{{hintFold.sbAssumptionsHint}}">{{t.assumptionsHint}}</view>
+      </view>
     </view>
   </view>
 
@@ -131,7 +137,13 @@
        ⚠️ 参考金额只是灰字起点（在下面各输入框的 placeholder 里），**不会自动填值**。 -->
   <view class="card2" wx:if="{{bands.length}}">
     <view class="sec">{{t.bandPreviewTitle}}</view>
-    <view class="hint">{{t.bandPreviewNote}}</view>
+    <view class="hint-fold">
+      <view class="hint-fold-head" data-key="sbBandPreviewNote" bindtap="onToggleHintFold">
+        <text class="hint-fold-guide">{{hintFold.sbBandPreviewNote ? t.hintFoldHide : t.hintFoldShow}}</text>
+        <text class="hint-fold-arrow">{{hintFold.sbBandPreviewNote ? '▾' : '▸'}}</text>
+      </view>
+    <view class="hint-fold-body" wx:if="{{hintFold.sbBandPreviewNote}}">{{t.bandPreviewNote}}</view>
+    </view>
     <view class="row">
       <text class="row-name">{{t.expectRevLabel}}</text>
       <view class="row-in-wrap">
@@ -139,7 +151,13 @@
         <text class="row-unit">元</text>
       </view>
     </view>
-    <view class="hint">{{t.expectRevNote}}</view>
+    <view class="hint-fold">
+      <view class="hint-fold-head" data-key="sbExpectRevNote" bindtap="onToggleHintFold">
+        <text class="hint-fold-guide">{{hintFold.sbExpectRevNote ? t.hintFoldHide : t.hintFoldShow}}</text>
+        <text class="hint-fold-arrow">{{hintFold.sbExpectRevNote ? '▾' : '▸'}}</text>
+      </view>
+    <view class="hint-fold-body" wx:if="{{hintFold.sbExpectRevNote}}">{{t.expectRevNote}}</view>
+    </view>
     <view class="bp-grid">
       <view class="bp-item" wx:for="{{bands}}" wx:key="key">
         <text class="bp-name">{{item.name}}</text>
@@ -154,7 +172,13 @@
   <!-- ① 开店投入（一次性）—— 按年限摊到每月 -->
   <view class="card2">
     <view class="sec">{{t.secBuild}}</view>
-    <view class="hint">{{t.buildNote}}</view>
+    <view class="hint-fold">
+      <view class="hint-fold-head" data-key="sbBuildNote" bindtap="onToggleHintFold">
+        <text class="hint-fold-guide">{{hintFold.sbBuildNote ? t.hintFoldHide : t.hintFoldShow}}</text>
+        <text class="hint-fold-arrow">{{hintFold.sbBuildNote ? '▾' : '▸'}}</text>
+      </view>
+    <view class="hint-fold-body" wx:if="{{hintFold.sbBuildNote}}">{{t.buildNote}}</view>
+    </view>
     <view class="rw" wx:for="{{buildRows}}" wx:key="key">
       <view class="row">
         <text class="row-name">{{item.name}}</text>
@@ -176,8 +200,20 @@
   <!-- ② 每月固定支出（反推 Tab 下房租行隐藏 —— 房租由目标租金率自动导出，不误填） -->
   <view class="card2">
     <view class="sec">{{t.secFixed}}</view>
-    <view class="hint">{{t.fixedNote}}</view>
-    <view class="hint" wx:if="{{mode === 'reverse'}}">{{t.revRentHint}}</view>
+    <view class="hint-fold">
+      <view class="hint-fold-head" data-key="sbFixedNote" bindtap="onToggleHintFold">
+        <text class="hint-fold-guide">{{hintFold.sbFixedNote ? t.hintFoldHide : t.hintFoldShow}}</text>
+        <text class="hint-fold-arrow">{{hintFold.sbFixedNote ? '▾' : '▸'}}</text>
+      </view>
+    <view class="hint-fold-body" wx:if="{{hintFold.sbFixedNote}}">{{t.fixedNote}}</view>
+    </view>
+    <view class="hint-fold">
+      <view class="hint-fold-head" data-key="sbRevRentHint" bindtap="onToggleHintFold">
+        <text class="hint-fold-guide">{{hintFold.sbRevRentHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+        <text class="hint-fold-arrow">{{hintFold.sbRevRentHint ? '▾' : '▸'}}</text>
+      </view>
+    <view class="hint-fold-body" wx:if="{{hintFold.sbRevRentHint}}">{{t.revRentHint}}</view>
+    </view>
     <view class="rw" wx:for="{{fixedRows}}" wx:key="key" wx:if="{{mode === 'forward' || item.key !== 'rent'}}">
       <view class="row">
         <text class="row-name">{{item.name}}</text>
@@ -201,14 +237,26 @@
     </view>
     <slider min="0" max="100" step="1" value="{{marginPct}}" activeColor="#1e3a5f" block-size="22"
             bindchanging="onMarginChanging" bindchange="onMarginChange" />
-    <view class="hint">{{t.marginTip}}</view>
+    <view class="hint-fold">
+      <view class="hint-fold-head" data-key="sbMarginTip" bindtap="onToggleHintFold">
+        <text class="hint-fold-guide">{{hintFold.sbMarginTip ? t.hintFoldHide : t.hintFoldShow}}</text>
+        <text class="hint-fold-arrow">{{hintFold.sbMarginTip ? '▾' : '▸'}}</text>
+      </view>
+    <view class="hint-fold-body" wx:if="{{hintFold.sbMarginTip}}">{{t.marginTip}}</view>
+    </view>
     <view class="hint" wx:if="{{marginBand}}">{{t.marginBandLabel}} {{marginBand}}</view>
   </view>
 
   <!-- ④ 跟营业额挂钩的费用（是"率"不是"额"：流水越高，这笔钱越多） -->
   <view class="card2">
     <view class="sec">{{t.secVar}}</view>
-    <view class="hint">{{t.varNote}}</view>
+    <view class="hint-fold">
+      <view class="hint-fold-head" data-key="sbVarNote" bindtap="onToggleHintFold">
+        <text class="hint-fold-guide">{{hintFold.sbVarNote ? t.hintFoldHide : t.hintFoldShow}}</text>
+        <text class="hint-fold-arrow">{{hintFold.sbVarNote ? '▾' : '▸'}}</text>
+      </view>
+    <view class="hint-fold-body" wx:if="{{hintFold.sbVarNote}}">{{t.varNote}}</view>
+    </view>
     <view class="rw" wx:for="{{varRows}}" wx:key="key">
       <view class="row">
         <text class="row-name">{{item.name}}</text>

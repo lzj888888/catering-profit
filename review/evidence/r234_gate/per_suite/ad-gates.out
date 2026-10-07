@@ -5,7 +5,7 @@
 ✅ G2 wxss 无 <88rpx min-height（20/40 占位除外）
 ✅ G2 wxml 内联无 <88rpx min-height
 ===== G3 · 数字输入 adjust-position =====
-✅ G3 全部数字输入含 adjust-position（共 72 个）
+✅ G3 全部数字输入含 adjust-position（共 73 个）
 ✅ G3 均配 cursor-spacing
 ===== G4 · 热更新 getUpdateManager =====
 ✅ G4 app.js 有 setupUpdate/getUpdateManager

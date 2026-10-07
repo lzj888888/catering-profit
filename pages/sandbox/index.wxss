@@ -124,3 +124,17 @@
 .asm-src { flex: 0 0 auto; font-size: 28rpx; color: #9aa4b2; margin-left: 12rpx; }
 .payback-disclaimer { color: #b45309; }
 .payback-m3-btn { margin: 16rpx 0 0; }
+
+/* ===== R234/J4 · 行内长提示折叠（句级，与月录入页 .hint-fold 同形）=====
+ * 与上面 .fold-toggle 的区别（**必须视觉可分**，否则用户以为是同一套开关）：
+ *   · .fold-toggle = **区段级**（30rpx 加粗 + 上边框）—— 收的是「整块参数区」；
+ *   · .hint-fold   = **句级**（28rpx 常规 + 无边框）—— 收的是「一句说明文案」。
+ * body 底色 #f3f7fb 与全局 `.hint` **同色**：折叠前是浅蓝块，折叠后展开仍是同一块 ⇒ 视觉连贯。
+ * 🔴 本块无外层背景，故不套 .guide-fold 那种白卡（否则 body 嵌白卡 = 双层圆角）。 */
+.hint-fold { padding: 0 0 6rpx; }
+.hint-fold-head { display: flex; align-items: center; justify-content: space-between;
+  min-height: 88rpx; padding: 14rpx 8rpx; }
+.hint-fold-guide { font-size: 28rpx; color: #1e3a5f; }
+.hint-fold-arrow { font-size: 28rpx; color: #1e3a5f; }
+.hint-fold-body { font-size: 28rpx; color: #4a5b70; line-height: 1.6; padding: 16rpx 20rpx;
+  background: #f3f7fb; border-radius: 12rpx; margin: 0 0 12rpx; }

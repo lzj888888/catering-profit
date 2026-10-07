@@ -1,5 +1,12 @@
 <view class="container safe-bottom">
-  <view class="hint">{{t.hintAlways}}</view>
+  <!-- R234/J4e：本句 ≥18 字 ⇒ 折叠（R234 完整清点口径：剥注释 + 含复合 class）。 -->
+  <view class="hint-fold">
+    <view class="hint-fold-head" data-key="ciHintAlways" bindtap="onToggleHintFold">
+      <text class="hint-fold-guide">{{hintFold.ciHintAlways ? t.hintFoldHide : t.hintFoldShow}}</text>
+      <text class="hint-fold-arrow">{{hintFold.ciHintAlways ? '▾' : '▸'}}</text>
+    </view>
+    <view class="hint-fold-body" wx:if="{{hintFold.ciHintAlways}}">{{t.hintAlways}}</view>
+  </view>
 
   <!-- R191：顶部只留「找东西」+「新增」。
        跳转按钮（原料库 / 外卖 / 对账）全部撤走 —— 已由 pages/m3/hub 枢纽页承接。

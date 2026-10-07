@@ -22,7 +22,7 @@ B · 后端口径实跑（require 生产 getLedger/validate.js）
 
 C · 全仓同类回归（picker mode="selector" 的 handler 必须用下标取数组）
   ✅ C-① 扫描面非退化：命中 ≥10 个 selector picker（半仓扫描靠不住）
-  ✅ C-② 全部 17 处都用下标取数组元素（无裸传 detail.value）
+  ✅ C-② 全部 18 处都用下标取数组元素（无裸传 detail.value）
   ✅ C-③ 关键锚点在场：月历页的 onMonthChange 落在扫描面内（否则这条回归形同虚设）
 
 D · UI 一致（picker 选中项不被 WXML 表达式绑架）

@@ -38,3 +38,16 @@
 .warn { font-size: 28rpx; color: #e74c3c; line-height: 1.5; margin: 10rpx 4rpx; }
 
 .btn { margin-top: 12rpx; }
+
+/* ===== R234/J4d · 行内长提示折叠（句级，与月录入页 / M2 / assetEdit / amortize 同形）=====
+ * 本页折 2 处（importPickHint 22 字 / importShapeCHint 20 字）；
+ * `importPickPlatformHint`（17 字）**故意保持平铺** —— 它是确认按钮紧下方的操作提示。
+ * body 底色 #f3f7fb 与全局 `.hint` 同色 ⇒ 折叠前后视觉连贯。
+ * 🔴 字号一律 ≥28rpx（AD-G1）、头行 min-height ≥88rpx（AD-G2）。 */
+.hint-fold { padding: 0 0 6rpx; }
+.hint-fold-head { display: flex; align-items: center; justify-content: space-between;
+  min-height: 88rpx; padding: 14rpx 8rpx; }
+.hint-fold-guide { font-size: 28rpx; color: #1e3a5f; }
+.hint-fold-arrow { font-size: 28rpx; color: #1e3a5f; }
+.hint-fold-body { font-size: 28rpx; color: #4a5b70; line-height: 1.6; padding: 16rpx 20rpx;
+  background: #f3f7fb; border-radius: 12rpx; margin: 0 0 12rpx; }

@@ -31,9 +31,20 @@ Page({
       heroCtaEnter: TERMS.ui.heroCtaEnter,
       heroCtaDetail: TERMS.ui.heroCtaDetail,
       cur: TERMS.ui.currencySymbol,
+      // ── R234/J3 首页折叠引导条（复用 exp.guideBody 四步，不新写文案）──
+      // 🔴 三处登记的第二处：术语源有了、wxml 用了，这里漏映射 ⇒ 页面渲染成**空白**且零报错
+      //    （R124 同族：WXML 对 {{undefined}} 不报错、静默空）⇒ 由 check_page_terms 守。
+      guideFoldShow: TERMS.exp.guideFoldShow,
+      guideFoldHide: TERMS.exp.guideFoldHide,
+      guideBody: TERMS.exp.guideBody,
     },
     shopName: '',
     loading: true,
+    // R234/J3：首页折叠引导条**默认收起**（与月录入页 hintFold 的默认观感一致）。
+    //   ⚠️ 只放展示态：不入库、不进快照 —— 用户下次进来回到「收起」，不占首屏。
+    //   为什么不给「看过就不再显示」的持久化：本仓存储键约定要带 shopId+month，
+    //   而这条引导与月份无关；为它单开一套存储键（还要处理换设备回默认）不如常驻折叠条简单。
+    guideOpen: false,
     // ── R207 头卡数据区 ──
     curMonth: ui.nowMonth(),
     refProfit: '0.00',
@@ -101,6 +112,15 @@ Page({
   goSettings() { wx.navigateTo({ url: '/pages/shop/setting' }); },
   goSwitch() { wx.navigateTo({ url: '/pages/shop/switch' }); },
   goMine() { wx.switchTab({ url: '/pages/mine/index' }); },
+
+  // R234/J3：首页折叠引导条开关。
+  //   ⚠️ 与月录入页的 `onToggleHintFold`（多键 map）**故意不同形**：那里是 15 处并列的提示、
+  //      需要 map 记住每一处的开合；这里只有一条引导、单个布尔量即可 ⇒ 不硬套 map 形状。
+  //   ⚠️ 与 mine 页 `onGuide`（wx.showModal 弹窗）并存：一个是「随时能看的常驻条」，
+  //      一个是「我的 → 使用指引」的一次性弹窗，入口不同、不互相替代。
+  onToggleGuide() {
+    this.setData({ guideOpen: !this.data.guideOpen });
+  },
 
   // R193：全局开了 enablePullDownRefresh，但本页**没实现** ⇒ 下拉转圈、松手没反应（假刷新）。
   onPullDownRefresh() {

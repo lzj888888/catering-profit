@@ -1,20 +1,20 @@
-  ✅ L1-① 云端 PAID_FEATURES 可解析且 ≥ 3 项 —— 3 项：[export, m3_combo, m3_takeaway]
-  ✅ L1-② 前端 PAYWALL_TYPES 可解析且 ≥ 2 项 —— 4 项：[saveLimit, export, combo, takeaway]
-  ✅ L1-③ TERMS.paywall 可解析 —— 顶层键：saveLimit, export, combo, takeaway, ctaShort
-  ✅ L2 每个付费能力派生键都 ∈ PAYWALL_TYPES（登记即必须能弹墙） —— export→export / combo→combo / takeaway→takeaway
-  ✅ L3 PAYWALL_TYPES 每个键都有 TERMS.paywall[键] —— 4 个键全部有文案
-  ✅ L4 各触发键的 title/content/primary/secondary 均非空 —— 4 个键 × 4 字段全齐
+  ✅ L1-① 云端 PAID_FEATURES 可解析且 ≥ 3 项 —— 4 项：[export, m3_combo, m3_takeaway, m3_dishreview]
+  ✅ L1-② 前端 PAYWALL_TYPES 可解析且 ≥ 2 项 —— 5 项：[saveLimit, export, combo, takeaway, dishreview]
+  ✅ L1-③ TERMS.paywall 可解析 —— 顶层键：saveLimit, export, combo, takeaway, dishreview, ctaShort
+  ✅ L2 每个付费能力派生键都 ∈ PAYWALL_TYPES（登记即必须能弹墙） —— export→export / combo→combo / takeaway→takeaway / dishreview→dishreview
+  ✅ L3 PAYWALL_TYPES 每个键都有 TERMS.paywall[键] —— 5 个键全部有文案
+  ✅ L4 各触发键的 title/content/primary/secondary 均非空 —— 5 个键 × 4 字段全齐
   ✅ L5-① 影子：把虚构能力 m3_foobar 塞进清单 ⇒ 判据必须判红（证明有分辨力） —— 判红 1 项：[foobar]
   ✅ L5-② 影子：真实清单必须判绿（正负互证用的是同一段逻辑） —— 判红 0 项
-  ✅ L6-① 反向：代码里 hasFeature(...,'X') 的 X 必须 ∈ PAID_FEATURES（防未登记就拦） —— 实调用 3 处 / 键 {export, m3_combo}
-  ✅ L6-②a 有同名云函数目录的能力，该目录内必须接墙 —— 本仓暂无「同名目录」能力（其余由 ②b/②e 承接）
+  ✅ L6-① 反向：代码里 hasFeature(...,'X') 的 X 必须 ∈ PAID_FEATURES（防未登记就拦） —— 实调用 4 处 / 键 {export, m3_dishreview, m3_combo}
+  ✅ L6-②a 有同名云函数目录的能力，该目录内必须接墙 —— 已检目录：m3_dishreview
   ✅ L6-②b 无同名目录的能力必须显式登记落点（穷尽分类，防"扫不到就恒绿"） —— m3_combo→cloudfunctions/saveCostCard/index.js / m3_takeaway→前端（云侧无可挂点，已登记边界）
   ✅ L6-②c 登记落点（at 非空）必须可验证：该文件真含此能力的 hasFeature 调用（防用豁免表掩盖漏接） —— m3_combo→cloudfunctions/saveCostCard/index.js
   ✅ L6-②d 落点登记无陈旧键（键必须仍在 PAID_FEATURES 内） —— 2 条登记，键全部有效
-  ✅ L6-②e 分类穷尽：非 export 能力 100% 落入「同名目录 ∪ 落点登记」 —— 非 export 能力 2 项 → 同名目录 0 + 落点登记 2
-  ✅ L7-① 扫描面下界：cloudfunctions 下 .js 文件 ≥ 200（防遍历失效 ⇒ 零命中假绿） —— 821 个 .js
-  ✅ L7-② 派生集下界：付费能力 ≥ 3（导出/套餐/外卖） —— 3 项
+  ✅ L6-②e 分类穷尽：非 export 能力 100% 落入「同名目录 ∪ 落点登记」 —— 非 export 能力 3 项 → 同名目录 1 + 落点登记 2
+  ✅ L7-① 扫描面下界：cloudfunctions 下 .js 文件 ≥ 200（防遍历失效 ⇒ 零命中假绿） —— 885 个 .js
+  ✅ L7-② 派生集下界：付费能力 ≥ 3（导出/套餐/外卖） —— 4 项
   ✅ L7-③ 反恒真前提：影子判据确实能被触发（judge 非恒真）
-✅ 付费能力清单（export/m3_combo/m3_takeaway）每一项都已配好墙：弹窗类型 + 文案四字段，且无一"登记了却弹不出"。
+✅ 付费能力清单（export/m3_combo/m3_takeaway/m3_dishreview）每一项都已配好墙：弹窗类型 + 文案四字段，且无一"登记了却弹不出"。
 
 ===== R159 付费墙覆盖面守卫结果：17 通过 / 0 失败 =====

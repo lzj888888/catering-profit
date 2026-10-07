@@ -2,3 +2,16 @@
 .val-input { text-align: right; font-size: 30rpx; width: 320rpx; }
 .picker-val { text-align: right; font-size: 30rpx; color: #222; min-height: 88rpx; line-height: 88rpx; }
 .picker-val.ph { color: #bbb; }
+
+/* ===== R234/J4 · 行内长提示折叠（句级，与月录入页 / M2 选址页同形）=====
+ * 本页只折 1 处：`lumpMonthHint`（21 字）。其余三处（fAmountHint 13 / fStartHint 7 /
+ * fTerminateHint 14）均 <18 字 ⇒ **保持平铺**（分层判据的另一侧，不是漏做）。
+ * body 底色 #f3f7fb 与全局 `.hint` 同色 ⇒ 折叠前后是同一块视觉，不会跳。
+ * 🔴 字号一律 ≥28rpx（AD-G1）、头行 min-height ≥88rpx（AD-G2）。 */
+.hint-fold { padding: 0 0 6rpx; }
+.hint-fold-head { display: flex; align-items: center; justify-content: space-between;
+  min-height: 88rpx; padding: 14rpx 8rpx; }
+.hint-fold-guide { font-size: 28rpx; color: #1e3a5f; }
+.hint-fold-arrow { font-size: 28rpx; color: #1e3a5f; }
+.hint-fold-body { font-size: 28rpx; color: #4a5b70; line-height: 1.6; padding: 16rpx 20rpx;
+  background: #f3f7fb; border-radius: 12rpx; margin: 0 0 12rpx; }

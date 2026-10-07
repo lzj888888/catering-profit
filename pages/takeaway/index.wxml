@@ -127,13 +127,29 @@
 
   <!-- ===== tab 2：账单导入（批次 F 阶段①）===== -->
   <block wx:if="{{tab === 'import'}}">
-    <view class="hint">{{t.importPickHint}}</view>
+    <!-- R234/J4d：22 字（≥18）⇒ 折叠。这是「导入」tab 的第一句话，占用首屏最大 ——
+         且它说的「支持哪些账单格式」属于**点开文件前看一次就够**的信息。 -->
+    <view class="hint-fold">
+      <view class="hint-fold-head" data-key="tkPickHint" bindtap="onToggleHintFold">
+        <text class="hint-fold-guide">{{hintFold.tkPickHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+        <text class="hint-fold-arrow">{{hintFold.tkPickHint ? '▾' : '▸'}}</text>
+      </view>
+      <view class="hint-fold-body" wx:if="{{hintFold.tkPickHint}}">{{t.importPickHint}}</view>
+    </view>
     <button class="btn primary" bindtap="onChooseFile">{{t.importPick}}</button>
 
     <!-- 预览（解析 + 甲级门禁后展示；确认后才落库）—— 形态 C 与账单分开展示 -->
     <!-- 形态 C（外卖商品销量）：platform 机器判不出 ⇒ 必须选平台 -->
     <view class="card2" wx:if="{{importPreview && importShape === shapeC}}">
-      <view class="hint">{{t.importShapeCHint}}</view>
+      <!-- R234/J4d：20 字（≥18）⇒ 折叠。它出在**预览之后**（用户在核对数字），
+           此时页面已有大量信息，20 字说明会把 picker 挤下去。 -->
+      <view class="hint-fold">
+        <view class="hint-fold-head" data-key="tkShapeCHint" bindtap="onToggleHintFold">
+          <text class="hint-fold-guide">{{hintFold.tkShapeCHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+          <text class="hint-fold-arrow">{{hintFold.tkShapeCHint ? '▾' : '▸'}}</text>
+        </view>
+        <view class="hint-fold-body" wx:if="{{hintFold.tkShapeCHint}}">{{t.importShapeCHint}}</view>
+      </view>
       <view class="field">
         <text class="lbl">{{t.importPlatformLabel}}</text>
         <picker mode="selector" range="{{importPlatformOptions}}" range-key="label" value="{{importPlatformIndex}}" bindchange="onImportPlatformPick">
@@ -161,6 +177,8 @@
            平台由用户在下面 picker 里选，若这里按 grade 拦，picker 与按钮同屏却永远点不到 = 死锁。
            未选平台时按钮**可见但禁用**（disabled 绑定 importPlatformChoice），提示语在按钮下方。 -->
       <button class="btn primary" wx:if="{{!importGrade || importGrade.pass}}" style="margin-top:24rpx;" disabled="{{!importPlatformChoice}}" bindtap="onConfirmImport">{{t.importConfirm}}</button>
+      <!-- R234/J4d：本句 17 字 —— ⚠️ **保持平铺**（<18 字分层线下）。
+           它是「确认导入」按钮**紧下方**的操作提示，用户此刻正要动手 ⇒ 必须一眼可见。 -->
       <view class="hint" wx:if="{{!importGrade || importGrade.pass}}">{{t.importPickPlatformHint}}</view>
     </view>
     <!-- 账单（批次 F）预览 -->
