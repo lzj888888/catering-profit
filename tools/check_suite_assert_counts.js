@@ -175,6 +175,7 @@ const CASES = [
   //   14 条 = ① 模块可达 3 + ② 日期闭环 2 + ③ 自失效护栏 3 + ④ 单源/行为 6（含真调 toMonth 的 UTC 边界）。
   { key: 'check_excel_date_utc', rel: 'tools/check_excel_date_utc.js' }, // 14 条（①+②+③+④）
   { key: 'check_dish_key_single_source', rel: 'tools/check_dish_key_single_source.js' }, // 12 条（①+②+③+④）
+  { key: 'check_formc_shape', rel: 'tools/check_formc_shape.js' }, // 15 条（①+②+③+④）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

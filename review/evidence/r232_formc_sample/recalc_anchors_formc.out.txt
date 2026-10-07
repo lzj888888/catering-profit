@@ -1,0 +1,40 @@
+
+=== 段一 现状 —— 真样例喂进**生产** detectDishShape，证明形态 C 永远判不出 ===
+✅ C-1a 真样例单行表头 R1 含「商品名称」  got=true  want=true
+✅ C-1b 真样例表头含「销量」  got=true  want=true
+✅ C-1c 🔴 真样例表头**不含**「商品销量」（v1.6 §3.4 写死这个 ⇒ 修前永远判不出）  got=false  want=false
+✅ C-1d 生产 detectDishShape(形态C真矩阵) === waimai_goods（v1.7 C-1 修正后）  got="waimai_goods"  want="waimai_goods"
+✅ C-1e 对照：生产 detectDishShape(形态A真矩阵) === dish_sales（形态 A 不受影响）  got="dish_sales"  want="dish_sales"
+
+=== 段二 真样例事实 —— 逐格 dump 自行聚合 ===
+✅ C-2a 数据行数（R2 起，单行表头）  got=354  want=354
+✅ C-2b 列数  got=18  want=18
+✅ C-2c 关键列位均找到  got=true  want=true
+✅ C-2d 商品数（去重）  got=51  want=51
+✅ C-2e 日期跨度天数  got=7  want=7
+✅ C-2f 首/末日期  got=["2026-09-07","2026-09-13"]  want=["2026-09-07","2026-09-13"]
+✅ C-2g 销量列全为字符串（dump 侧）⇒ 必须 toNum（§4.5 同类）  got=true  want=true
+✅ C-2h Σ销量  got=118  want=118
+✅ C-2i Σ销售额（元，两位浮点直接比）  got=1823.08  want=1823.08
+✅ C-2j 有销量行数  got=49  want=49
+✅ C-6a 网格 51×7=357 但实得 354 ⇒ 缺 3 格（不补零）  got=3  want=3
+✅ C-5a 存在 amount=0 且 qty>0 的行  got=true  want=true
+✅ C-5b 该类 SKU 名为「来点辣椒吗」（口味询问类，非真菜品）  got="来点辣椒吗"  want="来点辣椒吗"
+✅ C-5c 该类 qty 占全表比例 36.4%  got=36.4  want=36.4
+✅ C-3a 有销量行里「销售额 ≠ 订单交易额」的行数  got=49  want=49
+✅ C-3b 参与比对行数  got=49  want=49
+
+=== 段三 反例 —— C-1 提案规则下：形态 C 应判出、且形态 A 不得被误判 ===
+✅ C-1f 目标规则下 形态C真矩阵 → waimai_goods（现状 null ⇒ 规则确有必要）  got="waimai_goods"  want="waimai_goods"
+✅ C-1g 🔴 目标规则下 形态A真矩阵仍 → dish_sales（不得被误判成 C）  got="dish_sales"  want="dish_sales"
+✅ C-1h 反证：去掉「不含销售方式」⇒ 形态 A 判出什么（用于说明区分项是否可省）  got="dish_sales"  want="dish_sales"
+✅ C-1i 🔴 形态A表头**不含**「销量」⇒ 与 C 天然隔离（区分项是冗余防御，非实际承担者）  got=false  want=false
+✅ C-1j 形态A表头**不含**「商品销量」  got=false  want=false
+✅ C-1k 形态A表头含「销售数量」（C 规则不碰它 ⇒ 不会误伤）  got=true  want=true
+✅ C-1l 形态C表头**不含**「销售数量」（A 规则不碰它 ⇒ 不会误伤）  got=false  want=false
+
+=== 段四 C-3 反例 —— 误用订单交易额当 amount 的差额 ===
+✅ C-3c Σ订单交易额（元）≠ Σ销售额（元）  got=true  want=true
+✅ C-3d 误用会虚增（订单交易额 ≥ 销售额）  got=true  want=true
+
+===== 形态C 锚点结果：30 通过 / 0 失败 =====

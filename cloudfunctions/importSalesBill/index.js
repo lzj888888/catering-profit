@@ -140,9 +140,10 @@ async function handleDishImport({ shopId, userId, clientRequestId, dishDetect, m
   if (dishDetect.shape === DISH_SHAPES.B) {
     return fail(ERROR_CODES.INVALID_PARAM, '这是套餐销售明细表，套餐组分已并入菜品销售表，本表仅作交叉校验、不单独导入。');
   }
-  // 形态 C：外卖商品销量 —— 本批不做（样例未到）
+  // 形态 C：外卖商品销量 —— 样例已到货、判定已按 v1.7 C-1 修正（此前因列名写死 '商品销量' 而永远判不出），
+  //   但**解析能力尚未实现**（v1.7 C-2~C-7 落实现批次）。此处给明确提示，而非「这张表不认识」。
   if (dishDetect.shape === DISH_SHAPES.C) {
-    return fail(ERROR_CODES.INVALID_PARAM, '外卖商品销量表本批暂不支持导入（待样例落地）。');
+    return fail(ERROR_CODES.INVALID_PARAM, '这是外卖商品销量表（形态 C），识别已支持，解析导入功能尚未上线。');
   }
   // 仅形态 A 走主路径
   const sheetRows = matrix.sheets[dishDetect.sheet].rows;

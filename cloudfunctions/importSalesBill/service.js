@@ -230,19 +230,35 @@ const DISH_A_STRUCT = {
 };
 
 // 名称归一（trim + NFKC，保留规格后缀与括号 —— §4.4/§4.7）
-// 🔴 R232 C-9：实现已上提到单源 common/dishKey.js 并由顶部 require('./cx_dishKey') 引入，
-//    本文件**不得**再内联第二份。伴侣守卫：tools/check_dish_key_single_source.js。
+// 🔴 R232 C-9：实现已上提到单源 common/dishKey.js，由顶部 `const { normalizeDishName } = common;` 取用
+//    （common 全层零外部依赖，写法与仓内其它云函数一致）⇒ 本文件**不得**再内联第二份。
+//    伴侣守卫：tools/check_dish_key_single_source.js。
 
-// 单 sheet 形态判定（§3.4 fail-closed）。sheetRows：0-based 二维 cells。
-// A ← 有 '菜品名称' + '销售数量' 且 R2 含 '销售方式'；B ← 有 '套餐' + '单品名称'；C ← 有 '商品名称' + '商品销量'。
+// 单 sheet 形态判定（v1.6 §3.4 fail-closed + **v1.7 C-1/C-2 勘误**）。sheetRows：0-based 二维 cells。
+// 🔴 v1.7 C-2：表头行**按形态不同** —— A/B 在 R3、**C 在 R1（单行表头）**
+//   ⇒ 必须同时扫描 R1 与 R3；只扫 R3 则形态 C 的表头永远扫不到。
+// 🔴 v1.7 C-1：v1.6 §3.4 写死 `'商品销量'`，而**真样例的列名是 `销量`**
+//   ⇒ 原样启用则形态 C **永远判不出**（硬阻断：明明是外卖表却提示「这张表不认识」）。
+//   ⇒ 放宽为 `'商品销量' 或 '销量'`，并要求 `'销售额'`（提高判定精度）。
+// 规则：
+//   A ← 有 '菜品名称' + '销售数量' 且 R2 含 '销售方式'
+//   B ← 有 '套餐' + '单品名称'
+//   C ← 有 ('商品名称' 或 '菜品名称') + ('商品销量' 或 '销量') + '销售额' 且 R2 **不含** '销售方式'
+//       （最后一项是**冗余防御**：实测两套列名天然不重叠，A 用「销售数量」、C 用「销量」，
+//         即使删掉也不会误判 —— 见 v1.7 §4.2 与锚点 C-1i~C-1l。保留以防将来列名趋同。）
 function detectDishShape(sheetRows) {
   const rows = sheetRows || [];
-  const hdr = (rows[2] || []).map((x) => (x == null ? '' : String(x).trim()));  // R3
+  const hdr3 = (rows[2] || []).map((x) => (x == null ? '' : String(x).trim()));  // R3（形态 A/B）
+  const hdr1 = (rows[0] || []).map((x) => (x == null ? '' : String(x).trim()));  // R1（形态 C）
+  const hdr = hdr3.concat(hdr1);
   const r2 = (rows[1] || []).map((x) => (x == null ? '' : String(x))).join('');  // R2 参数自述
   const has = (c) => hdr.indexOf(c) >= 0;
   if (has('菜品名称') && has('销售数量') && r2.indexOf('销售方式') >= 0) return DISH_SHAPES.A;
   if (has('套餐') && has('单品名称')) return DISH_SHAPES.B;
-  if (has('商品名称') && has('商品销量')) return DISH_SHAPES.C;
+  if ((has('商品名称') || has('菜品名称'))
+    && (has('商品销量') || has('销量'))
+    && has('销售额')
+    && r2.indexOf('销售方式') < 0) return DISH_SHAPES.C;
   return null;
 }
 
