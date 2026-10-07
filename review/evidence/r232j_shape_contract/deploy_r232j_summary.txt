@@ -1,0 +1,36 @@
+# R232j 部署取证（2026-10-07）
+
+命令：cli.bat cloud functions deploy --names importSalesBill -r -e cloud1-d4gphpoxy337f2a25 --project <repo>
+铁律：-r 必带（否则覆盖云端 wx-server-sdk ⇒ 前端「网络不可用」）；一次一个函数。
+
+## 部署结果（判据：日志含函数名 + ASCII true + 完成行）
+| 函数 | success | filesCount | packSize | 耗时 |
+|---|---|---|---|---|
+| importSalesBill | **true** | **19** | 54.9 KB | 22.8s |
+
+日志原文（stderr 通道）：
+```
+√ [importSalesBill] cloudfunction importSalesBill exists in the cloud, will update it
+√ [importSalesBill] upload cloud function importSalesBill - deploy
+√ deploy cloudfunctions
+```
+表格通道：`│ importSalesBill │ true │ 19 │ '54.9 KB' │`
+
+## 磁盘对账（filesCount ≡ 磁盘数）
+`ls cloudfunctions/importSalesBill/*.js cloudfunctions/importSalesBill/package.json | wc -l` = **19**
+⇒ ✅ 19 ≡ 19
+
+## 云端 info 回读（--names 空格分隔，不逗号）
+| 函数 | status | timeout | runtime |
+|---|---|---|---|
+| importSalesBill | Active | **20**（**保持**） | Nodejs16.13 |
+| getDishReview | Active | 3 | Nodejs16.13 |
+
+🔴 **R232h 推论获实证**：`importSalesBill` 的 timeout 在**又一次重部署后仍是 20** ⇒
+   「控制台手工改过的值能在重部署后保留」成立（getDishReview 从未手工改过 ⇒ 每次部署都回 3）。
+   ⇒ 建议仍成立：新建/首部署函数后**立即**去控制台抬 timeout。
+
+## 本轮为何必须部署
+前端修好后**不足以**清除「门禁未通过」：首次预览 platform 必空 ⇒ 云端 checkGradeA 仍返
+SCHEMA_PLATFORM ⇒ grade.pass=false。本批把预览分支改为「剔掉 platform 项 + 回 platform_missing 位、
+阻断只留 confirm 分支」⇒ 必须上云才生效。
