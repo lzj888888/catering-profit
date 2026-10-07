@@ -1,0 +1,5 @@
+base keys = 161
+miss keys = 113
+[iter 1] added=0 changed=0 keys=161 rc!=0=0 t=270s
+written: C:/Users/lzj/AppData/Local/Temp/inscode\gitcache.json | archived: C:/Users/lzj/WorkBuddy/Claw/catering-profit\review/evidence/r234_gate/gitcache_rebuilt.json
+final keys = 161 | rc!=0 = 0
