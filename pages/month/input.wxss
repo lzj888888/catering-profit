@@ -163,6 +163,20 @@
 .scope { font-size: 28rpx; color: #6b7a8d; line-height: 1.6; padding: 12rpx 16rpx;
   background: #f5f8fc; border-radius: 10rpx; margin: 0 0 12rpx; }
 
+/* ===== R234/J1（2026-10-07）· 通用「行内提示折叠」 =====
+   背景：本页原有 16 处行内长提示（累计 708 字）全部平铺，最长一条 92 字；
+        与 2026-09-21 对 scope 的反馈同源 ⇒ 同一逻辑处理（收起、点开看全文）。
+   🔴 字号一律 ≥28rpx（本仓红线）；触控行高 ≥88rpx（.hint-fold-head 用 min-height 保底）。
+   ⚠️ 与 .scope-* 分开命名：两者语义不同（口径 vs 操作说明），
+      合并会让「点开看口径」与「点开看说明」在同页出现两遍同样的引导语。 */
+.hint-fold { padding: 0 0 6rpx; }
+.hint-fold-head { display: flex; align-items: center; justify-content: space-between;
+  min-height: 88rpx; padding: 14rpx 8rpx; }
+.hint-fold-guide { font-size: 28rpx; color: #1e3a5f; }
+.hint-fold-arrow { font-size: 28rpx; color: #1e3a5f; }
+.hint-fold-body { font-size: 28rpx; color: #6b7a8d; line-height: 1.6; padding: 12rpx 16rpx;
+  background: #f5f8fc; border-radius: 10rpx; margin: 0 0 12rpx; }
+
 /* ===== 2026-09-21 堂食录入模式（快速 / 分项 · 严格互斥 · 方案 A）=====
    ⚠️ 方案 A：选「分项」时总额由各渠道相加自动算出、不可手填 ⇒ 单一数据源，无需校验。
    ⚠️ 预设渠道名是**固定标签不可编辑**（省出的宽度全给金额框），只有「+ 添加渠道」的自定义行才可编辑。 */

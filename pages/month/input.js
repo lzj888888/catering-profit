@@ -66,6 +66,9 @@ Page({
       //   与预设项提示前缀（「还没加的有：」）消失。守卫 check_page_terms 已补上防复发。
       scopeShow: TERMS.ledger.scopeShow,
       scopeHide: TERMS.ledger.scopeHide,
+      // R234/J1：通用「行内提示折叠」引导语（与上面 scopeShow/Hide 并存，语义不同）
+      hintFoldShow: TERMS.ledger.hintFoldShow,
+      hintFoldHide: TERMS.ledger.hintFoldHide,
       classTotalSuffix: TERMS.ledger.classTotalSuffix,
       presetHintPrefix: TERMS.ledger.presetHintPrefix,
       // 核算方式（2026-09-20：库存 / 摊销开关从店铺设置页迁入本页，就地二选一）
@@ -183,6 +186,10 @@ Page({
     incomeGroups: [],          // [{ category, label, items(模板), expanded, rows }]
     expenseGroups: [],
     fillGuideOpen: false,      // E2：顶部「填写口径」折叠块（默认收起）
+    // R234/J1：行内提示折叠状态（key = wxml 里写死的字面量；缺键 = 收起）。
+    //   🔴 默认空对象 ⇒ **一切默认收起**，与 scope 的「默认收起」保持一致观感。
+    //   ⚠️ 只放**展示态**，不参与任何计算、不入库、不进快照（切月不串状态）。
+    hintFold: {},
     // round189：上月一键复制（prevHasData = 上月有没有账；没账 ⇒ 走首月常规科目预置）
     prevMonth: '',
     prevHasData: false,
@@ -325,6 +332,21 @@ Page({
   // E2：顶部「填写口径」折叠块开关
   onToggleFillGuide() {
     this.setData({ fillGuideOpen: !this.data.fillGuideOpen });
+  },
+
+  // R234/J1：**通用「行内提示折叠」开关**（一个 handler 服务全部 16 处，不逐处写方法）。
+  //   为什么这么做：逐处写 16 个方法 ⇒ 16 个可被改坏的点、没有判据守得住；
+  //   单一 handler + `data-key` ⇒ 折叠状态集中在 `hintFold` 一个 map 里，
+  //   新增位置只是往 map 里加一个键，**不新增代码路径**（本仓「减数量非增代码」的一贯做法）。
+  //   ⚠️ key 由 wxml 侧写死字面量（如 `data-key="incomeHint"`），js 侧不推导 —— 避免第二套命名真相源。
+  //   ⚠️ 与 `onToggleFillGuide` / `onToggleScope` 并存不冲突：三者管三块不同的折叠，语义不重叠。
+  onToggleHintFold(e) {
+    const key = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.key) || '';
+    if (!key) return;                       // 无 key ⇒ 静默返回（不误翻别人的状态）
+    const cur = this.data.hintFold || {};
+    const next = Object.assign({}, cur);
+    next[key] = !cur[key];
+    this.setData({ hintFold: next });
   },
 
   // ===== round189 · 常规科目预置 + 上月一键复制 =====

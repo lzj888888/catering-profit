@@ -185,6 +185,12 @@ const CASES = [
   //   16 条删掉一批仍 > 0 ⇒ A0-② 的「通过数为 0」下界抓不到，只有 A2「声明 ≡ 实跑」能发现（同 round73 立本守卫根因）。
   { key: 'check_formc_parse', rel: 'tools/check_formc_parse.js' }, // 16 条（S + R-C1/2/3/4）
   { key: 'check_shape_machine_value', rel: 'tools/check_shape_machine_value.js' }, // 12 条（V-1/2/3/4）
+  // R234/J1 扩面（R234）：行内提示折叠守卫同批纳入 —— 它的 V-1~V-4 四组负样本互证
+  //   （旧平铺写法必解析出 0 折叠块 / key≠guide 可判红 / 缺 wx:if 判「折了但永远展开」 /
+  //   cssBlock 对不存在类返 null）与 S1~S5 五条自失效护栏正是「非恒真」的凭据；
+  //   断言数不受守则「删掉 V 组负样本 + 调低 S4/S5 下界」就等于把守卫悄悄改小
+  //   （判据仍全绿而证明力归零），与 round73 立本守卫的根因同族。
+  { key: 'check_hint_fold', rel: 'tools/check_hint_fold.js' },          // 24 条（A/B/C/D/S/V 六组）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

@@ -23,9 +23,16 @@
     <view class="muted" wx:if="{{recurringOn}}">{{t.recurringHint}}</view>
   </view>
 
-  <!-- 收入（A2：大类 → 二级细项；E1：引导文案） -->
+  <!-- 收入（A2：大类 → 二级细项；E1：引导文案）
+       R234/J1：47 字长提示收进折叠块（原先平铺占 2 行） -->
   <view class="sec">{{t.incomeTitle}}</view>
-  <view class="hint">{{t.incomeHint}}</view>
+  <view class="hint-fold">
+    <view class="hint-fold-head" data-key="incomeHint" bindtap="onToggleHintFold">
+      <text class="hint-fold-guide">{{hintFold.incomeHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+      <text class="hint-fold-arrow">{{hintFold.incomeHint ? '▾' : '▸'}}</text>
+    </view>
+    <view class="hint-fold-body" wx:if="{{hintFold.incomeHint}}">{{t.incomeHint}}</view>
+  </view>
 
   <view class="group" wx:for="{{incomeGroups}}" wx:key="category" wx:for-item="g" wx:for-index="gi">
     <!-- 堂食由「快速 / 分项」模式开关接管，不再用手风琴展开 -->
@@ -68,12 +75,24 @@
           data-kind="income" data-gidx="{{gi}}" data-ridx="0" bindinput="onSubAmount" disabled="{{readOnly}}"
           adjust-position="{{true}}" cursor-spacing="20" />
       </view>
-      <view class="hint">{{t.dmFastHint}}</view>
+      <view class="hint-fold">
+        <view class="hint-fold-head" data-key="dmFastHint" bindtap="onToggleHintFold">
+          <text class="hint-fold-guide">{{hintFold.dmFastHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+          <text class="hint-fold-arrow">{{hintFold.dmFastHint ? '▾' : '▸'}}</text>
+        </view>
+        <view class="hint-fold-body" wx:if="{{hintFold.dmFastHint}}">{{t.dmFastHint}}</view>
+      </view>
     </view>
 
     <!-- 堂食·分项渠道录入：两行（行①渠道名+× / 行②金额整行宽）+ 合计自动算 -->
     <block wx:elif="{{g.category === 'dine_in'}}">
-      <view class="hint">{{t.dmDetailHint}}</view>
+      <view class="hint-fold">
+        <view class="hint-fold-head" data-key="dmDetailHintF" bindtap="onToggleHintFold">
+          <text class="hint-fold-guide">{{hintFold.dmDetailHintF ? t.hintFoldHide : t.hintFoldShow}}</text>
+          <text class="hint-fold-arrow">{{hintFold.dmDetailHintF ? '▾' : '▸'}}</text>
+        </view>
+        <view class="hint-fold-body" wx:if="{{hintFold.dmDetailHintF}}">{{t.dmDetailHint}}</view>
+      </view>
       <view class="dine-item" wx:for="{{g.rows}}" wx:key="index" wx:for-item="r" wx:for-index="ri">
         <!-- 2026-09-21 李老师真机反馈：原一行三列把渠道名挤成竖排、金额框只剩 240rpx
              ⇒ 改两行：行① 渠道名（整行，永不竖排）+ ×；行② 金额（整行宽，好点好改） -->
@@ -131,14 +150,26 @@
       </view>
 
       <!-- 平台口径句（A.11.2：这一个数 = 商品总价+打包费+活动补贴；非实付/非到账/非应收款） -->
-      <view class="hint">{{t.twScopeGuide}}</view>
+      <view class="hint-fold">
+        <view class="hint-fold-head" data-key="twScopeGuide" bindtap="onToggleHintFold">
+          <text class="hint-fold-guide">{{hintFold.twScopeGuide ? t.hintFoldHide : t.hintFoldShow}}</text>
+          <text class="hint-fold-arrow">{{hintFold.twScopeGuide ? '▾' : '▸'}}</text>
+        </view>
+        <view class="hint-fold-body" wx:if="{{hintFold.twScopeGuide}}">{{t.twScopeGuide}}</view>
+      </view>
 
       <!-- 🔴 R161-6 归月口径句：结算日 = 账单日 + 3 天，按结算日导月必然串月 -->
       <view class="tw-period">{{t.twPeriodNote}}</view>
 
       <!-- 快速录入：每平台 1 个金额框（默认） -->
       <block wx:if="{{takeoutMode === 'fast'}}">
-        <view class="hint">{{t.twFastHint}}</view>
+        <view class="hint-fold">
+        <view class="hint-fold-head" data-key="twFastHint" bindtap="onToggleHintFold">
+          <text class="hint-fold-guide">{{hintFold.twFastHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+          <text class="hint-fold-arrow">{{hintFold.twFastHint ? '▾' : '▸'}}</text>
+        </view>
+        <view class="hint-fold-body" wx:if="{{hintFold.twFastHint}}">{{t.twFastHint}}</view>
+      </view>
         <view class="dine-item" wx:for="{{g.rows}}" wx:key="index" wx:for-item="r" wx:for-index="ri">
           <view class="dine-line1"><text class="dine-name">{{r.subItem}}</text></view>
           <view class="dine-line2">
@@ -174,17 +205,34 @@
           <text class="dine-sum-lbl">{{t.twPerOrderLabel}}</text>
           <text class="dine-sum-val">{{takeoutPerOrder}}</text>
         </view>
-        <view class="hint" wx:if="{{!takeoutQtyTotal}}">{{t.twOrdersHint}}</view>
-        <view class="hint" wx:else>{{t.twPerOrderHint}}</view>
+        <view class="hint-fold">
+          <view class="hint-fold-head" data-key="twOrdersHintF" bindtap="onToggleHintFold">
+            <text class="hint-fold-guide">{{hintFold.twOrdersHintF ? t.hintFoldHide : t.hintFoldShow}}</text>
+            <text class="hint-fold-arrow">{{hintFold.twOrdersHintF ? '▾' : '▸'}}</text>
+          </view>
+          <view class="hint-fold-body" wx:if="{{hintFold.twOrdersHintF}}">{{t.twOrdersHint}}</view>
+        </view>
         <view class="hint">{{takeoutFilledText}}</view>
-        <view class="hint">{{t.twTotalAutoHint}}</view>
+        <view class="hint-fold">
+        <view class="hint-fold-head" data-key="twTotalAutoHint" bindtap="onToggleHintFold">
+          <text class="hint-fold-guide">{{hintFold.twTotalAutoHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+          <text class="hint-fold-arrow">{{hintFold.twTotalAutoHint ? '▾' : '▸'}}</text>
+        </view>
+        <view class="hint-fold-body" wx:if="{{hintFold.twTotalAutoHint}}">{{t.twTotalAutoHint}}</view>
+      </view>
         <!-- T3′（round97）：快速模式轻量自查 —— 零依赖判据（不看补贴，只看营销段是否记了佣金/配送费） -->
         <view class="tw-rec-msg" wx:if="{{twSelfCheck}}">{{twSelfCheck}}</view>
       </block>
 
       <!-- 分项录入：每平台 3 框（商品总价 / 打包费 / 商家活动补贴），小计自动 -->
       <block wx:else>
-        <view class="hint">{{t.twDetailHint}}</view>
+        <view class="hint-fold">
+          <view class="hint-fold-head" data-key="twDetailHintF" bindtap="onToggleHintFold">
+            <text class="hint-fold-guide">{{hintFold.twDetailHintF ? t.hintFoldHide : t.hintFoldShow}}</text>
+            <text class="hint-fold-arrow">{{hintFold.twDetailHintF ? '▾' : '▸'}}</text>
+          </view>
+          <view class="hint-fold-body" wx:if="{{hintFold.twDetailHintF}}">{{t.twDetailHint}}</view>
+        </view>
         <view class="tw-detail-row" wx:for="{{takeoutDetailRows}}" wx:key="platform" wx:for-item="r" wx:for-index="ri">
           <view class="tw-plat-name">{{r.platform}}</view>
           <view class="tw-fields">
@@ -243,7 +291,13 @@
           <text class="dine-sum-lbl">{{t.twPerOrderLabel}}</text>
           <text class="dine-sum-val">{{takeoutPerOrder}}</text>
         </view>
-        <view class="hint">{{t.twOrdersHint}}</view>
+        <view class="hint-fold">
+          <view class="hint-fold-head" data-key="twOrdersHintF2" bindtap="onToggleHintFold">
+            <text class="hint-fold-guide">{{hintFold.twOrdersHintF2 ? t.hintFoldHide : t.hintFoldShow}}</text>
+            <text class="hint-fold-arrow">{{hintFold.twOrdersHintF2 ? '▾' : '▸'}}</text>
+          </view>
+          <view class="hint-fold-body" wx:if="{{hintFold.twOrdersHintF2}}">{{t.twOrdersHint}}</view>
+        </view>
 
         <!-- 配平校验（A.11.4 · 只做软提示：不阻断保存、不参与利润、不写入金额） -->
         <view class="tw-rec">
@@ -252,9 +306,21 @@
             <input class="val-input" type="digit" confirm-type="done" value="{{twRecYuan}}" placeholder="{{t.twRecPh}}"
               bindinput="onRecYuan" disabled="{{readOnly}}" adjust-position="{{true}}" cursor-spacing="20" />
           </view>
-          <view class="tw-rec-hint">{{t.twRecCalcHint}}</view>
+          <view class="hint-fold">
+            <view class="hint-fold-head" data-key="twRecCalcHint" bindtap="onToggleHintFold">
+              <text class="hint-fold-guide">{{hintFold.twRecCalcHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+              <text class="hint-fold-arrow">{{hintFold.twRecCalcHint ? '▾' : '▸'}}</text>
+            </view>
+            <view class="hint-fold-body" wx:if="{{hintFold.twRecCalcHint}}">{{t.twRecCalcHint}}</view>
+          </view>
           <view class="tw-rec-msg" wx:if="{{twRecText}}">{{twRecText}}</view>
-          <view class="tw-rec-hint" wx:elif="{{!twRecYuan}}">{{t.twRecNoInput}}</view>
+          <view class="hint-fold" wx:elif="{{!twRecYuan}}">
+            <view class="hint-fold-head" data-key="twRecNoInputF" bindtap="onToggleHintFold">
+              <text class="hint-fold-guide">{{hintFold.twRecNoInputF ? t.hintFoldHide : t.hintFoldShow}}</text>
+              <text class="hint-fold-arrow">{{hintFold.twRecNoInputF ? '▾' : '▸'}}</text>
+            </view>
+            <view class="hint-fold-body" wx:if="{{hintFold.twRecNoInputF}}">{{t.twRecNoInput}}</view>
+          </view>
         </view>
       </block>
     </block>
@@ -312,7 +378,13 @@
 
   <!-- 费用（A2：四大类；E1：引导文案） -->
   <view class="sec">{{t.expenseTitle}}</view>
-  <view class="hint">{{t.expenseHint}}</view>
+  <view class="hint-fold">
+    <view class="hint-fold-head" data-key="expenseHint" bindtap="onToggleHintFold">
+      <text class="hint-fold-guide">{{hintFold.expenseHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+      <text class="hint-fold-arrow">{{hintFold.expenseHint ? '▾' : '▸'}}</text>
+    </view>
+    <view class="hint-fold-body" wx:if="{{hintFold.expenseHint}}">{{t.expenseHint}}</view>
+  </view>
 
   <view class="group" wx:for="{{expenseGroups}}" wx:key="category" wx:for-item="g" wx:for-index="gi">
     <view class="group-head" data-kind="expense" data-idx="{{gi}}" bindtap="onToggleGroup">
@@ -352,7 +424,13 @@
       <view class="exp-note {{r.promo ? 'promo' : ''}}" wx:if="{{r.note}}">
         {{r.note}}
         <text wx:if="{{r.promo}}" class="promo-path">{{t.twPromoPathLabel}}</text>
-        <view wx:if="{{r.promo}}" class="promo-hint">{{t.twPromoPathHint}}</view>
+        <view wx:if="{{r.promo}}" class="hint-fold">
+          <view class="hint-fold-head" data-key="twPromoPathHint" bindtap="onToggleHintFold">
+            <text class="hint-fold-guide">{{hintFold.twPromoPathHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+            <text class="hint-fold-arrow">{{hintFold.twPromoPathHint ? '▾' : '▸'}}</text>
+          </view>
+          <view class="hint-fold-body" wx:if="{{hintFold.twPromoPathHint}}">{{t.twPromoPathHint}}</view>
+        </view>
       </view>
       <!-- T1（round97）+ round102 · 营销段「分平台佣金小计」：只回显、不入库；填了即**自动汇成**佣金总额那一行
            （该行随即转只读，避免两个来源打架）；一行都不填则完全不碰那一行。
@@ -361,7 +439,13 @@
               营销组没有佣金行时该下标退化为末行下标 ⇒ 块仍可见、功能不丢）。 -->
       <view class="mk-plat" wx:if="{{g.category === 'marketing' && g.expanded && ri === g.mkPlatAfterRi}}">
         <view class="mk-plat-title">{{t.mkPlatTitle}}</view>
-        <view class="hint">{{t.mkPlatHint}}</view>
+        <view class="hint-fold">
+          <view class="hint-fold-head" data-key="mkPlatHintF" bindtap="onToggleHintFold">
+            <text class="hint-fold-guide">{{hintFold.mkPlatHintF ? t.hintFoldHide : t.hintFoldShow}}</text>
+            <text class="hint-fold-arrow">{{hintFold.mkPlatHintF ? '▾' : '▸'}}</text>
+          </view>
+          <view class="hint-fold-body" wx:if="{{hintFold.mkPlatHintF}}">{{t.mkPlatHint}}</view>
+        </view>
         <view class="mk-plat-row" wx:for="{{twMkByPlat}}" wx:key="platform" wx:for-item="p" wx:for-index="pi">
           <text class="mk-plat-name">{{p.platform}}</text>
           <input class="val-input mk-plat-amt" type="digit" confirm-type="done" value="{{p.amountYuan}}"
@@ -422,7 +506,13 @@
        结构上就排除了「本月既有一笔摊销、又有几笔小额一次算清」—— 而这正是真实场景（李老师真机反馈）。
        现在两类投入**可以同时存在**，按笔登记在「一次性投入」页；本页只给口径说明 + 两行摘要 + 一个入口。 -->
   <view class="cm-sub">{{t.cmAssetTitle}}</view>
-  <view class="hint">{{t.cmAssetHint}}</view>
+  <view class="hint-fold">
+    <view class="hint-fold-head" data-key="cmAssetHint" bindtap="onToggleHintFold">
+      <text class="hint-fold-guide">{{hintFold.cmAssetHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+      <text class="hint-fold-arrow">{{hintFold.cmAssetHint ? '▾' : '▸'}}</text>
+    </view>
+    <view class="hint-fold-body" wx:if="{{hintFold.cmAssetHint}}">{{t.cmAssetHint}}</view>
+  </view>
   <button class="btn ghost" bindtap="goAmortize">{{t.cmAssetGo}}</button>
   <view class="cm-state" wx:if="{{assetSummaryLump}}">{{assetSummaryLump}}</view>
   <view class="cm-state" wx:if="{{assetSummaryAmort}}">{{assetSummaryAmort}}</view>
