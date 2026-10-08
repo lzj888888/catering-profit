@@ -1,0 +1,35 @@
+[
+  {
+    "card_code": "cc_muhz52um1mts",
+    "version": 5,
+    "name": "鱼香肉丝",
+    "price_fen": 3000,
+    "total_cost_fen": 1200,
+    "gross_margin_pct": 60,
+    "card_type": 1,
+    "mode": "A",
+    "lines": 1
+  },
+  {
+    "card_code": "cc_muhznpgzd5ot",
+    "version": 7,
+    "name": "炸鸡腿",
+    "price_fen": 200000,
+    "total_cost_fen": 80000,
+    "gross_margin_pct": 60,
+    "card_type": 1,
+    "mode": "A",
+    "lines": 1
+  },
+  {
+    "card_code": "cc_muibc75r5q3j",
+    "version": 8,
+    "name": "肥炸鸡腿",
+    "price_fen": 120063,
+    "total_cost_fen": 48025,
+    "gross_margin_pct": 60,
+    "card_type": 1,
+    "mode": "A",
+    "lines": 2
+  }
+]

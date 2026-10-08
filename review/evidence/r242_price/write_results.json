@@ -1,0 +1,29 @@
+[
+  {
+    "card_code": "cc_muhznpgzd5ot",
+    "res": {
+      "code": "SUCCESS",
+      "msg": "ok",
+      "data": {
+        "shop_id": "shop_mu6j87v1itrs",
+        "card_code": "cc_muhznpgzd5ot",
+        "version": 7,
+        "card_row_id": "560e7cf56ac7a7d00154b7c16abc6db5",
+        "total_cost_fen": 80000,
+        "material_total_fen": 80000,
+        "gross_profit_fen": 120000,
+        "gross_margin_pct": 60,
+        "reverse_price_fen": 200000,
+        "lines": [
+          {
+            "material_id": "mat_mu7606ti1psx",
+            "net_unit_cost": 160000,
+            "line_net_cost_fen": 80000
+          }
+        ],
+        "virtual_material_id": null,
+        "client_request_id": "r242-price-cc_muhznpgzd5ot-1791469235530"
+      }
+    }
+  }
+]

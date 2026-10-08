@@ -1,0 +1,21 @@
+[ok] connected ws://127.0.0.1:9420 | 目标毛利 60% | 模式 ★写入
+
+=== 现状（3 张）· shop_id=shop_mu6j87v1itrs ===
+  cc_muhz52um1mts  v5  鱼香肉丝  card_type=1 mode=A batch=null specs=[]
+      成本=12.00元  现挂牌价=30.00元  现毛利=60%  建议(60%)=30.00元  行=1[type1/in2]
+  cc_muhznpgzd5ot  v6  炸鸡腿  card_type=1 mode=A batch=null specs=[]
+      成本=800.00元  现挂牌价=62.50元  现毛利=-1180%  建议(60%)=2000.00元  行=1[type1/in1]
+  cc_muibc75r5q3j  v8  肥炸鸡腿  card_type=1 mode=A batch=null specs=[]
+      成本=480.25元  现挂牌价=1200.63元  现毛利=60%  建议(60%)=1200.63元  行=2[type1/in1,type1/in1]
+  [--only=cc_muhznpgzd5ot] 仅处理命中卡：1 张
+
+=== 将写入（每张卡各 +1 个新版本，不 UPDATE）===
+  cc_muhznpgzd5ot  炸鸡腿  card_type=1 mode=A  挂牌价 2000.00元  目标毛利 60%  行 1  载荷=320B
+
+=== 写入 ===
+  cc_muhznpgzd5ot → code=SUCCESS ver=7 成本=80000 毛利=60 反算价=200000  MSG=ok
+
+=== 复验（重读云端，以库为准）===
+  cc_muhz52um1mts  v5  鱼香肉丝  card_type=1 mode=A  行=1  成本=12.00元  挂牌价=30.00元  毛利=60%
+  cc_muhznpgzd5ot  v7  炸鸡腿  card_type=1 mode=A  行=1  成本=800.00元  挂牌价=2000.00元  毛利=60%
+  cc_muibc75r5q3j  v8  肥炸鸡腿  card_type=1 mode=A  行=2  成本=480.25元  挂牌价=1200.63元  毛利=60%

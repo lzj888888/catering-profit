@@ -1,0 +1,18 @@
+文件 = jd_bill_20260930.xlsx | 40298 B
+
+[1] bufferToMatrix → sheets = ["com.jd.o2o.settlement.domain.dt"]
+    行数 = 117 · 首行前 6 格 = ["商家基础信息","商家基础信息","商家基础信息","商家基础信息","商家基础信息","订单基础信息"]
+
+[2] guessHeader → 第 1 行（0-based=0）
+    该行前 10 格 = ["商家基础信息","商家基础信息","商家基础信息","商家基础信息","商家基础信息","订单基础信息","订单基础信息","订单基础信息","订单基础信息","订单基础信息"]
+
+[3] detectPlatform(第1行) → null
+    对照：用第1行当表头 → detectPlatform = null
+    对照：用第2行当表头 → detectPlatform = null
+
+[4] parseBillMatrix → {"amountFen":0,"qty":0,"rowCount":0}
+
+[5] checkGradeA → pass = false | level = A
+    failures = [{"code":"CHANNEL_EMPTY","field":"rows","msg":"未解析到任何数据行"},{"code":"SCHEMA_PLATFORM","field":"platform","msg":"平台未知：null"},{"code":"REQUIRED_SHOP_ID","field":"shop_id","msg":"门店 ID 为空"}]
+
+[6] 变体（删掉一级表头 R1）→ guessHeader 第 1 行 · detectPlatform = null
