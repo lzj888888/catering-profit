@@ -1,0 +1,54 @@
+=== A 平台耦合点（只列真含分派逻辑的文件）===
+  cloudfunctions/importSalesBill/index.js
+      · SHEET 表名映射
+  cloudfunctions/importSalesBill/service.js
+      · COL 列映射表
+      · SHEET 表名映射
+      · detectPlatform 实现
+      · detectDishShape 守卫
+      · DISH_C_COLS 白名单
+      · 平台枚举(gradeGate)
+      · 按平台分支(if platform)
+  pages/takeaway/index.js
+      · 前端平台选项
+  utils/billParse.js
+      · COL 列映射表
+      · SHEET 表名映射
+      · detectPlatform 实现
+      · 按平台分支(if platform)
+  utils/gradeGate.js
+      · 平台枚举(gradeGate)
+  ── 派生副本（sync_common 自动生成，改源后必跑同步）: 0 处
+
+=== B 平台名枚举出现处 ===
+  cloudfunctions/common/indicatorRef.js                          other
+  cloudfunctions/getDishReview/service.js                        pos
+  cloudfunctions/importSalesBill/index.js                        other,pos
+  cloudfunctions/importSalesBill/service.js                      eleme,meituan,other,pos,taobao
+  cloudfunctions/importSalesBill/validate.js                     eleme,meituan,other,taobao
+  cloudfunctions/initDb/collections.js                           other
+  cloudfunctions/saveLedger/selftest.js                          other
+  utils/billParse.js                                             meituan,taobao
+  utils/bizPreset.js                                             other
+  utils/gradeGate.js                                             eleme,meituan,other,pos,taobao
+  utils/materialBatch.js                                         other
+  pages/material/edit.js                                         other
+  pages/material/index.js                                        other
+  pages/material/pick.js                                         other
+  pages/takeaway/index.js                                        eleme,meituan,other,taobao
+  tools/check_dish_category_free.js                              other
+  tools/check_expense_item_seed.js                               other
+  tools/check_formc_parse.js                                     meituan
+  tools/check_grade_gate_dual.js                                 eleme,meituan,other,pos,taobao
+  tools/check_m333_parse.js                                      pos
+  tools/check_selftest_shape.js                                  other
+  tools/check_suite_assert_counts.js                             pos
+  tools/selftest_batch8b.js                                      other
+  tools/selftest_bill_parse.js                                   meituan,taobao
+  tools/selftest_grade_gate.js                                   taobao
+  tools/selftest_m3_recon.js                                     other
+  miniprogram/i18n/terms.js                                      other
+
+=== C 结论计数 ===
+  必须改动的非副本文件数: 5
+  自动派生副本数（跑 sync_common 即可）: 0

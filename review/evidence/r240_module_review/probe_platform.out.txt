@@ -1,0 +1,39 @@
+=== 0 正样本基线（证明探针能认出「该认出的」）===
+  ✅ 淘宝表头 → taobao  实得 taobao
+  ✅ 美团表头 → meituan  实得 meituan
+
+=== 1 识别条件 = 单列名硬依赖（去掉那一列即失效）===
+  ✅ 淘宝表头去掉「结算金额」→ 认不出  实得 null
+  ✅ 美团表头去掉「商家应收款」→ 认不出  实得 null
+
+=== 2 京东外卖账单（假设列名，共测 4 种常见写法）===
+  · 假设A：商家实收 + 结算状态 → detectPlatform = null
+  · 假设B：实付金额 + 打款金额 → detectPlatform = null
+  · 假设C：含「结算金额」（与淘宝同名列） → detectPlatform = "taobao"
+  · 假设D：含「商家应收款」（与美团同名列） → detectPlatform = "meituan"
+
+=== 3 模拟 index.js:72 的准入判据（sheetNameByPlatform 白名单）===
+  · 手选 platform=taobao   → 白名单 sheet 名 "外卖账单明细" ⇒ 放行
+  · 手选 platform=meituan  → 白名单 sheet 名 "订单明细" ⇒ 放行
+  · 手选 platform=eleme    → 白名单 sheet 名 undefined ⇒ 阻断（报「无法识别账单平台」，提示语里没有这一家）
+  · 手选 platform=other    → 白名单 sheet 名 undefined ⇒ 阻断（报「无法识别账单平台」，提示语里没有这一家）
+  · 手选 platform=jd       → 白名单 sheet 名 undefined ⇒ 阻断（报「无法识别账单平台」，提示语里没有这一家）
+  ✅ 京东 jd 在白名单外 ⇒ 账单路径必然阻断
+  ✅ 饿了么 eleme 也在白名单外 ⇒ 前端选项里的 eleme 其实进不来
+
+=== 4 形态 C（外卖「商品销量」）判定 —— 列名词表是否敏感 ===
+  ✅ 美团式形态C表头 → 判为 C（正样本）  实得 waimai_goods
+  ✅ 假设京东式（销售数量/销售金额）→ 判不出  实得 null
+  ✅ 假设京东式（商品/实付金额）→ 判不出  实得 null
+
+=== 5 形态 C 取列白名单（缺列时不报错、静默归空）===
+  DISH_C_COLS = ["日期","门店编号","商品名称","销量","销售额"]
+  → rows=1  totals.amountFen=0  unmatched=0  （列名不在白名单 ⇒ 静默取不到数，不报「列缺失」）
+  ✅ 假设京东式表：行进了、钱是 0（静默）
+
+=== 6 淘宝式「退单」列缺失时的静默行为（误判后不报错）===
+  → rows=[{"bizDate":"2026-08-01","qty":1,"amountFen":10000},{"bizDate":"2026-08-02","qty":1,"amountFen":-5000}]  excluded={"rows":0,"reason":""}
+  ✅ 缺「退单」列 ⇒ 退款行被当正常单计入（金额 5000 分）  实得 5000
+  ⇒ 若某家平台的表恰好含「结算金额」但这张表**不是**淘宝格式 ⇒ 会被当淘宝解析且**不报错**
+
+===== 汇总：通过 11 / 失败 0 =====
