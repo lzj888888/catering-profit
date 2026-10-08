@@ -180,6 +180,40 @@ sec('E · cash 回本算式全仓只出现一次且在 utils/ 内');
     cashViolation.length ? '复算：' + cashViolation.join(', ') : 'pages 零复算');
 }
 
+// ============ F R237：桌数换算 + 翻台口径分组 + 三档阈值（前端纯函数，零引擎参与）============
+sec('F · R237 桌数换算 + 翻台口径分组 + 三档阈值');
+// 🔴 为什么必须守这三个纯函数：它们决定**页面上说什么** —— 叫不叫「翻台」、算术上难不难、
+//   「几桌 × 几座」。改动它们不会有任何报错，只会让文案 / 分档**静默变错**
+//   （本仓最典型的静默缺陷面，见 `check_m2_biz_inputs.js` 的立据）。
+// ⚠️ F-③ 是**锚点脚本抓出来的真缺陷**（review/evidence/r237_m2_turn/recalc_anchors.js）：
+//    `Number(null) === 0` 且 `Number('') === 0` ⇒ 引擎红警时返回的 `turn_rate: null`
+//    会被分档成 **'easy'**，页面就会写「这个水平，正常做着就能到」
+//    —— 把"算不出来"说成"很轻松"，是本轮最坏的一类静默错。故必须有空值护栏。
+let seatsPerTableOf = null, turnModeOf = null, turnLevelOf = null;
+try { ({ seatsPerTableOf, turnModeOf, turnLevelOf } = require(BIZ_PRESET)); } catch (e) { seatsPerTableOf = null; }
+check('F-⓪ bizPreset 导出 R237 三个纯函数（解析不到即判红，否则 F-①~④ 会静默恒真）',
+  !!(seatsPerTableOf && turnModeOf && turnLevelOf));
+if (seatsPerTableOf && turnModeOf && turnLevelOf) {
+  check('F-① 单桌座位数：快餐 2 / 正餐 4 / 火锅 4 / 茶饮 2，未知业态兜底 4（不得 0 / NaN）',
+    seatsPerTableOf('fastfood') === 2 && seatsPerTableOf('dining') === 4
+    && seatsPerTableOf('hotpot') === 4 && seatsPerTableOf('cafe') === 2
+    && seatsPerTableOf('nope') === 4,
+    ['fastfood', 'dining', 'hotpot', 'cafe', 'nope'].map((k) => k + '=' + seatsPerTableOf(k)).join(' '));
+  check('F-② 翻台口径分组：火锅/正餐 = table（**可说「翻台」**）/ 快餐/茶饮 = seat（**禁用「翻台」**）',
+    turnModeOf('hotpot') === 'table' && turnModeOf('dining') === 'table'
+    && turnModeOf('fastfood') === 'seat' && turnModeOf('cafe') === 'seat',
+    ['hotpot', 'dining', 'fastfood', 'cafe'].map((k) => k + '=' + turnModeOf(k)).join(' '));
+  check('F-③ 🔴 空值不得被分档（Number(null)===0 会把"算不出来"说成"很轻松"）',
+    turnLevelOf('seat', null) === '' && turnLevelOf('seat', undefined) === ''
+    && turnLevelOf('seat', '') === '' && turnLevelOf('seat', NaN) === '',
+    'null/undefined/空串/NaN ⇒ 全部空串（页面据此不渲染难度行）');
+  check('F-④ 三档阈值边界：桌 ≤1.8 / ≤2.8；座位 ≤2.5 / ≤4.0',
+    turnLevelOf('table', 1.8) === 'easy' && turnLevelOf('table', 2.81) === 'hard'
+    && turnLevelOf('seat', 2.5) === 'easy' && turnLevelOf('seat', 4.01) === 'hard',
+    '桌 1.8/2.81 = ' + turnLevelOf('table', 1.8) + '/' + turnLevelOf('table', 2.81)
+    + ' · 座位 2.5/4.01 = ' + turnLevelOf('seat', 2.5) + '/' + turnLevelOf('seat', 4.01));
+}
+
 // 断言数下界（用于 check_suite_assert_counts 登记；file 末尾打印「N 通过 / M 失败」）
 console.log(`\n===== 业态参数包守卫结果：${pass} 通过 / ${failN} 失败 =====`);
 process.exit(failN === 0 ? 0 : 1);

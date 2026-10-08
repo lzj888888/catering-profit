@@ -156,7 +156,7 @@ const CASES = [
   // M2v1.3 扩面（批次 第三期）：业态参数包守卫同批纳入 —— 它的 S 扫描面（预设数 ≥4 + 断言数下界）
   //   与 C 形态参数完备（缺一即 NaN）、D L1/L2 禁入、E 回本唯一出口正是「非恒真」的凭据；
   //   断言数不受守则「删掉反例 / 调低下界」静默通过，与 round73 立本守卫的根因同族。
-  { key: 'check_biz_preset', rel: 'tools/check_biz_preset.js' }, // 15 条（S/A/B/C/D/E 六组，含城市系数双副本逐值 ≡ 生产源、断言数下界）
+  { key: 'check_biz_preset', rel: 'tools/check_biz_preset.js' }, // 20 条（S/A/B/C/D/E/F 七组，含城市系数双副本逐值 ≡ 生产源、R237 口径纯函数、断言数下界）
   // R232 扩面：gradeGate 双副本等价守卫同批纳入 —— 它的 C 组两道自失效护栏（样本数下界 / 影子反例必须报差异）
   //   与 B-②「电池须同时产出过 pass=true 与 pass=false」正是「非恒真」凭据；
   //   12 条删掉一批仍 > 0 ⇒ A0-② 的「通过数为 0」下界抓不到，只有 A2「声明 ≡ 实跑」能发现（同 round73 立本守卫根因）。
@@ -197,7 +197,7 @@ const CASES = [
   // R234/M2v1.4：M2 小白输入面 —— 把 R223 **定案却零守卫**的铁律变成断言
   //   （专业指标不得进输入区 / 业态预设平铺 / 结论先给判定且不自造 / 术语餐饮化）。
   //   ⚠️ 不登记这里会被 A5-② 判「声明行含未受守 key」—— 新增套件的同步面之一。
-  { key: 'check_m2_biz_inputs', rel: 'tools/check_m2_biz_inputs.js' },  // 28 条（P/A/B/C/D/V/E 七组）
+  { key: 'check_m2_biz_inputs', rel: 'tools/check_m2_biz_inputs.js' },  // 34 条（P/A/B/C/D/V/E 七组；A-⑧=R237 唯一换算点白名单）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

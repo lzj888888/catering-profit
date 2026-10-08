@@ -236,7 +236,11 @@ function calcSandboxReverse(clean) {
     seats,
     open_days: openDays,
     red_alert: false,
-    warn_keys: turnRate > 8 ? ['turnOverHigh'] : [],
+    // 🔴 R237：翻台红警**已删除** —— 李老师 2026-10-08「不要过多让翻台率去佐证生意好坏」；
+    //   豆包第 5 轮裁定：「旧的 >8 阈值是适配旧座位口径的产物，口径已变更，直接废弃」。
+    //   ⚠️ 字段**保留**（云函数契约字段，形状一字不改）⇒ 恒空数组，前端不再据此标红；
+    //   难度提示改由前端按业态阈值做（见 `utils/bizPreset.js::turnLevelOf`），**不标红、不进主结论**。
+    warn_keys: [],
   };
 }
 

@@ -1,0 +1,22 @@
+
+===== V-1 契约两侧都能取到（非退化：取不到即判红，不许「都为空所以相等」） =====
+  ✅ V-1-① 云函数侧 DISH_SHAPES 可提取 —— {"A":"dish_sales","B":"combo_detail","C":"waimai_goods"}
+  ✅ V-1-② 页面侧 DISH_SHAPES 可提取 —— {"A":"dish_sales","B":"combo_detail","C":"waimai_goods"}
+  ✅ V-1-③ 页面侧已导出可被 wxml 使用的 shapeC 下发位
+
+===== V-2 两侧逐字相等（这就是契约本身） =====
+  ✅ V-2-① A 值一致 —— dish_sales vs dish_sales
+  ✅ V-2-② B 值一致 —— combo_detail vs combo_detail
+  ✅ V-2-③ C 值一致 —— waimai_goods vs waimai_goods
+  ✅ V-2-④ C 值是机器值不是字母序号 —— waimai_goods
+
+===== V-3 页面不得再用字母序号比对 shape（行为判据：真值必须判得出 C） =====
+  ✅ V-3-① 云函数返回 C ⇒ 页面判得出（行为） —— cloud=waimai_goods page=waimai_goods
+  ✅ V-3-② 反例：字母序号 'C' 判不出（自失效护栏） —— 若此项为真，说明 V-3-① 恒真、判据失效
+
+===== V-4 源码面无残留字母序号比对（去掉注释后再扫，避免被注释骗过） =====
+  ✅ V-4-① 页面源码（去注释）无 `shape === 'C'` —— 命中 0 处
+  ✅ V-4-② wxml 无 `importShape === 'C'` —— 命中 0 处
+  ✅ V-4-③ wxml 走 data 下发的 shapeC（不在模板里写字面量）
+
+12 通过 / 0 失败

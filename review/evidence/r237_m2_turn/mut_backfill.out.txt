@@ -1,0 +1,37 @@
+== R237 变异回灌 ==
+仓根 C:\Users\lzj\WorkBuddy\Claw\catering-profit
+node C:/Users/lzj/.workbuddy/binaries/node/versions/22.22.2-3/node.exe
+
+[M1·组A] ✅ 有效红（命中目标断言名）
+      文件 pages/sandbox/index.js · 替换 [2] 处 · 唯一换算点被绕过：seats 直接取桌数（漏乘单桌座位数）
+      套件 tools/check_m2_biz_inputs.js · RC=1 · 真FAIL=1 · md5 6dbbb4bf→6dbbb4bf
+        ❌ A-⑧ 🔴 `seats:` 右值只允许 `this.seatsNow()` 或透传 `<obj>.seats`（漏乘 / 写死 / 残留旧字段即红） —— 受检 4 处（换算 0 + 透传 2） ⇒ 越界：Math.floor(Number(this.data.tablesNum)) | Ma
+        ===== M2 小白输入面守卫结果：33 通过 / 1 失败 =====
+
+[M2·组A] ✅ 有效红（命中目标断言名）
+      文件 cloudfunctions/calcSandbox/service.js · 替换 [1] 处 · 翻台红警被加回来（旧写法 turnRate > 8 ? ['turnOverHigh'] : []）
+      套件 tools/check_m2_reverse_rent.js · RC=1 · 真FAIL=1 · md5 e7e2aec9→e7e2aec9
+        ❌ E-① 🔴 高翻台 ⇒ warn_keys 仍为空（旧写法会返回 ["turnOverHigh"]）  warn_keys=["turnOverHigh"] · turn_rate=37.04
+        ===== M2 反推房租口径守卫结果：22 通过 / 1 失败 =====
+
+[M3·组A] ✅ 有效红（命中目标断言名）
+      文件 utils/bizPreset.js · 替换 [1] 处 · 空值护栏失效 ⇒ Number(null)===0 被分档成 easy（把'算不出来'说成'很轻松'）
+      套件 tools/check_biz_preset.js · RC=1 · 真FAIL=1 · md5 0f6092fc→0f6092fc
+        ❌ F-③ 🔴 空值不得被分档（Number(null)===0 会把"算不出来"说成"很轻松"） —— null/undefined/空串/NaN ⇒ 全部空串（页面据此不渲染难度行）
+        ===== 业态参数包守卫结果：19 通过 / 1 失败 =====
+
+[M4·组B] ✅ 未转红（符合预期）
+      文件 pages/sandbox/index.js · 替换 [1] 处 · 反向伤害①：违规写法**只进注释** ⇒ 不得转红（证明剥注释有效）
+      套件 tools/check_m2_biz_inputs.js · RC=0 · 真FAIL=0 · md5 6dbbb4bf→6dbbb4bf
+        ===== M2 小白输入面守卫结果：34 通过 / 0 失败 =====
+
+[M5·组B] ✅ 未转红（符合预期）
+      文件 utils/bizPreset.js · 替换 [1] 处 · 反向伤害②：等价改写（=== null || === undefined → == null）⇒ 不得转红（判行为不判字面）
+      套件 tools/check_biz_preset.js · RC=0 · 真FAIL=0 · md5 0f6092fc→0f6092fc
+        ===== 业态参数包守卫结果：20 通过 / 0 失败 =====
+
+== 汇总 ==
+组A 有效红 3 / 无效红 0
+组B 反向伤害 0（应为 0）
+还原失败 0（应为 0）
+结论：全绿 —— 守卫有效且无反向伤害

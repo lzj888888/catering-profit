@@ -137,7 +137,8 @@ const ALLOW_INPUTS = {
   planName: '方案名（快照用，非测算入参）',
   presetIdx: '业态预设 picker（枚举，非专业指标）',
   rentYuan: '月租金 → fixed_items.rent；房东报价，填得出',
-  seatsNum: '座位数 → seats（反推算翻台必需）；由面积×密度估算、用户可改',
+  seatsPerTableNum: '单桌座位数（业态默认、用户可改）→ 与桌数相乘得 seats；属"用户输入的派生"，非外部基准',
+  tablesNum: '桌数 → seats（= 桌数 × 单桌座位数，唯一换算点 = index.js::seatsNow）；老板站铺子里数得出',
   targetYuan: '目标月利润 → target_profit_fen；老板自己定目标',
 };
 const FOR_ITEM = /^item\./;   // wx:for 里的行内输入（费用明细 / 建店投入明细），按行登记不过逐个枚举
@@ -187,6 +188,32 @@ check('A-⑥ 每个输入字段都已登记用途（未登记即红 ⇒ 防"填�
   unknownInputs.length === 0,
   unknownInputs.length ? `未登记：${unknownInputs.join('、')} ⇒ 先在 ALLOW_INPUTS 写明"这数是客户填的还是咱们算的"`
     : `已登记 ${binds.filter((b) => ALLOW_INPUTS[b]).length} 项 + ${binds.filter((b) => FOR_ITEM.test(b)).length} 项行内明细`);
+// 🔴🔴 A-⑧（R237 新增）：引擎入参 `seats` 必须经**唯一换算点**得出。
+//   R237 把输入口径由「座位数」改成「桌数」后，`seats` 由 `seatsNow() = 桌数 × 单桌座位数` 得出。
+//   ⚠️ 这条红线的风险是**全静默**的：若有人图省事把 `seats: this.seatsNow()` 改回
+//      `seats: Math.floor(Number(this.data.tablesNum))`（漏乘单桌座位数），
+//      页面一切正常、引擎也照算 —— 只是**所有周转类结论都偏大**
+//      （实测：5 桌时正确 3.70、漏乘 14.81，见 review/evidence/r237_m2_turn/recalc_anchors.js C-①）。
+//   判据：`seats: <rhs>` 的右值**只允许两种形态**（白名单制）：
+//     ① `this.seatsNow()` —— 唯一换算点（桌数 × 单桌座位数）
+//     ② `<标识符>.seats`   —— **透传**上一层已构造好的 payload，不是新换算点
+//   ⚠️ 形态 ② 是**判据自身的修正**，留痕在此：R237 首版判据只看「右边含不含 this.seatsNow()」，
+//      把 `seats: p.seats`（转发 payload）误判成「第二处换算点」⇒ 直接判红。
+//      这是**我方判据错**（R181i 纪律：守卫红先怀疑自己，别改代码迎合判据）。
+//   反例（下列写法必须判红，见 §九变异回灌）：
+//      `seats: Math.floor(Number(this.data.tablesNum))`（漏乘单桌座位数）
+//      `seats: Number(this.data.seatsNum)`（残留旧字段名）
+//      `seats: 20`（写死常量）
+const seatsAssigns = (js.match(/\bseats\s*:[^,\n]*/g) || []).map((s) => s.trim());
+const seatsRhs = seatsAssigns.map((s) => s.replace(/^seats\s*:\s*/, '').trim());
+const seatsViaNow = seatsRhs.filter((r) => /^this\.seatsNow\(\)/.test(r));
+const seatsViaPass = seatsRhs.filter((r) => /^[A-Za-z_$][\w$]*\.seats$/.test(r));
+const badSeats = seatsRhs.filter((r) => seatsViaNow.indexOf(r) < 0 && seatsViaPass.indexOf(r) < 0);
+check('A-⑧ 🔴 `seats:` 右值只允许 `this.seatsNow()` 或透传 `<obj>.seats`（漏乘 / 写死 / 残留旧字段即红）',
+  seatsAssigns.length >= 4 && seatsViaNow.length >= 2 && badSeats.length === 0,
+  `受检 ${seatsAssigns.length} 处（换算 ${seatsViaNow.length} + 透传 ${seatsViaPass.length}）`
+    + (badSeats.length ? ` ⇒ 越界：${badSeats.join(' | ')}` : '，全部合规'));
+
 // 自失效护栏 ③：白名单不能是空壳（否则 A-⑥ 会把一切判红却看起来"很严"）。
 check('A-⑦ 白名单本身非退化（条目数 ≥ 10，且与实扫绑定有交集）',
   Object.keys(ALLOW_INPUTS).length >= 10
@@ -292,8 +319,8 @@ const v6Unknown = ['tableTurnoverYuan'].filter((b) => !ALLOW_INPUTS[b] && !FOR_I
 check('V-⑥ 负样本（未登记的新字段 tableTurnoverYuan）会被 A-⑥ 判红', v6Unknown.length === 1,
   v6Unknown.length === 1 ? '已报红' : '未报（白名单失效）');
 // V7：正样本（已登记的合法字段）⇒ A-⑥ **不得**误报（防反向伤害二型）
-const v7Ok = ['seatsNum', 'avgPriceYuan', 'rentYuan'].filter((b) => !ALLOW_INPUTS[b]);
-check('V-⑦ 正样本（已登记字段 seatsNum/avgPriceYuan/rentYuan）**不误报**', v7Ok.length === 0,
+const v7Ok = ['tablesNum', 'seatsPerTableNum', 'avgPriceYuan', 'rentYuan'].filter((b) => !ALLOW_INPUTS[b]);
+check('V-⑦ 正样本（已登记字段 tablesNum/seatsPerTableNum/avgPriceYuan/rentYuan）**不误报**', v7Ok.length === 0,
   v7Ok.length ? `🔴 把合法字段判红了：${v7Ok.join('、')}` : '未误报');
 
 // ============ E 下界 ============

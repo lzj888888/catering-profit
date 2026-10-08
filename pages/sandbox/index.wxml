@@ -76,14 +76,24 @@
     <!-- L2 更多设置 -->
     <view class="fold-toggle" bindtap="onToggleL2">{{t.l2Toggle}}{{showL2 ? ' ▾' : ' ▸'}}</view>
     <view wx:if="{{showL2}}">
+      <!-- 🔴 R237：输入口径由「座位数」改为「桌数 + 单桌座位数」（李老师 2026-10-08：
+           「餐饮老板算账都是按桌数来算……桌数只能推论或者顾客自己选填最准」）。
+           ⚠️ 座位数 = 桌数 × 单桌座位数，换算只在 index.js::seatsNow() 一处做 ⇒ 引擎零改动。 -->
       <view class="row">
-        <text class="row-name">{{t.seatLabel}}</text>
+        <text class="row-name">{{t.tablesLabel}}</text>
         <view class="row-in-wrap">
-          <input class="row-in" type="number" placeholder="{{t.seatPh}}" value="{{seatsNum}}" bindinput="onSeats" adjust-position="{{true}}" cursor-spacing="20" />
+          <input class="row-in" type="number" placeholder="{{t.tablesPh}}" value="{{tablesNum}}" bindinput="onTables" adjust-position="{{true}}" cursor-spacing="20" />
+          <text class="row-unit">{{t.tableUnit}}</text>
+        </view>
+      </view>
+      <view class="row-note">{{t.tablesNote}}</view>
+      <view class="row">
+        <text class="row-name">{{t.seatsPerTableLabel}}</text>
+        <view class="row-in-wrap">
+          <input class="row-in" type="number" placeholder="{{t.seatsPerTablePh}}" value="{{seatsPerTableNum}}" bindinput="onSeatsPerTable" adjust-position="{{true}}" cursor-spacing="20" />
           <text class="row-unit">{{t.headcountUnit}}</text>
         </view>
       </view>
-      <view class="row-note">{{t.seatNote}}</view>
       <view class="row">
         <text class="row-name">{{t.avgPriceLabel}}</text>
         <view class="row-in-wrap">
@@ -330,10 +340,19 @@
       <view class="cell"><text class="lbl">{{t.revRentCap}}</text><text class="val">{{t.cur}}{{reverseResult.rent_cap}}</text></view>
       <view class="cell"><text class="lbl">{{t.revTraffic}}</text><text class="val">{{reverseResult.monthly_traffic}}</text></view>
       <view class="cell"><text class="lbl">{{t.revDailyTraffic}}</text><text class="val">{{reverseResult.daily_traffic}}</text></view>
-      <view class="cell"><text class="lbl">{{t.revTurnRate}}</text><text class="val">{{reverseResult.turn_rate}}</text></view>
+      <!-- 🔴 R237：一个数、两套话术 —— 按业态切。火锅/正餐/烧烤（按桌点菜）才叫「翻台」；
+           快餐/小面/茶饮常拼桌、单人客多，只说「座位周转」，**禁用「翻台」二字**。 -->
+      <view class="cell"><text class="lbl">{{reverseResult.turn_is_table ? t.revTurnRateTable : t.revTurnRateSeat}}</text><text class="val">{{reverseResult.turn_rate}}</text></view>
       <!-- 🔴 R234-实测移除：面积上限。它 = 房租上限 ÷ 坪效，而坪效已退出输入区 ⇒ 该值恒 null。
            留着就是一行永远不显示、却让人以为"我们能算面积"的死输出 —— 算不出来就别给（不编造）。 -->
-      <view class="hint" wx:if="{{reverseResult.warn_turn_high}}" style="color:#b45309;">{{t.revWarnTurnHigh}}</view>
+      <!-- 🔴 R237：翻台**红警已删除** —— 李老师 2026-10-08「不要过多让翻台率去佐证生意好坏」；
+           豆包第 5 轮：「旧的 >8 阈值是适配旧座位口径的产物，口径已变更，直接废弃」。
+           换成两条**中性灰字**（`.row-note` = 28rpx / #9aa4b2；不标红、不进主结论卡）：
+             ① 口径说明（按业态两套话术）；② 难度一句话（三档，互斥渲染）。 -->
+      <view class="row-note">{{reverseResult.turn_is_table ? t.turnNoteTable : t.turnNoteSeat}}</view>
+      <view class="row-note" wx:if="{{reverseResult.turn_level === 'easy'}}">{{t.turnLevelEasy}}</view>
+      <view class="row-note" wx:if="{{reverseResult.turn_level === 'ok'}}">{{t.turnLevelOk}}</view>
+      <view class="row-note" wx:if="{{reverseResult.turn_level === 'hard'}}">{{t.turnLevelHard}}</view>
     </view>
   </block>
 

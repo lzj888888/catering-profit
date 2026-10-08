@@ -212,7 +212,29 @@ check('D-② 扫描面非空：反推函数体真实存在且 > validate 之外�
   revBody ? `rev=${revBody.length} val=${valBody.length}` : 'null');
 
 // 断言数下界（防"删掉几条判据"无人知）
-check('D-③ 本守卫断言数 ≥ 19（删掉判据即转红）', pass + failN >= 18, `含本条共 ${pass + failN + 1} 条`);
+// ⚠️ 口径提醒：本行在 **E 段之前**求值，此刻计数 = 20（不含 D-③ 自身与 E 段 2 条）⇒
+//    下界取 19（留 1 档余量）。**真正精确的硬下界**是重启键的断言数声明行（声明 ≡ 实跑，本轮 23）。
+check('D-③ 本守卫断言数 ≥ 19（本行之前实测 20 的一档余量；精确硬下界见断言数声明行）',
+  pass + failN >= 19, `本行之前共 ${pass + failN} 条 · 全文 23 条`);
+
+// ============ E R237：翻台红警退场 ============
+sec('E · R237 翻台红警退场：高翻台输入 ⇒ warn_keys 仍为空（不再由翻台产生任何软提示）');
+// 🔴 为什么必须补这一条（**变异回灌探出来的真缺口**，不是顺手加的）：
+//   本轮删掉的是引擎里**唯一一处**由翻台产生软提示的代码
+//   （原 `warn_keys: turnRate > 8 ? ['turnOverHigh'] : []`，李老师 2026-10-08
+//     「不要过多让翻台率去佐证生意好坏」）。删掉之后**不会有任何报错**；
+//   而 `cloudfunctions/calcSandbox/selftest.js::J9` 只验「翻台 3.70（< 8）⇒ warn_keys 空」——
+//   **这条在删除之前就是绿的** ⇒ 单靠 J9，「红警被加回来」永远不会转红（恒真）。
+//   ⇒ 定式：用**高翻台输入**（seats 极小）钉死；并配 E-② 证明该输入真的越过旧阈值，
+//     否则 E-① 又会退化成恒真断言（本仓 R130 教训：上限/阈值类判据必须自带非退化护栏）。
+const revHigh = svc ? svc.calcSandboxReverse(Object.assign({}, REV_BASE, {
+  fixedItems: [{ key: 'labor', fen: 2800000 }], varItems: [], open_days: 30, seats: 2,
+})) : {};
+check('E-① 🔴 高翻台 ⇒ warn_keys 仍为空（旧写法会返回 ["turnOverHigh"]）',
+  Array.isArray(revHigh.warn_keys) && revHigh.warn_keys.length === 0,
+  'warn_keys=' + JSON.stringify(revHigh.warn_keys) + ' · turn_rate=' + revHigh.turn_rate);
+check('E-② 非恒真前提：该输入确实是高翻台（turn_rate 越过旧阈值 8）',
+  revHigh.turn_rate > 8, 'turn_rate=' + revHigh.turn_rate + '（须 > 8，否则 E-① 无鉴别力）');
 
 console.log(`\n===== M2 反推房租口径守卫结果：${pass} 通过 / ${failN} 失败 =====`);
 process.exit(failN === 0 ? 0 : 1);

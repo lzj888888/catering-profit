@@ -123,7 +123,14 @@ function inputValues(wxml) {
 //        （㎡ ÷ 每座占地），不是外部基准；且 switch 业态之前它是空的（不存在无中生有的注入）。
 //      ⇒ 它是"用户输入的派生"而非"注入的参考值"，可入白名单。
 //      ⚠️ 但这条口子只开到这儿：**要是哪天 seatsNum 改成从 BANDS/参谋包取**，此处必须重新审视。
-const OK_VALUE = /^\{\{(item\.(yuan|years|pct)|targetYuan|expectYuan|planName|areaNum|rentYuan|headcountNum|avgPriceYuan|laborUnitYuan|openDaysNum|seatsNum|pixelEffYuan|turnNum)\}\}$/;
+// 2026-10-08（R237 翻台口径改造）：
+//   ① **删除** seatsNum —— 该字段已不存在（口径由"座位数"改为"桌数 + 单桌座位数"）。
+//      🔴 按上面那条自订纪律：白名单里留着已经不存在的数据名是危险的（越界可伪装成"老登记项"）。
+//   ② **新增** tablesNum / seatsPerTableNum —— 都是**用户手填**，且比 seatsNum **更干净**：
+//      R237 已砍掉 `estimateSeats`，桌数**没有任何自动注入路径**（空着就是空着）。
+//      ⚠️ 若将来给桌数加"按面积粗估"的引导，**必须是 placeholder 而非 value** ——
+//         那正是本守卫存在的意义（参考值只当提示，绝不替你填）。
+const OK_VALUE = /^\{\{(item\.(yuan|years|pct)|targetYuan|expectYuan|planName|areaNum|rentYuan|headcountNum|avgPriceYuan|laborUnitYuan|openDaysNum|tablesNum|seatsPerTableNum|pixelEffYuan|turnNum)\}\}$/;
 
 const pageJsRaw = readRel(PAGE_JS);
 const pageWxmlRaw = readRel(PAGE_WXML);
