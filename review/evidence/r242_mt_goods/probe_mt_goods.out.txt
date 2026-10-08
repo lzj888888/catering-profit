@@ -1,0 +1,47 @@
+xlsx 版本 = 0.18.5
+
+=== 0 生产源码现状（从 index.js 抽取）===
+  平台 → sheet 名 : {"taobao":"外卖账单明细","meituan":"订单明细"}
+
+=== 1 正样本基线（证明判据不是恒 null）===
+  ✅ 假淘宝表头 → taobao  实得 taobao
+  ✅ 假美团表头 → meituan  实得 meituan
+  ✅ 标准列名表 → waimai_goods  实得 waimai_goods
+
+=== 2 真·美团商品表（mt_goods_20260907_20260913.csv）===
+  文件字节数 = 1003  md5 = 347fc8ea872a8cbccbde653553199c66
+  bufferToMatrix ⇒ sheet 名 = ["Sheet1"]
+  行数 = 11 · R1 列数 = 14
+  R1（引擎看到的表头）= ["ÈÕÆÚ","ÉÌÆ·Ãû","ÃÅµêËùÔÚ³ÇÊÐ","ÃÅµêÃû³Æ","ÃÅµêid","ÉÌÆ·ÏúÁ¿","ÏúÁ¿Õ¼±È","ÉÌÆ·ÏúÊÛ¶î","ÏúÊÛ¶îÕ¼±È","ÉÌÆ·ºÃÆÀÊý","ÉÌÆ·²îÆÀÊý","¶©µ¥½»Ò×¶î","´øÀ´¶©µ¥Á¿","ÏÂµ¥ÈËÊý"]
+  R2（引擎看到的首条数据）= ["20260910","ÖóÐ¡ËÖÈâ","ÖØÇì","°ÒÈýÑù.°ÒÅ£Èâ","34081552","1","0.25","8.6","0.1178","0","0","83.8","1","1"]
+
+  --- 2.1 编码（GBK 表经 xlsx 读 CSV）---
+      首条商品名 = "ÖóÐ¡ËÖÈâ"
+  ❌ 中文未被解坏（期望「煮小酥肉」）  实得 "ÖóÐ¡ËÖÈâ"
+
+  --- 2.2 形态识别 ---
+      detectDishMatrix ⇒ {"shape":null,"sheet":""}
+      detectDishShape  ⇒ null
+  ❌ 能判出形态 C（waimai_goods）  实得 null
+
+  --- 2.3 平台识别 ---
+      guessHeader ⇒ R1
+      detectPlatform ⇒ null
+  ❌ 能认出平台  实得 null
+
+  --- 2.4 复现 index.js:56-74 分支 ---
+      判定 ⇒ ⛔ 阻断：「无法识别账单平台（请确认是淘宝闪购、美团外卖账单，或堂食《菜品销售统计》）」
+  ❌ 真样例应能进 handleDishImport（若为 ❌ 即「进不来」的机器判据）  实得 shape=null
+
+  --- 2.5 强行喂 parseDishSalesC（假设形态已过）---
+      groups 数 = 0 · rows 数 = 0 · unmatched 数 = 10
+      totals = {"qty":0,"amountFen":0}
+      zeroAmountQty = []
+      unmatched 前 3 = [{"name":"","dishKey":"","qty":0,"amountFen":0,"bizDate":""},{"name":"","dishKey":"","qty":0,"amountFen":0,"bizDate":""},{"name":"","dishKey":"","qty":0,"amountFen":0,"bizDate":""}]
+
+  --- 2.6 日期归一 normalizeDate ---
+      normalizeDate("20260910") ⇒ "20260910"   // 真美团紧凑 8 位
+      normalizeDate("2026-09-10") ⇒ "2026-09-10"   // 标准
+      normalizeDate("2026/9/7") ⇒ "2026-09-07"   // 斜杠
+
+通过 3 / 失败 4
