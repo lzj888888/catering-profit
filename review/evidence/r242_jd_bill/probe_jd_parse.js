@@ -1,6 +1,15 @@
 // review/evidence/r242_jd_bill/probe_jd_parse.js —— 京东「对账单下载」灌生产解析链实测（只读、不起模拟器）
 // 全程用**生产代码**：bufferToMatrix → guessHeader → detectPlatform → parseBillMatrix → checkGradeA
 // 运行：node probe_jd_parse.js
+//
+// ⚠️⚠️ ERRATA（R242e · 2026-10-08）—— 本文件**入参结构有误**，仅供留痕，勿引用其结论：
+//   ① 第 45 行 `const doc = { sheets: names.map(...) }` 造了**数组**，
+//      而生产 `billParse.js:80` 是 `sheets[SHEET[platform]]` 按**字符串键**取 ⇒ 恒 undefined。
+//      正确结构 = `bufferToMatrix` 原样返回 `{ sheets: { 表名: {rows} } }`（对象）。
+//   ② 第 53 行 `checkGradeA({ platform, matrix: doc, totals })` 传错字段，
+//      生产 `gradeGate.js:34` 读的是 `input.rows`（恒 undefined ⇒ 恒报 CHANNEL_EMPTY）。
+//      （注：doc 变量内声明的 rows2 变体不受 ① 影响，其 detectPlatform 结论仍成立。）
+//   ⇒ 已由 `probe_jd_fixed.js` 修正重测。本轮所有结论以 probe_jd_fixed.js 为准。
 const fs = require('fs');
 const path = require('path');
 const Module = require('module');

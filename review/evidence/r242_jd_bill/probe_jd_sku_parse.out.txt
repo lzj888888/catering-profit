@@ -1,0 +1,25 @@
+文件 = jd_sku_bill_20260930.xlsx | 3830 B
+
+[1] bufferToMatrix → sheets = ["sku对账单下载"]
+    行数 = 1 · 最大列数 = 27
+    R1 前 12 格 = ["到家业务单号","业务类型","商家编号","门店编号","skuId","sku名称","sku数量","商品售价","费用类型","二级促销类型","结算金额","京东承担金额"]
+
+[2] guessHeader → 第 1 行（0-based=0）
+
+[3] 🔴 detectPlatform(R1) → "taobao"
+    判据：COL.taobao.net = "结算金额"；本表第 11 列 = "结算金额"
+    ⇒ 若返回 "taobao"，则京东 SKU 表被**误判为淘宝**（跨平台串味）
+
+[4] 特征列命中对照：
+    taobao.net("结算金额") 命中 = true
+    meituan.net("商家应收款") 命中 = false
+    本表还含「账单日期」? = false （淘宝另一个特征列）
+    本表还含「订单类型」? = false （淘宝另一个特征列）
+
+[5] parseBillMatrix → {"amountFen":0,"qty":0,"rowCount":0}
+
+[6] checkGradeA → pass = false | level = A
+    failures = [{"code":"CHANNEL_EMPTY","field":"rows","msg":"未解析到任何数据行"},{"code":"REQUIRED_SHOP_ID","field":"shop_id","msg":"门店 ID 为空"}]
+
+[7] 对照（订单级 jd_bill_20260930.xlsx）：
+    guessHeader=第1行 · detectPlatform = null

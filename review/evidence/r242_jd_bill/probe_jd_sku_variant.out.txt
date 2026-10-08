@@ -1,0 +1,15 @@
+变体 sheet = ["外卖账单明细"] | 行数 = 5 （1 表头 + 4 数据）
+[1] guessHeader = 第1行 · detectPlatform = "taobao"
+
+[2] parseBillMatrix(doc, { platform: "taobao" })：
+     totals = {"amountFen":0,"qty":0,"rowCount":0}
+     rows   = []
+     months = []
+     excludedReason = undefined
+
+     ⚖️ 对照正确口径：amountFen 应=15070 · qty 应=2 · bizDate 应=2026-09-30
+     ⇒ 实测 qty = 0 （虚高 -2 ）
+     ⇒ 实测 bizDate = []
+
+[3] checkGradeA（带 shop_id）→ pass = false | level = A
+    failures = [{"code":"CHANNEL_EMPTY","field":"rows","msg":"未解析到任何数据行"},{"code":"REQUIRED_SHOP_ID","field":"shop_id","msg":"门店 ID 为空"}]

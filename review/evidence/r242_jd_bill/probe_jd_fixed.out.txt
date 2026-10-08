@@ -1,0 +1,41 @@
+
+========== A 订单级真表 jd_bill_20260930.xlsx ==========
+  sheet 名 = ["com.jd.o2o.settlement.domain.dt"] | 行数 = 117
+  guessHeader = 第1行 · 该行前 4 格 = ["商家基础信息","商家基础信息","商家基础信息","商家基础信息"]
+  detectPlatform = null
+  parseBillMatrix(sheets 原样传入) → totals = {"amountFen":0,"qty":0,"rowCount":0} · months = []
+  checkGradeA(正确入参) → pass = false | failures = [{"code":"CHANNEL_EMPTY","field":"rows","msg":"未解析到任何数据行"},{"code":"SCHEMA_PLATFORM","field":"platform","msg":"平台未知：null"},{"code":"REQUIRED_SHOP_ID","field":"shop_id","msg":"门店 ID 为空"}]
+  ⚖️ 期望： 基线：订单级 Σ应结 555.96 元 = 55596 分
+
+========== B 订单级 · 删掉分组行 R1（变体） ==========
+  sheet 名 = ["com.jd.o2o.settlement.domain.dt"] | 行数 = 116
+  guessHeader = 第1行 · 该行前 4 格 = ["商家编号","商家名称","门店编号","门店名称"]
+  detectPlatform = null
+  parseBillMatrix(sheets 原样传入) → totals = {"amountFen":0,"qty":0,"rowCount":0} · months = []
+  checkGradeA(正确入参) → pass = false | failures = [{"code":"CHANNEL_EMPTY","field":"rows","msg":"未解析到任何数据行"},{"code":"SCHEMA_PLATFORM","field":"platform","msg":"平台未知：null"},{"code":"REQUIRED_SHOP_ID","field":"shop_id","msg":"门店 ID 为空"}]
+  ⚖️ 期望： 看表头选对后能否解析
+
+========== C SKU 真表（空）jd_sku_bill_20260930.xlsx ==========
+  sheet 名 = ["sku对账单下载"] | 行数 = 1
+  guessHeader = 第1行 · 该行前 4 格 = ["到家业务单号","业务类型","商家编号","门店编号"]
+  detectPlatform = "taobao"
+  parseBillMatrix(sheets 原样传入) → totals = {"amountFen":0,"qty":0,"rowCount":0} · months = []
+  checkGradeA(正确入参) → pass = false | failures = [{"code":"CHANNEL_EMPTY","field":"rows","msg":"未解析到任何数据行"},{"code":"REQUIRED_SHOP_ID","field":"shop_id","msg":"门店 ID 为空"}]
+  ⚖️ 期望： 零数据行 ⇒ 应 0/0/0
+
+========== D SKU 带数据变体（sheet 名改成淘宝的"外卖账单明细"） ==========
+  sheet 名 = ["外卖账单明细"] | 行数 = 5
+  guessHeader = 第1行 · 该行前 4 格 = ["到家业务单号","业务类型","商家编号","门店编号"]
+  detectPlatform = "taobao"
+  parseBillMatrix(sheets 原样传入) → totals = {"amountFen":15070,"qty":4,"rowCount":4} · months = [""]
+     首行 = {"bizDate":"","qty":4,"amountFen":15070} · 末行 = {"bizDate":"","qty":4,"amountFen":15070}
+  checkGradeA(正确入参) → pass = false | failures = [{"code":"SCHEMA_BIZDATE","field":"rows[0].bizDate","msg":"账单日期格式错误："},{"code":"REQUIRED_SHOP_ID","field":"shop_id","msg":"门店 ID 为空"},{"code":"REQUIRED_BIZDATE","field":"rows[0].bizDate","msg":"账单日期为空"}]
+  ⚖️ 期望： 正确口径：amountFen=15070 · qty=2 · bizDate=2026-09-30
+
+========== E SKU 带数据变体（sheet 名保持京东原名"sku对账单下载"） ==========
+  sheet 名 = ["sku对账单下载"] | 行数 = 5
+  guessHeader = 第1行 · 该行前 4 格 = ["到家业务单号","业务类型","商家编号","门店编号"]
+  detectPlatform = "taobao"
+  parseBillMatrix(sheets 原样传入) → totals = {"amountFen":0,"qty":0,"rowCount":0} · months = []
+  checkGradeA(正确入参) → pass = false | failures = [{"code":"CHANNEL_EMPTY","field":"rows","msg":"未解析到任何数据行"},{"code":"REQUIRED_SHOP_ID","field":"shop_id","msg":"门店 ID 为空"}]
+  ⚖️ 期望： 验证"sheet 名不匹配"这道护栏是否真拦住
