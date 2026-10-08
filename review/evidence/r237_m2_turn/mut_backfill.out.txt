@@ -16,9 +16,9 @@ node C:/Users/lzj/.workbuddy/binaries/node/versions/22.22.2-3/node.exe
 
 [M3·组A] ✅ 有效红（命中目标断言名）
       文件 utils/bizPreset.js · 替换 [1] 处 · 空值护栏失效 ⇒ Number(null)===0 被分档成 easy（把'算不出来'说成'很轻松'）
-      套件 tools/check_biz_preset.js · RC=1 · 真FAIL=1 · md5 0f6092fc→0f6092fc
+      套件 tools/check_biz_preset.js · RC=1 · 真FAIL=1 · md5 640cb584→640cb584
         ❌ F-③ 🔴 空值不得被分档（Number(null)===0 会把"算不出来"说成"很轻松"） —— null/undefined/空串/NaN ⇒ 全部空串（页面据此不渲染难度行）
-        ===== 业态参数包守卫结果：19 通过 / 1 失败 =====
+        ===== 业态参数包守卫结果：20 通过 / 1 失败 =====
 
 [M4·组B] ✅ 未转红（符合预期）
       文件 pages/sandbox/index.js · 替换 [1] 处 · 反向伤害①：违规写法**只进注释** ⇒ 不得转红（证明剥注释有效）
@@ -26,12 +26,18 @@ node C:/Users/lzj/.workbuddy/binaries/node/versions/22.22.2-3/node.exe
         ===== M2 小白输入面守卫结果：34 通过 / 0 失败 =====
 
 [M5·组B] ✅ 未转红（符合预期）
-      文件 utils/bizPreset.js · 替换 [1] 处 · 反向伤害②：等价改写（=== null || === undefined → == null）⇒ 不得转红（判行为不判字面）
-      套件 tools/check_biz_preset.js · RC=0 · 真FAIL=0 · md5 0f6092fc→0f6092fc
-        ===== 业态参数包守卫结果：20 通过 / 0 失败 =====
+      文件 utils/bizPreset.js · 替换 [1] 处 · 反向伤害②：等价改写（`== null` → 拆成三个 `===` 判断）⇒ 不得转红（判行为不判字面）
+      套件 tools/check_biz_preset.js · RC=0 · 真FAIL=0 · md5 640cb584→640cb584
+        ===== 业态参数包守卫结果：21 通过 / 0 失败 =====
+
+[M6·组A] ✅ 有效红（命中目标断言名）
+      文件 miniprogram/i18n/terms.js · 替换 [1] 处 · 三档文案改回「生意承诺」（'正常做着就能到'）⇒ F-⑤ 必须红
+      套件 tools/check_biz_preset.js · RC=1 · 真FAIL=1 · md5 75ba1ea1→75ba1ea1
+        ❌ F-⑤ 🔴 三档难度文案不得含"生意承诺/判决"词（须为"目标要求"表述） —— easy=这个水平，正常做着就能到 · ok=这个要求在常见范围内 · hard=这个要求偏高，得努把力
+        ===== 业态参数包守卫结果：20 通过 / 1 失败 =====
 
 == 汇总 ==
-组A 有效红 3 / 无效红 0
+组A 有效红 4 / 无效红 0
 组B 反向伤害 0（应为 0）
 还原失败 0（应为 0）
 结论：全绿 —— 守卫有效且无反向伤害

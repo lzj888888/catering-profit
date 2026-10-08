@@ -184,7 +184,7 @@ function turnLevelOf(mode, value) {
   //   引擎红警时返回的 `turn_rate: null` 会被分档成 **'easy'**，页面渲染出
   //   「这个水平，正常做着就能到」—— 这是**最坏的一类静默错**（把"算不出来"说成"很轻松"）。
   //   ⇒ 空值一律返回空串（页面据此不渲染难度行）。
-  if (value === null || value === undefined || value === '') return '';
+  if (value == null || value === '') return '';
   const v = Number(value);
   if (!isFinite(v)) return '';
   const t = TURN_THRESHOLD[mode] || TURN_THRESHOLD.seat;

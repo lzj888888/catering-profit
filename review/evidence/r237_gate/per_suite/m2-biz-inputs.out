@@ -2,7 +2,7 @@
 ===== P 前置：扫描面非退化（否则 A/B/C 会静默恒绿） =====
   ✅ P-① 两个面文件可读且非空 —— index.js 50819 字符 · index.wxml 25074 字符
   ✅ P-② wxml 里带 value 绑定的 `<input>` ≥ 6（提取器没被写窄） —— 16 个
-  ✅ P-③ terms.js / bizPreset.js 可读 —— terms 65885 字符 · bizPreset 12665 字符
+  ✅ P-③ terms.js / bizPreset.js 可读 —— terms 65887 字符 · bizPreset 12641 字符
 
 ===== A 主判据：坪效 / 目标租金率 不得出现在输入区（R223 §3.2 落守） =====
   ✅ A-① wxml 的 input value 绑定**零**专业指标字段 —— 受检 16 个绑定

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// tools/check_biz_preset.js —— M2v1.3 业态参数包守卫（新增 · 六组 S/A/B/C/D/E）
+// tools/check_biz_preset.js —— M2v1.3 业态参数包守卫（新增 · 七组 S/A/B/C/D/E/F）
 // 运行：node tools/check_biz_preset.js   （由 verify_all.js 的 [biz-preset] 套件调用）
 //
 // 为什么需要它（R182「判据存在 ≠ 被执行」同族）：业态参数包的取值/形态/城市系数全是
@@ -12,6 +12,7 @@
 //     headcount_linear⇒params.laborUnitYuan / revenue_rate⇒pct / step⇒steps 非空
 //   D L1/L2禁入 index.wxml 的 L1/L2 区块不得把 坪效/目标租金率/翻台率 当输入框
 //   E 回本 único出口 cash 回本算式全仓只出现一次且在 utils/bizPreset.js；pages/** 不得复算
+//   F R237   桌数换算（单桌座位数）/ 翻台口径分组 / 三档阈值 / 空值护栏 / **三档文案去承诺词**
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -20,6 +21,7 @@ const ROOT = path.resolve(__dirname, '..');
 const BIZ_PRESET = path.join(ROOT, 'utils', 'bizPreset.js');
 const INDICATOR = path.join(ROOT, 'cloudfunctions', 'common', 'indicatorRef.js');
 const PAGE_WXML = path.join(ROOT, 'pages', 'sandbox', 'index.wxml');
+const TERMS = path.join(ROOT, 'miniprogram', 'i18n', 'terms.js');
 
 const FORMS = ['fixed', 'area_linear', 'headcount_linear', 'revenue_rate', 'step'];
 
@@ -213,6 +215,24 @@ if (seatsPerTableOf && turnModeOf && turnLevelOf) {
     '桌 1.8/2.81 = ' + turnLevelOf('table', 1.8) + '/' + turnLevelOf('table', 2.81)
     + ' · 座位 2.5/4.01 = ' + turnLevelOf('seat', 2.5) + '/' + turnLevelOf('seat', 4.01));
 }
+// 🔴 F-⑤（R237-followup）：三档难度文案**不得替老板下"生意好坏"的判决**。
+//   李老师 2026-10-08 原话：「不要过多让翻台率去佐证生意好坏」。
+//   首版文案踩了这条：`turnLevelEasy = '这个水平，正常做着就能到'` —— 它既是**乐观承诺**
+//   （把"目标要求"说成"你能做到"），又是**拿自定值下的判决**：
+//   判它的阈值（1.8/2.8 · 2.5/4.0）与喂它的单桌座位数（2/4/4/2）**两处都是自定值、零权威源**。
+//   ⇒ 改为「目标要求」表述（反推出来的门槛，不是生意诊断）。
+//   判据两条（任一不成立即红）：① 三个键都在且非空（缺键 ⇒ 页面渲染空行 = 静默空白）
+//                              ② 不得含承诺/判决词（黑名单；文案类只此一法）
+const termsSrc = readOr(TERMS) || '';
+const lvKeys = ['turnLevelEasy', 'turnLevelOk', 'turnLevelHard'];
+const lvText = lvKeys.map((k) => {
+  const m = termsSrc.match(new RegExp(k + ":\\s*'([^']*)'"));
+  return m ? m[1] : null;
+});
+const PROMISE = /就能到|轻松|稳赚|包赚|包您|保证|肯定赚|一定赚/;
+check('F-⑤ 🔴 三档难度文案不得含"生意承诺/判决"词（须为"目标要求"表述）',
+  lvText.every((s) => s && s.length > 0) && !lvText.some((s) => PROMISE.test(s)),
+  lvText.map((s, i) => ['easy', 'ok', 'hard'][i] + '=' + (s === null ? '（键缺失）' : s)).join(' · '));
 
 // 断言数下界（用于 check_suite_assert_counts 登记；file 末尾打印「N 通过 / M 失败」）
 console.log(`\n===== 业态参数包守卫结果：${pass} 通过 / ${failN} 失败 =====`);

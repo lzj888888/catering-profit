@@ -232,7 +232,7 @@
 ===== 批次0 自测结果（复审节点① 五条）=====
 ✅ 点1·身份只来自OPENID(忽略伪造记录)  →  user.id=u_real
 ✅ 点1·函数不接收event(签名为 ctx,db,audit)  →  resolveAuth.length=3（参数=ctx,db,audit，无 event 入口）
-✅ 点1b·首次自动建档返回user  →  user.id=u_muyux74nkz62
+✅ 点1b·首次自动建档返回user  →  user.id=u_muywgp3z9n3k
 ✅ 点1b·建了默认shop  →  shop=1
 ✅ 点1b·建了entitlement(expire_at=0)  →  expire_at=0
 ✅ 点1b·建档写audit_log(AUTH_AUTO_PROVISION)  →  audit=1
@@ -266,8 +266,8 @@
 ✅ A6b·并发首进只建出 1 个 user  →  user=1
 ✅ A6b·并发首进只建出 1 个 shop  →  shop=1
 ✅ A6b·并发首进只建出 1 条 entitlement  →  ent=1
-✅ A6b·并发两次拿到同一个 user_id  →  ids=u_muyux74xicuh,u_muyux74xicuh
-✅ A6b·店铺 id 用单源确定性格式 shop_<user_id>  →  shop_id=shop_u_muyux74xicuh
+✅ A6b·并发两次拿到同一个 user_id  →  ids=u_muywgp46irnu,u_muywgp46irnu
+✅ A6b·店铺 id 用单源确定性格式 shop_<user_id>  →  shop_id=shop_u_muywgp46irnu
 ✅ A6b·机制级：确定性 id ⇒ 同 user 第二次建店被库拒  →  rejected=true
 ✅ A6b·机制级：仅剩 1 个店  →  shop=1
 ✅ A6b·反向证据：随机 id 两次都成功 ⇒ 2 个店（这就是旧实现能建出重复店的原因）  →  shop=2
@@ -611,7 +611,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 ✅ P4 每个报告目录均真实存在  (1 个目录全部存在)
 ✅ P4 每个提到报告路径的活文档都给出了可解析的绝对路径  (4 份：review/README.md, SMOKETEST_RUNBOOK.md, 新手上云操作手册.md, specs/dev-specs/★知识存储点_2026-09-10.md)
 ✅ P5 报告目录含 ≥1 份 `YYYY-MM-DD.md`  (31 份)
-   ℹ️ 最新报告：2026-10-08.md（15875 B，mtime 2026-10-08 00:14）
+   ℹ️ 最新报告：2026-10-08.md（19704 B，mtime 2026-10-08 02:03）
 ✅ P6 诱饵「~\.workbuddy\memory」确实存在（标注不腐）  (~\.workbuddy\memory · 云端画像缓存)
 ✅ P6 诱饵「~\.workbuddy\MEMORY.md」确实存在（标注不腐）  (~\.workbuddy\MEMORY.md · 跨项目用户级记忆)
 
@@ -1311,7 +1311,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 
 ===== [batch5-payCreateOrder] cloudfunctions/payCreateOrder/selftest.js =====
 ===== 订单生成 =====
-✅ 生成订单号（PO 前缀）  (POMUYV1693DPXO)
+✅ 生成订单号（PO 前缀）  (POMUYWPWBFL68)
 ✅ 金额=2590 分（整数）
 ✅ plan_id/plan_name 原样携带
 ✅ status=pending
@@ -1370,7 +1370,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 
 ===== [batch5-payRenew] cloudfunctions/payRenew/selftest.js =====
 ===== 续费订单生成 =====
-✅ 生成续费订单号（PR 前缀）  (PRMUYV1D94IL7Q)
+✅ 生成续费订单号（PR 前缀）  (PRMUYWR5L42QXZ)
 ✅ 金额=19900 分
 ✅ plan 携带 + status=pending
 ✅ enable_real_payment=false
@@ -1591,7 +1591,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 ✅ 新用户录单 → expire_at = 今日 + 31 天
 ✅ 权益 source=manual
 ✅ 订单写入（status=paid / channel=manual / 金额分）
-✅ 订单号 MO 前缀  (MOMU2MDMO09Z9T)
+✅ 订单号 MO 前缀  (MOMU2MDMO04DOL)
 ✅ 订单关联 plan/user
 ✅ 审计 action=ADMIN_MANUAL_ORDER 且含前后值
 ✅ 未到期续费 → 原值 + 365 天（累加非覆盖）  (diff=33264000000)
@@ -2153,7 +2153,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 
 ===== [evidence-meta] tools/check_evidence_meta.js =====
 ===== S · 自失效护栏 =====
-✅ S1 扫描面非空 · review/evidence 下 .md/.txt = 994 个
+✅ S1 扫描面非空 · review/evidence 下 .md/.txt = 996 个
 
 ===== E1 · 纯读声明 vs 写入痕迹 =====
    ↳ review/evidence/realcloud_20260917/47_timeout_all.txt:77 检出写入痕迹，但**同小节已声明例外** ⇒ 放行（正面样本）
@@ -2338,7 +2338,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 
 ===== [suite-coverage] tools/check_suite_coverage.js =====
 ===== S1 前置：git 列表可用（fail-closed）=====
-✅ S1 能在仓库根执行 git ls-files · 跟踪文件 7382 个
+✅ S1 能在仓库根执行 git ls-files · 跟踪文件 7550 个
 ✅ S1-② 面 A 工作树补面逐根达下界（根路径写错即转红） · tools:110 prototype:14 cfTests:1 cf-selftest:43
 ✅ S1-③ 面 A 工作树补面并入扫描面 · 工作树新增 0 个未入库文件（未 add 的新判据不再失明）
 
@@ -2377,15 +2377,15 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 
 ===== C3 「第 N 套件」序号声明 ≡ SUITES 实际位置 =====
 ✅ C3-前置 git 路径未被转义（CJK 文件真进扫描面） · 零转义
-✅ C3-补面① 工作树补面逐根达下界（补面被扫空即转红） · specs=81 / tools=110 / miniprogram=2 / rootMd=8 ＋未入库 1 个
-✅ C3-补面② 回环：index 面内文件均能由工作树扫描复现（根路径写错即转红） · index 199 个全部复现
+✅ C3-补面① 工作树补面逐根达下界（补面被扫空即转红） · specs=81 / tools=110 / miniprogram=2 / rootMd=8 ＋未入库 0 个
+✅ C3-补面② 回环：index 面内文件均能由工作树扫描复现（根路径写错即转红） · index 200 个全部复现
 ✅ C3 面内 4 处「第 N 套件」序号声明全部对得上 · 全部 ≡ SUITES 实际位置
 
 ===== C4 扫描面非空（判据存在 ≠ 判据被执行）=====
 ✅ C4 面 A 三处声明 + 序号面全部有命中 · 头注/§1.1/会漂行/序号声明 = true/true/true/4
 
 ===== C5 前提守卫：被排除的 review/ 确实是历史陈述面 =====
-✅ C5 review/ 历史计数陈述存在（排除面没打错、放行规则确有必要） · 历史陈述文件 332 个
+✅ C5 review/ 历史计数陈述存在（排除面没打错、放行规则确有必要） · 历史陈述文件 333 个
 
 ===== C6 前提守卫：自指排除只放行注释行（§0.3⑦）=====
 ✅ C6 自身文件「第 N 套件」仅出现在注释行 · 注释行命中 2 处，全部属说明性举例
@@ -2482,9 +2482,9 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
   [page-manifest] ✅ PASS  (✅ 17 条 / 段 2)
 
 ===== [quota-limits] tools/check_quota_limits.js =====
-  ✅ L1-① 扫描面非空且无八进制转义（CJK 路径不得被静默跳过） —— 7382 个文件 / 转义 0
-  ✅ L1-② 工作树补面逐根达下界（补面被扫空即转红） —— specs=46 ＋未入库 1 个
-  ✅ L1-③ 回环：index 内 specs/*.md 均能由工作树扫描复现（根路径写错即转红） —— index 45 个全部复现
+  ✅ L1-① 扫描面非空且无八进制转义（CJK 路径不得被静默跳过） —— 7550 个文件 / 转义 0
+  ✅ L1-② 工作树补面逐根达下界（补面被扫空即转红） —— specs=46 ＋未入库 0 个
+  ✅ L1-③ 回环：index 内 specs/*.md 均能由工作树扫描复现（根路径写错即转红） —— index 46 个全部复现
   ✅ L2-① 单源 plan_free.limits 可解析（fail-closed，配置种子） —— shop=1 / cost_card=20 / hard_shop=200 / hard_card=2000
   ✅ L2r 反向断言：checkQuota/service.js 剥注释后零额度字面量（防硬编码复发） —— 零命中（额度只由 limits 入参注入）
   ✅ L2r-② 前提：反向断言对象存在且非空（防读空导致零命中假绿） —— 959 字符
@@ -2496,7 +2496,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
   ✅ L1-② 文件级排除面前提：确有 OBSOLETE 历史版被排除（证明排除没打错） —— 1 个文件
   ✅ L5 当前态免费额陈述全部 ≡ 单源实算（M1/M3 强面） —— 13 处一致（M1=1 / M3=20）
   ✅ L6 硬上限陈述 ∈ {200, 2000}（≡ 单源） —— 12 处一致（200/2000）
-  ✅ L7 排除面前提：确有历史/演进类陈述被放行（证明排除面没打错） —— 326 行
+  ✅ L7 排除面前提：确有历史/演进类陈述被放行（证明排除面没打错） —— 327 行
   ✅ L8 强面命中数 ≥ 4（正则/扫描面失效即零命中假绿） —— 13 处
   ✅ L9 唯一声明处不扩散（其它 .md 不得再自称本口径单源） —— 仅 specs/dev-specs/商业化方案_v1.4_融合版.md 一处
   ✅ L11-① 弱面补口·命中数 ≥ 3（正则/文件改动导致零命中即判红，防"补口本身失效"） —— 4 处（声明处文件内）
@@ -2521,9 +2521,9 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
   [quota-limits] ✅ PASS  (✅ 25 条 / 段 1)
 
 ===== [collection-perms] tools/check_collection_perms.js =====
-  ✅ P1-① 扫描面非空且无八进制转义（CJK 路径不得被静默跳过） —— 7382 个文件 / 转义 0
-  ✅ P1-② 工作树补面逐根达下界（补面被扫空即转红） —— specs=46 ＋未入库 1 个
-  ✅ P1-③ 回环：index 内 specs/*.md 均能由工作树扫描复现（根路径写错即转红） —— index 45 个全部复现
+  ✅ P1-① 扫描面非空且无八进制转义（CJK 路径不得被静默跳过） —— 7550 个文件 / 转义 0
+  ✅ P1-② 工作树补面逐根达下界（补面被扫空即转红） —— specs=46 ＋未入库 0 个
+  ✅ P1-③ 回环：index 内 specs/*.md 均能由工作树扫描复现（根路径写错即转红） —— index 46 个全部复现
   ✅ P2-① 单源 COLLECTIONS 可解析 —— cloudfunctions/initDb/collections.js
   ✅ P2-② 单源非空且元素唯一 —— 27 张 / 去重 27
   ✅ P2-③ 单源命名合法（小写下划线） —— 全部合法
@@ -2553,7 +2553,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
   [collection-perms] ✅ PASS  (✅ 23 条 / 段 1)
 
 ===== [privacy-collection] tools/check_privacy_collection.js =====
-  ✅ C1-① 扫描面非空且无八进制转义（CJK 路径不得被静默跳过） —— 7382 个文件 / 转义 0
+  ✅ C1-① 扫描面非空且无八进制转义（CJK 路径不得被静默跳过） —— 7550 个文件 / 转义 0
   ✅ C1-③ 工作树补面非空（路径写错即零覆盖，非恒真） —— 工作树 1060 个 / 其中 index 外 0 个
   ✅ C2-① 云函数目录集可解析（fail-closed） —— 49 个目录
   ✅ C2-② 小程序端源码扫描面可解析（fail-closed） —— 126 个文件
@@ -2593,8 +2593,8 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
   ✅ A1-② 实跑失败数为 0（验收锚点当前全绿）
 
 ===== A2 扫描面（index ∪ 工作树 · CJK 不得被转义跳过） =====
-  ✅ A2-① 无 CJK 八进制转义路径（坑⑪） —— git ls-files 7382 条
-  ✅ A2-② 扫描面非空（路径写错即零覆盖，非恒真） —— 55 个 .md（工作树补 2 个）
+  ✅ A2-① 无 CJK 八进制转义路径（坑⑪） —— git ls-files 7550 条
+  ✅ A2-② 扫描面非空（路径写错即零覆盖，非恒真） —— 55 个 .md（工作树补 1 个）
 
 ===== A3 唯一声明处 ≡ 实算 =====
   ✅ A3-① 唯一声明处恰 1 处 —— specs/dev-specs/core/14_种子数据与验收脚本规范.md:29
@@ -2612,7 +2612,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
      [HIST 放行] specs/dev-specs/★知识存储点_2026-09-10.md:853 「94/94 全绿」 —— - **套件数会漂**：`verify_all.js` 增删套件后必须同步头部注释里的数量（现 **153**；2026-09-17 由 41 → 45（新增 batch7 四组自
      [HIST 放行] specs/dev-specs/★知识存储点_2026-09-10.md:853 「145/145 全绿」 —— - **套件数会漂**：`verify_all.js` 增删套件后必须同步头部注释里的数量（现 **153**；2026-09-17 由 41 → 45（新增 batch7 四组自
      [HIST 放行] specs/dev-specs/★知识存储点_2026-09-10.md:859 「88/88 全绿」 —— 前 16 例同族病均为数字漂移，本例为**时态**漂移；含 5 组正负样本互证 + 2 道自失效护栏）** → **83（round78：新增 `tools/check_incom
-  ⚠️ 弱面（锚点不就近，只明示不判红，可能是子集/另一口径）22 处：
+  ⚠️ 弱面（锚点不就近，只明示不判红，可能是子集/另一口径）17 处：
      BATCH0_DELIVERY.md:5 写 20/0（最近锚点 Infinity 字符） —— > 自测：本机 `node cloudfunctions/common/__tests__/batch0_selfcheck.js` → **20 通过 / 0 失败 + 1 待办
      BATCH0_DELIVERY.md:45 写 20/0（最近锚点 Infinity 字符） —— 合计：20 通过 / 0 失败（待办 1 项不计入失败）
      BATCH1_DELIVERY.md:16 写 20/0（最近锚点 Infinity 字符） —— | 批次 0 自测**现场实测** | `node cloudfunctions/common/__tests__/batch0_selfcheck.js` → **20 通过 /
@@ -2720,7 +2720,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
   · tools/check_fn_public_surface.js → 17 通过
   · tools/check_paid_quota_unlock.js → 8 通过
   · tools/check_m2_reverse_rent.js → 23 通过
-  · tools/check_biz_preset.js → 20 通过
+  · tools/check_biz_preset.js → 21 通过
   · tools/check_grade_gate_dual.js → 13 通过
   · tools/check_fn_deps.js → 12 通过
   · tools/check_m333_parse.js → 23 通过
@@ -2791,7 +2791,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
   ✅ A2-check_fn_public_surface 声明 17 ≡ 实跑 17
   ✅ A2-check_paid_quota_unlock 声明 8 ≡ 实跑 8
   ✅ A2-check_m2_reverse_rent 声明 23 ≡ 实跑 23
-  ✅ A2-check_biz_preset 声明 20 ≡ 实跑 20
+  ✅ A2-check_biz_preset 声明 21 ≡ 实跑 21
   ✅ A2-check_grade_gate_dual 声明 13 ≡ 实跑 13
   ✅ A2-check_fn_deps 声明 12 ≡ 实跑 12
   ✅ A2-check_m333_parse 声明 23 ≡ 实跑 23
@@ -2813,10 +2813,9 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
   ✅ A7-① 仅重启键一处自称本口径单源
 
 ===== W 弱面：specs 内当前态引用与实跑不符（明示，不判红） =====
-  ⚠️ specs/dev-specs/core/开发规范v1.8_ModuleM2增量_桌数输入与翻台口径修正.md:310 check_m2_reverse_rent 写 22 / 实跑 23
-  ⚠️ specs/dev-specs/core/开发规范v1.8_ModuleM2增量_桌数输入与翻台口径修正.md:311 check_biz_preset 写 19 / 实跑 20
-  · 弱面共 2 条（只明示，不判红 —— 可能是子集/另一口径）
-  ✅ W-① 弱面扫描完成：2 条明示（弱面只提示、不判红）
+  （无不符）
+  · 弱面共 0 条（只明示，不判红 —— 可能是子集/另一口径）
+  ✅ W-① 弱面扫描完成：0 条明示（弱面只提示、不判红）
 
 ===== 套件断言数口径守卫结果：72 通过 / 0 失败 =====
   [suite-assert-counts] ✅ PASS  (✅ 72 条 / 段 7)
@@ -2868,7 +2867,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 
 ===== S1 前提守卫（扫描面非空 —— 防"目录写错 ⇒ 恒绿"） =====
   ✅ S1-① 活文档面 46 个 .md ≥ 20
-  ✅ S1-② 受检小节标题 1015 个 ≥ 300
+  ✅ S1-② 受检小节标题 1018 个 ≥ 300
   ✅ S1-③ 活文档面全部可读（无读取失败）
 
 ===== A1 硬判据：小节标题说 STALE / 同节正文说已闭环（活文档面） =====
@@ -2925,7 +2924,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 
 ===== C7 前提守卫（登记面非空，证明解析真的生效） =====
   ✅ C7-① 在册集合非空（前端 7 / 后端 5）—— 登记解析生效
-  ✅ C7-② 扫描面 351 个 .md（index ∪ 工作树）
+  ✅ C7-② 扫描面 352 个 .md（index ∪ 工作树）
   ✅ C7-③ 扫描面无八进制转义（quotepath=false 生效）
 
 ===== C8 口径单源不扩散 =====
@@ -3349,8 +3348,8 @@ R118 · 归档补录宽限期口径穿透守卫（计算常量 ≡ 服务端文�
 
 ===== B1 扫描面 fail-closed =====
   ✅ B1-① 单源文件（常量 + 服务端文案）存在且非空 —— 9712B
-  ✅ B1-② 前端 i18n 主副本存在且非空 —— 113297B
-  ✅ B1-③ 前端 i18n 派生副本存在且非空 —— 113297B
+  ✅ B1-② 前端 i18n 主副本存在且非空 —— 113303B
+  ✅ B1-③ 前端 i18n 派生副本存在且非空 —— 113303B
   ✅ B1-④ 唯一声明处文件存在且非空 —— 41349B
   ✅ B1-⑤ md 扫描面达下界（坑㉛：路径写错即红） —— 46/25
 
@@ -3707,7 +3706,7 @@ R118 · 归档补录宽限期口径穿透守卫（计算常量 ≡ 服务端文�
 ===== A 主判据：对外文案面剥注释后零「食材成本率」类表述 =====
   ✅ A-① pages/ 全面（100 个 .js/.wxml/.json/.wxss）零命中 —— 0 命中
   ✅ A-② miniprogram/ + utils/ + 术语镜像 零命中 —— 26 个文件 0 命中
-  ✅ A-③ 术语双副本逐字节一致（K11 同族） —— identical 113297B
+  ✅ A-③ 术语双副本逐字节一致（K11 同族） —— identical 113303B
 
 ===== B 反向护栏：引擎中间量必须留、前端必须无 =====
   ✅ B-① 引擎内部中间量 foodCostPct 仍声明 = 100 − 毛利率、仍是综合变动成本率的加数、仍出参 —— 声明[有] 作加数[是] 出参[有]（删了保本点会算错）
@@ -4485,7 +4484,7 @@ R118 · 归档补录宽限期口径穿透守卫（计算常量 ≡ 服务端文�
 ===== S · 自失效护栏（防「判据恒真」与「扫描面扫空」）=====
 ✅ S3-a 匹配器正样本全部命中（folder / file / suffix / prefix 四类） · 6/6 命中
 ✅ S3-b 匹配器负样本全部放行（禁「一律忽略」式恒真） · 5/5 放行
-✅ S1 扫描面非退化：未忽略文件数达下界 · 全盘 8207 个文件中未忽略 135 个（下界 60）
+✅ S1 扫描面非退化：未忽略文件数达下界 · 全盘 8242 个文件中未忽略 135 个（下界 60）
 ✅ S2 关键入口真在入包集合内（扫空 / 根路径写错即转红） · 锚点 5 个全部命中
 
 ===== P · 入包体积（微信预览 / 上传硬上限 2 MB）=====
@@ -5124,7 +5123,7 @@ R213 权益链路：免费额度阈值/到期判定/续费/后台调权四段均
 ===== [biz-preset] tools/check_biz_preset.js =====
 
 ===== S · 扫描面（bizPreset 存在 / 预设数 ≥4 / 断言数下界） =====
-  ✅ S-① utils/bizPreset.js 存在且非空 —— 12665 字符
+  ✅ S-① utils/bizPreset.js 存在且非空 —— 12641 字符
   ✅ S-② bizPreset 可 require 且导出 BIZ_PRESETS / CITY_COEF —— 预设 6 个
   ✅ S-③ 预设数 ≥ 4 —— 6 个
   ✅ S-④ CITY_COEF 三档都带 rent+labor 双键 —— tier1/county 双键须在（漏乘 labor ⇒ 一线退回二三线）
@@ -5156,9 +5155,10 @@ R213 权益链路：免费额度阈值/到期判定/续费/后台调权四段均
   ✅ F-② 翻台口径分组：火锅/正餐 = table（**可说「翻台」**）/ 快餐/茶饮 = seat（**禁用「翻台」**） —— hotpot=table dining=table fastfood=seat cafe=seat
   ✅ F-③ 🔴 空值不得被分档（Number(null)===0 会把"算不出来"说成"很轻松"） —— null/undefined/空串/NaN ⇒ 全部空串（页面据此不渲染难度行）
   ✅ F-④ 三档阈值边界：桌 ≤1.8 / ≤2.8；座位 ≤2.5 / ≤4.0 —— 桌 1.8/2.81 = easy/hard · 座位 2.5/4.01 = easy/hard
+  ✅ F-⑤ 🔴 三档难度文案不得含"生意承诺/判决"词（须为"目标要求"表述） —— easy=这个要求不高，比较容易达到 · ok=这个要求在常见范围内 · hard=这个要求偏高，得努把力
 
-===== 业态参数包守卫结果：20 通过 / 0 失败 =====
-  [biz-preset] ✅ PASS  (✅ 20 条 / 段 8)
+===== 业态参数包守卫结果：21 通过 / 0 失败 =====
+  [biz-preset] ✅ PASS  (✅ 21 条 / 段 8)
 
 ===== [grade-gate-dual] tools/check_grade_gate_dual.js =====
 
@@ -5650,7 +5650,7 @@ R213 权益链路：免费额度阈值/到期判定/续费/后台调权四段均
 ===== P 前置：扫描面非退化（否则 A/B/C 会静默恒绿） =====
   ✅ P-① 两个面文件可读且非空 —— index.js 50819 字符 · index.wxml 25074 字符
   ✅ P-② wxml 里带 value 绑定的 `<input>` ≥ 6（提取器没被写窄） —— 16 个
-  ✅ P-③ terms.js / bizPreset.js 可读 —— terms 65885 字符 · bizPreset 12665 字符
+  ✅ P-③ terms.js / bizPreset.js 可读 —— terms 65887 字符 · bizPreset 12641 字符
 
 ===== A 主判据：坪效 / 目标租金率 不得出现在输入区（R223 §3.2 落守） =====
   ✅ A-① wxml 的 input value 绑定**零**专业指标字段 —— 受检 16 个绑定
@@ -5700,4 +5700,4 @@ R213 权益链路：免费额度阈值/到期判定/续费/后台调权四段均
 
 ===== 总览：153/153 套件通过 =====
 R92（套件入库，真 git 判定）：✅
-耗时 653.8s
+耗时 1775.2s

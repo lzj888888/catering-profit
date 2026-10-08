@@ -2,7 +2,7 @@
 ===== 批次0 自测结果（复审节点① 五条）=====
 ✅ 点1·身份只来自OPENID(忽略伪造记录)  →  user.id=u_real
 ✅ 点1·函数不接收event(签名为 ctx,db,audit)  →  resolveAuth.length=3（参数=ctx,db,audit，无 event 入口）
-✅ 点1b·首次自动建档返回user  →  user.id=u_muyux74nkz62
+✅ 点1b·首次自动建档返回user  →  user.id=u_muywgp3z9n3k
 ✅ 点1b·建了默认shop  →  shop=1
 ✅ 点1b·建了entitlement(expire_at=0)  →  expire_at=0
 ✅ 点1b·建档写audit_log(AUTH_AUTO_PROVISION)  →  audit=1
@@ -36,8 +36,8 @@
 ✅ A6b·并发首进只建出 1 个 user  →  user=1
 ✅ A6b·并发首进只建出 1 个 shop  →  shop=1
 ✅ A6b·并发首进只建出 1 条 entitlement  →  ent=1
-✅ A6b·并发两次拿到同一个 user_id  →  ids=u_muyux74xicuh,u_muyux74xicuh
-✅ A6b·店铺 id 用单源确定性格式 shop_<user_id>  →  shop_id=shop_u_muyux74xicuh
+✅ A6b·并发两次拿到同一个 user_id  →  ids=u_muywgp46irnu,u_muywgp46irnu
+✅ A6b·店铺 id 用单源确定性格式 shop_<user_id>  →  shop_id=shop_u_muywgp46irnu
 ✅ A6b·机制级：确定性 id ⇒ 同 user 第二次建店被库拒  →  rejected=true
 ✅ A6b·机制级：仅剩 1 个店  →  shop=1
 ✅ A6b·反向证据：随机 id 两次都成功 ⇒ 2 个店（这就是旧实现能建出重复店的原因）  →  shop=2

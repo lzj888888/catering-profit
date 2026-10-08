@@ -52,7 +52,7 @@ MUTATIONS = [
         suite="tools/check_biz_preset.js",
         file="utils/bizPreset.js",
         note="空值护栏失效 ⇒ Number(null)===0 被分档成 easy（把'算不出来'说成'很轻松'）",
-        pairs=[(b"if (value === null || value === undefined || value === '') return '';",
+        pairs=[(b"if (value == null || value === '') return '';",
                 b"if (value === '__never__') return '';", 1)],
     ),
     dict(
@@ -67,9 +67,17 @@ MUTATIONS = [
         id="M5", group="B", want_red=False, assert_named="F-③",
         suite="tools/check_biz_preset.js",
         file="utils/bizPreset.js",
-        note="反向伤害②：等价改写（=== null || === undefined → == null）⇒ 不得转红（判行为不判字面）",
-        pairs=[(b"if (value === null || value === undefined || value === '') return '';",
-                b"if (value == null || value === '') return '';", 1)],
+        note="反向伤害②：等价改写（`== null` → 拆成三个 `===` 判断）⇒ 不得转红（判行为不判字面）",
+        pairs=[(b"if (value == null || value === '') return '';",
+                b"if (value === undefined || value === null || value === '') return '';", 1)],
+    ),
+    dict(
+        id="M6", group="A", want_red=True, assert_named="F-⑤",
+        suite="tools/check_biz_preset.js",
+        file="miniprogram/i18n/terms.js",
+        note="三档文案改回「生意承诺」（'正常做着就能到'）⇒ F-⑤ 必须红",
+        pairs=[(b("turnLevelEasy: '这个要求不高，比较容易达到'"),
+                b("turnLevelEasy: '这个水平，正常做着就能到'"), 1)],
     ),
 ]
 
@@ -106,7 +114,7 @@ def main():
         f = ROOT / m["file"]
         before = f.read_bytes()
         before_md5 = hashlib.md5(before).hexdigest()
-        bak = BACKUP / (m["id"] + "__" + pathlib.Path(m["file"]).name + ".bak")
+        bak = BACKUP / (m["id"] + "__" + pathlib.Path(m["file"]).with_suffix(".bak").name)
         bak.write_bytes(before)
 
         # ---- 施加变异（每组独立：逐条 count 精确替换，命中数不符即中止）----

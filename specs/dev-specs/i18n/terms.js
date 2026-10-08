@@ -802,11 +802,11 @@ const TERMS = {
     //    「不要过多让翻台率去佐证生意好坏」；豆包第 5 轮：「旧阈值是适配旧座位口径的产物，直接废弃」。
     //    改为两条**中性灰字**（页面用 `.row-note`，不标红、不进主结论）：
     //      `turnNote*` = 口径说明；`turnLevel*` = 难度一句话（三档互斥）。
-    turnNoteTable: '按桌算：平均每张桌一天接待了几拨客人',
-    turnNoteSeat: '快餐小吃常拼桌，这只是事前预估，实际看拼桌和单人客占比',
-    turnLevelEasy: '这个水平，正常做着就能到',
-    turnLevelOk: '这个水平，客流得抓一抓才稳',
-    turnLevelHard: '这个水平偏高，新手维持起来吃力',
+    turnNoteTable: '按每桌坐满估算：平均一张桌一天要接待几拨客人',
+    turnNoteSeat: '按座位算、每批按坐满估；快餐小吃常拼桌、单人客多，实际会有出入',
+    turnLevelEasy: '这个要求不高，比较容易达到',
+    turnLevelOk: '这个要求在常见范围内',
+    turnLevelHard: '这个要求偏高，得努把力',
     revRentHint: '「寻找铺面」时房租是算出来的结果，所以这里不用填',
     // ===== M2v1.2（多方案存储 · 第二期）：保存沙盘 / 我的方案入口 =====
     savePlanEntry: '我的方案 ›',

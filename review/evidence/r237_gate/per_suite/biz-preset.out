@@ -1,6 +1,6 @@
 
 ===== S · 扫描面（bizPreset 存在 / 预设数 ≥4 / 断言数下界） =====
-  ✅ S-① utils/bizPreset.js 存在且非空 —— 12665 字符
+  ✅ S-① utils/bizPreset.js 存在且非空 —— 12641 字符
   ✅ S-② bizPreset 可 require 且导出 BIZ_PRESETS / CITY_COEF —— 预设 6 个
   ✅ S-③ 预设数 ≥ 4 —— 6 个
   ✅ S-④ CITY_COEF 三档都带 rent+labor 双键 —— tier1/county 双键须在（漏乘 labor ⇒ 一线退回二三线）
@@ -32,5 +32,6 @@
   ✅ F-② 翻台口径分组：火锅/正餐 = table（**可说「翻台」**）/ 快餐/茶饮 = seat（**禁用「翻台」**） —— hotpot=table dining=table fastfood=seat cafe=seat
   ✅ F-③ 🔴 空值不得被分档（Number(null)===0 会把"算不出来"说成"很轻松"） —— null/undefined/空串/NaN ⇒ 全部空串（页面据此不渲染难度行）
   ✅ F-④ 三档阈值边界：桌 ≤1.8 / ≤2.8；座位 ≤2.5 / ≤4.0 —— 桌 1.8/2.81 = easy/hard · 座位 2.5/4.01 = easy/hard
+  ✅ F-⑤ 🔴 三档难度文案不得含"生意承诺/判决"词（须为"目标要求"表述） —— easy=这个要求不高，比较容易达到 · ok=这个要求在常见范围内 · hard=这个要求偏高，得努把力
 
-===== 业态参数包守卫结果：20 通过 / 0 失败 =====
+===== 业态参数包守卫结果：21 通过 / 0 失败 =====

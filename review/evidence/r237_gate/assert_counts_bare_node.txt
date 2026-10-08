@@ -3,6 +3,7 @@
 #  （git 调用 EBUSY），属【执行形态】问题，不是代码缺陷。
 #  正确形态（python 驱动 + gitcache）的结果见同目录 gate_full.txt：总览 153/153。
 #  保留下来的理由：它是「沙箱下 node 直接跑会假红」这一事实的现场证据。
+#  另：末尾 W 段的弱面提示（规范里引用变异态数字）只明示、不判红。
 
 
 ===== A0 实算单源（逐个真跑套件脚本，不抄字面量） =====
@@ -58,7 +59,7 @@
   · tools/check_fn_public_surface.js → 17 通过
   · tools/check_paid_quota_unlock.js → 8 通过
   · tools/check_m2_reverse_rent.js → 23 通过
-  · tools/check_biz_preset.js → 20 通过
+  · tools/check_biz_preset.js → 21 通过
   · tools/check_grade_gate_dual.js → 13 通过
   · tools/check_fn_deps.js → 12 通过
   · tools/check_m333_parse.js → 23 通过
@@ -128,7 +129,7 @@
   ✅ A2-check_fn_public_surface 声明 17 ≡ 实跑 17
   ✅ A2-check_paid_quota_unlock 声明 8 ≡ 实跑 8
   ✅ A2-check_m2_reverse_rent 声明 23 ≡ 实跑 23
-  ✅ A2-check_biz_preset 声明 20 ≡ 实跑 20
+  ✅ A2-check_biz_preset 声明 21 ≡ 实跑 21
   ✅ A2-check_grade_gate_dual 声明 13 ≡ 实跑 13
   ✅ A2-check_fn_deps 声明 12 ≡ 实跑 12
   ✅ A2-check_m333_parse 声明 23 ≡ 实跑 23
@@ -150,9 +151,10 @@
   ✅ A7-① 仅重启键一处自称本口径单源
 
 ===== W 弱面：specs 内当前态引用与实跑不符（明示，不判红） =====
-  ⚠️ specs/dev-specs/core/开发规范v1.8_ModuleM2增量_桌数输入与翻台口径修正.md:310 check_m2_reverse_rent 写 22 / 实跑 23
-  ⚠️ specs/dev-specs/core/开发规范v1.8_ModuleM2增量_桌数输入与翻台口径修正.md:311 check_biz_preset 写 19 / 实跑 20
-  · 弱面共 2 条（只明示，不判红 —— 可能是子集/另一口径）
-  ✅ W-① 弱面扫描完成：2 条明示（弱面只提示、不判红）
+  ⚠️ specs/dev-specs/core/开发规范v1.8_ModuleM2增量_桌数输入与翻台口径修正.md:370 check_m2_reverse_rent 写 22 / 实跑 23
+  ⚠️ specs/dev-specs/core/开发规范v1.8_ModuleM2增量_桌数输入与翻台口径修正.md:371 check_biz_preset 写 19 / 实跑 21
+  ⚠️ specs/dev-specs/core/开发规范v1.8_ModuleM2增量_桌数输入与翻台口径修正.md:373 check_biz_preset 写 20 / 实跑 21
+  · 弱面共 3 条（只明示，不判红 —— 可能是子集/另一口径）
+  ✅ W-① 弱面扫描完成：3 条明示（弱面只提示、不判红）
 
 ===== 套件断言数口径守卫结果：69 通过 / 4 失败 =====
