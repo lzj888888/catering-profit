@@ -1,0 +1,2 @@
+[ok] connected ws://127.0.0.1:9420
+FATAL timeout waiting for automator response

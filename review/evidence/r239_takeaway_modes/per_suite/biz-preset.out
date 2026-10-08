@@ -1,0 +1,37 @@
+
+===== S · 扫描面（bizPreset 存在 / 预设数 ≥4 / 断言数下界） =====
+  ✅ S-① utils/bizPreset.js 存在且非空 —— 12641 字符
+  ✅ S-② bizPreset 可 require 且导出 BIZ_PRESETS / CITY_COEF —— 预设 6 个
+  ✅ S-③ 预设数 ≥ 4 —— 6 个
+  ✅ S-④ CITY_COEF 三档都带 rent+labor 双键 —— tier1/county 双键须在（漏乘 labor ⇒ 一线退回二三线）
+  ✅ S-⑤ 从 indicatorRef.js 解析出 CITY_TIERS 三档（扫描面非退化） —— tier1/tier23/county
+  ✅ S-⑥ 前端 CITY_COEF 逐值 ≡ 生产源 CITY_TIERS（防复刻漂移） —— 3 档 × (rent,labor) 全等
+
+===== A · 主分类 ∈ indicatorRef.js::BIZ_KEYS =====
+  ✅ A-① 从 indicatorRef.js 解析出 BIZ_KEYS 且恰 4 类 —— fastfood/dining/hotpot/cafe
+  ✅ A-② 每个预设 bizKey ∈ BIZ_KEYS（无第 5 类） —— 6 个全合规
+
+===== B · 每个预设自包含（禁引用别的预设） =====
+  ✅ B-① 无预设引用别的预设的 presetKey —— 整套独立
+
+===== C · costMeta 形态 ∈ 五形态 + 参数完备（缺一即 NaN） =====
+  ✅ C-① 全部 form ∈ 五形态 —— 五形态
+  ✅ C-② 全部 costMeta 参数完备 —— 完备
+
+===== D · index.wxml L1/L2 不得把 坪效/目标租金率/翻台率 当输入框 =====
+  ✅ D-① L1/L2 区块（l1l2→l3-pro）无 坪效/租金率/翻台 输入框 —— L1/L2 锚点存在，区间内零命中
+
+===== E · cash 回本算式全仓只出现一次且在 utils/ 内 =====
+  ✅ E-① bizPreset 含 paybackCash 定义 —— paybackCash 在
+  ✅ E-② paybackCash 语义 = 投资 ÷ (月净利 + 月摊销)（实跑锚点 11.9） —— paybackCash(26.2万, 1.6万, 0.61万) = 11.9 月（应为 11.9）
+  ✅ E-③ pages/** 无 cash 回本算式（只有 paybackCash 调用是允许的） —— pages 零复算
+
+===== F · R237 桌数换算 + 翻台口径分组 + 三档阈值 =====
+  ✅ F-⓪ bizPreset 导出 R237 三个纯函数（解析不到即判红，否则 F-①~④ 会静默恒真）
+  ✅ F-① 单桌座位数：快餐 2 / 正餐 4 / 火锅 4 / 茶饮 2，未知业态兜底 4（不得 0 / NaN） —— fastfood=2 dining=4 hotpot=4 cafe=2 nope=4
+  ✅ F-② 翻台口径分组：火锅/正餐 = table（**可说「翻台」**）/ 快餐/茶饮 = seat（**禁用「翻台」**） —— hotpot=table dining=table fastfood=seat cafe=seat
+  ✅ F-③ 🔴 空值不得被分档（Number(null)===0 会把"算不出来"说成"很轻松"） —— null/undefined/空串/NaN ⇒ 全部空串（页面据此不渲染难度行）
+  ✅ F-④ 三档阈值边界：桌 ≤1.8 / ≤2.8；座位 ≤2.5 / ≤4.0 —— 桌 1.8/2.81 = easy/hard · 座位 2.5/4.01 = easy/hard
+  ✅ F-⑤ 🔴 三档难度文案不得含"生意承诺/判决"词（须为"目标要求"表述） —— easy=这个要求不高，比较容易达到 · ok=这个要求在常见范围内 · hard=这个要求偏高，得努把力
+
+===== 业态参数包守卫结果：21 通过 / 0 失败 =====

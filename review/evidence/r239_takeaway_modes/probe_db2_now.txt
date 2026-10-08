@@ -1,0 +1,9 @@
+[ok] connected ws://127.0.0.1:9420
+{
+  "cards": {
+    "n": 0,
+    "list": [],
+    "zeroCost": 0
+  },
+  "salesErr": "Permission denied 更多错误信息请访问：https://docs.cloudbase.net/error-code/basic/DATABASE_PERMISSION_DENIED"
+}

@@ -1,0 +1,12 @@
+✅ 新用户录单 → expire_at = 今日 + 31 天
+✅ 权益 source=manual
+✅ 订单写入（status=paid / channel=manual / 金额分）
+✅ 订单号 MO 前缀  (MOMU2MDMO03UM9)
+✅ 订单关联 plan/user
+✅ 审计 action=ADMIN_MANUAL_ORDER 且含前后值
+✅ 未到期续费 → 原值 + 365 天（累加非覆盖）  (diff=33264000000)
+✅ 重复录单 → ADMIN_OP_IDEMPOTENT
+✅ 重复录单不重复写订单/权益
+✅ plan_id 不存在 → INVALID_PARAM
+
+==== adminManualOrder 批次 6 自测结果：10 通过 / 0 失败 ====

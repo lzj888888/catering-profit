@@ -1,0 +1,46 @@
+[ok] connected ws://127.0.0.1:9420
+{
+  "shop": {
+    "shop_id": "shop_mu6j87v1itrs",
+    "shop_name": "AbC"
+  },
+  "costCard": {
+    "code": "SUCCESS",
+    "msg": "ok",
+    "dataKeys": [
+      "shop_id",
+      "truncated",
+      "client_request_id",
+      "list"
+    ],
+    "n": 3,
+    "truncated": false,
+    "sample": [
+      {
+        "code": "cc_muhz52um1mts",
+        "name": "鱼香肉丝",
+        "type": 1,
+        "cost_yuan": 12,
+        "price_yuan": 0,
+        "lines": 1
+      },
+      {
+        "code": "cc_muhznpgzd5ot",
+        "name": "炸鸡腿",
+        "type": 1,
+        "cost_yuan": 25,
+        "price_yuan": 0,
+        "lines": 1
+      },
+      {
+        "code": "cc_muibc75r5q3j",
+        "name": "肥炸鸡腿",
+        "type": 1,
+        "cost_yuan": 480.25,
+        "price_yuan": 0,
+        "lines": 2
+      }
+    ],
+    "zeroCost": 0
+  }
+}

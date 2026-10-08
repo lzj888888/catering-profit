@@ -1,0 +1,23 @@
+
+===== S · 扫描面（两份副本存在且可加载） =====
+  ✅ S-① 两份副本文件存在且非空 —— utils/gradeGate.js 3540B / cloudfunctions/importSalesBill/service.js 19099B
+  ✅ S-② 前端单源可加载且导出 checkGradeA(function) / SALES_SCHEMA(object) —— front keys=checkGradeA,SALES_SCHEMA
+  ✅ S-③ 云函数副本可加载且导出 checkGradeA(function) / SALES_SCHEMA(object) —— cloud keys=bufferToMatrix,detectPlatform,guessHeader,parseBillMatrix,checkGradeA,SALES_SCHEMA,toNum,fmtCell,EXCEL_UTC_BASE,DISH_SHAPES,DISH_A_STRUCT,normalizeDishName,detectDishShape,detectDishMatrix,extractBizDate,dishRefId,saleDocId,parseDishSales,normalizeDate,parseDishSalesC（xlsx 依赖：本地未装，已注入空桩（checkGradeA 不用它））
+
+===== A · SALES_SCHEMA 逐字段值等价 + 关键锚点在场 =====
+  ✅ A-① 字段名集合相等（缺 / 多都红） —— 9 个字段两端一致
+  ✅ A-② 逐字段逐属性值等价（pattern 归一化 source+flags；enum 逐值） —— 9 字段 × 全部属性值相等
+  ✅ A-③ platform.enum 含 taobao/meituan/eleme/other 且 qty.integer=true（非空壳） —— enum=[taobao,meituan,eleme,pos,other]
+
+===== B · checkGradeA 行为等价（组合电池逐组比对出参） =====
+  ✅ B-① 组合电池逐组出参全等（{pass, level, failures} 序列化比对） —— 882 组全等
+  ✅ B-② 电池有分辨力（同时产出过 pass=true 与 pass=false） —— pass=true 20 组 / pass=false 862 组
+
+===== C · 自失效护栏（样本下界 + 影子反例） =====
+  ✅ C-① 电池样本数 ≥ 800（防组合嵌套被改小 ⇒ 覆盖面悄悄缩水） —— 882 组（实测 882）
+  ✅ C-② schema 字段数 ≥ 9（防"两份一起被削成小 schema"仍判绿） —— 9 个字段
+  ✅ C-③ 影子：副本 enum 少一项 ⇒ 结构比较器报差异且落在 platform 字段（证明非恒空） —— 报 2 处，其中 platform 1 处
+  ✅ C-④a 影子样本有效（被删枚举项确实存在于基线，且影子 enum 恰好少 1 项） —— 基线 enum=["taobao","meituan","eleme","pos","other"]，删「pos」⇒ 影子 4 项
+  ✅ C-④ 影子：一侧 enum 少一项（另一侧没少）⇒ 行为比较器必须报且只报 platform 判别差异（真实漂移形态） —— 报 117 组（其中 platform 判别 117 组）
+
+===== gradeGate 双副本等价守卫结果：13 通过 / 0 失败 =====
