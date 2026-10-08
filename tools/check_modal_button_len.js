@@ -18,6 +18,14 @@
 //   `ALIASES` 表同步；A-③/A-④ 改为**从 ALIASES 派生**（候选数、展开键都不再写死），
 //   使"新加一类触发"只需改 ALIASES 一处，且新类型的按钮文案**自动纳入 4 字检查**。
 //
+// ===== R238 增补：页面局部别名 =====
+//   `pages/takeaway/index.js` 顶部有 `const TK = TERMS.ledger.takeaway;`，该页术语一律走 `TK.xxx`。
+//   R238 首次在该页引入 `showModal` ⇒ `confirmText: TK.importGoReview` 落进扫描面而**解析不了**
+//   ⇒ B-② 判红。⚠️ 那次判红**本身是对的**：解析不了 ⇒ 「≤4 字」红线失效 ⇒ 必须报出来。
+//   处置＝**让解析器认识该别名**（`PAGE_ALIAS`，与 `TERMS.` 分支同族），
+//   而非改业务代码把两处写成全路径去迎合守卫（那会破坏页面风格一致性，且下一个人还会踩）；
+//   同时配 C-⑥ 防腐化押住源绑定（与 `def` / `buttons` 同款纪律）。
+//
 // ===== 判据 =====
 // A. 解析器自带**钉死样本**（先证明解析器真的会解析，再看真实扫描结果）：
 //    · 单键表达式解析出 1 条 1 个候选
@@ -57,6 +65,24 @@ const ALIASES = {
   'buttons.unlockPro': ['buttons.unlockPro'],
 };
 
+// 🔴 R238：**页面局部别名** —— `pages/takeaway/index.js` 顶部有 `const TK = TERMS.ledger.takeaway;`，
+//   该页全部术语走 `TK.xxx`（页面既有风格）。R238 首次在该页引入 `showModal`
+//   ⇒ `confirmText: TK.importGoReview` / `cancelText: TK.importGoLater` 落进本守卫扫描面，
+//     而 `candidatesOf` 只认 `TERMS.` 前缀 ⇒ **B-② 判红**。
+//   ⚠️ 那次判红**本身是对的**（fail-closed）：解析不了 ⇒ 「≤4 字」这条红线就失效了，
+//     必须报出来，不能假装通过。但**处置方式**不是改业务代码去迎合守卫
+//     （那会破坏该页"术语一律走 TK."的风格一致性，且下一个人还会踩），
+//     而是**让解析器认识该别名** —— 本守卫上方注释即写着「写法变了 ⇒ 转红提醒更新别名表」。
+//   ⚠️ 将来别的页面再用局部别名，**在此追加一行** + 同步加一条防腐化断言（见下方 C-⑥ 同款）。
+const PAGE_ALIAS = [
+  {
+    prefix: 'TK.',
+    to: 'ledger.takeaway.',
+    file: 'pages/takeaway/index.js',
+    bind: /const\s+TK\s*=\s*TERMS\.ledger\.takeaway/,
+  },
+];
+
 let pass = 0, fail = 0;
 const ok = (m) => { pass++; console.log('✅ ' + m); };
 const no = (m) => { fail++; console.log('❌ ' + m); };
@@ -91,6 +117,10 @@ function candidatesOf(expr) {
     if (!part) continue;
     if (part.indexOf('TERMS.') === 0) {
       cands.push({ kind: 'terms', key: part.slice('TERMS.'.length) });
+    } else if (PAGE_ALIAS.some((a) => part.indexOf(a.prefix) === 0)) {
+      // R238：页面局部别名（`TK.xxx` ⇒ `ledger.takeaway.xxx`）—— 与 TERMS. 分支同族
+      const a = PAGE_ALIAS.find((x) => part.indexOf(x.prefix) === 0);
+      cands.push({ kind: 'terms', key: a.to + part.slice(a.prefix.length) });
     } else if (ALIASES[part]) {
       for (const k of ALIASES[part]) cands.push({ kind: 'terms', key: k });
     } else if (/^'[^']*'$/.test(part) || /^"[^"]*"$/.test(part)) {
@@ -190,6 +220,16 @@ const pw = path.join(REPO, 'utils/paywall.js');
 const pwSrc = fs.existsSync(pw) ? fs.readFileSync(pw, 'utf8') : '';
 check('C-④ 别名表防腐化：paywall.js 内 def 仍来自 TERMS.paywall', /const\s+def\s*=\s*TERMS\.paywall/.test(pwSrc));
 check('C-⑤ 别名表防腐化：paywall.js 内 buttons 仍来自 TERMS.buttons', /const\s+buttons\s*=\s*TERMS\.buttons/.test(pwSrc));
+// R238：**页面局部别名**防腐化 —— 押各页的别名仍绑定在预期 TERMS 路径上。
+//   绑定一旦被改（例如 `TK` 改成指向别的组），本守卫对 `TK.*` 的展开就全错
+//   ⇒ 必须转红提醒，而不是悄悄漏判。⚠️ 逐条遍历 `PAGE_ALIAS`，将来加别名**不必再改这里**
+//   （与 A-③/A-④「从表派生」同一手法）⇒ 断言数 = 1 + PAGE_ALIAS.length。
+PAGE_ALIAS.forEach((a, i) => {
+  const p = path.join(REPO, a.file);
+  const src = fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : '';
+  check('C-⑥-' + i + ' 别名表防腐化：' + a.file + ' 内 ' + a.prefix.slice(0, -1)
+    + ' 仍来自 TERMS.' + a.to.replace(/\.$/, ''), a.bind.test(src));
+});
 
 /* ===================== D. 断言数下界 ===================== */
 console.log('\n===== D. 断言数下界（防后人删断言）=====');

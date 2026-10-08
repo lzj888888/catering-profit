@@ -1,0 +1,68 @@
+===== A. 解析器钉死样本（先证明解析器有效）=====
+✅ A-① 单键表达式解析出 1 条
+✅ A-② 单键候选数 = 1 且键名正确
+✅ A-③ `||` 表达式候选数 = 1 + ALIASES[def.primary] 长度（= 5）
+✅ A-④ 别名 def.primary 被逐个展开为 4 个键
+✅ A-⑤ 非按钮行不误抓
+
+===== B. 真实扫描（pages/ utils/ app.js）=====
+   扫描文件 49 个，命中按钮引用 42 条，候选 52 个
+   · pages\card\edit.js:586 confirmText = TERMS.card.delLineConfirmOk
+   · pages\card\edit.js:587 cancelText = TERMS.buttons.cancel
+   · pages\card\edit.js:833 cancelText = TERMS.buttons.cancel
+   · pages\card\index.js:299 cancelText = TERMS.buttons.thinkAgain
+   · pages\card\index.js:300 confirmText = TERMS.exp.serviceEntry
+   · pages\card\index.js:327 cancelText = TERMS.buttons.cancel
+   · pages\card\index.js:346 cancelText = TERMS.buttons.cancel
+   · pages\card\index.js:406 cancelText = TERMS.buttons.cancel
+   · pages\card\version.js:135 cancelText = TERMS.buttons.cancel
+   · pages\material\index.js:240 cancelText = TERMS.buttons.cancel
+   · pages\mine\index.js:103 confirmText = TERMS.exp.guideOk
+   · pages\mine\index.js:114 confirmText = TERMS.buttons.thinkAgain || '知道了'
+   · pages\mine\index.js:125 confirmText = TERMS.buttons.thinkAgain || '知道了'
+   · pages\mine\index.js:136 confirmText = TERMS.exp.goSetting
+   · pages\mine\index.js:137 cancelText = TERMS.buttons.cancel
+   · pages\mine\index.js:150 confirmText = TERMS.exp.logoutTitle
+   · pages\mine\index.js:151 cancelText = TERMS.exp.cancelLogout
+   · pages\month\input.js:415 confirmText = TERMS.ledger.copyPrevOkBtn
+   · pages\month\input.js:416 cancelText = TERMS.ledger.copyPrevCancelBtn
+   · pages\month\input.js:1444 confirmText = TERMS.ledger.missingWarnGo
+   · pages\month\input.js:1445 cancelText = TERMS.ledger.missingWarnSave
+   · pages\pay\orders.js:98 confirmText = TERMS.buttons.gotIt
+   · pages\pay\orders.js:115 confirmText = TERMS.buttons.thinkAgain
+   · pages\sandbox\index.js:363 confirmText = TERMS.m2.draftClearOk
+   · pages\sandbox\index.js:364 cancelText = TERMS.buttons.cancel
+   · pages\shop\switch.js:181 cancelText = TERMS.buttons.thinkAgain
+   · pages\shop\switch.js:182 confirmText = TERMS.exp.resetOk
+   · pages\shop\switch.js:242 cancelText = TERMS.buttons.thinkAgain
+   · pages\shop\switch.js:246 confirmText = TERMS.exp.deleteOk
+   · pages\takeaway\index.js:480 confirmText = TK.importGoReview
+   · pages\takeaway\index.js:481 cancelText = TK.importGoLater
+   · utils\paywall.js:43 cancelText = def.secondary || buttons.cancel
+   · utils\paywall.js:45 confirmText = TERMS.paywall.ctaShort || def.primary
+   · utils\paywall.js:71 confirmText = TERMS.buttons.gotIt
+   · utils\paywall.js:105 cancelText = TERMS.buttons.thinkAgain
+   · utils\paywall.js:106 confirmText = TERMS.exp.serviceEntry
+   · utils\shopGuard.js:28 cancelText = TERMS.buttons.cancel
+   · utils\shopGuard.js:29 confirmText = TERMS.exp.switchTitle
+   · app.js:65 confirmText = TERMS.exp.updateConfirm
+   · app.js:66 cancelText = TERMS.exp.updateCancel
+   · app.js:126 confirmText = TERMS.exp.privacyAgree
+   · app.js:127 cancelText = TERMS.exp.privacyDisagree
+✅ B-① 按钮引用条数下界 ≥ 6（防引用被删光导致空跑）
+✅ B-② 所有按钮表达式均可解析（无无法识别的片段）
+✅ B-③ 全部按钮文案 ≤ 4 字（实际检查 42 条引用）
+
+===== C. 反恒真（同一判据的正负互证）=====
+✅ C-① 影子：6 字 / 5 字文案必须判红（证明有分辨力）
+✅ C-② 影子：3 字 / 3 字文案必须判绿
+✅ C-③ 影子：真实超长键 paywall.saveLimit.primary 若回到 6 字会被判红（用同长度字面量代理）
+✅ C-④ 别名表防腐化：paywall.js 内 def 仍来自 TERMS.paywall
+✅ C-⑤ 别名表防腐化：paywall.js 内 buttons 仍来自 TERMS.buttons
+✅ C-⑥-0 别名表防腐化：pages/takeaway/index.js 内 TK 仍来自 TERMS.ledger.takeaway
+
+===== D. 断言数下界（防后人删断言）=====
+✅ D-① 断言数 ≥ 12（累计 ✅ 14 条 / ❌ 0 条）
+
+==== R145 showModal 按钮文案长度守卫：15 通过 / 0 失败 ====
+✅ R145 通过：15 条断言全绿，42 条按钮引用文案均 ≤ 4 字

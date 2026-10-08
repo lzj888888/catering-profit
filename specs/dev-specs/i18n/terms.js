@@ -529,7 +529,7 @@ const TERMS = {
       // ===== M3.17 账单导入（批次 F 阶段① 第二 tab）=====
       importTab: '账单导入',
       importPick: '选择账单文件',
-      importPickHint: '支持淘宝闪购 / 美团外卖的 xlsx 账单',
+      importPickHint: '支持淘宝闪购 / 美团外卖账单，堂食的《菜品销售统计》也从这里导入',
       importPlatformLabel: '平台',
       importRowsLabel: '识别到',
       importMonthsLabel: '归月到',
@@ -539,6 +539,10 @@ const TERMS = {
       importDaysUnit: '天',
       importConfirm: '确认导入',
       importSuccess: '导入成功',
+      // R238：导入成功后的下游引导（此前只有 toast，用户到这就断了 —— 2026-10-08 真机实测）
+      importSuccessGo: '导入完成。去「单品毛利复盘」看单品卖了多少、毛利多少。',
+      importGoReview: '去看',
+      importGoLater: '稍后',
       importFail: '门禁未通过，已阻断导入',
       importNoFile: '请先选择账单文件',
       importEmpty: '先选文件，解析后在此预览',

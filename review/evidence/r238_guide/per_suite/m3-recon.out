@@ -1,0 +1,27 @@
+===== D · 标准菜单毛利率 =====
+✅ D 标准菜单毛利率 (6300−2215)/6300 = 64.84%  (got 64.84)
+===== D · 差值 / 折算金额 =====
+✅ D 差值 diffPp = −9.84（actual 55 − menu 64.84）  (got -9.84)
+✅ D 折算金额 diffFen = −9840（菜品口径收入 10 万）  (got -9840)
+✅ D 未抑制（coverage=1 ≥ 0.6）
+===== D · 覆盖率闸门（抑制）=====
+✅ D 覆盖率 3/12 = 25% < 60% ⇒ 抑制生效  ({"suppressed":true,"menuPct":64.84,"actualPct":55,"diffPp":null,"diffFen":null,"reason":"coverage_low"})
+✅ D 抑制时只回两个 pct、diffPp 为 null  (diffPp=null diffFen=null)
+✅ D 抑制时两个 pct 仍可读
+✅ D 覆盖率缺失（null）⇒ 抑制  ({"suppressed":true,"menuPct":64.84,"actualPct":55,"diffPp":null,"diffFen":null,"reason":"coverage_missing"})
+===== 细项名单源 =====
+✅ 细项名取自单源（GOODS_FIELD === TERMS.ledger.takeawayMode.goodsField）  (商品总价)
+===== 套餐默认排除（正负互证）=====
+✅ 套餐默认排除：加套餐后默认口径与不含套餐一致（64.84）  (got 64.84)
+✅ includeCombo: true 时含套餐 ⇒ 结果改变（≠ 64.84）  (got 60.34)
+===== 除零 / 空账 =====
+✅ price_fen 全 0 ⇒ pct === null 且 reason === no_price（不许除零/不许返回 0）  ({"pct":null,"reason":"no_price"})
+✅ 空卡数组 ⇒ pct === null（不是 0）  ({"pct":null,"reason":"no_price"})
+===== 外卖快速录入 ⇒ 抑制（need_detail_income）=====
+✅ 外卖快速录入（无 sub_items）⇒ pct === null 且 reason === need_detail_income  ({"income_fen":0,"food_cost_fen":0,"pct":null,"reason":"need_detail_income"})
+===== 实际菜品毛利率（分项录入）=====
+✅ 菜品口径收入 = dine_in 70000 + 外卖商品总价 28000 = 98000  (got 98000)
+✅ 实际菜品毛利率 = (98000−45000)/98000 = 54.08%  (got 54.08)
+
+============================================================
+===== M3.21 对账自测结果：16 通过 / 0 失败 =====

@@ -107,5 +107,57 @@ check('V-4-② wxml 无 `importShape === \'C\'`', wxmlStray.length === 0,
 check('V-4-③ wxml 走 data 下发的 shapeC（不在模板里写字面量）',
   /importShape\s*===\s*shapeC/.test(wxmlSrc));
 
+// ===================== E 组（R238）：导入成功后的**下游引导** =====================
+//   现场（2026-10-08 真机实测，李老师原话）：
+//     「能导入了，导入后显示 已落库，然后呢，去哪里看什么？感觉导入后没有变化呀？」
+//   根因：`onConfirmImport` 成功后**只有一个 toast、零跳转** ⇒ 用户到这就断了。
+//   本页只负责**导入**，展示在 `pages/m3/dishreview`（单品毛利复盘）；
+//   且导入入口在「外卖」tab、展示在「配方」tab ⇒ **跨模块跳跃**，用户不可能自己猜到。
+//
+//   🔴 判据纪律（与本文件顶部同款）：判**行为**、不判字面 ——
+//      不看源码里有没有 "navigateTo" 这几个字符（注释里就能写），而是：
+//        ① 真从 `onConfirmImport` 函数体（**剥注释后**）提取导航目标；
+//        ② 该目标必须在 `app.json::pages` 里注册（防**死链**）；
+//        ③ 该目标必须**不是 tabBar 页** —— 只有非 tabBar 页能用 `navigateTo`；
+//           若目标是 tabBar 页却调 navigateTo，微信端**静默失败**（不报错、不跳转）；
+//        ④ 目标必须是数据真正的展示位（单品毛利复盘）。
+const stripFn = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+function extractMethodBody(src, name) {
+  const i = src.indexOf('async ' + name + '(');
+  if (i < 0) return null;
+  const rest = src.slice(i);
+  // 页面顶层方法一律 2 空格缩进 ⇒ 用「换行 + 恰好 2 空格 + 标识符 + (」定函数体下界
+  const m = rest.slice(1).match(/\n {2}(?:async\s+)?[A-Za-z_$][\w$]*\s*\(/);
+  return m ? rest.slice(0, m.index + 1) : rest;
+}
+const appJson = JSON.parse(fs.readFileSync(path.join(ROOT, 'app.json'), 'utf8'));
+const APP_PAGES = appJson.pages || [];
+const TAB_PAGES = ((appJson.tabBar && appJson.tabBar.list) || []).map((x) => x.pagePath);
+
+const confirmBody = extractMethodBody(pageSrc, 'onConfirmImport');
+const confirmCode = confirmBody ? stripFn(confirmBody) : '';
+const navUrlM = confirmCode.match(/wx\.navigateTo\s*\([^)]*url\s*:\s*'([^']+)'/);
+const navTarget = navUrlM ? navUrlM[1].replace(/^\//, '') : '';
+const DISHREVIEW = 'pages/m3/dishreview/index';
+
+sec('E-R238 导入成功后必须给下游引导（判行为：目标页必须真能到达）');
+check('E-⓪ 自失效护栏：能提取到 onConfirmImport 函数体（提取不到即红，不许恒绿）',
+  !!confirmBody && confirmCode.length > 200,
+  confirmBody ? ('函数体 ' + confirmBody.length + ' 字符（剥注释后 ' + confirmCode.length + '）')
+    : '未找到 `async onConfirmImport(` ⇒ 扫描面退化');
+check('E-① 成功分支里有"下一步"交互（showModal，而非纯 toast）',
+  /wx\.showModal\s*\(/.test(confirmCode),
+  /wx\.showModal\s*\(/.test(confirmCode) ? '有 showModal' : '只有 toast ⇒ 用户到这就断了');
+check('E-② 导航目标可提取（wx.navigateTo + url 字面量）',
+  !!navTarget, navTarget || '未提取到 navigateTo 的 url');
+check('E-③ 目标页在 app.json::pages 里注册（防死链）',
+  !!navTarget && APP_PAGES.indexOf(navTarget) >= 0,
+  navTarget + (APP_PAGES.indexOf(navTarget) >= 0 ? ' ✅ 已注册' : ' ❌ 未注册 ⇒ 点「去看」会失败'));
+check('E-④ 目标页**不是** tabBar 页（tabBar 页只能 switchTab，用 navigateTo 会静默失败）',
+  !!navTarget && TAB_PAGES.indexOf(navTarget) < 0,
+  navTarget + ' | tabBar = [' + TAB_PAGES.join(', ') + ']');
+check('E-⑤ 目标 = 单品毛利复盘（数据真正的展示位）',
+  navTarget === DISHREVIEW, navTarget + ' vs ' + DISHREVIEW);
+
 console.log('\n' + pass + ' 通过 / ' + failN + ' 失败');
 process.exitCode = failN ? 1 : 0;

@@ -98,7 +98,7 @@ const CASES = [
   //   （输入敏感 ×2 / 变体偏移 1 分必须判不等 / mode 非法三副本均抛错）正是「非恒真」的凭据；
   //   断言数不受守则「删掉反恒真段 + 调低下界」就等于把守卫悄悄改小（判据仍全绿而证明力归零）。
   { key: 'check_m3_engine_parity', rel: 'tools/check_m3_engine_parity.js' },
-  { key: 'check_modal_button_len', rel: 'tools/check_modal_button_len.js' },
+  { key: 'check_modal_button_len', rel: 'tools/check_modal_button_len.js' }, // 15 条（A 解析器钉死样本 / B 真实扫描 ≤4 字 / C 反恒真 + R238 页面局部别名防腐化 / D 下界）
   { key: 'check_dish_category_free', rel: 'tools/check_dish_category_free.js' },
   { key: 'check_unit_convert', rel: 'tools/check_unit_convert.js' },   // 17 条（含 C2b 语义等价影子）
   // R150 扩面（round150）：多规格派生层守卫同批纳入 —— 它的 L3 三条腿恒等（全 1 / 压力样本 / 空系数表）、
@@ -184,7 +184,7 @@ const CASES = [
   //   补零 357≠354 / 销量文本 isFinite("43")=false）与 R-C4 自失效护栏正是「非恒真」凭据；
   //   16 条删掉一批仍 > 0 ⇒ A0-② 的「通过数为 0」下界抓不到，只有 A2「声明 ≡ 实跑」能发现（同 round73 立本守卫根因）。
   { key: 'check_formc_parse', rel: 'tools/check_formc_parse.js' }, // 16 条（S + R-C1/2/3/4）
-  { key: 'check_shape_machine_value', rel: 'tools/check_shape_machine_value.js' }, // 12 条（V-1/2/3/4）
+  { key: 'check_shape_machine_value', rel: 'tools/check_shape_machine_value.js' }, // 18 条（V-1/2/3/4 契约 + E-R238 导入后下游引导）
   // R234/J1 扩面（R234）：行内提示折叠守卫同批纳入 —— 它的 V-1~V-4 四组负样本互证
   //   （旧平铺写法必解析出 0 折叠块 / key≠guide 可判红 / 缺 wx:if 判「折了但永远展开」 /
   //   cssBlock 对不存在类返 null）与 S1~S5 五条自失效护栏正是「非恒真」的凭据；

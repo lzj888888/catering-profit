@@ -1,0 +1,35 @@
+
+===== S · 扫描面（service.js 可加载 + 真表 dump 可读） =====
+  ✅ S-① service.js 可加载且导出 parseDishSales(function) / dishRefId / saleDocId / DISH_SHAPES —— 导出键：DISH_SHAPES,DISH_A_STRUCT,normalizeDishName,detectDishShape,detectDishMatrix,dishRefId,saleDocId,parseDishSales,parseDishSalesC（xlsx 已注入空桩）
+  ✅ S-② 真表 dump 可读且行数 ≥ 270（R1~R270） —— 270 行
+
+===== R231-1 · 表形态常量 ≡ 真表结构（表头行 / 合计行 / 单位） =====
+  ✅ 1-① 形态判定 = A（堂食菜品销售统计） —— detectDishShape=dish_sales
+  ✅ 1-② 表结构常量 ≡ 真表（两行表头 R3/R4，数据 R5 起，合计标签） —— {"headerRow1":3,"headerRow2":4,"dataStartRow":5,"totalLabel":"合计","colName":1,"colQty":2,"colSales":4,"colIncome":6,"colDiscount":8}
+  ✅ 1-③ 数据行数 = 265（排除 R1–R4 表头 + R270 合计） —— 265 行
+  ✅ 1-③b 合计行未混入数据面（无 name==合计） —— true
+  ✅ 1-④ 单位 = 元（快餐15元 单价 = 1500 分 = 15 元） —— salesFen 1395000 / qty 930 = 1500 分
+  ✅ 1-⑤ Σ销售数量 = 3280.3 —— 3280.3
+  ✅ 1-⑤b Σ销售额(元) = 33146.2 —— 33146.2
+  ✅ 1-⑤c Σ收入(元) = 30319.7（amount 用实际收入口径） —— 30319.7
+  ✅ 1-⑤d 恒等式 销售额 − 优惠 == 收入 —— 33146.2 − 2826.5 = 30319.699999999997
+  ✅ 1-⑥ 反例：纳入合计行 ⇒ 266 行（排除合计是必要规则，非恒真） —— 266 行
+
+===== R231-2 · external_ref_id 必含 dish_key 段（§5.1） =====
+  ✅ 2-① dishRefId 含 dish_key 且 DISH: 前缀 —— DISH:pos:2026-09-13:耙牛肉（半斤）
+  ✅ 2-② 落库行 external_ref_id 均由 dishRefId 生成（含各自 dish_key） —— 2026-09-13
+  ✅ 2-③ 反例：BILL: 形态（无 dish_key）⇒ 判据判红 —— BILL:pos:2026-09-13
+
+===== R231-3 · qty 恒整数（§5.2，撞 SALES_SCHEMA::qty integer） =====
+  ✅ 3-① 全部落库行 qty 为整数 —— 265 行全部整数
+  ✅ 3-② 非整数 qty 被 round 且单列进解析报告（加工 16.5→17） —— [{"n":"加工","raw":16.5,"rounded":17},{"n":"泡椒酸菜鱼","raw":4.8,"rounded":5}]
+  ✅ 3-②b 泡椒酸菜鱼 4.8→5 同样在报告内 —— {"name":"泡椒酸菜鱼","raw":4.8,"rounded":5}
+  ✅ 3-③ 反例：qty=3280.3（未 round）⇒ Number.isInteger 判红 —— 3280.3
+
+===== R231-5 · 幂等（二次导入行数不变）+ 未匹配不静默归零 =====
+  ✅ 5-① 幂等：同一矩阵解析两次 ⇒ 行数 / 合计恒等 —— 265 / 265 行
+  ✅ 5-② _id 确定性（同 shop/platform/biz/seq ⇒ 同 _id；seq 不同 ⇒ 不同 _id） —— SALE_s1_pos_2026-09-13_0 vs SALE_s1_pos_2026-09-13_1
+  ✅ 5-③ 未匹配：菜名 "-" 行归 unmatched（不落为菜名、不静默归零） —— [{"name":"-","dishKey":"-","rawQty":5,"qty":5,"amountFen":4500}]
+  ✅ 5-③b 未匹配行的 qty/amount 保留（不归零） —— qty 5 / amountFen 4500
+
+===== m333-parse 守卫结果：23 通过 / 0 失败 =====

@@ -1,0 +1,75 @@
+# 真云取证 · getDishReview 云端 ≡ 本地（2026-10-08 R237 续）
+
+## 为什么要做这次取证
+ROADMAP 的 R232h 段（H-1 形态 C 接通）「下一步 1」写的是
+「部署 `importSalesBill` + `getDishReview`〔本轮已发起〕」，
+但仓内**只留下 R232j 对 `importSalesBill` 的部署取证**（`r232j_shape_contract/deploy_r232j_summary.txt`），
+**没有 `getDishReview` 的** ⇒ 「读侧接通到底上云了没」在仓内**无证据**。
+
+触发场景：李老师真机导入形态 C 成功（提示「导入成功」）后问「去哪看、感觉没变化」。
+若读侧未上云 ⇒ 云端 `takeaway` 仍是 `null` 硬编码 ⇒ 外卖榜恒空 ⇒ 正好解释「没变化」。
+**这条必须实测，不能推断。**
+
+## 判据：直接下载云端代码做 diff（比看 filesCount 更硬）
+filesCount 在「只改内容、不增文件」时不变化 ⇒ **无法证明版本**。
+故改用 `cli cloud functions download` 拉云端源码，与本地逐字比对。
+
+命令：
+```
+"C:/Program Files (x86)/Tencent/微信web开发者工具/cli.bat" cloud functions download \
+  -e cloud1-d4gphpoxy337f2a25 -n getDishReview \
+  -p <temp>/r237_probe_cloud/getDishReview \
+  --project <repo>
+```
+结果：`√ download cloudfunction` · RC=0（⚠️ rc 非判据，判据见下）
+
+## 云端文件清单（18 个 ⇒ 与 R232f filesCount=18 一致）
+common.js / cx_audit.js / cx_auth.js / cx_comboDerive.js / cx_dataAdapter.js /
+cx_dishKey.js / cx_entitlement.js / cx_errors.js / cx_idempotency.js / cx_index.js /
+cx_indicatorRef.js / cx_money.js / cx_rateLimit.js / cx_specDerive.js / cx_utilTime.js /
+**index.js** / package.json / **service.js**
+
+## 关键判据 ①：云端 index.js **含**外卖侧接通（非 `takeaway: null` 硬编码）
+```
+35:const { buildDishReview, buildTakeawayReview, splitSales } = require('./service');
+65:  const { dineIn, takeaway: takeawaySales } = splitSales(allSales);
+67:  const takeawayResult = buildTakeawayReview(takeawaySales, cards, { normalizeDishName, toMonth });
+73:    takeaway: Object.keys(takeawayResult.by_platform).length ? takeawayResult : null,
+```
+⇒ 红线 18「外卖空态保持 null、不默认 0」在云端是**按 `by_platform` 实际有无**判的，不是写死。
+
+## 关键判据 ②：云端 service.js **含** buildTakeawayReview 定义
+```
+121:function buildTakeawayReview(sales, cards, deps) {
+165:module.exports = { buildDishReview, buildTakeawayReview, rankReview, splitSales };
+```
+
+## 关键判据 ③：逐字比对
+```
+[index.js]   IDENTICAL ✅
+[service.js] IDENTICAL ✅
+```
+
+## 关键判据 ④：云端 timeout
+```
+│ getDishReview │ 'Active' │ 20 │ 'Nodejs16.13' │
+```
+⇒ **已是 20**（R232e/R232f 两次回读都是 3）。R232e 遗留待办
+「`getDishReview` 云端 timeout 3 → 20（真机前必做）」**已达成**。
+
+## 结论
+1. **H-1 的读侧改动确实已上云** —— 云端 `getDishReview` 与本地逐字一致 ⇒ 外卖榜通路**通的**。
+   ROADMAP 缺失的这块取证由本文件补齐。
+2. `timeout = 20` 也已达成 ⇒ 「真机前必做」两条前置**均已就绪**。
+3. ⇒ 「导入后看不到变化」**不是通路问题**：导入的销量落 `external_sales_daily`，
+   而 `pages/takeaway` 只管导入不负责展示；查看入口是
+   **底部「配方」tab → 「单品毛利复盘」卡**（`pages/m3/dishreview`）。
+4. ⚠️ 发现的**体验缺口**（产品问题，非缺陷）：`pages/takeaway/index.js::onConfirmImport`
+   成功后**只弹一个「导入成功」toast 并清空预览态**，**没有任何"下一步去哪看"的引导**
+   ⇒ 用户到此为止不知道下游在哪。
+
+## 未测到的（显式写明，不用推断语气冒充实测）
+- 李老师账号的 `m3_dishreview` 权益是否已解锁 —— 未测（需真机/探针带真实 OPENID）。
+  若未解锁，进单品复盘会直接弹付费窗（`openPaywall('dishreview')`）。
+- 导入那 51 个外卖商品名与现有成本卡 `dish_key` 的匹配率 —— 未测。
+  不匹配的会进「未匹配菜品」区（红线 17：不静默归零）。

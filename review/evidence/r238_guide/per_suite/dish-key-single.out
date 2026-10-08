@@ -1,0 +1,23 @@
+# R232 C-9 守卫 —— 菜品名归一(dish_key)单源（分叉 = 全菜匹配不上且不报错）
+
+===== ① 单源可达（fail-closed） =====
+  ✅ 1-① common/dishKey.js 可加载且导出 normalizeDishName —— function
+  ✅ 1-② 聚合入口 common/index.js 已导出 dishKey + normalizeDishName（漏导 ⇒ 真云 TypeError） —— dishKey ✓ / normalizeDishName function
+  ✅ 1-③ common/ 全层零外部依赖（否则纯逻辑层被污染、本地守卫加载不了） —— 0 个外部 require
+
+===== ② 两侧不得再有本地内联（剥离注释后 · 查算法特征串而非函数名） =====
+  ✅ 2-① 写侧代码里无本地归一实现（不得含 .normalize('NFKC')） —— 无本地实现
+  ✅ 2-② 读侧代码里无本地归一实现（原 normName 已删除） —— 无本地实现
+  ✅ 2-③ 两侧均从单源取（写侧 require('./common')；读侧 common.dishKey / common.normalizeDishName） —— 写侧 ✓ / 读侧 ✓
+
+===== ③ 行为等价（函数引用恒等 · 不是重算一遍跟自己比） =====
+  ✅ 3-① 写侧 service.js 导出的 normalizeDishName 与单源**行为等价**（8 样本返回值全等） —— 8/8 行为一致（派生副本 ⇒ 不能比引用，只能比行为）
+  ✅ 3-② 聚合入口 normalizeDishName ≡ 单源函数（=== ⇒ 读侧从 common 取即必然同口径） —— 同一引用
+  ✅ 3-③ 单源行为符合口径（6 个样本：trim / NFKC / 保留括号 / null / undefined / 数字） —— 6/6 —— "  Ａ１  "→"A1" , "耙牛肉（大份）"→"耙牛肉(大份)" , "  小面  "→"小面"
+
+===== ④ 自失效护栏（样本有效 · 分叉确会静默失效） =====
+  ✅ 4-① 样本有区分力（未归一则 ≠ 归一眼 ⇒ 本守卫非恒绿） —— "  Ａ１  " ≠ "A1"
+  ✅ 4-② 规则分叉 ⇒ 写侧 key 与读侧 key 不等价（正是「全菜匹配不上且不报错」的成因） —— 写侧 "耙牛肉(大份)" vs 变体读侧 "耙牛肉"
+  ✅ 4-③ stripComments 确能剥掉注释里的特征串（否则 ② 段会被注释喂成恒绿） —— 剥后不含 normalize('NFKC')
+
+===== dish_key 单源守卫结果：12 通过 / 0 失败 =====

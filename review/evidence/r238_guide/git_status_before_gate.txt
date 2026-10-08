@@ -1,0 +1,28 @@
+=== R238 门禁前工作区状态（git status --short）===
+ M miniprogram/i18n/terms.js
+ M pages/takeaway/index.js
+ M specs/dev-specs/i18n/terms.js
+ M "specs/dev-specs/\342\230\205\347\237\245\350\257\206\345\255\230\345\202\250\347\202\271_2026-09-10.md"
+ M tools/check_modal_button_len.js
+ M tools/check_shape_machine_value.js
+ M tools/check_suite_assert_counts.js
+?? "review/NOTE_2026-10-08_round238_\345\257\274\345\205\245\345\220\216\345\274\225\345\257\274\347\274\272\345\217\243_\345\205\245\345\217\243\350\257\264\346\230\216\344\270\216\344\270\213\346\270\270\350\267\263\350\275\254.md"
+?? review/evidence/r237_probe_cloud/
+?? review/evidence/r238_guide/
+
+=== git diff --stat ===
+warning: in the working copy of 'miniprogram/i18n/terms.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'pages/takeaway/index.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'specs/dev-specs/i18n/terms.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'specs/dev-specs/★知识存储点_2026-09-10.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tools/check_modal_button_len.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tools/check_shape_machine_value.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tools/check_suite_assert_counts.js', LF will be replaced by CRLF the next time Git touches it
+ miniprogram/i18n/terms.js                          |  6 ++-
+ pages/takeaway/index.js                            | 27 ++++++++++-
+ specs/dev-specs/i18n/terms.js                      |  6 ++-
+ ...\255\230\345\202\250\347\202\271_2026-09-10.md" |  2 +-
+ tools/check_modal_button_len.js                    | 40 +++++++++++++++++
+ tools/check_shape_machine_value.js                 | 52 ++++++++++++++++++++++
+ tools/check_suite_assert_counts.js                 |  4 +-
+ 7 files changed, 130 insertions(+), 7 deletions(-)

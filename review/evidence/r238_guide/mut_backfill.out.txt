@@ -1,0 +1,19 @@
+[基线] tools/check_modal_button_len.js rc=0 ⇒ 绿 ✅
+[基线] tools/check_shape_machine_value.js rc=0 ⇒ 绿 ✅
+[A1] ✅ [check_shape_machine_value.js] 期望红 :: rc=1 红=True 命中E-①=True 还原=True
+[A2] ✅ [check_shape_machine_value.js] 期望红 :: rc=1 红=True 命中E-②=True 还原=True
+[A3] ✅ [check_shape_machine_value.js] 期望红 :: rc=1 红=True 命中E-③=True 还原=True
+[A4] ✅ [check_shape_machine_value.js] 期望红 :: rc=1 红=True 命中E-④=True 还原=True
+[A5] ✅ [check_shape_machine_value.js] 期望红 :: rc=1 红=True 命中E-②=True 还原=True
+[A6] ✅ [check_modal_button_len.js] 期望红 :: rc=1 红=True 命中C-⑥-0=True 还原=True
+[B1] ✅ [check_shape_machine_value.js] 期望不红 :: rc=0 红=False 命中E-②=False 还原=True
+[B2] ✅ [check_shape_machine_value.js] 期望不红 :: rc=0 红=False 命中E-①=False 还原=True
+[B3] ✅ [check_modal_button_len.js] 期望不红 :: rc=0 红=False 命中C-⑥-0=False 还原=True
+
+===== 变异回灌汇总 =====
+组 A（必须红）: 6/6 有效红
+组 B（不得红）: 3/3 无反向伤害
+无效（锚点失配）: 0
+最终还原校验: 绿 ✅
+
+✅ 全部通过
