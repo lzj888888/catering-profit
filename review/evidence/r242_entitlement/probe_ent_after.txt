@@ -1,0 +1,42 @@
+[ok] connected ws://127.0.0.1:9420
+{
+  "before": {
+    "shop_id": "",
+    "shop_name": "",
+    "shopLoaded": false
+  },
+  "shopCtx": {
+    "code": "SUCCESS",
+    "msg": "ok",
+    "data": {
+      "shop_id": "shop_mu6j87v1itrs",
+      "shop_name": "AbC",
+      "shop_remark": "",
+      "no_shop": false,
+      "switches": {
+        "inventorySwitchOn": true,
+        "amortizeSwitchOn": true
+      },
+      "takeaway_params": "",
+      "menu_dish_count": null,
+      "pinned_cards": [],
+      "pinned_materials": [],
+      "is_new_shop": false,
+      "client_request_id": ""
+    }
+  },
+  "shopIdUsed": "shop_mu6j87v1itrs",
+  "ent": {
+    "code": "SUCCESS",
+    "msg": "ok",
+    "data": {
+      "shop_id": "shop_mu6j87v1itrs",
+      "user_id": "u_mu6j87t1a283",
+      "expire_at": 1830268799000,
+      "is_active": true,
+      "source": "manual",
+      "days_left": 449,
+      "client_request_id": ""
+    }
+  }
+}
