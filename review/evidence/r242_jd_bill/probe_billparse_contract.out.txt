@@ -1,0 +1,18 @@
+
+===== meituan_2026-08.matrix.json =====
+  sheets 形态 = 对象{键:账单明细,订单明细,汇总信息…}
+  [A] 原样(对象) → totals = {"amountFen":182664,"qty":50,"rowCount":50}
+      锚点期望 amountFen=182664 qty=50 ⇒ ✅ 命中
+  [B] 数组形态   → totals = {"amountFen":0,"qty":0,"rowCount":0} ⇒ ❌ 归零（取不到 sheet）
+  [C] 二维数组   → totals = {"amountFen":0,"qty":0,"rowCount":0}
+
+===== taobao_2026-08.matrix.json =====
+  sheets 形态 = 对象{键:外卖账单明细,推广账单明细,保障服务费账单明细…}
+  [A] 原样(对象) → totals = {"amountFen":377965,"qty":150,"rowCount":156}
+      锚点期望 amountFen=377965 ⇒ ✅ 命中
+  [B] 数组形态   → totals = {"amountFen":0,"qty":0,"rowCount":0} ⇒ ❌ 归零（取不到 sheet）
+  [C] 二维数组   → totals = {"amountFen":0,"qty":0,"rowCount":0}
+
+===== 生产调用点 =====
+  cloudfunctions/importSalesBill/index.js:76  const parsed = parseBillMatrix(matrix, { platform });
+  cloudfunctions/importSalesBill/service.js:95  function parseBillMatrix(matrix, opts) {
