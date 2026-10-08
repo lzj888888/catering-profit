@@ -26,23 +26,65 @@ function toNum(v) {
   return neg ? -n : n;
 }
 
-// 列名常量（两平台净额列 / 关键列）
-const COL = {
-  taobao: { billDate: '账单日期', net: '结算金额', orderType: '订单类型', refund: '退单' },
-  meituan: { billDate: '账单日期', net: '商家应收款', bizType: '交易类型', order: '外卖订单' },
+// ---- 平台档案（🔴 单源：平台识别条件 + 列名，两者都只在这里写一次）----
+// 🔴 P1（R245）：识别从「单列特征」改为「签名列 require 全中 + 排除列 deny 全不中」。
+//    原因：京东 SKU 级对账单第 11 列也叫「结算金额」（与淘宝同名）⇒ 单列判据把它误判成 taobao，
+//    能走通并算出「qty 虚高、bizDate 全空」的错数（静默错账，比读不进来更危险）。
+const C_BILL_DATE  = '账单日期';
+const C_TAOBAO_NET = '结算金额';
+const C_MEITUAN_NET = '商家应收款';
+// 京东独有列：任一命中即排除淘宝/美团（🔴 加严判据必须先确认它不在对方真表头里，见 selftest）
+const JD_ONLY_COLS = ['应结金额', '对账单业务类型', 'sku名称', '费用类型'];
+
+const PLATFORM_PROFILE = {
+  taobao: {
+    sheet: '外卖账单明细',
+    require: [C_BILL_DATE, C_TAOBAO_NET],   // 签名列：全部命中才算
+    deny: JD_ONLY_COLS,                     // 排除列：命中任一即否决（防京东串味）
+    billDate: C_BILL_DATE, net: C_TAOBAO_NET, orderType: '订单类型', refund: '退单',
+  },
+  meituan: {
+    sheet: '订单明细',
+    require: [C_BILL_DATE, C_MEITUAN_NET],
+    deny: [],
+    billDate: C_BILL_DATE, net: C_MEITUAN_NET, bizType: '交易类型', order: '外卖订单',
+  },
 };
-const SHEET = { taobao: '外卖账单明细', meituan: '订单明细' };
+// 判定顺序（沿用原「先淘宝后美团」语义；命中即返回，全不中返回 null = fail-closed）
+const PLATFORM_ORDER = ['taobao', 'meituan'];
+
+// 列名常量由档案派生（🔴 不重复写列名字面量）
+const COL = {
+  taobao: {
+    billDate: PLATFORM_PROFILE.taobao.billDate, net: PLATFORM_PROFILE.taobao.net,
+    orderType: PLATFORM_PROFILE.taobao.orderType, refund: PLATFORM_PROFILE.taobao.refund,
+  },
+  meituan: {
+    billDate: PLATFORM_PROFILE.meituan.billDate, net: PLATFORM_PROFILE.meituan.net,
+    bizType: PLATFORM_PROFILE.meituan.bizType, order: PLATFORM_PROFILE.meituan.order,
+  },
+};
+const SHEET = {
+  taobao: PLATFORM_PROFILE.taobao.sheet,
+  meituan: PLATFORM_PROFILE.meituan.sheet,
+};
 
 /**
  * 按表头列名判定平台。🔴 只看列名、不看文件名。
+ * 判据 = 签名列（require）全中 且 排除列（deny）全不中；全不中返回 null（fail-closed）。
  * @param {string[]} header 表头（列名数组）
  * @returns {'taobao'|'meituan'|null}
  */
 function detectPlatform(header) {
   if (!Array.isArray(header)) return null;
   const cols = header.filter(Boolean).map((s) => String(s).trim());
-  if (cols.indexOf(COL.taobao.net) >= 0) return 'taobao';     // 「结算金额」= 淘宝独有
-  if (cols.indexOf(COL.meituan.net) >= 0) return 'meituan';   // 「商家应收款」= 美团独有
+  const has = (n) => cols.indexOf(n) >= 0;
+  for (const p of PLATFORM_ORDER) {
+    const prof = PLATFORM_PROFILE[p];
+    if (!(prof.require || []).every(has)) continue;      // 签名列未全中
+    if ((prof.deny || []).some(has)) continue;           // 命中任一排除列
+    return p;
+  }
   return null;
 }
 

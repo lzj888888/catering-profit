@@ -29,6 +29,18 @@ check('detectPlatform 美团表头 → meituan', detectPlatform(mtHeader) === 'm
 check('detectPlatform 空表头 → null', detectPlatform([]) === null, '');
 check('detectPlatform 未知表头 → null', detectPlatform(['foo', 'bar']) === null, '');
 
+// 🔴 P1（R245）：判据从「单列特征」改为「签名列全中 + 排除列全不中」
+//    京东 SKU 表第 11 列也叫「结算金额」⇒ 旧判据把它误判成 taobao（能算出错数的静默错账）。
+console.log('===== P1 平台判据加严（京东串味回归）=====');
+const JDR = path.join(__dirname, '..', 'review', 'evidence', 'r245_jd_profile');
+const jdSkuH = JSON.parse(fs.readFileSync(path.join(JDR, 'jd_sku_header.json'), 'utf8')).header;
+const jdOrdH = JSON.parse(fs.readFileSync(path.join(JDR, 'jd_order_header.json'), 'utf8')).header;
+check('京东 SKU 表头 ≠ taobao（deny 排除生效）', detectPlatform(jdSkuH) !== 'taobao', String(detectPlatform(jdSkuH)));
+check('京东订单级表头 ≠ taobao', detectPlatform(jdOrdH) !== 'taobao', String(detectPlatform(jdOrdH)));
+check('淘宝表头混入「应结金额」⇒ 判 null（deny 硬判据）', detectPlatform(tbHeader.concat(['应结金额'])) === null, String(detectPlatform(tbHeader.concat(['应结金额']))));
+check('缺签名列（只有账单日期）⇒ null', detectPlatform(['账单日期']) === null, String(detectPlatform(['账单日期'])));
+check('签名列单中一个（只有结算金额）⇒ 不判 taobao', detectPlatform(['结算金额']) !== 'taobao', String(detectPlatform(['结算金额'])));
+
 console.log('===== 淘宝锚点 =====');
 const tbR = parseBillMatrix(tb, { platform: 'taobao' });
 check('淘宝 行数 156（totals.rowCount）', tbR.totals.rowCount === 156, `got ${tbR.totals.rowCount}`);
