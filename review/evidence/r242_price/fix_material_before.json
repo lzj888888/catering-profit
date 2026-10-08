@@ -1,0 +1,73 @@
+{
+  "shop_id": "shop_mu6j87v1itrs",
+  "list": [
+    {
+      "id": "mat_mu7606ti1psx",
+      "name": "鸡腿肉",
+      "brand_spec": "",
+      "purchase_unit": "件",
+      "purchase_price_fen": 16000,
+      "convert_factor": 10,
+      "yield_rate": 100,
+      "is_virtual": false,
+      "net_unit_cost": 160000,
+      "unit_cost_fen": 1600,
+      "category": "other",
+      "aliases": "[]",
+      "remark": "",
+      "std_key": "",
+      "updated_at": 1790491747707
+    },
+    {
+      "id": "mat_muhyzjtzndj",
+      "name": "鸡胸肉",
+      "brand_spec": "",
+      "purchase_unit": "件",
+      "purchase_price_fen": 18000,
+      "convert_factor": 20000,
+      "yield_rate": 100,
+      "is_virtual": false,
+      "net_unit_cost": 90,
+      "unit_cost_fen": 1,
+      "category": "other",
+      "aliases": "[]",
+      "remark": "",
+      "std_key": "",
+      "updated_at": 1790491459646
+    },
+    {
+      "id": "mat_muibavsj62f7",
+      "name": "猪板油",
+      "brand_spec": "",
+      "purchase_unit": "斤",
+      "purchase_price_fen": 2500,
+      "convert_factor": 500,
+      "yield_rate": 100,
+      "is_virtual": false,
+      "net_unit_cost": 500,
+      "unit_cost_fen": 5,
+      "category": "other",
+      "aliases": "[]",
+      "remark": "",
+      "std_key": "",
+      "updated_at": 1790436703958
+    },
+    {
+      "id": "mat_muibawl9eyqz",
+      "name": "猪板油",
+      "brand_spec": "",
+      "purchase_unit": "50",
+      "purchase_price_fen": 500,
+      "convert_factor": 500,
+      "yield_rate": 100,
+      "is_virtual": false,
+      "net_unit_cost": 100,
+      "unit_cost_fen": 1,
+      "category": "other",
+      "aliases": "[]",
+      "remark": "",
+      "std_key": "",
+      "updated_at": 1790422455933
+    }
+  ]
+}

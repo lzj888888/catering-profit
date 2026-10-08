@@ -1,0 +1,28 @@
+=== 改前 ===
+  shop_id      = shop_mu6j87v1itrs
+  id           = mat_mu7606ti1psx
+  name         = 鸡腿肉
+  采购单位     = 件 | 采购价(分) = 16000
+  换算         = 10 → 20000
+  出成率       = 100
+  净料成本(万) = 160000 → 预期 80
+  净料折合     = 16.000000 元/克 → 0.008000 元/克
+
+(只读模式，未写库。加 --commit 执行)
+{
+  "shop_id": "shop_mu6j87v1itrs",
+  "material": {
+    "id": "mat_mu7606ti1psx",
+    "name": "鸡腿肉",
+    "brand_spec": "",
+    "purchase_unit": "件",
+    "purchase_price_fen": 16000,
+    "convert_factor": 20000,
+    "yield_rate": 100,
+    "is_virtual": false,
+    "category": "other",
+    "aliases": "[]",
+    "remark": "",
+    "std_key": ""
+  }
+}

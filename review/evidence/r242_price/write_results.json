@@ -1,28 +1,33 @@
 [
   {
-    "card_code": "cc_muhznpgzd5ot",
+    "card_code": "cc_muibc75r5q3j",
     "res": {
       "code": "SUCCESS",
       "msg": "ok",
       "data": {
         "shop_id": "shop_mu6j87v1itrs",
-        "card_code": "cc_muhznpgzd5ot",
-        "version": 7,
-        "card_row_id": "560e7cf56ac7a7d00154b7c16abc6db5",
-        "total_cost_fen": 80000,
-        "material_total_fen": 80000,
-        "gross_profit_fen": 120000,
-        "gross_margin_pct": 60,
-        "reverse_price_fen": 200000,
+        "card_code": "cc_muibc75r5q3j",
+        "version": 10,
+        "card_row_id": "f84116646ac7badb03b792272f9782a4",
+        "total_cost_fen": 49,
+        "material_total_fen": 49,
+        "gross_profit_fen": 74,
+        "gross_margin_pct": 60.16,
+        "reverse_price_fen": 123,
         "lines": [
           {
+            "material_id": "mat_muibavsj62f7",
+            "net_unit_cost": 500,
+            "line_net_cost_fen": 25
+          },
+          {
             "material_id": "mat_mu7606ti1psx",
-            "net_unit_cost": 160000,
-            "line_net_cost_fen": 80000
+            "net_unit_cost": 80,
+            "line_net_cost_fen": 24
           }
         ],
         "virtual_material_id": null,
-        "client_request_id": "r242-price-cc_muhznpgzd5ot-1791469235530"
+        "client_request_id": "r242-price-cc_muibc75r5q3j-1791474110219"
       }
     }
   }

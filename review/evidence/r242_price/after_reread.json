@@ -12,10 +12,10 @@
   },
   {
     "card_code": "cc_muhznpgzd5ot",
-    "version": 7,
+    "version": 9,
     "name": "炸鸡腿",
-    "price_fen": 200000,
-    "total_cost_fen": 80000,
+    "price_fen": 100,
+    "total_cost_fen": 40,
     "gross_margin_pct": 60,
     "card_type": 1,
     "mode": "A",

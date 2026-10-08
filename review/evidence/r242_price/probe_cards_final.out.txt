@@ -1,0 +1,16 @@
+[ok] connected ws://127.0.0.1:9420 | 目标毛利 60% | 模式 只读
+
+=== 现状（3 张）· shop_id=shop_mu6j87v1itrs ===
+  cc_muhz52um1mts  v5  鱼香肉丝  card_type=1 mode=A batch=null specs=[]
+      成本=12.00元  现挂牌价=30.00元  现毛利=60%  建议(60%)=30.00元  行=1[type1/in2]
+  cc_muhznpgzd5ot  v9  炸鸡腿  card_type=1 mode=A batch=null specs=[]
+      成本=0.40元  现挂牌价=1.00元  现毛利=60%  建议(60%)=1.00元  行=1[type1/in1]
+  cc_muibc75r5q3j  v10  肥炸鸡腿  card_type=1 mode=A batch=null specs=[]
+      成本=0.49元  现挂牌价=1.23元  现毛利=60.16%  建议(60%)=1.23元  行=2[type1/in1,type1/in1]
+
+=== 将写入（每张卡各 +1 个新版本，不 UPDATE）===
+  cc_muhz52um1mts  鱼香肉丝  card_type=1 mode=A  挂牌价 30.00元  目标毛利 60%  行 1  载荷=321B
+  cc_muhznpgzd5ot  炸鸡腿  card_type=1 mode=A  挂牌价 1.00元  目标毛利 60%  行 1  载荷=317B
+  cc_muibc75r5q3j  肥炸鸡腿  card_type=1 mode=A  挂牌价 1.23元  目标毛利 60%  行 2  载荷=416B
+
+(只读模式，未写入；加 --commit 才写)

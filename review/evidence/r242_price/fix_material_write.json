@@ -1,0 +1,12 @@
+{
+  "ok": true,
+  "res": {
+    "code": "SUCCESS",
+    "msg": "ok",
+    "data": {
+      "shop_id": "shop_mu6j87v1itrs",
+      "id": "mat_mu7606ti1psx",
+      "client_request_id": "r242fix_mat_1791473885020"
+    }
+  }
+}
