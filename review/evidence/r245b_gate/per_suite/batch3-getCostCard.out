@@ -1,0 +1,10 @@
+✅ 出参 card_code/version/total_cost_fen 正确
+✅ 出参 calc_mode → A（合同形态）
+✅ 出参附带 lines 数组（默认空，由 Controller 装配）
+✅ calc_mode=2 映射为 B
+✅ 明细行出参含 net_unit_cost=333 快照  (=333)
+✅ 明细行出参 line_net_cost_fen=666  (=666)
+✅ validateInput 无 card_code 放行（列表模式）
+✅ validateInput 带 card_code 放行（详情模式）
+
+==== getCostCard 批次 3 自测结果：8 通过 / 0 失败 ====

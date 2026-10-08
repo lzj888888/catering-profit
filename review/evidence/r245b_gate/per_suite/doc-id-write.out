@@ -1,0 +1,45 @@
+===== P. 解析器自带钉死样本 =====
+✅ P-① 负样本：`.doc(m.id).update(` 判违规
+✅ P-② 负样本：`.doc(vm.id || vm.material_id).update(` 判违规
+✅ P-③ 正样本：`.doc(exist._id || a.asset_id).update(` 判安全
+✅ P-④ 正样本：`.doc(row._id).update(` 判安全
+✅ P-⑤ 变量回溯：`const rid = doc._id || x;` + `.doc(rid)` 判安全
+✅ P-⑥ 变量回溯：`const rid = x.id;` + `.doc(rid)` 判违规
+✅ P-⑦ 变量无定义 ⇒ 判违规（fail-closed，不猜）
+✅ P-⑧ `_id` 词边界：`foo_ids` / `grid` 不算含 `_id`
+✅ P-⑨ 剥注释：注释里的 `.doc(a.id).update(` 不被扫到
+✅ P-⑩ 剥注释（块注释）：`/* .doc(a.id).update() */` 不被扫到
+✅ P-⑪ 字符串里的 `.doc(...)` 不被误扫（引号感知）
+✅ P-⑫ 扫描真样本：`.doc(shopDoc.id || shopId).update(` 被抓且判违规
+✅ P-⑬ 扫描真样本：`.doc(exist._id || m.id).update(` 被抓且判安全
+✅ P-⑭ `.doc()` 后不接 update/set/remove（纯读）不报
+✅ P-⑮ 跨函数同名不串：形参 `id` 不被同文件另一处的 `id = …_id…` 误判为安全
+✅ P-⑯ 同函数体内赋值：`const rid = x._id || y;` 后 `.doc(rid).update(` 判安全
+===== A. 真扫 cloudfunctions（单源，非派生态）=====
+✅ A-① 扫到的云函数目录数 ≥ 40（覆盖真单源）
+✅ A-② 扫到的文件数 ≥ 80
+✅ A-③ 真扫到 .doc().update/remove 的写点 ≥ 15 处（守卫确有活干）
+✅ A-④ 🔴 违规数 == 0（写库一律用 _id 或显式白名单）
+✅ A-⑤ 全部写点中，含 _id 的占比 ≥ 60%（安全写法是主流）
+✅ A-⑥ 本轮修复点已是安全写法：saveShopSetting/index.js ← doc(shopRid)
+✅ A-⑥ 本轮修复点已是安全写法：saveMaterial/index.js ← doc(exist._id || m.id)
+✅ A-⑥ 本轮修复点已是安全写法：saveCostCard/index.js ← doc(vm._id || vm.id || vm.material_id)
+✅ A-⑥ 本轮修复点已是安全写法：syncCostCard/index.js ← doc(vm._id || vm.id || vm.material_id)
+===== B. 白名单约束 =====
+✅ B-① 每条白名单都写了 `why`（非空且 ≥ 20 字）
+✅ B-② 白名单条目数 ≤ 3（多了说明豁免失控）
+✅ B-③ 白名单里的 file 真实存在
+✅ B-④ 白名单确实被用到（无死条目）
+✅ B-⑤ 带 todo 的白名单条目已标注后续动作
+===== C. 反面红线 =====
+✅ C-① 负样本仍判违规：`doc(accountId)` 且定义不含 _id
+✅ C-② 负样本仍判违规：`doc(material_id)`
+✅ C-③ 解析器不把 `.doc().set()` 漏掉（set 也是写）
+✅ C-④ 解析器不把 `.doc().remove()` 漏掉
+✅ C-⑤ 跨行 `.doc(
+  arg
+).update(` 仍能抓到
+===== E. 覆盖度 =====
+✅ E-① 断言数 ≥ 33（实测 36 的保守下沿）
+
+==== R130 写库主键守卫：36 通过 / 0 失败 ====

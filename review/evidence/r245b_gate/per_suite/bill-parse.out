@@ -1,0 +1,50 @@
+===== detectPlatform（按列名，不看文件名）=====
+✅ detectPlatform 淘宝表头 → taobao  (taobao)
+✅ detectPlatform 美团表头 → meituan  (meituan)
+✅ detectPlatform 空表头 → null
+✅ detectPlatform 未知表头 → null
+===== P1 平台判据加严（京东串味回归）=====
+✅ 京东 SKU 表头 ≠ taobao（deny 排除生效）  (jd_sku)
+✅ 京东订单级表头 ≠ taobao  (jd_order)
+✅ 淘宝表头混入「应结金额」⇒ 判 null（deny 硬判据）  (null)
+✅ 缺签名列（只有账单日期）⇒ null  (null)
+✅ 签名列单中一个（只有结算金额）⇒ 不判 taobao  (null)
+===== 淘宝锚点 =====
+✅ 淘宝 行数 156（totals.rowCount）  (got 156)
+✅ 淘宝 到手 3779.65 元 = 377965 分  (got 377965)
+✅ 淘宝 有效订单数 150（不含退单 6）  (got 150)
+✅ 淘宝 归月 months 含 2026-08  (["2026-08"])
+===== 美团锚点 =====
+✅ 美团 筛后 50 行（totals.rowCount）  (got 50)
+✅ 美团 应收 1826.64 元 = 182664 分  (got 182664)
+✅ 美团 有效订单数 50  (got 50)
+✅ 美团 排除 47 行（全 97 − 筛后 50）  (got 47)
+✅ 美团 不筛直接 Σ 会得 1747.95（≠ 收入，已通过筛选避开）  (应收=182664)
+===== guessHeader（前 5 行非空文本格最多）=====
+✅ guessHeader 淘宝 → 0  (0)
+✅ guessHeader 美团 → 0  (0)
+===== 京东秒送（P2~P6）=====
+✅ detectPlatform 京东订单级表头 → jd_order  (jd_order)
+✅ detectPlatform 京东 SKU 表头 → jd_sku  (jd_sku)
+✅ 京东订单级 表头行 = 1（两级表头取 R2）  (got 1)
+✅ 京东订单级 收入 555.96 元 = 55596 分（仅正向订单）  (got 55596)
+✅ 京东订单级 有效订单 23（按主订单号去重）  (got 23)
+✅ 京东订单级 排除 92 行（115 − 23）  (got 92)
+✅ 京东订单级 不筛会得 482.65（错值，已验证避开）  (收入=55596)
+✅ 京东订单级 bizDate 由「账期」区间归一为 YYYY-MM-DD  ({"bizDate":"2026-09-01","qty":2,"amountFen":4454})
+✅ 京东 SKU 表头行 = 0  (got 0)
+✅ 京东 SKU 结算合计 237.00 元 = 23700 分  (got 23700)
+✅ 京东 SKU 订单数 3（13 行按到家业务单号去重）  (got 3)
+✅ 京东 SKU 计费行 13（长表一行一费项）  (got 13)
+✅ 京东 SKU bizDate 取「账期时间」  ([{"bizDate":"2026-09-01","qty":3,"amountFen":23700}])
+===== 云函数副本同步检查（防两处漂移）=====
+✅ 云函数副本含 PLATFORM_PROFILE 档案
+✅ 云函数副本含 jd_order / jd_sku 两形态
+✅ 云函数副本含 pickSheet（按签名找 sheet，P4）
+✅ 云函数副本 detectPlatform 用 require+deny（P1）
+===== 平台枚举三副本同步（R245：京东两形态）=====
+✅ 前端 utils/gradeGate.js 与云端 SALES_SCHEMA 的 platform.enum 逐值同序（含 jd_order/jd_sku）  (cloud=[taobao,meituan,jd_order,jd_sku,eleme,pos,other] front=[taobao,meituan,jd_order,jd_sku,eleme,pos,other])
+✅ 入参 validate.js 的 PLATFORMS 含 jd_order/jd_sku 且不含 pos（入口不得把京东平台吞成空）  (PLATFORMS=[taobao,meituan,jd_order,jd_sku,eleme,other])
+
+============================================================
+===== 账单解析自测结果：39 通过 / 0 失败 =====
