@@ -1,9 +1,0 @@
-===== R141 per100g 恒等规格守卫 =====
-✅ P1 SPEC_PRESETS 存在 spec_key === per100g  ({"spec_key":"per100g","name":"每100g","coef":{"main":1,"aux":1,"season":1,"semi":1,"pack":1},"unit_label":"100g"})
-✅ P2 per100g.coef 五项全 === 1  ({"main":1,"aux":1,"season":1,"semi":1,"pack":1})
-✅ P3 反恒真：合成 coef.main=0.9 必须判为不合规（allOnes=false）  (allOnes=false)
-✅ P4 unit_label === '100g'  (got 100g)
-✅ 反向：half/small 仍在（未误删）
-✅ 反向：half.coef 仍非全 1（缩放规格未被误改）  ({"main":0.5,"aux":0.7,"season":1,"semi":0.5,"pack":1})
-
-==== R141 每100g恒等规格守卫：6 通过 / 0 失败 ====

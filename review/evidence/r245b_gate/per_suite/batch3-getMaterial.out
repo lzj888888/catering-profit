@@ -1,9 +1,0 @@
-✅ 出参 id / name / is_virtual 正确
-✅ 出参净料单位成本=333（万分，未丢失精度）  (=333)
-✅ 出参 unit_cost_fen=3（333万分→3分）  (=3)
-✅ 虚拟半成品(份) unit_cost_fen=448  (=448)
-✅ netUnitCostWan 聚能一致性(鸡胸 444)
-✅ validateInput 合法
-✅ validateInput is_virtual 非布尔拒
-
-==== getMaterial 批次 3 自测结果：7 通过 / 0 失败 ====

@@ -1,7 +1,0 @@
-✅ 合法入参放行（archive 缺省 true）
-✅ archive=false → 取消归档
-✅ month 坏格式拒
-✅ month 越界拒
-✅ 缺 shop_id 拒
-
-==== archiveMonth 批次 4 自测结果：5 通过 / 0 失败 ====

@@ -1,9 +1,0 @@
-✅ 仅 is_deleted=false（软删不出现在后台列表）
-✅ 带 user_id 过滤
-✅ status=paid 过滤
-✅ 非法 status 不入条件
-✅ user_id + status 组合
-✅ 金额映射为整数分
-✅ 订单号/状态/支付时间映射
-
-==== adminOrderList 批次 6 自测结果：7 通过 / 0 失败 ====
