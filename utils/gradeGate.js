@@ -15,7 +15,9 @@ const SALES_SCHEMA = {
     dish_key: { type: 'string', required: true },
     qty: { type: 'number', required: true, integer: true, min: 0 },
     amount: { type: 'number', required: true, integer: true },
-    platform: { type: 'string', required: true, enum: ['taobao', 'meituan', 'eleme', 'pos', 'other'] },
+    // 🔴 R245：枚举须与云端 `cloudfunctions/importSalesBill/service.js::SALES_SCHEMA` **逐值同序**
+    //    （R245 P1 给云端加了 jd_order/jd_sku，前端这份漏跟 ⇒ check_grade_gate_dual A-② 当场红）
+    platform: { type: 'string', required: true, enum: ['taobao', 'meituan', 'jd_order', 'jd_sku', 'eleme', 'pos', 'other'] },
     source: { type: 'string', required: true, enum: ['oauth', 'excel', 'manual'] },
     created_at: { type: 'number', required: true, integer: true },
   },

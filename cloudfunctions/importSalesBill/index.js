@@ -18,6 +18,7 @@ const { ERROR_CODES, ok, fail } = common;
 const { nowUtc } = common.utilTime;
 const {
   bufferToMatrix, detectPlatform, guessHeader, parseBillMatrix, checkGradeA, SALES_SCHEMA,
+  pickSheet,   // R245：🔴 京东表名不固定 ⇒ 判定 sheet 是否存在必须按签名找，不能硬编码表名
   DISH_SHAPES, detectDishMatrix, parseDishSales, parseDishSalesC, dishRefId, saleDocId,
 } = require('./service');
 const { validateInput } = require('./validate');
@@ -59,7 +60,6 @@ exports.main = async (event) => {
   }
 
   // ===== 6. 外卖账单（批次 F 原路径）=====
-  const sheetNameByPlatform = { taobao: '外卖账单明细', meituan: '订单明细' };
   let platform = v.platform;
   if (!platform) {
     for (const name of Object.keys(matrix.sheets)) {
@@ -69,8 +69,9 @@ exports.main = async (event) => {
       if (p) { platform = p; break; }
     }
   }
-  if (!platform || !matrix.sheets[sheetNameByPlatform[platform]]) {
-    return fail(ERROR_CODES.INVALID_PARAM, '无法识别账单平台（请确认是淘宝闪购、美团外卖账单，或堂食《菜品销售统计》）');
+  // 🔴 R245：判定「表在不在」改为按签名找 sheet（京东表名不固定：com.jd.o2o… / sku对账单下载）
+  if (!platform || !pickSheet(matrix.sheets, platform)) {
+    return fail(ERROR_CODES.INVALID_PARAM, '无法识别账单平台（请确认是淘宝闪购、美团外卖、京东秒送账单，或堂食《菜品销售统计》）');
   }
 
   const parsed = parseBillMatrix(matrix, { platform });

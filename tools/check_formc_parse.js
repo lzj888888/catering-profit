@@ -170,5 +170,44 @@ check('R-C4-② 表头 18 列且含 5 白名单列',
 check('R-C4-③ 关键锚点在场：形态 C 判定不回归（detectDishShape=waimai_goods）',
   svc.detectDishShape(C) === 'waimai_goods', svc.detectDishShape(C));
 
+// ============ R-C5 美团真样例·别名列名（R245 P7）============
+sec('R-C5 · 美团真样例·别名列名（R245 P7：商品名/商品销量/商品销售额）');
+const MTR = 'review/evidence/r245_mt_goods/mt_goods_matrix.json';
+const hasMTR = fs.existsSync(path.join(ROOT, MTR));
+let MTG = { rows: [] };
+if (hasMTR) MTG = JSON.parse(fs.readFileSync(path.join(ROOT, MTR), 'utf8'));
+const MTG_H = (MTG.rows[0] || []).map((x) => (x == null ? '' : String(x).trim()));
+check('R-C5-① 美团真样例矩阵在场（11 行 × 14 列；缺失即红）',
+  hasMTR && MTG.rows.length === 11 && MTG_H.length === 14,
+  hasMTR ? MTG.rows.length + ' 行 × ' + MTG_H.length + ' 列' : '🔴 ' + MTR + ' 缺失');
+const pMT = (hasMTR && MTG.rows.length) ? svc.parseDishSalesC(MTG.rows, { platform: 'meituan' }) : null;
+check('R-C5-② 行数 = 10（单行表头 R1，数据 R2 起）', !!pMT && pMT.rows.length === 10,
+  pMT ? pMT.rows.length + ' 行' : '🔴 无解析结果');
+check('R-C5-③ Σ销量 = 12（别名列「商品销量」取得到 ⇒ 不是 0）', !!pMT && pMT.totals.qty === 12,
+  pMT ? String(pMT.totals.qty) : '🔴');
+check('R-C5-④ Σ商品销售额 = 270.00（amountFen=27000；别名列「商品销售额」取得到）',
+  !!pMT && pMT.totals.amountFen === 27000, pMT ? pMT.totals.amountFen + ' 分' : '🔴');
+check('R-C5-⑤ 天数 = 3 且首末 = 2026-09-10 / 2026-09-13（R245 P8 紧凑 8 位「20260910」归一）',
+  !!pMT && pMT.groups.length === 3 && pMT.groups[0].bizDate === '2026-09-10' && pMT.groups[2].bizDate === '2026-09-13',
+  pMT ? pMT.groups.map((g) => g.bizDate).join('~') : '🔴');
+check('R-C5-⑥ zeroAmountQty 恰 1 条「来点辣椒?吗」qty=4（0910×1 + 0912×3，按名聚合）',
+  !!pMT && pMT.zeroAmountQty.length === 1 && pMT.zeroAmountQty[0].name === '来点辣椒?吗'
+    && pMT.zeroAmountQty[0].qty === 4,
+  pMT ? JSON.stringify(pMT.zeroAmountQty) : '🔴');
+check('R-C5-⑦ 自失效护栏：真表头**零正名**命中（删别名 ⇒ 取列全 -1 ⇒ 上列数字必变）',
+  ['商品名称', '销量', '销售额'].every((c) => MTG_H.indexOf(c) < 0),
+  '命中=' + (['商品名称', '销量', '销售额'].filter((c) => MTG_H.indexOf(c) >= 0).join(',') || '零命中 ✓'));
+
+// ============ R-C6 normalizeDate 紧凑格式（R245 P8）============
+sec('R-C6 · normalizeDate 紧凑 8 位（R245 P8）');
+check('R-C6-① 20260910 ⇒ 2026-09-10（美团商品表真格式）',
+  !!svc && svc.normalizeDate('20260910') === '2026-09-10', svc ? svc.normalizeDate('20260910') : '🔴');
+check('R-C6-② 2026/9/7 ⇒ 2026-09-07（旧形态不回归）',
+  !!svc && svc.normalizeDate('2026/9/7') === '2026-09-07', svc ? svc.normalizeDate('2026/9/7') : '🔴');
+check('R-C6-③ 2026091（7 位）⇒ 原样返回（fail-closed，不猜）',
+  !!svc && svc.normalizeDate('2026091') === '2026091', svc ? svc.normalizeDate('2026091') : '🔴');
+check('R-C6-④ abc ⇒ 原样返回（非日期不改写）',
+  !!svc && svc.normalizeDate('abc') === 'abc', svc ? svc.normalizeDate('abc') : '🔴');
+
 console.log('\n===== formc-parse 守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);

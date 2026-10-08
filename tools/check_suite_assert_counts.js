@@ -131,7 +131,7 @@ const CASES = [
   { key: 'selftest_m3_takeaway', rel: 'tools/selftest_m3_takeaway.js' }, // 21 条（M3.17：T-a~T-g）
   { key: 'selftest_m3_impact', rel: 'tools/selftest_m3_impact.js' }, // 17 条（M3.19：C-a/C-a2/C-b/dry-run）
   { key: 'selftest_m3_recon', rel: 'tools/selftest_m3_recon.js' }, // 16 条（M3.21：D 锚点 + 闸门）
-  { key: 'selftest_bill_parse', rel: 'tools/selftest_bill_parse.js' }, // 20 条（批次 F：平台判定 + 两锚点；R245 加 P1 京东串味回归 5 条）
+  { key: 'selftest_bill_parse', rel: 'tools/selftest_bill_parse.js' }, // 39 条（批次 F 15 + R245 P1 京东串味 5 + P2~P6 京东两形态/取数/日期 17 + 平台枚举三副本 2）
   { key: 'selftest_grade_gate', rel: 'tools/selftest_grade_gate.js' }, // 11 条（批次 F：甲级三门）
   // round181p 扩面：打包体积 / ignore 规则守卫同批纳入 —— 它的 S 段三道自失效护栏（扫描面非退化 / 关键入口在包内 / 匹配器四类正负样本互证）与 P-②「预算常量 < 微信硬上限」正是「非恒真」凭据；而 11 条删掉一批仍 > 0 ⇒ A0-② 的「通过数为 0」下界抓不到，只有 A2「声明 ≡ 实跑」能发现（与 round73 立本守卫的根因同族）。
   { key: 'check_pack_size', rel: 'tools/check_pack_size.js' }, // 11 条（R182：S1~S3 + P-①~③ + G-①~④）
@@ -175,7 +175,7 @@ const CASES = [
   //   14 条 = ① 模块可达 3 + ② 日期闭环 2 + ③ 自失效护栏 3 + ④ 单源/行为 6（含真调 toMonth 的 UTC 边界）。
   { key: 'check_excel_date_utc', rel: 'tools/check_excel_date_utc.js' }, // 14 条（①+②+③+④）
   { key: 'check_dish_key_single_source', rel: 'tools/check_dish_key_single_source.js' }, // 12 条（①+②+③+④）
-  { key: 'check_formc_shape', rel: 'tools/check_formc_shape.js' }, // 15 条（①+②+③+④）
+  { key: 'check_formc_shape', rel: 'tools/check_formc_shape.js' }, // 21 条（①+②+③+④+⑤ 美团真样例别名列名 6 条）
   // R232f：getDishReview 算法层守卫 —— 阶段②读侧原「零判据」（算法内联在 exports.main 里，无法 require）。
   //   32 条 = ⓪ 模块在场 4 + ① 真调生产 buildDishReview 16（含 C-10 回归 + 反恒真）+ ② 架构防退化 5 + ③ 单源 3 + ④ 自失效护栏 4。
   //   变异回灌 6/6 有效红（版本选取/未匹配归零/零除/漏项/本地时区/聚合覆盖），全部命中目标断言名。
@@ -183,7 +183,7 @@ const CASES = [
   // H-1 扩面（M3.33 形态 C 解析层）：parseDishSalesC 守卫同批纳入 —— 它的 R-C2 三组反例（订单交易额 2974.91≠1823.08 /
   //   补零 357≠354 / 销量文本 isFinite("43")=false）与 R-C4 自失效护栏正是「非恒真」凭据；
   //   16 条删掉一批仍 > 0 ⇒ A0-② 的「通过数为 0」下界抓不到，只有 A2「声明 ≡ 实跑」能发现（同 round73 立本守卫根因）。
-  { key: 'check_formc_parse', rel: 'tools/check_formc_parse.js' }, // 16 条（S + R-C1/2/3/4）
+  { key: 'check_formc_parse', rel: 'tools/check_formc_parse.js' }, // 27 条（S + R-C1/2/3/4 + R-C5 美团真样例别名 7 + R-C6 紧凑日期 4）
   { key: 'check_shape_machine_value', rel: 'tools/check_shape_machine_value.js' }, // 18 条（V-1/2/3/4 契约 + E-R238 导入后下游引导）
   // R234/J1 扩面（R234）：行内提示折叠守卫同批纳入 —— 它的 V-1~V-4 四组负样本互证
   //   （旧平铺写法必解析出 0 折叠块 / key≠guide 可判红 / 缺 wx:if 判「折了但永远展开」 /

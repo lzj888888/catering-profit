@@ -130,5 +130,38 @@ check('4-② 规范 §5.2 明文「严禁取用」订单交易额（整单口径
 check('4-③ 规范红线 R232-1 明文禁止订单交易额作为 amount',
   hasRedLine, hasRedLine ? '✓' : '🔴 红线条目被删/被改');
 
+sec('⑤ 美团真样例·别名列名（R245 P7 —— 真表头是 商品名/商品销量/商品销售额）');
+// 为什么加这一组：R232 那份真样例用的是**正名**（商品名称/销量/销售额），
+// 李老师 2026-10-08 微信来料的美团「商品」表用的是**别名**（商品名/商品销量/商品销售额）
+// ⇒ 精确等名判据下它 `detectDishShape = null`（R242 实测四道阻断之②），fail-closed 只提示「表不认识」。
+// 🔴 判据纪律：判行为不判字面 —— 喂真矩阵进生产函数，不查源码里有没有 '商品名' 这个串。
+const MT_REL = 'review/evidence/r245_mt_goods/mt_goods_matrix.json';
+const hasMT = fs.existsSync(path.join(ROOT, MT_REL));
+let MT = { rows: [] };
+if (hasMT) MT = JSON.parse(fs.readFileSync(path.join(ROOT, MT_REL), 'utf8'));
+const MT_H = (MT.rows[0] || []).map((x) => (x == null ? '' : String(x).trim()));
+check('5-① 美团真样例矩阵在场（11 行 × 14 列；缺失即红，不许静默跳过）',
+  hasMT && MT.rows.length === 11 && MT_H.length === 14,
+  hasMT ? MT.rows.length + ' 行 × ' + MT_H.length + ' 列' : '🔴 ' + MT_REL + ' 缺失');
+check('5-② 🔴 生产 detectDishShape(美团真矩阵) === waimai_goods（删掉别名映射即红）',
+  !!(S && MT.rows.length && S.detectDishShape(MT.rows) === 'waimai_goods'),
+  S && MT.rows.length ? String(S.detectDishShape(MT.rows)) : '🔴 数据/模块缺失');
+check('5-③ 自失效护栏：真表头**零正名**命中（商品名称/销量/销售额 全不在场 ⇒ 样本对别名有区分力）',
+  ['商品名称', '销量', '销售额'].every((c) => MT_H.indexOf(c) < 0),
+  '命中=' + ['商品名称', '销量', '销售额'].filter((c) => MT_H.indexOf(c) >= 0).join(',') || '零命中 ✓');
+const ALIAS = (S && S.DISH_C_ALIAS) || null;
+const aliasOk = !!ALIAS && ['商品名称', '销量', '销售额'].every((k) => Array.isArray(ALIAS[k]) && ALIAS[k].length >= 1)
+  && (ALIAS['商品名称'] || []).indexOf('商品名') >= 0
+  && (ALIAS['销量'] || []).indexOf('商品销量') >= 0
+  && (ALIAS['销售额'] || []).indexOf('商品销售额') >= 0;
+check('5-④ 别名单源已导出且结构合法（三个正名各自含对应别名，判定与取列共用一张表）',
+  aliasOk, ALIAS ? JSON.stringify(ALIAS) : '🔴 DISH_C_ALIAS 未导出');
+check('5-⑤ 仅别名最小表（日期/商品名/商品销量/商品销售额）⇒ 判出 waimai_goods（防靠别的列侥幸命中）',
+  !!(S && S.detectDishShape([['日期', '商品名', '商品销量', '商品销售额']]) === 'waimai_goods'),
+  S ? String(S.detectDishShape([['日期', '商品名', '商品销量', '商品销售额']])) : '🔴 无模块');
+check('5-⑥ 别名不得放宽精度：有「商品名」+「商品销量」但缺销售额 ⇒ **不**判 C',
+  !!(S && S.detectDishShape([['日期', '商品名', '商品销量']]) !== 'waimai_goods'),
+  S ? String(S.detectDishShape([['日期', '商品名', '商品销量']])) : '🔴 无模块');
+
 console.log(`\n===== 形态C 判定守卫结果：${pass} 通过 / ${failN} 失败 =====`);
 process.exit(failN === 0 ? 0 : 1);

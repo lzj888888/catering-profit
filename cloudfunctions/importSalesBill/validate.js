@@ -11,7 +11,9 @@ function validateInput(event) {
 
   // platform 可选：不传则云函数按表头自动检测；传了必须是外卖平台枚举（不含 pos —— 堂食不走这条路）。
   // 🔴 v1.7 §10-2：形态 C 的 platform 必须由调用方显式传入（不许按文件名猜）；此处放宽以放行 eleme/other。
-  const PLATFORMS = ['taobao', 'meituan', 'eleme', 'other'];
+  // 🔴 R245：与 service.js::SALES_SCHEMA.platform.enum 同一平台面（多了 jd_order/jd_sku；
+  //    仍不含 pos —— 堂食不走这条路）。
+  const PLATFORMS = ['taobao', 'meituan', 'jd_order', 'jd_sku', 'eleme', 'other'];
   const platform = PLATFORMS.indexOf(src.platform) >= 0 ? src.platform : '';
 
   const confirm = src.confirm === true;

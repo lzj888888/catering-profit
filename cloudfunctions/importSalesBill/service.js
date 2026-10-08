@@ -66,23 +66,108 @@ function bufferToMatrix(buffer) {
 }
 
 // ===================== billParse 同源（utils/billParse.js）=====================
-const COL = {
-  taobao: { billDate: '账单日期', net: '结算金额', orderType: '订单类型', refund: '退单' },
-  meituan: { billDate: '账单日期', net: '商家应收款', bizType: '交易类型', order: '外卖订单' },
+// 🔴 R245：与 utils/billParse.js **档案驱动**版同步（P1 判据加严 + P2~P6 京东两形态）。
+//   改这里之前先改 utils/ 那份并跑 tools/selftest_bill_parse.js（锚点由自测守）。
+const C_BILL_DATE  = '账单日期';
+const C_TAOBAO_NET = '结算金额';
+const C_MEITUAN_NET = '商家应收款';
+const C_JD_ORDER_NET = '应结金额';
+const C_JD_BIZ_TYPE  = '对账单业务类型';
+const C_JD_ACCT      = '账期';
+const C_JD_ACCT_TIME = '账期时间';
+const C_JD_SKU_ORDER = '到家业务单号';
+const JD_ONLY_COLS = [C_JD_ORDER_NET, C_JD_BIZ_TYPE, 'sku名称', '费用类型'];
+
+const PLATFORM_PROFILE = {
+  taobao: {
+    sheet: '外卖账单明细',
+    require: [C_BILL_DATE, C_TAOBAO_NET],
+    deny: JD_ONLY_COLS,
+    billDate: C_BILL_DATE, net: C_TAOBAO_NET,
+    orderType: '订单类型', refund: '退单',
+    rowFilter: null,
+    qtyRule: 'perRow_exceptRefund',
+    excludeLabel: '退单',
+  },
+  meituan: {
+    sheet: '订单明细',
+    require: [C_BILL_DATE, C_MEITUAN_NET],
+    deny: [],
+    billDate: C_BILL_DATE, net: C_MEITUAN_NET,
+    bizType: '交易类型', order: '外卖订单',
+    rowFilter: { col: '交易类型', eq: '外卖订单' },
+    qtyRule: 'perRow',
+    excludeLabel: '非外卖订单（广告/保险）',
+  },
+  jd_order: {
+    sheet: null,
+    require: [C_JD_ORDER_NET, C_JD_BIZ_TYPE],
+    deny: [],
+    billDate: C_JD_ACCT, net: C_JD_ORDER_NET,
+    dateRule: 'acctRange',
+    rowFilter: { col: '订单类型', eq: '正向订单' },
+    qtyRule: 'perOrderNo',
+    orderKey: '主订单号',
+    excludeLabel: '非正向订单（推广费/保险单）',
+  },
+  jd_sku: {
+    sheet: 'sku对账单下载',
+    require: [C_TAOBAO_NET, 'sku名称', '费用类型'],
+    deny: [C_BILL_DATE],
+    billDate: C_JD_ACCT_TIME, net: C_TAOBAO_NET,
+    dateRule: 'datetime',
+    rowFilter: null,
+    qtyRule: 'perOrderNo',
+    orderKey: C_JD_SKU_ORDER,
+    excludeLabel: '',
+  },
 };
-const SHEET = { taobao: '外卖账单明细', meituan: '订单明细' };
+const PLATFORM_ORDER = ['taobao', 'meituan', 'jd_order', 'jd_sku'];
+
+const COL = {
+  taobao: {
+    billDate: PLATFORM_PROFILE.taobao.billDate, net: PLATFORM_PROFILE.taobao.net,
+    orderType: PLATFORM_PROFILE.taobao.orderType, refund: PLATFORM_PROFILE.taobao.refund,
+  },
+  meituan: {
+    billDate: PLATFORM_PROFILE.meituan.billDate, net: PLATFORM_PROFILE.meituan.net,
+    bizType: PLATFORM_PROFILE.meituan.bizType, order: PLATFORM_PROFILE.meituan.order,
+  },
+};
+const SHEET = {
+  taobao: PLATFORM_PROFILE.taobao.sheet,
+  meituan: PLATFORM_PROFILE.meituan.sheet,
+};
 
 function detectPlatform(header) {
   if (!Array.isArray(header)) return null;
   const cols = header.filter(Boolean).map((s) => String(s).trim());
-  if (cols.indexOf(COL.taobao.net) >= 0) return 'taobao';
-  if (cols.indexOf(COL.meituan.net) >= 0) return 'meituan';
+  const has = (n) => cols.indexOf(n) >= 0;
+  for (const p of PLATFORM_ORDER) {
+    const prof = PLATFORM_PROFILE[p];
+    if (!(prof.require || []).every(has)) continue;
+    if ((prof.deny || []).some(has)) continue;
+    return p;
+  }
   return null;
 }
 
-function guessHeader(rows) {
+function rowCols(row) {
+  return (row || []).map((v) => (v == null ? '' : String(v).trim()));
+}
+
+function guessHeader(rows, platform) {
+  const list = rows || [];
+  const prof = platform ? PLATFORM_PROFILE[platform] : null;
+  if (prof && prof.require) {
+    const lim = Math.min(list.length, 5);
+    for (let i = 0; i < lim; i++) {
+      const cols = rowCols(list[i]);
+      if (prof.require.every((c) => cols.indexOf(c) >= 0)) return i;
+    }
+  }
   let best = -1, bi = 0;
-  const n = Math.min((rows || []).length, 5);
+  const n = Math.min(list.length, 5);
   for (let i = 0; i < n; i++) {
     const row = rows[i] || [];
     let txt = 0;
@@ -92,37 +177,92 @@ function guessHeader(rows) {
   return bi;
 }
 
+function pickSheet(sheets, platform) {
+  const prof = PLATFORM_PROFILE[platform];
+  if (!prof) return undefined;
+  const names = Object.keys(sheets || {});
+  if (prof.sheet && names.indexOf(prof.sheet) >= 0) return prof.sheet;
+  for (const n of names) {
+    const rows = (sheets[n] && sheets[n].rows) || [];
+    const hi = guessHeader(rows, platform);
+    const cols = rowCols(rows[hi]);
+    const has = (c) => cols.indexOf(c) >= 0;
+    if ((prof.require || []).every(has) && !(prof.deny || []).some(has)) return n;
+  }
+  return prof.sheet;
+}
+
+function normDate(raw, rule) {
+  const s = String(raw == null ? '' : raw).trim();
+  if (!s || !rule) return s;
+  let m;
+  if (rule === 'acctRange') {
+    m = s.match(/^(\d{4})(\d{2})(\d{2})/);
+    return m ? m[1] + '-' + m[2] + '-' + m[3] : s;
+  }
+  if (rule === 'compact8') {
+    m = s.match(/^(\d{4})(\d{2})(\d{2})$/);
+    return m ? m[1] + '-' + m[2] + '-' + m[3] : s;
+  }
+  m = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+  if (m) return m[1] + '-' + String(m[2]).padStart(2, '0') + '-' + String(m[3]).padStart(2, '0');
+  m = s.match(/^(\d{4})(\d{2})(\d{2})/);
+  return m ? m[1] + '-' + m[2] + '-' + m[3] : s;
+}
+
 function parseBillMatrix(matrix, opts) {
   const platform = (opts && opts.platform) || null;
+  const prof = PLATFORM_PROFILE[platform];
   const sheets = (matrix && matrix.sheets) || {};
-  const sheet = sheets[SHEET[platform]];
+  if (!prof) {
+    return {
+      platform, sheet: null, headerRow: -1, header: [], rows: [],
+      totals: { amountFen: 0, qty: 0, rowCount: 0 }, months: [],
+      excluded: { rows: 0, reason: '未知平台' },
+    };
+  }
+
+  const sheetKey = pickSheet(sheets, platform);
+  const sheet = sheets[sheetKey];
   const allRows = (sheet && sheet.rows) || [];
-  const headerRow = guessHeader(allRows);
-  const header = (allRows[headerRow] || []).map((s) => (s == null ? '' : String(s).trim()));
+  const headerRow = guessHeader(allRows, platform);
+  const header = rowCols(allRows[headerRow]);
 
   const colIdx = {};
   header.forEach((h, i) => { if (h) colIdx[h] = i; });
-  const c = COL[platform];
+  const at = (row, name) => (name == null ? undefined : row[colIdx[name]]);
 
   let excludedRows = 0;
+  const rf = prof.rowFilter;
   const orders = [];
+  const seenOrder = new Set();
+
   for (let i = headerRow + 1; i < allRows.length; i++) {
     const row = allRows[i] || [];
-    if (platform === 'taobao') {
-      const net = toNum(row[colIdx[c.net]]);
-      if (net == null) continue;
-      const bizDate = (row[colIdx[c.billDate]] || '').trim();
-      const orderType = (row[colIdx[c.orderType]] || '').trim();
-      const isRefund = orderType === c.refund;
-      orders.push({ bizDate, qty: isRefund ? 0 : 1, amountFen: Math.round(net * 100) });
-    } else {
-      const bizType = (row[colIdx[c.bizType]] || '').trim();
-      if (bizType !== c.order) { excludedRows++; continue; }
-      const net = toNum(row[colIdx[c.net]]);
-      if (net == null) continue;
-      const bizDate = (row[colIdx[c.billDate]] || '').trim();
-      orders.push({ bizDate, qty: 1, amountFen: Math.round(net * 100) });
+    if (rf) {
+      const v = String(at(row, rf.col) == null ? '' : at(row, rf.col)).trim();
+      if (rf.eq != null && v !== rf.eq) { excludedRows++; continue; }
+      if (rf.ne != null && v === rf.ne) { excludedRows++; continue; }
     }
+    const net = toNum(at(row, prof.net));
+    if (net == null) continue;
+    const bizDate = normDate(at(row, prof.billDate), prof.dateRule);
+    let qty = 0;
+    if (prof.qtyRule === 'perRow_exceptRefund') {
+      const ot = String(at(row, prof.orderType) == null ? '' : at(row, prof.orderType)).trim();
+      qty = (ot === prof.refund) ? 0 : 1;
+    } else if (prof.qtyRule === 'perRow') {
+      qty = 1;
+    } else if (prof.qtyRule === 'perOrderNo') {
+      const key = String(at(row, prof.orderKey) == null ? '' : at(row, prof.orderKey)).trim();
+      if (key && key !== '-' && seenOrder.has(key)) {
+        qty = 0;
+      } else {
+        if (key && key !== '-') seenOrder.add(key);
+        qty = 1;
+      }
+    }
+    orders.push({ bizDate, qty, amountFen: Math.round(net * 100) });
   }
 
   const byDate = new Map();
@@ -139,11 +279,10 @@ function parseBillMatrix(matrix, opts) {
     rowCount: orders.length,
   };
   const months = Array.from(new Set(rows.map((r) => String(r.bizDate).slice(0, 7)))).sort();
+  const excludedReason = excludedRows > 0 ? (prof.excludeLabel || '') : '';
 
-  return {
-    platform, headerRow, header, rows, totals, months,
-    excluded: { rows: excludedRows, reason: excludedRows > 0 ? (platform === 'taobao' ? c.refund : '非外卖订单（广告/保险）') : '' },
-  };
+  return { platform, sheet: sheetKey, headerRow, header, rows, totals, months,
+           excluded: { rows: excludedRows, reason: excludedReason } };
 }
 
 // ===================== gradeGate 同源（utils/gradeGate.js）=====================
@@ -155,7 +294,7 @@ const SALES_SCHEMA = {
     dish_key: { type: 'string', required: true },
     qty: { type: 'number', required: true, integer: true, min: 0 },
     amount: { type: 'number', required: true, integer: true },
-    platform: { type: 'string', required: true, enum: ['taobao', 'meituan', 'eleme', 'pos', 'other'] },
+    platform: { type: 'string', required: true, enum: ['taobao', 'meituan', 'jd_order', 'jd_sku', 'eleme', 'pos', 'other'] },
     source: { type: 'string', required: true, enum: ['oauth', 'excel', 'manual'] },
     created_at: { type: 'number', required: true, integer: true },
   },
@@ -234,7 +373,41 @@ const DISH_A_STRUCT = {
 //    （common 全层零外部依赖，写法与仓内其它云函数一致）⇒ 本文件**不得**再内联第二份。
 //    伴侣守卫：tools/check_dish_key_single_source.js。
 
-// 单 sheet 形态判定（v1.6 §3.4 fail-closed + **v1.7 C-1/C-2 勘误**）。sheetRows：0-based 二维 cells。
+// 🔴 R245 P7：形态 C **列名别名表**（单源）。正名 → 别名清单（按序取第一个命中的）。
+//   真样例有两套列名：R232 那份是正名（`商品名称`/`销量`/`销售额`），
+//   李老师 2026-10-08 微信来料的美团「商品」表是别名（`商品名`/`商品销量`/`商品销售额`）⇒ 精确等名判不出。
+//   🔴 判定与取列**共用这一张表**：判得出就必须取得出，否则「认得出却取不到列」的静默空表。
+//   ⚠️ `门店编号` **无下游**（parseDishSalesC 取了也不进 rows）⇒ **不**给「门店id」加别名 ——
+//      加了就是死输入（本仓红线：填了没用比填了算错更坏）；将来按门店分流时再补。
+const DISH_C_ALIAS = {
+  日期: ['日期'],
+  // `菜品名称` 保留为别名：v1.7 旧判据是 `商品名称 || 菜品名称`，归一后等价（且**不影响**形态 A —— A 用原样列名判）
+  商品名称: ['商品名称', '商品名', '菜品名称'],
+  销量: ['销量', '商品销量'],
+  销售额: ['销售额', '商品销售额'],
+  门店编号: ['门店编号'],
+};
+
+// 别名归一（**仅供形态 C 判定使用**）：`商品名`→`商品名称`、`商品销量`→`销量`、`商品销售额`→`销售额`。
+// 🔴 绝不能对形态 A/B 的判据做归一 —— A 的判据就靠 `菜品名称` 原样命中（归一会把 A 也吃掉 ⇒ 判不出 A）。
+function canonDishCHeader(hdr) {
+  const rev = {};
+  for (const k of Object.keys(DISH_C_ALIAS)) {
+    for (const a of DISH_C_ALIAS[k]) rev[a] = k;
+  }
+  return (hdr || []).map((c) => (rev[c] == null ? c : rev[c]));
+}
+
+// 按正名找列位（先用正名，再用别名；全不中 ⇒ -1 ⇒ 取数归空，不报错）
+function findDishCCol(hdr, canon) {
+  for (const a of (DISH_C_ALIAS[canon] || [])) {
+    const i = hdr.indexOf(a);
+    if (i >= 0) return i;
+  }
+  return -1;
+}
+
+// 单 sheet 形态判定（v1.6 §3.4 fail-closed + **v1.7 C-1/C-2 勘误** + **R245 P7 别名**）。sheetRows：0-based 二维 cells。
 // 🔴 v1.7 C-2：表头行**按形态不同** —— A/B 在 R3、**C 在 R1（单行表头）**
 //   ⇒ 必须同时扫描 R1 与 R3；只扫 R3 则形态 C 的表头永远扫不到。
 // 🔴 v1.7 C-1：v1.6 §3.4 写死 `'商品销量'`，而**真样例的列名是 `销量`**
@@ -251,13 +424,15 @@ function detectDishShape(sheetRows) {
   const hdr3 = (rows[2] || []).map((x) => (x == null ? '' : String(x).trim()));  // R3（形态 A/B）
   const hdr1 = (rows[0] || []).map((x) => (x == null ? '' : String(x).trim()));  // R1（形态 C）
   const hdr = hdr3.concat(hdr1);
+  const hdrC = canonDishCHeader(hdr);   // 🔴 R245 P7：别名归一**只给形态 C 用**（A/B 仍按原列名判）
   const r2 = (rows[1] || []).map((x) => (x == null ? '' : String(x))).join('');  // R2 参数自述
-  const has = (c) => hdr.indexOf(c) >= 0;
+  const has = (c) => hdr.indexOf(c) >= 0;      // A/B 判据：原样列名
+  const hasC = (c) => hdrC.indexOf(c) >= 0;    // C 判据：别名归一后的列名
   if (has('菜品名称') && has('销售数量') && r2.indexOf('销售方式') >= 0) return DISH_SHAPES.A;
   if (has('套餐') && has('单品名称')) return DISH_SHAPES.B;
-  if ((has('商品名称') || has('菜品名称'))
-    && (has('商品销量') || has('销量'))
-    && has('销售额')
+  if (hasC('商品名称')
+    && hasC('销量')
+    && hasC('销售额')
     && r2.indexOf('销售方式') < 0) return DISH_SHAPES.C;
   return null;
 }
@@ -353,19 +528,22 @@ function parseDishSales(sheetRows, opts) {
 // ===================== M3.33 形态 C（外卖「商品销量」）解析 —— v1.7 C-2~C-7 =====================
 
 // 日期归一：接受 2026/9/7 / 2026-09-07 / 2026.9.7 等形态，统一成 YYYY-MM-DD（月/日补零）。
+// 🔴 R245 P8：再接受**紧凑 8 位** `20260910`（美团「商品」表真格式 —— 此前原样返回 ⇒ 被甲级门禁拦）。
 // 取不到可解析形态时原样返回（由甲级门禁 fail-closed 拦，不静默改写）。
 function normalizeDate(v) {
   if (v == null) return '';
   const s = String(v).trim();
   if (!s) return '';
-  const m = s.match(/^(\d{4})[/\-.](\d{1,2})[/\-.](\d{1,2})/);
+  let m = s.match(/^(\d{4})[/\-.](\d{1,2})[/\-.](\d{1,2})/);
+  if (!m) m = s.match(/^(\d{4})(\d{2})(\d{2})(?:\D|$)/);   // 紧凑 8 位（后跟非数字或直接结束 ⇒ 7 位/9 位不认）
   if (!m) return s;
   const pad = (n) => String(n).padStart(2, '0');
   return m[1] + '-' + pad(m[2]) + '-' + pad(m[3]);
 }
 
-// 形态 C 白名单取列（v1.7 C-4）：只取这 5 列，其余 13 列一律丢弃且不报错。
-const DISH_C_COLS = ['日期', '门店编号', '商品名称', '销量', '销售额'];
+// 形态 C 白名单取列（v1.7 C-4）：只取这几列，其余列一律丢弃且不报错。
+// 🔴 R245 P7：列名由别名表派生（判定与取列同一张表 ⇒ 不会出现「认得出却取不到」）。
+const DISH_C_COLS = Object.keys(DISH_C_ALIAS);
 
 /**
  * 解析形态 C（外卖「商品销量」）。v1.7 C-2~C-7。
@@ -379,7 +557,7 @@ function parseDishSalesC(sheetRows, opts) {
 
   // 白名单列位（找不到的列记 -1，取数时按 -1 走 undefined ⇒ 归空，不报错）
   const idx = {};
-  for (const c of DISH_C_COLS) idx[c] = hdr.indexOf(c);
+  for (const c of DISH_C_COLS) idx[c] = findDishCCol(hdr, c);   // R245 P7：正名 → 别名兜底
   const get = (r, col) => (idx[col] >= 0 ? r[idx[col]] : undefined);
 
   const out = [];
@@ -437,8 +615,10 @@ function parseDishSalesC(sheetRows, opts) {
 
 module.exports = {
   bufferToMatrix, detectPlatform, guessHeader, parseBillMatrix, checkGradeA, SALES_SCHEMA, toNum,
+  pickSheet, normDate, PLATFORM_PROFILE,   // R245：P4 按签名找 sheet / 日期归一
   fmtCell, EXCEL_UTC_BASE,   // R232 C-11：fmtCell 导出以便守卫直接验证日期口径（此前漏导，0/4 全错无人知）
   DISH_SHAPES, DISH_A_STRUCT, normalizeDishName, detectDishShape, detectDishMatrix,
+  DISH_C_ALIAS, canonDishCHeader, findDishCCol,   // R245 P7：形态 C 列名别名单源（守卫用）
   extractBizDate, dishRefId, saleDocId, parseDishSales,
   normalizeDate, parseDishSalesC,   // v1.7 形态 C（外卖商品销量）
 };
