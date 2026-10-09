@@ -1274,6 +1274,20 @@ const TERMS = {
     reviewPlatformAllUnmatched: '本平台菜品均未匹配到成本卡，暂无毛利。',
     reviewGoMap: '去映射',
     reviewGoCard: '新建成本卡',
+    // ===== R255：菜名映射**写侧**（M3/M4）—— 把未匹配菜名人工挂到成本卡 =====
+    //   触发（真云坐实，非推断）：R254 只读探针跑出 taobao 平台块 51 道菜 ¥1823.08，
+    //   而 ranked 0 条、unmatchedCount 51 ⇒ 菜名与卡名**字面不等** ⇒ 单品毛利恒算不出来；
+    //   且客户端直读 shop_dish_mapping 返回 DATABASE_PERMISSION_DENIED（core/15：仅管理端可读写）
+    //   ⇒ 造映射记录只能走云函数，没有第二条路。
+    reviewMapPick: '关联',
+    reviewMapTitle: '已关联菜品',
+    reviewMapHint: '这里是你手动关联过的菜名。关联后复盘按该成本卡算毛利；关联错了可在此解除。',
+    reviewMapEmpty: '还没有手动关联任何菜名。',
+    reviewMapLinked: '已关联：',
+    reviewMapUnlink: '解除',
+    reviewMapOk: '已关联',   // ⚠️ toast 文案要短（微信用 icon:'none' 时过长会被截断）
+    reviewMapUnlinkOk: '已解除',
+    reviewMapNoCard: '本店还没有成本卡，请先新建成本卡。',
     reviewEmpty: '还没有导入堂食销量，请先在「外卖」页导入《菜品销售统计》。',
     // ===== R252：已导入账单「查看 + 清除」（补 R251 报障第 ④ 问的真缺口）=====
     //   背景：`external_sales_daily` 全站只有写入、没有删除 ⇒ 导错了**看不见也删不掉**

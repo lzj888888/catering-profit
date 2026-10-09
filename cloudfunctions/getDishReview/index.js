@@ -100,8 +100,25 @@ exports.main = async (event) => {
   //    （可复算，不在这里写业务判断）。
   const totals = mergeTotals(dineTotals, takeawayResult.totals);
 
+  // ===== 4c. R255：映射表**带出**（供前端展示「已关联 / 解除」）=====
+  //   🔴 零额外查询：`mapping` 是第 4b 步已经读进来的同一份数据，此处只做投影（不新增一次 listAll）。
+  //   为什么必须带出：**挂错卡时该菜会从 unmatched 变 ranked，未匹配清单里就没有它了**
+  //   ⇒ 用户既改不了也删不掉 ⇒ 死结。前端据这份列表渲染「已关联菜品」小节 + 解除按钮。
+  const mappingList = [];
+  for (const m of mapping) {
+    const ref = (m.external_ref_id == null ? '' : String(m.external_ref_id)).trim();
+    const cc = (m.card_code == null ? '' : String(m.card_code)).trim();
+    if (!ref || !cc) continue;
+    mappingList.push({
+      platform: (m.platform == null ? '' : String(m.platform)).trim(),
+      dish_key: ref,
+      card_code: cc,
+    });
+  }
+
   return ok({
     shop_id: shopId,
+    mapping: mappingList,   // 🔴 R255：本店现有菜名映射（前端据此可展示 / 解除，防「挂错卡无入口」）
     dine_in: ranked,        // 堂食排行
     // 无外卖数据 ⇒ null（空态，不默认 0，红线 18）；有数据 ⇒ { by_platform, totals }
     takeaway: Object.keys(takeawayResult.by_platform).length ? takeawayResult : null,

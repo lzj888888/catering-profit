@@ -105,12 +105,41 @@
           <!-- 🔴 R251：来源平台（跨平台合并后否则看不出这菜来自哪）+ 口味询问类 SKU 标记 -->
           <text class="plat" wx:if="{{item.platformText}}">{{item.platformText}}</text>
           <text class="zero" wx:if="{{item.zeroAmount}}">{{t.reviewZeroAmount}}</text>
+          <!-- R255：映射**写了却没生效**（挂到的卡被删了 / platform 不匹配）时用户看到的仍是未匹配，
+               最容易困惑 ⇒ 把已关联的卡名显示出来，提示"挂过但没生效"。 -->
+          <text class="snap" wx:if="{{item.mappedCardName}}">{{t.reviewMapLinked}}{{item.mappedCardName}}</text>
         </view>
         <text class="c-qty">{{item.qty}}</text>
         <text class="c-num">{{t.cur}}{{item.amountText}}</text>
+        <!-- R255：关联到成本卡。用 <picker>（系统选择器，**不触发键盘**）
+             ⇒ 避开「弹层 × 键盘 = 死结」；也无需新增页面/弹层。 -->
+        <picker wx:if="{{cardOptions.length}}" range="{{cardOptions}}"
+                data-idx="{{index}}" bindchange="onPickCard" disabled="{{mappingBusy}}">
+          <view class="btn-small ghost">{{t.reviewMapPick}}</view>
+        </picker>
       </view>
+      <view class="muted" wx:if="{{!cardOptions.length}}">{{t.reviewMapNoCard}}</view>
       <view class="field-save">
         <button class="btn-small ghost" bindtap="goMap">{{t.reviewGoMap}}</button>
+      </view>
+    </view>
+
+    <!-- ===== R255：已关联菜品（**解除入口**）=====
+         为什么必须有这一块：关联成功后该菜会从上方的未匹配清单里消失（变 ranked），
+         若没有独立的解除入口 ⇒ 用户**既改不了也删不掉** ⇒ 挂错一次卡就是死结。
+         platform 为空 = 跨所有平台生效 ⇒ 不显示平台名（不为此新增文案）。 -->
+    <view class="section-title">{{t.reviewMapTitle}}</view>
+    <view class="card2">
+      <view class="muted">{{t.reviewMapHint}}</view>
+      <view class="muted" wx:if="{{!mappings.length}}">{{t.reviewMapEmpty}}</view>
+      <view class="row" wx:for="{{mappings}}" wx:key="dishKey">
+        <view class="c-name">
+          <text>{{item.dishKey}}</text>
+          <text class="plat" wx:if="{{item.platformText}}">{{item.platformText}}</text>
+          <text class="snap">{{t.reviewMapLinked}}{{item.cardName}}</text>
+        </view>
+        <button class="btn-small ghost" data-idx="{{index}}" bindtap="onUnlinkMap"
+                disabled="{{mappingBusy}}">{{t.reviewMapUnlink}}</button>
       </view>
     </view>
 

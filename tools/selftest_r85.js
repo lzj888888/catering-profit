@@ -346,6 +346,15 @@ const A15_EXEMPT = [
   //   by=WorkBuddy / date=2026-10-09 / reason=R252 新增 getSalesBills（列已导入账单）+ clearSalesBills（软删）
   /^cloudfunctions\/getSalesBills\//,
   /^cloudfunctions\/clearSalesBills\//,
+  // ⚠️ 2026-10-10（R255）**十一次触发** —— 新增授权云函数 `saveDishMapping`（菜名映射**写侧**）：
+  //   把未匹配菜名人工挂到成本卡（shop_dish_mapping）。必要性由 **R254 真云只读探针坐实**：
+  //   taobao 平台块 51 道菜 ¥1823.08 而 ranked 0 条、unmatchedCount 51 ⇒ 单品毛利恒算不出来；
+  //   且客户端直读该集合返回 DATABASE_PERMISSION_DENIED（core/15：仅管理端可读写）
+  //   ⇒ 造映射记录只能走云函数，没有第二条路。同轮另改 `getDishReview/index.js` 出参加 `mapping`
+  //   （**已在 R232 白名单内**）。仍按 round103 的**白名单式**登记（精确到目录），
+  //   **绝不放宽成 `cloudfunctions/` 全豁免**：
+  //   by=WorkBuddy / date=2026-10-10 / reason=R255 授权新增 saveDishMapping（菜名映射写侧）
+  /^cloudfunctions\/saveDishMapping\//,
   /^cloudfunctions\/common\/salesBillId\.js$/,        // R252：新增单源（_id 形态解析）
   /^cloudfunctions\/[^/]+\/cx_salesBillId\.js$/,      // R252：sync_common 派生（全函数）
 ];

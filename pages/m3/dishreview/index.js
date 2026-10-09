@@ -39,6 +39,14 @@ Page({
       reviewUnmatchedHint: TERMS.card.reviewUnmatchedHint,
       reviewGoMap: TERMS.card.reviewGoMap,
       reviewGoCard: TERMS.card.reviewGoCard,
+      // R255：菜名映射写侧（关联到成本卡 / 解除）
+      reviewMapPick: TERMS.card.reviewMapPick,
+      reviewMapTitle: TERMS.card.reviewMapTitle,
+      reviewMapHint: TERMS.card.reviewMapHint,
+      reviewMapEmpty: TERMS.card.reviewMapEmpty,
+      reviewMapLinked: TERMS.card.reviewMapLinked,
+      reviewMapUnlink: TERMS.card.reviewMapUnlink,
+      reviewMapNoCard: TERMS.card.reviewMapNoCard,
       reviewEmpty: TERMS.card.reviewEmpty,
       // R252：已导入账单「查看 + 清除」
       reviewBillsTitle: TERMS.card.reviewBillsTitle,
@@ -75,6 +83,11 @@ Page({
     bills: [],
     billsSummary: null,
     clearing: false,
+    // ===== R255：菜名映射写侧 =====
+    cardOptions: [],      // picker 的 range（成本卡名）
+    cardCodes: [],        // 与 cardOptions 同序的 card_code（picker 只给索引 ⇒ 必须自己对齐）
+    mappings: [],         // 已关联菜品（来自 getDishReview 出参 mapping）+ 展示字段
+    mappingBusy: false,   // 写操作进行中（防连点重复提交）
   },
 
   onLoad() { this.init(); },
@@ -130,6 +143,9 @@ Page({
   async load() {
     this.setData({ loading: true });
     const d = await api.call('getDishReview', {});
+    // 🔴 R255：成本卡列表（「关联」picker 用）。**必须在这里先拉** —— 下面构造
+    //   unmatched（显示已关联卡名）与 mappings（显示卡名）都要用它做 code→name。
+    const { cardOptions, cardCodes, nameByCode } = await this.loadCards();
 
     const dineIn = (d.dine_in || []).map((x) => this.fmtRanked(x));
 
@@ -146,7 +162,10 @@ Page({
     const pushUnmatched = (x, platName) => {
       const nm = x.name || x.dish_key || '';
       if (!nm) return;
-      const cur = unmatchedMap.get(nm) || { name: nm, qty: 0, amountFen: 0, platforms: new Set() };
+      // 🔴 R255：必须保留**原始 dish_key** —— 写侧映射的键就是它（`platform + '|' + dish_key`）。
+      //   unmatched 行里 name 与 dish_key 目前同源（service.js 两字段都写 dishKey），
+      //   但显式带 dish_key 才不依赖这个巧合：哪天后端给 name 换成人读名，这里不至于失配。
+      const cur = unmatchedMap.get(nm) || { name: nm, dishKey: x.dish_key || nm, qty: 0, amountFen: 0, platforms: new Set() };
       cur.qty += x.qty || 0;
       cur.amountFen += x.amountFen || 0;
       if (platName) cur.platforms.add(platName);
@@ -163,8 +182,18 @@ Page({
         (((d.takeaway.by_platform[p] || {}).unmatched) || []).forEach((x) => pushUnmatched(x, pn));
       }
     }
+    // 🔴 R255：dish_key → card_code（来自 getDishReview 出参 mapping）
+    //   用途①：未匹配行显示「已关联：X」（映射写了但读侧没生效 ⇒ 卡被删了或 platform 不匹配，
+    //           此时用户看到的仍是未匹配，最容易困惑）；
+    const mapByDishKey = new Map();
+    for (const m of (d.mapping || [])) {
+      if (!m || !m.dish_key || !m.card_code) continue;
+      mapByDishKey.set(m.dish_key, m.card_code);
+    }
     const unmatched = Array.from(unmatchedMap.values()).map((x) => ({
       name: x.name,
+      dishKey: x.dishKey,
+      mappedCardName: nameByCode[mapByDishKey.get(x.dishKey) || ''] || '',
       qty: x.qty,
       amountText: fmtYuan(x.amountFen),
       platformText: Array.from(x.platforms).join(' / '),
@@ -175,6 +204,17 @@ Page({
       zeroAmount: x.amountFen === 0 && x.qty > 0,
     }));
     const totals = this.fmtTotals(d.totals);
+
+    // ===== R255：「已关联菜品」列表（**解除入口**）=====
+    //   为什么必须有这一块：**关联成功后该菜会从 unmatched 变 ranked** ⇒ 未匹配清单里没有它了。
+    //   若不给独立的解除入口，用户既改不了也删不掉 ⇒ 挂错一次卡就是死结（A1 锚点的反面）。
+    //   `platform` 为空 = 跨所有平台生效 ⇒ 不显示平台名（不为此新增文案）。
+    const mappings = (d.mapping || []).map((m) => ({
+      dishKey: m.dish_key,
+      platformText: m.platform ? (PLAT_NAMES[m.platform] || m.platform) : '',
+      cardCode: m.card_code,
+      cardName: nameByCode[m.card_code] || m.card_code,
+    }));
 
     // 外卖：按平台分块（无数据 ⇒ null 空态，不默认 0）
     // 🔴 R251：每块必须带出「合计 + 未匹配数 + 空榜成因」，否则榜为空时页面上只剩一个**光标题**
@@ -209,11 +249,84 @@ Page({
       takeaway,
       unmatched,
       totals,
+      // R255：卡列表 + 已关联列表（picker 与解除入口的数据源）
+      cardOptions,
+      cardCodes,
+      mappings,
       empty: dineIn.length === 0 && unmatched.length === 0 && !takeaway,
     });
     this.markRows();
     // R252：账单列表**单独一次调用**（读侧独立函数；失败不影响复盘主区渲染）
     await this.loadBills();
+  },
+
+  // ===== R255：成本卡列表（供「关联」picker 用）=====
+  //   复用既有 `getCostCard({})`（出参 list[] = 该店各卡的最新版本），**不新增读接口**。
+  //   🔴 失败不阻断：卡列表拉不到 ⇒ 只影响「关联」入口（数组置空 ⇒ picker 不渲染），
+  //      复盘主区照常渲染 —— 附加载荷不该拖垮主功能（与 loadBills 同一条纪律）。
+  async loadCards() {
+    try {
+      const res = await api.call('getCostCard', {});
+      const list = (res && res.list) || [];
+      const byCode = new Map();
+      for (const c of list) {
+        const cc = c.card_code;
+        if (!cc) continue;
+        const cur = byCode.get(cc);
+        if (!cur || (Number(c.version) || 0) > (Number(cur.version) || 0)) byCode.set(cc, c);
+      }
+      const codes = Array.from(byCode.keys());
+      const nameByCode = {};
+      const cardOptions = codes.map((cc) => {
+        const nm = byCode.get(cc).name || cc;
+        nameByCode[cc] = nm;
+        return nm;
+      });
+      return { cardCodes: codes, cardOptions, nameByCode };
+    } catch (e) {
+      return { cardCodes: [], cardOptions: [], nameByCode: {} };
+    }
+  },
+
+  // ===== R255：把未匹配菜名**关联**到成本卡 =====
+  //   🔴 键口径（与读侧 lookupCardCode 对齐，错位 = 挂了也读不到、静默失效）：
+  //     · `dish_key` = **原始菜名**（不归一 —— 读侧按原样查）；
+  //     · `platform` **不传**（空 ⇒ 跨所有平台生效，读侧有 mapIndex.get('|' + k) 兜底）。
+  async onPickCard(e) {
+    if (this.data.mappingBusy) return;
+    const pick = Number(e.detail.value);
+    const rowIdx = Number(e.currentTarget.dataset.idx);
+    const row = this.data.unmatched[rowIdx];
+    const cardCode = this.data.cardCodes[pick];
+    if (!row || !cardCode) return;
+    this.setData({ mappingBusy: true });
+    try {
+      await api.call('saveDishMapping', { dish_key: row.dishKey, card_code: cardCode });
+      wx.showToast({ title: TERMS.card.reviewMapOk, icon: 'none' });
+      await this.load();   // 重算：该菜应从 unmatched 变 ranked
+    } catch (err) {
+      api.toastError(err);
+    } finally {
+      this.setData({ mappingBusy: false });
+    }
+  },
+
+  // ===== R255：**解除**已关联（card_code 传空串即解除）=====
+  async onUnlinkMap(e) {
+    if (this.data.mappingBusy) return;
+    const rowIdx = Number(e.currentTarget.dataset.idx);
+    const m = this.data.mappings[rowIdx];
+    if (!m) return;
+    this.setData({ mappingBusy: true });
+    try {
+      await api.call('saveDishMapping', { dish_key: m.dishKey, card_code: '' });
+      wx.showToast({ title: TERMS.card.reviewMapUnlinkOk, icon: 'none' });
+      await this.load();
+    } catch (err) {
+      api.toastError(err);
+    } finally {
+      this.setData({ mappingBusy: false });
+    }
   },
 
   // ===== R252：已导入账单（查看 + 清除）=====

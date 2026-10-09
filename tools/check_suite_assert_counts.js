@@ -209,6 +209,10 @@ const CASES = [
   //   + ③ 聚合行为 7 + ④ 清除匹配 7（含 BUG-B 回归）+ ⑤ index 源码形状 8 + ⑥ validate 形状 4
   //   + ⑦ 自检非退化 3。两个 BUG 都是本轮实现中真踩到的 ⇒ 断言数被删会静默通过的那类风险尤高。
   { key: 'check_salesbills', rel: 'tools/check_salesbills.js' },  // 43 条（①5+②8+③7+④7+⑤9+⑥4+⑦3）
+  // R255：菜名映射写侧 —— S 扫描面 4 + A1 键双向同源 5 + A2 键三决定 5 + A3 五要素 6
+  //   + A4 卡存在性/软删/前端接线 6 + B 反向 4 + C 自检 4（真调生产纯函数）。
+  //   头号风险 = 写侧键与读侧 mapIndex 错位 ⇒ 用户挂了映射页面照旧 unmatched 且不报错。
+  { key: 'check_dish_mapping_write', rel: 'tools/check_dish_mapping_write.js' },  // 35 条
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];
