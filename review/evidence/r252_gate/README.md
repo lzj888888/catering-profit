@@ -42,16 +42,52 @@ check_salesbills  43 通过 / 0 失败
 | **A** | `lastIndexOf('_')` 取平台 ⇒ `BILL_..._jd_order_2026-10-08` 解析成 `platform='order'` | 改**按已知平台枚举做前缀匹配**（`pickPlatform`，最长优先） | `2-③/2-④` |
 | **B** | `matchTargets` 的 `want` 用 `t.kind + '\|' + …`，`kind` 缺省为 `''` ⇒ 构出 `\|taobao\|…`，与实行 `bill\|taobao\|…` 永不相等 ⇒「不限形态」清除**命中 0 行** | kind 缺省**展开成两种形态** `['bill','dish']` | `4-①` |
 
-## 4 🔴 部署未闭环（阻塞 · 如实记录）
+## 4 ✅ 部署已闭环（IDE GUI 起来后一次成功）
 
-两个新云函数**尚未上云**。
+### 4.1 修通过程
 
-- 第 1 次 `cli cloud functions deploy --names getSalesBills -r` ⇒ 242.5s timeout，日志停在 `- initialize`
-- 第 2 次 ⇒ 37.2s，同样无 success 行
-- 第 3 次 ⇒ 280s，同样 FAIL（0/1 OK）
-- 探针：`wechatdevtools.exe` 进程 **0**；IDE 服务端口 9420~9425 **全 closed**
-- 三条启动路全试：Win+R 键鼠（非沙箱）❌ / `Popen(微信开发者工具.exe)` ❌ / `explorer.exe` ❌
-- ⇒ 与技能 `miniprogram-cloud-deploy` §3.3/§3.4 记载一致：**IDE GUI 必须在跑，cli 自起的裸 server 完成不了首次函数创建**
+先前三次部署全 FAIL（242.5s timeout / 37.2s / 280s），根因 = **IDE GUI 没跑**（端口全闭）。
+按键鼠控制技能 §9.2 启动 IDE ⇒ **Win+R 第一次不出窗、重做一次即成**（该技能明写此现象）。
 
-**待办**：请李老师在正常桌面打开微信开发者工具（打开本项目即起 server），
-之后喊一声，我跑 `review/evidence/_deploy_fns.py getSalesBills clearSalesBills` 完成上云 + 出真机预览码。
+成功后日志形态（判据齐全）：
+
+```
+√ IDE server has started, listening on http://127.0.0.1:10896
+√ [getSalesBills] cloudfunction getSalesBills doesn't exist in the cloud, will create it
+√ [getSalesBills] upload cloud function getSalesBills - deploy
+√ deploy cloudfunctions
+```
+
+⚠️ **首次 create 会撞 `FailedOperation.UpdateFunctionCode: 当前函数处于Creating状态`**
+（不是失败，是云端在创建）⇒ **等 45~50s 重试即成功**（两函数均如此，第二次即 `success=true`）。
+
+### 4.2 部署结果（判据：`success=true` + `filesCount`）
+
+| 函数 | success | filesCount | packSize | 用时 |
+|---|---|---|---|---|
+| `getSalesBills` | **true** | 21 | 48.6 KB | 19.6s |
+| `clearSalesBills` | **true** | 21 | 49.2 KB | ~10s |
+
+### 4.3 timeout 抬升（键鼠代操控制台，配方 19）
+
+新部署函数 timeout 平台默认 = **3**（真机必超时）⇒ 用键鼠代操云开发控制台改成 **20**。
+坐标**逐项复现**配方（`∞` 1402≈1408 · 侧栏云函数 166 · 版本与配置 1639 · 配置 1612 ·
+高级配置 607 · 超时框 **791**≈792 · 绿底确定**像素法 1322**≈1321，误差 1px）。
+数字框**可直接编辑**（点 → Ctrl+A → 粘贴 `20`），**剪贴板回读**校验 `3` → `20`。
+
+### 4.4 ✅ 权威判据（`cli … info` 回读）
+
+```
+│ getSalesBills   │ 'Active' │ 20 │ 'Nodejs16.13' │
+│ clearSalesBills │ 'Active' │ 20 │ 'Nodejs16.13' │
+```
+
+**第三方独立确认**：控制台云函数列表 = 两函数 **已部署**
+（`getSalesBills` 创建 19:56:07 / 更新 19:57:14；`clearSalesBills` 创建 19:57:44 / 更新 20:06:28）。
+
+归档：`fn_info_after_deploy.txt`（info 回读）· `fn_list_cloud.txt`（list 清单）· `qr_meta_R252.json`
+
+### 4.5 真机预览码
+
+`qr_R252.jpg` —— md5 `f240ecb433d4439dbef7abfee881c4db` · 出码 20:07:01 · 失效≈ 20:32:01
+验码通过（`_qr_verify` 解出 URL + 实印 317/250/199px 三档全过，含 37% 余量）。
