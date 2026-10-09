@@ -94,6 +94,8 @@
           <text class="row-unit">{{t.headcountUnit}}</text>
         </view>
       </view>
+      <!-- 🔴 R246：供给侧口径说明（防被读成"桌均实际来客人数"）——由 t.seatsPerTableNote 供给，页面零硬编码 -->
+      <view class="row-note">{{t.seatsPerTableNote}}</view>
       <view class="row">
         <text class="row-name">{{t.avgPriceLabel}}</text>
         <view class="row-in-wrap">

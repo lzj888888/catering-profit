@@ -152,6 +152,7 @@ Page({
       tablesNote: M.tablesNote,
       seatsPerTableLabel: M.seatsPerTableLabel,
       seatsPerTablePh: M.seatsPerTablePh,
+      seatsPerTableNote: M.seatsPerTableNote,   // 🔴 R246：供给侧口径说明
       tableUnit: M.tableUnit,
       areaLabel: M.areaLabel,
       areaUnit: M.areaUnit,
