@@ -32,7 +32,7 @@ const { toMonth } = common.utilTime;
 
 // 🔴 R232f：算法层已外提到 service.js（纯函数 · 零 db）⇒ 6 处口径首次可被独立复算。
 //   本文件只负责：鉴权 → 付费墙 → 取数 → 调 service → 返回。
-const { buildDishReview, buildTakeawayReview, splitSales } = require('./service');
+const { buildDishReview, buildTakeawayReview, splitSales, mergeTotals } = require('./service');
 
 exports.main = async (event) => {
   const ctx = cloud.getWXContext();
@@ -91,8 +91,14 @@ exports.main = async (event) => {
   //   🔴 分流在 service 层做（splitSales 可复算），不在 index 做业务判断。
   const { dineIn, takeaway: takeawaySales } = splitSales(allSales);
   const deps = { normalizeDishName, toMonth, lookupCardCode };
-  const { dine_in: ranked, unmatched, totals } = buildDishReview(dineIn, cards, deps);
+  const { dine_in: ranked, unmatched, totals: dineTotals } = buildDishReview(dineIn, cards, deps);
   const takeawayResult = buildTakeawayReview(takeawaySales, cards, deps);
+
+  // 🔴🔴 R254：顶层 totals 必须是【堂食 + 外卖】的全渠道合计 —— 原只取堂食一份，
+  //    纯外卖店铺（堂食 0 行）主结论卡恒显示「0 / ¥0.00」（真云实证：taobao 51 道菜、
+  //    by_platform.taobao.totals.amountFen 非 0，而顶层 totals 全 0）。合并走 service 纯函数
+  //    （可复算，不在这里写业务判断）。
+  const totals = mergeTotals(dineTotals, takeawayResult.totals);
 
   return ok({
     shop_id: shopId,
@@ -100,7 +106,7 @@ exports.main = async (event) => {
     // 无外卖数据 ⇒ null（空态，不默认 0，红线 18）；有数据 ⇒ { by_platform, totals }
     takeaway: Object.keys(takeawayResult.by_platform).length ? takeawayResult : null,
     unmatched,
-    totals,
+    totals,                 // 🔴 R254：全渠道合计（堂食 + 各外卖平台），不再是「仅堂食」
     truncated: !!(salesRes.truncated || cardsRes.truncated),
     client_request_id: (event && event.client_request_id) || '',
   });

@@ -168,6 +168,37 @@ function buildTakeawayReview(sales, cards, deps) {
 }
 
 /**
+ * 合并两份 totals（堂食 + 外卖）为「全渠道合计」（纯函数 · 零 db · 可复算）。
+ *
+ * 🔴 R254 真云缺陷：顶层 totals 原本**只取堂食那一份**
+ *    （index.js 原写法 `const {...totals} = buildDishReview(...)`，外卖的 `takeawayResult.totals` 被丢弃），
+ *    而前端主结论卡渲染的正是这个顶层 totals（pages/m3/dishreview/index.wxml `{{totals.qty}}` 等）
+ *    ⇒ 纯外卖店铺（堂食 0 行，本仓真云现状）主结论卡恒显示
+ *      「份数 0 / 营收 ¥0.00 / 成本 ¥0.00 / 毛利 ¥0.00」，
+ *      而同一屏的平台块里却明明白白列着 51 道菜、¥1823 的销量
+ *      ⇒ 用户视角 =「导进来了但合计是 0」—— 比空态更误导（空态至少不会让人以为算错了）。
+ *
+ * 🔴 口径（与 rankReview 的 totals 同源，逐字段相加，**不取平均、不去重**）：
+ *    qty / amountFen 含未匹配（卖了就算营收）；costFen / grossFen 只算已匹配（未匹配无成本可算）；
+ *    dishCount = 已匹配菜品数；unmatchedCount = 未匹配菜品数。
+ *
+ * @param {Object} a 堂食 totals（缺省视为全 0）
+ * @param {Object} b 外卖 totals（缺省视为全 0）
+ * @returns {{qty:number, amountFen:number, costFen:number, grossFen:number, dishCount:number, unmatchedCount:number}}
+ */
+const TOTALS_FIELDS = ['qty', 'amountFen', 'costFen', 'grossFen', 'dishCount', 'unmatchedCount'];
+
+function mergeTotals(a, b) {
+  const out = {};
+  for (const f of TOTALS_FIELDS) {
+    const x = (a && typeof a[f] === 'number' && isFinite(a[f])) ? a[f] : 0;
+    const y = (b && typeof b[f] === 'number' && isFinite(b[f])) ? b[f] : 0;
+    out[f] = x + y;
+  }
+  return out;
+}
+
+/**
  * 把全量销量行**在 service 层**分流（可复算；不在 index 做业务判断）。
  * @param {Array<{platform:string}>} sales
  * @returns {{dineIn:Array, takeaway:Array}} dineIn = platform==='pos'；takeaway = 其余非空平台
@@ -183,4 +214,4 @@ function splitSales(sales) {
   return { dineIn, takeaway };
 }
 
-module.exports = { buildDishReview, buildTakeawayReview, rankReview, splitSales };
+module.exports = { buildDishReview, buildTakeawayReview, rankReview, splitSales, mergeTotals, TOTALS_FIELDS };

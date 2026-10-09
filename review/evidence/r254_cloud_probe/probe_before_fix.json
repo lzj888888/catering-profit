@@ -1,0 +1,377 @@
+[ok] connected ws://127.0.0.1:9420
+{
+  "shopCtx": {
+    "raw": {
+      "code": "SUCCESS",
+      "msg": "ok",
+      "data": {
+        "shop_id": "shop_mu6j87v1itrs",
+        "shop_name": "AbC",
+        "shop_remark": "",
+        "no_shop": false,
+        "switches": {
+          "inventorySwitchOn": true,
+          "amortizeSwitchOn": true
+        },
+        "takeaway_params": "",
+        "menu_dish_count": null,
+        "pinned_cards": [],
+        "pinned_materials": [],
+        "is_new_shop": false,
+        "client_request_id": ""
+      }
+    }
+  },
+  "shopCtxShape": "BIZ",
+  "shopId": "shop_mu6j87v1itrs",
+  "salesBills": {
+    "shape": "BIZ",
+    "code": "SUCCESS",
+    "msg": "ok",
+    "summary": {
+      "active_bills": 49,
+      "cleared_bills": 0,
+      "active_rows": 396,
+      "active_qty": 291,
+      "active_amount_fen": 615869,
+      "platforms": [
+        "jd_order",
+        "taobao"
+      ],
+      "all_platforms": [
+        "jd_order",
+        "taobao"
+      ],
+      "unknown_rows": 0
+    },
+    "listN": 49,
+    "list": [
+      {
+        "bill_id": "BILL_shop_mu6j87v1itrs_jd_order_2026-09-30",
+        "kind": "bill",
+        "platform": "jd_order",
+        "biz_date": "2026-09-30",
+        "row_count": 1,
+        "qty": 2,
+        "amount_fen": 4530,
+        "cleared": false,
+        "cleared_at": ""
+      },
+      {
+        "bill_id": "BILL_shop_mu6j87v1itrs_jd_order_2026-09-28",
+        "kind": "bill",
+        "platform": "jd_order",
+        "biz_date": "2026-09-28",
+        "row_count": 1,
+        "qty": 1,
+        "amount_fen": 1873,
+        "cleared": false,
+        "cleared_at": ""
+      },
+      {
+        "bill_id": "BILL_shop_mu6j87v1itrs_jd_order_2026-09-25",
+        "kind": "bill",
+        "platform": "jd_order",
+        "biz_date": "2026-09-25",
+        "row_count": 1,
+        "qty": 1,
+        "amount_fen": 2329,
+        "cleared": false,
+        "cleared_at": ""
+      },
+      {
+        "bill_id": "BILL_shop_mu6j87v1itrs_jd_order_2026-09-24",
+        "kind": "bill",
+        "platform": "jd_order",
+        "biz_date": "2026-09-24",
+        "row_count": 1,
+        "qty": 2,
+        "amount_fen": 4773,
+        "cleared": false,
+        "cleared_at": ""
+      },
+      {
+        "bill_id": "BILL_shop_mu6j87v1itrs_jd_order_2026-09-22",
+        "kind": "bill",
+        "platform": "jd_order",
+        "biz_date": "2026-09-22",
+        "row_count": 1,
+        "qty": 1,
+        "amount_fen": 1549,
+        "cleared": false,
+        "cleared_at": ""
+      },
+      {
+        "bill_id": "BILL_shop_mu6j87v1itrs_jd_order_2026-09-14",
+        "kind": "bill",
+        "platform": "jd_order",
+        "biz_date": "2026-09-14",
+        "row_count": 1,
+        "qty": 1,
+        "amount_fen": 1683,
+        "cleared": false,
+        "cleared_at": ""
+      },
+      {
+        "bill_id": "BILL_shop_mu6j87v1itrs_jd_order_2026-09-13",
+        "kind": "bill",
+        "platform": "jd_order",
+        "biz_date": "2026-09-13",
+        "row_count": 1,
+        "qty": 1,
+        "amount_fen": 2708,
+        "cleared": false,
+        "cleared_at": ""
+      },
+      {
+        "bill_id": "SALE_shop_mu6j87v1itrs_taobao_2026-09-13_0",
+        "kind": "dish",
+        "platform": "taobao",
+        "biz_date": "2026-09-13",
+        "row_count": 51,
+        "qty": 18,
+        "amount_fen": 30260,
+        "cleared": false,
+        "cleared_at": ""
+      },
+      {
+        "bill_id": "BILL_shop_mu6j87v1itrs_jd_order_2026-09-12",
+        "kind": "bill",
+        "platform": "jd_order",
+        "biz_date": "2026-09-12",
+        "row_count": 1,
+        "qty": 1,
+        "amount_fen": 2009,
+        "cleared": false,
+        "cleared_at": ""
+      },
+      {
+        "bill_id": "SALE_shop_mu6j87v1itrs_taobao_2026-09-12_0",
+        "kind": "dish",
+        "platform": "taobao",
+        "biz_date": "2026-09-12",
+        "row_count": 51,
+        "qty": 28,
+        "amount_fen": 43600,
+        "cleared": false,
+        "cleared_at": ""
+      },
+      {
+        "bill_id": "SALE_shop_mu6j87v1itrs_taobao_2026-09-11_0",
+        "kind": "dish",
+        "platform": "taobao",
+        "biz_date": "2026-09-11",
+        "row_count": 51,
+        "qty": 4,
+        "amount_fen": 7400,
+        "cleared": false,
+        "cleared_at": ""
+      },
+      {
+        "bill_id": "BILL_shop_mu6j87v1itrs_jd_order_2026-09-10",
+        "kind": "bill",
+        "platform": "jd_order",
+        "biz_date": "2026-09-10",
+        "row_count": 1,
+        "qty": 2,
+        "amount_fen": 5471,
+        "cleared": false,
+        "cleared_at": ""
+      },
+      {
+        "bill_id": "SALE_shop_mu6j87v1itrs_taobao_2026-09-10_0",
+        "kind": "dish",
+        "platform": "taobao",
+        "biz_date": "2026-09-10",
+        "row_count": 51,
+        "qty": 13,
+        "amount_fen": 23100,
+        "cleared": false,
+        "cleared_at": ""
+      },
+      {
+        "bill_id": "SALE_shop_mu6j87v1itrs_taobao_2026-09-09_0",
+        "kind": "dish",
+        "platform": "taobao",
+        "biz_date": "2026-09-09",
+        "row_count": 50,
+        "qty": 9,
+        "amount_fen": 14780,
+        "cleared": false,
+        "cleared_at": ""
+      },
+      {
+        "bill_id": "SALE_shop_mu6j87v1itrs_taobao_2026-09-08_0",
+        "kind": "dish",
+        "platform": "taobao",
+        "biz_date": "2026-09-08",
+        "row_count": 50,
+        "qty": 42,
+        "amount_fen": 55568,
+        "cleared": false,
+        "cleared_at": ""
+      },
+      {
+        "bill_id": "BILL_shop_mu6j87v1itrs_jd_order_2026-09-07",
+        "kind": "bill",
+        "platform": "jd_order",
+        "biz_date": "2026-09-07",
+        "row_count": 1,
+        "qty": 1,
+        "amount_fen": 1538,
+        "cleared": false,
+        "cleared_at": ""
+      },
+      {
+        "bill_id": "SALE_shop_mu6j87v1itrs_taobao_2026-09-07_0",
+        "kind": "dish",
+        "platform": "taobao",
+        "biz_date": "2026-09-07",
+        "row_count": 50,
+        "qty": 4,
+        "amount_fen": 7600,
+        "cleared": false,
+        "cleared_at": ""
+      },
+      {
+        "bill_id": "BILL_shop_mu6j87v1itrs_jd_order_2026-09-05",
+        "kind": "bill",
+        "platform": "jd_order",
+        "biz_date": "2026-09-05",
+        "row_count": 1,
+        "qty": 2,
+        "amount_fen": 10699,
+        "cleared": false,
+        "cleared_at": ""
+      },
+      {
+        "bill_id": "BILL_shop_mu6j87v1itrs_jd_order_2026-09-04",
+        "kind": "bill",
+        "platform": "jd_order",
+        "biz_date": "2026-09-04",
+        "row_count": 1,
+        "qty": 1,
+        "amount_fen": 2179,
+        "cleared": false,
+        "cleared_at": ""
+      },
+      {
+        "bill_id": "BILL_shop_mu6j87v1itrs_jd_order_2026-09-03",
+        "kind": "bill",
+        "platform": "jd_order",
+        "biz_date": "2026-09-03",
+        "row_count": 1,
+        "qty": 3,
+        "amount_fen": 6193,
+        "cleared": false,
+        "cleared_at": ""
+      }
+    ],
+    "truncated": false,
+    "rawHead": "{\"code\":\"SUCCESS\",\"msg\":\"ok\",\"data\":{\"shop_id\":\"shop_mu6j87v1itrs\",\"list\":[{\"bill_id\":\"BILL_shop_mu6j87v1itrs_jd_order_2026-09-30\",\"kind\":\"bill\",\"platform\":\"jd_order\",\"biz_date\":\"2026-09-30\",\"row_count\":1,\"qty\":2,\"amount_fen\":4530,\"cleared\":false,\"cleared_at\":\"\"},{\"bill_id\":\"BILL_shop_mu6j87v1itrs_jd_order_2026-09-28\",\"kind\":\"bill\",\"platform\":\"jd_order\",\"biz_date\":\"2026-09-28\",\"row_count\":1,\"qty\":1,\"amount_fen\":1873,\"cleared\":false,\"cleared_at\":\"\"},{\"bill_id\":\"BILL_shop_mu6j87v1itrs_jd_order_2026-09-25\",\"kind\":\"bill\",\"platform\":\"jd_order\",\"biz_date\":\"2026-09-25\",\"row_count\":1,\"qty\":1,\"amount_f"
+  },
+  "salesBillsInclCleared": {
+    "shape": "BIZ",
+    "code": "SUCCESS",
+    "summary": {
+      "active_bills": 49,
+      "cleared_bills": 0,
+      "active_rows": 396,
+      "active_qty": 291,
+      "active_amount_fen": 615869,
+      "platforms": [
+        "jd_order",
+        "taobao"
+      ],
+      "all_platforms": [
+        "jd_order",
+        "taobao"
+      ],
+      "unknown_rows": 0
+    },
+    "listN": 49
+  },
+  "dishReview": {
+    "shape": "BIZ",
+    "code": "SUCCESS",
+    "msg": "ok",
+    "keys": [
+      "shop_id",
+      "dine_in",
+      "takeaway",
+      "unmatched",
+      "totals",
+      "truncated",
+      "client_request_id"
+    ],
+    "totals": {
+      "qty": 0,
+      "amountFen": 0,
+      "costFen": 0,
+      "grossFen": 0,
+      "dishCount": 0,
+      "unmatchedCount": 0
+    },
+    "truncated": false,
+    "dineInN": 0,
+    "byPlatform": {
+      "taobao": {
+        "ranked_n": 0,
+        "unmatched_n": 51,
+        "unmatched_sample": [
+          {
+            "key": "★发鱿鱼",
+            "qty": 2,
+            "fen": 1520
+          },
+          {
+            "key": "【耙牛筋】六荤六素单人餐+米饭",
+            "qty": 12,
+            "fen": 43200
+          },
+          {
+            "key": "【超实惠】耙肥肠六荤六素单人餐(含有米饭)",
+            "qty": 6,
+            "fen": 21600
+          },
+          {
+            "key": "【超豪华】耙牛肉六荤六素单人套餐(含米饭)",
+            "qty": 24,
+            "fen": 91200
+          },
+          {
+            "key": "【超豪华】耙牛肉六荤六素单人套餐(含米饭)+老国宾",
+            "qty": 0
+          },
+          {
+            "key": "乐堡",
+            "qty": 0
+          },
+          {
+            "key": "冬瓜",
+            "qty": 0
+          },
+          {
+            "key": "加个油碟",
+            "qty": 4,
+            "fen": 1200
+          }
+        ]
+      },
+      "jd_order": {
+        "ranked_n": 0,
+        "unmatched_n": 0,
+        "unmatched_sample": []
+      }
+    }
+  },
+  "mapping": {
+    "err": "Permission denied 更多错误信息请访问：https://docs.cloudbase.net/error-code/basic/DATABASE_PERMISSION_DENIED"
+  },
+  "salesSample": {
+    "err": "Permission denied 更多错误信息请访问：https://docs.cloudbase.net/error-code/basic/DATABASE_PERMISSION_DENIED"
+  },
+  "page": {
+    "err": "TypeError: Cannot read properties of undefined (reading 'route')"
+  }
+}

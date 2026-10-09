@@ -2344,7 +2344,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 
 ===== [suite-coverage] tools/check_suite_coverage.js =====
 ===== S1 前置：git 列表可用（fail-closed）=====
-✅ S1 能在仓库根执行 git ls-files · 跟踪文件 8349 个
+✅ S1 能在仓库根执行 git ls-files · 跟踪文件 8357 个
 ✅ S1-② 面 A 工作树补面逐根达下界（根路径写错即转红） · tools:113 prototype:14 cfTests:1 cf-selftest:45
 ✅ S1-③ 面 A 工作树补面并入扫描面 · 工作树新增 0 个未入库文件（未 add 的新判据不再失明）
 
@@ -2672,7 +2672,6 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
   [admin-auth-params] ✅ PASS  (✅ 9 条 / 段 6)
 
 ===== [suite-assert-counts] tools/check_suite_assert_counts.js =====
-  [suite-assert-counts] ❌ FAIL (1)
 
 ===== A0 实算单源（逐个真跑套件脚本，不抄字面量） =====
   · tools/selftest_ui_fix.js → 38 通过
@@ -2734,7 +2733,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
   · tools/check_excel_date_utc.js → 14 通过
   · tools/check_dish_key_single_source.js → 12 通过
   · tools/check_formc_shape.js → 21 通过
-  · tools/check_dishreview_engine.js → 60 通过
+  · tools/check_dishreview_engine.js → 68 通过
   · tools/check_formc_parse.js → 27 通过
   · tools/check_shape_machine_value.js → 27 通过
   · tools/check_hint_fold.js → 190 通过
@@ -2808,7 +2807,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
   ✅ A2-check_excel_date_utc 声明 14 ≡ 实跑 14
   ✅ A2-check_dish_key_single_source 声明 12 ≡ 实跑 12
   ✅ A2-check_formc_shape 声明 21 ≡ 实跑 21
-  ❌ A2-check_dishreview_engine 声明 68 ≠ 实跑 60
+  ✅ A2-check_dishreview_engine 声明 68 ≡ 实跑 68
   ✅ A2-check_formc_parse 声明 27 ≡ 实跑 27
   ✅ A2-check_shape_machine_value 声明 27 ≡ 实跑 27
   ✅ A2-check_hint_fold 声明 190 ≡ 实跑 190
@@ -2830,7 +2829,8 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
   · 弱面共 0 条（只明示，不判红 —— 可能是子集/另一口径）
   ✅ W-① 弱面扫描完成：0 条明示（弱面只提示、不判红）
 
-===== 套件断言数口径守卫结果：74 通过 / 1 失败 =====
+===== 套件断言数口径守卫结果：75 通过 / 0 失败 =====
+  [suite-assert-counts] ✅ PASS  (✅ 75 条 / 段 7)
 
 ===== [fn-selftest-counts] tools/check_fn_selftest_counts.js =====
 
@@ -6046,4 +6046,4 @@ R213 权益链路：免费额度阈值/到期判定/续费/后台调权四段均
 ==== clearSalesBills R252 自测结果：16 通过 / 0 失败 ====
   [clear-sales-bills-fn] ✅ PASS  (✅ 16 条 / 段 1)
 
-===== 总览：157/158 套件通过 =====
+===== 总览：158/158 套件通过 =====

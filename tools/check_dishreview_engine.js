@@ -428,6 +428,80 @@ const BASE_DEPS = { normalizeDishName, toMonth };
     JSON.stringify(r.totals));
 }
 
+// ============ ⑧ 全渠道 totals（堂食 + 外卖）—— R254 ============
+// 真云实证缺陷（2026-10-09 模拟器逻辑层探针，证据见 review/evidence/r254_cloud_probe/）：
+//   顶层 totals 原只取 buildDishReview 的产物（**仅堂食**），外卖那份 takeawayResult.totals 被丢弃；
+//   而前端主结论卡渲染的正是这个顶层 totals（pages/m3/dishreview/index.wxml 的 {{totals.qty}} 等）
+//   ⇒ 纯外卖店铺（本仓真云现状：堂食 0 行、taobao 51 道菜）主结论卡恒显示
+//     「份数 0 / 营收 ¥0.00 / 成本 ¥0.00 / 毛利 ¥0.00」，而同一屏平台块里明明白白有数据
+//     ⇒ 用户视角＝「导进来了但合计是 0」。
+//
+// 🔴 判据仍走「真调生产纯函数」+「源码面反恒真」，不靠字面扫描（改名即绕过）。
+// 🔴 期望值手推：外卖 2 行（qty 2+4=6，amount 1520+1200=2720；均无同名成本卡 ⇒ 全部未匹配）。
+console.log('\n============ ⑧ 全渠道 totals（R254）============');
+
+{
+  const SVC8 = require(path.join(ROOT, 'cloudfunctions/getDishReview/service.js'));
+  const mergeTotals8 = SVC8.mergeTotals;
+  const buildTakeawayReview8 = SVC8.buildTakeawayReview;
+
+  // ---- 8-① / 8-② mergeTotals 自身的逐字段相加（真调生产）----
+  const a8 = { qty: 3, amountFen: 3000, costFen: 1200, grossFen: 1800, dishCount: 2, unmatchedCount: 1 };
+  const b8 = { qty: 5, amountFen: 5000, costFen: 2000, grossFen: 3000, dishCount: 4, unmatchedCount: 3 };
+  const m8 = (typeof mergeTotals8 === 'function') ? mergeTotals8(a8, b8) : null;
+  check('8-① mergeTotals 已导出且六字段逐项相加（真调生产）',
+    !!m8 && m8.qty === 8 && m8.amountFen === 8000 && m8.costFen === 3200
+    && m8.grossFen === 4800 && m8.dishCount === 6 && m8.unmatchedCount === 4,
+    JSON.stringify(m8));
+  const z8 = (typeof mergeTotals8 === 'function') ? mergeTotals8(undefined, undefined) : null;
+  check('8-② 缺省入参按 0 处理（不抛、不产出 NaN）',
+    !!z8 && Object.keys(z8).length === 6
+    && Object.keys(z8).every(function (k) { return z8[k] === 0; }),
+    JSON.stringify(z8));
+
+  // ---- 8-③ / 8-④ 核心场景：堂食 0 行 + 外卖有数据 ⇒ 合并后 totals 必须等于外卖那份 ----
+  const TAKE8 = [
+    { dish_key: '★发鱿鱼', qty: 2, amount: 1520, platform: 'taobao' },
+    { dish_key: '加个油碟', qty: 4, amount: 1200, platform: 'taobao' },
+  ];
+  const dine8 = buildDishReview([], CARD_FIX, BASE_DEPS);
+  const take8 = buildTakeawayReview8(TAKE8, CARD_FIX, BASE_DEPS);
+  const merged8 = (typeof mergeTotals8 === 'function') ? mergeTotals8(dine8.totals, take8.totals) : null;
+  check('8-③ 纯外卖店铺：堂食 totals 全 0，合并后 qty 必须 = 外卖 qty = 6（绝不为 0）',
+    dine8.totals.qty === 0 && !!merged8 && merged8.qty === take8.totals.qty && merged8.qty === 6,
+    'dine=' + JSON.stringify(dine8.totals) + ' take=' + JSON.stringify(take8.totals)
+    + ' merged=' + JSON.stringify(merged8));
+  check('8-④ 合并后 amountFen 必须 = 外卖 amountFen = 2720，且 unmatchedCount = 2',
+    !!merged8 && merged8.amountFen === 2720 && take8.totals.amountFen === 2720
+    && merged8.unmatchedCount === 2,
+    JSON.stringify(merged8));
+
+  // ---- 8-⑤ ~ 8-⑦ 源码面：index.js 必须真的走 mergeTotals，且旧写法绝迹 ----
+  const idxNo8 = stripComments(idxSrc);
+  const RE_MERGE = /totals\s*=\s*mergeTotals\s*\(/;
+  // 🔴 闭括号绝不能被 [,}] 吃掉：首版写成 `[,}][^}]*\}` ⇒ 旧形态 `unmatched, totals }` 里
+  //    的 `}` 被 [,}] 消耗掉，后面再找 `}` 找不到 ⇒ **旧写法反而匹配不上**（M1b 实证假绿）。
+  //    改为 `\s*,?\s*\}`：逗号可选、闭括号单独匹配。
+  const RE_OLD = /\{\s*[^}]*\btotals\s*,?\s*\}\s*=\s*buildDishReview\s*\(/;
+  check('8-⑤ index.js 顶层 totals 走 mergeTotals（剥注释后真查调用点）',
+    RE_MERGE.test(idxNo8),
+    RE_MERGE.exec(idxNo8) ? RE_MERGE.exec(idxNo8)[0] : '未命中');
+  // 🔴 反恒真：只认「把 totals 直接当绑定名取走」这一种旧形态（totals 后紧跟 , 或 }）。
+  //    新写法是 `totals: dineTotals`（后跟冒号）⇒ 不被误伤；改回 `totals` ⇒ 当场转红。
+  check('8-⑥ 旧写法「只从 buildDishReview 取 totals」已绝迹（反恒真）',
+    !RE_OLD.test(idxNo8),
+    '命中即说明顶层 totals 又退回仅堂食');
+  check('8-⑦ mergeTotals 从 service 单源取，index.js 不得内联第二份',
+    /require\(['"]\.\/service['"]\)/.test(idxNo8) && /mergeTotals/.test(idxNo8)
+    && !/function\s+mergeTotals/.test(idxNo8));
+
+  // ---- 8-⑧ 自失效护栏（R182 纪律：扫描面非退化 + 关键锚点在场）----
+  check('8-⑧ 扫描面非退化：index.js / service.js 均在场且关键锚点在场',
+    idxSrc.length > 1000 && svcSrc.length > 1000
+    && /mergeTotals/.test(svcSrc) && /exports\.main/.test(idxSrc)
+    && /buildTakeawayReview/.test(svcSrc));
+}
+
 console.log('\n===== getDishReview 算法层守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);
 })().catch(function (e) {
