@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：155 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：158 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -960,6 +960,23 @@ const SUITES = [
   //   则文档无该字段；而读侧（list/listAll/countActive）强制 `is_deleted:false`
   //   的**严格等值**匹配 ⇒ 写成功、读不出、两端零报错（R249 真云实证）。
   ['doc-write-isdeleted',  'tools/check_doc_write_isdeleted.js'],
+  // ===== R252 已导入账单「查看 + 清除」守卫（同族病：见头部注释同名条目）=====
+  //   根因：R251 报障第 ④ 问暴露的真缺口 —— `external_sales_daily` **只有写入、没有删除**
+  //   （写 3 处 / 读 1 处 / 删 0 处）⇒ 导错了看不见也删不掉。本批补 `getSalesBills`（列账单）
+  //   + `clearSalesBills`（软删）。两函数**都要反向解析 `_id`** ⇒ 解析分叉即「列表里看得见、
+  //   点清除却删不掉」（静默失效，与 dish-key-single 同族）⇒ 解析上提单源 `common/salesBillId.js`。
+  //   判据 = ① 单源被两侧引用（函数引用恒等）② 形态解析行为（含 **BUG-A 回归**：`jd_order`
+  //   被 rightmost-'_' 切成 `order`）③ 聚合行为 ④ 清除匹配（含 **BUG-B 回归**：kind 缺省时
+  //   构键错误 ⇒「不限形态」全部命中 0 行）⑤ index 源码形状（只读性/软删三件套/幂等位置/上限）
+  //   ⑥ validate 独立 ⑦ 自检非退化。两个 BUG 都是本轮实现中**真踩到**的，故各留回归断言。
+  ['sales-bills',          'tools/check_salesbills.js'],
+  // ===== R252 两新云函数自带 selftest（面 A：`cloudfunctions/<fn>/selftest.js` 零漏网）=====
+  //   ⚠️ 本项**由 check_suite_coverage 的 S5 抓出**（首次刷缓存时 rc=1，报「未挂 SUITES」）
+  //   —— 即「新增云函数」的**第 6 处同步面**：除 A15 白名单 / core/10 全集+契约行 /
+  //   隐私收集项 / 幂等契约之外，**两函数的 selftest 还必须挂进 SUITES**，
+  //   否则判据存在却不被自动执行（本守卫存在的理由）。
+  ['sales-bills-fn',       'cloudfunctions/getSalesBills/selftest.js'],
+  ['clear-sales-bills-fn', 'cloudfunctions/clearSalesBills/selftest.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

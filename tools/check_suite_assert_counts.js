@@ -205,6 +205,10 @@ const CASES = [
   //   （C-②/C-③ 正负样本互证）；S 组 8 条含三道下界 + 两条锚点在场护栏；断言数不受守则
   //   「删掉 C 组自检」会静默通过。
   { key: 'check_doc_write_isdeleted', rel: 'tools/check_doc_write_isdeleted.js' },  // 39 条（P 16 + S 8 + A 5 + B 5 + C 4 + E 1）
+  // R252：已导入账单「查看+清除」——① 单源被两侧引用 5 + ② 形态解析行为 8（含 BUG-A 回归）
+  //   + ③ 聚合行为 7 + ④ 清除匹配 7（含 BUG-B 回归）+ ⑤ index 源码形状 8 + ⑥ validate 形状 4
+  //   + ⑦ 自检非退化 3。两个 BUG 都是本轮实现中真踩到的 ⇒ 断言数被删会静默通过的那类风险尤高。
+  { key: 'check_salesbills', rel: 'tools/check_salesbills.js' },  // 43 条（①5+②8+③7+④7+⑤9+⑥4+⑦3）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

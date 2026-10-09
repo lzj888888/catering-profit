@@ -113,5 +113,31 @@
         <button class="btn-small ghost" bindtap="goMap">{{t.reviewGoMap}}</button>
       </view>
     </view>
+
+    <!-- ===== R252：已导入账单（查看 + 清除）=====
+         补 R251 报障第 ④ 问的真缺口：`external_sales_daily` 原先只有写入没有删除
+         ⇒ 导错了看不见也删不掉。此处列出该店导过的账单（一平台一天一条），可单条或全部清除。 -->
+    <view class="section-title">{{t.reviewBillsTitle}}</view>
+    <view class="card2">
+      <view class="muted">{{t.reviewBillsHint}}</view>
+
+      <view class="muted" wx:if="{{!bills.length}}">{{t.reviewBillsEmpty}}</view>
+
+      <block wx:if="{{bills.length}}">
+        <view class="row" wx:for="{{bills}}" wx:key="bill_id">
+          <view class="c-name">
+            <text>{{item.platformText}}</text>
+            <text class="plat">{{item.bizDate}} · {{item.kindText}}</text>
+            <text class="plat">{{item.rowCount}}{{t.reviewBillsRows}} · {{item.qtyText}}{{t.reviewBillsQty}} · {{t.cur}}{{item.amountText}}</text>
+            <text class="zero" wx:if="{{item.cleared}}">{{t.reviewBillsCleared}}</text>
+          </view>
+          <button class="btn-small ghost" wx:if="{{!item.cleared}}"
+                  data-idx="{{index}}" bindtap="onClearBill" disabled="{{clearing}}">{{t.reviewBillsClear}}</button>
+        </view>
+        <view class="field-save">
+          <button class="btn-small ghost" bindtap="onClearAllBills" disabled="{{clearing}}">{{t.reviewBillsClearAll}}</button>
+        </view>
+      </block>
+    </view>
   </block>
 </view>

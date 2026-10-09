@@ -335,6 +335,19 @@ const A15_EXEMPT = [
   //   ⇒ 沿用既有记登、**不新增白名单条目**（避免把豁免面撑大），
   //   按 round103 纪律记明时点与理由：
   //   by=WorkBuddy / date=2026-10-09 / reason=R249 授权：修裸写 is_deleted 缺陷（两处文件均属已登白名单目录）
+  // R252（同时刻第十九次触发）：补 R251 报障第 ④ 问的真缺口 —— `external_sales_daily`
+  //   全站只有写入、没有删除 ⇒ 导错了看不见也删不掉。本批新增两个函数目录
+  //   （`getSalesBills` 列账单 / `clearSalesBills` 软删），并新增**单源**
+  //   `common/salesBillId.js`（`_id` 形态解析，读/写两侧共用）⇒ 派生 `cx_salesBillId.js`
+  //   （**已在 round110 的 `/^cloudfunctions\/[^/]+\/cx_index\.js$/` 同族条目**，
+  //    但 `cx_salesBillId.js` 是**新文件**，另加一条派生条目，不做 `cx_*` 泛化）。
+  //   均为方案 `review/PLAN_2026-10-09_已导入账单查看与清除.md` 显式授权的新增，非「顺手改」；
+  //   沿用 round103 的**白名单式**登记（精确到目录/文件名），**绝不放宽成 `cloudfunctions/` 全豁免**：
+  //   by=WorkBuddy / date=2026-10-09 / reason=R252 新增 getSalesBills（列已导入账单）+ clearSalesBills（软删）
+  /^cloudfunctions\/getSalesBills\//,
+  /^cloudfunctions\/clearSalesBills\//,
+  /^cloudfunctions\/common\/salesBillId\.js$/,        // R252：新增单源（_id 形态解析）
+  /^cloudfunctions\/[^/]+\/cx_salesBillId\.js$/,      // R252：sync_common 派生（全函数）
 ];
 check('A15 云函数逻辑零改动（仅 initDb 建库单源 + 本批授权函数豁免）', (() => {
   const { execFileSync } = require('child_process');

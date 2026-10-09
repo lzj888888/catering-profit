@@ -40,6 +40,19 @@ Page({
       reviewGoMap: TERMS.card.reviewGoMap,
       reviewGoCard: TERMS.card.reviewGoCard,
       reviewEmpty: TERMS.card.reviewEmpty,
+      // R252：已导入账单「查看 + 清除」
+      reviewBillsTitle: TERMS.card.reviewBillsTitle,
+      reviewBillsHint: TERMS.card.reviewBillsHint,
+      reviewBillsEmpty: TERMS.card.reviewBillsEmpty,
+      reviewBillsBill: TERMS.card.reviewBillsBill,
+      reviewBillsDish: TERMS.card.reviewBillsDish,
+      reviewBillsUnit: TERMS.card.reviewBillsUnit,
+      reviewBillsRows: TERMS.card.reviewBillsRows,
+      reviewBillsQty: TERMS.card.reviewBillsQty,
+      reviewBillsCleared: TERMS.card.reviewBillsCleared,
+      reviewBillsClear: TERMS.card.reviewBillsClear,
+      reviewBillsClearAll: TERMS.card.reviewBillsClearAll,
+      reviewBillsClearedNone: TERMS.card.reviewBillsClearedNone,
       reviewTotals: TERMS.card.reviewTotals,
       reviewTotalQty: TERMS.card.reviewTotalQty,
       reviewTotalRevenue: TERMS.card.reviewTotalRevenue,
@@ -58,6 +71,10 @@ Page({
     unmatched: [],           // 未匹配菜品
     totals: null,
     empty: false,
+    // R252：已导入账单列表（getSalesBills 读侧；与复盘榜同源集合，但**独立读取**）
+    bills: [],
+    billsSummary: null,
+    clearing: false,
   },
 
   onLoad() { this.init(); },
@@ -195,6 +212,85 @@ Page({
       empty: dineIn.length === 0 && unmatched.length === 0 && !takeaway,
     });
     this.markRows();
+    // R252：账单列表**单独一次调用**（读侧独立函数；失败不影响复盘主区渲染）
+    await this.loadBills();
+  },
+
+  // ===== R252：已导入账单（查看 + 清除）=====
+  //   为什么单独一次调用：`getSalesBills` 与 `getDishReview` 是两个读侧函数
+  //   （一个列"导过什么"、一个算"毛利多少"）。分开 ⇒ 账单区失败不拖垮复盘主区。
+  async loadBills() {
+    try {
+      const res = await api.call('getSalesBills', {});
+      const names = TERMS.card.reviewPlatformNames;
+      const bills = (res.list || []).map((x) => ({
+        bill_id: x.bill_id,
+        kind: x.kind,
+        kindText: x.kind === 'bill' ? TERMS.card.reviewBillsBill : TERMS.card.reviewBillsDish,
+        platform: x.platform,
+        platformText: names[x.platform] || x.platform,
+        bizDate: x.biz_date,
+        rowCount: x.row_count,
+        qtyText: String(x.qty),
+        amountText: fmtYuan(x.amount_fen),
+        cleared: !!x.cleared,
+      }));
+      this.setData({ bills, billsSummary: res.summary || null });
+    } catch (e) {
+      // 账单区是"附加信息"：失败就留空，不 toast（复盘主区已渲染，不该被它打断）
+      this.setData({ bills: [], billsSummary: null });
+    }
+  },
+
+  // 清除单条（二次确认 → clearSalesBills({targets}) → 刷新账单区 + 复盘主区）
+  onClearBill(e) {
+    const idx = Number(e.currentTarget.dataset.idx);
+    const b = this.data.bills[idx];
+    if (!b) return;
+    wx.showModal({
+      title: TERMS.card.reviewBillsClear,
+      content: TERMS.card.reviewBillsClearConfirm,
+      confirmColor: '#e74c3c',
+      success: (r) => {
+        if (!r.confirm) return;
+        this.doClear([{ platform: b.platform, biz_date: b.bizDate, kind: b.kind }], false);
+      },
+    });
+  },
+
+  // 全部清除（二次确认 → clearSalesBills({all,confirm_all}) ）
+  onClearAllBills() {
+    if (!this.data.bills.length) {
+      wx.showToast({ title: TERMS.card.reviewBillsClearedNone, icon: 'none' });
+      return;
+    }
+    wx.showModal({
+      title: TERMS.card.reviewBillsClearAll,
+      content: TERMS.card.reviewBillsClearAllConfirm,
+      confirmColor: '#e74c3c',
+      success: (r) => {
+        if (!r.confirm) return;
+        this.doClear([], true);
+      },
+    });
+  },
+
+  async doClear(targets, all) {
+    if (this.data.clearing) return;         // 防连点（同一动作并发 = 幂等键之外的第二道闸）
+    this.setData({ clearing: true });
+    try {
+      const req = { shop_id: (getApp().globalData && getApp().globalData.shop_id) || '' };
+      if (all) { req.all = true; req.confirm_all = true; } else { req.targets = targets; }
+      await api.call('clearSalesBills', req);
+      wx.showToast({ title: TERMS.card.reviewBillsClearedToast, icon: 'success' });
+      // 清除后**两个区都要刷**：账单区（行消失/标已清除）+ 复盘主区（数字自然不含被清的行）
+      await this.loadBills();
+      await this.load();
+    } catch (e) {
+      api.toastError(e);
+    } finally {
+      this.setData({ clearing: false });
+    }
   },
 
   // 阈值变化 → 重标红（仅提示，不影响任何计算口径）

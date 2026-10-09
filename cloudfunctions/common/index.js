@@ -73,4 +73,11 @@ module.exports = {
   //   伴侣守卫：tools/check_dish_key_single_source.js。
   dishKey: require('./dishKey'),
   normalizeDishName: require('./dishKey').normalizeDishName,
+
+  // R252：`external_sales_daily` 的 `_id` 形态解析**单源** —— 读侧 getSalesBills 与写侧 clearSalesBills
+  //   必须用同一份解析，否则「列表里看得见、清除时删不掉」（静默失效）。
+  //   ⚠️ 同 genId 教训：新符号务必在此聚合入口导出，否则云端 `const { parseSalesBillId } = common` 会 TypeError。
+  //   伴侣守卫：tools/check_salesbills.js。
+  salesBillId: require('./salesBillId'),
+  parseSalesBillId: require('./salesBillId').parseSalesBillId,
 };

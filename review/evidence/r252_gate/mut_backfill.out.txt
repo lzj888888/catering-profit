@@ -1,0 +1,17 @@
+基线绿 ✅
+
+A1 退回 BUG-A：平台改 rightmost-'_' 盲切               ❌=3  expect=2-③ -> ✅抓到
+A2 退回 BUG-B：kind 缺省不展开（want 键缺形态）              ❌=3  expect=4-① -> ✅抓到
+A3 软删缺 delete_at（三件套残）                         ❌=1  expect=5-② -> ✅抓到
+A4 幂等预检挪到业务写之后                                 ❌=2  expect=5-④ -> ✅抓到
+A5 疑似物理删除：加一行 .remove(                         ❌=1  expect=5-③ -> ✅抓到
+A6 清理上限护栏改大（下界失效）                              ❌=1  expect=5-⑥-b -> ✅抓到
+A7 getSalesBills 变成可写（加物理删）                    ❌=1  expect=5-① -> ✅抓到
+A8 validate 去掉 targets/all 二选一判据               ❌=1  expect=6-② -> ✅抓到
+A9 unknown 形态被静默吞掉（当命中处理）                      ❌=1  expect=7-③ -> ✅抓到
+B1 等价：pickPlatform 用 some 改写                   ❌=0  -> ✅未假红
+B2 等价：`all || want.has(...)` → 三元              ❌=0  -> ✅未假红
+B3 等价：kinds 展开用 concat                         ❌=0  -> ✅未假红
+
+还原后 ❌=0 crash=False -> ✅回绿
+统计：抓到 9 / 漏网 0 / 期望 9
