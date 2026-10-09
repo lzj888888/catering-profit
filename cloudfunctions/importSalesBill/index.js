@@ -20,6 +20,7 @@ const {
   bufferToMatrix, detectPlatform, guessHeader, parseBillMatrix, checkGradeA, SALES_SCHEMA,
   pickSheet,   // R245：🔴 京东表名不固定 ⇒ 判定 sheet 是否存在必须按签名找，不能硬编码表名
   detectPlatformInRows, detectPlatformInMatrix,   // R250：平台自动判定逐行试签名（京东订单级两级表头）
+  PLATFORM_AMBIGUOUS,   // R253：多平台同时命中哨兵 —— 🔴 必须 import，truthy 陷阱见 :73 附近
   DISH_SHAPES, detectDishMatrix, parseDishSales, parseDishSalesC, dishRefId, saleDocId,
 } = require('./service');
 const { validateInput } = require('./validate');
@@ -72,6 +73,14 @@ exports.main = async (event) => {
     //   `detectPlatformInMatrix` = 该口径的唯一入口（可 require ⇒ 守卫能真调它判行为）。
     const hit = detectPlatformInMatrix(matrix);
     if (hit) platform = hit.platform;
+  }
+  // 🔴 R253：多平台「同时命中」⇒ 拒绝代选，改为**指名请用户手选**。
+  //   为什么单列一支而不是并进下面那句「无法识别账单平台」：两者**用户下一步动作完全不同** ——
+  //   认不出 = 表不对（换文件）；多平台命中 = 表对但归属有歧义（选一下即可）。
+  //   并成一句会让用户拿着正确的表反复换文件。且 `'AMBIGUOUS'` 是 truthy，
+  //   若不显式拦截，下面 `pickSheet(sheets, 'AMBIGUOUS')` 找不到 sheet ⇒ 落到"认不出"分支（错误归因）。
+  if (platform === PLATFORM_AMBIGUOUS) {
+    return fail(ERROR_CODES.INVALID_PARAM, '这张表同时符合多个平台的账单特征（例如同时含「结算金额」与「商家应收款」），无法自动判定是哪个平台。请在导入时手动选择平台后再试。');
   }
   // 🔴 R245：判定「表在不在」改为按签名找 sheet（京东表名不固定：com.jd.o2o… / sku对账单下载）
   if (!platform || !pickSheet(matrix.sheets, platform)) {

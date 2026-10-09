@@ -1,0 +1,9 @@
+淘宝真表头                     | hits=[taobao] | 现状返回="taobao"
+美团真表头                     | hits=[meituan] | 现状返回="meituan"
+京东订单级 R2                     | hits=[jd_order] | 现状返回="jd_order"
+京东 SKU 表                     | hits=[jd_sku] | 现状返回="jd_sku"
+淘宝∪美团 并集表头                     | hits=[taobao,meituan] | 现状返回="taobao"  🔴 多平台命中
+结算金额 + 商家应收款（无账单日期）                  | hits=[] | 现状返回=null
+
+多平台命中的样本数 = 1 / 6
+⇒ 若 >0，则 AMBIGUOUS 哨兵有真实靶子；现状是「闷头按第一个跑」。

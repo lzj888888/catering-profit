@@ -15,7 +15,8 @@ function check(name, cond, detail) {
   else { fail++; console.log(`❌ ${name}${detail ? '  (' + detail + ')' : ''}`); }
 }
 
-const { detectPlatform, guessHeader, parseBillMatrix, detectPlatformInMatrix } = require('../utils/billParse.js');
+const { detectPlatform, guessHeader, parseBillMatrix, detectPlatformInMatrix, detectPlatformInRows,
+        PLATFORM_PROFILE } = require('../utils/billParse.js');
 const ROOT = path.join(__dirname, '..', 'review', 'evidence', 'r181l_stage1_import_feed', 'fixtures');
 const tb = JSON.parse(fs.readFileSync(path.join(ROOT, 'taobao_2026-08.matrix.json'), 'utf8'));
 const mt = JSON.parse(fs.readFileSync(path.join(ROOT, 'meituan_2026-08.matrix.json'), 'utf8'));
@@ -213,6 +214,57 @@ check('B3 云函数 index.js 的平台自动判定调用 detectPlatformInMatrix(
   block.indexOf('detectPlatformInMatrix(matrix)') >= 0, 'block 长度=' + block.length);
 check('B4 自失效护栏：B3 的扫描面非空（取不到 `if (!platform) {` 段时必须红）',
   block.length > 40, 'block 长度=' + block.length);
+
+// ===== D（R253）：多平台「同时命中」必须拒绝代选，不得闷头挑一个跑 =====
+// 缺口成因：各平台档案的 require 是**独立**判据，谁都不排除谁 ⇒ 一张表同时含
+//   淘宝 `结算金额` + 美团 `商家应收款` 时两套签名同时成立。旧实现 `for…return p`
+//   命中第一个就返回 ⇒ 按淘宝跑完并给出「算完了」的结果 —— **不报错才是最大的错**。
+// 🔴 期望值是**手写字面量**（不从被测算的 PLATFORM_AMBIGUOUS 读回），否则变异改常量判据跟着变、永不红。
+console.log('\n===== D 多平台同时命中 ⇒ 拒绝代选（R253）=====');
+// 表头刻意同时含两平台签名列（无 deny 拦得住，两边都成立）
+const BOTH = ['账单日期', '结算金额', '商家应收款', '订单类型'];
+const hitsBoth = PLATFORM_PROFILE.taobao.require.every((c) => BOTH.indexOf(c) >= 0)
+  && PLATFORM_PROFILE.meituan.require.every((c) => BOTH.indexOf(c) >= 0);
+check('D0 样本构造有效：同一表头确实同时满足淘宝与美团两套签名（否则判据无靶子）', hitsBoth);
+check('D1 多平台同时命中 ⇒ detectPlatform 返 "AMBIGUOUS"（不返 taobao/meituan 任一个）',
+  detectPlatform(BOTH) === 'AMBIGUOUS', String(detectPlatform(BOTH)));
+check('D2 单平台样本不受影响：淘宝仍 taobao / 美团仍 meituan（兼容性回归）',
+  detectPlatform(['账单日期', '结算金额']) === 'taobao'
+  && detectPlatform(['账单日期', '商家应收款']) === 'meituan');
+check('D3 认不出仍返 null（fail-closed 语义不变，未被哨兵污染）',
+  detectPlatform(['foo', 'bar']) === null && detectPlatform([]) === null);
+
+// 逐行/逐 sheet 两级都必须**冒泡**哨兵（truthy 陷阱：`if (p)` 拦不住真值字符串）
+const BOTH_ROWS = [['表头组'], BOTH, ['1', '2', '3', '4']];
+const rowsHit = detectPlatformInRows(BOTH_ROWS);
+check('D4 detectPlatformInRows 冒泡哨兵（truthy 陷阱：`if (p)` 会把它当平台名往下传）',
+  rowsHit && rowsHit.platform === 'AMBIGUOUS', JSON.stringify(rowsHit));
+const matrixHit = detectPlatformInMatrix({ sheets: { s1: { rows: BOTH_ROWS } } });
+check('D5 detectPlatformInMatrix 冒泡哨兵（跨 sheet 也不代选）',
+  matrixHit && matrixHit.platform === 'AMBIGUOUS', JSON.stringify(matrixHit));
+check('D6 哨兵样本里 R2 才是命中行（证明确实按行试签名后再拦，而非碰巧）',
+  rowsHit && rowsHit.headerRow === 1, rowsHit ? String(rowsHit.headerRow) : 'null');
+
+// 调用点：index.js 必须**显式**比较哨兵（不能用 if(platform) 判空），且要给可读提示
+const idxNoCmtD = idxSrc;   // 上方已剥注释
+check('D7 index.js 显式比较 platform === PLATFORM_AMBIGUOUS（判空式 if 拦不住真值字符串）',
+  /platform\s*===\s*PLATFORM_AMBIGUOUS/.test(idxNoCmtD));
+check('D8 index.js 哨兵分支在「无法识别账单平台」之前（否则被错误归因成"表不对"）',
+  idxNoCmtD.indexOf('PLATFORM_AMBIGUOUS') < idxNoCmtD.indexOf('无法识别账单平台')
+  && idxNoCmtD.indexOf('PLATFORM_AMBIGUOUS') >= 0);
+check('D9 index.js 哨兵提示含「手动选择平台」指引（用户下一步动作可执行）',
+  idxNoCmtD.indexOf('手动选择平台') >= 0);
+check('D10 index.js 已从 service 导入 PLATFORM_AMBIGUOUS（缺则运行时 ReferenceError）',
+  /PLATFORM_AMBIGUOUS/.test(idxNoCmtD.split("require('./service')")[0] || ''));
+check('D11 自失效护栏：D7~D10 的扫描面非空（index.js 源码可读）',
+  idxNoCmtD.length > 500, idxNoCmtD.length + ' 字符');
+// 云端副本与前端副本必须同步改（两处独立副本，只改一处 = 生产走旧逻辑）
+check('D12 云端副本 service.js 也返哨兵（两份副本同步，非只改前端）',
+  !!(cfSvc && cfSvc.detectPlatform(BOTH) === 'AMBIGUOUS'),
+  cfSvc ? String(cfSvc.detectPlatform(BOTH)) : '云端副本不可加载');
+check('D13 两份副本在哨兵样本上行为一致（逐条等价）',
+  !!(cfSvc && JSON.stringify(cfSvc.detectPlatformInMatrix({ sheets: { s1: { rows: BOTH_ROWS } } }))
+    === JSON.stringify(detectPlatformInMatrix({ sheets: { s1: { rows: BOTH_ROWS } } }))));
 
 console.log('\n' + '='.repeat(60));
 console.log(`===== 账单解析自测结果：${pass} 通过 / ${fail} 失败 =====`);

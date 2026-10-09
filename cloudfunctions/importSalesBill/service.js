@@ -124,6 +124,13 @@ const PLATFORM_PROFILE = {
 };
 const PLATFORM_ORDER = ['taobao', 'meituan', 'jd_order', 'jd_sku'];
 
+// 🔴 R253：多平台「同时命中」的哨兵值 —— 与 utils/billParse.js 同步（两份独立副本，改一处必改另一处）。
+//   成因：各平台档案的 require 是**独立**判据，谁都不排除谁 ⇒ 一张表同时含
+//   淘宝 `结算金额` + 美团 `商家应收款`（第三方导出宽表 / 平台改版加列）时两套签名同时成立。
+//   旧实现 `for…return p` 命中第一个就返回 ⇒ 闷头按淘宝跑完并给出"算完了"的结果 —— 不报错才是最大的错。
+//   ⚠️ 本哨兵是**字符串**（truthy）⇒ `if (p)` / `if (hit)` 式的判空拦截**都拦不住它**，上层必须显式比较。
+const PLATFORM_AMBIGUOUS = 'AMBIGUOUS';
+
 // 🔴 R247：原此处的 `COL` / `SHEET` 两个映射表在 R245 平台档案化后**已零引用**
 //   （sheet 名与列名全部收进 `PLATFORM_PROFILE[]`，`detectPlatform` / `pickSheet` 直接读档案）
 //   ⇒ 作为残骸删除（全仓 grep 零引用；两处副本 utils/billParse.js 同步删）。
@@ -132,13 +139,16 @@ function detectPlatform(header) {
   if (!Array.isArray(header)) return null;
   const cols = header.filter(Boolean).map((s) => String(s).trim());
   const has = (n) => cols.indexOf(n) >= 0;
+  const hits = [];
   for (const p of PLATFORM_ORDER) {
     const prof = PLATFORM_PROFILE[p];
     if (!(prof.require || []).every(has)) continue;
     if ((prof.deny || []).some(has)) continue;
-    return p;
+    hits.push(p);
   }
-  return null;
+  if (hits.length === 0) return null;                    // 认不出 ⇒ fail-closed（现状不变）
+  if (hits.length === 1) return hits[0];                 // 唯一命中 ⇒ 现状不变
+  return PLATFORM_AMBIGUOUS;                             // 🔴 R253：≥2 命中 ⇒ 拒绝代选
 }
 
 // 🔴 R250：平台判定**不能先问「哪一行最像表头」**。
@@ -153,6 +163,9 @@ function detectPlatformInRows(rows, limit) {
   const n = Math.min(list.length, limit == null ? 5 : limit);
   for (let i = 0; i < n; i++) {
     const p = detectPlatform(list[i] || []);
+    // 🔴 R253：`'AMBIGUOUS'` 是**真值字符串** ⇒ `if (p)` 拦不住它，会被当平台名往下传。
+    //   遇到即**立即冒泡**，不继续试后续行去挑一个"更像"的（那正是本条要消灭的「闷头代选」）。
+    if (p === PLATFORM_AMBIGUOUS) return { platform: PLATFORM_AMBIGUOUS, headerRow: i };
     if (p) return { platform: p, headerRow: i };
   }
   return null;
@@ -164,6 +177,8 @@ function detectPlatformInMatrix(matrix) {
   const sheets = (matrix && matrix.sheets) || {};
   for (const name of Object.keys(sheets)) {
     const hit = detectPlatformInRows((sheets[name] || {}).rows);
+    // 🔴 R253：哨兵同上，跨 sheet 也不代选。
+    if (hit && hit.platform === PLATFORM_AMBIGUOUS) return { platform: PLATFORM_AMBIGUOUS, headerRow: hit.headerRow, sheet: name };
     if (hit) return { platform: hit.platform, headerRow: hit.headerRow, sheet: name };
   }
   return null;
@@ -634,6 +649,7 @@ module.exports = {
   bufferToMatrix, detectPlatform, guessHeader, parseBillMatrix, checkGradeA, SALES_SCHEMA, toNum,
   pickSheet, normDate, PLATFORM_PROFILE,   // R245：P4 按签名找 sheet / 日期归一
   detectPlatformInRows, detectPlatformInMatrix,   // R250：两级表头（京东订单级）⇒ 平台判定逐行试签名，不靠 guessHeader 选行
+  PLATFORM_AMBIGUOUS,                            // R253：多平台同时命中哨兵（上层必须显式比较，truthy 陷阱）
   fmtCell, EXCEL_UTC_BASE,   // R232 C-11：fmtCell 导出以便守卫直接验证日期口径（此前漏导，0/4 全错无人知）
   DISH_SHAPES, DISH_A_STRUCT, normalizeDishName, detectDishShape, detectDishMatrix,
   DISH_C_ALIAS, canonDishCHeader, findDishCCol,   // R245 P7：形态 C 列名别名单源（守卫用）

@@ -64,6 +64,12 @@ const EXEMPT = {
   //   reg.exe 黑名单拦断（wait IDE port timeout），该脚本未产出任何数据，纯一次性取证件。
   'review/evidence/r181b_gate/check_timeout.py':
     { by: 'r181d', date: '2026-09-30', reason: 'R86 timeout 真云回读的一次性取证脚本（通道被安全策略拦断、未产出数据），非生产判据' },
+  // R253 补：R252 归档的「IDE 就绪机器判据探针」—— 判微信开发者工具是否起来（读 `.ide` 端口 + 进程名），
+  //   纯一次性取证件，服务于「部署前先证 IDE 已在」这一步，不参与任何生产链路。
+  //   ⚠️ 教训：归档脚本**别用** check_/verify_/selftest_/test_ 前缀（技能 gate-under-sandbox §⑧）——
+  //      本文件是 R252 取件时踩到的那次；R253 自身的取证件已改用 d0_/d1_/d3_/m1m2_ 前缀规避。
+  'review/evidence/r252_gate/check_ide_ready.py':
+    { by: 'r253', date: '2026-10-09', reason: '微信开发者工具就绪判据的一次性取证脚本（读 .ide 端口 + 进程名），非生产判据' },
 };
 
 function gitTracked() {

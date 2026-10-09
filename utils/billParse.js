@@ -92,6 +92,16 @@ const PLATFORM_PROFILE = {
 // 判定顺序：先淘宝后美团（沿用原语义），再京东两形态；全不中返回 null = fail-closed
 const PLATFORM_ORDER = ['taobao', 'meituan', 'jd_order', 'jd_sku'];
 
+// 🔴 R253：多平台「同时命中」的哨兵值。
+//   成因：各平台档案的 require 是**独立**判据，谁都不排除谁 ⇒ 一张表同时含
+//   淘宝 `结算金额` + 美团 `商家应收款`（第三方导出宽表 / 平台改版加列都会造成）
+//   时，两套签名同时成立。旧实现 `for…return p` **命中第一个就返回** ⇒ 闷头按淘宝跑完，
+//   用户看到一份「算完了」的结果 —— **不报错才是最大的错**。
+//   ⇒ 改为「收集全部命中」：0 个 null · 1 个返平台 · ≥2 个 返本哨兵（fail-closed）。
+//   ⚠️ 本哨兵是**字符串**（truthy）⇒ 所有 `if (p)` / `if (hit)` 式的判空拦截**都拦不住它**，
+//      上层必须**显式**比较（见 detectPlatformInRows / detectPlatformInMatrix / index.js）。
+const PLATFORM_AMBIGUOUS = 'AMBIGUOUS';
+
 // 🔴 R247：原此处的 `COL` / `SHEET` 两个映射表在 R245 平台档案化后**已零引用**
 //   （sheet 名与列名全部收进 `PLATFORM_PROFILE[]`，`detectPlatform` / `pickSheet` 直接读档案）
 //   ⇒ 作为残骸删除（与云函数副本 cloudfunctions/importSalesBill/service.js 同步）。
@@ -99,20 +109,24 @@ const PLATFORM_ORDER = ['taobao', 'meituan', 'jd_order', 'jd_sku'];
 /**
  * 按表头列名判定平台。🔴 只看列名、不看文件名。
  * 判据 = 签名列（require）全中 且 排除列（deny）全不中；全不中返回 null（fail-closed）。
+ * 🔴 R253：**多平台同时命中 ⇒ 返回 `'AMBIGUOUS'`**（不挑一个跑）。
  * @param {string[]} header 表头（列名数组）
- * @returns {'taobao'|'meituan'|'jd_order'|'jd_sku'|null}
+ * @returns {'taobao'|'meituan'|'jd_order'|'jd_sku'|'AMBIGUOUS'|null}
  */
 function detectPlatform(header) {
   if (!Array.isArray(header)) return null;
   const cols = header.filter(Boolean).map((s) => String(s).trim());
   const has = (n) => cols.indexOf(n) >= 0;
+  const hits = [];
   for (const p of PLATFORM_ORDER) {
     const prof = PLATFORM_PROFILE[p];
     if (!(prof.require || []).every(has)) continue;      // 签名列未全中
     if ((prof.deny || []).some(has)) continue;           // 命中任一排除列
-    return p;
+    hits.push(p);
   }
-  return null;
+  if (hits.length === 0) return null;                    // 认不出 ⇒ fail-closed（现状不变）
+  if (hits.length === 1) return hits[0];                 // 唯一命中 ⇒ 现状不变
+  return PLATFORM_AMBIGUOUS;                             // 🔴 ≥2 命中 ⇒ 拒绝代选
 }
 
 // 行 → 去空 trim 的列名数组
@@ -141,6 +155,10 @@ function detectPlatformInRows(rows, limit) {
   const n = Math.min(list.length, limit == null ? 5 : limit);
   for (let i = 0; i < n; i++) {
     const p = detectPlatform(list[i] || []);
+    // 🔴 R253：`'AMBIGUOUS'` 是**真值字符串** ⇒ `if (p)` 拦不住它，会当成平台名往下传。
+    //   冲突要么在本行暴露、要么根本不存在（同一张表复用同表头）⇒ 遇到即**立即冒泡**，
+    //   不继续试后续行去挑一个"更像"的 —— 那正是本条要消灭的「闷头代选」。
+    if (p === PLATFORM_AMBIGUOUS) return { platform: PLATFORM_AMBIGUOUS, headerRow: i };
     if (p) return { platform: p, headerRow: i };
   }
   return null;
@@ -151,6 +169,8 @@ function detectPlatformInMatrix(matrix) {
   const sheets = (matrix && matrix.sheets) || {};
   for (const name of Object.keys(sheets)) {
     const hit = detectPlatformInRows((sheets[name] || {}).rows);
+    // 🔴 R253：哨兵同上，立即冒泡（不跨 sheet 代选）。
+    if (hit && hit.platform === PLATFORM_AMBIGUOUS) return { platform: PLATFORM_AMBIGUOUS, headerRow: hit.headerRow, sheet: name };
     if (hit) return { platform: hit.platform, headerRow: hit.headerRow, sheet: name };
   }
   return null;
@@ -323,4 +343,4 @@ function parseBillMatrix(matrix, opts) {
 }
 
 module.exports = { detectPlatform, guessHeader, parseBillMatrix, toNum, normDate, pickSheet, PLATFORM_PROFILE,
-  detectPlatformInRows, detectPlatformInMatrix };   // R250：平台判定逐行试签名（两级表头 / 自动判定路径）
+  detectPlatformInRows, detectPlatformInMatrix, PLATFORM_AMBIGUOUS };   // R250：平台判定逐行试签名（两级表头 / 自动判定路径）；R253：+多平台哨兵

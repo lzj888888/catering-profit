@@ -21,7 +21,8 @@
  * 核心：把一组销量行聚合 → 匹配成本卡 → 算毛利 → 排名 → 合计（两条路共用，不复制）。
  * @param {Array<{dish_key:string, qty:*, amount:*}>} sales 一组销量行
  * @param {Array<{card_code:string, version:number, name:string, total_cost:*, created_at:*}>} cards 成本卡（全版本）
- * @param {{normalizeDishName:Function, toMonth:Function}} deps 单源注入
+ * @param {{normalizeDishName:Function, toMonth:Function, lookupCardCode?:Function}} deps 单源注入
+ *   `lookupCardCode(dishKey, platform) => card_code|''`（可空）：菜名映射表查询（R253 决策 2）。
  * @returns {{ranked:Array, unmatched:Array, totals:Object}}
  */
 function rankReview(sales, cards, deps) {
@@ -45,21 +46,41 @@ function rankReview(sales, cards, deps) {
   }
 
   // ===== 3. 按 dish_key 聚合销量 =====
+  // 🔴 R253：聚合桶带上 `platform` —— 映射表唯一键是 (shop_id, platform, external_ref_id)
+  //   ⇒ 同一 dish_key 在不同平台可挂不同卡，查表必须带平台，否则跨平台串卡。
   const agg = new Map();
   for (const s of (sales || [])) {
     const k = (s.dish_key == null ? '' : String(s.dish_key)).trim();
     if (!k) continue;                                    // 空 dish_key 跳过（不计入、不报错）
-    const a = agg.get(k) || { qty: 0, amountFen: 0 };
+    const a = agg.get(k) || { qty: 0, amountFen: 0, platform: '' };
     a.qty += (Number(s.qty) || 0);
     a.amountFen += (Number(s.amount) || 0);
+    // 同 dish_key 跨平台混入时以首个非空平台为准（rankReview 的调用方已按平台分组，正常不会混）
+    if (!a.platform) a.platform = (s.platform == null ? '' : String(s.platform)).trim();
     agg.set(k, a);
   }
 
   // ===== 4. 匹配 + 计算（未匹配单列，不归零）=====
+  // 🔴 R253（决策 2）：匹配**先查菜名映射表**，查不到再回落同名归一匹配。
+  //   为什么需要映射表：菜名匹配走 `normalizeDishName`（trim + NFKC），**保留规格后缀与括号** ⇒
+  //   平台侧写「耙牛肉(小份)」而成本卡叫「耙牛肉」时，两边归一后依然不等 ⇒ 静默落 unmatched。
+  //   映射表（shop_dish_mapping）是人工一次性挂钩（平台菜品 → 本地卡），比字符串猜名可靠。
+  //   🔴 回落是**必须**的：映射表为空（新店／尚未挂钩）时行为须与改动前**逐行等价**，
+  //      否则本次改动会让所有存量用户"忽然全菜不匹配"。
+  //   🔴 键用 `dishKey` 而**不是**销量行的 external_ref_id：两者语义不同 ——
+  //      销量行 = 'DISH:<platform>:<biz_date>:<dish_key>'（**含日期**，逐日变），
+  //      映射表 = 平台侧菜品 ID / dish_key（**稳定**）。用 external_ref_id 作键会天天匹配不上。
+  const lookupCardCode = deps.lookupCardCode;            // 可空 ⇒ 无映射表时退化为纯名称匹配
   const ranked = [];
   const unmatched = [];
   for (const [dishKey, a] of agg) {
-    const cardCode = nameToCode.get(normalizeDishName(dishKey)) || '';
+    let cardCode = '';
+    if (typeof lookupCardCode === 'function') {
+      cardCode = lookupCardCode(dishKey, a.platform) || '';
+    }
+    if (!cardCode || !latestByCode.has(cardCode)) {
+      cardCode = nameToCode.get(normalizeDishName(dishKey)) || '';   // 回落：同名归一（原口径）
+    }
     const card = cardCode ? latestByCode.get(cardCode) : null;
     if (!card) {
       unmatched.push({ dish_key: dishKey, name: dishKey, qty: a.qty, amountFen: a.amountFen });

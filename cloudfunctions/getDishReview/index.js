@@ -60,11 +60,39 @@ exports.main = async (event) => {
   const cardsRes = await da.listAll('shop_cost_card', { shop_id: shopId });
   const cards = (cardsRes && cardsRes.data) || [];
 
+  // ===== 4b. 读菜名映射表（R253 决策 2；表为空 ⇒ 行为与接线前逐行等价）=====
+  //   🔴 `shop_dish_mapping` 唯一键 = (shop_id, platform, external_ref_id)（R239 已建索引）。
+  //   此处 `external_ref_id` 存**平台侧菜品 ID / dish_key**（规范 §6.2，稳定）；
+  //   与销量行的 `external_ref_id`（'DISH:<platform>:<biz_date>:<dish_key>'）**语义不同**，
+  //   故查找键取 `dish_key`，不取销量行的 external_ref_id（含日期会天天失配）。
+  //   ⚠️ 读失败不阻断主流程：映射表是**增强**，缺失时应回落名称匹配而非整页报错。
+  let mapping = [];
+  try {
+    const mapRes = await da.listAll('shop_dish_mapping', { shop_id: shopId });
+    mapping = (mapRes && mapRes.data) || [];
+  } catch (e) { mapping = []; }
+  // (platform + '|' + dish_key) → card_code；同键后者覆盖（同一挂钩重复登记取最新）
+  const mapIndex = new Map();
+  for (const m of mapping) {
+    const p = (m.platform == null ? '' : String(m.platform)).trim();
+    const ref = (m.external_ref_id == null ? '' : String(m.external_ref_id)).trim();
+    const cc = (m.card_code == null ? '' : String(m.card_code)).trim();
+    if (!ref || !cc) continue;
+    mapIndex.set(p + '|' + ref, cc);
+  }
+  const lookupCardCode = (dishKey, platform) => {
+    const k = (dishKey == null ? '' : String(dishKey)).trim();
+    if (!k) return '';
+    const p = (platform == null ? '' : String(platform)).trim();
+    return mapIndex.get(p + '|' + k) || mapIndex.get('|' + k) || '';
+  };
+
   // ===== 5~6. 分流 + 聚合 + 匹配 + 毛利计算 + 排名 + 合计（纯函数 · 见 service.js）=====
   //   🔴 分流在 service 层做（splitSales 可复算），不在 index 做业务判断。
   const { dineIn, takeaway: takeawaySales } = splitSales(allSales);
-  const { dine_in: ranked, unmatched, totals } = buildDishReview(dineIn, cards, { normalizeDishName, toMonth });
-  const takeawayResult = buildTakeawayReview(takeawaySales, cards, { normalizeDishName, toMonth });
+  const deps = { normalizeDishName, toMonth, lookupCardCode };
+  const { dine_in: ranked, unmatched, totals } = buildDishReview(dineIn, cards, deps);
+  const takeawayResult = buildTakeawayReview(takeawaySales, cards, deps);
 
   return ok({
     shop_id: shopId,

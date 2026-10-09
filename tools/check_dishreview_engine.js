@@ -45,9 +45,10 @@ sec('⓪ 模块在场（读不到即红，不静默放行）');
 check('0-① service.js 在场', svcSrc.length > 0, SVC_REL);
 check('0-② index.js 在场', idxSrc.length > 0, IDX_REL);
 
-let buildDishReview = null, normalizeDishName = null, toMonth = null;
+let buildDishReview = null, rankReview = null, normalizeDishName = null, toMonth = null;
 try {
   buildDishReview = require(path.join(ROOT, 'cloudfunctions/getDishReview/service.js')).buildDishReview;
+  rankReview = require(path.join(ROOT, 'cloudfunctions/getDishReview/service.js')).rankReview;
 } catch (e) { /* 下面判据判红 */ }
 try {
   normalizeDishName = require(path.join(ROOT, 'cloudfunctions/common/dishKey.js')).normalizeDishName;
@@ -322,6 +323,110 @@ check('6-⑨ wxml 真渲染成因说明与平台合计（剥注释后判，防�
 check('6-⑩ 自检：合成的「只渲染标题、不渲染合计」样本必须判红',
   judgePlatformSummary('<view class="section-title">{{t.reviewTakeaway}} · {{item.platformName}}</view>') === false);
 check('6-⑪ 自失效护栏：wxml 扫描面非空', wxmlNoCmt.length > 300, wxmlNoCmt.length + ' 字符');
+
+// ============ ⑦ 菜名映射表接线（R253 决策 2）============
+// 缺口：菜品匹配只走 `normalizeDishName`（trim + NFKC，**保留规格后缀与括号**）⇒
+//   平台写「耙牛肉(小份)」而成本卡叫「耙牛肉」时两边归一后仍不等 ⇒ **静默落 unmatched**。
+//   映射表（shop_dish_mapping）是人工一次性挂钩（平台菜品 → 本地卡），比字符串猜名可靠。
+// 🔴 本节最重要的两条是 7-①/7-②（**回落等价**）：
+//   映射表为空 / 未注入时，行为必须与接线前**逐字相同** —— 否则本次改动会让所有存量用户
+//   "忽然全菜不匹配"，且**不报错**（比不接线更坏）。
+// 🔴 期望值全部手推，不从被测模块读回。
+console.log('\n============ ⑦ 菜名映射表接线（R253 决策 2）============');
+
+// ⚠️ created_at 必须传 **Date**（toMonth 真口径是 getUTCFullYear ⇒ 传 ISO 串会抛）
+const CARD_FIX = [
+  { card_code: 'C001', version: 1, name: '耙牛肉', total_cost: 1200, created_at: new Date('2026-09-01T00:00:00Z') },
+  { card_code: 'C001', version: 2, name: '耙牛肉', total_cost: 1350, created_at: new Date('2026-10-01T00:00:00Z') },
+  { card_code: 'C002', version: 1, name: '小面', total_cost: 300, created_at: new Date('2026-09-05T00:00:00Z') },
+];
+const BASE_DEPS = { normalizeDishName, toMonth };
+
+// ---- 7-①/7-② 回落等价（防存量用户受伤）----
+{
+  const sales = [
+    { dish_key: '耙牛肉', qty: 10, amount: 12000, platform: 'pos' },
+    { dish_key: '小面', qty: 5, amount: 3000, platform: 'pos' },
+    { dish_key: '没成本卡的菜', qty: 2, amount: 2000, platform: 'pos' },
+  ];
+  const before = JSON.stringify(buildDishReview(sales, CARD_FIX, BASE_DEPS));   // 接线前形态
+  const noMap = JSON.stringify(buildDishReview(sales, CARD_FIX,
+    { normalizeDishName, toMonth, lookupCardCode: null }));                      // 接线后·无映射表
+  check('7-① 不注入 lookupCardCode ⇒ 输出与接线前**逐字相同**（存量用户零影响）',
+    before === noMap, before === noMap ? 'len=' + before.length : '前≠后');
+  const emptyMap = JSON.stringify(buildDishReview(sales, CARD_FIX,
+    { normalizeDishName, toMonth, lookupCardCode: () => '' }));                  // 接线后·空表
+  check('7-② 映射表为空（恒返空串）⇒ 输出仍与接线前逐字相同',
+    before === emptyMap);
+  check('7-③ 自失效护栏：判据面非退化 —— 样本含已匹配 2 行 + 未匹配 1 行',
+    JSON.parse(before).dine_in.length === 2 && JSON.parse(before).unmatched.length === 1,
+    'ranked=' + JSON.parse(before).dine_in.length + ' unmatched=' + JSON.parse(before).unmatched.length);
+}
+
+// ---- 7-④/7-⑤ 映射真的能救回「名字对不上」的行（先证缺口真存在）----
+{
+  const sales = [{ dish_key: '耙牛肉(小份)', qty: 3, amount: 4500, platform: 'pos' }];
+  const noMap = buildDishReview(sales, CARD_FIX, BASE_DEPS);
+  check('7-④ 无映射时「耙牛肉(小份)」确实匹配不上（缺口真实存在，映射非多此一举）',
+    noMap.unmatched.length === 1 && noMap.dine_in.length === 0,
+    'unmatched=' + noMap.unmatched.length);
+  const withMap = buildDishReview(sales, CARD_FIX,
+    { normalizeDishName, toMonth, lookupCardCode: (k, p) => (p === 'pos' && k === '耙牛肉(小份)' ? 'C001' : '') });
+  check('7-⑤ 挂上映射后同一行匹配成功，且用**最新版本**成本 1350（3×1350=4050）',
+    withMap.dine_in.length === 1 && withMap.dine_in[0].card_code === 'C001'
+    && withMap.dine_in[0].totalCostFen === 4050 && withMap.dine_in[0].grossFen === 450,
+    JSON.stringify(withMap.dine_in[0] || withMap.unmatched));
+}
+
+// ---- 7-⑥ 脏映射（指向不存在的卡）不得把本来能匹配的行打掉 ----
+{
+  const sales = [{ dish_key: '小面', qty: 5, amount: 3000, platform: 'pos' }];
+  const r = buildDishReview(sales, CARD_FIX,
+    { normalizeDishName, toMonth, lookupCardCode: (k) => (k === '小面' ? 'NO_SUCH_CARD' : '') });
+  check('7-⑥ 映射指向不存在的卡 ⇒ 回落名称匹配（5×300=1500，仍挂 C002）',
+    r.dine_in.length === 1 && r.dine_in[0].card_code === 'C002' && r.dine_in[0].totalCostFen === 1500,
+    JSON.stringify(r.dine_in[0] || r.unmatched));
+}
+
+// ---- 7-⑦ 平台隔离：同一 dish_key 在不同平台可挂不同卡，不得串卡 ----
+{
+  const lookup = (k, p) => ({ 'meituan|招牌面': 'C002', 'taobao|招牌面': 'C001' }[p + '|' + k] || '');
+  const deps = { normalizeDishName, toMonth, lookupCardCode: lookup };
+  const mt = rankReview([{ dish_key: '招牌面', qty: 2, amount: 2000, platform: 'meituan' }], CARD_FIX, deps);
+  const tb = rankReview([{ dish_key: '招牌面', qty: 2, amount: 2000, platform: 'taobao' }], CARD_FIX, deps);
+  check('7-⑦ 美团行挂 C002、淘宝行挂 C001（查表带平台键，跨平台不串卡）',
+    mt.ranked[0] && tb.ranked[0] && mt.ranked[0].card_code === 'C002' && tb.ranked[0].card_code === 'C001',
+    'mt=' + JSON.stringify((mt.ranked[0] || {}).card_code) + ' tb=' + JSON.stringify((tb.ranked[0] || {}).card_code));
+  check('7-⑧ 自失效护栏：两平台样本的卡不同（否则该判据已退化成常量）',
+    mt.ranked[0] && tb.ranked[0] && mt.ranked[0].card_code !== tb.ranked[0].card_code);
+}
+
+// ---- 7-⑨ 映射查找键必须用 dish_key，不得用销量行的 external_ref_id（含日期 ⇒ 天天失配）----
+{
+  const SERVICE_SRC = rd('cloudfunctions/getDishReview/service.js');
+  const codeNoCmt = SERVICE_SRC.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+  check('7-⑨a service.js 查映射表时传的是 dishKey（而非含日期的 external_ref_id）',
+    /lookupCardCode\(\s*dishKey\s*,/.test(codeNoCmt));
+  const IDX_SRC = rd('cloudfunctions/getDishReview/index.js');
+  const idxNoCmt = IDX_SRC.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+  check('7-⑨b index.js 读 shop_dish_mapping 集合（接线落地，不是只有注释）',
+    /listAll\(\s*'shop_dish_mapping'/.test(idxNoCmt));
+  check('7-⑨c index.js 读映射表失败不阻断主流程（try/catch 兜底，缺失即回落）',
+    /catch\s*\([^)]*\)\s*\{\s*mapping\s*=\s*\[\]\s*;/.test(idxNoCmt));
+}
+
+// ---- 7-⑩ 红线 17 回归：仍未匹配的必须单列返回，绝不静默归零 ----
+{
+  const r = buildDishReview([{ dish_key: '完全没卡的菜', qty: 7, amount: 7000, platform: 'pos' }],
+    CARD_FIX, { normalizeDishName, toMonth, lookupCardCode: () => '' });
+  check('7-⑩ 未匹配仍单列返回且 qty/amount 原样带出（红线 17）',
+    r.unmatched.length === 1 && r.unmatched[0].dish_key === '完全没卡的菜'
+    && r.unmatched[0].qty === 7 && r.unmatched[0].amountFen === 7000,
+    JSON.stringify(r.unmatched));
+  check('7-⑪ 未匹配不进 ranked，但仍计入 totals.qty/amountFen（不得凭空消失）',
+    r.dine_in.length === 0 && r.totals.qty === 7 && r.totals.amountFen === 7000 && r.totals.grossFen === 0,
+    JSON.stringify(r.totals));
+}
 
 console.log('\n===== getDishReview 算法层守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);
