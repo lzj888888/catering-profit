@@ -213,6 +213,9 @@ const CASES = [
   //   + A4 卡存在性/软删/前端接线 6 + B 反向 4 + C 自检 4（真调生产纯函数）。
   //   头号风险 = 写侧键与读侧 mapIndex 错位 ⇒ 用户挂了映射页面照旧 unmatched 且不报错。
   { key: 'check_dish_mapping_write', rel: 'tools/check_dish_mapping_write.js' },  // 35 条
+  // R256：摊销归档锁 —— S 扫描面 8 + A 源码面 9 + B 行为面 8 + C 自失效 3。
+  //   缺口由生产代码注释自己点名（此前只有删除路径上锁）⇒ 编辑/新增改得动已封账月份的数字。
+  { key: 'check_amort_archive_lock', rel: 'tools/check_amort_archive_lock.js' },  // 28 条
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

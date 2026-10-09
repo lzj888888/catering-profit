@@ -12,6 +12,7 @@ const { ERROR_CODES, ok, fail } = common;
 const { makeAdapter } = common.dataAdapter;
 const { nowUtc } = common.utilTime;
 const { validateInput } = require('./validate');
+const S = require('./service');            // R256：归档锁的**选择**下沉为纯函数（可行为面断言）
 
 // round107：一次性投入（mode='lump'）是挂在**某一个月**上的 ⇒ 那个月归档后不许再增删改。
 //   与 saveLedger 用**同一把锁**（只读 + ARCHIVED_LOCKED），否则会出现「账锁了、但钱从台账被挪走」的缝。
@@ -34,16 +35,29 @@ async function archiveLocked(da, shopId, month) {
 //   ⚠️ 为什么不只看 start_month：归档不强制按时间顺序做（可以先归档 10 月、再回头归档 9 月），
 //      只看 start_month 会漏掉「start_month 未归档、但它后面某月已归档」这条例外路径。
 //   ⚠️ 数据量：一个店一个月最多一条月度账，全量取回在 JS 里过滤即可（不做区间查询是为了不扩 dataAdapter 的接口面）。
-//   ⚠️ 本轮只给「删除」加锁；「编辑 / 新增摊销」的同类缺口**仍然存在**（见 §10 契约与 NOTE 的记录），
-//      不在这轮扩大改动面 —— 免得把未经前端预告的拒绝行为引进编辑路径。
-async function amortArchiveLocked(da, shopId, startMonth) {
+//   ✅ R256：缺口已补 —— 编辑 / 新增摊销**同样**走这把锁（选择哪几把 ⇒ 纯函数 S.decideArchiveLock）。
+//      此前只锁删除 ⇒ 改一笔 3 月起摊的资产的金额，而 5 月已归档 ⇒ 5 月的账被事后改动（封账承诺失效）。
+async function amortArchiveLocked(da, shopId, startMonth, actionWord) {
   if (!startMonth) return null;
   const res = await da.list('shop_monthly_account', { shop_id: shopId });
   const rows = (res && res.data) || [];
   const hit = rows.find((r) => r.is_archive && String(r.month || '') >= String(startMonth));
   if (!hit) return null;
+  const verb = actionWord || '删掉它';
   return fail(ERROR_CODES.ARCHIVED_LOCKED,
-    `该资产从 ${startMonth} 起逐月摊销，而 ${hit.month} 已归档为只读；删掉它会让已封账月份的数字变化，请改用「提前报废」保留痕迹`);
+    `该资产从 ${startMonth} 起逐月摊销，而 ${hit.month} 已归档为只读；${verb}会让已封账月份的数字变化，请改用「提前报废」保留痕迹`);
+}
+
+// R256：把「纯函数算出的锁计划」真正打在写库之前（编辑 / 新增共用，删除路径保持原样不动）。
+//   🔴 位置铁律：必须早于任何 .update() / da.insert()，否则拒绝来得太晚（账已经改了）。
+async function applyLockPlan(da, shopId, plan, actionWord) {
+  if (!plan) return null;
+  for (let i = 0; i < plan.lumpMonths.length; i++) {
+    const locked = await archiveLocked(da, shopId, plan.lumpMonths[i]);
+    if (locked) return locked;
+  }
+  if (plan.amortStart) return await amortArchiveLocked(da, shopId, plan.amortStart, actionWord);
+  return null;
 }
 
 exports.main = async (event) => {
@@ -91,6 +105,12 @@ exports.main = async (event) => {
     // ===== 编辑：目标必须存在且未软删 =====
     const exist = await da.get('shop_amortize', a.asset_id);
     if (!exist) return fail(ERROR_CODES.RESOURCE_NOT_FOUND, `资产 ${a.asset_id} 不存在或已软删`);
+    // 🔴 R256：编辑同样要过归档锁（此前只有删除过了）。语义 = 改动它覆盖到的每一个月的账 ⇒
+    //   两侧起摊月取**更早**的那个（改起摊月向前 / 向后都会动到已算过的月）。锁必须早于写库。
+    const editPlan = S.decideArchiveLock(exist.mode, exist.start_month, a.mode, a.start_month);
+    const editLocked = await applyLockPlan(da, shopId, editPlan, '改它');
+    if (editLocked) return editLocked;
+
     // H1：分组字段只在「有值」时覆盖（编辑单笔/报废单笔不该把多笔资产拆散）；独立资产保持 '' 不写。
     const patch = {
       name: a.name, value_fen: a.value_fen, start_month: a.start_month,
@@ -104,10 +124,11 @@ exports.main = async (event) => {
   } else {
     // ===== 新增 =====
     // round107：一次性投入挂在 start_month 那个月 ⇒ 归档月不许新记
-    if (a.mode === 'lump') {
-      const locked = await archiveLocked(da, shopId, a.start_month);
-      if (locked) return locked;
-    }
+    // 🔴 R256：摊销（mode≠'lump'）此前**完全没锁** ⇒ 新增一笔 3 月起摊的摊销，而 5 月已归档
+    //   ⇒ 已封账的 5 月凭空多出一笔摊销（封账承诺失效）。这里与编辑共用同一套锁计划。
+    const addPlan = S.decideArchiveLock(null, null, a.mode, a.start_month);
+    const addLocked = await applyLockPlan(da, shopId, addPlan, '记上它');
+    if (addLocked) return addLocked;
     const assetId = genId('amort_');
     await da.insert('shop_amortize', {
       asset_id: assetId, id: assetId, shop_id: shopId,

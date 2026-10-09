@@ -1,0 +1,20 @@
+- initialize
+
+(node:27644) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)
+√ IDE server has started, listening on http://127.0.0.1:10896
+- deploy cloudfunctions
+- fetching cloud env list
+- [saveDishMapping] Fetching info of cloudfunction saveDishMapping
+√ [saveDishMapping] cloudfunction saveDishMapping doesn't exist in the cloud, will create it
+- [saveDishMapping] upload cloud function saveDishMapping - preparing
+× [saveDishMapping] upload cloud function saveDishMapping - deploy
+× deploy cloudfunctions
+
+┌─────────────────┬─────────┐
+│ (index)         │ success │
+├─────────────────┼─────────┤
+│ saveDishMapping │ false   │
+└─────────────────┴─────────┘
+[error] fail to deploy cloudfunction saveDishMapping :
+{"message":"Error: TencentCloud API error: {\n    \"Response\": {\n        \"Error\": {\n            \"Code\": \"FailedOperation.UpdateFunctionCode\",\n            \"Message\": \"当前函数处于Creating状态，无法进行此操作，请稍后重试。\"\n        },\n        \"RequestId\": \"b6c946a8-049a-4874-ae0d-8cb24b52d403\"\n    }\n}"}
