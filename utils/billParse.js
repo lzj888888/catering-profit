@@ -92,21 +92,9 @@ const PLATFORM_PROFILE = {
 // 判定顺序：先淘宝后美团（沿用原语义），再京东两形态；全不中返回 null = fail-closed
 const PLATFORM_ORDER = ['taobao', 'meituan', 'jd_order', 'jd_sku'];
 
-// 列名常量由档案派生（🔴 不重复写列名字面量）
-const COL = {
-  taobao: {
-    billDate: PLATFORM_PROFILE.taobao.billDate, net: PLATFORM_PROFILE.taobao.net,
-    orderType: PLATFORM_PROFILE.taobao.orderType, refund: PLATFORM_PROFILE.taobao.refund,
-  },
-  meituan: {
-    billDate: PLATFORM_PROFILE.meituan.billDate, net: PLATFORM_PROFILE.meituan.net,
-    bizType: PLATFORM_PROFILE.meituan.bizType, order: PLATFORM_PROFILE.meituan.order,
-  },
-};
-const SHEET = {
-  taobao: PLATFORM_PROFILE.taobao.sheet,
-  meituan: PLATFORM_PROFILE.meituan.sheet,
-};
+// 🔴 R247：原此处的 `COL` / `SHEET` 两个映射表在 R245 平台档案化后**已零引用**
+//   （sheet 名与列名全部收进 `PLATFORM_PROFILE[]`，`detectPlatform` / `pickSheet` 直接读档案）
+//   ⇒ 作为残骸删除（与云函数副本 cloudfunctions/importSalesBill/service.js 同步）。
 
 /**
  * 按表头列名判定平台。🔴 只看列名、不看文件名。

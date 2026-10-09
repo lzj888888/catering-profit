@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：153 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：154 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -471,6 +471,15 @@
 //         + S 组 5 条自失效护栏（wxml 非退化 / 折叠数 ≥ 目标 / 未一刀切（仍存短提示）/ 断言数下限）
 //         + V 组负样本互证（旧平铺写法解析出 0 折叠块 ⇒ 判据能识别退化；key≠guide / 缺 wx:if 均可判红）。
 //         24 条断言）
+//       + R247：**形态 C 平台 picker 一致性守卫**（tools/check_picker_platform.js，R247）
+//         —— 根因：形态 C（外卖商品销量）必须由用户**手选平台**，而 picker 的 value 与
+//         云端 `SALES_SCHEMA.platform.enum`、术语单源 `reviewPlatformNames` 之间有三个
+//         **全静默**的失效点：① 越界 value 被云函数拒收；② 缺术语键 ⇒ `label = NAMES[v] || v`
+//         **回落成机器值**（界面直接显示 `jd_sku`，R246 接京东时实测）；③ enum 新增平台而
+//         picker 没加 ⇒ 新平台选不到、且门禁全绿零报错。
+//         判据 = S 扫描面（三道下界护栏防扫空） + A 正向（picker ⊆ enum 且每项有术语键）
+//         + B 反向（enum 成员未进 picker 者必须逐一在显式排除名单内） + C 合成样本自检（4 条）。
+//         15 条断言。
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -925,6 +934,13 @@ const SUITES = [
   //           D 术语餐饮化 / V 负样本互证（8 条变异回灌实测 8/8 恰红在目标断言）。
   //   详见 tools/check_m2_biz_inputs.js 头注。
   ['m2-biz-inputs',        'tools/check_m2_biz_inputs.js'],
+  // ===== R247 形态 C 平台 picker 一致性守卫（同族病：见头部注释同名条目）=====
+  //   根因：形态 C 平台由用户手选，picker 的 value 与云端 enum / 术语单源两处都存在
+  //   **静默**失效 —— 越界值被云函数拒收 · 缺术语键 ⇒ label 回落成机器值 · enum 加平台
+  //   而 picker 漏加 ⇒ 选不到且零报错。三条此前均无任何套件在守。
+  //   判据 = S 扫描面（含三道下界护栏）+ A 正向（⊆ enum + 每项有术语键）
+  //        + B 反向（enum \ picker ⊆ 显式排除名单）+ C 合成样本自检（4 条，防恒绿）。
+  ['picker-platform',      'tools/check_picker_platform.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

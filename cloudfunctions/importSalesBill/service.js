@@ -124,20 +124,9 @@ const PLATFORM_PROFILE = {
 };
 const PLATFORM_ORDER = ['taobao', 'meituan', 'jd_order', 'jd_sku'];
 
-const COL = {
-  taobao: {
-    billDate: PLATFORM_PROFILE.taobao.billDate, net: PLATFORM_PROFILE.taobao.net,
-    orderType: PLATFORM_PROFILE.taobao.orderType, refund: PLATFORM_PROFILE.taobao.refund,
-  },
-  meituan: {
-    billDate: PLATFORM_PROFILE.meituan.billDate, net: PLATFORM_PROFILE.meituan.net,
-    bizType: PLATFORM_PROFILE.meituan.bizType, order: PLATFORM_PROFILE.meituan.order,
-  },
-};
-const SHEET = {
-  taobao: PLATFORM_PROFILE.taobao.sheet,
-  meituan: PLATFORM_PROFILE.meituan.sheet,
-};
+// 🔴 R247：原此处的 `COL` / `SHEET` 两个映射表在 R245 平台档案化后**已零引用**
+//   （sheet 名与列名全部收进 `PLATFORM_PROFILE[]`，`detectPlatform` / `pickSheet` 直接读档案）
+//   ⇒ 作为残骸删除（全仓 grep 零引用；两处副本 utils/billParse.js 同步删）。
 
 function detectPlatform(header) {
   if (!Array.isArray(header)) return null;

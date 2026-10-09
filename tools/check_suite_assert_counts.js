@@ -198,6 +198,9 @@ const CASES = [
   //   （专业指标不得进输入区 / 业态预设平铺 / 结论先给判定且不自造 / 术语餐饮化）。
   //   ⚠️ 不登记这里会被 A5-② 判「声明行含未受守 key」—— 新增套件的同步面之一。
   { key: 'check_m2_biz_inputs', rel: 'tools/check_m2_biz_inputs.js' },  // 34 条（P/A/B/C/D/V/E 七组；A-⑧=R237 唯一换算点白名单）
+  // R247：形态 C 平台 picker 一致性守卫 —— S 段三道下界护栏（picker ≥4 / enum ≥6 / 术语键 ≥4）
+  //   + C 段 4 条合成样本自检是「非恒真」凭据；断言数不受守则「删掉 B 组两条」会静默通过。
+  { key: 'check_picker_platform', rel: 'tools/check_picker_platform.js' },  // 15 条（S 4 + A 4 + B 3 + C 4）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];
