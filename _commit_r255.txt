@@ -1,0 +1,28 @@
+feat(R255): 菜名映射写侧 —— saveDishMapping 云函数 + M3 关联入口 + 双守卫
+
+为什么（R254 真云探针实测坐实，不是推断）：
+  淘宝平台块 51 道菜 ¥1823.08，而 ranked 0 条、unmatchedCount 51 ⇒ 单品毛利恒算不出来。
+  根因 = R253 只读了映射表（getDishReview 先查 shop_dish_mapping），但**没有任何入口往表里写一行**
+  ⇒ 表恒空 ⇒ 读侧那条路径永远走不到。且客户端直读该集合返回 DATABASE_PERMISSION_DENIED
+  （core/15：仅管理端可读写，客户端零直连）⇒ 造映射记录只能走新云函数。
+
+键口径（本轮头号判据，与读侧 mapIndex **逐字对齐**；错位即"死输入"——挂了映射页面照旧 unmatched 且不报错）：
+  读侧 set(platform + '|' + external_ref_id)，查 get(p+'|'+k) || get('|'+k) || ''
+  ⇒ ① external_ref_id 存**原始 dish_key**（绝不归一）② platform 可空（空 ⇒ 跨所有平台生效）
+    ③ 两端都 trim。
+
+新增：
+  cloudfunctions/saveDishMapping/{index,service,validate,selftest,package}.js
+    —— 鉴权 → 校验 → 付费墙(m3_dishreview) → 限流 → 幂等 → **卡存在性校验** → created/updated/cleared/noop → 审计。
+  cloudfunctions/getDishReview/index.js：出参增 mapping: mappingList（零额外查询，复用 4b 已读的 mapping）
+    —— 否则挂错卡后该菜从 unmatched 变 ranked ⇒ 未匹配清单里没有它 ⇒ 用户既改不了也删不掉（死结）。
+  miniprogram/pages/m3/dishreview：未匹配行加 <picker> 关联入口（避开「弹层×键盘=死结」）+ 已关联列表解除入口。
+  i18n/terms.js（两处 md5 一致）新增 10 条术语。
+  tools/check_dish_mapping_write.js（35 断言）+ cloudfunctions/saveDishMapping/selftest.js（22 断言）。
+
+同步面：core/10 契约行 + 全集口径 49→50 · selftest_r85 A15 白名单 · verify_all SUITES 158→160 ·
+  重启键三处（入口行/套件数会漂/断言数声明 六十九者→七十者）· check_suite_assert_counts CASES ·
+  重启键「46 个云函数都叫 selftest.js」。
+
+验证：11 条变异全部点名转红且还原 md5 全等（含两次守卫假绿的自我证伪：M5 卡存在性只查字符串存在、
+  M11 限流器建了却从不调用 ⇒ 判据改为「条件-返回形态」与「建了+调了+拒了」三段）。

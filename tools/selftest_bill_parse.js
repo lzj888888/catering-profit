@@ -223,8 +223,11 @@ check('B4 自失效护栏：B3 的扫描面非空（取不到 `if (!platform) {`
 console.log('\n===== D 多平台同时命中 ⇒ 拒绝代选（R253）=====');
 // 表头刻意同时含两平台签名列（无 deny 拦得住，两边都成立）
 const BOTH = ['账单日期', '结算金额', '商家应收款', '订单类型'];
-const hitsBoth = PLATFORM_PROFILE.taobao.require.every((c) => BOTH.indexOf(c) >= 0)
-  && PLATFORM_PROFILE.meituan.require.every((c) => BOTH.indexOf(c) >= 0);
+// ⚠️ 拆成三条单句、不写「换行 + && 续行」：R68 的顶层块切分把第一行末尾（`)`）当成块尾，
+//    而块尾既非 `;` 也非 `}` ⇒ 守卫 fail-closed 判「无法定界」并拒绝给结论（实测转红）。
+const taobaoHitBoth = PLATFORM_PROFILE.taobao.require.every((c) => BOTH.indexOf(c) >= 0);
+const meituanHitBoth = PLATFORM_PROFILE.meituan.require.every((c) => BOTH.indexOf(c) >= 0);
+const hitsBoth = taobaoHitBoth && meituanHitBoth;
 check('D0 样本构造有效：同一表头确实同时满足淘宝与美团两套签名（否则判据无靶子）', hitsBoth);
 check('D1 多平台同时命中 ⇒ detectPlatform 返 "AMBIGUOUS"（不返 taobao/meituan 任一个）',
   detectPlatform(BOTH) === 'AMBIGUOUS', String(detectPlatform(BOTH)));

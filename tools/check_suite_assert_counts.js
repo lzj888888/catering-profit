@@ -131,7 +131,7 @@ const CASES = [
   { key: 'selftest_m3_takeaway', rel: 'tools/selftest_m3_takeaway.js' }, // 21 条（M3.17：T-a~T-g）
   { key: 'selftest_m3_impact', rel: 'tools/selftest_m3_impact.js' }, // 17 条（M3.19：C-a/C-a2/C-b/dry-run）
   { key: 'selftest_m3_recon', rel: 'tools/selftest_m3_recon.js' }, // 16 条（M3.21：D 锚点 + 闸门）
-  { key: 'selftest_bill_parse', rel: 'tools/selftest_bill_parse.js' }, // 53 条（批次 F 15 + R245 P1 京东串味 5 + P2~P6 京东两形态/取数/日期 17 + 平台枚举三副本 2 + R250 平台自动判定逐候选行试签名 14）
+  { key: 'selftest_bill_parse', rel: 'tools/selftest_bill_parse.js' }, // 70 条（批次 F 15 + R245 P1 京东串味 5 + P2~P6 京东两形态/取数/日期 17 + 平台枚举三副本 2 + R250 平台自动判定逐候选行试签名 14 + R253 D 段多平台同时命中 17）
   { key: 'selftest_grade_gate', rel: 'tools/selftest_grade_gate.js' }, // 11 条（批次 F：甲级三门）
   // round181p 扩面：打包体积 / ignore 规则守卫同批纳入 —— 它的 S 段三道自失效护栏（扫描面非退化 / 关键入口在包内 / 匹配器四类正负样本互证）与 P-②「预算常量 < 微信硬上限」正是「非恒真」凭据；而 11 条删掉一批仍 > 0 ⇒ A0-② 的「通过数为 0」下界抓不到，只有 A2「声明 ≡ 实跑」能发现（与 round73 立本守卫的根因同族）。
   { key: 'check_pack_size', rel: 'tools/check_pack_size.js' }, // 11 条（R182：S1~S3 + P-①~③ + G-①~④）
