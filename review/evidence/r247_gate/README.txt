@@ -85,9 +85,16 @@ B. 清 R245（平台档案化 P1~P8）的死代码残骸
   提交前元守卫快检：check_suite_coverage 10/0 · check_suite_count_claims 11/0 ·
   check_suite_assert_counts 73/0。
 
+  🔁 **提交后复跑（第二次 —— 工作树干净 + 证据文件已入库，扫描面变了）**：
+  同样 **154/154 · RC=0 · 失败清单为空**（3m56s）。
+  两次输出**逐字比对**的唯一差异是测试里**随机生成**的 user_id / 时间戳（非确定性样本），
+  其余全等 ⇒ 证据文件入库**未引入任何回归**。复跑原文见 `gate_recheck.txt`。
+  （依据：门的 §18.1 时序陷阱 —— 门禁跑完后新写的文档/证据必须**再跑一次**才算数。）
+
 【文件清单】
   README.txt               本文件
   gate_full.txt            原生门禁完整 stdout + RC（5799 行，含逐套件段）
+  gate_recheck.txt         提交后复跑的门禁 stdout + RC（同上，154/154）
   mut_r247.py              变异回灌脚本（可复现）
   patch_verify_all.py      verify_all.js 四处同步的两阶段断言式补丁
   patch_restart_key.py     重启键三处同步的两阶段断言式补丁
