@@ -173,6 +173,9 @@
         <text class="val">{{importZeroAmountQty.length}} {{t.importRowUnit}}</text>
       </view>
       <view class="warn" wx:if="{{importGrade && !importGrade.pass}}">{{t.importFail}}</view>
+      <!-- 🔴 R250：门禁失败的**原因**（此前只渲染上面那句笼统话，用户看不出是"这份文件没数据"）。
+           `importFailReason` 为空串时整行不渲染（例如形态 C 预览期的 platform_missing 不算门禁失败）。 -->
+      <view class="muted" wx:if="{{importGrade && !importGrade.pass && importFailReason}}">{{importFailReason}}</view>
       <!-- 🔴 确认按钮**不看 grade.pass 里的 platform 项**（云函数预览期已剔掉它）：形态 C 的
            平台由用户在下面 picker 里选，若这里按 grade 拦，picker 与按钮同屏却永远点不到 = 死锁。
            未选平台时按钮**可见但禁用**（disabled 绑定 importPlatformChoice），提示语在按钮下方。 -->
@@ -206,6 +209,8 @@
 
       <!-- 甲级门禁结果 -->
       <view class="warn" wx:if="{{importGrade && !importGrade.pass}}">{{t.importFail}}</view>
+      <!-- 🔴 R250：同上分支 —— 门禁失败原因必须透出（现场：京东 SKU 级空模板 ⇒ CHANNEL_EMPTY）。 -->
+      <view class="muted" wx:if="{{importGrade && !importGrade.pass && importFailReason}}">{{importFailReason}}</view>
       <button class="btn primary" wx:if="{{importGrade && importGrade.pass}}" style="margin-top:24rpx;" bindtap="onConfirmImport">{{t.importConfirm}}</button>
     </view>
     <view class="muted" wx:else>{{t.importEmpty}}</view>

@@ -32,6 +32,33 @@ const DISH_SHAPES = {
 const IMPORT_PLATFORM_OPTIONS = ['meituan', 'eleme', 'taobao', 'jd_sku', 'other']
   .map((v) => ({ value: v, label: (TERMS.card.reviewPlatformNames[v] || v) }));
 
+// 🔴 R250：甲级门禁失败**原因**映射（按 `grade.failures[0].code`）。
+//   现场：李老师导入京东「sku对账单下载」（**只有表头的空模板**）⇒ 云函数回
+//   `CHANNEL_EMPTY 未解析到任何数据行`，而界面只有一句「门禁未通过，已阻断导入」
+//   ⇒ 他看不出"是这份文件没数据"，只能反复重试。原因必须透出。
+//   口径：**不直接显示云函数原文**（那会让英文 code / 技术措辞漏到界面），一律经本表映射到
+//   `TERMS.ledger.takeaway.*`；未登记的 code 走 `importFailRow` 兜底（fail-safe，不静默）。
+//   ⚠️ 键必须与云函数 `service.js::checkGradeA` 产出的 code 逐字一致（漏一个 ⇒ 兜底文案，不空白）。
+const FAIL_REASON_KEY = {
+  CHANNEL_EMPTY: 'importFailEmpty',
+  CHANNEL_TOTAL_MISSING: 'importFailTotal',
+  SCHEMA_PLATFORM: 'importFailPlatform',
+  SCHEMA_BIZDATE: 'importFailRow',
+  SCHEMA_AMOUNT: 'importFailRow',
+  SCHEMA_QTY: 'importFailRow',
+  REQUIRED_SHOP_ID: 'importFailRow',
+  REQUIRED_BIZDATE: 'importFailRow',
+  REQUIRED_AMOUNT: 'importFailRow',
+};
+
+// 门禁失败 ⇒ 一句人话原因（无失败/未登记 code ⇒ 空串，界面不渲染那一行）。
+function failReasonText(grade) {
+  const f = grade && grade.failures && grade.failures[0];
+  if (!f) return '';
+  const key = FAIL_REASON_KEY[f.code] || 'importFailRow';
+  return TK[key] || '';
+}
+
 function newItem() { return { card_id: '', card_name: '', qty: '1' }; }
 function newPack() { return { material_id: '', qty: '1', unit_price_yuan: '' }; }
 function defaultParams() {
@@ -120,6 +147,11 @@ Page({
       importGoReview: TK.importGoReview,
       importGoLater: TK.importGoLater,
       importFail: TK.importFail,
+      // 🔴 R250：门禁失败原因四键（`failReasonText()` 按 failures[0].code 取）
+      importFailEmpty: TK.importFailEmpty,
+      importFailTotal: TK.importFailTotal,
+      importFailPlatform: TK.importFailPlatform,
+      importFailRow: TK.importFailRow,
       importNoFile: TK.importNoFile,
       importEmpty: TK.importEmpty,
       // v1.7 形态 C（外卖商品销量）：平台机器判不出 ⇒ 必须选平台
@@ -160,6 +192,7 @@ Page({
     importFileID: '',      // 云存储 fileID
     importPlatform: '',    // 检测到的平台
     importGrade: null,     // 甲级门禁结果
+    importFailReason: '',  // 🔴 R250：门禁失败原因（failures[0].code → 人话），空串 ⇒ 不渲染该行
     importPreview: null,   // 预览 { rows, totals, months, excluded }
     importing: false,      // 防重复提交
     // v1.7 形态 C（外卖商品销量）：platform 机器判不出 ⇒ 必须选平台
@@ -423,6 +456,8 @@ Page({
         //   平台的阻断在 confirm 分支（云函数 `if (!platform) return fail`）+ 前端
         //   `onConfirmImport` 的 picker 兜底，两处都拦得住，不必在预览期拦。
         importPlatformMissing: !!d.platform_missing,
+        // 🔴 R250：门禁没过时把**原因**一并落到 data（wxml 在那句笼统提示下面渲染一行人话）
+        importFailReason: failReasonText(d.grade),
         importPreview: preview,
         importZeroAmountQty: (isC && p && p.zeroAmountQty) ? p.zeroAmountQty : [],
         // 形态 C 平台选择重置
@@ -466,6 +501,7 @@ Page({
       // 导入成功后清空预览态（含形态 C 的平台选择）
       this.setData({
         importing: false, importFileID: '', importShape: '', importPlatform: '', importGrade: null,
+        importFailReason: '',
         importPreview: null, importPlatformIndex: -1, importPlatformChoice: '', importPlatformChoiceLabel: '', importZeroAmountQty: [],
       });
       // 🔴 R238：导入成功后给**下游引导** —— 此前只有一个 toast、零跳转，用户到这就断了。

@@ -159,5 +159,83 @@ check('E-④ 目标页**不是** tabBar 页（tabBar 页只能 switchTab，用 n
 check('E-⑤ 目标 = 单品毛利复盘（数据真正的展示位）',
   navTarget === DISHREVIEW, navTarget + ' vs ' + DISHREVIEW);
 
+// ============================================================================================
+// 🔴 R250：甲级门禁失败**原因**必须透出到界面。
+//
+//   现场（2026-10-09 李老师真机）：「导入 京东账单 提示 门禁未通过 已阻断导入」——
+//   而那句 `t.importFail` 是**笼统话**：云函数预览其实回了 `grade.failures[]`（含具体 code/msg），
+//   页面却一个字段都不读 ⇒ 用户看不出"这份文件本来就没有数据行"。
+//   实测那份京东「sku对账单下载」是 **1 行 × 27 列（只有表头）的空模板** ⇒ CHANNEL_EMPTY
+//   ⇒ 门禁**判得对**，但界面把原因吞了 ⇒ 用户只能反复重试（"填了没用"的兄弟形态：**错得不明不白**）。
+//
+//   判据取向（与 V 组同款：判行为不判字面）：
+//     ① 从**云端 service.js 真取** checkGradeA 的 failure code 全集（不手抄）；
+//     ② 从**页面真取** FAIL_REASON_KEY 映射；
+//     ③ 逐 code 走一遍页面逻辑（code → key → TERMS 文案），断言**每条都落得出非空人话**；
+//     ④ 断言 wxml 两个 fail 分支都渲染了原因行（云函数回了、界面不读 = 静默丢弃）。
+// ============================================================================================
+sec('F-R250 门禁失败原因必须透出（行为：云函数的每个 failure code 都落得出人话）');
+
+const termsSrc = fs.readFileSync(path.join(ROOT, 'miniprogram', 'i18n', 'terms.js'), 'utf8');
+let TERMSM = null;
+try { TERMSM = require(path.join(ROOT, 'miniprogram', 'i18n', 'terms.js')); } catch (e) { TERMSM = null; }
+const TKM = TERMSM && TERMSM.TERMS && TERMSM.TERMS.ledger && TERMSM.TERMS.ledger.takeaway;
+
+// ① 云端 checkGradeA 的 failure code 全集
+const gIdx = svcSrc.indexOf('function checkGradeA(');
+const gBody = gIdx >= 0 ? svcSrc.slice(gIdx, gIdx + 4000) : '';
+const cloudCodes = Array.from(new Set((gBody.match(/code:\s*'([A-Z][A-Z_]+)'/g) || [])
+  .map((s) => (s.match(/'([A-Z][A-Z_]+)'/) || [])[1]).filter(Boolean)));
+
+// ② 页面映射
+const mpM = pageSrc.match(/FAIL_REASON_KEY\s*=\s*\{([\s\S]*?)\};/);
+const pageMap = {};
+if (mpM) {
+  for (const mm of mpM[1].matchAll(/([A-Z][A-Z_]+)\s*:\s*'([A-Za-z]+)'/g)) pageMap[mm[1]] = mm[2];
+}
+
+check('F-⓪ 自失效护栏：扫描面非退化（云 code 取到 ≥5 条 / 页面映射取到 ≥5 条 / terms 可加载）',
+  cloudCodes.length >= 5 && Object.keys(pageMap).length >= 5 && !!TKM,
+  'cloud codes=' + cloudCodes.length + ' page map=' + Object.keys(pageMap).length + ' terms=' + !!TKM);
+
+const missing = cloudCodes.filter((c) => !pageMap[c]);
+check('F-① 云端每个 failure code 都在页面映射表里登记（新增 code 不登记即红）',
+  missing.length === 0, missing.length ? ('漏登记：' + missing.join(', ')) : ('已覆盖 ' + cloudCodes.join(', ')));
+
+const noText = cloudCodes.filter((c) => {
+  const key = pageMap[c] || 'importFailRow';                 // 页面 failReasonText 的兜底口径
+  const v = TKM && TKM[key];
+  return !(typeof v === 'string' && v.trim().length > 0);
+});
+check('F-② 每个 code 走一遍页面逻辑都落得出非空人话（code → key → TERMS 文案）',
+  noText.length === 0, noText.length ? ('落空：' + noText.join(', ')) : '全部非空');
+
+const reasonKeys = Array.from(new Set(Object.values(pageMap).concat(['importFailRow'])));
+const texts = reasonKeys.map((k) => (TKM && TKM[k]) || '');
+check('F-③ 原因文案彼此不同（否则"四种原因"实际只显示一句，等于没区分）',
+  texts.length >= 3 && new Set(texts).size === texts.length, JSON.stringify(reasonKeys));
+
+// 🔴 判据必须按「**渲染行**」配对，且**剥掉 wxml 注释**：注释里提到 importFailReason 也会被计数
+//   ⇒ 只数次数会假绿（实测：把两条渲染行删掉、注释还在 ⇒ 旧写法仍绿 = 无分辨力）。
+const wxmlNoCmt = wxmlSrc.replace(/<!--[\s\S]*?-->/g, ' ');
+const wxmlLines = wxmlNoCmt.split('\n');
+const warnLines = wxmlLines.filter((l) => l.indexOf('{{t.importFail}}') >= 0).length;
+const reasonLines = wxmlLines.filter((l) => l.indexOf('>{{importFailReason}}') >= 0).length;
+check('F-④ 每个 fail 横幅都配一条**同级渲染**的原因行（两处分支都要有；回了不读=静默丢弃）',
+  warnLines >= 2 && reasonLines === warnLines,
+  'fail 横幅 × ' + warnLines + ' / 原因渲染行 × ' + reasonLines);
+
+check('F-⑤ 页面 data 初始值含 importFailReason（否则首帧 undefined）',
+  /importFailReason\s*:\s*''/.test(pageSrc), '');
+check('F-⑥ 页面在预览回包处真调 failReasonText(d.grade) 并落 data',
+  /importFailReason:\s*failReasonText\(d\.grade\)/.test(pageSrc), '');
+check('F-⑦ 导入成功分支清空 importFailReason（否则旧原因粘在新一次导入上）',
+  /importFailReason:\s*'',[\s\S]{0,200}importPreview:\s*null/.test(stripComments(pageSrc)), '');
+check('F-⑧ 四键已在页面 t:{} 登记（漏映射 ⇒ 渲染成空白且零报错，R124 同族）',
+  /importFailEmpty:\s*TK\.importFailEmpty/.test(pageSrc)
+  && /importFailTotal:\s*TK\.importFailTotal/.test(pageSrc)
+  && /importFailPlatform:\s*TK\.importFailPlatform/.test(pageSrc)
+  && /importFailRow:\s*TK\.importFailRow/.test(pageSrc), '');
+
 console.log('\n' + pass + ' 通过 / ' + failN + ' 失败');
 process.exitCode = failN ? 1 : 0;

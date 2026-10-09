@@ -15,7 +15,7 @@ function check(name, cond, detail) {
   else { fail++; console.log(`❌ ${name}${detail ? '  (' + detail + ')' : ''}`); }
 }
 
-const { detectPlatform, guessHeader, parseBillMatrix } = require('../utils/billParse.js');
+const { detectPlatform, guessHeader, parseBillMatrix, detectPlatformInMatrix } = require('../utils/billParse.js');
 const ROOT = path.join(__dirname, '..', 'review', 'evidence', 'r181l_stage1_import_feed', 'fixtures');
 const tb = JSON.parse(fs.readFileSync(path.join(ROOT, 'taobao_2026-08.matrix.json'), 'utf8'));
 const mt = JSON.parse(fs.readFileSync(path.join(ROOT, 'meituan_2026-08.matrix.json'), 'utf8'));
@@ -113,6 +113,106 @@ const pv = platValidate ? platValidate.replace(/['"\s]/g, '').split(',').filter(
 check('入参 validate.js 的 PLATFORMS 含 jd_order/jd_sku 且不含 pos（入口不得把京东平台吞成空）',
   pv.indexOf('jd_order') >= 0 && pv.indexOf('jd_sku') >= 0 && pv.indexOf('pos') < 0,
   'PLATFORMS=[' + pv.join(',') + ']');
+
+// ============================================================================================
+// 🔴 R250：平台**自动判定**（前端不传 platform 时走的那条路）必须识破「两级表头」。
+//
+//   根因：京东《对账单下载》（订单级）R1 是**合并的组表头**（"商家基础信息" × 5 /
+//     "订单基础信息" × 77，导出时**逐格写满**），R2 才是真列名；两者的「非空文本格数」都是 82
+//     ⇒ guessHeader 的启发式（文本最多 + 严格大于 + 先到先得）取到 **R1**
+//     ⇒ 旧写法 `detectPlatform(rows[guessHeader(rows)])` 返 null
+//     ⇒ **一张有 117 行数据的表被判「无法识别账单平台」**（真机现象：李老师导京东账单进不去）。
+//   ⚠️ 盲区成因：本文件此前只测了 `detectPlatform(正确表头行)`，**从没测过
+//     `guessHeader → detectPlatform` 这条生产链**；且原 `guessHeader` 注释已写明"京东订单级 R1 是
+//     分组行"，但那要在**传入 platform** 时才生效 —— 自动判定时 platform 还没有，走的正是纯启发式。
+//   ✅ 本组判**行为**（真调生产函数），不扫源码字面。
+// ============================================================================================
+console.log('===== 平台自动判定（R250：两级表头 ⇒ 逐候选行试签名）=====');
+const jdOrdRows = ((jdOrderM.sheets || {})[Object.keys(jdOrderM.sheets)[0]] || {}).rows || [];
+check('S1 样本确实是"两级表头"：R1（组表头）判不出平台', detectPlatform(jdOrdRows[0]) === null, String(detectPlatform(jdOrdRows[0])));
+check('S2 样本确实是"两级表头"：R2 才是真列名（jd_order）', detectPlatform(jdOrdRows[1]) === 'jd_order', String(detectPlatform(jdOrdRows[1])));
+check('S3 自失效护栏：扫描面非退化（4 个 fixture 都在场、京东订单级样本 ≥ 10 行）',
+  jdOrdRows.length >= 10 && !!tb && !!mt && !!jdSkuM, 'jd_order 行数=' + jdOrdRows.length);
+
+const autoJd = detectPlatformInMatrix(jdOrderM);
+check('A1 京东订单级：自动判定 ⇒ jd_order 且表头行 = 1  ← R250 修复点',
+  !!autoJd && autoJd.platform === 'jd_order' && autoJd.headerRow === 1, JSON.stringify(autoJd));
+
+// 🔴🔴 R250 关键：**仓内 fixture 复现不出这个坑** —— 它的 R0（组表头）是**稀疏**的
+//   （只有 17 个非空格，导出时只写了左上角），而 R1 真列名有 82 格 ⇒ 启发式照样选 R1。
+//   但**真文件**的 R1 是**逐格写满**的（实测：82 格全非空，与 R2 打平）⇒ 才触发"先到先得取到组表头"。
+//   ⇒ 拿 fixture 当样本时，旧写法（`detectPlatform(rows[guessHeader(rows)])`）**也能过**
+//     ⇒ A1 那条**没有分辨力**（实测：把 detectPlatformInRows 退回旧写法，A1 仍绿）。
+//   故此处按真文件形态**现造忠实样本**：只需在**判据相关属性**上忠实，
+//   即「R0 与 R1 的非空文本格数相等」——这正是让旧写法翻车的那一条。
+const jdOrdRealHdr = jdOrdH.slice();
+const jdFilled = (() => {
+  const w = jdOrdRealHdr.length;
+  const group = [];
+  for (let i = 0; i < w; i++) group.push(i < 5 ? '商家基础信息' : '订单基础信息');
+  return { sheets: { 'com.jd.o2o.settlement.domain.dt': { rows: [group, jdOrdRealHdr] } } };
+})();
+const nzText = (r) => (r || []).filter((x) => x != null && String(x).trim() !== '').length;
+check('S4 忠实样本：R0（组表头逐格写满）与 R1（真列名）非空文本格数**相等** ⇒ 复现出"打平"这一致病条件',
+  nzText(jdFilled.sheets['com.jd.o2o.settlement.domain.dt'].rows[0]) === nzText(jdOrdRealHdr)
+  && nzText(jdOrdRealHdr) === 82,
+  'R0=' + nzText(jdFilled.sheets['com.jd.o2o.settlement.domain.dt'].rows[0]) + ' R1=' + nzText(jdOrdRealHdr));
+check('S5 记录盲区成因：仓内 fixture 的 R0 是**稀疏**的（非空格数 < 一半）⇒ 不能拿它当本组样本',
+  nzText(jdOrdRows[0]) < nzText(jdOrdRows[1]) / 2,
+  'fixture R0=' + nzText(jdOrdRows[0]) + ' vs R1=' + nzText(jdOrdRows[1]));
+const autoFilled = detectPlatformInMatrix(jdFilled);
+check('A5 忠实样本（两级表头都写满）：自动判定 ⇒ jd_order 且表头行 = 1  ← 真正有分辨力的那条',
+  !!autoFilled && autoFilled.platform === 'jd_order' && autoFilled.headerRow === 1, JSON.stringify(autoFilled));
+// 只作诊断打印、**不判红**：旧写法在此样本上会翻车 —— 用它自证「样本确有区分力」，
+//   但**不**把"旧写法必须失败"写成断言（否则将来有人把 guessHeader 改进成会跳组表头，
+//   正确实现反被判红 = 判据反向伤害第二型）。真正的判据只有 A5 这一条行为断言。
+console.log('      · 诊断（不判红）：旧写法 detectPlatform(rows[guessHeader(rows)]) 在本样本 ⇒ '
+  + JSON.stringify(detectPlatform((jdFilled.sheets['com.jd.o2o.settlement.domain.dt'].rows[guessHeader(jdFilled.sheets['com.jd.o2o.settlement.domain.dt'].rows)] || []).map((x) => String(x).trim()))));
+
+const autoTb = detectPlatformInMatrix(tb);
+check('A2 回归：淘宝（单级表头）自动判定 ⇒ taobao 且表头行 = 0（不许被本次改动改坏）',
+  !!autoTb && autoTb.platform === 'taobao' && autoTb.headerRow === 0, JSON.stringify(autoTb));
+const autoMt = detectPlatformInMatrix(mt);
+check('A3 回归：美团多 sheet（只第 2 个 sheet 命中）⇒ meituan 且指到「订单明细」',
+  !!autoMt && autoMt.platform === 'meituan' && autoMt.sheet === '订单明细', JSON.stringify(autoMt));
+check('A4 反例：无关矩阵 ⇒ null（不许"猜一个"）',
+  detectPlatformInMatrix({ sheets: { x: { rows: [['foo', 'bar'], ['1', '2']] } } }) === null, '');
+
+// 云端副本行为等价（R245 起两副本靠人工同步；本函数是 R250 新加的 ⇒ 必须两处都在且行为一致）
+let cfSvc = null;
+try { cfSvc = require(path.join(__dirname, '..', 'cloudfunctions', 'importSalesBill', 'service.js')); }
+catch (e) {
+  const Module = require('module');
+  const orig = Module._load;
+  Module._load = function (req) { if (req === 'xlsx') return {}; return orig.apply(this, arguments); };
+  try { cfSvc = require(path.join(__dirname, '..', 'cloudfunctions', 'importSalesBill', 'service.js')); } catch (e2) { cfSvc = null; }
+  Module._load = orig;
+}
+check('B1 云端副本导出 detectPlatformInMatrix（新函数不许只改一处）',
+  !!(cfSvc && typeof cfSvc.detectPlatformInMatrix === 'function'), '');
+const same = (m) => JSON.stringify(cfSvc && cfSvc.detectPlatformInMatrix(m)) === JSON.stringify(detectPlatformInMatrix(m));
+check('B2 云端副本 ≡ 前端副本（4 个 fixture + 忠实两级表头样本，逐条行为等价）',
+  !!(cfSvc && same(jdOrderM) && same(tb) && same(mt) && same(jdSkuM) && same(jdFilled)),
+  cfSvc ? ('jd=' + JSON.stringify(cfSvc.detectPlatformInMatrix(jdOrderM))
+    + ' 忠实=' + JSON.stringify(cfSvc.detectPlatformInMatrix(jdFilled))) : '云端副本不可加载');
+
+// 调用点：云函数 index.js 的平台自动判定必须走这个唯一入口（否则修好了函数、调用点没跟上）
+const idxSrcRaw = fs.readFileSync(path.join(__dirname, '..', 'cloudfunctions', 'importSalesBill', 'index.js'), 'utf8');
+const idxSrc = idxSrcRaw.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1 ');
+const block = (() => {           // 取 `if (!platform) { … }` 这一段（行号无关）
+  const i = idxSrc.indexOf('if (!platform) {');
+  if (i < 0) return '';
+  let d = 0;
+  for (let j = idxSrc.indexOf('{', i); j < idxSrc.length; j++) {
+    if (idxSrc[j] === '{') d++;
+    else if (idxSrc[j] === '}') { d--; if (d === 0) return idxSrc.slice(i, j + 1); }
+  }
+  return '';
+})();
+check('B3 云函数 index.js 的平台自动判定调用 detectPlatformInMatrix(matrix)（剥注释后判）',
+  block.indexOf('detectPlatformInMatrix(matrix)') >= 0, 'block 长度=' + block.length);
+check('B4 自失效护栏：B3 的扫描面非空（取不到 `if (!platform) {` 段时必须红）',
+  block.length > 40, 'block 长度=' + block.length);
 
 console.log('\n' + '='.repeat(60));
 console.log(`===== 账单解析自测结果：${pass} 通过 / ${fail} 失败 =====`);

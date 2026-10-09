@@ -1,0 +1,41 @@
+========================================================================================
+# 真·京东订单级（117 行 × 82 列） （预期：命中 jd_order，headerRow=1，门禁 pass=true）
+  云端 service.js  detectPlatformInMatrix ⇒ {"platform":"jd_order","headerRow":1,"sheet":"com.jd.o2o.settlement.domain.dt"}
+  镜像 utils/billParse.js detectPlatformInMatrix ⇒ {"platform":"jd_order","headerRow":1,"sheet":"com.jd.o2o.settlement.domain.dt"}
+  两副本行为一致 = true
+  pickSheet ⇒ "com.jd.o2o.settlement.domain.dt"
+  parsed: rows=15 totals={"amountFen":55596,"qty":23,"rowCount":23} excluded={"rows":92,"reason":"非正向订单（推广费/保险单）"}
+  grade: pass=true failures=[]
+========================================================================================
+# 真·京东 SKU 级（仅表头 1 行） （预期：命中 jd_sku，rows=0，CHANNEL_EMPTY）
+  云端 service.js  detectPlatformInMatrix ⇒ {"platform":"jd_sku","headerRow":0,"sheet":"sku对账单下载"}
+  镜像 utils/billParse.js detectPlatformInMatrix ⇒ {"platform":"jd_sku","headerRow":0,"sheet":"sku对账单下载"}
+  两副本行为一致 = true
+  pickSheet ⇒ "sku对账单下载"
+  parsed: rows=0 totals={"amountFen":0,"qty":0,"rowCount":0} excluded={"rows":0,"reason":""}
+  grade: pass=false failures=[{"code":"CHANNEL_EMPTY","field":"rows","msg":"未解析到任何数据行"}]
+========================================================================================
+# 真·淘宝闪购商品表 （预期：形态 C ⇒ 平台机器判不出（用户选））
+  云端 service.js  detectPlatformInMatrix ⇒ null
+  镜像 utils/billParse.js detectPlatformInMatrix ⇒ null
+  两副本行为一致 = true
+  pickSheet ⇒ null
+  → 无平台（本表按设计属**形态 C**：平台由用户在 picker 里选 ⇒ 这是**预期**，非缺陷）
+# fixture jd_order_2026-09.matrix.json (不在)
+# fixture jd_sku_sample.matrix.json (不在)
+========================================================================================
+# fixture taobao_2026-08.matrix.json （回归：不得与改前行为不同）
+  云端 service.js  detectPlatformInMatrix ⇒ {"platform":"taobao","headerRow":0,"sheet":"外卖账单明细"}
+  镜像 utils/billParse.js detectPlatformInMatrix ⇒ {"platform":"taobao","headerRow":0,"sheet":"外卖账单明细"}
+  两副本行为一致 = true
+  pickSheet ⇒ "外卖账单明细"
+  parsed: rows=27 totals={"amountFen":377965,"qty":150,"rowCount":156} excluded={"rows":0,"reason":""}
+  grade: pass=true failures=[]
+========================================================================================
+# fixture meituan_2026-08.matrix.json （回归：不得与改前行为不同）
+  云端 service.js  detectPlatformInMatrix ⇒ {"platform":"meituan","headerRow":0,"sheet":"订单明细"}
+  镜像 utils/billParse.js detectPlatformInMatrix ⇒ {"platform":"meituan","headerRow":0,"sheet":"订单明细"}
+  两副本行为一致 = true
+  pickSheet ⇒ "订单明细"
+  parsed: rows=19 totals={"amountFen":182664,"qty":50,"rowCount":50} excluded={"rows":47,"reason":"非外卖订单（广告/保险）"}
+  grade: pass=true failures=[]

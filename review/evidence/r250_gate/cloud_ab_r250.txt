@@ -1,0 +1,28 @@
+[ok] connected ws://127.0.0.1:9420
+    poll 1 {"done":false}
+    poll 4 {"done":false}
+shop 轮询结果 = {"done":true,"ms":7183,"res":"shop_mu6j87v1itrs"}
+shop_id = shop_mu6j87v1itrs
+========================================================================================
+# A · 真·京东订单级（117 行 × 82 列，两级表头）
+  预期：platform='jd_order' 且 grade.pass=true（旧写法会回「无法识别账单平台」）
+  本地文件 40298 B → base64 53732 字符
+  上传轮询 = {"done":true,"res":{"fileID":"cloud://cloud1-d4gphpoxy337f2a25.636c-cloud1-d4gphpoxy337f2a25-1487499085/sales_bills/r250_jd_order_1791530295825.xlsx","size":40298}}
+  fileID = cloud://cloud1-d4gphpoxy337f2a25.636c-cloud1-d4gphpoxy337f2a25-1487499085/sales_bills/r250_jd_order_1791530295825.xlsx
+    poll 1 {"done":false}
+  预览轮询 done=true ms=3906 err=undefined
+  回包 = {"code":"SUCCESS","msg":"ok","data":{"shop_id":"shop_mu6j87v1itrs","platform":"jd_order","grade":{"pass":true,"level":"A","failures":[]},"preview":{"headerRow":1,"rows":[{"bizDate":"2026-09-01","qty":2,"amountFen":4454},{"bizDate":"2026-09-02","qty":2,"amountFen":3608},{"bizDate":"2026-09-03","qty":3,"amountFen":6193},{"bizDate":"2026-09-04","qty":1,"amountFen":2179},{"bizDate":"2026-09-05","qty":2,"amountFen":10699},{"bizDate":"2026-09-07","qty":1,"amountFen":1538},{"bizDate":"2026-09-10","qty":2,"amountFen":5471},{"bizDate":"2026-09-12","qty":1,"amountFen":2009},{"bizDate":"2026-09-13","qty":1,"amountFen":2708},{"bizDate":"2026-09-14","qty":1,"amountFen":1683},{"bizDate":"2026-09-22","qty":1,"amountFen":1549},{"bizDate":"2026-09-24","qty":2,"amountFen":4773},{"bizDate":"2026-09-25","qty":1,"amountFen":2329},{"bizDate":"2026-09-28","qty":1,"amountFen":1873},{"bizDate":"2026-09-30","qty":2,"amountFen":4530}],"totals":{"amountFen":55596,"qty":23,"rowCount":23},"months":["2026-09"],"excluded":{"rows":92,"reason":"非正向订单（推广费/保险单）"}},"client_request_id":""}}
+  platform = "jd_order"
+  grade    = {"pass":true,"level":"A","failures":[]}
+  preview  = rows 15 · totals {"amountFen":55596,"qty":23,"rowCount":23} · excluded {"rows":92,"reason":"非正向订单（推广费/保险单）"}
+========================================================================================
+# B · 真·京东 SKU 级（1 行 × 27 列 = 只有表头的空模板）
+  预期：platform='jd_sku' 且 grade.pass=false、failures[0].code='CHANNEL_EMPTY'
+  本地文件 3830 B → base64 5108 字符
+  上传轮询 = {"done":true,"res":{"fileID":"cloud://cloud1-d4gphpoxy337f2a25.636c-cloud1-d4gphpoxy337f2a25-1487499085/sales_bills/r250_jd_sku_1791530301999.xlsx","size":3830}}
+  fileID = cloud://cloud1-d4gphpoxy337f2a25.636c-cloud1-d4gphpoxy337f2a25-1487499085/sales_bills/r250_jd_sku_1791530301999.xlsx
+  预览轮询 done=true ms=1273 err=undefined
+  回包 = {"code":"SUCCESS","msg":"ok","data":{"shop_id":"shop_mu6j87v1itrs","platform":"jd_sku","grade":{"pass":false,"level":"A","failures":[{"code":"CHANNEL_EMPTY","field":"rows","msg":"未解析到任何数据行"}]},"preview":{"headerRow":0,"rows":[],"totals":{"amountFen":0,"qty":0,"rowCount":0},"months":[],"excluded":{"rows":0,"reason":""}},"client_request_id":""}}
+  platform = "jd_sku"
+  grade    = {"pass":false,"level":"A","failures":[{"code":"CHANNEL_EMPTY","field":"rows","msg":"未解析到任何数据行"}]}
+  preview  = rows 0 · totals {"amountFen":0,"qty":0,"rowCount":0} · excluded {"rows":0,"reason":""}

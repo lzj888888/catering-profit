@@ -121,6 +121,42 @@ function rowCols(row) {
 }
 
 /**
+ * 平台判定（**逐候选行试签名**）—— R250：修「两级表头 ⇒ 自动判定返 null」。
+ *
+ * 🔴 为什么不能写成 `detectPlatform(rows[guessHeader(rows)])`：
+ *    京东《对账单下载》（订单级）是两级表头，R1 = 合并的组表头（"商家基础信息" × 5 /
+ *    "订单基础信息" × 77，导出**逐格写满**），R2 = 真列名。两者非空文本格数都是 82 ⇒ 打平
+ *    ⇒ guessHeader 的启发式（文本最多 + 严格大于 + 先到先得）取到 R1 ⇒ detectPlatform(R1)=null
+ *    ⇒ **一张有 117 行数据的表被判「无法识别账单平台」**（fail-closed 误杀真数据）。
+ *    （guessHeader 的注释早已写明"京东订单级 R1 是分组行"，但那只在**传入 platform** 时生效；
+ *      自动判定这条路上 platform 还没有 ⇒ 走的正是纯启发式 ⇒ 盲区。）
+ * ⇒ 平台判定**不该依赖"哪一行最像表头"**，直接前 5 行逐行试签名，与 pickSheet 的扫描口径一致。
+ *
+ * @param {Array<Array>} rows 定宽矩阵（行 = 数组）
+ * @param {number} [limit] 候选行数上限（默认 5）
+ * @returns {{platform:string, headerRow:number}|null}
+ */
+function detectPlatformInRows(rows, limit) {
+  const list = rows || [];
+  const n = Math.min(list.length, limit == null ? 5 : limit);
+  for (let i = 0; i < n; i++) {
+    const p = detectPlatform(list[i] || []);
+    if (p) return { platform: p, headerRow: i };
+  }
+  return null;
+}
+
+// 矩阵级入口（与云端 service.js 同源）：逐 sheet、每 sheet 逐候选行试签名。
+function detectPlatformInMatrix(matrix) {
+  const sheets = (matrix && matrix.sheets) || {};
+  for (const name of Object.keys(sheets)) {
+    const hit = detectPlatformInRows((sheets[name] || {}).rows);
+    if (hit) return { platform: hit.platform, headerRow: hit.headerRow, sheet: name };
+  }
+  return null;
+}
+
+/**
  * 表头行 = 前 5 行里「非空文本格最多」的那一行（移植 parse_bill.py::guess_header）。
  * 🔴 P3：给了 platform 时**优先用档案签名**定位（require 全中的第一行）——
  *    京东订单级 R1 是分组行、R2 才是真列名，纯启发式会在其中挑错。
@@ -286,4 +322,5 @@ function parseBillMatrix(matrix, opts) {
            excluded: { rows: excludedRows, reason: excludedReason } };
 }
 
-module.exports = { detectPlatform, guessHeader, parseBillMatrix, toNum, normDate, pickSheet, PLATFORM_PROFILE };
+module.exports = { detectPlatform, guessHeader, parseBillMatrix, toNum, normDate, pickSheet, PLATFORM_PROFILE,
+  detectPlatformInRows, detectPlatformInMatrix };   // R250：平台判定逐行试签名（两级表头 / 自动判定路径）

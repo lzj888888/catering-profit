@@ -1,0 +1,17 @@
+
+┌─────────────────┬──────────┬─────────┬───────────────┐
+│ (index)         │ status   │ timeout │ runtime       │
+├─────────────────┼──────────┼─────────┼───────────────┤
+│ importSalesBill │ 'Active' │ 20      │ 'Nodejs16.13' │
+└─────────────────┴──────────┴─────────┴───────────────┘
+
+--- STDERR ---
+- initialize
+
+(node:24296) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)
+√ IDE server has started, listening on http://127.0.0.1:10896
+- query cloudfunctions info
+- Preparing to fetch cloudfunctions info
+- Fetching info of cloudfunction importSalesBill
+√ query cloudfunctions info

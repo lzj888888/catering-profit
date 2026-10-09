@@ -19,6 +19,7 @@ const { nowUtc } = common.utilTime;
 const {
   bufferToMatrix, detectPlatform, guessHeader, parseBillMatrix, checkGradeA, SALES_SCHEMA,
   pickSheet,   // R245：🔴 京东表名不固定 ⇒ 判定 sheet 是否存在必须按签名找，不能硬编码表名
+  detectPlatformInRows, detectPlatformInMatrix,   // R250：平台自动判定逐行试签名（京东订单级两级表头）
   DISH_SHAPES, detectDishMatrix, parseDishSales, parseDishSalesC, dishRefId, saleDocId,
 } = require('./service');
 const { validateInput } = require('./validate');
@@ -62,12 +63,15 @@ exports.main = async (event) => {
   // ===== 6. 外卖账单（批次 F 原路径）=====
   let platform = v.platform;
   if (!platform) {
-    for (const name of Object.keys(matrix.sheets)) {
-      const s = matrix.sheets[name];
-      const hdr = (s.rows[guessHeader(s.rows)] || []).map((x) => String(x).trim());
-      const p = detectPlatform(hdr);
-      if (p) { platform = p; break; }
-    }
+    // 🔴 R250：**不能**写 `detectPlatform(rows[guessHeader(rows)])` —— 京东《对账单下载》（订单级）
+    //   是两级表头：R1 = 合并的组表头（"商家基础信息"/"订单基础信息"，导出逐格写满 82 格），
+    //   R2 才是真列名。两者「非空文本格数」都是 82 ⇒ 打平 ⇒ guessHeader 取到 R1
+    //   ⇒ detectPlatform(R1) = null ⇒ **一张 117 行数据的表被判「无法识别账单平台」**（误杀真数据）。
+    //   实测（真 SheetJS）：guessHeader ⇒ 第 0 行判不出；第 1 行本可识别为 jd_order。
+    //   ⇒ 平台判定直接**逐候选行试签名**（前 5 行内谁先命中谁赢），不再依赖"哪一行最像表头"。
+    //   `detectPlatformInMatrix` = 该口径的唯一入口（可 require ⇒ 守卫能真调它判行为）。
+    const hit = detectPlatformInMatrix(matrix);
+    if (hit) platform = hit.platform;
   }
   // 🔴 R245：判定「表在不在」改为按签名找 sheet（京东表名不固定：com.jd.o2o… / sku对账单下载）
   if (!platform || !pickSheet(matrix.sheets, platform)) {

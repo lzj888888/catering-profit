@@ -1,0 +1,24 @@
+===== base 先绿 =====
+  bill   RC=0  ===== 账单解析自测结果：53 通过 / 0 失败 =====
+  shape  RC=0  27 通过 / 0 失败
+
+===== 逐条变异 =====
+  ✅ 有效红 [M1 index.js 退回旧写法（先 guessHeader 选行、再判平台）]
+        变红=True · 红在目标断言(B3)=True · 还原md5全等=True · 复绿=True
+           ❌ B3 云函数 index.js 的平台自动判定调用 detectPlatformInMatrix(matrix)（剥注释后判）  (block 长度=306)
+  ✅ 有效红 [M2a utils/billParse.js 平台判定退回「先选表头行」（忠实两级表头样本必挂）]
+        变红=True · 红在目标断言(A5)=True · 还原md5全等=True · 复绿=True
+           ❌ A5 忠实样本（两级表头都写满）：自动判定 ⇒ jd_order 且表头行 = 1  ← 真正有分辨力的那条  (null)
+           ❌ B2 云端副本 ≡ 前端副本（4 个 fixture + 忠实两级表头样本，逐条行为等价）  (jd={"platform":"jd_order","headerRow":1,"sheet":"com.jd.o2o.settl
+  ✅ 有效红 [M2b 云端 service.js 平台判定退回旧写法（两副本分叉）]
+        变红=True · 红在目标断言(B2)=True · 还原md5全等=True · 复绿=True
+           ❌ B2 云端副本 ≡ 前端副本（4 个 fixture + 忠实两级表头样本，逐条行为等价）  (jd={"platform":"jd_order","headerRow":1,"sheet":"com.jd.o2o.settl
+  ✅ 有效红 [M3 wxml 删掉两条原因渲染行（回到「回了不读」）]
+        变红=True · 红在目标断言(F-④)=True · 还原md5全等=True · 复绿=True
+           ❌ F-④ 每个 fail 横幅都配一条**同级渲染**的原因行（两处分支都要有；回了不读=静默丢弃） —— fail 横幅 × 2 / 原因渲染行 × 0
+  ✅ 有效红 [M4 页面映射表漏登记一个 code（CHANNEL_EMPTY）]
+        变红=True · 红在目标断言(F-①)=True · 还原md5全等=True · 复绿=True
+           ❌ F-① 云端每个 failure code 都在页面映射表里登记（新增 code 不登记即红） —— 漏登记：CHANNEL_EMPTY
+
+===== 汇总 =====
+  全部变异有效 = True

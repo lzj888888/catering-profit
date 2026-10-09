@@ -141,6 +141,34 @@ function detectPlatform(header) {
   return null;
 }
 
+// 🔴 R250：平台判定**不能先问「哪一行最像表头」**。
+//   京东《对账单下载》（订单级）是**两级表头**：R1 = 合并的组表头（"商家基础信息" × 5 / "订单基础信息" × 77，
+//   导出时**逐格写满**，不是只写左上角），R2 = 真列名。两者「非空文本格数」都是 82 ⇒ 打平
+//   ⇒ guessHeader 的启发式（文本最多 + 严格大于 + 先到先得）取到 **R1**
+//   ⇒ detectPlatform(R1) = null ⇒ 一张 117 行数据的表被判「无法识别账单平台」（fail-closed 误杀真数据）。
+//   实测（真 SheetJS 走 bufferToMatrix）：guessHeader ⇒ 第 0 行；但**第 1 行本可识别为 jd_order**。
+//   修法：平台判定改为**逐候选行试签名**（前 5 行内谁先命中谁赢），与 pickSheet 的扫描口径一致。
+function detectPlatformInRows(rows, limit) {
+  const list = rows || [];
+  const n = Math.min(list.length, limit == null ? 5 : limit);
+  for (let i = 0; i < n; i++) {
+    const p = detectPlatform(list[i] || []);
+    if (p) return { platform: p, headerRow: i };
+  }
+  return null;
+}
+
+// 矩阵级：逐 sheet、每 sheet 逐候选行试签名 —— 云端「自动判定平台」的唯一入口。
+// （上提成可 require 的纯函数，守卫才能真调它判**行为**，而不是扫源码字面。）
+function detectPlatformInMatrix(matrix) {
+  const sheets = (matrix && matrix.sheets) || {};
+  for (const name of Object.keys(sheets)) {
+    const hit = detectPlatformInRows((sheets[name] || {}).rows);
+    if (hit) return { platform: hit.platform, headerRow: hit.headerRow, sheet: name };
+  }
+  return null;
+}
+
 function rowCols(row) {
   return (row || []).map((v) => (v == null ? '' : String(v).trim()));
 }
@@ -605,6 +633,7 @@ function parseDishSalesC(sheetRows, opts) {
 module.exports = {
   bufferToMatrix, detectPlatform, guessHeader, parseBillMatrix, checkGradeA, SALES_SCHEMA, toNum,
   pickSheet, normDate, PLATFORM_PROFILE,   // R245：P4 按签名找 sheet / 日期归一
+  detectPlatformInRows, detectPlatformInMatrix,   // R250：两级表头（京东订单级）⇒ 平台判定逐行试签名，不靠 guessHeader 选行
   fmtCell, EXCEL_UTC_BASE,   // R232 C-11：fmtCell 导出以便守卫直接验证日期口径（此前漏导，0/4 全错无人知）
   DISH_SHAPES, DISH_A_STRUCT, normalizeDishName, detectDishShape, detectDishMatrix,
   DISH_C_ALIAS, canonDishCHeader, findDishCCol,   // R245 P7：形态 C 列名别名单源（守卫用）
