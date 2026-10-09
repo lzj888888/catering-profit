@@ -219,5 +219,114 @@ check('5-③ 🔴 每个 by_platform 之后的窗口内必须能读到 unmatched
 check('5-④ 自检：合成的「只渲染 ranked、不读 unmatched」样本必须判红（带 setData 同名干扰）',
   judgeTakeawayUnmatched('takeaway = Object.keys(d.takeaway.by_platform).map((p) => ({ ranked: b.ranked })); this.setData({ takeaway, unmatched, totals });') === false);
 
+// ============ ⑥ 平台块「不得只留光标题」（R251）============
+// 真实缺陷（李老师 2026-10-09 真机报障：「又有京东又有淘宝数据，正常吗？看看是不是混乱了」）：
+//   「外卖·淘宝闪购」「外卖·京东（订单）」两个标题下面**什么都没有** ⇒ 看着像混进了脏数据。
+//   真云实测（`review/evidence/r251_dishreview/probe_r251.txt`）两条成因**完全不同**：
+//     · jd_order 块 `unmatchedCount=0`、`ranked=[]` ⇒ 该平台只进了**账单级**行
+//       （`importSalesBill` 账单分支写 `dish_key: ''`，被 `rankReview` 的 `if (!k) continue` 跳过
+//        ⇒ 既不上榜、也不进未匹配、连合计都是 0 —— 「填了没用」的死输入）
+//     · taobao 块 `unmatchedCount=51`、`ranked=[]` ⇒ 有菜品行，但一张成本卡都没匹配上
+//   而 `by_platform[p].totals` 后端**一直算着**，页面却**一次都没渲染**（用户看不到「导进来多少」）。
+// 判据（**判行为不判字面**）：**真调页面 `load()`**（require hook 换桩 + 注入 setData），
+//   断两条成因各自落在正确措辞上、且**互不相同**（防判据退化成常量）。
+//   ⚠️ 不许只 grep 源码：注释里出现 `item.totals` 会把「wxml 其实没渲染」判绿（R249-B 同型假绿）。
+function judgePlatformSummary(wxmlNoCmt) {
+  return wxmlNoCmt.indexOf('item.emptyReason') >= 0 && wxmlNoCmt.indexOf('item.totals.qty') >= 0;
+}
+// ⚠️ 本段**必须异步**：页面 `load()` 内有 `await api.call(...)` ⇒ 同步读 data 会读到「还没跑完」的
+//   中间态（`takeaway` 仍是 null）= **假绿**。故整段包进 async IIFE，末尾统一出结果并 exit。
+(async function sectionR251() {
+console.log('\n============ ⑥ 平台块不得只留光标题（R251）============');
+
+// 真云回包**忠实样本**（字段名/量级照抄 probe_r251.txt，只把菜名缩短）
+const FIX_R251 = {
+  dine_in: [],
+  totals: { qty: 0, amountFen: 0, costFen: 0, grossFen: 0, dishCount: 0, unmatchedCount: 0 },
+  unmatched: [],
+  takeaway: {
+    by_platform: {
+      taobao: {
+        ranked: [],
+        unmatched: [
+          { dish_key: '样本菜甲', name: '样本菜甲', qty: 2, amountFen: 1520 },
+          { dish_key: '样本菜乙', name: '样本菜乙', qty: 43, amountFen: 0 },
+        ],
+        totals: { qty: 45, amountFen: 1520, costFen: 0, grossFen: 0, dishCount: 0, unmatchedCount: 2 },
+      },
+      jd_order: {
+        ranked: [], unmatched: [],
+        totals: { qty: 0, amountFen: 0, costFen: 0, grossFen: 0, dishCount: 0, unmatchedCount: 0 },
+      },
+    },
+  },
+};
+
+let pageData = null;
+try {
+  const Module = require('module');
+  const origLoadM = Module._load;
+  Module._load = function (request, parent, isMain) {
+    if (/utils[\\/]api\.js$/.test(request)) {
+      return { ensureShop: async () => true, call: async () => FIX_R251, toastError: () => {} };
+    }
+    if (/utils[\\/]ui\.js$/.test(request)) return { setTitle: () => {}, nowMonth: () => '2026-10' };
+    if (/utils[\\/]paywall\.js$/.test(request)) return { openPaywall: () => {} };
+    return origLoadM.apply(this, arguments);
+  };
+  let captured = null;
+  global.Page = (o) => { captured = o; };
+  global.getApp = () => ({ globalData: { shop_id: 'shop_probe' } });
+  global.wx = { navigateTo: () => {} };
+  delete require.cache[require.resolve(path.join(ROOT, PAGE_REL))];
+  require(path.join(ROOT, PAGE_REL));
+  Module._load = origLoadM;
+  if (captured) {
+    const inst = Object.assign({}, captured);
+    inst.data = JSON.parse(JSON.stringify(captured.data));
+    inst.setData = function (o) { Object.assign(this.data, o); };
+    await inst.load();
+    pageData = inst.data;
+  }
+} catch (e) { /* 下面判红 */ }
+
+check('6-① 页面 load() 可被真调（fail-closed：拿不到 data 即红）', !!(pageData && pageData.takeaway),
+  pageData ? 'by_platform 解析成功' : '未取得页面 data');
+if (pageData && pageData.takeaway) {
+  const tb = pageData.takeaway.find((b) => b.platform === 'taobao');
+  const jd = pageData.takeaway.find((b) => b.platform === 'jd_order');
+  check('6-② 账单级平台（jd_order）必须给出「只有账单合计」的说明',
+    jd && typeof jd.emptyReason === 'string' && jd.emptyReason.indexOf('账单合计') >= 0,
+    jd && JSON.stringify(jd.emptyReason));
+  check('6-③ 全未匹配平台（taobao）必须给出「未匹配到成本卡」的说明',
+    tb && typeof tb.emptyReason === 'string' && tb.emptyReason.indexOf('未匹配到成本卡') >= 0,
+    tb && JSON.stringify(tb.emptyReason));
+  check('6-④ 自失效护栏：两条成因**互不相同**（否则判据已退化成常量）',
+    jd && tb && jd.emptyReason !== tb.emptyReason);
+  check('6-⑤ 平台合计必须带出来（此前算好了却不渲染）',
+    tb && tb.totals && tb.totals.qty === 45 && tb.unmatchedCount === 2,
+    tb && JSON.stringify({ qty: tb.totals.qty, un: tb.unmatchedCount }));
+  check('6-⑥ 未匹配行必须标来源平台（跨平台合并后否则看不出出处）',
+    (pageData.unmatched[0] || {}).platformText === '淘宝闪购',
+    JSON.stringify((pageData.unmatched[0] || {}).platformText));
+  check('6-⑦ 0 元高份数行标「口味询问类」，非 0 元行**不得**误标（掉进 unmatched 后标记不能丢）',
+    (pageData.unmatched.find((x) => x.name === '样本菜乙') || {}).zeroAmount === true
+    && (pageData.unmatched.find((x) => x.name === '样本菜甲') || {}).zeroAmount === false);
+  check('6-⑧ 自失效护栏：样本里含 0 元行与正常行各一（判据面非退化）',
+    pageData.unmatched.length === 2);
+}
+// 页面算出来的东西**必须真被 wxml 渲染**（本仓反复踩过的「算了不渲染」族）
+const WXML_REL = 'pages/m3/dishreview/index.wxml';
+const wxmlNoCmt = rd(WXML_REL).replace(/<!--[\s\S]*?-->/g, ' ');
+check('6-⑨ wxml 真渲染成因说明与平台合计（剥注释后判，防注释骗过）', judgePlatformSummary(wxmlNoCmt));
+check('6-⑩ 自检：合成的「只渲染标题、不渲染合计」样本必须判红',
+  judgePlatformSummary('<view class="section-title">{{t.reviewTakeaway}} · {{item.platformName}}</view>') === false);
+check('6-⑪ 自失效护栏：wxml 扫描面非空', wxmlNoCmt.length > 300, wxmlNoCmt.length + ' 字符');
+
 console.log('\n===== getDishReview 算法层守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);
+})().catch(function (e) {
+  console.log('  ❌ ⑥ 段未捕获异常（按 fail-closed 判红）：' + ((e && e.message) || e));
+  console.log('\n===== getDishReview 算法层守卫结果：' + pass + ' 通过 / ' + (failN + 1) + ' 失败 =====');
+  process.exit(1);
+});

@@ -1,0 +1,179 @@
+R{
+  "at": "2026-10-09T07:40:52.091Z",
+  "shop_id": "shop_mu6j87v1itrs",
+  "raw": {
+    "code": "SUCCESS",
+    "msg": "ok",
+    "data": {
+      "shop_id": "shop_mu6j87v1itrs",
+      "truncated": false,
+      "client_request_id": "",
+      "list": [
+        {
+          "card_code": "cc_muhz52um1mts",
+          "version": 5,
+          "name": "成本卡1",
+          "category": "",
+          "tags": "",
+          "card_type": 1,
+          "calc_mode": "A",
+          "batch_output": null,
+          "loss_rate": 0,
+          "aux_fen": 0,
+          "price_fen": 3000,
+          "price_promo_fen": 0,
+          "total_cost_fen": 1200,
+          "material_total_fen": 1200,
+          "gross_profit_fen": 1800,
+          "gross_margin_pct": 60,
+          "reverse_price_fen": 3000,
+          "created_at": 1791468938498,
+          "updated_at": 1791468938498,
+          "specs": [],
+          "lines": [
+            {
+              "material_id": "",
+              "material_name": "猪里脊",
+              "quantity": 12,
+              "net_unit_cost": 10000,
+              "line_net_cost_fen": 1200,
+              "brand_spec": "",
+              "purchase_unit": "",
+              "purchase_price": 0,
+              "convert_factor": 0,
+              "yield_rate": 0,
+              "input_type": 2,
+              "line_kind": "main",
+              "group_name": "",
+              "line_type": 1,
+              "sub_card_ref": "",
+              "sub_version": 0
+            }
+          ]
+        },
+        {
+          "card_code": "cc_muhznpgzd5ot",
+          "version": 9,
+          "name": "成本卡2",
+          "category": "",
+          "tags": "",
+          "card_type": 1,
+          "calc_mode": "A",
+          "batch_output": null,
+          "loss_rate": 0,
+          "aux_fen": 0,
+          "price_fen": 100,
+          "price_promo_fen": 0,
+          "total_cost_fen": 40,
+          "material_total_fen": 40,
+          "gross_profit_fen": 60,
+          "gross_margin_pct": 60,
+          "reverse_price_fen": 100,
+          "created_at": 1791474298101,
+          "updated_at": 1791474298101,
+          "specs": [],
+          "lines": [
+            {
+              "material_id": "mat_mu7606ti1psx",
+              "material_name": "鸡腿肉",
+              "quantity": 50,
+              "net_unit_cost": 80,
+              "line_net_cost_fen": 40,
+              "brand_spec": "",
+              "purchase_unit": "件",
+              "purchase_price": 16000,
+              "convert_factor": 20000,
+              "yield_rate": 100,
+              "input_type": 1,
+              "line_kind": "main",
+              "group_name": "",
+              "line_type": 1,
+              "sub_card_ref": "",
+              "sub_version": 0
+            }
+          ]
+        },
+        {
+          "card_code": "cc_muibc75r5q3j",
+          "version": 10,
+          "name": "成本卡3",
+          "category": "",
+          "tags": "",
+          "card_type": 1,
+          "calc_mode": "A",
+          "batch_output": null,
+          "loss_rate": 0,
+          "aux_fen": 0,
+          "price_fen": 123,
+          "price_promo_fen": 0,
+          "total_cost_fen": 49,
+          "material_total_fen": 49,
+          "gross_profit_fen": 74,
+          "gross_margin_pct": 60.16,
+          "reverse_price_fen": 123,
+          "created_at": 1791474395845,
+          "updated_at": 1791474395845,
+          "specs": [],
+          "lines": [
+            {
+              "material_id": "mat_muibavsj62f7",
+              "material_name": "猪板油",
+              "quantity": 5,
+              "net_unit_cost": 500,
+              "line_net_cost_fen": 25,
+              "brand_spec": "",
+              "purchase_unit": "斤",
+              "purchase_price": 2500,
+              "convert_factor": 500,
+              "yield_rate": 100,
+              "input_type": 1,
+              "line_kind": "main",
+              "group_name": "",
+              "line_type": 1,
+              "sub_card_ref": "",
+              "sub_version": 0
+            },
+            {
+              "material_id": "mat_mu7606ti1psx",
+              "material_name": "鸡腿肉",
+              "quantity": 30,
+              "net_unit_cost": 80,
+              "line_net_cost_fen": 24,
+              "brand_spec": "",
+              "purchase_unit": "件",
+              "purchase_price": 16000,
+              "convert_factor": 20000,
+              "yield_rate": 100,
+              "input_type": 1,
+              "line_kind": "main",
+              "group_name": "",
+              "line_type": 1,
+              "sub_card_ref": "",
+              "sub_version": 0
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "cards": [
+    {
+      "card_code": "cc_muhz52um1mts",
+      "name": "成本卡1",
+      "version": 5,
+      "lines": 1
+    },
+    {
+      "card_code": "cc_muhznpgzd5ot",
+      "name": "成本卡2",
+      "version": 9,
+      "lines": 1
+    },
+    {
+      "card_code": "cc_muibc75r5q3j",
+      "name": "成本卡3",
+      "version": 10,
+      "lines": 2
+    }
+  ]
+}

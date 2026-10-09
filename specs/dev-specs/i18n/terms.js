@@ -1263,6 +1263,15 @@ const TERMS = {
     reviewThresholdHint: '低于此阈值的菜品标红，仅提示、不影响核算。',
     reviewUnmatched: '未匹配菜品',
     reviewUnmatchedHint: '以下菜品未匹配到成本卡，无法计算毛利。请点「去映射」或新建成本卡。',
+    // 🔴 R251：外卖平台块**榜为空时不能只留一个光标题**（李老师 2026-10-09 真机报障：
+    //   「外卖·淘宝闪购」「外卖·京东（订单）」两个标题下面什么都没有 ⇒ 看着像「混进了脏数据」）。
+    //   两种成因必须分开说，判据用**后端已算好的** `totals.unmatchedCount`（不是前端猜）：
+    //     · unmatchedCount > 0 ⇒ 有菜品行但一张卡都没匹配上（②）
+    //     · unmatchedCount = 0 且 ranked 空 ⇒ 该平台只有「账单级」行
+    //       （`importSalesBill` 账单分支写的是 `dish_key: ''`，而 `rankReview` 对空 dish_key 直接
+    //        `continue` 跳过 ⇒ 既不上榜、也不进未匹配、连合计都是 0 ⇒ 在「菜品」复盘里注定不可见）(①)
+    reviewPlatformBillOnly: '本平台只导入了账单合计（无菜品明细），不参与菜品毛利复盘。',
+    reviewPlatformAllUnmatched: '本平台菜品均未匹配到成本卡，暂无毛利。',
     reviewGoMap: '去映射',
     reviewGoCard: '新建成本卡',
     reviewEmpty: '还没有导入堂食销量，请先在「外卖」页导入《菜品销售统计》。',

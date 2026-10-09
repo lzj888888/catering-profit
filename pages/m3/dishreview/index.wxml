@@ -76,6 +76,16 @@
             <text class="c-num">{{it.marginText}}</text>
           </view>
         </view>
+        <!-- 🔴 R251：平台小结（份数 / 营收 / 未匹配项数）+ **空榜成因**。
+             此前：① 后端算好的 `totals` **一次都没渲染过** ⇒ 用户看不到「到底导进来多少」；
+                   ② `ranked` 为空时本块**只留一个光标题** ⇒ 看着像混进了脏数据。
+             成因由 `item.emptyReason` 给出（账单级 / 全未匹配，两种措辞，见 terms.js 注释）。 -->
+        <view class="card2">
+          <view class="muted" wx:if="{{item.emptyReason}}">{{item.emptyReason}}</view>
+          <view class="cell"><text class="lbl">{{t.reviewTotalQty}}</text><text class="val">{{item.totals.qty}}</text></view>
+          <view class="cell"><text class="lbl">{{t.reviewTotalRevenue}}</text><text class="val">{{t.cur}}{{item.totals.revenueText}}</text></view>
+          <view class="cell" wx:if="{{item.unmatchedCount}}"><text class="lbl">{{t.reviewUnmatched}}</text><text class="val">{{item.unmatchedCount}}</text></view>
+        </view>
       </block>
     </block>
     <block wx:else>
@@ -90,7 +100,12 @@
     <view class="card2" wx:if="{{unmatched.length}}">
       <view class="muted">{{t.reviewUnmatchedHint}}</view>
       <view class="row" wx:for="{{unmatched}}" wx:key="name">
-        <view class="c-name"><text>{{item.name}}</text></view>
+        <view class="c-name">
+          <text>{{item.name}}</text>
+          <!-- 🔴 R251：来源平台（跨平台合并后否则看不出这菜来自哪）+ 口味询问类 SKU 标记 -->
+          <text class="plat" wx:if="{{item.platformText}}">{{item.platformText}}</text>
+          <text class="zero" wx:if="{{item.zeroAmount}}">{{t.reviewZeroAmount}}</text>
+        </view>
         <text class="c-qty">{{item.qty}}</text>
         <text class="c-num">{{t.cur}}{{item.amountText}}</text>
       </view>

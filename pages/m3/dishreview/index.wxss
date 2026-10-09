@@ -17,6 +17,8 @@
 .below .c-num { color: #e74c3c; font-weight: 600; }
 .snap { font-size: 28rpx; color: #c2701a; margin-top: 4rpx; }
 .zero { font-size: 28rpx; color: #9aa4b2; margin-top: 4rpx; }
+/* R251：未匹配菜品的「来源平台」标签（跨平台合并后标明出处；中性色，不与 .snap 的告警橙混用） */
+.plat { font-size: 28rpx; color: #6b7a90; margin-top: 4rpx; }
 
 .cell { display: flex; justify-content: space-between; padding: 12rpx 4rpx; border-bottom: 1rpx solid #eef2f7; }
 .val { font-size: 30rpx; color: #1e3a5f; }

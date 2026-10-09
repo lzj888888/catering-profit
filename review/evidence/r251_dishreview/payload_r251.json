@@ -1,0 +1,372 @@
+{
+  "at": "2026-10-09T07:39:02.291Z",
+  "ws": "ws://127.0.0.1:9420",
+  "shop_id": "shop_mu6j87v1itrs",
+  "review_raw": {
+    "code": "SUCCESS",
+    "msg": "ok",
+    "data": {
+      "shop_id": "shop_mu6j87v1itrs",
+      "dine_in": [],
+      "takeaway": {
+        "by_platform": {
+          "taobao": {
+            "ranked": [],
+            "unmatched": [
+              {
+                "dish_key": "菜品01",
+                "name": "菜品01",
+                "qty": 2,
+                "amountFen": 1520
+              },
+              {
+                "dish_key": "菜品02",
+                "name": "菜品02",
+                "qty": 12,
+                "amountFen": 43200
+              },
+              {
+                "dish_key": "菜品03",
+                "name": "菜品03",
+                "qty": 6,
+                "amountFen": 21600
+              },
+              {
+                "dish_key": "菜品04",
+                "name": "菜品04",
+                "qty": 24,
+                "amountFen": 91200
+              },
+              {
+                "dish_key": "菜品05",
+                "name": "菜品05",
+                "qty": 0,
+                "amountFen": 0
+              },
+              {
+                "dish_key": "菜品06",
+                "name": "菜品06",
+                "qty": 0,
+                "amountFen": 0
+              },
+              {
+                "dish_key": "菜品07",
+                "name": "菜品07",
+                "qty": 0,
+                "amountFen": 0
+              },
+              {
+                "dish_key": "菜品08",
+                "name": "菜品08",
+                "qty": 4,
+                "amountFen": 1200
+              },
+              {
+                "dish_key": "菜品09",
+                "name": "菜品09",
+                "qty": 0,
+                "amountFen": 0
+              },
+              {
+                "dish_key": "菜品10",
+                "name": "菜品10",
+                "qty": 2,
+                "amountFen": 720
+              },
+              {
+                "dish_key": "菜品11",
+                "name": "菜品11",
+                "qty": 0,
+                "amountFen": 0
+              },
+              {
+                "dish_key": "菜品12",
+                "name": "菜品12",
+                "qty": 0,
+                "amountFen": 0
+              },
+              {
+                "dish_key": "菜品13",
+                "name": "菜品13",
+                "qty": 1,
+                "amountFen": 588
+              },
+              {
+                "dish_key": "菜品14",
+                "name": "菜品14",
+                "qty": 0,
+                "amountFen": 0
+              },
+              {
+                "dish_key": "菜品15",
+                "name": "菜品15",
+                "qty": 0,
+                "amountFen": 0
+              },
+              {
+                "dish_key": "菜品16",
+                "name": "菜品16",
+                "qty": 0,
+                "amountFen": 0
+              },
+              {
+                "dish_key": "菜品17",
+                "name": "菜品17",
+                "qty": 0,
+                "amountFen": 0
+              },
+              {
+                "dish_key": "菜品18",
+                "name": "菜品18",
+                "qty": 43,
+                "amountFen": 0
+              },
+              {
+                "dish_key": "菜品19",
+                "name": "菜品19",
+                "qty": 4,
+                "amountFen": 1200
+              },
+              {
+                "dish_key": "菜品20",
+                "name": "菜品20",
+                "qty": 1,
+                "amountFen": 480
+              },
+              {
+                "dish_key": "菜品21",
+                "name": "菜品21",
+                "qty": 0,
+                "amountFen": 0
+              },
+              {
+                "dish_key": "菜品22",
+                "name": "菜品22",
+                "qty": 0,
+                "amountFen": 0
+              },
+              {
+                "dish_key": "菜品23",
+                "name": "菜品23",
+                "qty": 4,
+                "amountFen": 800
+              },
+              {
+                "dish_key": "菜品24",
+                "name": "菜品24",
+                "qty": 0,
+                "amountFen": 0
+              },
+              {
+                "dish_key": "菜品25",
+                "name": "菜品25",
+                "qty": 0,
+                "amountFen": 0
+              },
+              {
+                "dish_key": "菜品26",
+                "name": "菜品26",
+                "qty": 0,
+                "amountFen": 0
+              },
+              {
+                "dish_key": "菜品27",
+                "name": "菜品27",
+                "qty": 5,
+                "amountFen": 14480
+              },
+              {
+                "dish_key": "菜品28",
+                "name": "菜品28",
+                "qty": 0,
+                "amountFen": 0
+              },
+              {
+                "dish_key": "菜品29",
+                "name": "菜品29",
+                "qty": 0,
+                "amountFen": 0
+              },
+              {
+                "dish_key": "菜品30",
+                "name": "菜品30",
+                "qty": 1,
+                "amountFen": 600
+              },
+              {
+                "dish_key": "菜品31",
+                "name": "菜品31",
+                "qty": 0,
+                "amountFen": 0
+              },
+              {
+                "dish_key": "菜品32",
+                "name": "菜品32",
+                "qty": 0,
+                "amountFen": 0
+              },
+              {
+                "dish_key": "菜品33",
+                "name": "菜品33",
+                "qty": 2,
+                "amountFen": 760
+              },
+              {
+                "dish_key": "菜品34",
+                "name": "菜品34",
+                "qty": 0,
+                "amountFen": 0
+              },
+              {
+                "dish_key": "菜品35",
+                "name": "菜品35",
+                "qty": 0,
+                "amountFen": 0
+              },
+              {
+                "dish_key": "菜品36",
+                "name": "菜品36",
+                "qty": 0,
+                "amountFen": 0
+              },
+              {
+                "dish_key": "菜品37",
+                "name": "菜品37",
+                "qty": 1,
+                "amountFen": 1380
+              },
+              {
+                "dish_key": "菜品38",
+                "name": "菜品38",
+                "qty": 0,
+                "amountFen": 0
+              },
+              {
+                "dish_key": "菜品39",
+                "name": "菜品39",
+                "qty": 0,
+                "amountFen": 0
+              },
+              {
+                "dish_key": "菜品40",
+                "name": "菜品40",
+                "qty": 0,
+                "amountFen": 0
+              },
+              {
+                "dish_key": "菜品41",
+                "name": "菜品41",
+                "qty": 3,
+                "amountFen": 1500
+              },
+              {
+                "dish_key": "菜品42",
+                "name": "菜品42",
+                "qty": 0,
+                "amountFen": 0
+              },
+              {
+                "dish_key": "菜品43",
+                "name": "菜品43",
+                "qty": 1,
+                "amountFen": 300
+              },
+              {
+                "dish_key": "菜品44",
+                "name": "菜品44",
+                "qty": 0,
+                "amountFen": 0
+              },
+              {
+                "dish_key": "菜品45",
+                "name": "菜品45",
+                "qty": 0,
+                "amountFen": 0
+              },
+              {
+                "dish_key": "菜品46",
+                "name": "菜品46",
+                "qty": 1,
+                "amountFen": 400
+              },
+              {
+                "dish_key": "菜品47",
+                "name": "菜品47",
+                "qty": 0,
+                "amountFen": 0
+              },
+              {
+                "dish_key": "菜品48",
+                "name": "菜品48",
+                "qty": 0,
+                "amountFen": 0
+              },
+              {
+                "dish_key": "菜品49",
+                "name": "菜品49",
+                "qty": 0,
+                "amountFen": 0
+              },
+              {
+                "dish_key": "菜品50",
+                "name": "菜品50",
+                "qty": 1,
+                "amountFen": 380
+              },
+              {
+                "dish_key": "菜品51",
+                "name": "菜品51",
+                "qty": 0,
+                "amountFen": 0
+              }
+            ],
+            "totals": {
+              "qty": 118,
+              "amountFen": 182308,
+              "costFen": 0,
+              "grossFen": 0,
+              "dishCount": 0,
+              "unmatchedCount": 51
+            }
+          },
+          "jd_order": {
+            "ranked": [],
+            "unmatched": [],
+            "totals": {
+              "qty": 0,
+              "amountFen": 0,
+              "costFen": 0,
+              "grossFen": 0,
+              "dishCount": 0,
+              "unmatchedCount": 0
+            }
+          }
+        },
+        "totals": {
+          "qty": 118,
+          "amountFen": 182308,
+          "costFen": 0,
+          "grossFen": 0,
+          "dishCount": 0,
+          "unmatchedCount": 51
+        }
+      },
+      "unmatched": [],
+      "totals": {
+        "qty": 0,
+        "amountFen": 0,
+        "costFen": 0,
+        "grossFen": 0,
+        "dishCount": 0,
+        "unmatchedCount": 0
+      },
+      "truncated": false,
+      "client_request_id": ""
+    }
+  },
+  "raw": {
+    "countErr": "Permission denied 更多错误信息请访问：https://docs.cloudbase.net/error-code/basic/DATABASE_PERMISSION_DENIED",
+    "aggErr": "Permission denied 更多错误信息请访问：https://docs.cloudbase.net/error-code/basic/DATABASE_PERMISSION_DENIED",
+    "sampleErr": "Permission denied 更多错误信息请访问：https://docs.cloudbase.net/error-code/basic/DATABASE_PERMISSION_DENIED"
+  }
+}

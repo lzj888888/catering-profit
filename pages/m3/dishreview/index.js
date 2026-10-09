@@ -104,6 +104,9 @@ Page({
       revenueText: fmtYuan(t.amountFen),
       costText: fmtYuan(t.costFen),
       grossText: fmtYuan(t.grossFen),
+      // 🔴 R251：`unmatchedCount` 必须带出来 —— 它是**判「平台块为什么是空的」的唯一准确依据**
+      //   （前端**不许**自己猜：拿 qty>0 当判据会把「全 0 份的菜」误判成账单级）。
+      unmatchedCount: t.unmatchedCount || 0,
     } : null;
   },
 
@@ -123,38 +126,61 @@ Page({
     //   复用既有文案 `reviewUnmatched/reviewUnmatchedHint/reviewGoMap` 与既有渲染块
     //   ⇒ **零新增可见文案**（不必动术语三处同步面）。同名单跨平台只出一行、qty/金额相加。
     const unmatchedMap = new Map();
-    const pushUnmatched = (x) => {
+    const pushUnmatched = (x, platName) => {
       const nm = x.name || x.dish_key || '';
       if (!nm) return;
-      const cur = unmatchedMap.get(nm) || { name: nm, qty: 0, amountFen: 0 };
+      const cur = unmatchedMap.get(nm) || { name: nm, qty: 0, amountFen: 0, platforms: new Set() };
       cur.qty += x.qty || 0;
       cur.amountFen += x.amountFen || 0;
+      if (platName) cur.platforms.add(platName);
       unmatchedMap.set(nm, cur);
     };
-    (d.unmatched || []).forEach(pushUnmatched);
+    // 🔴 R251：合并时**必须带上来源平台** —— 否则跨平台合并成一张表后，
+    //   用户看不出某道菜来自淘宝还是京东（真机报障：「京东我也导入了，可是没看到 JD 字样」）。
+    //   平台名走既有单源 `TERMS.card.reviewPlatformNames`（+ 堂食名 `reviewDineIn`），**零新增文案**。
+    const PLAT_NAMES = TERMS.card.reviewPlatformNames;
+    (d.unmatched || []).forEach((x) => pushUnmatched(x, TERMS.card.reviewDineIn));
     if (d.takeaway && d.takeaway.by_platform) {
       for (const p of Object.keys(d.takeaway.by_platform)) {
-        (((d.takeaway.by_platform[p] || {}).unmatched) || []).forEach(pushUnmatched);
+        const pn = PLAT_NAMES[p] || p;
+        (((d.takeaway.by_platform[p] || {}).unmatched) || []).forEach((x) => pushUnmatched(x, pn));
       }
     }
     const unmatched = Array.from(unmatchedMap.values()).map((x) => ({
       name: x.name,
       qty: x.qty,
       amountText: fmtYuan(x.amountFen),
+      platformText: Array.from(x.platforms).join(' / '),
+      // 🔴 R251：0 元高份数行 = v1.7 C-5 的「口味询问类 SKU」（如「来点辣椒吗」43 份 / 0 元）。
+      //   该标记原先**只在 `ranked` 分支里打**（service.js::buildTakeawayReview），
+      //   一旦这行没有成本卡、掉进 `unmatched`，标记就丢了 ⇒ 43 份 0 元混在未匹配里，
+      //   把读者对「份数」的观感推高。此处按同一口径（amount 0 且 qty>0）在前端补回，复用既有文案。
+      zeroAmount: x.amountFen === 0 && x.qty > 0,
     }));
     const totals = this.fmtTotals(d.totals);
 
     // 外卖：按平台分块（无数据 ⇒ null 空态，不默认 0）
+    // 🔴 R251：每块必须带出「合计 + 未匹配数 + 空榜成因」，否则榜为空时页面上只剩一个**光标题**
+    //   （李老师 2026-10-09 真机报障：「又有京东又有淘宝…是不是混乱了」）。
+    //   成因判据用后端已算好的 `totals.unmatchedCount`，**不用前端猜**：
+    //     unmatchedCount > 0 ⇒ 有菜品行但一张卡都没匹配上；
+    //     unmatchedCount = 0 且 ranked 空 ⇒ 该平台只进了「账单级」行（dish_key 为空，被 rankReview 跳过）。
     const names = TERMS.card.reviewPlatformNames;
     let takeaway = null;
     if (d.takeaway && d.takeaway.by_platform) {
       takeaway = Object.keys(d.takeaway.by_platform).map((p) => {
         const b = d.takeaway.by_platform[p];
+        const ranked = (b.ranked || []).map((x) => this.fmtRanked(x));
+        const totals = this.fmtTotals(b.totals);
+        const unmatchedCount = (totals && totals.unmatchedCount) || 0;
         return {
           platform: p,
           platformName: names[p] || p,
-          ranked: (b.ranked || []).map((x) => this.fmtRanked(x)),
-          totals: this.fmtTotals(b.totals),
+          ranked,
+          totals,
+          unmatchedCount,
+          emptyReason: ranked.length ? ''
+            : (unmatchedCount > 0 ? TERMS.card.reviewPlatformAllUnmatched : TERMS.card.reviewPlatformBillOnly),
         };
       });
     }

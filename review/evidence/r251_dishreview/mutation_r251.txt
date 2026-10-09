@@ -1,0 +1,8 @@
+基线：RC=0 绿=True
+✅ M1 页面不再给「空榜成因」 —— RC=1 · 红在 6-②=True · 还原md5全等=True · 复绿=True
+✅ M2 页面丢掉 unmatchedCount（回退成"前端自己猜"） —— RC=1 · 红在 6-⑤=True · 还原md5全等=True · 复绿=True
+✅ M3 wxml 删掉「成因说明」渲染行（回到光标题） —— RC=1 · 红在 6-⑨=True · 还原md5全等=True · 复绿=True
+✅ M4 未匹配行不再标来源平台 —— RC=1 · 红在 6-⑥=True · 还原md5全等=True · 复绿=True
+✅ M5 未匹配行丢失「口味询问类」标记 —— RC=1 · 红在 6-⑦=True · 还原md5全等=True · 复绿=True
+
+全部变异有效 = True
