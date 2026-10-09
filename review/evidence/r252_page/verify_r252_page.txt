@@ -1,0 +1,36 @@
+===== A. load() + loadBills() 真跑 =====
+  ✅ A-① load() 后 loading=false
+  ✅ A-② load() 末尾自动拉了账单区（bills 非空） —— bills=2
+  ✅ A-③ 两函数都被调用且顺序正确（先 getDishReview 再 getSalesBills） —— getDishReview → getSalesBills
+
+===== B. 账单行渲染字段 =====
+  ✅ B-① kindText = 账单级 —— 账单合计
+  ✅ B-② platformText 走术语表（淘宝闪购） —— 淘宝闪购
+  ✅ B-③ 金额按分转元（182308 → 1823.08） —— 1823.08
+  ✅ B-④ 京东行平台名未回落成机器值（jd_order 不得原样显示） —— 京东（订单）
+  ✅ B-⑤ billsSummary 带出（bills=2） —— {"bills":2,"rows":3,"qty":124,"amount_fen":194308}
+
+===== C. onClearBill（单条清除）入参 =====
+  ✅ C-① 先弹二次确认（showModal） —— 清除
+  ✅ C-② confirmColor 为危险色 #e74c3c
+  ✅ C-③ 调 clearSalesBills 且入参为 targets（不含 all） —— {"shop_id":"shop_mu6j87v1itrs","targets":[{"platform":"jd_order","biz_date":"2026-10-07","kind":"bill"}]}
+  ✅ C-④ target 形状 = {platform,biz_date,kind} 且取自行数据 —— {"platform":"jd_order","biz_date":"2026-10-07","kind":"bill"}
+  ✅ C-⑤ 🔴 未见过的平台名（jd_order）原样带给云端（不是被前端截断成 order）
+  ✅ C-⑥ 清除后两区同刷：getDishReview 再来一次 + getSalesBills 至少一次 —— clearSalesBills → getSalesBills → getDishReview → getSalesBills
+  ✅ C-⑥-b getSalesBills 恰为 2 次（doClear 显式一次 + load() 内嵌一次，符合本页设计） —— 实际 2 次
+
+===== D. onClearAllBills（全部清除）=====
+  ✅ D-① all=true 且 confirm_all=true 同现（契约要求） —— {"shop_id":"shop_mu6j87v1itrs","all":true,"confirm_all":true}
+  ✅ D-② all 形态下不得携 targets
+
+===== E. 防连点 + 空态 =====
+  ✅ E-① 无账单时「全部清除」给 toast、不弹确认、不调云函数 —— 没有可清除的数据
+  ✅ E-② clearing=true 时 doClear 直接返回（不重复调云函数）
+
+===== F. 自失效护栏（判据本身非退化）=====
+  ✅ F-① 两个平台的 platformText 互不相同（否则说明术语表退化成常量）
+  ✅ F-② 术语表对 taobao/jd_order 都有非空且不同的显示名 —— 淘宝闪购 / 京东（订单）
+  ✅ F-③ 页面 t 里有新术语键（title/hint）
+  ✅ F-③-b TERMS.card 里有清除确认文案（modal 直接引用，不进 data.t）
+
+===== R252 页面行为验证结果：23 通过 / 0 失败 =====
