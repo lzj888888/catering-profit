@@ -2344,7 +2344,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 
 ===== [suite-coverage] tools/check_suite_coverage.js =====
 ===== S1 前置：git 列表可用（fail-closed）=====
-✅ S1 能在仓库根执行 git ls-files · 跟踪文件 8340 个
+✅ S1 能在仓库根执行 git ls-files · 跟踪文件 8342 个
 ✅ S1-② 面 A 工作树补面逐根达下界（根路径写错即转红） · tools:113 prototype:14 cfTests:1 cf-selftest:45
 ✅ S1-③ 面 A 工作树补面并入扫描面 · 工作树新增 0 个未入库文件（未 add 的新判据不再失明）
 
