@@ -1,0 +1,38 @@
+- initialize
+
+(node:38296) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)
+√ IDE server has started, listening on http://127.0.0.1:10896
+- deploy cloudfunctions
+- fetching cloud env list
+- [getDishReview] Fetching info of cloudfunction getDishReview
+√ [getDishReview] cloudfunction getDishReview doesn't exist in the cloud, will create it
+- [getDishReview] upload cloud function getDishReview - preparing
+× [getDishReview] upload cloud function getDishReview - deploy
+× deploy cloudfunctions
+
+┌───────────────┬─────────┐
+│ (index)       │ success │
+├───────────────┼─────────┤
+│ getDishReview │ false   │
+└───────────────┴─────────┘
+[error] fail to deploy cloudfunction getDishReview :
+{"message":"Error: TencentCloud API error: {\n    \"Response\": {\n        \"Error\": {\n            \"Code\": \"FailedOperation.UpdateFunctionCode\",\n            \"Message\": \"当前函数处于Creating状态，无法进行此操作，请稍后重试。\"\n        },\n        \"RequestId\": \"643316dc-e55c-43e4-8553-82e4b4409a27\"\n    }\n}"}
+- initialize
+
+(node:5172) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)
+√ IDE server has started, listening on http://127.0.0.1:10896
+- deploy cloudfunctions
+- fetching cloud env list
+- [getDishReview] Fetching info of cloudfunction getDishReview
+√ [getDishReview] cloudfunction getDishReview exists in the cloud, will update it
+- [getDishReview] upload cloud function getDishReview - preparing
+√ [getDishReview] upload cloud function getDishReview - deploy
+√ deploy cloudfunctions
+
+┌───────────────┬─────────┬────────────┬───────────┐
+│ (index)       │ success │ filesCount │ packSize  │
+├───────────────┼─────────┼────────────┼───────────┤
+│ getDishReview │ true    │ 19         │ '49.6 KB' │
+└───────────────┴─────────┴────────────┴───────────┘
