@@ -1239,7 +1239,10 @@ const TERMS = {
     // v1.7 C-5：零价高销量行（口味询问类 SKU，如「来点辣椒吗」）标注 —— 不剔除、不计营收口径
     reviewZeroAmount: '口味询问类 SKU，不计营收',
     // v1.7 §2.5：外卖平台展示名（key = SALES_SCHEMA.platform.enum，不含 pos）
-    reviewPlatformNames: { taobao: '淘宝闪购', meituan: '美团', eleme: '饿了么', other: '其他' },
+    // 🔴 R246：补京东两形态（jd_order 订单级 / jd_sku SKU 级）。
+    //   ⚠️ 京东「订单级」是**账单**（走对账路），「SKU 级」才是**商品销量表**（走形态 C 路）
+    //   ⇒ 两者都要在榜单里能显示名；但 picker 只列 jd_sku（见 pages/takeaway/index.js 注释）。
+    reviewPlatformNames: { taobao: '淘宝闪购', meituan: '美团', eleme: '饿了么', jd_order: '京东（订单）', jd_sku: '京东（SKU）', other: '其他' },
     reviewRankTitle: '单品毛利排行榜',
     reviewDish: '菜品',
     reviewQty: '份数',

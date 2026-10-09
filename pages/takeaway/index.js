@@ -26,7 +26,10 @@ const DISH_SHAPES = {
 };
 
 // v1.7 形态 C（外卖商品销量）：外卖平台选择项（label 来自 terms 单源；不含 pos —— 堂食不走这条路）
-const IMPORT_PLATFORM_OPTIONS = ['meituan', 'eleme', 'taobao', 'other']
+// 🔴 R246：加京东 —— 但**只列 `jd_sku`**（SKU 级 = 商品销量表，正是形态 C 要的表型）；
+//   `jd_order`（订单级）是**账单**、走对账路（M3 外卖账单导入），不是"商品销量表" ⇒ 不进本 picker。
+//   ⚠️ 两个 enum 值仍都在 `reviewPlatformNames` 里登记（榜单显示名要用），只是 picker 不列 jd_order。
+const IMPORT_PLATFORM_OPTIONS = ['meituan', 'eleme', 'taobao', 'jd_sku', 'other']
   .map((v) => ({ value: v, label: (TERMS.card.reviewPlatformNames[v] || v) }));
 
 function newItem() { return { card_id: '', card_name: '', qty: '1' }; }
