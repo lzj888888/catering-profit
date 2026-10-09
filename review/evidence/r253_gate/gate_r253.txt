@@ -2344,7 +2344,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
 
 ===== [suite-coverage] tools/check_suite_coverage.js =====
 ===== S1 前置：git 列表可用（fail-closed）=====
-✅ S1 能在仓库根执行 git ls-files · 跟踪文件 8332 个
+✅ S1 能在仓库根执行 git ls-files · 跟踪文件 8339 个
 ✅ S1-② 面 A 工作树补面逐根达下界（根路径写错即转红） · tools:113 prototype:14 cfTests:1 cf-selftest:45
 ✅ S1-③ 面 A 工作树补面并入扫描面 · 工作树新增 0 个未入库文件（未 add 的新判据不再失明）
 
@@ -2710,7 +2710,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
   · tools/selftest_m3_takeaway.js → 21 通过
   · tools/selftest_m3_impact.js → 17 通过
   · tools/selftest_m3_recon.js → 16 通过
-  · tools/selftest_bill_parse.js → 67 通过
+  · tools/selftest_bill_parse.js → 70 通过
   · tools/selftest_grade_gate.js → 11 通过
   · tools/check_pack_size.js → 11 通过
   · tools/selftest_m3_per100g.js → 7 通过
@@ -2784,7 +2784,7 @@ S2 毛利率展示=64.06% （全精度 64.0625%）
   ✅ A2-selftest_m3_takeaway 声明 21 ≡ 实跑 21
   ✅ A2-selftest_m3_impact 声明 17 ≡ 实跑 17
   ✅ A2-selftest_m3_recon 声明 16 ≡ 实跑 16
-  ✅ A2-selftest_bill_parse 声明 67 ≡ 实跑 67
+  ✅ A2-selftest_bill_parse 声明 70 ≡ 实跑 70
   ✅ A2-selftest_grade_gate 声明 11 ≡ 实跑 11
   ✅ A2-check_pack_size 声明 11 ≡ 实跑 11
   ✅ A2-selftest_m3_per100g 声明 7 ≡ 实跑 7
@@ -4523,6 +4523,9 @@ R118 · 归档补录宽限期口径穿透守卫（计算常量 ≡ 服务端文�
 ✅ D4 detectPlatformInRows 冒泡哨兵（truthy 陷阱：`if (p)` 会把它当平台名往下传）  ({"platform":"AMBIGUOUS","headerRow":1})
 ✅ D5 detectPlatformInMatrix 冒泡哨兵（跨 sheet 也不代选）  ({"platform":"AMBIGUOUS","headerRow":1,"sheet":"s1"})
 ✅ D6 哨兵样本里 R2 才是命中行（证明确实按行试签名后再拦，而非碰巧）  (1)
+✅ D4b detectPlatformInRows 源码含**显式** `=== PLATFORM_AMBIGUOUS` 比较（行为判据无辨识力 ⇒ 守意图）  (函数体长度=353)
+✅ D5b detectPlatformInMatrix 源码含**显式** `=== PLATFORM_AMBIGUOUS` 比较（跨 sheet 同理）  (函数体长度=414)
+✅ D4c 自失效护栏：D4b/D5b 的扫描面非退化（两个函数体都取到、且哨兵常量在源码里在场）  (rows=353 matrix=414)
 ✅ D7 index.js 显式比较 platform === PLATFORM_AMBIGUOUS（判空式 if 拦不住真值字符串）
 ✅ D8 index.js 哨兵分支在「无法识别账单平台」之前（否则被错误归因成"表不对"）
 ✅ D9 index.js 哨兵提示含「手动选择平台」指引（用户下一步动作可执行）
@@ -4532,8 +4535,8 @@ R118 · 归档补录宽限期口径穿透守卫（计算常量 ≡ 服务端文�
 ✅ D13 两份副本在哨兵样本上行为一致（逐条等价）
 
 ============================================================
-===== 账单解析自测结果：67 通过 / 0 失败 =====
-  [bill-parse] ✅ PASS  (✅ 67 条 / 段 11)
+===== 账单解析自测结果：70 通过 / 0 失败 =====
+  [bill-parse] ✅ PASS  (✅ 70 条 / 段 11)
 
 ===== [grade-gate] tools/selftest_grade_gate.js =====
 ===== 正常通过 =====

@@ -1,0 +1,10 @@
+=== 基线 ===
+detectPlatform(BOTH)      = "AMBIGUOUS"
+detectPlatformInRows      = {"platform":"AMBIGUOUS","headerRow":1}
+detectPlatformInMatrix    = {"platform":"AMBIGUOUS","headerRow":1,"sheet":"s1"}
+matrix(mix s1哨兵,s2淘宝)  = {"platform":"AMBIGUOUS","headerRow":1,"sheet":"s1"}
+rows(第一行淘宝,第二行哨兵) = {"platform":"taobao","headerRow":0}
+
+=== A2 行级去显式比较 ===  行为完全相同（无辨识力）
+=== A3 矩阵级去显式比较 ===  行为完全相同（无辨识力）
+已还原

@@ -1,0 +1,20 @@
+基线 bill   ❌=0 crash=False
+基线 dish   ❌=0 crash=False
+
+A1 退回「命中第一个即返回」(旧 bug)                               grpA ❌=4  ✅抓到
+A2 行级去掉哨兵显式比较（truthy 陷阱）                             grpA ❌=1  ✅抓到
+A3 矩阵级去掉哨兵显式比较（跨 sheet 代选）                           grpA ❌=1  ✅抓到
+A4 只改前端、云端副本退回旧写法（双副本失同步）                            grpA ❌=2  ✅抓到
+A5 index.js 删掉哨兵分支（退回"认不出"错误归因）                      grpA ❌=2  ✅抓到
+A6 index.js 去掉 PLATFORM_AMBIGUOUS 导入                 grpA ❌=1  ✅抓到
+A7 删掉映射优先分支（只留名称匹配）                                  grpA ❌=4  ✅抓到
+A8 去掉脏映射回落分支                                         grpA ❌=1  ✅抓到
+A9 查表键改用 external_ref_id（含日期 ⇒ 天天失配）                 grpA ❌=4  ✅抓到
+A10 查表不带平台（跨平台串卡）                                    grpA ❌=3  ✅抓到
+B1 等价改写：hits.length===0 分支改成 !hits.length            grpB ❌=0  ✅未误红
+B2 等价改写：行级哨兵比较改成 switch 形态                           grpB ❌=0  ✅未误红
+
+还原后 bill   ❌=0 crash=False
+还原后 dish   ❌=0 crash=False
+
+变异 12 条 / 漏网 0 条

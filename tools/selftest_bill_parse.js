@@ -245,6 +245,37 @@ check('D5 detectPlatformInMatrix 冒泡哨兵（跨 sheet 也不代选）',
 check('D6 哨兵样本里 R2 才是命中行（证明确实按行试签名后再拦，而非碰巧）',
   rowsHit && rowsHit.headerRow === 1, rowsHit ? String(rowsHit.headerRow) : 'null');
 
+// 🔴 R253-mut：D4/D5 的**行为判据在本样本下无辨识力**（变异回灌实证 A2/A3 漏网）——
+//   哨兵本身是字符串 `'AMBIGUOUS'`，`if (p)` 把它透传出去，返回值与显式拦**逐字节相同**
+//   （取件 review/evidence/r253_gate/d4d5_probe.out：5 组样本全部无差异）。
+//   ⇒ 显式比较的价值在**意图/防回归**，行为判据守不住 ⇒ 必须补**源码级**判据。
+//   形态参照 B3/B4：从被证物源码里解析事实，再断言显式比较在位；并配自失效护栏。
+const bpSrcRaw = fs.readFileSync(path.join(__dirname, '..', 'utils', 'billParse.js'), 'utf8');
+const bpSrc = bpSrcRaw.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1 ');
+// 取某函数体（`function name(…) { … }`），行号无关；取不到返回 ''
+const bodyOf = (src, name) => {
+  const re = new RegExp('function\\s+' + name + '\\s*\\(');
+  const m = src.match(re);
+  if (!m) return '';
+  const i = src.indexOf('{', src.indexOf(m[0]));
+  if (i < 0) return '';
+  let d = 0;
+  for (let j = i; j < src.length; j++) {
+    if (src[j] === '{') d++;
+    else if (src[j] === '}') { d--; if (d === 0) return src.slice(i, j + 1); }
+  }
+  return '';
+};
+const rowsBody = bodyOf(bpSrc, 'detectPlatformInRows');
+const matrixBody = bodyOf(bpSrc, 'detectPlatformInMatrix');
+check('D4b detectPlatformInRows 源码含**显式** `=== PLATFORM_AMBIGUOUS` 比较（行为判据无辨识力 ⇒ 守意图）',
+  /===\s*PLATFORM_AMBIGUOUS/.test(rowsBody), '函数体长度=' + rowsBody.length);
+check('D5b detectPlatformInMatrix 源码含**显式** `=== PLATFORM_AMBIGUOUS` 比较（跨 sheet 同理）',
+  /===\s*PLATFORM_AMBIGUOUS/.test(matrixBody), '函数体长度=' + matrixBody.length);
+check('D4c 自失效护栏：D4b/D5b 的扫描面非退化（两个函数体都取到、且哨兵常量在源码里在场）',
+  rowsBody.length > 60 && matrixBody.length > 60 && /const\s+PLATFORM_AMBIGUOUS\s*=\s*'AMBIGUOUS'/.test(bpSrc),
+  'rows=' + rowsBody.length + ' matrix=' + matrixBody.length);
+
 // 调用点：index.js 必须**显式**比较哨兵（不能用 if(platform) 判空），且要给可读提示
 const idxNoCmtD = idxSrc;   // 上方已剥注释
 check('D7 index.js 显式比较 platform === PLATFORM_AMBIGUOUS（判空式 if 拦不住真值字符串）',

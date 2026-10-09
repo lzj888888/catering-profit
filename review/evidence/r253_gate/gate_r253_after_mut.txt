@@ -1,0 +1,12 @@
+rc = 0 | t = 2s
+   specs/dev-specs/core/13_上线前查缺补漏_决策与待办总览.md:79 写 15 —— | `adminExport` / `exportData` | **60s** | 对齐 `core/06:410` 铁律；1500 条 ≈ 15 页往返 |
+   specs/dev-specs/core/13_上线前查缺补漏_决策与待办总览.md:138 写 4/4（最近锚点 Infinity 字符） —— 还原后 `saveCostCard` 35/35、`calcBom` 40/40、`syncCostCard` 4/4 全绿（随实现更新）；套件 64/64、门禁 A–L RC=0
+   ✅ C3-calcBom specs/dev-specs/core/13_上线前查缺补漏_决策与待办总览.md:138 写 40/40 ≡ 实跑 40
+   ✅ C3-saveCostCard specs/dev-specs/core/13_上线前查缺补漏_决策与待办总览.md:138 写 35/35 ≡ 实跑 35
+   ✅ C3-syncCostCard specs/dev-specs/core/13_上线前查缺补漏_决策与待办总览.md:138 写 4/4 ≡ 实跑 4
+   ⚠️ review/ROADMAP_2026-09-30_下一步总览.md:265 「### B 线 · 投喂 InsCode（**通道已就绪，可开工**；按优先级排队）」/ 正文 "已落地"
+   单源 cloudfunctions/saveLedger/index.js / i18n miniprogram/i18n/terms.js（+镜像）/ 声明 specs/dev-specs/core/13_上线前查缺补漏_决策与待办总览.md / md 扫描面 46 份
+   ✅ B3-③ 标记词在 md 扫描面出现且仅 1 次（单源不扩散，坑⑮） —— specs/dev-specs/core/13_上线前查缺补漏_决策与待办总览.md
+   ✅ B6-① 前提：四份目标文件都在扫描面内（路径没写错） —— cloudfunctions/saveLedger/index.js / miniprogram/i18n/terms.js / specs/dev-specs/i18n/terms.js / specs/dev-specs/core/13_上线前查缺补漏_决策与待办总览.
+   93 处，例：specs/dev-specs/BRANCH_STRATEGY.md:64 7天 | specs/dev-specs/core/01_架构总览.md:95 30天 | specs/dev-specs/core/01_架构总览.md:220 31天
+   ===== 总览：158/158 套件通过 =====
