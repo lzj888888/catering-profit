@@ -55,6 +55,26 @@ ENV = cloud1-d4gphpoxy337f2a25   待部署 2 个
   （`git show --stat 27d223b 6eb239a -- cloudfunctions/common/` ⇒ 命中 **0**）
   ⇒ 不触发「改 common ⇒ 全部 `cx_*.js` 派生 ⇒ 43 个全部署」那条规则。
 
+## 四-bis 真机预览码（`qr_R253.jpg`）
+
+```
+$ cli preview --project <仓根> --qr-format image --qr-size 400 -o qr_R253.jpg -i qr_meta_R253.json
+√ Using AppID: wx33c110dc57a9c8dc
+√ preview
+```
+
+| 项 | 值 |
+|---|---|
+| 文件 | `qr_R253.jpg`（**470×470** 实际像素，47591 字节，JPEG SOI/EOI 完整） |
+| md5 | `548b57bacbe8dcbaa2c45ff10714e72a` |
+| 包体 | **508.8 KB**（520971 字节，`qr_meta_R253.json`）—— 微信硬上限 2 MB，**余量充足** |
+| AppID | `wx33c110dc57a9c8dc` |
+
+> ⚠️ **验码深度如实说明**：本轮**只做了「出码成功 + 图片结构完整 + 尺寸取证 + 目视三定位角在位」**，
+> **没有做机器解码**（本机无 `cv2`/`PIL`，不值得为一个只读校验去装 OpenCV）。
+> ⇒ 判据强度：**「码生成出来了」= 已证**；**「码能被微信扫开」= 未证**，以真机扫码为准。
+> ⚠️ 预览码**有有效期**，过期请重出（技能 `miniprogram-preview-qr`）。
+
 ## 五 还没做完的（别把「部署成功」当「功能可用」）
 
 `cli` **没有 `invoke` 子命令** ⇒ 命令行拿不到云函数运行结果。真云功能验证只剩两条路：
