@@ -11,7 +11,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { calcMonthlyProfit } = require('./service');
+const { calcMonthlyProfit, resolveArchiveSwitches } = require('./service');
 const saveLedger = require('../saveLedger/service');
 const { validateInput } = require('./validate');
 const { ERROR_CODES } = require('./common');
@@ -137,6 +137,58 @@ check('🔴 分母与 result **同源**（revenueFen 取 result.incomeTotalFen�
   /const incomeTotal = result\.incomeTotalFen/.test(body) && /revenueFen: incomeTotal/.test(body));
 check('读 shop 取业态 / 城市层级（参考带的前提输入）',
   /da\.get\('shop'/.test(body) && /biz_type/.test(body) && /city_tier/.test(body));
+
+// ===== 6. R257 · 归档月回读必须用「落库时的开关快照」 =====
+// 缺口：回读重算的入参里，明细全冻结在 acct 里，**唯独开关读的是实时 shop_switch**
+//   ⇒ 归档后改一次开关，封账月的利润就漂了。saveLedger 早已落库 switch_used，只是没人读。
+// 口径：归档+完整快照⇒snapshot；未归档⇒live；归档但快照缺失/残缺⇒回落实时（唯一 fail-open，零回归）。
+const SNAP_OFF = { inventorySwitchOn: false, amortizeSwitchOn: false };
+const SNAP_ON = { inventorySwitchOn: true, amortizeSwitchOn: true };
+
+const a1 = resolveArchiveSwitches({ isArchive: true, switchUsed: SNAP_OFF, liveInventorySwitchOn: true, liveAmortizeSwitchOn: true });
+check('R257 归档月 + 完整快照 ⇒ 用快照（实时全开也压不住）',
+  a1.source === 'snapshot' && a1.inventorySwitchOn === false && a1.amortizeSwitchOn === false, a1.source);
+
+const a2 = resolveArchiveSwitches({ isArchive: true, switchUsed: SNAP_ON, liveInventorySwitchOn: false, liveAmortizeSwitchOn: false });
+check('R257 归档月 + 快照全开 ⇒ 实时全关也压不住（反向）',
+  a2.source === 'snapshot' && a2.inventorySwitchOn === true && a2.amortizeSwitchOn === true, a2.source);
+
+const a3 = resolveArchiveSwitches({ isArchive: false, switchUsed: SNAP_OFF, liveInventorySwitchOn: true, liveAmortizeSwitchOn: false });
+check('R257 未归档月 ⇒ 用实时（快照不参与）',
+  a3.source === 'live' && a3.inventorySwitchOn === true && a3.amortizeSwitchOn === false, a3.source);
+
+const a4 = resolveArchiveSwitches({ isArchive: true, switchUsed: null, liveInventorySwitchOn: true, liveAmortizeSwitchOn: false });
+check('R257 归档但快照缺失 ⇒ 回落实时（唯一 fail-open：老数据硬拒就再也看不了）',
+  a4.source === 'live_no_snapshot' && a4.inventorySwitchOn === true && a4.amortizeSwitchOn === false, a4.source);
+
+const a5 = resolveArchiveSwitches({ isArchive: true, switchUsed: { inventorySwitchOn: true }, liveInventorySwitchOn: false, liveAmortizeSwitchOn: false });
+check('R257 快照残缺（只一个布尔键）⇒ 判不完整、回落实时（不半用半不用的拼盘）',
+  a5.source === 'live_no_snapshot' && a5.inventorySwitchOn === false, a5.source);
+
+const a6 = resolveArchiveSwitches();
+check('R257 空入参不炸（未归档语义 ⇒ live 全关）',
+  a6.source === 'live' && a6.inventorySwitchOn === false && a6.amortizeSwitchOn === false);
+
+// 静态形状：controller 必须把解算结果喂进引擎，而不是 swGet(...) 的实时值
+check('R257 controller 引入 resolveArchiveSwitches（纯函数单源）', /resolveArchiveSwitches/.test(body));
+check('R257 🔴 开关常量取自解算结果 sw.*（换回 swGet(...) = 缺口复发）',
+  /const inventorySwitchOn = sw\.inventorySwitchOn;/.test(body)
+  && /const amortizeSwitchOn = sw\.amortizeSwitchOn;/.test(body)
+  && !/SwitchOn\s*=\s*swGet\(/.test(body));
+// 引擎入参是**简写多行**（amortizeSwitchOn, inventorySwitchOn,），故按调用块取，不做整行匹配
+const iCall = body.indexOf('calcMonthlyProfit({');
+const callBlock = iCall >= 0 ? body.slice(iCall, body.indexOf('});', iCall)) : '';
+check('R257 🔴 引擎入参用的是上面那两个常量（简写），且块内不含实时 swGet',
+  callBlock.indexOf('inventorySwitchOn') >= 0 && callBlock.indexOf('amortizeSwitchOn') >= 0
+  && callBlock.indexOf('swGet(') < 0, `block=${callBlock.length}字`);
+check('R257 解算发生在重算之前（顺序：resolveArchiveSwitches 早于 calcMonthlyProfit）',
+  body.indexOf('resolveArchiveSwitches({') >= 0 && body.indexOf('calcMonthlyProfit({') > body.indexOf('resolveArchiveSwitches({'));
+check('R257 isArchive 判定与落库同源（acct.is_archive，不另立开关态）',
+  /const isArchiveNow = !!\(\s*acct && acct\.is_archive\s*\)/.test(body));
+check('R257 快照取自 acct.switch_used（与 saveLedger 落库字段同名同源）',
+  /switchUsed:\s*acct && acct\.switch_used/.test(body));
+check('R257 出参带 switch_source（归档月数字为什么没跟开关变，有一条可查线索）',
+  /switch_source:\s*sw\.source/.test(body));
 
 console.log(`\n==== getLedger 自测结果：${pass} 通过 / ${failN} 失败 ====`);
 process.exit(failN === 0 ? 0 : 1);

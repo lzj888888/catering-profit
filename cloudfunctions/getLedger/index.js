@@ -11,7 +11,7 @@ const { resolveAuth, assertShopOwner } = common;
 const { ERROR_CODES, ok, fail } = common;
 const { indicatorRef } = common;                    // round115：M1 行业指标对照（口径单源，见 common/indicatorRef.js §七）
 const { makeAdapter } = common.dataAdapter;
-const { calcMonthlyProfit } = require('./service');
+const { calcMonthlyProfit, resolveArchiveSwitches } = require('./service');
 const { validateInput } = require('./validate');
 
 // A2 兼容：库内明细可能是旧格式（camelCase amountFen）或新格式（snake_case amount_fen + sub_items）。
@@ -125,10 +125,24 @@ exports.main = async (event) => {
   const cityTier = (shopDoc && shopDoc.city_tier) || '';
 
   // ===== 服务端权威开关 =====
-  const swRes = await da.list('shop_switch', { shop_id: shopId });  const swRows = (swRes && swRes.data) || [];
+  const swRes = await da.list('shop_switch', { shop_id: shopId });
+  const swRows = (swRes && swRes.data) || [];
   const swGet = (key) => { const r = swRows.find((x) => x.switch_key === key); return r ? !!r.enabled : false; };
-  const inventorySwitchOn = swGet('inventory_switch');
-  const amortizeSwitchOn = swGet('amortize_switch');
+
+  // ===== R257：归档月回读改用「落库时的开关快照」 =====
+  //   getLedger 是**回读重算**（不信任落库存量），所以参与计算的**参数**也必须一起冻结 ——
+  //   否则归档后改一次开关，封账月的利润就漂了（「已归档=只读」在这条路径上是假的）。
+  //   快照由 saveLedger 落库（switch_used = 引擎产出的 {inventorySwitchOn, amortizeSwitchOn}）。
+  //   未归档月仍用实时值（开关是实时建模控件，改了就应立刻看到效果；下次保存快照随之更新）。
+  const isArchiveNow = !!(acct && acct.is_archive);
+  const sw = resolveArchiveSwitches({
+    isArchive: isArchiveNow,
+    switchUsed: acct && acct.switch_used,
+    liveInventorySwitchOn: swGet('inventory_switch'),
+    liveAmortizeSwitchOn: swGet('amortize_switch'),
+  });
+  const inventorySwitchOn = sw.inventorySwitchOn;
+  const amortizeSwitchOn = sw.amortizeSwitchOn;
 
   // ===== 重算（防篡改）=====
   const result = calcMonthlyProfit({
@@ -161,8 +175,11 @@ exports.main = async (event) => {
   return ok({
     shop_id: shopId, month: v.month,
     account_id: acct ? (acct.account_id || acct._id) : '',
-    is_archive: !!acct && !!acct.is_archive,
+    is_archive: isArchiveNow,
     archived_at: acct ? (acct.archived_at || 0) : 0,
+    // R257：本次重算用的开关来源（'snapshot' 归档快照 / 'live' 实时 / 'live_no_snapshot' 归档但快照缺失）
+    //   前端不必渲染它；留着是为了「封账月数字为什么没跟着开关变」这类疑问有一条可查的线索。
+    switch_source: sw.source,
     income_items: toSnake(incomeItems), expense_items: toSnake(expenseItems),
     direct_consume_fen: directConsumeFen, inventory: inventoryOut,
     // round103：期初来源做成**可观测**（auto = 系统结转；否则为老板填的值，prev 供差异提示）

@@ -216,6 +216,9 @@ const CASES = [
   // R256：摊销归档锁 —— S 扫描面 8 + A 源码面 9 + B 行为面 8 + C 自失效 3。
   //   缺口由生产代码注释自己点名（此前只有删除路径上锁）⇒ 编辑/新增改得动已封账月份的数字。
   { key: 'check_amort_archive_lock', rel: 'tools/check_amort_archive_lock.js' },  // 28 条
+  // R257：归档月开关快照 —— S 扫描面 5 + A 源码面 10 + A2 穷尽三条腿 4 + B 行为面 9 + C 自失效 5。
+  //   缺口 = 回读重算的入参里唯独开关读实时 shop_switch ⇒ 归档后改开关，封账月利润就漂。
+  { key: 'check_archive_switch_snapshot', rel: 'tools/check_archive_switch_snapshot.js' },  // 33 条
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

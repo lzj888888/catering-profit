@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：161 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：162 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -984,6 +984,9 @@ const SUITES = [
   // R256：摊销资产「增/删/改」三条写路径的归档锁 —— 删除路径锁不回退 + 编辑/新增两路径真上锁
   //   + 锁早于写库 + 区间锁用 >= 而非等值；B 段真调纯函数钉死「编辑取更早起摊月」。
   ['amort-archive-lock',   'tools/check_amort_archive_lock.js'],
+  // R257：归档月回读必须用「落库时的开关快照」—— 回读重算的入参里，明细全冻结在 acct 里，
+  //   唯独开关读的是实时 shop_switch ⇒ 归档后改一次开关，封账月的利润就漂（「已归档=只读」是假的）。
+  ['archive-switch-snapshot', 'tools/check_archive_switch_snapshot.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
