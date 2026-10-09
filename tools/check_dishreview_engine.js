@@ -190,5 +190,34 @@ check('4-④ 关键锚点在场：service.js 有 5 个口径段标记',
     return svcSrc.indexOf(k) >= 0;
   }));
 
+// ============ ⑤ 页面消费契约：外卖「未匹配」不得被静默丢弃（R249-B）============
+// 真实缺陷（R249 真云实证）：getDishReview 回的是 **两层** 未匹配 ——
+//   顶层 `unmatched`（= buildDishInReview 产物，**仅堂食**）与 `takeaway.by_platform[p].unmatched`（各外卖平台）。
+//   而页面只读顶层那份 ⇒ 外卖路径下「红线 17：不静默归零」**未落地**：
+//   51 个外卖商品在界面上完全不可见，且外卖榜区块因 `ranked` 为空连表头都不渲染、只剩一个空标题。
+// 判据（**判行为不判字面**）：在注释剥离后的页面源码里，**每个 `by_platform` 出现点之后的窗口内**
+//   至少有一处存在「按平台读 unmatched」的形态；三种合法写法都算（`.unmatched` / `['unmatched']` / 解构）。
+//   ⚠️ 不能只判「源码里有没有 `unmatched` 这个词」—— 旧代码 `setData({ …, unmatched, … })` 那处
+//   **不是**按平台读，会把缺陷判绿（自证假绿）。
+function judgeTakeawayUnmatched(src) {
+  const W = 1200;
+  const reads = /(\.\s*unmatched\b|\[\s*['"]unmatched['"]\s*\]|\{\s*unmatched\s*[,}])/;
+  let i = -1, windows = 0, hit = 0;
+  while ((i = src.indexOf('by_platform', i + 1)) >= 0) {
+    windows++;
+    if (reads.test(src.slice(i, i + W))) hit++;
+  }
+  return windows > 0 && hit > 0;
+}
+console.log('\n============ ⑤ 页面消费契约（R249-B）============');
+const PAGE_REL = 'pages/m3/dishreview/index.js';
+const pageSrc = stripComments(rd(PAGE_REL));
+check('5-① 页面源码可读且非空（自失效护栏，防扫空恒绿）', pageSrc.length > 500, pageSrc.length + ' 字符');
+check('5-② 页面确实按 by_platform 分平台渲染（判据锚点在位）', pageSrc.indexOf('by_platform') >= 0);
+check('5-③ 🔴 每个 by_platform 之后的窗口内必须能读到 unmatched（否则外卖未匹配静默不可见）',
+  judgeTakeawayUnmatched(pageSrc) === true);
+check('5-④ 自检：合成的「只渲染 ranked、不读 unmatched」样本必须判红（带 setData 同名干扰）',
+  judgeTakeawayUnmatched('takeaway = Object.keys(d.takeaway.by_platform).map((p) => ({ ranked: b.ranked })); this.setData({ takeaway, unmatched, totals });') === false);
+
 console.log('\n===== getDishReview 算法层守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);

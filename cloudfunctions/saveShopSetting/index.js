@@ -80,7 +80,9 @@ exports.main = async (event) => {
       try {
         await db.collection('shop_switch').doc(row._id || row.id).update({ data: { enabled: kv.enabled, updated_at: now } });
       } catch (e) {
-        await db.collection('shop_switch').add({ data: { shop_id: shopId, switch_key: kv.key, enabled: kv.enabled, updated_at: now } });
+        // 🔴 R249：`.add()` 直写必须带 is_deleted:false —— 否则 da.list（强制 is_deleted:false）永远查不到
+        //   本行 ⇒ 下次走到 else 分支再 insert 一条 ⇒ 同一 (shop_id, switch_key) 反复长重复行。
+        await db.collection('shop_switch').add({ data: { shop_id: shopId, switch_key: kv.key, enabled: kv.enabled, updated_at: now, is_deleted: false } });
       }
     } else {
       await da.insert('shop_switch', { shop_id: shopId, switch_key: kv.key, enabled: kv.enabled });

@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：154 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：155 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -480,6 +480,20 @@
 //         判据 = S 扫描面（三道下界护栏防扫空） + A 正向（picker ⊆ enum 且每项有术语键）
 //         + B 反向（enum 成员未进 picker 者必须逐一在显式排除名单内） + C 合成样本自检（4 条）。
 //         15 条断言。
+//       + R249：**裸写文档必须注入 is_deleted**（tools/check_doc_write_isdeleted.js，R249）
+//         —— 根因：适配层读侧（list / listAll / countActive）一律强制注入
+//         `is_deleted: false`，而微信云开发 where 是**严格等值**（undefined !== false）；
+//         另一侧多处「裸写」（不走 adapter 的 `.doc(id).set({data:..})` / `.add({data:..})`）
+//         **不写 is_deleted**，而 set 是 upsert + **整文档替换** ⇒ 文档建出来了但没该字段；
+//         而接口照常回 SUCCESS、`written` 照常上涨（它数的是循环次数）
+//         ⇒ 读侧静默过滤、前端空态、**两端零报错**。
+//         真云实证：导入淘宝闪购《商品销量》⇒ 落库回 `{code:SUCCESS, written:354}`，
+//         而生产读路径 `getDishReview` 读回 `takeaway: null`（用户可见 = 「单品毛利复盘·外卖」没变化）。
+//         判据 = **交叉判据**（不是「见裸写就红」）：写侧集合 ∩ 「被软删过滤读」集合 非空即红；
+//         配 S 扫描面非退化 + 锚点在场两道自失效护栏。
+//         ⚠️ `.update()` / `.remove()` 不入判据（字段级部分更新，不会移除已有字段）；
+//         `da.get()` 也不在读侧集合内（它的判据是 `doc.is_deleted` 真值，undefined 为 falsy ⇒ 本缺陷免疫）。
+//         39 断言。
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -941,6 +955,11 @@ const SUITES = [
   //   判据 = S 扫描面（含三道下界护栏）+ A 正向（⊆ enum + 每项有术语键）
   //        + B 反向（enum \ picker ⊆ 显式排除名单）+ C 合成样本自检（4 条，防恒绿）。
   ['picker-platform',      'tools/check_picker_platform.js'],
+  // ===== R249 裸写文档必须注入 is_deleted（同族病：见头部注释同名条目）=====
+  //   根因：`.doc(id).set({data:..})` / `.add({data:..})` 是**整文档替换**，不写 is_deleted
+  //   则文档无该字段；而读侧（list/listAll/countActive）强制 `is_deleted:false`
+  //   的**严格等值**匹配 ⇒ 写成功、读不出、两端零报错（R249 真云实证）。
+  ['doc-write-isdeleted',  'tools/check_doc_write_isdeleted.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

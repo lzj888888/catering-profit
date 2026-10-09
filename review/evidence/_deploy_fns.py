@@ -15,7 +15,26 @@ import io, os, sys, json, time, subprocess
 
 REPO = r"C:\Users\lzj\WorkBuddy\Claw\catering-profit"
 CLI = r"C:\Program Files (x86)\Tencent\微信web开发者工具\cli.bat"
-NODE = r"C:\Users\lzj\.workbuddy\binaries\node\versions\22.22.2-3\node.exe"
+
+
+def _pick_node():
+    """判据用 node：**自适应解析**，别写死版本号。
+    起因（R249）：原本硬编码 `.../versions/22.22.2-3/node.exe`，而本机已升到 `22.22.2-6`
+    ⇒ judge 每次抛异常、把**成功的部署一律判成 MISS**（假阴性，浪费一轮重跑）。"""
+    base = r"C:\Users\lzj\.workbuddy\binaries\node\versions"
+    cands = []
+    try:
+        cands = sorted(os.listdir(base), reverse=True)
+    except Exception:
+        pass
+    for c in cands + ["current"]:
+        exe = os.path.join(base, c, "node.exe")
+        if os.path.isfile(exe):
+            return exe
+    return "node"
+
+
+NODE = _pick_node()
 JUDGE = os.path.join(REPO, "review", "evidence", "_judge_deploy.js")
 OUT = os.path.join(REPO, "_m3", "deploy_logs")
 

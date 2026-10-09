@@ -179,7 +179,7 @@ const CASES = [
   // R232f：getDishReview 算法层守卫 —— 阶段②读侧原「零判据」（算法内联在 exports.main 里，无法 require）。
   //   32 条 = ⓪ 模块在场 4 + ① 真调生产 buildDishReview 16（含 C-10 回归 + 反恒真）+ ② 架构防退化 5 + ③ 单源 3 + ④ 自失效护栏 4。
   //   变异回灌 6/6 有效红（版本选取/未匹配归零/零除/漏项/本地时区/聚合覆盖），全部命中目标断言名。
-  { key: 'check_dishreview_engine', rel: 'tools/check_dishreview_engine.js' }, // 32 条（⓪+①+②+③+④）
+  { key: 'check_dishreview_engine', rel: 'tools/check_dishreview_engine.js' }, // 36 条（⓪+①+②+③+④+⑤；⑤=R249-B 页面消费契约）
   // H-1 扩面（M3.33 形态 C 解析层）：parseDishSalesC 守卫同批纳入 —— 它的 R-C2 三组反例（订单交易额 2974.91≠1823.08 /
   //   补零 357≠354 / 销量文本 isFinite("43")=false）与 R-C4 自失效护栏正是「非恒真」凭据；
   //   16 条删掉一批仍 > 0 ⇒ A0-② 的「通过数为 0」下界抓不到，只有 A2「声明 ≡ 实跑」能发现（同 round73 立本守卫根因）。
@@ -201,6 +201,10 @@ const CASES = [
   // R247：形态 C 平台 picker 一致性守卫 —— S 段三道下界护栏（picker ≥4 / enum ≥6 / 术语键 ≥4）
   //   + C 段 4 条合成样本自检是「非恒真」凭据；断言数不受守则「删掉 B 组两条」会静默通过。
   { key: 'check_picker_platform', rel: 'tools/check_picker_platform.js' },  // 15 条（S 4 + A 4 + B 3 + C 4）
+  // R249：裸写文档必须注入 is_deleted —— P 组 16 条拼写器钉死样本是「非恒真」凭据
+  //   （C-②/C-③ 正负样本互证）；S 组 8 条含三道下界 + 两条锚点在场护栏；断言数不受守则
+  //   「删掉 C 组自检」会静默通过。
+  { key: 'check_doc_write_isdeleted', rel: 'tools/check_doc_write_isdeleted.js' },  // 39 条（P 16 + S 8 + A 5 + B 5 + C 4 + E 1）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

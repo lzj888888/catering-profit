@@ -77,3 +77,11 @@ _m3/
 #      本条只做**「将来新增不误提交」**的机械保证。注意 gitignore 的**固有语义**：该规则**同样匹配**
 #      那三份已入库件，但 git **对已跟踪文件不适用 ignore** ⇒ 三份仍在索引中、其改动照常可见。
 /review/evidence/**/gitcache_rebuilt.json
+
+# R249：`_probe_tmp/` = 本轮「导入报障」定性用的**真实业务账单副本**
+#   （taobao_goods.xlsx / jd_order.xlsx / jd_sku.xlsx，李老师的真实销售数据）。
+#   既有决定同 `_m3/`：**过程件不入库**（说明档 + 判据脚本已入库 `review/evidence/r249_import/`）。
+#   ⚠️ 目录**留在仓内**（`r249_recalc.py` 硬引用 `_probe_tmp/taobao_goods.xlsx` 路径，外移会断复现）；
+#      本条只做「不误提交」的机械保证，**未删除、未移动**任何文件。
+#   ⚠️ 含真实销售数据 ⇒ 除体积外还有**隐私**理由，务必不入库。
+_probe_tmp/

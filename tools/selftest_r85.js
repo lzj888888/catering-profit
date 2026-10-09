@@ -329,6 +329,12 @@ const A15_EXEMPT = [
   //   沿用 round103 的**白名单式**登记（精确到目录），**绝不放宽成 `cloudfunctions/` 全豁免**：
   //   by=WorkBuddy / date=2026-10-06 / reason=R232 授权批次 G M3.33 阶段② 新增 getDishReview（单品毛利复盘读侧）
   /^cloudfunctions\/getDishReview\//,
+  // R249（同时刻第十八次触发）：修真缺陷 —— 裸写文档缺 `is_deleted` 导致
+  //   「写进去读不出」（导入 354 行、页面全空）。涉及 `importSalesBill`
+  //   与 `saveShopSetting` 两个目录 —— **两者均已在 R181l / round115 已有条目内**
+  //   ⇒ 沿用既有记登、**不新增白名单条目**（避免把豁免面撑大），
+  //   按 round103 纪律记明时点与理由：
+  //   by=WorkBuddy / date=2026-10-09 / reason=R249 授权：修裸写 is_deleted 缺陷（两处文件均属已登白名单目录）
 ];
 check('A15 云函数逻辑零改动（仅 initDb 建库单源 + 本批授权函数豁免）', (() => {
   const { execFileSync } = require('child_process');

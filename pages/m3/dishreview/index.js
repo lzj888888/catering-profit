@@ -112,8 +112,33 @@ Page({
     const d = await api.call('getDishReview', {});
 
     const dineIn = (d.dine_in || []).map((x) => this.fmtRanked(x));
-    const unmatched = (d.unmatched || []).map((x) => ({
-      name: x.name || x.dish_key,
+
+    // 🔴 R249-B（附带发现，与 is_deleted 同轮修）：外卖的「未匹配菜品」**只**嵌在
+    //   `takeaway.by_platform[p].unmatched` 里，而前端**从不读**它（只读顶层 `d.unmatched`，
+    //   而顶层那份是 `buildDishInReview` 的产物 = **仅堂食**）⇒ 外卖路径下
+    //   「红线 17：不静默归零」**未落地**：外卖商品全部匹配不上成本卡时，
+    //   外卖榜区块因 `ranked.length === 0` 连表头都不渲染，只留一个**空标题**，
+    //   用户可见 =「导了但什么都没变」（正是 R249 报障现场的第二层）。
+    //   修法：按菜名合并（堂食 + 各外卖平台）后并入下方同一张「未匹配菜品」表 ——
+    //   复用既有文案 `reviewUnmatched/reviewUnmatchedHint/reviewGoMap` 与既有渲染块
+    //   ⇒ **零新增可见文案**（不必动术语三处同步面）。同名单跨平台只出一行、qty/金额相加。
+    const unmatchedMap = new Map();
+    const pushUnmatched = (x) => {
+      const nm = x.name || x.dish_key || '';
+      if (!nm) return;
+      const cur = unmatchedMap.get(nm) || { name: nm, qty: 0, amountFen: 0 };
+      cur.qty += x.qty || 0;
+      cur.amountFen += x.amountFen || 0;
+      unmatchedMap.set(nm, cur);
+    };
+    (d.unmatched || []).forEach(pushUnmatched);
+    if (d.takeaway && d.takeaway.by_platform) {
+      for (const p of Object.keys(d.takeaway.by_platform)) {
+        (((d.takeaway.by_platform[p] || {}).unmatched) || []).forEach(pushUnmatched);
+      }
+    }
+    const unmatched = Array.from(unmatchedMap.values()).map((x) => ({
+      name: x.name,
       qty: x.qty,
       amountText: fmtYuan(x.amountFen),
     }));

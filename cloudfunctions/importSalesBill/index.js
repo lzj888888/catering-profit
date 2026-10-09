@@ -114,6 +114,9 @@ exports.main = async (event) => {
         platform,
         source: 'excel',
         created_at: now,
+        // 🔴 R249：`.set()` = 整文档替换 ⇒ 不写 is_deleted 的文档**没有该字段**，
+        //   而读侧 da.list/listAll 强制 `is_deleted:false`（严格等值）⇒ 写入成功但读不出来（假绿）。
+        is_deleted: false,
       },
     });
     written++;
@@ -194,6 +197,8 @@ async function handleDishImport({ shopId, userId, clientRequestId, dishDetect, m
         platform: 'pos',
         source: 'excel',
         created_at: now,
+        // 🔴 R249：见上方外卖账单同款注释 —— 缺 is_deleted ⇒ 写入成功、读侧（强制 is_deleted:false）读不出。
+        is_deleted: false,
       },
     });
     written++;
@@ -310,6 +315,8 @@ async function handleFormCImport({ shopId, userId, clientRequestId, dishDetect, 
           platform,
           source: 'excel',
           created_at: now,
+          // 🔴 R249：缺 is_deleted ⇒ 落库 354 行却「单品毛利复盘·外卖」全程空态的根因（读侧强制 is_deleted:false）。
+          is_deleted: false,
         },
       });
       written++;
