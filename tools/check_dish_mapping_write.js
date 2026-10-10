@@ -225,6 +225,83 @@ check('B-④ 解除分支不得顺带清空其它字段（只软删，不改 pla
   !/action === 'cleared'[\s\S]{0,200}\.update\(/.test(bareIndex),
   'cleared 分支不写 update');
 
+// ===================== D R260 批量关联（规范 v1.9）=====================
+console.log('===== D 批量关联（规范 v1.9 · 只关该关的 / 建议不自动提交）=====');
+const bareValidateD = stripComments(srcValidate);
+const SUG = require(path.join(ROOT, 'utils/dishMapSuggest.js'));
+
+// D-① 两种形态**互斥**：判「条件-返回形态」，不是"提过 items 这个词"
+check('D-① 🔴 单条与批量互斥：源码里必须有「同时给就拒」的条件-返回（静默取其一 ⇒ 用户以为提交了批量）',
+  /if \(hasSingle && hasBatch\)/.test(bareValidateD) && /return err\(/.test(bareValidateD));
+// D-② 上限单源：前端分块粒度必须 ≤ 云端单批上限
+check('D-② 🔴 前端 BATCH_CHUNK ≤ 云端 MAX_BATCH（超了 ⇒ 整批被拒，用户看到失败却不知为啥）',
+  Number.isInteger(SUG.BATCH_CHUNK) && SUG.BATCH_CHUNK > 0 && SUG.BATCH_CHUNK <= W.MAX_BATCH,
+  '前端 ' + SUG.BATCH_CHUNK + ' ≤ 云端 ' + W.MAX_BATCH);
+// D-③ 去重真的接在 validate 上（有函数没接线 = 白写）
+check('D-③ 🔴 批内去重接在 validate 上（findBatchConflicts + duplicate_key 都得到场）',
+  /findBatchConflicts\(/.test(bareValidateD) && /duplicate_key/.test(bareValidateD));
+// D-④ 卡存在性**整批**先校验 + 早于**批内**任何写库（在批量函数体内定位，不靠全局首个写库）
+const bareIndex2 = stripComments(srcIndex);
+const iFn = bareIndex2.indexOf('async function runBatchMapping');
+const batchSrc = iFn >= 0 ? bareIndex2.slice(iFn) : '';
+const iBatchGuard = batchSrc.indexOf('if (rejected.length)');
+const batchWrites = ['da.insert(COLL', 'db.collection(COLL).doc(', 'da.softDelete(COLL,']
+  .map((k) => batchSrc.indexOf(k)).filter((x) => x >= 0);
+const iBatchWrite = batchWrites.length ? Math.min.apply(null, batchWrites) : -1;
+check('D-④ 🔴 批量：卡存在性整批先校验，且早于批内任何写库（挪到写之后 ⇒ 脏数据已落库才报错）',
+  iBatchGuard >= 0 && iBatchWrite > iBatchGuard, 'guard@' + iBatchGuard + ' < write@' + iBatchWrite);
+check('D-④b 批量也走软删解除（可逆），且带 _id 主键',
+  /da\.softDelete\(COLL, p\._id, userId\)/.test(batchSrc) && /const _id = p\._id;/.test(batchSrc));
+// D-⑤ 落库仍写**原始 dish_key**（批内不得出现任何归一化调用）
+check('D-⑤ 🔴 批量落库 external_ref_id 仍写原始 dish_key（归一即读侧永远查不到）',
+  /external_ref_id: p\.dish_key/.test(batchSrc) && !/normalizeDishName|normForSuggest|normKeyPart\(p\.dish_key\)\.replace/.test(batchSrc));
+// D-⑥ 前端「选择」路径里不得出现云调用 / 整页重载（否则批量等于没做）
+const pickLocal = /onPickLocal\(e\) \{[\s\S]*?\n  \},/.exec(srcPage);
+check('D-⑥ 🔴 批量"选择"路径内不得调 saveDishMapping、也不得 this.load()（那正是要省掉的东西）',
+  !!pickLocal && pickLocal[0].indexOf('saveDishMapping') < 0 && pickLocal[0].indexOf('this.load()') < 0,
+  pickLocal ? '选择路径 ' + pickLocal[0].length + ' 字' : '未找到 onPickLocal');
+// D-⑦ 提交载荷只来自用户确认的选择集
+const saveBatch = /onSaveBatch\(\) \{[\s\S]*?\n  \},/.exec(srcPage);
+check('D-⑦ 🔴 提交载荷来自 x.selCode（用户确认后的选择集），不得直接用建议函数返回值',
+  !!saveBatch && /x\.selCode/.test(saveBatch[0]) && !/suggestCardIndex/.test(saveBatch[0]));
+check('D-⑧ 提交按 BATCH_CHUNK 分块（不分块 ⇒ 51 条一次发、超上限整批被拒）',
+  !!saveBatch && /BATCH_CHUNK/.test(saveBatch[0]) && /slice\(/.test(saveBatch[0]));
+// D-⑨~D-⑭ 行为面：真调 suggestCardIndex
+const CARDN = ['发鱿鱼', '耙牛肉', '土豆'];
+check('D-⑨ 行为面：★装饰名 / 【】括号名经归一命中对应卡',
+  SUG.suggestCardIndex('★发鱿鱼', CARDN).index === 0
+  && SUG.suggestCardIndex('【招牌】耙牛肉', CARDN).index === 1,
+  JSON.stringify([SUG.suggestCardIndex('★发鱿鱼', CARDN), SUG.suggestCardIndex('【招牌】耙牛肉', CARDN)]));
+check('D-⑩ 🔴 行为面：口味询问 SKU **不给建议**（真表里实测有"来点辣椒?吗"，猜中＝把误判写进库）',
+  SUG.suggestCardIndex('来点辣椒?吗', CARDN).index === -1
+  && SUG.suggestCardIndex('来点辣椒?吗', CARDN).how === 'question');
+check('D-⑪ 行为面：包含匹配取**最长**卡名（否则"牛肉"会把"耙牛肉"吃掉）',
+  SUG.suggestCardIndex('耙牛肉小份', ['牛肉', '耙牛肉']).index === 1,
+  String(SUG.suggestCardIndex('耙牛肉小份', ['牛肉', '耙牛肉']).index));
+check('D-⑫ 行为面：原名完全相等 ⇒ how=exact（最可靠的一档优先）',
+  SUG.suggestCardIndex('土豆', CARDN).how === 'exact');
+check('D-⑬ 行为面：都不中 ⇒ index=-1（**不给建议**，用户自己选）',
+  SUG.suggestCardIndex('完全不存在的菜', CARDN).index === -1);
+// ⚠️ 首版只测了「★发鱿鱼」（走 norm 分支）⇒ 变异 M11 把 `name` 加到 **contains 分支**时
+//    守卫**没转红**（假绿）。⇒ 改成把**五条返回分支各打一发**，逐条查键集。
+//    这是"判据必须覆盖被测对象全部分支"的又一例（同族：R257 的"关多了/关少了"两个方向）。
+const BRANCH_SAMPLES = [
+  ['土豆', 'CARDN'],                    // ① exact
+  ['★发鱿鱼', 'CARDN'],                 // ② norm
+  ['耙牛肉小份', 'OTHER'],              // ③ contains
+  ['来点辣椒?吗', 'CARDN'],             // 安全闸 question
+  ['完全不存在的菜', 'CARDN'],          // ④ none
+];
+const BRANCH_SET = { CARDN: CARDN, OTHER: ['牛肉', '耙牛肉'] };
+const badKeys = BRANCH_SAMPLES.filter(([nm, set]) => {
+  const r = SUG.suggestCardIndex(nm, BRANCH_SET[set]);
+  return Object.keys(r).sort().join(',') !== 'how,index';
+}).map(([nm]) => nm);
+check('D-⑭ 🔴 行为面：建议函数**五条返回分支**的键集都只有 {index, how}'
+  + '（结构上不可能把归一化后的名字带出去）',
+  badKeys.length === 0, badKeys.length ? '有额外键的样本：' + badKeys.join(',') : '5/5 分支干净');
+check('D-⑮ 断言数下界 ≥ 45（防删段后恒绿）', (pass + failN) >= 45, '当前累计 ' + (pass + failN));
+
 // ===================== C 自检（判定函数有分辨力）=====================
 console.log('===== C 自检（真调生产纯函数）=====');
 const C_ROWS = [
@@ -265,5 +342,5 @@ check('C-③ trim 生效：前后空格的 dish_key 与干净键同命中',
 
 check('C-④ 断言数下界 ≥ 24（防删断言；实测见末行）', (pass + failN) >= 24, '当前累计 ' + (pass + failN));
 
-console.log('\n===== R255 菜名映射写侧守卫：' + pass + ' 通过 / ' + failN + ' 失败 =====');
+console.log('\n===== R255/R260 菜名映射写侧守卫：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);

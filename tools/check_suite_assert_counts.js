@@ -212,7 +212,7 @@ const CASES = [
   // R255：菜名映射写侧 —— S 扫描面 4 + A1 键双向同源 5 + A2 键三决定 5 + A3 五要素 6
   //   + A4 卡存在性/软删/前端接线 6 + B 反向 4 + C 自检 4（真调生产纯函数）。
   //   头号风险 = 写侧键与读侧 mapIndex 错位 ⇒ 用户挂了映射页面照旧 unmatched 且不报错。
-  { key: 'check_dish_mapping_write', rel: 'tools/check_dish_mapping_write.js' },  // 35 条
+  { key: 'check_dish_mapping_write', rel: 'tools/check_dish_mapping_write.js' },  // 51 条（R260 加 D 段 16 条：批量关联）
   // R256：摊销归档锁 —— S 扫描面 8 + A 源码面 9 + B 行为面 8 + C 自失效 3。
   //   缺口由生产代码注释自己点名（此前只有删除路径上锁）⇒ 编辑/新增改得动已封账月份的数字。
   { key: 'check_amort_archive_lock', rel: 'tools/check_amort_archive_lock.js' },  // 28 条

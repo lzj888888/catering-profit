@@ -12,6 +12,8 @@ const api = require('../../../utils/api.js');
 const ui = require('../../../utils/ui.js');
 const { openPaywall } = require('../../../utils/paywall.js');
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
+// R260：菜名映射「建议卡」纯函数（**只预选、不落库**，规范 v1.9 §0 D32）
+const { suggestCardIndex, BATCH_CHUNK } = require('../../../utils/dishMapSuggest.js');
 
 const fenYuan = (fen) => (Number(fen) || 0) / 100;
 const fmtYuan = (fen) => fenYuan(fen).toFixed(2);
@@ -50,6 +52,15 @@ Page({
       reviewMapLinked: TERMS.card.reviewMapLinked,
       reviewMapUnlink: TERMS.card.reviewMapUnlink,
       reviewMapNoCard: TERMS.card.reviewMapNoCard,
+      // R260 批量关联（第三处登记）
+      reviewBatchEnter: TERMS.card.reviewBatchEnter,
+      reviewBatchExit: TERMS.card.reviewBatchExit,
+      reviewBatchHint: TERMS.card.reviewBatchHint,
+      reviewBatchSuggest: TERMS.card.reviewBatchSuggest,
+      reviewBatchSave: TERMS.card.reviewBatchSave,
+      reviewBatchNone: TERMS.card.reviewBatchNone,
+      reviewBatchSaving: TERMS.card.reviewBatchSaving,
+      reviewBatchDone: TERMS.card.reviewBatchDone,
       reviewEmpty: TERMS.card.reviewEmpty,
       // R252：已导入账单「查看 + 清除」
       reviewBillsTitle: TERMS.card.reviewBillsTitle,
@@ -90,6 +101,10 @@ Page({
     cardOptions: [],      // picker 的 range（成本卡名）
     cardCodes: [],        // 与 cardOptions 同序的 card_code（picker 只给索引 ⇒ 必须自己对齐）
     mappings: [],         // 已关联菜品（来自 getDishReview 出参 mapping）+ 展示字段
+    // ===== R260 批量关联（规范 v1.9）=====
+    batchMode: false,     // 批量模式：行的选择只记在本机，点「保存全部关联」才提交
+    batchCount: 0,        // 已选行数（按钮上的计数）
+    batchSaving: false,   // 提交中（防连点）
     mappingBusy: false,   // 写操作进行中（防连点重复提交）
   },
 
@@ -257,6 +272,8 @@ Page({
       cardCodes,
       mappings,
       empty: dineIn.length === 0 && unmatched.length === 0 && !takeaway,
+      // R260：批量模式开着时，刷新后重新算建议（已挂上的菜会消失，剩下的重算）
+      batchCount: this.data.batchMode ? this.countBatchSel(unmatched) : 0,
     });
     this.markRows();
     // R252：账单列表**单独一次调用**（读侧独立函数；失败不影响复盘主区渲染）
@@ -311,6 +328,101 @@ Page({
       api.toastError(err);
     } finally {
       this.setData({ mappingBusy: false });
+    }
+  },
+
+  // ===================== R260：批量关联（规范 v1.9）=====================
+  // 现状痛点（实测）：R255 的入口是「一道菜一次 picker + 选完 `await this.load()` 重算整页」
+  //   ⇒ 51 道外卖菜 = 51 次全页往返。批量把往返压成 ⌈N/BATCH_CHUNK⌉ 次。
+  // 🔴 三条不可动摇（规范 v1.9 D29/D30/D32）：
+  //   ① 行的选择**只记在本机**（选择路径内**不得**调 saveDishMapping）；
+  //   ② 建议**只预选**，绝不自动提交（归一化匹配必然会误判，如"来点辣椒?吗"这类口味询问 SKU）；
+  //   ③ 提交载荷只来自**用户确认后的选择集**（selCode），不回读建议函数的返回值。
+
+  // 给未匹配行算「建议卡」（只预选；`how` 用于在界面上标「建议」二字）
+  applyBatchSuggestions(rows) {
+    const names = this.data.cardOptions || [];
+    const codes = this.data.cardCodes || [];
+    return (rows || []).map((x) => {
+      const s = suggestCardIndex(x.name, names);
+      const sel = s.index >= 0 && codes[s.index] ? codes[s.index] : '';
+      return Object.assign({}, x, {
+        pickIdx: s.index >= 0 ? s.index : 0,
+        selCode: sel,
+        selLabel: sel ? names[s.index] : '',
+        suggestHow: sel ? s.how : '',
+      });
+    });
+  },
+
+  countBatchSel(rows) {
+    return (rows || []).filter((x) => x.selCode).length;
+  },
+
+  onToggleBatch() {
+    if (this.data.batchSaving) return;
+    if (this.data.batchMode) { this.setData({ batchMode: false, batchCount: 0 }); return; }
+    if (!this.data.cardOptions.length) { wx.showToast({ title: TERMS.card.reviewMapNoCard, icon: 'none' }); return; }
+    const rows = this.applyBatchSuggestions(this.data.unmatched);
+    this.setData({ batchMode: true, unmatched: rows, batchCount: this.countBatchSel(rows) });
+  },
+
+  // 行内选择：**只改本地**（不调云函数、不重载整页）
+  onPickLocal(e) {
+    if (this.data.batchSaving) return;
+    const idx = Number(e.currentTarget.dataset.idx);
+    const pick = Number(e.detail.value);
+    const code = (this.data.cardCodes || [])[pick];
+    if (!code) return;
+    const rows = this.data.unmatched.slice();
+    if (!rows[idx]) return;
+    rows[idx] = Object.assign({}, rows[idx], {
+      pickIdx: pick, selCode: code, selLabel: this.data.cardOptions[pick],
+      // 用户改过 ⇒ 不再是"建议"（界面上的「建议」标记随之消失，避免误导"这是系统推荐的"）
+      suggestHow: '',
+    });
+    this.setData({ unmatched: rows, batchCount: this.countBatchSel(rows) });
+  },
+
+  // 行内清掉本地选择（保留本行在未匹配清单里，稍后再选）
+  onClearLocal(e) {
+    if (this.data.batchSaving) return;
+    const idx = Number(e.currentTarget.dataset.idx);
+    const rows = this.data.unmatched.slice();
+    if (!rows[idx]) return;
+    rows[idx] = Object.assign({}, rows[idx], { selCode: '', selLabel: '', suggestHow: '' });
+    this.setData({ unmatched: rows, batchCount: this.countBatchSel(rows) });
+  },
+
+  // 一次提交（分块 ≤ BATCH_CHUNK；上限的硬约束在云端 MAX_BATCH，守卫钉住两者关系）
+  async onSaveBatch() {
+    if (this.data.batchSaving) return;
+    const items = this.data.unmatched
+      .filter((x) => x.selCode)
+      .map((x) => ({ dish_key: x.dishKey, card_code: x.selCode }));
+    if (!items.length) { wx.showToast({ title: TERMS.card.reviewBatchNone, icon: 'none' }); return; }
+    this.setData({ batchSaving: true });
+    wx.showLoading({ title: TERMS.card.reviewBatchSaving });
+    let done = 0;
+    try {
+      for (let i = 0; i < items.length; i += BATCH_CHUNK) {
+        const chunk = items.slice(i, i + BATCH_CHUNK);
+        await api.call('saveDishMapping', {
+          items: chunk,
+          client_request_id: 'dm_' + Date.now() + '_' + i,
+        });
+        done += chunk.length;
+        wx.showLoading({ title: TERMS.card.reviewBatchSaving + ' ' + done + '/' + items.length });
+      }
+      wx.hideLoading();
+      wx.showToast({ title: TERMS.card.reviewBatchDone + ' ' + done, icon: 'success' });
+      // 重算：已挂上的菜从候选里消失、剩下的重新给建议（batchMode 保持开启，便于继续）
+      await this.load();
+    } catch (err) {
+      wx.hideLoading();
+      api.toastError(err);
+    } finally {
+      this.setData({ batchSaving: false });
     }
   },
 

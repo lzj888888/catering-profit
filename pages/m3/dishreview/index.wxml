@@ -115,17 +115,51 @@
           <!-- R255：映射**写了却没生效**（挂到的卡被删了 / platform 不匹配）时用户看到的仍是未匹配，
                最容易困惑 ⇒ 把已关联的卡名显示出来，提示"挂过但没生效"。 -->
           <text class="snap" wx:if="{{item.mappedCardName}}">{{t.reviewMapLinked}}{{item.mappedCardName}}</text>
+          <!-- R260：批量模式下本机已选（尚未提交）+ "这是建议"标记 -->
+          <text class="snap" wx:if="{{batchMode && item.selLabel}}">{{t.reviewMapLinked}}{{item.selLabel}}</text>
+          <text class="plat" wx:if="{{batchMode && item.suggestHow}}">{{t.reviewBatchSuggest}}</text>
         </view>
         <text class="c-qty">{{item.qty}}</text>
         <text class="c-num">{{t.cur}}{{item.amountText}}</text>
         <!-- R255：关联到成本卡。用 <picker>（系统选择器，**不触发键盘**）
-             ⇒ 避开「弹层 × 键盘 = 死结」；也无需新增页面/弹层。 -->
-        <picker wx:if="{{cardOptions.length}}" range="{{cardOptions}}"
-                data-idx="{{index}}" bindchange="onPickCard" disabled="{{mappingBusy}}">
-          <view class="btn-small ghost">{{t.reviewMapPick}}</view>
-        </picker>
+             ⇒ 避开「弹层 × 键盘 = 死结」；也无需新增页面/弹层。
+             R260：批量模式下换成 `onPickLocal` —— **只改本机状态**，
+                   不调云函数、也不重载整页（这才是"批量"省下来的东西）。 -->
+        <block wx:if="{{batchMode}}">
+          <picker wx:if="{{cardOptions.length}}" range="{{cardOptions}}" value="{{item.pickIdx}}"
+                  data-idx="{{index}}" bindchange="onPickLocal" disabled="{{batchSaving}}">
+            <view class="btn-small ghost">{{item.selLabel || t.reviewMapPick}}</view>
+          </picker>
+          <view class="del" wx:if="{{item.selCode}}" data-idx="{{index}}" bindtap="onClearLocal">×</view>
+        </block>
+        <block wx:else>
+          <picker wx:if="{{cardOptions.length}}" range="{{cardOptions}}"
+                  data-idx="{{index}}" bindchange="onPickCard" disabled="{{mappingBusy}}">
+            <view class="btn-small ghost">{{t.reviewMapPick}}</view>
+          </picker>
+        </block>
       </view>
       <view class="muted" wx:if="{{!cardOptions.length}}">{{t.reviewMapNoCard}}</view>
+      <!-- ===== R260：批量关联（规范 v1.9）=====
+           「一道菜一次 picker + 选完整页重算」在 51 道外卖菜 / 270 行堂食菜上太慢
+           ⇒ 先在本机把选择攒起来，点一次「保存全部关联」再提交（分块 ≤ BATCH_CHUNK）。
+           ⚠️ 建议标记（`suggestHow`）只表示"系统按名字猜的预选"，**必须人工核对**：
+              归一化匹配会误判（如"来点辣椒?吗"这类口味询问 SKU 本就不该匹配任何菜）。 -->
+      <block wx:if="{{cardOptions.length}}">
+        <view class="field-save">
+          <button class="btn-small ghost" bindtap="onToggleBatch" disabled="{{mappingBusy || batchSaving}}">
+            {{batchMode ? t.reviewBatchExit : t.reviewBatchEnter}}
+          </button>
+        </view>
+        <block wx:if="{{batchMode}}">
+          <view class="muted">{{t.reviewBatchHint}}</view>
+          <view class="field-save">
+            <button class="btn primary" bindtap="onSaveBatch" disabled="{{batchSaving || !batchCount}}">
+              {{t.reviewBatchSave}} · {{batchCount}}
+            </button>
+          </view>
+        </block>
+      </block>
       <view class="field-save">
         <button class="btn-small ghost" bindtap="goMap">{{t.reviewGoMap}}</button>
       </view>

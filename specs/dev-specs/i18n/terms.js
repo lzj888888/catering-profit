@@ -1302,6 +1302,17 @@ const TERMS = {
     reviewMapOk: '已关联',   // ⚠️ toast 文案要短（微信用 icon:'none' 时过长会被截断）
     reviewMapUnlinkOk: '已解除',
     reviewMapNoCard: '本店还没有成本卡，请先新建成本卡。',
+    // ===== R260：**批量关联**（规范 v1.9）=====
+    //   起因：外卖 SKU 真表 51 个商品名、堂食菜品表 270 行，而 R255 的入口是
+    //   「一道菜一次 picker + 每次选完整页重算」⇒ 逐行人工太慢。
+    reviewBatchEnter: '批量关联',
+    reviewBatchExit: '退出批量',
+    reviewBatchHint: '每行先选好，点下方按钮**一次提交**。带「建议」的是系统按名字猜的预选，请核对后再提交。',
+    reviewBatchSuggest: '建议',
+    reviewBatchSave: '保存全部关联',
+    reviewBatchNone: '还没有选择任何菜品',
+    reviewBatchSaving: '正在保存',
+    reviewBatchDone: '已保存', 
     reviewEmpty: '还没有导入堂食销量，请先在「外卖」页导入《菜品销售统计》。',
     // ===== R252：已导入账单「查看 + 清除」（补 R251 报障第 ④ 问的真缺口）=====
     //   背景：`external_sales_daily` 全站只有写入、没有删除 ⇒ 导错了**看不见也删不掉**
