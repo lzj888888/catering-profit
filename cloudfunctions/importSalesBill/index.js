@@ -22,6 +22,7 @@ const {
   detectPlatformInRows, detectPlatformInMatrix,   // R250：平台自动判定逐行试签名（京东订单级两级表头）
   PLATFORM_AMBIGUOUS,   // R253：多平台同时命中哨兵 —— 🔴 必须 import，truthy 陷阱见 :73 附近
   DISH_SHAPES, detectDishMatrix, parseDishSales, parseDishSalesC, dishRefId, saleDocId,
+  BILL_IMPORT_ENABLED,   // R259：账单导入开关（只作用账单，形态 A/B/C 不受影响）
 } = require('./service');
 const { validateInput } = require('./validate');
 
@@ -107,6 +108,19 @@ exports.main = async (event) => {
   }
 
   if (!grade.pass) return fail(ERROR_CODES.INVALID_PARAM, '甲级门禁未通过，已阻断落库');
+
+  // 🔴 R259：账单导入**暂停展示**（李老师 2026-10-10）。
+  //   为什么拦在**这里**（confirm 之后、写库之前），而不是函数入口：
+  //     · 预览（confirm=false）**照常放行** —— 它不写库，留着便于日后复看解析与门禁结果；
+  //     · 只拦「确认落库」这一步，**精确等于**「不产生账单数据」，不牵连形态 A/B/C。
+  //   ⚠️ 前端已把「确认导入」按钮藏起（`utils/featureFlags.js`）⇒ 本行是**防御性兜底**
+  //      （防旧版本客户端 / 越权直调）。两端取值必须一致，由 `check_bill_import_gate` 守。
+  //   ⚠️ 用 FORBIDDEN 而非新造码：本仓错误码表与 i18n 互锁（core/09），为一条暂停开关扩表
+  //      性价比低；且 `fail(code, msg)` 的 msg 会透传到前端（`api.toastError` 取 `e.msg` 优先），
+  //      用户看到的是下面这句人话、不是"无权限"。恢复时若需正式语义，再补专用码。
+  if (!BILL_IMPORT_ENABLED) {
+    return fail(ERROR_CODES.FORBIDDEN, '外卖账单导入已暂停展示，正在打磨中；堂食/外卖的《商品销量》仍可正常导入。');
+  }
 
   // 🔒 R181l 幂等（重放形态）：命中即返回首次结果、不重复写入。
   const prior = await common.idempotency.findPriorResult(db, shopId, clientRequestId);

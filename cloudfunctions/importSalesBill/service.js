@@ -383,11 +383,20 @@ function checkGradeA(input, schema) {
 //   三种表形态（§3.4 fail-closed，零命中/多命中不许猜）+ 堂食《菜品销售统计》解析（§4）。
 // 🔴 引擎四函数（netUnitCostWan / lineNetCostYuan / calcCostCard / wouldCreateCycle）零改动 —— 本段纯上层。
 
+// ===== R259（2026-10-10）：外卖「账单导入」开关 =====
+// 李老师决定**账单导入暂停展示**（理由见 `review/NOTE_2026-10-10_外卖账单导入_暂停展示衔接备忘.md`）。
+// 🔴 该开关**只作用账单**（走 `parseBillMatrix` 的订单级/日汇总表），
+//    形态 A/B/C（菜品销售统计 / 套餐明细 / **外卖商品销量**）**不受影响** ——
+//    那三种是单品/套餐复盘的输入，正是本轮重点，且与账单**同出一个云函数与同一个页面 tab**。
+// ⚠️ 前端 `utils/featureFlags.js::BILL_IMPORT_ENABLED` 必须与本值**一致**（守卫同源比对）。
+//    为什么不能真单源：云函数是独立部署单元，不能 `require` 仓内 `utils/`（那是小程序侧）。
+const BILL_IMPORT_ENABLED = false;
+
 // 表形态（§2.1.1 / §3）
 const DISH_SHAPES = {
   A: 'dish_sales',    // 堂食《菜品销售统计》（美团收银 POS）—— 主路径
   B: 'combo_detail',  // 团购《套餐销售明细》—— 仅交叉校验，不入库
-  C: 'waimai_goods',  // 外卖「商品销量」—— 预留，待样例
+  C: 'waimai_goods',  // 外卖「商品销量」—— 🔴 样例已到货（R258/R259 实测：淘宝闪购「商品下载」355 行 = 7 天 × 51 商品）
 };
 
 // 形态 A 表结构常量（§2.1.2 实测 · 六项必核）
@@ -655,4 +664,5 @@ module.exports = {
   DISH_C_ALIAS, canonDishCHeader, findDishCCol,   // R245 P7：形态 C 列名别名单源（守卫用）
   extractBizDate, dishRefId, saleDocId, parseDishSales,
   normalizeDate, parseDishSalesC,   // v1.7 形态 C（外卖商品销量）
+  BILL_IMPORT_ENABLED,              // R259：账单导入开关（前端 utils/featureFlags.js 同源同值）
 };

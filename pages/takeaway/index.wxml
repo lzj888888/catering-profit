@@ -184,8 +184,19 @@
            它是「确认导入」按钮**紧下方**的操作提示，用户此刻正要动手 ⇒ 必须一眼可见。 -->
       <view class="hint" wx:if="{{!importGrade || importGrade.pass}}">{{t.importPickPlatformHint}}</view>
     </view>
-    <!-- 账单（批次 F）预览 -->
+    <!-- 账单 / 形态 A（堂食菜品销售统计）预览 —— 🔴 R259：**只对"真账单"**受单源开关控制。
+         ⚠️ 判据是「**有没有 shape**」而不是「这是哪张卡」：本卡同时承载
+            ① 账单（云函数 handleBillImport **不回 shape** ⇒ `importShape === ''`）
+            ② 形态 A 堂食《菜品销售统计》(`d.shape === 'dish_sales'`)
+            ⇒ 若按卡片整块关，会**连带关掉堂食单品复盘的导入**（正是本轮要重点做的）。
+         ⚠️ 关的是"账单"：不展示账单数字、不给「确认导入」按钮，只留"正在打磨 + 数据还在 + 替代路径"。
+         ⚠️ 云函数侧另有同值兜底（`importSalesBill` confirm 分支），双保险。 -->
     <view class="card2" wx:elif="{{importPreview}}">
+      <view wx:if="{{!billImportOn && !importShape}}">
+        <view class="warn">{{t.importBillPaused}}</view>
+        <view class="muted">{{t.importBillPausedHint}}</view>
+      </view>
+      <block wx:if="{{billImportOn || !!importShape}}">
       <view class="cell">
         <text class="lbl">{{t.importPlatformLabel}}</text>
         <text class="val">{{importPlatform}}</text>
@@ -212,6 +223,7 @@
       <!-- 🔴 R250：同上分支 —— 门禁失败原因必须透出（现场：京东 SKU 级空模板 ⇒ CHANNEL_EMPTY）。 -->
       <view class="muted" wx:if="{{importGrade && !importGrade.pass && importFailReason}}">{{importFailReason}}</view>
       <button class="btn primary" wx:if="{{importGrade && importGrade.pass}}" style="margin-top:24rpx;" bindtap="onConfirmImport">{{t.importConfirm}}</button>
+      </block>
     </view>
     <view class="muted" wx:else>{{t.importEmpty}}</view>
   </block>

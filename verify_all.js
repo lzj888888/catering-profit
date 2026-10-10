@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：162 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：163 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -987,6 +987,11 @@ const SUITES = [
   // R257：归档月回读必须用「落库时的开关快照」—— 回读重算的入参里，明细全冻结在 acct 里，
   //   唯独开关读的是实时 shop_switch ⇒ 归档后改一次开关，封账月的利润就漂（「已归档=只读」是假的）。
   ['archive-switch-snapshot', 'tools/check_archive_switch_snapshot.js'],
+  // R259：外卖「账单导入」暂停展示的单源开关 —— 🔴 本守卫的核心是防**关多了**：
+  //   那个 tab 是统一导入器（云函数按表头判形态），形态 A 堂食《菜品销售统计》与账单
+  //   渲染在**同一张卡**（账单不回 shape ⇒ importShape 为空）⇒ 按卡片整块关会连带
+  //   砍掉堂食/外卖单品复盘的导入。判据=「有没有 shape」，不是「这是哪张卡」。
+  ['bill-import-gate', 'tools/check_bill_import_gate.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

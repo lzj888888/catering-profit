@@ -219,6 +219,10 @@ const CASES = [
   // R257：归档月开关快照 —— S 扫描面 5 + A 源码面 10 + A2 穷尽三条腿 4 + B 行为面 9 + C 自失效 5。
   //   缺口 = 回读重算的入参里唯独开关读实时 shop_switch ⇒ 归档后改开关，封账月利润就漂。
   { key: 'check_archive_switch_snapshot', rel: 'tools/check_archive_switch_snapshot.js' },  // 33 条
+  // R259：账单导入开关 —— S 扫描面 4 + A 源码面 14 + B 行为面 6 + C 自失效 4。
+  //   失效有**两个方向**：关多了（连形态 A/C 一起关 ⇒ 复盘没输入，页面上看不出）
+  //   与关少了（开关被改回 true ⇒ 账单又能落库）。
+  { key: 'check_bill_import_gate', rel: 'tools/check_bill_import_gate.js' },  // 28 条
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

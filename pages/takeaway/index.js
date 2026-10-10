@@ -11,6 +11,10 @@ const { openPaywall } = require('../../utils/paywall.js');
 const { fetchEntitlement } = require('../../utils/entitlement.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 const { calcTakeawayOrder, reverseListedPrice } = require('../../utils/takeawayDerive.js');
+// 🔴 R259：产品级开关**单源**（账单导入暂停展示）。⚠️ 只作用"账单"，形态 A/B/C 不受影响 ——
+//   它们与账单同出一个 tab 与同一个云函数（云函数按表头自动判形态），藏整个 tab 会连带
+//   砍掉外卖单品复盘的输入通道。详见 utils/featureFlags.js 头注 + NOTE_2026-10-10。
+const FLAGS = require('../../utils/featureFlags.js');
 
 const TK = TERMS.ledger.takeaway;
 
@@ -154,6 +158,9 @@ Page({
       importFailRow: TK.importFailRow,
       importNoFile: TK.importNoFile,
       importEmpty: TK.importEmpty,
+      // R259：账单暂停态文案（第三处登记 —— 漏映射 ⇒ 页面渲染成**空白**且零报错，R124 同族）
+      importBillPaused: TK.importBillPaused,
+      importBillPausedHint: TK.importBillPausedHint,
       // v1.7 形态 C（外卖商品销量）：平台机器判不出 ⇒ 必须选平台
       importShapeCHint: TK.importShapeCHint,
       importPickPlatform: TK.importPickPlatform,
@@ -172,7 +179,10 @@ Page({
       hintFoldShow: TERMS.ledger.hintFoldShow,
       hintFoldHide: TERMS.ledger.hintFoldHide,
     },
-    tab: 'calc',          // 'calc' 单均测算 | 'import' 账单导入
+    tab: 'calc',          // 'calc' 单均测算 | 'import' 导入
+    // 🔴 R259：账单导入开关（单源 utils/featureFlags.js）。false ⇒ 账单预览不展示数字、
+    //   不给「确认导入」按钮；形态 A/B/C（堂食菜品统计 / 套餐明细 / 外卖商品销量）照常可导。
+    billImportOn: FLAGS.BILL_IMPORT_ENABLED,
     mode: 'cash',          // 'cash' 到手口径 | 'accrual' 总额法口径
     // R234/J4d：行内长提示折叠（本页 2 处，默认收起）。与月录入页 / M2 / assetEdit / amortize **同一实现**。
     hintFold: {},
