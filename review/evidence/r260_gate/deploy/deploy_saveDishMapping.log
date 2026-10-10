@@ -1,0 +1,18 @@
+- initialize
+
+(node:23804) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)
+√ IDE server has started, listening on http://127.0.0.1:10896
+- deploy cloudfunctions
+- fetching cloud env list
+- [saveDishMapping] Fetching info of cloudfunction saveDishMapping
+√ [saveDishMapping] cloudfunction saveDishMapping exists in the cloud, will update it
+- [saveDishMapping] upload cloud function saveDishMapping - preparing
+√ [saveDishMapping] upload cloud function saveDishMapping - deploy
+√ deploy cloudfunctions
+
+┌─────────────────┬─────────┬────────────┬───────────┐
+│ (index)         │ success │ filesCount │ packSize  │
+├─────────────────┼─────────┼────────────┼───────────┤
+│ saveDishMapping │ true    │ 21         │ '57.7 KB' │
+└─────────────────┴─────────┴────────────┴───────────┘
