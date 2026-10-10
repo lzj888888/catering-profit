@@ -223,6 +223,7 @@ const CASES = [
   //   失效有**两个方向**：关多了（连形态 A/C 一起关 ⇒ 复盘没输入，页面上看不出）
   //   与关少了（开关被改回 true ⇒ 账单又能落库）。
   { key: 'check_bill_import_gate', rel: 'tools/check_bill_import_gate.js' },  // 28 条
+  { key: 'check_hub_guide', rel: 'tools/check_hub_guide.js' },  // 17 条（R263：枢纽页三步走/分层/空状态；G2 空状态严格 === 0 + G4 位置不变式）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

@@ -5,10 +5,27 @@
     <text class="hub-sub">{{t.subtitle}}</text>
   </view>
 
-  <!-- 分区卡 = 图标块（这件事是什么）+ 标题 + 副文案（拿它干什么）。
-       🔴 副文案不是装饰：本仓已知短板＝「术语直给无解释」，老板看名字猜不出用途。
-       🔴 R192：左侧不再用 8rpx 色条（R191 被判「像括号、廉价」）⇒ 改 96rpx 品牌色渐变图标块，
-          整卡补阴影 ⇒ 体积感来自**整块**，而不是一条边。 -->
+  <!-- ===== R263：三步走（回答「能做什么 / 怎么做 / 结果去哪看」）=====
+       🔴 必须排在**第一张卡之前**：老板一进来先看到"流程"，再看到"入口"。
+       守卫 `check_hub_guide` G4 盯这个位置 —— 挪到卡片后面 = 还是先看到一堆卡 = 没解决懵。 -->
+  <view class="hub-flow">
+    <text class="hub-flow-t">{{t.flowTitle}}</text>
+    <view class="hub-flow-step" wx:for="{{t.flowSteps}}" wx:key="*this">{{item}}</view>
+  </view>
+
+  <!-- ===== R263：空状态（卡数 === 0）—— 只给**一件事**做，不给 5 张卡 =====
+       ⚠️ 判据必须是 `cardCount === 0`（真读到 0），**不能**写 `cardCount <= 0`：
+          `-1` 是"没读到"（fail-closed 不显示数量），拿它当空状态 ⇒ 网络一抖动就误报"你还没有卡"。
+       守卫 G2 盯这个严格相等。 -->
+  <view class="hub-empty" wx:if="{{cardCount === 0}}">
+    <text class="hub-empty-t">{{t.emptyTitle}}</text>
+    <text class="hub-empty-d">{{t.emptyDesc}}</text>
+    <button class="btn primary hub-empty-btn" bindtap="goCard">{{t.emptyBtn}}</button>
+  </view>
+
+  <!-- ===== 第一层：先做（主链路）===== -->
+  <view class="hub-sec">{{t.secStart}}</view>
+
   <view class="hub-card" bindtap="goCard">
     <view class="hub-ico hub-ico-card">{{t.icoCard}}</view>
     <view class="hub-main">
@@ -28,6 +45,9 @@
     <view class="hub-go">›</view>
   </view>
 
+  <!-- ===== 第二层：有成本卡之后（顺序 = 三步走的 ②③：先导入，再看榜，最后进阶对账）===== -->
+  <view class="hub-sec">{{t.secAfter}}</view>
+
   <view class="hub-card" bindtap="goTakeaway">
     <view class="hub-ico hub-ico-takeaway">{{t.icoTakeaway}}</view>
     <view class="hub-main">
@@ -37,20 +57,20 @@
     <view class="hub-go">›</view>
   </view>
 
-  <view class="hub-card" bindtap="goRecon">
-    <view class="hub-ico hub-ico-recon">{{t.icoRecon}}</view>
-    <view class="hub-main">
-      <text class="hub-name">{{t.reconTitle}}</text>
-      <text class="hub-desc">{{t.reconSub}}</text>
-    </view>
-    <view class="hub-go">›</view>
-  </view>
-
   <view class="hub-card" bindtap="goReview">
     <view class="hub-ico hub-ico-review">{{t.icoReview}}</view>
     <view class="hub-main">
       <text class="hub-name">{{t.reviewTitle}}</text>
       <text class="hub-desc">{{t.reviewSub}}</text>
+    </view>
+    <view class="hub-go">›</view>
+  </view>
+
+  <view class="hub-card" bindtap="goRecon">
+    <view class="hub-ico hub-ico-recon">{{t.icoRecon}}</view>
+    <view class="hub-main">
+      <text class="hub-name">{{t.reconTitle}}</text>
+      <text class="hub-desc">{{t.reconSub}}</text>
     </view>
     <view class="hub-go">›</view>
   </view>

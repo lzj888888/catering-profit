@@ -18,3 +18,22 @@
 .hub-name { display: block; font-size: 32rpx; font-weight: 700; color: #222; }
 .hub-desc { display: block; font-size: 28rpx; color: #888; margin-top: 8rpx; line-height: 1.5; }
 .hub-count { display: block; font-size: 28rpx; color: #1e3a5f; margin-top: 8rpx; }
+
+/* ===== R263：三步走 / 分层标题 / 空状态 =====
+   ⚠️ 字号一律 ≥28rpx（本仓 AD 硬红线）；色值走 app.wxss 的品牌色，本文件只写中性字色。 */
+.hub-flow {
+  background: #fff; border-radius: 20rpx; padding: 24rpx; margin-bottom: 24rpx;
+  box-shadow: 0 4rpx 8rpx rgba(30, 58, 95, 0.06), 0 12rpx 28rpx rgba(30, 58, 95, 0.10);
+}
+.hub-flow-t { display: block; font-size: 28rpx; font-weight: 700; color: #1e3a5f; margin-bottom: 12rpx; }
+.hub-flow-step { display: block; font-size: 28rpx; color: #555; line-height: 1.7; }
+
+.hub-sec { display: block; font-size: 28rpx; font-weight: 700; color: #1e3a5f; margin: 8rpx 8rpx 16rpx; }
+
+.hub-empty {
+  background: #fff; border-radius: 20rpx; padding: 32rpx 24rpx; margin-bottom: 24rpx;
+  border: 2rpx dashed #c8d4e4;
+}
+.hub-empty-t { display: block; font-size: 32rpx; font-weight: 700; color: #222; }
+.hub-empty-d { display: block; font-size: 28rpx; color: #888; margin-top: 10rpx; line-height: 1.6; }
+.hub-empty-btn { margin-top: 24rpx; }

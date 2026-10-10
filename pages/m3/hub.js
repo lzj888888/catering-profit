@@ -30,6 +30,14 @@ Page({
       reviewSub: TERMS.hub.reviewSub,
       countPrefix: TERMS.card.countPrefix,
       countSuffix: TERMS.card.countSuffix,
+      // R263：三步走 / 分层 / 空状态（wxml 用到就必须登记 —— 漏登记 ⇒ 页面静默空白）
+      flowTitle: TERMS.hub.flowTitle,
+      flowSteps: TERMS.hub.flowSteps,
+      secStart: TERMS.hub.secStart,
+      secAfter: TERMS.hub.secAfter,
+      emptyTitle: TERMS.hub.emptyTitle,
+      emptyDesc: TERMS.hub.emptyDesc,
+      emptyBtn: TERMS.hub.emptyBtn,
       // R192：图标块单字（wxml 用到就必须登记 —— 漏登记 ⇒ 页面静默空白，本仓 R189 P2-1 同族）
       icoCard: TERMS.hub.icoCard,
       icoMaterial: TERMS.hub.icoMaterial,
