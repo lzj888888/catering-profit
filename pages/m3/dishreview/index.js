@@ -53,6 +53,10 @@ Page({
       reviewMapUnlink: TERMS.card.reviewMapUnlink,
       reviewMapNoCard: TERMS.card.reviewMapNoCard,
       reviewMapShortCard: TERMS.card.reviewMapShortCard,
+      // R264 覆盖率明示 + 行内「去建卡」（第三处登记）
+      reviewCoverage: TERMS.card.reviewCoverage,
+      reviewCoverageHint: TERMS.card.reviewCoverageHint,
+      reviewNewCard: TERMS.card.reviewNewCard,
       // R260 批量关联（第三处登记）
       reviewBatchEnter: TERMS.card.reviewBatchEnter,
       reviewBatchExit: TERMS.card.reviewBatchExit,
@@ -104,6 +108,11 @@ Page({
     // R262：「卡不够挂」引导（未匹配数 − 卡数；>0 才显示，见 load() 内 shortCardText）
     shortCardGap: 0,
     shortCardText: '',
+    // R264：覆盖率明示（共 N 道 / 已算 M 道 / 覆盖 X% 营收；见 load() 内 coverageText）
+    coverageCount: 0,
+    coverageMatched: 0,
+    coveragePct: 0,
+    coverageText: '',
     mappings: [],         // 已关联菜品（来自 getDishReview 出参 mapping）+ 展示字段
     // ===== R260 批量关联（规范 v1.9）=====
     batchMode: false,     // 批量模式：行的选择只记在本机，点「保存全部关联」才提交
@@ -140,6 +149,8 @@ Page({
       name: x.name || x.dish_key,
       qty: x.qty,
       revenueText: fmtYuan(x.amountFen),
+      // 🔴 R264：覆盖率要按**金额**算 ⇒ 数值必须带到展示层（`revenueText` 是字符串，不能相减）
+      amountFen: x.amountFen || 0,
       costText: fmtYuan(x.totalCostFen),
       grossText: fmtYuan(x.grossFen),
       marginPct: x.marginPct,
@@ -281,6 +292,31 @@ Page({
       ? String(TERMS.card.reviewMapShortCard).replace('{n}', String(shortCardGap))
       : '';
 
+    // ===== R264：覆盖率明示 =====
+    //   为什么必须有：真机 51 道菜 / 3 张卡，界面只说"未匹配 51 道" ⇒ 用户既看不到"已算出几道"，
+    //   也无从判断"先建哪道最划算"，面对长清单无从下手 ⇒ 这是李老师当场卡住的**同一个根因**。
+    //   🔴 覆盖率按**金额**算，不按行数：真表里有 43 份 0 元的「口味询问类 SKU」，
+    //      按行数算会把它们计入分母 ⇒ 覆盖率被稀释，且不能反映"钱有没有算到"。
+    //   🔴 道数按**菜名去重**：同一道菜会出现在堂食 + 多个外卖平台，按行加总会把一道菜数成三道。
+    const sumFen = (arr) => (arr || []).reduce((s, x) => s + (Number(x.amountFen) || 0), 0);
+    let rankedFen = sumFen(dineIn);
+    const dishNames = new Set();
+    dineIn.forEach((x) => dishNames.add(x.name));
+    (takeaway || []).forEach((b) => {
+      rankedFen += sumFen(b.ranked);
+      (b.ranked || []).forEach((x) => dishNames.add(x.name));
+    });
+    const unmatchedFen = unmatchedSorted.reduce((s, x) => s + (Number(x.amountFen) || 0), 0);
+    unmatched.forEach((x) => dishNames.add(x.name));
+    const coverageCount = dishNames.size;
+    const coverageMatched = dishNames.size - new Set(unmatched.map((x) => x.name)).size;
+    const allFen = rankedFen + unmatchedFen;
+    const coveragePct = allFen > 0 ? Math.round((rankedFen * 100) / allFen) : 0;
+    const coverageText = String(TERMS.card.reviewCoverage)
+      .replace('{n}', String(coverageCount))
+      .replace('{m}', String(coverageMatched))
+      .replace('{p}', String(coveragePct));
+
     this.setData({
       loading: false,
       locked: false,
@@ -290,6 +326,11 @@ Page({
       totals,
       shortCardGap,
       shortCardText,
+      // R264：覆盖率
+      coverageCount,
+      coverageMatched,
+      coveragePct,
+      coverageText,
       // R255：卡列表 + 已关联列表（picker 与解除入口的数据源）
       cardOptions,
       cardCodes,
@@ -568,4 +609,15 @@ Page({
 
   // 「去映射」= 去建缺失的成本卡（未匹配菜品没有对应卡 ⇒ 建了卡即自动匹配）
   goMap() { wx.navigateTo({ url: '/pages/card/index' }); },
+
+  // ===== R264：带着菜名去建卡（**预填**）=====
+  //   原路径：退出复盘 → M3 → 菜品卡 → 新建 → 手打菜名。51 道菜来回切，最容易错的就是菜名
+  //   （打错一个字 = 建了另一道菜的卡，回来照样匹配不上 ⇒ 白建一张）。
+  //   ⇒ 直接跳建卡页并把菜名带上（`pages/card/edit` 的 onLoad 负责回填）。
+  //   🔴 菜名必须 `encodeURIComponent`：菜名里有空格/括号/加号（如「肥牛(大)」「A+B 套餐」），
+  //      不编码会被 URL 截断或把 `+` 解成空格 ⇒ 预填出来是错的名字（静默错）。
+  goNewCard(e) {
+    const nm = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.name) || '';
+    wx.navigateTo({ url: '/pages/card/edit?card_code=&dish_name=' + encodeURIComponent(nm) });
+  },
 });

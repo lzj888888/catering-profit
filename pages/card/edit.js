@@ -226,6 +226,11 @@ Page({
     // round156：本页进入时刻 —— 用作「原料选择页回传」的哨兵（见 onShow）
     this._loadedAt = Date.now();
     this.setData({ card_code: (q && q.card_code) || '', isEdit: !!((q && q.card_code) || '').length > 0 });
+    // R264：从「单品毛利复盘」的未匹配行点「去建卡」带过来的菜名 ⇒ **预填**。
+    //   🔴 必须 `decodeURIComponent`（复盘页用 `encodeURIComponent` 编码，防空格/括号/加号截断）。
+    //   ⚠️ 只在**新建**时生效：编辑态下面 load() 会用卡里的名字回填，预填不该覆盖它。
+    const prefillName = (q && q.dish_name) ? decodeURIComponent(q.dish_name) : '';
+    if (prefillName && !((q && q.card_code) || '').length) this.setData({ name: prefillName });
     this.load();
   },
 

@@ -10,6 +10,15 @@
     <!-- 事后复盘口径（v1.2 §M3.35 原文，落 card 命名空间） -->
     <view class="afterfact">{{t.reviewAfterFact}}</view>
 
+    <!-- ===== R264：覆盖率明示 =====
+         真机实证：外卖 51 道菜、店里 3 张成本卡 ⇒ 界面只说「未匹配 51 道」，
+         用户看不到"已经算出几道"、也无从判断"先建哪道最划算" ⇒ 面对长清单无从下手。
+         🔴 覆盖率按**金额**算（不按行数：0 元的口味询问类 SKU 会把分母稀释）。 -->
+    <block wx:if="{{coverageCount}}">
+      <view class="afterfact">{{coverageText}}</view>
+      <view class="muted">{{t.reviewCoverageHint}}</view>
+    </block>
+
     <!-- 毛利率标红阈值（用户自定义，默认占位值，非警戒线） -->
     <view class="field">
       <text class="lbl">{{t.reviewThreshold}}</text>
@@ -149,6 +158,9 @@
             <view class="btn-small ghost">{{t.reviewMapPick}}</view>
           </picker>
         </block>
+        <!-- R264：行内「去建卡」—— 带着这道菜名跳建卡页并预填（免手打，打错字就白建一张）。
+             卡不够时（见上方引导）这是**唯一**该点的按钮。 -->
+        <button class="btn-small ghost" data-name="{{item.name}}" bindtap="goNewCard">{{t.reviewNewCard}}</button>
       </view>
       <view class="muted" wx:if="{{!cardOptions.length}}">{{t.reviewMapNoCard}}</view>
       <!-- ===== R260：批量关联（规范 v1.9）=====
@@ -156,7 +168,11 @@
            ⇒ 先在本机把选择攒起来，点一次「保存全部关联」再提交（分块 ≤ BATCH_CHUNK）。
            ⚠️ 建议标记（`suggestHow`）只表示"系统按名字猜的预选"，**必须人工核对**：
               归一化匹配会误判（如"来点辣椒?吗"这类口味询问 SKU 本就不该匹配任何菜）。 -->
-      <block wx:if="{{cardOptions.length}}">
+      <!-- 🔴 R264 P1-B：**卡不够时不再给「批量关联」主按钮**。
+           卡数 < 未匹配数 ⇒ 必然有菜挂不上，而批量模式会按名字**猜**一批预选
+           ⇒ 猜错的被一次性写进库，成本算错且毛利照常出数（用户会信那个数），
+           比"暂时算不出"坏得多 ⇒ 此时只留上方「新建成本卡」一条路。 -->
+      <block wx:if="{{cardOptions.length && shortCardGap <= 0}}">
         <view class="field-save">
           <button class="btn-small ghost" bindtap="onToggleBatch" disabled="{{mappingBusy || batchSaving}}">
             {{batchMode ? t.reviewBatchExit : t.reviewBatchEnter}}

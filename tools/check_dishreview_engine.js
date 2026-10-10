@@ -608,6 +608,65 @@ function section11() {
 }
 section11();
 
+// ===== ⑫ 段（R264）：覆盖率明示 + 行内「去建卡」带菜名预填 + 卡不够不给批量按钮 =====
+// 真机实证（李老师 2026-10-10）：外卖 51 道菜、店里 3 张成本卡 ⇒ 界面只说「未匹配 51 道」，
+//   用户看不到"已经算出几道"、也无从判断"先建哪道最划算"，面对长清单无从下手（当场卡住）。
+// 三件事：
+//   A 覆盖率按**金额**算（不按行数 —— 真表有 43 份 0 元的口味询问类 SKU，按行数会稀释分母）；
+//   B 行内「去建卡」带菜名预填（免手打 —— 菜名打错一个字 = 建了另一道菜的卡，回来照样匹配不上）；
+//   C 卡不够时**不给**批量关联按钮（猜错的预选被一次性写进库 ⇒ 成本算错且毛利照常出数）。
+function section12() {
+  const pageSrc = rd('pages/m3/dishreview/index.js');
+  const wxmlSrc = rd('pages/m3/dishreview/index.wxml');
+  const editSrc = rd('pages/card/edit.js');
+  const termsSrc = rd('miniprogram/i18n/terms.js');
+
+  check('12-① 文案单源：terms.js 有 reviewCoverage 且带 {n}/{m}/{p} 三个占位（页面不拼中文）',
+    /reviewCoverage:\s*'[^']*\{n\}[^']*\{m\}[^']*\{p\}[^']*'/.test(termsSrc));
+  check('12-② 前端真的替换了三个占位（否则用户看到字面 {n} / {m} / {p}）',
+    /reviewCoverage\)\s*\.replace\('\{n\}'/.test(pageSrc)
+    && /\.replace\('\{m\}'/.test(pageSrc)
+    && /\.replace\('\{p\}'/.test(pageSrc));
+  // 🔴 判「需求」：覆盖率的分母必须是**金额**，不是行数。
+  //   真表 355 行里有 43 份 0 元的口味询问类 SKU ⇒ 按行数算会把它们计入分母，覆盖率被稀释。
+  // ⚠️ 判「语义」不判「排版」：只看 pct 那一行用不用金额（rankedFen/allFen），
+  //   不钉死乘除顺序（`(a*100)/b` 与 `a/b*100` 等价 ⇒ 钉死顺序会造成反向伤害第二型）。
+  const pctLine = (pageSrc.match(/const coveragePct = [^\n]*/) || [''])[0];
+  check('12-③ 🔴 覆盖率按金额算（pct 的分母是营收 allFen，不是道数 coverageCount）'
+    + ' —— 按行数算 ⇒ 0 元的口味询问类 SKU 稀释分母',
+    /rankedFen/.test(pctLine) && /allFen/.test(pctLine) && !/coverageCount/.test(pctLine)
+    && /const allFen = rankedFen \+ unmatchedFen/.test(pageSrc)
+    && /Number\(x\.amountFen\)/.test(pageSrc)
+    && /amountFen: x\.amountFen \|\| 0/.test(pageSrc));
+  check('12-④ 道数按菜名去重（同一道菜会出现在堂食 + 多个外卖平台，按行加总会数重）',
+    /dishNames\.add/.test(pageSrc) && /dishNames\.size/.test(pageSrc));
+  check('12-⑤ 覆盖率条真的渲染出来（wxml 引用 coverageText，且只在有菜时显示）',
+    /coverageCount/.test(wxmlSrc) && /coverageText/.test(wxmlSrc));
+  check('12-⑥ 除零保护：营收为 0 时覆盖率取 0，不得产出 NaN/Infinity',
+    /allFen > 0 \?/.test(pageSrc) && /: 0;/.test(pageSrc));
+
+  // P0-B：行内「去建卡」带菜名预填
+  check('12-⑦ 复盘页「去建卡」跳转带 dish_name，且菜名经 encodeURIComponent 编码'
+    + ' —— 菜名含空格/括号/加号时会截断或被解成空格（静默错名）',
+    /dish_name=' \+ encodeURIComponent\(/.test(pageSrc));
+  check('12-⑧ 建卡页 onLoad 接住 dish_name 并 decodeURIComponent 回填到 name',
+    /decodeURIComponent\(q\.dish_name\)/.test(editSrc) && /setData\(\{ name: prefillName \}\)/.test(editSrc));
+  // 🔴 只在**新建**时生效：编辑态下 load() 会用卡里的名字回填，预填覆盖它就是"改了名还以为没改"。
+  check('12-⑨ 🔴 预填只在新建态生效（编辑态不得覆盖卡里的菜名）',
+    /prefillName\s*&&\s*!\(\(q && q\.card_code\)/.test(editSrc));
+  check('12-⑩ 行内按钮把菜名带出去（wxml 绑定 data-name + goNewCard）',
+    /data-name="\{\{item\.name\}\}" bindtap="goNewCard"/.test(wxmlSrc));
+
+  // P1-B：卡不够时不给批量关联按钮
+  check('12-⑪ 🔴 批量关联入口受 shortCardGap 约束（卡数 < 未匹配数 ⇒ 不渲染该按钮）'
+    + ' —— 猜错的预选会被一次性写进库，成本算错且毛利照常出数',
+    /cardOptions\.length && shortCardGap <= 0/.test(wxmlSrc));
+  check('12-⑫ 自失效护栏：四份源码非空且关键锚点在场',
+    pageSrc.length > 1000 && wxmlSrc.length > 200 && editSrc.length > 1000 && termsSrc.length > 1000
+    && /coverageText/.test(pageSrc) && /goNewCard/.test(pageSrc) && /shortCardGap/.test(pageSrc));
+}
+section12();
+
 console.log('\n===== getDishReview 算法层守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);
 })().catch(function (e) {
