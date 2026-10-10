@@ -54,6 +54,13 @@
 
     <!-- 外卖榜（v1.7 实态：按平台分块；无数据 ⇒ 空态，红线 18 不默认 0） -->
     <block wx:if="{{takeaway}}">
+      <!-- R259：外卖毛利率的**口径说明**（李老师 2026-10-10 裁定：指标名保持「毛利率」，
+           不叫"食材毛利率" ⇒ 防误导靠**同屏把差在哪讲清**，不靠改名）。
+           为什么必须有：复盘毛利 = 销量表金额 − 销量×卡内成本，而**外卖侧那个金额是
+           平台侧金额（顾客实付/商品原价）、不是商家到手** ⇒ 佣金与配送被算进了毛利
+           （实测锚点：规范 v1.2 §1.1 外卖到手率仅 66.67%）⇒ 不说明就是让用户拿虚高数定价。
+           ⚠️ 只放外卖区块：堂食侧那个金额就是售价，`售价 − 食材成本` 叫毛利率没毛病。 -->
+      <view class="muted">{{t.reviewTakeawayMarginNote}}</view>
       <block wx:for="{{takeaway}}" wx:key="platform">
         <view class="section-title">{{t.reviewTakeaway}} · {{item.platformName}}</view>
         <view class="card2" wx:if="{{item.ranked.length}}">

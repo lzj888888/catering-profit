@@ -502,6 +502,55 @@ console.log('\n============ ⑧ 全渠道 totals（R254）============');
     && /buildTakeawayReview/.test(svcSrc));
 }
 
+// ============ ⑨ 外卖毛利率「口径说明」必须与指标同屏（R259）============
+// 缺口（R258 核查发现）：复盘的毛利率 = `销量表金额 − 销量×卡内成本`，而
+//   · 堂食侧「销量表金额」= 售价 ⇒ `售价 − 食材成本`，叫毛利率**没毛病**；
+//   · **外卖侧那是平台侧金额（顾客实付/商品原价），不是商家到手** ⇒ 佣金、配送、
+//     商家补贴**全被算进了毛利**（实测锚点：规范 v1.2 §1.1 外卖到手率仅 **66.67%**，
+//     即 33% 里有大半是平台费用）。
+// ⇒ 「其他费用不填只出毛利」本身可行，但**不加口径说明就会让老板拿虚高的数去定价**。
+// 李老师 2026-10-10 裁定：**指标名保持「毛利率」**（不叫"食材毛利率"），
+//   故本段守的是「**同屏口径说明**」，不是改名。
+function section9() {
+  const terms = rd('miniprogram/i18n/terms.js');
+  const termsMirror = rd('specs/dev-specs/i18n/terms.js');
+  const wxmlSrc = rd('pages/m3/dishreview/index.wxml');
+  const pageSrc = rd('pages/m3/dishreview/index.js');
+
+  const m = /reviewTakeawayMarginNote:\s*'([^']*)'/.exec(terms);
+  check('9-① 口径说明文案存在（外卖毛利率必须与说明同屏，否则用户拿虚高数定价）',
+    !!m && m[1].length > 0, m ? m[1] : 'n/a');
+  // 判「说了什么」而不是判字面：必须点出**未扣平台费用**这件事
+  check('9-② 说明必须点明「未扣平台佣金/配送」（只说"仅供参考"不够 —— 要给出差在哪）',
+    !!m && /佣金/.test(m[1]) && /配送/.test(m[1]) && /(未扣|不含|没扣)/.test(m[1]),
+    m ? m[1] : 'n/a');
+  // 李老师裁定：**不得**改叫「食材毛利率」
+  check('9-③ 🔴 指标名保持「毛利率」——说明里不得出现「食材毛利率」（李老师 2026-10-10 裁定）',
+    !!m && m[1].indexOf('食材毛利率') < 0, m ? m[1] : 'n/a');
+  check('9-④ 页面 t:{} 已登记该键（漏映射 ⇒ 渲染成**空白**且零报错，R124 同族）',
+    /reviewTakeawayMarginNote:\s*TERMS\.\w+\.reviewTakeawayMarginNote/.test(pageSrc),
+    String(/reviewTakeawayMarginNote:\s*TERMS\./.test(pageSrc)));
+  check('9-⑤ 🔴 说明渲染在**外卖区块内**（放在堂食区块 = 把干净的堂食说脏）',
+    /<block wx:if="\{\{takeaway\}\}">[\s\S]{0,400}reviewTakeawayMarginNote/.test(wxmlSrc),
+    String(/<block wx:if="\{\{takeaway\}\}">[\s\S]{0,400}reviewTakeawayMarginNote/.test(wxmlSrc)));
+  // ⚠️ 首版写成「堂食区块内不得出现」用的是 `wx:if="{{dineIn` 前缀 → 实际堂食块是
+  //   `<view class="card2" wx:if="{{dineIn.length}}">` ⇒ 恒不匹配 ⇒ **恒真断言**（假绿）。
+  //   ⇒ 改成两条有分辨力的：① 只渲染一处（防同页两句口径互相打架）② 必须走 `t.` 绑定（页面零硬编码红线）
+  const noteHits = (wxmlSrc.match(/reviewTakeawayMarginNote/g) || []).length;
+  check('9-⑥ 该说明在页面只渲染**一处**（同页两句口径会互相打架）',
+    noteHits === 1, `命中 ${noteHits} 处`);
+  check('9-⑦ 渲染走 `t.` 绑定、不得把中文硬写进 wxml（本仓「页面零硬编码」红线）',
+    /\{\{t\.reviewTakeawayMarginNote\}\}/.test(wxmlSrc)
+    && !/<\/text>[^<]*未扣[^<]*/.test(wxmlSrc));
+  check('9-⑧ terms 两副本逐字节一致（改单副本 ⇒ 页面静默空白）',
+    terms.length > 0 && terms === termsMirror);
+  // 自失效护栏：扫描面非退化 + 关键锚点在场
+  check('9-⑨ 自失效护栏：wxml / terms 非空且外卖区块锚点在场',
+    wxmlSrc.length > 500 && terms.length > 1000
+    && /<block wx:if="\{\{takeaway\}\}">/.test(wxmlSrc) && /reviewMargin:/.test(terms));
+}
+section9();
+
 console.log('\n===== getDishReview 算法层守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);
 })().catch(function (e) {

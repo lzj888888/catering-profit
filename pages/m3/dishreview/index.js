@@ -32,6 +32,9 @@ Page({
       reviewRevenue: TERMS.card.reviewRevenue,
       reviewCost: TERMS.card.reviewCost,
       reviewGross: TERMS.card.reviewGross,
+      // R259：外卖毛利率的**口径说明** —— 李老师 2026-10-10 裁定指标名保持「毛利率」，
+      //   所以防误导不靠改名，靠**同屏把差在哪讲清**（外卖侧金额是平台侧金额、非商家到手）。
+      reviewTakeawayMarginNote: TERMS.card.reviewTakeawayMarginNote,
       reviewMargin: TERMS.card.reviewMargin,
       reviewThreshold: TERMS.card.reviewThreshold,
       reviewThresholdHint: TERMS.card.reviewThresholdHint,

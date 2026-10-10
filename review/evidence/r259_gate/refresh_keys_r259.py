@@ -44,6 +44,7 @@ STALE_NODE_SUFFIX = [
     "tools/check_evidence_meta.js",
     "tools/check_hint_fold.js",
     "tools/check_page_terms.js",
+    "tools/check_dishreview_engine.js",
 ]
 
 # 本轮「新出现」的键（缓存里从来没有过 ⇒ 必须显式补，全量重建补不上）
