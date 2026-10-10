@@ -106,6 +106,17 @@
     <view class="section-title" wx:if="{{unmatched.length}}">{{t.reviewUnmatched}}</view>
     <view class="card2" wx:if="{{unmatched.length}}">
       <view class="muted">{{t.reviewUnmatchedHint}}</view>
+      <!-- ===== R262：**卡不够挂** 的显式引导 =====
+           真机实证：店里 3 张成本卡 vs 外卖 51 道菜 ⇒ 每行 picker 只有这 3 张可选。
+           界面既没显示"没卡"（cardOptions 非空）、也没提示"卡不够" ⇒ 用户只能盲目关联，
+           而**挂错卡 = 食材成本算错**，比"暂时不算"更坏（用户会信那个错数）。
+           ⇒ 缺口 > 0 时明说还差几道菜，并给「新建成本卡」入口。 -->
+      <block wx:if="{{shortCardGap > 0}}">
+        <view class="snap">{{shortCardText}}</view>
+        <view class="field-save">
+          <button class="btn-small ghost" bindtap="goMap">{{t.reviewGoCard}}</button>
+        </view>
+      </block>
       <view class="row" wx:for="{{unmatched}}" wx:key="name">
         <view class="c-name">
           <text>{{item.name}}</text>

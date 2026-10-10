@@ -582,6 +582,32 @@ function section10() {
 }
 section10();
 
+// ===== ⑪ 段（R262）：「卡不够挂」的显式引导 =====
+// 真机实证（李老师 2026-10-10）：店里有 3 张成本卡（鱼香肉丝/炸鸡腿/肥炸鸡腿），外卖 51 道菜
+//   ⇒ 未匹配清单每行 picker 只有这 3 张可选；而旧代码**只在 `cardOptions.length === 0`** 时
+//   显示「本店还没有成本卡」⇒ 有卡但不够时**零提示**，用户只能盲目关联。
+//   🔴 最坏的不是"关联不上"，是"关联错了"：把黄喉挂到鱼香肉丝 ⇒ 食材成本按错的算，
+//      且**用户会信那个数**（毛利榜照常出数）⇒ 比"暂时不算"更坏。
+function section11() {
+  const pageSrc = rd('pages/m3/dishreview/index.js');
+  const wxmlSrc = rd('pages/m3/dishreview/index.wxml');
+  const termsSrc = rd('miniprogram/i18n/terms.js');
+  check('11-① 文案单源：terms.js 有 reviewMapShortCard 且带 {n} 占位（缺口数字走占位，页面不拼中文）',
+    /reviewMapShortCard:\s*'[^']*\{n\}[^']*'/.test(termsSrc));
+  check('11-② 前端真的替换了占位（否则用户看到字面 {n}）',
+    /reviewMapShortCard\)\.replace\('\{n\}'/.test(pageSrc));
+  // 🔴 判「需求」而非「我改过什么」：缺口 = 未匹配数 − 卡数，**不是**"卡数是否为 0"。
+  //   旧行为正是只看 cardOptions.length ⇒ 3 张卡 vs 51 道菜时零提示（本轮真机卡点的根因）。
+  check('11-③ 🔴 缺口按「未匹配数 − 卡数」算（不是只看卡数是否为 0）—— 只看卡数 ⇒ 3 卡 51 菜时零提示',
+    /unmatched\.length - \(cardOptions \|\| \[\]\)\.length/.test(pageSrc));
+  check('11-④ 引导只在缺口 > 0 时出现（卡够用时不打扰）',
+    /shortCardGap > 0/.test(pageSrc) && /shortCardGap > 0/.test(wxmlSrc));
+  check('11-⑤ 自失效护栏：三份源码非空且关键锚点在场',
+    pageSrc.length > 1000 && wxmlSrc.length > 200 && termsSrc.length > 1000
+    && /shortCardText/.test(pageSrc) && /reviewGoCard/.test(wxmlSrc));
+}
+section11();
+
 console.log('\n===== getDishReview 算法层守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);
 })().catch(function (e) {

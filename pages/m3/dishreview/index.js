@@ -52,6 +52,7 @@ Page({
       reviewMapLinked: TERMS.card.reviewMapLinked,
       reviewMapUnlink: TERMS.card.reviewMapUnlink,
       reviewMapNoCard: TERMS.card.reviewMapNoCard,
+      reviewMapShortCard: TERMS.card.reviewMapShortCard,
       // R260 批量关联（第三处登记）
       reviewBatchEnter: TERMS.card.reviewBatchEnter,
       reviewBatchExit: TERMS.card.reviewBatchExit,
@@ -100,6 +101,9 @@ Page({
     // ===== R255：菜名映射写侧 =====
     cardOptions: [],      // picker 的 range（成本卡名）
     cardCodes: [],        // 与 cardOptions 同序的 card_code（picker 只给索引 ⇒ 必须自己对齐）
+    // R262：「卡不够挂」引导（未匹配数 − 卡数；>0 才显示，见 load() 内 shortCardText）
+    shortCardGap: 0,
+    shortCardText: '',
     mappings: [],         // 已关联菜品（来自 getDishReview 出参 mapping）+ 展示字段
     // ===== R260 批量关联（规范 v1.9）=====
     batchMode: false,     // 批量模式：行的选择只记在本机，点「保存全部关联」才提交
@@ -268,6 +272,15 @@ Page({
       });
     }
 
+    // ===== R262：「卡不够挂」显式引导 =====
+    //   真机实证：3 张卡 vs 51 道外卖菜 ⇒ 每行 picker 只有这 3 张可选；界面既不显示"没卡"
+    //   （cardOptions 非空）也不提示"卡不够" ⇒ 用户只能盲目关联，而**挂错卡 = 成本算错**（比不算更坏）。
+    //   ⇒ 未匹配数 > 卡数时明说还差几道菜，并给出去建卡的入口。
+    const shortCardGap = unmatched.length - (cardOptions || []).length;
+    const shortCardText = shortCardGap > 0
+      ? String(TERMS.card.reviewMapShortCard).replace('{n}', String(shortCardGap))
+      : '';
+
     this.setData({
       loading: false,
       locked: false,
@@ -275,6 +288,8 @@ Page({
       takeaway,
       unmatched,
       totals,
+      shortCardGap,
+      shortCardText,
       // R255：卡列表 + 已关联列表（picker 与解除入口的数据源）
       cardOptions,
       cardCodes,
