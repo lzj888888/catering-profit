@@ -28,6 +28,11 @@
 //   B7 pages/utils 内不得残留 csv/json 的 fileType 字面
 //   C1 两份 terms.js md5 全等            C2 expFile 七键齐全非空
 //   C3 两个页面 t:{} 登记 exportHint      C4 两个 wxml 真渲染 exportHint
+//   E1 报表四张表（利润/明细/摊销来源/口径说明）
+//   E2 摊销在场：利润表有「当月摊销」行且金额 = 库内权威值
+//   E3 摊销来源：读 shop_amortize 台账 + **不重算摊销公式**（禁第四个引擎副本）
+//   E4 明细带细项   E5 口径说明含两个开关   E6 金额单位是「元」不是「分」
+//   E7 真跑 buildMonthlySheets：表上加减 ≡ 引擎口径（能对上账）
 //   D1 OPENABLE 正负样本（csv/json/txt 必 undefined；xlsx/pdf 必命中）
 //   D2 判据非退化：断言数 ≥ 实测保守下沿
 (function () {
@@ -172,6 +177,95 @@
   const wOk = [/\{\{t\.exportHint\}\}/.test(read(P.m1w)), /\{\{t\.exportHint\}\}/.test(read(P.m3w))];
   check('C4 两个 wxml 真渲染 exportHint（登记了不用 = 静默空白）', wOk[0] && wOk[1],
     'result.wxml ' + (wOk[0] ? '渲染' : '未渲染') + ' / card/index.wxml ' + (wOk[1] ? '渲染' : '未渲染'));
+
+  // ================= E 月度报表内容（R266：摊销必须在场 + 每个数有出处 + 加减能对账）=================
+  console.log('\n===== E · 月度报表内容（摊销在场 · 来源可追溯 · 加减对得上账）=====');
+  // wx-server-sdk 在 node 环境不存在 ⇒ 注入空桩只为取出**纯函数** buildMonthlySheets（明示用桩，不冒充真依赖）
+  const ModuleX = require('module');
+  const origLoad = ModuleX._load;
+  ModuleX._load = function (req) {
+    if (req === 'wx-server-sdk') return { init() {}, DYNAMIC_CURRENT_ENV: 'x', database: () => ({}), getWXContext: () => ({}) };
+    return origLoad.apply(this, arguments);
+  };
+  let buildMonthlySheets = null;
+  try { buildMonthlySheets = require(P.fn).buildMonthlySheets; } catch (e) { buildMonthlySheets = null; }
+  ModuleX._load = origLoad;
+  check('E1 云函数导出纯函数 buildMonthlySheets（零 IO ⇒ 可直测；wx-server-sdk 以空桩注入）',
+    typeof buildMonthlySheets === 'function');
+  // 静态：结构与依赖面
+  check('E2 main 里真的调用了 buildMonthlySheets（不是写了不用）',
+    /sheets = buildMonthlySheets\(/.test(fnCode));
+  check('E3 四张表名齐全（利润表 / 收入费用明细 / 摊销来源 / 口径说明）',
+    /name: '利润表'/.test(fnCode) && /name: '收入费用明细'/.test(fnCode)
+    && /name: '摊销来源'/.test(fnCode) && /name: '口径说明'/.test(fnCode));
+  check('E4 利润表带「说明」列（每个数都写清怎么来的）', /说明（这个数怎么来的）/.test(fnCode));
+  check('E5 摊销来源读的是 shop_amortize 台账（来源是台账，不是拍脑袋）',
+    /da\.list\('shop_amortize'/.test(fnCode));
+  // E5-②：光「读了台账」不够 —— 还得**真的传进纯函数**（写成 assets: [] 照样不红，表就整段空了）
+  check('E5-② main 把台账读出的行真的传进纯函数（传空数组 ⇒ 摊销来源表整段消失）',
+    /assets: \(aRes && aRes\.data\) \|\| \[\]/.test(fnCode));
+  check('E6 禁止在导出里重算摊销公式（摊销引擎已有三个同源副本，再写一份＝静默错账）',
+    !/amountForMonth|amortizeForMonth|amortizeTotalForMonth/.test(fnCode));
+  check('E7 明细表展开 sub_items（大类下面的细项也要能看见）', /sub_items/.test(fnCode));
+  check('E8 口径说明里带两个服务端开关状态（库存 / 摊销）',
+    /库存开关/.test(fnCode) && /摊销开关/.test(fnCode));
+  check('E9 金额展示单位是「元」（老板看「分」没有意义）',
+    /金额\(元\)/.test(fnCode) && !/金额\(分\)/.test(fnCode));
+
+  // 真跑：表上加减 ≡ 引擎口径（S1 锚点 9160 的同构样例）
+  const SAMPLE = {
+    shopName: '探针店', month: '2026-09', stamp: Date.UTC(2026, 8, 1),
+    row: {
+      income_items: [
+        { name: '堂食', amount_fen: 4000000, sub_items: [{ sub_item: '午餐', amount_fen: 2500000 }, { sub_item: '晚餐', amount_fen: 1500000 }] },
+      ],
+      expense_items: [{ name: '房租', amount_fen: 1200000, sub_items: [] }],
+      direct_consume_fen: 2200000, real_consume_fen: 2500000, amortize_fen: 333333, lump_sum_fen: 0,
+      income_total_fen: 4000000, expense_total_fen: 1200000, gross_profit_fen: 1500000, gross_margin_pct: 37.5,
+      operation_ref_profit_fen: 600000, total_factor_real_profit_fen: -33333, profit_diff_fen: 633333,
+      switch_used: { inventorySwitchOn: true, amortizeSwitchOn: true },
+    },
+    assets: [
+      { asset_id: 'a1', name: '装修', value_fen: 12000000, start_month: '2026-01', total_months: 36, mode: 'amort' },
+      { asset_id: 'a2', name: '小工具', value_fen: 80000, start_month: '2026-09', total_months: 1, mode: 'lump' },
+    ],
+  };
+  let S2 = null;
+  try { S2 = buildMonthlySheets(SAMPLE); } catch (e) { S2 = null; }
+  const okSheets = S2 && S2.length === 4;
+  check('E10 真跑：产出 4 张表', okSheets, S2 ? S2.map((s) => s.name).join(' / ') : '运行失败');
+  const byName = {};
+  if (okSheets) S2.forEach((s) => { byName[s.name] = s; });
+  const prof2 = (byName['利润表'] || {}).rows || [];
+  const rowOf = (rows, key) => (rows.find((x) => String(x[0]).indexOf(key) >= 0) || []);
+  const r2 = (x) => Math.round(Number(x) * 100) / 100;
+  const amRow2 = rowOf(prof2, '当月摊销');
+  check('E11 利润表真有「当月摊销」行，且金额 = 库内权威 3333.33 元', amRow2.length > 0 && r2(amRow2[1]) === 3333.33,
+    JSON.stringify(amRow2));
+  const inc2 = rowOf(prof2, '营业收入')[1], exp2 = rowOf(prof2, '费用合计')[1];
+  const dir2 = rowOf(prof2, '食材消耗（本月填写）')[1], lump2 = rowOf(prof2, '一次性投入（本月）')[1];
+  const op2 = rowOf(prof2, '经营参考利润')[1], gap2 = rowOf(prof2, '消耗差异')[1];
+  const real2 = rowOf(prof2, '全要素真实利润')[1], diff2 = rowOf(prof2, '两口径差额')[1];
+  check('E12 表上加减：经营参考 = 收入 − 费用 − 填写消耗 − 一次性',
+    r2(inc2 - exp2 - dir2 - lump2) === r2(op2), `${inc2}-${exp2}-${dir2}-${lump2} = ${r2(inc2 - exp2 - dir2 - lump2)} vs ${op2}`);
+  check('E13 表上加减：全要素真实 = 经营参考 − 消耗差异 − 当月摊销',
+    r2(op2 - gap2 - amRow2[1]) === r2(real2), `${op2}-${gap2}-${amRow2[1]} = ${r2(op2 - gap2 - amRow2[1])} vs ${real2}`);
+  check('E14 两口径差额 = 消耗差异 + 当月摊销（差额不再是个谜）',
+    r2(diff2) === r2(gap2 + amRow2[1]), `${diff2} vs ${r2(gap2 + amRow2[1])}`);
+  const amRows2 = (byName['摊销来源'] || {}).rows || [];
+  check('E15 摊销来源表列出台账每笔资产（装修 12 万 / 36 月）',
+    amRows2.some((x) => x[1] === '装修' && x[2] === 120000 && x[4] === 36), '行数=' + amRows2.length);
+  check('E16 摊销来源表给出「本月摊销合计」（逐笔实际额以它为准）',
+    amRows2.some((x) => String(x[1]).indexOf('本月摊销合计') >= 0 && r2(x[6]) === 3333.33));
+  const det2 = (byName['收入费用明细'] || {}).rows || [];
+  check('E17 明细表含细项（午餐 / 晚餐）且合计与利润表一致',
+    det2.some((x) => x[1] === '午餐' && x[2] === '细项')
+    && det2.some((x) => x[0] === '收入' && x[2] === '合计' && Number(x[3]) === inc2));
+  const note2 = (byName['口径说明'] || {}).rows || [];
+  const noteGet2 = (k) => String((note2.find((x) => x[0] === k) || [])[1] || '');
+  check('E18 口径说明写出两条利润公式 + 两个开关状态',
+    noteGet2('库存开关') === '开' && noteGet2('摊销开关') === '开'
+    && /不含摊销/.test(noteGet2('经营参考利润')) && /当月摊销/.test(noteGet2('全要素真实利润')));
 
   // ================= D 自检（证明判据有分辨力）=================
   console.log('\n===== D · 判据自检（正负样本）=====');

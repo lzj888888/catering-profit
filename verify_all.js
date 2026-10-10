@@ -498,6 +498,8 @@
 //       + 导出投递守卫（tools/check_export_delivery.js，R265：真机反馈「点导出只弹导出完成，不知道文件在哪、什么格式」；
 //         根因＝云函数落 CSV 后 openDocument(fileType 只认 doc/docx/xls/xlsx/ppt/pptx/pdf 七类) 必 fail，
 //         而三处 fail 回调全是空的。判据＝默认出真 xlsx（SheetJS/base64；依赖缺失响亮失败、不许静默回退 CSV）
+//         ＋ R266 扩 E 段 18 断言：月度报表必须有「当月摊销」行、每个数写清来源、摊销来源读 shop_amortize
+//           台账且**禁止重算摊销公式**（引擎已有三个同源副本，再写一份＝静默错账）、表上加减 ≡ 引擎口径
 //         + 前端投递单源（OPENABLE 恰 7 值且不含 csv/json · showMenu 必开 · fail 非空兜底转发）
 //         + 三处调用点全走单源（禁第二份 downloadContent）+ 文案三处齐。25 断言 + S/A/B/C/D 五组）
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
