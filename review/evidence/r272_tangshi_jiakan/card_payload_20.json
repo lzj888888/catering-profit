@@ -1,0 +1,1194 @@
+[
+  {
+    "name": "小面",
+    "category": "面食",
+    "lines": [
+      {
+        "input_type": 2,
+        "name": "水面/碱水面",
+        "quantity": 100,
+        "net_unit_cost": 60
+      },
+      {
+        "input_type": 2,
+        "name": "油辣子(辣椒+菜油熬)",
+        "quantity": 20,
+        "net_unit_cost": 300
+      },
+      {
+        "input_type": 2,
+        "name": "花椒面",
+        "quantity": 2,
+        "net_unit_cost": 500
+      },
+      {
+        "input_type": 2,
+        "name": "猪油",
+        "quantity": 10,
+        "net_unit_cost": 200
+      },
+      {
+        "input_type": 2,
+        "name": "花生碎",
+        "quantity": 10,
+        "net_unit_cost": 240
+      },
+      {
+        "input_type": 2,
+        "name": "芽菜/榨菜",
+        "quantity": 15,
+        "net_unit_cost": 160
+      },
+      {
+        "input_type": 2,
+        "name": "小葱",
+        "quantity": 10,
+        "net_unit_cost": 100
+      },
+      {
+        "input_type": 2,
+        "name": "骨汤(猪骨熬制分摊)",
+        "quantity": 1,
+        "net_unit_cost": 3000
+      },
+      {
+        "input_type": 2,
+        "name": "酱油/醋/蒜泥水/鸡精",
+        "quantity": 1,
+        "net_unit_cost": 1500
+      }
+    ],
+    "price_fen": 743,
+    "aux_fen": 0,
+    "engine_cost_fen": 253,
+    "engine_margin_pct": 65.95,
+    "check_cost_yuan": 2.53
+  },
+  {
+    "name": "抄手",
+    "category": "面食",
+    "lines": [
+      {
+        "input_type": 2,
+        "name": "抄手皮",
+        "quantity": 120,
+        "net_unit_cost": 80
+      },
+      {
+        "input_type": 2,
+        "name": "猪前腿肉馅",
+        "quantity": 120,
+        "net_unit_cost": 260
+      },
+      {
+        "input_type": 2,
+        "name": "姜葱水/蛋清",
+        "quantity": 20,
+        "net_unit_cost": 160
+      },
+      {
+        "input_type": 2,
+        "name": "红油/油辣子",
+        "quantity": 25,
+        "net_unit_cost": 300
+      },
+      {
+        "input_type": 2,
+        "name": "骨汤",
+        "quantity": 1,
+        "net_unit_cost": 3500
+      },
+      {
+        "input_type": 2,
+        "name": "花生/芝麻/葱花",
+        "quantity": 20,
+        "net_unit_cost": 240
+      },
+      {
+        "input_type": 2,
+        "name": "盐/味精/胡椒等",
+        "quantity": 1,
+        "net_unit_cost": 1500
+      }
+    ],
+    "price_fen": 1253,
+    "aux_fen": 0,
+    "engine_cost_fen": 613,
+    "engine_margin_pct": 51.08,
+    "check_cost_yuan": 6.13
+  },
+  {
+    "name": "韭叶",
+    "category": "面食",
+    "lines": [
+      {
+        "input_type": 2,
+        "name": "韭叶面",
+        "quantity": 130,
+        "net_unit_cost": 80
+      },
+      {
+        "input_type": 2,
+        "name": "肉臊子(肉末)",
+        "quantity": 50,
+        "net_unit_cost": 300
+      },
+      {
+        "input_type": 2,
+        "name": "油辣子",
+        "quantity": 20,
+        "net_unit_cost": 300
+      },
+      {
+        "input_type": 2,
+        "name": "骨汤",
+        "quantity": 1,
+        "net_unit_cost": 3500
+      },
+      {
+        "input_type": 2,
+        "name": "花生/芝麻/葱花",
+        "quantity": 20,
+        "net_unit_cost": 240
+      },
+      {
+        "input_type": 2,
+        "name": "盐/酱油/花椒等",
+        "quantity": 1,
+        "net_unit_cost": 1500
+      }
+    ],
+    "price_fen": 716,
+    "aux_fen": 0,
+    "engine_cost_fen": 412,
+    "engine_margin_pct": 42.46,
+    "check_cost_yuan": 4.12
+  },
+  {
+    "name": "米线",
+    "category": "面食",
+    "lines": [
+      {
+        "input_type": 2,
+        "name": "鲜米线",
+        "quantity": 200,
+        "net_unit_cost": 60
+      },
+      {
+        "input_type": 2,
+        "name": "肉臊子(肉末)",
+        "quantity": 40,
+        "net_unit_cost": 300
+      },
+      {
+        "input_type": 2,
+        "name": "骨汤",
+        "quantity": 1,
+        "net_unit_cost": 4000
+      },
+      {
+        "input_type": 2,
+        "name": "酸菜/木耳/豆芽等配菜",
+        "quantity": 50,
+        "net_unit_cost": 100
+      },
+      {
+        "input_type": 2,
+        "name": "花生/香菜/葱花",
+        "quantity": 20,
+        "net_unit_cost": 240
+      },
+      {
+        "input_type": 2,
+        "name": "辣椒油/盐/鸡精等",
+        "quantity": 1,
+        "net_unit_cost": 3000
+      }
+    ],
+    "price_fen": 714,
+    "aux_fen": 0,
+    "engine_cost_fen": 408,
+    "engine_margin_pct": 42.86,
+    "check_cost_yuan": 4.08
+  },
+  {
+    "name": "耙牛肉（半斤）",
+    "category": "招牌菜",
+    "lines": [
+      {
+        "input_type": 2,
+        "name": "生牛肉",
+        "quantity": 250,
+        "net_unit_cost": 776
+      }
+    ],
+    "price_fen": 3176,
+    "aux_fen": 100,
+    "engine_cost_fen": 2040,
+    "engine_margin_pct": 35.77,
+    "check_cost_yuan": 20.4
+  },
+  {
+    "name": "耙牛筋（半斤）",
+    "category": "招牌菜",
+    "lines": [
+      {
+        "input_type": 2,
+        "name": "生牛筋",
+        "quantity": 250,
+        "net_unit_cost": 506
+      }
+    ],
+    "price_fen": 3243,
+    "aux_fen": 80,
+    "engine_cost_fen": 1345,
+    "engine_margin_pct": 58.53,
+    "check_cost_yuan": 13.44
+  },
+  {
+    "name": "毛血旺",
+    "category": "招牌菜",
+    "lines": [
+      {
+        "input_type": 2,
+        "name": "鸭血/血旺",
+        "quantity": 300,
+        "net_unit_cost": 80
+      },
+      {
+        "input_type": 2,
+        "name": "毛肚",
+        "quantity": 80,
+        "net_unit_cost": 500
+      },
+      {
+        "input_type": 2,
+        "name": "黄喉",
+        "quantity": 50,
+        "net_unit_cost": 600
+      },
+      {
+        "input_type": 2,
+        "name": "午餐肉",
+        "quantity": 80,
+        "net_unit_cost": 280
+      },
+      {
+        "input_type": 2,
+        "name": "豆芽/粉条/豆皮",
+        "quantity": 200,
+        "net_unit_cost": 60
+      },
+      {
+        "input_type": 2,
+        "name": "火锅底料/红油",
+        "quantity": 150,
+        "net_unit_cost": 300
+      },
+      {
+        "input_type": 2,
+        "name": "干辣椒/花椒(炝油)",
+        "quantity": 30,
+        "net_unit_cost": 600
+      },
+      {
+        "input_type": 2,
+        "name": "蒜末/姜葱/调味",
+        "quantity": 1,
+        "net_unit_cost": 5000
+      }
+    ],
+    "price_fen": 4133,
+    "aux_fen": 0,
+    "engine_cost_fen": 1964,
+    "engine_margin_pct": 52.48,
+    "check_cost_yuan": 19.64
+  },
+  {
+    "name": "小料",
+    "category": "蘸料台",
+    "lines": [
+      {
+        "input_type": 2,
+        "name": "干辣椒面（二荆条）",
+        "quantity": 10,
+        "net_unit_cost": 220
+      },
+      {
+        "input_type": 2,
+        "name": "花椒面",
+        "quantity": 2,
+        "net_unit_cost": 300
+      },
+      {
+        "input_type": 2,
+        "name": "盐",
+        "quantity": 2,
+        "net_unit_cost": 50
+      },
+      {
+        "input_type": 2,
+        "name": "味精",
+        "quantity": 2,
+        "net_unit_cost": 150
+      },
+      {
+        "input_type": 2,
+        "name": "花生碎（红皮花生）",
+        "quantity": 5,
+        "net_unit_cost": 180
+      },
+      {
+        "input_type": 2,
+        "name": "熟白芝麻",
+        "quantity": 3,
+        "net_unit_cost": 167
+      },
+      {
+        "input_type": 2,
+        "name": "蒜泥",
+        "quantity": 12,
+        "net_unit_cost": 75
+      },
+      {
+        "input_type": 2,
+        "name": "香油（芝麻油）",
+        "quantity": 25,
+        "net_unit_cost": 360
+      },
+      {
+        "input_type": 2,
+        "name": "醋",
+        "quantity": 8,
+        "net_unit_cost": 75
+      }
+    ],
+    "price_fen": 440,
+    "aux_fen": 0,
+    "engine_cost_fen": 151,
+    "engine_margin_pct": 65.68,
+    "check_cost_yuan": 1.51
+  },
+  {
+    "name": "耙肥肠（四两）",
+    "category": "招牌菜",
+    "lines": [
+      {
+        "input_type": 2,
+        "name": "生肥肠",
+        "quantity": 200,
+        "net_unit_cost": 528
+      },
+      {
+        "input_type": 2,
+        "name": "卤料+清洗（盐醋面粉耗材）",
+        "quantity": 1,
+        "net_unit_cost": 10000
+      }
+    ],
+    "price_fen": 2340,
+    "aux_fen": 0,
+    "engine_cost_fen": 1156,
+    "engine_margin_pct": 50.6,
+    "check_cost_yuan": 11.55
+  },
+  {
+    "name": "泡椒酸菜鱼",
+    "category": "江湖菜",
+    "lines": [
+      {
+        "input_type": 2,
+        "name": "活草鱼（整鱼）",
+        "quantity": 750,
+        "net_unit_cost": 220
+      },
+      {
+        "input_type": 2,
+        "name": "泡酸菜（挤水净重）",
+        "quantity": 120,
+        "net_unit_cost": 70
+      },
+      {
+        "input_type": 2,
+        "name": "泡野山椒",
+        "quantity": 40,
+        "net_unit_cost": 60
+      },
+      {
+        "input_type": 2,
+        "name": "老姜",
+        "quantity": 15,
+        "net_unit_cost": 33
+      },
+      {
+        "input_type": 2,
+        "name": "大蒜",
+        "quantity": 20,
+        "net_unit_cost": 75
+      },
+      {
+        "input_type": 2,
+        "name": "蛋清（上浆）",
+        "quantity": 30,
+        "net_unit_cost": 113
+      },
+      {
+        "input_type": 2,
+        "name": "玉米淀粉",
+        "quantity": 10,
+        "net_unit_cost": 50
+      },
+      {
+        "input_type": 2,
+        "name": "菜籽油",
+        "quantity": 30,
+        "net_unit_cost": 120
+      },
+      {
+        "input_type": 2,
+        "name": "猪油",
+        "quantity": 20,
+        "net_unit_cost": 100
+      },
+      {
+        "input_type": 2,
+        "name": "干红花椒",
+        "quantity": 2,
+        "net_unit_cost": 600
+      },
+      {
+        "input_type": 2,
+        "name": "葱花",
+        "quantity": 10,
+        "net_unit_cost": 30
+      },
+      {
+        "input_type": 2,
+        "name": "盐/味精/鸡精/料酒",
+        "quantity": 1,
+        "net_unit_cost": 2500
+      }
+    ],
+    "price_fen": 3360,
+    "aux_fen": 0,
+    "engine_cost_fen": 1913,
+    "engine_margin_pct": 43.07,
+    "check_cost_yuan": 19.13
+  },
+  {
+    "name": "肥肠二两",
+    "category": "面食",
+    "lines": [
+      {
+        "input_type": 2,
+        "name": "碱水面",
+        "quantity": 150,
+        "net_unit_cost": 50
+      },
+      {
+        "input_type": 2,
+        "name": "熟肥肠（臊子）",
+        "quantity": 55,
+        "net_unit_cost": 582
+      },
+      {
+        "input_type": 2,
+        "name": "油辣子",
+        "quantity": 40,
+        "net_unit_cost": 172
+      },
+      {
+        "input_type": 2,
+        "name": "花椒面",
+        "quantity": 1,
+        "net_unit_cost": 300
+      },
+      {
+        "input_type": 2,
+        "name": "味精",
+        "quantity": 4,
+        "net_unit_cost": 50
+      },
+      {
+        "input_type": 2,
+        "name": "芽菜",
+        "quantity": 8,
+        "net_unit_cost": 100
+      },
+      {
+        "input_type": 2,
+        "name": "榨菜末",
+        "quantity": 7,
+        "net_unit_cost": 114
+      },
+      {
+        "input_type": 2,
+        "name": "花生碎",
+        "quantity": 15,
+        "net_unit_cost": 140
+      },
+      {
+        "input_type": 2,
+        "name": "复制酱油",
+        "quantity": 16,
+        "net_unit_cost": 50
+      },
+      {
+        "input_type": 2,
+        "name": "猪油",
+        "quantity": 10,
+        "net_unit_cost": 160
+      },
+      {
+        "input_type": 2,
+        "name": "葱花",
+        "quantity": 7,
+        "net_unit_cost": 86
+      },
+      {
+        "input_type": 2,
+        "name": "姜蒜水",
+        "quantity": 18,
+        "net_unit_cost": 22
+      },
+      {
+        "input_type": 2,
+        "name": "红烧卤料",
+        "quantity": 1,
+        "net_unit_cost": 3000
+      },
+      {
+        "input_type": 2,
+        "name": "骨汤",
+        "quantity": 1,
+        "net_unit_cost": 4500
+      }
+    ],
+    "price_fen": 1600,
+    "aux_fen": 0,
+    "engine_cost_fen": 615,
+    "engine_margin_pct": 61.56,
+    "check_cost_yuan": 6.15
+  },
+  {
+    "name": "韭菜炒蛋",
+    "category": "炒菜",
+    "lines": [
+      {
+        "input_type": 2,
+        "name": "韭菜（净料）",
+        "quantity": 216,
+        "net_unit_cost": 71
+      },
+      {
+        "input_type": 2,
+        "name": "鸡蛋（3个）",
+        "quantity": 165,
+        "net_unit_cost": 112
+      },
+      {
+        "input_type": 2,
+        "name": "菜籽油",
+        "quantity": 25,
+        "net_unit_cost": 120
+      },
+      {
+        "input_type": 2,
+        "name": "盐/味精",
+        "quantity": 1,
+        "net_unit_cost": 1000
+      }
+    ],
+    "price_fen": 1600,
+    "aux_fen": 0,
+    "engine_cost_fen": 378,
+    "engine_margin_pct": 76.38,
+    "check_cost_yuan": 3.78
+  },
+  {
+    "name": "肥肠三两",
+    "category": "面食",
+    "lines": [
+      {
+        "input_type": 2,
+        "name": "碱水面",
+        "quantity": 220,
+        "net_unit_cost": 50
+      },
+      {
+        "input_type": 2,
+        "name": "熟肥肠（臊子）",
+        "quantity": 75,
+        "net_unit_cost": 581
+      },
+      {
+        "input_type": 2,
+        "name": "油辣子",
+        "quantity": 45,
+        "net_unit_cost": 173
+      },
+      {
+        "input_type": 2,
+        "name": "花椒面",
+        "quantity": 1,
+        "net_unit_cost": 400
+      },
+      {
+        "input_type": 2,
+        "name": "味精",
+        "quantity": 5,
+        "net_unit_cost": 40
+      },
+      {
+        "input_type": 2,
+        "name": "芽菜",
+        "quantity": 10,
+        "net_unit_cost": 100
+      },
+      {
+        "input_type": 2,
+        "name": "榨菜末",
+        "quantity": 8,
+        "net_unit_cost": 113
+      },
+      {
+        "input_type": 2,
+        "name": "花生碎",
+        "quantity": 20,
+        "net_unit_cost": 140
+      },
+      {
+        "input_type": 2,
+        "name": "复制酱油",
+        "quantity": 20,
+        "net_unit_cost": 50
+      },
+      {
+        "input_type": 2,
+        "name": "猪油",
+        "quantity": 12,
+        "net_unit_cost": 158
+      },
+      {
+        "input_type": 2,
+        "name": "葱花",
+        "quantity": 9,
+        "net_unit_cost": 78
+      },
+      {
+        "input_type": 2,
+        "name": "姜蒜水",
+        "quantity": 20,
+        "net_unit_cost": 20
+      },
+      {
+        "input_type": 2,
+        "name": "红烧卤料",
+        "quantity": 1,
+        "net_unit_cost": 3000
+      },
+      {
+        "input_type": 2,
+        "name": "骨汤",
+        "quantity": 1,
+        "net_unit_cost": 5000
+      }
+    ],
+    "price_fen": 1800,
+    "aux_fen": 0,
+    "engine_cost_fen": 797,
+    "engine_margin_pct": 55.72,
+    "check_cost_yuan": 7.97
+  },
+  {
+    "name": "刀削",
+    "category": "面食",
+    "lines": [
+      {
+        "input_type": 2,
+        "name": "鲜刀削面",
+        "quantity": 180,
+        "net_unit_cost": 46
+      },
+      {
+        "input_type": 2,
+        "name": "猪精瘦肉末（杂酱臊子）",
+        "quantity": 40,
+        "net_unit_cost": 250
+      },
+      {
+        "input_type": 2,
+        "name": "骨汤",
+        "quantity": 250,
+        "net_unit_cost": 10
+      },
+      {
+        "input_type": 2,
+        "name": "油辣子（辣椒油）",
+        "quantity": 10,
+        "net_unit_cost": 170
+      },
+      {
+        "input_type": 2,
+        "name": "花椒面",
+        "quantity": 1,
+        "net_unit_cost": 300
+      },
+      {
+        "input_type": 2,
+        "name": "盐",
+        "quantity": 1,
+        "net_unit_cost": 100
+      },
+      {
+        "input_type": 2,
+        "name": "味精",
+        "quantity": 1,
+        "net_unit_cost": 200
+      },
+      {
+        "input_type": 2,
+        "name": "葱花",
+        "quantity": 5,
+        "net_unit_cost": 80
+      },
+      {
+        "input_type": 2,
+        "name": "蒜泥（蒜水）",
+        "quantity": 5,
+        "net_unit_cost": 80
+      },
+      {
+        "input_type": 2,
+        "name": "酱油（生抽）",
+        "quantity": 5,
+        "net_unit_cost": 80
+      }
+    ],
+    "price_fen": 713,
+    "aux_fen": 0,
+    "engine_cost_fen": 243,
+    "engine_margin_pct": 65.92,
+    "check_cost_yuan": 2.43
+  },
+  {
+    "name": "水煮肉片",
+    "category": "江湖菜",
+    "lines": [
+      {
+        "input_type": 2,
+        "name": "猪精瘦肉",
+        "quantity": 350,
+        "net_unit_cost": 250
+      },
+      {
+        "input_type": 2,
+        "name": "黄豆芽（垫底）",
+        "quantity": 150,
+        "net_unit_cost": 23
+      },
+      {
+        "input_type": 2,
+        "name": "大白菜（垫底）",
+        "quantity": 150,
+        "net_unit_cost": 19
+      },
+      {
+        "input_type": 2,
+        "name": "郫县豆瓣酱",
+        "quantity": 30,
+        "net_unit_cost": 120
+      },
+      {
+        "input_type": 2,
+        "name": "干辣椒节",
+        "quantity": 12,
+        "net_unit_cost": 317
+      },
+      {
+        "input_type": 2,
+        "name": "干红花椒",
+        "quantity": 6,
+        "net_unit_cost": 600
+      },
+      {
+        "input_type": 2,
+        "name": "姜末",
+        "quantity": 10,
+        "net_unit_cost": 40
+      },
+      {
+        "input_type": 2,
+        "name": "蒜末",
+        "quantity": 20,
+        "net_unit_cost": 75
+      },
+      {
+        "input_type": 2,
+        "name": "蛋清（上浆）",
+        "quantity": 30,
+        "net_unit_cost": 113
+      },
+      {
+        "input_type": 2,
+        "name": "玉米淀粉",
+        "quantity": 10,
+        "net_unit_cost": 50
+      },
+      {
+        "input_type": 2,
+        "name": "菜籽油（炒制+泼油）",
+        "quantity": 80,
+        "net_unit_cost": 120
+      },
+      {
+        "input_type": 2,
+        "name": "葱花",
+        "quantity": 10,
+        "net_unit_cost": 30
+      },
+      {
+        "input_type": 2,
+        "name": "盐/味精/鸡精/生抽",
+        "quantity": 1,
+        "net_unit_cost": 2500
+      }
+    ],
+    "price_fen": 3800,
+    "aux_fen": 0,
+    "engine_cost_fen": 1230,
+    "engine_margin_pct": 67.63,
+    "check_cost_yuan": 12.29
+  },
+  {
+    "name": "牛肉滑",
+    "category": "火锅涮品",
+    "lines": [
+      {
+        "input_type": 2,
+        "name": "牛后腿肉茸（净料）",
+        "quantity": 150,
+        "net_unit_cost": 810
+      },
+      {
+        "input_type": 2,
+        "name": "打制清水（加水率35%）",
+        "quantity": 52,
+        "net_unit_cost": 0
+      },
+      {
+        "input_type": 2,
+        "name": "蛋清",
+        "quantity": 25,
+        "net_unit_cost": 112
+      },
+      {
+        "input_type": 2,
+        "name": "红薯淀粉",
+        "quantity": 12,
+        "net_unit_cost": 67
+      },
+      {
+        "input_type": 2,
+        "name": "盐",
+        "quantity": 2,
+        "net_unit_cost": 50
+      },
+      {
+        "input_type": 2,
+        "name": "白胡椒粉",
+        "quantity": 1,
+        "net_unit_cost": 400
+      },
+      {
+        "input_type": 2,
+        "name": "味精/鸡精",
+        "quantity": 2,
+        "net_unit_cost": 150
+      }
+    ],
+    "price_fen": 1803,
+    "aux_fen": 0,
+    "engine_cost_fen": 1259,
+    "engine_margin_pct": 30.17,
+    "check_cost_yuan": 12.59
+  },
+  {
+    "name": "杂酱二两",
+    "category": "面食",
+    "lines": [
+      {
+        "input_type": 2,
+        "name": "碱水面",
+        "quantity": 150,
+        "net_unit_cost": 50
+      },
+      {
+        "input_type": 2,
+        "name": "杂酱（猪肉末炒后）",
+        "quantity": 50,
+        "net_unit_cost": 248
+      },
+      {
+        "input_type": 2,
+        "name": "炒制油+甜面酱/豆瓣",
+        "quantity": 1,
+        "net_unit_cost": 3000
+      },
+      {
+        "input_type": 2,
+        "name": "油辣子",
+        "quantity": 40,
+        "net_unit_cost": 172
+      },
+      {
+        "input_type": 2,
+        "name": "花椒面",
+        "quantity": 1,
+        "net_unit_cost": 300
+      },
+      {
+        "input_type": 2,
+        "name": "味精",
+        "quantity": 4,
+        "net_unit_cost": 50
+      },
+      {
+        "input_type": 2,
+        "name": "芽菜",
+        "quantity": 8,
+        "net_unit_cost": 100
+      },
+      {
+        "input_type": 2,
+        "name": "榨菜末",
+        "quantity": 7,
+        "net_unit_cost": 114
+      },
+      {
+        "input_type": 2,
+        "name": "花生碎",
+        "quantity": 15,
+        "net_unit_cost": 140
+      },
+      {
+        "input_type": 2,
+        "name": "复制酱油",
+        "quantity": 16,
+        "net_unit_cost": 50
+      },
+      {
+        "input_type": 2,
+        "name": "猪油",
+        "quantity": 10,
+        "net_unit_cost": 160
+      },
+      {
+        "input_type": 2,
+        "name": "葱花",
+        "quantity": 7,
+        "net_unit_cost": 86
+      },
+      {
+        "input_type": 2,
+        "name": "姜蒜水",
+        "quantity": 18,
+        "net_unit_cost": 22
+      },
+      {
+        "input_type": 2,
+        "name": "骨汤",
+        "quantity": 1,
+        "net_unit_cost": 4500
+      }
+    ],
+    "price_fen": 1200,
+    "aux_fen": 0,
+    "engine_cost_fen": 419,
+    "engine_margin_pct": 65.08,
+    "check_cost_yuan": 4.19
+  },
+  {
+    "name": "红汤大锅",
+    "category": "锅底",
+    "lines": [
+      {
+        "input_type": 2,
+        "name": "牛油",
+        "quantity": 300,
+        "net_unit_cost": 130
+      },
+      {
+        "input_type": 2,
+        "name": "干辣椒",
+        "quantity": 80,
+        "net_unit_cost": 260
+      },
+      {
+        "input_type": 2,
+        "name": "花椒",
+        "quantity": 40,
+        "net_unit_cost": 500
+      },
+      {
+        "input_type": 2,
+        "name": "豆瓣酱",
+        "quantity": 80,
+        "net_unit_cost": 100
+      },
+      {
+        "input_type": 2,
+        "name": "火锅香料",
+        "quantity": 30,
+        "net_unit_cost": 600
+      },
+      {
+        "input_type": 2,
+        "name": "姜蒜醪糟冰糖",
+        "quantity": 500,
+        "net_unit_cost": 20
+      }
+    ],
+    "price_fen": 1873,
+    "aux_fen": 0,
+    "engine_cost_fen": 1158,
+    "engine_margin_pct": 38.17,
+    "check_cost_yuan": 11.58
+  },
+  {
+    "name": "牛肉三两",
+    "category": "面食",
+    "lines": [
+      {
+        "input_type": 2,
+        "name": "碱水面",
+        "quantity": 220,
+        "net_unit_cost": 50
+      },
+      {
+        "input_type": 2,
+        "name": "熟牛腩（红烧）",
+        "quantity": 75,
+        "net_unit_cost": 917
+      },
+      {
+        "input_type": 2,
+        "name": "红烧卤料",
+        "quantity": 1,
+        "net_unit_cost": 5000
+      },
+      {
+        "input_type": 2,
+        "name": "油辣子",
+        "quantity": 45,
+        "net_unit_cost": 173
+      },
+      {
+        "input_type": 2,
+        "name": "花椒面",
+        "quantity": 1,
+        "net_unit_cost": 400
+      },
+      {
+        "input_type": 2,
+        "name": "味精",
+        "quantity": 5,
+        "net_unit_cost": 40
+      },
+      {
+        "input_type": 2,
+        "name": "芽菜",
+        "quantity": 10,
+        "net_unit_cost": 100
+      },
+      {
+        "input_type": 2,
+        "name": "榨菜末",
+        "quantity": 8,
+        "net_unit_cost": 113
+      },
+      {
+        "input_type": 2,
+        "name": "花生碎",
+        "quantity": 20,
+        "net_unit_cost": 140
+      },
+      {
+        "input_type": 2,
+        "name": "复制酱油",
+        "quantity": 20,
+        "net_unit_cost": 50
+      },
+      {
+        "input_type": 2,
+        "name": "猪油",
+        "quantity": 10,
+        "net_unit_cost": 160
+      },
+      {
+        "input_type": 2,
+        "name": "葱花",
+        "quantity": 9,
+        "net_unit_cost": 78
+      },
+      {
+        "input_type": 2,
+        "name": "姜蒜水",
+        "quantity": 20,
+        "net_unit_cost": 20
+      },
+      {
+        "input_type": 2,
+        "name": "骨汤",
+        "quantity": 1,
+        "net_unit_cost": 5000
+      }
+    ],
+    "price_fen": 1800,
+    "aux_fen": 0,
+    "engine_cost_fen": 1066,
+    "engine_margin_pct": 40.78,
+    "check_cost_yuan": 10.66
+  },
+  {
+    "name": "蛋炒饭",
+    "category": "主食",
+    "lines": [
+      {
+        "input_type": 2,
+        "name": "生大米（本地籼米）",
+        "quantity": 140,
+        "net_unit_cost": 34
+      },
+      {
+        "input_type": 2,
+        "name": "鸡蛋（1.5个）",
+        "quantity": 80,
+        "net_unit_cost": 113
+      },
+      {
+        "input_type": 2,
+        "name": "葱花",
+        "quantity": 15,
+        "net_unit_cost": 33
+      },
+      {
+        "input_type": 2,
+        "name": "菜籽油",
+        "quantity": 20,
+        "net_unit_cost": 120
+      },
+      {
+        "input_type": 2,
+        "name": "盐/味精",
+        "quantity": 1,
+        "net_unit_cost": 1000
+      }
+    ],
+    "price_fen": 1000,
+    "aux_fen": 0,
+    "engine_cost_fen": 177,
+    "engine_margin_pct": 82.3,
+    "check_cost_yuan": 1.76
+  }
+]

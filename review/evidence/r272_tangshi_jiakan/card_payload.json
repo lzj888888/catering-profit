@@ -1,0 +1,293 @@
+[
+  {
+    "name": "小面",
+    "lines": [
+      {
+        "input_type": 2,
+        "name": "水面/碱水面",
+        "quantity": 100,
+        "net_unit_cost": 60
+      },
+      {
+        "input_type": 2,
+        "name": "油辣子(辣椒+菜油熬)",
+        "quantity": 20,
+        "net_unit_cost": 300
+      },
+      {
+        "input_type": 2,
+        "name": "花椒面",
+        "quantity": 2,
+        "net_unit_cost": 500
+      },
+      {
+        "input_type": 2,
+        "name": "猪油",
+        "quantity": 10,
+        "net_unit_cost": 200
+      },
+      {
+        "input_type": 2,
+        "name": "花生碎",
+        "quantity": 10,
+        "net_unit_cost": 240
+      },
+      {
+        "input_type": 2,
+        "name": "芽菜/榨菜",
+        "quantity": 15,
+        "net_unit_cost": 160
+      },
+      {
+        "input_type": 2,
+        "name": "小葱",
+        "quantity": 10,
+        "net_unit_cost": 100
+      },
+      {
+        "input_type": 2,
+        "name": "骨汤(猪骨熬制分摊)",
+        "quantity": 1,
+        "net_unit_cost": 3000
+      },
+      {
+        "input_type": 2,
+        "name": "酱油/醋/蒜泥水/鸡精",
+        "quantity": 1,
+        "net_unit_cost": 1500
+      }
+    ],
+    "price_fen": 743,
+    "aux_fen": 0,
+    "engine_cost_fen": 253,
+    "engine_margin_pct": 65.95
+  },
+  {
+    "name": "抄手",
+    "lines": [
+      {
+        "input_type": 2,
+        "name": "抄手皮",
+        "quantity": 120,
+        "net_unit_cost": 80
+      },
+      {
+        "input_type": 2,
+        "name": "猪前腿肉馅",
+        "quantity": 120,
+        "net_unit_cost": 260
+      },
+      {
+        "input_type": 2,
+        "name": "姜葱水/蛋清",
+        "quantity": 20,
+        "net_unit_cost": 160
+      },
+      {
+        "input_type": 2,
+        "name": "红油/油辣子",
+        "quantity": 25,
+        "net_unit_cost": 300
+      },
+      {
+        "input_type": 2,
+        "name": "骨汤",
+        "quantity": 1,
+        "net_unit_cost": 3500
+      },
+      {
+        "input_type": 2,
+        "name": "花生/芝麻/葱花",
+        "quantity": 20,
+        "net_unit_cost": 240
+      },
+      {
+        "input_type": 2,
+        "name": "盐/味精/胡椒等",
+        "quantity": 1,
+        "net_unit_cost": 1500
+      }
+    ],
+    "price_fen": 1253,
+    "aux_fen": 0,
+    "engine_cost_fen": 613,
+    "engine_margin_pct": 51.08
+  },
+  {
+    "name": "韭叶",
+    "lines": [
+      {
+        "input_type": 2,
+        "name": "韭叶面",
+        "quantity": 130,
+        "net_unit_cost": 80
+      },
+      {
+        "input_type": 2,
+        "name": "肉臊子(肉末)",
+        "quantity": 50,
+        "net_unit_cost": 300
+      },
+      {
+        "input_type": 2,
+        "name": "油辣子",
+        "quantity": 20,
+        "net_unit_cost": 300
+      },
+      {
+        "input_type": 2,
+        "name": "骨汤",
+        "quantity": 1,
+        "net_unit_cost": 3500
+      },
+      {
+        "input_type": 2,
+        "name": "花生/芝麻/葱花",
+        "quantity": 20,
+        "net_unit_cost": 240
+      },
+      {
+        "input_type": 2,
+        "name": "盐/酱油/花椒等",
+        "quantity": 1,
+        "net_unit_cost": 1500
+      }
+    ],
+    "price_fen": 716,
+    "aux_fen": 0,
+    "engine_cost_fen": 412,
+    "engine_margin_pct": 42.46
+  },
+  {
+    "name": "米线",
+    "lines": [
+      {
+        "input_type": 2,
+        "name": "鲜米线",
+        "quantity": 200,
+        "net_unit_cost": 60
+      },
+      {
+        "input_type": 2,
+        "name": "肉臊子(肉末)",
+        "quantity": 40,
+        "net_unit_cost": 300
+      },
+      {
+        "input_type": 2,
+        "name": "骨汤",
+        "quantity": 1,
+        "net_unit_cost": 4000
+      },
+      {
+        "input_type": 2,
+        "name": "酸菜/木耳/豆芽等配菜",
+        "quantity": 50,
+        "net_unit_cost": 100
+      },
+      {
+        "input_type": 2,
+        "name": "花生/香菜/葱花",
+        "quantity": 20,
+        "net_unit_cost": 240
+      },
+      {
+        "input_type": 2,
+        "name": "辣椒油/盐/鸡精等",
+        "quantity": 1,
+        "net_unit_cost": 3000
+      }
+    ],
+    "price_fen": 714,
+    "aux_fen": 0,
+    "engine_cost_fen": 408,
+    "engine_margin_pct": 42.86
+  },
+  {
+    "name": "耙牛肉（半斤）",
+    "lines": [
+      {
+        "input_type": 2,
+        "name": "生牛肉",
+        "quantity": 250,
+        "net_unit_cost": 776
+      }
+    ],
+    "price_fen": 3176,
+    "aux_fen": 100,
+    "engine_cost_fen": 2040,
+    "engine_margin_pct": 35.77
+  },
+  {
+    "name": "耙牛筋（半斤）",
+    "lines": [
+      {
+        "input_type": 2,
+        "name": "生牛筋",
+        "quantity": 250,
+        "net_unit_cost": 506
+      }
+    ],
+    "price_fen": 3243,
+    "aux_fen": 80,
+    "engine_cost_fen": 1345,
+    "engine_margin_pct": 58.53
+  },
+  {
+    "name": "毛血旺",
+    "lines": [
+      {
+        "input_type": 2,
+        "name": "鸭血/血旺",
+        "quantity": 300,
+        "net_unit_cost": 80
+      },
+      {
+        "input_type": 2,
+        "name": "毛肚",
+        "quantity": 80,
+        "net_unit_cost": 500
+      },
+      {
+        "input_type": 2,
+        "name": "黄喉",
+        "quantity": 50,
+        "net_unit_cost": 600
+      },
+      {
+        "input_type": 2,
+        "name": "午餐肉",
+        "quantity": 80,
+        "net_unit_cost": 280
+      },
+      {
+        "input_type": 2,
+        "name": "豆芽/粉条/豆皮",
+        "quantity": 200,
+        "net_unit_cost": 60
+      },
+      {
+        "input_type": 2,
+        "name": "火锅底料/红油",
+        "quantity": 150,
+        "net_unit_cost": 300
+      },
+      {
+        "input_type": 2,
+        "name": "干辣椒/花椒(炝油)",
+        "quantity": 30,
+        "net_unit_cost": 600
+      },
+      {
+        "input_type": 2,
+        "name": "蒜末/姜葱/调味",
+        "quantity": 1,
+        "net_unit_cost": 5000
+      }
+    ],
+    "price_fen": 4133,
+    "aux_fen": 0,
+    "engine_cost_fen": 1964,
+    "engine_margin_pct": 52.48
+  }
+]
