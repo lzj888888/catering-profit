@@ -551,6 +551,37 @@ function section9() {
 }
 section9();
 
+// ============ ⑩ 未匹配清单按营收降序（R261）============
+// 缺口：后端返回的是**首见顺序**，而真实数据下未匹配有 51 行（外卖商品表）/ 270 行（堂食菜品表）
+//   ⇒ 用户得逐行读才知道"哪道菜影响最大"。降序后大头在最上面，批量关联（R260）先处理值得处理的那批。
+// 🔴 这类排序的失效方式是**静默**的：把 `.sort()` 挪到 `.map()` **之后**，
+//    行里只剩 `amountText`（字符串）⇒ 减法得 NaN ⇒ 比较器恒返回 falsy ⇒ **顺序原地不动**，
+//    页面照样渲染、零报错。⇒ 判据必须钉住「排序发生在 map 之前」这个**位置不变式**。
+function section10() {
+  const pageSrc = rd('pages/m3/dishreview/index.js');
+  check('10-① 未匹配清单按营收降序（比较器真的用了 amountFen 的差）',
+    /\(b\.amountFen - a\.amountFen\)/.test(pageSrc));
+  check('10-② 有稳定化兜底（同额按份数、再按菜名）—— 否则两次 load 顺序抖动，用户以为数据变了',
+    /\|\| \(b\.qty - a\.qty\)/.test(pageSrc) && /localeCompare/.test(pageSrc));
+  // 🔴 位置不变式：先 sort 后 map（挪到 map 之后 ⇒ 排的是字符串，静默不动）
+  const iSorted = pageSrc.indexOf('const unmatchedSorted = Array.from(unmatchedMap.values()).sort(');
+  const iMapped = pageSrc.indexOf('const unmatched = unmatchedSorted.map(');
+  check('10-③ 🔴 排序发生在 map **之前**（`unmatched` 由 `unmatchedSorted.map(` 而来）'
+    + ' —— 挪到 map 之后 ⇒ 排的是 amountText 字符串、顺序原地不动且零报错',
+    iSorted >= 0 && iMapped > iSorted, 'sort@' + iSorted + ' < map@' + iMapped);
+  // 自失效护栏：扫描面非退化 + 关键锚点在场
+  check('10-④ 自失效护栏：页面源码非空且未匹配清单的构造锚点在场',
+    pageSrc.length > 1000 && /unmatchedMap/.test(pageSrc) && /const unmatchedSorted/.test(pageSrc));
+  // 影子样本：把排序挪到 map 之后（拿字符串排）⇒ 上述判据必须判红
+  const SHADOW = 'const unmatched = Array.from(unmatchedMap.values()).map((x) => ({ amountText: "1" }));\n'
+    + 'const late = [].sort((a, b) => (b.amountFen - a.amountFen) || (b.qty - a.qty));';
+  const shadowOk = SHADOW.indexOf('const unmatched = unmatchedSorted.map(') >= 0
+    && SHADOW.indexOf('const unmatchedSorted = Array.from(unmatchedMap.values()).sort(') >= 0;
+  check('10-⑤ 影子：把排序挪到 map 之后的写法 ⇒ 10-③ 判据失效（证明该判据有分辨力）',
+    shadowOk === false, String(shadowOk));
+}
+section10();
+
 console.log('\n===== getDishReview 算法层守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);
 })().catch(function (e) {

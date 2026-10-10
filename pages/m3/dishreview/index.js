@@ -208,7 +208,15 @@ Page({
       if (!m || !m.dish_key || !m.card_code) continue;
       mapByDishKey.set(m.dish_key, m.card_code);
     }
-    const unmatched = Array.from(unmatchedMap.values()).map((x) => ({
+    // 🔴 R261：**按营收降序** —— 真实数据下未匹配清单有 51 行（外卖商品表）/ 270 行（堂食菜品表），
+    //   而后端返回的是"首见顺序"。按首见顺序排，用户得逐行读才知道**哪道菜影响最大**；
+    //   降序后大头永远在最上面，批量关联（R260）也就能先处理真正值得处理的那批。
+    //   ⚠️ 排序必须在 `.map()` **之前**：map 之后的行里只有 `amountText`（字符串），
+    //      拿它做减法排序会得到 NaN ⇒ 顺序不动（**静默失效**，页面看着正常）。
+    //   ⚠️ 同额时按份数、再按菜名兜底 ⇒ **顺序稳定**（否则两次 load 顺序抖动，用户以为数据变了）。
+    const unmatchedSorted = Array.from(unmatchedMap.values()).sort((a, b) =>
+      (b.amountFen - a.amountFen) || (b.qty - a.qty) || String(a.name).localeCompare(String(b.name)));
+    const unmatched = unmatchedSorted.map((x) => ({
       name: x.name,
       dishKey: x.dishKey,
       mappedCardName: nameByCode[mapByDishKey.get(x.dishKey) || ''] || '',
