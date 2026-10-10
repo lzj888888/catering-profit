@@ -191,6 +191,8 @@ check('A15 推广费取数路径标注存在', /twPromoPathHint/.test(inputWxml)
 //   （round103 登记）⇒ 本轮**沿用既有条目、不新增白名单**（避免把豁免面撑大），按纪律记明时点与理由：
 //   by=WorkBuddy / date=2026-09-27 / reason=round162 授权：外卖有效订单数 qty 落库（saveLedger 校验+映射 / getLedger 出参回读）
 const A15_EXEMPT = [
+  /^cloudfunctions\/exportData\/index\.js$/,     // round265：导出改出真 xlsx（SheetJS + base64 + encoding 出参），属缺陷修复而非同步动作
+  /^cloudfunctions\/exportData\/package\.json$/, // round265：新增 xlsx 依赖声明（require 与依赖必须同源，由 check_fn_deps 另守）
   /^cloudfunctions\/initDb\//,
   /^cloudfunctions\/getLedger\//,
   /^cloudfunctions\/saveLedger\//,

@@ -6,6 +6,7 @@
 const api = require('../../utils/api.js');
 const ui = require('../../utils/ui.js');
 const { openPaywall, openService } = require('../../utils/paywall.js');
+const exportFile = require('../../utils/exportFile.js');   // R265：导出投递单源（落盘 + 打开 + 转发兜底）
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 
 // 本店用过的菜品分类（本地字典，与 edit.js 同一 key；不新建集合 —— M3 v1.1 零新建集合红线）
@@ -37,6 +38,7 @@ Page({
       calcModeA: TERMS.card.calcModeA,
       calcModeB: TERMS.card.calcModeB,
       export: TERMS.buttons.export,
+      exportHint: TERMS.expFile.hint,
       goOrders: TERMS.pay.goOrders,
       exportIng: TERMS.exp.exportIng,
       exportDone: TERMS.exp.exportDone,
@@ -433,23 +435,11 @@ Page({
   async doExport() {
     wx.showLoading({ title: TERMS.exp.exportIng, mask: true });
     try {
-      const d = await api.call('exportData', { scope: 'm3_cards', format: 'excel', client_request_id: 'ex3_' + Date.now() });
+      // R265：'excel'(=CSV) 在微信里打不开（openDocument 不认 csv）⇒ 改要真 xlsx
+      const d = await api.call('exportData', { scope: 'm3_cards', format: 'xlsx', client_request_id: 'ex3_' + Date.now() });
       wx.hideLoading();
-      this.downloadContent(d.filename, d.content, d.format);
-      wx.showToast({ title: TERMS.exp.exportDone, icon: 'success' });
+      exportFile.deliver(d);   // 单源投递：落盘 + 打开 + 打不开时转发兜底
     } catch (e) { wx.hideLoading(); api.toastError(e); }
-  },
-
-  downloadContent(filename, content, format) {
-    const fs = wx.getFileSystemManager();
-    const tmp = `${wx.env.USER_DATA_PATH}/${filename}`;
-    // S0（任务4）：exportData 声明的 format='excel' 实际落盘为 CSV 内容（带 BOM，Excel 可开），
-    //   fileType 按「json / csv」二选一，'excel' 显式映射为 'csv'（避免隐式 else 碰巧对）。
-    const fileType = format === 'json' ? 'json' : 'csv';
-    try {
-      fs.writeFileSync(tmp, format === 'json' ? JSON.stringify(content) : String(content), 'utf8');
-      wx.openDocument({ filePath: tmp, showMenu: true, fileType, fail: () => {} });
-    } catch (e) { api.toastError(e); }
   },
   onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()); },
 });

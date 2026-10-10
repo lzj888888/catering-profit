@@ -5,8 +5,14 @@
 // ⚠️ 异步导出 + 进度（§2.4）：本函数生成内容并返回（v1.0 简版：云函数内同步生成，前端显示
 //   「正在导出…」进度提示条 + loading，不阻塞 UI；超大数据量的任务队列排 v1.1 选做）。
 //   · scope = 'm1_report'（M1 月度报表）| 'm3_cards'（M3 成本卡批量）
-//   · format = 'excel'（CSV+BOM，Excel 可开）| 'json'
+//   · format = 'xlsx'（**默认**，真 Excel 二进制·base64 下发）| 'excel'（=CSV+BOM，旧兼容）| 'json'
 //   · 文件名含店铺名 + 月份（对齐 §2.4）
+//
+// 🔴 R265（2026-10-10 真机反馈修复）：v1.0 默认落 **CSV**，前端 `wx.openDocument({fileType:'csv'})`
+//    而微信 fileType 合法值只有 doc/docx/xls/xlsx/ppt/pptx/pdf —— **csv/json 一律打不开**，
+//    openDocument 必走 fail；当时的 fail 回调是空的 ⇒ 用户只看到一句「导出完成」，
+//    **文件躺在小程序沙箱里永远找不到，也不知道是什么格式**。
+//    ⇒ 默认改为真 xlsx：SheetJS 生成 → base64 下发 → 前端落盘后 fileType:'xlsx' 打开（右上角可保存/转发）。
 const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
@@ -27,6 +33,24 @@ function csvEscape(v) {
 function csvFromRows(header, rows) {
   return '\uFEFF' + [header].concat(rows).map((r) => r.map(csvEscape).join(',')).join('\r\n');
 }
+
+// ===================== XLSX 纯函数（R265·可单测）=====================
+// 惰性 require：万一云端漏装依赖，也只让「导出」这一条路失败并明确报错，
+//   不会因顶层 require 崩掉整个云函数（连 CSV/JSON 一起陪葬）。
+function loadXlsx() {
+  try { return require('xlsx'); } catch (e) { return null; }
+}
+function xlsxBase64(header, rows, sheetName) {
+  const XLSX = loadXlsx();
+  if (!XLSX) return '';
+  const aoa = [header].concat(rows.map((r) => r.map((v) => (typeof v === 'number' ? v : String(v == null ? '' : v)))));
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, String(sheetName || 'Sheet1').slice(0, 31));
+  return XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
+}
+// 工作表名（≤31 字符，Excel 硬限）
+const SHEET_NAME = { m1_report: '月度报表', m3_cards: '菜品成本卡', m2_compare: '方案对比' };
 
 // JSON 导出用唯一键名（CSV 表头允许重复列标签，JSON 键必须唯一）
 function jsonKeys(scope) {
@@ -51,7 +75,8 @@ exports.main = async (event) => {
   //   compare 表（且图片/Excel 两出口共用同一份已算结果），本函数只做事后序列化 + 归属校验。
   const isCompare = v.export_type === 'm2_compare';
   const scope = isCompare ? 'm2_compare' : (v.scope === 'm3_cards' ? 'm3_cards' : 'm1_report');
-  const format = v.format === 'json' ? 'json' : 'excel';
+  // R265：不传 format 时默认 **xlsx**（真 Excel），'excel' 保留为 CSV 旧兼容通道。
+  const format = v.format === 'json' ? 'json' : (v.format === 'excel' ? 'excel' : 'xlsx');
   const month = (typeof v.month === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(v.month)) ? v.month : '';
   if (!isCompare && scope === 'm1_report' && !month) return fail(ERROR_CODES.INVALID_PARAM, 'm1_report 需提供 month（YYYY-MM）');
   // M2 对比：plan_ids 必须 1~3 个非空字符串
@@ -74,7 +99,7 @@ exports.main = async (event) => {
   const stamp = nowUtc();
 
   // ===== 3. 取数并生成 =====
-  let header, body, filename;
+  let header, body, fileBase;
   if (scope === 'm1_report') {
     const r = await da.list('shop_monthly_account', { shop_id: shopId, month });
     const row = r && r.data && r.data[0];
@@ -94,7 +119,7 @@ exports.main = async (event) => {
         row ? (row.total_factor_real_profit_fen || 0) : 0,
       ]);
     }
-    filename = `${shopName || '店铺'}_${month}_月度报表.${format === 'json' ? 'json' : 'csv'}`;
+    fileBase = `${shopName || '店铺'}_${month}_月度报表`;
   } else if (scope === 'm2_compare') {
     // M2 对比表：前端已用 calcSandbox 重算好 `table`（= 图片/Excel 两出口共用同一份已算结果）。
     // 本函数只做归属校验（不泄漏他人方案）+ 序列化。
@@ -108,7 +133,7 @@ exports.main = async (event) => {
     const table = (v.table && Array.isArray(v.table.rows)) ? v.table : { header: [], rows: [] };
     header = Array.isArray(table.header) ? table.header : [];
     body = table.rows || [];
-    filename = `${shopName || '店铺'}_方案对比.${format === 'json' ? 'json' : 'csv'}`;
+    fileBase = `${shopName || '店铺'}_方案对比`;
   } else {
     const res = await da.list('shop_cost_card', { shop_id: shopId });
     const cards = ((res && res.data) || []);
@@ -128,11 +153,14 @@ exports.main = async (event) => {
       c.gross_margin_pct != null ? c.gross_margin_pct : 0,
       c.calc_mode === 2 ? 'B' : 'A',
     ]);
-    filename = `${shopName || '店铺'}_成本卡_${month || '全部'}.${format === 'json' ? 'json' : 'csv'}`;
+    fileBase = `${shopName || '店铺'}_成本卡_${month || '全部'}`;
   }
 
-  const payload = format === 'json'
-    ? body.map((b) => {
+  // ===== 4. 序列化（R265：默认 xlsx；json/csv 为兼容通道）=====
+  let content;
+  let encoding = 'utf8';
+  if (format === 'json') {
+    content = body.map((b) => {
       if (scope === 'm2_compare') {
         // JSON 键必须唯一（CSV 表头可有重复列标签；JSON fromEntries 会覆盖）—— dup 时追加下标
         const o = {};
@@ -140,18 +168,28 @@ exports.main = async (event) => {
         return o;
       }
       return Object.fromEntries(jsonKeys(scope).map((k, i) => [k, b[i]]));
-    })
-    : csvFromRows(header, body);
+    });
+  } else if (format === 'xlsx') {
+    content = xlsxBase64(header, body, SHEET_NAME[scope] || 'Sheet1');
+    // 🔴 依赖缺失必须**响亮失败**：静默回退成 CSV 会让用户又回到「导出完成但打不开」的原点。
+    if (!content) return fail(ERROR_CODES.SYSTEM_ERROR, '导出服务未安装 xlsx 依赖，暂时无法生成 Excel');
+    encoding = 'base64';
+  } else {
+    content = csvFromRows(header, body);
+  }
+  const ext = format === 'json' ? 'json' : (format === 'xlsx' ? 'xlsx' : 'csv');
+  const filename = `${fileBase}.${ext}`;
 
   return ok({
     shop_id: shopId,
     scope,
     format,
     filename,
+    encoding,              // R265 新增：前端据此决定「base64 二进制」还是「utf8 文本」落盘
     // 进度提示字段：简版直接生成完毕
     progress: 100,
     status: 'ready',
-    content: payload,
+    content,
     count: body.length,
     generated_at: stamp,
     client_request_id: v.client_request_id || '',
@@ -161,3 +199,4 @@ exports.main = async (event) => {
 // 导出供 selftest
 exports.csvEscape = csvEscape;
 exports.csvFromRows = csvFromRows;
+exports.xlsxBase64 = xlsxBase64;

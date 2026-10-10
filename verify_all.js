@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：164 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：165 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -495,6 +495,11 @@
 //         `da.get()` 也不在读侧集合内（它的判据是 `doc.is_deleted` 真值，undefined 为 falsy ⇒ 本缺陷免疫）。
 //         39 断言。
 //       + M3 枢纽页引导守卫（tools/check_hub_guide.js，R263：「三步走 + 分层 + 空状态」——李老师 2026-10-10 真机反馈「进来一脸懵：不知道这个模块能做什么、怎么做、结果去哪里看」；根因＝5 张分区卡**平级**摆着、零先后线索。判据＝三步走块真渲染 + 空状态必须**严格** `cardCount === 0`（写成 `<= 0` 会把"没读到(-1)"误判成空状态）+ 位置不变式（引导块必须在第一张卡之前）+ 卡名 ≡ 页面标题（`hub.takeawayTitle` ≡ `ledger.takeaway.title`）。17 断言 + 3 道自失效护栏）
+//       + 导出投递守卫（tools/check_export_delivery.js，R265：真机反馈「点导出只弹导出完成，不知道文件在哪、什么格式」；
+//         根因＝云函数落 CSV 后 openDocument(fileType 只认 doc/docx/xls/xlsx/ppt/pptx/pdf 七类) 必 fail，
+//         而三处 fail 回调全是空的。判据＝默认出真 xlsx（SheetJS/base64；依赖缺失响亮失败、不许静默回退 CSV）
+//         + 前端投递单源（OPENABLE 恰 7 值且不含 csv/json · showMenu 必开 · fail 非空兜底转发）
+//         + 三处调用点全走单源（禁第二份 downloadContent）+ 文案三处齐。25 断言 + S/A/B/C/D 五组）
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
@@ -997,6 +1002,10 @@ const SUITES = [
   //   这一类引导块的失效方式**全是静默的**：判据放宽成 `<= 0` 会在网络抖动时误报
   //   「你还没有卡」；引导块挪到卡片后面 ⇒ 问题原样复现；`flowSteps` 数组漏登记 ⇒ 只剩空标题。
   ['hub-guide', 'tools/check_hub_guide.js'],
+  // R265：导出文件「真能拿到手」守卫（同上：落 CSV + 空 fail 回调 ⇒ 用户零反馈）。
+  //   🔴 核心是防**退化**：默认 format 改回 excel(=CSV) / OPENABLE 里加 csv / showMenu 被删 / fail 写回空回调，
+  //      四种改法**界面都照样弹「导出完成」、零报错**，只有本守卫会红。
+  ['export-delivery', 'tools/check_export_delivery.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

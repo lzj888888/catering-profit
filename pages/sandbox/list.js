@@ -10,6 +10,7 @@ const api = require('../../utils/api.js');
 const ui = require('../../utils/ui.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 const { openPaywall } = require('../../utils/paywall.js');
+const exportFile = require('../../utils/exportFile.js');   // R265：导出投递单源（落盘 + 打开 + 转发兜底）
 
 const P = TERMS.m2Plan;
 const MAX_SEL = 3;
@@ -238,12 +239,12 @@ Page({
     const planIds = this.data.selIds.slice();
     const table = this.buildCompareTable();
     try {
+      // R265：此前「导出」= 把 CSV 文本塞进剪贴板 ⇒ 用户拿到一串字、不知道往哪粘（真机反馈同类问题）。
+      //   统一改成真 xlsx 文件 + 打开（打不开则转发到微信）。
       const d = await api.call('exportData', {
-        export_type: 'm2_compare', format: 'excel', plan_ids: planIds, table,
+        export_type: 'm2_compare', format: 'xlsx', plan_ids: planIds, table,
       });
-      const content = d.content || '';
-      wx.setClipboardData({ data: content });
-      wx.showToast({ title: this.data.t.exportCopied, icon: 'none' });
+      exportFile.deliver(d);
     } catch (e) {
       if (e.code === 'FEATURE_LOCKED') {
         openPaywall('export', { shopId: (getApp && getApp().globalData && getApp().globalData.shop_id) || '' });

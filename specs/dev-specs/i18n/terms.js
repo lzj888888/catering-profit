@@ -1696,6 +1696,20 @@ const TERMS = {
   },
 
   // ===== 二十三、批次 7 体验打磨文案 =====
+  // ===== R265：导出文件的投递（utils/exportFile.js 单源消费；顶层段，不在 exp 校验段内）=====
+  // 背景：微信 wx.openDocument 只认 doc/docx/xls/xlsx/ppt/pptx/pdf；csv/json 打不开。
+  //   此前导出落 CSV 且 fail 回调为空 ⇒ 用户只看到「导出完成」，找不到文件也不知道什么格式。
+  expFile: {
+    opened: '已生成Excel',                 // toast ≤7 字（icon 模式下超出会被截断）
+    openFailTitle: '导出完成',
+    openFailContent: '文件已生成：{name}\n本机型打不开预览，可转发给「文件传输助手」在电脑上查看。',
+    forward: '转发',
+    close: '关闭',
+    forwardFail: '转发未成功',
+    writeFail: '保存文件失败',
+    // 按钮下方常驻说明：回答「什么格式 / 去哪看」
+    hint: '导出为 Excel(.xlsx)，打开后点右上角「…」可保存或转发到微信',
+  },
   exp: {
     // 校验
     required: (label) => `${label}不能为空`,

@@ -224,6 +224,7 @@ const CASES = [
   //   与关少了（开关被改回 true ⇒ 账单又能落库）。
   { key: 'check_bill_import_gate', rel: 'tools/check_bill_import_gate.js' },  // 28 条
   { key: 'check_hub_guide', rel: 'tools/check_hub_guide.js' },  // 17 条（R263：枢纽页三步走/分层/空状态；G2 空状态严格 === 0 + G4 位置不变式）
+  { key: 'check_export_delivery', rel: 'tools/check_export_delivery.js' },  // 25 条（R265：导出投递；A2 SheetJS 真 xlsx + A6 依赖缺失响亮失败 + B2 OPENABLE 恰 7 值 + B5/B6 showMenu 与 fail 兜底 + C 文案三处齐）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

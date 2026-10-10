@@ -128,6 +128,8 @@
   </view>
 
   <button class="btn ghost" bindtap="onExport">{{t.exportBtn}}</button>
+  <!-- R265：用户反馈「点了导出只看到『导出完成』，不知道什么格式、去哪看」⇒ 常驻一行说明 -->
+  <view class="ind-note">{{t.exportHint}}</view>
 </view>
 
 <!-- 修 1：空态（r 为 null：无账本或接口异常；中性表述 + 去录入出口） -->

@@ -86,4 +86,6 @@
   <view class="ops-row">
     <button class="btn ghost" style="flex:1;margin-top:24rpx;" bindtap="onExport">{{t.export}}</button>
   </view>
+  <!-- R265：导出后「去哪看 / 什么格式」此前完全没提示 ⇒ 常驻一行 -->
+  <view class="muted" style="margin-top:8rpx;">{{t.exportHint}}</view>
 </view>

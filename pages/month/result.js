@@ -8,6 +8,7 @@ const api = require('../../utils/api.js');
 const ui = require('../../utils/ui.js');
 const entitle = require('../../utils/entitlement.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
+const exportFile = require('../../utils/exportFile.js');   // R265：导出投递单源（落盘 + 打开 + 转发兜底）
 
 Page({
   data: {
@@ -39,6 +40,7 @@ Page({
       exportDone: TERMS.exp.exportDone,
       fileSaved: TERMS.exp.fileSaved,
       viewFile: TERMS.exp.viewFile,
+      exportHint: TERMS.expFile.hint,
       resultEmpty: TERMS.uiFix.resultEmpty,
       resultEmptyGoInput: TERMS.uiFix.resultEmptyGoInput,
       subItem: TERMS.ledger.subItem,
@@ -246,35 +248,16 @@ Page({
     try {
       const d = await require('../../utils/api.js').call('exportData', {
         scope: 'm1_report',
-        format: 'excel',
+        // R265：'excel'(=CSV) 在微信里打不开（openDocument 不认 csv）⇒ 改要真 xlsx
+        format: 'xlsx',
         month: this.data.month,
         client_request_id: 'ex_' + Date.now(),
       });
       wx.hideLoading();
-      this.downloadContent(d.filename, d.content, d.format);
-      wx.showToast({ title: this.data.t.exportDone, icon: 'success' });
+      exportFile.deliver(d);   // 落盘 + 打开；打不开时给「转发到微信」兜底（提示/成功态由单源负责）
     } catch (e) {
       wx.hideLoading();
       require('../../utils/api.js').toastError(e);
     }
-  },
-
-  // 前端下载导出内容（Excel=CSV 文本；JSON 原样）
-  downloadContent(filename, content, format) {
-    const api = require('../../utils/api.js');
-    if (format === 'json') {
-      const fs = wx.getFileSystemManager();
-      const tmp = `${wx.env.USER_DATA_PATH}/${filename}`;
-      try { fs.writeFileSync(tmp, JSON.stringify(content)); } catch (e) { api.toastError(e); return; }
-      wx.openDocument({ filePath: tmp, showMenu: true, fail: () => wx.showToast({ title: this.data.t.fileSaved, icon: 'none' }) });
-      return;
-    }
-    // CSV/Excel：wx 无直接下载，落本地文件 + openDocument 预览（v1.0 简版）
-    const fs = wx.getFileSystemManager();
-    const tmp = `${wx.env.USER_DATA_PATH}/${filename}`;
-    try {
-      fs.writeFileSync(tmp, String(content), 'utf8');
-      wx.openDocument({ filePath: tmp, showMenu: true, fileType: 'csv', fail: () => {} });
-    } catch (e) { api.toastError(e); }
   },
 });
