@@ -222,7 +222,7 @@ const CASES = [
   // R259：账单导入开关 —— S 扫描面 4 + A 源码面 14 + B 行为面 6 + C 自失效 4。
   //   失效有**两个方向**：关多了（连形态 A/C 一起关 ⇒ 复盘没输入，页面上看不出）
   //   与关少了（开关被改回 true ⇒ 账单又能落库）。
-  { key: 'check_bill_import_gate', rel: 'tools/check_bill_import_gate.js' },  // 28 条
+  { key: 'check_bill_import_gate', rel: 'tools/check_bill_import_gate.js' },  // 48 条（R271 增 F 段 20 条：跨平台重复导入防护）
   { key: 'check_hub_guide', rel: 'tools/check_hub_guide.js' },  // 17 条（R263：枢纽页三步走/分层/空状态；G2 空状态严格 === 0 + G4 位置不变式）
   { key: 'check_export_delivery', rel: 'tools/check_export_delivery.js' },  // 44 条（R265 导出投递 25 + R266 报表内容 18：E11 摊销在场 / E12~E14 表上加减对得上账 / E15~E16 摊销来源台账 / E18 两个开关状态）
 ];

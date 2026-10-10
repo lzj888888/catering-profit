@@ -36,6 +36,20 @@ const DISH_SHAPES = {
 const IMPORT_PLATFORM_OPTIONS = ['meituan', 'eleme', 'taobao', 'jd_sku', 'other']
   .map((v) => ({ value: v, label: (TERMS.card.reviewPlatformNames[v] || v) }));
 
+// 🔴 R271：平台机器值 → 显示名（**唯一映射处**）。
+//   `reviewPlatformNames` 里不含 'pos'（那是堂食，非外卖平台）⇒ 单独兜底，否则界面会漏出机器值。
+function platformLabel(v) {
+  const p = String(v || '');
+  if (!p) return '';
+  if (p === 'pos') return '堂食';
+  return TERMS.card.reviewPlatformNames[p] || p;
+}
+// 上次导入平台的本地记忆（按店铺隔离；存本机即可，换机/换人 ⇒ 回到未选，不会选错）。
+function lastPlatformKey() {
+  const sid = (typeof getApp === 'function' && getApp().globalData && getApp().globalData.shop_id) || '';
+  return 'last_import_platform_' + sid;
+}
+
 // 🔴 R250：甲级门禁失败**原因**映射（按 `grade.failures[0].code`）。
 //   现场：李老师导入京东「sku对账单下载」（**只有表头的空模板**）⇒ 云函数回
 //   `CHANNEL_EMPTY 未解析到任何数据行`，而界面只有一句「门禁未通过，已阻断导入」
@@ -161,6 +175,12 @@ Page({
       // R259：账单暂停态文案（第三处登记 —— 漏映射 ⇒ 页面渲染成**空白**且零报错，R124 同族）
       importBillPaused: TK.importBillPaused,
       importBillPausedHint: TK.importBillPausedHint,
+      // R271：跨平台重复导入防护 + 回执/暂停态说人话
+      importDupTitle: TK.importDupTitle,
+      importDupBody: TK.importDupBody,
+      importDupFix: TK.importDupFix,
+      importSuccessPlat: TK.importSuccessPlat,
+      importBillRecognized: TK.importBillRecognized,
       // v1.7 形态 C（外卖商品销量）：平台机器判不出 ⇒ 必须选平台
       importShapeCHint: TK.importShapeCHint,
       importPickPlatform: TK.importPickPlatform,
@@ -214,6 +234,13 @@ Page({
     importPlatformChoiceLabel: '',      // picker 显示名
     importZeroAmountQty: [],            // 预览：零元行（v1.7 C-5）
     importPlatformMissing: false,       // 预览期平台必空（云函数回该标志）⇒ 不据此禁用「确认导入」
+    // ===== R271：跨平台重复导入防护 =====
+    importDup: null,                    // 云函数回的 { dup, platform, hit, scanned }
+    importDupText: '',                  // 警告正文（js 侧拼好，wxml 不做字符串处理）
+    importDupFixText: '',               // 「改选『X』覆盖」引导句
+    importDupBlock: false,              // 命中 ⇒ 禁用「确认导入」（防销量翻倍）
+    importPlatformLabel: '',            // 账单分支：识别到的平台显示名（暂停态要"说清认成了什么"）
+    importBillRecognizedText: '',       // 账单分支：「识别到：X · N 行 · M月」（暂停态露出来，别只说"打磨中"）
   },
 
   onLoad() { this.load(); },
@@ -474,7 +501,17 @@ Page({
         importPlatformIndex: -1,
         importPlatformChoice: '',
         importPlatformChoiceLabel: '',
+        // 🔴 R271：形态 C 默认带上「上次用的平台」（老板每月导一次，不让他每次都重新想）。
+        //   ⚠️ 只是**预选**，picker 里看得见、可改；不是静默替他选。
+        importPlatformIndex: isC ? this.savedPlatformIndex() : -1,
+        importPlatformChoice: (isC && this.savedPlatformIndex() >= 0)
+          ? (IMPORT_PLATFORM_OPTIONS[this.savedPlatformIndex()] || {}).value : '',
+        // 账单分支：把"这张表被认成什么了"说清楚（平台 + 行数 + 月份）⇒ 老板知道该换哪种表
+        importPlatformLabel: platformLabel(d.platform),
+        importBillRecognizedText: (!isC && p && p.totals) ? this.buildRecognizedText(d.platform, p) : '',
       });
+      // 预选了平台 ⇒ 立刻查一次重复（不等点「确认导入」才报错）
+      if (isC && this.data.importPlatformChoice) this.refreshDup();
     } catch (e) {
       wx.hideLoading();
       this.setData({ importing: false });
@@ -490,7 +527,64 @@ Page({
       importPlatformIndex: i,
       importPlatformChoice: opt ? opt.value : '',
       importPlatformChoiceLabel: opt ? opt.label : '',
+      // 换平台 ⇒ 先清掉上一次的重复判定（避免残留旧结论把按钮一直禁用）
+      importDup: null, importDupText: '', importDupFixText: '', importDupBlock: false,
     });
+    if (opt && opt.value) this.refreshDup();
+  },
+
+  // ===== R271：跨平台重复导入防护 =====
+
+  // 本机记忆的上次平台（返回 picker 下标；没记过 ⇒ -1）
+  savedPlatformIndex() {
+    try {
+      const v = wx.getStorageSync(lastPlatformKey());
+      if (!v) return -1;
+      for (let i = 0; i < IMPORT_PLATFORM_OPTIONS.length; i += 1) {
+        if (IMPORT_PLATFORM_OPTIONS[i].value === v) return i;
+      }
+    } catch (e) { /* 读不到 ⇒ 当没记过 */ }
+    return -1;
+  },
+
+  // 账单暂停态的「识别到：X · N 行 · M月」整句（wxml 不做字符串拼接 ⇒ js 侧拼好）
+  buildRecognizedText(platform, p) {
+    const plat = platformLabel(platform) || '未知平台';
+    const rows = (p && p.totals && p.totals.rowCount != null) ? p.totals.rowCount : 0;
+    const months = ((p && p.months) || []).join('、');
+    return (TERMS.ledger.takeaway.importBillRecognized || '')
+      .replace('{plat}', plat).replace('{rows}', String(rows)).replace('{months}', months || '-');
+  },
+
+  // 选完平台后**立即**查一次「这批数据是不是已经用别的平台导过」。
+  //   · 为什么不在点「确认导入」时才拦：那时老板已经走完流程才被弹回，体验差；
+  //     现在改成选完平台就提示，并**直接禁用按钮**，他只需把平台改回原来的即可。
+  //   · 云函数 fail 的 msg 会被 `api.call` 覆盖成 code→i18n 通用文案（见 utils/api.js:47）
+  //     ⇒ 人话必须走**预览通道**（ok 的 data）回来，这里拿得到。
+  async refreshDup() {
+    const fileID = this.data.importFileID;
+    const platform = this.data.importPlatformChoice;
+    if (!fileID || !platform || this.data.importShape !== DISH_SHAPES.C) return;
+    try {
+      const d = await api.call('importSalesBill', { fileID, platform, confirm: false });
+      const dup = d && d.dup;
+      if (dup && dup.dup) {
+        const oldLabel = platformLabel(dup.platform) || '另一个平台';
+        const curLabel = platformLabel(platform) || '当前平台';
+        this.setData({
+          importDup: dup,
+          importDupText: (TERMS.ledger.takeaway.importDupBody || '')
+            .replace('{old}', oldLabel).replace('{n}', String(dup.hit)).replace('{cur}', curLabel),
+          importDupFixText: (TERMS.ledger.takeaway.importDupFix || '').replace('{old}', oldLabel),
+          importDupBlock: true,
+        });
+      } else {
+        this.setData({ importDup: dup || null, importDupText: '', importDupFixText: '', importDupBlock: false });
+      }
+    } catch (e) {
+      // 查重复失败 ⇒ **不阻断导入**（这只是预防性提示，不能反过来变成新的卡点）
+      this.setData({ importDup: null, importDupText: '', importDupFixText: '', importDupBlock: false });
+    }
   },
 
   // 用户确认 → importSalesBill(confirm=true) 落库
@@ -523,9 +617,15 @@ Page({
       //   · dishreview **不是 tabBar 页**（tabBar = 核算 / 配方 / 我的）⇒ 必须 `navigateTo`。
       //   · 正文**刻意不带条数**：幂等重放分支是 `return ok(prior)`，prior **不含 `written`**
       //     ⇒ 若写成「已写入 {n} 条」，重复导入时会渲染「已写入 0 条」= 把"重导"说成"没导进去"。
+      // 🔴 R271：记住本次平台（下次预选），并在回执里**说清是按哪个平台落库的**
+      //   —— 此前回执只说"导入完成"，老板回头看到复盘页某个平台下有数据，对不上自己刚才选的啥。
+      try { if (platform) wx.setStorageSync(lastPlatformKey(), platform); } catch (e) { /* 存不了不影响主流程 */ }
+      const platName = platformLabel(platform) || '';
       wx.showModal({
         title: TK.importSuccess,
-        content: TK.importSuccessGo,
+        content: platName
+          ? (TERMS.ledger.takeaway.importSuccessPlat || '').replace('{name}', platName)
+          : TK.importSuccessGo,
         confirmText: TK.importGoReview,
         cancelText: TK.importGoLater,
         success: (m) => { if (m.confirm) wx.navigateTo({ url: '/pages/m3/dishreview/index' }); },

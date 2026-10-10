@@ -179,7 +179,12 @@
       <!-- 🔴 确认按钮**不看 grade.pass 里的 platform 项**（云函数预览期已剔掉它）：形态 C 的
            平台由用户在下面 picker 里选，若这里按 grade 拦，picker 与按钮同屏却永远点不到 = 死锁。
            未选平台时按钮**可见但禁用**（disabled 绑定 importPlatformChoice），提示语在按钮下方。 -->
-      <button class="btn primary" wx:if="{{!importGrade || importGrade.pass}}" style="margin-top:24rpx;" disabled="{{!importPlatformChoice}}" bindtap="onConfirmImport">{{t.importConfirm}}</button>
+      <!-- 🔴 R271：命中「跨平台重复」⇒ 禁用确认按钮（同一份表用两个平台各导一次会翻倍）。
+           不提供"仍然导入"出口：留后门等于让"随手选平台"继续发生；正解是改回原平台覆盖。 -->
+      <button class="btn primary" wx:if="{{!importGrade || importGrade.pass}}" style="margin-top:24rpx;" disabled="{{!importPlatformChoice || importDupBlock}}" bindtap="onConfirmImport">{{t.importConfirm}}</button>
+      <view class="warn" wx:if="{{importDupBlock}}">{{t.importDupTitle}}</view>
+      <view class="muted" wx:if="{{importDupText}}">{{importDupText}}</view>
+      <view class="muted" wx:if="{{importDupFixText}}">{{importDupFixText}}</view>
       <!-- R234/J4d：本句 17 字 —— ⚠️ **保持平铺**（<18 字分层线下）。
            它是「确认导入」按钮**紧下方**的操作提示，用户此刻正要动手 ⇒ 必须一眼可见。 -->
       <view class="hint" wx:if="{{!importGrade || importGrade.pass}}">{{t.importPickPlatformHint}}</view>
@@ -194,6 +199,9 @@
     <view class="card2" wx:elif="{{importPreview}}">
       <view wx:if="{{!billImportOn && !importShape}}">
         <view class="warn">{{t.importBillPaused}}</view>
+        <!-- 🔴 R271：把"这张表被认成了什么"说清楚 —— 只说"打磨中"老板不知道该换哪张表，
+             会误以为是"京东不行"（真实判据是：表里有菜品/商品行就能导，只有订单号金额的就是账单）。 -->
+        <view class="muted" wx:if="{{importBillRecognizedText}}">{{importBillRecognizedText}}</view>
         <view class="muted">{{t.importBillPausedHint}}</view>
       </view>
       <block wx:if="{{billImportOn || !!importShape}}">

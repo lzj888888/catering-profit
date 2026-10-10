@@ -654,6 +654,64 @@ function parseDishSalesC(sheetRows, opts) {
   return { shape: DISH_SHAPES.C, rows: out, groups, totals, nonInt, zeroAmountQty, unmatched };
 }
 
+// ===== R271：跨平台重复导入检测（防「同一份表用两个平台各导一次 ⇒ 销量翻倍」）=====
+//
+// 🔴 为什么必须拦（不是"讲究"，是真错账）：
+//   落库主键 `_id = SALE_<shop>_<platform>_<biz_date>_<seq>` **含 platform**。
+//   同一份外卖商品销量表 先以「美团」导一次、再以「淘宝闪购」导一次 ⇒ 两组 _id 不同 ⇒
+//   **互不覆盖** ⇒ 同一道菜的销量、营收**翻倍**；更要命的是它们分散在两个平台分组里，
+//   单看任一组都"像对的" ⇒ 老板极难发现（本仓红线：静默错账 > 看不到数）。
+//
+// 🔴 判据为什么要求「日期 + 菜名 + 销量 + 金额」**逐行全等**，而不是只看日期/菜名重合：
+//   老板常**同时做美团与淘宝闪购**，两张商品销量表 ① 日期区间必然重叠 ② 菜名也可能同名
+//   （"黄喉"两个平台都卖）⇒ 只按日期或菜名判会**误杀合法的多平台真数据**（把真数据挡在门外
+//   = 另一种错）。而"逐行销量与金额都一样"几乎只可能是**同一份表导了两次**。
+//   ⇒ 宁可漏判（样本太小不判），不可误杀；故设三道下限（扫描数 / 命中数 / 命中率）。
+const DUP_MIN_SCAN = 20;   // 扫描行数下限：少于 20 行不判（样本太小，比率不稳定）
+const DUP_MIN_HIT = 10;    // 命中行数下限：至少 10 行全等才判重复
+const DUP_RATE = 0.8;      // 命中率阈值
+
+/**
+ * 判断"这批待导入的销量行，是不是已经用**别的平台**导过一次"。
+ * @param {Array<{platform:string,biz_date:string,dish_key:string,qty:number,amount:number}>} existing 库内已有行（同店、已排除软删）
+ * @param {Array<{biz_date:string,dish_key:string,qty:number,amountFen:number}>} incoming 本次待导入行（形态 C groups[].rows 扁平化）
+ * @param {string} platform 本次选择的平台（同平台的行会被跳过 —— 那是幂等覆盖，不是重复）
+ * @returns {{dup:boolean, platform:string, hit:number, scanned:number, rate:number}}
+ *          platform = 命中最多的那个已有平台（'' 表示没命中）
+ */
+function detectDupImport(existing, incoming, platform) {
+  const self = String(platform || '');
+  const idx = {};
+  (existing || []).forEach((e) => {
+    if (String(e.platform || '') === self) return;      // 同平台 ⇒ 幂等覆盖，不算重复
+    const k = String(e.biz_date || '') + '|' + String(e.dish_key || '');
+    (idx[k] = idx[k] || []).push(e);
+  });
+  let hit = 0;
+  let scanned = 0;
+  const byPlatform = {};
+  (incoming || []).forEach((r) => {
+    scanned += 1;
+    const k = String(r.biz_date || '') + '|' + String(r.dish_key || '');
+    const cand = idx[k] || [];
+    for (let i = 0; i < cand.length; i += 1) {
+      const e = cand[i];
+      if (Number(e.qty) === Number(r.qty) && Number(e.amount) === Number(r.amountFen)) {
+        hit += 1;
+        const p = String(e.platform || '');
+        byPlatform[p] = (byPlatform[p] || 0) + 1;
+        break;
+      }
+    }
+  });
+  let topPlatform = '';
+  let top = 0;
+  Object.keys(byPlatform).forEach((p) => { if (byPlatform[p] > top) { top = byPlatform[p]; topPlatform = p; } });
+  const rate = scanned > 0 ? (hit / scanned) : 0;
+  const dup = scanned >= DUP_MIN_SCAN && hit >= DUP_MIN_HIT && rate >= DUP_RATE;
+  return { dup: dup, platform: topPlatform, hit: hit, scanned: scanned, rate: rate };
+}
+
 module.exports = {
   bufferToMatrix, detectPlatform, guessHeader, parseBillMatrix, checkGradeA, SALES_SCHEMA, toNum,
   pickSheet, normDate, PLATFORM_PROFILE,   // R245：P4 按签名找 sheet / 日期归一
@@ -663,6 +721,7 @@ module.exports = {
   DISH_SHAPES, DISH_A_STRUCT, normalizeDishName, detectDishShape, detectDishMatrix,
   DISH_C_ALIAS, canonDishCHeader, findDishCCol,   // R245 P7：形态 C 列名别名单源（守卫用）
   extractBizDate, dishRefId, saleDocId, parseDishSales,
+  detectDupImport, DUP_MIN_SCAN, DUP_MIN_HIT, DUP_RATE,   // R271：跨平台重复导入检测（防销量翻倍）
   normalizeDate, parseDishSalesC,   // v1.7 形态 C（外卖商品销量）
   BILL_IMPORT_ENABLED,              // R259：账单导入开关（前端 utils/featureFlags.js 同源同值）
 };

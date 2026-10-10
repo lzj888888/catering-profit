@@ -23,8 +23,32 @@ const {
   PLATFORM_AMBIGUOUS,   // R253：多平台同时命中哨兵 —— 🔴 必须 import，truthy 陷阱见 :73 附近
   DISH_SHAPES, detectDishMatrix, parseDishSales, parseDishSalesC, dishRefId, saleDocId,
   BILL_IMPORT_ENABLED,   // R259：账单导入开关（只作用账单，形态 A/B/C 不受影响）
+  detectDupImport,       // R271：跨平台重复导入检测（纯函数，零 IO ⇒ 守卫/探针可直测）
 } = require('./service');
 const { validateInput } = require('./validate');
+
+// ===== R271：跨平台重复导入检测（查库版）=====
+// 为什么要单独一层：detectDupImport 是**零 IO 纯函数**（可直测），IO 全隔离在本函数内。
+// ⚠️ 走 `da.listAll`（与读侧 getDishReview 同一入口），不自己拼 where —— 分页/软删/上限口径同源。
+// 🔴 只在**已选平台**时调用：未选平台（预览首帧）无法判断"跟谁重复"，返回 null（不是"没重复"）。
+async function detectDupFromDb(shopId, platform, groups) {
+  const da = common.dataAdapter.makeAdapter(db);
+  // 🔴 只查**本次涉及的日期**：全店全量 listAll 在行数多时可达数秒，而本检测每批都要跑一次。
+  //   日期集合来自表内 biz_date（不是今天），跨月导入也不会漏。
+  const dates = [];
+  (groups || []).forEach((g) => { if (g.bizDate && dates.indexOf(g.bizDate) < 0) dates.push(g.bizDate); });
+  const where = { shop_id: shopId };
+  if (dates.length) where.biz_date = db.command.in(dates);
+  const res = await da.listAll('external_sales_daily', where);
+  const existing = (res && res.data) || [];
+  const incoming = [];
+  (groups || []).forEach((g) => {
+    (g.rows || []).forEach((r) => {
+      incoming.push({ biz_date: g.bizDate, dish_key: r.dishKey, qty: r.qty, amountFen: r.amountFen });
+    });
+  });
+  return detectDupImport(existing, incoming, platform);
+}
 
 exports.main = async (event) => {
   const ctx = cloud.getWXContext();
@@ -306,6 +330,9 @@ async function handleFormCImport({ shopId, userId, clientRequestId, dishDetect, 
       // 预览期门禁：剔掉 platform 项（平台的阻断留给 confirm；见上方注释）
       grade: platform ? grade : gradeNonPlatform,
       platform_missing: !platform,
+      // 🔴 R271：跨平台重复检测结果（前端据此**在点确认之前**就警告，见 utils/api.js 的 msg 覆盖说明）。
+      //   未选平台 ⇒ null（不是"没重复"）；前端只在 platform 有值后才读它。
+      dup: (platform ? await detectDupFromDb(shopId, platform, parsed.groups) : null),
       preview: {
         groups: parsed.groups,
         totals: parsed.totals,
@@ -320,6 +347,19 @@ async function handleFormCImport({ shopId, userId, clientRequestId, dishDetect, 
   // 🔴 落库：platform 必填，缺值 fail（不许 fallback 'other' 静默入库）
   if (!platform) return fail(ERROR_CODES.INVALID_PARAM, '请选择外卖平台');
   if (!grade.pass) return fail(ERROR_CODES.INVALID_PARAM, '甲级门禁未通过，已阻断落库');
+
+  // 🔴 R271：跨平台重复导入 ⇒ **硬阻断落库**（防同一份表用两个平台各导一次 ⇒ 销量翻倍）。
+  //   前端已在预览期据此禁用「确认导入」并引导改回原平台；本行是**防御性兜底**
+  //   （旧版本客户端 / 越权直调）。⚠️ 不提供 force 参数：留后门等于让"随手选平台"继续发生。
+  //   正解永远是"改用原平台重导"（同平台同 _id ⇒ 覆盖，不会翻倍）。
+  if (confirm) {
+    const dup = await detectDupFromDb(shopId, platform, parsed.groups);
+    if (dup && dup.dup) {
+      return fail(ERROR_CODES.FORBIDDEN,
+        '这批数据已经用另一个平台导过一次了（' + dup.hit + ' 行销量与金额完全一致）。'
+        + '再导一次会变成两份、销量翻倍。请改用原平台重新导入（会覆盖原来的那一份）。');
+    }
+  }
 
   // 🔒 幂等（重放形态）：命中即返回首次结果、不重复写入。
   const prior = await common.idempotency.findPriorResult(db, shopId, clientRequestId);

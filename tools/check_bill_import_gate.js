@@ -199,5 +199,118 @@ check('C-③ 影子：把「真账单也判成内容分支」的假实现 ⇒ �
   fakeAlwaysOff('') !== contentOf('', off), `假=${fakeAlwaysOff('')} 真=${contentOf('', off)}`);
 check('C-④ 断言数下界 ≥ 20（防删段后恒绿）', (pass + failN) >= 20, `本段前累计 ${pass + failN} 条`);
 
+console.log('\n===== F R271 跨平台重复导入防护（防「同一份表用两个平台各导一次 ⇒ 销量翻倍」）=====');
+// 🔴 为什么守：落库主键 SALE_<shop>_<platform>_<biz_date>_<seq> **含 platform** ⇒
+//   同一份外卖商品销量表先以「美团」导、再以「淘宝闪购」导 ⇒ 两组 _id 不同、互不覆盖 ⇒
+//   同一道菜销量/营收**翻倍**，且分散在两个平台分组里，老板单看任一组都"像对的"（静默错账）。
+// 🔴 判据为什么必须「日期+菜名+销量+金额」逐行全等：老板常同时做美团与淘宝闪购，
+//   两张表日期必然重叠、菜名也可能同名 ⇒ 只按日期/菜名判会**误杀合法的多平台真数据**。
+//   F-④ 专门守这条"不误杀"，是本段最值钱的一条；C-⑤ 用退化版判据证明它有分辨力。
+const Module_r271 = require('module');
+const origLoad_r271 = Module_r271._load;
+Module_r271._load = function (req) { if (req === 'xlsx') return {}; return origLoad_r271.apply(this, arguments); };
+let SVC_r271 = null;
+const svcStub_r271 = true;   // 🔴 明示：require 云端 service.js 时 xlsx 走**空桩**（仓内无 node_modules，只为取纯函数）
+try { SVC_r271 = require(P.fnSvc); } catch (e) { SVC_r271 = null; } finally { Module_r271._load = origLoad_r271; }
+const dd_r271 = (SVC_r271 && typeof SVC_r271.detectDupImport === 'function') ? SVC_r271.detectDupImport : null;
+check('F-① 纯函数 detectDupImport 可从云端 service.js 加载（xlsx 走空桩，仅取纯函数）',
+  !!dd_r271, dd_r271 ? ('可加载，xlsx 用桩=' + svcStub_r271) : '加载失败');
+
+const mkRows_r271 = (n, dq, da) => {
+  const out = [];
+  for (let i = 0; i < n; i += 1) {
+    out.push({ biz_date: '2026-10-0' + (i % 7 + 1), dish_key: 'dish_' + i,
+      qty: 10 + i + (dq || 0), amountFen: 1000 + i * 10 + (da || 0) });
+  }
+  return out;
+};
+const asEx_r271 = (rows, p) => rows.map((r) => ({ platform: p, biz_date: r.biz_date, dish_key: r.dish_key, qty: r.qty, amount: r.amountFen }));
+const A_r271 = mkRows_r271(30, 0, 0);
+check('F-② 行为：同平台重导 ⇒ 不判重复（幂等覆盖，本就该放行）',
+  !!dd_r271 && dd_r271(asEx_r271(A_r271, 'taobao'), A_r271, 'taobao').dup === false);
+const rDup_r271 = dd_r271 ? dd_r271(asEx_r271(A_r271, 'taobao'), A_r271, 'meituan') : null;
+check('F-③ 行为：跨平台同数据 ⇒ 判重复，且指回原平台 taobao',
+  !!rDup_r271 && rDup_r271.dup === true && rDup_r271.platform === 'taobao',
+  rDup_r271 ? ('dup=' + rDup_r271.dup + ' platform=' + rDup_r271.platform + ' hit=' + rDup_r271.hit) : 'n/a');
+check('F-④ 🔴 行为：真·多平台数据（销量/金额逐行不同）⇒ 不误杀',
+  !!dd_r271 && dd_r271(asEx_r271(A_r271, 'taobao'), mkRows_r271(30, 5, 700), 'meituan').dup === false);
+check('F-⑤ 行为：样本 < ' + (SVC_r271 ? SVC_r271.DUP_MIN_SCAN : 20) + ' 行 ⇒ 不判（宁可漏判）',
+  !!dd_r271 && dd_r271(asEx_r271(A_r271.slice(0, 10), 'taobao'), A_r271.slice(0, 10), 'meituan').dup === false);
+const half_r271 = A_r271.map((x, i) => (i % 2 === 0 ? x : Object.assign({}, x, { qty: x.qty + 1 })));
+check('F-⑥ 行为：命中率约 0.5 ⇒ 不判（阈值 ' + (SVC_r271 ? SVC_r271.DUP_RATE : 0.8) + '）',
+  !!dd_r271 && dd_r271(asEx_r271(A_r271, 'taobao'), half_r271, 'meituan').dup === false);
+check('F-⑦ 行为：空库 ⇒ 不判（首次导入永远放行）',
+  !!dd_r271 && dd_r271([], A_r271, 'meituan').dup === false);
+
+const idxCode_r271 = fs.readFileSync(P.fnIdx, 'utf8');
+const svcCode_r271 = fs.readFileSync(P.fnSvc, 'utf8');
+const jsCode_r271 = fs.readFileSync(P.pageJs, 'utf8');
+const wxmlCode_r271 = fs.readFileSync(P.pageWxml, 'utf8');
+const termsCode_r271 = fs.readFileSync(P.terms, 'utf8');
+const strip_r271 = (c) => c.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|\s)\/\/[^\n]*/g, '$1');
+const idxStr_r271 = strip_r271(idxCode_r271);
+const jsStr_r271 = strip_r271(jsCode_r271);
+
+check('F-⑧ 云函数：预览返回 dup 字段（人话只能走预览通道 —— fail 的 msg 会被前端 msgOf 覆盖）',
+  /dup:\s*\(platform \? await detectDupFromDb/.test(idxStr_r271));
+const guardAt_r271 = idxStr_r271.indexOf('if (confirm) {');
+// 🔴 基准必须取 confirm 阻断**之后**的首个写库：全文首个写库属于形态 A（堂食）分支，
+//    与形态 C 的阻断无关 —— 首版拿它当基准 ⇒ 误红（我方判据错，不是代码错）。
+const writeAt_r271 = idxStr_r271.indexOf("db.collection('external_sales_daily').doc(", guardAt_r271);
+check('F-⑨ 🔴 云函数：confirm 分支有 dup 硬阻断，且**早于首个写库**（晚了 = 先写后拒）',
+  guardAt_r271 > 0 && writeAt_r271 > 0 && guardAt_r271 < writeAt_r271 && /dup && dup\.dup/.test(idxStr_r271),
+  'confirm 阻断 @' + guardAt_r271 + ' < 写库 @' + writeAt_r271);
+check('F-⑩ 🔴 不提供 force 后门（留后门 = 让"随手选平台"继续发生；正解是改回原平台覆盖）',
+  !/force/i.test(idxStr_r271.slice(0, writeAt_r271 > 0 ? writeAt_r271 + 400 : idxStr_r271.length)));
+check('F-⑪ 纯函数引用三道下限常量（防"只看日期"式退化）',
+  /scanned >= DUP_MIN_SCAN/.test(svcCode_r271) && /hit >= DUP_MIN_HIT/.test(svcCode_r271) && /rate >= DUP_RATE/.test(svcCode_r271));
+// 🔴 判据取**语义级**（disabled 表达式里同时含两个键），不钉顺序/完整串 ——
+//    钉死 `!importPlatformChoice || importDupBlock` 会把「调换两侧」的等价改写误判成缺陷（反向伤害第二型）。
+const dis_r271 = (wxmlCode_r271.match(/disabled="\{\{([^}]*)\}\}"[^>]*bindtap="onConfirmImport"/g) || []).join(' ');
+check('F-⑫ 前端：命中 ⇒ 确认按钮被禁用（disabled 表达式同时含 importPlatformChoice 与 importDupBlock）',
+  dis_r271.indexOf('importPlatformChoice') >= 0 && dis_r271.indexOf('importDupBlock') >= 0,
+  dis_r271 ? dis_r271.slice(0, 90) : '未匹配到确认按钮的 disabled');
+// 🔴 不能只判「全文出现过 refreshDup」：页面有两处调用（选平台后 / 预选上次平台后），
+//    删掉**选平台后**那一处仍满足"出现过" ⇒ 变异 M5 首跑**没转红**（我方判据漏洞）。
+//    与本仓 R266「只守『调用了读库 API』不够，还要守『读到的东西传给了谁』」同族：
+//    静态判据必须钉到**具体调用点所属函数**，而不是"文件里有这串字"。
+const pickFnIdx_r271 = jsStr_r271.indexOf('onImportPlatformPick(e)');
+const pickFnEnd_r271 = jsStr_r271.indexOf('\n  },', pickFnIdx_r271);
+const pickBody_r271 = (pickFnIdx_r271 > 0 && pickFnEnd_r271 > pickFnIdx_r271)
+  ? jsStr_r271.slice(pickFnIdx_r271, pickFnEnd_r271) : '';
+check('F-⑬ 前端：选完平台立即查重复（必须在 onImportPlatformPick 函数体内调用 refreshDup）',
+  pickBody_r271.indexOf('refreshDup') >= 0,
+  pickBody_r271 ? ('函数体 ' + pickBody_r271.length + ' 字符，含 refreshDup=' + (pickBody_r271.indexOf('refreshDup') >= 0)) : '未定位到该函数');
+check('F-⑭ 前端：三句 dup 文案都渲染（标题 / 正文 / 改选引导）',
+  wxmlCode_r271.indexOf('t.importDupTitle') >= 0
+  && wxmlCode_r271.indexOf('{{importDupText}}') >= 0
+  && wxmlCode_r271.indexOf('{{importDupFixText}}') >= 0);
+check('F-⑮ 前端：回执带平台名（此前只说"导入完成"，老板对不上自己选的啥）',
+  /importSuccessPlat/.test(jsStr_r271) && /importSuccessPlat/.test(termsCode_r271));
+check('F-⑯ 前端：平台显示名走术语单源，且 pos 有兜底（否则界面漏出机器值）',
+  /reviewPlatformNames\[p\] \|\| p/.test(jsStr_r271) && /p === 'pos'/.test(jsStr_r271));
+check('F-⑰ 账单暂停态：把"这张表被认成什么了"露出来（平台+行数+月份 ⇒ 老板知道换哪种表）',
+  /importBillRecognizedText/.test(wxmlCode_r271) && /buildRecognizedText/.test(jsStr_r271)
+  && /importBillRecognized/.test(termsCode_r271));
+const keys_r271 = ['importDupTitle', 'importDupBody', 'importDupFix', 'importSuccessPlat', 'importBillRecognized'];
+// 🔴 别用字符串拼正则：`'\s'` 在 JS 字符串里等于 `'s'` ⇒ 判据静默失配（首版误红的真因）。
+const missing_r271 = keys_r271.filter((k) => jsStr_r271.indexOf(k + ': TK.' + k) < 0);
+check('F-⑱ 页面 t 登记齐 5 个新键（漏登记 ⇒ 界面静默空白，本仓已踩过）',
+  missing_r271.length === 0, missing_r271.length ? ('缺 ' + missing_r271.join(',')) : '5/5');
+// C-⑤ 影子：把判据退化成"只看日期重叠" ⇒ 真·多平台样本会被误判 ⇒ 证明 F-④ 的判据有分辨力
+const shadow_r271 = (existing, incoming, self) => {
+  const idx = {};
+  (existing || []).forEach((e) => {
+    if (String(e.platform || '') === String(self || '')) return;
+    (idx[String(e.biz_date)] = idx[String(e.biz_date)] || []).push(e);
+  });
+  let hit = 0;
+  (incoming || []).forEach((r) => { if (idx[String(r.biz_date)]) hit += 1; });
+  return { dup: (incoming || []).length >= 20 && hit >= 10 && (hit / (incoming || []).length) >= 0.8 };
+};
+check('C-⑤ 🔴 影子：退化成"只看日期重叠"的判据会**误杀**真·多平台数据（证明 F-④ 判据有分辨力）',
+  shadow_r271(asEx_r271(A_r271, 'taobao'), mkRows_r271(30, 5, 700), 'meituan').dup === true);
+check('F-⑲ 断言数下界 ≥ 17（防删段后恒绿）', (pass + failN) >= 17, '本段前累计 ' + (pass + failN) + ' 条');
+
 console.log(`\n===== R259 账单导入开关守卫：${pass} 通过 / ${failN} 失败 =====`);
 process.exit(failN === 0 ? 0 : 1);

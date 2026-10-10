@@ -1,0 +1,11 @@
+R271 门禁 export-delivery 定性：单跑反证
+时间：2026-10-10 20:05:41
+
+--- 门禁存档中的那条 ---
+6411:===== [export-delivery] tools/check_export_delivery.js =====
+6412:  [export-delivery] ❌ FAIL (EBUSY)
+
+--- 单跑（NODE_PATH 带 xlsx 真包）---
+rc=0
+
+===== R265 导出投递守卫结果：44 通过 / 0 失败 =====
