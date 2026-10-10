@@ -217,7 +217,12 @@ check('A7 唯一声明处不扩散（其它 .md 同行不得同时自称单源 +
 //   🔴 根因（R212 挖出的双方盲区）：全仓 `makeRateLimiter` 只命中「定义 + 自测」，**零业务调用点**
 //      ⇒ 豆包点名的三个高危写接口当时限流恒不触发，而 A1–A7 全绿（它们守的是"阈值数字对不对"）。
 //      与 R182「上限类判据扫描面一空即恒绿」同族：判据必须能区分「真没接线」与「压根没扫到」。
-const RL_MUST = ['saveCostCard', 'syncCostCard'];   // 必须接线的写入口（含复制/重算；复制走 saveCostCard）
+// ⚠️ R260 补记：R255 给 saveDishMapping 接了限流（模块级 RATE_STORE + await 调用 + limited→fail），
+//   **但没把它登记进本名单** ⇒ A8-④ 长期判红。之所以四轮门禁全绿，是因为历轮的
+//   「增量刷缓存」用**后缀清单**选键，而本文件不在清单里 ⇒ 一直读的是 R255 之前的
+//   过期缓存（R250 类型①）。R260 改成**全刷 node 键**后当场暴露。
+//   ⇒ 教训：登记类名单与「接线」是两件事，接线了不等于登记了。
+const RL_MUST = ['saveCostCard', 'syncCostCard', 'saveDishMapping'];   // 必须接线的写入口（含复制/重算；复制走 saveCostCard）
 const RL_EXEMPT = [];                               // 有意不接的（如纯计算锚点）在此登记并写理由；当前无
 const CF_MIN = 30;                                  // 扫描面下界（云函数 index.js 数；实测约 42）
 
