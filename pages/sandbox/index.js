@@ -602,6 +602,15 @@ Page({
         this.refreshStick();
         return;
       }
+      // 🔴 round273：与 seats **同源的坑** —— 营业天数没填 ⇒ 发 0 ⇒ 引擎 fail-closed 拒的是契约名
+      //   `open_days`（「反推模式下 open_days（每月营业天数）必须是 1~31 的整数」），用户只看到
+      //   一句「填写错误」，根本不知道缺哪项。⇒ 同样在发请求前拦一步，给一句人话。
+      //   ⚠️ 只动**前端引导**，后端 fail-closed 语义不动（由 check_m2_reverse_rent C-③ 钉住）。
+      if (this.validDaysNow() <= 0) {
+        this.setData({ loading: false, dirty: false, reverseResult: null, calcError: M.needOpenDays });
+        this.refreshStick();
+        return;
+      }
       // 固定支出剔除 rent（页面已隐藏房租行，此处保险再滤一层）
       const fixedItems = this.data.fixedRows
         .filter((r) => r.key !== 'rent')
@@ -1265,6 +1274,11 @@ Page({
     // 🔴 R237：同 onCalc 的反推分支 —— 桌数为空时不发请求，先给一句人话（引擎报的是契约名 `seats`）。
     if (this.seatsNow() <= 0) {
       this.setData({ loading: false, dirty: false, reverseResult: null, calcError: M.needTables });
+      return;
+    }
+    // 🔴 round273：同上（营业天数没填 ⇒ 发 0 ⇒ 报契约名的「填写错误」）⇒ 拦一步说人话
+    if (this.validDaysNow() <= 0) {
+      this.setData({ loading: false, dirty: false, reverseResult: null, calcError: M.needOpenDays });
       return;
     }
     const p = this.buildPresetParam('reverse');

@@ -956,6 +956,9 @@ const TERMS = {
     tableUnit: '桌',
     // 反推模式缺桌数时的**前置**提示（页面先拦一步；引擎侧那句仍写契约字段名 `seats`，不面向用户）。
     needTables: '先填一下「店里能摆多少张桌子」，才能反推营业额',
+    // 🔴 round273（横向排查同源坑）：营业天数没填同样会发 0 ⇒ 引擎拒的是契约名 `open_days`，
+    //   用户看到的就是一句莫名其妙的「填写错误」。与 needTables 同款：发请求前拦一步，说人话。
+    needOpenDays: '先填一下「一个月打算开门几天」，才能反推营业额',
     pixelEffLabel2: '坪效',
     rentRateLabel2: '目标租金率',
     turnLabel2: '翻台率',
