@@ -195,6 +195,9 @@ Page({
       // 🔴 三处登记的第二处（第一处 terms.js、第三处 index.wxml）：漏登记 ⇒ **渲染空白且零报错**。
       // ⚠️ 判定值不自造：全部读引擎 `indicators` 里 rent 那行的 level（good/ok/warn/bad/na）。
       verdictTitle: M.verdictTitle,
+      verdictHealthTitle: M.verdictHealthTitle,
+      verdictWorstLabel: M.verdictWorstLabel,
+      verdictHealthStrip: M.verdictHealthStrip,
       verdictGood: M.verdictGood,
       verdictOk: M.verdictOk,
       verdictWarn: M.verdictWarn,
@@ -1240,17 +1243,28 @@ Page({
       good: M.verdictNoteGood, ok: M.verdictNoteOk, warn: M.verdictNoteWarn,
       bad: M.verdictNoteBad, na: M.verdictNoteNa,
     };
-    const row = (indTarget || []).filter((x) => x.key === 'rent')[0];
-    if (!row || row.pct == null) {
-      return { level: 'na', levelName: NAME.na, note: NOTE.na, mine: '', band: '' };
+    const rows = indTarget || [];
+    if (!rows.length) {
+      return { level: 'na', levelName: NAME.na, note: NOTE.na, mine: '', band: '', summary: [] };
     }
-    const lv = row.level || 'na';
+    // 🔴 #7（P0-2，round272）：主结论改「综合健康度」—— 取 6 项指标里最差的 level（bad>warn>ok>good），
+    //    不再只判房租，消除「人工/毛利率爆了但结论还绿」的信任坑。判定仍读引擎 level，不自造。
+    const rank = { na: 0, good: 1, ok: 2, warn: 3, bad: 4 };
+    const summary = rows.map((x) => ({
+      key: x.key, name: x.name || x.key, pct: x.pct, level: x.level || 'na',
+      lo: x.lo, hi: x.hi,
+    }));
+    let worst = 'good';
+    summary.forEach((s) => { if (rank[s.level] > rank[worst]) worst = s.level; });
+    // 最该盯的一项 = 最差 level 里的第一项（替代原「只显示房租」），用于 mine/band 展示
+    const worstRow = summary.filter((s) => s.level === worst)[0] || summary[0];
     return {
-      level: lv,
-      levelName: NAME[lv] || '',
-      note: NOTE[lv] || '',
-      mine: String(row.pct) + '%',
-      band: row.lo == null ? '' : row.lo + '~' + row.hi + '%',
+      level: worst,
+      levelName: NAME[worst] || '',
+      note: NOTE[worst] || '',
+      mine: worstRow.pct == null ? '' : String(worstRow.pct) + '%',
+      band: worstRow.lo == null ? '' : worstRow.lo + '~' + worstRow.hi + '%',
+      summary,
     };
   },
 

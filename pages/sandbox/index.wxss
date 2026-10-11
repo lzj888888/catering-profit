@@ -113,6 +113,14 @@
   font-size: 28rpx; color: #4a5b70; line-height: 1.6; padding: 14rpx 20rpx;
   background: #f3f7fb; border-radius: 12rpx; margin-top: 10rpx;
 }
+/* 🔴 #7（P0-2，round272）：主结论卡加「6 项指标体检」条 —— 一眼看出哪项拖后腿。
+   ⚠️ 配色不自造：`.lv-*` 评级色已在 app.wxss 单源，本文件不重复定义。 */
+.verdict-health { margin-top: 14rpx; padding-top: 14rpx; border-top: 1rpx solid #e3e9f0; }
+.vh-cap { font-size: 26rpx; color: #888; display: block; margin-bottom: 8rpx; }
+.vh-item { display: flex; align-items: center; justify-content: space-between; padding: 5rpx 0; }
+.vh-name { font-size: 28rpx; color: #444; }
+.vh-pct { font-size: 28rpx; color: #1e3a5f; font-weight: 600; flex: 1; text-align: center; }
+.vh-lv { font-size: 24rpx; font-weight: 700; padding: 2rpx 16rpx; border-radius: 6rpx; }
 /* L1 引导句：紧贴标题下，说明"哪些该你答、哪些我们替你算" —— 降低第一次进页面的放弃率 */
 .l1-guide { padding: 10rpx 20rpx; }
 

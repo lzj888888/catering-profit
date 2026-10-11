@@ -393,11 +393,11 @@
        放在结果区**第一位**：结论要在用户往下翻之前就看到。 -->
   <view class="card2 verdict-card" id="m2result" wx:if="{{mode === 'forward' && verdict && verdict.level !== 'na'}}">
     <view class="verdict-head">
-      <text class="verdict-title">{{t.verdictTitle}}</text>
+      <text class="verdict-title">{{t.verdictHealthTitle}}</text>
       <text class="verdict-lv lv-{{verdict.level}}">{{verdict.levelName}}</text>
     </view>
     <view class="verdict-row">
-      <text class="verdict-lbl">{{t.verdictRentLabel}}</text>
+      <text class="verdict-lbl">{{t.verdictWorstLabel}}</text>
       <text class="verdict-val">{{verdict.mine}}</text>
     </view>
     <view class="verdict-row">
@@ -405,6 +405,14 @@
       <text class="verdict-val sub">{{verdict.band}}</text>
     </view>
     <view class="verdict-note">{{verdict.note}}</view>
+    <view class="verdict-health">
+      <text class="vh-cap">{{t.verdictHealthStrip}}</text>
+      <view class="vh-item" wx:for="{{verdict.summary}}" wx:key="key">
+        <text class="vh-name">{{item.name}}</text>
+        <text class="vh-pct">{{item.pct == null ? '—' : item.pct + '%'}}</text>
+        <text class="vh-lv lv-{{item.level}}">{{item.level}}</text>
+      </view>
+    </view>
   </view>
 
   <block wx:if="{{mode === 'forward' && result && !result.red_alert}}">
