@@ -146,7 +146,13 @@ function validateInput(event) {
   let validDays = 0;
   if (!isReverse) {
     const vd = src.valid_days;
-    if (vd !== undefined && vd !== null) {
+    // 🔴 round273 修正（李老师真机：打开 M2 / 点「已有铺面」直接报「填写错误」）：
+    //   本项是**选填**（口径白纸黑字写的是「选填 1~31，缺省回退 30」），但前端未填时发的是 0，
+    //   而这里的判断只排除了 undefined/null ⇒ 0 被送进 1~31 校验 ⇒ 整表被打回「填写错误」。
+    //   正解：`0 / null / undefined` **一律视为「没填」**（哨兵值），交由 service 回退 30
+    //   —— 与 service 侧 `const validDays = num0(c.validDays) > 0 ? num0(c.validDays) : 30` 同义。
+    //   ⚠️ 只有**真填了**却越界（如 0.5 / 32 / 负数，除 0 外）才报契约错。
+    if (vd !== undefined && vd !== null && vd !== 0) {
       if (typeof vd !== 'number' || !Number.isInteger(vd) || vd < 1 || vd > 31) {
         return err('valid_days（每月营业天数）必须是 1~31 的整数');
       }

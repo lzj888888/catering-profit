@@ -332,5 +332,17 @@ check('L11 经 validate 全链路：不传 valid_days ⇒ clean=0 ⇒ service �
   !vWd0.error && vWd0.clean.validDays === 0 && calcSandbox(vWd0.clean).break_even_daily_fen === 253333,
   vWd0.error ? `${vWd0.error}` : `clean.validDays=${vWd0.clean.validDays} · daily=${calcSandbox(vWd0.clean).break_even_daily_fen}`);
 
+// 🔴 L12~L13（round273 加固）：钉住「未填 vs 越界」的边界 —— 只改对了一半就会红。
+//   起因：李老师真机「打开 M2 / 点『已有铺面』提示填写错误」。根因＝前端未填时发 `valid_days: 0`，
+//   而 validate 只排除 undefined/null ⇒ 0 被当成越界值 ⇒ 整表被打回（本项其实是**选填**，缺省回退 30）。
+//   L12=「0 必须放行且回退 30」（防再犯）；L13=「真越界仍必须拒」（防把校验整个删掉 ⇒ 假绿）。
+const vWdZero = validateInput(Object.assign({}, wire, { valid_days: 0 }));
+check('L12 经 validate 全链路：未填发 0 ⇒ 不报错、clean=0、service 回退 30（round273 回归）',
+  !vWdZero.error && vWdZero.clean.validDays === 0 && calcSandbox(vWdZero.clean).break_even_daily_fen === 253333,
+  vWdZero.error ? `${vWdZero.error}/${vWdZero.msg}` : `clean.validDays=${vWdZero.clean.validDays} · daily=${calcSandbox(vWdZero.clean).break_even_daily_fen}`);
+const vWd32 = validateInput(Object.assign({}, wire, { valid_days: 32 }));
+check('L13 经 validate 全链路：真填了越界值 32 ⇒ 仍拒（防「放行 0」被误写成「不校验」）',
+  !!vWd32.error, vWd32.error ? `err=${vWd32.error}` : 'no error (BAD)');
+
 console.log(`\n==== calcSandbox M2 v2 自测结果：${pass} 通过 / ${failN} 失败 ====`);
 process.exit(failN === 0 ? 0 : 1);

@@ -946,6 +946,9 @@ Page({
    */
   validDaysNow() {
     const n = Number(this.data.openDaysNum);
+    // 🔴 round273：返回的 0 是**哨兵**（= 没填 / 填了非法值），**不是**「每月营业 0 天」。
+    //   云端 validate 对 0 按「未填」处理（不进 1~31 校验），service 再回退 30 ⇒ 与「选填」口径一致。
+    //   曾在这里返回 0 却被云端当成越界值 ⇒ 用户没动过这项、一点「已有铺面」就整表报「填写错误」。
     if (!Number.isInteger(n) || n < 1 || n > 31) return 0;
     return n;
   },
