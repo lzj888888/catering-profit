@@ -141,6 +141,19 @@ function validateInput(event) {
   const expectedRevenueFen = fen(expRaw, 'expected_revenue_fen');
   if (expectedRevenueFen && expectedRevenueFen.error) return expectedRevenueFen;
 
+  // ---- 正向模式：营业天数（valid_days，选填 1~31，缺省回退 30）----
+  // 🔴 #1（P0-1，round272）：与反向 openDays 口径对齐，消除「正向÷30 / 反向÷openDays」不一致。
+  let validDays = 0;
+  if (!isReverse) {
+    const vd = src.valid_days;
+    if (vd !== undefined && vd !== null) {
+      if (typeof vd !== 'number' || !Number.isInteger(vd) || vd < 1 || vd > 31) {
+        return err('valid_days（每月营业天数）必须是 1~31 的整数');
+      }
+      validDays = vd;
+    }
+  }
+
   // ---- 反推约束 + 反推入参（M2v1.1 · 全部 fail-closed）----
   // 🔴 核心口径：反推模式下房租由目标租金率导出，fixed_items 不得含 rent（重复计租 ⇒ R 虚高 25%）。
   if (isReverse && fixedSeen.rent) {
@@ -183,6 +196,7 @@ function validateInput(event) {
       cityTier, bizType,
       buildItems, fixedItems, varItems,
       grossMarginPct, targetProfitFen, expectedRevenueFen,
+      valid_days: validDays,
       rev_price_fen: revPriceFen,
       seats,
       open_days: openDays,

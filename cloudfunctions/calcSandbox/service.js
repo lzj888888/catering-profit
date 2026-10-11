@@ -93,11 +93,14 @@ function calcSandbox(clean) {
   let breakEvenDailyFen = null;
   let targetMonthlyFen = null;
   let targetDailyFen = null;
+  // 🔴 #1（P0-1，round272）：日折算统一用 validDays（营业天数），有值用、否则回退 30；
+  //    与反向模式 openDays 口径对齐，消除「正向÷30 / 反向÷openDays」不一致。月度核心公式不动。
+  const validDays = num0(c.validDays) > 0 ? num0(c.validDays) : 30;
   if (!redAlert) {
     breakEvenMonthlyFen = Math.round(fixedTotalFen / marginRatePct);
-    breakEvenDailyFen = Math.round(breakEvenMonthlyFen / 30);
+    breakEvenDailyFen = Math.round(breakEvenMonthlyFen / validDays);
     targetMonthlyFen = Math.round((fixedTotalFen + targetProfitFen) / marginRatePct);
-    targetDailyFen = Math.round(targetMonthlyFen / 30);
+    targetDailyFen = Math.round(targetMonthlyFen / validDays);
   }
 
   // ---- 5) 回本周期（月）：建店总投入 ÷ 目标月利润；目标利润 ≤ 0 时不编造 ----
@@ -130,6 +133,7 @@ function calcSandbox(clean) {
     break_even_daily_fen: breakEvenDailyFen,
     target_monthly_fen: targetMonthlyFen,
     target_daily_fen: targetDailyFen,
+    valid_days: validDays,
     payback_months: paybackMonths,
     // 指标对照（无红警时才有意义）
     indicators_at_breakeven: indAtBreakEven,
@@ -180,6 +184,9 @@ function calcSandboxReverse(clean) {
   const revPriceFen = num0(c.rev_price_fen);
   const seats = num0(c.seats);
   const openDays = num0(c.open_days);
+  // 🔴 #1（P0-1，round272）：反向日折算统一用 validDays（= openDays，缺省回退 30），
+  //    与正向口径一致（消除「正向÷30 / 反向÷openDays」不一致）。
+  const validDays = openDays > 0 ? openDays : 30;
   const targetRentRate = num0(c.target_rent_rate);
   const pixelEffFen = num0(c.pixel_eff_fen);
 
@@ -212,12 +219,12 @@ function calcSandboxReverse(clean) {
   }
 
   // ---- 派生量（先算后取整，中间值不取整）----
-  const targetDailyFen = Math.round(R / openDays);
+  const targetDailyFen = Math.round(R / validDays);
   const rentCapFen = Math.round(R * targetRentRate / 100);
   const monthlyTrafficRaw = R / revPriceFen;
   const monthlyTraffic = round2(monthlyTrafficRaw);
-  const dailyTraffic = round2(monthlyTrafficRaw / openDays);
-  const turnRate = round2(monthlyTrafficRaw / (seats * openDays));
+  const dailyTraffic = round2(monthlyTrafficRaw / validDays);
+  const turnRate = round2(monthlyTrafficRaw / (seats * validDays));
   // 面积上限 = 房租上限 ÷ 坪效（均为分，相除得 ㎡）；坪效 ≤ 0 ⇒ null（不编造）
   let areaCapSqm = null;
   if (pixelEffFen > 0) areaCapSqm = round1(rentCapFen / pixelEffFen);
@@ -235,6 +242,7 @@ function calcSandboxReverse(clean) {
     rev_price_fen: revPriceFen,
     seats,
     open_days: openDays,
+    valid_days: validDays,
     red_alert: false,
     // 🔴 R237：翻台红警**已删除** —— 李老师 2026-10-08「不要过多让翻台率去佐证生意好坏」；
     //   豆包第 5 轮裁定：「旧的 >8 阈值是适配旧座位口径的产物，口径已变更，直接废弃」。

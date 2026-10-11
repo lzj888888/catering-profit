@@ -296,5 +296,19 @@ check('K10 反推 validate 出参 clean.mode === reverse 且反推字段齐备',
   && k10.clean.open_days === 30 && k10.clean.target_rent_rate === 12 && k10.clean.pixel_eff_fen === 4000,
   k10.error ? k10.msg : JSON.stringify(k10.clean));
 
+console.log('\n===== L #1 口径统一：validDays 日折算（round272）=====');
+// L1：正向传 validDays=26 ⇒ 日均 = 月 ÷ 26（不再恒 ÷30），与反向 openDays 口径一致
+const fwd26 = calcSandbox(Object.assign({}, base, { validDays: 26 }));
+check('L1 正向 validDays=26 ⇒ 保本日均 = 7600000÷26 = 292308', fwd26.break_even_daily_fen === 292308, `=${fwd26.break_even_daily_fen}`);
+check('L2 正向 validDays=26 ⇒ 目标日均 = 10600000÷26 = 407692', fwd26.target_daily_fen === 407692, `=${fwd26.target_daily_fen}`);
+check('L3 正向出参带 valid_days=26', fwd26.valid_days === 26, `=${fwd26.valid_days}`);
+check('L4 正向不传 validDays ⇒ 回退 30（无回归）', calcSandbox(base).break_even_daily_fen === 253333, `=${calcSandbox(base).break_even_daily_fen}`);
+// L5：反向 openDays=26（=validDays）⇒ 日折算 ÷26，与正向口径一致（消除「正向÷30 / 反向÷openDays」不一致）
+const rev26 = calcSandboxReverse(Object.assign({}, revBase, { open_days: 26 }));
+check('L5 反向 openDays=26 ⇒ 目标日均 = 10000000÷26 = 384615', rev26.target_daily_fen === 384615, `=${rev26.target_daily_fen}`);
+check('L6 反向出参带 valid_days=26', rev26.valid_days === 26, `=${rev26.valid_days}`);
+check('L7 反向 openDays=26 ⇒ 日均客流 = 2222.22÷26 = 85.47', rev26.daily_traffic === 85.47, `=${rev26.daily_traffic}`);
+check('L8 反向 openDays=26 ⇒ 翻台 = 2222.22÷(20×26) = 4.27', rev26.turn_rate === 4.27, `=${rev26.turn_rate}`);
+
 console.log(`\n==== calcSandbox M2 v2 自测结果：${pass} 通过 / ${failN} 失败 ====`);
 process.exit(failN === 0 ? 0 : 1);
