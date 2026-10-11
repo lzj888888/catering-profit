@@ -11,6 +11,12 @@ module.exports = {
     const nn = new Date(Date.UTC(y, m - 1 + 1, 15, 12));
     return `${nn.getUTCFullYear()}-${String(nn.getUTCMonth() + 1).padStart(2, '0')}`;
   },
+  /** 当月序号 -1 → 上月 YYYY-MM（用于「一键归档上月」） */
+  prevMonth(ym) {
+    const [y, m] = String(ym).split('-').map(Number);
+    const pp = new Date(Date.UTC(y, m - 1 - 1, 15, 12));
+    return `${pp.getUTCFullYear()}-${String(pp.getUTCMonth() + 1).padStart(2, '0')}`;
+  },
   /** 最近 n 个月（含当月、倒序、YYYY-MM）—— 月份下拉的滚动窗口 */
   // 🔴 为什么必须有（2026-09-21 李老师真机反馈「月份选择 只有两个月份」）：
   //    月度首页原实现只拿「已建档月份 ∪ 当月」，而 getMonthList 只返回 shop_monthly_account 有行的月份

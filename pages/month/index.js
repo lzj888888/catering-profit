@@ -37,7 +37,9 @@ Page({
       goAmortize: TERMS.nav.goAmortize,
       goResult: TERMS.nav.goResult,
       archiveNow: TERMS.nav.archiveNow,
+      archivePrev: TERMS.nav.archivePrev,
       confirmArchive: TERMS.ui.confirmArchive,
+      confirmArchivePrev: TERMS.ui.confirmArchivePrev,
       history: TERMS.ui.history,
       expireSoonTitle: TERMS.pay.expireSoonTitle,
       renewEntry: TERMS.pay.renewEntry,
@@ -63,6 +65,8 @@ Page({
     isArchive: false,
     archivedAtMs: 0,
     canArchive: false,
+    prevMonth: '',
+    canArchivePrev: false,
     switches: {},
     result: null,
     loading: true,
@@ -149,7 +153,14 @@ Page({
       });
       // 归档状态：次月 1 日起软提示（待归档徽标）；归档月只读标识
       const canArchive = !d.is_archive && !!d.account_id;
-      this.setData({ canArchive });
+      // P1：一键归档上月 —— 取「上一月」归档态，给老板每月初一键归档上月（复用 archiveMonth）
+      const prevM = ui.prevMonth(month);
+      let canArchivePrev = false;
+      try {
+        const pd = await api.call('getLedger', { month: prevM });
+        canArchivePrev = !pd.is_archive && !!pd.account_id;
+      } catch (e) { canArchivePrev = false; }
+      this.setData({ canArchive, prevMonth: prevM, canArchivePrev });
     } catch (e) { api.toastError(e); }
   },
 
@@ -187,6 +198,25 @@ Page({
         try {
           await api.call('archiveMonth', { month: this.data.curMonth, archive: true });
           wx.showToast({ title: TERMS.nav.archiveNow, icon: 'success' });
+          this.loadMonth(this.data.curMonth);
+        } catch (e) { api.toastError(e); }
+      },
+    });
+  },
+
+  // P1：一键归档上月（复用 archiveMonth，归档「上一月」）
+  onArchivePrev() {
+    const m = this.data.prevMonth;
+    if (!m) return;
+    wx.showModal({
+      title: TERMS.nav.archivePrev,
+      content: (TERMS.ui.confirmArchivePrev || '').replace('{m}', m),
+      confirmColor: '#1e3a5f',
+      success: async (r) => {
+        if (!r.confirm) return;
+        try {
+          await api.call('archiveMonth', { month: m, archive: true });
+          wx.showToast({ title: TERMS.nav.archivePrev, icon: 'success' });
           this.loadMonth(this.data.curMonth);
         } catch (e) { api.toastError(e); }
       },

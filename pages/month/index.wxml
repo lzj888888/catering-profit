@@ -74,5 +74,6 @@
   <button class="btn" wx:if="{{switches.amortizeSwitchOn}}" bindtap="goAmortize">{{t.goAmortize}}</button>
   <button class="btn ghost" bindtap="goResult">{{t.goResult}}</button>
   <button class="btn ghost" wx:if="{{canArchive}}" bindtap="onArchive">{{t.archiveNow}}</button>
+  <button class="btn ghost" wx:if="{{canArchivePrev}}" bindtap="onArchivePrev">{{t.archivePrev}}</button>
 </view>
 <view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

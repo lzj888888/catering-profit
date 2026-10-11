@@ -185,6 +185,7 @@ const TERMS = {
     archivedLock: '归档月只读',
     graceArchive: '归档后 7 天内可补录（需确认）',
     confirmArchive: '确认结账并归档该月？归档后默认只读（7 天内仍可补录）。',
+    confirmArchivePrev: '确认把上月（{m}）归档？归档后上月默认只读（7 天内仍可补录）。',
     currencySymbol: '¥',
     loadFailed: '加载失败',
     opFailed: '操作失败',
@@ -214,6 +215,7 @@ const TERMS = {
     viewVersion: '版本历史',
     syncPrice: '同步至原料最新价',
     archiveNow: '结账并归档',
+    archivePrev: '归档上月',
   },
 
   // ===== 十二、M1 收入/费用分类模板（MVP 固定结构；金额一律「元」界面输入 → 适配层转「分」）=====
