@@ -113,6 +113,15 @@ Page({
     coverageMatched: 0,
     coveragePct: 0,
     coverageText: '',
+    // R272：覆盖率 C 档 + 自助餐人均食材成本（见 load() 内 coverageCText / buffet_*）
+    coverageC_pct: 0,
+    coverageCText: '',
+    buffetMeals: 0,
+    buffet_revenueText: '',
+    buffet_perCapitaPriceText: '',
+    buffet_perCapitaCostText: '',
+    buffet_grossMarginText: '',
+    buffet_hasCostInput: false,
     mappings: [],         // 已关联菜品（来自 getDishReview 出参 mapping）+ 展示字段
     // ===== R260 批量关联（规范 v1.9）=====
     batchMode: false,     // 批量模式：行的选择只记在本机，点「保存全部关联」才提交
@@ -317,6 +326,24 @@ Page({
       .replace('{m}', String(coverageMatched))
       .replace('{p}', String(coveragePct));
 
+    // ===== R272：覆盖率 C 档 + 自助餐人均食材成本（来自 getDishReview 服务端计算）=====
+    //   🔴 不动上面 A 档 coverageText（守卫 12-③/12-⑤ 钉死）：A 档分母含零售+自助会稀释，
+    //      故另立 C 档（分母剔零售、自助计分子）作主口径；自助餐单列「人均食材成本」块。
+    const covC = d.coverageC || {};
+    const bf = d.buffet || {};
+    const buffetMeals = bf.meals || 0;
+    const coverageC_pct = covC.pct || 0;
+    const coverageCText = String(TERMS.card.reviewCoverageC)
+      .replace('{p}', String(coverageC_pct))
+      .replace('{made}', fmtYuan(covC.matchedMadeRevenueFen || 0))
+      .replace('{total}', fmtYuan((covC.madeRevenueFen || 0) + (covC.buffetRevenueFen || 0)))
+      .replace('{retail}', fmtYuan(covC.retailRevenueFen || 0));
+    const buffet_revenueText = fmtYuan(bf.revenueFen || 0);
+    const buffet_perCapitaPriceText = fmtYuan(bf.perCapitaPriceFen || 0);
+    const buffet_perCapitaCostText = fmtYuan(bf.perCapitaCostFen || 0);
+    const buffet_grossMarginText = (bf.grossMarginPct != null) ? (String(bf.grossMarginPct) + '%') : '';
+    const buffet_hasCostInput = !!bf.hasCostInput;
+
     this.setData({
       loading: false,
       locked: false,
@@ -331,6 +358,15 @@ Page({
       coverageMatched,
       coveragePct,
       coverageText,
+      // R272：覆盖率 C 档 + 自助餐人均食材成本
+      coverageC_pct,
+      coverageCText,
+      buffetMeals,
+      buffet_revenueText,
+      buffet_perCapitaPriceText,
+      buffet_perCapitaCostText,
+      buffet_grossMarginText,
+      buffet_hasCostInput,
       // R255：卡列表 + 已关联列表（picker 与解除入口的数据源）
       cardOptions,
       cardCodes,

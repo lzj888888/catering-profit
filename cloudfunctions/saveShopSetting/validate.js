@@ -82,6 +82,15 @@ function validateInput(event) {
     else return err('menu_dish_count 必须是非负整数');
   }
 
+  // R272：自助餐线本月食材消耗总额（分，可选）。
+  //   三态：undefined = 不传不动库；null = 清掉该 switch 行；非负整数 = 存 shop_switch.value（数字字符串，单位分）。
+  let buffetFoodCostTotal;
+  if (src.buffet_food_cost_total !== undefined) {
+    if (src.buffet_food_cost_total === null) buffetFoodCostTotal = null;
+    else if (Number.isInteger(src.buffet_food_cost_total) && src.buffet_food_cost_total >= 0) buffetFoodCostTotal = String(src.buffet_food_cost_total);
+    else return err('buffet_food_cost_total 必须是非负整数（单位：分）');
+  }
+
   return {
     error: null,
     shop_id: src.shop_id,
@@ -90,6 +99,7 @@ function validateInput(event) {
     pinned_cards: pc.value, pinned_materials: pm.value,
     takeaway_params: takeawayParams,
     menu_dish_count: menuDishCount,
+    buffet_food_cost_total: buffetFoodCostTotal,
     input: { client_request_id: src.client_request_id || '' },
   };
 }

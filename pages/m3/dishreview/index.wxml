@@ -19,6 +19,14 @@
       <view class="muted">{{t.reviewCoverageHint}}</view>
     </block>
 
+    <!-- ===== R272：覆盖率 C 档（制作类 + 自助 / 剔除零售转售）=====
+         为什么单列：A 档分母含零售转售（烟/酒/饮料）与自助餐，会稀释真实烹饪业务的覆盖率；
+         C 档分母 = 制作类 + 自助餐营收、剔除零售转售，才是"你会做的菜的毛利覆盖了多少"。 -->
+    <block wx:if="{{coverageCount}}">
+      <view class="afterfact">{{coverageCText}}</view>
+      <view class="muted">{{t.reviewCoverageCHint}}</view>
+    </block>
+
     <!-- 毛利率标红阈值（用户自定义，默认占位值，非警戒线） -->
     <view class="field">
       <text class="lbl">{{t.reviewThreshold}}</text>
@@ -60,6 +68,24 @@
       <view class="cell"><text class="lbl">{{t.reviewTotalCost}}</text><text class="val">{{t.cur}}{{totals.costText}}</text></view>
       <view class="cell"><text class="lbl">{{t.reviewTotalGross}}</text><text class="val">{{t.cur}}{{totals.grossText}}</text></view>
     </view>
+
+    <!-- ===== R272：自助餐（快餐=随便吃）人均食材成本 =====
+         自助餐不建单品成本卡，改走「人均食材成本 = 本月自助线食材消耗 ÷ 售出份数」口径；
+         消耗总额由店铺设置录入（单位：分），未填则提示去设置页填写。 -->
+    <block wx:if="{{buffet_meals > 0}}">
+      <view class="section-title">{{t.reviewBuffetTitle}}</view>
+      <view class="card2">
+        <view class="cell"><text class="lbl">{{t.reviewBuffetRevenue}}</text><text class="val">{{t.cur}}{{buffet_revenueText}}</text></view>
+        <view class="cell"><text class="lbl">{{t.reviewBuffetMeals}}</text><text class="val">{{buffet_meals}} 份</text></view>
+        <view class="cell"><text class="lbl">{{t.reviewBuffetPerCapitaPrice}}</text><text class="val">{{t.cur}}{{buffet_perCapitaPriceText}}</text></view>
+        <view class="cell"><text class="lbl">{{t.reviewBuffetPerCapitaCost}}</text>
+          <text class="val" wx:if="{{buffet_hasCostInput}}">{{t.cur}}{{buffet_perCapitaCostText}}</text>
+          <text class="val" wx:else>{{t.reviewBuffetNoCost}}</text>
+        </view>
+        <view class="cell" wx:if="{{buffet_hasCostInput}}"><text class="lbl">{{t.reviewBuffetGrossMargin}}</text><text class="val">{{buffet_grossMarginText}}</text></view>
+      </view>
+      <view class="muted">{{t.reviewBuffetHint}}</view>
+    </block>
 
     <!-- 外卖榜（v1.7 实态：按平台分块；无数据 ⇒ 空态，红线 18 不默认 0） -->
     <block wx:if="{{takeaway}}">

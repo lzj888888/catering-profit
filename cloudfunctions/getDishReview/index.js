@@ -32,7 +32,7 @@ const { toMonth } = common.utilTime;
 
 // 🔴 R232f：算法层已外提到 service.js（纯函数 · 零 db）⇒ 6 处口径首次可被独立复算。
 //   本文件只负责：鉴权 → 付费墙 → 取数 → 调 service → 返回。
-const { buildDishReview, buildTakeawayReview, splitSales, mergeTotals } = require('./service');
+const { buildDishReview, buildTakeawayReview, splitSales, mergeTotals, computeCoverage } = require('./service');
 
 exports.main = async (event) => {
   const ctx = cloud.getWXContext();
@@ -100,6 +100,26 @@ exports.main = async (event) => {
   //    （可复算，不在这里写业务判断）。
   const totals = mergeTotals(dineTotals, takeawayResult.totals);
 
+  // ===== R272：覆盖率 C 档口径 + 自助餐（快餐）人均食材成本 =====
+  //   分母=制作类+自助（剔除零售转售），自助按人均食材成本计入分子；另聚合自助营收/份数。
+  //   自助食材消耗总额来自店铺设置（switch_key='m3_buffet_food_cost_total'，值=分字符串），未填则 hasCostInput=false。
+  const allTagged = dineIn.concat(takeawaySales);
+  const matchedKeys = new Set();
+  const collectKeys = (arr) => {
+    for (const r of (arr || [])) if (r && r.dish_key) matchedKeys.add(String(r.dish_key).trim());
+  };
+  collectKeys(ranked);
+  if (takeawayResult.by_platform) {
+    for (const p of Object.keys(takeawayResult.by_platform)) collectKeys(takeawayResult.by_platform[p].ranked);
+  }
+  let buffetFoodCostTotalFen = null;
+  try {
+    const bsRes = await da.list('shop_switch', { shop_id: shopId, switch_key: 'm3_buffet_food_cost_total' });
+    const bsRow = (bsRes && bsRes.data && bsRes.data[0]) || null;
+    if (bsRow && bsRow.value != null && bsRow.value !== '') buffetFoodCostTotalFen = Number(bsRow.value) || null;
+  } catch (e) { buffetFoodCostTotalFen = null; }
+  const coverage = computeCoverage(allTagged, matchedKeys, buffetFoodCostTotalFen);
+
   // ===== 4c. R255：映射表**带出**（供前端展示「已关联 / 解除」）=====
   //   🔴 零额外查询：`mapping` 是第 4b 步已经读进来的同一份数据，此处只做投影（不新增一次 listAll）。
   //   为什么必须带出：**挂错卡时该菜会从 unmatched 变 ranked，未匹配清单里就没有它了**
@@ -124,6 +144,10 @@ exports.main = async (event) => {
     takeaway: Object.keys(takeawayResult.by_platform).length ? takeawayResult : null,
     unmatched,
     totals,                 // 🔴 R254：全渠道合计（堂食 + 各外卖平台），不再是「仅堂食」
+    // R272：覆盖率 C 档口径 + 自助餐人均食材成本（分母剔除零售、自助计分子；自助另走人均成本）
+    coverageA: coverage.coverageA,
+    coverageC: coverage.coverageC,
+    buffet: coverage.buffet,
     truncated: !!(salesRes.truncated || cardsRes.truncated),
     client_request_id: (event && event.client_request_id) || '',
   });

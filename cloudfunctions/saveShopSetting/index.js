@@ -121,6 +121,21 @@ exports.main = async (event) => {
     }
   }
 
+  // ===== 5.6. R272：自助餐线本月食材消耗总额（switch_key='m3_buffet_food_cost_total'，value=数字字符串，单位分）=====
+  //   自助餐（快餐=随便吃）人均食材成本口径的数据源；零新建集合/索引，沿用 shop_switch + idx_switch_shop_key。
+  if (v.buffet_food_cost_total !== undefined) {
+    const key = SWITCH_KEYS.buffetFoodCostTotal;
+    const bfRes = await da.list('shop_switch', { shop_id: shopId, switch_key: key });
+    const bfRow = (bfRes && bfRes.data && bfRes.data[0]) || null;
+    if (v.buffet_food_cost_total === null) {
+      if (bfRow) await db.collection('shop_switch').doc(bfRow._id || bfRow.id).remove();
+    } else if (bfRow) {
+      await db.collection('shop_switch').doc(bfRow._id || bfRow.id).update({ data: { value: v.buffet_food_cost_total, updated_at: now } });
+    } else {
+      await da.insert('shop_switch', { shop_id: shopId, switch_key: key, value: v.buffet_food_cost_total });
+    }
+  }
+
   return ok({
     shop_id: shopId,
     name: v.name || (shopDoc ? shopDoc.name : ''),
@@ -136,6 +151,8 @@ exports.main = async (event) => {
     takeaway_params: v.takeaway_params !== undefined ? v.takeaway_params : undefined,
     // M3.21：回读在售菜品数
     menu_dish_count: v.menu_dish_count !== undefined ? v.menu_dish_count : undefined,
+    // R272：回读自助餐线本月食材消耗总额
+    buffet_food_cost_total: v.buffet_food_cost_total !== undefined ? v.buffet_food_cost_total : undefined,
     client_request_id: v.input.client_request_id || '',
   });
 };

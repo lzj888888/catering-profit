@@ -208,10 +208,90 @@ function splitSales(sales) {
   const takeaway = [];
   for (const s of (sales || [])) {
     const p = (s.platform == null ? '' : String(s.platform)).trim();
-    if (p === 'pos') dineIn.push(s);
-    else if (p) takeaway.push(s);
+    const category = classifyDishKey(s.dish_key);
+    const tagged = Object.assign({}, s, { category });
+    if (p === 'pos') dineIn.push(tagged);
+    else if (p) takeaway.push(tagged);
   }
   return { dineIn, takeaway };
 }
 
-module.exports = { buildDishReview, buildTakeawayReview, rankReview, splitSales, mergeTotals, TOTALS_FIELDS };
+// ===== R272：销售行分类（制作类 / 零售转售 / 自助餐）=====
+// 为什么需要：覆盖率 C 档的分母要剔除零售、自助计入分子；自助餐另走「人均食材成本」口径。
+// 🔴 关键字匹配（可调）：快餐/自助/随便吃=自助；烟/酒/饮料/槟榔等=零售转售；其余=制作类。
+//   用户 2026-10-10 确认：快餐=一份钱随便吃，不建单品成本卡，改人均食材成本口径。
+//   🔴 缺省全归「made」：无关键字命中的行保持原口径，C 档退化为 A 档（零破坏，对其余店无影响）。
+const CATEGORY_KEYWORDS = {
+  buffet: ['快餐', '自助', '随便吃', '小火锅'],
+  retail: ['烟', '酒', '饮料', '槟榔', '啤酒', '可乐', '雪碧', '奶茶', '矿泉水'],
+};
+function classifyDishKey(name) {
+  const n = (name == null ? '' : String(name)).trim();
+  if (!n) return 'made';
+  for (const kw of CATEGORY_KEYWORDS.buffet) if (n.indexOf(kw) >= 0) return 'buffet';
+  for (const kw of CATEGORY_KEYWORDS.retail) if (n.indexOf(kw) >= 0) return 'retail';
+  return 'made';
+}
+
+/**
+ * 计算覆盖率 A 档 / C 档 + 自助餐聚合（纯函数 · 零 db · 可复算）。
+ * @param {Array} allSales 已打 category 标签的全部销量行（splitSales 产物合并）
+ * @param {Set<string>} matchedKeys 已匹配到成本卡的 dish_key 集合
+ * @param {number|null} buffetFoodCostTotalFen 本月自助餐线食材消耗总额（分），来自店铺设置；null=未填
+ * @returns {{coverageA:Object, coverageC:Object, buffet:Object}}
+ */
+function computeCoverage(allSales, matchedKeys, buffetFoodCostTotalFen) {
+  let madeRevenue = 0, madeMatchedRevenue = 0;
+  let buffetRevenue = 0, buffetMeals = 0;
+  let retailRevenue = 0;
+  let totalRevenue = 0, matchedRevenue = 0;
+  const mk = matchedKeys || new Set();
+  for (const s of (allSales || [])) {
+    const key = (s.dish_key == null ? '' : String(s.dish_key)).trim();
+    const cat = s.category || 'made';
+    const amt = Number(s.amount) || 0;        // external_sales_daily.amount 为分
+    const qty = Number(s.qty) || 0;
+    totalRevenue += amt;
+    if (mk.has(key)) matchedRevenue += amt;
+    if (cat === 'made') {
+      madeRevenue += amt;
+      if (mk.has(key)) madeMatchedRevenue += amt;
+    } else if (cat === 'buffet') {
+      buffetRevenue += amt; buffetMeals += qty;
+    } else if (cat === 'retail') {
+      retailRevenue += amt;
+    }
+  }
+  // A 档：分母=全部营收（含零售+自助），分子=已匹配营收
+  const coverageA_pct = totalRevenue > 0 ? Math.round((matchedRevenue * 100) / totalRevenue) : 0;
+  // C 档：分母=制作类+自助（剔除零售转售），分子=制作类已匹配+自助（自助按人均成本口径计入）
+  const denomC = madeRevenue + buffetRevenue;
+  const numC = madeMatchedRevenue + buffetRevenue;
+  const coverageC_pct = denomC > 0 ? Math.round((numC * 100) / denomC) : 0;
+  // 自助餐人均口径
+  const perCapitaPriceFen = buffetMeals > 0 ? Math.round(buffetRevenue / buffetMeals) : 0;
+  const perCapitaCostFen = (buffetFoodCostTotalFen && buffetFoodCostTotalFen > 0 && buffetMeals > 0)
+    ? Math.round(buffetFoodCostTotalFen / buffetMeals) : null;
+  const grossMarginPct = (perCapitaCostFen != null && perCapitaPriceFen > 0)
+    ? Math.round(((perCapitaPriceFen - perCapitaCostFen) * 100) / perCapitaPriceFen) : null;
+  return {
+    coverageA: { pct: coverageA_pct },
+    coverageC: {
+      pct: coverageC_pct,
+      madeRevenueFen: madeRevenue,
+      buffetRevenueFen: buffetRevenue,
+      retailRevenueFen: retailRevenue,
+      matchedMadeRevenueFen: madeMatchedRevenue,
+    },
+    buffet: {
+      revenueFen: buffetRevenue,
+      meals: buffetMeals,
+      perCapitaPriceFen,
+      perCapitaCostFen,
+      grossMarginPct,
+      hasCostInput: !!(buffetFoodCostTotalFen && buffetFoodCostTotalFen > 0),
+    },
+  };
+}
+
+module.exports = { buildDishReview, buildTakeawayReview, rankReview, splitSales, mergeTotals, TOTALS_FIELDS, computeCoverage, classifyDishKey };

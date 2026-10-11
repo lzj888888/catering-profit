@@ -8,6 +8,8 @@ const SWITCH_KEYS = {
   takeawayParams: 'm3_takeaway_params',
   // M3.21（批次 E）：本月在售菜品数（对账覆盖率分母）—— 值 = 数字字符串（存 shop_switch.value）。
   menuDishCount: 'm3_menu_dish_count',
+  // R272：自助餐线本月食材消耗总额（分，非负整数；用于自助餐人均食材成本口径）—— 值 = 数字字符串（存 shop_switch.value）。
+  buffetFoodCostTotal: 'm3_buffet_food_cost_total',
 };
 
 module.exports = { SWITCH_KEYS, ERROR_CODES };
