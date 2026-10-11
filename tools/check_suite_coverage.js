@@ -70,6 +70,9 @@ const EXEMPT = {
   //      本文件是 R252 取件时踩到的那次；R253 自身的取证件已改用 d0_/d1_/d3_/m1m2_ 前缀规避。
   'review/evidence/r252_gate/check_ide_ready.py':
     { by: 'r253', date: '2026-10-09', reason: '微信开发者工具就绪判据的一次性取证脚本（读 .ide 端口 + 进程名），非生产判据' },
+  // r272 补：堂食 270 行 ↔ 成本卡通关的建卡取证脚本（核验已建卡是否覆盖 Top 营收菜），纯一次性取证件，非生产判据。
+  'review/evidence/r272_tangshi_jiakan/verify_cards.js':
+    { by: 'r272', date: '2026-10-12', reason: '堂食建卡覆盖核验的一次性取证脚本，非生产判据' },
 };
 
 function gitTracked() {
