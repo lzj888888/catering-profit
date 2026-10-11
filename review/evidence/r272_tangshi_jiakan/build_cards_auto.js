@@ -68,13 +68,13 @@ async function callFn(mp, name, data) {
   }
   if (!shopId) {
     log('ABORT: 拿不到 shop_id');
-    await mp.disconnect().catch(() => {});
+    if (mp && typeof mp.disconnect === 'function') { try { await mp.disconnect(); } catch (e) {} }
     process.exit(4);
   }
 
   if (DRY_RUN) {
     log('DRY_RUN：只校验 shop_id，不建卡');
-    await mp.disconnect().catch(() => {});
+    if (mp && typeof mp.disconnect === 'function') { try { await mp.disconnect(); } catch (e) {} }
     process.exit(0);
   }
 

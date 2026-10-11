@@ -1,0 +1,167 @@
+{
+  "shop_id": "shop_mu6j87v1itrs",
+  "ok": 0,
+  "total": 20,
+  "report": [
+    {
+      "name": "小面",
+      "ok": false,
+      "card_code": "cc_mv3906gl2gdf",
+      "cost_fen": 253,
+      "margin_pct": 65.95,
+      "err": "SUCCESS"
+    },
+    {
+      "name": "抄手",
+      "ok": false,
+      "card_code": "cc_mv3907ksaux8",
+      "cost_fen": 613,
+      "margin_pct": 51.08,
+      "err": "SUCCESS"
+    },
+    {
+      "name": "韭叶",
+      "ok": false,
+      "card_code": "cc_mv3908ooj5xs",
+      "cost_fen": 412,
+      "margin_pct": 42.46,
+      "err": "SUCCESS"
+    },
+    {
+      "name": "米线",
+      "ok": false,
+      "card_code": "cc_mv3909qthv3m",
+      "cost_fen": 408,
+      "margin_pct": 42.86,
+      "err": "SUCCESS"
+    },
+    {
+      "name": "耙牛肉（半斤）",
+      "ok": false,
+      "card_code": "cc_mv390arojetj",
+      "cost_fen": 2040,
+      "margin_pct": 35.77,
+      "err": "SUCCESS"
+    },
+    {
+      "name": "耙牛筋（半斤）",
+      "ok": false,
+      "card_code": "cc_mv390bnhkw1u",
+      "cost_fen": 1345,
+      "margin_pct": 58.53,
+      "err": "SUCCESS"
+    },
+    {
+      "name": "毛血旺",
+      "ok": false,
+      "card_code": "cc_mv390ccmh9wg",
+      "cost_fen": 1964,
+      "margin_pct": 52.48,
+      "err": "SUCCESS"
+    },
+    {
+      "name": "小料",
+      "ok": false,
+      "card_code": "cc_mv390dfp7s1z",
+      "cost_fen": 151,
+      "margin_pct": 65.68,
+      "err": "SUCCESS"
+    },
+    {
+      "name": "耙肥肠（四两）",
+      "ok": false,
+      "card_code": "cc_mv390encg6oe",
+      "cost_fen": 1156,
+      "margin_pct": 50.6,
+      "err": "SUCCESS"
+    },
+    {
+      "name": "泡椒酸菜鱼",
+      "ok": false,
+      "card_code": "cc_mv390fjjh8rt",
+      "cost_fen": 1913,
+      "margin_pct": 43.07,
+      "err": "SUCCESS"
+    },
+    {
+      "name": "肥肠二两",
+      "ok": false,
+      "card_code": "cc_mv390gou8sl5",
+      "cost_fen": 615,
+      "margin_pct": 61.56,
+      "err": "SUCCESS"
+    },
+    {
+      "name": "韭菜炒蛋",
+      "ok": false,
+      "card_code": "cc_mv390i09k5v4",
+      "cost_fen": 378,
+      "margin_pct": 76.38,
+      "err": "SUCCESS"
+    },
+    {
+      "name": "肥肠三两",
+      "ok": false,
+      "card_code": "cc_mv390j0jjyek",
+      "cost_fen": 797,
+      "margin_pct": 55.72,
+      "err": "SUCCESS"
+    },
+    {
+      "name": "刀削",
+      "ok": false,
+      "card_code": "cc_mv390k7v3vli",
+      "cost_fen": 243,
+      "margin_pct": 65.92,
+      "err": "SUCCESS"
+    },
+    {
+      "name": "水煮肉片",
+      "ok": false,
+      "card_code": "cc_mv390lbcfn3f",
+      "cost_fen": 1230,
+      "margin_pct": 67.63,
+      "err": "SUCCESS"
+    },
+    {
+      "name": "牛肉滑",
+      "ok": false,
+      "card_code": "cc_mv390mgk93ou",
+      "cost_fen": 1259,
+      "margin_pct": 30.17,
+      "err": "SUCCESS"
+    },
+    {
+      "name": "杂酱二两",
+      "ok": false,
+      "card_code": "cc_mv390neviqwt",
+      "cost_fen": 419,
+      "margin_pct": 65.08,
+      "err": "SUCCESS"
+    },
+    {
+      "name": "红汤大锅",
+      "ok": false,
+      "card_code": "cc_mv390oqjkidl",
+      "cost_fen": 1158,
+      "margin_pct": 38.17,
+      "err": "SUCCESS"
+    },
+    {
+      "name": "牛肉三两",
+      "ok": false,
+      "card_code": "cc_mv390pog4h2u",
+      "cost_fen": 1066,
+      "margin_pct": 40.78,
+      "err": "SUCCESS"
+    },
+    {
+      "name": "蛋炒饭",
+      "ok": false,
+      "card_code": "cc_mv390qso2fyl",
+      "cost_fen": 177,
+      "margin_pct": 82.3,
+      "err": "SUCCESS"
+    }
+  ]
+}
