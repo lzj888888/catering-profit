@@ -57,6 +57,22 @@ Page({
       reviewCoverage: TERMS.card.reviewCoverage,
       reviewCoverageHint: TERMS.card.reviewCoverageHint,
       reviewNewCard: TERMS.card.reviewNewCard,
+      // R272：自助餐（快餐=随便吃）人均食材成本块 —— 下方 wxml 用 t.reviewBuffet*，本页 t:{} 此前漏注册 ⇒ 真机标签空白（静默空白 bug），此处补齐
+      reviewBuffetTitle: TERMS.card.reviewBuffetTitle,
+      reviewBuffetRevenue: TERMS.card.reviewBuffetRevenue,
+      reviewBuffetMeals: TERMS.card.reviewBuffetMeals,
+      reviewBuffetPerCapitaPrice: TERMS.card.reviewBuffetPerCapitaPrice,
+      reviewBuffetPerCapitaCost: TERMS.card.reviewBuffetPerCapitaCost,
+      reviewBuffetNoCost: TERMS.card.reviewBuffetNoCost,
+      reviewBuffetGrossMargin: TERMS.card.reviewBuffetGrossMargin,
+      reviewBuffetHint: TERMS.card.reviewBuffetHint,
+      // R272b：行业基准带（网上平均数据）
+      reviewBuffetBenchTitle: TERMS.card.reviewBuffetBenchTitle,
+      reviewBuffetBenchLow: TERMS.card.reviewBuffetBenchLow,
+      reviewBuffetBenchMid: TERMS.card.reviewBuffetBenchMid,
+      reviewBuffetBenchHigh: TERMS.card.reviewBuffetBenchHigh,
+      reviewBuffetBenchHint: TERMS.card.reviewBuffetBenchHint,
+      reviewBuffetActual: TERMS.card.reviewBuffetActual,
       // R260 批量关联（第三处登记）
       reviewBatchEnter: TERMS.card.reviewBatchEnter,
       reviewBatchExit: TERMS.card.reviewBatchExit,
@@ -122,6 +138,15 @@ Page({
     buffet_perCapitaCostText: '',
     buffet_grossMarginText: '',
     buffet_hasCostInput: false,
+    // R272b：行业基准带（网上平均数据，对照用）
+    buffet_benchLowText: '',
+    buffet_benchMidText: '',
+    buffet_benchHighText: '',
+    buffet_rateLowPct: 0,
+    buffet_rateMidPct: 0,
+    buffet_rateHighPct: 0,
+    buffet_actualRateText: '',
+    buffet_flagClass: '',
     mappings: [],         // 已关联菜品（来自 getDishReview 出参 mapping）+ 展示字段
     // ===== R260 批量关联（规范 v1.9）=====
     batchMode: false,     // 批量模式：行的选择只记在本机，点「保存全部关联」才提交
@@ -343,6 +368,17 @@ Page({
     const buffet_perCapitaCostText = fmtYuan(bf.perCapitaCostFen || 0);
     const buffet_grossMarginText = (bf.grossMarginPct != null) ? (String(bf.grossMarginPct) + '%') : '';
     const buffet_hasCostInput = !!bf.hasCostInput;
+    // R272b：行业基准带（来自 getDishReview 服务端 benchmark）
+    const bm = bf.benchmark || {};
+    const buffet_benchLowText = fmtYuan(bm.costLowFen || 0);
+    const buffet_benchMidText = fmtYuan(bm.costMidFen || 0);
+    const buffet_benchHighText = fmtYuan(bm.costHighFen || 0);
+    const buffet_rateLowPct = bm.rateLowPct || 0;
+    const buffet_rateMidPct = bm.rateMidPct || 0;
+    const buffet_rateHighPct = bm.rateHighPct || 0;
+    const buffet_actualRateText = (bm.actualRatePct != null)
+      ? (bm.actualRatePct + '%（' + (bm.actualFlag || '') + '）') : '';
+    const buffet_flagClass = (bm.actualFlag === '偏高') ? 'warn' : ((bm.actualFlag === '偏低') ? 'note' : '');
 
     this.setData({
       loading: false,
@@ -367,6 +403,15 @@ Page({
       buffet_perCapitaCostText,
       buffet_grossMarginText,
       buffet_hasCostInput,
+      // R272b：行业基准带
+      buffet_benchLowText,
+      buffet_benchMidText,
+      buffet_benchHighText,
+      buffet_rateLowPct,
+      buffet_rateMidPct,
+      buffet_rateHighPct,
+      buffet_actualRateText,
+      buffet_flagClass,
       // R255：卡列表 + 已关联列表（picker 与解除入口的数据源）
       cardOptions,
       cardCodes,

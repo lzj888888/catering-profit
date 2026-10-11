@@ -83,8 +83,15 @@
           <text class="val" wx:else>{{t.reviewBuffetNoCost}}</text>
         </view>
         <view class="cell" wx:if="{{buffet_hasCostInput}}"><text class="lbl">{{t.reviewBuffetGrossMargin}}</text><text class="val">{{buffet_grossMarginText}}</text></view>
+        <!-- R272b：行业基准带（网上平均数据）-->
+        <view class="subtitle">{{t.reviewBuffetBenchTitle}}</view>
+        <view class="cell"><text class="lbl">{{t.reviewBuffetBenchLow}}</text><text class="val">{{t.cur}}{{buffet_benchLowText}} <text class="muted">（成本率{{buffet_rateLowPct}}%）</text></text></view>
+        <view class="cell"><text class="lbl">{{t.reviewBuffetBenchMid}}</text><text class="val">{{t.cur}}{{buffet_benchMidText}} <text class="muted">（成本率{{buffet_rateMidPct}}%）</text></text></view>
+        <view class="cell"><text class="lbl">{{t.reviewBuffetBenchHigh}}</text><text class="val">{{t.cur}}{{buffet_benchHighText}} <text class="muted">（成本率{{buffet_rateHighPct}}%）</text></text></view>
+        <view class="cell" wx:if="{{buffet_hasCostInput && buffet_actualRateText}}"><text class="lbl">{{t.reviewBuffetActual}}</text><text class="val {{buffet_flagClass}}">{{buffet_actualRateText}}</text></view>
       </view>
       <view class="muted">{{t.reviewBuffetHint}}</view>
+      <view class="muted">{{t.reviewBuffetBenchHint}}</view>
     </block>
 
     <!-- 外卖榜（v1.7 实态：按平台分块；无数据 ⇒ 空态，红线 18 不默认 0） -->

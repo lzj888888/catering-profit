@@ -274,6 +274,25 @@ function computeCoverage(allSales, matchedKeys, buffetFoodCostTotalFen) {
     ? Math.round(buffetFoodCostTotalFen / buffetMeals) : null;
   const grossMarginPct = (perCapitaCostFen != null && perCapitaPriceFen > 0)
     ? Math.round(((perCapitaPriceFen - perCapitaCostFen) * 100) / perCapitaPriceFen) : null;
+  // ===== R272b：行业基准人均食材成本（网上平均数据，供「数字是否合理」对照）=====
+  // 来源（2024-2025 行业平均）：
+  //   · 餐饮O2O 2025 暑期实测食材成本率 41%（较 2024 升 5pp）；美团/红餐《自助餐发展报告2024》：40%–60%；
+  //   · 15 元低价自助 食材 5–7 元/人（成本率 35%–45%）；60 元自助 18–24 元/人（~30%–40%）；
+  //   · 美式自助 Food cost 30%–45% of revenue。综合取中位数 ~40%、合理区间 30%–55%。
+  // 🔴 用户原话（2026-10-11）：每个店客人不同——重体力劳动者吃得多、蓝领吃得少；鲜肉与冻肉价差 ~2 倍。
+  //   ⇒ 做成【低/中/高】三档带：低=冻品/蓝领为主、高=鲜肉/重体力为主，正对应用户的门店差异。
+  const BENCH = { low: 0.30, mid: 0.40, high: 0.50 };
+  const benchCostLowFen = perCapitaPriceFen ? Math.round(perCapitaPriceFen * BENCH.low) : 0;
+  const benchCostMidFen = perCapitaPriceFen ? Math.round(perCapitaPriceFen * BENCH.mid) : 0;
+  const benchCostHighFen = perCapitaPriceFen ? Math.round(perCapitaPriceFen * BENCH.high) : 0;
+  // 用户实际成本率（仅在已填月消耗时判）
+  let actualRatePct = null, actualFlag = '';
+  if (perCapitaCostFen != null && perCapitaPriceFen > 0) {
+    actualRatePct = Math.round((perCapitaCostFen * 100) / perCapitaPriceFen);
+    if (actualRatePct > 55) actualFlag = '偏高';        // 食材成本吃紧，注意控损/调价
+    else if (actualRatePct < 25) actualFlag = '偏低';    // 冻品为主或数据待核
+    else actualFlag = '合理';
+  }
   return {
     coverageA: { pct: coverageA_pct },
     coverageC: {
@@ -290,6 +309,17 @@ function computeCoverage(allSales, matchedKeys, buffetFoodCostTotalFen) {
       perCapitaCostFen,
       grossMarginPct,
       hasCostInput: !!(buffetFoodCostTotalFen && buffetFoodCostTotalFen > 0),
+      // R272b：行业基准带（低/中/高），供对照「你的实际是否合合理」
+      benchmark: {
+        rateLowPct: Math.round(BENCH.low * 100),
+        rateMidPct: Math.round(BENCH.mid * 100),
+        rateHighPct: Math.round(BENCH.high * 100),
+        costLowFen: benchCostLowFen,
+        costMidFen: benchCostMidFen,
+        costHighFen: benchCostHighFen,
+        actualRatePct,
+        actualFlag,            // '' | '合理' | '偏高' | '偏低'
+      },
     },
   };
 }

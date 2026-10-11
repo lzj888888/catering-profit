@@ -1351,6 +1351,13 @@ const TERMS = {
     reviewBuffetNoCost: '待填写（在「设置」页填本月自助食材消耗）',
     reviewBuffetGrossMargin: '人均毛利率',
     reviewBuffetHint: '自助餐=一份钱随便吃，不建单品成本卡。人均食材成本 = 本月自助线食材消耗 ÷ 售出份数；请在「设置」页填写本月自助食材消耗总额（单位：分）。',
+    // R272b：行业基准带（网上平均数据，2024-2025）—— 成本率=食材成本÷售价
+    reviewBuffetBenchTitle: '行业参考人均食材成本（按成本率）',
+    reviewBuffetBenchLow: '冻品/蓝领客群为主',
+    reviewBuffetBenchMid: '平均',
+    reviewBuffetBenchHigh: '鲜肉/重体力客群为主',
+    reviewBuffetBenchHint: '成本率=食材成本÷售价。行业平均 30%–55%，中位数约 40%；冻品或蓝领客群偏低、鲜肉或重体力客群偏高（鲜肉与冻肉价差约 2 倍）。仅供对照，请以你的实际为准。',
+    reviewBuffetActual: '你的实际成本率',
     //   行内按钮短文案（并排不能长）。点它 = 带着这道菜名去建卡页**预填**，
     //   免掉「退出 → 进菜品卡 → 新建 → 手打菜名」这串最容易出错（菜名打错就白建）的操作。
     reviewNewCard: '去建卡',

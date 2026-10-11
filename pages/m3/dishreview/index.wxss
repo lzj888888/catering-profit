@@ -22,3 +22,7 @@
 
 .cell { display: flex; justify-content: space-between; padding: 12rpx 4rpx; border-bottom: 1rpx solid #eef2f7; }
 .val { font-size: 30rpx; color: #1e3a5f; }
+/* R272b：自助餐行业基准带子标题 + 实际成本率标色（偏高=红/偏低=橙）*/
+.subtitle { font-size: 28rpx; color: #1e3a5f; font-weight: 600; margin: 12rpx 4rpx 4rpx; }
+.val.warn { color: #e74c3c; font-weight: 600; }
+.val.note { color: #c2701a; }
