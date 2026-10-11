@@ -108,8 +108,15 @@
 
       <!-- 透视表 -->
       <block wx:else>
+        <!-- 🔴 round273：被"固定住"的维度随场景走 ——
+             A（已有铺面）主轴扫毛利率 ⇒ 固定**月租金**；B（寻找铺面）主轴扫租金档位 ⇒ 固定**毛利率**。
+             人工两边都固定。维度本身一个没删，只是换主轴。 -->
         <view class="pivot-fix">
-          <view class="field">
+          <view class="field" wx:if="{{mode === 'forward'}}">
+            <text class="label">{{t.pivotFixRent}}</text>
+            <input class="inp" type="digit" value="{{pivotFix.rent}}" data-key="rent" bindinput="onPivotFixInput" adjust-position="{{true}}" cursor-spacing="20" />
+          </view>
+          <view class="field" wx:else>
             <text class="label">{{t.pivotFixMargin}}</text>
             <input class="inp" type="digit" value="{{pivotFix.margin}}" data-key="margin" bindinput="onPivotFixInput" adjust-position="{{true}}" cursor-spacing="20" />
           </view>
@@ -121,11 +128,13 @@
         <scroll-view scroll-x="true" class="tbl-scroll">
           <view class="tbl">
             <view class="tr th">
-              <text class="td">{{t.dimRent}}</text>
+              <!-- 🔴 round273：首列表头随场景（毛利率 / 月租金） -->
+              <text class="td">{{t.pivotRowLabel}}</text>
               <text class="td" wx:for="{{result.pivot.cols}}" wx:key="index">{{item==0?t.colBreakDaily:item+t.yuan}}</text>
             </view>
             <view class="tr" wx:for="{{result.pivot.rows}}" wx:key="index" wx:for-item="rrow">
-              <text class="td">{{rrow}}{{t.yuan}}</text>
+              <!-- 行值单位随维度：毛利率 ⇒ %，月租金 ⇒ 元 -->
+              <text class="td">{{rrow}}{{pivotRowDim==='margin' ? t.pct : t.yuan}}</text>
               <text class="td" wx:for="{{result.pivot.cols}}" wx:key="index" wx:for-item="cc">{{result.pivot.cells[rrow+'|'+cc]!=null?result.pivot.cells[rrow+'|'+cc]:'—'}}</text>
             </view>
           </view>

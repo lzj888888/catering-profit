@@ -902,7 +902,9 @@ Page({
   },
 
   // ===== M2 G1/G2（2026-10-11 改造）：跳转场景矩阵 / 多方案对比 =====
-  goMatrix() { wx.navigateTo({ url: '/pages/sandbox/matrix' }); },
+  // 🔴 round273：矩阵页按**当前场景**进（A 已有铺面 ⇒ 扫毛利率；B 寻找铺面 ⇒ 扫租金档位）。
+  //   同一个矩阵页在不同处境下要答的不是同一个问题，故把 `mode` 带过去（不带 ⇒ 页内默认 reverse）。
+  goMatrix() { wx.navigateTo({ url: '/pages/sandbox/matrix?mode=' + this.data.mode }); },
   goCompare() { wx.navigateTo({ url: '/pages/sandbox/compare' }); },
 
   // ===== M2v1.3（业态参数包 + 回本卡 · 第三期）=====

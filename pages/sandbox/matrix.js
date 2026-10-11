@@ -59,6 +59,10 @@ Page({
       colTargetMonthly: M.colTargetMonthly,
       colTargetDaily: M.colTargetDaily,
       redAlertHint: M.redAlertHint,
+      // 🔴 round273：透视表首列表头 + A 场景的"固定月租金"输入标签（初值按默认场景 reverse 给，
+      //   进入时 onLoad 会按 `?mode=` 覆盖成对应场景的那一份）
+      pivotRowLabel: M.pivotRowLabelRev,
+      pivotFixRent: M.pivotFixRent,
       pivotCellBreak: M.pivotCellBreak,
       pivotCellTarget: M.pivotCellTarget,
       backToSandbox: M.backToSandbox,
@@ -77,13 +81,30 @@ Page({
       target: DEFAULT_DIMS.target.slice(),
     },
     global: { area: 60, buildTotalYuan: 0, buildYears: 3 },
-    pivotFix: { margin: 55, labor: 2 },
+    // 🔴 round273：多一个 `rent` —— A 场景透视主轴是毛利率 ⇒ 被固定住的是月租金（反之亦然）
+    pivotFix: { margin: 55, labor: 2, rent: 5000 },
+    // 🔴 round273 · 场景：'forward' 已有铺面（店已开，扫毛利率）/ 'reverse' 寻找铺面（扫租金档位）。
+    //   ⚠️ 默认 reverse：本页最初就是按「扫租金档位」造的（G1），**保持原行为不回退**；
+    //      只有从沙盘页带 `?mode=forward` 进来才切成 A 场景口径。
+    mode: 'reverse',
+    pivotRowDim: 'rent',   // 透视表**行**维度：forward ⇒ margin，reverse ⇒ rent
     loading: false,
     exporting: false,
     result: null, // { rows:[], view, count, pivot }
   },
 
-  onLoad() {
+  onLoad(options) {
+    const mode = (options && options.mode === 'forward') ? 'forward' : 'reverse';
+    // 🔴 round273：按进来的场景切「透视行维度」与标题/引导语（维度**全保留**，只是透视主轴不同 ——
+    //   A 也可以扫租金做敏感性分析，故不删维度，只换默认主轴）。
+    const pivotRowDim = mode === 'forward' ? 'margin' : 'rent';
+    this.setData({
+      mode,
+      pivotRowDim,
+      't.title': mode === 'forward' ? M.titleFwd : M.titleRev,
+      't.subtitle': mode === 'forward' ? M.subtitleFwd : M.subtitleRev,
+      't.pivotRowLabel': mode === 'forward' ? M.pivotRowLabelFwd : M.pivotRowLabelRev,
+    });
     this.syncBuildDefault();
   },
 
@@ -225,15 +246,24 @@ Page({
   // ===== 透视表：行=月租金档，列=目标利润档，单元格=目标日均(元) =====
   // 顶部固定 毛利率 / 人工，从已算结果里筛出对应子集（无需重新调云）
   buildPivot(rows) {
-    const fixMargin = Number(this.data.pivotFix.margin);
+    // 🔴 round273：透视**主轴**按场景走 —— A（forward）扫毛利率、B（reverse）扫租金档位。
+    //   被"固定住"的则是另一个成本维度（A 固定月租金 / B 固定毛利率），人工两边都固定。
+    //   维度**一个都没删**（rent/labor/margin/target 全在），只是换默认主轴 ⇒ 旧行为零回退。
+    const dim = this.data.pivotRowDim;                    // 'rent' | 'margin'
+    const FIELD = { rent: 'rent', margin: 'marginPct' };  // 维度 → toRow 里的字段名
+    const fixKey = dim === 'margin' ? 'rent' : 'margin';  // 固定住的**另一个**维度
+    const fixVal = Number(this.data.pivotFix[fixKey]);
     const fixLabor = Number(this.data.pivotFix.labor);
-    const filtered = rows.filter((r) => !r.red && r.marginPct === fixMargin && r.labor === fixLabor);
+    const filtered = rows.filter((r) => !r.red
+      && Number(r[FIELD[fixKey]]) === fixVal
+      && Number(r.labor) === fixLabor);
     const cells = {};
-    for (const r of filtered) cells[r.rent + '|' + r.targetYuan] = r.targetDaily;
+    for (const r of filtered) cells[r[FIELD[dim]] + '|' + r.targetYuan] = r.targetDaily;
     return {
-      fixMargin,
+      fixMargin: Number(this.data.pivotFix.margin),
       fixLabor,
-      rows: this.data.dims.rent.slice(),
+      fixRent: Number(this.data.pivotFix.rent),
+      rows: this.data.dims[dim].slice(),
       cols: this.data.dims.target.slice(),
       cells,
     };
