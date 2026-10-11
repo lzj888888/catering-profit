@@ -7,13 +7,13 @@
 .check { width: 36rpx; height: 36rpx; border: 2rpx solid #bbb; border-radius: 50%; margin-right: 18rpx; }
 .check.on { background: #2b7fff; border-color: #2b7fff; }
 .pname { font-size: 30rpx; color: #222; flex: 1; }
-.pmeta { font-size: 24rpx; color: #e2533a; }
+.pmeta { font-size: 28rpx; color: #e2533a; }
 .btn-primary { background: #2b7fff; color: #fff; font-size: 32rpx; border-radius: 12rpx; margin: 16rpx 0; }
 .cmp-tbl { display: flex; flex-direction: column; }
 .tr { display: flex; border-bottom: 1rpx solid #eee; }
 .tr.th { background: #f5f6fa; }
 .tr.red .td { color: #e2533a; }
-.td { flex: 1; padding: 16rpx 8rpx; font-size: 24rpx; color: #333; text-align: center; }
+.td { flex: 1; padding: 16rpx 8rpx; font-size: 28rpx; color: #333; text-align: center; }
 .tr.th .td { font-weight: 600; color: #222; }
 .verdict { margin-top: 20rpx; font-size: 28rpx; color: #07b36b; line-height: 1.5; }
 .nav-row { margin-top: 24rpx; }

@@ -54,3 +54,4 @@ if (problems.length) {
   process.exit(1);
 }
 console.log('✅ M2 矩阵/对比改造守卫通过（matrix action 批量复用引擎 + m2_matrix 免费导出豁免 + 术语双副本一致）');
+console.log('M2 矩阵/对比改造守卫结果：1 通过 / 0 失败');

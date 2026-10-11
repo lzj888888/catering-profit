@@ -26,15 +26,15 @@
     <view class="card-title">{{t.buildLabel}}</view>
     <view class="field">
       <text class="label">{{t.buildLabel}}</text>
-      <input class="inp" type="digit" value="{{global.buildTotalYuan}}" data-key="buildTotalYuan" bindinput="onGlobalInput" placeholder="元" />
+      <input class="inp" type="digit" value="{{global.buildTotalYuan}}" data-key="buildTotalYuan" bindinput="onGlobalInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="元" />
     </view>
     <view class="field">
       <text class="label">{{t.buildYearsLabel}}</text>
-      <input class="inp" type="digit" value="{{global.buildYears}}" data-key="buildYears" bindinput="onGlobalInput" placeholder="年" />
+      <input class="inp" type="digit" value="{{global.buildYears}}" data-key="buildYears" bindinput="onGlobalInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="年" />
     </view>
     <view class="field">
       <text class="label">{{t.areaLabel}}</text>
-      <input class="inp" type="digit" value="{{global.area}}" data-key="area" bindinput="onGlobalInput" placeholder="㎡" />
+      <input class="inp" type="digit" value="{{global.area}}" data-key="area" bindinput="onGlobalInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="㎡" />
     </view>
   </view>
 
@@ -43,28 +43,28 @@
     <view class="dim-block">
       <view class="dim-head"><text>{{t.dimRent}}</text><view class="add" bindtap="addDim" data-dim="rent">{{t.addDim}}</view></view>
       <view class="dim-row" wx:for="{{dims.rent}}" wx:key="index" wx:for-index="idx">
-        <input class="inp dim-inp" type="digit" value="{{item}}" data-dim="rent" data-idx="{{idx}}" bindinput="onDimInput" />
+        <input class="inp dim-inp" type="digit" value="{{item}}" data-dim="rent" data-idx="{{idx}}" bindinput="onDimInput" adjust-position="{{true}}" cursor-spacing="20" />
         <view class="del" wx:if="{{dims.rent.length>1}}" bindtap="delDim" data-dim="rent" data-idx="{{idx}}">{{t.delDim}}</view>
       </view>
     </view>
     <view class="dim-block">
       <view class="dim-head"><text>{{t.dimLabor}}</text><view class="add" bindtap="addDim" data-dim="labor">{{t.addDim}}</view></view>
       <view class="dim-row" wx:for="{{dims.labor}}" wx:key="index" wx:for-index="idx">
-        <input class="inp dim-inp" type="digit" value="{{item}}" data-dim="labor" data-idx="{{idx}}" bindinput="onDimInput" />
+        <input class="inp dim-inp" type="digit" value="{{item}}" data-dim="labor" data-idx="{{idx}}" bindinput="onDimInput" adjust-position="{{true}}" cursor-spacing="20" />
         <view class="del" wx:if="{{dims.labor.length>1}}" bindtap="delDim" data-dim="labor" data-idx="{{idx}}">{{t.delDim}}</view>
       </view>
     </view>
     <view class="dim-block">
       <view class="dim-head"><text>{{t.dimMargin}}</text><view class="add" bindtap="addDim" data-dim="margin">{{t.addDim}}</view></view>
       <view class="dim-row" wx:for="{{dims.margin}}" wx:key="index" wx:for-index="idx">
-        <input class="inp dim-inp" type="digit" value="{{item}}" data-dim="margin" data-idx="{{idx}}" bindinput="onDimInput" />
+        <input class="inp dim-inp" type="digit" value="{{item}}" data-dim="margin" data-idx="{{idx}}" bindinput="onDimInput" adjust-position="{{true}}" cursor-spacing="20" />
         <view class="del" wx:if="{{dims.margin.length>1}}" bindtap="delDim" data-dim="margin" data-idx="{{idx}}">{{t.delDim}}</view>
       </view>
     </view>
     <view class="dim-block">
       <view class="dim-head"><text>{{t.dimTarget}}</text><view class="add" bindtap="addDim" data-dim="target">{{t.addDim}}</view></view>
       <view class="dim-row" wx:for="{{dims.target}}" wx:key="index" wx:for-index="idx">
-        <input class="inp dim-inp" type="digit" value="{{item}}" data-dim="target" data-idx="{{idx}}" bindinput="onDimInput" />
+        <input class="inp dim-inp" type="digit" value="{{item}}" data-dim="target" data-idx="{{idx}}" bindinput="onDimInput" adjust-position="{{true}}" cursor-spacing="20" />
         <view class="del" wx:if="{{dims.target.length>1}}" bindtap="delDim" data-dim="target" data-idx="{{idx}}">{{t.delDim}}</view>
       </view>
     </view>
@@ -111,11 +111,11 @@
         <view class="pivot-fix">
           <view class="field">
             <text class="label">{{t.pivotFixMargin}}</text>
-            <input class="inp" type="digit" value="{{pivotFix.margin}}" data-key="margin" bindinput="onPivotFixInput" />
+            <input class="inp" type="digit" value="{{pivotFix.margin}}" data-key="margin" bindinput="onPivotFixInput" adjust-position="{{true}}" cursor-spacing="20" />
           </view>
           <view class="field">
             <text class="label">{{t.pivotFixLabor}}</text>
-            <input class="inp" type="digit" value="{{pivotFix.labor}}" data-key="labor" bindinput="onPivotFixInput" />
+            <input class="inp" type="digit" value="{{pivotFix.labor}}" data-key="labor" bindinput="onPivotFixInput" adjust-position="{{true}}" cursor-spacing="20" />
           </view>
         </view>
         <scroll-view scroll-x="true" class="tbl-scroll">
