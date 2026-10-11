@@ -35,6 +35,7 @@
     <block wx:if="{{tab === 'free'}}">
       <view class="muted">{{t.netRef}}</view>
       <view class="result-num">{{t.cur}}{{result.ref_profit}}</view>
+      <view class="caliber-hint">{{t.caliberRefHint}}</view>
     </block>
     <block wx:else>
       <!-- R234/J4e：本句 ≥18 字 ⇒ 折叠（R234 完整清点口径：剥注释 + 含复合 class）。 -->
@@ -47,6 +48,7 @@
       </view>
       <view class="muted">{{t.netTrue}}</view>
       <view class="result-num">{{t.cur}}{{result.true_profit}}</view>
+      <view class="caliber-hint">{{t.caliberTrueHint}}</view>
     </block>
     <view class="row" style="margin-top:20rpx;">
       <text class="lbl">{{t.totalRevenue}}</text>

@@ -19,3 +19,6 @@
 .hint-fold-arrow { font-size: 28rpx; color: #1e3a5f; }
 .hint-fold-body { font-size: 28rpx; color: #4a5b70; line-height: 1.6; padding: 16rpx 20rpx;
   background: #f3f7fb; border-radius: 12rpx; margin: 0 0 12rpx; }
+
+/* 暖化：双口径常驻口径解释（P0#2，tab 下常显一行小字，不折叠） */
+.caliber-hint { font-size: 28rpx; color: #8a94a6; line-height: 1.5; margin-top: 12rpx; }

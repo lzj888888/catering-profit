@@ -27,6 +27,8 @@ Page({
       netRef: TERMS.ui.netRef,
       netTrue: TERMS.ui.netTrue,
       profitDiff: TERMS.ui.profitDiff,
+      caliberRefHint: TERMS.ui.caliberRefHint,
+      caliberTrueHint: TERMS.ui.caliberTrueHint,
       pendingArchive: TERMS.ui.pendingArchive,
       archivedLock: TERMS.ui.archivedLock,
       graceArchive: TERMS.ui.graceArchive,

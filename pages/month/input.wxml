@@ -23,6 +23,22 @@
     <view class="muted" wx:if="{{recurringOn}}">{{t.recurringHint}}</view>
   </view>
 
+  <!-- P0#3：新手/老手模式切换（仅存本地；新手折叠非核心科目） -->
+  <view class="im-wrap">
+    <view class="im-sec">{{t.inputModeTitle}}</view>
+    <view class="im-opts">
+      <view class="im-opt {{inputMode === 'novice' ? 'on' : ''}}" data-val="novice" bindtap="onPickInputMode">
+        <view class="im-h">{{inputMode === 'novice' ? '✓ ' : ''}}{{t.inputModeNovice}}</view>
+        <view class="im-d">{{t.inputModeNoviceDesc}}</view>
+      </view>
+      <view class="im-opt {{inputMode === 'pro' ? 'on' : ''}}" data-val="pro" bindtap="onPickInputMode">
+        <view class="im-h">{{inputMode === 'pro' ? '✓ ' : ''}}{{t.inputModePro}}</view>
+        <view class="im-d">{{t.inputModeProDesc}}</view>
+      </view>
+    </view>
+  </view>
+  <view class="im-tip" wx:if="{{inputMode === 'novice' && !showMore}}">{{t.noviceTip}}</view>
+
   <!-- 收入（A2：大类 → 二级细项；E1：引导文案）
        R234/J1：47 字长提示收进折叠块（原先平铺占 2 行） -->
   <view class="sec">{{t.incomeTitle}}</view>
@@ -34,7 +50,7 @@
     <view class="hint-fold-body" wx:if="{{hintFold.incomeHint}}">{{t.incomeHint}}</view>
   </view>
 
-  <view class="group" wx:for="{{incomeGroups}}" wx:key="category" wx:for-item="g" wx:for-index="gi">
+  <view class="group" wx:if="{{inputMode === 'pro' || showMore || g.core}}" wx:for="{{incomeGroups}}" wx:key="category" wx:for-item="g" wx:for-index="gi">
     <!-- 堂食由「快速 / 分项」模式开关接管，不再用手风琴展开 -->
     <view class="group-head" wx:if="{{g.category === 'dine_in'}}">
       <text class="g-label">{{g.label}}</text>
@@ -386,7 +402,7 @@
     <view class="hint-fold-body" wx:if="{{hintFold.expenseHint}}">{{t.expenseHint}}</view>
   </view>
 
-  <view class="group" wx:for="{{expenseGroups}}" wx:key="category" wx:for-item="g" wx:for-index="gi">
+  <view class="group" wx:if="{{inputMode === 'pro' || showMore || g.core}}" wx:for="{{expenseGroups}}" wx:key="category" wx:for-item="g" wx:for-index="gi">
     <view class="group-head" data-kind="expense" data-idx="{{gi}}" bindtap="onToggleGroup">
       <text class="g-label">{{g.label}}</text>
       <text class="g-toggle">{{g.expanded ? '▾' : '▸'}}</text>
@@ -469,6 +485,11 @@
     <view class="group-ops" wx:if="{{g.expanded}}">
       <button class="btn-small ghost" data-kind="expense" data-gidx="{{gi}}" catchtap="onOpenPresetPick">{{t.addSubItem}}</button>
     </view>
+  </view>
+
+  <!-- P0#3：新手模式下一键展开被折叠的非核心科目（其他收入/营销/其他费用） -->
+  <view class="im-expand" wx:if="{{inputMode === 'novice' && !showMore}}">
+    <button class="btn ghost btn-block" bindtap="onExpandAll">{{t.expandAllBtn}}</button>
   </view>
 
   <!-- 核算方式（2026-09-20：库存/摊销开关从店铺设置页迁入此处，就地二选一） -->

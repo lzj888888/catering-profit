@@ -6,6 +6,12 @@
 <view class="container safe-bottom" wx:elif="{{r}}">
   <view class="archived-bar" wx:if="{{isArchive}}">{{t.archiveLocked}}</view>
 
+  <!-- 暖化：顶部「一句话结论 + 红黄绿带」（装饰性，只看真利润正负，不碰引擎口径） -->
+  <view class="band band-{{bandClass}}" wx:if="{{bandClass}}">
+    <text class="band-label">{{t.bandLabel}}</text>
+    <text class="band-text">{{bandText}}</text>
+  </view>
+
   <!-- 批次 5 · 到期提醒常驻提示条（双渠道兜底） -->
   <view class="expire-banner" wx:if="{{expireSoonDays > 0}}">
     <view class="muted">{{t.expireSoonTitle}} · {{expireSoonText}}</view>

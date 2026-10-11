@@ -34,6 +34,11 @@ Page({
       flowLand: TERMS.resultPage.flowLand,
       flowPer100: TERMS.resultPage.flowPer100,
       flowHint: TERMS.resultPage.flowHint,
+      // 暖化：结果页顶部「一句话结论 + 红黄绿带」（装饰性，判定只看真利润正负 + 毛利率）
+      bandLabel: TERMS.resultPage.bandLabel,
+      bandRed: TERMS.resultPage.bandRed,
+      bandYellow: TERMS.resultPage.bandYellow,
+      bandGreen: TERMS.resultPage.bandGreen,
       refNote: TERMS.resultPage.refNote,
       trueNote: TERMS.resultPage.trueNote,
       archiveLocked: TERMS.resultPage.archiveLocked,
@@ -73,6 +78,8 @@ Page({
     isArchive: false,
     loading: true,
     showPer100: false,
+    bandClass: '',
+    bandText: '',
     r: null,       // 展示用已格式化数据
     incDetail: [],
     expDetail: [],
@@ -111,6 +118,12 @@ Page({
       const trueFen = res.total_factor_real_profit_fen || 0;
       const ratio = incomeFen > 0 ? Math.round((trueFen / incomeFen) * 100) : 0;
       const per100Text = (ratio < 0 ? '−' : '') + Math.abs(ratio);
+      // 暖化：顶部「一句话结论 + 红黄绿带」（装饰性，仅判后端真利润正负 + 毛利率，不碰引擎）
+      //   红=亏损；黄=赚钱但毛利率<30%偏薄；绿=赚钱且毛利率达标。阈值 30 仅作白话提示，非业务红线。
+      const gmPct = res.gross_margin_pct != null ? res.gross_margin_pct : 0;
+      let bandClass = 'green', bandText = this.data.t.bandGreen;
+      if (trueFen <= 0) { bandClass = 'red'; bandText = this.data.t.bandRed; }
+      else if (gmPct < 30) { bandClass = 'yellow'; bandText = this.data.t.bandYellow; }
       // D1：保存原始明细（snake_case，含 sub_items），供下钻面板展示（前端不重算金额）
       const incDetail = this.buildDetail(d.income_items || []);
       const expDetail = this.buildDetail(d.expense_items || []);
@@ -137,6 +150,7 @@ Page({
         },
         loading: false,
         showPer100: incomeFen > 0,
+        bandClass, bandText,
         inds, scope,
         bizIdx: sv.bizIdx, cityIdx: sv.cityIdx, bizText: sv.bizText, cityText: sv.cityText,
       });

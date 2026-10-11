@@ -30,6 +30,9 @@ const TAKEOUT_FOLD_KEY = 'takeout_fold_';
 // round217：保存前「缺项软提示」的"该月已提示过"记忆键（仅存本地）。
 //   ⚠️ 与草稿/模式键一样只存本地：换设备会再提示一次 —— 可接受（提示是软的，不阻断保存）。
 const MISS_WARN_KEY = 'miss_warn_';
+// P0#3（2026-10-11）：新手/老手模式记忆键（仅存本地；复用 DINE_MODE_KEY 同族约定）。
+//   新手 = 只渲染 core 组（堂食/外卖/运营/人工），折叠其他收入/营销/其他费用。
+const INPUT_MODE_KEY = 'input_mode_';
 
 Page({
   data: {
@@ -174,9 +177,20 @@ Page({
       twPromoPathLabel: TERMS.ledger.takeawayMode.promoPathLabel,
       twPromoPathHint: TERMS.ledger.takeawayMode.promoPathHint,
       expenseItemNotes: TERMS.ledger.expenseItemNotes || {},
+      // P0#3：新手/老手模式
+      inputModeTitle: TERMS.ledger.inputModeTitle,
+      inputModeNovice: TERMS.ledger.inputModeNovice,
+      inputModeNoviceDesc: TERMS.ledger.inputModeNoviceDesc,
+      inputModePro: TERMS.ledger.inputModePro,
+      inputModeProDesc: TERMS.ledger.inputModeProDesc,
+      expandAllBtn: TERMS.ledger.expandAllBtn,
+      noviceTip: TERMS.ledger.noviceTip,
       cur: '¥',
       loading: TERMS.ui.loading,
     },
+    // P0#3：新手/老手模式（仅存本地；默认新手，折叠非核心科目）
+    inputMode: 'novice',
+    showMore: false,
     month: '',
     isArchive: false,
     archivedAtMs: 0,
@@ -245,7 +259,8 @@ Page({
 
   onLoad(q) {
     const month = (q && q.month) || ui.nowMonth();
-    this.setData({ month });
+    // P0#3：读入新手/老手模式（仅存本地；读不到回默认 'novice'）
+    this.setData({ month, inputMode: this.loadInputMode() || 'novice' });
     this.initGroups();
     this.load();
   },
@@ -309,6 +324,7 @@ Page({
       const raw = [{ subItem: '', amountYuan: '' }];
       const g = {
         category: d.category, label: d.label, items: d.items || [],
+        core: !!d.core,     // P0#3：核心组标记（来自 terms 单源），新手模式折叠非核心组
         scope: (scopeMap || {})[d.category] || '',
         scopeOpen: false,   // 2026-09-21：口径句默认收起（李老师反馈原样展开太占地方）
         expanded: false,
@@ -504,6 +520,7 @@ Page({
       // ⚠️ round102：同 initGroups —— 先建页面对象再装配（decorateRows 会往 g 挂只读派生字段）
       const g = {
         category: d.category, label: d.label, items: d.items || [],
+        core: !!d.core,     // P0#3：核心组标记（来自 terms 单源），新手模式折叠非核心组
         scope: (scopeMap || {})[d.category] || '',
         scopeOpen: false,   // 与 initGroups 一致：读回后端数据也默认收起
         expanded,
@@ -849,6 +866,37 @@ Page({
       if (v === 'fast' || v === 'detail') return v;
     } catch (e) { /* 读不到 → 由数据推断 */ }
     return null;
+  },
+
+  // P0#3：新手/老手模式记忆（仅存本地；换设备/清缓存回默认 'novice'）。
+  //   ⚠️ 与 DINE_MODE_KEY 同族：按 shopId 区分，不同店各自记偏好。
+  inputModeKey() {
+    const app = getApp();
+    const shopId = (app && app.globalData && app.globalData.shop_id) || '';
+    return INPUT_MODE_KEY + shopId;
+  },
+  saveInputMode(m) { try { wx.setStorageSync(this.inputModeKey(), m); } catch (e) { /* 存不了不影响填表 */ } },
+  loadInputMode() {
+    try {
+      const v = wx.getStorageSync(this.inputModeKey());
+      if (v === 'novice' || v === 'pro') return v;
+    } catch (e) { /* 读不到 → 默认 novice */ }
+    return null;
+  },
+  onPickInputMode(e) {
+    if (this.data.readOnly) {
+      wx.showModal({ title: TERMS.inputPage.archiveReadonly, content: TERMS.inputPage.confirmLocked, showCancel: false });
+      return;
+    }
+    const val = e.currentTarget.dataset.val === 'pro' ? 'pro' : 'novice';
+    if (this.data.inputMode === val) return;
+    // 切模式即重置 showMore：老手本就全显、新手回到折叠态（让状态可预期）
+    this.setData({ inputMode: val, showMore: false });
+    this.saveInputMode(val);
+  },
+  // 新手模式下一键展开被折叠的非核心科目（仅本会话；不写库、不持久）
+  onExpandAll() {
+    this.setData({ showMore: true });
   },
 
   onPickDineMode(e) {

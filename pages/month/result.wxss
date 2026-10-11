@@ -40,3 +40,15 @@
 .ind-lv.lv-na { background: #f2f4f8; }
 
 .ind-note { font-size: 28rpx; color: #8a94a6; padding-top: 12rpx; line-height: 1.5; }
+
+/* ===== 暖化：结果页顶部「一句话结论 + 红黄绿带」（装饰性，不碰引擎口径）===== */
+/* 字号 28rpx 下界（G1 守卫）；色值走本页语义色，不引新品牌色 */
+.band { border-radius: 16rpx; padding: 22rpx 24rpx; margin-bottom: 16rpx; display: flex; flex-direction: column; }
+.band-label { font-size: 28rpx; color: #6b7280; margin-bottom: 6rpx; }
+.band-text { font-size: 30rpx; font-weight: 600; line-height: 1.4; }
+.band-red { background: #fdecea; }
+.band-red .band-text { color: #c0392b; }
+.band-yellow { background: #fdf4e7; }
+.band-yellow .band-text { color: #b9770e; }
+.band-green { background: #eaf6f0; }
+.band-green .band-text { color: #1e8e5a; }

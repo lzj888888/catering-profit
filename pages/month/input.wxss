@@ -221,3 +221,18 @@
 }
 .dine-sum-lbl { font-size: 28rpx; color: #6b7a8d; }
 .dine-sum-val { font-size: 34rpx; font-weight: 600; color: #1e3a5f; }
+
+/* P0#3：新手/老手模式切换（分段控件，复用 dm-opt 视觉语言；字号一律 ≥28rpx） */
+.im-wrap { padding: 4rpx 0 8rpx; }
+.im-sec { font-size: 28rpx; color: #6b7a8d; padding: 0 0 10rpx 8rpx; }
+.im-opts { display: flex; gap: 12rpx; }
+.im-opt {
+  flex: 1; min-width: 0; padding: 16rpx 14rpx; border-radius: 12rpx;
+  border: 2rpx solid #e3eaf2; background: #fff;
+}
+.im-opt.on { border: 2rpx solid #1e3a5f; background: #e8eff7; }
+.im-h { font-size: 28rpx; font-weight: 600; color: #1e3a5f; }
+.im-d { font-size: 28rpx; color: #6b7a8d; margin-top: 6rpx; }
+.im-tip { font-size: 28rpx; color: #8a94a6; line-height: 1.5; padding: 6rpx 8rpx 4rpx; }
+.im-expand { padding: 16rpx 0 4rpx; }
+.btn-block { width: 100%; min-height: 88rpx; }
