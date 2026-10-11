@@ -136,20 +136,25 @@ const TAB_PAGES = ((appJson.tabBar && appJson.tabBar.list) || []).map((x) => x.p
 
 const confirmBody = extractMethodBody(pageSrc, 'onConfirmImport');
 const confirmCode = confirmBody ? stripFn(confirmBody) : '';
-const navUrlM = confirmCode.match(/wx\.navigateTo\s*\([^)]*url\s*:\s*'([^']+)'/);
+// 🔴 R238 的真实落地形态（P0#8）：导入成功后**不再用 showModal**（modal 放不下两个出口），
+//   改用常驻「成功结果条」（importDone:true）+ 两个出口按钮（goDishReview→单品毛利 / goRecon→对账）。
+//   判据跟着真实实现走：① 成功分支确实亮起结果条；② 出口按钮真能跳到 dishreview。
+//   ⚠️ goDishReview 非 async ⇒ 不能用 extractMethodBody（只认 async）；整页剥注释后抽 dishreview 的 navigateTo。
+const pageCode2 = stripFn(pageSrc);
+const navUrlM = pageCode2.match(/wx\.navigateTo\(\s*[^)]*url:\s*'([^']*dishreview[^']*)'/);
 const navTarget = navUrlM ? navUrlM[1].replace(/^\//, '') : '';
 const DISHREVIEW = 'pages/m3/dishreview/index';
 
-sec('E-R238 导入成功后必须给下游引导（判行为：目标页必须真能到达）');
+sec('E-R238 导入成功后必须给下游引导（判行为：结果条亮起 + 出口真能跳到单品毛利复盘）');
 check('E-⓪ 自失效护栏：能提取到 onConfirmImport 函数体（提取不到即红，不许恒绿）',
   !!confirmBody && confirmCode.length > 200,
   confirmBody ? ('函数体 ' + confirmBody.length + ' 字符（剥注释后 ' + confirmCode.length + '）')
     : '未找到 `async onConfirmImport(` ⇒ 扫描面退化');
-check('E-① 成功分支里有"下一步"交互（showModal，而非纯 toast）',
-  /wx\.showModal\s*\(/.test(confirmCode),
-  /wx\.showModal\s*\(/.test(confirmCode) ? '有 showModal' : '只有 toast ⇒ 用户到这就断了');
-check('E-② 导航目标可提取（wx.navigateTo + url 字面量）',
-  !!navTarget, navTarget || '未提取到 navigateTo 的 url');
+check('E-① 成功分支亮起「成功结果条」（importDone:true，常驻可反复看，取代一次性 toast/modal）',
+  /importDone\s*:\s*true/.test(confirmCode),
+  /importDone\s*:\s*true/.test(confirmCode) ? '结果条已亮起' : '成功分支未设置 importDone ⇒ 用户到这就断了');
+check('E-② 出口按钮导航目标可提取（goDishReview 跳 dishreview 的 wx.navigateTo）',
+  !!navTarget, navTarget || '未提取到跳往 dishreview 的 navigateTo');
 check('E-③ 目标页在 app.json::pages 里注册（防死链）',
   !!navTarget && APP_PAGES.indexOf(navTarget) >= 0,
   navTarget + (APP_PAGES.indexOf(navTarget) >= 0 ? ' ✅ 已注册' : ' ❌ 未注册 ⇒ 点「去看」会失败'));

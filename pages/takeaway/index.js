@@ -157,6 +157,7 @@ Page({
       importExcludedLabel: TK.importExcludedLabel,
       importRowUnit: TK.importRowUnit,
       importDaysUnit: TK.importDaysUnit,
+      importSuccessPlat: TK.importSuccessPlat,
       importConfirm: TK.importConfirm,
       importSuccess: TK.importSuccess,
       importGoLater: TK.importGoLater,
@@ -621,7 +622,7 @@ Page({
         // P0#8：成功结果条（常驻：标题=importSuccess、正文=importDoneText、两个出口按钮）
         importDone: true,
         importDoneText: platName
-          ? (TK.importDoneBody || '').replace('{name}', platName)
+          ? (TK.importSuccessPlat || '').replace('{name}', platName)
           : (TK.importDoneBodyPlain || ''),
       });
     } catch (e) {

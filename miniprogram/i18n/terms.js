@@ -564,7 +564,7 @@ const TERMS = {
       importConfirm: '确认导入',
       importSuccess: '导入成功',
       // R238：导入成功后的下游引导（此前只有 toast，用户到这就断了 —— 2026-10-08 真机实测）
-      importDoneBody: '已按「{name}」导入完成。',
+      importSuccessPlat: '已按「{name}」导入完成。',
       importDoneBodyPlain: '导入完成。',
       goRecon: '去对账（M1↔M3）',
       goDishReview: '查看单品毛利',
@@ -579,7 +579,7 @@ const TERMS = {
       importFailTotal: '账单的合计金额读不出来，请确认文件没有被改动过。',
       importFailPlatform: '账单的平台认不出来，暂时不能导入。',
       importFailRow: '账单里有格式不对的行（日期 / 金额 / 单数），暂时不能导入。',
-      importNoFile: '请先选择账单文件',
+      importNoFile: '请先选择销量文件',
       importEmpty: '先选文件，解析后在此预览',
       // R259：账单分支的**暂停态**（开关关闭时：账单预览不展示数字、也不给「确认导入」按钮）。
       //   措辞要点：① 说清"以前导的数据还在"（否则用户以为白干了）② 指向可用的替代路径。

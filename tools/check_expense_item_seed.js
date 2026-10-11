@@ -91,7 +91,10 @@ function parseFrontExpense(src) {
   const end = src.indexOf('subItem:', start);
   const block = src.slice(start, end < 0 ? start + 4000 : end);
   const out = {};
-  const re = /category: '(\w+)',\s*label: '([^']*)',\s*items: \[([^\]]*)\]/g;
+  // 🔴 修正：category 与 items 之间可能夹 `core: true`（新手模式标记，术语单源已用）；
+  //   原正则要求 label 紧跟 items ⇒ 漏解析带 core 的 operation/labor 两类 ⇒ 误报"缺类"。
+  //   真实数据（terms.expense 4 类 23 项）与种子逐项同序一致，是守卫解析器错、不是数据错。
+  const re = /category: '(\w+)',\s*label: '([^']*)',\s*(?:core:\s*true,\s*)?items: \[([^\]]*)\]/g;
   let m;
   while ((m = re.exec(block))) {
     out[m[1]] = m[3].split(',').map((s) => s.trim().replace(/^'|'$/g, '').trim()).filter(Boolean);
