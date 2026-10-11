@@ -1,4 +1,4 @@
-<view class="container safe-bottom" wx:if="{{!loading}}">
+<view class="container safe-bottom {{stickKpi ? 'has-stick' : ''}}" wx:if="{{!loading}}">
 
   <!-- M2v1.2：我的方案入口（标题栏右侧常驻按钮） -->
   <view class="entry-bar">
@@ -342,7 +342,7 @@
         <view class="hint-fold-body" wx:if="{{hintFold.sbRedAlertRev}}">{{t.redAlertHint}}</view>
       </view>
     </view>
-    <view class="card2" wx:if="{{!reverseResult.red_alert}}">
+    <view class="card2" id="m2result" wx:if="{{!reverseResult.red_alert}}">
       <view class="sec">{{t.secResult}}</view>
       <view class="cell big"><text class="lbl">{{t.revRevenue}}</text><text class="val keynum">{{t.cur}}{{reverseResult.target_monthly}}</text></view>
       <view class="cell"><text class="lbl">{{t.revRentCap}}</text><text class="val">{{t.cur}}{{reverseResult.rent_cap}}</text></view>
@@ -350,17 +350,25 @@
       <view class="cell"><text class="lbl">{{t.revDailyTraffic}}</text><text class="val">{{reverseResult.daily_traffic}}</text></view>
       <!-- 🔴 R237：一个数、两套话术 —— 按业态切。火锅/正餐/烧烤（按桌点菜）才叫「翻台」；
            快餐/小面/茶饮常拼桌、单人客多，只说「座位周转」，**禁用「翻台」二字**。 -->
-      <view class="cell"><text class="lbl">{{reverseResult.turn_is_table ? t.revTurnRateTable : t.revTurnRateSeat}}</text><text class="val">{{reverseResult.turn_rate}}</text></view>
-      <!-- 🔴 R234-实测移除：面积上限。它 = 房租上限 ÷ 坪效，而坪效已退出输入区 ⇒ 该值恒 null。
-           留着就是一行永远不显示、却让人以为"我们能算面积"的死输出 —— 算不出来就别给（不编造）。 -->
-      <!-- 🔴 R237：翻台**红警已删除** —— 李老师 2026-10-08「不要过多让翻台率去佐证生意好坏」；
-           豆包第 5 轮：「旧的 >8 阈值是适配旧座位口径的产物，口径已变更，直接废弃」。
-           换成两条**中性灰字**（`.row-note` = 28rpx / #9aa4b2；不标红、不进主结论卡）：
-             ① 口径说明（按业态两套话术）；② 难度一句话（三档，互斥渲染）。 -->
+      <view class="cell">
+        <view class="lbl-q">
+          <text class="lbl">{{reverseResult.turn_is_table ? t.revTurnRateTable : t.revTurnRateSeat}}</text>
+          <text class="q-mark" catchtap="onToggleTurnHelp">?</text>
+        </view>
+        <text class="val">{{reverseResult.turn_rate}}</text>
+      </view>
       <view class="row-note">{{reverseResult.turn_is_table ? t.turnNoteTable : t.turnNoteSeat}}</view>
-      <view class="row-note" wx:if="{{reverseResult.turn_level === 'easy'}}">{{t.turnLevelEasy}}</view>
-      <view class="row-note" wx:if="{{reverseResult.turn_level === 'ok'}}">{{t.turnLevelOk}}</view>
-      <view class="row-note" wx:if="{{reverseResult.turn_level === 'hard'}}">{{t.turnLevelHard}}</view>
+      <!-- 🔴 P0#5（2026-10-11）：翻台三档口语解释收进「?」点开面板（口径说明 + 三档白话，当前档高亮），
+           默认不显示、减少满屏灰字；点「?」才展开，更顺手也更省眼。 -->
+      <view class="turn-help" wx:if="{{showTurnHelp}}">
+        <view class="th-title">{{t.turnHelpTitle}}</view>
+        <view class="th-body">{{t.turnHelpBody}}</view>
+        <view class="th-levels">
+          <view class="th-lv {{reverseResult.turn_level === 'easy' ? 'on' : ''}}"><text class="th-dot">·</text>{{t.turnLevelEasy}}</view>
+          <view class="th-lv {{reverseResult.turn_level === 'ok' ? 'on' : ''}}"><text class="th-dot">·</text>{{t.turnLevelOk}}</view>
+          <view class="th-lv {{reverseResult.turn_level === 'hard' ? 'on' : ''}}"><text class="th-dot">·</text>{{t.turnLevelHard}}</view>
+        </view>
+      </view>
     </view>
   </block>
 
@@ -383,7 +391,7 @@
        🔴 判定**不自造**：`verdict.level` 直接读引擎 indicators 里 rent 那行的 level，
           前端只做 key → 中文映射（见 index.js::verdictOf）。
        放在结果区**第一位**：结论要在用户往下翻之前就看到。 -->
-  <view class="card2 verdict-card" wx:if="{{mode === 'forward' && verdict && verdict.level !== 'na'}}">
+  <view class="card2 verdict-card" id="m2result" wx:if="{{mode === 'forward' && verdict && verdict.level !== 'na'}}">
     <view class="verdict-head">
       <text class="verdict-title">{{t.verdictTitle}}</text>
       <text class="verdict-lv lv-{{verdict.level}}">{{verdict.levelName}}</text>
@@ -479,6 +487,11 @@
         <button class="btn primary" catchtap="onSavePlan" disabled="{{planSaving}}">{{planSaving ? t.planSaving : t.savePlanBtn}}</button>
       </view>
     </view>
+  </view>
+  <!-- P0#5：结果吸底条（测算出数后常驻屏幕底部，老板滚长表单也一直看得见核心数；点开看完整测算） -->
+  <view class="stick-bar" wx:if="{{stickKpi}}" bindtap="onStickTap">
+    <view class="stick-l"><text class="stick-lbl">{{stickLbl}}</text><text class="stick-val">{{stickVal}}</text></view>
+    <text class="stick-go">{{t.stickTap}}</text>
   </view>
 </view>
 <view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

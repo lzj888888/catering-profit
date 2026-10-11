@@ -180,3 +180,28 @@
 .hint-fold-arrow { font-size: 28rpx; color: #1e3a5f; }
 .hint-fold-body { font-size: 28rpx; color: #4a5b70; line-height: 1.6; padding: 16rpx 20rpx;
   background: #f3f7fb; border-radius: 12rpx; margin: 0 0 12rpx; }
+
+/* ===== P0#5（2026-10-11）：翻台「?」触发说明 + 结果吸底条 ===== */
+/* 翻台率单元格里的「?」徽标：小圆点、可点、不抢视觉 */
+.lbl-q { display: flex; align-items: center; }
+.q-mark { display: inline-flex; align-items: center; justify-content: center;
+  width: 34rpx; height: 34rpx; margin-left: 10rpx; border-radius: 50%;
+  background: #e3eaf2; color: #1e3a5f; font-size: 24rpx; font-weight: 600; line-height: 1; }
+/* 「?」点开后的白话说明面板 */
+.turn-help { background: #f3f7fb; border-radius: 12rpx; padding: 16rpx 20rpx; margin: 4rpx 0 8rpx; }
+.th-title { font-size: 28rpx; font-weight: 600; color: #1e3a5f; margin-bottom: 6rpx; }
+.th-body { font-size: 28rpx; color: #4a5b70; line-height: 1.6; margin-bottom: 10rpx; }
+.th-levels { display: flex; flex-direction: column; gap: 6rpx; }
+.th-lv { font-size: 28rpx; color: #9aa4b2; line-height: 1.5; }
+.th-lv.on { color: #1e3a5f; font-weight: 600; }
+.th-dot { margin-right: 8rpx; }
+/* 结果吸底条：测算出数后常驻屏幕底部，老板滚长表单也看得见核心数 */
+.container.has-stick { padding-bottom: calc(env(safe-area-inset-bottom) + 180rpx); }
+.stick-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18rpx 24rpx calc(env(safe-area-inset-bottom) + 18rpx);
+  background: #1e3a5f; box-shadow: 0 -4rpx 16rpx rgba(30, 58, 95, 0.18); }
+.stick-l { display: flex; align-items: baseline; min-width: 0; }
+.stick-lbl { font-size: 28rpx; color: #cfe0f2; margin-right: 14rpx; flex: 0 0 auto; }
+.stick-val { font-size: 36rpx; font-weight: 700; color: #fff; }
+.stick-go { font-size: 28rpx; color: #9ec3e8; flex: 0 0 auto; margin-left: 12rpx; }

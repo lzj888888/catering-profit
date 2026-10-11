@@ -122,6 +122,12 @@ Page({
       turnLevelEasy: M.turnLevelEasy,
       turnLevelOk: M.turnLevelOk,
       turnLevelHard: M.turnLevelHard,
+      // 🔴 P0#5（2026-10-11）：翻台「?」白话说明 + 结果吸底条（纯展示层）
+      turnHelpTitle: M.turnHelpTitle,
+      turnHelpBody: M.turnHelpBody,
+      stickFwdLbl: M.stickFwdLbl,
+      stickRevLbl: M.stickRevLbl,
+      stickTap: M.stickTap,
       // 🔴 R234-实测：`revAreaCap` 映射已随面积上限输出一并移除（坪效不让问 ⇒ 恒算不出）。
       //    ⚠️ terms.js 里的定义**保留** —— 它是全项目共享词典（多页共用），不是"本页用到才算数"。
       // 🔴 R237：`revWarnTurnHigh` 映射**已删除** —— 红警同时从引擎（`warn_keys` 恒空数组）与页面移除。
@@ -244,6 +250,11 @@ Page({
     //    ⚠️ 云端入参 `target_rent_rate` / `pixel_eff_fen` **保留**（契约 + 快照需要），只是换了取值来源。
     reverseResult: null,     // 反推结果（reverse 块）
     rentRatePct: '',         // R234：本次采用的房租行规（%，来自云端 BANDS，**只读回显**）
+    // 🔴 P0#5（2026-10-11）：翻台「?」说明面板 + 结果吸底条（纯展示层，不碰引擎）
+    showTurnHelp: false,     // 翻台率「?」点开/收起说明
+    stickKpi: false,         // 吸底条是否显示（出数后才显示）
+    stickLbl: '',            // 吸底条左侧标签（保本营业额 / 房租最多能扛）
+    stickVal: '',            // 吸底条核心数字
     // M2v1.2（多方案存储 · 第二期）：保存沙盘弹窗
     sandboxId: '',           // 正算/反推共用同一个 sandbox_id（首次保存后回填）
     showSave: false,
@@ -491,8 +502,28 @@ Page({
     const mode = e.currentTarget.dataset.mode;
     if (mode === this.data.mode) return;
     this.setData({ mode });
+    // 切 Tab 后吸底条标签/数字要跟着当前结果重算（结果可能仍有效，也可能已清空）
+    this.refreshStick();
     // 切到反推 Tab 立即触发一次反推（复用防抖）
     this.scheduleCalc();
+  },
+  // 🔴 P0#5：翻台率「?」点开/收起白话说明（口径 + 三档口语，当前档高亮）；纯展示，不碰引擎
+  onToggleTurnHelp() { this.setData({ showTurnHelp: !this.data.showTurnHelp }); },
+  // 🔴 P0#5：吸底条点开 ⇒ 滚到结果区（原生页面滚动用 pageScrollTo + selector）
+  onStickTap() { wx.pageScrollTo({ selector: '#m2result', duration: 300 }); },
+  // 🔴 P0#5：根据当前 Tab + 结果，算出吸底条要显示的核心数（只在出数且非红警时显示）
+  refreshStick() {
+    const t = this.data.t || {};
+    const cur = (t.cur) || '¥';
+    let kpi = false, lbl = '', val = '';
+    if (this.data.mode === 'reverse') {
+      const r = this.data.reverseResult;
+      if (r && !r.red_alert) { kpi = true; lbl = t.stickRevLbl || '房租最多能扛'; val = cur + (r.rent_cap != null ? r.rent_cap : ''); }
+    } else {
+      const r = this.data.result;
+      if (r && !r.red_alert) { kpi = true; lbl = t.stickFwdLbl || '保本营业额'; val = cur + (r.break_even_monthly != null ? r.break_even_monthly : ''); }
+    }
+    this.setData({ stickKpi: kpi, stickLbl: lbl, stickVal: val });
   },
   // 🔴 R234：删掉 `onRevRentRate` / `onRevPixelEff` 两个 handler ——
   //    对应输入框已从 wxml 移除（R223 §3.2 明令「L1/L2 严禁以坪效/目标租金率作输入」）。
@@ -546,6 +577,7 @@ Page({
       //   ⇒ 在发请求**之前**拦一步，换成一句人话（术语三处登记：terms/页面已登记 needTables）。
       if (this.seatsNow() <= 0) {
         this.setData({ loading: false, dirty: false, reverseResult: null, calcError: M.needTables });
+        this.refreshStick();
         return;
       }
       // 固定支出剔除 rent（页面已隐藏房租行，此处保险再滤一层）
@@ -597,6 +629,7 @@ Page({
           } : null,
           calcError: rev ? '' : M.needFixed,
         });
+        this.refreshStick();
       } catch (e) {
         if (seq !== this._seq) return;
         this.setData({ loading: false, dirty: false, reverseResult: null, calcError: e.msg || '' });
@@ -668,6 +701,7 @@ Page({
         loading: false,
         dirty: false,
       });
+      this.refreshStick();
     } catch (e) {
       if (seq !== this._seq) return;
       this.setData({ loading: false, dirty: false });
