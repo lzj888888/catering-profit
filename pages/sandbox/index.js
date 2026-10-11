@@ -198,6 +198,7 @@ Page({
       verdictHealthTitle: M.verdictHealthTitle,
       verdictWorstLabel: M.verdictWorstLabel,
       verdictHealthStrip: M.verdictHealthStrip,
+      m2Disclaimer: M.m2Disclaimer,
       verdictGood: M.verdictGood,
       verdictOk: M.verdictOk,
       verdictWarn: M.verdictWarn,

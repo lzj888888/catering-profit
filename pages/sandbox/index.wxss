@@ -173,6 +173,8 @@
 .asm-input { flex: 1 1 auto; font-size: 28rpx; color: #1e3a5f; font-weight: 600; }
 .asm-src { flex: 0 0 auto; font-size: 28rpx; color: #9aa4b2; margin-left: 12rpx; }
 .payback-disclaimer { color: #b45309; }
+/* 🔴 #8（P1，round272）：全局测算边界免责声明（与 payback-disclaimer 互补，灰调以示边界） */
+.m2-disclaimer { color: #8a93a0; margin-top: 4rpx; }
 .payback-m3-btn { margin: 16rpx 0 0; }
 
 /* ===== R234/J4 · 行内长提示折叠（句级，与月录入页 .hint-fold 同形）=====

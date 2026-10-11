@@ -452,6 +452,9 @@
     <button class="btn ghost payback-m3-btn" bindtap="onGoM3">{{t.paybackSeeM3}}</button>
   </view>
 
+  <!-- 🔴 #8（P1，round272）：全局测算边界免责声明 —— 与 paybackDisclaimer 互补，点明结果仅参考 -->
+  <view class="hint m2-disclaimer" wx:if="{{mode === 'forward'}}">{{t.m2Disclaimer}}</view>
+
   <!-- 餐饮指标对照 -->
   <view class="card2" wx:if="{{indicators.length}}">
     <view class="sec">{{t.secIndicators}}</view>

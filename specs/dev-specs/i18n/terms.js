@@ -952,6 +952,9 @@ const TERMS = {
     paybackCash: '几年能收回现金',
     paybackNull: '填了目标利润才能算回本',
     paybackDisclaimer: '行业参考假设值，非你门店真实投入',
+    // 🔴 #8（P1，round272）：全局测算边界免责声明 —— 与 paybackDisclaimer 互补，
+    //    点明「结果仅供参考、不构成决策依据」（<18 字，不触发 check_hint_fold）。
+    m2Disclaimer: '结果仅供参考，不构成决策依据',
     paybackSeeM3: '查看完整回本测算',
     months: '个月',
     yuanUnit: '元',
