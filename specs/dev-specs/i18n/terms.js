@@ -562,8 +562,10 @@ const TERMS = {
       importConfirm: '确认导入',
       importSuccess: '导入成功',
       // R238：导入成功后的下游引导（此前只有 toast，用户到这就断了 —— 2026-10-08 真机实测）
-      importSuccessGo: '导入完成。去「单品毛利复盘」看单品卖了多少、毛利多少。',
-      importGoReview: '去看',
+      importDoneBody: '已按「{name}」导入完成。',
+      importDoneBodyPlain: '导入完成。',
+      goRecon: '去对账（M1↔M3）',
+      goDishReview: '查看单品毛利',
       importGoLater: '稍后',
       importFail: '门禁未通过，已阻断导入',
       // 🔴 R250：门禁失败的**原因**必须透出。此前只显示上面那句笼统话 ⇒
@@ -589,8 +591,6 @@ const TERMS = {
       importDupTitle: '⚠️ 这批数据好像导过一次',
       importDupBody: '已经用「{old}」导过 {n} 行（销量与金额完全一致）。再以「{cur}」导入会变成两份、销量翻倍。',
       importDupFix: '请改选「{old}」再导入 —— 同平台会覆盖原来那份，不会翻倍。',
-      // 回执带平台名：此前只说"导入完成"，老板回头看复盘页对不上自己刚才选的啥。
-      importSuccessPlat: '已按「{name}」导入完成。去「单品毛利复盘」看单品卖了多少、毛利多少。',
       // 账单暂停态：把"这张表被认成了什么"说出来（平台+行数+月份）。
       //   只说"打磨中"会让老板误判成"某个平台不行"，而真实判据是**表里有没有菜品/商品行**。
       importBillRecognized: '识别到：{plat} · {rows} 行 · {months}',

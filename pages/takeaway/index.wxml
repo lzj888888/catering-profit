@@ -233,7 +233,16 @@
       <button class="btn primary" wx:if="{{importGrade && importGrade.pass}}" style="margin-top:24rpx;" bindtap="onConfirmImport">{{t.importConfirm}}</button>
       </block>
     </view>
-    <view class="muted" wx:else>{{t.importEmpty}}</view>
+    <view class="muted" wx:elif="{{!importDone}}">{{t.importEmpty}}</view>
+    <view wx:else></view>
+    <!-- P0#8：导入成功结果条（常驻，给老板明确下一步 —— 看单品毛利 / 去对账） -->
+    <view class="card2 ok-bar" wx:if="{{importDone}}">
+      <view class="ok-title">{{t.importSuccess}}</view>
+      <view class="muted">{{importDoneText}}</view>
+      <button class="btn primary" bindtap="goRecon">{{t.goRecon}}</button>
+      <button class="btn ghost" bindtap="goDishReview">{{t.goDishReview}}</button>
+      <button class="btn ghost btn-block" bindtap="dismissDone">{{t.importGoLater}}</button>
+    </view>
   </block>
 </view>
 <view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

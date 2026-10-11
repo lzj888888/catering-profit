@@ -159,11 +159,10 @@ Page({
       importDaysUnit: TK.importDaysUnit,
       importConfirm: TK.importConfirm,
       importSuccess: TK.importSuccess,
-      // R238：导入成功后的**下游引导**（modal 用键）。`t:{}` 严格说只管 wxml 渲染，
-      //   但本页所有可见文案一律在此登记（同一风格），避免"这键到底登记没"要靠猜。
-      importSuccessGo: TK.importSuccessGo,
-      importGoReview: TK.importGoReview,
       importGoLater: TK.importGoLater,
+      // P0#8：导入成功结果条（替代原 showModal —— 两出口放不下）；goRecon/goDishReview 见下方
+      goRecon: TK.goRecon,
+      goDishReview: TK.goDishReview,
       importFail: TK.importFail,
       // 🔴 R250：门禁失败原因四键（`failReasonText()` 按 failures[0].code 取）
       importFailEmpty: TK.importFailEmpty,
@@ -179,7 +178,6 @@ Page({
       importDupTitle: TK.importDupTitle,
       importDupBody: TK.importDupBody,
       importDupFix: TK.importDupFix,
-      importSuccessPlat: TK.importSuccessPlat,
       importBillRecognized: TK.importBillRecognized,
       // v1.7 形态 C（外卖商品销量）：平台机器判不出 ⇒ 必须选平台
       importShapeCHint: TK.importShapeCHint,
@@ -241,6 +239,9 @@ Page({
     importDupBlock: false,              // 命中 ⇒ 禁用「确认导入」（防销量翻倍）
     importPlatformLabel: '',            // 账单分支：识别到的平台显示名（暂停态要"说清认成了什么"）
     importBillRecognizedText: '',       // 账单分支：「识别到：X · N 行 · M月」（暂停态露出来，别只说"打磨中"）
+    // P0#8：导入成功结果条（常驻，给老板明确下一步）
+    importDone: false,
+    importDoneText: '',
   },
 
   onLoad() { this.load(); },
@@ -484,6 +485,7 @@ Page({
       }
       this.setData({
         importing: false,
+        importDone: false, importDoneText: '',
         importFileID: fileID,
         importShape: d.shape || '',
         importPlatform: d.platform || '',
@@ -602,33 +604,25 @@ Page({
       wx.showLoading({ title: TK.importConfirm, mask: true });
       await api.call('importSalesBill', { fileID: this.data.importFileID, platform, confirm: true });
       wx.hideLoading();
-      // 导入成功后清空预览态（含形态 C 的平台选择）
-      this.setData({
-        importing: false, importFileID: '', importShape: '', importPlatform: '', importGrade: null,
-        importFailReason: '',
-        importPreview: null, importPlatformIndex: -1, importPlatformChoice: '', importPlatformChoiceLabel: '', importZeroAmountQty: [],
-      });
-      // 🔴 R238：导入成功后给**下游引导** —— 此前只有一个 toast、零跳转，用户到这就断了。
-      //   现场（2026-10-08 李老师真机实测原话）：
-      //     「能导入了，导入后显示 已落库，然后呢，去哪里看什么？感觉导入后没有变化呀？」
-      //   根因：本页只负责**导入**，展示在 `pages/m3/dishreview`（单品毛利复盘）——
-      //         用户不可能自己猜到这个跳跃（且导入入口在「外卖」页、展示在「配方」页，跨了两个模块）。
-      //   · 用 showModal 而非 showToast：toast 没有按钮，给不了"下一步"。
-      //   · dishreview **不是 tabBar 页**（tabBar = 核算 / 配方 / 我的）⇒ 必须 `navigateTo`。
-      //   · 正文**刻意不带条数**：幂等重放分支是 `return ok(prior)`，prior **不含 `written`**
-      //     ⇒ 若写成「已写入 {n} 条」，重复导入时会渲染「已写入 0 条」= 把"重导"说成"没导进去"。
-      // 🔴 R271：记住本次平台（下次预选），并在回执里**说清是按哪个平台落库的**
+      // 🔴 R271：记住本次平台（下次预选），并在结果条文里**说清是按哪个平台落库的**
       //   —— 此前回执只说"导入完成"，老板回头看到复盘页某个平台下有数据，对不上自己刚才选的啥。
       try { if (platform) wx.setStorageSync(lastPlatformKey(), platform); } catch (e) { /* 存不了不影响主流程 */ }
       const platName = platformLabel(platform) || '';
-      wx.showModal({
-        title: TK.importSuccess,
-        content: platName
-          ? (TERMS.ledger.takeaway.importSuccessPlat || '').replace('{name}', platName)
-          : TK.importSuccessGo,
-        confirmText: TK.importGoReview,
-        cancelText: TK.importGoLater,
-        success: (m) => { if (m.confirm) wx.navigateTo({ url: '/pages/m3/dishreview/index' }); },
+      // 导入成功后：清预览态 + 展示「成功结果条」（P0#8：给老板明确下一步）。
+      // 🔴 不再用 showModal：modal 只能 confirm/cancel，放不下「看单品毛利」「去对账」两个出口；
+      //   改用常驻结果条（importDone），老板可慢慢读、两个按钮都能点。
+      this.setData({
+        importing: false,
+        importFileID: '', importShape: '', importPlatform: '', importGrade: null,
+        importFailReason: '',
+        importPreview: null, importPlatformIndex: -1, importPlatformChoice: '', importPlatformChoiceLabel: '', importZeroAmountQty: [],
+        // 🔴 R271：清空重复判定，避免残留旧结论把下次导入的「确认导入」一直禁用
+        importDup: null, importDupText: '', importDupFixText: '', importDupBlock: false,
+        // P0#8：成功结果条（常驻：标题=importSuccess、正文=importDoneText、两个出口按钮）
+        importDone: true,
+        importDoneText: platName
+          ? (TK.importDoneBody || '').replace('{name}', platName)
+          : (TK.importDoneBodyPlain || ''),
       });
     } catch (e) {
       wx.hideLoading();
@@ -636,6 +630,11 @@ Page({
       api.toastError(e);
     }
   },
+
+  // P0#8：导入成功结果条 —— 两个出口 + 收起
+  goRecon() { wx.navigateTo({ url: '/pages/recon/index' }); },
+  goDishReview() { wx.navigateTo({ url: '/pages/m3/dishreview/index' }); },
+  dismissDone() { this.setData({ importDone: false, importDoneText: '' }); },
 
   onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()); },
 });
