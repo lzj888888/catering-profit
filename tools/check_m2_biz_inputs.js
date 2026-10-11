@@ -337,6 +337,39 @@ const v8Red = /rank\s*[:=]/.test(badVo2) && /\bworst\b/.test(badVo2);
 check('V-⑧ 负样本（verdictOf 退化成永远绿、无 rank/worst）会被 C-④ 判红',
   !v8Red, v8Red ? '🔴 把退化实现漏过了' : '已报红（C-④ 非假绿）');
 
+// ============ F · round273：A 区派生指标（每天来多少人 / 一天翻几台）============
+sec('F · A 区派生指标 crowdOf：口径同源 + fail-closed');
+// 🔴 为什么必须有这一段：round273 给「已有铺面」补齐了 round223 §3.1 定案的两项指标，
+//   它们是**前端派生**（正向引擎根本不出这两个数）⇒ **没有引擎自测护着**，
+//   口径一旦漂移（漏乘单桌座位数 / 改成分母 30 / 删掉 fail-closed）**没有任何东西会报错**。
+//   ⇒ 用守卫钉死三件事：与反推同源可比、不给假数、只在 A 区渲染。
+const crowdFn = (js.match(/crowdOf\s*\([^)]*\)\s*\{([\s\S]*?)\n  \}/) || [])[1] || '';
+check('F-① 页面存在 `crowdOf(result)`（A 区客流/翻台的**唯一**派生处）',
+  /crowdOf\s*\(/.test(js), crowdFn ? `抓到函数体 ${crowdFn.length} 字符` : '未抓到函数体');
+check('F-② 每天来客 = 日均营业额 ÷ 人均消费（ceil，人不能是小数）',
+  /breakPeople\s*=\s*Math\.ceil\(\s*bd\s*\/\s*price\s*\)/.test(crowdFn)
+  && /targetPeople\s*=\s*Math\.ceil\(\s*td\s*\/\s*price\s*\)/.test(crowdFn),
+  /bd\s*\/\s*price/.test(crowdFn) ? '除数=人均消费' : '🔴 除的不是人均消费');
+check('F-③ 翻台 = 日均来客 ÷ 座位数（与反推 `月客流÷(座位×天数)` 同源 ⇒ 两 Tab 可比）',
+  /turn\s*:[^;\n]*targetPeople\s*\/\s*seats/.test(crowdFn),
+  /targetPeople\s*\/\s*seats/.test(crowdFn) ? '分子=日均来客、分母=座位数' : '🔴 口径已漂移');
+check('F-④ fail-closed：人均消费 ≤0 或座位数 ≤0 ⇒ 返回 null（**不给假数**）',
+  /!\s*\(price\s*>\s*0\)/.test(crowdFn) && /!\s*\(seats\s*>\s*0\)/.test(crowdFn) && /return null/.test(crowdFn),
+  /return null/.test(crowdFn) ? '有 null 兜底' : '🔴 恒出数');
+check('F-⑤ 只在「已有铺面」渲染（wxml 判 `mode === forward && crowd`）',
+  /mode\s*===\s*['"]forward['"]\s*&&\s*crowd/.test(wx),
+  /mode\s*===\s*['"]forward['"]\s*&&\s*crowd/.test(wx) ? '已限定 A 区' : '🔴 B 区也会渲染');
+// 负样本（防假绿）：F-③ 必须能抓到「座位数漏乘桌数」这种**最易犯**的错
+const badCrowd1 = 'crowdOf(r){const p=Number(this.data.avgPriceYuan);const s=Number(this.data.seatsPerTableNum);return {breakPeople:Math.ceil(Number(r.break_even_daily)/p),targetPeople:Math.ceil(Number(r.target_daily)/p),turn:Math.round((Math.ceil(Number(r.target_daily)/p)/s)*100)/100};}';
+check('F-⑥ 负样本（座位数只取 seatsPerTableNum、**漏乘桌数**）会被 F-③ 判红',
+  !/turn\s*:[^;\n]*targetPeople\s*\/\s*seats/.test(badCrowd1),
+  /turn\s*:[^;\n]*targetPeople\s*\/\s*seats/.test(badCrowd1) ? '🔴 把错误实现漏过了' : '已报红');
+// 负样本（防假绿）：删掉 fail-closed 恒出数 ⇒ F-④ 必须红
+const badCrowd2 = 'crowdOf(r){const price=1;const seats=1;return {breakPeople:1,targetPeople:1,turn:1};}';
+check('F-⑦ 负样本（删掉 fail-closed、恒出数）会被 F-④ 判红',
+  !(/!\s*\(price\s*>\s*0\)/.test(badCrowd2)),
+  /!\s*\(price\s*>\s*0\)/.test(badCrowd2) ? '🔴 把错误实现漏过了' : '已报红');
+
 // ============ E 下界 ============
 sec('E 下界：断言数不得被悄悄删掉');
 // ⚠️ 阈值 = **实测值**（25）：写成"看起来合理"的整数会让它变成摆设；
