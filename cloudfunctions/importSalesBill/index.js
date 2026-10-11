@@ -143,7 +143,7 @@ exports.main = async (event) => {
   //      性价比低；且 `fail(code, msg)` 的 msg 会透传到前端（`api.toastError` 取 `e.msg` 优先），
   //      用户看到的是下面这句人话、不是"无权限"。恢复时若需正式语义，再补专用码。
   if (!BILL_IMPORT_ENABLED) {
-    return fail(ERROR_CODES.FORBIDDEN, '外卖账单导入已暂停展示，正在打磨中；堂食/外卖的《商品销量》仍可正常导入。');
+    return fail(ERROR_CODES.FORBIDDEN, '订单/结算类账单导入已暂停展示，正在打磨中；堂食《菜品销售统计》与美团/京东/淘宝闪购/其他外卖的《商品销量》仍可正常导入。');
   }
 
   // 🔒 R181l 幂等（重放形态）：命中即返回首次结果、不重复写入。
