@@ -1458,8 +1458,15 @@ const TERMS = {
     purchaseHint: '本月采购入库总价值（元）',
     closing: '期末盘点',
     closingHint: '月末盘点剩余库存总价值（元）',
+    // ===== 暖化（2026-10-11）：保留专业术语，补「白话」辅助，帮新手秒懂怎么填 =====
+    openingAux: '白话：月初你库房里还剩的菜、肉、米面油，值多少钱',
+    purchaseAux: '白话：这个月你又进了多少菜和料',
+    closingAux: '白话：月底盘点，库房里还剩多少没用掉的',
     save: '保存库存',
     hintFormula: '保存后由服务端按库存倒轧计算真实消耗。',
+    // B：实时预览（纯前端读 getLedger.result.real_consume_fen，零后端改动）
+    realConsumePreview: '本月真实食材消耗',
+    realConsumePreviewNote: '倒轧 = 月初剩的 + 本月买的 − 月底剩的。你不用手算，保存后自动出数。',
     // ===== round103：期初结转 + 修正（依据 规范 02_模拟测试数据集.md:127「从上月期末结转，不可编辑」）=====
     openingCarryNote: (m) => `期初由上月（${m}）期末自动结转，不用手填`,
     openingEmptyNote: '还没有可结转的上月期末，请填写建账库存',
@@ -1514,6 +1521,7 @@ const TERMS = {
     // ===== round107：本页同时承载两类投入 =====
     lumpSectionTitle: '本月一次算清',
     lumpSectionHint: '这些钱全部算进本月费用，不跨月摊',
+    lumpSectionAux: '白话：冰箱、小设备这种一次花的钱，就记在买它的那个月，不用往后摊',
     lumpEmpty: '本月还没有一次算清的投入',
     lumpSumLabel: '合计（计入本月费用）',
     lumpAdd: '记一笔',
@@ -1596,6 +1604,15 @@ const TERMS = {
     // 未设置业态/地区时的兜底说明（bandOf 回落 正餐 × 二三线）
     indScopeTip: '按「正餐 · 二三线」估算',
     indScopeChange: '可改',
+    // ===== 暖化（2026-10-11）：C 钱去哪了 故事线（专业术语保留，补白话流向，老板秒懂利润怎么算）=====
+    flowTitle: '钱是怎么算出来的',
+    flowSell: '卖了',
+    flowMaterial: '食材',
+    flowExpense: '费用',
+    flowAmort: '摊销',
+    flowLand: '落袋',
+    flowPer100: '每卖 100 元，约落袋',
+    flowHint: '专业口径：收入 − 食材 − 费用 − 摊销 = 真实利润（权责发生制）',
   },
 
   // ===== 十八、核算方式（录入页就地二选一 · 2026-09-20 从店铺设置页迁入）=====

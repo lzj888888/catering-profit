@@ -27,6 +27,7 @@
        本页另有 `amortSwitchHint`（18 字）走折叠 ⇒ 同页两级并存，正是分层判据的样本。 -->
   <view class="card2">
     <view class="hint">{{t.lumpSectionHint}}</view>
+    <view class="hint">{{t.lumpSectionAux}}</view>
 
     <view class="lump-row" wx:for="{{lumps}}" wx:key="item_id" wx:for-item="it">
       <view class="lump-name">{{it.name}}</view>

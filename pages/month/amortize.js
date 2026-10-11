@@ -20,6 +20,7 @@ Page({
       // round107：本月一次算清清单
       lumpSectionTitle: TERMS.amortizePage.lumpSectionTitle,
       lumpSectionHint: TERMS.amortizePage.lumpSectionHint,
+      lumpSectionAux: TERMS.amortizePage.lumpSectionAux,
       lumpEmpty: TERMS.amortizePage.lumpEmpty,
       lumpSumLabel: TERMS.amortizePage.lumpSumLabel,
       lumpAdd: TERMS.amortizePage.lumpAdd,

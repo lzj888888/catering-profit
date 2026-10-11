@@ -25,6 +25,15 @@ Page({
       refProfit: TERMS.resultPage.refProfit,
       trueProfit: TERMS.resultPage.trueProfit,
       profitDiff: TERMS.resultPage.profitDiff,
+      // C：钱去哪了 故事线（专业术语保留 + 白话流向）
+      flowTitle: TERMS.resultPage.flowTitle,
+      flowSell: TERMS.resultPage.flowSell,
+      flowMaterial: TERMS.resultPage.flowMaterial,
+      flowExpense: TERMS.resultPage.flowExpense,
+      flowAmort: TERMS.resultPage.flowAmort,
+      flowLand: TERMS.resultPage.flowLand,
+      flowPer100: TERMS.resultPage.flowPer100,
+      flowHint: TERMS.resultPage.flowHint,
       refNote: TERMS.resultPage.refNote,
       trueNote: TERMS.resultPage.trueNote,
       archiveLocked: TERMS.resultPage.archiveLocked,
@@ -63,6 +72,7 @@ Page({
     month: '',
     isArchive: false,
     loading: true,
+    showPer100: false,
     r: null,       // 展示用已格式化数据
     incDetail: [],
     expDetail: [],
@@ -96,6 +106,11 @@ Page({
       const d = await api.call('getLedger', { month: this.data.month });
       const res = d.result || {};
       const fen = (v) => api.fenToYuan(v || 0, 2);
+      // C：每卖 100 元约落袋多少（纯前端换算，前端不重算利润口径）
+      const incomeFen = res.income_total_fen || 0;
+      const trueFen = res.total_factor_real_profit_fen || 0;
+      const ratio = incomeFen > 0 ? Math.round((trueFen / incomeFen) * 100) : 0;
+      const per100Text = (ratio < 0 ? '−' : '') + Math.abs(ratio);
       // D1：保存原始明细（snake_case，含 sub_items），供下钻面板展示（前端不重算金额）
       const incDetail = this.buildDetail(d.income_items || []);
       const expDetail = this.buildDetail(d.expense_items || []);
@@ -118,8 +133,10 @@ Page({
           refProfit: fen(res.operation_ref_profit_fen),
           trueProfit: fen(res.total_factor_real_profit_fen),
           profitDiff: fen(res.profit_diff_fen),
+          per100: per100Text,
         },
         loading: false,
+        showPer100: incomeFen > 0,
         inds, scope,
         bizIdx: sv.bizIdx, cityIdx: sv.cityIdx, bizText: sv.bizText, cityText: sv.cityText,
       });

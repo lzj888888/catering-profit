@@ -27,6 +27,38 @@
     <view class="muted">{{t.trueNote}}</view>
   </view>
 
+  <!-- C：钱去哪了 故事线（专业术语保留，补白话流向，老板秒懂利润怎么算） -->
+  <view class="card2" wx:if="{{showPer100}}">
+    <view class="muted">{{t.flowTitle}}</view>
+    <view style="display:flex;flex-wrap:wrap;align-items:center;gap:10rpx;margin:12rpx 0;">
+      <view style="display:flex;flex-direction:column;align-items:center;min-width:110rpx;">
+        <text class="muted">{{t.flowSell}}</text>
+        <text class="val">{{t.cur}}{{r.income}}</text>
+      </view>
+      <text class="muted">−</text>
+      <view style="display:flex;flex-direction:column;align-items:center;min-width:110rpx;">
+        <text class="muted">{{t.flowMaterial}}</text>
+        <text class="val">{{t.cur}}{{r.realConsume}}</text>
+      </view>
+      <text class="muted">−</text>
+      <view style="display:flex;flex-direction:column;align-items:center;min-width:110rpx;">
+        <text class="muted">{{t.flowExpense}}</text>
+        <text class="val">{{t.cur}}{{r.expense}}</text>
+      </view>
+      <text class="muted">−</text>
+      <view style="display:flex;flex-direction:column;align-items:center;min-width:110rpx;">
+        <text class="muted">{{t.flowAmort}}</text>
+        <text class="val">{{t.cur}}{{r.effectiveAmortize}}</text>
+      </view>
+      <text class="muted">=</text>
+      <view style="display:flex;flex-direction:column;align-items:center;min-width:110rpx;">
+        <text class="muted">{{t.flowLand}}</text>
+        <text class="val" style="color:#22a06b;">{{t.cur}}{{r.trueProfit}}</text>
+      </view>
+    </view>
+    <view class="muted">{{t.flowPer100}} {{t.cur}}{{r.per100}}　{{t.flowHint}}</view>
+  </view>
+
   <!-- 收入/费用/毛利 -->
   <view class="card2">
     <!-- D1：营业收入行可点下钻（大类 → 细项） -->

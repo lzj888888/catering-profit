@@ -56,6 +56,8 @@ Page({
       // R264 覆盖率明示 + 行内「去建卡」（第三处登记）
       reviewCoverage: TERMS.card.reviewCoverage,
       reviewCoverageHint: TERMS.card.reviewCoverageHint,
+      // R272：C 档覆盖率口径说明（wxml:27 引用，此前漏注册 ⇒ 真机静默空白）
+      reviewCoverageCHint: TERMS.card.reviewCoverageCHint,
       reviewNewCard: TERMS.card.reviewNewCard,
       // R272：自助餐（快餐=随便吃）人均食材成本块 —— 下方 wxml 用 t.reviewBuffet*，本页 t:{} 此前漏注册 ⇒ 真机标签空白（静默空白 bug），此处补齐
       reviewBuffetTitle: TERMS.card.reviewBuffetTitle,

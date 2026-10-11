@@ -19,8 +19,14 @@ Page({
       purchaseHint: TERMS.inventoryPage.purchaseHint,
       closing: TERMS.inventoryPage.closing,
       closingHint: TERMS.inventoryPage.closingHint,
+      openingAux: TERMS.inventoryPage.openingAux,
+      purchaseAux: TERMS.inventoryPage.purchaseAux,
+      closingAux: TERMS.inventoryPage.closingAux,
       save: TERMS.inventoryPage.save,
       hintFormula: TERMS.inventoryPage.hintFormula,
+      realConsumePreview: TERMS.inventoryPage.realConsumePreview,
+      realConsumePreviewNote: TERMS.inventoryPage.realConsumePreviewNote,
+      cur: '¥',
       loading: TERMS.ui.loading,
       archiveReadonly: TERMS.inputPage.archiveReadonly,
       graceNote: TERMS.inputPage.graceNote,
@@ -45,6 +51,9 @@ Page({
     openingYuan: '',
     purchaseYuan: '',
     closingYuan: '',
+    // B：实时预览「本月真实食材消耗」（纯前端读 getLedger.result.real_consume_fen，零后端改动）
+    realConsumeFen: 0,
+    realConsumeYuan: '0.00',
     // round103：期初来源三态（自动结转 / 与上月期末不符 / 首月待填）
     openingAuto: false,
     prevMonth: '',
@@ -128,6 +137,9 @@ Page({
         openingYuan: openingFen > 0 ? api.fenToYuan(openingFen) : '',
         purchaseYuan: purchaseFen > 0 ? api.fenToYuan(purchaseFen) : '',
         closingYuan: closingFen > 0 ? api.fenToYuan(closingFen) : '',
+        // B：getLedger 已重算 result，真实消耗直接取（结果页同口径）；本页只读展示，不重算
+        realConsumeFen: (d.result && d.result.real_consume_fen) || 0,
+        realConsumeYuan: api.fenToYuan((d.result && d.result.real_consume_fen) || 0, 2),
         openingAuto, prevMonth, openingNote,
         loading: false,
       });
