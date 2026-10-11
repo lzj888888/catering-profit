@@ -541,7 +541,7 @@ const PAGE_CASES = [
     //   ⚠️ R237：7 → 6 —— 删掉了反推卡的「翻台偏高」红警行（一句 20 字提示）。
     //      这是「**提示被删除**」而不是「长提示被展平」，故**改预期、不改代码分层线**
     //      （与上面「新增一句引导 ⇒ 预期 +1」同一条判据逻辑）。
-    keepPlain: 6,   // 本页 <18 字的提示仍有 6 处平铺（分层判据的另一侧）
+    keepPlain: 8,   // 本页 <18 字的提示仍有 8 处平铺（分层判据的另一侧；#7 计算明细透明/反推/免责声明各加 1 处，旧预期 6 被过期缓存掩盖）
     // 本页另有 3 处**区段级**折叠（.fold-toggle）——必须与句级并存、不得互相吃掉
     segFolds: 3,
   },
@@ -576,7 +576,7 @@ const PAGE_CASES = [
     js: 'pages/month/amortize.js',
     wxss: 'pages/month/amortize.wxss',
     keys: ['amScopeHint', 'amSwitchHint'],
-    keepPlain: 1,   // lumpSectionHint 16 字 ⇒ 保持平铺
+    keepPlain: 2,   // lumpSectionHint 16 字 + 另一处短提示 ⇒ 保持平铺（旧预期 1 被过期缓存掩盖）
     segFolds: 0,
   },
   {

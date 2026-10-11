@@ -310,5 +310,27 @@ check('L6 反向出参带 valid_days=26', rev26.valid_days === 26, `=${rev26.val
 check('L7 反向 openDays=26 ⇒ 日均客流 = 2222.22÷26 = 85.47', rev26.daily_traffic === 85.47, `=${rev26.daily_traffic}`);
 check('L8 反向 openDays=26 ⇒ 翻台 = 2222.22÷(20×26) = 4.27', rev26.turn_rate === 4.27, `=${rev26.turn_rate}`);
 
+// 🔴 L9~L11（round272b 加固）：**经 validate 全链路**（wire 入参 → clean → service）。
+//   ⚠️ 为什么必须补这一段：L1~L4 直接调 `calcSandbox({validDays:26})`，**跳过了 validate 层**。
+//     实测踩坑：validate 的 clean 曾写成 snake `valid_days`，而 service 读 camel `c.validDays`
+//     ⇒ 键名漂移 ⇒ 真实链路（云函数 index.js 走 validate）恒回退 30，而 L1~L4 全绿 = **假绿**。
+//   ⇒ 判据必须钉在「前端真正走的入口」上：`validateInput(event).clean` → `calcSandbox(clean)`。
+const wire = {
+  shop_id: 's', mode: 'forward', city_tier: base.cityTier, biz_type: base.bizType,
+  build_items: base.buildItems, fixed_items: base.fixedItems, var_items: base.varItems,
+  gross_margin_pct: base.grossMarginPct, target_profit_fen: base.targetProfitFen,
+};
+const vWd = validateInput(Object.assign({}, wire, { valid_days: 26 }));
+check('L9 经 validate 全链路：wire `valid_days` ⇒ clean 键名对齐（防 snake/camel 漂移）',
+  !vWd.error && vWd.clean.validDays === 26,
+  vWd.error ? `${vWd.error}/${vWd.msg}` : `clean.validDays=${vWd.clean.validDays}`);
+const wFwd = calcSandbox(vWd.clean);
+check('L10 经 validate 全链路：保本日均 = 7600000÷26 = 292308（≠ ÷30 的 253333）',
+  wFwd.break_even_daily_fen === 292308, `=${wFwd.break_even_daily_fen}`);
+const vWd0 = validateInput(Object.assign({}, wire));
+check('L11 经 validate 全链路：不传 valid_days ⇒ clean=0 ⇒ service 回退 30（无回归）',
+  !vWd0.error && vWd0.clean.validDays === 0 && calcSandbox(vWd0.clean).break_even_daily_fen === 253333,
+  vWd0.error ? `${vWd0.error}` : `clean.validDays=${vWd0.clean.validDays} · daily=${calcSandbox(vWd0.clean).break_even_daily_fen}`);
+
 console.log(`\n==== calcSandbox M2 v2 自测结果：${pass} 通过 / ${failN} 失败 ====`);
 process.exit(failN === 0 ? 0 : 1);

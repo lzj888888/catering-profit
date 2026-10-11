@@ -133,7 +133,7 @@ const ALLOW_INPUTS = {
   headcountNum: '员工数 → labor 固定项；老板自己排班，填得出',
   laborUnitYuan: '单人月人工单价 → labor；当地行情，填得出',
   marginPct: '菜品毛利率 → gross_margin_pct（核心口径，由菜品成本推出或选填）',
-  openDaysNum: '每月开门天数 → open_days（反推必需）；老板自己定',
+  openDaysNum: '每月开门天数 → 正向 valid_days / 反向 open_days（同一份用户输入，两个 Tab 共用）；老板自己定',
   planName: '方案名（快照用，非测算入参）',
   presetIdx: '业态预设 picker（枚举，非专业指标）',
   rentYuan: '月租金 → fixed_items.rent；房东报价，填得出',
@@ -252,15 +252,23 @@ check('C-①a 渲染判定等级 `{{verdict.level}}`（卡片本体）',
   /\{\{verdict\.level\}\}/.test(wx), /\{\{verdict\.level\}\}/.test(wx) ? '在场' : '缺失 ⇒ 结论卡只剩数字');
 check('C-①b 渲染判定文案 `{{verdict.levelName}}`（等级要有中文）',
   /\{\{verdict\.levelName\}\}/.test(wx), /\{\{verdict\.levelName\}\}/.test(wx) ? '在场' : '缺失 ⇒ 用户看到英文枚举');
-check('C-①c 渲染卡片标题 `{{t.verdictTitle}}`（说清这张卡在答什么）',
-  /\{\{t\.verdictTitle\}\}/.test(wx), /\{\{t\.verdictTitle\}\}/.test(wx) ? '在场' : '缺失 ⇒ 卡片没有名字');
+// 🔴 #7（round272）术语改名：主结论卡标题键由 `verdictTitle` 改为 `verdictHealthTitle`
+//   （含义从「租金贵不贵」拓宽为「铺子健不健康」综合健康度）。terms.js 里 `verdictTitle` 已成孤儿键，
+//   wxml 实际用的是 `verdictHealthTitle` ⇒ 判据须跟新键，否则恒红（判据过期，非代码回退）。
+check('C-①c 渲染卡片标题 `{{t.verdictHealthTitle}}`（说清这张卡在答什么）',
+  /\{\{t\.verdictHealthTitle\}\}/.test(wx), /\{\{t\.verdictHealthTitle\}\}/.test(wx) ? '在场' : '缺失 ⇒ 卡片没有名字');
 // 🔴 判据：判定等级必须来自引擎 indicators，前端**不能自己再判一遍**。
 check('C-② `verdictOf` 内**不得**调用 `levelOf`（判定不自造）',
   !!vo && !/\blevelOf\s*\(/.test(vo), !!vo && /\blevelOf\s*\(/.test(vo) ? '发现自造判定' : '零自造（只读引擎 level）');
 check('C-③ `verdictOf` 内**不得**出现阈值比较（`>=` / `<=`）',
   !!vo && !/(>=|<=)/.test(vo), !!vo && /(>=|<=)/.test(vo) ? '发现阈值比较 ⇒ 又造了一份判据' : '零阈值比较');
-check('C-④ `verdictOf` 读的是 rent 那一行（指标 key 锚定）',
-  !!vo && /['"]rent['"]/.test(vo), !!vo ? '已锚 key=rent' : 'N/A');
+// 🔴 #7（round272）设计变更：主结论由「单锚房租」改为「6 项指标里最差 level」综合健康度。
+//   旧判据 C-④（必须含 'rent' 单键）已与当前实现对不上 ⇒ 更新为「必须按 worst-of-6 综合，不回退单指标」。
+//   ⚠️ 这是**判据过期**不是代码回退：verdictOf 现在遍历全部 indicators 取最坏（index.js:1279-1297），正是 #7 要的。
+//   鉴別力：若有人把 verdictOf 改回 `return {level:'good',…}`（永远绿、不看指标），`rank`/`worst` 任一缺失即红。
+check('C-④ `verdictOf` 按「6 项里最差 level」综合判定（#7 综合健康度，不单锚 rent）',
+  !!vo && /rank\s*[:=]/.test(vo) && /\bworst\b/.test(vo),
+  !!vo ? (/rank\s*[:=]/.test(vo) && /\bworst\b/.test(vo) ? '已按 worst-of-6 综合' : '未见 rank/worst 逻辑 ⇒ 可能退回单指标') : 'N/A');
 
 // ============ D 主判据：术语餐饮化 ============
 sec('D 主判据：结论与术语必须是餐饮人听得懂的话');
@@ -322,6 +330,12 @@ check('V-⑥ 负样本（未登记的新字段 tableTurnoverYuan）会被 A-⑥ 
 const v7Ok = ['tablesNum', 'seatsPerTableNum', 'avgPriceYuan', 'rentYuan'].filter((b) => !ALLOW_INPUTS[b]);
 check('V-⑦ 正样本（已登记字段 tablesNum/seatsPerTableNum/avgPriceYuan/rentYuan）**不误报**', v7Ok.length === 0,
   v7Ok.length ? `🔴 把合法字段判红了：${v7Ok.join('、')}` : '未误报');
+// V8（#7 配套）：把 verdictOf 退化成「永远绿、不看指标」喂给 C-④ 新判据，必须转红
+//   ⇒ 证明 C-④ 不是假绿（否则"任意永远绿的实现"都会过）。
+const badVo2 = 'verdictOf(list) { return { level: "good", levelName: "划算", note: "" }; }';
+const v8Red = /rank\s*[:=]/.test(badVo2) && /\bworst\b/.test(badVo2);
+check('V-⑧ 负样本（verdictOf 退化成永远绿、无 rank/worst）会被 C-④ 判红',
+  !v8Red, v8Red ? '🔴 把退化实现漏过了' : '已报红（C-④ 非假绿）');
 
 // ============ E 下界 ============
 sec('E 下界：断言数不得被悄悄删掉');

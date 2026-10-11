@@ -196,7 +196,11 @@ function validateInput(event) {
       cityTier, bizType,
       buildItems, fixedItems, varItems,
       grossMarginPct, targetProfitFen, expectedRevenueFen,
-      valid_days: validDays,
+      // 🔴 #1 修正（round272b）：clean 里**必须用 camelCase `validDays`** —— service 读的是 `c.validDays`。
+      //   曾写成 snake `valid_days` ⇒ 键名漂移 ⇒ 真实链路（index.js → validate → service）恒回退 30，
+      //   而直接用 camel 调 service 的自测全绿 = **假绿**（已被 L9~L11 全链路断言钉住）。
+      //   命名依据：wire 侧 snake（`valid_days`）/ clean 侧 camel（`validDays`），与 `gross_margin_pct → grossMarginPct` 同构。
+      validDays,
       rev_price_fen: revPriceFen,
       seats,
       open_days: openDays,

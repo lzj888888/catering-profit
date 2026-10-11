@@ -345,6 +345,9 @@ Page({
         marginPct: this.data.marginPct,
         expectYuan: this.data.expectYuan,
         targetYuan: this.data.targetYuan,
+        // #1 收口（round272b）：营业天数也要随草稿回来 —— 否则提示「已载入上次填的数」是**半份**
+        //   （用户改过 26 天、退出重进后被静默丢回 30 天，且他看不出来）。
+        openDaysNum: this.data.openDaysNum,
         build: this.data.buildRows.map((r) => ({ key: r.key, yuan: r.yuan, years: r.years })),
         fixed: this.data.fixedRows.map((r) => ({ key: r.key, yuan: r.yuan })),
         varRows: this.data.varRows.map((r) => ({ key: r.key, pct: r.pct })),
@@ -370,6 +373,7 @@ Page({
       marginPct: typeof d.marginPct === 'number' ? d.marginPct : this.data.marginPct,
       expectYuan: d.expectYuan || '',
       targetYuan: d.targetYuan || '',
+      openDaysNum: d.openDaysNum || '',
       draftRestored: true,
     });
     return true;
@@ -667,6 +671,10 @@ Page({
         target_profit_fen: api.yuanToFen(this.data.targetYuan),
         // round114：预计月营业额（选填）—— 后端据此反算各项参考金额（amount_preview）
         expected_revenue_fen: api.yuanToFen(this.data.expectYuan),
+        // 🔴 #1 收口（round272b）：正向也带营业天数 —— 此前正向**既不发 open_days、也不发 valid_days**
+        //   ⇒ 引擎恒回退 30 天 ⇒ L3「一个月打算开门几天」在正向是**死输入**（改了触发重算却零影响）。
+        //   日折算口径与反推统一（后端按 validDays 除）；预设默认全 30 ⇒ 没动过这一项的用户结果不变。
+        valid_days: this.validDaysNow(),
         client_request_id: 'sb_' + Date.now(),
       });
       if (seq !== this._seq) return;      // 过期响应：新请求已在路上，丢弃
@@ -929,6 +937,18 @@ Page({
   },
   /** 翻台口径：'table'（桌周转，可说「翻台」）/ 'seat'（座位周转，**禁用「翻台」二字**）。 */
   turnModeNow() { return turnModeOf(this.bizKeyNow()); },
+  /**
+   * 🔴 #1 收口（round272b）：每月营业天数 —— **正向 / 反向共用同一份用户输入**（L3「一个月打算开门几天」）。
+   *   返回 1~31 的整数；未填 / 非法（0 / 非整数 / 越界）⇒ 返回 0，交由后端按「缺省回退 30」处理。
+   *   为什么必须在页面侧夹一次：正向入参 `valid_days` 走**严格校验**（非 1~31 的整数直接拒），
+   *   用户可能填 28.5 ⇒ 不夹就会把一个"本来能算"的表单变成一条契约名报错。
+   *   ⚠️ 反推的 `open_days` 保持原样（其 fail-closed 语义由 validate 层守着，不在此处改）。
+   */
+  validDaysNow() {
+    const n = Number(this.data.openDaysNum);
+    if (!Number.isInteger(n) || n < 1 || n > 31) return 0;
+    return n;
+  },
 
   onPreset(e) {
     const i = Number(e.detail.value);
@@ -1088,6 +1108,9 @@ Page({
       gross_margin_pct: Number(this.data.marginPct),
       target_profit_fen: api.yuanToFen(this.data.targetYuan),
       expected_revenue_fen: api.yuanToFen(this.data.expectYuan),
+      // 🔴 #1 收口（round272b）：预设分支（正/反共用本装配器）同样喂 valid_days；
+      //   反推模式下 validate 只读 open_days、忽略本字段 ⇒ 对反推零影响。
+      valid_days: this.validDaysNow(),
       rev_price_fen: api.yuanToFen(this.data.avgPriceYuan),
       seats,
       open_days: openDays,
