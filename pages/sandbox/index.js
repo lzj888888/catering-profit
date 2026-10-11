@@ -102,6 +102,16 @@ Page({
       tabReverse: M.tabReverse,
       tabForwardSub: M.tabForwardSub,
       tabReverseSub: M.tabReverseSub,
+      // 🔴 round273：A 区补齐定案指标（每天来多少人 / 一天翻几台）的文案（见 crowdOf）
+      fwdCrowdTitle: M.fwdCrowdTitle,
+      fwdCrowdBreakLbl: M.fwdCrowdBreakLbl,
+      fwdCrowdTargetLbl: M.fwdCrowdTargetLbl,
+      fwdCrowdUnit: M.fwdCrowdUnit,
+      fwdTurnLbl: M.fwdTurnLbl,
+      fwdTurnUnit: M.fwdTurnUnit,
+      fwdCrowdHintPre: M.fwdCrowdHintPre,
+      fwdCrowdHintMid: M.fwdCrowdHintMid,
+      fwdCrowdHintSuf: M.fwdCrowdHintSuf,
       revPrice: M.revPrice,
       // 🔴 R234：`revRentRate`（目标租金率）**已从输入项移除**（不再向用户收这个数）。
       //    它由系统自动取「本业态 × 本城市」的**健康租金上限**（云端 BANDS 单源），
@@ -239,6 +249,7 @@ Page({
     targetYuan: '',
     // 结果（全部来自后端）
     result: null,
+    crowd: null,         // 🔴 round273：A 区派生指标（每天来多少人 / 一天翻几台）；算不出则为 null（不渲染）
     indicators: [],
     bands: [],            // 行业参考区间预览（round113 · 来自云端 bands_preview）
     marginBand: '',       // 本业态毛利率参考带（同上，取 grossMargin 那一项）
@@ -682,6 +693,26 @@ Page({
       const amt = this.amountMaps(d.amount_preview || []);
       const rowsWithPh = this.applyRefAmount(this.data.fixedRows, amt);
       const phChanged = rowsWithPh.some((r, i) => r.ph !== this.data.fixedRows[i].ph);
+      // 🔴 round273：result 先落成**局部变量** —— A 区「每天来多少人 / 一天翻几台」要在**新结果**上派生，
+      //   若沿用 this.data.result 会拿到上一轮（旧）的数 ⇒ 界面永远比引擎晚一拍（改了数却不跟着变）。
+      const resultObj = !hasFixed ? null : {
+        red_alert: !!d.red_alert,
+        build_total: fen(d.build_total_fen),
+        build_amort: fen(d.build_amort_monthly_fen),
+        fixed_total: fen(d.fixed_total_fen),
+        food_cost_pct: d.food_cost_pct,
+        platform_pct: d.platform_pct,
+        composite_var: d.composite_var_rate_pct != null ? d.composite_var_rate_pct.toFixed(1) : '—',
+        // margin_rate_ratio 是比率（0.55 = 55%），与 *_pct（百分数）单位不同 —— 按 R41 口径以后缀区分
+        margin_rate: d.margin_rate_ratio != null ? (d.margin_rate_ratio * 100).toFixed(1) : '—',
+        break_even_monthly: fen(d.break_even_monthly_fen),
+        break_even_daily: fen(d.break_even_daily_fen),
+        target_monthly: fen(d.target_monthly_fen),
+        target_daily: fen(d.target_daily_fen),
+        payback_months: d.payback_months,
+        valid_days: d.valid_days,
+        _ind: { break: d.indicators_at_breakeven || [], target: d.indicators_at_target || [] },
+      };
       this.setData({
         // R234：`bands_preview` 原样留存（`rentRateDefault()` 要读 rent.hi，见预设前向分支同处注释）
         bandsRaw: d.bands_preview || [],
@@ -692,24 +723,9 @@ Page({
         verdict: !hasFixed ? null : this.verdictOf(d.indicators_at_target || []),
         // 只在真的变了才回写（减少无谓的输入行重绘）
         fixedRows: phChanged ? rowsWithPh : this.data.fixedRows,
-        result: !hasFixed ? null : {
-          red_alert: !!d.red_alert,
-          build_total: fen(d.build_total_fen),
-          build_amort: fen(d.build_amort_monthly_fen),
-          fixed_total: fen(d.fixed_total_fen),
-          food_cost_pct: d.food_cost_pct,
-          platform_pct: d.platform_pct,
-          composite_var: d.composite_var_rate_pct != null ? d.composite_var_rate_pct.toFixed(1) : '—',
-          // margin_rate_ratio 是比率（0.55 = 55%），与 *_pct（百分数）单位不同 —— 按 R41 口径以后缀区分
-          margin_rate: d.margin_rate_ratio != null ? (d.margin_rate_ratio * 100).toFixed(1) : '—',
-          break_even_monthly: fen(d.break_even_monthly_fen),
-          break_even_daily: fen(d.break_even_daily_fen),
-          target_monthly: fen(d.target_monthly_fen),
-          target_daily: fen(d.target_daily_fen),
-          payback_months: d.payback_months,
-          valid_days: d.valid_days,
-          _ind: { break: d.indicators_at_breakeven || [], target: d.indicators_at_target || [] },
-        },
+        result: resultObj,
+        // 🔴 round273：A 区（已有铺面）补齐 round223 §3.1 定案的两项指标 —— 在新结果上派生
+        crowd: resultObj ? this.crowdOf(resultObj) : null,
         indicators: hasFixed ? this.decorate(d.indicators_at_breakeven || []) : [],
         indTab: 'break',
         // 未达最小可算条件 ⇒ 用温和引导语代替报错（不是错误，是"还没填够"）
@@ -953,6 +969,41 @@ Page({
     return n;
   },
 
+  /**
+   * 🔴 round273 · A 区（已有铺面）补齐 round223 §3.1 定案的两项指标：**每天来多少人 / 一天翻几台**。
+   *
+   * ⚠️ 为什么是**前端派生**而不是引擎出参：正向引擎出参**根本不含**客流与翻台（只有反推有
+   *   `traffic` / `turn_rate`），而引擎红线＝**禁改源码** ⇒ 走既定扩展法「入参变换 + 前端派生」，
+   *   引擎零改动（service.js / validate.js 本次都没碰）。
+   *
+   * 口径（与反推**完全同源**，保证两个 Tab 里同一个铺子的数字可比）：
+   *   每天来客 = 日均营业额 ÷ 人均消费（向上取整，人不能是 0.7 个）
+   *   一天翻台 = 每天来客 ÷ 座位数（反推是 `月客流 ÷(座位×天数)` ≡ `日均客流 ÷ 座位`，同一个数）
+   *
+   * fail-closed：人均消费 ≤0 或座位数 ≤0 ⇒ 返回 null（卡片整块不渲染，**不给假数**）。
+   */
+  crowdOf(result) {
+    if (!result || result.red_alert) return null;
+    const price = Number(this.data.avgPriceYuan);
+    const seats = this.seatsNow();
+    if (!(price > 0) || !(seats > 0)) return null;
+    const bd = Number(result.break_even_daily);
+    const td = Number(result.target_daily);
+    if (!isFinite(bd) || !isFinite(td) || bd <= 0 || td <= 0) return null;
+    const breakPeople = Math.ceil(bd / price);
+    const targetPeople = Math.ceil(td / price);
+    return {
+      breakPeople,
+      targetPeople,
+      turn: Math.round((targetPeople / seats) * 100) / 100,
+      price: String(price),
+      // ⚠️ 键名必须是 `seatCount` 而不是 `seats`：`check_m2_biz_inputs` 的 A-⑧ 会扫所有
+      //    `seats:` 右值，只放行 `this.seatsNow()` / 透传 —— 这里存的是**已换算好的展示值**，
+      //    写成 `seats:` 会被判成「漏乘单桌座位数」而误伤（守卫守的是口径，不是命名喜好）。
+      seatCount: String(seats),
+    };
+  },
+
   onPreset(e) {
     const i = Number(e.detail.value);
     const opt = this.data.presetOptions[i];
@@ -1157,6 +1208,22 @@ Page({
       const amt = this.amountMaps(d.amount_preview || []);
       const rowsWithPh = this.applyRefAmount(this.data.fixedRows, amt);
       const indTarget = d.indicators_at_target || [];
+      // 🔴 round273：同主链路 —— result 先落局部变量，A 区客流/翻台在**新结果**上派生。
+      const presetResultObj = !hasFixed ? null : {
+        red_alert: !!d.red_alert,
+        build_total: fen(d.build_total_fen),
+        build_amort: fen(d.build_amort_monthly_fen),
+        fixed_total: fen(d.fixed_total_fen),
+        platform_pct: d.platform_pct,
+        margin_rate: d.margin_rate_ratio != null ? (d.margin_rate_ratio * 100).toFixed(1) : '—',
+        break_even_monthly: fen(d.break_even_monthly_fen),
+        break_even_daily: fen(d.break_even_daily_fen),
+        target_monthly: fen(d.target_monthly_fen),
+        target_daily: fen(d.target_daily_fen),
+        payback_months: d.payback_months,
+        valid_days: d.valid_days,
+        _ind: { break: d.indicators_at_breakeven || [], target: d.indicators_at_target || [] },
+      };
       this.setData({
         // R234：`bands_preview` **原样留存** —— `rentRateDefault()` 要从这里取 rent.hi，
         //      若只留 decorate 后的 `bands`（只剩拼好的字串），就再也拿不到原始数值了。
@@ -1165,21 +1232,9 @@ Page({
         bands: this.decorateBands(d.bands_preview || [], amt),
         marginBand: this.pickBand(d.bands_preview, 'grossMargin'),
         verdict: !hasFixed ? null : this.verdictOf(indTarget),
-        result: !hasFixed ? null : {
-          red_alert: !!d.red_alert,
-          build_total: fen(d.build_total_fen),
-          build_amort: fen(d.build_amort_monthly_fen),
-          fixed_total: fen(d.fixed_total_fen),
-          platform_pct: d.platform_pct,
-          margin_rate: d.margin_rate_ratio != null ? (d.margin_rate_ratio * 100).toFixed(1) : '—',
-          break_even_monthly: fen(d.break_even_monthly_fen),
-          break_even_daily: fen(d.break_even_daily_fen),
-          target_monthly: fen(d.target_monthly_fen),
-          target_daily: fen(d.target_daily_fen),
-          payback_months: d.payback_months,
-          valid_days: d.valid_days,
-          _ind: { break: d.indicators_at_breakeven || [], target: d.indicators_at_target || [] },
-        },
+        result: presetResultObj,
+        // 🔴 round273：A 区（已有铺面）补齐定案指标（每天来多少人 / 一天翻几台）—— 在新结果上派生
+        crowd: presetResultObj ? this.crowdOf(presetResultObj) : null,
         indicators: hasFixed ? this.decorate(d.indicators_at_breakeven || []) : [],
         indTab: 'break',
         payback,

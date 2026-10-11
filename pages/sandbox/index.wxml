@@ -434,6 +434,21 @@
         <text class="lbl">{{t.resPayback}}</text><text class="val">{{result.payback_months}}{{t.paybackUnit}}</text>
       </view>
     </view>
+
+    <!-- 🔴 round273 · A 区（已有铺面）补齐 round223 §3.1 定案的两项指标：**每天来多少人 / 一天翻几台**。
+         定案原文 A 输出 = 每天卖多少够本 / 每天来多少人 / 一天翻几台 / 房租占营业额 X%（附行业对比）/ 几年回本
+         —— 后三项界面上早就有，**前两项一直缺**（只有「寻找铺面」Tab 有客流与翻台）。
+         ⚠️ 由前端 `crowdOf()` 派生（正向引擎不出这两个数），引擎零改动。
+         为什么放这个位置：先答「每月要卖多少钱」，紧接着答老板的下一句「那得来多少人」。
+         fail-closed：人均消费或桌数没填 ⇒ crowd=null ⇒ 整块不渲染，**不给假数**。 -->
+    <view class="card2" wx:if="{{mode === 'forward' && crowd}}">
+      <view class="sec">{{t.fwdCrowdTitle}}</view>
+      <view class="cell"><text class="lbl">{{t.fwdCrowdBreakLbl}}</text><text class="val">{{crowd.breakPeople}}{{t.fwdCrowdUnit}}</text></view>
+      <view class="cell"><text class="lbl">{{t.fwdCrowdTargetLbl}}</text><text class="val keynum">{{crowd.targetPeople}}{{t.fwdCrowdUnit}}</text></view>
+      <view class="cell"><text class="lbl">{{t.fwdTurnLbl}}</text><text class="val">{{crowd.turn}}{{t.fwdTurnUnit}}</text></view>
+      <view class="hint">{{t.fwdCrowdHintPre}}{{crowd.price}}{{t.fwdCrowdHintMid}}{{crowd.seatCount}}{{t.fwdCrowdHintSuf}}</view>
+    </view>
+
     <view class="card2 calc-basis" wx:if="{{result.valid_days}}">
       <view class="sec">{{t.calcBasisTitle}}</view>
       <view class="cell"><text class="lbl">{{t.fixedTotal}}</text><text class="val">{{t.cur}}{{result.fixed_total}}</text></view>
