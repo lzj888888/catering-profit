@@ -434,6 +434,13 @@
         <text class="lbl">{{t.resPayback}}</text><text class="val">{{result.payback_months}}{{t.paybackUnit}}</text>
       </view>
     </view>
+    <view class="card2 calc-basis" wx:if="{{result.valid_days}}">
+      <view class="sec">{{t.calcBasisTitle}}</view>
+      <view class="cell"><text class="lbl">{{t.fixedTotal}}</text><text class="val">{{t.cur}}{{result.fixed_total}}</text></view>
+      <view class="cell"><text class="lbl">{{t.marginName}}</text><text class="val">{{result.margin_rate}}%</text></view>
+      <view class="cell"><text class="lbl">{{t.calcBasisDays}}</text><text class="val">{{result.valid_days}} 天</text></view>
+      <view class="hint calc-basis-formula">{{t.calcBasisFormula}}</view>
+    </view>
   </block>
 
   <!-- 餐饮指标对照（待下面 payback 卡前） -->

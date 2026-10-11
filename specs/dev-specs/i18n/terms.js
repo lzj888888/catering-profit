@@ -989,6 +989,9 @@ const TERMS = {
     verdictHealthTitle: '这个铺子健不健康',
     verdictWorstLabel: '最该盯的一项',
     verdictHealthStrip: '6 项指标体检',
+    calcBasisTitle: '测算依据',
+    calcBasisDays: '营业天数',
+    calcBasisFormula: '保本月营业额 = 月固定成本 ÷ 毛利率',
   },
 
   // ===== 十四、M3 成本卡页面文案 =====

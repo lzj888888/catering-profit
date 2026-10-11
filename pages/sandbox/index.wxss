@@ -175,6 +175,7 @@
 .payback-disclaimer { color: #b45309; }
 /* 🔴 #8（P1，round272）：全局测算边界免责声明（与 payback-disclaimer 互补，灰调以示边界） */
 .m2-disclaimer { color: #8a93a0; margin-top: 4rpx; }
+.calc-basis-formula { color: #4a5b70; font-size: 24rpx; line-height: 1.6; margin-top: 10rpx; padding: 10rpx 14rpx; background: #f3f7fb; border-radius: 10rpx; }
 .payback-m3-btn { margin: 16rpx 0 0; }
 
 /* ===== R234/J4 · 行内长提示折叠（句级，与月录入页 .hint-fold 同形）=====
