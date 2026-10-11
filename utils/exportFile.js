@@ -68,7 +68,14 @@ function deliver(res) {
     filePath,
     fileType,
     showMenu: true,
-    success: () => wx.showToast({ title: TERMS.expFile.opened, icon: 'success' }),
+    // P0#1（2026-10-11）：原来只弹一句「已生成Excel」toast，用户仍不知道文件叫什么、去哪找。
+    //   改成显式弹窗：文件名 + 格式 + 去向（右上角「…」转发/存电脑），闭环「导出完成 → 知道去哪」。
+    success: () => wx.showModal({
+      title: TERMS.expFile.savedTitle,
+      content: String(TERMS.expFile.savedBody).replace('{name}', filename).replace('{type}', fileType),
+      confirmText: TERMS.expFile.ok,
+      showCancel: false,
+    }),
     fail: () => fallbackShare(filePath, filename),
   });
 }
