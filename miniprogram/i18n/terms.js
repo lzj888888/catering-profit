@@ -1014,8 +1014,19 @@ const TERMS = {
     addLine: '+ 添加明细行',
     reverseTitle: '反算售价',
     reverseHint: '输入目标毛利率，反推建议售价',
+    // 🔴 P0#7（2026-10-11）：反算前置说明 —— 让老板知道反算用的是上面原料行算出的成本，
+    //   先填好成本行再点反算，不然算出来是空的。
+    reversePre: '反算用的是上面原料行算出的成本；先填好成本行，再点反算',
     targetMargin: '目标毛利率（%）',
     reverseResult: '建议售价',
+    // 🔴 P0#7：新手/专业模式（与 M1 录入页同形）—— 新手先填核心项，专业项默认收起
+    inputModeTitle: '填表模式',
+    inputModeNovice: '新手',
+    inputModeNoviceDesc: '先填核心：菜名、成本行、反算售价；专业项先收起',
+    inputModePro: '专业',
+    inputModeProDesc: '显示全部项（核算模式、规格、团购到手）',
+    expandProBtn: '展开专业项',
+    noviceTip: '专业项（核算模式、规格、团购到手）已收起；要点「展开专业项」才显示',
     copyVersion: '生成新版本',
     hintAlways: '提示：理论配方成本 ≠ 真实门店毛利。',
     versionHistory: '版本历史',
@@ -1470,6 +1481,12 @@ const TERMS = {
     icoTakeaway: '外',
     icoRecon: '账',
     icoReview: '榜',
+    // 🔴 P0#6（2026-10-11）：付费小字（外卖 / 单品毛利复盘 / 对账 属付费域；成本卡 + 原料库免费）
+    //   付费卡挂一行小字，老板一眼知道哪些要开通，不点进去才发现有墙。
+    payTag: '付费功能',
+    payTagNote: '开通后可用',
+    // 🔴 P0#6：快捷操作 —— 最常用的「建成本卡」做成顶部主按钮，一步到位（不用先找卡再进）
+    quickAdd: '＋ 新建菜品成本卡',
   },
 
   // ===== 十五、M1 库存录入页（shop_inventory）=====

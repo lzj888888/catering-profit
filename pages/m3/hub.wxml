@@ -13,6 +13,9 @@
     <view class="hub-flow-step" wx:for="{{t.flowSteps}}" wx:key="*this">{{item}}</view>
   </view>
 
+  <!-- 🔴 P0#6：快捷操作 —— 最常用的「建成本卡」做成顶部主按钮，一步到位（空状态已有同等 CTA，故仅在有卡时显示） -->
+  <button class="btn primary hub-quick" wx:if="{{cardCount > 0}}" bindtap="goCard">{{t.quickAdd}}</button>
+
   <!-- ===== R263：空状态（卡数 === 0）—— 只给**一件事**做，不给 5 张卡 =====
        ⚠️ 判据必须是 `cardCount === 0`（真读到 0），**不能**写 `cardCount <= 0`：
           `-1` 是"没读到"（fail-closed 不显示数量），拿它当空状态 ⇒ 网络一抖动就误报"你还没有卡"。
@@ -52,6 +55,7 @@
     <view class="hub-ico hub-ico-takeaway">{{t.icoTakeaway}}</view>
     <view class="hub-main">
       <text class="hub-name">{{t.takeawayTitle}}</text>
+      <text class="hub-pay">{{t.payTag}}</text>
       <text class="hub-desc">{{t.takeawaySub}}</text>
     </view>
     <view class="hub-go">›</view>
@@ -61,6 +65,7 @@
     <view class="hub-ico hub-ico-review">{{t.icoReview}}</view>
     <view class="hub-main">
       <text class="hub-name">{{t.reviewTitle}}</text>
+      <text class="hub-pay">{{t.payTag}}</text>
       <text class="hub-desc">{{t.reviewSub}}</text>
     </view>
     <view class="hub-go">›</view>
@@ -70,6 +75,7 @@
     <view class="hub-ico hub-ico-recon">{{t.icoRecon}}</view>
     <view class="hub-main">
       <text class="hub-name">{{t.reconTitle}}</text>
+      <text class="hub-pay">{{t.payTag}}</text>
       <text class="hub-desc">{{t.reconSub}}</text>
     </view>
     <view class="hub-go">›</view>

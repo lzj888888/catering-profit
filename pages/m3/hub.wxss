@@ -18,6 +18,14 @@
 .hub-name { display: block; font-size: 32rpx; font-weight: 700; color: #222; }
 .hub-desc { display: block; font-size: 28rpx; color: #888; margin-top: 8rpx; line-height: 1.5; }
 .hub-count { display: block; font-size: 28rpx; color: #1e3a5f; margin-top: 8rpx; }
+/* 🔴 P0#6：付费小字徽标（行内小药丸，不抢视觉；仅标在付费域卡上） */
+.hub-pay {
+  display: inline-block; font-size: 22rpx; line-height: 1; color: #b45309;
+  background: #fdf2e0; border: 1rpx solid #f0d9b0; border-radius: 8rpx;
+  padding: 4rpx 10rpx; margin-top: 8rpx;
+}
+/* 🔴 P0#6：快捷操作主按钮（有卡时常驻，一步建卡） */
+.hub-quick { margin: 4rpx 0 24rpx; min-height: 88rpx; font-weight: 600; }
 
 /* ===== R263：三步走 / 分层标题 / 空状态 =====
    ⚠️ 字号一律 ≥28rpx（本仓 AD 硬红线）；色值走 app.wxss 的品牌色，本文件只写中性字色。 */

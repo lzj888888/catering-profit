@@ -44,6 +44,9 @@ Page({
       icoTakeaway: TERMS.hub.icoTakeaway,
       icoRecon: TERMS.hub.icoRecon,
       icoReview: TERMS.hub.icoReview,
+      // 🔴 P0#6：快捷操作 + 付费小字（wxml 用到就必须登记 —— 漏登记 ⇒ 静默空白）
+      quickAdd: TERMS.hub.quickAdd,
+      payTag: TERMS.hub.payTag,
     },
     // -1 = 没取到（就不显示这行）。🔴 **绝不能默认 0**：读不到时显示「共 0 张」
     //   会让老板以为卡丢了 —— 与本仓「不替用户编数」同一条纪律（M2 参考值只提示不预填）。

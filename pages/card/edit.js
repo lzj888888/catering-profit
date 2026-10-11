@@ -17,6 +17,8 @@ const { calcGrouponOrder } = require('../../utils/grouponDerive.js');           
 
 // 本店填过的菜品分类（本地记忆，供下次点选；不新建集合、不上云 —— M3 v1.1 零新建集合红线）
 const EDIT_CATS_KEY = 'm3_dish_cats';
+// 🔴 P0#7：新手/专业模式（与 M1 录入页同形）—— 本地记忆、按 shop 区分、换设备回默认
+const INPUT_MODE_KEY = 'card_input_mode_';
 
 // 明细行空行工厂（档案行）
 // round149：新增 `qty_unit`（用量单位，枚举见 utils/units.js）+ `spec_hint`（该原料的换算说明）。
@@ -89,6 +91,15 @@ Page({
       activityPriceHint: TERMS.card.activityPriceHint,
       warnPriceBelowCost: TERMS.card.warnPriceBelowCost,
       reverseApply: TERMS.card.reverseApply,
+      // 🔴 P0#7：反算前置说明 + 新手/专业模式（wxml 用到就必须登记）
+      reversePre: TERMS.card.reversePre,
+      inputModeTitle: TERMS.card.inputModeTitle,
+      inputModeNovice: TERMS.card.inputModeNovice,
+      inputModeNoviceDesc: TERMS.card.inputModeNoviceDesc,
+      inputModePro: TERMS.card.inputModePro,
+      inputModeProDesc: TERMS.card.inputModeProDesc,
+      expandProBtn: TERMS.card.expandProBtn,
+      noviceTip: TERMS.card.noviceTip,
       category: TERMS.card.category,
       categoryPh: TERMS.card.categoryPh,
       categoryHint: TERMS.card.categoryHint,
@@ -207,6 +218,9 @@ Page({
     subCardOptions: [], // picker range（[{ card_code, label }]）
     comboLines: [],     // 子卡行：[{ sub_card_ref, sub_card_name, qty }]
     comboInsight: null, // 回填的套餐三数（{ customer_save_fen, merchant_lose_fen, cost_share }）
+    // 🔴 P0#7（2026-10-11）：新手/专业模式（与 M1 录入页同形）—— 默认新手，专业项收起
+    inputMode: 'novice',
+    showMore: false,
     // M3.20（批次 B 收尾）菜品模板：picker range（20 道菜名）+ 当前选中项（-1 = 未选）
     tplNames: TEMPLATES.map((t) => t.dish_name),
     tplPicked: -1,
@@ -231,8 +245,31 @@ Page({
     //   ⚠️ 只在**新建**时生效：编辑态下面 load() 会用卡里的名字回填，预填不该覆盖它。
     const prefillName = (q && q.dish_name) ? decodeURIComponent(q.dish_name) : '';
     if (prefillName && !((q && q.card_code) || '').length) this.setData({ name: prefillName });
+    // 🔴 P0#7：读本地记的专业/新手偏好（按 shop 区分；换设备回默认 novice）
+    this.setData({ inputMode: this.loadInputMode() || 'novice' });
     this.load();
   },
+
+  // 🔴 P0#7：新手/专业模式（与 M1 录入页同形）—— 本地记忆、按 shop 区分
+  inputModeKey() {
+    const app = getApp();
+    const shopId = (app && app.globalData && app.globalData.shop_id) || '';
+    return INPUT_MODE_KEY + shopId;
+  },
+  saveInputMode(m) {
+    try { wx.setStorageSync(this.inputModeKey(), m); } catch (e) { /* 本地记忆失败不影响主流程 */ }
+  },
+  loadInputMode() {
+    try { const v = wx.getStorageSync(this.inputModeKey()); if (v === 'novice' || v === 'pro') return v; } catch (e) { /* 忽略 */ }
+    return null;
+  },
+  onPickInputMode(e) {
+    const val = e.currentTarget.dataset.val === 'pro' ? 'pro' : 'novice';
+    if (this.data.inputMode === val) return;
+    this.setData({ inputMode: val, showMore: false });
+    this.saveInputMode(val);
+  },
+  onExpandPro() { this.setData({ showMore: true }); },
 
   // round156：从「原料选择页」返回 → 消费回传。
   //   哨兵 `at`：进选择页**没选就返回**时，globalData 里没有新值（或还是上一轮的旧值），

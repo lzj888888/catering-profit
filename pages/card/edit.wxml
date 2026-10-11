@@ -6,6 +6,22 @@
     <view class="saved-go" bindtap="backToList">{{t.backToList}}</view>
   </view>
 
+  <!-- 🔴 P0#7：新手/专业模式（与 M1 录入页同形）—— 新手先填核心项，专业项默认收起 -->
+  <view class="im-wrap">
+    <view class="im-sec">{{t.inputModeTitle}}</view>
+    <view class="im-opts">
+      <view class="im-opt {{inputMode === 'novice' ? 'on' : ''}}" data-val="novice" bindtap="onPickInputMode">
+        <view class="im-h">{{inputMode === 'novice' ? '✓ ' : ''}}{{t.inputModeNovice}}</view>
+        <view class="im-d">{{t.inputModeNoviceDesc}}</view>
+      </view>
+      <view class="im-opt {{inputMode === 'pro' ? 'on' : ''}}" data-val="pro" bindtap="onPickInputMode">
+        <view class="im-h">{{inputMode === 'pro' ? '✓ ' : ''}}{{t.inputModePro}}</view>
+        <view class="im-d">{{t.inputModeProDesc}}</view>
+      </view>
+    </view>
+  </view>
+  <view class="im-tip" wx:if="{{inputMode === 'novice' && !showMore}}">{{t.noviceTip}}</view>
+
   <view class="field">
     <text class="lbl">{{t.dishName}}</text>
     <input class="val-input" value="{{name}}" placeholder="{{t.dishNamePh}}" bindinput="onName" />
@@ -32,8 +48,8 @@
     <text class="muted">{{t.templateHint}}</text>
   </view>
 
-  <!-- 核算模式（仅单品） -->
-  <view class="field" wx:if="{{cardType === '1'}}">
+  <!-- 核算模式（仅单品）· 🔴 P0#7：新手模式默认收起，展开专业项才显示 -->
+  <view class="field" wx:if="{{cardType === '1' && (inputMode === 'pro' || showMore)}}">
     <text class="lbl">{{t.calcMode}}</text>
     <radio-group class="mode-group" bindchange="onMode">
       <label class="mode-item"><radio value="A" checked="{{calcMode === 'A'}}" color="#1e3a5f"/>{{t.calcModeA}}</label>
@@ -221,6 +237,7 @@
 
   <!-- 反算售价（R190：单品 / 套餐**都能用** —— 此前套餐点了没反应，规范 v1.2 早定了套餐反算口径） -->
   <view class="reverse">
+    <view class="muted rev-pre">{{t.reversePre}}</view>
     <view class="cell">
       <text class="lbl">{{t.targetMargin}}</text>
       <input class="val-input" type="digit" value="{{targetMargin}}" bindinput="onTargetMargin"  adjust-position="{{true}}" cursor-spacing="20" />
@@ -231,10 +248,16 @@
     <view class="muted" wx:if="{{previewCostFen > 0}}">{{t.totalCost}}：<text style="color:#1e3a5f;">{{t.cur}}{{previewCost}}</text></view>
   </view>
 
+  <!-- 🔴 P0#7：新手模式「展开专业项」入口（点一下全部专业项都显示；切模式会重置） -->
+  <view class="im-expand" wx:if="{{inputMode === 'novice' && !showMore}}">
+    <button class="btn ghost btn-block" bindtap="onExpandPro">{{t.expandProBtn}}</button>
+  </view>
+
   <!-- M3.37（R190）团购到手试算：
        🔴 佣金基数 = **顾客实付的团购价**（原价 188 / 团购价 88 ⇒ 按 88 抽，不是按 188）；
-       费率店家自己填、**无默认值**（行业常见 6% 只作 placeholder，R128 同族）。 -->
-  <view class="reverse">
+       费率店家自己填、**无默认值**（行业常见 6% 只作 placeholder，R128 同族）。
+       🔴 P0#7：专业项，新手模式默认收起 -->
+  <view class="reverse" wx:if="{{inputMode === 'pro' || showMore}}">
     <view class="spec-title">{{t.grouponTitle}}</view>
     <text class="muted">{{t.grouponHint}}</text>
     <view class="cell">
@@ -262,7 +285,7 @@
        ⚠️ 页面**不抄系数**（系数单源在服务端 SPEC_PRESETS）—— 只送规格键 + 售价，
        试算结果由云端返回（含它是用哪套系数算的）。主成本口径完全不受影响。
        ⚠️ 套餐（引用型卡）无规格概念 ⇒ 仅单品显示。 -->
-  <view class="spec-box" wx:if="{{cardType === '1'}}">
+  <view class="spec-box" wx:if="{{cardType === '1' && (inputMode === 'pro' || showMore)}}">
     <view class="spec-title">{{t.specTitle}}</view>
     <view class="muted">{{t.specHint}}</view>
     <block wx:for="{{specRows}}" wx:for-item="sp" wx:for-index="si" wx:key="spec_key">
