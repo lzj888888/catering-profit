@@ -6,6 +6,8 @@
 .field-save { display: flex; justify-content: flex-end; margin-top: 16rpx; }
 .muted { font-size: 28rpx; color: #6b7a90; line-height: 1.5; }
 .section-title { font-size: 30rpx; color: #1e3a5f; font-weight: 600; margin: 24rpx 4rpx 12rpx; }
+/* R272c：自助餐块上移到顶部，标题高亮便于在长页面一眼看到 */
+.section-title.highlight { color: #b8430e; border-left: 8rpx solid #e8743b; padding-left: 16rpx; background: #fff6f0; border-radius: 0 10rpx 10rpx 0; }
 
 /* 排名表：自定义行（不复用全局 .row —— 那是「间隔卡」语义，这里是表行） */
 .row { display: flex; align-items: center; padding: 20rpx 8rpx; border-bottom: 1rpx solid #eef2f7; font-size: 28rpx; }

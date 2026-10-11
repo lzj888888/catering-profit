@@ -27,6 +27,31 @@
       <view class="muted">{{t.reviewCoverageCHint}}</view>
     </block>
 
+    <!-- ===== R272c：自助餐（快餐=随便吃）人均食材成本 · 上移到顶部，避免在 21 行堂食榜 + 244 行未匹配的长页面里被埋 =====
+         自助餐不建单品成本卡，改走「人均食材成本 = 本月自助线食材消耗 ÷ 售出份数」口径；
+         消耗总额由店铺设置录入（单位：分），未填则提示去设置页填写。 -->
+    <block wx:if="{{buffet_meals > 0}}">
+      <view class="section-title highlight">{{t.reviewBuffetTitle}}</view>
+      <view class="card2">
+        <view class="cell"><text class="lbl">{{t.reviewBuffetRevenue}}</text><text class="val">{{t.cur}}{{buffet_revenueText}}</text></view>
+        <view class="cell"><text class="lbl">{{t.reviewBuffetMeals}}</text><text class="val">{{buffet_meals}} 份</text></view>
+        <view class="cell"><text class="lbl">{{t.reviewBuffetPerCapitaPrice}}</text><text class="val">{{t.cur}}{{buffet_perCapitaPriceText}}</text></view>
+        <view class="cell"><text class="lbl">{{t.reviewBuffetPerCapitaCost}}</text>
+          <text class="val" wx:if="{{buffet_hasCostInput}}">{{t.cur}}{{buffet_perCapitaCostText}}</text>
+          <text class="val" wx:else>{{t.reviewBuffetNoCost}}</text>
+        </view>
+        <view class="cell" wx:if="{{buffet_hasCostInput}}"><text class="lbl">{{t.reviewBuffetGrossMargin}}</text><text class="val">{{buffet_grossMarginText}}</text></view>
+        <!-- R272b：行业基准带（网上平均数据）-->
+        <view class="subtitle">{{t.reviewBuffetBenchTitle}}</view>
+        <view class="cell"><text class="lbl">{{t.reviewBuffetBenchLow}}</text><text class="val">{{t.cur}}{{buffet_benchLowText}} <text class="muted">（成本率{{buffet_rateLowPct}}%）</text></text></view>
+        <view class="cell"><text class="lbl">{{t.reviewBuffetBenchMid}}</text><text class="val">{{t.cur}}{{buffet_benchMidText}} <text class="muted">（成本率{{buffet_rateMidPct}}%）</text></text></view>
+        <view class="cell"><text class="lbl">{{t.reviewBuffetBenchHigh}}</text><text class="val">{{t.cur}}{{buffet_benchHighText}} <text class="muted">（成本率{{buffet_rateHighPct}}%）</text></text></view>
+        <view class="cell" wx:if="{{buffet_hasCostInput && buffet_actualRateText}}"><text class="lbl">{{t.reviewBuffetActual}}</text><text class="val {{buffet_flagClass}}">{{buffet_actualRateText}}</text></view>
+      </view>
+      <view class="muted">{{t.reviewBuffetHint}}</view>
+      <view class="muted">{{t.reviewBuffetBenchHint}}</view>
+    </block>
+
     <!-- 毛利率标红阈值（用户自定义，默认占位值，非警戒线） -->
     <view class="field">
       <text class="lbl">{{t.reviewThreshold}}</text>
@@ -69,30 +94,7 @@
       <view class="cell"><text class="lbl">{{t.reviewTotalGross}}</text><text class="val">{{t.cur}}{{totals.grossText}}</text></view>
     </view>
 
-    <!-- ===== R272：自助餐（快餐=随便吃）人均食材成本 =====
-         自助餐不建单品成本卡，改走「人均食材成本 = 本月自助线食材消耗 ÷ 售出份数」口径；
-         消耗总额由店铺设置录入（单位：分），未填则提示去设置页填写。 -->
-    <block wx:if="{{buffet_meals > 0}}">
-      <view class="section-title">{{t.reviewBuffetTitle}}</view>
-      <view class="card2">
-        <view class="cell"><text class="lbl">{{t.reviewBuffetRevenue}}</text><text class="val">{{t.cur}}{{buffet_revenueText}}</text></view>
-        <view class="cell"><text class="lbl">{{t.reviewBuffetMeals}}</text><text class="val">{{buffet_meals}} 份</text></view>
-        <view class="cell"><text class="lbl">{{t.reviewBuffetPerCapitaPrice}}</text><text class="val">{{t.cur}}{{buffet_perCapitaPriceText}}</text></view>
-        <view class="cell"><text class="lbl">{{t.reviewBuffetPerCapitaCost}}</text>
-          <text class="val" wx:if="{{buffet_hasCostInput}}">{{t.cur}}{{buffet_perCapitaCostText}}</text>
-          <text class="val" wx:else>{{t.reviewBuffetNoCost}}</text>
-        </view>
-        <view class="cell" wx:if="{{buffet_hasCostInput}}"><text class="lbl">{{t.reviewBuffetGrossMargin}}</text><text class="val">{{buffet_grossMarginText}}</text></view>
-        <!-- R272b：行业基准带（网上平均数据）-->
-        <view class="subtitle">{{t.reviewBuffetBenchTitle}}</view>
-        <view class="cell"><text class="lbl">{{t.reviewBuffetBenchLow}}</text><text class="val">{{t.cur}}{{buffet_benchLowText}} <text class="muted">（成本率{{buffet_rateLowPct}}%）</text></text></view>
-        <view class="cell"><text class="lbl">{{t.reviewBuffetBenchMid}}</text><text class="val">{{t.cur}}{{buffet_benchMidText}} <text class="muted">（成本率{{buffet_rateMidPct}}%）</text></text></view>
-        <view class="cell"><text class="lbl">{{t.reviewBuffetBenchHigh}}</text><text class="val">{{t.cur}}{{buffet_benchHighText}} <text class="muted">（成本率{{buffet_rateHighPct}}%）</text></text></view>
-        <view class="cell" wx:if="{{buffet_hasCostInput && buffet_actualRateText}}"><text class="lbl">{{t.reviewBuffetActual}}</text><text class="val {{buffet_flagClass}}">{{buffet_actualRateText}}</text></view>
-      </view>
-      <view class="muted">{{t.reviewBuffetHint}}</view>
-      <view class="muted">{{t.reviewBuffetBenchHint}}</view>
-    </block>
+    <!-- R272c：自助餐块已上移到覆盖率 C 档之后（页面顶部），此处不再重复渲染。 -->
 
     <!-- 外卖榜（v1.7 实态：按平台分块；无数据 ⇒ 空态，红线 18 不默认 0） -->
     <block wx:if="{{takeaway}}">
