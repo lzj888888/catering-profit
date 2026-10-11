@@ -138,6 +138,9 @@ Page({
       planSavedOk: M.planSavedOk,
       planNamePh: M.planNamePh,
       cancel: TERMS.buttons.cancel,
+      // M2 G1/G2（2026-10-11 改造）：入口文案（来自 TERMS.matrix / TERMS.m2Plan 单源）
+      matrixEntry: TERMS.matrix.title,
+      compareEntry: TERMS.m2Plan.compare,
       // M2v1.3（业态参数包 + 回本卡）
       presetLabel: M.presetLabel,
       presetNone: M.presetNone,
@@ -831,6 +834,10 @@ Page({
       api.toastError(e);
     }
   },
+
+  // ===== M2 G1/G2（2026-10-11 改造）：跳转场景矩阵 / 多方案对比 =====
+  goMatrix() { wx.navigateTo({ url: '/pages/sandbox/matrix' }); },
+  goCompare() { wx.navigateTo({ url: '/pages/sandbox/compare' }); },
 
   // ===== M2v1.3（业态参数包 + 回本卡 · 第三期）=====
   // 🔴 R234：业态预设**平铺**（背景见 terms.js 的 R234 段与本文件顶部注释）。

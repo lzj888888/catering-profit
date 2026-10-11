@@ -10,6 +10,8 @@
     "pages/shop/setting",
     "pages/sandbox/index",
     "pages/sandbox/list",
+    "pages/sandbox/matrix",
+    "pages/sandbox/compare",
     "pages/m3/hub",
     "pages/card/index",
     "pages/card/edit",

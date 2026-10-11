@@ -58,7 +58,7 @@ function xlsxBase64(header, rows, sheetName) {
   return xlsxSheetsBase64([{ name: sheetName, header: header, rows: rows }]);
 }
 // 工作表名（≤31 字符，Excel 硬限）
-const SHEET_NAME = { m1_report: '月度报表', m3_cards: '菜品成本卡', m2_compare: '方案对比' };
+const SHEET_NAME = { m1_report: '月度报表', m3_cards: '菜品成本卡', m2_compare: '方案对比', m2_matrix: '场景矩阵' };
 
 // R266：分 → 元（**仅导出展示用**；库内与引擎一律「分」整数）
 function yuan(fen) { return Math.round(Number(fen) || 0) / 100; }
@@ -177,19 +177,37 @@ exports.main = async (event) => {
   if (auth.error) return fail(auth.error);
   const userId = auth.user.id;
 
-  const shopId = event && event.shop_id;
-  const owner = await assertShopOwner(db, shopId, userId);
-  if (owner.error) return fail(owner.error, owner.msg);
-
   const v = (event && event.input) || event || {};
   // M2v1.3：对比表导出（Excel 付费，复用 'export' 能力键）。前端已用 calcSandbox 重算好
   //   compare 表（且图片/Excel 两出口共用同一份已算结果），本函数只做事后序列化 + 归属校验。
+  // G1（2026-10-11）：场景矩阵导出同样「前端已算好 table 传进来」，但**免费**（见下方 isM2FreeExport）。
   const isCompare = v.export_type === 'm2_compare';
-  const scope = isCompare ? 'm2_compare' : (v.scope === 'm3_cards' ? 'm3_cards' : 'm1_report');
+  const isMatrix = v.export_type === 'm2_matrix' || v.scope === 'm2_matrix';
+  const scope = isMatrix ? 'm2_matrix' : (isCompare ? 'm2_compare' : (v.scope === 'm3_cards' ? 'm3_cards' : 'm1_report'));
+
+  // 🔴 G4（2026-10-11 李老师拍板·引流豁免）：M2 场景矩阵导出**免费**，不读付费墙。
+  //   理由：M2 整体定位「免费 Excel 盈亏平衡/选址测算引流 → 付费 H5 转化」，
+  //   矩阵与对比表导出一律免费。这是**有意的引流产品决策**，不是付费墙漏洞 ——
+  //   后续复审请勿把它当 bug 修掉。矩阵数据全部来自前端已算结果、不读店铺资产，
+  //   故也不校验店铺归属（避免把免费引流工具误绑成「需先开店铺」）。
+  const isM2FreeExport = scope === 'm2_matrix';
+
+  let da, shopDoc, shopName, shopId;
+  if (isM2FreeExport) {
+    shopName = (typeof v.shop_name === 'string' && v.shop_name) ? v.shop_name : '选址测算';
+  } else {
+    shopId = event && event.shop_id;
+    const owner = await assertShopOwner(db, shopId, userId);
+    if (owner.error) return fail(owner.error, owner.msg);
+    da = makeAdapter(db);
+    shopDoc = await da.get('shop', shopId);
+    shopName = shopDoc ? (shopDoc.name || '') : '';
+  }
+
   // R265：不传 format 时默认 **xlsx**（真 Excel），'excel' 保留为 CSV 旧兼容通道。
   const format = v.format === 'json' ? 'json' : (v.format === 'excel' ? 'excel' : 'xlsx');
   const month = (typeof v.month === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(v.month)) ? v.month : '';
-  if (!isCompare && scope === 'm1_report' && !month) return fail(ERROR_CODES.INVALID_PARAM, 'm1_report 需提供 month（YYYY-MM）');
+  if (!isCompare && !isMatrix && scope === 'm1_report' && !month) return fail(ERROR_CODES.INVALID_PARAM, 'm1_report 需提供 month（YYYY-MM）');
   // M2 对比：plan_ids 必须 1~3 个非空字符串
   if (isCompare) {
     const planIds = Array.isArray(v.plan_ids) ? v.plan_ids.filter((s) => typeof s === 'string' && s) : [];
@@ -201,12 +219,12 @@ exports.main = async (event) => {
   // ===== 2. 导出权限（只读 expire_at）=====
   // M3.28（批次 Q3）：判定下沉到单源 common/entitlement.js —— 理由见该文件头注。
   //   ⚠️ 不许在本函数里写第二遍 `expireAt > nowUtc()`：付费语义一旦分叉，"导出"与"S1 套餐"就会给出两个答案。
-  const canExport = await hasFeature(db, userId, 'export');
-  if (!canExport) return fail(ERROR_CODES.FEATURE_LOCKED, '导出需开通真实利润');
+  //   🔴 M2 矩阵导出（isM2FreeExport）**跳过**此判定（引流免费，见上方注释）。
+  if (!isM2FreeExport) {
+    const canExport = await hasFeature(db, userId, 'export');
+    if (!canExport) return fail(ERROR_CODES.FEATURE_LOCKED, '导出需开通真实利润');
+  }
 
-  const da = makeAdapter(db);
-  const shopDoc = await da.get('shop', shopId);
-  const shopName = shopDoc ? (shopDoc.name || '') : '';
   const stamp = nowUtc();
 
   // ===== 3. 取数并生成 =====
@@ -224,6 +242,13 @@ exports.main = async (event) => {
     header = sheets[0].header;
     body = sheets[0].rows;
     fileBase = `${shopName || '店铺'}_${month}_月度报表`;
+  } else if (scope === 'm2_matrix') {
+    // G1（2026-10-11）：场景矩阵导出 —— 前端已用 calcSandbox(matrix) 算好 table，
+    //   本函数只做序列化（与 m2_compare 同模式）。免费（isM2FreeExport 已跳过付费墙）。
+    const table = (v.table && Array.isArray(v.table.rows)) ? v.table : { header: [], rows: [] };
+    header = Array.isArray(table.header) ? table.header : [];
+    body = table.rows || [];
+    fileBase = `${shopName || '选址测算'}_场景矩阵`;
   } else if (scope === 'm2_compare') {
     // M2 对比表：前端已用 calcSandbox 重算好 `table`（= 图片/Excel 两出口共用同一份已算结果）。
     // 本函数只做归属校验（不泄漏他人方案）+ 序列化。

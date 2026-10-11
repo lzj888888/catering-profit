@@ -1,0 +1,40 @@
+<!-- pages/sandbox/compare/index.wxml —— M2 G2 多方案对比 -->
+<view class="page">
+  <view class="head"><view class="title">{{t.title}}</view></view>
+
+  <view wx:if="{{plans.length === 0 && !loading}}" class="empty">{{t.empty}}</view>
+
+  <view class="card" wx:for="{{plans}}" wx:key="sandbox_id">
+    <view class="plan-row" bindtap="onToggle" data-id="{{item.sandbox_id}}">
+      <view class="check {{selected.indexOf(item.sandbox_id) >= 0 ? 'on' : ''}}"></view>
+      <text class="pname">{{item.name}}</text>
+      <text class="pmeta">{{item.snapshot.red_alert ? t.red : ''}}</text>
+    </view>
+  </view>
+
+  <button class="btn-primary" bindtap="onCompare">{{t.doCompare}}</button>
+
+  <block wx:if="{{compared}}">
+    <view class="card">
+      <view class="cmp-tbl">
+        <view class="tr th">
+          <text class="td">{{t.planCol}}</text>
+          <text class="td">{{t.breakMonthly}}</text>
+          <text class="td">{{t.targetMonthly}}</text>
+          <text class="td">{{t.payback}}</text>
+          <text class="td">{{t.varRate}}</text>
+        </view>
+        <view class="tr {{item.red ? 'red' : ''}}" wx:for="{{compared.rows}}" wx:key="name">
+          <text class="td">{{item.name}}</text>
+          <text class="td">{{item.breakMonthly != null ? item.breakMonthly : '—'}}</text>
+          <text class="td">{{item.targetMonthly != null ? item.targetMonthly : '—'}}</text>
+          <text class="td">{{item.payback != null ? item.payback : '—'}}</text>
+          <text class="td">{{item.varRate != null ? item.varRate : '—'}}</text>
+        </view>
+      </view>
+      <view class="verdict">{{compared.verdict}}</view>
+    </view>
+  </block>
+
+  <view class="nav-row"><button class="btn-ghost" bindtap="goSandbox">{{t.backToSandbox}}</button></view>
+</view>

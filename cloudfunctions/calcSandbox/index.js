@@ -16,10 +16,27 @@ const { validateInput } = require('./validate');
 exports.main = async (event) => {
   const ctx = cloud.getWXContext();
 
-  // ===== 1. 鉴权中间件（批次 0）=====
+  // ===== 0. 鉴权中间件（批次 0，所有分支共用）=====
   const auth = await resolveAuth(ctx, db);
   if (auth.error) return fail(auth.error);
   const userId = auth.user.id;
+
+  // ===== 0.5. G1 场景矩阵批量计算（M2 选址反推改造 · 免费引流，不绑定店铺、不触发付费墙）=====
+  // 🔴 口径：前端用 assembleItems 把每个维度组合装配成 clean 参数（与单测完全一致），整批送来；
+  //   本分支只做「循环调 calcSandbox」，**引擎 service.js 一行不改**（与 R219/R223/R234 同一套路）。
+  // 🔴 不校验店铺归属 / 不读库 / 不碰付费墙 —— 它是纯测算，数据全部来自用户输入，无店铺资产可读。
+  //   店铺 id 由 api.call 自动注入，本分支直接忽略（避免把免费引流工具误绑成「需先开店铺」）。
+  if (event && event.action === 'matrix') {
+    const arr = Array.isArray(event.clean_array) ? event.clean_array : [];
+    if (arr.length === 0 || arr.length > 1000) {
+      return fail(ERROR_CODES.INVALID_PARAM, 'matrix.clean_array 需 1~1000 个 clean 参数');
+    }
+    const rows = arr.map((c) => calcSandbox(c && typeof c === 'object' ? c : {}));
+    return ok({
+      client_request_id: (event.client_request_id) || '',
+      rows,
+    });
+  }
 
   const shopId = event && event.shop_id;
   const owner = await assertShopOwner(db, shopId, userId);

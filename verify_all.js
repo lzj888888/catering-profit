@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：165 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：166 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -1008,6 +1008,8 @@ const SUITES = [
   //   🔴 核心是防**退化**：默认 format 改回 excel(=CSV) / OPENABLE 里加 csv / showMenu 被删 / fail 写回空回调，
   //      四种改法**界面都照样弹「导出完成」、零报错**，只有本守卫会红。
   ['export-delivery', 'tools/check_export_delivery.js'],
+  // ===== M2 矩阵/对比改造守卫（2026-10-11）=====
+  ['m2-matrix-guard', 'tools/check_m2_matrix.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

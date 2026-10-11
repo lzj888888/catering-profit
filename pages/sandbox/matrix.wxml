@@ -1,0 +1,143 @@
+<!-- pages/sandbox/matrix/index.wxml —— M2 G1 场景矩阵生成器 -->
+<view class="page">
+  <view class="head">
+    <view class="title">{{t.title}}</view>
+    <view class="subtitle">{{t.subtitle}}</view>
+  </view>
+
+  <!-- 业态 + 城市 -->
+  <view class="card">
+    <view class="field">
+      <text class="label">{{t.presetLabel}}</text>
+      <picker mode="selector" range="{{presets}}" range-key="name" value="{{presetIdx}}" bindchange="onPresetChange">
+        <view class="picker">{{presets[presetIdx].name}}</view>
+      </picker>
+    </view>
+    <view class="field">
+      <text class="label">{{t.cityLabel}}</text>
+      <picker mode="selector" range="{{t.cityTiers}}" range-key="name" value="{{cityIdx}}" bindchange="onCityChange">
+        <view class="picker">{{t.cityTiers[cityIdx].name}}</view>
+      </picker>
+    </view>
+  </view>
+
+  <!-- 全局投入 -->
+  <view class="card">
+    <view class="card-title">{{t.buildLabel}}</view>
+    <view class="field">
+      <text class="label">{{t.buildLabel}}</text>
+      <input class="inp" type="digit" value="{{global.buildTotalYuan}}" data-key="buildTotalYuan" bindinput="onGlobalInput" placeholder="元" />
+    </view>
+    <view class="field">
+      <text class="label">{{t.buildYearsLabel}}</text>
+      <input class="inp" type="digit" value="{{global.buildYears}}" data-key="buildYears" bindinput="onGlobalInput" placeholder="年" />
+    </view>
+    <view class="field">
+      <text class="label">{{t.areaLabel}}</text>
+      <input class="inp" type="digit" value="{{global.area}}" data-key="area" bindinput="onGlobalInput" placeholder="㎡" />
+    </view>
+  </view>
+
+  <!-- 维度编辑器 -->
+  <view class="card">
+    <view class="dim-block">
+      <view class="dim-head"><text>{{t.dimRent}}</text><view class="add" bindtap="addDim" data-dim="rent">{{t.addDim}}</view></view>
+      <view class="dim-row" wx:for="{{dims.rent}}" wx:key="index" wx:for-index="idx">
+        <input class="inp dim-inp" type="digit" value="{{item}}" data-dim="rent" data-idx="{{idx}}" bindinput="onDimInput" />
+        <view class="del" wx:if="{{dims.rent.length>1}}" bindtap="delDim" data-dim="rent" data-idx="{{idx}}">{{t.delDim}}</view>
+      </view>
+    </view>
+    <view class="dim-block">
+      <view class="dim-head"><text>{{t.dimLabor}}</text><view class="add" bindtap="addDim" data-dim="labor">{{t.addDim}}</view></view>
+      <view class="dim-row" wx:for="{{dims.labor}}" wx:key="index" wx:for-index="idx">
+        <input class="inp dim-inp" type="digit" value="{{item}}" data-dim="labor" data-idx="{{idx}}" bindinput="onDimInput" />
+        <view class="del" wx:if="{{dims.labor.length>1}}" bindtap="delDim" data-dim="labor" data-idx="{{idx}}">{{t.delDim}}</view>
+      </view>
+    </view>
+    <view class="dim-block">
+      <view class="dim-head"><text>{{t.dimMargin}}</text><view class="add" bindtap="addDim" data-dim="margin">{{t.addDim}}</view></view>
+      <view class="dim-row" wx:for="{{dims.margin}}" wx:key="index" wx:for-index="idx">
+        <input class="inp dim-inp" type="digit" value="{{item}}" data-dim="margin" data-idx="{{idx}}" bindinput="onDimInput" />
+        <view class="del" wx:if="{{dims.margin.length>1}}" bindtap="delDim" data-dim="margin" data-idx="{{idx}}">{{t.delDim}}</view>
+      </view>
+    </view>
+    <view class="dim-block">
+      <view class="dim-head"><text>{{t.dimTarget}}</text><view class="add" bindtap="addDim" data-dim="target">{{t.addDim}}</view></view>
+      <view class="dim-row" wx:for="{{dims.target}}" wx:key="index" wx:for-index="idx">
+        <input class="inp dim-inp" type="digit" value="{{item}}" data-dim="target" data-idx="{{idx}}" bindinput="onDimInput" />
+        <view class="del" wx:if="{{dims.target.length>1}}" bindtap="delDim" data-dim="target" data-idx="{{idx}}">{{t.delDim}}</view>
+      </view>
+    </view>
+  </view>
+
+  <button class="btn-primary" bindtap="onGenerate" disabled="{{loading}}">{{loading ? t.generating : t.generate}}</button>
+
+  <!-- 结果区 -->
+  <block wx:if="{{result}}">
+    <view class="card">
+      <view class="result-bar">
+        <text class="count">{{t.count}}</text>
+        <view class="view-tabs">
+          <view class="tab {{result.view==='detail'?'on':''}}" bindtap="onViewChange" data-view="detail">{{t.detail}}</view>
+          <view class="tab {{result.view==='pivot'?'on':''}}" bindtap="onViewChange" data-view="pivot">{{t.pivot}}</view>
+        </view>
+      </view>
+
+      <!-- 明细表 -->
+      <scroll-view wx:if="{{result.view==='detail'}}" scroll-x="true" class="tbl-scroll">
+        <view class="tbl">
+          <view class="tr th">
+            <text class="td">{{t.dimRent}}</text><text class="td">{{t.dimLabor}}</text><text class="td">{{t.dimMargin}}</text>
+            <text class="td">{{t.dimTarget}}</text><text class="td">{{t.colBreakMonthly}}</text><text class="td">{{t.colBreakDaily}}</text>
+            <text class="td">{{t.colTargetMonthly}}</text><text class="td">{{t.colTargetDaily}}</text><text class="td">{{t.rentPct}}</text><text class="td">{{t.payback}}</text>
+          </view>
+          <view class="tr {{item.red?'red':''}}" wx:for="{{result.rows}}" wx:key="index">
+            <text class="td">{{item.rent}}{{t.yuan}}</text>
+            <text class="td">{{item.labor}}{{t.person}}</text>
+            <text class="td">{{item.marginPct}}{{t.pct}}</text>
+            <text class="td">{{item.targetYuan}}{{t.yuan}}</text>
+            <text class="td">{{item.breakMonthly!=null?item.breakMonthly:'—'}}</text>
+            <text class="td">{{item.breakDaily!=null?item.breakDaily:'—'}}</text>
+            <text class="td">{{item.targetMonthly!=null?item.targetMonthly:'—'}}</text>
+            <text class="td">{{item.targetDaily!=null?item.targetDaily:'—'}}</text>
+            <text class="td">{{item.rentPct!=null?item.rentPct:'—'}}</text>
+            <text class="td">{{item.payback!=null?item.payback:'—'}}</text>
+          </view>
+        </view>
+      </scroll-view>
+
+      <!-- 透视表 -->
+      <block wx:else>
+        <view class="pivot-fix">
+          <view class="field">
+            <text class="label">{{t.pivotFixMargin}}</text>
+            <input class="inp" type="digit" value="{{pivotFix.margin}}" data-key="margin" bindinput="onPivotFixInput" />
+          </view>
+          <view class="field">
+            <text class="label">{{t.pivotFixLabor}}</text>
+            <input class="inp" type="digit" value="{{pivotFix.labor}}" data-key="labor" bindinput="onPivotFixInput" />
+          </view>
+        </view>
+        <scroll-view scroll-x="true" class="tbl-scroll">
+          <view class="tbl">
+            <view class="tr th">
+              <text class="td">{{t.dimRent}}</text>
+              <text class="td" wx:for="{{result.pivot.cols}}" wx:key="index">{{item==0?t.colBreakDaily:item+t.yuan}}</text>
+            </view>
+            <view class="tr" wx:for="{{result.pivot.rows}}" wx:key="index" wx:for-item="rrow">
+              <text class="td">{{rrow}}{{t.yuan}}</text>
+              <text class="td" wx:for="{{result.pivot.cols}}" wx:key="index" wx:for-item="cc">{{result.pivot.cells[rrow+'|'+cc]!=null?result.pivot.cells[rrow+'|'+cc]:'—'}}</text>
+            </view>
+          </view>
+        </scroll-view>
+      </block>
+
+      <button class="btn-export" bindtap="onExport" disabled="{{exporting}}">{{exporting ? t.exporting : t.exportXlsx}}</button>
+    </view>
+  </block>
+
+  <view class="nav-row">
+    <button class="btn-ghost" bindtap="goSandbox">{{t.backToSandbox}}</button>
+    <button class="btn-ghost" bindtap="goCompare">{{t.toCompare}}</button>
+  </view>
+</view>
