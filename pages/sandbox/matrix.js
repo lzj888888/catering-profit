@@ -14,6 +14,11 @@ const { deliver } = require('../../utils/exportFile.js');
 
 const M = TERMS.matrix;
 
+// 🔴 round279 · 模板替换（术语单源：文案在 terms.js，数字在此填，避免 wxml 里拼字符串）
+function fmt(tpl, map) {
+  return String(tpl).replace(/\{(\w+)\}/g, (_, k) => (map[k] != null ? map[k] : ''));
+}
+
 // 默认扫维度档位（照搬小面表 + 毛利率 4 档，即「升级」核心）
 const DEFAULT_DIMS = {
   rent: [3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000],
@@ -75,6 +80,15 @@ Page({
       yuan: M.yuan,
       pct: M.pct,
       person: M.person,
+      // 🔴 round279 · #9 矩阵杠杆术语（纯展示增强，引擎零改）
+      insightTitle: M.insightTitle,
+      insightNone: M.insightNone,
+      leverRule: M.leverRule,
+      colLever: M.colLever,
+      colCushion: M.colCushion,
+      colLeverExport: M.colLeverExport,
+      colCushionExport: M.colCushionExport,
+      cushionBreakEven: M.cushionBreakEven,
     },
     presets: BIZ_PRESETS.map((p) => ({ key: p.presetKey, name: TERMS.m2.bizTypes.find((b) => b.key === p.bizKey) ? TERMS.m2.bizTypes.find((b) => b.key === p.bizKey).name + '·预设' : p.presetKey })),
     presetIdx: 0,
@@ -216,9 +230,10 @@ Page({
       const d = await api.call('calcSandbox', { action: 'matrix', clean_array: cleanArr });
       const rows = (d.rows || []).map((res, i) => this.toRow(meta[i], res));
       const pivot = this.buildPivot(rows);
+      const insight = this.buildInsight(rows);
       this.setData({
         loading: false,
-        result: { rows, view: 'detail', count: rows.length, pivot },
+        result: { rows, view: 'detail', count: rows.length, pivot, insight },
       });
     } catch (e) {
       this.setData({ loading: false });
@@ -233,19 +248,82 @@ Page({
     const rentPct = (targetMonthlyFen && targetMonthlyFen > 0)
       ? Math.round((rentFen / targetMonthlyFen) * 1000) / 10
       : null;
+    const breakMonthly = res.break_even_monthly_fen != null ? res.break_even_monthly_fen / 100 : null;
+    const breakDaily = res.break_even_daily_fen != null ? res.break_even_daily_fen / 100 : null;
+    const targetMonthly = targetMonthlyFen != null ? targetMonthlyFen / 100 : null;
+    const targetDaily = res.target_daily_fen != null ? res.target_daily_fen / 100 : null;
+    // 🔴 round279 · #9 派生（纯展示，引擎零改）：
+    //   ① 房租杠杆：房租每涨 ¥1000，需多做到手营收 = 1000 ÷ 毛利率（按本行毛利率计）
+    const mRate = meta.marginPct > 0 ? meta.marginPct / 100 : 0;
+    const leverYuan = mRate > 0 ? Math.round(1000 / mRate) : null;
+    //   ② 淡季安全垫：目标营收相对保本线的缓冲百分比（营收可跌这么多才到保本；
+    //      目标利润=0 即保本线本身 ⇒ 缓冲为 0，前端标「保本线」而非 0%）
+    let cushionPct = null;
+    if (meta.targetYuan > 0 && targetMonthly != null && breakMonthly != null && targetMonthly > 0) {
+      cushionPct = Math.round((targetMonthly - breakMonthly) / targetMonthly * 100);
+    }
     return {
       rent: meta.rent,
       labor: meta.labor,
       marginPct: meta.marginPct,
       targetYuan: meta.targetYuan,
-      breakMonthly: res.break_even_monthly_fen != null ? res.break_even_monthly_fen / 100 : null,
-      breakDaily: res.break_even_daily_fen != null ? res.break_even_daily_fen / 100 : null,
-      targetMonthly: targetMonthlyFen != null ? targetMonthlyFen / 100 : null,
-      targetDaily: res.target_daily_fen != null ? res.target_daily_fen / 100 : null,
+      breakMonthly,
+      breakDaily,
+      targetMonthly,
+      targetDaily,
       rentPct,
+      leverYuan,
+      cushionPct,
       payback: res.payback_months != null ? res.payback_months : null,
       red: !!res.red_alert,
     };
+  },
+
+  // ===== #9 结论高亮：在「当前透视固定维度」下从已算 rows 抽可行子集，给出扛租/杠杆/淡季安全垫 =====
+  // 🔴 round279 · 纯前端派生，引擎零改。结论跟着透视固定维度走：
+  //   reverse（寻找铺面，扫租金档位）→ 固定毛利率/人工 ⇒ 结论「可承受最高月租」
+  //   forward（已有铺面，扫毛利率）  → 固定月租金/人工 ⇒ 结论「最低可行毛利率」
+  buildInsight(rows) {
+    if (!rows || !rows.length) return { has: false };
+    const dim = this.data.pivotRowDim;                 // 'rent' | 'margin'
+    const fixKey = dim === 'margin' ? 'rent' : 'margin'; // 被固定的另一个维度
+    const fixVal = Number(this.data.pivotFix[fixKey]);
+    const fixLabor = Number(this.data.pivotFix.labor);
+    // 目标利润锚点：取维度里最大的目标利润档（最紧张、最有参考意义）
+    const targetDims = this.data.dims.target.map(Number).filter(isFinite);
+    const targetAnchor = targetDims.length ? Math.max(...targetDims) : 0;
+    let filtered = rows.filter((r) => !r.red
+      && Number(r[fixKey === 'rent' ? 'rent' : 'marginPct']) === fixVal
+      && Number(r.labor) === fixLabor
+      && (targetAnchor === 0 || r.targetYuan === targetAnchor));
+    if (!filtered.length) {
+      // 退一步：放宽目标利润约束，只看固定维度 + 人工
+      filtered = rows.filter((r) => !r.red
+        && Number(r[fixKey === 'rent' ? 'rent' : 'marginPct']) === fixVal
+        && Number(r.labor) === fixLabor);
+    }
+    if (!filtered.length) return { has: false };
+
+    let bestLabel, bestVal, bestText;
+    if (dim === 'rent') {
+      bestVal = Math.max(...filtered.map((r) => r.rent));
+      bestText = fmt(M.insightMaxRent, { rent: bestVal, target: targetAnchor, margin: fixVal });
+    } else {
+      bestVal = Math.min(...filtered.map((r) => r.marginPct));
+      bestText = fmt(M.insightMinMargin, { margin: bestVal, rent: fixVal, target: targetAnchor });
+    }
+    // 房租杠杆：按锚定毛利率计（reverse=fixVal 毛利率；forward=最低可行毛利率本身）
+    const leverMargin = dim === 'rent' ? fixVal : bestVal;
+    const leverYuan = Math.round(1000 / (leverMargin / 100));
+    const leverText = fmt(M.insightLever, { lever: leverYuan, margin: leverMargin });
+    // 淡季安全垫：取最优档那一行
+    const bestRow = filtered.find((r) => (dim === 'rent' ? r.rent === bestVal : r.marginPct === bestVal));
+    let cushionText = null;
+    if (bestRow && bestRow.targetMonthly != null && bestRow.breakMonthly != null && bestRow.targetMonthly > 0) {
+      const cushion = Math.round((bestRow.targetMonthly - bestRow.breakMonthly) / bestRow.targetMonthly * 100);
+      cushionText = fmt(M.insightCushion, { cushion });
+    }
+    return { has: true, bestLabel: dim === 'rent' ? 'maxRent' : 'minMargin', bestText, leverText, cushionText };
   },
 
   // ===== 透视表：行=月租金档，列=目标利润档，单元格=目标日均(元) =====
@@ -280,7 +358,10 @@ Page({
     pivotFix[key] = val;
     this.setData({ pivotFix }, () => {
       if (this.data.result) {
-        this.setData({ 'result.pivot': this.buildPivot(this.data.result.rows) });
+        this.setData({
+          'result.pivot': this.buildPivot(this.data.result.rows),
+          'result.insight': this.buildInsight(this.data.result.rows),
+        });
       }
     });
   },
@@ -291,7 +372,10 @@ Page({
     pivotFix[key] = val;
     this.setData({ pivotFix }, () => {
       if (this.data.result) {
-        this.setData({ 'result.pivot': this.buildPivot(this.data.result.rows) });
+        this.setData({
+          'result.pivot': this.buildPivot(this.data.result.rows),
+          'result.insight': this.buildInsight(this.data.result.rows),
+        });
       }
     });
   },
@@ -309,7 +393,7 @@ Page({
     const header = [
       t.dimRent, t.dimLabor, t.dimMargin, t.dimTarget,
       t.colBreakMonthly, t.colBreakDaily, t.colTargetMonthly, t.colTargetDaily,
-      t.rentPct, t.payback,
+      t.rentPct, t.payback, t.colLeverExport, t.colCushionExport,
     ];
     const body = rows.map((r) => [
       r.rent, r.labor, r.marginPct, r.targetYuan,
@@ -319,6 +403,8 @@ Page({
       r.targetDaily != null ? r.targetDaily : '—',
       r.rentPct != null ? r.rentPct : '—',
       r.payback != null ? r.payback : '—',
+      r.leverYuan != null ? r.leverYuan : '—',
+      r.cushionPct != null ? r.cushionPct : '—',
     ]);
     this.setData({ exporting: true });
     try {

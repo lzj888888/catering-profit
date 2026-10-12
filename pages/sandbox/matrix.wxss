@@ -39,3 +39,10 @@
 .td { flex: none; width: 200rpx; padding: 16rpx 12rpx; font-size: 28rpx; color: #333; box-sizing: border-box; white-space: normal; }
 .tr.th .td { font-weight: 600; color: #222; }
 .nav-row { display: flex; margin-top: 24rpx; }
+/* 🔴 round279 · #9 结论速读卡（结论高亮 + 房租杠杆 + 淡季安全垫）*/
+.insight { background: #fff7ec; border: 1rpx solid #ffd9a0; border-radius: 14rpx; padding: 20rpx 22rpx; margin-bottom: 18rpx; }
+.insight.none { background: #f4f5f7; border-color: #e2e4e8; }
+.insight-title { font-size: 28rpx; font-weight: 700; color: #b35a00; margin-bottom: 10rpx; }
+.insight-line { font-size: 28rpx; color: #444; line-height: 1.6; }
+.insight-line.lever { color: #1a1a1a; font-weight: 600; }
+.insight-rule { font-size: 28rpx; color: #9a7b50; margin-top: 8rpx; }

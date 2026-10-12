@@ -83,6 +83,16 @@
         </view>
       </view>
 
+      <!-- 🔴 round279 · #9 结论速读：结论高亮 + 房租杠杆提示 + 淡季安全垫 -->
+      <view class="insight" wx:if="{{result.insight && result.insight.has}}">
+        <view class="insight-title">{{t.insightTitle}}</view>
+        <view class="insight-line" wx:if="{{result.insight.bestText}}">{{result.insight.bestText}}</view>
+        <view class="insight-line lever">{{result.insight.leverText}}</view>
+        <view class="insight-line" wx:if="{{result.insight.cushionText}}">{{result.insight.cushionText}}</view>
+        <view class="insight-rule">{{t.leverRule}}</view>
+      </view>
+      <view class="insight none" wx:elif="{{result.insight}}">{{t.insightNone}}</view>
+
       <!-- 明细表 -->
       <scroll-view wx:if="{{result.view==='detail'}}" scroll-x="true" class="tbl-scroll">
         <view class="tbl">
@@ -90,6 +100,7 @@
             <text class="td">{{t.colRent}}</text><text class="td">{{t.colLabor}}</text><text class="td">{{t.colMargin}}</text>
             <text class="td">{{t.colTarget}}</text><text class="td">{{t.colBreakMonthly}}</text><text class="td">{{t.colBreakDaily}}</text>
             <text class="td">{{t.colTargetMonthly}}</text><text class="td">{{t.colTargetDaily}}</text><text class="td">{{t.rentPct}}</text><text class="td">{{t.payback}}</text>
+            <text class="td">{{t.colLever}}</text><text class="td">{{t.colCushion}}</text>
           </view>
           <view class="tr {{item.red?'red':''}}" wx:for="{{result.rows}}" wx:key="index">
             <text class="td">{{item.rent}}{{t.yuan}}</text>
@@ -102,6 +113,8 @@
             <text class="td">{{item.targetDaily!=null?item.targetDaily:'—'}}</text>
             <text class="td">{{item.rentPct!=null?item.rentPct:'—'}}</text>
             <text class="td">{{item.payback!=null?item.payback:'—'}}</text>
+            <text class="td">{{item.leverYuan!=null?item.leverYuan:'—'}}</text>
+            <text class="td">{{item.cushionPct!=null?item.cushionPct+t.pct:t.cushionBreakEven}}</text>
           </view>
         </view>
       </scroll-view>
