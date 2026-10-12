@@ -69,6 +69,7 @@ const PUBLIC_FNS = [
   { fn: 'payCallback', why: '微信支付回调 —— 平台调用无登录态，改由 verifyCallbackSign 验签 fail-closed 兜底', mustSelfGuard: false },
   { fn: 'payExpireNotify', why: '定时触发器任务 —— R215 已加固：有用户 OPENID 即拒绝（只放行定时/控制台）', mustSelfGuard: true },
   { fn: 'smokeTest', why: '真云诊断探针（会建集合/写库）—— R215 已加固：有用户 OPENID 即拒绝', mustSelfGuard: true },
+  { fn: 'verifyTangshi', why: 'M3.33 一次性只读探针：固定 where 聚合 external_sales_daily，不读 OPENID、不写库、仅 dev 诊断用', mustSelfGuard: false },
 ];
 
 let pass = 0, failN = 0;
