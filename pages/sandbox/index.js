@@ -214,6 +214,11 @@ Page({
       assumptionsTitle: M.assumptionsTitle,
       assumptionsHint: M.assumptionsHint,
       costLoss: M.costLoss,
+      // 🔴 round278：M2 真机测试暴露的 P0 —— `onPreset`(L1100) 拼 feeRows 时读
+      //    `this.data.t.fixedItems[itemKey]`，但本键自 M2 v1.3 起从未映射进 t:{}，
+      //    点选任意业态预设即抛 `TypeError: Cannot read properties of undefined (reading 'utility')`，选择静默失效。
+      //    与 `costLoss: M.costLoss` 同族补回；terms.js L737 单源已定义。
+      fixedItems: M.fixedItems,
       paybackTitle: M.paybackTitle,
       paybackInvest: M.paybackInvest,
       paybackCash: M.paybackCash,
@@ -251,7 +256,7 @@ Page({
       hintFoldHide: TERMS.ledger.hintFoldHide,
     },
     // 选择器
-    cityIdx: 1, bizIdx: 1,          // 默认「二三线 / 中式正餐」
+    cityIdx: 1, bizIdx: 4,          // 🔴 round278：默认「二三线 / 其他·通用餐饮」—— 与预设兜底「都不是（按通用经验估算）」显示对齐（round277 真机暴露的静默错配 B）
     // 各行（yuan / pct 保存**字符串**，与输入框语义一致；提交时才转分）
     buildRows: [
       mkRow('decor', M.buildItems, M.buildItemNotes, { yuan: '', years: 3 }),
