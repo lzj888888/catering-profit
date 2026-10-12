@@ -102,6 +102,21 @@ const BIZ_PRESETS = [
       { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'S', labelKey: 'costLoss' },
     ],
   },
+  // 7) 其他 / 通用餐饮 —— 🔴 round276 新增**通用兜底**：老板开的店不在上面 6 个预设里时的诚实出口。
+  //    bizKey='other' ⇒ 走 indicatorRef.BANDS.other（4 类带的保守并集，标注"未细分行业"）。
+  //    参数全部取通用中位（非特定行业）：人工走人头线性（多数业态适用）、各项 revenue_rate 取并集区间中值。
+  //    ⚠️ 这是"系统给初值、用户可改"的默认值，**不承担计算口径**（用户改了就以用户的为准）。
+  {
+    presetKey: 'other', bizKey: 'other', paybackView: 'invest',
+    params: { grossMarginPct: { v: 60, src: 'S' }, laborUnitYuan: { v: 5000, src: 'S' }, openDays: { v: 30, src: 'P' } },
+    costMeta: [
+      { itemKey: 'rent', form: 'fixed', src: 'U' },
+      { itemKey: 'labor', form: 'headcount_linear', src: 'S' },
+      { itemKey: 'utility', form: 'revenue_rate', pct: 4, src: 'S' },   // 并集 [1,6] 中值
+      { itemKey: 'manage', form: 'revenue_rate', pct: 7, src: 'S' },   // 并集 [5,10] 中值
+      { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'S', labelKey: 'costLoss' },
+    ],
+  },
 ];
 
 const FORMS = ['fixed', 'area_linear', 'headcount_linear', 'revenue_rate', 'step'];
@@ -135,6 +150,7 @@ const SEATS_PER_TABLE = {
   dining:   4,   // 川菜 / 中餐：4 人方桌圆桌为主（包间多可手动调大）
   hotpot:   4,   // 火锅 / 烧烤：4 人桌为主
   cafe:     2,   // 新式茶饮：堂食位少，以外带为主
+  other:    4,   // 通用兜底：取餐饮中位（与 seatsPerTableOf 的未知业态默认值一致）
 };
 
 // ===== R237 · 翻台口径分组（豆包第 4 轮裁定）=====

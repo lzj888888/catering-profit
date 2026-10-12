@@ -720,6 +720,7 @@ const TERMS = {
       { key: 'dining', name: '中式正餐' },
       { key: 'hotpot', name: '火锅烧烤' },
       { key: 'cafe', name: '茶饮咖啡' },
+      { key: 'other', name: '其他/通用餐饮' },
     ],
     secBuild: '开店投入（一次性）',
     secFixed: '每月固定支出',
@@ -914,9 +915,12 @@ const TERMS = {
     // R234：`业态预设` ⇒ `打算开什么店`。旧名是**数据名**（叫自己和 preset 打交道），
     //   新名是**问题**（用户在回答一个问题）—— L1 里每一项都应该是一句问话。
     presetLabel: '打算开什么店',
-    presetNone: '都不是（我自己填）',
+    presetNone: '都不是（按通用经验估算）',
     presetPickedPre: '已按「',
     presetPickedSuf: '」的行规预填',
+    // 🔴 round276：通用兜底业态提示 —— 选「其他/通用餐饮」时，行业参考区间卡上方显示，
+    //   明确告诉老板"这是通用经验区间、未细分行业、仅供粗估"，避免他当成行业精确值。
+    otherBandNote: '当前为通用经验区间（未细分行业），结果仅供粗估；如能归到具体品类请优先选上面',
     bizPresets: {
       fastfood_noodle: '小面 / 米线',
       fastfood_hotpot_noodle: '火锅浇头面',
@@ -924,6 +928,7 @@ const TERMS = {
       hotpot_barbecue: '烧烤',
       dining_sichuan: '川菜 / 中餐',
       cafe_tea: '新式茶饮',
+      other: '其他 / 通用餐饮（未细分行业）',
     },
     // R234：业态预设**平铺 6 项**（不再先问「你属于哪个大类」）。
     //   旧逻辑是两级 picker：先选 4 个大类之一、再选类内预设。但 6 个预设分布是

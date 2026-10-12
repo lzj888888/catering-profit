@@ -54,6 +54,7 @@ Page({
       secTarget: M.secTarget,
       secResult: M.secResult,
       secIndicators: M.secIndicators,
+      bizIsOther: false,   // 🔴 round276：通用兜底业态标记（选「其他/通用餐饮」时为真）
       buildPh: M.buildPh,
       yearsSuffix: M.yearsSuffix,
       buildTotal: M.buildTotal,
@@ -82,6 +83,7 @@ Page({
       autoHint: M.autoHint,
       needFixed: M.needFixed,
       bandPreviewTitle: M.bandPreviewTitle,
+      otherBandNote: M.otherBandNote,
       bandPreviewNote: M.bandPreviewNote,
       buildNote: M.buildNote,
       fixedNote: M.fixedNote,
@@ -759,6 +761,8 @@ Page({
         eff: this.effOf(),
         indicators: hasFixed ? this.decorate(d.indicators_at_breakeven || []) : [],
         indTab: 'break',
+        // 🔴 round276：通用兜底业态标记 —— 选「其他/通用餐饮」时为真，行业参考区间卡上方显示"未细分行业"提示
+        bizIsOther: this.bizKeyNow() === 'other',
         // 未达最小可算条件 ⇒ 用温和引导语代替报错（不是错误，是"还没填够"）
         calcError: hasFixed ? '' : M.needFixed,
         loading: false,
@@ -949,7 +953,10 @@ Page({
       key: p.presetKey,
       name: this.data.t.bizPresets[p.presetKey] || p.presetKey,
     }));
-    const full = [{ key: '', name: this.data.t.presetNone }].concat(opts);
+    // 🔴 round276：兜底选项**真实 key='other'**（不再是空串）。旧实现 key='' ⇒
+    //   `findPreset('')` 静默回退到 `BIZ_PRESETS[0]`（快餐小面）⇒ 选"都不是"实则按错业态出指标，用户无感。
+    //   现在选它走真正的通用兜底业态（BANDS.other），指标按"通用经验区间"出，且下方提示"未细分行业"。
+    const full = [{ key: 'other', name: this.data.t.presetNone }].concat(opts);
     const idx = full.findIndex((o) => o.key === this.data.presetKey);
     const still = idx >= 0;
     this.setData({
@@ -1076,9 +1083,10 @@ Page({
   onPreset(e) {
     const i = Number(e.detail.value);
     const opt = this.data.presetOptions[i];
+    // 🔴 round276：兜底选项 key='other'；此处保留空值兜底，统一按通用业态处理（不静默回落 fastfood）。
     if (!opt || !opt.key) {
-      // 「都不是（我自己填）」：清空预设，回到手填全部
-      this.setData({ presetKey: '', presetName: this.data.t.presetNone, presetPicked: false, feeRows: [], feeOverrides: {} });
+      this.setData({ presetKey: 'other', presetName: this.data.t.presetNone, presetPicked: false,
+        feeRows: [], feeOverrides: {}, bizIsOther: true });
       this.scheduleCalc();
       return;
     }
@@ -1103,6 +1111,8 @@ Page({
         patch.bizName = this.data.t.bizTypes[bi].name;
       }
     }
+    // 🔴 round276：通用兜底业态标记（选「其他/通用餐饮」时为真）
+    patch.bizIsOther = (bk === 'other');
     // 自动带出参数包默认值（只覆盖还为空 / 未改的项）
     if (preset.params && preset.params.grossMarginPct) patch.marginPct = preset.params.grossMarginPct.v;
     if (preset.params && preset.params.openDays) patch.openDaysNum = String(preset.params.openDays.v);
@@ -1192,7 +1202,8 @@ Page({
   //   🔴 R234：两个 Tab **共用同一套 L1/L2/L3 输入**（此前反推 Tab 另有一套 revPrice/revSeats/…
   //     与 L2 的 avgPrice 同义并存 ⇒ 用户改一处、另一处不动，是本页第二个"重复")。
   buildPresetParam(mode) {
-    const preset = findPreset(this.data.presetKey) || BIZ_PRESETS[0];
+    // 🔴 round276：兜底预设优先按 'other' 解析（通用业态），**绝不**静默回落 BIZ_PRESETS[0]（快餐小面）。
+    const preset = findPreset(this.data.presetKey) || findPreset('other') || BIZ_PRESETS[0];
     const cityKey = this.data.t.cityTiers[this.data.cityIdx].key;
     const coef = Object.assign({ rent: 1, labor: 1 }, CITY_COEF[cityKey] || {});
     const isReverse = mode === 'reverse';

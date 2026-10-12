@@ -95,7 +95,7 @@ const bizKeysMatch = /const\s+BIZ_KEYS\s*=\s*\[([^\]]*)\]/.exec(indSrc);
 const BIZ_KEYS = bizKeysMatch
   ? bizKeysMatch[1].split(',').map((x) => x.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean)
   : [];
-check('A-① 从 indicatorRef.js 解析出 BIZ_KEYS 且恰 4 类', BIZ_KEYS.length === 4, BIZ_KEYS.join('/'));
+check('A-① 从 indicatorRef.js 解析出 BIZ_KEYS（4 类 + 通用兜底 other = 5）', BIZ_KEYS.length === 5, BIZ_KEYS.join('/'));
 if (Array.isArray(BIZ_PRESETS)) {
   const bad = BIZ_PRESETS.filter((p) => BIZ_KEYS.indexOf(p.bizKey) < 0);
   check('A-② 每个预设 bizKey ∈ BIZ_KEYS（无第 5 类）', bad.length === 0,
@@ -108,8 +108,11 @@ sec('B · 每个预设自包含（禁引用别的预设）');
   const keys = (BIZ_PRESETS || []).map((p) => p.presetKey);
   const bad = (BIZ_PRESETS || []).filter((p) => {
     const s = JSON.stringify(p);
-    // 自身 presetKey 允许；出现其它预设的 presetKey = 引用别的预设
-    return keys.some((k) => k !== p.presetKey && s.indexOf(k) >= 0);
+    // 🔴 精确匹配：仅当某预设把「别的预设的 presetKey」当成自己的 presetKey/bizKey **字段值**时，
+    //   才算"引用别的预设"。旧实现用整串 indexOf ⇒ 每个预设 costMeta 都含 itemKey:'other'，
+    //   而 'other' 现也是预设 key ⇒ 全误报。itemKey:'other'（杂支损耗项）与预设 key 同词不同义，必须排除。
+    return keys.some((k) => k !== p.presetKey
+      && new RegExp('"(presetKey|bizKey)":"' + k + '"').test(s));
   });
   check('B-① 无预设引用别的预设的 presetKey', bad.length === 0,
     bad.length ? bad.map((p) => p.presetKey).join(' | ') : '整套独立');

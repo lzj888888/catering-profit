@@ -166,6 +166,14 @@
        ⚠️ 参考金额只是灰字起点（在下面各输入框的 placeholder 里），**不会自动填值**。 -->
   <view class="card2" wx:if="{{bands.length}}">
     <view class="sec">{{t.bandPreviewTitle}}</view>
+    <!-- 🔴 round276：通用兜底业态提示 —— 选「其他/通用餐饮」时出现，明确"通用经验区间、未细分行业、仅供粗估" -->
+    <view class="hint-fold warn-note" wx:if="{{bizIsOther}}">
+      <view class="hint-fold-head" data-key="sbOtherBandNote" bindtap="onToggleHintFold">
+        <text class="hint-fold-guide">{{hintFold.sbOtherBandNote ? t.hintFoldHide : t.hintFoldShow}}</text>
+        <text class="hint-fold-arrow">{{hintFold.sbOtherBandNote ? '▾' : '▸'}}</text>
+      </view>
+      <view class="hint-fold-body" wx:if="{{hintFold.sbOtherBandNote}}">{{t.otherBandNote}}</view>
+    </view>
     <view class="hint-fold">
       <view class="hint-fold-head" data-key="sbBandPreviewNote" bindtap="onToggleHintFold">
         <text class="hint-fold-guide">{{hintFold.sbBandPreviewNote ? t.hintFoldHide : t.hintFoldShow}}</text>

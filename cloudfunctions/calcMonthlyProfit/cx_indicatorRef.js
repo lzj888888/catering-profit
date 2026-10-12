@@ -46,7 +46,11 @@ const CITY_TIERS = [
 const CITY_KEYS = CITY_TIERS.map((t) => t.key);
 
 // ===== 二、业态（[D1] 四类；hotpot 的**显示名**是"火锅烧烤"，覆盖两类，见带值说明）=====
-const BIZ_KEYS = ['fastfood', 'dining', 'hotpot', 'cafe'];
+//   🔴 round276 增 `other`：**通用兜底业态**（4 类带的**保守并集**，纯单源派生，不引外部数据）。
+//     用途：老板开的店不在 6 个预设里时，选「其他 / 通用餐饮」落到这里，按"通用经验区间"粗估，
+//     而不是静默回落到某一具体业态（旧实现 `findPreset('')` 会回退 fastfood 参数包 ⇒ 指标按错业态出）。
+//     带值均取自上面 4 类带的并集（lo 取各带最小、hi 取各带最大），保证：① 不漏判 ② 不误清 ③ 满足 C-⑫ 不变式。
+const BIZ_KEYS = ['fastfood', 'dining', 'hotpot', 'cafe', 'other'];
 
 // ===== 三、参考带（**毛利率口径** · **二三线基准** · 单位 %）=====
 // 六项：grossMargin 菜品毛利率 / labor 人工占比 / rent 房租占比 /
@@ -85,6 +89,9 @@ const BANDS = {
   dining: { grossMargin: [55, 65], labor: [17, 22], rent: [8, 15], mkt: [5, 10], energy: [3, 5], manage: [5, 10] },
   hotpot: { grossMargin: [52, 67], labor: [14, 18], rent: [8, 15], mkt: [5, 10], energy: [4, 6], manage: [5, 10] },
   cafe: { grossMargin: [62, 72], labor: [14, 18], rent: [5, 12], mkt: [3, 8], energy: [1, 3], manage: [5, 10] },
+  // 🔴 通用兜底（4 类带并集）：grossMargin[52,72]/labor[14,22]/rent[5,15]/mkt[3,10]/energy[1,6]/manage[5,10]
+  //   —— 满足 C-⑫（gain.hi≥55、cost.lo≤警戒线：rent.lo5≤15 / labor.lo14≤20）；前端标注"未细分行业，仅供粗估"。
+  other: { grossMargin: [52, 72], labor: [14, 22], rent: [5, 15], mkt: [3, 10], energy: [1, 6], manage: [5, 10] },
 };
 const BAND_KEYS = ['grossMargin', 'labor', 'rent', 'mkt', 'energy', 'manage'];
 

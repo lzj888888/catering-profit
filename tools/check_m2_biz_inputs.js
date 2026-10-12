@@ -420,12 +420,40 @@ check('G-⑩ 负样本（分子改成**保本营业额** + 删掉 fail-closed）
   !(/const rev\s*=\s*Number\(this\.data\.expectYuan\)/.test(badEff) && /!\s*\(rev\s*>\s*0\)/.test(badEff)),
   /this\.data\.expectYuan/.test(badEff) ? '🔴 把错误实现漏过了' : '已报红');
 
+// ============ H · round276：兜底品类「其他/通用餐饮」必须落到通用业态（不得静默回落 fastfood）============
+sec('H · 兜底品类：选「都不是」⇒ 通用 other 业态（不静默错配 fastfood）');
+// 🔴 为什么必须立这一段：李老师 2026-10-12 质疑"开的店不在 6 个预设里怎么选"。
+//   抓 onPreset 函数体单独验「空值分支」—— 防止整体 js 上也命中（正常分支也置 bizIsOther）导致误判绿灯。
+const onPresetSrc = (js.match(/onPreset\s*\(e\)\s*\{([\s\S]*?)\n  \}/) || [])[1] || '';
+//   旧实现：兜底选项 key='' ⇒ `findPreset('')` 回退 `BIZ_PRESETS[0]`（快餐小面）⇒
+//   选"都不是"实则按**快餐小面**的参数包 + 正餐业态带出指标，用户完全无感。
+//   正确行为：兜底选项 key='other' ⇒ 走 `indicatorRef.BANDS.other`（4 类带的保守并集，标注"未细分行业"）。
+const bpMod = (() => { try { return require(path.join(ROOT, 'utils/bizPreset.js')); } catch (e) { return null; } })();
+check('H-① 兜底选项 key 是 other（不是空串；空串会静默回落 fastfood）',
+  /const full\s*=\s*\[\{\s*key:\s*'other'/.test(js),
+  /key:\s*'other'/.test(js) ? '兜底 key=other' : '🔴 兜底仍是空串 key（会静默错配）');
+check('H-② onPreset 空值兜底也走 other（presetKey 置 other + bizIsOther 置真）',
+  /presetKey:\s*'other'/.test(onPresetSrc) && /bizIsOther:\s*true/.test(onPresetSrc),
+  /presetKey:\s*'other'/.test(onPresetSrc) ? '空值兜底=other' : '🔴 空值仍清成空串');
+check('H-③ 装配入口 fallback 含 `findPreset(\'other\')`（绝不裸回退 BIZ_PRESETS[0]）',
+  /findPreset\(this\.data\.presetKey\)\s*\|\|\s*findPreset\('other'\)\s*\|\|\s*BIZ_PRESETS\[0\]/.test(js),
+  '装配 fallback 链路含 other');
+check('H-④ BIZ_PRESETS 含 other 预设且 bizKey=other（通用业态有真实参数包，不是空壳）',
+  !!bpMod && Array.isArray(bpMod.BIZ_PRESETS)
+  && bpMod.BIZ_PRESETS.some((p) => p.presetKey === 'other' && p.bizKey === 'other'),
+  bpMod ? `预设数 ${bpMod.BIZ_PRESETS.length}` : 'require 失败');
+// 🔴 负样本（防假绿）：把 fallback 退化回旧式 `findPreset(x) || BIZ_PRESETS[0]`（正是静默错配的根），必须被 H-③ 判红
+const badFb = 'const preset = findPreset(this.data.presetKey) || BIZ_PRESETS[0];';
+check('H-⑤ 负样本（fallback 退化成裸 || BIZ_PRESETS[0]）会被 H-③ 判红',
+  !/findPreset\(this\.data\.presetKey\)\s*\|\|\s*findPreset\('other'\)\s*\|\|\s*BIZ_PRESETS\[0\]/.test(badFb),
+  /findPreset\('other'\)/.test(badFb) ? '🔴 把错误实现漏过了' : '已报红');
+
 // ============ E 下界 ============
 sec('E 下界：断言数不得被悄悄删掉');
 // ⚠️ 阈值 = **实测值**（25）：写成"看起来合理"的整数会让它变成摆设；
 //    每次增删断言都要跟这一行（由 `check_suite_assert_counts` 从外部再校一遍总数）。
-check('E-① 断言总数 ≥ 25（首版实测 25 条：P3 + A5 + B5 + C5 + D3 + V4 + E1）',
-  (pass + failN) >= 25, `实际 ${pass + failN} 条`);
+check('E-① 断言总数 ≥ 30（25 首版 + H 组 5 条兜底品类回归）',
+  (pass + failN) >= 30, `实际 ${pass + failN} 条`);
 
 console.log('\n===== M2 小白输入面守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);
