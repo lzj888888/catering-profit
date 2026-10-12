@@ -99,7 +99,7 @@ const TERMS = {
     },
     dishreview: {
       title: '复盘需开通',
-      content: '单品毛利复盘为专业版功能：导入可免费保存，开通后解锁单品毛利排行榜。',
+      content: '菜品赚多赚少排行榜为专业版功能：导入可免费保存，开通后解锁单品毛利排行榜。',
       primary: '去开通', // ⚠️ ≤4 字符（平台硬限制）
       secondary: '再想想',
     },
@@ -155,7 +155,7 @@ const TERMS = {
     settings: '设置',
     // R199：底部 tabBar 上线后首页下半屏的引导语（说明「去哪找别的功能」，避免看着像空了一段）。
     //      禁用词表：不含「盈利/赚钱/收益率/付费/订阅」等 13 个禁用词里的任何一条（门槛守卫每轮查）。
-    tipMore: '底部「配方」进菜品成本卡与原料库，「我的」看订单与客服。',
+    tipMore: '底部「配方」进菜品成本卡与进货原料价表，「我的」看订单与客服。',
     loading: '加载中…',
     save: '保存',
     cancel: '取消',
@@ -486,7 +486,7 @@ const TERMS = {
     },
     // ===== M3.17（批次 D）· 外卖单均试算页（纯试算，不落库）=====
     takeaway: {
-      title: '外卖单均测算',
+      title: '外卖每单赚多少',
       // 双口径（顶部显示口径名 + 一句人话解释；两套数字不混）
       modeCash: '到手口径',
       modeAccrual: '总额法口径',
@@ -566,7 +566,7 @@ const TERMS = {
       // R238：导入成功后的下游引导（此前只有 toast，用户到这就断了 —— 2026-10-08 真机实测）
       importSuccessPlat: '已按「{name}」导入完成。',
       importDoneBodyPlain: '导入完成。',
-      goRecon: '去对账（M1↔M3）',
+      goRecon: '去对账',
       goDishReview: '查看单品毛利',
       importGoLater: '稍后',
       importFail: '门禁未通过，已阻断导入',
@@ -1129,7 +1129,7 @@ const TERMS = {
     versionReadonly: '历史版本只读，不可编辑',
     dishNamePh: '如 宫保鸡丁',
     // ===== 批次 P0（M3 v1.2）· 原料档案页（任务 1）=====
-    materialListTitle: '原料库', // R191 改名：「档案」是内部说法，老板看不懂；用途另见 hub.materialSub
+    materialListTitle: '进货原料价表', // R191 改名：「档案」是内部说法，老板看不懂；用途另见 hub.materialSub
     matName: '原料名称',
     matNamePh: '如 鸡胸肉',
     matBrand: '品牌规格',
@@ -1368,7 +1368,7 @@ const TERMS = {
     impactTrend: '成本趋势',
     impactTrendSingle: '只有 1 个版本，暂无成本趋势',
     // ===== M3.21（批次 E）· M1↔M3 率对率对账 =====
-    reconTitle: 'M1↔M3 对账',
+    reconTitle: '账上利润和实际营收对不对',
     reconMenuMargin: 'M3 标准菜单毛利率',
     reconActualMargin: 'M1 实际菜品毛利率',
     reconDiffPp: '差值',
@@ -1388,7 +1388,7 @@ const TERMS = {
     reconAttr4: '④ 口径差异（外卖到手 vs 总额法）',
     // ===== M3.33（批次 G） 单品毛利复盘（导入销量 → 排行榜）=====
     //   【事后复盘】口径文案（v1.2 §M3.35 原文），落 card 命名空间、不新建顶层命名空间。
-    reviewTitle: '单品毛利复盘',
+    reviewTitle: '菜品赚多赚少排行榜',
     reviewAfterFact: '本报表基于标准成本卡 × 销售份数推演，仅作经营参考；如需门店真实账面成本，请使用 M1 月度核算。',
     reviewDineIn: '堂食',
     reviewTakeaway: '外卖',
@@ -1535,19 +1535,19 @@ const TERMS = {
     subtitle: '原料、成本、毛利核算',
     // 每张分区卡 = 标题（这件事叫什么）+ 副文案（拿它干什么）。副文案不是装饰：
     //   本仓已知短板＝「术语直给无解释」（权责发生制 / 出成率 / 净料率），老板看名字猜不出用途。
-    cardTitle: '菜品及套餐成本卡',
+    cardTitle: '每道菜/套餐成本毛利表',
     cardSub: '给每道菜算成本、毛利，反推该卖多少钱',
-    materialTitle: '原料库',
+    materialTitle: '进货原料价表',
     materialSub: '填原料价格；改一次价，用它的菜全都跟着变',
     // 🔴 R263：卡名必须与**页面自己的标题**一致 —— `pages/takeaway` 的标题取自
     //   `TERMS.ledger.takeaway.title` =「外卖单均测算」。原名「外卖菜品成本及利润」
     //   既与页内标题打架（点进去标题换了个名字），又把"导入"这个后台动作摆进了功能名
     //   ⇒ 改成页面自己叫的名字，导入挪进副文案。
-    takeawayTitle: '外卖单均测算',
+    takeawayTitle: '外卖每单赚多少',
     takeawaySub: '算一单外卖到手多少、赚多少；销量表也在这里导入',
-    reconTitle: 'M1↔M3 对账',
+    reconTitle: '账上利润和实际营收对不对',
     reconSub: '账本上的数 vs 菜品卡推出来的数',
-    reviewTitle: '单品毛利复盘',
+    reviewTitle: '菜品赚多赚少排行榜',
     reviewSub: '导入销量后看排行，哪道菜在拖毛利后腿 —— 结果都落在这一页',
 
     // ===== R263：三步走 + 分层 + 空状态（李老师 2026-10-10 真机反馈「进来一脸懵」）=====
