@@ -150,6 +150,9 @@ const ALLOW_INPUTS = {
   'channel.groupPlatformRate': '团购平台抽成率(%) → 推导团购毛利率（默认示例值 5%）',
   'channel.takeawayOverride': '外卖净毛利率手动覆盖(%) → 选填，覆盖推导值',
   'channel.groupOverride': '团购净毛利率手动覆盖(%) → 选填，覆盖推导值',
+  // 🔴 2026-10-12（round279e · A 初始总投入回本）：非引擎入参，纯前端派生回本月数（复用 paybackCash 一次除法），
+  //   用户手填的一次性总投入（含转让费/装修/设备/加盟）；引擎零改。
+  'initialInvestYuan': '初始总投入(含转让费/装修/设备/加盟) → 纯前端派生回本月数，非引擎入参；用户手填',
 };
 const FOR_ITEM = /^item\./;   // wx:for 里的行内输入（费用明细 / 建店投入明细），按行登记不过逐个枚举
 

@@ -552,6 +552,18 @@
       <text class="lbl">{{t.paybackCash}}</text>
       <text class="val {{!payback.investDefault ? 'keynum' : ''}}">{{payback.hasData ? ((payback.cash != null ? payback.cash : '—') + t.months) : '—'}}</text>
     </view>
+    <!-- 🔴 round279e · A：初始总投入（非必填）。填后按「总投入 ÷ (目标利润+建店月摊)」派生回本月数，覆盖转让费/加盟费等真实总投入 -->
+    <view class="row">
+      <text class="row-name">{{t.initialInvestLabel}}</text>
+      <view class="row-in-wrap">
+        <input class="row-in" type="digit" placeholder="{{t.initialInvestPh}}" value="{{initialInvestYuan}}" bindinput="onInitialInvest" adjust-position="{{true}}" cursor-spacing="20" />
+        <text class="row-unit">{{t.yuanUnit}}</text>
+      </view>
+    </view>
+    <view class="cell" wx:if="{{payback.userPaybackMonths}}">
+      <text class="lbl">{{t.paybackByInvest}}</text>
+      <text class="val keynum">{{payback.userPaybackMonths}}{{t.paybackUnit}}</text>
+    </view>
     <view class="hint" wx:if="{{!payback.hasData}}">{{t.paybackNull}}</view>
     <view class="hint payback-disclaimer">{{t.paybackDisclaimer}}</view>
     <button class="btn ghost payback-m3-btn" bindtap="onGoM3">{{t.paybackSeeM3}}</button>

@@ -132,7 +132,7 @@ function inputValues(wxml) {
 //         那正是本守卫存在的意义（参考值只当提示，绝不替你填）。
 // 2026-10-12（round279d #12 多渠道毛利率）：新增 8 个「分渠道」用户输入框，绑定 `channel.*`，
 //   均为用户手填/可改值（占比、抽成率、折扣率、覆盖值），非参考值注入 ⇒ 按本守卫纪律入白名单。
-const OK_VALUE = /^\{\{(item\.(yuan|years|pct)|targetYuan|expectYuan|planName|areaNum|rentYuan|headcountNum|avgPriceYuan|laborUnitYuan|openDaysNum|tablesNum|seatsPerTableNum|pixelEffYuan|turnNum|channel\.(takeawayRatio|groupRatio|platformRate|packRate|discountRate|groupPlatformRate|takeawayOverride|groupOverride))\}\}$/;
+const OK_VALUE = /^\{\{(item\.(yuan|years|pct)|targetYuan|expectYuan|planName|areaNum|rentYuan|headcountNum|avgPriceYuan|laborUnitYuan|openDaysNum|tablesNum|seatsPerTableNum|pixelEffYuan|turnNum|channel\.(takeawayRatio|groupRatio|platformRate|packRate|discountRate|groupPlatformRate|takeawayOverride|groupOverride)|initialInvestYuan)\}\}$/;
 
 const pageJsRaw = readRel(PAGE_JS);
 const pageWxmlRaw = readRel(PAGE_WXML);

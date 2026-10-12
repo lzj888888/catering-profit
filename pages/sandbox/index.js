@@ -260,6 +260,9 @@ Page({
       paybackSeeM3: M.paybackSeeM3,
       months: M.months,
       yuanUnit: M.yuanUnit,
+      initialInvestLabel: M.initialInvestLabel,
+      initialInvestPh: M.initialInvestPh,
+      paybackByInvest: M.paybackByInvest,
       // ── R234 · 主结论卡「这个铺子租金贵不贵」──
       // 🔴 三处登记的第二处（第一处 terms.js、第三处 index.wxml）：漏登记 ⇒ **渲染空白且零报错**。
       // ⚠️ 判定值不自造：全部读引擎 `indicators` 里 rent 那行的 level（good/ok/warn/bad/na）。
@@ -374,7 +377,8 @@ Page({
     //   ⚠️ 与上面三个区段级折叠（showL2/showL3/showAssumptions，走 .fold-toggle）**语义不同**：
     //      那三个收的是**整块参数区**，本 map 收的是**一句说明文案**。两者并存、互不干扰。
     hintFold: {},
-    payback: null,           // {invest, cash, investDefault}（M2v1.3 回本卡）
+    payback: null,           // {invest, cash, investDefault, userInvest, userPaybackMonths}（M2v1.3 回本卡）
+    initialInvestYuan: '',    // 🔴 round279e · A：初始总投入（非必填，纯前端派生回本月数，非引擎入参）
     presetAssumptions: [],   // 底部假设卡行 [{label,val,src}]
     bandsRaw: [],            // R234：云端 bands_preview **原样留存**（拿到 rent.hi 用，见 rentRateDefault）
     bandsRawKey: '',         // 上面这份数据对应哪一组「城市 × 业态」（= cityIdx + ':' + bizIdx）
@@ -446,6 +450,7 @@ Page({
         build: this.data.buildRows.map((r) => ({ key: r.key, yuan: r.yuan, years: r.years })),
         fixed: this.data.fixedRows.map((r) => ({ key: r.key, yuan: r.yuan })),
         varRows: this.data.varRows.map((r) => ({ key: r.key, pct: r.pct })),
+        presetKey: this.data.presetKey,
       });
     } catch (e) { /* 写盘失败不影响测算：草稿只是锦上添花，不打扰用户 */ }
   },
@@ -469,8 +474,10 @@ Page({
       expectYuan: d.expectYuan || '',
       targetYuan: d.targetYuan || '',
       openDaysNum: d.openDaysNum || '',
+      presetKey: d.presetKey || '',   // 🔴 round279e · D：回存业态预设（老用户打开时选择器与计算口径一致，不再"显示通用、实际按别业态算"）
       draftRestored: true,
     });
+    this.syncPresetOptions();   // 🔴 D：用回存的 presetKey 重建预设选择器显示（presetName/presetPicked 与计算口径对齐）
     return true;
   },
 
@@ -1336,6 +1343,8 @@ Page({
   },
   onRent(e) { this.setData({ rentYuan: e.detail.value }); this.scheduleCalc(); },
   onHeadcount(e) { this.setData({ headcountNum: e.detail.value }); this.scheduleCalc(); },
+  // 🔴 round279e · A：初始总投入（非必填）。不进引擎，只在前端派生回本月数（见 onCalcPresetFwd）。
+  onInitialInvest(e) { this.setData({ initialInvestYuan: e.detail.value }); this.scheduleCalc(); },
   onAvgPrice(e) { this.setData({ avgPriceYuan: e.detail.value }); this.scheduleCalc(); },
   onLaborUnit(e) { this.setData({ laborUnitYuan: e.detail.value }); this.scheduleCalc(); },
   onOpenDays2(e) { this.setData({ openDaysNum: e.detail.value }); this.scheduleCalc(); },
@@ -1486,11 +1495,17 @@ Page({
       // 回本卡（invest 直读引擎 payback_months；cash 唯一派生在 bizPreset）
       const invest = d.payback_months;
       const cash = paybackCash(d.build_total_fen, p._targetFen, d.build_amort_monthly_fen);
+      // 🔴 round279e · A：初始总投入回本（纯前端派生，复用 paybackCash 唯一合法除法，引擎零改）。
+      //   覆盖「转让费/加盟费等建店投入之外的真实总投入」——引擎 payback_months 只算 buildItems。
+      const investFen = api.yuanToFen(this.data.initialInvestYuan);
+      const userPayback = investFen > 0 ? paybackCash(investFen, p._targetFen, d.build_amort_monthly_fen) : null;
       const payback = {
         invest: invest != null ? api.fenToYuan(api.yuanToFen(invest), 0) : null,
         cash: cash != null ? String(cash) : null,
         investDefault: p._preset.paybackView === 'invest',
         hasData: invest != null || cash != null,
+        userInvest: investFen > 0 ? api.fenToYuan(investFen, 0) : null,
+        userPaybackMonths: userPayback != null ? String(userPayback) : null,
       };
       const amt = this.amountMaps(d.amount_preview || []);
       const rowsWithPh = this.applyRefAmount(this.data.fixedRows, amt);

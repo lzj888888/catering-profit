@@ -45,7 +45,10 @@
   // ---- 阈值（全部取实测值的保守侧；实测证据见 review/evidence/r181p_pack_guard/README.md）----
   const TOTAL_BUDGET_MB = 1.5;      // 实测入包 0.615 MB ⇒ 预算留约 2.4 倍余量，仍能抓到任何 >=0.9 MB 的新增垃圾
   const WECHAT_HARD_LIMIT_MB = 2;   // 微信预览 / 上传硬上限，不可协商
-  const PER_TOP_CAP_MB = 0.8;       // 实测最大合法顶层项 = pages 0.426 MB ⇒ 取约 1.9 倍
+  const PER_TOP_CAP_MB = 1.0;       // 🔴 2026-10-12 re-baseline（round279e）：实测最大合法顶层项 = pages ≈0.8005 MB
+                                    //   （M2 sandbox 模块 rounds 274–279e 增长，从 0.426 MB 翻倍到 ~0.8 MB，非垃圾/临时目录）；
+                                    //   取 ≈1.25 倍留余，仍 < 总量预算 1.5 MB 与微信硬上限 2.0 MB。原 0.8 MB 基线建立在 pages=0.426 MB 时，
+                                    //   已被真实业务增长吃满 ⇒ 重设基线让 P-③ 继续只对「真新增大顶层项（如 _m3 型 116 MB  dump）」转红。
   const MIN_KEPT_FILES = 60;        // 实测未忽略 108 个 ⇒ 保守下沿
   const MIN_RULES = 16;             // 实测 20 条
   const VALID_TYPES = ['folder', 'file', 'suffix', 'prefix', 'regexp', 'glob'];
