@@ -110,6 +110,10 @@
           <text class="row-unit">{{t.yuanUnit}}</text>
         </view>
       </view>
+      <!-- 🔴 round276 · 歧义消解注：原「一个人每月工资多少」里的"一个人"可指员工也可指顾客
+           （李老师真机反馈原文：「这个问的员工的还是来吃饭顾客的？」）⇒ 主标题改「员工月均工资」，
+           再挂这行把"发给员工的"钉死。主标题再短也救不了代词歧义，必须靠这一句。 -->
+      <view class="row-note">{{t.laborUnitNote}}</view>
     </view>
     <!-- L3 专业参数 -->
     <view class="fold-toggle" bindtap="onToggleL3">{{t.l3Toggle}}{{showL3 ? ' ▾' : ' ▸'}}</view>
@@ -121,6 +125,10 @@
           <text class="row-unit">{{t.dayUnit}}</text>
         </view>
       </view>
+      <!-- 🔴 round276 · 给默认值消纠结：原「一个月打算开门几天」的"打算"暗示可以随便选，
+           老板会卡在填 30 还是 31（李老师：「餐饮基本都是常年开，你让客户填30还是31？太模糊了」）。
+           ⇒ 主标题改「每月实际开门几天」，再挂这行给默认动作：常年开就填 30。 -->
+      <view class="row-note">{{t.openDaysNote2}}</view>
       <!-- 🔴 R234-实测移除：坪效 / 翻台率 两个输入框。
            依据李老师原话「这些本身是咱们计算出来的，不是让客户自己填出来的」。
            实测两条硬事实：
@@ -166,7 +174,10 @@
     <view class="hint-fold-body" wx:if="{{hintFold.sbBandPreviewNote}}">{{t.bandPreviewNote}}</view>
     </view>
     <view class="row">
-      <text class="row-name">{{t.expectRevLabel}}</text>
+      <!-- 🔴 round276 · 一个数、两套话术：A＝**实际**（已发生，看收银/外卖后台，用来算坪效·人效）；
+           B＝**预计**（还没开店，只能估个量，用来换同行参考金额）。此前 A/B 共用同一句
+           「这家店一个月大概能做多少生意」⇒ 已开店的以为在让他瞎估，找店的以为要填真实流水。 -->
+      <text class="row-name">{{mode === 'reverse' ? t.expectRevLabelRev : t.expectRevLabel}}</text>
       <view class="row-in-wrap">
         <input class="row-in" type="digit" placeholder="{{t.expectRevPh}}" value="{{expectYuan}}" bindinput="onExpect" adjust-position="{{true}}" cursor-spacing="20" />
         <text class="row-unit">元</text>
@@ -177,7 +188,7 @@
         <text class="hint-fold-guide">{{hintFold.sbExpectRevNote ? t.hintFoldHide : t.hintFoldShow}}</text>
         <text class="hint-fold-arrow">{{hintFold.sbExpectRevNote ? '▾' : '▸'}}</text>
       </view>
-    <view class="hint-fold-body" wx:if="{{hintFold.sbExpectRevNote}}">{{t.expectRevNote}}</view>
+    <view class="hint-fold-body" wx:if="{{hintFold.sbExpectRevNote}}">{{mode === 'reverse' ? t.expectRevNoteRev : t.expectRevNote}}</view>
     </view>
     <!-- 🔴 R234：下面这张 6 项占比网格（`bp-grid`）**整块删除**。
          理由：结果区「你的经营指标对照」表**已经有同名的 6 项 + 行业参考列 + 评级**
@@ -447,6 +458,19 @@
       <view class="cell"><text class="lbl">{{t.fwdCrowdTargetLbl}}</text><text class="val keynum">{{crowd.targetPeople}}{{t.fwdCrowdUnit}}</text></view>
       <view class="cell"><text class="lbl">{{t.fwdTurnLbl}}</text><text class="val">{{crowd.turn}}{{t.fwdTurnUnit}}</text></view>
       <view class="hint">{{t.fwdCrowdHintPre}}{{crowd.price}}{{t.fwdCrowdHintMid}}{{crowd.seatCount}}{{t.fwdCrowdHintSuf}}</view>
+    </view>
+
+    <!-- 🔴 round276 · A 区补齐 round223 §3.1 定案**遗漏**的「坪效 / 人效」（翻台 round273 已补）。
+         为什么放这里：老板的提问顺序是「每月要卖多少」→「要来多少人」→「**我现在这家店用得值不值**」。
+         分子 = 用户填的**实际月营业额**（A 区＝已发生流水；拿保本额当分子算的是"保本坪效"，不是他要的数）。
+         🔴 两项**都不挂行业区间**：仓内 BANDS 只有毛利率/房租占比/人工占比/能耗/管理/推广六项，
+            **没有坪效、没有人效** —— R223 §3.2 红线＝不得编造分位数 ⇒ 只出数值，留给老板自家横比。
+         fail-closed：没填实际营业额 ⇒ eff=null ⇒ 整块不渲染；面积/人数缺哪个就少哪一行。 -->
+    <view class="card2" wx:if="{{mode === 'forward' && eff}}">
+      <view class="sec">{{t.fwdEffTitle}}</view>
+      <view class="cell" wx:if="{{eff.pixel}}"><text class="lbl">{{t.fwdPixelEffLbl}}</text><text class="val">{{t.cur}}{{eff.pixel}}{{t.fwdPixelEffUnit}}</text></view>
+      <view class="cell" wx:if="{{eff.perHead}}"><text class="lbl">{{t.fwdPerHeadLbl}}</text><text class="val keynum">{{t.cur}}{{eff.perHead}}{{t.fwdPerHeadUnit}}</text></view>
+      <view class="hint">{{t.fwdEffHint}}</view>
     </view>
 
     <view class="card2 calc-basis" wx:if="{{result.valid_days}}">

@@ -36,6 +36,11 @@ Page({
       dimLabor: M.dimLabor,
       dimMargin: M.dimMargin,
       dimTarget: M.dimTarget,
+      // 🔴 round276：屏幕表头短名（见 terms.js 同名注释块）—— 只改显示用列，导出 Excel 仍用长名
+      colRent: M.colRent,
+      colLabor: M.colLabor,
+      colMargin: M.colMargin,
+      colTarget: M.colTarget,
       addDim: M.addDim,
       delDim: M.delDim,
       buildLabel: M.buildLabel,

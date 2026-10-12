@@ -87,8 +87,8 @@
       <scroll-view wx:if="{{result.view==='detail'}}" scroll-x="true" class="tbl-scroll">
         <view class="tbl">
           <view class="tr th">
-            <text class="td">{{t.dimRent}}</text><text class="td">{{t.dimLabor}}</text><text class="td">{{t.dimMargin}}</text>
-            <text class="td">{{t.dimTarget}}</text><text class="td">{{t.colBreakMonthly}}</text><text class="td">{{t.colBreakDaily}}</text>
+            <text class="td">{{t.colRent}}</text><text class="td">{{t.colLabor}}</text><text class="td">{{t.colMargin}}</text>
+            <text class="td">{{t.colTarget}}</text><text class="td">{{t.colBreakMonthly}}</text><text class="td">{{t.colBreakDaily}}</text>
             <text class="td">{{t.colTargetMonthly}}</text><text class="td">{{t.colTargetDaily}}</text><text class="td">{{t.rentPct}}</text><text class="td">{{t.payback}}</text>
           </view>
           <view class="tr {{item.red?'red':''}}" wx:for="{{result.rows}}" wx:key="index">

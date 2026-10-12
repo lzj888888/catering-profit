@@ -780,9 +780,11 @@ const TERMS = {
     //       + 参考区间卡上的"参考 ¥X"。
     // ⚠️ 只当灰字起点，**绝不自动填值** —— 用户不核对就得到一份"自证的合理"，反而误事。
     // ⚠️ 金额数值不在本文件（云端 indicatorRef.suggestAmounts 单源 → 经 amount_preview 下发）。
-    expectRevLabel: '这家店一个月大概能做多少生意',
+    expectRevLabel: '实际月营业额（看收银 / 外卖后台，取最近一月）',
     expectRevPh: '选填，如 150000',
-    expectRevNote: '填个大概数，各项会给出同行常见的参考金额，拿去找当地老店核对行情就行',
+    expectRevNote: '已有铺面填真实流水：用来算坪效 / 人效，对照保本线',
+    expectRevLabelRev: '预计月营业额（心里大概能做到的量）',
+    expectRevNoteRev: '寻找铺面填预估：各项会给出同行参考金额，拿去核对行情',
     refAmtCard: '参考 ¥',
     refAmtPh: '参考 ',
     varItems: { takeawayComm: '外卖平台佣金', grouponComm: '团购佣金', cardFee: '刷卡手续费', other: '其他' },
@@ -841,6 +843,15 @@ const TERMS = {
     fwdCrowdHintPre: '按人均消费 ¥',
     fwdCrowdHintMid: '、共 ',
     fwdCrowdHintSuf: ' 个座位估算；改这两个数，这里跟着变',
+    // 🔴 round276 · A 区补 round223 §3.1 定案遗漏的「坪效 / 人效」（翻台已 round273 补）。
+    //   ⚠️ 二者均无行业带数据（R223 红线：不得编造分位数）⇒ 只出数值 + 自家横比，不挂区间。
+    //      房租 / 人工 / 毛利率等区间走 BANDS 单源（云端 indicatorRef，本项目自有数据）。
+    fwdEffTitle: '我现在这家店，面积和人用得值不值',
+    fwdPixelEffLbl: '坪效（每㎡每月）',
+    fwdPixelEffUnit: '元/㎡·月',
+    fwdPerHeadLbl: '人效（每人每月）',
+    fwdPerHeadUnit: '元/人·月',
+    fwdEffHint: '坪效越高，这面积用得越值',
     // R234 · 反推输入：三项改名 + 一项不再问。
     //   「客单价」⇒「人均消费」（大众点评就叫"人均"；"客单价"是收银系统的话）；
     //   「每月营业天数」⇒「一个月打算开门几天」（"营业天数"太书面，"开门"才是餐饮人的词）。
@@ -931,9 +942,12 @@ const TERMS = {
     l3Toggle: '专业参数（老手才用）',
     // R234：L2 三项全部换成**说明句**而不是**指标名** —— 用户是在填"这店长什么样"，
     //   不是在给会计系统录科目。「客单价」⇒「一个人大概花多少」（不写代码就成了预算）。
-    avgPriceLabel: '一个人大概花多少',
-    laborUnitLabel: '一个人每月工资多少',
-    openDaysLabel2: '一个月打算开门几天',
+    avgPriceLabel: '一个人大概花多少（人均消费）',
+    laborUnitLabel: '员工月均工资（元/人·月）',
+    laborUnitPh: '例如 4500',
+    laborUnitNote: '这是发给员工的，不是顾客消费',
+    openDaysLabel2: '每月实际开门几天',
+    openDaysNote2: '常年开填 30，春节停业再改',
     dayUnit: '天',
     // 🔴 R237 · 输入口径由「座位数」改为「桌数」（李老师 2026-10-08 原话）：
     //   「餐饮老板算账都是按**桌数**来算，比如店里有 20 张桌子，今天火锅卖了 30 桌……
@@ -1779,6 +1793,16 @@ const TERMS = {
     dimLabor: '人工人数档位',
     dimMargin: '毛利率档位（%）',
     dimTarget: '目标月利润档位（元）',
+    // 🔴 round276 · 表头**短名**（只用于屏幕表格的 `<th>` 行）：
+    //   列宽有限（`.td` 200rpx ⇒ 内容区 176rpx，28rpx 字号只放得下 6 个字），
+    //   原「月租金档位（元）」8 字 / 「目标月利润档位（元）」10 字会被挤成多行
+    //   （李老师真机反馈：「矩阵里竖着的文字」）⇒ 屏幕表头一律用 3~4 字短名，**横排一行放得下**。
+    //   ⚠️ 维度**编辑区仍用长名**（那里空间够，且必须讲清"这是档位、单位是元"）；
+    //      导出的 Excel 表头也仍用长名（表格里列名越长越清楚，不受手机列宽限制）。
+    colRent: '月租金',
+    colLabor: '人工',
+    colMargin: '毛利率',
+    colTarget: '目标利润',
     addDim: '加一档',
     delDim: '删',
     buildLabel: '开店一次性投入（全局，按年限摊到每月）',

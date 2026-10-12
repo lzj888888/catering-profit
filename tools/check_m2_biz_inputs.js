@@ -370,6 +370,56 @@ check('F-⑦ 负样本（删掉 fail-closed、恒出数）会被 F-④ 判红',
   !(/!\s*\(price\s*>\s*0\)/.test(badCrowd2)),
   /!\s*\(price\s*>\s*0\)/.test(badCrowd2) ? '🔴 把错误实现漏过了' : '已报红');
 
+// ============ G · round276：L2「员工月均工资」必须是**活输入** + A 区坪效/人效口径 ============
+sec('G · round276：L2 工资不是死输入 · A 区坪效/人效口径同源');
+// 🔴 为什么必须立这一段：round276 李老师真机反馈「一个人每月工资多少——问的是员工的还是顾客的？」
+//   顺着这条查出一个**静默错**：L2 那个输入框的值只写进 `data.laborUnitYuan`、
+//   **从来没进过算式**（装配器恒读参数包常量）⇒ 老板把工资从 4500 改到 6000，
+//   重算照跑、保本点**纹丝不动** —— 这种"改了没反应"比报错更伤信任，且**没有任何东西会报错**。
+//   ⇒ 钉死两处：① 页面把值送进装配器；② 装配器**用户值优先、预设兜底**。
+const bp = stripJs(presetRaw);
+const asmFn = (bp.match(/function assembleItems\s*\([^)]*\)\s*\{([\s\S]*?)\n\}/) || [])[1] || '';
+const linBranch = (asmFn.match(/headcount_linear'\)[\s\S]{0,900}?\n\s*\}\s*else\s*if/)
+  || asmFn.match(/headcount_linear'([\s\S]{0,900})/)) || [];
+const linSrc = String(linBranch[1] || linBranch[0] || '');
+check('G-① 页面把 L2「员工月均工资」送进装配器（input 带 laborUnitYuan ⇒ 不是死输入）',
+  /laborUnitYuan:\s*Number\(this\.data\.laborUnitYuan\)/.test(js),
+  /laborUnitYuan:/.test(js) ? '已送进 input' : '🔴 值只写进 data、从没进算式');
+check('G-② 装配器 `headcount_linear` 分支：**用户值优先**、参数包只作兜底（≤0 才回落预设）',
+  /const u\s*=\s*Number\(in_\.laborUnitYuan\)/.test(linSrc)
+  && /u\s*>\s*0\s*\?\s*u\s*:/.test(linSrc),
+  /in_\.laborUnitYuan/.test(linSrc) ? '用户值参与取值' : '🔴 恒读 params.laborUnitYuan（用户改了零影响）');
+check('G-③ 兜底仍在（没填 / 非正数 ⇒ 回落参数包预设 ⇒ 既有锚点不漂）',
+  /p\.params\s*&&\s*p\.params\.laborUnitYuan\s*\?\s*Number\(p\.params\.laborUnitYuan\.v\)\s*:\s*0/.test(linSrc),
+  /p\.params\.laborUnitYuan/.test(linSrc) ? '预设兜底保留' : '🔴 兜底被删 ⇒ 没填就算 0 人工');
+// 负样本（防假绿）：把装配器改回「恒读预设」—— 正是 round276 修的那个 bug 本身
+const badAsm = "const unit = p.params && p.params.laborUnitYuan ? Number(p.params.laborUnitYuan.v) : 0;";
+check('G-④ 负样本（装配器改回恒读参数包预设、无视用户输入）会被 G-② 判红',
+  !(/const u\s*=\s*Number\(in_\.laborUnitYuan\)/.test(badAsm) && /u\s*>\s*0\s*\?\s*u\s*:/.test(badAsm)),
+  /in_\.laborUnitYuan/.test(badAsm) ? '🔴 把错误实现漏过了' : '已报红');
+
+// ── A 区坪效 / 人效（round223 §3.1 定案里**从来没建过**的两项）──
+const effFn = (js.match(/effOf\s*\(\s*\)\s*\{([\s\S]*?)\n  \}/) || [])[1] || '';
+check('G-⑤ 页面存在 `effOf()`（A 区坪效/人效的**唯一**派生处）',
+  /effOf\s*\(/.test(js), effFn ? `抓到函数体 ${effFn.length} 字符` : '未抓到函数体');
+check('G-⑥ 坪效 = 实际月营业额 ÷ 面积（分子必须是**已发生流水**，不是保本额）',
+  /const rev\s*=\s*Number\(this\.data\.expectYuan\)/.test(effFn) && /rev\s*\/\s*area/.test(effFn),
+  /this\.data\.expectYuan/.test(effFn) ? '分子=实际营业额' : '🔴 分子取错（算出来是保本坪效，不是实际坪效）');
+check('G-⑦ 人效 = 实际月营业额 ÷ 员工人数',
+  /const head\s*=\s*Number\(this\.data\.headcountNum\)/.test(effFn) && /rev\s*\/\s*head/.test(effFn),
+  /rev\s*\/\s*head/.test(effFn) ? '分母=员工人数' : '🔴 人效口径已漂移');
+check('G-⑧ fail-closed：没填实际月营业额 ⇒ 返回 null（**不给假数**）',
+  /!\s*\(rev\s*>\s*0\)/.test(effFn) && /return null/.test(effFn),
+  /return null/.test(effFn) ? '有 null 兜底' : '🔴 恒出数');
+check('G-⑨ 只在「已有铺面」渲染（wxml 判 `mode === forward && eff`）',
+  /mode\s*===\s*['"]forward['"]\s*&&\s*eff\b/.test(wx),
+  /mode\s*===\s*['"]forward['"]\s*&&\s*eff\b/.test(wx) ? '已限定 A 区' : '🔴 B 区也会渲染');
+// 负样本（防假绿）：拿保本营业额当分子 —— 老板要的是"我这店实际坪效"，不是"保本坪效"
+const badEff = 'effOf(){const rev=Number(this.data.result.break_even_monthly);const area=Number(this.data.areaNum);return {rev:String(rev),pixel:String(Math.round(rev/area)),perHead:null};}';
+check('G-⑩ 负样本（分子改成**保本营业额** + 删掉 fail-closed）会被 G-⑥/G-⑧ 判红',
+  !(/const rev\s*=\s*Number\(this\.data\.expectYuan\)/.test(badEff) && /!\s*\(rev\s*>\s*0\)/.test(badEff)),
+  /this\.data\.expectYuan/.test(badEff) ? '🔴 把错误实现漏过了' : '已报红');
+
 // ============ E 下界 ============
 sec('E 下界：断言数不得被悄悄删掉');
 // ⚠️ 阈值 = **实测值**（25）：写成"看起来合理"的整数会让它变成摆设；

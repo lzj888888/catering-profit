@@ -231,8 +231,13 @@ function assembleItems(preset, input, coef) {
       const a = Number(in_.area) || 0;
       fixedItems.push({ key: m.itemKey, fen: fenOf(Number(m.baseYuan) + Number(m.perSqmYuan) * a) });
     } else if (form === 'headcount_linear') {
-      // 单价只取 params.laborUnitYuan.v，乘 coef.labor × 人数
-      const unit = p.params && p.params.laborUnitYuan ? Number(p.params.laborUnitYuan.v) : 0;
+      // 单价：**用户填了就用用户的**（L2「员工月均工资」），没填才回落参数包预设。
+      // 🔴 round276 修的静默错：此前**恒读** `params.laborUnitYuan.v` ⇒ 用户在 L2 把工资从
+      //   4500 改成 6000，保本点纹丝不动（改了触发重算、结果零变化，用户以为是自己看错）。
+      //   参数包值仍作**兜底**（选预设时会把预设值写回 L2 输入框 ⇒ 老路径结果一字不漂）。
+      //   ⚠️ 入参只是**新增一个可选字段**，老调用方不传 ⇒ 走兜底分支 ⇒ 行为完全不变。
+      const u = Number(in_.laborUnitYuan);
+      const unit = u > 0 ? u : (p.params && p.params.laborUnitYuan ? Number(p.params.laborUnitYuan.v) : 0);
       const hc = Number(in_.headcount) || 0;
       fixedItems.push({ key: m.itemKey, fen: fenOf(unit * (co.labor || 1) * hc) });
     } else if (form === 'revenue_rate') {

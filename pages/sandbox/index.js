@@ -90,6 +90,11 @@ Page({
       expectRevLabel: M.expectRevLabel,
       expectRevPh: M.expectRevPh,
       expectRevNote: M.expectRevNote,
+      // 🔴 round276 · 一个数、两套话术：A「实际」（诊断，看收银后台）vs B「预计」（假设，估个量）。
+      //   此前 A/B 共用同一句「这家店一个月大概能做多少生意」⇒ 已开店的老板读成"让我瞎估"，
+      //   而 B 的老板又以为要填真实流水 ⇒ 两边都填不对（同一字段两种语义，是最典型的一词两义坑）。
+      expectRevLabelRev: M.expectRevLabelRev,
+      expectRevNoteRev: M.expectRevNoteRev,
       refAmtCard: M.refAmtCard,
       calc: M.calc,
       redAlert: M.redAlert,
@@ -112,6 +117,13 @@ Page({
       fwdCrowdHintPre: M.fwdCrowdHintPre,
       fwdCrowdHintMid: M.fwdCrowdHintMid,
       fwdCrowdHintSuf: M.fwdCrowdHintSuf,
+      // 🔴 round276 · A 区补齐 round223 §3.1 定案遗漏的「坪效 / 人效」（翻台已 round273 补）。
+      fwdEffTitle: M.fwdEffTitle,
+      fwdPixelEffLbl: M.fwdPixelEffLbl,
+      fwdPixelEffUnit: M.fwdPixelEffUnit,
+      fwdPerHeadLbl: M.fwdPerHeadLbl,
+      fwdPerHeadUnit: M.fwdPerHeadUnit,
+      fwdEffHint: M.fwdEffHint,
       revPrice: M.revPrice,
       // 🔴 R234：`revRentRate`（目标租金率）**已从输入项移除**（不再向用户收这个数）。
       //    它由系统自动取「本业态 × 本城市」的**健康租金上限**（云端 BANDS 单源），
@@ -182,7 +194,14 @@ Page({
       l3Toggle: M.l3Toggle,
       avgPriceLabel: M.avgPriceLabel,
       laborUnitLabel: M.laborUnitLabel,
+      // 🔴 round276 · 歧义消解：「一个人每月工资多少」被读成「顾客一个月花多少」——
+      //   同一句式里"一个人"既可指员工也可指顾客。主标题改为「员工月均工资」，
+      //   再挂一行注（laborUnitNote）把"发给员工的"钉死（主标题再短也救不了代词歧义）。
+      laborUnitNote: M.laborUnitNote,
       openDaysLabel2: M.openDaysLabel2,
+      // 🔴 round276 · 「一个月打算开门几天」：餐饮常年开，"打算"这个词暗示可以随便选 ⇒
+      //   老板会纠结填 30 还是 31。改为「每月实际开门几天」+ 注「常年开填 30」，给默认值。
+      openDaysNote2: M.openDaysNote2,
       dayUnit: M.dayUnit,
       // 🔴 R234-实测：`pixelEffLabel2`（坪效）/ `turnLabel2`（翻台率）映射已移除 ——
       //    两者连同其输入框一起退出本页（李老师原话：「这些本身是咱们计算出来的」）。
@@ -250,6 +269,7 @@ Page({
     // 结果（全部来自后端）
     result: null,
     crowd: null,         // 🔴 round273：A 区派生指标（每天来多少人 / 一天翻几台）；算不出则为 null（不渲染）
+    eff: null,           // 🔴 round276：A 区派生指标（坪效 / 人效）；没填实际营业额则为 null（不渲染）
     indicators: [],
     bands: [],            // 行业参考区间预览（round113 · 来自云端 bands_preview）
     marginBand: '',       // 本业态毛利率参考带（同上，取 grossMargin 那一项）
@@ -735,6 +755,8 @@ Page({
         result: resultObj,
         // 🔴 round273：A 区（已有铺面）补齐 round223 §3.1 定案的两项指标 —— 在新结果上派生
         crowd: resultObj ? this.crowdOf(resultObj) : null,
+        // 🔴 round276：A 区坪效 / 人效（纯派生，与引擎结果无关 ⇒ 不依赖 resultObj）
+        eff: this.effOf(),
         indicators: hasFixed ? this.decorate(d.indicators_at_breakeven || []) : [],
         indTab: 'break',
         // 未达最小可算条件 ⇒ 用温和引导语代替报错（不是错误，是"还没填够"）
@@ -1015,6 +1037,42 @@ Page({
     };
   },
 
+  /**
+   * 🔴 round276 · A 区（已有铺面）补齐 round223 §3.1 定案**遗漏**的「坪效 / 人效」
+   *   （翻台已 round273 补；这两项 grep 全仓零命中 ⇒ 从来没建过）。
+   *
+   * 为什么同样是**前端派生**：正向引擎出参里根本没有这两项（正向只回答"每月/每天卖多少够本"），
+   *   引擎红线＝**禁改源码** ⇒ 走既定扩展法（入参变换 + 前端派生），引擎零改动。
+   *
+   * 口径（餐饮通行定义，不是我造的）：
+   *   坪效 = 月营业额 ÷ 营业面积（元/㎡·月）—— 答"这面积用得值不值"
+   *   人效 = 月营业额 ÷ 员工人数（元/人·月）—— 答"这些人产出够不够"
+   *
+   * ⚠️ 分子必须是**用户填的实际月营业额**（A 区语义＝已发生的真实流水）：
+   *   拿"保本营业额"当分子算出来的是**保本坪效**，不是老板要的"我这店实际坪效"。
+   *
+   * 🔴 两项**都不挂行业区间**：R223 §3.2 红线＝不得编造分位数，而仓内 BANDS（`indicatorRef.js`）
+   *   只有毛利率/房租占比/人工占比/能耗/管理/推广六项 —— **没有坪效、也没有人效**。
+   *   ⇒ 只出数值、不做评级、不给区间，留给老板自家横比（换面积/换人数自己看变化）。
+   *
+   * fail-closed：没填实际营业额 ⇒ 整块不渲染（**不给假数**）；
+   *   面积或人数没填 ⇒ 只出填了的那一（几）项，缺的那项不出现。
+   */
+  effOf() {
+    const rev = Number(this.data.expectYuan);
+    if (!(rev > 0)) return null;
+    const area = Number(this.data.areaNum);
+    const head = Number(this.data.headcountNum);
+    const pixel = area > 0 ? Math.round(rev / area) : null;
+    const perHead = head > 0 ? Math.round(rev / head) : null;
+    if (pixel == null && perHead == null) return null;
+    return {
+      rev: String(Math.round(rev)),
+      pixel: pixel == null ? null : String(pixel),
+      perHead: perHead == null ? null : String(perHead),
+    };
+  },
+
   onPreset(e) {
     const i = Number(e.detail.value);
     const opt = this.data.presetOptions[i];
@@ -1144,6 +1202,9 @@ Page({
     const input = {
       area: Number(this.data.areaNum) || 0,
       headcount: Number(this.data.headcountNum) || 0,
+      // 🔴 round276：把 L2「员工月均工资」真正送进装配器（此前只写进 data、从没进过算式）。
+      //   空着 / 非正数 ⇒ assembleItems 回落参数包预设 ⇒ 与改造前逐字一致（锚点不漂）。
+      laborUnitYuan: Number(this.data.laborUnitYuan) || 0,
       rentYuan: Number(this.data.rentYuan) || 0,
       // 🔴 R219 口径（两道防线之一·装配层）：反推模式下 `fixed_items` **不得含 rent**。
       //    房租在此处是**求解目标**，把它当已知固定成本喂进去会**重复计租**
@@ -1246,6 +1307,8 @@ Page({
         result: presetResultObj,
         // 🔴 round273：A 区（已有铺面）补齐定案指标（每天来多少人 / 一天翻几台）—— 在新结果上派生
         crowd: presetResultObj ? this.crowdOf(presetResultObj) : null,
+        // 🔴 round276：同主链路，A 区坪效 / 人效（派生自用户填的实际营业额 + 面积 + 人数）
+        eff: this.effOf(),
         indicators: hasFixed ? this.decorate(d.indicators_at_breakeven || []) : [],
         indTab: 'break',
         payback,
