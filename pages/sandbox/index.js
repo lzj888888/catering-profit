@@ -66,6 +66,17 @@ Page({
       varTotal: M.varTotal,
       targetProfit: M.targetProfit,
       targetRow: M.targetRow,
+      // 🔴 round279c · #10 敏感度（前端派生，引擎零改）
+      sensTitle: M.sensTitle,
+      sensSub: M.sensSub,
+      sensMarginDown: M.sensMarginDown,
+      sensBase: M.sensBase,
+      sensBaseTag: M.sensBaseTag,
+      sensMarginUp: M.sensMarginUp,
+      sensBreakMonthly: M.sensBreakMonthly,
+      sensDelta: M.sensDelta,
+      sensLoading: M.sensLoading,
+      sensHint: M.sensHint,
       resBreakMonthly: M.resBreakMonthly,
       resBreakDaily: M.resBreakDaily,
       resTargetMonthly: M.resTargetMonthly,
@@ -346,6 +357,8 @@ Page({
     bandsRaw: [],            // R234：云端 bands_preview **原样留存**（拿到 rent.hi 用，见 rentRateDefault）
     bandsRawKey: '',         // 上面这份数据对应哪一组「城市 × 业态」（= cityIdx + ':' + bizIdx）
     verdict: null,           // R234：主结论卡 {level, levelName, note, mine, band, rentPct}
+    // 🔴 round279c · #10 敏感度（前端派生，引擎零改）：毛利率 ±5% 看保本额变化
+    sens: { open: false, loading: false, disabled: false, rows: null },
   },
 
   onLoad() { this._seq = 0; this.bootstrap(); },
@@ -581,9 +594,81 @@ Page({
   onTables(e) { this.setData({ tablesNum: e.detail.value }); this.scheduleCalc(); },
   onSeatsPerTable(e) { this.setData({ seatsPerTableNum: e.detail.value }); this.scheduleCalc(); },
 
+  // ===== 🔴 round279c · #10 敏感度（前端派生，引擎零改）=====
+  // 复用正向测算的入参装配，仅覆盖毛利率 —— 不新写计算逻辑、不碰引擎。
+  buildForwardPayload(marginPct) {
+    const fixedItems = this.data.fixedRows
+      .map((r) => ({ key: r.key, fen: api.yuanToFen(r.yuan) }))
+      .filter((x) => x.fen > 0);
+    return {
+      city_tier: this.data.t.cityTiers[this.data.cityIdx].key,
+      biz_type: this.data.t.bizTypes[this.data.bizIdx].key,
+      build_items: this.data.buildRows
+        .filter((r) => api.yuanToFen(r.yuan) > 0)
+        .map((r) => ({ key: r.key, fen: api.yuanToFen(r.yuan), years: Number(r.years) || 1 })),
+      fixed_items: fixedItems,
+      var_items: this.data.varRows
+        .filter((r) => Number(r.pct) > 0)
+        .map((r) => ({ key: r.key, pct: Number(r.pct) })),
+      gross_margin_pct: Number(marginPct),
+      target_profit_fen: api.yuanToFen(this.data.targetYuan),
+      expected_revenue_fen: api.yuanToFen(this.data.expectYuan),
+      valid_days: this.validDaysNow(),
+      client_request_id: 'sb_sens_' + Date.now() + '_' + Math.round(marginPct * 100),
+    };
+  },
+
+  async buildSensitivity() {
+    const base = Number(this.data.marginPct) || 0;
+    const deltas = [-5, 0, 5];
+    const hasFixed = this.data.fixedRows.some((r) => api.yuanToFen(r.yuan) > 0);
+    if (!hasFixed) {
+      this.setData({ 'sens.disabled': true, 'sens.loading': false, 'sens.rows': null });
+      return;
+    }
+    this.setData({ 'sens.loading': true, 'sens.disabled': false });
+    try {
+      const calls = deltas.map((d) => {
+        const m = Math.min(99, Math.max(1, base + d));
+        return api.call('calcSandbox', this.buildForwardPayload(m)).then((res) => ({
+          delta: d,
+          margin: m,
+          breakMonthly: res.break_even_monthly_fen != null ? api.fenToYuan(res.break_even_monthly_fen, 0) : null,
+        }));
+      });
+      const res = await Promise.all(calls);
+      const baseBreak = (res.find((r) => r.delta === 0) || {}).breakMonthly;
+      const rows = res.map((r) => {
+        const deltaPct = baseBreak > 0 && r.breakMonthly != null
+          ? Math.round((r.breakMonthly - baseBreak) / baseBreak * 100) : 0;
+        return {
+          key: 'd' + r.delta,
+          label: r.delta === 0 ? this.data.t.sensBase : (r.delta < 0 ? this.data.t.sensMarginDown : this.data.t.sensMarginUp),
+          breakMonthly: r.breakMonthly,
+          deltaPct,
+          deltaText: r.delta === 0 ? this.data.t.sensBaseTag : ((deltaPct >= 0 ? '+' : '') + deltaPct + '%'),
+        };
+      });
+      this.setData({ 'sens.rows': rows, 'sens.loading': false });
+    } catch (e) {
+      this.setData({ 'sens.loading': false });
+      api.toastError(e);
+    }
+  },
+
+  onToggleSens() {
+    const open = !this.data.sens.open;
+    // 每次展开都重算（输入可能已变，避免拿旧数）
+    if (open) {
+      this.setData({ 'sens.open': true, 'sens.rows': null, 'sens.loading': false, 'sens.disabled': false },
+        () => this.buildSensitivity());
+    } else {
+      this.setData({ 'sens.open': false });
+    }
+  },
+
   // ===== 自动重算（防抖；AD-6/AD-7 折中）=====
-  scheduleCalc() {
-    this.setData({ dirty: true });
+  scheduleCalc() {    this.setData({ dirty: true });
     // R193：用户一改就存草稿（此处已是 700ms 防抖链路上，不会高频写盘）
     this.saveDraft();
     if (this._timer) clearTimeout(this._timer);

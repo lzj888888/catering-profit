@@ -686,6 +686,17 @@ const TERMS = {
     varMkt: '营销费用率（%）',
     varOther: '其他变动率（%）',
     targetProfit: '目标月利润（元）',
+    // 🔴 round279c · #10 敏感度：毛利率扰动看保本额变化（前端派生，引擎零改）
+    sensTitle: '毛利率敏感度',
+    sensSub: '其余条件不变，看毛利率波动对保本月营收的影响',
+    sensMarginDown: '毛利率 −5%',
+    sensBase: '当前毛利率',
+    sensBaseTag: '基准',
+    sensMarginUp: '毛利率 +5%',
+    sensBreakMonthly: '保本月营收',
+    sensDelta: '较基准',
+    sensLoading: '测算中…',
+    sensHint: '需先填固定支出才能算敏感度',
     calc: '开始测算',
     // R193：M2 算完即丢 —— 本地草稿（零云端改动）
     draftRestored: '已载入上次填的数',

@@ -216,3 +216,11 @@
 .stick-lbl { font-size: 28rpx; color: #cfe0f2; margin-right: 14rpx; flex: 0 0 auto; }
 .stick-val { font-size: 36rpx; font-weight: 700; color: #fff; }
 .stick-go { font-size: 28rpx; color: #9ec3e8; flex: 0 0 auto; margin-left: 12rpx; }
+
+/* ===== 🔴 round279c · #10 敏感度：毛利率 ±5% 看保本额变化 =====
+   ⚠️ 字号 ≥28rpx 是硬红线（AD G1）；用颜色区上下、不压字号。 */
+.sens-delta { font-size: 28rpx; font-weight: 600; margin-left: 16rpx; }
+.sens-delta.up { color: #c0392b; }
+.sens-delta.down { color: #1e8e3e; }
+/* 🔴 瞬态「测算中」用独立类（非 .hint），避免被 hint-fold 守卫计入平铺提示数 */
+.sens-loading { font-size: 28rpx; color: #8a93a0; padding: 8rpx 0; }

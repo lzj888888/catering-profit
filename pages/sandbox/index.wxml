@@ -507,6 +507,23 @@
   <!-- 🔴 #8（P1，round272）：全局测算边界免责声明 —— 与 paybackDisclaimer 互补，点明结果仅参考 -->
   <view class="hint m2-disclaimer" wx:if="{{mode === 'forward'}}">{{t.m2Disclaimer}}</view>
 
+  <!-- 🔴 round279c · #10 敏感度：毛利率 ±5% 看保本额变化（前端派生，引擎零改） -->
+  <view class="card2" wx:if="{{mode === 'forward'}}">
+    <view class="fold-toggle" bindtap="onToggleSens">{{t.sensTitle}}{{sens.open ? ' ▾' : ' ▸'}}</view>
+    <view wx:if="{{sens.open}}">
+      <view class="hint">{{t.sensSub}}</view>
+      <view class="hint" wx:if="{{sens.disabled}}">{{t.sensHint}}</view>
+      <view class="sens-loading" wx:elif="{{sens.loading}}">{{t.sensLoading}}</view>
+      <block wx:elif="{{sens.rows}}">
+        <view class="cell" wx:for="{{sens.rows}}" wx:key="key">
+          <text class="lbl">{{item.label}}</text>
+          <text class="val">{{item.breakMonthly != null ? item.breakMonthly + t.cur : '—'}}</text>
+          <text class="sens-delta {{item.deltaPct > 0 ? 'up' : (item.deltaPct < 0 ? 'down' : '')}}" wx:if="{{item.deltaText}}">{{item.deltaText}}</text>
+        </view>
+      </block>
+    </view>
+  </view>
+
   <!-- 餐饮指标对照 -->
   <view class="card2" wx:if="{{indicators.length}}">
     <view class="sec">{{t.secIndicators}}</view>
