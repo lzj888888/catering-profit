@@ -73,6 +73,15 @@
         <text class="row-unit">{{t.headcountUnit}}</text>
       </view>
     </view>
+    <!-- 🔴 round279b · 目标利润归位 L1：原散落在底部「⑤ 目标月利润」卡，与 L1 标注的
+         「必填5项：…目标利润」断开 —— 老手视角下「想赚多少」属开店身份，应与
+         业态/面积/房租/人数并排作为 5 个首答问题（先答5个问题再填成本明细）。 -->
+    <view class="row">
+      <text class="row-name">{{t.targetRow}}</text>
+      <view class="row-in-wrap">
+        <input class="row-in" type="digit" value="{{targetYuan}}" bindinput="onTarget" adjust-position="{{true}}" cursor-spacing="20" />
+      </view>
+    </view>
     <!-- L2 更多设置 -->
     <view class="fold-toggle" bindtap="onToggleL2">{{t.l2Toggle}}{{showL2 ? ' ▾' : ' ▸'}}</view>
     <view wx:if="{{showL2}}">
@@ -299,17 +308,6 @@
       <view class="row-note" wx:if="{{item.note}}">{{item.note}}</view>
     </view>
     <view class="add-row" wx:if="{{varRows.length < 4}}" bindtap="onAddVar">{{t.addItem}}</view>
-  </view>
-
-  <!-- ⑤ 目标月利润 -->
-  <view class="card2">
-    <view class="sec">{{t.secTarget}}</view>
-    <view class="row">
-      <text class="row-name">{{t.targetRow}}</text>
-      <view class="row-in-wrap">
-        <input class="row-in" type="digit" value="{{targetYuan}}" bindinput="onTarget" adjust-position="{{true}}" cursor-spacing="20" />
-      </view>
-    </view>
   </view>
 
   <!-- ⑥ R234 · 「寻找铺面」（reverse Tab）本不该有**任何新输入** ——
