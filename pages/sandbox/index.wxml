@@ -286,6 +286,59 @@
     <view class="hint" wx:if="{{marginBand}}">{{t.marginBandLabel}} {{marginBand}}</view>
   </view>
 
+  <!-- ③-附 多渠道毛利率（默认关；关=老版本 100% 一致 · round279d #12 前端折算 / 引擎零改） -->
+  <view class="card2">
+    <view class="sec">{{t.channelSwitch}}</view>
+    <view class="switch-row">
+      <text class="switch-label">{{t.channelNote}}</text>
+      <switch checked="{{channel.on}}" bindchange="onToggleChannel" color="#1e3a5f" />
+    </view>
+    <block wx:if="{{channel.on}}">
+      <view class="hint">{{t.channelSample}}</view>
+      <view class="rw">
+        <view class="row">
+          <text class="row-name">{{t.channelTakeawayRatio}}</text>
+          <view class="row-in-wrap">
+            <input class="ipt-num" type="number" value="{{channel.takeawayRatio}}" data-field="takeawayRatio" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
+            <text class="unit">{{t.channelPct}}</text>
+          </view>
+        </view>
+        <view class="row">
+          <text class="row-name">{{t.channelGroupRatio}}</text>
+          <view class="row-in-wrap">
+            <input class="ipt-num" type="number" value="{{channel.groupRatio}}" data-field="groupRatio" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
+            <text class="unit">{{t.channelPct}}</text>
+          </view>
+        </view>
+        <view class="row">
+          <text class="row-name">{{t.channelDineinRatio}}</text>
+          <text class="row-val">{{channel.dineinRatio}}{{t.channelPct}}</text>
+        </view>
+      </view>
+      <view class="hint" wx:if="{{channel.over100}}">{{t.channelOver100}}</view>
+      <view class="hint" wx:if="{{channel.pureTakeaway}}">{{t.channelPureTakeaway}}</view>
+      <view class="rw">
+        <view class="row"><text class="row-name">{{t.channelTakeawayGm}}</text><text class="row-val">{{channel.takeawayGm != null ? channel.takeawayGm : '—'}}{{t.channelPct}}</text></view>
+        <view class="row"><text class="row-name">{{t.channelGroupGm}}</text><text class="row-val">{{channel.groupGm != null ? channel.groupGm : '—'}}{{t.channelPct}}</text></view>
+        <view class="row row-strong"><text class="row-name">{{t.channelBlended}}</text><text class="row-val">{{channel.blendedGm != null ? channel.blendedGm : '—'}}{{t.channelPct}}</text></view>
+      </view>
+      <view class="hint" wx:if="{{channel.blendedDiff > 0}}">{{t.channelBlendedDiff}}（{{channel.blendedDiff}}{{t.channelPct}}）</view>
+      <view class="fold-toggle" bindtap="onToggleChannelParams">{{t.channelParams}}{{channel.paramsOpen ? ' ▾' : ' ▸'}}</view>
+      <block wx:if="{{channel.paramsOpen}}">
+        <view class="rw">
+          <view class="row"><text class="row-name">{{t.channelPlatformRate}}</text><view class="row-in-wrap"><input class="ipt-num" type="number" value="{{channel.platformRate}}" data-field="platformRate" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" /><text class="unit">{{t.channelPct}}</text></view></view>
+          <view class="row"><text class="row-name">{{t.channelPackRate}}</text><view class="row-in-wrap"><input class="ipt-num" type="number" value="{{channel.packRate}}" data-field="packRate" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" /><text class="unit">{{t.channelPct}}</text></view></view>
+          <view class="row"><text class="row-name">{{t.channelDiscountRate}}</text><view class="row-in-wrap"><input class="ipt-num" type="number" value="{{channel.discountRate}}" data-field="discountRate" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" /><text class="unit">{{t.channelPct}}</text></view></view>
+          <view class="row"><text class="row-name">{{t.channelGroupPlatform}}</text><view class="row-in-wrap"><input class="ipt-num" type="number" value="{{channel.groupPlatformRate}}" data-field="groupPlatformRate" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" /><text class="unit">{{t.channelPct}}</text></view></view>
+          <view class="hint">{{t.channelOverride}}</view>
+          <view class="row"><text class="row-name">{{t.channelTakeawayGm}}</text><view class="row-in-wrap"><input class="ipt-num" type="number" value="{{channel.takeawayOverride}}" data-field="takeawayOverride" bindinput="onChannelInput" placeholder="—" adjust-position="{{true}}" cursor-spacing="20" /><text class="unit">{{t.channelPct}}</text></view></view>
+          <view class="row"><text class="row-name">{{t.channelGroupGm}}</text><view class="row-in-wrap"><input class="ipt-num" type="number" value="{{channel.groupOverride}}" data-field="groupOverride" bindinput="onChannelInput" placeholder="—" adjust-position="{{true}}" cursor-spacing="20" /><text class="unit">{{t.channelPct}}</text></view></view>
+        </view>
+      </block>
+      <view class="hint" wx:if="{{channel.leverageX != null}}">{{t.channelLeveragePre}} {{channel.leverageX}}{{t.channelPct}}{{t.channelLeverageMid}} {{channel.leverageY != null ? channel.leverageY : '—'}}{{t.channelPct}}</view>
+    </block>
+  </view>
+
   <!-- ④ 跟营业额挂钩的费用（是"率"不是"额"：流水越高，这笔钱越多） -->
   <view class="card2">
     <view class="sec">{{t.secVar}}</view>

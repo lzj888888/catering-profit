@@ -140,6 +140,16 @@ const ALLOW_INPUTS = {
   seatsPerTableNum: '单桌座位数（业态默认、用户可改）→ 与桌数相乘得 seats；属"用户输入的派生"，非外部基准',
   tablesNum: '桌数 → seats（= 桌数 × 单桌座位数，唯一换算点 = index.js::seatsNow）；老板站铺子里数得出',
   targetYuan: '目标月利润 → target_profit_fen；老板自己定目标',
+  // 🔴 2026-10-12（round279d #12 多渠道毛利率）：以下 8 个均为「分渠道」用户输入框，统一走 onChannelInput，
+  //   属用户手填/可改值（非参考值、非引擎推导注入），按本守卫纪律登记用途。
+  'channel.takeawayRatio': '外卖营收占比(%) → 与团购占比一起折算综合毛利率；用户按门店实际外卖单量填',
+  'channel.groupRatio': '团购营收占比(%) → 与外卖占比一起折算综合毛利率；用户按门店实际团购单量填',
+  'channel.platformRate': '外卖平台抽成率(%) → 推导外卖毛利率（默认示例值 20%，用户可改/按后台校准）',
+  'channel.packRate': '外卖包装/配送成本率(%) → 推导外卖毛利率（默认示例值 3%）',
+  'channel.discountRate': '团购折扣率(%) → 推导团购毛利率（默认示例值 30%=7 折）',
+  'channel.groupPlatformRate': '团购平台抽成率(%) → 推导团购毛利率（默认示例值 5%）',
+  'channel.takeawayOverride': '外卖净毛利率手动覆盖(%) → 选填，覆盖推导值',
+  'channel.groupOverride': '团购净毛利率手动覆盖(%) → 选填，覆盖推导值',
 };
 const FOR_ITEM = /^item\./;   // wx:for 里的行内输入（费用明细 / 建店投入明细），按行登记不过逐个枚举
 

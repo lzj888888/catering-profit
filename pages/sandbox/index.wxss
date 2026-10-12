@@ -57,6 +57,10 @@
 .row-unit { font-size: 28rpx; color: #888; margin-left: 6rpx; }
 .row-del { flex: 0 0 auto; font-size: 28rpx; color: #9aa4b2; padding: 16rpx 0 16rpx 8rpx; }
 .add-row { font-size: 28rpx; color: #1e3a5f; min-height: 88rpx; line-height: 88rpx; }
+.row-val { flex: 1 1 auto; font-size: 28rpx; color: #1e3a5f; text-align: right; font-weight: 600; }
+.row-strong .row-name, .row-strong .row-val { font-weight: 700; color: #1e3a5f; }
+.switch-row { display: flex; align-items: center; justify-content: space-between; min-height: 88rpx; }
+.switch-label { flex: 1 1 auto; font-size: 28rpx; color: #555; line-height: 1.4; padding-right: 16rpx; }
 
 /* ===== ③ 毛利率滑杆 ===== */
 .mg-top { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6rpx; }

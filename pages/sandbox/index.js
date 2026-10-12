@@ -77,6 +77,28 @@ Page({
       sensDelta: M.sensDelta,
       sensLoading: M.sensLoading,
       sensHint: M.sensHint,
+      // 🔴 round279d · #12 多渠道毛利率（前端折算，引擎零改）：堂食/外卖/团购分别给毛利率与营收占比
+      channelSwitch: M.channelSwitch,
+      channelNote: M.channelNote,
+      channelTakeawayRatio: M.channelTakeawayRatio,
+      channelGroupRatio: M.channelGroupRatio,
+      channelDineinRatio: M.channelDineinRatio,
+      channelTakeawayGm: M.channelTakeawayGm,
+      channelGroupGm: M.channelGroupGm,
+      channelBlended: M.channelBlended,
+      channelBlendedDiff: M.channelBlendedDiff,
+      channelParams: M.channelParams,
+      channelPlatformRate: M.channelPlatformRate,
+      channelPackRate: M.channelPackRate,
+      channelDiscountRate: M.channelDiscountRate,
+      channelGroupPlatform: M.channelGroupPlatform,
+      channelOverride: M.channelOverride,
+      channelOver100: M.channelOver100,
+      channelSample: M.channelSample,
+      channelLeveragePre: M.channelLeveragePre,
+      channelLeverageMid: M.channelLeverageMid,
+      channelPureTakeaway: M.channelPureTakeaway,
+      channelPct: M.channelPct,
       resBreakMonthly: M.resBreakMonthly,
       resBreakDaily: M.resBreakDaily,
       resTargetMonthly: M.resTargetMonthly,
@@ -359,6 +381,28 @@ Page({
     verdict: null,           // R234：主结论卡 {level, levelName, note, mine, band, rentPct}
     // 🔴 round279c · #10 敏感度（前端派生，引擎零改）：毛利率 ±5% 看保本额变化
     sens: { open: false, loading: false, disabled: false, rows: null },
+    // 🔴 round279d · #12 多渠道毛利率（前端折算，引擎零改）：开关关=老版本 100% 一致（零漂移）
+    channel: {
+      on: false,                 // 「分渠道细化毛利率」开关，默认关
+      paramsOpen: false,         // 默认参数（抽成/折扣）折叠，展开才显
+      takeawayRatio: 0,          // 外卖营收占比（0-100 整数）
+      groupRatio: 0,             // 团购营收占比（0-100 整数）
+      platformRate: 20,          // 外卖平台抽成率%（示例值，待校准）
+      packRate: 3,              // 外卖包装/配送成本率%（示例值，待校准）
+      discountRate: 30,          // 团购折扣率%（示例值，待校准）
+      groupPlatformRate: 5,      // 团购平台抽成率%（示例值，待校准）
+      takeawayOverride: '',      // 手动覆盖外卖净毛利率%（选填）
+      groupOverride: '',         // 手动覆盖团购净毛利率%（选填）
+      dineinRatio: 100,          // 堂食占比 = 100 - 外卖 - 团购（自动）
+      takeawayGm: null,          // 外卖毛利率（推导/覆盖）
+      groupGm: null,             // 团购毛利率（推导/覆盖）
+      blendedGm: null,           // 综合毛利率（加权）
+      blendedDiff: 0,            // 综合比堂食低的百分点
+      leverageX: null,           // 外卖/团购每+10% ⇒ 综合毛利降 X 点
+      leverageY: null,           // ⇒ 保本需升 Y%
+      over100: false,            // 外卖+团购 >100% 阻断
+      pureTakeaway: false,       // 无堂食营收强提示
+    },
   },
 
   onLoad() { this._seq = 0; this.bootstrap(); },
@@ -526,6 +570,7 @@ Page({
   },
   onMarginChange(e) {
     this.setData({ marginPct: Number(e.detail.value) });
+    if (this.data.channel.on) this.recomputeChannel();
     this.scheduleCalc();
   },
 
@@ -619,7 +664,7 @@ Page({
   },
 
   async buildSensitivity() {
-    const base = Number(this.data.marginPct) || 0;
+    const base = this.effectiveMarginPct();
     const deltas = [-5, 0, 5];
     const hasFixed = this.data.fixedRows.some((r) => api.yuanToFen(r.yuan) > 0);
     if (!hasFixed) {
@@ -665,6 +710,75 @@ Page({
     } else {
       this.setData({ 'sens.open': false });
     }
+  },
+
+  // ===== #12 多渠道毛利率（前端折算，引擎零改）=====
+  // 开关关：直接返回原 L2 毛利率（与老版本 100% 一致，零漂移）。
+  effectiveMarginPct() {
+    const c = this.data.channel;
+    if (!c.on) return Number(this.data.marginPct) || 0;
+    return (c.blendedGm != null) ? c.blendedGm : (Number(this.data.marginPct) || 0);
+  },
+
+  // 把渠道占比/参数折算成：堂食占比（自动）、外卖/团购毛利率（推导或覆盖）、综合毛利率、杠杆提示。
+  recomputeChannel() {
+    const c = this.data.channel;
+    const gmD = Number(this.data.marginPct) || 0;          // 堂食毛利率 = 原 L2 字段
+    const rt = Number(c.takeawayRatio) || 0;
+    const rg = Number(c.groupRatio) || 0;
+    const dinein = 100 - rt - rg;
+    const over100 = (rt + rg) > 100;
+    const pureTakeaway = (rt + rg) >= 100;
+    let takeawayGm = (c.takeawayOverride !== '' && c.takeawayOverride != null)
+      ? Number(c.takeawayOverride)
+      : (gmD - Number(c.platformRate) - Number(c.packRate));
+    let groupGm = (c.groupOverride !== '' && c.groupOverride != null)
+      ? Number(c.groupOverride)
+      : (100 - (100 - gmD) / (100 - Number(c.discountRate)) * 100 - Number(c.groupPlatformRate));
+    let blended = null, blendedDiff = 0, leverageX = null, leverageY = null;
+    if (!over100 && dinein >= 0) {
+      blended = (dinein * gmD + rt * takeawayGm + rg * groupGm) / 100;
+      blendedDiff = Math.round((gmD - blended) * 100) / 100;
+      const mix = rt + rg;
+      if (mix > 0) {
+        const mixGm = (rt * takeawayGm + rg * groupGm) / mix;   // 混合渠道加权毛利率
+        leverageX = Number(((gmD - mixGm) / 10).toFixed(1));    // 混合占比每 +10% ⇒ 综合毛利降 X 点
+        if ((blended - leverageX) > 0) {
+          leverageY = Number(((blended / (blended - leverageX) - 1) * 100).toFixed(1));
+        }
+      }
+    }
+    this.setData({
+      'channel.dineinRatio': dinein,
+      'channel.takeawayGm': takeawayGm,
+      'channel.groupGm': groupGm,
+      'channel.blendedGm': blended,
+      'channel.blendedDiff': blendedDiff,
+      'channel.leverageX': leverageX,
+      'channel.leverageY': leverageY,
+      'channel.over100': over100,
+      'channel.pureTakeaway': pureTakeaway,
+    });
+  },
+
+  onToggleChannel() {
+    const on = !this.data.channel.on;
+    this.setData({ 'channel.on': on }, () => {
+      if (on) this.recomputeChannel();
+      this.scheduleCalc();
+    });
+  },
+
+  onToggleChannelParams() {
+    this.setData({ 'channel.paramsOpen': !this.data.channel.paramsOpen });
+  },
+
+  onChannelInput(e) {
+    const field = e.currentTarget.dataset.field;
+    this.setData({ ['channel.' + field]: e.detail.value }, () => {
+      this.recomputeChannel();
+      this.scheduleCalc();
+    });
   },
 
   // ===== 自动重算（防抖；AD-6/AD-7 折中）=====
@@ -740,7 +854,7 @@ Page({
           var_items: this.data.varRows
             .filter((r) => Number(r.pct) > 0)
             .map((r) => ({ key: r.key, pct: Number(r.pct) })),
-          gross_margin_pct: Number(this.data.marginPct),
+          gross_margin_pct: this.effectiveMarginPct(),
           target_profit_fen: api.yuanToFen(this.data.targetYuan),
           // R234：同义字段合并 —— 人均/座位/天数/坪效一律取 L2/L3 那一份（反推卡不再另收）
           rev_price_fen: api.yuanToFen(this.data.avgPriceYuan),
@@ -799,7 +913,7 @@ Page({
         var_items: this.data.varRows
           .filter((r) => Number(r.pct) > 0)
           .map((r) => ({ key: r.key, pct: Number(r.pct) })),
-        gross_margin_pct: Number(this.data.marginPct),
+        gross_margin_pct: this.effectiveMarginPct(),
         target_profit_fen: api.yuanToFen(this.data.targetYuan),
         // round114：预计月营业额（选填）—— 后端据此反算各项参考金额（amount_preview）
         expected_revenue_fen: api.yuanToFen(this.data.expectYuan),
