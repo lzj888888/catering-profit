@@ -1,0 +1,24 @@
+# 环境族套件失败定性（round279f · 自查）
+
+## 命令
+```
+cd catering-profit
+node tools/check_suite_coverage.js
+```
+
+## 输出（节选）
+```
+===== S1 前置：git 列表可用（fail-closed）=====
+❌ S1 能在仓库根执行 git ls-files · spawnSync git EBUSY
+
+===== SUITES 覆盖守卫结果：0 通过 / 1 失败 =====
+```
+
+## 结论
+- 失败点 = `spawnSync git EBUSY`：沙箱当前态**禁止 node 派生子进程**（含 git）。
+- 该套件是 fail-closed 设计（git 不可用即判失败），属「文档化环境族」，**非代码回归**。
+- 同批 9 个失败项（docx-derive / suite-coverage / suite-count-claims / quota-limits /
+  collection-perms / privacy-collection / acceptance-counts / suite-assert-counts /
+  r85-takeaway）均为同类环境族（git/网络/长任务/CJK 扫描面），与 round279e 时点
+  定性一致。
+- HEAD = 1ed8e23（自 round279e 以来零代码改动）⇒ 全绿基线未破，稳定。
