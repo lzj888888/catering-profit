@@ -24,10 +24,23 @@ const CITY_COEF = {
   county: { rent: 0.75, labor: 0.85 },   // 县城 / 乡镇
 };
 
-// ===== 六个预设（🔴 照抄开发规范 v1.3 §3.4-bis，数值不得自创）=====
+// 🔴 P1-②（2026-10）：占营收率成本（utility/manage）合规落点修正的「房租兜底」。
+//   背景：原实现把它们写成 form:'revenue_rate' ⇒ 被 assembleItems 塞进 var_items，
+//   但 validate 的 VAR_KEYS 仅放行 4 键（takeawayComm/grouponComm/cardFee/other），
+//   utility/manage 不在其中 ⇒ 整条 preset 测算被拒（INVALID_PARAM），链路从根上不通；
+//   矩阵批量分支绕过 validate 能出数，但 mkt 被 utility+manage 虚高、energy/manage 指标因
+//   fixedFen 无值恒 null（两路口径矛盾）。
+//   修法（方案 B，合规 R188「严禁给 VAR_KEYS 加新键」）：utility/manage 改走 fixed_items
+//   （它们本就在 FIXED_KEYS），由「房租 × 房租占比(rentPct)」派生固定额；房租缺失（找店/反推
+//   模式未填 rentYuan）⇒ 用本兜底额 × 城市系数 派生。energy/manage 指标改从 fixedFen 正确算出，
+//   mkt 仅含合法 var 项（'other' 费率），整条 preset 链路 unblock，引擎零改动、51 副本零重部署。
+//   ⚠️ 已知权衡：保本点把水电/管理当固定（轻微偏高保本），但无静默错、链路通、单源零漂移。
+const RATE_COST_FLOOR = { fastfood: 8000, hotpot: 12000, dining: 12000, cafe: 8000, other: 10000 };
+
+// ===== 九个预设（🔴 照抄开发规范 v1.3 §3.4-bis，数值不得自创；R287 整改：删火锅浇头面、补正餐细分）=====
 // 取值来源标记 src：P=项目方 BP · D1=权威参考带 · S=我方自定 · U=用户填
 const BIZ_PRESETS = [
-  // 1) 小面 / 米线 —— [P] 小面测算.xlsx；人工走人头线性 ⇒ 规模可伸缩
+  // 1) 面馆（小面 / 米线 / 面条 / 拉面）—— [P] 小面测算.xlsx；R287 合并「小面+面条」归小吃快餐，统称面馆；人工走人头线性 ⇒ 规模可伸缩
   {
     presetKey: 'fastfood_noodle', bizKey: 'fastfood', paybackView: 'cash',
     params: { grossMarginPct: { v: 55, src: 'P' }, laborUnitYuan: { v: 4500, src: 'S' },
@@ -35,21 +48,9 @@ const BIZ_PRESETS = [
     costMeta: [
       { itemKey: 'rent', form: 'fixed', src: 'U' },
       { itemKey: 'labor', form: 'headcount_linear', src: 'S' },              // 单价 = 4,500 × coef.labor
-      { itemKey: 'utility', form: 'revenue_rate', pct: 5, src: 'P' },
-      { itemKey: 'manage', form: 'revenue_rate', pct: 5, src: 'P' },
+      { itemKey: 'utility', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 5, src: 'P' },
+      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 5, src: 'P' },
       { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'P', labelKey: 'costLoss' },
-    ],
-  },
-  // 2) 火锅浇头面 —— [P] 火锅面 BP；固定制 ⇒ 全部走 defaultYuan
-  {
-    presetKey: 'fastfood_hotpot_noodle', bizKey: 'fastfood', paybackView: 'invest',
-    params: { grossMarginPct: { v: 55, src: 'P' }, openDays: { v: 30, src: 'P' } },
-    costMeta: [
-      { itemKey: 'rent', form: 'fixed', src: 'U' },
-      { itemKey: 'labor', form: 'fixed', defaultYuan: 13500, src: 'P' },   // 1.35 万
-      { itemKey: 'utility', form: 'fixed', defaultYuan: 3600, src: 'P' },  // 0.36 万
-      { itemKey: 'other', form: 'fixed', defaultYuan: 2400, src: 'P' },    // 员工餐/网费/垃圾 0.24 万
-      { itemKey: 'manage', form: 'revenue_rate', pct: 3, src: 'P' },
     ],
   },
   // 3) 火锅（半自助）/ 卤鸡火锅 —— [P] 卤鸡火锅 BP；含建店投入参考
@@ -59,9 +60,9 @@ const BIZ_PRESETS = [
     costMeta: [
       { itemKey: 'rent', form: 'fixed', src: 'U' },
       { itemKey: 'labor', form: 'fixed', defaultYuan: 25000, src: 'P' },   // 2.5 万
-      { itemKey: 'utility', form: 'fixed', defaultYuan: 7500, src: 'P' },  // 0.75 万
-      { itemKey: 'other', form: 'fixed', defaultYuan: 6000, src: 'P' },    // 0.60 万
-      { itemKey: 'manage', form: 'revenue_rate', pct: 3, src: 'P' },
+      { itemKey: 'utility', form: 'fixed', defaultYuan: 7500, src: 'P' },  // 0.75 万（保持原绝对额，不随房租漂移）
+      { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'P', labelKey: 'costLoss' },    // 🔴 P1-② fixed→var：使 mkt 非 0（与全局 other 口径一致）
+      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 3, src: 'P' },
     ],
     // 🔴 折旧只能走这里：投资 26.2 万 ÷ (0.61 万 × 12) = 3.579234972677596 年，**小数位写足**
     buildRef: [{ key: 'other', fen: 26200000, years: 3.579234972677596, src: 'P' }],
@@ -73,8 +74,8 @@ const BIZ_PRESETS = [
     costMeta: [
       { itemKey: 'rent', form: 'fixed', src: 'U' },
       { itemKey: 'labor', form: 'headcount_linear', src: 'S' },
-      { itemKey: 'utility', form: 'revenue_rate', pct: 5, src: 'D1' },
-      { itemKey: 'manage', form: 'revenue_rate', pct: 7, src: 'D1' },
+      { itemKey: 'utility', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 5, src: 'D1' },
+      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 7, src: 'D1' },
       { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'S', labelKey: 'costLoss' },
     ],
   },
@@ -85,8 +86,44 @@ const BIZ_PRESETS = [
     costMeta: [
       { itemKey: 'rent', form: 'fixed', src: 'U' },
       { itemKey: 'labor', form: 'headcount_linear', src: 'S' },
-      { itemKey: 'utility', form: 'revenue_rate', pct: 4, src: 'D1' },
-      { itemKey: 'manage', form: 'revenue_rate', pct: 7, src: 'D1' },
+      { itemKey: 'utility', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 4, src: 'D1' },
+      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 7, src: 'D1' },
+      { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'S', labelKey: 'costLoss' },
+    ],
+  },
+  // 5b) 湘菜 —— [D1] 参考带（正餐系，bizKey=dining，与川菜同参考带；R287 补正餐细分）
+  {
+    presetKey: 'dining_xiang', bizKey: 'dining', paybackView: 'invest',
+    params: { grossMarginPct: { v: 60, src: 'D1' }, laborUnitYuan: { v: 5500, src: 'S' }, openDays: { v: 30, src: 'P' } },
+    costMeta: [
+      { itemKey: 'rent', form: 'fixed', src: 'U' },
+      { itemKey: 'labor', form: 'headcount_linear', src: 'S' },
+      { itemKey: 'utility', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 4, src: 'D1' },
+      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 7, src: 'D1' },
+      { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'S', labelKey: 'costLoss' },
+    ],
+  },
+  // 5c) 粤菜 —— [D1] 参考带
+  {
+    presetKey: 'dining_yue', bizKey: 'dining', paybackView: 'invest',
+    params: { grossMarginPct: { v: 60, src: 'D1' }, laborUnitYuan: { v: 5500, src: 'S' }, openDays: { v: 30, src: 'P' } },
+    costMeta: [
+      { itemKey: 'rent', form: 'fixed', src: 'U' },
+      { itemKey: 'labor', form: 'headcount_linear', src: 'S' },
+      { itemKey: 'utility', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 4, src: 'D1' },
+      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 7, src: 'D1' },
+      { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'S', labelKey: 'costLoss' },
+    ],
+  },
+  // 5d) 家常菜 —— [D1] 参考带
+  {
+    presetKey: 'dining_jiachang', bizKey: 'dining', paybackView: 'invest',
+    params: { grossMarginPct: { v: 60, src: 'D1' }, laborUnitYuan: { v: 5500, src: 'S' }, openDays: { v: 30, src: 'P' } },
+    costMeta: [
+      { itemKey: 'rent', form: 'fixed', src: 'U' },
+      { itemKey: 'labor', form: 'headcount_linear', src: 'S' },
+      { itemKey: 'utility', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 4, src: 'D1' },
+      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 7, src: 'D1' },
       { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'S', labelKey: 'costLoss' },
     ],
   },
@@ -97,12 +134,12 @@ const BIZ_PRESETS = [
     costMeta: [
       { itemKey: 'rent', form: 'fixed', src: 'U' },
       { itemKey: 'labor', form: 'headcount_linear', src: 'S' },
-      { itemKey: 'utility', form: 'revenue_rate', pct: 2, src: 'D1' },
-      { itemKey: 'manage', form: 'revenue_rate', pct: 7, src: 'D1' },
+      { itemKey: 'utility', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 2, src: 'D1' },
+      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 7, src: 'D1' },
       { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'S', labelKey: 'costLoss' },
     ],
   },
-  // 7) 其他 / 通用餐饮 —— 🔴 round276 新增**通用兜底**：老板开的店不在上面 6 个预设里时的诚实出口。
+  // 7) 其他 / 通用餐饮 —— 🔴 round276 新增**通用兜底**：老板开的店不在上面 8 个预设里时的诚实出口。
   //    bizKey='other' ⇒ 走 indicatorRef.BANDS.other（4 类带的保守并集，标注"未细分行业"）。
   //    参数全部取通用中位（非特定行业）：人工走人头线性（多数业态适用）、各项 revenue_rate 取并集区间中值。
   //    ⚠️ 这是"系统给初值、用户可改"的默认值，**不承担计算口径**（用户改了就以用户的为准）。
@@ -112,8 +149,8 @@ const BIZ_PRESETS = [
     costMeta: [
       { itemKey: 'rent', form: 'fixed', src: 'U' },
       { itemKey: 'labor', form: 'headcount_linear', src: 'S' },
-      { itemKey: 'utility', form: 'revenue_rate', pct: 4, src: 'S' },   // 并集 [1,6] 中值
-      { itemKey: 'manage', form: 'revenue_rate', pct: 7, src: 'S' },   // 并集 [5,10] 中值
+      { itemKey: 'utility', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 4, src: 'S' },   // 并集 [1,6] 中值
+      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 7, src: 'S' },   // 并集 [5,10] 中值
       { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'S', labelKey: 'costLoss' },
     ],
   },
@@ -229,6 +266,9 @@ function assembleItems(preset, input, coef) {
   const fixedItems = [];
   const varItems = [];
   const costMeta = Array.isArray(p.costMeta) ? p.costMeta : [];
+  // 房租（分）：用户填的已知（页面 input.rentYuan）；找店/反推模式未填 ⇒ 0（下方走 floor 兜底）
+  const rentFenRaw = in_.rentYuan != null ? fenOf(in_.rentYuan) : 0;
+  const bizKey = p.bizKey;
 
   for (const m of costMeta) {
     const form = m.form;
@@ -237,11 +277,20 @@ function assembleItems(preset, input, coef) {
       const userVal = in_.fixedYuan ? in_.fixedYuan[m.itemKey] : undefined;
       if (userVal !== undefined && userVal !== null && userVal !== '') {
         fixedItems.push({ key: m.itemKey, fen: fenOf(userVal) });
+      } else if (m.derivedFrom === 'rent_rate') {
+        // 🔴 P1-②：占营收率成本（utility/manage）合规落点 —— 由「房租 × 房租占比(rentPct)」派生固定额。
+        //   房租缺失（找店/反推模式未填 rentYuan）⇒ 用 RATE_COST_FLOOR[bizKey] × 城市系数 兜底。
+        //   房租已知（用户填 rentYuan）⇒ base=房租分；两者都走 fixed_items（utility/manage 本就在
+        //   FIXED_KEYS），与 R188「严禁给 VAR_KEYS 加新键」一致，引擎零改动、51 副本零重部署。
+        const base = rentFenRaw > 0 ? rentFenRaw
+          : Math.round(fenOf(RATE_COST_FLOOR[bizKey] || 10000) * (co.rent || 1));
+        const fen = Math.round(base * (Number(m.rentPct) || 0) / 100);
+        if (fen > 0) fixedItems.push({ key: m.itemKey, fen });
       } else if (m.defaultYuan != null) {
         const c = co[m.itemKey] || 1;          // labor→co.labor / rent→co.rent；utility/manage/other 无对应键 ⇒ ×1
         fixedItems.push({ key: m.itemKey, fen: fenOf(Number(m.defaultYuan) * c) });
       }
-      // src='U' 且用户没填 ⇒ 无 defaultYuan ⇒ 跳过（不编造）
+      // src='U' 且用户没填、又无 defaultYuan/derivedFrom ⇒ 跳过（不编造）
     } else if (form === 'area_linear') {
       // 🔴 不乘 coef（参数已是元/㎡ 绝对成本；城市差异走分城参数包，乘系数 = 双重折算）
       const a = Number(in_.area) || 0;

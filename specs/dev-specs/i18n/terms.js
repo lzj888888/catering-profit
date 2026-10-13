@@ -979,11 +979,13 @@ const TERMS = {
     //   明确告诉老板"这是通用经验区间、未细分行业、仅供粗估"，避免他当成行业精确值。
     otherBandNote: '当前为通用经验区间（未细分行业），结果仅供粗估；如能归到具体品类请优先选上面',
     bizPresets: {
-      fastfood_noodle: '小面 / 米线',
-      fastfood_hotpot_noodle: '火锅浇头面',
+      fastfood_noodle: '面馆（小面 / 米线 / 面条 / 拉面）',
       hotpot_half_self: '火锅（半自助）',
       hotpot_barbecue: '烧烤',
       dining_sichuan: '川菜 / 中餐',
+      dining_xiang: '湘菜',
+      dining_yue: '粤菜',
+      dining_jiachang: '家常菜',
       cafe_tea: '新式茶饮',
       other: '其他 / 通用餐饮（未细分行业）',
     },
@@ -992,8 +994,10 @@ const TERMS = {
     //   快餐 2 / 火锅 2 / **正餐 1 / 茶饮 1** ⇒ 选「中式正餐」后下拉只剩 1 项，
     //   李老师看到的正是这个现象（2026-10-07 原话：「业态预设里面只有川菜 中餐」）。
     //   ⇒ 大类只该由系统用来取 `BANDS`（参考带只有 4 套），**不该让用户先答**。
-    l1Title: '先答这 5 个问题',
-    l1Guide: '这 5 个你一定答得上来',
+    l1Title: '你这家店，先答 5 个',
+    l1Guide: '按现在经营的情况填，这 5 个都现成',
+    l1TitleRev: '想开的店，先填 5 项',
+    l1GuideRev: '按你打算的业态和预算填，5 个都好估',
     bizAutoNote: '选好上面那一项，这里会自己跟上',
     areaLabel: '铺子多少平方',
     areaUnit: '㎡',

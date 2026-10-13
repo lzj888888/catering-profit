@@ -126,7 +126,7 @@ sec('C · costMeta 形态 ∈ 五形态 + 参数完备（缺一即 NaN）');
     for (const m of (p.costMeta || [])) {
       if (FORMS.indexOf(m.form) < 0) { badForm++; continue; }
       const lacks =
-        (m.form === 'fixed' && m.src !== 'U' && m.defaultYuan == null)
+        (m.form === 'fixed' && m.src !== 'U' && m.defaultYuan == null && m.derivedFrom !== 'rent_rate')
         || (m.form === 'area_linear' && (m.baseYuan == null || m.perSqmYuan == null))
         || (m.form === 'headcount_linear' && !(p.params && p.params.laborUnitYuan))
         || (m.form === 'revenue_rate' && m.pct == null)

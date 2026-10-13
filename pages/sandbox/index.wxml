@@ -43,8 +43,8 @@
 
   <!-- M2v1.3 · L1 小白（必填 5 项：打算开什么店 / 面积 / 月租金 / 员工数 / 目标利润）-->
   <view class="card2" id="l1l2">
-    <view class="sec">{{t.l1Title}}</view>
-    <view class="hint l1-guide">{{t.l1Guide}}</view>
+    <view class="sec">{{mode === 'reverse' ? t.l1TitleRev : t.l1Title}}</view>
+    <view class="hint l1-guide">{{mode === 'reverse' ? t.l1GuideRev : t.l1Guide}}</view>
     <view class="sel-row">
       <text class="sel-lbl">{{t.presetLabel}}</text>
       <picker class="sel-pk" range="{{presetOptions}}" range-key="name" value="{{presetIdx}}" bindchange="onPreset">

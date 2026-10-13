@@ -8,8 +8,10 @@ const {
 // 🔴 invest 口径**读生产引擎** payback_months（证明引擎零改动；不另写一套算式）
 const ENGINE = require('../cloudfunctions/calcSandbox/service.js');
 const { calcSandbox } = ENGINE;
-
-const BIZ_KEYS = ['fastfood', 'dining', 'hotpot', 'cafe'];
+// 🔴 BIZ_KEYS 取单源（indicatorRef.BIZ_KEYS 已含兜底业态 'other'）；此前写死 4 类导致
+//   round276 新增的 'other' 通用预设自检恒红，与单源漂移。
+const { indicatorRef } = require('../cloudfunctions/common');
+const BIZ_KEYS = indicatorRef.BIZ_KEYS;
 const FORMS = ['fixed', 'area_linear', 'headcount_linear', 'revenue_rate', 'step'];
 
 let pass = 0, failN = 0;
@@ -45,7 +47,7 @@ for (const pr of BIZ_PRESETS) {
 for (const pr of BIZ_PRESETS) {
   const bad = (pr.costMeta || []).filter((m) => {
     if (FORMS.indexOf(m.form) < 0) return true;
-    if (m.form === 'fixed' && m.src !== 'U' && m.defaultYuan == null) return true;
+    if (m.form === 'fixed' && m.src !== 'U' && m.defaultYuan == null && m.derivedFrom !== 'rent_rate') return true;
     if (m.form === 'area_linear' && (m.baseYuan == null || m.perSqmYuan == null)) return true;
     if (m.form === 'headcount_linear' && !(pr.params && pr.params.laborUnitYuan)) return true;
     if (m.form === 'revenue_rate' && m.pct == null) return true;
