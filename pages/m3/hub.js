@@ -47,10 +47,18 @@ Page({
       // 🔴 P0#6：快捷操作 + 付费小字（wxml 用到就必须登记 —— 漏登记 ⇒ 静默空白）
       quickAdd: TERMS.hub.quickAdd,
       payTag: TERMS.hub.payTag,
+      // 🔴 R281 O3：三步走线性化新增键（wxml 用到就必须登记 —— 漏登记 ⇒ 静默空白）
+      flowBtns: TERMS.hub.flowBtns,
+      flowAllDone: TERMS.hub.flowAllDone,
+      flowNextHint: TERMS.hub.flowNextHint,
     },
     // -1 = 没取到（就不显示这行）。🔴 **绝不能默认 0**：读不到时显示「共 0 张」
     //   会让老板以为卡丢了 —— 与本仓「不替用户编数」同一条纪律（M2 参考值只提示不预填）。
     cardCount: -1,
+    // 🔴 R281 O3：三步完成态（初值全 false = 未完成；fail-closed：读失败也保持 false）。
+    //   nextStep = 第一个未完成的步序号；全部完成 = -1（此时显示「三步都做完了」而不是按钮）。
+    stepFlags: [false, false, false],
+    nextStep: 0,
   },
 
   onShow() {
@@ -69,11 +77,31 @@ Page({
   // 只读展示「你已有多少张卡」，给第一张分区卡一个锚点。
   // fail-closed：失败保持 -1（不显示），数量只是锦上添花，不打扰用户。
   async loadCount() {
-    try {
-      const d = await api.call('getCostCard', {});
-      const n = (d && Array.isArray(d.list)) ? d.list.length : -1;
-      this.setData({ cardCount: n });
-    } catch (e) { /* 静默：本页导航功能不受影响 */ }
+    // 三个接口**都不加付费墙**（getMaterial / getCostCard / getSalesBills 属基础读能力）；
+    // 且一次并发取回，不额外增加往返（原来只取卡数，现在顺带喂三步完成态）。
+    // 🔴 fail-closed：任一接口失败 ⇒ 该项为 null ⇒ 对应步**保持未完成**（false / -1），
+    //    绝不把"没读到"当成"已完成"或"共 0"（同一条纪律：不替用户编数）。
+    const [mat, card, sales] = await Promise.all([
+      api.call('getMaterial', {}).catch(() => null),
+      api.call('getCostCard', {}).catch(() => null),
+      api.call('getSalesBills', {}).catch(() => null),
+    ]);
+    const cardN = (card && Array.isArray(card.list)) ? card.list.length : -1;
+    const flags = [
+      !!(mat && Array.isArray(mat.list) && mat.list.length > 0),
+      cardN > 0,
+      !!(sales && Array.isArray(sales.list) && sales.list.length > 0),
+    ];
+    this.setData({ cardCount: cardN, stepFlags: flags, nextStep: flags.indexOf(false) });
+  },
+
+  // 🔴 R281 O3：从引导块直接跳到「当前该做的那一步」，不用老板自己在 5 张卡里猜。
+  goStep(e) {
+    const i = Number((e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.step) || 0);
+    if (i === 0) return wx.navigateTo({ url: '/pages/material/index' });
+    if (i === 1) return wx.navigateTo({ url: '/pages/card/index' });
+    // 第③步落在「外卖」页的第二个 tab（销量导入入口，R259 起该 tab 主载形态 A/B/C 销量）
+    return wx.navigateTo({ url: '/pages/takeaway/index?tab=import' });
   },
 
   // ===== 四个分区（跳转目标均已在 app.json::pages 注册）=====

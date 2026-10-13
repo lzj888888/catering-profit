@@ -245,7 +245,12 @@ Page({
     importDoneText: '',
   },
 
-  onLoad() { this.load(); },
+  // R281 O3：支持从枢纽页引导块直达「销量导入」tab —— /pages/takeaway/index?tab=import
+  //   （原来 onLoad 不读 options ⇒ 引导第③步跳过来仍停在「单均测算」tab，等于白跳）
+  onLoad(options) {
+    if (options && options.tab === 'import') this.setData({ tab: 'import' });
+    this.load();
+  },
 
   // R234/J4d：行内提示折叠开关（仓内统一形态，五页同一实现 —— 不各写一套，否则改判据要改五处）。
   onToggleHintFold(e) {

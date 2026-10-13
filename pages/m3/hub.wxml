@@ -10,7 +10,17 @@
        守卫 `check_hub_guide` G4 盯这个位置 —— 挪到卡片后面 = 还是先看到一堆卡 = 没解决懵。 -->
   <view class="hub-flow">
     <text class="hub-flow-t">{{t.flowTitle}}</text>
-    <view class="hub-flow-step" wx:for="{{t.flowSteps}}" wx:key="*this">{{item}}</view>
+    <!-- 🔴 R281 O3：三步走**线性化** —— 每步带完成态（✓ / ○），由 hub.js 的三个免费只读接口判定。
+         守 G1-1：`wx:for="{{t.flowSteps}}"` 必须保留（守卫据此认定"真渲染了三步走"）。 -->
+    <view class="hub-flow-step" wx:for="{{t.flowSteps}}" wx:key="*this">
+      <text class="hub-flow-flag {{stepFlags[index] ? 'on' : ''}}">{{stepFlags[index] ? '✓' : '○'}}</text>
+      <text class="hub-flow-txt">{{item}}</text>
+    </view>
+    <!-- 未完成的第一步给直达按钮（老板不用在下面 5 张卡里猜该点哪个）；
+         nextStep < 0 = 三步都完成 ⇒ 改显示「都做完了」，不再给按钮。 -->
+    <button class="btn primary hub-flow-btn" wx:if="{{nextStep >= 0}}" bindtap="goStep" data-step="{{nextStep}}">{{t.flowBtns[nextStep]}}</button>
+    <text class="hub-flow-tip" wx:if="{{nextStep >= 0}}">{{t.flowNextHint}}</text>
+    <text class="hub-flow-tip" wx:if="{{nextStep < 0}}">{{t.flowAllDone}}</text>
   </view>
 
   <!-- 🔴 P0#6：快捷操作 —— 最常用的「建成本卡」做成顶部主按钮，一步到位（空状态已有同等 CTA，故仅在有卡时显示） -->
