@@ -1,0 +1,84 @@
+{
+  "a6": {
+    "ok": true,
+    "res": {
+      "inp": {
+        "route": "pages/sandbox/matrix",
+        "mode": "reverse",
+        "dims": {
+          "rent": [
+            3000,
+            4000,
+            5000,
+            6000,
+            7000,
+            8000,
+            9000,
+            10000
+          ],
+          "labor": [
+            2,
+            3
+          ],
+          "margin": [
+            45,
+            55,
+            60,
+            65
+          ],
+          "target": [
+            0,
+            10000,
+            15000
+          ]
+        },
+        "area": 60,
+        "buildTotalYuan": 0,
+        "presetIdx": 0,
+        "cityIdx": 1,
+        "presetName": {
+          "key": "fastfood_noodle",
+          "name": "快餐小吃·预设"
+        },
+        "genCalled": true
+      },
+      "after": {
+        "route": "pages/sandbox/matrix",
+        "dataMode": "reverse",
+        "title": "场景矩阵测算 · 寻找铺面",
+        "subtitle": "还没拿铺子：扫一批房租档位，看哪个档位扛得住",
+        "loading": false,
+        "resultCount": 192,
+        "resultBrief": {
+          "count": 192,
+          "nullBreak": 0,
+          "row0": {
+            "rent": 3000,
+            "labor": 2,
+            "marginPct": 45,
+            "targetYuan": 0,
+            "breakMonthly": 28604.65,
+            "breakDaily": 953.49,
+            "targetMonthly": 28604.65,
+            "targetDaily": 953.49,
+            "rentPct": 10.5,
+            "leverYuan": 2222,
+            "cushionPct": null,
+            "payback": null,
+            "red": false
+          },
+          "insight": {
+            "has": true,
+            "bestLabel": "maxRent",
+            "bestText": "可承受最高月租 ¥10000（目标利润 ¥15000 @ 毛利率 55%）",
+            "leverText": "房租每涨 ¥1000，需多做到手营收 ≈ ¥1818（按毛利率 55% 计）",
+            "cushionText": "淡季安全垫 ≈ 43%：营收跌这么多才到保本"
+          },
+          "view": "detail"
+        },
+        "reverseBrief": null,
+        "stackDepth": 1
+      }
+    }
+  }
+}

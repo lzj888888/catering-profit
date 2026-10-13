@@ -1,0 +1,557 @@
+{
+  "cases": [
+    {
+      "tag": "rent=8000",
+      "presetKey": "fastfood_noodle",
+      "bizKey": "fastfood",
+      "varKeys": [
+        "other"
+      ],
+      "fixedKeys": [
+        "rent",
+        "labor",
+        "utility",
+        "manage"
+      ],
+      "badVar": [],
+      "badFixed": [],
+      "utilityFen": 40000,
+      "manageFen": 40000,
+      "pass": true
+    },
+    {
+      "tag": "rent=0(找店/反推)",
+      "presetKey": "fastfood_noodle",
+      "bizKey": "fastfood",
+      "varKeys": [
+        "other"
+      ],
+      "fixedKeys": [
+        "labor",
+        "utility",
+        "manage"
+      ],
+      "badVar": [],
+      "badFixed": [],
+      "utilityFen": 40000,
+      "manageFen": 40000,
+      "pass": true
+    },
+    {
+      "tag": "rent=8000",
+      "presetKey": "hotpot_half_self",
+      "bizKey": "hotpot",
+      "varKeys": [
+        "other"
+      ],
+      "fixedKeys": [
+        "rent",
+        "labor",
+        "utility",
+        "manage"
+      ],
+      "badVar": [],
+      "badFixed": [],
+      "utilityFen": 750000,
+      "manageFen": 24000,
+      "pass": true
+    },
+    {
+      "tag": "rent=0(找店/反推)",
+      "presetKey": "hotpot_half_self",
+      "bizKey": "hotpot",
+      "varKeys": [
+        "other"
+      ],
+      "fixedKeys": [
+        "labor",
+        "utility",
+        "manage"
+      ],
+      "badVar": [],
+      "badFixed": [],
+      "utilityFen": 750000,
+      "manageFen": 36000,
+      "pass": true
+    },
+    {
+      "tag": "rent=8000",
+      "presetKey": "hotpot_barbecue",
+      "bizKey": "hotpot",
+      "varKeys": [
+        "other"
+      ],
+      "fixedKeys": [
+        "rent",
+        "labor",
+        "utility",
+        "manage"
+      ],
+      "badVar": [],
+      "badFixed": [],
+      "utilityFen": 40000,
+      "manageFen": 56000,
+      "pass": true
+    },
+    {
+      "tag": "rent=0(找店/反推)",
+      "presetKey": "hotpot_barbecue",
+      "bizKey": "hotpot",
+      "varKeys": [
+        "other"
+      ],
+      "fixedKeys": [
+        "labor",
+        "utility",
+        "manage"
+      ],
+      "badVar": [],
+      "badFixed": [],
+      "utilityFen": 60000,
+      "manageFen": 84000,
+      "pass": true
+    },
+    {
+      "tag": "rent=8000",
+      "presetKey": "dining_sichuan",
+      "bizKey": "dining",
+      "varKeys": [
+        "other"
+      ],
+      "fixedKeys": [
+        "rent",
+        "labor",
+        "utility",
+        "manage"
+      ],
+      "badVar": [],
+      "badFixed": [],
+      "utilityFen": 32000,
+      "manageFen": 56000,
+      "pass": true
+    },
+    {
+      "tag": "rent=0(找店/反推)",
+      "presetKey": "dining_sichuan",
+      "bizKey": "dining",
+      "varKeys": [
+        "other"
+      ],
+      "fixedKeys": [
+        "labor",
+        "utility",
+        "manage"
+      ],
+      "badVar": [],
+      "badFixed": [],
+      "utilityFen": 48000,
+      "manageFen": 84000,
+      "pass": true
+    },
+    {
+      "tag": "rent=8000",
+      "presetKey": "dining_xiang",
+      "bizKey": "dining",
+      "varKeys": [
+        "other"
+      ],
+      "fixedKeys": [
+        "rent",
+        "labor",
+        "utility",
+        "manage"
+      ],
+      "badVar": [],
+      "badFixed": [],
+      "utilityFen": 32000,
+      "manageFen": 56000,
+      "pass": true
+    },
+    {
+      "tag": "rent=0(找店/反推)",
+      "presetKey": "dining_xiang",
+      "bizKey": "dining",
+      "varKeys": [
+        "other"
+      ],
+      "fixedKeys": [
+        "labor",
+        "utility",
+        "manage"
+      ],
+      "badVar": [],
+      "badFixed": [],
+      "utilityFen": 48000,
+      "manageFen": 84000,
+      "pass": true
+    },
+    {
+      "tag": "rent=8000",
+      "presetKey": "dining_yue",
+      "bizKey": "dining",
+      "varKeys": [
+        "other"
+      ],
+      "fixedKeys": [
+        "rent",
+        "labor",
+        "utility",
+        "manage"
+      ],
+      "badVar": [],
+      "badFixed": [],
+      "utilityFen": 32000,
+      "manageFen": 56000,
+      "pass": true
+    },
+    {
+      "tag": "rent=0(找店/反推)",
+      "presetKey": "dining_yue",
+      "bizKey": "dining",
+      "varKeys": [
+        "other"
+      ],
+      "fixedKeys": [
+        "labor",
+        "utility",
+        "manage"
+      ],
+      "badVar": [],
+      "badFixed": [],
+      "utilityFen": 48000,
+      "manageFen": 84000,
+      "pass": true
+    },
+    {
+      "tag": "rent=8000",
+      "presetKey": "dining_jiachang",
+      "bizKey": "dining",
+      "varKeys": [
+        "other"
+      ],
+      "fixedKeys": [
+        "rent",
+        "labor",
+        "utility",
+        "manage"
+      ],
+      "badVar": [],
+      "badFixed": [],
+      "utilityFen": 32000,
+      "manageFen": 56000,
+      "pass": true
+    },
+    {
+      "tag": "rent=0(找店/反推)",
+      "presetKey": "dining_jiachang",
+      "bizKey": "dining",
+      "varKeys": [
+        "other"
+      ],
+      "fixedKeys": [
+        "labor",
+        "utility",
+        "manage"
+      ],
+      "badVar": [],
+      "badFixed": [],
+      "utilityFen": 48000,
+      "manageFen": 84000,
+      "pass": true
+    },
+    {
+      "tag": "rent=8000",
+      "presetKey": "cafe_tea",
+      "bizKey": "cafe",
+      "varKeys": [
+        "other"
+      ],
+      "fixedKeys": [
+        "rent",
+        "labor",
+        "utility",
+        "manage"
+      ],
+      "badVar": [],
+      "badFixed": [],
+      "utilityFen": 16000,
+      "manageFen": 56000,
+      "pass": true
+    },
+    {
+      "tag": "rent=0(找店/反推)",
+      "presetKey": "cafe_tea",
+      "bizKey": "cafe",
+      "varKeys": [
+        "other"
+      ],
+      "fixedKeys": [
+        "labor",
+        "utility",
+        "manage"
+      ],
+      "badVar": [],
+      "badFixed": [],
+      "utilityFen": 16000,
+      "manageFen": 56000,
+      "pass": true
+    },
+    {
+      "tag": "rent=8000",
+      "presetKey": "other",
+      "bizKey": "other",
+      "varKeys": [
+        "other"
+      ],
+      "fixedKeys": [
+        "rent",
+        "labor",
+        "utility",
+        "manage"
+      ],
+      "badVar": [],
+      "badFixed": [],
+      "utilityFen": 32000,
+      "manageFen": 56000,
+      "pass": true
+    },
+    {
+      "tag": "rent=0(找店/反推)",
+      "presetKey": "other",
+      "bizKey": "other",
+      "varKeys": [
+        "other"
+      ],
+      "fixedKeys": [
+        "labor",
+        "utility",
+        "manage"
+      ],
+      "badVar": [],
+      "badFixed": [],
+      "utilityFen": 40000,
+      "manageFen": 70000,
+      "pass": true
+    }
+  ],
+  "mutants": [
+    {
+      "tag": "MUTANT-revenue_rate",
+      "presetKey": "fastfood_noodle",
+      "bizKey": "fastfood",
+      "varKeys": [
+        "utility",
+        "manage",
+        "other"
+      ],
+      "fixedKeys": [
+        "rent",
+        "labor"
+      ],
+      "badVar": [
+        "utility",
+        "manage"
+      ],
+      "badFixed": [],
+      "utilityFen": null,
+      "manageFen": null,
+      "pass": false
+    },
+    {
+      "tag": "MUTANT-revenue_rate",
+      "presetKey": "hotpot_half_self",
+      "bizKey": "hotpot",
+      "varKeys": [
+        "utility",
+        "other",
+        "manage"
+      ],
+      "fixedKeys": [
+        "rent",
+        "labor"
+      ],
+      "badVar": [
+        "utility",
+        "manage"
+      ],
+      "badFixed": [],
+      "utilityFen": null,
+      "manageFen": null,
+      "pass": false
+    },
+    {
+      "tag": "MUTANT-revenue_rate",
+      "presetKey": "hotpot_barbecue",
+      "bizKey": "hotpot",
+      "varKeys": [
+        "utility",
+        "manage",
+        "other"
+      ],
+      "fixedKeys": [
+        "rent",
+        "labor"
+      ],
+      "badVar": [
+        "utility",
+        "manage"
+      ],
+      "badFixed": [],
+      "utilityFen": null,
+      "manageFen": null,
+      "pass": false
+    },
+    {
+      "tag": "MUTANT-revenue_rate",
+      "presetKey": "dining_sichuan",
+      "bizKey": "dining",
+      "varKeys": [
+        "utility",
+        "manage",
+        "other"
+      ],
+      "fixedKeys": [
+        "rent",
+        "labor"
+      ],
+      "badVar": [
+        "utility",
+        "manage"
+      ],
+      "badFixed": [],
+      "utilityFen": null,
+      "manageFen": null,
+      "pass": false
+    },
+    {
+      "tag": "MUTANT-revenue_rate",
+      "presetKey": "dining_xiang",
+      "bizKey": "dining",
+      "varKeys": [
+        "utility",
+        "manage",
+        "other"
+      ],
+      "fixedKeys": [
+        "rent",
+        "labor"
+      ],
+      "badVar": [
+        "utility",
+        "manage"
+      ],
+      "badFixed": [],
+      "utilityFen": null,
+      "manageFen": null,
+      "pass": false
+    },
+    {
+      "tag": "MUTANT-revenue_rate",
+      "presetKey": "dining_yue",
+      "bizKey": "dining",
+      "varKeys": [
+        "utility",
+        "manage",
+        "other"
+      ],
+      "fixedKeys": [
+        "rent",
+        "labor"
+      ],
+      "badVar": [
+        "utility",
+        "manage"
+      ],
+      "badFixed": [],
+      "utilityFen": null,
+      "manageFen": null,
+      "pass": false
+    },
+    {
+      "tag": "MUTANT-revenue_rate",
+      "presetKey": "dining_jiachang",
+      "bizKey": "dining",
+      "varKeys": [
+        "utility",
+        "manage",
+        "other"
+      ],
+      "fixedKeys": [
+        "rent",
+        "labor"
+      ],
+      "badVar": [
+        "utility",
+        "manage"
+      ],
+      "badFixed": [],
+      "utilityFen": null,
+      "manageFen": null,
+      "pass": false
+    },
+    {
+      "tag": "MUTANT-revenue_rate",
+      "presetKey": "cafe_tea",
+      "bizKey": "cafe",
+      "varKeys": [
+        "utility",
+        "manage",
+        "other"
+      ],
+      "fixedKeys": [
+        "rent",
+        "labor"
+      ],
+      "badVar": [
+        "utility",
+        "manage"
+      ],
+      "badFixed": [],
+      "utilityFen": null,
+      "manageFen": null,
+      "pass": false
+    },
+    {
+      "tag": "MUTANT-revenue_rate",
+      "presetKey": "other",
+      "bizKey": "other",
+      "varKeys": [
+        "utility",
+        "manage",
+        "other"
+      ],
+      "fixedKeys": [
+        "rent",
+        "labor"
+      ],
+      "badVar": [
+        "utility",
+        "manage"
+      ],
+      "badFixed": [],
+      "utilityFen": null,
+      "manageFen": null,
+      "pass": false
+    }
+  ],
+  "summary": {
+    "presetCount": 9,
+    "presetKeys": [
+      "fastfood_noodle",
+      "hotpot_half_self",
+      "hotpot_barbecue",
+      "dining_sichuan",
+      "dining_xiang",
+      "dining_yue",
+      "dining_jiachang",
+      "cafe_tea",
+      "other"
+    ],
+    "casesAllPass": true,
+    "casesFailList": [],
+    "mutantsAllCaught": true,
+    "mutantsMissed": [],
+    "utilityAllNonZero": true,
+    "manageAllNonZero": true
+  }
+}

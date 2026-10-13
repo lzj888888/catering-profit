@@ -212,6 +212,11 @@ Page({
       bizPresets: M.bizPresets,
       l1Title: M.l1Title,
       l1Guide: M.l1Guide,
+      // 🔴 R291 补登记（修 P1-③ 静默空白）：index.wxml:46/47 的 reverse 三元分支引用了
+      //    这两个键，但此前 t:{} 只登记了 forward 那一对 ⇒ `{{undefined}}` 被 WXML 静默渲染成空串。
+      //    守卫工具 tools/check_page_terms.js 的 P2-1 已精确点名本处。
+      l1TitleRev: M.l1TitleRev,
+      l1GuideRev: M.l1GuideRev,
       // 🔴 R237：座位数输入 ⇒ **桌数 + 单桌座位数**（口径说明见 terms.js 同名注释块）。
       tablesLabel: M.tablesLabel,
       tablesPh: M.tablesPh,

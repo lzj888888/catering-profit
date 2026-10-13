@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>R291 · P1 批次模拟器走查（589aaae）</title>
+<style>
+  :root{
+    --bg:#f5f6f8; --card:#ffffff; --ink:#1f2937; --ink2:#4b5563; --ink3:#8b95a5;
+    --line:#e3e6ea; --ok:#0f9d58; --okbg:#eaf7ef; --bad:#d93025; --badbg:#fdecea;
+    --warn:#b26a00; --warnbg:#fff6e5; --accent:#1e3a5f; --mono:"Consolas","Menlo",monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:15px/1.7 -apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;}
+  .wrap{max-width:1060px;margin:0 auto;padding:28px 20px 60px}
+  h1{font-size:22px;margin:0 0 6px;color:var(--accent)}
+  .meta{color:var(--ink3);font-size:13px;margin-bottom:22px}
+  .meta code{font-family:var(--mono);background:#eceff3;padding:1px 6px;border-radius:4px;color:var(--ink2)}
+  h2{font-size:17px;margin:30px 0 12px;padding-left:10px;border-left:4px solid var(--accent)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin:14px 0;
+        box-shadow:0 1px 2px rgba(16,24,40,.04)}
+  .verdicts{display:flex;gap:14px;flex-wrap:wrap;margin:18px 0 6px}
+  .v{flex:1 1 300px;border-radius:10px;padding:14px 16px;border:1px solid var(--line);background:var(--card)}
+  .v.ok{border-color:#bfe6cd;background:var(--okbg)}
+  .v.bad{border-color:#f3c2bd;background:var(--badbg)}
+  .v .tag{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.4px;padding:2px 9px;border-radius:20px;margin-bottom:8px}
+  .v.ok .tag{background:var(--ok);color:#fff}
+  .v.bad .tag{background:var(--bad);color:#fff}
+  .v .h{font-weight:700;font-size:15.5px;margin-bottom:4px}
+  .v .d{color:var(--ink2);font-size:13.5px}
+  table{width:100%;border-collapse:collapse;font-size:13.6px;margin:6px 0}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:#f0f2f5;font-weight:600;color:var(--ink2);white-space:nowrap}
+  td code,li code,p code{font-family:var(--mono);font-size:12.6px;background:#eceff3;padding:1px 5px;border-radius:4px}
+  .pass{color:var(--ok);font-weight:700}
+  .fail{color:var(--bad);font-weight:700}
+  pre{background:#1e242c;color:#e6edf3;padding:14px 16px;border-radius:8px;overflow-x:auto;
+      font-family:var(--mono);font-size:12.6px;line-height:1.6;margin:10px 0}
+  .shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px;margin-top:8px}
+  figure{margin:0;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center}
+  figure img{width:100%;height:auto;border-radius:5px;border:1px solid var(--line);background:#fff}
+  figcaption{font-size:12.3px;color:var(--ink2);margin-top:8px;line-height:1.5}
+  .note{border-left:4px solid var(--warn);background:var(--warnbg);padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0;font-size:13.8px}
+  .note.bad{border-left-color:var(--bad);background:var(--badbg)}
+  .note.ok{border-left-color:var(--ok);background:var(--okbg)}
+  ul{margin:8px 0 8px 4px;padding-left:20px}
+  li{margin:4px 0}
+  .foot{color:var(--ink3);font-size:12.5px;margin-top:34px;border-top:1px solid var(--line);padding-top:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>R291 · P1 批次模拟器走查</h1>
+  <div class="meta">
+    对象提交 <code>589aaae</code> · 走查时刻 2026-10-13 22:0x · 通道 <code>cli auto</code>（<code>AppID wx33c110dc57a9c8dc</code>）·
+    证据目录 <code>review/evidence/r291_p1_walkthrough/</code> · 走查方只登记、不代改码，未合并任何分支
+  </div>
+
+  <div class="verdicts">
+    <div class="v ok">
+      <span class="tag">PASS</span>
+      <div class="h">P1-② 业态参数包链路 unblock</div>
+      <div class="d">三证齐全：离线探针 18/18 · 变异对照 9/9 抓错 · 真机批量 <b>192/192 行出数</b>（nullBreak=0）</div>
+    </div>
+    <div class="v bad">
+      <span class="tag">FAIL</span>
+      <div class="h">P1-③ 首页 reverse 文案切换</div>
+      <div class="d">零生效：① 运行路径不可达 ② 即便可达也漏登记 <code>t</code> 白名单 ⇒ <b>渲染空白且零报错</b></div>
+    </div>
+  </div>
+
+  <div class="note bad">
+    <b>合 main 建议：先修 P1-③ 再谈合并。</b>
+    关键事实 —— 既有守卫 <code>tools/check_page_terms.js</code> <b>本来就会红</b>（退出码 1，精确点名
+    <code>index.wxml:46/47</code>）；P1 提交只跑了 3 个子套件、<b>未跑 verify_all 全量</b> ⇒ 一个已有的守卫被跳过。<br>
+    ⇒ 不是"守卫缺失"，是"没跑"。按「先审后合」挂起，等你拍板。
+  </div>
+
+  <h2>1 · P1-② 三证</h2>
+  <div class="card">
+    <table>
+      <tr><th>证</th><th>手段</th><th>结果</th></tr>
+      <tr>
+        <td>A · 真机批量</td>
+        <td>矩阵页 <code>?mode=reverse</code> + <code>onGenerate()</code>；维度 8×2×4×3</td>
+        <td><span class="pass">192/192 行</span> 出数 · <code>nullBreak=0</code> · row0 保本 28604.65 元 · insight「可承受最高月租 ¥10000」</td>
+      </tr>
+      <tr>
+        <td>B · 离线探针</td>
+        <td>直接 require 生产模块 <code>utils/bizPreset.js</code> → <code>assembleItems</code>；9 预设 × 2 输入（房租 8000 / 0）</td>
+        <td><span class="pass">18/18 pass</span> · 每例 <code>var</code> 只有 <code>["other"]</code>（合法） · utility/manage 全部落 <code>fixed_items</code> 且非 0</td>
+      </tr>
+      <tr>
+        <td>C · 变异对照</td>
+        <td>把 utility/manage 还原成改前写法 <code>form:'revenue_rate'</code> 再跑同一探针</td>
+        <td><span class="pass">9/9 抓错</span> ⇒ <code>badVar=["utility","manage"]</code>、<code>pass=false</code> ⇒ 探针非假绿</td>
+      </tr>
+    </table>
+    <p style="font-size:13.4px;color:var(--ink2);margin-bottom:0">
+      契约单源：<code>cloudfunctions/*/cx_indicatorRef.js:121-122</code> ——
+      <code>FIXED_KEYS=['rent','labor','utility','manage','other']</code> ·
+      <code>VAR_KEYS=['takeawayComm','grouponComm','cardFee','other']</code>。
+      utility/manage 现落在 fixed 侧 ⇒ 合规，且引擎零改动、51 副本零重部署。
+    </p>
+  </div>
+
+  <h2>2 · P1-③ 双重缺陷（带 file:line）</h2>
+  <div class="card">
+    <p><b>问题 1 · 运行路径不可达</b> —— <code>pages/sandbox/index.js:326</code> 初值 <code>mode:'forward'</code>；全页唯一 <code>setData({mode})</code> 在 <code>:630</code>，但 <code>:626-629</code> 在 <code>mode==='reverse'</code> 时<b>提前 return 跳去矩阵页</b>（R290 v5：首页恒 forward）。</p>
+    <pre>$ a2 首页点「找店」
+before = { route: pages/sandbox/index,    dataMode: forward }
+after  = { route: pages/sandbox/matrix,   dataMode: reverse,
+           title: "场景矩阵测算 · 寻找铺面",
+           subtitle: "还没拿铺子：扫一批房租档位，看哪个档位扛得住" }   ← 已跳页</pre>
+
+    <p style="margin-top:18px"><b>问题 2 · 即便可达也取不到值（t 白名单漏登记）</b> —— <code>pages/sandbox/index.js:213-214</code> 只登记了 <code>l1Title</code>/<code>l1Guide</code>，漏 <code>l1TitleRev</code>/<code>l1GuideRev</code>。</p>
+    <pre>$ a3 强制 setData({ mode:'reverse' })
+modeAfter     = "reverse"
+hasL1TitleRev = false            ← 键根本不在 data.t 里
+hasL1GuideRev = false
+l1TitleRev    = "&lt;undefined&gt;"
+tKeysL1       = ["l1Title","l1Guide"]      ← 只有这两个</pre>
+    <p style="font-size:13.4px;color:var(--ink2)">
+      WXML 对 <code>{{undefined}}</code> 不报错、不警告 ⇒ 渲染为空白。该页 <code>:267</code> 的注释恰好写下了这条纪律：
+      「三处登记的第二处……漏登记 ⇒ <b>渲染空白且零报错</b>」。
+    </p>
+
+    <p style="margin-top:18px"><b>问题 3 · 既有守卫本来就会红</b></p>
+    <pre>$ node tools/check_page_terms.js ; echo $?
+❌ P2-1 每个页面 wxml 用到的 t.&lt;键&gt; 都在同页 t:{} 里（零静默空白）
+   · pages/sandbox/index.wxml:46  用了 t.l1TitleRev 但 index.js 的 t 里没有
+   · pages/sandbox/index.wxml:47  用了 t.l1GuideRev 但 index.js 的 t 里没有
+===== 页面术语键守卫结果：7 通过 / 1 失败 =====
+1                                  ← 真实退出码 = 1（红）</pre>
+    <p style="font-size:13.4px;color:var(--ink2);margin-bottom:0">
+      该守卫自防护栏同时全绿（扫描 56 文件 / <code>TERMS.</code> 1209 处 / <code>t.</code> 用法 1249 次 / 27 页面）
+      ⇒ <b>它是活的、能精确点名</b>，只是这一批没被跑到。
+    </p>
+  </div>
+
+  <h2>3 · 截图证据（渲染层）</h2>
+  <div class="card">
+    <div class="shots">
+      <figure>
+        <img src="01_sandbox_forward.png" alt="forward 态首页">
+        <figcaption><b>01 · forward 态</b><br>OCR 命中「你这家店，先答5个」＋「按现在经营的情况填，这5个都现成」⇒ 文案渲染正确</figcaption>
+      </figure>
+      <figure>
+        <img src="02_after_reverse_tab.png" alt="点找店后落矩阵页">
+        <figcaption><b>02 · 点「找店」后</b><br>OCR 命中「场景矩阵测算·寻找铺面」⇒ 确证跳到了矩阵页</figcaption>
+      </figure>
+      <figure>
+        <img src="03_sandbox_forced_reverse.png" alt="强制 reverse 后标题空白">
+        <figcaption><b>03 · 强制 reverse</b><br>标题与引导行<b>双双消失</b>，Rev 文案<b>未出现</b> ⇒ 空白复现</figcaption>
+      </figure>
+      <figure>
+        <img src="06_matrix_gen_reverse.png" alt="矩阵批量结果">
+        <figcaption><b>06 · 矩阵批量结果</b><br>192 行出数（P1-② 证 A）</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <h2>4 · 修法建议（待你拍板，我不代改）</h2>
+  <div class="card">
+    <p><b>路线 B（推荐）· 删死代码，与 R290 v5 口径一致</b></p>
+    <ul>
+      <li>撤销 <code>index.wxml:46-47</code> 三元分支 → 回到 <code>{{t.l1Title}}</code> / <code>{{t.l1Guide}}</code></li>
+      <li>撤销 terms 双副本的 <code>l1TitleRev</code>/<code>l1GuideRev</code>（<code>cp</code> + <code>md5</code> 校验一致）</li>
+      <li>reverse 的标题/引导<b>已在矩阵页生效</b>（<code>matrix.js:123-125</code>，本轮实测通过），首页无需重复承担</li>
+    </ul>
+    <p><b>路线 A · 若仍要保留首页 reverse 文案</b>：在 <code>index.js</code> 的 <code>t:{}</code> 补
+      <code>l1TitleRev: M.l1TitleRev, l1GuideRev: M.l1GuideRev,</code> ⇒ 但按 R290 v5 它仍是死代码。</p>
+    <div class="note">
+      <b>治本：批次提交前必跑全量门禁</b>（<code>verify_all</code> 167 套件）。本轮教训 = 跳过全量 ⇒ 已有的守卫形同不存在。
+      建议在批次提交脚本里硬卡「未跑全量不得提交」。
+    </div>
+  </div>
+
+  <h2>5 · 边界声明</h2>
+  <div class="card">
+    <ul>
+      <li><b>真机未跑</b>：需你扫码（预览码见交付，失效约 22:39）。模拟器 ≠ 真机。</li>
+      <li><b>首页 forward 单次测算</b>未单独取证：入参与矩阵路同源（同一 <code>assembleItems</code> → 同一 <code>calcSandbox</code>），已由证 A/B/C 覆盖。</li>
+      <li>03 截图为降级证据（setData 后 2.8s 抓帧）；但逻辑层铁证 + WXML 对 undefined 的确定语义已可独立支撑结论。</li>
+    </ul>
+  </div>
+
+  <div class="foot">
+    复现：<code>node review/evidence/r291_p1_walkthrough/probe_bizpreset.js</code> ·
+    <code>node review/evidence/r291_p1_walkthrough/walk1.js &lt;证据目录&gt; ws://127.0.0.1:9420 a1</code> ·
+    <code>node tools/check_page_terms.js</code>（应红，退出码 1）
+  </div>
+
+</div>
+</body>
+</html>
