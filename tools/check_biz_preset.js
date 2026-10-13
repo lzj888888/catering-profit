@@ -237,6 +237,62 @@ check('F-⑤ 🔴 三档难度文案不得含"生意承诺/判决"词（须为"�
   lvText.every((s) => s && s.length > 0) && !lvText.some((s) => PROMISE.test(s)),
   lvText.map((s, i) => ['easy', 'ok', 'hard'][i] + '=' + (s === null ? '（键缺失）' : s)).join(' · '));
 
+// ============ G R293：占比一律取 BANDS 指数（禁自定）============
+// 🔴 为什么必须守（李老师 2026-10-14 原话：「咱们数据库有的指数，比如各种占比，按咱们的指数走」）：
+//   `utils/bizPreset.js` 是**前端文件、不便 require 云函数** ⇒ BANDS 只能以「数字」形式落在这里。
+//   数字一旦落下来就可能与单源**静默漂移**（改了 BANDS、这里没跟 ⇒ 老板看到的占比仍是旧口径，
+//   且**零报错**：数字合法、装配通过、引擎照算）。S-⑤/S-⑥ 只守了 CITY_COEF，占比这一族此前裸奔。
+//   判据两条：① 毛利率必须落在 BANDS 带内（带外 ⇒ 老板一进来就被误判"偏低/偏高"）；
+//            ② `derivedFrom:'rent_rate'` 的 rentPct 必须 ≡ BANDS 中值之比（容差 ±1，取整误差）。
+sec('G · R293 预设占比 ≡ BANDS 指数派生（禁自定）');
+{
+  const indSrcG = readOr(INDICATOR) || '';
+  const segG = /const\s+BANDS\s*=\s*\{([\s\S]*?)\n\};/.exec(indSrcG);
+  const BANDS = {};
+  if (segG) {
+    const lineRe = /^\s*(\w+):\s*\{([^}]*)\}/gm;
+    let m;
+    while ((m = lineRe.exec(segG[1]))) {
+      const o = {};
+      const kvRe = /(\w+):\s*\[([\d.]+),\s*([\d.]+)\]/g;
+      let k;
+      while ((k = kvRe.exec(m[2]))) o[k[1]] = { mid: (Number(k[2]) + Number(k[3])) / 2, lo: Number(k[2]), hi: Number(k[3]) };
+      BANDS[m[1]] = o;
+    }
+  }
+  const bandKeys = Object.keys(BANDS);
+  check('G-① 从 indicatorRef.js 解析出 BANDS（5 业态 × 6 指标；解析不到即红，防"扫空恒绿"）',
+    bandKeys.length === 5 && bandKeys.every((k) => Object.keys(BANDS[k]).length === 6),
+    bandKeys.length ? bandKeys.map((k) => k + '(' + Object.keys(BANDS[k]).length + ')').join(' ') : '解析不到 ⇒ fail-closed');
+
+  if (bandKeys.length === 5 && Array.isArray(BIZ_PRESETS)) {
+    const outGm = [], outPct = [];
+    for (const p of BIZ_PRESETS) {
+      const b = BANDS[p.bizKey];
+      if (!b) { outGm.push(p.presetKey + ' 业态无带'); continue; }
+      const gm = p.params && p.params.grossMarginPct ? Number(p.params.grossMarginPct.v) : null;
+      if (gm == null) { outGm.push(p.presetKey + ' 缺毛利率'); continue; }
+      if (!(gm >= b.grossMargin.lo && gm <= b.grossMargin.hi)) {
+        outGm.push(`${p.presetKey} 毛利率 ${gm}% ∉ [${b.grossMargin.lo},${b.grossMargin.hi}]`);
+      }
+      for (const m of (p.costMeta || [])) {
+        if (m.derivedFrom !== 'rent_rate') continue;
+        const indKey = m.itemKey === 'utility' ? 'energy' : (m.itemKey === 'manage' ? 'manage' : null);
+        if (!indKey) continue;
+        const want = Math.round(b[indKey].mid / b.rent.mid * 100);
+        if (Math.abs(Number(m.rentPct) - want) > 1) {
+          outPct.push(`${p.presetKey}.${m.itemKey} rentPct ${m.rentPct} ≠ BANDS 推导 ${want}`);
+        }
+        if (m.src === 'E') outPct.push(`${p.presetKey}.${m.itemKey} src 仍是 'E'（自定占比）⇒ 应为 'B'`);
+      }
+    }
+    check('G-② 每个预设毛利率 ∈ BANDS.grossMargin 带内（带外 ⇒ 老板被误判"毛利率偏低"）',
+      outGm.length === 0, outGm.length ? '越界：' + outGm.join(' | ') : `${BIZ_PRESETS.length} 个全在带内`);
+    check('G-③ 🔴 rentPct ≡ BANDS 中值之比（rentPct = BANDS[ind]中值 ÷ BANDS.rent中值 × 100，±1）',
+      outPct.length === 0, outPct.length ? '漂移：' + outPct.join(' | ') : '全部 ≡ BANDS 派生（零自定占比）');
+  }
+}
+
 // 断言数下界（用于 check_suite_assert_counts 登记；file 末尾打印「N 通过 / M 失败」）
 console.log(`\n===== 业态参数包守卫结果：${pass} 通过 / ${failN} 失败 =====`);
 process.exit(failN === 0 ? 0 : 1);
