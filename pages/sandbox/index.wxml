@@ -127,17 +127,17 @@
     <!-- L3 专业参数 -->
     <view class="fold-toggle" bindtap="onToggleL3">{{t.l3Toggle}}{{showL3 ? ' ▾' : ' ▸'}}</view>
     <view wx:if="{{showL3}}" id="l3-pro">
-      <view class="row">
-        <text class="row-name">{{t.openDaysLabel2}}</text>
-        <view class="row-in-wrap">
-          <input class="row-in" type="number" value="{{openDaysNum}}" bindinput="onOpenDays2" adjust-position="{{true}}" cursor-spacing="20" />
-          <text class="row-unit">{{t.dayUnit}}</text>
+        <!-- 🔴 R290 · 李老师：「每月开门天数这个不需要写，整体默认的就是每天都正常营业，我们推演也是按每天营业推的」
+           ⇒ 移除输入框。实测依据：`utils/bizPreset.js` 7 个业态参数包的 openDays **全部 = 30**，
+             与「每天营业」一致 ⇒ 改常量零冲突、不改任何数字。
+           ⚠️ 引擎侧 `open_days` 仍是必填（`validate` 要求 1~31 整数）⇒ **不是删字段，是固定 30**：
+              `openDaysNum` 默认 '30' ＋ 草稿回读兜底 '30' ＋ 发参 `|| 30`
+              （留空会发 0 ⇒ 触发 fail-closed，老板只会看到「填写错误」）。 -->
+        <view class="row">
+          <text class="row-name">{{t.openDaysLabel2}}</text>
+          <text class="row-unit">{{openDaysNum}}{{t.dayUnit}}</text>
         </view>
-      </view>
-      <!-- 🔴 round276 · 给默认值消纠结：原「一个月打算开门几天」的"打算"暗示可以随便选，
-           老板会卡在填 30 还是 31（李老师：「餐饮基本都是常年开，你让客户填30还是31？太模糊了」）。
-           ⇒ 主标题改「每月实际开门几天」，再挂这行给默认动作：常年开就填 30。 -->
-      <view class="row-note">{{t.openDaysNote2}}</view>
+        <view class="row-note">{{t.openDaysNote2}}</view>
       <!-- 🔴 R234-实测移除：坪效 / 翻台率 两个输入框。
            依据李老师原话「这些本身是咱们计算出来的，不是让客户自己填出来的」。
            实测两条硬事实：

@@ -354,7 +354,9 @@ Page({
     headcountNum: '',        // 员工数（人）
     avgPriceYuan: '',        // 客单价（元）
     laborUnitYuan: '',       // 单人月人工单价（元）
-    openDaysNum: '',         // 每月营业天数
+    // 🔴 R290：固定 30（李老师原话「每天都正常营业，推演也按每天营业推」）。
+    //   ⚠️ 不是删字段——引擎 `open_days` 必填 1~31，留空会发 0 ⇒ fail-closed 报「填写错误」。
+    openDaysNum: '30',       // 每月营业天数（常量，页面只读展示，不再让老板填）
     // 🔴 R237：输入口径由「座位数」改为「桌数」—— 李老师 2026-10-08 原话：
     //   「餐饮老板算账都是按桌数来算，比如店里有 20 张桌子，今天火锅卖了 30 桌」。
     //   引擎入参仍是 `seats`（座位数，云函数契约字段，**名字与形状一字不改**）⇒
@@ -473,7 +475,7 @@ Page({
       marginPct: typeof d.marginPct === 'number' ? d.marginPct : this.data.marginPct,
       expectYuan: d.expectYuan || '',
       targetYuan: d.targetYuan || '',
-      openDaysNum: d.openDaysNum || '',
+      openDaysNum: d.openDaysNum || '30',   // R290：旧草稿没有该字段时兜底 30，绝不回退空串（空串 ⇒ 发 0 ⇒ fail-closed）
       presetKey: d.presetKey || '',   // 🔴 round279e · D：回存业态预设（老用户打开时选择器与计算口径一致，不再"显示通用、实际按别业态算"）
       draftRestored: true,
     });
@@ -615,6 +617,16 @@ Page({
   onTab(e) {
     const mode = e.currentTarget.dataset.mode;
     if (mode === this.data.mode) return;
+    // 🔴 R290 v5（李老师拍板）：找店 = 多维度推演 ⇒ **直接进场景矩阵页**，不在首页再填一遍。
+    //   实证依据（勿凭转述改设计）：
+    //   · 矩阵页 4 个维度档位 rent/labor/margin/target 已存在，且 buildClean 传 `fixedYuan:{rent}`
+    //     **不传 mode** ⇒ 引擎 `validate.js:24` 默认 forward ⇒ **矩阵本来就出保本点**（不是只有房租上限）。
+    //   · 首页 reverse 才走 reverse 引擎（只出 rent_cap_fen、无 break_even），那是另一条路。
+    //   ⇒ 首页自此恒为「已有铺面」（forward）；找店的房租在矩阵页以「档位」形式填，仍遵循「房租是根本」。
+    if (mode === 'reverse') {
+      wx.navigateTo({ url: '/pages/sandbox/matrix?mode=reverse' });
+      return;
+    }
     this.setData({ mode });
     // 切 Tab 后吸底条标签/数字要跟着当前结果重算（结果可能仍有效，也可能已清空）
     this.refreshStick();
@@ -866,7 +878,7 @@ Page({
           // R234：同义字段合并 —— 人均/座位/天数/坪效一律取 L2/L3 那一份（反推卡不再另收）
           rev_price_fen: api.yuanToFen(this.data.avgPriceYuan),
           seats: this.seatsNow(),   // R237：由「桌数 × 单桌座位数」换算（唯一换算点见 seatsNow()）
-          open_days: Number(this.data.openDaysNum) || 0,
+          open_days: Number(this.data.openDaysNum) || 30,   // R290：兜底 30（不填也对，引擎要 1~31）
           target_rent_rate: this.rentRateDefault(),
           pixel_eff_fen: 0,   // R234-实测：坪效退出输入区 ⇒ 恒 0 ⇒ 引擎返回 area_cap_sqm=null（不编造）
           client_request_id: 'sb_' + Date.now(),
@@ -1113,7 +1125,7 @@ Page({
       // R234：同义字段合并 —— 一律取 L2/L3 那一份（反推卡不再另收一套）
       rev_price_fen: api.yuanToFen(this.data.avgPriceYuan),
       seats: this.seatsNow(),   // R237：由「桌数 × 单桌座位数」换算（唯一换算点见 seatsNow()）
-      open_days: Number(this.data.openDaysNum) || 0,
+      open_days: Number(this.data.openDaysNum) || 30,   // R290：兜底 30（反推 open_days 必填 1~31，发 0 会被 validate 拒）
       target_rent_rate: this.rentRateDefault(),
       pixel_eff_fen: 0,   // R234-实测：同上（契约字段保留，取值恒 0）
     };
@@ -1210,6 +1222,8 @@ Page({
    *   为什么必须在页面侧夹一次：正向入参 `valid_days` 走**严格校验**（非 1~31 的整数直接拒），
    *   用户可能填 28.5 ⇒ 不夹就会把一个"本来能算"的表单变成一条契约名报错。
    *   ⚠️ 反推的 `open_days` 保持原样（其 fail-closed 语义由 validate 层守着，不在此处改）。
+   *   🔴 R290：该项已改为**常量 30**（老板不再填）⇒ 正常路径恒返回 30；
+   *      「未填返回 0」这一哨兵分支仍需保留——防止历史草稿里存了空串/非法值时把整表变成「填写错误」。
    */
   validDaysNow() {
     const n = Number(this.data.openDaysNum);
@@ -1347,7 +1361,7 @@ Page({
   onInitialInvest(e) { this.setData({ initialInvestYuan: e.detail.value }); this.scheduleCalc(); },
   onAvgPrice(e) { this.setData({ avgPriceYuan: e.detail.value }); this.scheduleCalc(); },
   onLaborUnit(e) { this.setData({ laborUnitYuan: e.detail.value }); this.scheduleCalc(); },
-  onOpenDays2(e) { this.setData({ openDaysNum: e.detail.value }); this.scheduleCalc(); },
+  // 🔴 R290：营业天数改为常量 30 ⇒ 原 `onOpenDays2` 输入 handler 随 UI 一并删除（不留孤立 handler）。
   // 🔴 R234-实测修复：`onPixelEff` / `onTurn` 已随输入区一并删除（坪效/翻台率是算出来的，不是填的）。
   //    留着 handler 会让人以为"UI 删了、逻辑还在"，下次加回输入框只要一行 —— 必须连根拔。
   onFeePct(e) {
