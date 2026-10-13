@@ -24,6 +24,13 @@ for k in keys:
     parts = k.split(" ")
     args = parts[1:]
     exe = NODE if k.startswith("node.exe") else PY
+    # 🔴 R282 根治「不可还原键」：缓存键是**扁平字符串**（preload 的 keyOf 用 args.join(' ')，
+    #   引号丢失）⇒ `python.exe -c "import docx"` 存成 `python.exe -c import docx`，
+    #   还原时被拆成 ['-c','import','docx'] ⇒ 真跑 `-c import` ⇒ SyntaxError ⇒ 恒红。
+    #   `-c` 只接受**一个**参数 ⇒ 把剩余全部并回去即可。
+    #   ✅ 刻意**不改键格式**（改了会让既有 177 个键全部失效、需全量重建，代价远大于收益）。
+    if args and args[0] == '-c' and len(args) > 2:
+        args = ['-c', ' '.join(args[1:])]
     script = args[-1] if args else ""
     cwds = [REPO]
     if script and os.path.isabs(script) and os.path.exists(script):
