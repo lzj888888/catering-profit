@@ -1,0 +1,1398 @@
+{
+  "forward": [
+    {
+      "name": "A · 县城小面馆（李老板）",
+      "bizKey": "fastfood",
+      "cityKey": "county",
+      "fixedMap": {
+        "rent": 300000,
+        "labor": 544000,
+        "utility": 120000,
+        "manage": 141000
+      },
+      "d": {
+        "build_total_fen": 0,
+        "build_amort_monthly_fen": 0,
+        "fixed_ex_amort_fen": 1105000,
+        "fixed_total_fen": 1105000,
+        "food_cost_pct": 45,
+        "platform_pct": 2,
+        "composite_var_rate_pct": 47,
+        "margin_rate_ratio": 0.53,
+        "red_alert": false,
+        "break_even_monthly_fen": 2084906,
+        "break_even_daily_fen": 69497,
+        "target_monthly_fen": 3594340,
+        "target_daily_fen": 119811,
+        "valid_days": 30,
+        "payback_months": null,
+        "indicators_at_breakeven": [
+          {
+            "key": "grossMargin",
+            "pct": 55,
+            "lo": 58,
+            "hi": 68,
+            "level": "warn",
+            "redline": 55,
+            "redlineHit": false
+          },
+          {
+            "key": "rent",
+            "pct": 14.4,
+            "lo": 3.8,
+            "hi": 7.5,
+            "level": "bad",
+            "redline": 15,
+            "redlineHit": false
+          },
+          {
+            "key": "labor",
+            "pct": 26.1,
+            "lo": 13.6,
+            "hi": 17,
+            "level": "bad",
+            "redline": 20,
+            "redlineHit": true
+          },
+          {
+            "key": "energy",
+            "pct": 5.8,
+            "lo": 2,
+            "hi": 4,
+            "level": "bad",
+            "redline": null,
+            "redlineHit": false
+          },
+          {
+            "key": "manage",
+            "pct": 6.8,
+            "lo": 5,
+            "hi": 10,
+            "level": "ok",
+            "redline": null,
+            "redlineHit": false
+          },
+          {
+            "key": "mkt",
+            "pct": 2,
+            "lo": 3,
+            "hi": 8,
+            "level": "good",
+            "redline": null,
+            "redlineHit": false
+          }
+        ],
+        "indicators_at_target": [
+          {
+            "key": "grossMargin",
+            "pct": 55,
+            "lo": 58,
+            "hi": 68,
+            "level": "warn",
+            "redline": 55,
+            "redlineHit": false
+          },
+          {
+            "key": "rent",
+            "pct": 8.3,
+            "lo": 3.8,
+            "hi": 7.5,
+            "level": "warn",
+            "redline": 15,
+            "redlineHit": false
+          },
+          {
+            "key": "labor",
+            "pct": 15.1,
+            "lo": 13.6,
+            "hi": 17,
+            "level": "ok",
+            "redline": 20,
+            "redlineHit": false
+          },
+          {
+            "key": "energy",
+            "pct": 3.3,
+            "lo": 2,
+            "hi": 4,
+            "level": "ok",
+            "redline": null,
+            "redlineHit": false
+          },
+          {
+            "key": "manage",
+            "pct": 3.9,
+            "lo": 5,
+            "hi": 10,
+            "level": "good",
+            "redline": null,
+            "redlineHit": false
+          },
+          {
+            "key": "mkt",
+            "pct": 2,
+            "lo": 3,
+            "hi": 8,
+            "level": "good",
+            "redline": null,
+            "redlineHit": false
+          }
+        ],
+        "bands_preview": [
+          {
+            "key": "grossMargin",
+            "dir": "gain",
+            "lo": 58,
+            "hi": 68,
+            "redline": 55
+          },
+          {
+            "key": "rent",
+            "dir": "cost",
+            "lo": 3.8,
+            "hi": 7.5,
+            "redline": 15
+          },
+          {
+            "key": "labor",
+            "dir": "cost",
+            "lo": 13.6,
+            "hi": 17,
+            "redline": 20
+          },
+          {
+            "key": "energy",
+            "dir": "cost",
+            "lo": 2,
+            "hi": 4,
+            "redline": null
+          },
+          {
+            "key": "manage",
+            "dir": "cost",
+            "lo": 5,
+            "hi": 10,
+            "redline": null
+          },
+          {
+            "key": "mkt",
+            "dir": "cost",
+            "lo": 3,
+            "hi": 8,
+            "redline": null
+          }
+        ],
+        "amount_preview": [
+          {
+            "key": "rent",
+            "indKey": "rent",
+            "pct": 5.7,
+            "fen": 342000
+          },
+          {
+            "key": "labor",
+            "indKey": "labor",
+            "pct": 15.3,
+            "fen": 918000
+          },
+          {
+            "key": "utility",
+            "indKey": "energy",
+            "pct": 3,
+            "fen": 180000
+          },
+          {
+            "key": "manage",
+            "indKey": "manage",
+            "pct": 7.5,
+            "fen": 450000
+          }
+        ]
+      }
+    },
+    {
+      "name": "B · 二线火锅半自助（王老板）",
+      "bizKey": "hotpot",
+      "cityKey": "tier23",
+      "fixedMap": {
+        "rent": 1200000,
+        "labor": 2500000,
+        "utility": 750000,
+        "manage": 264000
+      },
+      "d": {
+        "build_total_fen": 26200000,
+        "build_amort_monthly_fen": 610000,
+        "fixed_ex_amort_fen": 4714000,
+        "fixed_total_fen": 5324000,
+        "food_cost_pct": 47,
+        "platform_pct": 2,
+        "composite_var_rate_pct": 49,
+        "margin_rate_ratio": 0.51,
+        "red_alert": false,
+        "break_even_monthly_fen": 10439216,
+        "break_even_daily_fen": 347974,
+        "target_monthly_fen": 16321569,
+        "target_daily_fen": 544052,
+        "valid_days": 30,
+        "payback_months": 8.7,
+        "indicators_at_breakeven": [
+          {
+            "key": "grossMargin",
+            "pct": 53,
+            "lo": 52,
+            "hi": 67,
+            "level": "ok",
+            "redline": 55,
+            "redlineHit": true
+          },
+          {
+            "key": "rent",
+            "pct": 11.5,
+            "lo": 8,
+            "hi": 15,
+            "level": "ok",
+            "redline": 15,
+            "redlineHit": false
+          },
+          {
+            "key": "labor",
+            "pct": 23.9,
+            "lo": 14,
+            "hi": 18,
+            "level": "bad",
+            "redline": 20,
+            "redlineHit": true
+          },
+          {
+            "key": "energy",
+            "pct": 7.2,
+            "lo": 4,
+            "hi": 6,
+            "level": "warn",
+            "redline": null,
+            "redlineHit": false
+          },
+          {
+            "key": "manage",
+            "pct": 2.5,
+            "lo": 5,
+            "hi": 10,
+            "level": "good",
+            "redline": null,
+            "redlineHit": false
+          },
+          {
+            "key": "mkt",
+            "pct": 2,
+            "lo": 5,
+            "hi": 10,
+            "level": "good",
+            "redline": null,
+            "redlineHit": false
+          }
+        ],
+        "indicators_at_target": [
+          {
+            "key": "grossMargin",
+            "pct": 53,
+            "lo": 52,
+            "hi": 67,
+            "level": "ok",
+            "redline": 55,
+            "redlineHit": true
+          },
+          {
+            "key": "rent",
+            "pct": 7.4,
+            "lo": 8,
+            "hi": 15,
+            "level": "good",
+            "redline": 15,
+            "redlineHit": false
+          },
+          {
+            "key": "labor",
+            "pct": 15.3,
+            "lo": 14,
+            "hi": 18,
+            "level": "ok",
+            "redline": 20,
+            "redlineHit": false
+          },
+          {
+            "key": "energy",
+            "pct": 4.6,
+            "lo": 4,
+            "hi": 6,
+            "level": "ok",
+            "redline": null,
+            "redlineHit": false
+          },
+          {
+            "key": "manage",
+            "pct": 1.6,
+            "lo": 5,
+            "hi": 10,
+            "level": "good",
+            "redline": null,
+            "redlineHit": false
+          },
+          {
+            "key": "mkt",
+            "pct": 2,
+            "lo": 5,
+            "hi": 10,
+            "level": "good",
+            "redline": null,
+            "redlineHit": false
+          }
+        ],
+        "bands_preview": [
+          {
+            "key": "grossMargin",
+            "dir": "gain",
+            "lo": 52,
+            "hi": 67,
+            "redline": 55
+          },
+          {
+            "key": "rent",
+            "dir": "cost",
+            "lo": 8,
+            "hi": 15,
+            "redline": 15
+          },
+          {
+            "key": "labor",
+            "dir": "cost",
+            "lo": 14,
+            "hi": 18,
+            "redline": 20
+          },
+          {
+            "key": "energy",
+            "dir": "cost",
+            "lo": 4,
+            "hi": 6,
+            "redline": null
+          },
+          {
+            "key": "manage",
+            "dir": "cost",
+            "lo": 5,
+            "hi": 10,
+            "redline": null
+          },
+          {
+            "key": "mkt",
+            "dir": "cost",
+            "lo": 5,
+            "hi": 10,
+            "redline": null
+          }
+        ],
+        "amount_preview": [
+          {
+            "key": "rent",
+            "indKey": "rent",
+            "pct": 11.5,
+            "fen": 2875000
+          },
+          {
+            "key": "labor",
+            "indKey": "labor",
+            "pct": 16,
+            "fen": 4000000
+          },
+          {
+            "key": "utility",
+            "indKey": "energy",
+            "pct": 5,
+            "fen": 1250000
+          },
+          {
+            "key": "manage",
+            "indKey": "manage",
+            "pct": 7.5,
+            "fen": 1875000
+          }
+        ]
+      }
+    },
+    {
+      "name": "C · 一线快餐（张老板）",
+      "bizKey": "fastfood",
+      "cityKey": "tier1",
+      "fixedMap": {
+        "rent": 1500000,
+        "labor": 2760000,
+        "utility": 600000,
+        "manage": 705000
+      },
+      "d": {
+        "build_total_fen": 0,
+        "build_amort_monthly_fen": 0,
+        "fixed_ex_amort_fen": 5565000,
+        "fixed_total_fen": 5565000,
+        "food_cost_pct": 45,
+        "platform_pct": 2,
+        "composite_var_rate_pct": 47,
+        "margin_rate_ratio": 0.53,
+        "red_alert": false,
+        "break_even_monthly_fen": 10500000,
+        "break_even_daily_fen": 350000,
+        "target_monthly_fen": 14273585,
+        "target_daily_fen": 475786,
+        "valid_days": 30,
+        "payback_months": null,
+        "indicators_at_breakeven": [
+          {
+            "key": "grossMargin",
+            "pct": 55,
+            "lo": 58,
+            "hi": 68,
+            "level": "warn",
+            "redline": 55,
+            "redlineHit": false
+          },
+          {
+            "key": "rent",
+            "pct": 14.3,
+            "lo": 6,
+            "hi": 12,
+            "level": "warn",
+            "redline": 15,
+            "redlineHit": false
+          },
+          {
+            "key": "labor",
+            "pct": 26.3,
+            "lo": 18.4,
+            "hi": 23,
+            "level": "warn",
+            "redline": 20,
+            "redlineHit": true
+          },
+          {
+            "key": "energy",
+            "pct": 5.7,
+            "lo": 2,
+            "hi": 4,
+            "level": "bad",
+            "redline": null,
+            "redlineHit": false
+          },
+          {
+            "key": "manage",
+            "pct": 6.7,
+            "lo": 5,
+            "hi": 10,
+            "level": "ok",
+            "redline": null,
+            "redlineHit": false
+          },
+          {
+            "key": "mkt",
+            "pct": 2,
+            "lo": 3,
+            "hi": 8,
+            "level": "good",
+            "redline": null,
+            "redlineHit": false
+          }
+        ],
+        "indicators_at_target": [
+          {
+            "key": "grossMargin",
+            "pct": 55,
+            "lo": 58,
+            "hi": 68,
+            "level": "warn",
+            "redline": 55,
+            "redlineHit": false
+          },
+          {
+            "key": "rent",
+            "pct": 10.5,
+            "lo": 6,
+            "hi": 12,
+            "level": "ok",
+            "redline": 15,
+            "redlineHit": false
+          },
+          {
+            "key": "labor",
+            "pct": 19.3,
+            "lo": 18.4,
+            "hi": 23,
+            "level": "ok",
+            "redline": 20,
+            "redlineHit": false
+          },
+          {
+            "key": "energy",
+            "pct": 4.2,
+            "lo": 2,
+            "hi": 4,
+            "level": "warn",
+            "redline": null,
+            "redlineHit": false
+          },
+          {
+            "key": "manage",
+            "pct": 4.9,
+            "lo": 5,
+            "hi": 10,
+            "level": "good",
+            "redline": null,
+            "redlineHit": false
+          },
+          {
+            "key": "mkt",
+            "pct": 2,
+            "lo": 3,
+            "hi": 8,
+            "level": "good",
+            "redline": null,
+            "redlineHit": false
+          }
+        ],
+        "bands_preview": [
+          {
+            "key": "grossMargin",
+            "dir": "gain",
+            "lo": 58,
+            "hi": 68,
+            "redline": 55
+          },
+          {
+            "key": "rent",
+            "dir": "cost",
+            "lo": 6,
+            "hi": 12,
+            "redline": 15
+          },
+          {
+            "key": "labor",
+            "dir": "cost",
+            "lo": 18.4,
+            "hi": 23,
+            "redline": 20
+          },
+          {
+            "key": "energy",
+            "dir": "cost",
+            "lo": 2,
+            "hi": 4,
+            "redline": null
+          },
+          {
+            "key": "manage",
+            "dir": "cost",
+            "lo": 5,
+            "hi": 10,
+            "redline": null
+          },
+          {
+            "key": "mkt",
+            "dir": "cost",
+            "lo": 3,
+            "hi": 8,
+            "redline": null
+          }
+        ],
+        "amount_preview": [
+          {
+            "key": "rent",
+            "indKey": "rent",
+            "pct": 9,
+            "fen": 1620000
+          },
+          {
+            "key": "labor",
+            "indKey": "labor",
+            "pct": 20.7,
+            "fen": 3726000
+          },
+          {
+            "key": "utility",
+            "indKey": "energy",
+            "pct": 3,
+            "fen": 540000
+          },
+          {
+            "key": "manage",
+            "indKey": "manage",
+            "pct": 7.5,
+            "fen": 1350000
+          }
+        ]
+      }
+    },
+    {
+      "name": "D · 三线川菜正餐（陈老板）",
+      "bizKey": "dining",
+      "cityKey": "tier23",
+      "fixedMap": {
+        "rent": 800000,
+        "labor": 2700000,
+        "utility": 280000,
+        "manage": 208000
+      },
+      "d": {
+        "build_total_fen": 0,
+        "build_amort_monthly_fen": 0,
+        "fixed_ex_amort_fen": 3988000,
+        "fixed_total_fen": 3988000,
+        "food_cost_pct": 40,
+        "platform_pct": 2,
+        "composite_var_rate_pct": 42,
+        "margin_rate_ratio": 0.58,
+        "red_alert": false,
+        "break_even_monthly_fen": 6875862,
+        "break_even_daily_fen": 229195,
+        "target_monthly_fen": 11186207,
+        "target_daily_fen": 372874,
+        "valid_days": 30,
+        "payback_months": null,
+        "indicators_at_breakeven": [
+          {
+            "key": "grossMargin",
+            "pct": 60,
+            "lo": 55,
+            "hi": 65,
+            "level": "ok",
+            "redline": 55,
+            "redlineHit": false
+          },
+          {
+            "key": "rent",
+            "pct": 11.6,
+            "lo": 8,
+            "hi": 15,
+            "level": "ok",
+            "redline": 15,
+            "redlineHit": false
+          },
+          {
+            "key": "labor",
+            "pct": 39.3,
+            "lo": 17,
+            "hi": 22,
+            "level": "bad",
+            "redline": 20,
+            "redlineHit": true
+          },
+          {
+            "key": "energy",
+            "pct": 4.1,
+            "lo": 3,
+            "hi": 5,
+            "level": "ok",
+            "redline": null,
+            "redlineHit": false
+          },
+          {
+            "key": "manage",
+            "pct": 3,
+            "lo": 5,
+            "hi": 10,
+            "level": "good",
+            "redline": null,
+            "redlineHit": false
+          },
+          {
+            "key": "mkt",
+            "pct": 2,
+            "lo": 5,
+            "hi": 10,
+            "level": "good",
+            "redline": null,
+            "redlineHit": false
+          }
+        ],
+        "indicators_at_target": [
+          {
+            "key": "grossMargin",
+            "pct": 60,
+            "lo": 55,
+            "hi": 65,
+            "level": "ok",
+            "redline": 55,
+            "redlineHit": false
+          },
+          {
+            "key": "rent",
+            "pct": 7.2,
+            "lo": 8,
+            "hi": 15,
+            "level": "good",
+            "redline": 15,
+            "redlineHit": false
+          },
+          {
+            "key": "labor",
+            "pct": 24.1,
+            "lo": 17,
+            "hi": 22,
+            "level": "warn",
+            "redline": 20,
+            "redlineHit": true
+          },
+          {
+            "key": "energy",
+            "pct": 2.5,
+            "lo": 3,
+            "hi": 5,
+            "level": "good",
+            "redline": null,
+            "redlineHit": false
+          },
+          {
+            "key": "manage",
+            "pct": 1.9,
+            "lo": 5,
+            "hi": 10,
+            "level": "good",
+            "redline": null,
+            "redlineHit": false
+          },
+          {
+            "key": "mkt",
+            "pct": 2,
+            "lo": 5,
+            "hi": 10,
+            "level": "good",
+            "redline": null,
+            "redlineHit": false
+          }
+        ],
+        "bands_preview": [
+          {
+            "key": "grossMargin",
+            "dir": "gain",
+            "lo": 55,
+            "hi": 65,
+            "redline": 55
+          },
+          {
+            "key": "rent",
+            "dir": "cost",
+            "lo": 8,
+            "hi": 15,
+            "redline": 15
+          },
+          {
+            "key": "labor",
+            "dir": "cost",
+            "lo": 17,
+            "hi": 22,
+            "redline": 20
+          },
+          {
+            "key": "energy",
+            "dir": "cost",
+            "lo": 3,
+            "hi": 5,
+            "redline": null
+          },
+          {
+            "key": "manage",
+            "dir": "cost",
+            "lo": 5,
+            "hi": 10,
+            "redline": null
+          },
+          {
+            "key": "mkt",
+            "dir": "cost",
+            "lo": 5,
+            "hi": 10,
+            "redline": null
+          }
+        ],
+        "amount_preview": [
+          {
+            "key": "rent",
+            "indKey": "rent",
+            "pct": 11.5,
+            "fen": 2300000
+          },
+          {
+            "key": "labor",
+            "indKey": "labor",
+            "pct": 19.5,
+            "fen": 3900000
+          },
+          {
+            "key": "utility",
+            "indKey": "energy",
+            "pct": 4,
+            "fen": 800000
+          },
+          {
+            "key": "manage",
+            "indKey": "manage",
+            "pct": 7.5,
+            "fen": 1500000
+          }
+        ]
+      }
+    },
+    {
+      "name": "E · 二线新式茶饮（小美）",
+      "bizKey": "cafe",
+      "cityKey": "tier23",
+      "fixedMap": {
+        "rent": 600000,
+        "labor": 840000,
+        "utility": 144000,
+        "manage": 180000
+      },
+      "d": {
+        "build_total_fen": 0,
+        "build_amort_monthly_fen": 0,
+        "fixed_ex_amort_fen": 1764000,
+        "fixed_total_fen": 1764000,
+        "food_cost_pct": 33,
+        "platform_pct": 2,
+        "composite_var_rate_pct": 35,
+        "margin_rate_ratio": 0.65,
+        "red_alert": false,
+        "break_even_monthly_fen": 2713846,
+        "break_even_daily_fen": 90462,
+        "target_monthly_fen": 4252308,
+        "target_daily_fen": 141744,
+        "valid_days": 30,
+        "payback_months": null,
+        "indicators_at_breakeven": [
+          {
+            "key": "grossMargin",
+            "pct": 67,
+            "lo": 62,
+            "hi": 72,
+            "level": "ok",
+            "redline": 55,
+            "redlineHit": false
+          },
+          {
+            "key": "rent",
+            "pct": 22.1,
+            "lo": 5,
+            "hi": 12,
+            "level": "bad",
+            "redline": 15,
+            "redlineHit": true
+          },
+          {
+            "key": "labor",
+            "pct": 31,
+            "lo": 14,
+            "hi": 18,
+            "level": "bad",
+            "redline": 20,
+            "redlineHit": true
+          },
+          {
+            "key": "energy",
+            "pct": 5.3,
+            "lo": 1,
+            "hi": 3,
+            "level": "bad",
+            "redline": null,
+            "redlineHit": false
+          },
+          {
+            "key": "manage",
+            "pct": 6.6,
+            "lo": 5,
+            "hi": 10,
+            "level": "ok",
+            "redline": null,
+            "redlineHit": false
+          },
+          {
+            "key": "mkt",
+            "pct": 2,
+            "lo": 3,
+            "hi": 8,
+            "level": "good",
+            "redline": null,
+            "redlineHit": false
+          }
+        ],
+        "indicators_at_target": [
+          {
+            "key": "grossMargin",
+            "pct": 67,
+            "lo": 62,
+            "hi": 72,
+            "level": "ok",
+            "redline": 55,
+            "redlineHit": false
+          },
+          {
+            "key": "rent",
+            "pct": 14.1,
+            "lo": 5,
+            "hi": 12,
+            "level": "warn",
+            "redline": 15,
+            "redlineHit": false
+          },
+          {
+            "key": "labor",
+            "pct": 19.8,
+            "lo": 14,
+            "hi": 18,
+            "level": "warn",
+            "redline": 20,
+            "redlineHit": false
+          },
+          {
+            "key": "energy",
+            "pct": 3.4,
+            "lo": 1,
+            "hi": 3,
+            "level": "warn",
+            "redline": null,
+            "redlineHit": false
+          },
+          {
+            "key": "manage",
+            "pct": 4.2,
+            "lo": 5,
+            "hi": 10,
+            "level": "good",
+            "redline": null,
+            "redlineHit": false
+          },
+          {
+            "key": "mkt",
+            "pct": 2,
+            "lo": 3,
+            "hi": 8,
+            "level": "good",
+            "redline": null,
+            "redlineHit": false
+          }
+        ],
+        "bands_preview": [
+          {
+            "key": "grossMargin",
+            "dir": "gain",
+            "lo": 62,
+            "hi": 72,
+            "redline": 55
+          },
+          {
+            "key": "rent",
+            "dir": "cost",
+            "lo": 5,
+            "hi": 12,
+            "redline": 15
+          },
+          {
+            "key": "labor",
+            "dir": "cost",
+            "lo": 14,
+            "hi": 18,
+            "redline": 20
+          },
+          {
+            "key": "energy",
+            "dir": "cost",
+            "lo": 1,
+            "hi": 3,
+            "redline": null
+          },
+          {
+            "key": "manage",
+            "dir": "cost",
+            "lo": 5,
+            "hi": 10,
+            "redline": null
+          },
+          {
+            "key": "mkt",
+            "dir": "cost",
+            "lo": 3,
+            "hi": 8,
+            "redline": null
+          }
+        ],
+        "amount_preview": [
+          {
+            "key": "rent",
+            "indKey": "rent",
+            "pct": 8.5,
+            "fen": 510000
+          },
+          {
+            "key": "labor",
+            "indKey": "labor",
+            "pct": 16,
+            "fen": 960000
+          },
+          {
+            "key": "utility",
+            "indKey": "energy",
+            "pct": 2,
+            "fen": 120000
+          },
+          {
+            "key": "manage",
+            "indKey": "manage",
+            "pct": 7.5,
+            "fen": 450000
+          }
+        ]
+      }
+    },
+    {
+      "name": "F · 二线烧烤（刘老板）",
+      "bizKey": "hotpot",
+      "cityKey": "tier23",
+      "fixedMap": {
+        "rent": 1000000,
+        "labor": 2100000,
+        "utility": 430000,
+        "manage": 220000
+      },
+      "d": {
+        "build_total_fen": 0,
+        "build_amort_monthly_fen": 0,
+        "fixed_ex_amort_fen": 3750000,
+        "fixed_total_fen": 3750000,
+        "food_cost_pct": 41,
+        "platform_pct": 2,
+        "composite_var_rate_pct": 43,
+        "margin_rate_ratio": 0.57,
+        "red_alert": false,
+        "break_even_monthly_fen": 6578947,
+        "break_even_daily_fen": 219298,
+        "target_monthly_fen": 10964912,
+        "target_daily_fen": 365497,
+        "valid_days": 30,
+        "payback_months": null,
+        "indicators_at_breakeven": [
+          {
+            "key": "grossMargin",
+            "pct": 59,
+            "lo": 52,
+            "hi": 67,
+            "level": "ok",
+            "redline": 55,
+            "redlineHit": false
+          },
+          {
+            "key": "rent",
+            "pct": 15.2,
+            "lo": 8,
+            "hi": 15,
+            "level": "warn",
+            "redline": 15,
+            "redlineHit": true
+          },
+          {
+            "key": "labor",
+            "pct": 31.9,
+            "lo": 14,
+            "hi": 18,
+            "level": "bad",
+            "redline": 20,
+            "redlineHit": true
+          },
+          {
+            "key": "energy",
+            "pct": 6.5,
+            "lo": 4,
+            "hi": 6,
+            "level": "warn",
+            "redline": null,
+            "redlineHit": false
+          },
+          {
+            "key": "manage",
+            "pct": 3.3,
+            "lo": 5,
+            "hi": 10,
+            "level": "good",
+            "redline": null,
+            "redlineHit": false
+          },
+          {
+            "key": "mkt",
+            "pct": 2,
+            "lo": 5,
+            "hi": 10,
+            "level": "good",
+            "redline": null,
+            "redlineHit": false
+          }
+        ],
+        "indicators_at_target": [
+          {
+            "key": "grossMargin",
+            "pct": 59,
+            "lo": 52,
+            "hi": 67,
+            "level": "ok",
+            "redline": 55,
+            "redlineHit": false
+          },
+          {
+            "key": "rent",
+            "pct": 9.1,
+            "lo": 8,
+            "hi": 15,
+            "level": "ok",
+            "redline": 15,
+            "redlineHit": false
+          },
+          {
+            "key": "labor",
+            "pct": 19.2,
+            "lo": 14,
+            "hi": 18,
+            "level": "warn",
+            "redline": 20,
+            "redlineHit": false
+          },
+          {
+            "key": "energy",
+            "pct": 3.9,
+            "lo": 4,
+            "hi": 6,
+            "level": "good",
+            "redline": null,
+            "redlineHit": false
+          },
+          {
+            "key": "manage",
+            "pct": 2,
+            "lo": 5,
+            "hi": 10,
+            "level": "good",
+            "redline": null,
+            "redlineHit": false
+          },
+          {
+            "key": "mkt",
+            "pct": 2,
+            "lo": 5,
+            "hi": 10,
+            "level": "good",
+            "redline": null,
+            "redlineHit": false
+          }
+        ],
+        "bands_preview": [
+          {
+            "key": "grossMargin",
+            "dir": "gain",
+            "lo": 52,
+            "hi": 67,
+            "redline": 55
+          },
+          {
+            "key": "rent",
+            "dir": "cost",
+            "lo": 8,
+            "hi": 15,
+            "redline": 15
+          },
+          {
+            "key": "labor",
+            "dir": "cost",
+            "lo": 14,
+            "hi": 18,
+            "redline": 20
+          },
+          {
+            "key": "energy",
+            "dir": "cost",
+            "lo": 4,
+            "hi": 6,
+            "redline": null
+          },
+          {
+            "key": "manage",
+            "dir": "cost",
+            "lo": 5,
+            "hi": 10,
+            "redline": null
+          },
+          {
+            "key": "mkt",
+            "dir": "cost",
+            "lo": 5,
+            "hi": 10,
+            "redline": null
+          }
+        ],
+        "amount_preview": [
+          {
+            "key": "rent",
+            "indKey": "rent",
+            "pct": 11.5,
+            "fen": 1840000
+          },
+          {
+            "key": "labor",
+            "indKey": "labor",
+            "pct": 16,
+            "fen": 2560000
+          },
+          {
+            "key": "utility",
+            "indKey": "energy",
+            "pct": 5,
+            "fen": 800000
+          },
+          {
+            "key": "manage",
+            "indKey": "manage",
+            "pct": 7.5,
+            "fen": 1200000
+          }
+        ]
+      }
+    }
+  ],
+  "reverse": [
+    {
+      "name": "A · 县城小面馆（李老板）",
+      "d": {
+        "mode": "reverse",
+        "target_monthly_fen": 4101099,
+        "target_daily_fen": 136703,
+        "rent_cap_fen": 307582,
+        "monthly_traffic": 3417.58,
+        "daily_traffic": 113.92,
+        "turn_rate": 7.12,
+        "area_cap_sqm": null,
+        "rent_rate_pct": 7.5,
+        "rev_price_fen": 1200,
+        "seats": 16,
+        "open_days": 30,
+        "valid_days": 30,
+        "red_alert": false,
+        "warn_keys": []
+      },
+      "rentRate": 7.5,
+      "seats": 16
+    },
+    {
+      "name": "B · 二线火锅半自助（王老板）",
+      "d": {
+        "mode": "reverse",
+        "target_monthly_fen": 19788889,
+        "target_daily_fen": 659630,
+        "rent_cap_fen": 2968333,
+        "monthly_traffic": 3044.44,
+        "daily_traffic": 101.48,
+        "turn_rate": 1.27,
+        "area_cap_sqm": null,
+        "rent_rate_pct": 15,
+        "rev_price_fen": 6500,
+        "seats": 80,
+        "open_days": 30,
+        "valid_days": 30,
+        "red_alert": false,
+        "warn_keys": []
+      },
+      "rentRate": 15,
+      "seats": 80
+    },
+    {
+      "name": "C · 一线快餐（张老板）",
+      "d": {
+        "mode": "reverse",
+        "target_monthly_fen": 13646829,
+        "target_daily_fen": 454894,
+        "rent_cap_fen": 1637619,
+        "monthly_traffic": 6823.41,
+        "daily_traffic": 227.45,
+        "turn_rate": 14.22,
+        "area_cap_sqm": null,
+        "rent_rate_pct": 12,
+        "rev_price_fen": 2000,
+        "seats": 16,
+        "open_days": 30,
+        "valid_days": 30,
+        "red_alert": false,
+        "warn_keys": []
+      },
+      "rentRate": 12,
+      "seats": 16
+    },
+    {
+      "name": "D · 三线川菜正餐（陈老板）",
+      "d": {
+        "mode": "reverse",
+        "target_monthly_fen": 13795349,
+        "target_daily_fen": 459845,
+        "rent_cap_fen": 2069302,
+        "monthly_traffic": 2508.25,
+        "daily_traffic": 83.61,
+        "turn_rate": 1.16,
+        "area_cap_sqm": null,
+        "rent_rate_pct": 15,
+        "rev_price_fen": 5500,
+        "seats": 72,
+        "open_days": 30,
+        "valid_days": 30,
+        "red_alert": false,
+        "warn_keys": []
+      },
+      "rentRate": 15,
+      "seats": 72
+    },
+    {
+      "name": "E · 二线新式茶饮（小美）",
+      "d": {
+        "mode": "reverse",
+        "target_monthly_fen": 4286792,
+        "target_daily_fen": 142893,
+        "rent_cap_fen": 514415,
+        "monthly_traffic": 2857.86,
+        "daily_traffic": 95.26,
+        "turn_rate": 11.91,
+        "area_cap_sqm": null,
+        "rent_rate_pct": 12,
+        "rev_price_fen": 1500,
+        "seats": 8,
+        "open_days": 30,
+        "valid_days": 30,
+        "red_alert": false,
+        "warn_keys": []
+      },
+      "rentRate": 12,
+      "seats": 8
+    },
+    {
+      "name": "F · 二线烧烤（刘老板）",
+      "d": {
+        "mode": "reverse",
+        "target_monthly_fen": 12809524,
+        "target_daily_fen": 426984,
+        "rent_cap_fen": 1921429,
+        "monthly_traffic": 2134.92,
+        "daily_traffic": 71.16,
+        "turn_rate": 1.11,
+        "area_cap_sqm": null,
+        "rent_rate_pct": 15,
+        "rev_price_fen": 6000,
+        "seats": 64,
+        "open_days": 30,
+        "valid_days": 30,
+        "red_alert": false,
+        "warn_keys": []
+      },
+      "rentRate": 15,
+      "seats": 64
+    }
+  ]
+}

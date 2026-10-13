@@ -17,7 +17,9 @@ const { TERMS } = require('../../miniprogram/i18n/terms.js');
 // R237：`estimateSeats`（面积 × 业态密度 → 座位估算）**已删除** —— 李老师否掉了"面积↔桌数"的强关联；
 //   改为 `seatsPerTableOf`（业态默认单桌座位数）+ `turnModeOf`（翻台口径）+ `turnLevelOf`（三档难度）。
 const { BIZ_PRESETS, CITY_COEF, assembleItems, resolveBuild, paybackCash, findPreset,
-  bizKeyOfPreset, seatsPerTableOf, turnModeOf, turnLevelOf } = require('../../utils/bizPreset.js');
+  // R292：周转难度改按**业态**分档（turnLevelOfBiz）—— 快餐/茶饮翻座天然高，
+  //   套旧的 table/seat 通用档会把常态判成「这数偏高」，属吓跑老板的误导提示。
+  bizKeyOfPreset, seatsPerTableOf, turnModeOf, turnLevelOf, turnLevelOfBiz } = require('../../utils/bizPreset.js');
 
 const M = TERMS.m2;
 const BUILD_ALL = Object.keys(M.buildItems);
@@ -906,7 +908,7 @@ Page({
             //   `turn_is_table` 决定话术（桌周转 / 座位周转）；`turn_level` 只驱动三档灰字。
             //   ⚠️ 引擎侧 `warn_keys` **恒空数组**（云函数契约字段保留、形状一字不改）⇒ 前端不再据它标红。
             turn_is_table: this.turnModeNow() === 'table',
-            turn_level: turnLevelOf(this.turnModeNow(), rev.turn_rate),
+            turn_level: turnLevelOfBiz(this.bizKeyNow(), rev.turn_rate),
           } : null,
           calcError: rev ? '' : M.needFixed,
         });
@@ -1623,7 +1625,7 @@ Page({
           area_cap_sqm: rev.area_cap_sqm,
           // 🔴 R237：同上一处 —— 红警退场，改为中性口径 + 难度（见上条注释）。
           turn_is_table: this.turnModeNow() === 'table',
-          turn_level: turnLevelOf(this.turnModeNow(), rev.turn_rate),
+          turn_level: turnLevelOfBiz(this.bizKeyNow(), rev.turn_rate),
         } : null,
         calcError: rev ? '' : M.needFixed,
         loading: false,

@@ -35,6 +35,21 @@ const CITY_COEF = {
 //   模式未填 rentYuan）⇒ 用本兜底额 × 城市系数 派生。energy/manage 指标改从 fixedFen 正确算出，
 //   mkt 仅含合法 var 项（'other' 费率），整条 preset 链路 unblock，引擎零改动、51 副本零重部署。
 //   ⚠️ 已知权衡：保本点把水电/管理当固定（轻微偏高保本），但无静默错、链路通、单源零漂移。
+//
+// 🔴🔴 R292 修正（**本条是 R292 老板视角实跑抓出的 P0 回归**）：`rentPct` 的语义澄清 + 数值重定。
+//   原实现（P1-②）把「占**营收** X%」直接写成了「房租 × X%」，数值沿用原 pct（5/7/4/2）未换算
+//   ⇒ 分母从「营收」换成「房租」，而房租只占营收 7~12% ⇒ **水电/管理被系统性低估 8~16 倍**。
+//   实测（R292 探针）：县城小面馆水电算出 ¥150/月、川菜正餐 ¥320/月、烧烤 ¥500/月 —— 荒谬，
+//   且**直接后果是保本营业额被严重低估**（小面馆算出「月做 1.6 万即保本」，真实需 3 万+），
+//   属于「给老板一个乐观到离谱的数字」这一最危险的错误类型。
+//   修正口径：装配层拿不到营收（营收是算出来的），而**房租与营收强相关** ⇒
+//     rentPct = 目标占营收率 ÷ 该业态房租占营收率（BANDS.rent 中值）
+//   例 fastfood：房租占营收 7.5%（BANDS.rent[5,10] 中值）⇒ 营收 ≈ 房租 × 13.3；
+//     水电取 3%（energy[2,4] 中值）⇒ 3% × 13.3 = **房租的 40%** ⇒ rentPct = 40。
+//   ⚠️ 误差来源：当房租占比偏离带中值时（如一线铺面贵到 12%），派生值会同步偏高 ——
+//     方向是「房租贵 ⇒ 面积/规模大 ⇒ 水电高」，属合理同向，已在此写明，非静默错。
+//   ⚠️ src 由 'P'/'D1' 改为 **'E'（经验折算，待真实样本校准）**：因为本数是**我方推导**，
+//     不再是 BP 实测值或权威带直取 —— 谎标来源比标"待校准"更糟。
 const RATE_COST_FLOOR = { fastfood: 8000, hotpot: 12000, dining: 12000, cafe: 8000, other: 10000 };
 
 // ===== 九个预设（🔴 照抄开发规范 v1.3 §3.4-bis，数值不得自创；R287 整改：删火锅浇头面、补正餐细分）=====
@@ -48,8 +63,10 @@ const BIZ_PRESETS = [
     costMeta: [
       { itemKey: 'rent', form: 'fixed', src: 'U' },
       { itemKey: 'labor', form: 'headcount_linear', src: 'S' },              // 单价 = 4,500 × coef.labor
-      { itemKey: 'utility', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 5, src: 'P' },
-      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 5, src: 'P' },
+      // R292：rentPct 由「占营收率」折算而来（见 RATE_COST_FLOOR 处推导）：
+      //   utility 3%营收 ÷ 7.5%房租 = 40%；manage 3.5%营收 ÷ 7.5%房租 = 47%
+      { itemKey: 'utility', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 40, src: 'E' },
+      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 47, src: 'E' },
       { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'P', labelKey: 'costLoss' },
     ],
   },
@@ -62,10 +79,24 @@ const BIZ_PRESETS = [
       { itemKey: 'labor', form: 'fixed', defaultYuan: 25000, src: 'P' },   // 2.5 万
       { itemKey: 'utility', form: 'fixed', defaultYuan: 7500, src: 'P' },  // 0.75 万（保持原绝对额，不随房租漂移）
       { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'P', labelKey: 'costLoss' },    // 🔴 P1-② fixed→var：使 mkt 非 0（与全局 other 口径一致）
-      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 3, src: 'P' },
+      // R292：manage 2.5%营收 ÷ 11.5%房租 = 22%（utility 保持下方 BP 实测绝对额，不折算）
+      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 22, src: 'E' },
     ],
-    // 🔴 折旧只能走这里：投资 26.2 万 ÷ (0.61 万 × 12) = 3.579234972677596 年，**小数位写足**
-    buildRef: [{ key: 'other', fen: 26200000, years: 3.579234972677596, src: 'P' }],
+    // 🔴 折旧只能走这里：投资 26.2 万，BP 口径月摊销 0.61 万 ⇒ 等效年限 3.579234972677596 年。
+    // 🔴🔴 R292 修正（**P0 功能性 BUG，老板视角实跑抓出**）：原写法 `years: 3.579…`（小数）
+    //   会被 `calcSandbox/validate.js` 判红（`years 必须是 1~20 的整数`）⇒ **整个「火锅半自助」
+    //   预设正算/反推两路都被拒**，老板一选这个业态点测算就报「填写错误」，预设完全不可用。
+    //   修法：拆成**两笔整数年限**，使总投资与月摊销都与原 BP **精确相等**（锚点零漂移）：
+    //     decor 15.6 万 ÷ (3×12) = 4,333.33 元/月
+    //     equip 10.6 万 ÷ (5×12) = 1,766.67 元/月
+    //     合计 26.2 万 / 6,100.00 元/月 —— 与 BP 的 0.61 万逐分吻合。
+    //   ⚠️ 为什么不用「years 取整 3」：那会让月摊销变 7,277.78（偏离 BP 19%）；
+    //      为什么不用「改 validate 收小数」：契约层 years 整数是既有约定，动它要重部署云函数。
+    //      ⇒ 拆笔是**零部署、零漂移、零契约改动**的唯一解。
+    buildRef: [
+      { key: 'decor', fen: 15600000, years: 3, src: 'P' },   // 装修 15.6 万，按 3 年翻新周期
+      { key: 'equip', fen: 10600000, years: 5, src: 'P' },   // 设备 10.6 万，按 5 年直线折旧
+    ],
   },
   // 4) 烧烤 —— [D1] 参考带（BANDS.hotpot；「烧烤」不新增第 5 类，属 hotpot）
   {
@@ -74,8 +105,9 @@ const BIZ_PRESETS = [
     costMeta: [
       { itemKey: 'rent', form: 'fixed', src: 'U' },
       { itemKey: 'labor', form: 'headcount_linear', src: 'S' },
-      { itemKey: 'utility', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 5, src: 'D1' },
-      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 7, src: 'D1' },
+      // R292：utility 5%营收 ÷ 11.5%房租 = 43%；manage 2.5% ÷ 11.5% = 22%
+      { itemKey: 'utility', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 43, src: 'E' },
+      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 22, src: 'E' },
       { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'S', labelKey: 'costLoss' },
     ],
   },
@@ -86,8 +118,9 @@ const BIZ_PRESETS = [
     costMeta: [
       { itemKey: 'rent', form: 'fixed', src: 'U' },
       { itemKey: 'labor', form: 'headcount_linear', src: 'S' },
-      { itemKey: 'utility', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 4, src: 'D1' },
-      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 7, src: 'D1' },
+      // R292：utility 4%营收 ÷ 11.5%房租 = 35%；manage 3% ÷ 11.5% = 26%
+      { itemKey: 'utility', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 35, src: 'E' },
+      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 26, src: 'E' },
       { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'S', labelKey: 'costLoss' },
     ],
   },
@@ -98,8 +131,9 @@ const BIZ_PRESETS = [
     costMeta: [
       { itemKey: 'rent', form: 'fixed', src: 'U' },
       { itemKey: 'labor', form: 'headcount_linear', src: 'S' },
-      { itemKey: 'utility', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 4, src: 'D1' },
-      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 7, src: 'D1' },
+      // R292：utility 4%营收 ÷ 11.5%房租 = 35%；manage 3% ÷ 11.5% = 26%
+      { itemKey: 'utility', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 35, src: 'E' },
+      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 26, src: 'E' },
       { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'S', labelKey: 'costLoss' },
     ],
   },
@@ -110,8 +144,9 @@ const BIZ_PRESETS = [
     costMeta: [
       { itemKey: 'rent', form: 'fixed', src: 'U' },
       { itemKey: 'labor', form: 'headcount_linear', src: 'S' },
-      { itemKey: 'utility', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 4, src: 'D1' },
-      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 7, src: 'D1' },
+      // R292：utility 4%营收 ÷ 11.5%房租 = 35%；manage 3% ÷ 11.5% = 26%
+      { itemKey: 'utility', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 35, src: 'E' },
+      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 26, src: 'E' },
       { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'S', labelKey: 'costLoss' },
     ],
   },
@@ -122,8 +157,9 @@ const BIZ_PRESETS = [
     costMeta: [
       { itemKey: 'rent', form: 'fixed', src: 'U' },
       { itemKey: 'labor', form: 'headcount_linear', src: 'S' },
-      { itemKey: 'utility', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 4, src: 'D1' },
-      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 7, src: 'D1' },
+      // R292：utility 4%营收 ÷ 11.5%房租 = 35%；manage 3% ÷ 11.5% = 26%
+      { itemKey: 'utility', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 35, src: 'E' },
+      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 26, src: 'E' },
       { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'S', labelKey: 'costLoss' },
     ],
   },
@@ -134,8 +170,9 @@ const BIZ_PRESETS = [
     costMeta: [
       { itemKey: 'rent', form: 'fixed', src: 'U' },
       { itemKey: 'labor', form: 'headcount_linear', src: 'S' },
-      { itemKey: 'utility', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 2, src: 'D1' },
-      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 7, src: 'D1' },
+      // R292：utility 2%营收 ÷ 8.5%房租 = 24%；manage 2.5% ÷ 8.5% = 30%
+      { itemKey: 'utility', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 24, src: 'E' },
+      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 30, src: 'E' },
       { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'S', labelKey: 'costLoss' },
     ],
   },
@@ -149,8 +186,8 @@ const BIZ_PRESETS = [
     costMeta: [
       { itemKey: 'rent', form: 'fixed', src: 'U' },
       { itemKey: 'labor', form: 'headcount_linear', src: 'S' },
-      { itemKey: 'utility', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 4, src: 'S' },   // 并集 [1,6] 中值
-      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 7, src: 'S' },   // 并集 [5,10] 中值
+      { itemKey: 'utility', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 35, src: 'E' },  // 3.5%营收 ÷ 10%房租
+      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 30, src: 'E' },   // 3%营收 ÷ 10%房租
       { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'S', labelKey: 'costLoss' },
     ],
   },
@@ -213,7 +250,28 @@ const TURN_BIZ_TABLE = ['hotpot', 'dining'];
 const TURN_THRESHOLD = {
   table: { easyMax: 1.8, okMax: 2.8 },   // 每日桌周转：≤1.8 轻松 / 1.8~2.8 有点难 / >2.8 很难
   seat:  { easyMax: 2.5, okMax: 4.0 },   // 每日座位周转：≤2.5 轻松 / 2.5~4.0 有点难 / >4.0 很难
+  // 🔴 R292 新增**业态维**（老板视角实跑抓出的误导性提示）：
+  //   反推实测「县城小面馆」座位周转 5.36 ⇒ 套统一 seat 档（>4.0）被判 **hard「这数偏高，店里得
+  //   真忙得起来」**—— 但快餐/小面翻座 5~6 次/天本就是常态（吃完就走），这句提示是**吓跑老板**，
+  //   与事实相反。根因：原表只有 table/seat 两档，**未按业态区分**快餐与正餐的天然周转差异。
+  //   ⇒ 新增业态键（与各自口径配套：hotpot/dining 用桌档值、fastfood/cafe 用放宽后的座位档值），
+  //     旧两键**保留**（`turnLevelOf` 签名与行为一字不变 ⇒ 既有守卫 F-④ 不红、老调用方零漂移）。
+  fastfood: { easyMax: 4.0, okMax: 6.5 },  // 快餐/小面：吃完即走，翻座 4~6 属常态
+  cafe:     { easyMax: 5.0, okMax: 8.0 },  // 茶饮：外带为主，座位周转天然更高
+  hotpot:   { easyMax: 1.8, okMax: 2.8 },  // 火锅/烧烤：桌周转（与 table 档同值）
+  dining:   { easyMax: 1.8, okMax: 2.8 },  // 正餐：桌周转（与 table 档同值）
+  other:    { easyMax: 2.5, okMax: 4.0 },  // 通用兜底：取中位
 };
+
+/**
+ * 🔴 R292 · 按**业态**分档（推荐入口）。
+ *  与 `turnLevelOf(mode, …)` 的区别：那个按「桌/座」口径查通用档；本函数按业态查**细分档**
+ *  （快餐/茶饮的座位周转天然高于正餐，套通用档会把常态判成「很难」）。
+ * @returns {'easy'|'ok'|'hard'|''}
+ */
+function turnLevelOfBiz(bizKey, value) {
+  return turnLevelOf(bizKey, value);   // 查表键即业态名（TURN_THRESHOLD 已含业态维）；未命中回落 seat 档
+}
 
 /** 业态默认「一桌坐几人」。未知业态 ⇒ 4（餐饮通用中位）。 */
 function seatsPerTableOf(bizKey) {
@@ -363,4 +421,6 @@ module.exports = {
   // R237：桌数 ⇄ 座位数 换算 + 翻台口径/阈值（引擎零改的入参变换层）
   SEATS_PER_TABLE, TURN_BIZ_TABLE, TURN_THRESHOLD,
   seatsPerTableOf, turnModeOf, turnLevelOf,
+  // R292：按业态细分档（快餐/茶饮不再被判「很难」）
+  turnLevelOfBiz,
 };
