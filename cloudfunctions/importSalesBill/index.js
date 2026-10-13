@@ -24,6 +24,7 @@ const {
   DISH_SHAPES, detectDishMatrix, parseDishSales, parseDishSalesC, dishRefId, saleDocId,
   BILL_IMPORT_ENABLED,   // R259：账单导入开关（只作用账单，形态 A/B/C 不受影响）
   detectDupImport,       // R271：跨平台重复导入检测（纯函数，零 IO ⇒ 守卫/探针可直测）
+  diagnoseColumns,       // R286：认不出表形态时「缺哪几列」诊断（走 ok 通道，见 :111 附近说明）
 } = require('./service');
 const { validateInput } = require('./validate');
 
@@ -108,8 +109,18 @@ exports.main = async (event) => {
     return fail(ERROR_CODES.INVALID_PARAM, '这张表同时符合多个平台的账单特征（例如同时含「结算金额」与「商家应收款」），无法自动判定是哪个平台。请在导入时手动选择平台后再试。');
   }
   // 🔴 R245：判定「表在不在」改为按签名找 sheet（京东表名不固定：com.jd.o2o… / sku对账单下载）
+  // 🔴 R286：认不出 ⇒ **走 ok 通道回诊断**，不再 fail。
+  //   为什么：这段原来是 `fail(INVALID_PARAM, '无法识别账单平台（请确认是…）')`，
+  //   而 `utils/api.js:47` 会把 `r.msg` **整条覆盖**成 `msgOf(code)` 的通用文案（原始 msg 只落 console.warn）
+  //   ⇒ 老板看到的只是「参数有误」，不知道**该补哪一列**，只能反复换文件（R283 实测的痛点）。
+  //   ⇒ 人话改走 ok 的 data（与 R271 重复导入警告同一条通道），文案由前端按 i18n/terms.js 拼。
+  //   ⚠️ 仍保留 fail-closed 语义：**不落库、不给预览、不产生任何数据**，只是把「为什么」说清楚。
+  //   ⚠️ 上面 143 行那句「fail 的 msg 会透传到前端」是**错的**（实测已证伪），勿再照它写。
   if (!platform || !pickSheet(matrix.sheets, platform)) {
-    return fail(ERROR_CODES.INVALID_PARAM, '无法识别账单平台（请确认是淘宝闪购、美团外卖、京东秒送账单，或堂食《菜品销售统计》）');
+    return ok({
+      diagnosis: diagnoseColumns(matrix),
+      client_request_id: clientRequestId || '',
+    });
   }
 
   const parsed = parseBillMatrix(matrix, { platform });

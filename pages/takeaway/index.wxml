@@ -162,6 +162,16 @@
 
     <button class="btn primary" bindtap="onChooseFile">{{t.importPick}}</button>
 
+    <!-- 🔴 R286：认不出这张表 ⇒ 「缺哪几列」诊断回执。
+         ⚠️ 必须**独立成块**、不能挂进下面预览区的 wx:if：诊断态下 preview/grade 全为空，
+            挂进去就永远不显示（老板只会看到"没反应"，正是 R283 记录的痛点）。
+         ⚠️ 文案来自后端**结构化列名** + 前端 terms 模板，后端不造文案（i18n 单源）。 -->
+    <view class="card2" wx:if="{{importDiagText}}">
+      <view class="warn">{{t.importDiagTitle}}</view>
+      <view class="muted">{{importDiagText}}</view>
+      <view class="muted" wx:if="{{importDiagFoundText}}">{{importDiagFoundText}}</view>
+    </view>
+
     <!-- 预览（解析 + 甲级门禁后展示；确认后才落库）—— 形态 C 与账单分开展示 -->
     <!-- 形态 C（外卖商品销量）：platform 机器判不出 ⇒ 必须选平台 -->
     <view class="card2" wx:if="{{importPreview && importShape === shapeC}}">

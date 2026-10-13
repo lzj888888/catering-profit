@@ -283,9 +283,14 @@ check('D4c 自失效护栏：D4b/D5b 的扫描面非退化（两个函数体都�
 const idxNoCmtD = idxSrc;   // 上方已剥注释
 check('D7 index.js 显式比较 platform === PLATFORM_AMBIGUOUS（判空式 if 拦不住真值字符串）',
   /platform\s*===\s*PLATFORM_AMBIGUOUS/.test(idxNoCmtD));
-check('D8 index.js 哨兵分支在「无法识别账单平台」之前（否则被错误归因成"表不对"）',
-  idxNoCmtD.indexOf('PLATFORM_AMBIGUOUS') < idxNoCmtD.indexOf('无法识别账单平台')
-  && idxNoCmtD.indexOf('PLATFORM_AMBIGUOUS') >= 0);
+// ⚠️ R286：锚点从「旧文案字面量」改为**分支本身**（`diagnosis:` 出参）。
+//   原判据比对 `indexOf('无法识别账单平台')`，而 R286 把那句 fail 改成了 ok({diagnosis})
+//   （人话改走 data 通道）⇒ 字面量消失、判据误红（守卫反向伤害第二型：判据按字面，实现等价改写）。
+//   语义不变：**哨兵分支必须排在「认不出表」分支之前**，否则多平台歧义会被错误归因成"表不对"。
+check('D8 index.js 哨兵分支在「认不出表」分支之前（否则被错误归因成"表不对"）',
+  idxNoCmtD.indexOf('PLATFORM_AMBIGUOUS') >= 0
+  && idxNoCmtD.indexOf('diagnosis:') >= 0
+  && idxNoCmtD.indexOf('PLATFORM_AMBIGUOUS') < idxNoCmtD.indexOf('diagnosis:'));
 check('D9 index.js 哨兵提示含「手动选择平台」指引（用户下一步动作可执行）',
   idxNoCmtD.indexOf('手动选择平台') >= 0);
 check('D10 index.js 已从 service 导入 PLATFORM_AMBIGUOUS（缺则运行时 ReferenceError）',

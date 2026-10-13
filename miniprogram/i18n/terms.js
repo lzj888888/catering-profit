@@ -617,6 +617,14 @@ const TERMS = {
       importPickPlatform: '请选择外卖平台',
       importPickPlatformHint: '选好平台后点「确认导入」即可落库。',
       importZeroAmountLabel: '零元行',
+      // ===== R286：导入失败「缺哪几列」回执（人话走 ok 的 data 通道，见 utils/api.js:47 的覆盖说明）=====
+      //   ⚠️ 后端只回**结构化列名**，文案在前端按这里的模板拼（后端造文案＝第二份 i18n 单源）。
+      //   ⚠️ 措辞用「暂不开放」而非「暂不支持」（check_bill_import_gate 的 A-⑪ 判据按字面比对）。
+      importDiagTitle: '这张表还差这几列',
+      importDiagBody: '缺：{cols}。把这几列补上再导入就行。',
+      importDiagFound: '表里读到这些列：{cols}',
+      importDiagExcluded: '这几列都在，但表里带「{col}」—— 这类表暂不开放导入。',
+      importDiagEmpty: '这张表里没读到表头（前 5 行都是空的），换一张试试。',
     },
     // 费用侧各细项「行内说明」（⚠️ 按**显示名**（与 collections.js item_name 一致）挂，随 terms 双副本走）
     // ===== round217：运营类行内注（首次补齐 7/7）=====

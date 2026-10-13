@@ -492,6 +492,78 @@ function detectDishMatrix(matrix) {
   return { shape: null, sheet: '' };
 }
 
+// ===== R286：导入失败「缺哪几列」诊断（纯函数 ⇒ 守卫可 require 直调判行为）=====
+// 为什么要有它：`utils/api.js:47` 把后端 `fail(code, msg)` 的 msg **覆盖**成 code→i18n 通用文案
+//   （原始 msg 只落 `console.warn`）⇒ 写进 fail() 的人话**到不了老板眼前**。
+//   ⇒ 诊断必须走 **ok 的 data 通道**（与 R271 重复导入警告同一条路）。
+// 为什么只回结构化数据、不回文案：文案是 i18n 单源（`i18n/terms.js`），后端造文案＝第二份单源。
+//   后端只回答「缺哪几列 / 表里实际有哪些列」，人话由前端按 terms 拼。
+const DIAG_REQUIRED = {
+  C: ['商品名称', '销量', '销售额'],   // 形态 C（外卖商品销量）：正名，判定前先过别名归一
+  A: ['菜品名称', '销售数量'],         // 形态 A（堂食《菜品销售统计》）：**原样**列名判，不做别名归一
+};
+const DIAG_MAX_COLS = 30;   // 回显列名上限（防一张 100 列的宽表把回执撑爆）
+const DIAG_SCAN_ROWS = 5;   // 表头候选行数（与 detectDishShape 扫 R1/R3 的范围一致）
+
+// 挑「最像表头」的那一行：非空文本格最多者胜（与 `guessHeader` 的无平台兜底分支**同口径**，
+// 保证「判不出」与「诊断」说的是同一行，不会出现「按第 3 行判、按第 1 行报」的错位）。
+function pickHeaderRow(rows) {
+  let best = -1;
+  let bi = 0;
+  const n = Math.min((rows || []).length, DIAG_SCAN_ROWS);
+  for (let i = 0; i < n; i++) {
+    const row = rows[i] || [];
+    let txt = 0;
+    for (const v of row) if (v && toNum(v) === null) txt++;
+    if (txt > best) { best = txt; bi = i; }
+  }
+  return best <= 0 ? -1 : bi;   // 全空表 ⇒ -1（不猜）
+}
+
+// 认不出表形态时，回一份可执行的诊断：缺哪几列 / 表里实际有什么。
+// 🔴 判定与取列共用 `DISH_C_ALIAS`（R245 P7 单源）⇒ 不会出现「报缺某列、其实有别名能取到」。
+function diagnoseColumns(matrix) {
+  const missAll = { A: DIAG_REQUIRED.A.slice(), C: DIAG_REQUIRED.C.slice() };
+  const sheets = (matrix && matrix.sheets) || {};
+  const names = Object.keys(sheets);
+  if (!names.length) {
+    return { shape: null, sheet: '', headerRow: -1, foundCols: [], missing: missAll, nearest: 'C', reason: 'empty_table', excludedBy: '' };
+  }
+  // 只诊断第一张 sheet：导入是单表操作，多表时取第一张，避免「换张表就换个说法」。
+  const name = names[0];
+  const rows = (sheets[name] || {}).rows || [];
+  const hi = pickHeaderRow(rows);
+  const hdr = hi < 0 ? [] : rowCols(rows[hi]).filter(Boolean);
+  const hdrC = canonDishCHeader(hdr);                       // C 用别名归一后的列名
+  const missC = DIAG_REQUIRED.C.filter((c) => hdrC.indexOf(c) < 0);
+  const missA = DIAG_REQUIRED.A.filter((c) => hdr.indexOf(c) < 0);   // A 按原样列
+  // nearest：缺得少的那个形态更可能是老板的本意；打平时取 C（本页目标形态是外卖销量表）。
+  const nearest = missC.length <= missA.length ? 'C' : 'A';
+  // 🔴 reason：必须与「缺列清单」**自洽** —— 列齐却报「缺列」是自相矛盾的回执（老板会照着补不存在的列）。
+  //   列齐仍判不出的真因只有两种（二者都是 detectDishShape 的**负向条件**，见 R272d）：
+  //     · 含「费用类型」 ⇒ 这是订单/结算账单（已暂停导入，不是销量表）
+  //     · R2 含「销售方式」 ⇒ 这是堂食销售表的另一种排布，被形态 A 的排它条件挡住
+  let reason = 'missing_cols';
+  let excludedBy = '';
+  if (hi < 0) {
+    reason = 'empty_table';
+  } else if (missC.length === 0) {
+    reason = 'cols_ok_but_excluded';
+    if (hdr.indexOf('费用类型') >= 0) excludedBy = '费用类型';
+    else if (((rows[1] || []).map((x) => (x == null ? '' : String(x))).join('')).indexOf('销售方式') >= 0) excludedBy = '销售方式';
+  }
+  return {
+    shape: null,
+    sheet: name,
+    headerRow: hi,
+    foundCols: hdr.slice(0, DIAG_MAX_COLS),
+    missing: { A: missA, C: missC },
+    nearest,
+    reason,
+    excludedBy,
+  };
+}
+
 // 从 R2 参数行提取营业日期（取「至」= 结束日，确定性 ⇒ 幂等）。返回 YYYY-MM-DD，取不到返回 ''。
 function extractBizDate(sheetRows) {
   const r2 = ((sheetRows || [])[1] || []).map((x) => (x == null ? '' : String(x))).join('');
@@ -728,4 +800,5 @@ module.exports = {
   detectDupImport, DUP_MIN_SCAN, DUP_MIN_HIT, DUP_RATE,   // R271：跨平台重复导入检测（防销量翻倍）
   normalizeDate, parseDishSalesC,   // v1.7 形态 C（外卖商品销量）
   BILL_IMPORT_ENABLED,              // R259：账单导入开关（前端 utils/featureFlags.js 同源同值）
+  diagnoseColumns, pickHeaderRow, DIAG_REQUIRED, DIAG_MAX_COLS,   // R286：认不出表时「缺哪几列」诊断
 };

@@ -191,6 +191,12 @@ Page({
       importPickPlatform: TK.importPickPlatform,
       importPickPlatformHint: TK.importPickPlatformHint,
       importZeroAmountLabel: TK.importZeroAmountLabel,
+      // R286：导入失败「缺哪几列」回执（第三处登记 —— 漏映射 ⇒ 页面渲染成**空白**且零报错）
+      importDiagTitle: TK.importDiagTitle,
+      importDiagBody: TK.importDiagBody,
+      importDiagFound: TK.importDiagFound,
+      importDiagExcluded: TK.importDiagExcluded,
+      importDiagEmpty: TK.importDiagEmpty,
       save: TERMS.buttons.save,
       cancel: TERMS.buttons.cancel,
       cur: '¥',
@@ -228,6 +234,8 @@ Page({
     importPlatform: '',    // 检测到的平台
     importGrade: null,     // 甲级门禁结果
     importFailReason: '',  // 🔴 R250：门禁失败原因（failures[0].code → 人话），空串 ⇒ 不渲染该行
+    importDiagText: '',    // 🔴 R286：认不出表时的「缺哪几列」人话（空串 ⇒ 不渲染）
+    importDiagFoundText: '', // R286：表里实际读到的列名（给老板对照自己导的表对不对）
     importPreview: null,   // 预览 { rows, totals, months, excluded }
     importing: false,      // 防重复提交
     // v1.7 形态 C（外卖商品销量）：platform 机器判不出 ⇒ 必须选平台
@@ -469,6 +477,37 @@ Page({
       // 调云函数解析 + 甲级门禁，confirm=false 只预览
       const d = await api.call('importSalesBill', { fileID, confirm: false });
       wx.hideLoading();
+      // 🔴 R286：云函数认不出这张表 ⇒ 走 **ok 的 data** 回诊断（fail 的 msg 会被 api.js:47 覆盖成通用文案）
+      //   ⇒ 只有从这里取才拿得到「缺哪几列」；不进预览态、不给确认按钮（fail-closed 语义不变）。
+      if (d && d.diagnosis) {
+        const dg = d.diagnosis;
+        const miss = (dg.missing && dg.missing[dg.nearest]) || [];
+        let body = '';
+        if (dg.reason === 'empty_table') {
+          body = TK.importDiagEmpty || '';
+        } else if (dg.reason === 'cols_ok_but_excluded') {
+          body = (TK.importDiagExcluded || '').replace('{col}', dg.excludedBy || '');
+        } else {
+          body = (TK.importDiagBody || '').replace('{cols}', miss.join('、'));
+        }
+        this.setData({
+          importing: false,
+          importDone: false, importDoneText: '',
+          importFileID: fileID,
+          importShape: '', importPlatform: '', importGrade: null, importPreview: null,
+          importFailReason: '', importBillRecognizedText: '', importPlatformLabel: '',
+          importPlatformMissing: false, importZeroAmountQty: [],
+          importDup: null, importDupText: '', importDupFixText: '', importDupBlock: false,
+          importDiagText: body,
+          importDiagFoundText: (dg.foundCols && dg.foundCols.length)
+            ? (TK.importDiagFound || '').replace('{cols}', dg.foundCols.slice(0, 8).join('、')) : '',
+        });
+        return;
+      }
+      // 识别成功 ⇒ 清掉上一次的诊断回执（避免旧提示一直挂着）
+      if (this.data.importDiagText || this.data.importDiagFoundText) {
+        this.setData({ importDiagText: '', importDiagFoundText: '' });
+      }
       const p = d.preview || null;
       const isC = d.shape === DISH_SHAPES.C;
       let preview = null;
