@@ -1,0 +1,3 @@
+=== STEP r5 OK (attempt 0) ===
+{"fill":{"mode":"reverse","seats":"8"},"s":{"route":"pages/sandbox/index","mode":"reverse","calcError":"填写有误，请检查后重试","loading":false,"reverseResult":null,"crowd":null,"eff":null,"verdict":null,"l1TitleRev":"想开的店，先填 5 项","l1GuideRev":"按你打算的业态和预算填，5 个都好估"}}
+report written: walk_report.json

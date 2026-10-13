@@ -1,0 +1,3 @@
+=== STEP r5f OK (attempt 0) ===
+[{"label":"H1 forward · 无 valid_days","code":"INVALID_PARAM","msg":"INVALID_PARAM"},{"label":"H2 forward · 带 valid_days","code":"INVALID_PARAM","msg":"INVALID_PARAM"},{"label":"H3 reverse · 无 valid_days","code":"INVALID_PARAM","msg":"INVALID_PARAM"}]
+report written: walk_report.json

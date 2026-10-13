@@ -1,0 +1,23 @@
+{
+  "r5g": {
+    "ok": true,
+    "attempt": 0,
+    "res": {
+      "shopId": "shop_mu6j87v1itrs",
+      "rows": [
+        {
+          "label": "I1 forward + shop_id",
+          "code": "SUCCESS",
+          "msg": "ok",
+          "breakEven": 2015873
+        },
+        {
+          "label": "I2 reverse + shop_id",
+          "code": "SUCCESS",
+          "msg": "ok",
+          "breakEven": 1539683
+        }
+      ]
+    }
+  }
+}

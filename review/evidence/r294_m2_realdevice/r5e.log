@@ -1,0 +1,3 @@
+=== STEP r5e OK (attempt 0) ===
+[{"label":"F1 forward 显式","code":"INVALID_PARAM","msg":"INVALID_PARAM"},{"label":"F2 不带 mode（引擎默认 forward）","code":"INVALID_PARAM","msg":"INVALID_PARAM"},{"label":"G  reverse（对照：预期仍拒）","code":"INVALID_PARAM","msg":"INVALID_PARAM"}]
+report written: walk_report.json
