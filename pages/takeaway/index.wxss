@@ -47,6 +47,10 @@
 .hint-fold { padding: 0 0 6rpx; }
 .hint-fold-head { display: flex; align-items: center; justify-content: space-between;
   min-height: 88rpx; padding: 14rpx 8rpx; }
+/* R282：折叠块标题（「去哪下载这张表？」）—— flex:1 占满剩余空间，
+   把右侧「展开看看 ▸」推到最右（head 是 space-between 的 flex）。
+   字号 28rpx = 本仓 UI 下限（记忆红线：新增字号 ≥28rpx），色值取品牌墨蓝 #1e3a5f（app.wxss 单源）。 */
+.hint-fold-title { font-size: 28rpx; color: #1e3a5f; font-weight: 600; flex: 1; }
 .hint-fold-guide { font-size: 28rpx; color: #1e3a5f; }
 .hint-fold-arrow { font-size: 28rpx; color: #1e3a5f; }
 .hint-fold-body { font-size: 28rpx; color: #4a5b70; line-height: 1.6; padding: 16rpx 20rpx;

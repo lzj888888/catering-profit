@@ -150,6 +150,12 @@ Page({
       importTab: TK.importTab,
       importPick: TK.importPick,
       importPickHint: TK.importPickHint,
+      // R282：导入「去哪下载这张表」引导 —— 🔴 页面 t:{} 是**逐条列举**，
+      //   漏登记 = 页面静默空白（本仓已踩过的红线，守 check_page_terms）。
+      importWhereTitle: TK.importWhereTitle,
+      importWhereBody: TK.importWhereBody,
+      importColsTitle: TK.importColsTitle,
+      importColsBody: TK.importColsBody,
       importPlatformLabel: TK.importPlatformLabel,
       importRowsLabel: TK.importRowsLabel,
       importMonthsLabel: TK.importMonthsLabel,

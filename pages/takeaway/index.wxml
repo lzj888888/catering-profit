@@ -136,6 +136,30 @@
       </view>
       <view class="hint-fold-body" wx:if="{{hintFold.tkPickHint}}">{{t.importPickHint}}</view>
     </view>
+
+    <!-- ===== R282：老板「不知道去哪下载表」—— 导入出错的**体验层根因** =====
+         实测：导入页此前只说「支持哪些表」，从不说「去哪拿这张表」
+           ⇒ 老板随便导一张 Excel ⇒ 判不出来 ⇒ 结论是「这功能不好用」。
+         位置：放在**选文件按钮之前**（老板的动线是：先去下载表 → 再回来选文件）。
+         折叠块是纯数据驱动（data-key + hintFold）⇒ 加项**零 js 改动**。
+         🔴 只给「表名级」指引，不写平台后台的具体菜单路径（编造=替用户编数，本仓禁止）。 -->
+    <view class="hint-fold">
+      <view class="hint-fold-head" data-key="tkWhereHint" bindtap="onToggleHintFold">
+        <text class="hint-fold-title">{{t.importWhereTitle}}</text>
+        <text class="hint-fold-guide">{{hintFold.tkWhereHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+        <text class="hint-fold-arrow">{{hintFold.tkWhereHint ? '▾' : '▸'}}</text>
+      </view>
+      <view class="hint-fold-body" wx:if="{{hintFold.tkWhereHint}}">{{t.importWhereBody}}</view>
+    </view>
+    <view class="hint-fold">
+      <view class="hint-fold-head" data-key="tkColsHint" bindtap="onToggleHintFold">
+        <text class="hint-fold-title">{{t.importColsTitle}}</text>
+        <text class="hint-fold-guide">{{hintFold.tkColsHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+        <text class="hint-fold-arrow">{{hintFold.tkColsHint ? '▾' : '▸'}}</text>
+      </view>
+      <view class="hint-fold-body" wx:if="{{hintFold.tkColsHint}}">{{t.importColsBody}}</view>
+    </view>
+
     <button class="btn primary" bindtap="onChooseFile">{{t.importPick}}</button>
 
     <!-- 预览（解析 + 甲级门禁后展示；确认后才落库）—— 形态 C 与账单分开展示 -->
