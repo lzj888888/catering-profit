@@ -103,11 +103,23 @@ Page({
       reviewTotalRevenue: TERMS.card.reviewTotalRevenue,
       reviewTotalCost: TERMS.card.reviewTotalCost,
       reviewTotalGross: TERMS.card.reviewTotalGross,
+      // 🔴 R281 O2：首屏重构新增键（第三处登记 —— 漏登记 ⇒ 真机静默空白）
+      reviewTodoPre: TERMS.card.reviewTodoPre,
+      reviewTodoSuf: TERMS.card.reviewTodoSuf,
+      reviewTodoBtn: TERMS.card.reviewTodoBtn,
+      reviewMoreTitle: TERMS.card.reviewMoreTitle,
+      reviewMoreOpen: TERMS.card.reviewMoreOpen,
+      reviewMoreClose: TERMS.card.reviewMoreClose,
+      reviewDataTitle: TERMS.card.reviewDataTitle,
       cur: '¥',
       loading: TERMS.ui.loading,
     },
     loading: true,
     locked: false,
+    // 🔴 R281 O2：两个折叠区默认**收起** —— 首屏只留「未匹配待办条 + 堂食榜 + 外卖榜」。
+    //   覆盖率 / 自助餐 / 阈值 / 已关联 / 账单 只是**折层级，不删**（守 R264/R272/R255/R252）。
+    moreOpen: false,
+    dataOpen: false,
     threshold: 30,           // 用户自定义阈值（默认占位值，非警戒线）
     thresholdInput: '30',
     curMonth: '',
@@ -669,6 +681,15 @@ Page({
   },
 
   // 阈值变化 → 重标红（仅提示，不影响任何计算口径）
+  // ===== R281 O2：首屏重构 —— 折叠区开关 =====
+  toggleMore() { this.setData({ moreOpen: !this.data.moreOpen }); },
+  toggleData() { this.setData({ dataOpen: !this.data.dataOpen }); },
+
+  // 顶部红色待办条「去挂」⇒ 直接滚到未匹配区（不新增页面、不跳走，免得打断看榜）
+  gotoUnmatched() {
+    wx.pageScrollTo({ selector: '#unmatched', duration: 200 });
+  },
+
   onThreshold(e) {
     const raw = e.detail.value;
     const n = Number(raw);

@@ -28,3 +28,12 @@
 .subtitle { font-size: 28rpx; color: #1e3a5f; font-weight: 600; margin: 12rpx 4rpx 4rpx; }
 .val.warn { color: #e74c3c; font-weight: 600; }
 .val.note { color: #c2701a; }
+/* 🔴 R281 O2：首屏重构 —— 顶部红色待办条 + 两个折叠区入口行
+   守本仓 UI 下限：字号 ≥28rpx、按钮触控高度 ≥88rpx；告警红沿用既有 #e74c3c（同 .val.warn），不引入新色。 */
+.todo-bar { display: flex; align-items: center; justify-content: space-between; background: #fdecea; border-left: 8rpx solid #e74c3c; border-radius: 8rpx; padding: 16rpx 20rpx; margin: 12rpx 0; }
+.todo-txt { flex: 1; font-size: 28rpx; color: #b03024; line-height: 1.5; }
+.todo-btn { min-height: 88rpx; line-height: 88rpx; font-size: 28rpx; color: #b03024; background: transparent; padding: 0 12rpx; }
+.more-bar { display: flex; align-items: center; padding: 20rpx 4rpx; border-top: 1rpx solid #eef2f7; border-bottom: 1rpx solid #eef2f7; margin-top: 12rpx; }
+.more-t { font-size: 30rpx; color: #1e3a5f; font-weight: 600; }
+.more-sum { flex: 1; margin-left: 16rpx; font-size: 28rpx; color: #6b7a90; }
+.more-act { font-size: 28rpx; color: #2a4e7c; }
