@@ -586,14 +586,17 @@ const PAGE_CASES = [
     segFolds: 0,
   },
   {
-    // R234/J4d：外卖单均测算页 —— 本页折 2 处（导入 tab 的两句长提示）。
+    // R234/J4d：外卖单均测算页 —— 本页折 4 处（导入 tab 的长提示）。
     //   ⚠️ 本页是**条件渲染**页（wx:if 切换 tab），但折叠块在 wx:if 内也算落地：
     //      判据扫的是静态 wxml 结构，与运行时可见性无关（这正是要守的 —— 折了就是折了）。
+    //   R282 新增 2 处（tkWhereHint / tkColsHint）：老板「不知道去哪下载表」的引导 ——
+    //     🔴 新增折叠块**必须同步登记到这里**，否则 F2「不得出现期望外折叠块」判红
+    //     （守卫这个设计是对的：防止随手乱加折叠块把首屏撑爆）。
     name: 'takeaway',
     wxml: 'pages/takeaway/index.wxml',
     js: 'pages/takeaway/index.js',
     wxss: 'pages/takeaway/index.wxss',
-    keys: ['tkPickHint', 'tkShapeCHint'],
+    keys: ['tkPickHint', 'tkShapeCHint', 'tkWhereHint', 'tkColsHint'],
     keepPlain: 1,   // importPickPlatformHint 17 字（确认按钮紧下方）⇒ 保持平铺
     segFolds: 0,
   },
