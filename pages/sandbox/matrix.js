@@ -49,6 +49,7 @@ Page({
       addDim: M.addDim,
       delDim: M.delDim,
       buildLabel: M.buildLabel,
+      buildTotalLabel: M.buildTotalLabel,
       buildYearsLabel: M.buildYearsLabel,
       areaLabel: M.areaLabel,
       generate: M.generate,

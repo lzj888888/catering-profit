@@ -6,7 +6,7 @@
   </view>
 
   <!-- 业态 + 城市 -->
-  <view class="card">
+  <view class="mcard">
     <view class="field">
       <text class="label">{{t.presetLabel}}</text>
       <picker mode="selector" range="{{presets}}" range-key="name" value="{{presetIdx}}" bindchange="onPresetChange">
@@ -22,10 +22,10 @@
   </view>
 
   <!-- 全局投入 -->
-  <view class="card">
+  <view class="mcard">
     <view class="card-title">{{t.buildLabel}}</view>
     <view class="field">
-      <text class="label">{{t.buildLabel}}</text>
+      <text class="label">{{t.buildTotalLabel}}</text>
       <input class="inp" type="digit" value="{{global.buildTotalYuan}}" data-key="buildTotalYuan" bindinput="onGlobalInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="元" />
     </view>
     <view class="field">
@@ -39,7 +39,7 @@
   </view>
 
   <!-- 维度编辑器 -->
-  <view class="card">
+  <view class="mcard">
     <view class="dim-block">
       <view class="dim-head"><text>{{t.dimRent}}</text><view class="add" bindtap="addDim" data-dim="rent">{{t.addDim}}</view></view>
       <view class="dim-row" wx:for="{{dims.rent}}" wx:key="index" wx:for-index="idx">
@@ -74,7 +74,7 @@
 
   <!-- 结果区 -->
   <block wx:if="{{result}}">
-    <view class="card">
+    <view class="mcard">
       <view class="result-bar">
         <text class="count">{{t.count}}</text>
         <view class="view-tabs">

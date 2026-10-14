@@ -1925,6 +1925,9 @@ const TERMS = {
     addDim: '加一档',
     delDim: '删',
     buildLabel: '开店一次性投入（全局，按年限摊到每月）',
+    // 🔴 R296c：矩阵「全局投入」卡的**卡标题**已经用 buildLabel（含解释），首行 label 若也用同一键
+    //   ⇒ 卡标题与首行**逐字重复**（真机截图实证）⇒ 首行改用本短标签，解释只留在卡标题。
+    buildTotalLabel: '投入总额',
     buildYearsLabel: '摊销年限',
     areaLabel: '面积（㎡，仅算坪效用）',
     generate: '生成矩阵',
