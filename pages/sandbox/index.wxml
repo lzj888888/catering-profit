@@ -105,16 +105,46 @@
         </view>
       </view>
       <view class="row">
-        <text class="row-name">{{t.laborUnitLabel}}</text>
+        <text class="row-name">{{t.laborTotalLabel}}</text>
         <view class="row-in-wrap">
-          <input class="row-in" type="digit" value="{{laborUnitYuan}}" bindinput="onLaborUnit" adjust-position="{{true}}" cursor-spacing="20" />
+          <input class="row-in" type="digit" value="{{laborTotalYuan}}" bindinput="onLaborTotal" adjust-position="{{true}}" cursor-spacing="20" />
           <text class="row-unit">{{t.yuanUnit}}</text>
         </view>
       </view>
-      <!-- 🔴 round276 · 歧义消解注：原「一个人每月工资多少」里的"一个人"可指员工也可指顾客
-           （李老师真机反馈原文：「这个问的员工的还是来吃饭顾客的？」）⇒ 主标题改「员工月均工资」，
-           再挂这行把"发给员工的"钉死。主标题再短也救不了代词歧义，必须靠这一句。 -->
-      <view class="row-note">{{t.laborUnitNote}}</view>
+      <view class="row-note">{{t.laborTotalNote}}</view>
+      <!-- 🔴 R296 拍3（李老师 2026-10-14）：水/电/燃气拆成三项 —— 有店的填实数，找店的留空走参考值。
+           ⚠️ 引擎侧仍是单个 `utility` 键（FIXED_KEYS 零改）⇒ 装配时三数求和进一个键（零部署）。 -->
+      <view class="row">
+        <text class="row-name">{{t.waterFee}}</text>
+        <view class="row-in-wrap">
+          <input class="row-in" type="digit" value="{{waterYuan}}" bindinput="onWater" adjust-position="{{true}}" cursor-spacing="20" />
+          <text class="row-unit">{{t.yuanUnit}}</text>
+        </view>
+      </view>
+      <view class="row">
+        <text class="row-name">{{t.elecFee}}</text>
+        <view class="row-in-wrap">
+          <input class="row-in" type="digit" value="{{electricYuan}}" bindinput="onElectric" adjust-position="{{true}}" cursor-spacing="20" />
+          <text class="row-unit">{{t.yuanUnit}}</text>
+        </view>
+      </view>
+      <view class="row">
+        <text class="row-name">{{t.gasFee}}</text>
+        <view class="row-in-wrap">
+          <input class="row-in" type="digit" value="{{gasYuan}}" bindinput="onGas" adjust-position="{{true}}" cursor-spacing="20" />
+          <text class="row-unit">{{t.yuanUnit}}</text>
+        </view>
+      </view>
+      <view class="row-note">{{t.utilitySplitNote}}</view>
+      <!-- 🔴 R296 拍2（李老师 2026-10-14）：管理费**可选填** —— 普通单店通常没有，留空=不评（不虚高）。 -->
+      <view class="row">
+        <text class="row-name">{{t.manageOptLabel}}</text>
+        <view class="row-in-wrap">
+          <input class="row-in" type="digit" value="{{manageYuan}}" bindinput="onManage" adjust-position="{{true}}" cursor-spacing="20" />
+          <text class="row-unit">{{t.yuanUnit}}</text>
+        </view>
+      </view>
+      <view class="row-note">{{t.manageOptNote}}</view>
     </view>
     <!-- L3 专业参数 -->
     <view class="fold-toggle" bindtap="onToggleL3">{{t.l3Toggle}}{{showL3 ? ' ▾' : ' ▸'}}</view>
@@ -216,32 +246,14 @@
       </view>
       <view class="row-note" wx:if="{{item.note}}">{{item.note}}</view>
     </view>
-    <view class="add-row" wx:if="{{buildRows.length < 4}}" bindtap="onAddBuild">{{t.addItem}}</view>
+    <view class="add-row" wx:if="{{buildRows.length < 5}}" bindtap="onAddBuild">{{t.addItem}}</view>
   </view>
 
-  <!-- ② 每月固定支出（反推 Tab 下房租行隐藏 —— 房租由目标租金率自动导出，不误填） -->
-  <view class="card2">
-    <view class="sec">{{t.secFixed}}</view>
-    <view class="hint-fold">
-      <view class="hint-fold-head" data-key="sbFixedNote" bindtap="onToggleHintFold">
-        <text class="hint-fold-guide">{{hintFold.sbFixedNote ? t.hintFoldHide : t.hintFoldShow}}</text>
-        <text class="hint-fold-arrow">{{hintFold.sbFixedNote ? '▾' : '▸'}}</text>
-      </view>
-    <view class="hint-fold-body" wx:if="{{hintFold.sbFixedNote}}">{{t.fixedNote}}</view>
-    </view>
-    <view class="rw" wx:for="{{fixedRows}}" wx:key="key" wx:if="{{mode === 'forward' || item.key !== 'rent'}}">
-      <view class="row">
-        <text class="row-name">{{item.name}}</text>
-        <view class="row-in-wrap">
-          <input class="row-in" type="digit" placeholder="{{item.ph}}" value="{{item.yuan}}" data-idx="{{index}}" bindinput="onFixedYuan" adjust-position="{{true}}" cursor-spacing="20" />
-          <text class="row-unit">元</text>
-        </view>
-        <text class="row-del" data-idx="{{index}}" bindtap="onDelFixed">{{t.delItem}}</text>
-      </view>
-      <view class="row-note" wx:if="{{item.note}}">{{item.note}}</view>
-    </view>
-    <view class="add-row" wx:if="{{fixedRows.length < 5}}" bindtap="onAddFixed">{{t.addItem}}</view>
-  </view>
+  <!-- 🔴 R296 拍1（李老师 2026-10-14）：「每月固定支出」明细表**整块删除**。
+       为什么删：它是早期 AI 自加的输入项 —— 界面自证"已计入"，实则 preset 态下根本不进引擎
+       （信任陷阱，R294-C 登记）；且与主字段重复（房租在 L1、人工改由 L2「人工每月总额」直填）。
+       固定成本改由**结构化输入**承载：房租(L1) / 人工总额(L2) / 水电气(L2) / 管理费(L2)；
+       「其他固定」的小项（网费/垃圾清运/油烟清洗/收银年费…）挂在各输入行的 note 里，不漏又不啰嗦。 -->
 
   <!-- ③ 菜品毛利率（滑杆：拖动只改数字，松手才重算） -->
   <view class="card2">
@@ -413,27 +425,10 @@
       <view class="cell"><text class="lbl">{{t.revRentCap}}</text><text class="val">{{t.cur}}{{reverseResult.rent_cap}}</text></view>
       <view class="cell"><text class="lbl">{{t.revTraffic}}</text><text class="val">{{reverseResult.monthly_traffic}}</text></view>
       <view class="cell"><text class="lbl">{{t.revDailyTraffic}}</text><text class="val">{{reverseResult.daily_traffic}}</text></view>
-      <!-- 🔴 R237：一个数、两套话术 —— 按业态切。火锅/正餐/烧烤（按桌点菜）才叫「翻台」；
-           快餐/小面/茶饮常拼桌、单人客多，只说「座位周转」，**禁用「翻台」二字**。 -->
-      <view class="cell">
-        <view class="lbl-q">
-          <text class="lbl">{{reverseResult.turn_is_table ? t.revTurnRateTable : t.revTurnRateSeat}}</text>
-          <text class="q-mark" catchtap="onToggleTurnHelp">?</text>
-        </view>
-        <text class="val">{{reverseResult.turn_rate}}</text>
-      </view>
-      <view class="row-note">{{reverseResult.turn_is_table ? t.turnNoteTable : t.turnNoteSeat}}</view>
-      <!-- 🔴 P0#5（2026-10-11）：翻台三档口语解释收进「?」点开面板（口径说明 + 三档白话，当前档高亮），
-           默认不显示、减少满屏灰字；点「?」才展开，更顺手也更省眼。 -->
-      <view class="turn-help" wx:if="{{showTurnHelp}}">
-        <view class="th-title">{{t.turnHelpTitle}}</view>
-        <view class="th-body">{{t.turnHelpBody}}</view>
-        <view class="th-levels">
-          <view class="th-lv {{reverseResult.turn_level === 'easy' ? 'on' : ''}}"><text class="th-dot">·</text>{{t.turnLevelEasy}}</view>
-          <view class="th-lv {{reverseResult.turn_level === 'ok' ? 'on' : ''}}"><text class="th-dot">·</text>{{t.turnLevelOk}}</view>
-          <view class="th-lv {{reverseResult.turn_level === 'hard' ? 'on' : ''}}"><text class="th-dot">·</text>{{t.turnLevelHard}}</view>
-        </view>
-      </view>
+      <!-- 🔴 R296 拍4（李老师 2026-10-14）：**删除反推结果里的翻台率展示**。
+           理由原话：「翻台率可以删除 —— 有店铺的商家自己在收银软件上能自动出，咱们出这个一是
+           不好出，也出不准」。⇒ 反推结果只留 目标营业额 / 房租上限 / 月客流 / 日均客流。
+           ⚠️ 引擎仍照常算 `turn_rate`（契约字段不动），只是**不再向用户展示**。 -->
     </view>
   </block>
 

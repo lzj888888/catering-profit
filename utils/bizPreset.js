@@ -56,13 +56,13 @@ const CITY_COEF = {
 //   推导式（`ind` = energy | manage）：
 //     rentPct = BANDS[biz][ind] 中值 ÷ BANDS[biz].rent 中值 × 100
 //   各业态结果（BANDS 中值：rent / energy / manage）：
-//     fastfood 7.5 / 3 / 7.5 ⇒ utility 40 · manage **100**
-//     dining   11.5 / 4 / 7.5 ⇒ utility 35 · manage **65**
-//     hotpot   11.5 / 5 / 7.5 ⇒ utility 43 · manage **65**
-//     cafe      8.5 / 2 / 7.5 ⇒ utility 24 · manage **88**
-//     other      10 / 3.5 / 7.5 ⇒ utility 35 · manage **75**
+//     fastfood 7.5 / 3 / 6 ⇒ utility 40 · manage **80**
+//     dining   11.5 / 4 / 6 ⇒ utility 35 · manage **52**
+//     hotpot   11.5 / 5 / 6 ⇒ utility 43 · manage **52**
+//     cafe      8.5 / 2 / 6 ⇒ utility 24 · manage **71**
+//     other      10 / 3.5 / 6 ⇒ utility 35 · manage **60**
 //   ⇒ src 由 'E' 改为 **'B'（BANDS 指数派生）**；**不再有自定占比**。
-//   ⚠️ 已知代价（诚实标注）：BANDS.manage [5,10] 是**连锁口径**（含总部管理费/系统/办公/招待），
+//   ⚠️ 已知代价（诚实标注）：BANDS.manage [4,8] 是**连锁口径**（含总部管理费/系统/办公/招待），
 //     小微单店真实管理杂费约 1~4% ⇒ 按库中值执行后管理费等额偏高，**方向是保守（保本偏高）**，
 //     不是乐观偏差。若要贴近单店实际，须改 BANDS.manage（单源，改它要同步重部署 51 份副本）。
 //   🔴 防漂移：`tools/check_biz_preset.js` G 段机器校验 rentPct ≡ BANDS 推导值（改 BANDS 即红）。
@@ -81,12 +81,12 @@ const BIZ_PRESETS = [
       avgPriceYuan: { v: 12, src: 'P' }, openDays: { v: 30, src: 'P' } },
     costMeta: [
       { itemKey: 'rent', form: 'fixed', src: 'U' },
-      { itemKey: 'labor', form: 'headcount_linear', src: 'S' },              // 单价 = 4,500 × coef.labor
+      { itemKey: 'labor', form: 'labor_total', src: 'U' },              // 直接填人工总额（不×人数/不×系数）
       // R293：rentPct **一律取 BANDS 指数中值**（推导见 RATE_COST_FLOOR 处，禁自定）：
       //   utility 3%（BANDS.energy[2,4] 中值）÷ 房租 7.5%（BANDS.rent[5,10] 中值）= 40%
-      //   manage 7.5%（BANDS.manage[5,10] 中值）÷ 7.5% = 100%
-      { itemKey: 'utility', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 40, src: 'B' },
-      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 100, src: 'B' },
+      //   manage 6%（BANDS.manage[4,8] 中值）÷ 7.5% = 80%
+      { itemKey: 'utility', form: 'energy_split', derivedFrom: 'rent_rate', rentPct: 40, src: 'B' },
+      { itemKey: 'manage', form: 'fixed_opt', derivedFrom: 'rent_rate', rentPct: 80, src: 'B' },
       { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'P', labelKey: 'costLoss' },
     ],
   },
@@ -97,11 +97,11 @@ const BIZ_PRESETS = [
     costMeta: [
       { itemKey: 'rent', form: 'fixed', src: 'U' },
       { itemKey: 'labor', form: 'fixed', defaultYuan: 25000, src: 'P' },   // 2.5 万
-      { itemKey: 'utility', form: 'fixed', defaultYuan: 7500, src: 'P' },  // 0.75 万（保持原绝对额，不随房租漂移）
+      { itemKey: 'utility', form: 'energy_split', derivedFrom: 'rent_rate', rentPct: 43, src: 'B' },  // 火锅业态能耗：房租×占比反推（找店兜底）
       { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'P', labelKey: 'costLoss' },    // 🔴 P1-② fixed→var：使 mkt 非 0（与全局 other 口径一致）
-      // R293：manage 7.5%（BANDS.manage[5,10] 中值）÷ 11.5%房租 = 65%
+      // R293：manage 6%（BANDS.manage[4,8] 中值）÷ 11.5%房租 = 52%
       //   （utility 保持下方 BP 实测绝对额 7500，不折算）
-      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 65, src: 'B' },
+      { itemKey: 'manage', form: 'fixed_opt', derivedFrom: 'rent_rate', rentPct: 52, src: 'B' },
     ],
     // 🔴 折旧只能走这里：投资 26.2 万，BP 口径月摊销 0.61 万 ⇒ 等效年限 3.579234972677596 年。
     // 🔴🔴 R292 修正（**P0 功能性 BUG，老板视角实跑抓出**）：原写法 `years: 3.579…`（小数）
@@ -125,10 +125,10 @@ const BIZ_PRESETS = [
     params: { grossMarginPct: { v: 59, src: 'D1' }, laborUnitYuan: { v: 5000, src: 'S' }, openDays: { v: 30, src: 'P' } },
     costMeta: [
       { itemKey: 'rent', form: 'fixed', src: 'U' },
-      { itemKey: 'labor', form: 'headcount_linear', src: 'S' },
-      // R293：utility 5%（BANDS.energy[4,6] 中值）÷ 11.5%房租 = 43%；manage 7.5% ÷ 11.5% = 65%
-      { itemKey: 'utility', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 43, src: 'B' },
-      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 65, src: 'B' },
+      { itemKey: 'labor', form: 'labor_total', src: 'U' },
+      // R293：utility 5%（BANDS.energy[4,6] 中值）÷ 11.5%房租 = 43%；manage 6% ÷ 11.5% = 52%
+      { itemKey: 'utility', form: 'energy_split', derivedFrom: 'rent_rate', rentPct: 43, src: 'B' },
+      { itemKey: 'manage', form: 'fixed_opt', derivedFrom: 'rent_rate', rentPct: 52, src: 'B' },
       { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'S', labelKey: 'costLoss' },
     ],
   },
@@ -138,10 +138,10 @@ const BIZ_PRESETS = [
     params: { grossMarginPct: { v: 60, src: 'D1' }, laborUnitYuan: { v: 5500, src: 'S' }, openDays: { v: 30, src: 'P' } },
     costMeta: [
       { itemKey: 'rent', form: 'fixed', src: 'U' },
-      { itemKey: 'labor', form: 'headcount_linear', src: 'S' },
-      // R293：utility 4%（BANDS.energy[3,5] 中值）÷ 11.5%房租 = 35%；manage 7.5% ÷ 11.5% = 65%
-      { itemKey: 'utility', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 35, src: 'B' },
-      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 65, src: 'B' },
+      { itemKey: 'labor', form: 'labor_total', src: 'U' },
+      // R293：utility 4%（BANDS.energy[3,5] 中值）÷ 11.5%房租 = 35%；manage 6% ÷ 11.5% = 52%
+      { itemKey: 'utility', form: 'energy_split', derivedFrom: 'rent_rate', rentPct: 35, src: 'B' },
+      { itemKey: 'manage', form: 'fixed_opt', derivedFrom: 'rent_rate', rentPct: 52, src: 'B' },
       { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'S', labelKey: 'costLoss' },
     ],
   },
@@ -151,10 +151,10 @@ const BIZ_PRESETS = [
     params: { grossMarginPct: { v: 60, src: 'D1' }, laborUnitYuan: { v: 5500, src: 'S' }, openDays: { v: 30, src: 'P' } },
     costMeta: [
       { itemKey: 'rent', form: 'fixed', src: 'U' },
-      { itemKey: 'labor', form: 'headcount_linear', src: 'S' },
-      // R293：utility 4%（BANDS.energy[3,5] 中值）÷ 11.5%房租 = 35%；manage 7.5% ÷ 11.5% = 65%
-      { itemKey: 'utility', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 35, src: 'B' },
-      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 65, src: 'B' },
+      { itemKey: 'labor', form: 'labor_total', src: 'U' },
+      // R293：utility 4%（BANDS.energy[3,5] 中值）÷ 11.5%房租 = 35%；manage 6% ÷ 11.5% = 52%
+      { itemKey: 'utility', form: 'energy_split', derivedFrom: 'rent_rate', rentPct: 35, src: 'B' },
+      { itemKey: 'manage', form: 'fixed_opt', derivedFrom: 'rent_rate', rentPct: 52, src: 'B' },
       { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'S', labelKey: 'costLoss' },
     ],
   },
@@ -164,10 +164,10 @@ const BIZ_PRESETS = [
     params: { grossMarginPct: { v: 60, src: 'D1' }, laborUnitYuan: { v: 5500, src: 'S' }, openDays: { v: 30, src: 'P' } },
     costMeta: [
       { itemKey: 'rent', form: 'fixed', src: 'U' },
-      { itemKey: 'labor', form: 'headcount_linear', src: 'S' },
-      // R293：utility 4%（BANDS.energy[3,5] 中值）÷ 11.5%房租 = 35%；manage 7.5% ÷ 11.5% = 65%
-      { itemKey: 'utility', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 35, src: 'B' },
-      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 65, src: 'B' },
+      { itemKey: 'labor', form: 'labor_total', src: 'U' },
+      // R293：utility 4%（BANDS.energy[3,5] 中值）÷ 11.5%房租 = 35%；manage 6% ÷ 11.5% = 52%
+      { itemKey: 'utility', form: 'energy_split', derivedFrom: 'rent_rate', rentPct: 35, src: 'B' },
+      { itemKey: 'manage', form: 'fixed_opt', derivedFrom: 'rent_rate', rentPct: 52, src: 'B' },
       { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'S', labelKey: 'costLoss' },
     ],
   },
@@ -177,10 +177,10 @@ const BIZ_PRESETS = [
     params: { grossMarginPct: { v: 60, src: 'D1' }, laborUnitYuan: { v: 5500, src: 'S' }, openDays: { v: 30, src: 'P' } },
     costMeta: [
       { itemKey: 'rent', form: 'fixed', src: 'U' },
-      { itemKey: 'labor', form: 'headcount_linear', src: 'S' },
-      // R293：utility 4%（BANDS.energy[3,5] 中值）÷ 11.5%房租 = 35%；manage 7.5% ÷ 11.5% = 65%
-      { itemKey: 'utility', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 35, src: 'B' },
-      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 65, src: 'B' },
+      { itemKey: 'labor', form: 'labor_total', src: 'U' },
+      // R293：utility 4%（BANDS.energy[3,5] 中值）÷ 11.5%房租 = 35%；manage 6% ÷ 11.5% = 52%
+      { itemKey: 'utility', form: 'energy_split', derivedFrom: 'rent_rate', rentPct: 35, src: 'B' },
+      { itemKey: 'manage', form: 'fixed_opt', derivedFrom: 'rent_rate', rentPct: 52, src: 'B' },
       { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'S', labelKey: 'costLoss' },
     ],
   },
@@ -190,31 +190,31 @@ const BIZ_PRESETS = [
     params: { grossMarginPct: { v: 67, src: 'D1' }, laborUnitYuan: { v: 4500, src: 'S' }, openDays: { v: 30, src: 'P' } },
     costMeta: [
       { itemKey: 'rent', form: 'fixed', src: 'U' },
-      { itemKey: 'labor', form: 'headcount_linear', src: 'S' },
-      // R293：utility 2%（BANDS.energy[1,3] 中值）÷ 8.5%房租 = 24%；manage 7.5% ÷ 8.5% = 88%
-      { itemKey: 'utility', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 24, src: 'B' },
-      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 88, src: 'B' },
+      { itemKey: 'labor', form: 'labor_total', src: 'U' },
+      // R293：utility 2%（BANDS.energy[1,3] 中值）÷ 8.5%房租 = 24%；manage 6% ÷ 8.5% = 71%
+      { itemKey: 'utility', form: 'energy_split', derivedFrom: 'rent_rate', rentPct: 24, src: 'B' },
+      { itemKey: 'manage', form: 'fixed_opt', derivedFrom: 'rent_rate', rentPct: 71, src: 'B' },
       { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'S', labelKey: 'costLoss' },
     ],
   },
   // 7) 其他 / 通用餐饮 —— 🔴 round276 新增**通用兜底**：老板开的店不在上面 8 个预设里时的诚实出口。
   //    bizKey='other' ⇒ 走 indicatorRef.BANDS.other（4 类带的保守并集，标注"未细分行业"）。
-  //    参数全部取通用中位（非特定行业）：人工走人头线性（多数业态适用）、各项 revenue_rate 取并集区间中值。
+  //    参数全部取通用中位（非特定行业）：人工直接填总额（多数业态适用）、各项 revenue_rate 取并集区间中值。
   //    ⚠️ 这是"系统给初值、用户可改"的默认值，**不承担计算口径**（用户改了就以用户的为准）。
   {
     presetKey: 'other', bizKey: 'other', paybackView: 'invest',
     params: { grossMarginPct: { v: 60, src: 'S' }, laborUnitYuan: { v: 5000, src: 'S' }, openDays: { v: 30, src: 'P' } },
     costMeta: [
       { itemKey: 'rent', form: 'fixed', src: 'U' },
-      { itemKey: 'labor', form: 'headcount_linear', src: 'S' },
-      { itemKey: 'utility', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 35, src: 'B' },  // 3.5%（energy[1,6] 中值）÷ 10%（rent[5,15] 中值）
-      { itemKey: 'manage', form: 'fixed', derivedFrom: 'rent_rate', rentPct: 75, src: 'B' },   // 7.5%（manage[5,10] 中值）÷ 10%
+      { itemKey: 'labor', form: 'labor_total', src: 'U' },
+      { itemKey: 'utility', form: 'energy_split', derivedFrom: 'rent_rate', rentPct: 35, src: 'B' },  // 3.5%（energy[1,6] 中值）÷ 10%（rent[5,15] 中值）
+      { itemKey: 'manage', form: 'fixed_opt', derivedFrom: 'rent_rate', rentPct: 60, src: 'B' },   // 6%（manage[4,8] 中值）÷ 10% = 60%
       { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'S', labelKey: 'costLoss' },
     ],
   },
 ];
 
-const FORMS = ['fixed', 'area_linear', 'headcount_linear', 'revenue_rate', 'step'];
+const FORMS = ['fixed', 'area_linear', 'headcount_linear', 'revenue_rate', 'step', 'labor_total', 'energy_split', 'fixed_opt'];
 
 // ===== R234 · 业态预设**平铺**所需的两张派生表 =====
 //
@@ -333,7 +333,7 @@ function fenOf(yuan) {
 /**
  * 🔴 **唯一入参装配函数**（cost_meta 形态运算只准出现在这里）。
  * @param {object} preset 参数包预设（BIZ_PRESETS 的一项）
- * @param {object} input   用户输入：{ area, headcount, rentYuan, fixedYuan:{itemKey:yuan}, buildItems:[] }
+ * @param {object} input   用户输入：{ area, headcount, rentYuan, laborTotalYuan, waterYuan, electricYuan, gasYuan, fixedYuan:{itemKey:yuan}, buildItems:[] }
  * @param {object} coef    城市系数：{ rent, labor }（来自 CITY_COEF，或云函数 CITY_TIERS 实读物）
  * @returns {{fixedItems:Array<{key,fen}>, varItems:Array<{key,pct}>}}
  *   —— 输出与引擎入参**完全同形**，本函数内**不得出现任何保本/毛利/摊销算式**。
@@ -388,6 +388,61 @@ function assembleItems(preset, input, coef) {
       //   此前恒乘 co.labor ⇒ 县城手填 3200 被压成 2720，与第 378 行"用户填了就用用户的"自相矛盾。
       const laborMul = u > 0 ? 1 : (co.labor || 1);
       fixedItems.push({ key: m.itemKey, fen: fenOf(unit * laborMul * hc) });
+    } else if (form === 'labor_total') {
+      // 🔴 拍1（李老师 2026-10）：人工 = 用户**直接填总额**，不乘人数、不乘城市系数
+      //   （人数是给人效展示用的，不是用来乘出工资 —— 各店工资不同，乘法会失真）。
+      //   ⚠️ 兜底：**空 / 0 / 非正数** ⇒ 一律回落「人数 × 人均(参数包或 L2) × 城市系数」旧估算，
+      //      避免人工=0 把保本点乐观化（R292 同族危险）。有填正数 ⇒ 一律用用户的。
+      //   🔴 为什么 `n <= 0` 也要兜底（不只是空串）：前端 `Number(v) || 0` 会把空串变 0，
+      //      若只挡空串，0 会掉进「if 成立但 n>0 不成立」的夹缝 ⇒ 人工=0 静默乐观化。
+      const userLabor = in_.laborTotalYuan;
+      const n = (userLabor !== undefined && userLabor !== null && userLabor !== '') ? Number(userLabor) : 0;
+      if (n > 0) {
+        fixedItems.push({ key: m.itemKey, fen: fenOf(n) });
+      } else {
+        const u = Number(in_.laborUnitYuan);
+        const unit = u > 0 ? u : (p.params && p.params.laborUnitYuan ? Number(p.params.laborUnitYuan.v) : 0);
+        const hc = Number(in_.headcount) || 0;
+        const laborMul = u > 0 ? 1 : (co.labor || 1);
+        fixedItems.push({ key: m.itemKey, fen: fenOf(unit * laborMul * hc) });
+      }
+    } else if (form === 'energy_split') {
+      // 🔴 拍3（李老师 2026-10）：水/电/气三拆分（库内 ITEM_TAGS.energy = 水费/电费/燃气费，1:4:3）。
+      //   有店 ⇒ 填实数，三数都 >0 则求和进 utility 引擎键（不改 FIXED_KEYS，引擎零改动）；
+      //   找店小白未填实数 ⇒ 房租 × 占比(rentPct) 反推总额兜底（与旧 derivedFrom 同口径）。
+      const fy = in_.fixedYuan || {};
+      const w = Number(in_.waterYuan != null ? in_.waterYuan : fy.water);
+      const elec = Number(in_.electricYuan != null ? in_.electricYuan : fy.electric);
+      const gas = Number(in_.gasYuan != null ? in_.gasYuan : fy.gas);
+      if (w > 0 && elec > 0 && gas > 0) {
+        fixedItems.push({ key: m.itemKey, fen: fenOf(w + elec + gas) });
+      } else if (m.derivedFrom === 'rent_rate') {
+        const base = rentFenRaw > 0 ? rentFenRaw
+          : Math.round(fenOf(RATE_COST_FLOOR[bizKey] || 10000) * (co.rent || 1));
+        const fen = Math.round(base * (Number(m.rentPct) || 0) / 100);
+        if (fen > 0) fixedItems.push({ key: m.itemKey, fen });
+      }
+    } else if (form === 'fixed_opt') {
+      // 🔴 拍2（李老师 2026-10）：管理费这类「有的店有、有的店没有」的项 —— 可选填。
+      //   判定依据 = **键是否存在**于 `fixedYuan`（不是"值是否为空"）：
+      //     · 键存在（含 '' / 0 / '0'）⇒ 用户**已作答**（显式留空或填 0 = 单店通常无管理费）
+      //       ⇒ 一律「不评」（不兜底、不虚高）。填了 >0 ⇒ 用用户的。
+      //     · 键**缺失**（矩阵/找店批量调用方压根不传 manage）⇒ 才走「房租×占比」推荐值兜底（保守不乐观）。
+      //   🔴 修的是真 Bug：旧写法 `(m.itemKey in fy2) ? fy2[itemKey] : undefined` 后判 `uv !== ''`，
+      //      当前端留空传 `''`（键在）时 `uv === ''` 落进 else-if ⇒ **反而加上推荐管理费**，与拍2 相反。
+      const fy2 = in_.fixedYuan || {};
+      if (m.itemKey in fy2) {
+        const uv = fy2[m.itemKey];
+        if (uv !== undefined && uv !== null && uv !== '' && Number(uv) > 0) {
+          fixedItems.push({ key: m.itemKey, fen: fenOf(Number(uv)) });
+        }
+        // 键在但空/0/非数 ⇒ 不评（不加任何固定成本）
+      } else if (m.derivedFrom === 'rent_rate') {
+        const base = rentFenRaw > 0 ? rentFenRaw
+          : Math.round(fenOf(RATE_COST_FLOOR[bizKey] || 10000) * (co.rent || 1));
+        const fen = Math.round(base * (Number(m.rentPct) || 0) / 100);
+        if (fen > 0) fixedItems.push({ key: m.itemKey, fen });
+      }
     } else if (form === 'revenue_rate') {
       // 直接给 pct（不换算成金额），**不乘** coef（占比与城市无关）
       varItems.push({ key: m.itemKey, pct: Number(m.pct) });

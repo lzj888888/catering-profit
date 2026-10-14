@@ -131,7 +131,15 @@ const ALLOW_INPUTS = {
   cityIdx: '城市层级 picker（枚举，非专业指标）',
   expectYuan: '预计月营业额 → expected_revenue_fen（仅正向、选填）',
   headcountNum: '员工数 → labor 固定项；老板自己排班，填得出',
-  laborUnitYuan: '单人月人工单价 → labor；当地行情，填得出',
+  // ⚠️ R296 拍1：`laborUnitYuan`（员工月均工资）**输入框已删**（人工改「直接填总额」），
+  //   此字段降级为**内部兜底**（选预设时带出、无 UI）—— 白名单条目保留（数据字段仍在）。
+  laborUnitYuan: '（已无输入框）单人月人工单价 → labor 兜底；今由预设自动带出',
+  // 🔴 R296 拍1/2/3（2026-10-14）：替换「每月固定支出」明细表的结构化固定成本输入。
+  laborTotalYuan: '人工每月总额(元) → labor 固定项（不乘人数）；老板自己填实际工资合计',
+  waterYuan: '水费(元/月) → 与电/气求和成 utility；有账单的填实数，没有留空走参考值',
+  electricYuan: '电费(元/月) → 与电/气求和成 utility；有账单的填实数，没有留空走参考值',
+  gasYuan: '燃气费(元/月) → 与电/气求和成 utility；有账单的填实数，没有留空走参考值',
+  manageYuan: '管理费(元/月，选填) → manage 固定项；非加盟店留空 = 不评',
   marginPct: '菜品毛利率 → gross_margin_pct（核心口径，由菜品成本推出或选填）',
   openDaysNum: '每月开门天数 → 正向 valid_days / 反向 open_days（同一份用户输入，两个 Tab 共用）；老板自己定',
   planName: '方案名（快照用，非测算入参）',

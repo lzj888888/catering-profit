@@ -522,7 +522,8 @@ const PAGE_CASES = [
     js: 'pages/sandbox/index.js',
     wxss: 'pages/sandbox/index.wxss',
     keys: ['sbAssumptionsHint', 'sbBandPreviewNote', 'sbExpectRevNote', 'sbBuildNote',
-           'sbFixedNote', 'sbMarginTip', 'sbVarNote',
+           // 🔴 R296 拍1：`sbFixedNote`（「每月固定支出」卡的折叠说明）**随明细表整块删除** ⇒ 移出期望键集。
+           'sbMarginTip', 'sbVarNote',
            // ── R234/J4f 补漏两处（26 字 redAlertHint）──
            // 🔴 **两处必须两个独立 key**：同一句文案出现在正推 Tab 与反推 Tab 的红牌卡里。
            //   两处虽互斥显示，但若共用一个 key，用户在正推点开后切到反推

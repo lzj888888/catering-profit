@@ -85,13 +85,13 @@ const BIZ_KEYS = ['fastfood', 'dining', 'hotpot', 'cafe', 'other'];
 // ⚠️ 不变式（由 tools/check_indicator_ref.js C-⑫ 守）：基准档 cost 类 **lo ≤ REDLINE**、
 //    gain 类 **hi ≥ REDLINE** —— 否则会出现「既优秀又命中警戒线」这种自相矛盾。
 const BANDS = {
-  fastfood: { grossMargin: [58, 68], labor: [16, 20], rent: [5, 10], mkt: [3, 8], energy: [2, 4], manage: [5, 10] },
-  dining: { grossMargin: [55, 65], labor: [17, 22], rent: [8, 15], mkt: [5, 10], energy: [3, 5], manage: [5, 10] },
-  hotpot: { grossMargin: [52, 67], labor: [14, 18], rent: [8, 15], mkt: [5, 10], energy: [4, 6], manage: [5, 10] },
-  cafe: { grossMargin: [62, 72], labor: [14, 18], rent: [5, 12], mkt: [3, 8], energy: [1, 3], manage: [5, 10] },
+  fastfood: { grossMargin: [58, 68], labor: [16, 20], rent: [5, 10], mkt: [3, 8], energy: [2, 4], manage: [4, 8] },
+  dining: { grossMargin: [55, 65], labor: [17, 22], rent: [8, 15], mkt: [5, 10], energy: [3, 5], manage: [4, 8] },
+  hotpot: { grossMargin: [52, 67], labor: [14, 18], rent: [8, 15], mkt: [5, 10], energy: [4, 6], manage: [4, 8] },
+  cafe: { grossMargin: [62, 72], labor: [14, 18], rent: [5, 12], mkt: [3, 8], energy: [1, 3], manage: [4, 8] },
   // 🔴 通用兜底（4 类带并集）：grossMargin[52,72]/labor[14,22]/rent[5,15]/mkt[3,10]/energy[1,6]/manage[5,10]
   //   —— 满足 C-⑫（gain.hi≥55、cost.lo≤警戒线：rent.lo5≤15 / labor.lo14≤20）；前端标注"未细分行业，仅供粗估"。
-  other: { grossMargin: [52, 72], labor: [14, 22], rent: [5, 15], mkt: [3, 10], energy: [1, 6], manage: [5, 10] },
+  other: { grossMargin: [52, 72], labor: [14, 22], rent: [5, 15], mkt: [3, 10], energy: [1, 6], manage: [4, 8] },
 };
 const BAND_KEYS = ['grossMargin', 'labor', 'rent', 'mkt', 'energy', 'manage'];
 
@@ -120,9 +120,14 @@ const REDLINE_KEYS = ['rent', 'labor', 'grossMargin', 'loss'];
 // ===== 六、对外参数（供 validate 白名单复用，避免两处枚举漂移）=====
 const FIXED_KEYS = ['rent', 'labor', 'utility', 'manage', 'other'];
 const VAR_KEYS = ['takeawayComm', 'grouponComm', 'cardFee', 'other'];
-const BUILD_KEYS = ['franchise', 'decor', 'equip', 'other'];
-// 摊销年限默认值（[E1] 经验值：加盟按合同期、装修按翻新周期、设备按直线折旧）
-const BUILD_DEFAULT_YEARS = { franchise: 3, decor: 3, equip: 5, other: 3 };
+// 🔴 R296 新段（李老师 2026-10-14：「转让费确实是个大头需要摊销」）：建店白名单**新增 `transfer`（转让费）**。
+//   为什么单列（而非埋进 `other`）：转让费是开店最大的一笔一次性支出（常见 5~30 万），
+//   ★ 摊销年限语义与「证照/首批物料」等小额杂项不同（按**剩余租期**摊，通常 3 年）⇒ 埋一起会让回本周期算不准。
+//   ⚠️ 代价：改本白名单需 `tools/sync_common.js` 重生成 51 份 `cx_` 副本，
+//      且**只需重部署 calcSandbox**（`validate.js` 是唯一消费 BUILD_KEYS 的函数）。
+const BUILD_KEYS = ['franchise', 'decor', 'equip', 'transfer', 'other'];
+// 摊销年限默认值（[E1] 经验值：加盟按合同期、装修按翻新周期、设备按直线折旧、转让费按剩余租期）
+const BUILD_DEFAULT_YEARS = { franchise: 3, decor: 3, equip: 5, transfer: 3, other: 3 };
 
 // ===== 七、M1 台账细项 → 指标归属（round115 · 2026-09-24）=====
 //

@@ -12,7 +12,7 @@ const { calcSandbox } = ENGINE;
 //   round276 新增的 'other' 通用预设自检恒红，与单源漂移。
 const { indicatorRef } = require('../cloudfunctions/common');
 const BIZ_KEYS = indicatorRef.BIZ_KEYS;
-const FORMS = ['fixed', 'area_linear', 'headcount_linear', 'revenue_rate', 'step'];
+const FORMS = ['fixed', 'area_linear', 'headcount_linear', 'labor_total', 'energy_split', 'fixed_opt', 'revenue_rate', 'step'];
 
 let pass = 0, failN = 0;
 function check(name, cond, detail) {
@@ -67,11 +67,17 @@ const ar80 = assembleItems(AR_PRESET, { area: 80 }, { rent: 1, labor: 1 });
 check('面积 50 → 装配 3,600 分? 元', ar50.fixedItems[0].fen === 360000, `=${ar50.fixedItems[0].fen}分`);
 check('面积 80 → 装配 4,200 元（Δ600）', ar80.fixedItems[0].fen === 420000 && (ar80.fixedItems[0].fen - ar50.fixedItems[0].fen) === 60000, `=${ar80.fixedItems[0].fen}分（Δ${(ar80.fixedItems[0].fen - ar50.fixedItems[0].fen) / 100}元）`);
 
-console.log('\n===== ③ headcount_linear 随人数重算（fastfood_noodle 单价 4,500）=====');
-const hc2 = assembleItems(findPreset('fastfood_noodle'), { headcount: 2 }, { rent: 1, labor: 1 });
-const hc3 = assembleItems(findPreset('fastfood_noodle'), { headcount: 3 }, { rent: 1, labor: 1 });
-check('2 人 → 人工 9,000 元', hc2.fixedItems.filter((x) => x.key === 'labor')[0].fen === 900000, `=${hc2.fixedItems.filter((x) => x.key === 'labor')[0].fen}分`);
-check('3 人 → 人工 13,500 元（Δ4,500）', hc3.fixedItems.filter((x) => x.key === 'labor')[0].fen === 1350000, `=${hc3.fixedItems.filter((x) => x.key === 'labor')[0].fen}分`);
+console.log('\n===== ③ labor_total 直接填总额（不×人数；拍1）+ 人数兜底 =====');
+const ltDirect = assembleItems(findPreset('fastfood_noodle'), { laborTotalYuan: 12000, headcount: 3 }, { rent: 1, labor: 1 });
+check('直接填 12,000 ⇒ 人工=12,000（不×3 人）', ltDirect.fixedItems.filter((x) => x.key === 'labor')[0].fen === 1200000, `=${ltDirect.fixedItems.filter((x) => x.key === 'labor')[0].fen}分`);
+const lt2 = assembleItems(findPreset('fastfood_noodle'), { headcount: 2 }, { rent: 1, labor: 1 });
+const lt3 = assembleItems(findPreset('fastfood_noodle'), { headcount: 3 }, { rent: 1, labor: 1 });
+check('未填 ⇒ 人数兜底 2 人 → 9,000 元', lt2.fixedItems.filter((x) => x.key === 'labor')[0].fen === 900000, `=${lt2.fixedItems.filter((x) => x.key === 'labor')[0].fen}分`);
+check('未填 ⇒ 人数兜底 3 人 → 13,500 元（Δ4,500）', lt3.fixedItems.filter((x) => x.key === 'labor')[0].fen === 1350000, `=${lt3.fixedItems.filter((x) => x.key === 'labor')[0].fen}分`);
+// 🔴 2026-10-14 锁修正：填 0 亦视作"未填"（前端 `Number(v)||0` 把空串变 0）⇒ 必须回落人数兜底，
+//    否则人工=0 静默乐观化保本点（R292 同族危险）。
+const lt0 = assembleItems(findPreset('fastfood_noodle'), { laborTotalYuan: 0, headcount: 3 }, { rent: 1, labor: 1 });
+check('填 0 ⇒ 视作未填，人数兜底 3 人 → 13,500 元（不静默变 0）', lt0.fixedItems.filter((x) => x.key === 'labor')[0].fen === 1350000, `=${lt0.fixedItems.filter((x) => x.key === 'labor')[0].fen}分`);
 
 console.log('\n===== ④ fixed+defaultYuan 优先级（用户填 > defaultYuan，二选一不叠加）=====');
 const rb = assembleItems(findPreset('hotpot_half_self'), { fixedYuan: {} }, { rent: 1, labor: 1 });
@@ -99,6 +105,20 @@ check('cash < invest（两口径确有 30%+ 差）', cash < eng.payback_months &
 
 console.log('\n===== ⑦ 边界：目标利润 ≤ 0 ⇒ cash 返回 null（不编造） =====');
 check('paybackCash(…, 0, …) → null', paybackCash(26200000, 0, 610000) === null, `=${paybackCash(26200000, 0, 610000)}`);
+
+console.log('\n===== ⑧ fixed_opt 管理费：键存在(含空/0)⇒不评；键缺失⇒房租×占比兜底（拍2）=====');
+// 判据 = **键是否存在**于 fixedYuan（不是"值是否为空"）：
+//   键在（'' / 0）⇒ 用户已作答（单店通常无管理费）⇒ 不评；
+//   键缺（矩阵/找店批量调用方不传）⇒ 才走「房租 × rentPct」推荐值兜底。
+const MGM = findPreset('fastfood_noodle');   // manage: fixed_opt / rentPct=80
+const mgEmpty = assembleItems(MGM, { rentYuan: 10000, fixedYuan: { manage: '' } }, { rent: 1, labor: 1 });
+check('留空("")但键在 ⇒ 不评（无 manage 项）', mgEmpty.fixedItems.filter((x) => x.key === 'manage').length === 0);
+const mgZero = assembleItems(MGM, { rentYuan: 10000, fixedYuan: { manage: 0 } }, { rent: 1, labor: 1 });
+check('填 0 ⇒ 不评（无 manage 项）', mgZero.fixedItems.filter((x) => x.key === 'manage').length === 0);
+const mgSet = assembleItems(MGM, { rentYuan: 10000, fixedYuan: { manage: 5000 } }, { rent: 1, labor: 1 });
+check('填 5,000 ⇒ 用用户的（不兜底）', (mgSet.fixedItems.filter((x) => x.key === 'manage')[0] || {}).fen === 500000, `=${(mgSet.fixedItems.filter((x) => x.key === 'manage')[0] || {}).fen}分`);
+const mgAbsent = assembleItems(MGM, { rentYuan: 10000, fixedYuan: {} }, { rent: 1, labor: 1 });
+check('键缺失（找店/矩阵不传）⇒ 房租×80% 兜底 = 8,000 元', (mgAbsent.fixedItems.filter((x) => x.key === 'manage')[0] || {}).fen === 800000, `=${(mgAbsent.fixedItems.filter((x) => x.key === 'manage')[0] || {}).fen}分`);
 
 console.log(`\n===== 业态参数包自测：${pass} 通过 / ${failN} 失败 =====`);
 process.exit(failN === 0 ? 0 : 1);

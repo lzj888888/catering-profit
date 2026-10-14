@@ -23,7 +23,7 @@ const INDICATOR = path.join(ROOT, 'cloudfunctions', 'common', 'indicatorRef.js')
 const PAGE_WXML = path.join(ROOT, 'pages', 'sandbox', 'index.wxml');
 const TERMS = path.join(ROOT, 'miniprogram', 'i18n', 'terms.js');
 
-const FORMS = ['fixed', 'area_linear', 'headcount_linear', 'revenue_rate', 'step'];
+const FORMS = ['fixed', 'area_linear', 'headcount_linear', 'labor_total', 'energy_split', 'fixed_opt', 'revenue_rate', 'step'];
 
 let pass = 0, failN = 0;
 function check(name, cond, detail) {
