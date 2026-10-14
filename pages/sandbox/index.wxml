@@ -274,7 +274,10 @@
     <view class="hint" wx:if="{{marginBand}}">{{t.marginBandLabel}} {{marginBand}}</view>
   </view>
 
-  <!-- ③-附 多渠道毛利率（默认关；关=老版本 100% 一致 · round279d #12 前端折算 / 引擎零改） -->
+  <!-- 🔴 R296b 「渠道佣金」（原 #12 多渠道毛利率**改造** · 豆包评审定案）：
+       老板只填「各渠道占比 + 抽点」（他知道的数），系统自动算**加权挂钩费率**进计算公式。
+       🔴 **绝不揉进毛利率** —— 老板认知里毛利率是"菜赚不赚钱"，偷偷扣平台佣金会被当成软件算错。
+       ⚠️ 默认关（不计佣金，与改造前 100% 一致）；外卖占比≥40% / 薄利品类 / 团购>10% 的店建议开。 -->
   <view class="card2">
     <view class="sec">{{t.channelSwitch}}</view>
     <view class="switch-row">
@@ -292,6 +295,20 @@
           </view>
         </view>
         <view class="row">
+          <text class="row-name">{{t.channelPlatformRate}}</text>
+          <view class="row-in-wrap">
+            <input class="ipt-num" type="number" value="{{channel.platformRate}}" data-field="platformRate" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
+            <text class="unit">{{t.channelPct}}</text>
+          </view>
+        </view>
+        <view class="row">
+          <text class="row-name">{{t.channelPackRate}}</text>
+          <view class="row-in-wrap">
+            <input class="ipt-num" type="number" value="{{channel.packRate}}" data-field="packRate" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
+            <text class="unit">{{t.channelPct}}</text>
+          </view>
+        </view>
+        <view class="row">
           <text class="row-name">{{t.channelGroupRatio}}</text>
           <view class="row-in-wrap">
             <input class="ipt-num" type="number" value="{{channel.groupRatio}}" data-field="groupRatio" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
@@ -299,57 +316,32 @@
           </view>
         </view>
         <view class="row">
-          <text class="row-name">{{t.channelDineinRatio}}</text>
-          <text class="row-val">{{channel.dineinRatio}}{{t.channelPct}}</text>
+          <text class="row-name">{{t.channelGroupPlatform}}</text>
+          <view class="row-in-wrap">
+            <input class="ipt-num" type="number" value="{{channel.groupPlatformRate}}" data-field="groupPlatformRate" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
+            <text class="unit">{{t.channelPct}}</text>
+          </view>
         </view>
-      </view>
-      <view class="hint" wx:if="{{channel.over100}}">{{t.channelOver100}}</view>
-      <view class="hint" wx:if="{{channel.pureTakeaway}}">{{t.channelPureTakeaway}}</view>
-      <view class="rw">
-        <view class="row"><text class="row-name">{{t.channelTakeawayGm}}</text><text class="row-val">{{channel.takeawayGm != null ? channel.takeawayGm : '—'}}{{t.channelPct}}</text></view>
-        <view class="row"><text class="row-name">{{t.channelGroupGm}}</text><text class="row-val">{{channel.groupGm != null ? channel.groupGm : '—'}}{{t.channelPct}}</text></view>
-        <view class="row row-strong"><text class="row-name">{{t.channelBlended}}</text><text class="row-val">{{channel.blendedGm != null ? channel.blendedGm : '—'}}{{t.channelPct}}</text></view>
-      </view>
-      <view class="hint" wx:if="{{channel.blendedDiff > 0}}">{{t.channelBlendedDiff}}（{{channel.blendedDiff}}{{t.channelPct}}）</view>
-      <view class="fold-toggle" bindtap="onToggleChannelParams">{{t.channelParams}}{{channel.paramsOpen ? ' ▾' : ' ▸'}}</view>
-      <block wx:if="{{channel.paramsOpen}}">
-        <view class="rw">
-          <view class="row"><text class="row-name">{{t.channelPlatformRate}}</text><view class="row-in-wrap"><input class="ipt-num" type="number" value="{{channel.platformRate}}" data-field="platformRate" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" /><text class="unit">{{t.channelPct}}</text></view></view>
-          <view class="row"><text class="row-name">{{t.channelPackRate}}</text><view class="row-in-wrap"><input class="ipt-num" type="number" value="{{channel.packRate}}" data-field="packRate" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" /><text class="unit">{{t.channelPct}}</text></view></view>
-          <view class="row"><text class="row-name">{{t.channelDiscountRate}}</text><view class="row-in-wrap"><input class="ipt-num" type="number" value="{{channel.discountRate}}" data-field="discountRate" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" /><text class="unit">{{t.channelPct}}</text></view></view>
-          <view class="row"><text class="row-name">{{t.channelGroupPlatform}}</text><view class="row-in-wrap"><input class="ipt-num" type="number" value="{{channel.groupPlatformRate}}" data-field="groupPlatformRate" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" /><text class="unit">{{t.channelPct}}</text></view></view>
-          <view class="hint">{{t.channelOverride}}</view>
-          <view class="row"><text class="row-name">{{t.channelTakeawayGm}}</text><view class="row-in-wrap"><input class="ipt-num" type="number" value="{{channel.takeawayOverride}}" data-field="takeawayOverride" bindinput="onChannelInput" placeholder="—" adjust-position="{{true}}" cursor-spacing="20" /><text class="unit">{{t.channelPct}}</text></view></view>
-          <view class="row"><text class="row-name">{{t.channelGroupGm}}</text><view class="row-in-wrap"><input class="ipt-num" type="number" value="{{channel.groupOverride}}" data-field="groupOverride" bindinput="onChannelInput" placeholder="—" adjust-position="{{true}}" cursor-spacing="20" /><text class="unit">{{t.channelPct}}</text></view></view>
+        <view class="row">
+          <text class="row-name">{{t.channelDiscountRate}}</text>
+          <view class="row-in-wrap">
+            <input class="ipt-num" type="number" value="{{channel.discountRate}}" data-field="discountRate" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
+            <text class="unit">{{t.channelPct}}</text>
+          </view>
         </view>
-      </block>
-      <view class="hint" wx:if="{{channel.leverageX != null}}">{{t.channelLeveragePre}} {{channel.leverageX}}{{t.channelPct}}{{t.channelLeverageMid}} {{channel.leverageY != null ? channel.leverageY : '—'}}{{t.channelPct}}</view>
+        <view class="row">
+          <text class="row-name">{{t.channelCardRate}}</text>
+          <view class="row-in-wrap">
+            <input class="ipt-num" type="number" value="{{channel.cardRate}}" data-field="cardRate" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
+            <text class="unit">{{t.channelPct}}</text>
+          </view>
+        </view>
+        <view class="row row-strong"><text class="row-name">{{t.channelTotal}}</text><text class="row-val">{{channel.total}}{{t.channelPct}}</text></view>
+      </view>
+      <view class="hint">{{t.channelTotalNote}}</view>
     </block>
   </view>
 
-  <!-- ④ 跟营业额挂钩的费用（是"率"不是"额"：流水越高，这笔钱越多） -->
-  <view class="card2">
-    <view class="sec">{{t.secVar}}</view>
-    <view class="hint-fold">
-      <view class="hint-fold-head" data-key="sbVarNote" bindtap="onToggleHintFold">
-        <text class="hint-fold-guide">{{hintFold.sbVarNote ? t.hintFoldHide : t.hintFoldShow}}</text>
-        <text class="hint-fold-arrow">{{hintFold.sbVarNote ? '▾' : '▸'}}</text>
-      </view>
-    <view class="hint-fold-body" wx:if="{{hintFold.sbVarNote}}">{{t.varNote}}</view>
-    </view>
-    <view class="rw" wx:for="{{varRows}}" wx:key="key">
-      <view class="row">
-        <text class="row-name">{{item.name}}</text>
-        <view class="row-in-wrap">
-          <input class="row-in" type="digit" value="{{item.pct}}" data-idx="{{index}}" bindinput="onVarPct" adjust-position="{{true}}" cursor-spacing="20" />
-          <text class="row-unit">%</text>
-        </view>
-        <text class="row-del" data-idx="{{index}}" bindtap="onDelVar">{{t.delItem}}</text>
-      </view>
-      <view class="row-note" wx:if="{{item.note}}">{{item.note}}</view>
-    </view>
-    <view class="add-row" wx:if="{{varRows.length < 4}}" bindtap="onAddVar">{{t.addItem}}</view>
-  </view>
 
   <!-- ⑥ R234 · 「寻找铺面」（reverse Tab）本不该有**任何新输入** ——
        它问的是同一个店，只是把"已知房租"换成"求房租上限"。
@@ -383,6 +375,8 @@
         <text class="row-unit">元</text>
       </view>
     </view>
+    <!-- 🔴 R296b：口径提示（豆包）—— 老板普遍把"平台打款净额"当收入；此处明确填**总流水**、佣金系统自动扣 -->
+    <view class="hint">{{t.revGrossHint}}</view>
     <view class="hint-fold">
       <view class="hint-fold-head" data-key="sbExpectRevNote" bindtap="onToggleHintFold">
         <text class="hint-fold-guide">{{hintFold.sbExpectRevNote ? t.hintFoldHide : t.hintFoldShow}}</text>

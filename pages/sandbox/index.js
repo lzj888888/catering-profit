@@ -24,7 +24,7 @@ const { BIZ_PRESETS, CITY_COEF, assembleItems, resolveBuild, paybackCash, findPr
 const M = TERMS.m2;
 const BUILD_ALL = Object.keys(M.buildItems);
 // 🔴 R296 拍1：`FIXED_ALL` 随「每月固定支出」明细表删除（原仅 `onAddFixed` 使用）。
-const VAR_ALL = Object.keys(M.varItems);
+// 🔴 R296b：`VAR_ALL` 随 ④「挂钩费用」明细卡删除（原仅 `onAddVar` 使用）。
 const DEBOUNCE_MS = 700;
 // R193：M2 本地草稿键（此前算完即丢 —— 不存不导不记忆，退出重进全部重填）
 const DRAFT_KEY = 'sandbox_draft_v1';
@@ -97,6 +97,10 @@ Page({
       channelOverride: M.channelOverride,
       channelOver100: M.channelOver100,
       channelSample: M.channelSample,
+      // 🔴 R296b：渠道佣金新键（占比×抽点 → 加权挂钩费率）
+      channelCardRate: M.channelCardRate,
+      channelTotal: M.channelTotal,
+      channelTotalNote: M.channelTotalNote,
       channelLeveragePre: M.channelLeveragePre,
       channelLeverageMid: M.channelLeverageMid,
       channelPureTakeaway: M.channelPureTakeaway,
@@ -128,6 +132,7 @@ Page({
       expectRevPh: M.expectRevPh,
       expectRevTitle: M.expectRevTitle,
       expectRevNote: M.expectRevNote,
+      revGrossHint: M.revGrossHint,
       // 🔴 round276 · 一个数、两套话术：A「实际」（诊断，看收银后台）vs B「预计」（假设，估个量）。
       //   此前 A/B 共用同一句「这家店一个月大概能做多少生意」⇒ 已开店的老板读成"让我瞎估"，
       //   而 B 的老板又以为要填真实流水 ⇒ 两边都填不对（同一字段两种语义，是最典型的一词两义坑）。
@@ -316,9 +321,8 @@ Page({
       mkRow('equip', M.buildItems, M.buildItemNotes, { yuan: '', years: 5 }),
       mkRow('franchise', M.buildItems, M.buildItemNotes, { yuan: '', years: 3 }),
     ],
-    // 🔴 R296 拍1：`fixedRows`（每月固定支出明细表）**整块删除** —— 固定成本改由结构化输入承载
-    //   （房租 L1 / 人工总额·水电气·管理费 L2），小项挂各输入行 note。
-    varRows: [mkRow('takeawayComm', M.varItems, M.varItemNotes, { pct: '' })],
+    // 🔴 R296b：`varRows`（④「跟营业额挂钩的费用」明细）**整块删除** —— 挂钩费率改由
+    //   「渠道佣金」卡（各渠道占比 × 抽点）自动算，见 `recomputeChannel` + `buildPresetParam`。
     marginPct: 65,
     expectYuan: '',      // 预计月营业额（选填）—— 锚点：后端据此反算各项参考金额
     targetYuan: '',
@@ -412,27 +416,26 @@ Page({
     verdict: null,           // R234：主结论卡 {level, levelName, note, mine, band, rentPct}
     // 🔴 round279c · #10 敏感度（前端派生，引擎零改）：毛利率 ±5% 看保本额变化
     sens: { open: false, loading: false, disabled: false, rows: null },
-    // 🔴 round279d · #12 多渠道毛利率（前端折算，引擎零改）：开关关=老版本 100% 一致（零漂移）
+    // 🔴 R296b 「渠道佣金」（原 #12 多渠道毛利率**改造** · 豆包评审定案）：
+    //   老板只知道「大概多少生意来自外卖/团购 + 平台抽几个点」，**80% 算不出加权总费率** ⇒
+    //   让他填「各渠道占比 + 抽点」，系统自动算**加权挂钩费率**，直接进 `var_items`（引擎零改）。
+    //   🔴 绝不揉进毛利率 —— 老板认知里毛利率是"菜赚不赚钱"，偷偷扣掉平台佣金会被当成软件算错。
+    //   ⚠️ 默认 `on:false` ⇒ 佣金 0，与改造前 **100% 一致（保本/目标锚点零漂移）**；
+    //      打开后默认 外卖占比 20% × 抽点 20% = 4%（豆包：主流档，普通堂食店直接可用）。
     channel: {
-      on: false,                 // 「分渠道细化毛利率」开关，默认关
-      paramsOpen: false,         // 默认参数（抽成/折扣）折叠，展开才显
-      takeawayRatio: 0,          // 外卖营收占比（0-100 整数）
-      groupRatio: 0,             // 团购营收占比（0-100 整数）
-      platformRate: 20,          // 外卖平台抽成率%（示例值，待校准）
-      packRate: 3,              // 外卖包装/配送成本率%（示例值，待校准）
-      discountRate: 30,          // 团购折扣率%（示例值，待校准）
-      groupPlatformRate: 5,      // 团购平台抽成率%（示例值，待校准）
-      takeawayOverride: '',      // 手动覆盖外卖净毛利率%（选填）
-      groupOverride: '',         // 手动覆盖团购净毛利率%（选填）
-      dineinRatio: 100,          // 堂食占比 = 100 - 外卖 - 团购（自动）
-      takeawayGm: null,          // 外卖毛利率（推导/覆盖）
-      groupGm: null,             // 团购毛利率（推导/覆盖）
-      blendedGm: null,           // 综合毛利率（加权）
-      blendedDiff: 0,            // 综合比堂食低的百分点
-      leverageX: null,           // 外卖/团购每+10% ⇒ 综合毛利降 X 点
-      leverageY: null,           // ⇒ 保本需升 Y%
-      over100: false,            // 外卖+团购 >100% 阻断
-      pureTakeaway: false,       // 无堂食营收强提示
+      on: false,                 // 「渠道佣金」开关，默认关（关 = 不计佣金，零漂移）
+      takeawayRatio: 20,         // 外卖占流水%（默认 20）
+      platformRate: 20,          // 外卖平台抽成率%（主流 18~23，取 20）
+      packRate: 0,               // 外卖包装/配送成本率%（选填，主流 0~3）
+      groupRatio: 0,             // 团购占流水%
+      groupPlatformRate: 5,      // 团购平台抽成率%（主流 3~8，取 5）
+      discountRate: 0,           // 团购折扣率%（选填）
+      cardRate: 0.6,             // 刷卡/扫码费率%（通常 <1，可忽略）
+      // ---- 派生（均按**总流水**口径，供 var_items；合计即「总挂钩费率」）----
+      takeawayComm: 0,           // 外卖佣金费率 = 外卖占比% × (抽点+包装)%
+      grouponComm: 0,            // 团购佣金费率 = 团购占比% × (抽点+折扣)%
+      cardFee: 0,                // 刷卡费率
+      total: 0,                  // 合计挂钩费率（= 三者之和）
     },
   },
 
@@ -475,8 +478,7 @@ Page({
         //   （用户改过 26 天、退出重进后被静默丢回 30 天，且他看不出来）。
         openDaysNum: this.data.openDaysNum,
         build: this.data.buildRows.map((r) => ({ key: r.key, yuan: r.yuan, years: r.years })),
-        // 🔴 R296 拍1：`fixed`（明细表）随明细表删除，不再存草稿（固定成本来自结构化字段）。
-        varRows: this.data.varRows.map((r) => ({ key: r.key, pct: r.pct })),
+        // 🔴 R296 拍1 / R296b：`fixed`（明细表）与 `varRows`（挂钩费用明细）均已删除，不再存草稿。
         presetKey: this.data.presetKey,
       });
     } catch (e) { /* 写盘失败不影响测算：草稿只是锦上添花，不打扰用户 */ }
@@ -487,15 +489,13 @@ Page({
     try { d = wx.getStorageSync(DRAFT_KEY); } catch (e) { d = null; }
     if (!d || d.v !== 1) return false;
     const build = (d.build || []).map((x) => mkRow(x.key, M.buildItems, M.buildItemNotes, { yuan: x.yuan, years: x.years }));
-    // 🔴 R296 拍1：旧草稿里的 `d.fixed`（明细表）**忽略**（该表已删）；固定成本走结构化字段。
-    const varRows = (d.varRows || []).map((x) => mkRow(x.key, M.varItems, M.varItemNotes, { pct: x.pct }));
+    // 🔴 R296 拍1 / R296b：旧草稿里的 `d.fixed`（明细表）与 `d.varRows`（挂钩明细）**一并忽略**。
     const ci = d.cityIdx || 0;
     const bi = d.bizIdx || 0;
     this.setData({
       cityIdx: ci, cityName: M.cityTiers[ci].name,
       bizIdx: bi, bizName: M.bizTypes[bi].name,
       buildRows: build.length ? build : this.data.buildRows,
-      varRows: varRows.length ? varRows : this.data.varRows,
       marginPct: typeof d.marginPct === 'number' ? d.marginPct : this.data.marginPct,
       expectYuan: d.expectYuan || '',
       targetYuan: d.targetYuan || '',
@@ -588,29 +588,8 @@ Page({
     this.scheduleCalc();
   },
 
-  // ===== 挂钩费用 =====
-  onVarPct(e) {
-    const i = Number(e.currentTarget.dataset.idx);
-    const rows = this.data.varRows.slice();
-    rows[i].pct = e.detail.value;
-    this.setData({ varRows: rows });
-    this.scheduleCalc();
-  },
-  onAddVar() {
-    const used = this.data.varRows.map((r) => r.key);
-    const k = VAR_ALL.filter((x) => used.indexOf(x) < 0)[0];
-    if (!k) return;
-    const rows = this.data.varRows.concat([mkRow(k, M.varItems, M.varItemNotes, { pct: '' })]);
-    this.setData({ varRows: rows });
-    this.scheduleCalc();
-  },
-  onDelVar(e) {
-    const i = Number(e.currentTarget.dataset.idx);
-    const rows = this.data.varRows.slice();
-    rows.splice(i, 1);
-    this.setData({ varRows: rows });
-    this.scheduleCalc();
-  },
+  // 🔴 R296b：`onVarPct` / `onAddVar` / `onDelVar` 三 handler **随 ④「挂钩费用」明细卡一并删除** ——
+  //   挂钩费率改由「渠道佣金」卡自动算（`onChannelInput` → `recomputeChannel`），不再让用户逐项加行。
 
   // ===== 目标利润 =====
   onTarget(e) { this.setData({ targetYuan: e.detail.value }); this.scheduleCalc(); },
@@ -681,7 +660,7 @@ Page({
   },
 
   async buildSensitivity() {
-    const base = this.effectiveMarginPct();
+    const base = Number(this.data.marginPct) || 0;   // R296b：毛利率不再被渠道折算（佣金走 var_items）
     const deltas = [-5, 0, 5];
     const hasFixed = this.buildForwardPayload(base).fixed_items.length > 0;
     if (!hasFixed) {
@@ -729,66 +708,33 @@ Page({
     }
   },
 
-  // ===== #12 多渠道毛利率（前端折算，引擎零改）=====
-  // 开关关：直接返回原 L2 毛利率（与老版本 100% 一致，零漂移）。
-  effectiveMarginPct() {
-    const c = this.data.channel;
-    if (!c.on) return Number(this.data.marginPct) || 0;
-    return (c.blendedGm != null) ? c.blendedGm : (Number(this.data.marginPct) || 0);
-  },
-
-  // 把渠道占比/参数折算成：堂食占比（自动）、外卖/团购毛利率（推导或覆盖）、综合毛利率、杠杆提示。
+  // ===== R296b · 渠道佣金（原 #12「多渠道毛利率」改造 · 豆包评审定案）=====
+  // 🔴 口径：佣金**进挂钩费率（var_items）**，**绝不揉进毛利率**（老板认知里毛利率=菜赚不赚钱）。
+  //   老板填「各渠道占比 + 抽点」（他知道的数），系统算**加权挂钩费率**（占**总流水**%）。
+  //   ⚠️「占比」是关键：老板嘴里的"抽点"是**该渠道收入**的百分比，直接乘总流水会高估 ⇒ 必须加权。
   recomputeChannel() {
     const c = this.data.channel;
-    const gmD = Number(this.data.marginPct) || 0;          // 堂食毛利率 = 原 L2 字段
     const rt = Number(c.takeawayRatio) || 0;
     const rg = Number(c.groupRatio) || 0;
-    const dinein = 100 - rt - rg;
-    const over100 = (rt + rg) > 100;
-    const pureTakeaway = (rt + rg) >= 100;
-    let takeawayGm = (c.takeawayOverride !== '' && c.takeawayOverride != null)
-      ? Number(c.takeawayOverride)
-      : (gmD - Number(c.platformRate) - Number(c.packRate));
-    let groupGm = (c.groupOverride !== '' && c.groupOverride != null)
-      ? Number(c.groupOverride)
-      : (100 - (100 - gmD) / (100 - Number(c.discountRate)) * 100 - Number(c.groupPlatformRate));
-    let blended = null, blendedDiff = 0, leverageX = null, leverageY = null;
-    if (!over100 && dinein >= 0) {
-      blended = (dinein * gmD + rt * takeawayGm + rg * groupGm) / 100;
-      blendedDiff = Math.round((gmD - blended) * 100) / 100;
-      const mix = rt + rg;
-      if (mix > 0) {
-        const mixGm = (rt * takeawayGm + rg * groupGm) / mix;   // 混合渠道加权毛利率
-        leverageX = Number(((gmD - mixGm) / 10).toFixed(1));    // 混合占比每 +10% ⇒ 综合毛利降 X 点
-        if ((blended - leverageX) > 0) {
-          leverageY = Number(((blended / (blended - leverageX) - 1) * 100).toFixed(1));
-        }
-      }
-    }
+    const off = !c.on;
+    const r2 = (x) => Math.round(x * 100 + 1e-9) / 100;
+    const takeawayComm = off ? 0 : r2(rt * ((Number(c.platformRate) || 0) + (Number(c.packRate) || 0)) / 100);
+    const grouponComm = off ? 0 : r2(rg * ((Number(c.groupPlatformRate) || 0) + (Number(c.discountRate) || 0)) / 100);
+    const cardFee = off ? 0 : r2(Number(c.cardRate) || 0);
     this.setData({
-      'channel.dineinRatio': dinein,
-      'channel.takeawayGm': takeawayGm,
-      'channel.groupGm': groupGm,
-      'channel.blendedGm': blended,
-      'channel.blendedDiff': blendedDiff,
-      'channel.leverageX': leverageX,
-      'channel.leverageY': leverageY,
-      'channel.over100': over100,
-      'channel.pureTakeaway': pureTakeaway,
+      'channel.takeawayComm': takeawayComm,
+      'channel.grouponComm': grouponComm,
+      'channel.cardFee': cardFee,
+      'channel.total': r2(takeawayComm + grouponComm + cardFee),
     });
   },
 
   onToggleChannel() {
     const on = !this.data.channel.on;
-    this.setData({ 'channel.on': on }, () => {
-      if (on) this.recomputeChannel();
-      this.scheduleCalc();
-    });
+    // 🔴 R296b：开/关**都要**重算 —— 关掉时把佣金归零（否则关了还留着上次的值 ⇒ 静默多扣）。
+    this.setData({ 'channel.on': on }, () => { this.recomputeChannel(); this.scheduleCalc(); });
   },
-
-  onToggleChannelParams() {
-    this.setData({ 'channel.paramsOpen': !this.data.channel.paramsOpen });
-  },
+  // （R296b：原 `onToggleChannelParams` 随「默认参数」折叠区一并删除 —— 新卡无该折叠。）
 
   onChannelInput(e) {
     const field = e.currentTarget.dataset.field;
@@ -1271,6 +1217,15 @@ Page({
     const fo = this.data.feeOverrides || {};
     const varItemsFinal = asm.varItems.map((v) =>
       (fo[v.key] != null && fo[v.key] !== '' ? { key: v.key, pct: Number(fo[v.key]) } : v));
+    // 🔴 R296b：**渠道佣金**并入挂钩费率（占**总流水**%）。老板只填「占比 × 抽点」，此处取加权结果。
+    //   ⚠️ 与 costMeta 的 var 项（如"其他=2%损耗"）**键不重叠**（此处只用 takeawayComm/grouponComm/cardFee）⇒ 不重复计。
+    const cm = this.data.channel || {};
+    if (cm.on) {
+      const addComm = (k, p) => { const n = Number(p) || 0; if (n > 0) varItemsFinal.push({ key: k, pct: n }); };
+      addComm('takeawayComm', cm.takeawayComm);
+      addComm('grouponComm', cm.grouponComm);
+      addComm('cardFee', cm.cardFee);
+    }
     const buildItems = resolveBuild(preset, input);
     const openDays = (this.data.openDaysNum && this.data.openDaysNum !== '') ? Number(this.data.openDaysNum)
       : (preset.params && preset.params.openDays ? preset.params.openDays.v : 30);
