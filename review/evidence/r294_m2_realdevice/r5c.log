@@ -1,0 +1,3 @@
+=== STEP r5c OK (attempt 0) ===
+{"payload":"{\"mode\":\"reverse\",\"city_tier\":\"tier23\",\"biz_type\":\"other\",\"build_items\":[],\"fixed_items\":[{\"key\":\"labor\",\"fen\":640000},{\"key\":\"utility\",\"fen\":350000},{\"key\":\"manage\",\"fen\":750000}],\"var_items\":[{\"key\":\"other\",\"pct\":2}],\"gross_margin_pct\":65,\"target_profit_fen\":800000,\"expected_revenue_fen\":0,\"rev_price_fen\":1200,\"seats\":32,\"open_days\":30,\"target_rent_rate\":15,\"pixel_eff_fen\":0,\"valid_days\":30,\"client_request_id\":\"sb_r294_1791920312206\"}","raw":"{\"code\":\"INVALID_PARAM\",\"msg\":\"INVALID_PARAM\",\"data\":{}}","err":null}
+report written: walk_report.json

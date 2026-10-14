@@ -1,0 +1,3 @@
+=== STEP r3c OK (attempt 0) ===
+{"large192":{"ms":2466,"combos":192,"err":null,"loading":false,"count":192,"nullBreak":0,"redCount":0,"insight":{"has":true,"bestLabel":"maxRent","bestText":"可承受最高月租 ¥10000（目标利润 ¥15000 @ 毛利率 55%）","leverText":"房租每涨 ¥1000，需多做到手营收 ≈ ¥1818（按毛利率 55% 计）","cushionText":"淡季安全垫 ≈ 31%：营收跌这么多才到保本"},"first3":[{"rent":3000,"labor":2,"margin":45,"target":0,"breakMonthly":37674.42,"rentPct":8},{"rent":3000,"labor":2,"margin":45,"target":10000,"breakMonthly":37674.42,"rentPct":4.9},{"rent":3000,"labor":2,"margin":45,"target":15000,"breakMonthly":37674.42,"rentPct":4.1}]},"rev":"REJ:timeout waiting for automator response"}
+report written: walk_report.json

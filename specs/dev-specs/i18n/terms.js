@@ -722,10 +722,10 @@ const TERMS = {
     sensLoading: '测算中…',
     sensHint: '需先填固定支出才能算敏感度',
     // 🔴 round279d · #12 多渠道毛利率（前端折算，引擎零改）
-    channelSwitch: '分渠道细化毛利率',
-    channelNote: '开启后按堂食 / 外卖 / 团购分别折算综合毛利率（房租、人工不变）',
-    channelTakeawayRatio: '外卖营收占比',
-    channelGroupRatio: '团购营收占比',
+    channelSwitch: '渠道佣金（外卖 / 团购抽成）',
+    channelNote: '开外卖 / 团购的店建议开；纯堂食不用管（关着 = 不计佣金）',
+    channelTakeawayRatio: '外卖占流水',
+    channelGroupRatio: '团购占流水',
     channelDineinRatio: '堂食占比（自动）',
     channelTakeawayGm: '外卖毛利率',
     channelGroupGm: '团购毛利率',
@@ -738,7 +738,10 @@ const TERMS = {
     channelGroupPlatform: '团购平台抽成率',
     channelOverride: '如需手动覆盖净毛利率，在下方两行填入（留空则用推导值）',
     channelOver100: '外卖 + 团购占比不可超过 100%，请调整',
-    channelSample: '平台抽成 / 折扣为示例值，请按门店后台实际数据校准',
+    channelSample: '填「大概多少生意来自外卖 / 团购 + 平台抽几个点」就行，系统自动算加权；抽成率按门店后台实际填',
+    channelCardRate: '刷卡 / 扫码费率',
+    channelTotal: '合计挂钩费率（按总流水算）',
+    channelTotalNote: '佣金按比例自动扣，不用你减',
     channelLeveragePre: '外卖 / 团购占比每 +10%：综合毛利率约降',
     channelLeverageMid: '点，保本营业额需升约',
     channelPureTakeaway: '检测到无堂食营收：请务必确认外卖抽成 / 包装填写准确，否则保本偏差可能超 20%',
@@ -786,7 +789,7 @@ const TERMS = {
     secTarget: '目标月利润',
     secResult: '测算结果',
     secIndicators: '你的经营指标对照',
-    buildItems: { franchise: '加盟费', decor: '装修', equip: '设备资产', other: '其他投入' },
+    buildItems: { franchise: '加盟费', decor: '装修', equip: '设备资产', transfer: '转让费', other: '其他投入' },
     buildPh: '金额',
     yearsSuffix: '年',
     buildTotal: '开店共投入',
@@ -796,6 +799,19 @@ const TERMS = {
     marginName: '菜品毛利率',
     marginSub: '毛利率越高，需要卖出的营业额越少',
     marginTip: '不用另填食材成本，它会随毛利率自动折算',
+
+    // ===== R296 费用类别（2026-10-14 李老师拍板：大额独立成项、小额挂进 note）=====
+    //   原则：金额大的独立成输入项（房租 / 人工总额 / 水电气 / 管理费 / 转让费）；
+    //   金额小的（网费、垃圾清运、油烟清洗、收银年费…）挂进所属大类的一行 note，
+    //   既不把填表搞得很啰嗦，又不漏大项。
+    laborTotalLabel: '人工每月总额',
+    laborTotalNote: '后厨+前厅+店长+社保的合计，直接填总额（不乘人数）。人数只用来算人效，不拿它乘工资。',
+    utilitySplitNote: '有账单就填实数（取近 3 个月平均）；没有就留空，系统按行业占比给参考值。',
+    waterFee: '水费',
+    elecFee: '电费',
+    gasFee: '燃气费',
+    manageOptLabel: '管理费（选填）',
+    manageOptNote: '加盟店的权益金 / 管理费填这里；普通单店通常没有，留空即可（留空=不评，不影响测算）。',
 
     // ===== 填表引导（round113 · 2026-09-24）=====
     // 目的：客户多是餐饮小白，"不知道这项该填多少" ⇒ 干脆不填、不用（李老师 round113 原话）。
@@ -813,22 +829,23 @@ const TERMS = {
       franchise: '按合同一次性付；没加盟就留空',
       decor: '含硬装、软装、门头招牌；不含押金',
       equip: '厨房设备、桌椅、冷柜、收银系统等',
-      other: '转让费、证照办理、首批物料等',
+      transfer: '交给上一家的转让费（开店的一大笔）；按租期摊到每月',
+      other: '证照办理、首批物料、设计费、开办活动等',
     },
     fixedNote: '每月固定要付的，不管生意好坏都跑不掉',
     fixedItemNotes: {
-      rent: '含物业费；季付/年付先除以月数',
-      labor: '后厨+前厅+店长，含社保；不含提成奖金',
-      utility: '看近 3 个月账单取平均；充值制按充值额算',
-      manage: '加盟管理费、总部抽成等；没有就留空',
-      other: '上面没覆盖的固定支出，如宿舍、宽带',
+      rent: '含物业费/物管费；季付/年付先除以月数',
+      labor: '后厨+前厅+店长，含社保；提成奖金算到「跟营业额挂钩的费用」里',
+      utility: '水费/电费/燃气费；有账单填实数，没有留空走参考值',
+      manage: '加盟管理费 / 权益金；普通单店一般没有，留空不评',
+      other: '上面没覆盖的固定支出：网费、垃圾清运费、油烟管道清洗、收银系统年费、日常维修、保险、宿舍等；生意好的店可加税费',
     },
     varNote: '这些是按流水抽成的，不是固定金额 —— 填百分比',
     varItemNotes: {
       takeawayComm: '平台抽佣，一般 15%~25%',
       grouponComm: '团购平台的抽成比例，按合同填',
       cardFee: '收单机构给的费率，通常不到 1%',
-      other: '会员折扣、支付通道费等其他按流水抽的',
+      other: '会员折扣、支付通道费，以及线下推广（点评/抖音推广、开业活动）等按流水抽的',
     },
     marginBandLabel: '本业态参考',
 
@@ -838,9 +855,12 @@ const TERMS = {
     //       + 参考区间卡上的"参考 ¥X"。
     // ⚠️ 只当灰字起点，**绝不自动填值** —— 用户不核对就得到一份"自证的合理"，反而误事。
     // ⚠️ 金额数值不在本文件（云端 indicatorRef.suggestAmounts 单源 → 经 amount_preview 下发）。
+    expectRevTitle: '选填 · 本月实际营业额（算人效/坪效用，不参与保本）',
     expectRevLabel: '实际月营业额（看收银 / 外卖后台，取最近一月）',
     expectRevPh: '选填，如 150000',
     expectRevNote: '已有铺面填真实流水：用来算坪效 / 人效，对照保本线',
+    // 🔴 R296b：营业额口径提示（豆包）—— 填**总流水（毛额）**，佣金由「渠道佣金」卡自动扣，不用自己减。
+    revGrossHint: '填总卖钱额，佣金系统自动扣',
     expectRevLabelRev: '预计月营业额（心里大概能做到的量）',
     expectRevNoteRev: '寻找铺面填预估：各项会给出同行参考金额，拿去核对行情',
     refAmtCard: '参考 ¥',
@@ -971,8 +991,8 @@ const TERMS = {
     // ===== M2v1.3（业态参数包 + 回本卡 · 第三期）=====
     // R234：`业态预设` ⇒ `打算开什么店`。旧名是**数据名**（叫自己和 preset 打交道），
     //   新名是**问题**（用户在回答一个问题）—— L1 里每一项都应该是一句问话。
-    presetLabel: '打算开什么店',
-    presetNone: '都不是（按通用经验估算）',
+    presetLabel: '行业标准',
+    presetNone: '通用餐饮（经验估算）',
     presetPickedPre: '已按「',
     presetPickedSuf: '」的行规预填',
     // 🔴 round276：通用兜底业态提示 —— 选「其他/通用餐饮」时，行业参考区间卡上方显示，
@@ -1085,6 +1105,19 @@ const TERMS = {
     verdictNoteWarn: '偏高了，压价或换铺',
     verdictNoteBad: '房租吃掉了太多流水',
     verdictNoteNa: '填了上面几项就能判',
+    // 🔴 R296-E（P0-① 整改）：逐指标结论文案（单源）。verdictOf 按「最差项 key × level」精准取，
+    //   不再用通用 level 文案（否则人工最差也显示"压价或换铺"——串台）。键 = indNames 的 6 项 key。
+    //   成本项（rent/labor/energy/manage/mkt）高为坏；毛利率（grossMargin）低为坏。
+    verdictNoteByItem: {
+      grossMargin: { good: '毛利率很漂亮，定价和成本都到位', ok: '毛利率正常', warn: '毛利率偏低，优化菜品结构或压采购成本', bad: '毛利率太低，得重做菜单定价或换供应商' },
+      rent: { good: '房租占比很健康，租金压力小', ok: '房租占比在合理范围，能扛', warn: '房租占比偏高，试着谈长租约或提升坪效（加座/提翻台）', bad: '房租快吃掉流水了，要么换铺要么大幅提营收' },
+      labor: { good: '人效很高，人工成本控制得好', ok: '人工占比正常，排班合理', warn: '人工占比偏高，优化排班或提升单店产出', bad: '人工成本压垮利润，需砍岗位或提客单/翻台' },
+      energy: { good: '能耗控制得好', ok: '能耗正常', warn: '能耗偏高，查设备能效或错峰用电', bad: '能耗异常高，可能设备老化或浪费' },
+      manage: { good: '管理费很低', ok: '管理费正常', warn: '管理费占比偏高，核对加盟/平台抽成条款', bad: '管理费占比过高，重新谈合作条款' },
+      mkt: { good: '推广费控制得很好', ok: '推广费正常', warn: '推广费偏高，评估投放效果、砍掉低效渠道', bad: '推广费严重拖累利润，重新规划投放' },
+    },
+    // 0 值数据缺失提示：成本类/毛利率为 0 通常是「没填实际支出」而非真 0，不宜判优秀。
+    verdictNoteZero: '该项为 0，可能没填实际支出，数据待核对',
     // 长句版说到切身亏损 —— 豆包裁定：「餐饮老板口头就这么交流，一听就懂」。
     verdictRentLabel: '房租吃掉你营业额的多少',
     verdictCompare: '同行做得稳的是',
@@ -1892,6 +1925,9 @@ const TERMS = {
     addDim: '加一档',
     delDim: '删',
     buildLabel: '开店一次性投入（全局，按年限摊到每月）',
+    // 🔴 R296c：矩阵「全局投入」卡的**卡标题**已经用 buildLabel（含解释），首行 label 若也用同一键
+    //   ⇒ 卡标题与首行**逐字重复**（真机截图实证）⇒ 首行改用本短标签，解释只留在卡标题。
+    buildTotalLabel: '投入总额',
     buildYearsLabel: '摊销年限',
     areaLabel: '面积（㎡，仅算坪效用）',
     generate: '生成矩阵',

@@ -1,0 +1,5 @@
+=== STEP r1 OK (attempt 0) ===
+{"modeAfter":"reverse","l1TitleRev":"想开的店，先填 5 项","l1GuideRev":"按你打算的业态和预算填，5 个都好估","l1Title":"你这家店，先答 5 个","tKeysL1":["l1Title","l1Guide","l1TitleRev","l1GuideRev"]}
+=== STEP r2 OK (attempt 0) ===
+{"before":"REJ:Uncaught Cannot read properties of undefined (reading 'route')","after":"REJ:Uncaught Cannot read properties of undefined (reading 'data')"}
+report written: walk_report.json

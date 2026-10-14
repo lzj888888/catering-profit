@@ -1,0 +1,3 @@
+=== STEP r5g OK (attempt 0) ===
+{"shopId":"shop_mu6j87v1itrs","rows":[{"label":"I1 forward + shop_id","code":"SUCCESS","msg":"ok","breakEven":2015873},{"label":"I2 reverse + shop_id","code":"SUCCESS","msg":"ok","breakEven":1539683}]}
+report written: walk_report.json

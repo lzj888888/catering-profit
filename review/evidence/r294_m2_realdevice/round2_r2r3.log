@@ -1,0 +1,5 @@
+=== STEP r2 OK (attempt 0) ===
+{"before":"REJ:Uncaught Cannot read properties of undefined (reading 'route')","after":"REJ:Uncaught Cannot read properties of undefined (reading 'data')"}
+=== STEP r3 OK (attempt 0) ===
+{"setup":"REJ:Uncaught Cannot read properties of undefined (reading 'data')","afterPick":"REJ:Uncaught Cannot read properties of undefined (reading 'data')","gen":{"called":false,"err":"Cannot read properties of undefined (reading 'onGenerate')"},"res":"REJ:Uncaught Cannot read properties of undefined (reading 'data')"}
+report written: walk_report.json

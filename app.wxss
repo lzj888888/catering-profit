@@ -7,9 +7,14 @@
 page { background: #f5f6f8; font-family: -apple-system, "PingFang SC", sans-serif; }
 .container { padding: 24rpx; }
 .summary { display: flex; flex-wrap: wrap; }
-.card { width: 48%; margin: 1%; background: #fff; border-radius: 20rpx; padding: 20rpx; box-sizing: border-box; }
-.card.hl { background: #e8eff7; }
-.card.net { background: #eafaf0; }
+/* 🔴🔴 R296d：原此处有三条**全局**半宽卡片规则 ——
+   `.card { width: 48%; margin: 1%; ... }` / `.card.hl` / `.card.net`（早期首页九宫格的样式）。
+   它们已被首页现行的 `hero-*` 体系取代，**全仓零用量**（`class="card"` / 组合类 / 动态绑定三种写法实扫均为空）。
+   留着的唯一后果 = **雷**：任何页面只要复用 `.card` 这个类名，就会静默继承 `width: 48%`
+   ⇒ 卡片只剩半宽 ⇒ 卡内标签在 flex 行里被挤到 ~1 字宽 ⇒ 中文逐字断行 = **「竖版文字」**。
+   矩阵页 / 对比页正是踩此雷（2026-10-14 李老师连续几轮反馈「改了几次没改成横版」）。
+   ⇒ 本轮**把雷拆了**：删掉这三条；并由 `tools/check_page_card_width.js` 机器守着
+   「全局样式表里不得再出现精确类名 `.card`」。 */
 .label { display: block; font-size: 28rpx; color: #888; }
 .value { display: block; font-size: 40rpx; font-weight: 700; color: #222; }
 .sub { font-size: 28rpx; color: #1e3a5f; }

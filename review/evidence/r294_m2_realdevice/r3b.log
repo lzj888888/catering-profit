@@ -1,0 +1,3 @@
+=== STEP r3b OK (attempt 0) ===
+{"small":"REJ:Uncaught Cannot read properties of undefined (reading 'setData')","large":"REJ:Uncaught Cannot read properties of undefined (reading 'data')"}
+report written: walk_report.json

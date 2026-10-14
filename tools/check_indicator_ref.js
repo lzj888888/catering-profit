@@ -302,9 +302,9 @@ for (const ind of ['rent', 'labor']) {
   got.forEach((r) => { by[r.key] = r; });
   // 期望：**毛利率 65%（dining 带 55~65 ⇒ 达上限 good —— gain 方向越高越好）**
   //       房租 10%（dining 带 8~15 ⇒ ok，未过 15 警戒线）/ 人工 15%（带 25~35 ⇒ good）
-  //       能耗 3%（带 3~5 ⇒ good）/ 管理 5%（带 5~10 ⇒ good）
+  //       能耗 3%（带 3~5 ⇒ good）/ 管理 5%（带 4~8 ⇒ ok；R296：manage 5,10→4,8，5 落在带内）
   //       营销 15%（带 5~10，超上限 25%（12.5）之外 ⇒ bad）
-  const want = { grossMargin: ['65', 'good'], rent: ['10', 'ok'], labor: ['15', 'good'], energy: ['3', 'good'], manage: ['5', 'good'], mkt: ['15', 'bad'] };
+  const want = { grossMargin: ['65', 'good'], rent: ['10', 'ok'], labor: ['15', 'good'], energy: ['3', 'good'], manage: ['5', 'ok'], mkt: ['15', 'bad'] };
   const bad = Object.keys(want).filter((k) => !by[k] || String(by[k].pct) !== want[k][0] || by[k].level !== want[k][1]);
   check('C-⑧ evaluateIndicators 语义样本 6 项（占比 + 评级）', bad.length === 0,
     bad.length ? bad.map((k) => `${k}=${by[k] ? by[k].pct + '/' + by[k].level : 'null'}`).join('，')
@@ -378,8 +378,8 @@ for (const ind of ['rent', 'labor']) {
   const by = {};
   got.forEach((x) => { by[x.key] = x; });
   // 手算：房租 [8,15]→11.5% ⇒ 1150000；人工 [17,22]→19.5% ⇒ 1950000；
-  //       能耗 [3,5]→4% ⇒ 400000；管理 [5,10]→7.5% ⇒ 750000
-  const wantFen = { rent: 1150000, labor: 1950000, utility: 400000, manage: 750000 };
+  //       能耗 [3,5]→4% ⇒ 400000；管理 [4,8]→6% ⇒ 600000（R296：manage 5,10→4,8）
+  const wantFen = { rent: 1150000, labor: 1950000, utility: 400000, manage: 600000 };
   const bad = Object.keys(wantFen).filter((k) => !by[k] || by[k].fen !== wantFen[k]);
   check('C-⑬ 🔴 参考金额正样本：正餐·二三线·10万 ⇒ 4 项且金额 = 营业额 × 中值%',
     got.length === 4 && bad.length === 0,

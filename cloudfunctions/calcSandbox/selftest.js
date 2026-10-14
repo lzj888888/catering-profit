@@ -153,15 +153,15 @@ check('G6 空入参也给默认业态（dining）的参考带，不崩',
 console.log('\n===== H 参考金额反算（round114 · 预计月营业额锚点）=====');
 // 正餐 · 二三线 · 预计月营业额 100,000 元（10000000 分）：
 //   房租 带[8,15] 中值 11.5% ⇒ 11,500.00 元；人工 [17,22]→19.5% ⇒ 19,500.00 元
-//   能耗 [3,5]  →4%         ⇒  4,000.00 元；管理 [5,10]→7.5% ⇒  7,500.00 元
+//   能耗 [3,5]  →4%         ⇒  4,000.00 元；管理 [4,8]→6%   ⇒  6,000.00 元（R296：BANDS.manage 5,10→4,8）
 const withRev = calcSandbox(Object.assign({}, base, { expectedRevenueFen: 10000000 }));
 const am = withRev.amount_preview || [];
 const amOf = (k) => am.filter((x) => x.key === k)[0] || {};
 check('H1 填了预计营业额 ⇒ 反算 4 项（房租/人工/水电气/管理费）', am.length === 4, `=${am.length} 项`);
 check('H2 房租参考金额 = 100,000 × 11.5% = 11,500（1150000分）', amOf('rent').fen === 1150000, `=${amOf('rent').fen}分`);
 check('H3 人工参考金额 = 19,500（1950000分）', amOf('labor').fen === 1950000, `=${amOf('labor').fen}分`);
-check('H4 能耗/管理 = 4,000 / 7,500（固定项 key=utility，指标 indKey=energy —— 双键各归其位）',
-  amOf('utility').fen === 400000 && amOf('utility').indKey === 'energy' && amOf('manage').fen === 750000,
+check('H4 能耗/管理 = 4,000 / 6,000（固定项 key=utility，指标 indKey=energy —— 双键各归其位）',
+  amOf('utility').fen === 400000 && amOf('utility').indKey === 'energy' && amOf('manage').fen === 600000,
   `utility=${amOf('utility').fen}/${amOf('utility').indKey} manage=${amOf('manage').fen}`);
 check('H5 🔴 未填营业额（0）⇒ 空数组，不编造 0 元', (calcSandbox(base).amount_preview || []).length === 0);
 check('H6 🔴 pct 与 fen 自洽（fen == 营业额 × pct%，客户拿计算器可复算）',

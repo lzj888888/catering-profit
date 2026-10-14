@@ -132,7 +132,10 @@ function inputValues(wxml) {
 //         那正是本守卫存在的意义（参考值只当提示，绝不替你填）。
 // 2026-10-12（round279d #12 多渠道毛利率）：新增 8 个「分渠道」用户输入框，绑定 `channel.*`，
 //   均为用户手填/可改值（占比、抽成率、折扣率、覆盖值），非参考值注入 ⇒ 按本守卫纪律入白名单。
-const OK_VALUE = /^\{\{(item\.(yuan|years|pct)|targetYuan|expectYuan|planName|areaNum|rentYuan|headcountNum|avgPriceYuan|laborUnitYuan|openDaysNum|tablesNum|seatsPerTableNum|pixelEffYuan|turnNum|channel\.(takeawayRatio|groupRatio|platformRate|packRate|discountRate|groupPlatformRate|takeawayOverride|groupOverride)|initialInvestYuan)\}\}$/;
+const OK_VALUE = /^\{\{(item\.(yuan|years|pct)|targetYuan|expectYuan|planName|areaNum|rentYuan|headcountNum|avgPriceYuan|laborUnitYuan|openDaysNum|tablesNum|seatsPerTableNum|pixelEffYuan|turnNum|channel\.(takeawayRatio|groupRatio|platformRate|packRate|discountRate|groupPlatformRate|takeawayOverride|groupOverride|cardRate)|initialInvestYuan|laborTotalYuan|waterYuan|electricYuan|gasYuan|manageYuan)\}\}$/;
+// 🔴 R296 拍1/2/3（2026-10-14）：新增结构化固定成本输入 laborTotalYuan / waterYuan / electricYuan /
+//   gasYuan / manageYuan（替换「每月固定支出」明细表），均为**用户手填**（有账单填实数；找店留空走参考值，
+//   参考值只当占位/说明，**不进 value**）⇒ 按本守卫纪律入白名单。
 
 const pageJsRaw = readRel(PAGE_JS);
 const pageWxmlRaw = readRel(PAGE_WXML);
@@ -143,19 +146,18 @@ const jsStripped = stripJs(pageJsRaw);
 const refBody = bodyOf(jsStripped, 'applyRefAmount');
 check('P-① 两个面文件可读且非空', pageJsRaw.length > 1000 && pageWxmlRaw.length > 1000,
   `index.js ${pageJsRaw.length} 字符 · index.wxml ${pageWxmlRaw.length} 字符`);
-check('P-② `applyRefAmount` 函数体**可解析**（解析不到即判红 —— 否则 A 段会静默变绿）',
-  !!refBody, refBody ? `函数体 ${refBody.length} 字符` : '未找到 applyRefAmount 定义');
+// 🔴 R296 拍1：`applyRefAmount`（参考金额灰字只进 placeholder）**随「每月固定支出」明细表删除** ——
+//   该函数已不存在 ⇒ 原 P-② / A-① / C-① 三条**针对它**的断言一并移除（对已删代码断言＝假红）。
+//   ⚠️ 本守卫**核心判据 B-①**（wxml 每个 input 的 value 必须绑"用户自己填"的字段）**原样保留**：
+//      「参考值绝不悄悄进 value」这条红线仍由它守着（新输入框已登记入 OK_VALUE）。
 // ⚠️ 下界 = **实测值**（6），不是「展开后的行数」：wxml 里 `wx:for` 只写一个 `<input>` 标签，
 //    所以 3 行建店投入 / 4 行固定支出 都只各占 1 个标签。凭估会把自己判红（本轮实测踩过）。
 check('P-③ wxml 里 `<input>` 数 ≥ 6（扫描面没有被写窄）',
   inputValues(pageWxmlRaw).length >= 6, `${inputValues(pageWxmlRaw).length} 个`);
 
-// ============ A 主判据：不碰用户值 ============
-sec('A 主判据：参考金额只改 placeholder，绝不写进用户输入值');
-check('A-① `applyRefAmount` 函数体（剥注释后）**零 `yuan`**',
-  !!refBody && !touchesYuan(refBody),
-  refBody ? (touchesYuan(refBody) ? '🔴 函数体出现 yuan ⇒ 参考值可能被自动填值' : '零 yuan（只动 ph）')
-    : '函数体未解析（见 P-②）');
+// ============ A 主判据（R296 起并入 B）：不碰用户值 ============
+// 🔴 R296 拍1：原 A-① 断言 `applyRefAmount` 体内零 yuan —— 该函数已随明细表删除（见 P-② 处说明），
+//   红线改由 B-① 承接：wxml 每个 input 的 value 必须绑"用户自己填"的字段，参考值不得进 value。
 
 // ============ B 主判据：wxml value 绑定白名单 ============
 sec('B 主判据：wxml 输入框的 value 只能绑「用户自己填」的字段');
@@ -170,8 +172,7 @@ sec('B 主判据：wxml 输入框的 value 只能绑「用户自己填」的字�
 
 // ============ C 正向要求 ============
 sec('C 正向要求：参考值确实有出口，且仍是"只写 ph"');
-check('C-① `applyRefAmount` 体内确实写 `ph`（防函数被掏空 ⇒ A-① 恒真）',
-  !!refBody && /\bph\b/.test(refBody), refBody ? '含 ph' : '函数体未解析');
+// （C-① 已随 applyRefAmount 删除而移除 —— 见 P-② 处说明。）
 check('C-② 参考值仍有出口：terms 单源含 `refAmtPh` 键',
   /\brefAmtPh\s*:/.test(readRel(TERMS_REL)), 'miniprogram/i18n/terms.js::m2.refAmtPh');
 // ⚠️ round114 变异 A14 实证：只查「键存在」挡不住「键被掏空」（`refAmtPh: ''`）——
@@ -217,7 +218,7 @@ sec('D 自失效护栏：四件工具各带正负样本互证');
 
 // ============ E 下界 ============
 sec('E 下界：断言数不被悄悄删小');
-check('E-① 本守卫断言数 ≥ 13（删掉判据即转红）', pass + failN >= 13, `含本条共 ${pass + failN + 1} 条`);
+check('E-① 本守卫断言数 ≥ 10（删掉判据即转红；R296 移除 3 条 applyRefAmount 断言后下调下界）', pass + failN >= 10, `含本条共 ${pass + failN + 1} 条`);
 
 console.log(`\n===== M2 参考值不预填守卫结果：${pass} 通过 / ${failN} 失败 =====`);
 process.exit(failN === 0 ? 0 : 1);

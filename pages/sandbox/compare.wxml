@@ -4,7 +4,7 @@
 
   <view wx:if="{{plans.length === 0 && !loading}}" class="empty">{{t.empty}}</view>
 
-  <view class="card" wx:for="{{plans}}" wx:key="sandbox_id">
+  <view class="mcard" wx:for="{{plans}}" wx:key="sandbox_id">
     <view class="plan-row" bindtap="onToggle" data-id="{{item.sandbox_id}}">
       <view class="check {{selected.indexOf(item.sandbox_id) >= 0 ? 'on' : ''}}"></view>
       <!-- 🔴 round273：方案名后标场景（已有铺面 / 寻找铺面）—— 选方案时就该看出口径 -->
@@ -18,7 +18,7 @@
   <block wx:if="{{compared}}">
     <!-- 🔴 round273：跨场景混比硬提示 —— 两种场景算的不是同一个东西（保本营业额 vs 房租上限） -->
     <view class="hint" wx:if="{{mixedScene}}">{{t.mixedScene}}</view>
-    <view class="card">
+    <view class="mcard">
       <view class="cmp-tbl">
         <view class="tr th">
           <text class="td">{{t.planCol}}</text>

@@ -522,7 +522,9 @@ const PAGE_CASES = [
     js: 'pages/sandbox/index.js',
     wxss: 'pages/sandbox/index.wxss',
     keys: ['sbAssumptionsHint', 'sbBandPreviewNote', 'sbExpectRevNote', 'sbBuildNote',
-           'sbFixedNote', 'sbMarginTip', 'sbVarNote',
+           // 🔴 R296 拍1：`sbFixedNote`（「每月固定支出」卡的折叠说明）**随明细表整块删除** ⇒ 移出期望键集。
+           // 🔴 R296b：`sbVarNote`（④「挂钩费用」卡的折叠说明）**随该卡整块删除** ⇒ 移出期望键集。
+           'sbMarginTip',
            // ── R234/J4f 补漏两处（26 字 redAlertHint）──
            // 🔴 **两处必须两个独立 key**：同一句文案出现在正推 Tab 与反推 Tab 的红牌卡里。
            //   两处虽互斥显示，但若共用一个 key，用户在正推点开后切到反推
@@ -546,10 +548,10 @@ const PAGE_CASES = [
     //   ⚠️ round276：9 → 10，新增的是 A 区坪效/人效卡的一句短注「坪效越高，这面积用得越值」（**12 字，合规平铺**）。
     //      同 round273 那条判据逻辑：新增**一句给用户看的短提示** ⇒ 改预期；
     //      若是"把长提示展平"或"把短提示改短来回避折叠"才是破坏分层线（那会被 F9 的另一侧判红）。
-    keepPlain: 18,  // 本页 <18 字的提示仍有 18 处平铺（分层判据的另一侧；#7 计算明细透明/反推/免责声明各加 1 处，旧预期 6 被过期缓存掩盖；round273 客流卡口径注 +1；round276 坪效/人效卡口径注 +1；round279c #10 敏感度卡加 sensSub+sensHint 2 处；round279d #12 多渠道卡加 channelSample/over100/pureTakeaway/blendedDiff/override/leverage 6 处）
-    // 本页另有 5 处**区段级**折叠（.fold-toggle）——必须与句级并存、不得互相吃掉
-    // （round279c #10 敏感度卡新增 1 处 onToggleSens：3 → 4；round279d #12 多渠道卡新增 1 处 onToggleChannelParams：4 → 5）
-    segFolds: 5,
+    keepPlain: 14,  // 本页 <18 字的提示平铺数（分层判据的另一侧；2026-10-14 R296b:17→14 —— ④挂钩卡删 sbVarNote 说明 + 多渠道卡改渠道佣金后仅留 channelSample/channelTotalNote 两处 + 新增 revGrossHint 短提示）
+    // 本页**区段级**折叠（.fold-toggle）——必须与句级并存、不得互相吃掉
+    // （2026-10-14 R296b:5→4 —— 多渠道卡的「默认参数」折叠区随 onToggleChannelParams 删除）
+    segFolds: 4,
   },
   {
     // R234/J4b：一次性投入 / 分期摊销编辑页。本页**只折 1 处** ——

@@ -131,7 +131,15 @@ const ALLOW_INPUTS = {
   cityIdx: '城市层级 picker（枚举，非专业指标）',
   expectYuan: '预计月营业额 → expected_revenue_fen（仅正向、选填）',
   headcountNum: '员工数 → labor 固定项；老板自己排班，填得出',
-  laborUnitYuan: '单人月人工单价 → labor；当地行情，填得出',
+  // ⚠️ R296 拍1：`laborUnitYuan`（员工月均工资）**输入框已删**（人工改「直接填总额」），
+  //   此字段降级为**内部兜底**（选预设时带出、无 UI）—— 白名单条目保留（数据字段仍在）。
+  laborUnitYuan: '（已无输入框）单人月人工单价 → labor 兜底；今由预设自动带出',
+  // 🔴 R296 拍1/2/3（2026-10-14）：替换「每月固定支出」明细表的结构化固定成本输入。
+  laborTotalYuan: '人工每月总额(元) → labor 固定项（不乘人数）；老板自己填实际工资合计',
+  waterYuan: '水费(元/月) → 与电/气求和成 utility；有账单的填实数，没有留空走参考值',
+  electricYuan: '电费(元/月) → 与电/气求和成 utility；有账单的填实数，没有留空走参考值',
+  gasYuan: '燃气费(元/月) → 与电/气求和成 utility；有账单的填实数，没有留空走参考值',
+  manageYuan: '管理费(元/月，选填) → manage 固定项；非加盟店留空 = 不评',
   marginPct: '菜品毛利率 → gross_margin_pct（核心口径，由菜品成本推出或选填）',
   openDaysNum: '每月开门天数 → 正向 valid_days / 反向 open_days（同一份用户输入，两个 Tab 共用）；老板自己定',
   planName: '方案名（快照用，非测算入参）',
@@ -150,6 +158,8 @@ const ALLOW_INPUTS = {
   'channel.groupPlatformRate': '团购平台抽成率(%) → 推导团购毛利率（默认示例值 5%）',
   'channel.takeawayOverride': '外卖净毛利率手动覆盖(%) → 选填，覆盖推导值',
   'channel.groupOverride': '团购净毛利率手动覆盖(%) → 选填，覆盖推导值',
+  // 🔴 R296b（渠道佣金改造）：新增「刷卡/扫码费率」输入（占**总流水**%），用户手填不可推导 ⇒ 登记。
+  'channel.cardRate': '刷卡/扫码费率(%) → 直接进挂钩费率（占总流水%）；用户按收单机构费率填',
   // 🔴 2026-10-12（round279e · A 初始总投入回本）：非引擎入参，纯前端派生回本月数（复用 paybackCash 一次除法），
   //   用户手填的一次性总投入（含转让费/装修/设备/加盟）；引擎零改。
   'initialInvestYuan': '初始总投入(含转让费/装修/设备/加盟) → 纯前端派生回本月数，非引擎入参；用户手填',
@@ -222,8 +232,11 @@ const seatsRhs = seatsAssigns.map((s) => s.replace(/^seats\s*:\s*/, '').trim());
 const seatsViaNow = seatsRhs.filter((r) => /^this\.seatsNow\(\)/.test(r));
 const seatsViaPass = seatsRhs.filter((r) => /^[A-Za-z_$][\w$]*\.seats$/.test(r));
 const badSeats = seatsRhs.filter((r) => seatsViaNow.indexOf(r) < 0 && seatsViaPass.indexOf(r) < 0);
+// 🔴 R296-E：删除首页 reverse 死代码后，`seats:` 合法赋值由 ≥4 降为 2（buildPresetParam 内 `this.seatsNow()`
+//   + onCalcPresetFwd 内 `p.seats` 透传）。自退化护栏同步下调（不因清理死代码而假红）；
+//   核心红线不变 —— 任一右值不是「换算点 / 透传」即红，且必须至少保留 1 个换算点。
 check('A-⑧ 🔴 `seats:` 右值只允许 `this.seatsNow()` 或透传 `<obj>.seats`（漏乘 / 写死 / 残留旧字段即红）',
-  seatsAssigns.length >= 4 && seatsViaNow.length >= 2 && badSeats.length === 0,
+  seatsAssigns.length >= 2 && seatsViaNow.length >= 1 && badSeats.length === 0,
   `受检 ${seatsAssigns.length} 处（换算 ${seatsViaNow.length} + 透传 ${seatsViaPass.length}）`
     + (badSeats.length ? ` ⇒ 越界：${badSeats.join(' | ')}` : '，全部合规'));
 

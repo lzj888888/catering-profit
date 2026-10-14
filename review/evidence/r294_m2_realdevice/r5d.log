@@ -1,0 +1,3 @@
+=== STEP r5d OK (attempt 0) ===
+[{"label":"A 原样（含 valid_days）","code":"INVALID_PARAM","msg":"INVALID_PARAM"},{"label":"B 去掉 valid_days","code":"INVALID_PARAM","msg":"INVALID_PARAM"},{"label":"C expected_revenue_fen 给 60000 元","code":"INVALID_PARAM","msg":"INVALID_PARAM"},{"label":"D gross_margin_pct=55","code":"INVALID_PARAM","msg":"INVALID_PARAM"},{"label":"E seats=20 / 客单 30 元","code":"INVALID_PARAM","msg":"INVALID_PARAM"}]
+report written: walk_report.json

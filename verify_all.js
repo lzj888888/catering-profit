@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：168 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：169 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -769,6 +769,10 @@ const SUITES = [
   //   （WXML 文本节点仍会插值 {{}} ⇒ 屏上是**求值后**的值，故像"英文报错"）。
   //   判据 A＝裸属性行（上一非空行已闭合）；判据 B＝标签配平（未闭合 / 错配 / 缺 >）。
   ['wxml-struct', 'tools/check_wxml_structure.js'],
+  // ===== R296c 页面卡片宽度冲突守卫（2026-10-14）：见头部注释同名条目。
+  //   根因：`app.wxss .card { width:48% }`（首页九宫格专用）被 matrix/compare 两页复用而不覆盖
+  //   width ⇒ 卡片半宽 ⇒ 卡内 flex 行的 <text> 被挤成「一字一行」（用户：「原来都是竖版的字体」）。
+  ['page-card-width', 'tools/check_page_card_width.js'],
   // ===== R124 页面术语键「引用即存在」守卫（同族病第 27 例，round108）：见头部注释同名条目。
   //   根因：WXML 对 `{{undefined}}` **不报错**，静默渲染成空 ⇒「少映射一个术语键」在真机上
   //   表现为**空白按钮 / 空白文案 / 空白 placeholder**。R122 只验 .js 能否编译、R123 只验
