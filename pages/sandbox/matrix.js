@@ -9,6 +9,8 @@ const api = require('../../utils/api.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 const {
   BIZ_PRESETS, CITY_COEF, assembleItems, resolveBuild, findPreset, bizKeyOfPreset,
+  // R297：全局开店投入的年限兜底（与云端 indicatorRef 同口径，不再硬写 1）
+  BUILD_DEFAULT_YEARS, buildYearsOf,
 } = require('../../utils/bizPreset.js');
 const { deliver } = require('../../utils/exportFile.js');
 
@@ -136,7 +138,7 @@ Page({
       global: {
         area: this.data.global.area,
         buildTotalYuan: ref ? Math.round(ref.fen / 100) : 0,
-        buildYears: ref ? Math.round(ref.years) : 3,
+        buildYears: ref ? buildYearsOf('other', ref.years) : BUILD_DEFAULT_YEARS.other,
       },
     });
   },
@@ -203,8 +205,10 @@ Page({
   // 全局开店投入 → buildItems（与 bizPreset.resolveBuild 同形：[{key,fen,years}]）
   buildItems() {
     const yuan = Number(this.data.global.buildTotalYuan) || 0;
-    const years = Number(this.data.global.buildYears) || 1;
-    return [{ key: 'other', fen: api.yuanToFen(yuan), years: years > 0 ? years : 1 }];
+    // 🔴 R297：原 `|| 1` / `years > 0 ? years : 1` 双重硬兜 1 年 —— 清空年限即按 1 年摊，
+    //   月摊销虚高 3 倍 ⇒ 整张矩阵的保本点系统性偏高。改走同口径归一。
+    const years = buildYearsOf('other', this.data.global.buildYears);
+    return [{ key: 'other', fen: api.yuanToFen(yuan), years }];
   },
 
   // ===== 生成矩阵（批量送云）=====

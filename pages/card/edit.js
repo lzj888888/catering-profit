@@ -45,10 +45,15 @@ function renumber(lines) {
 // 手工行净料单位成本（万分）：round(单价元/基准单位 × 10000 ÷ (出成率/100))
 //   round151：加第三参 `priceUnit` —— 单价先折算到基准单位（元/克）再进这条**既有公式**。
 //   ⚠️ 公式本体一字不改（引擎口径）；折算只发生在录入层，云端契约与快照格式零改动。
+//
+// 🔴🔴 R297 真漏洞修复：出成率改走 `units.yieldRateOf`（唯一入口，**带 (0,100] 上界**）。
+//   原 `Number(yieldRate) || 100` 只兜 0/NaN，**没有上界** ⇒ 老板填 150 ⇒ 成本被 ÷1.5
+//   ⇒ 毛利虚高，且**零报错**（云端只收 net_unit_cost 快照，那条 (0,100] 校验永远走不到）。
+//   现在：非法/越界 ⇒ `yieldRateOf` 返回 null ⇒ 本函数返回 0 ⇒ 调用方**响亮提示**（不静默编数）。
 function manualNetUnitWan(unitPriceYuan, yieldRate, priceUnit) {
   const p = units.priceToBase(unitPriceYuan, priceUnit || units.BASE_UNIT);
-  const y = Number(yieldRate) || 100;
-  if (!(p > 0)) return 0;
+  const y = units.yieldRateOf(yieldRate);
+  if (!(p > 0) || y === null) return 0;
   return Math.round((p * 10000) / (y / 100));
 }
 
@@ -715,8 +720,27 @@ Page({
     } catch (e) { api.toastError(e); }
   },
 
+  // 🔴 R297：出成率**上界**校验（手工行）—— 越界**绝不静默回落 100**（那等于替老板编一个数）。
+  //   返回第一处越界 { idx, raw }；全部合法返回 null。
+  //   为什么必须前置：净料成本 = 单价 ÷ 出成率，出成率 150 ⇒ 成本被 ÷1.5 ⇒ **毛利虚高**，
+  //   而云端只收 net_unit_cost 快照、验不到出成率 ⇒ 不在这里拦就一路静默到老板眼前。
+  badYieldOf() {
+    const lines = this.data.lines || [];
+    for (let i = 0; i < lines.length; i++) {
+      const l = lines[i];
+      if (Number(l.input_type) !== 2) continue;
+      if (units.yieldRateOf(l.yield_rate) === null) return { idx: i, raw: l.yield_rate };
+    }
+    return null;
+  },
+
   buildCalcLines() {
     const out = [];
+    // 🔴 R297：先过出成率上界（反算 / 保存两条路共用，防「试算出的成本也偏低」）
+    if (this.badYieldOf()) {
+      wx.showToast({ title: TERMS.card.yieldRangeErr, icon: 'none' });
+      return null;
+    }
     // M3.16 / R190：**套餐也能算**（此前反算区只给单品用，套餐点了没反应）
     //   子卡行 → 引擎行：net_unit_cost = 子卡单份成本(分) × 100（与引擎「万分之一元」同尺度）；quantity = 份数。
     if (this.data.cardType === '3') {
@@ -738,7 +762,7 @@ Page({
       if (l.input_type === 2) {
         // 手工行：前端算净料单位成本（录入换算），反算与保存用同一值（单源）
         const wan = manualNetUnitWan(l.unit_price_yuan, l.yield_rate, l.price_unit);
-        if (wan <= 0) continue;
+        if (wan <= 0) continue;      // 🔴 R297：出成率越界已在 `badYieldOf` 前置拦下并提示，此处兜底
         out.push({ quantity: qtyBase, net_unit_cost: wan, line_kind: l.line_kind || 'main' });
       } else {
         if (!l.material_id) continue;
@@ -884,6 +908,11 @@ Page({
 
   async doSave() {
     const lines = [];
+    // 🔴 R297：保存前同样先过出成率上界（与反算同一入口，两条路口径一致）
+    if (this.badYieldOf()) {
+      wx.showToast({ title: TERMS.card.yieldRangeErr, icon: 'none' });
+      return;
+    }
     // M3.16（批次 C）套餐：明细行 = 子卡引用行（sub_card_ref + 份数），不走原料/手工分支。
     if (this.data.cardType === '3') {
       for (const cl of this.data.comboLines) {
@@ -903,7 +932,13 @@ Page({
         const kind = l.line_kind || 'main';
         if (l.input_type === 2) {
           const wan = manualNetUnitWan(l.unit_price_yuan, l.yield_rate, l.price_unit);
-          if (wan <= 0) { wx.showToast({ title: TERMS.card.manualUnitPrice, icon: 'none' }); return; }
+          if (wan <= 0) {
+            // 🔴 R297：区分「单价没填」与「出成率越界」—— 改前两者共用「单价」提示，
+            //   老板填错出成率却被告知"单价有问题"，等于指错路（且越界那条本会**静默按 100 算**）。
+            const bad = units.yieldRateOf(l.yield_rate) === null;
+            wx.showToast({ title: bad ? TERMS.card.yieldRangeErr : TERMS.card.manualUnitPrice, icon: 'none' });
+            return;
+          }
           lines.push({ input_type: 2, name: (l.material_name || '').trim(), qty: qtyBase, net_unit_cost: wan, line_kind: kind });
         } else {
           if (!l.material_id) continue;

@@ -19,7 +19,9 @@ const { TERMS } = require('../../miniprogram/i18n/terms.js');
 const { BIZ_PRESETS, CITY_COEF, assembleItems, resolveBuild, paybackCash, findPreset,
   // R292：周转难度改按**业态**分档（turnLevelOfBiz）—— 快餐/茶饮翻座天然高，
   //   套旧的 table/seat 通用档会把常态判成「这数偏高」，属吓跑老板的误导提示。
-  bizKeyOfPreset, seatsPerTableOf, turnModeOf, turnLevelOf, turnLevelOfBiz } = require('../../utils/bizPreset.js');
+  bizKeyOfPreset, seatsPerTableOf, turnModeOf, turnLevelOf, turnLevelOfBiz,
+  // R297：年限不再各写各的（初始行 / 新增行 / 提交 / 回存草稿 四处同走这一份）
+  BUILD_DEFAULT_YEARS, buildYearsOf } = require('../../utils/bizPreset.js');
 
 const M = TERMS.m2;
 const BUILD_ALL = Object.keys(M.buildItems);
@@ -316,10 +318,12 @@ Page({
     // 各行（yuan / pct 保存**字符串**，与输入框语义一致；提交时才转分）
     buildRows: [
       // 🔴 R296：新增「转让费」（开店大头，按租期摊）—— 与证照/首批物料分开，摊销年限更准。
-      mkRow('transfer', M.buildItems, M.buildItemNotes, { yuan: '', years: 3 }),
-      mkRow('decor', M.buildItems, M.buildItemNotes, { yuan: '', years: 3 }),
-      mkRow('equip', M.buildItems, M.buildItemNotes, { yuan: '', years: 5 }),
-      mkRow('franchise', M.buildItems, M.buildItemNotes, { yuan: '', years: 3 }),
+      // 🔴 R297：年限一律取 `BUILD_DEFAULT_YEARS`（与云端 indicatorRef 同口径）——
+      //   此前四处各写死 3/3/5/3，改默认值得改四遍且必漏一处。
+      mkRow('transfer', M.buildItems, M.buildItemNotes, { yuan: '', years: BUILD_DEFAULT_YEARS.transfer }),
+      mkRow('decor', M.buildItems, M.buildItemNotes, { yuan: '', years: BUILD_DEFAULT_YEARS.decor }),
+      mkRow('equip', M.buildItems, M.buildItemNotes, { yuan: '', years: BUILD_DEFAULT_YEARS.equip }),
+      mkRow('franchise', M.buildItems, M.buildItemNotes, { yuan: '', years: BUILD_DEFAULT_YEARS.franchise }),
     ],
     // 🔴 R296b：`varRows`（④「跟营业额挂钩的费用」明细）**整块删除** —— 挂钩费率改由
     //   「渠道佣金」卡（各渠道占比 × 抽点）自动算，见 `recomputeChannel` + `buildPresetParam`。
@@ -488,7 +492,10 @@ Page({
     let d = null;
     try { d = wx.getStorageSync(DRAFT_KEY); } catch (e) { d = null; }
     if (!d || d.v !== 1) return false;
-    const build = (d.build || []).map((x) => mkRow(x.key, M.buildItems, M.buildItemNotes, { yuan: x.yuan, years: x.years }));
+    // 🔴 R297：草稿里的年限可能为空/非法（老草稿无此字段）⇒ 走 `buildYearsOf` 归一，
+    //   绝不把空串直接塞回输入框（空串 ⇒ 提交时若再兜错，保本点照样静默算错）。
+    const build = (d.build || []).map((x) => mkRow(x.key, M.buildItems, M.buildItemNotes,
+      { yuan: x.yuan, years: buildYearsOf(x.key, x.years) }));
     // 🔴 R296 拍1 / R296b：旧草稿里的 `d.fixed`（明细表）与 `d.varRows`（挂钩明细）**一并忽略**。
     const ci = d.cityIdx || 0;
     const bi = d.bizIdx || 0;
@@ -558,7 +565,8 @@ Page({
     const used = this.data.buildRows.map((r) => r.key);
     const k = BUILD_ALL.filter((x) => used.indexOf(x) < 0)[0];
     if (!k) return;
-    const rows = this.data.buildRows.concat([mkRow(k, M.buildItems, M.buildItemNotes, { yuan: '', years: 3 })]);
+    const rows = this.data.buildRows.concat([mkRow(k, M.buildItems, M.buildItemNotes,
+      { yuan: '', years: buildYearsOf(k, '') })]);
     this.setData({ buildRows: rows });
     this.scheduleCalc();
   },
@@ -1188,9 +1196,19 @@ Page({
     const cityKey = this.data.t.cityTiers[this.data.cityIdx].key;
     const coef = Object.assign({ rent: 1, labor: 1 }, CITY_COEF[cityKey] || {});
     const isReverse = mode === 'reverse';
+    // 🔴 R297 真漏洞修复：原写 `years: Number(r.years) || 1` ——
+    //   用户清空年限 ⇒ 前端硬兜 **1 年** ⇒ 月摊销虚高 3 倍（equip 5 倍）⇒ 保本点/目标营收虚高，
+    //   且**零报错**（静默错账）；同时把云端 `BUILD_DEFAULT_YEARS` 单源兜底架空成死代码。
+    //   现改走 `buildYearsOf`：空/非法 ⇒ 回落云端同口径默认值（transfer/decor/franchise/other=3、equip=5）。
     const userBuild = this.data.buildRows
       .filter((r) => api.yuanToFen(r.yuan) > 0)
-      .map((r) => ({ key: r.key, fen: api.yuanToFen(r.yuan), years: Number(r.years) || 1 }));
+      .map((r) => {
+        const item = { key: r.key, fen: api.yuanToFen(r.yuan), years: buildYearsOf(r.key, r.years) };
+        // ⚠️ `years === undefined`（key 不在白名单）时**必须删键**，别留 undefined ——
+        //    留着会被序列化成 null 或直接丢键，行为取决于通道；删键 ⇒ 云端明确走单源兜底。
+        if (item.years === undefined) delete item.years;
+        return item;
+      });
     const input = {
       area: Number(this.data.areaNum) || 0,
       headcount: Number(this.data.headcountNum) || 0,

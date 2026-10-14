@@ -250,6 +250,12 @@ Page({
     //   清空的系数悄悄换回 500，正是「不许静默改掉老板敲的数」要禁的行为）。
     const cf = Number(this.data.convert_factor) || 0;
     if (!(cf > 0)) { wx.showToast({ title: TERMS.card.matConvert, icon: 'none' }); return; }
+    // 🔴 R297：出成率**上界**也在这里前置拦（与菜品卡手工行同一入口 `units.yieldRateOf`）。
+    //   云端 `saveMaterial/validate.js` 有 (0,100] 校验 ⇒ 不会静默算错；但它的 msg 到不了用户眼前
+    //   （R271：`utils/api.js` 把 fail 的 msg 覆盖成通用文案）⇒ 老板只会看到一句"出错了"、
+    //   不知道是哪一格。这里前置给**人话**，让他在点保存当场就知道改哪。
+    const yr = units.yieldRateOf(this.data.yield_rate);
+    if (yr === null) { wx.showToast({ title: TERMS.card.yieldRangeErr, icon: 'none' }); return; }
     // 元 → 分整数（前端换算，禁止字符串/小数元透传）
     const purchasePriceFen = Math.round((Number(this.data.priceYuan) || 0) * 100);
     // aliases：逗号分隔 → JSON 数组字符串（仅检索，不替换原料名）
@@ -261,7 +267,7 @@ Page({
       purchase_unit: String(this.data.purchase_unit || '').trim() || TERMS.card.matUnitDefault,
       purchase_price_fen: purchasePriceFen,
       convert_factor: cf,
-      yield_rate: Number(this.data.yield_rate) || 100,
+      yield_rate: yr,
       is_virtual: false,
       category: this.data.categoryOptions[this.data.categoryIndex].value,
       aliases: JSON.stringify(aliases),

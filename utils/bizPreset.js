@@ -459,6 +459,33 @@ function assembleItems(preset, input, coef) {
   return { fixedItems, varItems };
 }
 
+// 🔴🔴 R297（第一轮查缺补漏抓出的真漏洞）：建店投入**摊销年限默认值**。
+//   单源出处：`cloudfunctions/common/indicatorRef.js::BUILD_DEFAULT_YEARS`。
+//   为什么前端必须有一份副本：小程序包**不能 require 云函数目录**（cloudfunctions 不进小程序包），
+//   而年限既用于「页面初始行的展示值」，也用于「用户清空输入框时的兜底」，必须与引擎同口径。
+//   踩过的坑（R297 实测）：`pages/sandbox/index.js` 原写 `years: Number(r.years) || 1` ——
+//     用户清空年限 ⇒ 前端按 **1 年**摊销 ⇒ 月摊销虚高 3 倍（equip 5 倍）⇒ 固定成本合计虚高
+//     ⇒ 保本点 / 目标营收**同步虚高**，而整个过程**零报错、零提示**（静默错账）。
+//     更隐蔽的是：云端 `calcSandbox/validate.js` 里 `BUILD_DEFAULT_YEARS` 那段兜底因此
+//     **永远走不到（死代码）** —— 单源写了、但被前端的硬兜底架空了。
+//   ⚠️ 改这里必须**同时**改云端单源，否则守卫 `tools/check_build_default_years.js` 转红。
+const BUILD_DEFAULT_YEARS = { franchise: 3, decor: 3, equip: 5, transfer: 3, other: 3 };
+
+/**
+ * 年限解析（前端唯一入口）：把输入框里的原始字符串/数字归一成引擎可吃的整数年限。
+ *   · 合法（≥1 的有限数）⇒ 向下取整；
+ *   · 空 / 0 / 负数 / NaN / 未知 key ⇒ 回落到 `BUILD_DEFAULT_YEARS[key]`（与云端同口径）；
+ *   · 连 key 都不在白名单 ⇒ `undefined`（让云端单源再兜一次，绝不落 1）。
+ * 🔴 为什么**不**兜 1：1 年摊销会让月摊销放大数倍，是把保本点推高的最危险形态。
+ * @returns {number|undefined}
+ */
+function buildYearsOf(key, raw) {
+  const y = Number(raw);
+  if (Number.isFinite(y) && y >= 1) return Math.floor(y);
+  return Object.prototype.hasOwnProperty.call(BUILD_DEFAULT_YEARS, key)
+    ? BUILD_DEFAULT_YEARS[key] : undefined;
+}
+
 /**
  * 建店投入（buildItems）：用户填了真实建店投入 ⇒ 用用户的；没填 ⇒ 用 preset.buildRef（两条路二选一，不叠加）。
  * 输出形状 = 引擎 build_items：[{key, fen, years}]。
@@ -496,6 +523,8 @@ function findPreset(key) {
 module.exports = {
   BIZ_PRESETS, CITY_COEF, FORMS,
   assembleItems, resolveBuild, paybackCash, findPreset, round1,
+  // R297：建店投入摊销年限默认值（与云端 indicatorRef 同口径）+ 年限归一入口
+  BUILD_DEFAULT_YEARS, buildYearsOf,
   // R234：业态预设平铺（预设 → 4 大类反查）
   bizKeyOfPreset,
   // R237：桌数 ⇄ 座位数 换算 + 翻台口径/阈值（引擎零改的入参变换层）

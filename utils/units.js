@@ -121,6 +121,31 @@ function suggestConvert(unit) {
   return typeof v === 'number' && v > 0 ? v : null;
 }
 
+/**
+ * 🔴🔴 R297（第一轮查缺补漏抓出的 M3 真漏洞）：**出成率归一**（前端唯一入口）。
+ *
+ * 背景：`pages/card/edit.js` 的手工行用「单价 ÷ 出成率」算净料单位成本，原写法是
+ *   `const y = Number(yieldRate) || 100;`
+ * 只兜了 0 / NaN / 空串，**没有上界**。老板填 150（或 200、1000）⇒ 净料成本被 ÷1.5（÷2、÷10）
+ * ⇒ **成本被系统性低估、毛利虚高**，而整个过程零报错（静默错账）。
+ *
+ * 更隐蔽的是：`saveCostCard/validate.js` 里那条 `yield_rate ∈ (0,100]` 的校验
+ * **永远走不到** —— 前端只送 `net_unit_cost` 快照，出成率根本不上云 ⇒ 云端守不住
+ * （与 R297 建店年限同一族：「单源写了，但被前端架空」的死代码）。
+ * ⚠️ 原料档案侧（saveMaterial/validate.js）**有**这条校验，所以那边是「报错」而不是静默错账。
+ *
+ * @param {string|number} raw 输入框原始值
+ * @returns {number|null} 合法出成率（(0,100]）；未填 = 100（不折损，与预填默认值同义）；
+ *                        非法 / 越界 = **null**（🔴 不静默回落 100 —— 那等于替老板编一个数）
+ */
+function yieldRateOf(raw) {
+  const s = String(raw === undefined || raw === null ? '' : raw).trim();
+  if (s === '') return 100;
+  const n = Number(s);
+  if (!Number.isFinite(n) || n <= 0 || n > 100) return null;
+  return n;
+}
+
 // 单位换算用于「换单位时保住物理量」：1000 克 → 1 千克。
 // 返回字符串（与页面输入框的 string 值同型），末尾多余 0 去掉，整数不留小数点。
 function convertQtyText(qtyText, fromUnit, toUnit) {
@@ -149,4 +174,6 @@ module.exports = {
   baseWordOf,
   isCrossFamily,
   priceToBase,
+  // R297：出成率归一（上界校验的唯一入口，防「填 150 ⇒ 成本被 ÷1.5 ⇒ 毛利虚高」）
+  yieldRateOf,
 };

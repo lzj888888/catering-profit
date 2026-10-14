@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：169 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：171 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -1022,6 +1022,26 @@ const SUITES = [
   ['memory-budget', 'tools/check_memory_budget.js'],
   // ===== 导入诊断守卫（R286 · 2026-10-13）=====
   ['import-diagnosis', 'tools/check_import_diagnosis.js'],
+  // ===== R297 建店投入「摊销年限默认值」单源守卫（2026-10-15 · 第一轮查缺补漏抓出的真漏洞）=====
+  //   页面侧原硬兜 `years: Number(r.years) || 1` ⇒ 用户清空年限就按 **1 年**摊销 ⇒ 月摊销虚高 3 倍
+  //   ⇒ 保本点/目标营收同步虚高，**零报错**（静默错账）；同时把云端 BUILD_DEFAULT_YEARS 单源兜底
+  //   架空成死代码 —— 「写了单源 ≠ 生效」的同族病。
+  //   判据 = A 前端副本 ≡ 云端单源（双向）+ B 云端年限表 ≡ BUILD_KEYS 自洽
+  //        + C buildYearsOf 九例行为（含"清空 ⇒ ≠1"正向钉死）
+  //        + D 页面层零「|| 1 / >0?x:1」年限兜底（剥注释 + 正负样本互证）
+  //        + E 变异互证 + 扫描面非空 + 断言数下界。
+  ['build-default-years', 'tools/check_build_default_years.js'],
+  // ===== R297 M3「出成率」上界守卫（同上轮抓出的第二个真漏洞）=====
+  //   净料成本 = 单价 ÷ 出成率，而前端 `Number(yieldRate) || 100` **没有上界** ⇒
+  //   填 150 ⇒ 成本被 ÷1.5 ⇒ 实测单份成本 24.00→16.00 元（−33.3%）、毛利率 64.71%→76.47%，
+  //   且**零报错**（老板拿到的是一个好看的假数字）。云端 saveCostCard 那条「大于 0 且 ≤100」校验
+  //   **永远走不到** —— 前端只送 net_unit_cost 快照，出成率不上云（单源被架空的同族病第二例）。
+  //   ⚠️ SUITES 区间内的注释**禁止出现方括号**：check_selftest_shape.js 的括号配平器不剥注释，
+  //      注释里出现一个右方括号就会把 SUITES 判成提前闭合 ⇒ 求值失败 ⇒ 该守卫 fail-closed 转红。
+  //   判据 = A yieldRateOf 十三例 + 整区间 −10~110 逐点扫描（仅 1~100 放行）
+  //        + B 页面层零旧裸兜（剥注释 + 正负样本互证）+ C 反算/保存两条路都前置拦截
+  //        + D 云端单源在位 + 变异互证 + 断言数下界。
+  ['yield-rate-range', 'tools/check_yield_rate_range.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
