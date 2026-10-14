@@ -225,7 +225,7 @@ const CASES = [
   { key: 'check_bill_import_gate', rel: 'tools/check_bill_import_gate.js' },  // 48 条（R271 增 F 段 20 条：跨平台重复导入防护）
   { key: 'check_hub_guide', rel: 'tools/check_hub_guide.js' },  // 17 条（R263：枢纽页三步走/分层/空状态；G2 空状态严格 === 0 + G4 位置不变式）
   { key: 'check_export_delivery', rel: 'tools/check_export_delivery.js' },  // 44 条（R265 导出投递 25 + R266 报表内容 18：E11 摊销在场 / E12~E14 表上加减对得上账 / E15~E16 摊销来源台账 / E18 两个开关状态）
-  { key: 'check_page_card_width', rel: 'tools/check_page_card_width.js' },  // 3 条（R296：`.wxml` 用 `class="card"` 却未在本页 `.wxss` 覆盖 width ⇒ 继承全局 `.card{width:48%}` ⇒ 卡片半宽、标签逐字断行成竖排；A-② 27 页扫描 + A-③ 负样本非恒真）
+  { key: 'check_page_card_width', rel: 'tools/check_page_card_width.js' },  // 3 条（R296c 立 / R296d 拆雷反转：A-① 全局 app.wxss 必须零精确类名 `.card`（否则任何页面复用即继承 width:48% ⇒ 卡片半宽 ⇒ 标签逐字断行成竖排）+ A-② 页面用了 `class="card"` 就得自己声明 width + A-③ 负样本互证不误伤 .card2/.card-title/.mcard）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];
