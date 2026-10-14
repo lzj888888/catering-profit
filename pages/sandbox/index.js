@@ -126,6 +126,7 @@ Page({
       marginBandLabel: M.marginBandLabel,
       expectRevLabel: M.expectRevLabel,
       expectRevPh: M.expectRevPh,
+      expectRevTitle: M.expectRevTitle,
       expectRevNote: M.expectRevNote,
       // 🔴 round276 · 一个数、两套话术：A「实际」（诊断，看收银后台）vs B「预计」（假设，估个量）。
       //   此前 A/B 共用同一句「这家店一个月大概能做多少生意」⇒ 已开店的老板读成"让我瞎估"，
@@ -1179,10 +1180,17 @@ Page({
   //   ⇒ 治法：用户只需回答「我开什么店」；`bizKey`（4 大类）由**系统**反查（`bizKeyOfPreset`），
   //     它只是去云端取 `BANDS` 的钥匙，**不是一道要用户先答的题**。
   syncPresetOptions() {
-    const opts = BIZ_PRESETS.map((p) => ({
-      key: p.presetKey,
-      name: this.data.t.bizPresets[p.presetKey] || p.presetKey,
-    }));
+    // 🔴 行业标准选项按「美团大类」分组呈现：每个选项名前缀业态大类（快餐小吃 / 火锅烧烤 / 中式正餐 / 茶饮咖啡），
+    //   末尾「通用餐饮」兜底（key='other'）。用户一眼能按品类定位自己的店。
+    const catName = (bk) => {
+      const bt = this.data.t.bizTypes.find((x) => x.key === bk);
+      return bt ? bt.name : '';
+    };
+    const opts = BIZ_PRESETS.map((p) => {
+      const c = catName(bizKeyOfPreset(p.presetKey));
+      const base = this.data.t.bizPresets[p.presetKey] || p.presetKey;
+      return { key: p.presetKey, name: (c ? c + ' · ' : '') + base };
+    });
     // 🔴 round276：兜底选项**真实 key='other'**（不再是空串）。旧实现 key='' ⇒
     //   `findPreset('')` 静默回退到 `BIZ_PRESETS[0]`（快餐小面）⇒ 选"都不是"实则按错业态出指标，用户无感。
     //   现在选它走真正的通用兜底业态（BANDS.other），指标按"通用经验区间"出，且下方提示"未细分行业"。
@@ -1678,6 +1686,7 @@ Page({
     return {
       level: worst,
       levelName: NAME[worst] || '',
+      itemName: worstRow.name || '',
       note: NOTE[worst] || '',
       mine: worstRow.pct == null ? '' : String(worstRow.pct) + '%',
       band: worstRow.lo == null ? '' : worstRow.lo + '~' + worstRow.hi + '%',

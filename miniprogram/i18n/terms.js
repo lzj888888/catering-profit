@@ -838,6 +838,7 @@ const TERMS = {
     //       + 参考区间卡上的"参考 ¥X"。
     // ⚠️ 只当灰字起点，**绝不自动填值** —— 用户不核对就得到一份"自证的合理"，反而误事。
     // ⚠️ 金额数值不在本文件（云端 indicatorRef.suggestAmounts 单源 → 经 amount_preview 下发）。
+    expectRevTitle: '选填 · 本月实际营业额（算人效/坪效用，不参与保本）',
     expectRevLabel: '实际月营业额（看收银 / 外卖后台，取最近一月）',
     expectRevPh: '选填，如 150000',
     expectRevNote: '已有铺面填真实流水：用来算坪效 / 人效，对照保本线',
@@ -971,8 +972,8 @@ const TERMS = {
     // ===== M2v1.3（业态参数包 + 回本卡 · 第三期）=====
     // R234：`业态预设` ⇒ `打算开什么店`。旧名是**数据名**（叫自己和 preset 打交道），
     //   新名是**问题**（用户在回答一个问题）—— L1 里每一项都应该是一句问话。
-    presetLabel: '打算开什么店',
-    presetNone: '都不是（按通用经验估算）',
+    presetLabel: '行业标准',
+    presetNone: '通用餐饮（经验估算）',
     presetPickedPre: '已按「',
     presetPickedSuf: '」的行规预填',
     // 🔴 round276：通用兜底业态提示 —— 选「其他/通用餐饮」时，行业参考区间卡上方显示，
