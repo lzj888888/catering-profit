@@ -1675,8 +1675,17 @@ Page({
     // 🔴 #7（P0-2，round272）：主结论改「综合健康度」—— 取 6 项指标里最差的 level（bad>warn>ok>good），
     //    不再只判房租，消除「人工/毛利率爆了但结论还绿」的信任坑。判定仍读引擎 level，不自造。
     const rank = { na: 0, good: 1, ok: 2, warn: 3, bad: 4 };
+    // 🔴 R296-C（真机走查发现）：指标名 / 评级**必须走中文单源**（`M.indNames` / `M.indLevels*`）。
+    //   此前直接透传后端英文 key（grossMargin / rent / labor …）与英文 level（ok / good），
+    //   中文界面读成英文 —— 与本次诉求「带出各指标是否正常的中文解读（如房租占比高还是低）」不符。
+    //   ⚠️ `level`（英文）**保留**：wxml 用它作 CSS 类名 `lv-{{item.level}}`（`.lv-ok` / `.lv-bad` …）；
+    //      中文另存 `levelName`（成本项「偏高/过高」、毛利率走反向表「偏低/过低」）。
+    const names = M.indNames || {};
     const summary = rows.map((x) => ({
-      key: x.key, name: x.name || x.key, pct: x.pct, level: x.level || 'na',
+      key: x.key,
+      name: names[x.key] || x.name || x.key,
+      levelName: ((x.key === M.indGainKey ? M.indLevelsGain : M.indLevels) || {})[x.level] || '',
+      pct: x.pct, level: x.level || 'na',
       lo: x.lo, hi: x.hi,
     }));
     let worst = 'good';
