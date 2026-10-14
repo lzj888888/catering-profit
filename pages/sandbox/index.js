@@ -362,6 +362,9 @@ Page({
     headcountNum: '',        // 员工数（人）
     avgPriceYuan: '',        // 客单价（元）
     laborUnitYuan: '',       // 单人月人工单价（元）
+    // 🔴 R294-C：手填标记位。marginPct 初值非空（65），不能靠「空串」判断用户是否改过 ⇒ 用显式标记。
+    //   选预设时仅补 `fieldTouched.x` 为 false 的字段，用户手填过的一律保留。
+    fieldTouched: { margin: false, labor: false, avg: false },
     // 🔴 R290：固定 30（李老师原话「每天都正常营业，推演也按每天营业推」）。
     //   ⚠️ 不是删字段——引擎 `open_days` 必填 1~31，留空会发 0 ⇒ fail-closed 报「填写错误」。
     openDaysNum: '30',       // 每月营业天数（常量，页面只读展示，不再让老板填）
@@ -586,7 +589,7 @@ Page({
     this.setData({ marginPct: Number(e.detail.value) });
   },
   onMarginChange(e) {
-    this.setData({ marginPct: Number(e.detail.value) });
+    this.setData({ marginPct: Number(e.detail.value), 'fieldTouched.margin': true });
     if (this.data.channel.on) this.recomputeChannel();
     this.scheduleCalc();
   },
@@ -1353,11 +1356,14 @@ Page({
     }
     // 🔴 round276：通用兜底业态标记（选「其他/通用餐饮」时为真）
     patch.bizIsOther = (bk === 'other');
-    // 自动带出参数包默认值（只覆盖还为空 / 未改的项）
-    if (preset.params && preset.params.grossMarginPct) patch.marginPct = preset.params.grossMarginPct.v;
-    if (preset.params && preset.params.openDays) patch.openDaysNum = String(preset.params.openDays.v);
-    if (preset.params && preset.params.laborUnitYuan) patch.laborUnitYuan = String(preset.params.laborUnitYuan.v);
-    if (preset.params && preset.params.avgPriceYuan) patch.avgPriceYuan = String(preset.params.avgPriceYuan.v);
+    // 🔴 R294-C（真机走查登记 · 本次修复）：选预设只补「用户没手动改过」的字段，绝不覆盖已手填值。
+    //   手填判定用 fieldTouched 标记（marginPct 初值非空的 65，不能靠空串判断 ⇒ 必须用标记位）；
+    //   laborUnitYuan/avgPriceYuan 初值为空串、fieldTouched 同样适用，逻辑统一。
+    //   openDays 为常量 30（R290 已删手填入口），空值守卫即可，预设不会冲它。
+    if (preset.params && preset.params.grossMarginPct && !this.data.fieldTouched.margin) patch.marginPct = preset.params.grossMarginPct.v;
+    if (preset.params && preset.params.openDays && !this.data.openDaysNum) patch.openDaysNum = String(preset.params.openDays.v);
+    if (preset.params && preset.params.laborUnitYuan && !this.data.fieldTouched.labor) patch.laborUnitYuan = String(preset.params.laborUnitYuan.v);
+    if (preset.params && preset.params.avgPriceYuan && !this.data.fieldTouched.avg) patch.avgPriceYuan = String(preset.params.avgPriceYuan.v);
     // 🔴 R237：**砍掉「面积 → 座位数」自动估算**（李老师 2026-10-08：「桌数和面积没有强关联，
     //   因为有的店要设包间，同样 100 平方米，包间多的店和全散台的店桌数差很远」）。
     //   ⚠️ 同时**不再预填桌数** —— 桌数由用户现场数（豆包：「小白站铺子门口，数桌子远比数椅子简单」）。
@@ -1374,8 +1380,8 @@ Page({
   onHeadcount(e) { this.setData({ headcountNum: e.detail.value }); this.scheduleCalc(); },
   // 🔴 round279e · A：初始总投入（非必填）。不进引擎，只在前端派生回本月数（见 onCalcPresetFwd）。
   onInitialInvest(e) { this.setData({ initialInvestYuan: e.detail.value }); this.scheduleCalc(); },
-  onAvgPrice(e) { this.setData({ avgPriceYuan: e.detail.value }); this.scheduleCalc(); },
-  onLaborUnit(e) { this.setData({ laborUnitYuan: e.detail.value }); this.scheduleCalc(); },
+  onAvgPrice(e) { this.setData({ avgPriceYuan: e.detail.value, 'fieldTouched.avg': true }); this.scheduleCalc(); },
+  onLaborUnit(e) { this.setData({ laborUnitYuan: e.detail.value, 'fieldTouched.labor': true }); this.scheduleCalc(); },
   // 🔴 R290：营业天数改为常量 30 ⇒ 原 `onOpenDays2` 输入 handler 随 UI 一并删除（不留孤立 handler）。
   // 🔴 R234-实测修复：`onPixelEff` / `onTurn` 已随输入区一并删除（坪效/翻台率是算出来的，不是填的）。
   //    留着 handler 会让人以为"UI 删了、逻辑还在"，下次加回输入框只要一行 —— 必须连根拔。
