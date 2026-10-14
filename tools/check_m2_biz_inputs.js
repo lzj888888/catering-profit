@@ -222,8 +222,11 @@ const seatsRhs = seatsAssigns.map((s) => s.replace(/^seats\s*:\s*/, '').trim());
 const seatsViaNow = seatsRhs.filter((r) => /^this\.seatsNow\(\)/.test(r));
 const seatsViaPass = seatsRhs.filter((r) => /^[A-Za-z_$][\w$]*\.seats$/.test(r));
 const badSeats = seatsRhs.filter((r) => seatsViaNow.indexOf(r) < 0 && seatsViaPass.indexOf(r) < 0);
+// 🔴 R296-E：删除首页 reverse 死代码后，`seats:` 合法赋值由 ≥4 降为 2（buildPresetParam 内 `this.seatsNow()`
+//   + onCalcPresetFwd 内 `p.seats` 透传）。自退化护栏同步下调（不因清理死代码而假红）；
+//   核心红线不变 —— 任一右值不是「换算点 / 透传」即红，且必须至少保留 1 个换算点。
 check('A-⑧ 🔴 `seats:` 右值只允许 `this.seatsNow()` 或透传 `<obj>.seats`（漏乘 / 写死 / 残留旧字段即红）',
-  seatsAssigns.length >= 4 && seatsViaNow.length >= 2 && badSeats.length === 0,
+  seatsAssigns.length >= 2 && seatsViaNow.length >= 1 && badSeats.length === 0,
   `受检 ${seatsAssigns.length} 处（换算 ${seatsViaNow.length} + 透传 ${seatsViaPass.length}）`
     + (badSeats.length ? ` ⇒ 越界：${badSeats.join(' | ')}` : '，全部合规'));
 

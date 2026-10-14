@@ -833,97 +833,18 @@ Page({
     const first = !!isFirst;
     if (first) this.setData({ loading: true, calcError: '' });
     const seq = ++this._seq;
-    const isReverse = this.data.mode === 'reverse';
 
     // M2v1.3：选了业态预设 ⇒ 走「参数包装配」的统一分支（两个 Tab 共用同一套 L1/L2/L3 输入）
     if (this.data.presetKey) {
-      const needsRefresh = this.bandsStale();
-      // 🔴 R234 时序修正：反推 Tab 的 `target_rent_rate` 取自 `bandsRaw`（房租行规上限）。
-      //    换业态 / 换城市后若直接发 reverse，会拿**上一组合**的行规去判 ⇒ 数字看着正常、判据错了。
-      //    ⇒ 过期时**先补一次 forward**（只为把新行规取回来），紧接着再走 reverse。
-      if (isReverse && needsRefresh) {
-        await this.onCalcPresetFwd();
-        if (seq !== this._seq) return;
-      }
-      return isReverse ? this.onCalcPresetRev() : this.onCalcPresetFwd();
+      // 🔴 R296-E（P2 死代码清理）：首页 mode 恒为 forward（onMode('reverse') 直接跳矩阵页），
+      //   此处只走正向装配；原「反推 Tab 先补 forward 取行规再走 reverse」分支自 R290 起已不可达，故删。
+      return this.onCalcPresetFwd();
     }
 
-    // ===== M2v1.1 反推分支（**未选预设**时的兼容路径）=====
-    if (isReverse) {
-      // 🔴 R237：桌数没填 ⇒ 座位数 = 0 ⇒ 引擎会 fail-closed 拒，而它报的是**契约字段名** `seats`
-      //   （「反推模式下 seats（座位数）必须是 > 0 的整数」）—— 对刚填完「桌数」的小白是看不懂的错。
-      //   ⇒ 在发请求**之前**拦一步，换成一句人话（术语三处登记：terms/页面已登记 needTables）。
-      if (this.seatsNow() <= 0) {
-        this.setData({ loading: false, dirty: false, reverseResult: null, calcError: M.needTables });
-        this.refreshStick();
-        return;
-      }
-      // 🔴 round273：与 seats **同源的坑** —— 营业天数没填 ⇒ 发 0 ⇒ 引擎 fail-closed 拒的是契约名
-      //   `open_days`（「反推模式下 open_days（每月营业天数）必须是 1~31 的整数」），用户只看到
-      //   一句「填写错误」，根本不知道缺哪项。⇒ 同样在发请求前拦一步，给一句人话。
-      //   ⚠️ 只动**前端引导**，后端 fail-closed 语义不动（由 check_m2_reverse_rent C-③ 钉住）。
-      if (this.validDaysNow() <= 0) {
-        this.setData({ loading: false, dirty: false, reverseResult: null, calcError: M.needOpenDays });
-        this.refreshStick();
-        return;
-      }
-      // 固定支出剔除 rent（页面已隐藏房租行，此处保险再滤一层）
-      const fixedItems = this.data.fixedRows
-        .filter((r) => r.key !== 'rent')
-        .map((r) => ({ key: r.key, fen: api.yuanToFen(r.yuan) }))
-        .filter((x) => x.fen > 0);
-      try {
-        const d = await api.call('calcSandbox', {
-          mode: 'reverse',
-          city_tier: this.data.t.cityTiers[this.data.cityIdx].key,
-          biz_type: this.data.t.bizTypes[this.data.bizIdx].key,
-          build_items: this.data.buildRows
-            .filter((r) => api.yuanToFen(r.yuan) > 0)
-            .map((r) => ({ key: r.key, fen: api.yuanToFen(r.yuan), years: Number(r.years) || 1 })),
-          fixed_items: fixedItems,
-          var_items: this.data.varRows
-            .filter((r) => Number(r.pct) > 0)
-            .map((r) => ({ key: r.key, pct: Number(r.pct) })),
-          gross_margin_pct: this.effectiveMarginPct(),
-          target_profit_fen: api.yuanToFen(this.data.targetYuan),
-          // R234：同义字段合并 —— 人均/座位/天数/坪效一律取 L2/L3 那一份（反推卡不再另收）
-          rev_price_fen: api.yuanToFen(this.data.avgPriceYuan),
-          seats: this.seatsNow(),   // R237：由「桌数 × 单桌座位数」换算（唯一换算点见 seatsNow()）
-          open_days: Number(this.data.openDaysNum) || 30,   // R290：兜底 30（不填也对，引擎要 1~31）
-          target_rent_rate: this.rentRateDefault(),
-          pixel_eff_fen: 0,   // R234-实测：坪效退出输入区 ⇒ 恒 0 ⇒ 引擎返回 area_cap_sqm=null（不编造）
-          client_request_id: 'sb_' + Date.now(),
-        });
-        if (seq !== this._seq) return;
-        const fen = (v) => (v == null ? null : api.fenToYuan(v, 2));
-        const rev = d.reverse || null;
-        this.setData({
-          loading: false,
-          dirty: false,
-          reverseResult: rev ? {
-            red_alert: !!rev.red_alert,
-            target_monthly: fen(rev.target_monthly_fen),
-            rent_cap: fen(rev.rent_cap_fen),
-            monthly_traffic: rev.monthly_traffic,
-            daily_traffic: rev.daily_traffic,
-            turn_rate: rev.turn_rate,
-            area_cap_sqm: rev.area_cap_sqm,
-            // 🔴 R237：`warn_turn_high`（红警）已删。改为两项**中性**展示量：
-            //   `turn_is_table` 决定话术（桌周转 / 座位周转）；`turn_level` 只驱动三档灰字。
-            //   ⚠️ 引擎侧 `warn_keys` **恒空数组**（云函数契约字段保留、形状一字不改）⇒ 前端不再据它标红。
-            turn_is_table: this.turnModeNow() === 'table',
-            turn_level: turnLevelOfBiz(this.bizKeyNow(), rev.turn_rate),
-          } : null,
-          calcError: rev ? '' : M.needFixed,
-        });
-        this.refreshStick();
-      } catch (e) {
-        if (seq !== this._seq) return;
-        this.setData({ loading: false, dirty: false, reverseResult: null, calcError: e.msg || '' });
-        api.toastError(e);
-      }
-      return;
-    }
+    // 🔴 R296-E（P2 死代码清理）：上面的 `if (isReverse)` 整块已删 —— 首页 mode 恒为 forward
+    //   （onMode('reverse') 直接跳矩阵页，首页不再进入 reverse 态），该分支自 R290 起即为不可达死代码。
+    //   反推计算现完全由 matrix 页承载（buildClean → assembleItems → 云函数批量算），与首页无耦合，
+    //   seatsNow/validDaysNow 仍被下方 forward 分支共用，故保留。
 
     // ===== 正向分支（现状，逐字节不变）=====
     const fixedItems = this.data.fixedRows
@@ -1590,67 +1511,12 @@ Page({
     }
   },
 
-  // ===== R234 · 「寻找铺面」Tab：与上面共用同一套 L1/L2/L3 入参装配 =====
-  //
-  // 🔴 为什么必须单独写这一个分支而不再复用手写的 fixedRows 装配：
-  //    旧的 reverse 分支手工拼 fixedRows/varRows，而 forward 已走 `buildPresetParam`（参数包装配）。
-  //    ⇒ 同一个铺子在两个 Tab 里**看到的成本根本不是同一份**（一边按行规、一边按手填）。
-  //    合并成一套后，"切 Tab" 只是换了问法，输入的钱永远是同一笔钱。
-  async onCalcPresetRev() {
-    if (this._timer) { clearTimeout(this._timer); this._timer = null; }
-    const seq = ++this._seq;
-    // 🔴 R237：同 onCalc 的反推分支 —— 桌数为空时不发请求，先给一句人话（引擎报的是契约名 `seats`）。
-    if (this.seatsNow() <= 0) {
-      this.setData({ loading: false, dirty: false, reverseResult: null, calcError: M.needTables });
-      return;
-    }
-    // 🔴 round273：同上（营业天数没填 ⇒ 发 0 ⇒ 报契约名的「填写错误」）⇒ 拦一步说人话
-    if (this.validDaysNow() <= 0) {
-      this.setData({ loading: false, dirty: false, reverseResult: null, calcError: M.needOpenDays });
-      return;
-    }
-    const p = this.buildPresetParam('reverse');
-    try {
-      const d = await api.call('calcSandbox', {
-        mode: 'reverse',
-        city_tier: p.city_tier, biz_type: p.biz_type,
-        build_items: p.build_items, fixed_items: p.fixed_items, var_items: p.var_items,
-        gross_margin_pct: p.gross_margin_pct, target_profit_fen: p.target_profit_fen,
-        expected_revenue_fen: p.expected_revenue_fen,
-        rev_price_fen: p.rev_price_fen, seats: p.seats, open_days: p.open_days,
-        target_rent_rate: p.target_rent_rate, pixel_eff_fen: p.pixel_eff_fen,
-        client_request_id: 'sb_' + Date.now(),
-      });
-      if (seq !== this._seq) return;
-      const fen = (v) => (v == null ? null : api.fenToYuan(v, 2));
-      const rev = d.reverse || null;
-      this.setData({
-        bandsRaw: d.bands_preview || [],
-        bandsRawKey: this.bandsKeyNow(),
-        // R234：把"本次按什么行规算"回显给用户（数字来自云端 BANDS，我们不自造）
-        rentRatePct: String(this.rentRateDefault()),
-        reverseResult: rev ? {
-          red_alert: !!rev.red_alert,
-          target_monthly: fen(rev.target_monthly_fen),
-          rent_cap: fen(rev.rent_cap_fen),
-          monthly_traffic: rev.monthly_traffic,
-          daily_traffic: rev.daily_traffic,
-          turn_rate: rev.turn_rate,
-          area_cap_sqm: rev.area_cap_sqm,
-          // 🔴 R237：同上一处 —— 红警退场，改为中性口径 + 难度（见上条注释）。
-          turn_is_table: this.turnModeNow() === 'table',
-          turn_level: turnLevelOfBiz(this.bizKeyNow(), rev.turn_rate),
-        } : null,
-        calcError: rev ? '' : M.needFixed,
-        loading: false,
-        dirty: false,
-      });
-    } catch (e) {
-      if (seq !== this._seq) return;
-      this.setData({ loading: false, dirty: false, reverseResult: null, calcError: e.msg || '' });
-      api.toastError(e);
-    }
-  },
+  // 🔴 R296-E（P2 死代码清理）：`onCalcPresetRev` 整方法已删 —— 首页 mode 恒为 forward
+  //   （onMode('reverse') 直接跳矩阵页），且 onCalc 内的 reverse 分派已改为恒走 forward，
+  //   故本方法自 R290 起不可达。反推计算现完全由 matrix 页承载（buildClean → assembleItems
+  //   → 云函数批量算），与首页无耦合；`seatsNow`/`validDaysNow` 仍被上方 forward 分支共用，保留。
+
+
 
   /**
    * R234 · 主结论卡「这个铺子租金贵不贵」的数据组装。
@@ -1674,6 +1540,11 @@ Page({
       good: M.verdictNoteGood, ok: M.verdictNoteOk, warn: M.verdictNoteWarn,
       bad: M.verdictNoteBad, na: M.verdictNoteNa,
     };
+    // 🔴 R296-E（P0-①）：逐指标文案单源（键 = indNames 的 6 项）。按「最差项 key × level」精准取，
+    //   消灭「人工/能耗最差却显示房租台词」的串台。找不到再回退通用 level 文案。
+    const NOTE_BY_ITEM = M.verdictNoteByItem || {};
+    // 为 0 通常是「没填实际支出」而非真 0 的项（mkt 例外：0 推广费合法），不判优秀。
+    const ZERO_NAIVE = { rent: 1, labor: 1, energy: 1, manage: 1, grossMargin: 1 };
     const rows = indTarget || [];
     if (!rows.length) {
       return { level: 'na', levelName: NAME.na, note: NOTE.na, mine: '', band: '', summary: [] };
@@ -1698,11 +1569,15 @@ Page({
     summary.forEach((s) => { if (rank[s.level] > rank[worst]) worst = s.level; });
     // 最该盯的一项 = 最差 level 里的第一项（替代原「只显示房租」），用于 mine/band 展示
     const worstRow = summary.filter((s) => s.level === worst)[0] || summary[0];
+    // 🔴 R296-E（P0-①）：精准文案 —— 按「最差项 key × level」取；fallback 通用 level 文案。
+    const itemNote = (NOTE_BY_ITEM[worstRow.key] && NOTE_BY_ITEM[worstRow.key][worst]) || NOTE[worst] || '';
+    // 🔴 R296-E（P0-①）：0 值数据缺失保护 —— 成本类/毛利率为 0 多属「没填」，不判优秀，降级 na 并提示。
+    const isZeroNaive = worstRow.pct === 0 && !!ZERO_NAIVE[worstRow.key];
     return {
-      level: worst,
-      levelName: NAME[worst] || '',
+      level: isZeroNaive ? 'na' : worst,
+      levelName: isZeroNaive ? (NAME.na || '') : (NAME[worst] || ''),
       itemName: worstRow.name || '',
-      note: NOTE[worst] || '',
+      note: isZeroNaive ? (M.verdictNoteZero || NOTE.na) : itemNote,
       mine: worstRow.pct == null ? '' : String(worstRow.pct) + '%',
       band: worstRow.lo == null ? '' : worstRow.lo + '~' + worstRow.hi + '%',
       summary,

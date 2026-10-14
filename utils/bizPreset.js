@@ -383,7 +383,11 @@ function assembleItems(preset, input, coef) {
       const u = Number(in_.laborUnitYuan);
       const unit = u > 0 ? u : (p.params && p.params.laborUnitYuan ? Number(p.params.laborUnitYuan.v) : 0);
       const hc = Number(in_.headcount) || 0;
-      fixedItems.push({ key: m.itemKey, fen: fenOf(unit * (co.labor || 1) * hc) });
+      // 🔴 R296-E（P1-③）：手填实际工资**不乘**城市系数（它已是当地真值，乘系数会失真）；
+      //   仅回落到预设基准工资时才乘 co.labor（一线人工绝对成本高，基准需按城折算）。
+      //   此前恒乘 co.labor ⇒ 县城手填 3200 被压成 2720，与第 378 行"用户填了就用用户的"自相矛盾。
+      const laborMul = u > 0 ? 1 : (co.labor || 1);
+      fixedItems.push({ key: m.itemKey, fen: fenOf(unit * laborMul * hc) });
     } else if (form === 'revenue_rate') {
       // 直接给 pct（不换算成金额），**不乘** coef（占比与城市无关）
       varItems.push({ key: m.itemKey, pct: Number(m.pct) });
