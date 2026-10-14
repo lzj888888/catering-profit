@@ -29,7 +29,17 @@ const read = (p) => {
 // ===== 1. calcSandbox matrix action =====
 const calcIdx = read('cloudfunctions/calcSandbox/index.js');
 if (!/event\.action\s*===\s*['"]matrix['"]/.test(calcIdx)) fail('calcSandbox 缺少 matrix action 分支');
-if (!/arr\.map\(\s*\(c\)\s*=>\s*calcSandbox/.test(calcIdx)) fail('matrix 未用 arr.map 循环调用 calcSandbox（引擎零改、批量复用）');
+// 🔴 R297 第二轮：原判据硬钉字面量 `arr.map((c) => calcSandbox`（实现细节）。
+//   修「矩阵分支零校验 ⇒ 越界值静默产数」必须在调用引擎**之前**插逐行校验，
+//   回调签名必然从 `(c)` 变成 `(c, i)` ⇒ 字面量判据把"修这个 bug"直接判红。
+//   ⇒ 改为**判语义**（仍是批量 map 复用引擎，不多不少），并**加严一条**：必须逐行过 validateClean。
+const mx = calcIdx.slice(calcIdx.indexOf("action === 'matrix'"));
+const mxBody = mx.slice(0, mx.indexOf('const shopId') > 0 ? mx.indexOf('const shopId') : mx.length);
+if (!/arr\.map\(/.test(mxBody)) fail('matrix 未用 arr.map 批量调用（引擎零改、批量复用）');
+if (!/calcSandbox\(/.test(mxBody)) fail('matrix 分支未调用 calcSandbox（引擎零改、批量复用）');
+if (!/validateClean\(/.test(mxBody)) {
+  fail('matrix 分支未做逐行入参校验（R297：零校验 ⇒ 毛利率 150 / 负房租静默产数，方向是保本偏低）');
+}
 
 // ===== 2. exportData m2_matrix 免费分支 =====
 const exp = read('cloudfunctions/exportData/index.js');

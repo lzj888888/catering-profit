@@ -211,6 +211,27 @@ Page({
     return [{ key: 'other', fen: api.yuanToFen(yuan), years }];
   },
 
+  // ===== R297 第二轮：四档维度体检（越界即人话，绝不静默送云）=====
+  //   dims 是自由文本数组；空档由 onGenerate 自己跳过（不在这里判），只管**填了却越界**。
+  badDimOf() {
+    const d = this.data.dims || {};
+    const chk = (arr, name, min, max) => {
+      const list = arr || [];
+      for (let i = 0; i < list.length; i++) {
+        const raw = String(list[i] === undefined || list[i] === null ? '' : list[i]).trim();
+        if (raw === '') continue;                 // 空档 = 没填，不算越界
+        const v = Number(raw);
+        if (!isFinite(v)) continue;               // 非数字由 onGenerate 跳过
+        if (v < min || v > max) return `第 ${i + 1} 档${name}要在 ${min}~${max}（现在填了 ${raw}）`;
+      }
+      return '';
+    };
+    return chk(d.margin, '毛利率', 0, 100)
+      || chk(d.rent, '房租', 0, 100000000)
+      || chk(d.labor, '人数', 0, 999)
+      || chk(d.target, '目标利润', 0, 100000000);
+  },
+
   // ===== 生成矩阵（批量送云）=====
   async onGenerate() {
     if (this.data.loading) return;
@@ -220,6 +241,12 @@ Page({
     const tiers = ['tier1', 'tier23', 'county'];
     const cityTier = tiers[this.data.cityIdx] || 'tier23';
     const coef = CITY_COEF[cityTier] || CITY_COEF.tier23;
+    // 🔴 R297 第二轮：四档维度是**自由文本**（onDimInput 只管存、onGenerate 只判 isFinite）
+    //   ⇒ 老板把「毛利率」填 150 / 房租填 -8000 时，旧码照发不误；云端矩阵分支当年又**零校验**
+    //   ⇒ 保本 46111→18444 元、房租负数→19444 元，**零提示**（静默错账，方向还是"更好看"）。
+    //   这里先挡一道：省一次云调用，且当场说清"第几档、哪一项、超了什么范围"。
+    const badDim = this.badDimOf();
+    if (badDim) { api.toastError({ msg: badDim }); return; }
     const { rent, labor, margin, target } = this.data.dims;
     const cleanArr = [];
     const meta = []; // 与 cleanArr 对齐的维度标注
@@ -236,10 +263,18 @@ Page({
       const rows = (d.rows || []).map((res, i) => this.toRow(meta[i], res));
       const pivot = this.buildPivot(rows);
       const insight = this.buildInsight(rows);
+      // 🔴 R297：云端拒掉的档位（rejected）**必须让人看见** —— 静默丢档 = 老板以为算过了。
+      const rejected = d.rejected || [];
       this.setData({
         loading: false,
-        result: { rows, view: 'detail', count: rows.length, pivot, insight },
+        result: { rows, view: 'detail', count: rows.length, pivot, insight, rejected },
       });
+      if (rejected.length) {
+        wx.showToast({
+          title: `有 ${rejected.length} 档算不出来：${rejected[0].msg}`,
+          icon: 'none', duration: 3000,
+        });
+      }
     } catch (e) {
       this.setData({ loading: false });
       api.toastError(e);
@@ -247,6 +282,16 @@ Page({
   },
 
   toRow(meta, res) {
+    // 🔴 R297：云端把「算不出的那一档」返回 **null**（不是编一个数顶上）⇒ 这里给占位行。
+    //   旧码直接解引用 res ⇒ TypeError ⇒ 整张矩阵崩成一句「出错」，老板连哪一档都不知道。
+    if (!res) {
+      return {
+        rent: meta.rent, labor: meta.labor, marginPct: meta.marginPct, targetYuan: meta.targetYuan,
+        breakMonthly: null, breakDaily: null, targetMonthly: null, targetDaily: null,
+        rentPct: null, leverYuan: null, cushionPct: null, payback: null,
+        red: false, invalid: true,
+      };
+    }
     const rentFen = meta.rent * 100;
     const targetMonthlyFen = res.target_monthly_fen;
     // 房租占比：两个引擎返回数值的简单比值（展示用，非测算公式）

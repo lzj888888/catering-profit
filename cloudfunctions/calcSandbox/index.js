@@ -11,7 +11,8 @@ const common = require('./common');                 // 扁平派生副本（sync
 const { resolveAuth, assertShopOwner } = common;
 const { ERROR_CODES, ok, fail } = common;
 const { calcSandbox, calcSandboxReverse } = require('./service');
-const { validateInput } = require('./validate');
+// 🔴 R297：validateClean = 矩阵分支逐行校验入口（与 validateInput 共用 checkClean 单源判据）
+const { validateInput, validateClean } = require('./validate');
 
 exports.main = async (event) => {
   const ctx = cloud.getWXContext();
@@ -31,10 +32,29 @@ exports.main = async (event) => {
     if (arr.length === 0 || arr.length > 1000) {
       return fail(ERROR_CODES.INVALID_PARAM, 'matrix.clean_array 需 1~1000 个 clean 参数');
     }
-    const rows = arr.map((c) => calcSandbox(c && typeof c === 'object' ? c : {}));
+    // 🔴🔴 R297 第二轮：逐行走**与单算同一套**字段级判据（validateClean，单源 checkClean）。
+    //   改前这里**零校验**直接喂引擎 ⇒ 老板把矩阵页「毛利率」档位填 150（页面维度是自由文本、
+    //   只判 isFinite）⇒ 保本 46111→18444 元、房租填负数 ⇒ 19444 元，**零报错**（静默错账）。
+    //   口径：算不出的一档 ⇒ 该行给 **null**（前端显示「—」）并在 rejected 里说明哪一档、为什么，
+    //   **绝不用一个能算但错的数顶上**（与项目「算不出就 null / 不渲染」同源）。
+    const rejected = [];
+    const rows = arr.map((c, i) => {
+      const v = validateClean(c && typeof c === 'object' ? c : {});
+      if (v.error) {
+        rejected.push({ index: i, code: v.error, msg: v.msg });
+        return null;
+      }
+      return calcSandbox(v.clean);
+    });
+    // 全部算不出 ⇒ 响亮失败（fail-closed），而不是甩给前端一屏 null
+    if (rejected.length === arr.length) {
+      const first = rejected[0];
+      return fail(first.code || ERROR_CODES.INVALID_PARAM, `矩阵第 ${first.index + 1} 档：${first.msg}`);
+    }
     return ok({
       client_request_id: (event.client_request_id) || '',
       rows,
+      rejected,
     });
   }
 
