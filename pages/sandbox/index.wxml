@@ -387,7 +387,9 @@
   </view>
 
   <view class="err-hint" wx:if="{{calcError}}">{{calcError}}</view>
-  <button class="btn primary calc-btn" bindtap="onCalc">{{t.calc}}</button>
+  <!-- 🔴 R297 第四轮（审计 B11）：原 `bindtap="onCalc"` 会把**事件对象**当 isFirst 传进去（恒真）
+       ⇒ 每次点按钮整页 loading 重绘、滚动位置丢失。改走 `onCalcBtn`（显式传 false）。 -->
+  <button class="btn primary calc-btn" bindtap="onCalcBtn">{{t.calc}}</button>
 
   <!-- M2v1.2：保存沙盘（底部主按钮） -->
   <button class="btn ghost save-sandbox-btn" bindtap="onOpenSave">{{t.savePlanBtn}}</button>
@@ -397,6 +399,12 @@
     <button class="btn ghost entry-btn" bindtap="goMatrix">{{t.matrixEntry}}</button>
     <button class="btn ghost entry-btn" bindtap="goCompare">{{t.compareEntry}}</button>
   </view>
+
+  <!-- 🔴 R297 第四轮（审计 B12）：结果区**唯一锚点**。原先把 `id="m2result"` 挂在两张结果卡上
+       （反推卡 + 主结论卡），而主结论卡带 `verdict.level !== 'na'` 条件 ⇒ 无判定时锚点整块不存在，
+       `onStickTap` 的 `pageScrollTo('#m2result')` 静默失效（点吸底条没反应）。
+       现改为**无条件**锚点、两张卡上的 id 一律卸掉（同页重复 id 也是隐患）。 -->
+  <view id="m2result"></view>
 
   <!-- M2v1.1 反推结果（仅反推 Tab；全部来自云端 reverse 块） -->
   <block wx:if="{{mode === 'reverse' && reverseResult}}">
@@ -413,7 +421,7 @@
         <view class="hint-fold-body" wx:if="{{hintFold.sbRedAlertRev}}">{{t.redAlertHint}}</view>
       </view>
     </view>
-    <view class="card2" id="m2result" wx:if="{{!reverseResult.red_alert}}">
+    <view class="card2" wx:if="{{!reverseResult.red_alert}}">
       <view class="sec">{{t.secResult}}</view>
       <view class="cell big"><text class="lbl">{{t.revRevenue}}</text><text class="val keynum">{{t.cur}}{{reverseResult.target_monthly}}</text></view>
       <view class="cell"><text class="lbl">{{t.revRentCap}}</text><text class="val">{{t.cur}}{{reverseResult.rent_cap}}</text></view>
@@ -445,7 +453,7 @@
        🔴 判定**不自造**：`verdict.level` 直接读引擎 indicators 里 rent 那行的 level，
           前端只做 key → 中文映射（见 index.js::verdictOf）。
        放在结果区**第一位**：结论要在用户往下翻之前就看到。 -->
-  <view class="card2 verdict-card" id="m2result" wx:if="{{mode === 'forward' && verdict && verdict.level !== 'na'}}">
+  <view class="card2 verdict-card" wx:if="{{mode === 'forward' && verdict && verdict.level !== 'na'}}">
     <view class="verdict-head">
       <text class="verdict-title">{{t.verdictHealthTitle}}</text>
       <text class="verdict-lv lv-{{verdict.level}}">{{verdict.levelName}}</text>

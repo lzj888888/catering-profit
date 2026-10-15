@@ -44,7 +44,7 @@
         <view class="cmp-table">
           <view class="cmp-row head">
             <view class="cmp-cell idx">{{t.colName}}</view>
-            <view class="cmp-cell" wx:for="{{compareCols}}" wx:key="name">{{item.name}}</view>
+            <view class="cmp-cell" wx:for="{{compareCols}}" wx:key="id">{{item.name}}</view>
           </view>
           <view class="cmp-row" wx:for="{{compareRows}}" wx:key="key">
             <view class="cmp-cell idx">{{item.name}}</view>

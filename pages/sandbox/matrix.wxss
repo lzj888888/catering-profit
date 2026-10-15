@@ -37,6 +37,9 @@
 .tr { display: flex; border-bottom: 1rpx solid #eee; }
 .tr.th { background: #f5f6fa; }
 .tr.red .td { color: #e2533a; }
+/* 🔴 R297 第四轮（审计 B7）：被云端拒掉的档位（算不出，各列为 —）灰显，与"有数"的行区分开。 */
+.tr.invalid { background: #fafafa; }
+.tr.invalid .td { color: #b0b4ba; }
 /* 🔴 round276：列宽 150 → 200rpx，并**放开换行**。
    原状：`.tbl-scroll` 上的 `white-space: nowrap` 会被 `.td` 继承 ⇒ 表头「月租金档位（元）」
    在 150rpx（内容区仅 126rpx）里既排不下又不换行 ⇒ 真机上呈现成"竖着的文字"。

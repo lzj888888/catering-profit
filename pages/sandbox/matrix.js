@@ -1,4 +1,4 @@
-// pages/sandbox/matrix/index.js —— M2 G1 场景矩阵生成器（2026-10-11 改造）
+// pages/sandbox/matrix.js —— M2 G1 场景矩阵生成器（2026-10-11 改造）
 //
 // ⚠️ 计算下沉（铁律不变）：每一行的测算全部由云函数 calcSandbox 算（经新增 matrix action 批量调），
 //   本页只做「维度组合 → assembleItems 装配 clean 参数 → 整批送云 → 展示分整数」。
@@ -401,20 +401,8 @@ Page({
       cells,
     };
   },
-  onPivotFixChange(e) {
-    const key = e.currentTarget.dataset.key;
-    const val = Number(e.detail.value);
-    const pivotFix = this.data.pivotFix;
-    pivotFix[key] = val;
-    this.setData({ pivotFix }, () => {
-      if (this.data.result) {
-        this.setData({
-          'result.pivot': this.buildPivot(this.data.result.rows),
-          'result.insight': this.buildInsight(this.data.result.rows),
-        });
-      }
-    });
-  },
+  // 🔴 R297 第四轮（审计 B6）：原 `onPivotFixChange` 与下面的 `onPivotFixInput` **函数体完全等价**，
+  //   且 wxml 只绑了 `onPivotFixInput`（matrix.wxml 三处）⇒ 前者不可达（死代码），已删。
   onPivotFixInput(e) {
     const key = e.currentTarget.dataset.key;
     const val = Number(e.detail.value);

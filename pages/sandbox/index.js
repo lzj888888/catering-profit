@@ -386,7 +386,9 @@ Page({
     manageYuan: '',
     // 🔴 R294-C：手填标记位。marginPct 初值非空（65），不能靠「空串」判断用户是否改过 ⇒ 用显式标记。
     //   选预设时仅补 `fieldTouched.x` 为 false 的字段，用户手填过的一律保留。
-    fieldTouched: { margin: false, labor: false, avg: false },
+    // 🔴 R297 第四轮（审计 B10）：补 `seatsPerTable` —— 原实现漏了这一项，选业态预设时
+    //   会**无条件覆盖**用户手填的单桌座位数（见 onPreset），与本节机制自相矛盾。
+    fieldTouched: { margin: false, labor: false, avg: false, seatsPerTable: false },
     // 🔴 R290：固定 30（李老师原话「每天都正常营业，推演也按每天营业推」）。
     //   ⚠️ 不是删字段——引擎 `open_days` 必填 1~31，留空会发 0 ⇒ fail-closed 报「填写错误」。
     openDaysNum: '30',       // 每月营业天数（常量，页面只读展示，不再让老板填）
@@ -647,7 +649,11 @@ Page({
   //    留着孤立的 handler 会让后续维护误以为还有这条路。
   // 🔴 R237：`onSeats`（座位数）已改为「桌数」—— 用户填桌、系统换算座位（见 `seatsNow()`）。
   onTables(e) { this.setData({ tablesNum: e.detail.value }); this.scheduleCalc(); },
-  onSeatsPerTable(e) { this.setData({ seatsPerTableNum: e.detail.value }); this.scheduleCalc(); },
+  onSeatsPerTable(e) {
+    // 🔴 R297 第四轮（审计 B10）：标记手填 ⇒ 之后切业态预设不再静默覆盖这一格。
+    this.setData({ seatsPerTableNum: e.detail.value, 'fieldTouched.seatsPerTable': true });
+    this.scheduleCalc();
+  },
 
   // ===== 🔴 round279c · #10 敏感度（前端派生，引擎零改）=====
   // 🔴 R296：入参统一走 `buildPresetParam`（单一装配器）—— 只覆盖毛利率，不新写计算逻辑、不碰引擎。
@@ -775,9 +781,21 @@ Page({
     //   为什么删掉原「未选预设」的 legacy 分支（它直接读被删的 `fixedRows`）：两条路装配口径不一；
     //   `buildPresetParam` 对空 presetKey 内部回落 'other' 通用预设 ⇒ 两条路合一，
     //   保存 / 重算 / 敏感度全部同源，杜绝"同一方案两处对不上"。
-    if (isFirst) this.setData({ loading: true, calcError: '' });
+    if (isFirst === true) this.setData({ loading: true, calcError: '' });
     return this.onCalcPresetFwd();
   },
+
+  /**
+   * 🔴 R297 第四轮（M2 整体审计 B11）：【开始测算】按钮专用入口。
+   *
+   * 为什么必须有这一层：`bindtap="onCalc"` 会把**事件对象**当作第一个实参传进来
+   * ⇒ `onCalc(isFirst)` 里 `isFirst` 恒为真 ⇒ 每次点按钮都 `setData({loading:true})`
+   * ⇒ 根节点 `wx:if="{{!loading}}"` 整页切走再切回 = **整页重绘 + 滚动位置丢失**
+   * （round114 明确修过的"改一个数就整页闪成加载中"，被按钮这条路重新引入；
+   *  而 `onCalc(true)` 的本意只给首屏 bootstrap 用）。
+   * ⇒ 按钮走这里、显式传 false；首屏仍由 bootstrap 走 `onCalc(true)`。
+   */
+  onCalcBtn() { return this.onCalc(false); },
 
   // 行业参考区间（round113）：key → 中文名 + "lo~hi%"。
   // round114：追加参考**金额**（amt）—— 用户填了"预计月营业额"后，每项旁边给出该量级下的
@@ -1106,7 +1124,13 @@ Page({
     //   因为有的店要设包间，同样 100 平方米，包间多的店和全散台的店桌数差很远」）。
     //   ⚠️ 同时**不再预填桌数** —— 桌数由用户现场数（豆包：「小白站铺子门口，数桌子远比数椅子简单」）。
     //   这里只做一件事：按业态把「单桌座位数」的默认值刷新（用户改过就以用户的为准）。
-    patch.seatsPerTableNum = String(seatsPerTableOf(bk || this.bizKeyNow()));
+    // 🔴 R297 第四轮（审计 B10）：原实现**无条件覆盖**单桌座位数 —— 与上面 R294-C 的
+    //   「只补用户没改过的字段」自相矛盾（旧注释写着"用户改过就以用户的为准"，代码却没判）。
+    //   包间大桌的店手填 6 人/桌，一切业态预设就被静默重置回默认值（火锅/正餐 4、快餐/茶饮 2）
+    //   ⇒ 座位数（= 桌数 × 单桌座位数）连带 A 区「一天翻几台」一起变，且零提示。
+    if (!this.data.fieldTouched.seatsPerTable) {
+      patch.seatsPerTableNum = String(seatsPerTableOf(bk || this.bizKeyNow()));
+    }
     this.setData(patch);
     this.scheduleCalc();
   },
@@ -1311,6 +1335,10 @@ Page({
       expected_revenue_fen: p.expected_revenue_fen,
       rev_price_fen: p.rev_price_fen, seats: p.seats, open_days: p.open_days,
       target_rent_rate: p.target_rent_rate, pixel_eff_fen: p.pixel_eff_fen,
+      // 🔴 R297 第四轮（M2 整体审计 B3）：本 payload 原**漏传 `valid_days`** ⇒ 云端
+      //   `service.js` 回落 30 天，与「敏感度」(buildForwardPayload) 和「保存后重算」
+      //   (param_json) 三条入口口径不同源。当前被「营业天数恒 30」掩盖，一旦放开即分叉。
+      valid_days: p.valid_days,
       client_request_id: 'sb_' + Date.now(),
     };
     try {

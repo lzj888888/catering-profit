@@ -57,6 +57,19 @@ Page({
 
   onLoad() { this.load(); },
 
+  /**
+   * 🔴 R297 第四轮（M2 整体审计 B1）：**画布必须在用户点导出之前就绪**。
+   *
+   * 病根：`initCanvas()` 的内部是 `wx.createSelectorQuery().exec(cb)`（**异步**），函数体
+   *   末尾无条件 `return null` —— 真正的 `this._ctx` 只在异步回调里才赋值。
+   *   而 `onExportImg()` 里 `const ctx = this._ctx || this.initCanvas(); if (!ctx) { 提示失败; return; }`
+   *   ⇒ **首次点击必然走 `!ctx` 分支**：弹一句提示、不出图；不点第二次就拿不到图。
+   *
+   * 治法：首屏渲染完成（onReady 在首帧之后触发，此时 canvas 节点已可查）就预热一次，
+   *   `this._ctx` 提前落定 ⇒ 首次点击即出图。保留 onExportImg 的惰性兜底（防御性）。
+   */
+  onReady() { this.initCanvas(); },
+
   async load() {
     this.setData({ loading: true, errMsg: '' });
     try {
@@ -130,6 +143,9 @@ Page({
           client_request_id: 'cmp_' + Date.now() + '_' + it.sandbox_id.slice(-4),
         }));
         cols.push({
+          // 🔴 R297 第四轮（审计 B5）：给列配一个**唯一键** —— 方案名允许重名，
+          //   wxml 里 `wx:key="name"` 撞键会导致对比表列渲染异常（少列/错列）。
+          id: it.sandbox_id,
           name: it.name,
           typeName: it.typeName,
           breakEvenYuan: d.break_even_monthly_fen != null ? api.fenToYuan(d.break_even_monthly_fen, 0) : '—',
@@ -186,6 +202,8 @@ Page({
     if (!this.data.compareRows.length) { api.toastError({ msg: P.notSelected }); return; }
     const { rows } = this.buildCompareTable();
     // 画布不足即降级提示（不阻断）；小屏用两行式文本
+    // 🔴 R297 第四轮（审计 B1）：正常路径下 `this._ctx` 已由 `onReady` 预热 ⇒ 首次点击即出图；
+    //   这里保留惰性兜底只为防御（例如 canvas 节点异常）。
     const ctx = this._ctx || this.initCanvas();
     if (!ctx) { api.toastError({ msg: P.exportImgHint }); return; }
     try {
@@ -230,6 +248,8 @@ Page({
         that._ch = 300;
       });
     } catch (e) { return null; }
+    // 🔴 R297 第四轮（审计 B1）：**恒返回 null 是设计使然** —— 真值只会在上面的异步回调里
+    //   落到 `this._ctx`。所以它**不是**"同步取画布"的接口，调用方必须在交互前预热（见 onReady）。
     return null;
   },
 
