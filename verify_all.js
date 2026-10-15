@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：172 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：173 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -1050,6 +1050,14 @@ const SUITES = [
   //   修：字段级判据抽成 checkClean 单源，wire 入口与 clean 入口共用；算不出的档位给 null + rejected 人话。
   //   判据 = P 接线真实 + A 十负四正行为级 + B 两入口共用单源 + C 变异互证 + D 页面层/断言数下界。
   ['matrix-validate', 'tools/check_matrix_validate.js'],
+  // ===== R297 第三轮「M2 两条入口判据等价」守卫 =====
+  //   M2 同一套参数有两条入库路径：calcSandbox（算）与 savePlan（**服务端自算快照后落库**）。
+  //   savePlan 原实现只判 typeof number && isFinite ⇒ 把 calcSandbox 的范围判据整个绕开
+  //   ⇒ 实测毛利率 150 ⇒ 快照保本 42564→18444 元**落库成"方案"**（同族病第四例）。
+  //   修：savePlan/validate.js 补 checkParamRanges（口径与 calcSandbox 等价；跨包不能 require，
+  //   故用「副本 + 本守卫同表双跑钉等价」）。
+  //   判据 = P 接线真实 + A 十六例两入口判决一致 + B 九类越界逐个拒 + C 变异互证 + D 单源/断言下界。
+  ['m2-entry-parity', 'tools/check_m2_entry_parity.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

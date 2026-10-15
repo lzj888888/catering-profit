@@ -886,6 +886,10 @@ Page({
     this.setData({ planSaving: true });
     const crid = this.data.saveCrid;   // 幂等键：本次点击固定，重试复用
     const paramJson = this.buildParam();
+    // 🔴 R297 第三轮：保存**不依赖先算成功**（原实现只校验方案名）⇒ 越界值会连快照一起落库
+    //   （实测毛利率 150 ⇒ 快照保本 42564→18444 元、方案列表/对比页从此拿它当数）。
+    const badParam = this.badParamOf(paramJson);
+    if (badParam) { api.toastError({ msg: badParam }); return; }
     try {
       const d = await api.call('savePlan', {
         plan: {
@@ -1276,10 +1280,30 @@ Page({
   },
 
   // 预设前向测算：结果区渲染 + 回本卡（invest 读引擎，cash 走 bizPreset.paybackCash 唯一派生）
+  // 🔴 R297 第三轮：送云前体检（口径与云端 calcSandbox / savePlan 一致，但给**人话**）
+  //   云端虽然也会拒（calcSandbox 单算路径一直有校验、savePlan 本轮补齐），
+  //   但 `utils/api.js` 会把 fail 的 msg 覆盖成通用文案（R271）⇒ 老板只看到"出错了"、不知改哪一格。
+  //   这里当场指出"哪一格、超了什么范围"。**只拦越界，不替老板改数**。
+  badParamOf(p) {
+    const g = Number(p.gross_margin_pct);
+    if (!isFinite(g) || g < 0 || g > 100) return `毛利率要在 0~100（现在填了 ${p.gross_margin_pct}）`;
+    const badFen = (arr) => (arr || []).find((it) => !isFinite(Number(it.fen)) || Number(it.fen) < 0);
+    const b1 = badFen(p.fixed_items);
+    if (b1) return `「${b1.key}」的金额不能为负`;
+    const b2 = badFen(p.build_items);
+    if (b2) return `「${b2.key}」的建店投入不能为负`;
+    const badVar = (p.var_items || []).find((it) => !isFinite(Number(it.pct)) || Number(it.pct) < 0 || Number(it.pct) > 100);
+    if (badVar) return `「${badVar.key}」的比例要在 0~100（现在填了 ${badVar.pct}）`;
+    if (!isFinite(Number(p.target_profit_fen)) || Number(p.target_profit_fen) < 0) return '目标月利润不能为负';
+    return '';
+  },
+
   async onCalcPresetFwd() {
     if (this._timer) { clearTimeout(this._timer); this._timer = null; }
     const seq = ++this._seq;
     const p = this.buildPresetParam('forward');
+    const bad = this.badParamOf(p);
+    if (bad) { api.toastError({ msg: bad }); return; }
     const payload = {
       city_tier: p.city_tier, biz_type: p.biz_type,
       build_items: p.build_items, fixed_items: p.fixed_items, var_items: p.var_items,
