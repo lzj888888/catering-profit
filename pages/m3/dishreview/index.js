@@ -411,7 +411,11 @@ Page({
       // R272：覆盖率 C 档 + 自助餐人均食材成本
       coverageC_pct,
       coverageCText,
-      buffetMeals,
+      // 🔴 R297-⑥（审计 M3-B3）：本页 wxml 的自助餐一族键名**一律 `buffet_xxx`**，只有这一个原先是驼峰
+      //   （`buffetMeals`）⇒ `index.wxml:50` 的 `wx:if="{{buffet_meals > 0}}"` 拿到的是 `undefined`
+      //   ⇒ 恒 false ⇒「人均食材成本 + 行业基准带 + 实际成本率」**整块永不渲染**（R272 专门做的能力，静默空转）。
+      //   ⚠️ R272 那轮把 `t.reviewBuffet*` 文案补齐了、却没对上**数据键** ⇒ 症状从"文字空白"变成"整块不见"，更难被发现。
+      buffet_meals: buffetMeals,
       buffet_revenueText,
       buffet_perCapitaPriceText,
       buffet_perCapitaCostText,

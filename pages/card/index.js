@@ -367,6 +367,11 @@ Page({
             activity_price_fen: src.price_promo_fen || 0,   // 任务4：复制带活动特价（分，validate 认 activity_price_fen）
             category: src.category || '',
             tags: src.tags || '',
+            // 🔴 R297-⑥（审计 M3-B5）：**复制必须带 `card_type`** —— 与版本恢复同族：
+            //   服务端缺省 = 1（单品）⇒ 复制套餐卡会静默降级成单品、永久失去子卡联动。
+            //   出参已带该字段（getCostCard/service.js:15）与规格（:33），照抄即可。
+            card_type: src.card_type === 3 ? 3 : 1,
+            specs: src.specs || [],
           };
           if (card.mode === 'B') card.batch_output = src.batch_output || 0;
           await api.call('saveCostCard', { card, client_request_id: 'ccc_' + Date.now() });

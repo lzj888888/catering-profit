@@ -110,7 +110,7 @@ const CASES = [
   //   断言数不受守则「删掉一条影子 + 调低下界」就等于把守卫悄悄改小（判据仍全绿而证明力归零）。
   { key: 'check_unit_family', rel: 'tools/check_unit_family.js' },     // 75 条（含 C1~C37 影子；round152 加 ⑩~⑬ 与 C7~C12；round153 加 ⑭~⑳ 与 C13~C23；round155 加 ㉑~㉕/整包口径 与 C24~C37）
   { key: 'check_list_query_limit', rel: 'tools/check_list_query_limit.js' }, // 22 条（R154：L1~L5 + S1~S3 + C1~C7 反恒真含替身正负样本；R157 加 L6/L7 + C8~C11：listAll 必须真的分页取全 + 调用点不得回退 list）
-  { key: 'check_list_ux', rel: 'tools/check_list_ux.js' },               // 32 条（R156：L1~L6 + S1~S3 + C1~C6 反恒真影子样本）
+  { key: 'check_list_ux', rel: 'tools/check_list_ux.js' },               // 37 条（R156：L1~L6 + S1~S3 + C1~C6；R298 扩面：L6 通用正则+全仓扫描+剥注释，L6b 渲染源，C4b~C4f 互证）
   { key: 'check_index_field_alignment', rel: 'tools/check_index_field_alignment.js' }, // 11 条（R157：L1 化石索引 + L2 锚点对齐 + L3 字段真在用 + S1~S3 + C1~C3 反恒真）
   { key: 'check_snapshot_fields', rel: 'tools/check_snapshot_fields.js' }, // 16 条（R144：L1 读侧全集 + L2 写侧全集 + L3 两读侧集合≡ + L4 fail-soft + L5 Controller + L6 validate 区间 + S1~S2 + C1~C3 反恒真）
   { key: 'check_paywall_coverage', rel: 'tools/check_paywall_coverage.js' }, // 17 条（R159：L1 三单源解析 + L2 能力⊆放行 + L3 放行有文案 + L4 四字段非空 + L5 影子正负 + L6 云函数双向 + L7 自失效护栏；R213 修假绿：L6-② 改「穷尽分类」+4 条）

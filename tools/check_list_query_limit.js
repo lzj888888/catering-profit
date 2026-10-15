@@ -238,7 +238,10 @@ if (commonSrc) {
 
 // ---------- L7 「读该店全部成本卡」必须走 listAll（R157，防"调用点回退"） ----------
 {
-  const targets = ['getCostCard', 'checkQuota', 'saveCostCard'];
+  // R298 扩面：加 `exportData` —— 它同样**只带 shop_id** 读全店成本卡，且后果最隐蔽
+  //   （导出件是给老板存档、给会计的，**少行不报错**）。原 targets 三处漏了它，
+  //   正是"判据只点名我以为会出问题的地方"的老毛病（与 R298 check_list_ux L6 同因）。
+  const targets = ['getCostCard', 'checkQuota', 'saveCostCard', 'exportData'];
   const bads = [];
   const missing = [];
   for (const fn of targets) {
@@ -249,7 +252,7 @@ if (commonSrc) {
   }
   if (missing.length) bad('L7 目标文件读不到（fail-closed）：' + missing.join(' / '));
   else if (bads.length) bad('L7 有 ' + bads.length + ' 处仍用 list() 读全店成本卡（应走 listAll）：\n     ' + bads.join('\n     '));
-  else ok('L7 三处「读该店全部成本卡」均走 listAll（' + targets.join(' / ') + '）—— 无截断回归');
+  else ok('L7 ' + targets.length + ' 处「读该店全部成本卡」均走 listAll（' + targets.join(' / ') + '）—— 无截断回归');
 }
 
 // ---------- S1~S3 自失效护栏 ----------

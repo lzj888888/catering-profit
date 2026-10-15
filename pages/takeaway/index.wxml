@@ -241,7 +241,7 @@
       <block wx:if="{{billImportOn || !!importShape}}">
       <view class="cell">
         <text class="lbl">{{t.importPlatformLabel}}</text>
-        <text class="val">{{importPlatform}}</text>
+        <text class="val">{{importPlatformLabel}}</text>
       </view>
       <view class="cell">
         <text class="lbl">{{t.importRowsLabel}}</text>

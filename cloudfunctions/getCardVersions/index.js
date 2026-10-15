@@ -27,7 +27,12 @@ exports.main = async (event) => {
   if (v.error) return fail(v.error, v.msg);
 
   const da = makeAdapter(db);
-  const cardsRes = await da.list('shop_cost_card', { shop_id: shopId, card_code: v.card_code });
+  // 🔴 R297-⑥（审计 M3-B12）：`shop_cost_card` 是版本模型（只 INSERT 不 UPDATE）⇒ 本查询要的是
+  //   **该 card_code 的全部历史版本**，`list()` 单页上限 1000 会让版本历史**静默少版**。
+  //   与 getCostCard/index.js:41-44 的 R157 判据同源。
+  //   ⚠️ 下一行的明细行查询（by `cost_card_row_id`）**保持 `list`**：它是唯一键过滤、行数即该版配方行数，
+  //      与 getCostCard/index.js:19 口径一致 ⇒ 不在此处扩大改动面。
+  const cardsRes = await da.listAll('shop_cost_card', { shop_id: shopId, card_code: v.card_code });
   const rows = ((cardsRes && cardsRes.data) || []).sort((a, b) => (b.version || 0) - (a.version || 0));
 
   const list = [];

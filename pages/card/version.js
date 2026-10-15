@@ -157,6 +157,15 @@ Page({
       activity_price_fen: v.price_promo_fen || 0,
       category: v.category,
       tags: v.tags,
+      // 🔴 R297-⑥（审计 M3-B5）：**恢复必须带 `card_type`**。
+      //   服务端对缺省值取 **1（单品）**（saveCostCard/validate.js:32），而版本出参本来就带
+      //   card_type（getCardVersions/service.js:15）⇒ 原先不带 ⇒ **恢复套餐卡会静默降级成单品**：
+      //   配方从「引用子卡」变成一串手工行、此后子卡改价不再联动这张卡。
+      //   之所以毫无报错：套餐子卡快照行恰好落进 validate 的「手工行」分支（name + net_unit_cost），
+      //   且引擎 `quantity × net_unit_cost / 100` 把 ×100 抵消 ⇒ 金额当场还是对的，只有联动永久失效。
+      //   `specs` 同理要带（出参 `specsFromJson` 与入参 `sanitizeSpecs` 是同一函数 ⇒ 格式天然一致）。
+      card_type: v.card_type === 3 ? 3 : 1,
+      specs: v.specs || [],
       card_code: this.data.card_code,   // 带 card_code → saveCostCard 生成新版本
     };
     if (v.calc_mode_key === 'B') card.batch_output = v.batch_output || 0;

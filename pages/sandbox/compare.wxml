@@ -6,7 +6,10 @@
 
   <view class="mcard" wx:for="{{plans}}" wx:key="sandbox_id">
     <view class="plan-row" bindtap="onToggle" data-id="{{item.sandbox_id}}">
-      <view class="check {{selected.indexOf(item.sandbox_id) >= 0 ? 'on' : ''}}"></view>
+      <!-- 🔴 R297-⑥：勾选态改读 `item.checked` —— 原写 `selected.indexOf(item.sandbox_id) >= 0`，
+           而 **WXML 表达式不支持方法调用**（同 M1 的 `g.rows.slice(...)`）⇒ 求值失败 ⇒ 勾选框**永不点亮**，
+           老板看不出自己选了哪几个（观感就是"点了没反应"）。标记由 js 侧 `onToggle` 维护。 -->
+      <view class="check {{item.checked ? 'on' : ''}}"></view>
       <!-- 🔴 round273：方案名后标场景（已有铺面 / 寻找铺面）—— 选方案时就该看出口径 -->
       <text class="pname">{{item.name}} · {{item.sceneName}}</text>
       <text class="pmeta">{{item.snapshot.red_alert ? t.red : ''}}</text>

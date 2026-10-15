@@ -61,6 +61,8 @@ Page({
             snapshot: p.result_snapshot_json,
             mode,
             sceneName: mode === 'reverse' ? M.sceneRev : M.sceneFwd,
+            // 🔴 R297-⑥：勾选态由数据驱动（wxml 不能调 `indexOf`，见 compare.wxml 注释）
+            checked: false,
           };
         });
       this.setData({ plans, loading: false });
@@ -79,7 +81,12 @@ Page({
       if (selected.length >= 3) { wx.showToast({ title: this.data.t.max, icon: 'none' }); return; }
       selected.push(id);
     }
-    this.setData({ selected });
+    // 🔴 R297-⑥：把勾选态**算进 plans**（wxml 读 `item.checked`）—— 原 wxml 用
+    //   `selected.indexOf(...)`，而 **WXML 表达式不支持方法调用** ⇒ 勾选框恒不亮。
+    const plans = this.data.plans.map((p) => Object.assign({}, p, {
+      checked: selected.indexOf(p.sandbox_id) >= 0,
+    }));
+    this.setData({ selected, plans });
   },
 
   onCompare() {

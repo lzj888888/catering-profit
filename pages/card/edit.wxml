@@ -95,7 +95,7 @@
         <text class="lbl">{{t.qty}}</text>
         <view class="qty-wrap">
           <input class="val-input qty-input" type="digit" value="{{lines[index].qty}}" data-idx="{{index}}" bindinput="onQty"  adjust-position="{{true}}" cursor-spacing="20" />
-          <picker mode="selector" range="{{qtyUnits}}" data-idx="{{index}}" bindchange="onQtyUnit">
+          <picker mode="selector" range="{{qtyUnits}}" value="{{lines[index].qtyUnitIdx}}" data-idx="{{index}}" bindchange="onQtyUnit">
             <view class="picker unit-pick">{{lines[index].qty_unit || baseUnit}}</view>
           </picker>
         </view>
@@ -118,7 +118,7 @@
         <text class="lbl">{{t.manualUnitPrice}}</text>
         <view class="price-wrap">
           <input class="val-input price-input" type="digit" value="{{lines[index].unit_price_yuan}}" data-idx="{{index}}" bindinput="onManualPrice"  adjust-position="{{true}}" cursor-spacing="20" />
-          <picker mode="selector" range="{{priceUnits}}" data-idx="{{index}}" bindchange="onManualPriceUnit">
+          <picker mode="selector" range="{{priceUnits}}" value="{{lines[index].priceUnitIdx}}" data-idx="{{index}}" bindchange="onManualPriceUnit">
             <view class="picker unit-pick price-unit">{{t.cur}}/{{lines[index].price_unit || baseUnit}}</view>
           </picker>
         </view>
@@ -132,7 +132,7 @@
         <text class="lbl">{{t.qty}}</text>
         <view class="qty-wrap">
           <input class="val-input qty-input" type="digit" value="{{lines[index].qty}}" data-idx="{{index}}" bindinput="onQty"  adjust-position="{{true}}" cursor-spacing="20" />
-          <picker mode="selector" range="{{qtyUnits}}" data-idx="{{index}}" bindchange="onQtyUnit">
+          <picker mode="selector" range="{{qtyUnits}}" value="{{lines[index].qtyUnitIdx}}" data-idx="{{index}}" bindchange="onQtyUnit">
             <view class="picker unit-pick">{{lines[index].qty_unit || baseUnit}}</view>
           </picker>
         </view>

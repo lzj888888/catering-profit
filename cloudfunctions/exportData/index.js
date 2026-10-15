@@ -264,7 +264,11 @@ exports.main = async (event) => {
     body = table.rows || [];
     fileBase = `${shopName || '店铺'}_方案对比`;
   } else {
-    const res = await da.list('shop_cost_card', { shop_id: shopId });
+    // 🔴 R297-⑥（审计 M3-B6）：**必须是 listAll（分页取全）** —— `shop_cost_card` 是版本模型
+    //   （只 INSERT 不 UPDATE），行数 = Σ(各 card_code 的版本数)；`list()` 单页硬上限 1000
+    //   ⇒ 卡/版本多的店导出会**静默少卡**（导出件是给老板存档、给会计的东西，少行不报错）。
+    //   R157 修过列表页那条腿（getCostCard/index.js:41-44），导出这条腿当时漏了 ⇒ 同族两条取数口径不一致。
+    const res = await da.listAll('shop_cost_card', { shop_id: shopId });
     const cards = ((res && res.data) || []);
     // 按 card_code 取最新版本
     const latest = new Map();

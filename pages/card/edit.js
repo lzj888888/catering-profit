@@ -39,7 +39,20 @@ function freshSpecRows() {
 }
 
 function renumber(lines) {
-  return lines.map((l, i) => Object.assign({}, l, { idx: i }));
+  return lines.map((l, i) => Object.assign({}, l, {
+    idx: i,
+    // 🔴 R297-⑥（审计 M3-B8）：**单位选择器的当前值必须由数据驱动**。
+    //   本页三个单位 picker 原先都没绑 `value`，而 `<picker mode="selector">` 缺省 value=0
+    //   ⇒ 打开时高亮**永远停在第一项「克」**，与行上真正的单位不符。
+    //   用户为了"看一眼当前值"点开、再直接按确定 ⇒ `detail.value = 0` ⇒ 单位被静默改成「克」。
+    //   单价那条尤其危险：`onManualPriceUnit` **故意不做数值换算**（保住老板敲的那个数，见其注释），
+    //   于是「6 元/斤」摇身变成「6 元/克」⇒ **成本放大 1000 倍、零提示**。
+    //   ⚠️ 不能写在 WXML 里：WXML 表达式**不支持方法调用**（`pages/material/index.js:139` 已有同款注释），
+    //      故下标在 js 侧算好。挂 `renumber` 是因为它是**所有行变更的公共出口** ⇒
+    //      新增 / 回填 / 换单位三条路径自动全覆盖，不必在 6 处调用点各补一次（抄多份必漂）。
+    qtyUnitIdx: Math.max(0, units.QTY_UNITS.indexOf(l.qty_unit || units.BASE_UNIT)),
+    priceUnitIdx: Math.max(0, units.QTY_UNITS.indexOf(l.price_unit || units.BASE_UNIT)),
+  }));
 }
 
 // 手工行净料单位成本（万分）：round(单价元/基准单位 × 10000 ÷ (出成率/100))
@@ -355,6 +368,16 @@ Page({
           init.category = c.category || '';
           init.tags = c.tags || '';
           init.previewCostFen = c.total_cost_fen || 0;
+          // 🔴 R297-⑥（审计 M3-B2）：这里只设了「显示判据」previewCostFen，却没设「值」previewCost
+          //   ⇒ wxml 的 `wx:if="{{previewCostFen > 0}}"` 成立、而 `{{previewCost}}` 是空串
+          //   ⇒ 屏上渲染成「单份成本：¥」（有标题有货币符、没有数字）。原先只有用户手点一次
+          //   反算/规格试算才会被填上 ⇒ 每次进编辑态都先看到一个"没算出来"的假象。
+          init.previewCost = c.total_cost_fen ? api.fenToYuan(c.total_cost_fen, 2) : '';
+          // 🔴 R297-⑥（审计 M3-B1）：活动特价**从不回填** —— 后端其实早把它送出来了
+          //   （getCostCard/service.js::price_promo_fen），这里却没用。
+          //   后果不是"少显示"而是**静默清零**：输入框空着，老板以为本来没设，直接保存就把
+          //   `activity_price_yuan` 提交成 0（第二档毛利率随之消失），全程零提示。
+          init.activityPriceYuan = c.price_promo_fen > 0 ? api.fenToYuan(c.price_promo_fen, 2) : '';
           init.copyVersion = TERMS.card.copyVersion;
           if (c.card_type === 3) {
             // M3.16 套餐：回填子卡行 + 三个显示数（顾客省 / 我少赚 / 成本结构）
@@ -1016,6 +1039,12 @@ Page({
       activityPriceYuan: '',
       batchOutput: '',
       reversePriceFen: 0, previewCostFen: 0, reverseResultPreview: '', previewCost: '',
+      // 🔴 R297-⑥（审计 M3-B10）：团购那一组**同属「这道菜特有」**，必须跟 priceYuan 一起清。
+      //   原先只清了反算类结果、漏了团购 ⇒ 连续录下一道菜时，屏上还挂着上一道菜的
+      //   佣金/到手/毛利（含红字「比堂食低」）—— 那组数字对新菜根本不成立。
+      //   ⚠️ 与上方「刻意保留的门店级默认」（核算模式/损耗率/辅料/分类/标签/目标毛利率）不同类：
+      //      团购价与补贴是逐菜填的，留着就是错的。
+      grouponPriceYuan: '', grouponRate: '', grouponPromoYuan: '', grouponView: null,
       specRows: freshSpecRows(),
       // M3.16（批次 C）套餐：清空套餐特有字段（连续录入下一道默认回到单品）
       cardType: '1',

@@ -168,7 +168,10 @@ exports.main = async (event) => {
   if (prior) return ok(prior);
 
   // ===== 3. 找该 card_code 的最新版本卡 =====
-  const cardsRes = await da.list('shop_cost_card', { shop_id: shopId, card_code: cardCode });
+  // 🔴 R297-⑥（审计 M3-B12）：版本模型取全（`list()` 单页上限 1000 ⇒ 版本多的卡会取漏，
+  //   连带把 `nextVersion` 算小、覆盖出重复版本号）。与 getCostCard/index.js:41-44 的 R157 判据同源。
+  //   ⚠️ 下一行的明细行查询保持 `list`（唯一键过滤，与 getCostCard/index.js:19 口径一致）。
+  const cardsRes = await da.listAll('shop_cost_card', { shop_id: shopId, card_code: cardCode });
   const versions = (cardsRes && cardsRes.data) || [];
   if (versions.length === 0) return fail(ERROR_CODES.RESOURCE_NOT_FOUND, `成本卡 ${cardCode} 不存在或已软删`);
   let latestCard = versions[0];
@@ -296,6 +299,13 @@ exports.main = async (event) => {
     loss_rate: p.lossPct,
     aux_cost: p.auxFen,
     price_list: p.priceFen,
+    // 🔴 R297-⑥（审计 M3-B4）：活动特价与多规格**必须随版本透传**（与上面 card_type 同一类）。
+    //   原先 cardDoc 不带这两项 ⇒ 点一次「同步至原料最新价格」，卡上的活动特价与规格定义就**永久消失**
+    //   （版本模型只 INSERT、最新版本即全部真相）。而 saveCostCard 是落的
+    //   （saveCostCard/index.js:343 `price_promo` / :355 `specs_json`）⇒ 同族两条写路径口径不一致。
+    //   ⚠️ 丢的是"定义"不是"成本" ⇒ 成本曲线/毛利率看着照旧正常，属**纯静默丢失**。
+    price_promo: latestCard.price_promo || 0,
+    specs_json: latestCard.specs_json || '',
     total_cost: result.unit_cost_fen,   // 整数分
     material_total_fen: result.material_total_fen,
     gross_profit_fen: result.gross_profit_fen,

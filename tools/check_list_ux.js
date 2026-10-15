@@ -16,6 +16,14 @@
 //
 // ④ WXML 表达式**不支持方法调用**：`{{pinned.indexOf(item.card_code) >= 0}}` 恒为 false
 //    ⇒ 置顶标记永不显示（且不报错）⇒ 只能"预先在 JS 里打标记"。
+//    🔴 R298 扩面（本轮真实事故×2）：原判据是「8 个方法名白名单 + 只扫 3 个列表页」，
+//      而实际踩到的两处**分别落在别的页**、且其中一个方法名还不在白名单里：
+//        · `pages/month/input.wxml`  `{{g.expanded ? g.rows : g.rows.slice(0, 1)}}`（**slice 不在白名单**）
+//          ⇒ 费用/其他收入组的**细项行整段不渲染**（收入、费用两个月录入页各一处）
+//        · `pages/sandbox/compare.wxml` `{{selected.indexOf(...)}}`（indexOf 在册，但**该页不在原扫描面**）
+//          ⇒ 方案勾选框永不点亮（老板看不出选了哪几个）
+//      ⇒ 判据改成「**通用** `.{ident}(`」+「扫描面 = **全仓** pages/**/*.wxml」，并加扫描面下界
+//        （防止 walk 失效 ⇒ 0 个文件 ⇒ 恒真假绿）。
 //
 // 判据（纯函数化 + 正负互证 + 反查真实单源）：
 //   L1 排序在位：两个列表页都有 sortList，且同时用置顶与 updated_at；applyFilter 真的调用它
@@ -23,7 +31,8 @@
 //   L3 置顶落点：saveShopSetting 校验+写库、getShopContext 下发；且**不得新建集合**（复用 shop 文档）
 //   L4 原料选择：模板不再走原生 picker；改走独立页且该页四件套齐全、已注册、有搜索与分组
 //   L5 连续录入：保存后按 isEdit 分支；afterSaved 必须清 id / card_code；有显式返回出口
-//   L6 WXML 安全：三个列表相关模板的 {{}} 内不得出现方法调用
+//   L6 WXML 安全：**全仓** pages/**/*.wxml 的 {{}} 内不得出现任何方法调用（通用 .ident( ，非白名单）
+//   L6b 渲染源：月录入页细项行必须渲染**已装饰的 g.rows**（fixed/tag 都在其上），不得改读未装饰/易过期的 showRows
 //   S1~S3 自失效护栏（扫描面文件数 / 空输入 fail-closed / 命中数下界）
 //   C1~C6 反恒真：喂坏样本必红、喂等价改写必绿
 //
@@ -145,12 +154,81 @@ function judgeMaterialPicker(wxml) {
   return { ok: true, why: '原料走独立选择页（模板已无原生 materials picker）' };
 }
 
-// 判据 L6：WXML 表达式不支持方法调用 ⇒ 标记必须在 JS 里预先打好。
+// WXML 注释剥离（**等长空格替换、保留 \n**）：判据只看**会被求值**的部分。
+//   🔴 为什么必须剥（本轮实测假红）：守卫扩到全仓后，`pages/month/input.wxml` 里那句
+//     「原式 `{{g.expanded ? g.rows : g.rows.slice(0, 1)}}` 已修」的**说明注释**被判红 ——
+//     注释不会被 WXML 求值，写"曾经的错法"是**文档、不是缺陷**。
+//   ⚠️ 反向不放松：真·方法调用只可能出现在 {{}} 求值段；藏在注释里的调用**本来就不生效**，
+//     故剥离不削弱判据（与 `check_wxml_structure.js::skeleton` 同一手法）。
+const stripWxmlComments = (s) => String(s || '').replace(/<!--[\s\S]*?-->/g, (m) => m.replace(/[^\n]/g, ' '));
+
+// 判据 L6：WXML 表达式不支持方法调用 ⇒ 任何 `{{ ... .ident( ... }}` 都是静默失效
+//   （求值成 undefined，不报错、不渲染）。
+//   ⚠️ R298 教训：**别用方法名白名单**（slice 就漏了）；也别只扫"相关页"（在别的页照样发生）。
+//     ⇒ 判据 = 通用正则；调用方负责把**全仓**模板喂进来（见 L6 段）。
+//   ✅ 不误伤：`{{a.b}}`（无括号）、`{{ok ? 1 : 2}}`（无点）、`{{price | fmt}}`（管道过滤器）、
+//     `{{ 0.5 }}`（点后接数字）、注释里的示例 —— 已用正负样本互证（C4 / C4b / C4c）。
+//   ⚠️ 前提：本仓 wxml **不使用 <wxs>**（已机器核对：0 处）⇒ 不存在"合法的方法调用"。
+//     将来若引入 WXS，须回看本判据（WXS 里的函数调用在模板中是合法的）。
 function judgeWxmlNoMethodCall(wxml) {
   if (!wxml) return { ok: false, why: '取不到模板（fail-closed）' };
-  const m = /\{\{[^}]*\.\s*(indexOf|includes|split|trim|filter|map|find|toFixed)\s*\(/.exec(wxml);
-  if (m) return { ok: false, why: 'WXML 表达式里调用了方法（模板不支持，恒为 undefined ⇒ 静默失效）' };
+  const src = stripWxmlComments(wxml);
+  // `[^}\n]*` 刻意不跨行、不跨 mustache，避免把相邻两段 {{}} 之间的内容误算进同一次求值。
+  const m = /\{\{[^}\n]*\.\s*([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/.exec(src);
+  if (m) return { ok: false, why: 'WXML 表达式里调用了 .' + m[1] + '()（模板不支持 ⇒ 恒为 undefined，静默失效）' };
   return { ok: true, why: '模板 {{}} 内无方法调用（标记由 JS 预先打好）' };
+}
+
+// 判据 L6b：细项行的**渲染源必须是已装饰行** `g.rows`。
+//   为什么单列一条（与 L6 "有没有方法调用" 是**两个不同的失效面**）：
+//     这不是"写法"问题，而是"取哪一份数据"问题 —— `g.rows` 是**唯一装配口** decorateRows 的产物
+//     （`fixed` 预设名只读 / `tag` 沿用·要核对 / `note` 行内说明 都挂在其上）；而 `g.showRows` 槽
+//     对非堂食组是**未装饰** raw，且多处赋值在 markRecurringTags / updateRow 之后是**过期引用**
+//     ⇒ 一旦模板改读它，预设细项名会退化成**可编辑输入框**、「沿用/要核对」标记消失 —— 全是**无报错的静默降级**。
+//   （🔴 这正是本轮我自己先踩的坑：M1-B1 初版改成读 `showRows`，门禁全绿而语义已错，靠"按老板常识走查"才现形。）
+//   判据 = 渲染源里不得出现 `g.showRows`，且 `wx:for="{{g.rows}}"` 出现 ≥2 处（收入侧 + 费用侧都走它）。
+function judgeRowRenderSource(wxml) {
+  if (!wxml) return { ok: false, why: '取不到模板（fail-closed）' };
+  const src = stripWxmlComments(wxml);   // 同上：说明性注释不算渲染源
+  if (/\{\{\s*g\.showRows\b/.test(src)) {
+    return { ok: false, why: '细项渲染源用了 g.showRows（未装饰 / 易过期槽）⇒ 预设名只读与「沿用」标记会静默丢失' };
+  }
+  const n = (src.match(/wx:for="\{\{g\.rows\}\}"/g) || []).length;
+  if (n < 2) return { ok: false, why: '细项渲染源 g.rows 只出现 ' + n + ' 处（应 ≥2：收入侧 + 费用侧）' };
+  return { ok: true, why: '细项渲染源为**已装饰**的 g.rows（' + n + ' 处；折叠由 wx:if 数据表达式决策，不产生派生槽）' };
+}
+
+// L6 扫描面收集器：**全仓** .wxml（递归）。返回 [relPath, text] 列表。
+//   ⚠️ 扫描面/排除面刻意与 `tools/check_wxml_structure.js` 的约定**保持一致**
+//     （SCAN_DIRS = pages/miniprogram/components + 仓根 *.wxml；排除 node_modules/.git/.workbuddy/review）
+//     —— 两处判据不同（那边管结构与裸属性行、这边管表达式方法调用），但**扫描面必须同源**，
+//     否则将来新增一个 `components/` 目录时，一边扫得到、一边扫不到 ⇒ 覆盖出现无声的洞。
+//   ⚠️ walk 失败时返回空数组 ⇒ 由调用方的**扫描面下界**转红（不许"扫不到就当通过"）。
+function collectAllPageWxml() {
+  const out = [];
+  const EXCLUDED = new Set(['node_modules', '.git', '.workbuddy', 'review']);
+  const walk = (dir) => {
+    let entries;
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch (e) { return; }
+    for (const e of entries) {
+      if (EXCLUDED.has(e.name)) continue;
+      const full = path.join(dir, e.name);
+      if (e.isDirectory()) walk(full);
+      else if (e.isFile() && e.name.endsWith('.wxml')) {
+        const r = path.relative(ROOT, full).split(path.sep).join('/');
+        out.push([r, read(r) || '']);
+      }
+    }
+  };
+  for (const d of ['pages', 'miniprogram', 'components']) {
+    const abs = path.join(ROOT, d);
+    if (fs.existsSync(abs)) walk(abs);
+  }
+  for (const e of fs.readdirSync(ROOT, { withFileTypes: true })) {
+    if (e.isFile() && e.name.endsWith('.wxml')) out.push([e.name, read(e.name) || '']);
+  }
+  out.sort((a, b) => (a[0] < b[0] ? -1 : 1));
+  return out;
 }
 
 // 判据 L5a：保存后必须按 isEdit 分支 —— 编辑=回列表 / 新增=连续录入。
@@ -275,14 +353,31 @@ console.log('===== L5 · 连续录入（防第二道覆盖第一道）=====');
     : bad('L5-⑤ 返回出口缺失（菜品卡=' + backC + '，原料=' + backM + '）—— 连续录入会把人困在本页');
 }
 
-// ===================== L6 WXML 表达式安全 =====================
+// ===================== L6 WXML 表达式安全（全仓扫描） =====================
 console.log('');
-console.log('===== L6 · WXML 表达式不得调方法 =====');
+console.log('===== L6 · 全仓 WXML {{}} 不得调方法 =====');
 {
-  [['L6-①', 'pages/card/index.wxml'], ['L6-②', 'pages/material/index.wxml'], ['L6-③', 'pages/material/pick.wxml']].forEach(([id, rel]) => {
-    const r = judgeWxmlNoMethodCall(read(rel));
-    r.ok ? ok(id + ' ' + rel + '：' + r.why) : bad(id + ' ' + rel + ' —— ' + r.why);
+  const all = collectAllPageWxml();
+  // 扫描面下界：当前实有 27 页。取 25 —— 新增页不必改判据，但**掉到 25 以下必然是真出事**
+  //   （walk 坏了 / pages 被搬走 / 守卫被改成扫单页），不许"扫不到就当通过"。
+  const SURFACE_MIN = 25;
+  (all.length >= SURFACE_MIN)
+    ? ok('L6-① 扫描面下界：全仓 ' + all.length + ' 个 .wxml（≥' + SURFACE_MIN + '）')
+    : bad('L6-① 扫描面塌陷：只扫到 ' + all.length + ' 个 .wxml（<' + SURFACE_MIN + '）⇒ 判据失效');
+  const hits = [];
+  all.forEach(([rel, text]) => {
+    const r = judgeWxmlNoMethodCall(text);
+    if (!r.ok) hits.push(rel + ' —— ' + r.why);
   });
+  if (hits.length === 0) {
+    ok('L6-② 全仓 ' + all.length + ' 个模板的 {{}} 内 0 处方法调用（标记均已在 JS 里预先打好）');
+  } else {
+    bad('L6-② 全仓发现 ' + hits.length + ' 处模板方法调用（模板不支持 ⇒ 该处永不渲染，且不报错）');
+    hits.slice(0, 8).forEach((h) => console.log('       ↳ ' + h));
+  }
+  // L6-③ 取哪一份数据（与"有没有方法调用"是两个面）
+  const r6b = judgeRowRenderSource(read('pages/month/input.wxml'));
+  r6b.ok ? ok('L6-③ 月录入页细项渲染源：' + r6b.why) : bad('L6-③ 月录入页细项渲染源 —— ' + r6b.why);
 }
 
 // ===================== S 自失效护栏 =====================
@@ -307,9 +402,10 @@ console.log('===== S · 自失效护栏 =====');
   const empties = [
     judgeSortList(null, 'id'), judgeOutUpdatedAt(null), judgeMaterialPicker(null),
     judgeWxmlNoMethodCall(null), judgeIsEditBranch(null), judgeAfterSavedResets(null, 'id'),
+    judgeRowRenderSource(null),
   ];
   empties.every((r) => r.ok === false)
-    ? ok('S2 全部 6 条判据在空输入时 fail-closed（读不到文件绝不假绿）')
+    ? ok('S2 全部 ' + empties.length + ' 条判据在空输入时 fail-closed（读不到文件绝不假绿）')
     : bad('S2 有条判据在空输入时返回通过 ⇒ 文件被删/改名会静默变成假绿');
 
   // S3 命中数下界：sortList 至少 2 处（两个列表），映射出 updated_at 的 service 至少 3 处
@@ -347,6 +443,27 @@ console.log('===== C · 反恒真影子样本 =====');
   // C4 坏样本：模板里在 {{}} 内调方法 ⇒ 必须判红
   const c4 = judgeWxmlNoMethodCall('{{pinned.indexOf(item.card_code) >= 0}}');
   c4.ok === false ? ok('C4 影子样本「WXML 内调 indexOf」判红') : bad('C4 判据放过模板方法调用（假绿）');
+
+  // C4b 好样本（**不误伤**）：无括号的属性访问 / 三元 / 管道过滤器 / 小数 —— 必须判绿。
+  //   这条是 R298 拆掉白名单后的**必要配套**：正则放宽到通用 `.ident(` 后，最容易变成"见点就红"。
+  const c4b = judgeWxmlNoMethodCall('{{a.b}}{{ok ? 1 : 2}}{{item.price | fixed}}{{form.amount > 0.5}}{{x}}');
+  c4b.ok === true ? ok('C4b 影子样本「属性访问/三元/管道/小数」判绿（通用正则不误伤）') : bad('C4b 通用正则误伤合法写法 —— ' + c4b.why);
+
+  // C4c 坏样本：**本轮 M1 真事故原文**（`slice` 不在旧白名单内）⇒ 证明"白名单已拆"。
+  const c4c = judgeWxmlNoMethodCall('wx:for="{{g.expanded ? g.rows : g.rows.slice(0, 1)}}"');
+  c4c.ok === false ? ok('C4c 影子样本「M1 原文 g.rows.slice(0,1)」判红 ⇒ 白名单已拆') : bad('C4c 判据仍按白名单 ⇒ slice 这类静默失效抓不到');
+
+  // C4d 坏样本：细项渲染源改读未装饰/易过期的 `g.showRows` ⇒ 必须判红（**本轮我自己踩的坑**）
+  const c4d = judgeRowRenderSource('wx:for="{{g.showRows}}" wx:for="{{g.rows}}"');
+  c4d.ok === false ? ok('C4d 影子样本「细项改读 g.showRows（未装饰槽）」判红 ⇒ 静默降级锁死') : bad('C4d 判据放过未装饰渲染源（固定的预设名会变成可编辑框）');
+
+  // C4e 好样本：本轮的真实修法形态（g.rows + wx:if 折叠，两个面各一处）⇒ 必须判绿
+  const c4e = judgeRowRenderSource('wx:for="{{g.rows}}" wx:key="index" wx:if="{{g.expanded || ri === 0}}"\nwx:for="{{g.rows}}"');
+  c4e.ok === true ? ok('C4e 影子样本「g.rows + wx:if 折叠」判绿（等价改正不误杀）') : bad('C4e 真实修法形态被判红 —— ' + c4e.why);
+
+  // C4f 好样本：**注释里**举例写法（写"曾经的错法"是文档不是缺陷）⇒ 必须判绿（证明剥注释生效）
+  const c4f = judgeWxmlNoMethodCall('<!-- 原式 {{g.rows.slice(0, 1)}} 已修 -->\n<view wx:for="{{g.rows}}"></view>');
+  c4f.ok === true ? ok('C4f 影子样本「注释里的举例写法」判绿（剥注释生效，不误杀文档）') : bad('C4f 把说明性注释判红了 —— ' + c4f.why);
 
   // C5 坏样本：afterSaved 不清主键 ⇒ 必须判红，且失败原因必须点名该键
   const c5 = judgeAfterSavedResets('afterSaved(name) { this.setData({ name: empty, lines: [] }); }', 'card_code');

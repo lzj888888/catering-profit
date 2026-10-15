@@ -362,8 +362,14 @@
     </block>
 
     <!-- 非堂食 / 非外卖（其他业务收入等）：保持原两行细项 -->
+    <!-- 🔴 R297-⑥（M1-B1）：折叠**不得**在模板里算 —— 原写 `{{g.expanded ? g.rows : g.rows.slice(0, 1)}}`，
+         而 **WXML 表达式不支持方法调用** ⇒ `slice` 求值失败 ⇒ 该组细项行**整段不渲染**（费用细项直接消失）。
+         修法：渲染源恒为**已装饰的 `g.rows`**（`fixed` 预设名只读 / `tag` 沿用·要核对 都挂在这层，
+         见 input.js 的 decorateRows「唯一装配口」），折叠只用一个**数据表达式** `wx:if` 决策。
+         ⚠️ 刻意不采用 `showRows` 槽：它对非堂食组是**未装饰**的 raw（丢 fixed/tag），且多处赋值在
+            markRecurringTags / updateRow 之后**是过期引用** ⇒ 改读它会静默退回"预设名可编辑、标丢失"。 -->
     <block wx:else>
-      <view class="sub-block" wx:for="{{g.expanded ? g.rows : g.rows.slice(0, 1)}}" wx:key="index"
+      <view class="sub-block" wx:for="{{g.rows}}" wx:key="index" wx:if="{{g.expanded || ri === 0}}"
         wx:for-item="r" wx:for-index="ri">
         <view class="sub-line1">
           <!-- 预设细项（fixed）：**名字**固定（防同一笔费用两个名字），但**可以删** ——
@@ -416,7 +422,9 @@
       <view class="scope" wx:if="{{g.scopeOpen}}">{{g.scope}}</view>
     </view>
 
-    <view class="sub-block" wx:for="{{g.expanded ? g.rows : g.rows.slice(0, 1)}}" wx:key="index"
+    <!-- 🔴 R297-⑥（M1-B1）：同收入侧 —— 渲染源恒为已装饰的 `g.rows`，折叠用 `wx:if` 数据表达式。
+         原式 `{{g.expanded ? g.rows : g.rows.slice(0, 1)}}` 在模板里调 `slice` ⇒ 费用细项整段不渲染。 -->
+    <view class="sub-block" wx:for="{{g.rows}}" wx:key="index" wx:if="{{g.expanded || ri === 0}}"
       wx:for-item="r" wx:for-index="ri">
       <view class="sub-line1">
         <!-- 预设细项（fixed）：名字固定、但可删（同收入侧口径，G11d 守） -->
