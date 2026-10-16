@@ -233,6 +233,8 @@ const CASES = [
   //   + C 登记清单 fail-closed 10（未登记/登记失效/守恒/kind 合法/money 必安全/money 下界防批量改标/
   //     四类非空/理由非空/单源含 toFixed(10)/三副本同源）+ D 正负样本互证 8（D-⑤~D-⑦ 对账分辨力 + 断言数下界）。
   { key: 'check_money_precision', rel: 'tools/check_money_precision.js' },  // 30 条
+  // R298·B3 导出件可回读：真写→真读回 + 内容保真（详见 tools/check_export_roundtrip.js 头注）
+  { key: 'check_export_roundtrip', rel: 'tools/check_export_roundtrip.js' },  // 46 条
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：174 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：175 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -1074,6 +1074,13 @@ const SUITES = [
   //   见头部注释同名条目。根因：`Math.round(元 * 100)` 在 IEEE754 下半步会静默少进 1 分。
   //   判据 = S 扫描面 + A 行为穷举 + B 前后端双副本等价 + C 形态 + D 正负样本互证。
   ['money-precision', 'tools/check_money_precision.js'],
+  // ===== R298·B3 导出件「真能读回 + 内容保真」守卫 =====
+  //   见头部注释同名条目。根因：check_export_delivery 只判**源码形态**（bookType / base64 / 依赖声明 / 文案），
+  //   从没有任何测试真解码过 base64 ⇒ 导出件「行数对不对、金额是不是数字（会计能不能 SUM）、值有没有变」
+  //   这一整面环上零判据（同族病：判据只覆盖写法、不覆盖产出物）。
+  //   判据 = S 扫描面与依赖三级 fail-closed + A 真写→真读回结构守恒 + B 单元格类型
+  //        + C 分↔元往返逐点等值 + D 多 scope 覆盖 + E 边界行为登记 + F 判据分辨力 + W 已知缺口登记。
+  ['export-roundtrip', 'tools/check_export_roundtrip.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

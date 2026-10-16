@@ -1,0 +1,51 @@
+R298·B3 导出件「真能读回 + 内容保真」守卫（第二梯队收官）
+
+背景（PLAN_R297 第二梯队 B3 原判据「导出 ↔ 导入往返等值」）：
+侦察后改判为「导出件可回读性与内容保真」—— 4 个导出出口（M1 月度报表 /
+M3 菜品成本卡 / M2 方案对比 / M2 场景矩阵，全走 utils/exportFile.js::deliver 单源）
+与导入侧 3 处（外卖+堂食统一导入器 importSalesBill、原料批量 saveMaterial）
+零交集 ⇒「往返」链路在业务上不存在。
+
+缺口属实（PLAN 说「能否读回从未验证」）：check_export_delivery 只判**源码形态**
+（bookType / base64 / 依赖声明 / 文案三处），从无任何测试真解码过 base64；
+exportData/selftest.js 里 xlsx|base64 同样零命中 ⇒ 导出件「行数对不对、金额是不是
+数字（会计能不能 SUM）、值有没有变」这一整面**环上零判据**（同族病：判据只覆盖
+写法、不覆盖产出物）。
+
+新增 tools/check_export_roundtrip.js（46 断言 / 8 组判据）：
+  S 扫描面与依赖三级 fail-closed（仓内 → 受管工作区 → env B3_XLSX_PATH，全不可得
+    即响亮红；**不设 stub** —— 自写自读恒真，正是 PLAN 要防的）
+  A 真写→真读回结构守恒（PK 魔数 / 4 表名与顺序 / 逐表行数含空行 / 逐格 / 真落盘）
+  B 单元格类型（金额必须数字型，否则会计 SUM 得 0；口径说明表零数字格作正负互证）
+  C 分↔元逐点回算等值（十进制安全式）+ yuan 往返 8 边界值 + 无无限小数
+  D 多 scope 覆盖（m1 多表 / m3 单表 7 列 / m2 混合表 / SHEET_NAME 四键对号）
+  E 边界行为登记（空 rows / 空 sheets / 重名 / 31 字符截断 / 负数百万级）
+  F 判据分辨力（对账纯函数喂假数据自证 + resolveXlsx 全不存在返回 null）
+  W 已知缺口登记
+
+关键发现（本轮新查出、此前无人知道）：
+  · 空 sheets ⇒ SheetJS 抛 Workbook is empty（xlsxSheetsBase64 无异常兜底；
+    main 里的 if(!content) 兜得住「返回假值」兜不住「抛异常逃逸」）⇒ W1
+  · 表重名 ⇒ 抛 already exists（无去重；slice(0,31) 截断本身会制造重名；
+    (s.name || Sheet1) 缺省兜底还会让两个缺名表都落成 Sheet1）⇒ W2
+  两者当前可达性均为 0 ⇒ 登记为**防御缺口**（修与不修属 C 段拍板）。
+
+证据（review/evidence/r298_b3_export/）：
+  · cross_check_openpyxl.py —— 「SheetJS 写 → SheetJS 读」是同源往返，只能证明
+    自己和自己一致 ⇒ 换**独立实现**（Python openpyxl 3.1.5，Decimal 精确回算）
+    读同一份落盘产物 ⇒ 13/13 通过
+  · mut_backfill_b3.py —— 6 组文件级变异 6/6（md5 逐字节还原）：MB2「少最后一行」
+    = PLAN 原话场景被 A4/A7 抓住；MB4「偏 0.5 分」被 C2~C6 抓住（证明 C 组真在
+    比数值不是比结构）；MB6「纯排版加空格」必须保持绿（判据不脆）
+  · probe_behavior.js / probe_feasibility.js —— SheetJS 边界行为与可行性探针
+
+声明面：套件数 174 → 175（verify_all 头注 / 重启键 §1.1 / 重启键「套件数会漂」三处）
++ 断言数声明行 check_export_roundtrip=46（「七十七者」→「七十八者」）
++ tools/check_suite_assert_counts.js::CASES 登记。
+
+门禁：175/175 全绿（逐套件 175 PASS / 0 FAIL、零失败、RC=0、282.8s、R92 通过）；
+元守卫 assert_counts 84/0 · coverage 10/0 · count_claims 11/0 · selftest_shape 62 合规。
+首轮 174/175 红在 R92 suite-tracked（新套件 untracked ⇒ 必须先 git add 再跑门禁）。
+
+业务代码零改动（cloudfunctions/exportData/index.js md5 61710795df72eca3450e63806bbcf4ef 未变）。
+NOTE：review/NOTE_2026-10-16_R298_B3导出件可回读.md
