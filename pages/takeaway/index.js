@@ -686,6 +686,4 @@ Page({
   goRecon() { wx.navigateTo({ url: '/pages/recon/index' }); },
   goDishReview() { wx.navigateTo({ url: '/pages/m3/dishreview/index' }); },
   dismissDone() { this.setData({ importDone: false, importDoneText: '' }); },
-
-  onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()); },
 });

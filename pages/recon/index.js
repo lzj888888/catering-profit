@@ -6,7 +6,7 @@
 const api = require('../../utils/api.js');
 const ui = require('../../utils/ui.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
-const { calcMenuMargin, calcActualDishMargin, reconcile } = require('../../utils/reconDerive.js');
+const { calcMenuMargin, calcActualDishMargin, reconcile, suppressKeyOf } = require('../../utils/reconDerive.js');
 
 Page({
   data: {
@@ -102,13 +102,14 @@ Page({
       const cardCount = cards.filter((c) => c.card_type !== 3).length;
       const coverage = (savedCount == null || savedCount <= 0) ? null : (cardCount / savedCount);
       const rec = reconcile({ menuPct: menu.pct, actualPct: actual.pct, coverage, incomeFen: actual.income_fen });
-      // 抑制原因 → 文案（三种：未填在售数 / 覆盖率不足 / 外卖快速录入拆不出商品总价）
+      // 🔴 R298X：抑制原因 → 文案键**走单源**（utils/reconDerive.js::suppressKeyOf）。
+      //   修前这里是内联 if/else，只给 3 个分支，把 `menu_no_price`（菜品卡没填售价）与
+      //   `actual_no_data`（本月没录收入）**兜底**成「覆盖率不足（<60%）」——而 reconcile 的
+      //   判定顺序决定了：能走到这两种 reason，说明覆盖率**是够的**。于是用户在覆盖率 100% 的
+      //   页面上读到「覆盖率不足」，会去补在售菜品数，而真问题是没填售价 / 没录收入 ⇒ 诊断反了。
       let suppressText = '';
       if (rec.suppressed) {
-        if (rec.reason === 'coverage_missing') suppressText = TERMS.card.reconSuppressNoCount;
-        else if (rec.reason === 'coverage_low') suppressText = TERMS.card.reconSuppressCoverage;
-        else if (actual.reason === 'need_detail_income') suppressText = TERMS.card.reconSuppressDetail;
-        else suppressText = TERMS.card.reconSuppressCoverage;   // menu_no_price / actual_no_data 兜底
+        suppressText = TERMS.card[suppressKeyOf(rec, actual.reason)] || TERMS.card.reconSuppressGeneric;
       }
       this.setData({
         result: {

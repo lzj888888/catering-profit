@@ -1468,6 +1468,12 @@ const TERMS = {
     reconSuppressCoverage: '覆盖率不足（<60%），差值可能失真，暂不显示。',
     reconSuppressDetail: '本月外卖用了快速录入，拆不出商品总价，请改用分项录入。',
     reconSuppressNoCount: '请先填写「本月在售菜品数」，才能算覆盖率。',
+    // 🔴 R298X：以下三条补的是「抑制原因不是覆盖率」时的**专属文案**。
+    //   修前 `menu_no_price`（菜品卡没填售价）/ `actual_no_data`（本月没录收入）被兜底成
+    //   「覆盖率不足（<60%）」，而这两种情形恰恰是覆盖率够的才会走到 ⇒ 文案把诊断方向带反。
+    reconSuppressNoPrice: '菜品成本卡还没填售价，算不出标准菜单毛利率。请到菜品成本里把售价补上。',
+    reconSuppressNoIncome: '本月还没录收入，算不出实际菜品毛利率。请先到月度录入里把收入记上。',
+    reconSuppressGeneric: '本月数据还不够，差值可能失真，暂不显示。',
     reconAttributionTitle: '差额可能来自（只列方向，不下结论）：',
     reconAttr1: '① 有菜没建卡（覆盖率缺口）',
     reconAttr2: '② 卡内价 ≠ 原料现价（部分卡用了旧价）',

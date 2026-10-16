@@ -112,9 +112,40 @@ function reconcile(input) {
   return { suppressed: false, menuPct, actualPct, diffPp, diffFen, reason: '' };
 }
 
+/**
+ * 🔴 R298X：抑制原因 → **TERMS.card 文案键**（单源）。
+ *   为什么必须单源（这是本轮修的真缺陷）：
+ *     修前 `pages/recon/index.js` 在页面里内联一段 if/else，只给了 3 个分支，
+ *     `menu_no_price`（菜品卡没填售价）与 `actual_no_data`（本月没录收入）**被兜底**
+ *     到「覆盖率不足（<60%）」的文案上。而 `reconcile` 的判定顺序是
+ *        coverage_missing → coverage_low → menu_no_price → actual_no_data
+ *     ⇒ 能走到后两者，说明**覆盖率是够的（≥60%）**。于是用户在覆盖率 100% 的页面上
+ *     读到「覆盖率不足」，会去补「在售菜品数」——**真问题是没填售价 / 没录收入**，
+ *     诊断方向被文案带反了。（同族于本仓「探测器坏了与命中 0 长得一样」。）
+ *   🔴 契约：**每个 reason 都有语义相符的专属键**；兜底键 `reconSuppressGeneric`
+ *     是一条**不含任何具体 reason 措辞**的通用文案，不得再借用覆盖率文案。
+ *   ⚠️ 刻意不 require TERMS：本函数只回答「用哪个键」，取值由调用方 `TERMS.card[key]` 做，
+ *     这样本函数保持纯函数、可被 selftest 直接 require 实跑（见 tools/selftest_m3_recon.js）。
+ * @param {{suppressed?:boolean, reason?:string}} rec reconcile() 的返回值
+ * @param {string} [actualReason] calcActualDishMargin() 的 reason（'need_detail_income' 等）
+ * @returns {string} TERMS.card 下的键名
+ */
+function suppressKeyOf(rec, actualReason) {
+  const r = (rec && rec.reason) || '';
+  if (r === 'coverage_missing') return 'reconSuppressNoCount';
+  if (r === 'coverage_low') return 'reconSuppressCoverage';
+  if (r === 'menu_no_price') return 'reconSuppressNoPrice';
+  if (r === 'actual_no_data') {
+    // 实际侧无数据分两种：外卖快速录入拆不出商品总价（有专属文案）／本月没录收入。
+    return actualReason === 'need_detail_income' ? 'reconSuppressDetail' : 'reconSuppressNoIncome';
+  }
+  return 'reconSuppressGeneric';
+}
+
 module.exports = {
   calcMenuMargin,
   calcActualDishMargin,
   reconcile,
+  suppressKeyOf,
   GOODS_FIELD,
 };

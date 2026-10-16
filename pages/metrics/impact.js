@@ -79,6 +79,4 @@ Page({
       api.toastError(e);
     }
   },
-
-  onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()); },
 });

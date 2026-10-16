@@ -1067,6 +1067,4 @@ Page({
 
   // 连续录入的显式出口（横幅上的「返回列表」）——不打断，也不把人困在本页
   backToList() { wx.navigateBack(); },
-
-  onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()); },
 });
