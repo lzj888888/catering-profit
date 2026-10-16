@@ -213,6 +213,78 @@ check('L7-② 派生集下界：付费能力 ≥ 3（导出/套餐/外卖）', d
 check('L7-③ 反恒真前提：影子判据确实能被触发（judge 非恒真）',
   judgeMissing(['m3_x'], []).length === 1 && judgeMissing([], TYPES).length === 0);
 
+// ---- L8 页面级付费入口（R299 新增）----
+//   为什么单立这一组（真缺口，R299 实测）：付费能力 `m3_takeaway` 在本仓**没有云端校验点**
+//   （纯前端试算、不落库）⇒ 它唯一的墙就是**页面入口**。而 `pages/takeaway/index.js` 里
+//   两个计算入口的墙**不一致**：`onCalc` 过 `fetchEntitlement`，`onReverse`（挂牌价反算）**不过**
+//   ⇒ 未开通用户可直接用反算拿到同一份付费价值。
+//   判据（**语义级**，不钉字面量）：页面里**任何调用付费能力纯函数的方法体**，都必须在**同一方法体内**
+//   出现 `fetchEntitlement`。⇒ 「同页面同能力的所有入口口径一致」成为机器可判的不变量。
+const PAID_PURE_FNS = ['calcTakeawayOrder', 'reverseListedPrice'];
+const TAKEAWAY_PAGE = 'pages/takeaway/index.js';
+
+/** 取出「Page({...}) 顶层方法」的方法体（花括号配平）；配平失败 ⇒ 返回 null（fail-closed）。 */
+function pageMethodBodies(src) {
+  const out = [];
+  const re = /^ {2}(?:async\s+)?([A-Za-z_$][\w$]*)\s*\([^)]*\)\s*\{/gm;
+  let m;
+  while ((m = re.exec(src)) !== null) {
+    const start = src.indexOf('{', m.index);
+    let depth = 0;
+    let i = start;
+    for (; i < src.length; i++) {
+      const c = src[i];
+      if (c === '{') depth++;
+      else if (c === '}') { depth--; if (depth === 0) break; }
+    }
+    if (depth !== 0) return null;
+    out.push({ name: m[1], body: src.slice(start, i + 1) });
+  }
+  return out;
+}
+
+/** 判据本体：给定方法体列表，返回「调了付费纯函数但没过墙」的方法名。与 L8-③ 的反恒真样本共用。 */
+function unpaidPaidCallers(bodies) {
+  return (bodies || []).filter((b) => PAID_PURE_FNS.some((fn) => new RegExp('\\b' + fn + '\\(').test(b.body))
+    && !/fetchEntitlement\s*\(/.test(b.body))
+    .map((b) => b.name);
+}
+
+let takeawaySrc = '';
+try { takeawaySrc = fs.readFileSync(path.join(ROOT, TAKEAWAY_PAGE), 'utf8'); } catch (_) { takeawaySrc = ''; }
+const tkBodies = pageMethodBodies(takeawaySrc);
+const unpaid = tkBodies ? unpaidPaidCallers(tkBodies) : ['<抽取失败>'];
+check('L8-① 🔴 页面内调用付费能力纯函数的方法，必须**在同一方法体内**过付费墙'
+  + ' —— 否则同一付费能力出现"有的入口拦、有的不拦"（未开通用户绕道用）',
+  tkBodies !== null && unpaid.length === 0,
+  unpaid.length ? `未过墙：${unpaid.join(', ')}` : `方法体 ${tkBodies ? tkBodies.length : 0} 个`);
+check('L8-② 扫描面下界：页面方法体解析到 ≥ 15 个（防抽取失效 ⇒ L8-① 恒真）',
+  tkBodies !== null && tkBodies.length >= 15, tkBodies ? `${tkBodies.length} 个` : '抽取失败');
+// 反恒真：造两个样本 —— 「调了付费纯函数但没过墙」必须判红；「两者都有」必须判绿。
+const FIX_FAKE_BAD = [{ name: 'onReverse', body: '{ const r = reverseListedPrice({}); this.setData({ r }); }' }];
+const FIX_FAKE_OK = [{ name: 'onCalc', body: '{ const e = await fetchEntitlement(); const r = calcTakeawayOrder({}, f); }' }];
+check('L8-③ 反恒真：无墙样本必须判红、有墙样本必须判绿（证明 L8-① 有分辨力，不是恒真）',
+  unpaidPaidCallers(FIX_FAKE_BAD).length === 1 && unpaidPaidCallers(FIX_FAKE_OK).length === 0,
+  `bad=${unpaidPaidCallers(FIX_FAKE_BAD).length} ok=${unpaidPaidCallers(FIX_FAKE_OK).length}`);
+
+// L8-④ 反算的**输入新鲜度**（R299 实测的真缺陷 T3，与付费墙无关但同一轮修的）：
+//   原实现把 `dish_cost_fen` / `pack_cost_fen` 取自 `this.data.result`（只有点过「计算」才有）
+//   ⇒ ① 未点计算就点反算 ⇒ 两个成本取 0 ⇒ 挂牌价里**完全没有食材与包装成本** ⇒ 严重偏低；
+//      ② 点过后改了菜品/数量再反算 ⇒ 用的是**上一次的旧成本**。
+//   判据：`onReverse` 必须**自己调 `calcTakeawayOrder`** 且**不得读 `this.data.result`**。
+const onReverseBody = (() => {
+  const b = (tkBodies || []).find((x) => x.name === 'onReverse');
+  return b ? b.body : '';
+})();
+const REVERSE_DEPENDS_OLD = /this\.data\.result/.test(onReverseBody);
+check('L8-④ 🔴 反算必须按**当前录入**自算（调 calcTakeawayOrder），不得读 `this.data.result`'
+  + ' —— 未点过「计算」时它为 null ⇒ 食材/包装成本取 0 ⇒ 反算挂牌价偏低，老板照它定价就亏',
+  onReverseBody.length > 0 && !REVERSE_DEPENDS_OLD && /calcTakeawayOrder\s*\(/.test(onReverseBody),
+  onReverseBody.length ? (REVERSE_DEPENDS_OLD ? '仍在读 this.data.result' : '已自算当前录入') : 'onReverse 未解析到');
+check('L8-⑤ 反恒真：把「读 this.data.result 的旧实现」喂给 L8-④ ⇒ 必须判不通过',
+  REVERSE_DEPENDS_OLD === false
+  && /this\.data\.result/.test('{ const cf = this.data.result ? this.data.result.cash.dish_cost_fen : 0; }'));
+
 // ⚠️ R69：本守卫的**最后一行必须**是「N 通过 / M 失败」收尾行 —— 收尾文案一律排在它**之前**。
 if (fails.length) console.log('失败项：' + fails.join(' | '));
 console.log(fails.length === 0

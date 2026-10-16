@@ -427,16 +427,33 @@ Page({
   },
 
   // ===== 挂牌价反算（P* = 商品挂牌总价，不含打包费）=====
-  onReverse() {
+  // 🔴 R299（缺陷 T3 · 静默错数且**直接害钱**）：原实现读 `this.data.result`（只有点过「计算」才有值）
+  //   ⇒ 两条错路：
+  //     ① **没点过「计算」直接点「反算」** ⇒ `dish_cost_fen` / `pack_cost_fen` 都取 0
+  //        ⇒ `reverseListedPrice` 的分子 = `0 + 0 + 目标利润 + 补贴 + 配送 + 顾客配送费 − 打包费`
+  //        ⇒ **完全没有食材成本与包装成本** ⇒ 反算出的挂牌价**严重偏低**，
+  //        而界面照常显示「反算挂牌价：¥X」⇒ **老板照它定价就是亏本卖**（零报错）。
+  //     ② 点过「计算」后**改了菜品 / 数量 / 打包**再点反算 ⇒ 用的是**上一次的旧成本**。
+  //   修法：**按当前录入自算**（同一份纯单源 `calcTakeawayOrder`，零新增口径），不再读 `this.data.result`。
+  // 🔴 R299（缺陷 T4 · 付费墙缺口）：本入口原先**不过付费墙**（同页「计算」过了 `fetchEntitlement`）
+  //   ⇒ 未开通用户可直接用反算 —— 而反算属**同一个**付费能力 `m3_takeaway`。
+  //   口径与 `onCalc` **逐字对齐**（不自造判断分支，守 R159）。
+  async onReverse() {
+    const ent = await fetchEntitlement().catch(() => null);
+    if (!ent || !ent.is_active) {
+      openPaywall('takeaway', { shopId: (getApp().globalData && getApp().globalData.shop_id) || '' });
+      return;
+    }
     const order = this.buildOrder();
+    // 🔴 未选菜品 ⇒ 与「计算」**同一句提示**且**不产出数**（否则会用零成本算出一个看着合理的挂牌价）
+    if (order.items.length === 0) { wx.showToast({ title: TK.dishPick, icon: 'none' }); return; }
+    const cur = calcTakeawayOrder(order, (id) => this.lookup(id));
     const subsidyMerchantFen =
       (order.params.s_user.payer === 'merchant' ? order.params.s_user.amount_fen : 0) +
       (order.params.s_merchant.payer === 'merchant' ? order.params.s_merchant.amount_fen : 0);
-    const cf = this.data.result ? this.data.result.cash.dish_cost_fen : 0;
-    const cp = this.data.result ? this.data.result.cash.pack_cost_fen : 0;
     const pStar = reverseListedPrice({
-      dish_cost_fen: cf,
-      pack_cost_fen: cp,
+      dish_cost_fen: cur.cash.dish_cost_fen,
+      pack_cost_fen: cur.cash.pack_cost_fen,
       target_profit_fen: Math.round(Number(((Number(this.data.targetProfitYuan) || 0) * 100).toFixed(10))),
       subsidy_merchant_fen: subsidyMerchantFen,
       delivery_fee_fen: order.params.delivery_fee_fen,

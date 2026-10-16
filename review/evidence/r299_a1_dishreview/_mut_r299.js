@@ -19,6 +19,7 @@ const crypto = require('crypto');
 const ROOT = process.cwd();
 const G1 = 'tools/check_dishreview_engine.js';
 const G2 = 'tools/check_truncated_surfaced.js';
+const G3 = 'tools/check_paywall_coverage.js';
 
 const sha = (abs) => crypto.createHash('sha256').update(fs.readFileSync(abs)).digest('hex');
 const absOf = (rel) => path.join(ROOT, rel);
@@ -118,6 +119,26 @@ const MUTS = [
     to: "const dh = {};",
     guard: G2,
     expect: [/③-c/],
+  },
+
+  // ===== 守卫 3（check_paywall_coverage L8）· R299-A1② 新增 =====
+  {
+    id: 'M11',
+    desc: 'T4 原样复现：反算不再过付费墙（同页「计算」过了、反算没过）',
+    file: 'pages/takeaway/index.js',
+    from: "  async onReverse() {\n    const ent = await fetchEntitlement().catch(() => null);\n    if (!ent || !ent.is_active) {\n      openPaywall('takeaway', { shopId: (getApp().globalData && getApp().globalData.shop_id) || '' });\n      return;\n    }\n",
+    to: '  async onReverse() {\n',
+    guard: G3,
+    expect: [/L8-①/],
+  },
+  {
+    id: 'M12',
+    desc: 'T3 原样复现：反算改回读 `this.data.result`（未点计算时成本取 0 ⇒ 挂牌价偏低）',
+    file: 'pages/takeaway/index.js',
+    from: '    const cur = calcTakeawayOrder(order, (id) => this.lookup(id));',
+    to: '    const cur = this.data.result || { cash: { dish_cost_fen: 0, pack_cost_fen: 0 } };',
+    guard: G3,
+    expect: [/L8-④/],
   },
 ];
 
