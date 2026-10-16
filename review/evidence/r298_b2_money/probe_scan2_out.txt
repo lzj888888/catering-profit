@@ -1,0 +1,90 @@
+================================================================================
+R298 · B2 补漏探针  扫描面 314 个 .js（与守卫 SKIP_DIRS 完全一致）
+================================================================================
+
+### IDENT 形态（标识符紧邻 * 100）—— 共 41 处
+  守卫能看见的（标识符命中白名单）：
+    ✓ cloudfunctions/calcBom/service.js                        :113   net_unit_cost: wan, line_net_cost_fen: Math.round(Number((yuan * 100).toFixed(10
+    ✓ cloudfunctions/calcBom/service.js                        :118   round 累加 }); } const materialTotalFen = Math.round(Number((detailSumYuan * 100).t
+    ✓ cloudfunctions/calcBom/service.js                        :123   n + auxFen / 100) / divisor; const unitCostFen = Math.round(Number((rawTotalYuan * 100).to
+    ✓ cloudfunctions/calcBom/validate.js                       :47    x_fen) ? src.aux_fen : (isFiniteNum(src.auxYuan) ? Math.round(Number((src.auxYuan * 100).toF
+    ✓ cloudfunctions/calcBom/validate.js                       :48    n) ? src.price_fen : (isFiniteNum(src.priceYuan) ? Math.round(Number((src.priceYuan * 100).t
+    ✓ cloudfunctions/common/money.js                           :17    sg: 'yuan must be a finite number' }; } return Math.round(Number((yuan * 100).toFixed(10
+    ✓ cloudfunctions/saveCostCard/service.js                   :90    ntity: qty, net_unit_cost: wan, line_net_cost_fen: Math.round(Number((yuan * 100).toFixed(10
+    ✓ cloudfunctions/saveCostCard/service.js                   :92    ).toFixed(10))) }); } const materialTotalFen = Math.round(Number((detailSumYuan * 100).t
+    ✓ cloudfunctions/saveCostCard/service.js                   :96    uan + auxFen / 100) / divisor; let unitCostFen = Math.round(Number((rawTotalYuan * 100).to
+    ✓ cloudfunctions/saveCostCard/validate.js                  :107   _fen : (typeof card.auxYuan === 'number' ? Math.round(Number((card.auxYuan * 100).to
+    ✓ cloudfunctions/saveCostCard/validate.js                  :119   ce_fen : (typeof card.priceYuan === 'number' ? Math.round(Number((card.priceYuan * 100).
+    ✓ cloudfunctions/saveCostCard/validate.js                  :124   : (typeof card.activity_price_yuan === 'number' ? Math.round(Number((card.activity_price_yu
+    ✓ cloudfunctions/syncCostCard/service.js                   :71    ntity: qty, net_unit_cost: wan, line_net_cost_fen: Math.round(Number((yuan * 100).toFixed(10
+    ✓ cloudfunctions/syncCostCard/service.js                   :73    ).toFixed(10))) }); } const materialTotalFen = Math.round(Number((detailSumYuan * 100).t
+    ✓ cloudfunctions/syncCostCard/service.js                   :76    uan + auxFen / 100) / divisor; let unitCostFen = Math.round(Number((rawTotalYuan * 100).to
+    ✓ pages/card/edit.js                                       :725   const v = calcGrouponOrder({ priceFen: Math.round(Number((priceYuan * 100).toFix
+    ✓ pages/card/edit.js                                       :833   Finite(yuan) || yuan <= 0) return null; return Math.round(Number((yuan * 100).toFixed(10
+  守卫**看不见**的（标识符不在白名单）：
+    ✗ cloudfunctions/calcSandbox/service.js                    :159   ident=n                      .round(n * 10 + 1e-9) / 10; } function round2(n) { return Math.round(n * 100 + 1e-9) / 100;
+    ✗ cloudfunctions/getDishReview/service.js                  :266   ident=matchedRevenue         mt; } } const coverageA_pct = totalRevenue > 0 ? Math.round((matchedRevenue * 100)
+    ✗ cloudfunctions/getDishReview/service.js                  :270   ident=numC                   nue + buffetRevenue; const coverageC_pct = denomC > 0 ? Math.round((numC * 100) / denomC)
+    ✗ cloudfunctions/getDishReview/service.js                  :294   ident=perCapitaCostFen       n != null && perCapitaPriceFen > 0) { actualRatePct = Math.round((perCapitaCostFen * 100
+    ✗ cloudfunctions/getDishReview/service.js                  :317   ident=BENCH.low              CostTotalFen > 0), benchmark: { rateLowPct: Math.round(BENCH.low * 100),
+    ✗ cloudfunctions/getDishReview/service.js                  :318   ident=BENCH.mid              teLowPct: Math.round(BENCH.low * 100), rateMidPct: Math.round(BENCH.mid * 100),
+    ✗ cloudfunctions/getDishReview/service.js                  :319   ident=BENCH.high             eMidPct: Math.round(BENCH.mid * 100), rateHighPct: Math.round(BENCH.high * 100),
+    ✗ cloudfunctions/importSalesBill/service.js                :297   ident=net                    ; } } orders.push({ bizDate, qty, amountFen: Math.round(net * 100) }); }
+    ✗ cloudfunctions/saveCostCard/index.js                     :409   ident=result.unit_cost_fen   ) === String(cardCode)) || null; } const unitWan = Math.round(result.unit_cost_fen *
+    ✗ cloudfunctions/savePlan/service.js                       :159   ident=n                      .round(n * 10 + 1e-9) / 10; } function round2(n) { return Math.round(n * 100 + 1e-9) / 100;
+    ✗ cloudfunctions/syncCostCard/index.js                     :358   ident=result.unit_cost_fen   ard_id) === String(cardCode)) || null; const unitWan = Math.round(result.unit_cost_fen *
+    ✗ pages/m3/dishreview/index.js                             :362   ident=rankedFen              dFen + unmatchedFen; const coveragePct = allFen > 0 ? Math.round((rankedFen * 100) / all
+    ✗ pages/sandbox/index.js                                   :672   ident=marginPct              , client_request_id: 'sb_sens_' + Date.now() + '_' + Math.round(marginPct * 100),
+    ✗ pages/sandbox/index.js                                   :698   ident=baseBreak              Monthly != null ? Math.round((r.breakMonthly - baseBreak) / baseBreak * 100) : 0;
+    ✗ pages/sandbox/index.js                                   :734   ident=x                      pRatio) || 0; const off = !c.on; const r2 = (x) => Math.round(x * 100 + 1e-9) / 100;
+    ✗ pages/sandbox/index.js                                   :1373  ident=d.margin_rate_ratio    : d.platform_pct, margin_rate: d.margin_rate_ratio != null ? (d.margin_rate_ratio *
+    ✗ pages/sandbox/matrix.js                                  :295   ident=meta.rent              red: false, invalid: true, }; } const rentFen = meta.rent * 100; c
+    ✗ pages/sandbox/matrix.js                                  :313   ident=targetMonthly          > 0) { cushionPct = Math.round((targetMonthly - breakMonthly) / targetMonthly * 100);
+    ✗ pages/sandbox/matrix.js                                  :373   ident=bestRow.targetMonthly  cushion = Math.round((bestRow.targetMonthly - bestRow.breakMonthly) / bestRow.targetMonthly
+    ✗ utils/api.js                                             :71    ident=n                      if (!isFinite(n) || n < 0) return 0; return Math.round(Number((n * 100).toFixed(10)))
+    ✗ utils/billParse.js                                       :319   ident=net                    ; } } orders.push({ bizDate, qty, amountFen: Math.round(net * 100) }); }
+    ✗ utils/bizPreset.js                                       :330   ident=n                      { const n = Number(yuan); return Number.isFinite(n) ? Math.round(n * 100) : 0; }
+    ✗ utils/dineChannels.js                                    :64    ident=c.sum                  e]; if (!c) return ''; return c.n === 1 ? c.raw : (Math.round(c.sum * 100) / 100).to
+    ✗ utils/reconDerive.js                                     :18    ident=n                      akeawayMode.goodsField) || '商品总价'; const round2 = (n) => Math.round(n * 100 + 1e-9) / 100;
+
+### PAREN 形态（`) * 100`）—— 共 36 处；守卫 RE_PROD **完全不可见**
+    ✗ cloudfunctions/calcBom/selftest.js                       :134   INES.reduce((s, l) => s + Math.round(lineNetCostYuan(l.quantity, l.net_unit_cost) * 100), 0); check(
+    ✗ cloudfunctions/calcMonthlyProfit/service.js              :61    sMarginRatePct = incomeTotalFen === 0 ? 0 : (grossProfitFen / incomeTotalFen) * 100; const gro
+    ✗ cloudfunctions/calcMonthlyProfit/service.js              :129   h.round(fen); } function rounded2(x) { return Math.round((x + Number.EPSILON) * 100) / 100; }
+    ✗ cloudfunctions/common/comboDerive.js                     :21    function fenToWan(unitCostFen) { return Math.round((Number(unitCostFen) || 0) * 100); }
+    ✗ cloudfunctions/common/indicatorRef.js                    :321   (fixed[k]); pct = (isFinite(rev) && rev > 0 && isFinite(fen)) ? (fen / rev) * 100 : null;
+    ✗ cloudfunctions/exportData/index.js                       :92    ow.gross_margin_pct) : (incTotal === 0 ? 0 : Math.round(((gross / incTotal) * 100 + Number.EPS
+    ✗ cloudfunctions/exportData/index.js                       :92    : (incTotal === 0 ? 0 : Math.round(((gross / incTotal) * 100 + Number.EPSILON) * 100) / 100);
+    ✗ cloudfunctions/getDishReview/service.js                  :276   & perCapitaPriceFen > 0) ? Math.round(((perCapitaPriceFen - perCapitaCostFen) * 100) / perCapita
+    ✗ cloudfunctions/getLedger/index.js                        :172   platformPct: (byInd.mkt != null && incomeTotal > 0) ? (byInd.mkt / incomeTotal) * 100 : null, })
+    ✗ cloudfunctions/getLedger/service.js                      :57    grossMarginRatePct = incomeTotalFen === 0 ? 0 : (grossProfitFen / incomeTotalFen) * 100; const eff
+    ✗ cloudfunctions/getLedger/service.js                      :65    , grossMarginRatePctDisplay: Math.round((grossMarginRatePct + Number.EPSILON) * 100) / 100,
+    ✗ cloudfunctions/importSalesBill/service.js                :616   , rounded: qty }); const amountFen = Math.round((income == null ? 0 : income) * 100); // 收
+    ✗ cloudfunctions/importSalesBill/service.js                :617   00); // 收入元→分整数 const salesFen = Math.round((sales == null ? 0 : sales) * 100); const
+    ✗ cloudfunctions/importSalesBill/service.js                :618   les) * 100); const discountFen = Math.round((discount == null ? 0 : discount) * 100); const
+    ✗ cloudfunctions/importSalesBill/service.js                :692   ty, rounded: qty }); const amountFen = Math.round((sales == null ? 0 : sales) * 100); // amoun
+    ✗ cloudfunctions/saveLedger/service.js                     :32    grossMarginRatePct = incomeTotalFen === 0 ? 0 : (grossProfitFen / incomeTotalFen) * 100; const eff
+    ✗ cloudfunctions/saveLedger/service.js                     :41    , grossMarginRatePctDisplay: Math.round((grossMarginRatePct + Number.EPSILON) * 100) / 100,
+    ✗ pages/card/edit.js                                       :728   ate) || 0, promoFen: Math.round((Number(this.data.grouponPromoYuan) || 0) * 100), di
+    ✗ pages/card/edit.js                                       :729   uan) || 0) * 100), dineFen: Math.round((Number(this.data.priceYuan) || 0) * 100), });
+    ✗ pages/card/edit.js                                       :779   inue; out.push({ quantity: qty, net_unit_cost: Number(sub.total_cost_fen) * 100, line_kind:
+    ✗ pages/card/edit.js                                       :905   }); return; } const priceFen = Math.round((Number(this.data.priceYuan) || 0) * 100); if (pr
+    ✗ pages/card/version.js                                    :107   x.apply(null, vals.concat([1])); const pct = (n) => Math.round((n / maxVal) * 100); cons
+    ✗ pages/material/edit.js                                   :260   rn; } const purchasePriceFen = Math.round((Number(this.data.priceYuan) || 0) * 100); const
+    ✗ pages/month/result.js                                    :119   it_fen || 0; const ratio = incomeFen > 0 ? Math.round((trueFen / incomeFen) * 100) : 0;
+    ✗ pages/sandbox/index.js                                   :1037  breakPeople, targetPeople, turn: Math.round((targetPeople / seats) * 100) / 100,
+    ✗ pages/takeaway/index.js                                  :377   alue }); }, buildOrder() { const fen = (v) => Math.round((Number(v) || 0) * 100); const
+    ✗ pages/takeaway/index.js                                  :440   cp, target_profit_fen: Math.round((Number(this.data.targetProfitYuan) || 0) * 100), subs
+    ✗ utils/calc.js                                            :9     const profit = revenue - cost; const rate = revenue > 0 ? (profit / revenue) * 100 : 0; retur
+    ✗ utils/calc.js                                            :23    - totalCost; const grossRate = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0; const
+    ✗ utils/grouponDerive.js                                   :37    etFen - costFen; const netRatePct = priceFen > 0 ? Number(((netFen / priceFen) * 100).toFixed(2))
+    ✗ utils/grouponDerive.js                                   :38    oFixed(2)) : 0; const profitRatePct = netFen > 0 ? Number(((profitFen / netFen) * 100).toFixed(2))
+    ✗ utils/materialBatch.js                                   :88    push('单价不是数字：' + p.priceYuan); else priceFen = Math.round(Number(p.priceYuan) * 100); } let
+    ✗ utils/reconDerive.js                                     :42    'no_price' }; // 🔴 不许除零、不许返回 0 return { pct: round2((1 - costFen / priceFen) * 100) }; }
+    ✗ utils/reconDerive.js                                     :82    , food_cost_fen: foodCostFen, pct: round2(((incomeFen - foodCostFen) / incomeFen) * 100) }; }
+    ✗ utils/takeaway.js                                        :303   on - deliveryFee - deliverySubsidy; const diff = Math.round((actual - expected) * 100) / 100; co
+    ✗ utils/takeaway.js                                        :307   Math.abs(diff); const packTotal = Math.round((Number(p && p.packTotal) || 0) * 100) / 100; if
+
+================================================================================
+小结：守卫可见 17 处 / 面内总计 77 处 ⇒ 观测覆盖率 22.1%
+================================================================================

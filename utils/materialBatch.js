@@ -85,7 +85,7 @@ function buildRow(cells, defaultUnit) {
   let priceFen = 0;
   if (String(p.priceYuan || '').trim() !== '') {
     if (!isNumLike(p.priceYuan)) errors.push('单价不是数字：' + p.priceYuan);
-    else priceFen = Math.round(Number(p.priceYuan) * 100);
+    else priceFen = Math.round(Number((Number(p.priceYuan) * 100).toFixed(10)));
   }
 
   let convert_factor = null;

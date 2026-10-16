@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：173 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：174 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -504,6 +504,18 @@
 //         + 三处调用点全走单源（禁第二份 downloadContent）+ 文案三处齐。25 断言 + S/A/B/C/D 五组）
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
+//       + 金额精度守卫（tools/check_money_precision.js，R298：「元 → 分」是**唯一必须做浮点乘法的边界**
+//         （× 100），而单源 `common/money.js::yuanToFen` 写了、sync 进 51 个云函数包，**业务代码一处都没用**
+//         —— 19 处各自裸写 `Math.round(元 * 100)`。裸写在 IEEE754 下半步（真值恰为 x.xx5）会**静默少进 1 分**：
+//         三位小数全域 18 万点错 1147 点、成本引擎 qty×(净料万分之元) 600 万组合错 3528 处，方向恒为偏小。
+//         ⚠️ 免责面：两位小数（老板日常输入形态）穷举 100 万点原本就 0 错 —— 不是"金额体系全错"。
+//         判据 = S 扫描面 + A 行为穷举 + B 前后端双副本等价（合法域逐点 / 差异精确落在非法域）
+//         + C **登记清单 fail-closed**（全仓 78 处 `* 100` 按 IDENT/PAREN/LITERAL 三形态桶穷尽对账，
+//           逐点具名登记 kind + 语义理由；未登记 / 登记失效 / 计数不符一律判红；money 必十进制安全、
+//           带 money 下界防"批量改标成 ratio 绕过"）+ D 正负样本互证 + 断言数下界）
+//         🔴 观测覆盖率（立此判据的根因）：旧判据只认**命名像"分"**的标识符 ⇒ 面内 77 处仅见 17 处
+//            （22.1%），`promoFen`/`packTotal` 之外的 `c.sum`、`)](`、`448 * 100` 三种书写形态全在盲区；
+//            升级为登记清单后 78/78 全登记 —— 覆盖面由**语义**决定而非命名习惯。
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
 //    那两处仍是**人工面**，改 SUITES 后须手动跟（A–L 无一组能发现重启键自相矛盾）。
 // 用同一个 node（process.execPath）跑子进程，避免多解释器/环境问题。
@@ -1058,6 +1070,10 @@ const SUITES = [
   //   故用「副本 + 本守卫同表双跑钉等价」）。
   //   判据 = P 接线真实 + A 十六例两入口判决一致 + B 九类越界逐个拒 + C 变异互证 + D 单源/断言下界。
   ['m2-entry-parity', 'tools/check_m2_entry_parity.js'],
+  // ===== R298 金额精度守卫（「元 → 分」十进制安全）=====
+  //   见头部注释同名条目。根因：`Math.round(元 * 100)` 在 IEEE754 下半步会静默少进 1 分。
+  //   判据 = S 扫描面 + A 行为穷举 + B 前后端双副本等价 + C 形态 + D 正负样本互证。
+  ['money-precision', 'tools/check_money_precision.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

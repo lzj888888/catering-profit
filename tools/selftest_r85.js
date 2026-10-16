@@ -360,6 +360,17 @@ const A15_EXEMPT = [
   /^cloudfunctions\/saveDishMapping\//,
   /^cloudfunctions\/common\/salesBillId\.js$/,        // R252：新增单源（_id 形态解析）
   /^cloudfunctions\/[^/]+\/cx_salesBillId\.js$/,      // R252：sync_common 派生（全函数）
+  // ⚠️ 2026-10-16（R298 · B2）**第二十次触发**（顺延 R252=第十九次；中间 B4 追加的
+  //   `/^cloudfunctions\/verifyTangshi\//` 属同一时刻、未单列序号）—— 同一时机关卡第 20 次：
+  //   金额精度「元 → 分」十进制安全。改动面 = ① 单源 `cloudfunctions/common/money.js::yuanToFen`
+  //   补齐 `toFixed(10)`（消 IEEE754 下半步 x.xx5 静默少进 1 分；已有 100 万点穷举证明两位小数域 0 错）；
+  //   ② `sync_common` 把该单源派生到全部 51 个函数目录的 `cx_money.js`（**同步动作**，非各函数自有逻辑）；
+  //   ③ 消费侧 `calcBom/selftest.js` 与 `importSalesBill/service.js` 的裸乘改十进制安全形态
+  //   （**两者目录均已在白名单内**）。均为**本批显式授权**的后端改动，非「顺手改云函数逻辑」；
+  //   沿用**白名单式**登记（精确到**派生文件名**、**不做 `cx_*` 泛化**，同 `cx_dataAdapter.js` 性质），
+  //   **绝不放宽成 `cloudfunctions/` 全豁免**（那样等于守卫作废）：
+  //   by=WorkBuddy / date=2026-10-16 / reason=R298 B2 授权金额精度修复（单源 common/money.js + 全函数派生 cx_money.js）
+  /^cloudfunctions\/[^/]+\/cx_money\.js$/,            // R298 B2：sync_common 派生（全函数，同 cx_dataAdapter.js 性质）
 ];
 check('A15 云函数逻辑零改动（仅 initDb 建库单源 + 本批授权函数豁免）', (() => {
   const { execFileSync } = require('child_process');

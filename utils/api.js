@@ -59,10 +59,16 @@ module.exports = {
   },
 
   /** 元（字符串/数字）→ 分（number）整数。input 值是字符串、界面单位是元。 */
+  // 🔴 R298（B2）：十进制安全 —— 原式 `Math.round(n * 100)` 对 x.xx5 会**少进 1 分**
+  //   （1.005→100 真值 101），而输入框 `type="digit"` 不拦三位小数、handler 又原样存字符串
+  //   ⇒ **可达**。两位小数穷举 100 万点零漂移，故本修法不改日常行为。
+  //   ⚠️ 与云端单源 `cloudfunctions/common/money.js::yuanToFen` **必须同款**
+  //   （差异：本端非数/负数 ⇒ 0（fail-soft）；云端非数 ⇒ 抛 INVALID_PARAM（fail-closed）。
+  //   该差异**仅在非法输入域**，合法输入域两份必须逐点等价 —— 守卫 B 组专钉这条）。
   yuanToFen(yuanInput) {
     const n = Number(yuanInput);
     if (!isFinite(n) || n < 0) return 0;
-    return Math.round(n * 100);
+    return Math.round(Number((n * 100).toFixed(10)));
   },
 
   /** 分 → 展示字符串（如 2200000 → "22000.00"）。仅展示，不参与任何计算。 */

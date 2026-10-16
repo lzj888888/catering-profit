@@ -294,7 +294,7 @@ function parseBillMatrix(matrix, opts) {
         qty = 1;
       }
     }
-    orders.push({ bizDate, qty, amountFen: Math.round(net * 100) });
+    orders.push({ bizDate, qty, amountFen: Math.round(Number((net * 100).toFixed(10))) });
   }
 
   const byDate = new Map();
@@ -613,9 +613,9 @@ function parseDishSales(sheetRows, opts) {
     const qty = rawQty == null ? 0 : Math.round(rawQty);   // §5.2 恒整数
     const isNonInt = rawQty != null && !Number.isInteger(rawQty);
     if (isNonInt) nonInt.push({ name: name0, raw: rawQty, rounded: qty });
-    const amountFen = Math.round((income == null ? 0 : income) * 100);       // 收入元→分整数
-    const salesFen = Math.round((sales == null ? 0 : sales) * 100);
-    const discountFen = Math.round((discount == null ? 0 : discount) * 100);
+    const amountFen = Math.round(Number(((income == null ? 0 : income) * 100).toFixed(10)));       // 收入元→分整数
+    const salesFen = Math.round(Number(((sales == null ? 0 : sales) * 100).toFixed(10)));
+    const discountFen = Math.round(Number(((discount == null ? 0 : discount) * 100).toFixed(10)));
     const dishKey = normalizeDishName(name0);
     // 菜名 '-' 或空（外卖未建映射 / 空行）⇒ 归未匹配（§1.3-2 / 红线 17），不落为菜名
     if (dishKey === '' || dishKey === '-') { unmatched.push({ name: name0, dishKey, rawQty, qty, amountFen }); continue; }
@@ -689,7 +689,7 @@ function parseDishSalesC(sheetRows, opts) {
     const qty = rawQty == null ? 0 : Math.round(rawQty);
     const isNonInt = rawQty != null && !Number.isInteger(rawQty);
     if (isNonInt) nonInt.push({ name: name0, raw: rawQty, rounded: qty });
-    const amountFen = Math.round((sales == null ? 0 : sales) * 100);   // amount_fen = 销售额 × 100（v1.7 C-3）
+    const amountFen = Math.round(Number(((sales == null ? 0 : sales) * 100).toFixed(10)));   // amount_fen = 销售额 × 100（v1.7 C-3）
     const bizDate = normalizeDate(get(r, '日期'));   // 行内「日期」列（v1.7 C-7：形态 C 无参数行）
     const dishKey = normalizeDishName(name0);        // 单源 common/dishKey（R232 C-9）
 

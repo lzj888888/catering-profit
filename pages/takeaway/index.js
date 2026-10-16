@@ -374,7 +374,7 @@ Page({
 
   // ===== 组装订单（元→分） =====
   buildOrder() {
-    const fen = (v) => Math.round((Number(v) || 0) * 100);
+    const fen = (v) => Math.round(Number(((Number(v) || 0) * 100).toFixed(10)));
     const p = this.data.params;
     const items = this.data.items.filter((it) => it.card_id).map((it) => ({ card_id: it.card_id, qty: Number(it.qty) || 0 }));
     const packs = this.data.packs.filter((pk) => fen(pk.unit_price_yuan) > 0).map((pk) => ({ qty: Number(pk.qty) || 0, unit_price_fen: fen(pk.unit_price_yuan) }));
@@ -437,7 +437,7 @@ Page({
     const pStar = reverseListedPrice({
       dish_cost_fen: cf,
       pack_cost_fen: cp,
-      target_profit_fen: Math.round((Number(this.data.targetProfitYuan) || 0) * 100),
+      target_profit_fen: Math.round(Number(((Number(this.data.targetProfitYuan) || 0) * 100).toFixed(10))),
       subsidy_merchant_fen: subsidyMerchantFen,
       delivery_fee_fen: order.params.delivery_fee_fen,
       delivery_customer_fen: order.params.delivery_customer_fen,

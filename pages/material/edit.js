@@ -257,7 +257,7 @@ Page({
     const yr = units.yieldRateOf(this.data.yield_rate);
     if (yr === null) { wx.showToast({ title: TERMS.card.yieldRangeErr, icon: 'none' }); return; }
     // 元 → 分整数（前端换算，禁止字符串/小数元透传）
-    const purchasePriceFen = Math.round((Number(this.data.priceYuan) || 0) * 100);
+    const purchasePriceFen = Math.round(Number(((Number(this.data.priceYuan) || 0) * 100).toFixed(10)));
     // aliases：逗号分隔 → JSON 数组字符串（仅检索，不替换原料名）
     const aliases = this.data.aliasesYuan.split(/[,，]/).map((s) => s.trim()).filter(Boolean);
     const material = {

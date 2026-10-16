@@ -1,0 +1,196 @@
+================================================================================================
+R298 B2 补漏 · 「* 100」全命中点上下文  （扫描面 314 个 .js）
+================================================================================================
+
+
+------------------------------------------------------------------------------------------------
+### cloudfunctions/calcBom/selftest.js
+  L134   [PAREN] ident=<expr>                 | const perLineWrong = R38_LINES.reduce((s, l) => s + Math.round(lineNetCostYuan(l.quantity, l.net_unit_cost) * 100), 0);
+
+------------------------------------------------------------------------------------------------
+### cloudfunctions/calcBom/service.js
+  L113   [IDENT] ident=yuan                   | line_net_cost_fen: Math.round(Number((yuan * 100).toFixed(10))), // 展示用；合计用高精度 yuan，不逐行 round 累加
+  L118   [IDENT] ident=detailSumYuan          | const materialTotalFen = Math.round(Number((detailSumYuan * 100).toFixed(10)));
+  L123   [IDENT] ident=rawTotalYuan           | const unitCostFen = Math.round(Number((rawTotalYuan * 100).toFixed(10))); // round 到分（落库值）
+
+------------------------------------------------------------------------------------------------
+### cloudfunctions/calcBom/validate.js
+  L47    [IDENT] ident=src.auxYuan            | const auxFen = isFiniteNum(src.aux_fen) ? src.aux_fen : (isFiniteNum(src.auxYuan) ? Math.round(Number((src.auxYuan * 100).toFixed(10))) : 0);
+  L48    [IDENT] ident=src.priceYuan          | const priceFen = isFiniteNum(src.price_fen) ? src.price_fen : (isFiniteNum(src.priceYuan) ? Math.round(Number((src.priceYuan * 100).toFixed(10))) : 0);
+
+------------------------------------------------------------------------------------------------
+### cloudfunctions/calcMonthlyProfit/service.js
+  L61    [PAREN] ident=<expr>                 | incomeTotalFen === 0 ? 0 : (grossProfitFen / incomeTotalFen) * 100;
+  L129   [PAREN] ident=<expr>                 | return Math.round((x + Number.EPSILON) * 100) / 100;
+
+------------------------------------------------------------------------------------------------
+### cloudfunctions/calcSandbox/service.js
+  L159   [IDENT] ident=n                      | function round2(n) { return Math.round(n * 100 + 1e-9) / 100; }
+
+------------------------------------------------------------------------------------------------
+### cloudfunctions/common/comboDerive.js
+  L21    [PAREN] ident=<expr>                 | return Math.round((Number(unitCostFen) || 0) * 100);
+
+------------------------------------------------------------------------------------------------
+### cloudfunctions/common/indicatorRef.js
+  L321   [PAREN] ident=<expr>                 | pct = (isFinite(rev) && rev > 0 && isFinite(fen)) ? (fen / rev) * 100 : null;
+
+------------------------------------------------------------------------------------------------
+### cloudfunctions/common/money.js
+  L17    [IDENT] ident=yuan                   | return Math.round(Number((yuan * 100).toFixed(10)));
+
+------------------------------------------------------------------------------------------------
+### cloudfunctions/exportData/index.js
+  L92    [PAREN] ident=<expr>                 | : (incTotal === 0 ? 0 : Math.round(((gross / incTotal) * 100 + Number.EPSILON) * 100) / 100);
+  L92    [PAREN] ident=<expr>                 | : (incTotal === 0 ? 0 : Math.round(((gross / incTotal) * 100 + Number.EPSILON) * 100) / 100);
+
+------------------------------------------------------------------------------------------------
+### cloudfunctions/getDishReview/service.js
+  L266   [IDENT] ident=matchedRevenue         | const coverageA_pct = totalRevenue > 0 ? Math.round((matchedRevenue * 100) / totalRevenue) : 0;
+  L270   [IDENT] ident=numC                   | const coverageC_pct = denomC > 0 ? Math.round((numC * 100) / denomC) : 0;
+  L276   [PAREN] ident=<expr>                 | ? Math.round(((perCapitaPriceFen - perCapitaCostFen) * 100) / perCapitaPriceFen) : null;
+  L294   [IDENT] ident=perCapitaCostFen       | actualRatePct = Math.round((perCapitaCostFen * 100) / perCapitaPriceFen);
+  L317   [IDENT] ident=BENCH.low              | rateLowPct: Math.round(BENCH.low * 100),
+  L318   [IDENT] ident=BENCH.mid              | rateMidPct: Math.round(BENCH.mid * 100),
+  L319   [IDENT] ident=BENCH.high             | rateHighPct: Math.round(BENCH.high * 100),
+
+------------------------------------------------------------------------------------------------
+### cloudfunctions/getLedger/index.js
+  L172   [PAREN] ident=<expr>                 | platformPct: (byInd.mkt != null && incomeTotal > 0) ? (byInd.mkt / incomeTotal) * 100 : null,
+
+------------------------------------------------------------------------------------------------
+### cloudfunctions/getLedger/service.js
+  L57    [PAREN] ident=<expr>                 | const grossMarginRatePct = incomeTotalFen === 0 ? 0 : (grossProfitFen / incomeTotalFen) * 100;
+  L65    [PAREN] ident=<expr>                 | grossMarginRatePctDisplay: Math.round((grossMarginRatePct + Number.EPSILON) * 100) / 100,
+
+------------------------------------------------------------------------------------------------
+### cloudfunctions/importSalesBill/service.js
+  L297   [IDENT] ident=net                    | orders.push({ bizDate, qty, amountFen: Math.round(net * 100) });
+  L616   [PAREN] ident=<expr>                 | const amountFen = Math.round((income == null ? 0 : income) * 100);       // 收入元→分整数
+  L617   [PAREN] ident=<expr>                 | const salesFen = Math.round((sales == null ? 0 : sales) * 100);
+  L618   [PAREN] ident=<expr>                 | const discountFen = Math.round((discount == null ? 0 : discount) * 100);
+  L692   [PAREN] ident=<expr>                 | const amountFen = Math.round((sales == null ? 0 : sales) * 100);   // amount_fen = 销售额 × 100（v1.7 C-3）
+
+------------------------------------------------------------------------------------------------
+### cloudfunctions/saveCostCard/index.js
+  L409   [IDENT] ident=result.unit_cost_fen   | const unitWan = Math.round(result.unit_cost_fen * 100); // 单份半成品成本：分→万分（1分=100万分）
+
+------------------------------------------------------------------------------------------------
+### cloudfunctions/saveCostCard/service.js
+  L90    [IDENT] ident=yuan                   | lineOut.push({ quantity: qty, net_unit_cost: wan, line_net_cost_fen: Math.round(Number((yuan * 100).toFixed(10))) });
+  L92    [IDENT] ident=detailSumYuan          | const materialTotalFen = Math.round(Number((detailSumYuan * 100).toFixed(10)));
+  L96    [IDENT] ident=rawTotalYuan           | let unitCostFen = Math.round(Number((rawTotalYuan * 100).toFixed(10)));
+
+------------------------------------------------------------------------------------------------
+### cloudfunctions/saveCostCard/validate.js
+  L107   [IDENT] ident=card.auxYuan           | : (typeof card.auxYuan === 'number' ? Math.round(Number((card.auxYuan * 100).toFixed(10))) : 0);
+  L119   [IDENT] ident=card.priceYuan         | : (typeof card.priceYuan === 'number' ? Math.round(Number((card.priceYuan * 100).toFixed(10))) : 0);
+  L124   [IDENT] ident=card.activity_price_yuan | : (typeof card.activity_price_yuan === 'number' ? Math.round(Number((card.activity_price_yuan * 100).toFixed(10))) : 0);
+
+------------------------------------------------------------------------------------------------
+### cloudfunctions/saveLedger/service.js
+  L32    [PAREN] ident=<expr>                 | const grossMarginRatePct = incomeTotalFen === 0 ? 0 : (grossProfitFen / incomeTotalFen) * 100;
+  L41    [PAREN] ident=<expr>                 | grossMarginRatePctDisplay: Math.round((grossMarginRatePct + Number.EPSILON) * 100) / 100,
+
+------------------------------------------------------------------------------------------------
+### cloudfunctions/savePlan/service.js
+  L159   [IDENT] ident=n                      | function round2(n) { return Math.round(n * 100 + 1e-9) / 100; }
+
+------------------------------------------------------------------------------------------------
+### cloudfunctions/syncCostCard/index.js
+  L358   [IDENT] ident=result.unit_cost_fen   | const unitWan = Math.round(result.unit_cost_fen * 100);
+
+------------------------------------------------------------------------------------------------
+### cloudfunctions/syncCostCard/service.js
+  L71    [IDENT] ident=yuan                   | lineOut.push({ quantity: qty, net_unit_cost: wan, line_net_cost_fen: Math.round(Number((yuan * 100).toFixed(10))) });
+  L73    [IDENT] ident=detailSumYuan          | const materialTotalFen = Math.round(Number((detailSumYuan * 100).toFixed(10)));
+  L76    [IDENT] ident=rawTotalYuan           | let unitCostFen = Math.round(Number((rawTotalYuan * 100).toFixed(10)));
+
+------------------------------------------------------------------------------------------------
+### pages/card/edit.js
+  L725   [IDENT] ident=priceYuan              | priceFen: Math.round(Number((priceYuan * 100).toFixed(10))),
+  L728   [PAREN] ident=<expr>                 | promoFen: Math.round((Number(this.data.grouponPromoYuan) || 0) * 100),
+  L729   [PAREN] ident=<expr>                 | dineFen: Math.round((Number(this.data.priceYuan) || 0) * 100),
+  L779   [PAREN] ident=<expr>                 | out.push({ quantity: qty, net_unit_cost: Number(sub.total_cost_fen) * 100, line_kind: 'main' });
+  L833   [IDENT] ident=yuan                   | return Math.round(Number((yuan * 100).toFixed(10)));
+  L905   [PAREN] ident=<expr>                 | const priceFen = Math.round((Number(this.data.priceYuan) || 0) * 100);
+
+------------------------------------------------------------------------------------------------
+### pages/card/version.js
+  L107   [PAREN] ident=<expr>                 | const pct = (n) => Math.round((n / maxVal) * 100);
+
+------------------------------------------------------------------------------------------------
+### pages/m3/dishreview/index.js
+  L362   [IDENT] ident=rankedFen              | const coveragePct = allFen > 0 ? Math.round((rankedFen * 100) / allFen) : 0;
+
+------------------------------------------------------------------------------------------------
+### pages/material/edit.js
+  L260   [PAREN] ident=<expr>                 | const purchasePriceFen = Math.round((Number(this.data.priceYuan) || 0) * 100);
+
+------------------------------------------------------------------------------------------------
+### pages/month/result.js
+  L119   [PAREN] ident=<expr>                 | const ratio = incomeFen > 0 ? Math.round((trueFen / incomeFen) * 100) : 0;
+
+------------------------------------------------------------------------------------------------
+### pages/sandbox/index.js
+  L672   [IDENT] ident=marginPct              | client_request_id: 'sb_sens_' + Date.now() + '_' + Math.round(marginPct * 100),
+  L698   [IDENT] ident=baseBreak              | ? Math.round((r.breakMonthly - baseBreak) / baseBreak * 100) : 0;
+  L734   [IDENT] ident=x                      | const r2 = (x) => Math.round(x * 100 + 1e-9) / 100;
+  L1037  [PAREN] ident=<expr>                 | turn: Math.round((targetPeople / seats) * 100) / 100,
+  L1373  [IDENT] ident=d.margin_rate_ratio    | margin_rate: d.margin_rate_ratio != null ? (d.margin_rate_ratio * 100).toFixed(1) : '—',
+
+------------------------------------------------------------------------------------------------
+### pages/sandbox/matrix.js
+  L295   [IDENT] ident=meta.rent              | const rentFen = meta.rent * 100;
+  L313   [IDENT] ident=targetMonthly          | cushionPct = Math.round((targetMonthly - breakMonthly) / targetMonthly * 100);
+  L373   [IDENT] ident=bestRow.targetMonthly  | const cushion = Math.round((bestRow.targetMonthly - bestRow.breakMonthly) / bestRow.targetMonthly * 100);
+
+------------------------------------------------------------------------------------------------
+### pages/takeaway/index.js
+  L377   [PAREN] ident=<expr>                 | const fen = (v) => Math.round((Number(v) || 0) * 100);
+  L440   [PAREN] ident=<expr>                 | target_profit_fen: Math.round((Number(this.data.targetProfitYuan) || 0) * 100),
+
+------------------------------------------------------------------------------------------------
+### utils/api.js
+  L71    [IDENT] ident=n                      | return Math.round(Number((n * 100).toFixed(10)));
+
+------------------------------------------------------------------------------------------------
+### utils/billParse.js
+  L319   [IDENT] ident=net                    | orders.push({ bizDate, qty, amountFen: Math.round(net * 100) });
+
+------------------------------------------------------------------------------------------------
+### utils/bizPreset.js
+  L330   [IDENT] ident=n                      | return Number.isFinite(n) ? Math.round(n * 100) : 0;
+
+------------------------------------------------------------------------------------------------
+### utils/calc.js
+  L9     [PAREN] ident=<expr>                 | const rate = revenue > 0 ? (profit / revenue) * 100 : 0;
+  L23    [PAREN] ident=<expr>                 | const grossRate = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
+
+------------------------------------------------------------------------------------------------
+### utils/dineChannels.js
+  L64    [IDENT] ident=c.sum                  | return c.n === 1 ? c.raw : (Math.round(c.sum * 100) / 100).toFixed(2);
+
+------------------------------------------------------------------------------------------------
+### utils/grouponDerive.js
+  L37    [PAREN] ident=<expr>                 | const netRatePct = priceFen > 0 ? Number(((netFen / priceFen) * 100).toFixed(2)) : 0;
+  L38    [PAREN] ident=<expr>                 | const profitRatePct = netFen > 0 ? Number(((profitFen / netFen) * 100).toFixed(2)) : 0;
+
+------------------------------------------------------------------------------------------------
+### utils/materialBatch.js
+  L88    [PAREN] ident=<expr>                 | else priceFen = Math.round(Number(p.priceYuan) * 100);
+
+------------------------------------------------------------------------------------------------
+### utils/reconDerive.js
+  L18    [IDENT] ident=n                      | const round2 = (n) => Math.round(n * 100 + 1e-9) / 100;
+  L42    [PAREN] ident=<expr>                 | return { pct: round2((1 - costFen / priceFen) * 100) };
+  L82    [PAREN] ident=<expr>                 | return { income_fen: incomeFen, food_cost_fen: foodCostFen, pct: round2(((incomeFen - foodCostFen) / incomeFen) * 100) };
+
+------------------------------------------------------------------------------------------------
+### utils/takeaway.js
+  L303   [PAREN] ident=<expr>                 | const diff = Math.round((actual - expected) * 100) / 100;
+  L307   [PAREN] ident=<expr>                 | const packTotal = Math.round((Number(p && p.packTotal) || 0) * 100) / 100;
+
+================================================================================================
+总计 77 处
+================================================================================================

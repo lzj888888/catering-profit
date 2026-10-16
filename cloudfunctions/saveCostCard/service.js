@@ -83,13 +83,17 @@ function calcCostCard(p) {
     const wan = Number(ln.net_unit_cost) || 0;
     const yuan = qty * (wan / 10000);
     detailSumYuan += yuan;
-    lineOut.push({ quantity: qty, net_unit_cost: wan, line_net_cost_fen: Math.round(yuan * 100) });
+    // 🔴 R298（B2）：**十进制安全** —— 原式 `Math.round(<元> * 100)` 在半步（真值恰为 x.xx5）会
+    //   **少进 1 分**（实测 qty=0.1 × 净料 14500 万分之元 ⇒ 真值 14.5 分，原式取 14）。根因与
+    //   `money.yuanToFen` 同一处浮点：`toFixed(10)` 只消 1e-13 量级噪声、不动真实半步。
+    //   成本引擎三副本（calcBom / saveCostCard / syncCostCard）**必须同源同口径**。
+    lineOut.push({ quantity: qty, net_unit_cost: wan, line_net_cost_fen: Math.round(Number((yuan * 100).toFixed(10))) });
   }
-  const materialTotalFen = Math.round(detailSumYuan * 100);
+  const materialTotalFen = Math.round(Number((detailSumYuan * 100).toFixed(10)));
 
   const divisor = 1 - lossPct / 100;
   const rawTotalYuan = (detailSumYuan + auxFen / 100) / divisor;
-  let unitCostFen = Math.round(rawTotalYuan * 100);
+  let unitCostFen = Math.round(Number((rawTotalYuan * 100).toFixed(10)));
 
   let batchTotalFen = null;
   if (mode === 'B') {

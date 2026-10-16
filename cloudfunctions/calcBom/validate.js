@@ -40,8 +40,12 @@ function validateInput(event) {
     if (typeof pv === 'number') return pv; // 已是分
     return -1; // 缺失/非法 → 上层回落 yuan
   };
-  const auxFen = isFiniteNum(src.aux_fen) ? src.aux_fen : (isFiniteNum(src.auxYuan) ? Math.round(src.auxYuan * 100) : 0);
-  const priceFen = isFiniteNum(src.price_fen) ? src.price_fen : (isFiniteNum(src.priceYuan) ? Math.round(src.priceYuan * 100) : 0);
+  // 🔴 R298（B2）：**十进制安全** —— 原式 `Math.round(<元> * 100)` 在半步（真值恰为 x.xx5）会
+  //   **少进 1 分**（实测 qty=0.1 × 净料 14500 万分之元 ⇒ 真值 14.5 分，原式取 14）。根因与
+  //   `money.yuanToFen` 同一处浮点：`toFixed(10)` 只消 1e-13 量级噪声、不动真实半步。
+  //   成本引擎三副本（calcBom / saveCostCard / syncCostCard）**必须同源同口径**。
+  const auxFen = isFiniteNum(src.aux_fen) ? src.aux_fen : (isFiniteNum(src.auxYuan) ? Math.round(Number((src.auxYuan * 100).toFixed(10))) : 0);
+  const priceFen = isFiniteNum(src.price_fen) ? src.price_fen : (isFiniteNum(src.priceYuan) ? Math.round(Number((src.priceYuan * 100).toFixed(10))) : 0);
   if (!Number.isInteger(auxFen) || auxFen < 0) return err('辅料分摊必须是非负整数分');
   if (!Number.isInteger(priceFen) || priceFen < 0) return err('建议售价必须是非负整数分');
 

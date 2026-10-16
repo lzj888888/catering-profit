@@ -61,7 +61,7 @@ function normalizeDineRows(rows, items, notes, aliases) {
   const amountOf = (name) => {
     const c = acc[name];
     if (!c) return '';
-    return c.n === 1 ? c.raw : (Math.round(c.sum * 100) / 100).toFixed(2);
+    return c.n === 1 ? c.raw : (Math.round(Number((c.sum * 100).toFixed(10))) / 100).toFixed(2);
   };
 
   const out = presets.map((name) => ({

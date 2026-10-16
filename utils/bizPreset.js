@@ -327,7 +327,7 @@ function turnLevelOf(mode, value) {
 
 function fenOf(yuan) {
   const n = Number(yuan);
-  return Number.isFinite(n) ? Math.round(n * 100) : 0;
+  return Number.isFinite(n) ? Math.round(Number((n * 100).toFixed(10))) : 0;
 }
 
 /**

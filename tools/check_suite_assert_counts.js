@@ -227,6 +227,12 @@ const CASES = [
   { key: 'check_hub_guide', rel: 'tools/check_hub_guide.js' },  // 17 条（R263：枢纽页三步走/分层/空状态；G2 空状态严格 === 0 + G4 位置不变式）
   { key: 'check_export_delivery', rel: 'tools/check_export_delivery.js' },  // 44 条（R265 导出投递 25 + R266 报表内容 18：E11 摊销在场 / E12~E14 表上加减对得上账 / E15~E16 摊销来源台账 / E18 两个开关状态）
   { key: 'check_page_card_width', rel: 'tools/check_page_card_width.js' },  // 3 条（R296c 立 / R296d 拆雷反转：A-① 全局 app.wxss 必须零精确类名 `.card`（否则任何页面复用即继承 width:48% ⇒ 卡片半宽 ⇒ 标签逐字断行成竖排）+ A-② 页面用了 `class="card"` 就得自己声明 width + A-③ 负样本互证不误伤 .card2/.card-title/.mcard）
+  // R298 金额精度：「元 → 分」十进制安全（x.xx5 半步静默少进 1 分）+ 前后端双副本等价。
+  //   S 扫描面 6（S-⑤ 三形态桶 IDENT/PAREN/LITERAL 穷尽对账 —— 防"只扫命名像分的标识符"
+  //   而漏 LITERAL 字面量与 PAREN 括号两种形态）+ A 行为穷举 4 + B 双副本等价 2
+  //   + C 登记清单 fail-closed 10（未登记/登记失效/守恒/kind 合法/money 必安全/money 下界防批量改标/
+  //     四类非空/理由非空/单源含 toFixed(10)/三副本同源）+ D 正负样本互证 8（D-⑤~D-⑦ 对账分辨力 + 断言数下界）。
+  { key: 'check_money_precision', rel: 'tools/check_money_precision.js' },  // 30 条
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

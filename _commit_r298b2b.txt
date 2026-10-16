@@ -1,0 +1,51 @@
+R298 · B2「金额精度」第二遍收口：观测覆盖率 22.1%→100% + 补修 19 处 + 守卫升级为登记清单
+
+## 根因（本轮新判）
+首遍守卫的元语义判据是**标识符白名单**（ident 含 yuan|price|amount|money）⇒
+覆盖面由**命名习惯**决定、不由语义决定：面内 77~78 处 `* 100` 只观测到 17 处（22.1%）。
+盲区两种成因（各自实证）：
+ ① 命名不像"分/元"：`packTotal` / `c.sum` / `fenOf(n)` 的 `n`；
+ ② 书写形态不是"标识符 × 100"：`) * 100`（括号）与 `448 * 100`（字面量）结构性看不见。
+与 D1「术语值当机器键」、首遍 B2-③「单源零消费者」同型。
+
+## 守卫升级（tools/check_money_precision.js，18 → 30 断言）
+- S-⑤ **三形态桶穷尽**：IDENT / PAREN / LITERAL，用 `RE_ANY` 总数对账。
+  实证：只做 IDENT+PAREN 时 78≠77 ⇒ 暴露第 78 处 `448 * 100`。
+- C 组 **登记清单 fail-closed**（蓝本 check_idempotency::EXEMPT_KEY）：面内每处命中必须
+  具名登记 kind + 语义理由；未登记/登记失效/计数不符一律判红。kind 四值：
+  money（必须十进制安全）/ ratio / scaled_int / token。
+  键格式 `<rel>::<形态>|<归一化文本>|#<序号>`，**不含行号**（行号漂移不得误报登记失效）。
+- **防退化下界 MIN_MONEY=34**（实测 37）：无此条 ⇒ "批量把 money 改标成 ratio"可绕过 C-④。
+- safe 判定与书写形态解耦：`SAFE_WRAP` + `safeRanges()` 区间包含（弃定宽窗口）。
+- 登记分布：money=37（单源 2 + 首遍 16 + 第二遍 19）/ ratio=35 / scaled_int=5 / token=1 = 78。
+
+## 第二遍补修 19 处（11 文件，两阶段写入、纯 LF、git diff --numstat 精确 1,5,3,1,1,2,1,1,1,1,2）
+- cloudfunctions/importSalesBill/service.js ×5（net/income/sales×2/discount → **直接落库 amount_fen**）
+- pages/card/edit.js ×3（promoFen/dineFen/priceFen）
+- pages/takeaway/index.js ×2 · utils/takeaway.js ×2（元→2位小数）
+- cloudfunctions/calcBom/selftest.js ×1（括号形态，首遍结构性看不见）
+- pages/material/edit.js · pages/sandbox/matrix.js（**原式连取整都没有 ⇒ 分可能非整数**，真缺陷）
+  · utils/billParse.js · utils/bizPreset.js（前端第 3 份元→分）· utils/materialBatch.js
+  （**Excel 导入可带三位小数 ⇒ 半步真实可达**）· utils/dineChannels.js
+
+## 变异回灌 6/6（mut_backfill_b2b.py，字节级 md5 逐一双向还原）
+M1 未登记 ⇒ C-① 红 · M2/M3 money 退回裸写（IDENT/**括号**形态）⇒ C-④ 红 ·
+M4 删登记 ⇒ C-②+C-③ 红 · M5 索引形态 ⇒ S-⑤ 红 · M6 纯排版加空格 ⇒ **必须绿**（判据不脆）。
+
+## 顺带修：selftest_r85::A15「云函数逻辑零改动」首遍就已转红（首遍漏记）
+首遍落盘 common/money.js + 51 份派生 cx_money.js 后，未豁免集 = 18 个函数目录的 cx_money.js
+⇒ 首遍 NOTE §8 记的「174/174」与工作树不符（已如实更正）。按仓内既有先例
+（cx_dataAdapter.js / cx_salesBillId.js）追加**一条派生文件名级**白名单 + 具名 by/date/reason；
+**不做 cx_* 泛化、不放宽成全豁免**。复绿：selftest_r85 161/0。
+
+## 声明面同步（四处）
+- tools/check_suite_assert_counts.js::CASES：money_precision 行尾误挂的卡片宽度注释**归位**，改注 30 条分组
+  （附带修正上一轮 suite_sync.py 的误挂）
+- 重启键（唯一声明处）：check_money_precision=18 → **30**（「七十七者」条数不变）
+- verify_all.js 头注：「16 处」→「19 处」+ 判据行改写为登记清单口径 + 补观测覆盖率根因
+- 重启键「套件数会漂」行演进链：16 处 → 19 处
+
+## 门禁（本轮实测）
+174/174 套件通过 · 逐套件 174 PASS / 0 FAIL · R92 ✅ · 251.6s；
+money-precision 30/0 · selftest_r85 161/0 · check_suite_assert_counts 83/0 ·
+coverage 10/0 · count_claims 11/0 · selftest_shape 62 个合规。

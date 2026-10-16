@@ -300,11 +300,11 @@ function reconcile(p) {
   //          ② 真实扣一次补贴（取绝对值 ⇒ 客户填正数/负数都得同一个正确答案）。
   const gross = incomeTotal - subsidy;
   const expected = gross - Math.abs(subsidy) - commission - deliveryFee - deliverySubsidy;
-  const diff = Math.round((actual - expected) * 100) / 100;
+  const diff = Math.round(Number(((actual - expected) * 100).toFixed(10))) / 100;
   const absDiff = Math.abs(diff);
 
   // 专项：差额恰等于打包费合计（A.11.4 c）—— 先于漏填判断（更具体）
-  const packTotal = Math.round((Number(p && p.packTotal) || 0) * 100) / 100;
+  const packTotal = Math.round(Number(((Number(p && p.packTotal) || 0) * 100).toFixed(10))) / 100;
   if (packTotal > 0 && Math.abs(absDiff - packTotal) <= 0.01) {
     return { status: 'packaging', diff, expected, actual };
   }

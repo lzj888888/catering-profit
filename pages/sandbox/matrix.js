@@ -292,7 +292,7 @@ Page({
         red: false, invalid: true,
       };
     }
-    const rentFen = meta.rent * 100;
+    const rentFen = Math.round(Number((meta.rent * 100).toFixed(10)));   // R298-B2：原式**连取整都没有** ⇒ 分不是整数，违约铁律
     const targetMonthlyFen = res.target_monthly_fen;
     // 房租占比：两个引擎返回数值的简单比值（展示用，非测算公式）
     const rentPct = (targetMonthlyFen && targetMonthlyFen > 0)

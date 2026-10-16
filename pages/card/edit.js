@@ -718,11 +718,15 @@ Page({
       const costFen = d.unit_cost_fen || 0;
       if (!(costFen > 0)) { wx.showToast({ title: TERMS.card.grouponNeedCost, icon: 'none' }); return; }
       const v = calcGrouponOrder({
-        priceFen: Math.round(priceYuan * 100),
+        // 🔴 R298（B2）：**十进制安全** —— 原式 `Math.round(<元> * 100)` 在半步（真值恰为 x.xx5）会
+        //   **少进 1 分**（实测 qty=0.1 × 净料 14500 万分之元 ⇒ 真值 14.5 分，原式取 14）。根因与
+        //   `money.yuanToFen` 同一处浮点：`toFixed(10)` 只消 1e-13 量级噪声、不动真实半步。
+        //   成本引擎三副本（calcBom / saveCostCard / syncCostCard）**必须同源同口径**。
+        priceFen: Math.round(Number((priceYuan * 100).toFixed(10))),
         costFen,
         ratePct: Number(this.data.grouponRate) || 0,
-        promoFen: Math.round((Number(this.data.grouponPromoYuan) || 0) * 100),
-        dineFen: Math.round((Number(this.data.priceYuan) || 0) * 100),
+        promoFen: Math.round(Number(((Number(this.data.grouponPromoYuan) || 0) * 100).toFixed(10))),
+        dineFen: Math.round(Number(((Number(this.data.priceYuan) || 0) * 100).toFixed(10))),
       });
       // vsDineNeg = 堂食毛利 − 团购到手毛利 > 0 ⇒ 这个团购在拉低毛利 ⇒ 红字
       this.setData({
@@ -826,7 +830,7 @@ Page({
   specPriceFen(r) {
     const yuan = Number(r.priceYuan);
     if (!isFinite(yuan) || yuan <= 0) return null;
-    return Math.round(yuan * 100);
+    return Math.round(Number((yuan * 100).toFixed(10)));
   },
   // 提交给云端的规格列表：**只送键 + 售价**（系数/名称由服务端单源补齐）
   collectSpecs() {
@@ -898,7 +902,7 @@ Page({
   async onSave() {
     if (!this.data.name.trim()) { wx.showToast({ title: TERMS.card.dishName, icon: 'none' }); return; }
     // 售价低于成本预警（M3.7 #15）：先反算拿成本对比，不阻断保存
-    const priceFen = Math.round((Number(this.data.priceYuan) || 0) * 100);
+    const priceFen = Math.round(Number(((Number(this.data.priceYuan) || 0) * 100).toFixed(10)));
     if (priceFen > 0) {
       const linesInput = this.buildCalcLines();
       if (linesInput) {
