@@ -43,8 +43,10 @@
 //   D3 单表七列：数字列数字型       D4 m2 形态混合表真读回
 //   D5 单表与多表同为 PK            D6 四 scope 表名口径登记
 //   E1 只有表头（空 rows）⇒ 读回 1 行不抛错
-//   E2 空 sheets ⇒ 抛 Workbook is empty（SheetJS 行为已登记，升级即红逼复核）
-//   E3 重名 ⇒ 抛 already exists（含截断重名 / 双双缺名）
+//   E2a SheetJS 底层：空工作簿 ⇒ 抛 Workbook is empty（升级即红逼复核）
+//   E2b W1 正向：空 sheets ⇒ xlsxSheetsBase64 返回空串（异常不外泄）
+//   E3a SheetJS 底层：重名 ⇒ 抛 already exists（升级即红逼复核）
+//   E3b W2 正向：三种重名制造法都去重成功（2 表名互异）
 //   E4 超 31 字符真截断             E5 负数 / 大数 / 0.01 边界往返
 //   E6 空串表头读回空串（不是 undefined）
 //   F1 diffRows 对「少一行」判红     F2 diffRows 对「改一格」判红
@@ -53,8 +55,9 @@
 //   F5 diffSheetNames 对改名 / 换序判红
 //   F6 resolveXlsx 对全不存在候选返回 null（fail-closed 自证）
 //   F7 断言数下界（防退化）
-//   W1 缺口登记：xlsxSheetsBase64 无异常兜底（空表 ⇒ 抛；可达性 0）
-//   W2 缺口登记：xlsxSheetsBase64 无重名去重（可达性 0）
+//   W1 正向：xlsxSheetsBase64 已有 try/catch 异常兜底（R298·B3 修复）
+//   W2 正向：xlsxSheetsBase64 已接重名去重 uniqueSheetName（R298·B3 修复）
+//   W3 正向：buildMonthlySheets 不污染全局（sheets 已显式声明，非隐式全局）
 (function () {
   'use strict';
   const fs = require('fs');
@@ -466,18 +469,41 @@
   const hws = (hOnly && hOnly.sheets['只有表头']) || null;
   check('E1 只有表头（rows 空）⇒ 读回 1 行且不抛错（会计拿到空表也要能打开）',
     !!hws && hws.rows.length === 1, hws ? JSON.stringify(hws.rows) : '抛错/未产出');
-  let e2msg = '';
-  try { E.xlsxSheetsBase64([]); } catch (e) { e2msg = e.message; }
-  check('E2 空 sheets ⇒ SheetJS 抛「Workbook is empty」（行为登记：若升级改了行为，本断言转红逼复核）',
-    e2msg === 'Workbook is empty', e2msg || '未抛错（行为已变！）');
-  let e3msg = '', e3b = '', e3c = '';
-  try { E.xlsxSheetsBase64([{ name: '同名', header: ['a'], rows: [[1]] }, { name: '同名', header: ['a'], rows: [[2]] }]); } catch (e) { e3msg = e.message; }
+  // E2a 底层登记：**直接**测真库（不经被测函数）——SheetJS 对空工作簿会抛，升级改行为即转红
+  let e2raw = '';
+  try { XLSX.write(XLSX.utils.book_new(), { type: 'base64', bookType: 'xlsx' }); } catch (e) { e2raw = e.message; }
+  check('E2a SheetJS 底层：空工作簿 ⇒ 抛「Workbook is empty」（升级改行为即转红逼复核）',
+    e2raw === 'Workbook is empty', e2raw || '未抛错（SheetJS 行为已变！）');
+  // E2b 正向（R298·B3-W1 已修）：被测函数把该异常兜成空串 ⇒ main 的 if(!content) 转人话 fail
+  let e2ret = 'UNSET', e2threw = '';
+  try { e2ret = E.xlsxSheetsBase64([]); } catch (e) { e2threw = e.message; }
+  check('E2b W1 正向：空 sheets ⇒ xlsxSheetsBase64 返回空串（不抛；异常不外泄给调用者）',
+    e2ret === '' && !e2threw, e2threw ? ('仍抛：' + e2threw) : ('返回 ' + JSON.stringify(e2ret)));
+  // E3a 底层登记：**直接**测真库——SheetJS 对重名会抛（升级改行为即转红）
+  let e3raw = '';
+  try {
+    const wbDup = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wbDup, XLSX.utils.aoa_to_sheet([['a']]), '同名');
+    XLSX.utils.book_append_sheet(wbDup, XLSX.utils.aoa_to_sheet([['b']]), '同名');
+  } catch (e) { e3raw = e.message; }
+  check('E3a SheetJS 底层：重名 ⇒ 抛「already exists」（升级改行为即转红逼复核）',
+    /already exists/.test(e3raw), e3raw || '未抛错（SheetJS 行为已变！）');
+  // E3b 正向（R298·B3-W2 已修）：三种制造法都去重成功（2 表 · 名互异 · 不抛）
   const long1 = '第一部分口径说明附录甲乙丙丁戊己庚辛壬癸子丑寅卯辰巳午未申酉戌亥甲乙丙丁戊己庚辛壬癸';
-  try { E.xlsxSheetsBase64([{ name: long1 + 'A', header: ['a'], rows: [[1]] }, { name: long1 + 'B', header: ['a'], rows: [[2]] }]); } catch (e) { e3b = e.message; }
-  try { E.xlsxSheetsBase64([{ header: ['a'], rows: [[1]] }, { header: ['a'], rows: [[2]] }]); } catch (e) { e3c = e.message; }
-  check('E3 重名 ⇒ 抛「already exists」（三种制造法都命中：同名 / 截断后同名 / 双双缺名成 Sheet1）',
-    /already exists/.test(e3msg) && /already exists/.test(e3b) && /already exists/.test(e3c),
-    [e3msg, e3b, e3c].map((m) => m ? '✓' : '✗').join('/'));
+  const dupCases = [
+    ['同名', [{ name: '同名', header: ['a'], rows: [[1]] }, { name: '同名', header: ['a'], rows: [[2]] }]],
+    ['截断后同名', [{ name: long1 + 'A', header: ['a'], rows: [[1]] }, { name: long1 + 'B', header: ['a'], rows: [[2]] }]],
+    ['双双缺名', [{ header: ['a'], rows: [[1]] }, { header: ['a'], rows: [[2]] }]],
+  ];
+  const dupBad = [];
+  dupCases.forEach(([label, sets]) => {
+    try {
+      const names = readBack(E.xlsxSheetsBase64(sets)).SheetNames;
+      if (!(names.length === 2 && new Set(names).size === 2)) dupBad.push(label + '→' + names.join('/'));
+    } catch (e) { dupBad.push(label + '→ERR:' + e.message); }
+  });
+  check('E3b W2 正向：三种重名制造法都去重成功（同名 / 截断后同名 / 双双缺名 ⇒ 2 表名互异）',
+    dupBad.length === 0, dupBad.join(' | ') || '全通过');
   const LONG = long1 + 'A';
   let e4name = '';
   try {
@@ -521,14 +547,24 @@
   check('F6 resolveXlsx 对「全不存在候选」返回 null（fail-closed 自证：不会拿假模块蒙混）', f6 === null);
   check('F7 判据非退化：本守卫断言数 ≥ 40（防「删判据 ⇒ 恒绿」）', pass + failN >= 40, '累计 ' + (pass + failN) + ' 条');
 
-  // ================= W 已知缺口登记（本轮**不修**，登记备查）=================
-  console.log('\n===== W · 已知缺口登记（可达性 0；修好之后应把该条改成正向断言）=====');
+  // ================= W 缺口闭合复核（R298·B3 登记的两条缺口 + 隐式全局，本批已修）=================
+  console.log('\n===== W · 缺口闭合复核（R298·B3 登记 ⇒ 本批修复后转正向断言）=====');
   const fnBody = /function xlsxSheetsBase64\(sheets\)\s*\{[\s\S]*?\n\}/.exec(fnCode);
   const bodyTxt = fnBody ? fnBody[0] : '';
-  check('W1 缺口①：xlsxSheetsBase64 无异常兜底 ⇒ 传空数组会抛异常逃逸（if(!content) 兜不住抛）· 可达性 0（m1_report 恒 4 表）',
-    !!bodyTxt && !/try\s*\{/.test(bodyTxt), bodyTxt ? '函数体无 try/catch（形态未变）' : '未定位到函数体');
-  check('W2 缺口②：xlsxSheetsBase64 无重名去重 ⇒ 两表重名（含截断重名 / 双双缺名）会抛异常 · 可达性 0（4 表名硬编码唯一）',
-    !!bodyTxt && !/new Set\(|unique|distinct/i.test(bodyTxt), bodyTxt ? '函数体无去重逻辑（形态未变）' : '未定位到函数体');
+  check('W1 正向：xlsxSheetsBase64 已有异常兜底（try/catch ⇒ 返回空串 + console.error 留痕）',
+    !!bodyTxt && /try\s*\{/.test(bodyTxt) && /catch\s*\(/.test(bodyTxt) && /return\s+''/.test(bodyTxt),
+    bodyTxt ? (/try\s*\{/.test(bodyTxt) ? '含 try/catch 兜底' : '❌ 函数体无 try/catch（缺口仍在）') : '未定位到函数体');
+  check('W2 正向：xlsxSheetsBase64 已接重名去重入口（uniqueSheetName）',
+    !!bodyTxt && /uniqueSheetName\s*\(/.test(bodyTxt),
+    bodyTxt ? (/uniqueSheetName\s*\(/.test(bodyTxt) ? '已接去重' : '❌ 未接去重（缺口仍在）') : '未定位到函数体');
+  // R298·B3 第 3 项（隐式全局）：原 `sheets = [...]` 未声明 ⇒ 已补 const。
+  //   判据取**行为面**（真调一次看是否污染 global），不是形态面 —— 与「分支到不到」同族纪律。
+  delete global.sheets;
+  let w3threw = '';
+  try { E.buildMonthlySheets(); } catch (e) { w3threw = e.message; }
+  check('W3 正向：buildMonthlySheets 不污染全局（sheets 已显式声明，非隐式全局）',
+    !('sheets' in global) && !w3threw,
+    w3threw ? ('抛：' + w3threw) : (('sheets' in global) ? '❌ global.sheets 被写入（仍是隐式全局）' : '未污染全局'));
 
   console.log('\n===== R298 B3 导出件可回读守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
   if (failN) bad.forEach((b) => console.log('   ❌ ' + b));

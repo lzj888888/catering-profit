@@ -43,16 +43,38 @@ function loadXlsx() {
 // R266：多工作表（月度报表 = 利润表 / 收入费用明细 / 摊销来源 / 口径说明 四张）。
 //   起因（李老师真机反馈）：导出能出 Excel 了，但「月度报表」里**没有摊销**，
 //   两个利润数字并列却看不出差在哪、每个数怎么来的 ⇒ 拿到表也对不上账。
+// R298·B3-W2：工作表名去重。SheetJS 的 `book_append_sheet` 遇重名会**抛 `already exists`**，
+//   而重名有两处天然制造法：`slice(0, 31)` 把两个长名截成同一个、`(name || 'Sheet1')` 让两个
+//   缺名表都落成 `Sheet1`。⇒ 统一入口改名：先按 Excel 硬限截到 31 字符，再对已存在名追加 `_2`/`_3`…
+function uniqueSheetName(wb, rawName) {
+  const base = String(rawName || 'Sheet1').slice(0, 31) || 'Sheet1';
+  if (wb.SheetNames.indexOf(base) < 0) return base;
+  for (let i = 2; i <= 9999; i++) {
+    const suffix = '_' + i;
+    const cand = base.slice(0, 31 - suffix.length) + suffix;
+    if (wb.SheetNames.indexOf(cand) < 0) return cand;
+  }
+  return base.slice(0, 29) + '_x';   // 理论不可达（万张同名表）：保底留痕
+}
+// R298·B3-W1：本函数契约是「只返回字符串」——`loadXlsx` 缺失已 fail-soft 成 `''`，
+//   但 SheetJS 自身也会抛（空工作簿 `Workbook is empty` / 非法表名等）。若让异常逃逸，
+//   `main` 里那句「导出服务未安装 xlsx 依赖」人话就轮不到说，前端只会拿到 undefined。
+//   ⇒ 一并兜成 `''`，交 `main` 的 `if (!content) return fail(...)` 统一转人话。
 function xlsxSheetsBase64(sheets) {
   const XLSX = loadXlsx();
   if (!XLSX) return '';
-  const wb = XLSX.utils.book_new();
-  (sheets || []).forEach((s) => {
-    const aoa = [s.header].concat((s.rows || []).map((r) => r.map((v) => (typeof v === 'number' ? v : String(v == null ? '' : v)))));
-    const ws = XLSX.utils.aoa_to_sheet(aoa);
-    XLSX.utils.book_append_sheet(wb, ws, String(s.name || 'Sheet1').slice(0, 31));
-  });
-  return XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
+  try {
+    const wb = XLSX.utils.book_new();
+    (sheets || []).forEach((s) => {
+      const aoa = [s.header].concat((s.rows || []).map((r) => r.map((v) => (typeof v === 'number' ? v : String(v == null ? '' : v)))));
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      XLSX.utils.book_append_sheet(wb, ws, uniqueSheetName(wb, s.name));
+    });
+    return XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
+  } catch (e) {
+    console.error('[exportData] xlsx 序列化失败：' + ((e && e.message) || e));
+    return '';
+  }
 }
 function xlsxBase64(header, rows, sheetName) {
   return xlsxSheetsBase64([{ name: sheetName, header: header, rows: rows }]);
@@ -160,7 +182,7 @@ function buildMonthlySheets(c) {
       ['待结算', '本表不列：待结算是现金流指标，不进入毛利与利润'],
     ];
 
-    sheets = [
+    const sheets = [
       { name: '利润表', header: ['项目', '金额(元)', '说明（这个数怎么来的）'], rows: profitRows },
       { name: '收入费用明细', header: ['类别', '项目', '层级', '金额(元)', '来源'], rows: detailRows },
       { name: '摊销来源', header: ['处置方式', '名称', '原值(元)', '起始月', '分摊月数', '提前终止月', '月均参考(元)'], rows: assetRows },
