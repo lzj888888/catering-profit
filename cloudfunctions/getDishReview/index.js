@@ -32,7 +32,7 @@ const { toMonth } = common.utilTime;
 
 // 🔴 R232f：算法层已外提到 service.js（纯函数 · 零 db）⇒ 6 处口径首次可被独立复算。
 //   本文件只负责：鉴权 → 付费墙 → 取数 → 调 service → 返回。
-const { buildDishReview, buildTakeawayReview, splitSales, mergeTotals, computeCoverage } = require('./service');
+const { buildDishReview, buildTakeawayReview, splitSales, mergeTotals, computeCoverage, filterByRange } = require('./service');
 
 exports.main = async (event) => {
   const ctx = cloud.getWXContext();
@@ -53,8 +53,19 @@ exports.main = async (event) => {
   const da = makeAdapter(db);
 
   // ===== 3. 读全部销量行（去掉 platform 过滤；listAll 分页取全，突破单页 1000）=====
+  // 🔴 R301：**契约入参 `biz_date_from` / `biz_date_to` 的补实现**。
+  //   契约（`specs/dev-specs/core/10_云函数清单与接口契约.md`）**一直**声明这两个入参，
+  //   而实现从未读取 ⇒ 复盘榜把历次导入的**多个月份全部累加**、页面却按"当前月"呈现
+  //   ⇒ 「这道菜这个月卖过」是错的（**静默错数**；真样本就是 7 天表，"一段"冒充"整月"）。
+  //   为什么在 **service 纯函数层**过滤而不在 `where` 里加范围条件：
+  //     `common/dataAdapter.js` 的 `where` 只支持**等值**，加范围支持要动全仓 **51 份**
+  //     `cx_dataAdapter.js` 派生副本（要跑 sync_common）⇒ 改动面与风险不成比例；
+  //     而**在内存里过滤与在库里过滤结果逐行等价**（`listAll` 本来就读该店全量行，读的量不变）。
+  const bizFrom = event && event.biz_date_from;
+  const bizTo = event && event.biz_date_to;
   const salesRes = await da.listAll('external_sales_daily', { shop_id: shopId });
-  const allSales = (salesRes && salesRes.data) || [];
+  const rawSales = (salesRes && salesRes.data) || [];
+  const { rows: allSales, from: rangeFrom, to: rangeTo, days: rangeDays } = filterByRange(rawSales, bizFrom, bizTo);
 
   // ===== 4. 读成本卡（listAll，取各 card_code 最新版本；软删自动过滤）=====
   const cardsRes = await da.listAll('shop_cost_card', { shop_id: shopId });
@@ -139,6 +150,11 @@ exports.main = async (event) => {
   return ok({
     shop_id: shopId,
     mapping: mappingList,   // 🔴 R255：本店现有菜名映射（前端据此可展示 / 解除，防「挂错卡无入口」）
+    // 🔴 R301：**如实回报统计期间**（契约出参里的 `range{from,to}`）。
+    //   · `from`/`to` 为空串 ⇒ **未按区间过滤**（调用方没给 / 只给了一端）⇒ 前端必须显示
+    //     "全部期间"而不是假装单月 —— 期间口径**不许由前端猜**。
+    //   · `days` = 该期间内**实际有数据的天数**（去重）⇒ 直接把"这个月只有 7 天数据"暴露出来。
+    range: { from: rangeFrom, to: rangeTo, days: rangeDays },
     dine_in: ranked,        // 堂食排行
     // 无外卖数据 ⇒ null（空态，不默认 0，红线 18）；有数据 ⇒ { by_platform, totals }
     takeaway: Object.keys(takeawayResult.by_platform).length ? takeawayResult : null,

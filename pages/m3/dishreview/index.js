@@ -119,9 +119,18 @@ Page({
       loading: TERMS.ui.loading,
       // R299：数据截断的可见降级文案（单源 TERMS.ui.dataTruncated）
       dataTruncated: TERMS.ui.dataTruncated,
+      // 🔴 R301：统计月份选择器的标签（期间口径必须让用户看得见）
+      reviewMonthPick: TERMS.card.reviewMonthPick,
     },
     loading: true,
     locked: false,
+    // 🔴 R301：本榜的**统计月份**（YYYY-MM）。为什么必须有：契约要求 `getDishReview` 按
+    //   `biz_date_from/to` 取数，而在此之前实现从不过滤 ⇒ 榜是**跨月累计**却按"当前月"呈现。
+    //   注意它与 `curMonth` 是**两件事**：`curMonth` 只用于成本卡快照提示（"该卡成本为 X 月快照"），
+    //   `month` 才是**数据统计期间**。二者在页面上必须分开讲清（R299 §`snapshot_month` 同一条纪律）。
+    month: '',
+    // 期间标注文案（由云端回的 `range` 如实生成；**不许前端猜**）
+    rangeText: '',
     // R299：本页是否有**已被服务端标记为「已达读取上限」**的读取（复盘榜 / 成本卡 / 账单任一）。
     //   为 true ⇒ 页面顶部显示可见降级提示 —— 见 utils/dataHealth.js 头注（为什么不能静默）。
     truncated: false,
@@ -196,7 +205,7 @@ Page({
     try {
       await api.ensureShop();
       ui.setTitle(TERMS.card.reviewTitle);
-      this.setData({ curMonth: ui.nowMonth() });
+      this.setData({ curMonth: ui.nowMonth(), month: ui.nowMonth() });
       await this.load();
     } catch (e) {
       this.setData({ loading: false });
@@ -249,7 +258,20 @@ Page({
 
   async load() {
     this.setData({ loading: true });
-    const d = await api.call('getDishReview', {});
+    // 🔴 R301：**必须传**契约入参 `biz_date_from` / `biz_date_to`（月 → 区间走 `utils/ui.js::monthRange` 单源）。
+    //   不传 ⇒ 云端不过滤 ⇒ 榜**跨月累计**（正是 R301 修的缺陷）⇒ 由守卫钉住"必须传"（见 NOTE 的判据）。
+    //   `month` 缺省自愈为当前月：与 `init()` 的默认**同一个口径**（只此一处兜底，不新增语义），
+    //   避免"某条路径没先 init 就 load"时静默退回**不过滤**（那会把跨月累计这个缺陷放回来）。
+    const month = this.data.month || ui.nowMonth();
+    const rng = ui.monthRange(month);
+    const d = await api.call('getDishReview', { biz_date_from: rng.from, biz_date_to: rng.to });
+    // 🔴 R301 期间标注：云端**如实回** `range{from,to,days}` ⇒ 有区间就报
+    //   「本榜统计 YYYY-MM，共 N 天有数据」（N 直接把"这个月只有 7 天数据"暴露出来）；
+    //   没有区间（旧客户端 / 只给一端 ⇒ 云端不过滤）就**明说"不是单月"**，**绝不假装是本月**。
+    const rg = (d && d.range) || {};
+    const rangeText = (rg.from && rg.to)
+      ? TERMS.card.reviewRangeOf(month, rg.days || 0)
+      : TERMS.card.reviewRangeAll(rg.days || 0);
     // 🔴 R299（缺陷 D2）：消费服务端 `truncated`（可见降级）。见 utils/dataHealth.js 头注。
     this._setTrunc('review', dh.isTruncated(d));
     // 🔴 R255：成本卡列表（「关联」picker 用）。**必须在这里先拉** —— 下面构造
@@ -441,6 +463,7 @@ Page({
     this.setData({
       loading: false,
       locked: false,
+      rangeText,
       dineIn,
       takeaway,
       unmatched,
@@ -751,6 +774,16 @@ Page({
   // ===== R281 O2：首屏重构 —— 折叠区开关 =====
   toggleMore() { this.setData({ moreOpen: !this.data.moreOpen }); },
   toggleData() { this.setData({ dataOpen: !this.data.dataOpen }); },
+
+  // 🔴 R301：切「统计月份」⇒ 按新区间重新取数。用 `<picker mode="date" fields="month">`
+  //   （系统选择器、**零新术语/零新数据源**），值是 `YYYY-MM`。
+  //   只读页 ⇒ 直接重载，无未保存输入可丢（与 onShow 返回刷新同一条依据）。
+  onMonth(e) {
+    const m = (e && e.detail && e.detail.value) || '';
+    if (!m || m === this.data.month) return;
+    this.setData({ month: m });
+    this.load();
+  },
 
   // 顶部红色待办条「去挂」⇒ 直接滚到未匹配区（不新增页面、不跳走，免得打断看榜）
   gotoUnmatched() {

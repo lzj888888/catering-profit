@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：178 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：179 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -1130,6 +1130,13 @@ const SUITES = [
   //        + ③ 消费者面 **fail-closed 登记表**（未消费未登记 ⇒ 判红；且登记表无僵尸键/空转键）
   //        + ④ 反恒真（未消费样本必须判不通过）+ 三个真消费点正样本。
   ['truncated-surfaced', 'tools/check_truncated_surfaced.js'],
+  // ===== R301 ·云函数「契约入参 vs 实现」守卫 =====
+  //   见头部注释同名条目。抓的真缺陷：契约**一直**声明 `getDishReview` 的入参
+  //   `biz_date_from/biz_date_to`、出参 `range{from,to}`，而实现**从未读取** ⇒ 复盘榜
+  //   把历次导入的多个月份**全部累加**、页面却按"当前月"呈现（静默错数，真样本是 7 天表）。
+  //   判据 = ① 契约表解析 + 两处扫描面下界 + ② 每个入参必须被实现引用（否则显式登记 why）
+  //        + ③ 登记表双向防腐（无僵尸键 / 无空转键）+ ④ 反恒真（注释喂不饱判据 / 解析器形状自证）。
+  ['fn-contract-params', 'tools/check_fn_contract_params.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

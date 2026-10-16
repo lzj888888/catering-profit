@@ -4,7 +4,9 @@ import io
 
 REPS_BY_FILE = {
     'specs/dev-specs/★知识存储点_2026-09-10.md': [
-        ('`check_paywall_coverage`=20', '`check_paywall_coverage`=22'),
+        ('串 **178** 个套件', '串 **179** 个套件'),
+        ('现 **178**；2026-09-17', '现 **179**；2026-09-17'),
+        ('`check_dishreview_engine`=111', '`check_dishreview_engine`=119'),
     ],
 }
 

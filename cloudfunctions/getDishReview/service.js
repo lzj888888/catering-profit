@@ -199,6 +199,56 @@ function mergeTotals(a, b) {
 }
 
 /**
+ * 按业务日期区间过滤销量行（**纯函数** · 零 db · 可复算）。
+ *
+ * 🔴 R301 · 为什么必须有（**契约与实现分歧**的实锤，不是新加需求）：
+ *   契约 `specs/dev-specs/core/10_云函数清单与接口契约.md` 的 `getDishReview` 一行
+ *   **一直**声明入参 `{ shop_id, biz_date_from, biz_date_to, platform?, ... }`，
+ *   而实现**从未读取过 `biz_date_from/to`** ⇒ 复盘榜把该店**历次导入的多个月份全部累加**
+ *   当成一份榜，而页面按"当前月"呈现 ⇒ 「这道菜这个月卖过」是**错的**（静默错数）。
+ *   真样本就是 **7 天表**（`importSalesBill/service.js` 注释：淘宝闪购 355 行 = 7 天 × 51 商品）
+ *   ⇒ **"一段"冒充"整月"**。
+ *
+ * 口径：
+ *   · `biz_date` 是 `YYYY-MM-DD` 字符串 ⇒ **直接按字符串比较**（等长前缀可比，零时区风险）。
+ *   · **两端都给** ⇒ 过滤；**任一端缺** ⇒ **不过滤**（与改动前**逐行等价** ⇒ 旧客户端不被打断），
+ *     并由出参 `range` 如实回报（`from/to` 为空串）⇒ 前端据此显示"全部期间"，**不许假装是单月**。
+ *   · ⚠️ 不做"单边过滤"：半开区间算出来的榜既不是本月也不是全部，**比不过滤更糟**。
+ *   · 区间反了（`from > to`）⇒ **空集**（不静默当全量）。
+ *
+ * @param {Array<{biz_date:string}>} sales
+ * @param {string} from `YYYY-MM-DD`
+ * @param {string} to   `YYYY-MM-DD`
+ * @returns {{rows:Array, from:string, to:string, days:number}} `days` = 结果集内**实际有数据的天数**（去重）
+ */
+function filterByRange(sales, from, to) {
+  const rows0 = sales || [];
+  const f = (from == null ? '' : String(from)).trim();
+  const t = (to == null ? '' : String(to)).trim();
+  if (!f || !t) return { rows: rows0, from: '', to: '', days: countDataDays(rows0) };
+  if (f > t) return { rows: [], from: f, to: t, days: 0 };
+  const rows = rows0.filter((s) => {
+    const d = (s && s.biz_date == null ? '' : String(s.biz_date)).trim();
+    return !!d && d >= f && d <= t;
+  });
+  return { rows, from: f, to: t, days: countDataDays(rows) };
+}
+
+/**
+ * 一组销量行里**实际有数据的天数**（按 `biz_date` 去重）。
+ * 🔴 它的唯一用途是**把"这是 7 天段，不是整月"直接暴露给老板** ——
+ *   期间口径不能只说"YYYY-MM"，还得说"这个月里其实只有 N 天有数据"。
+ */
+function countDataDays(rows) {
+  const set = new Set();
+  for (const s of (rows || [])) {
+    const d = (s && s.biz_date == null ? '' : String(s.biz_date)).trim();
+    if (d) set.add(d);
+  }
+  return set.size;
+}
+
+/**
  * 把全量销量行**在 service 层**分流（可复算；不在 index 做业务判断）。
  * @param {Array<{platform:string}>} sales
  * @returns {{dineIn:Array, takeaway:Array}} dineIn = platform==='pos'；takeaway = 其余非空平台
@@ -327,4 +377,4 @@ function computeCoverage(allSales, matchedKeys, buffetFoodCostTotalFen) {
   };
 }
 
-module.exports = { buildDishReview, buildTakeawayReview, rankReview, splitSales, mergeTotals, TOTALS_FIELDS, computeCoverage, classifyDishKey };
+module.exports = { buildDishReview, buildTakeawayReview, rankReview, splitSales, mergeTotals, TOTALS_FIELDS, computeCoverage, classifyDishKey, filterByRange, countDataDays };

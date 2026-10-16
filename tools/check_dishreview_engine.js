@@ -271,7 +271,17 @@ try {
     if (/utils[\\/]api\.js$/.test(request)) {
       return { ensureShop: async () => true, call: async () => FIX_R251, toastError: () => {} };
     }
-    if (/utils[\\/]ui\.js$/.test(request)) return { setTitle: () => {}, nowMonth: () => '2026-10' };
+    // 🔴 R301：ui 替身必须**从真实模块派生**，只覆盖测试要钉死的那两个函数。
+    //   原写法是**手写白名单** `{ setTitle, nowMonth }` ⇒ 页面一用上 `ui` 的新函数
+    //   （本轮 `ui.monthRange`）替身就缺符号 ⇒ `load()` 抛异常 ⇒ 6-① 误红。
+    //   这是 R97「mock 没有真云的 `_id` 语义」的**同族**：**替身会漂**。
+    //   ⇒ 改为 spread 真实模块 + 只覆盖 `setTitle`（会调 wx）/ `nowMonth`（要**确定性**月份）。
+    if (/utils[\\/]ui\.js$/.test(request)) {
+      return Object.assign({}, origLoadM.apply(this, arguments), {
+        setTitle: () => {},
+        nowMonth: () => '2026-10',
+      });
+    }
     if (/utils[\\/]paywall\.js$/.test(request)) return { openPaywall: () => {} };
     return origLoadM.apply(this, arguments);
   };
@@ -718,7 +728,72 @@ function section12() {
 }
 section12();
 
-// ===== ⑬ 段（R298）：跨端契约机械化 —— 云端只回机器码、中文只在前端术语表 =====
+// ===== ⑭ 段（R301）：**统计期间**（契约入参 `biz_date_from/to` 的补实现）=====
+// 为什么（真缺陷，实锤"契约与实现分歧"）：
+//   契约 `specs/dev-specs/core/10_云函数清单与接口契约.md` 的 `getDishReview` 一行**一直**声明
+//   入参 `biz_date_from` / `biz_date_to`、出参 `range{from,to}`，而实现**从未读取** ⇒
+//   复盘榜把该店**历次导入的多个月份全部累加**当成一份榜、页面却按"当前月"呈现
+//   ⇒「这道菜这个月卖过」是错的（**静默错数**）。真样本就是 **7 天表**，"一段"冒充"整月"。
+// 本段是**行为级**判据（真调 `filterByRange` 算），不是读源码字面 —— 防"改了字面量但函数没变"。
+function section14() {
+  const pageSrc = rd('pages/m3/dishreview/index.js');
+  const wxmlSrc = rd('pages/m3/dishreview/index.wxml');
+  const idxSrc = rd('cloudfunctions/getDishReview/index.js');
+  const svcSrc = rd('cloudfunctions/getDishReview/service.js');
+  const uiSrc = rd('utils/ui.js');
+
+  // ① 实现**真的读**了契约入参（不是只写在注释里 —— 剥注释后再判，本仓「被注释喂成恒真」同族）
+  const idxStripped = idxSrc.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+  check('14-① 🔴 实现真的读契约入参 `biz_date_from` / `biz_date_to`（剥注释后判）',
+    /event\.biz_date_from/.test(idxStripped) && /event\.biz_date_to/.test(idxStripped)
+    && /filterByRange\(/.test(idxStripped));
+
+  // ② 出参如实回 `range`（前端不许猜期间）
+  check('14-② 出参含 `range: { from, to, days }`（期间口径由云端给，前端不猜）',
+    /range:\s*\{\s*from:\s*rangeFrom,\s*to:\s*rangeTo,\s*days:\s*rangeDays\s*\}/.test(idxSrc));
+
+  // ③ ④ **行为级**：真调 filterByRange 验四条语义（区间内 / 任一端缺⇒不过滤 / 区间反⇒空 / 非法日期行剔除）
+  const SVC_P = path.join(ROOT, 'cloudfunctions/getDishReview/service.js');
+  let SVC = null;
+  try { SVC = require(SVC_P); } catch (e) { SVC = null; }
+  const ROWS = [
+    { biz_date: '2026-09-30', qty: 1 }, { biz_date: '2026-10-01', qty: 1 },
+    { biz_date: '2026-10-07', qty: 1 }, { biz_date: '2026-10-31', qty: 1 },
+    { biz_date: '2026-11-01', qty: 1 },
+  ];
+  const r1 = SVC ? SVC.filterByRange(ROWS, '2026-10-01', '2026-10-31') : null;
+  check('14-③ 🔴 行为：按区间过滤（跨月数据只留区间内 3 行 / days=3；9-30 与 11-01 必须被剔除）',
+    !!r1 && r1.rows.length === 3 && r1.days === 3 && r1.from === '2026-10-01' && r1.to === '2026-10-31'
+    && r1.rows.every((x) => x.biz_date >= '2026-10-01' && x.biz_date <= '2026-10-31'));
+  const r2 = SVC ? SVC.filterByRange(ROWS, '2026-10-01', '') : null;
+  const r3 = SVC ? SVC.filterByRange(ROWS, '2026-11-01', '2026-10-01') : null;
+  check('14-④ 行为：**任一端缺 ⇒ 不过滤**（`range.from` 回空串，前端据此明说"不是单月"）'
+    + ' + **区间反了 ⇒ 空集**（不静默当全量）',
+    !!r2 && r2.rows.length === 5 && r2.from === '' && r2.days === 5
+    && !!r3 && r3.rows.length === 0 && r3.days === 0);
+
+  // ⑤ 前端**必须传**区间（这是"不许退回跨月累计"的前端侧钉子）+ 月→区间走单源
+  check('14-⑤ 🔴 复盘页 load() 必须传 `biz_date_from/to`，且月→区间走单源 `utils/ui.js::monthRange`'
+    + ' —— 不传 ⇒ 云端不过滤 ⇒ 跨月累计这个缺陷会**悄悄回来**',
+    /api\.call\('getDishReview',\s*\{\s*biz_date_from:\s*rng\.from,\s*biz_date_to:\s*rng\.to\s*\}\)/.test(pageSrc)
+    && /ui\.monthRange\(month\)/.test(pageSrc)
+    && /monthRange\(ym\)\s*\{/.test(uiSrc));
+
+  // ⑥ 期间**可见**：月份选择器 + 期间文案渲染；且"没有区间"时必须**明说不是单月**（不许假装本月）
+  check('14-⑥ 期间可见：页面有月份选择器 + 渲染期间文案；且未过滤时必须**明说"不是单月"**',
+    /fields="month"/.test(wxmlSrc) && /bindchange="onMonth"/.test(wxmlSrc)
+    && /\{\{rangeText\}\}/.test(wxmlSrc) && /reviewRangeAll/.test(pageSrc)
+    && /reviewRangeAll:/.test(rd('miniprogram/i18n/terms.js')));
+  const lf = (a) => a.replace(/\r?\n/g, ' ');
+  check('14-⑦ 反恒真：把「不传区间」的旧前端形态喂给 14-⑤ 的判据 ⇒ 必须判不通过',
+    !/api\.call\('getDishReview',\s*\{\s*biz_date_from:\s*rng\.from,\s*biz_date_to:\s*rng\.to\s*\}\)/
+      .test(lf("const d = await api.call('getDishReview', {});")));
+  check('14-⑧ 自失效护栏：五份源码非空且关键锚点在场（防读空文件 ⇒ 恒真）',
+    pageSrc.length > 1000 && wxmlSrc.length > 200 && idxSrc.length > 500
+    && svcSrc.length > 1000 && uiSrc.length > 500
+    && /filterByRange/.test(svcSrc) && /countDataDays/.test(svcSrc));
+}
+section14();
 // 为什么（R297 第七轮 A1 复核实测的真缺陷）：
 //   旧形态是 `service.js` 回中文字符串 `'偏高'/'偏低'/'合理'`，前端 `index.js` 再拿中文字符串
 //   `bm.actualFlag === '偏高'` 取警示色 ⇒ **前后端靠中文字面量做接口契约**，两端还可能不同人改。

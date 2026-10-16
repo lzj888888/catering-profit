@@ -20,6 +20,7 @@ const ROOT = process.cwd();
 const G1 = 'tools/check_dishreview_engine.js';
 const G2 = 'tools/check_truncated_surfaced.js';
 const G3 = 'tools/check_paywall_coverage.js';
+const G4 = 'tools/check_fn_contract_params.js';
 
 const sha = (abs) => crypto.createHash('sha256').update(fs.readFileSync(abs)).digest('hex');
 const absOf = (rel) => path.join(ROOT, rel);
@@ -139,6 +140,44 @@ const MUTS = [
     to: '    const cur = this.data.result || { cash: { dish_cost_fen: 0, pack_cost_fen: 0 } };',
     guard: G3,
     expect: [/L8-④/],
+  },
+
+  // ===== 守卫 4（check_fn_contract_params）· R301 新增 =====
+  {
+    id: 'M13',
+    desc: 'R301 原样复现（**新守卫**）：实现不再读契约入参 `biz_date_from` ⇒ 契约与实现分歧重现',
+    file: 'cloudfunctions/getDishReview/index.js',
+    from: '  const bizFrom = event && event.biz_date_from;\n',
+    to: '',
+    guard: G4,
+    expect: [/②-a/],
+  },
+  {
+    id: 'M14',
+    desc: 'R301 原样复现（**复盘页守卫**）：实现不再读契约入参 ⇒ 14-① 必须红（同一次变异两条判据都抓）',
+    file: 'cloudfunctions/getDishReview/index.js',
+    from: '  const bizFrom = event && event.biz_date_from;\n',
+    to: '',
+    guard: G1,
+    expect: [/14-①/],
+  },
+  {
+    id: 'M15',
+    desc: 'R301 反向：前端 load() 不再传区间（回到 `{}`）⇒ 跨月累计这个缺陷会悄悄回来',
+    file: 'pages/m3/dishreview/index.js',
+    from: "    const d = await api.call('getDishReview', { biz_date_from: rng.from, biz_date_to: rng.to });",
+    to: "    const d = await api.call('getDishReview', {});",
+    guard: G1,
+    expect: [/14-⑤/],
+  },
+  {
+    id: 'M16',
+    desc: 'R301 行为面：`filterByRange` 过滤后仍回原全集 ⇒ 14-③ 的行为判据必须红',
+    file: 'cloudfunctions/getDishReview/service.js',
+    from: '  return { rows, from: f, to: t, days: countDataDays(rows) };',
+    to: '  return { rows: rows0, from: f, to: t, days: countDataDays(rows) };',
+    guard: G1,
+    expect: [/14-③/],
   },
 ];
 
