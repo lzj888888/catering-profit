@@ -1,0 +1,67 @@
+=== 修前：行为探针（跨租户读成立）===
+调用者 B + shop_A ⇒ {"code":"SUCCESS","used":3}（= A 店成本卡数，修前实测）
+
+=== 修后：行为探针 ===
+===== R298 · B4 · checkQuota 跨租户读（行为级）=====
+调用者 OPENID   : openid_B（= 用户 B）
+传入 shop_id    : shop_aaaaaaaaaaaa（= 用户 A 的店）
+A 店成本卡      : 3 张 calculated + 1 张 draft（draft 不占额）
+B 用户成本卡    : 0 张
+
+出参 RAW        : {"code":"FORBIDDEN","msg":"FORBIDDEN","data":{}}
+出参 code       : FORBIDDEN
+
+✅ 结论：归属校验**已拦截**（FORBIDDEN）—— 用户 B 拿不到 A 店数据
+
+=== 修后：check_fn_public_surface 全量 ===
+===== S · 扫描面（fail-closed）=====
+✅ S-① 函数目录数 ≥ 40（扫描面非退化）  (实测 51 个目录 / 51 个有 index.js)
+✅ S-② 契约文档存在  (specs/dev-specs/core/10_云函数清单与接口契约.md)
+✅ S-② 契约文档行数 ≥ 100（没读成空/半截文件）  (201 行)
+✅ S-③ A 类（用户鉴权）函数数 ≥ 25（扫描面非退化）  (实测 A=35 / B=9 / C=7)
+✅ S-④ 锚点函数（getShopContext / saveCostCard / getLedger）都在 A 类  (三个锚点全在)
+
+===== A · 三分穷尽（每个函数必有归类）=====
+✅ A-① 每个函数都落进 A/B/C 之一（无"未分类"）  (51 个全部归类)
+✅ A-② C 类（免鉴权）数量 ≥ 4（扫描面非退化）  (实测 7 个：adminInit / adminLogin / initDb / payCallback / payExpireNotify / smokeTest / verifyTangshi)
+
+===== B · 免鉴权函数必须逐条登记 =====
+✅ B-① C 类全部登记在 PUBLIC_FNS（新增免鉴权函数必须补登记）  (7 个全部登记)
+✅ B-② 每条登记都有 why（≥12 字，说明为什么不需要鉴权）  (7 条全有)
+✅ B-③ 登记表无陈旧键（每条目录必须真实存在）  (7 条全在)
+✅ B-④ 反向：「已带鉴权却仍登记为免鉴权」⇒ 红（登记表不得腐化）  (无过期登记)
+
+===== C · 定时/探针类必须自带来源校验 =====
+✅ C-① 必须自保的登记项数 ≥ 3（定时 + 两个探针）  (实测 3 项：payExpireNotify / smokeTest / verifyTangshi)
+✅ C-② 每个必须自保的函数都真的判了来源（OPENID 后 return 拒绝）  (3 个已判)
+✅ C-③ 解析器自证：判了来源的样本 ⇒ true
+✅ C-④ 解析器自证：只取 OPENID 不拒绝的样本 ⇒ false
+
+===== E · 契约「鉴权」列 ≡ 实然归属校验（R298 · B4 越权面）=====
+✅ E-① 契约「鉴权」列含 shop 的函数数 ≥ 24（解析器非退化）  (实测 28 个)
+✅ E-② 契约含 shop 的函数都必须有归属校验（或显式豁免）  (28 个已覆盖（含 1 条豁免）)
+✅ E-③ 豁免表无陈旧键（契约里确实标了含 shop）  (1 条均对应)
+✅ E-④ 豁免表反向防腐：已补归属校验却仍登记豁免 ⇒ 红  (无腐化)
+✅ E-⑤ 每条豁免都有 why（≥12 字，说明为什么不需要归属校验）  (1 条全有)
+✅ E-⑥ 有归属校验的函数数 ≥ 26（扫描面非退化）  (实测 28 个)
+✅ E-⑦ 解析器自证：带转义竖线的 user+shop 行 ⇒ 认出该函数且鉴权含 shop  (fakeShopFn / auth=user+shop)
+✅ E-⑧ 解析器自证：鉴权列=user 的行 ⇒ 不落入 shop 面（哪怕入参格含 shop_id）  (auth=user)
+✅ E-⑨ 解析器自证：鉴权格**内含转义竖线**（user+shop\|幂等）⇒ 仍读出该格且含 shop  (auth=user+shop\|幂等)
+
+===== D · 自失效护栏 =====
+✅ D-① 断言数 ≥ 20（实测 26 的保守下沿）  (本段之前 24 条)
+✅ D-② 扫描面文件数 ≥ 40（防"扫空 ⇒ 全绿"）  (实测 51 个 index.js)
+
+==== R215 云函数公开面守卫：26 通过 / 0 失败 ====
+
+=== 契约 ≡ 实然对账（修后）===
+===== 契约鉴权列含 shop 但代码无 assertShopOwner（契约 ≡ 实然 不一致）=====
+  🔴 L179  getShopContext         契约=user+shop                    代码: auth=True defaultShopId=True
+
+===== 契约鉴权列含 shop 且代码有 assertShopOwner（一致）=====
+  共 28 个：getMonthList, getLedger, saveLedger, calcMonthlyProfit, getAmortSchedule, saveAsset, calcAmortize, getMaterial, saveMaterial, getCostCard, saveCostCard, syncCostCard, calcBom, detectCycle, importSalesBill, getDishReview, getSalesBills, clearSalesBills, saveDishMapping, getPlan, savePlan, calcSandbox, saveShopSetting, getCardVersions, archiveMonth, checkQuota, smokeTest, manageShop
+
+===== 契约鉴权列 = 无（免鉴权）的函数 =====
+  L28   initDb                 契约=无（仅 dev 管理员手动运行一次） ｜ 代码: ctx=True owner=True auth=False
+  L112  payExpireNotify        契约=无（定时任务） ｜ 代码: ctx=True owner=False auth=False
+  L123  adminLogin             契约=无（独立） ｜ 代码: ctx=True owner=False auth=False

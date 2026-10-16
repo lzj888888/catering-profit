@@ -9,6 +9,16 @@ const db = cloud.database();
 const _ = db.command;
 
 exports.main = async () => {
+  // 🔴 R298（B4）：**加来源校验**。本函数原先 `exports.main = async () => {...}` 无任何来源判定，
+  //   而契约明写「不进前端调用链」—— 但 `wx.cloud.callFunction` 是**客户端可直达**的，
+  //   ⇒ 任意已登录用户都能拿到**全库聚合**（count / sumYuan）与**跨店 `shopIds` 列表**。
+  //   判据沿用 R215 既定定式（payExpireNotify / smokeTest 同款）：**有用户 OPENID 即客户端调用 ⇒ 拒绝**；
+  //   云控制台「测试」与 `cli` 调用都没有用户上下文（OPENID 为空）⇒ 诊断能力不受影响。
+  //   ⚠️ 同族守卫 `tools/check_fn_public_surface.js` 的 PUBLIC_FNS 已把本项从 `mustSelfGuard: false`
+  //      改为 `true`（原先的豁免理由只答了「不写库」，没答「别人能不能调」）。
+  const ctx = cloud.getWXContext();
+  if (ctx && ctx.OPENID) return { ok: false, code: 'FORBIDDEN', msg: 'verifyTangshi 仅限云控制台 / cli 调用（R298 加固）' };
+
   const where = { platform: 'pos', biz_date: '2026-09-13', is_deleted: false };
   // 🔴 wx-server-sdk .get() 默认每页最多 100 条 ⇒ 必须用 .count() 取权威总数，
   //    并用 .limit(1000) 一次取全（265 < 1000）才能正确求和，否则会把 265 截断成 100。

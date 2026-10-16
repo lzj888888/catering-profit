@@ -144,7 +144,10 @@
 | **C-④ `showRows` 死槽清理** | ⏸ **改判单独一批** | 不是缺陷（死代码）；清理会碰 `selftest_batch8b` 的 179 条断言（内含 showRows 折叠模型）⇒ 必须单独审 + 单独变异，**不夹进 D1**。当前风险已由 `check_list_ux` L6b 钉住「渲染源恒为 `g.rows`」 |
 | **D2 B5 配置缺省静默 fallback** | ⏳ 未开工 | 下一个审计面（豆包新提，已取证本仓确有 `rate \|\| 0` 等形态） |
 | **D3 落盘（审计产出必落盘）** | ✅ 完成 | 本文件 + 上述复核记录 |
-
+| **D2 B5 配置缺省静默 fallback** | ✅ 完成 | 修 `netUnitCostWan` **五副本裸除**（Infinity/NaN/低估 33%）；守卫 `check_yield_rate_range` 加 E 段（24/0）；变异 **9/9**；`review/NOTE_2026-10-16_R298_D2配置缺省静默fallback.md` + `review/evidence/r298_d2_fallback/` |
+| **D4 B4 多租户越权** | ✅ 完成 | **判定口径**＝契约「鉴权」列 ≡ 代码实然：契约含 `shop` 的 **28** 个函数里 **2** 个不合格 ⇒ 修 `checkQuota`（越权读，行为级实证 `used:3`）；修 `verifyTangshi`（无来源校验，跨店 `shopIds` 暴露）；守卫 `check_fn_public_surface` 加 **E 组 8 条** + C-① 下界 2→3（17→26 断言）；变异 **10/10**；`review/NOTE_2026-10-16_R298_B4多租户越权.md` + `review/evidence/r298_b4_tenant/` |
+| **D5 B2 金额精度 / B3 导出入往返** | ⏳ 未开工 | PLAN 第二梯队剩余两项 |
+| **⏸ 登记不修** | — | ① `getShopContext` 忽略 `event.shop_id`（**不越权**但属幽灵入参；连带 `shopSwitcher.switchShop` 不刷新 `shop_name`/`switches` ⇒ 多店语义缺陷候选，需先审后合）② `payCreateOrder` 落库未校验 `shop_id`（契约列=`user`，轻微） |
 ## 执行中新踩到的坑（已沉淀）
 
 1. **判据③ 的精确形态**：`含中文 且 ∈ 术语值集`（合取）—— 只判"∈ 值集"会被术语表里的

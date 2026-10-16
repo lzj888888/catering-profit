@@ -216,6 +216,7 @@ const A15_EXEMPT = [
   // R181l（批次 F 阶段①）：新增授权云函数 importSalesBill（账单导入：xlsx → 解析 → 甲级门禁 →
   //   落 external_sales_daily）。按 round103 白名单式登记，**不放宽成全豁免**：
   /^cloudfunctions\/importSalesBill\//,
+  /^cloudfunctions\/verifyTangshi\//,                 // R298（B4）：加来源校验（有用户 OPENID 即拒）—— 越权面修补，非同步动作
   // ⚠️ 2026-09-25（round127/r128）**八次触发** —— 同一时机关卡第 8 次：M3 v1.2 批次 P0 授权改
   //   saveCostCard / saveMaterial / syncCostCard（**已在 round116 白名单内**）+ getMaterial（新增登记）。
   //   本批改动内容：M3.2 原料软删分支、M3.3 临时手工行（input_type=2）、M3.7 成本卡软删（按 card_code 全版本）、
