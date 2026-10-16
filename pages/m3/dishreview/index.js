@@ -14,6 +14,10 @@ const { openPaywall } = require('../../../utils/paywall.js');
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 // R260：菜名映射「建议卡」纯函数（**只预选、不落库**，规范 v1.9 §0 D32）
 const { suggestCardIndex, BATCH_CHUNK } = require('../../../utils/dishMapSuggest.js');
+// R299：云函数出参 `truncated` 的**可见降级**唯一谓词（单源）。
+//   为什么：`dataAdapter.js::listAll` 明文要求调用方把「已到读取上限、可能不全」透传到**用户面前**
+//   （可见降级），服务端照做了、前端此前零消费 ⇒ 超上限时静默少行。见 `utils/dataHealth.js` 头注。
+const dh = require('../../../utils/dataHealth.js');
 
 const fenYuan = (fen) => (Number(fen) || 0) / 100;
 const fmtYuan = (fen) => fenYuan(fen).toFixed(2);
@@ -113,9 +117,14 @@ Page({
       reviewDataTitle: TERMS.card.reviewDataTitle,
       cur: '¥',
       loading: TERMS.ui.loading,
+      // R299：数据截断的可见降级文案（单源 TERMS.ui.dataTruncated）
+      dataTruncated: TERMS.ui.dataTruncated,
     },
     loading: true,
     locked: false,
+    // R299：本页是否有**已被服务端标记为「已达读取上限」**的读取（复盘榜 / 成本卡 / 账单任一）。
+    //   为 true ⇒ 页面顶部显示可见降级提示 —— 见 utils/dataHealth.js 头注（为什么不能静默）。
+    truncated: false,
     // 🔴 R281 O2：两个折叠区默认**收起** —— 首屏只留「未匹配待办条 + 堂食榜 + 外卖榜」。
     //   覆盖率 / 自助餐 / 阈值 / 已关联 / 账单 只是**折层级，不删**（守 R264/R272/R255/R252）。
     moreOpen: false,
@@ -169,8 +178,19 @@ Page({
     mappingBusy: false,   // 写操作进行中（防连点重复提交）
   },
 
-  onLoad() { this.init(); },
-  onShow() { if (this.data.locked) this.init(); },   // 从付费弹窗返回后重试
+  onLoad() { this._shown = false; this.init(); },
+  // 🔴 R299（缺陷 D3）：「去建卡 / 去映射」在本页是 `navigateTo` 跳走再回来（R264 专门设计的闭环），
+  //   而本页 `enablePullDownRefresh: false`（无下拉刷新）、旧 onShow 又**只在 locked 时**重载
+  //   ⇒ 返回后页面全然不刷新：刚建的卡不进关联 picker、刚挂的菜不进榜、unmatched 也不减少
+  //   ⇒ 用户会以为「卡没建上 / 关联失败」并重复操作。
+  //   本页是**只读页**（零未保存输入）⇒ 返回时重载是安全且期待的。
+  //   对照 `pages/card/index.js:122` 同类只读页即 `onShow(){this.load()}` —— 说明这是遗漏，不是设计选择。
+  //   首次进入不重复拉：onLoad 的 init() 已经在拉，`_shown` 此时仍为 false。
+  onShow() {
+    if (this.data.locked) { this.init(); return; }   // 从付费弹窗返回后重试
+    if (this._shown) this.load();
+    this._shown = true;
+  },
 
   async init() {
     try {
@@ -194,6 +214,12 @@ Page({
     const snapMonth = x.snapshot_month || '';
     const isOld = snapMonth && snapMonth !== this.data.curMonth;
     return {
+      // 🔴 R299（缺陷 D1）：`dishKey` **必须带出来** —— 覆盖率「共 N 道」必须按**菜品身份**去重，
+      //   而本行的 `name` 是**成本卡名**（service.js:95 `card.name || dishKey`），与未匹配行的
+      //   `name`（service.js:86 `dishKey`，**菜名**）**不是同一个命名空间**。
+      //   此前覆盖率把两者塞进同一个 Set ⇒ 多张卡挂到同一张卡时「共 N 道」少算、卡名与菜名
+      //   碰巧同名时两个数一起错（用户可见的错数，见 evidence FINDINGS §2）。
+      dishKey: x.dish_key || x.name || '',
       name: x.name || x.dish_key,
       qty: x.qty,
       revenueText: fmtYuan(x.amountFen),
@@ -224,9 +250,12 @@ Page({
   async load() {
     this.setData({ loading: true });
     const d = await api.call('getDishReview', {});
+    // 🔴 R299（缺陷 D2）：消费服务端 `truncated`（可见降级）。见 utils/dataHealth.js 头注。
+    this._setTrunc('review', dh.isTruncated(d));
     // 🔴 R255：成本卡列表（「关联」picker 用）。**必须在这里先拉** —— 下面构造
     //   unmatched（显示已关联卡名）与 mappings（显示卡名）都要用它做 code→name。
-    const { cardOptions, cardCodes, nameByCode } = await this.loadCards();
+    const { cardOptions, cardCodes, nameByCode, truncated: cardsTruncated } = await this.loadCards();
+    this._setTrunc('cards', cardsTruncated);
 
     const dineIn = (d.dine_in || []).map((x) => this.fmtRanked(x));
 
@@ -346,18 +375,27 @@ Page({
     //   🔴 覆盖率按**金额**算，不按行数：真表里有 43 份 0 元的「口味询问类 SKU」，
     //      按行数算会把它们计入分母 ⇒ 覆盖率被稀释，且不能反映"钱有没有算到"。
     //   🔴 道数按**菜名去重**：同一道菜会出现在堂食 + 多个外卖平台，按行加总会把一道菜数成三道。
+    // 🔴 R299（缺陷 D1）：道数去重**必须按 `dishKey`（菜品身份）**，两侧同一命名空间。
+    //   改动前用的是 `.name`，而 `.name` 在两类行上语义不同：
+    //     · 已匹配行 `service.js:95` ⇒ `card.name || dishKey`（**成本卡名**）
+    //     · 未匹配行 `service.js:86` ⇒ `dishKey`（**菜名**）
+    //   ⇒ 多张菜挂同一张卡时「共 N 道」少算；卡名与某未匹配菜名碰巧同名时两个数一起错。
+    //   服务端**本来就返回** `dish_key`，是前端 discard 掉了 ⇒ 零云端改动的纯前端修复。
     const sumFen = (arr) => (arr || []).reduce((s, x) => s + (Number(x.amountFen) || 0), 0);
     let rankedFen = sumFen(dineIn);
-    const dishNames = new Set();
-    dineIn.forEach((x) => dishNames.add(x.name));
+    const dishKeys = new Set();
+    dineIn.forEach((x) => dishKeys.add(x.dishKey));
     (takeaway || []).forEach((b) => {
       rankedFen += sumFen(b.ranked);
-      (b.ranked || []).forEach((x) => dishNames.add(x.name));
+      (b.ranked || []).forEach((x) => dishKeys.add(x.dishKey));
     });
     const unmatchedFen = unmatchedSorted.reduce((s, x) => s + (Number(x.amountFen) || 0), 0);
-    unmatched.forEach((x) => dishNames.add(x.name));
-    const coverageCount = dishNames.size;
-    const coverageMatched = dishNames.size - new Set(unmatched.map((x) => x.name)).size;
+    unmatched.forEach((x) => dishKeys.add(x.dishKey));
+    const coverageCount = dishKeys.size;
+    // ⚠️ 保留原公式语义（共 = 两侧并集；已算 = 共 − 未匹配数），**只统一命名空间**。
+    //   跨平台「同一道菜在堂食已匹配、在外卖未匹配」会被记为「未算全」—— 改动前即如此，本轮不改（已登记）。
+    const unmatchedKeys = new Set(unmatched.map((x) => x.dishKey));
+    const coverageMatched = coverageCount - Array.from(unmatchedKeys).filter((k) => dishKeys.has(k)).length;
     const allFen = rankedFen + unmatchedFen;
     const coveragePct = allFen > 0 ? Math.round((rankedFen * 100) / allFen) : 0;
     const coverageText = String(TERMS.card.reviewCoverage)
@@ -449,6 +487,18 @@ Page({
     await this.loadBills();
   },
 
+  // ===== R299：数据截断（可见降级）==========
+  //   为什么单立一个方法：复盘 / 成本卡 / 账单是**三次独立读取**，任一处被服务端标记
+  //   `truncated` 都意味着"屏幕上看到的可能不全" ⇒ 只要有一处，就显示提示。
+  //   用 `_trunc` 而不是三处各写一次 `setData({truncated})` —— 否则后一次读取会把前一次的
+  //   标记**覆盖掉**（三处互相冲掉 = 提示时有时无，比不提示更难查）。
+  _setTrunc(source, truncated) {
+    this._trunc = this._trunc || {};
+    this._trunc[source] = !!truncated;
+    const any = Object.keys(this._trunc).some((k) => this._trunc[k]);
+    if (any !== this.data.truncated) this.setData({ truncated: any });
+  },
+
   // ===== R255：成本卡列表（供「关联」picker 用）=====
   //   复用既有 `getCostCard({})`（出参 list[] = 该店各卡的最新版本），**不新增读接口**。
   //   🔴 失败不阻断：卡列表拉不到 ⇒ 只影响「关联」入口（数组置空 ⇒ picker 不渲染），
@@ -471,9 +521,11 @@ Page({
         nameByCode[cc] = nm;
         return nm;
       });
-      return { cardCodes: codes, cardOptions, nameByCode };
+      // 🔴 R299：把 `truncated` **带出去**（由调用方统一汇总显示，见 _setTrunc）。
+      //   卡少了 ⇒ picker 选项少 ⇒ 用户明明有卡却挂不上，且零提示（静默少卡）。
+      return { cardCodes: codes, cardOptions, nameByCode, truncated: dh.isTruncated(res) };
     } catch (e) {
-      return { cardCodes: [], cardOptions: [], nameByCode: {} };
+      return { cardCodes: [], cardOptions: [], nameByCode: {}, truncated: false };
     }
   },
 
@@ -633,9 +685,14 @@ Page({
         cleared: !!x.cleared,
       }));
       this.setData({ bills, billsSummary: res.summary || null });
+      // 🔴 R299（缺陷 D2）：账单列表是所有已导入账单的"账"，少行 = 用户以为没导过 ⇒ 同样必须可见降级。
+      //   ⚠️ `getSalesBills` 的 `truncated` 判据与其它函数**不同源**（它用 `>= LIST_LIMIT`，
+      //      见 `cloudfunctions/getSalesBills/index.js:41-44` 注释），但出参字段名相同 ⇒ 谓词通用。
+      this._setTrunc('bills', dh.isTruncated(res));
     } catch (e) {
       // 账单区是"附加信息"：失败就留空，不 toast（复盘主区已渲染，不该被它打断）
       this.setData({ bills: [], billsSummary: null });
+      this._setTrunc('bills', false);
     }
   },
 

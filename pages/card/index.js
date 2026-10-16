@@ -9,6 +9,7 @@ const { openPaywall, openService } = require('../../utils/paywall.js');
 const exportFile = require('../../utils/exportFile.js');   // R265：导出投递单源（落盘 + 打开 + 转发兜底）
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 const band = require('../../utils/marginBand.js');   // 🔴 R298Y：毛利色阶/区间**唯一单源**（数值 + 文案 + 色值）
+const dh = require('../../utils/dataHealth.js');     // 🔴 R299：出参 `truncated` 的可见降级（单源）
 
 // 本店用过的菜品分类（本地字典，与 edit.js 同一 key；不新建集合 —— M3 v1.1 零新建集合红线）
 const LIST_CATS_KEY = 'm3_dish_cats';
@@ -40,6 +41,8 @@ Page({
       empty: TERMS.card.empty,
       hintAlways: TERMS.card.hintAlways,
       loading: TERMS.ui.loading,
+      // R299：数据截断的可见降级文案（单源 TERMS.ui.dataTruncated）
+      dataTruncated: TERMS.ui.dataTruncated,
       cur: '¥',
       calcModeA: TERMS.card.calcModeA,
       calcModeB: TERMS.card.calcModeB,
@@ -107,6 +110,9 @@ Page({
     selectMode: false, // 批量同步选择模式
     selected: {},      // { card_code: true }
     loading: true,
+    // R299：本店成本卡读取是否被服务端标记「已达读取上限」（截断 ⇒ 列表可能少卡，
+    //   且因列表无排序「丢哪张随机」）。为 true ⇒ 顶部显示可见降级提示。见 utils/dataHealth.js。
+    truncated: false,
   },
 
   // R234/J4e：行内提示折叠开关（仓内统一形态 —— 多页同一实现，不各写一套）。
@@ -127,6 +133,9 @@ Page({
       await api.ensureShop();
       ui.setTitle(TERMS.card.listTitle);
       const d = await api.call('getCostCard', {});
+      // 🔴 R299：消费出参 `truncated`（可见降级）—— 卡少了 ⇒ 用户以为"我就这几张卡"，
+      //   且列表无排序 ⇒ 丢哪张随机。`dataAdapter.js::listAll` 明文要求调用方必须透传到用户面前。
+      const truncated = dh.isTruncated(d);
       // round156：置顶（店铺级偏好）—— 读失败**不阻断列表**：它只是排序偏好，不是数据。
       let pinned = [];
       try {
@@ -170,7 +179,7 @@ Page({
       }
       // 本店用过的分类写进本地字典 ⇒ 编辑页 chips 直接可点（新建卡也不用重打"锅底"）
       try { wx.setStorageSync(LIST_CATS_KEY, Array.from(catSeen).slice(0, 40)); } catch (err) { /* 忽略 */ }
-      this.setData({ all, categoryOptions, tagOptions, pinned, loading: false });
+      this.setData({ all, categoryOptions, tagOptions, pinned, loading: false, truncated });
       this.applyFilter();
     } catch (e) {
       this.setData({ loading: false });

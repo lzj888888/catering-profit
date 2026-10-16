@@ -19,6 +19,7 @@ const ui = require('../../utils/ui.js');
 const sw = require('../../utils/shopSwitcher.js');
 const { openPaywall } = require('../../utils/paywall.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
+const dh = require('../../utils/dataHealth.js');   // 🔴 R299：出参 `truncated` 的可见降级（单源）
 const app = getApp();
 
 const NAME_MAX = 20;
@@ -45,6 +46,7 @@ Page({
       resetDone: TERMS.exp.resetDone,
       resetNoData: TERMS.exp.resetNoData,
       checkingImpact: TERMS.exp.checkingImpact,
+      dataTruncated: TERMS.ui.dataTruncated,
       namePh: TERMS.settings.shopNamePh,
       createOk: TERMS.exp.createOk,
       save: TERMS.buttons.save,
@@ -155,29 +157,37 @@ Page({
 
   // 🔴 后果量级必须**真去查**（op=stats），不能拿「数据将永久丢失」这类万能恐吓句糊弄。
   //   查不到（-1）⇒ **不许往下走**（fail-closed）：宁可不给这个口子，也不让用户盲确认。
+  // 🔴 R299（缺陷 D2）：`op=stats` 的清点**本身**可能被服务端截断（`listAll` 撞 LIST_TOTAL_CAP），
+  //   此时 `months` 是**偏小的** —— 而它会被直接写进「将永久删除 N 个月数据」的确认框
+  //   ⇒ 用户是在**被低估的后果量级**上点确认。故必须把 `truncated` 一路带出到拍板那一刻。
   async fetchImpact(id) {
     wx.showLoading({ title: this.data.t.checkingImpact, mask: true });
     try {
       const d = await api.call('manageShop', {
         op: 'stats', target_shop_id: id, client_request_id: 'ss_' + Date.now(),
       });
-      return (d && Number(d.months)) || 0;
+      return { months: (d && Number(d.months)) || 0, truncated: dh.isTruncated(d) };
     } catch (e) {
       api.toastError(e);
-      return -1;
+      return { months: -1, truncated: false };
     } finally {
       wx.hideLoading();
     }
   },
 
+  // 清点被截断时给确认框补一行"读到的可能不全"（复用全局单源文案 TERMS.ui.dataTruncated）。
+  impactWarn(truncated) {
+    return truncated ? '\n' + this.data.t.dataTruncated : '';
+  },
+
   async askReset(id, name) {
     if (this.data.busy) return;
-    const months = await this.fetchImpact(id);
-    if (months < 0) return;
-    if (months === 0) { wx.showToast({ title: this.data.t.resetNoData, icon: 'none' }); return; }
+    const imp = await this.fetchImpact(id);
+    if (imp.months < 0) return;
+    if (imp.months === 0) { wx.showToast({ title: this.data.t.resetNoData, icon: 'none' }); return; }
     wx.showModal({
       title: this.data.t.resetShop + ' · ' + name,
-      content: this.data.t.resetAsk(months),
+      content: this.data.t.resetAsk(imp.months) + this.impactWarn(imp.truncated),
       cancelText: TERMS.buttons.thinkAgain,
       confirmText: TERMS.exp.resetOk,
       confirmColor: '#e74c3c',
@@ -228,8 +238,8 @@ Page({
     if (this.data.busy) return;
     // 🔴 R210：先报**后果量级**再让用户拍板 —— 真查到几个月就写几个月；
     //   清点失败（-1）直接不开这个窗（不拿「数据可能丢失」这种万能恐吓句糊弄过去）。
-    const months = await this.fetchImpact(id);
-    if (months < 0) return;
+    const imp = await this.fetchImpact(id);
+    if (imp.months < 0) return;
     // 🔴 R208：**不再禁止删除最后一家**。旧实现在这里直接 return 一个「至少要保留一家」弹窗，
     //   与 `exp.deleteConfirm` 承诺的「不再占用店铺额度」自相矛盾 —— 免费档（限 1 家）
     //   永远删不掉 ⇒ 额度永远腾不出来，想换店只能付费。改为**分级告知后果**：
@@ -238,7 +248,7 @@ Page({
     const willBeEmpty = (this.data.list || []).length <= 1;
     wx.showModal({
       title: TERMS.exp.deleteShop + ' · ' + name,
-      content: this.data.t.deleteAsk(months) + (willBeEmpty ? '\n' + this.data.t.deleteLastHint : ''),
+      content: this.data.t.deleteAsk(imp.months) + (willBeEmpty ? '\n' + this.data.t.deleteLastHint : '') + this.impactWarn(imp.truncated),
       cancelText: TERMS.buttons.thinkAgain,
       // ⚠️ showModal 按钮文案 ≤4 字（超了整窗 fail 且静默）。
       // 🔴 本行**不得写行内注释**：`tools/check_modal_button_len.js` 的解析器按整行取值，

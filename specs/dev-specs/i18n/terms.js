@@ -177,6 +177,11 @@ const TERMS = {
     loading: '加载中…',
     save: '保存',
     cancel: '取消',
+    // R299：云函数出参 `truncated` 的**可见降级**文案（单源）。为什么必须有：
+    //   `dataAdapter.js::listAll` 明文要求「达上限仍有剩余 ⇒ 调用方必须透传到出参（可见降级）」，
+    //   四个云函数照做了、前端却零消费 ⇒ 超上限时静默少行（复盘榜/账单/成本卡列表）。
+    //   守 `tools/check_truncated_surfaced.js`（消费点 fail-closed 登记表）。
+    dataTruncated: '数据量已达单次读取上限，以下内容可能不完整。',
     all: '全部',
     back: '返回',
     income: '收入',

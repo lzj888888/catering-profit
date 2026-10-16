@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：177 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：178 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -531,6 +531,17 @@
 //         + ② 行级往返（同族；且必须 ∈ 出参层 lineToOut）+ ③ 复制面（onCopy 的 `l.X` ⊆ getCostCard::lineToOutput）
 //         + ④ 函数体抽取 fail-closed / 集合下界 / 正样本。⚠️ **剥注释是判据成立的前提**：不剥则注释里的字段名
 //         会喂饱两个集合 ⇒ 缺陷②永远抓不出来（首版实测））
+//       + 云函数出参 `truncated` **消费面**守卫（tools/check_truncated_surfaced.js，R299：本仓同族病
+//         的**最后一公里** —— `dataAdapter.js::listAll` 明文要求「达上限仍有剩余 ⇒ 调用方**必须**把这个
+//         事实透传到出参（**可见降级**）」，四个云函数照做了、**前端曾零消费**（全仓 grep `truncated`
+//         在 pages/utils/miniprogram 下为空）⇒ 超 LIST_TOTAL_CAP(20000) 时复盘榜 / 账单列表 / 成本卡列表
+//         **静默少行**，页面照常渲染、零提示。判据 = ①**生产者面**（从 `cloudfunctions/*/index.js` 的
+//         `ok({...})` 里**实扫**出真的回了 `truncated` 的函数 —— 不写死名单，且必须同时认 `truncated:` 与
+//         **简写** `truncated,`，首版只认冒号曾漏掉 getSalesBills）+ ②**契约面**（`dataAdapter` 的
+//         「必须透传 / 可见降级 / LIST_TOTAL_CAP 是显式常量」原话仍在）+ ③**消费者面 fail-closed 登记表**
+//         （每个碰过 emitter 的页面文件：要么消费 `isTruncated`、要么在 `EXEMPT` 里带 why ⇒ 未表态即判红；
+//         且登记表**无僵尸键**（文件改名后豁免悄悄失效）**无空转键**（豁免表变成躲避修复的垃圾桶））
+//         + ④**反恒真**（未消费样本必须判不通过）+ 三个真消费点正样本）
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
 //    那两处仍是**人工面**，改 SUITES 后须手动跟（A–L 无一组能发现重启键自相矛盾）。
 // 用同一个 node（process.execPath）跑子进程，避免多解释器/环境问题。
@@ -1110,6 +1121,15 @@ const SUITES = [
   //        + ② 行级往返（同族，且必须可出参）+ ③ 复制面 + ④ 函数体抽取 fail-closed 与集合下界、正样本。
   //   ⚠️ 剥注释是判据成立的前提：不剥则注释里的字段名会喂饱集合 ⇒ 缺陷 C 永远抓不出（实测）。
   ['m3-card-roundtrip', 'tools/check_m3_card_roundtrip.js'],
+  // ===== R299 ·云函数出参 `truncated` 的**消费面**守卫 =====
+  //   见头部注释同名条目。为什么需要：`dataAdapter.js::listAll` 明文要求「达上限仍有剩余 ⇒
+  //   调用方**必须**把这个事实透传到出参（**可见降级**）」，四个云函数照做了、**前端曾零消费**
+  //   ⇒ 超 LIST_TOTAL_CAP(20000) 时复盘榜/账单/成本卡列表**静默少行**。
+  //   判据 = ① 生产者面（从 cloudfunctions 的 ok({...}) 里**扫**出真的回 truncated 的函数，
+  //        不写死名单；含简写属性 `truncated,`）+ ② 契约面（dataAdapter 的原话仍在）
+  //        + ③ 消费者面 **fail-closed 登记表**（未消费未登记 ⇒ 判红；且登记表无僵尸键/空转键）
+  //        + ④ 反恒真（未消费样本必须判不通过）+ 三个真消费点正样本。
+  ['truncated-surfaced', 'tools/check_truncated_surfaced.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

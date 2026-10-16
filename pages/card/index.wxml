@@ -1,4 +1,9 @@
 <view class="container safe-bottom">
+  <!-- ===== R299：数据截断的**可见降级** =====
+       云函数出参 `truncated`（`dataAdapter.js::listAll` 契约要求"必须透传到出参、可见降级"）。
+       成本卡是版本模型（只 INSERT）⇒ 卡多/改得勤的店会先撞上限；截断时列表少卡且**无排序**，
+       "丢哪张随机" ⇒ 用户会以为卡丢了。 -->
+  <view class="muted warn-line" wx:if="{{truncated}}">{{t.dataTruncated}}</view>
   <!-- R234/J4e：本句 ≥18 字 ⇒ 折叠（R234 完整清点口径：剥注释 + 含复合 class）。 -->
   <view class="hint-fold">
     <view class="hint-fold-head" data-key="ciHintAlways" bindtap="onToggleHintFold">

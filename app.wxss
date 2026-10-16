@@ -58,6 +58,12 @@ page { background: #f5f6f8; font-family: -apple-system, "PingFang SC", sans-seri
 .result-num { font-size: 56rpx; font-weight: 800; color: #1e3a5f; }
 .muted { color: #666; font-size: 28rpx; }
 .hint { font-size: 28rpx; color: #4a5b70; background: #f3f7fb; border-radius: 12rpx; padding: 16rpx 20rpx; margin-bottom: 12rpx; line-height: 1.6; }
+/* 🔴 R299：数据截断的**可见降级**行（全局单源，多页共用 —— 复盘页 / 成本卡列表 / 店铺清点）。
+ * 为什么是全局：同一个语义（"服务端已达读取上限，你看的可能不全"）出现在 ≥2 个页面，
+ *   各页各写一份色值 ⇒ 改主题时逐页漏改（本仓既有红线，见上方 R191 段）。
+ * 为什么必须醒目：它不是"附加信息"，而是"这页数字还准不准"的前提 ⇒ 用琥珀底 + 左侧色条，
+ *   不用 .muted（灰字会被当成普通说明跳过）。深色模式已全站移除（见上），浅色底安全。 */
+.warn-line { font-size: 28rpx; color: #92610a; background: #fdf3d8; border-left: 8rpx solid #e8a33d; border-radius: 0 12rpx 12rpx 0; padding: 16rpx 20rpx; margin-bottom: 12rpx; line-height: 1.6; }
 .safe-bottom { padding-bottom: calc(env(safe-area-inset-bottom) + 24rpx); }
 .switch-row { display: flex; justify-content: space-between; align-items: center; padding: 24rpx 20rpx; background: #fff; border-radius: 16rpx; margin-bottom: 12rpx; }
 .switch-row .lbl2 { font-size: 30rpx; }

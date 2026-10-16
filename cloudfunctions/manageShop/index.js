@@ -217,6 +217,13 @@ async function onStats(da, target) {
     op: 'stats', shop_id: target,
     months: st.months, rows: st.rows,
     income: st.income, expense: st.expense,
+    // 🔴 R299（缺陷 D2）：**必须把清点可能被截断这件事回出去** ——
+    //   本函数的 `months/rows` 会被前端直接写进「将永久删除 N 个月数据」的确认框。
+    //   `scanMonthly` 里 `listAll('shop_monthly_account')` 命中 LIST_TOTAL_CAP（20000）时
+    //   `months` 是**偏小的**（少数的月份既不会被数到、也不会报错）⇒ 用户是在**被低估的后果量级**上
+    //   点「确认删除」。同文件 `op=reset` 路径已经消费了它（`decideReset` 见 truncated ⇒ fail-closed），
+    //   唯独这条**只读**路径把它丢在内部返回里 ⇒ "写读取方 ≠ 修好" 的又一例。
+    truncated: !!st.truncated,
   });
 }
 

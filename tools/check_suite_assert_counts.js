@@ -146,7 +146,7 @@ const CASES = [
   { key: 'check_home_ui_v3', rel: 'tools/check_home_ui_v3.js' }, // 32 条（R207：S 护栏 5 / A 头卡 13 / B 口径 4 / C 模块卡与入口保全 7 / D 全局单源 3；A-⑬~⑮=R298 hasProfit 必须以「有账本记录」为前置，否则新用户看到 ¥0.00）
   { key: 'check_shop_lifecycle', rel: 'tools/check_shop_lifecycle.js' }, // 29 条（R208：S 护栏 4 / A 配额语义 5（实跑 decideDelete）/ B 删空不死锁 6 / C 入口不藏 10 / D 文案对齐 4）
   { key: 'check_month_picker', rel: 'tools/check_month_picker.js' }, // 18 条（R209：S 护栏 4 / A handler 实跑 5 / B 后端实跑 4 / C 全仓回归 3 / D UI 一致 2）
-  { key: 'check_shop_reset', rel: 'tools/check_shop_reset.js' }, // 52 条（R210：S 护栏 / A 实跑 decideReset / B 实跑 validateInput / C 范围恰三表不含资产 / D 前端三按钮 / E 文案量级 / F 写库纪律）
+  { key: 'check_shop_reset', rel: 'tools/check_shop_reset.js' }, // 53 条（R210：S 护栏 / A 实跑 decideReset / B 实跑 validateInput / C 范围恰三表不含资产 / D 前端三按钮 / E 文案量级 / F 写库纪律）
   { key: 'check_entitlement_flow', rel: 'tools/check_entitlement_flow.js' }, // 28 条（R213：E-A 实跑单源 9 / E-B 实跑配额 7 / E-C 链路在场 9 / E-D 护栏 3）
   { key: 'check_fn_public_surface', rel: 'tools/check_fn_public_surface.js' },
   { key: 'check_paid_quota_unlock', rel: 'tools/check_paid_quota_unlock.js' }, // 8 条（R215b：S 扫描面 2 / A 免费额度须被 paid 短路 1 / B 硬上限不得被 paid 豁免 1 / C 注入与单源 2 / D 解析器正负样本 2） // 17 条（R215：S 扫描面 5 / A 三分穷尽 2 / B 登记双向 4 / C 来源自保 4 / D 自失效 2）
@@ -180,7 +180,7 @@ const CASES = [
   // R232f：getDishReview 算法层守卫 —— 阶段②读侧原「零判据」（算法内联在 exports.main 里，无法 require）。
   //   32 条 = ⓪ 模块在场 4 + ① 真调生产 buildDishReview 16（含 C-10 回归 + 反恒真）+ ② 架构防退化 5 + ③ 单源 3 + ④ 自失效护栏 4。
   //   变异回灌 6/6 有效红（版本选取/未匹配归零/零除/漏项/本地时区/聚合覆盖），全部命中目标断言名。
-  { key: 'check_dishreview_engine', rel: 'tools/check_dishreview_engine.js' }, // 107 条（⓪~⑬；⑤=R249-B 页面消费契约；⑥=R251 平台块不得只留光标题；⑨=R259 外卖毛利率口径说明；⑩=R261 未匹配按营收降序；⑪=R262「卡不够挂」引导；⑫=R264 覆盖率按金额+行内去建卡预填+卡不够不给批量按钮；⑬=R298 跨端契约机器码：云端只回 high/low/ok、前端色号表 ⊆ 术语表键集）
+  { key: 'check_dishreview_engine', rel: 'tools/check_dishreview_engine.js' }, // 109 条（⓪~⑬；⑤=R249-B 页面消费契约；⑥=R251 平台块不得只留光标题；⑨=R259 外卖毛利率口径说明；⑩=R261 未匹配按营收降序；⑪=R262「卡不够挂」引导；⑫=R264 覆盖率按金额+行内去建卡预填+卡不够不给批量按钮；⑬=R298 跨端契约机器码：云端只回 high/low/ok、前端色号表 ⊆ 术语表键集）
   // H-1 扩面（M3.33 形态 C 解析层）：parseDishSalesC 守卫同批纳入 —— 它的 R-C2 三组反例（订单交易额 2974.91≠1823.08 /
   //   补零 357≠354 / 销量文本 isFinite("43")=false）与 R-C4 自失效护栏正是「非恒真」凭据；
   //   16 条删掉一批仍 > 0 ⇒ A0-② 的「通过数为 0」下界抓不到，只有 A2「声明 ≡ 实跑」能发现（同 round73 立本守卫根因）。

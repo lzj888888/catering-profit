@@ -159,10 +159,19 @@ check('D-⑤ fail-closed：清点失败时的哨兵值被两处调用方明判�
   (pageCode.match(/months\s*<\s*0/g) || []).length >= 2, String((pageCode.match(/months\s*<\s*0/g) || []).length) + ' 处');
 check('D-⑥ 没有月账时不弹危险确认窗（改弹提示直接收手）',
   /months\s*===\s*0\s*\)\s*\{\s*wx\.showToast/.test(pageCode.replace(/\s+/g, ' ')) || /months === 0/.test(pageCode));
-check('D-⑦ 确认框文案真的把月数插进去了（resetAsk(months) 传参，不是硬编码一句）',
-  /content:\s*this\.data\.t\.resetAsk\(months\)/.test(pageCode));
-check('D-⑧ 删除同理：content 走 deleteAsk(months)，不再是固定一句',
-  /content:\s*this\.data\.t\.deleteAsk\(months\)/.test(pageCode));
+// 🔴 R299 判据升级（原判据钉了字面量 `resetAsk(months)` ⇒ 把"月数"换个变量名就判红）：
+//   要守的**语义**是「把**查到的量级**插进确认框文案，而不是硬编码一句恐吓话」，
+//   与该量级叫什么变量无关（R299 起 `fetchImpact` 改回 `{months, truncated}` 对象 ⇒ 实参成了 `imp.months`）。
+//   ⇒ 判据改为「实参是**标识符表达式**（非字符串/数字字面量）」。
+const ASK_ARG_RE = /content:\s*this\.data\.t\.(resetAsk|deleteAsk)\(\s*(?!['"\d])[A-Za-z_$][\w$.]*\s*\)/;
+check('D-⑦ 确认框文案真的把月数插进去了（resetAsk(<标识符>) 传参，不是硬编码一句）',
+  /content:\s*this\.data\.t\.resetAsk\(\s*(?!['"\d])[A-Za-z_$][\w$.]*\s*\)/.test(pageCode));
+check('D-⑧ 删除同理：content 走 deleteAsk(<标识符>)，不再是固定一句',
+  /content:\s*this\.data\.t\.deleteAsk\(\s*(?!['"\d])[A-Za-z_$][\w$.]*\s*\)/.test(pageCode));
+// 反恒真：上面两条判据喂给「硬编码一句」的样本 ⇒ 必须判不通过（证明它守的是"有量级"，不是"有调用"）。
+check('D-⑨ 反恒真：content 写死一句（resetAsk(\'确定吗\')）⇒ D-⑦/D-⑧ 的判据必须判不通过',
+  !ASK_ARG_RE.test("content: this.data.t.resetAsk('确定吗'),")
+  && !ASK_ARG_RE.test('content: this.data.t.deleteAsk(1),'));
 check('D-⑨ 真正执行清空走 op=reset', /op:\s*'reset'/.test(pageCode));
 // 🔴 三个按钮进来后名字区只剩 ~326rpx，而店名上限 NAME_MAX=20 字 ⇒ 不截断会溢出压在按钮上
 //   （同族于 R195 实测的「按钮被顶出卡片」）；所以名字必须包一层自带 ellipsis 的节点。

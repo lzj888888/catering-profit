@@ -638,8 +638,28 @@ function section12() {
     && /const allFen = rankedFen \+ unmatchedFen/.test(pageSrc)
     && /Number\(x\.amountFen\)/.test(pageSrc)
     && /amountFen: x\.amountFen \|\| 0/.test(pageSrc));
-  check('12-④ 道数按菜名去重（同一道菜会出现在堂食 + 多个外卖平台，按行加总会数重）',
-    /dishNames\.add/.test(pageSrc) && /dishNames\.size/.test(pageSrc));
+  // 🔴 R299 升级（原判据的盲区）：旧判据只问「用没用 Set 去重」（`/dishNames\.add/ && /dishNames\.size/`），
+  //   **不问「去重用的那个字段在两侧是不是同一个命名空间」** —— 属"守了形状、没守语义"（R298Y 同族）。
+  //   实况（修复前）：两侧都取 `.name`，而 `.name` 语义不同 ——
+  //     · 已匹配行 `service.js:95` ⇒ `card.name || dishKey`（**成本卡名**）
+  //     · 未匹配行 `service.js:86` ⇒ `dishKey`（**菜名**）
+  //   ⇒ 多张菜挂到同一张卡时「共 N 道」少算；卡名与某未匹配菜名碰巧同名时两个数一起错（用户可见的错数）。
+  //   新判据 = 「菜品身份 `dishKey` 被带出 + 三侧(堂食/外卖/未匹配)都按它去重 + 旧命名空间不得复活」。
+  //   ⚠️ 必须**钉住去重参数的实参**（`dishKeys.add(x.dishKey)`）而不只是"调了 add"：
+  //      只数 `dishKeys.add(` 的次数时，把实参换成 `x.name` 照样是 3 次 ⇒ 判据恒真（本判据首版即此病）。
+  //   ⚠️ `dishKey:` 那条腿必须**锚定在 `fmtRanked` 函数体内**：同文件 `pushUnmatched` 里另有一处
+  //      `dishKey: x.dish_key || nm`，若只做全文匹配，把 `fmtRanked` 的那行删掉判据**照样绿**
+  //      （变异 M3 实测抓到 —— "探测器坏了与命中 0 长得一样"）。
+  const coverageAddKey = (pageSrc.match(/dishKeys\.add\(x\.dishKey\)/g) || []).length;
+  const coverageAddName = (pageSrc.match(/dishKeys\.add\(x\.name\)/g) || []).length;
+  check('12-④ 🔴 覆盖率「道数」三侧一律按 `dishKey`（菜品身份）去重，不得用 `.name`'
+    + ' —— `.name` 在已匹配行是**成本卡名**、在未匹配行是**菜名**，混算 ⇒「共 N 道 / 已算 M 道」一起错',
+    /fmtRanked\(x\)\s*\{[\s\S]{0,700}?dishKey:\s*x\.dish_key/.test(pageSrc)
+    && coverageAddKey >= 3
+    && coverageAddName === 0
+    && /const coverageCount = dishKeys\.size/.test(pageSrc)
+    && /new Set\(unmatched\.map\(\(x\) => x\.dishKey\)\)/.test(pageSrc)
+    && !/dishNames/.test(pageSrc));
   check('12-⑤ 覆盖率条真的渲染出来（wxml 引用 coverageText，且只在有菜时显示）',
     /coverageCount/.test(wxmlSrc) && /coverageText/.test(wxmlSrc));
   check('12-⑥ 除零保护：营收为 0 时覆盖率取 0，不得产出 NaN/Infinity',
@@ -664,6 +684,24 @@ function section12() {
   check('12-⑫ 自失效护栏：四份源码非空且关键锚点在场',
     pageSrc.length > 1000 && wxmlSrc.length > 200 && editSrc.length > 1000 && termsSrc.length > 1000
     && /coverageText/.test(pageSrc) && /goNewCard/.test(pageSrc) && /shortCardGap/.test(pageSrc));
+
+  // 🔴 R299 新增（缺陷 D3）：**只读页「返回本页必须刷新」**。
+  //   「去建卡 / 去映射」在本页是 `navigateTo` 跳走再回来（R264 专门设计的闭环），而本页
+  //   `enablePullDownRefresh: false`（无下拉刷新）、旧 `onShow` 又**只在 locked 时**重载
+  //   ⇒ 返回后页面全然不刷新：刚建的卡不进关联 picker、刚挂的菜不进榜、`unmatched` 也不减少
+  //   ⇒ 用户以为「卡没建上 / 关联失败」并重复操作。
+  //   本页是**只读页**（零未保存输入）⇒ 返回时重载是安全且期待的；对照 `pages/card/index.js:122`
+  //   同类只读页即 `onShow(){this.load()}` ⇒ 说明这是遗漏，不是设计选择。
+  //   判据 = `onShow` 的非 locked 路径必须重载 + 用 `_shown` 哨兵避免首次进入重复拉。
+  const ON_SHOW_RELOAD = /onShow\(\)\s*\{[\s\S]{0,400}?if\s*\(this\._shown\)\s*this\.load\(\)/;
+  check('12-⑬ 🔴 只读页返回时必须刷新（`onShow` 非 locked 路径重载 + `_shown` 哨兵防首次重复拉）'
+    + ' —— 旧写法只在 locked 时重载 ⇒「去建卡」回来卡列表还是旧的，用户以为没建上',
+    ON_SHOW_RELOAD.test(pageSrc) && /onLoad\(\)\s*\{\s*this\._shown\s*=\s*false;/.test(pageSrc)
+    && /enablePullDownRefresh"\s*:\s*false/.test(rd('pages/m3/dishreview/index.json')));
+  // 反恒真：把**旧写法**（只在 locked 时重载）喂给上面那条判据 ⇒ 必须判不通过。
+  const OLD_ONSHOW = "onShow() { if (this.data.locked) this.init(); },";
+  check('12-⑭ 反恒真：旧 onShow（只在 locked 时重载）必须判不通过（证明 ⑬ 有分辨力，不是恒真）',
+    !ON_SHOW_RELOAD.test(OLD_ONSHOW));
 }
 section12();
 
