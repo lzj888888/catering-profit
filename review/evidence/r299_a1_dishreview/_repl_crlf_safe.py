@@ -1,0 +1,26 @@
+# -*- coding: utf-8 -*-
+"""CRLF 安全替换：按**原始字节**读写，行尾一律不动（只重放既定文字改动）。
+用法：python this.py   （改动写在本文件 REPS 里）
+"""
+import io
+
+REPS_BY_FILE = {
+    'specs/dev-specs/★知识存储点_2026-09-10.md': [
+        ('`check_dishreview_engine`=109', '`check_dishreview_engine`=111'),
+    ],
+}
+
+for p, reps in REPS_BY_FILE.items():
+    raw = io.open(p, 'rb').read()
+    s = raw.decode('utf-8')
+    crlf = s.count('\r\n')
+    lf_only = s.count('\n') - crlf
+    for a, b in reps:
+        n = s.count(a)
+        assert n == 1, '命中 %d 处（要求恰 1）：%s' % (n, a[:50])
+        s = s.replace(a, b)
+    out = s.encode('utf-8')
+    io.open(p, 'wb').write(out)
+    print('%s  CRLF=%d 纯LF=%d  →  CRLF=%d 纯LF=%d' % (
+        p, crlf, lf_only,
+        s.count('\r\n'), s.count('\n') - s.count('\r\n')))

@@ -702,6 +702,19 @@ function section12() {
   const OLD_ONSHOW = "onShow() { if (this.data.locked) this.init(); },";
   check('12-⑭ 反恒真：旧 onShow（只在 locked 时重载）必须判不通过（证明 ⑬ 有分辨力，不是恒真）',
     !ON_SHOW_RELOAD.test(OLD_ONSHOW));
+
+  // 🔴 R299-Q（豆包评审采纳）：**汇总卡必须带标题**，且标题要写明口径「堂食+外卖」。
+  //   为什么：那张「份数/营收/成本/毛利」卡的数据源是 `mergeTotals(堂食, 外卖)`＝**全渠道合计**，
+  //   却无标题地夹在「堂食榜」与「外卖榜」之间 ⇒ 极易被读成"堂食小计"（读错一次就误判堂食盈利）。
+  //   术语 `reviewTotals` 自引入（bcd3326）起**从未被渲染**（死键）⇒ 本轮借它补标题（零新增键），
+  //   并把口径写进键值「汇总（堂食+外卖）」（键值也必须带口径 —— 只写"汇总"仍会被读成小计）。
+  check('12-⑮ 🔴 汇总卡必须渲染标题，且标题键值写明口径「堂食+外卖」'
+    + ' —— 无标题会被读成堂食小计（该卡实为全渠道合计）',
+    /t\.reviewTotals/.test(wxmlSrc)
+    && /section-title[^>]*>\s*\{\{t\.reviewTotals\}\}/.test(wxmlSrc)
+    && /reviewTotals:\s*'[^']*堂食\s*\+\s*外卖[^']*'/.test(termsSrc));
+  check('12-⑯ 反恒真：把"无标题"版本（只有 totals 卡、无 reviewTotals 引用）喂给 ⑮ ⇒ 必须判不通过',
+    !(/section-title[^>]*>\s*\{\{t\.reviewTotals\}\}/.test('<view class="card2" wx:if="{{totals}}"></view>')));
 }
 section12();
 

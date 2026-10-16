@@ -94,10 +94,30 @@ const MUTS = [
     id: 'M8',
     desc: '登记表**空转键**：往 EXEMPT 塞一个"存在但根本没碰过 emitter"的文件 ⇒ ③-f 必须判红',
     file: 'tools/check_truncated_surfaced.js',
-    from: "  'pages/card/edit.js': 'getCostCard 仅取模板 / 子卡候选，不是\"本店全部卡\"的展示面',\n};",
-    to: "  'pages/card/edit.js': 'getCostCard 仅取模板 / 子卡候选，不是\"本店全部卡\"的展示面',\n  'pages/index/index.js': '假的空转登记项（变异用）',\n};",
+    from: "  'pages/card/edit.js': 'getCostCard 仅取模板 / 子卡候选供选择，不渲染\"本店全部卡\"清单、不输出总数、不进金额计算',\n};",
+    to: "  'pages/card/edit.js': 'getCostCard 仅取模板 / 子卡候选供选择，不渲染\"本店全部卡\"清单、不输出总数、不进金额计算',\n  'pages/index/index.js': '假的空转登记项（变异用）',\n};",
     guard: G2,
     expect: [/③-f/],
+  },
+
+  // ===== 守卫 1（check_dishreview_engine）· R299-Q 新增腿 =====
+  {
+    id: 'M9',
+    desc: 'Q1 原样复现：删掉汇总卡的标题行（"全渠道合计"被读成堂食小计）',
+    file: 'pages/m3/dishreview/index.wxml',
+    from: '    <view class="section-title">{{t.reviewTotals}}</view>\n',
+    to: '',
+    guard: G1,
+    expect: [/12-⑮/],
+  },
+  {
+    id: 'M10',
+    desc: 'Q3 反向：hub.js 撤回消费（该页把 length 当**精确张数**渲染 ⇒ 不许豁免）',
+    file: 'pages/m3/hub.js',
+    from: "const dh = require('../../utils/dataHealth.js');",
+    to: "const dh = {};",
+    guard: G2,
+    expect: [/③-c/],
   },
 ];
 

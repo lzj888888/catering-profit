@@ -12,6 +12,7 @@ const api = require('../../utils/api.js');
 const ui = require('../../utils/ui.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 const shopGuard = require('../../utils/shopGuard.js');
+const dh = require('../../utils/dataHealth.js');   // 🔴 R299：出参 `truncated` 的可见降级（单源）
 
 Page({
   data: {
@@ -30,6 +31,8 @@ Page({
       reviewSub: TERMS.hub.reviewSub,
       countPrefix: TERMS.card.countPrefix,
       countSuffix: TERMS.card.countSuffix,
+      // R299：数据截断的可见降级文案（单源 TERMS.ui.dataTruncated）
+      dataTruncated: TERMS.ui.dataTruncated,
       // R263：三步走 / 分层 / 空状态（wxml 用到就必须登记 —— 漏登记 ⇒ 页面静默空白）
       flowTitle: TERMS.hub.flowTitle,
       flowSteps: TERMS.hub.flowSteps,
@@ -55,6 +58,12 @@ Page({
     // -1 = 没取到（就不显示这行）。🔴 **绝不能默认 0**：读不到时显示「共 0 张」
     //   会让老板以为卡丢了 —— 与本仓「不替用户编数」同一条纪律（M2 参考值只提示不预填）。
     cardCount: -1,
+    // 🔴 R299（豆包评审采纳 · 修正我自己的初判）：本页把 `card.list.length` 当**精确张数**显示
+    //   （`hub.wxml:47` 「共 N 张」）。若 `getCostCard` 命中 `LIST_TOTAL_CAP`（20000 行）被截断，
+    //   这个数就是**偏小的精确数** —— 属豆包给的判断标准里的「**精确计数**」一类
+    //   ⇒ 必须可见降级（我原先把它列入 EXEMPT 是**判错了**：它不只是"取 length 做入口判断"，
+    //   它把那个 length **渲染给用户看了**）。见 utils/dataHealth.js 头注。
+    truncated: false,
     // 🔴 R281 O3：三步完成态（初值全 false = 未完成；fail-closed：读失败也保持 false）。
     //   nextStep = 第一个未完成的步序号；全部完成 = -1（此时显示「三步都做完了」而不是按钮）。
     stepFlags: [false, false, false],
@@ -92,7 +101,13 @@ Page({
       cardN > 0,
       !!(sales && Array.isArray(sales.list) && sales.list.length > 0),
     ];
-    this.setData({ cardCount: cardN, stepFlags: flags, nextStep: flags.indexOf(false) });
+    // 🔴 R299：三次读取任一被服务端标记 `truncated` ⇒ 上方「共 N 张」是偏小的精确数 ⇒ 可见降级。
+    this.setData({
+      cardCount: cardN,
+      stepFlags: flags,
+      nextStep: flags.indexOf(false),
+      truncated: dh.isTruncated(card) || dh.isTruncated(sales),
+    });
   },
 
   // 🔴 R281 O3：从引导块直接跳到「当前该做的那一步」，不用老板自己在 5 张卡里猜。

@@ -111,7 +111,12 @@
       </view>
     </view>
 
-    <!-- 汇总 -->
+    <!-- 汇总（**全渠道合计** = 堂食 + 各外卖平台，见 cloudfunctions/getDishReview/index.js:101 mergeTotals）
+         🔴 R299-Q（豆包评审采纳）：这张卡此前**没有标题**，而它夹在「堂食榜」与「外卖榜」之间
+         ⇒ 老板极易读成「堂食小计」（读错一次就误判堂食盈利）。术语 `reviewTotals` 自引入起
+         从未被渲染（死键）⇒ 借它补上标题（零新增键），并把口径写进键值「汇总（堂食+外卖）」。
+         ⚠️ 卡片**位置**下移到外卖榜之后属**版式调整**（需老板拍板）⇒ 本轮只补标题、不动位置（已登记）。 -->
+    <view class="section-title">{{t.reviewTotals}}</view>
     <view class="card2" wx:if="{{totals}}">
       <view class="cell"><text class="lbl">{{t.reviewTotalQty}}</text><text class="val">{{totals.qty}}</text></view>
       <view class="cell"><text class="lbl">{{t.reviewTotalRevenue}}</text><text class="val">{{t.cur}}{{totals.revenueText}}</text></view>

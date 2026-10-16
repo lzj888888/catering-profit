@@ -5,6 +5,11 @@
     <text class="hub-sub">{{t.subtitle}}</text>
   </view>
 
+  <!-- ===== R299：数据截断的**可见降级** =====
+       本页「共 N 张」是**精确计数**（`hub.wxml` 计数行），而 `getCostCard` 命中 LIST_TOTAL_CAP
+       时会截断 ⇒ 那个数是偏小的精确数（老板会以为卡丢了）。见 utils/dataHealth.js 头注。 -->
+  <view class="warn-line" wx:if="{{truncated}}">{{t.dataTruncated}}</view>
+
   <!-- ===== R263：三步走（回答「能做什么 / 怎么做 / 结果去哪看」）=====
        🔴 必须排在**第一张卡之前**：老板一进来先看到"流程"，再看到"入口"。
        守卫 `check_hub_guide` G4 盯这个位置 —— 挪到卡片后面 = 还是先看到一堆卡 = 没解决懵。 -->

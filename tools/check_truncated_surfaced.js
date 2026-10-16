@@ -111,11 +111,17 @@ ok('②-d LIST_TOTAL_CAP 仍是显式常量（防爆护栏的存在性）', /con
 // ============ ③ 消费者面：未消费就必须显式登记（fail-closed）============
 //   判据粒度 = **页面文件级**：一个页面只要碰过某个 emitter，就必须整体表态
 //   （要么消费、要么登记为什么不必消费）。粒度太细（逐调用点）反而会因作用域分析不可靠而假红。
+// 🔴 豁免判据（R299-Q · 豆包评审采纳，并**修正了我自己的一次误判**）：
+//   「**静默错数危害**」而非"改造成本"。三条充分豁免条件（须同时成立）：
+//     ① 不渲染"看似完整的清单"；② **不输出精确总数**（把 length 渲染给用户看 = 不豁免）；
+//     ③ 该读取不参与任何金额/毛利计算。
+//   ⚠️ `pages/m3/hub.js` **曾被我列入本表，已撤**：它不只是"取 length 做入口判断"，
+//      它把 `card.list.length` 当**精确张数**渲染（`hub.wxml` 「共 N 张」）⇒ 属条件②违反
+//      ⇒ 已改为消费（`dh.isTruncated(card)`）。这条留痕就是为了防"豁免表变垃圾桶"。
 const EXEMPT = {
-  'pages/m3/hub.js': '只取 getCostCard / getSalesBills 返回的 length 做入口计数，不渲染"看似完整"的清单',
-  'pages/recon/index.js': 'getCostCard 仅作 code→name 辅助映射；卡缺只回落显示 code，不构成"少行"误导',
-  'pages/takeaway/index.js': 'getCostCard 仅作 code→name 辅助映射（外卖页卡名回显），同上',
-  'pages/card/edit.js': 'getCostCard 仅取模板 / 子卡候选，不是"本店全部卡"的展示面',
+  'pages/recon/index.js': 'getCostCard 仅作 code→name 辅助映射；卡缺只回落显示 code，不渲染清单、不输出总数、不进金额计算',
+  'pages/takeaway/index.js': 'getCostCard 仅作 code→name 辅助映射（外卖页卡名回显），同上三条均不违反',
+  'pages/card/edit.js': 'getCostCard 仅取模板 / 子卡候选供选择，不渲染"本店全部卡"清单、不输出总数、不进金额计算',
 };
 
 const pageFiles = walk(path.join(ROOT, 'pages'), []).filter((f) => f.endsWith('.js'));
