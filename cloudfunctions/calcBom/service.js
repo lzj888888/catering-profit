@@ -45,7 +45,13 @@ function purchasePerGramYuan(purchasePriceFen, convertFactor) {
  *   → (1500/100)/500/(0.9) = 0.033333…元 → Math.round(0.033333*10000) = **333**（即 0.0333 元）
  */
 function netUnitCostWan(purchasePriceFen, convertFactor, yieldRate) {
-  const yuan = purchasePerGramYuan(purchasePriceFen, convertFactor) / (yieldRate / 100);
+  // 🔴 R298（D2）：出成率 / 换算系数**夹紧**（口径同前端 utils/units.js::yieldRateOf：未填=100）。
+  //   原实现裸除 ⇒ yieldRate=0 时 ÷0 = Infinity、缺失时 NaN、>100 时成本被低估（静默错账）。
+  //   与另 4 个副本（getMaterial / saveCostCard / saveMaterial / syncCostCard）行为同源。
+  const y = Number(yieldRate);
+  const yr = (Number.isFinite(y) && y > 0 && y <= 100) ? y : 100;
+  const cf = Number(convertFactor) > 0 ? Number(convertFactor) : 1;
+  const yuan = purchasePerGramYuan(purchasePriceFen, cf) / (yr / 100);
   return Math.round(yuan * 10000); // round 到 4 位小数（万分）
 }
 
