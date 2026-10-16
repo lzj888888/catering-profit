@@ -14,13 +14,16 @@
 //   解析 `10_云函数清单与接口契约.md` 中含 `+幂等` 的行 ⇒ 「必须幂等」集合。
 //   ⚠️ fail-closed：解析出的集合少于 5 个（= 文档被改动/表格被重排）⇒ **判红**，不许静默放行。
 //
-// 五条判据：
+// 判据：
 //   I1 契约解析：`+幂等` 行必须能解析出 ≥5 个函数名（否则红）。
 //   I2 契约覆盖：REQUIRED 每个函数必须存在且含幂等调用；目录不存在者必须登记进 NOT_IMPLEMENTED。
 //   I3 顺序不变量：幂等预检必须**早于**首个业务写（否则等于没查——写完才查）。
 //   I4 登记同源：走重放形态者必须同时用单源 `shopKey()` 造键（两处各自拼串 ⇒ "登记了却查不到"）。
 //   I5 全量登记：凡是①有业务写 或 ②声明了 client_request_id 的函数，都必须「有幂等实现」或「在 EXEMPT 登记」。
 //   I6 豁免不腐：EXEMPT / NOT_IMPLEMENTED 里的登记若已不成立（函数不存在、或已实现幂等）⇒ 判红，限期清理。
+//   I7 装饰性幂等键：写了非空 idempotency_key 却从不查重 ⇒ 该 key 永不生效，必须补查重或登记理由。
+//   I8 行为对拍（R298W）：真 require 单源模块 + 内存 mock db 跑**行为**判据（键格式 / 命中语义 /
+//      **隔离性** / 两种形态键同源），配影子样本自证有鉴别力 —— 补 I1~I7「只守形态、不守行为」的缺口。
 //
 // 运行：
 //   node tools/check_idempotency.js          # 校验（exit 0/1）
@@ -300,5 +303,97 @@ for (const [fn] of NOT_IMPLEMENTED) {
     info.has(fn) ? '函数已交付 ⇒ 请移出该登记并确认其幂等' : '仍未交付');
 }
 
-console.log(`\n===== 幂等覆盖守卫结果：${pass} 通过 / ${failN} 失败 =====`);
-process.exit(failN === 0 ? 0 : 1);
+console.log('');
+console.log('===== I8 单源幂等模块「行为对拍」（R298W：形态判据测不了行为，补真跑）=====');
+// 背景：I1~I7 **全是形态判据**（读源码判"有没有调、顺序对不对、有没有登记"），**测不了**
+//   「同一 client_request_id 连发两次是否真只产一条」。而 common/idempotency.js 是**全仓唯一**
+//   幂等实现（15 个云函数共用）⇒ 它一旦漂移（键格式 / where 条件 / 返回值形态），
+//   I1~I7 全绿而线上重复建资产（saveAsset 重复 ⇒ saveLedger 摊销翻倍 ⇒ M1 利润算错）。
+//   ⇒ 本段真 require 该模块 + 内存 mock db，跑**行为**对拍；并配影子样本证明判据有鉴别力。
+const I8_BASE = pass + failN;
+(async () => {
+  let IDEM = null;
+  try { IDEM = require(path.join(ROOT, 'cloudfunctions', 'common', 'idempotency.js')); } catch (e) { IDEM = null; }
+  check('I8.0 前置：common/idempotency.js 可被真加载（不可加载 ⇒ 后续行为判据无法执行，不给假绿）',
+    !!IDEM && typeof IDEM.shopKey === 'function' && typeof IDEM.checkIdempotent === 'function'
+    && typeof IDEM.findPriorResult === 'function',
+    IDEM ? '已加载 3 个导出' : '加载失败');
+
+  if (IDEM) {
+    // 内存 mock：模拟云库 `collection(name).where(f).limit(n).get()`。
+    //   blind=true ⇒ 故意忽略 where 过滤（影子样本用，见 I8.F1）。
+    function makeDb(rows, blind) {
+      const store = (rows || []).slice();
+      return {
+        collection(name) {
+          const q = { name: name, filter: null, limit: null };
+          const api = {
+            where(f) { q.filter = f; return api; },
+            limit(n) { q.limit = n; return api; },
+            async get() {
+              let d = store.filter((r) => r && r.__coll === name);
+              if (!blind) {
+                const f = q.filter || {};
+                d = d.filter((r) => Object.keys(f).every((k) => r[k] === f[k]));
+              }
+              if (q.limit) d = d.slice(0, q.limit);
+              return { data: d };
+            },
+          };
+          return api;
+        },
+      };
+    }
+    const KEY = IDEM.shopKey('s1', 'c1');
+    const ROW = { __coll: 'audit_log', shop_id: 's1', idempotency_key: KEY, after_data: { ok: true, n: 7 } };
+
+    // —— 键（"查重键与登记键同源"的载体）——
+    check('I8.1 shopKey 格式 = <shop_id>__<client_request_id>', IDEM.shopKey('s1', 'c1') === 's1__c1', IDEM.shopKey('s1', 'c1'));
+    check('I8.2 空 client_request_id ⇒ 空串（= 不做幂等约束，而非"拿空串当键"）',
+      IDEM.shopKey('s1', '') === '' && IDEM.shopKey('s1', null) === '' && IDEM.shopKey('s1', undefined) === '');
+
+    // —— 拒绝形态 ——
+    check('I8.3 checkIdempotent：空表 ⇒ false（未处理过）', (await IDEM.checkIdempotent(makeDb([]), KEY)) === false);
+    check('I8.4 checkIdempotent：命中 ⇒ true', (await IDEM.checkIdempotent(makeDb([ROW]), KEY)) === true);
+    check('I8.5 checkIdempotent：空 key ⇒ false（fail-safe 方向：不做拒绝）',
+      (await IDEM.checkIdempotent(makeDb([ROW]), '')) === false);
+
+    // —— 重放形态 ——
+    const prior = await IDEM.findPriorResult(makeDb([ROW]), 's1', 'c1');
+    check('I8.6 findPriorResult：无记录 ⇒ null', (await IDEM.findPriorResult(makeDb([]), 's1', 'c1')) === null);
+    check('I8.7 findPriorResult：有记录 ⇒ 返回 after_data（首次结果）',
+      !!prior && prior.ok === true && prior.n === 7, JSON.stringify(prior));
+    check('I8.8 findPriorResult：有记录但缺 after_data ⇒ null（不返回半个对象）',
+      (await IDEM.findPriorResult(makeDb([Object.assign({}, ROW, { after_data: undefined })]), 's1', 'c1')) === null);
+    check('I8.9 findPriorResult：空 client_request_id ⇒ null',
+      (await IDEM.findPriorResult(makeDb([ROW]), 's1', '')) === null);
+
+    // —— 🔴 隔离性（键退化的后果：全局串台 ⇒ 别人提交过的 crid 让你被判重复）——
+    const dbOtherShop = makeDb([Object.assign({}, ROW, { shop_id: 's2', idempotency_key: IDEM.shopKey('s2', 'c1') })]);
+    const crossShopPrior = await IDEM.findPriorResult(makeDb([ROW]), 's2', 'c1');
+    const crossShopReject = await IDEM.checkIdempotent(dbOtherShop, KEY);
+    check('I8.10 🔴 不同 shop_id 不互相命中（防键退化成全局键）',
+      crossShopPrior === null && crossShopReject === false,
+      'findPrior=' + JSON.stringify(crossShopPrior) + ' · checkIdem=' + crossShopReject);
+    check('I8.11 🔴 同 shop 不同 client_request_id 不互相命中',
+      (await IDEM.findPriorResult(makeDb([ROW]), 's1', 'c2')) === null);
+
+    // —— 🔴 键同源：两种形态必须查**同一个键**（R73 核心不变量，此前无行为级判据）——
+    const dbSame = makeDb([ROW]);
+    check('I8.12 🔴 键同源：checkIdempotent(shopKey(s,c)) 与 findPriorResult(s,c) 命中同一行',
+      (await IDEM.checkIdempotent(dbSame, IDEM.shopKey('s1', 'c1'))) === true
+      && (await IDEM.findPriorResult(dbSame, 's1', 'c1')) !== null);
+
+    // —— F 反恒真（影子样本）：where 过滤被打瞎 ⇒ 隔离性必须**失效** ——
+    //   若"打瞎的 db"仍能让 I8.10 通过，说明该判据根本没在检验隔离性。
+    const blindHit = await IDEM.findPriorResult(makeDb([ROW], true), 's2', 'c1');
+    check('I8.F1 影子样本：where 过滤被打瞎 ⇒ 隔离性确实失效（证明 I8.10 有鉴别力，非恒真）',
+      blindHit !== null, blindHit === null ? '⚠️ 打瞎后仍为 null ⇒ 判据可能未真正检验隔离性' : '打瞎后串台（预期）');
+  }
+
+  check('I8.F2 判据非退化：本段断言数 ≥ 12（防"删判据 ⇒ 恒绿"）', (pass + failN) - I8_BASE >= 12,
+    '本段 ' + ((pass + failN) - I8_BASE) + ' 条');
+
+  console.log(`\n===== 幂等覆盖守卫结果：${pass} 通过 / ${failN} 失败 =====`);
+  process.exit(failN === 0 ? 0 : 1);
+})();
