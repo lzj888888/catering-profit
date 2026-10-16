@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：175 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：177 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -516,6 +516,21 @@
 //         🔴 观测覆盖率（立此判据的根因）：旧判据只认**命名像"分"**的标识符 ⇒ 面内 77 处仅见 17 处
 //            （22.1%），`promoFen`/`packTotal` 之外的 `c.sum`、`)](`、`448 * 100` 三种书写形态全在盲区；
 //            升级为登记清单后 78/78 全登记 —— 覆盖面由**语义**决定而非命名习惯。
+//       + M3 毛利率色阶单源守卫（tools/check_m3_margin_bands.js，R298Y：规范 §M3.8 的「≥60 绿 / 40~60 黄 /
+//         <40 红」被抄三份且互相打架 —— 筛选 30 / 色带 40 / 文案 30 ⇒ 毛利 35% 的卡**色带判红、筛选取中**
+//         （用户可见自相矛盾），而 `marginHigh|marginMid|marginLow` 在 tools/ 下**零命中**（判据只守形态不守行为）。
+//         修 = 单源化到 `utils/marginBand.js`（阈值 + 文案 + 色值，页面与 wxml 一律引用；terms 那三个键整体撤掉
+//         —— 双副本无法 require 同一相对路径）。判据 = ① 单源取值 ② **行为实跑 22 例**（含反恒真锚点
+//         `matchBand('mid',35)===false`、`colorOf(35)==='#e74c3c'`）③ 全仓无游离阈值字面量 ④ 双副本键定义不回流
+//         ⑤ 扫描面下界（81 文件）+ 正样本锚点）
+//       + M3 成本卡跨页往返保真守卫（tools/check_m3_card_roundtrip.js，R298Y：抓两处零覆盖缺陷 ——
+//         ① `onCopy` 把套餐子卡行当手工行送、丢 `sub_card_ref` ⇒ validate 强制要求 ⇒ **复制套餐卡 100% 失败**；
+//         ② `version.js::doRestore` 读 `v.card_type`/`v.specs`，而 `load()` 的 list 映射**从未赋值**这两键
+//         ⇒ R297-⑥ 注释声称"恢复不再降级"实为**空修复**（行为仍是它描述的 bug）——本仓同族病第 4 型「修了一半」。
+//         判据 = ① 卡级往返（doRestore 的每个 `v.X` ⊆ load 映射产物 = 顶层键 ∪ 直接引用，容 `calc_mode_key` 派生键）
+//         + ② 行级往返（同族；且必须 ∈ 出参层 lineToOut）+ ③ 复制面（onCopy 的 `l.X` ⊆ getCostCard::lineToOutput）
+//         + ④ 函数体抽取 fail-closed / 集合下界 / 正样本。⚠️ **剥注释是判据成立的前提**：不剥则注释里的字段名
+//         会喂饱两个集合 ⇒ 缺陷②永远抓不出来（首版实测））
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
 //    那两处仍是**人工面**，改 SUITES 后须手动跟（A–L 无一组能发现重启键自相矛盾）。
 // 用同一个 node（process.execPath）跑子进程，避免多解释器/环境问题。
@@ -1081,6 +1096,20 @@ const SUITES = [
   //   判据 = S 扫描面与依赖三级 fail-closed + A 真写→真读回结构守恒 + B 单元格类型
   //        + C 分↔元往返逐点等值 + D 多 scope 覆盖 + E 边界行为登记 + F 判据分辨力 + W 已知缺口登记。
   ['export-roundtrip', 'tools/check_export_roundtrip.js'],
+  // ===== R298Y ·M3 毛利率「色阶 / 区间」阈值单源守卫 =====
+  //   见头部注释同名条目。根因：规范 §M3.8 的 60/40 被抄了三份且不一致（筛选 30 / 色带 40 / 文案 30）
+  //   ⇒ 35% 的卡色带判红却被「中」筛出，用户可见自相矛盾，而 `marginHigh|marginMid|marginLow` 在 tools/ 下零命中。
+  //   修 = 单源化到 `utils/marginBand.js`（阈值 + 文案 + 色值），页面与 wxml 一律引用。
+  //   判据 = ① 单源取值 + ② 行为实跑 22 例（含反恒真锚点 matchBand('mid',35)===false）
+  //        + ③ 全仓无游离阈值字面量 + ④ terms 双副本键定义不得回流 + ⑤ 扫描面下界与正样本锚点。
+  ['m3-margin-bands', 'tools/check_m3_margin_bands.js'],
+  // ===== R298Y ·M3 成本卡「出参 → 页面映射 → 提交入参」往返保真守卫 =====
+  //   见头部注释同名条目。抓两处零覆盖缺陷：① onCopy 丢 sub_card_ref ⇒ 复制套餐卡 100% 失败；
+  //   ② version.js::doRestore 读 `v.card_type`/`v.specs` 而 `load()` 从未赋值 ⇒ R297-⑥ **空修复**。
+  //   判据 = ① 卡级往返（doRestore 的 v.X ⊆ load 映射产物：顶层键 ∪ 直接引用）
+  //        + ② 行级往返（同族，且必须可出参）+ ③ 复制面 + ④ 函数体抽取 fail-closed 与集合下界、正样本。
+  //   ⚠️ 剥注释是判据成立的前提：不剥则注释里的字段名会喂饱集合 ⇒ 缺陷 C 永远抓不出（实测）。
+  ['m3-card-roundtrip', 'tools/check_m3_card_roundtrip.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

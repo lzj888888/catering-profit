@@ -1,0 +1,49 @@
+
+--- M1 · 单源阈值 MID 40 → 30（回到"筛选 30 / 色带 40"那套错口径）
+    文件：utils/marginBand.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M2 · 页面改回硬编码分界（`margin >= 60` 游离字面量回流）
+    文件：pages/card/index.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M3 · terms.js 重新长出 marginMid 键（双副本会漂移的老路）
+    文件：miniprogram/i18n/terms.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M4 · ★缺陷 C 原样复现：删掉 load() 里的 card_type 映射（R297-⑥ 的空修复形态）
+    文件：pages/card/version.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M5 · ★缺陷 C 原样复现（另一半）：删掉 load() 里的 specs 映射
+    文件：pages/card/version.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M6 · 行级同族：删掉 load() 行映射里的 line_type（卡级补了、行级漏了）
+    文件：pages/card/version.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M7 · ★缺陷 B 原样复现：onCopy 删掉子卡行分流（子卡行被当手工行送出）
+    文件：pages/card/index.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M8 · 「读到了 ≠ 送出去了」：保留 `l.sub_card_ref` 判据，只删提交键
+    文件：pages/card/index.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M9 · 出参层腿：删掉 getCostCard::lineToOutput 的 sub_card_ref（页面拿了后端没给）
+    文件：cloudfunctions/getCostCard/service.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+===== R298Y 变异回灌汇总 =====
+✅ M1  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M2  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M3  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M4  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M5  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M6  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M7  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M8  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M9  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+变异 9/9 全部：真红 + 点名腿命中 + 保留腿仍绿 + 逐字节还原 + 还原后归绿
+结论：两个守卫均**非恒真**，且守的是真实回归（含缺陷 B / C 的原样复现）

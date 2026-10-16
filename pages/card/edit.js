@@ -822,8 +822,15 @@ Page({
   onSpecPrice(e) {
     const key = e.currentTarget.dataset.spec;
     const v = e.detail.value;
+    // 🔴 R298Y 修复：**改了售价就必须清掉该行试算结果**。
+    //   改前只改 `priceYuan`、保留 `result` ⇒ 老板把该规格从 100 改成 200 后，
+    //   该行仍显示**按 100 算出的**毛利率/成本/建议价（`result.marginPct` 直接来自服务端试算入参），
+    //   数字看着正常、其实已经过期 —— 而**同一页**的失效策略本来是齐的：
+    //     · `toggleSpec`（启用/停用）⇒ `result: ... null ...`
+    //     · `onGrouponPrice/Rate/Promo` ⇒ `grouponView: null`
+    //   （「同一个修复合集的另一半没做完」——同族病第 4 型。）
     this.setData({
-      specRows: this.data.specRows.map((r) => (r.spec_key === key ? Object.assign({}, r, { priceYuan: v }) : r)),
+      specRows: this.data.specRows.map((r) => (r.spec_key === key ? Object.assign({}, r, { priceYuan: v, result: null }) : r)),
     });
   },
   // 把某规格行的输入拼成 spec_prices（整数分）；空/非法 ⇒ 该规格不带价（只出成本与建议价）

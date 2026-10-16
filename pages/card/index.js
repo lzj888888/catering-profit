@@ -8,16 +8,22 @@ const ui = require('../../utils/ui.js');
 const { openPaywall, openService } = require('../../utils/paywall.js');
 const exportFile = require('../../utils/exportFile.js');   // R265：导出投递单源（落盘 + 打开 + 转发兜底）
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
+const band = require('../../utils/marginBand.js');   // 🔴 R298Y：毛利色阶/区间**唯一单源**（数值 + 文案 + 色值）
 
 // 本店用过的菜品分类（本地字典，与 edit.js 同一 key；不新建集合 —— M3 v1.1 零新建集合红线）
 const LIST_CATS_KEY = 'm3_dish_cats';
 
 // 毛利率区间筛选项（v1.0 M3.8：≥60% 绿 / 40%~60% 黄 / <40% 红，未定价灰）
+// 🔴 R298Y 修复：三档的**数值与文案一律取自 `utils/marginBand.js`**。
+//   改前这里写 30（「中」= 30%~60%），而同页 `index.wxml` 色带写 40、`terms.js` 文案又写 30
+//   ⇒ 一张 35% 的卡：色带判红（<40）、筛选却归「中」（≥30）—— 用户可见的自相矛盾。
+//   ⚠️ 文案也不再走 `TERMS.card.margin*`（那三个键已删）：它们落在**双副本** terms.js 里，
+//      而双副本被 K11 要求逐字节一致、目录深度不同 ⇒ 无法 require 同一相对路径 ⇒ 阈值只能放非副本模块。
 const MARGIN_OPTIONS = [
-  { value: 'all', label: TERMS.card.marginAll },
-  { value: 'high', label: TERMS.card.marginHigh },
-  { value: 'mid', label: TERMS.card.marginMid },
-  { value: 'low', label: TERMS.card.marginLow },
+  { value: 'all', label: band.LABEL.all },
+  { value: 'high', label: band.LABEL.high },
+  { value: 'mid', label: band.LABEL.mid },
+  { value: 'low', label: band.LABEL.low },
 ];
 
 Page({
@@ -47,9 +53,8 @@ Page({
       filterMargin: TERMS.card.filterMargin,
       filterCategory: TERMS.card.filterCategory,
       marginAll: TERMS.card.marginAll,
-      marginHigh: TERMS.card.marginHigh,
-      marginMid: TERMS.card.marginMid,
-      marginLow: TERMS.card.marginLow,
+      // ⚠️ R298Y：`marginHigh/marginMid/marginLow` 三键**已从 terms.js 删除**（会随双副本漂移，
+      //   且与色带数值来源不同）⇒ 三档文案改由 `utils/marginBand.js::LABEL` 提供（见 MARGIN_OPTIONS）。
       deleteCard: TERMS.card.deleteCard,
       // R192：「⋯」菜单里的「编辑」（卡片主体点击也是进编辑，但菜单里必须还能找到）
       editCard: TERMS.card.editCard,
@@ -128,23 +133,29 @@ Page({
         const sc = await api.call('getShopContext', {});
         pinned = Array.isArray(sc.pinned_cards) ? sc.pinned_cards : [];
       } catch (err) { pinned = []; }
-      const all = (d.list || []).map((c) => ({
-        card_code: c.card_code,
-        version: c.version,
-        name: c.name || '',
-        category: c.category || '',
-        tags: c.tags || '',
-        total_cost: api.fenToYuan(c.total_cost_fen, 2),
-        price: c.price_fen > 0 ? api.fenToYuan(c.price_fen, 2) : '—',
-        price_fen: c.price_fen,
-        margin: c.price_fen > 0 ? c.gross_margin_pct : null,
-        calc_mode: c.calc_mode,
-        // M3.16（批次 C）：卡片类型（1=单品 / 3=套餐）；套餐「我少赚」为负 ⇒ 红字提示。
-        card_type: c.card_type,
-        combo_lose_neg: !!(c.combo && c.combo.merchantLoseFen < 0),
-        // round156：排序键（「最近编辑在前」）。存量卡没有 updated_at ⇒ 0（排最后，不插队到新卡前面）
-        updated_at: Number(c.updated_at) || 0,
-      }));
+      const all = (d.list || []).map((c) => {
+        // R298Y：未定价（price_fen=0）⇒ margin = null ⇒ 色带显「—」+ 灰，且三档筛选**永不命中**
+        const margin = c.price_fen > 0 ? c.gross_margin_pct : null;
+        return {
+          card_code: c.card_code,
+          version: c.version,
+          name: c.name || '',
+          category: c.category || '',
+          tags: c.tags || '',
+          total_cost: api.fenToYuan(c.total_cost_fen, 2),
+          price: c.price_fen > 0 ? api.fenToYuan(c.price_fen, 2) : '—',
+          price_fen: c.price_fen,
+          margin,
+          // 🔴 R298Y：色值也取自单源（改前是 wxml 里内联的三元表达式，与筛选口径各写各的 ⇒ 35% 的卡自相矛盾）
+          margin_color: band.colorOf(margin),
+          calc_mode: c.calc_mode,
+          // M3.16（批次 C）：卡片类型（1=单品 / 3=套餐）；套餐「我少赚」为负 ⇒ 红字提示。
+          card_type: c.card_type,
+          combo_lose_neg: !!(c.combo && c.combo.merchantLoseFen < 0),
+          // round156：排序键（「最近编辑在前」）。存量卡没有 updated_at ⇒ 0（排最后，不插队到新卡前面）
+          updated_at: Number(c.updated_at) || 0,
+        };
+      });
       // S0（任务 3）：分类/标签筛选选项 —— 从数据去重（不写死枚举；tag 按逗号分隔后取单项去重）
       const catSeen = new Set();
       const tagSeen = new Set();
@@ -197,9 +208,9 @@ Page({
         const tags = c.tags.split(/[,，]/).map((x) => x.trim());
         if (!tags.includes(tag)) return false;
       }
-      if (mf === 'high') return c.margin !== null && c.margin >= 60;
-      if (mf === 'mid') return c.margin !== null && c.margin >= 30 && c.margin < 60;
-      if (mf === 'low') return c.margin !== null && c.margin < 30;
+      // 🔴 R298Y：区间判定与色带色阶**同源**（`utils/marginBand.js`）。
+      //   改前这里写 `>= 30 / < 30`，而同页 `index.wxml:66` 色带写 `>= 40` ⇒ 两套口径并存。
+      if (mf && mf !== 'all' && !band.matchBand(mf, c.margin)) return false;
       return true;
     });
     // round156：过滤完再排序（置顶在前 + 最近编辑在前），并给每条打 `pinned` 标记
@@ -352,10 +363,23 @@ Page({
           const d = await api.call('getCostCard', { card_code: cc });
           const src = d.list && d.list[0];
           if (!src) { api.toastError({ msg: TERMS.card.empty }); return; }
-          // 复制明细行：档案行 material_id+qty；手工行（material_id 空）→ input_type=2 + net_unit_cost 快照
+          // 复制明细行（R298Y 修复）—— 三种行各有自己的形态，**必须按 line_type 分流**：
+          //   ① 子卡行（套餐）：line_type=2 + sub_card_ref ⇒ `{ sub_card_ref, qty }`
+          //      🔴 改前**丢了 `sub_card_ref`** ⇒ 子卡行落进「手工行」分支送出 ⇒
+          //      `saveCostCard/validate.js:51` 对 card_type=3 的每一行强制要求 sub_card_ref
+          //      ⇒ 后端报「套餐明细行必须提供 sub_card_ref」⇒ **复制套餐卡 100% 失败**。
+          //   ② 档案行：material_id + qty；③ 手工行：input_type=2 + name + net_unit_cost 快照。
+          // ⚠️ 同族提醒（R297-⑥ 的教训）：这类「出参 → 再提交」的搬运，补一处就要把**同一族的字段**一并补齐，
+          //    否则只是修了其中一半（R297-⑥ 补了 card_type 却漏了整条行级往返）。
           const lines = (src.lines || []).map((l) => {
-            if (l.material_id) return { material_id: l.material_id, qty: l.quantity };
-            return { input_type: 2, name: l.material_name || '', qty: l.quantity, net_unit_cost: l.net_unit_cost };
+            if (l.line_type === 2 || l.sub_card_ref) {
+              return { sub_card_ref: l.sub_card_ref || '', qty: Number(l.quantity) || 0 };
+            }
+            // round150：`line_kind` 是**规格缩放的唯一依据**（M3.14）—— 复制丢了它，新卡的规格成本按 main 重算。
+            const lineKind = l.line_kind || 'main';
+            const groupName = l.group_name || '';
+            if (l.material_id) return { material_id: l.material_id, qty: l.quantity, line_kind: lineKind, group_name: groupName };
+            return { input_type: 2, name: l.material_name || '', qty: l.quantity, net_unit_cost: l.net_unit_cost, line_kind: lineKind, group_name: groupName };
           });
           const card = {
             name: (src.name || '') + '',

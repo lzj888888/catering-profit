@@ -78,6 +78,15 @@ Page({
         category: v.category || '',
         tags: v.tags || '',
         batch_output: v.batch_output || 0,
+        // 🔴 R298Y 修复 —— R297-⑥ 的**空修复**（本仓「修了一半」同族病第 4 型）：
+        //   `doRestore` 读 `v.card_type` / `v.specs`，但这两个字段**从未被本映射搬出来**（下面的键里根本没有）
+        //   ⇒ 恒 `undefined` ⇒ `card_type` 恒取 1、`specs` 恒 `[]`
+        //   ⇒ R297-⑥ 注释里声称的「恢复套餐卡不再静默降级」**实际上一个字都没生效**（行为仍是它描述的 bug）。
+        //   ⚠️ 教训：**写读取方 ≠ 修好**。判据必须守「`doRestore` 用到的每个 `v.X` 都在本映射被赋值」，
+        //      而不是只 grep 「`card_type` 这个词出现过」—— 后者在改前就是绿的（注释里有该词）。
+        //   出参本来就齐（getCardVersions/service.js:15 / :33，与 getCostCard 同字段集）⇒ 照抄即可。
+        card_type: v.card_type === 3 ? 3 : 1,
+        specs: v.specs || [],
         lines: (v.lines || []).map((l) => ({
           material_id: l.material_id || '',
           material_name: l.material_name || '',
@@ -90,6 +99,14 @@ Page({
           purchase_price: l.purchase_price != null ? api.fenToYuan(l.purchase_price, 2) : '',
           convert_factor: l.convert_factor != null ? String(l.convert_factor) : '',
           yield_rate: l.yield_rate != null ? String(l.yield_rate) : '',
+          // 🔴 R298Y：行级往返字段（与卡级 card_type/specs 同族）——
+          //   缺了它们，套餐子卡行在 `doRestore` 里会被当成「手工行」送出 ⇒ 与 onCopy 同一处失败。
+          input_type: l.input_type === 2 ? 2 : 1,
+          line_kind: l.line_kind || 'main',
+          group_name: l.group_name || '',
+          line_type: l.line_type === 2 ? 2 : 1,
+          sub_card_ref: l.sub_card_ref || '',
+          sub_version: l.sub_version != null ? l.sub_version : 0,
         })),
       }));
       this.setData({ list, loading: false });
@@ -141,10 +158,16 @@ Page({
   },
 
   async doRestore(v) {
-    // 明细行：material_id 非空 = 档案行；空 = 手工行（快照直传 net_unit_cost，validate 认）
+    // 明细行（R298Y 修复）：三种行分流 —— 子卡行 / 档案行 / 手工行。
+    //   🔴 改前只按 `material_id` 二分 ⇒ **套餐子卡行（material_id 为空）落进「手工行」分支**，
+    //   丢 `sub_card_ref` ⇒ `saveCostCard/validate.js:51` 强制要求 ⇒ 恢复套餐卡必失败。
+    //   ⚠️ `line_kind` 一并带（规格缩放依据，M3.14），否则恢复后规格成本按 main 重算。
     const lines = (v.lines || []).map((l) => {
-      if (l.material_id) return { material_id: l.material_id, qty: Number(l.quantity) || 0 };
-      return { input_type: 2, name: l.material_name || '', qty: Number(l.quantity) || 0, net_unit_cost: l.net_unit_cost };
+      if (l.line_type === 2 && l.sub_card_ref) return { sub_card_ref: l.sub_card_ref, qty: Number(l.quantity) || 0 };
+      const lineKind = l.line_kind || 'main';
+      const groupName = l.group_name || '';
+      if (l.material_id) return { material_id: l.material_id, qty: Number(l.quantity) || 0, line_kind: lineKind, group_name: groupName };
+      return { input_type: 2, name: l.material_name || '', qty: Number(l.quantity) || 0, net_unit_cost: l.net_unit_cost, line_kind: lineKind, group_name: groupName };
     });
     if (lines.length === 0) { wx.showToast({ title: TERMS.card.versionLines, icon: 'none' }); return; }
     const card = {
@@ -164,6 +187,9 @@ Page({
       //   之所以毫无报错：套餐子卡快照行恰好落进 validate 的「手工行」分支（name + net_unit_cost），
       //   且引擎 `quantity × net_unit_cost / 100` 把 ×100 抵消 ⇒ 金额当场还是对的，只有联动永久失效。
       //   `specs` 同理要带（出参 `specsFromJson` 与入参 `sanitizeSpecs` 是同一函数 ⇒ 格式天然一致）。
+      // ⚠️ R298Y 补正：R297-⑥ **只写了这两行读取、没把字段搬进 `load()` 的 list 映射** ⇒ 该修复
+      //   一整轮内都是**空转**（`v.card_type`/`v.specs` 恒 undefined）。现在 load() 已补（见其注释），
+      //   并新增守卫 `tools/check_m3_card_roundtrip.js` 死守「这里用到的 `v.X` ⇔ load() 必须赋值」。
       card_type: v.card_type === 3 ? 3 : 1,
       specs: v.specs || [],
       card_code: this.data.card_code,   // 带 card_code → saveCostCard 生成新版本

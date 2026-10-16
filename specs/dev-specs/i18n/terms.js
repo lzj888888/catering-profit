@@ -1307,9 +1307,11 @@ const TERMS = {
     filterCategory: '分类',
     filterMargin: '毛利率区间',
     marginAll: '全部',
-    marginHigh: '高（≥60%）',
-    marginMid: '中（30%~60%）',
-    marginLow: '低（<30%）',
+    // 🔴 R298Y：本处原有 `marginHigh/marginMid/marginLow` 三键（文案里写死 30/40 阈值）**已删**。
+    //   毛利色阶与区间的阈值 + 文案 + 色值，一律由 `utils/marginBand.js`（唯一单源）给出 ——
+    //   规范 §M3.8 明写「色阶阈值建议也从同一配置源读取，保持全局一致」。
+    //   之所以不在本表内实现单源：本文件有**双副本**（miniprogram/ ≡ specs/dev-specs/，K11 守逐字节一致），
+    //   两份目录深度不同 ⇒ 无法 require 同一相对路径 ⇒ 只能把阈值放在非副本模块里。
     // R192：「⋯」菜单项 —— 点卡片主体也能进编辑，但**按钮不能凭空消失**（老板的肌肉记忆在按钮上）
     editCard: '编辑',
     deleteCard: '删除',

@@ -63,7 +63,7 @@
       <text class="val">{{t.cur}}{{item.total_cost}}</text>
       <text class="dot">·</text>
       <text class="lbl">{{t.grossMargin}}</text>
-      <text class="val" style="color:{{item.margin === null ? '#999' : (item.margin >= 60 ? '#22a06b' : (item.margin >= 40 ? '#b45309' : '#e74c3c'))}};">{{item.margin === null ? '—' : (item.margin) + '%'}}</text>
+      <text class="val" style="color:{{item.margin_color}};">{{item.margin === null ? '—' : (item.margin) + '%'}}</text>
       <text class="dot">·</text>
       <text class="lbl">{{t.version}} {{item.version}}</text>
     </view>
