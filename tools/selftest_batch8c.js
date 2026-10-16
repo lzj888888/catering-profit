@@ -52,12 +52,128 @@ check('读台账时归一分组字段（老数据 → "" / 1）', /group_id: a\.
 check('返回 assets 带 group_id', /group_id: a\.group_id, batch_seq: a\.batch_seq,/.test(gas));
 
 console.log('');
-console.log('===== H1 · 🔒 摊销算法零改动护栏 =====');
+console.log('===== H1 · 🔒 摊销算法零改动护栏（形态面）=====');
+// 🔴 R453：本仓摊销金额有**三份各自手写的实现**，每一份都在注释里自称"同源/同款/同口径"：
+//   ① 利润表侧 `calcAmortize/service.js`（另含残值 calcResidualFen）
+//   ② 摊销页展示 `getAmortSchedule/service.js`（首行「与 calcAmortize/service.js 同源」）
+//   ③ 账本快照 `saveLedger/service.js`（首注「与 calcAmortize/service.js 保持同源同口径」）
+//   ⇒ 任一份漂移 = 「页面显示 ≠ 账本 ≠ 利润表」而门禁照绿（摊销是 M1 利润表的核心减项）。
+//   ⚠️ R453 之前的实况：尾差倒挤句**只守了 ①一份**（②③ 各自手写的同一句无人守）⇒ 下面逐份补上。
+const AMORT_ENGINES = [
+  { tag: '①利润表侧', rel: 'cloudfunctions/calcAmortize/service.js', fn: 'amountForMonthFen' },
+  { tag: '②摊销页展示', rel: 'cloudfunctions/getAmortSchedule/service.js', fn: 'amountForMonth' },
+  { tag: '③账本快照', rel: 'cloudfunctions/saveLedger/service.js', fn: 'amountForMonth' },
+];
 for (const f of ['cloudfunctions/calcAmortize/service.js', 'cloudfunctions/getAmortSchedule/service.js', 'cloudfunctions/saveLedger/service.js']) {
   const src = read(f);
   check(`${f} 不含分组字段（引擎不动）`, !/group_id/.test(src) && !/batches/.test(src));
 }
 check('末月尾差倒挤仍在（calcAmortize）', /total_value - base \* \(N - 1\)/.test(read('cloudfunctions/calcAmortize/service.js')));
+// R453 补面（只增不减）：②③ 的同一句也必须在场 —— 此前没人问过它们
+for (const e of AMORT_ENGINES) {
+  check(`尾差倒挤句仍在 · ${e.tag}（${e.rel}）`, /total_value - base \* \(N - 1\)/.test(read(e.rel)));
+}
+
+console.log('');
+console.log('===== H1b · 🔒 三份摊销引擎「数值等价」对拍（R453 新增）=====');
+// 为什么还要加：上面是**形态面**（判文本）。两份形态相同的实现仍可能数值不等 ——
+//   例如有人把 ②③ 的尾差句**同时**改成 `return base`，形态判据照样全绿。
+//   ⇒ 这里补**行为面**：真 require 三份引擎，对同一批资产 × 同一批月份**逐点对拍分整数**。
+//   形态 + 行为互补，与 R255「写侧键 ≡ 读侧键」同手法；判据不绑函数名以外的字面量。
+const ENGINES = {};
+for (const e of AMORT_ENGINES) {
+  try { ENGINES[e.tag] = require(path.join(ROOT, e.rel)); } catch (err) { ENGINES[e.tag] = null; }
+}
+check('三份引擎均可被 Node 加载（loadable 是对拍的前提；读不到即判红，不静默跳过）',
+  AMORT_ENGINES.every((e) => ENGINES[e.tag] && typeof ENGINES[e.tag][e.fn] === 'function'));
+
+const EQ_CASES = [
+  { name: '整除 12 月', value: 120000, months: 12, start: '2026-01', term: '' },
+  { name: '不整除 3 月', value: 1000000, months: 3, start: '2026-01', term: '' },
+  { name: '不整除 7 月', value: 10000000, months: 7, start: '2025-11', term: '' },
+  { name: '单月 N=1', value: 88888, months: 1, start: '2026-03', term: '' },
+  { name: '提前终止', value: 1200000, months: 12, start: '2026-01', term: '2026-05' },
+  { name: '终止月晚于自然到期', value: 600000, months: 6, start: '2026-01', term: '2026-12' },
+  { name: '跨年 13 月', value: 999999, months: 13, start: '2025-11', term: '' },
+  { name: '1 分 3 月（尾差极端）', value: 1, months: 3, start: '2026-01', term: '' },
+  { name: 'S3 装修 12 万/36 月', value: 12000000, months: 36, start: '2026-01', term: '' },
+];
+const EQ_MONTHS = ['2025-01', '2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04',
+  '2026-05', '2026-06', '2026-07', '2026-12', '2027-01', '2027-06', '2027-12', '2028-11', '2028-12', '2029-01'];
+const eqAsset = (c, i) => ({
+  asset_id: 'e' + i, name: c.name, total_value: c.value,
+  start_month: c.start, total_months: c.months, terminate_month: c.term,
+});
+const eqMonthsOf = (start, n) => {
+  const [y0, m0] = start.split('-').map(Number);
+  const out = [];
+  for (let i = 0; i < n; i++) { const idx = y0 * 12 + (m0 - 1) + i; out.push(`${Math.floor(idx / 12)}-${String((idx % 12) + 1).padStart(2, '0')}`); }
+  return out;
+};
+
+let eqMism = 0, eqFirst = '';
+for (let i = 0; i < EQ_CASES.length; i++) {
+  const a = eqAsset(EQ_CASES[i], i);
+  for (const m of EQ_MONTHS) {
+    const v = AMORT_ENGINES.map((e) => ENGINES[e.tag][e.fn](a, m));
+    if (!(v[0] === v[1] && v[1] === v[2])) {
+      eqMism++;
+      if (!eqFirst) eqFirst = `${EQ_CASES[i].name}@${m}: ①${v[0]}/②${v[1]}/③${v[2]}`;
+    }
+  }
+}
+check(`三份引擎全矩阵逐点对拍一致（${EQ_CASES.length} 资产 × ${EQ_MONTHS.length} 月 × 3 份）`,
+  eqMism === 0, eqMism === 0 ? `${EQ_CASES.length * EQ_MONTHS.length} 点全等` : eqMism + ' 处不等，首处 ' + eqFirst);
+
+// S3 双侧锚点（与 saveLedger/selftest.js 的 3,333.33 / 末月 3,333.45 同值 ⇒ 口径跨包更硬）
+const decorE = { asset_id: 'dec', name: '装修', total_value: 12000000, start_month: '2026-01', total_months: 36, terminate_month: '' };
+const vDec12 = AMORT_ENGINES.map((e) => ENGINES[e.tag][e.fn](decorE, '2026-12'));
+const vDecLast = AMORT_ENGINES.map((e) => ENGINES[e.tag][e.fn](decorE, '2028-12'));
+check('S3 锚点：装修 2026-12 = 333,333 分（三份一致）', vDec12.every((x) => x === 333333), vDec12.join('/'));
+check('S3 锚点：装修末月 2028-12 尾差倒挤 = 333,345 分（三份一致）', vDecLast.every((x) => x === 333345), vDecLast.join('/'));
+
+// 影子样本（反恒真）：把 ② 的尾差倒挤改成 base ⇒ 对拍**必须**判不等。
+//   用 vm + 空桩加载（不落盘、不污染生产目录），与探针同一手法。
+const vm = require('vm');
+const TAIL_SENT = 'if (end === naturalEnd) return asset.total_value - base * (N - 1);';
+const pageSrcE = read('cloudfunctions/getAmortSchedule/service.js');
+check('影子样本前提：② 源码含尾差句（否则样本无效，下面会 fail-closed 地判红）',
+  pageSrcE.indexOf(TAIL_SENT) >= 0);
+function loadTamperedEngine(src) {
+  const sandbox = { module: { exports: {} }, exports: {}, console };
+  sandbox.require = (id) => {
+    if (id === './common') return { ERROR_CODES: {} };
+    throw new Error('unexpected require: ' + id);
+  };
+  vm.runInNewContext(src, sandbox, { filename: 'tampered_engine.js' });
+  return sandbox.module.exports;
+}
+const TAMP = loadTamperedEngine(pageSrcE.replace(TAIL_SENT, 'if (end === naturalEnd) return base;'));
+// ⚠️ 参照物取 **② 的真品**（不是 ①）：影子样本的职责只是"证明篡改能被检出"，
+//   若拿 ① 当基准、而 ① 自己也被人为篡改（变异回灌场景），影子样本会**假红**
+//   —— 那会把"对照组被污染"误读成"判据失效"。用真品 ② 作基准 ⇒ 与其他引擎状态无关。
+let shMism = 0, shTail = 0;
+for (let i = 0; i < EQ_CASES.length; i++) {
+  const c = EQ_CASES[i];
+  if (c.term) continue;                       // 只对"自然到期"样本：尾差路径专属
+  const a = eqAsset(c, i);
+  const tailMonth = eqMonthsOf(c.start, c.months).slice(-1)[0];
+  for (const m of EQ_MONTHS) {
+    if (TAMP.amountForMonth(a, m) !== ENGINES['②摊销页展示'].amountForMonth(a, m)) {
+      shMism++;
+      if (m === tailMonth) shTail++;
+    }
+  }
+}
+check('影子样本：篡改 ② 的尾差句 ⇒ 对拍判不等（⇒ 判据有鉴别力，非恒真）', shMism > 0, shMism + ' 处不等');
+check('影子样本：不等点全部落在自然到期末月（⇒ 定位准确，不误报区间外）',
+  shMism > 0 && shMism === shTail, `末月 ${shTail} / 不等 ${shMism}`);
+const aTermE = eqAsset(EQ_CASES[4], 4);
+let shTermChanged = 0;
+for (const m of EQ_MONTHS) {
+  if (TAMP.amountForMonth(aTermE, m) !== ENGINES['②摊销页展示'].amountForMonth(aTermE, m)) shTermChanged++;
+}
+check('影子样本：提前终止样本零变化（⇒ 篡改只打到自然到期尾差路径）', shTermChanged === 0, shTermChanged + ' 处');
 
 console.log('');
 console.log('===== H1 · 前端（摊销页分组 + 追加采购）=====');
