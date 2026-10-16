@@ -88,9 +88,14 @@ Page({
     try {
       const d = await api.call('getLedger', { month: ui.nowMonth() });
       const fen = d && d.result && d.result.operation_ref_profit_fen;
-      if (typeof fen === 'number' && Number.isFinite(fen)) {
-        // 有建档月（含利润恰为 0 的极端情况：这里 fen===0 仍算「有数据」，因为那是一个**真实算出来的 0**，
-        // 与「没录过」是两回事 ⇒ 显示 0.00 是诚实的，不显示才是虚报）
+      // 🔴 R298（M1-B2，A1 复核 + 豆包独立判断一致）：
+      //   `getLedger` 对**没有账本记录**的店回的是「默认空账」（cloudfunctions/getLedger/index.js:4），
+      //   它的 operation_ref_profit_fen 也是 0 ⇒ 只按"是不是数字"判定，会把「**从没录过**」
+      //   渲染成 **¥0.00**。老板会读成"这月不赚不赔"甚至"生意差"，还可能拿这个 0 去做决策
+      //   —— 那是**误导性的诚实**，比留空更糟（空态有「暂无数据 + 录入入口」，才是正确引导）。
+      //   ⇒ 判定改为「**有账本记录**（`account_id` 非空）**且**利润是有限数」才算「有数据」。
+      //     （account_id 为空 ⟺ 无记录 ⇒ 走空态；有记录但利润恰为 0 仍显示 0.00 —— 那才是真算出来的 0。）
+      if (d && d.account_id && typeof fen === 'number' && Number.isFinite(fen)) {
         this.setData({ refProfit: api.fenToYuan(fen, 2), hasProfit: true, profitKnown: true });
       } else {
         this.setData({ hasProfit: false, profitKnown: true });

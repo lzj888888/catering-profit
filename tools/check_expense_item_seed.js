@@ -29,6 +29,18 @@
  *   E7 「项名当机器键」必须命中种子（R217，round217 新增）：
  *       recurringFixed / recurringVariable / expenseItemNotes 键 / missingWarnItems  ⊆ 种子项名；
  *       配影子样本自证判据有分辨力 + 运营类行内注覆盖下界（防新补的文案被整段删回去）。
+ *   E8 「语义锚点」必须真单源（R298，R297 第七轮 A1 复核后新增）：
+ *       `TERMS.semantic.<键>`（业务逻辑引用的锚点）必须 ① 已声明为非空字符串 ② ∈ 对应 category
+ *       的预设项 ③ 在 terms 源里以 `SEMANTIC.<键>` 被引用（= 预设清单真的引用了它，非孤立副本）。
+ *       配影子样本自证"引用计数"有分辨力。
+ *
+ * 为什么加 E8（根因，与本文件既有主题同族更深一层）：
+ *   E7 守的是「**项名**被当机器键」；E8 守的是「**业务逻辑**拿项名当机器键」——
+ *   `pages/month/input.js` 的「费用侧手改上锁」与「补贴自动带出」原写作
+ *   `r.subItem === '外卖活动补贴'`（中文字面量）⇒ 术语表一改名，两处**同时静默失灵**
+ *   （上锁失效、用户手改被自动值覆盖；补贴带不过去 ⇒ 利润算错），零报错、门禁全绿。
+ *   现改为 `TERMS.semantic.expenseMktSubsidy`，且 `items` 里同一锚点被引用 ⇒ **真单源**：
+ *   改名只改一处、逻辑与清单不可能分叉。E8-③ 专门钉住"有没有被改回字面量副本"。
  *
  * 为什么加 E7（根因）：
  *   `recurringFixed/Variable`（首月铺哪些行）、`expenseItemNotes`（行上挂哪句说明）、
@@ -95,9 +107,20 @@ function parseFrontExpense(src) {
   //   原正则要求 label 紧跟 items ⇒ 漏解析带 core 的 operation/labor 两类 ⇒ 误报"缺类"。
   //   真实数据（terms.expense 4 类 23 项）与种子逐项同序一致，是守卫解析器错、不是数据错。
   const re = /category: '(\w+)',\s*label: '([^']*)',\s*(?:core:\s*true,\s*)?items: \[([^\]]*)\]/g;
+  // 🔴 R298：`items` 里可以直接引用**语义锚点常量**（`SEMANTIC.<键>`）—— 这是**真单源**：
+  //   预设清单与业务逻辑引同一个值，改名只需改一处。此处把常量 token 解析回字面量，
+  //   否则 E3 会把 `SEMANTIC.expenseMktSubsidy` 当成项名去和种子比 ⇒ 误报"清单不一致"。
+  //   ⚠️ 解析不出（semantic 组被删/改名）时**原样保留 token** ⇒ E3 判红，fail-closed，不静默放行。
+  let semanticMap = {};
+  try { semanticMap = require(path.join(ROOT, TERMS_REL)).TERMS.semantic || {}; } catch (_) { semanticMap = {}; }
+  const resolveAnchorTok = (tok) => {
+    const mm = /^SEMANTIC\.([A-Za-z_$][\w$]*)$/.exec(tok);
+    return mm && typeof semanticMap[mm[1]] === 'string' ? semanticMap[mm[1]] : tok;
+  };
   let m;
   while ((m = re.exec(block))) {
-    out[m[1]] = m[3].split(',').map((s) => s.trim().replace(/^'|'$/g, '').trim()).filter(Boolean);
+    out[m[1]] = m[3].split(',').map((s) => s.trim().replace(/^'|'$/g, '').trim())
+      .map(resolveAnchorTok).filter(Boolean);
   }
   return Object.keys(out).length ? out : null;
 }
@@ -329,6 +352,53 @@ if (cfSeed && nKeys) {
   else no('E7-⑥', `运营类行内注仅 ${covered} 项 < 下界 ${MIN_OPERATION_NOTES}（新补的可见说明被删掉了）`);
 } else {
   no('E7-⑥', '运营类行内注覆盖判定跳过（上游解析失败）');
+}
+
+// ============ E8 「语义锚点」必须真单源（R298） ============
+section('E8 语义锚点：定义处 = 引用处（真单源，防被改回字面量副本）');
+
+// 契约：每个锚点必须 ① 已声明且为非空字符串 ② ∈ 对应 category 的预设项 ③ 在 terms 源里被
+// `SEMANTIC.<键>` 引用。③ 是"真单源"的证据 —— 若有人把 items 里的引用改回中文字面量，
+// 锚点就成了**孤立副本**（改名会分叉），③ 立刻判红。
+const ANCHOR_CONTRACT = [
+  { key: 'expenseMktSubsidy', category: 'marketing' },
+];
+let semanticGrp = null;
+try { semanticGrp = require(path.join(ROOT, TERMS_REL)).TERMS.semantic || null; } catch (_) { semanticGrp = null; }
+
+if (semanticGrp && frontExp && termsSrc) {
+  // 🔴 R298 变异回灌抓出的坑：E8-③ 若直接在 `termsSrc` 里数字符串，**说明注释里举的例子会被算成引用**
+  //   —— 本轮实测：把 items 改回字面量后 E8-③ 仍判绿（注释里那句 `SEMANTIC.expenseMktSubsidy` 顶了数）。
+  //   ⇒ 只在**代码**里计数（剥掉行首 `//` 注释与块注释）。本仓已多次踩「守卫被自己的说明注释绊红/绊绿」。
+  const codeOnly = termsSrc
+    .replace(/^[ \t]*\/\/[^\n]*/gm, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+  const missA = [];
+  const notInCat = [];
+  const orphan = [];
+  for (const a of ANCHOR_CONTRACT) {
+    const v = semanticGrp[a.key];
+    if (typeof v !== 'string' || !v) { missA.push(a.key); continue; }
+    if ((frontExp[a.category] || []).indexOf(v) < 0) notInCat.push(`${a.key}="${v}" ∉ ${a.category}`);
+    const refs = (codeOnly.match(new RegExp('SEMANTIC\\.' + a.key + '\\b', 'g')) || []).length;
+    if (refs < 1) orphan.push(a.key);
+  }
+  if (missA.length) no('E8-①', `锚点未声明或非字符串（fail-closed）：${missA.join('、')}`);
+  else ok('E8-①', `${ANCHOR_CONTRACT.length} 个契约锚点均已声明且为非空字符串`);
+  if (notInCat.length) no('E8-②', `锚点值不在对应预设清单内（业务逻辑会静默失灵）：${notInCat.join('；')}`);
+  else ok('E8-②', '锚点值均落在对应 category 的预设项内');
+  if (orphan.length) no('E8-③', `锚点无人引用（= 已退回"两处字面量副本"，改名会分叉）：${orphan.join('、')}`);
+  else ok('E8-③', '每个锚点都在 terms 源里以 SEMANTIC.<键> 被引用（真单源、非孤立副本）');
+  // 判据自证（影子样本）：证明 E8-③ 的"引用计数"有分辨力，否则它可以恒真假绿
+  const realRefs = (codeOnly.match(/SEMANTIC\.expenseMktSubsidy\b/g) || []).length;
+  const fakeRefs = (codeOnly.match(/SEMANTIC\.__round298_不存在__\b/g) || []).length;
+  if (realRefs >= 1 && fakeRefs === 0) ok('E8-④', `判据自证：真锚点引用 ${realRefs} 次、假锚点 0 次（计数有分辨力）`);
+  else no('E8-④', `判据自证失败（真 ${realRefs} / 假 ${fakeRefs}）⇒ E8-③ 结论不可信`);
+} else {
+  no('E8-①', '锚点判定跳过（semantic 组 / terms / 预设清单解析失败，fail-closed）');
+  no('E8-②', '锚点判定跳过（上游解析失败，fail-closed）');
+  no('E8-③', '锚点判定跳过（上游解析失败，fail-closed）');
+  no('E8-④', '判据自证跳过（上游解析失败）');
 }
 
 console.log(`\n===== 费用项清单口径守卫结果：${pass} 通过 / ${fail} 失败 =====`);

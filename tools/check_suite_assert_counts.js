@@ -60,7 +60,8 @@ const CASES = [
   { key: 'check_takeaway_paste_cases', rel: 'tools/check_takeaway_paste_cases.js' },
   // R121 扩面（round97）：费用项清单守卫同批纳入 —— 它的 E5 下界护栏（总项数 ≥20 / 每类 ≥2）与
   //   E6 前提证明正是「非恒真」的凭据；断言数不受守则「删掉下界 + 删一处副本比对」同样静默通过。
-  { key: 'check_expense_item_seed', rel: 'tools/check_expense_item_seed.js' },
+  // R298 扩面：新增 E8 语义锚点真单源（4 条：声明 / ∈ 清单 / 被引用 / 判据自证）⇒ 17 → 21。
+  { key: 'check_expense_item_seed', rel: 'tools/check_expense_item_seed.js' },      // 21 条
   // R123 扩面（round100）：WXML 结构完整性守卫同批纳入 —— 它是**唯一有两个独立判据**的守卫
   //   （A 裸属性行 / B 标签配平），删掉其中任一条 ⇒ 实跑通过数 2→1，**仍 > 0**
   //   ⇒ A0-② 的「通过数为 0」下界抓不到，只有本守卫的 A2「声明 ≡ 实跑」能发现。
@@ -142,7 +143,7 @@ const CASES = [
   { key: 'check_auth_guard_shape', rel: 'tools/check_auth_guard_shape.js' }, // 17 条（R194：G1 扫描面非退化 / G2 分支带 error / G3 无 ok()·fail() / G4 派生同形 / G5 锚点在场 / G6 调用点形状）
   { key: 'check_tabbar', rel: 'tools/check_tabbar.js' },
   { key: 'check_material_batch', rel: 'tools/check_material_batch.js' }, // 26 条（R204：A 解析行为 9 / B 页面接线 8 / C 护栏 4 / D 正负样本 2；R211 补 3：带分隔符的空行必须按空行跳过——逗号 ⑩ / 分号 ⑪ / 40 行模板压力 ⑫）
-  { key: 'check_home_ui_v3', rel: 'tools/check_home_ui_v3.js' }, // 29 条（R207：S 护栏 5 / A 头卡 10 / B 口径 4 / C 模块卡与入口保全 7 / D 全局单源 3）
+  { key: 'check_home_ui_v3', rel: 'tools/check_home_ui_v3.js' }, // 32 条（R207：S 护栏 5 / A 头卡 13 / B 口径 4 / C 模块卡与入口保全 7 / D 全局单源 3；A-⑬~⑮=R298 hasProfit 必须以「有账本记录」为前置，否则新用户看到 ¥0.00）
   { key: 'check_shop_lifecycle', rel: 'tools/check_shop_lifecycle.js' }, // 29 条（R208：S 护栏 4 / A 配额语义 5（实跑 decideDelete）/ B 删空不死锁 6 / C 入口不藏 10 / D 文案对齐 4）
   { key: 'check_month_picker', rel: 'tools/check_month_picker.js' }, // 18 条（R209：S 护栏 4 / A handler 实跑 5 / B 后端实跑 4 / C 全仓回归 3 / D UI 一致 2）
   { key: 'check_shop_reset', rel: 'tools/check_shop_reset.js' }, // 52 条（R210：S 护栏 / A 实跑 decideReset / B 实跑 validateInput / C 范围恰三表不含资产 / D 前端三按钮 / E 文案量级 / F 写库纪律）
@@ -179,7 +180,7 @@ const CASES = [
   // R232f：getDishReview 算法层守卫 —— 阶段②读侧原「零判据」（算法内联在 exports.main 里，无法 require）。
   //   32 条 = ⓪ 模块在场 4 + ① 真调生产 buildDishReview 16（含 C-10 回归 + 反恒真）+ ② 架构防退化 5 + ③ 单源 3 + ④ 自失效护栏 4。
   //   变异回灌 6/6 有效红（版本选取/未匹配归零/零除/漏项/本地时区/聚合覆盖），全部命中目标断言名。
-  { key: 'check_dishreview_engine', rel: 'tools/check_dishreview_engine.js' }, // 99 条（⓪~⑫；⑤=R249-B 页面消费契约；⑥=R251 平台块不得只留光标题；⑨=R259 外卖毛利率口径说明；⑩=R261 未匹配按营收降序；⑪=R262「卡不够挂」引导；⑫=R264 覆盖率按金额+行内去建卡预填+卡不够不给批量按钮）
+  { key: 'check_dishreview_engine', rel: 'tools/check_dishreview_engine.js' }, // 107 条（⓪~⑬；⑤=R249-B 页面消费契约；⑥=R251 平台块不得只留光标题；⑨=R259 外卖毛利率口径说明；⑩=R261 未匹配按营收降序；⑪=R262「卡不够挂」引导；⑫=R264 覆盖率按金额+行内去建卡预填+卡不够不给批量按钮；⑬=R298 跨端契约机器码：云端只回 high/low/ok、前端色号表 ⊆ 术语表键集）
   // H-1 扩面（M3.33 形态 C 解析层）：parseDishSalesC 守卫同批纳入 —— 它的 R-C2 三组反例（订单交易额 2974.91≠1823.08 /
   //   补零 357≠354 / 销量文本 isFinite("43")=false）与 R-C4 自失效护栏正是「非恒真」凭据；
   //   16 条删掉一批仍 > 0 ⇒ A0-② 的「通过数为 0」下界抓不到，只有 A2「声明 ≡ 实跑」能发现（同 round73 立本守卫根因）。

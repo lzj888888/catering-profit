@@ -390,9 +390,15 @@ Page({
     const buffet_rateLowPct = bm.rateLowPct || 0;
     const buffet_rateMidPct = bm.rateMidPct || 0;
     const buffet_rateHighPct = bm.rateHighPct || 0;
+    // 🔴 R298：只认云端回的**机器码**（'' | high | low | ok）—— 不再用中文字面量比较。
+    //   旧写法 `bm.actualFlag === '偏高'`：云端一改文案，警示色会**静默丢失**（老板看不到告警）。
+    //   文案走术语单源 `TERMS.card.buffetFlag`；色号在页面层（同一张码表，两处只共享"码"这个契约）。
+    const buffet_flagCode = bm.actualFlagCode || '';
+    const buffet_flagText = TERMS.card.buffetFlag[buffet_flagCode] || '';
     const buffet_actualRateText = (bm.actualRatePct != null)
-      ? (bm.actualRatePct + '%（' + (bm.actualFlag || '') + '）') : '';
-    const buffet_flagClass = (bm.actualFlag === '偏高') ? 'warn' : ((bm.actualFlag === '偏低') ? 'note' : '');
+      ? (bm.actualRatePct + '%' + (buffet_flagText ? '（' + buffet_flagText + '）' : '')) : '';
+    const BUFFET_FLAG_CLS = { high: 'warn', low: 'note' };
+    const buffet_flagClass = BUFFET_FLAG_CLS[buffet_flagCode] || '';
 
     this.setData({
       loading: false,

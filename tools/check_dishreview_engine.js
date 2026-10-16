@@ -667,6 +667,66 @@ function section12() {
 }
 section12();
 
+// ===== ⑬ 段（R298）：跨端契约机械化 —— 云端只回机器码、中文只在前端术语表 =====
+// 为什么（R297 第七轮 A1 复核实测的真缺陷）：
+//   旧形态是 `service.js` 回中文字符串 `'偏高'/'偏低'/'合理'`，前端 `index.js` 再拿中文字符串
+//   `bm.actualFlag === '偏高'` 取警示色 ⇒ **前后端靠中文字面量做接口契约**，两端还可能不同人改。
+//   任一端改文案 ⇒ `buffet_flagClass` 静默变空 ⇒ 「成本偏高」的红色告警**消失**，零报错。
+//   ⇒ 契约改为机器码（`'' | high | low | ok`），文案由 `TERMS.card.buffetFlag` 单源映射。
+// 本段是**行为级**判据（真调 `computeCoverage` 算三档），不是读源码字面 —— 防"改了字面量但函数没变"。
+function section13() {
+  const TERMS_P = path.join(ROOT, 'miniprogram/i18n/terms.js');
+  const SVC_P = path.join(ROOT, 'cloudfunctions/getDishReview/service.js');
+  let FLAG_MAP = null, computeCoverage = null;
+  try { FLAG_MAP = require(TERMS_P).TERMS.card.buffetFlag || null; } catch (e) { FLAG_MAP = null; }
+  try { computeCoverage = require(SVC_P).computeCoverage || null; } catch (e) { computeCoverage = null; }
+
+  if (!FLAG_MAP || typeof computeCoverage !== 'function') {
+    check('13-① 前置：术语表 buffetFlag 与 computeCoverage 均可解析（fail-closed）', false,
+      'flagMap=' + (FLAG_MAP ? 'ok' : 'null') + ' / fn=' + typeof computeCoverage);
+    return;
+  }
+  const KEYS = Object.keys(FLAG_MAP);
+  const SALES = [{ dish_key: '自助餐', category: 'buffet', amount: 10000, qty: 1 }];
+  const codeOf = (costFen) => computeCoverage(SALES, new Set(), costFen).buffet.benchmark.actualFlagCode;
+  const cHigh = codeOf(6000);     // 成本率 60% > 55% ⇒ 高
+  const cOk = codeOf(4000);       // 40% ⇒ 合理
+  const cLow = codeOf(2000);      // 20% < 25% ⇒ 低
+  const cNone = codeOf(null);     // 本月自助食材消耗未填
+
+  check('13-① 云端三档产出的码均 ∈ 术语表 buffetFlag 的键集（跨端契约 = 机器码）',
+    cHigh !== '' && cOk !== '' && cLow !== '' &&
+    KEYS.indexOf(cHigh) >= 0 && KEYS.indexOf(cOk) >= 0 && KEYS.indexOf(cLow) >= 0,
+    'keys=' + KEYS.join('/') + ' 实测=' + [cHigh, cOk, cLow].join('/'));
+  // ⚠️ 只判"三档互不相同"，**不钉死 'high'/'ok'/'low' 这三个字面量**（钉字面量会把改名判红、属反向伤害第二型）
+  check('13-② 三档码互不相同（阈值方向没反、也没被压成同一档）',
+    cHigh !== cOk && cOk !== cLow && cHigh !== cLow, [cHigh, cOk, cLow].join('/'));
+  check('13-③ 未填成本 ⇒ 空码（不得把「没数据」当成「合理」）', cNone === '', JSON.stringify(cNone));
+  check('13-④ 码里不含中文（一旦云端回中文，前端取色就会静默丢失）',
+    !/[一-龥]/.test(String(cHigh) + cOk + cLow), cHigh + cOk + cLow);
+  check('13-⑤ 契约里不再有中文字段 actualFlag（旧形态已移除，防回退）',
+    computeCoverage(SALES, new Set(), 6000).buffet.benchmark.actualFlag === undefined);
+
+  // 前端侧：色号表的键必须 ⊆ 云端码集 —— 否则云端新增/改名档位时，该档在前端**静默无色**
+  const pageSrc13 = rd('pages/m3/dishreview/index.js');
+  const clsBlock = (pageSrc13.match(/BUFFET_FLAG_CLS\s*=\s*\{([^}]*)\}/) || ['', ''])[1];
+  const clsKeys = clsBlock.split(',').map((s) => (s.split(':')[0] || '').trim().replace(/^['"]|['"]$/g, '')).filter(Boolean);
+  check('13-⑥ 前端色号表键集 ⊆ 术语表键集（云端档位改名/新增不会静默无色）',
+    clsKeys.length > 0 && clsKeys.every((k) => KEYS.indexOf(k) >= 0),
+    'cls=[' + clsKeys.join('/') + '] keys=[' + KEYS.join('/') + ']');
+  check('13-⑦ 判据自证：掺一个不存在的键进色号表 ⇒ 上面的包含判据必须不通过（证明 ⑥ 有分辨力，不是恒真）',
+    !['high', '__round298_不存在的档__'].every((k) => KEYS.indexOf(k) >= 0));
+  // 防回退：前端不得再拿中文字段取色（strip 掉 Code 后缀再查，避免 actualFlagCode 误命中）
+  // 🔴 必须先剥注释：本判据的**说明注释里就举了旧写法 `bm.actualFlag === '偏高'` 这个例子**
+  //   —— 直接扫源码会把注释判红（本仓已第三次踩「守卫被自己的说明注释绊红」，见 round107 A9-②）。
+  const pageNoCmt13 = pageSrc13
+    .replace(/^[ \t]*\/\/[^\n]*/gm, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+  check('13-⑧ 前端不再按中文字段 actualFlag 取色（旧形态已移除，防回退）',
+    !/actualFlag\b/.test(pageNoCmt13.replace(/actualFlagCode/g, '')));
+}
+section13();
+
 console.log('\n===== getDishReview 算法层守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);
 })().catch(function (e) {

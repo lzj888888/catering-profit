@@ -286,12 +286,15 @@ function computeCoverage(allSales, matchedKeys, buffetFoodCostTotalFen) {
   const benchCostMidFen = perCapitaPriceFen ? Math.round(perCapitaPriceFen * BENCH.mid) : 0;
   const benchCostHighFen = perCapitaPriceFen ? Math.round(perCapitaPriceFen * BENCH.high) : 0;
   // 用户实际成本率（仅在已填月消耗时判）
-  let actualRatePct = null, actualFlag = '';
+  // 🔴 R298 契约机械化：本函数只回**机器码**（'' | high | low | ok），中文文案由前端 terms 映射
+  //   （`TERMS.card.buffetFlag`）—— 术语单源。旧版回中文字符串、前端再拿中文字符串比较 ⇒
+  //   任一端改文案，「成本偏高」的警示色会**静默丢失**（无报错，老板看不到告警）。
+  let actualRatePct = null, actualFlagCode = '';
   if (perCapitaCostFen != null && perCapitaPriceFen > 0) {
     actualRatePct = Math.round((perCapitaCostFen * 100) / perCapitaPriceFen);
-    if (actualRatePct > 55) actualFlag = '偏高';        // 食材成本吃紧，注意控损/调价
-    else if (actualRatePct < 25) actualFlag = '偏低';    // 冻品为主或数据待核
-    else actualFlag = '合理';
+    if (actualRatePct > 55) actualFlagCode = 'high';        // 食材成本吃紧，注意控损/调价
+    else if (actualRatePct < 25) actualFlagCode = 'low';    // 冻品为主或数据待核
+    else actualFlagCode = 'ok';
   }
   return {
     coverageA: { pct: coverageA_pct },
@@ -318,7 +321,7 @@ function computeCoverage(allSales, matchedKeys, buffetFoodCostTotalFen) {
         costMidFen: benchCostMidFen,
         costHighFen: benchCostHighFen,
         actualRatePct,
-        actualFlag,            // '' | '合理' | '偏高' | '偏低'
+        actualFlagCode,        // '' | 'high' | 'low' | 'ok'（机器码；文案见前端 terms.card.buffetFlag）
       },
     },
   };

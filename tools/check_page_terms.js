@@ -24,12 +24,20 @@
 //   ② 反查页面 t：每个 .wxml 里用到的 `t.<键>`，都必须在该页 .js 的 `t: { ... }` 键集合里。
 //   两条腿对应**两种不同的漏法**：①漏在「术语名写错/术语被删」，②漏在「忘了往 t 里映射」
 //   （本次 7 处里 6 处属 ②：术语好好的，只是没搬进页面的视图模型）。
+//   ③（R298 新增）**术语值不得被当字面量比较**：`r.subItem === '外卖活动补贴'` 这类写法，
+//   一旦术语表改名就**静默失灵**（上锁失效/补贴带不过去/警示色消失），零报错、门禁全绿。
+//   判据① 只守「键存在」，**守不到「值被当键」** ⇒ 本判据补上这一面。
+//   精确形态 = 「**含中文 且 ∈ 术语值集**」两个字条件合取（缺一不可）—— 只查"∈ 值集"会把
+//   `category: 'dine_in'` 这类**合法机器码**判红（实测 54 处假阳性）；只查"含中文"则脱离术语单源语义。
 //
 // 自失效护栏（防本守卫被改小/恒真）：
 //   S1 扫描面文件数 ≥ 40（页面 + 工具 + 前端根）；
 //   S2 判据① 命中 `TERMS.` 引用的**总次数** ≥ 400（低于此说明解析器坏了或扫描面被写窄）；
 //   S3 判据② 命中 `t.` 用法的**总次数** ≥ 300，且**带 `t: {` 块的页面数** ≥ 8；
 //   S4 锚点页面必须在扫描面内（含事故现场 `pages/month/amortize.js` 与 `pages/month/input.wxml`）。
+//   S5 判据③ 必须真的在扫比较型字面量（≥150 次）且术语值集非缩水（≥800 串）。
+//   ⚠️ 判据③ 用的是**保字符串内容**的剥注释（`stripCommentsKeepStr`）—— 复用 `stripComments`
+//      会把串内容换成空格 ⇒ 判据全盲、"命中 0" 是假阴性（R298 实测踩到，靠影子样本抓出）。
 //
 // 边界（诚实声明，别高估）：
 //   · 判据② 只认**字面块形态** `t: { ... }`（按花括号配平）。若某页用 `t: Object.assign(...)` /
@@ -71,6 +79,33 @@
         if (c === '\\') { out += '  '; i += 2; continue; }
         if (c === inStr) { inStr = null; out += c; i++; continue; }
         out += (c === '\n') ? c : ' '; i++; continue;
+      }
+      if (c === '/' && d === '/') { inLine = true; out += '  '; i += 2; continue; }
+      if (c === '/' && d === '*') { inBlock = true; out += '  '; i += 2; continue; }
+      if (c === '"' || c === "'" || c === '`') { inStr = c; out += c; i++; continue; }
+      out += c; i++;
+    }
+    return out;
+  }
+
+  // 🔴 R298：判据③ 必须**看见字符串内容**，故不能复用上面的 stripComments（它把串内容换成空格 ⇒ 判据全盲）。
+  //    本函数只剥注释，字符串字面量**原样保留**。（这是影子样本当场抓出来的 bug：P3-1 报"命中 0"
+  //    而 P3-2/P3-3 正样本同样返回空 ⇒ 判据根本看不见 —— 与 R297「0 命中可能是探测器坏了」同型。）
+  function stripCommentsKeepStr(src) {
+    let out = ''; let i = 0; const n = src.length;
+    let inLine = false, inBlock = false, inStr = null;
+    while (i < n) {
+      const c = src[i], d = src[i + 1];
+      if (inLine) { if (c === '\n') { inLine = false; out += c; } else out += ' '; i++; continue; }
+      if (inBlock) {
+        if (c === '*' && d === '/') { inBlock = false; out += '  '; i += 2; continue; }
+        out += (c === '\n') ? c : ' '; i++; continue;
+      }
+      if (inStr) {
+        if (c === '\\') { out += c + (d === undefined ? '' : d); i += 2; continue; }
+        out += c; i++;
+        if (c === inStr) inStr = null;
+        continue;
       }
       if (c === '/' && d === '/') { inLine = true; out += '  '; i += 2; continue; }
       if (c === '/' && d === '*') { inBlock = true; out += '  '; i += 2; continue; }
@@ -206,6 +241,86 @@
     unbalanced.length === 0,
     unbalanced.length ? ('配平失败：' + unbalanced.length + ' 个页面') : '全部配平');
 
+  // ================= 判据 ③：术语值不得被当字面量比较（R298）=================
+  // 背景（R297 第七轮 A1 复核实测，3 处）：
+  //   · `input.js` 用 `r.subItem === '外卖活动补贴'` 做「费用侧手改上锁」与「补贴自动带出」的定位；
+  //   · `dishreview/index.js` 用 `bm.actualFlag === '偏高'` 决定成本率警示色（**跨端契约**：
+  //     云端回中文串、前端拿中文串比较）。
+  // 后果：术语表一改名 ⇒ 该逻辑**静默失灵**（上锁失效 / 补贴带不过去 / 警示色消失），零报错、
+  //   门禁全绿 —— 与「M2 细项名当机器键 ⇒ 改名静默失效」同族病。
+  //   判据① 只守「键存在」，**守不到「值被当键」** ⇒ 本判据补上这一面。
+  // 边界：只扫 pages/ · utils/ · miniprogram/ 的 .js；`miniprogram/i18n/terms.js` 是定义源、排除；
+  //   剥注释（注释里举例写术语值不判红）；云端够不到术语表，跨端契约另行机械化（机器码）。
+  console.log('\n===== P3 · 页面/工具层不得把「术语值」当字面量比较 =====');
+  const TERM_VALS = new Set();
+  (function collectVals(o, seen) {
+    if (o === null || typeof o !== 'object' || seen.has(o)) return;
+    seen.add(o);
+    for (const k of Object.keys(o)) {
+      const v = o[k];
+      if (typeof v === 'string') TERM_VALS.add(v);
+      else if (typeof v === 'object') collectVals(v, seen);
+    }
+  })(terms, new Set());
+
+  // 比较型用法（'X' 出现在比较/定位位置）。纯函数 ⇒ 影子样本可直接证伪它。
+  // 🔴 判据的**精确形态**（实测校准，别放宽）：
+  //   `含中文 且 ∈ 术语值集 的字面量`。—— 两个条件缺一不可：
+  //   · 只判"∈ 术语值集"会误杀**机器码**：术语表里 `category: 'dine_in'` 这类项**既是键又是值**，
+  //     于是 `g.category === 'dine_in'` 会被判红（实测 54 处假阳性）——而它恰恰是**正确写法**。
+  //   · 只判"含中文"会误杀一切正常中文判断（`name.includes('店')` 之类），且脱离"术语单源"语义。
+  //   ⇒ 合取之后正好命中缺陷家族本身：「**一个外显词被当机器键**」。
+  const CJK = /[\u4e00-\u9fa5\u3000-\u303f\uff00-\uffef]/;   // 中文/全角标点 ⇒ 是外显词，不是机器码
+  const CMP_PATS = [
+    ['=== / !==', /(?:===|!==)\s*'([^'\\]*)'/g],
+    ['indexOf', /\.indexOf\(\s*'([^'\\]*)'/g],
+    ['includes', /\.includes\(\s*'([^'\\]*)'/g],
+    ['case', /\bcase\s+'([^'\\]*)'/g],
+  ];
+  const CMP_ALL = /(?:===|!==)\s*'[^'\\]*'|\.indexOf\(\s*'[^'\\]*'|\.includes\(\s*'[^'\\]*'|\bcase\s+'[^'\\]*'/g;
+  function findTermValueLiterals(strippedSrc, valueSet) {
+    const out = [];
+    for (const pair of CMP_PATS) {
+      const re = pair[1];
+      re.lastIndex = 0;                        // 复用带 g 的正则 ⇒ 必须归零，否则第二次调用漏扫
+      let m;
+      while ((m = re.exec(strippedSrc))) {
+        if (m[1] && CJK.test(m[1]) && valueSet.has(m[1])) out.push(pair[0] + ' ' + JSON.stringify(m[1]));
+      }
+    }
+    return out;
+  }
+
+  const p3Hits = [];
+  let p3Cmp = 0;
+  for (const fp of jsFiles) {
+    const rel = path.relative(ROOT, fp).split(path.sep).join('/');
+    if (rel === 'miniprogram/i18n/terms.js') continue;      // 定义源自身不扫（它的值本就是术语）
+    const code = stripCommentsKeepStr(fs.readFileSync(fp, 'utf8'));
+    p3Cmp += (code.match(CMP_ALL) || []).length;
+    findTermValueLiterals(code, TERM_VALS).forEach((h) => p3Hits.push(rel + '  ' + h));
+  }
+  check('P3-1 零处「把术语值当字面量比较」（改名会静默失灵的同族病）',
+    p3Hits.length === 0,
+    p3Hits.length ? ('命中 ' + p3Hits.length + ' 处：' + p3Hits.slice(0, 6).join(' | '))
+      : ('扫 ' + p3Cmp + ' 处比较型字面量，命中 0'));
+
+  // 影子样本（正样本必红 / 负样本必绿）—— 证明判据有分辨力，且**逐条证明不是放宽过头的恒真**
+  const sBad1 = findTermValueLiterals(stripCommentsKeepStr("if (r.subItem === '外卖活动补贴') {}"), TERM_VALS);
+  check("P3-2 正样本「=== '外卖活动补贴'」判红（本轮真事故形态）", sBad1.length === 1, JSON.stringify(sBad1));
+  const sBad2 = findTermValueLiterals(stripCommentsKeepStr("const c = (bm.flag === '偏高') ? 'warn' : '';"), TERM_VALS);
+  check("P3-3 正样本「=== '偏高'」判红（跨端中文契约的旧形态）", sBad2.length === 1, JSON.stringify(sBad2));
+  const sOk1 = findTermValueLiterals(stripCommentsKeepStr("if (x === '这个字符串不在术语表里') {}"), TERM_VALS);
+  check('P3-4 负样本「含中文但不在术语表里的串」判绿（不误杀正常中文判断）', sOk1.length === 0, JSON.stringify(sOk1));
+  // 🔴 这条是本判据**最容易被放宽过头**的地方：机器码在术语表里也是"值"（`category: 'dine_in'`）,
+  //    若判据只查"∈ 术语值集"，`g.category === 'dine_in'`（**正确写法**）会被判红 —— 实测 54 处假阳性。
+  const sOk2 = findTermValueLiterals(stripCommentsKeepStr("if (g.category === 'dine_in') {}"), TERM_VALS);
+  check("P3-5 负样本「机器码 'dine_in'（在术语表里但是码）」判绿 —— 防止判据放宽成 54 处假阳性",
+    sOk2.length === 0, JSON.stringify(sOk2));
+  const sOk3 = findTermValueLiterals(stripCommentsKeepStr("// 注释里写 '外卖活动补贴' 不算\nconst a = 1;"), TERM_VALS);
+  check('P3-6 负样本「注释里的术语值」判绿（剥注释生效，避免守卫被自己的说明注释绊红）',
+    sOk3.length === 0, JSON.stringify(sOk3));
+
   // ================= 自失效护栏（防扫描面被写窄 / 判据恒真）=================
   console.log('\n===== P0 · 自失效护栏（证明本守卫不是恒真）=====');
   check('S1 扫描面非空：页面/工具 .js ≥ 20 个', jsFiles.length >= 20, '实际 ' + jsFiles.length + ' 个');
@@ -215,6 +330,8 @@
   const anchorOk = ANCHORS_JS.every((a) => seenAnchor[a]) && ANCHORS_WXML.every((a) => seenWxmlAnchor[a]);
   check('S4 锚点文件在扫描面内（含本轮事故现场 amortize.js / input.wxml）', anchorOk,
     anchorOk ? '4 个锚点全命中' : '锚点缺失 ⇒ 扫描面可能被写窄');
+  check('S5 判据③ 确实在扫比较：比较型字面量 ≥ 150 次 / TERMS 叶子串 ≥ 800',
+    p3Cmp >= 150 && TERM_VALS.size >= 800, '实际 ' + p3Cmp + ' 次 / ' + TERM_VALS.size + ' 串');
 
   console.log('\n===== 页面术语键守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
   if (failN) {

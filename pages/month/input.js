@@ -686,7 +686,9 @@ Page({
     const rows = g.rows.slice();
     rows[ridx] = Object.assign({}, rows[ridx], patch);
     // R85：费用侧「外卖活动补贴」被用户手改 → 上锁（syncSubsidyCarry 不再覆盖；除非再动收入侧分项值）
-    if (kind === 'expense' && g.category === 'marketing' && rows[ridx].subItem === '外卖活动补贴' && patch.amountYuan !== undefined) {
+    // 🔴 R298：基准取自 `TERMS.semantic.expenseMktSubsidy`（锚点），**不再写中文字面量** ——
+    //   旧写法在术语改名时会**静默失灵**（上锁失效，用户手改被自动值覆盖），门禁全绿。
+    if (kind === 'expense' && g.category === 'marketing' && rows[ridx].subItem === TERMS.semantic.expenseMktSubsidy && patch.amountYuan !== undefined) {
       rows[ridx].twCarryLock = true;
     }
     // round217：费用行**改了细项名** ⇒ 行内说明必须跟着换（否则「房租」的注会留在老板新起的名字底下）
@@ -1227,7 +1229,8 @@ Page({
     const mk = groups.findIndex((x) => x.category === 'marketing');
     if (mk < 0) return;
     const mg = Object.assign({}, groups[mk]);
-    const ri = mg.rows.findIndex((r) => r.subItem === '外卖活动补贴');
+    // 🔴 R298：定位基准同样取锚点（旧写法用中文字面量 ⇒ 改名后补贴**静默带不过去**）
+    const ri = mg.rows.findIndex((r) => r.subItem === TERMS.semantic.expenseMktSubsidy);
     if (ri < 0) return;
     const cur = (mg.rows[ri] && mg.rows[ri].amountYuan) || '';
     const target = total ? total.toFixed(2) : '';
