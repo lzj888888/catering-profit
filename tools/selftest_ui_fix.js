@@ -14,14 +14,33 @@ const read = (p) => fs.readFileSync(path.join(ROOT, p), "utf8");
 console.log('===== 修 1 · result 三态（loading / 有结果 / 空态）=====');
 const rw = read("pages/month/result.wxml");
 check('存在 loading 独立分支 (wx:if={{loading}})', /wx:if="\{\{loading\}\}"/.test(rw));
-check('存在结果分支 (wx:elif={{r}})', /wx:elif="\{\{r\}\}"/.test(rw));
+// 🔴 R298·C1：本段由「存在性判据」升为「**可达性判据**」（判语义，不钉字面量）。
+//   旧断言钉死 `wx:elif="{{r}}"` —— 而那正是缺陷本身：getLedger 对无账本记录月返回「默认空账」
+//   ⇒ r 在成功路径恒真 ⇒ 空态分支只在 catch（接口异常）路径可达 ⇒ 「无账本」这个正常态走不到
+//   ⇒ 未建档月份挂红带「亏损」。教训：「分支在不在」绿了，没人问「分支到不到」。
+const mElif = rw.match(/wx:elif="\{\{(.+?)\}\}"/);
+const elifExpr = mElif ? mElif[1].trim() : '';
+check('结果分支判据存在（fail-closed：无 wx:elif 即红）', mElif !== null, elifExpr ? `判据 = ${elifExpr}` : '未匹配');
+check('🔴 结果分支判据 = 账本存在性信号（不得是 r/result 这类恒真量）',
+  /hasLedger|account/i.test(elifExpr), `判据 = ${elifExpr || 'n/a'}`);
+const rj = read("pages/month/result.js");
+check('🔴 result.js 该信号由 d.account_id 派生（与 getLedger:177 出参同源）',
+  /hasLedger\s*:\s*!!\(\s*d\s*&&\s*d\.account_id\s*\)/.test(rj));
 check('存在空态分支 (wx:else) 且含 resultEmpty', /wx:else[\s\S]{0,400}resultEmpty/.test(rw));
 check('空态分支不含「加载中」', !/wx:else[\s\S]{0,400}resultEmpty[\s\S]{0,200}加载中/.test(rw));
 check('空态有去录入出口 (goInput + resultEmptyGoInput)', /resultEmptyGoInput/.test(rw) && /bindtap="goInput"/.test(rw));
-const rj = read("pages/month/result.js");
 check('result.js 有 goInput 方法跳 input', /goInput\(\) \{\s*wx\.navigateTo\(\{ url: '\/pages\/month\/input\?month='/.test(rj));
 check('result.js 空态文案引用 uiFix.resultEmpty', /resultEmpty: TERMS\.uiFix\.resultEmpty/.test(rj));
 check('旧 wx:else=加载中 已移除（无 !loading && r 写法）', !/!loading && r/.test(rw));
+// —— 影子样本：证明上面的「可达性」断言**真有分辨力**（不然它可能恒真 = 假绿），且替换确实生效
+const shadowWxml = rw.replace(/wx:elif="\{\{(.+?)\}\}"/, 'wx:elif="{{r}}"');
+const shadowExprM = shadowWxml.match(/wx:elif="\{\{(.+?)\}\}"/);
+const shadowExpr = shadowExprM ? shadowExprM[1].trim() : '';
+check('影子 W：判据换回 {{r}}（缺陷原样）⇒ 可达性断言必须判红',
+  shadowExpr === 'r' && !/hasLedger|account/i.test(shadowExpr), `替换后判据 = ${shadowExpr || 'n/a'}`);
+const shadowJs = rj.replace(/hasLedger\s*:\s*!!\(.+?\)/, 'hasLedger: true');
+check('影子 J：js 侧判据改成恒真 ⇒ 「由 account_id 派生」断言必须判红',
+  !/hasLedger\s*:\s*!!\(\s*d\s*&&\s*d\.account_id\s*\)/.test(shadowJs));
 
 // ============ 修 2：amortize totalYuan 初值 ============
 console.log('');

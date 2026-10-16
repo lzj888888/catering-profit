@@ -61,7 +61,11 @@ exports.main = async (event) => {
   const exRes = await da.list('shop_monthly_account', { shop_id: shopId, month: v.month });
   existing = (exRes && exRes.data && exRes.data[0]) || null;
   if (existing && existing.is_archive) {
-    const archivedAt = existing.archived_at || now;
+    // R298·C3 fail-closed（与前端 utils/ui.js::withinGrace 同口径）：缺 archived_at ⇒ 视作 0（纪元）⇒ 必在宽限外。
+    //   原先 `|| now` ⇒ (now-now)=0 < 宽限 ⇒ **fail-open 放行**，而前端对同一条记录却显示「已锁」⇒ 两端判决相反。
+    //   本仓 archived_at 的约定默认值处处为 0：archiveMonth:55/63（取消归档）、getLedger:179（出参）、
+    //   本函数 insert 分支（新建时 `archived_at: 0`）。⇒ `|| 0` 与全仓口径一致；未知归档时间不敢承诺「在 7 天内」⇒ 锁。
+    const archivedAt = existing.archived_at || 0;
     const withinGrace = (now - archivedAt) < GRACE_DAYS_MS;
     if (!(v.archiveOverride && withinGrace)) {
       return fail(ERROR_CODES.ARCHIVED_LOCKED, '归档月份为只读，仅归档后 7 天内可补录（需二次确认）');

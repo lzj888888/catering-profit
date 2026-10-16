@@ -37,9 +37,14 @@ module.exports = {
   },
   /** 归档后 7 天宽限是否仍可补录 */
   withinGrace(archivedAtMs, nowMs) {
+    // fail-closed：未知归档时间 ⇒ 视为已锁（与云端 saveLedger 归档守卫的 `|| 0` 同口径）。
     if (!archivedAtMs) return false;
     const GRACE = 7 * 24 * 3600 * 1000;
-    return (Date.now() - archivedAtMs) < GRACE;
+    // R298·C4：nowMs 原为**死参**（函数体写死 Date.now()）⇒ 时间不可注入、无法对宽限边界做变异测试。
+    //   用 Number.isFinite 而非 `nowMs || …`（否则传入 0＝纪元会被当"未传"静默回退，测试假绿），
+    //   也不止 typeof number（会放进 NaN/Infinity ⇒ 后续比较恒 false，语义含糊）。
+    const now = Number.isFinite(nowMs) ? nowMs : Date.now();
+    return (now - archivedAtMs) < GRACE;
   },
   /** 设置导航栏标题（从 i18n/terms.js 取词，避免 .json 硬编码） */
   setTitle(text) { wx.setNavigationBarTitle({ title: text }); },

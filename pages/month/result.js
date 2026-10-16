@@ -81,6 +81,9 @@ Page({
     bandClass: '',
     bandText: '',
     r: null,       // 展示用已格式化数据
+    // 🔴 三态判据（R298·C1）：必须是「账本存在性」，**不能**用 r —— getLedger 对无账本记录月
+    //   返回「默认空账」（getLedger/index.js:4），result 恒存在 ⇒ r 在成功路径恒真 ⇒ 空态分支不可达。
+    hasLedger: false,
     incDetail: [],
     expDetail: [],
     showIncDrill: false,
@@ -133,6 +136,9 @@ Page({
       const sv = this.scopeView(scope);
       this.setData({
         isArchive: !!d.is_archive,
+        // R298·C1：账本存在性单源判据 —— 与首页 pages/index/index.js:98 同一字段、同一含义。
+        //   缺它 ⇒ 「无账本」这个正常态永远走结果分支 ⇒ 未建档月份显示红带「亏损」+ 全 ¥0.00 + 可导出空报表。
+        hasLedger: !!(d && d.account_id),
         incDetail,
         expDetail,
         r: {

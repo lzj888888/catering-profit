@@ -126,7 +126,10 @@ Page({
       // 统一用服务端读回的开关（getLedger 返回的 switches 为权威）
       const sw = d.switches || app.globalData.switches;
       // ⚠️ 计算下沉：金额一律由后端返回分整数，此处仅格式化展示（分→元），不做任何业务计算
-      const r = d.result || null;
+      // R298·C2：d.result 对无账本记录月**恒为对象**（getLedger 返回「默认空账」）⇒ `|| null` 恒真。
+      //   必须用 account_id 判「有没有账本」——与下方 canArchive、首页 index.js:98 同一单源判据。
+      const hasLedger = !!d.account_id;
+      const r = hasLedger ? (d.result || null) : null;
       const fmt = (v) => (v == null ? '0.00' : api.fenToYuan(v, 2));
       this.setData({
         curMonth: month,

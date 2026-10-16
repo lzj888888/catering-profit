@@ -1,9 +1,10 @@
-<!-- 修 1：三态拆分 —— loading / 有结果 / 空态（无账本或接口异常，中性表述 + 去录入出口） -->
+<!-- 修 1：三态拆分 —— loading / 有结果 / 空态（无账本或接口异常，中性表述 + 去录入出口）
+     R298·C1 修：结果分支判据由 `r` 改为 `hasLedger`（账本存在性）—— 缘由见文末空态分支处注释。 -->
 <view class="container safe-bottom" wx:if="{{loading}}">
   <view class="muted" style="text-align:center;padding:60rpx 0;">{{t.loading}}</view>
 </view>
 
-<view class="container safe-bottom" wx:elif="{{r}}">
+<view class="container safe-bottom" wx:elif="{{hasLedger}}">
   <view class="archived-bar" wx:if="{{isArchive}}">{{t.archiveLocked}}</view>
 
   <!-- 暖化：顶部「一句话结论 + 红黄绿带」（装饰性，只看真利润正负，不碰引擎口径） -->
@@ -170,7 +171,10 @@
   <view class="ind-note">{{t.exportHint}}</view>
 </view>
 
-<!-- 修 1：空态（r 为 null：无账本或接口异常；中性表述 + 去录入出口） -->
+<!-- 空态（hasLedger 为 false：无账本或接口异常；中性表述 + 去录入出口）
+     R298·C1 修：判据原为 `r`，但 getLedger 对无账本记录月返回「默认空账」⇒ r 在成功路径恒真
+     ⇒ 本分支只在 catch（接口异常）路径可达，「无账本」这个正常态走不到 ⇒ 未建档月份误显示红带「亏损」。
+     现改用账本存在性判据 hasLedger（= !!d.account_id，与首页 index.js:98 同源）。 -->
 <view class="container safe-bottom" wx:else>
   <view class="empty-state">
     <view class="muted" style="text-align:center;padding:60rpx 0 0;">{{t.resultEmpty}}</view>
