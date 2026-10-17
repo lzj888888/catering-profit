@@ -10,6 +10,15 @@ const entitle = require('../../utils/entitlement.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 // 🔴 R311：体检算法（纯函数）—— 保本区间/归因/健康营收/结构性诊断
 const BE = require('../../utils/breakeven.js');
+
+// 🔴 R313：上一个月（跨月对比用）。纯字符串运算，不依赖 this / ui。
+function prevMonthOf(m) {
+  const mt = /^(\d{4})-(\d{2})$/.exec(String(m || ''));
+  if (!mt) return '';
+  let y = Number(mt[1]); let mo = Number(mt[2]) - 1;
+  if (mo === 0) { mo = 12; y -= 1; }
+  return y + '-' + String(mo).padStart(2, '0');
+}
 const exportFile = require('../../utils/exportFile.js');   // R265：导出投递单源（落盘 + 打开 + 转发兜底）
 // 🔴 R302：外卖到手账 —— 口径全部在 `utils/takeaway.js`（纯函数单源），页面只做「名字→数字」解析与格式化
 const { settleSummary } = require('../../utils/takeaway.js');
@@ -17,6 +26,9 @@ const { settleSummary } = require('../../utils/takeaway.js');
 Page({
   data: {
     t: {
+      beMomMore: TERMS.card.beMomMore,
+      beMomLess: TERMS.card.beMomLess,
+      beYuanUnit: TERMS.card.beYuanUnit,
       beMarginDrop: TERMS.card.beMarginDrop,
       beMarginRise: TERMS.card.beMarginRise,
       beHealthyText: TERMS.card.beHealthyText,
@@ -167,7 +179,20 @@ Page({
       // R302：外卖到手账 —— 由 M1 **已录**的数反算（详见 buildSettle 头注）
       const settle = this.buildSettle(d.income_items || [], d.expense_items || []);
       // 🔴 R311：体检（纯读 M1 结果做解释，**不改任何既有计算**）
-      const be = this.buildBreakeven(d, res);
+      // 🔴 R313：上月真钱利润（跨月对比）。**只读、失败不阻断**——拿不到就当没上月，
+      //   绝不编 0（编 0 会让"比上月多赚"凭空出现）。
+      let prevProfitFen = null;
+      try {
+        const curM = d.month || this.data.month || '';
+        const pm = prevMonthOf(curM);
+        if (pm) {
+          const pd = await api.call('getLedger', { month: pm });
+          if (pd && pd.account_id && pd.total_factor_real_profit_fen != null) {
+            prevProfitFen = Number(pd.total_factor_real_profit_fen);
+          }
+        }
+      } catch (e) { prevProfitFen = null; }
+      const be = this.buildBreakeven(d, res, prevProfitFen);
       // round115：行业指标对照 —— 后端只回 key/数值/level 枚举，中文名与评级文案在前端补齐（术语单源在前端）
       const inds = this.decorateInds(d.indicators || []);
       const scope = d.indicator_scope || {};
@@ -235,7 +260,7 @@ Page({
   // 🔴 R311：体检结论（**只解释、不重算利润**）
   //   食材成本**不在 expense_items 里**（calcMonthlyProfit/service.js:22-27 明写其属费用非食材成本），
   //   而它是最**大**的变动成本 ⇒ 必须显式传，否则保本线会大幅偏低（最危险的方向）。
-  buildBreakeven(d, res) {
+  buildBreakeven(d, res, prevProfitFen) {
     const T = this.data.t;
     // 🔴 R312：分 → "X.X万"（一位小数）。老板看"10.8万"比"¥108,491.00"快得多。
     const wan = (fen) => (Math.round((Number(fen || 0) / 100 / 10000) * 10) / 10) + String(T.beWan || '万');
@@ -290,7 +315,18 @@ Page({
     }
     // 🔴 老板视角：标题直接给"亏/赚"结论 —— 老板不该自己从"安全边际 -19.3%"换算"我在亏"。
     //   ⚠️ 判据 = 安全边际 < 0（营收低于保本线，按定义就是亏）；**不给**"接近保本"这种模糊话。
-    const title = (bk.safeMarginPct != null && bk.safeMarginPct < 0) ? T.beVerdictLoss : T.beVerdictWin;
+    let title = (bk.safeMarginPct != null && bk.safeMarginPct < 0) ? T.beVerdictLoss : T.beVerdictWin;
+    // 🔴 R313：跨月对比 —— 只在**上月账本存在**时追加；差额 < 1 元视为"没变"，不打扰。
+    if (prevProfitFen != null && Number.isFinite(Number(prevProfitFen))) {
+      const nowP = Number((res && res.total_factor_real_profit_fen) || 0);
+      const diff = nowP - Number(prevProfitFen);
+      if (Math.abs(diff) >= 100) {
+        const money = api.fenToYuan(Math.abs(diff), 0) + String(T.beYuanUnit || '元');
+        title += (diff > 0
+          ? String(T.beMomMore || '').replace('{a}', money)
+          : String(T.beMomLess || '').replace('{a}', money));
+      }
+    }
     return {
       ok: true,
       title,

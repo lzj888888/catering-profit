@@ -1552,6 +1552,10 @@ const TERMS = {
     beHealthyText: '做到{a}，费用占比才回到正常',
     beRangeText: '{a}到{b}',
     beWan: '万',
+    // 🔴 R313：跨月对比（老板看完"这个月在亏"，下一句一定问"上月呢"）
+    beMomMore: '，比上月多赚{a}',
+    beMomLess: '，比上月少赚{a}',
+    beYuanUnit: '元',
     beVerdictLoss: '这个月在亏',
     beVerdictWin: '这个月有赚',
     // 🔴 R311-A：毛利率差距的金额化（整句放术语里 —— wxml 不许有硬编码汉字）
