@@ -13,7 +13,7 @@
   <view class="card2" wx:if="{{be && be.ok}}">
     <view class="cell drill-head"><text class="lbl">{{t.beTitle}}</text></view>
     <view class="cell"><text class="lbl">{{t.beBreakeven}}</text><text class="val">{{t.cur}}{{be.lowText}} ~ {{be.highText}}</text></view>
-    <view class="cell" wx:if="{{be.marginText}}"><text class="lbl">{{t.beMargin}}</text><text class="val {{be.marginNeg ? 'warn' : ''}}">{{be.marginText}}%</text></view>
+    <view class="cell" wx:if="{{be.marginText}}"><text class="lbl">{{t.beMargin}}</text><text class="val {{be.marginNeg ? 'warn' : ''}}">{{be.marginText}}</text></view>
     <view class="cell" wx:if="{{be.healthyText}}"><text class="lbl">{{t.beHealthy}}</text><text class="val">{{t.cur}}{{be.healthyText}}</text></view>
     <view class="warn" wx:if="{{be.diag === 'structural'}}">{{t.beStructural}}</view>
     <view class="muted" wx:if="{{be.unknownText}}">{{be.unknownText}}</view>

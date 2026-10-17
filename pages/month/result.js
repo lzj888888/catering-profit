@@ -256,7 +256,7 @@ Page({
       varText: api.fenToYuan(sp.variableFen, 2),
       lowText: api.fenToYuan(bk.lowFen, 2),
       highText: api.fenToYuan(bk.highFen, 2),
-      marginText: bk.safeMarginPct == null ? '' : String(bk.safeMarginPct),
+      marginText: bk.safeMarginPct == null ? '' : (String(bk.safeMarginPct) + '%'),
       marginNeg: bk.safeMarginPct != null && bk.safeMarginPct < 0,
       healthyText: healthyFen > 0 ? api.fenToYuan(healthyFen, 2) : '',
       diag: BE.diagnose(healthyFen, bk.breakevenFen),
