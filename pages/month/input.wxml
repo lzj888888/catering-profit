@@ -402,6 +402,11 @@
 
   <!-- 费用（A2：四大类；E1：引导文案） -->
   <view class="sec">{{t.expenseTitle}}</view>
+  <!-- 🔴 R308：沿用上月（**只带费用侧**）。省掉"每月重填十几项"这个最大的弃用原因；
+       收入侧**不带**（预填收入会诱导忘改 ⇒ 静默错账）。本月已有费用时先弹确认，不静默覆盖。 -->
+  <view class="group-ops" wx:if="{{!readOnly}}">
+    <button class="btn-mini" bindtap="onCarryExpense">{{t.carryBtn}}</button>
+  </view>
   <view class="hint-fold">
     <view class="hint-fold-head" data-key="expenseHint" bindtap="onToggleHintFold">
       <text class="hint-fold-guide">{{hintFold.expenseHint ? t.hintFoldHide : t.hintFoldShow}}</text>

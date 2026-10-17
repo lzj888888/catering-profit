@@ -25,6 +25,7 @@ const G5 = 'tools/check_takeaway_settle.js';
 const G6 = 'tools/check_import_scope_claims.js';
 const G7 = 'tools/selftest_batch8b.js';
 const G8 = 'tools/check_share_split.js';
+const G9 = 'tools/check_carry_over.js';
 
 const sha = (abs) => crypto.createHash('sha256').update(fs.readFileSync(abs)).digest('hex');
 const absOf = (rel) => path.join(ROOT, rel);
@@ -280,6 +281,15 @@ const MUTS = [
     to: '<view class="card2" wx:if="{{splitCards.length}}">',
     guard: G8,
     expect: [/①-b/],
+  },
+  {
+    id: 'M27',
+    desc: 'R308 原样复现：沿用上月时把**收入侧**也带进来（诱导老板忘改 ⇒ 本月收入变成上月的数）',
+    file: 'pages/month/input.js',
+    from: '        this.setData({ expenseGroups });',
+    to: '        this.setData({ incomeGroups: expenseGroups });',
+    guard: G9,
+    expect: [/①-a/],
   },
 ];
 

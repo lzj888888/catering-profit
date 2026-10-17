@@ -40,6 +40,10 @@ Page({
       title: TERMS.inputPage.title,
       incomeTitle: TERMS.ledger.incomeTitle,
       expenseTitle: TERMS.ledger.expenseTitle,
+      carryBtn: TERMS.ledger.carryBtn,
+      carryOverwrite: TERMS.ledger.carryOverwrite,
+      carryEmpty: TERMS.ledger.carryEmpty,
+      carryDone: TERMS.ledger.carryDone,
       income: TERMS.ledger.income,          // [{category,label,items:[...]}]
       expense: TERMS.ledger.expense,        // [{category,label,items:[...]}]
       subItem: TERMS.ledger.subItem,
@@ -1486,6 +1490,49 @@ Page({
       return;
     }
     proceed();
+  },
+
+  // ===== R308：沿用上月（**只带费用侧**）=====
+  // 🔴 为什么只带费用：餐饮的**费用结构月度稳定**（房租/人工/水电/固定支出），而**收入月月变**。
+  //   预填收入 = 诱导老板"忘了改" ⇒ 静默错账（本仓头号危害）⇒ 收入侧**一律留空**，让他照实填。
+  // 🔴 不能静默覆盖：本月费用侧只要已有任何非空金额，必须先弹确认（不许悄悄抹掉已填的数）。
+  async onCarryExpense() {
+    if (this.data.readOnly) {
+      wx.showModal({ title: TERMS.inputPage.archiveReadonly, content: TERMS.inputPage.confirmLocked, showCancel: false });
+      return;
+    }
+    if (this._carryBusy) return;
+    const prev = this.prevMonthOf(this.data.month);
+    if (!prev) return;
+    const hasAmount = (r) => String((r && r.amountYuan) || '').trim() !== '';
+    const dirty = (this.data.expenseGroups || []).some((g) => (g.rows || []).some(hasAmount));
+    const run = async () => {
+      this._carryBusy = true;
+      try {
+        const d = await api.call('getLedger', { month: prev });
+        // 只带**有金额**的项：上月全空的细项不铺出来（否则本月凭空多出一堆空行）
+        const items = (d.expense_items || []).filter((it) => (Number(it && it.amount_fen) || 0) !== 0
+          || (it.sub_items || []).some((si) => (Number(si && si.amount_fen) || 0) !== 0));
+        if (!items.length) { wx.showToast({ title: TERMS.ledger.carryEmpty, icon: 'none' }); return; }
+        // 复用既有装配口（与「读回本月账」同一函数）⇒ 行模型/decorate/notes 全部一致，不另造一套
+        const expenseGroups = this.rebuildFromItems(TERMS.ledger.expense, items, TERMS.ledger.expenseScope, TERMS.ledger.expenseItemNotes);
+        this.setData({ expenseGroups });
+        wx.showToast({ title: TERMS.ledger.carryDone, icon: 'none' });
+      } catch (e) {
+        api.toastError(e);
+      } finally {
+        this._carryBusy = false;
+      }
+    };
+    if (dirty) {
+      wx.showModal({
+        title: TERMS.ledger.carryBtn,
+        content: TERMS.ledger.carryOverwrite,
+        success: (r) => { if (r.confirm) run(); },
+      });
+      return;
+    }
+    await run();
   },
 
   // 组装提交：每大类 → sub_items（云函数汇总大类金额，前端不汇总）；旧调用兼容（无细项时也走 sub_items 单行）

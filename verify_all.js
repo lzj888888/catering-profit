@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：182 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：183 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -1152,6 +1152,10 @@ const SUITES = [
   //   守三条铁律：估算不得冒充实测（只挂空态 + 必须声明）· 不替老板编数（>100 拒绝、无订单不算）·
   //   亏损菜原样露出。
   ['share-split', 'tools/check_share_split.js'],
+  // ===== R308 ·「沿用上月」（只带费用侧）守卫 =====
+  //   见头部注释同名条目。M1 手填十几项费用、月月重复 ⇒ 第二个月就懒得填 ⇒ 月度趋势死。
+  //   一键带费用侧，省 ~80% 填写量。红线：绝不带收入（诱导忘改=静默错账）· 不许静默覆盖 · 归档拦截。
+  ['carry-over', 'tools/check_carry_over.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
