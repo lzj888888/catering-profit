@@ -1468,8 +1468,8 @@ const TERMS = {
     //   只做搜索建议 + 一键起行，**绝不自动替换、绝不预填价格**。
     matLexiconHint: '试试这些常用原料（点一下填入，不会自动改名）',
     templateFrom: '从模板新建',
-    templatePickPh: '选一道模板，预填配方（价格留空）',
-    templateHint: '模板只预填行名 / 用量 / 单位，价格请自行填写',
+    templatePickPh: '选一道模板起个头（可跳过）',
+    templateHint: '模板只给例子，克数与价格都按实际填',
     // ===== M3.19（批次 E）· 原料变动影响面 =====
     impactTitle: '涨价影响面',
     impactEmpty: '没有成本卡用到这个原料',
