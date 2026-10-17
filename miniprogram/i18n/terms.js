@@ -1504,6 +1504,27 @@ const TERMS = {
     // ===== M3.33（批次 G） 单品毛利复盘（导入销量 → 排行榜）=====
     //   【事后复盘】口径文案（v1.2 §M3.35 原文），落 card 命名空间、不新建顶层命名空间。
     reviewTitle: '菜品赚多赚少排行榜',
+    // 🔴 R307：占比拆分参考榜（估算）——外卖销量拿不到时的轻量补位，见 utils/shareSplit.js 头注。
+    //   ⚠️ 每条文案都 **≤17 字**（`check_hint_fold` 对 ≥18 字的行内提示要求必须折叠）。
+    splitTitle: '按占比估一个',
+    splitIntro: '还没有实测销量，先按占比估个大概',
+    splitOrderLabel: '本月外卖有效订单数',
+    splitNoOrder: '本月还没填有效订单数，去补一下',
+    splitPickPh: '选一道菜',
+    splitPctPh: '占比 %',
+    splitAdd: '再加一道',
+    splitCalc: '算一下',
+    splitResultTitle: '参考毛利贡献',
+    splitNote: '按你填的占比估算，不是实测',
+    splitQty: '估算份数',
+    splitContrib: '毛利贡献',
+    splitLossTag: '亏本',
+    splitTotal: '合计',
+    splitErrNoRows: '先选菜并填占比',
+    splitErrDup: '同一道菜选了两遍',
+    splitErrPct: '占比要填 0–100 的数字',
+    splitErrSum: '占比合计超过 100%，请调小',
+    splitErrNoPrice: '有菜没填售价，算不出毛利',
     reviewAfterFact: '本报表基于标准成本卡 × 销售份数推演，仅作经营参考；如需门店真实账面成本，请使用 M1 月度核算。',
     reviewDineIn: '堂食',
     reviewTakeaway: '外卖',

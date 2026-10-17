@@ -18,6 +18,8 @@ const { suggestCardIndex, BATCH_CHUNK } = require('../../../utils/dishMapSuggest
 //   为什么：`dataAdapter.js::listAll` 明文要求调用方把「已到读取上限、可能不全」透传到**用户面前**
 //   （可见降级），服务端照做了、前端此前零消费 ⇒ 超上限时静默少行。见 `utils/dataHealth.js` 头注。
 const dh = require('../../../utils/dataHealth.js');
+// 🔴 R307：占比拆分参考榜（纯函数）—— 外卖销量拿不到时的**轻量补位**，见模块头注（含三条铁律）
+const { splitRank, MAX_ROWS, qtyText } = require('../../../utils/shareSplit.js');
 
 const fenYuan = (fen) => (Number(fen) || 0) / 100;
 const fmtYuan = (fen) => fenYuan(fen).toFixed(2);
@@ -28,6 +30,26 @@ Page({
     t: {
       reviewTitle: TERMS.card.reviewTitle,
       reviewAfterFact: TERMS.card.reviewAfterFact,
+      // 🔴 R307：占比拆分参考榜（估算）—— 逐条列举，漏登记 = 页面静默空白（守 check_page_terms）
+      splitTitle: TERMS.card.splitTitle,
+      splitIntro: TERMS.card.splitIntro,
+      splitOrderLabel: TERMS.card.splitOrderLabel,
+      splitNoOrder: TERMS.card.splitNoOrder,
+      splitPickPh: TERMS.card.splitPickPh,
+      splitPctPh: TERMS.card.splitPctPh,
+      splitAdd: TERMS.card.splitAdd,
+      splitCalc: TERMS.card.splitCalc,
+      splitResultTitle: TERMS.card.splitResultTitle,
+      splitNote: TERMS.card.splitNote,
+      splitQty: TERMS.card.splitQty,
+      splitContrib: TERMS.card.splitContrib,
+      splitLossTag: TERMS.card.splitLossTag,
+      splitTotal: TERMS.card.splitTotal,
+      splitErrNoRows: TERMS.card.splitErrNoRows,
+      splitErrDup: TERMS.card.splitErrDup,
+      splitErrPct: TERMS.card.splitErrPct,
+      splitErrSum: TERMS.card.splitErrSum,
+      splitErrNoPrice: TERMS.card.splitErrNoPrice,
       reviewDineIn: TERMS.card.reviewDineIn,
       reviewTakeaway: TERMS.card.reviewTakeaway,
       reviewTakeawayEmpty: TERMS.card.reviewTakeawayEmpty,
@@ -146,6 +168,17 @@ Page({
     unmatched: [],           // 未匹配菜品
     totals: null,
     empty: false,
+    // 🔴 R307：占比拆分参考榜（**估算**）。只在空态渲染 ⇒ 天然不与实测榜混排（R306 铁律①）。
+    //   `splitCards` 与 `loadCards()` 同一次 `getCostCard({})` 派生，**不新增读接口**。
+    splitOpen: false,
+    splitCards: [],        // [{ code, name, priceFen, costFen }]
+    splitOptions: [],      // picker 显示名
+    splitRows: [],         // [{ cardIdx, name, pctText }]
+    splitOrderCount: 0,    // 本月外卖有效订单数（来自 M1 已落库的 sub_items[].qty）
+    splitHasOrder: false,
+    splitResult: null,     // 算完才赋值；null ⇒ 不渲染结果区
+    splitErr: '',          // 人话（按 code 查 terms）
+    splitMax: 5,
     // R252：已导入账单列表（getSalesBills 读侧；与复盘榜同源集合，但**独立读取**）
     bills: [],
     billsSummary: null,
@@ -276,8 +309,10 @@ Page({
     this._setTrunc('review', dh.isTruncated(d));
     // 🔴 R255：成本卡列表（「关联」picker 用）。**必须在这里先拉** —— 下面构造
     //   unmatched（显示已关联卡名）与 mappings（显示卡名）都要用它做 code→name。
-    const { cardOptions, cardCodes, nameByCode, truncated: cardsTruncated } = await this.loadCards();
+    const { cardOptions, cardCodes, nameByCode, splitCards, truncated: cardsTruncated } = await this.loadCards();
     this._setTrunc('cards', cardsTruncated);
+    // R307：占比估算的候选卡（与「关联」picker 同源，不额外读库）
+    this.setData({ splitCards, splitOptions: (splitCards || []).map((c) => c.name) });
 
     const dineIn = (d.dine_in || []).map((x) => this.fmtRanked(x));
 
@@ -522,6 +557,105 @@ Page({
     if (any !== this.data.truncated) this.setData({ truncated: any });
   },
 
+  // ===== R307：占比拆分参考榜（估算 · 仅在空态）=====
+  // 🔴 为什么在空态：实测销量拿不到时这是唯一能让 M3「打开就有东西看」的路；
+  //   放在空态 ⇒ **天然不与实测榜混排**（R306 铁律①），不用额外做互斥逻辑。
+
+  async onSplitOpen() {
+    const next = !this.data.splitOpen;
+    this.setData({ splitOpen: next });
+    // 懒加载：只有真打开才去读 M1（避免每次进页多一次云调用）
+    if (!next || this.data.splitHasOrder) return;
+    const n = await this.fetchOrderCount();
+    this.setData({ splitOrderCount: n, splitHasOrder: n > 0 });
+  },
+
+  /** 本月外卖有效订单数（M1 已落库的 `sub_items[].qty`，与 R302「到手账」同一取法） */
+  async fetchOrderCount() {
+    try {
+      const d = await api.call('getLedger', { month: this.data.month });
+      let n = 0;
+      for (const it of (d.income_items || [])) {
+        if (!it || it.category !== 'takeaway') continue;
+        for (const si of (it.sub_items || [])) n += Number(si && si.qty) || 0;
+      }
+      return n;
+    } catch (e) {
+      return 0;   // 读不到 ⇒ 当"没填"处理，页面会让他去补（**不编 0 单**）
+    }
+  },
+
+  onSplitAdd() {
+    const rows = (this.data.splitRows || []).slice();
+    if (rows.length >= MAX_ROWS) return;
+    rows.push({ cardIdx: -1, name: '', pctText: '' });
+    // 改了输入 ⇒ 旧结果作废（防"结果区还显示上一次的数"）
+    this.setData({ splitRows: rows, splitResult: null, splitErr: '' });
+  },
+
+  onSplitDel(e) {
+    const i = Number(e.currentTarget.dataset.idx);
+    const rows = (this.data.splitRows || []).slice();
+    rows.splice(i, 1);
+    this.setData({ splitRows: rows, splitResult: null, splitErr: '' });
+  },
+
+  onSplitPick(e) {
+    const i = Number(e.currentTarget.dataset.idx);
+    const rows = (this.data.splitRows || []).slice();
+    const ci = Number(e.detail.value);
+    const card = (this.data.splitCards || [])[ci] || {};
+    // ⚠️ 选重了**不自动去重**（静默改用户输入更糟）⇒ 交给 checkShares 报 `dupCard`
+    rows[i] = { cardIdx: ci, name: card.name || '', pctText: rows[i].pctText || '' };
+    this.setData({ splitRows: rows, splitResult: null, splitErr: '' });
+  },
+
+  onSplitPct(e) {
+    const i = Number(e.currentTarget.dataset.idx);
+    const rows = (this.data.splitRows || []).slice();
+    rows[i] = Object.assign({}, rows[i], { pctText: e.detail.value });
+    this.setData({ splitRows: rows, splitResult: null, splitErr: '' });
+  },
+
+  onSplitCalc() {
+    const rows = (this.data.splitRows || []).map((r) => {
+      const c = (this.data.splitCards || [])[r.cardIdx] || {};
+      return { cardCode: c.code || '', name: c.name || '', priceFen: c.priceFen, costFen: c.costFen, pctText: r.pctText };
+    });
+    const res = splitRank({ orderCount: this.data.splitOrderCount, rows });
+    const T = this.data.t;
+    if (res.needOrderCount) { this.setData({ splitResult: null, splitErr: T.splitNoOrder }); return; }
+    if (res.errors.length) {
+      const map = {
+        noRows: T.splitErrNoRows, dupCard: T.splitErrDup, pctInvalid: T.splitErrPct,
+        pctOver: T.splitErrPct, pctSumOver: T.splitErrSum, noPrice: T.splitErrNoPrice,
+      };
+      const msgs = res.errors.map((c) => map[c]).filter((x) => !!x);
+      this.setData({ splitResult: null, splitErr: msgs.join('；') });
+      return;
+    }
+    const list = (res.list || []).map((x) => ({
+      name: x.name,
+      sharePct: x.sharePct,
+      qtyText: qtyText(x.estQty),
+      unitGrossText: api.fenToYuan(x.unitGrossFen, 2),
+      contribText: api.fenToYuan(x.contribFen, 2),
+      // 亏损菜**必须原样露出**（负号 + 标记），不许显示成 0 或省略
+      loss: x.loss,
+      neg: x.contribFen < 0,
+    }));
+    this.setData({
+      splitErr: '',
+      splitResult: {
+        list,
+        totalPctText: String(res.totalPct),
+        sumQtyText: qtyText(res.sumEstQty),
+        sumContribText: api.fenToYuan(res.sumContribFen, 2),
+        sumNeg: res.sumContribFen < 0,
+      },
+    });
+  },
+
   // ===== R255：成本卡列表（供「关联」picker 用）=====
   //   复用既有 `getCostCard({})`（出参 list[] = 该店各卡的最新版本），**不新增读接口**。
   //   🔴 失败不阻断：卡列表拉不到 ⇒ 只影响「关联」入口（数组置空 ⇒ picker 不渲染），
@@ -546,9 +680,20 @@ Page({
       });
       // 🔴 R299：把 `truncated` **带出去**（由调用方统一汇总显示，见 _setTrunc）。
       //   卡少了 ⇒ picker 选项少 ⇒ 用户明明有卡却挂不上，且零提示（静默少卡）。
-      return { cardCodes: codes, cardOptions, nameByCode, truncated: dh.isTruncated(res) };
+      // 🔴 R307：同时派生 `splitCards`（占比估算用）—— **同一次读、不新增接口**。
+      //   售价/成本取该卡**最新版本**（byCode 已按 version 取大）；缺值按 0（后面 `checkShares` 会拦 `noPrice`）。
+      const splitCards = codes.map((cc) => {
+        const c = byCode.get(cc) || {};
+        return {
+          code: cc,
+          name: nameByCode[cc] || cc,
+          priceFen: Number(c.price_fen) || 0,
+          costFen: Number(c.total_cost_fen) || 0,
+        };
+      });
+      return { cardCodes: codes, cardOptions, nameByCode, splitCards, truncated: dh.isTruncated(res) };
     } catch (e) {
-      return { cardCodes: [], cardOptions: [], nameByCode: {}, truncated: false };
+      return { cardCodes: [], cardOptions: [], nameByCode: {}, splitCards: [], truncated: false };
     }
   },
 

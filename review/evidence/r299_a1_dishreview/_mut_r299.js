@@ -24,6 +24,7 @@ const G4 = 'tools/check_fn_contract_params.js';
 const G5 = 'tools/check_takeaway_settle.js';
 const G6 = 'tools/check_import_scope_claims.js';
 const G7 = 'tools/selftest_batch8b.js';
+const G8 = 'tools/check_share_split.js';
 
 const sha = (abs) => crypto.createHash('sha256').update(fs.readFileSync(abs)).digest('hex');
 const absOf = (rel) => path.join(ROOT, rel);
@@ -259,6 +260,26 @@ const MUTS = [
     to: "    g.rows = this.decorateRows(g, rows);   // 走同一装配口：名字命中预设清单 ⇒ fixed、无删除键\n    g.showRows = g.rows;",
     guard: G7,
     expect: [/不得复活 showRows 死槽/],
+  },
+
+  // ===== 守卫 8（check_share_split）· R307 新增 =====
+  {
+    id: 'M25',
+    desc: 'R307 原样复现：占比合计 >100% 不再拒绝（改成"能算就算"，等于替老板编数）',
+    file: 'utils/shareSplit.js',
+    from: "  if (totalPct > PCT_MAX + 0.05) errors.push('pctSumOver');",
+    to: '  // 变异：不判合计',
+    guard: G8,
+    expect: [/②-b/],
+  },
+  {
+    id: 'M26',
+    desc: 'R307 原样复现：把估算区块挂到**非空态**（估算与实测混排 ⇒ 老板会把估算当实测）',
+    file: 'pages/m3/dishreview/index.wxml',
+    from: '<view class="card2" wx:if="{{empty && splitCards.length}}">',
+    to: '<view class="card2" wx:if="{{splitCards.length}}">',
+    guard: G8,
+    expect: [/①-b/],
   },
 ];
 

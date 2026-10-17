@@ -102,6 +102,46 @@
       <view class="muted">{{t.reviewEmpty}}</view>
     </view>
 
+    <!-- ===== R307：占比拆分参考榜（**估算**）=====
+         为什么只放空态：实测销量拿不到时，这是唯一能让 M3「打开就有东西看」的路（见 utils/shareSplit.js 头注）。
+         放在空态 ⇒ **天然不与实测榜混排**（R306 铁律①），不需要额外做互斥逻辑。
+         ⚠️ 结果区必须固定挂一行「按你填的占比估算，不是实测」(splitNote) —— 不许让老板以为是实测。 -->
+    <view class="card2" wx:if="{{empty && splitCards.length}}">
+      <view class="cell drill-head" bindtap="onSplitOpen">
+        <text class="lbl">{{t.splitTitle}}</text>
+        <text class="val">{{splitOpen ? '▾' : '▸'}}</text>
+      </view>
+      <block wx:if="{{splitOpen}}">
+        <view class="muted">{{t.splitIntro}}</view>
+        <view class="muted">{{t.splitOrderLabel}}：{{splitHasOrder ? splitOrderCount : '—'}}</view>
+        <!-- 没有有效订单数 ⇒ 不算（**不编 0 单**），只给去补的指引 -->
+        <view class="warn" wx:if="{{!splitHasOrder}}">{{t.splitNoOrder}}</view>
+        <block wx:if="{{splitHasOrder}}">
+          <view class="cell" wx:for="{{splitRows}}" wx:key="index" wx:for-index="si">
+            <picker class="lbl" range="{{splitOptions}}" value="{{item.cardIdx}}" data-idx="{{si}}" bindchange="onSplitPick">
+              <text>{{item.name || t.splitPickPh}}</text>
+            </picker>
+            <input class="val" type="digit" value="{{item.pctText}}" placeholder="{{t.splitPctPh}}"
+              data-idx="{{si}}" bindinput="onSplitPct" adjust-position="{{true}}" cursor-spacing="20" />
+            <text class="btn-del" data-idx="{{si}}" bindtap="onSplitDel">×</text>
+          </view>
+          <view class="group-ops">
+            <button class="btn-mini" wx:if="{{splitRows.length < splitMax}}" bindtap="onSplitAdd">{{t.splitAdd}}</button>
+            <button class="btn-mini" bindtap="onSplitCalc">{{t.splitCalc}}</button>
+          </view>
+          <view class="warn" wx:if="{{splitErr}}">{{splitErr}}</view>
+          <block wx:if="{{splitResult}}">
+            <view class="muted">{{t.splitResultTitle}} · {{t.splitTotal}} {{t.cur}}{{splitResult.sumContribText}}</view>
+            <view class="cell" wx:for="{{splitResult.list}}" wx:key="index" wx:for-index="ri">
+              <text class="lbl">{{item.name}}<text class="warn" wx:if="{{item.loss}}"> {{t.splitLossTag}}</text></text>
+              <text class="val">{{t.splitQty}} {{item.qtyText}} · {{t.splitContrib}} {{t.cur}}{{item.contribText}}</text>
+            </view>
+            <view class="muted">{{t.splitNote}}</view>
+          </block>
+        </block>
+      </block>
+    </view>
+
     <!-- 堂食榜（两来源分开呈现；外卖空态另列，不混榜） -->
     <view class="section-title">{{t.reviewDineIn}} · {{t.reviewRankTitle}}</view>
     <view class="card2" wx:if="{{dineIn.length}}">
