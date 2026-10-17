@@ -39,6 +39,7 @@
     <text class="hub-empty-t">{{t.emptyTitle}}</text>
     <text class="hub-empty-d">{{t.emptyDesc}}</text>
     <button class="btn primary hub-empty-btn" bindtap="goCard">{{t.emptyBtn}}</button>
+    <text class="hub-empty-tpl">{{t.emptyTplHint}}</text>
   </view>
 
   <!-- ===== 第一层：先做（主链路）===== -->

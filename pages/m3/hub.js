@@ -41,6 +41,7 @@ Page({
       emptyTitle: TERMS.hub.emptyTitle,
       emptyDesc: TERMS.hub.emptyDesc,
       emptyBtn: TERMS.hub.emptyBtn,
+      emptyTplHint: TERMS.hub.emptyTplHint,
       // R192：图标块单字（wxml 用到就必须登记 —— 漏登记 ⇒ 页面静默空白，本仓 R189 P2-1 同族）
       icoCard: TERMS.hub.icoCard,
       icoMaterial: TERMS.hub.icoMaterial,

@@ -52,3 +52,5 @@
 .hub-empty-t { display: block; font-size: 32rpx; font-weight: 700; color: #222; }
 .hub-empty-d { display: block; font-size: 28rpx; color: #888; margin-top: 10rpx; line-height: 1.6; }
 .hub-empty-btn { margin-top: 24rpx; }
+/* 🔴 R319：空态里的模板提示 —— 字号必须 ≥28rpx（AD-G1 红线），弱化只靠颜色。 */
+.hub-empty-tpl { display: block; font-size: 28rpx; color: #8a97a8; margin-top: 14rpx; }
