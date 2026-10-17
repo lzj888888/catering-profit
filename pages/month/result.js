@@ -17,6 +17,7 @@ const { settleSummary } = require('../../utils/takeaway.js');
 Page({
   data: {
     t: {
+      beGmText: TERMS.card.beGmText,
       beVerdictLoss: TERMS.card.beVerdictLoss,
       beVerdictWin: TERMS.card.beVerdictWin,
       beAttrLead: TERMS.card.beAttrLead,
@@ -263,12 +264,30 @@ Page({
     const attr = (!at.needTarget && at.diffPp > 0)
       ? { rate: String(at.ratePct), denom: String(at.denomPp), numer: String(at.numerPp) }
       : null;
+    // 🔴 R311-A：毛利率差距 → **金额化**（全页面唯一"带得出确定金额、又不怨营业额"的建议）。
+    //   为什么只做毛利率：不受营业额影响的四个指标里（毛利率/单份毛利/租金单价/人均人工成本），
+    //   只有毛利率 M1 自己就有（res.gross_margin_pct + d.indicators 的 grossMargin 区间）。
+    //   ⚠️ 匹配必须用**机器键** `key === 'grossMargin'`，**不能**用中文名（改名会静默失效）；
+    //   ⚠️ fail-soft：找不到 / 已达下限 / lo 缺失 ⇒ null（**不显示**），绝不凑一条假建议。
+    let gm = null;
+    {
+      const list = (d && d.indicators) || [];
+      const g = list.find((it) => it && it.key === 'grossMargin');
+      const gPct = g ? Number(g.pct !== undefined ? g.pct : g.mine) : NaN;
+      const gLo = g ? Number(g.lo) : NaN;
+      if (g && g.has !== false && Number.isFinite(gPct) && Number.isFinite(gLo) && gPct < gLo) {
+        const gapPp = Math.round((gLo - gPct) * 10) / 10;
+        const moneyText = api.fenToYuan(Math.round((revFen * gapPp) / 100), 2);
+        gm = { text: String(T.beGmText || '').replace('{a}', String(gPct)).replace('{b}', String(gapPp)).replace('{c}', moneyText) };
+      }
+    }
     // 🔴 老板视角：标题直接给"亏/赚"结论 —— 老板不该自己从"安全边际 -19.3%"换算"我在亏"。
     //   ⚠️ 判据 = 安全边际 < 0（营收低于保本线，按定义就是亏）；**不给**"接近保本"这种模糊话。
     const title = (bk.safeMarginPct != null && bk.safeMarginPct < 0) ? T.beVerdictLoss : T.beVerdictWin;
     return {
       ok: true,
       title,
+      gm,
       attr,
       revText: api.fenToYuan(revFen, 2),
       fixedText: api.fenToYuan(sp.fixedFen, 2),

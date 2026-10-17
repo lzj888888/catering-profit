@@ -1548,6 +1548,8 @@ const TERMS = {
     // 🔴 R311-A（老板视角）：卡标题直接给结论 —— 老板不该自己从"安全边际 -19.3%"换算"我在亏"
     beVerdictLoss: '这个月在亏',
     beVerdictWin: '这个月有赚',
+    // 🔴 R311-A：毛利率差距的金额化（整句放术语里 —— wxml 不许有硬编码汉字）
+    beGmText: '毛利率只有{a}，比同行下限少{b}个点，相当于每月少赚{c}',
     reviewAfterFact: '本报表基于标准成本卡 × 销售份数推演，仅作经营参考；如需门店真实账面成本，请使用 M1 月度核算。',
     reviewDineIn: '堂食',
     reviewTakeaway: '外卖',
