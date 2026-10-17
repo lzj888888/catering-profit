@@ -167,6 +167,25 @@ check('F-④ 三项依据都在折叠区内（保本区间 / 达标营业额 / �
 check('F-⑤ 自失效护栏：默认 true 的样本必须判红（防本组恒绿）',
   'data: { beMore: true, t: {} }'.indexOf('beMore: false') < 0);
 
+// ================= G 回本两条路（R315）=================
+// 为什么机器守：亏损月如果只给"营收要涨 X%"，等于只指一条路；而"降变动成本"这条
+//   必须真的算出来（v 压到 1 - F/R），不能写死一句空话；反过来 F >= R 时又**不能**
+//   给这条路（v 要压到 <=0，不可能）—— 这两种失效都零报错。
+console.log('');
+console.log('===== G 回本两条路（R315）=====');
+const BE2 = require('../utils/breakeven.js');
+check('G-① recoverPaths 已导出', typeof BE2.recoverPaths === 'function');
+const rp9 = BE2.recoverPaths({ revenueFen: 9200000, fixedFen: 3282800, variableFen: 6687300 });
+check('G-② 锚点：9 月样本回本营收 12019644 / 变动率压到 64.3 / 需降 8.4 个点',
+  rp9.ok === true && rp9.needRevenueFen === 12019644 && rp9.targetVarRatePct === 64.3 && rp9.varGapPp === 8.4);
+const rpF = BE2.recoverPaths({ revenueFen: 100000, fixedFen: 120000, variableFen: 10000 });
+check('G-③ 固定成本超过营收时，路径二**不存在**（不许编「压到 0%」）',
+  rpF.ok === true && rpF.varPathPossible === false);
+check('G-④ 页面亏损月切到 pathText、赚钱月才显示 marginText',
+  /pathText:/.test(jsCode) && /BE\.recoverPaths\(/.test(jsCode) && /safeMarginPct < 0\) \? ''/.test(jsCode));
+check('G-⑤ 自失效护栏：把 F>R 的样本判成「路径二可行」必须被抓（防本组恒绿）',
+  BE2.recoverPaths({ revenueFen: 100000, fixedFen: 120000, variableFen: 10000 }).varPathPossible !== true);
+
 // ================= D 工具自证（判据不是恒真）=================
 console.log('\n===== D 工具自证（正负样本互证）=====');
 const S1 = 'var a = 1; // 阈值 15%\nvar b = 2;';

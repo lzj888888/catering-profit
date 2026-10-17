@@ -213,7 +213,44 @@ function diagnose(healthyFen, breakevenFen) {
   return 'normal';
 }
 
+/**
+ * 🔴 R315：回本**两条路**（纯代数，只给老板真能动的那两条）。
+ *   亏损时只说"营收要涨 30.6%"等于只给一条路，而老板实际能选的是两条：
+ *     ① 提营收（客单价 / 客流 / 单量）
+ *     ② 降**变动成本率**（食材 / 佣金 / 补贴 / 包装 —— 这些才是能动的）
+ *   数学：保本 BE = F / (1 − v)，v = 变动 / 营收
+ *     · 路径①：营收提到 BE        ⇒ 涨幅 = BE/R − 1
+ *     · 路径②：v 压到 (1 − F/R)   ⇒ 需降 (v − (1 − F/R)) 个百分点
+ *   🔴 不把「降固定费用」当路径 —— 房租/人工是合同锁定，写出来就是开错药（R311 结论）。
+ *   🔴 若 F ≥ R（固定成本已超过营收）⇒ 路径②**不存在**（v 要压到 ≤0），
+ *      必须如实只给路径①，绝不编一个"压到 0%"。
+ * @returns {{ok:boolean, reason?:string, needRevenueFen?:number, revenueGapPct?:number,
+ *            curVarRatePct?:number, targetVarRatePct?:number, varGapPp?:number,
+ *            varPathPossible?:boolean}}
+ */
+function recoverPaths(o) {
+  const c = o || {};
+  const R = Number(c.revenueFen) || 0;
+  const F = Number(c.fixedFen) || 0;
+  const V = Number(c.variableFen) || 0;
+  if (!(R > 0)) return { ok: false, reason: 'noRevenue' };
+  if (!(F > 0)) return { ok: false, reason: 'noFixed' };
+  const v = V / R;
+  if (!(v < 1)) return { ok: false, reason: 'noContribution' };
+  const needR = F / (1 - v);
+  const targetV = 1 - F / R;
+  return {
+    ok: true,
+    needRevenueFen: Math.round(needR),
+    revenueGapPct: Math.round((needR / R - 1) * 1000) / 10,
+    curVarRatePct: Math.round(v * 1000) / 10,
+    targetVarRatePct: Math.round(targetV * 1000) / 10,
+    varGapPp: Math.round((v - targetV) * 1000) / 10,
+    varPathPossible: targetV > 0,
+  };
+}
+
 module.exports = {
   COST_MODEL, SENS_REL,
-  inferByName, splitFixedVariable, breakeven, attribution, healthyRevenue, diagnose,
+  inferByName, splitFixedVariable, breakeven, attribution, healthyRevenue, diagnose, recoverPaths,
 };

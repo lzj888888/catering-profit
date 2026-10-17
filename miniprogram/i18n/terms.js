@@ -1556,6 +1556,9 @@ const TERMS = {
     // 🔴 R314：体检卡精简 —— 依据折叠（只留结论/动作在前面）
     beMoreShow: '展开看依据',
     beMoreHide: '收起，只看结论',
+    // 🔴 R315：回本两条路（亏损月份替代「营收要涨 X% 才回本」那一行）
+    bePathText: '回本两条路：营收到{a}，或变动成本率压到{b}%',
+    bePathRevOnly: '回本只能靠营收：要到{a}，固定成本已超过营收',
     beMomMore: '，比上月多赚{a}',
     beMomLess: '，比上月少赚{a}',
     beYuanUnit: '元',

@@ -30,6 +30,8 @@ Page({
     t: {
       beMoreShow: TERMS.card.beMoreShow,
       beMoreHide: TERMS.card.beMoreHide,
+      bePathText: TERMS.card.bePathText,
+      bePathRevOnly: TERMS.card.bePathRevOnly,
       beMomMore: TERMS.card.beMomMore,
       beMomLess: TERMS.card.beMomLess,
       beYuanUnit: TERMS.card.beYuanUnit,
@@ -341,12 +343,23 @@ Page({
       varText: api.fenToYuan(sp.variableFen, 2),
       lowText: api.fenToYuan(bk.lowFen, 2),
       highText: api.fenToYuan(bk.highFen, 2),
-      // 🔴 R312：不再叫"安全边际 xx%"。直接说人话 ——
-      //   正：营收再掉 X% 就亏（X = 安全边际，数学上精确等价）
-      //   负：营收要涨 X% 才回本（X = |安全边际|，因为 BE/R = 1+|margin|）
-      marginText: bk.safeMarginPct == null ? '' : (bk.safeMarginPct >= 0
-        ? String(T.beMarginDrop || '').replace('{p}', String(bk.safeMarginPct))
-        : String(T.beMarginRise || '').replace('{p}', String(Math.abs(bk.safeMarginPct)))),
+      // 🔴 R312：不再叫"安全边际 xx%"。直接说人话。
+      // 🔴 R315：**亏损月份不再显示这一行**（只给"要涨 X%"是一条路），改显示"回本两条路"；
+      //   赚钱的月份保留"营收再掉 X% 就亏"——那时老板问的是抗风险，不是回本。
+      marginText: (bk.safeMarginPct == null || bk.safeMarginPct < 0) ? ''
+        : String(T.beMarginDrop || '').replace('{p}', String(bk.safeMarginPct)),
+      pathText: (() => {
+        if (!(bk.safeMarginPct != null && bk.safeMarginPct < 0)) return '';
+        const rp = BE.recoverPaths({ revenueFen: revFen, fixedFen: sp.fixedFen, variableFen: sp.variableFen });
+        if (!rp.ok) return '';
+        // 🔴 固定成本已超过营收 ⇒ 降变动成本永远回不了本，**只给营收一条路**（不编"压到 0%"）。
+        if (!rp.varPathPossible) {
+          return String(T.bePathRevOnly || '').replace('{a}', wan(rp.needRevenueFen));
+        }
+        return String(T.bePathText || '')
+          .replace('{a}', wan(rp.needRevenueFen))
+          .replace('{b}', String(rp.targetVarRatePct));
+      })(),
       // 🔴 R312：金额改"万"—— ¥108,491.00 老板记不住；区间用**中文"到"**，
       //   不用 `~`（李老师反馈：容易被看成减号，以为两个数相减）。
       rangeText: String(T.beRangeText || '').replace('{a}', wan(bk.lowFen)).replace('{b}', wan(bk.highFen)),
