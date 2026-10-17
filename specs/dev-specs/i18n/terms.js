@@ -1534,10 +1534,10 @@ const TERMS = {
     costDriftUp: '成本↑{p}%',
     costDriftDown: '成本↓{p}%',
     // 🔴 R311：体检结论卡（保本区间 / 健康营收 / 归因 / 结构性诊断）。每条 ≤17 字。
-    beTitle: '体检：离亏还有多远',
+    beTitle: '本月经营体检',
     beBreakeven: '保本营收（估算）',
-    beMargin: '安全边际',
-    beHealthy: '占比全正常的营收',
+    beMargin: '安全垫',
+    beHealthy: '达标营业额',
     beStructural: '不是费用问题，是毛利结构',
     beNoData: '还没填食材成本，算不出保本',
     beUnknown: '有费用项认不出，已按固定算',
@@ -1546,6 +1546,12 @@ const TERMS = {
     beAttrDenom: '点来自营收不足',
     beAttrNumer: '点来自房租本身贵',
     // 🔴 R311-A（老板视角）：卡标题直接给结论 —— 老板不该自己从"安全边际 -19.3%"换算"我在亏"
+    // 🔴 R312（李老师真机反馈）：全部换成老板听得懂的话，不许出现"安全边际/占比全正常"这类术语
+    beMarginDrop: '营收再掉{p}%就亏',
+    beMarginRise: '营收要涨{p}%才回本',
+    beHealthyText: '做到{a}，费用占比才回到正常',
+    beRangeText: '{a}到{b}',
+    beWan: '万',
     beVerdictLoss: '这个月在亏',
     beVerdictWin: '这个月有赚',
     // 🔴 R311-A：毛利率差距的金额化（整句放术语里 —— wxml 不许有硬编码汉字）

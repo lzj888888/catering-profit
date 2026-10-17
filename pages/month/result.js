@@ -17,6 +17,11 @@ const { settleSummary } = require('../../utils/takeaway.js');
 Page({
   data: {
     t: {
+      beMarginDrop: TERMS.card.beMarginDrop,
+      beMarginRise: TERMS.card.beMarginRise,
+      beHealthyText: TERMS.card.beHealthyText,
+      beRangeText: TERMS.card.beRangeText,
+      beWan: TERMS.card.beWan,
       beGmText: TERMS.card.beGmText,
       beVerdictLoss: TERMS.card.beVerdictLoss,
       beVerdictWin: TERMS.card.beVerdictWin,
@@ -232,6 +237,8 @@ Page({
   //   而它是最**大**的变动成本 ⇒ 必须显式传，否则保本线会大幅偏低（最危险的方向）。
   buildBreakeven(d, res) {
     const T = this.data.t;
+    // 🔴 R312：分 → "X.X万"（一位小数）。老板看"10.8万"比"¥108,491.00"快得多。
+    const wan = (fen) => (Math.round((Number(fen || 0) / 100 / 10000) * 10) / 10) + String(T.beWan || '万');
     const rows = [];
     for (const it of (d.expense_items || [])) {
       const subs = it && it.sub_items;
@@ -294,9 +301,17 @@ Page({
       varText: api.fenToYuan(sp.variableFen, 2),
       lowText: api.fenToYuan(bk.lowFen, 2),
       highText: api.fenToYuan(bk.highFen, 2),
-      marginText: bk.safeMarginPct == null ? '' : (String(bk.safeMarginPct) + '%'),
+      // 🔴 R312：不再叫"安全边际 xx%"。直接说人话 ——
+      //   正：营收再掉 X% 就亏（X = 安全边际，数学上精确等价）
+      //   负：营收要涨 X% 才回本（X = |安全边际|，因为 BE/R = 1+|margin|）
+      marginText: bk.safeMarginPct == null ? '' : (bk.safeMarginPct >= 0
+        ? String(T.beMarginDrop || '').replace('{p}', String(bk.safeMarginPct))
+        : String(T.beMarginRise || '').replace('{p}', String(Math.abs(bk.safeMarginPct)))),
+      // 🔴 R312：金额改"万"—— ¥108,491.00 老板记不住；区间用**中文"到"**，
+      //   不用 `~`（李老师反馈：容易被看成减号，以为两个数相减）。
+      rangeText: String(T.beRangeText || '').replace('{a}', wan(bk.lowFen)).replace('{b}', wan(bk.highFen)),
       marginNeg: bk.safeMarginPct != null && bk.safeMarginPct < 0,
-      healthyText: healthyFen > 0 ? api.fenToYuan(healthyFen, 2) : '',
+      healthyText: healthyFen > 0 ? String(T.beHealthyText || '').replace('{a}', wan(healthyFen)) : '',
       diag: BE.diagnose(healthyFen, bk.breakevenFen),
       unknownText: (sp.unknown && sp.unknown.length) ? T.beUnknown : '',
     };
