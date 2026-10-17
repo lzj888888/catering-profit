@@ -7,6 +7,19 @@
 <view class="container safe-bottom" wx:elif="{{hasLedger}}">
   <view class="archived-bar" wx:if="{{isArchive}}">{{t.archiveLocked}}</view>
 
+  <!-- 🔴 R311：体检结论卡（保本区间 + 健康营收 + 结构性诊断）。
+       ⚠️ 报**区间**不报单点 —— 贡献率低时区间会宽到 ±30%+，报单点就是假精确。
+       ⚠️ 不改任何既有计算：本卡只解释 M1 已经算出的数。 -->
+  <view class="card2" wx:if="{{be && be.ok}}">
+    <view class="cell drill-head"><text class="lbl">{{t.beTitle}}</text></view>
+    <view class="cell"><text class="lbl">{{t.beBreakeven}}</text><text class="val">{{t.cur}}{{be.lowText}} ~ {{be.highText}}</text></view>
+    <view class="cell" wx:if="{{be.marginText}}"><text class="lbl">{{t.beMargin}}</text><text class="val {{be.marginNeg ? 'warn' : ''}}">{{be.marginText}}%</text></view>
+    <view class="cell" wx:if="{{be.healthyText}}"><text class="lbl">{{t.beHealthy}}</text><text class="val">{{t.cur}}{{be.healthyText}}</text></view>
+    <view class="warn" wx:if="{{be.diag === 'structural'}}">{{t.beStructural}}</view>
+    <view class="muted" wx:if="{{be.unknownText}}">{{be.unknownText}}</view>
+  </view>
+  <view class="warn" wx:if="{{be && be.noDataText}}">{{be.noDataText}}</view>
+
   <!-- 暖化：顶部「一句话结论 + 红黄绿带」（装饰性，只看真利润正负，不碰引擎口径） -->
   <view class="band band-{{bandClass}}" wx:if="{{bandClass}}">
     <text class="band-label">{{t.bandLabel}}</text>

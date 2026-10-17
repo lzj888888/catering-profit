@@ -8,6 +8,8 @@ const api = require('../../utils/api.js');
 const ui = require('../../utils/ui.js');
 const entitle = require('../../utils/entitlement.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
+// 🔴 R311：体检算法（纯函数）—— 保本区间/归因/健康营收/结构性诊断
+const BE = require('../../utils/breakeven.js');
 const exportFile = require('../../utils/exportFile.js');   // R265：导出投递单源（落盘 + 打开 + 转发兜底）
 // 🔴 R302：外卖到手账 —— 口径全部在 `utils/takeaway.js`（纯函数单源），页面只做「名字→数字」解析与格式化
 const { settleSummary } = require('../../utils/takeaway.js');
@@ -15,6 +17,13 @@ const { settleSummary } = require('../../utils/takeaway.js');
 Page({
   data: {
     t: {
+      beTitle: TERMS.card.beTitle,
+      beBreakeven: TERMS.card.beBreakeven,
+      beMargin: TERMS.card.beMargin,
+      beHealthy: TERMS.card.beHealthy,
+      beStructural: TERMS.card.beStructural,
+      beNoData: TERMS.card.beNoData,
+      beUnknown: TERMS.card.beUnknown,
       title: TERMS.resultPage.title,
       monthTotal: TERMS.resultPage.monthTotal,
       income: TERMS.resultPage.income,
@@ -146,6 +155,8 @@ Page({
       const expDetail = this.buildDetail(d.expense_items || []);
       // R302：外卖到手账 —— 由 M1 **已录**的数反算（详见 buildSettle 头注）
       const settle = this.buildSettle(d.income_items || [], d.expense_items || []);
+      // 🔴 R311：体检（纯读 M1 结果做解释，**不改任何既有计算**）
+      const be = this.buildBreakeven(d, res);
       // round115：行业指标对照 —— 后端只回 key/数值/level 枚举，中文名与评级文案在前端补齐（术语单源在前端）
       const inds = this.decorateInds(d.indicators || []);
       const scope = d.indicator_scope || {};
@@ -158,6 +169,7 @@ Page({
         incDetail,
         expDetail,
         settle,
+        be,
         r: {
           income: fen(res.income_total_fen),
           expense: fen(res.expense_total_fen),
@@ -209,6 +221,55 @@ Page({
    * @param {Array} expItems getLedger 出参 `expense_items`
    * @returns {object} 给 wxml 的展示对象（`has:false` ⇒ 不渲染）
    */
+  // 🔴 R311：体检结论（**只解释、不重算利润**）
+  //   食材成本**不在 expense_items 里**（calcMonthlyProfit/service.js:22-27 明写其属费用非食材成本），
+  //   而它是最**大**的变动成本 ⇒ 必须显式传，否则保本线会大幅偏低（最危险的方向）。
+  buildBreakeven(d, res) {
+    const T = this.data.t;
+    const rows = [];
+    for (const it of (d.expense_items || [])) {
+      const subs = it && it.sub_items;
+      if (subs && subs.length) {
+        for (const si of subs) rows.push({ name: (si && si.sub_item) || (it && it.name) || '', amountFen: (si && si.amount_fen) || 0 });
+      } else if (it && it.amount_fen) {
+        rows.push({ name: it.name || '', amountFen: it.amount_fen });
+      }
+    }
+    const revFen = (res && res.income_total_fen) || 0;
+    const matFen = (res && res.material_cost_fen) || 0;
+    const sp = BE.splitFixedVariable(rows, { materialCostFen: matFen });
+    const bk = BE.breakeven({ revenueFen: revFen, fixedFen: sp.fixedFen, variableFen: sp.variableFen });
+    if (!bk.ok) {
+      return { ok: false, reason: bk.reason, needRevenue: bk.needRevenue,
+        noDataText: bk.needRevenue ? '' : (matFen > 0 ? '' : T.beNoData) };
+    }
+    const rentFen = this._sumByName(rows, '房租');
+    const laborFen = this._sumByName(rows, '工资') + this._sumByName(rows, '社保');
+    const healthyFen = BE.healthyRevenue([
+      { amountFen: rentFen, hiPct: 15 },
+      { amountFen: laborFen, hiPct: 22 },
+    ]);
+    return {
+      ok: true,
+      revText: api.fenToYuan(revFen, 2),
+      fixedText: api.fenToYuan(sp.fixedFen, 2),
+      varText: api.fenToYuan(sp.variableFen, 2),
+      lowText: api.fenToYuan(bk.lowFen, 2),
+      highText: api.fenToYuan(bk.highFen, 2),
+      marginText: bk.safeMarginPct == null ? '' : String(bk.safeMarginPct),
+      marginNeg: bk.safeMarginPct != null && bk.safeMarginPct < 0,
+      healthyText: healthyFen > 0 ? api.fenToYuan(healthyFen, 2) : '',
+      diag: BE.diagnose(healthyFen, bk.breakevenFen),
+      unknownText: (sp.unknown && sp.unknown.length) ? T.beUnknown : '',
+    };
+  },
+
+  _sumByName(rows, kw) {
+    let n = 0;
+    for (const r of (rows || [])) if (r && String(r.name || '').indexOf(kw) >= 0) n += Number(r.amountFen) || 0;
+    return n;
+  },
+
   buildSettle(incItems, expItems) {
     const roles = ((TERMS.ledger.takeawayMode || {}).reconcileRoles) || {};
     const subsidyName = TERMS.semantic.expenseMktSubsidy;

@@ -1533,6 +1533,14 @@ const TERMS = {
     // 🔴 R309：成本变动提醒（同一张卡上一版 vs 本版的单份成本）。短标签，避免触发折叠要求。
     costDriftUp: '成本↑{p}%',
     costDriftDown: '成本↓{p}%',
+    // 🔴 R311：体检结论卡（保本区间 / 健康营收 / 归因 / 结构性诊断）。每条 ≤17 字。
+    beTitle: '体检：离亏还有多远',
+    beBreakeven: '保本营收（估算）',
+    beMargin: '安全边际',
+    beHealthy: '占比全正常的营收',
+    beStructural: '不是费用问题，是毛利结构',
+    beNoData: '还没填食材成本，算不出保本',
+    beUnknown: '有费用项认不出，已按固定算',
     reviewAfterFact: '本报表基于标准成本卡 × 销售份数推演，仅作经营参考；如需门店真实账面成本，请使用 M1 月度核算。',
     reviewDineIn: '堂食',
     reviewTakeaway: '外卖',
