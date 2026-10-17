@@ -39,7 +39,7 @@
        ⚠️ 报**区间**不报单点 —— 贡献率低时区间会宽到三成以上，报单点就是假精确。
        ⚠️ 不改任何既有计算：本卡只解释 M1 已经算出的数。 -->
   <view class="card2" wx:if="{{be && be.ok}}">
-    <view class="cell drill-head"><text class="lbl">{{t.beTitle}}</text></view>
+    <view class="cell drill-head"><text class="lbl">{{t.beTitle}} · {{be.title}}</text></view>
     <view class="cell"><text class="lbl">{{t.beBreakeven}}</text><text class="val">{{t.cur}}{{be.lowText}} ~ {{be.highText}}</text></view>
     <view class="cell" wx:if="{{be.marginText}}"><text class="lbl">{{t.beMargin}}</text><text class="val {{be.marginNeg ? 'warn' : ''}}">{{be.marginText}}</text></view>
     <view class="cell" wx:if="{{be.healthyText}}"><text class="lbl">{{t.beHealthy}}</text><text class="val">{{t.cur}}{{be.healthyText}}</text></view>

@@ -17,6 +17,8 @@ const { settleSummary } = require('../../utils/takeaway.js');
 Page({
   data: {
     t: {
+      beVerdictLoss: TERMS.card.beVerdictLoss,
+      beVerdictWin: TERMS.card.beVerdictWin,
       beAttrLead: TERMS.card.beAttrLead,
       beAttrDenom: TERMS.card.beAttrDenom,
       beAttrNumer: TERMS.card.beAttrNumer,
@@ -261,8 +263,12 @@ Page({
     const attr = (!at.needTarget && at.diffPp > 0)
       ? { rate: String(at.ratePct), denom: String(at.denomPp), numer: String(at.numerPp) }
       : null;
+    // 🔴 老板视角：标题直接给"亏/赚"结论 —— 老板不该自己从"安全边际 -19.3%"换算"我在亏"。
+    //   ⚠️ 判据 = 安全边际 < 0（营收低于保本线，按定义就是亏）；**不给**"接近保本"这种模糊话。
+    const title = (bk.safeMarginPct != null && bk.safeMarginPct < 0) ? T.beVerdictLoss : T.beVerdictWin;
     return {
       ok: true,
+      title,
       attr,
       revText: api.fenToYuan(revFen, 2),
       fixedText: api.fenToYuan(sp.fixedFen, 2),
