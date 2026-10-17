@@ -148,6 +148,25 @@ check('C-⑨ 结果页新增文案已进 terms（三处同步里的术语侧）'
 check('C-⑩ 结果页 js 的 t 块已映射这些新文案（少一处 wxml 会取空串）',
   /indTitle:\s*TERMS\.resultPage\.indTitle/.test(jsSrc) && /indBand:\s*TERMS\.m2\.indBand/.test(jsSrc));
 
+// ================= F 体检卡「依据折叠」（R314）=================
+// 为什么必须机器守：折叠这类改动的失效方式**全是静默的** ——
+//   默认值改回 true ⇒ 又变回 6 行（观感回退，零报错）；
+//   bindtap 写错一个字母 ⇒ 点了没反应（零报错）；
+//   `beMore` 在 js 里没有 data 键 ⇒ 恒 undefined ⇒ 恒收起（点了永远不展开，零报错）。
+console.log('');
+console.log('===== F 体检卡依据折叠（R314）=====');
+check('F-① wxml 有折叠控件且绑定 onToggleBeMore（不是死代码）',
+  /bindtap="onToggleBeMore"/.test(wxmlCode) && /\{\{beMore \?/.test(wxmlCode));
+check('F-② handler 真翻转 beMore（不是空函数）',
+  /onToggleBeMore\s*\(\s*\)\s*\{[\s\S]{0,200}setData\s*\(\s*\{\s*beMore\s*:\s*!this\.data\.beMore/.test(jsCode));
+const dataSeg = (jsCode.match(/data:\s*\{([\s\S]{0,1200})/) || [])[1] || '';
+check('F-③ 默认**收起**（data 里 beMore: false，不是 true）', dataSeg.indexOf('beMore: false') >= 0);
+const foldSeg = (wxmlCode.match(/<block wx:if="\{\{beMore\}\}">([\s\S]*?)<\/block>/) || [])[1] || '';
+check('F-④ 三项依据都在折叠区内（保本区间 / 达标营业额 / 房租归因未被删）',
+  /beBreakeven/.test(foldSeg) && /beHealthy/.test(foldSeg) && /beAttrLead/.test(foldSeg));
+check('F-⑤ 自失效护栏：默认 true 的样本必须判红（防本组恒绿）',
+  'data: { beMore: true, t: {} }'.indexOf('beMore: false') < 0);
+
 // ================= D 工具自证（判据不是恒真）=================
 console.log('\n===== D 工具自证（正负样本互证）=====');
 const S1 = 'var a = 1; // 阈值 15%\nvar b = 2;';

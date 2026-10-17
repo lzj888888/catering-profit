@@ -1553,6 +1553,9 @@ const TERMS = {
     beRangeText: '{a}到{b}',
     beWan: '万',
     // 🔴 R313：跨月对比（老板看完"这个月在亏"，下一句一定问"上月呢"）
+    // 🔴 R314：体检卡精简 —— 依据折叠（只留结论/动作在前面）
+    beMoreShow: '展开看依据',
+    beMoreHide: '收起，只看结论',
     beMomMore: '，比上月多赚{a}',
     beMomLess: '，比上月少赚{a}',
     beYuanUnit: '元',

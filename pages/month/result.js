@@ -25,7 +25,11 @@ const { settleSummary } = require('../../utils/takeaway.js');
 
 Page({
   data: {
+    // 🔴 R314：体检卡「依据」默认收起（老板先看结论/动作，想追依据再展开）
+    beMore: false,
     t: {
+      beMoreShow: TERMS.card.beMoreShow,
+      beMoreHide: TERMS.card.beMoreHide,
       beMomMore: TERMS.card.beMomMore,
       beMomLess: TERMS.card.beMomLess,
       beYuanUnit: TERMS.card.beYuanUnit,
@@ -351,6 +355,13 @@ Page({
       diag: BE.diagnose(healthyFen, bk.breakevenFen),
       unknownText: (sp.unknown && sp.unknown.length) ? T.beUnknown : '',
     };
+  },
+
+  // 🔴 R314：展开/收起体检卡的「依据」三行（保本区间 / 达标营业额 / 房租归因）。
+  //   为什么默认收起：这 6 行里只有 3 行是「结论/动作」，其余是「依据」；
+  //   老板第一眼要的是"我在亏吗、能撑多少、哪里漏钱"，依据想追再看。
+  onToggleBeMore() {
+    this.setData({ beMore: !this.data.beMore });
   },
 
   _sumByName(rows, kw) {
