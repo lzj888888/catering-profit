@@ -1841,6 +1841,19 @@ const TERMS = {
 
   // ===== 十七、M1 结果展示页 =====
   resultPage: {
+    // 🔴 R302：外卖到手账（M1 **已录**的外卖整体口径反算，零新增输入）。
+    //   为什么做它：李老师拿不到京东/美团《商品销量》表，而**老板每天看的就是汇总级**（营业额/回款）
+    //   ⇒ 把已录的营收 + 佣金/配送费/商家补贴**变成他看得懂的一个数**。
+    //   ⚠️ 两条提示都 <18 字，**故意不折叠**（避免牵动 check_hint_fold 的 EXPECT 登记与新建手柄）。
+    settleTitle: '外卖到手账',
+    settleIncome: '外卖营收',
+    settlePlatformFee: '平台扣费',
+    settleNet: '到手金额',
+    settleNetRate: '到手率',
+    settlePerOrder: '单均到手',
+    settleUnfilled: '未填',
+    settleNote: '按你录的数估算，不是平台结算单',
+    settleMissingFee: '还没录佣金/配送费，到手会偏高',
     title: '经营结果',
     monthTotal: '本月总览',
     income: '营业收入',

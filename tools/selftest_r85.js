@@ -676,8 +676,18 @@ check('A26-12 真漏填补贴仍要报 miss（修公式不得把漏填检测一�
   const r = reconcile(Object.assign({}, R164, { incomeTotal: 6585.08, subsidy: 0 }));
   return r.status === 'miss' && Math.abs(Math.abs(r.diff) - 2069.70) < 0.01;
 })());
-check('A26-12 源码级：reconcile 内补贴取绝对值参与扣减（防回退到只减一次）',
-  /Math\.abs\(subsidy\)/.test(fs.readFileSync(path.join(ROOT, 'utils/takeaway.js'), 'utf8')));
+check('A26-12 源码级：补贴取绝对值参与扣减（防回退到只减一次）'
+  + ' —— 🔴 R302 起锚点移到**公式所在函数** `expectedReceivable`，并要求 `reconcile` **委托**给它：'
+  + '原判据钉在 `reconcile` 函数体内，公式被抽成单源（元/分共用）后**假红**（腿锚错地方）',
+  (() => {
+    const s = fs.readFileSync(path.join(ROOT, 'utils/takeaway.js'), 'utf8');
+    const i = s.indexOf('function expectedReceivable(');
+    const ri = s.indexOf('function reconcile(');
+    if (i < 0 || ri < 0) return false;
+    const fbody = s.slice(i, i + 900).split('\nfunction ')[0];
+    const rbody = s.slice(ri, ri + 2000);
+    return /Math\.abs\(\s*sub\s*\)/.test(fbody) && /expectedReceivable\(/.test(rbody);
+  })());
 
 // ===== A27 · R166 文案不得与已修算法脱节（"实现改了、说明没跟上" 是静默误导，客户照样算错）=====
 // 背景：R164 修了配平式（只减一次补贴 ⇒ 两步走），但界面上那句「按外卖收入−活动补贴…」仍在描述旧算法。

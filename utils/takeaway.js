@@ -266,6 +266,34 @@ function subsidyTotal(detailRows) {
 const RECONCILE_THRESHOLD = 50; // 元
 
 /**
+ * 「应有商家应收款」（＝**到手金额**）的**唯一口径处**。
+ *
+ * 🔴 R302：为什么必须抽出来 —— 本函数原先是 `reconcile` 的内联三行；到手账（`settleSummary`）
+ *   要把**同一个口径**再用一次。若各写一份，两处一旦漂移就会出现「配平校验说对、到手账说另一个数」
+ *   （本仓最贵的病：同一语义两份实现）。⇒ 抽成一处，**reconcile（元）与 settleSummary（分）共用**。
+ *
+ * 🔴 本函数**单位无关**（纯加減乘除，无除法/无取整）⇒ 传分得数、传元得元，两处口径必然一致。
+ *
+ * 两步走（R164 修正，用真值证伪过）：① 收入合计里**含**补贴框的值 ⇒ 先按原符号抵消，还原"优惠前总额"；
+ *   ② 再**真实扣一次**补贴（取绝对值 ⇒ 客户填正数/负数都得到同一答案）。
+ *   按规范字面只减一次 ⇒ 补贴被完全抵消、一次都没扣 ⇒ 恒定误报（见 NOTE_2026-09-28_round164）。
+ *
+ * @param {number} incomeTotal 收入合计（含补贴框的值）
+ * @param {number} subsidy 商家承担补贴合计（符号随客户填法）
+ * @param {number} commission 平台佣金
+ * @param {number} deliveryFee 配送服务费
+ * @param {number} deliverySubsidy 配送补贴
+ * @returns {number} 应有应收款（与入参同单位）
+ */
+function expectedReceivable(incomeTotal, subsidy, commission, deliveryFee, deliverySubsidy) {
+  const inc = Number(incomeTotal) || 0;
+  const sub = Number(subsidy) || 0;
+  const gross = inc - sub;
+  return gross - Math.abs(sub) - (Number(commission) || 0)
+    - (Number(deliveryFee) || 0) - (Number(deliverySubsidy) || 0);
+}
+
+/**
  * 机器近似校验式（A.11.4 b，🔴 R164 修正实现）：
  *   应有商家应收款 ≈ 优惠前总额 − 商家承担补贴 − 佣金 − 配送服务费 − 配送补贴
  *
@@ -291,15 +319,12 @@ function reconcile(p) {
   const actual = Number(p && p.actualReceivable);
   if (!(actual > 0)) return null; // 未填 → 不校验（选填框）
 
-  const incomeTotal = Number(p && p.incomeTotal) || 0;
   const subsidy = Number(p && p.subsidy) || 0;
   const commission = Number(p && p.commission) || 0;
   const deliveryFee = Number(p && p.deliveryFee) || 0;
   const deliverySubsidy = Number(p && p.deliverySubsidy) || 0;
-  // R164：两步走。① 还原优惠前总额（收入合计里含了补贴框的值，先按原符号抵消掉）；
-  //          ② 真实扣一次补贴（取绝对值 ⇒ 客户填正数/负数都得同一个正确答案）。
-  const gross = incomeTotal - subsidy;
-  const expected = gross - Math.abs(subsidy) - commission - deliveryFee - deliverySubsidy;
+  // R164 两步走 + R302 抽成唯一口径处：公式在 `expectedReceivable`（单位无关，到手账共用同一份）。
+  const expected = expectedReceivable(p && p.incomeTotal, subsidy, commission, deliveryFee, deliverySubsidy);
   const diff = Math.round(Number(((actual - expected) * 100).toFixed(10))) / 100;
   const absDiff = Math.abs(diff);
 
@@ -348,11 +373,72 @@ function mkByPlatFilled(list) {
   });
 }
 
+// ===================== R302 · 「外卖到手账」（由 M1 已录入的数反算） =====================
+
+/**
+ * 「外卖到手账」——**纯函数 · 零新增输入 · 零新口径**。
+ *
+ * 🔴 为什么做它（R300 决策 §2「D 主」）：李老师拿不到京东/美团的《商品销量》表，且**平台 App 上
+ *   老板每天看的就是汇总级**（营业额 / 回款）。⇒ 把 M1 **已录**的外卖整体口径（收入侧按平台分 +
+ *   费用侧佣金/配送费/配送补贴/商家补贴 + 有效订单数）**用起来**，算出老板手机上看得到的粒度：
+ *   到手金额 / 到手率 / 单均到手。**不新增任何输入、不新建页面**（避免与 M1 重复 ⇒ 第二套口径）。
+ *
+ * 🔴 单位：**入参与出参都是「分」**（本仓金额单源）。唯一的除法（到手率、单均）只在展示层收尾。
+ * 🔴 「到手金额」用的就是 `expectedReceivable`（与配平校验**同一份公式**）——
+ *   口径若与配平校验不一致，会出现"校验说对、到手账说另一个数"。
+ *
+ * ⚠️ 缺项**不编数**：`netRatePct` 在营收为 0 时回 `null`（不是 0）；`perOrderText` 在没订单数时回 `''`。
+ *   页面据此显示「未填」而不是 0 —— 与本仓「不替用户编数」同一条纪律。
+ *
+ * @param {object} p {
+ *   incomeFen,           // 外卖营收合计（收入侧 category='takeaway' 各行之和；**含**商家补贴框的值）
+ *   commissionFen,       // 外卖平台佣金
+ *   deliveryFeeFen,      // 外卖配送服务费
+ *   deliverySubsidyFen,  // 外卖配送补贴
+ *   subsidyFen,          // 商家承担补贴合计（符号随客户填法）
+ *   orderCount,          // 有效订单数（单，来自收入侧子项 qty；**不参与任何金额**）
+ * }
+ * @returns {{
+ *   incomeFen:number, platformFeeFen:number, subsidyFen:number, netFen:number,
+ *   netRatePct:(number|null), perOrderText:string, hasIncome:boolean, hasOrderCount:boolean,
+ *   platformFeeKnown:boolean,
+ * }}
+ */
+function settleSummary(p) {
+  const o = p || {};
+  const fen = (v) => Math.round(Number(v) || 0);          // 分，整数（入参已是分；防御非整数/字符串）
+  const incomeFen = fen(o.incomeFen);
+  const commissionFen = fen(o.commissionFen);
+  const deliveryFeeFen = fen(o.deliveryFeeFen);
+  const deliverySubsidyFen = fen(o.deliverySubsidyFen);
+  const subsidyFen = fen(o.subsidyFen);
+  const platformFeeFen = commissionFen + deliveryFeeFen + deliverySubsidyFen;
+  const netFen = Math.round(expectedReceivable(
+    incomeFen, subsidyFen, commissionFen, deliveryFeeFen, deliverySubsidyFen));
+  // 到手率：营收为 0 ⇒ null（**不是 0**）—— 0% 会被读成"一分没到手"
+  const netRatePct = incomeFen > 0 ? Math.round((netFen / incomeFen) * 100) : null;
+  const orderCount = Number(o.orderCount) || 0;
+  return {
+    incomeFen,
+    platformFeeFen,
+    subsidyFen,
+    netFen,
+    netRatePct,
+    perOrderText: perOrderYuan(netFen / 100, orderCount),
+    hasIncome: incomeFen > 0,
+    hasOrderCount: orderCount > 0,
+    // 平台扣费三项全 0 ⇒ 老板还没录佣金/配送费 ⇒ 到手额会**偏高**，页面必须提示去补录（不静默）
+    platformFeeKnown: platformFeeFen !== 0,
+  };
+}
+
 module.exports = {
   pickTakeawayMode, takeawayModeKey, snapshotDetail, restoreDetail, subtotalOf,
   extractPaste, firstNumber, stripNonMoney, pasteFillValue, pasteFilledFromTotal, filledLabel,
-  subsidyTotal, reconcile, RECONCILE_THRESHOLD,
+  subsidyTotal, reconcile, RECONCILE_THRESHOLD, expectedReceivable,
   mkByPlatTotal, mkByPlatFilled,
   // R162：有效订单数（只回显，不进金额）
   qtyTotal, perOrderYuan,
+  // R302：外卖到手账（M1 已录数反算）
+  settleSummary,
 };

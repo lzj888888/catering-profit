@@ -9,6 +9,8 @@ const ui = require('../../utils/ui.js');
 const entitle = require('../../utils/entitlement.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 const exportFile = require('../../utils/exportFile.js');   // R265：导出投递单源（落盘 + 打开 + 转发兜底）
+// 🔴 R302：外卖到手账 —— 口径全部在 `utils/takeaway.js`（纯函数单源），页面只做「名字→数字」解析与格式化
+const { settleSummary } = require('../../utils/takeaway.js');
 
 Page({
   data: {
@@ -42,6 +44,16 @@ Page({
       refNote: TERMS.resultPage.refNote,
       trueNote: TERMS.resultPage.trueNote,
       archiveLocked: TERMS.resultPage.archiveLocked,
+      // R302：外卖到手账（M1 已录数反算）—— 逐条列举，漏登记 = 页面静默空白（本仓红线，守 check_page_terms）
+      settleTitle: TERMS.resultPage.settleTitle,
+      settleIncome: TERMS.resultPage.settleIncome,
+      settlePlatformFee: TERMS.resultPage.settlePlatformFee,
+      settleNet: TERMS.resultPage.settleNet,
+      settleNetRate: TERMS.resultPage.settleNetRate,
+      settlePerOrder: TERMS.resultPage.settlePerOrder,
+      settleUnfilled: TERMS.resultPage.settleUnfilled,
+      settleNote: TERMS.resultPage.settleNote,
+      settleMissingFee: TERMS.resultPage.settleMissingFee,
       loading: TERMS.ui.loading,
       cur: '¥',
       pendingArchive: TERMS.ui.pendingArchive,
@@ -94,6 +106,8 @@ Page({
     // round115：行业指标对照（后端出 pct/lo/hi/level，中文名与评级文案在前端补）
     inds: [],
     scope: {},
+    // R302：外卖到手账的展示对象（`has:false` ⇒ 不渲染该卡；没做外卖的店不显示空卡）
+    settle: { has: false },
     bizTypes: TERMS.m2.bizTypes,
     cityTiers: TERMS.m2.cityTiers,
     bizIdx: 1,      // 默认「中式正餐」（bizTypes[1]），与后端 bandOf 的兜底口径一致
@@ -130,6 +144,8 @@ Page({
       // D1：保存原始明细（snake_case，含 sub_items），供下钻面板展示（前端不重算金额）
       const incDetail = this.buildDetail(d.income_items || []);
       const expDetail = this.buildDetail(d.expense_items || []);
+      // R302：外卖到手账 —— 由 M1 **已录**的数反算（详见 buildSettle 头注）
+      const settle = this.buildSettle(d.income_items || [], d.expense_items || []);
       // round115：行业指标对照 —— 后端只回 key/数值/level 枚举，中文名与评级文案在前端补齐（术语单源在前端）
       const inds = this.decorateInds(d.indicators || []);
       const scope = d.indicator_scope || {};
@@ -141,6 +157,7 @@ Page({
         hasLedger: !!(d && d.account_id),
         incDetail,
         expDetail,
+        settle,
         r: {
           income: fen(res.income_total_fen),
           expense: fen(res.expense_total_fen),
@@ -170,6 +187,66 @@ Page({
       this.setData({ loading: false });
       api.toastError(e);
     }
+  },
+
+  // ===== R302：外卖到手账（M1 已录数反算 · 零新增输入 · 零云函数改动）=====
+
+  /**
+   * 由 M1 **已录入**的明细反算「外卖到手账」。
+   *
+   * 🔴 为什么做它（R300 决策 §2「D 主」）：京东/美团的《商品销量》表拿不到、且**平台 App 上老板每天
+   *   看的就是汇总级**（营业额 / 回款）。⇒ 把 M1 已录的外卖整体口径用起来，给他看得懂的粒度。
+   *   **不新增输入、不新建页面**（否则与 M1 重复 ⇒ 第二套口径，本仓最贵的病）。
+   *
+   * 分工：本函数只做两件事 —— ①用**术语单源**把"哪一个费用项是佣金/配送费/补贴"认出来；
+   *   ②把分整数喂给 `settleSummary`。**金额口径全在 utils/takeaway.js**（纯函数，可单测）。
+   *
+   * ⚠️ 项名单源：`TERMS.ledger.takeawayMode.reconcileRoles`（佣金/配送费/配送补贴）+
+   *   `TERMS.semantic.expenseMktSubsidy`（商家承担补贴）—— **页面零中文字面量**（守 check_page_terms 判据③）。
+   *   收入侧用**机器值** `category === 'takeaway'`（与 `pages/month/input.js` 同一判据）。
+   *
+   * @param {Array} incItems getLedger 出参 `income_items`（含 sub_items）
+   * @param {Array} expItems getLedger 出参 `expense_items`
+   * @returns {object} 给 wxml 的展示对象（`has:false` ⇒ 不渲染）
+   */
+  buildSettle(incItems, expItems) {
+    const roles = ((TERMS.ledger.takeawayMode || {}).reconcileRoles) || {};
+    const subsidyName = TERMS.semantic.expenseMktSubsidy;
+    const fenOf = (items, nm) => {
+      if (!nm) return 0;
+      const it = (items || []).find((x) => x && x.name === nm);
+      return it ? (Number(it.amount_fen) || 0) : 0;
+    };
+    const twRows = (incItems || []).filter((x) => x && x.category === 'takeaway');
+    const incomeFen = twRows.reduce((s, x) => s + (Number(x.amount_fen) || 0), 0);
+    // 有效订单数只在子项上（R162：qty 不进任何金额，只派生单均）
+    let orderCount = 0;
+    for (const r of twRows) {
+      for (const si of (r.sub_items || [])) orderCount += Number(si && si.qty) || 0;
+    }
+    const st = settleSummary({
+      incomeFen,
+      commissionFen: fenOf(expItems, roles.commission),
+      deliveryFeeFen: fenOf(expItems, roles.deliveryFee),
+      deliverySubsidyFen: fenOf(expItems, roles.deliverySubsidy),
+      subsidyFen: fenOf(expItems, subsidyName),
+      orderCount,
+    });
+    if (!st.hasIncome) return { has: false };
+    const rate = st.netRatePct;
+    return {
+      has: true,
+      income: api.fenToYuan(st.incomeFen, 2),
+      // 佣金/配送费一项都没录 ⇒ **显示「未填」而不是 0.00**（0 会被读成"平台不扣费"，到手额因此偏高）
+      platformFeeText: st.platformFeeKnown
+        ? (this.data.t.cur + api.fenToYuan(st.platformFeeFen, 2))
+        : (this.data.t.settleUnfilled || ''),
+      net: api.fenToYuan(st.netFen, 2),
+      netRate: rate === null ? null : (rate < 0 ? '−' + Math.abs(rate) : String(rate)),
+      perOrder: st.perOrderText,
+      showPerOrder: !!st.perOrderText,
+      showMissingFee: !st.platformFeeKnown,
+    };
   },
 
   // ===== round115：行业指标对照 =====

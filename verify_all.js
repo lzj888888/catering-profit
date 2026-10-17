@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：179 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：180 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -1137,6 +1137,12 @@ const SUITES = [
   //   判据 = ① 契约表解析 + 两处扫描面下界 + ② 每个入参必须被实现引用（否则显式登记 why）
   //        + ③ 登记表双向防腐（无僵尸键 / 无空转键）+ ④ 反恒真（注释喂不饱判据 / 解析器形状自证）。
   ['fn-contract-params', 'tools/check_fn_contract_params.js'],
+  // ===== R302 ·M1「外卖到手账」守卫 =====
+  //   见头部注释同名条目。抓的第一件事是「**不许出现两份公式**」：到手金额与配平校验
+  //   （`reconcile` 的应有应收款）是同一口径 ⇒ 判据钉「reconcile 必须**调用** `expectedReceivable`」
+  //   + 该函数必须**单位无关**（元/分共用一份）+ 行为对拍（分与元算出同一到手额）
+  //   + 不编数（营收 0 ⇒ 到手率 null 而非 0；无订单数 ⇒ 单均空串而非 0.00）+ 页面消费面。
+  ['takeaway-settle', 'tools/check_takeaway_settle.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

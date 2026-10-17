@@ -66,6 +66,22 @@
     <view class="muted">{{t.flowPer100}} {{t.cur}}{{r.per100}}　{{t.flowHint}}</view>
   </view>
 
+  <!-- ===== R302：外卖到手账（由 M1 **已录**的数反算，零新增输入）=====
+       为什么放这里：老板手机上看的就是「营业额 / 回款」这一级粒度，而这张卡把 M1 里
+       已录的外卖营收、平台佣金/配送费、商家补贴**变成他看得懂的一个数：到手金额 / 到手率 / 单均到手**。
+       🔴 只在**有外卖营收**时才出现（没做外卖的店不显示空卡）。 -->
+  <view class="card2" wx:if="{{settle.has}}">
+    <view class="muted">{{t.settleTitle}}</view>
+    <view class="cell"><text class="lbl">{{t.settleIncome}}</text><text class="val">{{t.cur}}{{settle.income}}</text></view>
+    <view class="cell"><text class="lbl">{{t.settlePlatformFee}}</text><text class="val">{{settle.platformFeeText}}</text></view>
+    <view class="cell"><text class="lbl">{{t.settleNet}}</text><text class="val">{{t.cur}}{{settle.net}}</text></view>
+    <view class="cell" wx:if="{{settle.netRate !== null}}"><text class="lbl">{{t.settleNetRate}}</text><text class="val">{{settle.netRate}}%</text></view>
+    <view class="cell" wx:if="{{settle.showPerOrder}}"><text class="lbl">{{t.settlePerOrder}}</text><text class="val">{{t.cur}}{{settle.perOrder}}</text></view>
+    <!-- 🔴 佣金/配送费一项都没录 ⇒ 到手额必然偏高：必须说出来并给去补录的出口，不静默 -->
+    <view class="warn" wx:if="{{settle.showMissingFee}}">{{t.settleMissingFee}}</view>
+    <view class="muted">{{t.settleNote}}</view>
+  </view>
+
   <!-- 收入/费用/毛利 -->
   <view class="card2">
     <!-- D1：营业收入行可点下钻（大类 → 细项） -->

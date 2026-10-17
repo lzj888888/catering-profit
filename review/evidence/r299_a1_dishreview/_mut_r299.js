@@ -21,6 +21,7 @@ const G1 = 'tools/check_dishreview_engine.js';
 const G2 = 'tools/check_truncated_surfaced.js';
 const G3 = 'tools/check_paywall_coverage.js';
 const G4 = 'tools/check_fn_contract_params.js';
+const G5 = 'tools/check_takeaway_settle.js';
 
 const sha = (abs) => crypto.createHash('sha256').update(fs.readFileSync(abs)).digest('hex');
 const absOf = (rel) => path.join(ROOT, rel);
@@ -178,6 +179,44 @@ const MUTS = [
     to: '  return { rows: rows0, from: f, to: t, days: countDataDays(rows) };',
     guard: G1,
     expect: [/14-③/],
+  },
+
+  // ===== 守卫 5（check_takeaway_settle）· R302 新增 =====
+  {
+    id: 'M17',
+    desc: 'R302 原样复现：`reconcile` 内联回自己的公式（＝两处口径各写一份 ⇒ 会漂移）',
+    file: 'utils/takeaway.js',
+    from: '  const expected = expectedReceivable(p && p.incomeTotal, subsidy, commission, deliveryFee, deliverySubsidy);',
+    to: '  const gross = (Number(p && p.incomeTotal) || 0) - subsidy;\n  const expected = gross - Math.abs(subsidy) - commission - deliveryFee - deliverySubsidy;',
+    guard: G5,
+    expect: [/①-a/],
+  },
+  {
+    id: 'M18',
+    desc: 'R302 反向：`expectedReceivable` 里掺进单位换算（`/ 100`）⇒ 元/分再也不能共用同一份',
+    file: 'utils/takeaway.js',
+    from: '  const gross = inc - sub;',
+    to: '  const gross = (inc - sub) / 100;',
+    guard: G5,
+    expect: [/①-b/],
+  },
+  {
+    id: 'M19',
+    desc: 'R302 原样复现：页面改用**中文字面量**定位费用项（术语改名即静默失效）',
+    file: 'pages/month/result.js',
+    from: '      commissionFen: fenOf(expItems, roles.commission),',
+    to: "      commissionFen: fenOf(expItems, '外卖平台佣金'),",
+    guard: G5,
+    expect: [/④-b/],
+  },
+  {
+    id: 'M20',
+    desc: 'R302 不编数面：营收 0 时到手率回 0（而不是 null）⇒ 会被读成"一分没到手"',
+    file: 'utils/takeaway.js',
+    from: '  const netRatePct = incomeFen > 0 ? Math.round((netFen / incomeFen) * 100) : null;',
+    to: '  const netRatePct = incomeFen > 0 ? Math.round((netFen / incomeFen) * 100) : 0;',
+    guard: G5,
+    expect: [/③-a/],
   },
 ];
 
