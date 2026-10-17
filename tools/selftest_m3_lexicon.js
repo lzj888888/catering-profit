@@ -103,6 +103,21 @@ check('L-g 返回行不含 price/unit_cost/cost 键', rowBadKeys.length === 0,
   rowBadKeys.length ? `非法键：${JSON.stringify(rowBadKeys[0])}` : '行只含 line_name/qty/unit');
 check("L-g 返回行键集合 = {line_name, qty, unit}", rows.every((r) => Object.keys(r).sort().join(',') === 'line_name,qty,unit'), '');
 
+console.log('===== L-h · 模板模式随行（R317）=====');
+// 为什么守：火锅锅底是「炒一批料 → 打 N 锅」。模板若只带料单不带 mode B，
+//   套用后整批料成本会被当成「一锅」的成本 —— 静默算错 N 倍，界面完全看不出来。
+const badMode = TEMPLATES.filter((t) => t.mode !== undefined && t.mode !== 'A' && t.mode !== 'B');
+check('L-h mode 仅允许 省略 / A / B', badMode.length === 0,
+  badMode.length ? `非法：${badMode.map((t) => t.tpl_key + ':' + t.mode).join(',')}` : '全部合法');
+const badBatch = TEMPLATES.filter((t) => t.mode === 'B' && !(Number(t.batch_output) > 1));
+check('L-h mode=B 必须带 batch_output > 1（缺了就等于没分批）', badBatch.length === 0,
+  badBatch.length ? `缺失：${badBatch.map((t) => t.tpl_key).join(',')}` : '全部齐备');
+const editSrc = require('fs').readFileSync(require('path').join(__dirname, '../pages/card/edit.js'), 'utf8');
+check('L-h 页面套用模板时把模式带出（不是只带料单）',
+  editSrc.indexOf("tpl.mode === 'B'") >= 0 && editSrc.indexOf('patch.batchOutput') >= 0);
+check('L-h 自失效：mode=B 缺 batch 的样本必须判红',
+  [ { tpl_key: 'x', mode: 'B' } ].filter((t) => t.mode === 'B' && !(Number(t.batch_output) > 1)).length === 1);
+
 console.log('\n' + '='.repeat(60));
 console.log(`===== M3.20 词库/模板自测结果：${pass} 通过 / ${fail} 失败 =====`);
 process.exit(fail === 0 ? 0 : 1);

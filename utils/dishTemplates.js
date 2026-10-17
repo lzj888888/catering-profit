@@ -7,8 +7,14 @@
 //   ② 所有 `unit` ∈ `utils/units.js::PURCHASE_UNITS`（16 项）。
 //   ③ `applyTemplate` 返回的行**不得含** price / unit_cost / cost 类键（模板不掺金额口径）。
 //   ④ 纯数据、不写库 —— 模板只是省打字，保存仍走既有 `api.call('saveCostCard')`，配额照扣。
-
+//   ⑤ **模式必须随模板走**（R317）：模板可带 `mode`（'A' 省略 / 'B' 批量产出）与 `batch_output`。
+//      🔴 不加这条会**静默算错 10 倍**：火锅锅底是「炒一批料 → 打 N 锅」，
+//      若套用时仍按 mode A 算，整批料的成本会变成「一锅」的成本，且界面看不出来。
+//
 // 20 道高频菜品模板。每道：{ tpl_key, dish_name, lines: [{ line_name, qty, unit }] }。
+// 可选：mode:'B' + batch_output:N（批量产出；仅在「一次投料、多次出品」的菜上使用，如火锅锅底/卤水/红油）。
+// 🔴 何时该用 mode B：**一次投的料，产出多份**（炒一锅料打 10 锅）⇒ 单份成本 = 整批 ÷ 产出数。
+//    若这道菜就是"一份投一份"（宫保鸡丁），**不要**加 mode，保持默认 A。
 const TEMPLATES = [
   {
     tpl_key: 'gongbao_jiding',

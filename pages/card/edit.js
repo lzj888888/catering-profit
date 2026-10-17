@@ -471,7 +471,17 @@ Page({
       qty: String(r.qty),
       qty_unit: r.unit,
     }));
-    this.setData({ name: tpl.dish_name, lines: renumber(lines), tplPicked: i, cardType: '1', calcMode: 'A' });
+    // 🔴 R317：**模式随模板走**。火锅锅底这类「炒一批料 → 打 N 锅」必须 mode B + 批量产出；
+    //   若仍按 mode A 套用，整批料的成本会被当成「一锅」的成本 ⇒ **静默算错 N 倍**（界面看不出）。
+    //   mode B 时顺手把专业项展开（核算模式 / 批量产出就在那一区，不展开老板看不到、改不了）。
+    const tplMode = tpl.mode === 'B' ? 'B' : 'A';
+    const batch = Number(tpl.batch_output);
+    const patch = { name: tpl.dish_name, lines: renumber(lines), tplPicked: i, cardType: '1', calcMode: tplMode };
+    if (tplMode === 'B') {
+      patch.batchOutput = batch > 0 ? String(batch) : '';
+      patch.showMore = true;
+    }
+    this.setData(patch);
     this.refreshSpecHints();
   },
   // 子卡选择（picker 按 index 取）
