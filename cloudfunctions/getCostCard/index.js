@@ -70,6 +70,22 @@ exports.main = async (event) => {
   const list = [];
   for (const card of targets) {
     const out = cardToOutput(card);
+    // 🔴 R309：成本变动提醒 —— 同一 card_code 的**上一个版本**的单份成本。
+    //   为什么在这里算：`shop_cost_card` 只 INSERT 不 UPDATE（版本模型），本函数手里已有**全部版本**
+    //   （`da.listAll` 取全）⇒ 顺手带出去，前端不用再逐张查 `getCardVersions`（N 次调用）。
+    //   版本号可能**不连续**（1,2,5）⇒ 取「version 小于当前的最大者」，不能死算 version-1。
+    //   没有上一版 ⇒ `null`（**不是 0**：0 会被读成"上版成本是 0"，等于虚报涨幅）。
+    let prevCost = null;
+    for (const [k, v] of byVersion) {
+      const m = /^(.*)#(\d+)$/.exec(k);
+      if (!m || m[1] !== String(card.card_code)) continue;
+      const ver = Number(m[2]);
+      if (ver >= (Number(card.version) || 1)) continue;
+      if (prevCost === null || ver > prevCost.ver) {
+        prevCost = { ver, cost: v.total_cost != null ? v.total_cost : null };
+      }
+    }
+    out.prev_total_cost_fen = prevCost && prevCost.cost != null ? prevCost.cost : null;
     out.lines = await loadLines(da, shopId, card);
     // M3.16 套餐：装配三个显示信息（顾客省 / 我少赚 / 成本结构）。
     //   子卡单份成本与挂牌价取**锁定版本**（sub_version）的子卡 doc；子卡已软删 ⇒ 回退明细行快照。

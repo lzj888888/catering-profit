@@ -26,6 +26,7 @@ const G6 = 'tools/check_import_scope_claims.js';
 const G7 = 'tools/selftest_batch8b.js';
 const G8 = 'tools/check_share_split.js';
 const G9 = 'tools/check_carry_over.js';
+const G10 = 'tools/check_cost_drift.js';
 
 const sha = (abs) => crypto.createHash('sha256').update(fs.readFileSync(abs)).digest('hex');
 const absOf = (rel) => path.join(ROOT, rel);
@@ -290,6 +291,15 @@ const MUTS = [
     to: '        this.setData({ incomeGroups: expenseGroups });',
     guard: G9,
     expect: [/①-a/],
+  },
+  {
+    id: 'M28',
+    desc: 'R309 原样复现：没有上一版时用 0 兜底（涨幅虚报成 100%+）',
+    file: 'cloudfunctions/getCostCard/index.js',
+    from: 'out.prev_total_cost_fen = prevCost && prevCost.cost != null ? prevCost.cost : null;',
+    to: 'out.prev_total_cost_fen = prevCost && prevCost.cost != null ? prevCost.cost : 0;',
+    guard: G10,
+    expect: [/①-b/],
   },
 ];
 

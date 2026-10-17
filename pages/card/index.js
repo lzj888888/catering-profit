@@ -8,6 +8,23 @@ const ui = require('../../utils/ui.js');
 const { openPaywall, openService } = require('../../utils/paywall.js');
 const exportFile = require('../../utils/exportFile.js');   // R265：导出投递单源（落盘 + 打开 + 转发兜底）
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
+
+// 🔴 R309：成本变动标签（纯展示，不改任何计算）
+//   食材涨价是餐饮最痛的变量，而**成本卡的版本模型里已经存着两版的成本** ——
+//   不用老板多填一个字，就能主动告诉他"这道菜成本涨了 8%"。
+//   三条不显示（都不许编数）：没有上一版 / 上一版成本 ≤0（不许除零）/ 变化不足 1%（不打扰）。
+function costDriftText(c) {
+  const pv = c && c.prev_total_cost_fen;
+  const nw = c && c.total_cost_fen;
+  if (pv === null || pv === undefined || nw === null || nw === undefined) return '';
+  const p = Number(pv);
+  const n = Number(nw);
+  if (!(p > 0) || !(n >= 0)) return '';
+  const d = Math.round(((n - p) * 100) / p);
+  if (!d) return '';
+  const tpl = d > 0 ? TERMS.card.costDriftUp : TERMS.card.costDriftDown;
+  return String(tpl || '').replace('{p}', String(Math.abs(d)));
+}
 const band = require('../../utils/marginBand.js');   // 🔴 R298Y：毛利色阶/区间**唯一单源**（数值 + 文案 + 色值）
 const dh = require('../../utils/dataHealth.js');     // 🔴 R299：出参 `truncated` 的可见降级（单源）
 
@@ -30,6 +47,8 @@ const MARGIN_OPTIONS = [
 Page({
   data: {
     t: {
+      costDriftUp: TERMS.card.costDriftUp,
+      costDriftDown: TERMS.card.costDriftDown,
       listTitle: TERMS.card.listTitle,
       addCard: TERMS.buttons.addCostCard,
       totalCost: TERMS.card.totalCost,
@@ -163,6 +182,11 @@ Page({
           combo_lose_neg: !!(c.combo && c.combo.merchantLoseFen < 0),
           // round156：排序键（「最近编辑在前」）。存量卡没有 updated_at ⇒ 0（排最后，不插队到新卡前面）
           updated_at: Number(c.updated_at) || 0,
+          // 🔴 R309：成本变动提醒 —— 本版 vs 上一版的**单份成本**。
+          //   只在「上一版存在 且 成本真的变了」才出标签；涨幅取整到 1%（不显示 0.3% 这种噪声）。
+          //   ⚠️ 上一版为 `null`（第一次建卡）或 上一版成本 ≤0（数据不全）⇒ **不显示**，
+          //      绝不能用 0 当分母算出"涨了无穷多"或"涨了 100%"。
+          driftText: costDriftText(c),
         };
       });
       // S0（任务 3）：分类/标签筛选选项 —— 从数据去重（不写死枚举；tag 按逗号分隔后取单项去重）

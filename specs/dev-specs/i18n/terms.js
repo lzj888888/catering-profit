@@ -1530,6 +1530,9 @@ const TERMS = {
     splitErrPct: '占比要填 0–100 的数字',
     splitErrSum: '占比合计超过 100%，请调小',
     splitErrNoPrice: '有菜没填售价，算不出毛利',
+    // 🔴 R309：成本变动提醒（同一张卡上一版 vs 本版的单份成本）。短标签，避免触发折叠要求。
+    costDriftUp: '成本↑{p}%',
+    costDriftDown: '成本↓{p}%',
     reviewAfterFact: '本报表基于标准成本卡 × 销售份数推演，仅作经营参考；如需门店真实账面成本，请使用 M1 月度核算。',
     reviewDineIn: '堂食',
     reviewTakeaway: '外卖',
