@@ -1541,6 +1541,10 @@ const TERMS = {
     beStructural: '不是费用问题，是毛利结构',
     beNoData: '还没填食材成本，算不出保本',
     beUnknown: '有费用项认不出，已按固定算',
+    // 🔴 R311③：归因句（占比高里，多少是营收不足、多少是该项真贵）
+    beAttrLead: '房租占比',
+    beAttrDenom: '点来自营收不足',
+    beAttrNumer: '点来自房租本身贵',
     reviewAfterFact: '本报表基于标准成本卡 × 销售份数推演，仅作经营参考；如需门店真实账面成本，请使用 M1 月度核算。',
     reviewDineIn: '堂食',
     reviewTakeaway: '外卖',

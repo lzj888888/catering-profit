@@ -17,6 +17,9 @@ const { settleSummary } = require('../../utils/takeaway.js');
 Page({
   data: {
     t: {
+      beAttrLead: TERMS.card.beAttrLead,
+      beAttrDenom: TERMS.card.beAttrDenom,
+      beAttrNumer: TERMS.card.beAttrNumer,
       beTitle: TERMS.card.beTitle,
       beBreakeven: TERMS.card.beBreakeven,
       beMargin: TERMS.card.beMargin,
@@ -249,8 +252,18 @@ Page({
       { amountFen: rentFen, hiPct: 15 },
       { amountFen: laborFen, hiPct: 22 },
     ]);
+    // 🔴 R311③：归因 —— 房租占比偏高里，"营收不足"与"房租本身贵"各占多少点。
+    //   目标率取行业区间中点 12%（8-15 的中点）；目标营收取"健康营收"。
+    const at = BE.attribution({ revenueFen: revFen, itemFen: rentFen, targetRatePct: 12, targetRevenueFen: healthyFen });
+    // ⚠️ 只在**占比确实偏高**（diffPp > 0）时才给归因：
+    //   若房租本来就在区间内，说"有 X 点来自营收不足"是**误导**（它没偏高，不需要解释）。
+    //   分母/分子**保留符号**（不取绝对值）：两者可能一正一负，取绝对值会让"加起来等于率差"不成立。
+    const attr = (!at.needTarget && at.diffPp > 0)
+      ? { rate: String(at.ratePct), denom: String(at.denomPp), numer: String(at.numerPp) }
+      : null;
     return {
       ok: true,
+      attr,
       revText: api.fenToYuan(revFen, 2),
       fixedText: api.fenToYuan(sp.fixedFen, 2),
       varText: api.fenToYuan(sp.variableFen, 2),
