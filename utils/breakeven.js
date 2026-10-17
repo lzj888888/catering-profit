@@ -69,6 +69,18 @@ function splitFixedVariable(rows, opts) {
   let fixedFen = 0;
   let variableFen = 0;
 
+  // 🔴 R311 实测发现（必须补，否则保本线全错）：M1 的**食材成本不在 expenseItems 里**
+  //   （见 calcMonthlyProfit/service.js:22-27：expenseItems 是"费用非食材成本"；
+  //     食材另有 directConsumeFen，库存开关开时 = 期初 + 采购 − 期末 = materialCostFen）
+  //   而食材是**最大的变动成本**（行业 55–70%）。漏了它 ⇒ 变动成本几乎为零 ⇒ 贡献率虚高
+  //   ⇒ 保本线**大幅偏低** ⇒ 体检会说"你离亏还远"，这是最危险的方向。
+  //   ⇒ 由调用方把 `materialCostFen` 传进来，固定按 **100% 变动** 计入。
+  const material = Math.round(Number(o.materialCostFen) || 0);
+  if (material > 0) {
+    variableFen += material;
+    detail.push({ key: 'food', label: '食材成本', variablePct: 100, amountFen: material, fixedFen: 0, variableFen: material, from: 'material' });
+  }
+
   for (const r of (Array.isArray(rows) ? rows : [])) {
     if (!r) continue;
     const amt = Math.round(Number(r.amountFen) || 0);
