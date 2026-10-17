@@ -70,8 +70,10 @@ const badUnit = LEXICON.filter((it) => PURCHASE_UNITS.indexOf(it.default_unit) <
 check(`L-e 全部 default_unit ∈ PURCHASE_UNITS（16 项）`, badUnit.length === 0,
   badUnit.length ? `非法：${badUnit.map((x) => x.default_unit).join(',')}` : `${LEXICON.length} 条均合法`);
 
-console.log('===== L-f · 模板 20 道 =====');
-check('L-f 模板 20 道', TEMPLATES.length === 20, `length=${TEMPLATES.length}`);
+console.log('===== L-f · 模板规模（20~35，封顶 35）=====');
+// 为什么是区间而不是定值：模板会继续按业态补（火锅/小面/卤味），定值每加一道就要改一次判据，
+//   而**真正的红线是上限**——模板超过 35 道后，picker 滚轮变成负担，且会强化"系统只有这些菜"的错觉。
+check('L-f 模板 20~35 道（封顶 35）', TEMPLATES.length >= 20 && TEMPLATES.length <= 35, `length=${TEMPLATES.length}`);
 const PRICE_KEYS = ['price', 'unit_cost', 'cost', 'price_fen', 'unit_cost_fen', 'cost_fen'];
 const deepHasPrice = (obj, path) => {
   if (Array.isArray(obj)) return obj.some((o, i) => deepHasPrice(o, `${path}[${i}]`));

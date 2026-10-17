@@ -61,6 +61,7 @@
   <view class="field" wx:if="{{cardType === '1' && calcMode === 'B'}}">
     <text class="lbl">{{t.batchOutput}}</text>
     <input class="val-input" type="number" value="{{batchOutput}}" bindinput="onBatch"  adjust-position="{{true}}" cursor-spacing="20" />
+    <text class="muted">{{t.batchHint}}</text>
   </view>
 
   <!-- 明细行（录入方式：档案选择 / 临时手工）—— 仅单品 -->

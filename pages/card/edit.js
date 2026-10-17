@@ -79,6 +79,7 @@ Page({
       calcModeA: TERMS.card.calcModeA,
       calcModeB: TERMS.card.calcModeB,
       batchOutput: TERMS.card.batchOutput,
+      batchHint: TERMS.card.batchHint,
       lossRate: TERMS.card.lossRate,
       auxAmount: TERMS.card.auxAmount,
       price: TERMS.card.price,

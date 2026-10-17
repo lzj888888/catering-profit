@@ -200,6 +200,40 @@ const TEMPLATES = [
       { line_name: '猪里脊', qty: 100, unit: '克' },
     ],
   },
+  // ===== 一批多用（mode B）=====
+  // 🔴 这两道与上面 20 道**性质不同**：上面是「投一份、出一份」，这两道是「炒一批、打多锅」，
+  //   所以必须带 mode:'B' + batch_output，套用时页面会自动切到「批量预制」并展开产出数。
+  // ⚠️ 用量是**行业常见量级**（一锅约 2kg 油 / 250g 豆瓣），不是标准配方 ——
+  //   各店炒料差异极大，老板必须按自家改（页面文案已写「模板只给例子」）。
+  //   量级校验：按常见采购价，整批约 600–700 元 ÷ 12 锅 ≈ 50–60 元/锅，落在火锅锅底合理区间。
+  {
+    tpl_key: 'niuyou_guodi',
+    dish_name: '牛油锅底（一锅料打多锅）',
+    mode: 'B',
+    batch_output: 12,
+    lines: [
+      { line_name: '牛油', qty: 24000, unit: '克' },
+      { line_name: '郫县豆瓣', qty: 3000, unit: '克' },
+      { line_name: '干辣椒', qty: 1500, unit: '克' },
+      { line_name: '花椒', qty: 600, unit: '克' },
+      { line_name: '姜', qty: 1000, unit: '克' },
+      { line_name: '蒜', qty: 800, unit: '克' },
+      { line_name: '香料', qty: 400, unit: '克' },
+    ],
+  },
+  {
+    tpl_key: 'fanqie_guodi',
+    dish_name: '番茄锅底（一锅料打多锅）',
+    mode: 'B',
+    batch_output: 10,
+    lines: [
+      { line_name: '番茄', qty: 5000, unit: '克' },
+      { line_name: '番茄酱', qty: 2000, unit: '克' },
+      { line_name: '洋葱', qty: 1500, unit: '克' },
+      { line_name: '食用油', qty: 1500, unit: '克' },
+      { line_name: '姜', qty: 300, unit: '克' },
+    ],
+  },
 ];
 
 /**
