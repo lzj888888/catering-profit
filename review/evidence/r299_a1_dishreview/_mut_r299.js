@@ -23,6 +23,7 @@ const G3 = 'tools/check_paywall_coverage.js';
 const G4 = 'tools/check_fn_contract_params.js';
 const G5 = 'tools/check_takeaway_settle.js';
 const G6 = 'tools/check_import_scope_claims.js';
+const G7 = 'tools/selftest_batch8b.js';
 
 const sha = (abs) => crypto.createHash('sha256').update(fs.readFileSync(abs)).digest('hex');
 const absOf = (rel) => path.join(ROOT, rel);
@@ -247,6 +248,17 @@ const MUTS = [
     to: '  if (false) out.push({ code: \'crossMonth\', value: months.length, unit: \'month\' });',
     guard: G6,
     expect: [/③-b/],
+  },
+
+  // ===== 守卫 7（selftest_batch8b · 死槽钉子）· R304 新增 =====
+  {
+    id: 'M24',
+    desc: 'R304 原样复现：把 `showRows` 死槽重新写活（R297 M1-B1 的回归就是从改读它开始的）',
+    file: 'pages/month/input.js',
+    from: "    g.rows = this.decorateRows(g, rows);   // 走同一装配口：名字命中预设清单 ⇒ fixed、无删除键",
+    to: "    g.rows = this.decorateRows(g, rows);   // 走同一装配口：名字命中预设清单 ⇒ fixed、无删除键\n    g.showRows = g.rows;",
+    guard: G7,
+    expect: [/不得复活 showRows 死槽/],
   },
 ];
 

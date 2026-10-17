@@ -11,6 +11,15 @@ function check(name, cond, detail) {
   else { failN++; console.log(`❌ ${name}${detail ? '  (' + detail + ')' : ''}`); }
 }
 const read = (p) => fs.readFileSync(path.join(ROOT, p), "utf8");
+// 🔴 R304：等长剥注释（保留换行与位置）—— 判"某标识符是否被赋值"时必须剥，
+//   否则**注释里提到它**就会把判据喂成恒真/恒假（本仓 R298Y「被注释喂成恒真」同族，踩过）。
+// ⚠️ 必须写成 **function 声明**：`check_selftest_shape` 的 R68 顶层块切分靠「块尾是 `;` 或 `}`」定界，
+//   多行**链式** arrow（`.replace().replace()` 跨行）无法定界 ⇒ 整个文件形状结论 fail-closed 判红（实测踩到）。
+function stripJsComments(s) {
+  return String(s)
+    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
+    .replace(/(^|[^:])\/\/[^\n]*/g, (m, p1) => p1 + ' '.repeat(m.length - p1.length));
+}
 const terms = read("miniprogram/i18n/terms.js");
 const termsSpec = read("specs/dev-specs/i18n/terms.js");
 
@@ -40,13 +49,26 @@ const inputWxml = read("pages/month/input.wxml");
 check('input.js 有 incomeGroups/expenseGroups 组模型', /incomeGroups: \[\],/.test(inputJs) && /expenseGroups: \[\],/.test(inputJs));
 // round102（2026-09-22）判据放宽到**语义级**：原判据绑死了 initGroups 里的局部变量名（const rows）——
 //   本轮把 initGroups/rebuildFromItems 改成「先建页面对象、再装配 rows」后变量名变成 raw ⇒ 误报。
-//   守卫意图是「有 rows/showRows 细项行模型」（折叠态取首行、展开态全量），与局部变量名无关。
+// 🔴 R304：腿② 锚点**搬到语义新家** —— 死槽 `showRows` 已**整体删除**
+//   （13 处赋值 / **零消费者**；R297 的 M1-B1 修法曾因改读它引入静默语义回归）。
+//   "折叠只显示首行 / 展开全量" 现在的表达处是 **wxml 对全量 `g.rows` 的条件渲染**：
+//     `wx:for="{{g.rows}}"` + `wx:if="{{g.expanded || ri === 0}}"`（R297-⑥ 已禁掉"模板里算 slice"）。
+//   ⚠️ 原判据钉在死槽名上 ⇒ 清理死代码时**必然假红**（R299 记的「腿锚错地方」同族）。
 //   腿①：行数组以「单个空行」初始化（= [{ subItem: ... }]，不限 const/let/变量名）
-//   腿②：showRows 按 expanded 取首行 / 全量（showRows: 与 g.showRows = 两种写法均算）
-check('input.js 有 rows/showRows 细项行模型（折叠取首行 / 展开全量）',
+//   腿②：折叠/展开由 wxml 条件渲染表达（`g.expanded || ri === 0`）—— 不再依赖任何预计算槽
+check('input.js 有 rows 细项行模型 + wxml 条件渲染（折叠取首行 / 展开全量）',
   /=\s*\[\{ subItem: '', amountYuan: '' \}\]/.test(inputJs)
-  && /showRows\s*[:=]\s*(?:g\.|out\.)?expanded\s*\?\s*(?:g\.|out\.)?rows\s*:\s*(?:g\.|out\.)?rows\.slice\(0, 1\)/.test(inputJs));
+  && /wx:for="\{\{g\.rows\}\}"/.test(inputWxml)
+  && /wx:if="\{\{g\.expanded \|\| ri === 0\}\}"/.test(inputWxml));
 check('input.js 有 buildItems（提交 sub_items，前端不汇总）', /buildItems\(groups\)/.test(inputJs) && /sub_items:/.test(inputJs));
+// 🔴 R304：**死槽不得复活**。`showRows` 曾是 13 处赋值 / 零消费者的死槽，且 R297 的 M1-B1 修法
+//   **曾因改读它引入静默语义回归**（未装饰 raw ⇒ 丢 fixed/tag）而门禁全绿。
+//   ⇒ 钉死「`input.js` 内不得再出现 `showRows` 的赋值或初始化」（注释里提到它不算）。
+// ⚠️ 判据用 `\bshowRows\s*[:=]`：**不能用 `(^|[^\w.])`** —— 那会把 `.` 排除掉，
+//   而真实形态正是 `g.showRows = …`（前面就是点）⇒ **恰好漏掉最该抓的一种**。
+//   本版首稿就是这么写的，被变异 M24 当场抓出（变异不只验"抓得到"，还验**判据覆盖面**）。
+check('input.js 不得复活 showRows 死槽（R304：13 处赋值/零消费者 ⇒ 已整体删除）',
+  !/\bshowRows\s*[:=]/.test(stripJsComments(inputJs)));
 check('input.wxml 有 sub_item 输入与 addRow/delRow', /onSubItem/.test(inputWxml) && /addRow/.test(inputWxml) && /delRow/.test(inputWxml));
 check('input.wxml 用 group-head 展开/收起', /group-head/.test(inputWxml) && /onToggleGroup/.test(inputWxml));
 const slv = read("cloudfunctions/saveLedger/validate.js");

@@ -366,8 +366,10 @@
          而 **WXML 表达式不支持方法调用** ⇒ `slice` 求值失败 ⇒ 该组细项行**整段不渲染**（费用细项直接消失）。
          修法：渲染源恒为**已装饰的 `g.rows`**（`fixed` 预设名只读 / `tag` 沿用·要核对 都挂在这层，
          见 input.js 的 decorateRows「唯一装配口」），折叠只用一个**数据表达式** `wx:if` 决策。
-         ⚠️ 刻意不采用 `showRows` 槽：它对非堂食组是**未装饰**的 raw（丢 fixed/tag），且多处赋值在
-            markRecurringTags / updateRow 之后**是过期引用** ⇒ 改读它会静默退回"预设名可编辑、标丢失"。 -->
+         ⚠️ 那个 `showRows` 槽**已在 R304 整体删除**（13 处赋值 / 零消费者），不是"不用"而是"不存在"了。
+            它当时对非堂食组是**未装饰**的 raw（丢 fixed/tag），且多处赋值在 markRecurringTags / updateRow
+            之后**是过期引用** ⇒ 改读它会静默退回"预设名可编辑、标丢失"（R297 的 M1-B1 就是这么回归的）。
+            `selftest_batch8b` 已加钉子：`input.js` 里 `g.showRows =` **不得复活**。 -->
     <block wx:else>
       <view class="sub-block" wx:for="{{g.rows}}" wx:key="index" wx:if="{{g.expanded || ri === 0}}"
         wx:for-item="r" wx:for-index="ri">

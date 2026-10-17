@@ -310,7 +310,8 @@ Page({
   },
 
   // A2：按模板初始化大类组（每类默认单行：细项名空 = 整类总额）
-  // ⚠️ showRows = 实际渲染行：折叠时仅首行（整类总额），展开时全部细项行（WXML 不支持方法调用，故预计算）
+  // 🔴 R304：原 `showRows` 槽已**整体删除**（13 处赋值、**零消费者**）。它是未装饰的 raw，丢 fixed/tag ——
+  //   R297 的 M1-B1 修法**曾因改读它引入静默语义回归**而门禁全绿（同族病）。渲染直接用 `rows`（已装饰、折叠与否在 wxml 侧用 expanded 判断）。
   // E2：每类带一句 scope（包括 / 不包括），来源 i18n（incomeScope / expenseScope），页面不写死文案
   initGroups() {
     // T1：分平台小计行按收入侧平台单源铺开（此时通常全空 ⇒ 不接管任何行）
@@ -330,10 +331,8 @@ Page({
         expanded: false,
         notesOn: !!notesMap,   // round217：该组细项挂不挂行内说明（收入组 false ⇒ decorateRows 里天然 no-op）
         rows: [],
-        showRows: [],
       };
       g.rows = this.decorateRows(g, raw);
-      g.showRows = g.category === 'dine_in' ? g.rows : raw;
       return g;
     });
     this.setData({
@@ -478,7 +477,6 @@ Page({
       if (!pick.length) return g;
       const ng = Object.assign({}, g, { expanded: true });
       ng.rows = this.decorateRows(ng, pick.map((n) => ({ subItem: n, amountYuan: '', recurring: true })));
-      ng.showRows = ng.rows;
       return ng;
     });
     this.setData({ expenseGroups, recurringOn: true });
@@ -526,13 +524,8 @@ Page({
         expanded,
         notesOn: !!notesMap,   // round217：见 initGroups —— 费用组挂行内说明，收入组不挂
         rows: [],
-        showRows: [],
       };
       g.rows = this.decorateRows(g, rows);
-      g.showRows = expanded ? rows : rows.slice(0, 1);
-      if (d.category === 'dine_in') {
-        g.showRows = expanded ? g.rows : g.rows.slice(0, 1);
-      }
       return g;
     });
   },
@@ -623,13 +616,11 @@ Page({
 
   // round109：把「外卖分组的展开状态」落到 incomeGroups 上（就地替换该组对象，其余不动）。
   //   ⚠️ 只碰 category==='takeaway' 那一组 —— 别的组的展开语义是「手风琴看细项」，与它无关。
-  //   ⚠️ 同时把 showRows 跟着设成 rows：折叠态下 g.rows 仍是全量（摘要按模式另行取数），
-  //      而 showRows 是给别处（其他收入类）用的；外卖两态都不读 showRows，设一下只为不留半旧值。
   applyTakeoutFold(groups) {
     const gi = (groups || []).findIndex((x) => x.category === 'takeaway');
     if (gi < 0) return groups;
     const expanded = this.loadTakeoutFold();
-    const g = Object.assign({}, groups[gi], { expanded, showRows: groups[gi].rows });
+    const g = Object.assign({}, groups[gi], { expanded });
     groups[gi] = g;
     return groups;
   },
@@ -643,7 +634,6 @@ Page({
     const groups = this.data[key].slice();
     const g = Object.assign({}, groups[idx]);
     g.expanded = !g.expanded;
-    g.showRows = g.expanded ? g.rows : g.rows.slice(0, 1); // 折叠只显示首行（整类总额）
     groups[idx] = g;
     this.setData({ [key]: groups });
     // round109：外卖分组的展开/折叠要记住（下次进来保持），其余组不记（手风琴状态本就不跨次保留）
@@ -696,7 +686,6 @@ Page({
       rows[ridx] = this.attachRowNote(rows[ridx]);
     }
     g.rows = rows;
-    g.showRows = g.expanded ? rows : rows.slice(0, 1);
     groups[gidx] = g;
     this.setData({ [key]: groups });
     this.syncDineSum();
@@ -736,7 +725,6 @@ Page({
     // custom:true = 「刚点添加、还没填」的空行，装配时要放行（否则点了没反应）
     g.rows = g.rows.concat([{ subItem: name || '', amountYuan: '', custom: !name }]);
     g.rows = this.decorateRows(g, g.rows);
-    g.showRows = g.rows;
     groups[Number(gidx)] = g;
     this.setData({ [key]: groups });
     this.syncDineSum();
@@ -750,7 +738,6 @@ Page({
     // custom:true = 「刚点添加、还没填」的空行，装配时要放行（否则点了没反应）
     g.rows = g.rows.concat([{ subItem: '', amountYuan: '', custom: true }]);
     g.rows = this.decorateRows(g, g.rows);
-    g.showRows = g.rows;
     groups[Number(gidx)] = g;
     this.setData({ [key]: groups });
     this.syncDineSum();
@@ -764,7 +751,6 @@ Page({
     rows.splice(Number(ridx), 1);
     if (rows.length === 0) rows = [{ subItem: '', amountYuan: '' }]; // 至少保留一行（老板只填一行也能走）
     g.rows = this.decorateRows(g, rows);
-    g.showRows = g.expanded ? g.rows : g.rows.slice(0, 1);
     groups[Number(gidx)] = g;
     this.setData({ [key]: groups });
     this.syncDineSum();
@@ -937,14 +923,12 @@ Page({
       const sum = cur.reduce((s2, r) => s2 + (Number(r.amountYuan) || 0), 0);
       g.rows = this.decorateDineRows([{ subItem: '', amountYuan: sum ? sum.toFixed(2) : '' }]);
       g.expanded = false;
-      g.showRows = g.rows;
       groups[gi] = g;
       this.setData({ incomeGroups: groups, dineMode: val, dineDetailRows: this.decorateDineRows(cur) });
       this.syncDineSum();
       this.saveDineMode(val);
       return;
     }
-    g.showRows = g.rows;
     groups[gi] = g;
     this.setData({ incomeGroups: groups, dineMode: val, dineDetailRows: g.rows.map((r) => ({ subItem: r.subItem || '', amountYuan: r.amountYuan || '', fixed: !!r.fixed, note: r.note || '' })) });
     this.syncDineSum();
@@ -1322,7 +1306,6 @@ Page({
     if (ri < 0) rows.push({ subItem: name, amountYuan: target });
     else rows[ri] = Object.assign({}, rows[ri], { amountYuan: target });
     g.rows = this.decorateRows(g, rows);   // 走同一装配口：名字命中预设清单 ⇒ fixed、无删除键
-    g.showRows = g.expanded ? g.rows : g.rows.slice(0, 1);
     groups[mk] = g;
     patch.expenseGroups = groups;
     patch.twMkRowGi = mk;
@@ -1461,7 +1444,6 @@ Page({
     if (gi < 0) return;
     const groups = this.data.expenseGroups.slice();
     const g = Object.assign({}, groups[gi], { expanded: true });
-    g.showRows = g.rows;
     groups[gi] = g;
     this.setData({ expenseGroups: groups });
   },
