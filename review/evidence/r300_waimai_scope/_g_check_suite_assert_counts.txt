@@ -1,0 +1,25 @@
+
+===== A0 实算单源（逐个真跑套件脚本，不抄字面量） =====
+  · tools/selftest_ui_fix.js → 42 通过
+  · tools/selftest_ad_gates.js → 24 通过
+  · tools/selftest_batch8b.js → 179 通过
+  · tools/selftest_batch8c.js → 70 通过
+  · tools/check_ios_pay.js → 6 通过
+  · tools/check_env_ready.js → 11 通过
+  · tools/selftest_r85.js → 161 通过
+  · tools/check_theme_color.js → 16 通过
+  · tools/check_suite_coverage.js → 10 通过
+  · tools/check_amount_input_row.js → 15 通过
+  · tools/check_takeaway_paste_cases.js → 80 通过
+  · tools/check_expense_item_seed.js → 21 通过
+  · tools/check_wxml_structure.js → 2 通过
+  · tools/check_flow_entry_and_fold.js → 26 通过
+  · tools/check_indicator_ref.js → 54 通过
+  · tools/check_m2_no_cost_rate.js → 17 通过
+  · cloudfunctions/calcSandbox/selftest.js → 98 通过
+  · tools/check_m2_ref_not_prefill.js → 13 通过
+  · tools/check_m1_indicator_view.js → 31 通过
+  · tools/check_doc_id_write.js → 36 通过
+  · tools/check_m3_engine_parity.js → 22 通过
+  · tools/check_modal_button_len.js → 15 通过
+  · tools/check_dish_category_free.js → 6 通过

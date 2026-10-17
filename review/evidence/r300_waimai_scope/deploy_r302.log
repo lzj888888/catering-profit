@@ -1,0 +1,22 @@
+﻿=== deploy start 08:58:37 ===
+manageShop	OK
+getCostCard	OK
+getSalesBills	OK
+importSalesBill	OK
+saveShopSetting	OK
+calcBom	OK
+syncCostCard	OK
+saveCostCard	OK
+exportData	OK
+verifyTangshi	OK
+savePlan	OK
+saveMaterial	OK
+saveLedger	OK
+getMaterial	OK
+getCardVersions	OK
+checkQuota	OK
+saveDishMapping	OK
+clearSalesBills	OK
+getLedger	OK
+getShopContext	OK
+=== deploy end 09:08:11 ===

@@ -1,0 +1,25 @@
+
+===== S 扫描面（防退化） =====
+  ✅ S-① 三个源文件全部读到（页面 / 云端 service / 术语单源） —— pages/takeaway/index.js=true | cloudfunctions/importSalesBill/service.js=true | miniprogram/i18n/terms.js=true
+  ✅ S-② picker 选项数 ≥ 2（R303 收窄后实测 2 的保守下沿；扫空即红） —— 实测 2 项 [taobao, other]
+  ✅ S-③ 云端 platform.enum 成员数 ≥ 6（实测 7 的保守下沿；扫空即红） —— 实测 7 项 [taobao, meituan, jd_order, jd_sku, eleme, pos, other]
+  ✅ S-④ 术语单源的 reviewPlatformNames 键数 ≥ 4（实测 6 的保守下沿） —— 实测 6 键 [taobao, meituan, eleme, jd_order, jd_sku, other]
+
+===== A 正向：picker 的每一项都必须能被云端接受、且显示人话 =====
+  ✅ A-① picker 每个 value 都在云端 SALES_SCHEMA.platform.enum 内 —— 全部在 enum 内
+  ✅ A-② picker 每个 value 在 reviewPlatformNames 有键（否则 label 回落成机器值） —— 全部有术语键
+  ✅ A-③ picker 每个 label 非空 —— 2 项均有非空显示名
+  ✅ A-④ picker 每个 label 不等于其 value（不得回落成机器值形态） —— 无 value 被直接当显示名
+
+===== B 反向：云端 enum 的每个成员都要有归属（进 picker 或显式排除） =====
+  ✅ B-① picker 不含 `pos`（堂食平台不得进「外卖商品销量」picker） —— 未含 pos
+  ✅ B-② enum 中未进 picker 的成员，必须逐一在显式排除名单内（防"enum 加平台、picker 静默漏"） —— 未进 picker 的 meituan, jd_order, jd_sku, eleme, pos 均已显式排除
+  ✅ B-③ 排除名单本身 ⊆ 云端 enum（防写错 key 而永不自知） —— 排除名单 pos, jd_order, meituan, jd_sku, eleme 均在 enum 内
+
+===== C 自检（合成样本 → 判据有分辨力） =====
+  ✅ C-① 正样本（干净配置）→ 零问题（判定不误报） —— issues=[]
+  ✅ C-② 合成「picker value 越出 enum」⇒ 必须判出（防恒定绿） —— 让 picker 多一个 enum 里没有的平台
+  ✅ C-③ 合成「picker value 缺术语键」⇒ 必须判出（这就是 label 回落机器值的形态） —— 从 reviewPlatformNames 删掉 eleme 键
+  ✅ C-④ 合成「enum 新增平台但不在排除名单」⇒ 必须判出（防静默漏） —— 云端 enum 加 douyin、picker 与排除名单都不动
+
+15 通过 / 0 失败

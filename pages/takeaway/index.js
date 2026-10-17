@@ -15,6 +15,8 @@ const { calcTakeawayOrder, reverseListedPrice } = require('../../utils/takeawayD
 //   它们与账单同出一个 tab 与同一个云函数（云函数按表头自动判形态），藏整个 tab 会连带
 //   砍掉外卖单品复盘的输入通道。详见 utils/featureFlags.js 头注 + NOTE_2026-10-10。
 const FLAGS = require('../../utils/featureFlags.js');
+// 🔴 R303：形态 C 导入的**一级校验**（纯函数 · 零外部依赖）—— 表内自洽的错，导之前就报出来
+const { checkImportShape, coveredDates } = require('../../utils/importSanity.js');
 
 const TK = TERMS.ledger.takeaway;
 
@@ -33,7 +35,18 @@ const DISH_SHAPES = {
 // 🔴 R246：加京东 —— 但**只列 `jd_sku`**（SKU 级 = 商品销量表，正是形态 C 要的表型）；
 //   `jd_order`（订单级）是**账单**、走对账路（M3 外卖账单导入），不是"商品销量表" ⇒ 不进本 picker。
 //   ⚠️ 两个 enum 值仍都在 `reviewPlatformNames` 里登记（榜单显示名要用），只是 picker 不列 jd_order。
-const IMPORT_PLATFORM_OPTIONS = ['meituan', 'eleme', 'taobao', 'jd_sku', 'other']
+// 🔴 R303（R300 §5.5 定案）· **picker 只列"有真实准确样本证据"的平台**：
+//   · `taobao`（淘宝闪购）—— **唯一**有实测样本的：`importSalesBill/service.js:399` 注释
+//     「样例已到货（R258/R259 实测：淘宝闪购「商品下载」355 行 = 7 天 × 51 商品）」⇒ 保留。
+//   · `other` —— **必须留**：导入区已明文承诺「不会从后台导也没关系 —— 自己用 Excel 列这 3 列，
+//     一样能导入」（terms `importColsBody`）⇒ 删了它等于**打断这条不依赖任何平台的自救路径**。
+//   · `meituan` / `jd_sku` —— **移出**：李老师 2026-10-17 口供「**京东、美团提供的表不准确**」，
+//     且无任何实测样本。军规「**先补验再窄范围承诺**」：列在 picker 里＝我们承诺他能导
+//     ⇒ 对不准的平台做确定性承诺，就是「静默错账」的入口。他手上有准确表时仍可走 `other`。
+//   · `eleme` —— 从未验证过 ⇒ 同纪律不列名（需要时归 `other`）。
+// ⚠️ `TERMS.card.reviewPlatformNames` 的**历史键必须全留**（meituan / eleme / jd_order / jd_sku / taobao / other）
+//   —— 已落库的历史数据显示名靠它，删了会让**历史榜单漏出机器值**（R271 老坑）。已核：6 键齐全。
+const IMPORT_PLATFORM_OPTIONS = ['taobao', 'other']
   .map((v) => ({ value: v, label: (TERMS.card.reviewPlatformNames[v] || v) }));
 
 // 🔴 R271：平台机器值 → 显示名（**唯一映射处**）。
@@ -197,6 +210,12 @@ Page({
       importDiagFound: TK.importDiagFound,
       importDiagExcluded: TK.importDiagExcluded,
       importDiagEmpty: TK.importDiagEmpty,
+      // 🔴 R303 一级校验（标题 + 四条模板；`{n}` 由 js 替换，wxml 不做字符串处理）
+      importSanityTitle: TK.importSanityTitle,
+      importSanityNoDays: TK.importSanityNoDays,
+      importSanityCrossMonth: TK.importSanityCrossMonth,
+      importSanityZeroTotal: TK.importSanityZeroTotal,
+      importSanityOddAvgPrice: TK.importSanityOddAvgPrice,
       save: TERMS.buttons.save,
       cancel: TERMS.buttons.cancel,
       cur: '¥',
@@ -235,6 +254,8 @@ Page({
     importGrade: null,     // 甲级门禁结果
     importFailReason: '',  // 🔴 R250：门禁失败原因（failures[0].code → 人话），空串 ⇒ 不渲染该行
     importDiagText: '',    // 🔴 R286：认不出表时的「缺哪几列」人话（空串 ⇒ 不渲染）
+    // 🔴 R303：一级校验结论（表内自洽的错）。空串 ⇒ 不渲染（没发现问题，**不假报"一切正常"**）
+    importSanityText: '',
     importDiagFoundText: '', // R286：表里实际读到的列名（给老板对照自己导的表对不对）
     importPreview: null,   // 预览 { rows, totals, months, excluded }
     importing: false,      // 防重复提交
@@ -513,6 +534,7 @@ Page({
           importFileID: fileID,
           importShape: '', importPlatform: '', importGrade: null, importPreview: null,
           importFailReason: '', importBillRecognizedText: '', importPlatformLabel: '',
+          importSanityText: '',
           importPlatformMissing: false, importZeroAmountQty: [],
           importDup: null, importDupText: '', importDupFixText: '', importDupBlock: false,
           importDiagText: body,
@@ -528,6 +550,8 @@ Page({
       const p = d.preview || null;
       const isC = d.shape === DISH_SHAPES.C;
       let preview = null;
+      // 🔴 R303：一级校验结论（默认空串 ⇒ 不渲染；不假报"一切正常"）
+      let sanityText = '';
       if (isC) {
         // 形态 C：按天分组（groups），无 months/excluded；零元行必须可见（v1.7 C-5）。
         // 🔴 分 → 元 必须**在括号外**除（R232j 修）：原写法 `(x || 0 / 100).toFixed(2)`
@@ -542,6 +566,14 @@ Page({
           dateRangeText: (first && last) ? (first === last ? first : (first + ' ~ ' + last)) : '',
           amountYuan: (amtFen / 100).toFixed(2),
         };
+        // 🔴 R303 一级校验（零外部依赖）：只用这张表自身能自证的错 ⇒ 导之前就告诉老板。
+        //   覆盖：无日期 / 跨月 / 有销量但金额全 0 / **均价异常（疑销量与金额列写反）**。
+        //   见 utils/importSanity.js 头注（含"为什么不做'只覆盖 N 天不是整月'"）。
+        sanityText = this.buildSanityText(checkImportShape({
+          groupDates: coveredDates(gs),
+          totalQty: (p && p.totals && p.totals.qty) || 0,
+          totalAmountFen: amtFen,
+        }));
       } else {
         // 账单（批次 F）：amount 分→元、months join 都在这里做（wxml 不做法调用 / 浮点除法）
         preview = p ? {
@@ -565,6 +597,8 @@ Page({
         importPlatformMissing: !!d.platform_missing,
         // 🔴 R250：门禁没过时把**原因**一并落到 data（wxml 在那句笼统提示下面渲染一行人话）
         importFailReason: failReasonText(d.grade),
+        // 🔴 R303：一级校验结论（空串 ⇒ 不渲染）
+        importSanityText: sanityText,
         importPreview: preview,
         importZeroAmountQty: (isC && p && p.zeroAmountQty) ? p.zeroAmountQty : [],
         // 形态 C 平台选择重置
@@ -587,6 +621,23 @@ Page({
       this.setData({ importing: false });
       api.toastError(e);
     }
+  },
+
+  // 🔴 R303：一级校验结论 → 一句人话（**wxml 不做字符串处理**，与 importDupText / buildRecognizedText 同一约定）
+  //   多条问题用「；」连成一行；**没有问题 ⇒ 回空串**（不渲染，也**不假报"一切正常"** ——
+  //   假报"正常"会让老板以为我们验过了，而一级校验只看"表内自洽"，看不了"表对不对"）。
+  buildSanityText(issues) {
+    const list = Array.isArray(issues) ? issues : [];
+    if (!list.length) return '';
+    const T = this.data.t;
+    const parts = [];
+    for (const it of list) {
+      if (it.code === 'noDays') parts.push(T.importSanityNoDays);
+      else if (it.code === 'crossMonth') parts.push(String(T.importSanityCrossMonth).replace('{n}', String(it.value)));
+      else if (it.code === 'zeroTotal') parts.push(T.importSanityZeroTotal);
+      else if (it.code === 'oddAvgPrice') parts.push(String(T.importSanityOddAvgPrice).replace('{n}', String(it.value)));
+    }
+    return parts.length ? ((T.importSanityTitle || '') + '：' + parts.join('；')) : '';
   },
 
   // 形态 C 平台选择（v1.7 §2.5：platform 机器判不出 ⇒ 必须选平台；未选 ⇒ 提交禁用）
@@ -682,7 +733,7 @@ Page({
       this.setData({
         importing: false,
         importFileID: '', importShape: '', importPlatform: '', importGrade: null,
-        importFailReason: '',
+        importFailReason: '', importSanityText: '',
         importPreview: null, importPlatformIndex: -1, importPlatformChoice: '', importPlatformChoiceLabel: '', importZeroAmountQty: [],
         // 🔴 R271：清空重复判定，避免残留旧结论把下次导入的「确认导入」一直禁用
         importDup: null, importDupText: '', importDupFixText: '', importDupBlock: false,

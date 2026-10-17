@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：180 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：181 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -1143,6 +1143,10 @@ const SUITES = [
   //   + 该函数必须**单位无关**（元/分共用一份）+ 行为对拍（分与元算出同一到手额）
   //   + 不编数（营收 0 ⇒ 到手率 null 而非 0；无订单数 ⇒ 单均空串而非 0.00）+ 页面消费面。
   ['takeaway-settle', 'tools/check_takeaway_settle.js'],
+  // ===== R303 ·导入「承诺面 + 平台范围 + 一级校验」守卫 =====
+  //   见头部注释同名条目。防的真危害是**静默错账**：对已知不准的平台（李老师 10-17 口供：
+  //   京东/美团表不准确）做确定性承诺 ⇒ 老板导进来、毛利榜照常出数并显示得很确定。
+  ['import-scope-claims', 'tools/check_import_scope_claims.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

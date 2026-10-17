@@ -175,6 +175,8 @@
     <!-- 预览（解析 + 甲级门禁后展示；确认后才落库）—— 形态 C 与账单分开展示 -->
     <!-- 形态 C（外卖商品销量）：platform 机器判不出 ⇒ 必须选平台 -->
     <view class="card2" wx:if="{{importPreview && importShape === shapeC}}">
+      <!-- 🔴 R303 一级校验结论（表内自洽的错，导之前就报；空串 ⇒ 不渲染，也不假报"一切正常"） -->
+      <view class="warn" wx:if="{{importSanityText}}">{{importSanityText}}</view>
       <!-- R234/J4d：20 字（≥18）⇒ 折叠。它出在**预览之后**（用户在核对数字），
            此时页面已有大量信息，20 字说明会把 picker 挤下去。 -->
       <view class="hint-fold">

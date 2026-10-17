@@ -22,6 +22,7 @@ const G2 = 'tools/check_truncated_surfaced.js';
 const G3 = 'tools/check_paywall_coverage.js';
 const G4 = 'tools/check_fn_contract_params.js';
 const G5 = 'tools/check_takeaway_settle.js';
+const G6 = 'tools/check_import_scope_claims.js';
 
 const sha = (abs) => crypto.createHash('sha256').update(fs.readFileSync(abs)).digest('hex');
 const absOf = (rel) => path.join(ROOT, rel);
@@ -217,6 +218,35 @@ const MUTS = [
     to: '  const netRatePct = incomeFen > 0 ? Math.round((netFen / incomeFen) * 100) : 0;',
     guard: G5,
     expect: [/③-a/],
+  },
+
+  // ===== 守卫 6（check_import_scope_claims）· R303 新增 =====
+  {
+    id: 'M21',
+    desc: 'R303 原样复现：picker 加回 `meituan`（对已知不准的平台重新做承诺）',
+    file: 'pages/takeaway/index.js',
+    from: "const IMPORT_PLATFORM_OPTIONS = ['taobao', 'other']",
+    to: "const IMPORT_PLATFORM_OPTIONS = ['meituan', 'taobao', 'other']",
+    guard: G6,
+    expect: [/①-a/],
+  },
+  {
+    id: 'M22',
+    desc: 'R303 原样复现：引导文案把「美团外卖：找带商品名…」加回去（承诺面回收前形态）',
+    file: 'miniprogram/i18n/terms.js',
+    from: "淘宝闪购：进商家后台找「商品下载」。⚠️ 其他平台后台路径不确定、报表口径也常与账单对不上",
+    to: "淘宝闪购：进商家后台找「商品下载」。美团外卖：找带商品名、销量、销售额的销量报表。⚠️ 其他平台后台路径不确定、报表口径也常与账单对不上",
+    guard: G6,
+    expect: [/②-a/],
+  },
+  {
+    id: 'M23',
+    desc: 'R303 反向：一级校验去掉「跨月」判断 ⇒ 跨月表不再被报出来',
+    file: 'utils/importSanity.js',
+    from: "  if (months.length > 1) out.push({ code: 'crossMonth', value: months.length, unit: 'month' });",
+    to: '  if (false) out.push({ code: \'crossMonth\', value: months.length, unit: \'month\' });',
+    guard: G6,
+    expect: [/③-b/],
   },
 ];
 
