@@ -157,7 +157,7 @@ const CASES = [
   // M2v1.3 扩面（批次 第三期）：业态参数包守卫同批纳入 —— 它的 S 扫描面（预设数 ≥4 + 断言数下界）
   //   与 C 形态参数完备（缺一即 NaN）、D L1/L2 禁入、E 回本唯一出口正是「非恒真」的凭据；
   //   断言数不受守则「删掉反例 / 调低下界」静默通过，与 round73 立本守卫的根因同族。
-  { key: 'check_biz_preset', rel: 'tools/check_biz_preset.js' }, // 24 条（S/A/B/C/D/E/F/G 八组；R293 增 G 组 3 条：占比 ≡ BANDS 指数派生、毛利率 ∈ BANDS 带内、禁 src='E' 自定占比）
+  { key: 'check_biz_preset', rel: 'tools/check_biz_preset.js' }, // 32 条（S/A/B/C/D/E/F/G 八组；R293 增 G 组 3 条；R332 增 H 组 8 条：各大类须有「其他XX」兜底 / 兜底不得复制参数 / base 可解析 / 继承真生效 / 显示名不重复）
   // R232 扩面：gradeGate 双副本等价守卫同批纳入 —— 它的 C 组两道自失效护栏（样本数下界 / 影子反例必须报差异）
   //   与 B-②「电池须同时产出过 pass=true 与 pass=false」正是「非恒真」凭据；
   //   12 条删掉一批仍 > 0 ⇒ A0-② 的「通过数为 0」下界抓不到，只有 A2「声明 ≡ 实跑」能发现（同 round73 立本守卫根因）。

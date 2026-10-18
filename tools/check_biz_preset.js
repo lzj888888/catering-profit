@@ -50,8 +50,8 @@ sec('S · 扫描面（bizPreset 存在 / 预设数 ≥4 / 断言数下界）');
 const bizSrc = readOr(BIZ_PRESET);
 check('S-① utils/bizPreset.js 存在且非空', !!bizSrc && bizSrc.length > 2000, bizSrc ? bizSrc.length + ' 字符' : '读不到');
 
-let BIZ_PRESETS = null, CITY_COEF = null, paybackCash = null;
-try { ({ BIZ_PRESETS, CITY_COEF, paybackCash } = require(BIZ_PRESET)); } catch (e) { BIZ_PRESETS = null; }
+let BIZ_PRESETS = null, CITY_COEF = null, paybackCash = null, findPreset = null;
+try { ({ BIZ_PRESETS, CITY_COEF, paybackCash, findPreset } = require(BIZ_PRESET)); } catch (e) { BIZ_PRESETS = null; }
 check('S-② bizPreset 可 require 且导出 BIZ_PRESETS / CITY_COEF',
   Array.isArray(BIZ_PRESETS) && !!CITY_COEF, BIZ_PRESETS ? `预设 ${BIZ_PRESETS.length} 个` : 'require 失败');
 check('S-③ 预设数 ≥ 4', Array.isArray(BIZ_PRESETS) && BIZ_PRESETS.length >= 4, BIZ_PRESETS ? BIZ_PRESETS.length + ' 个' : '0');
@@ -267,7 +267,10 @@ sec('G · R293 预设占比 ≡ BANDS 指数派生（禁自定）');
 
   if (bandKeys.length === 5 && Array.isArray(BIZ_PRESETS)) {
     const outGm = [], outPct = [];
-    for (const p of BIZ_PRESETS) {
+    for (const raw0 of BIZ_PRESETS) {
+      // 🔴 R332：兜底条目（其他快餐/其他火锅…）只写 base，参数靠继承 ⇒ 必须看**合并后的生效值**，
+      //   否则会被误判成"缺毛利率"。判据要守的是生效值，不是字面定义。
+      const p = (findPreset && findPreset(raw0.presetKey)) || raw0;
       const b = BANDS[p.bizKey];
       if (!b) { outGm.push(p.presetKey + ' 业态无带'); continue; }
       const gm = p.params && p.params.grossMarginPct ? Number(p.params.grossMarginPct.v) : null;
@@ -290,6 +293,44 @@ sec('G · R293 预设占比 ≡ BANDS 指数派生（禁自定）');
       outGm.length === 0, outGm.length ? '越界：' + outGm.join(' | ') : `${BIZ_PRESETS.length} 个全在带内`);
     check('G-③ 🔴 rentPct ≡ BANDS 中值之比（rentPct = BANDS[ind]中值 ÷ BANDS.rent中值 × 100，±1）',
       outPct.length === 0, outPct.length ? '漂移：' + outPct.join(' | ') : '全部 ≡ BANDS 派生（零自定占比）');
+
+    // ===== H 组（R332）：业态两级化 =====
+    //   失效方式：① 某大类没有兜底 ⇒ 老板找不到自己的店，被迫选错细分（保本跟着错）
+    //            ② 兜底偷偷复制一套参数 ⇒ 改大类时两处漂移（继承形同虚设）
+    //            ③ 两个细分同名 ⇒ 老板看不出区别（矩阵页原先就是这么坏的）
+    if (Array.isArray(BIZ_PRESETS) && findPreset) {
+      for (const bk of ['fastfood', 'hotpot', 'dining', 'cafe']) {
+        const hit = BIZ_PRESETS.filter((x) => x.presetKey === bk + '_other')[0];
+        check('H-① ' + bk + ' 有「其他XX」兜底（找不到自己的店时仍有正确的大类参数）',
+          !!hit && hit.bizKey === bk, hit ? ('bizKey=' + hit.bizKey) : '缺 ' + bk + '_other');
+      }
+
+      const copied = BIZ_PRESETS.filter((x) => x.base && (x.params || x.costMeta || x.buildRef));
+      check('H-② 兜底条目不得自带 params/costMeta/buildRef（否则就是复制，继承等于没做）',
+        copied.length === 0, copied.length ? '自带参数：' + copied.map((x) => x.presetKey).join(' | ') : '全部只写 base');
+
+      const badBase = BIZ_PRESETS.filter((x) => x.base && !BIZ_PRESETS.some((y) => y.presetKey === x.base));
+      check('H-③ base 必须指向真实存在的条目（写错 ⇒ 参数取不到、静默回落）',
+        badBase.length === 0, badBase.length ? '悬空 base：' + badBase.map((x) => x.presetKey + '→' + x.base).join(' | ') : '全部可解析');
+
+      const merged = BIZ_PRESETS.filter((x) => x.base).map((x) => findPreset(x.presetKey));
+      const badMerge = merged.filter((m) => !m || !m.params || !m.params.grossMarginPct || !(m.costMeta && m.costMeta.length));
+      check('H-④ 继承必须真的生效（合并后要有毛利率与成本结构，否则装配时静默缺项）',
+        badMerge.length === 0, badMerge.length ? '合并后缺参数 ' + badMerge.length + ' 个' : merged.length + ' 个兜底全部合并成功');
+
+      let T2 = null;
+      try { T2 = require(path.join(__dirname, '../miniprogram/i18n/terms.js')).TERMS; } catch (e) { T2 = null; }
+      const subMap = T2 && T2.m2 && T2.m2.bizPresets;
+      if (subMap) {
+        const missing = BIZ_PRESETS.filter((x) => !subMap[x.presetKey]).map((x) => x.presetKey);
+        const vals = BIZ_PRESETS.map((x) => subMap[x.presetKey]).filter(Boolean);
+        const dup = vals.filter((v, i) => vals.indexOf(v) !== i);
+        check('H-⑤ 每个业态都有显示名且互不重复（同名 ⇒ 老板看不出区别）',
+          missing.length === 0 && dup.length === 0,
+          (missing.length ? '缺名：' + missing.join(' | ') : '') + (dup.length ? ' 重名：' + dup.join(' | ') : '')
+            || (BIZ_PRESETS.length + ' 个名字全不同'));
+      }
+    }
   }
 }
 

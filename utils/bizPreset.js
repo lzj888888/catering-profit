@@ -92,6 +92,11 @@ const BIZ_PRESETS = [
   },
   // 3) 火锅（半自助）/ 卤鸡火锅 —— [P] 卤鸡火锅 BP；含建店投入参考
   {
+    presetKey: 'fastfood_other', bizKey: 'fastfood', paybackView: 'cash',
+    // 其他快餐：盖浇饭 / 炸鸡 / 麻辣烫 等找不到自己时选它；参数全继承面馆
+    base: 'fastfood_noodle',
+  },
+  {
     presetKey: 'hotpot_half_self', bizKey: 'hotpot', paybackView: 'cash',
     params: { grossMarginPct: { v: 53, src: 'P' }, openDays: { v: 30, src: 'P' } },   // 标准 60% → 实际 53%（自助浪费）
     costMeta: [
@@ -133,6 +138,11 @@ const BIZ_PRESETS = [
     ],
   },
   // 5) 川菜 / 中餐 —— [D1] 参考带
+  {
+    presetKey: 'hotpot_other', bizKey: 'hotpot', paybackView: 'cash',
+    // 其他火锅：串串 / 冒菜 / 烤鱼 / 铁锅炖 等；参数继承半自助（火锅最保守一档）
+    base: 'hotpot_half_self',
+  },
   {
     presetKey: 'dining_sichuan', bizKey: 'dining', paybackView: 'invest',
     params: { grossMarginPct: { v: 60, src: 'D1' }, laborUnitYuan: { v: 5500, src: 'S' }, openDays: { v: 30, src: 'P' } },
@@ -186,6 +196,11 @@ const BIZ_PRESETS = [
   },
   // 6) 新式茶饮 —— [D1] 参考带
   {
+    presetKey: 'dining_other', bizKey: 'dining', paybackView: 'invest',
+    // 其他正餐：东北菜 / 西北菜 / 融合菜 等；参数继承川菜（正餐代表）
+    base: 'dining_sichuan',
+  },
+  {
     presetKey: 'cafe_tea', bizKey: 'cafe', paybackView: 'invest',
     params: { grossMarginPct: { v: 67, src: 'D1' }, laborUnitYuan: { v: 4500, src: 'S' }, openDays: { v: 30, src: 'P' } },
     costMeta: [
@@ -201,6 +216,11 @@ const BIZ_PRESETS = [
   //    bizKey='other' ⇒ 走 indicatorRef.BANDS.other（4 类带的保守并集，标注"未细分行业"）。
   //    参数全部取通用中位（非特定行业）：人工直接填总额（多数业态适用）、各项 revenue_rate 取并集区间中值。
   //    ⚠️ 这是"系统给初值、用户可改"的默认值，**不承担计算口径**（用户改了就以用户的为准）。
+  {
+    presetKey: 'cafe_other', bizKey: 'cafe', paybackView: 'invest',
+    // 其他饮品：果汁 / 酸奶 / 糖水 等；参数继承新式茶饮
+    base: 'cafe_tea',
+  },
   {
     presetKey: 'other', bizKey: 'other', paybackView: 'invest',
     params: { grossMarginPct: { v: 60, src: 'S' }, laborUnitYuan: { v: 5000, src: 'S' }, openDays: { v: 30, src: 'P' } },
@@ -517,7 +537,19 @@ function paybackCash(buildTotalFen, targetProfitFen, buildAmortMonthlyFen) {
 
 // 按 presetKey 取预设（页面用）
 function findPreset(key) {
-  return BIZ_PRESETS.filter((p) => p.presetKey === key)[0] || null;
+  const raw = BIZ_PRESETS.filter((p) => p.presetKey === key)[0] || null;
+  if (!raw) return null;
+  // 🔴 R332：业态两级化 —— 细分条目可只写 `base: '<大类代表>'`，其余全继承。
+  //   为什么继承而不是复制：复制会让「改一处漏一处」变成默认风险（同一参数两处副本）。
+  //   ⚠️ 返回的是**新对象**，params 也浅拷贝 —— 防止调用方改到 base 的定义。
+  if (!raw.base) return raw;
+  const base = BIZ_PRESETS.filter((p) => p.presetKey === raw.base)[0];
+  if (!base) return raw;   // base 写错时退回自身（缺参数会在装配时暴露，不静默编数）
+  return Object.assign({}, base, {
+    presetKey: raw.presetKey,
+    bizKey: raw.bizKey || base.bizKey,
+    params: Object.assign({}, base.params, raw.params || {}),
+  });
 }
 
 module.exports = {

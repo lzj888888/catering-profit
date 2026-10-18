@@ -103,6 +103,7 @@ Page({
       cashEquipLabel: M.cashEquipLabel,
       cashStockLabel: M.cashStockLabel,
       cashDepositNote: M.cashDepositNote,
+      colLaborFee: M.colLaborFee,
       laborTotalLabel2: M.laborTotalLabel2,
       laborTotalNote2: M.laborTotalNote2,
       fixedBreakTitle: M.fixedBreakTitle,
@@ -126,7 +127,14 @@ Page({
       cashIncompleteNote: M.cashIncompleteNote,
       cashWan: M.cashWan,
     },
-    presets: BIZ_PRESETS.map((p) => ({ key: p.presetKey, name: TERMS.m2.bizTypes.find((b) => b.key === p.bizKey) ? TERMS.m2.bizTypes.find((b) => b.key === p.bizKey).name + '·预设' : p.presetKey })),
+    // 🔴 R332 修 bug：原先名字只拼「大类·预设」⇒ 同大类的两个细分（半自助 / 烤肉）**显示成一模一样**，
+    //   老板选哪个都看不出区别。现改为「大类 · 细分」；通用兜底不加大类前缀（否则重复成一串）。
+    presets: BIZ_PRESETS.map((p) => {
+      const bt = TERMS.m2.bizTypes.find((b) => b.key === p.bizKey);
+      const sub = TERMS.m2.bizPresets[p.presetKey] || p.presetKey;
+      const cat = (bt && p.bizKey !== 'other') ? bt.name + ' · ' : '';
+      return { key: p.presetKey, name: cat + sub };
+    }),
     presetIdx: 0,
     cityIdx: 1, // tier23
     dims: {
@@ -348,6 +356,31 @@ Page({
     });
   },
 
+  // 🔴 R332：某一行的人工成本（元/月）—— 给明细表加「人工/月」列。
+  //   🔴 必须走 assembleItems，不能自己按「人数 × 工资」算：
+  //     · 面馆是 labor_total（人数 × 预设工资 × 城市系数）
+  //     · **火锅半自助是 fixed 25000（跟人数完全无关）** ⇒ 自己乘就会算错。
+  laborOf(rentYuan, laborN) {
+    const preset = findPreset(BIZ_PRESETS[this.data.presetIdx].presetKey);
+    if (!preset) return null;
+    const tiers = ['tier1', 'tier23', 'county'];
+    const coef = CITY_COEF[tiers[this.data.cityIdx] || 'tier23'] || CITY_COEF.tier23;
+    const ltYuan = Number(this.data.global.laborTotalYuan);
+    const { fixedItems } = assembleItems(preset, {
+      area: Number(this.data.global.area) || 0,
+      headcount: laborN,
+      rentYuan,
+      laborTotalYuan: ltYuan > 0 ? ltYuan : undefined,
+      fixedYuan: { rent: rentYuan },
+      buildItems: this.buildItems(),
+    }, coef);
+    let fen = 0;
+    for (let i = 0; i < fixedItems.length; i++) {
+      if (fixedItems[i].key === 'labor') fen += Number(fixedItems[i].fen) || 0;
+    }
+    return fen > 0 ? Math.round(fen / 100) : null;
+  },
+
   // 🔴 R331：固定费用构成 —— 让老板能核对「这个保本点是怎么来的」。
   //   做法：用**同一个** assembleItems（前端同源）把固定项重算一遍；
   //   🔴 与引擎返回的 fixed_ex_amort 对账，差 >1 元就整个不显示 —— 宁可不说，也不给一个对不上的拆项。
@@ -537,7 +570,7 @@ Page({
         rent: meta.rent, labor: meta.labor, marginPct: meta.marginPct, targetYuan: meta.targetYuan,
         breakMonthly: null, breakDaily: null, targetMonthly: null, targetDaily: null,
         rentPct: null, leverYuan: null, cushionPct: null, payback: null,
-        red: false, invalid: true, fixedExAmort: null,
+        red: false, invalid: true, fixedExAmort: null, laborYuan: null,
       };
     }
     const rentFen = Math.round(Number((meta.rent * 100).toFixed(10)));   // R298-B2：原式**连取整都没有** ⇒ 分不是整数，违约铁律
@@ -577,6 +610,8 @@ Page({
       payback: res.payback_months != null ? res.payback_months : null,
       red: !!res.red_alert,
       fixedExAmort,
+      // 🔴 R332：人工/月（走 assembleItems 同源，与业态的人工形态一致）
+      laborYuan: this.laborOf(meta.rent, meta.labor),
     };
   },
 
@@ -588,8 +623,22 @@ Page({
     if (!rows || !rows.length) return { has: false };
     const dim = this.data.pivotRowDim;                 // 'rent' | 'margin'
     const fixKey = dim === 'margin' ? 'rent' : 'margin'; // 被固定的另一个维度
-    const fixVal = Number(this.data.pivotFix[fixKey]);
-    const fixLabor = Number(this.data.pivotFix.labor);
+    // 🔴 R332 修必现 bug：`pivotFix` 是**写死的**（margin 55 / labor 2），而实际生成的行用的是 `dims` 档位
+    //   ——高级维度收起时只取第一档（茶饮 67%、火锅 53%…）⇒ 拿 55 去筛**永远筛不到**
+    //   ⇒ 不管有没有可行组合，结论一律显示"当前筛选无可行组合"。
+    //   修法：优先用 pivotFix；若该值在结果里不存在，退到结果中**实际出现的第一档**。
+    const uniqOf = (fn) => {
+      const out = [];
+      rows.forEach((r) => { const v = Number(fn(r)); if (isFinite(v) && out.indexOf(v) < 0) out.push(v); });
+      return out;
+    };
+    const labs = uniqOf((r) => r.labor);
+    let fixLabor = Number(this.data.pivotFix.labor);
+    if (labs.indexOf(fixLabor) < 0) fixLabor = labs[0];
+    const pool = uniqOf((r) => r[fixKey === 'rent' ? 'rent' : 'marginPct']);
+    let fixVal = Number(this.data.pivotFix[fixKey]);
+    if (pool.indexOf(fixVal) < 0) fixVal = pool[0];
+    if (!isFinite(fixLabor) || !isFinite(fixVal)) return { has: false };
     // 目标利润锚点：取维度里最大的目标利润档（最紧张、最有参考意义）
     const targetDims = this.data.dims.target.map(Number).filter(isFinite);
     const targetAnchor = targetDims.length ? Math.max(...targetDims) : 0;
@@ -636,8 +685,22 @@ Page({
     const dim = this.data.pivotRowDim;                    // 'rent' | 'margin'
     const FIELD = { rent: 'rent', margin: 'marginPct' };  // 维度 → toRow 里的字段名
     const fixKey = dim === 'margin' ? 'rent' : 'margin';  // 固定住的**另一个**维度
-    const fixVal = Number(this.data.pivotFix[fixKey]);
-    const fixLabor = Number(this.data.pivotFix.labor);
+    // 🔴 R332 修必现 bug：`pivotFix` 是**写死的**（margin 55 / labor 2），而实际生成的行用的是 `dims` 档位
+    //   ——高级维度收起时只取第一档（茶饮 67%、火锅 53%…）⇒ 拿 55 去筛**永远筛不到**
+    //   ⇒ 不管有没有可行组合，结论一律显示"当前筛选无可行组合"。
+    //   修法：优先用 pivotFix；若该值在结果里不存在，退到结果中**实际出现的第一档**。
+    const uniqOf = (fn) => {
+      const out = [];
+      rows.forEach((r) => { const v = Number(fn(r)); if (isFinite(v) && out.indexOf(v) < 0) out.push(v); });
+      return out;
+    };
+    const labs = uniqOf((r) => r.labor);
+    let fixLabor = Number(this.data.pivotFix.labor);
+    if (labs.indexOf(fixLabor) < 0) fixLabor = labs[0];
+    const pool = uniqOf((r) => r[fixKey === 'rent' ? 'rent' : 'marginPct']);
+    let fixVal = Number(this.data.pivotFix[fixKey]);
+    if (pool.indexOf(fixVal) < 0) fixVal = pool[0];
+    if (!isFinite(fixLabor) || !isFinite(fixVal)) return { has: false };
     const filtered = rows.filter((r) => !r.red
       && Number(r[FIELD[fixKey]]) === fixVal
       && Number(r.labor) === fixLabor);

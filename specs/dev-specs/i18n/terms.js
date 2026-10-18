@@ -1078,13 +1078,17 @@ const TERMS = {
     otherBandNote: '当前为通用经验区间（未细分行业），结果仅供粗估；如能归到具体品类请优先选上面',
     bizPresets: {
       fastfood_noodle: '面馆（小面 / 米线 / 面条 / 拉面）',
-      hotpot_half_self: '火锅（半自助）',
+      hotpot_half_self: '半自助',
       hotpot_barbecue: '烧烤',
-      dining_sichuan: '川菜 / 中餐',
+      dining_sichuan: '川菜',
       dining_xiang: '湘菜',
       dining_yue: '粤菜',
       dining_jiachang: '家常菜',
       cafe_tea: '新式茶饮',
+      fastfood_other: '其他快餐（盖浇饭 / 炸鸡 / 麻辣烫）',
+      hotpot_other: '其他火锅（串串 / 冒菜 / 烤鱼）',
+      dining_other: '其他正餐（东北 / 西北 / 融合菜）',
+      cafe_other: '其他饮品（果汁 / 酸奶 / 糖水）',
       other: '其他 / 通用餐饮（未细分行业）',
     },
     // R234：业态预设**平铺 6 项**（不再先问「你属于哪个大类」）。
@@ -2113,6 +2117,7 @@ const TERMS = {
     //      导出的 Excel 表头也仍用长名（表格里列名越长越清楚，不受手机列宽限制）。
     colRent: '月租金',
     colLabor: '人工',
+    colLaborFee: '人工/月',
     colMargin: '毛利率',
     colTarget: '目标利润',
     addDim: '加一档',

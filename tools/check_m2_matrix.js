@@ -302,6 +302,13 @@ for (const rel of Object.keys(CJK_BASELINE)) {
     'matrix.wxml 固定费用构成没有 fail-closed 条件（R331：对不上账时会渲染空卡）');
 }
 
+// --- R332：结论筛选必须能从"写死的 pivotFix"退回"结果里实际存在的档位" ---
+//   原 bug：pivotFix 写死 margin=55/labor=2，而生成的行是 dims 第一档（茶饮 67%）
+//   ⇒ 永远筛不到 ⇒ 任何组合都显示"当前筛选无可行组合"（必现，与有没有可行组合无关）。
+chk(/if \(labs\.indexOf\(fixLabor\) < 0\) fixLabor = labs\[0\]/.test(mtxJs)
+  && /if \(pool\.indexOf\(fixVal\) < 0\) fixVal = pool\[0\]/.test(mtxJs),
+  'matrix.js 结论筛选未从 pivotFix 退回实际档位（R332：会必现「当前筛选无可行组合」）');
+
 if (problems.length) {
   console.log('❌ M2 矩阵/对比 + 页面完整性守卫失败 ' + problems.length + ' 处：');
   problems.forEach((m) => console.log('   ' + m));

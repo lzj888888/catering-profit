@@ -155,7 +155,7 @@
       <scroll-view wx:if="{{result.view==='detail'}}" scroll-x="true" class="tbl-scroll">
         <view class="tbl">
           <view class="tr th">
-            <text class="td">{{t.colRent}}</text><text class="td">{{t.colLabor}}</text><text class="td">{{t.colMargin}}</text>
+            <text class="td">{{t.colRent}}</text><text class="td">{{t.colLabor}}</text><text class="td">{{t.colLaborFee}}</text><text class="td">{{t.colMargin}}</text>
             <text class="td">{{t.colTarget}}</text><text class="td">{{t.colBreakMonthly}}</text><text class="td">{{t.colBreakDaily}}</text>
             <text class="td">{{t.colTargetMonthly}}</text><text class="td">{{t.colTargetDaily}}</text><text class="td">{{t.rentPct}}</text><text class="td">{{t.payback}}</text>
             <text class="td">{{t.colLever}}</text><text class="td">{{t.colCushion}}</text>
@@ -166,6 +166,7 @@
           <view class="tr {{item.red?'red':''}}{{item.invalid?' invalid':''}}" wx:for="{{result.rows}}" wx:key="index">
             <text class="td">{{item.rent}}{{t.yuan}}{{item.invalid?' ⚠':''}}</text>
             <text class="td">{{item.labor}}{{t.person}}</text>
+            <text class="td">{{item.laborYuan!=null?item.laborYuan:'—'}}</text>
             <text class="td">{{item.marginPct}}{{t.pct}}</text>
             <text class="td">{{item.targetYuan}}{{t.yuan}}</text>
             <text class="td">{{item.breakMonthly!=null?item.breakMonthly:'—'}}</text>
