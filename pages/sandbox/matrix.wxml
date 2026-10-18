@@ -36,7 +36,13 @@
       <text class="label">{{t.areaLabel}}</text>
       <input class="inp" type="digit" value="{{global.area}}" data-key="area" bindinput="onGlobalInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="㎡" />
     </view>
-    <!-- 🔴 R331：人工总额可选填 —— 填了就用，不填才按人数×行业均值估（原来只能估，老板改不了） -->
+    <!-- 🔴 R335（B 方案）：人均工资由**老板自己填**，不是系统猜；人工 = 人数 × 人均 -->
+    <view class="field">
+      <text class="label">{{t.laborUnitLabel}}</text>
+      <input class="inp" type="digit" value="{{global.laborUnitYuan}}" data-key="laborUnitYuan" bindinput="onGlobalInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.cashYuanPh}}" />
+    </view>
+    <view class="hint">{{t.laborUnitNote}}</view>
+    <!-- 🔴 R331/R335：总额是覆盖项 —— 只想填总额时用它，优先级高于「人数 × 人均」 -->
     <view class="field">
       <text class="label">{{t.laborTotalLabel2}}</text>
       <input class="inp" type="digit" value="{{global.laborTotalYuan}}" data-key="laborTotalYuan" bindinput="onGlobalInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.cashYuanPh}}" />
@@ -66,6 +72,14 @@
     <block wx:if="{{advOpen}}">
     <!-- 🔴 R334：人工档位整块删除 —— 人数每店都不同（麻辣烫有 8 人的也有 3 人的），人均工资也无统一值，
          用「人数 × 人均」估只会算错。人工改为在上方「人工每月总额」直接填。 -->
+    <!-- 🔴 R335：人数档位回来了（按业态给默认：快餐 2/3、火锅正餐 5/6）-->
+    <view class="dim-block">
+      <view class="dim-head"><text>{{t.dimLabor}}</text><view class="add" bindtap="addDim" data-dim="labor">{{t.addDim}}</view></view>
+      <view class="dim-row" wx:for="{{dims.labor}}" wx:key="index" wx:for-index="idx">
+        <input class="inp dim-inp" type="digit" value="{{item}}" data-dim="labor" data-idx="{{idx}}" bindinput="onDimInput" adjust-position="{{true}}" cursor-spacing="20" />
+        <view class="del" wx:if="{{dims.labor.length>1}}" bindtap="delDim" data-dim="labor" data-idx="{{idx}}">{{t.delDim}}</view>
+      </view>
+    </view>
     <view class="dim-block">
       <view class="dim-head"><text>{{t.dimMargin}}</text><view class="add" bindtap="addDim" data-dim="margin">{{t.addDim}}</view></view>
       <view class="dim-row" wx:for="{{dims.margin}}" wx:key="index" wx:for-index="idx">
@@ -150,7 +164,7 @@
       <scroll-view wx:if="{{result.view==='detail'}}" scroll-x="true" class="tbl-scroll">
         <view class="tbl">
           <view class="tr th">
-            <text class="td">{{t.colRent}}</text><text class="td">{{t.colLaborFee}}</text><text class="td">{{t.colMargin}}</text>
+            <text class="td">{{t.colRent}}</text><text class="td">{{t.colLabor}}</text><text class="td">{{t.colLaborFee}}</text><text class="td">{{t.colMargin}}</text>
             <text class="td">{{t.colTarget}}</text><text class="td">{{t.colBreakMonthly}}</text><text class="td">{{t.colBreakDaily}}</text>
             <text class="td">{{t.colTargetMonthly}}</text><text class="td">{{t.colTargetDaily}}</text><text class="td">{{t.rentPct}}</text><text class="td">{{t.payback}}</text>
             <text class="td">{{t.colLever}}</text><text class="td">{{t.colCushion}}</text>
@@ -160,6 +174,7 @@
                现加 .invalid 灰显 + 首列 ⚠ 标记。 -->
           <view class="tr {{item.red?'red':''}}{{item.invalid?' invalid':''}}" wx:for="{{result.rows}}" wx:key="index">
             <text class="td">{{item.rent}}{{t.yuan}}{{item.invalid?' ⚠':''}}</text>
+            <text class="td">{{item.labor}}{{t.person}}</text>
             <text class="td">{{item.laborYuan!=null?item.laborYuan:'—'}}</text>
             <text class="td">{{item.marginPct}}{{t.pct}}</text>
             <text class="td">{{item.targetYuan}}{{t.yuan}}</text>

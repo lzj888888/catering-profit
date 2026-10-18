@@ -24,6 +24,16 @@ function fmt(tpl, map) {
 }
 
 // 默认扫维度档位（照搬小面表 + 毛利率 4 档，即「升级」核心）
+// 🔴 R335：每个业态的合理人数档位 —— 快餐 2/3 人，火锅与正餐 5/6 人（2 人的火锅店不现实）。
+//   这张表替代原来的「全业态都用 2/3 人」。
+const LABOR_DIMS = {
+  fastfood: [2, 3],
+  hotpot: [5, 6],
+  dining: [5, 6],
+  cafe: [2, 3],
+  other: [3, 4],
+};
+
 const DEFAULT_DIMS = {
   rent: [3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000],
   labor: [2, 3],
@@ -106,6 +116,8 @@ Page({
       colLaborFee: M.colLaborFee,
       laborFixedHint: M.laborFixedHint,
       laborTotalHint: M.laborTotalHint,
+      laborUnitLabel: M.laborUnitLabel,
+      laborUnitNote: M.laborUnitNote,
       laborTotalLabel2: M.laborTotalLabel2,
       laborTotalNote2: M.laborTotalNote2,
       fixedBreakTitle: M.fixedBreakTitle,
@@ -141,12 +153,15 @@ Page({
     cityIdx: 1, // tier23
     dims: {
       rent: DEFAULT_DIMS.rent.slice(),
+      // 🔴 R335：人数档位回来了（按业态给默认，见 LABOR_DIMS）——
+      //   矩阵的核心价值是"多请一个人会怎样"，去掉这一维就只剩单价推演了。
+      labor: DEFAULT_DIMS.labor.slice(),
       margin: DEFAULT_DIMS.margin.slice(),
       target: DEFAULT_DIMS.target.slice(),
     },
-    global: { area: 60, buildTotalYuan: 0, buildYears: 3, laborTotalYuan: '' },
+    global: { area: 60, buildTotalYuan: 0, buildYears: 3, laborTotalYuan: '', laborUnitYuan: '' },
     // 🔴 R331：老板手改过毛利率档位 ⇒ 切业态时不再覆盖（与 index 页 fieldTouched 同一判据）
-    fieldTouched: { margin: false },
+    fieldTouched: { margin: false, labor: false, unit: false },
     // 🔴 round273：多一个 `rent` —— A 场景透视主轴是毛利率 ⇒ 被固定住的是月租金（反之亦然）
     pivotFix: { margin: 55, labor: 2, rent: 5000 },
     // 🔴 round273 · 场景：'forward' 已有铺面（店已开，扫毛利率）/ 'reverse' 寻找铺面（扫租金档位）。
@@ -212,6 +227,17 @@ Page({
       dims.margin[0] = g;
       patch.dims = dims;
     }
+    // 🔴 R335：换了业态 ⇒ 人数档位与人均都跟着换（快餐 2/3 人、火锅正餐 5/6 人）。
+    //   老板手改过人数档位就不动。
+    const bk = p ? p.bizKey : '';
+    const ld = LABOR_DIMS[bk];
+    if (ld && !this.data.fieldTouched.labor) {
+      const dims2 = patch.dims || this.data.dims;
+      dims2.labor = ld.slice();
+      patch.dims = dims2;
+    }
+    const u = p && p.params && p.params.laborUnitYuan ? Number(p.params.laborUnitYuan.v) : 0;
+    if (u > 0 && !this.data.fieldTouched.unit) patch.global = Object.assign({}, this.data.global, { laborUnitYuan: String(u) });
     this.setData(patch, () => { this.syncBuildDefault(); this.setData({ laborHint: this.laborHintOf() }); });
   },
   onCityChange(e) {
@@ -226,6 +252,7 @@ Page({
     dims[dim][idx] = val;
     // 🔴 R331：改了毛利率档位就标记为"手改过" ⇒ 之后切业态不再用预设值覆盖它
     if (dim === 'margin') this.setData({ dims, 'fieldTouched.margin': true });
+    else if (dim === 'labor') this.setData({ dims, 'fieldTouched.labor': true });
     else this.setData({ dims });
   },
   addDim(e) {
@@ -402,16 +429,20 @@ Page({
   //   🔴 必须走 assembleItems，不能自己按「人数 × 工资」算：
   //     · 面馆是 labor_total（人数 × 预设工资 × 城市系数）
   //     · **火锅半自助是 fixed 25000（跟人数完全无关）** ⇒ 自己乘就会算错。
-  laborOf(rentYuan) {
+  laborOf(rentYuan, laborN) {
     const preset = findPreset(BIZ_PRESETS[this.data.presetIdx].presetKey);
     if (!preset) return null;
     const tiers = ['tier1', 'tier23', 'county'];
     const coef = CITY_COEF[tiers[this.data.cityIdx] || 'tier23'] || CITY_COEF.tier23;
-    // 🔴 R334：不再传 headcount —— 人工只认总额（老板填的或参考值）
+    // 🔴 R335：与 buildClean 同口径 —— 总额优先，否则 人数 × 人均
+    const lt = Number(this.data.global.laborTotalYuan);
+    const un = Number(this.data.global.laborUnitYuan);
     const { fixedItems } = assembleItems(preset, {
       area: Number(this.data.global.area) || 0,
+      headcount: laborN,
       rentYuan,
-      laborTotalYuan: this.laborEffYuan(preset),
+      laborTotalYuan: lt > 0 ? lt : undefined,
+      laborUnitYuan: (lt > 0 || !(un > 0)) ? undefined : un,
       fixedYuan: { rent: rentYuan },
       buildItems: this.buildItems(),
     }, coef);
@@ -475,15 +506,19 @@ Page({
   },
 
   // ===== 装配单行的 clean 参数（与单测口径一致，走 assembleItems 唯一入口）=====
-  buildClean(preset, coef, rentYuan, marginPct, targetYuan, cityTier) {
+  buildClean(preset, coef, rentYuan, laborN, marginPct, targetYuan, cityTier) {
     const buildItems = this.buildItems();
-    // 🔴 R334：人工只认「老板填的总额」。
-    //   没填 ⇒ 用本业态参考值（见 laborRefYuan），**不传 headcount** ——
-    //   传 0 会让 labor_total 分支乘出 0（保本虚低），这是最危险的方向。
+    // 🔴 R335（B 方案）：两条路都留，优先级从高到低
+    //   ① 老板直接填了「人工总额」⇒ 用它（覆盖人数×人均）
+    //   ② 否则用「人数 × 人均」（人均老板可改，默认取业态值）
+    const ltYuan = Number(this.data.global.laborTotalYuan);
+    const unitYuan = Number(this.data.global.laborUnitYuan);
     const input = {
       area: Number(this.data.global.area) || 0,
+      headcount: laborN,
       rentYuan,
-      laborTotalYuan: this.laborEffYuan(preset),
+      laborTotalYuan: ltYuan > 0 ? ltYuan : undefined,
+      laborUnitYuan: (ltYuan > 0 || !(unitYuan > 0)) ? undefined : unitYuan,
       fixedYuan: { rent: rentYuan },
       buildItems,
     };
@@ -525,7 +560,7 @@ Page({
     };
     return chk(d.margin, '毛利率', 0, 100)
       || chk(d.rent, '房租', 0, 100000000)
-
+      || chk(d.labor, '人数', 0, 999)
       || chk(d.target, '目标利润', 0, 100000000);
   },
 
@@ -560,17 +595,18 @@ Page({
     //   这里先挡一道：省一次云调用，且当场说清"第几档、哪一项、超了什么范围"。
     const badDim = this.badDimOf();
     if (badDim) { api.toastError({ msg: badDim }); return; }
-    const { rent, margin, target } = this.data.dims;
-    // 🔴 R322：高级维度收起 ⇒ 毛利率只取第 1 档（否则 4 档 × 8 租金 = 噪声表）。
-    // 🔴 R334：人工已改为「老板填一个总额」，不再有档位 ⇒ 这里只剩毛利率这一维要处理。
+    const { rent, labor, margin, target } = this.data.dims;
+    // 🔴 R322：高级维度收起 ⇒ 人工/毛利率各只取第 1 档（否则行数被撑 8 倍，小白看到噪声表）。
+    // 🔴 R335：人数档位已恢复（按业态给默认值），所以这里两维都要处理。
+    const laborUse = this.data.advOpen ? labor : (labor || []).slice(0, 1);
     const marginUse = this.data.advOpen ? margin : (margin || []).slice(0, 1);
     const cleanArr = [];
     const meta = []; // 与 cleanArr 对齐的维度标注
-    for (const r of rent) for (const m of marginUse) for (const tg of target) {
-      const rv = Number(r), mv = Number(m), tgv = Number(tg);
-      if (![rv, mv, tgv].every((x) => isFinite(x))) continue;
-      cleanArr.push(this.buildClean(preset, coef, rv, mv, tgv, cityTier));
-      meta.push({ rent: rv, marginPct: mv, targetYuan: tgv });
+    for (const r of rent) for (const l of laborUse) for (const m of marginUse) for (const tg of target) {
+      const rv = Number(r), lv = Number(l), mv = Number(m), tgv = Number(tg);
+      if (![rv, lv, mv, tgv].every((x) => isFinite(x))) continue;
+      cleanArr.push(this.buildClean(preset, coef, rv, lv, mv, tgv, cityTier));
+      meta.push({ rent: rv, labor: lv, marginPct: mv, targetYuan: tgv });
     }
     if (!cleanArr.length) { api.toastError({ msg: '维度档位不能为空' }); return; }
     this.setData({ loading: true });
@@ -606,7 +642,7 @@ Page({
     //   旧码直接解引用 res ⇒ TypeError ⇒ 整张矩阵崩成一句「出错」，老板连哪一档都不知道。
     if (!res) {
       return {
-        rent: meta.rent, labor: null, marginPct: meta.marginPct, targetYuan: meta.targetYuan,
+        rent: meta.rent, labor: meta.labor, marginPct: meta.marginPct, targetYuan: meta.targetYuan,
         breakMonthly: null, breakDaily: null, targetMonthly: null, targetDaily: null,
         rentPct: null, leverYuan: null, cushionPct: null, payback: null,
         red: false, invalid: true, fixedExAmort: null, laborYuan: null,
@@ -650,8 +686,8 @@ Page({
       red: !!res.red_alert,
       fixedExAmort,
       // 🔴 R332：人工/月（走 assembleItems 同源，与业态的人工形态一致）
-      labor: null,          // 🔴 R334：人数维度已移除（人工只认总额）
-      laborYuan: this.laborOf(meta.rent),
+      labor: meta.labor,
+      laborYuan: this.laborOf(meta.rent, meta.labor),
     };
   },
 

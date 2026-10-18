@@ -98,10 +98,13 @@ const BIZ_PRESETS = [
   },
   {
     presetKey: 'hotpot_half_self', bizKey: 'hotpot', paybackView: 'cash',
-    params: { grossMarginPct: { v: 53, src: 'P' }, openDays: { v: 30, src: 'P' } },   // 标准 60% → 实际 53%（自助浪费）
+    params: { grossMarginPct: { v: 53, src: 'P' }, laborUnitYuan: { v: 5000, src: 'S' }, openDays: { v: 30, src: 'P' } },   // 标准 60% → 实际 53%（自助浪费）；人均 5000 由 BP 2.5 万 ÷ 5 人反推
     costMeta: [
       { itemKey: 'rent', form: 'fixed', src: 'U' },
-      { itemKey: 'labor', form: 'fixed', defaultYuan: 25000, src: 'P' },   // 2.5 万
+      // 🔴 R335：fixed 25000 → labor_total（人数 × 人均）。
+      //   为什么改：人数每店都不同（麻辣烫 8 人也有 3 人），写死一个总额就没法推演「多请一个人」；
+      //   人均取 5000（= BP 25000 ÷ 5 人），默认 5 人 ⇒ 仍是 25000，口径不漂。
+      { itemKey: 'labor', form: 'labor_total', src: 'P' },
       { itemKey: 'utility', form: 'energy_split', derivedFrom: 'rent_rate', rentPct: 43, src: 'B' },  // 火锅业态能耗：房租×占比反推（找店兜底）
       { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'P', labelKey: 'costLoss' },    // 🔴 P1-② fixed→var：使 mkt 非 0（与全局 other 口径一致）
       // R293：manage 6%（BANDS.manage[4,8] 中值）÷ 11.5%房租 = 52%

@@ -197,9 +197,14 @@ for (const rel of Object.keys(CJK_BASELINE)) {
     'matrix.js 的 advOpen 初值不是 false（R322：高级维度必须默认收起）');
   chk(/for \(const m of marginUse\)/.test(mjs),
     'matrix.js 生成循环未走 marginUse（R322：收起态必须只取第 1 档，否则行数被撑 8 倍）');
-  // 🔴 R334：人工不再是「人数档位」—— 老板直接填总额（人数每店不同、人均无统一值，乘出来就是错的）
-  chk(!/dims\.labor/.test(mjs) && !/dims\.labor/.test(mwxml),
-    'matrix 又出现了 dims.labor 档位（R334：人工已改为「每月总额」单值，档位会让老板以为人数影响工资）');
+  // 🔴 R335（B 方案定稿）：人数档位**必须在** —— 矩阵的价值就是扫「多请一个人会怎样」；
+  //   人均由老板自己填（不是系统猜），所以两者并存不冲突。
+  //   判据三条腿：data 里有档位定义 + 生成循环真的扫它 + 页面真的渲染它
+  //   （只判一条会被"定义了但没扫"或"扫了但没渲染"骗过）
+  chk(/labor: DEFAULT_DIMS\.labor/.test(mjs)
+    && /for \(const l of laborUse\)/.test(mjs)
+    && /dims\.labor/.test(mwxml),
+    'matrix 缺人数档位（R335：矩阵的核心是扫档，去掉这一维就只剩单价推演）');
   chk(/onToggleAdv/.test(mwxml) && /advNote/.test(mwxml),
     'matrix.wxml 缺高级维度开关或「按毛利率 X% · 人工 N 人测算」说明（R322：收起不等于不告知）');
 }
