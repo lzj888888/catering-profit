@@ -352,7 +352,7 @@ Page({
     //    · 坪效   ⇒ 原计划"与 L3 已有的 pixelEffYuan 复用那一个" —— R234 实测已**推翻**：
     //      坪效同属「算出来的」专业指标，L3 那一份也一并移除（见 data 处 R234-实测修复注释）。
     //    ⚠️ 云端入参 `target_rent_rate` / `pixel_eff_fen` **保留**（契约 + 快照需要），只是换了取值来源。
-    reverseResult: null,     // 反推结果（reverse 块）
+    // 🔴 R323：原 `reverseResult` 已删 —— 全页只有声明与读取、**从无赋值**（审计 B13）。
     rentRatePct: '',         // R234：本次采用的房租行规（%，来自云端 BANDS，**只读回显**）
     // 🔴 P0#5（2026-10-11）：结果吸底条（纯展示层，不碰引擎）。
     //   ⚠️ R296 拍4：`showTurnHelp`（翻台「?」面板开关）已随反推翻台展示一并删除。
@@ -612,22 +612,13 @@ Page({
   // ===== M2v1.1 双 Tab + 反推输入 =====
   onTab(e) {
     const mode = e.currentTarget.dataset.mode;
-    if (mode === this.data.mode) return;
-    // 🔴 R290 v5（李老师拍板）：找店 = 多维度推演 ⇒ **直接进场景矩阵页**，不在首页再填一遍。
-    //   实证依据（勿凭转述改设计）：
-    //   · 矩阵页 4 个维度档位 rent/labor/margin/target 已存在，且 buildClean 传 `fixedYuan:{rent}`
-    //     **不传 mode** ⇒ 引擎 `validate.js:24` 默认 forward ⇒ **矩阵本来就出保本点**（不是只有房租上限）。
-    //   · 首页 reverse 才走 reverse 引擎（只出 rent_cap_fen、无 break_even），那是另一条路。
-    //   ⇒ 首页自此恒为「已有铺面」（forward）；找店的房租在矩阵页以「档位」形式填，仍遵循「房租是根本」。
+    // 🔴 R323（P0-2）：清掉整段死分支 —— 原码在 `if (mode === 'reverse') navigate` 之后还有
+    //   `setData({mode}) / refreshStick() / scheduleCalc()`，但 `data.mode` 恒为 'forward'，
+    //   且「已有铺面」Tab 点一次会先被 `mode === this.data.mode` 早退 ⇒ 后半段**永远不执行**。
+    //   现在只保留真实行为：点「寻找铺面」⇒ 进矩阵页；点「已有铺面」⇒ 什么都不用做。
     if (mode === 'reverse') {
       wx.navigateTo({ url: '/pages/sandbox/matrix?mode=reverse' });
-      return;
     }
-    this.setData({ mode });
-    // 切 Tab 后吸底条标签/数字要跟着当前结果重算（结果可能仍有效，也可能已清空）
-    this.refreshStick();
-    // 切到反推 Tab 立即触发一次反推（复用防抖）
-    this.scheduleCalc();
   },
   // 🔴 R296 拍4：`onToggleTurnHelp` 随反推翻台展示一并删除（引擎仍算 turn_rate，仅不再展示）。
   // 🔴 P0#5：吸底条点开 ⇒ 滚到结果区（原生页面滚动用 pageScrollTo + selector）
@@ -637,13 +628,9 @@ Page({
     const t = this.data.t || {};
     const cur = (t.cur) || '¥';
     let kpi = false, lbl = '', val = '';
-    if (this.data.mode === 'reverse') {
-      const r = this.data.reverseResult;
-      if (r && !r.red_alert) { kpi = true; lbl = t.stickRevLbl || '房租最多能扛'; val = cur + (r.rent_cap != null ? r.rent_cap : ''); }
-    } else {
-      const r = this.data.result;
-      if (r && !r.red_alert) { kpi = true; lbl = t.stickFwdLbl || '保本营业额'; val = cur + (r.break_even_monthly != null ? r.break_even_monthly : ''); }
-    }
+    // 🔴 R323：首页恒为「已有铺面」⇒ 吸底条只可能有正向 KPI（反推 KPI 在矩阵页）。
+    const r = this.data.result;
+    if (r && !r.red_alert) { kpi = true; lbl = t.stickFwdLbl || '保本营业额'; val = cur + (r.break_even_monthly != null ? r.break_even_monthly : ''); }
     this.setData({ stickKpi: kpi, stickLbl: lbl, stickVal: val });
   },
   // 🔴 R234：删掉 `onRevRentRate` / `onRevPixelEff` 两个 handler ——

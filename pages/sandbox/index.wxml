@@ -7,11 +7,12 @@
 
   <!-- M2v1.1 双 Tab（R234 改名：按**用户此刻的处境**命名，不再用「正向/反推」这种算法词） -->
   <view class="tab-bar">
-    <view class="tab-item {{mode === 'forward' ? 'on' : ''}}" data-mode="forward" bindtap="onTab">
+    <!-- 🔴 R323：本页恒为「已有铺面」⇒ 高亮写死；「寻找铺面」是**跳转入口**，永不在此页高亮。 -->
+    <view class="tab-item on" data-mode="forward" bindtap="onTab">
       <text class="tab-main">{{t.tabForward}}</text>
       <text class="tab-sub">{{t.tabForwardSub}}</text>
     </view>
-    <view class="tab-item {{mode === 'reverse' ? 'on' : ''}}" data-mode="reverse" bindtap="onTab">
+    <view class="tab-item" data-mode="reverse" bindtap="onTab">
       <text class="tab-main">{{t.tabReverse}}</text>
       <text class="tab-sub">{{t.tabReverseSub}}</text>
     </view>
@@ -343,27 +344,9 @@
   </view>
 
 
-  <!-- ⑥ R234 · 「寻找铺面」（reverse Tab）本不该有**任何新输入** ——
-       它问的是同一个店，只是把"已知房租"换成"求房租上限"。
-       ⇒ 以前这里另收一套「客单价/座位/天数/目标租金率/坪效」，与 L2/L3 的同义项重复，已全部删除，
-         只留一行"本次按什么行规算"（房租率来自云端 BANDS，不是用户填的）。 -->
-  <view class="card2" wx:if="{{mode === 'reverse'}}">
-    <view class="auto-band">
-      <text class="auto-band-txt">{{t.rentRateAutoPre}}{{bizName}}{{t.rentRateAutoMid}}</text>
-      <text class="auto-band-num">{{rentRatePct}}{{t.pctUnit}}</text>
-      <text class="auto-band-txt">{{t.rentRateAutoUnit}}</text>
-    </view>
-    <!-- R234：24 字 ⇒ 折叠。这行话原先挂在「每月固定支出」卡上（key `sbRevRentHint`），
-         但它讲的明明是"反推为什么不用填房租" ⇒ **搬回反推卡**（信息就该在被需要的位置）。
-         换用新 key `sbRevRateAuto`：与本页其它折叠块一样，一处位置一个独立键。 -->
-    <view class="hint-fold">
-      <view class="hint-fold-head" data-key="sbRevRateAuto" bindtap="onToggleHintFold">
-        <text class="hint-fold-guide">{{hintFold.sbRevRateAuto ? t.hintFoldHide : t.hintFoldShow}}</text>
-        <text class="hint-fold-arrow">{{hintFold.sbRevRateAuto ? '▾' : '▸'}}</text>
-      </view>
-      <view class="hint-fold-body" wx:if="{{hintFold.sbRevRateAuto}}">{{t.revRentHint}}</view>
-    </view>
-  </view>
+  <!-- 🔴 R323（P0-2）：原「寻找铺面」反推卡已删 —— 它挂在 `wx:if="{{mode === 'reverse'}}"` 上，
+       而本页 `data.mode` **恒为 'forward'**（点反推 Tab 直接跳矩阵页）⇒ 整块**永远不渲染**。
+       找店的口径与档位在 `pages/sandbox/matrix` 里（那里有独立的 mode，且 R322 已做小白降维）。 -->
 
   <!-- 🔴 选填·本月实际营业额：人效/坪效与指标对比的唯一输入；明确不参与保本计算（保本只看房租/人工/毛利率/目标利润） -->
   <view class="card2">
