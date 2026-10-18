@@ -296,6 +296,36 @@ for (const rel of Object.keys(CJK_BASELINE)) {
     'index.js 未走 utils/promoImpact.js（R330：两套折扣公式必然漂移）');
 }
 
+// --- R337（M2-A1）：促销卡 W 口径 —— 文案问「几成客人」，公式算「营业额占比」 ---
+//   为什么必须钉：两者在「活动单金额 ≠ 非活动单金额」时**不等价**，而界面上没有任何报错——
+//   老板按人头估 3 成、系统按营业额算 3 成，差额全落在毛利率与保本线上（静默错数）。
+//   修法是改文案 + 明示近似条件，**公式不动**（公式本身没错，错的是没交代口径）。
+(function () {
+  const one = read('utils/promoImpact.js');
+  // ① 页面问的必须是「订单/单数」口径
+  const labelOf = (src) => (/promoWeightLabel:\s*'([^']*)'/.exec(src) || [])[1] || '';
+  const L1 = labelOf(t1);
+  const L2 = labelOf(t2);
+  chk(/订单|单数/.test(L1),
+    '促销参与率标签不是「订单/单数」口径（R337：问"几成客人"而公式按营业额占比 ⇒ 老板按人头估，数对不上）');
+  chk(L1 !== '' && L1 === L2,
+    '促销参与率标签双副本不一致或缺失（R337：miniprogram 与 specs 两份 terms 必须同值）');
+  // ② 近似条件必须真的出现在界面上（只改标签不说条件 = 仍是静默近似）
+  const note = (/promoApproxNote:\s*'([^']*)'/.exec(t1) || [])[1] || '';
+  chk(/单数|订单/.test(note) && /客单价|单价/.test(note),
+    'promoApproxNote 未写清「按单数近似 + 客单价前提」（R337：老板仍不知道这是估计）');
+  chk(/\{\{t\.promoApproxNote\}\}/.test(idxWxmlS),
+    'index.wxml 结果区未渲染 promoApproxNote（R337：算了不说口径 ⇒ 近似被当成精确）');
+  // ③ JSDoc 与页面同口径，且写明前提（文档与界面各说一套 = 下一个人必然改错）
+  const wi = one.indexOf('@param {number} p.weightPct');
+  const wDoc = wi >= 0 ? one.slice(wi, wi + 400) : '';
+  chk(/订单/.test(wDoc) && /客单价/.test(wDoc),
+    'utils/promoImpact.js 的 weightPct 注释未写「订单占比 + 客单价前提」（R337）');
+  // ④ 反恒真：拿**旧文案**喂给同一套判据，必须判不通过（证明 ① 不是恒真）
+  chk(!/订单|单数/.test(labelOf("promoWeightLabel: '几成客人会用',")),
+    'R337-④ 判据恒真：老文案「几成客人会用」也能通过 ①');
+}());
+
 // --- R331：矩阵页「人工总额 / 毛利率跟业态 / 固定费用构成」---
 //   三处都是「看起来对、数字错」的静默失效：
 //   ① 只传人数 ⇒ 工资永远是参数包估值，老板改不了（他以为在控成本）

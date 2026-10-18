@@ -853,7 +853,11 @@ const TERMS = {
     promoTitle: '做活动会怎样',
     promoSub: '只算降价，不算活动带来的新客',
     promoDiscountLabel: '打几折',
-    promoWeightLabel: '几成客人会用',
+    // 🔴 R337（M2-A1）：问的是**订单**占比，不是"客人"占比 ——
+    //   公式里的 W 是营业额占比，只有活动单与非活动单客单价接近时两口径才相等。
+    //   文案说"客人"会让老板按人头估，与算出来的数天然对不上。
+    promoWeightLabel: '几成订单用券',
+    promoApproxNote: '按单数比例近似（假设客单价接近）',
     promoGaLabel: '活动期毛利率',
     promoDropText: '掉 {x} 个点',
     promoBeLabel: '保本',

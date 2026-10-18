@@ -300,6 +300,10 @@
       <view class="warn" wx:if="{{promoRes.bad}}">{{promoRes.text}}</view>
     </block>
     <view class="hint" wx:if="{{!promoRes}}">{{t.promoNeedCalc}}</view>
+    <!-- 🔴 R337（M2-A1）：口径声明必须留在结果区 ——
+         页面问的是「几成订单用券」（单数口径），公式算的是营业额占比；
+         只有客单价接近时两者才相等，不说这句就是静默近似。 -->
+    <view class="hint">{{t.promoApproxNote}}</view>
   </view>
 
   <!-- 🔴 R296b 「渠道佣金」（原 #12 多渠道毛利率**改造** · 豆包评审定案）：

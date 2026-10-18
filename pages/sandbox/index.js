@@ -92,6 +92,7 @@ Page({
       promoDiscountOpts: M.promoDiscountOpts,
       promoWeightOpts: M.promoWeightOpts,
       promoNeedCalc: M.promoNeedCalc,
+      promoApproxNote: M.promoApproxNote,
       promoNegText: M.promoNegText,
       marginTip: M.marginTip,
       varTotal: M.varTotal,
