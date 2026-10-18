@@ -59,3 +59,18 @@
 /* 🔴 R322：高级维度折叠头 —— 只压颜色，不缩字号（AD-G1 字号 ≥28rpx 红线） */
 .adv-toggle .dim-head { color: #8a97a8; }
 .adv-arrow { color: #8a97a8; margin-left: 8rpx; }
+
+/* 🔴 R325：钱够不够开 · 能撑几个月
+   ⚠️ 字号一律 ≥28rpx（AD-G1 可读性红线：老板多老花眼），层级只靠颜色/字重区分。 */
+.cash-card { margin-top: 20rpx; padding: 24rpx; border-top: 1rpx solid #f0f0f0; }
+.cash-title { font-size: 32rpx; font-weight: 600; color: #1a1a1a; }
+.cash-lead { font-size: 28rpx; color: #8a97a8; margin-top: 8rpx; line-height: 1.5; }
+.cash-row { display: flex; align-items: center; margin-top: 16rpx; }
+.cash-lb { flex: 0 0 300rpx; font-size: 28rpx; color: #333; }
+.cash-inp { flex: 1; height: 64rpx; font-size: 30rpx; text-align: right; border-bottom: 1rpx solid #e6e6e6; }
+.cash-need { font-size: 32rpx; font-weight: 600; color: #1a1a1a; margin-top: 20rpx; }
+.cash-parts { font-size: 28rpx; color: #8a97a8; margin-top: 8rpx; line-height: 1.5; }
+.cash-verdict { font-size: 30rpx; font-weight: 600; margin-top: 16rpx; }
+.cash-verdict.ok { color: #1f7a4d; }
+.cash-verdict.warn { color: #b3491d; }
+.cash-note { font-size: 28rpx; color: #8a97a8; margin-top: 10rpx; line-height: 1.5; }
