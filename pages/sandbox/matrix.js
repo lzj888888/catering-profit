@@ -104,6 +104,8 @@ Page({
       cashStockLabel: M.cashStockLabel,
       cashDepositNote: M.cashDepositNote,
       colLaborFee: M.colLaborFee,
+      laborFixedHint: M.laborFixedHint,
+      laborTotalHint: M.laborTotalHint,
       laborTotalLabel2: M.laborTotalLabel2,
       laborTotalNote2: M.laborTotalNote2,
       fixedBreakTitle: M.fixedBreakTitle,
@@ -159,6 +161,8 @@ Page({
     cashRes: null,
     // 🔴 R331：固定费用构成（对不上账就是 null，不显示）
     fixedBreak: null,
+    // 🔴 R333：人数档位的有效性提示（空=不提示）
+    laborHint: '',
     mode: 'reverse',
     pivotRowDim: 'rent',   // 透视表**行**维度：forward ⇒ margin，reverse ⇒ rent
     loading: false,
@@ -209,7 +213,7 @@ Page({
       dims.margin[0] = g;
       patch.dims = dims;
     }
-    this.setData(patch, () => this.syncBuildDefault());
+    this.setData(patch, () => { this.syncBuildDefault(); this.setData({ laborHint: this.laborHintOf() }); });
   },
   onCityChange(e) {
     this.setData({ cityIdx: Number(e.detail.value) });
@@ -244,7 +248,26 @@ Page({
     const val = e.detail.value;
     const global = this.data.global;
     global[key] = val;
-    this.setData({ global });
+    const patch = { global };
+    // 🔴 R333：填了人工总额之后，"人数是否影响人工"的结论会变，提示要跟着变
+    if (key === 'laborTotalYuan') patch.laborHint = this.laborHintOf();
+    this.setData(patch);
+  },
+
+  // 🔴 R333：人数档位到底有没有用 —— 有些业态人工是固定额（火锅半自助 = 25000 写死），
+  //   改人数完全不影响结果。界面上必须说清，否则老板调了半天以为系统坏了。
+  //   三种情形：填了总额 ⇒ 人数只影响人效；labor_total/headcount_linear ⇒ 人数有效；fixed ⇒ 明说固定额。
+  laborHintOf() {
+    const T = this.data.t;
+    const preset = findPreset(BIZ_PRESETS[this.data.presetIdx].presetKey);
+    if (!preset) return '';
+    if (Number(this.data.global.laborTotalYuan) > 0) return T.laborTotalHint;
+    const m = (preset.costMeta || []).filter((x) => x.itemKey === 'labor')[0];
+    if (!m) return '';
+    if (m.form === 'labor_total' || m.form === 'headcount_linear') return '';
+    const fy = Number(m.defaultYuan) || 0;
+    if (!(fy > 0)) return '';
+    return String(T.laborFixedHint).replace('{x}', String(fy));
   },
 
   // ===== 🔴 R325：钱够不够开 · 能撑几个月 =====

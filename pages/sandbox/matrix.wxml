@@ -66,6 +66,8 @@
     <block wx:if="{{advOpen}}">
     <view class="dim-block">
       <view class="dim-head"><text>{{t.dimLabor}}</text><view class="add" bindtap="addDim" data-dim="labor">{{t.addDim}}</view></view>
+      <!-- 🔴 R333：人数档位对「人工=固定额」的业态无效（火锅半自助 = 25000 写死），必须当场说明 -->
+      <view class="hint" wx:if="{{laborHint}}">{{laborHint}}</view>
       <view class="dim-row" wx:for="{{dims.labor}}" wx:key="index" wx:for-index="idx">
         <input class="inp dim-inp" type="digit" value="{{item}}" data-dim="labor" data-idx="{{idx}}" bindinput="onDimInput" adjust-position="{{true}}" cursor-spacing="20" />
         <view class="del" wx:if="{{dims.labor.length>1}}" bindtap="delDim" data-dim="labor" data-idx="{{idx}}">{{t.delDim}}</view>
