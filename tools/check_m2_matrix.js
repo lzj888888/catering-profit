@@ -249,6 +249,24 @@ for (const rel of Object.keys(CJK_BASELINE)) {
     'matrix.js 缺项分支不在 safe 之前（R325：会先报「够」，把下限当完整数）');
 }
 
+// --- R327：M2 正推表（做到某营业额能赚多少）---
+//   失效方式全是静默的：公式写反 ⇒ 赚亏颠倒（最危险）；档位不含 1 ⇒ 没有保本锚点；
+//   红警时仍出表 ⇒ 拿不成立的参数算利润；页面渲染了但字段没映射 ⇒ 表格空白。
+{
+  // ① 公式方向：利润 = 营收 × 边际贡献率 − 固定费用（写反成 fixed − rev*k ⇒ 0.8 档从"亏"变"赚"）
+  chk(/Math\.round\(rev\s*\*\s*k\s*-\s*fixed\)/.test(idxJs),
+    'index.js 正推公式不是「营收 × 边际贡献率 − 固定费用」（R327：写反 ⇒ 赚亏颠倒）');
+  // ② 必须有保本档（mult 含 1），否则四档全是"赚"或全是"亏"，失去锚点
+  chk(/const mults = \[0\.8, 1, 1\.2, 1\.5\]/.test(idxJs),
+    'index.js 正推档位不是以保本线为基准的 4 档（R327：缺 1 倍档 ⇒ 没有保本锚点）');
+  // ③ 红警时必须短路（red_alert 时固定费用/边际贡献率不成立）
+  chk(/if \(!r || r\.red_alert\) return null;/.test(idxJs),
+    'index.js 正推表未在 red_alert 时短路（R327：会拿不成立的参数算利润）');
+  // ④ 页面真渲染（三列：营业额 / 结果 / 正负着色）
+  chk(/profitLadder/.test(idxWxmlS) && /item\.gain/.test(idxWxmlS) && /item\.loss/.test(idxWxmlS),
+    'index.wxml 未渲染正推表或未区分赚/亏（R327：算了不给颜色等于要老板自己读符号）');
+}
+
 if (problems.length) {
   console.log('❌ M2 矩阵/对比 + 页面完整性守卫失败 ' + problems.length + ' 处：');
   problems.forEach((m) => console.log('   ' + m));

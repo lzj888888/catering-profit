@@ -476,6 +476,22 @@
       </view>
     </view>
 
+    <!-- 🔴 R327：正推表 —— 做到这么多营业额能赚多少。
+         M2 原先只有倒推（要赚 X 需要卖多少），老板紧接着会问「我大概能做到 15 万，能赚多少」。
+         以保本线为基准取 4 档，不写死 8万/10万 —— 每个店保本线不同，绝对档位对多数店无意义。 -->
+    <view class="card2" wx:if="{{mode === 'forward' && profitLadder}}">
+      <view class="sec">{{t.profitLadderTitle}}</view>
+      <view class="hint">{{t.profitLadderSub}}</view>
+      <view class="pl-row pl-head">
+        <text class="pl-c1">{{t.profitColRev}}</text>
+        <text class="pl-c2">{{t.profitColResult}}</text>
+      </view>
+      <view class="pl-row" wx:for="{{profitLadder}}" wx:key="key">
+        <text class="pl-c1">{{item.revText}}</text>
+        <text class="pl-c2 {{item.gain ? 'pl-ok' : (item.loss ? 'pl-warn' : '')}}">{{item.resultText}}</text>
+      </view>
+    </view>
+
     <!-- 🔴 round273 · A 区（已有铺面）补齐 round223 §3.1 定案的两项指标：**每天来多少人 / 一天翻几台**。
          定案原文 A 输出 = 每天卖多少够本 / 每天来多少人 / 一天翻几台 / 房租占营业额 X%（附行业对比）/ 几年回本
          —— 后三项界面上早就有，**前两项一直缺**（只有「寻找铺面」Tab 有客流与翻台）。

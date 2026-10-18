@@ -845,6 +845,17 @@ const TERMS = {
     fixedTotal: '每月固定支出合计',
     marginName: '菜品毛利率',
     marginSub: '毛利率越高，需要卖出的营业额越少',
+    // 🔴 R327：正推 —— 做到某营业额能赚多少（M2 原只有倒推，补上另一端）
+    //   ⚠️ 不依赖 M1/M3：只用引擎已返回的固定费用与边际贡献率（李老师 2026-10-18 划的边界）
+    profitLadderTitle: '做到这些营业额，能赚多少',
+    profitLadderSub: '按上面毛利率算，改一项就跟着变',
+    profitColRev: '月营业额',
+    profitColResult: '结果',
+    profitAtBreak: '刚好保本',
+    profitLoss: '亏 {x}',
+    profitGain: '赚 {x}',
+    profitWan: '万',
+    profitYuan: '元',
     marginTip: '不用另填食材成本，它会随毛利率自动折算',
 
     // ===== R296 费用类别（2026-10-14 李老师拍板：大额独立成项、小额挂进 note）=====

@@ -66,6 +66,15 @@ Page({
       fixedTotal: M.fixedTotal,
       marginName: M.marginName,
       marginSub: M.marginSub,
+      profitLadderTitle: M.profitLadderTitle,
+      profitLadderSub: M.profitLadderSub,
+      profitColRev: M.profitColRev,
+      profitColResult: M.profitColResult,
+      profitAtBreak: M.profitAtBreak,
+      profitLoss: M.profitLoss,
+      profitGain: M.profitGain,
+      profitWan: M.profitWan,
+      profitYuan: M.profitYuan,
       marginTip: M.marginTip,
       varTotal: M.varTotal,
       targetProfit: M.targetProfit,
@@ -334,6 +343,8 @@ Page({
     targetYuan: '',
     // 结果（全部来自后端）
     result: null,
+    // 🔴 R327：正推表（做到某营业额能赚多少）—— 由 profitLadderOf(result) 派生
+    profitLadder: null,
     crowd: null,         // 🔴 round273：A 区派生指标（每天来多少人 / 一天翻几台）；算不出则为 null（不渲染）
     eff: null,           // 🔴 round276：A 区派生指标（坪效 / 人效）；没填实际营业额则为 null（不渲染）
     indicators: [],
@@ -1010,6 +1021,46 @@ Page({
    *
    * fail-closed：人均消费 ≤0 或座位数 ≤0 ⇒ 返回 null（卡片整块不渲染，**不给假数**）。
    */
+  // 🔴 R327：正推 —— 做到某个营业额，能赚多少。
+  //   为什么补：M2 原先只有**倒推**（要赚 X 需要卖多少），老板紧接着会问「那我大概能做到 15 万，能赚多少」。
+  //   两者是同一根公式的两端：
+  //     倒推 营收 = (固定费用 + 目标利润) ÷ 边际贡献率
+  //     正推 利润 = 营收 × 边际贡献率 − 固定费用
+  //   🔴 不依赖 M1/M3（李老师 2026-10-18 划的边界）：只用引擎已返回的 fixed_total 与 margin_rate。
+  //   🔴 以**保本线为基准**取 4 档，不预设"8万/10万/15万" —— 每个店保本线不同，绝对值档位对多数店无意义。
+  profitLadderOf(r) {
+    if (!r || r.red_alert) return null;
+    const fixed = Number(r.fixed_total);
+    const ratePct = Number(r.margin_rate);
+    const be = Number(r.break_even_monthly);
+    if (!isFinite(fixed) || !isFinite(ratePct) || !isFinite(be)) return null;
+    if (!(ratePct > 0) || !(be > 0)) return null;
+
+    const T = this.data.t;
+    const k = ratePct / 100;
+    const fill = (tpl, v) => String(tpl || '').replace('{x}', v);
+    const money = (yuan) => {
+      if (Math.abs(yuan) >= 10000) return (yuan / 10000).toFixed(1) + T.profitWan;
+      return Math.round(yuan) + T.profitYuan;
+    };
+
+    const mults = [0.8, 1, 1.2, 1.5];
+    return mults.map((m) => {
+      const rev = Math.round(be * m);
+      const profit = Math.round(rev * k - fixed);
+      const isBreak = m === 1;
+      return {
+        key: 'm' + String(m).replace('.', '_'),
+        revText: money(rev),
+        // 保本档直接说"刚好保本"，不显示 ±0 的噪声（rev 取整后 profit 可能是 1 或 -1）
+        resultText: isBreak ? T.profitAtBreak
+          : (profit > 0 ? fill(T.profitGain, money(profit)) : fill(T.profitLoss, money(profit))),
+        gain: !isBreak && profit > 0,
+        loss: !isBreak && profit < 0,
+      };
+    });
+  },
+
   crowdOf(result) {
     if (!result || result.red_alert) return null;
     const price = Number(this.data.avgPriceYuan);
@@ -1377,6 +1428,8 @@ Page({
         marginBand: this.pickBand(d.bands_preview, 'grossMargin'),
         verdict: !hasFixed ? null : this.verdictOf(indTarget),
         result: presetResultObj,
+        // 🔴 R327：正推表 —— 与 result 同批写入，直接用局部变量算（不读 this.data，避免时序依赖）
+        profitLadder: this.profitLadderOf(presetResultObj),
         // 🔴 round273：A 区（已有铺面）补齐定案指标（每天来多少人 / 一天翻几台）—— 在新结果上派生
         crowd: presetResultObj ? this.crowdOf(presetResultObj) : null,
         // 🔴 round276：同主链路，A 区坪效 / 人效（派生自用户填的实际营业额 + 面积 + 人数）
