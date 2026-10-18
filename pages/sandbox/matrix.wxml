@@ -47,6 +47,17 @@
         <view class="del" wx:if="{{dims.rent.length>1}}" bindtap="delDim" data-dim="rent" data-idx="{{idx}}">{{t.delDim}}</view>
       </view>
     </view>
+    <!-- 🔴 R322：小白模式默认收起「毛利率 / 人工」两个专业维度 ——
+         找店的人答不出毛利率（那是他要问的答案，不是他能填的输入）。
+         收起时两者各取第 1 档（行业默认），矩阵只剩「租金 × 目标利润」。 -->
+    <view class="dim-block adv-toggle" bindtap="onToggleAdv">
+      <view class="dim-head">
+        <text>{{advOpen ? t.advDimsHide : t.advDimsShow}}</text>
+        <text class="adv-arrow">{{advOpen ? '▾' : '▸'}}</text>
+      </view>
+      <view class="hint" wx:if="{{!advOpen}}">{{advNote}}</view>
+    </view>
+    <block wx:if="{{advOpen}}">
     <view class="dim-block">
       <view class="dim-head"><text>{{t.dimLabor}}</text><view class="add" bindtap="addDim" data-dim="labor">{{t.addDim}}</view></view>
       <view class="dim-row" wx:for="{{dims.labor}}" wx:key="index" wx:for-index="idx">
@@ -61,6 +72,7 @@
         <view class="del" wx:if="{{dims.margin.length>1}}" bindtap="delDim" data-dim="margin" data-idx="{{idx}}">{{t.delDim}}</view>
       </view>
     </view>
+    </block>
     <view class="dim-block">
       <view class="dim-head"><text>{{t.dimTarget}}</text><view class="add" bindtap="addDim" data-dim="target">{{t.addDim}}</view></view>
       <view class="dim-row" wx:for="{{dims.target}}" wx:key="index" wx:for-index="idx">

@@ -185,6 +185,22 @@ for (const rel of Object.keys(CJK_BASELINE)) {
     '硬编码中文回升：' + rel + ' 现有 ' + cur + ' 处 > 基线 ' + CJK_BASELINE[rel] + '（B9/B14：新文案请进 terms.js）');
 }
 
+// --- R322：矩阵「小白降维」—— 高级维度默认收起 ---
+// 为什么守：毛利率是找店人要**问的答案**，不是他能填的输入。默认展开四维度 = 一进来就撞墙。
+//   三种静默退化：① advOpen 初值改回 true（又变四维度，零报错）
+//                ② 生成循环改回裸 labor/margin（行数被撑 8 倍，表变成噪声）
+//                ③ 收起后不写「按毛利率 X% · 人工 N 人测算」（老板以为只按租金算 = 另一种假精确）
+{
+  const mjs = read('pages/sandbox/matrix.js');
+  const mwxml = read('pages/sandbox/matrix.wxml');
+  chk(/advOpen:\s*false/.test(mjs),
+    'matrix.js 的 advOpen 初值不是 false（R322：高级维度必须默认收起）');
+  chk(/for \(const l of laborUse\)/.test(mjs) && /for \(const m of marginUse\)/.test(mjs),
+    'matrix.js 生成循环未走 laborUse/marginUse（R322：收起态必须只取第 1 档，否则行数被撑 8 倍）');
+  chk(/onToggleAdv/.test(mwxml) && /advNote/.test(mwxml),
+    'matrix.wxml 缺高级维度开关或「按毛利率 X% · 人工 N 人测算」说明（R322：收起不等于不告知）');
+}
+
 if (problems.length) {
   console.log('❌ M2 矩阵/对比 + 页面完整性守卫失败 ' + problems.length + ' 处：');
   problems.forEach((m) => console.log('   ' + m));

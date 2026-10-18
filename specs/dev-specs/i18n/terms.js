@@ -2069,6 +2069,10 @@ const TERMS = {
     pivotRowLabelFwd: '毛利率',
     pivotRowLabelRev: '月租金',
     presetLabel: '经营类型',
+    // 🔴 R322：矩阵默认收起「毛利率 / 人工」两个专业维度（找店的人答不出毛利率）
+    advDimsShow: '高级维度：毛利率 / 人工',
+    advDimsHide: '收起高级维度',
+    advDimsUsed: '按毛利率 {m}% · 人工 {l} 人测算',
     dimRent: '月租金档位（元）',
     dimLabor: '人工人数档位',
     dimMargin: '毛利率档位（%）',

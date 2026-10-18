@@ -40,6 +40,8 @@ Page({
       bizLabel: TERMS.m2.bizLabel,
       bizTypes: TERMS.m2.bizTypes,
       dimRent: M.dimRent,
+      advDimsShow: M.advDimsShow,
+      advDimsHide: M.advDimsHide,
       dimLabor: M.dimLabor,
       dimMargin: M.dimMargin,
       dimTarget: M.dimTarget,
@@ -108,6 +110,9 @@ Page({
     // 🔴 round273 · 场景：'forward' 已有铺面（店已开，扫毛利率）/ 'reverse' 寻找铺面（扫租金档位）。
     //   ⚠️ 默认 reverse：本页最初就是按「扫租金档位」造的（G1），**保持原行为不回退**；
     //      只有从沙盘页带 `?mode=forward` 进来才切成 A 场景口径。
+    // 🔴 R322：高级维度（毛利率/人工）默认收起 —— 小白只填租金与目标利润
+    advOpen: false,
+    advNote: '',
     mode: 'reverse',
     pivotRowDim: 'rent',   // 透视表**行**维度：forward ⇒ margin，reverse ⇒ rent
     loading: false,
@@ -127,6 +132,8 @@ Page({
       't.subtitle': mode === 'forward' ? M.subtitleFwd : M.subtitleRev,
       't.pivotRowLabel': mode === 'forward' ? M.pivotRowLabelFwd : M.pivotRowLabelRev,
     });
+    // 🔴 R322：收起态下要显示「按毛利率 X% · 人工 N 人测算」，进页就先把这句算好
+    this.setData({ advNote: this.buildAdvNote() });
     this.syncBuildDefault();
   },
 
@@ -233,6 +240,22 @@ Page({
   },
 
   // ===== 生成矩阵（批量送云）=====
+  // 🔴 R322：展开/收起「高级维度（毛利率 / 人工）」。
+  //   收起时两维各取第 1 档（= 参数包默认/行业值），矩阵只剩「租金 × 目标利润」。
+  //   为什么必须给一句「按毛利率 X% · 人工 N 人测算」：收起的维度**仍然是测算输入**，
+  //   不写明等于让老板以为只按租金算 —— 那是另一种假精确。
+  onToggleAdv() {
+    const open = !this.data.advOpen;
+    this.setData({ advOpen: open, advNote: this.buildAdvNote() });
+  },
+
+  buildAdvNote() {
+    const m = (this.data.dims.margin || [])[0];
+    const l = (this.data.dims.labor || [])[0];
+    const tpl = (TERMS.matrix && TERMS.matrix.advDimsUsed) || '';
+    return String(tpl).replace('{m}', String(m == null ? '' : m)).replace('{l}', String(l == null ? '' : l));
+  },
+
   async onGenerate() {
     if (this.data.loading) return;
     const presetKey = BIZ_PRESETS[this.data.presetIdx].presetKey;
@@ -248,9 +271,13 @@ Page({
     const badDim = this.badDimOf();
     if (badDim) { api.toastError({ msg: badDim }); return; }
     const { rent, labor, margin, target } = this.data.dims;
+    // 🔴 R322：高级维度收起 ⇒ 人工/毛利率各只取第 1 档。
+    //   不这么做：默认 2 个人工档 × 4 个毛利率档 ⇒ 行数被撑到 8 倍，小白看到的是一张噪声表。
+    const laborUse = this.data.advOpen ? labor : (labor || []).slice(0, 1);
+    const marginUse = this.data.advOpen ? margin : (margin || []).slice(0, 1);
     const cleanArr = [];
     const meta = []; // 与 cleanArr 对齐的维度标注
-    for (const r of rent) for (const l of labor) for (const m of margin) for (const tg of target) {
+    for (const r of rent) for (const l of laborUse) for (const m of marginUse) for (const tg of target) {
       const rv = Number(r), lv = Number(l), mv = Number(m), tgv = Number(tg);
       if (![rv, lv, mv, tgv].every((x) => isFinite(x))) continue;
       cleanArr.push(this.buildClean(preset, coef, rv, lv, mv, tgv, cityTier));

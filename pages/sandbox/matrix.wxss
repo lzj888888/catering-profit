@@ -55,3 +55,7 @@
 .insight-line { font-size: 28rpx; color: #444; line-height: 1.6; }
 .insight-line.lever { color: #1a1a1a; font-weight: 600; }
 .insight-rule { font-size: 28rpx; color: #9a7b50; margin-top: 8rpx; }
+
+/* 🔴 R322：高级维度折叠头 —— 只压颜色，不缩字号（AD-G1 字号 ≥28rpx 红线） */
+.adv-toggle .dim-head { color: #8a97a8; }
+.adv-arrow { color: #8a97a8; margin-left: 8rpx; }
