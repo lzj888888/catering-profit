@@ -275,6 +275,33 @@
     <view class="hint" wx:if="{{marginBand}}">{{t.marginBandLabel}} {{marginBand}}</view>
   </view>
 
+  <!-- 🔴 R330：做活动会怎样 —— 打折对毛利率与保本线的影响。
+       🔴 只算单价影响，不算活动带来的新客：客流增量算不了，编一个就是假精确。
+       两个选择器都是纯本地重算，不请求云端。 -->
+  <view class="card2" wx:if="{{mode === 'forward'}}">
+    <view class="sec">{{t.promoTitle}}</view>
+    <view class="hint">{{t.promoSub}}</view>
+    <view class="promo-row">
+      <text class="promo-lb">{{t.promoDiscountLabel}}</text>
+      <view class="promo-chips">
+        <view class="chip {{promoDIdx === index ? 'on' : ''}}" wx:for="{{t.promoDiscountOpts}}" wx:key="index" data-idx="{{index}}" bindtap="onPromoD">{{item}}</view>
+      </view>
+    </view>
+    <view class="promo-row">
+      <text class="promo-lb">{{t.promoWeightLabel}}</text>
+      <view class="promo-chips">
+        <view class="chip {{promoWIdx === index ? 'on' : ''}}" wx:for="{{t.promoWeightOpts}}" wx:key="index" data-idx="{{index}}" bindtap="onPromoW">{{item}}</view>
+      </view>
+    </view>
+    <block wx:if="{{promoRes}}">
+      <view class="cell" wx:if="{{!promoRes.bad}}"><text class="lbl">{{t.promoGaLabel}}</text><text class="val">{{promoRes.gaText}} · {{promoRes.dropText}}</text></view>
+      <view class="cell" wx:if="{{!promoRes.bad}}"><text class="lbl">{{t.promoBeLabel}}</text><text class="val">{{promoRes.beText}}</text></view>
+      <view class="cell big" wx:if="{{!promoRes.bad}}"><text class="lbl">{{t.promoTrafficLabel}}</text><text class="val keynum">{{promoRes.trafficText}}</text></view>
+      <view class="warn" wx:if="{{promoRes.bad}}">{{promoRes.text}}</view>
+    </block>
+    <view class="hint" wx:if="{{!promoRes}}">{{t.promoNeedCalc}}</view>
+  </view>
+
   <!-- 🔴 R296b 「渠道佣金」（原 #12 多渠道毛利率**改造** · 豆包评审定案）：
        老板只填「各渠道占比 + 抽点」（他知道的数），系统自动算**加权挂钩费率**进计算公式。
        🔴 **绝不揉进毛利率** —— 老板认知里毛利率是"菜赚不赚钱"，偷偷扣平台佣金会被当成软件算错。

@@ -267,6 +267,21 @@ for (const rel of Object.keys(CJK_BASELINE)) {
     'index.wxml 未渲染正推表或未区分赚/亏（R327：算了不给颜色等于要老板自己读符号）');
 }
 
+// --- R330：促销卡（做活动会怎样）---
+//   失效方式全是静默的：选折扣不重算（还显示上一档的数）；结果里没算却渲染了（空白卡）；
+//   页面只渲染一部分（老板以为那就是全部）。
+{
+  chk(/promoRes:\s*this\.promoOf\(presetResultObj\)/.test(idxJs),
+    'index.js 结果出来时未算促销（R330：促销卡会一直是空的或显示旧数）');
+  chk(/onPromoD[\s\S]{0,220}promoDIdx[\s\S]{0,220}promoOf\(this\.data\.result\)/.test(idxJs)
+    && /onPromoW[\s\S]{0,220}promoWIdx[\s\S]{0,220}promoOf\(this\.data\.result\)/.test(idxJs),
+    'index.js 切换折扣/参与率后未重算（R330：选 7 折还显示 8 折的数）');
+  chk(/promoRes\.gaText/.test(idxWxmlS) && /promoRes\.beText/.test(idxWxmlS) && /promoRes\.trafficText/.test(idxWxmlS),
+    'index.wxml 未把三项输出全渲染（R330：漏一项老板会以为是全部）');
+  chk(/promoImpact/.test(idxJs),
+    'index.js 未走 utils/promoImpact.js（R330：两套折扣公式必然漂移）');
+}
+
 if (problems.length) {
   console.log('❌ M2 矩阵/对比 + 页面完整性守卫失败 ' + problems.length + ' 处：');
   problems.forEach((m) => console.log('   ' + m));

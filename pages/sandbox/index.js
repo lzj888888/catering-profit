@@ -23,7 +23,13 @@ const { BIZ_PRESETS, CITY_COEF, assembleItems, resolveBuild, paybackCash, findPr
   // R297：年限不再各写各的（初始行 / 新增行 / 提交 / 回存草稿 四处同走这一份）
   BUILD_DEFAULT_YEARS, buildYearsOf } = require('../../utils/bizPreset.js');
 
+// 🔴 R330：做活动会怎样（纯假设推演，不依赖账本/成本卡）
+const Promo = require('../../utils/promoImpact.js');
+
 const M = TERMS.m2;
+// 促销选项的真实值（与 terms 的 promoDiscountOpts / promoWeightOpts 一一对应）
+const PROMO_D = [0.9, 0.85, 0.8, 0.7];
+const PROMO_W = [10, 30, 50, 80, 100];
 const BUILD_ALL = Object.keys(M.buildItems);
 // 🔴 R296 拍1：`FIXED_ALL` 随「每月固定支出」明细表删除（原仅 `onAddFixed` 使用）。
 // 🔴 R296b：`VAR_ALL` 随 ④「挂钩费用」明细卡删除（原仅 `onAddVar` 使用）。
@@ -75,6 +81,18 @@ Page({
       profitGain: M.profitGain,
       profitWan: M.profitWan,
       profitYuan: M.profitYuan,
+      promoTitle: M.promoTitle,
+      promoSub: M.promoSub,
+      promoDiscountLabel: M.promoDiscountLabel,
+      promoWeightLabel: M.promoWeightLabel,
+      promoGaLabel: M.promoGaLabel,
+      promoBeLabel: M.promoBeLabel,
+      promoTrafficLabel: M.promoTrafficLabel,
+      promoTrafficNote: M.promoTrafficNote,
+      promoDiscountOpts: M.promoDiscountOpts,
+      promoWeightOpts: M.promoWeightOpts,
+      promoNeedCalc: M.promoNeedCalc,
+      promoNegText: M.promoNegText,
       marginTip: M.marginTip,
       varTotal: M.varTotal,
       targetProfit: M.targetProfit,
@@ -345,6 +363,10 @@ Page({
     result: null,
     // 🔴 R327：正推表（做到某营业额能赚多少）—— 由 profitLadderOf(result) 派生
     profitLadder: null,
+    // 🔴 R330：促销卡（默认 8 折 + 3 成客人会用；只改本地，不触发云端重算）
+    promoDIdx: 2,
+    promoWIdx: 1,
+    promoRes: null,
     crowd: null,         // 🔴 round273：A 区派生指标（每天来多少人 / 一天翻几台）；算不出则为 null（不渲染）
     eff: null,           // 🔴 round276：A 区派生指标（坪效 / 人效）；没填实际营业额则为 null（不渲染）
     indicators: [],
@@ -1061,6 +1083,50 @@ Page({
     });
   },
 
+  // 🔴 R330：做活动会怎样 —— 折扣 / 参与率 对毛利率与保本线的影响。
+  //   公式见 utils/promoImpact.js（GA 有分母，豆包第一版漏了）。
+  //   🔴 只算单价影响，不算活动带来的客流增长：算不了，编一个就是假精确。
+  promoOf(r) {
+    if (!r || r.red_alert) return null;
+    const T = this.data.t;
+    const fixed = Number(r.fixed_total);
+    const marginPct = Number(r.margin_rate);
+    if (!isFinite(fixed) || !isFinite(marginPct) || !(fixed > 0)) return null;
+
+    const out = Promo.promoImpact({
+      fixedYuan: fixed,
+      marginPct,
+      discount: PROMO_D[this.data.promoDIdx],
+      weightPct: PROMO_W[this.data.promoWIdx],
+    });
+    // 让价超过毛利率 ⇒ 没有保本点。这是确定结论，必须说出来（不是"算不出"）。
+    if (out.ok === false && out.reason === 'negativeMargin') return { bad: true, text: T.promoNegText };
+    if (!out.ok) return null;
+
+    const fill = (tpl, map) => String(tpl || '').replace(/\{(\w+)\}/g, (m, k) => (map[k] != null ? map[k] : m));
+    const money = (yuan) => (Math.abs(yuan) >= 10000
+      ? (yuan / 10000).toFixed(2) + T.profitWan
+      : Math.round(yuan) + T.profitYuan);
+
+    return {
+      bad: false,
+      gaText: out.gaPct + '%',
+      dropText: fill(T.promoDropText, { x: out.dropPctPoints }),
+      beText: fill(T.promoBeText, {
+        a: money(out.beBeforeYuan), b: money(out.beAfterYuan), p: out.beIncreasePct,
+      }),
+      trafficText: fill(T.promoTrafficText, { p: out.needTrafficPct }),
+    };
+  },
+
+  onPromoD(e) {
+    this.setData({ promoDIdx: Number(e.currentTarget.dataset.idx), promoRes: this.promoOf(this.data.result) });
+  },
+
+  onPromoW(e) {
+    this.setData({ promoWIdx: Number(e.currentTarget.dataset.idx), promoRes: this.promoOf(this.data.result) });
+  },
+
   crowdOf(result) {
     if (!result || result.red_alert) return null;
     const price = Number(this.data.avgPriceYuan);
@@ -1430,6 +1496,7 @@ Page({
         result: presetResultObj,
         // 🔴 R327：正推表 —— 与 result 同批写入，直接用局部变量算（不读 this.data，避免时序依赖）
         profitLadder: this.profitLadderOf(presetResultObj),
+        promoRes: this.promoOf(presetResultObj),
         // 🔴 round273：A 区（已有铺面）补齐定案指标（每天来多少人 / 一天翻几台）—— 在新结果上派生
         crowd: presetResultObj ? this.crowdOf(presetResultObj) : null,
         // 🔴 round276：同主链路，A 区坪效 / 人效（派生自用户填的实际营业额 + 面积 + 人数）

@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：185 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：186 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -1111,6 +1111,10 @@ const SUITES = [
   //   李老师 2026-10-18 当场否掉「预算→能开多大」：店多大由业态/商圈决定，钱只回答「够不够/能撑多久」。
   //   守的三种静默漂移：① 押金/预付没乘租金 ② 装修没乘面积 ③ 有人又写回「按预算反推面积」。
   ['opencash', 'tools/selftest_opencash.js'],
+  // ===== R330 · 促销对毛利率/保本线的影响（utils/promoImpact.js）=====
+  //   豆包第一版公式漏了分母：把「毛利额占原价」当成毛利率，算 49%，正确 52.13%，而它自称验算过。
+  //   守的四种静默漂移：① 漏分母 ② 折扣方向反 ③ 让价超过毛利率仍输出保本 ④ 保本涨幅与客流涨幅混为一谈。
+  ['promo-impact', 'tools/selftest_promo.js'],
   // ===== R298Y ·M3 毛利率「色阶 / 区间」阈值单源守卫 =====
   //   见头部注释同名条目。根因：规范 §M3.8 的 60/40 被抄了三份且不一致（筛选 30 / 色带 40 / 文案 30）
   //   ⇒ 35% 的卡色带判红却被「中」筛出，用户可见自相矛盾，而 `marginHigh|marginMid|marginLow` 在 tools/ 下零命中。

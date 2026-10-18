@@ -1,0 +1,7 @@
+NODE = C:/Users/lzj/.workbuddy/binaries/node/versions\22.22.2-6\node.exe
+SUITES = 186
+❌ [suite-tracked] 未入库套件: ['tools/selftest_promo.js']
+
+============================================================
+总览：185/186 通过   耗时 377.7s
+R92: ❌ ['tools/selftest_promo.js']

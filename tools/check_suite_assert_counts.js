@@ -238,6 +238,9 @@ const CASES = [
   // R324：开店资金测算（utils/openCash.js）—— 口径被李老师当场纠正过（预算不决定店面大小），
   //   纠正过的口径最容易漂回原样，故把 27 条行为判据纳入受守面。
   { key: 'selftest_opencash', rel: 'tools/selftest_opencash.js' },        // 27 条（A~G 七组 + 反恒真）
+  // R330：促销影响测算（utils/promoImpact.js）—— 豆包第一版公式漏了分母（算 49%，正确 52.13%），
+  //   且自称"代入算例验证过" ⇒ 这类「步骤自洽但数字错」的口径必须钉手算锚点，纳入受守面。
+  { key: 'selftest_promo', rel: 'tools/selftest_promo.js' },              // 26 条（A~G 七组 + 反恒真）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

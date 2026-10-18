@@ -848,6 +848,23 @@ const TERMS = {
     // 🔴 R327：正推 —— 做到某营业额能赚多少（M2 原只有倒推，补上另一端）
     //   ⚠️ 不依赖 M1/M3：只用引擎已返回的固定费用与边际贡献率（李老师 2026-10-18 划的边界）
     profitLadderTitle: '做到这些营业额，能赚多少',
+    // 🔴 R330：做活动会怎样（utils/promoImpact.js）
+    //   ⚠️ 只算单价影响，不算活动带来的客流增长 —— 这句必须在界面上，否则会被当成"活动一定亏"
+    promoTitle: '做活动会怎样',
+    promoSub: '只算降价，不算活动带来的新客',
+    promoDiscountLabel: '打几折',
+    promoWeightLabel: '几成客人会用',
+    promoGaLabel: '活动期毛利率',
+    promoDropText: '掉 {x} 个点',
+    promoBeLabel: '保本',
+    promoBeText: '{a} → {b}（+{p}%）',
+    promoTrafficLabel: '打平要多来',
+    promoTrafficText: '{p}% 的客人（多来的，不是总共）',
+    promoNegText: '这个折扣让价已经超过毛利率，卖多少都亏',
+    promoNeedCalc: '先点【开始测算】，这里才有数',
+    // 选项（显示文案；实际值在 index.js 的 PROMO_D / PROMO_W 里，一一对应）
+    promoDiscountOpts: ['9折', '8.5折', '8折', '7折'],
+    promoWeightOpts: ['1成', '3成', '5成', '8成', '全部'],
     profitLadderSub: '按上面毛利率算，改一项就跟着变',
     profitColRev: '月营业额',
     profitColResult: '结果',

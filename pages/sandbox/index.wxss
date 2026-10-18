@@ -237,3 +237,9 @@
 .pl-c2 { flex: 1; font-size: 30rpx; font-weight: 600; text-align: right; color: #1a1a1a; }
 .pl-c2.pl-ok { color: #1f7a4d; }
 .pl-c2.pl-warn { color: #b3491d; }
+
+/* 🔴 R330：促销卡（折扣 / 参与率）—— 复用 .chip，字号 ≥28rpx（AD-G1） */
+.promo-row { display: flex; align-items: flex-start; margin-top: 18rpx; flex-wrap: wrap; }
+.promo-lb { flex: 0 0 190rpx; font-size: 28rpx; color: #333; line-height: 56rpx; }
+.promo-chips { flex: 1 1 0; display: flex; flex-wrap: wrap; min-width: 0; }
+.promo-chips .chip { margin-bottom: 10rpx; }
