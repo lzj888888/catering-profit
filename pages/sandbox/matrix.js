@@ -114,6 +114,17 @@ Page({
       cashStockLabel: M.cashStockLabel,
       cashDepositNote: M.cashDepositNote,
       colLaborFee: M.colLaborFee,
+      buildDecorLabel: M.buildDecorLabel,
+      buildEquipLabel: M.buildEquipLabel,
+      buildFranchiseLabel: M.buildFranchiseLabel,
+      buildTransferLabel: M.buildTransferLabel,
+      buildTransferAmort: M.buildTransferAmort,
+      buildTransferNote: M.buildTransferNote,
+      buildYearPh: M.buildYearPh,
+      colBreakCash: M.colBreakCash,
+      buildYearsUnit: M.buildYearsUnit,
+      buildSumNote: M.buildSumNote,
+      beCashNote: M.beCashNote,
       laborFixedHint: M.laborFixedHint,
       laborTotalHint: M.laborTotalHint,
       laborUnitLabel: M.laborUnitLabel,
@@ -159,7 +170,18 @@ Page({
       margin: DEFAULT_DIMS.margin.slice(),
       target: DEFAULT_DIMS.target.slice(),
     },
-    global: { area: 60, buildTotalYuan: 0, buildYears: 3, laborTotalYuan: '', laborUnitYuan: '' },
+    // 🔴 R336：开店投入拆 4 项、各自年限（原来「一个总额 + 一个年限」把 5 年摊的设备压成 3 年
+    //   ⇒ 月摊销虚高 11~20% ⇒ 保本线连锁虚高）。转让费默认**不摊**（买位置，不是可摊资产）。
+    global: {
+      area: 60,
+      buildDecorYuan: '', buildDecorYears: 3,
+      buildEquipYuan: '', buildEquipYears: 5,
+      buildFranchiseYuan: '', buildFranchiseYears: 3,
+      buildTransferYuan: '', buildTransferYears: 3, buildTransferAmort: false,
+      laborTotalYuan: '', laborUnitYuan: '',
+    },
+    // 合计 / 每月摊销 一行话（纯展示派生，改任一项就跟着变）
+    buildSumText: '',
     // 🔴 R331：老板手改过毛利率档位 ⇒ 切业态时不再覆盖（与 index 页 fieldTouched 同一判据）
     fieldTouched: { margin: false, labor: false, unit: false },
     // 🔴 round273：多一个 `rent` —— A 场景透视主轴是毛利率 ⇒ 被固定住的是月租金（反之亦然）
@@ -204,14 +226,28 @@ Page({
   // 切换业态预设时，把「开店一次性投入」默认值带出来（有 buildRef 才带，否则留空让用户填）
   syncBuildDefault() {
     const p = findPreset(BIZ_PRESETS[this.data.presetIdx].presetKey);
-    const ref = (p && p.buildRef && p.buildRef[0]) || null;
-    this.setData({
-      global: {
-        area: this.data.global.area,
-        buildTotalYuan: ref ? Math.round(ref.fen / 100) : 0,
-        buildYears: ref ? buildYearsOf('other', ref.years) : BUILD_DEFAULT_YEARS.other,
-      },
-    });
+    const ref = (p && p.buildRef) || [];
+    const by = {};
+    for (let i = 0; i < ref.length; i++) by[ref[i].key] = ref[i];
+    // 🔴 R336 修 bug：原来这里 setData 整个 `global` **替换**成只有 area/buildTotal/buildYears 的对象
+    //   ⇒ 切业态会把老板填的「人工总额 / 人均工资」**清空**（R335 引入后实测存在，静默丢输入）。
+    //   改为在原对象上合并：只覆盖 4 项投入。
+    const g = Object.assign({}, this.data.global);
+    const fill = (key, yuanKey, yearsKey, defYears) => {
+      const b = by[key];
+      if (b) {
+        g[yuanKey] = String(Math.round(Number(b.fen) / 100));
+        g[yearsKey] = buildYearsOf(key, b.years);
+      } else {
+        g[yuanKey] = '';
+        g[yearsKey] = BUILD_DEFAULT_YEARS[key] || defYears;
+      }
+    };
+    fill('decor', 'buildDecorYuan', 'buildDecorYears', 3);
+    fill('equip', 'buildEquipYuan', 'buildEquipYears', 5);
+    fill('franchise', 'buildFranchiseYuan', 'buildFranchiseYears', 3);
+    fill('transfer', 'buildTransferYuan', 'buildTransferYears', 3);
+    this.setData({ global: g }, () => this.setData({ buildSumText: this.buildSumOf() }));
   },
 
   onPresetChange(e) {
@@ -277,7 +313,10 @@ Page({
     const patch = { global };
     // 🔴 R333：填了人工总额之后，"人数是否影响人工"的结论会变，提示要跟着变
     if (key === 'laborTotalYuan') patch.laborHint = this.laborHintOf();
-    this.setData(patch);
+    this.setData(patch, () => {
+      // 🔴 R336：投入 4 项任一项或年限变了 ⇒ 合计/月摊销必须跟着变（否则显示旧数）
+      if (String(key).indexOf('build') === 0) this.setData({ buildSumText: this.buildSumOf() });
+    });
   },
 
   // 🔴 R333：人数档位到底有没有用 —— 有些业态人工是固定额（火锅半自助 = 25000 写死），
@@ -322,6 +361,17 @@ Page({
       if (!best || Math.abs(r.rent - rentYuan) < Math.abs(best.rent - rentYuan)) best = r;
     }
     if (!best) return null;
+    // 🔴 R336 修双计：必须用**不含摊销**的固定费用。
+    //   原因：「签约到开业要拿」里已经把装修/设备一次性扣掉了；若每月净流出再用**含摊销**的固定费用，
+    //   同一笔装修钱被扣两次 ⇒ 剩余现金被高估消耗 ⇒ 能撑月数被**低估**（方向保守，但账是错的）。
+    //   摊销不是现金流出 —— 它只是把已经花掉的钱摊到账上。
+    if (best.fixedExAmort != null && best.fixedExAmort > 0) {
+      // 行里的固定费用是按「该行档位租金」算的；老板填的租金可能不在档位上（如填 5500、最近档 5000）
+      // ⇒ 用房租金替换档位租金，避免房租部分跟着档位走。
+      const rentDelta = rentYuan - (Number(best.rent) || 0);
+      return Math.round(best.fixedExAmort + rentDelta);
+    }
+    // 兜底（旧结果没有该字段）：仍按「保本营收 × 毛利率」反推，宁可保守
     return Math.round(best.breakMonthly * best.marginPct / 100);
   },
 
@@ -535,12 +585,57 @@ Page({
     };
   },
   // 全局开店投入 → buildItems（与 bizPreset.resolveBuild 同形：[{key,fen,years}]）
+  // 🔴 R336：4 项各自年限。老板只要知道「每样花了多少、几年摊回去」，不需要懂会计。
   buildItems() {
-    const yuan = Number(this.data.global.buildTotalYuan) || 0;
-    // 🔴 R297：原 `|| 1` / `years > 0 ? years : 1` 双重硬兜 1 年 —— 清空年限即按 1 年摊，
-    //   月摊销虚高 3 倍 ⇒ 整张矩阵的保本点系统性偏高。改走同口径归一。
-    const years = buildYearsOf('other', this.data.global.buildYears);
-    return [{ key: 'other', fen: api.yuanToFen(yuan), years }];
+    const g = this.data.global || {};
+    const it = [];
+    const add = (key, yuanRaw, yearsRaw, forceYears) => {
+      const fen = api.yuanToFen(yuanRaw);
+      if (!(fen > 0)) return;
+      // forceYears 用 0 表示「不摊」——引擎是 `if (years > 0) amort += ...`，
+      // 所以 years:0 **不参与摊销但仍计入 build_total**（回本月数要用总额），正是转让费要的。
+      const years = (forceYears === 0) ? 0 : buildYearsOf(key, yearsRaw);
+      it.push({ key, fen, years });
+    };
+    add('decor', g.buildDecorYuan, g.buildDecorYears);
+    add('equip', g.buildEquipYuan, g.buildEquipYears);
+    add('franchise', g.buildFranchiseYuan, g.buildFranchiseYears);
+    add('transfer', g.buildTransferYuan, g.buildTransferYears,
+      g.buildTransferAmort ? undefined : 0);
+    if (it.length) return it;
+    // 一项都没填 ⇒ 退回业态参考值（同 resolveBuild「两条路二选一」，**不叠加**；
+    //   也不做「填了一项就替你补其他项」——那会让老板以为填的是全量）
+    const pst = findPreset(BIZ_PRESETS[this.data.presetIdx].presetKey);
+    const ref = (pst && pst.buildRef) || [];
+    return ref.map((b) => ({ key: b.key, fen: Number(b.fen), years: Number(b.years) }));
+  },
+
+  // 合计 + 每月摊销 的展示文本（纯派生，直接读 buildItems 同一份结果，不另算一套）
+  buildSumOf() {
+    const T = this.data.t || {};
+    const items = this.buildItems();
+    let totalFen = 0;
+    let amortFen = 0;
+    for (let i = 0; i < items.length; i++) {
+      const fen = Number(items[i].fen) || 0;
+      const years = Number(items[i].years) || 0;
+      totalFen += fen;
+      if (years > 0) amortFen += fen / (years * 12);
+    }
+    if (!(totalFen > 0)) return '';
+    const money = (fen) => (Math.abs(fen) >= 1000000
+      ? (fen / 1000000).toFixed(1) + T.cashWan
+      : Math.round(fen / 100) + T.yuan);
+    return String(T.buildSumText || '{total} · {amort}')
+      .replace('{total}', money(totalFen))
+      .replace('{amort}', money(amortFen));
+  },
+
+  // 转让费「计入摊销」勾选（默认不勾 = 买位置的钱不摊）
+  onTransferAmortTap() {
+    const global = this.data.global;
+    global.buildTransferAmort = !global.buildTransferAmort;
+    this.setData({ global }, () => this.setData({ buildSumText: this.buildSumOf() }));
   },
 
   // ===== R297 第二轮：四档维度体检（越界即人话，绝不静默送云）=====
@@ -645,7 +740,7 @@ Page({
         rent: meta.rent, labor: meta.labor, marginPct: meta.marginPct, targetYuan: meta.targetYuan,
         breakMonthly: null, breakDaily: null, targetMonthly: null, targetDaily: null,
         rentPct: null, leverYuan: null, cushionPct: null, payback: null,
-        red: false, invalid: true, fixedExAmort: null, laborYuan: null,
+        red: false, invalid: true, fixedExAmort: null, laborYuan: null, beCashMonthly: null,
       };
     }
     const rentFen = Math.round(Number((meta.rent * 100).toFixed(10)));   // R298-B2：原式**连取整都没有** ⇒ 分不是整数，违约铁律
@@ -655,6 +750,14 @@ Page({
       ? Math.round((rentFen / targetMonthlyFen) * 1000) / 10
       : null;
     const breakMonthly = res.break_even_monthly_fen != null ? res.break_even_monthly_fen / 100 : null;
+    // 🔴 R336：现金保本（不含摊销）—— 纯比例派生，不需要前端知道边际贡献率：
+    //   账面 = (固定含摊) ÷ rate；现金 = (固定不含摊) ÷ rate
+    //   ⇒ 现金 = 账面 × 不含摊销 / 含摊销（同一个 rate 约掉）
+    //   引擎三个数都返回了（fixed_total_fen / fixed_ex_amort_fen / break_even_monthly_fen）。
+    let beCashMonthly = null;
+    if (breakMonthly != null && Number(res.fixed_total_fen) > 0 && res.fixed_ex_amort_fen != null) {
+      beCashMonthly = Math.round(breakMonthly * Number(res.fixed_ex_amort_fen) / Number(res.fixed_total_fen));
+    }
     const breakDaily = res.break_even_daily_fen != null ? res.break_even_daily_fen / 100 : null;
     const targetMonthly = targetMonthlyFen != null ? targetMonthlyFen / 100 : null;
     const targetDaily = res.target_daily_fen != null ? res.target_daily_fen / 100 : null;
@@ -676,6 +779,7 @@ Page({
       marginPct: meta.marginPct,
       targetYuan: meta.targetYuan,
       breakMonthly,
+      beCashMonthly,
       breakDaily,
       targetMonthly,
       targetDaily,
@@ -686,7 +790,6 @@ Page({
       red: !!res.red_alert,
       fixedExAmort,
       // 🔴 R332：人工/月（走 assembleItems 同源，与业态的人工形态一致）
-      labor: meta.labor,
       laborYuan: this.laborOf(meta.rent, meta.labor),
     };
   },

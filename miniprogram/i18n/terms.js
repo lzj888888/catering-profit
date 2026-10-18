@@ -2118,6 +2118,7 @@ const TERMS = {
     colRent: '月租金',
     colLabor: '人工',
     colLaborFee: '人工/月',
+    colBreakCash: '现金保本/月',
     // 🔴 R333：人数档位不是对所有业态都有效 —— 说清楚，别让老板白调
     laborFixedHint: '本业态人工按固定 {x} 元/月，改人数不影响结果',
     laborTotalHint: '已按你填的总额算，人数只影响人效',
@@ -2125,11 +2126,24 @@ const TERMS = {
     colTarget: '目标利润',
     addDim: '加一档',
     delDim: '删',
-    buildLabel: '开店一次性投入（全局，按年限摊到每月）',
+    buildLabel: '开店要投多少（押金不算：交多少退多少）',
+    // 🔴 R336：投入拆 4 项、各自年限 —— 原来一个总额 + 一个年限，
+    //   把「5 年摊的设备」压成「3 年摊」⇒ 月摊销虚高 11~20% ⇒ 保本线跟着虚高。
+    buildDecorLabel: '装修（门头、软装）',
+    buildEquipLabel: '设备（厨房、桌椅）',
+    buildFranchiseLabel: '加盟费（没有就留空）',
+    buildTransferLabel: '转让费（没有就留空）',
+    buildTransferAmort: '计入摊销',
+    buildTransferNote: '转让费是买位置，通常不摊；勾上才按年摊',
+    buildYearPh: '年',
+    buildYearsUnit: '年摊',
+    buildSumText: '合计 {total} · 每月摊 {amort}',
+    buildSumNote: '每月摊销会算进保本线（装修设备总得摊回去）',
+    // 双保本（R336）：账面看长期值不值，现金看这个月撑不撑得住
+    beCashNote: '现金保本 = 房租工资水电付得起就行，不算装修设备折旧',
+
     // 🔴 R296c：矩阵「全局投入」卡的**卡标题**已经用 buildLabel（含解释），首行 label 若也用同一键
     //   ⇒ 卡标题与首行**逐字重复**（真机截图实证）⇒ 首行改用本短标签，解释只留在卡标题。
-    buildTotalLabel: '投入总额',
-    buildYearsLabel: '摊销年限',
     areaLabel: '面积（㎡，仅算坪效用）',
     generate: '生成矩阵',
     generating: '生成中…',

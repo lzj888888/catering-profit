@@ -220,9 +220,13 @@ for (const rel of Object.keys(CJK_BASELINE)) {
   const genBody = (mtxJs.match(/async onGenerate\(\)\s*\{([\s\S]*?)\n  \},/) || [])[1] || '';
   chk(/this\.buildCash\(\)/.test(genBody),
     'matrix.js onGenerate 生成结果后未调用 buildCash（R325：现金卡会一直显示上一次的租金档位）');
-  // ② 反推方向：固定费用 = 保本营收 × 毛利率 ÷ 100（写反 ⇒ 能撑月数偏大，属危险方向）
-  chk(/best\.breakMonthly\s*\*\s*best\.marginPct\s*\/\s*100/.test(mtxJs),
-    'matrix.js 每月固定支出未按「保本营收 × 毛利率」反推（R325：方向写反 ⇒ 能撑月数偏大）');
+  // ② 🔴 R336 改判据语义：每月净流出必须**优先用不含摊销的固定费用**（fixedExAmort）。
+  //   原判据钉的是「保本营收 × 毛利率」这个反推公式 —— 而那个反推出来的正是**含摊销**口径，
+  //   与「签约到开业要拿」里的装修/设备重复计算（同一笔钱扣两次 ⇒ 能撑月数被低估）。
+  //   判据要守的是**语义**（用哪个口径），不是某个字面量：反推只允许作为旧数据兜底，且必须在后面。
+  chk(/best\.fixedExAmort/.test(mtxJs)
+    && mtxJs.indexOf('best.fixedExAmort') < mtxJs.indexOf('best.breakMonthly * best.marginPct'),
+    'matrix.js 每月净流出未优先用「不含摊销」固定费用（R336：装修设备已在现金需求扣过，再用含摊销=双计）');
   // ③ 未填设备/货款必须明说「实际更多」（不许把下限当完整）
   chk(/equipMissing\s*\|\|\s*r\.stockMissing/.test(mtxJs) && /cashIncompleteNote/.test(mtxJs),
     'matrix.js 未填设备/货款时未给「实际要拿的更多」提示（R325：把下限当完整数 = 假精确）');
@@ -235,9 +239,11 @@ for (const rel of Object.keys(CJK_BASELINE)) {
   chk(/cashRes\.levelCls/.test(mtxWxml) && /cashRes\.verdictText/.test(mtxWxml),
     'matrix.wxml 未渲染判定句（R325：算了不给结论等于没做）');
   // ⑥ 反恒真：写反的乘法顺序必须判不通过
-  const badSample = 'const fixed = Math.round(best.marginPct / 100 * best.breakMonthly);';
-  chk(!/best\.breakMonthly\s*\*\s*best\.marginPct\s*\/\s*100/.test(badSample),
-    'R325-⑥ 判据恒真：写反的样本也通过了 ②');
+  // ⑥ 反恒真：只有反推、没有 fixedExAmort 的样本，必须判不通过（证明 ② 不是恒真）
+  const badSample = 'return Math.round(best.breakMonthly * best.marginPct / 100);';
+  chk(!(badSample.indexOf('best.fixedExAmort') >= 0
+    && badSample.indexOf('best.fixedExAmort') < badSample.indexOf('best.breakMonthly * best.marginPct')),
+    'R336-⑥ 判据恒真：只有反推的样本也通过了 ②');
 
   // ⑦ 🔴「读到了 ≠ 送出去了」：buildCash 里引用的每个 T.xxx，必须在 data.t 映射里**被赋值**。
   //    只判「页面用了哪些文案」不够 —— 映射里漏一个键，拿到的是 undefined，
@@ -315,6 +321,82 @@ for (const rel of Object.keys(CJK_BASELINE)) {
 //   ⇒ 永远筛不到 ⇒ 任何组合都显示"当前筛选无可行组合"（必现，与有没有可行组合无关）。
 chk(/if \(pool\.indexOf\(fixVal\) < 0\) fixVal = pool\[0\]/.test(mtxJs),
   'matrix.js 结论筛选未从 pivotFix 退回实际档位（R332：会必现「当前筛选无可行组合」）');
+
+// --- R336：开店投入拆 4 项 + 转让费默认不摊 + 双保本口径 ---
+//   为什么必须钉：这是**口径级**错，且完全静默——
+//     · 原来「一个总额 + 一个年限」把 5 年摊的设备压成 3 年摊 ⇒ 月摊销虚高 11~20% ⇒ 保本线连锁虚高；
+//     · 转让费（买位置）被当成可摊资产 ⇒ 两口径差额再被拉大。
+//   静态腿：结构在不在；行为腿：数字对不对（同一笔钱摊/不摊的差必须精确等于 转让费÷年限÷12）。
+(function () {
+  // ① buildItems 必须 4 项齐全
+  const keys = ['decor', 'equip', 'franchise', 'transfer'];
+  const missing = keys.filter((k) => !new RegExp("add\\('" + k + "'").test(mtxJs));
+  chk(!missing.length, 'matrix.js buildItems 未拆出全部 4 项投入（R336：缺 ' + missing.join('/') + '）');
+
+  // ② 转让费不摊时必须是字面 0，不能落到 buildYearsOf（那个兜底成 3 年 ⇒ 白勾了）
+  chk(/buildTransferAmort\s*\?\s*undefined\s*:\s*0/.test(mtxJs)
+    && /forceYears\s*===\s*0/.test(mtxJs),
+    'matrix.js 转让费「不摊」未走 years:0（R336：buildYearsOf 会兜底成 3 年，勾选框等于没做）');
+
+  // ③ 现金保本必须由「不含摊销 / 含摊销」比例派生（不能自己编一个固定折扣率）
+  chk(/beCashMonthly\s*=\s*Math\.round\(breakMonthly\s*\*\s*Number\(res\.fixed_ex_amort_fen\)\s*\/\s*Number\(res\.fixed_total_fen\)\)/.test(mtxJs),
+    'matrix.js 现金保本未按「固定不含摊 ÷ 固定含摊」比例派生（R336：自己编系数会与引擎两口径对不上）');
+
+  // ④ 页面必须真渲染这一列（算了不显示 = 没做）
+  chk(/item\.beCashMonthly/.test(mtxWxml) && /colBreakCash/.test(mtxWxml),
+    'matrix.wxml 未渲染「现金保本」列（R336：双保本是老板判断"这店撑不撑得住"的唯一口径）');
+
+  // ④b 🔴 切业态不得清空老板已填的人工（R336 实测 bug：syncBuildDefault 原用字面量整体替换 global，
+  //    只带 area/buildTotal/buildYears 三键 ⇒ 人工总额、人均工资被静默清空）。
+  //    判据判**语义**（"不许整体替换"），不钉某种合并写法 —— {..spread} 和 Object.assign 都该过。
+  const syncBody = (mtxJs.match(/syncBuildDefault\(\)\s*\{([\s\S]*?)\n  \},/) || [])[1] || '';
+  chk(syncBody.length > 0 && !/global:\s*\{/.test(syncBody),
+    'syncBuildDefault 用字面量整体替换 global（R336：切业态会清空老板填的人工总额/人均工资，且零报错）');
+
+  // ⑤ 行为腿：真跑引擎，对拍同一笔钱摊 / 不摊
+  let engine = null;
+  try { engine = require('../cloudfunctions/calcSandbox/service.js').calcSandbox; } catch (e) { engine = null; }
+  if (!engine) {
+    chk(false, '无法加载 calcSandbox/service.js（R336：口径行为腿跑不了，不能算通过）');
+    return;
+  }
+  const base = {
+    cityTier: 'tier23', bizType: 'fastfood',
+    fixedItems: [{ key: 'rent', fen: 500000 }, { key: 'labor', fen: 900000 }],
+    varItems: [], grossMarginPct: 55, targetProfitFen: 2000000, expectedRevenueFen: 0,
+  };
+  const itemsOff = [
+    { key: 'decor', fen: 15000000, years: 3 },
+    { key: 'equip', fen: 8000000, years: 5 },
+    { key: 'franchise', fen: 5000000, years: 3 },
+    { key: 'transfer', fen: 10000000, years: 0 },
+  ];
+  const itemsOn = itemsOff.map((x) => (x.key === 'transfer' ? Object.assign({}, x, { years: 3 }) : x));
+  const off = engine(Object.assign({}, base, { buildItems: itemsOff }));
+  const on = engine(Object.assign({}, base, { buildItems: itemsOn }));
+
+  chk(off.build_total_fen === 38000000 && on.build_total_fen === 38000000,
+    '转让费不摊时投入总额被漏计（R336：years:0 只该跳过摊销，总额仍要算，否则回本月数错）');
+  chk(Math.abs((on.build_amort_monthly_fen - off.build_amort_monthly_fen) - Math.round(10000000 / 36)) <= 100,
+    '转让费摊/不摊的月摊销差额 ≠ 转让费÷36（R336：说明 years:0 没有真的跳过摊销）');
+
+  // ⑥ 设备按 3 年摊必须比 5 年高（证明"一个年限"确实会算错，这条是反恒真腿）
+  const e3 = engine(Object.assign({}, base, {
+    buildItems: itemsOff.map((x) => (x.key === 'equip' ? Object.assign({}, x, { years: 3 }) : x)),
+  }));
+  chk(e3.build_amort_monthly_fen > off.build_amort_monthly_fen,
+    '设备按 3 年摊未高于 5 年摊（R336：反恒真腿失败，说明这条判据抓不到"年限被压短"）');
+
+  // ⑦ 双保本必须现金 < 账面，且差额恰为 摊销÷边际贡献率
+  const beCash = Math.round(off.break_even_monthly_fen * off.fixed_ex_amort_fen / off.fixed_total_fen);
+  const rate = off.fixed_total_fen / off.break_even_monthly_fen;
+  chk(beCash < off.break_even_monthly_fen,
+    '现金保本未低于账面保本（R336：去掉摊销只会更低，反了就是公式写错）');
+  const gap = off.break_even_monthly_fen - beCash;
+  const expect = off.build_amort_monthly_fen / rate;
+  chk(Math.abs(gap - expect) / expect < 0.02,
+    '两口径差额 ≠ 摊销÷边际贡献率（R336：差额只能来自摊销，差额对上才说明没混入别的成本）');
+}());
 
 if (problems.length) {
   console.log('❌ M2 矩阵/对比 + 页面完整性守卫失败 ' + problems.length + ' 处：');

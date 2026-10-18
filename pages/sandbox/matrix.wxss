@@ -81,3 +81,15 @@
 .fb-row { display: flex; justify-content: space-between; align-items: center; margin-top: 14rpx; }
 .fb-lb { font-size: 28rpx; color: #333; }
 .fb-val { font-size: 30rpx; font-weight: 600; color: #1a1a1a; }
+
+/* 🔴 R336：开店投入 4 项 —— 金额 + 年限同行，字号 ≥28rpx（AD-G1） */
+.bd-inp { width: 200rpx; }
+.yr-inp { width: 80rpx; margin-left: 12rpx; text-align: center; }
+.yr-lb { font-size: 28rpx; color: #888; margin-left: 8rpx; }
+.amort-row { justify-content: flex-start; padding: 4rpx 0 0; }
+.amort-chk { display: flex; align-items: center; }
+.amort-box { display: inline-block; width: 34rpx; height: 34rpx; line-height: 34rpx; text-align: center;
+  border: 1rpx solid #c8c8c8; border-radius: 6rpx; font-size: 28rpx; color: #fff; background: #fff; }
+.amort-chk.on .amort-box { background: #2b7fff; border-color: #2b7fff; }
+.amort-tx { font-size: 28rpx; color: #333; margin-left: 12rpx; }
+.build-sum { font-size: 30rpx; font-weight: 600; color: #1a1a1a; margin-top: 12rpx; }
