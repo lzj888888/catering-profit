@@ -50,8 +50,8 @@ sec('S · 扫描面（bizPreset 存在 / 预设数 ≥4 / 断言数下界）');
 const bizSrc = readOr(BIZ_PRESET);
 check('S-① utils/bizPreset.js 存在且非空', !!bizSrc && bizSrc.length > 2000, bizSrc ? bizSrc.length + ' 字符' : '读不到');
 
-let BIZ_PRESETS = null, CITY_COEF = null, paybackCash = null, findPreset = null;
-try { ({ BIZ_PRESETS, CITY_COEF, paybackCash, findPreset } = require(BIZ_PRESET)); } catch (e) { BIZ_PRESETS = null; }
+let BIZ_PRESETS = null, CITY_COEF = null, paybackCash = null, findPreset = null, assembleItems = null;
+try { ({ BIZ_PRESETS, CITY_COEF, paybackCash, findPreset, assembleItems } = require(BIZ_PRESET)); } catch (e) { BIZ_PRESETS = null; }
 check('S-② bizPreset 可 require 且导出 BIZ_PRESETS / CITY_COEF',
   Array.isArray(BIZ_PRESETS) && !!CITY_COEF, BIZ_PRESETS ? `预设 ${BIZ_PRESETS.length} 个` : 'require 失败');
 check('S-③ 预设数 ≥ 4', Array.isArray(BIZ_PRESETS) && BIZ_PRESETS.length >= 4, BIZ_PRESETS ? BIZ_PRESETS.length + ' 个' : '0');
@@ -325,6 +325,21 @@ sec('G · R293 预设占比 ≡ BANDS 指数派生（禁自定）');
         const missing = BIZ_PRESETS.filter((x) => !subMap[x.presetKey]).map((x) => x.presetKey);
         const vals = BIZ_PRESETS.map((x) => subMap[x.presetKey]).filter(Boolean);
         const dup = vals.filter((v, i) => vals.indexOf(v) !== i);
+        // H-⑥ 🔴 R334：老板填的「人工每月总额」必须处处生效。
+        //   火锅类 labor 是 form='fixed' + defaultYuan=25000，旧逻辑不看 laborTotalYuan
+        //   ⇒ 填 12000 仍按 25000 算（实测复现，属"填了不生效"）。
+        if (assembleItems && CITY_COEF) {
+          const hp = findPreset('hotpot_half_self');
+          const out = assembleItems(hp, {
+            area: 60, rentYuan: 5000, laborTotalYuan: 12000,
+            fixedYuan: { rent: 5000 }, buildItems: [],
+          }, CITY_COEF.tier23);
+          const labYuan = out.fixedItems.filter((x) => x.key === 'labor')
+            .reduce((acc, b) => acc + b.fen, 0) / 100;
+          check('H-⑥ 填了人工总额必须压过参数包固定额（火锅类 form=fixed 会吞掉用户输入）',
+            labYuan === 12000, '实测 ' + labYuan + ' 元（应 12000）');
+        }
+
         check('H-⑤ 每个业态都有显示名且互不重复（同名 ⇒ 老板看不出区别）',
           missing.length === 0 && dup.length === 0,
           (missing.length ? '缺名：' + missing.join(' | ') : '') + (dup.length ? ' 重名：' + dup.join(' | ') : '')

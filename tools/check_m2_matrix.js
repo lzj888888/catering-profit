@@ -195,8 +195,11 @@ for (const rel of Object.keys(CJK_BASELINE)) {
   const mwxml = read('pages/sandbox/matrix.wxml');
   chk(/advOpen:\s*false/.test(mjs),
     'matrix.js 的 advOpen 初值不是 false（R322：高级维度必须默认收起）');
-  chk(/for \(const l of laborUse\)/.test(mjs) && /for \(const m of marginUse\)/.test(mjs),
-    'matrix.js 生成循环未走 laborUse/marginUse（R322：收起态必须只取第 1 档，否则行数被撑 8 倍）');
+  chk(/for \(const m of marginUse\)/.test(mjs),
+    'matrix.js 生成循环未走 marginUse（R322：收起态必须只取第 1 档，否则行数被撑 8 倍）');
+  // 🔴 R334：人工不再是「人数档位」—— 老板直接填总额（人数每店不同、人均无统一值，乘出来就是错的）
+  chk(!/dims\.labor/.test(mjs) && !/dims\.labor/.test(mwxml),
+    'matrix 又出现了 dims.labor 档位（R334：人工已改为「每月总额」单值，档位会让老板以为人数影响工资）');
   chk(/onToggleAdv/.test(mwxml) && /advNote/.test(mwxml),
     'matrix.wxml 缺高级维度开关或「按毛利率 X% · 人工 N 人测算」说明（R322：收起不等于不告知）');
 }
@@ -305,8 +308,7 @@ for (const rel of Object.keys(CJK_BASELINE)) {
 // --- R332：结论筛选必须能从"写死的 pivotFix"退回"结果里实际存在的档位" ---
 //   原 bug：pivotFix 写死 margin=55/labor=2，而生成的行是 dims 第一档（茶饮 67%）
 //   ⇒ 永远筛不到 ⇒ 任何组合都显示"当前筛选无可行组合"（必现，与有没有可行组合无关）。
-chk(/if \(labs\.indexOf\(fixLabor\) < 0\) fixLabor = labs\[0\]/.test(mtxJs)
-  && /if \(pool\.indexOf\(fixVal\) < 0\) fixVal = pool\[0\]/.test(mtxJs),
+chk(/if \(pool\.indexOf\(fixVal\) < 0\) fixVal = pool\[0\]/.test(mtxJs),
   'matrix.js 结论筛选未从 pivotFix 退回实际档位（R332：会必现「当前筛选无可行组合」）');
 
 if (problems.length) {

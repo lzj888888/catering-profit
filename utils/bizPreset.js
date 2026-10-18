@@ -374,7 +374,14 @@ function assembleItems(preset, input, coef) {
     if (form === 'fixed') {
       // 用户填了 ⇒ 用它的（src='U'，**不乘** coef）；没填且有 defaultYuan ⇒ 参数包供给（**乘** coef[对应项]）
       const userVal = in_.fixedYuan ? in_.fixedYuan[m.itemKey] : undefined;
-      if (userVal !== undefined && userVal !== null && userVal !== '') {
+      // 🔴 R334：人工特例 —— 老板填的「人工每月总额」必须压过参数包的 defaultYuan。
+      //   根因：火锅类 labor 是 form='fixed' + defaultYuan=25000，旧逻辑根本不看 laborTotalYuan
+      //   ⇒ 老板填 12000，算出来仍是 25000（**填了不生效**，实测复现）。
+      const ltRaw = m.itemKey === 'labor' ? in_.laborTotalYuan : undefined;
+      const ltYuan = (ltRaw === undefined || ltRaw === null || ltRaw === '') ? 0 : Number(ltRaw);
+      if (ltYuan > 0) {
+        fixedItems.push({ key: m.itemKey, fen: fenOf(ltYuan) });
+      } else if (userVal !== undefined && userVal !== null && userVal !== '') {
         fixedItems.push({ key: m.itemKey, fen: fenOf(userVal) });
       } else if (m.derivedFrom === 'rent_rate') {
         // 🔴 P1-②：占营收率成本（utility/manage）合规落点 —— 由「房租 × 房租占比(rentPct)」派生固定额。

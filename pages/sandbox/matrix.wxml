@@ -64,15 +64,8 @@
       <view class="hint" wx:if="{{!advOpen}}">{{advNote}}</view>
     </view>
     <block wx:if="{{advOpen}}">
-    <view class="dim-block">
-      <view class="dim-head"><text>{{t.dimLabor}}</text><view class="add" bindtap="addDim" data-dim="labor">{{t.addDim}}</view></view>
-      <!-- 🔴 R333：人数档位对「人工=固定额」的业态无效（火锅半自助 = 25000 写死），必须当场说明 -->
-      <view class="hint" wx:if="{{laborHint}}">{{laborHint}}</view>
-      <view class="dim-row" wx:for="{{dims.labor}}" wx:key="index" wx:for-index="idx">
-        <input class="inp dim-inp" type="digit" value="{{item}}" data-dim="labor" data-idx="{{idx}}" bindinput="onDimInput" adjust-position="{{true}}" cursor-spacing="20" />
-        <view class="del" wx:if="{{dims.labor.length>1}}" bindtap="delDim" data-dim="labor" data-idx="{{idx}}">{{t.delDim}}</view>
-      </view>
-    </view>
+    <!-- 🔴 R334：人工档位整块删除 —— 人数每店都不同（麻辣烫有 8 人的也有 3 人的），人均工资也无统一值，
+         用「人数 × 人均」估只会算错。人工改为在上方「人工每月总额」直接填。 -->
     <view class="dim-block">
       <view class="dim-head"><text>{{t.dimMargin}}</text><view class="add" bindtap="addDim" data-dim="margin">{{t.addDim}}</view></view>
       <view class="dim-row" wx:for="{{dims.margin}}" wx:key="index" wx:for-index="idx">
@@ -157,7 +150,7 @@
       <scroll-view wx:if="{{result.view==='detail'}}" scroll-x="true" class="tbl-scroll">
         <view class="tbl">
           <view class="tr th">
-            <text class="td">{{t.colRent}}</text><text class="td">{{t.colLabor}}</text><text class="td">{{t.colLaborFee}}</text><text class="td">{{t.colMargin}}</text>
+            <text class="td">{{t.colRent}}</text><text class="td">{{t.colLaborFee}}</text><text class="td">{{t.colMargin}}</text>
             <text class="td">{{t.colTarget}}</text><text class="td">{{t.colBreakMonthly}}</text><text class="td">{{t.colBreakDaily}}</text>
             <text class="td">{{t.colTargetMonthly}}</text><text class="td">{{t.colTargetDaily}}</text><text class="td">{{t.rentPct}}</text><text class="td">{{t.payback}}</text>
             <text class="td">{{t.colLever}}</text><text class="td">{{t.colCushion}}</text>
@@ -167,7 +160,6 @@
                现加 .invalid 灰显 + 首列 ⚠ 标记。 -->
           <view class="tr {{item.red?'red':''}}{{item.invalid?' invalid':''}}" wx:for="{{result.rows}}" wx:key="index">
             <text class="td">{{item.rent}}{{t.yuan}}{{item.invalid?' ⚠':''}}</text>
-            <text class="td">{{item.labor}}{{t.person}}</text>
             <text class="td">{{item.laborYuan!=null?item.laborYuan:'—'}}</text>
             <text class="td">{{item.marginPct}}{{t.pct}}</text>
             <text class="td">{{item.targetYuan}}{{t.yuan}}</text>
