@@ -59,7 +59,7 @@
       </view>
     </view>
     <view class="row">
-      <text class="row-name">{{t.headcountLabel}}</text>
+      <text class="row-name">{{mode === 'reverse' ? t.headcountLabelRev : t.headcountLabel}}</text>
       <view class="row-in-wrap">
         <input class="row-in" type="number" value="{{headcountNum}}" bindinput="onHeadcount" adjust-position="{{true}}" cursor-spacing="20" />
         <text class="row-unit">{{t.headcountUnit}}</text>
@@ -367,9 +367,9 @@
 
   <!-- 🔴 选填·本月实际营业额：人效/坪效与指标对比的唯一输入；明确不参与保本计算（保本只看房租/人工/毛利率/目标利润） -->
   <view class="card2">
-    <view class="sec">{{t.expectRevTitle}}</view>
+    <view class="sec">{{mode === 'reverse' ? t.expectRevTitleRev : t.expectRevTitle}}</view>
     <view class="row">
-      <text class="row-name">{{t.expectRevLabel}}</text>
+      <text class="row-name">{{mode === 'reverse' ? t.expectRevLabelRev : t.expectRevLabel}}</text>
       <view class="row-in-wrap">
         <input class="row-in" type="digit" placeholder="{{t.expectRevPh}}" value="{{expectYuan}}" bindinput="onExpect" adjust-position="{{true}}" cursor-spacing="20" />
         <text class="row-unit">元</text>
@@ -382,7 +382,7 @@
         <text class="hint-fold-guide">{{hintFold.sbExpectRevNote ? t.hintFoldHide : t.hintFoldShow}}</text>
         <text class="hint-fold-arrow">{{hintFold.sbExpectRevNote ? '▾' : '▸'}}</text>
       </view>
-    <view class="hint-fold-body" wx:if="{{hintFold.sbExpectRevNote}}">{{t.expectRevNote}}</view>
+    <view class="hint-fold-body" wx:if="{{hintFold.sbExpectRevNote}}">{{mode === 'reverse' ? t.expectRevNoteRev : t.expectRevNote}}</view>
     </view>
   </view>
 

@@ -133,6 +133,7 @@ Page({
       expectRevLabel: M.expectRevLabel,
       expectRevPh: M.expectRevPh,
       expectRevTitle: M.expectRevTitle,
+      expectRevTitleRev: M.expectRevTitleRev,
       expectRevNote: M.expectRevNote,
       revGrossHint: M.revGrossHint,
       // 🔴 round276 · 一个数、两套话术：A「实际」（诊断，看收银后台）vs B「预计」（假设，估个量）。
@@ -239,6 +240,7 @@ Page({
       areaUnit: M.areaUnit,
       rentLabel: M.rentLabel,
       headcountLabel: M.headcountLabel,
+      headcountLabelRev: M.headcountLabelRev,
       headcountUnit: M.headcountUnit,
       l2Toggle: M.l2Toggle,
       l3Toggle: M.l3Toggle,

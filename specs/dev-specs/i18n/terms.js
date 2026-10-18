@@ -903,6 +903,9 @@ const TERMS = {
     // ⚠️ 只当灰字起点，**绝不自动填值** —— 用户不核对就得到一份"自证的合理"，反而误事。
     // ⚠️ 金额数值不在本文件（云端 indicatorRef.suggestAmounts 单源 → 经 amount_preview 下发）。
     expectRevTitle: '选填 · 本月实际营业额（算人效/坪效用，不参与保本）',
+    // 🔴 R320：Rev 版此前**定义了却没接线**（0 处引用）⇒ "想开的店"也显示"看收银后台取最近一月"，
+    //   而老板还没开店。本条与下面 Label/Note 的三个 Rev 键一起，必须由页面按 mode 分叉引用。
+    expectRevTitleRev: '选填 · 预计月营业额（算坪效/人效用，不参与保本）',
     expectRevLabel: '实际月营业额（看收银 / 外卖后台，取最近一月）',
     expectRevPh: '选填，如 150000',
     expectRevNote: '已有铺面填真实流水：用来算坪效 / 人效，对照保本线',
@@ -1069,7 +1072,10 @@ const TERMS = {
     areaLabel: '铺子多少平方',
     areaUnit: '㎡',
     rentLabel: '每月房租多少钱',
-    headcountLabel: '打算请几个人',
+    // 🔴 R320：这两个场景问的不是一件事 —— 已有铺面问「现在几个人」，想开的店才问「打算请几个人」。
+    //   原来共用一句「打算请几个人」⇒ 老板看着自己的店被问"打算"，语义错位。
+    headcountLabel: '现在几个人',
+    headcountLabelRev: '打算请几个人',
     headcountUnit: '人',
     l2Toggle: '还有几个能改的（选填）',
     l3Toggle: '专业参数（老手才用）',

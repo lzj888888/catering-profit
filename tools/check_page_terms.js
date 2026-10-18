@@ -321,6 +321,30 @@
   check('P3-6 负样本「注释里的术语值」判绿（剥注释生效，避免守卫被自己的说明注释绊红）',
     sOk3.length === 0, JSON.stringify(sOk3));
 
+  // ================= R 组：分叉文案必须真接线（R320）=================
+  // 为什么守：`*Rev` 是「另一场景」的文案（已有铺面 vs 想开的店）。实测
+  //   expectRevLabelRev / expectRevNoteRev **定义了 0 处引用** ⇒ "想开的店"却显示
+  //   "看收银后台取最近一月"，老板还没开店。与 R124 同族：术语在、页面不读，**零报错**。
+  console.log('');
+  console.log('===== R 组 · 分叉文案（*Rev）必须真接线 =====');
+  const allPageSrc = jsFiles.concat(wxmlFiles).map((f) => fs.readFileSync(f, 'utf8')).join('\n');
+  const usedInPages = (k) => new RegExp('(?:t|M)\\.' + k + '\\b').test(allPageSrc);
+  const revKeys = [];
+  for (const g of Object.keys(terms)) {
+    const grp = terms[g];
+    if (!grp || typeof grp !== 'object') continue;
+    for (const k of Object.keys(grp)) if (/Rev$/.test(k)) revKeys.push(k);
+  }
+  const revDead = revKeys.filter((k) => !usedInPages(k));
+  check('R1 每个 *Rev 文案都真被页面引用（0 引用 = 死文案）', revDead.length === 0,
+    revDead.length ? '未接线：' + revDead.join(',') : revKeys.length + ' 个全部接线');
+  const sb = fs.readFileSync(path.join(ROOT, 'pages/sandbox/index.wxml'), 'utf8');
+  const sbKeys = ['headcountLabelRev', 'expectRevTitleRev', 'expectRevLabelRev', 'expectRevNoteRev'];
+  const sbMissing = sbKeys.filter((k) => sb.indexOf('t.' + k) < 0);
+  check('R2 sandbox 四处场景文案按 mode 分叉（少了就退回另一场景的措辞）', sbMissing.length === 0,
+    sbMissing.length ? '未分叉：' + sbMissing.join(',') : '4 处均分叉');
+  check('R3 自失效：造一个没人用的 *Rev 假键，必须被判红', !usedInPages('zzzFakeRevKey'));
+
   // ================= 自失效护栏（防扫描面被写窄 / 判据恒真）=================
   console.log('\n===== P0 · 自失效护栏（证明本守卫不是恒真）=====');
   check('S1 扫描面非空：页面/工具 .js ≥ 20 个', jsFiles.length >= 20, '实际 ' + jsFiles.length + ' 个');
