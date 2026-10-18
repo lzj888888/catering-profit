@@ -19,6 +19,11 @@
 8. **文案一律进 terms 双副本**（`miniprogram/i18n/terms.js` + `specs/dev-specs/i18n/terms.js`，改完 `diff -q` 必须 SAME）。
 9. **代码层级**：`cloudfunctions/calcSandbox/service.js`（引擎）**不动**；优先前端派生。必须动引擎时先写清影响面。
 10. **边界**：不碰 M1（pages/month）、M3（成本卡/菜品）、付费墙、`cloudfunctions/` 其他函数。只做 M2（pages/sandbox/* + utils/bizPreset.js + utils/promoImpact.js + terms）。
+11. 🔴 **门禁输出必须落盘留证**（R337b 补）：重定向到 `review/evidence/r337_auto/gate_<日期_时间>.txt` 并一起提交。
+    **不许只在回复里写「186/186」而不留日志** —— 第一轮（A1）就是这么干的，事后只能靠重跑守卫间接验证。
+    同样：真机码 PNG 也要落盘（`review/evidence/r337_auto/`），不要只复制到桌面。
+12. 🔴 **第零步先看有没有轮次被跳过**：`git log --format="%h %ad %s" --date=format:"%m-%d %H:%M" -5`。
+    若最新提交距现在 > 3 小时 ⇒ 说明机器休眠/客户端未运行时轮次被跳过。仍然只做一条，但要在回复里点明。
 
 ## 环境
 
