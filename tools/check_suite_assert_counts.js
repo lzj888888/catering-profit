@@ -235,6 +235,9 @@ const CASES = [
   { key: 'check_money_precision', rel: 'tools/check_money_precision.js' },  // 30 条
   // R298·B3 导出件可回读：真写→真读回 + 内容保真（详见 tools/check_export_roundtrip.js 头注）
   { key: 'check_export_roundtrip', rel: 'tools/check_export_roundtrip.js' },  // 46 条
+  // R324：开店资金测算（utils/openCash.js）—— 口径被李老师当场纠正过（预算不决定店面大小），
+  //   纠正过的口径最容易漂回原样，故把 27 条行为判据纳入受守面。
+  { key: 'selftest_opencash', rel: 'tools/selftest_opencash.js' },        // 27 条（A~G 七组 + 反恒真）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];
