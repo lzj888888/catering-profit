@@ -2165,6 +2165,16 @@ const TERMS = {
     cushionBreakEven: '保本线',
     // 🔴 R325：钱够不够开 · 能撑几个月（接 utils/openCash.js）
     //   定位：矩阵答「稳态能不能赚钱」，这块答「有没有命等到稳态」——两件事，不重复。
+    // 🔴 R331：矩阵页原先只有「人数」档位，工资永远按参数包估 ⇒ 老板以为在控成本，实际只控了人头。
+    //   补一个可选填的总额：填了就用，不填才估算（与 index 页同一套口径）。
+    laborTotalLabel2: '人工每月总额（选填）',
+    laborTotalNote2: '不填就按人数 × 行业平均工资估',
+    fixedBreakTitle: '固定费用怎么构成',
+    fixedBreakNote: '按上表第一档房租算；换档位时房租与水电气会跟着变',
+    fixedBreakRent: '房租',
+    fixedBreakLabor: '人工',
+    fixedBreakUtility: '水电气',
+    fixedBreakOther: '其他固定',
     cashTitle: '钱够不够开 · 能撑几个月',
     cashLead: '按这个铺子的租金和面积，签约到开业要拿出去多少现金',
     cashRentLabel: '看中的月租金',

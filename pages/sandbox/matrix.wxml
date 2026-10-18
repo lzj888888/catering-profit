@@ -36,6 +36,12 @@
       <text class="label">{{t.areaLabel}}</text>
       <input class="inp" type="digit" value="{{global.area}}" data-key="area" bindinput="onGlobalInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="㎡" />
     </view>
+    <!-- 🔴 R331：人工总额可选填 —— 填了就用，不填才按人数×行业均值估（原来只能估，老板改不了） -->
+    <view class="field">
+      <text class="label">{{t.laborTotalLabel2}}</text>
+      <input class="inp" type="digit" value="{{global.laborTotalYuan}}" data-key="laborTotalYuan" bindinput="onGlobalInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.cashYuanPh}}" />
+    </view>
+    <view class="hint">{{t.laborTotalNote2}}</view>
   </view>
 
   <!-- 维度编辑器 -->
@@ -104,6 +110,17 @@
         <view class="insight-rule">{{t.leverRule}}</view>
       </view>
       <view class="insight none" wx:elif="{{result.insight}}">{{t.insightNone}}</view>
+
+      <!-- 🔴 R331：固定费用构成 —— 让老板能核对「这个保本点是怎么来的」。
+           前端用同一个 assembleItems 重算，并与引擎对账；对不上就整块不显示（fail-closed）。
+           ⚠️ 只对应上表第一档房租（其余档位的房租/水电气会不同），文案已写明。 -->
+      <view class="fixed-break" wx:if="{{fixedBreak}}">
+        <view class="fb-title">{{t.fixedBreakTitle}}</view>
+        <view class="fb-row" wx:for="{{fixedBreak}}" wx:key="key">
+          <text class="fb-lb">{{item.name}}</text><text class="fb-val">{{item.text}}</text>
+        </view>
+        <view class="hint">{{t.fixedBreakNote}}</view>
+      </view>
 
       <!-- 🔴 R325：最后一道闸 —— 钱够不够开 / 能撑几个月。
            上面答「稳态能不能赚钱」，这里答「有没有命等到稳态」；两件事，不重复。 -->

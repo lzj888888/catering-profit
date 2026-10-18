@@ -103,6 +103,14 @@ Page({
       cashEquipLabel: M.cashEquipLabel,
       cashStockLabel: M.cashStockLabel,
       cashDepositNote: M.cashDepositNote,
+      laborTotalLabel2: M.laborTotalLabel2,
+      laborTotalNote2: M.laborTotalNote2,
+      fixedBreakTitle: M.fixedBreakTitle,
+      fixedBreakNote: M.fixedBreakNote,
+      fixedBreakRent: M.fixedBreakRent,
+      fixedBreakLabor: M.fixedBreakLabor,
+      fixedBreakUtility: M.fixedBreakUtility,
+      fixedBreakOther: M.fixedBreakOther,
       cashYuanPh: M.cashYuanPh,
       // 🔴 下面这些是 buildCash() 里直接读 T.xxx 的键 —— 少一个就是 undefined（文案变成空/报错，且不报任何错）
       cashNeedText: M.cashNeedText,
@@ -127,7 +135,9 @@ Page({
       margin: DEFAULT_DIMS.margin.slice(),
       target: DEFAULT_DIMS.target.slice(),
     },
-    global: { area: 60, buildTotalYuan: 0, buildYears: 3 },
+    global: { area: 60, buildTotalYuan: 0, buildYears: 3, laborTotalYuan: '' },
+    // 🔴 R331：老板手改过毛利率档位 ⇒ 切业态时不再覆盖（与 index 页 fieldTouched 同一判据）
+    fieldTouched: { margin: false },
     // 🔴 round273：多一个 `rent` —— A 场景透视主轴是毛利率 ⇒ 被固定住的是月租金（反之亦然）
     pivotFix: { margin: 55, labor: 2, rent: 5000 },
     // 🔴 round273 · 场景：'forward' 已有铺面（店已开，扫毛利率）/ 'reverse' 寻找铺面（扫租金档位）。
@@ -139,6 +149,8 @@ Page({
     // 🔴 R325：现金卡输入。租金默认跟透视表的固定租金走（老板已在页面上填过），只需再给一个「手上现金」
     cash: { rentYuan: 5000, budgetYuan: '', equipYuan: '', stockYuan: '' },
     cashRes: null,
+    // 🔴 R331：固定费用构成（对不上账就是 null，不显示）
+    fixedBreak: null,
     mode: 'reverse',
     pivotRowDim: 'rent',   // 透视表**行**维度：forward ⇒ margin，reverse ⇒ rent
     loading: false,
@@ -177,7 +189,19 @@ Page({
   },
 
   onPresetChange(e) {
-    this.setData({ presetIdx: Number(e.detail.value) }, () => this.syncBuildDefault());
+    const idx = Number(e.detail.value);
+    const p = BIZ_PRESETS[idx] ? findPreset(BIZ_PRESETS[idx].presetKey) : null;
+    const patch = { presetIdx: idx };
+    // 🔴 R331：矩阵页原先毛利率档位**硬编码 45% 起步、切业态不变**，而 index 页用的是业态预设值
+    //   （面馆 63% / 火锅 53% / 咖啡 67%）⇒ 同店两页保本点最多差 49%。
+    //   这里只改「第一档」（高级维度收起时就是它），且老板手改过就不动。
+    const g = p && p.params && p.params.grossMarginPct ? Number(p.params.grossMarginPct.v) : 0;
+    if (g > 0 && !this.data.fieldTouched.margin) {
+      const dims = this.data.dims;
+      dims.margin[0] = g;
+      patch.dims = dims;
+    }
+    this.setData(patch, () => this.syncBuildDefault());
   },
   onCityChange(e) {
     this.setData({ cityIdx: Number(e.detail.value) });
@@ -189,7 +213,9 @@ Page({
     const val = e.detail.value;
     const dims = this.data.dims;
     dims[dim][idx] = val;
-    this.setData({ dims });
+    // 🔴 R331：改了毛利率档位就标记为"手改过" ⇒ 之后切业态不再用预设值覆盖它
+    if (dim === 'margin') this.setData({ dims, 'fieldTouched.margin': true });
+    else this.setData({ dims });
   },
   addDim(e) {
     const dim = e.currentTarget.dataset.dim;
@@ -322,13 +348,69 @@ Page({
     });
   },
 
+  // 🔴 R331：固定费用构成 —— 让老板能核对「这个保本点是怎么来的」。
+  //   做法：用**同一个** assembleItems（前端同源）把固定项重算一遍；
+  //   🔴 与引擎返回的 fixed_ex_amort 对账，差 >1 元就整个不显示 —— 宁可不说，也不给一个对不上的拆项。
+  fixedBreakOf() {
+    const r = this.data.result;
+    if (!r || !r.rows || !r.rows.length) return null;
+    const row = r.rows[0];
+    if (!row || row.invalid || row.fixedExAmort == null) return null;
+
+    const preset = findPreset(BIZ_PRESETS[this.data.presetIdx].presetKey);
+    if (!preset) return null;
+    const tiers = ['tier1', 'tier23', 'county'];
+    const coef = CITY_COEF[tiers[this.data.cityIdx] || 'tier23'] || CITY_COEF.tier23;
+    const ltYuan = Number(this.data.global.laborTotalYuan);
+
+    const { fixedItems } = assembleItems(preset, {
+      area: Number(this.data.global.area) || 0,
+      headcount: row.labor,
+      rentYuan: row.rent,
+      laborTotalYuan: ltYuan > 0 ? ltYuan : undefined,
+      fixedYuan: { rent: row.rent },
+      buildItems: this.buildItems(),
+    }, coef);
+
+    let sumFen = 0;
+    const byKey = {};
+    for (let i = 0; i < fixedItems.length; i++) {
+      const f = Number(fixedItems[i].fen) || 0;
+      sumFen += f;
+      const k = fixedItems[i].key;
+      byKey[k] = (byKey[k] || 0) + f;
+    }
+
+    const engineYuan = Number(row.fixedExAmort);
+    // 对账：同源函数 + 同参数 ⇒ 必须相等；不等说明两侧参数包/入参已分叉 ⇒ fail-closed
+    if (!(engineYuan > 0) || Math.abs(sumFen / 100 - engineYuan) > 1) return null;
+
+    const T = this.data.t;
+    const money = (fen) => (Math.abs(fen) >= 1000000
+      ? (fen / 1000000).toFixed(1) + T.cashWan
+      : Math.round(fen / 100) + T.yuan);
+
+    const rows = [
+      { key: 'rent', name: T.fixedBreakRent, text: money(byKey.rent || 0) },
+      { key: 'labor', name: T.fixedBreakLabor, text: money(byKey.labor || 0) },
+      { key: 'utility', name: T.fixedBreakUtility, text: money(byKey.utility || 0) },
+    ];
+    const other = sumFen - (byKey.rent || 0) - (byKey.labor || 0) - (byKey.utility || 0);
+    if (other > 0) rows.push({ key: 'other', name: T.fixedBreakOther, text: money(other) });
+    return rows;
+  },
+
   // ===== 装配单行的 clean 参数（与单测口径一致，走 assembleItems 唯一入口）=====
   buildClean(preset, coef, rentYuan, laborN, marginPct, targetYuan, cityTier) {
     const buildItems = this.buildItems();
+    // 🔴 R331：老板填了人工总额就直传（assembleItems 的 labor_total 分支会用用户的，不乘人数）。
+    //   没填则 undefined ⇒ 回落「人数 × 参数包工资」，与改造前行为一致。
+    const ltYuan = Number(this.data.global.laborTotalYuan);
     const input = {
       area: Number(this.data.global.area) || 0,
       headcount: laborN,
       rentYuan,
+      laborTotalYuan: ltYuan > 0 ? ltYuan : undefined,
       fixedYuan: { rent: rentYuan },
       buildItems,
     };
@@ -433,6 +515,8 @@ Page({
       });
       // 🔴 R325：结果变了 ⇒ 反推的「每月固定支出」也变了，现金卡必须跟着重算（否则显示上一次的数）
       this.buildCash();
+      // 🔴 R331：固定费用构成（前端同源装配 + 与引擎对账）
+      this.setData({ fixedBreak: this.fixedBreakOf() });
       if (rejected.length) {
         wx.showToast({
           title: `有 ${rejected.length} 档算不出来：${rejected[0].msg}`,
@@ -453,7 +537,7 @@ Page({
         rent: meta.rent, labor: meta.labor, marginPct: meta.marginPct, targetYuan: meta.targetYuan,
         breakMonthly: null, breakDaily: null, targetMonthly: null, targetDaily: null,
         rentPct: null, leverYuan: null, cushionPct: null, payback: null,
-        red: false, invalid: true,
+        red: false, invalid: true, fixedExAmort: null,
       };
     }
     const rentFen = Math.round(Number((meta.rent * 100).toFixed(10)));   // R298-B2：原式**连取整都没有** ⇒ 分不是整数，违约铁律
@@ -466,6 +550,8 @@ Page({
     const breakDaily = res.break_even_daily_fen != null ? res.break_even_daily_fen / 100 : null;
     const targetMonthly = targetMonthlyFen != null ? targetMonthlyFen / 100 : null;
     const targetDaily = res.target_daily_fen != null ? res.target_daily_fen / 100 : null;
+    // 🔴 R331：引擎的「不含摊销固定费用」——用于和前端同源装配对账（对不上就不显示构成）
+    const fixedExAmort = res.fixed_ex_amort_fen != null ? api.fenToYuan(res.fixed_ex_amort_fen, 0) : null;
     // 🔴 round279 · #9 派生（纯展示，引擎零改）：
     //   ① 房租杠杆：房租每涨 ¥1000，需多做到手营收 = 1000 ÷ 毛利率（按本行毛利率计）
     const mRate = meta.marginPct > 0 ? meta.marginPct / 100 : 0;
@@ -490,6 +576,7 @@ Page({
       cushionPct,
       payback: res.payback_months != null ? res.payback_months : null,
       red: !!res.red_alert,
+      fixedExAmort,
     };
   },
 

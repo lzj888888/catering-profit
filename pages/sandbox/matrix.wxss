@@ -74,3 +74,10 @@
 .cash-verdict.ok { color: #1f7a4d; }
 .cash-verdict.warn { color: #b3491d; }
 .cash-note { font-size: 28rpx; color: #8a97a8; margin-top: 10rpx; line-height: 1.5; }
+
+/* 🔴 R331：固定费用构成 —— 字号 ≥28rpx（AD-G1），只靠字重/颜色分层 */
+.fixed-break { margin-top: 20rpx; padding: 24rpx; border-top: 1rpx solid #f0f0f0; }
+.fb-title { font-size: 32rpx; font-weight: 600; color: #1a1a1a; }
+.fb-row { display: flex; justify-content: space-between; align-items: center; margin-top: 14rpx; }
+.fb-lb { font-size: 28rpx; color: #333; }
+.fb-val { font-size: 30rpx; font-weight: 600; color: #1a1a1a; }

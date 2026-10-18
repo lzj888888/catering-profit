@@ -282,6 +282,26 @@ for (const rel of Object.keys(CJK_BASELINE)) {
     'index.js 未走 utils/promoImpact.js（R330：两套折扣公式必然漂移）');
 }
 
+// --- R331：矩阵页「人工总额 / 毛利率跟业态 / 固定费用构成」---
+//   三处都是「看起来对、数字错」的静默失效：
+//   ① 只传人数 ⇒ 工资永远是参数包估值，老板改不了（他以为在控成本）
+//   ② 毛利率档位写死 45% 且切业态不变 ⇒ 与 index 页同店差最多 49%
+//   ③ 构成拆项不与引擎对账 ⇒ 拆错也不报错
+{
+  chk(/laborTotalYuan:\s*ltYuan\s*>\s*0\s*\?\s*ltYuan/.test(mtxJs),
+    'matrix.js buildClean 未把人工总额传给装配（R331：老板填了也不生效，仍按人数×均值估）');
+  chk(/grossMarginPct[\s\S]{0,120}?dims\.margin\[0\]/.test(mtxJs),
+    'matrix.js 切业态时未用业态预设更新毛利率第一档（R331：与 index 页最多差 49%）');
+  chk(/!this\.data\.fieldTouched\.margin/.test(mtxJs),
+    'matrix.js 切业态时未保护老板手改过的毛利率（R331：会把手填值冲掉）');
+  chk(/dim === 'margin'[\s\S]{0,120}?fieldTouched\.margin': true/.test(mtxJs),
+    'matrix.js onDimInput 未标记手改毛利率（R331：上面那条保护等于永远成立）');
+  chk(/Math\.abs\(sumFen\s*\/\s*100\s*-\s*engineYuan\)\s*>\s*1/.test(mtxJs),
+    'matrix.js 固定费用构成未与引擎对账（R331：拆错了也照显示）');
+  chk(/fixed-break"[^>]*wx:if="\{\{fixedBreak\}\}"/.test(mtxWxml),
+    'matrix.wxml 固定费用构成没有 fail-closed 条件（R331：对不上账时会渲染空卡）');
+}
+
 if (problems.length) {
   console.log('❌ M2 矩阵/对比 + 页面完整性守卫失败 ' + problems.length + ' 处：');
   problems.forEach((m) => console.log('   ' + m));
