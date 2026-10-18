@@ -14,7 +14,7 @@
 //      ⇒ 一次「追加式插入」同时伤了两层：JS 语法（R122）+ WXML 结构（本条）。
 // 缺口在哪：95 个套件里**没有任何一条读 `.wxml`** —— R122 只覆盖 `.js`；真机页面无人编译。
 //
-// ============ 两条判据 ============
+// ============ 三条判据 ============
 // 【判据 A · 裸属性行】某非空行形如 `attr="…"`（属性名 = [A-Za-z_][\w:.-]*），
 //   而其**上一个非空行以 `>` 或 `/>` 结尾** ⇒ 标签已闭合，该属性行无处归属 ⇒ 判红。
 //   这是本次事故的**直接形态**，能在字面层面点名到行。
@@ -22,6 +22,13 @@
 //   `<name …>` 未自闭合入栈 / `<name …/>` 不入栈 / `</name>` 弹栈并比名；
 //   收尾栈非空 或 结束标签对不上 或 缺 `>` ⇒ 判红。
 //   —— 覆盖本类病灶的另一半（「标签压根没闭合」）。
+// 【判据 C · wx:else / wx:elif 相邻性】（R336 真机事故新增）
+//   WXML 规则：`wx:else` / `wx:elif` 必须**紧跟同级上一个带 `wx:if`/`wx:elif` 的元素**。
+//   中间插任何元素（哪怕一个 `<view class="hint">`）⇒ 编译直接失败：
+//       Bad attr `wx:else` with message: `wx:if not found, then something must be wrong`
+//   ⇒ **整个小程序打不开**（不是某一块渲染异常，是包编译不过）。
+//   R336 实测：全量门禁 186/186 全绿，但真机预览当场编译失败 —— 判据 A/B 都抓不到这种"结构合法但语义非法"。
+//   实现：对骨架化文本做单趟 tag 栈，每个栈帧记住"上一个元素是否带 if/elif"。
 //
 // ============ 骨架化（抹内容但**保行号**）============
 // 抹 `{{…}}`（跨行、非贪婪）与 `<!--…-->`，替换为**等长空格但保留 \n**：
@@ -96,8 +103,51 @@ const lineOf = (s, idx) => s.slice(0, idx).split('\n').length;
 
 const ATTR_RE = /^[A-Za-z_][\w:.\-]*\s*=\s*"/;
 
+// —— 判据 C：wx:else / wx:elif 的相邻性 ——
+//   VOID 名单：这些标签不产生"可被 else 跟随的容器"，直接不入栈。
+const VOID_TAGS = new Set(['input', 'image', 'icon', 'import', 'include', 'wxs',
+  'progress', 'slider', 'switch', 'textarea', 'canvas', 'video', 'audio']);
+function checkElseAdjacency(relName, sk) {
+  const out = [];
+  const re = /<(\/?)([a-zA-Z][\w-]*)((?:"[^"]*"|'[^']*'|[^>"'])*?)(\/?)>/g;
+  const stack = [{ tag: '#root', kids: [] }];
+  let m;
+  while ((m = re.exec(sk))) {
+    const closing = m[1] === '/';
+    const tag = m[2];
+    const attrs = m[3] || '';
+    const selfClose = m[4] === '/';
+    if (closing) {
+      for (let i = stack.length - 1; i > 0; i--) {
+        if (stack[i].tag === tag) { stack.length = i; break; }
+      }
+      continue;
+    }
+    const hasIf = /\bwx:if\s*=/.test(attrs);
+    const hasElif = /\bwx:elif\s*=/.test(attrs);
+    const hasElse = /\bwx:else\b/.test(attrs);
+    const parent = stack[stack.length - 1];
+    const prev = parent.kids[parent.kids.length - 1];
+    const prevOk = !!(prev && (prev.hasIf || prev.hasElif));
+    if ((hasElse || hasElif) && !prevOk) {
+      out.push({
+        rel: relName,
+        line: lineOf(sk, m.index),
+        msg: (hasElse ? 'wx:else' : 'wx:elif')
+          + (prev ? ' 前面的同级元素是 <' + prev.tag + '>，不带 wx:if/wx:elif'
+            : ' 没有同级前一个元素（wx:if 不在同级）')
+          + ' ⇒ 编译会报 wx:if not found',
+      });
+    }
+    parent.kids.push({ tag, hasIf, hasElif, hasElse });
+    if (!selfClose && !VOID_TAGS.has(tag)) stack.push({ tag, kids: [] });
+  }
+  return out;
+}
+
 const aHits = [];   // 判据 A
 const bErrs = [];   // 判据 B
+const cErrs = [];   // 判据 C
 const anchorSeen = new Set();
 let files = 0;
 
@@ -114,6 +164,7 @@ for (const r of list) {
   files++;
   const sk = skeleton(src);
   const skLines = sk.split('\n');
+  cErrs.push(...checkElseAdjacency(r, sk));
 
   // —— 判据 A：裸属性行 ——
   for (let i = 0; i < skLines.length; i++) {
@@ -182,7 +233,7 @@ if (missingAnchors.length) {
   guard.push(`未命中锚点文件 ${missingAnchors.length} 个：${missingAnchors.join('、')}—— 扫描面已失守，判红`);
 }
 
-const bad = aHits.length > 0 || bErrs.length > 0 || guard.length > 0;
+const bad = aHits.length > 0 || bErrs.length > 0 || cErrs.length > 0 || guard.length > 0;
 
 process.stdout.write(`\n[wxml-struct R123] 扫描 ${list.length} 个 .wxml`
   + `（判据 A 裸属性行 / 判据 B 标签配平；排除：${[...EXCLUDED_DIRS].join(' / ')}）\n`);
@@ -197,6 +248,9 @@ if (bad) {
   for (const e of bErrs) {
     process.stdout.write(`  ❌ ${e.rel}${e.line ? ':' + e.line : ''} ${e.msg}\n`);
   }
+  for (const e of cErrs) {
+    process.stdout.write(`  ❌ ${e.rel}:${e.line} ${e.msg}\n`);
+  }
 } else {
   process.stdout.write(`✅ ${files} 个 .wxml 结构完好`
     + `（裸属性行 0；锚点 ${anchorSeen.size}/${ANCHORS.length} 个、下界 ${MIN_FILES} 满足；R123）\n`);
@@ -204,9 +258,9 @@ if (bad) {
 
 // 🔒 R69 收尾行：`verify_all.js` 要求套件输出末尾 3 个非空行含「N 通过」，
 //   否则判「疑似提前退出」。本守卫两条判据（A/B）+ 一条护栏 ⇒ 通过数 = 2 或 0。
-const failCount = aHits.length + bErrs.length + guard.length;
+const failCount = aHits.length + bErrs.length + cErrs.length + guard.length;
 process.stdout.write(bad
-  ? `❌ WXML 结构守卫：0 通过 / ${failCount} 失败（裸属性行 ${aHits.length} / 标签问题 ${bErrs.length} / 护栏 ${guard.length}）\n`
-  : `✅ WXML 结构守卫：2 通过 / 0 失败\n`);
+  ? `❌ WXML 结构守卫：0 通过 / ${failCount} 失败（裸属性行 ${aHits.length} / 标签问题 ${bErrs.length} / if-else 相邻 ${cErrs.length} / 护栏 ${guard.length}）\n`
+  : `✅ WXML 结构守卫：3 通过 / 0 失败（R123 判据 A/B + R336 判据 C）\n`);
 
 process.exit(bad ? 1 : 0);

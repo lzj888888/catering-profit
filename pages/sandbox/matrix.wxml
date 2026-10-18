@@ -189,7 +189,8 @@
       </view>
 
       <!-- 明细表 -->
-      <scroll-view wx:if="{{result.view==='detail'}}" scroll-x="true" class="tbl-scroll">
+      <block wx:if="{{result.view==='detail'}}">
+      <scroll-view scroll-x="true" class="tbl-scroll">
         <view class="tbl">
           <view class="tr th">
             <text class="td">{{t.colRent}}</text><text class="td">{{t.colLabor}}</text><text class="td">{{t.colLaborFee}}</text><text class="td">{{t.colMargin}}</text>
@@ -220,6 +221,7 @@
       </scroll-view>
       <!-- 🔴 R336：两个保本并排，必须说清差别（不然老板以为哪个算错了） -->
       <view class="hint">{{t.beCashNote}}</view>
+      </block>
 
       <!-- 透视表 -->
       <block wx:else>
