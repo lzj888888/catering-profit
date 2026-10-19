@@ -737,6 +737,42 @@ chk(/if \(pool\.indexOf\(fixVal\) < 0\) fixVal = pool\[0\]/.test(mtxJs),
     '导出 body 缺「人工/月」或「现金保本/月」的取值（R349：表头有列、数据是空的）');
 }
 
+// --- R350：活动形态不止折扣（实收率入口）---
+//   满减 / 代金券 / 团购 / 第二份半价 全都能折成"每 100 元实收多少"，而每种都做选择器
+//   会让界面翻倍、老板还得学每种的参数。所以只留**一个**实收率入口。
+//   四个静默退化点：① 实收率不优先（填了没用）② 不限制范围（填 120 ⇒ 卡片直接消失）
+//   ③ 点折扣不清空实收率（两个来源打架，显示与高亮不一致）④ 页面没渲染
+{
+  const body = (idxJs.match(/promoDiscountOf\(\)\s*\{([\s\S]*?)\n  \},/) || [])[1] || '';
+  chk(/promoRealPct/.test(body) && /return\s+real\s*\/\s*100/.test(body),
+    'index.js 实收率没有优先于折扣档（R350：填了却没生效）');
+  chk(/real\s*<=\s*100/.test(body) && /real\s*>\s*0/.test(body),
+    'index.js 实收率未限制 1–100（R350：填 120 ⇒ d>1 ⇒ promoImpact 返回 badDiscount ⇒ 整张卡静默消失）');
+
+  const dBody = (idxJs.match(/onPromoD\(e\)\s*\{([\s\S]*?)\n  \},/) || [])[1] || '';
+  chk(/promoRealPct:\s*''/.test(dBody),
+    'index.js 点折扣档时未清空实收率（R350：两个来源打架，chip 高亮与实际算的数不一致）');
+
+  chk(/promoRealPct/.test(idxWxmlS) && /onPromoRealInput/.test(idxWxmlS),
+    'index.wxml 未渲染实收率输入（R350：只算了不给入口）');
+
+  // 行为腿：实收率 82 必须落在 8 折与 9 折之间（证明 d 真的被当成实收率用了）
+  let promo = null;
+  try { promo = require('../utils/promoImpact.js').promoImpact; } catch (e) { promo = null; }
+  if (promo) {
+    const mk = (d) => promo({ fixedYuan: 30000, marginPct: 55, discount: d, weightPct: 30 });
+    const g82 = mk(0.82), g80 = mk(0.8), g90 = mk(0.9);
+    chk(g82 && g82.ok && g82.gaPct > g80.gaPct && g82.gaPct < g90.gaPct,
+      'R350-⑤ 实收率 82 的毛利率未落在 8 折与 9 折之间（'
+      + (g80 && g80.gaPct) + '/' + (g82 && g82.gaPct) + '/' + (g90 && g90.gaPct) + '）');
+    const g120 = mk(1.2);
+    chk(g120 && g120.ok === false,
+      'R350-⑥ 实收率 >100 未被 promoImpact 拒绝（反恒真腿：说明范围校验不能省）');
+  } else {
+    chk(false, '无法加载 promoImpact（R350：行为腿跑不了，不能算通过）');
+  }
+}
+
 if (problems.length) {
   console.log('❌ M2 矩阵/对比 + 页面完整性守卫失败 ' + problems.length + ' 处：');
   problems.forEach((m) => console.log('   ' + m));

@@ -287,9 +287,17 @@
     <view class="promo-row">
       <text class="promo-lb">{{t.promoDiscountLabel}}</text>
       <view class="promo-chips">
-        <view class="chip {{promoDIdx === index ? 'on' : ''}}" wx:for="{{t.promoDiscountOpts}}" wx:key="index" data-idx="{{index}}" bindtap="onPromoD">{{item}}</view>
+        <view class="chip {{!promoRealPct && promoDIdx === index ? 'on' : ''}}" wx:for="{{t.promoDiscountOpts}}" wx:key="index" data-idx="{{index}}" bindtap="onPromoD">{{item}}</view>
       </view>
     </view>
+    <!-- 🔴 R350：活动形态不止打折。满减/代金券/团购/第二份半价 全都能折成"每 100 实收多少"，
+         填这里就优先于上面的折扣档；留空则按折扣档算。 -->
+    <view class="promo-row">
+      <text class="promo-lb">{{t.promoRealLabel}}</text>
+      <input class="promo-real-inp" type="digit" value="{{promoRealPct}}" bindinput="onPromoRealInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.promoRealPh}}" />
+      <text class="promo-real-unit">{{t.promoRealUnit}}</text>
+    </view>
+    <view class="hint">{{t.promoRealNote}}</view>
     <view class="promo-row">
       <text class="promo-lb">{{t.promoWeightLabel}}</text>
       <view class="promo-chips">

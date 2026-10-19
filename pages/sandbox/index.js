@@ -83,6 +83,10 @@ Page({
       profitYuan: M.profitYuan,
       promoTitle: M.promoTitle,
       promoSub: M.promoSub,
+      promoRealLabel: M.promoRealLabel,
+      promoRealPh: M.promoRealPh,
+      promoRealUnit: M.promoRealUnit,
+      promoRealNote: M.promoRealNote,
       promoDiscountLabel: M.promoDiscountLabel,
       promoWeightLabel: M.promoWeightLabel,
       promoGaLabel: M.promoGaLabel,
@@ -383,6 +387,8 @@ Page({
     profitLadder: null,
     // 🔴 R330：促销卡（默认 8 折 + 3 成客人会用；只改本地，不触发云端重算）
     promoDIdx: 2,
+    // 🔴 R350：实收率（每 100 元实收多少）。非空时**优先于折扣档**，与「人工总额覆盖人数×人均」同模式。
+    promoRealPct: '',
     promoWIdx: 1,
     promoRes: null,
     // 🔴 R342：固定费用构成（前端同源重算 + 与引擎对账，对不上就整块不显示）
@@ -1106,6 +1112,30 @@ Page({
   // 🔴 R330：做活动会怎样 —— 折扣 / 参与率 对毛利率与保本线的影响。
   //   公式见 utils/promoImpact.js（GA 有分母，豆包第一版漏了）。
   //   🔴 只算单价影响，不算活动带来的客流增长：算不了，编一个就是假精确。
+  // 🔴 R350：活动力度只有**一个**出口 —— 实收率优先，没填才用折扣档。
+  //   为什么不再问"你想做哪种活动"：满减/团购/代金券/第二份半价 全都能折成"每 100 元实收多少"，
+  //   而每种的额外参数（满多少减多少、券面额、平台抽点）让界面翻倍、老板还得学。
+  //   一个实收率入口覆盖所有可折算形态；赠品不在此列（它不产生营收，会破坏统一成本率前提）。
+  promoDiscountOf() {
+    const real = Number(this.data.promoRealPct);
+    if (real > 0 && real <= 100) return real / 100;
+    return PROMO_D[this.data.promoDIdx];
+  },
+
+  // 点折扣档 ⇒ 清空实收率（回到"按折扣"模式，否则两个来源打架）
+  onPromoD(e) {
+    this.setData({
+      promoDIdx: Number(e.currentTarget.dataset.idx),
+      promoRealPct: '',
+    }, () => this.setData({ promoRes: this.promoOf(this.data.result) }));
+  },
+
+  onPromoRealInput(e) {
+    this.setData({ promoRealPct: e.detail.value }, () => {
+      this.setData({ promoRes: this.promoOf(this.data.result) });
+    });
+  },
+
   promoOf(r) {
     if (!r || r.red_alert) return null;
     const T = this.data.t;
@@ -1116,7 +1146,7 @@ Page({
     const out = Promo.promoImpact({
       fixedYuan: fixed,
       marginPct,
-      discount: PROMO_D[this.data.promoDIdx],
+      discount: this.promoDiscountOf(),
       weightPct: PROMO_W[this.data.promoWIdx],
     });
     // 让价超过毛利率 ⇒ 没有保本点。这是确定结论，必须说出来（不是"算不出"）。
@@ -1153,9 +1183,7 @@ Page({
     };
   },
 
-  onPromoD(e) {
-    this.setData({ promoDIdx: Number(e.currentTarget.dataset.idx), promoRes: this.promoOf(this.data.result) });
-  },
+
 
   onPromoW(e) {
     this.setData({ promoWIdx: Number(e.currentTarget.dataset.idx), promoRes: this.promoOf(this.data.result) });

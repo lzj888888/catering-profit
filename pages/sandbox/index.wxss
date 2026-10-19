@@ -242,6 +242,9 @@
 
 /* 🔴 R330：促销卡（折扣 / 参与率）—— 复用 .chip，字号 ≥28rpx（AD-G1） */
 .promo-row { display: flex; align-items: flex-start; margin-top: 18rpx; flex-wrap: wrap; }
+.promo-real-inp { background: #f2f3f7; padding: 12rpx 18rpx; border-radius: 10rpx;
+  font-size: 28rpx; width: 180rpx; text-align: right; margin-left: 12rpx; }
+.promo-real-unit { font-size: 28rpx; color: #666; margin-left: 8rpx; }
 .promo-lb { flex: 0 0 190rpx; font-size: 28rpx; color: #333; line-height: 56rpx; }
 .promo-chips { flex: 1 1 0; display: flex; flex-wrap: wrap; min-width: 0; }
 .promo-chips .chip { margin-bottom: 10rpx; }
