@@ -140,6 +140,7 @@ Page({
       safeMargin: TERMS.card.beMargin,
       safeMarginDrop: TERMS.card.beMarginDrop,
       safeMarginEven: TERMS.matrix.cushionBreakEven,
+      targetEmptyHint: M.targetEmptyHint,
       resBreakMonthly: M.resBreakMonthly,
       resBreakDaily: M.resBreakDaily,
       resTargetMonthly: M.resTargetMonthly,
@@ -1491,7 +1492,14 @@ Page({
           ? TERMS.matrix.cushionBreakEven
           : String(TERMS.card.beMarginDrop || '').replace('{p}', String(_cushion)));
 
+      // 🔴 R340：目标利润没填 ⇒ 引擎让 target_monthly = break_even_monthly（同一个数）。
+      //   两行并排显示会让老板以为系统算错了（"我要的目标怎么等于保本"）。
+      //   ⚠️ 判据必须用**目标利润**（yuanToFen(targetYuan) > 0），不能用 target_monthly > 0 —
+      //     后者只要固定费用 > 0 就恒真，判了等于没判。
+      const _hasTarget = api.yuanToFen(this.data.targetYuan) > 0;
+
       const presetResultObj = !hasFixed ? null : {
+        has_target: _hasTarget,
         cushion_pct: _cushion,
         cushion_text: _cushionText,
         red_alert: !!d.red_alert,

@@ -954,6 +954,8 @@ const TERMS = {
     resBreakMonthly: '每月最少卖多少才不亏本',
     resBreakDaily: '每天最少卖多少才不亏本',
     resTargetMonthly: '想赚这么多，每月要卖多少',
+    // 🔴 R340：目标利润没填时，目标月营收 = 保本营收（同一个数），并排显示会让老板以为算错了。
+    targetEmptyHint: '想月赚多少？填一个数，这里算出要卖多少',
     resTargetDaily: '想赚这么多，每天要卖多少',
     resPayback: '开店投入抵完',
     targetRow: '每月想赚',

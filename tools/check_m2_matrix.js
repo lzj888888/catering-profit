@@ -450,6 +450,45 @@ chk(/if \(pool\.indexOf\(fixVal\) < 0\) fixVal = pool\[0\]/.test(mtxJs),
     'index.js 安全垫文案未复用 M1（R338：两模块各写一句话，改口径必漏一处）');
 }
 
+// --- R340：目标利润没填时，目标月营收 = 保本营收（两行同一个数）---
+//   老板看到「保本月营收 12.3 万 / 目标月营收 12.3 万」会以为系统算错了。
+//   四个静默退化点：① 判据用 target_monthly > 0（恒真，等于没判）② 只藏目标行却仍显示回本
+//   ③ 空态不给引导（老板不知道下一步）④ 编一个目标值（比显示同一个数更坏）
+{
+  // ① 判据字段必须是「目标利润」，不能是「目标月营收」——后者只要固定费用 > 0 就恒真
+  const mHas = idxJs.match(/const _hasTarget\s*=\s*([^;]+);/);
+  chk(mHas && /targetYuan/.test(mHas[1]) && !/target_monthly/.test(mHas[1]),
+    'index.js has_target 判据用错字段（R340：必须看目标利润 targetYuan，不能看 target_monthly —— 后者恒真）');
+
+  // ② 目标两行必须在 has_target 分支内（只藏一行会让老板以为另一半是真实数）
+  const iIf = idxWxmlS.indexOf('wx:if="{{result.has_target}}"');
+  const iTgt = idxWxmlS.indexOf('resTargetMonthly');
+  const iPay = idxWxmlS.indexOf('resPayback');
+  chk(iIf >= 0 && iTgt > iIf && iPay > iIf,
+    'index.wxml 目标月营收/回本没有一起放进 has_target 分支（R340：只藏一行反而更迷惑）');
+
+  // ③ 空态必须有引导句（不许什么都不显示，也不许编一个目标值）
+  chk(/targetEmptyHint/.test(idxWxmlS),
+    'index.wxml 目标未填时没有引导句（R340：老板不知道"填个目标就能看到要卖多少"）');
+
+  // ④ 行为腿：证明「目标为空 ⇒ 两数相等」客观存在，不是假想问题
+  let engine = null;
+  try { engine = require('../cloudfunctions/calcSandbox/service.js').calcSandbox; } catch (e) { engine = null; }
+  if (engine) {
+    const base = {
+      cityTier: 'tier23', bizType: 'fastfood',
+      fixedItems: [{ key: 'rent', fen: 500000 }, { key: 'labor', fen: 900000 }],
+      varItems: [], grossMarginPct: 55, expectedRevenueFen: 0, buildItems: [],
+    };
+    const noTarget = engine(Object.assign({}, base, { targetProfitFen: 0 }));
+    const hasTarget = engine(Object.assign({}, base, { targetProfitFen: 2000000 }));
+    chk(noTarget.target_monthly_fen === noTarget.break_even_monthly_fen,
+      'R340-④ 目标为 0 时目标月营收 ≠ 保本营收（引擎口径变了？本判据的前提失效，需重看）');
+    chk(hasTarget.target_monthly_fen > hasTarget.break_even_monthly_fen,
+      'R340-⑤ 填了目标利润后目标月营收未高于保本（反恒真腿：说明 ④ 不是恒真）');
+  }
+}
+
 if (problems.length) {
   console.log('❌ M2 矩阵/对比 + 页面完整性守卫失败 ' + problems.length + ' 处：');
   problems.forEach((m) => console.log('   ' + m));
