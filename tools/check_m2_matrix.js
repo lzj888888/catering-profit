@@ -660,6 +660,41 @@ chk(/if \(pool\.indexOf\(fixVal\) < 0\) fixVal = pool\[0\]/.test(mtxJs),
   const dimBody = (mtxJs.match(/onDimInput\(e\)\s*\{([\s\S]*?)\n  \},/) || [])[1] || '';
   chk(/fieldTouched\.rent/.test(dimBody),
     'matrix.js onDimInput 未标记 fieldTouched.rent（R345：没有标记 ⇒ 上面的保护是空修复）');
+  // --- R351：fieldTouched「读标记必须有对应写标记」 ---
+  //   失效形态（保护恒为真）：`onPresetChange` 里写 `!this.data.fieldTouched.unit` 做保护，
+  //   但**全文件从未把它置 true** ⇒ 条件永远是 false 的取反 ⇒ 老板手填人均 7000，
+  //   一切业态就被预设（5000/5500）静默换掉，页面不提示任何变化。
+  //   这类"空修复"只守「有没有保护语句」是查不出来的，必须比对读集与写集。
+  const stripC = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const touchReads = (src) => {
+    const set = new Set();
+    for (const m of stripC(src).matchAll(/fieldTouched\.([A-Za-z_][\w]*)/g)) set.add(m[1]);
+    return set;
+  };
+  const touchWrites = (src) => {
+    const set = new Set();
+    for (const m of stripC(src).matchAll(/'fieldTouched\.([A-Za-z_][\w]*)'\s*:\s*true/g)) set.add(m[1]);
+    // 三种写法都算（R299 教训：只认一种写法 ⇒ 漏抓生产者，判据假绿）：
+    //   ① setData 的 'fieldTouched.x': true
+    //   ② patch['fieldTouched.x'] = true
+    //   ③ fieldTouched.x = true
+    for (const m of stripC(src).matchAll(/\[\s*['"]fieldTouched\.([A-Za-z_][\w]*)['"]\s*\]\s*=\s*true/g)) set.add(m[1]);
+    for (const m of stripC(src).matchAll(/fieldTouched\.([A-Za-z_][\w]*)\s*=\s*true/g)) set.add(m[1]);
+    return set;
+  };
+  // 白名单必须写清理由：该字段**没有 UI 入口**，读它做保护无害（值只来自预设）。
+  // index.js 的 labor：laborUnitYuan 自 R296 起降级为内部兜底、无输入框。
+  const NO_UI_FLAGS = { 'index.js': ['labor'], 'matrix.js': [] };
+  for (const pair of [['index.js', idxJs], ['matrix.js', mtxJs]]) {
+    const name = pair[0];
+    const reads = touchReads(pair[1]);
+    const writes = touchWrites(pair[1]);
+    const allow = NO_UI_FLAGS[name] || [];
+    const missing = [];
+    reads.forEach((k) => { if (!writes.has(k) && allow.indexOf(k) < 0) missing.push(k); });
+    chk(missing.length === 0,
+      name + ' 的 fieldTouched 读标记找不到对应写标记（R351：保护恒为真 = 空修复）：' + missing.join(','));
+  }
 }
 
 // --- R346：矩阵面积随业态（原来固定 60㎡）---
@@ -745,6 +780,12 @@ chk(/if \(pool\.indexOf\(fixVal\) < 0\) fixVal = pool\[0\]/.test(mtxJs),
   // 新列的数据也必须真的送出去（表头加了、body 没加 = 整列空值）
   chk(/r\.beCashMonthly/.test(mtxJs) && /r\.laborYuan/.test(mtxJs),
     '导出 body 缺「人工/月」或「现金保本/月」的取值（R349：表头有列、数据是空的）');
+  // 🔴 R352：页面给「算不出来的档位」标了 ⚠，导出必须同样标。
+  //   不标的话，Excel 里那行是「5000 | — | — …」，老板读成"这档不划算"，
+  //   实际是"这档没算出来" —— 同一份数据两个含义，属于静默误导。
+  chk(/item\.invalid\s*\?\s*'\s*⚠'/.test(mtxWxml)
+    && /const body = rows\.map\(\(r\) => \[\s*markInvalid\(r\)/.test(mtxJs),
+    '导出的失败行没有 ⚠ 标记（R352：页面有、Excel 没有 ⇒ 老板会把"没算出来"读成"不划算"）');
 }
 
 // --- R350：活动形态不止折扣（实收率入口）---

@@ -347,6 +347,11 @@ Page({
     const patch = { global };
     // 🔴 R346：老板手改面积 ⇒ 之后切业态不再用建议值覆盖
     if (key === 'area') patch['fieldTouched.area'] = true;
+    // 🔴 R351：人均工资同病 —— `onPresetChange` 里读了 `fieldTouched.unit`，
+    //   但**全文件从来没有把它置 true** ⇒ 保护条件恒为真 ⇒ 老板手填 7000，
+    //   一切业态就被预设值（5000/5500）**静默换掉**，页面上不会提示任何变化。
+    //   ⇒ 读标记的地方，必须同时有写标记的地方（这条已入判据）。
+    if (key === 'laborUnitYuan') patch['fieldTouched.unit'] = true;
     // 🔴 R333：填了人工总额之后，"人数是否影响人工"的结论会变，提示要跟着变
     if (key === 'laborTotalYuan') patch.laborHint = this.laborHintOf();
     this.setData(patch, () => {
@@ -954,8 +959,12 @@ Page({
       t.colTargetMonthly, t.colTargetDaily,
       t.rentPct, t.payback, t.colLeverExport, t.colCushionExport,
     ];
+    // 🔴 R352：页面对算不出来的档位会在租金后标 `⚠`（见 matrix.wxml 的 item.invalid），
+    //   导出**必须同样标** —— 否则 Excel 里那行是"5000 | — | — | …"，
+    //   老板会读成"这一档不划算"，实际是"这一档没算出来"。同一份数据，两个含义。
+    const markInvalid = (r) => (r.invalid ? String(r.rent) + ' ⚠' : r.rent);
     const body = rows.map((r) => [
-      r.rent, r.labor,
+      markInvalid(r), r.labor,
       r.laborYuan != null ? r.laborYuan : '—',
       r.marginPct, r.targetYuan,
       r.breakMonthly != null ? r.breakMonthly : '—',
