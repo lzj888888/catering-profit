@@ -364,6 +364,8 @@ Page({
       verdictCompare: M.verdictCompare,
       // ── R234/J4 行内长提示折叠（M2 选址页 8 处 ≥18 字的提示）──
       // 🔴 三处登记的第二处：漏映射 ⇒ 页面渲染成**空白**且零报错（R124 同族）
+      stickProfitLbl: M.stickProfitLbl,
+      stickBeLbl: M.stickBeLbl,
       hintFoldShow: TERMS.ledger.hintFoldShow,
       hintFoldHide: TERMS.ledger.hintFoldHide,
     },
@@ -473,6 +475,9 @@ Page({
     feeRows: [],             // 当前预设 revenue_rate 项 [{key,label,pct}]
     showL2: false,
     showL3: false,
+    // 🔴 R364：试验台（做活动）默认收起 —— 它问的是"如果"，不是老板要填的事实；
+    //   收起时只显示一句结论（打几折要多卖多少），点开才露出参数。
+    showPromo: false,
     showAssumptions: false,
     // R234/J4：行内长提示折叠（与月录入页同一套 `hintFold` map 模式，默认全收起）。
     //   ⚠️ 与上面三个区段级折叠（showL2/showL3/showAssumptions，走 .fold-toggle）**语义不同**：
@@ -690,10 +695,29 @@ Page({
     const t = this.data.t || {};
     const cur = (t.cur) || '¥';
     let kpi = false, lbl = '', val = '';
+    let profitText = '', lvlText = '';
     // 🔴 R323：首页恒为「已有铺面」⇒ 吸底条只可能有正向 KPI（反推 KPI 在矩阵页）。
     const r = this.data.result;
-    if (r && !r.red_alert) { kpi = true; lbl = t.stickFwdLbl || '保本营业额'; val = cur + (r.break_even_monthly != null ? r.break_even_monthly : ''); }
-    this.setData({ stickKpi: kpi, stickLbl: lbl, stickVal: val });
+    if (r && !r.red_alert) {
+      kpi = true;
+      lbl = t.stickBeLbl || t.stickFwdLbl || '保本';
+      val = cur + (r.break_even_monthly != null ? r.break_even_monthly : '');
+      // 🔴 R364（李老师「整个版面一坨，不知道在表达什么」）：
+      //   吸底条原来只给一个「保本营业额」⇒ 老板滚到哪都只知道"要卖多少"，不知道"能赚多少"。
+      //   补两个数：按**实际月营业额**（他填的那个数）算的月利润 + 主结论评级。
+      //   ⚠️ 只有填了实际营业额才给利润 —— 没填就没有可信锚点，宁可空着也不拿目标利润冒充。
+      const expYuan = Number(String(this.data.expectYuan == null ? '' : this.data.expectYuan).replace(/[^\d.]/g, ''));
+      const k = Number(r.margin_rate) / 100;
+      const fixed = Number(r.fixed_total);
+      if (expYuan > 0 && isFinite(k) && k > 0 && isFinite(fixed)) {
+        const pYuan = Math.round(expYuan * k - fixed);
+        const money = (n) => String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        profitText = (pYuan >= 0 ? '+' : '−') + cur + money(pYuan);
+      }
+      const v = this.data.verdict;
+      if (v && v.level && v.level !== 'na' && v.levelName) lvlText = v.levelName;
+    }
+    this.setData({ stickKpi: kpi, stickLbl: lbl, stickVal: val, stickProfit: profitText, stickLvl: lvlText });
   },
   // 🔴 R234：删掉 `onRevRentRate` / `onRevPixelEff` 两个 handler ——
   //    对应输入框已从 wxml 移除（R223 §3.2 明令「L1/L2 严禁以坪效/目标租金率作输入」）。
@@ -1351,6 +1375,7 @@ Page({
   },
   onToggleL2() { this.setData({ showL2: !this.data.showL2 }); },
   onToggleL3() { this.setData({ showL3: !this.data.showL3 }); },
+  onTogglePromo() { this.setData({ showPromo: !this.data.showPromo }); },
   onToggleAssumptions() { this.setData({ showAssumptions: !this.data.showAssumptions }); },
 
   // R234/J4：**通用「行内提示折叠」开关**（与月录入页 `pages/month/input.js` 同一实现，

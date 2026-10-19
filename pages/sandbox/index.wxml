@@ -276,48 +276,6 @@
   <!-- 🔴 R330：做活动会怎样 —— 打折对毛利率与保本线的影响。
        🔴 只算单价影响，不算活动带来的新客：客流增量算不了，编一个就是假精确。
        两个选择器都是纯本地重算，不请求云端。 -->
-  <view class="card2" wx:if="{{mode === 'forward'}}">
-    <view class="sec">{{t.promoTitle}}</view>
-    <view class="hint">{{t.promoSub}}</view>
-    <view class="promo-row">
-      <text class="promo-lb">{{t.promoDiscountLabel}}</text>
-      <view class="promo-chips">
-        <view class="chip {{!promoRealPct && promoDIdx === index ? 'on' : ''}}" wx:for="{{t.promoDiscountOpts}}" wx:key="index" data-idx="{{index}}" bindtap="onPromoD">{{item}}</view>
-      </view>
-    </view>
-    <!-- 🔴 R350：活动形态不止打折。满减/代金券/团购/第二份半价 全都能折成"每 100 实收多少"，
-         填这里就优先于上面的折扣档；留空则按折扣档算。 -->
-    <view class="promo-row">
-      <text class="promo-lb">{{t.promoRealLabel}}</text>
-      <input class="promo-real-inp" type="digit" value="{{promoRealPct}}" bindinput="onPromoRealInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.promoRealPh}}" />
-      <text class="promo-real-unit">{{t.promoRealUnit}}</text>
-    </view>
-    <view class="hint">{{t.promoRealNote}}</view>
-    <view class="promo-row">
-      <text class="promo-lb">{{t.promoWeightLabel}}</text>
-      <view class="promo-chips">
-        <view class="chip {{promoWIdx === index ? 'on' : ''}}" wx:for="{{t.promoWeightOpts}}" wx:key="index" data-idx="{{index}}" bindtap="onPromoW">{{item}}</view>
-      </view>
-    </view>
-    <block wx:if="{{promoRes}}">
-      <view class="cell" wx:if="{{!promoRes.bad}}"><text class="lbl">{{t.promoGaLabel}}</text><text class="val">{{promoRes.gaText}} · {{promoRes.dropText}}</text></view>
-      <view class="cell" wx:if="{{!promoRes.bad}}"><text class="lbl">{{t.promoBeLabel}}</text><text class="val">{{promoRes.beText}}</text></view>
-      <view class="cell big" wx:if="{{!promoRes.bad}}"><text class="lbl">{{t.promoTrafficLabel}}</text><text class="val keynum">{{promoRes.trafficText}}</text></view>
-      <!-- 🔴 R344：与正推表同基准（日常保本 ×1.2），让老板看到"同样卖这么多，做活动少赚多少"。
-           这是**代价**；能不能靠多来的客人补回，看上一条"打平要多来 X%"。 -->
-      <view class="cell" wx:if="{{!promoRes.bad && promoRes.sameRevText}}">
-        <text class="lbl">{{promoRes.sameRevText}}</text>
-      </view>
-      <view class="hint" wx:if="{{!promoRes.bad && promoRes.sameRevText}}">{{t.promoSameRevNote}}</view>
-      <view class="warn" wx:if="{{promoRes.bad}}">{{promoRes.text}}</view>
-    </block>
-    <view class="hint" wx:if="{{!promoRes}}">{{t.promoNeedCalc}}</view>
-    <!-- 🔴 R337（M2-A1）：口径声明必须留在结果区 ——
-         页面问的是「几成订单用券」（单数口径），公式算的是营业额占比；
-         只有客单价接近时两者才相等，不说这句就是静默近似。 -->
-    <view class="hint">{{t.promoApproxNote}}</view>
-  </view>
-
   <!-- 🔴 R296b 「渠道佣金」（原 #12 多渠道毛利率**改造** · 豆包评审定案）：
        老板只填「各渠道占比 + 抽点」（他知道的数），系统自动算**加权挂钩费率**进计算公式。
        🔴 **绝不揉进毛利率** —— 老板认知里毛利率是"菜赚不赚钱"，偷偷扣平台佣金会被当成软件算错。
@@ -391,27 +349,6 @@
        而本页 `data.mode` **恒为 'forward'**（点反推 Tab 直接跳矩阵页）⇒ 整块**永远不渲染**。
        找店的口径与档位在 `pages/sandbox/matrix` 里（那里有独立的 mode，且 R322 已做小白降维）。 -->
 
-  <!-- 🔴 选填·本月实际营业额：人效/坪效与指标对比的唯一输入；明确不参与保本计算（保本只看房租/人工/毛利率/目标利润） -->
-  <view class="card2">
-    <view class="sec">{{mode === 'reverse' ? t.expectRevTitleRev : t.expectRevTitle}}</view>
-    <view class="row">
-      <text class="row-name">{{mode === 'reverse' ? t.expectRevLabelRev : t.expectRevLabel}}</text>
-      <view class="row-in-wrap">
-        <input class="row-in" type="digit" placeholder="{{t.expectRevPh}}" value="{{expectYuan}}" bindinput="onExpect" adjust-position="{{true}}" cursor-spacing="20" />
-        <text class="row-unit">元</text>
-      </view>
-    </view>
-    <!-- 🔴 R296b：口径提示（豆包）—— 老板普遍把"平台打款净额"当收入；此处明确填**总流水**、佣金系统自动扣 -->
-    <view class="hint">{{t.revGrossHint}}</view>
-    <view class="hint-fold">
-      <view class="hint-fold-head" data-key="sbExpectRevNote" bindtap="onToggleHintFold">
-        <text class="hint-fold-guide">{{hintFold.sbExpectRevNote ? t.hintFoldHide : t.hintFoldShow}}</text>
-        <text class="hint-fold-arrow">{{hintFold.sbExpectRevNote ? '▾' : '▸'}}</text>
-      </view>
-    <view class="hint-fold-body" wx:if="{{hintFold.sbExpectRevNote}}">{{mode === 'reverse' ? t.expectRevNoteRev : t.expectRevNote}}</view>
-    </view>
-  </view>
-
   <view class="err-hint" wx:if="{{calcError}}">{{calcError}}</view>
   <!-- 🔴 R297 第四轮（审计 B11）：原 `bindtap="onCalc"` 会把**事件对象**当 isFirst 传进去（恒真）
        ⇒ 每次点按钮整页 loading 重绘、滚动位置丢失。改走 `onCalcBtn`（显式传 false）。 -->
@@ -419,12 +356,6 @@
 
   <!-- M2v1.2：保存沙盘（底部主按钮） -->
   <button class="btn ghost save-sandbox-btn" bindtap="onOpenSave">{{t.savePlanBtn}}</button>
-
-  <!-- M2 G1/G2（2026-10-11 改造）：场景矩阵生成器 / 多方案对比 入口 -->
-  <view class="entry-row">
-    <button class="btn ghost entry-btn" bindtap="goMatrix">{{t.matrixEntry}}</button>
-    <button class="btn ghost entry-btn" bindtap="goCompare">{{t.compareEntry}}</button>
-  </view>
 
   <!-- 🔴 R297 第四轮（审计 B12）：结果区**唯一锚点**。原先把 `id="m2result"` 挂在两张结果卡上
        （反推卡 + 主结论卡），而主结论卡带 `verdict.level !== 'na'` 条件 ⇒ 无判定时锚点整块不存在，
@@ -647,6 +578,27 @@
     </view>
   </view>
 
+  <!-- 🔴 选填·本月实际营业额：人效/坪效与指标对比的唯一输入；明确不参与保本计算（保本只看房租/人工/毛利率/目标利润） -->
+  <view class="card2">
+    <view class="sec">{{mode === 'reverse' ? t.expectRevTitleRev : t.expectRevTitle}}</view>
+    <view class="row">
+      <text class="row-name">{{mode === 'reverse' ? t.expectRevLabelRev : t.expectRevLabel}}</text>
+      <view class="row-in-wrap">
+        <input class="row-in" type="digit" placeholder="{{t.expectRevPh}}" value="{{expectYuan}}" bindinput="onExpect" adjust-position="{{true}}" cursor-spacing="20" />
+        <text class="row-unit">元</text>
+      </view>
+    </view>
+    <!-- 🔴 R296b：口径提示（豆包）—— 老板普遍把"平台打款净额"当收入；此处明确填**总流水**、佣金系统自动扣 -->
+    <view class="hint">{{t.revGrossHint}}</view>
+    <view class="hint-fold">
+      <view class="hint-fold-head" data-key="sbExpectRevNote" bindtap="onToggleHintFold">
+        <text class="hint-fold-guide">{{hintFold.sbExpectRevNote ? t.hintFoldHide : t.hintFoldShow}}</text>
+        <text class="hint-fold-arrow">{{hintFold.sbExpectRevNote ? '▾' : '▸'}}</text>
+      </view>
+    <view class="hint-fold-body" wx:if="{{hintFold.sbExpectRevNote}}">{{mode === 'reverse' ? t.expectRevNoteRev : t.expectRevNote}}</view>
+    </view>
+  </view>
+
   <!-- 餐饮指标对照 -->
   <view class="card2" wx:if="{{indicators.length}}">
     <view class="sec">{{t.secIndicators}}</view>
@@ -666,6 +618,65 @@
       <text class="ind-c3">{{item.band}}</text>
       <text class="ind-c4 lv-{{item.level}}">{{item.levelName}}</text>
     </view>
+  </view>
+
+  <!-- 🔴 R364（李老师「整个版面一坨」）：试验台 —— 做活动默认**收起**。
+       它问的是"如果"，不是老板要填的事实；收起时只给一句结论（打几折要多卖多少），
+       位置也从"第 6 个参数"移到结果之后 ⇒ 独立成台，但仍吃同一份基准数据。 -->
+  <view class="card2 trial-card" wx:if="{{mode === 'forward'}}">
+    <view class="fold-toggle" bindtap="onTogglePromo">{{t.promoTitle}}{{showPromo ? ' ▾' : ' ▸'}}</view>
+    <view class="hint" wx:if="{{!showPromo}}">
+      <block wx:if="{{promoRes && !promoRes.bad}}">{{promoRes.gaText}} · {{promoRes.dropText}}</block>
+      <block wx:elif="{{promoRes && promoRes.bad}}">{{promoRes.text}}</block>
+      <block wx:else>{{t.promoNeedCalc}}</block>
+    </view>
+    <block wx:if="{{showPromo}}">
+
+    <view class="hint">{{t.promoSub}}</view>
+    <view class="promo-row">
+      <text class="promo-lb">{{t.promoDiscountLabel}}</text>
+      <view class="promo-chips">
+        <view class="chip {{!promoRealPct && promoDIdx === index ? 'on' : ''}}" wx:for="{{t.promoDiscountOpts}}" wx:key="index" data-idx="{{index}}" bindtap="onPromoD">{{item}}</view>
+      </view>
+    </view>
+    <!-- 🔴 R350：活动形态不止打折。满减/代金券/团购/第二份半价 全都能折成"每 100 实收多少"，
+         填这里就优先于上面的折扣档；留空则按折扣档算。 -->
+    <view class="promo-row">
+      <text class="promo-lb">{{t.promoRealLabel}}</text>
+      <input class="promo-real-inp" type="digit" value="{{promoRealPct}}" bindinput="onPromoRealInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.promoRealPh}}" />
+      <text class="promo-real-unit">{{t.promoRealUnit}}</text>
+    </view>
+    <view class="hint">{{t.promoRealNote}}</view>
+    <view class="promo-row">
+      <text class="promo-lb">{{t.promoWeightLabel}}</text>
+      <view class="promo-chips">
+        <view class="chip {{promoWIdx === index ? 'on' : ''}}" wx:for="{{t.promoWeightOpts}}" wx:key="index" data-idx="{{index}}" bindtap="onPromoW">{{item}}</view>
+      </view>
+    </view>
+    <block wx:if="{{promoRes}}">
+      <view class="cell" wx:if="{{!promoRes.bad}}"><text class="lbl">{{t.promoGaLabel}}</text><text class="val">{{promoRes.gaText}} · {{promoRes.dropText}}</text></view>
+      <view class="cell" wx:if="{{!promoRes.bad}}"><text class="lbl">{{t.promoBeLabel}}</text><text class="val">{{promoRes.beText}}</text></view>
+      <view class="cell big" wx:if="{{!promoRes.bad}}"><text class="lbl">{{t.promoTrafficLabel}}</text><text class="val keynum">{{promoRes.trafficText}}</text></view>
+      <!-- 🔴 R344：与正推表同基准（日常保本 ×1.2），让老板看到"同样卖这么多，做活动少赚多少"。
+           这是**代价**；能不能靠多来的客人补回，看上一条"打平要多来 X%"。 -->
+      <view class="cell" wx:if="{{!promoRes.bad && promoRes.sameRevText}}">
+        <text class="lbl">{{promoRes.sameRevText}}</text>
+      </view>
+      <view class="hint" wx:if="{{!promoRes.bad && promoRes.sameRevText}}">{{t.promoSameRevNote}}</view>
+      <view class="warn" wx:if="{{promoRes.bad}}">{{promoRes.text}}</view>
+    </block>
+    <view class="hint" wx:if="{{!promoRes}}">{{t.promoNeedCalc}}</view>
+    <!-- 🔴 R337（M2-A1）：口径声明必须留在结果区 ——
+         页面问的是「几成订单用券」（单数口径），公式算的是营业额占比；
+         只有客单价接近时两者才相等，不说这句就是静默近似。 -->
+    <view class="hint">{{t.promoApproxNote}}</view>
+    </block>
+  </view>
+
+  <!-- M2 G1/G2（2026-10-11 改造）：场景矩阵生成器 / 多方案对比 入口 -->
+  <view class="entry-row">
+    <button class="btn ghost entry-btn" bindtap="goMatrix">{{t.matrixEntry}}</button>
+    <button class="btn ghost entry-btn" bindtap="goCompare">{{t.compareEntry}}</button>
   </view>
 
   <view class="muted empty-tip" wx:if="{{!result}}">{{t.noCalc}}</view>
@@ -692,9 +703,17 @@
     </view>
   </view>
   <!-- P0#5：结果吸底条（测算出数后常驻屏幕底部，老板滚长表单也一直看得见核心数；点开看完整测算） -->
+  <!-- 🔴 R364：结论条 = 保本 + 月赚（按实际营业额）+ 评级。原来只给「保本」一个数，
+       老板滚到哪都知道"要卖多少"，却不知道"能赚多少"。 -->
   <view class="stick-bar" wx:if="{{stickKpi}}" bindtap="onStickTap">
-    <view class="stick-l"><text class="stick-lbl">{{stickLbl}}</text><text class="stick-val">{{stickVal}}</text></view>
-    <text class="stick-go">{{t.stickTap}}</text>
+    <view class="stick-row">
+      <view class="stick-l"><text class="stick-lbl">{{stickBeLbl}}</text><text class="stick-val">{{stickVal}}</text></view>
+      <view class="stick-m" wx:if="{{stickProfit}}"><text class="stick-lbl">{{t.stickProfitLbl}}</text><text class="stick-val2">{{stickProfit}}</text></view>
+    </view>
+    <view class="stick-row2">
+      <text class="stick-lv" wx:if="{{stickLvl}}">{{stickLvl}}</text>
+      <text class="stick-go">{{t.stickTap}}</text>
+    </view>
   </view>
 </view>
 <view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

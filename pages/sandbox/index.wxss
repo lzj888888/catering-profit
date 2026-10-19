@@ -218,10 +218,18 @@
   display: flex; align-items: center; justify-content: space-between;
   padding: 18rpx 24rpx calc(env(safe-area-inset-bottom) + 18rpx);
   background: #1e3a5f; box-shadow: 0 -4rpx 16rpx rgba(30, 58, 95, 0.18); }
+.stick-row { display: flex; align-items: baseline; justify-content: space-between; }
+.stick-row2 { display: flex; align-items: center; justify-content: space-between; margin-top: 6rpx; }
 .stick-l { display: flex; align-items: baseline; min-width: 0; }
-.stick-lbl { font-size: 28rpx; color: #cfe0f2; margin-right: 14rpx; flex: 0 0 auto; }
-.stick-val { font-size: 36rpx; font-weight: 700; color: #fff; }
-.stick-go { font-size: 28rpx; color: #9ec3e8; flex: 0 0 auto; margin-left: 12rpx; }
+/* 🔴 R364 + G1：标签 28rpx 是无障碍底线（selftest_ad_gates 禁 <28），
+   原来想用 22/24rpx 塞下三段，改成**两行**：第一行两个数、第二行评级 + 入口。 */
+.stick-lbl { font-size: 28rpx; color: #cfe0f2; margin-right: 8rpx; flex: 0 0 auto; }
+.stick-val { font-size: 34rpx; font-weight: 700; color: #fff; }
+.stick-m { display: flex; align-items: baseline; min-width: 0; flex: 0 0 auto; }
+.stick-val2 { font-size: 34rpx; font-weight: 700; color: #fff; }
+.stick-lv { font-size: 28rpx; color: #1e3a5f; background: #cfe0f2; border-radius: 999rpx;
+  padding: 2rpx 14rpx; flex: 0 0 auto; }
+.stick-go { font-size: 28rpx; color: #9ec3e8; flex: 0 0 auto; }
 
 /* ===== 🔴 round279c · #10 敏感度：毛利率 ±5% 看保本额变化 =====
    ⚠️ 字号 ≥28rpx 是硬红线（AD G1）；用颜色区上下、不压字号。 */
@@ -265,3 +273,8 @@
 /* 两个入口按钮原本会各自占满一行（.btn 是 display:flex 且无宽度限制） */
 .entry-row { display: flex; gap: 16rpx; }
 .entry-btn { flex: 1 1 0; min-width: 0; margin-top: 24rpx; }
+
+/* 🔴 R364：试验台卡片 —— 与"事实表单"视觉分离（虚线边 + 浅底），但**不引入新品牌色**，
+   只用仓内已有色（页面底 #f6f7fb / 边框 #dfe5ec / 品牌墨蓝 #1e3a5f）。 */
+.trial-card { background: #fbfcfe; border: 1rpx dashed #dfe5ec; }
+.trial-card .fold-toggle { margin-top: 0; }

@@ -1081,6 +1081,8 @@ const TERMS = {
     stickFwdLbl: '保本营业额',
     stickRevLbl: '房租最多能扛',
     stickTap: '点开看完整测算 ›',
+    stickProfitLbl: '月赚',
+    stickBeLbl: '保本',
     // ===== M2v1.2（多方案存储 · 第二期）：保存沙盘 / 我的方案入口 =====
     savePlanEntry: '我的方案 ›',
     savePlanBtn: '保存沙盘',
