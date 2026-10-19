@@ -369,8 +369,11 @@ chk(/if \(pool\.indexOf\(fixVal\) < 0\) fixVal = pool\[0\]/.test(mtxJs),
     'matrix.js 转让费「不摊」未走 years:0（R336：buildYearsOf 会兜底成 3 年，勾选框等于没做）');
 
   // ③ 现金保本必须由「不含摊销 / 含摊销」比例派生（不能自己编一个固定折扣率）
-  chk(/beCashMonthly\s*=\s*Math\.round\(breakMonthly\s*\*\s*Number\(res\.fixed_ex_amort_fen\)\s*\/\s*Number\(res\.fixed_total_fen\)\)/.test(mtxJs),
-    'matrix.js 现金保本未按「固定不含摊 ÷ 固定含摊」比例派生（R336：自己编系数会与引擎两口径对不上）');
+  // 🔴 R343 改判据语义：不再钉算式字面量，改为「必须调唯一函数 cashBreakeven」——
+  //   因为 index 页也要算同一个数，两边各写一套算式必然漂移（漂移的表现是两个页面给出两个保本数）。
+  chk(/cashBreakeven\(\s*breakMonthly\s*,\s*res\.fixed_ex_amort_fen\s*,\s*res\.fixed_total_fen\s*\)/.test(mtxJs)
+    && !/Math\.round\(\s*breakMonthly\s*\*/.test(mtxJs),
+    'matrix.js 现金保本未走 utils/bizPreset.js::cashBreakeven（R343：两页各写一套算式必然漂移）');
 
   // ④ 页面必须真渲染这一列（算了不显示 = 没做）
   chk(/item\.beCashMonthly/.test(mtxWxml) && /colBreakCash/.test(mtxWxml),
@@ -531,6 +534,33 @@ chk(/if \(pool\.indexOf\(fixVal\) < 0\) fixVal = pool\[0\]/.test(mtxJs),
       + '）⇒ 拆项会永远不显示，需重看口径');
   } else {
     chk(false, '无法加载 bizPreset/calcSandbox（R342：对账行为腿跑不了，不能算通过）');
+  }
+}
+
+// --- R343：双保本在两个页面必须同源（矩阵 + 已有店铺）---
+//   这是本仓反复踩的同族病：同一个数在两处各算一遍 ⇒ 漂移 ⇒ 老板看到两个保本点。
+//   判据只认「两边都调 cashBreakeven」，不认各自算式长什么样。
+{
+  chk(/cashBreakeven\(/.test(idxJs) && /cashBreakeven\(/.test(mtxJs),
+    'index.js / matrix.js 没有同时调用 cashBreakeven（R343：双保本必须两页同源）');
+
+  chk(!/Math\.round\(\s*[A-Za-z_.]*break[A-Za-z_]*\s*\*\s*[A-Za-z_.]*fixed_ex_amort/.test(idxJs),
+    'index.js 自己又写了一套现金保本算式（R343：必须调 cashBreakeven，不许另起一套）');
+
+  chk(/beCashLabel2/.test(idxWxmlS) && /result\.break_even_cash/.test(idxWxmlS),
+    'index.wxml 未渲染现金保本（R343：算了不显示等于没做）');
+
+  // 行为腿：无摊销时必须返回 null（两个数相同，显示两行会让老板以为哪里不一样）
+  let bp = null;
+  try { bp = require('../utils/bizPreset.js'); } catch (e) { bp = null; }
+  if (bp && typeof bp.cashBreakeven === 'function') {
+    chk(bp.cashBreakeven(40000, 1400000, 1400000) === null,
+      'cashBreakeven 在「无摊销」时未返回 null（R343：两口径相同就不该显示两行）');
+    chk(bp.cashBreakeven(42343, 1400000, 2088900) === 28379,
+      'cashBreakeven 数额不对（42343 × 140/208.89 应为 28370，实测 '
+      + bp.cashBreakeven(42343, 1400000, 2088900) + '）');
+  } else {
+    chk(false, '无法加载 cashBreakeven（R343：行为腿跑不了，不能算通过）');
   }
 }
 

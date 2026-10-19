@@ -10,8 +10,7 @@ const { TERMS } = require('../../miniprogram/i18n/terms.js');
 const {
   BIZ_PRESETS, CITY_COEF, assembleItems, resolveBuild, findPreset, bizKeyOfPreset,
   // R297：全局开店投入的年限兜底（与云端 indicatorRef 同口径，不再硬写 1）
-  BUILD_DEFAULT_YEARS, buildYearsOf,
-} = require('../../utils/bizPreset.js');
+  BUILD_DEFAULT_YEARS, buildYearsOf, cashBreakeven } = require('../../utils/bizPreset.js');
 const { deliver } = require('../../utils/exportFile.js');
 // 🔴 R325：开店现金需求（装修/押金/预付/设备/货款）+ 周转金能撑几个月
 const OpenCash = require('../../utils/openCash.js');
@@ -754,10 +753,9 @@ Page({
     //   账面 = (固定含摊) ÷ rate；现金 = (固定不含摊) ÷ rate
     //   ⇒ 现金 = 账面 × 不含摊销 / 含摊销（同一个 rate 约掉）
     //   引擎三个数都返回了（fixed_total_fen / fixed_ex_amort_fen / break_even_monthly_fen）。
-    let beCashMonthly = null;
-    if (breakMonthly != null && Number(res.fixed_total_fen) > 0 && res.fixed_ex_amort_fen != null) {
-      beCashMonthly = Math.round(breakMonthly * Number(res.fixed_ex_amort_fen) / Number(res.fixed_total_fen));
-    }
+    // 🔴 R343：改调 utils/bizPreset.js::cashBreakeven —— 与 index 页共用**同一个函数**。
+    //   原先这里自己写了一份算式，index 页再写一份就是两套口径 ⇒ 必然漂移。
+    const beCashMonthly = cashBreakeven(breakMonthly, res.fixed_ex_amort_fen, res.fixed_total_fen);
     const breakDaily = res.break_even_daily_fen != null ? res.break_even_daily_fen / 100 : null;
     const targetMonthly = targetMonthlyFen != null ? targetMonthlyFen / 100 : null;
     const targetDaily = res.target_daily_fen != null ? res.target_daily_fen / 100 : null;

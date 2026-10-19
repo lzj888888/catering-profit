@@ -21,7 +21,7 @@ const { BIZ_PRESETS, CITY_COEF, assembleItems, resolveBuild, paybackCash, findPr
   //   套旧的 table/seat 通用档会把常态判成「这数偏高」，属吓跑老板的误导提示。
   bizKeyOfPreset, seatsPerTableOf, turnModeOf, turnLevelOf, turnLevelOfBiz,
   // R297：年限不再各写各的（初始行 / 新增行 / 提交 / 回存草稿 四处同走这一份）
-  BUILD_DEFAULT_YEARS, buildYearsOf } = require('../../utils/bizPreset.js');
+  BUILD_DEFAULT_YEARS, buildYearsOf, cashBreakeven } = require('../../utils/bizPreset.js');
 
 // 🔴 R330：做活动会怎样（纯假设推演，不依赖账本/成本卡）
 const Promo = require('../../utils/promoImpact.js');
@@ -141,6 +141,8 @@ Page({
       safeMarginDrop: TERMS.card.beMarginDrop,
       safeMarginEven: TERMS.matrix.cushionBreakEven,
       targetEmptyHint: M.targetEmptyHint,
+      beCashLabel2: M.beCashLabel2,
+      beCashNote2: M.beCashNote2,
       fixedBreakTitle2: M.fixedBreakTitle2,
       fixedBreakNote2: M.fixedBreakNote2,
       resBreakMonthly: M.resBreakMonthly,
@@ -1544,8 +1546,14 @@ Page({
       //     后者只要固定费用 > 0 就恒真，判了等于没判。
       const _hasTarget = api.yuanToFen(this.data.targetYuan) > 0;
 
+      // 🔴 R343：现金保本（不含摊销）—— 调 utils/bizPreset.js::cashBreakeven，
+      //   与矩阵页**同一个函数**。无摊销时它返回 null，页面只显示一行（两个数相同没意义）。
+      const _beCash = cashBreakeven(
+        Number(d.break_even_monthly_fen) / 100, d.fixed_ex_amort_fen, d.fixed_total_fen);
+
       const presetResultObj = !hasFixed ? null : {
         has_target: _hasTarget,
+        break_even_cash: _beCash == null ? null : String(_beCash),
         cushion_pct: _cushion,
         cushion_text: _cushionText,
         red_alert: !!d.red_alert,

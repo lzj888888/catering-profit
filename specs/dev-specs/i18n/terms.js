@@ -959,6 +959,9 @@ const TERMS = {
     // 🔴 R342：固定费用构成（index 页）—— 与矩阵页的 fixedBreakTitle 分开：
     //   矩阵那版写的是"按上表第一档房租算"，在 index 页（只有一组输入）不成立。
     fixedBreakTitle2: '固定费用怎么构成',
+    // 🔴 R343：双保本（与矩阵页共用 utils/bizPreset.js::cashBreakeven，不各写一套）
+    beCashLabel2: '现金保本（不含摊销）',
+    beCashNote2: '不算装修设备折旧',
     fixedBreakNote2: '加起来等于上面的固定费用合计',
     resTargetDaily: '想赚这么多，每天要卖多少',
     resPayback: '开店投入抵完',

@@ -513,6 +513,14 @@
     <view class="card2">
       <view class="cell big"><text class="lbl">{{t.resBreakMonthly}}</text><text class="val keynum">{{t.cur}}{{result.break_even_monthly}}</text></view>
       <view class="cell"><text class="lbl">{{t.resBreakDaily}}</text><text class="val">{{t.cur}}{{result.break_even_daily}}</text></view>
+      <!-- 🔴 R343：现金保本 —— 与账面保本并排，让老板看到"不算折旧，房租工资付得起要卖多少"。
+           无摊销时 js 返回 null，这里自动不渲染（两个数相同没意义）。 -->
+      <view class="cell" wx:if="{{result.break_even_cash}}">
+        <text class="lbl">{{t.beCashLabel2}}</text><text class="val">{{t.cur}}{{result.break_even_cash}}</text>
+      </view>
+      <view class="cell" wx:if="{{result.break_even_cash}}">
+        <text class="lbl">{{t.beCashNote2}}</text>
+      </view>
       <!-- 🔴 R340：目标利润没填时，目标月营收 == 保本营收（引擎口径），两行并排会让老板以为算错了。
            所以整组只在「填了目标」时出现；没填时给一句引导，不编一个目标值。 -->
       <block wx:if="{{result.has_target}}">

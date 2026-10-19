@@ -545,6 +545,27 @@ function paybackCash(buildTotalFen, targetProfitFen, buildAmortMonthlyFen) {
   return round1(months);
 }
 
+/**
+ * 🔴 现金保本（不含摊销）—— 本仓**唯一**允许的第二个展示派生（同 paybackCash 的定位）。
+ *   为什么需要它：装修/设备是**已经花掉的钱**，摊销不是本月现金流出。
+ *   账面保本回答"这店长期值不值"，现金保本回答"这个月房租工资付得起吗"。
+ *
+ *   算式（纯比例，不需要知道边际贡献率）：
+ *     账面 = (固定含摊) ÷ rate；现金 = (固定不含摊) ÷ rate
+ *     ⇒ 现金 = 账面 × 不含摊 ÷ 含摊
+ *   ⚠️ 两个页面（矩阵 / 已有店铺）**必须都调这一个函数** —— 各写一套必然漂移，
+ *      而漂移的表现是两个页面给出两个保本数，老板只会觉得软件不准。
+ * @returns {number|null} 元（整数）；参数不成立时 null（**不编造**）
+ */
+function cashBreakeven(breakMonthlyYuan, fixedExAmortFen, fixedTotalFen) {
+  const be = Number(breakMonthlyYuan);
+  const ex = Number(fixedExAmortFen);
+  const total = Number(fixedTotalFen);
+  // `ex >= total` ⇒ 没有摊销，两个口径是同一个数 ⇒ 返回 null（页面只显示一行）
+  if (!(be > 0) || !(ex > 0) || !(total > 0) || ex >= total) return null;
+  return Math.round(be * ex / total);
+}
+
 // 按 presetKey 取预设（页面用）
 function findPreset(key) {
   const raw = BIZ_PRESETS.filter((p) => p.presetKey === key)[0] || null;
@@ -564,7 +585,7 @@ function findPreset(key) {
 
 module.exports = {
   BIZ_PRESETS, CITY_COEF, FORMS,
-  assembleItems, resolveBuild, paybackCash, findPreset, round1,
+  assembleItems, resolveBuild, paybackCash, cashBreakeven, findPreset, round1,
   // R297：建店投入摊销年限默认值（与云端 indicatorRef 同口径）+ 年限归一入口
   BUILD_DEFAULT_YEARS, buildYearsOf,
   // R234：业态预设平铺（预设 → 4 大类反查）
