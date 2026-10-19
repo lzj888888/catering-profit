@@ -715,6 +715,28 @@ chk(/if \(pool\.indexOf\(fixVal\) < 0\) fixVal = pool\[0\]/.test(mtxJs),
     'matrix.wxml 还引用着 laborFixedHint（R347）');
 }
 
+// --- R349：导出列必须与页面表头逐列对齐 ---
+//   踩到的真漏洞：页面 14 列，导出只有 12 列 —— 少了「人工/月」(R332) 和「现金保本/月」(R336)。
+//   老板在页面看到两列，导出 Excel 却没有，且**不报任何错**。
+//   这类漏洞每加一列就会复发一次，所以钉「列数相等」而不是钉某两列的名字。
+{
+  const thBody = (mtxWxml.match(/<view class="tr th">([\s\S]*?)<\/view>/) || [])[1] || '';
+  const pageCols = (thBody.match(/t\.\w+/g) || []).length;
+
+  const hm = mtxJs.match(/const header = \[([\s\S]*?)\];/);
+  const expCols = hm ? hm[1].split(',').map((x) => x.trim()).filter(Boolean).length : 0;
+
+  chk(pageCols > 0 && expCols > 0,
+    'matrix 表头/导出表头解析失败（R349：判据前提不成立，需重看解析锚点）');
+  chk(expCols === pageCols,
+    '导出列数 ' + expCols + ' ≠ 页面列数 ' + pageCols
+    + '（R349：页面加了列但导出没跟 ⇒ 导出件比老板看到的少信息，且不报错）');
+
+  // 新列的数据也必须真的送出去（表头加了、body 没加 = 整列空值）
+  chk(/r\.beCashMonthly/.test(mtxJs) && /r\.laborYuan/.test(mtxJs),
+    '导出 body 缺「人工/月」或「现金保本/月」的取值（R349：表头有列、数据是空的）');
+}
+
 if (problems.length) {
   console.log('❌ M2 矩阵/对比 + 页面完整性守卫失败 ' + problems.length + ' 处：');
   problems.forEach((m) => console.log('   ' + m));

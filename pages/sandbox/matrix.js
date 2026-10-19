@@ -945,14 +945,21 @@ Page({
     const rows = this.data.result && this.data.result.rows;
     if (!rows || !rows.length || this.data.exporting) return;
     const t = this.data.t;
+    // 🔴 R349 修漏洞：页面 14 列、导出只有 12 列 —— 少了「人工/月」(R332) 和「现金保本/月」(R336)。
+    //   老板在页面看到两列，导出 Excel 却没有 ⇒ 导出件比他看到的少信息，且**不报错**。
+    //   顺序与 matrix.wxml 表头逐列一致，改一处必须改另一处（列数由守卫钉住）。
     const header = [
-      t.dimRent, t.dimLabor, t.dimMargin, t.dimTarget,
-      t.colBreakMonthly, t.colBreakDaily, t.colTargetMonthly, t.colTargetDaily,
+      t.dimRent, t.dimLabor, t.colLaborFee, t.dimMargin, t.dimTarget,
+      t.colBreakMonthly, t.colBreakCash, t.colBreakDaily,
+      t.colTargetMonthly, t.colTargetDaily,
       t.rentPct, t.payback, t.colLeverExport, t.colCushionExport,
     ];
     const body = rows.map((r) => [
-      r.rent, r.labor, r.marginPct, r.targetYuan,
+      r.rent, r.labor,
+      r.laborYuan != null ? r.laborYuan : '—',
+      r.marginPct, r.targetYuan,
       r.breakMonthly != null ? r.breakMonthly : '—',
+      r.beCashMonthly != null ? r.beCashMonthly : '—',
       r.breakDaily != null ? r.breakDaily : '—',
       r.targetMonthly != null ? r.targetMonthly : '—',
       r.targetDaily != null ? r.targetDaily : '—',
