@@ -945,6 +945,36 @@ chk(/if \(pool\.indexOf\(fixVal\) < 0\) fixVal = pool\[0\]/.test(mtxJs),
     'B15 index.js 失败分支没有重算吸底条（refreshStick）：result 清空了、底部还挂着上一次的保本数');
 }
 
+// --- B16（R362）：矩阵页不得再用与 app.wxss 同名的「布局承载类」 ---
+//   失效形态（复发两次）：页面 wxss 里写 `.field/.label/.inp`，而 app.wxss 同名类给的是
+//   另一套语义 —— 尤其 `app.wxss:33 .field input { min-width: 320rpx }` 会**压过页面的 width**
+//   ⇒ 一行两个输入框各 185px、把 label 挤成 28px 宽 ⇒ 中文一字一行（李老师报的「竖排」）。
+//   R296c 用 `.mcard` 修过 `.card` 那处，但没顺手扫同名族 ⇒ 这次一起钉住。
+{
+  const BUSY = ['card', 'field', 'label', 'inp'];
+  // ⚠️ 必须扫**矩阵页**的 wxml（mtxWxml），不是首页 —— 首版误用 idxWxmlS ⇒ 判据恒绿（假通过）。
+  const mtxWxmlS = stripSrc(mtxWxml, '.wxml');
+  const toks = [];
+  const re = /class="([^"]*)"/g;
+  let m;
+  while ((m = re.exec(mtxWxmlS)) !== null) {
+    m[1].split(/\s+/).forEach((t) => { if (t) toks.push(t); });
+  }
+  // ⚠️ 矩阵页**自己的**唯一类名（mcard/mfield/mlabel/minp）不算冲突；
+  //    `bd-inp/yr-inp/dim-inp/cash-inp` 是既有唯一名，也不在 BUSY 里。
+  const clash = BUSY.filter((c) => toks.indexOf(c) >= 0);
+  chk(clash.length === 0,
+    'B16 matrix.wxml 仍在用与 app.wxss 同名的布局类：' + clash.join('、')
+    + '（R362：同名会让全局 min-width/padding 压过本页宽度，把中文挤成竖排）');
+
+  // 页面 wxss 侧同样不许再定义这四个选择器（防止"wxml 改了、样式还留着"）
+  const mtxWxssS = stripSrc(mtxWxss, '.wxss');
+  const badSel = mtxWxssS.split('\n')
+    .filter((ln) => /^\s*\.(card|field|label|inp)\s*[,{]/.test(ln));
+  chk(badSel.length === 0,
+    'B16 matrix.wxss 仍定义了全局同名选择器：' + (badSel[0] || '').trim());
+}
+
 if (problems.length) {
   console.log('❌ M2 矩阵/对比 + 页面完整性守卫失败 ' + problems.length + ' 处：');
   problems.forEach((m) => console.log('   ' + m));
@@ -953,5 +983,6 @@ if (problems.length) {
 }
 console.log('✅ M2 矩阵/对比改造守卫通过（matrix action 批量复用引擎 + m2_matrix 免费导出豁免 + 术语双副本一致）');
 console.log('✅ M2 页面完整性守卫通过（B1 画布预热 / B2 反推口径 / B3 valid_days 同源 / B4 术语单源 / B5 wx:key /'
-  + ' B7 invalid 可见 / B10 手填不覆盖 / B11 按钮不重绘 / B12 锚点唯一 / B15 失败清旧表 / B9+B14 硬编码中文 ' + cjkTotal + ' 处 ≤ 基线）');
+  + ' B7 invalid 可见 / B10 手填不覆盖 / B11 按钮不重绘 / B12 锚点唯一 / B15 失败清旧表 / B16 类名不撞全局 /'
+  + ' B9+B14 硬编码中文 ' + cjkTotal + ' 处 ≤ 基线）');
 console.log('M2 矩阵/对比 + 页面完整性守卫结果：' + pass + ' 通过 / 0 失败');

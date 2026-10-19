@@ -10,10 +10,19 @@
    ⇒ 改用**唯一类名 `.mcard`**（配 matrix.wxml 同步改），彻底断开与全局 `.card` 的耦合。 */
 .mcard { width: auto; margin: 0 0 20rpx 0; background: #fff; border-radius: 16rpx; padding: 24rpx; box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04); }
 .card-title { font-size: 28rpx; font-weight: 600; color: #333; margin-bottom: 16rpx; }
-.field { display: flex; align-items: center; justify-content: space-between; padding: 12rpx 0; }
-.label { font-size: 28rpx; color: #444; }
+/* 🔴🔴 R362（2026-10-19 李老师反馈「开店要投多少下面 装修/门头/软装/设备… 文字挤着向下排列」）
+   —— R296c 只解决了 `.card` 那处类名冲突，**`.field/.label/.inp` 三个仍与全局同名**，所以竖排没断根：
+     · `app.wxss:33` `.field input { min-width: 320rpx; padding: 14rpx 18rpx }`
+       ⇒ **min-width 压过本页的 `width`**，`.inp`(240rpx) 与 `.yr-inp`(80rpx) 双双被抬到 **185px**（模拟器实测）
+       ⇒ 一行两个输入框 370px > 行宽 342px ⇒ label 被挤成 **28px 宽 / 100~120px 高**（实测）= 一字一行。
+     · `app.wxss:51` 的 `.inp` 还是**另一种东西**（卡片容器：padding 24rpx / min-height 88rpx / margin-bottom 16rpx）
+       ⇒ 顺带把本页输入框撑高。
+   ⇒ 与 R296c 同一手法：本页改用专属类名 `.mfield / .mlabel / .minp`，与全局彻底断开。
+   ⚠️ 本页以后新增类名，先 grep `app.wxss` 有没有同名。 */
+.mfield { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 12rpx 0; }
+.mlabel { flex: 0 0 auto; white-space: nowrap; margin-right: 12rpx; font-size: 28rpx; color: #444; }
 .picker { background: #f2f3f7; padding: 14rpx 24rpx; border-radius: 10rpx; font-size: 28rpx; color: #222; min-width: 200rpx; text-align: center; }
-.inp { background: #f2f3f7; padding: 14rpx 20rpx; border-radius: 10rpx; font-size: 28rpx; width: 240rpx; text-align: right; }
+.minp { background: #f2f3f7; padding: 14rpx 20rpx; border-radius: 10rpx; font-size: 28rpx; width: 240rpx; text-align: right; box-sizing: border-box; }
 .dim-block { border-top: 1rpx solid #eee; padding-top: 16rpx; margin-top: 8rpx; }
 .dim-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12rpx; }
 .dim-head text { font-size: 28rpx; font-weight: 600; color: #333; }

@@ -7,14 +7,14 @@
 
   <!-- 业态 + 城市 -->
   <view class="mcard">
-    <view class="field">
-      <text class="label">{{t.presetLabel}}</text>
+    <view class="mfield">
+      <text class="mlabel">{{t.presetLabel}}</text>
       <picker mode="selector" range="{{presets}}" range-key="name" value="{{presetIdx}}" bindchange="onPresetChange">
         <view class="picker">{{presets[presetIdx].name}}</view>
       </picker>
     </view>
-    <view class="field">
-      <text class="label">{{t.cityLabel}}</text>
+    <view class="mfield">
+      <text class="mlabel">{{t.cityLabel}}</text>
       <picker mode="selector" range="{{t.cityTiers}}" range-key="name" value="{{cityIdx}}" bindchange="onCityChange">
         <view class="picker">{{t.cityTiers[cityIdx].name}}</view>
       </picker>
@@ -26,32 +26,32 @@
     <view class="card-title">{{t.buildLabel}}</view>
     <!-- 🔴 R336：拆 4 项、各自年限。原来「一个总额 + 一个年限」把 5 年摊的设备压成 3 年
          ⇒ 月摊销虚高 11~20% ⇒ 保本线连锁虚高；老板也看不出这笔钱花在哪。 -->
-    <view class="field">
-      <text class="label">{{t.buildDecorLabel}}</text>
-      <input class="inp bd-inp" type="digit" value="{{global.buildDecorYuan}}" data-key="buildDecorYuan" bindinput="onGlobalInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.yuan}}" />
-      <input class="inp yr-inp" type="digit" value="{{global.buildDecorYears}}" data-key="buildDecorYears" bindinput="onGlobalInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.buildYearPh}}" />
+    <view class="mfield">
+      <text class="mlabel">{{t.buildDecorLabel}}</text>
+      <input class="minp bd-inp" type="digit" value="{{global.buildDecorYuan}}" data-key="buildDecorYuan" bindinput="onGlobalInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.yuan}}" />
+      <input class="minp yr-inp" type="digit" value="{{global.buildDecorYears}}" data-key="buildDecorYears" bindinput="onGlobalInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.buildYearPh}}" />
       <text class="yr-lb">{{t.buildYearsUnit}}</text>
     </view>
-    <view class="field">
-      <text class="label">{{t.buildEquipLabel}}</text>
-      <input class="inp bd-inp" type="digit" value="{{global.buildEquipYuan}}" data-key="buildEquipYuan" bindinput="onGlobalInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.yuan}}" />
-      <input class="inp yr-inp" type="digit" value="{{global.buildEquipYears}}" data-key="buildEquipYears" bindinput="onGlobalInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.buildYearPh}}" />
+    <view class="mfield">
+      <text class="mlabel">{{t.buildEquipLabel}}</text>
+      <input class="minp bd-inp" type="digit" value="{{global.buildEquipYuan}}" data-key="buildEquipYuan" bindinput="onGlobalInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.yuan}}" />
+      <input class="minp yr-inp" type="digit" value="{{global.buildEquipYears}}" data-key="buildEquipYears" bindinput="onGlobalInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.buildYearPh}}" />
       <text class="yr-lb">{{t.buildYearsUnit}}</text>
     </view>
-    <view class="field">
-      <text class="label">{{t.buildFranchiseLabel}}</text>
-      <input class="inp bd-inp" type="digit" value="{{global.buildFranchiseYuan}}" data-key="buildFranchiseYuan" bindinput="onGlobalInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.yuan}}" />
-      <input class="inp yr-inp" type="digit" value="{{global.buildFranchiseYears}}" data-key="buildFranchiseYears" bindinput="onGlobalInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.buildYearPh}}" />
+    <view class="mfield">
+      <text class="mlabel">{{t.buildFranchiseLabel}}</text>
+      <input class="minp bd-inp" type="digit" value="{{global.buildFranchiseYuan}}" data-key="buildFranchiseYuan" bindinput="onGlobalInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.yuan}}" />
+      <input class="minp yr-inp" type="digit" value="{{global.buildFranchiseYears}}" data-key="buildFranchiseYears" bindinput="onGlobalInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.buildYearPh}}" />
       <text class="yr-lb">{{t.buildYearsUnit}}</text>
     </view>
-    <view class="field">
-      <text class="label">{{t.buildTransferLabel}}</text>
-      <input class="inp bd-inp" type="digit" value="{{global.buildTransferYuan}}" data-key="buildTransferYuan" bindinput="onGlobalInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.yuan}}" />
-      <input class="inp yr-inp" type="digit" value="{{global.buildTransferYears}}" data-key="buildTransferYears" bindinput="onGlobalInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.buildYearPh}}" />
+    <view class="mfield">
+      <text class="mlabel">{{t.buildTransferLabel}}</text>
+      <input class="minp bd-inp" type="digit" value="{{global.buildTransferYuan}}" data-key="buildTransferYuan" bindinput="onGlobalInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.yuan}}" />
+      <input class="minp yr-inp" type="digit" value="{{global.buildTransferYears}}" data-key="buildTransferYears" bindinput="onGlobalInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.buildYearPh}}" />
       <text class="yr-lb">{{t.buildYearsUnit}}</text>
     </view>
     <!-- 🔴 R336：转让费是买位置、不是可摊资产 ⇒ 默认不摊，勾上才摊 -->
-    <view class="field amort-row">
+    <view class="mfield amort-row">
       <view class="amort-chk {{global.buildTransferAmort?'on':''}}" bindtap="onTransferAmortTap">
         <text class="amort-box">{{global.buildTransferAmort?'✓':''}}</text>
         <text class="amort-tx">{{t.buildTransferAmort}}</text>
@@ -60,20 +60,20 @@
     <view class="hint">{{t.buildTransferNote}}</view>
     <view class="build-sum" wx:if="{{buildSumText}}">{{buildSumText}}</view>
     <view class="hint">{{t.buildSumNote}}</view>
-    <view class="field">
-      <text class="label">{{t.areaLabel}}</text>
-      <input class="inp" type="digit" value="{{global.area}}" data-key="area" bindinput="onGlobalInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="㎡" />
+    <view class="mfield">
+      <text class="mlabel">{{t.areaLabel}}</text>
+      <input class="minp" type="digit" value="{{global.area}}" data-key="area" bindinput="onGlobalInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="㎡" />
     </view>
     <!-- 🔴 R335（B 方案）：人均工资由**老板自己填**，不是系统猜；人工 = 人数 × 人均 -->
-    <view class="field">
-      <text class="label">{{t.laborUnitLabel}}</text>
-      <input class="inp" type="digit" value="{{global.laborUnitYuan}}" data-key="laborUnitYuan" bindinput="onGlobalInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.cashYuanPh}}" />
+    <view class="mfield">
+      <text class="mlabel">{{t.laborUnitLabel}}</text>
+      <input class="minp" type="digit" value="{{global.laborUnitYuan}}" data-key="laborUnitYuan" bindinput="onGlobalInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.cashYuanPh}}" />
     </view>
     <view class="hint">{{t.laborUnitNote}}</view>
     <!-- 🔴 R331/R335：总额是覆盖项 —— 只想填总额时用它，优先级高于「人数 × 人均」 -->
-    <view class="field">
-      <text class="label">{{t.laborTotalLabel2}}</text>
-      <input class="inp" type="digit" value="{{global.laborTotalYuan}}" data-key="laborTotalYuan" bindinput="onGlobalInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.cashYuanPh}}" />
+    <view class="mfield">
+      <text class="mlabel">{{t.laborTotalLabel2}}</text>
+      <input class="minp" type="digit" value="{{global.laborTotalYuan}}" data-key="laborTotalYuan" bindinput="onGlobalInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.cashYuanPh}}" />
     </view>
     <view class="hint">{{t.laborTotalNote2}}</view>
   </view>
@@ -83,7 +83,7 @@
     <view class="dim-block">
       <view class="dim-head"><text>{{t.dimRent}}</text><view class="add" bindtap="addDim" data-dim="rent">{{t.addDim}}</view></view>
       <view class="dim-row" wx:for="{{dims.rent}}" wx:key="index" wx:for-index="idx">
-        <input class="inp dim-inp" type="digit" value="{{item}}" data-dim="rent" data-idx="{{idx}}" bindinput="onDimInput" adjust-position="{{true}}" cursor-spacing="20" />
+        <input class="minp dim-inp" type="digit" value="{{item}}" data-dim="rent" data-idx="{{idx}}" bindinput="onDimInput" adjust-position="{{true}}" cursor-spacing="20" />
         <view class="del" wx:if="{{dims.rent.length>1}}" bindtap="delDim" data-dim="rent" data-idx="{{idx}}">{{t.delDim}}</view>
       </view>
     </view>
@@ -104,14 +104,14 @@
     <view class="dim-block">
       <view class="dim-head"><text>{{t.dimLabor}}</text><view class="add" bindtap="addDim" data-dim="labor">{{t.addDim}}</view></view>
       <view class="dim-row" wx:for="{{dims.labor}}" wx:key="index" wx:for-index="idx">
-        <input class="inp dim-inp" type="digit" value="{{item}}" data-dim="labor" data-idx="{{idx}}" bindinput="onDimInput" adjust-position="{{true}}" cursor-spacing="20" />
+        <input class="minp dim-inp" type="digit" value="{{item}}" data-dim="labor" data-idx="{{idx}}" bindinput="onDimInput" adjust-position="{{true}}" cursor-spacing="20" />
         <view class="del" wx:if="{{dims.labor.length>1}}" bindtap="delDim" data-dim="labor" data-idx="{{idx}}">{{t.delDim}}</view>
       </view>
     </view>
     <view class="dim-block">
       <view class="dim-head"><text>{{t.dimMargin}}</text><view class="add" bindtap="addDim" data-dim="margin">{{t.addDim}}</view></view>
       <view class="dim-row" wx:for="{{dims.margin}}" wx:key="index" wx:for-index="idx">
-        <input class="inp dim-inp" type="digit" value="{{item}}" data-dim="margin" data-idx="{{idx}}" bindinput="onDimInput" adjust-position="{{true}}" cursor-spacing="20" />
+        <input class="minp dim-inp" type="digit" value="{{item}}" data-dim="margin" data-idx="{{idx}}" bindinput="onDimInput" adjust-position="{{true}}" cursor-spacing="20" />
         <view class="del" wx:if="{{dims.margin.length>1}}" bindtap="delDim" data-dim="margin" data-idx="{{idx}}">{{t.delDim}}</view>
       </view>
     </view>
@@ -119,7 +119,7 @@
     <view class="dim-block">
       <view class="dim-head"><text>{{t.dimTarget}}</text><view class="add" bindtap="addDim" data-dim="target">{{t.addDim}}</view></view>
       <view class="dim-row" wx:for="{{dims.target}}" wx:key="index" wx:for-index="idx">
-        <input class="inp dim-inp" type="digit" value="{{item}}" data-dim="target" data-idx="{{idx}}" bindinput="onDimInput" adjust-position="{{true}}" cursor-spacing="20" />
+        <input class="minp dim-inp" type="digit" value="{{item}}" data-dim="target" data-idx="{{idx}}" bindinput="onDimInput" adjust-position="{{true}}" cursor-spacing="20" />
         <view class="del" wx:if="{{dims.target.length>1}}" bindtap="delDim" data-dim="target" data-idx="{{idx}}">{{t.delDim}}</view>
       </view>
     </view>
@@ -231,17 +231,17 @@
              A（已有铺面）主轴扫毛利率 ⇒ 固定**月租金**；B（寻找铺面）主轴扫租金档位 ⇒ 固定**毛利率**。
              人工两边都固定。维度本身一个没删，只是换主轴。 -->
         <view class="pivot-fix">
-          <view class="field" wx:if="{{mode === 'forward'}}">
-            <text class="label">{{t.pivotFixRent}}</text>
-            <input class="inp" type="digit" value="{{pivotFix.rent}}" data-key="rent" bindinput="onPivotFixInput" adjust-position="{{true}}" cursor-spacing="20" />
+          <view class="mfield" wx:if="{{mode === 'forward'}}">
+            <text class="mlabel">{{t.pivotFixRent}}</text>
+            <input class="minp" type="digit" value="{{pivotFix.rent}}" data-key="rent" bindinput="onPivotFixInput" adjust-position="{{true}}" cursor-spacing="20" />
           </view>
-          <view class="field" wx:else>
-            <text class="label">{{t.pivotFixMargin}}</text>
-            <input class="inp" type="digit" value="{{pivotFix.margin}}" data-key="margin" bindinput="onPivotFixInput" adjust-position="{{true}}" cursor-spacing="20" />
+          <view class="mfield" wx:else>
+            <text class="mlabel">{{t.pivotFixMargin}}</text>
+            <input class="minp" type="digit" value="{{pivotFix.margin}}" data-key="margin" bindinput="onPivotFixInput" adjust-position="{{true}}" cursor-spacing="20" />
           </view>
-          <view class="field">
-            <text class="label">{{t.pivotFixLabor}}</text>
-            <input class="inp" type="digit" value="{{pivotFix.labor}}" data-key="labor" bindinput="onPivotFixInput" adjust-position="{{true}}" cursor-spacing="20" />
+          <view class="mfield">
+            <text class="mlabel">{{t.pivotFixLabor}}</text>
+            <input class="minp" type="digit" value="{{pivotFix.labor}}" data-key="labor" bindinput="onPivotFixInput" adjust-position="{{true}}" cursor-spacing="20" />
           </view>
         </view>
         <scroll-view scroll-x="true" class="tbl-scroll">
