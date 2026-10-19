@@ -36,6 +36,7 @@ const ROUND = (n, p) => {
  * @param {number} p.fixedYuan    月固定费用（元）
  * @param {number} p.marginPct    日常毛利率（百分数，55 表示 55%）
  * @param {number} p.discount     折扣系数（0.8 表示打 8 折；1 表示不打折）
+ * @param {number} p.costRatePct  商家出资的活动成本占**实收**比（百分数；赠送/奖品/自贴券）
  * @param {number} p.weightPct    活动订单占比（百分数，30 表示 30%）
  *                                页面口径＝「几成订单用券」；公式内按营业额占比使用，
  *                                前提是活动单与非活动单客单价接近（页面已注明该近似）。
@@ -51,17 +52,27 @@ function promoImpact(p) {
   if (!(w >= 0) || w > 1) return { ok: false, reason: 'badWeight' };
   if (!(fixed > 0)) return { ok: false, reason: 'noFixed' };
 
-  const cut = w * (1 - d);          // 被活动让掉的那部分毛利率
-  const numer = g0 - cut;           // 让价后的边际贡献
-  const denom = 1 - cut;            // 让价后的实际营收（相对原价）
+  const cut = w * (1 - d);          // 被活动让掉的那部分毛利率（占原价）
+  const numer = g0 - cut;           // 让价后的边际贡献（占**原价**）
+  const denom = 1 - cut;            // 让价后的实收率（实收 ÷ 原价）
+  // 🔴 R370（纯堂食口径 + 口径修正）：
+  //   a = 商家出资的活动成本率（占**实收**）—— 赠酒/奖品/自贴券，随流水变动，属变动成本。
+  //   实收口径的边际率 ga = numer/denom − a；原价口径的边际贡献 = ga × denom = numer − a·denom。
+  const a = Math.max(0, Number(p && p.costRatePct) || 0) / 100;
+  const numerNet = numer - a * denom;
 
-  // 让价幅度 ≥ 毛利率 ⇒ 卖越多亏越多，不存在保本点
-  if (!(numer > 0)) return { ok: false, reason: 'negativeMargin' };
+  // 让价 + 活动成本 之和 ≥ 边际贡献 ⇒ 卖越多亏越多，不存在保本点
+  if (!(numerNet > 0)) return { ok: false, reason: 'negativeMargin' };
 
-  const ga = numer / denom;
+  const ga = numerNet / denom;
   const beBefore = fixed / g0;
-  const beAfter = fixed / ga;
-  const k = g0 / numer;
+  // 🔴🔴 R370 修必现错数：原来 `beAfter = fixed / ga` 是**实收口径**，却与
+  //   `beBefore = fixed / g0`（**原价口径**）并排显示并相除 ⇒ 涨幅被系统性低估
+  //   （实测 G0=63%/8折 ⇒ 显示 +17.2%，真值 +46.5%，与同一张卡的"打平要多来 46.5%"自相矛盾）。
+  //   ⇒ 保本额一律用**原价口径**（老板对账看的是流水）；实收口径另给 beAfterNetYuan。
+  const beAfter = fixed / numerNet;
+  const beAfterNet = fixed / ga;
+  const k = g0 / numerNet;
 
   return {
     ok: true,
@@ -69,9 +80,12 @@ function promoImpact(p) {
     gaRatio: ga,
     gaPct: ROUND(ga * 100, 1),
     dropPctPoints: ROUND((g0 - ga) * 100, 1),
-    // 保本（元）
+    // 保本（元）—— 两个都是**原价流水**口径，可直接相减/相除
     beBeforeYuan: Math.round(beBefore),
     beAfterYuan: Math.round(beAfter),
+    // 实收口径（现金到手）—— 只用于文案说明，不参与涨幅比较
+    beAfterNetYuan: Math.round(beAfterNet),
+    costRatePct: ROUND(a * 100, 2),
     beIncreasePct: ROUND((beAfter / beBefore - 1) * 100, 1),
     // 打平所需客流（倍数与百分比；1.1224 ⇒ 需多来 12.2%）
     trafficMultiple: ROUND(k, 4),

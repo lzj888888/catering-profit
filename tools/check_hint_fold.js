@@ -569,7 +569,9 @@ const PAGE_CASES = [
     //      同 R234/R330 判据：新增短提示 + 新增区段折叠 ⇒ 改预期；若是"把长提示展平"才该判红。
     //   ⚠️ R367：21 → 23 —— 目标反推卡加了两句短提示（反推结论行 note / 缺输入时的 tip），
     //      都是 <18 字合规平铺。同 R234/R330 判据：新增短提示 ⇒ 改预期。
-    keepPlain: 23,  // 本页 <18 字的提示平铺数（分层判据的另一侧；2026-10-14 R296b:17→14 —— ④挂钩卡删 sbVarNote 说明 + 多渠道卡改渠道佣金后仅留 channelSample/channelTotalNote 两处 + 新增 revGrossHint 短提示）
+    //   ⚠️ R370：23 → 24 —— 删掉 promoApproxNote(-1)、新增 promoCostNote(+1)、
+    //      新增「还没填实收率」的空态提示(+1) ⇒ 净 +1。三条都是 <18 字合规平铺。
+    keepPlain: 24,  // 本页 <18 字的提示平铺数（分层判据的另一侧；2026-10-14 R296b:17→14 —— ④挂钩卡删 sbVarNote 说明 + 多渠道卡改渠道佣金后仅留 channelSample/channelTotalNote 两处 + 新增 revGrossHint 短提示）
     // 本页**区段级**折叠（.fold-toggle）——必须与句级并存、不得互相吃掉
     // （2026-10-14 R296b:5→4 —— 多渠道卡的「默认参数」折叠区随 onToggleChannelParams 删除）
     segFolds: 5,

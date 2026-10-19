@@ -314,106 +314,73 @@ for (const rel of Object.keys(CJK_BASELINE)) {
     'index.wxml 未渲染正推表或未区分赚/亏（R327：算了不给颜色等于要老板自己读符号）');
 }
 
-// --- R330：促销卡（做活动会怎样）---
-//   失效方式全是静默的：选折扣不重算（还显示上一档的数）；结果里没算却渲染了（空白卡）；
-//   页面只渲染一部分（老板以为那就是全部）。
+// --- R370（2026-10-20 李老师拍板）：活动卡缩小为「保本门槛」· 纯堂食 · 口径统一 ---
+//   背景：原来有「折扣档 chips + 几成订单 chips + 实收率输入」三个控件，且
+//   ① 用 margin_rate（扣过渠道佣金）算**堂食**活动 ⇒ 把外卖抽成算成活动代价；
+//   ② beAfterYuan 是**实收口径**，与 beBeforeYuan（原价）相除 ⇒ 保本涨幅被系统性低估
+//      （实测 63% 毛利率打 8 折：显示 +17.2%，真值 +46.5%，与同一张卡的"要多来 46.5%"自相矛盾）。
+//   ⇒ 现在只保留两个输入（实收率 / 活动成本率），保本额统一**原价流水**口径。
 {
   chk(/promoRes:\s*this\.promoOf\(presetResultObj\)/.test(idxJs),
-    'index.js 结果出来时未算促销（R330：促销卡会一直是空的或显示旧数）');
-  chk(/onPromoD[\s\S]{0,220}promoDIdx[\s\S]{0,220}promoOf\(this\.data\.result\)/.test(idxJs)
-    && /onPromoW[\s\S]{0,220}promoWIdx[\s\S]{0,220}promoOf\(this\.data\.result\)/.test(idxJs),
-    'index.js 切换折扣/参与率后未重算（R330：选 7 折还显示 8 折的数）');
-  chk(/promoRes\.gaText/.test(idxWxmlS) && /promoRes\.beText/.test(idxWxmlS) && /promoRes\.trafficText/.test(idxWxmlS),
-    'index.wxml 未把三项输出全渲染（R330：漏一项老板会以为是全部）');
-  chk(/promoImpact/.test(idxJs),
-    'index.js 未走 utils/promoImpact.js（R330：两套折扣公式必然漂移）');
-  // --- R351：实收率「填了但越界」不许静默回落到折扣档 ---
-  //   失效形态（静默错值）：老板填 150 或 0 ⇒ 旧代码 `if (real>0 && real<=100)` 不成立
-  //   ⇒ 悄悄改用折扣档算，页面照常出数 ⇒ 老板以为看的是自己的数。
-  const discBody = (idxJs.match(/promoDiscountOf\(\)\s*\{([\s\S]*?)\n  \},/) || [])[1] || '';
-  chk(/raw === ''/.test(discBody) && /return null;/.test(discBody),
-    'promoDiscountOf 未区分「没填」与「填错」（R351：填错时静默回落到折扣档 = 静默错值）');
-  chk(/if \(d == null\) return \{ bad: true, text: T\.promoRealBad \};/.test(idxJs),
-    'promoOf 未对非法实收率给出明确文案（R351：会显示成折扣档的数或整卡片消失）');
-  chk(/promoRealBad: M\.promoRealBad/.test(idxJs),
-    '实收率告警文案未映射进 t（R351：会显示 undefined）');
-  // --- R353：`T.xxx` 引用集 ⊆ `t` 映射赋值集 ---
-  //   失效形态（页面零报错、文案是空串）：R344/R350 的补丁把
-  //   `promoDropText / promoBeText / promoTrafficText` 三行映射**覆盖掉了**
-  //   ⇒ 活动卡「掉了几个点 / 保本变成多少 / 打平要多来多少人」全渲染成空白。
-  //   只判「terms 里有没有这个键」查不出来 —— 键在 terms 里好好的，只是没映射进页面数据。
-  {
-    const noCmt = idxJs.replace(/^\s*\/\/.*$/gm, '');
-    const tBlock = (noCmt.match(/\n    t: \{([\s\S]*?)\n    \},/) || [])[1] || '';
-    const mapped = new Set();
-    for (const m of tBlock.matchAll(/^\s+([A-Za-z_][\w]*):\s*M\./gm)) mapped.add(m[1]);
-    const refs = new Set();
-    for (const m of noCmt.matchAll(/\bT\.([A-Za-z_][\w]*)/g)) refs.add(m[1]);
-    const missing = [];
-    refs.forEach((k) => { if (!mapped.has(k)) missing.push(k); });
-    chk(mapped.size > 20, 't 映射解析失败：只解析到 ' + mapped.size + ' 个键（R353 判据前提不成立）');
-    chk(missing.length === 0,
-      'index.js 引用了 t.xxx 却没映射进 t（R353：文案渲染成空串、页面零报错）：' + missing.join(','));
-  }
-
-  // --- R354：交互后重算必须「先落状态，再算」 ---
-  //   失效形态（显示上一档、零报错）：把 `promoRes: this.promoOf(...)` 写进 setData 的**同一个对象**里，
-  //   JS 先求值入参，此时 promoWIdx 还是旧值 ⇒ 点「全部」仍显示「3 成」。
-  //   ⚠️ 不能只判"函数体里有没有 promoOf" —— 写在回调里的**是对的**，必须只看首个 setData 的对象字面量。
-  {
-    const firstObj = (body) => {
-      const i = body.indexOf('setData({');
-      if (i < 0) return '';
-      const j = body.indexOf('{', i);
-      let depth = 0;
-      for (let k = j; k < body.length; k++) {
-        if (body[k] === '{') depth += 1;
-        else if (body[k] === '}') { depth -= 1; if (depth === 0) return body.slice(j, k + 1); }
-      }
-      return '';
-    };
-    for (const name of ['onPromoW', 'onPromoD', 'onPromoRealInput']) {
-      const body = (idxJs.match(new RegExp(name + '\\(e\\)\\s*\\{([\\s\\S]*?)\\n  \\},')) || [])[1] || '';
-      chk(body.length > 0, '解析不到 ' + name + ' 的函数体（R354 判据前提不成立）');
-      if (!body.length) continue;
-      const obj = firstObj(body);
-      chk(obj.length > 0, name + ' 里解析不到首个 setData 对象（R354 判据前提不成立）');
-      chk(!/promoOf/.test(obj),
-        name + ' 把 promoOf 写进了 setData 的对象字面量（R354：求值早于状态生效 ⇒ 永远显示上一档）');
-      chk(/promoOf/.test(body), name + ' 交互后没有重算 promoRes（R354：数字不会跟着变）');
+    'index.js 结果出来时未算活动门槛（R370：卡片会一直是空的或显示旧数）');
+  // ① 两个输入都必须重算，且必须「先落状态再算」（写在 setData 对象字面量里 = 求值早于生效）
+  const firstObj = (body) => {
+    const i = body.indexOf('setData({');
+    if (i < 0) return '';
+    const j = body.indexOf('{', i);
+    let depth = 0;
+    for (let k = j; k < body.length; k++) {
+      if (body[k] === '{') depth += 1;
+      else if (body[k] === '}') { depth -= 1; if (depth === 0) return body.slice(j, k + 1); }
     }
+    return '';
+  };
+  for (const name of ['onPromoRealInput', 'onPromoCostInput']) {
+    const body = (idxJs.match(new RegExp(name + '\\(e\\)\\s*\\{([\\s\\S]*?)\\n  \\},')) || [])[1] || '';
+    chk(body.length > 0, '解析不到 ' + name + ' 的函数体（R370 判据前提不成立）');
+    if (!body.length) continue;
+    chk(!/promoOf/.test(firstObj(body)),
+      name + ' 把 promoOf 写进了 setData 对象字面量（求值早于状态生效 ⇒ 永远显示上一档）');
+    chk(/promoOf/.test(body), name + ' 交互后没有重算 promoRes（数字不会跟着变）');
+  }
+  // ② 三态必须分清：没填 / 填错 / 合法 —— 填错绝不许静默回落到某个默认值
+  const netBody = (idxJs.match(/promoNetRateOf\(\)\s*\{([\s\S]*?)\n  \},/) || [])[1] || '';
+  chk(/raw === ''/.test(netBody) && /return null;/.test(netBody) && /return false;/.test(netBody),
+    'promoNetRateOf 未区分「没填 / 填错 / 合法」三态（R370：填错会被当成没填，静默算成 100%）');
+  chk(/if \(d === null\) return \{ empty: true/.test(idxJs) && /if \(d === false\) return \{ bad: true/.test(idxJs),
+    'promoOf 未把「没填」与「填错」分开提示（R370：两种状态混成一句，老板不知道要不要改）');
+  // ③ 纯堂食：基准必须是菜品毛利率，不得用扣过渠道佣金的 margin_rate
+  chk(/const marginPct = Number\(this\.data\.marginPct\);/.test(idxJs),
+    '活动基准取的不是菜品毛利率（R370：纯堂食活动不能用扣过渠道佣金的 margin_rate，否则高估伤害）');
+  // ④ 旧设计必须删干净（否则 chips 与实收率两个来源打架）
+  chk(!/promo-chips|onPromoD|onPromoW/.test(idxWxmlS),
+    'index.wxml 仍残留折扣档/参与率 chips（R370：已缩成两个输入，留着就是两套输入打架）');
+  chk(!/promoDiscountOf|PROMO_D|PROMO_W/.test(idxJs),
+    'index.js 仍残留折扣档/权重逻辑（R370：已删除，残留 = 死代码 + 未来误用）');
+  // ⑤ 三项输出必须都渲染
+  chk(/promoRes\.gaText/.test(idxWxmlS) && /promoRes\.beText/.test(idxWxmlS) && /promoRes\.trafficText/.test(idxWxmlS),
+    'index.wxml 未把三项输出全渲染（漏一项老板会以为是全部）');
+  // ⑥ 单源：必须走 utils/promoImpact.js
+  chk(/promoImpact/.test(idxJs), 'index.js 未走 utils/promoImpact.js（两套折扣公式必然漂移）');
+  // ⑦ 口径行为腿（本轮核心）：保本涨幅 必须与「打平要多卖」一致
+  //   失效形态：一个是原价口径、一个是实收口径 ⇒ 同卡两个数对不上（17.2% vs 46.5%）。
+  try {
+    const P = require('../utils/promoImpact.js').promoImpact;
+    const t = P({ fixedYuan: 30000, marginPct: 63, discount: 0.8, weightPct: 100 });
+    chk(t && t.ok === true, 'R370-⑦ 基准用例跑不通（后面两条无从判定）');
+    if (t && t.ok) {
+      chk(Math.abs(t.beIncreasePct - t.needTrafficPct) <= 0.15,
+        'R370-⑦ 保本涨幅 ≠ 打平要多卖（' + t.beIncreasePct + '% vs ' + t.needTrafficPct
+        + '%）⇒ 又出现两个口径混用，页面会自相矛盾');
+      chk(Math.abs(t.beAfterYuan - Math.round(t.beBeforeYuan * (t.needTrafficPct / 100 + 1))) <= 10,
+        'R370-⑦b beAfterYuan 不是原价口径（应 = 保本前 × (1 + 要多卖 %)）');
+      chk(t.beAfterNetYuan > 0 && t.beAfterNetYuan < t.beAfterYuan,
+        'R370-⑦c 现金实收应小于原价流水（实收口径字段没算对）');
+    }
+  } catch (e) {
+    chk(false, 'R370-⑦ 无法加载 promoImpact（行为腿跑不了，不能算通过）');
   }
 }
-
-// --- R337（M2-A1）：促销卡 W 口径 —— 文案问「几成客人」，公式算「营业额占比」 ---
-//   为什么必须钉：两者在「活动单金额 ≠ 非活动单金额」时**不等价**，而界面上没有任何报错——
-//   老板按人头估 3 成、系统按营业额算 3 成，差额全落在毛利率与保本线上（静默错数）。
-//   修法是改文案 + 明示近似条件，**公式不动**（公式本身没错，错的是没交代口径）。
-(function () {
-  const one = read('utils/promoImpact.js');
-  // ① 页面问的必须是「订单/单数」口径
-  const labelOf = (src) => (/promoWeightLabel:\s*'([^']*)'/.exec(src) || [])[1] || '';
-  const L1 = labelOf(t1);
-  const L2 = labelOf(t2);
-  chk(/订单|单数/.test(L1),
-    '促销参与率标签不是「订单/单数」口径（R337：问"几成客人"而公式按营业额占比 ⇒ 老板按人头估，数对不上）');
-  chk(L1 !== '' && L1 === L2,
-    '促销参与率标签双副本不一致或缺失（R337：miniprogram 与 specs 两份 terms 必须同值）');
-  // ② 近似条件必须真的出现在界面上（只改标签不说条件 = 仍是静默近似）
-  const note = (/promoApproxNote:\s*'([^']*)'/.exec(t1) || [])[1] || '';
-  chk(/单数|订单/.test(note) && /客单价|单价/.test(note),
-    'promoApproxNote 未写清「按单数近似 + 客单价前提」（R337：老板仍不知道这是估计）');
-  chk(/\{\{t\.promoApproxNote\}\}/.test(idxWxmlS),
-    'index.wxml 结果区未渲染 promoApproxNote（R337：算了不说口径 ⇒ 近似被当成精确）');
-  // ③ JSDoc 与页面同口径，且写明前提（文档与界面各说一套 = 下一个人必然改错）
-  const wi = one.indexOf('@param {number} p.weightPct');
-  const wDoc = wi >= 0 ? one.slice(wi, wi + 400) : '';
-  chk(/订单/.test(wDoc) && /客单价/.test(wDoc),
-    'utils/promoImpact.js 的 weightPct 注释未写「订单占比 + 客单价前提」（R337）');
-  // ④ 反恒真：拿**旧文案**喂给同一套判据，必须判不通过（证明 ① 不是恒真）
-  chk(!/订单|单数/.test(labelOf("promoWeightLabel: '几成客人会用',")),
-    'R337-④ 判据恒真：老文案「几成客人会用」也能通过 ①');
-}());
 
 // --- R331：矩阵页「人工总额 / 毛利率跟业态 / 固定费用构成」---
 //   三处都是「看起来对、数字错」的静默失效：
@@ -872,24 +839,24 @@ chk(/if \(pool\.indexOf\(fixVal\) < 0\) fixVal = pool\[0\]/.test(mtxJs),
     '导出的失败行没有 ⚠ 标记（R352：页面有、Excel 没有 ⇒ 老板会把"没算出来"读成"不划算"）');
 }
 
-// --- R350：活动形态不止折扣（实收率入口）---
-//   满减 / 代金券 / 团购 / 第二份半价 全都能折成"每 100 元实收多少"，而每种都做选择器
-//   会让界面翻倍、老板还得学每种的参数。所以只留**一个**实收率入口。
-//   四个静默退化点：① 实收率不优先（填了没用）② 不限制范围（填 120 ⇒ 卡片直接消失）
-//   ③ 点折扣不清空实收率（两个来源打架，显示与高亮不一致）④ 页面没渲染
+// --- R370b：实收率是唯一入口（R350 的"优先于折扣档"已随折扣档一并删除）---
+//   失效形态（都是静默的）：① 填了实收率不生效 ② 不限制 1–100（填 120 ⇒ 卡片直接消失）
+//   ③ 页面没渲染入口。原来的 ③「点折扣档要清空实收率」已随 chips 删除而失效 —— 只剩一个来源，
+//   不存在"打架"，故该条改为**反向判据**：代码里不许再出现 onPromoD。
 {
-  const body = (idxJs.match(/promoDiscountOf\(\)\s*\{([\s\S]*?)\n  \},/) || [])[1] || '';
-  chk(/promoRealPct/.test(body) && /return\s+real\s*\/\s*100/.test(body),
-    'index.js 实收率没有优先于折扣档（R350：填了却没生效）');
-  chk(/real\s*<=\s*100/.test(body) && /real\s*>\s*0/.test(body),
-    'index.js 实收率未限制 1–100（R350：填 120 ⇒ d>1 ⇒ promoImpact 返回 badDiscount ⇒ 整张卡静默消失）');
+  const body = (idxJs.match(/promoNetRateOf\(\)\s*\{([\s\S]*?)\n  \},/) || [])[1] || '';
+  chk(/promoRealPct/.test(body) && /return\s+v\s*\/\s*100/.test(body),
+    'index.js 实收率没被真正用上（R370：填了却没生效）');
+  chk(/v\s*<=\s*100/.test(body) && /v\s*>\s*0/.test(body),
+    'index.js 实收率未限制 1–100（填 120 ⇒ 卡片静默消失）');
 
-  const dBody = (idxJs.match(/onPromoD\(e\)\s*\{([\s\S]*?)\n  \},/) || [])[1] || '';
-  chk(/promoRealPct:\s*''/.test(dBody),
-    'index.js 点折扣档时未清空实收率（R350：两个来源打架，chip 高亮与实际算的数不一致）');
+  chk(!/onPromoD/.test(idxJs),
+    'index.js 仍有 onPromoD（R370：折扣档 chips 已删，留着就是死代码/未来误用）');
 
   chk(/promoRealPct/.test(idxWxmlS) && /onPromoRealInput/.test(idxWxmlS),
-    'index.wxml 未渲染实收率输入（R350：只算了不给入口）');
+    'index.wxml 未渲染实收率输入（只算了不给入口）');
+  chk(/promoCostPct/.test(idxWxmlS) && /onPromoCostInput/.test(idxWxmlS),
+    'index.wxml 未渲染活动成本率输入（R370：赠酒/奖品没入口 ⇒ 算不出真实让利）');
 
   // 行为腿：实收率 82 必须落在 8 折与 9 折之间（证明 d 真的被当成实收率用了）
   let promo = null;

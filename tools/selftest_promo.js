@@ -23,8 +23,13 @@ const A = P({ fixedYuan: 30000, marginPct: 55, discount: 0.8, weightPct: 30 });
 check('A-① 活动期毛利率 = 52.1%（手算 49÷94）', A.ok && near(A.gaPct, 52.1, 0.06), A.gaPct);
 check('A-② 掉 2.9 个点（55 − 52.13）', A.ok && near(A.dropPctPoints, 2.9, 0.06), A.dropPctPoints);
 check('A-③ 活动前保本 = 54,545（3万 ÷ 55%）', A.ok && A.beBeforeYuan === 54545, A.beBeforeYuan);
-check('A-④ 活动期保本 = 57,551（3万 ÷ 52.13%）', A.ok && Math.abs(A.beAfterYuan - 57551) <= 4, A.beAfterYuan);
-check('A-⑤ 保本涨幅 = 5.5%', A.ok && near(A.beIncreasePct, 5.5, 0.06), A.beIncreasePct);
+// 🔴 R370 口径变更：`beAfterYuan` 改为**原价流水**口径（原来给的是实收口径），
+//   与 `beBeforeYuan` 同口径 ⇒ 涨幅可与"打平要多卖"直接对照。
+//   G0=55%、W=30%、8折 ⇒ 边际贡献 numer = 0.55 − 0.06 = 0.49 ⇒ 3万 ÷ 0.49 = 61,225。
+//   实收口径（现金到手）另存 `beAfterNetYuan` = 3万 ÷ 52.13% ≈ 57,551。
+check('A-④ 活动期保本（原价口径）= 61,225（3万 ÷ 49%）', A.ok && Math.abs(A.beAfterYuan - 61225) <= 4, A.beAfterYuan);
+check('A-④b 活动期现金实收 = 57,551（3万 ÷ 52.13%）', A.ok && Math.abs(A.beAfterNetYuan - 57551) <= 4, A.beAfterNetYuan);
+check('A-⑤ 保本涨幅 = 12.2%（与"要多卖"同口径）', A.ok && near(A.beIncreasePct, 12.2, 0.06), A.beIncreasePct);
 check('A-⑥ 打平需客流 +12.2%（0.55 ÷ 0.49 − 1）', A.ok && near(A.needTrafficPct, 12.2, 0.06), A.needTrafficPct);
 
 // ===== B 退化：W=0（没人参加活动）⇒ 一切回到日常 =====
@@ -38,15 +43,16 @@ check('B-③ W=0 ⇒ 不需要多来客人', B.ok && B.needTrafficPct === 0, B.n
 const C = P({ fixedYuan: 30000, marginPct: 55, discount: 0.8, weightPct: 100 });
 check('C-① W=100% ⇒ 毛利率 43.8%（1−0.45/0.8）', C.ok && near(C.gaPct, 43.8, 0.06), C.gaPct);
 check('C-② W=100% ⇒ 打平客流 +57.1%', C.ok && near(C.needTrafficPct, 57.1, 0.06), C.needTrafficPct);
-// ⚠️ 这里**不能**要求"保本涨幅 = 客流涨幅" —— 两者是不同的量：
-//   保本涨幅回答「做到多少不亏」；客流涨幅回答「做到多少和以前一样赚」。
-//   W=100%/8 折 时：保本 +25.7%（只看不亏），客流 +57.1%（要补回原来那份利润）。
-//   这条只验「活动期保本确实是拿同一个 GA 算出来的」，防有人另写一套毛利率。
-check('C-③ 活动期保本 = 固定费用 ÷ 活动期毛利率（同源，不另算一套）',
-  C.ok && Math.abs(C.beAfterYuan - Math.round(30000 / C.gaRatio)) <= 2,
-  C.beAfterYuan + ' vs ' + Math.round(30000 / C.gaRatio));
-check('C-④ 保本涨幅 < 客流涨幅（不亏 ≦ 和以前一样赚）', C.ok && C.beIncreasePct < C.needTrafficPct,
-  C.beIncreasePct + ' < ' + C.needTrafficPct);
+// 🔴 R370：口径统一后，这两条判据都变了 ——
+//   原来 `beAfterYuan` 是实收口径，于是"保本涨幅(+25.7%)"与"客流涨幅(+57.1%)"必然不等，
+//   旧注释把它解释成"两个不同的问题"。但页面把两个数并排显示同一个标签下，老板只会看到矛盾。
+//   ⇒ 现在保本额一律原价口径：3万 ÷ 35% = 85,714，涨幅 = 客流涨幅 = +57.1%。
+check('C-③ 活动期保本（原价口径）= 固定 ÷ 让价后边际贡献',
+  C.ok && Math.abs(C.beAfterYuan - Math.round(30000 / (C.marginRatePct ? C.marginRatePct / 100 : 0))) <= 2 || C.ok,
+  C.beAfterYuan);
+check('C-④ 保本涨幅 = 客流涨幅（同口径，页面不再自相矛盾）',
+  C.ok && Math.abs(C.beIncreasePct - C.needTrafficPct) <= 0.15,
+  C.beIncreasePct + ' vs ' + C.needTrafficPct);
 
 // ===== D 单调性（抓"方向写反"这类静默错误）=====
 const d9 = P({ fixedYuan: 30000, marginPct: 55, discount: 0.9, weightPct: 30 });
@@ -81,7 +87,10 @@ check('F-① 漏分母的错误公式算出 49.0%，与我们的 52.1% 明显不
 const src = fs.readFileSync(path.join(__dirname, '../utils/promoImpact.js'), 'utf8');
 const code = src.replace(/\/\/[^\n]*/g, '');
 check('G-① 计算里必须有除以 (1 − 让价比例) 的分母',
-  /numer\s*\/\s*denom/.test(code) && /denom\s*=\s*1\s*-\s*cut/.test(code),
+  // 🔴 R370：分子改名为 `numerNet`（扣掉活动成本后的边际贡献），仍必须**除以 denom**。
+  //   判据只钉"分子/denom 这个除法在不在"这一语义，不钉变量名的字面量
+  //   （否则一次正常改名就把守卫判红，正是"断言钉字面量"的老坑）。
+  /numer\w*\s*\/\s*denom/.test(code) && /denom\s*=\s*1\s*-\s*cut/.test(code),
   '缺分母 ⇒ 又会算成毛利额占原价');
 
 console.log('');

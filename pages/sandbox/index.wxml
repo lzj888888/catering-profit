@@ -647,26 +647,23 @@
     <block wx:if="{{showPromo}}">
 
     <view class="hint">{{t.promoSub}}</view>
-    <view class="promo-row">
-      <text class="promo-lb">{{t.promoDiscountLabel}}</text>
-      <view class="promo-chips">
-        <view class="chip {{!promoRealPct && promoDIdx === index ? 'on' : ''}}" wx:for="{{t.promoDiscountOpts}}" wx:key="index" data-idx="{{index}}" bindtap="onPromoD">{{item}}</view>
-      </view>
-    </view>
-    <!-- 🔴 R350：活动形态不止打折。满减/代金券/团购/第二份半价 全都能折成"每 100 实收多少"，
-         填这里就优先于上面的折扣档；留空则按折扣档算。 -->
+    <!-- 🔴 R370（李老师 2026-10-20 · 纯堂食）：活动只算堂食，外卖那套佣金不参与。
+         输入从"选折扣档 + 选几成订单"缩成**两个数**（都从收银日报/活动台账上直接抄）：
+           ① 折扣后实收率 = 实收 ÷ 原价（打八折且全部参与 ≈ 80）
+           ② 活动成本率   = 赠酒/奖品/自贴券 ÷ 实收
+         公式 GA = (G0 − cut)/(1 − cut) − 成本率，保本额一律按**原价流水**口径。 -->
     <view class="promo-row">
       <text class="promo-lb">{{t.promoRealLabel}}</text>
       <input class="promo-real-inp" type="digit" value="{{promoRealPct}}" bindinput="onPromoRealInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.promoRealPh}}" />
-      <text class="promo-real-unit">{{t.promoRealUnit}}</text>
+      <text class="promo-real-unit">%</text>
     </view>
     <view class="hint">{{t.promoRealNote}}</view>
     <view class="promo-row">
-      <text class="promo-lb">{{t.promoWeightLabel}}</text>
-      <view class="promo-chips">
-        <view class="chip {{promoWIdx === index ? 'on' : ''}}" wx:for="{{t.promoWeightOpts}}" wx:key="index" data-idx="{{index}}" bindtap="onPromoW">{{item}}</view>
-      </view>
+      <text class="promo-lb">{{t.promoCostLabel}}</text>
+      <input class="promo-real-inp" type="digit" value="{{promoCostPct}}" bindinput="onPromoCostInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.promoCostPh}}" />
+      <text class="promo-real-unit">%</text>
     </view>
+    <view class="hint">{{t.promoCostNote}}</view>
     <block wx:if="{{promoRes}}">
       <view class="cell" wx:if="{{!promoRes.bad}}"><text class="lbl">{{t.promoGaLabel}}</text><text class="val">{{promoRes.gaText}} · {{promoRes.dropText}}</text></view>
       <view class="cell" wx:if="{{!promoRes.bad}}"><text class="lbl">{{t.promoBeLabel}}</text><text class="val">{{promoRes.beText}}</text></view>
@@ -678,12 +675,9 @@
       </view>
       <view class="hint" wx:if="{{!promoRes.bad && promoRes.sameRevText}}">{{t.promoSameRevNote}}</view>
       <view class="warn" wx:if="{{promoRes.bad}}">{{promoRes.text}}</view>
+      <view class="hint" wx:if="{{promoRes.empty}}">{{promoRes.text}}</view>
     </block>
     <view class="hint" wx:if="{{!promoRes}}">{{t.promoNeedCalc}}</view>
-    <!-- 🔴 R337（M2-A1）：口径声明必须留在结果区 ——
-         页面问的是「几成订单用券」（单数口径），公式算的是营业额占比；
-         只有客单价接近时两者才相等，不说这句就是静默近似。 -->
-    <view class="hint">{{t.promoApproxNote}}</view>
     </block>
   </view>
 

@@ -851,14 +851,17 @@ const TERMS = {
     // 🔴 R330：做活动会怎样（utils/promoImpact.js）
     //   ⚠️ 只算单价影响，不算活动带来的客流增长 —— 这句必须在界面上，否则会被当成"活动一定亏"
     promoTitle: '做活动会怎样',
-    promoSub: '只算降价，不算活动带来的新客',
+    promoSub: '只看堂食：算让利和活动成本，不算多来的客人',
     promoDiscountLabel: '打几折',
     // 🔴 R350：活动形态不止打折 —— 满减/代金券/团购/第二份半价都能折成「每 100 实收多少」。
     //   不去为每种形态做选择器（老板还得学每种的参数），直接让他填实收率：一个入口覆盖全部可折算形态。
-    promoRealLabel: '或每 100 元实收',
+    promoRealLabel: '折扣后实收率',
     promoRealPh: '留空按折扣',
     promoRealUnit: '元',
     promoRealNote: '满减/团购/代金券都填这（1-100）',
+    promoCostLabel: '活动成本率',
+    promoCostPh: '0',
+    promoCostNote: '赠酒、奖品、自己贴的券，按月成本 ÷ 实收算；没有就留空',
     // 🔴 R337（M2-A1）：问的是**订单**占比，不是"客人"占比 ——
     //   公式里的 W 是营业额占比，只有活动单与非活动单客单价接近时两口径才相等。
     //   文案说"客人"会让老板按人头估，与算出来的数天然对不上。
@@ -867,7 +870,7 @@ const TERMS = {
     promoGaLabel: '活动期毛利率',
     promoDropText: '掉 {x} 个点',
     promoBeLabel: '保本',
-    promoBeText: '{a} → {b}（+{p}%）',
+    promoBeText: '{a} → {b}（+{p}%，其中现金实收 {n}）',
     promoTrafficLabel: '打平要多来',
     promoTrafficText: '{p}% 的客人（多来的，不是总共）',
     // 🔴 R344：把活动卡和正推表连起来 —— 同一个营业额，做活动前后各赚多少。
@@ -876,7 +879,7 @@ const TERMS = {
     promoSameRevLoss: '同样做到 {r}，做活动会亏 {d}',
     promoSameRevNote: '按客流不变算；多来客人看上面',
     promoNegText: '这个折扣让价已经超过毛利率，卖多少都亏',
-    promoNeedCalc: '先点【开始测算】，这里才有数',
+    promoNeedCalc: '先点【开始测算】，再填实收率',
     // 🔴 R351：实收率填了但不是 1-100 ⇒ 必须明说，不许静默回落到折扣档
     //   （否则老板以为用的是自己的数，实际看的是折扣档的结果 —— 静默错值）
     promoRealBad: '实收率请填 1-100（每 100 元实收多少元）',

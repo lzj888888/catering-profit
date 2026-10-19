@@ -28,8 +28,6 @@ const Promo = require('../../utils/promoImpact.js');
 
 const M = TERMS.m2;
 // 促销选项的真实值（与 terms 的 promoDiscountOpts / promoWeightOpts 一一对应）
-const PROMO_D = [0.9, 0.85, 0.8, 0.7];
-const PROMO_W = [10, 30, 50, 80, 100];
 const BUILD_ALL = Object.keys(M.buildItems);
 // 🔴 R296 拍1：`FIXED_ALL` 随「每月固定支出」明细表删除（原仅 `onAddFixed` 使用）。
 // 🔴 R296b：`VAR_ALL` 随 ④「挂钩费用」明细卡删除（原仅 `onAddVar` 使用）。
@@ -84,11 +82,12 @@ Page({
       promoTitle: M.promoTitle,
       promoSub: M.promoSub,
       promoRealLabel: M.promoRealLabel,
+      promoCostLabel: M.promoCostLabel,
+      promoCostPh: M.promoCostPh,
+      promoCostNote: M.promoCostNote,
       promoRealPh: M.promoRealPh,
       promoRealUnit: M.promoRealUnit,
       promoRealNote: M.promoRealNote,
-      promoDiscountLabel: M.promoDiscountLabel,
-      promoWeightLabel: M.promoWeightLabel,
       promoGaLabel: M.promoGaLabel,
       promoBeLabel: M.promoBeLabel,
       promoTrafficLabel: M.promoTrafficLabel,
@@ -400,11 +399,10 @@ Page({
     // 🔴 R327：正推表（做到某营业额能赚多少）—— 由 profitLadderOf(result) 派生
     profitLadder: null,
     targetReverse: null,   // R367：想月赚 X 要怎么做（反推毛利率 / 人工上限）
-    // 🔴 R330：促销卡（默认 8 折 + 3 成客人会用；只改本地，不触发云端重算）
-    promoDIdx: 2,
-    // 🔴 R350：实收率（每 100 元实收多少）。非空时**优先于折扣档**，与「人工总额覆盖人数×人均」同模式。
-    promoRealPct: '',
-    promoWIdx: 1,
+    // 🔴 R370（纯堂食 · 缩小为「保本门槛」）：只剩两个输入 —— 实收率 与 活动成本率。
+    //   折扣档 / 几成订单 两组 chips 已删：老板手上直接有"实收 ÷ 原价"，不需要系统替他反推。
+    promoRealPct: '',   // 折扣后实收率（%）：实收 ÷ 原价 × 100；空 = 还没填
+    promoCostPct: '',   // 商家出资的活动成本率（% 实收）：赠送/奖品/自贴券
     promoRes: null,
     // 🔴 R342：固定费用构成（前端同源重算 + 与引擎对账，对不上就整块不显示）
     fixedBreak: null,
@@ -1225,24 +1223,22 @@ Page({
   //   为什么不再问"你想做哪种活动"：满减/团购/代金券/第二份半价 全都能折成"每 100 元实收多少"，
   //   而每种的额外参数（满多少减多少、券面额、平台抽点）让界面翻倍、老板还得学。
   //   一个实收率入口覆盖所有可折算形态；赠品不在此列（它不产生营收，会破坏统一成本率前提）。
-  promoDiscountOf() {
+  // 🔴 R370（缩小为「保本门槛」）：只剩**一个实收率**输入，不再有折扣档 / 几成订单两组 chips。
+  //   理由：折扣档本质是在替老板反推实收率，而他手上直接就有"实收 ÷ 原价"这个数；
+  //   多一组 chips 就多一层"我选哪个"的困惑，而且还要解释"几成订单"的口径近似（已删那段近似说明）。
+  //   三态返回：null = 还没填；false = 填了但越界；数字 = 合法实收率（0~1）。
+  promoNetRateOf() {
     const raw = String(this.data.promoRealPct == null ? '' : this.data.promoRealPct).trim();
-    const real = Number(raw);
-    // 没填 ⇒ 用折扣档
-    if (raw === '') return PROMO_D[this.data.promoDIdx];
-    // 填了且合法 ⇒ 用实收率
-    if (real > 0 && real <= 100) return real / 100;
-    // 🔴 R351：填了但越界（0 / 负数 / >100）⇒ 返回 null，由调用方明说，
-    //   绝不静默回落到折扣档 —— 否则老板以为用的是自己的数，看的是折扣档的结果。
-    return null;
+    if (raw === '') return null;
+    const v = Number(raw);
+    if (isFinite(v) && v > 0 && v <= 100) return v / 100;
+    return false;
   },
 
-  // 点折扣档 ⇒ 清空实收率（回到"按折扣"模式，否则两个来源打架）
-  onPromoD(e) {
-    this.setData({
-      promoDIdx: Number(e.currentTarget.dataset.idx),
-      promoRealPct: '',
-    }, () => this.setData({ promoRes: this.promoOf(this.data.result) }));
+  onPromoCostInput(e) {
+    this.setData({ promoCostPct: e.detail.value }, () => {
+      this.setData({ promoRes: this.promoOf(this.data.result) });
+    });
   },
 
   onPromoRealInput(e) {
@@ -1254,19 +1250,25 @@ Page({
   promoOf(r) {
     if (!r || r.red_alert) return null;
     const T = this.data.t;
-    const fixed = Number(r.fixed_total);
-    const marginPct = Number(r.margin_rate);
+    const fixed = Number(String(r.fixed_total).replace(/,/g, ''));
+    // 🔴🔴 R370（李老师 2026-10-20）：「这个活动是**纯堂食**的，跟外卖没关系」。
+    //   原来这里取 `r.margin_rate`——那是**扣过渠道佣金**的合并边际率
+    //   （m = (毛利率 − 渠道费率)/100）⇒ 拿它算堂食活动，会把外卖抽成算成活动的代价，**高估伤害**。
+    //   纯堂食活动的基准只能是**菜品毛利率**本身（菜单口径，不扣渠道）。
+    const marginPct = Number(this.data.marginPct);
     if (!isFinite(fixed) || !isFinite(marginPct) || !(fixed > 0)) return null;
 
-    const d = this.promoDiscountOf();
-    // 实收率填错 ⇒ 直接说清楚（不是"算不出"，也不是"没填"）
-    if (d == null) return { bad: true, text: T.promoRealBad };
+    const d = this.promoNetRateOf();
+    // 没填 ⇒ 提示去填；填错 ⇒ 说清楚（两者不能混成一句话）
+    if (d === null) return { empty: true, text: T.promoNeedCalc };
+    if (d === false) return { bad: true, text: T.promoRealBad };
 
     const out = Promo.promoImpact({
       fixedYuan: fixed,
       marginPct,
       discount: d,
-      weightPct: PROMO_W[this.data.promoWIdx],
+      weightPct: 100,                       // 🔴 R370：只填实收率 ⇒ 等价于全部流水都参与
+      costRatePct: Number(this.data.promoCostPct) || 0,
     });
     // 让价超过毛利率 ⇒ 没有保本点。这是确定结论，必须说出来（不是"算不出"）。
     if (out.ok === false && out.reason === 'negativeMargin') return { bad: true, text: T.promoNegText };
@@ -1281,8 +1283,10 @@ Page({
       bad: false,
       gaText: out.gaPct + '%',
       dropText: fill(T.promoDropText, { x: out.dropPctPoints }),
+      // 🔴 R370：两个数都是**原价流水**口径；现金实收单列，避免再次混口径
       beText: fill(T.promoBeText, {
-        a: money(out.beBeforeYuan), b: money(out.beAfterYuan), p: out.beIncreasePct,
+        a: money(out.beBeforeYuan), b: money(out.beAfterYuan),
+        p: out.beIncreasePct, n: money(out.beAfterNetYuan),
       }),
       trafficText: fill(T.promoTrafficText, { p: out.needTrafficPct }),
       // 🔴 R344：把活动卡接到正推表 —— 取「日常保本 × 1.2」当参照营业额，
@@ -1304,14 +1308,6 @@ Page({
 
 
 
-  onPromoW(e) {
-    // 🔴 R354：必须**先落 promoWIdx，再算** —— 原来把 `this.promoOf(...)` 直接写在 setData 的入参里，
-    //   它在 setData 生效**之前**求值，`promoOf` 读到的还是**旧的** promoWIdx
-    //   ⇒ 点「几成客人会用」永远显示**上一档**的结果（静默错值，页面零报错）。
-    //   模拟器实测：点「全部」仍显示「3 成」的 16.7%。
-    this.setData({ promoWIdx: Number(e.currentTarget.dataset.idx) },
-      () => this.setData({ promoRes: this.promoOf(this.data.result) }));
-  },
 
   crowdOf(result) {
     if (!result || result.red_alert) return null;
