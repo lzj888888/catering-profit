@@ -564,6 +564,46 @@ chk(/if \(pool\.indexOf\(fixVal\) < 0\) fixVal = pool\[0\]/.test(mtxJs),
   }
 }
 
+// --- R344：活动卡接到正推表（同一营业额，做活动前后各赚多少）---
+//   「打平要多来 X% 客人」说的是**门槛**，这里说的是**代价** —— 两句互补，缺一个老板都判断不了。
+//   三个静默退化点：① 参照营收与正推表不同基准（两张表对不上，老板会以为算错）
+//   ② 只算"少赚"不分盈亏（做活动做到亏，却显示成"少赚"）
+//   ③ 不写"客流不变"前提（老板会以为活动一定亏，或者反以为一定赚）
+{
+  chk(/sameRevText\s*:/.test(idxJs) && /promoSameRevWin/.test(idxJs) && /promoSameRevLoss/.test(idxJs),
+    'index.js 活动卡没接正推表（R344：缺「同样做到 R 少赚 D」这一句，老板只能自己心算）');
+
+  chk(/out\.beBeforeYuan\s*\*\s*1\.2/.test(idxJs),
+    'index.js 参照营收未取「日常保本 × 1.2」（R344：必须与正推表第 3 档同基准，否则两张表对不上）');
+
+  chk(/promoSameRevNote/.test(idxWxmlS),
+    'index.wxml 缺少「按客流不变算」的口径注（R344：不写前提，老板会以为活动一定亏/一定赚）');
+
+  // 页面必须真的渲染这一行（算了不显示等于没做）
+  chk(/promoRes\.sameRevText/.test(idxWxmlS),
+    'index.wxml 未渲染 sameRevText（R344）');
+
+  // 行为腿：用真实引擎口径验证「少赚」= R × (g0 − ga)，且方向恒为正
+  let promo = null;
+  try { promo = require('../utils/promoImpact.js').promoImpact; } catch (e) { promo = null; }
+  if (promo) {
+    const o = promo({ fixedYuan: 30000, marginPct: 55, discount: 0.8, weightPct: 30 });
+    if (o && o.ok) {
+      const R = Math.round(o.beBeforeYuan * 1.2);
+      const no = R * (55 / 100) - 30000;
+      const yes = R * (o.gaPct / 100) - 30000;
+      chk(Math.abs((no - yes) - R * (55 / 100 - o.gaPct / 100)) <= 2,
+        'R344-⑤ 「少赚」不等于 R × (毛利率差)（' + Math.round(no - yes) + ' vs '
+        + Math.round(R * (55 / 100 - o.gaPct / 100)) + '）⇒ 口径写错了');
+      chk(no > yes, 'R344-⑥ 做活动后的利润未低于不做（反恒真腿：说明 ⑤ 恒成立是假的）');
+    } else {
+      chk(false, 'R344 promoImpact 基线算例失败（' + (o && o.reason) + '）');
+    }
+  } else {
+    chk(false, '无法加载 promoImpact（R344：行为腿跑不了，不能算通过）');
+  }
+}
+
 if (problems.length) {
   console.log('❌ M2 矩阵/对比 + 页面完整性守卫失败 ' + problems.length + ' 处：');
   problems.forEach((m) => console.log('   ' + m));

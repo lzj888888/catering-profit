@@ -300,6 +300,12 @@
       <view class="cell" wx:if="{{!promoRes.bad}}"><text class="lbl">{{t.promoGaLabel}}</text><text class="val">{{promoRes.gaText}} · {{promoRes.dropText}}</text></view>
       <view class="cell" wx:if="{{!promoRes.bad}}"><text class="lbl">{{t.promoBeLabel}}</text><text class="val">{{promoRes.beText}}</text></view>
       <view class="cell big" wx:if="{{!promoRes.bad}}"><text class="lbl">{{t.promoTrafficLabel}}</text><text class="val keynum">{{promoRes.trafficText}}</text></view>
+      <!-- 🔴 R344：与正推表同基准（日常保本 ×1.2），让老板看到"同样卖这么多，做活动少赚多少"。
+           这是**代价**；能不能靠多来的客人补回，看上一条"打平要多来 X%"。 -->
+      <view class="cell" wx:if="{{!promoRes.bad && promoRes.sameRevText}}">
+        <text class="lbl">{{promoRes.sameRevText}}</text>
+      </view>
+      <view class="hint" wx:if="{{!promoRes.bad && promoRes.sameRevText}}">{{t.promoSameRevNote}}</view>
       <view class="warn" wx:if="{{promoRes.bad}}">{{promoRes.text}}</view>
     </block>
     <view class="hint" wx:if="{{!promoRes}}">{{t.promoNeedCalc}}</view>

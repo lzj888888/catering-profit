@@ -864,6 +864,11 @@ const TERMS = {
     promoBeText: '{a} → {b}（+{p}%）',
     promoTrafficLabel: '打平要多来',
     promoTrafficText: '{p}% 的客人（多来的，不是总共）',
+    // 🔴 R344：把活动卡和正推表连起来 —— 同一个营业额，做活动前后各赚多少。
+    //   「打平要多来 X% 客人」说的是门槛，「同样做到 R 少赚 D」说的是代价，两句互补。
+    promoSameRevWin: '同样做到 {r}，做活动少赚 {d}',
+    promoSameRevLoss: '同样做到 {r}，做活动会亏 {d}',
+    promoSameRevNote: '按客流不变算；多来客人看上面',
     promoNegText: '这个折扣让价已经超过毛利率，卖多少都亏',
     promoNeedCalc: '先点【开始测算】，这里才有数',
     // 选项（显示文案；实际值在 index.js 的 PROMO_D / PROMO_W 里，一一对应）

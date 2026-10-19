@@ -88,6 +88,9 @@ Page({
       promoGaLabel: M.promoGaLabel,
       promoBeLabel: M.promoBeLabel,
       promoTrafficLabel: M.promoTrafficLabel,
+      promoSameRevWin: M.promoSameRevWin,
+      promoSameRevLoss: M.promoSameRevLoss,
+      promoSameRevNote: M.promoSameRevNote,
       promoTrafficNote: M.promoTrafficNote,
       promoDiscountOpts: M.promoDiscountOpts,
       promoWeightOpts: M.promoWeightOpts,
@@ -1133,6 +1136,20 @@ Page({
         a: money(out.beBeforeYuan), b: money(out.beAfterYuan), p: out.beIncreasePct,
       }),
       trafficText: fill(T.promoTrafficText, { p: out.needTrafficPct }),
+      // 🔴 R344：把活动卡接到正推表 —— 取「日常保本 × 1.2」当参照营业额，
+      //   与正推表第 3 档完全同基准（老板可以两张表对着看）。
+      //   ⚠️ 前提写死：**客流不变**。所以这里说的是「代价」，不是「活动一定亏」——
+      //   多来的客人能补多少，看上面那行 trafficText。
+      sameRevText: (function () {
+        const R = Math.round(out.beBeforeYuan * 1.2);
+        const profitNo = R * (marginPct / 100) - fixed;
+        const profitYes = R * (out.gaPct / 100) - fixed;
+        if (!isFinite(profitNo) || !isFinite(profitYes)) return '';
+        if (profitYes > 0) {
+          return fill(T.promoSameRevWin, { r: money(R), d: money(profitNo - profitYes) });
+        }
+        return fill(T.promoSameRevLoss, { r: money(R), d: money(Math.abs(profitYes)) });
+      }()),
     };
   },
 
