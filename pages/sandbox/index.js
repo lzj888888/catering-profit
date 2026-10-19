@@ -1673,9 +1673,34 @@ Page({
       this.refreshStick();
     } catch (e) {
       if (seq !== this._seq) return;
-      this.setData({ loading: false });
-      if (e.code === 'M2_RED_ALERT') { this.setData({ result: { red_alert: true }, calcError: '' }); }
-      else { this.setData({ calcError: e.msg || '' }); api.toastError(e); }
+      if (e.code === 'M2_RED_ALERT') {
+        this.setData({ loading: false, result: { red_alert: true }, calcError: '' });
+        return;
+      }
+      // 🔴 R359（与 R358 同族）：本次**没算出来** ⇒ 必须把上一次的结果整套清掉。
+      //   原来只 `setData({ loading:false })` + calcError ⇒ 屏幕上留着旧数字
+      //   （结果卡条件只判 `result && !result.red_alert`，它照样渲染），
+      //   而老板刚改过输入 ⇒ 极易把旧数当新结果（静默错账，方向还是"看着挺好"）。
+      //   ⚠️ **派生状态一个都不能漏**：漏一个就会出现「保本数没了、指标条还挂着」的自相矛盾，
+      //      所以这里按「成功时写入过什么」逐项清回去（见下方 setData 的同一批键）。
+      this.setData({
+        loading: false,
+        calcError: e.msg || '',
+        result: null,
+        bands: [],
+        bandsRaw: [],
+        marginBand: '',
+        verdict: null,
+        profitLadder: null,
+        promoRes: null,
+        fixedBreak: null,
+        crowd: null,
+        eff: null,
+        indicators: [],
+        payback: null,
+        presetAssumptions: [],
+      });
+      api.toastError(e);
     }
   },
 

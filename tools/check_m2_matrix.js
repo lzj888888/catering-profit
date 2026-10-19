@@ -908,6 +908,39 @@ chk(/if \(pool\.indexOf\(fixVal\) < 0\) fixVal = pool\[0\]/.test(mtxJs),
   }
 }
 
+// --- B15（R359，与 R358 同族）：onCalc 失败必须把上一次的结果整套清掉 ---
+//   失效形态：catch 里只清 loading + 写 calcError ⇒ 结果卡条件（`result && !result.red_alert`）照旧成立
+//   ⇒ 屏幕留着上一次的旧数字，而老板刚改过输入 ⇒ 旧数被当新结果（静默错账，方向还是"看着挺好"）。
+//   判据两条腿：① 找准"含 calcError 的 catch"（brace 配平，不误抓别的 catch）
+//              ② 成功时写过的**每一个**派生键都必须被清回（漏一个 = 页面自相矛盾）
+{
+  const findCatchWith = (src, needle) => {
+    const re = /catch\s*\([^)]*\)\s*\{/g;
+    let m;
+    while ((m = re.exec(src)) !== null) {
+      const start = m.index + m[0].length;
+      let depth = 1;
+      let i = start;
+      while (i < src.length && depth > 0) {
+        if (src[i] === '{') depth += 1;
+        else if (src[i] === '}') depth -= 1;
+        i += 1;
+      }
+      const body = src.slice(start, i - 1);
+      if (body.indexOf(needle) >= 0) return body;
+    }
+    return '';
+  };
+  const blk = findCatchWith(idxJs, 'calcError');
+  chk(!!blk, 'B15 找不到 onCalc 的失败分支（含 calcError 的 catch）—— 判据无从落地，按未通过处理');
+  const MUST_CLEAR = ['result', 'bands', 'bandsRaw', 'marginBand', 'verdict', 'profitLadder',
+    'promoRes', 'fixedBreak', 'crowd', 'eff', 'indicators', 'payback', 'presetAssumptions'];
+  const missing = MUST_CLEAR.filter((k) => !new RegExp('(^|[\\s,{])' + k + '\\s*:\\s*(null|\\[\\]|\'\')').test(blk));
+  chk(blk && missing.length === 0,
+    'B15 index.js 失败分支没有清掉旧结果：' + (missing.join('、') || '（未解析到 catch 块）')
+    + '（R359：旧数字会被当成新结果）');
+}
+
 if (problems.length) {
   console.log('❌ M2 矩阵/对比 + 页面完整性守卫失败 ' + problems.length + ' 处：');
   problems.forEach((m) => console.log('   ' + m));
@@ -916,5 +949,5 @@ if (problems.length) {
 }
 console.log('✅ M2 矩阵/对比改造守卫通过（matrix action 批量复用引擎 + m2_matrix 免费导出豁免 + 术语双副本一致）');
 console.log('✅ M2 页面完整性守卫通过（B1 画布预热 / B2 反推口径 / B3 valid_days 同源 / B4 术语单源 / B5 wx:key /'
-  + ' B7 invalid 可见 / B10 手填不覆盖 / B11 按钮不重绘 / B12 锚点唯一 / B9+B14 硬编码中文 ' + cjkTotal + ' 处 ≤ 基线）');
+  + ' B7 invalid 可见 / B10 手填不覆盖 / B11 按钮不重绘 / B12 锚点唯一 / B15 失败清旧表 / B9+B14 硬编码中文 ' + cjkTotal + ' 处 ≤ 基线）');
 console.log('M2 矩阵/对比 + 页面完整性守卫结果：' + pass + ' 通过 / 0 失败');
