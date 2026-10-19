@@ -90,3 +90,35 @@
 .im-expand { padding: 16rpx 0 4rpx; }
 .btn-block { width: 100%; min-height: 88rpx; }
 .rev-pre { font-size: 28rpx; color: #8a94a6; line-height: 1.5; margin-bottom: 12rpx; }
+
+/* ===== R372（M3 UI 收紧）=====
+ * 问题（模拟器实测，novice 新建态）：整页 1561px ≈ 3.15 屏；其中
+ *   · 8 个 `.field` 各自是一张白卡（padding 24rpx × 上下 + margin 16rpx）⇒ 每个 62~115px
+ *   · **一个配料就是一张 299px 的卡**（输入方式 / 原料 / 换算说明 / 用量 / 组件 / 删除 各占一行）
+ * ⇒ 老板建一张卡要滚三屏，且看不出"填到哪一步了"。
+ * 手法（不删任何功能、不动任何计算）：
+ *   ① `.field` 从"一张卡一个字段"改成"设置列表行"：无上下内边距、行高 96rpx、1rpx 分隔线；
+ *   ② `.field` 允许换行 —— 例外说明（`.muted`）独占一行，不再被挤成 40px 宽的数字窄列
+ *      （这正是"竖排"的同族病：flex 行里塞第三块）；
+ *   ③ 输入框在本页收窄（覆盖全局 `.field input{min-width:320rpx}`），给标签让位；
+ *   ④ 配料卡与单元格的留白各收一档（触控下界 88rpx 不动）。
+ */
+.sec-lite { font-size: 28rpx; color: #6b7a8d; padding: 20rpx 8rpx 8rpx; }
+
+.form .field {
+  padding: 0 20rpx;
+  min-height: 96rpx;
+  margin-bottom: 1rpx;
+  border-radius: 6rpx;
+  flex-wrap: wrap;
+}
+.form .field .lbl { flex: 0 0 auto; padding-right: 16rpx; }
+.form .field .val-input { flex: 0 0 auto; width: 220rpx; min-width: 0; box-sizing: border-box; }
+.form .field .mode-group { flex: 1; justify-content: flex-end; }
+.form .field .muted { flex: 0 0 100%; padding: 0 0 10rpx; line-height: 1.45; }
+/* ⚠️ 88rpx 是 AD-G2 触控下界，不能为紧凑再压 */
+.form .field .picker { min-height: 88rpx; line-height: 88rpx; text-align: right; }
+
+.line { padding: 10rpx 20rpx; margin-bottom: 10rpx; }
+.cell2 { padding: 4rpx 0; }
+.del-row { margin-top: 0; }

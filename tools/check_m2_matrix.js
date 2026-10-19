@@ -360,6 +360,13 @@ for (const rel of Object.keys(CJK_BASELINE)) {
   // ⑤ 三项输出必须都渲染
   chk(/promoRes\.gaText/.test(idxWxmlS) && /promoRes\.beText/.test(idxWxmlS) && /promoRes\.trafficText/.test(idxWxmlS),
     'index.wxml 未把三项输出全渲染（漏一项老板会以为是全部）');
+  // ⑥b 🔴 R371（M2 审计）：活动卡只许给**差额**，不许自己再算一遍绝对利润。
+  //   失效形态：用菜单毛利率 ga 配全店 fixed 算"会亏多少" ⇒ 有渠道佣金的店被系统性低估，
+  //   且与主结果卡（margin_rate 口径）对不上，同一页两个利润数。
+  chk(/marginPct - out\.gaPct/.test(idxJs),
+    'R371 活动卡未按「G0 − ga 的差额」出数（差额只能用菜单口径，否则外卖佣金被算成活动代价）');
+  chk(/const mr = Number\(String\(r\.margin_rate\)/.test(idxJs),
+    'R371 活动卡的绝对盈亏没有用引擎 margin_rate（用菜单率配全店固定费用 ⇒ 亏损被低估，与主卡打架）');
   // ⑥ 单源：必须走 utils/promoImpact.js
   chk(/promoImpact/.test(idxJs), 'index.js 未走 utils/promoImpact.js（两套折扣公式必然漂移）');
   // ⑦ 口径行为腿（本轮核心）：保本涨幅 必须与「打平要多卖」一致

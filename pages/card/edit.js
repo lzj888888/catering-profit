@@ -74,6 +74,9 @@ Page({
   data: {
     t: {
       dishName: TERMS.card.dishName,
+      secBasic: TERMS.card.secBasic,
+      secCost: TERMS.card.secCost,
+      secPrice: TERMS.card.secPrice,
       dishNamePh: TERMS.card.dishNamePh,
       calcMode: TERMS.card.calcMode,
       calcModeA: TERMS.card.calcModeA,

@@ -46,6 +46,10 @@ Page({
       goOrders: TERMS.pay.goOrders,
       expiredLocked: TERMS.pay.expiredLocked,
       monthEmpty: TERMS.uiFix.monthEmpty,
+      // 🔴 R372（M1 账套裁决）：无账本月份不能只留一片空白 —— 结果卡是 `wx:if="{{result}}"`，
+      //   空月什么都不渲染，老板不知道是"没数据"还是"加载失败"。复用 result 页已有文案（不新增术语键）。
+      resultEmpty: TERMS.uiFix.resultEmpty,
+      resultEmptyGoInput: TERMS.uiFix.resultEmptyGoInput,
       // ── R234/J4e 行内长提示折叠（本页 1 处）──
       // 🔴 三处登记的第二处：漏映射 ⇒ 页面渲染成**空白**且零报错（R124 同族）
       // ⚠️ 引导语在 `TERMS.ledger` 组（跨页复用的通用模式引导语）。

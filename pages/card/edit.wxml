@@ -22,6 +22,7 @@
   </view>
   <view class="im-tip" wx:if="{{inputMode === 'novice' && !showMore}}">{{t.noviceTip}}</view>
 
+  <view class="sec-lite">{{t.secBasic}}</view>
   <view class="field">
     <text class="lbl">{{t.dishName}}</text>
     <input class="val-input" value="{{name}}" placeholder="{{t.dishNamePh}}" bindinput="onName" />
@@ -64,6 +65,7 @@
     <text class="muted">{{t.batchHint}}</text>
   </view>
 
+  <view class="sec-lite">{{t.secCost}}</view>
   <!-- 明细行（录入方式：档案选择 / 临时手工）—— 仅单品 -->
   <block wx:if="{{cardType === '1'}}">
   <view class="line" wx:for="{{lines}}" wx:key="idx">
@@ -88,7 +90,10 @@
       </view>
       <!-- round149：把「买」与「用」的换算摆在眼前（采购价 ÷ 换算系数 ÷ 出成率 ⇒ 净料元/克），
            老板不用去档案页心算，也不会把「按斤买」的价当成「按克」的价填。 -->
-      <view class="muted spec-hint">{{lines[index].spec_hint || t.matSpecHintEmpty}}</view>
+      <!-- 🔴 R372：空态说明只在**第一行**出现一次。原来每行都印一遍同一句 30 字解释，
+           三个配料就是三行重复文字（实测每行 30px）。 -->
+      <view class="muted spec-hint" wx:if="{{lines[index].spec_hint}}">{{lines[index].spec_hint}}</view>
+      <view class="muted spec-hint" wx:elif="{{index === 0}}">{{t.matSpecHintEmpty}}</view>
       <!-- round151：跨计量族提示（只提示、不拦截）。参考产品在同样情形下静默算出 ¥6,000,000 无告警 -->
       <view class="warn-hint" wx:if="{{lines[index].unit_warn}}">{{lines[index].unit_warn}}</view>
       <!-- round153：用量 + 单位**同一排** —— 数字与单位是同一个量的两半，拆两行会视觉断句。 -->
@@ -219,6 +224,7 @@
     <text class="lbl">{{t.auxAmount}}</text>
     <input class="val-input" type="digit" value="{{auxYuan}}" bindinput="onAux"  adjust-position="{{true}}" cursor-spacing="20" />
   </view>
+  <view class="sec-lite">{{t.secPrice}}</view>
   <view class="field">
     <text class="lbl">{{t.price}}</text>
     <input class="val-input" type="digit" value="{{priceYuan}}" bindinput="onPrice"  adjust-position="{{true}}" cursor-spacing="20" />

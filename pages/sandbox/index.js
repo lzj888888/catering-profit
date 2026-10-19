@@ -1293,14 +1293,19 @@ Page({
       //   与正推表第 3 档完全同基准（老板可以两张表对着看）。
       //   ⚠️ 前提写死：**客流不变**。所以这里说的是「代价」，不是「活动一定亏」——
       //   多来的客人能补多少，看上面那行 trafficText。
+      // 🔴 R371（M2 审计）：这一段里有两个**不同性质**的数，口径必须分开取：
+      //   ① 差额 Δ = R×(G0 − ga)：活动让利花掉多少 —— 只与菜单毛利率有关，与渠道费率无关
+      //      ⇒ 用菜单口径 marginPct / gaPct（若用 margin_rate 会把外卖佣金算成活动代价）。
+      //   ② 绝对盈亏 = R×margin_rate − fixed：与主结果卡**完全同口径**（margin_rate 已扣渠道）。
+      //   原来的错法：亏损支路用 `R×ga − fixed`（菜单口径 ga 配**全店** fixed）
+      //      ⇒ 有外卖/团购的店亏损被低估，且与主卡两个利润数打架。
       sameRevText: (function () {
         const R = Math.round(out.beBeforeYuan * 1.2);
-        const profitNo = R * (marginPct / 100) - fixed;
-        const profitYes = R * (out.gaPct / 100) - fixed;
-        if (!isFinite(profitNo) || !isFinite(profitYes)) return '';
-        if (profitYes > 0) {
-          return fill(T.promoSameRevWin, { r: money(R), d: money(profitNo - profitYes) });
-        }
+        const delta = R * ((marginPct - out.gaPct) / 100);
+        const mr = Number(String(r.margin_rate).replace(/,/g, ''));
+        const profitYes = R * (mr / 100) - fixed;
+        if (!isFinite(delta) || !(delta > 0) || !isFinite(profitYes)) return '';
+        if (profitYes > 0) return fill(T.promoSameRevWin, { r: money(R), d: money(delta) });
         return fill(T.promoSameRevLoss, { r: money(R), d: money(Math.abs(profitYes)) });
       }()),
     };
