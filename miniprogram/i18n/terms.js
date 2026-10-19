@@ -2135,6 +2135,7 @@ const TERMS = {
     //   ⚠️ 原 title/subtitle 保留作兜底（check_m2_matrix ③ 断言关键键齐全）。
     titleFwd: '场景矩阵测算 · 已有铺面',
     subtitleFwd: '店已经在开：改毛利率 / 人工 / 目标利润，看保本点会怎么变',
+    subtitleFwdLocked: '（房租固定 ¥{rent}，只扫人工 / 毛利率 / 目标）',
     titleRev: '场景矩阵测算 · 寻找铺面',
     subtitleRev: '还没拿铺子：扫一批房租档位，看哪个档位扛得住',
     pivotRowLabelFwd: '毛利率',

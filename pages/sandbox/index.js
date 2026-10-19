@@ -1004,7 +1004,21 @@ Page({
   // ===== M2 G1/G2（2026-10-11 改造）：跳转场景矩阵 / 多方案对比 =====
   // 🔴 round273：矩阵页按**当前场景**进（A 已有铺面 ⇒ 扫毛利率；B 寻找铺面 ⇒ 扫租金档位）。
   //   同一个矩阵页在不同处境下要答的不是同一个问题，故把 `mode` 带过去（不带 ⇒ 页内默认 reverse）。
-  goMatrix() { wx.navigateTo({ url: '/pages/sandbox/matrix?mode=' + this.data.mode }); },
+  // 🔴 R366：把当前这一页的**事实**带进矩阵页 —— 已有铺面的矩阵要拿它当固定前提
+  //   （房租就是他签的那个数、人数就是现在在岗的人数），否则进去是另一套默认值，
+  //   老板会以为"这表跟我没关系"。reverse（寻找铺面）不带：那时房租还是变量。
+  goMatrix() {
+    const d = this.data;
+    const q = ['mode=' + d.mode];
+    if (d.mode === 'forward') {
+      const add = (k, v) => { const n = Number(v); if (isFinite(n) && n > 0) q.push(k + '=' + Math.round(n)); };
+      add('rent', d.rentYuan);
+      add('labor', d.headcountNum);
+      add('margin', d.marginPct);
+      add('target', d.targetYuan);
+    }
+    wx.navigateTo({ url: '/pages/sandbox/matrix?' + q.join('&') });
+  },
   goCompare() { wx.navigateTo({ url: '/pages/sandbox/compare' }); },
 
   // ===== M2v1.3（业态参数包 + 回本卡 · 第三期）=====

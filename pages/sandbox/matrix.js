@@ -225,17 +225,57 @@ Page({
   },
 
   onLoad(options) {
-    const mode = (options && options.mode === 'forward') ? 'forward' : 'reverse';
+    const opt = options || {};
+    const mode = (opt.mode === 'forward') ? 'forward' : 'reverse';
     // 🔴 round273：按进来的场景切「透视行维度」与标题/引导语（维度**全保留**，只是透视主轴不同 ——
     //   A 也可以扫租金做敏感性分析，故不删维度，只换默认主轴）。
     const pivotRowDim = mode === 'forward' ? 'margin' : 'rent';
-    this.setData({
+    const patch = {
       mode,
       pivotRowDim,
       't.title': mode === 'forward' ? M.titleFwd : M.titleRev,
       't.subtitle': mode === 'forward' ? M.subtitleFwd : M.subtitleRev,
       't.pivotRowLabel': mode === 'forward' ? M.pivotRowLabelFwd : M.pivotRowLabelRev,
-    });
+    };
+    // 🔴🔴 R366（李老师 2026-10-19）：「已有店铺的矩阵」和「寻找铺面的矩阵」原来**是同一张表**——
+    //   默认（高级维度收起）两种模式都只扫 8 个**租金档**（onGenerate: advOpen ? dims : slice(0,1)）。
+    //   而房租对已有店铺是**既定前提**（房东报价，签了就是签了），扫它等于给老板看一堆与他无关的假设。
+    //   他真正能动的只有：请几个人、毛利率定多少、目标利润要多少。
+    //   ⇒ 已有铺面（forward）：房租**固定成他填的那一档**（不再作为扫描维），改扫
+    //      「人工（当前人数 / +1 人）× 毛利率（±5%）× 目标利润」；
+    //      reverse（寻找铺面）保持原样：扫 8 个租金档 —— 那才是"还没签、可以选"的人该看的。
+    if (mode === 'forward') {
+      const tiers = ['tier1', 'tier23', 'county'];
+      const cityTier = tiers[this.data.cityIdx] || 'tier23';
+      const rentPool = RENT_DIMS[cityTier] || RENT_DIMS.tier23;
+      const presetNow = findPreset(BIZ_PRESETS[this.data.presetIdx].presetKey);
+      const bk = presetNow ? presetNow.bizKey : '';
+      const laborDef = LABOR_DIMS[bk] || [2, 3];
+      const num = (v) => { const n = Number(v); return isFinite(n) && n > 0 ? Math.round(n) : 0; };
+      // 房租：优先用首页填的实际房租；没传就用本城市中位档（说明见页面副标题）
+      const rentIn = num(opt.rent);
+      const rentAnchor = rentIn > 0 ? rentIn : rentPool[Math.floor(rentPool.length / 2)];
+      // 人工：当前人数 + 1 人 —— 矩阵的核心问句是「多请一个人会怎样」（R335 注释原话）
+      const laborBase = num(opt.labor) || laborDef[0];
+      const labor = [laborBase, laborBase + 1];
+      // 毛利率：他现在的毛利率，上下各 5 个百分点（越界不收）
+      const mIn = Number(opt.margin);
+      const margin = isFinite(mIn) && mIn > 0
+        ? [mIn - 5, mIn, mIn + 5].map((x) => Math.round(x)).filter((x) => x > 0 && x < 100)
+          .filter((x, i, a) => a.indexOf(x) === i)
+        : [55, 60, 65];
+      // 目标利润：0（保本）+ 他填的目标
+      const tIn = num(opt.target);
+      const target = tIn > 0 ? [0, tIn] : [0, 10000];
+      patch.advOpen = true;          // 展开"高级维度"，否则下面这些档位不参与扫描
+      patch['dims.rent'] = [rentAnchor];
+      patch['dims.labor'] = labor;
+      patch['dims.margin'] = margin;
+      patch['dims.target'] = target;
+      // 副标题里把"房租已固定"讲明白 —— 否则老板会以为页面还是让他扫租金
+      patch['t.subtitle'] = String(M.subtitleFwdLocked || '').replace('{rent}', String(rentAnchor));
+    }
+    this.setData(patch);
     // 🔴 R322：收起态下要显示「按毛利率 X% · 人工 N 人测算」，进页就先把这句算好
     this.setData({ advNote: this.buildAdvNote() });
     this.syncBuildDefault();
