@@ -1,0 +1,16 @@
+{
+  "before": {
+    "stickKpi": true,
+    "stickLbl": "保本营业额",
+    "stickVal": "¥5555.56",
+    "hasResult": true
+  },
+  "inject": {
+    "called": 1,
+    "stickKpi": false,
+    "stickLbl": "",
+    "stickVal": "",
+    "result": "null",
+    "calcError": "网络不可用，请检查网络连接"
+  }
+}

@@ -939,6 +939,10 @@ chk(/if \(pool\.indexOf\(fixVal\) < 0\) fixVal = pool\[0\]/.test(mtxJs),
   chk(blk && missing.length === 0,
     'B15 index.js 失败分支没有清掉旧结果：' + (missing.join('、') || '（未解析到 catch 块）')
     + '（R359：旧数字会被当成新结果）');
+  // 吸底条是 result 的**缓存副本**（stickKpi/stickLbl/stickVal 由 refreshStick 派生）：
+  // 只清 result 不会让条消失 ⇒ 必须按单一来源重算。这条腿就是模拟器实测抓出来的。
+  chk(blk && /this\.refreshStick\(\)/.test(blk),
+    'B15 index.js 失败分支没有重算吸底条（refreshStick）：result 清空了、底部还挂着上一次的保本数');
 }
 
 if (problems.length) {

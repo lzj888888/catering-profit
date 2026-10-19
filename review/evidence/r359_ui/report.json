@@ -1,0 +1,66 @@
+{
+  "ws": "ws://127.0.0.1:9420",
+  "out": "C:/Users/lzj/WorkBuddy/Claw/catering-profit/review/evidence/r359_ui",
+  "steps": {
+    "before": null,
+    "seeded": 1
+  },
+  "connect": "ok",
+  "sys": {
+    "p": "devtools",
+    "pages": 0
+  },
+  "route": {
+    "route": "pages/sandbox/index",
+    "presetKey": "",
+    "marginPct": 65
+  },
+  "before": {
+    "result": "object",
+    "bands": "array(1)",
+    "bandsRaw": "array(6)",
+    "marginBand": "string:55%（参考）",
+    "verdict": "object",
+    "profitLadder": "object",
+    "promoRes": "object",
+    "fixedBreak": "object",
+    "crowd": "object",
+    "eff": "object",
+    "indicators": "array(1)",
+    "payback": "object",
+    "presetAssumptions": "array(1)",
+    "calcError": ""
+  },
+  "inject": {
+    "called": 1,
+    "threw": null,
+    "loading": false
+  },
+  "after": {
+    "result": "null",
+    "bands": "array(0)",
+    "bandsRaw": "array(0)",
+    "marginBand": "''",
+    "verdict": "null",
+    "profitLadder": "null",
+    "promoRes": "null",
+    "fixedBreak": "null",
+    "crowd": "null",
+    "eff": "null",
+    "indicators": "array(0)",
+    "payback": "null",
+    "presetAssumptions": "array(0)",
+    "calcError": "网络不可用，请检查网络连接"
+  },
+  "beforeShot": {
+    "result": "null",
+    "indicators": 0,
+    "calcError": "网络不可用，请检查网络连接"
+  },
+  "screenshot": "ok",
+  "afterShot": {
+    "result": "null",
+    "indicators": 0,
+    "calcError": "网络不可用，请检查网络连接"
+  }
+}

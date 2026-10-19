@@ -116,6 +116,18 @@ try:
     ok = rc == 0
     results.append(('M3 语义不变重排', ok))
     print('[%s] M3 →' % ('通过' if ok else '误伤'), summary(out))
+    # M4：只删「失败分支里的 refreshStick()」⇒ 吸底条留着上一次的保本数
+    with io.open(JS, encoding='utf-8') as f:
+        src = f.read()
+    assert '      this.refreshStick();\n      api.toastError(e);' in src
+    mutated = src.replace('      this.refreshStick();\n      api.toastError(e);', '      api.toastError(e);', 1)
+    assert mutated != src
+    with io.open(JS, 'w', encoding='utf-8', newline='') as f:
+        f.write(mutated)
+    rc, out = run()
+    ok = rc != 0 and '吸底条' in out
+    results.append(('M4 不重算吸底条', ok))
+    print('[%s] M4 →' % ('抓到了' if ok else '漏过'), summary(out))
 finally:
     restore()
 

@@ -1700,6 +1700,11 @@ Page({
         payback: null,
         presetAssumptions: [],
       });
+      // 🔴 R359b（真机/模拟器行为核验才抓到）：吸底条 `stickKpi/stickLbl/stickVal` 是
+      //   `result` 的**缓存副本**（`refreshStick()` 里由 result 派生），成功分支才刷新它。
+      //   ⇒ 结果区已清空、底部却还挂着上一次的「保本营业额 ¥5,555.56」，比不清更糟（自相矛盾）。
+      //   ✅ 不在 catch 里手写第二份清空逻辑，而是**按单一来源重算**：result 已为 null ⇒ 条自会隐藏。
+      this.refreshStick();
       api.toastError(e);
     }
   },
