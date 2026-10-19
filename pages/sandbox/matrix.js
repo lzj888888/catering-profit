@@ -33,6 +33,17 @@ const LABOR_DIMS = {
   other: [3, 4],
 };
 
+// 🔴 R346：面积按业态给建议值 —— 原来固定 60㎡，而 60㎡ 开火锅和开面馆都不对。
+//   面积直接影响：装修估算、水电参考值（房租×占比不涉及面积）、坪效分母。
+//   这是**建议值**，老板可以改；手改过就再也不覆盖（fieldTouched.area）。
+const AREA_DEFAULT = {
+  fastfood: 40,     // 面馆/快餐
+  hotpot: 120,      // 火锅/烤肉（含厨房与走道）
+  dining: 150,      // 中式正餐（含包间）
+  cafe: 30,         // 茶饮咖啡（档口/小店为主）
+  other: 60,
+};
+
 // 🔴 R345：租金档位按城市给三套 —— 原来县城和一线用同一套 3000~10000，
 //   县城老板扫到的全是"不可能租得起"的档，一线老板扫到的全是"根本租不到"的档，两端都失真。
 //   档数固定 8 个（与原一致）：行数不变，透视/导出不受影响。
@@ -255,6 +266,11 @@ Page({
     fill('equip', 'buildEquipYuan', 'buildEquipYears', 5);
     fill('franchise', 'buildFranchiseYuan', 'buildFranchiseYears', 3);
     fill('transfer', 'buildTransferYuan', 'buildTransferYears', 3);
+    // 🔴 R346：面积跟着业态走，但**手改过就不动**（老板量过自己的铺子，比预设可信）
+    if (!this.data.fieldTouched.area) {
+      const bk = (p && p.bizKey) || 'other';
+      g.area = AREA_DEFAULT[bk] || AREA_DEFAULT.other;
+    }
     this.setData({ global: g }, () => this.setData({ buildSumText: this.buildSumOf() }));
   },
 
@@ -330,6 +346,8 @@ Page({
     const global = this.data.global;
     global[key] = val;
     const patch = { global };
+    // 🔴 R346：老板手改面积 ⇒ 之后切业态不再用建议值覆盖
+    if (key === 'area') patch['fieldTouched.area'] = true;
     // 🔴 R333：填了人工总额之后，"人数是否影响人工"的结论会变，提示要跟着变
     if (key === 'laborTotalYuan') patch.laborHint = this.laborHintOf();
     this.setData(patch, () => {

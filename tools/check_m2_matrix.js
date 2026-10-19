@@ -652,6 +652,47 @@ chk(/if \(pool\.indexOf\(fixVal\) < 0\) fixVal = pool\[0\]/.test(mtxJs),
     'matrix.js onDimInput 未标记 fieldTouched.rent（R345：没有标记 ⇒ 上面的保护是空修复）');
 }
 
+// --- R346：矩阵面积随业态（原来固定 60㎡）---
+//   60㎡ 开火锅和开面馆都不对：面积直接影响装修估算、坪效分母，也影响老板对"这个铺子够不够"的判断。
+//   三个静默退化点：① 五类建议值全一样（等于没分）② 切业态不换 ③ 换的时候覆盖老板手改的值
+{
+  const mArea = mtxJs.match(/const AREA_DEFAULT\s*=\s*\{([\s\S]*?)\n\};/);
+  const area = {};
+  if (mArea) {
+    const re = /(\w+):\s*(\d+)/g;
+    let x;
+    while ((x = re.exec(mArea[1]))) area[x[1]] = Number(x[2]);
+  }
+  const keys = ['fastfood', 'hotpot', 'dining', 'cafe', 'other'];
+  chk(keys.every((k) => area[k] > 0),
+    'matrix.js 缺 AREA_DEFAULT 业态建议面积（R346）: ' + keys.filter((k) => !(area[k] > 0)).join('/'));
+
+  const vals = keys.map((k) => area[k]).filter((v) => v > 0);
+  chk(new Set(vals).size >= 4,
+    'R346-② 建议面积区分度不足（' + vals.join('/') + '）⇒ 至少四类要不同，否则等于没分业态');
+
+  const syncBody = (mtxJs.match(/syncBuildDefault\(\)\s*\{([\s\S]*?)\n  \},/) || [])[1] || '';
+  chk(/g\.area\s*=\s*AREA_DEFAULT\[/.test(syncBody),
+    'matrix.js syncBuildDefault 未按业态设面积（R346：切业态后面积还是 60）');
+  chk(/fieldTouched\.area/.test(syncBody),
+    'matrix.js syncBuildDefault 未保护手改面积（R346：会覆盖老板量过的铺子）');
+
+  const gBody = (mtxJs.match(/onGlobalInput\(e\)\s*\{([\s\S]*?)\n  \},/) || [])[1] || '';
+  chk(/fieldTouched\.area/.test(gBody),
+    'matrix.js onGlobalInput 未标记 fieldTouched.area（R346：没有标记 ⇒ 上面的保护是空修复）');
+
+  // 行为腿：所有业态的 bizKey 都必须在表里（否则那个业态会静默回落到 other 的 60㎡）
+  let bp = null;
+  try { bp = require('../utils/bizPreset.js'); } catch (e) { bp = null; }
+  if (bp) {
+    const miss = bp.BIZ_PRESETS.filter((x) => !(area[x.bizKey] > 0)).map((x) => x.presetKey);
+    chk(miss.length === 0,
+      'R346-⑤ 有业态没有建议面积（' + miss.join('/') + '）⇒ 会静默回落到 other 的 60㎡');
+  } else {
+    chk(false, '无法加载 bizPreset（R346：覆盖性行为腿跑不了，不能算通过）');
+  }
+}
+
 if (problems.length) {
   console.log('❌ M2 矩阵/对比 + 页面完整性守卫失败 ' + problems.length + ' 处：');
   problems.forEach((m) => console.log('   ' + m));
