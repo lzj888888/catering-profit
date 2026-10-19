@@ -99,6 +99,7 @@ Page({
       promoDiscountOpts: M.promoDiscountOpts,
       promoWeightOpts: M.promoWeightOpts,
       promoNeedCalc: M.promoNeedCalc,
+      promoRealBad: M.promoRealBad,
       promoApproxNote: M.promoApproxNote,
       promoNegText: M.promoNegText,
       marginTip: M.marginTip,
@@ -1117,9 +1118,15 @@ Page({
   //   而每种的额外参数（满多少减多少、券面额、平台抽点）让界面翻倍、老板还得学。
   //   一个实收率入口覆盖所有可折算形态；赠品不在此列（它不产生营收，会破坏统一成本率前提）。
   promoDiscountOf() {
-    const real = Number(this.data.promoRealPct);
+    const raw = String(this.data.promoRealPct == null ? '' : this.data.promoRealPct).trim();
+    const real = Number(raw);
+    // 没填 ⇒ 用折扣档
+    if (raw === '') return PROMO_D[this.data.promoDIdx];
+    // 填了且合法 ⇒ 用实收率
     if (real > 0 && real <= 100) return real / 100;
-    return PROMO_D[this.data.promoDIdx];
+    // 🔴 R351：填了但越界（0 / 负数 / >100）⇒ 返回 null，由调用方明说，
+    //   绝不静默回落到折扣档 —— 否则老板以为用的是自己的数，看的是折扣档的结果。
+    return null;
   },
 
   // 点折扣档 ⇒ 清空实收率（回到"按折扣"模式，否则两个来源打架）
@@ -1143,10 +1150,14 @@ Page({
     const marginPct = Number(r.margin_rate);
     if (!isFinite(fixed) || !isFinite(marginPct) || !(fixed > 0)) return null;
 
+    const d = this.promoDiscountOf();
+    // 实收率填错 ⇒ 直接说清楚（不是"算不出"，也不是"没填"）
+    if (d == null) return { bad: true, text: T.promoRealBad };
+
     const out = Promo.promoImpact({
       fixedYuan: fixed,
       marginPct,
-      discount: this.promoDiscountOf(),
+      discount: d,
       weightPct: PROMO_W[this.data.promoWIdx],
     });
     // 让价超过毛利率 ⇒ 没有保本点。这是确定结论，必须说出来（不是"算不出"）。

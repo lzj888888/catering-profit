@@ -226,7 +226,10 @@ const CASES = [
   { key: 'check_bill_import_gate', rel: 'tools/check_bill_import_gate.js' },  // 48 条（R271 增 F 段 20 条：跨平台重复导入防护）
   { key: 'check_hub_guide', rel: 'tools/check_hub_guide.js' },  // 17 条（R263：枢纽页三步走/分层/空状态；G2 空状态严格 === 0 + G4 位置不变式）
   { key: 'check_export_delivery', rel: 'tools/check_export_delivery.js' },  // 44 条（R265 导出投递 25 + R266 报表内容 18：E11 摊销在场 / E12~E14 表上加减对得上账 / E15~E16 摊销来源台账 / E18 两个开关状态）
-  { key: 'check_page_card_width', rel: 'tools/check_page_card_width.js' },  // 3 条（R296c 立 / R296d 拆雷反转：A-① 全局 app.wxss 必须零精确类名 `.card`（否则任何页面复用即继承 width:48% ⇒ 卡片半宽 ⇒ 标签逐字断行成竖排）+ A-② 页面用了 `class="card"` 就得自己声明 width + A-③ 负样本互证不误伤 .card2/.card-title/.mcard）
+  { key: 'check_page_card_width', rel: 'tools/check_page_card_width.js' },
+  // R351：wxml class ↔ wxss 选择器集合比对。为什么值得受守：它守的是「用了但没定义样式」
+  //   这一类**能编译、能跑、零报错**的问题（R351 实扫出 7 处，含活动卡最关键的告警块）。
+  { key: 'check_wxml_class_defined', rel: 'tools/check_wxml_class_defined.js' },   // 4 条（A-①未定义 / A-②白名单过期 / A-③文件面 / A-④动态前缀自检）  // 3 条（R296c 立 / R296d 拆雷反转：A-① 全局 app.wxss 必须零精确类名 `.card`（否则任何页面复用即继承 width:48% ⇒ 卡片半宽 ⇒ 标签逐字断行成竖排）+ A-② 页面用了 `class="card"` 就得自己声明 width + A-③ 负样本互证不误伤 .card2/.card-title/.mcard）
   // R298 金额精度：「元 → 分」十进制安全（x.xx5 半步静默少进 1 分）+ 前后端双副本等价。
   //   S 扫描面 6（S-⑤ 三形态桶 IDENT/PAREN/LITERAL 穷尽对账 —— 防"只扫命名像分的标识符"
   //   而漏 LITERAL 字面量与 PAREN 括号两种形态）+ A 行为穷举 4 + B 双副本等价 2

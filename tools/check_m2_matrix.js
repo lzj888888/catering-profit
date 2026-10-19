@@ -294,6 +294,16 @@ for (const rel of Object.keys(CJK_BASELINE)) {
     'index.wxml 未把三项输出全渲染（R330：漏一项老板会以为是全部）');
   chk(/promoImpact/.test(idxJs),
     'index.js 未走 utils/promoImpact.js（R330：两套折扣公式必然漂移）');
+  // --- R351：实收率「填了但越界」不许静默回落到折扣档 ---
+  //   失效形态（静默错值）：老板填 150 或 0 ⇒ 旧代码 `if (real>0 && real<=100)` 不成立
+  //   ⇒ 悄悄改用折扣档算，页面照常出数 ⇒ 老板以为看的是自己的数。
+  const discBody = (idxJs.match(/promoDiscountOf\(\)\s*\{([\s\S]*?)\n  \},/) || [])[1] || '';
+  chk(/raw === ''/.test(discBody) && /return null;/.test(discBody),
+    'promoDiscountOf 未区分「没填」与「填错」（R351：填错时静默回落到折扣档 = 静默错值）');
+  chk(/if \(d == null\) return \{ bad: true, text: T\.promoRealBad \};/.test(idxJs),
+    'promoOf 未对非法实收率给出明确文案（R351：会显示成折扣档的数或整卡片消失）');
+  chk(/promoRealBad: M\.promoRealBad/.test(idxJs),
+    '实收率告警文案未映射进 t（R351：会显示 undefined）');
 }
 
 // --- R337（M2-A1）：促销卡 W 口径 —— 文案问「几成客人」，公式算「营业额占比」 ---

@@ -877,6 +877,9 @@ const TERMS = {
     promoSameRevNote: '按客流不变算；多来客人看上面',
     promoNegText: '这个折扣让价已经超过毛利率，卖多少都亏',
     promoNeedCalc: '先点【开始测算】，这里才有数',
+    // 🔴 R351：实收率填了但不是 1-100 ⇒ 必须明说，不许静默回落到折扣档
+    //   （否则老板以为用的是自己的数，实际看的是折扣档的结果 —— 静默错值）
+    promoRealBad: '实收率请填 1-100（每 100 元实收多少元）',
     // 选项（显示文案；实际值在 index.js 的 PROMO_D / PROMO_W 里，一一对应）
     promoDiscountOpts: ['9折', '8.5折', '8折', '7折'],
     promoWeightOpts: ['1成', '3成', '5成', '8成', '全部'],

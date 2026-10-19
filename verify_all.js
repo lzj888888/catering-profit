@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：186 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：187 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -807,6 +807,13 @@ const SUITES = [
   //   （WXML 文本节点仍会插值 {{}} ⇒ 屏上是**求值后**的值，故像"英文报错"）。
   //   判据 A＝裸属性行（上一非空行已闭合）；判据 B＝标签配平（未闭合 / 错配 / 缺 >）。
   ['wxml-struct', 'tools/check_wxml_structure.js'],
+  // ===== R351 · 「class 用了但没样式」守卫（2026-10-19）
+  //   实扫发现 7 个 class 被 pages/sandbox/*.wxml 引用、却从无定义：warn / warn-note /
+  //   ipt-num / unit / entry-row / entry-btn / cmp。
+  //   **能编译、能跑、零报错，只是长得不对** —— 最关键的那句「让价超过毛利率」的警告
+  //   渲染成了普通黑字。既有守卫只看标签/属性/if-else 相邻性，没有一条把 wxml 的 class
+  //   与 wxss 选择器做集合比对，本条补的就是这个缺口。
+  ['wxml-class-defined', 'tools/check_wxml_class_defined.js'],
   // ===== R296c 页面卡片宽度冲突守卫（2026-10-14）：见头部注释同名条目。
   //   根因：`app.wxss .card { width:48% }`（首页九宫格专用）被 matrix/compare 两页复用而不覆盖
   //   width ⇒ 卡片半宽 ⇒ 卡内 flex 行的 <text> 被挤成「一字一行」（用户：「原来都是竖版的字体」）。

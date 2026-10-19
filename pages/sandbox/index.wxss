@@ -248,3 +248,20 @@
 .promo-lb { flex: 0 0 190rpx; font-size: 28rpx; color: #333; line-height: 56rpx; }
 .promo-chips { flex: 1 1 0; display: flex; flex-wrap: wrap; min-width: 0; }
 .promo-chips .chip { margin-bottom: 10rpx; }
+
+/* ===== R351 · 补「被 wxml 引用但从未定义」的 class =====
+   🔴 这类问题能编译、能跑、零报错，只是**长得不对**（走默认样式）。
+      新增守卫 tools/check_wxml_class_defined.js 扫出来的，只补样式，不动结构。
+      取值对齐同页既有口径：.warn 沿用 app.wxss 的 .warn-line 琥珀告警；
+      .ipt-num 对齐 .row-in；.unit 对齐 .row-unit。 */
+.warn {
+  font-size: 28rpx; color: #92610a; background: #fdf3d8;
+  border-left: 8rpx solid #e8a33d; border-radius: 0 12rpx 12rpx 0;
+  padding: 16rpx 20rpx; margin: 12rpx 0; line-height: 1.6;
+}
+.warn-note { font-size: 28rpx; color: #92610a; line-height: 1.6; padding: 0 0 6rpx; }
+.ipt-num { flex: 1 1 auto; font-size: 28rpx; color: #1e3a5f; text-align: right; min-height: 40rpx; }
+.unit { font-size: 28rpx; color: #888; margin-left: 6rpx; }
+/* 两个入口按钮原本会各自占满一行（.btn 是 display:flex 且无宽度限制） */
+.entry-row { display: flex; gap: 16rpx; }
+.entry-btn { flex: 1 1 0; min-width: 0; margin-top: 24rpx; }
