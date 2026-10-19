@@ -95,7 +95,11 @@ Page({
       promoSameRevWin: M.promoSameRevWin,
       promoSameRevLoss: M.promoSameRevLoss,
       promoSameRevNote: M.promoSameRevNote,
-      promoTrafficNote: M.promoTrafficNote,
+      // 🔴 R353：这三行曾被 R344/R350 的补丁**覆盖丢失** ⇒ 活动卡三个数字渲成空串、
+      //   页面零报错（跑模拟器读 data 才发现）。原文案键还在 terms 里，只是没映射进 t。
+      promoDropText: M.promoDropText,
+      promoBeText: M.promoBeText,
+      promoTrafficText: M.promoTrafficText,
       promoDiscountOpts: M.promoDiscountOpts,
       promoWeightOpts: M.promoWeightOpts,
       promoNeedCalc: M.promoNeedCalc,
@@ -1398,7 +1402,12 @@ Page({
   //   🔴 做法与矩阵页同源：前端用 assembleItems 装配出的 fixedItems，与引擎返回的
   //   `fixed_ex_amort_fen`（不含摊销固定费用）对账；**差 >1 元就整块不显示**（fail-closed）。
   //   宁可不说，也不给一个和引擎对不上的拆项。
-  fixedBreakOf(fixedItems, engineYuan) {
+  // 🔴 R353：入参统一为**分**（与引擎 `fixed_ex_amort_fen` 同单位，直接比整数）。
+  //   原实现签名是 engineYuan，却由调用方传入 `d.fixed_ex_amort_fen`（分）
+  //   ⇒ `sumFen / 100（元）` 与 `eng（分）` 比，永远差 100 倍 ⇒ **永远 return null**
+  //   ⇒ R342 的「固定费用拆项」上线后**从未显示过一次**（跑模拟器才发现）。
+  //   教训：跨层传值先在边界统一单位，别让函数名替调用方做假设。
+  fixedBreakOf(fixedItems, engineFen) {
     if (!Array.isArray(fixedItems) || !fixedItems.length) return null;
     const T = this.data.t;
     const byKey = {};
@@ -1410,8 +1419,9 @@ Page({
       sumFen += f;
       byKey[k] = (byKey[k] || 0) + f;
     }
-    const eng = Number(engineYuan);
-    if (!(eng > 0) || Math.abs(sumFen / 100 - eng) > 1) return null;
+    const engFen = Number(engineFen);
+    // 容差 100 分 = 1 元：四舍五入到分的累积误差允许，但单位错（差 100 倍）必然判红
+    if (!(engFen > 0) || Math.abs(sumFen - engFen) > 100) return null;
     const order = ['rent', 'labor', 'utility', 'manage', 'other'];
     const rows = [];
     let used = 0;

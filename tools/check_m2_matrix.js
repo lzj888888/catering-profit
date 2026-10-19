@@ -304,6 +304,24 @@ for (const rel of Object.keys(CJK_BASELINE)) {
     'promoOf 未对非法实收率给出明确文案（R351：会显示成折扣档的数或整卡片消失）');
   chk(/promoRealBad: M\.promoRealBad/.test(idxJs),
     '实收率告警文案未映射进 t（R351：会显示 undefined）');
+  // --- R353：`T.xxx` 引用集 ⊆ `t` 映射赋值集 ---
+  //   失效形态（页面零报错、文案是空串）：R344/R350 的补丁把
+  //   `promoDropText / promoBeText / promoTrafficText` 三行映射**覆盖掉了**
+  //   ⇒ 活动卡「掉了几个点 / 保本变成多少 / 打平要多来多少人」全渲染成空白。
+  //   只判「terms 里有没有这个键」查不出来 —— 键在 terms 里好好的，只是没映射进页面数据。
+  {
+    const noCmt = idxJs.replace(/^\s*\/\/.*$/gm, '');
+    const tBlock = (noCmt.match(/\n    t: \{([\s\S]*?)\n    \},/) || [])[1] || '';
+    const mapped = new Set();
+    for (const m of tBlock.matchAll(/^\s+([A-Za-z_][\w]*):\s*M\./gm)) mapped.add(m[1]);
+    const refs = new Set();
+    for (const m of noCmt.matchAll(/\bT\.([A-Za-z_][\w]*)/g)) refs.add(m[1]);
+    const missing = [];
+    refs.forEach((k) => { if (!mapped.has(k)) missing.push(k); });
+    chk(mapped.size > 20, 't 映射解析失败：只解析到 ' + mapped.size + ' 个键（R353 判据前提不成立）');
+    chk(missing.length === 0,
+      'index.js 引用了 t.xxx 却没映射进 t（R353：文案渲染成空串、页面零报错）：' + missing.join(','));
+  }
 }
 
 // --- R337（M2-A1）：促销卡 W 口径 —— 文案问「几成客人」，公式算「营业额占比」 ---
@@ -512,9 +530,14 @@ chk(/if \(pool\.indexOf\(fixVal\) < 0\) fixVal = pool\[0\]/.test(mtxJs),
     'index.js 固定费用拆项未用「装配出的 p.fixed_items + 引擎 fixed_ex_amort_fen」同源对账（R342）');
 
   const fbBody = (idxJs.match(/\n  fixedBreakOf\([^)]*\)\s*\{([\s\S]*?)\n  \},/) || [])[1] || '';
-  chk(fbBody.length > 0 && /Math\.abs\(sumFen\s*\/\s*100\s*-\s*eng\)\s*>\s*1/.test(fbBody)
+  // 🔴 R353：判据从「钉字面量 sumFen/100」改为「判单位一致」——
+  //   旧实现把引擎的**分**当**元**比，差 100 倍 ⇒ 永远 return null（拆项从未显示过）。
+  //   ① 必须有对账且 fail-closed；② 两侧必须同为分（容差 100 分 = 1 元）
+  chk(fbBody.length > 0 && /Math\.abs\(sumFen\s*-\s*engFen\)\s*>\s*100/.test(fbBody)
     && /return null/.test(fbBody),
-    'index.js 固定费用拆项没有「差 >1 元就不显示」的对账（R342：拆错了照显示比不显示更坏）');
+    'index.js 固定费用拆项没有「分对分、差 >100 分就不显示」的对账（R342/R353）');
+  chk(!/sumFen\s*\/\s*100\s*-\s*eng/.test(fbBody),
+    '固定费用对账又把「元」和「分」混比了（R353 实际事故：差 100 倍 ⇒ 拆项永远不显示）');
 
   // 判「有元素带 wx:if=\"{{fixedBreak}}\"」——不钉 class 名（本轮第一版钉了 class="fixedBreak"，
   // 而实际元素是 class="card2"，判据当场假红）。
