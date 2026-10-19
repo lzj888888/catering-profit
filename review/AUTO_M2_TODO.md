@@ -118,6 +118,17 @@
   - 改法：删掉该分支与相关 terms 键，或改成真正有用的提示（如"本业态参考人工 2.5 万"）。删前先确认无其他调用方。
   - 判据：删除后 `check_page_terms` 不得出现"未定义键"，且不得留下未被引用的 terms 键。
 
+- [ ] **M2-A14 失败重算清旧表（已有店铺页 `pages/sandbox/index.js`）**（R358 横向排查登记 · 未动）
+  - 现象（与 R358 同族）：`onCalc` 的 `catch` 只 `setData({ loading:false })` + `calcError`，
+    而 `result` 及其派生状态（`verdict` / `bands` / `profitLadder` / `promoRes` / `fixedBreak` /
+    `crowd` / `eff` / `indicators` / `payback`）**都还停在上一次**；
+    wxml 结果卡的条件是 `mode==='forward' && result && !result.red_alert` ⇒ 旧数字照样渲染，
+    只是上方多一行 `err-hint`。老板改了输入再算失败时，会把旧数当新结果。
+  - 为什么本轮没顺手改：要清的不是一个 `result`，而是 8 个派生状态；清错或漏清会让页面自相矛盾
+    （比如保本数没了、指标条还挂着）。且"失败后整页空白"的观感需要模拟器/真机确认。
+  - 先定方向再动手：ⓐ 清空整个结果区（纯 js，不需出码）｜ⓑ 保留 + 明确标注「以下是上次结果」
+    （要改 wxml ⇒ **必须出码**）。推荐 ⓑ，但要等出码通道恢复。
+
 ---
 
 ## 完成记录（只追加，不覆盖）
