@@ -604,6 +604,54 @@ chk(/if \(pool\.indexOf\(fixVal\) < 0\) fixVal = pool\[0\]/.test(mtxJs),
   }
 }
 
+// --- R345：矩阵租金档位必须随城市走 ---
+//   原来县城和一线共用 3000~10000：县城老板扫到的全是"不可能租得起"的档，
+//   一线老板扫到的全是"根本租不到"的档 —— 两端都失真，而矩阵的价值全在"扫档"。
+//   四个静默退化点：① 三套其实一模一样（复制粘贴）② 档位不递增（透视会给出错的"最高可行租金"）
+//   ③ 切城市不换档 ④ 换档覆盖老板手改的档（保护是空修复）
+{
+  const mBlock = mtxJs.match(/const RENT_DIMS\s*=\s*\{([\s\S]*?)\n\};/);
+  const dims = {};
+  if (mBlock) {
+    const re = /(\w+):\s*\[([^\]]+)\]/g;
+    let x;
+    while ((x = re.exec(mBlock[1]))) {
+      dims[x[1]] = x[2].split(',').map((v) => Number(v.trim())).filter((v) => isFinite(v));
+    }
+  }
+  const keys = ['tier1', 'tier23', 'county'];
+  chk(keys.every((k) => Array.isArray(dims[k]) && dims[k].length > 0),
+    'matrix.js 缺 RENT_DIMS 三套城市租金档位（R345：县城/一线不能共用一套）');
+
+  if (keys.every((k) => dims[k])) {
+    const lens = keys.map((k) => dims[k].length);
+    chk(lens.every((n) => n === lens[0]),
+      'R345-② 三套租金档位数量不一致（' + lens.join('/') + '）⇒ 切城市会改变矩阵行数');
+
+    const mono = keys.filter((k) => {
+      const a = dims[k];
+      for (let i = 1; i < a.length; i++) if (!(a[i] > a[i - 1])) return true;
+      return false;
+    });
+    chk(mono.length === 0,
+      'R345-③ 档位不是严格递增（' + mono.join('/') + '）⇒ 透视的「最高可行租金」会算错');
+
+    // 三套的首档必须不同 —— 否则就是复制粘贴
+    chk(new Set(keys.map((k) => dims[k][0])).size === 3,
+      'R345-④ 三套档位首档相同（' + keys.map((k) => dims[k][0]).join('/') + '）⇒ 等于没分城市');
+  }
+
+  const cityBody = (mtxJs.match(/onCityChange\(e\)\s*\{([\s\S]*?)\n  \},/) || [])[1] || '';
+  chk(/dims\.rent\s*=\s*\(RENT_DIMS\[/.test(cityBody),
+    'matrix.js onCityChange 未换租金档位（R345：切城市档位不动 = 没做）');
+  chk(/fieldTouched\.rent/.test(cityBody),
+    'matrix.js onCityChange 未保护手改档位（R345：会覆盖老板自己敲的租金）');
+
+  const dimBody = (mtxJs.match(/onDimInput\(e\)\s*\{([\s\S]*?)\n  \},/) || [])[1] || '';
+  chk(/fieldTouched\.rent/.test(dimBody),
+    'matrix.js onDimInput 未标记 fieldTouched.rent（R345：没有标记 ⇒ 上面的保护是空修复）');
+}
+
 if (problems.length) {
   console.log('❌ M2 矩阵/对比 + 页面完整性守卫失败 ' + problems.length + ' 处：');
   problems.forEach((m) => console.log('   ' + m));

@@ -33,8 +33,17 @@ const LABOR_DIMS = {
   other: [3, 4],
 };
 
+// 🔴 R345：租金档位按城市给三套 —— 原来县城和一线用同一套 3000~10000，
+//   县城老板扫到的全是"不可能租得起"的档，一线老板扫到的全是"根本租不到"的档，两端都失真。
+//   档数固定 8 个（与原一致）：行数不变，透视/导出不受影响。
+const RENT_DIMS = {
+  tier1: [6000, 8000, 10000, 12000, 15000, 18000, 22000, 28000],
+  tier23: [3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000],
+  county: [1000, 1500, 2000, 2500, 3000, 3500, 4000, 5000],
+};
+
 const DEFAULT_DIMS = {
-  rent: [3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000],
+  rent: RENT_DIMS.tier23.slice(),
   labor: [2, 3],
   margin: [45, 55, 60, 65],
   target: [0, 10000, 15000], // 0=保本
@@ -276,7 +285,16 @@ Page({
     this.setData(patch, () => { this.syncBuildDefault(); this.setData({ laborHint: this.laborHintOf() }); });
   },
   onCityChange(e) {
-    this.setData({ cityIdx: Number(e.detail.value) });
+    const idx = Number(e.detail.value);
+    const patch = { cityIdx: idx };
+    // 🔴 R345：切城市必须换租金档位（手改过就不动 —— 老板自己敲的档位比预设更可信）
+    if (!this.data.fieldTouched.rent) {
+      const tier = (this.data.t.cityTiers || [])[idx] || {};
+      const dims = this.data.dims;
+      dims.rent = (RENT_DIMS[tier.key] || RENT_DIMS.tier23).slice();
+      patch.dims = dims;
+    }
+    this.setData(patch);
   },
 
   // ===== 维度档位编辑 =====
@@ -288,6 +306,8 @@ Page({
     // 🔴 R331：改了毛利率档位就标记为"手改过" ⇒ 之后切业态不再用预设值覆盖它
     if (dim === 'margin') this.setData({ dims, 'fieldTouched.margin': true });
     else if (dim === 'labor') this.setData({ dims, 'fieldTouched.labor': true });
+    // 🔴 R345：改过租金档位就是"手改过" —— 没有这一行，onCityChange 的保护就是空修复
+    else if (dim === 'rent') this.setData({ dims, 'fieldTouched.rent': true });
     else this.setData({ dims });
   },
   addDim(e) {
