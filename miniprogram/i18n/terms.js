@@ -2148,7 +2148,6 @@ const TERMS = {
     colLaborFee: '人工/月',
     colBreakCash: '现金保本/月',
     // 🔴 R333：人数档位不是对所有业态都有效 —— 说清楚，别让老板白调
-    laborFixedHint: '本业态人工按固定 {x} 元/月，改人数不影响结果',
     laborTotalHint: '已按你填的总额算，人数只影响人效',
     colMargin: '毛利率',
     colTarget: '目标利润',

@@ -144,7 +144,6 @@ Page({
       buildYearsUnit: M.buildYearsUnit,
       buildSumNote: M.buildSumNote,
       beCashNote: M.beCashNote,
-      laborFixedHint: M.laborFixedHint,
       laborTotalHint: M.laborTotalHint,
       laborUnitLabel: M.laborUnitLabel,
       laborUnitNote: M.laborUnitNote,
@@ -359,17 +358,14 @@ Page({
   // 🔴 R333：人数档位到底有没有用 —— 有些业态人工是固定额（火锅半自助 = 25000 写死），
   //   改人数完全不影响结果。界面上必须说清，否则老板调了半天以为系统坏了。
   //   三种情形：填了总额 ⇒ 人数只影响人效；labor_total/headcount_linear ⇒ 人数有效；fixed ⇒ 明说固定额。
+  // 🔴 R347 清理死逻辑：R333 曾为「人工 = 固定额」的业态写过一条提示
+  //   （"本业态人工按固定 X 元/月"），但 R335 把火锅的 `fixed 25000` 改成了 `labor_total`
+  //   ⇒ 实测 **13 个业态已全部是 labor_total** ⇒ 那段分支永远走不到，是死代码。
+  //   现在只剩一种有效提示：老板直接填了人工总额时，告诉他"人数只影响人效"。
   laborHintOf() {
     const T = this.data.t;
-    const preset = findPreset(BIZ_PRESETS[this.data.presetIdx].presetKey);
-    if (!preset) return '';
     if (Number(this.data.global.laborTotalYuan) > 0) return T.laborTotalHint;
-    const m = (preset.costMeta || []).filter((x) => x.itemKey === 'labor')[0];
-    if (!m) return '';
-    if (m.form === 'labor_total' || m.form === 'headcount_linear') return '';
-    const fy = Number(m.defaultYuan) || 0;
-    if (!(fy > 0)) return '';
-    return String(T.laborFixedHint).replace('{x}', String(fy));
+    return '';
   },
 
   // ===== 🔴 R325：钱够不够开 · 能撑几个月 =====

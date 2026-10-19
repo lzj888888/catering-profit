@@ -693,6 +693,28 @@ chk(/if \(pool\.indexOf\(fixVal\) < 0\) fixVal = pool\[0\]/.test(mtxJs),
   }
 }
 
+// --- R347：清理 laborHintOf 的死逻辑 ---
+//   背景：R333 为「人工 = 固定额」的业态写了提示（"本业态人工按固定 X 元/月"），
+//   但 R335 把火锅的 `fixed 25000` 改成 `labor_total` 后，**13 个业态已全部是 labor_total**
+//   ⇒ 那段分支永远走不到。死代码的害处不是占地方，是**后来的人以为它还在生效**。
+//   判据守两头：
+//   ① 不许再把 laborFixedHint 加回来（真要支持固定额业态，应该重新设计而不是复活死代码）
+//   ② 那条**有效**的提示（填了人工总额 ⇒ 人数只影响人效）必须还在 —— 别把孩子和洗澡水一起倒掉
+{
+  const body = (mtxJs.match(/laborHintOf\(\)\s*\{([\s\S]*?)\n  \},/) || [])[1] || '';
+  chk(body.length > 0 && !/laborFixedHint/.test(body),
+    'matrix.js laborHintOf 又出现了 laborFixedHint（R347：13 个业态全 labor_total，那段永远走不到）');
+
+  chk(/laborTotalHint/.test(body),
+    'matrix.js laborHintOf 丢了「填了人工总额 ⇒ 人数只影响人效」这条有效提示（R347：清理不许误删）');
+
+  chk(!/laborFixedHint/.test(t1) && !/laborFixedHint/.test(t2),
+    'terms 里还留着 laborFixedHint 死键（R347：引用方已删，键留着只会误导后来人）');
+
+  chk(!/laborFixedHint/.test(mtxWxml),
+    'matrix.wxml 还引用着 laborFixedHint（R347）');
+}
+
 if (problems.length) {
   console.log('❌ M2 矩阵/对比 + 页面完整性守卫失败 ' + problems.length + ' 处：');
   problems.forEach((m) => console.log('   ' + m));
