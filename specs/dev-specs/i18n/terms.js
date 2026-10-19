@@ -956,6 +956,10 @@ const TERMS = {
     resTargetMonthly: '想赚这么多，每月要卖多少',
     // 🔴 R340：目标利润没填时，目标月营收 = 保本营收（同一个数），并排显示会让老板以为算错了。
     targetEmptyHint: '想月赚多少？填一个数，这里算出要卖多少',
+    // 🔴 R342：固定费用构成（index 页）—— 与矩阵页的 fixedBreakTitle 分开：
+    //   矩阵那版写的是"按上表第一档房租算"，在 index 页（只有一组输入）不成立。
+    fixedBreakTitle2: '固定费用怎么构成',
+    fixedBreakNote2: '加起来等于上面的固定费用合计',
     resTargetDaily: '想赚这么多，每天要卖多少',
     resPayback: '开店投入抵完',
     targetRow: '每月想赚',

@@ -500,6 +500,16 @@
       <view class="cell"><text class="lbl">{{t.varTotal}}</text><text class="val">{{result.platform_pct}}%</text></view>
     </view>
 
+    <!-- 🔴 R342：固定费用构成 —— 老板能核对「这 2.16 万人工怎么来的」。
+         前端用 assembleItems 同源重算，与引擎 fixed_ex_amort 对账；差 >1 元就整块不显示（fail-closed）。 -->
+    <view class="card2" wx:if="{{fixedBreak}}">
+      <view class="cell big"><text class="lbl">{{t.fixedBreakTitle2}}</text></view>
+      <view class="cell" wx:for="{{fixedBreak}}" wx:key="key">
+        <text class="lbl">{{item.name}}</text><text class="val">{{t.cur}}{{item.text}}</text>
+      </view>
+      <view class="cell"><text class="lbl">{{t.fixedBreakNote2}}</text></view>
+    </view>
+
     <view class="card2">
       <view class="cell big"><text class="lbl">{{t.resBreakMonthly}}</text><text class="val keynum">{{t.cur}}{{result.break_even_monthly}}</text></view>
       <view class="cell"><text class="lbl">{{t.resBreakDaily}}</text><text class="val">{{t.cur}}{{result.break_even_daily}}</text></view>

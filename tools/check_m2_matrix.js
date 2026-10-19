@@ -489,6 +489,51 @@ chk(/if \(pool\.indexOf\(fixVal\) < 0\) fixVal = pool\[0\]/.test(mtxJs),
   }
 }
 
+// --- R342：index 页（已有店铺）固定费用拆项 ---
+//   老板看到「固定费用合计 4.5 万」却不知道"这 2.16 万人工怎么来的"——尤其是人工被
+//   「人数 × 人均」估出来的时候。这是信任问题，不是美观问题。
+//   四个静默退化点：① 自己另算一套（两套公式必漂移）② 没有对账（拆错了也照显示）
+//   ③ 对账恒失败（拆项永远不显示，等于没做）④ 页面没有 fail-closed 条件
+{
+  chk(/fixedBreakOf\s*\(/.test(idxJs) && /this\.fixedBreakOf\(p\.fixed_items,\s*d\.fixed_ex_amort_fen\)/.test(idxJs),
+    'index.js 固定费用拆项未用「装配出的 p.fixed_items + 引擎 fixed_ex_amort_fen」同源对账（R342）');
+
+  const fbBody = (idxJs.match(/\n  fixedBreakOf\([^)]*\)\s*\{([\s\S]*?)\n  \},/) || [])[1] || '';
+  chk(fbBody.length > 0 && /Math\.abs\(sumFen\s*\/\s*100\s*-\s*eng\)\s*>\s*1/.test(fbBody)
+    && /return null/.test(fbBody),
+    'index.js 固定费用拆项没有「差 >1 元就不显示」的对账（R342：拆错了照显示比不显示更坏）');
+
+  // 判「有元素带 wx:if=\"{{fixedBreak}}\"」——不钉 class 名（本轮第一版钉了 class="fixedBreak"，
+  // 而实际元素是 class="card2"，判据当场假红）。
+  chk(/<view[^>]*wx:if="\{\{fixedBreak\}\}"/.test(idxWxmlS),
+    'index.wxml 固定费用构成没有 fail-closed 条件（R342：对不上账时会渲染空卡）');
+
+  // 行为腿：证明对账口径本身能通过（否则拆项永远不显示，且无人察觉）
+  let asmItems = null;
+  let engine = null;
+  try {
+    const bp = require('../utils/bizPreset.js');
+    asmItems = bp;
+    engine = require('../cloudfunctions/calcSandbox/service.js').calcSandbox;
+  } catch (e) { /* 下面统一判红 */ }
+  if (asmItems && engine) {
+    const pst = asmItems.findPreset('fastfood_noodle');
+    const asm = asmItems.assembleItems(pst, {
+      area: 60, headcount: 3, rentYuan: 5000, fixedYuan: { rent: 5000 }, buildItems: [],
+    }, asmItems.CITY_COEF.tier23);
+    const sum = asm.fixedItems.reduce((a, b) => a + (Number(b.fen) || 0), 0);
+    const d = engine({
+      cityTier: 'tier23', bizType: 'fastfood', fixedItems: asm.fixedItems, varItems: asm.varItems,
+      grossMarginPct: 60, targetProfitFen: 0, expectedRevenueFen: 0, buildItems: [],
+    });
+    chk(Math.abs(sum - d.fixed_ex_amort_fen) <= 100,
+      'R342-④ 装配合计与引擎 fixed_ex_amort 对不上（' + (sum / 100) + ' vs ' + (d.fixed_ex_amort_fen / 100)
+      + '）⇒ 拆项会永远不显示，需重看口径');
+  } else {
+    chk(false, '无法加载 bizPreset/calcSandbox（R342：对账行为腿跑不了，不能算通过）');
+  }
+}
+
 if (problems.length) {
   console.log('❌ M2 矩阵/对比 + 页面完整性守卫失败 ' + problems.length + ' 处：');
   problems.forEach((m) => console.log('   ' + m));

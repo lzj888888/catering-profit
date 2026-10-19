@@ -141,6 +141,8 @@ Page({
       safeMarginDrop: TERMS.card.beMarginDrop,
       safeMarginEven: TERMS.matrix.cushionBreakEven,
       targetEmptyHint: M.targetEmptyHint,
+      fixedBreakTitle2: M.fixedBreakTitle2,
+      fixedBreakNote2: M.fixedBreakNote2,
       resBreakMonthly: M.resBreakMonthly,
       resBreakDaily: M.resBreakDaily,
       resTargetMonthly: M.resTargetMonthly,
@@ -378,6 +380,8 @@ Page({
     promoDIdx: 2,
     promoWIdx: 1,
     promoRes: null,
+    // 🔴 R342：固定费用构成（前端同源重算 + 与引擎对账，对不上就整块不显示）
+    fixedBreak: null,
     crowd: null,         // 🔴 round273：A 区派生指标（每天来多少人 / 一天翻几台）；算不出则为 null（不渲染）
     eff: null,           // 🔴 round276：A 区派生指标（坪效 / 人效）；没填实际营业额则为 null（不渲染）
     indicators: [],
@@ -1330,6 +1334,44 @@ Page({
     return this.data.bandsRawKey !== this.bandsKeyNow() || (this.data.bandsRaw || []).length === 0;
   },
 
+  // 🔴 R342：固定费用构成 —— 让老板能核对「这个保本点是怎么来的」。
+  //   为什么必须做：结果区只给 fixed_total 一个总数，老板无法核对"这 2.16 万人工怎么来的"，
+  //   尤其人工是被「人数 × 人均」估出来的时候 —— 这是信任问题，不是美观问题。
+  //   🔴 做法与矩阵页同源：前端用 assembleItems 装配出的 fixedItems，与引擎返回的
+  //   `fixed_ex_amort_fen`（不含摊销固定费用）对账；**差 >1 元就整块不显示**（fail-closed）。
+  //   宁可不说，也不给一个和引擎对不上的拆项。
+  fixedBreakOf(fixedItems, engineYuan) {
+    if (!Array.isArray(fixedItems) || !fixedItems.length) return null;
+    const T = this.data.t;
+    const byKey = {};
+    let sumFen = 0;
+    for (let i = 0; i < fixedItems.length; i++) {
+      const f = Number(fixedItems[i] && fixedItems[i].fen) || 0;
+      const k = fixedItems[i] && fixedItems[i].key;
+      if (!k) continue;
+      sumFen += f;
+      byKey[k] = (byKey[k] || 0) + f;
+    }
+    const eng = Number(engineYuan);
+    if (!(eng > 0) || Math.abs(sumFen / 100 - eng) > 1) return null;
+    const order = ['rent', 'labor', 'utility', 'manage', 'other'];
+    const rows = [];
+    let used = 0;
+    const push = (k) => {
+      const fen = byKey[k] || 0;
+      used += fen;
+      rows.push({ key: k, name: (T.fixedItems && T.fixedItems[k]) || k, text: Math.round(fen / 100) });
+    };
+    for (let i = 0; i < order.length; i++) {
+      if (byKey[order[i]]) push(order[i]);
+    }
+    // 参数包若长出别的 key（如新增费用项），不丢 —— 归入「其他固定」而不是静默漏掉
+    if (sumFen - used > 0) {
+      rows.push({ key: 'rest', name: (T.fixedItems && T.fixedItems.other) || TERMS.matrix.fixedBreakOther, text: Math.round((sumFen - used) / 100) });
+    }
+    return rows;
+  },
+
   // 统一入参装配（preset 态）：cost_meta 形态运算**只在 assembleItems 内**，本方法不做任何保本/毛利率/摊销算式
   //
   // @param {string} mode 'forward'（已有铺面）| 'reverse'（寻找铺面）
@@ -1532,6 +1574,8 @@ Page({
         // 🔴 R327：正推表 —— 与 result 同批写入，直接用局部变量算（不读 this.data，避免时序依赖）
         profitLadder: this.profitLadderOf(presetResultObj),
         promoRes: this.promoOf(presetResultObj),
+        // 🔴 R342：与 result 同批写入，直接用局部变量 p（不读 this.data，避免时序依赖）
+        fixedBreak: this.fixedBreakOf(p.fixed_items, d.fixed_ex_amort_fen),
         // 🔴 round273：A 区（已有铺面）补齐定案指标（每天来多少人 / 一天翻几台）—— 在新结果上派生
         crowd: presetResultObj ? this.crowdOf(presetResultObj) : null,
         // 🔴 round276：同主链路，A 区坪效 / 人效（派生自用户填的实际营业额 + 面积 + 人数）
