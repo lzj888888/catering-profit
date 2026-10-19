@@ -197,6 +197,19 @@ for (const rel of Object.keys(CJK_BASELINE)) {
     'matrix.js 的 advOpen 初值不是 false（R322：高级维度必须默认收起）');
   chk(/for \(const m of marginUse\)/.test(mjs),
     'matrix.js 生成循环未走 marginUse（R322：收起态必须只取第 1 档，否则行数被撑 8 倍）');
+  // --- R356：矩阵计算必须**分批**，且超上限要明说 ---
+  //   失效形态（零有效提示）：一次性把 N 行 clean_array 发给云端，响应 ≈1.1KB/行，
+  //   960 行 ⇒ 1.05MB > 云开发响应上限 1MB ⇒ `-501000 response size exceeded`，
+  //   而 api.js 归为 NETWORK_ERROR ⇒ 页面显示「网络不可用，请检查网络连接」
+  //   ⇒ 老板以为手机网络坏了反复重试（实测 3.6 秒失败、0 行、无有效提示）。
+  chk(/const CHUNK = \d+;/.test(mjs)
+    && /for \(let off = 0; off < cleanArr\.length; off \+= CHUNK\)/.test(mjs)
+    && /allRows/.test(mjs),
+    'matrix.js 未分批请求（R356：大矩阵会撞 1MB 响应上限，被误报成「网络不可用」）');
+  chk(!/clean_array: cleanArr \}/.test(mjs),
+    'matrix.js 又一次性发送全量 clean_array（R356：960 行必失败）');
+  chk(/MAX_ROWS/.test(mjs) && /matrixRowsTooMany/.test(mjs),
+    'matrix.js 没有行数上限提示（R356：超 1000 行会被云端拒，前端应说清原因；文案走 terms）');
   // 🔴 R335（B 方案定稿）：人数档位**必须在** —— 矩阵的价值就是扫「多请一个人会怎样」；
   //   人均由老板自己填（不是系统猜），所以两者并存不冲突。
   //   判据三条腿：data 里有档位定义 + 生成循环真的扫它 + 页面真的渲染它

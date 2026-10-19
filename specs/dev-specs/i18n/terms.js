@@ -2212,6 +2212,8 @@ const TERMS = {
     insightTitle: '结论速读',
     insightNone: '当前筛选无可行组合，调低月租或目标利润再试',
     insightMaxRent: '可承受最高月租 ¥{rent}（目标利润 ¥{target} @ 毛利率 {margin}%）',
+    // 🔴 R356：档位组合超过云端上限（1000）时说清数量，别让云端回一句通用错误
+    matrixRowsTooMany: '档位组合 {n} 行，超过上限 {max} 行，请减少档位',
     insightMinMargin: '最低可行毛利率 {margin}%（月租 ¥{rent} @ 目标利润 ¥{target}）',
     insightLever: '房租每涨 ¥1000，需多做到手营收 ≈ ¥{lever}（按毛利率 {margin}% 计）',
     insightCushion: '淡季安全垫 ≈ {cushion}%：营收跌这么多才到保本',

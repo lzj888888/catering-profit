@@ -742,14 +742,37 @@ Page({
       meta.push({ rent: rv, labor: lv, marginPct: mv, targetYuan: tgv });
     }
     if (!cleanArr.length) { api.toastError({ msg: '维度档位不能为空' }); return; }
+    // 🔴 R356：云端矩阵分支的 clean_array 上限是 1000（超过直接 fail）。
+    //   前端先挡一道并说清「多少行 / 上限多少」，而不是让云端回一句通用错误。
+    const MAX_ROWS = 1000;
+    if (cleanArr.length > MAX_ROWS) {
+      api.toastError({ msg: fmt(M.matrixRowsTooMany, { n: cleanArr.length, max: MAX_ROWS }) });
+      return;
+    }
     this.setData({ loading: true });
     try {
-      const d = await api.call('calcSandbox', { action: 'matrix', clean_array: cleanArr });
-      const rows = (d.rows || []).map((res, i) => this.toRow(meta[i], res));
+      // 🔴🔴 R356：**必须分批**。云端 matrix 分支一次返回每行的完整引擎结果（约 1.1KB/行），
+      //   960 行时响应 ≈ 1.05MB ⇒ 云开发直接报
+      //     `errCode: -501000 response size exceeded 1048576 bytes`
+      //   而 api.js 会把它归入 NETWORK_ERROR ⇒ 页面显示「网络不可用，请检查网络连接」
+      //   ⇒ 老板以为手机网络坏了，反复重试（实测：960 行 3.6 秒失败、0 行结果、无有效提示）。
+      //   每批 150 行 ≈ 165KB，安全；批次顺序拼接，行序与 meta 一一对应。
+      const CHUNK = 150;
+      const allRows = [];
+      const rejected = [];
+      for (let off = 0; off < cleanArr.length; off += CHUNK) {
+        const part = cleanArr.slice(off, off + CHUNK);
+        const d = await api.call('calcSandbox', { action: 'matrix', clean_array: part });
+        const got = d.rows || [];
+        for (let k = 0; k < got.length; k++) allRows.push(got[k]);
+        (d.rejected || []).forEach((x) => {
+          rejected.push({ index: (Number(x.index) || 0) + off, code: x.code, msg: x.msg });
+        });
+      }
+      const rows = allRows.map((res, i) => this.toRow(meta[i], res));
       const pivot = this.buildPivot(rows);
       const insight = this.buildInsight(rows);
       // 🔴 R297：云端拒掉的档位（rejected）**必须让人看见** —— 静默丢档 = 老板以为算过了。
-      const rejected = d.rejected || [];
       this.setData({
         loading: false,
         result: { rows, view: 'detail', count: rows.length, pivot, insight, rejected },
