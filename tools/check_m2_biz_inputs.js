@@ -474,6 +474,32 @@ check('H-⑤ 负样本（fallback 退化成裸 || BIZ_PRESETS[0]）会被 H-③ 
   !/findPreset\(this\.data\.presetKey\)\s*\|\|\s*findPreset\('other'\)\s*\|\|\s*BIZ_PRESETS\[0\]/.test(badFb),
   /findPreset\('other'\)/.test(badFb) ? '🔴 把错误实现漏过了' : '已报红');
 
+// ============ T 组（R339）：L1 标题里的数字必须等于实际输入行数 ============
+//   为什么守：标题写「先答 5 个」，L1 实际只有 4 个输入框（面积/房租/人数/目标）——
+//   老板照着数，数不出来，第一屏就失信。而这类"文案里的数字"最容易被增删输入项时漏改，
+//   因为没有一条机器判据盯着它（同族病：定案写在注释里却没守卫）。
+//   ⚠️ 切段必须**按行**切：`t.l1TitleRev` 含子串 `t.l1Title`，用 split 会切错段（本轮踩过，
+//      切出 6 个字符的假段、rows 恒为 0 ⇒ 判据变成"永远 0 ≠ 5"的假红/假绿）。
+sec('T L1 标题数字 ≡ 实际输入行数（R339）');
+{
+  const lines = wxmlRaw.split('\n');
+  const si = lines.findIndex((l) => l.includes('t.l1Title'));
+  const ei = lines.findIndex((l, i) => i > si && l.includes('t.l2Toggle'));
+  const seg = (si >= 0 && ei > si) ? lines.slice(si, ei).join('\n') : '';
+  const rows = (seg.match(/bindinput=/g) || []).length;
+  check('T-① L1 段能定位且输入行 ≥ 4（下界，防切段失效变成恒真）',
+    rows >= 4, '实际 ' + rows + ' 行（切片 ' + (si + 1) + '→' + ei + '）');
+
+  const T2 = require('../miniprogram/i18n/terms.js').TERMS;
+  ['l1Title', 'l1TitleRev'].forEach((k) => {
+    const txt = String((T2.m2 && T2.m2[k]) || '');
+    const m = txt.match(/([0-9]+)\s*[个项]/);
+    const n = m ? Number(m[1]) : null;
+    check('T-② ' + k + ' 里的数字 = L1 实际行数（' + rows + '）',
+      n === rows, '文案「' + txt + '」里的数字是 ' + n);
+  });
+}
+
 // ============ E 下界 ============
 sec('E 下界：断言数不得被悄悄删掉');
 // ⚠️ 阈值 = **实测值**（25）：写成"看起来合理"的整数会让它变成摆设；
