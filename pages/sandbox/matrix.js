@@ -750,6 +750,7 @@ Page({
       return;
     }
     this.setData({ loading: true });
+    let shown = false;   // R358：本次是否已把新结果送上屏（决定 catch 里要不要清旧表）
     try {
       // 🔴🔴 R356：**必须分批**。云端 matrix 分支一次返回每行的完整引擎结果（约 1.1KB/行），
       //   960 行时响应 ≈ 1.05MB ⇒ 云开发直接报
@@ -782,7 +783,10 @@ Page({
       }
       // 第一批就失败 ⇒ 没有可展示的结果，保持原语义：报错退出
       if (failedAt === 0 || (!allRows.length && failedAt > 0)) {
-        this.setData({ loading: false });
+        // 🔴 R358：**必须清掉上一次的结果**。原来只 setData({loading:false}) ⇒ 屏幕上留着旧表，
+        //   而老板刚改过租金/目标档位、又只看到一句「网络不可用」⇒ 极易把旧数字当成新结果
+        //   （静默错账，方向还是"看着挺好"）。toast 已说明这次没算出来，清空不会让人误以为成功。
+        this.setData({ loading: false, result: null });
         api.toastError({ msg: failedMsg });
         return;
       }
@@ -802,6 +806,7 @@ Page({
         loading: false,
         result: { rows, view: 'detail', count: rows.length, pivot, insight, rejected, partialText },
       });
+      shown = true;
       // 🔴 R325：结果变了 ⇒ 反推的「每月固定支出」也变了，现金卡必须跟着重算（否则显示上一次的数）
       this.buildCash();
       // 🔴 R331：固定费用构成（前端同源装配 + 与引擎对账）
@@ -813,7 +818,9 @@ Page({
         });
       }
     } catch (e) {
-      this.setData({ loading: false });
+      // 🔴 R358：本次**还没**把新结果送上屏 ⇒ 清掉旧表（同上的静默错账）；
+      //   若已经上屏（如此后 buildCash/fixedBreakOf 才抛错），保留这一份有效结果，只报错。
+      this.setData({ loading: false, result: shown ? this.data.result : null });
       api.toastError(e);
     }
   },

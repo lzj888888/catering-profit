@@ -177,6 +177,48 @@ function reset(failAt) {
     check('C3 第 1 批失败 ⇒ loading 归零', () => {
       assert.strictEqual(p.data.loading, false);
     });
+
+    // ── D 先成功一次，再改档位重算且第 1 批失败 ──
+    //   失效形态（静默错账）：失败分支不碰 result ⇒ 屏幕上留着**上一次**的表，
+    //   而老板刚改了租金/目标档位、又看到一句「网络不可用」⇒ 极易把旧数字当成新结果。
+    reset(-1);
+    p = newPage();
+    await p.onGenerate();
+    const firstCount = (p.data.result || {}).count;
+    check('D0 前置：先成功算过一次（750 行）', () => {
+      assert.strictEqual(firstCount, 750, '首次结果 ' + firstCount + ' 行');
+    });
+    reset(1);
+    await p.onGenerate();
+    check('D1 重算第 1 批失败 ⇒ 旧表必须清掉（不能把上一次的数当新结果）', () => {
+      assert.strictEqual(p.data.result, null, '仍留着上一次的 ' + JSON.stringify({
+        count: (p.data.result || {}).count,
+        partialText: (p.data.result || {}).partialText,
+      }));
+    });
+    check('D2 重算第 1 批失败 ⇒ 仍有 toast 说明原因', () => {
+      assert.ok(state.toasts.length >= 1, '没有 toast');
+      assert.ok(/网络不可用/.test(state.toasts[0]), 'toast = ' + state.toasts[0]);
+    });
+
+    // ── E 先成功一次，再重算且第 3 批失败 ⇒ 结果是**新**的部分结果，不混旧表 ──
+    reset(-1);
+    p = newPage();
+    // 第二次用更少的档位（300 行 = 2 批），第 2 批失败 ⇒ 应显示 150 行新结果
+    await p.onGenerate();
+    p.data.dims = {
+      rent: [5000, 6000, 7000, 8000, 9000],
+      labor: [3, 4, 5, 6, 7, 8],
+      margin: [50, 55],
+      target: [0, 5000, 10000, 15000, 20000],
+    };
+    reset(2);
+    await p.onGenerate();
+    const E = p.data.result || {};
+    check('E1 重算中途失败 ⇒ 显示新的部分结果（150 行），不是上一次的 750 行', () => {
+      assert.strictEqual(E.count, 150, '实际 ' + E.count + ' 行');
+      assert.ok(/第 151-300 档/.test(E.partialText || ''), 'partialText = ' + E.partialText);
+    });
   } catch (e) {
     // harness 自身崩了也必须判红（fail-closed），不能让「没跑起来」冒充「通过」
     problems.push('harness 异常：' + (e && e.message));
