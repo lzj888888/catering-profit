@@ -322,6 +322,34 @@ for (const rel of Object.keys(CJK_BASELINE)) {
     chk(missing.length === 0,
       'index.js 引用了 t.xxx 却没映射进 t（R353：文案渲染成空串、页面零报错）：' + missing.join(','));
   }
+
+  // --- R354：交互后重算必须「先落状态，再算」 ---
+  //   失效形态（显示上一档、零报错）：把 `promoRes: this.promoOf(...)` 写进 setData 的**同一个对象**里，
+  //   JS 先求值入参，此时 promoWIdx 还是旧值 ⇒ 点「全部」仍显示「3 成」。
+  //   ⚠️ 不能只判"函数体里有没有 promoOf" —— 写在回调里的**是对的**，必须只看首个 setData 的对象字面量。
+  {
+    const firstObj = (body) => {
+      const i = body.indexOf('setData({');
+      if (i < 0) return '';
+      const j = body.indexOf('{', i);
+      let depth = 0;
+      for (let k = j; k < body.length; k++) {
+        if (body[k] === '{') depth += 1;
+        else if (body[k] === '}') { depth -= 1; if (depth === 0) return body.slice(j, k + 1); }
+      }
+      return '';
+    };
+    for (const name of ['onPromoW', 'onPromoD', 'onPromoRealInput']) {
+      const body = (idxJs.match(new RegExp(name + '\\(e\\)\\s*\\{([\\s\\S]*?)\\n  \\},')) || [])[1] || '';
+      chk(body.length > 0, '解析不到 ' + name + ' 的函数体（R354 判据前提不成立）');
+      if (!body.length) continue;
+      const obj = firstObj(body);
+      chk(obj.length > 0, name + ' 里解析不到首个 setData 对象（R354 判据前提不成立）');
+      chk(!/promoOf/.test(obj),
+        name + ' 把 promoOf 写进了 setData 的对象字面量（R354：求值早于状态生效 ⇒ 永远显示上一档）');
+      chk(/promoOf/.test(body), name + ' 交互后没有重算 promoRes（R354：数字不会跟着变）');
+    }
+  }
 }
 
 // --- R337（M2-A1）：促销卡 W 口径 —— 文案问「几成客人」，公式算「营业额占比」 ---

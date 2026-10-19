@@ -1201,7 +1201,12 @@ Page({
 
 
   onPromoW(e) {
-    this.setData({ promoWIdx: Number(e.currentTarget.dataset.idx), promoRes: this.promoOf(this.data.result) });
+    // 🔴 R354：必须**先落 promoWIdx，再算** —— 原来把 `this.promoOf(...)` 直接写在 setData 的入参里，
+    //   它在 setData 生效**之前**求值，`promoOf` 读到的还是**旧的** promoWIdx
+    //   ⇒ 点「几成客人会用」永远显示**上一档**的结果（静默错值，页面零报错）。
+    //   模拟器实测：点「全部」仍显示「3 成」的 16.7%。
+    this.setData({ promoWIdx: Number(e.currentTarget.dataset.idx) },
+      () => this.setData({ promoRes: this.promoOf(this.data.result) }));
   },
 
   crowdOf(result) {
