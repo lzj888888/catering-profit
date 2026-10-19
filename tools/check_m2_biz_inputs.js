@@ -500,6 +500,33 @@ sec('T L1 标题数字 ≡ 实际输入行数（R339）');
   });
 }
 
+// ============ U 组（R341）：L1 三个输入项的语义补答 ============
+//   为什么守：这三项在餐饮实务里都有歧义，不问清楚会**直接算错**——
+//     · 面积：使用面积 vs 房本面积（差约 20% ⇒ 坪效错）
+//     · 房租：含不含物业/取暖（直接进固定费用 ⇒ 保本错）
+//     · 人数：含不含老板夫妻（人效分母错）
+//   而"加一句提示"最容易在改版时被删掉，且删了不影响任何计算 —— 全靠人盯。
+sec('U 输入项语义提示（R341）');
+{
+  const U = require('../miniprogram/i18n/terms.js').TERMS.m2;
+  const keys = ['areaHint', 'rentHint', 'headcountHint', 'headcountHintRev'];
+
+  const missing = keys.filter((k) => !String(U[k] || '').trim());
+  check('U-① 四个语义提示键都存在且非空', missing.length === 0, '缺：' + missing.join('/'));
+
+  const tooLong = keys.filter((k) => String(U[k] || '').length > 18);
+  check('U-② 每条 ≤18 字（超过就不算"短提示"，应按分层线改折叠）', tooLong.length === 0,
+    tooLong.map((k) => k + '=' + String(U[k]).length + '字').join(' / '));
+
+  const n = (wxmlRaw.match(/class="row-hint"/g) || []).length;
+  check('U-③ L1 里真的渲染了 3 条提示', n === 3, '实际 ' + n + ' 条');
+
+  // 人数在两种模式下语义不同：已有店铺「含老板夫妻」、找店「打算请几个」
+  // —— 只写一条会让另一个模式文不对题。
+  check('U-④ 人数提示分正/反两套', /headcountHintRev/.test(wxmlRaw),
+    'wxml 里的 headcountHintRev 出现 ' + (wxmlRaw.match(/headcountHintRev/g) || []).length + ' 次');
+}
+
 // ============ E 下界 ============
 sec('E 下界：断言数不得被悄悄删掉');
 // ⚠️ 阈值 = **实测值**（25）：写成"看起来合理"的整数会让它变成摆设；

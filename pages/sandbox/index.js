@@ -257,6 +257,10 @@ Page({
       bizPresets: M.bizPresets,
       l1Title: M.l1Title,
       l1Guide: M.l1Guide,
+      areaHint: M.areaHint,
+      rentHint: M.rentHint,
+      headcountHint: M.headcountHint,
+      headcountHintRev: M.headcountHintRev,
       // 🔴 R291 补登记（修 P1-③ 静默空白）：index.wxml:46/47 的 reverse 三元分支引用了
       //    这两个键，但此前 t:{} 只登记了 forward 那一对 ⇒ `{{undefined}}` 被 WXML 静默渲染成空串。
       //    守卫工具 tools/check_page_terms.js 的 P2-1 已精确点名本处。

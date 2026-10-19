@@ -47,6 +47,8 @@
 /* ===== 明细行 ===== */
 .row { display: flex; align-items: center; min-height: 88rpx; }
 .row-name { flex: 0 0 200rpx; font-size: 28rpx; color: #333; }
+/* 🔴 R341：输入项的语义补答（≤18 字），对齐输入框左边界；字号 28rpx 满足 AD-G1 */
+.row-hint { font-size: 28rpx; color: #888; padding: 0 0 10rpx 200rpx; line-height: 1.4; }
 .row-in-wrap {
   flex: 1 1 auto; display: flex; align-items: center;
   border: 1rpx solid #dfe5ec; border-radius: 10rpx; padding: 6rpx 14rpx; background: #fff;
