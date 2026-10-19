@@ -1219,15 +1219,15 @@ const TERMS = {
     // ⚠️ 提示句一律 **<18 字**：≥18 字的行内提示必须进折叠块（本仓 `check_hint_fold` 判红），
     //    这里刻意写成短句，是为了让结论**一眼看到底**、不用点开。
     verdictTitle: '这个铺子租金贵不贵',
-    verdictGood: '划算',
-    verdictOk: '还行',
-    verdictWarn: '有点压力',
-    verdictBad: '不建议拿',
-    verdictNa: '还没填房租',
-    verdictNoteGood: '租金在安全区间，可以谈',
-    verdictNoteOk: '还在合理范围，能拿',
-    verdictNoteWarn: '偏高了，压价或换铺',
-    verdictNoteBad: '房租吃掉了太多流水',
+    verdictGood: '结构健康',
+    verdictOk: '基本健康',
+    verdictWarn: '有压力项',
+    verdictBad: '结构失衡',
+    verdictNa: '数据不足',
+    verdictNoteGood: '六项都在行业带内，保持住',
+    verdictNoteOk: '大体在带内，个别项接近上限',
+    verdictNoteWarn: '有一项偏高，按下面点名的项去调',
+    verdictNoteBad: '有一项明显超带，先调它再看结果',
     verdictNoteNa: '填了上面几项就能判',
     // 🔴 R296-E（P0-① 整改）：逐指标结论文案（单源）。verdictOf 按「最差项 key × level」精准取，
     //   不再用通用 level 文案（否则人工最差也显示"压价或换铺"——串台）。键 = indNames 的 6 项 key。
@@ -1247,7 +1247,7 @@ const TERMS = {
     verdictCompare: '同行做得稳的是',
     // 🔴 #7（P0-2，round272）：主结论升级「综合健康度」—— 取全部 6 项指标里最差的 level，
     //    不再只判房租（消除「人工/毛利率爆了但结论还绿」的信任坑）。
-    verdictHealthTitle: '这个铺子健不健康',
+    verdictHealthTitle: '你这个店健不健康',
     verdictWorstLabel: '最该盯的一项',
     verdictHealthStrip: '6 项指标体检',
     calcBasisTitle: '测算依据',
