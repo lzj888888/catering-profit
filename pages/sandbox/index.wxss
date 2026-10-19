@@ -278,3 +278,7 @@
    只用仓内已有色（页面底 #f6f7fb / 边框 #dfe5ec / 品牌墨蓝 #1e3a5f）。 */
 .trial-card { background: #fbfcfe; border: 1rpx dashed #dfe5ec; }
 .trial-card .fold-toggle { margin-top: 0; }
+
+/* 🔴 R367：目标反推卡 —— 与"体检卡"分开，视觉上像一张便签（左竖条 + 浅底） */
+.tgt-back-card { border-left: 6rpx solid #1e3a5f; background: #f8fafc; }
+.tgt-back-line { white-space: normal; line-height: 1.5; }

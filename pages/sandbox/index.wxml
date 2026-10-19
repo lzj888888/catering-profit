@@ -430,6 +430,20 @@
     </view>
   </view>
 
+  <!-- 🔴 R367（李老师 2026-10-19）：「想月赚 X，要怎么做」—— 目标反推。
+       两个数是**各自单算**（只动这一项就够），所以下面明写"不要叠加"。
+       口径已逐项对过引擎：固定总额含摊销、毛利率要先加回渠道费率。 -->
+  <view class="card2 tgt-back-card" wx:if="{{mode === 'forward' && targetReverse}}">
+    <block wx:if="{{targetReverse.has}}">
+      <view class="sec">{{targetReverse.title}}</view>
+      <view class="cell" wx:for="{{targetReverse.rows}}" wx:key="key">
+        <text class="lbl tgt-back-line">{{item.text}}</text>
+      </view>
+      <view class="hint">{{targetReverse.note}}</view>
+    </block>
+    <view class="hint" wx:else>{{targetReverse.tip}}</view>
+  </view>
+
   <block wx:if="{{mode === 'forward' && result && !result.red_alert}}">
     <view class="card2">
       <view class="sec">{{t.secResult}}</view>

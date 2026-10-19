@@ -366,6 +366,15 @@ Page({
       // 🔴 三处登记的第二处：漏映射 ⇒ 页面渲染成**空白**且零报错（R124 同族）
       stickProfitLbl: M.stickProfitLbl,
       stickBeLbl: M.stickBeLbl,
+      // 🔴 R367：目标反推文案（页面在 js 里拼串，所以映射必须齐 —— 缺一个就渲染空串）
+      tgtRevTitle: M.tgtRevTitle,
+      tgtRevMarginLine: M.tgtRevMarginLine,
+      tgtRevLaborLine: M.tgtRevLaborLine,
+      tgtRevLaborImpossible: M.tgtRevLaborImpossible,
+      tgtRevMarginImpossible: M.tgtRevMarginImpossible,
+      tgtRevNote: M.tgtRevNote,
+      tgtRevNeedRevenue: M.tgtRevNeedRevenue,
+      tgtRevNeedTarget: M.tgtRevNeedTarget,
       hintFoldShow: TERMS.ledger.hintFoldShow,
       hintFoldHide: TERMS.ledger.hintFoldHide,
     },
@@ -390,6 +399,7 @@ Page({
     result: null,
     // 🔴 R327：正推表（做到某营业额能赚多少）—— 由 profitLadderOf(result) 派生
     profitLadder: null,
+    targetReverse: null,   // R367：想月赚 X 要怎么做（反推毛利率 / 人工上限）
     // 🔴 R330：促销卡（默认 8 折 + 3 成客人会用；只改本地，不触发云端重算）
     promoDIdx: 2,
     // 🔴 R350：实收率（每 100 元实收多少）。非空时**优先于折扣档**，与「人工总额覆盖人数×人均」同模式。
@@ -1118,6 +1128,63 @@ Page({
   //     正推 利润 = 营收 × 边际贡献率 − 固定费用
   //   🔴 不依赖 M1/M3（李老师 2026-10-18 划的边界）：只用引擎已返回的 fixed_total 与 margin_rate。
   //   🔴 以**保本线为基准**取 4 档，不预设"8万/10万/15万" —— 每个店保本线不同，绝对值档位对多数店无意义。
+  // 🔴 R367（李老师 2026-10-19）：目标反推 —— 「想月赚 X，要怎么做」。
+  //   口径**逐项核对过引擎**（cloudfunctions/calcSandbox/service.js:88-103）：
+  //     F  = fixed_ex_amort + build_amort_monthly   ← 固定总额**含摊销**
+  //     v  = (100 − 菜品毛利率) + Σ渠道/损耗费率    ← 变动费率
+  //     m  = 1 − v/100 = (毛利率 − 渠道费率)/100
+  //     保本 = F / m ；目标营收 = (F + 目标利润) / m ；利润(在营收 R) = R×m − F
+  //   ⇒ 反推时**必须**：① 用含摊销的 F；② 把渠道费率加回毛利率（否则算出"偏低若干点"）；
+  //     ③ 两个结论是**各自单算**的（只动这一项），不能叠加 —— 页面上明写。
+  targetReverseOf(r, p) {
+    if (!r || r.red_alert) return null;
+    const T = this.data.t || {};
+    const fill = (tpl, o) => String(tpl || '').replace(/\{(\w+)\}/g, (mm, k) => (o[k] == null ? '' : o[k]));
+    const money = (n) => String(Math.round(Math.abs(n))).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    const profitYuan = Number(this.data.targetYuan) || 0;
+    const revYuan = Number(this.data.expectYuan) || 0;
+    if (!(profitYuan > 0)) return { has: false, tip: T.tgtRevNeedTarget || '' };
+    if (!(revYuan > 0)) return { has: false, tip: T.tgtRevNeedRevenue || '' };
+    // ⚠️ 单位陷阱（实测）：`result.margin_rate` 是**字符串百分数** "63.0"（不是 0~1），
+    //   `result.fixed_total` 也带千分位（"12,345.00"）⇒ 直接 Number() 会得到 63 或 NaN。
+    const m = Number(String(r.margin_rate).replace(/,/g, '')) / 100;   // ⇒ 0.63
+    const F = Number(String(r.fixed_total).replace(/,/g, ''));
+    const plat = Number(r.platform_pct) || 0;   // 渠道+损耗等费率（%），已是百分数
+    if (!(m > 0) || !isFinite(F)) return null;
+    // 需要的菜品毛利率 = 100×(F+P)/R + 渠道费率
+    const marginNeed = ((F + profitYuan) / revYuan) * 100 + plat;
+    const marginNow = m * 100 + plat;           // 还原成"菜品毛利率"口径
+    // 人工上限 = R×m − P − (固定总额 − 人工)
+    const laborItem = ((p && p.fixed_items) || []).filter((x) => x.key === 'labor')[0];
+    const laborNow = laborItem && isFinite(Number(laborItem.fen))
+      ? Number(laborItem.fen) / 100
+      : (Number(this.data.laborTotalYuan) || 0);
+    const otherFixed = F - laborNow;
+    const laborCap = revYuan * m - profitYuan - otherFixed;
+    const r1 = (x) => Math.round(x * 10) / 10;
+    const rows = [];
+    // ⚠️ 毛利率上限就是 100%（零食材成本）—— 算出来 >100% 说明这个目标在当前营业额下**根本做不到**，
+    //   不能把一个不可能的数当建议摆出去（实测：营收 3 万、目标 1 万、固定 2.35 万 ⇒ 需要 113.7%）。
+    if (marginNeed >= 100) {
+      rows.push({ key: 'margin', text: (T.tgtRevMarginImpossible || '') });
+    } else {
+      rows.push({ key: 'margin', text: fill(T.tgtRevMarginLine, { m: r1(marginNeed), n: r1(marginNow) }) });
+    }
+    // 人工上限 ≤ 0 时不编造数字：说明"光靠压人工做不到"
+    if (laborCap > 0) {
+      rows.push({ key: 'labor', text: fill(T.tgtRevLaborLine, { c: money(laborCap), n: money(laborNow) }) });
+    } else {
+      rows.push({ key: 'labor', text: (T.tgtRevLaborImpossible || '') });
+    }
+    return {
+      has: true,
+      title: fill(T.tgtRevTitle, { p: money(profitYuan) }),
+      rows,
+      note: fill(T.tgtRevNote, {}),
+      revYuan, profitYuan,
+    };
+  },
+
   profitLadderOf(r) {
     if (!r || r.red_alert) return null;
     const fixed = Number(r.fixed_total);
@@ -1690,6 +1757,8 @@ Page({
         result: presetResultObj,
         // 🔴 R327：正推表 —— 与 result 同批写入，直接用局部变量算（不读 this.data，避免时序依赖）
         profitLadder: this.profitLadderOf(presetResultObj),
+        // 🔴 R367：目标反推（想月赚 X 要怎么做）
+        targetReverse: this.targetReverseOf(presetResultObj, p),
         promoRes: this.promoOf(presetResultObj),
         // 🔴 R342：与 result 同批写入，直接用局部变量 p（不读 this.data，避免时序依赖）
         fixedBreak: this.fixedBreakOf(p.fixed_items, d.fixed_ex_amort_fen),
@@ -1737,6 +1806,7 @@ Page({
         indicators: [],
         payback: null,
         presetAssumptions: [],
+        targetReverse: null,
       });
       // 🔴 R359b（真机/模拟器行为核验才抓到）：吸底条 `stickKpi/stickLbl/stickVal` 是
       //   `result` 的**缓存副本**（`refreshStick()` 里由 result 派生），成功分支才刷新它。

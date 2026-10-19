@@ -1083,6 +1083,15 @@ const TERMS = {
     stickTap: '点开看完整测算 ›',
     stickProfitLbl: '月赚',
     stickBeLbl: '保本',
+    // ===== R367：目标反推（想月赚 X，要怎么做）=====
+    tgtRevTitle: '想月赚 {p} 元，要怎么做',
+    tgtRevMarginLine: '毛利率做到 {m}%（现在是 {n}%）',
+    tgtRevLaborLine: '人工压到 ¥{c}/月（现在是 ¥{n}）',
+    tgtRevNote: '两项各自单算：做到其中一项就够了，不要两个同时按最紧的算',
+    tgtRevLaborImpossible: '人工压到 0 也不够 —— 这个目标得靠提毛利率或提营业额',
+    tgtRevMarginImpossible: '毛利率要做到 100% 以上才够 —— 这个营业额下做不到，得先提营业额',
+    tgtRevNeedRevenue: '填上「本月实际营业额」就能反推',
+    tgtRevNeedTarget: '先填「目标月利润」，这里才给数',
     // ===== M2v1.2（多方案存储 · 第二期）：保存沙盘 / 我的方案入口 =====
     savePlanEntry: '我的方案 ›',
     savePlanBtn: '保存沙盘',
