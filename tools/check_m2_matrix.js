@@ -210,6 +210,26 @@ for (const rel of Object.keys(CJK_BASELINE)) {
     'matrix.js 又一次性发送全量 clean_array（R356：960 行必失败）');
   chk(/MAX_ROWS/.test(mjs) && /matrixRowsTooMany/.test(mjs),
     'matrix.js 没有行数上限提示（R356：超 1000 行会被云端拒，前端应说清原因；文案走 terms）');
+  // --- R357：分批中途失败 ⇒ 保留已算出的行 + 说清哪一段没算 ---
+  //   失效形态：逐批调用但没有**内层 try** ⇒ 任一失败就冒到外层 catch ⇒
+  //   整张表空白 + 一句笼统错误，老板分不清"全错"还是"错了一部分"。
+  //   判定不钉字面量（R297 教训：钉 `let failedAt = -1;` 会因改名/改初值误伤），只认语义链：
+  //   先从内层 catch 里**捕获**失败标记的变量名，再拿这个名字去查「标记为真 ⇒ 取 matrixPartial」。
+  //   ⚠️ 变量名由源码捕获，不写死（R357 变异 M4 实证：写死 failedAt ⇒ 纯改名就判红）。
+  const catchMark = mjs.match(/catch\s*\([^)]*\)\s*\{\s*([A-Za-z_$][\w$]*)\s*=[\s\S]{0,120}?break\s*;/);
+  const markVar = catchMark ? catchMark[1] : '';
+  chk(!!markVar
+    && new RegExp(markVar + '\\s*>=\\s*0[\\s\\S]{0,200}?matrixPartial').test(mjs),
+    'matrix.js 分批没有内层 try（R357：中途失败会丢掉已算出的全部结果）');
+  // 🔴 R298Y 教训：**「读到了 ≠ 送出去了」** —— 只 grep 词出现，判据会被"算了但不 emit"骗过。
+  //   必须独立守「result 这个对象字面量里真的产出了 partialText 这个键」。
+  const partialEmit = (mjs.match(/result:\s*\{([^}]*)\}/) || ['', ''])[1];
+  chk(/matrixPartial/.test(mjs)
+    && /(^|[\s,{])partialText\s*(,|:|\}|$)/.test(partialEmit),
+    'matrix.js 算了「哪一段没算」但没送进 result（R357/R298Y：不 emit ⇒ 页面仍静默少数据）');
+  const mwxmlCode = stripSrc(mtxWxml, '.wxml');
+  chk(/result\.partialText/.test(mwxmlCode) && /partial-note/.test(mwxmlCode),
+    'matrix.wxml 没渲染 partialText（R357：算了一半但页面不说，等于静默少数据）');
   // 🔴 R335（B 方案定稿）：人数档位**必须在** —— 矩阵的价值就是扫「多请一个人会怎样」；
   //   人均由老板自己填（不是系统猜），所以两者并存不冲突。
   //   判据三条腿：data 里有档位定义 + 生成循环真的扫它 + 页面真的渲染它

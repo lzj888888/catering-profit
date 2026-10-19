@@ -93,3 +93,8 @@
 .amort-chk.on .amort-box { background: #2b7fff; border-color: #2b7fff; }
 .amort-tx { font-size: 28rpx; color: #333; margin-left: 12rpx; }
 .build-sum { font-size: 30rpx; font-weight: 600; color: #1a1a1a; margin-top: 12rpx; }
+
+/* 🔴 R357：分批中断提示 —— 字号 ≥28rpx（AD-G1），沿用琥珀告警口径 */
+.partial-note { font-size: 28rpx; color: #92610a; background: #fdf3d8;
+  border-left: 8rpx solid #e8a33d; border-radius: 0 12rpx 12rpx 0;
+  padding: 16rpx 20rpx; margin: 12rpx 0; line-height: 1.6; }

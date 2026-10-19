@@ -760,22 +760,47 @@ Page({
       const CHUNK = 150;
       const allRows = [];
       const rejected = [];
+      // 🔴 R357：分批中途失败**不能把已算好的也丢掉**（原来外层 catch ⇒ 整张表空白 + 一句笼统错误，
+      //   老板分不清"全错"还是"错了一部分"）。改为逐批 try，失败即停，但保留已算出的行，
+      //   并在页面上明说「第 a-b 档没算出来」。
+      let failedAt = -1;
+      let failedMsg = '';
       for (let off = 0; off < cleanArr.length; off += CHUNK) {
         const part = cleanArr.slice(off, off + CHUNK);
-        const d = await api.call('calcSandbox', { action: 'matrix', clean_array: part });
-        const got = d.rows || [];
-        for (let k = 0; k < got.length; k++) allRows.push(got[k]);
-        (d.rejected || []).forEach((x) => {
-          rejected.push({ index: (Number(x.index) || 0) + off, code: x.code, msg: x.msg });
-        });
+        try {
+          const d = await api.call('calcSandbox', { action: 'matrix', clean_array: part });
+          const got = d.rows || [];
+          for (let k = 0; k < got.length; k++) allRows.push(got[k]);
+          (d.rejected || []).forEach((x) => {
+            rejected.push({ index: (Number(x.index) || 0) + off, code: x.code, msg: x.msg });
+          });
+        } catch (e) {
+          failedAt = off;
+          failedMsg = (e && e.msg) || '';
+          break;
+        }
       }
+      // 第一批就失败 ⇒ 没有可展示的结果，保持原语义：报错退出
+      if (failedAt === 0 || (!allRows.length && failedAt > 0)) {
+        this.setData({ loading: false });
+        api.toastError({ msg: failedMsg });
+        return;
+      }
+      const partialText = failedAt >= 0
+        ? fmt(M.matrixPartial, {
+          a: failedAt + 1,
+          b: Math.min(failedAt + CHUNK, cleanArr.length),
+          n: cleanArr.length,
+          m: allRows.length,
+        })
+        : '';
       const rows = allRows.map((res, i) => this.toRow(meta[i], res));
       const pivot = this.buildPivot(rows);
       const insight = this.buildInsight(rows);
       // 🔴 R297：云端拒掉的档位（rejected）**必须让人看见** —— 静默丢档 = 老板以为算过了。
       this.setData({
         loading: false,
-        result: { rows, view: 'detail', count: rows.length, pivot, insight, rejected },
+        result: { rows, view: 'detail', count: rows.length, pivot, insight, rejected, partialText },
       });
       // 🔴 R325：结果变了 ⇒ 反推的「每月固定支出」也变了，现金卡必须跟着重算（否则显示上一次的数）
       this.buildCash();

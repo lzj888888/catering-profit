@@ -190,6 +190,8 @@
 
       <!-- 明细表 -->
       <block wx:if="{{result.view==='detail'}}">
+      <!-- 🔴 R357：分批中途失败 ⇒ 已算出的先给，并说清哪一段没算（不整表空白） -->
+      <view class="partial-note" wx:if="{{result.partialText}}">{{result.partialText}}</view>
       <scroll-view scroll-x="true" class="tbl-scroll">
         <view class="tbl">
           <view class="tr th">
