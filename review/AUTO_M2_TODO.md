@@ -31,7 +31,7 @@
 - Python：`C:/Python314/python.exe`
 - 开发者工具 CLI：`C:/Program Files (x86)/Tencent/微信web开发者工具/cli.bat`
 - 推送：`git -c url."ssh://git@ssh.github.com:443/".insteadOf="git@github.com:" push origin dev`
-- 门禁当前基线：**186 套件**（加套件要同步三处：`verify_all.js` 头注 + `specs/dev-specs/★知识存储点_2026-09-10.md` §1.1 与「会套件数会漂」行）
+- 门禁当前基线：**188 套件**（加套件要同步三处：`verify_all.js` 头注 + `specs/dev-specs/★知识存储点_2026-09-10.md` §1.1 与「会套件数会漂」行）
 - 🔴 **出码先 open 再 preview**（R337 实测）：IDE 实例退化（主窗只剩 237×39）时，`preview` 会在
   `project()` 处**卡满 10 分钟报 `Error: Timeout`，而 `rc` 仍是 0** ⇒ ① 判据必须是「产物文件在不在 + 字节数」
   ② 先跑 `cli.bat open --project <仓根> --port 10896` 把项目打开，再跑 `preview`（本次 3 分 10 秒出码成功）。
@@ -137,4 +137,4 @@
 | 2026-10-19 | R346 | M2-A10 面积按业态给建议值（快餐40/火锅120/正餐150/茶饮30），受 fieldTouched.area 保护；判据 131、变异抓红；门禁 186/186 | 见 git log |
 | 2026-10-19 | R347 | M2-A13 删 laborHintOf 死分支（13 业态全 labor_total）＋terms 死键；保留有效提示；判据 135、变异抓红；门禁 186/186 | 见 git log |
 | 2026-10-19 | R348 | A8 + A11 出拍板文档（A8 推荐只加参考值；A11 实测 13 细分仅 6 组参数，正餐 5 个全同，推荐合并＋presetKey 别名兼容） | PLAN_M2_A8_A11.md |
-| 2026-10-19 | R357 | 补 R356 遗留的失败语义：分批内层 try，中途失败**保留已算出档位**并显示「第 a-b 档没算出来（共 n 档），下表只显示已算出的 m 档」；判据 171（新增 emit 面独立腿，防「算而不送」）、变异 4/4（3 抓红 + 1 改名不误伤）、**行为面 10/10**（真源码 + 桩 callFunction，第 4 批抛错）；门禁 187/187 · RC=0；🔴 **出码待补**（agent 侧拉不起 IDE GUI，需手动开 IDE 后跑 `review/evidence/r357_preview.py`） | 见 git log |
+| 2026-10-19 | R357 | 补 R356 遗留的失败语义：分批内层 try，中途失败**保留已算出档位**并显示「第 a-b 档没算出来（共 n 档），下表只显示已算出的 m 档」；判据 171（新增 emit 面独立腿，防「算而不送」）、变异 4/4（3 抓红 + 1 改名不误伤）、**行为面 11/11 已挂门禁**（`[m2-partial-behavior]`：真源码 + 桩 callFunction，第 4 批抛错）；门禁 **188/188 · RC=0**；🔴 **出码待补**（agent 侧拉不起 IDE GUI，需手动开 IDE 后跑 `review/evidence/r357_preview.py`） | 见 git log |
