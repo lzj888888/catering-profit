@@ -1275,6 +1275,12 @@ const TERMS = {
     secBasic: '基本信息',
     secCost: '成本明细',
     secPrice: '定价与收益',
+    // 🔴 R374（M3 吸底动作条）：编辑页保存按钮在**第三屏底部**，改个菜名也要滚到底。
+    //   吸底条常驻「试算成本 + 保存」，并把上一次试算的结果标成"上次试算"（不谎称实时）。
+    stickyRecalc: '试算成本',
+    stickyEmpty: '还没算成本',
+    stickyLast: '上次试算',
+    saveShort: '保存',
     dishName: '菜品名称',
     category: '菜品分类',
     tags: '标签',

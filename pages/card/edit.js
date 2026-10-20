@@ -77,6 +77,11 @@ Page({
       secBasic: TERMS.card.secBasic,
       secCost: TERMS.card.secCost,
       secPrice: TERMS.card.secPrice,
+      grossMargin: TERMS.card.grossMargin,
+      stickyRecalc: TERMS.card.stickyRecalc,
+      stickyEmpty: TERMS.card.stickyEmpty,
+      stickyLast: TERMS.card.stickyLast,
+      saveShort: TERMS.card.saveShort,
       dishNamePh: TERMS.card.dishNamePh,
       calcMode: TERMS.card.calcMode,
       calcModeA: TERMS.card.calcModeA,
@@ -210,6 +215,10 @@ Page({
     targetMargin: 60,
     reversePriceFen: 0,
     previewCostFen: 0,
+    // 🔴 R374：吸底条上的毛利率。**不是实时**——它对应 previewCostFen 那次试算，
+    //   所以文案写「上次试算」。与后端 saveCostCard/service.js:105 同式：
+    //   round((priceFen − unitCostFen) / priceFen × 10000) / 100。
+    stickyMargin: '',
     reverseResultPreview: '',
     previewCost: '',
     // M3.37 团购试算（纯前端、不落库；费率无默认值 ⇒ 只进 placeholder）
@@ -377,6 +386,7 @@ Page({
           //   ⇒ 屏上渲染成「单份成本：¥」（有标题有货币符、没有数字）。原先只有用户手点一次
           //   反算/规格试算才会被填上 ⇒ 每次进编辑态都先看到一个"没算出来"的假象。
           init.previewCost = c.total_cost_fen ? api.fenToYuan(c.total_cost_fen, 2) : '';
+          init.stickyMargin = this.marginTextOf(c.total_cost_fen || 0, init.priceYuan);
           // 🔴 R297-⑥（审计 M3-B1）：活动特价**从不回填** —— 后端其实早把它送出来了
           //   （getCostCard/service.js::price_promo_fen），这里却没用。
           //   后果不是"少显示"而是**静默清零**：输入框空着，老板以为本来没设，直接保存就把
@@ -514,7 +524,9 @@ Page({
 
   onLoss(e) { this.setData({ lossRate: e.detail.value }); },
   onAux(e) { this.setData({ auxYuan: e.detail.value }); },
-  onPrice(e) { this.setData({ priceYuan: e.detail.value }); },
+  onPrice(e) {
+    this.setData({ priceYuan: e.detail.value, stickyMargin: this.marginTextOf(this.data.previewCostFen, e.detail.value) });
+  },
   onActivityPrice(e) { this.setData({ activityPriceYuan: e.detail.value }); },
   onCategoryInput(e) { this.setData({ category: e.detail.value }); },
   pickCat(e) {
@@ -673,6 +685,15 @@ Page({
     });
   },
 
+  // 🔴 R374：吸底条的毛利率 —— 只用**页面上已有的两个数**（售价、上次试算成本），
+  //   公式与后端 saveCostCard/service.js 完全一致（两位小数）。
+  //   ⚠️ 不在这里重算成本：成本必须走 calcBom（引擎单源），本页**不抄成本算法**。
+  marginTextOf(costFen, priceYuan) {
+    const p = Math.round(Number(((Number(priceYuan) || 0) * 100).toFixed(10)));
+    if (!(p > 0) || !(costFen > 0)) return '';
+    return (Math.round(((p - costFen) / p) * 10000) / 100) + '%';
+  },
+
   // 反算售价 / 预览成本：调 calcBom（后端纯计算），不本地算
   async reverseCalc() {
     const linesInput = this.buildCalcLines();
@@ -695,6 +716,7 @@ Page({
         previewCostFen: d.unit_cost_fen || 0,
         reverseResultPreview: rp > 0 ? api.fenToYuan(rp, 2) : '',
         previewCost: d.unit_cost_fen ? api.fenToYuan(d.unit_cost_fen, 2) : '',
+        stickyMargin: this.marginTextOf(d.unit_cost_fen || 0, this.data.priceYuan),
       });
       if (rp > 0) {
         wx.showToast({ title: TERMS.card.reverseResult + ' ' + api.fenToYuan(rp, 2), icon: 'none' });
@@ -904,6 +926,7 @@ Page({
       this.setData({
         previewCostFen: d.unit_cost_fen || 0,
         previewCost: d.unit_cost_fen ? api.fenToYuan(d.unit_cost_fen, 2) : '',
+        stickyMargin: this.marginTextOf(d.unit_cost_fen || 0, this.data.priceYuan),
         specRows: this.data.specRows.map((r) => (r.enabled && byKey[r.spec_key] ? Object.assign({}, r, { result: byKey[r.spec_key] }) : r)),
       });
     } catch (e) { api.toastError(e); }

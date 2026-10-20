@@ -325,5 +325,21 @@
 
   <view style="height:20rpx;"></view>
   <button class="btn primary" style="margin-top:0;" bindtap="onSave">{{t.save}}</button>
+
+  <!-- 🔴 R374：吸底动作条。改前保存按钮在**第三屏底部**（整页 1367px），
+       改个菜名也要一路滚到底；而且没有成本/毛利时老板不知道自己填的对不对。
+       左边标「上次试算」（不谎称实时：成本只在 calcBom 返回后更新），右边常驻保存。
+       ⚠️ 试算仍走 calcBom（引擎单源），本页不抄成本算法。 -->
+  <view class="sticky-act">
+    <view class="sa-l" bindtap="reverseCalc">
+      <block wx:if="{{previewCostFen > 0}}">
+        <text class="sa-cap">{{t.stickyLast}}</text>
+        <text class="sa-val">{{t.cur}}{{previewCost}}</text>
+        <text class="sa-mg" wx:if="{{stickyMargin}}">{{t.grossMargin}} {{stickyMargin}}</text>
+      </block>
+      <text class="sa-empty" wx:else>{{t.stickyEmpty}} · {{t.stickyRecalc}}</text>
+    </view>
+    <button class="btn primary sa-btn" bindtap="onSave">{{t.saveShort}}</button>
+  </view>
 </view>
 <view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

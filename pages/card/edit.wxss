@@ -122,3 +122,22 @@
 .line { padding: 10rpx 20rpx; margin-bottom: 10rpx; }
 .cell2 { padding: 4rpx 0; }
 .del-row { margin-top: 0; }
+
+/* ===== R374：吸底动作条 =====
+ * 为什么需要：保存按钮在第三屏底部（整页 1367px，见 R372 实测），改一个字段也要滚到底。
+ * 为什么左边写「上次试算」而不是「当前成本」：成本只由 calcBom 返回，页面**不抄算法**；
+ *   输入改了但没重算时，标"当前成本"就是拿旧数骗人（R359/R370 同一个坑）。
+ * 触控：可点区域 min-height 88rpx（AD-G2），保存按钮同高。 */
+.form.safe-bottom { padding-bottom: calc(env(safe-area-inset-bottom) + 200rpx); }
+.sticky-act { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12rpx 24rpx calc(env(safe-area-inset-bottom) + 12rpx);
+  background: #ffffff; border-top: 1rpx solid #e6ebf2;
+  box-shadow: 0 -4rpx 16rpx rgba(30, 58, 95, 0.06); }
+.sa-l { flex: 1; min-width: 0; min-height: 88rpx; display: flex; align-items: center;
+  flex-wrap: wrap; column-gap: 12rpx; padding-right: 12rpx; }
+.sa-cap { font-size: 28rpx; color: #6b7a8d; }
+.sa-val { font-size: 34rpx; font-weight: 800; color: #1e3a5f; font-variant-numeric: tabular-nums; }
+.sa-mg { font-size: 28rpx; color: #2f6b4f; }
+.sa-empty { font-size: 28rpx; color: #8a94a6; }
+.sa-btn { width: 220rpx; margin: 0; min-height: 88rpx; font-size: 30rpx; padding: 0; }
