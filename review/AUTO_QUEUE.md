@@ -28,7 +28,7 @@
 | 14 | M3 `inputs_ref` 契约：`saveCostCard`/`getCostCard` 出参带 `card_code+version`（先定契约再改，别拍脑袋） | done | no | R387 已落：三处出参（saveCostCard / getCostCard / getCardVersions）同形状 `{kind,card_code,version}`，契约写进 core/10；守卫 34→37，变异 3/3；commit 34e1f76 |
 | 15 | 补契约「fail-soft/覆盖度/截断」类出参（7 组）：getDishReview(truncated/coverageA/coverageC/unmatched)、getSalesBills(truncated/summary)、getShopContext(no_shop)、manageShop(replayed)、importSalesBill(platform_missing/dup)、exportData(format/encoding/content)、saveCostCard+saveMaterial(deleted)。逐条带「漏掉的后果」改，改一条验一条 | todo | no | R389 扫描；**改文档不改代码**，只补声明，别动实现 |
 | 11 | 分享卡片结构化：`onShareAppMessage` 标题带可读结论句（如「本月保本 9160，月赚 8400」），不是只带小程序名 | todo | no | PLAN_AI §2；为"可被读懂"打底，不承诺被推荐 |
-| 12 | `shop_ai_consent` 授权模型设计（scope/有效期/撤回标记 + 撤回清缓存链路） | blocked | yes | why: 需李老师在控制台建集合与索引；可先出设计稿 |
+| 12 | `shop_ai_consent` 授权模型设计（scope/有效期/撤回标记 + 撤回清缓存链路） | blocked | yes | why: 需李老师在控制台建 2 集合 + 4 索引；**设计稿已就绪** `review/PLAN_2026-10-20_AI授权模型设计.md`（含字段/索引/状态机/k-匿名门槛），建完即可落码 |
 | 13 | 异常核对清单·规则层（本店历史阈值，不调模型） | todo | no | PLAN_AI §3/§8；纯规则，先出"偏离方向+幅度"，禁止"行业对标/挽损金额" |
 | 5 | 风格 A/B/C 铺开（先 3 页样板） | blocked | yes | why: 李老师未选型；选定后按「3 页样板→确认→全量」 |
 | 6 | M3 三页视觉统一（物料/枢纽/成本卡） | blocked | yes | why: 依赖 #5 选定风格，否则返工 |
