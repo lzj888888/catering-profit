@@ -49,3 +49,10 @@
   - 结论：无可开新条目；不给 blocked 条目"猜着做"（都缺外部输入），下轮仍按同一规则取首条。
 
 - [2026-10-21 01:45] R398 队列记账（纯文档，无代码）：#8 `clearMonth` 超时 → **done**（控制台回读 `timeout=20`/`Active`，证据 NOTE_2026-10-21 §一A）；#12 `why` 更新为真实进度（2 集合已建、索引 3/4、落码前置=补 `collections.js` 单源）；新增 **#16 异常核对清单页面接线**（唯一 todo & blocked=no，`buildChecklist` 现为零生产调用）。未跑全量门禁（未触碰 `tools/**`/`cloudfunctions/**`/页面代码）。
+
+- [2026-10-21 02:14] R400 只读巡检（队列 0 条 todo&no；#16 正被并发会话实时实现 ⇒ 按认领制跳过，不碰工作树）· 门禁沿用 191/191 RC=0 · 无代码提交（本条为记录）
+  - ① 工作树**不干净但全部归属并发 R399**：8 项（`pages/month/result.js|wxml`、两份 `terms.js`、`verify_all.js`、重启键、`tools/check_anomaly_wiring.js` 未跟踪）mtime 01:49–01:57；判活证据 = `_m3/_logs_r399/mk1.log` 02:07:42 写「refreshed 171, cache size = 177」+ `mk2.log` 02:07:44 起 0 字节（门禁在跑）。⇒ 按 R391 教训**不覆盖、不 add、不提交他人文件**。
+  - ② 最近门禁（最后一个跑完的）：`_m3/_logs_r396/gate_round2.log` 实读「总览：191/191 通过 耗时 375.6s」+ `GATE_RC=0`；R399 的 192 套件轮尚未出结果（日志 0 字节）。
+  - ③ 队列无僵尸：全表 0 条 `status: todo`；唯一 `in_progress` = #16 且**活着**（非僵尸）；10 条 done；#5–#9、#12 均 `blocked=yes` 且 `why` 在（等人选型 / 等扫码 / 等样例 / 等 AppSecret）。
+  - ④ NOTE↔代码抽检三条全对得上：R396 `utils/anomalyRules.js` 275 行 + `tools/selftest_anomaly_rules.js` 实点 47 个 `check(`（与 NOTE 声明 47 一致）；R395 `onShareAppMessage` 三页实存（`pages/card/index.js`、`pages/month/result.js`、`pages/sandbox/index.js`）+ `utils/shareCard.js` 被三页引用；R394 `savedDone` 在 7 页实存，`terms.js` 双副本 md5 同为 `e7c1744b…`（R399 改动后仍一致）。
+  - ⑤ 只读观察（未处置）：新套件 `tools/check_anomaly_wiring.js`（405 行）**尚未 `git add`** ⇒ 若并发会话在其门禁轮前不入库，`suite-tracked` 必红（R396 已踩过一次，处置定式=先 add 再跑门禁）。
