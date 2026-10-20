@@ -95,3 +95,10 @@
   - 🔴 两处自查：① `validate` 我最初写了 `trim` 且注释写"与写侧一致"，实际写侧不 trim ⇒ 写入 `' shop_x '` 后读不到，已改回不 trim；② 套件数我先写 196（按新增文件数想当然），`check_suite_count_claims` 判「文档 196 / 实算 195」⇒ 本轮只加 1 条套件。
   - 未做（如实登记）：两函数仍**未部署**（零线上调用方，等授权页同批）；`canSendToModel`（k-匿名）仍空；前端授权页未做；线上第 4 条索引仍卡 AppSecret。
 - [2026-10-21 05:58] R405 附带交付卫生：`新手上云操作手册.pdf` 重生（R403 遗留欠账）。`docx2pdf_word.py` 出 9 页/567768 字节；pypdf 提取文本机器判据：`49 条索引` 1 处、`13 条` 3 处、旧值 `45 条索引`/`12 条` 各 0 处。⚠️ `*.pdf` 在 `.gitignore` ⇒ 不入库、无守卫，改 `.md` 后必须手动重生。
+
+- [2026-10-21 06:52] R407 只读巡检（队列 **0 条 todo**；唯一 `in_progress` = #19，工作树里有它 06:14–06:31 的半成品）· 门禁沿用 **195/195 RC=0**（679.5s，R405）· 无代码改动
+  - ① 工作树**不干净但归属单一**：`miniprogram/i18n/terms.js` + `specs/dev-specs/i18n/terms.js`（R406 五条文案，双副本 md5 一致 `3dad45a2…`）、`pages/material/edit.js`（改价告知 + 直达影响面）、`verify_all.js`（头注 195→196 + 新套件行）、`★知识存储点`（套件数同步）、未入库 `tools/check_material_price_impact.js`。认领提交 `d3d2601`（06:14）后 mtime 止于 **06:31**；06:40 查 `wmic` 无 `run_gate/mk_force/verify_all` 进程、亦无 `_m3/_logs_r406/` ⇒ 该会话**已停摆**。按本轮规则 **`in_progress` 一律跳过** ⇒ 不 add、不覆盖、不代跑门禁、不提交其文件。
+  - ② 最近**已完成**门禁 = `_m3/_logs_r405/gate.log`「总览：195/195 通过」+ `GATE_RC=0`（679.5s，05:52）。当前树自称 196 套件（#19 未提交改动）⇒ **未经门禁验证**，不作为"已绿"引用。
+  - ③ 队列形态：**13 done / 5 blocked / 1 in_progress / 0 todo**，无僵尸 todo。5 条 blocked 仍是同一批外部输入（风格选型 / 扫码走查 / 美团样例 / AppSecret 索引）。
+  - ④ NOTE↔代码抽检三条全对得上：R405 `getAiConsent/` 存在且 `effective_scope`/`need_regrant` 只出现在自己的 service/validate/selftest，**本函数三份源码零 `.add/.update/.remove`**（只读成立）；契约「全集 55」与 `cloudfunctions/` 真目录数 **55** 相等。R403 `grantAiConsent`/`revokeAiConsent` 目录在，`consent_id`/`revoked_at` 在源码里真以标识符出现（`check_index_field_alignment` L1 不会判化石）。R402 `COLLECTIONS` 第 33 行含 `shop_ai_consent`/`shop_ai_insight`，`core/15` 权限矩阵第 28/29 行同业已备。
+  - ⑤ 顺带核了 #19 半成品的**自洽性**（只读，不下"可交付"结论）：`pages/metrics/impact` 四件齐 + `app.json:24` 有入口；弹窗按钮 `看影响面`(4字)/`先算了`(3字) 合规；`purchasePriceFen`/`cf`/`yr` 均在用前定义。⇒ 下一轮若它仍是停摆态，接手成本 ≈ 单跑守卫 + 一轮门禁（~12min）。
