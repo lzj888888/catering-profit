@@ -25,12 +25,12 @@ const COLLECTIONS = [
   //   本行补的是「**线上有、单源无**」这一漂移 —— 单源不登记，`initDb` 建不全、`apply_indexes` 也管不到它们。
   //   · shop_ai_consent：谁授权、对哪个店、同意哪些用途、何时撤（授权是**状态**，靠 revoked_at 留痕不删记录）
   //   · shop_ai_insight：T+1 预计算的结论（**派生数据**，撤回时必须能一次性清掉，否则"撤回了但结论还在被引用"）
-  //   🔴 **索引本轮刻意不登记**（设计稿 §7 拆成 步 1a/1b 的原因）：
-  //      `tools/check_index_field_alignment.js` 的 L1 判据要求**索引字段必须在 `cloudfunctions/**` 源码里
-  //      以独立标识符出现**（防"索引建在没人用的字段上"这类化石索引）。而 `consent_id` / `revoked_at`
-  //      此刻在云函数源码里**零出现**（grant/revoke 尚未落码）⇒ 现在登记索引会被（正确地）判红。
-  //      ⇒ 索引与 `grantAiConsent` / `revokeAiConsent` **同批**登记，顺序由机械判据决定，不由人拍脑袋。
-  'shop_ai_consent', 'shop_ai_insight',
+  //   R403（2026-10-21）：**四索引已随 `grantAiConsent` / `revokeAiConsent` 落码同批登记**（见 §2 尾部）。
+  //     顺序不是随手定的：`tools/check_index_field_alignment.js` 的 L1 判据要求索引字段必须在
+  //     `cloudfunctions/**` 源码里以独立标识符出现（防"索引建在没人用的字段上"的化石索引），
+  //     而 `consent_id` / `revoked_at` 在 grant/revoke 落码**之前**全树零出现 ⇒ 先登索引会被正确地判红。
+  //     ⇒ 机械判据给了顺序：先有读写这些字段的代码，索引才不是化石。
+'shop_ai_consent', 'shop_ai_insight',
 ];
 
 // ===== 2. 索引定义 =====
@@ -177,6 +177,19 @@ const INDEXES = {
   shop_dish_mapping: [
     { name: 'idx_dm_uniq', unique: true, keys: { shop_id: 1, platform: 1, external_ref_id: 1 } },
     { name: 'idx_dm_card_code', keys: { shop_id: 1, card_code: 1 } },
+  ],
+  // R403（2026-10-21）：AI 授权两表四索引（设计稿 §2/§3）。
+  //   · consent 的 unique 索引是**唯一性约束本身**，不是性能优化：一店一份授权靠它兜住并发，
+  //     代码里那条 `isDuplicateKeyError ⇒ 转覆盖写` 的分支只有在它存在时才成立。
+  //   · insight 的 `consent_id` 索引是**撤回链路的前提**：撤回按 consent_id 一次定位全部派生结论，
+  //     没有它每次撤回都是全表扫描，且授权越久越慢。
+  shop_ai_consent: [
+    { name: 'idx_ai_consent_user_shop', unique: true, keys: { user_id: 1, shop_id: 1 } },
+    { name: 'idx_ai_consent_shop', keys: { shop_id: 1, revoked_at: 1 } },
+  ],
+  shop_ai_insight: [
+    { name: 'idx_ai_insight_consent', keys: { consent_id: 1 } },
+    { name: 'idx_ai_insight_shop_month', keys: { shop_id: 1, month: 1, kind: 1 } },
   ],
 };
 

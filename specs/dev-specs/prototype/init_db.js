@@ -151,6 +151,15 @@ const INDEXES = {
     { name: 'idx_dm_uniq', unique: true, keys: { shop_id: 1, platform: 1, external_ref_id: 1 } },
     { name: 'idx_dm_card_code', keys: { shop_id: 1, card_code: 1 } },
   ],
+  // R403（2026-10-21）：AI 授权两表四索引 —— 与 cloudfunctions/initDb/collections.js **逐条同源**。
+  shop_ai_consent: [
+    { name: 'idx_ai_consent_user_shop', unique: true, keys: { user_id: 1, shop_id: 1 } },
+    { name: 'idx_ai_consent_shop', keys: { shop_id: 1, revoked_at: 1 } },
+  ],
+  shop_ai_insight: [
+    { name: 'idx_ai_insight_consent', keys: { consent_id: 1 } },
+    { name: 'idx_ai_insight_shop_month', keys: { shop_id: 1, month: 1, kind: 1 } },
+  ],
 };
 
 // ===== 3. 种子数据（套餐 + 功能权限，价格/名从表读，禁硬编码）=====

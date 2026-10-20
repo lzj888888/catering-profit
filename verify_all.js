@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：192 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：194 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -551,6 +551,7 @@
 //       + 异常核对清单接线守卫（tools/check_anomaly_wiring.js，R399：规则层 R396 曾**全仓零生产调用**
 //         ⇒ 规则再对、老板也看不见。判据 = 真 require + 真调用且**锚在 loadChecklist 函数体内** +
 //         目标月快照必须来自本页 getLedger 出参 + 契约面「toSnapshot 需求集 ⊆ getLedger 产出集」+ 反恒真）
+//       + AI 授权两函数自测（cloudfunctions/grantAiConsent/selftest.js、revokeAiConsent/selftest.js，R403）：规则层守的是**授权语义**不是接口形状 —— scope 是能力粒度（布尔与未知能力必须拒收）、条款版本必须与服务端当前一致（旧同意不得覆盖新条款）、已过期有效期不许落库、撤回三态与"已撤回不刷新时间戳"、派生结论按 consent_id 清且清不干净必须 clear_pending 显式降级；接线面另判幂等早于首个写与 stats.updated。
 // ⚠️ 不在 CI 之外假定任何 secrets；纯本地静态 + 单测。
 
 const { execFileSync } = require('child_process');
@@ -1201,6 +1202,10 @@ const SUITES = [
   //   见头部注释同名条目。规则层此前零生产调用，所以这一守的是**接线**不是算法：
   //   真 require、真调用锚在函数体内、目标月快照来自本页 getLedger 出参、契约面两边都从源码抽。
   ['anomaly-wiring', 'tools/check_anomaly_wiring.js'],
+  // ===== R403 · AI 授权写侧两函数（队列 #12 步 2）=====
+  //   守的是**授权语义**：能力粒度 / 条款版本 / 有效期 / 撤回三态 / 派生数据清理与显式降级。
+  ['ai-grant-consent', 'cloudfunctions/grantAiConsent/selftest.js'],
+  ['ai-revoke-consent', 'cloudfunctions/revokeAiConsent/selftest.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
