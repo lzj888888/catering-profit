@@ -279,6 +279,33 @@ ok('③-k doRestore **提交字面量**含 sub_card_ref（读到了 ≠ 送出�
 ok('③-l doRestore **提交字面量**含 card_type / specs（R298Y 修复点，防回流）', emitRestore.has('card_type') && emitRestore.has('specs'));
 ok('③-m 下界 提交字面量键数（防抽取器抽空 ⇒ 以上四条恒真）', emitCopy.size >= 6 && emitRestore.size >= 8, 'copy=' + emitCopy.size + ' restore=' + emitRestore.size);
 
+// ============ ⑤ AI 解释锚点（R387）============
+// 为什么守这一层：以后 AI 解读要能回答"这条结论基于哪张卡的哪一版"。
+//   · 形状必须两处一致（保存出参 / 列表出参），否则消费方要按来源分支判断；
+//   · 只能用**业务键** (card_code, version)，不能用 `_id` / `card_row_id`——
+//     库内主键跨环境不稳定，换 dev/prod 后引用就失效（还会诱使前端去存主键）。
+{
+  const saveIdx = read('cloudfunctions/saveCostCard/index.js') || '';
+  const getSvc = read('cloudfunctions/getCostCard/service.js') || '';
+  // ⚠️ 本文件所在的执行环境会把反斜杠转成斜杠，所以这里**不用正则转义**，
+  //   改为「定位 'cost_card' 字面量 → 回看前 90 字符里是否同时出现 inputs_ref 与 kind」。
+  //   这比写死整行更耐格式变化（换行/空格改了也不会误红）。
+  const nearRef = (src) => {
+    const i = src.indexOf("'cost_card'");
+    if (i < 0) return '';
+    return src.slice(Math.max(0, i - 90), i + 12);
+  };
+  const okRef = (src) => {
+    const s = nearRef(src);
+    return s.indexOf('inputs_ref') >= 0 && s.indexOf('kind') >= 0;
+  };
+  ok('⑤-1 saveCostCard 出参带 inputs_ref(kind+cost_card)', okRef(saveIdx), 'saveCostCard/index.js');
+  ok('⑤-2 getCostCard 单卡映射带同形状 inputs_ref', okRef(getSvc), 'getCostCard/service.js');
+  const seg = nearRef(saveIdx) + nearRef(getSvc);
+  const bad = seg.indexOf('_id') >= 0 || seg.indexOf('card_row_id') >= 0;
+  ok('⑤-3 inputs_ref 不含库内主键（_id / card_row_id）', !bad, bad ? '含主键' : 'ok');
+}
+
 // ============ 结论 ============
 const total = pass + problems.length;
 if (problems.length) {

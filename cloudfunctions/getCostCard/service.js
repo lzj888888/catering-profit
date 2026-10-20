@@ -8,6 +8,11 @@ function cardToOutput(doc) {
   return {
     card_code: doc.card_code || '',
     version: doc.version || 1,
+    // 🔴 R387（AI 解释锚点）：统一的「这份结论来自哪张卡的哪一版」。
+    //   为什么不用 _id / card_row_id：它们是**库内主键**，跨环境（dev/prod）不稳定，
+    //   换环境后引用就失效；而 (card_code, version) 是业务键，重建库也认得。
+    //   kind 留给以后 M1 月度（kind:'month'）等复用同一形状，避免每个模块各造一套。
+    inputs_ref: { kind: 'cost_card', card_code: doc.card_code || '', version: doc.version || 1 },
     name: doc.name || '',
     category: doc.category || '',
     tags: doc.tags || '',

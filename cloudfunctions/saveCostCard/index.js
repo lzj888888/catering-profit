@@ -445,6 +445,8 @@ exports.main = async (event) => {
     shop_id: shopId,
     card_code: cardCode,
     version: nextVersion,
+    // 🔴 R387：与 getCostCard 同一形状（kind + 业务键），不暴露库内主键
+    inputs_ref: { kind: 'cost_card', card_code: cardCode, version: nextVersion },
     card_row_id: cardRowId,
     total_cost_fen: result.unit_cost_fen,      // 整数分锚点
     material_total_fen: result.material_total_fen,
