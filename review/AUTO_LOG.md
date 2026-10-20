@@ -31,3 +31,5 @@
   - 只补两件事：单跑守卫（`check_share_card` 42/0、`selftest_ui_fix` 42/0）→ 全量门禁；**未重写任何文案或判据**。
   - 顺带清理：把仓根 0 字节 `_mk395.log` 移入已 ignore 的 `_m3/_logs_r395/`（不删）。
   - 免出码（只改 `.js`，无 wxml/wxss）、免部署（无云函数改动）。
+- [2026-10-20 22:09] R395 收工 · 只读巡检四项：① 工作树干净（三次提交后 `git status` 为空）② 最近门禁 190/190 RC=0（22:04，268.8s，mkforce RC=0）③ 队列无僵尸 todo（#11 已 done；#13 待做 blocked=no；其余 5 条 blocked=yes；无 `in_progress` 悬挂）④ NOTE↔代码抽检三条：R395 三页 `onShareAppMessage` 实存 3 处（card/month.result/sandbox）+ `utils/shareCard.js`、R394 完成态 `savedDone:'已保存'` 在 terms 组内、R393 转圈文案与页面调用对得上
+  - **未开 #13（异常核对清单·规则层）的原因**（不是懒，是前置缺失）：该条要"本店历史阈值"，而 `getLedger` 只取当月 + 上月（`prevMonthOf` 仅用于期初结转），**全仓无历史月列表能力**（grep `listMonths` 零命中）⇒ 需先扩云函数出参（行为变更 ⇒ 必部署），单轮 30 分钟做不完，开了就是半成品。
