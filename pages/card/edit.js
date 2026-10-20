@@ -80,6 +80,7 @@ Page({
       grossMargin: TERMS.card.grossMargin,
       stickyRecalc: TERMS.card.stickyRecalc,
       stickyEmpty: TERMS.card.stickyEmpty,
+      needLineForCalc: TERMS.card.needLineForCalc,
       stickyLast: TERMS.card.stickyLast,
       saveShort: TERMS.card.saveShort,
       dishNamePh: TERMS.card.dishNamePh,
@@ -698,6 +699,13 @@ Page({
   async reverseCalc() {
     const linesInput = this.buildCalcLines();
     if (!linesInput) return;
+    // 🔴 R383：空明细**不许试算**。实测 calcBom 对 `lines: []` 返回 `unit_cost_fen=0 / margin=100`，
+    //   吸底条会显示「成本 ¥0.00 · 毛利率 100%」——一个看起来很美的假数（R380 结论②）。
+    //   为什么不在引擎里拦：calcCostCard 属禁区；且"空数组"对引擎是合法的（套餐派生等场景）。
+    if (linesInput.length === 0) {
+      wx.showToast({ title: TERMS.card.needLineForCalc, icon: 'none' });
+      return;
+    }
     try {
       ui.setTitle(TERMS.card.reverseTitle);
       // 套餐固定按「份」聚合（M3.16：calc_mode 对套餐无意义）⇒ 强制 mode='A'

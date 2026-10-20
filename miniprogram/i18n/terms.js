@@ -1289,6 +1289,8 @@ const TERMS = {
     //   吸底条常驻「试算成本 + 保存」，并把上一次试算的结果标成"上次试算"（不谎称实时）。
     stickyRecalc: '试算成本',
     stickyEmpty: '还没算成本',
+    // R383：空明细不许试算 —— 引擎对空数组返回 0 成本/100% 毛利（实测），会显示一个假数。
+    needLineForCalc: '先填一行原料再算成本',
     stickyLast: '上次试算',
     saveShort: '保存',
     dishName: '菜品名称',
