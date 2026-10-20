@@ -139,6 +139,18 @@ chk(/id:\s*p\.sandbox_id/.test(cmpJs), 'compare.js 的对比行未带唯一 id�
 //      后者会被同一行第二个绑定（首列 ⚠ 标记）满足 ⇒ 变异回灌实测抓不到（弱判据）。
 chk(/class="tr [^"]*item\.invalid/.test(mtxWxml), 'matrix.wxml 的行 class 未绑定 item.invalid（B7：被拒档位在表里无从定位）');
 chk(/\.tr\.invalid/.test(mtxWxss), 'matrix.wxss 缺 .tr.invalid 样式（B7）');
+// 🔴 R386：AI 解释锚点 —— 每条结论都要能回答"按哪版引擎、哪版行业带算的"。
+//   两个出参分支（矩阵 / 单点）**都要带**：少一处就会出现"有的结论有版本、有的没有"，
+//   而这种残缺只有在老板追问"这条为什么"时才会暴露。
+chk(/engine_version:\s*ENGINE_VERSION/.test(calcIdx) && /out\.engine_version\s*=\s*ENGINE_VERSION/.test(calcIdx),
+  'R386 矩阵/单点两处出参未同时带 engine_version');
+chk(/bands_version:\s*BANDS_VERSION/.test(calcIdx) && /out\.bands_version\s*=\s*BANDS_VERSION/.test(calcIdx),
+  'R386 矩阵/单点两处出参未同时带 bands_version');
+{
+  const ir = require('../cloudfunctions/common/indicatorRef.js');
+  chk(typeof ir.BANDS_VERSION === 'string' && /^bands-[0-9a-f]{8}$/.test(ir.BANDS_VERSION),
+    'R386 BANDS_VERSION 不是内容哈希（' + String(ir.BANDS_VERSION) + '）');
+}
 // 🔴 R378：矩阵 14 列 × 200rpx ≈ 1400px，手机只能看到 2 列半 ⇒ 首列必须冻结，
 //   否则横滑时老板不知道这行是「房租 8000」还是「房租 30000」。窄屏还要明说可以横滑。
 //   判据锚在 `.td:first-child` **这条规则体内**（不是全文 grep：同族病 R375-变异 M2 已实证）。

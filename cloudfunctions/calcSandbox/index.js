@@ -10,7 +10,10 @@ const db = cloud.database();
 const common = require('./common');                 // 扁平派生副本（sync_common 生成）
 const { resolveAuth, assertShopOwner } = common;
 const { ERROR_CODES, ok, fail } = common;
-const { calcSandbox, calcSandboxReverse } = require('./service');
+const { calcSandbox, calcSandboxReverse, ENGINE_VERSION } = require('./service');
+// 🔴 R386：解释锚点 —— 每条结论都要能回答"按哪版引擎、哪版行业带算的"（PLAN_AI §6）。
+//   BANDS_VERSION 是内容哈希（改区间自动变），不手写版本号（手写必腐）。
+const { BANDS_VERSION } = common.indicatorRef;
 // 🔴 R297：validateClean = 矩阵分支逐行校验入口（与 validateInput 共用 checkClean 单源判据）
 const { validateInput, validateClean } = require('./validate');
 
@@ -53,6 +56,8 @@ exports.main = async (event) => {
     }
     return ok({
       client_request_id: (event.client_request_id) || '',
+      engine_version: ENGINE_VERSION,
+      bands_version: BANDS_VERSION,
       rows,
       rejected,
     });
@@ -78,6 +83,9 @@ exports.main = async (event) => {
   if (v.clean.mode === 'reverse') {
     out.reverse = calcSandboxReverse(v.clean);
   }
+  // 🔴 R386：与矩阵分支同一口径（两处都加，少一处就会出现"有的结论有版本、有的没有"）
+  out.engine_version = ENGINE_VERSION;
+  out.bands_version = BANDS_VERSION;
 
   return ok(out);
 };

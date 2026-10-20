@@ -93,6 +93,20 @@ const BANDS = {
   //   —— 满足 C-⑫（gain.hi≥55、cost.lo≤警戒线：rent.lo5≤15 / labor.lo14≤20）；前端标注"未细分行业，仅供粗估"。
   other: { grossMargin: [52, 72], labor: [14, 22], rent: [5, 15], mkt: [3, 10], energy: [1, 6], manage: [4, 8] },
 };
+
+// 🔴 R386（AI 解释锚点）：BANDS 必须有**版本号**，否则同一句「你的毛利率低于行业带」
+//   在改过区间之后就变成两句话，事后无法解释（PLAN_AI §6 第 1 条）。
+//   做法：对 BANDS 内容做 FNV-1a 短哈希 ⇒ **改了自动变、不用人维护**（手写版本号必腐）。
+//   ⚠️ 只依赖 JSON.stringify 的**声明顺序**（对象字面量顺序稳定）；改 BANDS 请保持这个文件内改。
+function _fnv1a(str) {
+  let h = 0x811c9dc5;
+  for (let k = 0; k < str.length; k++) {
+    h ^= str.charCodeAt(k);
+    h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+  }
+  return ('0000000' + h.toString(16)).slice(-8);
+}
+const BANDS_VERSION = 'bands-' + _fnv1a(JSON.stringify(BANDS));
 const BAND_KEYS = ['grossMargin', 'labor', 'rent', 'mkt', 'energy', 'manage'];
 
 // ===== 四、指标元数据 =====
@@ -408,7 +422,7 @@ function redlineOf(indKey) {
 module.exports = {
   CITY_TIERS, CITY_KEYS,
   BIZ_KEYS,
-  BANDS, BAND_KEYS,
+  BANDS, BANDS_VERSION, BAND_KEYS,
   INDICATORS, IND_KEYS,
   REDLINE, REDLINE_KEYS,
   FIXED_KEYS, VAR_KEYS, BUILD_KEYS, BUILD_DEFAULT_YEARS,
