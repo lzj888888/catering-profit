@@ -56,3 +56,11 @@
   - ③ 队列无僵尸：全表 0 条 `status: todo`；唯一 `in_progress` = #16 且**活着**（非僵尸）；10 条 done；#5–#9、#12 均 `blocked=yes` 且 `why` 在（等人选型 / 等扫码 / 等样例 / 等 AppSecret）。
   - ④ NOTE↔代码抽检三条全对得上：R396 `utils/anomalyRules.js` 275 行 + `tools/selftest_anomaly_rules.js` 实点 47 个 `check(`（与 NOTE 声明 47 一致）；R395 `onShareAppMessage` 三页实存（`pages/card/index.js`、`pages/month/result.js`、`pages/sandbox/index.js`）+ `utils/shareCard.js` 被三页引用；R394 `savedDone` 在 7 页实存，`terms.js` 双副本 md5 同为 `e7c1744b…`（R399 改动后仍一致）。
   - ⑤ 只读观察（未处置）：新套件 `tools/check_anomaly_wiring.js`（405 行）**尚未 `git add`** ⇒ 若并发会话在其门禁轮前不入库，`suite-tracked` 必红（R396 已踩过一次，处置定式=先 add 再跑门禁）。
+
+- [2026-10-21 02:45] R399 异常核对清单页面接线（队列 #16）· 门禁 192/192 RC=0（508.7s，刷缓存两循环 RC=0）· commit f09e4bd · 队列 #16 → done
+  - 规则层 R396 此前**全仓零生产调用**，本轮把它接上：`getMonthList` + 逐月 `getLedger`（≤6 次，目标月直接复用 load() 的 `d`）→ `buildChecklist` → 结果页「跟你自己的历史比」卡。
+  - 口径红线照旧：只给方向 + 百分比，**无金额差、无行业均值**；历史 <2 月整卡不渲染，0 项给「跟你自己过去差不多」（空白卡会被读成"没算完"）。
+  - 新守卫 `tools/check_anomaly_wiring.js`（24 断言）自己假红两轮：① `bodyOf` 按 `name(` 找首个位置 ⇒ 锚到 `this.loadChecklist(d)` **调用点**，函数体窗口错位（R299 ①型）⇒ 改 `defBodyOf`（前字符非 `.` 且 `{` 早于 `;`）；② `keysAfter('r.')` 命中 `ledger.` 里的那个 `r` ⇒ 五个顶层字段被误当 result 内字段 ⇒ 加词边界。**判据错，不是代码错**，两处都没改业务代码迎合。
+  - 变异 3/3 均红在目标断言：注释 require → ①/②-a；删 load() 真调用 → ②-b；目标月重拼对象 → ②-f。
+  - 第一轮门禁 191/192 唯一红 = `suite-tracked`「新守卫未入库」（git add 时序，与 R396 同型）；暂存后 192/192。
+  - 免部署（零云函数改动）；wxml 有改 ⇒ 已出预览码 `_m3/_logs_r399/preview_r399.png`（不入库），真机走查仍卡队列 #7。
