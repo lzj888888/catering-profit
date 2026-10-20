@@ -46,6 +46,8 @@ const EXEMPT_WRITE = new Map([
     + '⇒ 重复提交终态相同；shop_switch 的 .add 分支仅在行不存在时走，重放时已存在 ⇒ 走 update。契约 §7 未标 +幂等'],
   ['archiveMonth', '只翻转 is_archive 标记（true/false），覆盖式赋终值 ⇒ 重复归档终态相同；'
     + '不会重复插入（第 45 行的 insert 仅在当月账套不存在时走，重放时已存在 ⇒ 走 update）。契约未标 +幂等'],
+  ['clearMonth', 'M1 清空某月：**软删**（is_deleted=true / deleted_at / deleted_by），覆盖式赋终值 ⇒ 重复调用终态相同；'
+    + '不新增实体、不改金额；归档月直接拒绝。契约未标 +幂等，登记豁免'],
   ['getShopContext', '读函数，唯一写是「无店铺时自动建档」（if (!shop) 守卫）⇒ **顺序调用天然幂等**（第二次已查到店铺，不再 insert）；'
     + '⚠️ 并发下两个请求可能同时看到"无店铺" ⇒ 双建，属 check-then-act 竞态，与 resolveAuth 自动建档同源（该逻辑现存两处，属既有形态，未在本轮扩大改动面）——**同源另一处 = `common/auth.js::resolveAuth` 首建档**，两处都属**并发缺陷、不是幂等缺陷** ⇒ **本条豁免成立；但修并发建档必须两处一起改**（R78：交叉引用见重启键 §1.1 在案项 **A6**）'],
   ['adminRevokeToken', '把指定管理员的**全部会话删光**（覆盖式终态）⇒ 重复吊销终态相同；契约 §6 未把 +幂等 标在这一行'],

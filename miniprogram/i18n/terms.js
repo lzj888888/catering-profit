@@ -239,6 +239,13 @@ const TERMS = {
     syncPrice: '同步至原料最新价',
     archiveNow: '结账并归档',
     archivePrev: '归档上月',
+    // 🔴 R376（M1 清空某月）：破坏性操作 —— 按钮文案必须自解释，确认弹窗必须写清"能找回"。
+    clearMonth: '清空本月数据',
+    // ⚠️ confirmText 上限 4 字（tools/check_modal_button_len.js 红线）⇒ 弹窗按钮另起短文案
+    clearMonthOk: '清空本月',
+    clearMonthTitle: '确认清空',
+    clearMonthConfirm: '清空 {m} 的账？该月会回到「未建档」；重新录入会恢复同一份账，也能找客服找回。',
+    clearMonthDone: '已清空',
   },
 
   // ===== 十二、M1 收入/费用分类模板（MVP 固定结构；金额一律「元」界面输入 → 适配层转「分」）=====

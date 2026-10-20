@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：188 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：189 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -1179,6 +1179,9 @@ const SUITES = [
   //   成本卡版本里已有两版成本 ⇒ 主动告诉老板这道菜涨了多少，不增加任何填写负担。
   //   守不许编数：无上一版回 null（不是 0）· 上版<=0 不显示（不许除零）· 变化<1% 不打扰 · 断号版本取前一版。
   ['cost-drift', 'tools/check_cost_drift.js'],
+  // 🔴 R376：**追加在末尾**，不插中间 —— SUITES 是**有序表**，插中间会让后面所有
+  //   「第 N 套件」引用整体错位（check_suite_count_claims C3 会一次性点名 4 处）。
+  ['batch4-clearMonth',   'cloudfunctions/clearMonth/selftest.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

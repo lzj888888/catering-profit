@@ -38,6 +38,10 @@ Page({
       goResult: TERMS.nav.goResult,
       archiveNow: TERMS.nav.archiveNow,
       archivePrev: TERMS.nav.archivePrev,
+      clearMonth: TERMS.nav.clearMonth,
+      clearMonthTitle: TERMS.nav.clearMonthTitle,
+      clearMonthConfirm: TERMS.nav.clearMonthConfirm,
+      clearMonthDone: TERMS.nav.clearMonthDone,
       confirmArchive: TERMS.ui.confirmArchive,
       confirmArchivePrev: TERMS.ui.confirmArchivePrev,
       history: TERMS.ui.history,
@@ -206,6 +210,36 @@ Page({
           await api.call('archiveMonth', { month: this.data.curMonth, archive: true });
           wx.showToast({ title: TERMS.nav.archiveNow, icon: 'success' });
           this.loadMonth(this.data.curMonth);
+        } catch (e) { api.toastError(e); }
+      },
+    });
+  },
+
+  // 🔴 R376（M1 清空某月）：**软删**，不是硬删 —— 清空后该月回到「未建档」，
+  //   重新录入时 saveLedger 会复活同一行（唯一索引 shop_id+month 不允许重建）。
+  //   破坏性操作 ⇒ 弹窗必须同时写清「会怎样」和「能不能找回」，不给模糊措辞。
+  onClearMonth() {
+    const m = this.data.curMonth;
+    if (!m) return;
+    const content = String(TERMS.nav.clearMonthConfirm || '').replace('{m}', m);
+    wx.showModal({
+      title: TERMS.nav.clearMonthTitle,
+      content,
+      // 弹窗按钮 ≤4 字（check_modal_button_len 红线）：行尾不能带注释，否则判据会把注释当键值
+      confirmText: TERMS.nav.clearMonthOk,
+      confirmColor: '#c0392b',
+      success: async (r) => {
+        if (!r.confirm) return;
+        try {
+          await api.call('clearMonth', { month: m, confirm: true });
+          wx.showToast({ title: TERMS.nav.clearMonthDone, icon: 'success' });
+          // 清空后该月不再出现在「已建档」里 ⇒ 重新拉月份列表 + 重载当月（显示空态卡）
+          const ml = await api.call('getMonthList', {});
+          const months = Array.from(new Set(
+            ui.recentMonths(24).concat((ml.list || []).map((x) => x.month)).concat([m]),
+          )).sort().reverse();
+          this.setData({ months, monthIndex: Math.max(0, months.indexOf(m)) });
+          this.loadMonth(m);
         } catch (e) { api.toastError(e); }
       },
     });

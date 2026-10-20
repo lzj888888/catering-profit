@@ -22,3 +22,6 @@
 
 /* 暖化：双口径常驻口径解释（P0#2，tab 下常显一行小字，不折叠） */
 .caliber-hint { font-size: 28rpx; color: #8a94a6; line-height: 1.5; margin-top: 12rpx; }
+
+/* ===== R376：清空本月 —— 危险操作与普通 ghost 按钮区分（红边红字，沿用既有危险色 #c0392b） ===== */
+.btn-clear { color: #c0392b; border-color: #e6b3ad; }

@@ -83,5 +83,8 @@
   <button class="btn ghost" bindtap="goResult">{{t.goResult}}</button>
   <button class="btn ghost" wx:if="{{canArchive}}" bindtap="onArchive">{{t.archiveNow}}</button>
   <button class="btn ghost" wx:if="{{canArchivePrev}}" bindtap="onArchivePrev">{{t.archivePrev}}</button>
+  <!-- 🔴 R376：清空本月（**软删**，可恢复）。只在"该月有账且未归档"时出现：
+       空月没有可清的；归档月要先取消归档（服务端同样拒绝，双保险）。 -->
+  <button class="btn ghost btn-clear" wx:if="{{result && !isArchive}}" bindtap="onClearMonth">{{t.clearMonth}}</button>
 </view>
 <view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

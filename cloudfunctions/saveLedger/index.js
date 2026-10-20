@@ -60,6 +60,20 @@ exports.main = async (event) => {
   // 用月主键查（id 或复合字段），回落 where 查
   const exRes = await da.list('shop_monthly_account', { shop_id: shopId, month: v.month });
   existing = (exRes && exRes.data && exRes.data[0]) || null;
+  // 🔴 R376（M1 清空某月）：被清空的月份是**软删行**，`da.list` 一律过滤 is_deleted=false ⇒ 查不到。
+  //   但唯一索引 `(shop_id, month)` 还在 ⇒ 若直接 INSERT 会撞唯一键，当月再也存不进去。
+  //   ⇒ 保存前先"复活"同一行（保住 account_id，也让清空可逆）。
+  if (!existing) {
+    const rawRes = await db.collection('shop_monthly_account')
+      .where({ shop_id: shopId, month: v.month, is_deleted: true }).limit(1).get();
+    const soft = (rawRes && rawRes.data && rawRes.data[0]) || null;
+    if (soft) {
+      await db.collection('shop_monthly_account').doc(soft._id).update({
+        data: { is_deleted: false, deleted_at: 0, updated_at: now },
+      });
+      existing = Object.assign({}, soft, { is_deleted: false });
+    }
+  }
   if (existing && existing.is_archive) {
     // R298·C3 fail-closed（与前端 utils/ui.js::withinGrace 同口径）：缺 archived_at ⇒ 视作 0（纪元）⇒ 必在宽限外。
     //   原先 `|| now` ⇒ (now-now)=0 < 宽限 ⇒ **fail-open 放行**，而前端对同一条记录却显示「已锁」⇒ 两端判决相反。

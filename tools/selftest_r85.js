@@ -194,6 +194,11 @@ const A15_EXEMPT = [
   /^cloudfunctions\/exportData\/index\.js$/,     // round265：导出改出真 xlsx（SheetJS + base64 + encoding 出参），属缺陷修复而非同步动作
   /^cloudfunctions\/exportData\/package\.json$/, // round265：新增 xlsx 依赖声明（require 与依赖必须同源，由 check_fn_deps 另守）
   /^cloudfunctions\/initDb\//,
+  // by=WorkBuddy / date=2026-10-20 / reason=R376 授权：M1「清空某月」需要新函数 clearMonth
+  //   （软删 + 归档锁 + 审计留痕）与 saveLedger 的**复活软删行**（唯一索引 shop_id+month
+  //   不允许重建同月）；两者是同一需求的两端，缺任一端清空后该月就再也存不进去。
+  /^cloudfunctions\/clearMonth\//,
+  /^cloudfunctions\/saveLedger\/index\.js$/,
   /^cloudfunctions\/getLedger\//,
   /^cloudfunctions\/saveLedger\//,
   /^cloudfunctions\/calcMonthlyProfit\//,
