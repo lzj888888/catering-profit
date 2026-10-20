@@ -20,6 +20,15 @@ const CATEGORY_OPTIONS = [
   { value: 'other', label: TERMS.card.catOther },
 ];
 
+// 🔴 R406（队列 #19）：把「影响成本卡成本的三要素」拼成一个可比较的键。
+//   三要素 = 采购单价(分) / 换算系数 / 出成率 —— 成本卡快照里存的净料单位成本 = 单价 ÷ 系数 ÷ 出成率。
+//   ⚠️ 单源说明：这里只做**相等性比较**，不重算任何成本（引擎口径仍在 calcCostCard，本函数不碰）。
+//   为什么不直接比 `this.data.priceYuan` 字符串：'20' 与 '20.00' 是同一个价，
+//   字符串比较会误报「改了」⇒ 一路弹窗骚扰；统一折成「分」整数再比才对得上实际落库值。
+function costKeyOf(priceFen, convertFactor, yieldRate) {
+  return [Number(priceFen) || 0, Number(convertFactor) || 0, Number(yieldRate) || 0].join('|');
+}
+
 Page({
   data: {
     t: {
@@ -93,6 +102,13 @@ Page({
     // round155：单价标签带上采购单位（「采购单价（元/件）」）—— 一件多少钱，一眼看清。
     priceLabel: TERMS.card.matPriceOf(TERMS.card.matUnitDefault),
     priceYuan: '',
+    // 🔴 R406（队列 #19）：编辑态记下「影响成本卡成本的三要素」原值，保存时比对。
+    //   三要素 = 采购单价 / 换算系数 / 出成率 —— 成本卡快照里存的净料单位成本就是
+    //   「单价 ÷ 换算系数 ÷ 出成率」。
+    //   为什么不只盯价格：老板把「1 件 = 20 公斤」改成「= 25 公斤」，单价一分没动，
+    //   但每克成本已经变了 ⇒ 只比价格就会漏提醒（漏提醒 = 他按旧成本去定价）。
+    //   只改别名 / 备注 / 分类时不打扰（那些不进成本）。
+    origCostKey: '',
     // 默认换算系数 = 「默认采购单位（斤）」的建议值，取自单源 units.js（页面不写死 500）
     convert_factor: String(units.suggestConvert(TERMS.card.matUnitDefault) || 1),
     yield_rate: '100',
@@ -140,17 +156,21 @@ Page({
           const cf = String(m.convert_factor || units.suggestConvert(pu) || 1);
           // round155：把库里存的「克数」还原成右侧二元组（右单位默认取该采购单位的基准词）
           const cw = units.baseWordOf(pu);
+          // 🔴 R406：原值快照取**表单即将呈现的值**（而不是库里的裸值）——
+          //   库里缺字段时表单会回落成 100/建议换算，若拿裸值做基线，老板什么都没改也会被判成"改了"。
+          const yr0 = String(m.yield_rate || 100);
           this.setData({
             name: m.name || '',
             brand_spec: m.brand_spec || '',
             purchase_unit: pu,
             priceYuan: m.purchase_price_fen > 0 ? api.fenToYuan(m.purchase_price_fen, 2) : '',
+            origCostKey: costKeyOf(m.purchase_price_fen, cf, yr0),
             convert_factor: cf,
             convUnit: cw,
             convQty: cf,
             convUnitIndex: Math.max(0, units.QTY_UNITS.indexOf(cw)),
             priceLabel: TERMS.card.matPriceOf(pu),
-            yield_rate: String(m.yield_rate || 100),
+            yield_rate: yr0,
             categoryIndex: ci >= 0 ? ci : 5,
             aliasesYuan,
             remark: m.remark || '',
@@ -278,14 +298,27 @@ Page({
     if (this.data.saving) return;   // 连击保护
     // ⚠️ 必须在 afterSaved 之前取：afterSaved 会把 isEdit 清成 false（转新建态）
     const wasEdit = this.data.isEdit;
+    // 🔴 R406（队列 #19）：保存后的成本三要素键 vs 加载时的基线（origCostKey）。
+    //   只有它们变了才提醒 —— 老板只改个别名/备注时不该被弹窗打断。
+    const origCostKey = this.data.origCostKey;
+    const newCostKey = costKeyOf(purchasePriceFen, cf, yr);
     this.setData({ saving: true });
     try {
       await api.call('saveMaterial', { material, client_request_id: 'mat_' + Date.now() });
       if (wasEdit) {
         // 编辑态：**改完即走**。老板修的是一个具体的原料（改个价、补个别名），不是要连录一批；
         //   停下来反而让他对着一个不该再填的表单发愣。
-        wx.showToast({ title: TERMS.ui.savedDone, icon: 'success' });
-        setTimeout(() => wx.navigateBack(), 600);
+        // 🔴 R406：但「改的正好是进成本的那三个字段」时，走之前必须把真相说清 ——
+        //   成本卡是快照隔离，不点「同步至最新价」它不会跟着变（见云函数头注）。
+        //   改前这里只有一句「已保存」，老板会顺手按旧成本去定价 = 静默算错。
+        if (newCostKey !== origCostKey) {
+          // 兜底 catch：保存**已经成功**，此处任何异常都不许冒到外层
+          // （外层 catch 会把它渲染成"保存失败"，那是假话）。
+          await this.tellPriceImpact().catch(() => {});
+        } else {
+          wx.showToast({ title: TERMS.ui.savedDone, icon: 'success' });
+          setTimeout(() => wx.navigateBack(), 600);
+        }
       } else {
         // round156（新增态）：**不跳走**。改前 `setTimeout(navigateBack, 600)` 每存一个原料就回列表。
         //   原料页尤其需要连续录入：进价表一次要录一批（"一件 20 公斤 195 元"这种整包采买），
@@ -293,6 +326,63 @@ Page({
         this.afterSaved(material.name);
       }
     } catch (e) { this.setData({ saving: false }); api.toastError(e); }
+  },
+
+  // 🔴 R406（队列 #19）：改价后如实告知「成本卡不会自己跟着变」，并给一条直达影响面的路。
+  //
+  //   为什么不能照豆包 O5 的原话（「所有用该原料的菜成本已自动更新」）：
+  //     本仓成本卡是**快照隔离** —— 改原料价后旧卡成本不变，只有手动走 `syncCostCard`
+  //     才生成新版本（`cloudfunctions/syncCostCard/index.js:4-5`）。
+  //     落那句原文 = 承诺一件没发生的事 ⇒ 老板按没变的成本定价，比不提示更贵。
+  //
+  //   为什么先探一次 `dry_run`：没有菜用到这个原料时不该弹（批量调价会变成一路骚扰）。
+  //     `dry_run` 是**只读预览**：零写库、零新版本、不计写限额（同文件 index.js:51-53），探一次无副作用。
+  //
+  //   fail-soft 的边界（想清楚才敢这么写）：
+  //     探数失败 ⇒ 仍弹**不带数量**的通用版。「成本卡不会自己跟着变」这句话与影响数无关、
+  //     永远成立 ⇒ 宁可多说一句，也不许让老板误以为已自动更新。
+  //     唯一「不弹」的分支是**确实为 0 道菜**（读成功了才算数，读失败不当成 0）。
+  async tellPriceImpact() {
+    let n = -1;   // -1 = 没读到（不等于 0）
+    try {
+      const d = await api.call('syncCostCard', {
+        material_id: this.data.id,
+        dry_run: true,
+        client_request_id: 'mimp_' + Date.now(),
+      });
+      n = (d.affected || []).length;
+    } catch (e) { n = -1; }
+
+    if (n === 0) {   // 真的没有菜用到它 ⇒ 不值得打断（此时说"成本卡不会变"是废话）
+      wx.showToast({ title: TERMS.ui.savedDone, icon: 'success' });
+      setTimeout(() => wx.navigateBack(), 600);
+      return;
+    }
+
+    const content = n > 0 ? TERMS.card.matImpactAsk(n) : TERMS.card.matImpactAskUnknown;
+    const materialId = this.data.id;
+    const materialName = String(this.data.name || '').trim();
+    wx.showModal({
+      title: TERMS.card.matPriceSaved,
+      content,
+      // ⚠️ 平台硬限制 ≤4 字符（2026-09-26 真机事故 showmodal:fail confirm text length），
+      //   由 tools/check_modal_button_len.js 守着。
+      confirmText: TERMS.card.matImpactGo,
+      cancelText: TERMS.card.matImpactSkip,
+      confirmColor: '#1e3a5f',
+      success: (r) => {
+        if (!r.confirm) { wx.navigateBack(); return; }
+        // 用 redirectTo 而非 navigateTo：把编辑页从栈里**换掉**。
+        //   这张表单已经存过了，留在栈里只会让"返回"退回到一个不该再填的页面
+        //   （与 round156「改完即走」同一条纪律）。
+        wx.redirectTo({
+          url: '/pages/metrics/impact?material_id=' + materialId
+            + '&name=' + encodeURIComponent(materialName),
+        });
+      },
+      // modal 起不来也不能把老板困在「已保存但仍显示为编辑中」的表单上
+      fail: () => { wx.navigateBack(); },
+    });
   },
 
   // round156：连续录入 —— 保存成功后**留在本页**，清掉这个原料特有的字段，接着录下一个。

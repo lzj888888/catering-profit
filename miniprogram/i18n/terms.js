@@ -1442,6 +1442,18 @@ const TERMS = {
     matBatchCountOf: (a, b) => `可导入 ${a} 条 · 有问题 ${b} 条`,
     matDelete: '删除',
     matDeleteConfirm: '删除后该原料不再出现在列表，但已保存成本卡的快照不受影响。确定删除？',
+    // 🔴 R406（队列 #19）：改价后的**如实告知**。改前行为 =「保存 → toast 已保存 → 返回列表」，
+    //   老板会理所当然地以为「用这个原料的菜成本已经跟着变了」；而成本卡是**快照隔离**，
+    //   只有手动走「同步至最新价」（`syncCostCard`）才会生成新版本（见 `cloudfunctions/syncCostCard/index.js:4-5`）。
+    //   ⇒ 豆包 O5 拟的「所有用该原料的菜成本已自动更新」**在本仓是假承诺**，绝不能照抄：
+    //      他会按没变的成本去定价，这是「让老板算错」，比不提示更贵。
+    //   入口指向既有的只读影响面页 `pages/metrics/impact`（M3.19），不新增功能、不自动改卡。
+    //   ⚠️ confirm/cancel 受平台硬限制 **≤4 字符**（2026-09-26 真机事故），由 `check_modal_button_len` 守着。
+    matPriceSaved: '原料价已保存',
+    matImpactAsk: (n) => `用到这个原料的 ${n} 道菜，成本卡里还是旧价 —— 成本卡不会自己跟着变。要看这次涨价影响多少吗？`,
+    matImpactAskUnknown: '用这个原料的菜，成本卡里还是旧价 —— 成本卡不会自己跟着变。要看影响面吗？',
+    matImpactGo: '看影响面',
+    matImpactSkip: '先算了',
     matVirtual: '虚拟原料',
     matVirtualReadonly: '虚拟原料由半成品卡自动生成，不可手动编辑或删除',
     // round151：基准单位词随**采购单位的计量族**走（重量→克 / 体积→毫升 / 计数→个）。

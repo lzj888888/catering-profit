@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：195 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：196 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -555,6 +555,12 @@
 //       + AI 授权**读侧**自测（cloudfunctions/getAiConsent/selftest.js，R405）：守的是「记录 → 前端能直接用的状态」这一层翻译 ——
 //         四态穷尽（none/active/expired/revoked）、撤回优先于过期、`expire_at=0` 不算过期、条款升级时能力必须为空、
 //         出参键集合精确（不外泄 user_id）、读函数**零写库/零审计**、无记录也走 ok（正常态不报错）。
+//       + 原料改价「成本卡不会自己跟着变」告知守卫（tools/check_material_price_impact.js，R406 · 队列 #19）：
+//         守的是**文案与机制一致** —— O5 原拟文案「所有用该原料的菜成本已自动更新」在本仓是假承诺
+//         （成本卡快照隔离，只有 syncCostCard 才生成新版本）⇒ 老板会按没变的成本定价。
+//         六条腿：基线真赋值（防"判据在、数据没有"恒真）/ onSave 体内真比对 + 真调用（剥注释 + 锚函数定义体）/
+//         tellPriceImpact 内真弹窗 + dry_run 探测 + 跳影响面页 / 话术不得含「已自动更新」且必须点明「还是旧价」/
+//         两个弹窗按钮 ≤4 字符（平台硬限制，变量引用时 check_modal_button_len 抓不到）/ 合成样本 + 真实变异反恒真。
 // ⚠️ 不在 CI 之外假定任何 secrets；纯本地静态 + 单测。
 
 const { execFileSync } = require('child_process');
@@ -1212,6 +1218,10 @@ const SUITES = [
   // ===== R405 · AI 授权读侧（队列 #18）=====
   //   守的是**状态翻译**：记录里的 scope 是历史事实，页面要的是「现在能不能用」（effective_scope）。
   ['ai-get-consent', 'cloudfunctions/getAiConsent/selftest.js'],
+  // ===== R406 · 原料改价「成本卡不会自己跟着变」告知（队列 #19 · O5 遗留子项）=====
+  //   见头部注释同名条目。守的是**文案与机制一致**：成本卡是快照隔离，
+  //   任何"已自动更新"类说法都会被判红；同时守住「改价后必须告知 + 能给到影响面」这条链路。
+  ['material-price-impact', 'tools/check_material_price_impact.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
