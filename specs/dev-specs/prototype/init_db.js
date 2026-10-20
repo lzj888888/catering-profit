@@ -28,6 +28,9 @@ const COLLECTIONS = [
   'user', 'shop', 'shop_entitlement', 'order_refund', 'admin_user', 'admin_login_log',
   // R174（2026-09-30 批次 B）：入站数据接入缝预埋 —— 纯 schema 空表（与单源 collections.js 同步）
   'external_sales_daily', 'shop_dish_mapping',
+  // R402（2026-10-21）：AI 授权模型两表（与单源 collections.js 同步；线上 dev 已建成）
+  //   ⚠️ 索引**故意不在此处**：单源也没登记，理由见 collections.js 同名注释（落码同批登索引）。
+  'shop_ai_consent', 'shop_ai_insight',
 ];
 
 // ===== 2. 索引定义（复合/唯一按批次 0 §2.4 索引段）=====
