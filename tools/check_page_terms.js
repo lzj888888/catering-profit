@@ -357,6 +357,54 @@
   check('S5 判据③ 确实在扫比较：比较型字面量 ≥ 150 次 / TERMS 叶子串 ≥ 800',
     p3Cmp >= 150 && TERM_VALS.size >= 800, '实际 ' + p3Cmp + ' 次 / ' + TERM_VALS.size + ' 串');
 
+  // ===== S6 转圈文案必须是「正在做的事」（R393）=====
+  // 为什么守：实测三处把**别的动作的文案**当转圈标题 ——
+  //   · 同步成本卡（onSync / 批量同步）借了 exp.exportIng「正在导出…」⇒ 老板以为在导文件，
+  //     等半天没有文件可打开；
+  //   · 确认导入后落库借了按钮文案 importConfirm「确认导入」⇒ 读起来像"还要再确认一次"，
+  //     与实际"已经确认、正在落库"相反。
+  // 可枚举的形态判据：进行时文案以「…」结尾（"正在同步…" / "加载中…"）。
+  //   ⇒ 借来的动作名（"确认导入"）与忘加省略号（"正在保存"）都过不去；
+  //     而这条不需要理解语义，所以不会腐。
+  // ⚠️ 本环境会把反斜杠写坏 ⇒ 全程用 indexOf / split，不用正则转义。
+  {
+    const termsSrc = fs.readFileSync(TERMS_PATH, 'utf8');
+    let loadingCount = 0;
+    const offenders = [];
+    jsFiles.forEach((f) => {
+      const src = fs.readFileSync(f, 'utf8');
+      const parts = src.split('wx.showLoading');
+      for (let i = 1; i < parts.length; i++) {
+        const seg = parts[i].slice(0, 300);
+        const ti = seg.indexOf('title:');
+        if (ti < 0) continue;
+        loadingCount++;
+        let expr = seg.slice(ti + 6).trim();
+        const c1 = expr.indexOf(',');
+        const c2 = expr.indexOf('}');
+        const cutAt = (c1 < 0) ? c2 : ((c2 < 0) ? c1 : Math.min(c1, c2));
+        if (cutAt >= 0) expr = expr.slice(0, cutAt).trim();
+        // 进度式转圈是**拼接表达式**（'正在保存… ' + done + '/' + total）：
+        //   取 '+' 之前的固定部分判形态 —— 拼接的变量部分不该影响"是不是进行时"。
+        const plusAt = expr.indexOf('+');
+        if (plusAt >= 0) expr = expr.slice(0, plusAt).trim();
+        const leaf = expr.split('.').pop();
+        const at = termsSrc.indexOf(leaf + ": '");
+        let txt = '';
+        if (at >= 0) {
+          const start = at + leaf.length + 3;
+          const end = termsSrc.indexOf("'", start);
+          txt = termsSrc.slice(start, end < 0 ? start : end);
+        }
+        const shapeOk = txt.length > 0 && (txt.slice(-1) === '…' || txt.slice(-3) === '...');
+        if (!shapeOk) offenders.push(f.replace(ROOT, '') + ' → ' + expr + ' = "' + txt + '"');
+      }
+    });
+    check('S6 转圈标题都是进行时形态（以「…」结尾）',
+      offenders.length === 0 && loadingCount >= 8,
+      offenders.length ? offenders.slice(0, 3).join(' / ') : ('扫到 ' + loadingCount + ' 处'));
+  }
+
   console.log('\n===== 页面术语键守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
   if (failN) {
     bad.forEach((b) => console.log('   ❌ ' + b));

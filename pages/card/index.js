@@ -444,7 +444,7 @@ Page({
   async onSync(e) {
     const cc = e.currentTarget.dataset.code;
     try {
-      wx.showLoading({ title: TERMS.exp.exportIng, mask: true });
+      wx.showLoading({ title: TERMS.card.syncIng, mask: true });
       await api.call('syncCostCard', { card_code: cc, client_request_id: 'ccs_' + Date.now() });
       wx.hideLoading();
       wx.showToast({ title: TERMS.card.syncDone, icon: 'success' });
@@ -471,7 +471,7 @@ Page({
       cancelText: TERMS.buttons.cancel,
       success: async (r) => {
         if (!r.confirm) return;
-        wx.showLoading({ title: TERMS.exp.exportIng, mask: true });
+        wx.showLoading({ title: TERMS.card.syncIng, mask: true });
         try {
           for (const cc of codes) {
             await api.call('syncCostCard', { card_code: cc, client_request_id: 'ccb_' + cc + '_' + Date.now() });

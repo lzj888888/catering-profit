@@ -609,6 +609,9 @@ const TERMS = {
       importRowUnit: '行',
       importDaysUnit: '天',
       importConfirm: '确认导入',
+      // 🔴 R393：转圈标题不是按钮文案。原先把「确认导入」（动作名）当进行时用，
+      //   读起来像"还要再确认一次"，与实际"已经确认、正在落库"相反。
+      importIng: '正在导入…',
       importSuccess: '导入成功',
       // R238：导入成功后的下游引导（此前只有 toast，用户到这就断了 —— 2026-10-08 真机实测）
       importSuccessPlat: '已按「{name}」导入完成。',
@@ -1470,6 +1473,9 @@ const TERMS = {
     batchSync: '批量同步',
     batchSyncConfirm: '对选中的菜品按原料最新价生成新版本，旧版本保留。确定同步？',
     syncDone: '已生成新版本',
+    // 🔴 R393：同步与导出是两件事。原来 onSync / 批量同步都借 exp.exportIng（'正在导出…'），
+    //   老板会以为在导文件、等半天没有文件可打开。转圈文案必须说**正在进行的那件事**。
+    syncIng: '正在同步…',
     selectSync: '选择要同步的菜品',
     // ===== 批次 P0 · 成本卡编辑页补全（任务 3）=====
     inputType: '录入方式',
@@ -1806,7 +1812,7 @@ const TERMS = {
     reviewBatchSuggest: '建议',
     reviewBatchSave: '保存全部关联',
     reviewBatchNone: '还没有选择任何菜品',
-    reviewBatchSaving: '正在保存',
+    reviewBatchSaving: '正在保存…',
     reviewBatchDone: '已保存', 
     reviewEmpty: '还没有导入堂食销量，请先在「外卖」页导入《菜品销售统计》。',
     // ===== R252：已导入账单「查看 + 清除」（补 R251 报障第 ④ 问的真缺口）=====

@@ -720,7 +720,7 @@ Page({
     }
     this.setData({ importing: true });
     try {
-      wx.showLoading({ title: TK.importConfirm, mask: true });
+      wx.showLoading({ title: TK.importIng, mask: true });
       await api.call('importSalesBill', { fileID: this.data.importFileID, platform, confirm: true });
       wx.hideLoading();
       // 🔴 R271：记住本次平台（下次预选），并在结果条文里**说清是按哪个平台落库的**

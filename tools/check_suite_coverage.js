@@ -73,6 +73,11 @@ const EXEMPT = {
   // r272 补：堂食 270 行 ↔ 成本卡通关的建卡取证脚本（核验已建卡是否覆盖 Top 营收菜），纯一次性取证件，非生产判据。
   'review/evidence/r272_tangshi_jiakan/verify_cards.js':
     { by: 'r272', date: '2026-10-12', reason: '堂食建卡覆盖核验的一次性取证脚本，非生产判据' },
+  // R393 补：R391（出参契约补充声明）的取证脚本 —— 逐函数核对契约声明字段是否齐全。
+  //   它在 R391 收尾时才写入，而当轮门禁跑在那之前 ⇒ 当场没人报红。
+  //   属「新证据文件赶在门禁之后落地」，纯一次性取证件，不参与生产链路（S7 仍守它不被 SUITES 引用）。
+  'review/evidence/r391_contract_outparams/verify_out_params.py':
+    { by: 'r393', date: '2026-10-20', reason: 'R391 出参契约字段完备性的一次性取证脚本，非生产判据' },
 };
 
 function gitTracked() {
