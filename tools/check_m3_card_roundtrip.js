@@ -304,6 +304,15 @@ ok('③-m 下界 提交字面量键数（防抽取器抽空 ⇒ 以上四条恒�
   const seg = nearRef(saveIdx) + nearRef(getSvc);
   const bad = seg.indexOf('_id') >= 0 || seg.indexOf('card_row_id') >= 0;
   ok('⑤-3 inputs_ref 不含库内主键（_id / card_row_id）', !bad, bad ? '含主键' : 'ok');
+  // ⑤-4 契约文档必须**三行都**声明 inputs_ref：
+  //   代码三处、文档两处 = 典型「契约与实现分歧」，而且文档是写码 AI 的输入基线，
+  //   漏一行，下一个实现者就会照着两处的文档再去改一遍。
+  const doc = read('specs/dev-specs/core/10_云函数清单与接口契约.md') || '';
+  const docLines = doc.split('\n');
+  const rowHas = (name) => docLines.some((l) => l.indexOf(name) >= 0 && l.indexOf('inputs_ref') >= 0);
+  ok('⑤-4 契约文档三行都声明 inputs_ref',
+    rowHas('saveCostCard') && rowHas('getCostCard') && rowHas('getCardVersions'),
+    'save=' + rowHas('saveCostCard') + ' get=' + rowHas('getCostCard') + ' versions=' + rowHas('getCardVersions'));
 }
 
 // ============ 结论 ============
