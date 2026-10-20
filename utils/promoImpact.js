@@ -88,6 +88,10 @@ function promoImpact(p) {
     costRatePct: ROUND(a * 100, 2),
     beIncreasePct: ROUND((beAfter / beBefore - 1) * 100, 1),
     // 打平所需客流（倍数与百分比；1.1224 ⇒ 需多来 12.2%）
+    // 🔴 R375：**原价口径的边际贡献率**（一小数，0.43 = 每卖 1 元原价流水，留下 0.43 元）。
+    //   给「做活动还想月赚 X」反推用：所需原价流水 = (固定费用 + 目标利润) ÷ 本值。
+    //   为什么不用 gaPct：gaPct 是**实收口径**（分母是实收），拿它配"原价流水"会算小。
+    marginalOnGross: ROUND(numerNet, 6),
     trafficMultiple: ROUND(k, 4),
     needTrafficPct: ROUND((k - 1) * 100, 1),
   };

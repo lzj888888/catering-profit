@@ -674,6 +674,11 @@
         <text class="lbl">{{promoRes.sameRevText}}</text>
       </view>
       <view class="hint" wx:if="{{!promoRes.bad && promoRes.sameRevText}}">{{t.promoSameRevNote}}</view>
+      <!-- 🔴 R375：做活动 + 目标利润 ⇒ 所需原价流水。与上面"少赚多少"互补：
+           上面是代价，这一条是**目标还够不够**。没填目标利润时整行不出现（不编数）。 -->
+      <view class="cell" wx:if="{{!promoRes.bad && promoRes.goalText}}">
+        <text class="lbl">{{promoRes.goalText}}</text>
+      </view>
       <view class="warn" wx:if="{{promoRes.bad}}">{{promoRes.text}}</view>
       <view class="hint" wx:if="{{promoRes.empty}}">{{promoRes.text}}</view>
     </block>

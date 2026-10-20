@@ -85,6 +85,7 @@ Page({
       promoCostLabel: M.promoCostLabel,
       promoCostPh: M.promoCostPh,
       promoCostNote: M.promoCostNote,
+      promoGoalText: M.promoGoalText,
       promoRealPh: M.promoRealPh,
       promoRealUnit: M.promoRealUnit,
       promoRealNote: M.promoRealNote,
@@ -1308,6 +1309,20 @@ Page({
         if (profitYes > 0) return fill(T.promoSameRevWin, { r: money(R), d: money(delta) });
         return fill(T.promoSameRevLoss, { r: money(R), d: money(Math.abs(profitYes)) });
       }()),
+      // 🔴 R375（接 R367 的目标反推）：老板真正的问题不是"要多卖多少"，而是
+      //   **"做了这个活动，我想月赚 X 还能不能做到、要做到多少"**。
+      //   口径（与 R367 同源、与活动期同基准）：
+      //     所需原价流水 = (固定费用 + 目标利润) ÷ 原价口径边际贡献率
+      //   分母必须用 `out.marginalOnGross`（每 1 元**原价**流水留下多少），
+      //   不能用 gaPct —— ga 是**实收**口径，配"原价流水"会把门槛算小（R370 同族坑）。
+      goalText: (function () {
+        const tgt = Number(this.data.targetYuan) || 0;
+        if (!(tgt > 0) || !(out.marginalOnGross > 0)) return '';
+        const need = Math.round((fixed + tgt) / out.marginalOnGross);
+        const now = Math.round((fixed + tgt) / (marginPct / 100));
+        if (!isFinite(need) || !(need > 0)) return '';
+        return fill(T.promoGoalText, { p: money(tgt), a: money(need), b: money(now) });
+      }.call(this)),
     };
   },
 

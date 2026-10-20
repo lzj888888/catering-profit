@@ -387,6 +387,32 @@ for (const rel of Object.keys(CJK_BASELINE)) {
   } catch (e) {
     chk(false, 'R370-⑦ 无法加载 promoImpact（行为腿跑不了，不能算通过）');
   }
+  // ⑧ 🔴 R375：活动期目标反推 —— 所需原价流水 = (固定费用 + 目标利润) ÷ 原价口径边际贡献
+  //   失效形态（最容易犯）：拿 gaPct（**实收**口径）当分母 ⇒ 门槛被算小
+  //   （8 折时 31,395 → 25,093，差 25%）。必须在页面上取 `out.marginalOnGross`。
+  chk(/out\.marginalOnGross/.test(idxJs),
+    'R375 活动目标反推没用原价口径边际贡献（用 gaPct 会把门槛算小）');
+  // ⚠️ 必须只认**插值本身**：同一块里 `wx:if="{{... promoRes.goalText}}"` 也出现该词，
+  //   只 grep 词 ⇒ 删掉渲染仍然绿（R375 变异 M2 实证：这就是"判据被同文件另一处喂成恒真"）。
+  chk(/\{\{\s*promoRes\.goalText\s*\}\}/.test(idxWxmlS),
+    'R375 index.wxml 未真正渲染 goalText（只出现在 wx:if 条件里不算渲染）');
+  try {
+    const P2 = require('../utils/promoImpact.js').promoImpact;
+    const t3 = P2({ fixedYuan: 3500, marginPct: 63, discount: 0.8, weightPct: 100 });
+    chk(t3 && t3.ok === true, 'R375-⑧ 基准用例跑不通');
+    if (t3 && t3.ok) {
+      chk(Math.abs(t3.marginalOnGross - 0.43) < 1e-6,
+        'R375-⑧ marginalOnGross 应为 0.43（G0 63%、8 折全参与），实得 ' + t3.marginalOnGross);
+      chk(Math.round((3500 + 10000) / t3.marginalOnGross) === 31395,
+        'R375-⑧ 目标 1 万所需原价流水应为 31,395，实得 '
+        + Math.round((3500 + 10000) / t3.marginalOnGross));
+      // 反恒真：若两个口径算出同一个数，说明分母取错（或判据失效）
+      chk(Math.round((3500 + 10000) / (t3.gaPct / 100)) !== 31395,
+        'R375-⑧ 反恒真失效：实收口径与权重口径给出了同一结果，判据不可信');
+    }
+  } catch (e) {
+    chk(false, 'R375-⑧ 无法加载 promoImpact');
+  }
 }
 
 // --- R331：矩阵页「人工总额 / 毛利率跟业态 / 固定费用构成」---
