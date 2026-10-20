@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：194 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：195 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -552,6 +552,9 @@
 //         ⇒ 规则再对、老板也看不见。判据 = 真 require + 真调用且**锚在 loadChecklist 函数体内** +
 //         目标月快照必须来自本页 getLedger 出参 + 契约面「toSnapshot 需求集 ⊆ getLedger 产出集」+ 反恒真）
 //       + AI 授权两函数自测（cloudfunctions/grantAiConsent/selftest.js、revokeAiConsent/selftest.js，R403）：规则层守的是**授权语义**不是接口形状 —— scope 是能力粒度（布尔与未知能力必须拒收）、条款版本必须与服务端当前一致（旧同意不得覆盖新条款）、已过期有效期不许落库、撤回三态与"已撤回不刷新时间戳"、派生结论按 consent_id 清且清不干净必须 clear_pending 显式降级；接线面另判幂等早于首个写与 stats.updated。
+//       + AI 授权**读侧**自测（cloudfunctions/getAiConsent/selftest.js，R405）：守的是「记录 → 前端能直接用的状态」这一层翻译 ——
+//         四态穷尽（none/active/expired/revoked）、撤回优先于过期、`expire_at=0` 不算过期、条款升级时能力必须为空、
+//         出参键集合精确（不外泄 user_id）、读函数**零写库/零审计**、无记录也走 ok（正常态不报错）。
 // ⚠️ 不在 CI 之外假定任何 secrets；纯本地静态 + 单测。
 
 const { execFileSync } = require('child_process');
@@ -1206,6 +1209,9 @@ const SUITES = [
   //   守的是**授权语义**：能力粒度 / 条款版本 / 有效期 / 撤回三态 / 派生数据清理与显式降级。
   ['ai-grant-consent', 'cloudfunctions/grantAiConsent/selftest.js'],
   ['ai-revoke-consent', 'cloudfunctions/revokeAiConsent/selftest.js'],
+  // ===== R405 · AI 授权读侧（队列 #18）=====
+  //   守的是**状态翻译**：记录里的 scope 是历史事实，页面要的是「现在能不能用」（effective_scope）。
+  ['ai-get-consent', 'cloudfunctions/getAiConsent/selftest.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
