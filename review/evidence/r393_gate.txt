@@ -1,26 +1,7 @@
-R393 全量门禁（落地判据）
-
-NODE = C:/Users/lzj/.workbuddy/binaries/node/versions/22.22.2-6/node.exe
-命令 = NODE_OPTIONS="--require C:/Users/lzj/AppData/Local/Temp/inscode/gitcache_preload.js" python _m3/gitcache_helper/run_gate_py.py
+NODE = C:/Users/lzj/.workbuddy/binaries/node/versions\22.22.2-6\node.exe
 SUITES = 189
-总览：189/189 通过   耗时 702.5s
-RC = 0
+✅ [suite-tracked] 189 个套件文件全部已入库（R92 守卫 · 真 git）
 
---- 诚实边界（不掩盖测量时刻与内容差异）------------------------------------
-本轮首次门禁（19:11 结束）为 187/189，两条红：
-  ❌ suite-coverage      tools/check_suite_coverage.js :: exit=1
-  ❌ suite-assert-counts tools/check_suite_assert_counts.js :: exit=1
-根因不是代码，是 **gitcache 陈旧**：
-  · check_suite_coverage 的 S7 判「豁免清单里的 R391 取证件已不在面 B」——它读的是 preload 里
-    旧的 `git ls-files` 结果（该文件在缓存生成之后才落地）。
-  · check_suite_assert_counts 通过 execFileSync 跑 check_suite_coverage，吃到的正是
-    `node.exe .../check_suite_coverage.js` 这条 rc=1 的旧缓存 ⇒ 连锁假红。
-处置：只刷新两类缓存键（`git ls-files` ×2 + `check_suite_coverage` 实跑），没有全量重跑 mk_force.py
-（171 个键 ≈12 分钟，而失效面只有这两类）。刷新后两条守卫各自单跑 10/10、87/87 转绿。
-上述 189/189 是**刷新缓存之后**的整轮结果。
-
-另有一处本轮顺带修正：`tools/check_suite_coverage.js` 落盘时被整文件改成了 CRLF
-（266 行 LF → 全行翻写，diff 虚增 537 行）。已按军规 §8 二进制模式改回 LF，
-改后 diff 只剩 5 行新增（EXEMPT 补登记），守卫复跑 10/10。
-⇒ **本条 189/189 是在「CRLF 版」上测的、提交的是「LF 版」**：两者除 `\r` 外字节完全相同
-（去掉 \r 后逐字节相等，脚本已核），且该守卫改后单独复跑仍全绿。如实记录，不当作等价凭空推断。
+============================================================
+总览：189/189 通过   耗时 679.8s
+R92: ✅
