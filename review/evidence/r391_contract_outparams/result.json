@@ -1,0 +1,117 @@
+{
+  "pass": true,
+  "rows": [
+    {
+      "fn": "getDishReview",
+      "key": "truncated",
+      "code_emits": true,
+      "doc_declares": true,
+      "pass": true
+    },
+    {
+      "fn": "getDishReview",
+      "key": "coverageA",
+      "code_emits": true,
+      "doc_declares": true,
+      "pass": true
+    },
+    {
+      "fn": "getDishReview",
+      "key": "coverageC",
+      "code_emits": true,
+      "doc_declares": true,
+      "pass": true
+    },
+    {
+      "fn": "getDishReview",
+      "key": "unmatched",
+      "code_emits": true,
+      "doc_declares": true,
+      "pass": true
+    },
+    {
+      "fn": "getSalesBills",
+      "key": "truncated",
+      "code_emits": true,
+      "doc_declares": true,
+      "pass": true
+    },
+    {
+      "fn": "getSalesBills",
+      "key": "summary",
+      "code_emits": true,
+      "doc_declares": true,
+      "pass": true
+    },
+    {
+      "fn": "getShopContext",
+      "key": "no_shop",
+      "code_emits": true,
+      "doc_declares": true,
+      "pass": true
+    },
+    {
+      "fn": "manageShop",
+      "key": "replayed",
+      "code_emits": true,
+      "doc_declares": true,
+      "pass": true
+    },
+    {
+      "fn": "importSalesBill",
+      "key": "platform_missing",
+      "code_emits": true,
+      "doc_declares": true,
+      "pass": true
+    },
+    {
+      "fn": "importSalesBill",
+      "key": "dup",
+      "code_emits": true,
+      "doc_declares": true,
+      "pass": true
+    },
+    {
+      "fn": "exportData",
+      "key": "format",
+      "code_emits": true,
+      "doc_declares": true,
+      "pass": true
+    },
+    {
+      "fn": "exportData",
+      "key": "encoding",
+      "code_emits": true,
+      "doc_declares": true,
+      "pass": true
+    },
+    {
+      "fn": "exportData",
+      "key": "content",
+      "code_emits": true,
+      "doc_declares": true,
+      "pass": true
+    },
+    {
+      "fn": "saveCostCard",
+      "key": "deleted",
+      "code_emits": true,
+      "doc_declares": true,
+      "pass": true
+    },
+    {
+      "fn": "saveMaterial",
+      "key": "deleted",
+      "code_emits": true,
+      "doc_declares": true,
+      "pass": true
+    },
+    {
+      "fn": "getCostCard",
+      "key": "truncated",
+      "code_emits": true,
+      "doc_declares": true,
+      "pass": true
+    }
+  ]
+}
