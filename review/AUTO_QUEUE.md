@@ -19,7 +19,7 @@
 |---|---|---|---|---|
 | 1 | 补「损耗 100%」防御纵深守卫：喂 `calcBom/validate` 与 `saveCostCard/validate` 的 `loss_pct=100` 必须都拒；再加前提证明（绕过 validate 直喂引擎会得到非有限值），防判据恒真 | done | no | R381 已落（F-①/②/③，22→25 条，变异 2/2）；commit 9e87483 |
 | 2 | 空明细预览：确认编辑页在"一行都没填"时会不会试算并显示「成本 ¥0.00 · 毛利率 100%」；若会，页面侧加"无有效行不试算" | done | no | R383 已落：实测空数组确实得 100%，已在 reverseCalc 前置拦截；commit e7c7187 |
-| 3 | 成本卡编辑页：保存失败时的错误提示统一走"人话"（`api.js:47` 会把 fail 的 msg 覆盖成通用文案） | done | no | R384：`toastError` 超 14 字改 showModal（toast 会截断），ARCHIVED_LOCKED 文案补动作；commit 待回执 |
+| 3 | 成本卡编辑页：保存失败时的错误提示统一走"人话"（`api.js:47` 会把 fail 的 msg 覆盖成通用文案） | done | no | R384：`toastError` 超 14 字改 showModal（toast 会截断），ARCHIVED_LOCKED 文案补动作；commit e5b062a |
 | 4 | 全站"空态"巡检：列表空 / 搜索无结果 / 未建档月 / 无成本卡 四类，逐页看有没有"白屏无解释" | todo | no | R372/R376 已各修一处，怀疑还有同类 |
 | 10 | M2/M3 结果出参补「解释锚点」：`engine_version` / `bands_version` / `inputs_ref`（account_id 或 card_code+version），让未来 AI 解读能回溯到输入；不接模型 | todo | no | PLAN_AI §6；M3 已有 ENGINE_VERSION，M2 缺 |
 | 11 | 分享卡片结构化：`onShareAppMessage` 标题带可读结论句（如「本月保本 9160，月赚 8400」），不是只带小程序名 | todo | no | PLAN_AI §2；为"可被读懂"打底，不承诺被推荐 |
