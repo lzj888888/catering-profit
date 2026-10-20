@@ -41,6 +41,7 @@ Page({
       matAdd: TERMS.card.matAdd,
       matEdit: TERMS.card.matEdit,
       matEmpty: TERMS.card.matEmpty,
+      matNoMatch: TERMS.card.matNoMatch,
       matDelete: TERMS.card.matDelete,
       matDeleteConfirm: TERMS.card.matDeleteConfirm,
       matVirtual: TERMS.card.matVirtual,

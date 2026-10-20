@@ -62,6 +62,8 @@
     </view>
   </view>
 
-  <view wx:if="{{list.length === 0 && !loading}}" class="empty">{{t.matEmpty}}</view>
+  <!-- 🔴 R385：搜索无结果 ≠ 库里没有。原来只有一句「还没有原料」，搜不到会让老板以为原料没录进去。 -->
+  <view wx:if="{{list.length === 0 && !loading && keyword}}" class="empty">{{t.matNoMatch}}</view>
+  <view wx:elif="{{list.length === 0 && !loading}}" class="empty">{{t.matEmpty}}</view>
 </view>
 <view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

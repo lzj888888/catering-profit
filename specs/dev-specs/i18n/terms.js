@@ -1344,6 +1344,8 @@ const TERMS = {
     versionHistory: '版本历史',
     version: '版本',
     empty: '还没有菜品核算，点下方新增',
+    // 🔴 R385：同上，搜索无结果与真·空库要分开
+    noMatch: '没找到匹配的菜品，换个词试试',
     oldVersionNote: '历史版本（只读）',
     syncNote: '同步后将按原料最新价生成新版本，旧版本保留可查。',
     versionCreatedAt: '保存时间',
@@ -1373,6 +1375,8 @@ const TERMS = {
     matEdit: '编辑原料',
     matSearchPh: '搜索名称或别名',
     matEmpty: '还没有原料，点下方新增',
+    // 🔴 R385：搜索无结果 ≠ 库里没有 —— 两句话必须分开，否则老板会以为原料没录进去。
+    matNoMatch: '没找到匹配的原料，换个词试试',
     // ===== round156 · 原料选择页（**独立页**，不用弹层）=====
     //   为什么独立成页：弹层里放搜索框 ⇒ 弹层 × 键盘是死结（见 PITFALLS §6/§8），
     //   且原生 `<picker mode="selector">` 只能滚、没有搜索与分组 ⇒ 100 个原料要滚十几屏。

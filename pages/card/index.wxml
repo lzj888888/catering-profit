@@ -88,7 +88,9 @@
     </view>
   </view>
 
-  <view wx:if="{{list.length === 0 && !loading}}" class="empty">{{t.empty}}</view>
+  <!-- 🔴 R385：同上，搜索无结果与空库分开 -->
+  <view wx:if="{{list.length === 0 && !loading && keyword}}" class="empty">{{t.noMatch}}</view>
+  <view wx:elif="{{list.length === 0 && !loading}}" class="empty">{{t.empty}}</view>
   <view wx:if="{{loading}}" class="muted" style="text-align:center;padding:40rpx;">{{t.loading}}</view>
 
   <view class="ops-row">

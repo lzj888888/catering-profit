@@ -58,6 +58,7 @@ Page({
       viewVersion: TERMS.nav.viewVersion,
       syncPrice: TERMS.nav.syncPrice,
       empty: TERMS.card.empty,
+      noMatch: TERMS.card.noMatch,
       hintAlways: TERMS.card.hintAlways,
       loading: TERMS.ui.loading,
       // R299：数据截断的可见降级文案（单源 TERMS.ui.dataTruncated）
