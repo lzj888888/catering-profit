@@ -40,3 +40,10 @@
   - 判据自己假红一次：E-①/E-② 拿**带注释原文** grep「挽损/行业对标」，而这两个词是头注里的**禁令** ⇒ 禁令喂红判据。改扫剥注释后的代码即绿（与 R298Y「注释喂恒真」同族、方向相反）。
   - 免部署（未改任何云函数）；免出码（未改 wxml/wxss）。
   - 未做且已登记：页面未接线（P1 话术层一起接）、传输侧未做批量取数（6 次 getLedger 可接受，不提前造抽象）。
+
+- [2026-10-21 00:59] R397 只读巡检（队列已无可认领条目：8 done / 6 blocked / 0 todo）· 门禁沿用 191/191 RC=0 · 无新提交（本条为记录）
+  - ① 工作树：`git status --short` 空；本地 dev ≡ origin/dev（`019605a`，ahead 0 / behind 0）。
+  - ② 最近门禁：`_m3/_logs_r396/gate_round2.log` 实读「总览：191/191 通过 耗时 375.6s」+ `GATE_RC=0`（R396 轮，未过期）。
+  - ③ 队列无僵尸：全表无 `status=todo` 行、无 `in_progress` 悬挂；#5–#9、#12 均 `blocked=yes` 且 `why` 在（等人/等样例/等选型）。
+  - ④ NOTE↔代码抽检三条全对得上：R396 `utils/anomalyRules.js` 14.3KB + `tools/selftest_anomaly_rules.js` 单跑 47/0；R395 三页 `onShareAppMessage` 实存（card/month.result/sandbox）+ `utils/shareCard.js` 5.8KB；R394 `savedDone` 在双副本 terms.js 各 12 处、md5 同为 `5154d688…`。
+  - 结论：无可开新条目；不给 blocked 条目"猜着做"（都缺外部输入），下轮仍按同一规则取首条。
