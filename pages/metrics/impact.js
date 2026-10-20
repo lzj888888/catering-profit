@@ -49,6 +49,13 @@ Page({
     this.load();
   },
 
+  // 🔴 R379：下拉刷新。原来只能退出重进 —— 老板在原料页改完采购价、回到「影响面」时，
+  //   看到的还是上一次 dry_run 的结果（页面上没有任何时间戳），很容易把旧影响当成新影响。
+  onPullDownRefresh() {
+    const done = () => wx.stopPullDownRefresh();
+    this.load().then(done, done);
+  },
+
   async load() {
     this.setData({ loading: true });
     try {
