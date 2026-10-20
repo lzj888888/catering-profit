@@ -35,7 +35,7 @@
 | 7 | 真机走查（矩阵横滑/吸底条/空态/清空月/下拉刷新） | blocked | yes | why: 只能李老师扫码 |
 | 8 | `clearMonth` 超时 3s → 20s | done | no | R398 记账：控制台已改并**机器回读**（`cli cloud functions info` → `timeout=20`、`status=Active`）；证据 `review/NOTE_2026-10-21_控制台建集合与索引.md` §一A |
 | 9 | 外卖销量表接入 | blocked | yes | why: 缺美团/京东样例（表名+列名+口径），不猜列 |
-| 16 | 异常核对清单**页面接线**（#13 规则层的下游）：取数编排 `getMonthList` + 逐月 `getLedger`（≤lookbackMonths 次）→ `buildChecklist` → 月度结果页一张卡；历史 <2 月不出卡不给空壳 | todo | no | 现状：`utils/anomalyRules.js` 已存在但**零生产调用**（全仓仅 selftest 引用）；判据=守卫须守「真 require + 真调用 + 入参字段与 `toSnapshot` 契约一致」，改 wxml ⇒ 需出码 |
+| 16 | 异常核对清单**页面接线**（#13 规则层的下游）：取数编排 `getMonthList` + 逐月 `getLedger`（≤lookbackMonths 次）→ `buildChecklist` → 月度结果页一张卡；历史 <2 月不出卡不给空壳 | in_progress | no | 现状：`utils/anomalyRules.js` 已存在但**零生产调用**（全仓仅 selftest 引用）；判据=守卫须守「真 require + 真调用 + 入参字段与 `toSnapshot` 契约一致」，改 wxml ⇒ 需出码 |
 
 ## 回执格式（每次执行后追加到 `review/AUTO_LOG.md`）
 
