@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：190 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：191 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -1189,6 +1189,11 @@ const SUITES = [
   //   见头部注释同名条目。此前全仓零 onShareAppMessage ⇒ 微信一律拿小程序名当分享标题，
   //   对方只看得到「店算」两个字。守三条：标题真带本店算出的数 · 三页真接线且不自己拼 · 反恒真。
   ['share-card', 'tools/check_share_card.js'],
+  // ===== R396 · 异常核对清单「规则层」守卫（队列 #13 / PLAN_AI §3 §8-P0） =====
+  //   见头部注释同名条目。这一层只回答「哪几项跟你自己的历史不一样」，
+  //   所以判据必须同时守住**两头**：该报的要报（手算锚点 5 项）· 不该报的不许报（小额/短历史/无偏离）。
+  //   反恒真靠改阈值复算（倍数调到 4 ⇒ 同一输入不再报），不是靠"函数能跑"。
+  ['anomaly-rules', 'tools/selftest_anomaly_rules.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

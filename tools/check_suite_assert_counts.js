@@ -229,6 +229,10 @@ const CASES = [
   { key: 'check_page_card_width', rel: 'tools/check_page_card_width.js' },
   // R351：wxml class ↔ wxss 选择器集合比对。为什么值得受守：它守的是「用了但没定义样式」
   //   这一类**能编译、能跑、零报错**的问题（R351 实扫出 7 处，含活动卡最关键的告警块）。
+  // R396 扩面（队列 #13）：异常核对清单规则层自测同批纳入 —— 它的 S 组自失效护栏
+  //   （锚点样本非空 / 阈值自洽 / 清单非空）与 D 组五条反恒真（改阈值结论必须变）正是「非恒真」凭据；
+  //   47 条删掉一批仍 > 0 ⇒ A0-② 的「通过数为 0」下界抓不到，只有 A2「声明 ≡ 实跑」能发现。
+  { key: 'selftest_anomaly_rules', rel: 'tools/selftest_anomaly_rules.js' }, // 47 条（S4 + A20 + B7 + C4 + D5 + E5 + F2）
   { key: 'check_wxml_class_defined', rel: 'tools/check_wxml_class_defined.js' },   // 4 条（A-①未定义 / A-②白名单过期 / A-③文件面 / A-④动态前缀自检）  // 3 条（R296c 立 / R296d 拆雷反转：A-① 全局 app.wxss 必须零精确类名 `.card`（否则任何页面复用即继承 width:48% ⇒ 卡片半宽 ⇒ 标签逐字断行成竖排）+ A-② 页面用了 `class="card"` 就得自己声明 width + A-③ 负样本互证不误伤 .card2/.card-title/.mcard）
   // R298 金额精度：「元 → 分」十进制安全（x.xx5 半步静默少进 1 分）+ 前后端双副本等价。
   //   S 扫描面 6（S-⑤ 三形态桶 IDENT/PAREN/LITERAL 穷尽对账 —— 防"只扫命名像分的标识符"
