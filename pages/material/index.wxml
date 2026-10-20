@@ -29,22 +29,27 @@
       <!-- 🔴 R192：标题行不再放「⋯」（收纳过度 ⇒ 李老师反馈「功能按钮都丢了」）；
            操作统一走卡片底部 ops-mini 行，与成本卡列表同构。 -->
     </view>
-    <view class="cell">
-      <text class="lbl">{{t.matBrand}}</text>
-      <text class="val">{{item.brand_spec || '—'}}</text>
+    <!-- 🔴 R377（M3 密度对齐）：原来 4 行竖排（品牌 / 单价 / 换算 / 净料成本），
+         一张卡约 330rpx ⇒ 一屏只能放 2 张。改为：
+           ① 主行 = 净料成本（老板真正比价的那个数）+ 采购价，一行说完；
+           ② 品牌规格**为空就不渲染**（原来恒渲染一个「—」占 60rpx）；
+           ③ 换算单独一行且只在有换算时出现（round149 的语义不变，只是不再占空行）。
+         信息一个字没删，只是不再"每条信息各占一行"。 -->
+    <view class="cell-inline mat-kv">
+      <text class="lbl">{{t.matNetCost}}</text>
+      <text class="val mat-strong">{{t.cur}}{{item.net_cost}}</text>
+      <!-- 标签必须短；也不要「·」分隔 —— 实测 dot 两侧各 16rpx 边距白占 26px，带它整行必折 -->
+      <text class="lbl mat-lb2">{{t.matPurchase}}</text>
+      <text class="val">{{item.purchase_unit}} · {{t.cur}}{{item.purchase_price}}</text>
     </view>
-    <view class="cell">
-      <text class="lbl">{{t.matUnit}} / {{t.matPrice}}</text>
-      <text class="val money">{{item.purchase_unit}} · {{t.cur}}{{item.purchase_price}}</text>
+    <view class="cell-inline mat-kv" wx:if="{{item.brand_spec}}">
+      <text class="lbl">{{t.matBrand}}</text>
+      <text class="val mat-brand">{{item.brand_spec}}</text>
     </view>
     <!-- round149：同一原料可以有不同规格/单位 ⇒ 把「买 → 用」的换算写在卡片上 -->
-    <view class="cell">
+    <view class="cell-inline mat-kv" wx:if="{{item.spec_line}}">
       <text class="lbl">{{t.matConvert}}</text>
-      <text class="val">{{item.spec_line}}</text>
-    </view>
-    <view class="cell">
-      <text class="lbl">{{t.matNetCost}}</text>
-      <text class="val money" style="color:#1e3a5f;">{{t.cur}}{{item.net_cost}}</text>
+      <text class="val mat-spec">{{item.spec_line}}</text>
     </view>
 
     <!-- 🔴 R192：操作行 —— 「涨价影响面」是原料库**最高频**的动作（改价前先看影响谁），必须看得见。

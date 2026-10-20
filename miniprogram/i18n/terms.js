@@ -1362,6 +1362,7 @@ const TERMS = {
     matPriceOf: (u) => `采购单价（元/${u}）`,
     // round149：把单位写进标签（净料成本恒为「元/克」，与引擎口径一致；不写单位时老板会以为是"元/斤"）
     matNetCost: '净料单位成本（元/克）',
+    matPurchase: '采购',
     matCategory: '分类',
     matAliases: '别名',
     matAliasesHint: '逗号分隔，仅用于搜索提示，不会替换原料名',

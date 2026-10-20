@@ -33,6 +33,7 @@ Page({
       matUnit: TERMS.card.matUnit,
       matPrice: TERMS.card.matPrice,
       matNetCost: TERMS.card.matNetCost,
+      matPurchase: TERMS.card.matPurchase,
       matConvert: TERMS.card.matConvert,
       matUnitDefault: TERMS.card.matUnitDefault,
       matCategory: TERMS.card.matCategory,

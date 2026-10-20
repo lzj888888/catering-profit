@@ -14,3 +14,16 @@
 /* round156：置顶标记 —— 与分类标签同排，用主色实底区分。
    排序把置顶项排到了最前，界面就必须说清"为什么它在前面"，否则看起来还是乱的。 */
 .tag-pin { background: #1e3a5f; color: #fff; margin-left: 12rpx; }
+
+/* ===== R377：物料卡密度（与 R372 成本卡编辑页同一手法）=====
+ * 原有 4 行 `.cell`（全局 padding 24rpx、字号 30rpx）⇒ 每行 ~66rpx，一卡 ~330rpx。
+ * 现在主行用 `.cell-inline`（全局已有，padding 16rpx）、字号回到 30rpx 但行数减半。
+ * 信息一条没删：品牌为空时不再渲染「—」占位。 */
+/* ⚠️ 28rpx 是本仓无障碍下界（AD-G1），不能再低；为了压成一行才降到下界。
+   30rpx 时「净料成本 ¥0.0150 · 采购 件 · ¥120.00」会折成两行（实测 51px vs 31px）。 */
+.mat-kv { padding: 8rpx 0; align-items: baseline; font-size: 28rpx; }
+.mat-strong { color: #1e3a5f; font-weight: 700; }
+.mat-lb2 { margin-left: 16rpx; }
+.mat-brand { color: #555; }
+/* 换算串可能较长（"1 斤 = 500 克 ÷ 出成率 100%"）⇒ 允许换行，不截断 */
+.mat-spec { color: #6b7a8d; flex: 1 1 auto; min-width: 0; white-space: normal; line-height: 1.5; }
