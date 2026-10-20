@@ -222,7 +222,7 @@ Page({
       });
       this.setData({ saved: true });
       wx.removeStorageSync(DRAFT_KEY + this.data.month);
-      wx.showToast({ title: TERMS.inventoryPage.save, icon: 'success' });
+      wx.showToast({ title: TERMS.ui.savedDone, icon: 'success' });
       setTimeout(() => wx.navigateBack(), 500);
     } catch (e) { api.toastError(e); }
   },

@@ -1064,7 +1064,7 @@ Page({
       if (wasEdit) {
         // 编辑态：**改完即走**（老板改的是一道具体的菜，不是要连录一批）。
         //   ⚠️ 这里**不能**走 afterSaved —— 那会把 card_code 清掉，老板以为还在改这道菜。
-        wx.showToast({ title: TERMS.buttons.save, icon: 'success' });
+        wx.showToast({ title: TERMS.ui.savedDone, icon: 'success' });
         setTimeout(() => wx.navigateBack(), 600);
       } else {
         // round156（新增态）：**不跳走**。改前是 `setTimeout(navigateBack, 600)` —— 存一道菜就被踢回列表，

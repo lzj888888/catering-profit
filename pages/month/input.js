@@ -1593,7 +1593,7 @@ Page({
       });
       this.setData({ saved: true });
       wx.removeStorageSync(DRAFT_KEY + this.data.month); // 已保存 → 清草稿
-      wx.showToast({ title: TERMS.buttons.save, icon: 'success' });
+      wx.showToast({ title: TERMS.ui.savedDone, icon: 'success' });
       setTimeout(() => wx.navigateBack(), 500);
     } catch (e) { api.toastError(e); }
   },

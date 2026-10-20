@@ -208,7 +208,7 @@ Page({
         if (!r.confirm) return;
         try {
           await api.call('archiveMonth', { month: this.data.curMonth, archive: true });
-          wx.showToast({ title: TERMS.nav.archiveNow, icon: 'success' });
+          wx.showToast({ title: TERMS.ui.archivedDone, icon: 'success' });
           this.loadMonth(this.data.curMonth);
         } catch (e) { api.toastError(e); }
       },
@@ -257,7 +257,7 @@ Page({
         if (!r.confirm) return;
         try {
           await api.call('archiveMonth', { month: m, archive: true });
-          wx.showToast({ title: TERMS.nav.archivePrev, icon: 'success' });
+          wx.showToast({ title: TERMS.ui.archivedDone, icon: 'success' });
           this.loadMonth(this.data.curMonth);
         } catch (e) { api.toastError(e); }
       },

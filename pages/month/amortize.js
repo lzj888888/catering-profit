@@ -312,7 +312,7 @@ Page({
             asset: payload,
             client_request_id: 'at_' + Date.now(),
           });
-          wx.showToast({ title: TERMS.amortizePage.terminateNow, icon: 'success' });
+          wx.showToast({ title: TERMS.ui.scrappedDone, icon: 'success' });
           this.load();
         } catch (err) { api.toastError(err); }
       },

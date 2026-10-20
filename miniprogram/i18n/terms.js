@@ -176,6 +176,16 @@ const TERMS = {
     tipMore: '底部「配方」进菜品成本卡与进货原料价表，「我的」看订单与客服。',
     loading: '加载中…',
     save: '保存',
+    // 🔴 R394：**完成态**与**按钮语态**必须分开。
+    //   原先把 buttons.save('保存') / card.deleteCard('删除') 直接当成功提示用 ⇒
+    //   界面是「绿色对勾 + 保存」，老板分不清是"还要保存"还是"已经保存好了"。
+    //   按钮上写动词（保存），提示里写完成态（已保存）—— 这是同一条纪律的两面。
+    savedDone: '已保存',
+    deletedDone: '已删除',
+    copiedDone: '已复制',
+    archivedDone: '已归档',
+    switchedDone: '已切换',
+    scrappedDone: '已报废',
     cancel: '取消',
     // R299：云函数出参 `truncated` 的**可见降级**文案（单源）。为什么必须有：
     //   `dataAdapter.js::listAll` 明文要求「达上限仍有剩余 ⇒ 调用方必须透传到出参（可见降级）」，

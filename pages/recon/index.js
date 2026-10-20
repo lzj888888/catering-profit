@@ -140,7 +140,7 @@ Page({
     try {
       await api.call('saveShopSetting', { menu_dish_count: n, client_request_id: 'mdc_' + Date.now() });
       this.setData({ savedDishCount: n, menuDishCount: String(n) });
-      wx.showToast({ title: TERMS.buttons.save, icon: 'success' });
+      wx.showToast({ title: TERMS.ui.savedDone, icon: 'success' });
       this.calc(this.data.curMonth, n);
     } catch (e) { api.toastError(e); }
     this.setData({ saving: false });

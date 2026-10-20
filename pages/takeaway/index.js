@@ -491,7 +491,7 @@ Page({
     this.setData({ saving: true });
     try {
       await api.call('saveShopSetting', { takeaway_params: JSON.stringify(this.data.params) });
-      wx.showToast({ title: TERMS.buttons.save, icon: 'success' });
+      wx.showToast({ title: TERMS.ui.savedDone, icon: 'success' });
     } catch (e) { api.toastError(e); }
     this.setData({ saving: false });
   },

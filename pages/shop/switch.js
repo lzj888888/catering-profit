@@ -123,7 +123,7 @@ Page({
     // ⚠️ 切换永不触发付费弹窗（交互边界）
     sw.switchShop(shopId);
     this.setData({ currentShopId: shopId });
-    wx.showToast({ title: TERMS.exp.switchTitle, icon: 'success' });
+    wx.showToast({ title: TERMS.ui.switchedDone, icon: 'success' });
     setTimeout(() => wx.navigateBack(), 400);
   },
 

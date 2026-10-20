@@ -201,7 +201,7 @@ Page({
     }
     try {
       await api.call('saveAsset', { asset, client_request_id: 'as_' + Date.now() });
-      wx.showToast({ title: TERMS.buttons.save, icon: 'success' });
+      wx.showToast({ title: TERMS.ui.savedDone, icon: 'success' });
       setTimeout(() => wx.navigateBack(), 600);
     } catch (e) {
       this.setData({ saving: false });
@@ -230,7 +230,7 @@ Page({
             asset: { asset_id: this.data.assetId, delete: true },
             client_request_id: 'ad_' + Date.now(),
           });
-          wx.showToast({ title: label, icon: 'success' });
+          wx.showToast({ title: TERMS.ui.deletedDone, icon: 'success' });
           setTimeout(() => wx.navigateBack(), 600);
         } catch (e) { api.toastError(e); }
       },

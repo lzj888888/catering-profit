@@ -405,6 +405,66 @@
       offenders.length ? offenders.slice(0, 3).join(' / ') : ('扫到 ' + loadingCount + ' 处'));
   }
 
+  // ===== S7 成功提示必须是「完成态」（R394）=====
+  // 为什么守：绿色对勾 + 动词 = 老板分不清"还要做"还是"做好了"。
+  //   R394 实测 15 处：7 处把 buttons.save（"保存"）当成功提示、3 处把菜单项文案（"删除"/"复制"）当提示、
+  //   还有"切换店铺"（这是页面标题）、"结账并归档"（这是按钮）、"提前报废"、"堂食"（这是用途名）。
+  //   完成态标志只有三个：已 / 完成 / 成功。判据硬、可枚举、不腐。
+  // ⚠️ 动态表达式（拼接、函数调用）跳过 —— 但用「解析到的条数 ≥ 20」兜住，防止判据被写窄成恒真。
+  {
+    const termsSrc2 = fs.readFileSync(TERMS_PATH, 'utf8');
+    const DONE_WORDS = ['已', '完成', '成功'];
+    let resolved = 0;
+    const skipped = [];
+    const badDone = [];
+    jsFiles.forEach((f) => {
+      const src = fs.readFileSync(f, 'utf8');
+      const parts = src.split('wx.showToast');
+      for (let i = 1; i < parts.length; i++) {
+        const seg = parts[i].slice(0, 320);
+        if (seg.indexOf("icon: 'success'") < 0) continue;
+        const ti = seg.indexOf('title:');
+        if (ti < 0) { skipped.push(f.replace(ROOT, '') + ' (无 title)'); continue; }
+        let expr = seg.slice(ti + 6).trim();
+        const c1 = expr.indexOf(',');
+        const c2 = expr.indexOf('}');
+        const cutAt = (c1 < 0) ? c2 : ((c2 < 0) ? c1 : Math.min(c1, c2));
+        if (cutAt >= 0) expr = expr.slice(0, cutAt).trim();
+        let txt = '';
+        if (expr.charAt(0) === "'") {
+          const e2 = expr.indexOf("'", 1);
+          txt = (e2 > 0) ? expr.slice(1, e2) : '';
+        } else if (expr.indexOf('+') < 0 && expr.indexOf('(') < 0 && expr.indexOf('?') < 0) {
+          const leaf = expr.split('.').pop();
+          const at = termsSrc2.indexOf(leaf + ": '");
+          if (at >= 0) {
+            const start = at + leaf.length + 3;
+            const end = termsSrc2.indexOf("'", start);
+            txt = termsSrc2.slice(start, end < 0 ? start : end);
+          }
+        } else {
+          skipped.push(f.replace(ROOT, '') + ' ' + expr.slice(0, 40));
+          continue;
+        }
+        // 🔴 静态引用但取不到文本 ⇒ **判红**（不是跳过）。
+        //   否则把术语键删掉，这条会被当成"动态表达式"静默放过 —— 那正是本守卫最初要抓的病
+        //   （WXML 对 undefined 不报错，静默渲染成空）。
+        if (!txt) {
+          badDone.push(f.replace(ROOT, '') + ' ' + expr.slice(0, 40) + '（取不到文本）');
+          continue;
+        }
+        resolved++;
+        if (!DONE_WORDS.some((w) => txt.indexOf(w) >= 0)) {
+          badDone.push(f.replace(ROOT, '') + ' → "' + txt + '"');
+        }
+      }
+    });
+    check('S7 绿勾提示一律写完成态（已/完成/成功）',
+      badDone.length === 0 && resolved >= 20,
+      badDone.length ? badDone.slice(0, 3).join(' / ')
+        : ('解析 ' + resolved + ' 条全部合规，跳过动态 ' + skipped.length + ' 条'));
+  }
+
   console.log('\n===== 页面术语键守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
   if (failN) {
     bad.forEach((b) => console.log('   ❌ ' + b));

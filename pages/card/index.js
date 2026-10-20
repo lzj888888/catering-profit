@@ -376,7 +376,7 @@ Page({
         if (!r.confirm) return;
         try {
           await api.call('saveCostCard', { card: { _delete: true, card_code: cc }, client_request_id: 'ccd_' + Date.now() });
-          wx.showToast({ title: TERMS.card.deleteCard, icon: 'success' });
+          wx.showToast({ title: TERMS.ui.deletedDone, icon: 'success' });
           this.load();
         } catch (err) { api.toastError(err); }
       },
@@ -433,7 +433,7 @@ Page({
           };
           if (card.mode === 'B') card.batch_output = src.batch_output || 0;
           await api.call('saveCostCard', { card, client_request_id: 'ccc_' + Date.now() });
-          wx.showToast({ title: TERMS.card.copyCard, icon: 'success' });
+          wx.showToast({ title: TERMS.ui.copiedDone, icon: 'success' });
           this.load();
         } catch (err) { api.toastError(err); }
       },

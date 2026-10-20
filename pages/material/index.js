@@ -244,7 +244,7 @@ Page({
         if (!r.confirm) return;
         try {
           await api.call('saveMaterial', { material: { id: m.id, _delete: true }, client_request_id: 'md_' + Date.now() });
-          wx.showToast({ title: TERMS.card.matDelete, icon: 'success' });
+          wx.showToast({ title: TERMS.ui.deletedDone, icon: 'success' });
           this.load();
         } catch (err) { api.toastError(err); }
       },

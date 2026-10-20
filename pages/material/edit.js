@@ -284,7 +284,7 @@ Page({
       if (wasEdit) {
         // 编辑态：**改完即走**。老板修的是一个具体的原料（改个价、补个别名），不是要连录一批；
         //   停下来反而让他对着一个不该再填的表单发愣。
-        wx.showToast({ title: TERMS.buttons.save, icon: 'success' });
+        wx.showToast({ title: TERMS.ui.savedDone, icon: 'success' });
         setTimeout(() => wx.navigateBack(), 600);
       } else {
         // round156（新增态）：**不跳走**。改前 `setTimeout(navigateBack, 600)` 每存一个原料就回列表。
