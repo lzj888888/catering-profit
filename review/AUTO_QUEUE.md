@@ -21,7 +21,7 @@
 | 2 | 空明细预览：确认编辑页在"一行都没填"时会不会试算并显示「成本 ¥0.00 · 毛利率 100%」；若会，页面侧加"无有效行不试算" | done | no | R383 已落：实测空数组确实得 100%，已在 reverseCalc 前置拦截；commit e7c7187 |
 | 3 | 成本卡编辑页：保存失败时的错误提示统一走"人话"（`api.js:47` 会把 fail 的 msg 覆盖成通用文案） | done | no | R384：`toastError` 超 14 字改 showModal（toast 会截断），ARCHIVED_LOCKED 文案补动作；commit e5b062a |
 | 4 | 全站"空态"巡检：列表空 / 搜索无结果 / 未建档月 / 无成本卡 四类，逐页看有没有"白屏无解释" | done | no | R385：扫 23 页；真缺口=搜索无结果与空库同句（物料/菜品两页），已分开；commit c646938 |
-| 10 | M2/M3 结果出参补「解释锚点」：`engine_version` / `bands_version` / `inputs_ref`（account_id 或 card_code+version），让未来 AI 解读能回溯到输入；不接模型 | done | no | R386：M2 两处出参已带 engine/bands 版本（bands 用内容哈希）；M3 inputs_ref 拆到 #14；commit 待回执 |
+| 10 | M2/M3 结果出参补「解释锚点」：`engine_version` / `bands_version` / `inputs_ref`（account_id 或 card_code+version），让未来 AI 解读能回溯到输入；不接模型 | done | no | R386：M2 两处出参已带 engine/bands 版本（bands 用内容哈希）；M3 inputs_ref 拆到 #14；commit e183dae |
 | 14 | M3 `inputs_ref` 契约：`saveCostCard`/`getCostCard` 出参带 `card_code+version`（先定契约再改，别拍脑袋） | todo | no | PLAN_AI §6 第 2 条；R386 只做了 M2 |
 | 11 | 分享卡片结构化：`onShareAppMessage` 标题带可读结论句（如「本月保本 9160，月赚 8400」），不是只带小程序名 | todo | no | PLAN_AI §2；为"可被读懂"打底，不承诺被推荐 |
 | 12 | `shop_ai_consent` 授权模型设计（scope/有效期/撤回标记 + 撤回清缓存链路） | blocked | yes | why: 需李老师在控制台建集合与索引；可先出设计稿 |
