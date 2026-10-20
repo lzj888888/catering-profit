@@ -218,13 +218,52 @@ check('D-④ mode 非法值时三副本均抛错（R81 一致性）',
     catch (e) { return true; }
   }));
 
+// ===================== F：损耗率 100% 的防御纵深（R381） =====================
+// 为什么单独立这一段：
+//   引擎 `calcCostCard` 用 `divisor = 1 - lossPct/100` 做除数 ⇒ lossPct=100 时**除零**，
+//   实测输出 `unit_cost_fen = Infinity`、`gross_profit_fen = -Infinity`（R380 探针）。
+//   而 `calcCostCard` 属**引擎禁区·禁改源码** ⇒ 只能靠**入口**守住，且必须守住**两处入口**
+//   （calcBom 试算 / saveCostCard 保存），少一处就会出现"试算能过、保存也能过"的洞。
+//   ⚠️ 这三条的顺序是有意的：F-③ 是 F-①② 的**前提证明** —— 若哪天引擎不再产生非有限值，
+//      F-③ 会红，提醒"这条防线的前提变了"，而不是让 F-①② 变成两条恒真的形式断言。
+console.log('');
+console.log('===== F. 损耗率上界（两处入口 + 前提）=====');
+{
+  let cbv = null, scv = null;
+  try { cbv = require(path.join(CF, 'calcBom/validate.js')); } catch (e) { cbv = null; }
+  try { scv = require(path.join(CF, 'saveCostCard/validate.js')); } catch (e) { scv = null; }
+  check('F-① calcBom/validate 拒绝 loss_pct=100', !!cbv && (() => {
+    const r = cbv.validateInput({
+      shop_id: 's1', mode: 'A', loss_pct: 100,
+      lines: [{ quantity: 100, net_unit_cost: 14500 }],
+    });
+    return !!(r && r.error);
+  })());
+  check('F-② saveCostCard/validate 拒绝 loss_pct=100', !!scv && (() => {
+    const r = scv.validateInput({
+      shop_id: 's1', client_request_id: '',
+      card: { name: 'x', mode: 'A', loss_pct: 100, lines: [{ material_id: 'm1', qty: 100 }] },
+    });
+    return !!(r && r.error);
+  })());
+  check('F-③ 前提：绕过 validate 直喂引擎，确实产生非有限值（证明 F-①② 不是恒真）', (() => {
+    const base = mods.calcBom;
+    if (!base) return false;
+    const out = base.calcCostCard({
+      mode: 'A', lossPct: 100, auxFen: 0, priceFen: 3800, batchOutput: 0,
+      lines: [{ quantity: 100, net_unit_cost: 14500 }],
+    });
+    return !Number.isFinite(out.unit_cost_fen);
+  })());
+}
+
 // ===================== E：断言数下界 =====================
 console.log('');
 console.log('===== E. 覆盖度 =====');
 const TOTAL = pass + fail;
 // 下界取实测值的保守下沿（别凭估 —— 本仓已交过 4 次学费）。
 // round129 首次实跑 = 22（含本条自身），取 18（留 4 条余量，防后续正常增删即红）。
-check('E-① 断言数 ≥ 18（实测 22 的保守下沿）', TOTAL >= 18);
+check('E-① 断言数 ≥ 18（实测 25 的保守下沿；R381 新增 F 段 3 条）', TOTAL >= 18);
 
 console.log('');
 console.log('==== R131 M3 引擎多副本行为等价守卫：' + pass + ' 通过 / ' + fail + ' 失败 ====');
