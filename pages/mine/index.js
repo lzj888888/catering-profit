@@ -174,7 +174,7 @@ Page({
           app.globalData.no_shop = false;
           app.globalData.noShopPrompted = false;
         }
-        wx.showToast({ title: TERMS.exp.logoutDone, icon: 'none', duration: 3000 });
+        api.say(TERMS.exp.logoutDone);
         // 🔴 R199：`pages/index/index` 已改为**底部 tabBar 页** ⇒ `wx.reLaunch` 到 tabBar 页会失败
         //   （微信限制：tabBar 页只能 `switchTab`）。登出后回首页同样用 `wx.switchTab`。
         setTimeout(() => wx.switchTab({ url: '/pages/index/index' }), 1200);

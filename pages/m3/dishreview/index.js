@@ -751,7 +751,7 @@ Page({
   onToggleBatch() {
     if (this.data.batchSaving) return;
     if (this.data.batchMode) { this.setData({ batchMode: false, batchCount: 0 }); return; }
-    if (!this.data.cardOptions.length) { wx.showToast({ title: TERMS.card.reviewMapNoCard, icon: 'none' }); return; }
+    if (!this.data.cardOptions.length) { api.say(TERMS.card.reviewMapNoCard); return; }
     const rows = this.applyBatchSuggestions(this.data.unmatched);
     this.setData({ batchMode: true, unmatched: rows, batchCount: this.countBatchSel(rows) });
   },

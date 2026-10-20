@@ -918,7 +918,7 @@ Page({
         const def = TERMS.ledger.income.find((x) => x.category === 'dine_in');
         const seed = ((def && def.items) || []).map((name, i) => ({ subItem: name, amountYuan: i === 0 ? total : '' }));
         g.rows = this.decorateDineRows(seed.length ? seed : [{ subItem: '', amountYuan: total }]);
-        if (total) wx.showToast({ title: TERMS.ledger.dineMode.splitNotice, icon: 'none' });
+        if (total) api.say(TERMS.ledger.dineMode.splitNotice);
       }
       g.expanded = true;
     } else {

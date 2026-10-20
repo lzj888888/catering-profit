@@ -101,17 +101,25 @@ module.exports = {
   },
 
   /** 展示后端标准错误（已 i18n 映射）；供 catch 统一调用 */
+  // 🔴 R384/R392：**所有"要给人看的一句话"都从这里出去**。
+  //   showToast 只显示约两行（≈14 字），长文案会被截断——而提示的价值全在"后面那半句"
+  //   （「已提交注销申请，我们将于 15 个工作日内…」被切成「已提交注销申请，我们将于…」= 关键信息没了）。
+  //   ⇒ 超过 14 字走 showModal（单按钮，读完就关）。
+  //   ⚠️ 页面里**直接调 wx.showToast** 会绕过这条规则：R392 已把 4 处长文案改走本函数。
+  say(msg, opt) {
+    const text = String(msg == null ? '' : msg);
+    const long = text.length > 14;
+    const modalTitle = (opt && opt.title) || '提示';
+    if (long) {
+      wx.showModal({ title: modalTitle, content: text, showCancel: false, confirmText: '知道了' });
+      return;
+    }
+    wx.showToast({ title: text, icon: 'none' });
+  },
+
   toastError(e) {
     const terms = require('../miniprogram/i18n/terms.js');
     const fallback = (terms && terms.msgOf) ? terms.msgOf('SYSTEM_ERROR') : '操作失败';
-    const msg = (e && e.msg) || fallback;
-    // 🔴 R384：showToast 只显示约两行（≈14 字），长文案会被**截断**——
-    //   而错误提示的全部价值在"下一步怎么办"（如「这个月已归档，先取消归档再改」15 字）。
-    //   被截成「这个月已归档，先取消…」等于没说。⇒ 超过 14 字改走 showModal（只有一个按钮，读完就关）。
-    if (String(msg).length > 14) {
-      wx.showModal({ title: '操作没成功', content: msg, showCancel: false, confirmText: '知道了' });
-      return;
-    }
-    wx.showToast({ title: msg, icon: 'none' });
+    this.say((e && e.msg) || fallback, { title: '操作没成功' });
   },
 };

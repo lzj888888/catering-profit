@@ -504,7 +504,7 @@ Page({
         // 授权成功：后续到期前 7 天由 payExpireNotify 定时推送
       },
       fail: () => {
-        wx.showToast({ title: TERMS.pay.subscribeDenied, icon: 'none' });
+        api.say(TERMS.pay.subscribeDenied);
       },
     });
   },
