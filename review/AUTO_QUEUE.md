@@ -29,7 +29,7 @@
 | 15 | 补契约「fail-soft/覆盖度/截断」类出参（7 组）：getDishReview(truncated/coverageA/coverageC/unmatched)、getSalesBills(truncated/summary)、getShopContext(no_shop)、manageShop(replayed)、importSalesBill(platform_missing/dup)、exportData(format/encoding/content)、saveCostCard+saveMaterial(deleted)。逐条带「漏掉的后果」改，改一条验一条 | done | no | R391 已落：8 组里 2 组（getDishReview/getSalesBills）R301 已声明、复核不重复；实改 6 组；exportData 原 `task_id/file_url` 是未上线设计稿，整行纠正为同步直出。双面判据 16/16 + 变异 3/3；正文在 ec25a5e（被并发提交携带），证据 commit 19e4067 |
 | 11 | 分享卡片结构化：`onShareAppMessage` 标题带可读结论句（如「本月保本 9160，月赚 8400」），不是只带小程序名 | done | no | R395 已落：三页（M1 结果 / M2 测算 / M3 菜品）接线，文案单源 terms.js + 装配单源 utils/shareCard.js，守卫 42 断言；门禁 190/190；commit bb5cbff |
 | 12 | `shop_ai_consent` 授权模型设计（scope/有效期/撤回标记 + 撤回清缓存链路） | blocked | yes | why: 需李老师在控制台建 2 集合 + 4 索引；**设计稿已就绪** `review/PLAN_2026-10-20_AI授权模型设计.md`（含字段/索引/状态机/k-匿名门槛），建完即可落码 |
-| 13 | 异常核对清单·规则层（本店历史阈值，不调模型） | todo | no | PLAN_AI §3/§8；纯规则，先出"偏离方向+幅度"，禁止"行业对标/挽损金额"。⚠️ 前置：`getLedger` 只取当月+上月（无历史月列表能力，`listMonths` 零命中）⇒ 第一步须定「N 个月历史」的出参契约并部署，再写规则层 |
+| 13 | 异常核对清单·规则层（本店历史阈值，不调模型） | in_progress | no | PLAN_AI §3/§8；纯规则，先出"偏离方向+幅度"，禁止"行业对标/挽损金额"。⚠️ 前置：`getLedger` 只取当月+上月（无历史月列表能力，`listMonths` 零命中）⇒ 第一步须定「N 个月历史」的出参契约并部署，再写规则层 |
 | 5 | 风格 A/B/C 铺开（先 3 页样板） | blocked | yes | why: 李老师未选型；选定后按「3 页样板→确认→全量」 |
 | 6 | M3 三页视觉统一（物料/枢纽/成本卡） | blocked | yes | why: 依赖 #5 选定风格，否则返工 |
 | 7 | 真机走查（矩阵横滑/吸底条/空态/清空月/下拉刷新） | blocked | yes | why: 只能李老师扫码 |
