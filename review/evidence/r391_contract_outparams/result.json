@@ -1,5 +1,5 @@
 {
-  "pass": true,
+  "pass": false,
   "rows": [
     {
       "fn": "getDishReview",
@@ -103,8 +103,8 @@
       "fn": "saveMaterial",
       "key": "deleted",
       "code_emits": true,
-      "doc_declares": true,
-      "pass": true
+      "doc_declares": false,
+      "pass": false
     },
     {
       "fn": "getCostCard",
