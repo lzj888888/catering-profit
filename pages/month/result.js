@@ -24,6 +24,14 @@ const exportFile = require('../../utils/exportFile.js');   // R265：导出投�
 const { settleSummary } = require('../../utils/takeaway.js');
 // 🔴 R395：分享卡片标题装配（纯函数单源）—— 见 `utils/shareCard.js` 头注
 const shareCard = require('../../utils/shareCard.js');
+// 🔴 R399（队列 #16）：异常核对清单「规则层」—— 纯函数，只跟本店自己的历史比（见 `utils/anomalyRules.js` 头注）。
+//   本页只做两件事：① 编排取数（月份列表 + 逐月账本）② 把规则层的出参译成页面文案。
+//   ⚠️ 阈值/中位数/排序一律在规则层，页面零阈值、零金额差（PLAN_AI §3 口径红线）。
+const anomaly = require('../../utils/anomalyRules.js');
+
+// 清单最多显示几项（其余折叠成一句「另有 N 项」）：老板一次最多看 5 条，再多等于没看。
+//   与规则层的 maxItems(=20) 不是同一件事：那是**算多少**，这是**显示多少**。
+const ANOM_SHOW_MAX = 5;
 
 Page({
   data: {
@@ -94,6 +102,20 @@ Page({
       settleUnfilled: TERMS.resultPage.settleUnfilled,
       settleNote: TERMS.resultPage.settleNote,
       settleMissingFee: TERMS.resultPage.settleMissingFee,
+      // 🔴 R399（队列 #16）：异常核对清单（文案口径 = 只跟自店历史比，不给金额差/行业均值）
+      anomTitle: TERMS.resultPage.anomTitle,
+      anomSub: TERMS.resultPage.anomSub,
+      anomBasis: TERMS.resultPage.anomBasis,
+      anomEmpty: TERMS.resultPage.anomEmpty,
+      anomMore: TERMS.resultPage.anomMore,
+      anomGo: TERMS.resultPage.anomGo,
+      anomUp: TERMS.resultPage.anomUp,
+      anomDown: TERMS.resultPage.anomDown,
+      anomMissing: TERMS.resultPage.anomMissing,
+      anomNew: TERMS.resultPage.anomNew,
+      anomMarginUp: TERMS.resultPage.anomMarginUp,
+      anomMarginLow: TERMS.resultPage.anomMarginLow,
+      anomHighTag: TERMS.resultPage.anomHighTag,
       loading: TERMS.ui.loading,
       cur: '¥',
       pendingArchive: TERMS.ui.pendingArchive,
@@ -148,6 +170,9 @@ Page({
     scope: {},
     // R302：外卖到手账的展示对象（`has:false` ⇒ 不渲染该卡；没做外卖的店不显示空卡）
     settle: { has: false },
+    // 🔴 R399：核对清单的展示对象（`has:false` ⇒ 整卡不渲染）。
+    //   为什么历史不足时连卡都不出：只有 1 个月不叫「历史」，摆一张空卡会让人以为"没问题"。
+    anom: { has: false },
     bizTypes: TERMS.m2.bizTypes,
     cityTiers: TERMS.m2.cityTiers,
     bizIdx: 1,      // 默认「中式正餐」（bizTypes[1]），与后端 bandOf 的兜底口径一致
@@ -243,6 +268,10 @@ Page({
         inds, scope,
         bizIdx: sv.bizIdx, cityIdx: sv.cityIdx, bizText: sv.bizText, cityText: sv.cityText,
       });
+      // 🔴 R399：核对清单在**主数据渲染完之后**再取（最多 6 次 getLedger）——
+      //   `this.loadChecklist` 内部自带 try/catch 且**不返回 Promise 给调用方**：
+      //   结果页先出，清单后到；清单失败只丢这张卡，不影响任何已算出的数。
+      this.loadChecklist(d);
       // 批次 5：到期前 7 天常驻提示条（双渠道兜底）
       try {
         const ent = await entitle.fetchEntitlement();
@@ -434,6 +463,98 @@ Page({
       perOrder: st.perOrderText,
       showPerOrder: !!st.perOrderText,
       showMissingFee: !st.platformFeeKnown,
+    };
+  },
+
+  // ===== 🔴 R399（队列 #16）：异常核对清单（接线层 · 零阈值 · 零金额）=====
+
+  /**
+   * 编排取数并生成清单（由 load() 在主数据渲染完后调用，**不 await**）。
+   *
+   * 为什么取 N 个月：规则层要「本店自己的历史中位数」，少于 2 个有效历史月不出项。
+   * 为什么逐月取、不新造批量接口：`getMonthList`（只回 month/is_archive）+ `getLedger`（逐月账本）
+   *   都是既有能力；6 次调用是低频动作（每月看一次），先看真实耗时再决定要不要批量（R396 已登记）。
+   * 为什么目标月直接喂 `curLedger`：它就是 load() 刚拿到的 getLedger 出参 —— 再取一次＝同一口径算两遍
+   *   （本仓最贵的病：第二套口径）。
+   * 为什么单月失败只跳过：历史少一个月 ⇒ 规则层按「有效历史月」自动重算；一个月份取失败不该把整卡弄没。
+   */
+  async loadChecklist(curLedger) {
+    const empty = { has: false };
+    if (!curLedger || !curLedger.account_id) { this.setData({ anom: empty }); return; }
+    // 换月时先清：否则上一月的清单会挂在新月份下面（张冠李戴比不显示更糟）
+    this.setData({ anom: empty });
+    try {
+      const ml = await api.call('getMonthList', {});
+      const target = curLedger.month || this.data.month || '';
+      const lookback = Number(anomaly.THRESHOLDS.lookbackMonths) || 6;
+      const need = Number(anomaly.THRESHOLDS.minHistoryMonths) || 2;
+      // 只取**早于目标月**的已建档月，新在前，最多 lookback 个（餐饮季节性强，半年前不可比）
+      const built = ((ml && ml.list) || [])
+        .map((x) => (x && x.month) || '')
+        .filter((m) => m.length === 7 && m < target)
+        .sort((a, b) => (a < b ? 1 : -1))
+        .slice(0, lookback);
+      // 历史太短 ⇒ 连卡都不出（fail-closed：只有 1 个月不叫「历史」，出空卡会被读成"没问题"）
+      if (built.length < need) { this.setData({ anom: empty }); return; }
+      const snaps = [curLedger];
+      for (const m of built) {
+        try {
+          const d = await api.call('getLedger', { month: m });
+          if (d && d.account_id) snaps.push(d);
+        } catch (e) { /* 单月失败跳过，不阻断 */ }
+      }
+      const cl = anomaly.buildChecklist({ month: target, months: snaps });
+      this.setData({ anom: this.viewChecklist(cl) });
+    } catch (e) {
+      this.setData({ anom: empty });   // 取数失败 ⇒ 静默不出卡（结果页自身仍完整）
+    }
+  },
+
+  /**
+   * 规则层出参 → 页面展示对象。**只翻译，不判断**：
+   *   · 出不出卡、够不够历史、装哪些项、怎么排序 —— 全在 `utils/anomalyRules.js`；
+   *   · 本函数只把 rule/direction/ratio_pct 换成术语文案，绝不自己算百分比、绝不加金额差。
+   */
+  viewChecklist(cl) {
+    const T = this.data.t;
+    if (!cl || !cl.basis || cl.basis.insufficient) return { has: false };
+    const items = (cl.items || []).map((it) => this.viewAnomItem(it, T));
+    const shown = items.slice(0, ANOM_SHOW_MAX);
+    return {
+      has: true,
+      version: cl.version || '',
+      historyMonths: cl.basis.history_months || 0,
+      basisText: String(T.anomBasis || '').replace('{n}', String(cl.basis.history_months || 0)),
+      items: shown,
+      more: items.length > ANOM_SHOW_MAX
+        ? String(T.anomMore || '').replace('{n}', String(items.length - ANOM_SHOW_MAX))
+        : '',
+      // 「跟自己历史差不多」也要说一句：空白卡会被读成"没算完/坏了"，而不是"一切正常"
+      emptyText: items.length ? '' : (T.anomEmpty || ''),
+    };
+  },
+
+  // 单条：rule → 文案。百分比取整（老板不需要 133.3% 这种精度），**不带金额**（口径红线 PLAN_AI §3）。
+  viewAnomItem(it, T) {
+    const row = it || {};
+    const p = String(Math.round(Math.abs(Number(row.ratio_pct) || 0)));
+    let text = '';
+    if (row.rule === 'r1_up') text = String(T.anomUp || '').replace('{a}', row.name || '').replace('{p}', p);
+    else if (row.rule === 'r2_down') text = String(T.anomDown || '').replace('{a}', row.name || '').replace('{p}', p);
+    else if (row.rule === 'r3_missing') text = String(T.anomMissing || '').replace('{a}', row.name || '');
+    else if (row.rule === 'r4_new') text = String(T.anomNew || '').replace('{a}', row.name || '');
+    else if (row.rule === 'r5_margin') {
+      // 毛利率的幅度是**百分点**，不是相对百分比 —— 两个量纲绝不混用（规则层已分开，这里只取模板）
+      const tpl = row.direction === 'up' ? T.anomMarginUp : T.anomMarginLow;
+      text = String(tpl || '').replace('{p}', p);
+    }
+    return {
+      key: row.key || '',
+      text,
+      // 高优先项只加「优先看」小标 + 警示色（排序已在规则层做过，页面不再排）
+      tag: row.attention === 'high' ? (T.anomHighTag || '') : '',
+      tone: row.attention === 'high' ? 'warn' : '',
+      show: !!text,
     };
   },
 

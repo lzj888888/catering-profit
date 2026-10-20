@@ -59,6 +59,27 @@
   </view>
   <view class="warn" wx:if="{{be && be.noDataText}}">{{be.noDataText}}</view>
 
+  <!-- 🔴 R399（队列 #16）：异常核对清单 —— 只跟**本店自己的历史**比。
+       口径红线（PLAN_AI §3）：只给「哪一项跟过去不一样 + 差多少百分比」，**不给金额差、不给行业均值**
+       （没有同业真实数据，给出来就是编出来的确定性）。
+       历史不足 2 个月时 anom.has=false ⇒ 整卡不渲染，绝不摆空壳（空卡会被读成"没问题"）。 -->
+  <view class="card2" wx:if="{{anom.has}}">
+    <view class="cell drill-head">
+      <text class="lbl">{{t.anomTitle}}</text>
+      <text class="val">{{anom.basisText}}</text>
+    </view>
+    <view class="muted">{{t.anomSub}}</view>
+    <block wx:for="{{anom.items}}" wx:key="key">
+      <view class="cell" wx:if="{{item.show}}">
+        <text class="lbl {{item.tone}}">{{item.text}}</text>
+        <text class="val {{item.tone}}" wx:if="{{item.tag}}">{{item.tag}}</text>
+      </view>
+    </block>
+    <view class="muted" wx:if="{{anom.emptyText}}">{{anom.emptyText}}</view>
+    <view class="ind-note" wx:if="{{anom.more}}">{{anom.more}}</view>
+    <view class="ind-note" bindtap="goInput">{{t.anomGo}}</view>
+  </view>
+
   <!-- C：钱去哪了 故事线（专业术语保留，补白话流向，老板秒懂利润怎么算） -->
   <view class="card2" wx:if="{{showPer100}}">
     <view class="muted">{{t.flowTitle}}</view>
