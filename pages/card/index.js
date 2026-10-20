@@ -8,6 +8,8 @@ const ui = require('../../utils/ui.js');
 const { openPaywall, openService } = require('../../utils/paywall.js');
 const exportFile = require('../../utils/exportFile.js');   // R265：导出投递单源（落盘 + 打开 + 转发兜底）
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
+// 🔴 R395：分享卡片标题装配（纯函数单源）—— 见 `utils/shareCard.js` 头注
+const shareCard = require('../../utils/shareCard.js');
 
 // 🔴 R309：成本变动标签（纯展示，不改任何计算）
 //   食材涨价是餐饮最痛的变量，而**成本卡的版本模型里已经存着两版的成本** ——
@@ -204,10 +206,20 @@ Page({
       }
       // 本店用过的分类写进本地字典 ⇒ 编辑页 chips 直接可点（新建卡也不用重打"锅底"）
       try { wx.setStorageSync(LIST_CATS_KEY, Array.from(catSeen).slice(0, 40)); } catch (err) { /* 忽略 */ }
-      this.setData({ all, categoryOptions, tagOptions, pinned, loading: false, truncated });
+      // 🔴 R395：分享取数 —— **只统计已定价的卡**（未定价 `margin=null`）。
+      //   把未定价算进分母 ⇒ 标题会说「12 道菜里 5 道毛利低」，而其中几道根本没定价（假结论）。
+      //   档位线取 `marginBand.MID`（单源），不在本页再写一个 40。
+      const priced = all.filter((c) => c.margin !== null && c.margin !== undefined);
+      const shareFacts = {
+        priced: priced.length,
+        low: priced.filter((c) => Number(c.margin) < band.MID).length,
+        band: band.MID,
+      };
+      this.setData({ all, categoryOptions, tagOptions, pinned, loading: false, truncated, shareFacts });
       this.applyFilter();
     } catch (e) {
-      this.setData({ loading: false });
+      // 🔴 R395：分享取数跟着清 —— 否则「列表都没加载出来，分享还在报 N 道菜」
+      this.setData({ loading: false, shareFacts: null });
       api.toastError(e);
     }
   },
@@ -505,4 +517,15 @@ Page({
     } catch (e) { wx.hideLoading(); api.toastError(e); }
   },
   onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()); },
+
+  /**
+   * 🔴 R395（队列 #11）：分享卡片 —— 标题带「算了几道菜、几道毛利偏低」。
+   *
+   * 为什么挑这两个数：菜品成本卡是 M3 的核心产出，而"我算了多少道菜"是老板能立刻说出口的
+   *   进展指标；不写 onShareAppMessage 时微信只显示小程序名，对方看不出这张卡片的价值。
+   * 为什么口径只认「已定价」：见 load() 里的取数注释 —— 未定价进分母会造出"毛利偏低"的假结论。
+   */
+  onShareAppMessage() {
+    return shareCard.m3Share(this.data.shareFacts || {});
+  },
 });

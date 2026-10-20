@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：189 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：190 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -545,6 +545,9 @@
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
 //    那两处仍是**人工面**，改 SUITES 后须手动跟（A–L 无一组能发现重启键自相矛盾）。
 // 用同一个 node（process.execPath）跑子进程，避免多解释器/环境问题。
+//       + 分享卡片守卫（tools/check_share_card.js，R395：此前全仓零 onShareAppMessage ⇒ 微信一律
+//         拿小程序名当分享标题，对方只看到「店算」两个字；三页（M1 结果 / M2 测算 / M3 菜品）接线
+//         `utils/shareCard.js` 单源，判据 = 标题真带本店算出的数 + 页面不自己拼 + 反恒真）
 // ⚠️ 不在 CI 之外假定任何 secrets；纯本地静态 + 单测。
 
 const { execFileSync } = require('child_process');
@@ -1182,6 +1185,10 @@ const SUITES = [
   // 🔴 R376：**追加在末尾**，不插中间 —— SUITES 是**有序表**，插中间会让后面所有
   //   「第 N 套件」引用整体错位（check_suite_count_claims C3 会一次性点名 4 处）。
   ['batch4-clearMonth',   'cloudfunctions/clearMonth/selftest.js'],
+  // ===== R395 · 分享卡片守卫 =====
+  //   见头部注释同名条目。此前全仓零 onShareAppMessage ⇒ 微信一律拿小程序名当分享标题，
+  //   对方只看得到「店算」两个字。守三条：标题真带本店算出的数 · 三页真接线且不自己拼 · 反恒真。
+  ['share-card', 'tools/check_share_card.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

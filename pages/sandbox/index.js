@@ -12,6 +12,8 @@
 const api = require('../../utils/api.js');
 const ui = require('../../utils/ui.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
+// 🔴 R395：分享卡片标题装配（纯函数单源）—— 见 `utils/shareCard.js` 头注
+const shareCard = require('../../utils/shareCard.js');
 // M2v1.3：业态参数包（纯数据 + 唯一装配入口 + 回本派生，仓根 utils/）
 // R234：新增 `bizKeyOfPreset`（预设 → 4 大类，供"平铺业态"后自动定参考带）。
 // R237：`estimateSeats`（面积 × 业态密度 → 座位估算）**已删除** —— 李老师否掉了"面积↔桌数"的强关联；
@@ -1771,7 +1773,8 @@ Page({
         marginBand: this.pickBand(d.bands_preview, 'grossMargin'),
         verdict: !hasFixed ? null : this.verdictOf(indTarget),
         result: presetResultObj,
-        // 🔴 R327：正推表 —— 与 result 同批写入，直接用局部变量算（不读 this.data，避免时序依赖）
+        // 🔴 R395：分享卡片取数 —— 只留原始分（展示串 `break_even_monthly` 已 toFixed，反解会带误差）
+        shareFacts: { ready: !!presetResultObj, breakEvenFen: Number(d.break_even_monthly_fen) || 0 },        // 🔴 R327：正推表 —— 与 result 同批写入，直接用局部变量算（不读 this.data，避免时序依赖）
         profitLadder: this.profitLadderOf(presetResultObj),
         // 🔴 R367：目标反推（想月赚 X 要怎么做）
         targetReverse: this.targetReverseOf(presetResultObj, p),
@@ -1797,7 +1800,7 @@ Page({
     } catch (e) {
       if (seq !== this._seq) return;
       if (e.code === 'M2_RED_ALERT') {
-        this.setData({ loading: false, result: { red_alert: true }, calcError: '' });
+        this.setData({ loading: false, result: { red_alert: true }, calcError: '', shareFacts: null });
         return;
       }
       // 🔴 R359（与 R358 同族）：本次**没算出来** ⇒ 必须把上一次的结果整套清掉。
@@ -1810,6 +1813,8 @@ Page({
         loading: false,
         calcError: e.msg || '',
         result: null,
+        // 🔴 R395：分享取数必须跟着清 —— 否则「保本数已经没了，分享出去还在说旧保本线」（静默错账同族）
+        shareFacts: null,
         bands: [],
         bandsRaw: [],
         marginBand: '',
@@ -1918,5 +1923,17 @@ Page({
       if (m.form === 'revenue_rate') rows.push({ label: m.labelKey === 'costLoss' ? M.costLoss : (fee[m.itemKey] || m.itemKey), val: m.pct + '%', src: m.src });
     });
     return rows;
+  },
+
+  /**
+   * 🔴 R395（队列 #11）：分享卡片 —— 标题带本次算出的**保本营业额**。
+   *
+   * 为什么：开店测算最常见的传播场景就是「我把这个数发给合伙人/家人看看」，
+   *   不自定义标题时微信只显示小程序名 ⇒ 对方不知道这张卡片里是什么结论。
+   * 为什么只认 `shareFacts.ready`：`result` 在 red_alert / 计算失败时会变成空壳，
+   *   拿空壳去拼标题会说出「要卖到 0 元才保本」这种假话（本仓最忌讳的静默错账）。
+   */
+  onShareAppMessage() {
+    return shareCard.m2Share(this.data.shareFacts || {});
   },
 });

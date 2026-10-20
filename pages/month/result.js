@@ -22,6 +22,8 @@ function prevMonthOf(m) {
 const exportFile = require('../../utils/exportFile.js');   // R265：导出投递单源（落盘 + 打开 + 转发兜底）
 // 🔴 R302：外卖到手账 —— 口径全部在 `utils/takeaway.js`（纯函数单源），页面只做「名字→数字」解析与格式化
 const { settleSummary } = require('../../utils/takeaway.js');
+// 🔴 R395：分享卡片标题装配（纯函数单源）—— 见 `utils/shareCard.js` 头注
+const shareCard = require('../../utils/shareCard.js');
 
 Page({
   data: {
@@ -199,6 +201,15 @@ Page({
         }
       } catch (e) { prevProfitFen = null; }
       const be = this.buildBreakeven(d, res, prevProfitFen);
+      // 🔴 R395（队列 #11）：分享卡片取数 —— 只留**原始分**。分享时不再从展示串反解：
+      //   展示串经过 `fenToYuan(2)` ⇒「9,160.00」，反解回分必然带格式误差，也会在分享路径上再算一遍业务。
+      // ⚠️ 这里**不放** `hasLedger`：它的单源是下面 setData 里那句（R298 定的 `d.account_id` 判据），
+      //   在这里再写一遍 `!!(d && d.account_id)` 就是同一语义两份实现 —— 分享时由 handler 读 `data.hasLedger`。
+      const shareFacts = {
+        month: d.month || this.data.month || '',
+        breakEvenFen: (be && be.ok) ? (Number(be.breakevenFen) || 0) : 0,
+        profitFen: Number(res.total_factor_real_profit_fen) || 0,
+      };
       // round115：行业指标对照 —— 后端只回 key/数值/level 枚举，中文名与评级文案在前端补齐（术语单源在前端）
       const inds = this.decorateInds(d.indicators || []);
       const scope = d.indicator_scope || {};
@@ -212,6 +223,7 @@ Page({
         expDetail,
         settle,
         be,
+        shareFacts,
         r: {
           income: fen(res.income_total_fen),
           expense: fen(res.expense_total_fen),
@@ -335,6 +347,8 @@ Page({
     }
     return {
       ok: true,
+      // 🔴 R395：保本额的**原始分**（分享标题要整数元，不能从 `lowText` 这种带千分位的串反解）
+      breakevenFen: Number(bk.breakevenFen) || 0,
       title,
       gm,
       attr,
@@ -547,5 +561,24 @@ Page({
       wx.hideLoading();
       require('../../utils/api.js').toastError(e);
     }
+  },
+
+  /**
+   * 🔴 R395（队列 #11）：分享卡片 —— 标题带**本店已算出的结论**，不是只有小程序名。
+   *
+   * 为什么必须自定义：不写 `onShareAppMessage` 时微信一律用小程序名当标题
+   *   ⇒ 对方收到的卡片只说「店算」，看不出这工具能替老板算清什么（PLAN_AI §2 的落点）。
+   * 为什么只读 `shareFacts`：见 load() 里的取数注释 —— 展示串带格式，反解必然引入误差。
+   * 为什么把这个能力放在这里：本页是 M1 的唯一结论页，也是老板最可能「截个图发出去」的地方。
+   */
+  onShareAppMessage() {
+    const f = this.data.shareFacts || {};
+    // `hasLedger` 不复制进 shareFacts —— 直接读本页 `data.hasLedger`（R298 单源判据，全页只此一处表达式）
+    return shareCard.m1Share({
+      hasLedger: this.data.hasLedger === true,
+      month: f.month,
+      breakEvenFen: f.breakEvenFen,
+      profitFen: f.profitFen,
+    });
   },
 });
