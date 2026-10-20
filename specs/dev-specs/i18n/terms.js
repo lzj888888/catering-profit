@@ -2590,7 +2590,7 @@ const ERROR_MESSAGES = {
   'ERR.INVALID_PARAM': '填写有误，请检查后重试',
   'ERR.RESOURCE_NOT_FOUND': '数据不存在或已被删除',
   'ERR.SOFT_DELETED': '该数据已删除',
-  'ERR.ARCHIVED_LOCKED': '归档月份为只读，不可修改',
+  'ERR.ARCHIVED_LOCKED': '这个月已归档，先取消归档再改',
   'ERR.SNAPSHOT_IMMUTABLE': '历史快照不可修改',
   'ERR.FREE_LIMIT': '已达免费上限，开通后解锁',
   'ERR.HARD_CAP': '已达系统上限，请联系客服',

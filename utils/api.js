@@ -104,6 +104,14 @@ module.exports = {
   toastError(e) {
     const terms = require('../miniprogram/i18n/terms.js');
     const fallback = (terms && terms.msgOf) ? terms.msgOf('SYSTEM_ERROR') : '操作失败';
-    wx.showToast({ title: (e && e.msg) || fallback, icon: 'none' });
+    const msg = (e && e.msg) || fallback;
+    // 🔴 R384：showToast 只显示约两行（≈14 字），长文案会被**截断**——
+    //   而错误提示的全部价值在"下一步怎么办"（如「这个月已归档，先取消归档再改」15 字）。
+    //   被截成「这个月已归档，先取消…」等于没说。⇒ 超过 14 字改走 showModal（只有一个按钮，读完就关）。
+    if (String(msg).length > 14) {
+      wx.showModal({ title: '操作没成功', content: msg, showCancel: false, confirmText: '知道了' });
+      return;
+    }
+    wx.showToast({ title: msg, icon: 'none' });
   },
 };
