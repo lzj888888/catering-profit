@@ -70,3 +70,10 @@
   - 🔴 **四索引刻意没登记**：按设计稿原顺序（表+索引同批）做时 `check_index_field_alignment` L1 **当场判红** —— 它要求索引字段必须在 `cloudfunctions/**` 源码里以标识符出现，而 `consent_id`/`revoked_at` 在 grant/revoke 落码前**全树 0 命中**。判据没错，是顺序错 ⇒ 设计稿 §7 拆成 **1a 表 → 2 落码 → 1b 索引**，已写回并注明原因。
   - 第一轮门禁 190/192，两红都是真漂移：① K13「`下一步工序清单.txt` 落后 `.md`」（仓库根还有一份 `.txt` 逐字副本，`cp -f` 重生）；② `batch0_selfcheck`「点5·集合数=27→29」（该值是**故意写死**的，派生成 `=== COLLECTIONS.length` 就等于没守）。⇒ 一条教训：**改一个计数要同步 4 层派生面**（单源 → 镜像 → md/docx/txt → 自测写死期望值），漏的两处都是守卫抓的。
   - 未做（如实登记）：线上 dev 已有 3 条 `shop_ai_*` 索引与单源仍不一致（等落码同批补）；第 4 条 `idx_ai_insight_shop_month` 仍卡 AppSecret/窗口高度；零云函数逻辑改动 ⇒ **免部署**。
+
+- [2026-10-21 04:24] R404 只读巡检（队列 0 条可认领；R403 由并发会话实时实现，按认领制跳过）· 门禁沿用 192/192 RC=0（600.2s，R402）· 无代码改动
+  - ① 工作树**不干净但归属明确**：`cloudfunctions/grantAiConsent/`、`cloudfunctions/revokeAiConsent/`（03:54 新建）+ `initDb/collections.js`（四索引已补，注释自标 R403）+ `core/10`、`verify_all.js`、`★知识存储点`（mtime 03:54–04:20 仍在变）⇒ 并发会话正在做 R403，未认领未提交 ⇒ **不 add、不覆盖、不提交其文件**。
+  - ② 最近门禁 = `_m3/_logs_r402/gate3.log`「总览：192/192 通过」+ RC=0（600.2s）；同目录 `gate.log`（03:07）的 190/192 是 R402 修复前那轮，两红（K13 派生副本落后 / batch0 集合数 27→29）已在 R402 回执登记并修好。
+  - ③ 队列：10 done / 6 blocked / **0 todo / 0 in_progress**，无僵尸 todo。⚠️ 但现场在做的 R403 未在队列认领 ⇒ 队列与实际作业面不同步，下一轮**先看 git status + mtime**再谈认领。
+  - ④ NOTE↔代码抽检三条全对得上：R399 `loadChecklist` 真接线（`pages/month/result.js:274` 调用、`:481` 定义，自测 48 个 `check(`）；R402 `COLLECTIONS` 含 `shop_ai_consent`/`shop_ai_insight`，四索引已按设计稿 §7「1b」补入（`collections.js:186`）；R403 索引字段 `consent_id`/`revoked_at` 均在 grant/revoke 源码中真出现（`check_index_field_alignment` L1 不会判化石）；`terms.js` 双副本 md5 一致（`e7c1744b…`）。
+  - 6 条 blocked 仍是同一批外部输入缺口（选型/扫码/AppSecret/美团样例），不猜着做。
