@@ -36,6 +36,7 @@
 | 8 | `clearMonth` 超时 3s → 20s | done | no | R398 记账：控制台已改并**机器回读**（`cli cloud functions info` → `timeout=20`、`status=Active`）；证据 `review/NOTE_2026-10-21_控制台建集合与索引.md` §一A |
 | 9 | 外卖销量表接入 | blocked | yes | why: 缺美团/京东样例（表名+列名+口径），不猜列 |
 | 16 | 异常核对清单**页面接线**（#13 规则层的下游）：取数编排 `getMonthList` + 逐月 `getLedger`（≤lookbackMonths 次）→ `buildChecklist` → 月度结果页一张卡；历史 <2 月不出卡不给空壳 | done | no | 现状：`utils/anomalyRules.js` 已存在但**零生产调用**（全仓仅 selftest 引用）；判据=守卫须守「真 require + 真调用 + 入参字段与 `toSnapshot` 契约一致」，改 wxml ⇒ 需出码 | R399 已落：`loadChecklist`（≤6 次 getLedger，目标月复用出参）+ 结果页卡片 + 新守卫 24 断言；门禁 192/192；commit f09e4bd
+| 17 | `shop_ai_*` 2 集合进建库单源 + `core/15` 权限矩阵同步（**不含索引**，索引留落码同批） | in_progress | yes | why: 线上两集合已于 2026-10-21 建成 ⇒ 「线上有、单源无」是漂移源；**索引不进本轮**是机械判据给的方向：`check_index_field_alignment` L1 要求索引字段必须在 `cloudfunctions/**` 源码里以标识符出现，而 `consent_id`/`revoked_at` 现零出现 ⇒ 提前登索引会（正确地）被判成化石索引 |
 
 ## 回执格式（每次执行后追加到 `review/AUTO_LOG.md`）
 
