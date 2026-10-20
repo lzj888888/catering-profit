@@ -77,3 +77,12 @@
   - ③ 队列：10 done / 6 blocked / **0 todo / 0 in_progress**，无僵尸 todo。⚠️ 但现场在做的 R403 未在队列认领 ⇒ 队列与实际作业面不同步，下一轮**先看 git status + mtime**再谈认领。
   - ④ NOTE↔代码抽检三条全对得上：R399 `loadChecklist` 真接线（`pages/month/result.js:274` 调用、`:481` 定义，自测 48 个 `check(`）；R402 `COLLECTIONS` 含 `shop_ai_consent`/`shop_ai_insight`，四索引已按设计稿 §7「1b」补入（`collections.js:186`）；R403 索引字段 `consent_id`/`revoked_at` 均在 grant/revoke 源码中真出现（`check_index_field_alignment` L1 不会判化石）；`terms.js` 双副本 md5 一致（`e7c1744b…`）。
   - 6 条 blocked 仍是同一批外部输入缺口（选型/扫码/AppSecret/美团样例），不猜着做。
+
+- [2026-10-21 04:55] R403 AI 授权写侧落码（队列 #12 步 2 + 步 1b）· 门禁 194/194 RC=0（701.0s）· commit a2147cf
+  - 新增 `grantAiConsent` / `revokeAiConsent`（各 service/validate/selftest，common 由 sync_common 派生），自测 71 条（36+35）。
+  - 四索引同批登记（单源 45→49，unique 12→13）—— 与落码同批是**机械判据给的方向**：`check_index_field_alignment` L1 要求索引字段在 `cloudfunctions/**` 以标识符出现，落码前 `consent_id`/`revoked_at` 全树零出现。
+  - 五条设计取舍都写进 NOTE：scope 能力粒度（未知拒收）、覆盖不求并集、先翻标记再清派生、已撤回不刷新时间戳、清不干净必须 `clear_pending` 显式降级。
+  - 一次自测假红：revoke 判据钉了 `.doc(x._id || ...)` 一种写法，实现是 `const rid = ...` ⇒ **改判据不改代码**。
+  - 派生面 4 层全同步：core/10（§10 + 全集 52→54）、verify_all（套件 192→194）、重启键（套件数/selftest 覆盖面 47→49/索引 49-13）、手工面 .md/.txt/.docx + 索引核对单。
+  - 第一轮 192/194（新 selftest 未 git add ×2、手册 .txt 落后 .md）⇒ 同一族病第三次（R396/R399/R403）：**新增 selftest 必须先 git add 再跑门禁**。
+  - 未做：读侧函数（→ 队列 **#18**，todo/blocked:no）、线上第 4 条索引、两函数未部署（零调用方）、`canSendToModel`、手册 PDF 未重生（不在守卫面内，发人前必重生）。
