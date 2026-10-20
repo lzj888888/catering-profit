@@ -28,13 +28,14 @@
 | 14 | M3 `inputs_ref` 契约：`saveCostCard`/`getCostCard` 出参带 `card_code+version`（先定契约再改，别拍脑袋） | done | no | R387 已落：三处出参（saveCostCard / getCostCard / getCardVersions）同形状 `{kind,card_code,version}`，契约写进 core/10；守卫 34→37，变异 3/3；commit 34e1f76 |
 | 15 | 补契约「fail-soft/覆盖度/截断」类出参（7 组）：getDishReview(truncated/coverageA/coverageC/unmatched)、getSalesBills(truncated/summary)、getShopContext(no_shop)、manageShop(replayed)、importSalesBill(platform_missing/dup)、exportData(format/encoding/content)、saveCostCard+saveMaterial(deleted)。逐条带「漏掉的后果」改，改一条验一条 | done | no | R391 已落：8 组里 2 组（getDishReview/getSalesBills）R301 已声明、复核不重复；实改 6 组；exportData 原 `task_id/file_url` 是未上线设计稿，整行纠正为同步直出。双面判据 16/16 + 变异 3/3；正文在 ec25a5e（被并发提交携带），证据 commit 19e4067 |
 | 11 | 分享卡片结构化：`onShareAppMessage` 标题带可读结论句（如「本月保本 9160，月赚 8400」），不是只带小程序名 | done | no | R395 已落：三页（M1 结果 / M2 测算 / M3 菜品）接线，文案单源 terms.js + 装配单源 utils/shareCard.js，守卫 42 断言；门禁 190/190；commit bb5cbff |
-| 12 | `shop_ai_consent` 授权模型设计（scope/有效期/撤回标记 + 撤回清缓存链路） | blocked | yes | why: 需李老师在控制台建 2 集合 + 4 索引；**设计稿已就绪** `review/PLAN_2026-10-20_AI授权模型设计.md`（含字段/索引/状态机/k-匿名门槛），建完即可落码 |
+| 12 | `shop_ai_consent` 授权模型设计（scope/有效期/撤回标记 + 撤回清缓存链路） | blocked | yes | why: **控制台侧已推进**——2 集合已建、4 索引建成 3 条（`NOTE_2026-10-21_控制台建集合与索引.md` §二）；仍卡两处：① 第 4 条三字段索引（对话框只容两行，需 AppSecret 走 `tools/apply_indexes.js`，或改窗口高度）② 落码前置=`shop_ai_*` **未登记进 `initDb/collections.js` 单源**（可自主补，但需先补单源再落码）。设计稿 `review/PLAN_2026-10-20_AI授权模型设计.md` 已就绪 |
 | 13 | 异常核对清单·规则层（本店历史阈值，不调模型） | done | no | R396 已落：`utils/anomalyRules.js::buildChecklist`（5 规则 / 中位数基线 / 只出方向+幅度 / 历史<2 月不出项），自测 47 条；**前置缺口是误记** —— `getMonthList` 早已存在（`listMonths` 是名字猜错）⇒ 免改云函数免部署；页面接线留给 P1 话术层；commit 179b5b3 |
 | 5 | 风格 A/B/C 铺开（先 3 页样板） | blocked | yes | why: 李老师未选型；选定后按「3 页样板→确认→全量」 |
 | 6 | M3 三页视觉统一（物料/枢纽/成本卡） | blocked | yes | why: 依赖 #5 选定风格，否则返工 |
 | 7 | 真机走查（矩阵横滑/吸底条/空态/清空月/下拉刷新） | blocked | yes | why: 只能李老师扫码 |
-| 8 | `clearMonth` 超时 3s → 20s | blocked | yes | why: CLI 无改配置能力、无 tcb 登录态 ⇒ 需控制台或腾讯云密钥 |
+| 8 | `clearMonth` 超时 3s → 20s | done | no | R398 记账：控制台已改并**机器回读**（`cli cloud functions info` → `timeout=20`、`status=Active`）；证据 `review/NOTE_2026-10-21_控制台建集合与索引.md` §一A |
 | 9 | 外卖销量表接入 | blocked | yes | why: 缺美团/京东样例（表名+列名+口径），不猜列 |
+| 16 | 异常核对清单**页面接线**（#13 规则层的下游）：取数编排 `getMonthList` + 逐月 `getLedger`（≤lookbackMonths 次）→ `buildChecklist` → 月度结果页一张卡；历史 <2 月不出卡不给空壳 | todo | no | 现状：`utils/anomalyRules.js` 已存在但**零生产调用**（全仓仅 selftest 引用）；判据=守卫须守「真 require + 真调用 + 入参字段与 `toSnapshot` 契约一致」，改 wxml ⇒ 需出码 |
 
 ## 回执格式（每次执行后追加到 `review/AUTO_LOG.md`）
 

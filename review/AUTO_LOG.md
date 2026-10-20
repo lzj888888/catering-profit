@@ -47,3 +47,5 @@
   - ③ 队列无僵尸：全表无 `status=todo` 行、无 `in_progress` 悬挂；#5–#9、#12 均 `blocked=yes` 且 `why` 在（等人/等样例/等选型）。
   - ④ NOTE↔代码抽检三条全对得上：R396 `utils/anomalyRules.js` 14.3KB + `tools/selftest_anomaly_rules.js` 单跑 47/0；R395 三页 `onShareAppMessage` 实存（card/month.result/sandbox）+ `utils/shareCard.js` 5.8KB；R394 `savedDone` 在双副本 terms.js 各 12 处、md5 同为 `5154d688…`。
   - 结论：无可开新条目；不给 blocked 条目"猜着做"（都缺外部输入），下轮仍按同一规则取首条。
+
+- [2026-10-21 01:45] R398 队列记账（纯文档，无代码）：#8 `clearMonth` 超时 → **done**（控制台回读 `timeout=20`/`Active`，证据 NOTE_2026-10-21 §一A）；#12 `why` 更新为真实进度（2 集合已建、索引 3/4、落码前置=补 `collections.js` 单源）；新增 **#16 异常核对清单页面接线**（唯一 todo & blocked=no，`buildChecklist` 现为零生产调用）。未跑全量门禁（未触碰 `tools/**`/`cloudfunctions/**`/页面代码）。
