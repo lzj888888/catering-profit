@@ -56,6 +56,18 @@
         ② `white-space: normal` 让**超长的单元格值**正常折行，而不是溢出到隔壁列。 */
 .td { flex: none; width: 200rpx; padding: 16rpx 12rpx; font-size: 28rpx; color: #333; box-sizing: border-box; white-space: normal; }
 .tr.th .td { font-weight: 600; color: #222; }
+/* ===== R378：冻结首列（窄屏可读性的关键）=====
+ * 14 列 × 200rpx ≈ 1400px，手机内容区 ~350px ⇒ 只能看到 2 列半；
+ * 横滑时若首列跟着滚走，老板就不知道这一行是「房租 8000」还是「房租 30000」。
+ * 做法：首列 sticky left + 右侧投影（影子代替描边，横滑时能看出"叠在上面"）。
+ * ⚠️ 不缩短列宽：200rpx 是 round276 按「表头 6 字一行」定的，缩了表头会竖排（R362 同族）。 */
+.td:first-child { position: sticky; left: 0; z-index: 2; background: #fff;
+  box-shadow: 6rpx 0 10rpx -6rpx rgba(30, 58, 95, 0.18); }
+.tr.th .td:first-child { background: #f5f6fa; z-index: 3; }
+.tr.invalid .td:first-child { background: #fafafa; }
+.tr.red .td:first-child { background: #fff; }
+/* 窄屏提示：与 .hint 分开写，避免长句被判为需折叠（本句仅 9 字） */
+.swipe-hint { font-size: 28rpx; color: #6b7a8d; padding: 4rpx 8rpx 12rpx; }
 .nav-row { display: flex; margin-top: 24rpx; }
 /* 🔴 round279 · #9 结论速读卡（结论高亮 + 房租杠杆 + 淡季安全垫）*/
 .insight { background: #fff7ec; border: 1rpx solid #ffd9a0; border-radius: 14rpx; padding: 20rpx 22rpx; margin-bottom: 18rpx; }

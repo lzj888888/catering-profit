@@ -78,6 +78,7 @@ Page({
       dimTarget: M.dimTarget,
       // 🔴 round276：屏幕表头短名（见 terms.js 同名注释块）—— 只改显示用列，导出 Excel 仍用长名
       colRent: M.colRent,
+      matrixSwipeHint: M.matrixSwipeHint,
       colLabor: M.colLabor,
       colMargin: M.colMargin,
       colTarget: M.colTarget,
@@ -209,6 +210,7 @@ Page({
     //      只有从沙盘页带 `?mode=forward` 进来才切成 A 场景口径。
     // 🔴 R322：高级维度（毛利率/人工）默认收起 —— 小白只填租金与目标利润
     advOpen: false,
+    narrow: false,   // R378：窄屏才显示横滑提示（width < 400）
     advNote: '',
     // 🔴 R325：现金卡输入。租金默认跟透视表的固定租金走（老板已在页面上填过），只需再给一个「手上现金」
     cash: { rentYuan: 5000, budgetYuan: '', equipYuan: '', stockYuan: '' },
@@ -225,6 +227,8 @@ Page({
   },
 
   onLoad(options) {
+    // 🔴 R378：矩阵 14 列 ≈ 1400px，手机屏只能看到 2 列半 ⇒ 窄屏给一句横滑提示。
+    try { const wi = wx.getSystemInfoSync(); this.setData({ narrow: (wi.windowWidth || 375) < 400 }); } catch (e) {}
     const opt = options || {};
     const mode = (opt.mode === 'forward') ? 'forward' : 'reverse';
     // 🔴 round273：按进来的场景切「透视行维度」与标题/引导语（维度**全保留**，只是透视主轴不同 ——
