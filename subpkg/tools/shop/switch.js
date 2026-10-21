@@ -1,4 +1,4 @@
-// pages/shop/switch.js —— 批次 7 · 店铺切换页
+// subpkg/tools/shop/switch.js —— 批次 7 · 店铺切换页
 //
 // ⚠️ 店铺切换器（§2.3/§2.7）：
 //   · 列表仅含 is_deleted=false（getShopList 后端过滤）；
@@ -14,12 +14,12 @@
 //      误建第 2 家就永久占额度，连新建都做不了。
 //   ⇒ 现在三个动作都走 `manageShop`（op = create / rename / delete），在列表内**就地**完成（不跳页）。
 //   ⚠️ 目标店字段必须叫 `target_shop_id`：api.js 会无条件注入**当前店**的 shop_id。
-const api = require('../../utils/api.js');
-const ui = require('../../utils/ui.js');
-const sw = require('../../utils/shopSwitcher.js');
-const { openPaywall } = require('../../utils/paywall.js');
-const { TERMS } = require('../../miniprogram/i18n/terms.js');
-const dh = require('../../utils/dataHealth.js');   // 🔴 R299：出参 `truncated` 的可见降级（单源）
+const api = require('../../../utils/api.js');
+const ui = require('../../../utils/ui.js');
+const sw = require('../../../utils/shopSwitcher.js');
+const { openPaywall } = require('../../../utils/paywall.js');
+const { TERMS } = require('../../../miniprogram/i18n/terms.js');
+const dh = require('../../../utils/dataHealth.js');   // 🔴 R299：出参 `truncated` 的可见降级（单源）
 const app = getApp();
 
 const NAME_MAX = 20;

@@ -1,0 +1,27 @@
+R423 · 分包收尾：shop 2 页移入 subpkg/tools（主包 6→4 页，到底了）
+
+上一批 S4 因为另一会话正在改 shop/setting 而跳过它；现在工作树已干净，补上这最后一刀。
+
+结果：
+- pages/shop/* → subpkg/tools/shop/*
+- **主包 4 页**：index（tab）/ m3/hub（tab）/ mine（tab）/ m3/dishreview（受同目录约束，只能留）
+- subpkg/tools 9 页、biz 14 页
+- 包体最大项 subpkg=0.8844 / 顶格 1.2；总量 1.48
+- 门禁 203/203 RC=0（260.7s）
+
+**主包到此到底**：剩下 4 页里 3 页是 tabBar（微信硬要求留主包），
+`m3/dishreview` 只因 `m3/hub` 是 tabBar 而无法与它拆到两个包（同一目录不能跨包）。
+再往下做就得改 tabBar 结构 —— 不建议。
+
+顺带修两处卫生问题：
+1. `.gitignore` 补 `_归档_过程件_202610/`
+   —— 这是并发巡检（791c3d9）登记的风险：过程件归档目录一直以未跟踪状态裸露在 `git status` 里，
+   68 个文件、每次提交都得手工排除。口径同 `_m3/` 与 `_probe_tmp/`：**只做"不误提交"的机械保证，目录留在仓内**。
+2. `pages/mine/index.wxss` 注释里的 `pages/shop/switch.wxss` 引用改为分包路径（文档准确性）
+
+适配：
+- check_shop_reset：`path.join(ROOT,'pages','shop')` 分段拼接 ⇒ subpkg/tools/shop（53/53 绿）
+- check_page_manifest：提审材料 §4 两处路径
+- terms 双副本：脚本 3.5 步自动同步（零手工）
+
+自纠：`.gitignore` 追加时把 LF 变成了 CRLF（176/91），已转回（现 4/0）。这是今天第 4 次踩行尾，已确认是该死的"Python 追加 + 原文件 LF"组合。

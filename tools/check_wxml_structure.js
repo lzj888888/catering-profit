@@ -64,7 +64,7 @@ const ANCHORS = [
   'subpkg/biz/month/input.wxml',
   'subpkg/biz/month/result.wxml',
   'subpkg/biz/month/amortize.wxml',
-  'pages/shop/setting.wxml',
+  'subpkg/tools/shop/setting.wxml',
 ];
 
 function walk(dir, out) {

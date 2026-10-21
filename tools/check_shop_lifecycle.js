@@ -44,9 +44,9 @@ const TARGETS = {
   svc: R('cloudfunctions/manageShop/service.js'),
   msIdx: R('cloudfunctions/manageShop/index.js'),
   ctx: R('cloudfunctions/getShopContext/index.js'),
-  swJs: R('pages/shop/switch.js'),
-  swWxml: R('pages/shop/switch.wxml'),
-  swWxss: R('pages/shop/switch.wxss'),
+  swJs: R('subpkg/tools/shop/switch.js'),
+  swWxml: R('subpkg/tools/shop/switch.wxml'),
+  swWxss: R('subpkg/tools/shop/switch.wxss'),
   terms: R('miniprogram/i18n/terms.js'),
 };
 

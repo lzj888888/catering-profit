@@ -136,7 +136,7 @@ check('input.js 有 Sec/Field 映射', /cmSecTitle: TERMS\.calcMethod\.secTitle/
 //      ② 禁用框架 —— 控件/指令 + 受限字符窗，不裸扫关键词（正确文案里常含否定式提法）。
 console.log('');
 console.log('===== 修 4 防回归 · 核算方式单源（语义级，round59 加固）=====');
-const swSrc = read("pages/shop/setting.wxml"), sjSrc = read("pages/shop/setting.js");
+const swSrc = read("subpkg/tools/shop/setting.wxml"), sjSrc = read("subpkg/tools/shop/setting.js");
 const stripCmt = (s) => s.replace(/<!--[\s\S]*?-->/g, "").replace(/(^|\s)\/\/[^\n]*/g, "$1").replace(/\/\*[\s\S]*?\*\//g, "");
 const swCode = stripCmt(swSrc), sjCode = stripCmt(sjSrc);
 // ① 锚点 a：食材口径的选择入口必须在月度录入页；且录入页要有一处去「一次性投入」页的入口。

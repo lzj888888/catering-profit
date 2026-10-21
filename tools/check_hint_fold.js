@@ -641,9 +641,9 @@ const PAGE_CASES = [
   {
     // 27 字 —— 切换店铺页顶部说明（免费版可建 1 家店）。
     name: 'shopSwitch',
-    wxml: 'pages/shop/switch.wxml',
-    js: 'pages/shop/switch.js',
-    wxss: 'pages/shop/switch.wxss',
+    wxml: 'subpkg/tools/shop/switch.wxml',
+    js: 'subpkg/tools/shop/switch.js',
+    wxss: 'subpkg/tools/shop/switch.wxss',
     keys: ['swSwitchHint'],
     keepPlain: 0,   // 本页仅此一处 hint
     segFolds: 0,

@@ -176,7 +176,7 @@ ok('④-a 反恒真：把③的判据喂给「未消费」样本 ⇒ 必须判�
   !consumesTruncated(FAKE_UNHANDLED));
 const FAKE_HANDLED = "const dh = require('../../utils/dataHealth.js');\nconst r = await api.call('getCostCard', {});\nthis.setData({ t: dh.isTruncated(r) });\n";
 ok('④-b 正样本：消费版样本 ⇒ 必须判通过', consumesTruncated(FAKE_HANDLED));
-const POS = ['pages/m3/dishreview/index.js', 'subpkg/biz/card/index.js', 'pages/shop/switch.js'];
+const POS = ['pages/m3/dishreview/index.js', 'subpkg/biz/card/index.js', 'subpkg/tools/shop/switch.js'];
 for (const p of POS) {
   ok('④-c 正样本：' + p + ' 真消费 truncated', consumesTruncated(readOr(path.join(ROOT, p), '')));
 }

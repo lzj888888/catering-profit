@@ -114,8 +114,8 @@ Page({
   //   （微信限制：tabBar 页只能 `switchTab`，且不能带参数）。故改用 `wx.switchTab`。
   //   同理 `goMine()`（`pages/mine/index` 也在 tabBar 里）。
   goCard() { wx.switchTab({ url: '/pages/m3/hub' }); },
-  goSettings() { wx.navigateTo({ url: '/pages/shop/setting' }); },
-  goSwitch() { wx.navigateTo({ url: '/pages/shop/switch' }); },
+  goSettings() { wx.navigateTo({ url: '/subpkg/tools/shop/setting' }); },
+  goSwitch() { wx.navigateTo({ url: '/subpkg/tools/shop/switch' }); },
   goMine() { wx.switchTab({ url: '/pages/mine/index' }); },
 
   // R234/J3：首页折叠引导条开关。

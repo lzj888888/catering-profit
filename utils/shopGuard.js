@@ -29,7 +29,7 @@ function promptNoShop() {
     confirmText: TERMS.exp.switchTitle,
     confirmColor: '#1e3a5f',
     success: (r) => {
-      if (r.confirm) wx.navigateTo({ url: '/pages/shop/switch' });
+      if (r.confirm) wx.navigateTo({ url: '/subpkg/tools/shop/switch' });
     },
   });
   return true;

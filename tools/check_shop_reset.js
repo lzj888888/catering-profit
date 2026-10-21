@@ -22,7 +22,7 @@ const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
 const FN = path.join(ROOT, 'cloudfunctions', 'manageShop');
-const PAGE = path.join(ROOT, 'pages', 'shop');
+const PAGE = path.join(ROOT, 'subpkg', 'tools', 'shop');
 
 const read = (p) => fs.readFileSync(p, 'utf8');
 let pass = 0;
@@ -60,8 +60,8 @@ const scanTargets = [
   ['cloudfunctions/manageShop/service.js', srcSvc],
   ['cloudfunctions/manageShop/validate.js', srcVal],
   ['cloudfunctions/manageShop/index.js', srcIdx],
-  ['pages/shop/switch.js', srcPage],
-  ['pages/shop/switch.wxml', srcWxml],
+  ['subpkg/tools/shop/switch.js', srcPage],
+  ['subpkg/tools/shop/switch.wxml', srcWxml],
   ['miniprogram/i18n/terms.js', srcTerms],
 ];
 // ① 扫描面非空且每个文件都读到了东西（任一为空 ⇒ 后续所有 includes 判据都是假绿）
