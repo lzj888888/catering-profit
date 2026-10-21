@@ -331,3 +331,12 @@
   - 只做验证与出码，**未重写实现**：`check_amount_input` 56/0；`√ preview` 出码入库 `review/evidence/r427_qr/qr.png`（main 259.3 KB/合计 709.7 KB）。
   - R426 当时 5 条红（money_precision / m2_no_cost_rate / money_fmt / free_shop_limit / suite_assert_counts）全属并发 S3 分包迁移，S3/S4 自己提交后已自然转绿 —— **本轮未改任何判据**，可作「红≠一直红」的第八次实证。
   - 顺带修一处 S3 遗留：`pages/shop/setting.{js,wxml}` 注释里仍写 `pages/month/input`（目录已迁走）+ 整份 CRLF 翻写 ⇒ 还原 LF 并改注释路径（`d370f71`，零行为变化）。
+
+### R427 只读巡检（#32 落地后队列已无可认领条目）
+
+- [2026-10-21 19:40] R427 只读巡检 · 无代码改动
+  - **工作树**：仅有 `subpkg/biz/month/input.js` + `tools/check_amount_input.js` 两处未提交，均属并发会话 #42（`b0141ef chore: 认领 #42`，19:25–19:37 持续在写）⇒ 不覆盖、不 add。
+  - **最近门禁**：本轮自跑 **203/203 RC=0（227.4s）**（`_m3/_logs_r427/gate1.log`），与 R423-S4 的 203/203 一致，无回归。
+  - **队列**：42 行 = 24 done / 17 blocked / 1 in_progress（#42 活体）/ **0 todo** ⇒ 无可认领。
+  - **NOTE↔代码抽检三条全对得上**：R426 `checkAmounts` 在 `subpkg/biz/card/edit.js`(9)/`material/edit.js`(3)；R425 `twMkByPlat` 仍 15 处；R423-S4 `app.json` 主包 **6 页** + `subpkg/tools` 7 / `subpkg/biz` 14，与 NOTE 声明一致。
+  - 🔴 **新发现（只登记，未改）**：`_归档_过程件_202610/`（480 个过程件）在 `git status` 里是 `??` 未跟踪，`git check-ignore` 给不出有效规则 ⇒ **实际未被 ignore**。后果：本仓库任何一次 `git add -A` 都会把这 480 个临时件卷进提交。建议单立一条「把归档目录真正加入 .gitignore 并核对 `git status` 转净」，本轮不动（属跨目录卫生项，超出巡检只读边界）。
