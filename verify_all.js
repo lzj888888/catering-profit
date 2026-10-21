@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：199 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：200 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -577,6 +577,14 @@
 //         七条腿：库结构三元组 / §B 标题 / B1 集合数 / B2 索引数 / D1 部署数 / 云函数数与目录数 / **全局反查**；
 //         全局反查带「历史快照必须显式标注」的豁免 —— 豁免来自"标注"而非"恰好不匹配"（B8/B9 同形态对照证明）。
 //         单源用 require 运行时实读（不数行、不手抄）；合成样本 11 段 + 真实变异 5 组反恒真。
+// R412 新增 input-keyboard（`tools/check_input_keyboard.js`，输入框键盘类型必须能表达字段定义域）：
+//         小程序 `<input type="number">` 是**纯整数键盘**（无小数点），而「刷卡费率」默认值就是 0.6、
+//         平台抽成常见 21.5 / 22.5、「一件 12.5 公斤」的换算量也带小数 ⇒ 老板**填不进真值**，
+//         只能填 6 / 22 / 13 ⇒ 挂钩费率被放大 10 倍/抹掉 0.5 个点 ⇒ 保本额静默失真、零报错。
+//         判据 = A 与同一父容器 `%` 单位配对的 input 必须 digit（窗口取到下一个 `</view>`，
+//         不用固定字符数，否则下一行的百分号会把上一行的整数框误判成百分比框）+ B 换算量必须 digit
+//         + C 纯计数字段不得被判成百分比框（反向防过宽）+ D 已知 9 个百分比字段必须全被扫到
+//         （空集会让 A 腿恒真）。合成样本 7 段 + 真实变异 4/4 反恒真。28 断言。
 // ⚠️ 不在 CI 之外假定任何 secrets；纯本地静态 + 单测。
 
 const { execFileSync } = require('child_process');
@@ -1249,6 +1257,7 @@ const SUITES = [
   ['release-checklist', 'tools/check_release_checklist.js'],
   //   金额展示单源（R411：此前 7 份手写实现，其中 1 份会把小数切成千分位、2 份万的小数位还不一致）
   ['money-fmt', 'tools/check_money_fmt.js'],
+  ['input-keyboard', 'tools/check_input_keyboard.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

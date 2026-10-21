@@ -54,7 +54,7 @@
     <text class="lbl">{{convertLabel || t.matConvert}}</text>
     <view class="conv-wrap">
       <text class="conv-eq">{{convertLeft}}</text>
-      <input class="val-input conv-input" type="number" value="{{convQty}}" bindinput="onConvQty"  adjust-position="{{true}}" cursor-spacing="20" />
+      <input class="val-input conv-input" type="digit" value="{{convQty}}" bindinput="onConvQty"  adjust-position="{{true}}" cursor-spacing="20" />
       <picker range="{{convUnits}}" value="{{convUnitIndex}}" bindchange="onConvUnit">
         <view class="conv-unit">{{convUnit}}</view>
       </picker>

@@ -292,49 +292,49 @@
         <view class="row">
           <text class="row-name">{{t.channelTakeawayRatio}}</text>
           <view class="row-in-wrap">
-            <input class="ipt-num" type="number" value="{{channel.takeawayRatio}}" data-field="takeawayRatio" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
+            <input class="ipt-num" type="digit" value="{{channel.takeawayRatio}}" data-field="takeawayRatio" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
             <text class="unit">{{t.channelPct}}</text>
           </view>
         </view>
         <view class="row">
           <text class="row-name">{{t.channelPlatformRate}}</text>
           <view class="row-in-wrap">
-            <input class="ipt-num" type="number" value="{{channel.platformRate}}" data-field="platformRate" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
+            <input class="ipt-num" type="digit" value="{{channel.platformRate}}" data-field="platformRate" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
             <text class="unit">{{t.channelPct}}</text>
           </view>
         </view>
         <view class="row">
           <text class="row-name">{{t.channelPackRate}}</text>
           <view class="row-in-wrap">
-            <input class="ipt-num" type="number" value="{{channel.packRate}}" data-field="packRate" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
+            <input class="ipt-num" type="digit" value="{{channel.packRate}}" data-field="packRate" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
             <text class="unit">{{t.channelPct}}</text>
           </view>
         </view>
         <view class="row">
           <text class="row-name">{{t.channelGroupRatio}}</text>
           <view class="row-in-wrap">
-            <input class="ipt-num" type="number" value="{{channel.groupRatio}}" data-field="groupRatio" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
+            <input class="ipt-num" type="digit" value="{{channel.groupRatio}}" data-field="groupRatio" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
             <text class="unit">{{t.channelPct}}</text>
           </view>
         </view>
         <view class="row">
           <text class="row-name">{{t.channelGroupPlatform}}</text>
           <view class="row-in-wrap">
-            <input class="ipt-num" type="number" value="{{channel.groupPlatformRate}}" data-field="groupPlatformRate" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
+            <input class="ipt-num" type="digit" value="{{channel.groupPlatformRate}}" data-field="groupPlatformRate" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
             <text class="unit">{{t.channelPct}}</text>
           </view>
         </view>
         <view class="row">
           <text class="row-name">{{t.channelDiscountRate}}</text>
           <view class="row-in-wrap">
-            <input class="ipt-num" type="number" value="{{channel.discountRate}}" data-field="discountRate" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
+            <input class="ipt-num" type="digit" value="{{channel.discountRate}}" data-field="discountRate" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
             <text class="unit">{{t.channelPct}}</text>
           </view>
         </view>
         <view class="row">
           <text class="row-name">{{t.channelCardRate}}</text>
           <view class="row-in-wrap">
-            <input class="ipt-num" type="number" value="{{channel.cardRate}}" data-field="cardRate" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
+            <input class="ipt-num" type="digit" value="{{channel.cardRate}}" data-field="cardRate" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
             <text class="unit">{{t.channelPct}}</text>
           </view>
         </view>
