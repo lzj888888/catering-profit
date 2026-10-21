@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：197 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：198 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -569,6 +569,14 @@
 //         ⇒ 唯一有效位置是「首个 await 之前同步置位并返回」。五条腿：函数仍在 / 仍含写调用 /
 //         守卫早于首个 await / 标志真被置位（否则判据恒假）/ 标志真被复位（否则一次失败永久锁死）；
 //         另守幂等键仍在下传（拆掉它连网络重投都失守）。合成样本 5 段 + 真实变异 6 组反恒真。
+//       + 发布前清单数字与单源一致守卫（tools/check_release_checklist.js，R410 · 队列 #22）：
+//         守的是**活文档与单源之间没有机器契约** —— `review/CHECKLIST_正式版发布前必做.md` 自称活文档、
+//         是发布当天照着执行的清单，R410 实测其数字全面漂移且**文件内部自相矛盾**（标题 27 集合 / B1 写 25；
+//         云函数 43/42/44 三套并存 vs 单源 55）。照它执行会漏建 4 条索引，其中 `shop_ai_consent` 的
+//         `idx_ai_consent_user_shop` 是 unique ⇒ 重复授权产生多条记录、判定取错行（静默错，真机只表现为"慢"）。
+//         七条腿：库结构三元组 / §B 标题 / B1 集合数 / B2 索引数 / D1 部署数 / 云函数数与目录数 / **全局反查**；
+//         全局反查带「历史快照必须显式标注」的豁免 —— 豁免来自"标注"而非"恰好不匹配"（B8/B9 同形态对照证明）。
+//         单源用 require 运行时实读（不数行、不手抄）；合成样本 11 段 + 真实变异 5 组反恒真。
 // ⚠️ 不在 CI 之外假定任何 secrets；纯本地静态 + 单测。
 
 const { execFileSync } = require('child_process');
@@ -1234,6 +1242,11 @@ const SUITES = [
   //   见头部注释同名条目。守的是**双击语义**：幂等键按 Date.now() 每次新造 ⇒ 挡不住"点了两次"；
   //   遮罩是渲染后才拦点击的 ⇒ 守卫必须同步写在首个 await 之前，且标志要真置位、真复位。
   ['write-reentry', 'tools/check_write_reentry_guard.js'],
+  // ===== R410 · 发布前清单数字与单源一致（队列 #22）=====
+  //   见头部注释同名条目。守的是**活文档与单源之间没有机器契约**这个缺口：
+  //   该清单是发布当天照着执行的，数字漂移会直接导致漏建 unique 索引（静默错）。
+  //   同时守「历史快照必须显式标注」—— 未来把旧数字写回来会当场转红。
+  ['release-checklist', 'tools/check_release_checklist.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

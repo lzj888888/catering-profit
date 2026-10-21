@@ -24,9 +24,9 @@ dev 库里的任何账套 / 台账 / 测试数据**不会**流到正式版。
 | prod 环境 | **不存在** | 同上，列表里没有第二个环境 |
 | 前端 prod 槽 | 仍是占位符 `catering-prod-xxxxxxxx` | `miniprogram/config/env.js` `ENV_MAP.prod` |
 | 前端当前激活环境 | `ACTIVE_ENV: 'dev'` | 同上（写死，不会自动切） |
-| 云函数 | **43 个**（45 个目录 − `common` / `_adminCore` 两个库目录） | `ls -d cloudfunctions/*/`（R181m 复核；与云端 `list` 零差异） |
-| 库结构 | **27 集合 / 45 索引**（12 unique） | `cloudfunctions/initDb/collections.js` |
-| 已建成索引 | dev 侧 **45/45 已追平** | `tools/apply_indexes.js` |
+| 云函数 | **55 个**（57 个目录 − `common` / `_adminCore` 两个库目录） | `ls -d cloudfunctions/*/`（R410 复核；与云端 `list` 零差异） |
+| 库结构 | **29 集合 / 49 索引**（13 unique） | `cloudfunctions/initDb/collections.js`（R410 运行时实读，非人工数行） |
+| 已建成索引 | dev 侧 **48/49**（第 4 条 `idx_ai_insight_shop_month` 未建，卡 AppSecret / 控制台窗口高度） | `tools/apply_indexes.js`（R410 复核；见队列 #12） |
 
 ---
 
@@ -54,12 +54,12 @@ dev 库里的任何账套 / 台账 / 测试数据**不会**流到正式版。
 
 > ⚠️ **别把 dev 改名成 prod 当正式环境**。那样 dev 里的测试数据就原地"转正"了 —— 这是唯一会踩中您担心的那件事的做法。
 
-### B. prod 库结构（27 集合 + 45 索引）
+### B. prod 库结构（29 集合 + 49 索引）
 
 | # | 动作 | 说明 | 谁做 |
 |---|---|---|---|
-| B1 | 建 25 张集合 | 🔴 **政策（非能力限制）**：`initDb` 有环境门禁 `gate()`，含 `prod` 子串一律拒绝 ⇒ **prod 集合由控制台手工创建**，`initDb` **绝不部署到 prod** | 李老师 / 我 |
-| B2 | 建 **45 条索引**（R215c 更正：原文写「40 条」是 R174 把 40→45 后的**漏改**，与本节标题/单源 `collections.js` 的 45 冲突） | **已可脚本化，零改造**：`node tools/apply_indexes.js --env <prod_id> --apply --secret-file <文件>`。该脚本走官方 HTTP API（幂等、可回读校验），`--env` 参数**已支持**（`tools/apply_indexes.js:60`：`valOf('--env') \|\| initDb/config.json::DEV_ENV_ID`，无 `--env` 时仍从单源现读、不手抄）。⚠️ 默认 dry-run，必须显式 `--apply`；AppSecret **用后即轮换**（账号级凭证）。🔴 **线上 dev 现仅 40/45**（R174 那 5 条一直没建）⇒ 脚本幂等，跑一次即补齐；其中含 R202 兜底所需的 `shop.id` 索引（已登记于 `review/NOTE_2026-10-03_round203_impact-name-decode.md` 待办 #2，**不宜单加**，随本次批量一起做） | 我 |
+| B1 | 建 29 张集合 | 🔴 **政策（非能力限制）**：`initDb` 有环境门禁 `gate()`，含 `prod` 子串一律拒绝 ⇒ **prod 集合由控制台手工创建**，`initDb` **绝不部署到 prod** | 李老师 / 我 |
+| B2 | 建 **49 条索引**（R215c 更正：原文写「40 条」是 R174 把 40→45 后的**漏改**；R403/R405 落 AI 授权时又加 4 条至 **49**，以单源 `collections.js` 为准） | **已可脚本化，零改造**：`node tools/apply_indexes.js --env <prod_id> --apply --secret-file <文件>`。该脚本走官方 HTTP API（幂等、可回读校验），`--env` 参数**已支持**（`tools/apply_indexes.js:60`：`valOf('--env') \|\| initDb/config.json::DEV_ENV_ID`，无 `--env` 时仍从单源现读、不手抄）。⚠️ 默认 dry-run，必须显式 `--apply`；AppSecret **用后即轮换**（账号级凭证）。🔴 **线上 dev 现仅 48/49**（R174 那 5 条已随批量补齐；剩第 4 条 `idx_ai_insight_shop_month` 未建，见队列 #12）⇒ 脚本幂等，跑一次即补齐；其中含 R202 兜底所需的 `shop.id` 索引（已登记于 `review/NOTE_2026-10-03_round203_impact-name-decode.md` 待办 #2，**不宜单加**，随本次批量一起做） | 我 |
 
 ### C. prod 种子数据 —— ✅ **落地路径已补**（见 `review/PLAN_2026-10-01_prod环境播种方案.md`）
 
@@ -78,10 +78,10 @@ dev 库里的任何账套 / 台账 / 测试数据**不会**流到正式版。
 
 | # | 动作 | 判据 |
 |---|---|---|
-| D1 | 全量部署 **42 个函数**（43 − `initDb`） | `cli cloud functions deploy --names <fn> -r`，**一次一个、必带 `-r`**（漏 `-r` = 覆盖云端 `wx-server-sdk` ⇒ 前端「网络不可用」） |
+| D1 | 全量部署 **54 个函数**（55 − `initDb`） | `cli cloud functions deploy --names <fn> -r`，**一次一个、必带 `-r`**（漏 `-r` = 覆盖云端 `wx-server-sdk` ⇒ 前端「网络不可用」） |
 | D2 | 🔴 **先在控制台定 all 函数 timeout 值，再全量部署** | 实测：`config.json` 的 `timeout` **不被采纳**（重启键 §该条），值只存在于控制台。**dev 定过 ≠ prod 生效**，必须重走「定值 → 部署 → `cli cloud functions info` 逐个回读」 |
 | D3 | `ADMIN_SETUP_TOKEN` 等凭证重配 | 凭证**不随环境走** |
-| D2-bis ✅ | **dev 存量缺口（R215c 发现 → R215d 已闭环）**：`importSalesBill` / `manageShop` 的 `timeout` 曾为 **3**，**2026-10-05 已抬到 20**；全量 44 函数回读 `timeout==3` = **0** | 判据 = `cli cloud functions info --names …`（**空格分隔**）的 `timeout` 列。**现状：`{15:1, 20:40, 30:1, 60:2}`、`status` 44/44 `Active`**（`review/evidence/r215d_timeout/cli_info_all_44fn_after.txt`）。⚠️ **可复用纪律**：**新部署的函数 timeout 一律是平台默认 3** ⇒「部署完」≠「可用」，**每次部署新函数后必须回读 `timeout` 并手工抬到 20** | ✅ 已闭环（R215d · 键鼠代操控制台，见 `review/NOTE_2026-10-05_round215d_控制台抬timeout.md`） |
+| D2-bis ✅ | **dev 存量缺口（R215c 发现 → R215d 已闭环）**：`importSalesBill` / `manageShop` 的 `timeout` 曾为 **3**，**2026-10-05 已抬到 20**；全量 44 函数回读 `timeout==3` = **0** | 判据 = `cli cloud functions info --names …`（**空格分隔**）的 `timeout` 列。**🔴 R215d 时点值（非当前现状，勿照此核对）：`{15:1, 20:40, 30:1, 60:2}`、`status` 44/44 `Active`**（`review/evidence/r215d_timeout/cli_info_all_44fn_after.txt`）。⚠️ **可复用纪律**：**新部署的函数 timeout 一律是平台默认 3** ⇒「部署完」≠「可用」，**每次部署新函数后必须回读 `timeout` 并手工抬到 20** | ✅ 已闭环（R215d · 键鼠代操控制台，见 `review/NOTE_2026-10-05_round215d_控制台抬timeout.md`） |
 
 ### D+ 开真实支付 🔴（R215 补录 · R214 发现的清单缺口）
 
@@ -163,7 +163,7 @@ dev 库里的任何账套 / 台账 / 测试数据**不会**流到正式版。
 
 - ❌ 不需要动 dev 环境的任何数据（它是您的试验田，保留着更好 —— 出问题能对照）
 - ❌ 不需要改任何业务代码（换环境只改环境 ID）
-- ❌ 不需要把 dev 的 40 条索引"复制"到 prod 的**数据**里（索引是结构，不是数据）
+- ❌ 不需要把 dev 的 49 条索引"复制"到 prod 的**数据**里（索引是结构，不是数据）
 - ❌ 不需要删除 dev 里的测试数据
 
 ---
