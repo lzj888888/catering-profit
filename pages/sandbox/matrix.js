@@ -6,6 +6,8 @@
 //
 // ⚠️ 免费引流：本页矩阵与导出均免费（G4 李老师拍板），不触发付费墙、不要求先开店铺。
 const api = require('../../utils/api.js');
+// R411：金额展示单源（万/元口径与小数位只在这里定，页面不许再各写一份）
+const MoneyFmt = require('../../utils/moneyFmt.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 const {
   BIZ_PRESETS, CITY_COEF, assembleItems, resolveBuild, findPreset, bizKeyOfPreset,
@@ -467,11 +469,8 @@ Page({
     const y2f = (v) => api.yuanToFen(v);
 
     // 金额显示：≥1 万用「万」，否则用「元」（单位都取自 terms，不硬写中文）
-    const money = (fen) => {
-      const yuan = fen / 100;
-      if (Math.abs(yuan) >= 10000) return (yuan / 10000).toFixed(1) + T.cashWan;
-      return Math.round(yuan) + T.yuan;
-    };
+    // R411：走单源（分→元→万 的阈值换算收进 utils/moneyFmt.js）
+    const money = (fen) => MoneyFmt.formatFen(fen, { wanUnit: T.cashWan, yuanUnit: T.yuan });
     const fill = (tpl, map) => fmt(tpl, map);
 
     const fixedMonthly = this.fixedMonthlyYuan(rentYuan);
@@ -623,9 +622,8 @@ Page({
     if (!(engineYuan > 0) || Math.abs(sumFen / 100 - engineYuan) > 1) return null;
 
     const T = this.data.t;
-    const money = (fen) => (Math.abs(fen) >= 1000000
-      ? (fen / 1000000).toFixed(1) + T.cashWan
-      : Math.round(fen / 100) + T.yuan);
+    // R411：走单源（两处同形，一并收口）
+    const money = (fen) => MoneyFmt.formatFen(fen, { wanUnit: T.cashWan, yuanUnit: T.yuan });
 
     const rows = [
       { key: 'rent', name: T.fixedBreakRent, text: money(byKey.rent || 0) },
@@ -705,9 +703,8 @@ Page({
       if (years > 0) amortFen += fen / (years * 12);
     }
     if (!(totalFen > 0)) return '';
-    const money = (fen) => (Math.abs(fen) >= 1000000
-      ? (fen / 1000000).toFixed(1) + T.cashWan
-      : Math.round(fen / 100) + T.yuan);
+    // R411：走单源（两处同形，一并收口）
+    const money = (fen) => MoneyFmt.formatFen(fen, { wanUnit: T.cashWan, yuanUnit: T.yuan });
     return String(T.buildSumText || '{total} · {amort}')
       .replace('{total}', money(totalFen))
       .replace('{amort}', money(amortFen));

@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：198 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：199 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -1247,6 +1247,8 @@ const SUITES = [
   //   该清单是发布当天照着执行的，数字漂移会直接导致漏建 unique 索引（静默错）。
   //   同时守「历史快照必须显式标注」—— 未来把旧数字写回来会当场转红。
   ['release-checklist', 'tools/check_release_checklist.js'],
+  //   金额展示单源（R411：此前 7 份手写实现，其中 1 份会把小数切成千分位、2 份万的小数位还不一致）
+  ['money-fmt', 'tools/check_money_fmt.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

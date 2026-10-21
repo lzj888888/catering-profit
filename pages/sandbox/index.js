@@ -11,6 +11,8 @@
 // ⚠️ 付费弹窗边界：M2 模块**永不触发**付费弹窗（不变）。
 const api = require('../../utils/api.js');
 const ui = require('../../utils/ui.js');
+// R411：金额展示单源（万/元口径与小数位只在这里定，页面不许再各写一份）
+const MoneyFmt = require('../../utils/moneyFmt.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 // 🔴 R395：分享卡片标题装配（纯函数单源）—— 见 `utils/shareCard.js` 头注
 const shareCard = require('../../utils/shareCard.js');
@@ -722,7 +724,8 @@ Page({
       const fixed = Number(r.fixed_total);
       if (expYuan > 0 && isFinite(k) && k > 0 && isFinite(fixed)) {
         const pYuan = Math.round(expYuan * k - fixed);
-        const money = (n) => String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        // R411：走单源 —— 先取整再分组，小数位绝不被千分位切碎
+        const money = (n) => MoneyFmt.groupDigits(Math.abs(n));
         profitText = (pYuan >= 0 ? '+' : '−') + cur + money(pYuan);
       }
       const v = this.data.verdict;
@@ -1141,7 +1144,8 @@ Page({
     if (!r || r.red_alert) return null;
     const T = this.data.t || {};
     const fill = (tpl, o) => String(tpl || '').replace(/\{(\w+)\}/g, (mm, k) => (o[k] == null ? '' : o[k]));
-    const money = (n) => String(Math.round(Math.abs(n))).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    // R411：走单源（同上）
+    const money = (n) => MoneyFmt.groupDigits(Math.abs(n));
     const profitYuan = Number(this.data.targetYuan) || 0;
     const revYuan = Number(this.data.expectYuan) || 0;
     if (!(profitYuan > 0)) return { has: false, tip: T.tgtRevNeedTarget || '' };
@@ -1197,10 +1201,8 @@ Page({
     const T = this.data.t;
     const k = ratePct / 100;
     const fill = (tpl, v) => String(tpl || '').replace('{x}', v);
-    const money = (yuan) => {
-      if (Math.abs(yuan) >= 10000) return (yuan / 10000).toFixed(1) + T.profitWan;
-      return Math.round(yuan) + T.profitYuan;
-    };
+    // R411：走单源 —— 万的门槛与小数位不在页面写
+    const money = (yuan) => MoneyFmt.formatYuan(yuan, { wanUnit: T.profitWan, yuanUnit: T.profitYuan });
 
     const mults = [0.8, 1, 1.2, 1.5];
     return mults.map((m) => {
@@ -1278,9 +1280,8 @@ Page({
     if (!out.ok) return null;
 
     const fill = (tpl, map) => String(tpl || '').replace(/\{(\w+)\}/g, (m, k) => (map[k] != null ? map[k] : m));
-    const money = (yuan) => (Math.abs(yuan) >= 10000
-      ? (yuan / 10000).toFixed(2) + T.profitWan
-      : Math.round(yuan) + T.profitYuan);
+    // R411：走单源 + 精度统一到 1 位（原为 2 位 ⇒ 同一页上一张卡「1.2万」、这张「1.23万」，老板会当成两个数）
+    const money = (yuan) => MoneyFmt.formatYuan(yuan, { wanUnit: T.profitWan, yuanUnit: T.profitYuan });
 
     return {
       bad: false,
