@@ -340,3 +340,10 @@
   - **队列**：42 行 = 24 done / 17 blocked / 1 in_progress（#42 活体）/ **0 todo** ⇒ 无可认领。
   - **NOTE↔代码抽检三条全对得上**：R426 `checkAmounts` 在 `subpkg/biz/card/edit.js`(9)/`material/edit.js`(3)；R425 `twMkByPlat` 仍 15 处；R423-S4 `app.json` 主包 **6 页** + `subpkg/tools` 7 / `subpkg/biz` 14，与 NOTE 声明一致。
   - 🔴 **新发现（只登记，未改）**：`_归档_过程件_202610/`（480 个过程件）在 `git status` 里是 `??` 未跟踪，`git check-ignore` 给不出有效规则 ⇒ **实际未被 ignore**。后果：本仓库任何一次 `git add -A` 都会把这 480 个临时件卷进提交。建议单立一条「把归档目录真正加入 .gitignore 并核对 `git status` 转净」，本轮不动（属跨目录卫生项，超出巡检只读边界）。
+
+- [2026-10-21 22:50] R427 已落 · **队列 #42 → done** · 门禁 203/203 RC=0（245.4s）· commit 6e68472
+  - M1 录入页剩余 4 个金额入口接体检：`onTwDetail`（takeoutDetailRows 三框）/ `onFastSubsidy` / `onRecYuan`（twRecYuan）/ `onDirectConsume`（directConsumeYuan）。
+  - 🔴 最值得记的一条：`onFastSubsidy` **走了** `updateRow`，但触发条件只认 `patch.amountYuan`，它传的是 `{subsidy:...}` ⇒ **静默跳过**。**判据盯的是"字段名"而不是"这格是不是钱"** —— 与 R299「守分支在不在、不守分支到不到」同族病。
+  - 改法沿用 #24/#25 原则：**只暴露不改数**（不静默清洗、不改 yuanToFen、不阻止写入）。未改 wxml、无新增文案 ⇒ terms 零改动、免出码；零云函数 ⇒ 免部署。
+  - 守卫 56→**63**（②-39~②-45）；**变异 M1/M2/M3 全部被抓到**（删接线/删三框之一/删 onFastSubsidy 调用），还原后 md5 一致（662d46350ee4）。
+  - 未做：真机走查（#7 仍 blocked）。#32（M3 两页）已由并发会话完成（03f52d2），本轮未碰。
