@@ -354,3 +354,12 @@
   - 顺带修 `.gitignore` 补 `_归档_过程件_202610/`（并发巡检 791c3d9 登记的风险；68 个未跟踪文件一直裸露）。口径同 `_m3/`/`_probe_tmp/`：只做"不误提交"，目录留仓内。
   - 适配：check_shop_reset 分段拼接；提审材料 2 处；mine/index.wxss 注释路径；terms 由脚本 3.5 步自动同步。
   - 自纠：`.gitignore` 追加时 LF→CRLF（176/91）已转回（现 4/0）——**今天第 4 次行尾翻写**。
+
+- [2026-10-21 23:55] R428 已落 · 两道"防自己再犯"的机械保证 · commit 059c8b1 + 64ad052
+  - ① **`tools/check_line_endings.js`（提交前预检）**：今天行尾翻写踩了 4 次（check_page_manifest / check_bill_import_gate / check_free_shop_limit / .gitignore），diff 变几百行、真改动被淹没。
+    - 判据**逐字节比 CRLF 计数**（HEAD vs 工作树），不用"改动行数占比"那种启发式；`--fix` 可自动改回。
+    - **刻意不进 verify_all**：门禁是提交后跑的，那时工作树已干净 ⇒ 判据恒绿 = 假绿。正确位置是**提交前**。
+    - 自测：把 check_pages.js 翻成 CRLF → 报 274 行；`--fix` 后 `git diff` 归零。
+  - ② **过程件规则**：`_commit_*.txt` / `_gate_*.log` 入 `.gitignore`，并移除误入的 `_commit_s5.txt`。
+    R423 期间两次 `git add -A` 夹带（d2ee98b、87fcf4b）。仓库另有 4 个历史遗留 `_commit_r*.txt`，未删、只登记。
+  - 🔴 教训归纳：**"改完看 numstat"这条今天我写进三份 NOTE 还是犯了第 4 次 ⇒ 靠自律无效，必须机器守**。这是本轮真正的收获。
