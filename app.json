@@ -21,7 +21,6 @@
     "pages/material/pick",
     "pages/material/batch",
     "pages/takeaway/index",
-    "pages/metrics/impact",
     "pages/recon/index",
     "pages/m3/dishreview/index",
     "pages/pay/orders",
@@ -62,5 +61,13 @@
     ]
   },
   "style": "v2",
-  "lazyCodeLoading": "requiredComponents"
+  "lazyCodeLoading": "requiredComponents",
+  "subpackages": [
+    {
+      "root": "subpkg/tools",
+      "pages": [
+        "metrics/impact"
+      ]
+    }
+  ]
 }

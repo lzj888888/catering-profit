@@ -376,7 +376,7 @@ Page({
         //   这张表单已经存过了，留在栈里只会让"返回"退回到一个不该再填的页面
         //   （与 round156「改完即走」同一条纪律）。
         wx.redirectTo({
-          url: '/pages/metrics/impact?material_id=' + materialId
+          url: '/subpkg/tools/metrics/impact?material_id=' + materialId
             + '&name=' + encodeURIComponent(materialName),
         });
       },

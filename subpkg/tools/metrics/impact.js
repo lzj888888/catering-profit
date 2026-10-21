@@ -3,9 +3,9 @@
 // 数据来自 api.call('syncCostCard', { material_id, dry_run: true })。dry_run = 只读预览：
 //   列出所有用到该原料的成本卡、按最新价重算的新成本/新毛利率、是否跌破业态参考带下限。
 // 🔴 本页**只展示**，绝不出现「一键改卡 / 应用新价」按钮 —— 改卡只能由用户在列表页手动走「同步至最新价」。
-const api = require('../../utils/api.js');
-const ui = require('../../utils/ui.js');
-const { TERMS } = require('../../miniprogram/i18n/terms.js');
+const api = require('../../../utils/api.js');
+const ui = require('../../../utils/ui.js');
+const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 
 // 🔴 R203：路由参数里的**中文名必须自行解码**。
 //   跳转侧（pages/material/index.js::goImpact）用 encodeURIComponent 编过一次，

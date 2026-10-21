@@ -189,7 +189,7 @@ for (const p of found.sort()) {
 
   // ⑥ 下拉刷新：定义了钩子 ⇒ 该页 json 必须开启（R298X）
   //   根因：仓内曾有 **3 页**（`pages/card/edit.js` 成本卡编辑表单 / `pages/takeaway/index.js`
-  //   外卖试算 / `pages/metrics/impact.js` 影响面）各自复制了一段一模一样的
+  //   外卖试算 / `subpkg/tools/metrics/impact.js` 影响面）各自复制了一段一模一样的
   //   `onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()); },`，
   //   而它们三页的 json `enablePullDownRefresh` 全是 **false** ⇒ 钩子**永不触发**（死槽）。
   //   这类"假功能"页面照常渲染、零报错、控制台干净，人工走查极易放过 ⇒ 只能靠不变量守。

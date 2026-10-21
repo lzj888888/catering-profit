@@ -223,7 +223,7 @@ Page({
   goImpact(e) {
     const m = e.currentTarget.dataset.m;
     if (!m || !m.id) return;
-    wx.navigateTo({ url: '/pages/metrics/impact?material_id=' + m.id + '&name=' + encodeURIComponent(m.name || '') });
+    wx.navigateTo({ url: '/subpkg/tools/metrics/impact?material_id=' + m.id + '&name=' + encodeURIComponent(m.name || '') });
   },
   goEdit(e) {
     const m = e.currentTarget.dataset.m;

@@ -18,7 +18,7 @@
 //   ② **真比对 + 真调用**：`onSave` **函数体内**既有三要素键比对，又有 `this.tellPriceImpact(` 调用。
 //      ⚠️ 两种恒真本仓都踩过：全文 grep 词出现（注释喂绿）、锚到调用点（同文件别处有同名模式）
 //      ⇒ 一律在**剥注释后**的源码上、锚到**函数定义体**。
-//   ③ **真告知**：`tellPriceImpact` 函数体内有 `wx.showModal(`、有 `dry_run` 探测、且跳 `/pages/metrics/impact`。
+//   ③ **真告知**：`tellPriceImpact` 函数体内有 `wx.showModal(`、有 `dry_run` 探测、且跳 `/subpkg/tools/metrics/impact`。
 //   ④ **无假承诺**：话术不得出现「已自动更新」类字样；且必须含「旧价」（说清卡里还是旧价才算告知，
 //      只问"要看影响吗"而不说现状 = 半个告知，老板仍以为已经变了）。
 //   ⑤ **按钮合规**：modal 两个按钮 ≤4 字符（平台硬限制）。用变量引用时 `check_modal_button_len`
@@ -35,7 +35,7 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
 const EDIT = 'pages/material/edit.js';
-const IMPACT = 'pages/metrics/impact.js';
+const IMPACT = 'subpkg/tools/metrics/impact.js';
 const TERMS_SPEC = 'specs/dev-specs/i18n/terms.js';
 const TERMS_MP = 'miniprogram/i18n/terms.js';
 
@@ -209,7 +209,7 @@ function analyze(editSrc, termsSrc) {
   } else {
     if (tell.indexOf('wx.showModal(') < 0) fails.push('B2 tellPriceImpact 内没有 wx.showModal(');
     if (tell.indexOf('dry_run') < 0) fails.push('B3 没做 dry_run 影响数探测（会退化成对每个原料都弹）');
-    if (tell.indexOf('/pages/metrics/impact') < 0) fails.push('B4 告知后没有跳到影响面页');
+    if (tell.indexOf('/subpkg/tools/metrics/impact') < 0) fails.push('B4 告知后没有跳到影响面页');
   }
 
   // ④ 无假承诺 + 必须说清现状
@@ -267,7 +267,7 @@ ok('② onSave 体内真比对三要素', !!onSave && onSave.indexOf('newCostKey
 ok('③ onSave 体内真调用告知流程', !!onSave && onSave.indexOf('this.tellPriceImpact(') >= 0);
 ok('④ 告知流程真的弹窗', !!tell && tell.indexOf('wx.showModal(') >= 0);
 ok('⑤ 告知流程先探影响数（dry_run）', !!tell && tell.indexOf('dry_run') >= 0);
-ok('⑥ 告知流程跳到影响面页', !!tell && tell.indexOf('/pages/metrics/impact') >= 0);
+ok('⑥ 告知流程跳到影响面页', !!tell && tell.indexOf('/subpkg/tools/metrics/impact') >= 0);
 ok('⑦ 话术不说"已自动更新"', BANNED.every((w) => literalOf(termsSpec, 'matImpactAsk:').indexOf(w) < 0
   && literalOf(termsSpec, 'matImpactAskUnknown:').indexOf(w) < 0));
 ok('⑧ 话术点明"卡里还是旧价"', literalOf(termsSpec, 'matImpactAsk:').indexOf('旧价') >= 0
@@ -290,7 +290,7 @@ const GOOD_EDIT = ''
   + '  },\n'
   + '  async tellPriceImpact() {\n'
   + '    await api.call("syncCostCard", { dry_run: true });\n'
-  + '    wx.showModal({ success: (r) => { wx.redirectTo({ url: "/pages/metrics/impact?x=1" }); } });\n'
+  + '    wx.showModal({ success: (r) => { wx.redirectTo({ url: "/subpkg/tools/metrics/impact?x=1" }); } });\n'
   + '  },\n'
   + '});\n';
 const GOOD_TERMS = ''
@@ -321,7 +321,7 @@ ok('R4 反样本·删真调用 ⇒ 判否', analyze(BAD_C, GOOD_TERMS).length > 
   && analyze(BAD_C, GOOD_TERMS).some((f) => f.indexOf('A5') === 0));
 
 // 反样本 4：跳转目标改错页 ⇒ 必须判否
-const BAD_D = GOOD_EDIT.replace('/pages/metrics/impact?x=1', '/pages/card/index');
+const BAD_D = GOOD_EDIT.replace('/subpkg/tools/metrics/impact?x=1', '/pages/card/index');
 ok('R5 反样本·跳错页 ⇒ 判否', analyze(BAD_D, GOOD_TERMS).length > 0
   && analyze(BAD_D, GOOD_TERMS).some((f) => f.indexOf('B4') === 0));
 
