@@ -340,6 +340,9 @@
         </view>
         <view class="row row-strong"><text class="row-name">{{t.channelTotal}}</text><text class="row-val">{{channel.total}}{{t.channelPct}}</text></view>
       </view>
+      <!-- R412（队列 #24）：超 100% 的显式提示。文案键 channelOver100 早就在 terms 里定义，
+           但此前 wxml 从不渲染、js 从不判定 ⇒ 是死文案。cost 很高：不提示则佣金按 >100% 流水扣。 -->
+      <view class="warn-note" wx:if="{{channel.over100}}">{{t.channelOver100}}</view>
       <view class="hint">{{t.channelTotalNote}}</view>
     </block>
   </view>

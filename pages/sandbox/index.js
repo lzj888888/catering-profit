@@ -16,6 +16,9 @@ const MoneyFmt = require('../../utils/moneyFmt.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 // 🔴 R395：分享卡片标题装配（纯函数单源）—— 见 `utils/shareCard.js` 头注
 const shareCard = require('../../utils/shareCard.js');
+// R412（队列 #24）：渠道占比规则单源 —— 「外卖 + 团购 ≤ 100%」的判定必须可被机器验，
+//   写成纯函数（utils/channelRule.js）后守卫能喂真数字判行为，而不是 grep 字面量。
+const ChannelRule = require('../../utils/channelRule.js');
 // M2v1.3：业态参数包（纯数据 + 唯一装配入口 + 回本派生，仓根 utils/）
 // R234：新增 `bizKeyOfPreset`（预设 → 4 大类，供"平铺业态"后自动定参考带）。
 // R237：`estimateSeats`（面积 × 业态密度 → 座位估算）**已删除** —— 李老师否掉了"面积↔桌数"的强关联；
@@ -524,6 +527,7 @@ Page({
       grouponComm: 0,            // 团购佣金费率 = 团购占比% × (抽点+折扣)%
       cardFee: 0,                // 刷卡费率
       total: 0,                  // 合计挂钩费率（= 三者之和）
+      over100: false,            // R412：外卖+团购占比 > 100%（true 时界面提示；只提示不改数）
     },
   },
 
@@ -824,11 +828,17 @@ Page({
     const takeawayComm = off ? 0 : r2(rt * ((Number(c.platformRate) || 0) + (Number(c.packRate) || 0)) / 100);
     const grouponComm = off ? 0 : r2(rg * ((Number(c.groupPlatformRate) || 0) + (Number(c.discountRate) || 0)) / 100);
     const cardFee = off ? 0 : r2(Number(c.cardRate) || 0);
+    // 🔴 R412：占比合计 > 100% 时**必须提示**。老板填「外卖 60% + 团购 60%」时，
+    //   上面两行佣金等于按 120% 的流水扣 ⇒ 挂钩费率虚高 ⇒ 保本额虚高，而全程零报错。
+    //   为什么不静默钳到 100%：钳制会掩盖输入错误（钳完的数同样是错的，老板看不出自己填错）。
+    //   关掉渠道时（off）不给提示：此时占比不参与计算，提示只会误导。
+    const over100 = !off && ChannelRule.isChannelRatioOver100(rt, rg);
     this.setData({
       'channel.takeawayComm': takeawayComm,
       'channel.grouponComm': grouponComm,
       'channel.cardFee': cardFee,
       'channel.total': r2(takeawayComm + grouponComm + cardFee),
+      'channel.over100': over100,
     });
   },
 

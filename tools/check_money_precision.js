@@ -50,7 +50,11 @@ const SRC_MONEY = path.join(CF, 'common', 'money.js');
 const SRC_API = path.join(ROOT, 'utils', 'api.js');
 
 // 扫描面：剔派生副本（cx_* 由 sync_common 从 common/ 派生，判单源只看源）、证据、探针、规格原型
-const SKIP_DIRS = ['node_modules', 'miniprogram_npm', '.git', '.workbuddy', '_probe_tmp',
+//   `_m3`（R414 补）：`.gitignore` 第 39 行登记的**工作区临时脚本/截图堆**，git 零跟踪（`git ls-files _m3` 空）。
+//   它之前被漏扫进来 ⇒ 别人在 `_m3/` 里写的探针/暂存件（未上线的预研）会把本守卫判红，
+//   红因与生产金额换算无关（R414 实测：`_r415_probe/probe.js` + `_r415_stage/utils_amountInput.js` 两处 `* 100`）。
+//   排除它**不放宽判据**：生产面只要真写出未登记的 `* 100`，下面 MIN_FILES/MIN_HITS 与 C-① 照旧判红。
+const SKIP_DIRS = ['node_modules', 'miniprogram_npm', '.git', '.workbuddy', '_probe_tmp', '_m3',
   'prototype', 'review', 'specs', 'tools'];
 
 const MIN_FILES = 200;        // 实测 314 —— 取保守下沿
