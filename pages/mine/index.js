@@ -91,7 +91,7 @@ Page({
 
   // R193：我的订阅 / 订单 —— 此前 pay/orders 只能从「到期提醒条 / 月列表 / 成本卡列表」进，
   //   已付费用户在「我的」里根本找不到自己的有效期与续费入口（提醒条只在快到期才出现）。
-  goOrders() { wx.navigateTo({ url: '/pages/pay/orders' }); },
+  goOrders() { wx.navigateTo({ url: '/subpkg/tools/pay/orders' }); },
 
   // R193：使用指引 —— 新用户打开就是四张卡，M1 要填 40+ 字段，没有"第一次怎么用"。
   // 🔴 showModal confirmText ≤4 字符（文案已按此约束给「知道了」）。

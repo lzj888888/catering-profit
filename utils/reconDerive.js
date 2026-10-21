@@ -115,7 +115,7 @@ function reconcile(input) {
 /**
  * 🔴 R298X：抑制原因 → **TERMS.card 文案键**（单源）。
  *   为什么必须单源（这是本轮修的真缺陷）：
- *     修前 `pages/recon/index.js` 在页面里内联一段 if/else，只给了 3 个分支，
+ *     修前 `subpkg/tools/recon/index.js` 在页面里内联一段 if/else，只给了 3 个分支，
  *     `menu_no_price`（菜品卡没填售价）与 `actual_no_data`（本月没录收入）**被兜底**
  *     到「覆盖率不足（<60%）」的文案上。而 `reconcile` 的判定顺序是
  *        coverage_missing → coverage_low → menu_no_price → actual_no_data

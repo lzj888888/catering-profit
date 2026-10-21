@@ -146,7 +146,7 @@ check('R298X-⑧ 通用兜底文案不串味（不含 覆盖率/售价/收入 �
   !/覆盖率|售价|收入/.test(TERMS.card.reconSuppressGeneric), TERMS.card.reconSuppressGeneric);
 
 // ⑨⑩ 页面侧：reason→文案 的判定**只许在单源里**（形态判据，剥注释后扫）
-const recoSrc = fs.readFileSync(path.join(__dirname, '..', 'pages', 'recon', 'index.js'), 'utf8');
+const recoSrc = fs.readFileSync(path.join(__dirname, '..', 'subpkg', 'tools', 'recon', 'index.js'), 'utf8');
 const recoBody = recoSrc.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
 check('R298X-⑨ 页面改走单源（正文含 suppressKeyOf( 调用）', /suppressKeyOf\(/.test(recoBody));
 const REASON_LITERALS = ['coverage_missing', 'coverage_low', 'menu_no_price', 'actual_no_data'];

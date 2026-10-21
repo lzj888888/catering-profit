@@ -197,7 +197,7 @@ Page({
   goInventory() { wx.navigateTo({ url: '/subpkg/biz/month/inventory?month=' + this.data.curMonth }); },
   goAmortize() { wx.navigateTo({ url: '/subpkg/biz/month/amortize?month=' + this.data.curMonth }); },
   goResult() { wx.navigateTo({ url: '/subpkg/biz/month/result?month=' + this.data.curMonth }); },
-  goOrders() { wx.navigateTo({ url: '/pages/pay/orders' }); },
+  goOrders() { wx.navigateTo({ url: '/subpkg/tools/pay/orders' }); },
 
   onArchive() {
     wx.showModal({

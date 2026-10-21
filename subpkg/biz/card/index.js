@@ -378,7 +378,7 @@ Page({
     const cc = e.currentTarget.dataset.code;
     wx.navigateTo({ url: '/subpkg/biz/card/version?card_code=' + (cc || '') });
   },
-  goOrders() { wx.navigateTo({ url: '/pages/pay/orders' }); },
+  goOrders() { wx.navigateTo({ url: '/subpkg/tools/pay/orders' }); },
 
   // ===== 批次 P0（任务 2）· 删除 / 复制 / 同步 =====
   // 删除 = 软删该 card_code 所有版本（二次确认；历史版本不物理删）

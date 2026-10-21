@@ -1,14 +1,14 @@
-// pages/pay/orders.js —— 批次 5 · 订单记录页
+// subpkg/tools/pay/orders.js —— 批次 5 · 订单记录页
 //
 // ⚠️ 数据源 = payOrderList（订单主体=user_id，全店通用）；金额分整数仅格式化展示。
 // ⚠️ 展示「当前有效期至」+「续费」入口（到期前 30 天内、到期后均可见——由后端返回的 days_left 判断，
 //   前端只读 expire_at 相关值，不读 plan_id）。续费调 payRenew。
 // ⚠️ 当前阶段 enable_real_payment=false：续费下单后提示「联系客服开通」，权益由后台发放。
-const api = require('../../utils/api.js');
-const ui = require('../../utils/ui.js');
-const entitle = require('../../utils/entitlement.js');
-const { TERMS } = require('../../miniprogram/i18n/terms.js');
-const { isIOS } = require('../../utils/platform.js');
+const api = require('../../../utils/api.js');
+const ui = require('../../../utils/ui.js');
+const entitle = require('../../../utils/entitlement.js');
+const { TERMS } = require('../../../miniprogram/i18n/terms.js');
+const { isIOS } = require('../../../utils/platform.js');
 
 Page({
   data: {

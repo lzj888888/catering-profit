@@ -124,7 +124,7 @@ Page({
   goCard() { wx.navigateTo({ url: '/subpkg/biz/card/index' }); },
   goMaterial() { wx.navigateTo({ url: '/subpkg/biz/material/index' }); },
   goTakeaway() { wx.navigateTo({ url: '/subpkg/biz/takeaway/index' }); },
-  goRecon() { wx.navigateTo({ url: '/pages/recon/index' }); },
+  goRecon() { wx.navigateTo({ url: '/subpkg/tools/recon/index' }); },
   goReview() { wx.navigateTo({ url: '/pages/m3/dishreview/index' }); },
 
   // R193：全局开了下拉刷新但本页未实现 ⇒ 下拉转圈、松手没反应（假刷新）。

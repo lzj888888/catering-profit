@@ -1,12 +1,12 @@
-// pages/recon/index.js —— M3.21 M1↔M3 率对率对账（只读对照，绝不写 M1）
+// subpkg/tools/recon/index.js —— M3.21 M1↔M3 率对率对账（只读对照，绝不写 M1）
 //
 // 数据：getLedger(month) 拿 M1 实际 + getCostCard() 拿全部卡 → 喂 utils/reconDerive.js。
 // 🔴 只读：本页只调 getLedger / getCostCard / getShopContext / saveShopSetting，**绝不**调 saveLedger / archiveMonth 等 M1 写路径。
 // 🔴 覆盖率分母：用户在页面上填「本月在售菜品数」，存 shop_switch（m3_menu_dish_count）；未填 ⇒ coverage null ⇒ 抑制。
-const api = require('../../utils/api.js');
-const ui = require('../../utils/ui.js');
-const { TERMS } = require('../../miniprogram/i18n/terms.js');
-const { calcMenuMargin, calcActualDishMargin, reconcile, suppressKeyOf } = require('../../utils/reconDerive.js');
+const api = require('../../../utils/api.js');
+const ui = require('../../../utils/ui.js');
+const { TERMS } = require('../../../miniprogram/i18n/terms.js');
+const { calcMenuMargin, calcActualDishMargin, reconcile, suppressKeyOf } = require('../../../utils/reconDerive.js');
 
 Page({
   data: {

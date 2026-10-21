@@ -751,7 +751,7 @@ Page({
   },
 
   // P0#8：导入成功结果条 —— 两个出口 + 收起
-  goRecon() { wx.navigateTo({ url: '/pages/recon/index' }); },
+  goRecon() { wx.navigateTo({ url: '/subpkg/tools/recon/index' }); },
   goDishReview() { wx.navigateTo({ url: '/pages/m3/dishreview/index' }); },
   dismissDone() { this.setData({ importDone: false, importDoneText: '' }); },
 });

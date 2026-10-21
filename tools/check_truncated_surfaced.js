@@ -119,7 +119,7 @@ ok('②-d LIST_TOTAL_CAP 仍是显式常量（防爆护栏的存在性）', /con
 //      它把 `card.list.length` 当**精确张数**渲染（`hub.wxml` 「共 N 张」）⇒ 属条件②违反
 //      ⇒ 已改为消费（`dh.isTruncated(card)`）。这条留痕就是为了防"豁免表变垃圾桶"。
 const EXEMPT = {
-  'pages/recon/index.js': 'getCostCard 仅作 code→name 辅助映射；卡缺只回落显示 code，不渲染清单、不输出总数、不进金额计算',
+  'subpkg/tools/recon/index.js': 'getCostCard 仅作 code→name 辅助映射；卡缺只回落显示 code，不渲染清单、不输出总数、不进金额计算',
   'subpkg/biz/takeaway/index.js': 'getCostCard 只喂「一单组成项」的 picker 候选：截断只表现为**候选变少**，'
     + '页面上不显示任何卡数量/总数、这些取值不进金额口径（成本从候选里查，缺了就选不到而不是算错）'
     + '—— 三条豁免条件均不违反（与 m3/hub.js 的区别正在于：**hub 把那个数渲染给用户看了**）',

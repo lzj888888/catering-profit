@@ -645,7 +645,7 @@ Page({
   },
 
   onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()); },
-  goOrders() { wx.navigateTo({ url: '/pages/pay/orders' }); },
+  goOrders() { wx.navigateTo({ url: '/subpkg/tools/pay/orders' }); },
   goInput() { wx.navigateTo({ url: '/subpkg/biz/month/input?month=' + this.data.month }); },
 
   // M1 报表导出：权限只读 expire_at（前端先查，后端 exportData 再兜底校验）；免费用户触发付费墙

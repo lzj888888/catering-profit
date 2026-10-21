@@ -17,7 +17,7 @@
 //
 // 边界（明写，别高估本守卫）：
 //   · 只证「文件里做了 iOS 判断」，**证不了运行时真挡住** —— 运行时由 `utils/paywall.js`
-//     与 `pages/pay/orders.js` 的二次拦截保证（纵深），二者互补，缺一不可。
+//     与 `subpkg/tools/pay/orders.js` 的二次拦截保证（纵深），二者互补，缺一不可。
 //   · 只扫 `pages/` `utils/` `app.js`；云函数侧（`cloudfunctions/`）按政策**有意不拦**，不在扫描面。
 (function () {
   const fs = require('fs');
@@ -32,7 +32,8 @@
   }
 
   // ---------- 常量 ----------
-  const SCAN_DIRS = ['pages', 'utils'];
+  // R423 分包化：pay/orders 已移入 subpkg（扫描面必须含它，否则支付入口少算一处）
+  const SCAN_DIRS = ['pages', 'subpkg', 'utils'];
   const SCAN_FILES = ['app.js'];
   // ⚠️ 只认**调用形态**，不认裸函数名：注释/文档里出现 "payRenew" 不算支付入口
   //    （第一版用裸名 `line.includes('payCreateOrder')`，把 3 处注释全判成未过滤 —— 那是守卫误报，
@@ -134,7 +135,7 @@
     if (r.hit > 0) hitFiles.push({ rel: rel(f), ...r });
   }
   // S2：命中数下限 —— 若支付动作改名/被删导致零命中，说明守卫已空跑（静默失效）⇒ 判红。
-  //     ⚠️ 下限取 2 = 本轮实测的两个真实入口（utils/paywall.js 下单 + pages/pay/orders.js 续费）；
+  //     ⚠️ 下限取 2 = 本轮实测的两个真实入口（utils/paywall.js 下单 + subpkg/tools/pay/orders.js 续费）；
   //        新增入口只会让数字变大，**不会**让本条失去意义（它是下限，不是相等）。
   check('S2 支付入口命中数 ≥ 2（防支付动作改名/被删导致守卫空跑）', hitFiles.length >= 2,
     '实测命中 ' + hitFiles.length + ' 个文件：' + hitFiles.map((x) => x.rel).join(' , '));
