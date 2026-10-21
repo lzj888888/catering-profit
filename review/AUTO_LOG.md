@@ -205,3 +205,16 @@
     真正压上线的是 **6 件需要李老师拍板**（真机走查 · 线上第 4 条索引 · 归档口径 · 内容级幂等口径 · 风格选型 · 外卖样例）。
   - 顺手取证：① 死文案 84/1834（抽查后价值低，多为遗留键）；② 文案影子副本 35 处命中，真·UI 硬编码仅 `api.js` 3 处且都在死分支 ⇒ 登记不动手；③ `utils/validate.js` 零 require 确认。
   - **免部署**：无云函数改动。
+
+## R417 · 队列 #24 收尾（渠道占比 >100% 接活）
+- [2026-10-21 12:24] R417 渠道「外卖+团购 >100%」从死文案接活 · 门禁 201/201 RC=0 · commit bbe0e95 · 队列 #24 → done
+  - **正文由 R414 会话实现**（`utils/channelRule.js` + `tools/check_channel_over100.js` + 三处接线，见其 NOTE），
+    它留下的 `_gate414.log` / `_gate414b.log` 均 0 字节（门禁起不来），队列仍是 todo ⇒ 本轮只补验证与落地，**未改写其文案与判据**。
+  - 单跑：`check_channel_over100` 30/30、`selftest_shape` 69/69、`requires` 全解析、`suite_coverage` 10/10、`suite_count_claims` 11/11、`hint_fold` 190/190、`money_precision` 30/30。
+  - 出码：`√ preview`（704.6 KB），证据 `review/evidence/r414_qr/qr.png`；**免部署**（无云函数改动）。
+  - 🔴 **门禁第一遍被别人的预研件判红**：`_m3/_r415_probe/probe.js` 与 `_m3/_r415_stage/utils_amountInput.js` 各含一处 `* 100`，
+    `check_money_precision` 扫到 `_m3/` ⇒ C-①/C-③ 红（与生产金额换算无关）。处置＝把 `_m3` 补进该守卫 `SKIP_DIRS`
+    （`.gitignore` 第 39 行的临时脚本堆，`git ls-files _m3` 为空）；**不是放宽判据**：命中 98 仍 ≥ 70 下界，生产面未登记 `* 100` 照旧红。
+  - 轮次号：R416 已被并发会话 12:04 的盘点提交 `df94416` 占用 ⇒ 本条按先到先得改号 **R417**（只 amend 自己的提交）。
+  - 遗留登记：`pages/sandbox/index.js` / `index.wxml` / `utils/channelRule.js` 的注释把实现轮标成 **R412**（实为 R414），
+    仅注释标号偏差、零行为影响；改注释会作废已跑门禁的证据，故留待下次触碰这些文件时顺带更正。
