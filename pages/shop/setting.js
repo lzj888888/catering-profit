@@ -1,8 +1,8 @@
 // pages/shop/setting.js —— 批次 4 · 店铺设置页（店铺名 / 备注）
 //
 // ⚠️ 2026-09-20：库存 / 摊销开关**已迁出本页**，改到「月度录入」页就地二选一
-//   （pages/month/input）—— 真机走查发现老板在设置页看不懂「库存核算 / 摊销核算」这类词，
-//   放到真正要用到的计算步骤旁边才有意义。单源落点 = pages/month/input.wxml 的核算方式区。
+//   （subpkg/biz/month/input）—— 真机走查发现老板在设置页看不懂「库存核算 / 摊销核算」这类词，
+//   放到真正要用到的计算步骤旁边才有意义。单源落点 = subpkg/biz/month/input.wxml 的核算方式区。
 // ⚠️ 本页保存时**不传 switches**（未传 = 不动库），不会覆盖那边的选择；
 //   店铺名/备注仍以服务端为准（getShopContext 读回）。
 const api = require('../../utils/api.js');
@@ -18,7 +18,7 @@ Page({
       shopNamePh: TERMS.settings.shopNamePh,
       remark: TERMS.settings.remark,
       remarkPh: TERMS.settings.remarkPh,
-      // 核算方式（库存 / 摊销）已迁至 pages/month/input —— 本页不再提供开关
+      // 核算方式（库存 / 摊销）已迁至 subpkg/biz/month/input —— 本页不再提供开关
       calcMoved: TERMS.calcMethod.movedNote,
       save: TERMS.settings.save,
       saved: TERMS.settings.saved,
