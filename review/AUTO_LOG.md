@@ -218,3 +218,13 @@
   - 轮次号：R416 已被并发会话 12:04 的盘点提交 `df94416` 占用 ⇒ 本条按先到先得改号 **R417**（只 amend 自己的提交）。
   - 遗留登记：`pages/sandbox/index.js` / `index.wxml` / `utils/channelRule.js` 的注释把实现轮标成 **R412**（实为 R414），
     仅注释标号偏差、零行为影响；改注释会作废已跑门禁的证据，故留待下次触碰这些文件时顺带更正。
+
+## R417 · 只读巡检（第 7 步；本轮预算用尽，无第二条）
+- ① 工作树：**跟踪文件 0 改动**（`git status --porcelain -uno` 空）；仅剩 4 个 0 字节门禁日志与 2 个变异脚本未跟踪（他人半成品，未删未收）。
+- ② 最近门禁：R417 `201/201 通过 RC=0`（313.8s，`_m3/_logs_r414/gate1.log`）；上一轮 R412 为 200/200。
+- ③ 队列：18 done / 1 todo（#25）/ 0 in_progress ⇒ **无僵尸 in_progress**。#25 代码未落（`utils/amountInput.js` 不存在、`readYuan` 零引用），
+  预研件仍在 `_m3/_r415_stage/`（R415 已回执），**没人占着**；本轮剩 ~15 分钟做不完「接线 4 处 + 并入 E 组 + 刷缓存 + 门禁」⇒ 保持 todo，不标 blocked（它不等人，只等时间）。
+- ④ NOTE↔代码抽检三条全对得上：
+  - R414 渠道占比：`isChannelRatioOver100` 真被 `recomputeChannel` 调用，守卫单跑 30/30，wxml 有 `wx:if="{{channel.over100}}"`。
+  - R415 金额预研：如实「只有预研件、零生产调用」（`utils/amountInput.js` 不存在），与 #25 待办描述一致，未被误标 done。
+  - R416 盘点「`utils/validate.js` 零 require」：`grep` 唯一命中是它自己的头注 ⇒ 断言成立。
