@@ -295,3 +295,11 @@
   - 🔴 **三个"字符串替换碰不到"的漏网模式**（S0 只 1 页 15 处引用，暴露不出来）：① **分段拼接** `path.join(ROOT,'pages','month',...)`；② **转义斜杠** `\/pages\/month\/xxx`（正则里的写法）；③ **数量下界**「pages 下 .js ≥ 25」⇒ 迁移后剩 20 判"扫描面塌陷"。③ 的正确处置是**给扫描面加 subpkg（回到 26）**，不是把下界调低 —— 后者是放宽判据。
   - 未做：没动 `pages/shop/setting.js/wxml`（另一会话在改 AI 授权入口，且整文件行尾翻写）；S2~S5 待做。
   - 下一步判断：S2–S5 会明显快于 S1（三个漏网模式已知、扫描面适配是一次性的）。
+
+- [2026-10-21 20:20] R423 分包 **S2** 已落 · 门禁 203/203 RC=0（299.0s）· commit d2ee98b
+  - `pages/{card,material,takeaway}/*` → `subpkg/biz/*`；app.json 主包 20→**12 页**（分包 biz 14 + tools 1）；包体**最大项已从 pages 变成 subpkg=0.5509MB**（远低于顶格 1.2）；总量 1.4734。
+  - 🔴🔴 **「页面全集」有三种写法，必须分别处理**（S1 只 6 页没暴露）：a. `app.json.pages` 字符串集合 → 加分包展开；b. 文件系统 `walk('pages')` → 加 subpkg 根；c. 数量下界（≥20）→ 加根后自然恢复，**不许调低下界**。a 与 b 必须同时改，只改一个会出现"文件找到但声明没有"（`check_pages` 红了 15 处）。
+  - 🔴 **分包声明是「相对 root」**（`biz/card/edit`）与文件路径（`subpkg/biz/card/edit`）字符串不等 ⇒ 必须在一侧拼 root 对齐。本轮选择在 `declared` 侧拼（不改 walk 结果，避免破坏以"相对 root"为约定的判据）。
+  - 适配 10 个守卫：check_pages（孤儿页+walk面）/ page_manifest（提审材料8处）/ tabbar（下界20+listPageJs）/ build_default_years / material_batch（全集+B-③）/ input_keyboard / list_ux（L4-②正则+L4-③两段式注册）/ bill_import_gate（A-③级数）/ export_delivery / import_diagnosis / verify_all（注释）。
+  - 🔴 自纠（本轮第二次）：`check_bill_import_gate.js` 编辑时整文件 LF→CRLF 翻写（633 vs 317 行），已转回。**改文件后立刻看 numstat**。
+  - 未做：S3（sandbox→tools，主包里现在最大块）/ S4（shop/recon/pay）。
