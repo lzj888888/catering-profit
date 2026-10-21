@@ -311,3 +311,11 @@
   - 🔴 自己判据假红 2 条：`handlerAt()` 只取最近 2 空格缩进行 ⇒ 命中 `this.setData` / `lines[idx]=Object.assign`。修判据（向上找到纯标识符），未改代码迎合。
   - 🔴 门禁 5 红**全属并发 S3（sandbox→tools）在途**，与本条无关：money_precision 登记 10 条失效 / m2_no_cost_rate 锚点缺文件 / money_fmt S3 两条 / free_shop_limit pages=24<30 / suite_assert_counts 被传染。按「不覆盖」未动。
   - 未做：出码（改了 wxml 本应出，门禁未绿时无意义）；免部署（未改云函数）。
+
+- [2026-10-21 21:00] R423 分包 **S3** 已落 · 门禁 203/203 RC=0（291.6s）· commit 7ea5116
+  - `pages/sandbox/*` → `subpkg/tools/sandbox/*`；主包 12→**8 页**（分包 biz 14 + tools 5）；包体最大项 subpkg=0.8396 / 顶格 1.2；总量 1.4784。
+  - 🔴🔴 **本轮发现的是潜伏真 bug，不是迁移问题**：`SKIP_DIRS` 里 `'tools'` 本意跳过仓库根 `tools/`（守卫脚本），但**按目录名匹配** ⇒ 分包 `subpkg/tools` 被整块跳过 ⇒ `check_money_precision` 把 10 条 sandbox 登记判成"失效"（文件压根没扫）。⚠️ 症状像"登记过期"，最自然的修法是**删登记** ⇒ 那才是真破坏。修法：SKIP 只在**根级**生效；已修 check_money_precision + check_theme_color（后者同隐患未红，一并修）。**推广纪律：任何按名字跳目录的名单都会和分包目录名撞车。**
+  - 判据语义：`check_free_shop_limit` 的 `FE_FLOOR.pages 30` 必红（主包只剩 8 个 .js）⇒ **没有**直接改 8，而是逐根降为防扫空值 + **新增 A1-⑥ 前端 .js 合计 ≥ 30** 兜总则（判据不松反紧）。
+  - 脚本改进：`migrate_to_subpkg.py` 新增 **3.5 步自动同步 terms 双副本**（S2 手工 cp、S3 又漂移一次 ⇒ 写进脚本）。
+  - 自纠：`check_free_shop_limit.js` 行尾 LF→CRLF 翻写（487 vs 247）已转回；清掉 d2ee98b 误入的过程件（a59310e）。
+  - 未做：S4（shop 2 页 + recon + pay + m3/dishreview，约 100KB）—— 移完主包只剩 3 个 tabBar 页。
