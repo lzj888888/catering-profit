@@ -44,6 +44,9 @@ Page({
     // M3.19（A3）：成本趋势（数据全来自 list，前端算，不新增调用、不落库）
     chartRows: [],
     showChart: false,
+    // 🔴 R408：恢复历史版本 = `saveCostCard` 带 card_code ⇒ **INSERT 新版本**（不是回滚指针）。
+    //   双击就会在版本链上多一条与目标版本内容相同的记录，老板看到"版本数比我操作次数多"。
+    restoring: false,
     loading: true,
   },
 
@@ -158,6 +161,10 @@ Page({
   },
 
   async doRestore(v) {
+    // 🔴 R408 连点保护（必须在第一个 await 之前）：恢复不是"回滚指针"，而是拿旧版本内容
+    //   **再存一版新的**（`saveCostCard` 带 card_code）。幂等键拼的是 `Date.now()`，每次点击
+    //   都是新键 ⇒ 双击 = 两个内容相同的版本。
+    if (this.data.restoring) return;
     // 明细行（R298Y 修复）：三种行分流 —— 子卡行 / 档案行 / 手工行。
     //   🔴 改前只按 `material_id` 二分 ⇒ **套餐子卡行（material_id 为空）落进「手工行」分支**，
     //   丢 `sub_card_ref` ⇒ `saveCostCard/validate.js:51` 强制要求 ⇒ 恢复套餐卡必失败。
@@ -195,6 +202,7 @@ Page({
       card_code: this.data.card_code,   // 带 card_code → saveCostCard 生成新版本
     };
     if (v.calc_mode_key === 'B') card.batch_output = v.batch_output || 0;
+    this.setData({ restoring: true });
     try {
       wx.showLoading({ title: TERMS.card.restoring, mask: true });
       await api.call('saveCostCard', { card, client_request_id: 'rc_' + Date.now() });
@@ -202,6 +210,7 @@ Page({
       wx.showToast({ title: TERMS.card.restoreDone, icon: 'success' });
       this.load();
     } catch (err) { wx.hideLoading(); api.toastError(err); }
+    finally { this.setData({ restoring: false }); }
   },
 
   fmtTime(ms) {

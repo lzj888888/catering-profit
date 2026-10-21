@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：196 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：197 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -561,6 +561,14 @@
 //         六条腿：基线真赋值（防"判据在、数据没有"恒真）/ onSave 体内真比对 + 真调用（剥注释 + 锚函数定义体）/
 //         tellPriceImpact 内真弹窗 + dry_run 探测 + 跳影响面页 / 话术不得含「已自动更新」且必须点明「还是旧价」/
 //         两个弹窗按钮 ≤4 字符（平台硬限制，变量引用时 check_modal_button_len 抓不到）/ 合成样本 + 真实变异反恒真。
+//       + 成本卡「追加型写」前端重入保护守卫（tools/check_write_reentry_guard.js，R408 · 队列 #20）：
+//         守的是**双击语义** —— 这是「修了但没修好」的典型：R73 服务端幂等注释自称挡「网络重试 / 双击」，
+//         但 `findPriorResult` 按 `(shop_id, idempotency_key)` 查，而前端 38 处键全是 `前缀 + Date.now()`
+//         ⇒ 每次点击都是新键 ⇒ 双击被认成两次不同请求 ⇒ 照旧 INSERT 第二个版本。
+//         而 `showLoading({mask:true})` 的遮罩是**渲染后**才拦点击的，同一帧派发的第二个 tap 早已入队。
+//         ⇒ 唯一有效位置是「首个 await 之前同步置位并返回」。五条腿：函数仍在 / 仍含写调用 /
+//         守卫早于首个 await / 标志真被置位（否则判据恒假）/ 标志真被复位（否则一次失败永久锁死）；
+//         另守幂等键仍在下传（拆掉它连网络重投都失守）。合成样本 5 段 + 真实变异 6 组反恒真。
 // ⚠️ 不在 CI 之外假定任何 secrets；纯本地静态 + 单测。
 
 const { execFileSync } = require('child_process');
@@ -1222,6 +1230,10 @@ const SUITES = [
   //   见头部注释同名条目。守的是**文案与机制一致**：成本卡是快照隔离，
   //   任何"已自动更新"类说法都会被判红；同时守住「改价后必须告知 + 能给到影响面」这条链路。
   ['material-price-impact', 'tools/check_material_price_impact.js'],
+  // ===== R408 · 成本卡「追加型写」前端重入保护（队列 #20）=====
+  //   见头部注释同名条目。守的是**双击语义**：幂等键按 Date.now() 每次新造 ⇒ 挡不住"点了两次"；
+  //   遮罩是渲染后才拦点击的 ⇒ 守卫必须同步写在首个 await 之前，且标志要真置位、真复位。
+  ['write-reentry', 'tools/check_write_reentry_guard.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

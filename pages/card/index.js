@@ -131,6 +131,11 @@ Page({
     tagOptions: [],
     selectMode: false, // 批量同步选择模式
     selected: {},      // { card_code: true }
+    // 🔴 R408：写操作重入标志。`syncCostCard` / `saveCostCard` 都是 **INSERT 新版本**（不是 upsert），
+    //   重复执行只会在版本链上多出内容完全相同的版本。这两个标志是**同步**（在首个 await 之前）
+    //   置位的最后一道闸 —— 幂等键与 loading 遮罩都拦不住"两次点击"，理由见 onSync 注释。
+    syncing: false,    // 单卡 / 批量同步成本卡
+    copying: false,    // 复制成本卡（新建 card_code）
     loading: true,
     // R299：本店成本卡读取是否被服务端标记「已达读取上限」（截断 ⇒ 列表可能少卡，
     //   且因列表无排序「丢哪张随机」）。为 true ⇒ 顶部显示可见降级提示。见 utils/dataHealth.js。
@@ -397,6 +402,10 @@ Page({
 
   // 复制 = 基于最新版生成全新 card_code（复用 saveCostCard 不带 card_code → 新卡）
   async onCopy(e) {
+    // 🔴 R408：复制是**新建一张卡**（不是覆盖），双击就是两张一模一样的卡 —— 而卡片列表
+    //   没有"唯一名"约束，老板很难看出哪张是重复的，只会越用越乱。同 onBatchSyncRun：
+    //   modal 前后各挡一次（前者挡重复弹窗，后者挡两个弹窗都 confirm）。
+    if (this.data.copying) return;
     const cc = e.currentTarget.dataset.code;
     wx.showModal({
       title: TERMS.card.copyCard,
@@ -405,6 +414,8 @@ Page({
       cancelText: TERMS.buttons.cancel,
       success: async (r) => {
         if (!r.confirm) return;
+        if (this.data.copying) return;
+        this.setData({ copying: true });
         try {
           const d = await api.call('getCostCard', { card_code: cc });
           const src = d.list && d.list[0];
@@ -448,12 +459,22 @@ Page({
           wx.showToast({ title: TERMS.ui.copiedDone, icon: 'success' });
           this.load();
         } catch (err) { api.toastError(err); }
+        finally { this.setData({ copying: false }); }
       },
     });
   },
 
   // 同步单张至原料最新价（生成新版本，旧版本保留）
   async onSync(e) {
+    // 🔴 R408 连点保护（放在**第一个 await 之前**，这是唯一有效的位置）：
+    //   为什么不能只靠下面的 `client_request_id`：它拼的是 `Date.now()`，**每次点击都重新取值**。
+    //   双击 ⇒ 两个不同的幂等键 ⇒ 服务端 `findPriorResult` 查不到前一次 ⇒ 认成两次不同请求
+    //   ⇒ 照样 INSERT 第二个版本（版本号连跳、内容完全重复）。幂等键真正挡的是「同一次请求
+    //   被网络层原样重投」，不是「用户点了两次」。
+    //   为什么也不能只靠 `showLoading({mask:true})`：遮罩是渲染后才拦点击的，同一帧派发的
+    //   第二个 tap 早已进队列，等它执行时遮罩还没上屏。
+    if (this.data.syncing) return;
+    this.setData({ syncing: true });
     const cc = e.currentTarget.dataset.code;
     try {
       wx.showLoading({ title: TERMS.card.syncIng, mask: true });
@@ -462,6 +483,8 @@ Page({
       wx.showToast({ title: TERMS.card.syncDone, icon: 'success' });
       this.load();
     } catch (err) { wx.hideLoading(); api.toastError(err); }
+    // ⚠️ 必须复位：否则一次网络失败就把同步按钮永久锁死，老板只能杀进程重进。
+    finally { this.setData({ syncing: false }); }
   },
 
   // 批量同步：进入选择模式 → 多选 → 执行
@@ -474,6 +497,9 @@ Page({
     this.setData({ selected });
   },
   onBatchSyncRun() {
+    // 🔴 R408：modal 之前先挡一次。双击会在 confirm 之前排队弹出**两个** modal，
+    //   两个都 confirm 就会跑两遍整批同步（每张卡各多一个重复版本）。
+    if (this.data.syncing) return;
     const codes = Object.keys(this.data.selected).filter((k) => this.data.selected[k]);
     if (codes.length === 0) { wx.showToast({ title: TERMS.card.selectSync, icon: 'none' }); return; }
     wx.showModal({
@@ -483,6 +509,9 @@ Page({
       cancelText: TERMS.buttons.cancel,
       success: async (r) => {
         if (!r.confirm) return;
+        // 两个 modal 都 confirm 时，第二个在这里被挡（上面的检查发生在弹窗之前，管不到这里）
+        if (this.data.syncing) return;
+        this.setData({ syncing: true });
         wx.showLoading({ title: TERMS.card.syncIng, mask: true });
         try {
           for (const cc of codes) {
@@ -493,6 +522,7 @@ Page({
           this.setData({ selectMode: false, selected: {} });
           this.load();
         } catch (err) { wx.hideLoading(); api.toastError(err); }
+        finally { this.setData({ syncing: false }); }
       },
     });
   },
