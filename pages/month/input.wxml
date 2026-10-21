@@ -4,6 +4,9 @@
     {{t.archiveReadonly}}<text wx:if="{{inGrace}}"> · {{t.graceNote}}</text>
   </view>
 
+  <!-- R419：金额栏读不成数字的提示（与 M2 同一句文案；详见 NOTE_R419） -->
+  <view class="warn-note" wx:if="{{badAmountCount > 0}}">{{t.amountBadTip}}</view>
+
   <!-- E2（批次 8c）：顶部「填写口径」折叠块（默认收起）—— 防重填漏填 -->
   <view class="fill-guide">
     <view class="fill-guide-head" bindtap="onToggleFillGuide">

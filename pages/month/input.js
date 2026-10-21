@@ -8,6 +8,8 @@
 // ⚠️ AD-10/AD-23：onHide 自动存草稿（wx.setStorageSync），返回自动回填，不静默丢数据。
 const api = require('../../utils/api.js');
 const ui = require('../../utils/ui.js');
+// R419：金额输入可读性判定（详见 review/NOTE_2026-10-21_R419_M1金额体检.md）
+const AmountInput = require('../../utils/amountInput.js');
 const { normalizeDineRows, markFixedRows } = require('../../utils/dineChannels.js');
 const { pickTakeawayMode, takeawayModeKey, snapshotDetail, restoreDetail, subtotalOf,
   extractPaste, pasteFillValue, pasteFilledFromTotal, filledLabel, subsidyTotal, reconcile,
@@ -36,8 +38,12 @@ const INPUT_MODE_KEY = 'input_mode_';
 
 Page({
   data: {
+    // R419：读不成数字的金额行数（>0 时页面顶部提示；只提示不改数）
+    badAmountCount: 0,
     t: {
       title: TERMS.inputPage.title,
+      // R419：金额栏读不成数字的提示（与 M2 测算页共用 TERMS.ui 里的同一句）
+      amountBadTip: TERMS.ui.amountBadTip,
       incomeTitle: TERMS.ledger.incomeTitle,
       expenseTitle: TERMS.ledger.expenseTitle,
       carryBtn: TERMS.ledger.carryBtn,
@@ -697,6 +703,25 @@ Page({
     if (kind === 'income' && g.category === 'takeaway') this.syncTakeoutSum();
     // T3′：费用侧营销行被改 → 轻量自查提示要跟着消/显（幂等，无变化不 setData）
     if (kind === 'expense') this.syncTakeoutSelfCheck();
+    // R419：金额栏体检（只在改了金额时跑；几十行纯字符串判断，无云端调用）
+    if (patch.amountYuan !== undefined) this.checkAmounts();
+  },
+
+  /**
+   * R419：M1 金额栏体检（读不成数字的行数 → data，wxml 提示）。只暴露，不改数。
+   * 来由与实测见 review/NOTE_2026-10-21_R419_M1金额体检.md（这几行注释不写进包体，省体积）。
+   */
+  checkAmounts() {
+    let n = 0;
+    const groups = (this.data.incomeGroups || []).concat(this.data.expenseGroups || []);
+    for (let i = 0; i < groups.length; i++) {
+      const rows = groups[i].rows || [];
+      for (let j = 0; j < rows.length; j++) {
+        if (!AmountInput.classifyAmount(rows[j].amountYuan).readable) n++;
+      }
+    }
+    // 只在数量变化时 setData（避免每次按键都触发一次渲染）
+    if (n !== this.data.badAmountCount) this.setData({ badAmountCount: n });
   },
   // T4b（round97）：费用段「+ 添加细项」→ 先弹该类**尚未添加**的预设项清单。
   //   ⚠️ 本轮只作用于费用侧（data-kind="expense"）；收入侧仍走 addRow（空白行）—— 范围刻意限定。

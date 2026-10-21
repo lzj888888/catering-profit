@@ -148,7 +148,8 @@ Page({
       channelGroupPlatform: M.channelGroupPlatform,
       channelOverride: M.channelOverride,
       channelOver100: M.channelOver100,
-      amountBadTip: M.amountBadTip,
+      // R419：归到公共区（M1 月度录入页同用这一句）
+      amountBadTip: TERMS.ui.amountBadTip,
       channelSample: M.channelSample,
       // 🔴 R296b：渠道佣金新键（占比×抽点 → 加权挂钩费率）
       channelCardRate: M.channelCardRate,
@@ -873,17 +874,8 @@ Page({
   },
 
   /**
-   * R414（队列 #25）：金额框体检。
-   *
-   * 为什么需要：老板从微信/Excel 粘贴「12,000」（或全角「１２０００」、带空格）时，
-   *   `api.yuanToFen` 会**静默返回 0**，而 0 是**合法金额** ⇒ 云端校验无从拒 ⇒ 保本额照常出数但偏小。
-   *   实测（毛利率 65% / 人工 1.5 万 / 水电 3 千）：房租填 `12000` 保本 46154 元/月，
-   *   粘贴成 `12,000` 保本 27692 元/月 —— **少 40%，且全程零报错**。
-   *
-   * 本方法只**暴露**（把读不成数字的栏数写进 data，wxml 据此提示）：
-   *   · 不改 `yuanToFen`（它的 fail-soft 契约被 check_money_precision B 组钉住）；
-   *   · 不自动清洗（`1,5` 到底是 15 还是 1.5 猜不准，猜错比不猜更糟）；
-   *   · 不改数 —— 计算仍按 0 走，老板看到提示后自己改。
+   * R418：金额框体检（读不成数字的栏数 → data，wxml 提示）。只暴露，不改数。
+   * 来由、实测数据与边界见 review/NOTE_2026-10-21_R418_金额输入可读性.md（注释不进包体，省体积）。
    */
   checkAmountInputs() {
     const KEYS = ['rentYuan', 'laborTotalYuan', 'waterYuan', 'electricYuan', 'gasYuan',

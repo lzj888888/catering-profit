@@ -205,3 +205,5 @@ page { background: #f5f6f8; font-family: -apple-system, "PingFang SC", sans-seri
   font-family: -apple-system, "SF Pro Text", "Helvetica Neue", "Microsoft YaHei", sans-serif;
 }
 .ovh { overflow: hidden; }
+/* R419：「要注意」提示行，M1/M2 共用（原只在 M2 页定义） */
+.warn-note { font-size: 28rpx; color: #92610a; line-height: 1.6; padding: 0 0 6rpx; }

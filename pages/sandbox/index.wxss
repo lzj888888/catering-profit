@@ -267,7 +267,7 @@
   border-left: 8rpx solid #e8a33d; border-radius: 0 12rpx 12rpx 0;
   padding: 16rpx 20rpx; margin: 12rpx 0; line-height: 1.6;
 }
-.warn-note { font-size: 28rpx; color: #92610a; line-height: 1.6; padding: 0 0 6rpx; }
+/* R419：`.warn-note` 已提到 app.wxss（M1 月度录入页同用）⇒ 本地不再重复定义 */
 .ipt-num { flex: 1 1 auto; font-size: 28rpx; color: #1e3a5f; text-align: right; min-height: 40rpx; }
 .unit { font-size: 28rpx; color: #888; margin-left: 6rpx; }
 /* 两个入口按钮原本会各自占满一行（.btn 是 display:flex 且无宽度限制） */

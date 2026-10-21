@@ -21,6 +21,9 @@ const path = require('path');
 const ROOT = path.join(__dirname, '..');
 const PAGE_JS = 'pages/sandbox/index.js';
 const PAGE_WXML = 'pages/sandbox/index.wxml';
+// R419：M1 月度录入页（老板每月粘贴 Excel 的主战场）—— 同一套判定，接在 updateRow 上
+const M1_JS = 'pages/month/input.js';
+const M1_WXML = 'pages/month/input.wxml';
 let pass = 0;
 let fail = 0;
 
@@ -183,7 +186,27 @@ ok('②-7 data 声明 badAmountCount', /badAmountCount\s*:\s*0/.test(js));
 const xml = stripComments(readOr(PAGE_WXML, '').replace(/<!--[\s\S]*?-->/g, ''));
 ok('②-8 wxml 按 badAmountCount 渲染提示', /wx:if="\{\{\s*badAmountCount\s*>\s*0\s*\}\}"/.test(xml));
 ok('②-9 wxml 提示用的文案键是 t.amountBadTip', xml.indexOf('t.amountBadTip') >= 0);
-ok('②-10 文案键在页面 t 映射里真绑定', js.indexOf('amountBadTip: M.amountBadTip') >= 0);
+ok('②-10 文案键在页面 t 映射里真绑定', js.indexOf('amountBadTip: TERMS.ui.amountBadTip') >= 0);
+
+// ---- R419：M1 月度录入页（updateRow 是它所有金额格子的统一入口）----
+const m1Raw = readOr(M1_JS, '');
+const m1 = stripComments(m1Raw);
+const m1Xml = stripComments(readOr(M1_WXML, '').replace(/<!--[\s\S]*?-->/g, ''));
+ok('②-11 M1 页真 require utils/amountInput.js', m1.indexOf('amountInput.js') >= 0);
+const rowBody = bodyOf(m1, 'updateRow');
+ok('②-12 M1 updateRow 函数体可取（fail-closed）', rowBody.length > 0);
+ok('②-13 M1 updateRow 里真调体检（改了金额就查）',
+  rowBody.indexOf('checkAmounts(') >= 0 && rowBody.indexOf('patch.amountYuan') >= 0,
+  '所有金额格子都走 updateRow；不在这里调就永远不会被触发');
+const m1Chk = bodyOf(m1, 'checkAmounts');
+ok('②-14 M1 体检函数体可取且遍历两组', m1Chk.length > 0
+  && m1Chk.indexOf('incomeGroups') >= 0 && m1Chk.indexOf('expenseGroups') >= 0);
+ok('②-15 M1 体检真调纯函数 classifyAmount', m1Chk.indexOf('classifyAmount(') >= 0);
+ok('②-16 M1 wxml 按 badAmountCount 渲染提示', /wx:if="\{\{\s*badAmountCount\s*>\s*0\s*\}\}"/.test(m1Xml));
+ok('②-17 M1 的提示文案键在 t 里真绑定', m1.indexOf('amountBadTip: TERMS.ui.amountBadTip') >= 0);
+// 单源：两页用的是**同一个**文案键（不是各写一句相似的话）
+ok('②-18 两页共用同一文案键 TERMS.ui.amountBadTip（不各写一套说法）',
+  js.indexOf('TERMS.ui.amountBadTip') >= 0 && m1.indexOf('TERMS.ui.amountBadTip') >= 0);
 
 // ================= ③ 反恒真 =================
 ok('③-1 反恒真：删掉 scheduleCalc 里的调用 ⇒ ②-3 会红',
