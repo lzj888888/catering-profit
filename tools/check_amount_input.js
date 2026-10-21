@@ -349,6 +349,28 @@ ok('②-38 四页共用同一文案键 TERMS.ui.amountBadTip',
   js.indexOf('TERMS.ui.amountBadTip') >= 0 && m1.indexOf('TERMS.ui.amountBadTip') >= 0
   && cardJs.indexOf('TERMS.ui.amountBadTip') >= 0 && matJs.indexOf('TERMS.ui.amountBadTip') >= 0);
 
+// ---- R427（队列 #42）：M1 另外 4 个「写金额但不经 groups / 不经 amountYuan」的入口 ----
+// 为什么单独守：R419 守 updateRow 那条腿、R425 守 onMkByPlat，这 4 处**两条腿都摸不到**：
+//   ① onTwDetail 三框（goods/pack/subsidy）—— subtotalOf 会把读不成的按 0 求和；
+//   ② onFastSubsidy 走了 updateRow，但触发条件只认 patch.amountYuan ⇒ 静默跳过（"盯字段名不盯'这格是不是钱'");
+//   ③ onRecYuan / ④ onDirectConsume 直接 setData，连 updateRow 都不经。
+// 后果与 #31 同构：数字被按 0 算 ⇒ 利润虚高/虚低，**全程零报错**。
+const twDetailBody = bodyOf(m1, 'onTwDetail');
+ok('②-39 onTwDetail 函数体可取（fail-closed）', twDetailBody.length > 0);
+ok('②-40 onTwDetail 里真调体检（三框不经 updateRow ⇒ 不在这里调就永远不触发）',
+  twDetailBody.indexOf('checkAmounts(') >= 0);
+ok('②-41 体检覆盖 takeoutDetailRows 三框（goods/pack/subsidy 少一个 ⇒ 那框等于没接）',
+  m1Chk.indexOf('takeoutDetailRows') >= 0 && /classifyAmount\(r\.goods\)/.test(m1Chk)
+  && /classifyAmount\(r\.pack\)/.test(m1Chk) && /classifyAmount\(r\.subsidy\)/.test(m1Chk));
+ok('②-42 onFastSubsidy 里真调体检（updateRow 只认 patch.amountYuan ⇒ 不补就永远跳过）',
+  bodyOf(m1, 'onFastSubsidy').indexOf('checkAmounts(') >= 0);
+ok('②-43 体检覆盖 rows 的 subsidy（快速模式平台补贴写在 subsidy，不是 amountYuan）',
+  /classifyAmount\(rows\[j\]\.subsidy\)/.test(m1Chk));
+ok('②-44 onRecYuan 调体检且覆盖 twRecYuan（对账"实收"读不成的按 0）',
+  bodyOf(m1, 'onRecYuan').indexOf('checkAmounts(') >= 0 && m1Chk.indexOf('twRecYuan') >= 0);
+ok('②-45 onDirectConsume 调体检且覆盖 directConsumeYuan',
+  bodyOf(m1, 'onDirectConsume').indexOf('checkAmounts(') >= 0 && m1Chk.indexOf('directConsumeYuan') >= 0);
+
 // ================= ③ 反恒真 =================
 ok('③-1 反恒真：删掉 scheduleCalc 里的调用 ⇒ ②-3 会红',
   (() => { const b = calcBody.replace('checkAmountInputs(', ''); return b.indexOf('checkAmountInputs(') < 0; })());

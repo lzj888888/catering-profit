@@ -670,10 +670,11 @@ Page({
   // 🔴 R170（方案1）：快速模式「其中：商家承担补贴」输入 → 写 g.rows[i].subsidy。
   //   updateRow 内部对 income+takeaway 行已自动调 syncTakeoutSum（→ syncSubsidyCarry 带出到费用侧），
   //   这里**不重复调用**，避免双重 setData。
-  onFastSubsidy(e) {
-    const { kind, gidx, ridx } = e.currentTarget.dataset;
-    this.updateRow(kind, Number(gidx), Number(ridx), { subsidy: e.detail.value });
-  },
+    onFastSubsidy(e) {
+      const { kind, gidx, ridx } = e.currentTarget.dataset;
+      this.updateRow(kind, Number(gidx), Number(ridx), { subsidy: e.detail.value });
+      this.checkAmounts();   // R426：updateRow 的触发条件只认 patch.amountYuan ⇒ 这里必须自己补
+    },
   // 「这一格算不算填了」的统一判据（R162 引入，供 buildItems 两个分支共用）。
   //   ⚠️ 只看"有没有输入"，不看数值大小 ⇒ 填 0 也算填过（与 mkByPlatFilled 同语义，防"填了 0 被当空丢掉"）。
   _hasVal(v) {
@@ -718,6 +719,10 @@ Page({
       const rows = groups[i].rows || [];
       for (let j = 0; j < rows.length; j++) {
         if (!AmountInput.classifyAmount(rows[j].amountYuan).readable) n++;
+        // R426（队列 #42）：快速模式的「平台补贴」写在 subsidy（不是 amountYuan）
+        //   ⇒ onFastSubsidy 虽然走了 updateRow，但 updateRow 的触发条件只认 patch.amountYuan
+        //   ⇒ 这一格永远是"体检静默跳过"。判据要盯"这格是不是钱"，不是盯字段名。
+        if (!AmountInput.classifyAmount(rows[j].subsidy).readable) n++;
       }
     }
     // 🔴 R425（队列 #31）：**分平台佣金小计**是独立 handler（onMkByPlat），不经 updateRow ⇒
@@ -729,6 +734,20 @@ Page({
     for (let k = 0; k < byPlat.length; k++) {
       if (!AmountInput.classifyAmount(byPlat[k] && byPlat[k].amountYuan).readable) n++;
     }
+    // 🔴 R426（队列 #42）：以下 3 处也是「写金额但不经 groups / 不经 amountYuan」的入口。
+    //   共同后果与 #31 同构：**读不成的按 0 算** ⇒ 数字静默偏 ⇒ 利润虚高/虚低，全程零报错。
+    //   ④ 分项模式外卖三框（goods/pack/subsidy，onTwDetail 写）—— subtotalOf 会把读不成的按 0 求和
+    const twd = this.data.takeoutDetailRows || [];
+    for (let i = 0; i < twd.length; i++) {
+      const r = twd[i] || {};
+      if (!AmountInput.classifyAmount(r.goods).readable) n++;
+      if (!AmountInput.classifyAmount(r.pack).readable) n++;
+      if (!AmountInput.classifyAmount(r.subsidy).readable) n++;
+    }
+    //   ⑤ 对账「实收」twRecYuan（onRecYuan 直接 setData）
+    if (!AmountInput.classifyAmount(this.data.twRecYuan).readable) n++;
+    //   ⑥ 直接消费 directConsumeYuan（onDirectConsume 直接 setData）
+    if (!AmountInput.classifyAmount(this.data.directConsumeYuan).readable) n++;
     // 只在数量变化时 setData（避免每次按键都触发一次渲染）
     if (n !== this.data.badAmountCount) this.setData({ badAmountCount: n });
   },
@@ -1137,6 +1156,7 @@ Page({
     rows[idx] = r;
     this.setData({ takeoutDetailRows: rows });
     this.syncTakeoutSum();
+    this.checkAmounts();   // R426：三框不经 updateRow ⇒ 体检要自己触发
   },
 
   // ===== 粘贴（A.11.5：加速器，非唯一入口）=====
@@ -1195,7 +1215,7 @@ Page({
   },
 
   // ===== 配平校验（A.11.4 · 只做软提示）=====
-  onRecYuan(e) { this.setData({ twRecYuan: e.detail.value }); this.runReconcile(); },
+  onRecYuan(e) { this.setData({ twRecYuan: e.detail.value }); this.runReconcile(); this.checkAmounts(); },
 
   runReconcile() {
     const rows = this.data.takeoutDetailRows || [];
@@ -1355,7 +1375,7 @@ Page({
   },
 
 
-  onDirectConsume(e) { this.setData({ directConsumeYuan: e.detail.value }); },
+  onDirectConsume(e) { this.setData({ directConsumeYuan: e.detail.value }); this.checkAmounts(); },
 
   // ===== 核算方式（就地二选一 · 2026-09-20 从店铺设置页迁入）=====
   // ⚠️ 服务端唯一权威：这里只做「乐观更新 → 写库 → 失败回滚」，不自行推导计算口径。
