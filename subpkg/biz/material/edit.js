@@ -7,6 +7,7 @@
 const api = require('../../../utils/api.js');
 const ui = require('../../../utils/ui.js');
 const units = require('../../../utils/units.js');
+const AmountInput = require('../../../utils/amountInput.js');   // R426（队列 #32）：采购单价可读性体检
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 const { suggestByName } = require('../../../utils/materialLexicon.js');   // M3.20 词库（只读建议）
 
@@ -53,6 +54,7 @@ Page({
       cancel: TERMS.buttons.cancel,
       cur: '¥',
       loading: TERMS.ui.loading,
+      amountBadTip: TERMS.ui.amountBadTip,
       // round156：连续录入横幅
       savedOk: TERMS.card.savedOk,
       savedHint: TERMS.card.savedHint,
@@ -102,6 +104,8 @@ Page({
     // round155：单价标签带上采购单位（「采购单价（元/件）」）—— 一件多少钱，一眼看清。
     priceLabel: TERMS.card.matPriceOf(TERMS.card.matUnitDefault),
     priceYuan: '',
+    // R426（队列 #32）：采购单价读不成金额的栏数（0 = 正常）。只驱动横幅与保存拦截，不参与计算。
+    badAmountCount: 0,
     // 🔴 R406（队列 #19）：编辑态记下「影响成本卡成本的三要素」原值，保存时比对。
     //   三要素 = 采购单价 / 换算系数 / 出成率 —— 成本卡快照里存的净料单位成本就是
     //   「单价 ÷ 换算系数 ÷ 出成率」。
@@ -199,7 +203,7 @@ Page({
   },
   onBrand(e) { this.setData({ brand_spec: e.detail.value }); },
   onUnit(e) { this.setData({ purchase_unit: e.detail.value }, () => this.refreshUnitHint()); },
-  onPrice(e) { this.setData({ priceYuan: e.detail.value }); },
+  onPrice(e) { this.setData({ priceYuan: e.detail.value }); this.checkAmounts(); },
   // round152/155：手改右侧的**值** ⇒ 立 `convertTouched`（此后换采购单位也不再被建议值覆盖），
   //   并把「值 × 单位」折算回 `convert_factor`（引擎口径仍是克数）。
   onConvQty(e) {
@@ -259,6 +263,18 @@ Page({
       priceLabel: TERMS.card.matPriceOf(u),
     });
   },
+  // 🔴 R426（队列 #32）：采购单价的金额体检 —— 与 M1 录入页 / M3 成本卡页**同一个** `utils/amountInput`。
+  //   为什么原料页最怕读错：单价是**所有**用到它的菜品成本的源头（净料成本 = 单价 ÷ 系数 ÷ 出成率），
+  //   而保存走的是 `Number(priceYuan) || 0`（不走 `yuanToFen`）：粘贴「12,000」⇒ `Number` = NaN ⇒
+  //   `Math.round(NaN * 100)` = NaN ⇒ 上云的 `purchase_price_fen` 是 null/0，而 0 是合法金额 ⇒
+  //   云端校验无从拒 ⇒ 这个原料按 0 元/斤存库，**全店用到它的菜成本一起变 0**，零报错。
+  //   🔴 只判定、只暴露，不替老板清洗（`1,5` 可能是 15 也可能是 1.5，猜错比不猜更糟）。
+  //   返回读不成的栏数（onSave 据此拦提交）。
+  checkAmounts() {
+    const n = AmountInput.classifyAmount(this.data.priceYuan).readable ? 0 : 1;
+    if (n !== this.data.badAmountCount) this.setData({ badAmountCount: n });
+    return n;
+  },
   onYield(e) { this.setData({ yield_rate: e.detail.value }); },
   onCategory(e) { this.setData({ categoryIndex: Number(e.detail.value) }); },
   onAliases(e) { this.setData({ aliasesYuan: e.detail.value }); },
@@ -266,6 +282,11 @@ Page({
 
   async onSave() {
     if (!this.data.name.trim()) { wx.showToast({ title: TERMS.card.matName, icon: 'none' }); return; }
+    // 🔴 R426（队列 #32）：单价读不成 ⇒ 拦在提交前（横幅只能提醒，0 元/斤照样能存下去 = 全店成本归零）
+    if (this.checkAmounts() > 0) {
+      wx.showModal({ content: TERMS.ui.amountBadTip, showCancel: false, confirmText: TERMS.buttons.gotIt });
+      return;
+    }
     // round155：换算系数必须 >0 —— **不再静默兜底**（改前 `|| suggestConvert() || 1` 会把老板
     //   清空的系数悄悄换回 500，正是「不许静默改掉老板敲的数」要禁的行为）。
     const cf = Number(this.data.convert_factor) || 0;

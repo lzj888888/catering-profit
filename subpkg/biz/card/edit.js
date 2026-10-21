@@ -10,6 +10,7 @@
 const api = require('../../../utils/api.js');
 const ui = require('../../../utils/ui.js');
 const units = require('../../../utils/units.js');
+const AmountInput = require('../../../utils/amountInput.js');   // R426（队列 #32）：金额栏体检（纯判定，不改数）
 const { openPaywall } = require('../../../utils/paywall.js');
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 const { TEMPLATES, applyTemplate } = require('../../../utils/dishTemplates.js');   // M3.20 菜品模板（只预填，不写库）
@@ -194,9 +195,12 @@ Page({
       // ⚠️ 引导语在 `TERMS.ledger` 组（跨页复用的通用模式引导语）。
       hintFoldShow: TERMS.ledger.hintFoldShow,
       hintFoldHide: TERMS.ledger.hintFoldHide,
+      amountBadTip: TERMS.ui.amountBadTip,
     },
     // R234/J4f：行内长提示折叠（本页 1 处，默认收起）。仓内统一实现。
     hintFold: {},
+    // R426（队列 #32）：读不成金额的**栏数**（0 = 没填错）。只驱动一条横幅，不参与计算。
+    badAmountCount: 0,
     card_code: '',
     isEdit: false,
     name: '',
@@ -524,11 +528,12 @@ Page({
   },
 
   onLoss(e) { this.setData({ lossRate: e.detail.value }); },
-  onAux(e) { this.setData({ auxYuan: e.detail.value }); },
+  onAux(e) { this.setData({ auxYuan: e.detail.value }); this.checkAmounts(); },
   onPrice(e) {
     this.setData({ priceYuan: e.detail.value, stickyMargin: this.marginTextOf(this.data.previewCostFen, e.detail.value) });
+    this.checkAmounts();
   },
-  onActivityPrice(e) { this.setData({ activityPriceYuan: e.detail.value }); },
+  onActivityPrice(e) { this.setData({ activityPriceYuan: e.detail.value }); this.checkAmounts(); },
   onCategoryInput(e) { this.setData({ category: e.detail.value }); },
   pickCat(e) {
     const ds = (e && e.currentTarget && e.currentTarget.dataset) || {};
@@ -637,6 +642,7 @@ Page({
     const lines = this.data.lines.slice();
     lines[idx] = Object.assign({}, lines[idx], { unit_price_yuan: e.detail.value });
     this.setData({ lines });
+    this.checkAmounts();
   },
   // round151：手工行的**单价单位**（元/X）。
   //   ⚠️ 与「用量单位」是两件事，且**故意不做数值换算**（与 onQtyUnit 相反）：
@@ -741,9 +747,9 @@ Page({
   // ============ M3.37 团购到手试算（R190） ============
   // 口径（李老师 2026-10-02 定）：佣金基数 = **顾客实付的团购价**（不是原价）；费率店家自己填、无默认值。
   // 成本来自引擎 calcBom（与单品/套餐同一条路，不另算一份）；费用侧纯前端，**不落库**。
-  onGrouponPrice(e) { this.setData({ grouponPriceYuan: e.detail.value, grouponView: null }); },
+  onGrouponPrice(e) { this.setData({ grouponPriceYuan: e.detail.value, grouponView: null }); this.checkAmounts(); },
   onGrouponRate(e) { this.setData({ grouponRate: e.detail.value, grouponView: null }); },
-  onGrouponPromo(e) { this.setData({ grouponPromoYuan: e.detail.value, grouponView: null }); },
+  onGrouponPromo(e) { this.setData({ grouponPromoYuan: e.detail.value, grouponView: null }); this.checkAmounts(); },
   async calcGroupon() {
     const priceYuan = Number(this.data.grouponPriceYuan) || 0;
     if (!(priceYuan > 0)) { wx.showToast({ title: TERMS.card.grouponNeedPrice, icon: 'none' }); return; }
@@ -789,6 +795,34 @@ Page({
         previewCost: api.fenToYuan(costFen, 2),
       });
     } catch (e) { api.toastError(e); }
+  },
+
+  // 🔴 R426（队列 #32）：本页金额栏体检 —— 与 M1 录入页**同一个** `utils/amountInput`、同一套判定。
+  //   为什么这页更需要它（比 M1 更狠）：本页金额全是 `Number(x) || 0` 直转（没走 `yuanToFen`），
+  //   粘贴「12,000」⇒ `Number` 得 **NaN** ⇒ `Math.round(NaN * 100)` 仍是 NaN ⇒ 提交上云的
+  //   `price_fen` / `aux_fen` 变 null 或 0，而 0 是**合法金额** ⇒ 云端校验无从拒 ⇒
+  //   成本卡按 0 元落库、毛利率显示照常 ⇒ 老板拿它去定价，**全程零报错**。
+  //   🔴 边界（与 R419/R425 同口径）：**只判定、只暴露，不改数** ——
+  //     不替老板去掉逗号（`1,5` 可能是欧洲写法 15 或 1.5，猜错比不猜更糟）。
+  //   返回：读不成的栏数（onSave 据此拦提交；0 = 全部读得成）。
+  checkAmounts() {
+    const rows = this.data.specRows || [];
+    const lines = this.data.lines || [];
+    let n = 0;
+    const chk = (v) => { if (!AmountInput.classifyAmount(v).readable) n++; };
+    chk(this.data.priceYuan);
+    chk(this.data.auxYuan);
+    chk(this.data.activityPriceYuan);
+    chk(this.data.grouponPriceYuan);
+    chk(this.data.grouponPromoYuan);
+    for (let i = 0; i < rows.length; i++) chk(rows[i] && rows[i].priceYuan);
+    // 手工行单价（input_type=2）——它直接进净料成本，最不能读错的一格
+    for (let j = 0; j < lines.length; j++) {
+      if (Number(lines[j].input_type) !== 2) continue;
+      chk(lines[j].unit_price_yuan);
+    }
+    if (n !== this.data.badAmountCount) this.setData({ badAmountCount: n });
+    return n;
   },
 
   // 🔴 R297：出成率**上界**校验（手工行）—— 越界**绝不静默回落 100**（那等于替老板编一个数）。
@@ -876,6 +910,7 @@ Page({
     this.setData({
       specRows: this.data.specRows.map((r) => (r.spec_key === key ? Object.assign({}, r, { priceYuan: v, result: null }) : r)),
     });
+    this.checkAmounts();
   },
   // 把某规格行的输入拼成 spec_prices（整数分）；空/非法 ⇒ 该规格不带价（只出成本与建议价）
   specPriceFen(r) {
@@ -953,6 +988,15 @@ Page({
   // 保存 → saveCostCard（后端重算落库；编辑 = 带 card_code 另存新版本）
   async onSave() {
     if (!this.data.name.trim()) { wx.showToast({ title: TERMS.card.dishName, icon: 'none' }); return; }
+    // 🔴 R426（队列 #32）：金额栏读不成 ⇒ **拦在提交前**。为什么必须这里拦：
+    //   本页金额走 `Number(x) || 0`，读不成会变成 0 / NaN 一路到云端（0 是合法金额 ⇒ 无从拒），
+    //   而 `utils/api.js` 会把后端 fail 的 msg 覆盖成通用文案（R271）⇒ 真出错老板也不知道是哪一格。
+    //   横幅只能提醒，**保存这条路必须硬拦**，否则「提示归提示、照样存 0 元卡」。
+    if (this.checkAmounts() > 0) {
+      // title 留空（系统默认「提示」）—— 不为一句标题新造文案（新增可见文案要走 i18n 三处，代价大于收益）
+      wx.showModal({ content: TERMS.ui.amountBadTip, showCancel: false, confirmText: TERMS.buttons.gotIt });
+      return;
+    }
     // 售价低于成本预警（M3.7 #15）：先反算拿成本对比，不阻断保存
     const priceFen = Math.round(Number(((Number(this.data.priceYuan) || 0) * 100).toFixed(10)));
     if (priceFen > 0) {

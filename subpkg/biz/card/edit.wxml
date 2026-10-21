@@ -1,4 +1,7 @@
 <view class="form safe-bottom" wx:if="{{!loading}}">
+  <!-- R426（队列 #32）：金额栏读不成数字时的横幅。只提醒、不改数；点保存会被硬拦（edit.js::onSave）。 -->
+  <view class="warn-note" wx:if="{{badAmountCount > 0}}">{{t.amountBadTip}}</view>
+
   <!-- round156：连续录入 —— 保存成功后**留在本页**，这条横幅是"存到哪了"的凭证 + 显式返回出口。
        改前每存一道菜就 navigateBack 回列表，录 30 道菜要来回 60 次。 -->
   <view class="saved-bar" wx:if="{{savedName}}">

@@ -1,4 +1,7 @@
 <view class="form safe-bottom" wx:if="{{!loading}}">
+  <!-- R426（队列 #32）：单价读不成金额的横幅。只提醒、不改数；点保存会被硬拦（edit.js::onSave）。 -->
+  <view class="warn-note" wx:if="{{badAmountCount > 0}}">{{t.amountBadTip}}</view>
+
   <!-- round156：连续录入 —— 新增态保存成功后**留在本页**，这条横幅是"存到哪了"的凭证 + 显式返回出口。
        （编辑态不走这里：改完一个具体的原料就回列表，见 edit.js::onSave） -->
   <view class="saved-bar" wx:if="{{savedName}}">

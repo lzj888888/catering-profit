@@ -19,8 +19,8 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const PAGE_JS = 'pages/sandbox/index.js';
-const PAGE_WXML = 'pages/sandbox/index.wxml';
+const PAGE_JS = 'subpkg/tools/sandbox/index.js';
+const PAGE_WXML = 'subpkg/tools/sandbox/index.wxml';
 // R419：M1 月度录入页（老板每月粘贴 Excel 的主战场）—— 同一套判定，接在 updateRow 上
 const M1_JS = 'subpkg/biz/month/input.js';
 const M1_WXML = 'subpkg/biz/month/input.wxml';
@@ -153,7 +153,7 @@ ok('①-5 分数一律是整数（' + fenCases.length + ' 个样本）', fenBad.
 // ================= ② 接线面 =================
 const jsRaw = readOr(PAGE_JS, '');
 const js = stripComments(jsRaw);
-ok('②-0 pages/sandbox/index.js 存在', !!jsRaw);
+ok('②-0 subpkg/tools/sandbox/index.js 存在', !!jsRaw);
 ok('②-1 页面真 require utils/amountInput.js', js.indexOf('amountInput.js') >= 0);
 
 const calcBody = bodyOf(js, 'scheduleCalc');
@@ -220,6 +220,135 @@ ok('②-21 体检函数体覆盖 twMkByPlat（否则该框的坏值不计数 = �
 ok('②-22 清空分平台小计同样重算（坏值清掉后提示要能消失）',
   bodyOf(m1, 'clearMkByPlat').indexOf('checkAmounts(') >= 0);
 
+// ---- R426（队列 #32）：M3 两页（成本卡 / 原料）金额栏接线 ----
+// 为什么单独守：这两页的金额**不走 yuanToFen**，直接用 `Number(x) || 0`（card/edit.js::onSave、
+//   material/edit.js::onSave）⇒ 粘贴「12,000」得 NaN ⇒ 上云 price_fen / aux_fen 变 null/0。
+// M1 那两条腿（②-13 updateRow / ②-20 onMkByPlat）摸不到这里 ⇒ 没有本段就等于没接。
+const CARD_JS = 'subpkg/biz/card/edit.js';
+const CARD_WXML = 'subpkg/biz/card/edit.wxml';
+const MAT_JS = 'subpkg/biz/material/edit.js';
+const MAT_WXML = 'subpkg/biz/material/edit.wxml';
+const cardJs = stripComments(readOr(CARD_JS, ''));
+const cardXml = stripComments(readOr(CARD_WXML, '').replace(/<!--[\s\S]*?-->/g, ''));
+const matJs = stripComments(readOr(MAT_JS, ''));
+const matXml = stripComments(readOr(MAT_WXML, '').replace(/<!--[\s\S]*?-->/g, ''));
+
+// 金额字段判据：以 Yuan 结尾（priceYuan / auxYuan …）或手工行单价 unit_price_yuan。
+// 用后缀判，不硬抄字段名 —— 将来新加一个 XxxYuan 输入框会被实扫抓到并逼着接线。
+// 🔴 例外（按语义排除，不是给代码让路）：`aliasesYuan` 是**别名列表**（逗号分隔的检索词），
+//   逗号是它的合法分隔符、要原样提交成 JSON 数组 ⇒ 它不是金额，不能拿金额规则判它。
+const NON_MONEY_FIELDS = ['aliasesYuan'];
+function isMoneyField(f) {
+  if (NON_MONEY_FIELDS.indexOf(f) >= 0) return false;
+  if (f === 'unit_price_yuan') return true;
+  return f.length > 4 && f.slice(f.length - 4) === 'Yuan';
+}
+
+function plainIdent(s) {
+  if (!s) return false;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charAt(i);
+    const w = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c === '_' || c === '$';
+    if (!w) return false;
+  }
+  return true;
+}
+
+// 从「字段: e.detail.value」的赋值处回推所属 handler 名（方法定义缩进 2 空格）
+// 🔴 R426 自己踩的坑：赋值常发生在 `this.setData({ ... })` 或 `Object.assign({ ... })` 里，
+//   直接取"最近的 2 空格缩进行"会取到 `this.setData` / `lines[idx] = Object.assign` ⇒
+//   判据拿不到 handler 名，覆盖率腿**假红**。⇒ 必须**向上继续找**，直到取到纯标识符。
+function handlerAt(src, at) {
+  let p = src.lastIndexOf('\n  ', at);
+  while (p >= 0) {
+    const q = src.indexOf('(', p);
+    if (q > 0 && q < at) {
+      const name = src.slice(p + 3, q).trim();
+      if (plainIdent(name)) return name;
+    }
+    p = src.lastIndexOf('\n  ', p - 1);
+  }
+  return '';
+}
+
+// 实扫 (handler, 金额字段) 对
+function moneyInputs(src) {
+  const out = [];
+  let from = 0;
+  for (;;) {
+    const k = src.indexOf(': e.detail.value', from);
+    if (k < 0) break;
+    from = k + 1;
+    let p = k - 1;
+    while (p >= 0) {
+      const c = src.charAt(p);
+      const isW = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c === '_';
+      if (!isW) break;
+      p--;
+    }
+    const field = src.slice(p + 1, k);
+    if (!isMoneyField(field)) continue;
+    const fn = handlerAt(src, k);
+    if (!fn) continue;
+    out.push({ field: field, fn: fn });
+  }
+  return out;
+}
+
+const cardPairs = moneyInputs(cardJs);
+const cardMissHandler = cardPairs.filter((x) => bodyOf(cardJs, x.fn).indexOf('checkAmounts(') < 0);
+const cardFields = [];
+for (const x of cardPairs) if (cardFields.indexOf(x.field) < 0) cardFields.push(x.field);
+const cardChk = bodyOf(cardJs, 'checkAmounts');
+const cardChkMiss = cardFields.filter((f) => cardChk.indexOf(f) < 0);
+
+ok('②-23 M3 成本卡页真 require utils/amountInput.js', cardJs.indexOf('amountInput.js') >= 0);
+ok('②-24 M3 成本卡体检函数体可取（fail-closed）', cardChk.length > 0);
+ok('②-25 M3 成本卡体检真调纯函数 classifyAmount', cardChk.indexOf('classifyAmount(') >= 0);
+ok('②-26 M3 成本卡：实扫每个金额输入 handler 都调了体检（扫到 ' + cardPairs.length + ' 个）',
+  cardPairs.length > 0 && cardMissHandler.length === 0,
+  '未接线的 handler：' + cardMissHandler.map((x) => x.fn + '(' + x.field + ')').join(',')
+  + (cardPairs.length === 0 ? '（实扫到 0 个 ⇒ 扫描规则失效，fail-closed）' : ''));
+ok('②-27 M3 成本卡：体检体覆盖实扫到的全部金额字段',
+  cardFields.length > 0 && cardChkMiss.length === 0, '未覆盖：' + cardChkMiss.join(','));
+// 规格售价是**另一条路**（`priceYuan: v`，不是 e.detail.value）⇒ 实扫抓不到，必须单独守
+ok('②-28 M3 成本卡：规格售价 onSpecPrice 也接体检（不同写法，实扫会漏）',
+  bodyOf(cardJs, 'onSpecPrice').indexOf('checkAmounts(') >= 0);
+// 保存硬拦：横幅只提醒，不拦就照样存 0 元卡
+const cardSave = bodyOf(cardJs, 'onSave');
+ok('②-29 M3 成本卡 onSave 读不成金额就拦（checkAmounts 之后必须 return）',
+  cardSave.indexOf('checkAmounts()') >= 0 && cardSave.indexOf('return', cardSave.indexOf('checkAmounts()')) > 0
+  && cardSave.indexOf('showModal') > 0);
+ok('②-30 M3 成本卡 wxml 按 badAmountCount 渲染提示',
+  cardXml.indexOf('badAmountCount > 0') >= 0 && cardXml.indexOf('t.amountBadTip') >= 0);
+ok('②-31 M3 成本卡文案键在 t 映射里真绑定', cardJs.indexOf('amountBadTip: TERMS.ui.amountBadTip') >= 0);
+
+const matPairs = moneyInputs(matJs);
+const matMissHandler = matPairs.filter((x) => bodyOf(matJs, x.fn).indexOf('checkAmounts(') < 0);
+const matFields = [];
+for (const x of matPairs) if (matFields.indexOf(x.field) < 0) matFields.push(x.field);
+const matChk = bodyOf(matJs, 'checkAmounts');
+const matChkMiss = matFields.filter((f) => matChk.indexOf(f) < 0);
+const matSave = bodyOf(matJs, 'onSave');
+
+ok('②-32 M3 原料页真 require utils/amountInput.js', matJs.indexOf('amountInput.js') >= 0);
+ok('②-33 M3 原料页体检体可取且真调 classifyAmount',
+  matChk.length > 0 && matChk.indexOf('classifyAmount(') >= 0);
+ok('②-34 M3 原料页：实扫每个金额输入 handler 都调了体检（扫到 ' + matPairs.length + ' 个）',
+  matPairs.length > 0 && matMissHandler.length === 0,
+  '未接线的 handler：' + matMissHandler.map((x) => x.fn + '(' + x.field + ')').join(','));
+ok('②-35 M3 原料页：体检体覆盖实扫到的全部金额字段',
+  matFields.length > 0 && matChkMiss.length === 0, '未覆盖：' + matChkMiss.join(','));
+ok('②-36 M3 原料页 onSave 读不成金额就拦（checkAmounts 之后必须 return）',
+  matSave.indexOf('checkAmounts()') >= 0 && matSave.indexOf('return', matSave.indexOf('checkAmounts()')) > 0);
+ok('②-37 M3 原料页 wxml 渲染提示 + 文案键真绑定',
+  matXml.indexOf('badAmountCount > 0') >= 0 && matXml.indexOf('t.amountBadTip') >= 0
+  && matJs.indexOf('amountBadTip: TERMS.ui.amountBadTip') >= 0);
+// 单源：四页用同一句文案（不是各写一句相似的话）
+ok('②-38 四页共用同一文案键 TERMS.ui.amountBadTip',
+  js.indexOf('TERMS.ui.amountBadTip') >= 0 && m1.indexOf('TERMS.ui.amountBadTip') >= 0
+  && cardJs.indexOf('TERMS.ui.amountBadTip') >= 0 && matJs.indexOf('TERMS.ui.amountBadTip') >= 0);
+
 // ================= ③ 反恒真 =================
 ok('③-1 反恒真：删掉 scheduleCalc 里的调用 ⇒ ②-3 会红',
   (() => { const b = calcBody.replace('checkAmountInputs(', ''); return b.indexOf('checkAmountInputs(') < 0; })());
@@ -240,9 +369,21 @@ ok('③-6 反恒真：摘掉 onMkByPlat 里的调用 ⇒ ②-20 必红',
   mkPlatBody.replace('checkAmounts(', '').indexOf('checkAmounts(') < 0);
 ok('③-7 反恒真：体检体里抹掉 twMkByPlat ⇒ ②-21 必红',
   m1Chk.split('twMkByPlat').join('').indexOf('twMkByPlat') < 0);
+// R426（队列 #32）：证明新增的三条腿不是恒真
+ok('③-8 反恒真：把所有 `this.checkAmounts();` 摘掉 ⇒ ②-26/②-34 必红（handler 覆盖率真在看代码）',
+  (() => {
+    const mutated = cardJs.split('this.checkAmounts();').join('');
+    const miss = moneyInputs(mutated).filter((x) => bodyOf(mutated, x.fn).indexOf('checkAmounts(') < 0);
+    return moneyInputs(mutated).length > 0 && miss.length === cardPairs.length;
+  })());
+ok('③-9 反恒真：体检体里抹掉一个金额字段 ⇒ ②-27 必红',
+  cardFields.indexOf('grouponPromoYuan') >= 0
+  && cardChk.split('grouponPromoYuan').join('').indexOf('grouponPromoYuan') < 0);
+ok('③-10 反恒真：把 onSave 的拦截条件改成恒假 ⇒ ②-29 必红',
+  cardSave.split('checkAmounts() > 0').join('false').indexOf('checkAmounts()') < 0);
 
 // ================= ④ 下界 =================
-ok('④ 断言数下界（≥26）', pass + fail >= 26, '实际 ' + (pass + fail));
+ok('④ 断言数下界（≥40）', pass + fail >= 40, '实际 ' + (pass + fail));
 
 console.log('\n===== R414 金额输入可读性守卫：' + pass + ' 通过 / ' + fail + ' 失败 =====');
 process.exit(fail === 0 ? 0 : 1);
