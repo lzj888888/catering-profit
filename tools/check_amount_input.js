@@ -22,8 +22,8 @@ const ROOT = path.join(__dirname, '..');
 const PAGE_JS = 'pages/sandbox/index.js';
 const PAGE_WXML = 'pages/sandbox/index.wxml';
 // R419：M1 月度录入页（老板每月粘贴 Excel 的主战场）—— 同一套判定，接在 updateRow 上
-const M1_JS = 'pages/month/input.js';
-const M1_WXML = 'pages/month/input.wxml';
+const M1_JS = 'subpkg/biz/month/input.js';
+const M1_WXML = 'subpkg/biz/month/input.wxml';
 let pass = 0;
 let fail = 0;
 
@@ -208,6 +208,18 @@ ok('②-17 M1 的提示文案键在 t 里真绑定', m1.indexOf('amountBadTip: T
 ok('②-18 两页共用同一文案键 TERMS.ui.amountBadTip（不各写一套说法）',
   js.indexOf('TERMS.ui.amountBadTip') >= 0 && m1.indexOf('TERMS.ui.amountBadTip') >= 0);
 
+// ---- R425（队列 #31）：分平台「佣金小计」是**独立 handler**，不经 updateRow ----
+// 为什么必须单独守：R419 的接线判据只测 updateRow 这一条腿，而 onMkByPlat 根本不走它
+// ⇒ 粘贴「12,000」照样被读成 0，且这个 0 经 syncMkPlat **覆写营销段佣金行** ⇒ 佣金整行清零。
+const mkPlatBody = bodyOf(m1, 'onMkByPlat');
+ok('②-19 onMkByPlat 函数体可取（fail-closed）', mkPlatBody.length > 0);
+ok('②-20 onMkByPlat 里真调体检（不经 updateRow ⇒ 不在这里调就永远不触发）',
+  mkPlatBody.indexOf('checkAmounts(') >= 0);
+ok('②-21 体检函数体覆盖 twMkByPlat（否则该框的坏值不计数 = 等于没接）',
+  m1Chk.indexOf('twMkByPlat') >= 0);
+ok('②-22 清空分平台小计同样重算（坏值清掉后提示要能消失）',
+  bodyOf(m1, 'clearMkByPlat').indexOf('checkAmounts(') >= 0);
+
 // ================= ③ 反恒真 =================
 ok('③-1 反恒真：删掉 scheduleCalc 里的调用 ⇒ ②-3 会红',
   (() => { const b = calcBody.replace('checkAmountInputs(', ''); return b.indexOf('checkAmountInputs(') < 0; })());
@@ -223,9 +235,14 @@ ok('③-4 反恒真：注释里的同样代码不算数（剥注释后应扫不�
   stripComments('// checkAmountInputs(); wx:if="{{badAmountCount > 0}}"').indexOf('checkAmountInputs(') < 0);
 ok('③-5 反恒真：bodyOf 必须跳过成员调用（防取到 this.xxx() 调用处）',
   bodyOf('foo(){ this.bar(); }\n  bar() { return 1; }', 'bar').indexOf('return 1') >= 0);
+// ③-6/③-7：证明「去掉 R425 那条接线 / 那条计数」时判据真会红（不是恒真）
+ok('③-6 反恒真：摘掉 onMkByPlat 里的调用 ⇒ ②-20 必红',
+  mkPlatBody.replace('checkAmounts(', '').indexOf('checkAmounts(') < 0);
+ok('③-7 反恒真：体检体里抹掉 twMkByPlat ⇒ ②-21 必红',
+  m1Chk.split('twMkByPlat').join('').indexOf('twMkByPlat') < 0);
 
 // ================= ④ 下界 =================
-ok('④ 断言数下界（≥22）', pass + fail >= 22, '实际 ' + (pass + fail));
+ok('④ 断言数下界（≥26）', pass + fail >= 26, '实际 ' + (pass + fail));
 
 console.log('\n===== R414 金额输入可读性守卫：' + pass + ' 通过 / ' + fail + ' 失败 =====');
 process.exit(fail === 0 ? 0 : 1);
