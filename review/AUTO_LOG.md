@@ -276,3 +276,15 @@
   - 🔴 **认知修正**：分包**不降入包总量**（P-① 仍 1.4719MB），只降**主包**（P-③ pages 1.0005→0.995MB）。收益是"主包变小⇒首屏快+单条目不超顶格"，不是"总包体变小"。PLAN §2 已补。
   - 🔴 **自纠（ERRATA）**：`b4d625b` 里 `check_page_manifest.js` 显示 217 增/207 删，不是内容改动，是**编辑把整文件行尾 LF 翻成 CRLF**；`80d443e` 已改回（逻辑未变 17/17）。证据：HEAD~1 `CRLF=0/裸LF=207` → 改后 `CRLF=217/裸LF=0`。**纪律：改既有文件后必看 `git diff --numstat`，接近整文件行数即行尾翻写。**
   - 未做：**没有动 month/sandbox**（S1/S2 待确认）；S1 会真正检验"555 处引用"的规模，建议单独提交 + 完整门禁后再决定是否继续。
+
+## 2026-10-21 16:18–16:52 · R425（队列 #31 → done，1 条）
+
+- [2026-10-21 16:52] R425 M1 分平台佣金小计接金额体检 · 门禁 203/203 RC=0 · commit fe917f0 · 队列 #31 → done
+- **后果比登记时更重**：`onMkByPlat` 不经 `updateRow`、`twMkByPlat` 也不在 `incomeGroups/expenseGroups` 里 ⇒ 体检两条腿都摸不到；而 `syncMkPlat` 会用合计（读不成的按 0）**覆写营销段佣金行** ⇒ 粘贴「12,000」= 佣金整行变 0.00，利润虚高零报错。
+- 改法＝只暴露不改数：`checkAmounts` 增扫 `twMkByPlat`（与两组 rows 同一计数/同一句提示）+ `onMkByPlat`/`clearMkByPlat` 补触发。**零新文案、零 wxml、零云函数** ⇒ 免出码、免部署。
+- 守卫 `check_amount_input` 33→37 条：②-19~②-22（函数体可取 / 真调用 / 覆盖 twMkByPlat / 清空也重算）+ ③-6·③-7 反恒真。判据全走 `bodyOf()` 取函数体，不全文 grep（避开 R299 恒真第①型）。
+- 横向排查登队列 **#42**：同页还有 4 个金额入口未被覆盖（`onTwDetail` 三框 / `onFastSubsidy` / `onRecYuan` / `onDirectConsume`）。其中 `onFastSubsidy` **走了** updateRow 却因字段名不是 `amountYuan` 被静默跳过 ⇒ 判据要判"这格是不是钱"，不是判字段名。
+- 🔴 **并发占树实况**：开工时 63 项脏（R423/S1 分包迁移在途），`_gate_s1*` 三个日志、16:32 后无进程。守「不覆盖」：只动 `subpkg/biz/month/input.js` + `tools/check_amount_input.js`，其余原样留给他们；提交走 pathspec（`git commit -- <路径>`），未吞他人暂存。
+  - 副作用（已如实登记）：`input.js` 的 rename 被本提交一并带走 ⇒ HEAD 同时存在 `pages/month/input.js`（旧）与 `subpkg/biz/month/input.js`（新），**app.json 在 HEAD 仍指旧路径 ⇒ HEAD 自洽、不破**；旧文件的删除留给他们 S1 提交。
+- **门禁缓存处理（省 ~10min 的关键）**：本轮改了 `tools/**`，但没跑全量 `mk_force`（5~12min）。改成**只丢弃"套件调用类"缓存键**（`_m3/_r425_probe/drop_keys.py`，114/177 条，含 `tools/` 与 `verify_all`）⇒ 门禁现场真跑全部套件，等价于刷新、不额外计时。**其余非套件键保留。**
+- 判活/占用判据复用上轮：`git status` 项数 + 目标文件 mtime + `Get-Process node` 启动时间 + 门禁日志字节数。

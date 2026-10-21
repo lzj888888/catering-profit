@@ -53,7 +53,7 @@
 | 28 | `canSendToModel`（k-匿名门槛）未做 —— AI 三方里「判」这一半还是空的 | done | no | **R423 已落**：`cloudfunctions/common/aiGate.js`（纯函数零 IO）三关 = 授权态（**消费**读侧 `getAiConsent` 出参，不再判第二遍四态）/ 用途显式授权 / 样本量（行≥5 且 供应商≥3）；拒时恒给 `fallback:'L0'`。新套件 `ai-gate` 42 断言（含 2 条鉴别力断言），变异 2/2，门禁 203/203；commit e6a47f6。⚠️ 仍无生产调用方（出站函数未存在，接线时须补「真 require + 真调用」守卫）commit e6a47f6 · why: NOTE_R405 §9-2 如实登记。写/读已落（R403/R405），**「判」没落** ⇒ 现在没有门槛就允许出站。设计稿 §7 步 3。⚠️ 与「授权了没有」是两件事，别混 |
 | 29 | 前端 AI 授权页未做（页面 + 三态文案 + 只在首次使用 AI 功能时出现） | blocked | yes | why: NOTE_R405 §9-3。**卡在 #5 风格选型**——现在写页面必返工，与 #6 同因 |
 | 30 | `shop_ai_consent` / `shop_ai_insight` **未登记**进 `cloudfunctions/initDb/collections.js` | done | no | **核实已落（R402/#17 重复条目）**：R423 实读 `collections.js` —— 第 33 行集合名列表含两张表，第 186/190 行有各自的索引定义 ⇒ 本条与 #17 是同一件事的两次登记，不重复实现。why: NOTE_控制台建集合与索引 §五。控制台已建表，但**单源没有** ⇒ 「线上有、单源无」是漂移源；`check_schema_sync` 只比 collections.js ↔ init_db.js，抓不到这个方向 ⇒ 不会自己变红 |
-| 31 | M1 平台分项 `onMkByPlat`（`p.amountYuan`）金额体检未接 | in_progress | no | why: NOTE_R419 边界。它是独立 handler（不经过 updateRow）⇒ 粘贴「12,000」仍会被读成 0 |
+| 31 | M1 平台分项 `onMkByPlat`（`p.amountYuan`）金额体检未接 | done | no | **R425 已落**：`checkAmounts` 增扫 `twMkByPlat`（与两组 rows 同一计数/同一句提示）+ `onMkByPlat`/`clearMkByPlat` 补触发；守卫 33→37 条（②-19~22 + ③-6/③-7 反恒真）；门禁 203/203 RC=0；commit fe917f0。⚠️ 后果比登记时更重：`syncMkPlat` 会把合计（读不成的按 0）**覆写营销段佣金行** ⇒ 粘贴「12,000」= 佣金整行清成 0.00 |
 | 32 | M3 成本卡 / 原料录入页的金额框未接体检 | todo | no | why: NOTE_R418/R419 边界。`utils/amountInput.js` 已是通用件，接线成本低；⚠️ 与 #27 分包有文件交集（M3 页可能被移入分包）⇒ 建议排 #27 之后 |
 | 33 | **M1-B3「归档超 7 天无出路」**：`core/13:25` 写「修改须走客服后台」，但后台 11 个函数没有一个能改归档月账 ⇒ **「联系客服」是空承诺** | blocked | yes | why: NOTE_R410 §6-1（比我原先登记更严重）。按 R406 判断逻辑（文案不得承诺机制做不到的事），不能只补提示 ⇒ 李老师**三选一**：(a) 补后台改账能力 (b) 如实说仅可查看 (c) 次月冲销；🔴 **澄清见 NOTE_2026-10-21_R421**：「客服要绑微信号」是入口问题、「客服改不了归档账」是能力问题，两者别混 |
 | 34 | 重新部署 `getDishReview` + `manageShop`（R303 之后未部署） | blocked | yes | why: 未完成任务清单 §当前真实待办 ⏸(a)。部署走 CLI 需在本机且开发者工具在线 ⇒ 李老师在场时一次做完 |
@@ -64,6 +64,7 @@
 | 39 | 大赛报名（决策面板 #20） | blocked | yes | why: 未完成任务清单 C3。纯决策，等李老师 |
 | 40 | **客服 FAQ 标准回答（≤20 条）**：老板真会问的那些，李老师照着念就行 | blocked | yes | why: 李老师 2026-10-21 明确「先记着，上线前统一给我」⇒ **不要提前做**。内容口径已定（见 NOTE_R421 §2/§4）：按「不会用 / 数字看着不对 / 真 bug」三类组织；话术只用三句（收到→某天答复 / 确认一下再回 / 记下了下版改），**不承诺马上解决、不硬答**。⚠️ 触发条件 = 李老师说「要上线了」或「准备宣传」 |
 | 41 | **付费前说明文案**：能做什么 / **不能做什么** / 出问题怎么办（退款口径） | blocked | yes | why: 同 #40，李老师说上线前统一给。依据：付费用户的不满 90% 来自**没预期**而非没解决（NOTE_R421 §4）⇒ 这篇比客服响应速度更能防差评。必须写明：不代账、不报税、**已封账月份改不了**（与 #33 真实能力一致，不许承诺后台能改） |
+| 42 | M1 录入页**还有 4 个金额入口未被体检覆盖**（R425 横向排查发现，同族病） | todo | no | why: NOTE_R425 §5。① `onTwDetail`（`takeoutDetailRows[i]` 的 goods/pack/subsidy 三框）② `onFastSubsidy`（走 updateRow，但 patch 字段是 `subsidy` 而非 `amountYuan` ⇒ 触发条件 `patch.amountYuan !== undefined` 判不到 ⇒ **静默跳过**）③ `onRecYuan`（对账实收）④ `onDirectConsume`（直接消耗）。🔴 判据要改成「这一格是不是钱」而不是「字段名是不是 amountYuan」；改 tools ⇒ 需刷缓存，预算按 20min 计 |
 
 ## 回执格式（每次执行后追加到 `review/AUTO_LOG.md`）
 
