@@ -319,3 +319,10 @@
   - 脚本改进：`migrate_to_subpkg.py` 新增 **3.5 步自动同步 terms 双副本**（S2 手工 cp、S3 又漂移一次 ⇒ 写进脚本）。
   - 自纠：`check_free_shop_limit.js` 行尾 LF→CRLF 翻写（487 vs 247）已转回；清掉 d2ee98b 误入的过程件（a59310e）。
   - 未做：S4（shop 2 页 + recon + pay + m3/dishreview，约 100KB）—— 移完主包只剩 3 个 tabBar 页。
+
+- [2026-10-21 21:55] R423 分包 **S4** 已落 · 门禁 203/203 RC=0（300.1s）· commit c77878f · **分包主体收官**
+  - `pages/recon/*`、`pages/pay/*` → `subpkg/tools/*`；主包 8→**6 页**；分包 biz 14 + tools 7；包体最大项 subpkg=0.8562 / 顶格 1.2；总量 1.4785。
+  - **只做了 2/5 页**，另 3 页有硬原因：① `shop/setting`+`shop/switch` —— 另一会话正在改（工作树未提交），迁了会把对方半成品带走 ⇒ 等它落定后 10 分钟可迁；② `m3/dishreview` —— `m3/hub` 是 tabBar 必须留主包，**微信规定同目录不能拆两包** ⇒ 只能跟着留（~20KB）。
+  - 适配：`selftest_m3_recon` 分段拼接；`check_ios_pay` SCAN_DIRS 加 subpkg（否则支付入口少算一处 ⇒ S2 命中数<2 判红）；提审材料 2 处路径；terms 双副本由脚本 3.5 步自动同步（本轮零手工）。
+  - 全链路：27→26(S0)→20(S1)→12(S2)→8(S3)→**6 页(S4)**，每步门禁 203/203。
+  - 下一步：等并发会话落定迁 shop 2 页（主包 6→4），分包彻底结束；然后回队列 #28/#30/#31/#32。
