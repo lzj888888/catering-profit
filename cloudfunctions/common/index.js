@@ -80,4 +80,15 @@ module.exports = {
   //   伴侣守卫：tools/check_salesbills.js。
   salesBillId: require('./salesBillId'),
   parseSalesBillId: require('./salesBillId').parseSalesBillId,
+
+  // R423 · 队列 #28：AI「出站」k-匿名门槛单源（设计稿 §5）——
+  //   `canSendToModel` 消费读侧 `getAiConsent` 的判定态，**不再判一遍四态**（避免第二份实现）；
+  //   不满足门槛时显式给 `fallback:'L0'`，调用方没有自由发挥的空间。
+  //   ⚠️ 同 genId 教训：新符号务必在此聚合入口导出，否则云端 `const { canSendToModel } = common`
+  //   会 TypeError（本地 require 单源文件测不出）。伴侣守卫：tools/check_requires.js §2。
+  aiGate: require('./aiGate'),
+  canSendToModel: require('./aiGate').canSendToModel,
+  judgeSample: require('./aiGate').judgeSample,
+  SAMPLE_MIN: require('./aiGate').SAMPLE_MIN,
+  AI_PURPOSES: require('./aiGate').PURPOSES,
 };

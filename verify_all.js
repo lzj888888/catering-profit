@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：202 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：203 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -287,7 +287,7 @@
 //         分支都带 error + G3 单源无 ok()/fail() + G4 派生副本同形 + G5 关键锚点在场 + G6 调用点判据与形状一致）
 //       + 路由编解码配对守卫（tools/check_uri_codec_pairs.js，R203：**编码了却不解码** ——
 //         跳转侧 pages/material/index.js 用 encodeURIComponent(m.name) 编过原料名，目标页
-//         pages/metrics/impact.js 直接 q.name 赋值 ⇒ 顶部渲染 %E7%82%B8%E9%B8%A1%E8%85%BF
+//         subpkg/tools/metrics/impact.js 直接 q.name 赋值 ⇒ 顶部渲染 %E7%82%B8%E9%B8%A1%E8%85%BF
 //         （真机反馈「涨价影响面前面很多英文和百分号」）。⚠️ 长期存在却从未暴露：上游店铺鉴权 404
 //         让这页从没真正渲染出来 —— **修好上游会把下游老毛病一并照亮**。判据=A 编码跳转的目标页必须解码
 //         + B 扫描面非退化且至少存在一处编码跳转 + C impact.js 自反锚点在位；含 5 条影子用例）
@@ -1262,6 +1262,11 @@ const SUITES = [
   ['channel-over100', 'tools/check_channel_over100.js'],
   //   金额输入可读性（R414 · 队列 #25：粘贴「12,000」被 yuanToFen 静默读成 0 ⇒ 保本额少 40% 且零报错）
   ['amount-input', 'tools/check_amount_input.js'],
+  //   出站 k-匿名门槛（R423 · 队列 #28：设计稿 §7 步 3 一直空着 —— 有授权就等于能出站，
+  //   而聚合值在单店单 SKU 时等于原始值，脱敏失效）。守三关：授权态（消费读侧判定，不判第二遍）
+  //   + 用途显式授权 + 样本量（行 ≥5 且 供应商 ≥3）。含两条鉴别力断言：样本足但用途未授权必须拒、
+  //   传原始 doc（无 state）必须拒 —— 防「只看样本量就放行」与「偷偷实现第二份四态判定」。
+  ['ai-gate', 'tools/selftest_ai_gate.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

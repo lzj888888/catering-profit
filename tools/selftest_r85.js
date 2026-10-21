@@ -376,6 +376,14 @@ const A15_EXEMPT = [
   //   **绝不放宽成 `cloudfunctions/` 全豁免**（那样等于守卫作废）：
   //   by=WorkBuddy / date=2026-10-16 / reason=R298 B2 授权金额精度修复（单源 common/money.js + 全函数派生 cx_money.js）
   /^cloudfunctions\/[^/]+\/cx_money\.js$/,            // R298 B2：sync_common 派生（全函数，同 cx_dataAdapter.js 性质）
+  // ⚠️ 2026-10-21（R423 · 队列 #28）**第二十一次触发** —— 新增单源 `cloudfunctions/common/aiGate.js`
+  //   （AI「出站」k-匿名门槛：授权态 + 用途 + 样本量三关，纯函数零 IO；设计稿 §7 步 3 的缺口）
+  //   ⇒ `sync_common` 把它派生到全部函数目录的 `cx_aiGate.js`（**同步动作**，非各函数自有逻辑；
+  //   各函数没有引用它的代码，带旧副本无影响，R389 已核）。`common/index.js` 已在 round110 白名单内。
+  //   仍按**白名单式**登记（精确到**派生文件名**、**不做 `cx_*` 泛化**），**绝不放宽成 `cloudfunctions/` 全豁免**：
+  //   by=WorkBuddy / date=2026-10-21 / reason=R423 授权新增 AI 出站 k-匿名门槛单源（common/aiGate.js + 全函数派生 cx_aiGate.js）
+  /^cloudfunctions\/common\/aiGate\.js$/,
+  /^cloudfunctions\/[^/]+\/cx_aiGate\.js$/,
 ];
 check('A15 云函数逻辑零改动（仅 initDb 建库单源 + 本批授权函数豁免）', (() => {
   const { execFileSync } = require('child_process');
