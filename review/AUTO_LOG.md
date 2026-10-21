@@ -326,3 +326,8 @@
   - 适配：`selftest_m3_recon` 分段拼接；`check_ios_pay` SCAN_DIRS 加 subpkg（否则支付入口少算一处 ⇒ S2 命中数<2 判红）；提审材料 2 处路径；terms 双副本由脚本 3.5 步自动同步（本轮零手工）。
   - 全链路：27→26(S0)→20(S1)→12(S2)→8(S3)→**6 页(S4)**，每步门禁 203/203。
   - 下一步：等并发会话落定迁 shop 2 页（主包 6→4），分包彻底结束；然后回队列 #28/#30/#31/#32。
+
+- [2026-10-21 19:33] R427 #32 复跑转绿 + 出码（M3 两页金额体检，代码由 R426 落）· 门禁 203/203 RC=0（227.4s）· commit 03f52d2 · 队列 #32 → done
+  - 只做验证与出码，**未重写实现**：`check_amount_input` 56/0；`√ preview` 出码入库 `review/evidence/r427_qr/qr.png`（main 259.3 KB/合计 709.7 KB）。
+  - R426 当时 5 条红（money_precision / m2_no_cost_rate / money_fmt / free_shop_limit / suite_assert_counts）全属并发 S3 分包迁移，S3/S4 自己提交后已自然转绿 —— **本轮未改任何判据**，可作「红≠一直红」的第八次实证。
+  - 顺带修一处 S3 遗留：`pages/shop/setting.{js,wxml}` 注释里仍写 `pages/month/input`（目录已迁走）+ 整份 CRLF 翻写 ⇒ 还原 LF 并改注释路径（`d370f71`，零行为变化）。
