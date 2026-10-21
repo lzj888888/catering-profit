@@ -303,3 +303,11 @@
   - 适配 10 个守卫：check_pages（孤儿页+walk面）/ page_manifest（提审材料8处）/ tabbar（下界20+listPageJs）/ build_default_years / material_batch（全集+B-③）/ input_keyboard / list_ux（L4-②正则+L4-③两段式注册）/ bill_import_gate（A-③级数）/ export_delivery / import_diagnosis / verify_all（注释）。
   - 🔴 自纠（本轮第二次）：`check_bill_import_gate.js` 编辑时整文件 LF→CRLF 翻写（633 vs 317 行），已转回。**改文件后立刻看 numstat**。
   - 未做：S3（sandbox→tools，主包里现在最大块）/ S4（shop/recon/pay）。
+
+## 2026-10-21 17:53–18:52 · R426（队列 #32）
+- [2026-10-21 18:52] R426 M3 成本卡/原料页金额栏接体检（两页走 `Number()||0` 不走 `yuanToFen`，「12,000」⇒NaN⇒0 元卡零报错）· 门禁 198/203 RC=1 · commit 03f52d2 · 队列 #32 → todo（代码已落，欠一次复跑转绿）
+  - 接线：`checkAmounts()` 覆盖 7 个金额来源（售价/辅料/活动价/团购价/团购活动价/规格售价/手工行单价）+ 采购单价；7 个 handler 各调一次；`onSave` 硬拦（横幅只提醒、不拦照样存 0 元）。
+  - 守卫 `check_amount_input` 37→**56 条**（②-23~38、③-8~10），实扫「每个金额 handler 都接了体检」，`aliasesYuan` 按语义排除（别名列表不是金额）。
+  - 🔴 自己判据假红 2 条：`handlerAt()` 只取最近 2 空格缩进行 ⇒ 命中 `this.setData` / `lines[idx]=Object.assign`。修判据（向上找到纯标识符），未改代码迎合。
+  - 🔴 门禁 5 红**全属并发 S3（sandbox→tools）在途**，与本条无关：money_precision 登记 10 条失效 / m2_no_cost_rate 锚点缺文件 / money_fmt S3 两条 / free_shop_limit pages=24<30 / suite_assert_counts 被传染。按「不覆盖」未动。
+  - 未做：出码（改了 wxml 本应出，门禁未绿时无意义）；免部署（未改云函数）。
