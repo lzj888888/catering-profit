@@ -288,3 +288,10 @@
   - 副作用（已如实登记）：`input.js` 的 rename 被本提交一并带走 ⇒ HEAD 同时存在 `pages/month/input.js`（旧）与 `subpkg/biz/month/input.js`（新），**app.json 在 HEAD 仍指旧路径 ⇒ HEAD 自洽、不破**；旧文件的删除留给他们 S1 提交。
 - **门禁缓存处理（省 ~10min 的关键）**：本轮改了 `tools/**`，但没跑全量 `mk_force`（5~12min）。改成**只丢弃"套件调用类"缓存键**（`_m3/_r425_probe/drop_keys.py`，114/177 条，含 `tools/` 与 `verify_all`）⇒ 门禁现场真跑全部套件，等价于刷新、不额外计时。**其余非套件键保留。**
 - 判活/占用判据复用上轮：`git status` 项数 + 目标文件 mtime + `Get-Process node` 启动时间 + 门禁日志字节数。
+
+- [2026-10-21 19:25] R423 分包 **S1** 已落（李老师「听你的，咱们现在分包」）· 门禁 203/203 RC=0（352.7s）· commit 3633173
+  - `pages/month/*` → `subpkg/biz/month/*`（6 页/326KB）；app.json 主包 26→**20 页**；包体 `pages` **0.995 → 0.7269MB（−27%）**；入包总量 1.4731（分包算入总量，符合 S0 的认知修正）。
+  - 🔴🔴 **真实成本不在"555 处字符串"，而在每个守卫的「扫描面/正则/数量下界」**（PLAN 没预估这一类）· 共适配 **12 个守卫**：9 个扫描面只认 `pages/`（uri_codec / page_manifest / js_syntax / wxml_structure / page_terms / list_ux / month_picker / truncated_surfaced / flow_entry_and_fold）+ 3 类写死旧路径或深度（data_contract / archive_switch_snapshot / export_delivery / batch8b / ui_fix / share_card）。
+  - 🔴 **三个"字符串替换碰不到"的漏网模式**（S0 只 1 页 15 处引用，暴露不出来）：① **分段拼接** `path.join(ROOT,'pages','month',...)`；② **转义斜杠** `\/pages\/month\/xxx`（正则里的写法）；③ **数量下界**「pages 下 .js ≥ 25」⇒ 迁移后剩 20 判"扫描面塌陷"。③ 的正确处置是**给扫描面加 subpkg（回到 26）**，不是把下界调低 —— 后者是放宽判据。
+  - 未做：没动 `pages/shop/setting.js/wxml`（另一会话在改 AI 授权入口，且整文件行尾翻写）；S2~S5 待做。
+  - 下一步判断：S2–S5 会明显快于 S1（三个漏网模式已知、扫描面适配是一次性的）。
