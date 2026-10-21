@@ -64,7 +64,7 @@
 | 39 | 大赛报名（决策面板 #20） | blocked | yes | why: 未完成任务清单 C3。纯决策，等李老师 |
 | 40 | **客服 FAQ 标准回答（≤20 条）**：老板真会问的那些，李老师照着念就行 | blocked | yes | why: 李老师 2026-10-21 明确「先记着，上线前统一给我」⇒ **不要提前做**。内容口径已定（见 NOTE_R421 §2/§4）：按「不会用 / 数字看着不对 / 真 bug」三类组织；话术只用三句（收到→某天答复 / 确认一下再回 / 记下了下版改），**不承诺马上解决、不硬答**。⚠️ 触发条件 = 李老师说「要上线了」或「准备宣传」 |
 | 41 | **付费前说明文案**：能做什么 / **不能做什么** / 出问题怎么办（退款口径） | blocked | yes | why: 同 #40，李老师说上线前统一给。依据：付费用户的不满 90% 来自**没预期**而非没解决（NOTE_R421 §4）⇒ 这篇比客服响应速度更能防差评。必须写明：不代账、不报税、**已封账月份改不了**（与 #33 真实能力一致，不许承诺后台能改） |
-| 42 | M1 录入页**还有 4 个金额入口未被体检覆盖**（R425 横向排查发现，同族病） | todo | no | why: NOTE_R425 §5。① `onTwDetail`（`takeoutDetailRows[i]` 的 goods/pack/subsidy 三框）② `onFastSubsidy`（走 updateRow，但 patch 字段是 `subsidy` 而非 `amountYuan` ⇒ 触发条件 `patch.amountYuan !== undefined` 判不到 ⇒ **静默跳过**）③ `onRecYuan`（对账实收）④ `onDirectConsume`（直接消耗）。🔴 判据要改成「这一格是不是钱」而不是「字段名是不是 amountYuan」；改 tools ⇒ 需刷缓存，预算按 20min 计 |
+| 42 | M1 录入页**还有 4 个金额入口未被体检覆盖**（R425 横向排查发现，同族病） | in_progress | no | why: NOTE_R425 §5。① `onTwDetail`（`takeoutDetailRows[i]` 的 goods/pack/subsidy 三框）② `onFastSubsidy`（走 updateRow，但 patch 字段是 `subsidy` 而非 `amountYuan` ⇒ 触发条件 `patch.amountYuan !== undefined` 判不到 ⇒ **静默跳过**）③ `onRecYuan`（对账实收）④ `onDirectConsume`（直接消耗）。🔴 判据要改成「这一格是不是钱」而不是「字段名是不是 amountYuan」；改 tools ⇒ 需刷缓存，预算按 20min 计 |
 
 ## 回执格式（每次执行后追加到 `review/AUTO_LOG.md`）
 
