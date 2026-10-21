@@ -1,4 +1,4 @@
-// pages/material/pick.js —— round156 · 原料选择页（**独立页，不是弹层**）
+// subpkg/biz/material/pick.js —— round156 · 原料选择页（**独立页，不是弹层**）
 //
 // 由来（李老师原话）：「新增菜品一定需要在这个窗口加吗？如果有 100 道菜品，来回查找会很麻烦」
 //   —— 真正的痛点在**选原料**这一格：改前用原生 `<picker mode="selector" range="{{materials}}">`，
@@ -6,13 +6,13 @@
 //
 // 🔴 为什么独立成页而不是「弹层 + 搜索框」：弹层 × 键盘是本仓实测的死结
 //   （PITFALLS §6/§8：遮罩 inset 简写 ⇒ 透明窗口 / 输入被挡）。独立页是已验证的解法，
-//   与 `pages/material/edit`「独立成页，不用弹层」同一纪律。
+//   与 `subpkg/biz/material/edit`「独立成页，不用弹层」同一纪律。
 //
 // 回传：**不做 eventChannel**（本仓无先例），走 `getApp().globalData.pickMaterial`
 //   + 调用方 `onShow` 消费；带 `at` 时间戳做哨兵，避免"进页没选就返回"被误当成选中。
-const api = require('../../utils/api.js');
-const ui = require('../../utils/ui.js');
-const { TERMS } = require('../../miniprogram/i18n/terms.js');
+const api = require('../../../utils/api.js');
+const ui = require('../../../utils/ui.js');
+const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 
 // category 枚举 → 展示名（单源 = TERMS.card.cat*，本处只做键→词的映射，不另立枚举）
 const CATEGORY_LABELS = {

@@ -114,16 +114,16 @@ Page({
   // 🔴 R281 O3：从引导块直接跳到「当前该做的那一步」，不用老板自己在 5 张卡里猜。
   goStep(e) {
     const i = Number((e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.step) || 0);
-    if (i === 0) return wx.navigateTo({ url: '/pages/material/index' });
-    if (i === 1) return wx.navigateTo({ url: '/pages/card/index' });
+    if (i === 0) return wx.navigateTo({ url: '/subpkg/biz/material/index' });
+    if (i === 1) return wx.navigateTo({ url: '/subpkg/biz/card/index' });
     // 第③步落在「外卖」页的第二个 tab（销量导入入口，R259 起该 tab 主载形态 A/B/C 销量）
-    return wx.navigateTo({ url: '/pages/takeaway/index?tab=import' });
+    return wx.navigateTo({ url: '/subpkg/biz/takeaway/index?tab=import' });
   },
 
   // ===== 四个分区（跳转目标均已在 app.json::pages 注册）=====
-  goCard() { wx.navigateTo({ url: '/pages/card/index' }); },
-  goMaterial() { wx.navigateTo({ url: '/pages/material/index' }); },
-  goTakeaway() { wx.navigateTo({ url: '/pages/takeaway/index' }); },
+  goCard() { wx.navigateTo({ url: '/subpkg/biz/card/index' }); },
+  goMaterial() { wx.navigateTo({ url: '/subpkg/biz/material/index' }); },
+  goTakeaway() { wx.navigateTo({ url: '/subpkg/biz/takeaway/index' }); },
   goRecon() { wx.navigateTo({ url: '/pages/recon/index' }); },
   goReview() { wx.navigateTo({ url: '/pages/m3/dishreview/index' }); },
 

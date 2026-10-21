@@ -1,22 +1,22 @@
-// pages/takeaway/index.js —— M3.17 外卖单均 + M3.32 补贴拆行/固定佣金（纯试算页）
+// subpkg/biz/takeaway/index.js —— M3.17 外卖单均 + M3.32 补贴拆行/固定佣金（纯试算页）
 //
 // ⚠️ 计算下沉：本页**不做任何金额口径计算**，只把用户录入转成分、喂给纯计算单源
 //   `utils/takeawayDerive.js`（calcTakeawayOrder / resolveCommission / reverseListedPrice）。
 //   试算结果**不落库**；只把「平台参数默认值」经 saveShopSetting 存 shop_switch。
 // ⚠️ 付费域：M3 外卖属付费功能（m3_takeaway）⇒ 点「计算」时经 fetchEntitlement 判定，
 //   未开通走 openPaywall('takeaway')（与 R159 付费墙口径一致，不自造判断分支）。
-const api = require('../../utils/api.js');
-const ui = require('../../utils/ui.js');
-const { openPaywall } = require('../../utils/paywall.js');
-const { fetchEntitlement } = require('../../utils/entitlement.js');
-const { TERMS } = require('../../miniprogram/i18n/terms.js');
-const { calcTakeawayOrder, reverseListedPrice } = require('../../utils/takeawayDerive.js');
+const api = require('../../../utils/api.js');
+const ui = require('../../../utils/ui.js');
+const { openPaywall } = require('../../../utils/paywall.js');
+const { fetchEntitlement } = require('../../../utils/entitlement.js');
+const { TERMS } = require('../../../miniprogram/i18n/terms.js');
+const { calcTakeawayOrder, reverseListedPrice } = require('../../../utils/takeawayDerive.js');
 // 🔴 R259：产品级开关**单源**（账单导入暂停展示）。⚠️ 只作用"账单"，形态 A/B/C 不受影响 ——
 //   它们与账单同出一个 tab 与同一个云函数（云函数按表头自动判形态），藏整个 tab 会连带
 //   砍掉外卖单品复盘的输入通道。详见 utils/featureFlags.js 头注 + NOTE_2026-10-10。
-const FLAGS = require('../../utils/featureFlags.js');
+const FLAGS = require('../../../utils/featureFlags.js');
 // 🔴 R303：形态 C 导入的**一级校验**（纯函数 · 零外部依赖）—— 表内自洽的错，导之前就报出来
-const { checkImportShape, coveredDates } = require('../../utils/importSanity.js');
+const { checkImportShape, coveredDates } = require('../../../utils/importSanity.js');
 
 const TK = TERMS.ledger.takeaway;
 
@@ -280,7 +280,7 @@ Page({
     importDoneText: '',
   },
 
-  // R281 O3：支持从枢纽页引导块直达「销量导入」tab —— /pages/takeaway/index?tab=import
+  // R281 O3：支持从枢纽页引导块直达「销量导入」tab —— /subpkg/biz/takeaway/index?tab=import
   //   （原来 onLoad 不读 options ⇒ 引导第③步跳过来仍停在「单均测算」tab，等于白跳）
   onLoad(options) {
     if (options && options.tab === 'import') this.setData({ tab: 'import' });

@@ -114,7 +114,7 @@ check('L-h mode 仅允许 省略 / A / B', badMode.length === 0,
 const badBatch = TEMPLATES.filter((t) => t.mode === 'B' && !(Number(t.batch_output) > 1));
 check('L-h mode=B 必须带 batch_output > 1（缺了就等于没分批）', badBatch.length === 0,
   badBatch.length ? `缺失：${badBatch.map((t) => t.tpl_key).join(',')}` : '全部齐备');
-const editSrc = require('fs').readFileSync(require('path').join(__dirname, '../pages/card/edit.js'), 'utf8');
+const editSrc = require('fs').readFileSync(require('path').join(__dirname, '../subpkg/biz/card/edit.js'), 'utf8');
 check('L-h 页面套用模板时把模式带出（不是只带料单）',
   editSrc.indexOf("tpl.mode === 'B'") >= 0 && editSrc.indexOf('patch.batchOutput') >= 0);
 check('L-h 自失效：mode=B 缺 batch 的样本必须判红',

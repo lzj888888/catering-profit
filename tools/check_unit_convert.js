@@ -82,9 +82,9 @@ function pageHasOwnFactorTable(src) {
 }
 
 // 本轮受管页面源码（顶层声明：L2 枚举一致性与 L3/L4/L5/L7 共用同一份读入结果）
-const CARDJS = read('pages/card/edit.js') || '';
-const CARDWXML = read('pages/card/edit.wxml') || '';
-const MATE = read('pages/material/edit.js') || '';
+const CARDJS = read('subpkg/biz/card/edit.js') || '';
+const CARDWXML = read('subpkg/biz/card/edit.wxml') || '';
+const MATE = read('subpkg/biz/material/edit.js') || '';
 
 console.log('===== R149 · 单位换算守卫（采购单位 / 用量单位）=====');
 
@@ -154,7 +154,7 @@ if (!U) {
 }
 
 // ---------- L3 页面不自抄倍率表 ----------
-const pageFiles = ['pages/card/edit.js', 'pages/card/edit.wxml', 'pages/material/edit.js', 'pages/material/edit.wxml', 'pages/material/index.js'];
+const pageFiles = ['subpkg/biz/card/edit.js', 'subpkg/biz/card/edit.wxml', 'subpkg/biz/material/edit.js', 'subpkg/biz/material/edit.wxml', 'subpkg/biz/material/index.js'];
 let own = [];
 for (const f of pageFiles) {
   const r = pageHasOwnFactorTable(read(f));
@@ -184,7 +184,7 @@ else if (!hasSpecCall) bad('L6 specHintOf 定义了却没人调用（换算说�
 else ok('L6 明细行露出换算关系（spec_hint 占位 + specHintOf 定义 + 调用三者齐备）');
 
 // ---------- L7 采购单位可选（chips + 建议换算系数） ----------
-if (!/data-unit=/.test(read('pages/material/edit.wxml') || '')) bad('L7 原料档案页没有采购单位 chips（data-unit）');
+if (!/data-unit=/.test(read('subpkg/biz/material/edit.wxml') || '')) bad('L7 原料档案页没有采购单位 chips（data-unit）');
 else if (!/suggestConvert\s*\(/.test(MATE)) bad('L7 pickUnit 没走 units.suggestConvert（选了单位不会带出换算系数）');
 else ok('L7 原料档案页可点选采购单位并自动带出建议换算系数');
 

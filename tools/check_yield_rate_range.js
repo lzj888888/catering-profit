@@ -2,7 +2,7 @@
 // tools/check_yield_rate_range.js —— M3「出成率」上界守卫（R297 · 第一轮查缺补漏）
 //
 // 为什么需要这一层（R297 实测坐实的真漏洞，不是猜的）：
-//   净料单位成本 = **单价 ÷ 出成率**（`pages/card/edit.js::manualNetUnitWan`）。
+//   净料单位成本 = **单价 ÷ 出成率**（`subpkg/biz/card/edit.js::manualNetUnitWan`）。
 //   原写法 `const y = Number(yieldRate) || 100;` 只兜了 0 / NaN / 空串，**没有上界**。
 //   老板填 150 ⇒ 成本被 ÷1.5 ⇒ 实测（R297 探针 `review/evidence` 口径）：
 //     60 元/斤的牛肉、每份 200 克 —— 单份成本 24.00 ⇒ **16.00 元（−33.3%）**，
@@ -18,8 +18,8 @@
 //
 // 修法（本守卫锁死的东西）：
 //   · 唯一入口 `utils/units.js::yieldRateOf(raw)`：未填=100（不折损）；**越界/非法=null（不静默编数）**
-//   · `pages/card/edit.js`：`manualNetUnitWan` 用它 + `badYieldOf()` 在反算/保存两条路前置拦截
-//   · `pages/material/edit.js`：保存前同样前置，给人话提示
+//   · `subpkg/biz/card/edit.js`：`manualNetUnitWan` 用它 + `badYieldOf()` 在反算/保存两条路前置拦截
+//   · `subpkg/biz/material/edit.js`：保存前同样前置，给人话提示
 //   · 术语 `TERMS.card.yieldRangeErr` 双副本一致
 //
 // 判据（P/A/B/C/D 五段，fail-closed；解析不到即判红）：
@@ -36,8 +36,8 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
 const UNITS = 'utils/units.js';
-const CARD_EDIT = 'pages/card/edit.js';
-const MAT_EDIT = 'pages/material/edit.js';
+const CARD_EDIT = 'subpkg/biz/card/edit.js';
+const MAT_EDIT = 'subpkg/biz/material/edit.js';
 const TERMS_A = 'miniprogram/i18n/terms.js';
 const TERMS_B = 'specs/dev-specs/i18n/terms.js';
 const CF_VALIDATE = 'cloudfunctions/saveMaterial/validate.js';

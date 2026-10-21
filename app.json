@@ -7,14 +7,6 @@
     "pages/sandbox/matrix",
     "pages/sandbox/compare",
     "pages/m3/hub",
-    "pages/card/index",
-    "pages/card/edit",
-    "pages/card/version",
-    "pages/material/index",
-    "pages/material/edit",
-    "pages/material/pick",
-    "pages/material/batch",
-    "pages/takeaway/index",
     "pages/recon/index",
     "pages/m3/dishreview/index",
     "pages/pay/orders",
@@ -71,7 +63,15 @@
         "month/inventory",
         "month/amortize",
         "month/assetEdit",
-        "month/result"
+        "month/result",
+        "card/index",
+        "card/edit",
+        "card/version",
+        "material/index",
+        "material/edit",
+        "material/pick",
+        "material/batch",
+        "takeaway/index"
       ]
     }
   ]

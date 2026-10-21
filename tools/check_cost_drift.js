@@ -32,8 +32,8 @@ function block(src, start, len) {
 }
 
 const cf = rd('cloudfunctions/getCostCard/index.js');
-const page = rd('pages/card/index.js');
-const wxml = rd('pages/card/index.wxml');
+const page = rd('subpkg/biz/card/index.js');
+const wxml = rd('subpkg/biz/card/index.wxml');
 const cfBlock = block(cf, 'out.prev_total_cost_fen', 1) ? block(cf, 'let prevCost = null', 900) : '';
 const helper = block(page, 'function costDriftText(c)', 900);
 

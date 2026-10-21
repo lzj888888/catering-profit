@@ -618,9 +618,9 @@ const PAGE_CASES = [
     //     🔴 新增折叠块**必须同步登记到这里**，否则 F2「不得出现期望外折叠块」判红
     //     （守卫这个设计是对的：防止随手乱加折叠块把首屏撑爆）。
     name: 'takeaway',
-    wxml: 'pages/takeaway/index.wxml',
-    js: 'pages/takeaway/index.js',
-    wxss: 'pages/takeaway/index.wxss',
+    wxml: 'subpkg/biz/takeaway/index.wxml',
+    js: 'subpkg/biz/takeaway/index.js',
+    wxss: 'subpkg/biz/takeaway/index.wxss',
     keys: ['tkPickHint', 'tkShapeCHint', 'tkWhereHint', 'tkColsHint'],
     keepPlain: 1,   // importPickPlatformHint 17 字（确认按钮紧下方）⇒ 保持平铺
     segFolds: 0,
@@ -651,9 +651,9 @@ const PAGE_CASES = [
   {
     // 20 字 —— 原料别名说明（「不会替换原料名」是**防止误用**的关键提示）。
     name: 'materialEdit',
-    wxml: 'pages/material/edit.wxml',
-    js: 'pages/material/edit.js',
-    wxss: 'pages/material/edit.wxss',
+    wxml: 'subpkg/biz/material/edit.wxml',
+    js: 'subpkg/biz/material/edit.js',
+    wxss: 'subpkg/biz/material/edit.wxss',
     keys: ['matAliasesHint'],
     keepPlain: 1,   // convertHint（`{{convertHint}}` 动态值）⇒ 保持平铺
     segFolds: 0,
@@ -661,9 +661,9 @@ const PAGE_CASES = [
   {
     // 19 字 —— 菜品卡列表页顶部「理论配方成本 ≠ 真实门店毛利」。
     name: 'cardIndex',
-    wxml: 'pages/card/index.wxml',
-    js: 'pages/card/index.js',
-    wxss: 'pages/card/index.wxss',
+    wxml: 'subpkg/biz/card/index.wxml',
+    js: 'subpkg/biz/card/index.js',
+    wxss: 'subpkg/biz/card/index.wxss',
     keys: ['ciHintAlways'],
     keepPlain: 0,   // 本页仅此一处 hint
     segFolds: 0,
@@ -685,9 +685,9 @@ const PAGE_CASES = [
     //      写成恒绿又会漏掉"该页平铺数被误改"。⇒ keepPlain 必须**逐页显式声明**（数据驱动）。
     //   ⚠️ 本页 wxml 近 19K（全站最大），F11 下界按 keys 缩放后为 max(1500, 1×800)=1500 ⇒ 覆盖。
     name: 'cardEdit',
-    wxml: 'pages/card/edit.wxml',
-    js: 'pages/card/edit.js',
-    wxss: 'pages/card/edit.wxss',
+    wxml: 'subpkg/biz/card/edit.wxml',
+    js: 'subpkg/biz/card/edit.js',
+    wxss: 'subpkg/biz/card/edit.wxss',
     keys: ['ceActPriceHint'],
     keepPlain: 0,   // 本页仅此一处 hint
     segFolds: 0,

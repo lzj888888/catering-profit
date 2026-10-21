@@ -19,7 +19,7 @@
 //   使"新加一类触发"只需改 ALIASES 一处，且新类型的按钮文案**自动纳入 4 字检查**。
 //
 // ===== R238 增补：页面局部别名 =====
-//   `pages/takeaway/index.js` 顶部有 `const TK = TERMS.ledger.takeaway;`，该页术语一律走 `TK.xxx`。
+//   `subpkg/biz/takeaway/index.js` 顶部有 `const TK = TERMS.ledger.takeaway;`，该页术语一律走 `TK.xxx`。
 //   R238 首次在该页引入 `showModal` ⇒ `confirmText: TK.importGoReview` 落进扫描面而**解析不了**
 //   ⇒ B-② 判红。⚠️ 那次判红**本身是对的**：解析不了 ⇒ 「≤4 字」红线失效 ⇒ 必须报出来。
 //   处置＝**让解析器认识该别名**（`PAGE_ALIAS`，与 `TERMS.` 分支同族），
@@ -65,7 +65,7 @@ const ALIASES = {
   'buttons.unlockPro': ['buttons.unlockPro'],
 };
 
-// 🔴 R238：**页面局部别名** —— `pages/takeaway/index.js` 顶部有 `const TK = TERMS.ledger.takeaway;`，
+// 🔴 R238：**页面局部别名** —— `subpkg/biz/takeaway/index.js` 顶部有 `const TK = TERMS.ledger.takeaway;`，
 //   该页全部术语走 `TK.xxx`（页面既有风格）。R238 首次在该页引入 `showModal`
 //   ⇒ `confirmText: TK.importGoReview` / `cancelText: TK.importGoLater` 落进本守卫扫描面，
 //     而 `candidatesOf` 只认 `TERMS.` 前缀 ⇒ **B-② 判红**。
@@ -78,7 +78,7 @@ const PAGE_ALIAS = [
   {
     prefix: 'TK.',
     to: 'ledger.takeaway.',
-    file: 'pages/takeaway/index.js',
+    file: 'subpkg/biz/takeaway/index.js',
     bind: /const\s+TK\s*=\s*TERMS\.ledger\.takeaway/,
   },
 ];

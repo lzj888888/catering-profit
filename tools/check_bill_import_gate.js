@@ -5,7 +5,7 @@
 // 李老师 2026-10-10 决定账单导入暂停展示（详见 `review/NOTE_2026-10-10_外卖账单导入_暂停展示衔接备忘.md`）。
 // 这件事有一个**极易踩反**的点，本守卫的存在理由就是它：
 //
-//   🔴 `pages/takeaway` 那个 tab 是**一个统一导入器**，云函数按表头**自动判形态**：
+//   🔴 `subpkg/biz/takeaway` 那个 tab 是**一个统一导入器**，云函数按表头**自动判形态**：
 //       · 形态 A `dish_sales`   = 堂食《菜品销售统计》（美团收银）  ⇒ **要保留**
 //       · 形态 B `combo_detail` = 套餐销售明细（仅交叉校验、不入库）
 //       · 形态 C `waimai_goods` = **外卖《商品销量》**（SKU 长表）    ⇒ **要保留**（外卖单品复盘的输入）
@@ -35,8 +35,8 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 const P = {
   flags: path.join(ROOT, 'utils', 'featureFlags.js'),
-  pageJs: path.join(ROOT, 'pages', 'takeaway', 'index.js'),
-  pageWxml: path.join(ROOT, 'pages', 'takeaway', 'index.wxml'),
+  pageJs: path.join(ROOT, 'subpkg', 'biz', 'takeaway', 'index.js'),
+  pageWxml: path.join(ROOT, 'subpkg', 'biz', 'takeaway', 'index.wxml'),
   fnSvc: path.join(ROOT, 'cloudfunctions', 'importSalesBill', 'service.js'),
   fnIdx: path.join(ROOT, 'cloudfunctions', 'importSalesBill', 'index.js'),
   terms: path.join(ROOT, 'miniprogram', 'i18n', 'terms.js'),
@@ -83,7 +83,8 @@ check('A-② 🔴 两处取值**同源一致**（否则前端藏了、云端还�
   !!mFlags && !!mSvc && mFlags[1] === mSvc[1],
   `${mFlags ? mFlags[1] : '?'} vs ${mSvc ? mSvc[1] : '?'}`);
 check('A-③ 页面真 require 了单源开关（不是自己另写个常量）',
-  /require\('\.\.\/\.\.\/utils\/featureFlags\.js'\)/.test(pageJs));
+  // R423 分包化：页面在 subpkg/ 下时深度多一级 ⇒ 不绑死级数
+  /require\('(?:\.\.\/){2,3}utils\/featureFlags\.js'\)/.test(pageJs));
 check('A-④ 页面 data 的 billImportOn 取自开关（不写死）',
   /billImportOn:\s*FLAGS\.BILL_IMPORT_ENABLED/.test(pageJs));
 // 🔴 本守卫的核心判据：凡是用 billImportOn 做 wx:if 的地方，必须**同时**判"是不是账单"

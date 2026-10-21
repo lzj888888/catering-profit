@@ -28,7 +28,7 @@ function ok(name, cond, extra) {
 }
 function rd(rel) { try { return fs.readFileSync(path.join(ROOT, rel), 'utf8'); } catch (e) { return ''; } }
 
-const pageSrc = rd('pages/takeaway/index.js');
+const pageSrc = rd('subpkg/biz/takeaway/index.js');
 const sanitySrc = rd('utils/importSanity.js');
 const TERMS = require(path.join(ROOT, 'miniprogram/i18n/terms.js')).TERMS;
 const TK = TERMS.ledger.takeaway;
@@ -100,7 +100,7 @@ ok('③-e 🔴 **故意不做**「只覆盖 N 天不是整月」—— 导入是
 ok('③-f 结论落到页面且**空串不渲染**（不假报"一切正常"）',
   /importSanityText: sanityText/.test(pageSrc) && /buildSanityText/.test(pageSrc)
   && /if \(!list\.length\) return ''/.test(pageSrc)
-  && /importSanityText\}\}/.test(rd('pages/takeaway/index.wxml')));
+  && /importSanityText\}\}/.test(rd('subpkg/biz/takeaway/index.wxml')));
 
 // ===== ④ 反恒真 =====
 ok('④-a 反恒真：把「平台名与外卖邻近」的**旧文案**喂给 ②-a 的判据 ⇒ 必须判红；真文案必须判绿'

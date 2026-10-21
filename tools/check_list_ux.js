@@ -263,8 +263,8 @@ function judgeAfterSavedResets(src, key) {
 // ===================== L1 列表排序在位 =====================
 console.log('===== L1 · 两个列表「置顶 + 最近编辑在前」=====');
 {
-  const cardIdx = read('pages/card/index.js');
-  const matIdx = read('pages/material/index.js');
+  const cardIdx = read('subpkg/biz/card/index.js');
+  const matIdx = read('subpkg/biz/material/index.js');
   const r1 = judgeSortList(cardIdx, 'card_code');
   r1.ok ? ok('L1-① 菜品卡列表排序：' + r1.why) : bad('L1-① 菜品卡列表排序 —— ' + r1.why);
   const r2 = judgeSortList(matIdx, 'id');
@@ -312,19 +312,21 @@ console.log('===== L3 · 置顶落在既有 shop 文档（零新建集合）====
 console.log('');
 console.log('===== L4 · 原料选择走独立页（搜索 + 分组）=====');
 {
-  const wxml = read('pages/card/edit.wxml');
+  const wxml = read('subpkg/biz/card/edit.wxml');
   const r = judgeMaterialPicker(wxml);
   r.ok ? ok('L4-① ' + r.why) : bad('L4-① ' + r.why);
-  const js = read('pages/card/edit.js') || '';
-  const jumps = /\/pages\/material\/pick\?idx=/.test(js);
+  const js = read('subpkg/biz/card/edit.js') || '';
+  // R423 分包化：跳转目标与 app.json 注册形式都变了（分包路径 = root + "material/pick"）
+  const jumps = /\/(?:pages\/material|subpkg\/biz\/material)\/pick\?idx=/.test(js);
   jumps ? ok('L4-② 跳转带 idx（选择页知道自己该填哪一行）') : bad('L4-② 跳转未带 idx ⇒ 选完不知道该填哪一行');
-  const quartet = ['js', 'wxml', 'json', 'wxss'].filter((e) => read('pages/material/pick.' + e));
-  const registered = (read('app.json') || '').indexOf('"pages/material/pick"') >= 0;
+  const quartet = ['js', 'wxml', 'json', 'wxss'].filter((e) => read('subpkg/biz/material/pick.' + e));
+  // 分包页在 app.json 里是 root + "material/pick" 两段，完整路径不再出现
+  const registered = (read('app.json') || '').indexOf('"material/pick"') >= 0;
   (quartet.length === 4 && registered)
     ? ok('L4-③ 选择页四件套齐全（4/4）且已在 app.json 注册')
     : bad('L4-③ 选择页不完整：四件套 ' + quartet.length + '/4，注册=' + registered);
-  const pickJs = read('pages/material/pick.js') || '';
-  const pickWxml = read('pages/material/pick.wxml') || '';
+  const pickJs = read('subpkg/biz/material/pick.js') || '';
+  const pickWxml = read('subpkg/biz/material/pick.wxml') || '';
   const hasSearch = /onKeyword/.test(pickJs) && /bindinput="onKeyword"/.test(pickWxml);
   const hasGroup = fnBodyOf(pickJs, 'buildGroups') !== null && /wx:for="\{\{groups\}\}"/.test(pickWxml);
   (hasSearch && hasGroup)
@@ -336,8 +338,8 @@ console.log('===== L4 · 原料选择走独立页（搜索 + 分组）=====');
 console.log('');
 console.log('===== L5 · 连续录入（防第二道覆盖第一道）=====');
 {
-  const cardEdit = read('pages/card/edit.js');
-  const matEdit = read('pages/material/edit.js');
+  const cardEdit = read('subpkg/biz/card/edit.js');
+  const matEdit = read('subpkg/biz/material/edit.js');
   const r1 = judgeIsEditBranch(cardEdit);
   r1.ok ? ok('L5-① 菜品卡编辑页：' + r1.why) : bad('L5-① 菜品卡编辑页 —— ' + r1.why);
   const r2 = judgeIsEditBranch(matEdit);
@@ -346,8 +348,8 @@ console.log('===== L5 · 连续录入（防第二道覆盖第一道）=====');
   r3.ok ? ok('L5-③ ' + r3.why) : bad('L5-③ 菜品卡 —— ' + r3.why);
   const r4 = judgeAfterSavedResets(matEdit, 'id');
   r4.ok ? ok('L5-④ ' + r4.why) : bad('L5-④ 原料 —— ' + r4.why);
-  const backC = /backToList\s*\(\s*\)\s*\{/.test(cardEdit || '') && /bindtap="backToList"/.test(read('pages/card/edit.wxml') || '');
-  const backM = /backToList\s*\(\s*\)\s*\{/.test(matEdit || '') && /bindtap="backToList"/.test(read('pages/material/edit.wxml') || '');
+  const backC = /backToList\s*\(\s*\)\s*\{/.test(cardEdit || '') && /bindtap="backToList"/.test(read('subpkg/biz/card/edit.wxml') || '');
+  const backM = /backToList\s*\(\s*\)\s*\{/.test(matEdit || '') && /bindtap="backToList"/.test(read('subpkg/biz/material/edit.wxml') || '');
   (backC && backM)
     ? ok('L5-⑤ 两页都有显式「返回列表」出口（不打断，也不把人困住）')
     : bad('L5-⑤ 返回出口缺失（菜品卡=' + backC + '，原料=' + backM + '）—— 连续录入会把人困在本页');
@@ -385,9 +387,9 @@ console.log('');
 console.log('===== S · 自失效护栏 =====');
 {
   const faces = [
-    'pages/card/index.js', 'pages/material/index.js', 'pages/card/index.wxml', 'pages/material/index.wxml',
-    'pages/material/pick.wxml', 'pages/card/edit.js', 'pages/card/edit.wxml', 'pages/material/edit.js',
-    'pages/material/edit.wxml', 'app.json',
+    'subpkg/biz/card/index.js', 'subpkg/biz/material/index.js', 'subpkg/biz/card/index.wxml', 'subpkg/biz/material/index.wxml',
+    'subpkg/biz/material/pick.wxml', 'subpkg/biz/card/edit.js', 'subpkg/biz/card/edit.wxml', 'subpkg/biz/material/edit.js',
+    'subpkg/biz/material/edit.wxml', 'app.json',
     'cloudfunctions/getCostCard/service.js', 'cloudfunctions/getCardVersions/service.js',
     'cloudfunctions/getMaterial/service.js', 'cloudfunctions/saveShopSetting/validate.js',
     'cloudfunctions/saveShopSetting/index.js', 'cloudfunctions/getShopContext/index.js',

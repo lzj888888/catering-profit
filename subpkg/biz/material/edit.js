@@ -1,14 +1,14 @@
-// pages/material/edit.js —— 批次 P0（M3 v1.2）· 原料新增/编辑表单页（独立成页，不用弹层）
+// subpkg/biz/material/edit.js —— 批次 P0（M3 v1.2）· 原料新增/编辑表单页（独立成页，不用弹层）
 //
 // 写：api.call('saveMaterial', { material:{...} })。
 // ⚠️ 金额铁律：采购单价「元」输入 → 前端 Math.round(元×100) 转「分」整数（后端不收字符串/小数元）。
 // ⚠️ 三可选字段（M3.30）：category 下拉 6 类；aliases 逗号分隔 → JSON 数组字符串（仅检索）；remark 文本域。
 // ⚠️ 虚拟原料（is_virtual=true）只读（列表页已拦编辑入口，此处兜底不给存）。
-const api = require('../../utils/api.js');
-const ui = require('../../utils/ui.js');
-const units = require('../../utils/units.js');
-const { TERMS } = require('../../miniprogram/i18n/terms.js');
-const { suggestByName } = require('../../utils/materialLexicon.js');   // M3.20 词库（只读建议）
+const api = require('../../../utils/api.js');
+const ui = require('../../../utils/ui.js');
+const units = require('../../../utils/units.js');
+const { TERMS } = require('../../../miniprogram/i18n/terms.js');
+const { suggestByName } = require('../../../utils/materialLexicon.js');   // M3.20 词库（只读建议）
 
 // category 枚举（采购视角，独立于 M1 ITEM_TAGS，不建映射）
 const CATEGORY_OPTIONS = [

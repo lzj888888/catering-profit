@@ -215,13 +215,13 @@ check('L7-③ 反恒真前提：影子判据确实能被触发（judge 非恒真
 
 // ---- L8 页面级付费入口（R299 新增）----
 //   为什么单立这一组（真缺口，R299 实测）：付费能力 `m3_takeaway` 在本仓**没有云端校验点**
-//   （纯前端试算、不落库）⇒ 它唯一的墙就是**页面入口**。而 `pages/takeaway/index.js` 里
+//   （纯前端试算、不落库）⇒ 它唯一的墙就是**页面入口**。而 `subpkg/biz/takeaway/index.js` 里
 //   两个计算入口的墙**不一致**：`onCalc` 过 `fetchEntitlement`，`onReverse`（挂牌价反算）**不过**
 //   ⇒ 未开通用户可直接用反算拿到同一份付费价值。
 //   判据（**语义级**，不钉字面量）：页面里**任何调用付费能力纯函数的方法体**，都必须在**同一方法体内**
 //   出现 `fetchEntitlement`。⇒ 「同页面同能力的所有入口口径一致」成为机器可判的不变量。
 const PAID_PURE_FNS = ['calcTakeawayOrder', 'reverseListedPrice'];
-const TAKEAWAY_PAGE = 'pages/takeaway/index.js';
+const TAKEAWAY_PAGE = 'subpkg/biz/takeaway/index.js';
 
 /** 取出「Page({...}) 顶层方法」的方法体（花括号配平）；配平失败 ⇒ 返回 null（fail-closed）。 */
 function pageMethodBodies(src) {

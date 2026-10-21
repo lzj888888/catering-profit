@@ -79,7 +79,7 @@
   ];
 
   // S2 非退化锚点：这些文件若不在入包集合内，说明扫描面被扫空 / 根路径写错（而非「包变小了」）
-  const ANCHORS = ['app.js', 'app.json', 'app.wxss', 'pages/card/index.js', 'pages/takeaway/index.js'];
+  const ANCHORS = ['app.js', 'app.json', 'app.wxss', 'subpkg/biz/card/index.js', 'subpkg/biz/takeaway/index.js'];
 
   // S3 匹配器正负样本（自带规则表，不依赖真实配置 ⇒ 配置坏了也能自证匹配器是否还活着）
   const SAMPLE_RULES = [

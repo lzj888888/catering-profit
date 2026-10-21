@@ -226,7 +226,7 @@ Page({
   //   ⇒ 返回后页面全然不刷新：刚建的卡不进关联 picker、刚挂的菜不进榜、unmatched 也不减少
   //   ⇒ 用户会以为「卡没建上 / 关联失败」并重复操作。
   //   本页是**只读页**（零未保存输入）⇒ 返回时重载是安全且期待的。
-  //   对照 `pages/card/index.js:122` 同类只读页即 `onShow(){this.load()}` —— 说明这是遗漏，不是设计选择。
+  //   对照 `subpkg/biz/card/index.js:122` 同类只读页即 `onShow(){this.load()}` —— 说明这是遗漏，不是设计选择。
   //   首次进入不重复拉：onLoad 的 init() 已经在拉，`_shown` 此时仍为 false。
   onShow() {
     if (this.data.locked) { this.init(); return; }   // 从付费弹窗返回后重试
@@ -957,16 +957,16 @@ Page({
   },
 
   // 「去映射」= 去建缺失的成本卡（未匹配菜品没有对应卡 ⇒ 建了卡即自动匹配）
-  goMap() { wx.navigateTo({ url: '/pages/card/index' }); },
+  goMap() { wx.navigateTo({ url: '/subpkg/biz/card/index' }); },
 
   // ===== R264：带着菜名去建卡（**预填**）=====
   //   原路径：退出复盘 → M3 → 菜品卡 → 新建 → 手打菜名。51 道菜来回切，最容易错的就是菜名
   //   （打错一个字 = 建了另一道菜的卡，回来照样匹配不上 ⇒ 白建一张）。
-  //   ⇒ 直接跳建卡页并把菜名带上（`pages/card/edit` 的 onLoad 负责回填）。
+  //   ⇒ 直接跳建卡页并把菜名带上（`subpkg/biz/card/edit` 的 onLoad 负责回填）。
   //   🔴 菜名必须 `encodeURIComponent`：菜名里有空格/括号/加号（如「肥牛(大)」「A+B 套餐」），
   //      不编码会被 URL 截断或把 `+` 解成空格 ⇒ 预填出来是错的名字（静默错）。
   goNewCard(e) {
     const nm = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.name) || '';
-    wx.navigateTo({ url: '/pages/card/edit?card_code=&dish_name=' + encodeURIComponent(nm) });
+    wx.navigateTo({ url: '/subpkg/biz/card/edit?card_code=&dish_name=' + encodeURIComponent(nm) });
   },
 });

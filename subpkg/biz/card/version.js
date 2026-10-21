@@ -1,12 +1,12 @@
-// pages/card/version.js —— 批次 4 / 批次 S0 · M3 成本卡版本历史 + 恢复入口
+// subpkg/biz/card/version.js —— 批次 4 / 批次 S0 · M3 成本卡版本历史 + 恢复入口
 //
 // 数据来自 getCardVersions（后端只 INSERT 不 UPDATE 的版本模型，历史版本永不改写）。
 // 展示每版：版本号、保存时间、单份成本、配方明细行（含净料单位成本快照 + 5 字段快照）。
 // S0（任务 2）：每个版本加「恢复此版本」—— 恢复 = 把历史版本数据 INSERT 成新版本（复用 saveCostCard），
 //   旧版本原样保留（只 INSERT 不 UPDATE；最新 = card_code 下 version 最大者，不用 is_latest）。
-const api = require('../../utils/api.js');
-const ui = require('../../utils/ui.js');
-const { TERMS } = require('../../miniprogram/i18n/terms.js');
+const api = require('../../../utils/api.js');
+const ui = require('../../../utils/ui.js');
+const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 
 Page({
   data: {

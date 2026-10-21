@@ -46,10 +46,10 @@
     pkg: path.join(ROOT, 'cloudfunctions', 'exportData', 'package.json'),
     util: path.join(ROOT, 'utils', 'exportFile.js'),
     m1: path.join(ROOT, 'subpkg', 'biz', 'month', 'result.js'),
-    m3: path.join(ROOT, 'pages', 'card', 'index.js'),
+    m3: path.join(ROOT, 'subpkg', 'biz', 'card', 'index.js'),
     m2: path.join(ROOT, 'pages', 'sandbox', 'list.js'),
     m1w: path.join(ROOT, 'subpkg', 'biz', 'month', 'result.wxml'),
-    m3w: path.join(ROOT, 'pages', 'card', 'index.wxml'),
+    m3w: path.join(ROOT, 'subpkg', 'biz', 'card', 'index.wxml'),
     termsA: path.join(ROOT, 'miniprogram', 'i18n', 'terms.js'),
     termsB: path.join(ROOT, 'specs', 'dev-specs', 'i18n', 'terms.js'),
   };

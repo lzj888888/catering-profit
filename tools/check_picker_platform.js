@@ -3,7 +3,7 @@
 //
 // 为什么需要它
 // 形态 C（外卖商品销量）的导入必须由用户**手选平台**（机器判不出），选项来自
-//   `pages/takeaway/index.js::IMPORT_PLATFORM_OPTIONS`，label 来自术语单源
+//   `subpkg/biz/takeaway/index.js::IMPORT_PLATFORM_OPTIONS`，label 来自术语单源
 //   `miniprogram/i18n/terms.js::card.reviewPlatformNames`。
 // 这条链上有三个**都静默**的失效点：
 //   ① picker 的 value 不在云端 `SALES_SCHEMA.platform.enum` 内 ⇒ 云函数校验直接拒收，
@@ -23,7 +23,7 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
-const PAGE_REL = 'pages/takeaway/index.js';
+const PAGE_REL = 'subpkg/biz/takeaway/index.js';
 const SVC_REL = 'cloudfunctions/importSalesBill/service.js';
 const TERMS_REL = 'miniprogram/i18n/terms.js';
 

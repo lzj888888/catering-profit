@@ -45,7 +45,7 @@
 //         （集合双向）+ 下界护栏（总项数 ≥ 20 / 每 category ≥ 2））
 //       + 全仓 .js 语法编译守卫（tools/check_js_syntax.js，R122：**每个受管 .js 至少能被引擎编译一次**，
 //         用 `vm.Script` 同进程编译 675 个文件、不执行不 spawn）。
-//         根因=round97 T1 把 `pages/month/input.js` 的 require 解构**拆成两条**（第 13 行已 `}` 收尾、
+//         根因=round97 T1 把 `subpkg/biz/month/input.js` 的 require 解构**拆成两条**（第 13 行已 `}` 收尾、
 //         第 14 行又接一段）⇒ 微信出码 `Unexpected token (14:32)`、**小程序根本起不来**，
 //         而门禁当时报 **94/94 全绿**：check_requires 只查「require 路径**存在**」（存在 ≠ 可编译），
 //         全部 selftest/check_* 都是**文本级 grep**，而前端 `pages/`+`miniprogram/` **无任何套件 require**
@@ -58,7 +58,7 @@
 //         防扫描面被悄悄写窄）
 //       + WXML 结构完整性守卫（tools/check_wxml_structure.js，R123：**WXML 不得把属性暴露成文本**）。
 //         根因=round97 T1 的**同一支插入脚本**在把 input.js 的 require 拆成两条（R122 记）之后，
-//         **同一轮**又把 pages/month/input.wxml 的金额 <input> 从**属性集合中间**用 `/>` 收掉
+//         **同一轮**又把 subpkg/biz/month/input.wxml 的金额 <input> 从**属性集合中间**用 `/>` 收掉
 //         ⇒ 其后的属性行失去归属、成了文本节点；而 WXML 的文本节点**仍会插值 {{}}**
 //         ⇒ 真机屏上是**求值后**的 `data-gidx="0"` / `disabled="false"`（所以像"英文报错"
 //         却看不到双花括号）。缺口：95 个套件里**没有任何一条读 .wxml** —— R122 只覆盖 .js，
@@ -66,11 +66,11 @@
 //         判据 A＝裸属性行（该行形如 attr="…" 而**上一非空行以 > 或 /> 结尾** ⇒ 属性无归属）；
 //         判据 B＝标签配平（骨架化抹 `{{…}}` / `<!--…-->` 后单趟 tag 栈：未闭合 / 错配 / 缺 > 均判红）。
 //         骨架化时**保留换行**⇒ 报出的行号与源文件一致、不漂移；
-//         下界护栏＝文件数 ≥ 10 + 四个锚点页面（含事故现场 pages/month/input.wxml）必须命中）
+//         下界护栏＝文件数 ≥ 10 + 四个锚点页面（含事故现场 subpkg/biz/month/input.wxml）必须命中）
 //       + 页面术语键「引用即存在」守卫（tools/check_page_terms.js，R124：**WXML 拿不到的术语键
 //         会静默渲染成空** —— 空白按钮/空白文案/空白 placeholder，而门禁全绿）。
 //         根因=round108 李老师真机反馈「再投一笔下面的按钮是纯蓝色、上面没有文字」：
-//         `pages/month/amortize.js` 写 `TERMS.amortizePage.amortAdd`，而该键**在 terms.js 里不存在**
+//         `subpkg/biz/month/amortize.js` 写 `TERMS.amortizePage.amortAdd`，而该键**在 terms.js 里不存在**
 //         （本体是 `amortizePage.add`）⇒ undefined ⇒ 主按钮只剩底色。顺着这一处全仓扫出**同族 7 处**
 //         （空按钮 1 + 空文案 4 + 空 placeholder 2），全部漏在「术语本体是好的、只是没搬进页面的 t」。
 //         缺口：R122 只验 .js 能不能编译、R123 只验 WXML 属性有没有错成文本，
@@ -286,7 +286,7 @@
 //         任意用户改 shop_id 即可读写他人店铺数据（真云可达）。判据=G1 扫描面非退化 + G2 每个 return
 //         分支都带 error + G3 单源无 ok()/fail() + G4 派生副本同形 + G5 关键锚点在场 + G6 调用点判据与形状一致）
 //       + 路由编解码配对守卫（tools/check_uri_codec_pairs.js，R203：**编码了却不解码** ——
-//         跳转侧 pages/material/index.js 用 encodeURIComponent(m.name) 编过原料名，目标页
+//         跳转侧 subpkg/biz/material/index.js 用 encodeURIComponent(m.name) 编过原料名，目标页
 //         subpkg/tools/metrics/impact.js 直接 q.name 赋值 ⇒ 顶部渲染 %E7%82%B8%E9%B8%A1%E8%85%BF
 //         （真机反馈「涨价影响面前面很多英文和百分号」）。⚠️ 长期存在却从未暴露：上游店铺鉴权 404
 //         让这页从没真正渲染出来 —— **修好上游会把下游老毛病一并照亮**。判据=A 编码跳转的目标页必须解码
@@ -834,7 +834,7 @@ const SUITES = [
   //   背景：费用项清单四处副本此前**零守卫**（收入侧 R110 守的是 SEED_INCOME_ITEMS，不看费用侧）。
   ['expense-item-seed', 'tools/check_expense_item_seed.js'],
   // ===== R122 全仓 .js 语法编译守卫（round99）：见头部注释同名条目。
-  //   背景：round97 T1 的插入脚本把 pages/month/input.js 的 require 解构**拆成两条** ⇒
+  //   背景：round97 T1 的插入脚本把 subpkg/biz/month/input.js 的 require 解构**拆成两条** ⇒
   //   微信开发者工具出码时编译失败、小程序根本起不来，而门禁报 94/94 全绿 ——
   //   因为**全仓没有任何套件编译过 .js**（check_requires 只查「require 路径存在」，
   //   前端 pages/ 与 miniprogram/ 又无任何套件 require，只在真机/模拟器里跑）。
@@ -842,7 +842,7 @@ const SUITES = [
   ['js-syntax', 'tools/check_js_syntax.js'],
   // ===== R123 WXML 结构完整性守卫（同族病第 26 例，round100）：见头部注释同名条目。
   //   背景：round97 T1 的**同一支插入脚本**（为 R85 补互斥 disabled）在把 input.js 的 require
-  //   拆成两条（R122 记）之后，**同一轮**又把 pages/month/input.wxml 的金额 <input> 从
+  //   拆成两条（R122 记）之后，**同一轮**又把 subpkg/biz/month/input.wxml 的金额 <input> 从
   //   **属性集合中间**用 `/>` 收掉 ⇒ 其后属性行成了文本节点，真机渲染出整片英文
   //   （WXML 文本节点仍会插值 {{}} ⇒ 屏上是**求值后**的值，故像"英文报错"）。
   //   判据 A＝裸属性行（上一非空行已闭合）；判据 B＝标签配平（未闭合 / 错配 / 缺 >）。

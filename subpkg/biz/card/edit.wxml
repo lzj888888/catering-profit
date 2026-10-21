@@ -84,7 +84,7 @@
       <view class="cell2">
         <text class="lbl">{{t.material}}</text>
         <!-- round156：原生 `<picker>`（只能滚）→ **独立选择页**（搜索 + 按分类分组）。
-             100 个原料在原 picker 里要滚十几屏 ⇒ 换成跳 `pages/material/pick`。
+             100 个原料在原 picker 里要滚十几屏 ⇒ 换成跳 `subpkg/biz/material/pick`。
              为什么不用弹层：弹层 × 键盘是死结（PITFALLS §6）。 -->
         <view class="picker" data-idx="{{index}}" bindtap="goPickMaterial">{{lines[index].material_name ? lines[index].material_name : t.material}}</view>
       </view>

@@ -368,13 +368,13 @@ function judgePackUnits(pool) {
 
 // 本轮受管源码
 const UNITS_SRC = read('utils/units.js') || '';
-const CARDJS = read('pages/card/edit.js') || '';
-const CARDWXML = read('pages/card/edit.wxml') || '';
+const CARDJS = read('subpkg/biz/card/edit.js') || '';
+const CARDWXML = read('subpkg/biz/card/edit.wxml') || '';
 // round153：样式也是**行为**（单位格的视觉区隔靠 background，不是靠注释）⇒ 纳入扫描面
-const CARDWXSS = read('pages/card/edit.wxss') || '';
-const MATEJS = read('pages/material/edit.js') || '';
-const MATEWXML = read('pages/material/edit.wxml') || '';
-const MATIDX = read('pages/material/index.js') || '';
+const CARDWXSS = read('subpkg/biz/card/edit.wxss') || '';
+const MATEJS = read('subpkg/biz/material/edit.js') || '';
+const MATEWXML = read('subpkg/biz/material/edit.wxml') || '';
+const MATIDX = read('subpkg/biz/material/index.js') || '';
 const TERMS_A = read('miniprogram/i18n/terms.js') || '';
 const TERMS_B = read('specs/dev-specs/i18n/terms.js') || '';
 
@@ -598,7 +598,7 @@ const rUi = judgeUnitIndexDerived(MATEJS);
 if (rUi.ok) ok('L4 ' + rUi.why); else bad('L4 ' + rUi.why);
 
 // ---------- S1~S2 自失效护栏 ----------
-const scanFiles = ['utils/units.js', 'pages/card/edit.js', 'pages/card/edit.wxml', 'pages/card/edit.wxss', 'pages/material/edit.js', 'pages/material/edit.wxml', 'pages/material/index.js', 'miniprogram/i18n/terms.js', 'specs/dev-specs/i18n/terms.js'];
+const scanFiles = ['utils/units.js', 'subpkg/biz/card/edit.js', 'subpkg/biz/card/edit.wxml', 'subpkg/biz/card/edit.wxss', 'subpkg/biz/material/edit.js', 'subpkg/biz/material/edit.wxml', 'subpkg/biz/material/index.js', 'miniprogram/i18n/terms.js', 'specs/dev-specs/i18n/terms.js'];
 const scanned = scanFiles.filter((f) => read(f) != null).length;
 if (scanned >= scanFiles.length) ok('S1 扫描面完整（' + scanned + '/' + scanFiles.length + ' 个文件在位，改小扫描面即转红）');
 else bad('S1 扫描面缺失：仅 ' + scanned + '/' + scanFiles.length + ' 个文件可读');

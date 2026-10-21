@@ -26,8 +26,8 @@ const ROOT = path.resolve(__dirname, '..');
 const P = {
   svc: path.join(ROOT, 'cloudfunctions', 'importSalesBill', 'service.js'),
   idx: path.join(ROOT, 'cloudfunctions', 'importSalesBill', 'index.js'),
-  page: path.join(ROOT, 'pages', 'takeaway', 'index.js'),
-  wxml: path.join(ROOT, 'pages', 'takeaway', 'index.wxml'),
+  page: path.join(ROOT, 'subpkg', 'biz', 'takeaway', 'index.js'),
+  wxml: path.join(ROOT, 'subpkg', 'biz', 'takeaway', 'index.wxml'),
   terms: path.join(ROOT, 'miniprogram', 'i18n', 'terms.js'),
   termsSpec: path.join(ROOT, 'specs', 'dev-specs', 'i18n', 'terms.js'),
 };
@@ -92,7 +92,7 @@ if (src.terms && src.termsSpec) {
 }
 if (src.page) {
   for (const k of KEYS) {
-    if (!hasActiveKey(src.page, k)) fail(`A-⑩ 页面 pages/takeaway/index.js 未登记（或被注释）${k}（第三处缺失 ⇒ 渲染成空白且零报错）`);
+    if (!hasActiveKey(src.page, k)) fail(`A-⑩ 页面 subpkg/biz/takeaway/index.js 未登记（或被注释）${k}（第三处缺失 ⇒ 渲染成空白且零报错）`);
   }
   // 🔴 必须匹配**分支头**而不是裸 `d.diagnosis`：变异回灌实测把 `if (d && d.diagnosis) {`
   //    改成 `if (false) {` 后，源码里 `const dg = d.diagnosis;` 仍在 ⇒ 裸子串判据**假绿**。

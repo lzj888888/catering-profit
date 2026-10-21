@@ -177,7 +177,7 @@ const REGISTRY = {
     'IDENT|detailSumYuan * 100|#1': ['money', '成本引擎：明细高精度合计（元）→ 整数分'],
     'IDENT|rawTotalYuan * 100|#1': ['money', '成本引擎：原辅料合计（元）→ 整数分（落库值）'],
   },
-  'pages/card/edit.js': {
+  'subpkg/biz/card/edit.js': {
     // 🔴 R374：新增 marginTextOf 里的元→分（吸底条毛利率），插入位置在其它位点**之前**
     //   ⇒ 按序号的登记必须整体顺延（守卫 message 会直接点名差几处，别只补一条）。
     'PAREN|) * 100|#1': ['money', 'R374 吸底条：售价（元）→ 分（与后端毛利率同式，toFixed(10) 十进制安全）'],
@@ -188,13 +188,13 @@ const REGISTRY = {
     'IDENT|yuan * 100|#1': ['money', 'specPriceFen()：规格售价（元）→ 分；⚠️ 第 4 份元→分实现（收敛待判）'],
     'PAREN|) * 100|#5': ['money', '售价低于成本预警：售价（元）→ 分（老板手输）'],
   },
-  'pages/card/version.js': {
+  'subpkg/biz/card/version.js': {
     'PAREN|) * 100|#1': ['ratio', '版本趋势柱高：值 ÷ 最大值 → 百分比高度（纯展示）'],
   },
   'pages/m3/dishreview/index.js': {
     'IDENT|rankedFen * 100|#1': ['ratio', '覆盖率（金额口径）：已匹配 ÷ 全部 → 百分数'],
   },
-  'pages/material/edit.js': {
+  'subpkg/biz/material/edit.js': {
     'PAREN|) * 100|#1': ['money', '原料采购价（元）→ 分（老板手输）'],
   },
   'subpkg/biz/month/result.js': {
@@ -216,7 +216,7 @@ const REGISTRY = {
     'IDENT|targetMonthly * 100|#1': ['ratio', '缓冲率：(目标 − 保本) ÷ 目标 → 百分数'],
     'IDENT|bestRow.targetMonthly * 100|#1': ['ratio', '最佳档缓冲率：(目标 − 保本) ÷ 目标 → 百分数'],
   },
-  'pages/takeaway/index.js': {
+  'subpkg/biz/takeaway/index.js': {
     'PAREN|) * 100|#1': ['money', '外卖组装订单本地 fen()：元 → 分（打包费/单价等老板手输）'],
     'PAREN|) * 100|#2': ['money', '目标利润（元）→ 分（老板手输）'],
   },
@@ -254,7 +254,7 @@ const REGISTRY = {
     'IDENT|F * 100|#3': ['ratio', 'R311 分子效应分子：(F x 100)/Rt -- 比例，不是元->分'],
     'IDENT|f * 100|#1': ['ratio', 'R311 健康营收需求=(f x 100)/hi -- 比例，不是元->分'],
   },
-  'pages/card/index.js': {
+  'subpkg/biz/card/index.js': {
     'PAREN|) * 100|#1': ['ratio', 'R309 成本变动：变化百分比 = (本版-上版) x 100 / 上版 -- 不是元->分'],
   },
   'utils/shareSplit.js': {

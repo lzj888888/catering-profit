@@ -46,6 +46,11 @@ try {
 }
 
 const declared = Array.isArray(app.pages) ? app.pages.slice() : [];
+// R423 分包化：声明集合必须含分包页（按 root 拼回完整路径，与 walkPages 的文件路径形式一致）
+for (const sp of (app.subpackages || app.subPackages || [])) {
+  const root = String(sp.root || '').replace(/\/+$/, '');
+  for (const p of (sp.pages || [])) declared.push(root ? root + '/' + p : p);
+}
 // tabBar 也会引用页面，一并纳入「已声明」
 if (app.tabBar && Array.isArray(app.tabBar.list)) {
   for (const it of app.tabBar.list) {
@@ -84,6 +89,8 @@ function walkPages(dir) {
   }
 }
 walkPages(path.join(ROOT, 'pages'));
+// R423 分包化：页面不再全在 pages/ 下（下界 20 不变：两个根合起来仍在 27 个页面量级）
+if (fs.existsSync(path.join(ROOT, 'subpkg'))) walkPages(path.join(ROOT, 'subpkg'));
 
 const orphans = found.filter(
   (p) => !declaredSet.has(p) && !ORPHAN_WHITELIST.includes(p)
@@ -188,7 +195,7 @@ for (const p of found.sort()) {
   }
 
   // ⑥ 下拉刷新：定义了钩子 ⇒ 该页 json 必须开启（R298X）
-  //   根因：仓内曾有 **3 页**（`pages/card/edit.js` 成本卡编辑表单 / `pages/takeaway/index.js`
+  //   根因：仓内曾有 **3 页**（`subpkg/biz/card/edit.js` 成本卡编辑表单 / `subpkg/biz/takeaway/index.js`
   //   外卖试算 / `subpkg/tools/metrics/impact.js` 影响面）各自复制了一段一模一样的
   //   `onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()); },`，
   //   而它们三页的 json `enablePullDownRefresh` 全是 **false** ⇒ 钩子**永不触发**（死槽）。

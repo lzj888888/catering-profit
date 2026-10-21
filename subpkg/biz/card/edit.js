@@ -1,4 +1,4 @@
-// pages/card/edit.js —— M3 成本卡新建 / 编辑（另存新版本）+ 反算售价 + 批次 P0 补全
+// subpkg/biz/card/edit.js —— M3 成本卡新建 / 编辑（另存新版本）+ 反算售价 + 批次 P0 补全
 //
 // ⚠️ 计算下沉：本页**不做任何金额/成本/反算计算**。
 //   · 保存 → saveCostCard（后端内嵌引擎算 total_cost 落库）
@@ -7,13 +7,13 @@
 //   ② 分类 + 标签字段；③ 活动特价（第二条毛利率）；④ 售价低于成本预警；⑤ 反算结果填入建议售价。
 //   · 手工行净料单位成本（万分）= round(单价元 × 10000 ÷ (出成率/100))，前端算一次（录入换算），
 //     保存传 net_unit_cost 快照、反算传同一值 —— 单源，不做第二份真相源。
-const api = require('../../utils/api.js');
-const ui = require('../../utils/ui.js');
-const units = require('../../utils/units.js');
-const { openPaywall } = require('../../utils/paywall.js');
-const { TERMS } = require('../../miniprogram/i18n/terms.js');
-const { TEMPLATES, applyTemplate } = require('../../utils/dishTemplates.js');   // M3.20 菜品模板（只预填，不写库）
-const { calcGrouponOrder } = require('../../utils/grouponDerive.js');            // M3.37 团购渠道层（纯计算，不落库）
+const api = require('../../../utils/api.js');
+const ui = require('../../../utils/ui.js');
+const units = require('../../../utils/units.js');
+const { openPaywall } = require('../../../utils/paywall.js');
+const { TERMS } = require('../../../miniprogram/i18n/terms.js');
+const { TEMPLATES, applyTemplate } = require('../../../utils/dishTemplates.js');   // M3.20 菜品模板（只预填，不写库）
+const { calcGrouponOrder } = require('../../../utils/grouponDerive.js');            // M3.37 团购渠道层（纯计算，不落库）
 
 // 本店填过的菜品分类（本地记忆，供下次点选；不新建集合、不上云 —— M3 v1.1 零新建集合红线）
 const EDIT_CATS_KEY = 'm3_dish_cats';
@@ -47,7 +47,7 @@ function renumber(lines) {
     //   用户为了"看一眼当前值"点开、再直接按确定 ⇒ `detail.value = 0` ⇒ 单位被静默改成「克」。
     //   单价那条尤其危险：`onManualPriceUnit` **故意不做数值换算**（保住老板敲的那个数，见其注释），
     //   于是「6 元/斤」摇身变成「6 元/克」⇒ **成本放大 1000 倍、零提示**。
-    //   ⚠️ 不能写在 WXML 里：WXML 表达式**不支持方法调用**（`pages/material/index.js:139` 已有同款注释），
+    //   ⚠️ 不能写在 WXML 里：WXML 表达式**不支持方法调用**（`subpkg/biz/material/index.js:139` 已有同款注释），
     //      故下标在 js 侧算好。挂 `renumber` 是因为它是**所有行变更的公共出口** ⇒
     //      新增 / 回填 / 换单位三条路径自动全覆盖，不必在 6 处调用点各补一次（抄多份必漂）。
     qtyUnitIdx: Math.max(0, units.QTY_UNITS.indexOf(l.qty_unit || units.BASE_UNIT)),
@@ -317,12 +317,12 @@ Page({
     else this._pendingPick = p;
   },
 
-  // round156：原料选择改为**独立页**（`pages/material/pick`）。
+  // round156：原料选择改为**独立页**（`subpkg/biz/material/pick`）。
   //   改前是原生 `<picker mode="selector" range="{{materials}}">` —— 100 个原料只能靠手指滚，
   //   没有搜索、没有分组（李老师真机反馈：「如果有 100 道菜品，来回查找会很麻烦」）。
   goPickMaterial(e) {
     const idx = Number(e.currentTarget.dataset.idx);
-    wx.navigateTo({ url: '/pages/material/pick?idx=' + idx });
+    wx.navigateTo({ url: '/subpkg/biz/material/pick?idx=' + idx });
   },
 
   // 把选中的原料填进第 idx 行（原 onMaterialChange 的语义；改为按 **id** 取而非按下标取 ——
@@ -553,7 +553,7 @@ Page({
   onTags(e) { this.setData({ tags: e.detail.value }); },
   onTargetMargin(e) { this.setData({ targetMargin: e.detail.value }); },
   // 真机反馈：改第 N 道菜的原料必须回列表页最顶部 ⇒ 编辑页给直达入口
-  goMaterial() { wx.navigateTo({ url: '/pages/material/index' }); },
+  goMaterial() { wx.navigateTo({ url: '/subpkg/biz/material/index' }); },
 
   // ===== round149：用量单位 / 原料换算说明 =====
   // 单条原料的换算说明：采购价 ÷ 换算系数 ÷ 出成率 ⇒ 净料单价（元/克）。

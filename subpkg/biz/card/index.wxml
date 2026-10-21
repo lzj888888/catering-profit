@@ -55,7 +55,7 @@
         <text class="tag tag-pin" wx:if="{{item.pinned}}">{{t.pinTag}}</text>
         <text class="tag">{{item.calc_mode === 'A' ? t.calcModeA : t.calcModeB}}</text>
         <!-- 🔴 R309：成本变动（本版 vs 上一版单份成本）。只在"真的变了 & 上版成本>0"时才出现
-             （见 pages/card/index.js::costDriftText —— 三种情况一律不显示，绝不编数）。 -->
+             （见 subpkg/biz/card/index.js::costDriftText —— 三种情况一律不显示，绝不编数）。 -->
         <text class="tag" wx:if="{{item.driftText}}">{{item.driftText}}</text>
         <!-- M3.16（批次 C）：套餐标记 -->
         <text class="tag" wx:if="{{item.card_type === 3}}">{{t.cardTypeCombo}}</text>

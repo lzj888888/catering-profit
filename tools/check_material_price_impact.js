@@ -34,7 +34,7 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
-const EDIT = 'pages/material/edit.js';
+const EDIT = 'subpkg/biz/material/edit.js';
 const IMPACT = 'subpkg/tools/metrics/impact.js';
 const TERMS_SPEC = 'specs/dev-specs/i18n/terms.js';
 const TERMS_MP = 'miniprogram/i18n/terms.js';
@@ -172,7 +172,7 @@ function literalOf(src, key) {
 const BANNED = ['已自动更新', '已自动跟着变', '已跟随更新', '成本已更新', '自动同步完成'];
 
 /**
- * @param {string} editSrc   pages/material/edit.js 源码
+ * @param {string} editSrc   subpkg/biz/material/edit.js 源码
  * @param {string} termsSrc  terms.js 源码（任一副本）
  * @returns {string[]} 失败项（空数组 = 通过）
  */
@@ -321,7 +321,7 @@ ok('R4 反样本·删真调用 ⇒ 判否', analyze(BAD_C, GOOD_TERMS).length > 
   && analyze(BAD_C, GOOD_TERMS).some((f) => f.indexOf('A5') === 0));
 
 // 反样本 4：跳转目标改错页 ⇒ 必须判否
-const BAD_D = GOOD_EDIT.replace('/subpkg/tools/metrics/impact?x=1', '/pages/card/index');
+const BAD_D = GOOD_EDIT.replace('/subpkg/tools/metrics/impact?x=1', '/subpkg/biz/card/index');
 ok('R5 反样本·跳错页 ⇒ 判否', analyze(BAD_D, GOOD_TERMS).length > 0
   && analyze(BAD_D, GOOD_TERMS).some((f) => f.indexOf('B4') === 0));
 

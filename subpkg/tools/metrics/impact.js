@@ -8,7 +8,7 @@ const ui = require('../../../utils/ui.js');
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 
 // 🔴 R203：路由参数里的**中文名必须自行解码**。
-//   跳转侧（pages/material/index.js::goImpact）用 encodeURIComponent 编过一次，
+//   跳转侧（subpkg/biz/material/index.js::goImpact）用 encodeURIComponent 编过一次，
 //   微信路由**不保证**替我们解回来 ⇒ 页面直接显示 `%E7%82%B8%E9%B8%A1%E8%85%BF`
 //   （李老师报的「涨价影响面前面一大串英文和百分号」就是它）。
 //   ⚠️ 之所以到现在才暴露：此前店铺鉴权 404 ⇒ 本页取数必失败 ⇒ 从没真正渲染出来过。

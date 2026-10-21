@@ -1,13 +1,13 @@
-// pages/material/index.js —— 批次 P0（M3 v1.2）· 原料档案列表页
+// subpkg/biz/material/index.js —— 批次 P0（M3 v1.2）· 原料档案列表页
 //
 // 读：api.call('getMaterial', {}) 列表；写（删）：api.call('saveMaterial', { material:{ id, _delete:true } })。
 // ⚠️ 虚拟原料（is_virtual=true）只读：不可手动编辑、不可手动删除（仅由半成品卡级联产生/删除）。
 // ⚠️ 搜索 = 名称 or 别名（aliases 为 JSON 数组字符串，仅检索，绝不替换原料名）；分类按 category 过滤。
 // ⚠️ 删除 = 软删除；被成本卡引用时提示但允许删（快照不受影响）。
-const api = require('../../utils/api.js');
-const ui = require('../../utils/ui.js');
-const units = require('../../utils/units.js');
-const { TERMS } = require('../../miniprogram/i18n/terms.js');
+const api = require('../../../utils/api.js');
+const ui = require('../../../utils/ui.js');
+const units = require('../../../utils/units.js');
+const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 
 // category 枚举 → 展示名（单源映射：值域 meat/veg/dry/season/pack/other）
 const CATEGORY_LABELS = {
@@ -185,9 +185,9 @@ Page({
     }
   },
 
-  goAdd() { wx.navigateTo({ url: '/pages/material/edit?id=' }); },
+  goAdd() { wx.navigateTo({ url: '/subpkg/biz/material/edit?id=' }); },
   // round204：批量录入页（非 tabBar 页 ⇒ navigateTo。返回时本页 `onShow` 会重拉列表，新原料立刻可见）
-  goBatch() { wx.navigateTo({ url: '/pages/material/batch' }); },
+  goBatch() { wx.navigateTo({ url: '/subpkg/biz/material/batch' }); },
 
   // ===== R191：操作收纳（与成本卡列表**同构**）=====
   // 4 个平铺按钮 → 1 个「⋯」。🔴 同成本卡那条理由：按钮尺寸不能缩（88rpx 触控红线），只能减数量。
@@ -228,7 +228,7 @@ Page({
   goEdit(e) {
     const m = e.currentTarget.dataset.m;
     if (m.is_virtual) { wx.showToast({ title: TERMS.card.matVirtual, icon: 'none' }); return; } // 虚拟只读
-    wx.navigateTo({ url: '/pages/material/edit?id=' + (m.id || '') });
+    wx.navigateTo({ url: '/subpkg/biz/material/edit?id=' + (m.id || '') });
   },
 
   // 删除 = 软删除（二次确认；虚拟原料不给删）

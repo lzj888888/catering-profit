@@ -5,10 +5,10 @@
 //   两处真实缺陷，全部 175 个套件**零覆盖**（`tools/` 下 `sub_card_ref|line_type|card_type` 仅在
 //   `selftest_m3_combo.js`（只测**引擎层**三函数）与 `check_paywall_coverage.js` 命中）：
 //
-//   · 缺陷 B（功能必失败）：`pages/card/index.js::onCopy` 把**套餐子卡行**当成「手工行」送出
+//   · 缺陷 B（功能必失败）：`subpkg/biz/card/index.js::onCopy` 把**套餐子卡行**当成「手工行」送出
 //     （丢了 `sub_card_ref`）⇒ `saveCostCard/validate.js:51` 对 `card_type=3` 的每一行强制要求
 //     `sub_card_ref` ⇒ 后端报「套餐明细行必须提供 sub_card_ref」⇒ **复制套餐卡 100% 失败**。
-//   · 缺陷 C（**空修复**，本轮最大发现）：R297-⑥ 在 `pages/card/version.js::doRestore` 里写下了
+//   · 缺陷 C（**空修复**，本轮最大发现）：R297-⑥ 在 `subpkg/biz/card/version.js::doRestore` 里写下了
 //     `card_type: v.card_type === 3 ? 3 : 1` / `specs: v.specs || []`，注释还声称"恢复正常"——
 //     但 `load()` 的 list 映射**从来没赋值过** `card_type`/`specs` 两键 ⇒ 恒 `undefined`
 //     ⇒ 该修复整轮**空转**，实际行为仍是它自己描述的那个 bug（恢复套餐卡静默降级成单品）。
@@ -35,8 +35,8 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
-const F_IDX = 'pages/card/index.js';
-const F_VER = 'pages/card/version.js';
+const F_IDX = 'subpkg/biz/card/index.js';
+const F_VER = 'subpkg/biz/card/version.js';
 const F_GETCOST = 'cloudfunctions/getCostCard/service.js';
 const F_GETVER = 'cloudfunctions/getCardVersions/service.js';
 

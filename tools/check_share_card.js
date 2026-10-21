@@ -36,7 +36,7 @@ const TERMS_B = path.join(ROOT, 'specs', 'dev-specs', 'i18n', 'terms.js');
 const PAGES = [
   { rel: 'subpkg/biz/month/result.js', fn: 'm1Share', why: 'M1 月度结果页' },
   { rel: 'pages/sandbox/index.js', fn: 'm2Share', why: 'M2 开店测算页' },
-  { rel: 'pages/card/index.js', fn: 'm3Share', why: 'M3 菜品成本列表' },
+  { rel: 'subpkg/biz/card/index.js', fn: 'm3Share', why: 'M3 菜品成本列表' },
 ];
 
 let pass = 0;

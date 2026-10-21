@@ -91,22 +91,31 @@ check('A-⑨ 空行不计入行集合', r9.rows.length === 2 && r9.blankLines ==
   '行数=' + r9.rows.length + ' 空行=' + r9.blankLines);
 
 // —— B 组：页面接线 ——
-const FOUR = ['pages/material/batch.js', 'pages/material/batch.json', 'pages/material/batch.wxml', 'pages/material/batch.wxss'];
+const FOUR = ['subpkg/biz/material/batch.js', 'subpkg/biz/material/batch.json', 'subpkg/biz/material/batch.wxml', 'subpkg/biz/material/batch.wxss'];
 const missing = FOUR.filter((f) => !fs.existsSync(path.join(ROOT, f)));
 check('B-① 批量页四件套齐全', missing.length === 0, missing.length ? '缺：' + missing.join(' | ') : FOUR.length + ' 个齐全');
 
 let appPages = [];
-try { appPages = JSON.parse(read('app.json')).pages || []; } catch (e) { appPages = []; }
-check('B-② 批量页已在 app.json::pages 注册', appPages.indexOf('pages/material/batch') >= 0,
+try {
+  // R423 分包化：页面全集 = 主包 + 分包展开（旧写法只取 pages ⇒ 分包页被判未注册）
+  const _a = JSON.parse(read('app.json'));
+  const _sub = [].concat.apply([], ((_a.subpackages || _a.subPackages) || []).map(function (sp) {
+    var r = String(sp.root || '').replace(/\/+$/, '');
+    return (sp.pages || []).map(function (x) { return r ? r + '/' + x : x; });
+  }));
+  appPages = (Array.isArray(_a.pages) ? _a.pages : []).concat(_sub);
+} catch (e) { appPages = []; }
+check('B-② 批量页已在 app.json::pages 注册', appPages.indexOf('subpkg/biz/material/batch') >= 0,
   'app.json 共 ' + appPages.length + ' 页');
 
-const idxWxml = read('pages/material/index.wxml') || '';
-const idxJs = read('pages/material/index.js') || '';
+const idxWxml = read('subpkg/biz/material/index.wxml') || '';
+const idxJs = read('subpkg/biz/material/index.js') || '';
 check('B-③ 原料库列表页有批量入口（wxml 按钮 + js 跳转，两处都在）',
-  /bindtap="goBatch"/.test(idxWxml) && /goBatch\s*\(/.test(idxJs) && /\/pages\/material\/batch/.test(idxJs),
+  // R423 分包化：跳转目标改为 /subpkg/biz/material/batch（兼容主包旧形式）
+  /bindtap="goBatch"/.test(idxWxml) && /goBatch\s*\(/.test(idxJs) && /\/(?:pages\/material|subpkg\/biz\/material)\/batch/.test(idxJs),
   'wxml=' + /bindtap="goBatch"/.test(idxWxml) + ' js=' + /goBatch\s*\(/.test(idxJs));
 
-const bJs = read('pages/material/batch.js') || '';
+const bJs = read('subpkg/biz/material/batch.js') || '';
 check('B-④ 保存复用既有 saveMaterial（不新增云函数，避免牵动四处同步面）',
   /api\.call\(\s*'saveMaterial'/.test(bJs), '命中 saveMaterial 调用');
 
@@ -120,15 +129,15 @@ check('B-⑥ 解析有问题的行默认不勾选（fail-closed：脏数据不�
 check('B-⑦ 页面调纯函数解析，不在页面里内联重写一套解析',
   /batch\.parsePaste\(/.test(bJs), '命中 parsePaste 调用');
 
-const bWxml = read('pages/material/batch.wxml') || '';
+const bWxml = read('subpkg/biz/material/batch.wxml') || '';
 const callInWxml = /\{\{[^}]*[A-Za-z_$][\w$]*\s*\(/.test(bWxml);
 check('B-⑧ WXML 插值内不调方法（微信不支持，且恒 false 不报错）', !callInWxml,
   callInWxml ? '发现插值内函数调用' : '零命中');
 
 // —— C 组：自失效护栏 ——
 let matFiles = 0;
-try { matFiles = fs.readdirSync(path.join(ROOT, 'pages', 'material')).length; } catch (e) { matFiles = 0; }
-check('C-① 扫描面非退化（pages/material 下文件数 ≥ 8）', matFiles >= 8, matFiles + ' 个');
+try { matFiles = fs.readdirSync(path.join(ROOT, 'subpkg', 'biz', 'material')).length; } catch (e) { matFiles = 0; }
+check('C-① 扫描面非退化（subpkg/biz/material 下文件数 ≥ 8）', matFiles >= 8, matFiles + ' 个');
 
 check('C-② 解析纯函数可 require 且导出 parsePaste',
   typeof batch.parsePaste === 'function' && typeof batch.buildRow === 'function',

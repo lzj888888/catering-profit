@@ -628,7 +628,7 @@ section11();
 function section12() {
   const pageSrc = rd('pages/m3/dishreview/index.js');
   const wxmlSrc = rd('pages/m3/dishreview/index.wxml');
-  const editSrc = rd('pages/card/edit.js');
+  const editSrc = rd('subpkg/biz/card/edit.js');
   const termsSrc = rd('miniprogram/i18n/terms.js');
 
   check('12-① 文案单源：terms.js 有 reviewCoverage 且带 {n}/{m}/{p} 三个占位（页面不拼中文）',
@@ -700,7 +700,7 @@ function section12() {
   //   `enablePullDownRefresh: false`（无下拉刷新）、旧 `onShow` 又**只在 locked 时**重载
   //   ⇒ 返回后页面全然不刷新：刚建的卡不进关联 picker、刚挂的菜不进榜、`unmatched` 也不减少
   //   ⇒ 用户以为「卡没建上 / 关联失败」并重复操作。
-  //   本页是**只读页**（零未保存输入）⇒ 返回时重载是安全且期待的；对照 `pages/card/index.js:122`
+  //   本页是**只读页**（零未保存输入）⇒ 返回时重载是安全且期待的；对照 `subpkg/biz/card/index.js:122`
   //   同类只读页即 `onShow(){this.load()}` ⇒ 说明这是遗漏，不是设计选择。
   //   判据 = `onShow` 的非 locked 路径必须重载 + 用 `_shown` 哨兵避免首次进入重复拉。
   const ON_SHOW_RELOAD = /onShow\(\)\s*\{[\s\S]{0,400}?if\s*\(this\._shown\)\s*this\.load\(\)/;

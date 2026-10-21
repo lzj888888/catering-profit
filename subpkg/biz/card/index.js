@@ -1,15 +1,15 @@
-// pages/card/index.js —— 批次 4/5 / 批次 P0（M3 v1.2）· M3 成本卡列表
+// subpkg/biz/card/index.js —— 批次 4/5 / 批次 P0（M3 v1.2）· M3 成本卡列表
 // ⚠️ 批次 5 付费边界：只有「保存超限」「导出」才触发付费弹窗；M2 永不弹。
 // ⚠️ M3.22（批次 A1）：免费张数不再硬编码，一律取 checkQuota 出参。
 // ⚠️ 批次 P0（任务 2）：补齐搜索/筛选/删除（软删全部版本）/复制（新 card_code）/
 //   同步至原料最新价（接 syncCostCard，单张+批量）；加「原料档案」入口。
-const api = require('../../utils/api.js');
-const ui = require('../../utils/ui.js');
-const { openPaywall, openService } = require('../../utils/paywall.js');
-const exportFile = require('../../utils/exportFile.js');   // R265：导出投递单源（落盘 + 打开 + 转发兜底）
-const { TERMS } = require('../../miniprogram/i18n/terms.js');
+const api = require('../../../utils/api.js');
+const ui = require('../../../utils/ui.js');
+const { openPaywall, openService } = require('../../../utils/paywall.js');
+const exportFile = require('../../../utils/exportFile.js');   // R265：导出投递单源（落盘 + 打开 + 转发兜底）
+const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 // 🔴 R395：分享卡片标题装配（纯函数单源）—— 见 `utils/shareCard.js` 头注
-const shareCard = require('../../utils/shareCard.js');
+const shareCard = require('../../../utils/shareCard.js');
 
 // 🔴 R309：成本变动标签（纯展示，不改任何计算）
 //   食材涨价是餐饮最痛的变量，而**成本卡的版本模型里已经存着两版的成本** ——
@@ -27,8 +27,8 @@ function costDriftText(c) {
   const tpl = d > 0 ? TERMS.card.costDriftUp : TERMS.card.costDriftDown;
   return String(tpl || '').replace('{p}', String(Math.abs(d)));
 }
-const band = require('../../utils/marginBand.js');   // 🔴 R298Y：毛利色阶/区间**唯一单源**（数值 + 文案 + 色值）
-const dh = require('../../utils/dataHealth.js');     // 🔴 R299：出参 `truncated` 的可见降级（单源）
+const band = require('../../../utils/marginBand.js');   // 🔴 R298Y：毛利色阶/区间**唯一单源**（数值 + 文案 + 色值）
+const dh = require('../../../utils/dataHealth.js');     // 🔴 R299：出参 `truncated` 的可见降级（单源）
 
 // 本店用过的菜品分类（本地字典，与 edit.js 同一 key；不新建集合 —— M3 v1.1 零新建集合红线）
 const LIST_CATS_KEY = 'm3_dish_cats';
@@ -367,16 +367,16 @@ Page({
         });
         return;
       }
-      wx.navigateTo({ url: '/pages/card/edit?card_code=' });
+      wx.navigateTo({ url: '/subpkg/biz/card/edit?card_code=' });
     } catch (e) { api.toastError(e); }
   },
   goEdit(e) {
     const cc = e.currentTarget.dataset.code;
-    wx.navigateTo({ url: '/pages/card/edit?card_code=' + (cc || '') });
+    wx.navigateTo({ url: '/subpkg/biz/card/edit?card_code=' + (cc || '') });
   },
   goVersion(e) {
     const cc = e.currentTarget.dataset.code;
-    wx.navigateTo({ url: '/pages/card/version?card_code=' + (cc || '') });
+    wx.navigateTo({ url: '/subpkg/biz/card/version?card_code=' + (cc || '') });
   },
   goOrders() { wx.navigateTo({ url: '/pages/pay/orders' }); },
 
@@ -529,7 +529,7 @@ Page({
 
   // 导出：付费功能，免费触发付费墙
   async onExport() {
-    const ent = await require('../../utils/entitlement.js').fetchEntitlement().catch(() => null);
+    const ent = await require('../../../utils/entitlement.js').fetchEntitlement().catch(() => null);
     if (!ent || !ent.is_active) {
       openPaywall('export', { shopId: (getApp().globalData && getApp().globalData.shop_id) || '' });
       return;

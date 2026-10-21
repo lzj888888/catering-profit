@@ -120,10 +120,10 @@ ok('②-d LIST_TOTAL_CAP 仍是显式常量（防爆护栏的存在性）', /con
 //      ⇒ 已改为消费（`dh.isTruncated(card)`）。这条留痕就是为了防"豁免表变垃圾桶"。
 const EXEMPT = {
   'pages/recon/index.js': 'getCostCard 仅作 code→name 辅助映射；卡缺只回落显示 code，不渲染清单、不输出总数、不进金额计算',
-  'pages/takeaway/index.js': 'getCostCard 只喂「一单组成项」的 picker 候选：截断只表现为**候选变少**，'
+  'subpkg/biz/takeaway/index.js': 'getCostCard 只喂「一单组成项」的 picker 候选：截断只表现为**候选变少**，'
     + '页面上不显示任何卡数量/总数、这些取值不进金额口径（成本从候选里查，缺了就选不到而不是算错）'
     + '—— 三条豁免条件均不违反（与 m3/hub.js 的区别正在于：**hub 把那个数渲染给用户看了**）',
-  'pages/card/edit.js': 'getCostCard 仅取模板 / 子卡候选供选择，不渲染"本店全部卡"清单、不输出总数、不进金额计算',
+  'subpkg/biz/card/edit.js': 'getCostCard 仅取模板 / 子卡候选供选择，不渲染"本店全部卡"清单、不输出总数、不进金额计算',
 };
 
 const pageFiles = walk(path.join(ROOT, 'pages'), []).filter((f) => f.endsWith('.js'))
@@ -176,7 +176,7 @@ ok('④-a 反恒真：把③的判据喂给「未消费」样本 ⇒ 必须判�
   !consumesTruncated(FAKE_UNHANDLED));
 const FAKE_HANDLED = "const dh = require('../../utils/dataHealth.js');\nconst r = await api.call('getCostCard', {});\nthis.setData({ t: dh.isTruncated(r) });\n";
 ok('④-b 正样本：消费版样本 ⇒ 必须判通过', consumesTruncated(FAKE_HANDLED));
-const POS = ['pages/m3/dishreview/index.js', 'pages/card/index.js', 'pages/shop/switch.js'];
+const POS = ['pages/m3/dishreview/index.js', 'subpkg/biz/card/index.js', 'pages/shop/switch.js'];
 for (const p of POS) {
   ok('④-c 正样本：' + p + ' 真消费 truncated', consumesTruncated(readOr(path.join(ROOT, p), '')));
 }

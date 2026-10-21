@@ -1725,7 +1725,7 @@ const TERMS = {
     // v1.7 §2.5：外卖平台展示名（key = SALES_SCHEMA.platform.enum，不含 pos）
     // 🔴 R246：补京东两形态（jd_order 订单级 / jd_sku SKU 级）。
     //   ⚠️ 京东「订单级」是**账单**（走对账路），「SKU 级」才是**商品销量表**（走形态 C 路）
-    //   ⇒ 两者都要在榜单里能显示名；但 picker 只列 jd_sku（见 pages/takeaway/index.js 注释）。
+    //   ⇒ 两者都要在榜单里能显示名；但 picker 只列 jd_sku（见 subpkg/biz/takeaway/index.js 注释）。
     reviewPlatformNames: { taobao: '淘宝闪购', meituan: '美团', eleme: '饿了么', jd_order: '京东（订单）', jd_sku: '京东（SKU）', other: '其他' },
     reviewRankTitle: '单品毛利排行榜',
     reviewDish: '菜品',
@@ -1894,7 +1894,7 @@ const TERMS = {
     cardSub: '给每道菜算成本、毛利，反推该卖多少钱',
     materialTitle: '进货原料价表',
     materialSub: '填原料价格；改一次价，用它的菜全都跟着变',
-    // 🔴 R263：卡名必须与**页面自己的标题**一致 —— `pages/takeaway` 的标题取自
+    // 🔴 R263：卡名必须与**页面自己的标题**一致 —— `subpkg/biz/takeaway` 的标题取自
     //   `TERMS.ledger.takeaway.title` =「外卖单均测算」。原名「外卖菜品成本及利润」
     //   既与页内标题打架（点进去标题换了个名字），又把"导入"这个后台动作摆进了功能名
     //   ⇒ 改成页面自己叫的名字，导入挪进副文案。

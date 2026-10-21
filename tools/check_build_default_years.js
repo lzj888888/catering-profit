@@ -39,7 +39,8 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 const CLOUD_REF = 'cloudfunctions/common/indicatorRef.js';
 const FE_PRESET = 'utils/bizPreset.js';
-const SCAN_DIRS = ['pages'];
+// R423 分包化：页面代码不再全在 pages/ 下
+const SCAN_DIRS = ['pages', 'subpkg'];
 
 let pass = 0, failN = 0;
 function check(name, cond, detail) {

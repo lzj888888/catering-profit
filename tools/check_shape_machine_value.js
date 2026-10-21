@@ -3,7 +3,7 @@
 //
 // 为什么需要它
 // 云函数 importSalesBill 返回的 `shape` 是**机器值**（'dish_sales' / 'combo_detail' / 'waimai_goods'），
-// 不是字母序号。前端 pages/takeaway/index.js 曾写 `d.shape === 'C'` —— 与 'waimai_goods' 永不相等
+// 不是字母序号。前端 subpkg/biz/takeaway/index.js 曾写 `d.shape === 'C'` —— 与 'waimai_goods' 永不相等
 // ⇒ isC 恒 false ⇒ 形态 C 表格被当成外卖账单渲染 ⇒ 平台/识别到/归月到**全空白**、没有平台 picker、
 //   门禁因为 platform 空而必挂「门禁未通过，已阻断导入」⇒ 用户看到一张**永远导不进去**的卡。
 // 这是 2026-10-07 真机实测发现的 P0（合计 1823.08 正确 ⇒ 解析层没问题，纯前端契约错位）。
@@ -11,7 +11,7 @@
 // 判据纪律：判行为不判字面
 // 不查源码里有没有 `'C'` 这个字符串（注释里就有，会被骗过），而是：
 //   ① 从生产 service.js 真取 DISH_SHAPES 三值（require，不手抄常量）；
-//   ② 从 pages/takeaway/index.js 真取它声明的 DISH_SHAPES（静态提取）；
+//   ② 从 subpkg/biz/takeaway/index.js 真取它声明的 DISH_SHAPES（静态提取）；
 //   ③ 断言两侧**逐字相等**（这就是契约本身）；
 //   ④ 把前端那份喂给「云函数真返回值」，断言页面判得出形态 C（端到端行为）。
 //
@@ -24,8 +24,8 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
 const SVC_REL = 'cloudfunctions/importSalesBill/service.js';
-const PAGE_REL = 'pages/takeaway/index.js';
-const WXML_REL = 'pages/takeaway/index.wxml';
+const PAGE_REL = 'subpkg/biz/takeaway/index.js';
+const WXML_REL = 'subpkg/biz/takeaway/index.wxml';
 
 let pass = 0, failN = 0;
 const sec = (t) => console.log('\n===== ' + t + ' =====');

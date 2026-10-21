@@ -291,7 +291,7 @@ const wantSpecs = SD ? SD.SPEC_PRESETS.map((p) => p.spec_key).sort() : [];
 }
 {
   // 页面**不得**自抄系数表：出现「half/small + 0.5/0.7」同行的形态即红（注释行不算）
-  const pageFiles = ['pages/card/edit.js', 'pages/card/edit.wxml', 'pages/card/edit.wxss'];
+  const pageFiles = ['subpkg/biz/card/edit.js', 'subpkg/biz/card/edit.wxml', 'subpkg/biz/card/edit.wxss'];
   const hits = [];
   for (const f of pageFiles) {
     const s = read(f);
@@ -309,7 +309,7 @@ const wantSpecs = SD ? SD.SPEC_PRESETS.map((p) => p.spec_key).sort() : [];
 if (engineCopies.length >= 3) ok('S1-① 引擎副本 ' + engineCopies.length + ' 份 ≥ 3（扫描面被改小即转红）');
 else bad('S1-① 引擎副本仅 ' + engineCopies.length + ' 份（< 3，L2-② 的扫描面被写窄）');
 {
-  const pages = ['pages/card/edit.js', 'pages/card/edit.wxml', 'pages/card/edit.wxss'].filter((f) => read(f) != null).length;
+  const pages = ['subpkg/biz/card/edit.js', 'subpkg/biz/card/edit.wxml', 'subpkg/biz/card/edit.wxss'].filter((f) => read(f) != null).length;
   if (pages >= 3) ok('S1-② 页面扫描面完整（' + pages + '/3 个文件在位）');
   else bad('S1-② 页面扫描面缺失：仅 ' + pages + '/3');
 }

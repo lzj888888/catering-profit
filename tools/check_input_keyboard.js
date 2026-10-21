@@ -166,7 +166,8 @@ function walk(dir, out) {
   }
   return out;
 }
-const files = walk('pages', []);
+// R423 分包化：页面不再全在 pages/ 下（material/edit 已进 subpkg/biz）
+const files = walk('pages', []).concat(walk('subpkg', []));
 ok('P1 扫描面：pages 下 wxml 文件数 ≥ 10（防 walk 失效后空集恒真）', files.length >= 10,
   '实得 ' + files.length);
 

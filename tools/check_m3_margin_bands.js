@@ -5,8 +5,8 @@
 //   规范 `specs/dev-specs/core/开发规范v1.0_ModuleM3_菜品成本卡.md` §M3.8 定死
 //   「≥60% 绿 / 40%~60% 黄 / <40% 红 / 未定价灰」，且明写「色阶阈值建议也从**同一配置源**读取」。
 //   可这个口径被抄了三份、且三份不一致：
-//     · `pages/card/index.js` 筛选写 30（「中」= 30%~60%）
-//     · `pages/card/index.wxml` 色带写 40（≥40 才黄）
+//     · `subpkg/biz/card/index.js` 筛选写 30（「中」= 30%~60%）
+//     · `subpkg/biz/card/index.wxml` 色带写 40（≥40 才黄）
 //     · `miniprogram/i18n/terms.js` 文案写 30
 //   ⇒ 一张毛利 **35%** 的卡：色带判**红**（<40）、筛选却把它归**中**（≥30）—— 用户可见的自相矛盾。
 //   而全部套件对此**零覆盖**（`marginHigh|marginMid|marginLow` 在 `tools/` 下零命中）。
@@ -122,8 +122,8 @@ for (const abs of scanFiles) {
 ok('③ 无游离阈值字面量', strays.length === 0, strays.length ? strays.join(' / ') : '扫描 ' + scanFiles.length + ' 文件');
 
 // 正样本锚点：单源必须真的被页面引用（否则"全仓无字面量"可能只是没人写色阶了）
-const idxJs = readOr(path.join(ROOT, 'pages/card/index.js'), '');
-const idxWxml = readOr(path.join(ROOT, 'pages/card/index.wxml'), '');
+const idxJs = readOr(path.join(ROOT, 'subpkg/biz/card/index.js'), '');
+const idxWxml = readOr(path.join(ROOT, 'subpkg/biz/card/index.wxml'), '');
 ok('⑤-b 正样本：index.js 引用单源', /require\(['"][^'"]*utils\/marginBand\.js['"]\)/.test(idxJs), 'require 单源');
 ok('⑤-c 正样本：index.js 用 band.matchBand', /band\.matchBand\(/.test(idxJs));
 ok('⑤-d 正样本：index.js 用 band.LABEL', /band\.LABEL\./.test(idxJs));

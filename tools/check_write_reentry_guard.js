@@ -49,10 +49,10 @@ const BS = String.fromCharCode(92);
 // 目标清单：只有「追加型写 + 用户可点 + 无重入保护」才进这里。
 // write 字段用于 ② 判据；flag 字段用于 ③④⑤。
 const TARGETS = [
-  { file: 'pages/card/index.js', fn: 'onSync', flag: 'syncing', write: 'syncCostCard' },
-  { file: 'pages/card/index.js', fn: 'onBatchSyncRun', flag: 'syncing', write: 'syncCostCard' },
-  { file: 'pages/card/index.js', fn: 'onCopy', flag: 'copying', write: 'saveCostCard' },
-  { file: 'pages/card/version.js', fn: 'doRestore', flag: 'restoring', write: 'saveCostCard' },
+  { file: 'subpkg/biz/card/index.js', fn: 'onSync', flag: 'syncing', write: 'syncCostCard' },
+  { file: 'subpkg/biz/card/index.js', fn: 'onBatchSyncRun', flag: 'syncing', write: 'syncCostCard' },
+  { file: 'subpkg/biz/card/index.js', fn: 'onCopy', flag: 'copying', write: 'saveCostCard' },
+  { file: 'subpkg/biz/card/version.js', fn: 'doRestore', flag: 'restoring', write: 'saveCostCard' },
 ];
 
 let pass = 0;

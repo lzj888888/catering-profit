@@ -30,7 +30,7 @@ const F = {
   idxWxml: 'pages/index/index.wxml',
   idxJs: 'pages/index/index.js',
   idxWxss: 'pages/index/index.wxss',
-  matWxss: 'pages/material/index.wxss',
+  matWxss: 'subpkg/biz/material/index.wxss',
   terms: 'miniprogram/i18n/terms.js',
 };
 

@@ -1,4 +1,4 @@
-// pages/material/batch.js —— round204 · 原料批量录入（粘贴 → 解析 → 预览 → 导入）
+// subpkg/biz/material/batch.js —— round204 · 原料批量录入（粘贴 → 解析 → 预览 → 导入）
 //
 // 为什么有这一页（李老师 2026-10-04 追问「能不能导出空表让客户填，再导入」）：
 //   原料库首建要录几十上百种，手机逐条填一条约 40 秒 ⇒ 60 种一小时；而老板手边本来就有
@@ -15,10 +15,10 @@
 // 🔴 解析出的错误**不静默兜底**：缺单位/缺换算系数一律标红要求老板补，与 edit.js「不许静默改掉老板敲的数」同律。
 // ⚠️ 计数族（箱/桶/件…）没有通用换算 ⇒ 解析层直接判「换算系数必填」，绝不替老板猜。
 
-const api = require('../../utils/api.js');
-const units = require('../../utils/units.js');
-const batch = require('../../utils/materialBatch.js');
-const { TERMS } = require('../../miniprogram/i18n/terms.js');
+const api = require('../../../utils/api.js');
+const units = require('../../../utils/units.js');
+const batch = require('../../../utils/materialBatch.js');
+const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 
 // 并发批次：一次 5 条。太大 ⇒ 云函数并发超限；太小 ⇒ 60 条要等太久
 const CONCURRENCY = 5;

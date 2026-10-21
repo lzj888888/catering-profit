@@ -57,7 +57,8 @@ try {
 // ══════ S 扫描面非退化 ══════
 // 🔴 本守卫含「结构合法」类判据，若 app.json 读不到 tabBar 就整体退化成「无 tabBar ⇒ 跳过」
 // ⇒ 恒绿。必须先证「确实读到了 app.json 的 tabBar 结构」与「页面源文件确实扫到了」。
-const pages = Array.isArray(app.pages) ? app.pages : [];
+// R423 分包化：页面全集 = 主包 + 分包展开（旧写法只取主包 ⇒ 12 页 < 下界 20，判"扫描面退化"）
+const pages = [].concat(Array.isArray(app.pages) ? app.pages : [], ((app.subpackages || app.subPackages || []) || []).reduce(function (acc, sp) { var r = String(sp.root || '').replace(/\/+$/, ''); return acc.concat((sp.pages || []).map(function (p) { return r ? r + '/' + p : p; })); }, []));
 const tabBar = app.tabBar;
 const list = tabBar && Array.isArray(tabBar.list) ? tabBar.list : [];
 
@@ -118,7 +119,8 @@ A6 ? ok('A6 tabBar 入口数 ' + list.length + ' ≤ 5（微信上限 5）') : f
 
 // ══════ B 跳转方式（本守卫核心）════════
 const TAB_SET = new Set(paths);
-const JS_DIR = path.join(ROOT, 'pages');
+// R423 分包化：页面 .js 不再全在 pages/ 下 ⇒ 两个根都扫（下界 20 不变，覆盖面变大）
+const JS_DIRS = [path.join(ROOT, 'pages'), path.join(ROOT, 'subpkg')].filter((d) => fs.existsSync(d));
 /** 递归列出 pages/ 下的 .js（跳过下划线开头的私有目录） */
 function listPageJs(dir, acc) {
   acc = acc || [];
@@ -132,7 +134,7 @@ function listPageJs(dir, acc) {
   }
   return acc;
 }
-const pageJs = listPageJs(JS_DIR);
+const pageJs = JS_DIRS.reduce((acc, d) => listPageJs(d, acc), []);
 
 const S4 = pageJs.length >= 20;
 S4
