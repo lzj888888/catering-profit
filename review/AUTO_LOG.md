@@ -363,3 +363,10 @@
   - ② **过程件规则**：`_commit_*.txt` / `_gate_*.log` 入 `.gitignore`，并移除误入的 `_commit_s5.txt`。
     R423 期间两次 `git add -A` 夹带（d2ee98b、87fcf4b）。仓库另有 4 个历史遗留 `_commit_r*.txt`，未删、只登记。
   - 🔴 教训归纳：**"改完看 numstat"这条今天我写进三份 NOTE 还是犯了第 4 次 ⇒ 靠自律无效，必须机器守**。这是本轮真正的收获。
+
+- [2026-10-21 20:35] R430 只读巡检（队列 0 todo / 0 in_progress）· 门禁引用 R423-S5 203/203 RC=0（260.7s）· 无提交代码 · 队列无变更
+  - ① 工作树：唯一改动 `review/PLAN_2026-10-21_M1决策辅助设计.md`（20:13，+36/−9，真编辑非行尾翻写；`tools/check_line_endings.js` = ✅ 无翻写）⇒ 归属并发会话（R429 设计稿续写），**未 add、未提交**。
+  - ② 最近门禁：`_归档_过程件_202610/r423s5/_gate_s5.log` = **总览 203/203 通过 · 260.7s**；`verify_all.js::SUITES` 实读 **203** 条 ⇒ 声明与套件数一致。
+  - ③ 队列：42 行 = 25 done / 17 blocked / **0 todo / 0 in_progress**，无僵尸行（`blocked` 全部缺外部输入：选型/扫码/控制台/样例/AppSecret）。
+  - ④ NOTE↔代码抽检三条全对：R428 `tools/check_line_endings.js` 存在且**确未挂 SUITES**（其声明的「提交前跑、进 verify_all 会恒绿」成立）+ `.gitignore:95-96` 有 `_commit_*.txt`/`_gate_*.log`、`_commit_s5.txt` 零跟踪；R427 `check_amount_input.js` ②-39~②-45 四条分别真调 `checkAmounts(`（onTwDetail/onFastSubsidy/onRecYuan/onDirectConsume）；R426 `checkAmounts` 经 S5 迁移后仍在 `subpkg/biz/{card,material}/edit.js` + `subpkg/biz/month/input.js`；R423 分包结构 `app.json` 实测主包 **4 页** + `subpkg/tools:9` + `subpkg/biz:14` = 27，与总账一致。
+  - 现场另有并发会话在跑（`_jd_parse.py`/`_jd_parse_result.txt` 20:31 新建、node 20:30 起）⇒ 全程只读，未碰其文件。
