@@ -53,7 +53,7 @@
 | 28 | `canSendToModel`（k-匿名门槛）未做 —— AI 三方里「判」这一半还是空的 | done | no | **R423 已落**：`cloudfunctions/common/aiGate.js`（纯函数零 IO）三关 = 授权态（**消费**读侧 `getAiConsent` 出参，不再判第二遍四态）/ 用途显式授权 / 样本量（行≥5 且 供应商≥3）；拒时恒给 `fallback:'L0'`。新套件 `ai-gate` 42 断言（含 2 条鉴别力断言），变异 2/2，门禁 203/203；commit e6a47f6。⚠️ 仍无生产调用方（出站函数未存在，接线时须补「真 require + 真调用」守卫）commit e6a47f6 · why: NOTE_R405 §9-2 如实登记。写/读已落（R403/R405），**「判」没落** ⇒ 现在没有门槛就允许出站。设计稿 §7 步 3。⚠️ 与「授权了没有」是两件事，别混 |
 | 29 | 前端 AI 授权页未做（页面 + 三态文案 + 只在首次使用 AI 功能时出现） | blocked | yes | why: NOTE_R405 §9-3。**卡在 #5 风格选型**——现在写页面必返工，与 #6 同因 |
 | 30 | `shop_ai_consent` / `shop_ai_insight` **未登记**进 `cloudfunctions/initDb/collections.js` | done | no | **核实已落（R402/#17 重复条目）**：R423 实读 `collections.js` —— 第 33 行集合名列表含两张表，第 186/190 行有各自的索引定义 ⇒ 本条与 #17 是同一件事的两次登记，不重复实现。why: NOTE_控制台建集合与索引 §五。控制台已建表，但**单源没有** ⇒ 「线上有、单源无」是漂移源；`check_schema_sync` 只比 collections.js ↔ init_db.js，抓不到这个方向 ⇒ 不会自己变红 |
-| 31 | M1 平台分项 `onMkByPlat`（`p.amountYuan`）金额体检未接 | todo | no | why: NOTE_R419 边界。它是独立 handler（不经过 updateRow）⇒ 粘贴「12,000」仍会被读成 0 |
+| 31 | M1 平台分项 `onMkByPlat`（`p.amountYuan`）金额体检未接 | in_progress | no | why: NOTE_R419 边界。它是独立 handler（不经过 updateRow）⇒ 粘贴「12,000」仍会被读成 0 |
 | 32 | M3 成本卡 / 原料录入页的金额框未接体检 | todo | no | why: NOTE_R418/R419 边界。`utils/amountInput.js` 已是通用件，接线成本低；⚠️ 与 #27 分包有文件交集（M3 页可能被移入分包）⇒ 建议排 #27 之后 |
 | 33 | **M1-B3「归档超 7 天无出路」**：`core/13:25` 写「修改须走客服后台」，但后台 11 个函数没有一个能改归档月账 ⇒ **「联系客服」是空承诺** | blocked | yes | why: NOTE_R410 §6-1（比我原先登记更严重）。按 R406 判断逻辑（文案不得承诺机制做不到的事），不能只补提示 ⇒ 李老师**三选一**：(a) 补后台改账能力 (b) 如实说仅可查看 (c) 次月冲销；🔴 **澄清见 NOTE_2026-10-21_R421**：「客服要绑微信号」是入口问题、「客服改不了归档账」是能力问题，两者别混 |
 | 34 | 重新部署 `getDishReview` + `manageShop`（R303 之后未部署） | blocked | yes | why: 未完成任务清单 §当前真实待办 ⏸(a)。部署走 CLI 需在本机且开发者工具在线 ⇒ 李老师在场时一次做完 |
