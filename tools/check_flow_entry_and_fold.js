@@ -36,15 +36,15 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 
 const F = {
-  inputWxml: 'pages/month/input.wxml',
-  inputJs: 'pages/month/input.js',
-  inputWxss: 'pages/month/input.wxss',
+  inputWxml: 'subpkg/biz/month/input.wxml',
+  inputJs: 'subpkg/biz/month/input.js',
+  inputWxss: 'subpkg/biz/month/input.wxss',
   appWxss: 'app.wxss',
   appJson: 'app.json',
-  amortizeWxml: 'pages/month/amortize.wxml',
-  amortizeJs: 'pages/month/amortize.js',
-  assetEditWxml: 'pages/month/assetEdit.wxml',
-  assetEditJs: 'pages/month/assetEdit.js',
+  amortizeWxml: 'subpkg/biz/month/amortize.wxml',
+  amortizeJs: 'subpkg/biz/month/amortize.js',
+  assetEditWxml: 'subpkg/biz/month/assetEdit.wxml',
+  assetEditJs: 'subpkg/biz/month/assetEdit.js',
   saveAsset: 'cloudfunctions/saveAsset/index.js',
   terms: 'miniprogram/i18n/terms.js',
 };
@@ -273,25 +273,37 @@ else {
   const gr = bodyOf(amorJs, 'goResult');
   const gh = bodyOf(amorJs, 'goHome');
   if (!gr) no('B2-①', 'amortize.js 未定义 goResult');
-  else if (!/\/pages\/month\/result/.test(gr)) no('B2-①', 'goResult 未跳向 /pages/month/result');
+  else if (!/\/(?:pages\/month|subpkg\/biz\/month)\/result/.test(gr)) no('B2-①', 'goResult 未跳向 month/result（主包或分包路径）');
   else if (!gh) no('B2-②', 'amortize.js 未定义 goHome');
   else if (!/navigateBack/.test(gh) || !/redirectTo/.test(gh)) no('B2-②', 'goHome 缺兜底（须 navigateBack + redirectTo 双路，防本页是栈底时返回失败）');
-  else ok('B2-①', 'goResult → /pages/month/result；goHome 有 navigateBack + redirectTo 兜底');
+  else ok('B2-①', 'goResult → /subpkg/biz/month/result；goHome 有 navigateBack + redirectTo 兜底');
 }
 
 // B3 跳转目标必须是 app.json 里真实存在的页面（防"点了没反应" —— 真机上跳不存在的页只报错不提示）
 //   ⚠️ 判据是「**从出口函数体里解析出的 URL**」而不是"写死一份该在的清单"：
-//      初版写死 `need = ['/pages/month/result', …]`，做变异 M7（把 goResult 改成 /pages/month/results）
+//      初版写死 `need = ['/subpkg/biz/month/result', …]`，做变异 M7（把 goResult 改成 /subpkg/biz/month/results）
 //      时**照样判绿** —— 因为清单跟函数体没关系，等于断言了一个常量。改成"解析 URL ⇒ 反查 app.json"
 //      之后，改目标页立刻转红（本轮变异 M7 实证）。
 if (!appJson) no('B3-①', '读取 ' + F.appJson + ' 失败');
 else {
   let pages = [];
-  try { pages = (JSON.parse(appJson).pages || []).map((p) => '/' + String(p).replace(/^\//, '')); }
-  catch (e) { pages = []; }
+  try {
+    // R423 分包化：可跳转的真实页面 = 主包 pages + 所有 subpackages 展开（旧写法只取主包 ⇒
+    //   分包页会被判成「出口指向未注册页面」，而它明明注册了、只是换了包）。
+    const aj = JSON.parse(appJson);
+    const main = aj.pages || [];
+    const subs = aj.subpackages || aj.subPackages || [];
+    const expand = [];
+    for (const sp of subs) {
+      const root = String(sp.root || '').replace(/\/+$/, '');
+      for (const p of (sp.pages || [])) expand.push(root ? root + '/' + p : p);
+    }
+    pages = main.concat(expand).map((p) => '/' + String(p).replace(/^\//, ''));
+  } catch (e) { pages = []; }
   const bodies = [bodyOf(amorJs || '', 'goResult'), bodyOf(amorJs || '', 'goHome')]
     .filter(Boolean).join('\n');
-  const urls = Array.from(new Set(bodies.match(/\/pages\/[A-Za-z0-9_\-/]+/g) || []));
+  // 正则同步放宽：出口现在可能指向 /subpkg/...
+  const urls = Array.from(new Set(bodies.match(/\/(?:pages|subpkg)\/[A-Za-z0-9_\-/]+/g) || []));
   if (!pages.length) no('B3-①', 'app.json::pages 解析为空 ⇒ fail-closed');
   else if (!urls.length) no('B3-①', '两个出口的函数体里解析不到 /pages/… 目标 ⇒ 本判据会在空集上判定');
   else {

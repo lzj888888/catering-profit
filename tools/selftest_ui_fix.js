@@ -12,7 +12,7 @@ const read = (p) => fs.readFileSync(path.join(ROOT, p), "utf8");
 
 // ============ 修 1：result 三态 ============
 console.log('===== 修 1 · result 三态（loading / 有结果 / 空态）=====');
-const rw = read("pages/month/result.wxml");
+const rw = read("subpkg/biz/month/result.wxml");
 check('存在 loading 独立分支 (wx:if={{loading}})', /wx:if="\{\{loading\}\}"/.test(rw));
 // 🔴 R298·C1：本段由「存在性判据」升为「**可达性判据**」（判语义，不钉字面量）。
 //   旧断言钉死 `wx:elif="{{r}}"` —— 而那正是缺陷本身：getLedger 对无账本记录月返回「默认空账」
@@ -23,13 +23,13 @@ const elifExpr = mElif ? mElif[1].trim() : '';
 check('结果分支判据存在（fail-closed：无 wx:elif 即红）', mElif !== null, elifExpr ? `判据 = ${elifExpr}` : '未匹配');
 check('🔴 结果分支判据 = 账本存在性信号（不得是 r/result 这类恒真量）',
   /hasLedger|account/i.test(elifExpr), `判据 = ${elifExpr || 'n/a'}`);
-const rj = read("pages/month/result.js");
+const rj = read("subpkg/biz/month/result.js");
 check('🔴 result.js 该信号由 d.account_id 派生（与 getLedger:177 出参同源）',
   /hasLedger\s*:\s*!!\(\s*d\s*&&\s*d\.account_id\s*\)/.test(rj));
 check('存在空态分支 (wx:else) 且含 resultEmpty', /wx:else[\s\S]{0,400}resultEmpty/.test(rw));
 check('空态分支不含「加载中」', !/wx:else[\s\S]{0,400}resultEmpty[\s\S]{0,200}加载中/.test(rw));
 check('空态有去录入出口 (goInput + resultEmptyGoInput)', /resultEmptyGoInput/.test(rw) && /bindtap="goInput"/.test(rw));
-check('result.js 有 goInput 方法跳 input', /goInput\(\) \{\s*wx\.navigateTo\(\{ url: '\/pages\/month\/input\?month='/.test(rj));
+check('result.js 有 goInput 方法跳 input', /goInput\(\) \{\s*wx\.navigateTo\(\{ url: '\/(?:pages\/month|subpkg\/biz\/month)\/input\?month='/.test(rj));
 check('result.js 空态文案引用 uiFix.resultEmpty', /resultEmpty: TERMS\.uiFix\.resultEmpty/.test(rj));
 check('旧 wx:else=加载中 已移除（无 !loading && r 写法）', !/!loading && r/.test(rw));
 // —— 影子样本：证明上面的「可达性」断言**真有分辨力**（不然它可能恒真 = 假绿），且替换确实生效
@@ -45,7 +45,7 @@ check('影子 J：js 侧判据改成恒真 ⇒ 「由 account_id 派生」断言
 // ============ 修 2：amortize totalYuan 初值 ============
 console.log('');
 console.log('===== 修 2 · amortize totalYuan 初值 =====');
-const aj = read("pages/month/amortize.js");
+const aj = read("subpkg/biz/month/amortize.js");
 check('data 有 totalYuan: \'0.00\' 初值', /totalYuan: '0\.00'/.test(aj));
 check('load() 成功路径仍赋值 totalYuan', /totalYuan: api\.fenToYuan\(d\.total_amount_fen \|\| 0, 2\)/.test(aj));
 // 断言：即使 getAmortSchedule 失败（catch 只 loading:false），初值保证渲染 ¥0.00
@@ -54,8 +54,8 @@ check('catch 分支不改 totalYuan（保留初值 0.00）', /catch \(e\) \{\s*t
 // ============ 修 3：month/index 月份占位 ============
 console.log('');
 console.log('===== 修 3 · month/index 月份空值占位 =====');
-const mw = read("pages/month/index.wxml");
-const mj = read("pages/month/index.js");
+const mw = read("subpkg/biz/month/index.wxml");
+const mj = read("subpkg/biz/month/index.js");
 check('curMonth 空时显示 monthEmpty', /wx:if="\{\{curMonth\}\}"[\s\S]{0,200}wx:else>\{\{t\.monthEmpty\}\}/.test(mw));
 check('monthEmpty 文案引用 uiFix.monthEmpty', /monthEmpty: TERMS\.uiFix\.monthEmpty/.test(mj));
 check('monthEmpty 词条存在且无禁词', (() => {
@@ -117,8 +117,8 @@ check('运行时：支持传参取 n 个月；非法入参回落（不返回空�
 // 且文案不同（防"标题与字段名重复"的 UI 缺陷）；只是 key 从 uiFix 迁到 calcMethod。
 console.log('');
 console.log('===== 修 4 · input 小节标题 ≠ 字段标签 =====');
-const iw = read("pages/month/input.wxml");
-const ij = read("pages/month/input.js");
+const iw = read("subpkg/biz/month/input.wxml");
+const ij = read("subpkg/biz/month/input.js");
 check('小节标题用独立 key（cmSecTitle）', /<view class="sec">\{\{t\.cmSecTitle\}\}<\/view>/.test(iw));
 check('字段标签用独立 key（cmConsumeDirectField）', /<text class="lbl">\{\{t\.cmConsumeDirectField\}\}<\/text>/.test(iw));
 check('两处文案不再相同（Sec ≠ Field）', (() => {
@@ -142,14 +142,15 @@ const swCode = stripCmt(swSrc), sjCode = stripCmt(sjSrc);
 // ① 锚点 a：食材口径的选择入口必须在月度录入页；且录入页要有一处去「一次性投入」页的入口。
 //   🔴 round107 **重定（语义级）** —— 旧判据要求 `data-kind` 里同时出现 inventory + amortize。
 //      那对选项写的是 **shop 级** `amortize_switch`，结构上把「本月一笔摊销 + 几笔小额一次算清」
-//      变成互斥 —— 李老师真机反馈否决了它，现已拆成「逐笔登记」（见 pages/month/assetEdit）。
+//      变成互斥 —— 李老师真机反馈否决了它，现已拆成「逐笔登记」（见 subpkg/biz/month/assetEdit）。
 //      ⇒ 判据改为**不绑 handler 名、不绑 data-kind 取值**：
 //         ① `data-kind="inventory"` 二选一仍在录入页（食材口径单源没搬走）；
-//         ② `iw` 里某个 bindtap 的 handler，其方法体内跳向 /pages/month/amortize（= 去投入页的入口）。
+//         ② `iw` 里某个 bindtap 的 handler，其方法体内跳向 /subpkg/biz/month/amortize（= 去投入页的入口）。
 //      本条的**真正意图**（防开关挪回设置页）由下面 `chooseHit` 独立守，未放宽（round59 加固不撤）。
 const cmKinds = [...iw.matchAll(/data-kind="(\w+)"/g)].map(m => m[1]);
 const cmTapNames = [...iw.matchAll(/bindtap="(\w+)"/g)].map(m => m[1]);
-const cmGoesAsset = cmTapNames.some((n) => new RegExp(n + '\\s*\\(\\)\\s*\\{[^}]*\\/pages\\/month\\/amortize').test(ij));
+//   🔴 R423 分包化：跳转目标现在可能是 /subpkg/biz/month/... ⇒ 正则兼容两种（不绑死包位置）。
+const cmGoesAsset = cmTapNames.some((n) => new RegExp(n + '\\s*\\(\\)\\s*\\{[^}]*\\/(?:pages\\/month|subpkg\\/biz\\/month)\\/amortize').test(ij));
 check('🔴 食材口径选择入口在月度录入页 + 录入页有一处去「一次性投入」页的入口',
   cmKinds.includes('inventory') && cmGoesAsset && /bindtap="\w+"/.test(iw),
   'kinds=' + [...new Set(cmKinds)].join('/') + ' / 去投入页=' + (cmGoesAsset ? '有' : '无'));
@@ -168,7 +169,7 @@ check('🔴 设置页无核算方式选择入口 / switches 写入', !chooseHit,
 // ============ 修 5：tabs 单 tab 不满宽 ============
 console.log('');
 console.log('===== 修 5 · 单 tab 不满宽 =====');
-const mx = read("pages/month/index.wxss");
+const mx = read("subpkg/biz/month/index.wxss");
 check('tabs 依 isPaid 加 single 类', /class="tabs \{\{isPaid \? '' : 'single'\}\}"/.test(mw));
 check('wxss 有 .tabs.single 规则（flex 0 0 auto + min-width 220rpx）', /\.tabs\.single \{[^}]*display: inline-flex/.test(mx) && /\.tabs\.single \.tab \{[^}]*flex: 0 0 auto; min-width: 220rpx/.test(mx));
 check('双 tab 时保持 .tab flex:1（未改默认）', /\.tab \{ flex: 1;/.test(mx));
@@ -185,7 +186,7 @@ check('wxss 定义 .btn.danger', /\.btn\.danger \{[^}]*background: #e74c3c; colo
 // ============ 硬编码中文检查（wxml 业务代码无硬编码，注释除外）============
 console.log('');
 console.log('===== 硬编码中文检查（6 个页面 wxml，排除注释与 {{}} 绑定）=====');
-const pages = ["pages/month/result.wxml","pages/month/amortize.wxml","pages/month/index.wxml","pages/month/input.wxml","pages/mine/index.wxml"];
+const pages = ["subpkg/biz/month/result.wxml","subpkg/biz/month/amortize.wxml","subpkg/biz/month/index.wxml","subpkg/biz/month/input.wxml","pages/mine/index.wxml"];
 let hard = 0;
 for (const p of pages) {
   let s = read(p).replace(/<!--[\s\S]*?-->/g, "").replace(/\{\{[^}]*\}\}/g, "").replace(/<[^>]*>/g, " ");

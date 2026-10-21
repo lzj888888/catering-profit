@@ -177,11 +177,11 @@ check('影子样本：提前终止样本零变化（⇒ 篡改只打到自然到
 
 console.log('');
 console.log('===== H1 · 前端（摊销页分组 + 追加采购）=====');
-const amortJs = read('pages/month/amortize.js');
-const amortWxml = read('pages/month/amortize.wxml');
+const amortJs = read('subpkg/biz/month/amortize.js');
+const amortWxml = read('subpkg/biz/month/amortize.wxml');
 // round107：表单（新增 / 再投一笔 / 编辑 / 删除）已搬去独立页 ⇒ 相关判据的宿主随之切换。
-const aeJs = read('pages/month/assetEdit.js');
-const aeWxml = read('pages/month/assetEdit.wxml');
+const aeJs = read('subpkg/biz/month/assetEdit.js');
+const aeWxml = read('subpkg/biz/month/assetEdit.wxml');
 check('amortize.js 有 buildGroups（按 group_id || asset_id 分组）', /buildGroups\(rows\)/.test(amortJs) && /r\.group_id \|\| r\.asset_id/.test(amortJs));
 check('amortize.js 有 onToggleGroup（展开看每一笔）', /onToggleGroup\(e\)/.test(amortJs));
 check('amortize.js 有 onAppend（「再投一笔」跳编辑页并带组键）',
@@ -204,13 +204,13 @@ check('表单标题区分 一次算清 / 分期摊销 / 再投一笔（round107�
   /mode === 'append' \? t\.appendTitle : t\.amortTitle/.test(aeWxml) && /kind === 'lump' \? t\.lumpTitle/.test(aeWxml));
 check('「再投一笔」时渲染提示（t.appendHint 真出现；不绑具体文案，改词不误报）',
   /t\.appendHint/.test(aeWxml));
-check('摊销页 wxss 有分组样式', /\.batch-title/.test(read('pages/month/amortize.wxss')) && /\.batch-head/.test(read('pages/month/amortize.wxss')));
+check('摊销页 wxss 有分组样式', /\.batch-title/.test(read('subpkg/biz/month/amortize.wxss')) && /\.batch-head/.test(read('subpkg/biz/month/amortize.wxss')));
 
 // ==========================================================================
 console.log('');
 console.log('===== H2 · 填表引导：每类「包括 / 不包括」+ 填写口径 =====');
-const inputJs = read('pages/month/input.js');
-const inputWxml = read('pages/month/input.wxml');
+const inputJs = read('subpkg/biz/month/input.js');
+const inputWxml = read('subpkg/biz/month/input.wxml');
 check('terms 有 incomeScope（收入三类口径）', /incomeScope: \{/.test(terms) && /dine_in: '包括店内扫码点单/.test(terms));
 check('堂食口径含「不包括会员充值预收」', /不包括会员充值预收/.test(terms));
 // T5（2026-09-22 李老师拍板）：收入一律按实际成交金额（折后）记，折扣不单列（判据见 ModuleA A.1 配套段）。
@@ -254,10 +254,10 @@ check('input.wxml 每类口径句收进折叠块（引导行 + 按需展开）',
   /class="scope-head"/.test(inputWxml) && /bindtap="onToggleScope"/.test(inputWxml)
   && /<view class="scope" wx:if="\{\{g\.scopeOpen\}\}">\{\{g\.scope\}\}<\/view>/.test(inputWxml));
 check('input.wxml 口径句未退回「常展开」形态', !/class="scope" wx:if="\{\{g\.scope\}\}"/.test(inputWxml));
-check('input.wxss 有折叠块/口径样式', /\.fill-guide-head/.test(read('pages/month/input.wxss'))
+check('input.wxss 有折叠块/口径样式', /\.fill-guide-head/.test(read('subpkg/biz/month/input.wxss'))
   // round70 加固：原判据 `/\.scope-head/` 是**裸子串**，`.scope-head-x {` 也能命中 ⇒ 样式类被改名成
   //  带后缀的兄弟类时判绿（漏）。加边界 `[\s,{]`（类名后须紧跟空白/逗号/左花括号＝真选择器声明）。
-  && /\.scope-head[\s,{]/.test(read('pages/month/input.wxss')) && /\.scope \{/.test(read('pages/month/input.wxss')));
+  && /\.scope-head[\s,{]/.test(read('subpkg/biz/month/input.wxss')) && /\.scope \{/.test(read('subpkg/biz/month/input.wxss')));
 check('口径文案无硬编码（全部走 t.*）', !/[\u4e00-\u9fff]/.test(inputWxml.replace(/<!--[\s\S]*?-->/g, '')));
 
 console.log('');

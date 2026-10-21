@@ -197,7 +197,7 @@ const REGISTRY = {
   'pages/material/edit.js': {
     'PAREN|) * 100|#1': ['money', '原料采购价（元）→ 分（老板手输）'],
   },
-  'pages/month/result.js': {
+  'subpkg/biz/month/result.js': {
     'PAREN|) * 100|#1': ['ratio', '真实占比：真值 ÷ 收入 → 百分数（分/分）'],
   },
   'pages/sandbox/index.js': {

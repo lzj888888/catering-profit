@@ -1,14 +1,14 @@
-// pages/month/index.js —— 批次 4/5 · M1 月度经营首页
+// subpkg/biz/month/index.js —— 批次 4/5 · M1 月度经营首页
 // 月份选择器 + 双口径 tab + 结果卡 + 待归档徽标 + 结账归档。
 // ⚠️ 计算下沉：金额一律取 getLedger 返回的整数「分」，前端仅展示不计算。
 // ⚠️ 批次 5 权限 tab（§2.1.1/§2.4）：免费用户只见「经营参考估算」；付费用户（expire_at 有效）见双 tab。
 //   · 前端只读 payQueryEntitlement 的 expire_at/is_active，不读 plan_id；
 //   · **切换 tab 不触发付费弹窗**（交互边界：仅保存超限/导出触发）；
 //   · 到期前 7 天展示常驻提示条（双渠道之一，订阅消息为另一渠道）。
-const api = require('../../utils/api.js');
-const ui = require('../../utils/ui.js');
-const entitle = require('../../utils/entitlement.js');
-const { TERMS } = require('../../miniprogram/i18n/terms.js');
+const api = require('../../../utils/api.js');
+const ui = require('../../../utils/ui.js');
+const entitle = require('../../../utils/entitlement.js');
+const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 const app = getApp();
 
 Page({
@@ -193,10 +193,10 @@ Page({
     // ⚠️ 不触发付费弹窗（交互边界）
   },
 
-  goInput() { wx.navigateTo({ url: '/pages/month/input?month=' + this.data.curMonth }); },
-  goInventory() { wx.navigateTo({ url: '/pages/month/inventory?month=' + this.data.curMonth }); },
-  goAmortize() { wx.navigateTo({ url: '/pages/month/amortize?month=' + this.data.curMonth }); },
-  goResult() { wx.navigateTo({ url: '/pages/month/result?month=' + this.data.curMonth }); },
+  goInput() { wx.navigateTo({ url: '/subpkg/biz/month/input?month=' + this.data.curMonth }); },
+  goInventory() { wx.navigateTo({ url: '/subpkg/biz/month/inventory?month=' + this.data.curMonth }); },
+  goAmortize() { wx.navigateTo({ url: '/subpkg/biz/month/amortize?month=' + this.data.curMonth }); },
+  goResult() { wx.navigateTo({ url: '/subpkg/biz/month/result?month=' + this.data.curMonth }); },
   goOrders() { wx.navigateTo({ url: '/pages/pay/orders' }); },
 
   onArchive() {

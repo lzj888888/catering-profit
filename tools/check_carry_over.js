@@ -30,8 +30,8 @@ function stripJsComments(s) {
     .replace(/(^|[^:])\/\/[^\n]*/g, (m, p1) => p1 + ' '.repeat(m.length - p1.length));
 }
 
-const pageSrc = rd('pages/month/input.js');
-const wxml = rd('pages/month/input.wxml');
+const pageSrc = rd('subpkg/biz/month/input.js');
+const wxml = rd('subpkg/biz/month/input.wxml');
 const body = (() => {
   const s = stripJsComments(pageSrc);
   const i = s.indexOf('async onCarryExpense(');

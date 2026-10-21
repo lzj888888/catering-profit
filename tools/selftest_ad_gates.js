@@ -31,7 +31,7 @@ for (const f of g1Files) {
   lines.forEach((ln, i) => { if (g1re.test(ln)) g1bad.push(`${path.relative(ROOT, f).replace(/\\/g, "/")}:${i + 1} ${ln.trim().slice(0, 60)}`); });
 }
 check('G1 无 <28rpx 字号（0 残留）', g1bad.length === 0, g1bad.length ? g1bad.slice(0, 3).join(' | ') : '');
-const g1scope = readAll(["pages/month"], ".wxss").map((f) => fs.readFileSync(f, "utf8")).join("\n");
+const g1scope = readAll(["subpkg/biz/month"], ".wxss").map((f) => fs.readFileSync(f, "utf8")).join("\n");
 check('G1 .scope（填表引导口径）≥28rpx', !/\.scope \{[^}]*font-size:\s*2[0-7]rpx/.test(g1scope));
 
 console.log('===== G2 · 触控 ≥88rpx（占位 20/40rpx 除外）=====');
@@ -69,7 +69,7 @@ check('G5 mine 页有 nickname 输入', /type="nickname"/.test(mineWxml));
 check('G5 未用废弃 getUserProfile 调用', !/getUserProfile\(\{/.test(mineJs + mineWxml));
 
 console.log('===== G6 · 触觉反馈（不可逆操作）=====');
-const amortizeJs = fs.readFileSync(path.join(ROOT, "pages/month/amortize.js"), "utf8");
+const amortizeJs = fs.readFileSync(path.join(ROOT, "subpkg/biz/month/amortize.js"), "utf8");
 check('G6 报废资产 vibrateShort(medium)', /onTerminate[\s\S]{0,800}vibrateShort/.test(amortizeJs));
 check('G6 注销 vibrateShort', /doLogout[\s\S]{0,400}vibrateShort/.test(mineJs));
 check('G6 仅不可逆操作（amortize 仅 1 行 vibrateShort 调用）', (amortizeJs.match(/wx\.vibrateShort\(\{/g) || []).length === 1);

@@ -43,9 +43,9 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 
 const F = {
-  wxml: 'pages/month/input.wxml',
-  js: 'pages/month/input.js',
-  wxss: 'pages/month/input.wxss',
+  wxml: 'subpkg/biz/month/input.wxml',
+  js: 'subpkg/biz/month/input.js',
+  wxss: 'subpkg/biz/month/input.wxss',
   terms: 'miniprogram/i18n/terms.js',
 };
 
@@ -584,9 +584,9 @@ const PAGE_CASES = [
     //   ⚠️ data-key 只给**一个**（不按文案长短分两个键）：同一位置的开关，
     //      否则用户切 kind 时开合状态会跳变（这是设计约束，F1/F2 守住键集=只此一个）。
     name: 'assetEdit',
-    wxml: 'pages/month/assetEdit.wxml',
-    js: 'pages/month/assetEdit.js',
-    wxss: 'pages/month/assetEdit.wxss',
+    wxml: 'subpkg/biz/month/assetEdit.wxml',
+    js: 'subpkg/biz/month/assetEdit.js',
+    wxss: 'subpkg/biz/month/assetEdit.wxss',
     keys: ['aeMonthHint', 'aeTotalHint'],
     keepPlain: 2,   // fAmountHint 13 / fStartHint 7 / fTerminateHint 14 字 ⇒ 保持平铺
                     // ⚠️ J4f 补漏 `aeTotalHint`（fTotalHint 20 字，此前被我误判为平铺）
@@ -603,9 +603,9 @@ const PAGE_CASES = [
     //   ⚠️ 同页 `lumpSectionHint`（16 字）必须保持平铺 —— 16 与 18 只差 2 字，
     //      是检验"分层线没被挪动"的最贴近样本。
     name: 'amortize',
-    wxml: 'pages/month/amortize.wxml',
-    js: 'pages/month/amortize.js',
-    wxss: 'pages/month/amortize.wxss',
+    wxml: 'subpkg/biz/month/amortize.wxml',
+    js: 'subpkg/biz/month/amortize.js',
+    wxss: 'subpkg/biz/month/amortize.wxss',
     keys: ['amScopeHint', 'amSwitchHint'],
     keepPlain: 2,   // lumpSectionHint 16 字 + 另一处短提示 ⇒ 保持平铺（旧预期 1 被过期缓存掩盖）
     segFolds: 0,
@@ -631,9 +631,9 @@ const PAGE_CASES = [
   {
     // 44 字 —— 全站第二长；在「月度盈利」首页给免费用户解释「参考估算 vs 真实利润」的差别。
     name: 'monthIndex',
-    wxml: 'pages/month/index.wxml',
-    js: 'pages/month/index.js',
-    wxss: 'pages/month/index.wxss',
+    wxml: 'subpkg/biz/month/index.wxml',
+    js: 'subpkg/biz/month/index.js',
+    wxss: 'subpkg/biz/month/index.wxss',
     keys: ['moFreeHint'],
     keepPlain: 1,   // `pendingArchive · goResult`（拼接后仍短）⇒ 保持平铺
     segFolds: 0,
@@ -671,9 +671,9 @@ const PAGE_CASES = [
   {
     // 19 字 —— 盘点页「保存后由服务端按库存倒轧计算真实消耗」。
     name: 'inventory',
-    wxml: 'pages/month/inventory.wxml',
-    js: 'pages/month/inventory.js',
-    wxss: 'pages/month/inventory.wxss',
+    wxml: 'subpkg/biz/month/inventory.wxml',
+    js: 'subpkg/biz/month/inventory.js',
+    wxss: 'subpkg/biz/month/inventory.wxss',
     keys: ['invHintFormula'],
     keepPlain: 1,   // openingNote（`{{openingNote}}` 动态值）⇒ 保持平铺
     segFolds: 0,

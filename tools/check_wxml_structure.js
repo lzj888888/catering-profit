@@ -5,12 +5,12 @@
 // 真机开发版「月度录入 → 运营费用 / 人工费用」的每一行金额右侧，整片渲染出**英文属性串**：
 //     data-kind="expense" data-gidx="0" data-ridx="0" bindinput="onSubAmount"
 //     disabled="false" adjust-position="true" cursor-spacing="20" />
-// 根因：`pages/month/input.wxml` 的该 `<input>` 在**属性集合中间就被 `/>` 收掉了**，
+// 根因：`subpkg/biz/month/input.wxml` 的该 `<input>` 在**属性集合中间就被 `/>` 收掉了**，
 //      紧随其后的属性行失去了归属，成了**文本节点**；而 WXML 的文本节点**仍会插值** `{{}}`，
 //      ⇒ 屏上看到的是**求值后**的 `data-gidx="0"` / `disabled="false"`（不是字面量 `{{gi}}`），
 //      这正是「渲染出英文」却不出现双花括号的原因。
 // 同一支插入脚本（round97 T1，为 R85 营销小计补互斥 `disabled`）**同一轮**也把
-//      `pages/month/input.js` 的 require 解构拆成两条（R122 记）。
+//      `subpkg/biz/month/input.js` 的 require 解构拆成两条（R122 记）。
 //      ⇒ 一次「追加式插入」同时伤了两层：JS 语法（R122）+ WXML 结构（本条）。
 // 缺口在哪：95 个套件里**没有任何一条读 `.wxml`** —— R122 只覆盖 `.js`；真机页面无人编译。
 //
@@ -54,16 +54,16 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
 
-const SCAN_DIRS = ['pages', 'miniprogram', 'components'];
+const SCAN_DIRS = ['pages', 'subpkg', 'miniprogram', 'components'];
 const EXCLUDED_DIRS = new Set(['node_modules', '.git', '.workbuddy', 'review']);
 
 const MIN_FILES = 10;
 
-// 锚点：必须出现在扫描结果里。`pages/month/input.wxml` = 本次事故现场。
+// 锚点：必须出现在扫描结果里。`subpkg/biz/month/input.wxml` = 本次事故现场。
 const ANCHORS = [
-  'pages/month/input.wxml',
-  'pages/month/result.wxml',
-  'pages/month/amortize.wxml',
+  'subpkg/biz/month/input.wxml',
+  'subpkg/biz/month/result.wxml',
+  'subpkg/biz/month/amortize.wxml',
   'pages/shop/setting.wxml',
 ];
 

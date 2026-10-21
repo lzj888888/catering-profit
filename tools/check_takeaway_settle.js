@@ -36,8 +36,8 @@ function stripComments(s) {
 }
 
 const src = rd('utils/takeaway.js');
-const pageSrc = rd('pages/month/result.js');
-const wxmlSrc = rd('pages/month/result.wxml');
+const pageSrc = rd('subpkg/biz/month/result.js');
+const wxmlSrc = rd('subpkg/biz/month/result.wxml');
 ok('⓪ 自失效护栏：三份源码非空且关键锚点在场（防读空文件 ⇒ 恒真）',
   src.length > 5000 && pageSrc.length > 5000 && wxmlSrc.length > 2000
   && /function settleSummary/.test(src) && /function expectedReceivable/.test(src)

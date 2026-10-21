@@ -125,7 +125,7 @@ check('A2-② calcMonthlyProfit 读不到归档态（不读 shop_monthly_account
 const gas = read(path.join(ROOT, 'cloudfunctions', 'getAmortSchedule', 'index.js'));
 check('A2-③ getAmortSchedule 仍带 is_archive 出参（前端归档拦截的前提未被拆掉）',
   /is_archive:\s*isArchive/.test(gas), String(/is_archive:\s*isArchive/.test(gas)));
-const amortPage = read(path.join(ROOT, 'pages', 'month', 'amortize.js'));
+const amortPage = read(path.join(ROOT, 'subpkg', 'biz', 'month', 'amortize.js'));
 check('A2-④ 摊销页归档态下拦住改开关（onToggleAmortize 里 isArchive 早退）',
   /onToggleAmortize/.test(amortPage) && /if \(this\.data\.isArchive\)/.test(amortPage));
 

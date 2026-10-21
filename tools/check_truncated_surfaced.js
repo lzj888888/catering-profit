@@ -126,7 +126,9 @@ const EXEMPT = {
   'pages/card/edit.js': 'getCostCard 仅取模板 / 子卡候选供选择，不渲染"本店全部卡"清单、不输出总数、不进金额计算',
 };
 
-const pageFiles = walk(path.join(ROOT, 'pages'), []).filter((f) => f.endsWith('.js'));
+const pageFiles = walk(path.join(ROOT, 'pages'), []).filter((f) => f.endsWith('.js'))
+  // R423 分包化：页面代码不再全在 pages/ 下；下界 25 保持不变（覆盖面变大，判据不松）
+  .concat(fs.existsSync(path.join(ROOT, 'subpkg')) ? walk(path.join(ROOT, 'subpkg'), []).filter((f) => f.endsWith('.js')) : []);
 const consumers = [];
 for (const f of pageFiles) {
   const src = readOr(f, '');

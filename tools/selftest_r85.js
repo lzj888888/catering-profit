@@ -66,8 +66,8 @@ check('A6 无合计 → hasTotal=false', extractPaste('1\n2\n3').hasTotal === fa
 
 console.log('===== A7 · 手写路径（粘贴非唯一入口：金额框直接填合计数可保存）=====');
 // 语义：快速模式金额框直接写合计数，buildItems 只提交填了金额的行（既有逻辑），粘贴只是另一条路
-const inputJs = fs.readFileSync(path.join(ROOT, 'pages/month/input.js'), 'utf8');
-const inputWxml = fs.readFileSync(path.join(ROOT, 'pages/month/input.wxml'), 'utf8');
+const inputJs = fs.readFileSync(path.join(ROOT, 'subpkg/biz/month/input.js'), 'utf8');
+const inputWxml = fs.readFileSync(path.join(ROOT, 'subpkg/biz/month/input.wxml'), 'utf8');
 check('A7 快速模式有 4 个金额框（手写可用）', /快速录入：每平台 1 个金额框/.test(inputWxml) && inputWxml.includes('bindinput="onSubAmount"'));
 // ⚠️ R162：分项由 3 框变 4 框（加「有效订单数」）⇒ 模板处数 3 → 4。
 //   这条断言正是「加框但忘了同步守卫」的报警器：不同步就当场红。
@@ -420,7 +420,7 @@ check('A18 promoItem 单源在营销 items 内', MARKETING.indexOf(TERMS.ledger.
 check('A18 promo 判断不再由文案内容驱动', !/推广中心\/\.test\(note\)/.test(inputJs));
 
 console.log('===== A19 · 主题色单源（旧橘黄已全线下线，不得回流）=====');
-const wxssSrc = fs.readFileSync(path.join(ROOT, 'pages/month/input.wxss'), 'utf8');
+const wxssSrc = fs.readFileSync(path.join(ROOT, 'subpkg/biz/month/input.wxss'), 'utf8');
 // 判据只扫「生效样式」：逐行滤掉注释行（块注释首行 /* 与续行 *、含 */ 的收尾行）
 // ⚠️ 必须写成**单行**：R68 顶层块切分要求「深度回 0 时以 ; 或 } 收尾」，链式调用换行会让首行括号即平衡 ⇒ 判「不确定」而 fail-closed
 const wxssLive = wxssSrc.split('\n').filter((l) => !/^\s*(\/\*|\*)/.test(l) && l.indexOf('*/') < 0).join('\n');

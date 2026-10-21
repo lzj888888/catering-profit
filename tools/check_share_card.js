@@ -34,7 +34,7 @@ const TERMS_B = path.join(ROOT, 'specs', 'dev-specs', 'i18n', 'terms.js');
 
 // 必须接线的页面（顺序 = 队列 #11 点名的三个入口）
 const PAGES = [
-  { rel: 'pages/month/result.js', fn: 'm1Share', why: 'M1 月度结果页' },
+  { rel: 'subpkg/biz/month/result.js', fn: 'm1Share', why: 'M1 月度结果页' },
   { rel: 'pages/sandbox/index.js', fn: 'm2Share', why: 'M2 开店测算页' },
   { rel: 'pages/card/index.js', fn: 'm3Share', why: 'M3 菜品成本列表' },
 ];
@@ -206,8 +206,9 @@ for (const p of PAGES) {
   if (raw === null) { ok('② 可读 ' + p.rel, false, '文件读不到 ⇒ fail-closed'); continue; }
   const src = stripComments(raw);
 
+  // R423 分包化：页面在 subpkg/ 下时相对深度多一级 ⇒ 不绑死 `../` 级数
   ok('②-a ' + p.rel + ' 真 require shareCard',
-    has(src, "require('../../utils/shareCard.js')") || has(src, 'require("../../utils/shareCard.js")'));
+    /require\((['"])\.\.\/(?:\.\.\/)*utils\/shareCard\.js\1\)/.test(src));
 
   const body = bodyOf(src, 'onShareAppMessage');
   ok('②-b ' + p.rel + ' 有 onShareAppMessage 定义（剥注释后）', body.length > 20,

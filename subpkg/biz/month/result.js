@@ -1,15 +1,15 @@
-// pages/month/result.js —— 批次 4/5 · M1 结果展示页（收入/费用/毛利/毛利率/双利润/差异）
+// subpkg/biz/month/result.js —— 批次 4/5 · M1 结果展示页（收入/费用/毛利/毛利率/双利润/差异）
 //
 // ⚠️ 计算下沉：所有数值来自 getLedger 后端重算返回的分整数，前端仅格式化展示（分→元）。
 // ⚠️ 批次 5 · 到期提醒双渠道：① 结果页**常驻提示条**（到期前 7 天内，读 payQueryEntitlement 的
 //   days_left，前端只读 expire_at 系）；② 订阅消息（请求授权，用户拒绝不影响常驻条兜底）。
 // ⚠️ 归档态展示：归档月显示只读提示，不提供任何编辑入口。
-const api = require('../../utils/api.js');
-const ui = require('../../utils/ui.js');
-const entitle = require('../../utils/entitlement.js');
-const { TERMS } = require('../../miniprogram/i18n/terms.js');
+const api = require('../../../utils/api.js');
+const ui = require('../../../utils/ui.js');
+const entitle = require('../../../utils/entitlement.js');
+const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 // 🔴 R311：体检算法（纯函数）—— 保本区间/归因/健康营收/结构性诊断
-const BE = require('../../utils/breakeven.js');
+const BE = require('../../../utils/breakeven.js');
 
 // 🔴 R313：上一个月（跨月对比用）。纯字符串运算，不依赖 this / ui。
 function prevMonthOf(m) {
@@ -19,15 +19,15 @@ function prevMonthOf(m) {
   if (mo === 0) { mo = 12; y -= 1; }
   return y + '-' + String(mo).padStart(2, '0');
 }
-const exportFile = require('../../utils/exportFile.js');   // R265：导出投递单源（落盘 + 打开 + 转发兜底）
+const exportFile = require('../../../utils/exportFile.js');   // R265：导出投递单源（落盘 + 打开 + 转发兜底）
 // 🔴 R302：外卖到手账 —— 口径全部在 `utils/takeaway.js`（纯函数单源），页面只做「名字→数字」解析与格式化
-const { settleSummary } = require('../../utils/takeaway.js');
+const { settleSummary } = require('../../../utils/takeaway.js');
 // 🔴 R395：分享卡片标题装配（纯函数单源）—— 见 `utils/shareCard.js` 头注
-const shareCard = require('../../utils/shareCard.js');
+const shareCard = require('../../../utils/shareCard.js');
 // 🔴 R399（队列 #16）：异常核对清单「规则层」—— 纯函数，只跟本店自己的历史比（见 `utils/anomalyRules.js` 头注）。
 //   本页只做两件事：① 编排取数（月份列表 + 逐月账本）② 把规则层的出参译成页面文案。
 //   ⚠️ 阈值/中位数/排序一律在规则层，页面零阈值、零金额差（PLAN_AI §3 口径红线）。
-const anomaly = require('../../utils/anomalyRules.js');
+const anomaly = require('../../../utils/anomalyRules.js');
 
 // 清单最多显示几项（其余折叠成一句「另有 N 项」）：老板一次最多看 5 条，再多等于没看。
 //   与规则层的 maxItems(=20) 不是同一件事：那是**算多少**，这是**显示多少**。
@@ -298,7 +298,7 @@ Page({
    *
    * ⚠️ 项名单源：`TERMS.ledger.takeawayMode.reconcileRoles`（佣金/配送费/配送补贴）+
    *   `TERMS.semantic.expenseMktSubsidy`（商家承担补贴）—— **页面零中文字面量**（守 check_page_terms 判据③）。
-   *   收入侧用**机器值** `category === 'takeaway'`（与 `pages/month/input.js` 同一判据）。
+   *   收入侧用**机器值** `category === 'takeaway'`（与 `subpkg/biz/month/input.js` 同一判据）。
    *
    * @param {Array} incItems getLedger 出参 `income_items`（含 sub_items）
    * @param {Array} expItems getLedger 出参 `expense_items`
@@ -646,30 +646,30 @@ Page({
 
   onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()); },
   goOrders() { wx.navigateTo({ url: '/pages/pay/orders' }); },
-  goInput() { wx.navigateTo({ url: '/pages/month/input?month=' + this.data.month }); },
+  goInput() { wx.navigateTo({ url: '/subpkg/biz/month/input?month=' + this.data.month }); },
 
   // M1 报表导出：权限只读 expire_at（前端先查，后端 exportData 再兜底校验）；免费用户触发付费墙
   async onExport() {
     // 2026-09-20 加固：此前整段无 try/catch —— 一旦取权益/弹窗任一步抛异常，点击就是「毫无反应」，
     // 用户无从判断是没权限还是坏了。现统一兜底：任何异常都 toast 出来（可证伪，不静默）。
     try {
-      const ent = await require('../../utils/entitlement.js').fetchEntitlement().catch(() => null);
+      const ent = await require('../../../utils/entitlement.js').fetchEntitlement().catch(() => null);
       if (!ent || !ent.is_active) {
-        require('../../utils/paywall.js').openPaywall('export', {
+        require('../../../utils/paywall.js').openPaywall('export', {
           shopId: (getApp().globalData && getApp().globalData.shop_id) || '',
         });
         return;
       }
       await this.doExport();
     } catch (e) {
-      require('../../utils/api.js').toastError(e);
+      require('../../../utils/api.js').toastError(e);
     }
   },
 
   async doExport() {
     wx.showLoading({ title: this.data.t.exportIng, mask: true });   // 进度提示：生成中不阻塞
     try {
-      const d = await require('../../utils/api.js').call('exportData', {
+      const d = await require('../../../utils/api.js').call('exportData', {
         scope: 'm1_report',
         // R265：'excel'(=CSV) 在微信里打不开（openDocument 不认 csv）⇒ 改要真 xlsx
         format: 'xlsx',
@@ -680,7 +680,7 @@ Page({
       exportFile.deliver(d);   // 落盘 + 打开；打不开时给「转发到微信」兜底（提示/成功态由单源负责）
     } catch (e) {
       wx.hideLoading();
-      require('../../utils/api.js').toastError(e);
+      require('../../../utils/api.js').toastError(e);
     }
   },
 

@@ -290,7 +290,12 @@
     c7Srv,
     c7Srv ? '权威开关已在出参里' : '出参缺权威开关 ⇒ 页面只能去读前端缓存（= 缺陷复发）');
 
-  const amoPath108 = path.join(ROOT, 'pages', 'month', 'amortize.js');
+  // R423 分包化：amortize 已移入分包；兼容两种位置（迁移期/回迁都能读到）
+  const amoCandidates = [
+    path.join(ROOT, 'subpkg', 'biz', 'month', 'amortize.js'),
+    path.join(ROOT, 'pages', 'month', 'amortize.js'),
+  ];
+  const amoPath108 = amoCandidates.find((p) => fs.existsSync(p)) || amoCandidates[1];
   const amo108 = fs.existsSync(amoPath108) ? fs.readFileSync(amoPath108, 'utf8') : '';
   // ⚠️ 必须**剔注释**再判（踩过）：页面里那句「不再读 app.globalData.switches」的**解释性注释**
   //   本身就是这串 token ⇒ 裸扫会把正确的修复判成缺陷（round107 的 batch8b A9-② 同款自伤）。

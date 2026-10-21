@@ -36,7 +36,7 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
 const SKIP = ['node_modules', 'miniprogram_npm', '.git', 'tools', 'review', 'prototype', 'specs'];
-const KEY_WXML = 'pages/month/input.wxml';
+const KEY_WXML = 'subpkg/biz/month/input.wxml';
 
 // 前提下界：取自 2026-09-22 实测（14 / 5 / 32 / 48），留出余量但不留到"恒真"。
 const MIN_WXML = 12;

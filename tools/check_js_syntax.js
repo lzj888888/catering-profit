@@ -2,7 +2,7 @@
 // tools/check_js_syntax.js —— R122 · 全仓 .js **语法编译**守卫（round99 新增）
 //
 // ============ 为什么要有这条（2026-09-22 出码事故 · 真实触发，不是假想）============
-// round97 T1 的插入脚本把 `pages/month/input.js` 的 require 解构**拆成了两条**
+// round97 T1 的插入脚本把 `subpkg/biz/month/input.js` 的 require 解构**拆成了两条**
 //   （第 13 行已用 `}` 收尾，第 14 行又接一段 `mkByPlatTotal, mkByPlatFilled } = ...`）
 // ⇒ 微信开发者工具出码时**编译失败** `Unexpected token (14:32)`，小程序根本起不来。
 // 而当时 `verify_all.js` 报的是 **94/94 全绿**。缺口在哪：
@@ -43,14 +43,14 @@ const vm = require('vm');
 
 const ROOT = path.resolve(__dirname, '..');
 
-const SCAN_DIRS = ['miniprogram', 'pages', 'utils', 'cloudfunctions', 'tools', 'specs'];
+const SCAN_DIRS = ['miniprogram', 'pages', 'subpkg', 'utils', 'cloudfunctions', 'tools', 'specs'];
 const EXCLUDED_DIRS = new Set(['node_modules', '.git', '.workbuddy', 'review']);
 
 const MIN_FILES = 400;
 
-// 锚点：这些文件必须出现在扫描结果里。`pages/month/input.js` = 本次事故现场。
+// 锚点：这些文件必须出现在扫描结果里。`subpkg/biz/month/input.js` = 本次事故现场。
 const ANCHORS = [
-  'pages/month/input.js',
+  'subpkg/biz/month/input.js',
   'app.js',
   'utils/takeaway.js',
   'cloudfunctions/initDb/collections.js',

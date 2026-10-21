@@ -1449,7 +1449,7 @@ const TERMS = {
     //   只有手动走「同步至最新价」（`syncCostCard`）才会生成新版本（见 `cloudfunctions/syncCostCard/index.js:4-5`）。
     //   ⇒ 豆包 O5 拟的「所有用该原料的菜成本已自动更新」**在本仓是假承诺**，绝不能照抄：
     //      他会按没变的成本去定价，这是「让老板算错」，比不提示更贵。
-    //   入口指向既有的只读影响面页 `pages/metrics/impact`（M3.19），不新增功能、不自动改卡。
+    //   入口指向既有的只读影响面页 `subpkg/tools/metrics/impact`（M3.19），不新增功能、不自动改卡。
     //   ⚠️ confirm/cancel 受平台硬限制 **≤4 字符**（2026-09-26 真机事故），由 `check_modal_button_len` 守着。
     matPriceSaved: '原料价已保存',
     matImpactAsk: (n) => `用到这个原料的 ${n} 道菜，成本卡里还是旧价 —— 成本卡不会自己跟着变。要看这次涨价影响多少吗？`,

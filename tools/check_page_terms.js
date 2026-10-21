@@ -2,7 +2,7 @@
 // 运行： node tools/check_page_terms.js      （EXIT 0 = 全绿）
 //
 // 背景（李老师 2026-09-23 真机反馈，同族病）：
-//   摊销页底部主按钮渲染成**纯蓝色、上面没有文字** —— 因为 `pages/month/amortize.js` 写的是
+//   摊销页底部主按钮渲染成**纯蓝色、上面没有文字** —— 因为 `subpkg/biz/month/amortize.js` 写的是
 //   `TERMS.amortizePage.amortAdd`，而 terms.js 里**根本没有 `amortAdd` 这个键** ⇒ 取到 `undefined`
 //   ⇒ WXML 插值成空串 ⇒ 按钮只剩底色。术语本体一直是 `amortizePage.add`（「新增摊销资产」）。
 //   顺着这一处全仓一扫，同族**共 7 处**（同一轮全修）：
@@ -34,7 +34,7 @@
 //   S1 扫描面文件数 ≥ 40（页面 + 工具 + 前端根）；
 //   S2 判据① 命中 `TERMS.` 引用的**总次数** ≥ 400（低于此说明解析器坏了或扫描面被写窄）；
 //   S3 判据② 命中 `t.` 用法的**总次数** ≥ 300，且**带 `t: {` 块的页面数** ≥ 8；
-//   S4 锚点页面必须在扫描面内（含事故现场 `pages/month/amortize.js` 与 `pages/month/input.wxml`）。
+//   S4 锚点页面必须在扫描面内（含事故现场 `subpkg/biz/month/amortize.js` 与 `subpkg/biz/month/input.wxml`）。
 //   S5 判据③ 必须真的在扫比较型字面量（≥150 次）且术语值集非缩水（≥800 串）。
 //   ⚠️ 判据③ 用的是**保字符串内容**的剥注释（`stripCommentsKeepStr`）—— 复用 `stripComments`
 //      会把串内容换成空格 ⇒ 判据全盲、"命中 0" 是假阴性（R298 实测踩到，靠影子样本抓出）。
@@ -52,7 +52,7 @@
 
   const ROOT = path.resolve(__dirname, '..');
   const TERMS_PATH = path.join(ROOT, 'miniprogram', 'i18n', 'terms.js');
-  const SCAN_ROOTS = ['pages', 'utils', 'miniprogram'];
+  const SCAN_ROOTS = ['pages', 'subpkg', 'utils', 'miniprogram'];
   const EXTRA_FILES = ['app.js'];
 
   let pass = 0, failN = 0;
@@ -133,7 +133,9 @@
   for (const r of SCAN_ROOTS) walk(path.join(ROOT, r), jsFiles, (p) => /\.js$/.test(p));
   for (const f of EXTRA_FILES) { const p = path.join(ROOT, f); if (fs.existsSync(p)) jsFiles.push(p); }
   const wxmlFiles = [];
+  // R423 分包化：wxml 不再全在 pages/ 下（扫描面必须含 subpkg/，否则分包页的文案引用漏检）
   walk(path.join(ROOT, 'pages'), wxmlFiles, (p) => /\.wxml$/.test(p));
+  if (fs.existsSync(path.join(ROOT, 'subpkg'))) walk(path.join(ROOT, 'subpkg'), wxmlFiles, (p) => /\.wxml$/.test(p));
 
   const terms = require(TERMS_PATH).TERMS;
 
@@ -141,7 +143,7 @@
   console.log('\n===== P1 · 页面/工具引用的术语键必须存在（TERMS.<组>.<键>）=====');
   const p1Miss = [];
   let p1Hits = 0;
-  const ANCHORS_JS = ['pages/month/amortize.js', 'pages/month/input.js'];
+  const ANCHORS_JS = ['subpkg/biz/month/amortize.js', 'subpkg/biz/month/input.js'];
   const seenAnchor = {};
   for (const fp of jsFiles) {
     const rel = path.relative(ROOT, fp).split(path.sep).join('/');
@@ -170,7 +172,7 @@
   console.log('\n===== P2 · .wxml 用到的 t.<键> 必须在同页 .js 的 t:{} 里 =====');
   const p2Miss = [];
   let p2Hits = 0, blockPages = 0;
-  const ANCHORS_WXML = ['pages/month/input.wxml'];
+  const ANCHORS_WXML = ['subpkg/biz/month/input.wxml'];
   const seenWxmlAnchor = {};
   for (const wf of wxmlFiles) {
     const relW = path.relative(ROOT, wf).split(path.sep).join('/');

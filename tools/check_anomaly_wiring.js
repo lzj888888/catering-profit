@@ -31,8 +31,8 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
-const PAGE = 'pages/month/result.js';
-const WXML = 'pages/month/result.wxml';
+const PAGE = 'subpkg/biz/month/result.js';
+const WXML = 'subpkg/biz/month/result.wxml';
 const RULES = 'utils/anomalyRules.js';
 const LEDGER = 'cloudfunctions/getLedger/index.js';
 

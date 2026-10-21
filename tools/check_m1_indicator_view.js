@@ -22,8 +22,8 @@ const read = (p) => fs.readFileSync(rel(p), 'utf8');
 
 const REF_REL = 'cloudfunctions/common/indicatorRef.js';
 const TERMS_REL = 'miniprogram/i18n/terms.js';
-const PAGE_JS_REL = 'pages/month/result.js';
-const PAGE_WXML_REL = 'pages/month/result.wxml';
+const PAGE_JS_REL = 'subpkg/biz/month/result.js';
+const PAGE_WXML_REL = 'subpkg/biz/month/result.wxml';
 const GETLEDGER_REL = 'cloudfunctions/getLedger/index.js';
 
 let pass = 0, failN = 0;

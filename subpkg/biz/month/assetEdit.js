@@ -1,4 +1,4 @@
-// pages/month/assetEdit.js —— round107 · 一次性投入的**独立编辑页**
+// subpkg/biz/month/assetEdit.js —— round107 · 一次性投入的**独立编辑页**
 //
 // 为什么单独一页（而不是继续用摊销页的底部弹层）：
 //   真机截图显示，底部弹层（.mask{position:fixed} + .sheet 底部对齐）碰上 5 个字段 + 键盘时必然打架 ——
@@ -10,9 +10,9 @@
 //                     —— 金额进台账；当月「一次算清合计」由 saveLedger 服务端求和后进双利润引擎。
 //   · kind='amort' → saveAsset（分期摊销）
 //   · 删除         → saveAsset({ asset: { asset_id, delete:true } })（软删，不可复活）
-const api = require('../../utils/api.js');
-const ui = require('../../utils/ui.js');
-const { TERMS } = require('../../miniprogram/i18n/terms.js');
+const api = require('../../../utils/api.js');
+const ui = require('../../../utils/ui.js');
+const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 
 const T = TERMS.amortizePage;
 

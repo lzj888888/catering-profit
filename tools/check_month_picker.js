@@ -5,7 +5,7 @@
 // 【为什么要有这个守卫】R209 李老师真机反馈「月度盈利核算选月份只能选本月，选以前月份提示填写错误」。
 //   查出来是个**纯前端类型 bug**，而且当时全站 13 处 selector picker 里只有这一处走漏：
 //
-//     pages/month/index.js::onMonthChange 旧实现：
+//     subpkg/biz/month/index.js::onMonthChange 旧实现：
 //       const month = e.detail.value;          // ← selector 的 detail.value 是**下标数字**
 //       this.loadMonth(month);                 // ← 于是 getLedger 收到 month = 0 / 1 / 2
 //
@@ -68,8 +68,8 @@ function walk(dir, out) {
   return out;
 }
 
-const MONTH_JS = 'pages/month/index.js';
-const MONTH_WXML = 'pages/month/index.wxml';
+const MONTH_JS = 'subpkg/biz/month/index.js';
+const MONTH_WXML = 'subpkg/biz/month/index.wxml';
 const VALIDATE = 'cloudfunctions/getLedger/validate.js';
 
 const F_MONTH_JS = read(MONTH_JS);
@@ -125,7 +125,9 @@ ensure('S-②', '月历 js 剥注释后长度达下界（≥3000 字符，防读
   CODE_MONTH_JS.length >= 3000, '实际 ' + CODE_MONTH_JS.length + ' 字符');
 ensure('S-③', '能抽出 onMonthChange 函数体（抽不出 ⇒ 不许静默放行）',
   !!MONTH_BODY, '正则未命中函数定义');
-const allWxml = walk(path.join(ROOT, 'pages'), []).filter((p) => p.endsWith('.wxml'));
+// R423 分包化：wxml 不再全在 pages/ 下
+const allWxml = walk(path.join(ROOT, 'pages'), []).filter((p) => p.endsWith('.wxml'))
+  .concat(fs.existsSync(path.join(ROOT, 'subpkg')) ? walk(path.join(ROOT, 'subpkg'), []).filter((p) => p.endsWith('.wxml')) : []);
 ensure('S-④', '全仓 wxml 扫描面非退化（≥20 个文件，防扫空恒绿）',
   allWxml.length >= 20, '实际 ' + allWxml.length + ' 个 .wxml');
 

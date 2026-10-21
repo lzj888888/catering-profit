@@ -110,7 +110,10 @@ def main():
     #   里出现的 `pages/xxx` 是**历史记录**，改了就是篡改事实（R411 试跑时发现 259 处里绝大多数是
     #   `review/evidence/*/gitcache_*.json`）。若某个守卫因为读了 specs 而红，再针对那一处单独处理。
     def collect_targets():
-        CODE_DIRS = ("tools", "pages", "utils", "miniprogram")
+        # 🔴 必须含 `subpkg`：已经迁移过的模块里的**跳转路径**也要跟着改
+        #   （S1 实测：移过去的 amortize.js 还写着 `/pages/month/assetEdit`，
+        #    因为旧范围不含 subpkg ⇒ 出口指向未注册页面，真机点了没反应）。
+        CODE_DIRS = ("tools", "pages", "utils", "miniprogram", "subpkg")
         out = []
         for d in CODE_DIRS:
             base_dir = os.path.join(ROOT, d)

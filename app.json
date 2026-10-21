@@ -1,12 +1,6 @@
 {
   "pages": [
     "pages/index/index",
-    "pages/month/index",
-    "pages/month/input",
-    "pages/month/inventory",
-    "pages/month/amortize",
-    "pages/month/assetEdit",
-    "pages/month/result",
     "pages/shop/setting",
     "pages/sandbox/index",
     "pages/sandbox/list",
@@ -67,6 +61,17 @@
       "root": "subpkg/tools",
       "pages": [
         "metrics/impact"
+      ]
+    },
+    {
+      "root": "subpkg/biz",
+      "pages": [
+        "month/index",
+        "month/input",
+        "month/inventory",
+        "month/amortize",
+        "month/assetEdit",
+        "month/result"
       ]
     }
   ]

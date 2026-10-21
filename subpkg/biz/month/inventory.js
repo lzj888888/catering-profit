@@ -1,11 +1,11 @@
-// pages/month/inventory.js —— 批次 4 · M1 库存录入页（期初/采购/期末盘点，写 shop_inventory）
+// subpkg/biz/month/inventory.js —— 批次 4 · M1 库存录入页（期初/采购/期末盘点，写 shop_inventory）
 //
 // ⚠️ 计算下沉：金额一律「元」→ 适配层转「分」；真实消耗由服务端 saveLedger 倒轧，前端不算。
 // ⚠️ 库存开关：以服务端 getLedger 读回 switches.inventorySwitchOn 为准（前端仅展示）。
 // ⚠️ 归档守卫：is_archive=true 且超 7 天宽限 → 硬锁只读；宽限内补录需二次确认。
-const api = require('../../utils/api.js');
-const ui = require('../../utils/ui.js');
-const { TERMS } = require('../../miniprogram/i18n/terms.js');
+const api = require('../../../utils/api.js');
+const ui = require('../../../utils/ui.js');
+const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 
 const DRAFT_KEY = 'draft_month_inv_';
 
@@ -178,7 +178,7 @@ Page({
   onUnlockOpening() { this.setData({ openingAuto: false }); },
   onFixPrev() {
     if (!this.data.prevMonth) return;
-    wx.navigateTo({ url: '/pages/month/inventory?month=' + this.data.prevMonth });
+    wx.navigateTo({ url: '/subpkg/biz/month/inventory?month=' + this.data.prevMonth });
   },
   onPurchase(e) { this.setData({ purchaseYuan: e.detail.value }); },
   onClosing(e) { this.setData({ closingYuan: e.detail.value }); },

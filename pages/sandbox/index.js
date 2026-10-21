@@ -1511,7 +1511,7 @@ Page({
   onTogglePromo() { this.setData({ showPromo: !this.data.showPromo }); },
   onToggleAssumptions() { this.setData({ showAssumptions: !this.data.showAssumptions }); },
 
-  // R234/J4：**通用「行内提示折叠」开关**（与月录入页 `pages/month/input.js` 同一实现，
+  // R234/J4：**通用「行内提示折叠」开关**（与月录入页 `subpkg/biz/month/input.js` 同一实现，
   //   保持仓内单一形态 —— 两页若各写一套，将来改判据要改两处）。
   //   一个 handler 服务本页 8 处，折叠态集中在 `hintFold` 一个 map 里，新增位置只是加一个键。
   onToggleHintFold(e) {

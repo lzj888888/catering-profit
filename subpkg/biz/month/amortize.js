@@ -1,4 +1,4 @@
-// pages/month/amortize.js —— round107 · M1「一次性投入」页（本月一次算清清单 + 分期摊销台账）
+// subpkg/biz/month/amortize.js —— round107 · M1「一次性投入」页（本月一次算清清单 + 分期摊销台账）
 //
 // 这一页同时管两类「一次花的钱」：
 //   · 一次算清（mode='lump'）：全部算进投入那个月的费用，不跨月摊 —— 本月清单，可多笔
@@ -6,11 +6,11 @@
 // 两类**互不排斥**（李老师真机反馈：现在一个月既有一笔摊销、又有几笔小额一次算清，都能记）。
 //
 // ⚠️ 计算下沉：本月合计 / 各资产当月摊销 / 剩余未摊 全部由 getAmortSchedule 后端算，前端只展示分整数。
-// ⚠️ 表单不再用底部弹层：新增/编辑/再投一笔一律跳 pages/month/assetEdit（独立页）。
+// ⚠️ 表单不再用底部弹层：新增/编辑/再投一笔一律跳 subpkg/biz/month/assetEdit（独立页）。
 //   真机截图证明「底部弹层 + 键盘」会让面板被整个盖住 ⇒ 看不见、存不了。
-const api = require('../../utils/api.js');
-const ui = require('../../utils/ui.js');
-const { TERMS } = require('../../miniprogram/i18n/terms.js');
+const api = require('../../../utils/api.js');
+const ui = require('../../../utils/ui.js');
+const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 
 Page({
   data: {
@@ -238,23 +238,23 @@ Page({
     }
     wx.navigateTo({ url });
   },
-  onAddLump() { this.go('/pages/month/assetEdit?kind=lump&month=' + this.data.month); },
+  onAddLump() { this.go('/subpkg/biz/month/assetEdit?kind=lump&month=' + this.data.month); },
   onEditLump(e) {
     const it = e.currentTarget.dataset.item;
     if (!it || !it.item_id) return;
-    this.go('/pages/month/assetEdit?kind=lump&month=' + this.data.month + '&asset_id=' + it.item_id);
+    this.go('/subpkg/biz/month/assetEdit?kind=lump&month=' + this.data.month + '&asset_id=' + it.item_id);
   },
-  onAddAmort() { this.go('/pages/month/assetEdit?kind=amort&month=' + this.data.month); },
+  onAddAmort() { this.go('/subpkg/biz/month/assetEdit?kind=amort&month=' + this.data.month); },
   onEditAsset(e) {
     const a = e.currentTarget.dataset.asset;
     if (!a || !a.asset_id) return;
-    this.go('/pages/month/assetEdit?kind=amort&month=' + this.data.month + '&asset_id=' + a.asset_id);
+    this.go('/subpkg/biz/month/assetEdit?kind=amort&month=' + this.data.month + '&asset_id=' + a.asset_id);
   },
   // H1：再投一笔 —— 同一资产再记一笔（沿用组键，起摊月默认本月，每笔独立起摊）
   onAppend(e) {
     const key = e.currentTarget.dataset.group;
     if (!key) return;
-    this.go('/pages/month/assetEdit?kind=amort&month=' + this.data.month + '&group=' + key);
+    this.go('/subpkg/biz/month/assetEdit?kind=amort&month=' + this.data.month + '&group=' + key);
   },
 
   // ===== 分期摊销开关（服务端权威 shop_switch.amortize_switch）=====
@@ -322,14 +322,14 @@ Page({
   // ===== round109：收尾出口 =====
   //   起因（李老师真机）：填完摊销后「不知道做什么」，只能按手机最上面的返回键一层层退。
   goResult() {
-    wx.navigateTo({ url: '/pages/month/result?month=' + this.data.month });
+    wx.navigateTo({ url: '/subpkg/biz/month/result?month=' + this.data.month });
   },
   goHome() {
     // 本页由月度首页 navigateTo 进来 ⇒ 返回即回首页；
     // 若是直接进入本页（栈里只有自己），navigateBack 会失败 ⇒ 兜底 redirect。
     const pages = getCurrentPages();
     if (pages.length > 1) wx.navigateBack();
-    else wx.redirectTo({ url: '/pages/month/index' });
+    else wx.redirectTo({ url: '/subpkg/biz/month/index' });
   },
 
   onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()); },

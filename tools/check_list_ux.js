@@ -18,7 +18,7 @@
 //    ⇒ 置顶标记永不显示（且不报错）⇒ 只能"预先在 JS 里打标记"。
 //    🔴 R298 扩面（本轮真实事故×2）：原判据是「8 个方法名白名单 + 只扫 3 个列表页」，
 //      而实际踩到的两处**分别落在别的页**、且其中一个方法名还不在白名单里：
-//        · `pages/month/input.wxml`  `{{g.expanded ? g.rows : g.rows.slice(0, 1)}}`（**slice 不在白名单**）
+//        · `subpkg/biz/month/input.wxml`  `{{g.expanded ? g.rows : g.rows.slice(0, 1)}}`（**slice 不在白名单**）
 //          ⇒ 费用/其他收入组的**细项行整段不渲染**（收入、费用两个月录入页各一处）
 //        · `pages/sandbox/compare.wxml` `{{selected.indexOf(...)}}`（indexOf 在册，但**该页不在原扫描面**）
 //          ⇒ 方案勾选框永不点亮（老板看不出选了哪几个）
@@ -155,7 +155,7 @@ function judgeMaterialPicker(wxml) {
 }
 
 // WXML 注释剥离（**等长空格替换、保留 \n**）：判据只看**会被求值**的部分。
-//   🔴 为什么必须剥（本轮实测假红）：守卫扩到全仓后，`pages/month/input.wxml` 里那句
+//   🔴 为什么必须剥（本轮实测假红）：守卫扩到全仓后，`subpkg/biz/month/input.wxml` 里那句
 //     「原式 `{{g.expanded ? g.rows : g.rows.slice(0, 1)}}` 已修」的**说明注释**被判红 ——
 //     注释不会被 WXML 求值，写"曾经的错法"是**文档、不是缺陷**。
 //   ⚠️ 反向不放松：真·方法调用只可能出现在 {{}} 求值段；藏在注释里的调用**本来就不生效**，
@@ -220,7 +220,7 @@ function collectAllPageWxml() {
       }
     }
   };
-  for (const d of ['pages', 'miniprogram', 'components']) {
+  for (const d of ['pages', 'subpkg', 'miniprogram', 'components']) {
     const abs = path.join(ROOT, d);
     if (fs.existsSync(abs)) walk(abs);
   }
@@ -376,7 +376,7 @@ console.log('===== L6 · 全仓 WXML {{}} 不得调方法 =====');
     hits.slice(0, 8).forEach((h) => console.log('       ↳ ' + h));
   }
   // L6-③ 取哪一份数据（与"有没有方法调用"是两个面）
-  const r6b = judgeRowRenderSource(read('pages/month/input.wxml'));
+  const r6b = judgeRowRenderSource(read('subpkg/biz/month/input.wxml'));
   r6b.ok ? ok('L6-③ 月录入页细项渲染源：' + r6b.why) : bad('L6-③ 月录入页细项渲染源 —— ' + r6b.why);
 }
 
