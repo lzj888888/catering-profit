@@ -94,15 +94,15 @@ for (const k of needKeys) {
 // ============================================================
 // 4. M2 页面完整性（R297 第四轮整体审计）
 // ============================================================
-const idxJs = read('pages/sandbox/index.js');
-const idxWxml = read('pages/sandbox/index.wxml');
-const listJs = read('pages/sandbox/list.js');
-const listWxml = read('pages/sandbox/list.wxml');
-const cmpJs = read('pages/sandbox/compare.js');
-const cmpWxml = read('pages/sandbox/compare.wxml');
-const mtxJs = read('pages/sandbox/matrix.js');
-const mtxWxml = read('pages/sandbox/matrix.wxml');
-const mtxWxss = read('pages/sandbox/matrix.wxss');
+const idxJs = read('subpkg/tools/sandbox/index.js');
+const idxWxml = read('subpkg/tools/sandbox/index.wxml');
+const listJs = read('subpkg/tools/sandbox/list.js');
+const listWxml = read('subpkg/tools/sandbox/list.wxml');
+const cmpJs = read('subpkg/tools/sandbox/compare.js');
+const cmpWxml = read('subpkg/tools/sandbox/compare.wxml');
+const mtxJs = read('subpkg/tools/sandbox/matrix.js');
+const mtxWxml = read('subpkg/tools/sandbox/matrix.wxml');
+const mtxWxss = read('subpkg/tools/sandbox/matrix.wxss');
 // 去注释副本（凡"不得出现"类判据一律扫它，见文件上方说明）
 const idxWxmlS = stripSrc(idxWxml, '.wxml');
 const cmpJsS = stripSrc(cmpJs, '.js');
@@ -190,14 +190,14 @@ chk(/isFirst\s*===\s*true/.test(idxJs), 'index.js onCalc 未把 isFirst 收紧�
 //   （云端 fail 的 msg 会被 utils/api.js 覆盖，R271）⇒ 本期**显式豁免**、计入基线而不下沉 terms。
 //   wxml 侧同理：`元`/`%`/`天` 等**裸文本节点**不在本判据的引号扫描面内，属已登记豁免。
 const CJK_BASELINE = {
-  'pages/sandbox/index.js': 11,
-  'pages/sandbox/index.wxml': 0,
-  'pages/sandbox/matrix.js': 9,
-  'pages/sandbox/matrix.wxml': 2,
-  'pages/sandbox/compare.js': 1,
-  'pages/sandbox/compare.wxml': 0,
-  'pages/sandbox/list.js': 0,
-  'pages/sandbox/list.wxml': 0,
+  'subpkg/tools/sandbox/index.js': 11,
+  'subpkg/tools/sandbox/index.wxml': 0,
+  'subpkg/tools/sandbox/matrix.js': 9,
+  'subpkg/tools/sandbox/matrix.wxml': 2,
+  'subpkg/tools/sandbox/compare.js': 1,
+  'subpkg/tools/sandbox/compare.wxml': 0,
+  'subpkg/tools/sandbox/list.js': 0,
+  'subpkg/tools/sandbox/list.wxml': 0,
 };
 let cjkTotal = 0;
 for (const rel of Object.keys(CJK_BASELINE)) {
@@ -213,8 +213,8 @@ for (const rel of Object.keys(CJK_BASELINE)) {
 //                ② 生成循环改回裸 labor/margin（行数被撑 8 倍，表变成噪声）
 //                ③ 收起后不写「按毛利率 X% · 人工 N 人测算」（老板以为只按租金算 = 另一种假精确）
 {
-  const mjs = read('pages/sandbox/matrix.js');
-  const mwxml = read('pages/sandbox/matrix.wxml');
+  const mjs = read('subpkg/tools/sandbox/matrix.js');
+  const mwxml = read('subpkg/tools/sandbox/matrix.wxml');
   chk(/advOpen:\s*false/.test(mjs),
     'matrix.js 的 advOpen 初值不是 false（R322：高级维度必须默认收起）');
   chk(/for \(const m of marginUse\)/.test(mjs),

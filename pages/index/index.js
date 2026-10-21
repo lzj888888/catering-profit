@@ -106,7 +106,7 @@ Page({
   },
 
   goMonth() { wx.navigateTo({ url: '/subpkg/biz/month/index' }); },
-  goSandbox() { wx.navigateTo({ url: '/pages/sandbox/index' }); },
+  goSandbox() { wx.navigateTo({ url: '/subpkg/tools/sandbox/index' }); },
   // R191：M3 入口改指向**枢纽页**（pages/m3/hub），不再直接落进成本卡列表页。
   //   原因：原料库 / 外卖 / 对账 此前只能寄生在列表页顶部当按钮 ⇒ 分类说不明白。
   //   枢纽页只做「去哪」，列表页只做「找东西 + 新增」。

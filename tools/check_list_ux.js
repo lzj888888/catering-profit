@@ -20,7 +20,7 @@
 //      而实际踩到的两处**分别落在别的页**、且其中一个方法名还不在白名单里：
 //        · `subpkg/biz/month/input.wxml`  `{{g.expanded ? g.rows : g.rows.slice(0, 1)}}`（**slice 不在白名单**）
 //          ⇒ 费用/其他收入组的**细项行整段不渲染**（收入、费用两个月录入页各一处）
-//        · `pages/sandbox/compare.wxml` `{{selected.indexOf(...)}}`（indexOf 在册，但**该页不在原扫描面**）
+//        · `subpkg/tools/sandbox/compare.wxml` `{{selected.indexOf(...)}}`（indexOf 在册，但**该页不在原扫描面**）
 //          ⇒ 方案勾选框永不点亮（老板看不出选了哪几个）
 //      ⇒ 判据改成「**通用** `.{ident}(`」+「扫描面 = **全仓** pages/**/*.wxml」，并加扫描面下界
 //        （防止 walk 失效 ⇒ 0 个文件 ⇒ 恒真假绿）。

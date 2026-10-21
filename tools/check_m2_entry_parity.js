@@ -9,7 +9,7 @@
 //   实测（探针 `_probe_tmp/r297_saveplan_range.js`）：毛利率 150 ⇒ savePlan **放行**，
 //   内联引擎算出快照保本 **18444.45** 元（正常 42564.11）并**落库成"方案"**，
 //   方案列表 / 多方案对比页从此拿这个假数字当数。
-//   而 `pages/sandbox/index.js::onSavePlan` **不要求先算成功**（只校验方案名）⇒ 老板填 150、
+//   而 `subpkg/tools/sandbox/index.js::onSavePlan` **不要求先算成功**（只校验方案名）⇒ 老板填 150、
 //   点计算报错、但"保存"照样成功 ⇒ 静默错账落盘。
 //
 // 为什么是「副本 + 守卫钉等价」而不是共享文件：
@@ -34,7 +34,7 @@ const CF = (p) => path.join(ROOT, 'cloudfunctions', p);
 const SP_VALIDATE = 'cloudfunctions/savePlan/validate.js';
 const SP_INDEX = 'cloudfunctions/savePlan/index.js';
 const SP_MAP = 'cloudfunctions/savePlan/paramMap.js';
-const SANDBOX_PAGE = 'pages/sandbox/index.js';
+const SANDBOX_PAGE = 'subpkg/tools/sandbox/index.js';
 
 let pass = 0, failN = 0;
 function check(name, cond, detail) {

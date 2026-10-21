@@ -66,7 +66,8 @@ function collect() {
     for (const e of ents) {
       const abs = path.join(d, e.name);
       if (e.isDirectory()) {
-        if (SKIP_DIRS.includes(e.name)) continue;
+        // R423：SKIP 名单是按仓库根目录名设计的；分包里有同名目录（subpkg/tools）⇒ 只在根级跳过
+        if (SKIP_DIRS.includes(e.name) && path.relative(ROOT, abs) === e.name) continue;
         walk(abs);
       } else if (EXTS.includes(path.extname(e.name).toLowerCase())) {
         out.push(abs);

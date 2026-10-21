@@ -13,7 +13,7 @@
 //      浮点残差、字符串入参、负数/NaN 垃圾入参）。防"规则写错方向"（如 `>= 100` 把合法值判超）。
 //   ② **计算面**：`recomputeChannel` 函数体（**剥注释**）里 `setData` 真产出 `channel.over100`，
 //      且取值来自 `isChannelRatioOver100(` 调用 —— 防「只写字段名 / 硬编码 false / 写在别的函数里」。
-//   ③ **渲染面**：`pages/sandbox/index.wxml`（**剥注释**）里 `channel.over100` 真出现在 `wx:if`
+//   ③ **渲染面**：`subpkg/tools/sandbox/index.wxml`（**剥注释**）里 `channel.over100` 真出现在 `wx:if`
 //      属性内，且**同一元素内**真有 `t.channelOver100` 插值 —— 只渲染一个条件不显示文案 = 白做。
 //   ④ **反恒真**：自带合成样本，把上面每条腿对应的代码删掉/改坏，判据必须转 false；
 //      再把纯函数改成 `return false`，行为面必须发现。没有这一条，判据可能只是"文件里出现了这个词"。
@@ -28,8 +28,8 @@ const crypto = require('crypto');
 
 const ROOT = path.resolve(__dirname, '..');
 const RULE = path.join(ROOT, 'utils', 'channelRule.js');
-const PAGE_JS = path.join(ROOT, 'pages', 'sandbox', 'index.js');
-const PAGE_WXML = path.join(ROOT, 'pages', 'sandbox', 'index.wxml');
+const PAGE_JS = path.join(ROOT, 'subpkg', 'tools', 'sandbox', 'index.js');
+const PAGE_WXML = path.join(ROOT, 'subpkg', 'tools', 'sandbox', 'index.wxml');
 const TERMS_A = path.join(ROOT, 'miniprogram', 'i18n', 'terms.js');
 const TERMS_B = path.join(ROOT, 'specs', 'dev-specs', 'i18n', 'terms.js');
 
@@ -102,7 +102,7 @@ function stripXmlComments(src) {
 function bodyOf(src, name) {
   const s = String(src || '');
   // 🔴 R414（判据自身缺陷，接线后当场暴露）：必须**跳过成员调用**（`this.x()` / `.x()`），
-  //   只认**定义处**。实证：`pages/sandbox/index.js:683` 有一处 `this.recomputeChannel();` 排在
+  //   只认**定义处**。实证：`subpkg/tools/sandbox/index.js:683` 有一处 `this.recomputeChannel();` 排在
   //   822 行的定义之前，旧写法 `indexOf(name + '(')` 命中的是 683 ⇒ 取到一段不相干的块
   //   ⇒ ②-3/②-4/②-5 **恒红**（看似"补丁没接线"，其实是判据锚错了地方）。
   //   这与 R299 记的三种恒真形态同源，只是方向相反：锚错地方不只造成恒真，也会造成恒假。
@@ -174,7 +174,7 @@ ok('①-8 垃圾入参（null/空串/非数字/负数）一律不报超限', jun
 
 // ================= ② 计算面：recomputeChannel 真产出 =================
 const jsRaw = readOr(PAGE_JS, '');
-ok('②-0 pages/sandbox/index.js 存在', !!jsRaw, jsRaw ? '' : '文件缺失');
+ok('②-0 subpkg/tools/sandbox/index.js 存在', !!jsRaw, jsRaw ? '' : '文件缺失');
 const js = stripJsComments(jsRaw);
 ok('②-1 页面真 require utils/channelRule.js', js.indexOf('channelRule.js') >= 0, '未引用纯函数 ⇒ 规则没接线');
 
@@ -189,7 +189,7 @@ ok('②-5 over100 与纯函数调用在同一函数体内（不是别处调用�
 
 // ================= ③ 渲染面：wxml 真显示 =================
 const xmlRaw = readOr(PAGE_WXML, '');
-ok('③-0 pages/sandbox/index.wxml 存在', !!xmlRaw, xmlRaw ? '' : '文件缺失');
+ok('③-0 subpkg/tools/sandbox/index.wxml 存在', !!xmlRaw, xmlRaw ? '' : '文件缺失');
 const xml = stripXmlComments(xmlRaw);
 
 /** 找 `channel.over100` 是否出现在某个 wx:if / hidden 属性内，且同元素内有 t.channelOver100 插值。 */

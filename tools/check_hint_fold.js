@@ -518,9 +518,9 @@ section('F 组 · R234/J4 多页面句级折叠（数据驱动）');
 const PAGE_CASES = [
   {
     name: 'sandbox',
-    wxml: 'pages/sandbox/index.wxml',
-    js: 'pages/sandbox/index.js',
-    wxss: 'pages/sandbox/index.wxss',
+    wxml: 'subpkg/tools/sandbox/index.wxml',
+    js: 'subpkg/tools/sandbox/index.js',
+    wxss: 'subpkg/tools/sandbox/index.wxss',
     keys: ['sbAssumptionsHint', 'sbBandPreviewNote', 'sbExpectRevNote', 'sbBuildNote',
            // 🔴 R296 拍1：`sbFixedNote`（「每月固定支出」卡的折叠说明）**随明细表整块删除** ⇒ 移出期望键集。
            // 🔴 R296b：`sbVarNote`（④「挂钩费用」卡的折叠说明）**随该卡整块删除** ⇒ 移出期望键集。
@@ -539,7 +539,7 @@ const PAGE_CASES = [
            // 🔴 R323（P0-2）：`sbRevRateAuto` **随「寻找铺面」反推卡整块删除** ⇒ 移出期望键集。
            //   原因：该卡挂在 `wx:if="{{mode === 'reverse'}}"`，而首页 `data.mode` **恒为 'forward'**
            //   （点反推 Tab 直接跳矩阵页）⇒ 整块永不渲染，同 key 的折叠块也不可能被点到。
-           //   找店的口径/档位在 `pages/sandbox/matrix`（R322 已做小白降维）。
+           //   找店的口径/档位在 `subpkg/tools/sandbox/matrix`（R322 已做小白降维）。
            //   ⚠️ 这是「**整块功能按设计删除**」⇒ 改预期、不改分层线（与 R296 删 sbFixedNote 同判据）。
            'sbOtherBandNote'],
     //   ⚠️ R234/M2v1.4：6 → 7，新增的是 L1 引导句 `l1Guide`（**10 字，合规平铺**）。

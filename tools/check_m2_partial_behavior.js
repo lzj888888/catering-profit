@@ -83,7 +83,7 @@ console.log('\n===== R357 · 矩阵分批中断（第 4 批失败 / 全成功 / 
 
 let loaded = false;
 try {
-  require('../pages/sandbox/matrix.js');
+  require('../subpkg/tools/sandbox/matrix.js');
   loaded = !!(cfg && cfg.onGenerate);
 } catch (e) {
   console.log('❌ 加载页面源码失败：' + (e && e.message));

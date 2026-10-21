@@ -493,7 +493,7 @@ function assembleItems(preset, input, coef) {
 //   单源出处：`cloudfunctions/common/indicatorRef.js::BUILD_DEFAULT_YEARS`。
 //   为什么前端必须有一份副本：小程序包**不能 require 云函数目录**（cloudfunctions 不进小程序包），
 //   而年限既用于「页面初始行的展示值」，也用于「用户清空输入框时的兜底」，必须与引擎同口径。
-//   踩过的坑（R297 实测）：`pages/sandbox/index.js` 原写 `years: Number(r.years) || 1` ——
+//   踩过的坑（R297 实测）：`subpkg/tools/sandbox/index.js` 原写 `years: Number(r.years) || 1` ——
 //     用户清空年限 ⇒ 前端按 **1 年**摊销 ⇒ 月摊销虚高 3 倍（equip 5 倍）⇒ 固定成本合计虚高
 //     ⇒ 保本点 / 目标营收**同步虚高**，而整个过程**零报错、零提示**（静默错账）。
 //     更隐蔽的是：云端 `calcSandbox/validate.js` 里 `BUILD_DEFAULT_YEARS` 那段兜底因此

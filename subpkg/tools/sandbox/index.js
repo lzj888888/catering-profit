@@ -1,4 +1,4 @@
-// pages/sandbox/index.js —— M2 开店盈亏平衡点测算（v2 · 2026-09-23 李老师拍板改造）
+// subpkg/tools/sandbox/index.js —— M2 开店盈亏平衡点测算（v2 · 2026-09-23 李老师拍板改造）
 //
 // ⚠️ 计算下沉（铁律不变）：所有**公式**在云函数 calcSandbox（Service 层）算，前端只展示返回的分整数。
 //   前端只允许做「纯金额求和」这类展示汇总（如各行金额相加），**任何含除法 / 费率的量
@@ -9,19 +9,19 @@
 //   + 底部「开始测算」按钮兜底。公式权威性不变（仍由后端算），只是把"点按钮"从必做变成可选。
 //
 // ⚠️ 付费弹窗边界：M2 模块**永不触发**付费弹窗（不变）。
-const api = require('../../utils/api.js');
-const ui = require('../../utils/ui.js');
+const api = require('../../../utils/api.js');
+const ui = require('../../../utils/ui.js');
 // R411：金额展示单源（万/元口径与小数位只在这里定，页面不许再各写一份）
-const MoneyFmt = require('../../utils/moneyFmt.js');
-const { TERMS } = require('../../miniprogram/i18n/terms.js');
+const MoneyFmt = require('../../../utils/moneyFmt.js');
+const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 // 🔴 R395：分享卡片标题装配（纯函数单源）—— 见 `utils/shareCard.js` 头注
-const shareCard = require('../../utils/shareCard.js');
+const shareCard = require('../../../utils/shareCard.js');
 // R412（队列 #24）：渠道占比规则单源 —— 「外卖 + 团购 ≤ 100%」的判定必须可被机器验，
 //   写成纯函数（utils/channelRule.js）后守卫能喂真数字判行为，而不是 grep 字面量。
-const ChannelRule = require('../../utils/channelRule.js');
+const ChannelRule = require('../../../utils/channelRule.js');
 // R414（队列 #25）：金额输入可读性判定（纯函数）—— yuanToFen 对非法输入 fail-soft 返回 0，
 //   0 是合法金额 ⇒ 云端拒不了 ⇒ 必须在这一层**暴露**给老板看（不改数、不静默清洗）。
-const AmountInput = require('../../utils/amountInput.js');
+const AmountInput = require('../../../utils/amountInput.js');
 // M2v1.3：业态参数包（纯数据 + 唯一装配入口 + 回本派生，仓根 utils/）
 // R234：新增 `bizKeyOfPreset`（预设 → 4 大类，供"平铺业态"后自动定参考带）。
 // R237：`estimateSeats`（面积 × 业态密度 → 座位估算）**已删除** —— 李老师否掉了"面积↔桌数"的强关联；
@@ -31,10 +31,10 @@ const { BIZ_PRESETS, CITY_COEF, assembleItems, resolveBuild, paybackCash, findPr
   //   套旧的 table/seat 通用档会把常态判成「这数偏高」，属吓跑老板的误导提示。
   bizKeyOfPreset, seatsPerTableOf, turnModeOf, turnLevelOf, turnLevelOfBiz,
   // R297：年限不再各写各的（初始行 / 新增行 / 提交 / 回存草稿 四处同走这一份）
-  BUILD_DEFAULT_YEARS, buildYearsOf, cashBreakeven } = require('../../utils/bizPreset.js');
+  BUILD_DEFAULT_YEARS, buildYearsOf, cashBreakeven } = require('../../../utils/bizPreset.js');
 
 // 🔴 R330：做活动会怎样（纯假设推演，不依赖账本/成本卡）
-const Promo = require('../../utils/promoImpact.js');
+const Promo = require('../../../utils/promoImpact.js');
 
 const M = TERMS.m2;
 // 促销选项的真实值（与 terms 的 promoDiscountOpts / promoWeightOpts 一一对应）
@@ -621,7 +621,7 @@ Page({
       success: (r) => {
         if (!r.confirm) return;
         try { wx.removeStorageSync(DRAFT_KEY); } catch (e) { /* 忽略 */ }
-        wx.reLaunch({ url: '/pages/sandbox/index' });
+        wx.reLaunch({ url: '/subpkg/tools/sandbox/index' });
       },
     });
   },
@@ -707,7 +707,7 @@ Page({
     //   且「已有铺面」Tab 点一次会先被 `mode === this.data.mode` 早退 ⇒ 后半段**永远不执行**。
     //   现在只保留真实行为：点「寻找铺面」⇒ 进矩阵页；点「已有铺面」⇒ 什么都不用做。
     if (mode === 'reverse') {
-      wx.navigateTo({ url: '/pages/sandbox/matrix?mode=reverse' });
+      wx.navigateTo({ url: '/subpkg/tools/sandbox/matrix?mode=reverse' });
     }
   },
   // 🔴 R296 拍4：`onToggleTurnHelp` 随反推翻台展示一并删除（引擎仍算 turn_rate，仅不再展示）。
@@ -992,7 +992,7 @@ Page({
 
   // ===== M2v1.2（多方案存储 · 第二期）：我的方案入口 + 保存沙盘 =====
   onSaveEntry() {
-    wx.navigateTo({ url: '/pages/sandbox/list' });
+    wx.navigateTo({ url: '/subpkg/tools/sandbox/list' });
   },
 
   onOpenSave() {
@@ -1064,9 +1064,9 @@ Page({
       add('margin', d.marginPct);
       add('target', d.targetYuan);
     }
-    wx.navigateTo({ url: '/pages/sandbox/matrix?' + q.join('&') });
+    wx.navigateTo({ url: '/subpkg/tools/sandbox/matrix?' + q.join('&') });
   },
-  goCompare() { wx.navigateTo({ url: '/pages/sandbox/compare' }); },
+  goCompare() { wx.navigateTo({ url: '/subpkg/tools/sandbox/compare' }); },
 
   // ===== M2v1.3（业态参数包 + 回本卡 · 第三期）=====
   // 🔴 R234：业态预设**平铺**（背景见 terms.js 的 R234 段与本文件顶部注释）。

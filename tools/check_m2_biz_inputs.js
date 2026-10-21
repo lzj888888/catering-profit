@@ -37,8 +37,8 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
-const PAGE_JS = 'pages/sandbox/index.js';
-const PAGE_WXML = 'pages/sandbox/index.wxml';
+const PAGE_JS = 'subpkg/tools/sandbox/index.js';
+const PAGE_WXML = 'subpkg/tools/sandbox/index.wxml';
 const TERMS_REL = 'miniprogram/i18n/terms.js';
 const PRESET_REL = 'utils/bizPreset.js';
 

@@ -1,4 +1,4 @@
-// pages/sandbox/list.js —— 我的方案（列表 · 并排对比）· M2v1.2
+// subpkg/tools/sandbox/list.js —— 我的方案（列表 · 并排对比）· M2v1.2
 //
 // 🔴 数据来源：
 //   · 列表：getPlan 一次取回各 sandbox_id 的最新版本；卡片金额读 `result_snapshot_json`（只作快速渲染缓存）。
@@ -6,11 +6,11 @@
 //     前端**不做任何转换/公式**，param_json 本身即 calcSandbox 的 snake_case wire 形态，原样透传即可。
 //   · 金额一律「分」整数，前端只展示（fen/100）。
 // 🔴 最多 3 个（前端拦，不耗云函数）。
-const api = require('../../utils/api.js');
-const ui = require('../../utils/ui.js');
-const { TERMS } = require('../../miniprogram/i18n/terms.js');
-const { openPaywall } = require('../../utils/paywall.js');
-const exportFile = require('../../utils/exportFile.js');   // R265：导出投递单源（落盘 + 打开 + 转发兜底）
+const api = require('../../../utils/api.js');
+const ui = require('../../../utils/ui.js');
+const { TERMS } = require('../../../miniprogram/i18n/terms.js');
+const { openPaywall } = require('../../../utils/paywall.js');
+const exportFile = require('../../../utils/exportFile.js');   // R265：导出投递单源（落盘 + 打开 + 转发兜底）
 
 const P = TERMS.m2Plan;
 const MAX_SEL = 3;
@@ -108,7 +108,7 @@ Page({
 
   onBack() {
     if (this.data.mode === 'compare') this.setData({ mode: 'list' });
-    else wx.navigateBack({ fail: () => wx.reLaunch({ url: '/pages/sandbox/index' }) });
+    else wx.navigateBack({ fail: () => wx.reLaunch({ url: '/subpkg/tools/sandbox/index' }) });
   },
 
   onToggle(e) {

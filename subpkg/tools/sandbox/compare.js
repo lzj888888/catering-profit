@@ -1,10 +1,10 @@
-// pages/sandbox/compare.js —— M2 G2 多方案横向对比（2026-10-11 改造）
+// subpkg/tools/sandbox/compare.js —— M2 G2 多方案横向对比（2026-10-11 改造）
 //
 // ⚠️ 复用既有 savePlan / getPlan（cloudfunctions），不新增集合、引擎零改。
 //   对比数据取各方案保存时的 result_snapshot_json（calcSandbox 出参快照），前端只做展示与结论文案，
 //   不重算、不编公式。
-const api = require('../../utils/api.js');
-const { TERMS } = require('../../miniprogram/i18n/terms.js');
+const api = require('../../../utils/api.js');
+const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 
 const M = TERMS.matrix;
 

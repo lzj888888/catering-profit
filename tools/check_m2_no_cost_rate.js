@@ -111,7 +111,8 @@ function walk(dir, out) {
     else if (EXT_OK.has(path.extname(e.name).toLowerCase())) out.push(path.relative(ROOT, abs).replace(/\\/g, '/'));
   }
 }
-const HARD_ROOTS = ['pages', 'miniprogram', 'utils'];
+// R423 分包化：sandbox 等页面已移入 subpkg/（扫描面必须含它，否则锚点"不在面内"）
+const HARD_ROOTS = ['pages', 'subpkg', 'miniprogram', 'utils'];
 let hardFiles = [];
 for (const r of HARD_ROOTS) { const d = path.join(ROOT, r); if (fs.existsSync(d)) walk(d, hardFiles); }
 if (fs.existsSync(path.join(ROOT, TERMS_MIRROR_REL))) hardFiles.push(TERMS_MIRROR_REL);
@@ -175,7 +176,7 @@ sec('B 反向护栏：引擎中间量必须留、前端必须无');
     hasDecl && isAddend && inOutParam,
     `声明[${hasDecl ? '有' : '无'}] 作加数[${isAddend ? '是' : '否'}] 出参[${inOutParam ? '有' : '无'}]（删了保本点会算错）`);
 
-  // B-② 该中间量不得出前端（剥注释后 —— 注释里记录"我删掉了它"是正当的，见 pages/sandbox/index.js 的删除说明）
+  // B-② 该中间量不得出前端（剥注释后 —— 注释里记录"我删掉了它"是正当的，见 subpkg/tools/sandbox/index.js 的删除说明）
   const frontBad = hardFiles.filter((rel) => {
     let raw = ''; try { raw = readRel(rel); } catch (e) { return false; }
     return stripByExt(rel, raw).includes('foodCostPct');
@@ -265,7 +266,7 @@ sec('D 自失效护栏（证明本守卫既不恒真、也不恒红）');
     `实得 ${hardFiles.length} 个（pages ${pageFiles.length} + 其它 ${otherFiles.length}）`);
 
   // D-④ 锚点文件必须在面内（含本轮事故现场 + 反向护栏要读的两个引擎文件）
-  const need = ['pages/sandbox/index.wxml', 'pages/sandbox/index.js', TERMS_REL, TERMS_MIRROR_REL];
+  const need = ['subpkg/tools/sandbox/index.wxml', 'subpkg/tools/sandbox/index.js', TERMS_REL, TERMS_MIRROR_REL];
   const miss = need.filter((x) => !hardFiles.includes(x));
   const engOk = fs.existsSync(path.join(ROOT, SERVICE_REL)) && fs.existsSync(path.join(ROOT, INDREF_REL));
   check('D-④ 锚点文件在面内（sandbox wxml/js + 双术语）+ 两个引擎文件可读', miss.length === 0 && engOk,

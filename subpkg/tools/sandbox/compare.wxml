@@ -1,4 +1,4 @@
-<!-- pages/sandbox/compare.wxml —— M2 G2 多方案对比 -->
+<!-- subpkg/tools/sandbox/compare.wxml —— M2 G2 多方案对比 -->
 <view class="page">
   <view class="head"><view class="title">{{t.title}}</view></view>
 

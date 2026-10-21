@@ -340,7 +340,7 @@
   const revDead = revKeys.filter((k) => !usedInPages(k));
   check('R1 每个 *Rev 文案都真被页面引用（0 引用 = 死文案）', revDead.length === 0,
     revDead.length ? '未接线：' + revDead.join(',') : revKeys.length + ' 个全部接线');
-  const sb = fs.readFileSync(path.join(ROOT, 'pages/sandbox/index.wxml'), 'utf8');
+  const sb = fs.readFileSync(path.join(ROOT, 'subpkg/tools/sandbox/index.wxml'), 'utf8');
   const sbKeys = ['headcountLabelRev', 'expectRevTitleRev', 'expectRevLabelRev', 'expectRevNoteRev'];
   const sbMissing = sbKeys.filter((k) => sb.indexOf('t.' + k) < 0);
   check('R2 sandbox 四处场景文案按 mode 分叉（少了就退回另一场景的措辞）', sbMissing.length === 0,

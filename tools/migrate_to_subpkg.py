@@ -181,6 +181,18 @@ def main():
         write(os.path.join(ROOT, rel), s)
     print("[3/4] 全仓引用替换：%d 个文件" % len(plan))
 
+    # ---- 3.5 terms 双副本同步 ----
+    # 🔴 `miniprogram/i18n/terms.js` 与 `specs/dev-specs/i18n/terms.js` 必须 md5 一致
+    #   （守 check_hint_fold D1 / channel_over100 ④-3）。terms 注释里也写着页面路径，
+    #   迁移会改到它 ⇒ 不同步就立刻漂移。S3 实测踩到，故写进脚本。
+    _t1 = os.path.join(ROOT, "miniprogram", "i18n", "terms.js")
+    _t2 = os.path.join(ROOT, "specs", "dev-specs", "i18n", "terms.js")
+    if os.path.exists(_t1) and os.path.exists(_t2):
+        _s1 = read(_t1)
+        if _s1 != read(_t2):
+            write(_t2, _s1)
+            print("[3.5] terms 双副本已同步（写入 specs 副本）")
+
     # ---- 4. app.json：pages 移除 + subpackages 追加 ----
     try:
         app2 = json.loads(read(os.path.join(ROOT, "app.json")))

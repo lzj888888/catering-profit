@@ -19,7 +19,7 @@
 //     wire 入口 `validateInput` 与 clean 入口 `validateClean` **共用**（禁止复制第二套）
 //   · `index.js` matrix 分支：逐行 `validateClean` ⇒ 算不出的档位给 **null + rejected 人话**，
 //     **绝不用一个能算但错的数顶上**；全部算不出 ⇒ 响亮 fail
-//   · `pages/sandbox/matrix.js`：`badDimOf()` 在发起前挡一道 + `toRow` 对 null 给占位行
+//   · `subpkg/tools/sandbox/matrix.js`：`badDimOf()` 在发起前挡一道 + `toRow` 对 null 给占位行
 //
 // 判据（P/A/B/C/D 五段，fail-closed；解析不到即判红）：
 //   P 前置    文件在位、导出 validateClean、matrix 分支真的调它、页面有 badDimOf
@@ -36,7 +36,7 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 const CF_VALIDATE = 'cloudfunctions/calcSandbox/validate.js';
 const CF_INDEX = 'cloudfunctions/calcSandbox/index.js';
-const PAGE = 'pages/sandbox/matrix.js';
+const PAGE = 'subpkg/tools/sandbox/matrix.js';
 
 let pass = 0, failN = 0;
 function check(name, cond, detail) {
@@ -69,7 +69,7 @@ const mxBody = mxAt > 0 ? iSrc.slice(mxAt, iSrc.indexOf('const shopId', mxAt) > 
 check('P-⑦ matrix 分支真的调用了 validateClean（防"写了没人用"）', /validateClean\s*\(/.test(mxBody));
 check('P-⑧ matrix 分支仍批量复用引擎 calcSandbox（引擎零改）', /calcSandbox\s*\(/.test(mxBody));
 check('P-⑨ matrix 分支把算不出的档位置为 null（不静默编数）', /return\s+null/.test(mxBody));
-check('P-⑩ 页面 pages/sandbox/matrix.js 有 badDimOf 维度体检', /badDimOf\s*\(/.test(pSrc));
+check('P-⑩ 页面 subpkg/tools/sandbox/matrix.js 有 badDimOf 维度体检', /badDimOf\s*\(/.test(pSrc));
 check('P-⑪ onGenerate 真的调用了 badDimOf（防"函数写了没人用"）',
   /badDimOf\s*\(\s*\)/.test(stripComments(pSrc).slice(stripComments(pSrc).indexOf('async onGenerate'))));
 check('P-⑫ toRow 对 res 为空有占位行（旧码直接解引用 ⇒ 整张矩阵崩成"出错"）',

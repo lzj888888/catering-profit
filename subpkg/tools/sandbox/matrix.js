@@ -1,21 +1,21 @@
-// pages/sandbox/matrix.js —— M2 G1 场景矩阵生成器（2026-10-11 改造）
+// subpkg/tools/sandbox/matrix.js —— M2 G1 场景矩阵生成器（2026-10-11 改造）
 //
 // ⚠️ 计算下沉（铁律不变）：每一行的测算全部由云函数 calcSandbox 算（经新增 matrix action 批量调），
 //   本页只做「维度组合 → assembleItems 装配 clean 参数 → 整批送云 → 展示分整数」。
 //   前端不编任何保本/摊销/占比公式：占比等展示量要么取自引擎出参，要么是两个已返回数值的简单比值（展示用）。
 //
 // ⚠️ 免费引流：本页矩阵与导出均免费（G4 李老师拍板），不触发付费墙、不要求先开店铺。
-const api = require('../../utils/api.js');
+const api = require('../../../utils/api.js');
 // R411：金额展示单源（万/元口径与小数位只在这里定，页面不许再各写一份）
-const MoneyFmt = require('../../utils/moneyFmt.js');
-const { TERMS } = require('../../miniprogram/i18n/terms.js');
+const MoneyFmt = require('../../../utils/moneyFmt.js');
+const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 const {
   BIZ_PRESETS, CITY_COEF, assembleItems, resolveBuild, findPreset, bizKeyOfPreset,
   // R297：全局开店投入的年限兜底（与云端 indicatorRef 同口径，不再硬写 1）
-  BUILD_DEFAULT_YEARS, buildYearsOf, cashBreakeven } = require('../../utils/bizPreset.js');
-const { deliver } = require('../../utils/exportFile.js');
+  BUILD_DEFAULT_YEARS, buildYearsOf, cashBreakeven } = require('../../../utils/bizPreset.js');
+const { deliver } = require('../../../utils/exportFile.js');
 // 🔴 R325：开店现金需求（装修/押金/预付/设备/货款）+ 周转金能撑几个月
-const OpenCash = require('../../utils/openCash.js');
+const OpenCash = require('../../../utils/openCash.js');
 
 const M = TERMS.matrix;
 
@@ -1089,5 +1089,5 @@ Page({
   },
 
   goSandbox() { wx.navigateBack({ delta: 1 }); },
-  goCompare() { wx.navigateTo({ url: '/pages/sandbox/compare' }); },
+  goCompare() { wx.navigateTo({ url: '/subpkg/tools/sandbox/compare' }); },
 });

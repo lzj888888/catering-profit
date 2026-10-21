@@ -22,7 +22,7 @@ const S = TERMS.share;
 // 落地页（分享点进来落在哪一页）—— 写死成常量，避免三处各写一遍路径而漂移
 const PATH = {
   m1: '/subpkg/biz/month/result',
-  m2: '/pages/sandbox/index',
+  m2: '/subpkg/tools/sandbox/index',
   m3: '/subpkg/biz/card/index',
 };
 

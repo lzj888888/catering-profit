@@ -848,7 +848,7 @@ const SUITES = [
   //   判据 A＝裸属性行（上一非空行已闭合）；判据 B＝标签配平（未闭合 / 错配 / 缺 >）。
   ['wxml-struct', 'tools/check_wxml_structure.js'],
   // ===== R351 · 「class 用了但没样式」守卫（2026-10-19）
-  //   实扫发现 7 个 class 被 pages/sandbox/*.wxml 引用、却从无定义：warn / warn-note /
+  //   实扫发现 7 个 class 被 subpkg/tools/sandbox/*.wxml 引用、却从无定义：warn / warn-note /
   //   ipt-num / unit / entry-row / entry-btn / cmp。
   //   **能编译、能跑、零报错，只是长得不对** —— 最关键的那句「让价超过毛利率」的警告
   //   渲染成了普通黑字。既有守卫只看标签/属性/if-else 相邻性，没有一条把 wxml 的 class

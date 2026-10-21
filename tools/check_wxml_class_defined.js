@@ -2,7 +2,7 @@
 // tools/check_wxml_class_defined.js —— R351 · 「class 用了但没样式」守卫
 //
 // ============ 为什么要有这条（R351 实扫，不是假想）============
-// 扫 pages/sandbox/*.wxml 发现 7 个 class 被引用，但 `app.wxss` 与同页 `.wxss` 里
+// 扫 subpkg/tools/sandbox/*.wxml 发现 7 个 class 被引用，但 `app.wxss` 与同页 `.wxss` 里
 // **从来没有定义**：warn / warn-note / ipt-num / unit / entry-row / entry-btn / cmp。
 // 它们的共同点：**能编译、能运行、零报错，只是长得不对**（走浏览器默认样式）。
 //   · `.warn` —— 活动卡在「让价超过毛利率，卖多少都亏」时的告警块，本该琥珀底+左侧竖条，
@@ -26,7 +26,7 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
-const PAGE_DIR = path.join(ROOT, 'pages/sandbox');
+const PAGE_DIR = path.join(ROOT, 'subpkg/tools/sandbox');
 
 // 纯标记类：wxml 里写着，但**本来就不需要样式**（默认视图样式已够）。
 // 加进来的理由必须写清；A-② 会盯着它，一旦有人补了样式就判红（逼着摘掉）。
@@ -106,7 +106,7 @@ const selfOk = selfSample.length === 2
 let pass = 0;
 const bad = [];
 
-if (undefinedHits.length === 0) { pass += 1; console.log('✅ A-① pages/sandbox/*.wxml 的静态 class 全部有样式定义'); }
+if (undefinedHits.length === 0) { pass += 1; console.log('✅ A-① subpkg/tools/sandbox/*.wxml 的静态 class 全部有样式定义'); }
 else {
   for (const h of undefinedHits) {
     console.log(`  ❌ ${h.file}:${h.line} class="${h.cls}" 在 app.wxss 与本页 wxss 都没有定义`);

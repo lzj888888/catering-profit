@@ -425,8 +425,8 @@ sec('E 对外文案面：用户可见处不得出现「食材成本率」');
 // ⚠️ 扫描前必须**剥注释**：本仓多处注释里正当地提到"食材成本率"（含本守卫上方与 indicatorRef 顶部说明），
 //    裸扫必误杀（记忆纪律「扫描/计数类守卫先剥注释再数」）。
 const VISIBLE = [
-  'pages/sandbox/index.wxml',
-  'pages/sandbox/index.js',
+  'subpkg/tools/sandbox/index.wxml',
+  'subpkg/tools/sandbox/index.js',
   'miniprogram/i18n/terms.js',
   'specs/dev-specs/i18n/terms.js',
 ];

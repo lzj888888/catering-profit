@@ -20,7 +20,7 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 const BIZ_PRESET = path.join(ROOT, 'utils', 'bizPreset.js');
 const INDICATOR = path.join(ROOT, 'cloudfunctions', 'common', 'indicatorRef.js');
-const PAGE_WXML = path.join(ROOT, 'pages', 'sandbox', 'index.wxml');
+const PAGE_WXML = path.join(ROOT, 'subpkg', 'tools', 'sandbox', 'index.wxml');
 const TERMS = path.join(ROOT, 'miniprogram', 'i18n', 'terms.js');
 
 const FORMS = ['fixed', 'area_linear', 'headcount_linear', 'labor_total', 'energy_split', 'fixed_opt', 'revenue_rate', 'step'];

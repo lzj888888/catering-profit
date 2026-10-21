@@ -35,7 +35,7 @@ const TERMS_B = path.join(ROOT, 'specs', 'dev-specs', 'i18n', 'terms.js');
 // 必须接线的页面（顺序 = 队列 #11 点名的三个入口）
 const PAGES = [
   { rel: 'subpkg/biz/month/result.js', fn: 'm1Share', why: 'M1 月度结果页' },
-  { rel: 'pages/sandbox/index.js', fn: 'm2Share', why: 'M2 开店测算页' },
+  { rel: 'subpkg/tools/sandbox/index.js', fn: 'm2Share', why: 'M2 开店测算页' },
   { rel: 'subpkg/biz/card/index.js', fn: 'm3Share', why: 'M3 菜品成本列表' },
 ];
 

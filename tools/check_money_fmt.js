@@ -2,7 +2,7 @@
 //
 // 守的是什么（R411 改前实测）：
 //   同一批金额格式化在仓里躺着 **7 份**手写实现，而且彼此不一样：
-//     · `pages/sandbox/index.js:725` 用 `String(Math.abs(n))` + 千分位 ⇒ **不做 round**，
+//     · `subpkg/tools/sandbox/index.js:725` 用 `String(Math.abs(n))` + 千分位 ⇒ **不做 round**，
 //       遇到 `9160.000000000002` 会输出 `9,160.000,000,000,002`（千分位正则切到了小数位）
 //     · 同页 1200 行「万」用 `toFixed(1)`，1281 行用 `toFixed(2)`
 //       ⇒ 紧挨着的两张卡一个「1.2万」一个「1.23万」，老板会当成两个对不上的数
@@ -131,11 +131,12 @@ if (M) {
 }
 
 // ── S3 接线面：两页走单源，且页面内无手写实现 ─────────────────
-const PAGES = ['pages/sandbox/index.js', 'pages/sandbox/matrix.js'];
+const PAGES = ['subpkg/tools/sandbox/index.js', 'subpkg/tools/sandbox/matrix.js'];
 for (const f of PAGES) {
   const src = read(f);
   ok('S3 ' + f + ' 已 require utils/moneyFmt.js',
-    /require\(['"]\.\.\/\.\.\/utils\/moneyFmt\.js['"]\)/.test(stripComments(src)));
+    // R423 分包化：页面在 subpkg/ 下时深度多一级 ⇒ 不绑死级数
+    /require\(['"](?:\.\.\/){2,3}utils\/moneyFmt\.js['"]\)/.test(stripComments(src)));
   ok('S3 ' + f + ' 无手写金额格式化残留',
     scanHandwritten(src).length === 0,
     '命中：' + scanHandwritten(src).join(','));

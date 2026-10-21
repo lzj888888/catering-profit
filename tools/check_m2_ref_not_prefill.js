@@ -33,8 +33,8 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
-const PAGE_JS = 'pages/sandbox/index.js';
-const PAGE_WXML = 'pages/sandbox/index.wxml';
+const PAGE_JS = 'subpkg/tools/sandbox/index.js';
+const PAGE_WXML = 'subpkg/tools/sandbox/index.wxml';
 const TERMS_REL = 'miniprogram/i18n/terms.js';
 
 let pass = 0, failN = 0;
@@ -109,7 +109,7 @@ function inputValues(wxml) {
 // 🔴 新增用户输入框时必须把它的绑定加进来 —— 这是刻意的：本判据要挡住"参考值悄悄进 value"，
 //    白名单比黑名单更能 fail-closed（黑名单挡不住没预料到的新变量名）。
 // 2026-10-06（M2v1.2 多方案存储）：新增「保存沙盘」弹窗的方案名输入框 `{{planName}}`
-//   （pages/sandbox/index.wxml，用户自己填的方案名，非参考值）⇒ 按上述规则登记。
+//   （subpkg/tools/sandbox/index.wxml，用户自己填的方案名，非参考值）⇒ 按上述规则登记。
 // 2026-10-06（M2v1.3 业态参数包）：新增 L1/L2/L3 输入框（areaNum/rentYuan/headcountNum/
 //   avgPriceYuan/laborUnitYuan/openDaysNum/pixelEffYuan/turnNum），均为用户手填值，登记。
 // 2026-10-07（R234/M2v1.4 反推小白化）：
@@ -181,7 +181,7 @@ check('C-② 参考值仍有出口：terms 单源含 `refAmtPh` 键',
 check('C-③ `refAmtPh` 的**值非空**（挡"键在值空" —— A14 实证此处原本是缺口）',
   /\brefAmtPh\s*:\s*['"][^'"]+['"]/.test(readRel(TERMS_REL)), '值须为非空字符串字面量');
 check('C-④ 页面已把参考值提示文案映射进 t（`refAmtCard`）',
-  /\brefAmtCard\s*:/.test(pageJsRaw), 'pages/sandbox/index.js 的 t 块');
+  /\brefAmtCard\s*:/.test(pageJsRaw), 'subpkg/tools/sandbox/index.js 的 t 块');
 
 // ============ D 自失效护栏（正负样本互证）============
 sec('D 自失效护栏：四件工具各带正负样本互证');

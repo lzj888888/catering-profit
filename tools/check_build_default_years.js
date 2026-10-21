@@ -6,7 +6,7 @@
 //     · 机器面（引擎侧）：`cloudfunctions/common/indicatorRef.js::BUILD_DEFAULT_YEARS`
 //       = { franchise:3, decor:3, equip:5, transfer:3, other:3 }，由 `calcSandbox/validate.js`
 //       在 `years` 缺省时回填（单源兜底）。
-//     · 人填面（页面侧）：`pages/sandbox/index.js` 的初始行 / 新增行 / 提交装配 / 草稿回存。
+//     · 人填面（页面侧）：`subpkg/tools/sandbox/index.js` 的初始行 / 新增行 / 提交装配 / 草稿回存。
 //   R297 之前，页面侧根本**没有**这份默认值，而是硬兜 `years: Number(r.years) || 1`。
 //   后果（全部**静默**、零报错）：
 //     ① 用户清空年限输入框 ⇒ 按 **1 年**摊销 ⇒ 月摊销虚高 3 倍（equip 5 倍）

@@ -60,12 +60,15 @@ const READER_RELS = [
 const MIRROR_REL = 'cloudfunctions/getShopList/selftest.js';
 const CONSUMER_RELS = READER_RELS.concat([MIRROR_REL]);
 // 小程序根 = 仓根（round88 实读：`pages/` `utils/` `app.*` 在根，`miniprogram/` 只有 config/ 与 i18n/）
-const FE_DIRS = ['pages', 'utils', 'miniprogram'];
+const FE_DIRS = ['pages', 'subpkg', 'utils', 'miniprogram'];
 const FE_ROOT_FILES = ['app.js', 'app.json', 'app.wxss'];
 
 const MIN_BYTES = 200;
 const MIN_CODE = 150;                 // 剥注释后的长度下界（防读空 ⇒ 零命中假绿）
-const FE_FLOOR = { pages: 30, utils: 5, miniprogram: 2 };   // 坑㉛：逐根下界，取实测的保守值
+// R423 分包化：`pages` 不再是前端文件的全部（页面已有一部分在 `subpkg/`）。
+//   ⇒ 逐根下界降为"防扫空"的保守值，另用 FE_DIR_SUM_MIN 守**总量**（不缩水，判据不松）。
+const FE_FLOOR = { pages: 5, subpkg: 10, utils: 5, miniprogram: 2 };
+const FE_DIR_SUM_MIN = 30;            // 前端 .js 合计下界（分包前后都在 30+ 量级）
 const FE_APP_MIN = 3;
 
 const LIMITS_RE = /plan_id:\s*['"]plan_free['"][\s\S]{0,400}?limits:\s*\{([^}]*)\}/;
@@ -142,6 +145,10 @@ check('A1-④ 前端扫描面逐根达下界（坑㉛：根路径写错即红）
   badFeDir.length ? badFeDir.map((d) => `${d}=${feByDir[d]}<${FE_FLOOR[d]}`).join(' | ')
     : FE_DIRS.map((d) => `${d}:${feByDir[d]}/${FE_FLOOR[d]}`).join(' '));
 check(`A1-⑤ 根级 app 文件 ${feAppN}/${FE_APP_MIN} 在位`, feAppN >= FE_APP_MIN, `${feAppN} 个`);
+// R423 新增：逐根下界放宽了（分包化），必须另守总量 —— 否则"每根都过但整体缩水"会漏判
+const feSum = FE_DIRS.reduce((a, d) => a + (feByDir[d] || 0), 0);
+check(`A1-⑥ 前端 .js 合计 ≥ ${FE_DIR_SUM_MIN}（逐根下界放宽后的总量兜底）`, feSum >= FE_DIR_SUM_MIN,
+  `${FE_DIRS.map((d) => d + ':' + (feByDir[d] || 0)).join(' ')} = ${feSum}`);
 
 // —— A2 单源解析（fail-closed，解析失败也不崩）
 console.log('\n===== A2 单源（配置种子）可解析 =====');

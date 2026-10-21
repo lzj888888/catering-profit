@@ -1,4 +1,4 @@
-<!-- pages/sandbox/matrix.wxml —— M2 G1 场景矩阵生成器 -->
+<!-- subpkg/tools/sandbox/matrix.wxml —— M2 G1 场景矩阵生成器 -->
 <view class="page">
   <view class="head">
     <view class="title">{{t.title}}</view>

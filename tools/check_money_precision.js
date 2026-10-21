@@ -200,7 +200,7 @@ const REGISTRY = {
   'subpkg/biz/month/result.js': {
     'PAREN|) * 100|#1': ['ratio', '真实占比：真值 ÷ 收入 → 百分数（分/分）'],
   },
-  'pages/sandbox/index.js': {
+  'subpkg/tools/sandbox/index.js': {
     'IDENT|marginPct * 100|#1': ['token', '敏感度试算的 client_request_id 唯一串，非金额数值用途'],
     'IDENT|baseBreak * 100|#1': ['ratio', '敏感度：保本额变动率 → 百分数'],
     'IDENT|x * 100|#1': ['ratio', 'r2()：渠道佣金占比保留 2 位小数（值域 [0,100]）；⚠️ `+1e-9` 容差 >167773 失效'],
@@ -211,7 +211,7 @@ const REGISTRY = {
     'IDENT|d.margin_rate_ratio * 100|#1': ['ratio', '毛利率比率 → 百分数展示（保留 1 位）'],
     'IDENT|m * 100|#1': ['ratio', '目标反推：边际率（小数）→ 百分数，还原菜品毛利率（R367）'],
   },
-  'pages/sandbox/matrix.js': {
+  'subpkg/tools/sandbox/matrix.js': {
     'IDENT|meta.rent * 100|#1': ['money', '房租（元）→ 分；🔴 原式连取整都没有 ⇒ 分非整数，违约铁律（B2 已修）'],
     'IDENT|targetMonthly * 100|#1': ['ratio', '缓冲率：(目标 − 保本) ÷ 目标 → 百分数'],
     'IDENT|bestRow.targetMonthly * 100|#1': ['ratio', '最佳档缓冲率：(目标 − 保本) ÷ 目标 → 百分数'],
@@ -317,7 +317,13 @@ function walkJs(dir, out) {
   try { ents = fs.readdirSync(dir, { withFileTypes: true }); } catch (e) { return out; }
   for (const e of ents) {
     const p = path.join(dir, e.name);
-    if (e.isDirectory()) { if (SKIP_DIRS.indexOf(e.name) >= 0) continue; walkJs(p, out); }
+    // R423：SKIP 名单是按「仓库根下的目录名」设计的，但分包路径里也有同名目录
+    //   （`subpkg/tools`）⇒ 必须只在**根级**生效，否则整个 tools 分包被跳过
+    //   （S3 实测：sandbox 移进 subpkg/tools 后，10 条登记全部误判"失效"）。
+    if (e.isDirectory()) {
+      if (SKIP_DIRS.indexOf(e.name) >= 0 && path.relative(ROOT, p) === e.name) continue;
+      walkJs(p, out);
+    }
     else if (e.name.endsWith('.js') && e.name.indexOf('cx_') !== 0) out.push(p);
   }
   return out;

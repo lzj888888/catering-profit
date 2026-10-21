@@ -353,7 +353,7 @@
 
   <!-- 🔴 R323（P0-2）：原「寻找铺面」反推卡已删 —— 它挂在 `wx:if="{{mode === 'reverse'}}"` 上，
        而本页 `data.mode` **恒为 'forward'**（点反推 Tab 直接跳矩阵页）⇒ 整块**永远不渲染**。
-       找店的口径与档位在 `pages/sandbox/matrix` 里（那里有独立的 mode，且 R322 已做小白降维）。 -->
+       找店的口径与档位在 `subpkg/tools/sandbox/matrix` 里（那里有独立的 mode，且 R322 已做小白降维）。 -->
 
   <view class="err-hint" wx:if="{{calcError}}">{{calcError}}</view>
   <!-- 🔴 R297 第四轮（审计 B11）：原 `bindtap="onCalc"` 会把**事件对象**当 isFirst 传进去（恒真）
