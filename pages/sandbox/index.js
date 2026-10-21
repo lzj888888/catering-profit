@@ -19,6 +19,9 @@ const shareCard = require('../../utils/shareCard.js');
 // R412（队列 #24）：渠道占比规则单源 —— 「外卖 + 团购 ≤ 100%」的判定必须可被机器验，
 //   写成纯函数（utils/channelRule.js）后守卫能喂真数字判行为，而不是 grep 字面量。
 const ChannelRule = require('../../utils/channelRule.js');
+// R414（队列 #25）：金额输入可读性判定（纯函数）—— yuanToFen 对非法输入 fail-soft 返回 0，
+//   0 是合法金额 ⇒ 云端拒不了 ⇒ 必须在这一层**暴露**给老板看（不改数、不静默清洗）。
+const AmountInput = require('../../utils/amountInput.js');
 // M2v1.3：业态参数包（纯数据 + 唯一装配入口 + 回本派生，仓根 utils/）
 // R234：新增 `bizKeyOfPreset`（预设 → 4 大类，供"平铺业态"后自动定参考带）。
 // R237：`estimateSeats`（面积 × 业态密度 → 座位估算）**已删除** —— 李老师否掉了"面积↔桌数"的强关联；
@@ -145,6 +148,7 @@ Page({
       channelGroupPlatform: M.channelGroupPlatform,
       channelOverride: M.channelOverride,
       channelOver100: M.channelOver100,
+      amountBadTip: M.amountBadTip,
       channelSample: M.channelSample,
       // 🔴 R296b：渠道佣金新键（占比×抽点 → 加权挂钩费率）
       channelCardRate: M.channelCardRate,
@@ -528,6 +532,7 @@ Page({
       cardFee: 0,                // 刷卡费率
       total: 0,                  // 合计挂钩费率（= 三者之和）
       over100: false,            // R412：外卖+团购占比 > 100%（true 时界面提示；只提示不改数）
+      badAmountCount: 0,         // R414（#25）：读不成数字的金额栏数（>0 时界面提示；只提示不改数）
     },
   },
 
@@ -859,10 +864,36 @@ Page({
 
   // ===== 自动重算（防抖；AD-6/AD-7 折中）=====
   scheduleCalc() {    this.setData({ dirty: true });
+    // R414（队列 #25）：先体检金额框，再走防抖计算（体检本身零成本，不触发云端）
+    this.checkAmountInputs();
     // R193：用户一改就存草稿（此处已是 700ms 防抖链路上，不会高频写盘）
     this.saveDraft();
     if (this._timer) clearTimeout(this._timer);
     this._timer = setTimeout(() => { this.onCalc(); }, DEBOUNCE_MS);
+  },
+
+  /**
+   * R414（队列 #25）：金额框体检。
+   *
+   * 为什么需要：老板从微信/Excel 粘贴「12,000」（或全角「１２０００」、带空格）时，
+   *   `api.yuanToFen` 会**静默返回 0**，而 0 是**合法金额** ⇒ 云端校验无从拒 ⇒ 保本额照常出数但偏小。
+   *   实测（毛利率 65% / 人工 1.5 万 / 水电 3 千）：房租填 `12000` 保本 46154 元/月，
+   *   粘贴成 `12,000` 保本 27692 元/月 —— **少 40%，且全程零报错**。
+   *
+   * 本方法只**暴露**（把读不成数字的栏数写进 data，wxml 据此提示）：
+   *   · 不改 `yuanToFen`（它的 fail-soft 契约被 check_money_precision B 组钉住）；
+   *   · 不自动清洗（`1,5` 到底是 15 还是 1.5 猜不准，猜错比不猜更糟）；
+   *   · 不改数 —— 计算仍按 0 走，老板看到提示后自己改。
+   */
+  checkAmountInputs() {
+    const KEYS = ['rentYuan', 'laborTotalYuan', 'waterYuan', 'electricYuan', 'gasYuan',
+      'manageYuan', 'targetYuan', 'expectYuan', 'avgPriceYuan', 'initialInvestYuan'];
+    const fields = {};
+    for (let i = 0; i < KEYS.length; i++) fields[KEYS[i]] = this.data[KEYS[i]];
+    const bad = AmountInput.findUnreadable(fields);
+    const n = bad.length;
+    // 只在数量变化时 setData（避免每次输入都重渲染）
+    if (n !== this.data.badAmountCount) this.setData({ badAmountCount: n });
   },
 
   /**

@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：201 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：202 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -1260,6 +1260,8 @@ const SUITES = [
   ['input-keyboard', 'tools/check_input_keyboard.js'],
   //   渠道占比上限（R414 · 队列 #24：`channelOver100` 文案早就在 terms 里，但 wxml 从不渲染、js 从不判定 ⇒ 死文案）
   ['channel-over100', 'tools/check_channel_over100.js'],
+  //   金额输入可读性（R414 · 队列 #25：粘贴「12,000」被 yuanToFen 静默读成 0 ⇒ 保本额少 40% 且零报错）
+  ['amount-input', 'tools/check_amount_input.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

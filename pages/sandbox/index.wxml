@@ -53,6 +53,9 @@
       </view>
     </view>
     <view class="row-hint">{{t.areaHint}}</view>
+    <!-- R414（队列 #25）：金额栏读不成数字的显式提示。粘贴「12,000」时 yuanToFen 会静默读成 0，
+         0 是合法金额 ⇒ 云端拒不了 ⇒ 保本额照常出数但偏小（实测少 40%），原本全程零报错。 -->
+    <view class="warn-note" wx:if="{{badAmountCount > 0}}">{{t.amountBadTip}}</view>
     <view class="row">
       <text class="row-name">{{t.rentLabel}}</text>
       <view class="row-in-wrap">

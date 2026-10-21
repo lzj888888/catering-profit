@@ -228,3 +228,10 @@
   - R414 渠道占比：`isChannelRatioOver100` 真被 `recomputeChannel` 调用，守卫单跑 30/30，wxml 有 `wx:if="{{channel.over100}}"`。
   - R415 金额预研：如实「只有预研件、零生产调用」（`utils/amountInput.js` 不存在），与 #25 待办描述一致，未被误标 done。
   - R416 盘点「`utils/validate.js` 零 require」：`grep` 唯一命中是它自己的头注 ⇒ 断言成立。
+
+- [2026-10-21 13:50] R418 已落 · 金额栏「填了但读不成金额」不再静默读成 0（队列 #25）· 门禁 202/202 RC=0（300s，`_gate25b.log`）· 新守卫 `tools/check_amount_input.js` 23/23 + 真实变异 2/2（M1 删调用 ⇒ 红 ②-3；M2 缩字段集 ⇒ 红 ②-6「未覆盖：rentYuan」）
+  - 改前实测（`_m3/_r415_probe/probe.js`）：房租填 `12000` ⇒ 保本 46154 元/月；粘贴成 `12,000` ⇒ 进引擎 0 分 ⇒ 保本 **27692 元/月**（**少 40%**），全程零报错。
+  - 做法：新增 `utils/amountInput.js`（9 状态码纯函数）+ `scheduleCalc` 里体检 10 个金额框 + wxml 汇总提示。**不改 `yuanToFen`**（fail-soft 被 check_money_precision B 组钉住）、**不自动清洗**（`1,5` 是 15 还是 1.5 猜不准）、**不改数**。
+  - 🔴 自纠：第一版元→分写成 `Math.round(v * 100)` ⇒ `check_money_precision` C-④ 当场判红（只认 `Math.round(Number((x*100).toFixed(10)))`）。改用规范形态后顺带修对精度：`1.005 元` 由 100 分变 **101 分**。
+  - 🔴 判据设计：`②-6` 不从清单硬抄，而是**实扫生产代码** `XxxYuan: e.detail.value` 得到真实字段集，要求 ⊆ 体检清单 ⇒ 将来新加金额框忘接体检当场红。
+  - 未做（如实登记）：M1/M3 录入页的金额框**未接**（`utils/amountInput.js` 是通用件，接线成本低）；提示是**汇总式**不是逐框标红；**不拦计算**（读不成数字时仍出数，要不要拒算属产品决策）。
