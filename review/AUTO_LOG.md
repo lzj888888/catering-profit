@@ -268,3 +268,11 @@
   - 🔴 **门禁首轮 180/203：23 条红全是并发会话未提交的 `terms.js` 双副本漂移**（唯一差异＝一行注释里的路径 `pages/metrics/impact` → `subpkg/tools/metrics/impact`，改了 `miniprogram/` 那半边漏了 `cp`）+ 其分包迁移未完。补齐 `cp`（md5 对齐、`git diff --numstat` 仅 1/1、零行为影响）后 7 个受牵连套件当场转绿，终局 203/203。
   - 队列 #30 同时核实为**重复条目**：`#17/R402` 已把 `shop_ai_consent`/`shop_ai_insight` 登进 `collections.js`（R423 实读：第 33 行集合列表 + 第 186/190 行索引定义）⇒ 不重复实现，改 done。
   - 未做（如实登记）：#31 / #32 未开（三轮门禁累计 ~20 分钟，已超本轮 50 分钟预算）；`canSendToModel` 仍**零生产调用方**（出站函数未存在 ⇒ 接线那批必须补「真 require + 真调用」守卫）。
+
+- [2026-10-21 15:20] R423 已落 · **分包 S0**（迁移脚本 + metrics 试点，李老师「都听你的」授权）· 门禁 203/203 RC=0（369.4s）· commit b4d625b + 勘误 80d443e
+  - 只做最小验证：`tools/migrate_to_subpkg.py`（安全闸/tabBar 白名单/按真实深度重算相对 require/只改代码不碰 review·specs 历史/两阶段写入）+ `pages/metrics/*` → `subpkg/tools/metrics/*`（git 识别为 rename，历史保留）+ `app.json` 主包 27→26 页 + 首个 `subpackages`。
+  - 守卫适配（扫描面过期，非放宽）：`check_uri_codec_pairs` 扫描面加 `subpkg/`、锚点改指分包、正则 `(pages|subpkg)`；`check_page_manifest`「页面全集」= 主包 + 分包展开（否则分包页被判成"材料里的死条目"）。🔴 判据原则：**"页面总数"与"主包页数"是两个概念**，分包后必须分开。
+  - 试跑三坑（已修进脚本）：① 沿用 mv 前文件列表 ⇒ 读到失联路径崩溃、留半截状态；② `app.json` 分包 pages 写成 `p[len(old_dir)+1:]` 丢了模块子目录（出 `impact` 应为 `metrics/impact`）；③ **本机 `git reset --hard` 不写回被删文件** ⇒ 半截只能用 `git checkout HEAD -- <dir>` 恢复。
+  - 🔴 **认知修正**：分包**不降入包总量**（P-① 仍 1.4719MB），只降**主包**（P-③ pages 1.0005→0.995MB）。收益是"主包变小⇒首屏快+单条目不超顶格"，不是"总包体变小"。PLAN §2 已补。
+  - 🔴 **自纠（ERRATA）**：`b4d625b` 里 `check_page_manifest.js` 显示 217 增/207 删，不是内容改动，是**编辑把整文件行尾 LF 翻成 CRLF**；`80d443e` 已改回（逻辑未变 17/17）。证据：HEAD~1 `CRLF=0/裸LF=207` → 改后 `CRLF=217/裸LF=0`。**纪律：改既有文件后必看 `git diff --numstat`，接近整文件行数即行尾翻写。**
+  - 未做：**没有动 month/sandbox**（S1/S2 待确认）；S1 会真正检验"555 处引用"的规模，建议单独提交 + 完整门禁后再决定是否继续。
