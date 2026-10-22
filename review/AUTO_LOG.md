@@ -410,3 +410,10 @@
   - ④ NOTE↔代码抽检 3 条全对得上：R427 四入口 `onTwDetail`/`onFastSubsidy`/`onRecYuan`/`onDirectConsume` 各 2 处（定义+引用）；R426 `checkAmounts` 在 `subpkg/biz/{card,material}/edit.js` + `month/input.js` 三页俱在；R434 新页三关齐（`app.json:75` 注册 + `pages/mine/index.js:112` 入口 + terms 双副本 md5 `89f273bf` 一致），且 `consent.js:54/82/96` 真调 `getAiConsent`/`grantAiConsent`/`revokeAiConsent`。
   - 🔴 **队列反向漂移（本轮唯一实质发现；未改，留给下轮开工第一件事）**：#5 仍 `blocked: yes · why: 李老师未选型`，而 2026-10-22 已定风格 B（`d9bb0c2` + AUTO_LOG 18:30 回执）；#29（AI 授权页）`why: 卡在 #5` 但页面已落；#6（M3 三页）`why: 依赖 #5` 依赖已解除且 R434 明写「未做 = 队列 #6」。⇒ 若下轮只信队列仍会判「0 条可做」空转。建议回写：#5 → done、#29 → done、#6 → `todo / blocked: no`。
   - 🔴 **新增文档漂移**：`specs/dev-specs/上线材料_提审材料包_v1.md` §4 标题已改「28 页」，同文件 :99 静态自检行仍写「27 页」——`check_page_manifest` 只守 §4 表格，不扫这行 ⇒ 门禁抓不到。属审核材料，宜下一并改（零行为）。
+
+- [2026-10-22 19:58] R436 已落 · 队列 #34：`getDishReview` + `manageShop` 重部署（无人值守）· 门禁 未跑（零代码改动）· commit ad85032 · 队列 #34 → done
+  - 部署判据：逐个 `-r --port 10896` → `success=true`（getDishReview 20 files/62.0KB、manageShop 22 files/65.3KB）；`info` 回读 **两个都 Active / timeout 20**。
+  - 为什么本轮才做：原 blocked why 写「需李老师在场」，2026-10-22 实测 CLI 直连 IDE:10896 就能查能部（R389/R432/R434 也是无人值守部署成功）⇒ 该判据被推翻，不是等人。
+  - 为什么不靠「代码没变⇒不用部署」：CLI 的 `info` **没有更新时间字段**，无法证伪「线上是旧代码」；重部署是幂等且唯一能把它变成事实的动作。
+  - 队列回写（同轮，R435 遗留漂移）：#5 → done（已定风格 B）、#29 → done（`subpkg/biz/ai/consent` 已落，commit d9bb0c2）、#6 解锁为 `todo/no`；#29 原 why「卡 #5」随之作废。
+  - 本轮止于 1 条：19:29 开工，做完 #34 已 19:58；#6（三页视觉统一）需 wxml 改动 ⇒ 必须全量门禁 + 出码，塞不进 50 分钟窗口，留给下轮，不在未验证状态推进。
