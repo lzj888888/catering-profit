@@ -370,3 +370,11 @@
   - ③ 队列：42 行 = 25 done / 17 blocked / **0 todo / 0 in_progress**，无僵尸行（`blocked` 全部缺外部输入：选型/扫码/控制台/样例/AppSecret）。
   - ④ NOTE↔代码抽检三条全对：R428 `tools/check_line_endings.js` 存在且**确未挂 SUITES**（其声明的「提交前跑、进 verify_all 会恒绿」成立）+ `.gitignore:95-96` 有 `_commit_*.txt`/`_gate_*.log`、`_commit_s5.txt` 零跟踪；R427 `check_amount_input.js` ②-39~②-45 四条分别真调 `checkAmounts(`（onTwDetail/onFastSubsidy/onRecYuan/onDirectConsume）；R426 `checkAmounts` 经 S5 迁移后仍在 `subpkg/biz/{card,material}/edit.js` + `subpkg/biz/month/input.js`；R423 分包结构 `app.json` 实测主包 **4 页** + `subpkg/tools:9` + `subpkg/biz:14` = 27，与总账一致。
   - 现场另有并发会话在跑（`_jd_parse.py`/`_jd_parse_result.txt` 20:31 新建、node 20:30 起）⇒ 全程只读，未碰其文件。
+
+- [2026-10-22 19:45] R432 已落 · **队列 #43 完成** · 门禁 204/204 RC=0（711.9s）· commit 7b2ac2b · **已部署 importSalesBill（Active / 20s）**
+  - 新增形态 D（`jd_order_export`）：京东外卖「订单导出」现在能导入了。根因不是缺提示，是**商品明细混装在「商品信息」一列**（格式「商品名,单价,数量」，多商品用 / 分隔），形态 C 要的三列独立根本不存在。
+  - 实现：DISH_SHAPES 加 D（前后端两份常量，守 check_shape_machine_value）→ detectDishShape 加判据（有「商品信息」且（有「顾客实付」或「订单编号」），**放在 C 之后**）→ 新增 parseDishSalesD 拆列 → index.js **只在一处分叉**（其余门禁/预览/落库/重复检测全复用，避免两套逻辑漂移）→ 前端 isC 判断加 D。
+  - 🔴 关键坑：一单多商品必须按「日期 + 菜品键」聚合，否则同日同菜出多行 ⇒ 销量金额双计。
+  - 🔴 自纠：初版「先 price*100 转分再乘数量」带二进制残差去乘、误差被放大 ⇒ check_money_precision 判红；改为「先按元算行小计、再一次转分 round」并在 REGISTRY 登记命中点。
+  - 自测 12 项全过（临时脚本 `_test_shape_d.js`，用 xlsx stub 拦截加载**真代码**）：3 单→4 商品项→按日聚合 3 行；销量 4；金额 8001 分；耙牛筋同日两单正确聚合 qty=2/3700 分；反例三列齐全仍判 C、无商品信息判 null。
+  - 未做：真机/模拟器实导入走查（需李老师在模拟器里选文件）；#44（混装列**精准**提示，检测层）。
