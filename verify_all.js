@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：204 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：205 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -1271,6 +1271,12 @@ const SUITES = [
   //   所以它能真查；提交后再跑则恒绿，属正常。真正的用途是提交前手工跑一次。
   //   判据是逐字节比 CRLF 计数（HEAD vs 工作树），不是「改动行数占比」那种启发式。
   ['line-endings', 'tools/check_line_endings.js'],
+  // R437 · 队列 #6：M3 三页（枢纽/物料/成本卡）风格 B 外壳一致性。
+  //   守的是"视觉统一靠人自觉"这个缺口：三页看起来一样，靠的是都引用同一组声明；
+  //   任何一页把底色/圆角/阴影写回自己 wxss，界面照样渲染、零报错，只有对比着看才发现。
+  //   枢纽页不能加类名（check_hub_guide 的 S2/G4 按字面量 class 定位卡片）
+  //   ⇒ 它的统一只能在 app.wxss 的声明组里体现，谁删掉那个选择器就会悄悄回到旧形态。
+  ['m3-style-b', 'tools/check_m3_style_b.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

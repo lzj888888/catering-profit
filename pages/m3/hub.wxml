@@ -1,4 +1,4 @@
-<view class="container safe-bottom">
+<view class="container safe-bottom sb-page">
   <!-- R192：hero 不再是两行小字，而是**整块渐变头图** —— 页面一进来就有主体，不再是"四张白卡飘在灰底上" -->
   <view class="hub-hero">
     <text class="hub-title">{{t.title}}</text>

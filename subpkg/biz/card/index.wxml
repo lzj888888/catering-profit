@@ -1,4 +1,4 @@
-<view class="container safe-bottom">
+<view class="container safe-bottom sb-page">
   <!-- ===== R299：数据截断的**可见降级** =====
        云函数出参 `truncated`（`dataAdapter.js::listAll` 契约要求"必须透传到出参、可见降级"）。
        成本卡是版本模型（只 INSERT）⇒ 卡多/改得勤的店会先撞上限；截断时列表少卡且**无排序**，
@@ -45,8 +45,9 @@
     <button class="btn-small" bindtap="onBatchSyncRun">{{t.batchSync}}</button>
   </view>
 
-  <!-- 左侧色条区隔类型（色值走 app.wxss 的 .stripe-*，本页只给边框形态） -->
-  <view class="card2 {{item.card_type === 3 ? 'stripe-combo' : 'stripe-dish'}}" wx:for="{{list}}" wx:key="card_code" bindtap="{{selectMode ? 'onSelect' : 'goEdit'}}" data-code="{{item.card_code}}">
+  <!-- 左侧色条区隔类型（色值走 app.wxss 的 .stripe-*，本页只给边框形态）
+       🔴 R437（队列 #6）：加 `sb-card` = 风格 B 外壳（底色/圆角/阴影单源在 app.wxss） -->
+  <view class="card2 sb-card {{item.card_type === 3 ? 'stripe-combo' : 'stripe-dish'}}" wx:for="{{list}}" wx:key="card_code" bindtap="{{selectMode ? 'onSelect' : 'goEdit'}}" data-code="{{item.card_code}}">
     <view class="card-head">
       <view class="card-title card-title-flex">
         <checkbox wx:if="{{selectMode}}" checked="{{selected[item.card_code]}}" data-code="{{item.card_code}}" catchtap="onSelect" />

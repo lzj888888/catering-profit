@@ -214,7 +214,20 @@ page { background: #f5f6f8; font-family: -apple-system, "PingFang SC", sans-seri
       避免一次改 8 个 wxml 把表单逻辑和最值对齐搞坏。
    🔴 类名前缀 sb- = style B，全仓无同名冲突（加了先 grep 一遍）。 */
 .sb-page { background: #f2f4f7; min-height: 100vh; }
-.sb-card { background: #fff; border-radius: 24rpx; padding: 28rpx; margin-bottom: 20rpx; box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04); }
+/* 🔴 R437（队列 #6）：M3 三页（枢纽 / 物料 / 成本卡）的外壳取值并进**同一份声明**。
+   为什么不是各页 wxss 抄一遍数值：抄一份就多一处漂移点，改圆角要改四处且必然漏一处。
+   为什么枢纽页写在这组选择器里、而不是给 wxml 加类名：
+     `tools/check_hub_guide.js` 的 S2「hub-card 出现 ≥5 次」与 G4「引导块下标 < 第一张卡下标」
+     都是按**字面量** `class="hub-card"` 定位的；给卡片加第二个类会让这两条当场判红，
+     而军规禁止为了迁就改码去改守卫判据 ⇒ 枢纽只能在**声明层**共享（它无 sb-card 类名）。
+   为什么列表卡另给 `.sb-card.card2` 一条复合选择器：`.card2` 是 17 个页面共用的全局类，
+   直接改它会外溢到月度/外卖/对账（本轮只授权改三页）⇒ 复合选择器特异度 0,2,0 > 0,1,0，
+   只对**显式**同时带 sb-card 的列表卡生效，其余页面的 .card2 一个像素都不动。
+   布局（flex / padding / 具体间距）仍在各页 wxss，本组只管"底色 + 圆角 + 阴影 + 卡间距"。 */
+.sb-card, .hub-card, .hub-flow, .hub-empty, .sb-card.card2 {
+  background: #fff; border-radius: 24rpx; padding: 28rpx; margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+}
 .sb-row2 { display: flex; gap: 20rpx; margin-bottom: 20rpx; }
 .sb-row2 .sb-card { flex: 1 1 0; margin-bottom: 0; }
 .sb-lbl { font-size: 28rpx; color: #646a73; margin-bottom: 10rpx; }

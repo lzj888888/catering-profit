@@ -1,5 +1,9 @@
 /* pages/material/index.wxss —— 原料档案列表页 */
-.cat-picker { background: #fff; border-radius: 12rpx; margin: 16rpx 0; padding: 0 24rpx; }
+/* R437（队列 #6）：分类筛选条并入风格 B 外壳 —— 底色/圆角/阴影改由 wxml 上的 `sb-card` 给，
+   本文件只留"它是一行可点的选择条"这条布局（padding 0 让 picker 的触控区铺满整卡）。
+   原先在这里写死 `background:#fff; border-radius:12rpx` ⇒ 同一屏两种圆角（12 / 24），
+   正是"三页视觉不统一"的可见来源。 */
+.cat-picker { margin: 16rpx 0; padding: 0 24rpx; }
 /* R191：row-ops 平铺按钮区已废弃（4 个按钮 → 卡片右上「⋯」），保留注释说明去向，勿再加回。 */
 /* 左侧色条：色值走 app.wxss 的 .stripe-material（单源），本页只给边框形态 */
 /* R207：左侧 8rpx 色条 + 20rpx 圆角 = 小程序经典「尖角溢出」现场

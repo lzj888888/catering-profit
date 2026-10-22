@@ -1,4 +1,4 @@
-<view class="container safe-bottom" wx:if="{{!loading}}">
+<view class="container safe-bottom sb-page" wx:if="{{!loading}}">
   <!-- R191：与成本卡列表**同构** —— 顶部「搜索 + 新增」同一行（新增不再沉到页面最底部） -->
   <view class="top-row">
     <view class="inp top-inp"><input value="{{keyword}}" placeholder="{{t.matSearchPh}}" bindinput="onKeyword" /></view>
@@ -9,14 +9,16 @@
   </view>
 
   <picker mode="selector" range="{{catOptions}}" range-key="label" bindchange="onCatFilter">
-    <view class="cell cat-picker">
+    <view class="cell cat-picker sb-card">
       <text class="lbl">{{t.filterCategory}}</text>
       <text class="val">{{catLabel || t.marginAll}}</text>
     </view>
   </picker>
 
-  <!-- 原料列表（左侧色条 = 原料绿，色值走 app.wxss 的 .stripe-material 单源） -->
-  <view class="card2 stripe-material" wx:for="{{list}}" wx:key="id" data-m="{{item}}" bindtap="goEdit">
+  <!-- 原料列表（左侧色条 = 原料绿，色值走 app.wxss 的 .stripe-material 单源）
+       🔴 R437（队列 #6）：加 `sb-card` = 走风格 B 的外壳（底色/圆角/阴影，取值单源在 app.wxss）；
+           `.card2` 的 border-left 与 overflow 仍由本页 wxss 给（色条形态是本页专属）。 -->
+  <view class="card2 stripe-material sb-card" wx:for="{{list}}" wx:key="id" data-m="{{item}}" bindtap="goEdit">
     <view class="card-head">
       <view class="card-title card-title-flex mat-title">
         <!-- R207：名称单独一层做 ellipsis（长名截断），标签保持可见不被挤掉 -->
@@ -66,4 +68,4 @@
   <view wx:if="{{list.length === 0 && !loading && keyword}}" class="empty">{{t.matNoMatch}}</view>
   <view wx:elif="{{list.length === 0 && !loading}}" class="empty">{{t.matEmpty}}</view>
 </view>
-<view wx:else class="container"><view class="muted">{{t.loading}}</view></view>
+<view wx:else class="container sb-page"><view class="muted">{{t.loading}}</view></view>
