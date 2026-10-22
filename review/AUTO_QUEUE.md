@@ -34,7 +34,7 @@
 | 12 | `shop_ai_consent` 授权模型（scope/有效期/撤回标记 + 撤回清缓存链路） | blocked | yes | why: **写侧已落（R403）**——`grantAiConsent` / `revokeAiConsent` 两函数 + 四索引登单源（45→49）、契约 §10、门禁 194/194。剩余两件：① **读侧函数缺**（见 #18，前端授权页的前置）② 线上第 4 条索引 `idx_ai_insight_shop_month` 未建（控制台对话框第三行落不下，需 AppSecret 走 `tools/apply_indexes.js`）。设计稿 `review/PLAN_2026-10-20_AI授权模型设计.md` |
 | 13 | 异常核对清单·规则层（本店历史阈值，不调模型） | done | no | R396 已落：`utils/anomalyRules.js::buildChecklist`（5 规则 / 中位数基线 / 只出方向+幅度 / 历史<2 月不出项），自测 47 条；**前置缺口是误记** —— `getMonthList` 早已存在（`listMonths` 是名字猜错）⇒ 免改云函数免部署；页面接线留给 P1 话术层；commit 179b5b3 |
 | 5 | 风格 A/B/C 铺开（先 3 页样板） | done | no | R434 收口：2026-10-22 李老师选定**风格 B**（卡片化），骨架 `app.wxss::.sb-*` 已落 + 首屏样板 = AI 授权页（见 #29）。⇒ 剩余三页由 #6 承接，本条不再阻塞；commit d9bb0c2 |
-| 6 | M3 三页视觉统一（物料/枢纽/成本卡） | todo | no | 依赖已解除（#5 已定风格 B）。做法：只改**外壳**（页底色 + 分组卡片 + 圆角/阴影 token 走 `.sb-*` 单源），不重建页面、不动任何 bindtap/校验 |
+| 6 | M3 三页视觉统一（物料/枢纽/成本卡） | in_progress | no | 依赖已解除（#5 已定风格 B）。做法：只改**外壳**（页底色 + 分组卡片 + 圆角/阴影 token 走 `.sb-*` 单源），不重建页面、不动任何 bindtap/校验 |
 | 7 | 真机走查（矩阵横滑/吸底条/空态/清空月/下拉刷新） | blocked | yes | why: 只能李老师扫码 |
 | 8 | `clearMonth` 超时 3s → 20s | done | no | R398 记账：控制台已改并**机器回读**（`cli cloud functions info` → `timeout=20`、`status=Active`）；证据 `review/NOTE_2026-10-21_控制台建集合与索引.md` §一A |
 | 9 | 外卖销量表接入 | blocked | yes | why: 缺美团/京东样例（表名+列名+口径），不猜列 |
