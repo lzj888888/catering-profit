@@ -279,6 +279,7 @@ Page({
       compareEntry: TERMS.m2Plan.compare,
       // M2v1.3（业态参数包 + 回本卡）
       presetLabel: M.presetLabel,
+      m2NavLine: M.m2NavLine,
       presetNone: M.presetNone,
       presetPickedPre: M.presetPickedPre,
       presetPickedSuf: M.presetPickedSuf,
