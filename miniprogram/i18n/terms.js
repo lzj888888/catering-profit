@@ -1187,7 +1187,7 @@ const TERMS = {
       fastfood_noodle: '面馆（小面 / 米线 / 面条 / 拉面）',
       hotpot_half_self: '半自助',
       hotpot_barbecue: '烧烤',
-      dining_sichuan: '川菜',
+      dining_sichuan: '中式正餐（川湘粤家常菜）',
       dining_xiang: '湘菜',
       dining_yue: '粤菜',
       dining_jiachang: '家常菜',
