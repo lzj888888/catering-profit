@@ -158,34 +158,6 @@
       </view>
       <view class="row-note">{{t.manageOptNote}}</view>
     </view>
-    <!-- L3 专业参数 -->
-    <view class="fold-toggle" bindtap="onToggleL3">{{t.l3Toggle}}{{showL3 ? ' ▾' : ' ▸'}}</view>
-    <view wx:if="{{showL3}}" id="l3-pro">
-        <!-- 🔴 R361（李老师 2026-10-19）：「每月营业天数」那行**整行删除**。
-          理由：① 它自 R290 起就是只读值（固定 30），摆在一堆"可填费率"里会让人以为这里能改；
-                ② 同一事实已在底部「本次测算底层假设」卡由 `buildAssumptions()` 输出
-                   （`preset.params.openDays` = 30，来源 P）⇒ 两处重复、措辞还不同。
-          `openDaysNum` 状态**保留**（草稿回读 / 发参 `|| 30` 仍在用，见 index.js:1508），
-          只是不再渲染。术语键 `openDaysLabel2/openDaysNote2` 一并留档，不再映射到 `t`。 -->
-      <!-- 🔴 R234-实测移除：坪效 / 翻台率 两个输入框。
-           依据李老师原话「这些本身是咱们计算出来的，不是让客户自己填出来的」。
-           实测两条硬事实：
-             · 翻台率 `turnNum` 引擎**根本不收** ⇒ 填了触发重算却零影响 = 纯死输入；
-             · 坪效 `pixelEffYuan` 唯一下游 `area_cap_sqm` 因坪效不让问而恒 null ⇒ 一并移除。
-           引擎**输出**的翻台率（reverseResult.turn_rate）照常展示 —— 那是算出来的，不是填的。 -->
-      <!-- R438：费率区说明 —— 老板不知道该不该动（李老师 2026-10-22「专业参数……这个也没有用了」） -->
-      <view class="row-note">{{t.feeRowsHint}}</view>
-      <view class="row" wx:for="{{feeRows}}" wx:key="key">
-        <text class="row-name">{{item.label}}</text>
-        <view class="row-in-wrap">
-          <input class="row-in" type="digit" value="{{item.pct}}" data-key="{{item.key}}" bindinput="onFeePct" adjust-position="{{true}}" cursor-spacing="20" />
-          <text class="row-unit">{{t.pctUnit}}</text>
-        </view>
-        <!-- R439：按老板填的预计月营业额折算成钱，让他能核对（如房租 12% ≈ 12,000 元/月）。
-             只显示，不参与任何计算；没填营业额时为空。 -->
-        <text class="fee-amt" wx:if="{{item.amtText}}">{{item.amtText}}</text>
-      </view>
-    </view>
     <!-- 本次测算底层假设（默认折叠可展开） -->
     <!-- 🔴 R435（李老师 2026-10-22）：已有铺面（forward）**整块删掉**假设区。
          理由：① 已有店的老板有真实数据（毛利率/工资/客单价都报得出来），系统替他"假设"没意义；
