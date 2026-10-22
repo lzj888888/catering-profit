@@ -71,7 +71,8 @@
         "material/edit",
         "material/pick",
         "material/batch",
-        "takeaway/index"
+        "takeaway/index",
+        "ai/consent"
       ]
     }
   ]

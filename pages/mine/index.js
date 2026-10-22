@@ -39,6 +39,7 @@ Page({
       guideBody: TERMS.exp.guideBody,
       guideOk: TERMS.exp.guideOk,
       disclaimerLabel: TERMS.exp.disclaimerLabel,
+      aiConsentLabel: TERMS.exp.aiConsentLabel,
       disclaimer: TERMS.auditSafe.disclaimer,
       // G5：头像昵称（AD-15 新能力，本地保存展示）
       avatarLabel: TERMS.exp.avatarLabel,
@@ -106,6 +107,11 @@ Page({
   },
 
   // C1：免责声明弹窗
+  // R434（队列 #29）：AI 辅助分析授权页
+  onAiConsent() {
+    wx.navigateTo({ url: '/subpkg/biz/ai/consent' });
+  },
+
   onDisclaimer() {
     wx.showModal({
       title: TERMS.exp.disclaimerLabel,

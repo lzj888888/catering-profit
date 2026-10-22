@@ -207,3 +207,25 @@ page { background: #f5f6f8; font-family: -apple-system, "PingFang SC", sans-seri
 .ovh { overflow: hidden; }
 /* R419：「要注意」提示行，M1/M2 共用（原只在 M2 页定义） */
 .warn-note { font-size: 28rpx; color: #92610a; line-height: 1.6; padding: 0 0 6rpx; }
+
+/* ===== 风格 B（卡片化）· 全局骨架（2026-10-22 李老师选型 B）=====
+   用法：页面根加 .sb-page，区块用 .sb-card，两列并排用 .sb-row2 包两个 .sb-card。
+   🔴 只做"外壳骨架"：卡片 / 标题 / 主数值 / 徽标 / 明细行。内部表单仍用各页原有类，
+      避免一次改 8 个 wxml 把表单逻辑和最值对齐搞坏。
+   🔴 类名前缀 sb- = style B，全仓无同名冲突（加了先 grep 一遍）。 */
+.sb-page { background: #f2f4f7; min-height: 100vh; }
+.sb-card { background: #fff; border-radius: 24rpx; padding: 28rpx; margin-bottom: 20rpx; box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04); }
+.sb-row2 { display: flex; gap: 20rpx; margin-bottom: 20rpx; }
+.sb-row2 .sb-card { flex: 1 1 0; margin-bottom: 0; }
+.sb-lbl { font-size: 28rpx; color: #646a73; margin-bottom: 10rpx; }
+.sb-num { font-size: 40rpx; font-weight: 700; color: #1f2329; font-variant-numeric: tabular-nums; }
+.sb-num-lg { font-size: 48rpx; }
+.sb-sec { font-size: 28rpx; color: #646a73; margin: 6rpx 0 10rpx; }
+.sb-itm { display: flex; align-items: center; justify-content: space-between; font-size: 28rpx; padding: 14rpx 0; border-bottom: 1rpx solid #f4f5f7; }
+.sb-itm:last-child { border-bottom: none; }
+.sb-itm-v { font-weight: 600; font-variant-numeric: tabular-nums; }
+.sb-badge { display: inline-block; font-size: 28rpx; font-weight: 600; padding: 2rpx 14rpx; border-radius: 20rpx; margin-left: 10rpx; }
+.sb-badge.ok { background: #eaf6f0; color: #1f7a53; }
+.sb-badge.warn { background: #fff3e0; color: #a45f00; }
+.sb-badge.bad { background: #fdecea; color: #c0392b; }
+.sb-badge.na { background: #f2f4f7; color: #8a94a6; }

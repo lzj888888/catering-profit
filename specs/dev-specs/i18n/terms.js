@@ -139,6 +139,36 @@ const TERMS = {
     '当前为经营参考估算（按你直接填的消耗）。开通真实利润，可用库存倒轧算真实消耗，结果更准。',
 
   // ===== 六、结果页术语替换 =====
+  // R434（队列 #29）：AI 辅助分析授权页。文案口径：
+  //   · 只说"汇总后的数"，明说"不发原料清单和客户信息"（这是老板真正会怕的）
+  //   · 明说"样本太少不发"（与 common/aiGate 的 k-匿名门槛一致，不夸大也不隐瞒）
+  //   · 三项能力对应 PURPOSES = diagnose / pricing / expand（common/aiGate.js）
+  aiConsent: {
+    navTitle: 'AI 辅助分析',
+    title: 'AI 辅助分析授权',
+    lead: '开启后，店算会把汇总后的经营数据交给 AI，帮你看问题、给建议。',
+    stNone: '还没开启',
+    stOk: '已开启',
+    stStale: '条款已更新，需要重新确认',
+    secWhat: 'AI 会帮你做',
+    pDiagnose: '诊断问题',
+    pDiagnoseDesc: '指出哪块成本偏高、哪道菜可能在亏',
+    pPricing: '给定价建议',
+    pPricingDesc: '按成本和目标毛利，给出可卖价',
+    pExpand: '开店测算',
+    pExpandDesc: '按你的数据推算保本额和收回投入期',
+    secData: '数据怎么用',
+    data1: '只发汇总后的数（成本占比、毛利、销量），不发原料清单，也不发客户信息。',
+    data2: '样本太少时不发（不足 5 行或不足 3 个供应商），避免从汇总里反推出单家供应商的价格。',
+    data3: '随时可以在这里撤回，撤回后立刻停止。',
+    btnGrant: '同意并开启',
+    btnRevoke: '撤回授权',
+    btnReagree: '重新确认',
+    doneGrant: '已开启',
+    doneRevoke: '已撤回',
+    loadFail: '读不到授权状态，稍后再试',
+  },
+
   result: {
     grossMargin: '毛利率', // ✅ 安全，直接用
     paybackSuffix: '可收回投入', // 内部：回本周期 → 软展示"约 X 个月收回投入"
@@ -2581,6 +2611,7 @@ const TERMS = {
     serviceNotOpen: '客服暂未开通，可先在「意见反馈」里留言',
     guideOk: '知道了',
     disclaimerLabel: '免责声明',
+    aiConsentLabel: 'AI 辅助分析',
     // G4/G8：热更新 + 断网提示（app.js 全局）
     updateTitle: '发现新版本',
     updateBody: '有新版本可用，是否立即更新？',
