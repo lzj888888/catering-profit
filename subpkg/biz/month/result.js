@@ -40,6 +40,11 @@ Page({
     t: {
       beMoreShow: TERMS.card.beMoreShow,
       beMoreHide: TERMS.card.beMoreHide,
+      // R433：行业指标对照卡文案
+      indTitle: TERMS.modules.m1.indTitle,
+      indBandLbl: TERMS.modules.m1.indBandLbl,
+      indEmpty: TERMS.modules.m1.indEmpty,
+      indFoot: TERMS.modules.m1.indFoot,
       bePathText: TERMS.card.bePathText,
       bePathRevOnly: TERMS.card.bePathRevOnly,
       beMomMore: TERMS.card.beMomMore,
