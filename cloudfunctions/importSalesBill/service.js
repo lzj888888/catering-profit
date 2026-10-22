@@ -510,6 +510,14 @@ const DIAG_REQUIRED = {
   C: ['商品名称', '销量', '销售额'],   // 形态 C（外卖商品销量）：正名，判定前先过别名归一
   A: ['菜品名称', '销售数量'],         // 形态 A（堂食《菜品销售统计》）：**原样**列名判，不做别名归一
 };
+// 🔴 R434（队列 #44）：商品明细「挤在一列」的列名清单 —— 与「真缺列」是两回事。
+//   为什么必须分开：这类表**不是**少列，而是结构不同（一格里写着「商品名,单价,数量」）。
+//   回执只报「缺：商品名称、销量、销售额」时，老板看着自己的表明明有「商品信息」列，
+//   只会以为是自己导错了表，反复换文件（R431 实测的误导线）。
+//   为什么用**精确等名**而不是子串：`商品编号`/`商品条码`/`商品分类` 都含「商品」二字，
+//   子串匹配会把结构正常的表也判成混装列 ⇒ 给出错误的处置建议。
+//   顺序 = 具体优先：命中「商品信息」就报它，不报笼统的「商品」。
+const MIXED_GOODS_COLS = ['商品信息', '商品明细', '订单商品', '商品'];
 const DIAG_MAX_COLS = 30;   // 回显列名上限（防一张 100 列的宽表把回执撑爆）
 const DIAG_SCAN_ROWS = 5;   // 表头候选行数（与 detectDishShape 扫 R1/R3 的范围一致）
 
@@ -535,7 +543,7 @@ function diagnoseColumns(matrix) {
   const sheets = (matrix && matrix.sheets) || {};
   const names = Object.keys(sheets);
   if (!names.length) {
-    return { shape: null, sheet: '', headerRow: -1, foundCols: [], missing: missAll, nearest: 'C', reason: 'empty_table', excludedBy: '' };
+    return { shape: null, sheet: '', headerRow: -1, foundCols: [], missing: missAll, nearest: 'C', reason: 'empty_table', excludedBy: '', mixedCol: '' };
   }
   // 只诊断第一张 sheet：导入是单表操作，多表时取第一张，避免「换张表就换个说法」。
   const name = names[0];
@@ -545,6 +553,8 @@ function diagnoseColumns(matrix) {
   const hdrC = canonDishCHeader(hdr);                       // C 用别名归一后的列名
   const missC = DIAG_REQUIRED.C.filter((c) => hdrC.indexOf(c) < 0);
   const missA = DIAG_REQUIRED.A.filter((c) => hdr.indexOf(c) < 0);   // A 按原样列
+  // R434：混装列（商品明细挤在一格）—— 只在表头**精确等名**命中时才认，取最具体的那一个
+  const mixedCol = MIXED_GOODS_COLS.filter((c) => hdr.indexOf(c) >= 0)[0] || '';
   // nearest：缺得少的那个形态更可能是老板的本意；打平时取 C（本页目标形态是外卖销量表）。
   const nearest = missC.length <= missA.length ? 'C' : 'A';
   // 🔴 reason：必须与「缺列清单」**自洽** —— 列齐却报「缺列」是自相矛盾的回执（老板会照着补不存在的列）。
@@ -559,6 +569,12 @@ function diagnoseColumns(matrix) {
     reason = 'cols_ok_but_excluded';
     if (hdr.indexOf('费用类型') >= 0) excludedBy = '费用类型';
     else if (((rows[1] || []).map((x) => (x == null ? '' : String(x))).join('')).indexOf('销售方式') >= 0) excludedBy = '销售方式';
+  } else if (mixedCol) {
+    // 🔴 R434（队列 #44）：缺列清单非空，但表里有一列装的是**商品明细**（形如「商品名,单价,数量」）。
+    //   ⇒ 这比「缺三列」更接近真相：老板不需要"补列"，需要"分列"。
+    //   优先级放在缺列之上、排除态之下：列都齐（missC 为空）却仍判不出，通常是负向条件挡的，
+    //   那时报混装列会把人引向错误的处置（去分列一张本来不该导的表）。
+    reason = 'mixed_goods_column';
   }
   return {
     shape: null,
@@ -569,6 +585,7 @@ function diagnoseColumns(matrix) {
     nearest,
     reason,
     excludedBy,
+    mixedCol,
   };
 }
 

@@ -211,6 +211,7 @@ Page({
       importDiagBody: TK.importDiagBody,
       importDiagFound: TK.importDiagFound,
       importDiagExcluded: TK.importDiagExcluded,
+      importDiagMixed: TK.importDiagMixed,
       importDiagEmpty: TK.importDiagEmpty,
       // 🔴 R303 一级校验（标题 + 四条模板；`{n}` 由 js 替换，wxml 不做字符串处理）
       importSanityTitle: TK.importSanityTitle,
@@ -527,6 +528,11 @@ Page({
           body = TK.importDiagEmpty || '';
         } else if (dg.reason === 'cols_ok_but_excluded') {
           body = (TK.importDiagExcluded || '').replace('{col}', dg.excludedBy || '');
+        } else if (dg.reason === 'mixed_goods_column') {
+          // 🔴 R434（队列 #44）：商品明细挤在一列 ≠ 缺列 —— 必须指名是哪一列。
+          //   否则老板看着自己的表有「商品信息」，却被要求"补 商品名称/销量/销售额"，
+          //   只会怀疑自己导错了表（而真正该做的是在 Excel 里按逗号分列）。
+          body = (TK.importDiagMixed || '').replace('{col}', dg.mixedCol || '');
         } else {
           body = (TK.importDiagBody || '').replace('{cols}', miss.join('、'));
         }
