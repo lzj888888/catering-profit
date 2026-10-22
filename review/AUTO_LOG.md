@@ -402,3 +402,11 @@
   - **为什么没先做 M3 三页**：成本卡 edit.wxml 347 行全平铺 `.field`，卡片化必须加 wrapper（碰条件渲染）；三页合计 700+ 行。先让零风险的新页门禁全绿，再逐页改老页。
   - 门禁踩出 4 个坑（都写进注释）：① 「回本周期」是禁用词（金融色彩重）→「收回投入期」② 提审材料要 §4 登记 + 页数 27→28 ③ `t: T` 变量会让 page_terms 静态解析不出 ⇒ 必须字面量展开 ④ 字号下界 28rpx，骨架写了 22/24/26 被判红。
   - 未做：M3 三页视觉统一（队列 #6），需单独一轮逐页改 + 每页门禁。
+
+- [2026-10-22 18:26] R435 只读巡检（队列 0 todo / 0 in_progress）· 门禁 204/204 RC=0（499.4s，R434 日志）· 无代码提交（仅本回执）
+  - ① 工作树：**跟踪面干净**（0 修改 / 0 暂存），HEAD ≡ origin/dev（`5ac4bb1`）；7 个未跟踪件全属并发会话临时产物（`_add_q4344.py` / `_fix_terms.py` / `_jd_parse.py` / `_jd_parse_result.txt` / `_jd_pnl.py` / `_jd_pnl.txt` / `_msg_r433.txt`），未 add 未删。
+  - ② 最近门禁 = `_归档_过程件_202610/_gate_r434b.log` **204/204 通过 499.4s**；`verify_all.js::SUITES` 实读 **204** = 头注「串联：204」⇒ 三方一致。同批 `_gate_r434.log` 的 199/204 是修复前那轮（5 红 = ad-gates / terms-forbidden / page-manifest / suite-assert-counts / page-terms，与 R434 提交信息里「门禁踩出的 4 个坑」吻合），非当前态。
+  - ③ 队列：**0 todo / 0 in_progress**（29 done / 15 blocked），无僵尸 todo。
+  - ④ NOTE↔代码抽检 3 条全对得上：R427 四入口 `onTwDetail`/`onFastSubsidy`/`onRecYuan`/`onDirectConsume` 各 2 处（定义+引用）；R426 `checkAmounts` 在 `subpkg/biz/{card,material}/edit.js` + `month/input.js` 三页俱在；R434 新页三关齐（`app.json:75` 注册 + `pages/mine/index.js:112` 入口 + terms 双副本 md5 `89f273bf` 一致），且 `consent.js:54/82/96` 真调 `getAiConsent`/`grantAiConsent`/`revokeAiConsent`。
+  - 🔴 **队列反向漂移（本轮唯一实质发现；未改，留给下轮开工第一件事）**：#5 仍 `blocked: yes · why: 李老师未选型`，而 2026-10-22 已定风格 B（`d9bb0c2` + AUTO_LOG 18:30 回执）；#29（AI 授权页）`why: 卡在 #5` 但页面已落；#6（M3 三页）`why: 依赖 #5` 依赖已解除且 R434 明写「未做 = 队列 #6」。⇒ 若下轮只信队列仍会判「0 条可做」空转。建议回写：#5 → done、#29 → done、#6 → `todo / blocked: no`。
+  - 🔴 **新增文档漂移**：`specs/dev-specs/上线材料_提审材料包_v1.md` §4 标题已改「28 页」，同文件 :99 静态自检行仍写「27 页」——`check_page_manifest` 只守 §4 表格，不扫这行 ⇒ 门禁抓不到。属审核材料，宜下一并改（零行为）。
