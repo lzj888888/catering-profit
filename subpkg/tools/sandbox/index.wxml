@@ -177,21 +177,29 @@
       </view>
     </view>
     <!-- 本次测算底层假设（默认折叠可展开） -->
-    <view class="fold-toggle" bindtap="onToggleAssumptions">{{t.assumptionsTitle}}{{showAssumptions ? ' ▾' : ' ▸'}}</view>
-    <view wx:if="{{showAssumptions}}">
-      <view class="asm" wx:for="{{presetAssumptions}}" wx:key="label">
-        <text class="asm-lbl">{{item.label}}</text>
-        <text class="asm-input">{{item.val}}</text>
-        <text class="asm-src" wx:if="{{presetPicked}}">{{item.src}}</text>
-      </view>
-      <view class="hint-fold">
-        <view class="hint-fold-head" data-key="sbAssumptionsHint" bindtap="onToggleHintFold">
-          <text class="hint-fold-guide">{{hintFold.sbAssumptionsHint ? t.hintFoldHide : t.hintFoldShow}}</text>
-          <text class="hint-fold-arrow">{{hintFold.sbAssumptionsHint ? '▾' : '▸'}}</text>
+    <!-- 🔴 R435（李老师 2026-10-22）：已有铺面（forward）**整块删掉**假设区。
+         理由：① 已有店的老板有真实数据（毛利率/工资/客单价都报得出来），系统替他"假设"没意义；
+               ② 它还是**只读**的（`.asm-input` 是 text 不是 input）⇒ 老板看着不对也改不了；
+               ③ 它和毛利率滑块（本页 267 行的 slider）**打架**：一处只读显示"毛利率 60%"、
+                  一处能拖到 55% ⇒ 老板不知道哪个算数。
+         想开的店（reverse）保留：那种场景本来就没有真实数据，需要行业预估。 -->
+    <block wx:if="{{mode === 'reverse'}}">
+      <view class="fold-toggle" bindtap="onToggleAssumptions">{{t.assumptionsTitle}}{{showAssumptions ? ' ▾' : ' ▸'}}</view>
+      <view wx:if="{{showAssumptions}}">
+        <view class="asm" wx:for="{{presetAssumptions}}" wx:key="label">
+          <text class="asm-lbl">{{item.label}}</text>
+          <text class="asm-input">{{item.val}}</text>
+          <text class="asm-src" wx:if="{{presetPicked}}">{{item.src}}</text>
         </view>
-      <view class="hint-fold-body" wx:if="{{hintFold.sbAssumptionsHint}}">{{t.assumptionsHint}}</view>
+        <view class="hint-fold">
+          <view class="hint-fold-head" data-key="sbAssumptionsHint" bindtap="onToggleHintFold">
+            <text class="hint-fold-guide">{{hintFold.sbAssumptionsHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+            <text class="hint-fold-arrow">{{hintFold.sbAssumptionsHint ? '▾' : '▸'}}</text>
+          </view>
+          <view class="hint-fold-body" wx:if="{{hintFold.sbAssumptionsHint}}">{{t.assumptionsHint}}</view>
+        </view>
       </view>
-    </view>
+    </block>
   </view>
 
   <!-- ⓪ 行业参考区间 + 参考金额（round113 立 · round114 加"预计月营业额"锚点）
