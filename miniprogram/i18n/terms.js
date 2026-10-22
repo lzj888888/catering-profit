@@ -682,7 +682,7 @@ const TERMS = {
       //   ⚠️ 后端只回**结构化列名**，文案在前端按这里的模板拼（后端造文案＝第二份 i18n 单源）。
       //   ⚠️ 措辞用「暂不开放」而非「暂不支持」（check_bill_import_gate 的 A-⑪ 判据按字面比对）。
       importDiagTitle: '这张表还差这几列',
-      importDiagBody: '缺：{cols}。把这几列补上再导入就行。',
+      importDiagBody: '缺：{cols}。如果这几样其实挤在同一格里（例如「商品名,单价,数量」写在一格），请先在 Excel 里按逗号分列，再导出一次。',
       importDiagFound: '表里读到这些列：{cols}',
       importDiagExcluded: '这几列都在，但表里带「{col}」—— 这类表暂不开放导入。',
       // 🔴 R303 一级校验（零外部依赖）：表内自洽的错，**导之前**就报出来。

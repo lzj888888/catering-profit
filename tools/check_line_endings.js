@@ -85,6 +85,8 @@ for (const rel of files) {
 
 if (bad === 0) {
   console.log('✅ 无行尾翻写');
+  // R69：末尾须含「N 通过」，否则 verify_all 判「未走完收尾」
+  console.log('===== 行尾翻写预检：1 通过 / 0 失败 =====');
   process.exit(0);
 }
 
@@ -98,6 +100,7 @@ for (const r of rows) {
 
 if (!FIX) {
   console.log('\n修复：node tools/check_line_endings.js --fix');
+  console.log('===== 行尾翻写预检：0 通过 / 1 失败 =====');
   process.exit(1);
 }
 
