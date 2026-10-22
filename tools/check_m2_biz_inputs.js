@@ -404,9 +404,9 @@ check('F-③ 翻台 = 日均来客 ÷ 座位数（与反推 `月客流÷(座位�
 check('F-④ fail-closed：人均消费 ≤0 或座位数 ≤0 ⇒ 返回 null（**不给假数**）',
   /!\s*\(price\s*>\s*0\)/.test(crowdFn) && /!\s*\(seats\s*>\s*0\)/.test(crowdFn) && /return null/.test(crowdFn),
   /return null/.test(crowdFn) ? '有 null 兜底' : '🔴 恒出数');
-check('F-⑤ 只在「已有铺面」渲染（wxml 判 `mode === forward && crowd`）',
-  /mode\s*===\s*['"]forward['"]\s*&&\s*crowd/.test(wx),
-  /mode\s*===\s*['"]forward['"]\s*&&\s*crowd/.test(wx) ? '已限定 A 区' : '🔴 B 区也会渲染');
+check('F-⑤ 只在「已有铺面」渲染（同一 wx:if 内含 forward 与 crowd，允许夹其他条件）',
+  /mode\s*===\s*['"]forward['"][^"}]*crowd/.test(wx),
+  /mode\s*===\s*['"]forward['"][^"}]*crowd/.test(wx) ? '已限定 A 区' : '🔴 B 区也会渲染');
 // 负样本（防假绿）：F-③ 必须能抓到「座位数漏乘桌数」这种**最易犯**的错
 const badCrowd1 = 'crowdOf(r){const p=Number(this.data.avgPriceYuan);const s=Number(this.data.seatsPerTableNum);return {breakPeople:Math.ceil(Number(r.break_even_daily)/p),targetPeople:Math.ceil(Number(r.target_daily)/p),turn:Math.round((Math.ceil(Number(r.target_daily)/p)/s)*100)/100};}';
 check('F-⑥ 负样本（座位数只取 seatsPerTableNum、**漏乘桌数**）会被 F-③ 判红',
@@ -459,9 +459,9 @@ check('G-⑦ 人效 = 实际月营业额 ÷ 员工人数',
 check('G-⑧ fail-closed：没填实际月营业额 ⇒ 返回 null（**不给假数**）',
   /!\s*\(rev\s*>\s*0\)/.test(effFn) && /return null/.test(effFn),
   /return null/.test(effFn) ? '有 null 兜底' : '🔴 恒出数');
-check('G-⑨ 只在「已有铺面」渲染（wxml 判 `mode === forward && eff`）',
-  /mode\s*===\s*['"]forward['"]\s*&&\s*eff\b/.test(wx),
-  /mode\s*===\s*['"]forward['"]\s*&&\s*eff\b/.test(wx) ? '已限定 A 区' : '🔴 B 区也会渲染');
+check('G-⑨ 只在「已有铺面」渲染（同一 wx:if 内含 forward 与 eff，允许夹其他条件）',
+  /mode\s*===\s*['"]forward['"][^"}]*eff\b/.test(wx),
+  /mode\s*===\s*['"]forward['"][^"}]*eff\b/.test(wx) ? '已限定 A 区' : '🔴 B 区也会渲染');
 // 负样本（防假绿）：拿保本营业额当分子 —— 老板要的是"我这店实际坪效"，不是"保本坪效"
 const badEff = 'effOf(){const rev=Number(this.data.result.break_even_monthly);const area=Number(this.data.areaNum);return {rev:String(rev),pixel:String(Math.round(rev/area)),perHead:null};}';
 check('G-⑩ 负样本（分子改成**保本营业额** + 删掉 fail-closed）会被 G-⑥/G-⑧ 判红',

@@ -1176,6 +1176,7 @@ const TERMS = {
     m2NavLine: '填 4 个数，看要卖多少才保本、每月能赚多少（成本已含 2% 损耗）',
     feeRowsHint: '这几项按营业额的百分比算，不确定就保持默认；上面的营业额改了，这里不用重填',
     feeAmtUnit: '元/月',
+    moreAnalysis: '更多分析（利润阶梯 / 客群 / 效率 / 回本）',
     presetLabel: '行业标准',
     presetNone: '通用餐饮（经验估算）',
     presetPickedPre: '已按「',

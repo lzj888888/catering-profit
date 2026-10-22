@@ -492,7 +492,12 @@
     <!-- 🔴 R327：正推表 —— 做到这么多营业额能赚多少。
          M2 原先只有倒推（要赚 X 需要卖多少），老板紧接着会问「我大概能做到 15 万，能赚多少」。
          以保本线为基准取 4 档，不写死 8万/10万 —— 每个店保本线不同，绝对档位对多数店无意义。 -->
-    <view class="card2" wx:if="{{mode === 'forward' && profitLadder}}">
+    <!-- 🔴 R442（李老师 2026-10-22：「通篇太长」）：这四张卡（利润阶梯/客群/效率/回本）
+         都是「分析」，不是老板第一眼要看的结论 ⇒ 默认收起，点开才展开。
+         ⚠️ 只改四张卡各自的 wx:if，**不动 block 结构**（495-540 与 541 的 </block> 是跨层配对，
+            硬包一层会破坏层级）。 -->
+    <view class="fold-toggle" bindtap="onToggleMore">{{t.moreAnalysis}}{{showMore ? ' ▾' : ' ▸'}}</view>
+    <view class="card2" wx:if="{{mode === 'forward' && showMore && profitLadder}}">
       <view class="sec">{{t.profitLadderTitle}}</view>
       <view class="hint">{{t.profitLadderSub}}</view>
       <view class="pl-row pl-head">
@@ -511,7 +516,7 @@
          ⚠️ 由前端 `crowdOf()` 派生（正向引擎不出这两个数），引擎零改动。
          为什么放这个位置：先答「每月要卖多少钱」，紧接着答老板的下一句「那得来多少人」。
          fail-closed：人均消费或桌数没填 ⇒ crowd=null ⇒ 整块不渲染，**不给假数**。 -->
-    <view class="card2" wx:if="{{mode === 'forward' && crowd}}">
+    <view class="card2" wx:if="{{mode === 'forward' && showMore && crowd}}">
       <view class="sec">{{t.fwdCrowdTitle}}</view>
       <view class="cell"><text class="lbl">{{t.fwdCrowdBreakLbl}}</text><text class="val">{{crowd.breakPeople}}{{t.fwdCrowdUnit}}</text></view>
       <view class="cell"><text class="lbl">{{t.fwdCrowdTargetLbl}}</text><text class="val keynum">{{crowd.targetPeople}}{{t.fwdCrowdUnit}}</text></view>
@@ -524,7 +529,7 @@
          🔴 两项**都不挂行业区间**：仓内 BANDS 只有毛利率/房租占比/人工占比/能耗/管理/推广六项，
             **没有坪效、没有人效** —— R223 §3.2 红线＝不得编造分位数 ⇒ 只出数值，留给老板自家横比。
          fail-closed：没填实际营业额 ⇒ eff=null ⇒ 整块不渲染；面积/人数缺哪个就少哪一行。 -->
-    <view class="card2" wx:if="{{mode === 'forward' && eff}}">
+    <view class="card2" wx:if="{{mode === 'forward' && showMore && eff}}">
       <view class="sec">{{t.fwdEffTitle}}</view>
       <view class="cell" wx:if="{{eff.pixel}}"><text class="lbl">{{t.fwdPixelEffLbl}}</text><text class="val">{{t.cur}}{{eff.pixel}}{{t.fwdPixelEffUnit}}</text></view>
       <view class="cell" wx:if="{{eff.perHead}}"><text class="lbl">{{t.fwdPerHeadLbl}}</text><text class="val keynum">{{t.cur}}{{eff.perHead}}{{t.fwdPerHeadUnit}}</text></view>
@@ -541,7 +546,7 @@
   </block>
 
   <!-- 餐饮指标对照（待下面 payback 卡前） -->
-  <view class="card2" wx:if="{{mode === 'forward' && payback}}">
+  <view class="card2" wx:if="{{mode === 'forward' && showMore && payback}}">
     <view class="sec">{{t.paybackTitle}}</view>
     <view class="cell">
       <text class="lbl">{{t.paybackInvest}}</text>

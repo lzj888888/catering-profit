@@ -282,6 +282,7 @@ Page({
       m2NavLine: M.m2NavLine,
       feeRowsHint: M.feeRowsHint,
       feeAmtUnit: M.feeAmtUnit,
+      moreAnalysis: M.moreAnalysis,
       presetNone: M.presetNone,
       presetPickedPre: M.presetPickedPre,
       presetPickedSuf: M.presetPickedSuf,
@@ -497,6 +498,7 @@ Page({
     //   ⚠️ `pixel_eff_fen` 仍是**云函数契约字段**（validate 允许 0）⇒ 保留传参、恒传 0，不删字段。
     feeOverrides: {},        // itemKey → pct 字符串（L3 费率覆盖）
     feeRows: [],             // 当前预设 revenue_rate 项 [{key,label,pct}]
+    showMore: false,          // R442：结果区四张分析卡（利润阶梯/客群/效率/回本）默认收起
     showL2: false,
     showL3: false,
     // 🔴 R364：试验台（做活动）默认收起 —— 它问的是"如果"，不是老板要填的事实；
@@ -1526,6 +1528,9 @@ Page({
     this.setData({ feeOverrides: overrides, feeRows });
     this.scheduleCalc();
   },
+  // R442：展开/收起「更多分析」四张卡
+  onToggleMore() { this.setData({ showMore: !this.data.showMore }); },
+
   onToggleL2() { this.setData({ showL2: !this.data.showL2 }); },
 
   // R439（李老师 2026-10-22：「专业参数……这个餐饮老板知道什么意思吗？里面要装什么费率？」）：
