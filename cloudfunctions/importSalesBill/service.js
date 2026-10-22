@@ -397,6 +397,8 @@ const DISH_SHAPES = {
   A: 'dish_sales',    // 堂食《菜品销售统计》（美团收银 POS）—— 主路径
   B: 'combo_detail',  // 团购《套餐销售明细》—— 仅交叉校验，不入库
   C: 'waimai_goods',  // 外卖「商品销量」—— 🔴 样例已到货（R258/R259 实测：淘宝闪购「商品下载」355 行 = 7 天 × 51 商品）
+  // R432（队列 #43）：京东外卖「订单导出」—— 20 列，商品混装在一列，无独立销量/销售额列
+  D: 'jd_order_export',
 };
 
 // 形态 A 表结构常量（§2.1.2 实测 · 六项必核）
@@ -479,6 +481,12 @@ function detectDishShape(sheetRows) {
     && hasC('销售额')
     && r2.indexOf('销售方式') < 0
     && !has('费用类型')) return DISH_SHAPES.C;
+  // 🔴 R432（队列 #43）：京东外卖「订单导出」—— 商品混装在「商品信息」一列
+  //   为什么单列一支：它根本没有独立的「商品名称/销量/销售额」三列，形态 C 的判据永远不成立；
+  //   而在老板眼里「我明明有商品信息」，只说「缺三列」会让人觉得是自己导错了表。
+  //   判据取「商品信息」+（「顾客实付」或「订单编号」）—— 这三列是京东外卖订单导出的稳定签名。
+  //   ⚠️ 必须放在 C 之后：C 的判据更严（三列齐），先判 C 不会误吞 D。
+  if (has('商品信息') && (has('顾客实付') || has('订单编号'))) return DISH_SHAPES.D;
   return null;
 }
 
@@ -730,6 +738,106 @@ function parseDishSalesC(sheetRows, opts) {
   return { shape: DISH_SHAPES.C, rows: out, groups, totals, nonInt, zeroAmountQty, unmatched };
 }
 
+// ===== R432（队列 #43）：京东外卖「订单导出」形态 D =====
+// 为什么需要：京东外卖订单导出的商品是**混装**的 —— 20 列里没有独立的
+//   商品名称/销量/销售额，商品全部塞在「商品信息」一列，格式为「商品名,单价,数量」，多商品用 `/` 分隔。
+//   现有 4 个平台签名与形态 A/B/C 都认不出 ⇒ 直接拒收（老板会觉得「我明明有商品信息」）。
+//
+// 🔴 口径（必须写死在这里，否则下一个人会算错钱）：
+//   · amount_fen = Σ(单价 × 数量) × 100 —— **原价口径**，与形态 C 的「商品销售额」对齐，便于跨平台对比。
+//   · 京东订单的**顾客实付**常只有原价的 40%~60%（大额让利）⇒ 本形态入库的是
+//     「卖了什么、卖了多少份」，**不是到手多少钱**。毛利必须拿成本卡另算，不能拿这个金额减成本。
+//
+// 🔴 一个订单多个商品 ⇒ 拆开后按「日期 + 菜品键」聚合：
+//   不聚合的话，同一天同一道菜会出多行，下游按行累加 ⇒ 销量与金额都会重复计。
+function parseDishSalesD(sheetRows, opts) {
+  const rows = sheetRows || [];
+  const hdr = (rows[0] || []).map((x) => (x == null ? '' : String(x).trim()));
+  const iDate = hdr.indexOf('日期');
+  const iGoods = hdr.indexOf('商品信息');
+  const iOrder = hdr.indexOf('订单编号');
+
+  const empty = {
+    shape: DISH_SHAPES.D, rows: [], groups: [], totals: { qty: 0, amountFen: 0 },
+    nonInt: [], zeroAmountQty: [], unmatched: [],
+  };
+  // 缺关键列 ⇒ 回空结果，由上层 fail-closed；不在这里造数
+  if (iDate < 0 || iGoods < 0) return empty;
+
+  const agg = new Map();       // 'YYYY-MM-DD|dishKey' → { bizDate, name, dishKey, qty, amountFen }
+  const nonInt = [];
+  const unmatched = [];
+
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i] || [];
+    const bizDate = normalizeDate(r[iDate]);
+    const goodsRaw = r[iGoods] == null ? '' : String(r[iGoods]);
+    if (!bizDate || !goodsRaw.trim()) continue;
+
+    for (const seg0 of goodsRaw.split('/')) {
+      const seg = seg0.trim();
+      if (!seg) continue;
+      // 从右往左切两次（商品名里可能本身带逗号，从左切会切坏）
+      const p2 = seg.lastIndexOf(',');
+      if (p2 < 0) { unmatched.push({ name: seg, dishKey: '', qty: 0, amountFen: 0, bizDate }); continue; }
+      const p1 = seg.lastIndexOf(',', p2 - 1);
+      if (p1 < 0) { unmatched.push({ name: seg, dishKey: '', qty: 0, amountFen: 0, bizDate }); continue; }
+
+      const name0 = seg.slice(0, p1).trim();
+      const price = toNum(seg.slice(p1 + 1, p2));
+      const rawQty = toNum(seg.slice(p2 + 1));
+      const qty = rawQty == null ? 0 : Math.round(rawQty);
+      if (rawQty != null && !Number.isInteger(rawQty)) {
+        nonInt.push({ name: name0, raw: rawQty, rounded: qty });
+      }
+      // 🔴 金额：先按「元」算行小计，再一次性转分并 round —— 与形态 C 同形态。
+      //   不许先 `price * 100` 转分再乘数量：那会带着二进制残差去乘，误差被放大。
+      const lineYuan = (price == null ? 0 : price) * qty;
+      const amountFen = Math.round(Number((lineYuan * 100).toFixed(10)));
+      const dishKey = normalizeDishName(name0);
+
+      if (dishKey === '' || dishKey === '-') {
+        unmatched.push({ name: name0, dishKey, qty, amountFen, bizDate });
+        continue;
+      }
+      const k = bizDate + '|' + dishKey;
+      const cur = agg.get(k) || { bizDate, name: name0, dishKey, qty: 0, amountFen: 0 };
+      cur.qty += qty;
+      cur.amountFen += amountFen;
+      agg.set(k, cur);
+    }
+  }
+
+  const out = Array.from(agg.values());
+  // 金额 0 但有销量（加料/赠品）—— 与形态 C 同口径：按名聚合单列，不剔除
+  const zeroMap = new Map();
+  for (const r of out) {
+    if (r.amountFen === 0 && r.qty > 0) {
+      const z = zeroMap.get(r.name) || { name: r.name, qty: 0 };
+      z.qty += r.qty;
+      zeroMap.set(r.name, z);
+    }
+  }
+  const groupMap = new Map();
+  for (const r of out) {
+    const g = groupMap.get(r.bizDate) || { bizDate: r.bizDate, rows: [] };
+    g.rows.push(r);
+    groupMap.set(r.bizDate, g);
+  }
+  return {
+    shape: DISH_SHAPES.D,
+    rows: out,
+    groups: Array.from(groupMap.values()).sort((a, b) => (a.bizDate < b.bizDate ? -1 : 1)),
+    totals: {
+      qty: out.reduce((s, x) => s + x.qty, 0),
+      amountFen: out.reduce((s, x) => s + x.amountFen, 0),
+    },
+    nonInt,
+    zeroAmountQty: Array.from(zeroMap.values()),
+    unmatched,
+  };
+}
+
 // ===== R271：跨平台重复导入检测（防「同一份表用两个平台各导一次 ⇒ 销量翻倍」）=====
 //
 // 🔴 为什么必须拦（不是"讲究"，是真错账）：
@@ -799,6 +907,7 @@ module.exports = {
   extractBizDate, dishRefId, saleDocId, parseDishSales,
   detectDupImport, DUP_MIN_SCAN, DUP_MIN_HIT, DUP_RATE,   // R271：跨平台重复导入检测（防销量翻倍）
   normalizeDate, parseDishSalesC,   // v1.7 形态 C（外卖商品销量）
+  parseDishSalesD,                  // R432 形态 D（京东外卖订单导出，商品混装在一列）
   BILL_IMPORT_ENABLED,              // R259：账单导入开关（前端 utils/featureFlags.js 同源同值）
   diagnoseColumns, pickHeaderRow, DIAG_REQUIRED, DIAG_MAX_COLS,   // R286：认不出表时「缺哪几列」诊断
 };

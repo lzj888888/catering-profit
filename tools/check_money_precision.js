@@ -148,6 +148,7 @@ const REGISTRY = {
     'PAREN|) * 100|#2': ['money', '形态 C 销售额（元）→ 分'],
     'PAREN|) * 100|#3': ['money', '形态 C 优惠额（元）→ 分'],
     'PAREN|) * 100|#4': ['money', '美团销量表 amount_fen = 销售额（元）× 100（v1.7 C-3）'],
+    'IDENT|lineYuan * 100|#1': ['money', 'R432 形态 D（京东外卖订单导出）：行小计（单价 × 数量，元）→ 分，落 amount_fen'],
   },
   'cloudfunctions/saveCostCard/index.js': {
     'IDENT|result.unit_cost_fen * 100|#1': ['scaled_int', '单份半成品成本：整数分 → 万分（1 分 = 100 万分），精确'],

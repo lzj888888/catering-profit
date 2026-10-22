@@ -21,7 +21,7 @@ const {
   pickSheet,   // R245：🔴 京东表名不固定 ⇒ 判定 sheet 是否存在必须按签名找，不能硬编码表名
   detectPlatformInRows, detectPlatformInMatrix,   // R250：平台自动判定逐行试签名（京东订单级两级表头）
   PLATFORM_AMBIGUOUS,   // R253：多平台同时命中哨兵 —— 🔴 必须 import，truthy 陷阱见 :73 附近
-  DISH_SHAPES, detectDishMatrix, parseDishSales, parseDishSalesC, dishRefId, saleDocId,
+  DISH_SHAPES, detectDishMatrix, parseDishSales, parseDishSalesC, parseDishSalesD, dishRefId, saleDocId,
   BILL_IMPORT_ENABLED,   // R259：账单导入开关（只作用账单，形态 A/B/C 不受影响）
   detectDupImport,       // R271：跨平台重复导入检测（纯函数，零 IO ⇒ 守卫/探针可直测）
   diagnoseColumns,       // R286：认不出表形态时「缺哪几列」诊断（走 ok 通道，见 :111 附近说明）
@@ -207,7 +207,7 @@ async function handleDishImport({ shopId, userId, clientRequestId, dishDetect, m
     return fail(ERROR_CODES.INVALID_PARAM, '这是套餐销售明细表，套餐组分已并入菜品销售表，本表仅作交叉校验、不单独导入。');
   }
   // 形态 C：外卖商品销量 —— v1.7 C-2~C-7 本批实现真导入（platform 由调用方显式传入）
-  if (dishDetect.shape === DISH_SHAPES.C) {
+  if (dishDetect.shape === DISH_SHAPES.C || dishDetect.shape === DISH_SHAPES.D) {
     return handleFormCImport({ shopId, userId, clientRequestId, dishDetect, matrix, confirm, platform });
   }
   // 仅形态 A 走主路径
@@ -310,7 +310,11 @@ async function handleDishImport({ shopId, userId, clientRequestId, dishDetect, m
  */
 async function handleFormCImport({ shopId, userId, clientRequestId, dishDetect, matrix, confirm, platform }) {
   const sheetRows = matrix.sheets[dishDetect.sheet].rows;
-  const parsed = parseDishSalesC(sheetRows, { platform });
+  // R432（队列 #43）：形态 D（京东外卖订单导出）与 C 的输出结构完全一致
+  //   ⇒ 只在这一处分叉解析，门禁/预览/落库/重复检测全部复用，避免两套逻辑漂移。
+  const parsed = dishDetect.shape === DISH_SHAPES.D
+    ? parseDishSalesD(sheetRows, { platform })
+    : parseDishSalesC(sheetRows, { platform });
 
   // 甲级门禁（fail-closed）：逐组展开成行喂 checkGradeA；platform 由 opts 传入（R181m）
   const gradeRows = [];
@@ -337,7 +341,7 @@ async function handleFormCImport({ shopId, userId, clientRequestId, dishDetect, 
     return ok({
       shop_id: shopId,
       platform: platform || '',
-      shape: DISH_SHAPES.C,
+      shape: parsed.shape,
       // 预览期门禁：剔掉 platform 项（平台的阻断留给 confirm；见上方注释）
       grade: platform ? grade : gradeNonPlatform,
       platform_missing: !platform,
@@ -404,7 +408,7 @@ async function handleFormCImport({ shopId, userId, clientRequestId, dishDetect, 
   const out = {
     shop_id: shopId,
     platform,
-    shape: DISH_SHAPES.C,
+    shape: parsed.shape,
     written,
     groups: parsed.groups.map((g) => ({ bizDate: g.bizDate, count: g.rows.length })),
     totals: parsed.totals,

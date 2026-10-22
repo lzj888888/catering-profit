@@ -29,6 +29,8 @@ const DISH_SHAPES = {
   A: 'dish_sales',
   B: 'combo_detail',
   C: 'waimai_goods',
+  // R432（队列 #43）：京东外卖「订单导出」—— 商品混装在一列，云函数侧新解
+  D: 'jd_order_export',
 };
 
 // v1.7 形态 C（外卖商品销量）：外卖平台选择项（label 来自 terms 单源；不含 pos —— 堂食不走这条路）
@@ -548,7 +550,9 @@ Page({
         this.setData({ importDiagText: '', importDiagFoundText: '' });
       }
       const p = d.preview || null;
-      const isC = d.shape === DISH_SHAPES.C;
+      // R432：形态 D（京东外卖订单导出）的输出结构与 C 完全一致（groups/totals）
+      //   ⇒ 共用同一段分组预览。变量名沿用 isC（下面 6 处都读它），语义 = 走分组路径。
+      const isC = d.shape === DISH_SHAPES.C || d.shape === DISH_SHAPES.D;
       let preview = null;
       // 🔴 R303：一级校验结论（默认空串 ⇒ 不渲染；不假报"一切正常"）
       let sanityText = '';
