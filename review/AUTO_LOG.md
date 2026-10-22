@@ -457,3 +457,9 @@
   - **改了两条守卫判据**（钉字面量 → 判语义，依据 R297）：F-⑤ / G-⑨ 原要求字面量连续，插了 showMore 后语义没变却误红。**变异证明**：去掉 forward ⇒ F-⑤ 转红，还原后 64 绿。
   - 配套 `check_hint_fold::segFolds` 4 → 5。
 - [2026-10-23 00:38] 今日 M2 八件全落：假设区按场景删 · 顶部导航 · 说明可读性 · 业态 15→7 · 费率行显示金额 · 业态改名 · 删 L3 · 结果区四卡折叠
+
+- [2026-10-23 00:52] R443 只读巡检（队列 0 todo / 0 in_progress：33 done + 11 blocked）· 门禁 205/205（`_归档_过程件_202610/_gate_r442b.log` 00:34，661.3s，0 ❌ / 0 FAIL 行；该日志无 RC 行 ⇒ RC 未留痕，不冒称 RC=0）· 本轮无代码改动 · 队列 #9 why 收窄
+  - 跟踪面干净；根目录 9 个未跟踪 `_*.py/_*.txt` 属并发会话临时件，未动。🔴 并发会话在跑：同一 3 分钟内未跟踪件由 14 减到 9、AUTO_LOG mtime 00:39 ⇒ 提交只走显式路径，不用 `git add -A`。
+  - 抽检三条 NOTE 对得上：R423 分包（主包 4 页 + biz 15 + tools 9 = 28；`pages/` 0.164MB；`pages/ledger|card|metrics` 真实命中 0 —— 扫出的 166 条全在 `review/evidence/` 历史快照内，属该保留）· R427 M1 四入口（`subpkg/biz/month/input.js` :676/:1159/:1218/:1378 均真调 `checkAmounts()`）· R426 M3 两页（card/edit 9 处、material/edit 3 处，含 onSave 硬拦）。
+  - 队列 #9 why 收窄：京东侧已由 #43（形态 D 订单导出）落地并部署 ⇒ 不再是「缺美团/京东样例」，仅缺**美团销量表**样例（`review/evidence/r177_meituan` 只有 8 月对账 JSON，无销量表列名）。blocked 维持。
+  - 遗留未改（价值/风险不对等）：`cloudfunctions/syncCostCard/index.js:124` 注释仍写旧路径 `pages/metrics/impact.js`（现实为 `subpkg/biz/metrics/impact.js`），纯注释、不影响运行，留待该函数下次因业务改动重部署时顺手更正。
