@@ -48,7 +48,7 @@
 .row { display: flex; align-items: center; min-height: 88rpx; }
 .row-name { flex: 0 0 200rpx; font-size: 28rpx; color: #333; }
 /* 🔴 R341：输入项的语义补答（≤18 字），对齐输入框左边界；字号 28rpx 满足 AD-G1 */
-.row-hint { font-size: 28rpx; color: #888; padding: 0 0 10rpx 200rpx; line-height: 1.4; }
+.row-hint { font-size: 28rpx; color: #646a73; padding: 0 0 10rpx 200rpx; line-height: 1.4; }
 .row-in-wrap {
   flex: 1 1 auto; display: flex; align-items: center;
   border: 1rpx solid #dfe5ec; border-radius: 10rpx; padding: 6rpx 14rpx; background: #fff;
@@ -95,7 +95,7 @@
    目的：降低"不知道这项该填多少"的门槛（客户多为餐饮小白）。
    ⚠️ 无障碍硬约束（selftest_ad_gates G1/G2）：字号一律 ≥28rpx；min-height 只在 88rpx 用。 */
 .rw { display: block; }
-.row-note { font-size: 28rpx; color: #9aa4b2; line-height: 1.4; padding: 0 0 12rpx; }
+.row-note { font-size: 28rpx; color: #646a73; line-height: 1.4; padding: 0 0 12rpx; }
 /* ===== R234 · 「寻找铺面」Tab：行规自动带出条（房租率来自云端 BANDS，**不是用户填的**）=====
    设计意图：这行不是输入框，是"告知"。把百分比放大到标题级字号，让它像一句结论而非一个参数。 */
 .auto-band { display: flex; align-items: baseline; flex-wrap: wrap; padding: 14rpx 0 4rpx; }
