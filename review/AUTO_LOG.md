@@ -435,3 +435,8 @@
   - 自纠：① 误删 onToggleL2 换行致两行粘连（已拆回）② `' 元/月'` 硬编码 ⇒ `check_m2_matrix` 判「硬编码中文 12 > 基线 11」⇒ 移进 terms（`feeAmtUnit`）。
   - 今日 M2 四件全落：假设区按场景删（R435）· 顶部导航（R436）· 说明可读性（R437）· 业态+费率（R438/439）。
   - 未做：专业参数**改填金额**（要动引擎契约）——本轮用「显示金额」等效替代，老板能核对即可。
+
+- [2026-10-22 22:40] R441 只读巡检（队列 **0 todo / 0 in_progress** ⇒ 按规则不认领、不写码）· 最近门禁 **205/205 通过**（22:21 实跑 `_gate_r439b.log`，无 ❌/FAIL 行）· 零代码改动，仅回执 + 队列状态回写
+  - 四项判据：① 跟踪面 `git status --porcelain --untracked-files=no` **空**，HEAD `962e266` ≡ `origin/dev` ② 最近门禁 205/205，**晚于**最后一条代码提交 `5b17e19`（22:0x）、**早于**纯回执 `962e266`（22:23）⇒ 覆盖当前代码 ③ 无僵尸 todo：机器统计 43 行 = 29 `done/no` + 13 `blocked/yes` + 1 `done/yes` ④ 最近三条 NOTE 抽检**对得上**：R423 分包（`app.json` 主包 4 + `subpkg/biz` 15 + `subpkg/tools` 9 = 28 页，主包 `pages/` 0.125MB）· R427 M1 四入口（`subpkg/biz/month/input.js` 真接线 `onRecYuan:1218` / `onDirectConsume:1378` / 三框 `:1159`）· R426 M3 两页（`card/edit.js:995`、`material/edit.js:286` onSave 硬拦）
+  - 🔴 **本轮实质发现＝反向漂移 3 处**（不是僵尸 todo，而是「干完了仍标 blocked」），已回写：**#36 与 #8 是同一件事**（#8 已 done，`timeout=20` 机器回读）⇒ done；**#27 分包执行面**已由 R419–R423 S0–S5 落完（NOTE §7 原话「彻底结束」+ 主包 0.125MB 实测）⇒ done；**#12** 写侧 R403 / 读侧 R405（已被 `subpkg/biz/ai/consent.js:54` 真调用）/ 授权页 R434 三件已落 ⇒ 原 why 的「读侧缺」作废，仅剩第 4 条索引（需 AppSecret、用后须轮换 ⇒ 仍须李老师拍板，维持 blocked）。另 #17 `status=done` 而 `blocked=yes` 属标记残留 ⇒ 改 `no`
+  - 未做（如实登记）：① `_gate_r439b.log` **只有「总览：205/205 通过」+ `R92: ✅`，没有 RC 字段留痕** ⇒ `RC=0` 无法从该文件自证（runner 只写总览），本条不据此宣称 RC；② 未重跑门禁/出码/部署 —— 本轮零代码改动，按纪律不重复跑，也不拿"重跑一次"冒充验证
