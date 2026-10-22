@@ -181,6 +181,9 @@
           <input class="row-in" type="digit" value="{{item.pct}}" data-key="{{item.key}}" bindinput="onFeePct" adjust-position="{{true}}" cursor-spacing="20" />
           <text class="row-unit">{{t.pctUnit}}</text>
         </view>
+        <!-- R439：按老板填的预计月营业额折算成钱，让他能核对（如房租 12% ≈ 12,000 元/月）。
+             只显示，不参与任何计算；没填营业额时为空。 -->
+        <text class="fee-amt" wx:if="{{item.amtText}}">{{item.amtText}}</text>
       </view>
     </view>
     <!-- 本次测算底层假设（默认折叠可展开） -->

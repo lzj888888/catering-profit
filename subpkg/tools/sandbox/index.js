@@ -281,6 +281,7 @@ Page({
       presetLabel: M.presetLabel,
       m2NavLine: M.m2NavLine,
       feeRowsHint: M.feeRowsHint,
+      feeAmtUnit: M.feeAmtUnit,
       presetNone: M.presetNone,
       presetPickedPre: M.presetPickedPre,
       presetPickedSuf: M.presetPickedSuf,
@@ -867,6 +868,8 @@ Page({
 
   // ===== 自动重算（防抖；AD-6/AD-7 折中）=====
   scheduleCalc() {    this.setData({ dirty: true });
+    // R439：费率行同步「≈ 每月多少钱」—— 营业额一改，这里跟着变（见 refreshFeeAmt）
+    this.refreshFeeAmt();
     // R414（队列 #25）：先体检金额框，再走防抖计算（体检本身零成本，不触发云端）
     this.checkAmountInputs();
     // R193：用户一改就存草稿（此处已是 700ms 防抖链路上，不会高频写盘）
@@ -1524,6 +1527,28 @@ Page({
     this.scheduleCalc();
   },
   onToggleL2() { this.setData({ showL2: !this.data.showL2 }); },
+
+  // R439（李老师 2026-10-22：「专业参数……这个餐饮老板知道什么意思吗？里面要装什么费率？」）：
+  //   费率框是**占营业额的百分比**，但老板知道的是「房租 1.2 万」，算不出「占 12%」。
+  //   ⇒ 每行旁边补一句「≈ 每月多少钱」，用**他自己填的预计月营业额**折算，让他能核对。
+  //   ⚠️ 只做显示，**不参与任何计算、不改引擎入参**（真正的值仍是 pct）。
+  refreshFeeAmt() {
+    const rows = this.data.feeRows || [];
+    if (!rows.length) return;
+    const raw = String(this.data.expectYuan == null ? '' : this.data.expectYuan).replace(/[^\d.]/g, '');
+    const rev = Number(raw);
+    let changed = false;
+    const out = rows.map((r) => {
+      const p = Number(r.pct);
+      const ok = isFinite(rev) && rev > 0 && isFinite(p) && p > 0;
+      const txt = ok ? ('≈ ' + MoneyFmt.groupDigits(Math.round(rev * p / 100)) + ' ' + (this.data.t.feeAmtUnit || '')) : '';
+      if (txt !== (r.amtText || '')) changed = true;
+      return Object.assign({}, r, { amtText: txt });
+    });
+    // 无变化就不 setData，避免每次输入都整表重渲染
+    if (changed) this.setData({ feeRows: out });
+  },
+
   onToggleL3() { this.setData({ showL3: !this.data.showL3 }); },
   onTogglePromo() { this.setData({ showPromo: !this.data.showPromo }); },
   onToggleAssumptions() { this.setData({ showAssumptions: !this.data.showAssumptions }); },

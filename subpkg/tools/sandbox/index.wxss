@@ -285,3 +285,6 @@
 
 /* R436：顶部一行导航（填什么 → 看什么）。字号走 28rpx 底线（selftest_ad_gates G1）。 */
 .m2nav { font-size: 28rpx; color: #8a94a6; line-height: 1.6; padding: 8rpx 24rpx 0; }
+
+/* R439：费率行「≈ 每月多少钱」—— 灰色小字但走 28rpx 底线；宽度不够时换行不挤掉输入框。 */
+.fee-amt { font-size: 28rpx; color: #646a73; margin-left: 12rpx; flex: 0 0 auto; }
