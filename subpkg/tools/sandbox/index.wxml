@@ -173,6 +173,8 @@
              · 翻台率 `turnNum` 引擎**根本不收** ⇒ 填了触发重算却零影响 = 纯死输入；
              · 坪效 `pixelEffYuan` 唯一下游 `area_cap_sqm` 因坪效不让问而恒 null ⇒ 一并移除。
            引擎**输出**的翻台率（reverseResult.turn_rate）照常展示 —— 那是算出来的，不是填的。 -->
+      <!-- R438：费率区说明 —— 老板不知道该不该动（李老师 2026-10-22「专业参数……这个也没有用了」） -->
+      <view class="row-note">{{t.feeRowsHint}}</view>
       <view class="row" wx:for="{{feeRows}}" wx:key="key">
         <text class="row-name">{{item.label}}</text>
         <view class="row-in-wrap">

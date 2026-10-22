@@ -261,9 +261,26 @@ const hasBizFilter = !!spo && /\.filter\s*\(/.test(spo) && /\bbizKey\b/.test(spo
 check('B-① 函数体内**不得**按 `bizKey` 过滤选项（否则又变回两级 picker）',
   !hasBizFilter, hasBizFilter ? '发现 .filter( 与 bizKey 同现 ⇒ 又在做类内过滤' : '无 bizKey 过滤（6 项全给）');
 // 正向：选项必须来自 BIZ_PRESETS **整体**（map 出全部，而不是先筛后 map）。
-check('B-② 选项由 `BIZ_PRESETS` 整体 `map` 得出（不是先筛后 map）',
-  !!spo && /BIZ_PRESETS\s*\.\s*map/.test(spo.replace(/\s+/g, ' ')),
-  !!spo ? (spo.match(/BIZ_PRESETS[^;]{0,60}/) || [''])[0].replace(/\s+/g, ' ').trim() : 'N/A');
+// 🔴 R438（李老师 2026-10-22）：B-② 从「只许整体 map」放宽为「整体 map，或展示白名单筛」。
+//   为什么放宽（不是迎合代码，是原判据过严）：
+//   原判据用「禁一切 filter」来反证 B-①（防两级 picker），但它连带禁止了**白名单筛**。
+//   而白名单筛是产品决策：14 个预设只映射 4 个 bizKey，光 dining 就占 5 个
+//   （川菜/湘菜/粤菜/家常/其他）⇒ 选哪个算出来一样，李老师原话「选择更细的二级也没意义」。
+//   区分点：B-① 禁的是「按 bizKey 筛」（选中餐只剩 1 项）；白名单筛**不按 bizKey 筛**。
+//   ⇒ 放宽同时**加一道更强的守**：白名单必须覆盖全部 4 个 bizKey（否则等于把某个业态藏没了）。
+const _BP = require('../utils/bizPreset.js').BIZ_PRESETS;
+const _spoFlat = (spo || '').replace(/\s+/g, ' ');
+const _isWholeMap = /BIZ_PRESETS\s*\.\s*map/.test(_spoFlat);
+const _wlMatch = (spo || '').match(/DISPLAY_KEYS\s*=\s*\[([^\]]+)\]/);
+const _wlKeys = _wlMatch ? ((_wlMatch[1].match(/'([^']+)'/g) || []).map((s) => s.replace(/'/g, ''))) : [];
+const _isWhitelist = /BIZ_PRESETS\s*\.\s*filter/.test(_spoFlat) && _wlKeys.length > 0;
+const _covered = new Set(_wlKeys.map((k) => ((_BP.find((p) => p.presetKey === k) || {}).bizKey)).filter(Boolean));
+const _coversAll = _covered.size >= 4;
+check('B-② 选项来自 `BIZ_PRESETS`（整体 map｜或白名单筛且白名单覆盖 4 大业态）',
+  !!spo && (_isWholeMap || (_isWhitelist && _coversAll)),
+  !!spo
+    ? (_isWholeMap ? '整体 map' : ('白名单 ' + _wlKeys.length + ' 项覆盖 ' + _covered.size + ' 个业态'))
+    : 'N/A');
 const op = bodyOf(js, 'onPreset') || '';
 check('B-③ 选完预设必须回写 `bizIdx`（否则参考带停在旧业态，且零报错）',
   /\bbizIdx\b/.test(op), /\bbizIdx\b/.test(op) ? 'onPreset 内有 bizIdx' : '未回写 bizIdx ⇒ 换业态后行规不跟');

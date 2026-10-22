@@ -280,6 +280,7 @@ Page({
       // M2v1.3（业态参数包 + 回本卡）
       presetLabel: M.presetLabel,
       m2NavLine: M.m2NavLine,
+      feeRowsHint: M.feeRowsHint,
       presetNone: M.presetNone,
       presetPickedPre: M.presetPickedPre,
       presetPickedSuf: M.presetPickedSuf,
@@ -1082,7 +1083,22 @@ Page({
       const bt = this.data.t.bizTypes.find((x) => x.key === bk);
       return bt ? bt.name : '';
     };
-    const opts = BIZ_PRESETS.map((p) => {
+    // 🔴 R438（李老师 2026-10-22）：「中餐 湘菜 东北菜 什么的，这个重复的东西核算也是按中餐核算，
+    //   你让餐饮老板选择更细的二级也没意义呀」——查证属实：14 个预设只映射到 4 个 bizKey
+    //   （fastfood / hotpot / dining / cafe），**光 dining 就占 5 个**（川菜/湘菜/粤菜/家常/其他）
+    //   ⇒ 选哪个算出来一模一样，是伪选择。
+    //   ⇒ 下拉只展示 6 个代表项；**被隐藏的 key 仍保留在 BIZ_PRESETS 里**，旧方案照常解析。
+    const DISPLAY_KEYS = ['fastfood_noodle', 'fastfood_other', 'dining_sichuan',
+      'hotpot_half_self', 'hotpot_barbecue', 'cafe_tea'];
+    let shownPresets = BIZ_PRESETS.filter((p) => DISPLAY_KEYS.indexOf(p.presetKey) >= 0);
+    // 旧方案用到的 key 若不在白名单 ⇒ 临时补一条：否则 findIndex 找不到会回落 presetIdx=0
+    // （显示成"通用餐饮"，老板会以为方案坏了）。
+    const curKey = this.data.presetKey;
+    if (curKey && curKey !== 'other' && !shownPresets.some((p) => p.presetKey === curKey)) {
+      const old = BIZ_PRESETS.find((p) => p.presetKey === curKey);
+      if (old) shownPresets = shownPresets.concat([old]);
+    }
+    const opts = shownPresets.map((p) => {
       const c = catName(bizKeyOfPreset(p.presetKey));
       const base = this.data.t.bizPresets[p.presetKey] || p.presetKey;
       return { key: p.presetKey, name: (c ? c + ' · ' : '') + base };
