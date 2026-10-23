@@ -30,6 +30,8 @@
     <input class="val-input" type="digit" value="{{dineYuan}}" bindinput="onDine" placeholder="0" adjust-position="{{true}}" cursor-spacing="20" />
   </view>
 
+  <!-- 🔴 R443：读不成就不算（同 M1/M2/成本卡口径），提示挂在这里而不是弹窗，避免盖住输入框 -->
+  <view class="warn" wx:if="{{badAmountCount > 0}}">{{t.amountBadTip}}</view>
   <button class="btn primary" style="margin-top:24rpx;" bindtap="onCalc">{{t.calc}}</button>
 
   <!-- 结果：到手侧只按渠道算（不进 M1） -->

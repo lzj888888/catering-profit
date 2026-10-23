@@ -16,6 +16,8 @@ const { fetchEntitlement } = require('../../../utils/entitlement.js');
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 const { calcGrouponOrder } = require('../../../utils/grouponDerive.js');
 const dh = require('../../../utils/dataHealth.js'); // R299：getCostCard 出参 truncated 必须透传（选卡清单可能不全）
+// 🔴 R443：金额「读不成」判定（与 M1/M2/成本卡同一件，见 utils/amountInput.js 头注）
+const AmountInput = require('../../../utils/amountInput.js');
 
 const G = TERMS.card; // groupon* 文案挂在 TERMS.card 下
 
@@ -42,6 +44,7 @@ Page({
       vsDineMore: G.grouponVsDineMore,
       lossHint: G.grouponLossHint,
       dataTruncated: TERMS.ui.dataTruncated,
+      amountBadTip: TERMS.ui.amountBadTip,
       cur: '¥',
       loading: TERMS.ui.loading,
     },
@@ -54,6 +57,7 @@ Page({
     result: null,        // calcGrouponOrder 输出
     view: null,          // 展示用（分→元）
     truncated: false,    // R299：成本卡列表可能被服务端截断
+    badAmountCount: 0,   // R443：读不成的金额/百分比栏数（>0 ⇒ 不计算）
     loading: true,
   },
 
@@ -93,6 +97,19 @@ Page({
   onPromo(e) { this.setData({ promoYuan: e.detail.value }); },
   onDine(e) { this.setData({ dineYuan: e.detail.value }); },
 
+  // 🔴 R443：金额/百分比「读不成」必须在算之前说出来（与 M1/M2/成本卡同一口径）
+  //   为什么：下面 `fen()` 实现是 `Number(v) || 0` ——
+  //     · 「1,200」/「１２００」/「88元」⇒ 静默变 **0**（到手 0、毛利 = −成本 ⇒ 会弹"这单亏损"，
+  //       但原因其实是读不成，老板会以为自己算错了团购价）；
+  //     · 「-88」⇒ 佣金为负 ⇒ 到手反而高于团购价，**连提示都没有**。
+  //   只判定、不改数（不替老板去逗号：`1,5` 可能是欧洲写法 15 或 1.5，猜错比不猜更糟）。
+  checkAmounts() {
+    const list = [this.data.priceYuan, this.data.ratePct, this.data.promoYuan, this.data.dineYuan];
+    const n = list.filter((v) => !AmountInput.classifyAmount(v).readable).length;
+    if (n !== this.data.badAmountCount) this.setData({ badAmountCount: n });
+    return n;
+  },
+
   // ===== 计算（付费墙：点「算到手」时拦）=====
   async onCalc() {
     const ent = await fetchEntitlement().catch(() => null);
@@ -103,6 +120,8 @@ Page({
     const idx = this.data.cardIndex;
     if (idx < 0 || !this.data.dishes[idx]) { wx.showToast({ title: this.data.t.pick, icon: 'none' }); return; }
     if (!this.data.priceYuan) { wx.showToast({ title: G.grouponNeedPrice, icon: 'none' }); return; }
+    // 🔴 R443：先判「读得成吗」——读不成就不出数（否则 0 会被当真实金额算出一份"假结果"）
+    if (this.checkAmounts() > 0) return;
     // 元→分（与外卖页同一换算，乘 100 取整）
     const fen = (v) => Math.round(Number(((Number(v) || 0) * 100).toFixed(10)));
     const r = calcGrouponOrder({
