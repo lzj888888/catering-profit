@@ -509,3 +509,10 @@
   - ⑤ **顺手订正（同属「status 与代码事实不一致」）**：`#48` todo→done（`87d4ea6` 实测 5 文件 186+/45−；三件必修逐条实读：`input.js` 286 `applyDraftFromStorage` / 292 店铺比较 / 312 onShow 调用 / 636 load 内兜底 / onHide 321-326 `if(!sid) return`；`inventory.js` 84 / 89 / 98 / 162 / onHide 104-107；`check_write_reentry_guard.js` 300-400 五条腿齐）· `#27` 备注 `subpkg/biz` 15→16、28→29 页（第 16 页 `subpkg/biz/ai/consent`）、205/205→206/206 · `CODEBUDDY.md:17` 25→29 页、`:20` 167→206 套件（🔴 **该文件只在会话目录 `2026-09-08-22-08-11/`，仓根无此文件，不入 git**）。
   - ⑥ **本回执新登记（只登记、不改码）**：队列 `status` 与代码事实不一致（#45/#48/#27 三例）**目前无守卫拦截**，只能靠巡检人肉发现 ⇒ 待补判据：`done` 行必须能在 `git log` 找到对应 commit 且备注里的数字与实读一致。
   - ⑦ 执行纪律留痕：门禁一律 `> log 2>&1; echo RC=$?`，**不给门禁加 `| tail/head`**（读端先关 ⇒ SIGTERM ⇒ 空日志假失败）；后台任务等 `<task-notification>`，不轮询。
+- [2026-10-24 00:03] R450 真机预览码产出（#45 收口 ④） · 零代码改动 · 门禁未重跑（复用 R449 的 **206/206 RC=0 · 398.0s**，本轮回执只改 md 不触达 `packOptions` 打封面）· commit 见本条提交
+  - ① 出码成功：`preview_r450_20261023_235433.jpg` **45975 B** / 头 4B `ffd8ffe0` / md5 `0c3e6ec36948b1fa1241d3440ae64186` / 产物总量 **745.8 KB（763693 B）**；耗时 61.0s（阶段1 一次成功，未进阶段2）
+  - ② 可扫性判据（不信自述、只认解码）：`_qr_verify.py` → **`VERIFY_RC=0`**，解出 `https://mp.weixin.qq.com/a/~~2gaUQk7Oam4~jb5FOTC6ea419_1OLjUUXg~~`，像素 470x470 内码区 **414x409** ⇒ 码完整可扫、未被裁切
+  - ③ 三件交付：短名 `qr_now.jpg`（旧短名已归档 `r450_20261022_185309_qr_now_old.jpg`）/ 2x `qr_now_x2.png`（940×940 · 41525 B，**已 Read 进对话供当场对屏扫**）/ 桌面 `店算_真机预览码_r450.jpg`（45975 B）
+  - ④ 出码前置硬门（脚本自带，不一致即 `sys.exit(1)`）：`env 一致 = True ('cloud1-d4gphpoxy337f2a25')` —— `miniprogram/config/env.js::dev` 与 `cloudfunctions/initDb/config.json::DEV_ENV_ID` 逐字相等
+  - ⑤ 两条事实订正（登记，别再踩）：**`port_open(35237)=False` 不影响出码**（`cli.bat preview` 自起 IDE server，日志 `√ IDE server has started, listening on http://127.0.0.1:10896` 为动态端口）⇒ 35237 只是参考信号、非前置条件，**不手动起 IDE、不传 `--port`**；`- Fetching AppID () permissions` 空括号属 CLI 自身噪音，判据仍只认「产出 = ✅ 是」+ 字节数 + md5 + 头 4B
+  - ⑥ 事实边界：**出码 ≠ 走查**。遵 2026-09-23「不要再弹二维码」⇒ 未弹窗、未保活、不预告失效；未擅自建仓根 `outputs/`（`packOptions.ignore` 20 条内**无** `outputs` ⇒ 会进打包面；`review` 在 ignore 第 2 条 ⇒ 本回执改 md 不触达打包面）。走查仍待李老师人工用微信扫码，问题**贴成文字**回传（我读不了图片、且无扫码能力）
