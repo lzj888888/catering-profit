@@ -42,7 +42,7 @@
     <view class="cell"><text class="lbl">{{t.profit}}</text><text class="val strong">{{t.cur}}{{view.profit}}</text></view>
     <view class="cell"><text class="lbl">{{t.netRate}}</text><text class="val">{{view.netRate}}%</text></view>
     <view class="warn" wx:if="{{result.profitFen < 0}}">{{t.lossHint}}</view>
-    <view class="cell" wx:if="{{view.hasDine}}"><text class="lbl">{{view.vsDinePositive ? t.vsDineMore : t.vsDine}}</text><text class="val">{{t.cur}}{{view.vsDine}}</text></view>
+    <view class="cell" wx:if="{{view.hasDine}}"><text class="lbl">{{view.vsDineMore ? t.vsDineMore : t.vsDine}}</text><text class="val">{{t.cur}}{{view.vsDine}}</text></view>
   </block>
 </view>
 <view wx:else class="container safe-bottom"><view class="muted">{{t.loading}}</view></view>

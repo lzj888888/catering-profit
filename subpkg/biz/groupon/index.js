@@ -119,9 +119,11 @@ Page({
         profit: fmt(r.profitFen),
         netRate: r.netRatePct,
         profitRate: r.profitRatePct,
-        // vsDine 只用于展示：文案按键切换（多赚/少赚），金额一律取绝对值，避免「多赚 ¥-5.00」
+        // vsDineFen = 堂食毛利 − 团购利润（见 grouponDerive.js）⇒ < 0 才是团购多赚；
+        // 与 card/edit.js 的 vsDineNeg（> 0 = 团购拉低毛利）同源，勿反。
+        // 金额一律取绝对值，避免「多赚 ¥-5.00」
         vsDine: fmt(Math.abs(r.vsDineFen)),
-        vsDinePositive: r.vsDineFen > 0,
+        vsDineMore: r.vsDineFen < 0,
         hasDine: r.hasDine,
       },
     });

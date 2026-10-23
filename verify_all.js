@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：205 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：206 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -943,6 +943,9 @@ const SUITES = [
   // M3.17 + M3.32（批次 D · 外卖单均 + 补贴拆行/固定佣金）：T-a~T-g 七组锚点。
   //   佣金基数恒为商品总价（不含打包费）；双口径不混；补贴承担方未选不计入（fail-closed）；输出不含 M1 字段。
   ['m3-takeaway', 'tools/selftest_m3_takeaway.js'],
+  // M3.37 / R190（R443 批次 · 到店团购＝M3 第二渠道）：G-a~G-f 六组锚点。
+  //   佣金基数恒为顾客实付价（不是原价）；费率无默认（R128）；vsDineFen<0 = 团购多赚；输出不含 M1 月度字段。
+  ['m3-groupon', 'tools/selftest_m3_groupon.js'],
   // M3.19（批次 E · 原料变动与影响面）：C-a/C-a2 两组锚点 + dry_run 零写库 + 未挂牌价抑制。
   ['m3-impact', 'tools/selftest_m3_impact.js'],
   // M3.21（批次 E · M1↔M3 率对率对账）：D 锚点 + 覆盖率闸门 + 套餐排除 + 细项名单源。

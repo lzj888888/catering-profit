@@ -114,7 +114,7 @@ const CASES = [
   { key: 'check_list_ux', rel: 'tools/check_list_ux.js' },               // 37 条（R156：L1~L6 + S1~S3 + C1~C6；R298 扩面：L6 通用正则+全仓扫描+剥注释，L6b 渲染源，C4b~C4f 互证）
   { key: 'check_index_field_alignment', rel: 'tools/check_index_field_alignment.js' }, // 11 条（R157：L1 化石索引 + L2 锚点对齐 + L3 字段真在用 + S1~S3 + C1~C3 反恒真）
   { key: 'check_snapshot_fields', rel: 'tools/check_snapshot_fields.js' }, // 16 条（R144：L1 读侧全集 + L2 写侧全集 + L3 两读侧集合≡ + L4 fail-soft + L5 Controller + L6 validate 区间 + S1~S2 + C1~C3 反恒真）
-  { key: 'check_paywall_coverage', rel: 'tools/check_paywall_coverage.js' }, // 22 条（R159：L1 三单源解析 + L2 能力⊆放行 + L3 放行有文案 + L4 四字段非空 + L5 影子正负 + L6 云函数双向 + L7 自失效护栏；R213 修假绿：L6-② 改「穷尽分类」+4 条）
+  { key: 'check_paywall_coverage', rel: 'tools/check_paywall_coverage.js' }, // 26 条（R159：L1 三单源解析 + L2 能力⊆放行 + L3 放行有文案 + L4 四字段非空 + L5 影子正负 + L6 云函数双向 + L7 自失效护栏；R213 修假绿：L6-② 改「穷尽分类」+4 条；R443 扩面：L8 改按页面配清单，外卖 15 下界保留 + 团购 8 下界新增 + L8-⑥ 跨页隔离反恒真，22 → 26）
   // round181c 扩面：M3.16 套餐（引用型卡）守卫同批纳入 —— 它的 A-a/A-b/A-c 三锚点（成本 1275 分 /
   //   锁子卡版本 1275→1508 / 禁嵌套与版本无效）与「把子卡成本当 net_unit_cost 喂同一个 `calcCostCard`、
   //   引擎一字不改」的入参变换证明，正是本守卫要求的「非恒真」凭据；而 17 条断言删掉一批仍 > 0

@@ -213,15 +213,23 @@ check('L7-② 派生集下界：付费能力 ≥ 3（导出/套餐/外卖）', d
 check('L7-③ 反恒真前提：影子判据确实能被触发（judge 非恒真）',
   judgeMissing(['m3_x'], []).length === 1 && judgeMissing([], TYPES).length === 0);
 
-// ---- L8 页面级付费入口（R299 新增）----
-//   为什么单立这一组（真缺口，R299 实测）：付费能力 `m3_takeaway` 在本仓**没有云端校验点**
-//   （纯前端试算、不落库）⇒ 它唯一的墙就是**页面入口**。而 `subpkg/biz/takeaway/index.js` 里
+// ---- L8 页面级付费入口（R299 新增，R443 扩面到到店团购）----
+//   为什么单立这一组（真缺口，R299 实测）：付费能力 `m3_takeaway`（以及 R443 的团购）在本仓
+//   **没有云端校验点**（纯前端试算、不落库）⇒ 它唯一的墙就是**页面入口**。而 `subpkg/biz/takeaway/index.js` 里
 //   两个计算入口的墙**不一致**：`onCalc` 过 `fetchEntitlement`，`onReverse`（挂牌价反算）**不过**
 //   ⇒ 未开通用户可直接用反算拿到同一份付费价值。
 //   判据（**语义级**，不钉字面量）：页面里**任何调用付费能力纯函数的方法体**，都必须在**同一方法体内**
 //   出现 `fetchEntitlement`。⇒ 「同页面同能力的所有入口口径一致」成为机器可判的不变量。
-const PAID_PURE_FNS = ['calcTakeawayOrder', 'reverseListedPrice'];
-const TAKEAWAY_PAGE = 'subpkg/biz/takeaway/index.js';
+// 🔴 R443 扩面：清单**必须按页面配**，不能共用一张全局函数表 —— 否则
+//   ① 把团购的 pure fn 塞进全局表，会让外卖页"多认一个不属于它的入口"（判据被稀释）；
+//   ② 外卖页的函数留在全局表里，又会让团购页的 L8-① 被别页函数喂成恒真。
+//   故 `unpaidPaidCallers(bodies, fns)` 显式收函数清单；`floor` 取该页**真实**方法体数量的下界。
+const PAGES = [
+  { key: 'takeaway', label: '外卖单均', page: 'subpkg/biz/takeaway/index.js',
+    fns: ['calcTakeawayOrder', 'reverseListedPrice'], floor: 15 },
+  { key: 'groupon', label: '到店团购', page: 'subpkg/biz/groupon/index.js',
+    fns: ['calcGrouponOrder'], floor: 8 },
+];
 
 /** 取出「Page({...}) 顶层方法」的方法体（花括号配平）；配平失败 ⇒ 返回 null（fail-closed）。 */
 function pageMethodBodies(src) {
@@ -243,29 +251,34 @@ function pageMethodBodies(src) {
   return out;
 }
 
-/** 判据本体：给定方法体列表，返回「调了付费纯函数但没过墙」的方法名。与 L8-③ 的反恒真样本共用。 */
-function unpaidPaidCallers(bodies) {
-  return (bodies || []).filter((b) => PAID_PURE_FNS.some((fn) => new RegExp('\\b' + fn + '\\(').test(b.body))
+/** 判据本体：给定方法体列表 + **该页**的付费纯函数清单，返回「调了付费函数但没过墙」的方法名。 */
+function unpaidPaidCallers(bodies, fns) {
+  const list = fns || [];
+  return (bodies || []).filter((b) => list.some((fn) => new RegExp('\\b' + fn + '\\(').test(b.body))
     && !/fetchEntitlement\s*\(/.test(b.body))
     .map((b) => b.name);
 }
 
-let takeawaySrc = '';
-try { takeawaySrc = fs.readFileSync(path.join(ROOT, TAKEAWAY_PAGE), 'utf8'); } catch (_) { takeawaySrc = ''; }
-const tkBodies = pageMethodBodies(takeawaySrc);
-const unpaid = tkBodies ? unpaidPaidCallers(tkBodies) : ['<抽取失败>'];
-check('L8-① 🔴 页面内调用付费能力纯函数的方法，必须**在同一方法体内**过付费墙'
-  + ' —— 否则同一付费能力出现"有的入口拦、有的不拦"（未开通用户绕道用）',
-  tkBodies !== null && unpaid.length === 0,
-  unpaid.length ? `未过墙：${unpaid.join(', ')}` : `方法体 ${tkBodies ? tkBodies.length : 0} 个`);
-check('L8-② 扫描面下界：页面方法体解析到 ≥ 15 个（防抽取失效 ⇒ L8-① 恒真）',
-  tkBodies !== null && tkBodies.length >= 15, tkBodies ? `${tkBodies.length} 个` : '抽取失败');
-// 反恒真：造两个样本 —— 「调了付费纯函数但没过墙」必须判红；「两者都有」必须判绿。
-const FIX_FAKE_BAD = [{ name: 'onReverse', body: '{ const r = reverseListedPrice({}); this.setData({ r }); }' }];
-const FIX_FAKE_OK = [{ name: 'onCalc', body: '{ const e = await fetchEntitlement(); const r = calcTakeawayOrder({}, f); }' }];
-check('L8-③ 反恒真：无墙样本必须判红、有墙样本必须判绿（证明 L8-① 有分辨力，不是恒真）',
-  unpaidPaidCallers(FIX_FAKE_BAD).length === 1 && unpaidPaidCallers(FIX_FAKE_OK).length === 0,
-  `bad=${unpaidPaidCallers(FIX_FAKE_BAD).length} ok=${unpaidPaidCallers(FIX_FAKE_OK).length}`);
+const pageState = {};
+PAGES.forEach((p) => {
+  let src = '';
+  try { src = fs.readFileSync(path.join(ROOT, p.page), 'utf8'); } catch (_) { src = ''; }
+  const bodies = pageMethodBodies(src);
+  const unpaid = bodies ? unpaidPaidCallers(bodies, p.fns) : ['<抽取失败>'];
+  pageState[p.key] = { bodies, unpaid };
+  check(`L8-① 🔴 ${p.label}页内调用付费能力纯函数的方法，必须**在同一方法体内**过付费墙`
+    + ' —— 否则同一付费能力出现"有的入口拦、有的不拦"（未开通用户绕道用）',
+    bodies !== null && unpaid.length === 0,
+    unpaid.length ? `未过墙：${unpaid.join(', ')}` : `方法体 ${bodies ? bodies.length : 0} 个`);
+  check(`L8-② ${p.label}页扫描面下界：方法体解析到 ≥ ${p.floor} 个（防抽取失效 ⇒ L8-① 恒真）`,
+    bodies !== null && bodies.length >= p.floor, bodies ? `${bodies.length} 个` : '抽取失败');
+  // 反恒真：用**本页自己的**函数清单造两个样本 —— 「调了付费纯函数但没过墙」必须判红；「两者都有」必须判绿。
+  const FIX_FAKE_BAD = [{ name: 'onNoWall', body: '{ const r = ' + p.fns[0] + '({}); this.setData({ r }); }' }];
+  const FIX_FAKE_OK = [{ name: 'onWithWall', body: '{ const e = await fetchEntitlement(); const r = ' + p.fns[0] + '({}, f); }' }];
+  check(`L8-③ ${p.label}页反恒真：无墙样本必须判红、有墙样本必须判绿（证明 L8-① 有分辨力，不是恒真）`,
+    unpaidPaidCallers(FIX_FAKE_BAD, p.fns).length === 1 && unpaidPaidCallers(FIX_FAKE_OK, p.fns).length === 0,
+    `bad=${unpaidPaidCallers(FIX_FAKE_BAD, p.fns).length} ok=${unpaidPaidCallers(FIX_FAKE_OK, p.fns).length}`);
+});
 
 // L8-④ 反算的**输入新鲜度**（R299 实测的真缺陷 T3，与付费墙无关但同一轮修的）：
 //   原实现把 `dish_cost_fen` / `pack_cost_fen` 取自 `this.data.result`（只有点过「计算」才有）
@@ -273,7 +286,7 @@ check('L8-③ 反恒真：无墙样本必须判红、有墙样本必须判绿（
 //      ② 点过后改了菜品/数量再反算 ⇒ 用的是**上一次的旧成本**。
 //   判据：`onReverse` 必须**自己调 `calcTakeawayOrder`** 且**不得读 `this.data.result`**。
 const onReverseBody = (() => {
-  const b = (tkBodies || []).find((x) => x.name === 'onReverse');
+  const b = ((pageState.takeaway || {}).bodies || []).find((x) => x.name === 'onReverse');
   return b ? b.body : '';
 })();
 const REVERSE_DEPENDS_OLD = /this\.data\.result/.test(onReverseBody);
@@ -284,6 +297,15 @@ check('L8-④ 🔴 反算必须按**当前录入**自算（调 calcTakeawayOrder
 check('L8-⑤ 反恒真：把「读 this.data.result 的旧实现」喂给 L8-④ ⇒ 必须判不通过',
   REVERSE_DEPENDS_OLD === false
   && /this\.data\.result/.test('{ const cf = this.data.result ? this.data.result.cash.dish_cost_fen : 0; }'));
+
+// L8-⑥ 跨页隔离反恒真（R443 扩面的**核心理由**）：若共用一张全局函数表，别的页的付费函数
+//   会被本页判据"认领" ⇒ 判据永远是非空集合在互相稀释。必须证明清单真的按页生效：
+//   拿团购的 pure fn 喂外卖清单、拿外卖的 pure fn 喂团购清单，**都必须判绿**（不属于本页能力）。
+const X_TAK = [{ name: 'onGrouponOnly', body: '{ const r = calcGrouponOrder({}); this.setData({ r }); }' }];
+const X_GRP = [{ name: 'onTakeawayOnly', body: '{ const r = calcTakeawayOrder({}, f); this.setData({ r }); }' }];
+check('L8-⑥ 跨页隔离反恒真：团购函数喂外卖清单、外卖函数喂团购清单都必须判绿（清单按页配，不串味）',
+  unpaidPaidCallers(X_TAK, PAGES[0].fns).length === 0 && unpaidPaidCallers(X_GRP, PAGES[1].fns).length === 0,
+  `外卖清单认领团购入口=${unpaidPaidCallers(X_TAK, PAGES[0].fns).length} 团购清单认领外卖入口=${unpaidPaidCallers(X_GRP, PAGES[1].fns).length}`);
 
 // ⚠️ R69：本守卫的**最后一行必须**是「N 通过 / M 失败」收尾行 —— 收尾文案一律排在它**之前**。
 if (fails.length) console.log('失败项：' + fails.join(' | '));
