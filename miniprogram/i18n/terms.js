@@ -1986,6 +1986,12 @@ const TERMS = {
     reviewTotalRevenue: '总营收',
     reviewTotalCost: '总物料成本',
     reviewTotalGross: '总毛利',
+    // 🔴 R451：两款毛利率口径并列提示。本页毛利率＝菜品卡现算（utils/shareSplit.js:123
+    //   unitGrossFen / priceFen）；M2「选址测算」的毛利率＝用户手填（params.grossMarginPct.v）。
+    //   两条链路物理分离 ⇒ 同一家店会给出两个不同的保本数。李老师拍板「并列摆、不强行统一」
+    //   （同 AUTO_M2_TODO:88 现金保本/账面保本先例）。⚠️ 只讲机制、**不写死任何金额**：
+    //   数字随业态与房租变化，写进产品即变成假信息（同 R292「链路通 ≠ 数字对」）。
+    reviewTwoMarginNote: '这里每道菜的毛利率，是按菜品卡的成本现算的；「选址测算」里那个毛利率是你自己填的。两个数不一样很正常：手填的是事先估的，菜品卡是逐项算出来的。判断「这家店能不能保本」用手填那个，判断「哪道菜能剩多少」看这里。',
   },
 
   // ===== 十四-bis、M3 模块枢纽页（pages/m3/hub）=====

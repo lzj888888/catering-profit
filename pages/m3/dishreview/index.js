@@ -129,6 +129,8 @@ Page({
       reviewTotalRevenue: TERMS.card.reviewTotalRevenue,
       reviewTotalCost: TERMS.card.reviewTotalCost,
       reviewTotalGross: TERMS.card.reviewTotalGross,
+      // 🔴 R451：两款毛利率口径并列提示（terms.js 同名键，逐键登记——漏登记 ⇒ 真机静默空白）
+      reviewTwoMarginNote: TERMS.card.reviewTwoMarginNote,
       // 🔴 R281 O2：首屏重构新增键（第三处登记 —— 漏登记 ⇒ 真机静默空白）
       reviewTodoPre: TERMS.card.reviewTodoPre,
       reviewTodoSuf: TERMS.card.reviewTodoSuf,

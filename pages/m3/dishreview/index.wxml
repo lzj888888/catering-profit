@@ -177,6 +177,11 @@
       <view class="cell"><text class="lbl">{{t.reviewTotalGross}}</text><text class="val">{{t.cur}}{{totals.grossText}}</text></view>
     </view>
 
+    <!-- 🔴 R451：两款毛利率口径并列提示（李老师拍板「并列摆、不强行统一」）。
+         本页毛利＝菜品卡现算，M2 选址测算的毛利＝用户手填 ⇒ 保本数会不同，同屏把差在哪讲清即可。
+         样式复用本页 .muted（index.wxss:7，28rpx ≥ AD 门禁），零新增样式。 -->
+    <view class="muted" wx:if="{{totals}}">{{t.reviewTwoMarginNote}}</view>
+
     <!-- R272c：自助餐块已上移到覆盖率 C 档之后（页面顶部），此处不再重复渲染。 -->
 
     <!-- 外卖榜（v1.7 实态：按平台分块；无数据 ⇒ 空态，红线 18 不默认 0） -->
