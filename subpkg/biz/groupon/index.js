@@ -40,6 +40,10 @@ Page({
       net: G.grouponNet,
       profit: G.grouponProfit,
       netRate: G.grouponNetRate,
+      // 🔴 R452（B 项）：毛利率**与到手率并列摆**（两个都摆）；两键逐键登记——漏登记 ⇒ 真机静默空白。
+      //   分母口径见 utils/grouponDerive.js:38（毛利率分母 = 到手额，不是团购价），说明文案挂在页面下方。
+      profitRate: G.grouponProfitRate,
+      twoRateNote: G.grouponTwoRateNote,
       vsDine: G.grouponVsDine,
       vsDineMore: G.grouponVsDineMore,
       lossHint: G.grouponLossHint,

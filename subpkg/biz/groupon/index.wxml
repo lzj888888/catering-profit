@@ -43,6 +43,10 @@
     <view class="cell"><text class="lbl">{{t.net}}</text><text class="val strong">{{t.cur}}{{view.net}}</text></view>
     <view class="cell"><text class="lbl">{{t.profit}}</text><text class="val strong">{{t.cur}}{{view.profit}}</text></view>
     <view class="cell"><text class="lbl">{{t.netRate}}</text><text class="val">{{view.netRate}}%</text></view>
+    <!-- 🔴 R452（B 项）：毛利率与到手率**并列摆**（李老师拍板「两个都摆」）。
+         view.profitRate 早已在 js 里算出（index.js:144），此前**从未渲染** ⇒ 属「算了不显示」。 -->
+    <view class="cell"><text class="lbl">{{t.profitRate}}</text><text class="val">{{view.profitRate}}%</text></view>
+    <view class="muted">{{t.twoRateNote}}</view>
     <view class="warn" wx:if="{{result.profitFen < 0}}">{{t.lossHint}}</view>
     <view class="cell" wx:if="{{view.hasDine}}"><text class="lbl">{{view.vsDineMore ? t.vsDineMore : t.vsDine}}</text><text class="val">{{t.cur}}{{view.vsDine}}</text></view>
   </block>

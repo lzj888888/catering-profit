@@ -285,6 +285,8 @@ Page({
       m2NavLine: M.m2NavLine,
       feeRowsHint: M.feeRowsHint,
       feeAmtUnit: M.feeAmtUnit,
+      // 🔴 R452（D 项）：费率折算「≈ 每月多少钱」放回 ⇒ 必须同屏带这句「估算」（漏登记 ⇒ 真机静默空白）
+      feeAmtEst: M.feeAmtEst,
       moreAnalysis: M.moreAnalysis,
       presetNone: M.presetNone,
       presetPickedPre: M.presetPickedPre,
@@ -909,8 +911,9 @@ Page({
 
   // ===== 自动重算（防抖；AD-6/AD-7 折中）=====
   scheduleCalc() {    this.setData({ dirty: true });
-    // R447：原 R439 的 `refreshFeeAmt()` 调用随「费率行 ≈ 每月多少钱」一并删除 ——
-    //   它渲染的那一行（`fee-amt`）在 R441 删 L3 时就不存在了，留着只是每次输入白算一遍 + 一次 setData。
+    // 🔴 R452（D 项）：`refreshFeeAmt()` **放回** —— R447 删它是因为消费端（wxml 的 `fee-amt` 行）
+    //   已被 R441 一起删掉 ⇒ 纯写不读。本轮 wxml 已重新渲染费率行 ⇒ 消费端回来了，调用同步恢复。
+    this.refreshFeeAmt();
     // R443：输入区同步「每月固定支出合计」—— 老板边填边自查，不用滚到结果区
     this.refreshFixedPreview();
     // R443：顶部「还差哪几格」—— 只提示三项影响最大的，全填完自动消失
@@ -1585,10 +1588,31 @@ Page({
 
   onToggleL2() { this.setData({ showL2: !this.data.showL2 }); },
 
-  // 🔴 R447：原 `refreshFeeAmt()`（R439）已删 —— 它把每个费率项的 `pct` 折算成
-  //   「≈ N 元/月」写进 `feeRows[i].amtText`，而消费端（wxml 的 `fee-amt` 行）在 R441 删 L3 时
-  //   一起被删了 ⇒ 本方法是**纯写不读**：每次改营业额都算一遍、再整表 setData 一次，页面零变化。
-  //   ⚠️ 别再"修复"它 —— 它不是坏了，是**没有消费方**了。要恢复是重新加渲染（产品拍板）。
+  // 🔴 R452（D 项，李老师拍板：「费率折算放回，但必须标『估算』」）：`refreshFeeAmt()` 恢复。
+  //   沿革：R439 加 → R447 删（因 R441 删 L3 时把消费端 `fee-amt` 行一起删了 ⇒ 纯写不读）
+  //   → R452 恢复（wxml 重新渲染）。
+  //   🔴 口径边界（易错，勿改）：只折算 `form === 'revenue_rate'` 的项（`onPreset` 已过滤，
+  //   现只有「其他/损耗」2%）⇒ 基数 = **预计月营业额**。
+  //   **不含** utility / manage：那两项是「房租 × rentPct」派生（R293，见 utils/bizPreset.js），
+  //   基数是房租不是营业额 ⇒ 若在这里一并折算，就是 R292 同族错（基数换错、数字照出、零报错）。
+  //   🔴 只做显示、**不参与任何计算**（真正入引擎的仍是 pct；本方法不写 feeOverrides）。
+  refreshFeeAmt() {
+    const rows = this.data.feeRows || [];
+    if (!rows.length) return;
+    const raw = this.data.expectYuan;
+    // 读不成就**不显示**（同 refreshFixedPreview 口径：宁可不显示，也不显示一个错算的数）
+    const rev = AmountInput.classifyAmount(raw).readable ? Number(raw) : 0;
+    let changed = false;
+    const out = rows.map((r) => {
+      const p = Number(r.pct);
+      const ok = rev > 0 && isFinite(p) && p > 0;
+      const txt = ok ? ('≈ ' + MoneyFmt.groupDigits(Math.round(rev * p / 100)) + ' ' + (this.data.t.feeAmtUnit || '')) : '';
+      if (txt !== (r.amtText || '')) changed = true;
+      return Object.assign({}, r, { amtText: txt });
+    });
+    // 无变化就不 setData，避免每次输入都整表重渲染
+    if (changed) this.setData({ feeRows: out });
+  },
 
   // 🔴 R443：输入区实时「每月固定支出合计」——让老板**边填边自查**，不用滚到结果区才知道总数。
   //   为什么值得加：结果区那份合计在页面很下面，填到一半时最容易漏项（尤其"人工忘了填"）。

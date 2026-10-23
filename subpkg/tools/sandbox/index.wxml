@@ -161,6 +161,12 @@
       <view class="row-note">{{t.manageOptNote}}</view>
       <!-- 🔴 R443：填到一半就能看到每月固定支出合计（只读展示，不参与任何计算；读不成数字时整行不显示） -->
       <view class="row-note total-line" wx:if="{{fixedPreviewText}}">{{t.fixedTotal}} {{fixedPreviewText}}</view>
+      <!-- 🔴 R452（D 项）：费率行「≈ 每月多少钱」——李老师拍板**放回，但必须标「估算」**。
+           基数 = 你填的预计月营业额（见 refreshFeeAmt）：营业额没填或读不成 ⇒ amtText 为空 ⇒
+           整行不显示（宁可不显示，也不显示一个错算的数）。只做展示，不参与任何计算。 -->
+      <block wx:for="{{feeRows}}" wx:key="key">
+        <view class="row-note" wx:if="{{item.amtText}}">{{item.label}} {{item.pct}}% {{item.amtText}}（{{t.feeAmtEst}}）</view>
+      </block>
     </view>
     <!-- 本次测算底层假设（默认折叠可展开） -->
     <!-- 🔴 R435（李老师 2026-10-22）：已有铺面（forward）**整块删掉**假设区。

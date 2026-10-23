@@ -1212,6 +1212,9 @@ const TERMS = {
     m2NavLine: '填 4 个数，看要卖多少才保本、每月能赚多少（成本已含 2% 损耗）',
     feeRowsHint: '这几项按营业额的百分比算，不确定就保持默认；上面的营业额改了，这里不用重填',
     feeAmtUnit: '元/月',
+    // 🔴 R452（D 项，李老师拍板：「费率折算放回，但必须标『估算』」）：折算的基数是你自己填的
+    //   **预计**月营业额 ⇒ 折出来的金额只能是估算 ⇒ 渲染时必须带这一句，不许裸给数字。
+    feeAmtEst: '估算，按你填的预计月营业额折算',
     moreAnalysis: '更多分析（利润阶梯 / 客群 / 效率 / 回本）',
     presetLabel: '行业标准',
     presetNone: '通用餐饮（经验估算）',
@@ -1716,6 +1719,13 @@ const TERMS = {
     grouponProfit: '到手毛利',
     // 口径说明：netRatePct 分母是团购价、分子未扣成本 ⇒ 它是「到手率」而不是毛利率（毛利要扣成本）。
     grouponNetRate: '到手率',
+    // 🔴 R452（B 项）：两个率**并列摆**（李老师拍板「两个都摆，因为商家真正关心的是到手」）。
+    //   profitRatePct 的分母是**到手额**、不是团购价（utils/grouponDerive.js:38；判据见
+    //   selftest_m3_groupon.js G-c「毛利率 27.47%（分母 = 到手额 8272，不是团购价）」）
+    //   ⇒ 与到手率**分母不同**，两个数不能互相替代 ⇒ 同屏补一句机制说明
+    //   （同 R451 A 项口径：只讲机制、**不写死任何金额**）。
+    grouponProfitRate: '毛利率',
+    grouponTwoRateNote: '到手率 = 到手 ÷ 团购价（平台抽走多少）；毛利率 = 到手毛利 ÷ 到手额（扣掉成本还剩多少）。两个数分母不同，不能互相替代。',
     grouponVsDine: '比堂食少赚',
     grouponVsDineMore: '比堂食多赚',
     grouponNeedCost: '先点上方算一次成本',
