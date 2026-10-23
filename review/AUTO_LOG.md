@@ -524,3 +524,25 @@
   - ④ **门禁**：`_gate_r451c.log` **总览 206/206 通过 · 耗时 806.4s · GATE_RC=0**；`grep -n "❌"` 与 `grep -n "exit=1"` **均 no match**（全文 `cat`，未加 `| tail/head`）。单点复验：`check_terms_forbidden.js` **13:0** · `check_dishreview_engine.js` **119 通过/0 失败**（其 `9-⑧` 逐字比对两份 terms，L525-526 / L555-556）。
   - ⑤ 🔴 **两条新教训（已补登交接单 §11）**：(a) **新增文案必须先过 `check_terms_forbidden` T5 扫描**（14 个派生关键词：投资回报/ROI/回本周期/收益率/利润率/盈利/赚钱/躺赚/投资/理财/股/付费/订阅/会员费）—— 「赚钱」是最容易顺手写出的一个；**改文案、不改词表**。(b) **terms 双副本被两个守卫同时约束**：`check_dishreview_engine.js` `9-⑧` + `check_terms_forbidden.js` `T1b`，都判逐字节一致 ⇒ **改一处必双红**；且漏在 `data.t` 登记同名键 ⇒ **真机静默空白**（页面不报错，看不出来）。
   - ⑥ **未做 / 不越界**：A 项至此**代码侧完结**；B（团购页到手率+毛利率同摆）/ C（水电气不合并）/ D（#47 费率折算放回并标「估算」）/ E（活动模块只留 R443c）/ F（AI 主体变更排最前）**均未动码**，等李老师排期；G 真机走查仍待人工扫码（码 `qr_now_x2.png` 940×940 · 41525 B + 桌面 `店算_真机预览码_r450.jpg` 45975 B），问题**贴文字**回传。执行纪律留痕：门禁全程 `> log 2>&1; echo RC=$?`、**不截断**；判据一字未改、未跳过、未降级。
+
+- [2026-10-24 02:45] R452 团购页「到手率 + 毛利率」**并列摆**（交接单 B 项） · 门禁 **206/206 RC=0（1066.5s，与 R453 同批复跑）** · commit `6e1e68d` · 队列 未认领（B 项代码侧完结）
+  - ① **拍板与事实**：李老师「两个都摆，因为商家真正关心的是到手」。实读现码发现的是另一种"缺"—— `view.profitRate` **早就在 `subpkg/biz/groupon/index.js:144` 算出**、而 wxml **从未渲染** ⇒ 属「算了不显示」（与 R417「文案已定义、校验从未接线」同族）。
+  - ② **口径（写进注释与文案，防下一代改错）**：`profitRatePct = profitFen / **netFen**`（`utils/grouponDerive.js:38`），分母是**到手额**、不是团购价；判据见 `selftest_m3_groupon.js` G-c「毛利率 27.47%（分母 = 到手额 8272，不是团购价）」。到手率分母是团购价 ⇒ **两个数分母不同、不能互相替代** ⇒ 同屏补一句机制说明（沿用 R451 A 项口径：只讲机制、**零金额**）。
+  - ③ **改动面（可复核）**：`subpkg/biz/groupon/index.js` **+4**（`data.t` 逐键登记 `profitRate` / `twoRateNote`）+ `index.wxml` **+4**（到手率下方加毛利率行 + `.muted` 说明，**零新增样式**）+ 两份 `terms.js` 各 **+7**（`grouponProfitRate`「毛利率」/ `grouponTwoRateNote`）。
+  - ④ **守卫（全 RC=0）**：`check_terms_forbidden` 13:0（新文案无禁用词命中，先过 T5 才提交）· `check_page_terms` 20:0 · `selftest_m3_groupon` 23:0 · `node --check` 两页 js 均 rc=0 · 两份 terms **198499 B / sha 6a4af85f29461966 / CRLF 0 / LF 2887 逐字节一致**。
+  - ⑤ 🔴 **门禁事实（如实登记，不粉饰）**：**首轮** `_gate_r452.log` = **205/206**，唯一未过项是 `suite-assert-counts` **TIMEOUT>420s**（不是断言红）。裸跑该套件（`_t_counts.log`）⇒ **RC=0 · 89 通过/0 失败 · 313s**（单跑 313s < 420s，门禁里超时属**环境/并发负载**）；且本项改动**不碰任何套件或断言数**。**未因此改判据、未调超时、未跳过** ⇒ 同批（B+D，含 R453）复跑 ⇒ **206/206 · 1066.5s · GATE_RC=0**，`grep ❌` / `grep exit=1` 均 **0 命中**。
+
+- [2026-10-24 02:45] R453 沙盘页费率折算「≈ 每月多少钱」**放回并标「估算」**（交接单 D 项 / #47 后半） · 同批门禁 **206/206 RC=0（1066.5s）** · commit `6e1e68d` · 队列 #47 仍 done（本条是「重新显示」，非重开 #47）
+  - ① **沿革**：R439 加 → R447 连根拔（R441 删 L3 时把消费端 `fee-amt` 行一起删了 ⇒ 纯写不读）→ **R453 恢复**（李老师拍板「放回，但必须标『估算』」）。`feeRows` / `feeOverrides` 在 R447 时**有意保留**，正是为此刻。
+  - ② 🔴 **口径边界（本项唯一的坑，写进代码注释）**：只折算 `form === 'revenue_rate'` 的项（`onPreset` 已过滤，现**只有「其他/损耗」2%**）⇒ 基数 = **预计月营业额**；**不含** `utility` / `manage` —— 那两项是「房租 × rentPct」派生（R293，`utils/bizPreset.js`），**基数是房租不是营业额** ⇒ 若一并折算，就是 **R292 同族错**（基数换错、数字照出、全程零报错）。
+  - ③ **改动面（可复核）**：`subpkg/tools/sandbox/index.js` **+30/−6**（恢复 `refreshFeeAmt()` 19 行 + `scheduleCalc` 恢复调用 + `t.feeAmtEst` 登记）+ `index.wxml` **+6**（`固定支出合计` 下方 `<block wx:for="{{feeRows}}">` 渲染，带「估算」后缀）+ 两份 `terms.js` 各 **+3**（`feeAmtEst`「估算，按你填的预计月营业额折算」）。
+  - ④ **边界（与 R443 同口径）**：**只做显示、不参与任何计算**（真正入引擎的仍是 `pct`，不写 `feeOverrides`）；预计营业额没填或**读不成**（走 `AmountInput.classifyAmount`，不按 0 算）⇒ `amtText` 为空 ⇒ **整行不显示**（宁可不显示，也不显示一个错算的数）。
+  - ⑤ **改 wxml ⇒ 需出码**：本批两处 wxml 都变了 ⇒ 真机走查必须用**新码**，旧码（`qr_now_x2.png` / `店算_真机预览码_r450.jpg`）已不代表现码。
+
+- [2026-10-24 02:56] R454 **新预览码产出**（R452/R453 两处 wxml 都改 ⇒ R450 那张已不代表现码） · 零代码改动 · 门禁未重跑（复用 `6e1e68d` 那轮的 **206/206 · 1066.5s · RC=0**）· commit 见本条提交
+  - ① **出码成功**：`qr_r453_20261024_025325.jpg` **46934 B** / md5 `4ba301425242f3a1db5c79868cb0c418` / 产物总量 **747.3 KB（765256 B）**；耗时 59s（阶段 1 一次成功，未进重试）
+  - ② **可扫性判据（不信自述、只认解码）**：venv python + `zxingcpp` ⇒ **decoded = 1**，解出 `https://mp.weixin.qq.com/a/~~DAzjrwebsQ8~1lutG5dj-wcVAwE__E00jg~~`；2x 图 **940×940 / 125841 B / md5 `eed85a050f9bd578b6313492f3014362`**
+  - ③ **三件交付**：短名 `qr_now.jpg`（覆盖旧短名）/ 2x `qr_now_x2.png`（940×940）/ 桌面 `店算_真机预览码_r453.jpg`
+  - ④ **env 硬门（脚本自带，不一致即 exit 1）**：`miniprogram/config/env.js::dev` 与 `cloudfunctions/initDb/config.json::DEV_ENV_ID` 均 = `cloud1-d4gphpoxy337f2a25` ⇒ `ENV_OK = True`
+  - ⑤ 🔴 **两个本轮踩到的坑（下轮直接用）**：(a) 初版正则 `DEV_ENV_ID\s*:\s*['\"]` 抓不到 `config.json` 里的 `"DEV_ENV_ID": "..."`（**键名后面还有引号**）⇒ 恒空 ⇒ 硬门**假失败** exit 1；正确写法 `DEV_ENV_ID["']?\s*:\s*["']([^"']+)["']`。(b) `zxingcpp` **只装在 venv**（`C:/Users/lzj/.workbuddy/binaries/python/envs/default/Scripts/python.exe`），系统 python 3.13.12 没有 ⇒ 解码验证必须指定该解释器，否则 `VERIFY: UNKNOWN`
+  - ⑥ **事实边界**：**出码 ≠ 走查**；码 **25 分钟失效**（02:54 产出，约 03:19 失效）⇒ 李老师要走查时说一声，我随时重出（**不主动弹窗、不催**）。走查问题请**贴成文字**回传（我读不了图片、无扫码能力）
