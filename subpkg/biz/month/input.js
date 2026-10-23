@@ -275,29 +275,41 @@ Page({
     this.initGroups();
     this.load();
   },
-  onShow() {
-    // AD-10/AD-23：回来回填草稿（仅当本页还有未保存内容时）
+  /**
+   * 🔴 R443b：草稿回填（**必须可重复调用**）。
+   *   为什么抽成方法：冷启动时 `onShow` 早于 `load()` 里的 `await api.ensureShop()`
+   *   ⇒ 此刻 `globalData.shop_id` 仍是 '' ⇒ 判据 `draft.shop_id === currentShopId()` 必然不等
+   *   ⇒ 真草稿不恢复；更糟的是随后 `onHide` 用 `shop_id:''` 写盘，把真草稿覆盖掉（★数据丢失）。
+   *   ⇒ 两个调用点：① onShow（热返回，shop_id 已就绪）② load() 末尾（ensureShop + 装配完成之后）。
+   *   幂等：无店铺 / 不匹配 / 已保存 三个判据都在这里，重复调用无副作用。
+   */
+  applyDraftFromStorage() {
+    const sid = ss.currentShopId();
+    if (!sid) return;   // 店铺上下文未就绪 ⇒ 什么都不做（等 load 末尾再调，绝不用空店覆盖）
     const draft = wx.getStorageSync(DRAFT_KEY + this.data.month);
-    // 🔴 R443：草稿必须属于**当前店铺**。切店后老草稿仍躺在本地，若照读 ⇒ 把 A 店填了一半的数
-    //   当 B 店的初始值，老板一点保存就把 A 店数据写进 B 店账本（跨店数据污染，且事后难查出）。
-    //   严格相等：老草稿（无 shop_id）一律不认 —— 宁可丢一次草稿，不可串一次店。
-    if (draft && !this.data.saved && draft.shop_id === ss.currentShopId()) {
-      this.setData({
-        incomeGroups: draft.incomeGroups || this.data.incomeGroups,
-        expenseGroups: draft.expenseGroups || this.data.expenseGroups,
-        directConsumeYuan: draft.directConsumeYuan !== undefined ? draft.directConsumeYuan : this.data.directConsumeYuan,
-        dineDetailRows: draft.dineDetailRows ? draft.dineDetailRows.map((r) => ({ subItem: r.subItem || '', amountYuan: r.amountYuan || '', fixed: !!r.fixed, note: r.note || '' })) : this.data.dineDetailRows,
-        // R85：外卖段草稿回填（分项明细 / 粘贴原文 / 账单商家应收款；均只存本地，不入库）
-        takeoutMode: (draft.takeoutMode === 'fast' || draft.takeoutMode === 'detail') ? draft.takeoutMode : this.data.takeoutMode,
-        takeoutDetailRows: draft.takeoutDetailRows || this.data.takeoutDetailRows,
-        twRecYuan: draft.twRecYuan !== undefined ? draft.twRecYuan : this.data.twRecYuan,
-        twPasteRaw: draft.twPasteRaw || this.data.twPasteRaw || [],
-        // T1：分平台小计（只存本地、不入库）
-        twMkByPlat: this.buildMkByPlat(draft.twMkByPlat || this.data.twMkByPlat),
-      });
-      this.syncTakeoutSum();   // R119：两种模式都要重算（快速模式的合计取自 groups）
-      this.syncMkByPlat();     // T1：小计回草稿后重算（全空 ⇒ 不碰那一行）
-    }
+    // 🔴 草稿必须属于**当前店铺**：切店后老草稿仍躺在本地，若照读 ⇒ 把 A 店填了一半的数
+    //   当 B 店的初始值，老板一点保存就把 A 店数据写进 B 店账本（跨店污染，事后难查）。
+    if (!draft || this.data.saved || draft.shop_id !== sid) return;
+    this.setData({
+      incomeGroups: draft.incomeGroups || this.data.incomeGroups,
+      expenseGroups: draft.expenseGroups || this.data.expenseGroups,
+      directConsumeYuan: draft.directConsumeYuan !== undefined ? draft.directConsumeYuan : this.data.directConsumeYuan,
+      dineDetailRows: draft.dineDetailRows ? draft.dineDetailRows.map((r) => ({ subItem: r.subItem || '', amountYuan: r.amountYuan || '', fixed: !!r.fixed, note: r.note || '' })) : this.data.dineDetailRows,
+      // R85：外卖段草稿回填（分项明细 / 粘贴原文 / 账单商家应收款；均只存本地，不入库）
+      takeoutMode: (draft.takeoutMode === 'fast' || draft.takeoutMode === 'detail') ? draft.takeoutMode : this.data.takeoutMode,
+      takeoutDetailRows: draft.takeoutDetailRows || this.data.takeoutDetailRows,
+      twRecYuan: draft.twRecYuan !== undefined ? draft.twRecYuan : this.data.twRecYuan,
+      twPasteRaw: draft.twPasteRaw || this.data.twPasteRaw || [],
+      // T1：分平台小计（只存本地、不入库）
+      twMkByPlat: this.buildMkByPlat(draft.twMkByPlat || this.data.twMkByPlat),
+    });
+    this.syncTakeoutSum();   // R119：两种模式都要重算（快速模式的合计取自 groups）
+    this.syncMkByPlat();     // T1：小计回草稿后重算（全空 ⇒ 不碰那一行）
+  },
+
+  onShow() {
+    // AD-10/AD-23：回来回填草稿（仅当本页还有未保存内容时）—— 冷启动那次由 load() 末尾兜底
+    this.applyDraftFromStorage();
     // round104：从「库存盘点 / 摊销」子页返回时，按钮下面那行摘要必须重读 ——
     //   invSummary / 两行投入摘要（assetSummaryLump / assetSummaryAmort，round107 前身是 assetSummary）
     //   原来只在 load()（= onLoad）里算 ⇒ 返回后恒显旧数字
@@ -308,8 +320,12 @@ Page({
   },
   onHide() {
     // AD-10：自动存草稿（含已录入值）
+    // 🔴 R443b：**拿不到店铺就不写盘**。冷启动未选店时 shop_id 为 ''，
+    //   照写会用"空店草稿"覆盖真草稿（老板退出那一刻 ensureShop 可能还没完成 ⇒ 数据白丢）。
+    const sid = ss.currentShopId();
+    if (!sid) return;
     wx.setStorageSync(DRAFT_KEY + this.data.month, {
-      shop_id: ss.currentShopId(),   // R443：切店后不得回填到别的店
+      shop_id: sid,   // R443：切店后不得回填到别的店
       incomeGroups: this.data.incomeGroups,
       expenseGroups: this.data.expenseGroups,
       directConsumeYuan: this.data.directConsumeYuan,
@@ -615,6 +631,9 @@ Page({
       //   ⚠️ 顺序不能反：ensureRecurring 依赖 prevHasData（有上月 ⇒ 走复制，不重复铺行）
       await this.probePrevMonth();
       this.ensureRecurring();
+      // 🔴 R443b：冷启动时 onShow 早于 ensureShop（shop_id 还是 ''）⇒ 这里必须兜一次，
+      //   且位置要在**云端装配完成之后**，否则会被随后 setData 的云端数据覆盖。
+      this.applyDraftFromStorage();
     } catch (e) {
       this.setData({ loading: false });
       api.toastError(e);

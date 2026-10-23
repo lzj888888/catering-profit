@@ -77,24 +77,36 @@ Page({
     this.setData({ month });
     this.load();
   },
-  onShow() {
+  /**
+   * 🔴 R443b：盘点草稿回填（可重复调用）。理由同 `input.js::applyDraftFromStorage`：
+   *   冷启动 `onShow` 早于 `ensureShop` ⇒ shop_id 为空 ⇒ 不匹配；随后写盘还会用空店覆盖真草稿。
+   */
+  applyDraftFromStorage() {
+    const sid = ss.currentShopId();
+    if (!sid) return;   // 店铺上下文未就绪 ⇒ 等 load() 末尾再来
     const draft = wx.getStorageSync(DRAFT_KEY + this.data.month);
-    // 🔴 R443：同 M1 填表页 —— 盘点草稿也按店隔离（期初/采购/期末都是**金额**，串店即污染账本）。
-    if (draft && !this.data.saved && draft.shop_id === ss.currentShopId()) {
-      this.setData({
-        openingYuan: draft.openingYuan !== undefined ? draft.openingYuan : this.data.openingYuan,
-        purchaseYuan: draft.purchaseYuan !== undefined ? draft.purchaseYuan : this.data.purchaseYuan,
-        closingYuan: draft.closingYuan !== undefined ? draft.closingYuan : this.data.closingYuan,
-      });
-    }
+    // 🔴 同 M1 填表页 —— 盘点草稿也按店隔离（期初/采购/期末都是**金额**，串店即污染账本）。
+    if (!draft || this.data.saved || draft.shop_id !== sid) return;
+    this.setData({
+      openingYuan: draft.openingYuan !== undefined ? draft.openingYuan : this.data.openingYuan,
+      purchaseYuan: draft.purchaseYuan !== undefined ? draft.purchaseYuan : this.data.purchaseYuan,
+      closingYuan: draft.closingYuan !== undefined ? draft.closingYuan : this.data.closingYuan,
+    });
+  },
+
+  onShow() {
+    this.applyDraftFromStorage();
     // round104：从「上月库存页」（去改上月期末）返回时，本页期初若处于**自动结转只读态**，
     //   数值已随上月期末变化 ⇒ 必须重读（详见 refreshOpeningCarry 注释）。
     if (this._shown) this.refreshOpeningCarry();
     this._shown = true;
   },
   onHide() {
+    // 🔴 R443b：拿不到店铺就不写盘（否则用空店草稿覆盖真草稿）
+    const sid = ss.currentShopId();
+    if (!sid) return;
     wx.setStorageSync(DRAFT_KEY + this.data.month, {
-      shop_id: ss.currentShopId(),   // R443：切店后不得回填到别的店
+      shop_id: sid,   // R443：切店后不得回填到别的店
       openingYuan: this.data.openingYuan,
       purchaseYuan: this.data.purchaseYuan,
       closingYuan: this.data.closingYuan,
@@ -146,6 +158,8 @@ Page({
         openingAuto, prevMonth, openingNote,
         loading: false,
       });
+      // 🔴 R443b：冷启动 onShow 早于 ensureShop ⇒ 这里兜一次（位置在云端装配之后，不会被覆盖）
+      this.applyDraftFromStorage();
     } catch (e) {
       this.setData({ loading: false });
       api.toastError(e);

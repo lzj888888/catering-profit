@@ -299,16 +299,26 @@ for (const s of SAMPLES) {
   }
 }
 
-// ================= R443：本地草稿必须按店隔离（6 条） =================
+// ================= R443：本地草稿必须按店隔离 + 时序（10 条） =================
 // 为什么纳入本守卫：草稿写盘也是「覆盖型写」，但它的后果比「多出一版」更重 ——
 //   三个草稿键（sandbox_draft_v1 / draft_month_input_+月 / draft_month_inv_+月）**都不带 shop 维度**，
 //   切店后老草稿仍躺在本地 ⇒ M1 填表页会把 A 店填了一半的数当 B 店的初始值，
 //   老板一点保存就把 A 店数据写进 B 店账本（跨店污染，事后极难查出）。
-//   修法不是改键名（老草稿会变孤儿、旧键还永远删不干净），而是**草稿体记 shop_id + 恢复时严格相等校验**。
-// 两条腿（缺一不可，方向互不重复）：
-//   ① 写盘：setStorageSync(DRAFT_...) 之后 20 行内，**剥注释后**必须有 `shop_id:`；
-//   ② 恢复：getStorageSync(DRAFT_...) 之后 20 行内，必须有 `shop_id ===/!== x.currentShopId()`
-//      （两种写法都要认 —— M1 走 `===` 正向分支，沙箱页走 `!==` 的 fail 分支）。
+//
+// 🔴 R443b：只判「shop_id 有没有被比较」是不够的 —— 还要判**比较发生在什么时候**。
+//   冷启动时 `onShow` 早于 `load()` 里的 `await api.ensureShop()`，此刻 globalData.shop_id 仍是 ''
+//   ⇒ 判据必然不等 ⇒ 真草稿不恢复；随后 onHide 用 shop_id:'' 写盘 ⇒ **真草稿被覆盖（数据丢失）**。
+//   所以 M1 两页必须：① 恢复抽成 `applyDraftFromStorage()` ② 在 `async load()` 体内再调一次
+//   ③ 写盘前 `if (!sid) return`（拿不到店铺就不写，宁可不存也不覆盖）。
+//
+// 判据 5 条腿（缺一不可，方向互不重复）：
+//   ① 写盘：setStorageSync(DRAFT_...) 后 20 行内，**剥注释后**必须有 `shop_id:`；
+//   ② 恢复：getStorageSync(DRAFT_...) 前后 30 行窗口内必须有 `shop_id ===/!==` 与当前店铺比较；
+//      **两种写法都认** —— 内联 `ss.currentShopId()`，或先 `const sid = ss.currentShopId()` 再比 `sid`。
+//      （R443 第一版只认内联，改成 sid 变量后守卫立刻误红 —— 这正是"只认一种写法"的恒真假判据。）
+//   ③ 时序：M1 两页必须有 `applyDraftFromStorage`，且**在 `async load()` 体内被调用**（防挪回 onShow）；
+//   ④ 不覆盖：M1 两页 onHide 体内必须有 `if (!sid) return`；
+//   ⑤ 单源：`currentShopId` 必须由 `utils/shopSwitcher.js` 提供（防各页各写一套）。
 //   剥注释是必须的：注释里就写着 shop_id，不剥 ⇒ 代码删光判据照绿（R299 恒真形态③）。
 function stripLineComments(src) {
   return src.split('\n').map(function (ln) {
@@ -317,24 +327,58 @@ function stripLineComments(src) {
   }).join('\n');
 }
 
+/** 抽方法体：从 `标题 {` 起，到第一个顶格 `  },` 为止（本仓方法均为两空格缩进）。 */
+function bodyOf(src, headerRe) {
+  const m = headerRe.exec(src);
+  if (!m) return '';
+  const from = m.index;
+  const rest = src.slice(from + m[0].length);
+  const stop = rest.search(/\n {2}\},?/);
+  return stop < 0 ? rest : rest.slice(0, stop);
+}
+
 const DRAFT_TARGETS = [
-  { name: 'M1 填表草稿', p: 'subpkg/biz/month/input.js' },
-  { name: 'M1 盘点草稿', p: 'subpkg/biz/month/inventory.js' },
-  { name: 'M2 测算草稿', p: 'subpkg/tools/sandbox/index.js' }
+  { name: 'M1 填表草稿', p: 'subpkg/biz/month/input.js', needTiming: true },
+  { name: 'M1 盘点草稿', p: 'subpkg/biz/month/inventory.js', needTiming: true },
+  { name: 'M2 测算草稿', p: 'subpkg/tools/sandbox/index.js', needTiming: false }
 ];
 
 for (const t of DRAFT_TARGETS) {
-  const L = stripLineComments(fs.readFileSync(path.join(ROOT, t.p), 'utf8')).split('\n');
+  const raw = stripLineComments(fs.readFileSync(path.join(ROOT, t.p), 'utf8'));
+  const L = raw.split('\n');
   const wi = L.findIndex(function (ln) { return /setStorageSync\(DRAFT_/.test(ln); });
   const ri = L.findIndex(function (ln) { return /getStorageSync\(DRAFT_/.test(ln); });
   const wWin = wi < 0 ? '' : L.slice(wi, wi + 20).join('\n');
-  const rWin = ri < 0 ? '' : L.slice(ri, ri + 20).join('\n');
+  const rWin = ri < 0 ? '' : L.slice(Math.max(0, ri - 30), ri + 30).join('\n');
+
   tick(2);
   ok(t.name + ' · 写盘带 shop_id', /shop_id\s*:/.test(wWin),
     wi < 0 ? '没找到 setStorageSync(DRAFT_)' : '');
-  ok(t.name + ' · 恢复校验 shop_id', /shop_id\s*(?:===|!==)\s*\w+\.currentShopId\(\)/.test(rWin),
+  ok(t.name + ' · 恢复带店铺比较',
+    /shop_id\s*(?:===|!==)\s*(?:\w+\.currentShopId\(\)|sid\b)/.test(rWin) && /currentShopId\(\)/.test(rWin),
     ri < 0 ? '没找到 getStorageSync(DRAFT_)' : '');
+
+  if (!t.needTiming) continue;
+
+  const applyBody = bodyOf(raw, /applyDraftFromStorage\(\)\s*\{/);
+  const loadBody = bodyOf(raw, /async load\(\)\s*\{/);
+  const hideBody = bodyOf(raw, /onHide\(\)\s*\{/);
+  tick(3);
+  ok(t.name + ' · 恢复抽成 applyDraftFromStorage', !!applyBody,
+    '没找到该方法（说明恢复又被写回 onShow 内联）');
+  ok(t.name + ' · load 内兜底调用',
+    !!loadBody && /this\.applyDraftFromStorage\(\)/.test(loadBody),
+    'load() 体内没调用 ⇒ 冷启动时 shop_id 还是空，草稿永远不恢复');
+  ok(t.name + ' · 无店不写盘',
+    !!hideBody && /if\s*\(\s*!\s*sid\s*\)\s*return/.test(hideBody),
+    'onHide 缺 if (!sid) return ⇒ 未选店时会用空店草稿覆盖真草稿');
 }
+
+tick(1);
+const swSrc = stripLineComments(fs.readFileSync(path.join(ROOT, 'utils/shopSwitcher.js'), 'utf8'));
+ok('currentShopId 单源在 shopSwitcher',
+  /function currentShopId\(\)/.test(swSrc) && /module\.exports[\s\S]*currentShopId/.test(swSrc),
+  '别在各页面各写一套取店逻辑');
 
 // ================= 汇总 =================
 console.log('');
