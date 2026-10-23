@@ -195,6 +195,8 @@
         <block wx:for="{{comboInsight.cost_share}}" wx:key="name">
           <view class="muted" style="padding-left:24rpx;">{{item.name}} {{item.share_pct}}%</view>
         </block>
+        <!-- P1 · 套餐本身毛利（售价 − 套餐成本）：与「顾客省/我少赚」并列，让老板一眼看到这套餐自己赚多少 -->
+        <view class="muted" wx:if="{{comboSelfMargin}}" style="color:#1e9e5a;font-weight:600;">{{t.comboSelfMarginTitle}}：{{t.cur}}{{comboSelfMargin.profit}}（{{t.comboSelfMarginHint}} · {{comboSelfMargin.rate}}）</view>
       </block>
     </view>
   </block>

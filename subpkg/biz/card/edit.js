@@ -172,6 +172,9 @@ Page({
       comboInsightMerchantLose: TERMS.card.comboInsightMerchantLose,
       comboInsightLoseWarn: TERMS.card.comboInsightLoseWarn,
       comboInsightCostShare: TERMS.card.comboInsightCostShare,
+      // P1 · 套餐本身毛利（售价 − 套餐成本）
+      comboSelfMarginTitle: TERMS.card.comboSelfMarginTitle,
+      comboSelfMarginHint: TERMS.card.comboSelfMarginHint,
       // M3.37（R190）到店团购渠道层
       grouponTitle: TERMS.card.grouponTitle,
       grouponHint: TERMS.card.grouponHint,
@@ -254,6 +257,7 @@ Page({
     subCardOptions: [], // picker range（[{ card_code, label }]）
     comboLines: [],     // 子卡行：[{ sub_card_ref, sub_card_name, qty }]
     comboInsight: null, // 回填的套餐三数（{ customer_save_fen, merchant_lose_fen, cost_share }）
+    comboSelfMargin: null, // P1 · 套餐本身毛利（售价 − 套餐成本）：{ profit, rate } 或 null
     // 🔴 P0#7（2026-10-11）：新手/专业模式（与 M1 录入页同形）—— 默认新手，专业项收起
     inputMode: 'novice',
     showMore: false,
@@ -415,6 +419,8 @@ Page({
               merchant_lose_neg: c.combo.merchantLoseFen < 0,
               cost_share: (c.combo.costShare || []).map((s) => ({ name: s.name, share_pct: s.share_pct })),
             } : null;
+            // P1 · 套餐本身毛利（售价 − 套餐成本）：编辑回填时成本来自 c.total_cost_fen，售价来自 price_fen
+            init.comboSelfMargin = this.comboSelfMarginOf(c.total_cost_fen || 0, init.priceYuan);
           } else {
             // 单品：现有原料 / 手工行回填
             init.calcMode = c.calc_mode;
@@ -530,7 +536,10 @@ Page({
   onLoss(e) { this.setData({ lossRate: e.detail.value }); },
   onAux(e) { this.setData({ auxYuan: e.detail.value }); this.checkAmounts(); },
   onPrice(e) {
-    this.setData({ priceYuan: e.detail.value, stickyMargin: this.marginTextOf(this.data.previewCostFen, e.detail.value) });
+    const patch = { priceYuan: e.detail.value, stickyMargin: this.marginTextOf(this.data.previewCostFen, e.detail.value) };
+    // P1 · 套餐本身毛利：售价变动即时重算（仅套餐卡）
+    if (this.data.cardType === '3') patch.comboSelfMargin = this.comboSelfMarginOf(this.data.previewCostFen, e.detail.value);
+    this.setData(patch);
     this.checkAmounts();
   },
   onActivityPrice(e) { this.setData({ activityPriceYuan: e.detail.value }); this.checkAmounts(); },
@@ -701,6 +710,17 @@ Page({
     return (Math.round(((p - costFen) / p) * 10000) / 100) + '%';
   },
 
+  // 🔴 P1 · 套餐本身毛利（售价 − 套餐成本）：成本走引擎（calcBom / 回填 total_cost_fen），本方法只做展示换算。
+  //   返回 { profit: '¥X.XX', rate: 'Y%' }，金额或售价缺失时返回 null（fail-closed，不显示假数）。
+  comboSelfMarginOf(costFen, priceYuan) {
+    const cost = Number(costFen) || 0;
+    const p = Math.round(Number(((Number(priceYuan) || 0) * 100).toFixed(10)));
+    if (!(p > 0) || !(cost > 0)) return null;
+    const profitFen = p - cost;
+    const rate = Math.round((profitFen / p) * 10000) / 100;
+    return { profit: (profitFen / 100).toFixed(2), rate: rate + '%' };
+  },
+
   // 反算售价 / 预览成本：调 calcBom（后端纯计算），不本地算
   async reverseCalc() {
     const linesInput = this.buildCalcLines();
@@ -734,6 +754,10 @@ Page({
       });
       if (rp > 0) {
         wx.showToast({ title: TERMS.card.reverseResult + ' ' + api.fenToYuan(rp, 2), icon: 'none' });
+      }
+      // P1 · 套餐本身毛利：反算拿到套餐成本后即时补算（仅套餐卡）
+      if (this.data.cardType === '3') {
+        this.setData({ comboSelfMargin: this.comboSelfMarginOf(d.unit_cost_fen || 0, this.data.priceYuan) });
       }
     } catch (e) { api.toastError(e); }
   },

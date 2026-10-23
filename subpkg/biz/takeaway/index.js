@@ -223,6 +223,11 @@ Page({
       cancel: TERMS.buttons.cancel,
       cur: '¥',
       loading: TERMS.ui.loading,
+      // P1 · 逐行毛利（外卖单订单 套餐毛利）
+      itemGrossTitle: TK.itemGrossTitle,
+      itemComboTag: TK.itemComboTag,
+      itemGrossProfit: TK.itemGrossProfit,
+      itemGrossMargin: TK.itemGrossMargin,
       // ── R234/J4d 行内长提示折叠（本页 2 处：importPickHint 33 字 / importShapeCHint 20 字）──
       // ⚠️ R238：importPickHint 由 22 字改到 **33 字**（补「堂食《菜品销售统计》也从这里导」）——
       //    改的是**文案、不是节点** ⇒ 仍 ≥18 字、仍在折叠块内，`check_hint_fold` 的分层线
@@ -419,7 +424,7 @@ Page({
   },
   lookup(id) {
     const d = this.data.dishes.find((x) => x.card_id === id);
-    return d ? { unit_cost_fen: d.unit_cost_fen, price_fen: d.price_fen } : {};
+    return d ? { unit_cost_fen: d.unit_cost_fen, price_fen: d.price_fen, card_type: d.card_type, name: d.name } : {};
   },
 
   // ===== 计算（付费墙：点「计算」时拦）=====
@@ -433,6 +438,14 @@ Page({
     if (order.items.length === 0) { wx.showToast({ title: TK.dishPick, icon: 'none' }); return; }
     const result = calcTakeawayOrder(order, (id) => this.lookup(id));
     const fmt = (fen) => (fen / 100).toFixed(2);
+    // 🔴 P1 · 逐行毛利明细：本单每道菜/套餐的毛利额与毛利率（套餐行单独特「套餐」标签）。
+    const items = (result.lines || []).map((ln) => ({
+      name: ln.name || '',
+      is_combo: ln.is_combo,
+      qty: ln.qty,
+      gross_profit: fmt(ln.gross_profit_fen),
+      gross_margin: ln.gross_margin_pct,
+    }));
     this.setData({
       result,
       view: {
@@ -446,6 +459,8 @@ Page({
         expense: fmt(result.accrual.expense_fen),
         profit_accrual: fmt(result.accrual.profit_fen),
         rate_low: result.cash.receipt_rate < 70,
+        // P1 · 逐行毛利（外卖单订单 套餐毛利）
+        items,
       },
     });
   },

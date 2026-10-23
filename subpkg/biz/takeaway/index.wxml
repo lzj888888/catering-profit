@@ -113,6 +113,21 @@
     <view class="cell"><text class="lbl">{{t.profit}}</text><text class="val strong">{{t.cur}}{{view.profit_accrual}}</text></view>
   </block>
 
+  <!-- P1 · 本单各菜品/套餐毛利（外卖单订单 套餐毛利可读性）-->
+  <block wx:if="{{view.items.length}}">
+    <view class="sec">{{t.itemGrossTitle}}</view>
+    <view class="cell" wx:for="{{view.items}}" wx:key="index">
+      <view class="ci-left">
+        <text class="ci-name">{{item.name}}</text>
+        <text class="tag-combo" wx:if="{{item.is_combo}}">{{t.itemComboTag}}</text>
+      </view>
+      <view class="ci-right">
+        <text class="ci-meta">{{item.qty}} 份 · {{t.itemGrossMargin}} {{item.gross_margin}}%</text>
+        <text class="ci-profit">{{t.cur}}{{item.gross_profit}}</text>
+      </view>
+    </view>
+  </block>
+
   <!-- 挂牌价反算 -->
   <view class="sec">{{t.reverseTitle}}</view>
   <view class="field">

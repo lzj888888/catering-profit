@@ -78,6 +78,10 @@ const EXEMPT = {
   //   属「新证据文件赶在门禁之后落地」，纯一次性取证件，不参与生产链路（S7 仍守它不被 SUITES 引用）。
   'review/evidence/r391_contract_outparams/verify_out_params.py':
     { by: 'r393', date: '2026-10-20', reason: 'R391 出参契约字段完备性的一次性取证脚本，非生产判据' },
+  // R444 补：部署器 UnicodeDecodeError 修复的复现取证脚本 —— 验证修复前 judge msg 为空串、修复后 201 字符且 OK=true。
+  //   纯一次性取证件，不参与任何生产链路（S7 仍守它不被 SUITES 引用）。
+  'review/evidence/r444_runway/verify_judge_enc.py':
+    { by: 'r444', date: '2026-10-23', reason: 'R444 部署器解码修复复现的一次性取证脚本，非生产判据' },
 };
 
 function gitTracked() {

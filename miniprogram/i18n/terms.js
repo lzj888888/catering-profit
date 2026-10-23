@@ -638,6 +638,11 @@ const TERMS = {
       packCost: '包材成本',
       revenue: '收入',
       expense: '费用',
+      // P1 · 外卖单订单逐菜品/套餐毛利
+      itemGrossTitle: '本单各菜品毛利',
+      itemComboTag: '套餐',
+      itemGrossProfit: '毛利',
+      itemGrossMargin: '毛利率',
       // 挂牌价反算
       reverseTitle: '挂牌价反算',
       targetProfit: '目标到手利润（元）',
@@ -1657,6 +1662,9 @@ const TERMS = {
     comboInsightMerchantLose: '我少赚了',
     comboInsightLoseWarn: '这个套餐在拉低你的毛利',
     comboInsightCostShare: '成本结构',
+    // P1 · 套餐本身毛利（售价 − 套餐成本）
+    comboSelfMarginTitle: '套餐本身毛利',
+    comboSelfMarginHint: '售价 − 套餐成本',
     // M3.37（R190）到店团购渠道层：佣金基数 = 顾客实付价（李老师 2026-10-02 定）
     grouponTitle: '团购到手（抖音 / 美团到店）',
     grouponHint: '佣金按顾客实付的团购价算，不是按原价',

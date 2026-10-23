@@ -182,12 +182,15 @@ const REGISTRY = {
     // 🔴 R374：新增 marginTextOf 里的元→分（吸底条毛利率），插入位置在其它位点**之前**
     //   ⇒ 按序号的登记必须整体顺延（守卫 message 会直接点名差几处，别只补一条）。
     'PAREN|) * 100|#1': ['money', 'R374 吸底条：售价（元）→ 分（与后端毛利率同式，toFixed(10) 十进制安全）'],
+    // 🔴 R-P1（M3 套餐毛利可读性）：comboSelfMarginOf 新增一处元→分（PAREN 形态、带 toFixed(10) 安全），
+    //   插在 marginTextOf 之后 ⇒ 后续 PAREN 序号整体顺延 +1（见 R374 注释：插入位点在前必须顺延，别只补一条）。
+    'PAREN|) * 100|#2': ['money', 'comboSelfMarginOf：套餐售价（元）→ 分（沿用 marginTextOf 同式，toFixed(10) 十进制安全）'],
     'IDENT|priceYuan * 100|#1': ['money', '团购试算：售价（元）→ 分'],
-    'PAREN|) * 100|#2': ['money', '团购试算：优惠额（元）→ 分（老板手输，可带三位小数 ⇒ 真风险面）'],
-    'PAREN|) * 100|#3': ['money', '团购试算：堂食价（元）→ 分（老板手输）'],
-    'PAREN|) * 100|#4': ['scaled_int', '规格行 net_unit_cost：整数分 → 万分（与成本引擎同口径）'],
+    'PAREN|) * 100|#3': ['money', '团购试算：优惠额（元）→ 分（老板手输，可带三位小数 ⇒ 真风险面）'],
+    'PAREN|) * 100|#4': ['money', '团购试算：堂食价（元）→ 分（老板手输）'],
+    'PAREN|) * 100|#5': ['scaled_int', '规格行 net_unit_cost：整数分 → 万分（与成本引擎同口径）'],
     'IDENT|yuan * 100|#1': ['money', 'specPriceFen()：规格售价（元）→ 分；⚠️ 第 4 份元→分实现（收敛待判）'],
-    'PAREN|) * 100|#5': ['money', '售价低于成本预警：售价（元）→ 分（老板手输）'],
+    'PAREN|) * 100|#6': ['money', '售价低于成本预警：售价（元）→ 分（老板手输）'],
   },
   'subpkg/biz/card/version.js': {
     'PAREN|) * 100|#1': ['ratio', '版本趋势柱高：值 ÷ 最大值 → 百分比高度（纯展示）'],

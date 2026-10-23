@@ -80,15 +80,32 @@ function calcTakeawayOrder(order, lookup) {
   const packs = (order && Array.isArray(order.packs)) ? order.packs : [];
   const params = (order && order.params) || {};
 
-  // 商品总价 + 菜品成本
+  // 商品总价 + 菜品成本 + 逐行毛利（P1 · 外卖单订单 套餐毛利可读）
   let goodsTotal = 0;
   let dishCost = 0;
+  const lines = [];
   for (const it of items) {
     const id = (it && (it.card_id || it.combo_id)) || '';
     const qty = Number(it && it.qty) || 0;
     const card = (lookup && lookup(id)) || {};
-    goodsTotal += (Number(card.price_fen) || 0) * qty;
-    dishCost += (Number(card.unit_cost_fen) || 0) * qty;
+    const priceFen = Number(card.price_fen) || 0;
+    const costFen = Number(card.unit_cost_fen) || 0;
+    const lineAmount = priceFen * qty;
+    const lineCost = costFen * qty;
+    goodsTotal += lineAmount;
+    dishCost += lineCost;
+    const lineGross = lineAmount - lineCost;
+    const lineMargin = lineAmount > 0 ? Math.round((lineGross / lineAmount) * 10000) / 100 : 0;
+    lines.push({
+      card_id: id,
+      name: card.name || '',
+      is_combo: !!card.card_type && Number(card.card_type) === 3,
+      qty,
+      price_fen: Math.round(priceFen),
+      unit_cost_fen: Math.round(costFen),
+      gross_profit_fen: Math.round(lineGross),
+      gross_margin_pct: lineMargin,
+    });
   }
 
   // 包材成本
@@ -138,6 +155,9 @@ function calcTakeawayOrder(order, lookup) {
       pack_cost_fen: Math.round(packCost),
       profit_fen: Math.round(accrualProfit),
     },
+    // 🔴 P1 · 逐行毛利明细（外卖单订单 套餐毛利可读）：每道菜/套餐的售价、成本、毛利额、毛利率；
+    //   套餐行 is_combo=true（消费方据此打「套餐」标签）；不进 M1（守卫 R135 仅约束聚合输出，明细同理不外溢）。
+    lines,
   };
 }
 
