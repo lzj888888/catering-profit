@@ -546,3 +546,10 @@
   - ④ **env 硬门（脚本自带，不一致即 exit 1）**：`miniprogram/config/env.js::dev` 与 `cloudfunctions/initDb/config.json::DEV_ENV_ID` 均 = `cloud1-d4gphpoxy337f2a25` ⇒ `ENV_OK = True`
   - ⑤ 🔴 **两个本轮踩到的坑（下轮直接用）**：(a) 初版正则 `DEV_ENV_ID\s*:\s*['\"]` 抓不到 `config.json` 里的 `"DEV_ENV_ID": "..."`（**键名后面还有引号**）⇒ 恒空 ⇒ 硬门**假失败** exit 1；正确写法 `DEV_ENV_ID["']?\s*:\s*["']([^"']+)["']`。(b) `zxingcpp` **只装在 venv**（`C:/Users/lzj/.workbuddy/binaries/python/envs/default/Scripts/python.exe`），系统 python 3.13.12 没有 ⇒ 解码验证必须指定该解释器，否则 `VERIFY: UNKNOWN`
   - ⑥ **事实边界**：**出码 ≠ 走查**；码 **25 分钟失效**（02:54 产出，约 03:19 失效）⇒ 李老师要走查时说一声，我随时重出（**不主动弹窗、不催**）。走查问题请**贴成文字**回传（我读不了图片、无扫码能力）
+
+- [2026-10-24 03:05] R455 F 项落地包：**主体变更顺序 + 材料清单 + 代码侧改动面** · **零代码改动 ⇒ 门禁未跑** · commit 见本条提交 · 队列 未认领（F 属拍板项，只出材料不代选）
+  - ① **产出**：`review/PLAN_2026-10-24_F_主体变更_顺序与改动面清单.md`（§0 结论 / §1 两条路对比 / §2 材料清单 / §3 顺序 S1~S6 / §4 代码侧改动面 / §5 风险兜底 / §6 待拍板 3 件）。
+  - ② **为什么排最前（机器可证的出处，不靠印象）**：个人主体同时卡死**微信支付**（`PLAN_2026-10-23_AI落地路标_v1.md:51`，队列 #38 真金链路仍 blocked）、**「深度合成-AI问答」类目**（`:43`）、**小程序备案**（`:49`）⇒ 它是**商业化前置、不是 AI 前置**。
+  - ③ 🔴 **本轮最有价值的发现（换 AppID 的隐藏成本）**：身份主键就是 openid —— `cloudfunctions/getDishReview/cx_auth.js:48` `db.collection('user').where({ openid: OPENID, is_deleted: false })`，且身份唯一来源是云端 `ctx.OPENID`（`:44`，明确不读前端传入的 user_id/shop_id/openid）⇒ **换 AppID = 所有 OPENID 全变 = 用户身份全失效**，`user` / `shop_ai_consent` 全部失联，必须做新旧 openid 映射迁移。⇒ 建议**先走「主体变更（同 AppID）」**，"重新注册"只作驳回兜底。
+  - ④ **代码侧改动面（全仓扫描，带 `文件:行`）**：AppID 硬编码**全仓仅 `project.config.json:3` 一处**（业务代码零命中，20 处命中全在 `review/**` 与手册/取证 JSON）；云环境 ID 在 `miniprogram/config/env.js` + `cloudfunctions/initDb/config.json:3` + 控制台 `DEV_ENV_ID`/`TCB_ENV`（`下一步工序清单.md:63-87`）；迁移工作量 = **55 个云函数**逐个重部署（`ls -d cloudfunctions/*/` = 57 目录，含 `common` 公共库）+ **29 集合 / 29 组索引**重建（`initDb/collections.js` node 实跑取值，非抄文档）；支付 = `utils/paywall.js`（`enable_real_payment`、`:111` 待接 `wx.requestPayment`）+ `payRenew` / `payCallback`；隐私**无缺口**（`app.js:104-133` 已接授权，全仓零 `getLocation/chooseImage/getPhoneNumber/getUserProfile` 调用）。
+  - ⑤ **边界（如实登记）**：本轮**未动任何代码**、**未跑门禁**；S1~S5（办执照 / 选路线 / 变更或注册 / 微信认证 / 重新备案）**全在李老师手上**，我这边 S6 零前置阻塞。**未代选路线、未代定时间表** —— 只给建议与判据。
