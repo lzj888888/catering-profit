@@ -110,6 +110,7 @@ Page({
       //   页面零报错（跑模拟器读 data 才发现）。原文案键还在 terms 里，只是没映射进 t。
       promoDropText: M.promoDropText,
       promoBeText: M.promoBeText,
+      promoTrafficTextHeads: M.promoTrafficTextHeads,
       promoTrafficText: M.promoTrafficText,
       promoDiscountOpts: M.promoDiscountOpts,
       promoWeightOpts: M.promoWeightOpts,
@@ -1380,6 +1381,15 @@ Page({
     // R411：走单源 + 精度统一到 1 位（原为 2 位 ⇒ 同一页上一张卡「1.2万」、这张「1.23万」，老板会当成两个数）
     const money = (yuan) => MoneyFmt.formatYuan(yuan, { wanUnit: T.profitWan, yuanUnit: T.profitYuan });
 
+    // 🔴 R443c：把「多来 X%」换成老板的日常量 —— 客单价与营业天数本来就在页面上，不再额外问。
+    //   口径：多来的**金额** ÷ 营业天数 ÷ 客单价；与 beAfter/beBefore 同一「原价流水」口径，不外推。
+    //   缺客单价（或 ≤0）⇒ 整句不出现，绝不编一个"多来 N 位"。
+    const priceNum = Number(this.data.avgPriceYuan);
+    const dayNum = Number(this.data.openDaysNum) || 30;
+    const headsPerDay = (priceNum > 0 && dayNum > 0)
+      ? Math.round((out.beAfterYuan - out.beBeforeYuan) / dayNum / priceNum)
+      : 0;
+
     return {
       bad: false,
       gaText: out.gaPct + '%',
@@ -1389,7 +1399,10 @@ Page({
         a: money(out.beBeforeYuan), b: money(out.beAfterYuan),
         p: out.beIncreasePct, n: money(out.beAfterNetYuan),
       }),
-      trafficText: fill(T.promoTrafficText, { p: out.needTrafficPct }),
+      // 🔴 R443c：有客单价 ⇒ 同一行里补「每天多来几位」；没有 ⇒ 退回纯百分比（不编数、不增行）
+      trafficText: headsPerDay > 0
+        ? fill(T.promoTrafficTextHeads, { p: out.needTrafficPct, n: headsPerDay })
+        : fill(T.promoTrafficText, { p: out.needTrafficPct }),
       // 🔴 R344：把活动卡接到正推表 —— 取「日常保本 × 1.2」当参照营业额，
       //   与正推表第 3 档完全同基准（老板可以两张表对着看）。
       //   ⚠️ 前提写死：**客流不变**。所以这里说的是「代价」，不是「活动一定亏」——

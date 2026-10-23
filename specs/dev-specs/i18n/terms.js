@@ -961,7 +961,11 @@ const TERMS = {
     promoGaLabel: '活动期毛利率',
     promoDropText: '掉 {x} 个点',
     promoBeLabel: '保本',
-    promoBeText: '{a} → {b}（+{p}%，其中现金实收 {n}）',
+    // 🔴 R443c：原括号里塞了「现金实收」⇒ 一行四个数，老板读不下去。拆到下一行小字。
+    promoBeText: '{a} → {b}（+{p}%）',
+    // 🔴 R443c：老板能判断的是「多来几位客人」，不是「多来 46%」——
+    //   客单价与营业天数本就在页面上，**并进同一行、不新增提示行**（页面已够长，折叠守卫也在盯）。
+    promoTrafficTextHeads: '{p}% 的客人（每天多来 {n} 位）',
     promoTrafficLabel: '打平要多来',
     promoTrafficText: '{p}% 的客人（多来的，不是总共）',
     // 🔴 R344：把活动卡和正推表连起来 —— 同一个营业额，做活动前后各赚多少。
