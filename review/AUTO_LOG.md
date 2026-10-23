@@ -553,3 +553,19 @@
   - ③ 🔴 **本轮最有价值的发现（换 AppID 的隐藏成本）**：身份主键就是 openid —— `cloudfunctions/getDishReview/cx_auth.js:48` `db.collection('user').where({ openid: OPENID, is_deleted: false })`，且身份唯一来源是云端 `ctx.OPENID`（`:44`，明确不读前端传入的 user_id/shop_id/openid）⇒ **换 AppID = 所有 OPENID 全变 = 用户身份全失效**，`user` / `shop_ai_consent` 全部失联，必须做新旧 openid 映射迁移。⇒ 建议**先走「主体变更（同 AppID）」**，"重新注册"只作驳回兜底。
   - ④ **代码侧改动面（全仓扫描，带 `文件:行`）**：AppID 硬编码**全仓仅 `project.config.json:3` 一处**（业务代码零命中，20 处命中全在 `review/**` 与手册/取证 JSON）；云环境 ID 在 `miniprogram/config/env.js` + `cloudfunctions/initDb/config.json:3` + 控制台 `DEV_ENV_ID`/`TCB_ENV`（`下一步工序清单.md:63-87`）；迁移工作量 = **55 个云函数**逐个重部署（`ls -d cloudfunctions/*/` = 57 目录，含 `common` 公共库）+ **29 集合 / 29 组索引**重建（`initDb/collections.js` node 实跑取值，非抄文档）；支付 = `utils/paywall.js`（`enable_real_payment`、`:111` 待接 `wx.requestPayment`）+ `payRenew` / `payCallback`；隐私**无缺口**（`app.js:104-133` 已接授权，全仓零 `getLocation/chooseImage/getPhoneNumber/getUserProfile` 调用）。
   - ⑤ **边界（如实登记）**：本轮**未动任何代码**、**未跑门禁**；S1~S5（办执照 / 选路线 / 变更或注册 / 微信认证 / 重新备案）**全在李老师手上**，我这边 S6 零前置阻塞。**未代选路线、未代定时间表** —— 只给建议与判据。
+
+- [2026-10-24 03:3x] R456 **队列「status 与代码事实」一致性守卫落地**（R449 ⑥ 登记的缺口） · 门禁 **207/207 RC=0（1025.2s，第 2 轮）** · commit `40a97dc` · 套件 206 → **207**
+  - ① **守什么**：自驱队列是「下一条做什么」的唯一真源，而 `status` 是手写的。已实测 3 例漂移（#45 备注数字与实读不符 / #48 标 done 而 blocked 列仍 yes / #27 页数与 `app.json` 实读不符）。判据：`status` 合法、`blocked=yes` 必带 why、**done 必须有可机器验证的落点**、自称「已落/已部署」同上、编号唯一、扫描面下界护栏（行数 ≥20 / done ≥10 / blocked ≥1）。
+  - ② 🔴 **落点三选一（这是本轮真正的设计点）**：① 备注里的 commit sha 真存在于 git log；② 备注里的轮次号 `R###` 能在 commit message 里检索到；③ 显式「无代码提交：…」声明（≥8 字说明，防空声明）。**为什么不是"必须有 sha"**：#8（控制台把 `clearMonth` 超时 3s→20s）**根本没有代码提交**，硬要 sha 只能逼人编一个 —— 那比不填更糟。
+  - ③ **首跑真的抓到了缺口**：12 条 done 行无任何落点（#8,16,17,18,23,25,26,27,30,34,36,42）⇒ 判据未放宽，改成三选一后剩 #8 ⇒ 给它补了「无代码提交：控制台改超时，仓库零改动 + 机器判据」的**事实声明**（不是给判据开口子）。
+  - ④ 🔴 **实现坑（同族：解析面静默丢证据）**：表格解析不能无脑 `split('|').slice(1,-1)` —— 本表有行末**不带尾竖线**的条目（#16 以「commit f09e4bd」结尾）⇒ 最后一格（正是 commit 证据）被当收尾空串丢掉 ⇒ 假红。另一坑：只抹 sha 不足以让 done 行转红（多数行同时写了轮次号）⇒ 真实变异必须**三条落点一起抹**，否则 Q8 假红，而假红会诱使人去放宽判据。
+  - ⑤ **反恒真**：3 组合成样本（抹落点 / 删 why / 非法 status）+ 1 组真实变异（抹一条 done 行全部落点 → 转红 → 还原，收尾逐字节比对证明无残污）。单跑 **14 通过 / 0 失败**。
+  - ⑥ 🔴 **门禁首轮 202/207 的根因（环境，不是代码）**：我刷新 `lsfiles.txt` 时用了裸 `git ls-files` ⇒ CJK 路径被八进制转义 **894 条** ⇒ `suite-count-claims` / `quota-limits` / `collection-perms` / `privacy-collection` **4 个套件同时假红**（判据要求"CJK 路径不得被静默跳过"）。修法：快照必须 `git -c core.quotePath=false ls-files`（9323 行 / 480405 B / 转义 0）⇒ 4 个套件当场转绿。教训：**快照不是"行数对就算刷对"。**
+  - ⑦ **套件数三处同步**（缺一处必红）：`verify_all.js` 头注 206→207 · SUITES 末尾登记 · `★知识存储点` §1.1 行与「套件数会漂」行（后者已点名新套件）。
+
+- [2026-10-24 04:5x] R457 **手册「25 集合」漂移订正 + 新守卫性能/副作用修正** · 门禁 **207/207 RC=0（981.5s，第 3 轮）** · commit `bf3a725`
+  - ① **手册漂移（李老师照着执行的那种）**：`新手上云操作手册.md/.txt` 三处写「25 个集合 / `created.length: 25`」，而单源 `cloudfunctions/initDb/collections.js` node 实读 **`COLLECTIONS = 29`** ⇒ 照手册数会以为少建了 4 张表。已订正为 29 并写明依据；索引 49 条 / unique 13 条实读与手册一致，未动。
+  - ② **历史快照不改写、只标注**：`SMOKETEST_RUNBOOK.md/.txt` 的「线上只部署了 2 个函数、timeout=3」「25 集合 + 40 索引」是 **2026-09-17 时点值** ⇒ 就地加时点标注 + 现状（55 个函数 / timeout 20s / 29 集合 + 49 索引），**数值保留**（按既有纪律：时点快照显式标注，不回写）。
+  - ③ 🔴 **我自己把门禁顶超时了（因果链完整记录）**：新守卫首版在内部跑了多次 git（本机**任何** git 进程启动就 ~3s、`git log` 全量 5.9s）⇒ 单跑 **60s** ⇒ 而 `suite-assert-counts` 会 spawn 全部 207 个套件 ⇒ 它 **TIMEOUT>420s**（R457 首轮门禁唯一红项，前一轮也一样）。修法：git 事实面合并成**一次** `git log --format=%H%x1f%s%x1e`（同时服务 sha 前缀匹配与轮次号检索）⇒ 单跑 **17~18s** ⇒ 该套件不再超时。**判据与断言数一字未改。**
+  - ④ 🔴 **副作用修正**：真实变异由「写真文件后还原」改为**写副本**（`_m3/` 下）——门禁是并发跑套件的，写真文件会与同时读它的其它套件形成竞态；且本机 `fs.unlinkSync` 会被 safe-delete shim 拦截抛错（实测 `SHFileOperationW 失败` / `ETIMEDOUT`）⇒ 副本只覆盖不删除。判据不变（14 条断言）。
+  - ⑤ **行尾**：仓根 md 有 LF（手册）与 CRLF（SMOKETEST）两种 ⇒ Python 按字节改仍触发行尾预检 ⇒ 用 `node tools/check_line_endings.js --fix` 复位，`git diff --numstat` 回到 2~3 行/文件（无整文件翻写）。
