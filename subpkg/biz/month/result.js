@@ -53,6 +53,8 @@ Page({
       indBandLbl: TERMS.modules.m1.indBandLbl,
       indEmpty: TERMS.modules.m1.indEmpty,
       indFoot: TERMS.modules.m1.indFoot,
+      // R443：结果页「下一步」—— 去看是哪道菜在拖毛利
+      nextDishReview: TERMS.m2.nextDishReview,
       // R443：现金流体检
       runwayTitle: TERMS.modules.m1.runwayTitle,
       runwayLabel: TERMS.modules.m1.runwayLabel,
@@ -723,6 +725,9 @@ Page({
 
   onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()); },
   goOrders() { wx.navigateTo({ url: '/subpkg/tools/pay/orders' }); },
+  // 🔴 R443：去「单品毛利复盘」——把「毛利低」变成「是哪道菜」
+  //   ⚠️ 目标页在 pages/ 下（非分包），路径与 app.json 一致；没建卡时那边有自己的空态。
+  goDishReview() { wx.navigateTo({ url: '/pages/m3/dishreview/index' }); },
   goInput() { wx.navigateTo({ url: '/subpkg/biz/month/input?month=' + this.data.month }); },
 
   // M1 报表导出：权限只读 expire_at（前端先查，后端 exportData 再兜底校验）；免费用户触发付费墙

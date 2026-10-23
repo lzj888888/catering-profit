@@ -33,6 +33,9 @@
     <view class="muted">{{t.trueProfit}}</view>
     <view class="result-num" style="color:#22a06b;">{{t.cur}}{{r.trueProfit}}</view>
     <view class="muted">{{t.trueNote}}</view>
+
+  <!-- 🔴 R443：从「看到数」到「能去改」—— 结果页不该是死胡同 -->
+  <view class="next-link" bindtap="goDishReview">{{t.nextDishReview}}</view>
   </view>
 
   <!-- 🔴 R443（2026-10-23）：钱还能撑多久 —— 参照桌面「餐饮闭店决策模型 v1.0」的现金流维度
