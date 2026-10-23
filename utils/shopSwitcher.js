@@ -52,4 +52,16 @@ async function restoreLastShop(list) {
   return false; // 上次店铺已软删/不存在 → 保持当前（默认）
 }
 
-module.exports = { fetchShopList, persistShopId, restoreShopId, switchShop, restoreLastShop, PERSIST_KEY };
+/**
+ * 当前店铺 id —— **本地草稿隔离的唯一取法**（只认 app.globalData，与 card/edit.js::inputModeKey 同口径）。
+ * ⚠️ node 单测环境没有 getApp ⇒ 返回 ''：此时草稿一律不恢复（fail-closed，宁丢草稿不串店）。
+ */
+function currentShopId() {
+  try {
+    if (typeof getApp !== 'function') return '';
+    const app = getApp();
+    return (app && app.globalData && app.globalData.shop_id) || '';
+  } catch (e) { return ''; }
+}
+
+module.exports = { fetchShopList, persistShopId, restoreShopId, switchShop, restoreLastShop, PERSIST_KEY, currentShopId };

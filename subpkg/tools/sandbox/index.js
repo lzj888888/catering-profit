@@ -13,6 +13,7 @@ const api = require('../../../utils/api.js');
 const ui = require('../../../utils/ui.js');
 // R411：金额展示单源（万/元口径与小数位只在这里定，页面不许再各写一份）
 const MoneyFmt = require('../../../utils/moneyFmt.js');
+const ss = require('../../../utils/shopSwitcher.js');   // R443：草稿必须按店隔离
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 // 🔴 R395：分享卡片标题装配（纯函数单源）—— 见 `utils/shareCard.js` 头注
 const shareCard = require('../../../utils/shareCard.js');
@@ -582,6 +583,7 @@ Page({
     try {
       wx.setStorageSync(DRAFT_KEY, {
         v: 1,
+        shop_id: ss.currentShopId(),   // R443：切店后不得回填到别的店
         cityIdx: this.data.cityIdx,
         bizIdx: this.data.bizIdx,
         marginPct: this.data.marginPct,
@@ -593,6 +595,19 @@ Page({
         build: this.data.buildRows.map((r) => ({ key: r.key, yuan: r.yuan, years: r.years })),
         // 🔴 R296 拍1 / R296b：`fixed`（明细表）与 `varRows`（挂钩费用明细）均已删除，不再存草稿。
         presetKey: this.data.presetKey,
+        // 🔴 R443：**金额格也必须进草稿**。原草稿只存了城市/业态/毛利率/期望/目标/天数/投资项/业态预设 9 项，
+        //   而最费事的房租、人工、水电气、管理费、客单价、面积**一项没存** ⇒ 填完这几格退出重进全空，
+        //   页面上刚加的「每月固定支出合计」一重进就变 0，等于自证草稿是半份。
+        //   ⚠️ 这些是「元」字符串：原样存取，不做任何换算（换算会引入精度问题，见 check_money_precision）。
+        rentYuan: this.data.rentYuan,
+        laborTotalYuan: this.data.laborTotalYuan,
+        waterYuan: this.data.waterYuan,
+        electricYuan: this.data.electricYuan,
+        gasYuan: this.data.gasYuan,
+        manageYuan: this.data.manageYuan,
+        avgPriceYuan: this.data.avgPriceYuan,
+        initialInvestYuan: this.data.initialInvestYuan,
+        areaNum: this.data.areaNum,
       });
     } catch (e) { /* 写盘失败不影响测算：草稿只是锦上添花，不打扰用户 */ }
   },
@@ -600,7 +615,9 @@ Page({
   restoreDraft() {
     let d = null;
     try { d = wx.getStorageSync(DRAFT_KEY); } catch (e) { d = null; }
-    if (!d || d.v !== 1) return false;
+    // 🔴 R443：草稿只认**本店** —— 切到 B 店后，A 店填的房租/毛利率/客单价绝不能回填进来
+    //   （否则老板按 A 店的成本给 B 店做决策，且界面上看不出任何异常）。
+    if (!d || d.v !== 1 || d.shop_id !== ss.currentShopId()) return false;
     // 🔴 R297：草稿里的年限可能为空/非法（老草稿无此字段）⇒ 走 `buildYearsOf` 归一，
     //   绝不把空串直接塞回输入框（空串 ⇒ 提交时若再兜错，保本点照样静默算错）。
     const build = (d.build || []).map((x) => mkRow(x.key, M.buildItems, M.buildItemNotes,
@@ -617,6 +634,17 @@ Page({
       targetYuan: d.targetYuan || '',
       openDaysNum: d.openDaysNum || '30',   // R290：旧草稿没有该字段时兜底 30，绝不回退空串（空串 ⇒ 发 0 ⇒ fail-closed）
       presetKey: d.presetKey || '',   // 🔴 round279e · D：回存业态预设（老用户打开时选择器与计算口径一致，不再"显示通用、实际按别业态算"）
+      // 🔴 R443：金额格回填 —— 判据用 `!== undefined`（不写 `|| 默认值`）：
+      //   **空串是老板自己清空的状态**，不能被默认值顶回来（否则「我明明清空了，重进又有了」）。
+      rentYuan: d.rentYuan !== undefined ? d.rentYuan : this.data.rentYuan,
+      laborTotalYuan: d.laborTotalYuan !== undefined ? d.laborTotalYuan : this.data.laborTotalYuan,
+      waterYuan: d.waterYuan !== undefined ? d.waterYuan : this.data.waterYuan,
+      electricYuan: d.electricYuan !== undefined ? d.electricYuan : this.data.electricYuan,
+      gasYuan: d.gasYuan !== undefined ? d.gasYuan : this.data.gasYuan,
+      manageYuan: d.manageYuan !== undefined ? d.manageYuan : this.data.manageYuan,
+      avgPriceYuan: d.avgPriceYuan !== undefined ? d.avgPriceYuan : this.data.avgPriceYuan,
+      initialInvestYuan: d.initialInvestYuan !== undefined ? d.initialInvestYuan : this.data.initialInvestYuan,
+      areaNum: d.areaNum !== undefined ? d.areaNum : this.data.areaNum,
       draftRestored: true,
     });
     this.syncPresetOptions();   // 🔴 D：用回存的 presetKey 重建预设选择器显示（presetName/presetPicked 与计算口径对齐）

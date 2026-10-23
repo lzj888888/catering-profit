@@ -5,6 +5,7 @@
 // ⚠️ 归档守卫：is_archive=true 且超 7 天宽限 → 硬锁只读；宽限内补录需二次确认。
 const api = require('../../../utils/api.js');
 const ui = require('../../../utils/ui.js');
+const ss = require('../../../utils/shopSwitcher.js');   // R443：草稿必须按店隔离
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 
 const DRAFT_KEY = 'draft_month_inv_';
@@ -78,7 +79,8 @@ Page({
   },
   onShow() {
     const draft = wx.getStorageSync(DRAFT_KEY + this.data.month);
-    if (draft && !this.data.saved) {
+    // 🔴 R443：同 M1 填表页 —— 盘点草稿也按店隔离（期初/采购/期末都是**金额**，串店即污染账本）。
+    if (draft && !this.data.saved && draft.shop_id === ss.currentShopId()) {
       this.setData({
         openingYuan: draft.openingYuan !== undefined ? draft.openingYuan : this.data.openingYuan,
         purchaseYuan: draft.purchaseYuan !== undefined ? draft.purchaseYuan : this.data.purchaseYuan,
@@ -92,6 +94,7 @@ Page({
   },
   onHide() {
     wx.setStorageSync(DRAFT_KEY + this.data.month, {
+      shop_id: ss.currentShopId(),   // R443：切店后不得回填到别的店
       openingYuan: this.data.openingYuan,
       purchaseYuan: this.data.purchaseYuan,
       closingYuan: this.data.closingYuan,

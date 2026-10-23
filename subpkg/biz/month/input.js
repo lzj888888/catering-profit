@@ -9,6 +9,7 @@
 const api = require('../../../utils/api.js');
 const ui = require('../../../utils/ui.js');
 // R419：金额输入可读性判定（详见 review/NOTE_2026-10-21_R419_M1金额体检.md）
+const ss = require('../../../utils/shopSwitcher.js');   // R443：草稿必须按店隔离
 const AmountInput = require('../../../utils/amountInput.js');
 const { normalizeDineRows, markFixedRows } = require('../../../utils/dineChannels.js');
 const { pickTakeawayMode, takeawayModeKey, snapshotDetail, restoreDetail, subtotalOf,
@@ -277,7 +278,10 @@ Page({
   onShow() {
     // AD-10/AD-23：回来回填草稿（仅当本页还有未保存内容时）
     const draft = wx.getStorageSync(DRAFT_KEY + this.data.month);
-    if (draft && !this.data.saved) {
+    // 🔴 R443：草稿必须属于**当前店铺**。切店后老草稿仍躺在本地，若照读 ⇒ 把 A 店填了一半的数
+    //   当 B 店的初始值，老板一点保存就把 A 店数据写进 B 店账本（跨店数据污染，且事后难查出）。
+    //   严格相等：老草稿（无 shop_id）一律不认 —— 宁可丢一次草稿，不可串一次店。
+    if (draft && !this.data.saved && draft.shop_id === ss.currentShopId()) {
       this.setData({
         incomeGroups: draft.incomeGroups || this.data.incomeGroups,
         expenseGroups: draft.expenseGroups || this.data.expenseGroups,
@@ -305,6 +309,7 @@ Page({
   onHide() {
     // AD-10：自动存草稿（含已录入值）
     wx.setStorageSync(DRAFT_KEY + this.data.month, {
+      shop_id: ss.currentShopId(),   // R443：切店后不得回填到别的店
       incomeGroups: this.data.incomeGroups,
       expenseGroups: this.data.expenseGroups,
       directConsumeYuan: this.data.directConsumeYuan,

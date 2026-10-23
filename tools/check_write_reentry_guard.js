@@ -299,6 +299,43 @@ for (const s of SAMPLES) {
   }
 }
 
+// ================= R443：本地草稿必须按店隔离（6 条） =================
+// 为什么纳入本守卫：草稿写盘也是「覆盖型写」，但它的后果比「多出一版」更重 ——
+//   三个草稿键（sandbox_draft_v1 / draft_month_input_+月 / draft_month_inv_+月）**都不带 shop 维度**，
+//   切店后老草稿仍躺在本地 ⇒ M1 填表页会把 A 店填了一半的数当 B 店的初始值，
+//   老板一点保存就把 A 店数据写进 B 店账本（跨店污染，事后极难查出）。
+//   修法不是改键名（老草稿会变孤儿、旧键还永远删不干净），而是**草稿体记 shop_id + 恢复时严格相等校验**。
+// 两条腿（缺一不可，方向互不重复）：
+//   ① 写盘：setStorageSync(DRAFT_...) 之后 20 行内，**剥注释后**必须有 `shop_id:`；
+//   ② 恢复：getStorageSync(DRAFT_...) 之后 20 行内，必须有 `shop_id ===/!== x.currentShopId()`
+//      （两种写法都要认 —— M1 走 `===` 正向分支，沙箱页走 `!==` 的 fail 分支）。
+//   剥注释是必须的：注释里就写着 shop_id，不剥 ⇒ 代码删光判据照绿（R299 恒真形态③）。
+function stripLineComments(src) {
+  return src.split('\n').map(function (ln) {
+    const i = ln.indexOf('//');
+    return i >= 0 ? ln.slice(0, i) : ln;
+  }).join('\n');
+}
+
+const DRAFT_TARGETS = [
+  { name: 'M1 填表草稿', p: 'subpkg/biz/month/input.js' },
+  { name: 'M1 盘点草稿', p: 'subpkg/biz/month/inventory.js' },
+  { name: 'M2 测算草稿', p: 'subpkg/tools/sandbox/index.js' }
+];
+
+for (const t of DRAFT_TARGETS) {
+  const L = stripLineComments(fs.readFileSync(path.join(ROOT, t.p), 'utf8')).split('\n');
+  const wi = L.findIndex(function (ln) { return /setStorageSync\(DRAFT_/.test(ln); });
+  const ri = L.findIndex(function (ln) { return /getStorageSync\(DRAFT_/.test(ln); });
+  const wWin = wi < 0 ? '' : L.slice(wi, wi + 20).join('\n');
+  const rWin = ri < 0 ? '' : L.slice(ri, ri + 20).join('\n');
+  tick(2);
+  ok(t.name + ' · 写盘带 shop_id', /shop_id\s*:/.test(wWin),
+    wi < 0 ? '没找到 setStorageSync(DRAFT_)' : '');
+  ok(t.name + ' · 恢复校验 shop_id', /shop_id\s*(?:===|!==)\s*\w+\.currentShopId\(\)/.test(rWin),
+    ri < 0 ? '没找到 getStorageSync(DRAFT_)' : '');
+}
+
 // ================= 汇总 =================
 console.log('');
 if (problems.length === 0) {
