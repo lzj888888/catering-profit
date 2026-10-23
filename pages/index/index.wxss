@@ -141,7 +141,7 @@
 .guide-fold-arrow { font-size: 28rpx; color: #1e3a5f; flex: 0 0 auto; margin-left: 12rpx; }
 .guide-fold-body {
   font-size: 28rpx;
-  color: #6b7a8d;
+  color: #6b7a90;
   line-height: 1.6;
   padding: 16rpx 24rpx;
   background: #f5f8fc;

@@ -30,4 +30,4 @@
 .mat-lb2 { margin-left: 16rpx; }
 .mat-brand { color: #555; }
 /* 换算串可能较长（"1 斤 = 500 克 ÷ 出成率 100%"）⇒ 允许换行，不截断 */
-.mat-spec { color: #6b7a8d; flex: 1 1 auto; min-width: 0; white-space: normal; line-height: 1.5; }
+.mat-spec { color: #6b7a90; flex: 1 1 auto; min-width: 0; white-space: normal; line-height: 1.5; }

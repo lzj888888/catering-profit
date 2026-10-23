@@ -37,7 +37,7 @@
 .hub-flow-step { display: flex; align-items: flex-start; font-size: 28rpx; color: #555; line-height: 1.7; }
 /* 🔴 R281 O3：三步走完成态（✓ 已完成 / ○ 待完成）+ 未完成步的直达按钮。
    守本仓 UI 下限：字号 ≥28rpx、按钮触控高度 ≥88rpx；完成态用品牌墨蓝 #1e3a5f，不引入新色。 */
-.hub-flow-flag { display: inline-block; width: 44rpx; font-size: 28rpx; color: #9aa5b1; }
+.hub-flow-flag { display: inline-block; width: 44rpx; font-size: 28rpx; color: #9aa4b2; }
 .hub-flow-flag.on { color: #1e3a5f; font-weight: 700; }
 .hub-flow-txt { flex: 1; font-size: 28rpx; }
 .hub-flow-btn { margin-top: 16rpx; min-height: 88rpx; line-height: 88rpx; font-size: 30rpx; }

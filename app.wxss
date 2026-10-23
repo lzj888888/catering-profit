@@ -78,7 +78,7 @@ page { background: #f5f6f8; font-family: -apple-system, "PingFang SC", sans-seri
 .cm-opt.on { border-color: #1e3a5f; background: #f3f7fb; }
 .cm-opt-h { font-size: 30rpx; font-weight: 600; color: #222; }
 .cm-opt.on .cm-opt-h { color: #1e3a5f; }
-.cm-opt-d { font-size: 28rpx; color: #6b7a8d; margin-top: 6rpx; line-height: 1.5; }
+.cm-opt-d { font-size: 28rpx; color: #6b7a90; margin-top: 6rpx; line-height: 1.5; }
 .cm-state { font-size: 28rpx; color: #4a5b70; background: #f3f7fb; border-radius: 12rpx; padding: 16rpx 20rpx; margin: 12rpx 0; line-height: 1.6; }
 .cm-moved { font-size: 28rpx; color: #4a5b70; background: #f3f7fb; border-radius: 12rpx; padding: 20rpx; margin: 12rpx 0; line-height: 1.6; }
 

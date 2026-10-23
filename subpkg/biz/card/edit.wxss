@@ -11,7 +11,7 @@
 
 /* round150（M3.14）组件类型 chips —— 字号 28rpx 起（上线前 AD 缺口 G1 下界） */
 .kind-row { display: flex; flex-wrap: wrap; align-items: center; margin-top: 8rpx; }
-.kind-lbl { font-size: 28rpx; color: #6b7a8c; margin-right: 12rpx; }
+.kind-lbl { font-size: 28rpx; color: #6b7a90; margin-right: 12rpx; }
 .kind-chip { font-size: 28rpx; padding: 8rpx 20rpx; margin: 0 12rpx 8rpx 0; border-radius: 22rpx; background: #e8eff7; color: #1e3a5f; }
 .kind-on { background: #1e3a5f; color: #ffffff; }
 
@@ -80,12 +80,12 @@
 
 /* ===== P0#7（2026-10-11）：新手/专业模式（与 M1 录入页同形）+ 反算前置说明 ===== */
 .im-wrap { padding: 4rpx 0 8rpx; }
-.im-sec { font-size: 28rpx; color: #6b7a8d; padding: 0 0 10rpx 8rpx; }
+.im-sec { font-size: 28rpx; color: #6b7a90; padding: 0 0 10rpx 8rpx; }
 .im-opts { display: flex; gap: 12rpx; }
 .im-opt { flex: 1; min-width: 0; padding: 16rpx 14rpx; border-radius: 12rpx; border: 2rpx solid #e3eaf2; background: #fff; }
 .im-opt.on { border: 2rpx solid #1e3a5f; background: #e8eff7; }
 .im-h { font-size: 28rpx; font-weight: 600; color: #1e3a5f; }
-.im-d { font-size: 28rpx; color: #6b7a8d; margin-top: 6rpx; }
+.im-d { font-size: 28rpx; color: #6b7a90; margin-top: 6rpx; }
 .im-tip { font-size: 28rpx; color: #8a94a6; line-height: 1.5; padding: 6rpx 8rpx 4rpx; }
 .im-expand { padding: 16rpx 0 4rpx; }
 .btn-block { width: 100%; min-height: 88rpx; }
@@ -103,7 +103,7 @@
  *   ③ 输入框在本页收窄（覆盖全局 `.field input{min-width:320rpx}`），给标签让位；
  *   ④ 配料卡与单元格的留白各收一档（触控下界 88rpx 不动）。
  */
-.sec-lite { font-size: 28rpx; color: #6b7a8d; padding: 20rpx 8rpx 8rpx; }
+.sec-lite { font-size: 28rpx; color: #6b7a90; padding: 20rpx 8rpx 8rpx; }
 
 .form .field {
   padding: 0 20rpx;
@@ -136,7 +136,7 @@
   box-shadow: 0 -4rpx 16rpx rgba(30, 58, 95, 0.06); }
 .sa-l { flex: 1; min-width: 0; min-height: 88rpx; display: flex; align-items: center;
   flex-wrap: wrap; column-gap: 12rpx; padding-right: 12rpx; }
-.sa-cap { font-size: 28rpx; color: #6b7a8d; }
+.sa-cap { font-size: 28rpx; color: #6b7a90; }
 .sa-val { font-size: 34rpx; font-weight: 800; color: #1e3a5f; font-variant-numeric: tabular-nums; }
 .sa-mg { font-size: 28rpx; color: #2f6b4f; }
 .sa-empty { font-size: 28rpx; color: #8a94a6; }

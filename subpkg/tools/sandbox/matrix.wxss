@@ -67,7 +67,7 @@
 .tr.invalid .td:first-child { background: #fafafa; }
 .tr.red .td:first-child { background: #fff; }
 /* 窄屏提示：与 .hint 分开写，避免长句被判为需折叠（本句仅 9 字） */
-.swipe-hint { font-size: 28rpx; color: #6b7a8d; padding: 4rpx 8rpx 12rpx; }
+.swipe-hint { font-size: 28rpx; color: #6b7a90; padding: 4rpx 8rpx 12rpx; }
 .nav-row { display: flex; margin-top: 24rpx; }
 /* 🔴 round279 · #9 结论速读卡（结论高亮 + 房租杠杆 + 淡季安全垫）*/
 .insight { background: #fff7ec; border: 1rpx solid #ffd9a0; border-radius: 14rpx; padding: 20rpx 22rpx; margin-bottom: 18rpx; }
