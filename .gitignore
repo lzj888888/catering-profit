@@ -94,3 +94,18 @@ _归档_过程件_202610/
 #   （R423 两次用 git add -A 把它们夹带进提交，故立此规则）
 _commit_*.txt
 _gate_*.log
+
+# R443：仓库根的一次性过程件 —— 补丁脚本 / 提交信息草稿 / 京东账单解析草稿 / 收尾脚本。
+#   同 R423 / R428 口径：**只做「不误提交」的机械保证，不删不移**（数据零损失，李老师可随时自取）。
+#   为什么补：R428 只挡了 `_commit_*` 与 `_gate_*`，而实际残留是 `_msg_*` / `_add_*` / `_jd_*` 几族，
+#   一直以 `??` 悬挂污染 `git status`（R443 实测 17 条）⇒ 显式登记，避免再次用 `git add -A` 误夹带。
+#   ⚠️ 已入库的 `_fix_r77*.py` / `_mut_r*.py` 不受影响（git 对已跟踪文件不适用 ignore）。
+_msg_*.txt
+_add_*.py
+_fix_*.py
+_jd_parse*.py
+_jd_parse_result.txt
+_jd_pnl*.py
+_jd_pnl.txt
+_r443_finish.sh
+_r443_*.bat
