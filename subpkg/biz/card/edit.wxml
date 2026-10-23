@@ -185,6 +185,8 @@
         </view>
       </block>
       <button class="btn ghost btn-small" style="min-height:88rpx;" bindtap="addComboLine">{{t.comboAddSubCard}}</button>
+      <!-- 🔴 R443：子卡成本变了却没有自动更新套餐（syncCostCard 跳过套餐）⇒ 必须说出来 -->
+      <view class="muted warn-hint" wx:if="{{comboStaleText}}">{{comboStaleText}}</view>
 
       <!-- 三个显示数：顾客省 / 我少赚 / 成本结构 -->
       <block wx:if="{{comboInsight}}">

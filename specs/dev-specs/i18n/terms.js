@@ -1671,6 +1671,13 @@ const TERMS = {
     comboSubCardQty: '份数',
     comboAddSubCard: '+ 添加子菜',
     comboPickEmpty: '暂无可用子菜（先建单品菜品）',
+    // 🔴 R443：三处「该说出来却没说的话」——子卡成本已变 / 同名卡 / 保存回执
+    comboStaleTip: '子卡成本已变：{n} 张（套餐成本 {sign}{money} 元）· 重新保存即按新成本',
+    dupCardTitle: '已有同名卡',
+    dupCardTip: '「{name}」已有一张（成本 ¥{cost}）。继续新建会出现两张同名卡。',
+    dupCardGoEdit: '去改那张',
+    dupCardKeepNew: '继续新建',
+    savedReceipt: '成本 ¥{cost} · 毛利 ¥{gross} · 毛利率 {margin}%',
     comboInsightCustomerSave: '顾客省了',
     comboInsightMerchantLose: '我少赚了',
     comboInsightLoseWarn: '这个套餐在拉低你的毛利',

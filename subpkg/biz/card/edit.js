@@ -257,6 +257,7 @@ Page({
     subCardOptions: [], // picker range（[{ card_code, label }]）
     comboLines: [],     // 子卡行：[{ sub_card_ref, sub_card_name, qty }]
     comboInsight: null, // 回填的套餐三数（{ customer_save_fen, merchant_lose_fen, cost_share }）
+    comboStaleText: '', // R443：子卡成本已变时的提示（空 = 不显示）
     comboSelfMargin: null, // P1 · 套餐本身毛利（售价 − 套餐成本）：{ profit, rate } 或 null
     // 🔴 P0#7（2026-10-11）：新手/专业模式（与 M1 录入页同形）—— 默认新手，专业项收起
     inputMode: 'novice',
@@ -412,6 +413,11 @@ Page({
                 sub_card_ref: l.sub_card_ref,
                 sub_card_name: (subCards.find((s) => s.card_code === l.sub_card_ref) || {}).name || l.material_name || '',
                 qty: String(l.quantity),
+                // 🔴 R443：把**保存时**的子卡单份成本记下来（net_unit_cost 是万分之元 ⇒ 换成**分**存）——
+                //   套餐成本是快照，子卡后来涨价/改配方不会自动更新（syncCostCard 跳过 card_type=3）。
+                //   ⚠️ 一律在「分」上比较，不做 `fen * 100`（check_money_precision C-① 要求每处 ×100 登记，
+                //      而这里本质是整数换算，没必要引入一处浮点乘法）。
+                saved_fen: Math.round((Number(l.net_unit_cost) || 0) / 100),
               }));
             init.comboInsight = c.combo ? {
               customer_save_yuan: api.fenToYuan(c.combo.customerSaveFen, 2),
@@ -421,6 +427,7 @@ Page({
             } : null;
             // P1 · 套餐本身毛利（售价 − 套餐成本）：编辑回填时成本来自 c.total_cost_fen，售价来自 price_fen
             init.comboSelfMargin = this.comboSelfMarginOf(c.total_cost_fen || 0, init.priceYuan);
+            init.comboStaleText = '';
           } else {
             // 单品：现有原料 / 手工行回填
             init.calcMode = c.calc_mode;
@@ -452,6 +459,7 @@ Page({
       // 分类回显：自由文本，直接回显；候选 chips = 本店填过的 + 建议池（不再做"补进枚举"）
       init.catChips = this.buildCatChips(init.category);
       this.setData(init);
+      if (init.cardType === '3') this.refreshComboStale();
       // 明细行的原料换算说明（须在 setData(materials) 之后算，否则找不到原料）
       this.refreshSpecHints();
       // round156：从原料选择页返回时原料表还没到 ⇒ 在此补做（见 onShow 的 _pendingPick）。
@@ -515,7 +523,8 @@ Page({
     const opt = this.data.subCardOptions[Number(e.detail.value)];
     if (!opt) return;
     const comboLines = this.data.comboLines.slice();
-    comboLines[idx] = Object.assign({}, comboLines[idx], { sub_card_ref: opt.card_code, sub_card_name: opt.label });
+    // ⚠️ 换了子卡 ⇒ 旧快照作废（否则会把「换了子卡」误报成「子卡成本变了」）
+    comboLines[idx] = Object.assign({}, comboLines[idx], { sub_card_ref: opt.card_code, sub_card_name: opt.label, saved_fen: 0 });
     this.setData({ comboLines });
   },
   onComboQty(e) {
@@ -523,7 +532,89 @@ Page({
     const comboLines = this.data.comboLines.slice();
     comboLines[idx] = Object.assign({}, comboLines[idx], { qty: e.detail.value });
     this.setData({ comboLines });
+    this.refreshComboStale();
   },
+
+  // ===== R443：三处「说出来」的辅助 =====
+  /**
+   * 把 {name} 这类占位符替换掉（3 行模板串替换，与 sandbox/matrix 同一写法；不涉及任何计算）。
+   */
+  // eslint-disable-next-line
+  fillTpl(tpl, map) {
+    return String(tpl || '').replace(/\{(\w+)\}/g, (m, k) => (map[k] != null ? map[k] : m));
+  },
+
+  /**
+   * 🔴 R443：套餐成本是**保存时的子卡快照** —— 子卡后来改价/改配方不会自动更新套餐
+   *   （`cloudfunctions/syncCostCard/index.js:77` 明确 `card_type === 3` 跳过）。
+   *   结果：老板看到的套餐毛利可能是几个月前的成本，**零提示**。
+   *   这里只做「告诉你一声」，**绝不自动改数**（与 R406 原料改价同口径：不自动改，但必须让人知道）。
+   */
+  refreshComboStale() {
+    if (this.data.cardType !== '3') {
+      if (this.data.comboStaleText) this.setData({ comboStaleText: '' });
+      return;
+    }
+    let n = 0;
+    let deltaFen = 0;
+    for (const cl of (this.data.comboLines || [])) {
+      if (!cl || !cl.sub_card_ref) continue;
+      const cur = (this.data.subCards || []).find((s) => s.card_code === cl.sub_card_ref);
+      if (!cur) continue;
+      const curFen = Math.round(Number(cur.total_cost_fen || 0));   // 整数分
+      const savedFen = Math.round(Number(cl.saved_fen || 0));        // 整数分
+      if (!(savedFen > 0)) continue;                                 // 没快照（新建行）⇒ 无从判断，不报
+      if (curFen === savedFen) continue;
+      n += 1;
+      deltaFen += (curFen - savedFen) * (Number(cl.qty) || 0);       // 整数分 × 份数，无浮点
+    }
+    const text = n > 0
+      ? this.fillTpl(TERMS.card.comboStaleTip, {
+        n: n,
+        sign: deltaFen >= 0 ? '+' : '−',
+        money: api.fenToYuan(Math.abs(Math.round(deltaFen)), 2),
+      })
+      : '';
+    if (text !== this.data.comboStaleText) this.setData({ comboStaleText: text });
+  },
+
+  /**
+   * 🔴 R443：新建前查同名 —— 老板很容易建两张「宫保鸡丁」（一张 12.75、一张 11.90），
+   *   外卖/团购选卡时不知道选哪张 ⇒ 选错就按错成本算毛利。
+   *   ⚠️ 查询失败**放行**（不能因为一次网络抖动挡住保存）。
+   * @returns {Promise<boolean>} true = 继续保存
+   */
+  async confirmDupName(name) {
+    const nm = String(name || '').trim();
+    if (!nm) return true;
+    let list = [];
+    try {
+      const r = await api.call('getCostCard', {});
+      list = (r && r.list) || [];
+    } catch (e) { return true; }
+    const hit = list.find((x) => String(x.name || '').trim() === nm);
+    if (!hit) return true;
+    const cost = api.fenToYuan(hit.total_cost_fen || 0, 2);
+    return new Promise((resolve) => {
+      wx.showModal({
+        title: TERMS.card.dupCardTitle,
+        content: this.fillTpl(TERMS.card.dupCardTip, { name: nm, cost: cost }),
+        cancelText: TERMS.card.dupCardGoEdit,
+        confirmText: TERMS.card.dupCardKeepNew,
+        success: (res) => {
+          if (!res.confirm && hit.card_code) {
+            // 去改那张：redirectTo 顶掉当前新建页，避免栈里留一个空白新建页
+            wx.redirectTo({ url: '/subpkg/biz/card/edit?card_code=' + hit.card_code });
+            resolve(false);
+            return;
+          }
+          resolve(!!res.confirm);
+        },
+        fail: () => resolve(true),
+      });
+    });
+  },
+
   addComboLine() {
     this.setData({ comboLines: this.data.comboLines.concat([{ sub_card_ref: '', sub_card_name: '', qty: '1' }]) });
   },
@@ -1123,17 +1214,30 @@ Page({
       } catch (err) { /* 本地字典失败不影响保存 */ }
     }
     if (this.data.saving) return;   // 连击保护：重复提交会生成两个版本
+    // 🔴 R443：新建态先查同名卡（编辑态不必查 —— 改的是同一张）
+    if (!this.data.isEdit && !(await this.confirmDupName(card.name))) return;
     // ⚠️ 必须在 afterSaved 之前取：afterSaved 会把 isEdit 清成 false（转新建态）
     const wasEdit = this.data.isEdit;
     this.setData({ saving: true });
     try {
       ui.setTitle(TERMS.buttons.save);
-      await api.call('saveCostCard', { card, client_request_id: 'cc_' + Date.now() });
+      const out = await api.call('saveCostCard', { card, client_request_id: 'cc_' + Date.now() });
       if (wasEdit) {
         // 编辑态：**改完即走**（老板改的是一道具体的菜，不是要连录一批）。
         //   ⚠️ 这里**不能**走 afterSaved —— 那会把 card_code 清掉，老板以为还在改这道菜。
-        wx.showToast({ title: TERMS.ui.savedDone, icon: 'success' });
-        setTimeout(() => wx.navigateBack(), 600);
+        // 🔴 R443：保存回执 —— 不只说「已保存」，直接把这张卡的结果报给老板，
+        //   他当场就能判断对不对，不用再点进版本页核对。数字全部来自服务端返回值。
+        const o = out || {};
+        wx.showModal({
+          title: TERMS.ui.savedDone,
+          content: this.fillTpl(TERMS.card.savedReceipt, {
+            cost: api.fenToYuan(o.total_cost_fen || 0, 2),
+            gross: api.fenToYuan(o.gross_profit_fen || 0, 2),
+            margin: o.gross_margin_pct != null ? o.gross_margin_pct : '—',
+          }),
+          showCancel: false,
+          success: () => wx.navigateBack(),
+        });
       } else {
         // round156（新增态）：**不跳走**。改前是 `setTimeout(navigateBack, 600)` —— 存一道菜就被踢回列表，
         //   录 30 道菜要来回 60 次（李老师「100 道菜品，来回查找会很麻烦」的痛点之一）。
