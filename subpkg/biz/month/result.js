@@ -99,6 +99,8 @@ Page({
       realConsume: TERMS.resultPage.realConsume,
       effectiveAmortize: TERMS.resultPage.effectiveAmortize,
       refProfit: TERMS.resultPage.refProfit,
+      trendTitle: TERMS.resultPage.trendTitle,
+      trendNote: TERMS.resultPage.trendNote,
       trueProfit: TERMS.resultPage.trueProfit,
       profitDiff: TERMS.resultPage.profitDiff,
       // C：钱去哪了 故事线（专业术语保留 + 白话流向）
@@ -199,6 +201,7 @@ Page({
     // 🔴 R399：核对清单的展示对象（`has:false` ⇒ 整卡不渲染）。
     //   为什么历史不足时连卡都不出：只有 1 个月不叫「历史」，摆一张空卡会让人以为"没问题"。
     anom: { has: false },
+    trend: [],   // R443：近 6 个月走势 [{month,label,text,h,up,isCur}]
     bizTypes: TERMS.m2.bizTypes,
     cityTiers: TERMS.m2.cityTiers,
     bizIdx: 1,      // 默认「中式正餐」（bizTypes[1]），与后端 bandOf 的兜底口径一致
@@ -530,7 +533,7 @@ Page({
         .sort((a, b) => (a < b ? 1 : -1))
         .slice(0, lookback);
       // 历史太短 ⇒ 连卡都不出（fail-closed：只有 1 个月不叫「历史」，出空卡会被读成"没问题"）
-      if (built.length < need) { this.setData({ anom: empty }); return; }
+      if (built.length < need) { this.setData({ anom: empty, trend: [] }); return; }
       const snaps = [curLedger];
       for (const m of built) {
         try {
@@ -539,7 +542,7 @@ Page({
         } catch (e) { /* 单月失败跳过，不阻断 */ }
       }
       const cl = anomaly.buildChecklist({ month: target, months: snaps });
-      this.setData({ anom: this.viewChecklist(cl) });
+      this.setData({ anom: this.viewChecklist(cl), trend: this.buildTrend(snaps) });
     } catch (e) {
       this.setData({ anom: empty });   // 取数失败 ⇒ 静默不出卡（结果页自身仍完整）
     }
@@ -550,6 +553,38 @@ Page({
    *   · 出不出卡、够不够历史、装哪些项、怎么排序 —— 全在 `utils/anomalyRules.js`；
    *   · 本函数只把 rule/direction/ratio_pct 换成术语文案，绝不自己算百分比、绝不加金额差。
    */
+
+  /**
+   * 🔴 R443：近 6 个月真钱利润 → 柱状数据（**纯展示换算，不参与任何计算**）。
+   *   数据来源 = `loadChecklist` 已经拉回来的那批账本（当前月 + 最多 5 个历史月）⇒ **零额外云调用**。
+   *   口径：一律取 `total_factor_real_profit_fen`（与结果页「真钱利润」同一字段，不另算）。
+   *   边界：少于 2 个月 ⇒ 返回空（一个月不叫"走势"；出空图会被读成"没数据/坏了"）。
+   */
+  buildTrend(snaps) {
+    const rows = (snaps || [])
+      .filter((d) => d && d.account_id && d.month)
+      .map((d) => ({ month: d.month, fen: Number(d.total_factor_real_profit_fen) || 0 }))
+      .sort((a, b) => (a.month < b.month ? -1 : 1))
+      .slice(-6);
+    if (rows.length < 2) return [];
+    const maxAbs = rows.reduce((m, r) => Math.max(m, Math.abs(r.fen)), 0) || 1;
+    const cur = this.data.month;
+    return rows.map((r) => ({
+      month: r.month,
+      label: r.month.slice(5) + '月',
+      isCur: r.month === cur,
+      text: api.fenToYuan(r.fen, 0),
+      h: Math.max(8, Math.round((Math.abs(r.fen) / maxAbs) * 120)),
+      up: r.fen >= 0,
+    }));
+  },
+
+  goMonthResult(e) {
+    const m = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.month) || '';
+    if (!m || m === this.data.month) return;   // 点当前月 = 原地，不重复入栈
+    wx.navigateTo({ url: '/subpkg/biz/month/result?month=' + m });
+  },
+
   viewChecklist(cl) {
     const T = this.data.t;
     if (!cl || !cl.basis || cl.basis.insufficient) return { has: false };

@@ -36,6 +36,19 @@
 
   <!-- 🔴 R443：从「看到数」到「能去改」—— 结果页不该是死胡同 -->
   <view class="next-link" bindtap="goDishReview">{{t.nextDishReview}}</view>
+
+  <!-- 🔴 R443：近几个月走势 —— 用老板自己的历史数据（零额外云调用，复用 checklist 那批账本） -->
+  <view class="card2" wx:if="{{trend.length}}">
+    <view class="cell drill-head"><text class="lbl">{{t.trendTitle}}</text></view>
+    <view class="trend">
+      <view class="tb" wx:for="{{trend}}" wx:key="month" data-month="{{item.month}}" bindtap="goMonthResult">
+        <view class="tb-col"><view class="tb-bar {{item.up ? 'up' : 'down'}}" style="height:{{item.h}}rpx;"></view></view>
+        <text class="tb-lb {{item.isCur ? 'on' : ''}}">{{item.label}}</text>
+        <text class="tb-v">{{item.text}}</text>
+      </view>
+    </view>
+    <view class="muted">{{t.trendNote}}</view>
+  </view>
   </view>
 
   <!-- 🔴 R443（2026-10-23）：钱还能撑多久 —— 参照桌面「餐饮闭店决策模型 v1.0」的现金流维度

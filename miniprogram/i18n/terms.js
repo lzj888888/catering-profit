@@ -2219,6 +2219,10 @@ const TERMS = {
     realConsume: '真实消耗',
     effectiveAmortize: '当月摊销',
     refProfit: '经营参考估算',
+    // 🔴 R443：近 6 个月走势 —— 复用 checklist 那批账本（**零额外云调用**），
+    //   让用满 3 个月的老板第一次看到「我在变好还是变差」；这也是竞品最难抄的部分（他的历史数据）。
+    trendTitle: '近几个月真钱利润',
+    trendNote: '点上面的月份可以看当月；柱子越高，那个月赚得越多',
     trueProfit: '真实利润',
     profitDiff: '口径差异',
     refNote: '按直接填写的消耗估算',

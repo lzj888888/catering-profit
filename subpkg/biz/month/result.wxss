@@ -65,3 +65,13 @@
 .runway-big { font-size: 36rpx; font-weight: 700; }
 /* R443：结果页「下一步」文字链 —— 不造新色板，沿用页面主色 */
 .next-link { font-size: 28rpx; color: #1e3a5f; padding: 24rpx 0; text-align: center; }
+/* R443：近几个月走势（纯 CSS 柱状，不引图表库 —— 包体余量只剩 0.4KB 级别） */
+.trend { display: flex; align-items: flex-end; justify-content: space-between; padding: 16rpx 8rpx 8rpx; }
+.tb { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; }
+.tb-col { height: 120rpx; display: flex; align-items: flex-end; }
+.tb-bar { width: 36rpx; border-radius: 6rpx 6rpx 0 0; }
+.tb-bar.up { background: #22a06b; }
+.tb-bar.down { background: #e74c3c; }
+.tb-lb { font-size: 28rpx; color: #646a73; margin-top: 8rpx; }
+.tb-lb.on { color: #1e3a5f; font-weight: 600; }
+.tb-v { font-size: 28rpx; color: #646a73; }
