@@ -69,6 +69,10 @@ Page({
         card_id: c.card_code,
         name: c.name || '',
         card_type: c.card_type,
+        // 🔴 成本口径（R443 核验，勿再"修"）：total_cost_fen = 卡引擎 unit_cost_fen
+        //   = (Σ原料明细 + 辅料) ÷ (1 − 损耗率)，**不含任何包材/打包费**（见
+        //   cloudfunctions/saveCostCard/service.js:66-96）。外卖的包材是 packs 独立行、
+        //   由 takeawayDerive 单独算 pack_cost_fen；到店团购本就无包材（R190）⇒ 此处直接取用即正确。
         unit_cost_fen: c.total_cost_fen || 0,
         price_fen: c.price_fen || 0,
       }));
