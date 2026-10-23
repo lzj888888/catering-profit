@@ -165,6 +165,21 @@
   <view class="muted" style="margin:-4rpx 0 12rpx 4rpx;">{{t.lineKindHint}}</view>
   <button class="btn ghost btn-small" style="min-height:88rpx;" bindtap="addLine">{{t.addLine}}</button>
   <button class="btn ghost btn-small" style="min-height:88rpx;" bindtap="goMaterial">{{t.materialArchive}}</button>
+  <!-- 🔴 R443：批量粘贴配料（解析在 utils/cardPaste.js；只在本页暂存，点「导入」才进 lines） -->
+  <view class="paste-toggle" bindtap="onPasteToggle">{{t.pasteTitle}}{{pasteOpen ? ' ▾' : ' ▸'}}</view>
+  <block wx:if="{{pasteOpen}}">
+    <textarea class="paste-ta" value="{{pasteText}}" bindinput="onPasteInput" placeholder="{{t.pastePlaceholder}}" maxlength="-1" adjust-position="{{true}}" cursor-spacing="20" />
+    <view class="muted">{{t.pasteHint}}</view>
+    <button class="btn ghost btn-small" style="min-height:88rpx;" bindtap="onPasteParse">{{t.pasteParseBtn}}</button>
+    <block wx:if="{{pasteRows.length}}">
+      <view class="paste-row" wx:for="{{pasteRows}}" wx:key="index">
+        <text class="pr-name">{{item.name}}</text>
+        <text class="pr-qty">{{item.qtyText}} {{item.unit}}</text>
+        <text class="pr-st {{item.status === 'ok' ? 'ok' : 'bad'}}">{{item.status === 'ok' ? '✓' : item.statusText}}</text>
+      </view>
+      <button class="btn primary btn-small" bindtap="onPasteImport" disabled="{{pasteOkCount === 0}}">{{pasteImportLabel}}</button>
+    </block>
+  </block>
   </block>
 
   <!-- M3.16（批次 C）套餐：子卡选择行（选卡 + 份数）+ 三个显示数 -->

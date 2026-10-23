@@ -141,3 +141,12 @@
 .sa-mg { font-size: 28rpx; color: #2f6b4f; }
 .sa-empty { font-size: 28rpx; color: #8a94a6; }
 .sa-btn { width: 220rpx; margin: 0; min-height: 88rpx; font-size: 30rpx; padding: 0; }
+/* R443：批量粘贴配料 —— 不另造色板，沿用页面既有字号 */
+.paste-toggle { font-size: 28rpx; color: #646a73; padding: 16rpx 0; }
+.paste-ta { width: 100%; min-height: 200rpx; border: 1rpx solid #e5e6eb; border-radius: 8rpx; padding: 16rpx; font-size: 28rpx; box-sizing: border-box; }
+.paste-row { display: flex; align-items: center; justify-content: space-between; padding: 12rpx 0; border-bottom: 1rpx solid #f2f3f5; }
+.pr-name { font-size: 28rpx; flex: 1 1 auto; }
+.pr-qty { font-size: 28rpx; color: #646a73; margin: 0 16rpx; }
+.pr-st { font-size: 28rpx; }
+.pr-st.ok { color: #1e9e5a; }
+.pr-st.bad { color: #e74c3c; }

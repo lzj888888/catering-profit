@@ -10,6 +10,7 @@
 const api = require('../../../utils/api.js');
 const ui = require('../../../utils/ui.js');
 const units = require('../../../utils/units.js');
+const CardPaste = require('../../../utils/cardPaste.js');
 const AmountInput = require('../../../utils/amountInput.js');   // R426（队列 #32）：金额栏体检（纯判定，不改数）
 const { openPaywall } = require('../../../utils/paywall.js');
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
@@ -96,6 +97,11 @@ Page({
       material: TERMS.card.material,
       qty: TERMS.card.qty,
       addLine: TERMS.card.addLine,
+      pasteTitle: TERMS.card.pasteTitle,
+      pasteHint: TERMS.card.pasteHint,
+      pastePlaceholder: TERMS.card.pastePlaceholder,
+      pasteParseBtn: TERMS.card.pasteParseBtn,
+      pasteImportBtn: TERMS.card.pasteImportBtn,
       save: TERMS.card.save,
       reverseTitle: TERMS.card.reverseTitle,
       reverseHint: TERMS.card.reverseHint,
@@ -258,6 +264,12 @@ Page({
     comboLines: [],     // 子卡行：[{ sub_card_ref, sub_card_name, qty }]
     comboInsight: null, // 回填的套餐三数（{ customer_save_fen, merchant_lose_fen, cost_share }）
     comboStaleText: '', // R443：子卡成本已变时的提示（空 = 不显示）
+    // 🔴 R443：批量粘贴配料（只在本页暂存，导入后才进 lines；不落库、不联网）
+    pasteOpen: false,
+    pasteText: '',
+    pasteRows: [],
+    pasteOkCount: 0,
+    pasteImportLabel: '',
     comboSelfMargin: null, // P1 · 套餐本身毛利（售价 − 套餐成本）：{ profit, rate } 或 null
     // 🔴 P0#7（2026-10-11）：新手/专业模式（与 M1 录入页同形）—— 默认新手，专业项收起
     inputMode: 'novice',
@@ -769,6 +781,46 @@ Page({
     this.setData({ lines });
   },
   addLine() { this.setData({ lines: renumber(this.data.lines.concat([emptyLine()])) }); },
+
+  // ===== R443：批量粘贴配料（解析在 utils/cardPaste.js，这里只做展示与导入）=====
+  onPasteToggle() { this.setData({ pasteOpen: !this.data.pasteOpen }); },
+  onPasteInput(e) { this.setData({ pasteText: e.detail.value }); },
+  pasteStatusText(r) {
+    if (r.status === 'ok') return '';
+    if (r.status === 'no_match') return TERMS.card.pasteNoMatch;
+    if (r.status === 'bad_unit') return TERMS.card.pasteBadUnit;
+    return TERMS.card.pasteBadQty;
+  },
+  onPasteParse() {
+    const r = CardPaste.parseCardPaste(this.data.pasteText, this.data.materials || []);
+    const rows = r.rows.map((x) => Object.assign({}, x, { statusText: this.pasteStatusText(x) }));
+    this.setData({
+      pasteRows: rows,
+      pasteOkCount: r.okCount,
+      pasteImportLabel: this.fillTpl(TERMS.card.pasteImportBtn, { n: r.okCount }),
+    });
+  },
+  onPasteImport() {
+    const ok = (this.data.pasteRows || []).filter((r) => r.status === 'ok' && r.material);
+    if (!ok.length) { wx.showToast({ title: TERMS.card.pasteNoOk, icon: 'none' }); return; }
+    const add = ok.map((r) => ({
+      input_type: 1,
+      material_id: r.material.id,
+      material_name: r.material.name,
+      qty: String(r.qtyText),
+      // ⚠️ 存**老板写的单位**，不存折克后的数：保存时 `units.toBase(l.qty, l.qty_unit)` 还要再换算一次
+      qty_unit: r.unit,
+      spec_hint: '',
+      line_kind: 'main',
+    }));
+    // 全空行先丢掉，别让导入的行上面挂一条空行
+    const cur = (this.data.lines || []).filter((l) => l.qty || l.material_id || l.material_name);
+    this.setData({
+      lines: renumber(cur.concat(add)),
+      pasteRows: [], pasteText: '', pasteOkCount: 0, pasteImportLabel: '', pasteOpen: false,
+    });
+    wx.showToast({ title: this.fillTpl(TERMS.card.pasteImported, { n: add.length }), icon: 'success' });
+  },
   // round153：删行按钮从「录入方式」那行的红 × 挪到行尾并改名 ⇒ 顺手补上防误触。
   //   规则：**只有这行已经填了东西才问一句**，空行直接删 —— 不为没内容的东西增加摩擦。
   //   ⚠️ wx.showModal 的 confirmText/cancelText 上限 4 字符（真机事故见 terms.js paywall 注释）

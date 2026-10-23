@@ -183,5 +183,52 @@ check('A-⑫ 模板级压力：40 行「含空格的空行」夹在中间，只�
   r9c.rows.length === 2 && r9c.rows.every((x) => x.ok) && r9c.blankLines === 40,
   '行数=' + r9c.rows.length + ' 空行=' + r9c.blankLines);
 
+
+// ===================== C2 · 菜品卡「粘贴配料表」解析（R443）=====================
+// 与上面原料档案的批量录入同族，但**落点不同**：那边产出 saveMaterial 入参，这边产出**卡内配料行候选**。
+// 三条红线的判据都在这：不自动建原料 / 单位必须过单位池 / 数量读不成不静默当 0。
+const cp = require('../utils/cardPaste.js');
+const MATS = [{ id: 'm1', name: '鸡腿肉' }, { id: 'm2', name: '土豆' }];
+
+const c1 = cp.parseCardPaste('鸡腿肉\t200\t克\n土豆\t100\t克', MATS);
+check('C2-① Tab 三列还原：名称/数量/单位 ⇒ 2 行全 ok，净重 200 / 100 克',
+  c1.rows.length === 2 && c1.okCount === 2 && c1.rows[0].qtyBase === 200 && c1.rows[1].qtyBase === 100,
+  JSON.stringify(c1.rows.map((r) => [r.name, r.qtyBase, r.status])));
+
+const c2 = cp.parseCardPaste('鸡腿肉 200g', MATS);
+check('C2-② 单空格速记「鸡腿肉 200g」能拆（g 视作克），不是把整行当成名称',
+  c2.rows.length === 1 && c2.rows[0].status === 'ok' && c2.rows[0].unit === '克' && c2.rows[0].qtyBase === 200,
+  JSON.stringify(c2.rows[0]));
+
+const c3 = cp.parseCardPaste('土豆\t100', MATS);
+check('C2-③ 没写单位 ⇒ 按克（基准单位 = 定义，不是猜测）',
+  c3.rows[0].status === 'ok' && c3.rows[0].unit === '克' && c3.rows[0].qtyBase === 100,
+  JSON.stringify(c3.rows[0]));
+
+const c4 = cp.parseCardPaste('土豆\t0.2kg', MATS);
+check('C2-④ kg 别名必须换成「千克」⇒ 0.2kg = 200 克（原样喂 factorOf 当 1 倍 ⇒ 1000 倍错账）',
+  c4.rows[0].status === 'ok' && c4.rows[0].qtyBase === 200,
+  'qtyBase=' + c4.rows[0].qtyBase);
+
+const c5 = cp.parseCardPaste('牛排\t200\t克', MATS);
+check('C2-⑤ 名称对不上原料档案 ⇒ no_match（绝不自动建原料）',
+  c5.rows[0].status === 'no_match' && c5.rows[0].material === null && c5.okCount === 0,
+  JSON.stringify(c5.rows[0]));
+
+const c6 = cp.parseCardPaste('土豆\t2\t把', MATS);
+check('C2-⑥ 单位不在单位池 ⇒ bad_unit（「把」不在 QTY_UNITS，不许 fail-soft 当 1 倍）',
+  c6.rows[0].status === 'bad_unit',
+  JSON.stringify(c6.rows[0]));
+
+const c7 = cp.parseCardPaste('土豆\t两斤\t克', MATS);
+check('C2-⑦ 数量读不成 ⇒ bad_qty（不静默当 0）',
+  c7.rows[0].status === 'bad_qty',
+  JSON.stringify(c7.rows[0]) + ' / ' + c7.rows[0].status);
+
+const c8 = cp.parseCardPaste('   \n# 注释行\n土豆\t100\t克', MATS);
+check('C2-⑧ 空行与 # 注释不产出行（防噪音行 + 防"扫空恒绿"）',
+  c8.rows.length === 1 && c8.okCount === 1,
+  'rows=' + c8.rows.length);
+
 console.log('\n===== 原料批量录入守卫：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);

@@ -1671,6 +1671,17 @@ const TERMS = {
     comboSubCardQty: '份数',
     comboAddSubCard: '+ 添加子菜',
     comboPickEmpty: '暂无可用子菜（先建单品菜品）',
+    // 🔴 R443：菜品卡「批量粘贴配料」——老板手上是 Excel/微信里的配方，别逼他一格一格敲
+    pasteTitle: '批量粘贴配料',
+    pasteHint: '从 Excel / 微信复制过来，一行一样：名称 + 数量 + 单位',
+    pastePlaceholder: '鸡腿肉 200g\n土豆 100\n牛奶 2kg',
+    pasteParseBtn: '识别',
+    pasteImportBtn: '导入 {n} 行',
+    pasteNoOk: '没有能导入的行',
+    pasteNoMatch: '原料档案里没找到',
+    pasteBadUnit: '单位不认识',
+    pasteBadQty: '数量读不成',
+    pasteImported: '已导入 {n} 行',
     // 🔴 R443：三处「该说出来却没说的话」——子卡成本已变 / 同名卡 / 保存回执
     comboStaleTip: '子卡成本已变：{n} 张（套餐成本 {sign}{money} 元）· 重新保存即按新成本',
     dupCardTitle: '已有同名卡',
