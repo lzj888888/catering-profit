@@ -157,6 +157,8 @@
         </view>
       </view>
       <view class="row-note">{{t.manageOptNote}}</view>
+      <!-- 🔴 R443：填到一半就能看到每月固定支出合计（只读展示，不参与任何计算；读不成数字时整行不显示） -->
+      <view class="row-note total-line" wx:if="{{fixedPreviewText}}">{{t.fixedTotal}} {{fixedPreviewText}}</view>
     </view>
     <!-- 本次测算底层假设（默认折叠可展开） -->
     <!-- 🔴 R435（李老师 2026-10-22）：已有铺面（forward）**整块删掉**假设区。

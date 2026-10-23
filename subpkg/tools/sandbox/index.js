@@ -497,6 +497,7 @@ Page({
     //   ⚠️ `pixel_eff_fen` 仍是**云函数契约字段**（validate 允许 0）⇒ 保留传参、恒传 0，不删字段。
     feeOverrides: {},        // itemKey → pct 字符串（L3 费率覆盖）
     feeRows: [],             // 当前预设 revenue_rate 项 [{key,label,pct}]
+    fixedPreviewText: '',    // R443：输入区实时「每月固定支出合计」的展示文本（只读，不参与计算）
     showMore: false,          // R442：结果区四张分析卡（利润阶梯/客群/效率/回本）默认收起
     showL2: false,
     // 🔴 R364：试验台（做活动）默认收起 —— 它问的是"如果"，不是老板要填的事实；
@@ -870,6 +871,8 @@ Page({
   scheduleCalc() {    this.setData({ dirty: true });
     // R439：费率行同步「≈ 每月多少钱」—— 营业额一改，这里跟着变（见 refreshFeeAmt）
     this.refreshFeeAmt();
+    // R443：输入区同步「每月固定支出合计」—— 老板边填边自查，不用滚到结果区
+    this.refreshFixedPreview();
     // R414（队列 #25）：先体检金额框，再走防抖计算（体检本身零成本，不触发云端）
     this.checkAmountInputs();
     // R193：用户一改就存草稿（此处已是 700ms 防抖链路上，不会高频写盘）
@@ -1550,6 +1553,22 @@ Page({
     });
     // 无变化就不 setData，避免每次输入都整表重渲染
     if (changed) this.setData({ feeRows: out });
+  },
+
+  // 🔴 R443：输入区实时「每月固定支出合计」——让老板**边填边自查**，不用滚到结果区才知道总数。
+  //   为什么值得加：结果区那份合计在页面很下面，填到一半时最容易漏项（尤其"人工忘了填"）。
+  //   边界：**只做展示**、不参与任何计算（口径单源仍是 buildPresetParam）；任一栏读不成数字
+  //   ⇒ **不显示**（宁可不显示，也不显示一个少算的数；原因由金额提示那行说明）。
+  refreshFixedPreview() {
+    const KEYS = ['rentYuan', 'laborTotalYuan', 'waterYuan', 'electricYuan', 'gasYuan', 'manageYuan'];
+    let sum = 0;
+    for (const k of KEYS) {
+      const v = this.data[k];
+      if (!AmountInput.classifyAmount(v).readable) { this.setData({ fixedPreviewText: '' }); return; }
+      sum += Number(v) || 0;
+    }
+    const txt = sum > 0 ? ('≈ ' + MoneyFmt.groupDigits(sum) + ' ' + (this.data.t.feeAmtUnit || '')) : '';
+    if (txt !== this.data.fixedPreviewText) this.setData({ fixedPreviewText: txt });
   },
 
   onTogglePromo() { this.setData({ showPromo: !this.data.showPromo }); },

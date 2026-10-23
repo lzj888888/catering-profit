@@ -96,6 +96,8 @@
    ⚠️ 无障碍硬约束（selftest_ad_gates G1/G2）：字号一律 ≥28rpx；min-height 只在 88rpx 用。 */
 .rw { display: block; }
 .row-note { font-size: 28rpx; color: #646a73; line-height: 1.4; padding: 0 0 12rpx; }
+/* R443：输入区「每月固定支出合计」——只加粗，不另造配色（避免与页面既有色板打架） */
+.total-line { font-weight: 600; }
 /* ===== R234 · 「寻找铺面」Tab：行规自动带出条（房租率来自云端 BANDS，**不是用户填的**）=====
    设计意图：这行不是输入框，是"告知"。把百分比放大到标题级字号，让它像一句结论而非一个参数。 */
 .auto-band { display: flex; align-items: baseline; flex-wrap: wrap; padding: 14rpx 0 4rpx; }
