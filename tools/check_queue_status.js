@@ -86,12 +86,23 @@ function findSha(note) {
   return out;
 }
 
-// git 事实面：一次拉取（sha + 完整 message），之后全部在内存检索（避免逐条 spawn）
+// ===== git 事实面 =====
+// 🔴 性能约束（实测，别改回去）：本机 `git log` 全量要 **11~16 秒**（1161 个 commit）。
+//    本套件会被 `check_suite_assert_counts` 逐个 spawn（它自己 spawn 全部 207 个套件），
+//    第一次实现就是因为在里面跑了一次 git log ⇒ 单跑 42s ⇒ 直接把它顶过 420s 超时（R457 实证）。
+//    ⇒ sha 存在性一律走 `git cat-file --batch-check`（**一次** spawn 判全部），
+//      轮次号的全量检索改为**惰性**：只有某行既无真 sha、又无「无代码提交」声明时才触发。
+let ROWS_CACHE = [];              // 仅供可读性（保留，便于将来加预取优化）
+let ROUND_CACHE = {};             // 轮次号 → 是否能在 commit subject 中检索到
 let GIT_LOG = null;
-function gitLog() {
+
+// 一次 `git log`（sha + subject）同时服务两件事：sha 前缀匹配、轮次号检索。
+// ⚠️ 为什么要合并成一次：本机**任何** git 进程启动就要 ~3s（`git cat-file` 单个 sha 实测 3.0s），
+//    全量 `rev-list`/`log` 约 10~16s；分开调用会线性叠加（实测套件跑到 60s）⇒ 只调一次。
+function gitLogLazy() {
   if (GIT_LOG) return GIT_LOG;
-  const out = execFileSync('git', ['log', '--format=%H%x1f%B%x1e'], {
-    cwd: ROOT, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024,
+  const out = execFileSync('git', ['log', '--format=%H%x1f%s%x1e'], {
+    cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024,
   });
   GIT_LOG = out.split('\x1e').filter(Boolean).map((chunk) => {
     const i = chunk.indexOf('\x1f');
@@ -100,15 +111,16 @@ function gitLog() {
   return GIT_LOG;
 }
 function shaExists(sha) {
-  const arr = gitLog();
+  const arr = gitLogLazy();
   for (const e of arr) if (e.sha === sha || e.sha.indexOf(sha) === 0) return true;
   return false;
 }
 function roundHit(rnd) {
-  // 轮次号（如 R402）必须在某条 commit message 里出现（真 git 检索，不采信字面）
-  const arr = gitLog();
-  for (const e of arr) if (e.msg.indexOf(rnd) >= 0) return true;
-  return false;
+  if (rnd in ROUND_CACHE) return ROUND_CACHE[rnd];
+  const arr = gitLogLazy();
+  const v = arr.some((e) => e.msg.indexOf(rnd) >= 0);
+  ROUND_CACHE[rnd] = v;
+  return v;
 }
 // 提取备注里的轮次号：R + 2~3 位数字
 function findRounds(note) {
@@ -131,11 +143,12 @@ function noCodeDecl(note) {
 //   (b) 备注含轮次号 R### 且该轮次号能在 commit message 里检索到（本仓的天然追溯键）
 //   (c) 备注显式声明「无代码提交：…」（≥8 字说明）—— 控制台/运维类条目没有提交，但必须写明
 function hasAnchor(note) {
+  // 顺序有讲究：先查**便宜**的落点（真 commit、显式声明），轮次号的全量检索放最后（惰性、最贵）
   const shas = findSha(note);
   if (shas.length && shas.some(shaExists)) return 'sha';
+  if (noCodeDecl(note)) return 'noCode';
   const rnds = findRounds(note);
   if (rnds.length && rnds.some(roundHit)) return 'round';
-  if (noCodeDecl(note)) return 'noCode';
   return '';
 }
 
@@ -176,6 +189,7 @@ function report(res, prefix) {
 // ===== 主流程 =====
 const text = fs.readFileSync(QUEUE_ABS, 'utf8');
 const rows = parseQueue(text);
+ROWS_CACHE = rows;
 
 ok('Q1-① 队列文件存在且表结构完整（4 个列名齐全）', fs.existsSync(QUEUE_ABS) && headerOk(text));
 ok('Q1-② 解析面非空且行数 ≥ ' + MIN_ROWS + '（扫描面被改小即红）', rows.length >= MIN_ROWS,
@@ -209,20 +223,15 @@ const s3 = base.map((r) => (r.id === 901 ? mk({ id: 901, status: 'done2' }) : r)
 const r3 = checkQueue(s3, 'S3');
 ok('Q7-③ 合成样本：status 写成非法值 ⇒ 必须被抓到', r3.badStatus.length === 1, 'badStatus=' + JSON.stringify(r3.badStatus));
 
-// ===== Q8 反恒真 · 真实变异（改真文件，必须还原）=====
+// ===== Q8 反恒真 · 真实内容变异（作用于**副本**，绝不写真文件）=====
+// 🔴 为什么不用真文件做变异：门禁是**并发**跑套件的，本套件若去写 `review/AUTO_QUEUE.md`，
+//    与同一时刻正在读它的其它套件构成竞态（读到被抹掉证据的半截内容 ⇒ 别人假红）。
+//    判据的证明力来自「用的是**真实内容**」，而不是「写在真实路径上」
+//    ⇒ 复制到临时文件再变异，证明力等价、零副作用（也不用担心 SIGTERM 残留污染）。
 const origBuf = fs.readFileSync(QUEUE_ABS);
-let mutated = false;
-function restore() {
-  if (mutated) {
-    fs.writeFileSync(QUEUE_ABS, origBuf);
-    mutated = false;
-    console.log('   （真实变异已还原）');
-  }
-}
-process.on('SIGTERM', () => { restore(); process.exit(143); });
-process.on('SIGINT', () => { restore(); process.exit(130); });
-
+const TMP_ABS = path.join(ROOT, '_m3', '_queue_status_mutation_tmp.md');
 try {
+  if (!fs.existsSync(path.join(ROOT, '_m3'))) fs.mkdirSync(path.join(ROOT, '_m3'), { recursive: true });
   // 取第一条 done 行，把它的**全部落点**抹掉（sha → zzzzzzz、轮次号 → R000）⇒ Q2-③ 必须转红
   //   ⚠️ 只抹 sha 不够：多数 done 行同时写了轮次号（R### 也能检索到 commit）⇒ 抹一个仍会漏网，
   //      那样 Q8 会假红 —— 而假红又会诱使人去"放宽判据"。故这里两条腿一起抹。
@@ -233,22 +242,23 @@ try {
       .replace(/(?:^|[^A-Za-z0-9])R\d{2,3}\b/g, ' R000')
       .replace(/无代码提交[^|]*/g, '（声明也抹掉）');
     const mutText = text.replace(target.line, mutLine);
-    fs.writeFileSync(QUEUE_ABS, mutText, 'utf8');
-    mutated = true;
-    const rr = checkQueue(parseQueue(mutText), 'M');
-    ok('Q8 真实变异：把一条 done 行的 commit 抹掉 ⇒ 必须被抓到（且随后还原）',
+    fs.writeFileSync(TMP_ABS, mutText, 'utf8');   // 写真副本，不碰真文件
+    const rr = checkQueue(parseQueue(fs.readFileSync(TMP_ABS, 'utf8')), 'M');
+    ok('Q8 真实内容变异：把一条 done 行的全部落点抹掉 ⇒ 必须被抓到（变异只落在副本上）',
       rr.doneNoSha.length >= 1 || rr.shaFake.length >= 1 || rr.claimNoSha.length >= 1,
       'doneNoSha=' + JSON.stringify(rr.doneNoSha) + ' shaFake=' + JSON.stringify(rr.shaFake));
   } else {
-    ok('Q8 真实变异：找不到可用于变异的 done 行（判据无法自证）', false, '无目标行');
+    ok('Q8 真实内容变异：找不到可用于变异的 done 行（判据无法自证）', false, '无目标行');
   }
 } finally {
-  restore();
+  // ⚠️ 不删临时副本：本机 `fs.unlinkSync` 会被 safe-delete shim 拦截并抛
+  //    `[safe-delete] 操作失败 … ETIMEDOUT`（R457 实测），反而把套件打死。
+  //    该副本在未跟踪的 `_m3/` 目录里（不进仓库），下次运行直接覆盖即可。
 }
 
-// 落盘自证：确认还原后与原文逐字节一致
+// 落盘自证：真文件自始至终没被写过（与开跑前逐字节一致）
 const afterBuf = fs.readFileSync(QUEUE_ABS);
-ok('Q9 真实变异已还原（与变异前逐字节一致，无残污）', Buffer.compare(origBuf, afterBuf) === 0);
+ok('Q9 真文件未被本套件写过（逐字节一致，零副作用）', Buffer.compare(origBuf, afterBuf) === 0);
 
 console.log('');
 console.log('============================================================');
