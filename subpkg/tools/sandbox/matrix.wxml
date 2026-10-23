@@ -125,6 +125,7 @@
     </view>
   </view>
 
+  <view class="hint" wx:if="{{!result}}">{{t.matrixEmptyTip}}</view>
   <button class="btn-primary" bindtap="onGenerate" disabled="{{loading}}">{{loading ? t.generating : t.generate}}</button>
 
   <!-- 结果区 -->
@@ -194,6 +195,7 @@
       <view class="partial-note" wx:if="{{result.partialText}}">{{result.partialText}}</view>
       <!-- 🔴 R378：14 列 × 200rpx ≈ 1400px，手机只能看到 2 列半 ⇒ 窄屏明说"可以横滑"。
            首列（指标名）已冻结（见 matrix.wxss `.td:first-child`），横滑时行名不会跟着滚走。 -->
+      <view class="hint">{{t.matrixReadGrid}}</view>
       <view class="swipe-hint" wx:if="{{narrow && result}}">{{t.matrixSwipeHint}}</view>
       <scroll-view scroll-x="true" class="tbl-scroll">
         <view class="tbl">

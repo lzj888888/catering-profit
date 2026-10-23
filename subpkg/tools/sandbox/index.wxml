@@ -696,6 +696,7 @@
     <button class="btn ghost entry-btn" bindtap="goMatrix">{{t.matrixEntry}}</button>
     <button class="btn ghost entry-btn" bindtap="goCompare">{{t.compareEntry}}</button>
   </view>
+  <view class="muted">{{t.matrixEntryNote}}</view>
 
   <view class="muted empty-tip" wx:if="{{!result}}">{{t.noCalc}}</view>
 

@@ -276,6 +276,7 @@ Page({
       cancel: TERMS.buttons.cancel,
       // M2 G1/G2（2026-10-11 改造）：入口文案（来自 TERMS.matrix / TERMS.m2Plan 单源）
       matrixEntry: TERMS.matrix.title,
+      matrixEntryNote: M.matrixEntryNote,
       compareEntry: TERMS.m2Plan.compare,
       // M2v1.3（业态参数包 + 回本卡）
       presetLabel: M.presetLabel,
