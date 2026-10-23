@@ -39,6 +39,7 @@ Page({
       profit: G.grouponProfit,
       netRate: G.grouponNetRate,
       vsDine: G.grouponVsDine,
+      vsDineMore: G.grouponVsDineMore,
       lossHint: G.grouponLossHint,
       dataTruncated: TERMS.ui.dataTruncated,
       cur: '¥',
@@ -92,7 +93,7 @@ Page({
   async onCalc() {
     const ent = await fetchEntitlement().catch(() => null);
     if (!ent || !ent.is_active) {
-      openPaywall('takeaway', { shopId: (getApp().globalData && getApp().globalData.shop_id) || '' });
+      openPaywall('groupon', { shopId: (getApp().globalData && getApp().globalData.shop_id) || '' });
       return;
     }
     const idx = this.data.cardIndex;
@@ -118,7 +119,9 @@ Page({
         profit: fmt(r.profitFen),
         netRate: r.netRatePct,
         profitRate: r.profitRatePct,
-        vsDine: fmt(r.vsDineFen),
+        // vsDine 只用于展示：文案按键切换（多赚/少赚），金额一律取绝对值，避免「多赚 ¥-5.00」
+        vsDine: fmt(Math.abs(r.vsDineFen)),
+        vsDinePositive: r.vsDineFen > 0,
         hasDine: r.hasDine,
       },
     });

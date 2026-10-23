@@ -137,6 +137,12 @@ const TERMS = {
       primary: '去开通', // ⚠️ ≤4 字符（平台硬限制）
       secondary: '再想想',
     },
+    groupon: {
+      title: '团购需开通',
+      content: '团购利润核算为专业版功能：录入可免费保存，开通后解锁到手率与毛利测算。成本卡、原料库永久免费，已录入的数据可继续免费查看和编辑。',
+      primary: '去开通', // ⚠️ ≤4 字符（平台硬限制）
+      secondary: '再想想',
+    },
     dishreview: {
       title: '复盘需开通',
       content: '菜品赚多赚少排行榜为专业版功能：导入可免费保存，开通后解锁单品毛利排行榜。成本卡、原料库永久免费，已录入的数据可继续免费查看和编辑。',
@@ -1677,8 +1683,10 @@ const TERMS = {
     grouponCommission: '平台佣金',
     grouponNet: '到手',
     grouponProfit: '到手毛利',
-    grouponNetRate: '到手毛利率',
+    // 口径说明：netRatePct 分母是团购价、分子未扣成本 ⇒ 它是「到手率」而不是毛利率（毛利要扣成本）。
+    grouponNetRate: '到手率',
     grouponVsDine: '比堂食少赚',
+    grouponVsDineMore: '比堂食多赚',
     grouponNeedCost: '先点上方算一次成本',
     grouponNeedPrice: '先填团购价',
     grouponPick: '选菜品/套餐',
