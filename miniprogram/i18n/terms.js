@@ -53,7 +53,7 @@ const TERMS = {
       runwayTitle: '钱还能撑多久',
       runwayLabel: '账面能动的现金',
       runwayHint: '活期 + 备用金；不含压货、押金、还没到账的外卖款',
-      runwayMonthsPre: '按每月刚性支出（房租+人工+水电）算，还能撑',
+      runwayMonthsPre: '现有资金，按每月刚性支出（房租+人工+水电）算，还能撑',
       runwayMonthsSuf: '个月',
       runwayNoData: '这月房租 / 人工 / 水电没填全，算不出可撑月数',
       runwayNeedInput: '填一下能动的现金，就给你算',
