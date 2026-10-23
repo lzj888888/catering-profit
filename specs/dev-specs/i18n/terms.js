@@ -1250,6 +1250,12 @@ const TERMS = {
     areaLabel: '铺子多少平方',
     areaUnit: '㎡',
     rentLabel: '每月房租多少钱',
+    // 🔴 R443：给小白一个「填多少」的参照（此前这些框零 placeholder，全靠猜）
+    areaPh: '例如 80',
+    rentPh: '例如 12000',
+    laborTotalPh: '例如 15000',
+    avgPricePh: '例如 25',
+    missingPrefix: '还差：',
     // 🔴 R320：这两个场景问的不是一件事 —— 已有铺面问「现在几个人」，想开的店才问「打算请几个人」。
     //   原来共用一句「打算请几个人」⇒ 老板看着自己的店被问"打算"，语义错位。
     headcountLabel: '现在几个人',

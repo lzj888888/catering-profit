@@ -9,6 +9,8 @@
        如何做？从哪里看结果」）⇒ 顶部放**一行**导航，只写「填什么 → 看什么」。
        ⚠️ 刻意不写段落：页面已经 700+ 行，再加说明只会更长。 -->
   <view class="m2nav">{{t.m2NavLine}}</view>
+  <!-- 🔴 R443：还差哪几格（只列对保本影响最大的三项，不铺成清单） -->
+  <view class="row-note" wx:if="{{missingHint}}">{{missingHint}}</view>
 
   <!-- M2v1.1 双 Tab（R234 改名：按**用户此刻的处境**命名，不再用「正向/反推」这种算法词） -->
   <view class="tab-bar">
@@ -53,7 +55,7 @@
     <view class="row">
       <text class="row-name">{{t.areaLabel}}</text>
       <view class="row-in-wrap">
-        <input class="row-in" type="digit" value="{{areaNum}}" bindinput="onArea" adjust-position="{{true}}" cursor-spacing="20" />
+        <input class="row-in" type="digit" value="{{areaNum}}" placeholder="{{t.areaPh}}" bindinput="onArea" adjust-position="{{true}}" cursor-spacing="20" />
         <text class="row-unit">{{t.areaUnit}}</text>
       </view>
     </view>
@@ -64,7 +66,7 @@
     <view class="row">
       <text class="row-name">{{t.rentLabel}}</text>
       <view class="row-in-wrap">
-        <input class="row-in" type="digit" value="{{rentYuan}}" bindinput="onRent" adjust-position="{{true}}" cursor-spacing="20" />
+        <input class="row-in" type="digit" value="{{rentYuan}}" placeholder="{{t.rentPh}}" bindinput="onRent" adjust-position="{{true}}" cursor-spacing="20" />
         <text class="row-unit">{{t.yuanUnit}}</text>
       </view>
     </view>
@@ -112,14 +114,14 @@
       <view class="row">
         <text class="row-name">{{t.avgPriceLabel}}</text>
         <view class="row-in-wrap">
-          <input class="row-in" type="digit" value="{{avgPriceYuan}}" bindinput="onAvgPrice" adjust-position="{{true}}" cursor-spacing="20" />
+          <input class="row-in" type="digit" value="{{avgPriceYuan}}" placeholder="{{t.avgPricePh}}" bindinput="onAvgPrice" adjust-position="{{true}}" cursor-spacing="20" />
           <text class="row-unit">{{t.yuanUnit}}</text>
         </view>
       </view>
       <view class="row">
         <text class="row-name">{{t.laborTotalLabel}}</text>
         <view class="row-in-wrap">
-          <input class="row-in" type="digit" value="{{laborTotalYuan}}" bindinput="onLaborTotal" adjust-position="{{true}}" cursor-spacing="20" />
+          <input class="row-in" type="digit" value="{{laborTotalYuan}}" placeholder="{{t.laborTotalPh}}" bindinput="onLaborTotal" adjust-position="{{true}}" cursor-spacing="20" />
           <text class="row-unit">{{t.yuanUnit}}</text>
         </view>
       </view>

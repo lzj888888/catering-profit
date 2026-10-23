@@ -307,16 +307,21 @@ Page({
       seatsPerTableNote: M.seatsPerTableNote,   // 🔴 R246：供给侧口径说明
       tableUnit: M.tableUnit,
       areaLabel: M.areaLabel,
+      areaPh: M.areaPh,
       areaUnit: M.areaUnit,
       rentLabel: M.rentLabel,
+      rentPh: M.rentPh,
       headcountLabel: M.headcountLabel,
       headcountLabelRev: M.headcountLabelRev,
       headcountUnit: M.headcountUnit,
       l2Toggle: M.l2Toggle,
       avgPriceLabel: M.avgPriceLabel,
+      avgPricePh: M.avgPricePh,
+      missingPrefix: M.missingPrefix,
       // 🔴 R296 拍1（李老师 2026-10-14）：人工改「每月总额」直填（不乘人数）——
       //   原「员工月均工资 × 人数」的乘法已删（各店工资不同，乘法会失真；人数只用来算人效）。
       laborTotalLabel: M.laborTotalLabel,
+      laborTotalPh: M.laborTotalPh,
       laborTotalNote: M.laborTotalNote,
       // 🔴 R296 拍3：水/电/气拆三项输入（引擎仍合成单个 utility 键，零部署）。
       waterFee: M.waterFee,
@@ -498,6 +503,7 @@ Page({
     feeOverrides: {},        // itemKey → pct 字符串（L3 费率覆盖）
     feeRows: [],             // 当前预设 revenue_rate 项 [{key,label,pct}]
     fixedPreviewText: '',    // R443：输入区实时「每月固定支出合计」的展示文本（只读，不参与计算）
+    missingHint: '',         // R443：顶部「还差哪几格」一行提示（全填完即消失）
     showMore: false,          // R442：结果区四张分析卡（利润阶梯/客群/效率/回本）默认收起
     showL2: false,
     // 🔴 R364：试验台（做活动）默认收起 —— 它问的是"如果"，不是老板要填的事实；
@@ -873,6 +879,8 @@ Page({
     this.refreshFeeAmt();
     // R443：输入区同步「每月固定支出合计」—— 老板边填边自查，不用滚到结果区
     this.refreshFixedPreview();
+    // R443：顶部「还差哪几格」—— 只提示三项影响最大的，全填完自动消失
+    this.refreshMissing();
     // R414（队列 #25）：先体检金额框，再走防抖计算（体检本身零成本，不触发云端）
     this.checkAmountInputs();
     // R193：用户一改就存草稿（此处已是 700ms 防抖链路上，不会高频写盘）
@@ -1569,6 +1577,25 @@ Page({
     }
     const txt = sum > 0 ? ('≈ ' + MoneyFmt.groupDigits(sum) + ' ' + (this.data.t.feeAmtUnit || '')) : '';
     if (txt !== this.data.fixedPreviewText) this.setData({ fixedPreviewText: txt });
+  },
+
+  // 🔴 R443：顶部一行「还差哪几格」——只报对保本影响最大的三项（房租 / 人工 / 水电气），
+  //   不铺成清单（页面已在做减法：R441 删 L3、R442 折叠四卡）。三项都填了 ⇒ 整行消失。
+  //   边界：只提示、不拦计算（缺项仍能出数，改由结果区说明口径）。
+  refreshMissing() {
+    const d = this.data;
+    const filled = (k) => {
+      const v = d[k];
+      return AmountInput.classifyAmount(v).readable && Number(v) > 0;
+    };
+    const miss = [];
+    // 用**短标签**（房租 / 人工 / 水电气），不用输入项的提问式长标签：
+    // 「还差：房租、人工、水电气」比「还差：每月房租多少钱、人工每月总额」读得下去。
+    if (!filled('rentYuan')) miss.push(M.fixedItems.rent);
+    if (!filled('laborTotalYuan')) miss.push(M.fixedItems.labor);
+    if (!(filled('waterYuan') || filled('electricYuan') || filled('gasYuan'))) miss.push(M.fixedItems.utility);
+    const txt = miss.length ? (d.t.missingPrefix + miss.join('、')) : '';
+    if (txt !== d.missingHint) this.setData({ missingHint: txt });
   },
 
   onTogglePromo() { this.setData({ showPromo: !this.data.showPromo }); },
