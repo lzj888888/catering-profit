@@ -46,7 +46,8 @@ def env_id():
 
 def from_head():
     out = subprocess.run(["git", "show", "--name-only", "HEAD", "--", "cloudfunctions/"],
-                         capture_output=True, text=True, cwd=REPO).stdout
+                         capture_output=True, text=True, encoding="utf-8", errors="replace",
+                         cwd=REPO).stdout
     fns = []
     for ln in out.splitlines():
         if ln.startswith("cloudfunctions/"):
@@ -59,7 +60,11 @@ def from_head():
 
 def judge(log, fn):
     try:
-        r = subprocess.run([NODE, JUDGE, log, fn], capture_output=True, text=True, cwd=REPO, timeout=60)
+        # 🔴 必须显式 encoding="utf-8"：Windows 默认按 GBK 解，子进程吐 UTF-8 中文时
+        #    读取线程会抛 UnicodeDecodeError 静默死掉（2026-10-23 R443 实测，屏幕上那段红字），
+        #    结果 msg 被吞成空串、甚至把成功判成 MISS 白跑一次重试。
+        r = subprocess.run([NODE, JUDGE, log, fn], capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", cwd=REPO, timeout=60)
         return r.returncode == 0, (r.stdout or "").strip().replace("\n", " ")
     except Exception as e:
         return False, "judge 异常: %s" % e
