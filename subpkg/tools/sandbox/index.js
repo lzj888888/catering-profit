@@ -501,8 +501,12 @@ Page({
     //       ⇒ 用户填了会触发重算却对任何结果零影响 = 纯死输入（最糟的一类 UI）。
     //     · `pixelEffYuan` 唯一下游是 `area_cap_sqm`，而坪效不让问 ⇒ 该输出恒 null ⇒ 一并移除。
     //   ⚠️ `pixel_eff_fen` 仍是**云函数契约字段**（validate 允许 0）⇒ 保留传参、恒传 0，不删字段。
-    feeOverrides: {},        // itemKey → pct 字符串（L3 费率覆盖）
-    feeRows: [],             // 当前预设 revenue_rate 项 [{key,label,pct}]
+    // 🔴 R447：`feeOverrides` 与 `feeRows` **有意保留**（不是漏删）——
+    //   · `feeOverrides` 仍是引擎入参覆盖分支的源（`varItemsFinal` 里 `fo[v.key]`）；删它要动入参装配，越界。
+    //   · `feeRows` 由 `onPreset` 按预设 `costMeta` 装配，是「费率行 ≈ 每月多少钱」重新显示时的唯一数据源；
+    //     删了等于把恢复成本从"改 wxml"变成"改预设装配"。⚠️ 二者现均**无读取方**（R441 删 L3 的连带）。
+    feeOverrides: {},        // itemKey → pct 字符串（L3 费率覆盖；现无写入方，保留作引擎入参覆盖口）
+    feeRows: [],             // 当前预设 revenue_rate 项 [{key,label,pct}]（现无读取方，保留待产品拍板）
     fixedPreviewText: '',    // R443：输入区实时「每月固定支出合计」的展示文本（只读，不参与计算）
     missingHint: '',         // R443：顶部「还差哪几格」一行提示（全填完即消失）
     showMore: false,          // R442：结果区四张分析卡（利润阶梯/客群/效率/回本）默认收起
@@ -876,8 +880,8 @@ Page({
 
   // ===== 自动重算（防抖；AD-6/AD-7 折中）=====
   scheduleCalc() {    this.setData({ dirty: true });
-    // R439：费率行同步「≈ 每月多少钱」—— 营业额一改，这里跟着变（见 refreshFeeAmt）
-    this.refreshFeeAmt();
+    // R447：原 R439 的 `refreshFeeAmt()` 调用随「费率行 ≈ 每月多少钱」一并删除 ——
+    //   它渲染的那一行（`fee-amt`）在 R441 删 L3 时就不存在了，留着只是每次输入白算一遍 + 一次 setData。
     // R443：输入区同步「每月固定支出合计」—— 老板边填边自查，不用滚到结果区
     this.refreshFixedPreview();
     // R443：顶部「还差哪几格」—— 只提示三项影响最大的，全填完自动消失
@@ -1530,39 +1534,20 @@ Page({
   // 🔴 R290：营业天数改为常量 30 ⇒ 原 `onOpenDays2` 输入 handler 随 UI 一并删除（不留孤立 handler）。
   // 🔴 R234-实测修复：`onPixelEff` / `onTurn` 已随输入区一并删除（坪效/翻台率是算出来的，不是填的）。
   //    留着 handler 会让人以为"UI 删了、逻辑还在"，下次加回输入框只要一行 —— 必须连根拔。
-  onFeePct(e) {
-    const key = e.currentTarget.dataset.key;
-    const val = e.detail.value;
-    const overrides = Object.assign({}, this.data.feeOverrides, { [key]: val });
-    const feeRows = this.data.feeRows.map((r) => (r.key === key ? Object.assign({}, r, { pct: val }) : r));
-    this.setData({ feeOverrides: overrides, feeRows });
-    this.scheduleCalc();
-  },
+  // 🔴 R447：原 `onFeePct`（费率框输入 handler）已删 —— 它是 L3「专业参数」里费率框的接线上端，
+  //    R441 删掉那块 UI 之后 wxml 零绑定，成了孤儿 handler。按 R234 同一纪律（`onLaborUnit` /
+  //    `onTurn` 同款）：**只删 UI 不删 handler 会让人以为功能还在**，下一个加输入框的人只要一行就能
+  //    把它接回来，而它写的是引擎入参覆盖（`feeOverrides`）—— 半接回来的后果是静默改口径。
+  //    ⇒ 连根拔。要重新显示「≈ 每月多少钱」＝产品拍板（改 wxml），见 `review/AUTO_QUEUE.md` #47。
   // R442：展开/收起「更多分析」四张卡
   onToggleMore() { this.setData({ showMore: !this.data.showMore }); },
 
   onToggleL2() { this.setData({ showL2: !this.data.showL2 }); },
 
-  // R439（李老师 2026-10-22：「专业参数……这个餐饮老板知道什么意思吗？里面要装什么费率？」）：
-  //   费率框是**占营业额的百分比**，但老板知道的是「房租 1.2 万」，算不出「占 12%」。
-  //   ⇒ 每行旁边补一句「≈ 每月多少钱」，用**他自己填的预计月营业额**折算，让他能核对。
-  //   ⚠️ 只做显示，**不参与任何计算、不改引擎入参**（真正的值仍是 pct）。
-  refreshFeeAmt() {
-    const rows = this.data.feeRows || [];
-    if (!rows.length) return;
-    const raw = String(this.data.expectYuan == null ? '' : this.data.expectYuan).replace(/[^\d.]/g, '');
-    const rev = Number(raw);
-    let changed = false;
-    const out = rows.map((r) => {
-      const p = Number(r.pct);
-      const ok = isFinite(rev) && rev > 0 && isFinite(p) && p > 0;
-      const txt = ok ? ('≈ ' + MoneyFmt.groupDigits(Math.round(rev * p / 100)) + ' ' + (this.data.t.feeAmtUnit || '')) : '';
-      if (txt !== (r.amtText || '')) changed = true;
-      return Object.assign({}, r, { amtText: txt });
-    });
-    // 无变化就不 setData，避免每次输入都整表重渲染
-    if (changed) this.setData({ feeRows: out });
-  },
+  // 🔴 R447：原 `refreshFeeAmt()`（R439）已删 —— 它把每个费率项的 `pct` 折算成
+  //   「≈ N 元/月」写进 `feeRows[i].amtText`，而消费端（wxml 的 `fee-amt` 行）在 R441 删 L3 时
+  //   一起被删了 ⇒ 本方法是**纯写不读**：每次改营业额都算一遍、再整表 setData 一次，页面零变化。
+  //   ⚠️ 别再"修复"它 —— 它不是坏了，是**没有消费方**了。要恢复是重新加渲染（产品拍板）。
 
   // 🔴 R443：输入区实时「每月固定支出合计」——让老板**边填边自查**，不用滚到结果区才知道总数。
   //   为什么值得加：结果区那份合计在页面很下面，填到一半时最容易漏项（尤其"人工忘了填"）。
