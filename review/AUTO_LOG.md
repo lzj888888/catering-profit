@@ -483,3 +483,13 @@
   - 🔴 **本轮新发现的假红机理（下轮直接用）**：首轮门禁 **204/206**，红的 `suite-coverage` + `suite-assert-counts` **都不是代码问题** —— `mk_force.py` 只重刷 `node.exe` / `python.exe` 键，**`git …` 键永不刷新**（实测缓存 `git ls-files` 9118 行 / 实时 9314 行，缺 `review/evidence/r444_runway/` 两个已跟踪文件）⇒ `check_suite_coverage` S7 把已登记 EXEMPT 的取证脚本判成「僵尸条目」；`check_suite_assert_counts` 再因它 spawn 的子套件命中**旧缓存**（`node.exe …check_suite_coverage.js` = rc1）同红。处置：`review/evidence/r446_l3_deadrefs/refresh_git_cache_keys.py` 用真 git 重写两条 `git ls-files` 键 → S7 转绿 → 再跑一遍 `mk_force`（第二个循环，按新结果刷 node 键）→ 门禁 206/206。**判据未改一个字**。
   - 队列：#46 → done；新登记 **#47**（R439 费率行「≈ 每月多少钱」随 L3 一起消失、js 仍在算；且 `CHECKLIST_真机验收_R297.md` 第 24 条让真机验一个已不存在的行）。
   - 并发会话在场：`AUTO_QUEUE.md` 的 #46 登记行原为未提交状态，随认领提交 `31a9b62` 落盘；期间 R443 会话又提交 `aa48de3`、并在 17:32 改 `subpkg/biz/groupon/{index.js,index.wxml}` ⇒ **未代提交、未覆盖**，本方提交一律走显式路径。
+
+
+- [2026-10-23 20:18] R447 删 R439「费率金额」死代码（#47 后半：CHECKLIST 第 24 条已在 e6b616d 改成「反向验」，未重复实现）· 门禁 206/206 RC=0（205.4s）· commit b57fd52 · 队列 #47 → done
+  - 改动面（可复核）：`subpkg/tools/sandbox/index.js` **17+/32−** —— 删 `refreshFeeAmt()` 方法、`scheduleCalc()` 里那一次调用、`onFeePct()` handler；两处 `data` 声明（`feeOverrides` / `feeRows`）补「为何**有意保留**」注释。wxml **零改动** ⇒ 按判据**不出码**；云函数零改动 ⇒ **不部署**。
+  - 先证「零消费」再删（沿用 R446 取证口径）：全仓 grep `refreshFeeAmt|onFeePct|amtText|feeRows` ⇒ `subpkg/tools/sandbox/index.wxml` **0 命中**（渲染行 `fee-amt` 在 R441 删 L3 时一起没了）；`tools/**` 无一处引用这三个符号 ⇒ 无守卫依赖。连带符号已核：`feeAmtUnit` 仍被 `refreshFixedPreview`（1579 行）使用、`MoneyFmt` 另有 5 处 ⇒ **terms 键与 require 都不动**。
+  - 🔴 「保留」的两项已写进代码注释（防下一轮当成漏删又"修"一遍）：`feeOverrides` 仍是引擎入参覆盖分支的源（`varItemsFinal` 的 `fo[v.key]`，删它要动入参装配＝越界）；`feeRows` 由 `onPreset` 按预设 `costMeta` 装配，是「≈ 每月多少钱」重新显示时的唯一数据源。二者现分别**无写入方 / 无读取方** —— 这是 R441 删 L3 的连带，不是本轮造成的。
+  - 单跑守卫（全 RC=0）：`check_page_terms` 20/20 · `check_money_fmt` 29/29 · `check_amount_input` 63/63。
+  - 门禁 `_gate_r447a.log`：**总览 206/206 · EXIT=0 · 205.4s**（mk_force 171 键）。
+  - 并发会话在场（如实登记）：开工时 8 个已跟踪文件在途未提交（`subpkg/biz/card/edit.{js,wxml,wxss}`、两副本 `terms.js`、`tools/check_material_batch.js`、`tools/check_suite_assert_counts.js` + 未跟踪 `utils/cardPaste.js`），其 19:49 那轮门禁 **205/206** 唯一红 `suite-assert-counts` 属它自己在途改动（改了 counts 表却未对齐）。本轮**未代提交、未覆盖**，提交一律走显式路径；到 20:13 我这轮门禁已 206/206 ⇒ 对方已自行修好。
+  - 队列：#47 → done（commit b57fd52）。无新增 blocked 条目。⚠️ 若李老师还要「费率行 ≈ 每月多少钱」，那是**重新显示**（改 wxml + 恢复 handler），属产品拍板，另开条目。
