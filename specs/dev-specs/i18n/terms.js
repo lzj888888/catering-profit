@@ -1681,6 +1681,11 @@ const TERMS = {
     grouponVsDine: '比堂食少赚',
     grouponNeedCost: '先点上方算一次成本',
     grouponNeedPrice: '先填团购价',
+    grouponPick: '选菜品/套餐',
+    grouponPickPh: '请选择',
+    grouponDine: '堂食挂牌价（选填）',
+    grouponResult: '到手结果',
+    grouponLossHint: '这单团购到手毛利为负，在亏本',
     // ===== M3.20（批次 B 收尾）· 标准原料词库 + 菜品模板 =====
     //   只做搜索建议 + 一键起行，**绝不自动替换、绝不预填价格**。
     matLexiconHint: '试试这些常用原料（点一下填入，不会自动改名）',
@@ -2002,6 +2007,9 @@ const TERMS = {
     icoTakeaway: '外',
     icoRecon: '账',
     icoReview: '榜',
+    grouponTitle: '团购每单赚多少',
+    grouponSub: '算一单团购到手多少、赚多少；不进月度账',
+    icoGroupon: '团',
     // 🔴 P0#6（2026-10-11）：付费小字（外卖 / 单品毛利复盘 / 对账 属付费域；成本卡 + 原料库免费）
     //   付费卡挂一行小字，老板一眼知道哪些要开通，不点进去才发现有墙。
     //   ⚠️ 值禁用「付费 / 订阅 / 会员费」（触发虚拟支付审核）；用「开通」系（check_terms_forbidden T5 守着）。

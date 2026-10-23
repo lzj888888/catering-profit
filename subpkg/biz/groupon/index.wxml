@@ -1,0 +1,48 @@
+<view class="container safe-bottom sb-page" wx:if="{{!loading}}">
+  <view class="sec">{{t.title}}</view>
+  <view class="base-note">{{t.hint}}</view>
+  <view class="warn" wx:if="{{truncated}}">{{t.dataTruncated}}</view>
+
+  <!-- 选卡/套餐：成本来自这张卡（card_type 只有 1/3，算一次） -->
+  <view class="sec">{{t.pick}}</view>
+  <picker class="pick-grow" mode="selector" range="{{dishes}}" range-key="name" bindchange="onPick">
+    <view class="pick">{{dishes[cardIndex].name || t.pickPh}}</view>
+  </picker>
+
+  <!-- 团购价（顾客实付） -->
+  <view class="field">
+    <text class="lbl">{{t.price}}</text>
+    <input class="val-input" type="digit" value="{{priceYuan}}" bindinput="onPrice" placeholder="{{t.pricePh}}" adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+  <!-- 平台佣金率：无默认值（R128），商家自填 -->
+  <view class="field">
+    <text class="lbl">{{t.rate}}</text>
+    <input class="val-input" type="digit" value="{{ratePct}}" bindinput="onRate" placeholder="{{t.ratePh}}" adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+  <!-- 推广费（选填） -->
+  <view class="field">
+    <text class="lbl">{{t.promo}}</text>
+    <input class="val-input" type="digit" value="{{promoYuan}}" bindinput="onPromo" placeholder="0" adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+  <!-- 堂食挂牌价（选填，用于"比堂食少赚多少"） -->
+  <view class="field">
+    <text class="lbl">{{t.dine}}</text>
+    <input class="val-input" type="digit" value="{{dineYuan}}" bindinput="onDine" placeholder="0" adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+
+  <button class="btn primary" style="margin-top:24rpx;" bindtap="onCalc">{{t.calc}}</button>
+
+  <!-- 结果：到手侧只按渠道算（不进 M1） -->
+  <block wx:if="{{result}}">
+    <view class="sec">{{t.result}}</view>
+    <view class="cell"><text class="lbl">{{t.price}}</text><text class="val">{{t.cur}}{{view.price}}</text></view>
+    <view class="cell"><text class="lbl">{{t.commission}}</text><text class="val">{{t.cur}}{{view.commission}}</text></view>
+    <view class="cell" wx:if="{{view.promo !== '0.00'}}"><text class="lbl">{{t.promo}}</text><text class="val">{{t.cur}}{{view.promo}}</text></view>
+    <view class="cell"><text class="lbl">{{t.net}}</text><text class="val strong">{{t.cur}}{{view.net}}</text></view>
+    <view class="cell"><text class="lbl">{{t.profit}}</text><text class="val strong">{{t.cur}}{{view.profit}}</text></view>
+    <view class="cell"><text class="lbl">{{t.netRate}}</text><text class="val">{{view.netRate}}%</text></view>
+    <view class="warn" wx:if="{{result.profitFen < 0}}">{{t.lossHint}}</view>
+    <view class="cell" wx:if="{{view.hasDine}}"><text class="lbl">{{t.vsDine}}</text><text class="val">{{t.cur}}{{view.vsDine}}</text></view>
+  </block>
+</view>
+<view wx:else class="container safe-bottom"><view class="muted">{{t.loading}}</view></view>

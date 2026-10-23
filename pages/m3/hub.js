@@ -25,6 +25,8 @@ Page({
       materialSub: TERMS.hub.materialSub,
       takeawayTitle: TERMS.hub.takeawayTitle,
       takeawaySub: TERMS.hub.takeawaySub,
+      grouponTitle: TERMS.hub.grouponTitle,
+      grouponSub: TERMS.hub.grouponSub,
       reconTitle: TERMS.hub.reconTitle,
       reconSub: TERMS.hub.reconSub,
       reviewTitle: TERMS.hub.reviewTitle,
@@ -46,6 +48,7 @@ Page({
       icoCard: TERMS.hub.icoCard,
       icoMaterial: TERMS.hub.icoMaterial,
       icoTakeaway: TERMS.hub.icoTakeaway,
+      icoGroupon: TERMS.hub.icoGroupon,
       icoRecon: TERMS.hub.icoRecon,
       icoReview: TERMS.hub.icoReview,
       // 🔴 P0#6：快捷操作 + 付费小字（wxml 用到就必须登记 —— 漏登记 ⇒ 静默空白）
@@ -124,6 +127,7 @@ Page({
   goCard() { wx.navigateTo({ url: '/subpkg/biz/card/index' }); },
   goMaterial() { wx.navigateTo({ url: '/subpkg/biz/material/index' }); },
   goTakeaway() { wx.navigateTo({ url: '/subpkg/biz/takeaway/index' }); },
+  goGroupon() { wx.navigateTo({ url: '/subpkg/biz/groupon/index' }); },
   goRecon() { wx.navigateTo({ url: '/subpkg/tools/recon/index' }); },
   goReview() { wx.navigateTo({ url: '/pages/m3/dishreview/index' }); },
 

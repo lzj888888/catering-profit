@@ -72,6 +72,7 @@
         "material/pick",
         "material/batch",
         "takeaway/index",
+        "groupon/index",
         "ai/consent"
       ]
     }

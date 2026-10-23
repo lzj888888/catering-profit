@@ -77,6 +77,16 @@
     <view class="hub-go">›</view>
   </view>
 
+  <view class="hub-card" bindtap="goGroupon">
+    <view class="hub-ico hub-ico-groupon">{{t.icoGroupon}}</view>
+    <view class="hub-main">
+      <text class="hub-name">{{t.grouponTitle}}</text>
+      <text class="hub-pay">{{t.payTag}}</text>
+      <text class="hub-desc">{{t.grouponSub}}</text>
+    </view>
+    <view class="hub-go">›</view>
+  </view>
+
   <view class="hub-card" bindtap="goReview">
     <view class="hub-ico hub-ico-review">{{t.icoReview}}</view>
     <view class="hub-main">

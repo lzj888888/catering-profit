@@ -224,6 +224,9 @@ const REGISTRY = {
     'PAREN|) * 100|#1': ['money', '外卖组装订单本地 fen()：元 → 分（打包费/单价等老板手输）'],
     'PAREN|) * 100|#2': ['money', '目标利润（元）→ 分（老板手输）'],
   },
+  'subpkg/biz/groupon/index.js': {
+    'PAREN|) * 100|#1': ['money', '团购组装订单本地 fen()：元 → 分（团购价/推广费/堂食价老板手输）'],
+  },
   'utils/api.js': {
     'IDENT|n * 100|#1': ['money', '**前端单源** yuanToFen：全仓前端元→分唯一权威实现'],
   },
