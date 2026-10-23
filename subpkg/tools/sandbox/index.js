@@ -313,7 +313,6 @@ Page({
       headcountLabelRev: M.headcountLabelRev,
       headcountUnit: M.headcountUnit,
       l2Toggle: M.l2Toggle,
-      l3Toggle: M.l3Toggle,
       avgPriceLabel: M.avgPriceLabel,
       // 🔴 R296 拍1（李老师 2026-10-14）：人工改「每月总额」直填（不乘人数）——
       //   原「员工月均工资 × 人数」的乘法已删（各店工资不同，乘法会失真；人数只用来算人效）。
@@ -500,13 +499,12 @@ Page({
     feeRows: [],             // 当前预设 revenue_rate 项 [{key,label,pct}]
     showMore: false,          // R442：结果区四张分析卡（利润阶梯/客群/效率/回本）默认收起
     showL2: false,
-    showL3: false,
     // 🔴 R364：试验台（做活动）默认收起 —— 它问的是"如果"，不是老板要填的事实；
     //   收起时只显示一句结论（打几折要多卖多少），点开才露出参数。
     showPromo: false,
     showAssumptions: false,
     // R234/J4：行内长提示折叠（与月录入页同一套 `hintFold` map 模式，默认全收起）。
-    //   ⚠️ 与上面三个区段级折叠（showL2/showL3/showAssumptions，走 .fold-toggle）**语义不同**：
+    //   ⚠️ 与上面三个区段级折叠（showL2/showPromo/showAssumptions，走 .fold-toggle）**语义不同**：
     //      那三个收的是**整块参数区**，本 map 收的是**一句说明文案**。两者并存、互不干扰。
     hintFold: {},
     payback: null,           // {invest, cash, investDefault, userInvest, userPaybackMonths}（M2v1.3 回本卡）
@@ -1554,7 +1552,6 @@ Page({
     if (changed) this.setData({ feeRows: out });
   },
 
-  onToggleL3() { this.setData({ showL3: !this.data.showL3 }); },
   onTogglePromo() { this.setData({ showPromo: !this.data.showPromo }); },
   onToggleAssumptions() { this.setData({ showAssumptions: !this.data.showAssumptions }); },
 
