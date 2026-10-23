@@ -174,6 +174,23 @@ exports.main = async (event) => {
 
   return ok({
     shop_id: shopId, month: v.month,
+    // 🔴 R443（2026-10-23）：现金流体检 —— 前端算「钱还能撑几个月」需要**金额**，
+    //   而 indicators 只回占比 pct。单位**分**（与 sumByTag 的 amountFen 同源）。
+    //   ⚠️ 缺项不出键（与 indicators 的「缺项不评级」同源）⇒ 前端不得按 0 算，
+    //      否则会把「没填房租」当成「房租 0 元」，可撑月数被高估。
+    // 🔴 R444 收口：**必须经 `toFixedFen` 取数**，不能直取 `byInd.utility`。
+    //   `sumByTag` 的水电键叫 `energy`，`utility` 是**指标侧**的名字，映射单源在
+    //   `FIXED_FEN_KEY = { energy: 'utility' }`。直取 `byInd.utility` 恒 undefined
+    //   ⇒ 出参 `utility` 恒 null ⇒ 前端恒判「这月没填全」⇒ 整条功能死掉，
+    //   而装配/校验/门禁全绿（同 R298Y「读到了 ≠ 送出去了」一族的第九例）。
+    fixed_items_fen: (() => {
+      const fx = indicatorRef.toFixedFen(byInd);
+      return {
+        rent: fx.rent != null ? fx.rent : null,
+        labor: fx.labor != null ? fx.labor : null,
+        utility: fx.utility != null ? fx.utility : null,
+      };
+    })(),
     account_id: acct ? (acct.account_id || acct._id) : '',
     is_archive: isArchiveNow,
     archived_at: acct ? (acct.archived_at || 0) : 0,

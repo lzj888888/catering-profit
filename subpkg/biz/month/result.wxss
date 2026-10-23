@@ -59,3 +59,7 @@
 /* 🔴 字号**必须 ≥28rpx**（AD-G1 红线：老板多是老花眼，26rpx 已被守卫判红一次）。
    视觉弱化只靠**颜色/字重**，不靠缩字号。 */
 .be-more-head .lbl { color: #8a97a8; }
+
+/* R443：现金输入 + 可撑月数（字号走 28rpx 底线，selftest_ad_gates G1） */
+.runway-in { flex: 1 1 auto; text-align: right; font-size: 32rpx; color: #1f2329; }
+.runway-big { font-size: 36rpx; font-weight: 700; }
