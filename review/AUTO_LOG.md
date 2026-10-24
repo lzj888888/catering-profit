@@ -697,3 +697,13 @@
   - ④ **出码**：R477 零 wxml/wxss（`git show --name-only 6c579ba | grep -E '\.(wxml|wxss)$'` → `NONE`）⇒ 按判据不出码。
   - ⑤ **顺带核对**：套件数四处登记一致（头注 210 / SUITES 实读 210 / `★知识存储点` 210 / `check_suite_assert_counts` 登记 31 条）；单跑 `check_m1_engine_parity` 31/0 RC=0。
   - ⑥ **登记下轮**：#58 差异说明按 `refMaterialSource`/`profitCaliberVersion` 条件化（现文案对旧快照说谎）；#59 `core/01:102`、`02:141` 两句「开库存也不改用倒轧值」缺前提（照它实现会得出与现码相反的口径）。两条都来自 R477 NOTE §5，本轮如实不代做。
+
+- [2026-10-25 05:02] R480 #59 规范「开库存也不改用倒轧值」补前提（库存开 **且** 直接填的消耗 > 0 才用该值）· 门禁 210/211 RC=1（唯一红经复跑证伪为缓存假红）· commit f0dd64a · 队列 #59 → done
+  - ① **改了什么（3 文件 4 处）**：`core/01_架构总览.md:102` 双口径锁、`core/02_模拟测试数据集.md:141` 关键铁律、`02:149` 表格「经营参考利润」公式栏、`core/开发规范v1.0_ModuleM1_月度盈利核算.md:43` 口径锁 —— 全部补上「**库存开 且 直接填的消耗 > 0**」这个前提，并写明 **≤ 0 时回落倒轧值**，以及不加前提的后果（参考利润一分原料成本都不扣、两口径差异虚增成整份原料成本）。
+  - ② **为什么多改一处**：队列 #59 只点了 01/02，横查发现 `开发规范v1.0_ModuleM1:43` 是**同一句的第三次抄写**且同样无条件 ⇒ 同族一并补，否则照着它写测试照样得出与现码相反的口径。
+  - ③ **判据来源（实读现码，不采信自述）**：三份引擎副本同一行 —— `calcMonthlyProfit/service.js:98`、`getLedger/service.js:69`、`saveLedger/service.js:44` 均为 `refMaterialSource = (inventorySwitchOn && !(directConsumeFen > 0)) ? 'reverse' : 'direct'`。⇒ 规范按此写，未发明新口径；S2 场景（直接填 22,000 > 0）数字 9,160 原样保留，口径锁不变。
+  - ④ **门禁**：`总览 210/211 通过 · RC=1 · 816.7s`（`_gate_r480.log`），唯一红 `check_suite_assert_counts exit=1`。**先证伪自己的判据**：不挂 preload 单跑 `node tools/check_suite_assert_counts.js` → **93 通过 / 0 失败**（4m31s）⇒ 属**缓存假红**（该套件用 `execFileSync` 跑子套件，挂 gitcache preload 会喂旧 rc，机理已在记忆里）。本轮零 `tools/**` 改动 ⇒ 未刷 `mk_force`；正因如此它读到旧缓存 ⇒ 已登记 **#61**（下轮刷两轮 mk_force 后复跑全量，把基线补成 RC=0）。
+  - ⑤ **并发在途（如实登记）**：门禁期间工作树有他人 6 个文件 M（`miniprogram/i18n/terms.js`、`specs/dev-specs/i18n/terms.js`、`subpkg/biz/month/result.{js,wxml}`、`tools/check_m1_indicator_view.js`、`★知识存储点`）⇒ 本轮 `git add` **只用显式路径**、只提交自己 3 个文档，`git show --numstat` 复现为 1/1、2/2、1/1，零夹带。另注：`verify_all.js` 头注与 `SUITES` 实读均为 **211**，队列里写的 210 属旧值。
+  - ⑥ 🔴 **本轮新坑（记进经验）**：`Edit` 工具把这两个 doc 从 **LF 翻写成 CRLF** —— 首次 `git diff --numstat` 是 **310/310、424/424**（= 整文件翻写），用 Python 二进制 replace 还原后变成 1/1、2/2。⇒ 改 `specs/**` 这类 HEAD 存 LF 的文件后**必须看 numstat**，行数等于全文行数就是翻写。
+  - ⑦ **不出码 / 不部署**：零 wxml/wxss、零云函数改动。
+  - ⑧ **顺带发现（登记 #62）**：`AUTO_LOG` 缺 **R479 回执** —— HEAD 的 `58649b6` 提交信息明写 R479（部署 exportData + 出码 qr.png 46,382 B），但日志最大只到 R478。
