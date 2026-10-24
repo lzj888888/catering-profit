@@ -219,6 +219,12 @@ Page({
   },
 
   async save(archiveOverride) {
+    // 🔴 R470：无店铺态不要发写请求（服务端回 INVALID_PARAM，前端会显示成「填写有误」）
+    const _app = getApp && getApp();
+    if (!(_app && _app.globalData && _app.globalData.shop_id)) {
+      wx.showModal({ title: TERMS.exp.noShop, content: TERMS.exp.noShopHint, showCancel: false });
+      return;
+    }
     // 元 → 分（适配层）
     const inventory = {
       opening_fen: api.yuanToFen(this.data.openingYuan),

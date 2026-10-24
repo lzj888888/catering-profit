@@ -295,7 +295,7 @@ const TERMS = {
     heroNoDataHint: '把租金、人工、食材填进去，自动算出参考利润',
     heroCtaEnter: '录入本月经营数据',
     heroCtaDetail: '查看明细',
-    heroSwitch: '切换店铺',
+    heroSwitch: '店铺管理',
   },
 
   // ===== 十一、批次 4 页面级按钮/链接（补录）=====
@@ -2617,7 +2617,7 @@ const TERMS = {
     submitting: '提交中…',
     loading: '加载中…',
     // 店铺切换
-    switchTitle: '切换店铺',
+    switchTitle: '店铺管理',
     currentShop: '当前店铺',
     noShop: '还没有店铺',
     addShop: '+ 新增店铺',

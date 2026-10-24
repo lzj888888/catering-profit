@@ -36,7 +36,13 @@ function restoreShopId() {
 /** 切换店铺：写入 globalData（api.js 自动带新 shop_id）+ 持久化。 */
 function switchShop(shopId) {
   const app = getApp();
-  if (app && app.globalData) app.globalData.shop_id = shopId || '';
+  if (app && app.globalData) {
+    app.globalData.shop_id = shopId || '';
+    // 🔴 R470：切店必须让**上下文缓存失效**。`api.ensureShop` 靠 `shopLoaded` 短路
+    //   （api.js:110），不置 false 的话，切完返回上一页仍拿到旧店的 name/switches
+    //   ⇒ 真机表现「提示已切换、店名不变」。
+    app.globalData.shopLoaded = false;
+  }
   persistShopId(shopId);
 }
 

@@ -1659,6 +1659,13 @@ Page({
 
   async save(archiveOverride) {
     try {
+      // 🔴 R470：**无店铺态不要发写请求**。服务端只会回 INVALID_PARAM，
+      //   而前端把参数错误映射成「填写有误」⇒ 老板以为是自己填错了，其实是一家店都没有。
+      const _app = getApp && getApp();
+      if (!(_app && _app.globalData && _app.globalData.shop_id)) {
+        wx.showModal({ title: TERMS.exp.noShop, content: TERMS.exp.noShopHint, showCancel: false });
+        return;
+      }
       ui.setTitle(TERMS.buttons.save);
       await api.call('saveLedger', {
         month: this.data.month,

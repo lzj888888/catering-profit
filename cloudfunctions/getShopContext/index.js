@@ -28,9 +28,23 @@ exports.main = async (event) => {
 
   const da = makeAdapter(db);
 
-  // ===== 2. 取该用户店铺（**仅**「从未建过店」的新用户才自动建档）=====
-  const shopsRes = await da.list('shop', { user_id: userId });
-  let shop = (shopsRes && shopsRes.data && shopsRes.data[0]) || null;
+  // ===== 2. 取店铺（**仅**「从未建过店」的新用户才自动建档）=====
+  // 🔴 R470：**必须认调用方传的 shop_id**。
+  //   原来只取「该用户名下第一家」（data[0]）⇒ 前端切店铺只是本地改了 shop_id，云端每次仍回第一家
+  //   ⇒ 界面表现「有『已切换』提示、但店名不变」；更严重的是**读写分叉**：
+  //   写操作（saveLedger 等）带的是新 id，读回来的却是第一家 ⇒ 老板以为在 B 店，看到的是 A 店数据。
+  //   归属校验不能省：`shop_id` 由客户端传入，必须同时按 user_id 过滤，否则等于越权读别家。
+  const wantedId = (v.input && v.input.shop_id) || '';
+  let shop = null;
+  if (wantedId) {
+    const oneRes = await da.list('shop', { shop_id: wantedId, user_id: userId });
+    shop = (oneRes && oneRes.data && oneRes.data[0]) || null;
+    // 传了但不属于本人 / 已删 ⇒ 不猜也不报错，走下面的兜底（回第一家，或落到 no_shop 分支）
+  }
+  if (!shop) {
+    const shopsRes = await da.list('shop', { user_id: userId });
+    shop = (shopsRes && shopsRes.data && shopsRes.data[0]) || null;
+  }
   let created = false;
 
   // 🔴 R208：**必须先分清「从未建店的新用户」与「主动删空的老用户」**，两者处理完全不同。
