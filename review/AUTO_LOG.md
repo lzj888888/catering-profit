@@ -627,3 +627,9 @@
   - **取号避让（本条自身踩到的坑）**：落笔时两处最大号均 = R463，但**并发会话正在新增 `check_ai_pack` 套件**（`verify_all.js`/`check_suite_assert_counts.js`/知识存储点 16:06–16:27 在途，17:00:46 起在跑门禁），其回执必占 R464 ⇒ 本轮取 **R465** 避让，不做第二次撞号（R462 那次已付一条勘误提交）
   - **门禁口径**：跑在我方改动**之后**，但并发会话的改动**未提交、已进工作树**（`SUITES = 208` ＝ HEAD 的 207 + 它新增的那个套件）⇒ 这个 208/208 是**工作树态**的绿；我这条改动本身零代码、零 `tools/**`。未刷 `mk_force` 的理由：`tools/**` 我零改动，缓存由并发会话 17:24:39 刚结束的那轮门禁刷新过
   - **未做（如实登记）**：队列第一条 **#49（`preloadRule` 零守卫）本轮未做** —— 它要动的四个登记文件（`verify_all.js` / `check_suite_assert_counts.js` / 知识存储点 / 新套件）**正是并发会话的在途改动**，此刻新增套件必撞车 ⇒ 按「不覆盖别人的在途改动」跳过，**#49 仍为 todo**，留给下一轮挑空闲窗口
+- [2026-10-24 21:24] R469 **app.json `preloadRule` 从"零判据"到有守卫**（#49）· 门禁 **209/209 · RC=0 · 279.4s**（`_gate_r469.log`，0 ❌）· commit `e246032` · 队列 #49 → done
+  - 新增 `tools/check_preload_rule.js`（**14 断言**）：A 页面对照 2（key ∈ 主包 4 页 ∪ 分包 25 页 / key 形态不带前导 `/` 与 `.js`）· B 分包对照 3（packages 项 ∈ 分包 root / 非空字符串数组且无重复 / 规则字段名只允许 `packages`+`network` 且必含前者）· C 网络 1（缺省合法，出现必须 ∈ {all, wifi}）· D 语义 1（不得预载 key **自身所在**的分包 —— 页面搬进分包后的空转残留）· E 自失效护栏 7（扫描面 29 页/2 包/2 规则 + 配置真读到 + **5 条合成负样本**：坏 key→A-① / 坏包名→B-① / `network:"3g"`→C-① / 自包预载→D-① / 规则删空→E 显式判红）。
+  - **真实变异 3/3 红在目标断言名**（不是崩溃红）：M1 只改 `packages` 为 `["subpkg/bizz"]` → `❌ B-①` · M2 只改 key 为 `pages/m3/hub_moved` → `❌ A-①` · M3 `network:"3g"` → `❌ C-①`；每组还原后 **字节级一致**（`RESTORED_BYTE_EQUAL=True`），收尾复跑 14/14 · RC=0。⚠️ 变异脚本 `_mut_r469_preload.py` 在仓库外（工作区根）。
+  - 登记四处：`verify_all.js` 头注 208→209 + SUITES 追加 `preload-rule` · `check_suite_assert_counts.js` CASES 追加 `check_preload_rule=14` · 重启键「串 **209**」+「套件数会漂」现值 + 断言数口径行追加键、数词八十二者→八十三者（`git diff --numstat` 3/3，CRLF 1235/1235 未翻写）。单跑 `check_suite_assert_counts` **91/91 RC=0**、`check_suite_coverage` 10/10、`check_selftest_shape` 71 合规。
+  - **无 wxml/wxss 改动 ⇒ 不出码；无云函数改动 ⇒ 不部署**（本条只动 `app.json` 的读取侧判据与三处登记文件，线上行为零变化）。
+
