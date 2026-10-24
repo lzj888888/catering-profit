@@ -1,0 +1,77 @@
+# R472 · 队列 #51 收口：saveLedger 部署取证
+
+时点：2026-10-24 23:44（本机）
+环境：dev `cloud1-d4gphpoxy337f2a25`（现读 `miniprogram/config/env.js:23`）
+依据：队列 #51 —— `92738a2` 改了 `cloudfunctions/saveLedger/index.js` 但无部署证据
+（`review/evidence/` 无新增、`AUTO_LOG` 无该提交回执；并发会话工作日志自称已部署，按「不采信自述」须机器复核）。
+
+## 一、代码面确认（改动已在 HEAD）
+
+```
+$ git merge-base --is-ancestor 92738a2 HEAD && echo ANCESTOR_OK
+ANCESTOR_OK
+
+$ git log --oneline -6 -- cloudfunctions/saveLedger/index.js
+92738a2 fix(m1): R469 清空月后保存必失败（唯一键卡住 + 错误被"网络不可用"吞掉）
+8f5a3f0 R376 · M1 清空某月（软删 + 复活 + 归档锁）
+...
+```
+
+现码关键点（实读 `index.js:60-80`，非采信提交信息）：
+- `:67` 复活查询只按唯一键 `(shop_id, month)` 查，**不再要求 `is_deleted === true`**；
+- `:76` 命中软删行即 `update` 复活（保住 `account_id`，清空可逆）；
+- `:188-194` INSERT 撞唯一键后按唯一键回查改走 `update`（upsert 回退），不再把「库里有行」报成「网络不可用」。
+
+## 二、部署（本机可用命令形式）
+
+⚠️ **ERRATA（本轮实测，推翻 R470 记的 `--paths/--appid` 形式）**：
+本机 CLI `cloud functions deploy` 在**只给 `--paths` 不给 `--project`** 时直接报
+`code: 31 缺失参数 'project'`（且 **rc 仍 = 0**）；`--project` 与 `--paths` **必须同时给**，再补 `--port 10896`。
+
+```
+"C:/Program Files (x86)/Tencent/微信web开发者工具/cli.bat" cloud functions deploy \
+  --names saveLedger -r --env cloud1-d4gphpoxy337f2a25 \
+  --project C:/Users/lzj/WorkBuddy/Claw/catering-profit \
+  --paths C:/Users/lzj/WorkBuddy/Claw/catering-profit/cloudfunctions/saveLedger \
+  --port 10896
+```
+
+输出（原文摘录）：
+
+```
+√ [saveLedger] cloudfunction saveLedger exists in the cloud, will update it
+√ [saveLedger] upload cloud function saveLedger - deploy
+√ deploy cloudfunctions
+
+┌────────────┬─────────┬────────────┬───────────┐
+│ (index)    │ success │ filesCount │ packSize  │
+├────────────┼─────────┼────────────┼───────────┤
+│ saveLedger │ true    │ 22         │ '62.6 KB' │
+└────────────┴─────────┴────────────┴───────────┘
+```
+
+判据：`success = true` ✅（22 文件 / 62.6 KB）
+
+## 三、云端回读
+
+```
+"C:/Program Files (x86)/Tencent/微信web开发者工具/cli.bat" cloud functions info \
+  --names saveLedger --env cloud1-d4gphpoxy337f2a25 \
+  --project C:/Users/lzj/WorkBuddy/Claw/catering-profit --port 10896
+```
+
+```
+┌────────────┬──────────┬─────────┬───────────────┐
+│ (index)    │ status   │ timeout │ runtime       │
+├────────────┼──────────┼─────────┼───────────────┤
+│ saveLedger │ 'Active' │ 20      │ 'Nodejs16.13' │
+└────────────┴──────────┴─────────┴───────────────┘
+```
+
+判据：`status = Active`、`timeout = 20`（无需抬超时）、runtime Nodejs16.13 ✅
+
+## 四、边界
+
+- 只部署 dev（`cloud1-…`），未碰 prod、未开控制台。
+- 只部署 1 个函数：`saveLedger`（本轮零代码改动，仅为消除「线上是旧代码」的不确定，属幂等重部署）。
+- 未因 `cx_*.js` 派生副本批量部署。
