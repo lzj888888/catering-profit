@@ -96,26 +96,11 @@
   </view>
   <view class="warn" wx:if="{{be && be.noDataText}}">{{be.noDataText}}</view>
 
-  <!-- 🔴 R433（core/13:217「M1 结果页 → 决策辅助」的指标对照部分）：
-       数据由 getLedger 的 round115 指标早已算好并 setData 到 inds，但 wxml 从未渲染
-       ⇒ 老板在页面上看不到「房租占比偏高」这类判断。本卡只展示，**不新增任何计算**。
-       ⚠️ 缺项不评级（level 为 na、has 为 false）⇒ 显示"未填"，绝不按零值算
-       （按零值会得出「房租占比很低，优秀」这种荒谬结论，round115 实测踩过）。 -->
-  <view class="card2" wx:if="{{inds.length}}">
-    <view class="cell drill-head"><text class="lbl">{{t.indTitle}} · {{bizText}}</text></view>
-    <view class="ind-row" wx:for="{{inds}}" wx:key="key">
-      <view class="ind-line1">
-        <text class="ind-name">{{item.name}}</text>
-        <text class="ind-lv lv-{{item.level}}">{{item.lvText}}</text>
-      </view>
-      <view class="ind-line2">
-        <text class="ind-mine" wx:if="{{item.has}}">{{item.pct}}%</text>
-        <text class="ind-missing" wx:else>{{t.indEmpty}}</text>
-        <text class="ind-band" wx:if="{{item.has}}"> · {{t.indBandLbl}} {{item.lo}}~{{item.hi}}%</text>
-      </view>
-    </view>
-    <view class="ind-note">{{t.indFoot}}</view>
-  </view>
+  <!-- 🔴 R473：原先此处还有一块**不含业态/地区选择**的「指标对照」（R433 加的），
+       与下方 round115 那块（可选业态/城市、参考带随之变化）**同页重复**。
+       李老师真机判定：同一页两块名字一样、数值也可能不一样，反而让人不知道信哪个。
+       ⇒ 只保留**能选的那一块**（下方），这里删除；R433 的展示目的由下方那块承接。
+       数据仍来自 getLedger 的 round115 指标（inds），本页零阈值、零新增计算。 -->
 
   <!-- 🔴 R399（队列 #16）：异常核对清单 —— 只跟**本店自己的历史**比。
        口径红线（PLAN_AI §3）：只给「哪一项跟过去不一样 + 差多少百分比」，**不给金额差、不给行业均值**
@@ -248,6 +233,9 @@
       <text class="lbl">{{t.profitDiff}}</text>
       <text class="val">{{t.cur}}{{r.profitDiff}}</text>
     </view>
+    <!-- 🔴 R473：这个数原来只写「口径差异」，老板读不懂它在差什么（真机反馈：
+         "差异不应该是 A 减 B 吗？为什么等于食材成本"）。这里说清它是**哪两个数之差、差从哪来**。 -->
+    <view class="muted">{{t.profitDiffWhy}}</view>
   </view>
 
   <!-- round115：行业对照（李老师「让客户找到方向」的第一步）-->

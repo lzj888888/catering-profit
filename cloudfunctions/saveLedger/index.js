@@ -178,6 +178,10 @@ exports.main = async (event) => {
   let accountId;
   if (existing) {
     accountId = existing._id || existing.id;
+    // 🔴 R473：更新分支必须**补齐 account_id**。结果页"有没有账本"的判据就是 `!!d.account_id`
+    //   （R298 定的单源判据）⇒ 历史行缺这个字段时，会出现**保存成功、结果页却说"还没有账本"、
+    //   反复引导去录入**（李老师真机现象）。这里补一次，已有则不动（幂等）。
+    if (!existing.account_id) doc.account_id = genId('acc_');
     await db.collection('shop_monthly_account').doc(accountId).update({ data: doc });
   } else {
     try {

@@ -108,6 +108,7 @@ Page({
       trendNote: TERMS.resultPage.trendNote,
       trueProfit: TERMS.resultPage.trueProfit,
       profitDiff: TERMS.resultPage.profitDiff,
+      profitDiffWhy: TERMS.resultPage.profitDiffWhy,
       // C：钱去哪了 故事线（专业术语保留 + 白话流向）
       flowTitle: TERMS.resultPage.flowTitle,
       flowSell: TERMS.resultPage.flowSell,
