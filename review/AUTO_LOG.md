@@ -633,3 +633,9 @@
   - 登记四处：`verify_all.js` 头注 208→209 + SUITES 追加 `preload-rule` · `check_suite_assert_counts.js` CASES 追加 `check_preload_rule=14` · 重启键「串 **209**」+「套件数会漂」现值 + 断言数口径行追加键、数词八十二者→八十三者（`git diff --numstat` 3/3，CRLF 1235/1235 未翻写）。单跑 `check_suite_assert_counts` **91/91 RC=0**、`check_suite_coverage` 10/10、`check_selftest_shape` 71 合规。
   - **无 wxml/wxss 改动 ⇒ 不出码；无云函数改动 ⇒ 不部署**（本条只动 `app.json` 的读取侧判据与三处登记文件，线上行为零变化）。
 
+- [2026-10-24 21:32] R469b **只读巡检**（#49 收口后队列 **0 todo / 0 in_progress**，无活可认领）· 门禁 **209/209 · RC=0 · 279.4s**（`_gate_r469.log`，本轮亲跑，0 ❌）· 无代码提交（本行仅日志）
+  - ① 工作树：开工时干净（HEAD `4de3774` ≡ `origin/dev`）；本轮提交后 HEAD ≡ `origin/dev` = `ffa789b`，`git status` 空。
+  - ② 最近门禁：上面那条就是本轮实跑值（不是自述）；改过 `tools/**` ⇒ 已刷 `mk_force` **两轮**后再跑，判据「总览 209/209」+ `GATE_EXIT=0` + 真 FAIL=0 三件同时成立。
+  - ③ 队列：**39 done / 11 blocked / 0 todo / 0 in_progress**。11 条 blocked 逐条核 why 仍成立（#12 AppSecret 需拍板 · #7 真机扫码 · #9 美团销量表样例 · #21/#33/#35/#39/#40/#41 产品口径需拍板 · #37 prod 环境 · #38 支付手续），**无僵尸 todo、无反向漂移**。
+  - ④ NOTE ↔ 代码抽检三条都对得上：`NOTE_2026-10-23_交接_新对话续接.md` 仍是 R465 改的**指向式**（唯一的 208 已显式标「时点快照」⇒ 与现 209 不冲突，不改）；R463–R468 六条 AI 诊断包提交引用的 `PLAN_AI` **不是悬空引用**（落地件 = `review/PLAN_2026-10-23_AI落地路标_v1.md`）；`check_ai_pack` 已挂 SUITES 且断言数口径行与实跑一致（`check_suite_assert_counts` 91/91 RC=0）。
+  - 本轮停在这里的理由：队列已无 todo，且本轮累计 36 分钟、剩余时间不足以再走完「实现 + 刷缓存两轮 + 全量门禁（本轮实测 12 分钟）」一条完整链路 ⇒ 按「超 50 分钟即停」提前收口，不硬开第二条。
