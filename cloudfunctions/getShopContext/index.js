@@ -34,7 +34,10 @@ exports.main = async (event) => {
   //   ⇒ 界面表现「有『已切换』提示、但店名不变」；更严重的是**读写分叉**：
   //   写操作（saveLedger 等）带的是新 id，读回来的却是第一家 ⇒ 老板以为在 B 店，看到的是 A 店数据。
   //   归属校验不能省：`shop_id` 由客户端传入，必须同时按 user_id 过滤，否则等于越权读别家。
-  const wantedId = (v.input && v.input.shop_id) || '';
+  // ⚠️ 取值必须用 `v.shop_id`：本函数的 `validate.js` 把 shop_id 放在**返回值顶层**，
+  //   `v.input` 里只有 client_request_id（见 validate.js:9-10）。R470 第一版写成
+  //   `v.input.shop_id` ⇒ 恒 undefined ⇒ 回落第一家 ⇒ 修了等于没修（真机复测仍切不动）。
+  const wantedId = v.shop_id || '';
   let shop = null;
   if (wantedId) {
     const oneRes = await da.list('shop', { shop_id: wantedId, user_id: userId });
