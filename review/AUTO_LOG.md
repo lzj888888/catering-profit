@@ -707,3 +707,11 @@
   - ⑥ 🔴 **本轮新坑（记进经验）**：`Edit` 工具把这两个 doc 从 **LF 翻写成 CRLF** —— 首次 `git diff --numstat` 是 **310/310、424/424**（= 整文件翻写），用 Python 二进制 replace 还原后变成 1/1、2/2。⇒ 改 `specs/**` 这类 HEAD 存 LF 的文件后**必须看 numstat**，行数等于全文行数就是翻写。
   - ⑦ **不出码 / 不部署**：零 wxml/wxss、零云函数改动。
   - ⑧ **顺带发现（登记 #62）**：`AUTO_LOG` 缺 **R479 回执** —— HEAD 的 `58649b6` 提交信息明写 R479（部署 exportData + 出码 qr.png 46,382 B），但日志最大只到 R478。
+
+- [2026-10-25 05:22] R479 补记（台账原缺，本条只补回执不重做）：差异说明按口径来源条件化 + 导出与页面对不上账修复，已部署 `exportData`、已出码 · 门禁 211/211（日志无 RC 行，真 FAIL=0）· commit a74701c（代码）/ 58649b6（证据）· 队列 #62 → done
+  - ① **为什么补记**：`58649b6` 与 `a74701c` 的提交信息都写着 R479，`AUTO_QUEUE` #58 也已 done，但 `AUTO_LOG` 最大只到 R478 ⇒ 审计链上「R479 只存在于 commit message」。**不重做任何动作**，只按仓内已有机器证据补一条。
+  - ② **代码面（`a74701c`，04:03）**：`cloudfunctions/exportData/index.js` 21+（导出与页面对不上账）；两份 `terms.js` 各 12±：新增 `profitDiffWhyAmort` / `profitDiffWhyConsume` 两键 + `refNoteDirect` / `refNoteReverse`，原 `profitDiffWhy` 降级为**兜底句不点名食材**（R477 之后回落倒轧时差异里根本没有食材项，固定文案会对着「只剩摊销」的差异说「这里有食材差」）；`subpkg/biz/month/result.js` 13+；新增守卫 `tools/check_m1_diff_explain.js` 153 行；`verify_all.js` + `check_suite_assert_counts.js` 登记。
+  - ③ **门禁**：`总览 211/211 通过 · 662.1s · R92 ✅`（`_gate_r479b.log`，04:38，**晚于** `a74701c` 04:03 ⇒ 覆盖本批）。⚠️ 该日志**没有 RC 行** ⇒ 如实记「RC 未留痕」，判据只到「N/N + 真 FAIL=0」。（同批 `_gate_r479.log` 04:23 是 210/211，唯一红同为 `suite-assert-counts` —— 与 R480 观测到的缓存假红同因。）
+  - ④ **部署**：`exportData` → `success=true / filesCount=20 / packSize='60.8 KB'`，日志含 `√ upload cloud function exportData - deploy`（`review/evidence/r479_deploy/deploy_exportData.txt`）。**只部署这一个**，「只有它引用新符号」同理成立（diff 面只有 `exportData/index.js` 一支云函数）。
+  - ⑤ **出码**：`√ preview`、`Using AppID: wx33c110dc57a9c8dc`、TOTAL `761.4 KB`（main 265.3 / biz 323.7 / tools 172.3），`qr.png` **46,382 B**（`review/evidence/r479_qr/`）。
+  - ⑥ **terms 双副本现读一致**：md5 同为 `40b378a8fd6bee0b24c670dc869d8902`（两份文件）。⚠️ 该 md5 含**并发会话在途改动**（`git status` 现仍有两份 terms 的 M）⇒ 本条只补台账，**未提交、未覆盖他人改动**。
