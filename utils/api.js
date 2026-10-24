@@ -31,6 +31,19 @@ module.exports = {
       // 真实原因是云函数部署漏带依赖导致容器起不来（callFunction fail），却只显示"请检查网络连接"。
       // 现在把原始 errMsg 打到 console，真机可在「开发调试/日志」里看到，不再靠猜。
       console.error('[api.call] 云调用失败:', name, '| errMsg =', (e && e.errMsg) || e);
+      // 🔴 R469：**预览模式看不到 console**（只有「真机调试」能看）⇒ dev 下把原始 errMsg 直接弹出来。
+      //   为什么只对 NETWORK_ERROR 弹：这正是被「网络不可用」盖住的那一类，其它错误码本就有人话文案。
+      //   为什么加 envVersion 判断：release 版绝不把技术错误暴露给老板。
+      try {
+        const envVersion = (wx.getAccountInfoSync && wx.getAccountInfoSync().miniProgram.envVersion) || 'release';
+        if (envVersion !== 'release') {
+          wx.showModal({
+            title: '云调用失败 · ' + name,
+            content: String((e && e.errMsg) || e).slice(0, 300),
+            showCancel: false,
+          });
+        }
+      } catch (ignore) { /* 诊断弹窗失败不影响主流程 */ }
       throw { code: 'NETWORK_ERROR', msg };
     }
     const r = res && res.result;

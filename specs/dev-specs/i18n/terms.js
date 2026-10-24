@@ -2640,7 +2640,7 @@ const TERMS = {
     resetShort: '清空',
     resetShop: '清空月度账',
     resetOk: '清空',
-    resetAsk: (months) => '清掉这家店 ' + months + ' 个月的月度账？店铺名、菜品成本卡、原料档案都留着，只是账本归零，可以马上重录。',
+    resetAsk: (months) => '清掉这家店 ' + months + ' 个月的月度账？店铺名、菜品成本卡、原料档案、摊销台账都留着（这些都是跨月资产），只是账本归零，可以马上重录。',
     resetDone: (months) => '已清空 ' + months + ' 月',
     resetNoData: '这家店还没有月度账套',
     checkingImpact: '正在清点…',

@@ -64,8 +64,12 @@ exports.main = async (event) => {
   //   但唯一索引 `(shop_id, month)` 还在 ⇒ 若直接 INSERT 会撞唯一键，当月再也存不进去。
   //   ⇒ 保存前先"复活"同一行（保住 account_id，也让清空可逆）。
   if (!existing) {
+    // 🔴 R469：按**唯一键**查，不再要求 `is_deleted === true`。
+    //   唯一索引就是 (shop_id, month)（initDb/collections.js:63）—— 一行被"藏起来"不一定恰好是 true
+    //   （历史行缺该字段 / 写入中间态）。原来查不到就会去 INSERT ⇒ 撞唯一键 ⇒ 函数抛异常
+    //   ⇒ `api.js` 把任何 `callFunction:fail` 一律显示成「网络不可用」，真实原因被吞。
     const rawRes = await db.collection('shop_monthly_account')
-      .where({ shop_id: shopId, month: v.month, is_deleted: true }).limit(1).get();
+      .where({ shop_id: shopId, month: v.month }).limit(1).get();
     const soft = (rawRes && rawRes.data && rawRes.data[0]) || null;
     if (soft) {
       await db.collection('shop_monthly_account').doc(soft._id).update({
@@ -176,8 +180,21 @@ exports.main = async (event) => {
     accountId = existing._id || existing.id;
     await db.collection('shop_monthly_account').doc(accountId).update({ data: doc });
   } else {
-    const ins = await da.insert('shop_monthly_account', Object.assign({ account_id: genId('acc_'), is_archive: false, archived_at: 0 }, doc));
-    accountId = ins && ins._id;
+    try {
+      const ins = await da.insert('shop_monthly_account', Object.assign({ account_id: genId('acc_'), is_archive: false, archived_at: 0 }, doc));
+      accountId = ins && ins._id;
+    } catch (e) {
+      // 🔴 R469 兜底：唯一索引 (shop_id, month) 被占用（历史软删行 / 并发两次保存 / 上一步查询与写入之间的竞态）
+      //   ⇒ 按唯一键回查后改成 upsert 更新，**绝不把「库里有行」报成「网络不可用」**。
+      const again = await db.collection('shop_monthly_account')
+        .where({ shop_id: shopId, month: v.month }).limit(1).get();
+      const row = (again && again.data && again.data[0]) || null;
+      if (!row) throw e;   // 不是唯一键冲突 ⇒ 原样抛出，不掩盖真实故障
+      await db.collection('shop_monthly_account').doc(row._id).update({
+        data: Object.assign({}, doc, { is_deleted: false, deleted_at: 0 }),
+      });
+      accountId = row._id;
+    }
   }
 
   const out = {
