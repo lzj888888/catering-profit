@@ -650,3 +650,5 @@
   - ⑦ 口径核对（顺带，未改码）：新文案「…原料档案、**摊销台账**都留着」与 `clearMonth/index.js` 实际行为一致（只软删 `shop_monthly_account`，`shop_amortize` 零触碰）；两份 `terms.js` md5 均 `5e54a3bdccca351bbe91cad1ad56244e` ⇒ **一致**。
   - ⑧ ⚠️ 待复审（仅记录）：`utils/api.js` 新增诊断弹窗的注释写「**只对 NETWORK_ERROR 弹**」，但代码里没有对应条件 —— 该块位于 catch 内，凡 `wx.cloud.callFunction` 抛错都会弹（含服务端错误被既有归类成 NETWORK_ERROR 的情形）。release 已被 `envVersion` 挡掉 ⇒ 属**注释与实现不符**（dev 多弹一次窗），非线上行为缺陷。
   - ⑨ 边界：本轮**零代码改动**（只读巡检 + 两处文档）⇒ 未出码、未部署、未动线上环境。
+
+  - ⑩ **ERRATA（本轮自行订正，不改历史）**：⑨ 之后落盘的队列 #51 初版把 dev 环境 ID 抄成 `cloud1-4dgphoxy337f2a25`（漏一个 `p`），并按 `--project` 写部署命令 —— 而本机 CLI 对 `--project` **恒报「缺失参数 project」**、且环境 ID 单源在 `miniprogram/config/env.js:23`。已在本轮第二个提交订正为「现读 env.js + `--paths/--appid` 定式」，并补明「并发会话工作日志自称已部署、但无机器证据」这层差别。
