@@ -85,6 +85,8 @@
 | 56 | M1「两口径差异」在库存模式下恒等于整个食材成本（参考利润完全没扣食材） | done | no | **R477 已落**（commit `6c579ba`）：库存开 且 直接填的消耗 <= 0 ⇒ 参考口径回落倒轧值。实测改前参考 31,160 元 vs 真实 8,160 元（差 23,000＝整份食材成本），改后参考 8,160、差异只剩摊销 4,683.33。三份引擎副本（calcMonthlyProfit / saveLedger / getLedger）同步改，漏一份即静默错；新增守卫 `tools/check_m1_engine_parity.js`（第 210 个套件，31 断言，先红后绿）。🔴 判据取 <= 0 而非「未填」：库存页保存写死 `|| 0`（subpkg/biz/month/inventory.js:240）⇒ 恒传 0，那是占位不是老板意图。**边界**：库存开且填了正数 ⇒ 仍用填的值（S2 锚点即此形态，口径锁不变）。⚠️ 未做：①展示层按 ref_material_source / profit_caliber_version 条件化（下一轮）②L3「按模式只给一个利润」等真机反馈收完再动 ③规范 01/02 那两句「开库存也不改用倒轧值」需补前提，未动。 |
 
 
+| 56 | R477（`6c579ba`）M1 引擎口径修复的**机器证据缺口**：未推送 / 无 210 套件门禁基线 / 三个云函数（calcMonthlyProfit·getLedger·saveLedger）未部署 | in_progress | no | why: 02:47:14 提交改了 3 份 `service.js`（参考利润在库存模式下不扣原料）+ 新增第 210 套件，但 `review/evidence/` 无 r477 目录、`AUTO_LOG` 无 R477 回执、`origin/dev` 仍停 `fe7142a`。改了云函数不部署 ⇒ 修复永远到不了线上（前端照样显示"差异 = 整份原料成本"）；未推送 ⇒ 一次 `git checkout .` 即丢。核查：四种套件数登记一致（verify_all 头注 210 / SUITES 实读 210 / 知识存储点 210 / check_suite_assert_counts 登记 31 条），单跑守卫 31/0 RC=0。⇒ 本轮只补证据（门禁+部署+推送+回执），**不重复实现**口径改动 |
+
 ## 回执格式（每次执行后追加到 `review/AUTO_LOG.md`）
 
 
