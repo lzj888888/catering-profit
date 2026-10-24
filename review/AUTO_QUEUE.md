@@ -93,7 +93,7 @@
 | 60 | L3：按模式只给**一个**利润、删掉「两口径差异」展示（含首页/结果页/列表/导出/诊断包 + 数据迁移） | blocked | yes | why: 外审与 R477 都认为「两个利润 + 一个差异」对老板是认知负担，但这是**产品形态变更**（不是修 bug），涉及五个展示面与旧数据迁移 ⇒ 按李老师口径「等真机反馈收完再动」。R479 已把差异**说明**条件化（#58），先让真机跑一轮看老板还要不要这个数。 |
 
 
-| 61 | **全量门禁基线待补成 RC=0**：R480 那轮 `总览 210/211 RC=1`，唯一红 `suite-assert-counts` 已用「不挂 preload 单跑 93/0」证伪为缓存假红，但门禁日志里那条 rc 仍是旧的 | todo | no | why: 本轮零 `tools/**` 改动 ⇒ 按纪律未刷 `mk_force`；而该套件用 `execFileSync` 跑子套件，挂 gitcache preload 会喂**旧 rc**（记忆已载机理）⇒ 判据行留了个 RC=1。动作：`python review/evidence/r179_gate_sandbox/mk_force.py` 跑两轮 → 再跑全量门禁，把 `总览 N/N RC=0` 落成机器证据。⚠️ 纯补基线，**不改任何判据**；若复跑仍红在 `suite-assert-counts`，则按「红先怀疑判据」重新取证（大概率是并发会话在途改动）。 |
+| 61 | **全量门禁基线待补成 RC=0**：R480 那轮 `总览 210/211 RC=1`，唯一红 `suite-assert-counts` 已用「不挂 preload 单跑 93/0」证伪为缓存假红，但门禁日志里那条 rc 仍是旧的 | in_progress | no | why: 本轮零 `tools/**` 改动 ⇒ 按纪律未刷 `mk_force`；而该套件用 `execFileSync` 跑子套件，挂 gitcache preload 会喂**旧 rc**（记忆已载机理）⇒ 判据行留了个 RC=1。动作：`python review/evidence/r179_gate_sandbox/mk_force.py` 跑两轮 → 再跑全量门禁，把 `总览 N/N RC=0` 落成机器证据。⚠️ 纯补基线，**不改任何判据**；若复跑仍红在 `suite-assert-counts`，则按「红先怀疑判据」重新取证（大概率是并发会话在途改动）。 |
 | 62 | `AUTO_LOG` 缺 **R479** 回执（HEAD `58649b6` 提交信息明写 R479：部署 exportData + 出码 qr.png 46,382 B，日志最大只到 R478） | done | no | why: 提交里有机器证据（部署 success=true + 出码），但台账无对应回执行 ⇒ 后来人查审计链会发现「R479 只存在于 commit message」。动作：按 `58649b6` + `a74701c` 的实际取证补一条 R479 回执（**不重做部署**，证据已在 `review/evidence/` 与提交里）。  **R480 已补录（本条提交）**：按 `a74701c`（代码）/ `58649b6`（证据）实读补回执 —— 门禁 211/211 · 662.1s（`_gate_r479b.log`，04:38 晚于代码提交 04:03；日志无 RC 行，如实记「未留痕」）· `exportData` 部署 `success=true`/20 文件/60.8 KB · `√ preview` TOTAL 761.4 KB / qr.png 46,382 B。**未重做部署与出码**，零代码改动。 |
 
 ## 回执格式（每次执行后追加到 `review/AUTO_LOG.md`）
