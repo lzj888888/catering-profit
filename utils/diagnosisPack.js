@@ -40,6 +40,15 @@ const QUESTION_TEXT = {
   Q_NEXT_ACTION: '下个月想多一些结余，按投入从小到大排，最省力的做法是什么？',
 };
 
+// 「未包含」的原因码是**契约**（守卫按码判），但码不能直接给老板看 ——
+// 他看到 not_loaded_on_this_page 会以为程序坏了。所以导出文本时补一句人话注解。
+const REASON_TEXT = {
+  not_loaded_on_this_page: '本页没有加载这项数据',
+  fetch_failed_or_locked: '取数失败，或这个功能还没开通',
+  no_takeaway_income: '本期没有外卖收入',
+  groupon_not_in_m1: '团购按口径不并入月账（试算）',
+};
+
 // 金额字段白名单：只搬这些，避免把整个 ledger 出参（含内部字段）原样泄给外部 AI。
 const MONEY_FIELDS = [
   'income_total_fen',
@@ -71,6 +80,31 @@ function pickMoney(ledger) {
 
 // 菜品排行带几条进包：老板一次能看的就这么多；多了等于没看（与 anomaly 的 maxItems 同思路）。
 const DISH_TOP = 10;
+
+/**
+ * 渠道事实归一。
+ * 🔴 **团购永远不进包**：`utils/grouponDerive.js:10` 红线②「团购结果不得进 M1」
+ *   （守 `tools/selftest_m3_groupon.js` G-f）。团购是**试算**不是已发生，
+ *   塞进 M1 的月账包里＝把假设当事实。所以这里**故意忽略**调用方传的 groupon。
+ * 外卖可以进：它本来就是 M1 已录明细算出来的（`utils/takeaway.js::settleSummary`）。
+ */
+function normalizeChannels(v) {
+  const c = v || {};
+  const tw = c.takeaway;
+  const out = { takeaway: null, groupon: null };
+  if (tw && tw.hasIncome) {
+    out.takeaway = {
+      income_fen: num(tw.incomeFen),
+      platform_fee_fen: num(tw.platformFeeFen),
+      subsidy_fen: num(tw.subsidyFen),
+      net_fen: num(tw.netFen),
+      net_rate_pct: tw.netRatePct == null ? null : num(tw.netRatePct),
+      // 平台扣费一项都没录 ⇒ 到手额偏高。这个标记必须传下去，否则 AI 拿虚高的到手率下结论。
+      platform_fee_known: !!tw.platformFeeKnown,
+    };
+  }
+  return out;
+}
 
 /**
  * 菜品事实归一（两种入参形态都要认，免得调用方为了迁就本模块再包一层）：
@@ -138,9 +172,13 @@ function buildDiagnosisPack(input) {
     // 因为「没拿到」和「没有异常」是两件事 —— AI 看到空数组会当成后者。
     unavailable.push({ section: 'dishes', reason: i.dishesReason || 'not_loaded_on_this_page' });
   }
-  if (!i.channels) {
-    unavailable.push({ section: 'channels', reason: i.channelsReason || 'not_loaded_on_this_page' });
+  const channels = normalizeChannels(i.channels);
+  if (!channels.takeaway) {
+    unavailable.push({ section: 'takeaway', reason: i.takeawayReason || 'no_takeaway_income' });
   }
+  // 团购恒缺 —— **不是"没拿到"，是"不该进"**（红线见 normalizeChannels 头注）：
+  //   写成固定原因，AI 与老板都能分清「本期没有」与「这个口径不进月账」。
+  unavailable.push({ section: 'groupon', reason: 'groupon_not_in_m1' });
 
   const facts = {
     hasLedger: i.hasLedger !== false && !!ledger.account_id,
@@ -184,7 +222,7 @@ function buildDiagnosisPack(input) {
       items: Array.isArray(anom.items) ? anom.items : [],
     },
     dishes: dishes,
-    channels: i.channels || null,
+    channels: channels,
     questions: QUESTION_CODES.map(function (code) {
       return { code: code, text: QUESTION_TEXT[code] || '' };
     }),
@@ -323,16 +361,38 @@ function packToText(pack) {
   }
   L.push('');
 
-  L.push('## 7 未包含的部分（缺失≠没有异常）');
+  L.push('## 7 渠道事实（外卖到手）');
+  const ch = p.channels || {};
+  const tw = ch.takeaway;
+  if (tw) {
+    L.push('- 外卖营业额：' + money(tw.income_fen));
+    L.push('- 平台扣费（佣金 + 配送费 + 商家补贴）：' + money(tw.platform_fee_fen));
+    L.push('- 到手额：' + money(tw.net_fen));
+    if (tw.net_rate_pct != null) L.push('- 到手率：' + tw.net_rate_pct + '%');
+    if (!tw.platform_fee_known) {
+      // 没录佣金/配送费时，net_fen 就是「营业额减 0」⇒ 到手率虚高。必须说出来。
+      L.push('- ⚠️ **平台扣费一项都没录 ⇒ 到手额偏高，不是真到手**；请先补录佣金/配送费再看这一项');
+    }
+  } else {
+    L.push('- 本期没有外卖收入（或未录入外卖）');
+  }
+  L.push('- 团购：**本期不进月账**（团购是试算口径，按红线不并入 M1；见第 8 节）');
+  L.push('');
+
+  L.push('## 8 未包含的部分（缺失≠没有异常）');
   const un = Array.isArray(p.unavailable) ? p.unavailable : [];
   if (un.length) {
-    un.forEach(function (u) { L.push('- ' + u.section + '：' + u.reason); });
+    un.forEach(function (u) {
+      // 码保留（契约/可机读），后面补一句人话（老板看得懂，AI 也不用猜码义）
+      const g = REASON_TEXT[u.reason] || '';
+      L.push('- ' + u.section + '：' + u.reason + (g ? '（' + g + '）' : ''));
+    });
   } else {
     L.push('- 无');
   }
   L.push('');
 
-  L.push('## 8 可以直接问的问题');
+  L.push('## 9 可以直接问的问题');
   q.forEach(function (x, idx) { L.push((idx + 1) + '. ' + (x.text || x.code)); });
 
   return L.join('\n');

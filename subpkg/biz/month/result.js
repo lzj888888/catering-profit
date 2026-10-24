@@ -499,6 +499,8 @@ Page({
       subsidyFen: fenOf(expItems, subsidyName),
       orderCount,
     });
+    // 🔴 R468：原始出参留一份 —— 诊断包只搬原值（展示对象里的 netRate 是字符串、还加了「−」号）
+    this._settleRaw = st;
     if (!st.hasIncome) return { has: false };
     const rate = st.netRatePct;
     return {
@@ -820,6 +822,9 @@ Page({
         anomalies: this._anomRaw || {},
         dishes: dishes,
         dishesReason: dishes ? '' : dishesReason,
+        // 外卖：就是本页那张「外卖到手账」的原始出参（同一函数），不另算一遍。
+        // 团购**不传**：按红线不进 M1，传了也会被装配层忽略（见 utils/grouponDerive.js 红线②）。
+        channels: { takeaway: this._settleRaw || null },
       });
       wx.setClipboardData({
         data: pack.packToText(p),

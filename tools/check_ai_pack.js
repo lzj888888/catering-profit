@@ -172,10 +172,11 @@ ok('③-2 白名单外字段不外泄（secret_fen 不得出现）',
   !('secret_fen' in (P.month_facts || {})), '会把内部字段泄给外部 AI');
 ok('③-3 pack 显式声明单位（防把分当元）',
   typeof P.units === 'string' && /fen/.test(P.units) && P.units.length > 0);
-ok('③-4 缺菜品/渠道 ⇒ 进 unavailable 且写明原因（不许静默留空）',
-  Array.isArray(P.unavailable) && P.unavailable.length === 2 &&
+ok('③-4 缺菜品/外卖 ⇒ 进 unavailable 且写明原因；团购恒缺（红线）',
+  Array.isArray(P.unavailable) && P.unavailable.length === 3 &&
   P.unavailable.every((u) => !!u.section && !!u.reason) &&
-  P.dishes === null && P.channels === null,
+  P.dishes === null && P.channels && P.channels.takeaway === null &&
+  P.unavailable.some((u) => u.section === 'groupon' && u.reason === 'groupon_not_in_m1'),
   '实际=' + JSON.stringify(P.unavailable));
 ok('③-5 verdicts 与单独调用 buildInterpretation 一致（同一事实同一结论）',
   JSON.stringify(P.verdicts) === JSON.stringify(BI({
@@ -219,9 +220,9 @@ ok('③-12 菜品按毛利降序取前 N 道（不按销量、不按录入顺序
     const t = (PD.dishes && PD.dishes.top) || [];
     return t.length === 2 && t[0].name === '红烧牛肉面' && t[0].grossFen >= t[1].grossFen;
   })(), '实际=' + JSON.stringify((PD.dishes && PD.dishes.top || []).map((x) => x.name)));
-ok('③-13 传了菜品就不得再登记「缺菜品」（只有渠道该缺）',
-  Array.isArray(PD.unavailable) && PD.unavailable.length === 1 &&
-  PD.unavailable[0].section === 'channels',
+ok('③-13 传了菜品就不得再登记「缺菜品」（只剩外卖+团购两条）',
+  Array.isArray(PD.unavailable) && PD.unavailable.length === 2 &&
+  PD.unavailable.map((u) => u.section).sort().join(',') === 'groupon,takeaway',
   '实际=' + JSON.stringify(PD.unavailable));
 ok('③-14 文本含菜名与「未匹配成本卡」提醒（不能只给数字不给口径）',
   (function () {
@@ -240,6 +241,9 @@ ok('③-16 文本显式说明「食材成本」不在「费用合计」里（防
   /「食材成本」不在「费用合计」里/.test(TXT), '不说 ⇒ AI 把两者相加，成本算两遍');
 ok('③-17 文本显式区分两个利润口径（不许互相加减/平均）',
   /两个利润不是同一口径/.test(TXT) && /经营参考利润/.test(TXT) && /真钱利润/.test(TXT));
+ok('③-18 「未包含」的原因除机器码外必须带人话注解（老板看不懂 not_loaded_on_this_page）',
+  /groupon_not_in_m1（团购按口径不并入月账/.test(TXT) &&
+  /dishes：not_loaded_on_this_page（本页没有加载/.test(TXT), '只有码 ⇒ 老板以为程序坏了');
 
 // ================= ④ 纯度面 =================
 function srcOf(rel) { return stripComments(fs.readFileSync(path.join(ROOT, rel), 'utf8')); }
@@ -285,6 +289,38 @@ ok('⑤-2 把金额白名单删掉 income_total_fen ⇒ 该字段必须消失（
     const p2 = r.m.buildDiagnosisPack(PACK_IN);
     return !p2.month_facts || !('income_total_fen' in p2.month_facts);
   })());
+
+// ================= ⑥ 渠道面（外卖进 / 团购不进）=================
+// 依据：外卖来自 M1 已录明细（settleSummary），同一函数同一口径；
+//   团购按红线「团购结果不得进 M1」（utils/grouponDerive.js:10）**故意不进包**。
+const CH_TW = { takeaway: {
+  hasIncome: true, incomeFen: 500000, platformFeeFen: 0, subsidyFen: 0,
+  netFen: 500000, netRatePct: 100, platformFeeKnown: false,
+} };
+const PC = packMod.buildDiagnosisPack(Object.assign({}, PACK_IN, { channels: CH_TW }));
+ok('⑥-1 外卖数字原样搬运，且不再登记「缺外卖」',
+  !!PC.channels && !!PC.channels.takeaway && PC.channels.takeaway.income_fen === 500000 &&
+  !(PC.unavailable || []).some((u) => u.section === 'takeaway'),
+  '实际=' + JSON.stringify(PC.channels));
+ok('⑥-2 未录佣金/配送费 ⇒ 文本必须提示「到手额偏高」（否则 AI 拿虚高到手率下结论）',
+  /到手额偏高/.test(packMod.packToText(PC)));
+ok('⑥-3 录了佣金 ⇒ 该提示必须消失（双向，防恒真）',
+  (function () {
+    const known = { takeaway: Object.assign({}, CH_TW.takeaway, {
+      platformFeeFen: 120000, netFen: 380000, netRatePct: 76, platformFeeKnown: true,
+    }) };
+    const t = packMod.packToText(packMod.buildDiagnosisPack(Object.assign({}, PACK_IN, { channels: known })));
+    return t.indexOf('到手额偏高') < 0;
+  })());
+ok('⑥-4 团购即使被传进来也不得进包（红线：团购结果不得进 M1）',
+  (function () {
+    const p = packMod.buildDiagnosisPack(Object.assign({}, PACK_IN, {
+      channels: { takeaway: CH_TW.takeaway, groupon: { netFen: 777777, netRatePct: 88 } },
+    }));
+    const hit = (p.unavailable || []).filter((u) => u.section === 'groupon');
+    return p.channels.groupon === null && hit.length === 1 &&
+      hit[0].reason === 'groupon_not_in_m1' && JSON.stringify(p).indexOf('777777') < 0;
+  })(), '团购是试算口径，进 M1 就是拿假设当事实');
 
 // ================= 汇总 =================
 console.log('');
