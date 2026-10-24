@@ -28,6 +28,8 @@ const exportFile = require('../../../utils/exportFile.js');   // R265：导出�
 const { settleSummary } = require('../../../utils/takeaway.js');
 // 🔴 R395：分享卡片标题装配（纯函数单源）—— 见 `utils/shareCard.js` 头注
 const shareCard = require('../../../utils/shareCard.js');
+// 🔴 R464（PLAN_AI P0-①）：AI 诊断包 —— 纯函数装配，不调模型、不联网（见 utils/diagnosisPack.js 头注）
+const pack = require('../../../utils/diagnosisPack.js');
 // 🔴 R399（队列 #16）：异常核对清单「规则层」—— 纯函数，只跟本店自己的历史比（见 `utils/anomalyRules.js` 头注）。
 //   本页只做两件事：① 编排取数（月份列表 + 逐月账本）② 把规则层的出参译成页面文案。
 //   ⚠️ 阈值/中位数/排序一律在规则层，页面零阈值、零金额差（PLAN_AI §3 口径红线）。
@@ -152,6 +154,8 @@ Page({
       subscribeTip: TERMS.pay.subscribeTip,
       subscribeDenied: TERMS.pay.subscribeDenied,
       exportBtn: TERMS.exportBtn.m1Report,
+      aiPackBtn: TERMS.exportBtn.aiPackBtn,
+      aiPackHint: TERMS.exportBtn.aiPackHint,
       exportIng: TERMS.exp.exportIng,
       exportDone: TERMS.exp.exportDone,
       fileSaved: TERMS.exp.fileSaved,
@@ -276,6 +280,9 @@ Page({
       // R443：固定支出金额（分）留给「可撑月数」用；缺项为 null，不按 0 算
       this._fixedFen = (d && d.fixed_items_fen) || null;
       this.recalcRunway();
+      // R464：诊断包只搬「已经算好的数」—— 原始分口径单独留一份，避免从展示串反解
+      this._res = res;
+      this._ledger = d;
       this.setData({
         isArchive: !!d.is_archive,
         // R298·C1：账本存在性单源判据 —— 与首页 pages/index/index.js:98 同一字段、同一含义。
@@ -362,6 +369,7 @@ Page({
     const matFen = (res && res.material_cost_fen) || 0;
     const sp = BE.splitFixedVariable(rows, { materialCostFen: matFen });
     const bk = BE.breakeven({ revenueFen: revFen, fixedFen: sp.fixedFen, variableFen: sp.variableFen });
+    this._beRaw = bk;   // R464：诊断包取原始出参（页面展示用的是加工后的 be）
     if (!bk.ok) {
       return { ok: false, reason: bk.reason, needRevenue: bk.needRevenue,
         noDataText: bk.needRevenue ? '' : (matFen > 0 ? '' : T.beNoData) };
@@ -542,6 +550,7 @@ Page({
         } catch (e) { /* 单月失败跳过，不阻断 */ }
       }
       const cl = anomaly.buildChecklist({ month: target, months: snaps });
+      this._anomRaw = cl;   // R464：诊断包要的是规则层原始出参（页面拿到的是翻译后的视图对象）
       this.setData({ anom: this.viewChecklist(cl), trend: this.buildTrend(snaps) });
     } catch (e) {
       this.setData({ anom: empty });   // 取数失败 ⇒ 静默不出卡（结果页自身仍完整）
@@ -766,6 +775,33 @@ Page({
   goInput() { wx.navigateTo({ url: '/subpkg/biz/month/input?month=' + this.data.month }); },
 
   // M1 报表导出：权限只读 expire_at（前端先查，后端 exportData 再兜底校验）；免费用户触发付费墙
+  // 🔴 R464（PLAN_AI P0-①）：复制「AI 诊断包」。
+  //   为什么不吃付费墙：它不给任何结论，只是把本月**已算好的数字 + 已判好的结论**整理成文本，
+  //   让老板带去问外部 AI（零资质、零成本）；真报表走 onExport 的付费墙，两者不是一件事。
+  //   为什么用剪贴板：不新增文件权限、不依赖 openDocument 的格式支持，粘到哪里都由老板决定。
+  onCopyPack() {
+    try {
+      if (!this.data.hasLedger) {
+        wx.showModal({ title: this.data.t.aiPackBtn, content: this.data.t.aiPackEmpty, showCancel: false });
+        return;
+      }
+      const p = pack.buildDiagnosisPack({
+        month: this.data.month,
+        hasLedger: true,
+        shop: { bizText: this.data.bizText, cityText: this.data.cityText },
+        ledger: this._res || {},
+        breakeven: this._beRaw || {},
+        anomalies: this._anomRaw || {},
+      });
+      wx.setClipboardData({
+        data: pack.packToText(p),
+        fail: () => wx.showModal({ title: this.data.t.aiPackBtn, content: this.data.t.aiPackFail, showCancel: false }),
+      });
+    } catch (e) {
+      api.toastError(e);
+    }
+  },
+
   async onExport() {
     // 2026-09-20 加固：此前整段无 try/catch —— 一旦取权益/弹窗任一步抛异常，点击就是「毫无反应」，
     // 用户无从判断是没权限还是坏了。现统一兜底：任何异常都 toast 出来（可证伪，不静默）。

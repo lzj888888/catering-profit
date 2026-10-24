@@ -287,6 +287,9 @@
   </view>
 
   <button class="btn ghost" bindtap="onExport">{{t.exportBtn}}</button>
+  <!-- R464：诊断包 = 给 AI 读的事实包（不是报表），与导出分开、不占付费墙 -->
+  <button class="btn ghost" bindtap="onCopyPack">{{t.aiPackBtn}}</button>
+  <view class="ind-note">{{t.aiPackHint}}</view>
   <!-- R265：用户反馈「点了导出只看到『导出完成』，不知道什么格式、去哪看」⇒ 常驻一行说明 -->
   <view class="ind-note">{{t.exportHint}}</view>
 </view>
