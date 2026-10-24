@@ -288,8 +288,21 @@ Page({
       // R464：诊断包只搬「已经算好的数」—— 原始分口径单独留一份，避免从展示串反解
       this._res = res;
       this._ledger = d;
+      // 🔴 R479：差异说明 / 参考口径注释必须按「参考口径用的哪份食材消耗」**条件化** ——
+      //   固定写「食材 + 摊销」在两种情形下会说谎：
+      //     ① R477 后库存模式没填消耗 ⇒ 参考已回落倒轧 ⇒ 差异**只剩摊销**，没有食材项；
+      //     ② 库存关 ⇒ 两个口径用同一份消耗 ⇒ 差异同样只剩摊销。
+      //   取不到来源（旧账/脏数据）⇒ 回落到不点名食材的中性兜底文案，绝不硬猜。
+      const _src = (res && res.ref_material_source) || '';
+      const _tp = TERMS.resultPage;
+      const t = Object.assign({}, this.data.t, {
+        profitDiffWhy: _src === 'reverse' ? _tp.profitDiffWhyAmort
+          : (_src === 'direct' ? _tp.profitDiffWhyConsume : _tp.profitDiffWhy),
+        refNote: _src === 'reverse' ? _tp.refNoteReverse : _tp.refNoteDirect,
+      });
       this.setData({
         isArchive: !!d.is_archive,
+        t,
         // R298·C1：账本存在性单源判据 —— 与首页 pages/index/index.js:98 同一字段、同一含义。
         //   缺它 ⇒ 「无账本」这个正常态永远走结果分支 ⇒ 未建档月份显示红带「亏损」+ 全 ¥0.00 + 可导出空报表。
         hasLedger: !!(d && d.account_id),

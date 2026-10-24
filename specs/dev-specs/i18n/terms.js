@@ -2245,7 +2245,17 @@ const TERMS = {
     trendNote: '点上面的月份可以看当月；柱子越高，那个月赚得越多',
     trueProfit: '真实利润',
     profitDiff: '两口径差异',
-    profitDiffWhy: '= 经营参考估算 − 真实利润；差异来自「库存倒轧与直接填的差」+ 当月摊销',
+    // 🔴 R479：差异说明**必须按参考口径的来源条件化**，不能固定写「食材 + 摊销」——
+    //   R477 之后，库存模式下没填消耗时参考口径已回落到倒轧值 ⇒ 差异里**根本没有食材项**，
+    //   固定文案会指着"只剩摊销"的差异说"这里有食材差"，那叫说谎（外审第二轮点名）。
+    //   · profitDiffWhyAmort   ← ref_material_source === 'reverse'（回落倒轧）或库存关：差异只剩摊销
+    //   · profitDiffWhyConsume ← ref_material_source === 'direct' 且库存开：差异含食材差 + 摊销
+    profitDiffWhyAmort: '= 经营参考估算 − 真实利润；两个口径用的是同一份食材消耗，差的这部分就是当月摊销',
+    profitDiffWhyConsume: '= 经营参考估算 − 真实利润；差在食材消耗上（你填的数 vs 库存倒轧出来的数）+ 当月摊销',
+    // 兜底（旧账 / 取不到来源时）：不点名食材，只说"两个口径的差"
+    profitDiffWhy: '= 经营参考估算 − 真实利润；差异来自两个口径对成本的处理不同',
+    refNoteDirect: '按直接填写的消耗估算',
+    refNoteReverse: '库存模式下没填消耗，按「期初 + 采购 − 期末」倒轧估算',
     refNote: '按直接填写的消耗估算',
     trueNote: '按库存倒轧 + 摊销核算',
     archiveLocked: '归档月只读，无法修改',

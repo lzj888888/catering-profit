@@ -112,19 +112,34 @@ function buildMonthlySheets(c) {
     const gross = row.gross_profit_fen != null ? nz(row.gross_profit_fen) : incTotal - real;
     const gmPct = row.gross_margin_pct != null ? nz(row.gross_margin_pct)
       : (incTotal === 0 ? 0 : Math.round(((gross / incTotal) * 100 + Number.EPSILON) * 100) / 100);
-    const gapFen = real - direct;
+    // 🔴 R479：参考口径用的**不一定**是你填的那个消耗 —— R477 之后，库存模式没填消耗时
+    //   参考口径已回落到倒轧值（real），此时"消耗差异"应为 0，而不是 real − direct。
+    //   若仍按 real − direct 算 ⇒ 利润表里的「经营参考 − 消耗差异 − 摊销」等式**对不上账**，
+    //   且导出的"消耗差异"与页面显示的差异互相矛盾（页面走 getLedger 重算、导出读落库快照）。
+    //   落库字段 `ref_material_source` 由 saveLedger 写入；**旧账没有该字段** ⇒ 一律按 'direct'
+    //   （与它当时落库的值自洽 —— 不许拿新口径去解释旧数字）。
+    const refSrc = row.ref_material_source === 'reverse' ? 'reverse' : 'direct';
+    const refMat = refSrc === 'reverse' ? real : direct;
+    const gapFen = real - refMat;
     const diffFen = row.profit_diff_fen != null ? nz(row.profit_diff_fen) : gapFen + amort;
 
     // —— 表1：利润表（从上往下加减，能对上账）——
     const profitRows = [
       ['营业收入', yuan(incTotal), '收入明细逐项累加（见「收入费用明细」）'],
       ['减：费用合计', yuan(expTotal), '费用明细逐项累加（见「收入费用明细」）'],
-      ['减：食材消耗（本月填写）', yuan(direct), '本月填写的食材总消耗'],
+      [refSrc === 'reverse' ? '减：食材消耗（库存倒轧）' : '减：食材消耗（本月填写）',
+        yuan(refMat),
+        refSrc === 'reverse'
+          ? '库存模式下没填消耗 ⇒ 按「期初 + 采购 − 期末」倒轧（与页面同源）'
+          : '本月填写的食材总消耗'],
       ['减：一次性投入（本月）', yuan(lump), '资产台账里「一次算清」且计入本月的投入（见「摊销来源」）'],
       ['＝ 经营参考利润', yuan(opRef), '= 收入 − 费用 − 本月填写消耗 − 一次性投入（不含摊销·现金流视角）'],
       ['', '', ''],
       ['〔全要素调整〕', '', '把「这个月没掏钱、但确实花掉了的成本」加进来'],
-      ['　消耗差异（真实 − 填写）', yuan(gapFen), invOn ? '库存开关开：真实消耗 = 期初 + 采购 − 期末' : '库存开关关：两者相等，无差异'],
+      ['　消耗差异（真实 − 参考口径用的消耗）', yuan(gapFen),
+        refSrc === 'reverse'
+          ? '参考口径已用倒轧值 ⇒ 两者相等，无差异'
+          : (invOn ? '库存开关开：真实消耗 = 期初 + 采购 − 期末' : '库存开关关：两者相等，无差异')],
       ['　减：当月摊销', yuan(amort), amOn ? '资产台账按分摊月数逐笔计算（见「摊销来源」）' : '摊销开关关闭 ⇒ 本月不计入'],
       ['＝ 全要素真实利润', yuan(realP), '= 经营参考利润 − 消耗差异 − 当月摊销'],
       ['', '', ''],

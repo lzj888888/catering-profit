@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：210 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：211 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -1302,6 +1302,14 @@ const SUITES = [
   //   判据 = A 三副本可加载 / B 确定性伪随机 3000 组逐字段对拍 / C S1·S2·S2R 锚点三副本同立
   //   / D 反恒真四条 / E R477 口径专项九条（未填回落倒轧、填正数则口径锁不变、差异恒等式、出参可追溯）。
   ['m1-engine-parity', 'tools/check_m1_engine_parity.js'],
+  // ===== R479 · M1「两口径差异」说明的条件化守卫（本文件头注套件数 210 → 211）=====
+  //   R477 修完引擎，说明文案还在说旧话：固定写「差异来自食材 + 摊销」，
+  //   而回落后差异**只剩摊销** ⇒ 那不是说不清，是**说谎**（外审第二轮点名）。
+  //   同族风险在导出侧更狠：页面重算、导出读落库快照 ⇒ 两边会对不上账且都不报错。
+  //   判据 = A 结果页按 ref_material_source 分支且两条文案值不同 + 中性兜底 + terms 双副本 md5
+  //   / B 导出 refMat 由 refSrc 决定、gapFen 不用旧写法、旧账回落 direct
+  //   / C 反恒真三条（固定文案版 · 旧 gapFen 版 · 两文案同值版 都必须被判红）。
+  ['m1-diff-explain', 'tools/check_m1_diff_explain.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
