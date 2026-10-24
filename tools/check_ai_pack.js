@@ -236,6 +236,10 @@ ok('③-15 取数失败时，unavailable 里的原因必须是调用方给的那
     const hit = (p.unavailable || []).filter((u) => u.section === 'dishes');
     return hit.length === 1 && hit[0].reason === 'fetch_failed_or_locked';
   })(), '原因被写死 ⇒ 老板/复审分不清「没权限」和「没数据」');
+ok('③-16 文本显式说明「食材成本」不在「费用合计」里（防 AI 重复扣一次成本）',
+  /「食材成本」不在「费用合计」里/.test(TXT), '不说 ⇒ AI 把两者相加，成本算两遍');
+ok('③-17 文本显式区分两个利润口径（不许互相加减/平均）',
+  /两个利润不是同一口径/.test(TXT) && /经营参考利润/.test(TXT) && /真钱利润/.test(TXT));
 
 // ================= ④ 纯度面 =================
 function srcOf(rel) { return stripComments(fs.readFileSync(path.join(ROOT, rel), 'utf8')); }
