@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：209 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：210 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -1295,6 +1295,13 @@ const SUITES = [
   //   判据 A 页面对照 / B 分包对照 + 字段名 / C network 白名单 / D 不得预载自身所在包；
   //   E 段 7 条护栏里 5 条是合成负样本（证明 A~D 不恒真，且"规则删空"必须显式判红）。
   ['preload-rule', 'tools/check_preload_rule.js'],
+  // ===== R477 · M1 双利润引擎三副本行为等价守卫（本文件头注套件数 209 → 210）=====
+  //   起因＝老板真机「口径差异为什么等于食材成本？」，根因是库存模式下参考口径恒取 0
+  //   ⇒ 参考利润完全没扣食材。修它要同时改 calcMonthlyProfit / saveLedger / getLedger 三份副本，
+  //   而此前**只有 M3 有等价比对守卫**，M1 这一侧零覆盖 ⇒ 先立守卫再改口径（顺序不能反）。
+  //   判据 = A 三副本可加载 / B 确定性伪随机 3000 组逐字段对拍 / C S1·S2·S2R 锚点三副本同立
+  //   / D 反恒真四条 / E R477 口径专项九条（未填回落倒轧、填正数则口径锁不变、差异恒等式、出参可追溯）。
+  ['m1-engine-parity', 'tools/check_m1_engine_parity.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

@@ -7,11 +7,29 @@
 // 输入必须是 Controller 校验、清洗、读好服务端开关之后的「干净数据」，金额一律「分」整数。
 //
 // 口径锁（本批核心考点，刻意设计勿改）：
-//   🟢 经营参考利润 = 营业收入 − 总费用 − 【直接填的总消耗】(directConsumeFen)
-//      —— 即使库存开关打开，也**禁止**改用倒轧值 realConsumeFen。
-//   🔵 全要素真实利润 = 营业收入 − 总费用 − 【真实消耗】 − 当月摊销总费用
+//   🟢 经营参考利润 = 营业收入 − 总费用 − 【参考口径的食材消耗】 − 一次性投入
+//   🔵 全要素真实利润 = 营业收入 − 总费用 − 【真实消耗】 − 当月摊销总费用 − 一次性投入
 //      —— 库存开关开 → realConsumeFen = 期初+采购-期末；关 → = directConsumeFen。
-//   两利润差异 = (真实消耗 − 直接填消耗) + 当月摊销(实际计入值)
+//   两利润差异 = (真实消耗 − 参考口径消耗) + 当月摊销(实际计入值)
+//
+// 🔴 R477（2026-10-25）补一条**此前没考虑过的分支**：「直接填的消耗」**没填**时怎么办。
+//   原实现：库存开关一开，「直接填的消耗」那栏在前端**不显示**，值恒为 0 ⇒
+//     经营参考利润 = 收入 − 费用 − **0** − 一次性投入 ⇒ **完全没扣食材**，虚高得离谱。
+//     老板真机反馈「口径差异为什么等于食材成本？」—— 差异里的食材项其实就是整个食材成本。
+//   修正：库存开 且「直接填的消耗」没有正数 ⇒ 参考口径回落到倒轧值。
+//
+// 🔴🔴 判据为什么是「≤ 0」而不是「未填」（本轮实测修正，别按外审原话理解）：
+//   外审建议「未填」与「显式填 0」必须分开，听起来对，**实测在本仓行不通**：
+//   库存页保存时前端写死 `direct_consume_fen: this.data.directConsumeFen || 0`
+//   （`subpkg/biz/month/inventory.js:240`）⇒ 库存模式下**恒传 0**。
+//   这个 0 是**前端占位**，不承载老板意图 —— 库存模式下那栏 UI 根本不显示，
+//   老板**没有地方**去「声明这个月没消耗」。若硬按「显式 0 要尊重」处理，
+//   等于把 bug 原样保留（实测：参考利润仍是完全没扣食材的 3,116,000 分）。
+//   ⇒ 判据定为：**库存开 且 直接填的消耗 ≤ 0（未填/留空/0）⇒ 回落倒轧**。
+//      · 库存开 + 填了**正数** ⇒ 用填的值（S2 锚点即此形态，**口径锁不变**）
+//      · 库存开 + 0 / 未填    ⇒ 回落倒轧（修掉上面那个虚高）
+//      · 库存关              ⇒ 恒用填的值（没有倒轧数据可用）
+//   ⚠️ 若将来库存模式也开放这个输入框，"显式 0" 才重新具有语义，届时须回来改这里。
 //
 // 精度（对齐 POC2 口径 B）：中间全过程用「分」整数运算（禁止浮点存金额），
 //   最终输出金额 round 到分整数；毛利率保留 2 位小数展示（同时给全精度字段）。
@@ -32,7 +50,13 @@ function calcMonthlyProfit(clean) {
   // ===== 0. 输入防护（仅缺省容忍，负数/坏类型由 Controller 拦截）=====
   const incomeItems = (clean && clean.incomeItems) || [];
   const expenseItems = (clean && clean.expenseItems) || [];
-  const directConsumeFen = num0(clean && clean.directConsumeFen);
+  // ===== R477：直接填的消耗 —— 先**归一化**，再判断（不许直接 === 0）=====
+  //  入参可能是 0 / null / undefined / '' / '200' / NaN（前端透传 + 脏数据都到得了这里）。
+  //  directProvided = 「老板到底填过没有」；directConsumeFen = 归一化后的数字（未填记 0）。
+  const rawDirect = (clean && clean.directConsumeFen);
+  const directProvided = rawDirect !== undefined && rawDirect !== null && rawDirect !== ''
+    && !(typeof rawDirect === 'number' && Number.isNaN(rawDirect));
+  const directConsumeFen = directProvided ? num0(rawDirect) : 0;
   const amortizeFen = num0(clean && clean.amortizeFen);
   // round106（F2）：一次性投入（分）—— 与 getLedger/saveLedger 的引擎副本同源同口径
   const lumpSumFen = num0(clean && clean.lumpSumFen);
@@ -69,18 +93,26 @@ function calcMonthlyProfit(clean) {
   const effectiveLumpSumFen = lumpSumFen;
 
   // ===== 5. 两个利润口径 =====
-  // 🟢 经营参考利润：必须用【直接填总消耗】，即使开库存也**不改用倒轧值**（口径锁）。
+  // 🟢 参考口径取数（R477）：库存开且「直接填的消耗」没有正数 ⇒ 回落倒轧。
+  //   详见本文件头部「判据为什么是 ≤ 0」那段（库存模式下前端恒传 0，那个 0 是占位不是意图）。
+  const refMaterialSource = (inventorySwitchOn && !(directConsumeFen > 0)) ? 'reverse' : 'direct';
+  const refMaterialFen = refMaterialSource === 'reverse' ? realConsumeFen : directConsumeFen;
+  // 🟢 经营参考利润：用【参考口径消耗】 + 一次性投入（实际计入值）。
   const operationRefProfitFen = fenRoundN(
-    incomeTotalFen - expenseTotalFen - directConsumeFen - effectiveLumpSumFen
+    incomeTotalFen - expenseTotalFen - refMaterialFen - effectiveLumpSumFen
   );
   // 🔵 全要素真实利润：用【真实消耗】 + 当月摊销（实际计入值） + 一次性投入（实际计入值）。
   const totalFactorRealProfitFen = fenRoundN(
     incomeTotalFen - expenseTotalFen - realConsumeFen - effectiveAmortizeFen - effectiveLumpSumFen
   );
-  // 两利润差异 = (真实消耗 − 直接填消耗) + 当月摊销
+  // 两利润差异 = (真实消耗 − 参考口径消耗) + 当月摊销
+  //   ⇒ 库存开且未填时，前项为 0，差异**只剩当月摊销**（这正是老板能看懂的解释）。
   const profitDiffFen = fenRoundN(
-    (realConsumeFen - directConsumeFen) + effectiveAmortizeFen
+    (realConsumeFen - refMaterialFen) + effectiveAmortizeFen
   );
+  // 🔴 口径版本标识（R477）：库里已存的旧快照**不会**自动重算，页签/导出读到旧值时
+  //    必须能认出来 ⇒ 出参带上，前端按版本解释差异，不许拿新解释配旧数字（那叫说谎）。
+  const profitCaliberVersion = 'm1_v2';
 
   // 校验：两口径公式自洽（经营参考 − 全要素真实 === 差异）
   const diffCheck =
@@ -104,6 +136,9 @@ function calcMonthlyProfit(clean) {
     operationRefProfitFen, operationRefProfitYuan: fenToYuanStr(operationRefProfitFen),
     totalFactorRealProfitFen, totalFactorRealProfitYuan: fenToYuanStr(totalFactorRealProfitFen),
     profitDiffFen, profitDiffYuan: fenToYuanStr(profitDiffFen),
+    // R477：参考口径取了哪个数、为什么（前端解释差异的**取数单源**，不许前端自己猜）
+    refMaterialFen, refMaterialSource, directProvided,
+    profitCaliberVersion,
     // 口径信息
     switchUsed: { inventorySwitchOn, amortizeSwitchOn },
     // 待结算为现金流指标，仅回显，绝不参与毛利/利润

@@ -220,6 +220,13 @@ exports.main = async (event) => {
       profit_diff_fen: result.profitDiffFen,
       real_consume_fen: result.realConsumeFen,
       effective_amortize_fen: result.effectiveAmortizeFen,
+      // R477：参考口径**取了哪个数**、**为什么**（前端解释「两口径差异」的取数单源，
+      //   不许前端自己猜 —— 猜错就会拿新解释配旧数字，那叫说谎）。
+      //   ref_material_source = 'reverse' ⇒ 库存模式下没填直接消耗，用了倒轧值；
+      //                       = 'direct'  ⇒ 用了老板直接填的数（口径锁）。
+      ref_material_fen: result.refMaterialFen,
+      ref_material_source: result.refMaterialSource,
+      profit_caliber_version: result.profitCaliberVersion,
     },
     // round115：M1 行业指标对照（5 项：毛利率 / 房租 / 人工 / 能耗 / 推广费；**不含 manage**）
     //   每项含 { key, pct, lo, hi, level, redline, redlineHit }；**pct=null 表示该项没数据（不评级）**

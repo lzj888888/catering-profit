@@ -9,7 +9,14 @@
 function calcMonthlyProfit(clean) {
   const incomeItems = (clean && clean.incomeItems) || [];
   const expenseItems = (clean && clean.expenseItems) || [];
-  const directConsumeFen = num0(clean && clean.directConsumeFen);
+  // R477：直接填的消耗 —— 先**归一化**再判断（不许直接 === 0）。
+  //   directProvided = 「老板填过没有」（undefined/null/''/NaN ⇒ 没填）；
+  //   显式填 0 与未填必须分开：填 0 = 明确声明这月没消耗，要尊重；未填 = 不知道。
+  //   ⚠️ 与 calcMonthlyProfit/service.js、getLedger/service.js 同源同口径，改一处必改三处。
+  const rawDirect = (clean && clean.directConsumeFen);
+  const directProvided = rawDirect !== undefined && rawDirect !== null && rawDirect !== ''
+    && !(typeof rawDirect === 'number' && Number.isNaN(rawDirect));
+  const directConsumeFen = directProvided ? num0(rawDirect) : 0;
   const amortizeFen = num0(clean && clean.amortizeFen);
   const amortizeSwitchOn = !!(clean && clean.amortizeSwitchOn);
   const inventorySwitchOn = !!(clean && clean.inventorySwitchOn);
@@ -31,9 +38,15 @@ function calcMonthlyProfit(clean) {
   const grossProfitFen = Math.round(incomeTotalFen - materialCostFen);
   const grossMarginRatePct = incomeTotalFen === 0 ? 0 : (grossProfitFen / incomeTotalFen) * 100;
   const effectiveAmortizeFen = amortizeSwitchOn ? Math.round(amortizeFen) : 0;
-  const operationRefProfitFen = Math.round(incomeTotalFen - expenseTotalFen - directConsumeFen - effectiveLumpSumFen);
+  // R477：参考口径取数 —— 库存开且「直接填的消耗」没有正数 ⇒ 回落倒轧。
+  //   判据为什么是 ≤ 0 而不是「未填」：库存模式下前端恒传 0（subpkg/biz/month/inventory.js:240
+  //   写死 `|| 0`），那个 0 是占位、不承载老板意图 ⇒ 按"未填"处理。详见 calcMonthlyProfit/service.js 头部。
+  const refMaterialSource = (inventorySwitchOn && !(directConsumeFen > 0)) ? 'reverse' : 'direct';
+  const refMaterialFen = refMaterialSource === 'reverse' ? realConsumeFen : directConsumeFen;
+  const profitCaliberVersion = 'm1_v2';
+  const operationRefProfitFen = Math.round(incomeTotalFen - expenseTotalFen - refMaterialFen - effectiveLumpSumFen);
   const totalFactorRealProfitFen = Math.round(incomeTotalFen - expenseTotalFen - realConsumeFen - effectiveAmortizeFen - effectiveLumpSumFen);
-  const profitDiffFen = Math.round((realConsumeFen - directConsumeFen) + effectiveAmortizeFen);
+  const profitDiffFen = Math.round((realConsumeFen - refMaterialFen) + effectiveAmortizeFen);
   return {
     incomeTotalFen, expenseTotalFen,
     materialCostFen, directConsumeFen, realConsumeFen,
@@ -42,6 +55,8 @@ function calcMonthlyProfit(clean) {
     amortizeFen, effectiveAmortizeFen,
     lumpSumFen, effectiveLumpSumFen,
     operationRefProfitFen, totalFactorRealProfitFen, profitDiffFen,
+    // R477：参考口径取数与来源（前端解释差异的取数单源）+ 口径版本标识
+    refMaterialFen, refMaterialSource, directProvided, profitCaliberVersion,
     switchUsed: { inventorySwitchOn, amortizeSwitchOn },
     diffCheck: operationRefProfitFen - totalFactorRealProfitFen === profitDiffFen,
   };

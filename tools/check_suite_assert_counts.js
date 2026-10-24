@@ -260,6 +260,9 @@ const CASES = [
   //   它的 5 条合成负样本（E-③~E-⑦）是本守卫"非恒真"的唯一凭据，而这 5 条又全在文件内、
   //   删掉后门禁照旧全绿（A~D 在真配置上本来就全绿）⇒ 断言数不受守就等于没人知道护栏少了。
   { key: 'check_preload_rule', rel: 'tools/check_preload_rule.js' },      // 14 条（A2 + B3 + C1 + D1 + E7）
+  // R477：M1 双利润引擎三副本行为等价 —— 断言数不受守则「删掉 E 段口径专项」会静默通过
+  //   （而那正是本轮改动的落点）；B 段 3000 组对拍若被改成 1 组也无人报警 ⇒ 必须受守。
+  { key: 'check_m1_engine_parity', rel: 'tools/check_m1_engine_parity.js' }, // 31 条（A3 + B2 + C11 + D4 + E10 + F1）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

@@ -169,6 +169,12 @@ exports.main = async (event) => {
     total_factor_real_profit_fen: result.totalFactorRealProfitFen,
     profit_diff_fen: result.profitDiffFen,
     switch_used: result.switchUsed,
+    // R477：口径版本 + 参考口径取数来源 —— 落库是因为**导出走的是落库快照，不重算**
+    //   （cloudfunctions/exportData/index.js 直读 row.operation_ref_profit_fen）。
+    //   （存了版本，旧账才认得出自己是按哪套口径算的，页面与导出口径才不会互相打架。）
+    ref_material_fen: result.refMaterialFen,
+    ref_material_source: result.refMaterialSource,
+    profit_caliber_version: result.profitCaliberVersion,
     updated_at: now,
   };
   // round103：本次带了库存才写该字段；缺省则**保留库内原值**（防静默清零）
