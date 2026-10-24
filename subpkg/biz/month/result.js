@@ -268,7 +268,7 @@ Page({
           }
         }
       } catch (e) { prevProfitFen = null; }
-      const be = this.buildBreakeven(d, res, prevProfitFen);
+      const be = this.buildBreakeven(d, res, prevProfitFen, inds);
       // 🔴 R395（队列 #11）：分享卡片取数 —— 只留**原始分**。分享时不再从展示串反解：
       //   展示串经过 `fenToYuan(2)` ⇒「9,160.00」，反解回分必然带格式误差，也会在分享路径上再算一遍业务。
       // ⚠️ 这里**不放** `hasLedger`：它的单源是下面 setData 里那句（R298 定的 `d.account_id` 判据），
@@ -370,7 +370,7 @@ Page({
   // 🔴 R311：体检结论（**只解释、不重算利润**）
   //   食材成本**不在 expense_items 里**（calcMonthlyProfit/service.js:22-27 明写其属费用非食材成本），
   //   而它是最**大**的变动成本 ⇒ 必须显式传，否则保本线会大幅偏低（最危险的方向）。
-  buildBreakeven(d, res, prevProfitFen) {
+  buildBreakeven(d, res, prevProfitFen, inds) {
     const T = this.data.t;
     // 🔴 R312：分 → "X.X万"（一位小数）。老板看"10.8万"比"¥108,491.00"快得多。
     const wan = (fen) => (Math.round((Number(fen || 0) / 100 / 10000) * 10) / 10) + String(T.beWan || '万');
@@ -394,13 +394,28 @@ Page({
     }
     const rentFen = this._sumByName(rows, '房租');
     const laborFen = this._sumByName(rows, '工资') + this._sumByName(rows, '社保');
+    // 🔴 R480：达标营业额必须用**与下方指标卡同一套**「业态 × 城市」区间。
+    //   原先房租 15% / 人工 22% / 房租目标 12% 是**前端写死**的常数，而下方指标卡的参考带
+    //   来自后端 indicatorRef（分业态 × 分城市）⇒ **同一页两个"正常"口径**：
+    //   老板改业态时只有下面那块跟着变，上面这块纹丝不动（真机：一块能改、一块不能改，不知信哪个）。
+    //   现在统一从后端 indicators 取；**取不到才回落旧常数**（零回归，绝不硬崩）。
+    const indOf = (k) => (inds || []).find((x) => x && x.key === k) || null;
+    const hiOf = (k, fb) => {
+      const it = indOf(k);
+      return (it && typeof it.hi === 'number') ? it.hi : fb;
+    };
+    const rentIt = indOf('rent');
+    const rentHi = hiOf('rent', 15);
+    const laborHi = hiOf('labor', 22);
+    // 房租目标率 = 该业态区间**中点**（原来是写死的 12，即 8~15 的中点）
+    const rentTarget = (rentIt && typeof rentIt.lo === 'number' && typeof rentIt.hi === 'number')
+      ? (rentIt.lo + rentIt.hi) / 2 : 12;
     const healthyFen = BE.healthyRevenue([
-      { amountFen: rentFen, hiPct: 15 },
-      { amountFen: laborFen, hiPct: 22 },
+      { amountFen: rentFen, hiPct: rentHi },
+      { amountFen: laborFen, hiPct: laborHi },
     ]);
     // 🔴 R311③：归因 —— 房租占比偏高里，"营收不足"与"房租本身贵"各占多少点。
-    //   目标率取行业区间中点 12%（8-15 的中点）；目标营收取"健康营收"。
-    const at = BE.attribution({ revenueFen: revFen, itemFen: rentFen, targetRatePct: 12, targetRevenueFen: healthyFen });
+    const at = BE.attribution({ revenueFen: revFen, itemFen: rentFen, targetRatePct: rentTarget, targetRevenueFen: healthyFen });
     // ⚠️ 只在**占比确实偏高**（diffPp > 0）时才给归因：
     //   若房租本来就在区间内，说"有 X 点来自营收不足"是**误导**（它没偏高，不需要解释）。
     //   分母/分子**保留符号**（不取绝对值）：两者可能一正一负，取绝对值会让"加起来等于率差"不成立。
@@ -472,6 +487,13 @@ Page({
       rangeText: String(T.beRangeText || '').replace('{a}', wan(bk.lowFen)).replace('{b}', wan(bk.highFen)),
       marginNeg: bk.safeMarginPct != null && bk.safeMarginPct < 0,
       healthyText: healthyFen > 0 ? String(T.beHealthyText || '').replace('{a}', wan(healthyFen)) : '',
+      // R480：把"这个达标线是按哪个业态 × 城市算的"**写在旁边** —— 老板不用猜它跟下面
+      //   指标卡是不是一回事；且它现在**真的会跟着业态变**（口径已同源），说了才不作假。
+      healthyScopeText: (() => {
+        if (!(healthyFen > 0)) return '';
+        const sv = this.scopeView(d && d.indicator_scope);
+        return String(T.beHealthyScope || '').replace('{b}', sv.bizText).replace('{c}', sv.cityText);
+      })(),
       diag: BE.diagnose(healthyFen, bk.breakevenFen),
       unknownText: (sp.unknown && sp.unknown.length) ? T.beUnknown : '',
     };

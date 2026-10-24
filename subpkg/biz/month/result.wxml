@@ -91,6 +91,8 @@
     <block wx:if="{{beMore}}">
       <view class="cell"><text class="lbl">{{t.beBreakeven}}</text><text class="val">{{t.cur}}{{be.rangeText}}</text></view>
       <view class="cell" wx:if="{{be.healthyText}}"><text class="lbl">{{t.beHealthy}}</text><text class="val">{{be.healthyText}}</text></view>
+      <!-- R480：口径标注 —— 这块用的是**哪个业态 × 城市**的区间，且与下方指标卡同源、会跟着业态变 -->
+      <view class="muted" wx:if="{{be.healthyScopeText}}">{{be.healthyScopeText}}</view>
       <view class="muted" wx:if="{{be.attr}}">{{t.beAttrLead}} {{be.attr.rate}}：{{be.attr.denom}} {{t.beAttrDenom}}｜{{be.attr.numer}} {{t.beAttrNumer}}</view>
     </block>
   </view>

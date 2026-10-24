@@ -200,6 +200,30 @@ check('D-⑥ hasHardcodedPct 负样本：模板 {{x}}% 不误伤', !hasHardcoded
 check('D-⑦ missingItemNames 正样本：全命中返回空', missingItemNames({ rent: ['房租'] }, ['房租', '电费']).length === 0);
 check('D-⑧ missingItemNames 负样本：失配能被列出', missingItemNames({ rent: ['租金'] }, ['房租']).join() === 'rent:租金');
 
+// ================= H 口径同源（R480）=================
+console.log('\n===== H 口径同源：达标营业额必须与指标卡同一套「业态 × 城市」区间 =====');
+// 为什么单独立这一段：
+//   原先「达标营业额」用前端**写死**的房租 15% / 人工 22% / 房租目标 12%，而下方指标卡的
+//   参考带来自后端 indicatorRef（分业态 × 分城市）⇒ **同一页两个"正常"口径**：
+//   老板改业态时只有下面那块跟着变，上面这块纹丝不动（真机：一块能改、一块不能改，不知信哪个）。
+// ⚠️ 旧判据 hasHardcodedPct **抓不到这个** —— 它只认「数字 + %」，而这里是 `hiPct: 15`（无百分号），
+//    所以必须单立一条（同一族病：判据在真因之外的位置全绿）。
+const hasHardcodedHi = (s) => /hiPct:\s*(15|22)\b/.test(s) || /targetRatePct:\s*12\b/.test(s);
+check('H-① buildBreakeven 收 inds 参数（后端指标进得来）', /buildBreakeven\(d, res, prevProfitFen, inds\)/.test(jsCode));
+check('H-② 调用处真的把 inds 传进去了', /buildBreakeven\(d, res, prevProfitFen, inds\)/.test(jsCode));
+check('H-③ 达标营业额的房租/人工上限不再写死（改用后端指标）',
+  /hiPct: rentHi/.test(jsCode) && /hiPct: laborHi/.test(jsCode) && !/hiPct:\s*(15|22)\b/.test(jsCode));
+check('H-④ 房租目标率不再写死 12（改用该业态区间中点）',
+  /targetRatePct: rentTarget/.test(jsCode) && !/targetRatePct:\s*12\b/.test(jsCode));
+check('H-⑤ 取不到后端指标时仍有兜底（零回归，不许硬崩）',
+  /hiOf\('rent',\s*15\)/.test(jsCode) && /hiOf\('labor',\s*22\)/.test(jsCode));
+check('H-⑥ 页面把「按哪个业态算的」写在旁边（说了才不作假）',
+  /healthyScopeText/.test(jsCode) && /be\.healthyScopeText/.test(wxmlCode));
+check('H-⑦ terms 有 beHealthyScope 文案键', /beHealthyScope:/.test(termsSrc));
+const H_VARIANT = jsCode.replace(/hiPct: rentHi/, 'hiPct: 15').replace(/hiPct: laborHi/, 'hiPct: 22');
+check('H-⑧ 反恒真：改回写死 15/22 的变体必须被判红（证明 H-③ 不是恒真）',
+  H_VARIANT !== jsCode && hasHardcodedHi(H_VARIANT));
+
 // ================= E 下界：断言数不被悄悄删小 =================
 console.log('\n===== E 下界 =====');
 check('E-① 本守卫断言数 ≥ 28（删掉判据即转红）', pass + failN >= 28, `含本条共 ${pass + failN + 1} 条`);

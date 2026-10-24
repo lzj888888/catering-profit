@@ -1821,6 +1821,8 @@ const TERMS = {
     beMarginDrop: '营收再掉{p}%就亏',
     beMarginRise: '营收要涨{p}%才回本',
     beHealthyText: '做到{a}，费用占比才回到正常',
+    // R480：口径标注 —— 这个"达标线"是按哪个业态 × 城市算的（与下方指标卡**同源**，会跟着业态变）
+    beHealthyScope: '按「{b} · {c}」的行业区间算，改下面的业态这里也跟着变',
     beRangeText: '{a}到{b}',
     beWan: '万',
     // 🔴 R313：跨月对比（老板看完"这个月在亏"，下一句一定问"上月呢"）
