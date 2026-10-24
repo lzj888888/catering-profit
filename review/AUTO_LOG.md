@@ -715,3 +715,6 @@
   - ④ **部署**：`exportData` → `success=true / filesCount=20 / packSize='60.8 KB'`，日志含 `√ upload cloud function exportData - deploy`（`review/evidence/r479_deploy/deploy_exportData.txt`）。**只部署这一个**，「只有它引用新符号」同理成立（diff 面只有 `exportData/index.js` 一支云函数）。
   - ⑤ **出码**：`√ preview`、`Using AppID: wx33c110dc57a9c8dc`、TOTAL `761.4 KB`（main 265.3 / biz 323.7 / tools 172.3），`qr.png` **46,382 B**（`review/evidence/r479_qr/`）。
   - ⑥ **terms 双副本现读一致**：md5 同为 `40b378a8fd6bee0b24c670dc869d8902`（两份文件）。⚠️ 该 md5 含**并发会话在途改动**（`git status` 现仍有两份 terms 的 M）⇒ 本条只补台账，**未提交、未覆盖他人改动**。
+
+- [2026-10-25 05:31] R480 勘误 · **轮次号撞车**：并发会话的 `68575cc`（M1 结果页两块「正常」口径统一 —— 达标营业额不再写死 15%/22%）也自称 **R480**，与本轮同号。逐条区分：`64ad21b`（认领 #59）/ `f0dd64a`（#59 文档）/ `b258111`（回执+队列）/ `69c6694`（补录 R479 回执）= **本轮**；`68575cc` = 并发会话，**建议其后续改用 R481 起号**。不改写历史（已推 + 禁 force），按纪律「勘误提交 + 留痕」处置。
+  - 附带影响（如实记）：本轮全量门禁（`_gate_r480.log`，04:52→05:08）跑在**含 `68575cc` 未提交改动**的工作树上，不是 `f0dd64a` 的纯态 ⇒ 「210/211」这个数只能当工作树态读，不能当 HEAD 基线；HEAD 基线仍待 #61 刷缓存后复跑取得。
