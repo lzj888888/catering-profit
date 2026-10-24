@@ -292,7 +292,7 @@ const TERMS = {
     heroRefLabel: '本月经营参考利润',
     heroFirstUse: '本月未录入',
     heroNoData: '还没有本月数据',
-    heroNoDataHint: '把租金、人工、食材填进去，自动算出参考利润',
+    heroNoDataHint: '填上租金、人工、原料，自动算参考利润',
     heroCtaEnter: '录入本月经营数据',
     heroCtaDetail: '查看明细',
     heroSwitch: '店铺管理',
@@ -300,7 +300,7 @@ const TERMS = {
 
   // ===== 十一、批次 4 页面级按钮/链接（补录）=====
   nav: {
-    goInput: '录入收入·费用·消耗',
+    goInput: '录入收入·费用·原料',
     goInventory: '录入库存（期初/采购/期末）',
     goAmortize: '管理摊销资产',
     goResult: '查看结果',
@@ -2285,12 +2285,12 @@ const TERMS = {
   calcMethod: {
     secTitle: '这两笔钱怎么算',
     secHint: '随时能改，改了不影响已经填好的数字',
-    consumeTitle: '① 食材消耗',
+    consumeTitle: '① 原料用掉多少',
     consumeDirect: '按采购直接填',
-    consumeDirectDesc: '本月买菜花多少就填多少',
+    consumeDirectDesc: '本月买原料花多少就填多少',
     consumeInv: '按库存盘点倒算',
-    consumeInvDesc: '期初 + 采购 − 期末，算真实消耗',
-    consumeDirectField: '本月食材消耗',
+    consumeInvDesc: '期初 + 采购 − 期末，算真实用掉多少',
+    consumeDirectField: '本月用掉的原料',
     consumeDirectHint: '没盘点习惯就填采购总额',
     consumeInvGo: '去填库存盘点',
     consumeInvSummary: (o, p, c) => `已填：期初 ${o} · 采购 ${p} · 期末 ${c}`,

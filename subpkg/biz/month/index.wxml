@@ -73,18 +73,24 @@
        ⚠️ 文案复用 result 页的 resultEmpty（中性表述，接口异常时也不说谎）。 -->
   <view class="card2" wx:if="{{!result}}">
     <view class="muted">{{t.resultEmpty}}</view>
-    <button class="btn-small ghost" style="margin-top:12rpx;" bindtap="goInput">{{t.resultEmptyGoInput}}</button>
+    <!-- 🔴 R472：无账本时**这里就是唯一入口** ⇒ 用主按钮样式，别再在下面重复一排 -->
+    <button class="btn primary" style="margin-top:16rpx;" bindtap="goInput">{{t.resultEmptyGoInput}}</button>
   </view>
 
-  <!-- 快捷入口 -->
-  <button class="btn primary" bindtap="goInput">{{t.goInput}}</button>
-  <button class="btn" wx:if="{{switches.inventorySwitchOn}}" bindtap="goInventory">{{t.goInventory}}</button>
-  <button class="btn" wx:if="{{switches.amortizeSwitchOn}}" bindtap="goAmortize">{{t.goAmortize}}</button>
-  <button class="btn ghost" bindtap="goResult">{{t.goResult}}</button>
-  <button class="btn ghost" wx:if="{{canArchive}}" bindtap="onArchive">{{t.archiveNow}}</button>
-  <button class="btn ghost" wx:if="{{canArchivePrev}}" bindtap="onArchivePrev">{{t.archivePrev}}</button>
-  <!-- 🔴 R376：清空本月（**软删**，可恢复）。只在"该月有账且未归档"时出现：
-       空月没有可清的；归档月要先取消归档（服务端同样拒绝，双保险）。 -->
-  <button class="btn ghost btn-clear" wx:if="{{result && !isArchive}}" bindtap="onClearMonth">{{t.clearMonth}}</button>
+  <!-- 🔴 R472：有账本才出现「操作区」。无账本时下面这些按钮全部不渲染 ——
+       原来空月会同时出现「空态卡的去录入」+「录入收入·费用·消耗」+「查看结果」三个入口，
+       同一件事两个按钮、再加一个点了只能得到空结果的按钮。 -->
+  <block wx:if="{{result}}">
+    <!-- 快捷入口 -->
+    <button class="btn primary" bindtap="goInput">{{t.goInput}}</button>
+    <button class="btn" wx:if="{{switches.inventorySwitchOn}}" bindtap="goInventory">{{t.goInventory}}</button>
+    <button class="btn" wx:if="{{switches.amortizeSwitchOn}}" bindtap="goAmortize">{{t.goAmortize}}</button>
+    <button class="btn ghost" bindtap="goResult">{{t.goResult}}</button>
+    <button class="btn ghost" wx:if="{{canArchive}}" bindtap="onArchive">{{t.archiveNow}}</button>
+    <button class="btn ghost" wx:if="{{canArchivePrev}}" bindtap="onArchivePrev">{{t.archivePrev}}</button>
+    <!-- 🔴 R376：清空本月（**软删**，可恢复）。只在"该月有账且未归档"时出现：
+         空月没有可清的；归档月要先取消归档（服务端同样拒绝，双保险）。 -->
+    <button class="btn ghost btn-clear" wx:if="{{result && !isArchive}}" bindtap="onClearMonth">{{t.clearMonth}}</button>
+  </block>
 </view>
 <view wx:else class="container"><view class="muted">{{t.loading}}</view></view>
