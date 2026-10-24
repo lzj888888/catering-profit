@@ -667,3 +667,13 @@
   - ④ **NOTE ↔ 代码抽检 3 条全对得上**：`pages/mine/index.wxml` 仍命中 `open-type="contact"` 2 处（R421 客服入口事实）；`subpkg/tools/sandbox/index.js` 仍以常量 `sandbox_draft_v1` 存取、`:623` 恢复前比 `d.shop_id !== ss.currentShopId()`、`:589` 写盘带 `shop_id`（R443 隔离口径）；`NOTE_2026-10-23_交接_新对话续接.md` 仍是指向式（18 处「现取/指向式/SUITES = N」）。
   - ⑤ 🔴 **新登记 #52（在途改动，防丢失）**：上述三文件是并发会话 23:43 起改的「M1 月度首页空态去重（`result` 为假时不渲染操作区、空态按钮升主按钮）+ 文案『食材→原料』口径统一」，`AUTO_LOG`/队列/NOTE 均无记录 ⇒ 按 R443 先例登记待收口。其 wxml 注释自称 **R472**。
   - ⑥ 🔴 **撞号第二次（本轮留痕，不改历史）**：**R472 已被本轮占用**（`ff82ce5` 部署证据 + `049c769` 回执，均已推 origin/dev）⇒ 在途那批落盘时请改用 **R473**，不要产生第二份 R472 回执。
+
+- [2026-10-25 01:18] R474 #52 收口（在途批次已由 3f4fed9 落地，未重复实现）+ 只读巡检 · 门禁 209/209 RC=0 · commit 3f4fed9 · 队列 #52 → done
+  - ① **不重复实现**：`#52` 登记的「月度首页空态去重 + 食材→原料」三文件在途改动，已由并发会话于 00:18 提交 `3f4fed9`；`git show --stat` 实读 = `miniprogram/i18n/terms.js` / `specs/dev-specs/i18n/terms.js` / `subpkg/biz/month/index.wxml`。
+  - ② **机器复核（不采信提交信息）**：两份 `terms.js` 在 `3f4fed9` 处 md5 同为 `eedca9a1…` ✅；`index.wxml:83` 起 `<block wx:if="{result}">` **整块**包住 6 个操作按钮（含 `goResult` / `onClearMonth`），空态按钮 `:77` 已是 `class="btn primary"` ✅；terms 侧 6 处用词与提交信息逐条对得上（`heroNoDataHint` / `goInput` / `consumeTitle` / `consumeDirectDesc` / `consumeInvDesc` / `consumeDirectField`）✅。
+  - ③ **门禁（亲跑 · 工作树态）**：`总览 209/209 通过 · RC=0 · 276.3s`，`SUITES = 209`，0 条 FAIL/❌，日志 `_gate_r474.log`。⚠️ 明示：跑的是**工作树**，含并发会话在途的 R473 五文件（`saveLedger/index.js`、两份 `terms.js`、`month/result.js`、`month/result.wxml`，00:57–00:58 mtime）⇒ 这轮绿灯同时为那批未提交代码留了基线，但**不代表 HEAD 单独跑也是这个数**。
+  - ④ **不出码**：本轮零 wxml 改动（我未动 wxml；`3f4fed9` 的 wxml 排版由提交方真机确认）。
+  - ⑤ **不部署**：本轮零云函数改动。
+  - ⑥ **新登记 #53（在途，防丢失）**：R473 那批仍未提交，其中 `saveLedger` 是**行为变更**（update 分支补 `account_id`，`genId` 已从 `common` 解构、可用）⇒ 落盘后必须部署，否则「保存成功、结果页却说没有账本」在线上不变；改过 wxml 还需出码。
+  - ⑦ **新登记 #54（用词未真统一）**：`3f4fed9` 只改了录入路径，结果页仍叫「食材」（`flowMaterial` / `flowHint` / `bandRed` / `bandYellow` / `realConsumePreview` / `openingHint`）⇒ 同一批货两个词。已把边界写进条目：「食材成本 / 人均食材成本 / 食材库存」作科目名保留，叙述「买进/用掉的那批货」用「原料」；顺带清两组零消费死键（`uiFix.directConsumeSec/directConsumeField`、`directConsume/directConsumeHint`，全仓 0 引用）。
+  - ⑧ **巡检四项**：开工 `git status` = 5 个 M，**全属并发 R473**（未覆盖、未代提交，本轮只以显式路径提交 `review/**`）｜最近门禁 = 本轮 `209/209 RC=0`（`_gate_r472.log` 22:38 早于 `3f4fed9`，不能当 HEAD 基线；01:00 那次并发门禁 01:10 进程消失，仓根与工作区根**均无新增 `_gate_*.log`** ⇒ 无可引用结果）｜0 僵尸 todo、0 `in_progress` 残留、11 条 blocked 的 why 全部仍成立（均为拍板 / 控制台 / 样例 / 扫码）｜无反向漂移（`| done | yes |` 命中 0）。
