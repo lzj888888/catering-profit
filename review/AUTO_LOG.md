@@ -677,3 +677,9 @@
   - ⑥ **新登记 #53（在途，防丢失）**：R473 那批仍未提交，其中 `saveLedger` 是**行为变更**（update 分支补 `account_id`，`genId` 已从 `common` 解构、可用）⇒ 落盘后必须部署，否则「保存成功、结果页却说没有账本」在线上不变；改过 wxml 还需出码。
   - ⑦ **新登记 #54（用词未真统一）**：`3f4fed9` 只改了录入路径，结果页仍叫「食材」（`flowMaterial` / `flowHint` / `bandRed` / `bandYellow` / `realConsumePreview` / `openingHint`）⇒ 同一批货两个词。已把边界写进条目：「食材成本 / 人均食材成本 / 食材库存」作科目名保留，叙述「买进/用掉的那批货」用「原料」；顺带清两组零消费死键（`uiFix.directConsumeSec/directConsumeField`、`directConsume/directConsumeHint`，全仓 0 引用）。
   - ⑧ **巡检四项**：开工 `git status` = 5 个 M，**全属并发 R473**（未覆盖、未代提交，本轮只以显式路径提交 `review/**`）｜最近门禁 = 本轮 `209/209 RC=0`（`_gate_r472.log` 22:38 早于 `3f4fed9`，不能当 HEAD 基线；01:00 那次并发门禁 01:10 进程消失，仓根与工作区根**均无新增 `_gate_*.log`** ⇒ 无可引用结果）｜0 僵尸 todo、0 `in_progress` 残留、11 条 blocked 的 why 全部仍成立（均为拍板 / 控制台 / 样例 / 扫码）｜无反向漂移（`| done | yes |` 命中 0）。
+
+- [2026-10-25 01:23] R475 #53 收口（R473 的 `saveLedger` 部署 + 出码）· 门禁 209/209 RC=0 · commit 26e9759（代码）· 队列 #53 → done
+  - ① **部署（改了云函数就必须做）**：`saveLedger` 单函数 `-r` 部署到 dev（env 现读 `miniprogram/config/env.js:23`），`success=true` / 22 文件 / 62.8 KB；`info` 回读 `Active` / `timeout=20` / `Nodejs16.13`。证据 `review/evidence/r474_deploy_saveLedger/deploy_saveLedger.txt`。**只部署这一个**，未碰 `cx_*.js` 派生的其余 50 余个函数（它们没引用新符号）。
+  - ② **出码（改过 wxml 就必须做）**：`√ preview`（判据行实读，不靠"文件存在"），`review/evidence/r475_qr/qr.png` 47,383 B @01:21:16；分包体积 `main 264.9 KB / biz 323.5 KB / tools 172.3 KB`，合计 760.7 KB。**未弹给你扫**。
+  - ③ **代码未改**：本轮对 `cloudfunctions/**` 与 `miniprogram/**` 零改动（部署的是 `26e9759` 的内容）⇒ 未重跑门禁，引用 R474 在**同一份工作树内容**上跑出的 209/209 RC=0（`26e9759` 的 numstat 4/7/7/1/28 与门禁时的工作树一致）。
+  - ④ **口径留痕**：这次修的是一条真实用户现象 —— 历史行缺 `account_id` 时，`saveLedger` 更新成功但结果页判据 `!!d.account_id` 为假，于是「保存成功 → 仍被告知还没有账本 → 再让你去录入」。现 update 分支只在**缺字段**时补一次（已有则不动，幂等）。
