@@ -579,3 +579,14 @@
   - ⑥ **报问题格式**：`页面 / 操作 / 预期 / 实际` 四条贴**文字**（我读不了图片，截图要 OCR）—— 前五轮漏洞就是靠"给实际数字"抓出来的。
   - ⑦ **覆盖面的机器依据**：`app.json` 实读 = 主包 4 + `subpkg/tools` 9 + `subpkg/biz` 16 = **29 页**；逐页扫描 `<button>` / `<input>` / `bindtap` 计数已附在单子末尾（不是凭印象列页）。
   - ⑧ **边界**：本轮**零代码改动、未跑门禁**（`review/**` 不在打包面）；**未出新码**（码 25 分钟有效，李老师要走时说一声我现出，避免白出一张过期码）。
+
+- [2026-10-24 09:3x] R459 **分包预下载 `preloadRule` 落地 + 关全局下拉刷新** · 门禁 **207/207 · RC=0 · 865.3s** · 队列 #8（PLAN §6 S5 前半）
+  - ① **改了什么（`app.json`，共 +10/-1 行，无整文件翻写）**：新增 `preloadRule`：`pages/index/index` → `["subpkg/biz"]`、`pages/m3/hub` → `["subpkg/tools"]`，`network: "wifi"`；`window.enablePullDownRefresh` 由 `true` → `false`。
+  - ② **为什么是这两个映射（不靠印象，靠 PLAN 原文）**：`review/PLAN_2026-10-21_分包方案.md` §5 原文「首页加载完 → 预下载 `subpkg/biz`（核算线是主路径）；`m3/hub` 加载完 → 预下载 `subpkg/tools`（选址入口在 hub）」。
+  - ③ **上一轮的错已订正（这条要留痕）**：上一轮改到一半未提交，且映射**写反**——`pages/m3/hub` 写的是 `["subpkg/biz"]`、首页写了两个包，还多出一条无依据的 `pages/mine/index`。本轮按 §5 改正，并**删掉 `mine` 那条**（我的页无高频下游，避免首次进 tab 就双包预下载抢带宽）。
+  - ④ **机器校验（两道，都实跑）**：
+    - 结构合法性：`node -e` 读 `app.json` ⇒ `preloadRule` 两个 key 均命中真实页面（总计 29 页 = 主包 4 + tools 9 + biz 16）、两个包名均命中 `subpackages[].root` ⇒ 不会出现「键写错⇒静默不生效」。
+    - 包体预算（R182 守卫 `check_pack_size.js`）：**11 通过 / 0 失败**；入包总量 **1.5583 MB / 预算 1.7 MB**；最大项 `subpkg=0.9417 MB ≤ 顶格 1.2 MB`。
+  - ⑤ 🔴 **PLAN §6 S5 后半「降回顶格 0.8 / 预算 1.2」本轮不可执行（如实登记，不静默跳过）**：S5 原写「配 `preloadRule` **+** 把 R419 的权宜阈值降回更严（顶格 0.8 / 预算 1.2）」，但实测 `subpkg` 已 **0.9417 MB > 0.8**、总量 **1.5583 MB > 1.2** ⇒ **降即假红**。故本轮**只执行前半**，阈值维持续 R419 re-baseline 的 **1.2 / 1.7**。要真降回 0.8/1.2，前置是把 `subpkg` 再瘦 0.15 MB（另开工单，不在本轮冒充完成）。
+  - ⑥ **为什么关 `enablePullDownRefresh`**：`grep -rl "onPullDownRefresh"` 在 `miniprogram/**` **零命中**、`enablePullDownRefresh` 在页面 json/game json **零命中** ⇒ 无任何页面依赖下拉刷新，置 `false` 不会削弱功能，只避免误触发的整页重载。
+  - ⑦ **`preloadRule` 不改变入包集合**，只改「什么时候下」⇒ 对包体预算零影响（这也是 ④ 里 11/0 与上轮同值的原因）。

@@ -10,7 +10,7 @@
     "navigationBarBackgroundColor": "#1e3a5f",
     "navigationBarTextStyle": "white",
     "backgroundColor": "#f5f6f8",
-    "enablePullDownRefresh": true
+    "enablePullDownRefresh": false
   },
   "tabBar": {
     "color": "#8a94a6",
@@ -40,6 +40,16 @@
   },
   "style": "v2",
   "lazyCodeLoading": "requiredComponents",
+  "preloadRule": {
+    "pages/index/index": {
+      "network": "wifi",
+      "packages": ["subpkg/biz"]
+    },
+    "pages/m3/hub": {
+      "network": "wifi",
+      "packages": ["subpkg/tools"]
+    }
+  },
   "subpackages": [
     {
       "root": "subpkg/tools",
