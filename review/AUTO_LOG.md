@@ -652,3 +652,10 @@
   - ⑨ 边界：本轮**零代码改动**（只读巡检 + 两处文档）⇒ 未出码、未部署、未动线上环境。
 
   - ⑩ **ERRATA（本轮自行订正，不改历史）**：⑨ 之后落盘的队列 #51 初版把 dev 环境 ID 抄成 `cloud1-4dgphoxy337f2a25`（漏一个 `p`），并按 `--project` 写部署命令 —— 而本机 CLI 对 `--project` **恒报「缺失参数 project」**、且环境 ID 单源在 `miniprogram/config/env.js:23`。已在本轮第二个提交订正为「现读 env.js + `--paths/--appid` 定式」，并补明「并发会话工作日志自称已部署、但无机器证据」这层差别。
+
+- [2026-10-24 23:59] R472 **补部署 `saveLedger` 并补回执**（队列 #51）· 门禁 **209/209 · RC=0 · 831.1s**（`_gate_r472.log`，0 ❌）· commit `ff82ce5` · 队列 #51 → done
+  - ① **部署（机器证据）**：`--names saveLedger -r --env cloud1-d4gphpoxy337f2a25 --project <仓根> --paths <仓根>/cloudfunctions/saveLedger --port 10896` ⇒ `success=true` / `filesCount=22` / `62.6 KB`；回读 `cloud functions info` ⇒ `Active` / `timeout=20` / `Nodejs16.13`。证据 `review/evidence/r472_deploy_saveLedger/deploy_saveLedger.txt`。
+  - ② **代码面确认**（非采信提交信息）：`git merge-base --is-ancestor 92738a2 HEAD` → `ANCESTOR_OK`；实读 `saveLedger/index.js:67`（复活查询只按唯一键 `(shop_id, month)`，不再要求 `is_deleted===true`）、`:76`（复活 update 保 `account_id`）、`:188-194`（INSERT 撞唯一键后回查改走 update）。
+  - ③ 🔴 **部署命令定式勘误（推翻 R470 自述）**：R470 记「本机 CLI 对 `--project` 恒报缺失参数、可用形式 = `--paths --appid`」——**实测相反**：只给 `--paths` 不给 `--project` 才报 `code:31 缺失参数 'project'`（且 **rc 仍 0**，又一次印证 rc 不能当判据）；`--project` 与 `--paths` **必须同时给**，并带 `--port 10896`。已写入证据文件 §二，下轮照抄即可，不要再走 `--paths/--appid`。
+  - ④ **门禁覆盖范围**：最近一份 `_gate_r470.log`（22:38）早于 `cfadbcf`(22:52) 与 `bfc583a`(23:11) 两次提交 ⇒ 那段绿灯覆盖不到现 HEAD。本轮亲跑：`总览 209/209` + `GATE_EXIT=0` + 0 ❌ ⇒ **现 HEAD 已有门禁基线**（本轮 `tools/**` 零改动，未刷 `mk_force`，直接跑仍全绿 ⇒ 缓存无污染）。
+  - ⑤ 边界：只部署 dev（`cloud1-…`）1 个函数；未碰 prod/控制台；未因 `cx_*.js` 派生副本批量部署；本轮零代码改动 ⇒ 无 wxml 改动不出码。
