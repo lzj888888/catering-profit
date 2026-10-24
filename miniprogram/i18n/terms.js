@@ -2078,7 +2078,7 @@ const TERMS = {
   inventoryPage: {
     title: '库存盘点',
     opening: '期初库存',
-    openingHint: '月初食材库存总价值（元）',
+    openingHint: '月初原料库存总价值（元）',
     purchase: '本月采购',
     purchaseHint: '本月采购入库总价值（元）',
     closing: '期末盘点',
@@ -2090,7 +2090,7 @@ const TERMS = {
     save: '保存库存',
     hintFormula: '保存后由服务端按库存倒轧计算真实消耗。',
     // B：实时预览（纯前端读 getLedger.result.real_consume_fen，零后端改动）
-    realConsumePreview: '本月真实食材消耗',
+    realConsumePreview: '本月真实原料消耗',
     realConsumePreviewNote: '倒轧 = 月初剩的 + 本月买的 − 月底剩的。你不用手算，保存后自动出数。',
     // ===== round103：期初结转 + 修正（依据 规范 02_模拟测试数据集.md:127「从上月期末结转，不可编辑」）=====
     openingCarryNote: (m) => `期初由上月（${m}）期末自动结转，不用手填`,
@@ -2265,12 +2265,12 @@ const TERMS = {
     // ===== 暖化（2026-10-11）：C 钱去哪了 故事线（专业术语保留，补白话流向，老板秒懂利润怎么算）=====
     flowTitle: '钱是怎么算出来的',
     flowSell: '卖了',
-    flowMaterial: '食材',
+    flowMaterial: '原料',
     flowExpense: '费用',
     flowAmort: '摊销',
     flowLand: '落袋',
     flowPer100: '每卖 100 元，约落袋',
-    flowHint: '专业口径：收入 − 食材 − 费用 − 摊销 = 真实利润（权责发生制）',
+    flowHint: '专业口径：收入 − 原料 − 费用 − 摊销 = 真实利润（权责发生制）',
     // ===== 暖化（2026-10-11）：结果页顶部「一句话结论 + 红黄绿带」（装饰性，不碰引擎口径）=====
     //   判定只看后端真利润正负 + 毛利率（前端纯装饰，阈值写死 30% 仅作"偏薄"提示，非业务红线）。
     bandLabel: '本月经营结论',
