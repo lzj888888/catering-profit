@@ -254,8 +254,8 @@ const CASES = [
   { key: 'check_m3_style_b', rel: 'tools/check_m3_style_b.js' },          // 18 条（A9 + B4 + C5）
   // R463 · PLAN_AI P0：AI 诊断包 + L0 判断。纳入受守面的理由同上 —— 这两件最容易写成
   //   「包能生成、文本能打印、门禁全绿」，而数字被重算 / 判断被下放给模型 / 缺板块静默留空。
-  //   28 条含 2 条反恒真变异（⑤-1 亏损条件改 false / ⑤-2 金额白名单删一项）。
-  { key: 'check_ai_pack', rel: 'tools/check_ai_pack.js' },                // 28 条（①6 + ②8 + ③9 + ④3 + ⑤2）
+  //   31 条含 2 条反恒真变异（⑤-1 亏损条件改 false / ⑤-2 金额白名单删一项）。
+  { key: 'check_ai_pack', rel: 'tools/check_ai_pack.js' },                // 31 条（①7 + ②8 + ③11 + ④3 + ⑤2）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

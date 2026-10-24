@@ -63,6 +63,10 @@ ok('①-5 问题码恰好 5 个且互不重复',
   '实际=' + JSON.stringify(packMod.QUESTION_CODES));
 ok('①-6 口径版本号存在（可回溯当时用的规则）',
   !!interp.RULES_VERSION && !!packMod.PACK_VERSION);
+ok('①-7 5 个问题都带人话文本（只给机器码＝没给问题）',
+  Array.isArray(packMod.QUESTION_CODES) && packMod.QUESTION_CODES.every(
+    (c) => typeof (packMod.QUESTION_TEXT || {})[c] === 'string' && packMod.QUESTION_TEXT[c].length >= 8
+  ), '缺文本的问题码会导出一个没人能问的英文码');
 
 // ================= ② 判断面 =================
 const BI = interp.buildInterpretation;
@@ -153,7 +157,12 @@ const LEDGER = {
 const PACK_IN = {
   month: '2026-10', shop: { bizText: '小面', cityText: '二线' }, ledger: LEDGER,
   breakeven: { ok: true, breakevenFen: 1000000, lowFen: 900000, highFen: 1100000, contributionRate: 0.7, safeMarginPct: 18.9 },
-  anomalies: { version: 'anomaly-rules-1', basis: { insufficient: false, history_months: 5 }, items: [] },
+  anomalies: { version: 'anomaly-rules-1', basis: { insufficient: false, history_months: 5 }, items: [
+    // 刻意放一条「整店毛利率」：规则层对它不给 name（不属于某个费用项），
+    // 导出时必须补人话名，不能把 result|gross_margin 这个内部键泄给 AI（③-11 的靶子）。
+    { key: 'result|gross_margin', scope: 'result', name: '', rule: 'r5_margin', direction: 'down',
+      amount_fen: null, history_median_fen: null, ratio_pct: -6.2, ratio_unit: 'pt', band: 'mid', attention: 3 },
+  ] },
 };
 const P = packMod.buildDiagnosisPack(PACK_IN);
 ok('③-1 金额原样搬运（1234567 分不得被重算/换单位）',
@@ -176,12 +185,23 @@ ok('③-5 verdicts 与单独调用 buildInterpretation 一致（同一事实同�
 ok('③-6 5 个问题码全部进包', Array.isArray(P.questions) && P.questions.length === 5);
 
 const TXT = packMod.packToText(P);
-ok('③-7 文本含单位声明与 5 个问题码',
-  /单位是「分」/.test(TXT) && packMod.QUESTION_CODES.every((c) => TXT.indexOf(c) >= 0));
+ok('③-7 文本含单位声明，且 5 个问题的**中文问句**都在（不是只给机器码）',
+  /单位是「分」/.test(TXT) && packMod.QUESTION_CODES.every(
+    (c) => TXT.indexOf((packMod.QUESTION_TEXT || {})[c] || '\u0000') >= 0
+  ));
 ok('③-8 文本含「未包含」段并点明缺失=不等于没异常',
   /未包含/.test(TXT) && /缺失≠没有异常|缺失不等于没有异常/.test(TXT));
 ok('③-9 文本里金额带「分」单位（100 分 = 1 元可自证）',
   /1234567 分/.test(TXT), '文本片段=' + TXT.slice(0, 40).replace(/\n/g, ' '));
+ok('③-10 问题文本不含禁用词（金融/收益承诺类，同 TERMS.forbidden 口径）',
+  (function () {
+    const BAN = ['投资回报', 'ROI', '回本周期', '收益率', '利润率', '盈利', '赚钱', '躺赚', '投资', '理财', '付费', '订阅', '会员费'];
+    const all = packMod.QUESTION_CODES.map((c) => (packMod.QUESTION_TEXT || {})[c] || '').join('');
+    const hit = BAN.filter((w) => all.indexOf(w) >= 0);
+    return hit.length === 0;
+  })(), '问题文本命中禁用词 ⇒ 会被 T5 判红');
+ok('③-11 异常项名称不得泄露内部键（result|gross_margin 这类）',
+  !/result\|gross_margin/.test(TXT), '内部键直接给 AI 等于让它猜');
 
 // ================= ④ 纯度面 =================
 function srcOf(rel) { return stripComments(fs.readFileSync(path.join(ROOT, rel), 'utf8')); }

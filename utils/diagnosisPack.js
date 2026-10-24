@@ -20,8 +20,10 @@ const interp = require('./interpretation.js');
 
 const PACK_VERSION = 'ai-pack-1';
 
-// 5 个现成问题（老板可直接复制）。用**机器码**，中文问法由导出层/界面按 code 取术语文案。
+// 5 个现成问题（老板可直接复制）。
 //   为什么固定 5 个而不是让 AI 自己想：老板不会提问，这才是他真正缺的东西。
+//   为什么同时保留 code 与 text：code 给机器（守卫/埋点/未来内嵌问答按 code 取术语文案），
+//   text 直接给老板复制 —— **只给 code 等于没给问题**（R464 样例实测：导出后是 Q_PROFIT_DROP）。
 const QUESTION_CODES = [
   'Q_PROFIT_DROP',    // 这个月利润为什么变成这样，最该动哪一项？
   'Q_DISH_DRAG',      // 哪道菜在拖后腿（没有菜品数据时如实说没有）
@@ -29,6 +31,14 @@ const QUESTION_CODES = [
   'Q_CHANNEL_MIX',    // 堂食/外卖/团购的到手结构有没有问题？
   'Q_NEXT_ACTION',    // 下个月想多赚一点，最省力的做法是什么？
 ];
+
+const QUESTION_TEXT = {
+  Q_PROFIT_DROP: '这个月利润为什么变成这样？按影响大小排，最该先动哪一项？',
+  Q_DISH_DRAG: '哪道菜在拖后腿？如果包里没有菜品数据，请直接说缺数据，不要猜。',
+  Q_RENT_SAFE: '房租和固定成本占比安全吗？还要卖多少才到保本线？',
+  Q_CHANNEL_MIX: '堂食、外卖、团购的到手结构有没有问题？如果包里没有渠道数据，请直说。',
+  Q_NEXT_ACTION: '下个月想多一些结余，按投入从小到大排，最省力的做法是什么？',
+};
 
 // 金额字段白名单：只搬这些，避免把整个 ledger 出参（含内部字段）原样泄给外部 AI。
 const MONEY_FIELDS = [
@@ -130,7 +140,9 @@ function buildDiagnosisPack(input) {
     },
     dishes: Array.isArray(i.dishes) ? i.dishes : null,
     channels: i.channels || null,
-    questions: QUESTION_CODES.map(function (code) { return { code: code }; }),
+    questions: QUESTION_CODES.map(function (code) {
+      return { code: code, text: QUESTION_TEXT[code] || '' };
+    }),
     unavailable: unavailable,
   };
 }
@@ -201,7 +213,13 @@ function packToText(pack) {
   const v = p.verdicts || {};
   if (Array.isArray(v.items) && v.items.length) {
     v.items.forEach(function (it) {
-      L.push('- [' + it.level + '] ' + it.code + ' ' + JSON.stringify(it.params));
+      // 异常项明细在第 5 节给人话；这里只给条数 —— 否则 `key: 'result|gross_margin'`
+      // 这类内部键会原样泄给 AI（R464 样例实测）。
+      if (it.code === 'ANOMALY_ITEMS') {
+        L.push('- [' + it.level + '] ANOMALY_ITEMS 共 ' + (it.params && it.params.count) + ' 项（明细见第 5 节）');
+      } else {
+        L.push('- [' + it.level + '] ' + it.code + ' ' + JSON.stringify(it.params));
+      }
     });
   } else {
     L.push('- （无）');
@@ -214,8 +232,15 @@ function packToText(pack) {
   if (an.basis && an.basis.insufficient) {
     L.push('- 历史月数不足（' + (an.basis.history_months || 0) + ' 个月），本期不下结论。');
   } else if (items.length) {
+    // 🔴 名称兜底：`result|gross_margin` 这类内部键**不能直接给 AI**（R464 样例实测泄出去了）。
+    //   规则层对「整店毛利率」不给 name（它不属于某个费用项）⇒ 在这里补一个人话名。
+    const labelOf = function (it) {
+      if (it && it.name) return it.name;
+      if (it && it.rule === 'r5_margin') return '整店毛利率';
+      return (it && it.rule) || (it && it.key) || '未知项';
+    };
     items.forEach(function (it) {
-      L.push('- ' + (it.name || it.key) + '：' + it.direction +
+      L.push('- ' + labelOf(it) + '：' + it.direction +
         '，幅度 ' + (it.ratio_pct == null ? '—' : it.ratio_pct) + (it.ratio_unit === 'pt' ? ' 个百分点' : '%') +
         '，本月 ' + (it.amount_fen == null ? '—' : money(it.amount_fen)) +
         '，历史中位 ' + (it.history_median_fen == null ? '—' : money(it.history_median_fen)));
@@ -235,9 +260,9 @@ function packToText(pack) {
   L.push('');
 
   L.push('## 7 可以直接问的问题');
-  q.forEach(function (x, idx) { L.push((idx + 1) + '. ' + x.code); });
+  q.forEach(function (x, idx) { L.push((idx + 1) + '. ' + (x.text || x.code)); });
 
   return L.join('\n');
 }
 
-module.exports = { PACK_VERSION, QUESTION_CODES, MONEY_FIELDS, buildDiagnosisPack, packToText };
+module.exports = { PACK_VERSION, QUESTION_CODES, QUESTION_TEXT, MONEY_FIELDS, buildDiagnosisPack, packToText };
