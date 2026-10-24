@@ -203,6 +203,40 @@ ok('③-10 问题文本不含禁用词（金融/收益承诺类，同 TERMS.forb
 ok('③-11 异常项名称不得泄露内部键（result|gross_margin 这类）',
   !/result\|gross_margin/.test(TXT), '内部键直接给 AI 等于让它猜');
 
+// ---- 菜品事实（R466 接入）----
+const DISH_IN = {
+  range: { from: '2026-10-01', to: '2026-10-31', days: 21 },
+  dineIn: [
+    { dish_key: 'k1', name: '红烧牛肉面', qty: 120, amountFen: 240000, totalCostFen: 96000, grossFen: 144000, marginPct: 60 },
+    { dish_key: 'k2', name: '酸辣粉', qty: 300, amountFen: 300000, totalCostFen: 210000, grossFen: 90000, marginPct: 30 },
+  ],
+  totals: { qty: 420, amountFen: 540000 },
+  unmatched: 2, truncated: false,
+};
+const PD = packMod.buildDiagnosisPack(Object.assign({}, PACK_IN, { dishes: DISH_IN }));
+ok('③-12 菜品按毛利降序取前 N 道（不按销量、不按录入顺序）',
+  (function () {
+    const t = (PD.dishes && PD.dishes.top) || [];
+    return t.length === 2 && t[0].name === '红烧牛肉面' && t[0].grossFen >= t[1].grossFen;
+  })(), '实际=' + JSON.stringify((PD.dishes && PD.dishes.top || []).map((x) => x.name)));
+ok('③-13 传了菜品就不得再登记「缺菜品」（只有渠道该缺）',
+  Array.isArray(PD.unavailable) && PD.unavailable.length === 1 &&
+  PD.unavailable[0].section === 'channels',
+  '实际=' + JSON.stringify(PD.unavailable));
+ok('③-14 文本含菜名与「未匹配成本卡」提醒（不能只给数字不给口径）',
+  (function () {
+    const t = packMod.packToText(PD);
+    return t.indexOf('红烧牛肉面') >= 0 && t.indexOf('酸辣粉') >= 0 && /未匹配成本卡/.test(t);
+  })());
+ok('③-15 取数失败时，unavailable 里的原因必须是调用方给的那个（不许一律写成"未加载"）',
+  (function () {
+    const p = packMod.buildDiagnosisPack(Object.assign({}, PACK_IN, {
+      dishes: null, dishesReason: 'fetch_failed_or_locked',
+    }));
+    const hit = (p.unavailable || []).filter((u) => u.section === 'dishes');
+    return hit.length === 1 && hit[0].reason === 'fetch_failed_or_locked';
+  })(), '原因被写死 ⇒ 老板/复审分不清「没权限」和「没数据」');
+
 // ================= ④ 纯度面 =================
 function srcOf(rel) { return stripComments(fs.readFileSync(path.join(ROOT, rel), 'utf8')); }
 const S_I = srcOf(INTERP_REL);

@@ -69,6 +69,48 @@ function pickMoney(ledger) {
   return out;
 }
 
+// 菜品排行带几条进包：老板一次能看的就这么多；多了等于没看（与 anomaly 的 maxItems 同思路）。
+const DISH_TOP = 10;
+
+/**
+ * 菜品事实归一（两种入参形态都要认，免得调用方为了迁就本模块再包一层）：
+ *   · 数组  ⇒ 直接当排行（老调用方）
+ *   · 对象  ⇒ `getDishReview` 出参的收口形态 `{ range, dineIn, totals, coverageA, coverageC, unmatched, truncated }`
+ * 返回 null ⇒ 调用方必须把它登记进 unavailable（**不许静默留空**）。
+ */
+function normalizeDishes(v) {
+  if (!v) return null;
+  if (Array.isArray(v)) {
+    if (!v.length) return null;
+    return {
+      range: null, top: v.slice(0, DISH_TOP), totals: null,
+      coverageA: null, coverageC: null, unmatchedCount: null, truncated: false,
+    };
+  }
+  const list = Array.isArray(v.dineIn) ? v.dineIn.slice() : [];
+  if (!list.length && !v.totals) return null;
+  // 云函数已按毛利降序，这里再排一次只是**排序**（不是重算毛利），防止调用方换了数据源顺序。
+  list.sort(function (a, b) { return num(b && b.grossFen) - num(a && a.grossFen); });
+  return {
+    range: v.range || null,
+    top: list.slice(0, DISH_TOP).map(function (x) {
+      return {
+        name: (x && (x.name || x.dish_key)) || '',
+        qty: num(x && x.qty),
+        amountFen: num(x && x.amountFen),
+        totalCostFen: num(x && x.totalCostFen),
+        grossFen: num(x && x.grossFen),
+        marginPct: num(x && x.marginPct),
+      };
+    }),
+    totals: v.totals || null,
+    coverageA: v.coverageA != null ? v.coverageA : null,
+    coverageC: v.coverageC != null ? v.coverageC : null,
+    unmatchedCount: v.unmatched != null ? num(v.unmatched) : null,
+    truncated: !!v.truncated,
+  };
+}
+
 /**
  * 装配诊断包。
  *
@@ -90,11 +132,14 @@ function buildDiagnosisPack(input) {
   const shop = i.shop || {};
   const unavailable = [];
 
-  if (!Array.isArray(i.dishes)) {
-    unavailable.push({ section: 'dishes', reason: 'not_loaded_on_this_page' });
+  const dishes = normalizeDishes(i.dishes);
+  if (!dishes) {
+    // 原因必须由调用方给（feature_locked / fetch_failed / not_loaded_on_this_page），
+    // 因为「没拿到」和「没有异常」是两件事 —— AI 看到空数组会当成后者。
+    unavailable.push({ section: 'dishes', reason: i.dishesReason || 'not_loaded_on_this_page' });
   }
   if (!i.channels) {
-    unavailable.push({ section: 'channels', reason: 'not_loaded_on_this_page' });
+    unavailable.push({ section: 'channels', reason: i.channelsReason || 'not_loaded_on_this_page' });
   }
 
   const facts = {
@@ -138,7 +183,7 @@ function buildDiagnosisPack(input) {
       basis: anom.basis || null,
       items: Array.isArray(anom.items) ? anom.items : [],
     },
-    dishes: Array.isArray(i.dishes) ? i.dishes : null,
+    dishes: dishes,
     channels: i.channels || null,
     questions: QUESTION_CODES.map(function (code) {
       return { code: code, text: QUESTION_TEXT[code] || '' };
@@ -250,7 +295,30 @@ function packToText(pack) {
   }
   L.push('');
 
-  L.push('## 6 未包含的部分（缺失≠没有异常）');
+  L.push('## 6 菜品事实（堂食排行，按毛利降序取前 ' + DISH_TOP + ' 道）');
+  const dsh = p.dishes;
+  if (dsh && Array.isArray(dsh.top) && dsh.top.length) {
+    if (dsh.range && (dsh.range.from || dsh.range.to)) {
+      L.push('- 统计期间：' + (dsh.range.from || '?') + ' ~ ' + (dsh.range.to || '?') +
+        (dsh.range.days != null ? '，有数据 ' + dsh.range.days + ' 天' : ''));
+    }
+    dsh.top.forEach(function (x) {
+      L.push('- ' + x.name + '：销量 ' + x.qty + '，营业额 ' + money(x.amountFen) +
+        '，食材成本 ' + money(x.totalCostFen) + '，毛利 ' + money(x.grossFen) +
+        '，毛利率 ' + x.marginPct + '%');
+    });
+    if (dsh.unmatchedCount != null) {
+      L.push('- 未匹配成本卡：' + dsh.unmatchedCount + ' 道（这部分没有成本，算不出毛利 —— 不要替它估）');
+    }
+    if (dsh.truncated) {
+      L.push('- ⚠️ 明细被截断：本榜只统计了部分销售行，**不要当成全部**');
+    }
+  } else {
+    L.push('- （本期没有拿到菜品数据，原因见第 7 节）');
+  }
+  L.push('');
+
+  L.push('## 7 未包含的部分（缺失≠没有异常）');
   const un = Array.isArray(p.unavailable) ? p.unavailable : [];
   if (un.length) {
     un.forEach(function (u) { L.push('- ' + u.section + '：' + u.reason); });
@@ -259,7 +327,7 @@ function packToText(pack) {
   }
   L.push('');
 
-  L.push('## 7 可以直接问的问题');
+  L.push('## 8 可以直接问的问题');
   q.forEach(function (x, idx) { L.push((idx + 1) + '. ' + (x.text || x.code)); });
 
   return L.join('\n');

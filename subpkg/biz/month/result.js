@@ -30,6 +30,9 @@ const { settleSummary } = require('../../../utils/takeaway.js');
 const shareCard = require('../../../utils/shareCard.js');
 // 🔴 R464（PLAN_AI P0-①）：AI 诊断包 —— 纯函数装配，不调模型、不联网（见 utils/diagnosisPack.js 头注）
 const pack = require('../../../utils/diagnosisPack.js');
+// 🔴 R466：truncated 的单源判据（不许在页面里自己读 `d.truncated`）——
+//   本页不渲染截断横幅，但**必须消费**：诊断包会把「明细被截断」写进文本（可见降级）。
+const dh = require('../../../utils/dataHealth.js');
 // 🔴 R399（队列 #16）：异常核对清单「规则层」—— 纯函数，只跟本店自己的历史比（见 `utils/anomalyRules.js` 头注）。
 //   本页只做两件事：① 编排取数（月份列表 + 逐月账本）② 把规则层的出参译成页面文案。
 //   ⚠️ 阈值/中位数/排序一律在规则层，页面零阈值、零金额差（PLAN_AI §3 口径红线）。
@@ -156,6 +159,7 @@ Page({
       exportBtn: TERMS.exportBtn.m1Report,
       aiPackBtn: TERMS.exportBtn.aiPackBtn,
       aiPackHint: TERMS.exportBtn.aiPackHint,
+      aiPackLoading: TERMS.exportBtn.aiPackLoading,
       exportIng: TERMS.exp.exportIng,
       exportDone: TERMS.exp.exportDone,
       fileSaved: TERMS.exp.fileSaved,
@@ -779,11 +783,33 @@ Page({
   //   为什么不吃付费墙：它不给任何结论，只是把本月**已算好的数字 + 已判好的结论**整理成文本，
   //   让老板带去问外部 AI（零资质、零成本）；真报表走 onExport 的付费墙，两者不是一件事。
   //   为什么用剪贴板：不新增文件权限、不依赖 openDocument 的格式支持，粘到哪里都由老板决定。
-  onCopyPack() {
+  async onCopyPack() {
     try {
       if (!this.data.hasLedger) {
         wx.showModal({ title: this.data.t.aiPackBtn, content: this.data.t.aiPackEmpty, showCancel: false });
         return;
+      }
+      // 菜品事实**按需取**：失败 / 未开权限都不能挡住整包（包的主体是本月数字与判断）。
+      //   拿不到就如实写进 unavailable，绝不用 0 或空排行冒充「本月没卖菜」。
+      let dishes = this._dishes;
+      let dishesReason = this._dishesReason || 'not_loaded_on_this_page';
+      if (dishes === undefined) {
+        wx.showLoading({ title: this.data.t.aiPackLoading, mask: true });
+        try {
+          const rng = ui.monthRange(this.data.month);
+          const d = await api.call('getDishReview', { biz_date_from: rng.from, biz_date_to: rng.to });
+          dishes = {
+            range: d.range, dineIn: d.dine_in || [], totals: d.totals || null,
+            coverageA: d.coverageA, coverageC: d.coverageC,
+            unmatched: (d.unmatched || []).length, truncated: dh.isTruncated(d),
+          };
+        } catch (e) {
+          dishes = null;
+          dishesReason = 'fetch_failed_or_locked';   // 未开权限 / 取数失败：如实说，不编
+        }
+        this._dishes = dishes;
+        this._dishesReason = dishes ? '' : dishesReason;
+        wx.hideLoading();
       }
       const p = pack.buildDiagnosisPack({
         month: this.data.month,
@@ -792,12 +818,15 @@ Page({
         ledger: this._res || {},
         breakeven: this._beRaw || {},
         anomalies: this._anomRaw || {},
+        dishes: dishes,
+        dishesReason: dishes ? '' : dishesReason,
       });
       wx.setClipboardData({
         data: pack.packToText(p),
         fail: () => wx.showModal({ title: this.data.t.aiPackBtn, content: this.data.t.aiPackFail, showCancel: false }),
       });
     } catch (e) {
+      wx.hideLoading();
       api.toastError(e);
     }
   },
