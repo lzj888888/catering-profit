@@ -816,3 +816,10 @@
   - ⑤ **台账**：`tools/check_suite_assert_counts.js` CASES 注释 31→**33**（`check_m1_engine_parity` 实跑 33）、54→**60**（`check_m1_diff_explain` 实跑 60），并改为「分段计数以实跑 pass 数为准」——原注释拆项相加≠总数（4+9+6+3+21+1=44），再抄一遍仍是假数。
   - ⑥ **取号**：R494 —— `b220e8e`（20:56）与 `54a8296`/`1c5563e`（20:03–20:12）**同标 R493**，后者已在 AUTO_LOG 占号 ⇒ 本轮避让取 R494，不改写历史。
   - ⑦ **未做（如实登记）**：真机扫码走查（归李老师）；M1+M3 首月 1 元会员计费接入（NOTE §5 已另立批次，本轮不碰）。
+
+- [2026-10-25 21:22] R494 只读巡检（队列 0 todo，未改代码）· 四项全绿
+  - ① **工作树**：tracked **0 行**；HEAD `08fdb9c` ≡ `origin/dev`（领先/落后 0/0）；未跟踪过程件 **62 个**（`_r494_*.py` / `_mkforce_r494_*.log` / `_gate_r494.log` 等，只登记不动手 —— 批量清 >50 会触发 safe-delete 确认）。
+  - ② **门禁**：`_gate_r494.log` **211/211 · 100.8s · `GATE_RC=0` · `R92 ✅`**，晚于代码提交 `b220e8e`(20:56) 且已覆盖本轮 `tools/check_suite_assert_counts.js` 注释改动；其后的 `55705d3`（证据文件）/`08fdb9c`（台账）不含判据面。
+  - ③ **队列**：**0 todo / 0 in_progress / 56 done / 13 blocked**，无僵尸 todo、无反向漂移。13 条 why 逐条核过且仍成立：#7 扫码 · #9 美团销量表样例 · #12 AppSecret 建第 4 索引 · #21/#33/#35/#41/#55/#60 待拍板 · #37 prod 环境 · #38 支付手续前置 · #39 大赛报名 · #40 上线口径（等李老师说「要上线了」）。
+  - ④ **NOTE↔代码**：① R493 免费档分流三处一致 —— `pages/index/index.js:113` 按 `isPaid` 三元取数、`:116` 同口径取标签；月首页 `index.wxml:31/32` `isPaid ? result.profitTitle : t.netRef` 与 `isPaid ? true_profit : ref_profit` 同源 ② R489 三行两页**键名不同但都在屏**（月首页 `amortText/lumpText/basisText`、结果页 `amortText/lumpText/profitBasis`）③ R488 `profitTitle` 在首页 `index.wxml:27/35` 真上屏。
+  - ⑤ **观察（不登记、不计缺口）**：月首页 `amortText`/`basisText` 的 `wx:if` 带 `isPaid`，`lumpText` 不带 —— 一次性投入在两个口径都扣、摊销只属会计口径 ⇒ 现写法自洽（与 R492 巡检同一结论，现状未变）。
