@@ -162,8 +162,16 @@ check('F-② handler 真翻转 beMore（不是空函数）',
 const dataSeg = (jsCode.match(/data:\s*\{([\s\S]{0,1200})/) || [])[1] || '';
 check('F-③ 默认**收起**（data 里 beMore: false，不是 true）', dataSeg.indexOf('beMore: false') >= 0);
 const foldSeg = (wxmlCode.match(/<block wx:if="\{\{beMore\}\}">([\s\S]*?)<\/block>/) || [])[1] || '';
-check('F-④ 三项依据都在折叠区内（保本区间 / 达标营业额 / 房租归因未被删）',
-  /beBreakeven/.test(foldSeg) && /beHealthy/.test(foldSeg) && /beAttrLead/.test(foldSeg));
+// 🔴 F-④ **判据于 2026-10-25 变更（李老师真机亲自拍板，非"改判据迎合代码"）**：
+//   原判据＝「保本区间 / 达标营业额 / 房租归因**都在折叠区内**」（R314 定的"依据折叠"）。
+//   李老师真机反馈：「这个结论恰恰倒该露出来，大家很关注这个（做到多少才不亏），藏起来不行」。
+//   ⇒ 定案改为：**结论（保本营收 / 达标营业额）露出，依据（回本路径 / 毛利结构 / 房租归因）才折叠**。
+//   故本条改为判「该露的在外面、该藏的在里面」，两头都守住（不是放松）。
+check('F-④ 结论露出、依据折叠（R480 定案：保本营收 / 达标营业额在折叠区**外**，房租归因在**内**）',
+  foldSeg.indexOf('beBreakeven') < 0 && foldSeg.indexOf('beHealthy') < 0
+  && /beAttrLead/.test(foldSeg)
+  && wxmlCode.indexOf('t.beBreakeven') < wxmlCode.indexOf('<block wx:if="{{beMore}}">')
+  && wxmlCode.indexOf('t.beHealthy') < wxmlCode.indexOf('<block wx:if="{{beMore}}">'));
 check('F-⑤ 自失效护栏：默认 true 的样本必须判红（防本组恒绿）',
   'data: { beMore: true, t: {} }'.indexOf('beMore: false') < 0);
 
@@ -223,6 +231,20 @@ check('H-⑦ terms 有 beHealthyScope 文案键', /beHealthyScope:/.test(termsSr
 const H_VARIANT = jsCode.replace(/hiPct: rentHi/, 'hiPct: 15').replace(/hiPct: laborHi/, 'hiPct: 22');
 check('H-⑧ 反恒真：改回写死 15/22 的变体必须被判红（证明 H-③ 不是恒真）',
   H_VARIANT !== jsCode && hasHardcodedHi(H_VARIANT));
+// 🔴 R480 真机暴露：**顺序本身就是判据** —— `const inds` 若写在 `const be` 之后，
+//   同一块作用域内触发 TDZ ⇒ be 拿不到业态区间、回落写死常数 ⇒ 改业态时数字不跟着变。
+//   静态判据全绿也照样崩（判据不读执行顺序就看不见），故单独立一条。
+const I_INDS = jsCode.indexOf('const inds = this.decorateInds(');
+const I_BE = jsCode.indexOf('buildBreakeven(d, res, prevProfitFen, inds)');
+check('H-⑨ 顺序即判据：inds 的定义必须**早于** be 的计算（晚一步就 TDZ）',
+  I_INDS >= 0 && I_BE >= 0 && I_INDS < I_BE, `inds@${I_INDS} / be@${I_BE}`);
+const I_FOLD = wxmlCode.indexOf('wx:if="{{beMore}}"');
+check('H-⑩ 结论必须露出来：保本营收 / 达标营业额在折叠块**之外**（老板最关心的不该藏）',
+  I_FOLD >= 0 && wxmlCode.indexOf('t.beBreakeven') < I_FOLD && wxmlCode.indexOf('t.beHealthy') < I_FOLD,
+  `fold@${I_FOLD}`);
+const H_VARIANT2 = jsCode.replace('const inds = this.decorateInds(', 'const __moved_inds = this.decorateInds(');
+check('H-⑪ 反恒真：把 inds 定义挪走（顺序失效）的变体必须被判红',
+  H_VARIANT2 !== jsCode && H_VARIANT2.indexOf('const inds = this.decorateInds(') < 0);
 
 // ================= E 下界：断言数不被悄悄删小 =================
 console.log('\n===== E 下界 =====');

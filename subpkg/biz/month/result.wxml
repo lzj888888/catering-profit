@@ -75,24 +75,31 @@
   <!-- 🔴 R311：体检结论卡（保本区间 + 健康营收 + 结构性诊断）。
        ⚠️ 报**区间**不报单点 —— 贡献率低时区间会宽到三成以上，报单点就是假精确。
        ⚠️ 不改任何既有计算：本卡只解释 M1 已经算出的数。 -->
-  <!-- 🔴 R314：体检卡精简 —— 上面只留「结论 / 动作 / 诚实提示」，
-       依据（保本区间、达标营业额、房租归因）默认收起。
-       判据：老板第一眼只要三件事 —— 我在亏吗、还能撑多少、哪里在漏钱。 -->
+  <!-- 🔴 R314 + R480 修正（李老师真机 2026-10-25 拍板）：**什么该露出、什么该折叠**。
+       原实现把「保本营收」「达标营业额」藏在"展开看依据"里 —— 恰恰把老板最关心的
+       「做到多少才不亏」藏了（李老师："这个结论恰恰倒该露出来，大家很关注这个"）。
+       现改为：
+         · **结论层（默认可见）** = 保本营收 / 达标营业额（带口径标注）/ 安全垫
+         · **依据层（折叠）**   = 回本两条路 / 毛利结构 / 结构性诊断 / 认不出的费用项 / 房租归因
+       判据：老板第一眼要的是"我在亏吗、要做到多少才不亏、还能撑多少"，其余才是依据。 -->
   <view class="card2" wx:if="{{be && be.ok}}">
     <view class="cell drill-head"><text class="lbl">{{t.beTitle}} · {{be.title}}</text></view>
+    <!-- 结论①：保本营收 -->
+    <view class="cell"><text class="lbl">{{t.beBreakeven}}</text><text class="val">{{t.cur}}{{be.rangeText}}</text></view>
+    <!-- 结论②：达标营业额 + 口径标注（按哪个业态算的、会跟着业态变） -->
+    <view class="cell" wx:if="{{be.healthyText}}"><text class="lbl">{{t.beHealthy}}</text><text class="val">{{be.healthyText}}</text></view>
+    <view class="muted" wx:if="{{be.healthyScopeText}}">{{be.healthyScopeText}}</view>
+    <!-- 结论③：安全垫 -->
     <view class="cell" wx:if="{{be.marginText}}"><text class="lbl">{{t.beMargin}}</text><text class="val {{be.marginNeg ? 'warn' : ''}}">{{be.marginText}}</text></view>
-    <view class="muted" wx:if="{{be.pathText}}">{{be.pathText}}</view>
-    <view class="muted" wx:if="{{be.gm}}">{{be.gm.text}}</view>
-    <view class="warn" wx:if="{{be.diag === 'structural'}}">{{t.beStructural}}</view>
-    <view class="muted" wx:if="{{be.unknownText}}">{{be.unknownText}}</view>
     <view class="cell be-more-head" bindtap="onToggleBeMore">
       <text class="lbl">{{beMore ? t.beMoreHide : t.beMoreShow}}</text>
     </view>
     <block wx:if="{{beMore}}">
-      <view class="cell"><text class="lbl">{{t.beBreakeven}}</text><text class="val">{{t.cur}}{{be.rangeText}}</text></view>
-      <view class="cell" wx:if="{{be.healthyText}}"><text class="lbl">{{t.beHealthy}}</text><text class="val">{{be.healthyText}}</text></view>
-      <!-- R480：口径标注 —— 这块用的是**哪个业态 × 城市**的区间，且与下方指标卡同源、会跟着业态变 -->
-      <view class="muted" wx:if="{{be.healthyScopeText}}">{{be.healthyScopeText}}</view>
+      <!-- 依据（R480 起默认收起）-->
+      <view class="muted" wx:if="{{be.pathText}}">{{be.pathText}}</view>
+      <view class="muted" wx:if="{{be.gm}}">{{be.gm.text}}</view>
+      <view class="warn" wx:if="{{be.diag === 'structural'}}">{{t.beStructural}}</view>
+      <view class="muted" wx:if="{{be.unknownText}}">{{be.unknownText}}</view>
       <view class="muted" wx:if="{{be.attr}}">{{t.beAttrLead}} {{be.attr.rate}}：{{be.attr.denom}} {{t.beAttrDenom}}｜{{be.attr.numer}} {{t.beAttrNumer}}</view>
     </block>
   </view>

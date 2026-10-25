@@ -254,6 +254,16 @@ Page({
       const expDetail = this.buildDetail(d.expense_items || []);
       // R302：外卖到手账 —— 由 M1 **已录**的数反算（详见 buildSettle 头注）
       const settle = this.buildSettle(d.income_items || [], d.expense_items || []);
+      // round115：行业指标对照 —— 后端只回 key/数值/level 枚举，中文名与评级文案在前端补齐（术语单源在前端）
+      // 🔴🔴 R480 修（真机暴露，2026-10-25）：**inds 必须先于 be 定义**。
+      //   原因：`buildBreakeven` 的「达标营业额」要取 inds 里的业态区间（房租/人工上限）。
+      //   原实现把 `const inds` 写在 `const be` **之后** ⇒ 同一块作用域内的 TDZ
+      //   （Cannot access 'inds' before initialization）⇒ be 拿不到业态区间、回落写死常数
+      //   ⇒ **改业态时保本营收/达标营业额纹丝不动**（李老师真机反馈"现在是没有变化的"）。
+      //   ⚠️ 顺序本身就是判据：别再把这三行挪回 be 后面（已由 check_m1_indicator_view H-⑨ 守）。
+      const inds = this.decorateInds(d.indicators || []);
+      const scope = d.indicator_scope || {};
+      const sv = this.scopeView(scope);
       // 🔴 R311：体检（纯读 M1 结果做解释，**不改任何既有计算**）
       // 🔴 R313：上月真钱利润（跨月对比）。**只读、失败不阻断**——拿不到就当没上月，
       //   绝不编 0（编 0 会让"比上月多赚"凭空出现）。
@@ -278,10 +288,7 @@ Page({
         breakEvenFen: (be && be.ok) ? (Number(be.breakevenFen) || 0) : 0,
         profitFen: Number(res.total_factor_real_profit_fen) || 0,
       };
-      // round115：行业指标对照 —— 后端只回 key/数值/level 枚举，中文名与评级文案在前端补齐（术语单源在前端）
-      const inds = this.decorateInds(d.indicators || []);
-      const scope = d.indicator_scope || {};
-      const sv = this.scopeView(scope);
+      // （inds / scope / sv 已在上方定义 —— 见上面 R480 顺序注释，勿挪动）
       // R443：固定支出金额（分）留给「可撑月数」用；缺项为 null，不按 0 算
       this._fixedFen = (d && d.fixed_items_fen) || null;
       this.recalcRunway();
