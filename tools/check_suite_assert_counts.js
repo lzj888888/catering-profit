@@ -262,10 +262,11 @@ const CASES = [
   { key: 'check_preload_rule', rel: 'tools/check_preload_rule.js' },      // 14 条（A2 + B3 + C1 + D1 + E7）
   // R477：M1 双利润引擎三副本行为等价 —— 断言数不受守则「删掉 E 段口径专项」会静默通过
   //   （而那正是本轮改动的落点）；B 段 3000 组对拍若被改成 1 组也无人报警 ⇒ 必须受守。
-  { key: 'check_m1_engine_parity', rel: 'tools/check_m1_engine_parity.js' }, // 31 条（A3 + B2 + C11 + D4 + E10 + F1）
+  { key: 'check_m1_engine_parity', rel: 'tools/check_m1_engine_parity.js' }, // 33 条（R483 增 2；分段计数以实跑 pass 数为准）
   // R479：差异说明条件化 —— 断言数不受守则「把 A-⑥ 两条文案写成同值」会静默通过
   //   （分支留着、值一样 ⇒ 形同没条件化，正是本守卫要对付的假条件化）。
-  { key: 'check_m1_diff_explain', rel: 'tools/check_m1_diff_explain.js' },   // 54 条（S4 + A9 + B6 + C3 + H21 + D1）
+  // R493：H 段（摊销/依据三态行为面 21 条）+ I 段（真实盘点 5 跳链路 6 条）⇒ 33→60。
+  { key: 'check_m1_diff_explain', rel: 'tools/check_m1_diff_explain.js' },   // 60 条（H21 + I6 为 R493 新增；分段计数以实跑 pass 数为准）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];
