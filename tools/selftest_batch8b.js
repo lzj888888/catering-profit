@@ -299,7 +299,7 @@ check('G10i 保存只提交填了金额的行（空渠道不落库）',
 check('G10k 新增行带 custom 标记（点了「添加渠道」立刻出现空行）',
   /concat\(\[\{ subItem: '', amountYuan: '', custom: true \}\]\)/.test(dinJs));
 check('G10j 预设行不给删除键（× 只对自定义行）',
-  /class="btn-del" wx:if="\{\{!r\.fixed\}\}"/.test(dinWxml));
+  /class="btn-del" wx:if="\{\{!r\.fixed && incomeEditGi === gi\}\}"/.test(dinWxml));
 
 // ===== G11（2026-09-21 李老师真机反馈「美团和现金后面有红色X、和上面重复了」）=====
 // 现场（真云 getLedger 实测）：2026-09 堂食 sub_items = [{美团: 50000}, {现金: 2000}]
@@ -362,16 +362,30 @@ check('G11d 非堂食行装配也走唯一入口（不再各自拼装）',
 // R494（2026-10-25）：费用侧 × 新增「编辑态」闸门（防上滑/敲空白误删）。
 //   判据仍守「至少留一行」这条主线，同时**独立**守「必须有且仅有一处挂 expenseEditGi === gi」
 //   —— 只放宽字面量、不确认闸门真的挂上，等于把防误删改动放空（同族病：守门不守语义）。
-check('G11d 两个 WXML 分支的 × 都受「至少留一行」护栏约束；费用侧另加本组删除态闸门（R494b）',
-  (dinWxml.match(/class="btn-del" wx:if="\{\{g\.expanded && g\.rows\.length > 1(?:\s*&&\s*expenseEditGi === gi)?\}\}"/g) || []).length === 2
-  && (dinWxml.match(/class="btn-del" wx:if="\{\{g\.expanded && g\.rows\.length > 1 && expenseEditGi === gi\}\}"/g) || []).length === 1
-  && /data-gidx="\{\{gi\}\}"[\s\S]{0,80}?catchtap="toggleExpenseEdit"/.test(dinWxml));
+// R496（2026-10-25）：收入侧套用同一套 ⇒ × 由 2 处变 3 处（堂食渠道 / 其他收入 / 费用），
+//   且**每一处**都必须挂本组删除态闸门（收入 incomeEditGi、费用 expenseEditGi）。
+//   ⚠️ 判据改成「先抽出全部 wx:if 条件再逐条判」而不是钉整串字面量：
+//      钉字面量的写法每加一个修饰条件就红一次（本轮已第 N 次），且**容易把"加了但加错侧"判成绿**。
+// ⚠️ R68（形状守卫）：顶层**多行链式调用**会被判「无法定界」并 fail-closed ⇒ 必须写成单行。
+const delIfConds = (dinWxml.match(/class="btn-del" wx:if="\{\{([^"]*)\}\}"/g) || []).map((s) => s.replace(/^class="btn-del" wx:if="\{\{/, '').replace(/\}\}"$/, ''));
+check('G11d/R496 三处 × **无一常驻**，全部挂本组删除态闸门（收入 incomeEditGi / 费用 expenseEditGi === gi）',
+  delIfConds.length === 3 && delIfConds.every((c) => /(incomeEditGi|expenseEditGi) === gi/.test(c)));
+check('G11d/R496 「至少留一行」护栏仍在（g.rows.length > 1 恰好两处：其他收入 + 费用；堂食渠道不适用）',
+  delIfConds.filter((c) => /g\.rows\.length > 1/.test(c)).length === 2);
+check('G11d/R496 闸门分侧正确：收入侧两处用 incomeEditGi、费用侧一处用 expenseEditGi',
+  delIfConds.filter((c) => /incomeEditGi === gi/.test(c)).length === 2
+  && delIfConds.filter((c) => /expenseEditGi === gi/.test(c)).length === 1);
+check('G11d/R496 两侧开关按钮都真接上处理函数（防「按钮加了却没接线」）',
+  /data-gidx="\{\{gi\}\}"[\s\S]{0,80}?catchtap="toggleExpenseEdit"/.test(dinWxml)
+  && /data-gidx="\{\{gi\}\}"[\s\S]{0,80}?catchtap="toggleIncomeEdit"/.test(dinWxml)
+  && /toggleIncomeEdit\(e\) \{[\s\S]{0,200}?incomeEditGi:/.test(dinJs));
 // R494c（2026-10-25 李老师）：**取消「完成删除」** + 删完自动收起 ×。
 //   为什么单独立腿：这三条都是「改一半不报错」的活口 —— ① 删了文案却没接自动退出 ⇒ × 赖在屏幕上，
 //   用户还得再点一次按钮（就是李老师说的那一步）；② 自动退出了但文案仍写「完成删除」⇒ 名不副实；
 //   ③ 状态只靠文案、没有颜色表达 ⇒ 用户看不出自己正在删除态。每条都独立判，不合并。
-check('R494c-① 删除落数据的 doDeleteRow 里自动把 expenseEditGi 置回 -1（删完即收，不再要求点「完成」）',
-  /doDeleteRow\(kind, gidx, ridx\) \{[\s\S]{0,800}?expenseEditGi: -1/.test(dinJs));
+// R496：由「固定清 expenseEditGi」改为**按 kind 只收起本次删的那一侧**（收入/费用各一个下标）。
+check('R494c-① 删除落数据的 doDeleteRow 自动收起 ×：按 kind 收起对应侧（删完即收，不再要求点「完成」）',
+  /doDeleteRow\(kind, gidx, ridx\) \{[\s\S]{0,900}?\[kind === 'income' \? 'incomeEditGi' : 'expenseEditGi'\]: -1/.test(dinJs));
 check('R494c-② 「完成删除」文案已从三处彻底移除（页面 / 逻辑 / 文案单源）',
   !/expenseDelDone/.test(dinWxml) && !/expenseDelDone/.test(dinJs) && !/expenseDelDone/.test(terms));
 check('R494c-③ 删除态改用**颜色**表达：按钮挂 is-del-on 且文案恒为 t.expenseDelItem（无三元换字）',
@@ -384,7 +398,15 @@ check('R494c-④ 两枚按钮等宽恒在一行（nowrap + flex 1 1 0），且�
 check('G11d 反向腿：预算行的 × 已不再带 !r.fixed（防被改回去）',
   !/class="btn-del" wx:if="\{\{g\.expanded && !r\.fixed/.test(dinWxml));
 check('G11d 堂食渠道的 × 仍带 !r.fixed（那里的预设渠道确实会被补回，与 G10j 同口径）',
-  /class="btn-del" wx:if="\{\{!r\.fixed\}\}"/.test(dinWxml));
+  /class="btn-del" wx:if="\{\{!r\.fixed && incomeEditGi === gi\}\}"/.test(dinWxml));
+// R496（2026-10-25 李老师：「收入侧也可以套用同一套」）：收入两处（其他收入组=细项 / 堂食组=渠道）
+//   必须与费用侧同款 —— 并排等宽胶囊 + is-del-on 表达删除态 + 文案恒定（无三元换字）。
+//   为什么单独立腿：收入与费用是两套 wx:for 分支，「费用改好了收入没跟上」是典型的改一半不报错。
+check('R496 收入侧两枚按钮同款：并排 subop-btn + is-del-on 表达删除态 + 文案恒为 t.incomeDelItem / t.incomeDelChannel',
+  (dinWxml.match(/class="btn-small ghost subop-btn subop-del \{\{incomeEditGi === gi \? 'is-del-on' : ''\}\}"/g) || []).length === 2
+  && /catchtap="toggleIncomeEdit">\{\{t\.incomeDelItem\}\}/.test(dinWxml)
+  && /catchtap="toggleIncomeEdit">\{\{t\.incomeDelChannel\}\}/.test(dinWxml)
+  && !/incomeEditGi === gi \? t\./.test(dinWxml));
 check('G11d 预设行名以纯文本渲染（不可编辑）',
   (dinWxml.match(/class="sub-item-fixed" wx:elif="\{\{g\.expanded\}\}"/g) || []).length === 2);
 

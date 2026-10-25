@@ -47,8 +47,11 @@ Page({
       amountBadTip: TERMS.ui.amountBadTip,
       incomeTitle: TERMS.ledger.incomeTitle,
       expenseTitle: TERMS.ledger.expenseTitle,
-      // R494b：费用区「－ 删除细项 / 完成删除」开关（与「+ 添加细项」并排）
+      // R494b/c：费用区「- 删除细项」开关（与「+ 添加细项」并排，删完自动收起）
       expenseDelItem: TERMS.ledger.expenseDelItem,
+      // R496（2026-10-25）：收入侧套用同一套 —— 其他收入组叫「细项」、堂食组叫「渠道」（两者不是一回事）
+      incomeDelItem: TERMS.ledger.incomeDelItem,
+      incomeDelChannel: TERMS.ledger.incomeDelChannel,
       carryBtn: TERMS.ledger.carryBtn,
       carryOverwrite: TERMS.ledger.carryOverwrite,
       carryEmpty: TERMS.ledger.carryEmpty,
@@ -209,6 +212,9 @@ Page({
     //   点任一组就会让**四组同时**冒出一片 ×，反而更乱 ⇒ 只让当前这一组进入删除态。
     //   默认态仍不渲染任何 × ⇒ 上滑/敲空白/滚屏都碰不到删除键；点 × 还有 wx.showModal 二次确认。
     expenseEditGi: -1,
+    // R496（2026-10-25）：收入侧同一套（组下标，-1 = 全关）。与费用侧**各用各的下标** ⇒
+    //   在某组开删除态不会牵连另一侧；删掉一行后按 kind 只收起对应那一侧。
+    incomeEditGi: -1,
     month: '',
     isArchive: false,
     archivedAtMs: 0,
@@ -279,7 +285,7 @@ Page({
     const month = (q && q.month) || ui.nowMonth();
     // P0#3：读入新手/老手模式（仅存本地；读不到回默认 'novice'）
     // 切月/重进一律退出删除态：避免上次留下的「可删」状态跨月串台
-    this.setData({ month, inputMode: this.loadInputMode() || 'novice', expenseEditGi: -1 });
+    this.setData({ month, inputMode: this.loadInputMode() || 'novice', expenseEditGi: -1, incomeEditGi: -1 });
     this.initGroups();
     this.load();
   },
@@ -842,6 +848,13 @@ Page({
     const gi = Number((e.currentTarget.dataset || {}).gidx);
     this.setData({ expenseEditGi: this.data.expenseEditGi === gi ? -1 : gi });
   },
+  // R496（2026-10-25 李老师：收入侧也套用同一套）—— 与费用侧**同口径不同键**：
+  //   默认态不渲染 ×；点本组「- 删除细项 / - 删除渠道」才出 ×；删完自动收起（见 doDeleteRow）。
+  //   ⚠️ 堂食渠道行额外保留 `!r.fixed`：那里的预设渠道装配时会补回，给了 × 只会让人以为删不掉（G10j/G11d 守）。
+  toggleIncomeEdit(e) {
+    const gi = Number((e.currentTarget.dataset || {}).gidx);
+    this.setData({ incomeEditGi: this.data.incomeEditGi === gi ? -1 : gi });
+  },
   // 删除前二次确认：正文如实说「会回到下方待选项 / 可重新添加」—— 🔴 不写「不可恢复」，
   //   因为预设项删掉后会出现在下方「还没加的有：…」，点一下就能加回来（李老师 2026-10-25 指出）。
   delRow(e) {
@@ -870,9 +883,10 @@ Page({
     if (rows.length === 0) rows = [{ subItem: '', amountYuan: '' }]; // 至少保留一行（老板只填一行也能走）
     g.rows = this.decorateRows(g, rows);
     groups[Number(gidx)] = g;
-    // R494c：删完即收 —— × 自动收起，不再要求用户点「完成删除」（那一步多余且无感）。
+    // R494c / R496：删完即收 —— × 自动收起，不再要求用户点「完成删除」（那一步多余且无感）。
     //   想再删一行，重新点一次「- 删除细项」即可（每次都显式进入 = 多一层防误删）。
-    this.setData({ [key]: groups, expenseEditGi: -1 });
+    //   按 kind 只收起**本次删的那一侧**：收入与费用各用一个下标，别一刀切全清（避免误伤另一侧已开的状态）。
+    this.setData({ [key]: groups, [kind === 'income' ? 'incomeEditGi' : 'expenseEditGi']: -1 });
     this.syncDineSum();
   },
 

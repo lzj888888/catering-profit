@@ -120,8 +120,10 @@
             data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubItem" disabled="{{readOnly}}" />
           <text wx:else class="dine-name">{{r.subItem}}</text>
           <!-- 预设渠道（fixed）不给删除键：清单是单一数据源，装配时必然补回，
-               给了 × 只会让人以为「删不掉」（G10j 守）；自定义渠道行仍可删 -->
-          <button class="btn-del" wx:if="{{!r.fixed}}"
+               给了 × 只会让人以为「删不掉」（G10j 守）；自定义渠道行仍可删。
+               R496：与费用侧同口径 —— 再挂本组删除态闸门 incomeEditGi === gi，
+               默认态不渲染 ×（上滑/敲空白/滚屏都碰不到）。 -->
+          <button class="btn-del" wx:if="{{!r.fixed && incomeEditGi === gi}}"
             data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" catchtap="delRow">{{t.delSubItem}}</button>
         </view>
         <view class="dine-note" wx:if="{{r.note}}">{{r.note}}</view>
@@ -137,8 +139,11 @@
         <text class="dine-sum-val">{{dineSumYuan}}</text>
       </view>
       <view class="hint">{{t.dmSumAutoHint}}</view>
-      <view class="group-ops">
-        <button class="btn-small ghost" data-kind="income" data-gidx="{{gi}}" catchtap="addRow">{{t.dmAddChannel}}</button>
+      <!-- R496：与费用侧同一套 —— 「+ 添加渠道」右侧并排「- 删除渠道」，等宽胶囊、删完自动收起 -->
+      <view class="group-ops group-ops-inline">
+        <button class="btn-small ghost subop-btn" data-kind="income" data-gidx="{{gi}}" catchtap="addRow">{{t.dmAddChannel}}</button>
+        <button class="btn-small ghost subop-btn subop-del {{incomeEditGi === gi ? 'is-del-on' : ''}}"
+          wx:if="{{!readOnly}}" data-gidx="{{gi}}" catchtap="toggleIncomeEdit">{{t.incomeDelChannel}}</button>
       </view>
     </block>
 
@@ -385,7 +390,8 @@
           <input class="sub-item-inp" wx:if="{{g.expanded && !r.fixed}}" value="{{r.subItem}}" placeholder="{{t.subItemPh}}"
             data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubItem" disabled="{{readOnly}}" />
           <text class="sub-item-fixed" wx:elif="{{g.expanded}}">{{r.subItem}}</text>
-          <button class="btn-del" wx:if="{{g.expanded && g.rows.length > 1}}"
+          <!-- R496：挂本组删除态闸门 incomeEditGi === gi（与费用侧同口径：默认态不渲染 ×） -->
+          <button class="btn-del" wx:if="{{g.expanded && g.rows.length > 1 && incomeEditGi === gi}}"
             data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" catchtap="delRow">{{t.delSubItem}}</button>
         </view>
         <view class="sub-line2">
@@ -397,8 +403,12 @@
       <!-- round102：未用预设项只读提示（点它直开预设面板）—— 补「添加」这条腿的可发现性 -->
       <view class="hint preset-hint" wx:if="{{g.expanded && g.unusedText}}" data-kind="income" data-gidx="{{gi}}"
         catchtap="onOpenPresetPick">{{t.presetHintPrefix}}{{g.unusedText}}</view>
-      <view class="group-ops" wx:if="{{g.expanded}}">
-        <button class="btn-small ghost" data-kind="income" data-gidx="{{gi}}" catchtap="addRow">{{t.addSubItem}}</button>
+      <!-- R496：与费用侧同一套 —— 「+ 添加细项」右侧并排「- 删除细项」，等宽胶囊、删完自动收起 -->
+      <view class="group-ops group-ops-inline" wx:if="{{g.expanded}}">
+        <button class="btn-small ghost subop-btn" data-kind="income" data-gidx="{{gi}}" catchtap="addRow">{{t.addSubItem}}</button>
+        <button class="btn-small ghost subop-btn subop-del {{incomeEditGi === gi ? 'is-del-on' : ''}}"
+          wx:if="{{!readOnly && g.rows.length > 1}}" data-gidx="{{gi}}"
+          catchtap="toggleIncomeEdit">{{t.incomeDelItem}}</button>
       </view>
     </block>
   </view>
