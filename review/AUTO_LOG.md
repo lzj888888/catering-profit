@@ -838,3 +838,12 @@
   - ③ 无僵尸 todo：13 条 blocked 的 why 仍成立（#12 AppSecret / #7 扫码 / #9 美团样例 / #21 #33 #35 #55 #60 拍板 / #37 prod / #38 支付手续 / #39 #40 #41 决策）。
   - ④ NOTE↔代码：R493（`b220e8e`）§1 勾选已核 —— `inventory.js:59-61` 出 `stockTakeDone`/`showStockTake`，`inventory.wxml:39-45` 真渲染 `<switch bindchange="onToggleStockTake">`（🔴 首查用小写 `stocktake` grep 得 0 命中，是按错键名的假阴性，不是缺行）；R489（`1a38eeb`）/R488（`b0225df`）已于 R491/R489 复核，现码未变。
   - ⑤ 登记 **#71（blocked=yes）**：本页收入侧两处删除键（`input.wxml:124` 堂食自定义渠道、`:388` 收入细项）仍是常驻 ×，未纳入本轮「编辑态」；因共用 `delRow` ⇒ 已有二次确认（不会误删），只剩「多一次弹窗」的摩擦 ⇒ 是否一并收进编辑态属交互取舍，需李老师拍板，不擅自改。
+
+- [2026-10-25 23:46] R496 补 R494b（`6063899`）/ R494c（`df2e3dc`）机器证据：门禁 RC 可自证 + 出码 · 门禁 211/211 RC=0 · commit cefedbb · 队列 #72 → done
+  - ① **未重复实现**：两提交的「费用细项 - 删除细项并排 + 取消完成删除」已实读复核自洽 —— terms 双副本 md5 `174e7b3c3babdd35cd5952c1ebbd8253` 全等；`input.js:51` 有 `t.expenseDelItem` 映射、`terms.js:344` 有该键；旧键 `expenseEdit`/`expenseEditDone` 全仓零引用（无死键）；`expenseEditGi` 三处置位 `-1`（`onLoad:282` / `toggle:843` / `doDeleteRow:875`）；`input.wxml:447` 的 × 用 `g.expanded && rows.length>1 && expenseEditGi === gi` 三重条件（默认态不渲染）；`:511` 删除态只由 `is-del-on` 颜色表达（文案恒为 `t.expenseDelItem`，符合 R494c 定案）。
+  - ② 单跑守卫：`selftest_batch8b` **184/0**（与 `★知识存储点` 声明 184 一致）、`check_page_terms` **20/0**、`check_wxml_class_defined` **4/0**、`check_modal_button_len` **15/0**、`check_hint_fold` **190/0**、`check_queue_status` **14/0**。
+  - ③ 门禁：前置 `mk_force` 两轮（各 `refreshed 171 / cache size 177`）⇒ `SUITES=211` · **总览 211/211** · **GATE_RC=0** · **120.0s**（`_gate_r496.log`，晚于 HEAD `df2e3dc`）。本批改了 `tools/selftest_batch8b.js` ⇒ 两轮刷新不可省（否则 `check_suite_assert_counts` 读到旧 rc）。
+  - ④ 出码：`√ preview` **RC=0**，`review/evidence/r496_qr/qr.png` **47,937 B** / md5 `03c8e2e268b7faad29e522d1c91452bc`，TOTAL 768.3 KB（main 268.6 / biz 327.3 / tools 172.3）；日志 `preview_r496.txt`。`r495_qr` 为 22:34 旧码，覆盖不到这两批 wxml/wxss 改动。
+  - ⑤ 部署：**零云函数改动**（`git diff 8bf72fa..HEAD -- cloudfunctions` = 0 文件）⇒ 不部署。
+  - ⑥ 撞号留痕：两提交自标 R494b/R494c（R494 号已被 21:17 回执占用，用字母后缀区分）⇒ 本轮取 R496 避让。
+  - ⑦ 交互遗留（不登记新条目，并入 #71 口径）：收入侧两处删除键仍常驻（#71 待拍板）；费用侧本轮已达「默认态无 ×、删完即收」。
