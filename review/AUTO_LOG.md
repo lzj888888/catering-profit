@@ -789,3 +789,14 @@
   - ③ 队列：**0 todo / 0 in_progress / 54 done / 13 blocked**，无僵尸 todo；13 条 why 抽核仍全属「人等」（AppSecret / 真机扫码 / 付费墙与产品口径拍板 / 美团样例 / prod 环境）。
   - ④ NOTE↔代码：`NOTE_R489`（利润解读）与本轮落账代码逐条对得上（terms 5 键双副本 md5 `cba52f79…` 等、两页 t 映射真挂）；`NOTE_R488`（名随数走）由 `utils/profitLabel.js` 单一来源 + G-⑦ 守住；`NOTE_R483`（会计口径会诊）结论「待李老师拍板 A/B」已被 R484 定案覆盖，属时点快照不回写。
   - ⑤ 本轮发现的**唯一新缺口**已登 #68：`amortText`/`basisText` 三态无机器判据（R492 靠人眼修，修完仍无守卫）。
+
+- [2026-10-25 20:05] R493 #68 摊销/依据三态补上行为面判据（`check_m1_diff_explain` 33→54） · 门禁 211/211 RC=0 · commit 54a8296 · 队列 #68 → done
+  - ① **认领 `daa09db`** 前复核：HEAD `d97e338` ≡ `origin/dev`，tracked 面 0 行脏（仅未跟踪过程件）；本条是 R492 只改实现、没留判据的收口。
+  - ② **判据跑在真实现上**：新 H 组 `require('utils/profitLabel.js')` + 合成 getLedger 入参，**不扫源码文字** —— 源码里出现几次 `amortText:` 与它在什么入参下说什么，是两件事（R298Y 教训：读到了 ≠ 送出去了）。
+  - ③ **三态 × 三分支 9 条**：摊销关 ⇒ 一个字不提（入参故意给 1234.00 元，证明判据看开关不看金额）/ 开且有额 ⇒ 报 `amortLine(1234.00)` / 开但为 0 ⇒ 明说 `amortNone`；分支 = 库存关·库存开未盘点·已盘点。R492 的缺口正是「只在其中两个分支说了」。
+  - ④ **依据三态 4 条 + 集合面 1 条**：已盘点 ⇒ `basis='stocktake'` 且 `closingFen===500000`（分，不做显示换算）/ 未盘点或库存关 ⇒ `purchase`·`direct` 且 `closingFen===null`；H-⑦ 走集合面：4 组「closingFen 为 null」样本（期末 0 / 字段缺失 / 显式 null / 库存关）一律不得声称 stocktake。
+  - ⑤ **参考口径 2 条**：ref+reverse ⇒ 不提摊销且 `basis`/`closingFen` 带出；ref+direct ⇒ 不提摊销、`closingFen=null`（参考口径本来不含摊销，说「已扣」是另一个数的属性）。
+  - ⑥ **反恒真 4 条**：真实现在判据上零不通过 / 旧二态实现必须判红 / 永不说摊销必须判红 / 假 stocktake 必须逐条判红。期望文案全部取自 terms 单源（不写死「本月没有摊销」字面量，否则改文案就成改判据 —— #54 教训）。
+  - ⑦ **真实变异**：把 `utils/profitLabel.js` 未盘点分支退回二态（只改第一处，第 2 处保留）⇒ **红在 H-③ direct + H-③ purchase**（+ H-⑩ 连带），51/3；还原后 `md5 a1b88a5f6689878c660030deb5b9c387` 与原文件逐字节一致、54/0。证据 `review/evidence/r493_amort_tristate/`（`guard_mutated.txt` / `guard_restored.txt` / `mutate_apply.txt`）。
+  - ⑧ **登记同步**：`check_m1_diff_explain` 33→**54**，两处齐（`★知识存储点:44` 唯一声明行 + `check_suite_assert_counts.js` 的 CASES 注释 `23 条` 订正为 `54 条（S4+A9+B6+C3+H21+D1）`）。下界抬到 `>= 50`：`>= 14` 这种旧下界对「整段删掉 H」根本不痛不痒（整段被删必须转红）。
+  - ⑨ **门禁**：`tools/**` 有改动 ⇒ 先刷 `mk_force` 两轮（`_mkforce_r493_a/b.log`），再 `_gate_r493.log` → **211/211** · **303.6s** · `R92 ✅` · **`GATE_RC=0`**。零 wxml/wxss ⇒ 不出码；零云函数 ⇒ 不部署。
