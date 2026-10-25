@@ -741,3 +741,6 @@
   - ④ **R485/R486 回执补录**：`000ad6a` 6 文件（标题按模式 `profitTitle`：盘点「本月利润」/ 不盘点「估算利润」，wxml 已实读引用 `r.profitTitle`）· `0d08aab` 5 文件 19+/51−（删双 tab 切换与两段 block，改单数字摘要卡，实读 diff 一致）。两批都改过 wxml ⇒ 按纪律补出码：`√ preview` `review/evidence/r487_qr/qr.png` **45,910 B** / md5 `f0b8b1b92d94ddb0c059ca4e6b8fa065` / TOTAL 761.6 KB / main 265.9 KB（16:27）。**未重做 R484–R486 的业务改动**。
   - ⑤ **门禁可自证基线**：`mk_force` 两轮各 `refreshed 171 / cache size 177` → 全量 `SUITES=211` · `总览 211/211` · **233.3s** · `R92 ✅` · **GATE_RC=0**（`_gate_r487.log`，16:26，晚于 HEAD `da9c5c6`）。同时把前序四份日志的结论登记入账：`_gate_r484.log` 210/211（红 `page-terms`）→ `_gate_r485b.log` 211/211 → `_gate_r486.log` 210/211（红 `suite-assert-counts`，缓存假红）→ `_gate_r486b.log` 211/211（**无 RC 行**，不能自称 RC=0）。
   - ⑥ 队列 #63 → done；13 条 blocked 的 why 逐条复核**仍成立**（前提全是人等：扫码 / AppSecret / 样例 / 拍板）。
+  - ① 巡检 · 收口态：`HEAD 0b9200a` ≡ `origin/dev`（推送 `398d829..0b9200a`，**7 个滞留提交一次带上**）；tracked **0 行**，仓库根未跟踪过程件 **46 个**（`_r4xx_*.py` / `_mkforce_r48*.log` / `_deploy_r484.log` 等）⇒ 按「批量移动会触发 safe-delete」纪律**只登记不动手**。
+  - ② 巡检 · 队列：**0 todo / 0 in_progress / 50 done / 13 blocked**，无僵尸 todo、无残留 in_progress。13 条 blocked 的 why 全属「人等」（扫码 / AppSecret / 美团销量表样例 / 产品拍板）⇒ 无反向漂移。
+  - ③ 巡检 · NOTE↔代码：最近 4 篇全是 R483 会计口径会诊（结论「两个消耗数并存＝设计缺陷，待李老师拍板 A/B」），而 R484 已按「盘点用倒轧 / 不盘点用采购入库额」定案落码 ⇒ **NOTE 的「待拍板」是时点快照，已被 R484 覆盖**，按纪律不回写历史，仅登记以免下轮照着旧结论再问一遍。
