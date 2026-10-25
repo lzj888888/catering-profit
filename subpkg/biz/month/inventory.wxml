@@ -36,6 +36,16 @@
       value="{{closingYuan}}" bindinput="onClosing"  adjust-position="{{true}}" cursor-spacing="20" />
   </view>
 
+  <!-- R493：期末库存=0（含未填）时才让老板确认"是否真的盘了点"；填了正数直接视为已盘点 -->
+  <view wx:if="{{showStockTake}}" class="field stock-take">
+    <view class="lbl-col">
+      <text class="lbl">{{t.stockTakeDone}}</text>
+      <text class="muted">{{t.stockTakeDoneHint}}</text>
+    </view>
+    <switch checked="{{stockTakeDone}}" bindchange="onToggleStockTake" disabled="{{readOnly}}" color="#1e3a5f" />
+  </view>
+  <view wx:else class="muted">{{t.stockTakeNotePos}}</view>
+
   <!-- B：实时预览（保存后自动算出，帮老板马上看到「这三个月数字会算出啥」）-->
   <view class="card2" wx:if="{{realConsumeFen > 0}}">
     <view class="muted">{{t.realConsumePreview}}</view>

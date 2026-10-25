@@ -5,6 +5,8 @@ const ui = require('../../utils/ui.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 const app = getApp();
 const shopGuard = require('../../utils/shopGuard.js');
+// R493：免费档锁在付费墙后 ⇒ 首页也要读权益，免费显示参考口径、付费才显示会计利润
+const entitle = require('../../utils/entitlement.js');
 // R488：利润标签单一来源（名随数走）—— 首页/月首页/结果页三处共用，禁止各自再写一份判断
 const profitLabel = require('../../utils/profitLabel.js');
 
@@ -95,18 +97,23 @@ Page({
   async loadRefProfit() {
     try {
       const d = await api.call('getLedger', { month: ui.nowMonth() });
-      const fen = d && d.result && d.result.total_factor_real_profit_fen;
-      // 🔴 R298（M1-B2，A1 复核 + 豆包独立判断一致）：
-      //   `getLedger` 对**没有账本记录**的店回的是「默认空账」（cloudfunctions/getLedger/index.js:4），
-      //   它的 operation_ref_profit_fen 也是 0 ⇒ 只按"是不是数字"判定，会把「**从没录过**」
-      //   渲染成 **¥0.00**。老板会读成"这月不赚不赔"甚至"生意差"，还可能拿这个 0 去做决策
-      //   —— 那是**误导性的诚实**，比留空更糟（空态有「暂无数据 + 录入入口」，才是正确引导）。
-      //   ⇒ 判定改为「**有账本记录**（`account_id` 非空）**且**利润是有限数」才算「有数据」。
-      //     （account_id 为空 ⟺ 无记录 ⇒ 走空态；有记录但利润恰为 0 仍显示 0.00 —— 那才是真算出来的 0。）
-      if (d && d.account_id && typeof fen === 'number' && Number.isFinite(fen)) {
+      // 🔴 R298 判据：有账本记录（account_id 非空）才算"有数据"，否则走空态（绝不显示 ¥0）。
+      if (!d || !d.account_id) {
+        this.setData({ hasProfit: false, profitKnown: true });
+        return;
+      }
+      // R493：免费档（未开通）锁在付费墙后 ⇒ 只显示**参考口径**（operation_ref_profit_fen / 经营参考利润）；
+      //   付费档才显示**会计利润**（total_factor_real_profit_fen / 本月利润）。两口径取数来源不同，
+      //   必须按权益分流，否则免费档在首页看到的数会跟月首页（已按权益分流）对不上。
+      const ent = await entitle.fetchEntitlement();
+      const isPaid = entitle.isPaid(ent);
+      const res = d.result || {};
+      // 🔴 R298 判据：hasProfit 为真必须以「有账本记录（account_id）+ 有限数」为前置（无记录情形上面已 early-return）。
+      //   R493：两档口径取数不同（付费=会计利润 / 免费=经营参考利润），按 isPaid 选字段，仍是同一个 if 守"有记录+有限数"。
+      const fen = isPaid ? res.total_factor_real_profit_fen : res.operation_ref_profit_fen;
+      if (d.account_id && typeof fen === 'number' && Number.isFinite(fen)) {
         // 🔴 R488：标签由单一来源生成（名随数走）—— 同一个数在这里、月首页、结果页必然同名。
-        //   典型：盘点过 ⇒「本月利润」；没盘点 ⇒「估算利润」。绝不在这里另写判断。
-        const lab = profitLabel.pickProfitLabel(d, 'real');
+        const lab = profitLabel.pickProfitLabel(d, isPaid ? 'real' : 'ref');
         this.setData({ hasProfit: true, refProfit: api.fenToYuan(fen, 2), profitKnown: true, profitTitle: lab.title });
       } else {
         this.setData({ hasProfit: false, profitKnown: true });

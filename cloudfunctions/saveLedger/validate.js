@@ -121,6 +121,8 @@ function validateInput(event) {
     shop_id: src.shop_id, month: src.month,
     incomeItems, expenseItems,
     directConsumeFen, inventory,
+    // R493：本月是否真实盘点（清仓月期末=0 时据此区分"盘了"与"没盘"）；缺省=false，不强制
+    stockTakeDone: src.stock_take_done === true,
     archiveOverride: src.archive_override === true,
     input: { client_request_id: src.client_request_id || '' },
   };

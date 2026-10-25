@@ -338,6 +338,61 @@ check('H-⑫ 反恒真：永不说摊销的实现必须被判红 ⇒ 证明 H-�
 check('H-⑬ 反恒真：声称 stocktake 却无 closingFen 的假实现必须逐条判红 ⇒ 证明 H-⑦ 不是恒真',
   judgeBasis(() => ({ basis: 'stocktake', closingFen: null })) === NO_CLOSING_SAMPLES.length);
 
+// ===================== I. R493：真实盘点落库链路（stock_take_done 五跳透传） =====================
+console.log('');
+console.log('===== I. R493：真实盘点落库链路（前端→validate→saveLedger→getLedger→标签）=====');
+// 为什么立这段：库存页「本月已盘点」勾选要真正落到 shop_monthly_account.stock_take_done，
+// 否则 profitLabel.hasStockTake 永远读不到勾选、清仓月（期末=0）会恒按"没盘点"算（标签回落估算利润）。
+// 链路有五处，任何一处断了都是**静默**失效（页面不报错、只是标签错）：
+//  ① 前端 inventory.js 必须把勾选 emit 成 stock_take_done（=== true，防偷偷传 truthy 非布尔）
+//  ② validate.js 不能把该字段剥掉（它只白名单拷贝 inventory 三键）—— 必须显式透传
+//  ③ saveLedger/index.js 必须写 doc.stock_take_done
+//  ④ getLedger/index.js 必须把该字段回传给客户端
+//  ⑤ profitLabel.hasStockTake 必须真读 ledger.stock_take_done（否则链路断了也没人发现）
+const INV_JS_I = 'subpkg/biz/month/inventory.js';
+const VALIDATE_JS_I = 'cloudfunctions/saveLedger/validate.js';
+const SAVE_JS_I = 'cloudfunctions/saveLedger/index.js';
+const GET_JS_I = 'cloudfunctions/getLedger/index.js';
+const LABEL_JS_I = 'utils/profitLabel.js';
+const invSrcI = fs.existsSync(path.join(ROOT, INV_JS_I)) ? R(INV_JS_I) : '';
+const valSrcI = fs.existsSync(path.join(ROOT, VALIDATE_JS_I)) ? R(VALIDATE_JS_I) : '';
+const saveSrcI = fs.existsSync(path.join(ROOT, SAVE_JS_I)) ? R(SAVE_JS_I) : '';
+const getSrcI = fs.existsSync(path.join(ROOT, GET_JS_I)) ? R(GET_JS_I) : '';
+const labelSrcI = fs.existsSync(path.join(ROOT, LABEL_JS_I)) ? R(LABEL_JS_I) : '';
+check('I-① 前端 inventory.js 保存时 emit stock_take_done（=== true，非仅 truthy）',
+  /stock_take_done:\s*this\.data\.stockTakeDone\s*===\s*true/.test(invSrcI),
+  'inventory.js 没把勾选 emit 成 stock_take_done === true');
+check('I-② saveLedger/validate.js 透传 stock_take_done（=== true → stockTakeDone，不被白名单剥掉）',
+  /stockTakeDone:\s*src\.stock_take_done\s*===\s*true/.test(valSrcI),
+  'validate.js 没透传 stock_take_done（会被白名单剥掉，落库拿不到）');
+check('I-③ saveLedger/index.js 落库 doc.stock_take_done = v.stockTakeDone',
+  /doc\.stock_take_done\s*=\s*v\.stockTakeDone/.test(saveSrcI),
+  'saveLedger/index.js 没把 stock_take_done 落库');
+check('I-④ getLedger/index.js 回传 stock_take_done 给客户端（!! 防 undefined 误判 false）',
+  /stock_take_done:\s*!!\(acct\s*&&\s*acct\.stock_take_done\)/.test(getSrcI),
+  'getLedger/index.js 没把 stock_take_done 回传给客户端');
+const hasStockTakeReads = /function\s+hasStockTake[\s\S]{0,2000}?ledger\.stock_take_done/.test(labelSrcI);
+check('I-⑤ profitLabel.hasStockTake 真读 ledger.stock_take_done（闭环标签逻辑）',
+  hasStockTakeReads,
+  'profitLabel.hasStockTake 没读 ledger.stock_take_done ⇒ 勾选落库了标签也用不上');
+// 反恒真：合成一份"前端 emit 了、但后端三处全漏 + 标签不读"的断链变体，判据必须不全绿
+const BROKEN = {
+  inv: 'stock_take_done: this.data.stockTakeDone === true',
+  val: 'shop_id: src.shop_id',        // 没透传 stockTakeDone
+  save: 'doc.lump_sum_fen = 1',       // 没写 doc.stock_take_done
+  get: 'inventory: inventoryOut',     // 没回传 stock_take_done
+  label: 'function hasStockTake(l){ return false; }', // 没读 stock_take_done
+};
+const brokenAllPass =
+  /stock_take_done:\s*this\.data\.stockTakeDone\s*===\s*true/.test(BROKEN.inv) &&
+  /stockTakeDone:\s*src\.stock_take_done\s*===\s*true/.test(BROKEN.val) &&
+  /doc\.stock_take_done\s*=\s*v\.stockTakeDone/.test(BROKEN.save) &&
+  /stock_take_done:\s*!!\(acct\s*&&\s*acct\.stock_take_done\)/.test(BROKEN.get) &&
+  /function\s+hasStockTake[\s\S]{0,400}?stock_take_done/.test(BROKEN.label);
+check('I-⑥ 反恒真：后端三处任一漏传都必须判红（合成断链变体 ⇒ 不全绿）',
+  brokenAllPass === false,
+  '合成断链变体竟然全绿 ⇒ 上面的判据是恒真（被注释/字面量喂成真）');
+
 // ===================== D. 断言数下界 =====================
 console.log('');
 console.log('===== D. 覆盖度 =====');

@@ -199,6 +199,8 @@ exports.main = async (event) => {
     switch_source: sw.source,
     income_items: toSnake(incomeItems), expense_items: toSnake(expenseItems),
     direct_consume_fen: directConsumeFen, inventory: inventoryOut,
+    // R493：本月是否真实盘点（库存页勾选落库；profitLabel 据此区分清仓月"盘了"与"没盘"）
+    stock_take_done: !!(acct && acct.stock_take_done),
     // round103：期初来源做成**可观测**（auto = 系统结转；否则为老板填的值，prev 供差异提示）
     opening_auto: openingAuto,
     opening_source_month: openingAuto ? prevMonth : '',

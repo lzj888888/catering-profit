@@ -179,6 +179,8 @@ exports.main = async (event) => {
   };
   // round103：本次带了库存才写该字段；缺省则**保留库内原值**（防静默清零）
   if (v.inventory) doc.inventory = v.inventory;
+  // R493：本月是否真实盘点（清仓月期末=0 时据此区分"盘了"与"没盘"）；落库覆盖，缺省=false
+  doc.stock_take_done = v.stockTakeDone;
   // round107：一次算清合计**每次都由台账重算并落库**（快照值，供列表/审计直接读，不再依赖前端传参）
   doc.lump_sum_fen = effectiveLumpSumFen;
   let accountId;

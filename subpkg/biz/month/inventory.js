@@ -36,6 +36,10 @@ Page({
       confirmLocked: TERMS.inputPage.confirmLocked,
       openingUnlock: TERMS.inventoryPage.openingUnlock,
       openingFix: TERMS.inventoryPage.openingFix,
+      // R493：库存页「本月已盘点」勾选（只在期末=0 时出现）
+      stockTakeDone: TERMS.inventoryPage.stockTakeDone,
+      stockTakeDoneHint: TERMS.inventoryPage.stockTakeDoneHint,
+      stockTakeNotePos: TERMS.inventoryPage.stockTakeNotePos,
       // ── R234/J4e 行内长提示折叠（本页 1 处）──
       // 🔴 三处登记的第二处：漏映射 ⇒ 页面渲染成**空白**且零报错（R124 同族）
       // ⚠️ 引导语在 `TERMS.ledger` 组（跨页复用的通用模式引导语）。
@@ -52,6 +56,10 @@ Page({
     openingYuan: '',
     purchaseYuan: '',
     closingYuan: '',
+    // R493：库存页「本月已盘点」勾选（落库 shop_monthly_account.stock_take_done）
+    stockTakeDone: false,
+    // 期末库存=0（含未填）时才显示勾选框；填了正数视为已盘点，不显示
+    showStockTake: false,
     // B：实时预览「本月真实食材消耗」（纯前端读 getLedger.result.real_consume_fen，零后端改动）
     realConsumeFen: 0,
     realConsumeYuan: '0.00',
@@ -152,6 +160,10 @@ Page({
         openingYuan: openingFen > 0 ? api.fenToYuan(openingFen) : '',
         purchaseYuan: purchaseFen > 0 ? api.fenToYuan(purchaseFen) : '',
         closingYuan: closingFen > 0 ? api.fenToYuan(closingFen) : '',
+        // R493：读回「本月已盘点」勾选（getLedger 透传 shop_monthly_account.stock_take_done）
+        stockTakeDone: !!d.stock_take_done,
+        // 期末=0（含未填）才显示勾选框；填了正数直接视为已盘点
+        showStockTake: !(closingFen > 0),
         // B：getLedger 已重算 result，真实消耗直接取（结果页同口径）；本页只读展示，不重算
         realConsumeFen: (d.result && d.result.real_consume_fen) || 0,
         realConsumeYuan: api.fenToYuan((d.result && d.result.real_consume_fen) || 0, 2),
@@ -198,7 +210,13 @@ Page({
     wx.navigateTo({ url: '/subpkg/biz/month/inventory?month=' + this.data.prevMonth });
   },
   onPurchase(e) { this.setData({ purchaseYuan: e.detail.value }); },
-  onClosing(e) { this.setData({ closingYuan: e.detail.value }); },
+  onClosing(e) {
+    const v = e.detail.value;
+    const n = Number(v);
+    this.setData({ closingYuan: v, showStockTake: !(n > 0) });
+  },
+  // R493：勾选「本月已盘点」（仅期末=0 时出现）。勾上=清仓但确实盘了；不勾=按没盘点算
+  onToggleStockTake(e) { this.setData({ stockTakeDone: !!(e.detail && e.detail.value) }); },
 
   onSave() {
     if (this.data.readOnly) {
@@ -240,6 +258,8 @@ Page({
         direct_consume_fen: this.data.directConsumeFen || 0,
         // 库存页只写库存
         inventory,
+        // R493：本月是否真实盘点（清仓月期末=0 时据此区分"盘了"与"没盘"）
+        stock_take_done: this.data.stockTakeDone === true,
         archive_override: archiveOverride || undefined,
         client_request_id: 'in_' + Date.now(),
       });

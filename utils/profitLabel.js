@@ -65,7 +65,13 @@ function hasStockTake(ledger) {
   if (!sw.inventorySwitchOn) return false;
   const inv = ledger.inventory || {};
   const closing = toFen(inv.closing_fen != null ? inv.closing_fen : inv.closing);
-  return closing != null && closing > 0;
+  // 期末填正数 ⇒ 必然真盘点（倒轧有数），显式勾选不覆盖（防旧 flag 污染：某月填了正数仍被上月存的 false 误判）
+  if (closing != null && closing > 0) return true;
+  // 期末为 0 的歧义场景（清仓 / 没盘），才看库存页「本月已盘点」显式勾选：
+  //   · 勾选 = 清仓但确实盘了 ⇒ 真盘点
+  //   · 未勾选 / 字段缺失 ⇒ 按没盘点算（标签回落「估算利润」）
+  const explicit = ledger.stock_take_done;
+  return explicit === true;
 }
 
 /** 倒轧用的期末库存（分）。没有期末数时返回 null —— 别把 null 当 0 显示成「¥0.00」。 */

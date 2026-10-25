@@ -197,13 +197,13 @@ ensure('B-①', '当月用 ui.nowMonth() 取（不硬编码月份 ⇒ 跨月不�
   src.idxJs.indexOf('ui.nowMonth()') >= 0, 'index.js 里没有 ui.nowMonth()');
 // 🔴 R484：字段**改了**，判据跟着改（不是放松，是换守正确的那个）。
 //   旧：首页取 operation_ref_profit_fen（经营参考利润）。
-//   新：R484 定案「一个月只出一个数」⇒ 结果页只出会计利润，首页必须取**同一个字段**
-//       total_factor_real_profit_fen，否则「首页一个数、结果页另一个数」（差当月摊销）。
-//   ⇒ 本条守的**目的没变**：首页与月度结果页**同字段、不另算**，只是那个"同字段"换了。
-ensure('B-②', '利润取 getLedger 的 total_factor_real_profit_fen（R484：与月度结果页**同一字段**，不在这里另算）',
+//   R493：首页按权益分流——付费档取 total_factor_real_profit_fen（会计利润）、
+//       免费档取 operation_ref_profit_fen（经营参考利润，参考口径、不含摊销），两档口径**都必须在场**。
+//   ⚠️ 两个字段都引用 = 自由/付费分流已落；若只留其一，免费档或付费档会缺失对应数。
+ensure('B-②', '利润取数：付费取 total_factor_real_profit_fen、免费取 operation_ref_profit_fen（R493：两口径都必须在场，按权益分流）',
   src.idxJs.indexOf('getLedger') >= 0 && src.idxJs.indexOf('total_factor_real_profit_fen') >= 0
-  && src.idxJs.indexOf('operation_ref_profit_fen') < 0,
-  'index.js 没按要求取数（仍取参考利润或没取真实利润）⇒ 口径会与月度页漂移');
+  && src.idxJs.indexOf('operation_ref_profit_fen') >= 0,
+  'index.js 没按要求取数（付费/免费两档口径必须都在场）⇒ 免费档或付费档会缺数');
 ensure('B-③', '**三态**标志在 data 里（未确定 ≠ 无数据，否则老用户每次进首页先闪一帧空态）',
   src.idxJs.indexOf('profitKnown') >= 0, 'data 里没有 profitKnown');
 ensure('B-④', '取数失败**静默降级**（这块只是装饰性总结，不该弹第二个 toast 制造噪音）',
