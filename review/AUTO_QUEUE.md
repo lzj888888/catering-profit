@@ -99,6 +99,9 @@
 
 | 63 | **R484–R486 三个提交零回执 / 零推送 / 零出码**：`cc36d54`(R484 一个月只出一个数，改 3 份云函数 service.js + 两份 terms + 结果页) · `000ad6a`(R485 估算利润/本月利润) · `0d08aab`(R486 首页去双 tab 改单数字摘要卡，改 wxml/wxss) 全部只存在于 commit 里：`AUTO_LOG` 最大号仍到 R482、`origin/dev` 停在 `398d829`（本地领先 7 个提交） | done | no | why: R487 巡检实读 —— `grep -n 'R48[3-6]' review/AUTO_LOG.md` 零命中；`git log --oneline origin/dev..HEAD` 7 条；`review/evidence/` 最新目录 `r486_doubao`（只有豆包会诊稿），无 r484/r485/r486 出码目录，而 R484 改了 `result.wxml`、R486 改了 `index.wxml`+`index.wxss` ⇒ 按纪律应出码。已有机器证据：`_deploy_r484.log` 13:32 三函数 3/3 `success=true`（R485/R486 未动云函数）、`_gate_r486b.log` 14:54 **211/211**（日志无 RC 行）⇒ 本轮只补「推送 + 出码 + 回执 + 可自证 RC」，**不重复实现** R484–R486 的口径改动 · commit 3272bb6（证据+回执提交） |
 
+
+| 64 | **R488（`b0225df`）零回执 / 零机器可验证门禁 / 零出码**：改了 `pages/index/index.wxml` + `subpkg/biz/month/index.wxml` + `tools/check_m1_diff_explain.js`（8+/2−，⇒ 挂 preload 跑门禁前必须先刷缓存），但 `AUTO_LOG` 最大号仍是 R487、`_gate_*.log` 最新一份（16:26）早于该提交（17:18）、`review/evidence/` 最新目录是 `r487_qr` | in_progress | no | why: R489 巡检实读 —— `git log origin/dev..HEAD` 为空（已推送）、工作树跟踪面 0 行脏，但 `grep -n "R488" review/AUTO_LOG.md` **零命中**、`find . -newermt "16:55" -name "*.log"` **零命中**，R488 的 `211/211 rc=0` 只存在于工作日志自述（`node verify_all.js` 裸跑、未落盘、未挂 preload），按「不采信自述 / 门禁只认 N/N + GATE_RC=0」须重跑并落盘；且 R488 改了 wxml ⇒ 按纪律应出码（无 r488_qr 目录）。⇒ 本轮只补「门禁 + 出码 + 回执」，**不重复实现** R488 的标签收口 · commit 
+
 ## 回执格式（每次执行后追加到 `review/AUTO_LOG.md`）
 
 
