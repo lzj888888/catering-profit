@@ -166,13 +166,14 @@ check('🔴 设置页无 movedNote 之外的 calcMethod 引用', badCmRefs.lengt
 const chooseHit = /<(picker|switch|radio-group|checkbox-group|slider)\b|data-kind="(?:inventory|amortize)"|switches\s*:|saveShopSetting[\s\S]{0,240}switches/.exec(swCode + sjCode);
 check('🔴 设置页无核算方式选择入口 / switches 写入', !chooseHit, chooseHit ? chooseHit[0].slice(0, 40) : '');
 
-// ============ 修 5：tabs 单 tab 不满宽 ============
+// ============ 修 5：首页单数字摘要卡（去掉双 tab 切换） ============
 console.log('');
-console.log('===== 修 5 · 单 tab 不满宽 =====');
+console.log('===== 修 5 · 首页单数字摘要卡 =====');
 const mx = read("subpkg/biz/month/index.wxss");
-check('tabs 依 isPaid 加 single 类', /class="tabs \{\{isPaid \? '' : 'single'\}\}"/.test(mw));
-check('wxss 有 .tabs.single 规则（flex 0 0 auto + min-width 220rpx）', /\.tabs\.single \{[^}]*display: inline-flex/.test(mx) && /\.tabs\.single \.tab \{[^}]*flex: 0 0 auto; min-width: 220rpx/.test(mx));
-check('双 tab 时保持 .tab flex:1（未改默认）', /\.tab \{ flex: 1;/.test(mx));
+check('首页结果卡不再有双 tab 切换（wxml 无 class="tabs"）', !/class="tabs/.test(mw));
+check('首页只显一个利润数：按 isPaid 取 true_profit / ref_profit', /isPaid \? result\.true_profit : result\.ref_profit/.test(mw));
+check('wxss 已移除 .tabs / .tabs.single 规则', !/\.tabs\s*\{/.test(mx) && !/\.tabs\.single/.test(mx));
+check('免费用户仍渲染 moFreeHint 升级提示（hint-fold 守卫不破）', /data-key="moFreeHint"/.test(mw) && /t\.freeHint/.test(mw));
 
 // ============ 修 6：mine 注销按钮抽类 ============
 console.log('');

@@ -15,8 +15,6 @@ Page({
   data: {
     t: {
       m1: TERMS.modules.m1.navTitle,
-      freeTab: TERMS.m1Tabs.free.display,
-      paidTab: TERMS.m1Tabs.paid.display,
       freeHint: TERMS.freeHint,
       loading: TERMS.ui.loading,
       month: TERMS.ui.month,
@@ -65,7 +63,6 @@ Page({
     months: [],              // 可选月份（倒序）
     monthIndex: 0,           // R209：picker 的选中下标（WXML 里不做 indexOf 表达式，避免依赖解析器白名单）
     curMonth: '',
-    tab: 'free',
     isPaid: false,           // 权限判定（只读 expire_at / is_active）
     expireSoonDays: 0,       // 到期前 7 天内天数（0 = 不提示）
     expireSoonText: '',      // 预计算提示文案（WXML 不支持函数调用）
@@ -107,7 +104,6 @@ Page({
         expireSoonDays,
         expireSoonText: expireSoonDays > 0 ? TERMS.pay.expireSoonBody(expireSoonDays) : '',
         isExpired,
-        tab: isPaid ? (this.data.tab === 'paid' ? 'paid' : 'free') : 'free',
       });
       const cur = this.data.curMonth || ui.nowMonth();
       const ml = await api.call('getMonthList', {});
@@ -160,7 +156,6 @@ Page({
           true_profit: fmt(r.total_factor_real_profit_fen),
           profit_diff: fmt(r.profit_diff_fen),
         } : null,
-        tab: this.data.tab,
       });
       // 归档状态：次月 1 日起软提示（待归档徽标）；归档月只读标识
       const canArchive = !d.is_archive && !!d.account_id;
@@ -187,12 +182,6 @@ Page({
     this.setData({ monthIndex: i, loading: true });
     this.loadMonth(month).then(() => this.setData({ loading: false }));
   },
-  switchTab(e) {
-    const tab = e.currentTarget.dataset.tab;
-    this.setData({ tab });
-    // ⚠️ 不触发付费弹窗（交互边界）
-  },
-
   goInput() { wx.navigateTo({ url: '/subpkg/biz/month/input?month=' + this.data.curMonth }); },
   goInventory() { wx.navigateTo({ url: '/subpkg/biz/month/inventory?month=' + this.data.curMonth }); },
   goAmortize() { wx.navigateTo({ url: '/subpkg/biz/month/amortize?month=' + this.data.curMonth }); },
