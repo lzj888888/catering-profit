@@ -769,6 +769,32 @@ check('A26-13d R496 scopeGuide 必须给出**手机上抄得到**的数（含「
   /营业额/.test(twT.scopeGuide));
 check('A26-13e R496 subsidyNote 必须明说补贴「不计入营业收入」', /不计入营业收入/.test(twT.subsidyNote));
 
+// ===== A26-14 · R498 文档面：入参说明不得回退到旧口径（注释说反了比没注释更危险）=====
+// 🔴 来历（2026-10-26 R498 巡检发现）：R496 修了 `subtotalOf`/`expectedReceivable` 的**实现**，
+//   但 `reconcile` / `settleSummary` 的 JSDoc 仍写着「收入**含**补贴框的值 + 两步走还原」—— 与新口径
+//   **正好相反**。零行为影响 ⇒ 现有断言一条都不会红；但后人照注释改代码 ⇒ 补贴被扣两遍。
+//   本仓已踩过「注释喂恒真 / 注释误导」三轮（R299 ③ / R298Y / R496 A26-4），注释必须进判据面。
+// ⚠️ 判据细节：先剥掉「**不含**补贴」再判 —— 「不含补贴」含「含补贴」子串，不剥会自伤（修好了也判红）。
+// ⚠️ 只取 `@param` 行（`incomeTotal, //`）而非 `@returns` 里的 `incomeFen:number`，否则后者的行会被正向出口误判。
+console.log('—— A26-14 R498 收入入参说明不得再写「含补贴」——');
+check('A26-14 R498 reconcile/settleSummary 的收入入参必须写明「优惠前总额/不含」且不得再写「含补贴」', (() => {
+  const s = fs.readFileSync(path.join(ROOT, 'utils/takeaway.js'), 'utf8');
+  const docOf = (fn) => {
+    const i = s.indexOf('function ' + fn + '(');
+    if (i < 0) return '';
+    const j = s.lastIndexOf('/**', i);
+    const k = s.indexOf('*/', j);
+    return (j >= 0 && k > j) ? s.slice(j, k) : '';
+  };
+  const lines = ['reconcile', 'settleSummary'].map(docOf).join('\n').split('\n')
+    .filter((l) => /^\s*\*\s+(incomeTotal|incomeFen),\s+\/\//.test(l));
+  // 自失效护栏：两处说明都必须真抽得到（改名/删注释 ⇒ 判红，不许静默变绿）
+  return lines.length >= 2
+    && lines.every((l) => !/含补贴/.test(l.replace(/不含补贴/g, '')) && /(优惠前|不含)/.test(l));
+})());
+check('A26-14b R498 带出注释不得再写「净额为零」（R496 后收入不含补贴 ⇒ 带出是唯一一次扣减，不是一进一出）',
+  /R170/.test(inputJs) && !/净额为零/.test(inputJs));
+
 // ===== A27 · R166 文案不得与已修算法脱节（"实现改了、说明没跟上" 是静默误导，客户照样算错）=====
 // 背景：R164 修了配平式（只减一次补贴 ⇒ 两步走），但界面上那句「按外卖收入−活动补贴…」仍在描述旧算法。
 //      这类漂移**不影响计算结果**，故不会有任何现有断言变红 —— 只能靠显式语义断言钉住。

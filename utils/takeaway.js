@@ -317,8 +317,12 @@ function expectedReceivable(incomeTotal, subsidy, commission, deliveryFee, deliv
  *   真值验算（8 月实测账单 156 行，见 review/evidence/r161_waimai）：expected 恒 = 5849.35，而真实到手 3779.65，
  *   **差恰好 = 商家承担补贴 2069.70 ⇒ 恒定误报「漏填 2069.70」，客户改无可改**。
  *   正确做法两步走：① `incomeTotal − subsidy` 还原优惠前总额；② 再**真实扣一次**补贴（取绝对值 ⇒ 正负号都算对）。
+ *
+ * 🔴🔴 ⚠️ 该"两步走"已被 **R496/R497（2026-10-26）推翻，勿照抄**：它成立的前提是「收入三框和**含**补贴」。
+ *   R496 起收入侧已是优惠前总额（`subtotalOf(goods, pack)`，**不含**补贴）⇒ 收入里根本没有补贴可"还原"，
+ *   照 ① 再减一次就是把补贴**扣两遍**（净额凭空少一个补贴额）。现实现 = 只减一次，见 `expectedReceivable` 的 R496 注。
  * @param {object} p {
- *   incomeTotal,     // 外卖收入合计（快速模式 = 各平台总额之和；分项模式 = 各平台小计之和）（元，含补贴框的值）
+ *   incomeTotal,     // 外卖收入合计（快速模式 = 各平台总额之和；分项模式 = 各平台小计之和）（元，**优惠前总额、不含补贴** —— R496 起）
  *   subsidy,         // 商家承担补贴合计（元，符号随客户填法，取绝对值参与扣减）
  *   commission,      // 外卖平台佣金（元）
  *   deliveryFee,     // 外卖配送服务费（元）
@@ -405,7 +409,7 @@ function mkByPlatFilled(list) {
  *   页面据此显示「未填」而不是 0 —— 与本仓「不替用户编数」同一条纪律。
  *
  * @param {object} p {
- *   incomeFen,           // 外卖营收合计（收入侧 category='takeaway' 各行之和；**含**商家补贴框的值）
+ *   incomeFen,           // 外卖营收合计（收入侧 category='takeaway' 各行之和；**优惠前总额、不含**商家补贴 —— R496 起）
  *   commissionFen,       // 外卖平台佣金
  *   deliveryFeeFen,      // 外卖配送服务费
  *   deliverySubsidyFen,  // 外卖配送补贴
