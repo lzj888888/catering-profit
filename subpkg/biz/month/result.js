@@ -89,6 +89,9 @@ Page({
       beAttrNumer: TERMS.card.beAttrNumer,
       beTitle: TERMS.card.beTitle,
       beBreakeven: TERMS.card.beBreakeven,
+      // R482：确定的盈亏平衡点（结论层用）+ 区间来源标注（不许让老板以为是"算不准"）
+      bePoint: TERMS.card.bePoint,
+      bePointNote: TERMS.card.bePointNote,
       beMargin: TERMS.card.beMargin,
       beHealthy: TERMS.card.beHealthy,
       beStructural: TERMS.card.beStructural,
@@ -492,6 +495,14 @@ Page({
       // 🔴 R312：金额改"万"—— ¥108,491.00 老板记不住；区间用**中文"到"**，
       //   不用 `~`（李老师反馈：容易被看成减号，以为两个数相减）。
       rangeText: String(T.beRangeText || '').replace('{a}', wan(bk.lowFen)).replace('{b}', wan(bk.highFen)),
+      // 🔴 R482（李老师 2026-10-25 追问：「录完确定的数，为什么出来两个模糊的数？」）：
+      //   **确定的盈亏平衡点是存在的** —— bk.breakevenFen = 固定成本 ÷ 边际贡献率，只用老板填的数。
+      //   之前页面上只有 ±10% 敏感性**区间**（low~high），那个区间是我方自己加的容错带，
+      //   不是老板填出来的 ⇒ 结论层应给**确定的点**，区间降级并标明"±10% 估算"。
+      pointText: bk.breakevenFen > 0 ? wan(bk.breakevenFen) : '',
+      pointNoteText: bk.breakevenFen > 0
+        ? String(T.bePointNote || '').replace('{a}', wan(bk.lowFen)).replace('{b}', wan(bk.highFen))
+        : '',
       marginNeg: bk.safeMarginPct != null && bk.safeMarginPct < 0,
       healthyText: healthyFen > 0 ? String(T.beHealthyText || '').replace('{a}', wan(healthyFen)) : '',
       // R480：把"这个达标线是按哪个业态 × 城市算的"**写在旁边** —— 老板不用猜它跟下面

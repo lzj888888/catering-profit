@@ -167,10 +167,10 @@ const foldSeg = (wxmlCode.match(/<block wx:if="\{\{beMore\}\}">([\s\S]*?)<\/bloc
 //   李老师真机反馈：「这个结论恰恰倒该露出来，大家很关注这个（做到多少才不亏），藏起来不行」。
 //   ⇒ 定案改为：**结论（保本营收 / 达标营业额）露出，依据（回本路径 / 毛利结构 / 房租归因）才折叠**。
 //   故本条改为判「该露的在外面、该藏的在里面」，两头都守住（不是放松）。
-check('F-④ 结论露出、依据折叠（R480 定案：保本营收 / 达标营业额在折叠区**外**，房租归因在**内**）',
-  foldSeg.indexOf('beBreakeven') < 0 && foldSeg.indexOf('beHealthy') < 0
+check('F-④ 结论露出、依据折叠（R480/R482 定案：盈亏平衡点 / 达标营业额在折叠区**外**，房租归因在**内**）',
+  foldSeg.indexOf('bePoint') < 0 && foldSeg.indexOf('beHealthy') < 0
   && /beAttrLead/.test(foldSeg)
-  && wxmlCode.indexOf('t.beBreakeven') < wxmlCode.indexOf('<block wx:if="{{beMore}}">')
+  && wxmlCode.indexOf('t.bePoint') < wxmlCode.indexOf('<block wx:if="{{beMore}}">')
   && wxmlCode.indexOf('t.beHealthy') < wxmlCode.indexOf('<block wx:if="{{beMore}}">'));
 check('F-⑤ 自失效护栏：默认 true 的样本必须判红（防本组恒绿）',
   'data: { beMore: true, t: {} }'.indexOf('beMore: false') < 0);
@@ -239,9 +239,19 @@ const I_BE = jsCode.indexOf('buildBreakeven(d, res, prevProfitFen, inds)');
 check('H-⑨ 顺序即判据：inds 的定义必须**早于** be 的计算（晚一步就 TDZ）',
   I_INDS >= 0 && I_BE >= 0 && I_INDS < I_BE, `inds@${I_INDS} / be@${I_BE}`);
 const I_FOLD = wxmlCode.indexOf('wx:if="{{beMore}}"');
-check('H-⑩ 结论必须露出来：保本营收 / 达标营业额在折叠块**之外**（老板最关心的不该藏）',
-  I_FOLD >= 0 && wxmlCode.indexOf('t.beBreakeven') < I_FOLD && wxmlCode.indexOf('t.beHealthy') < I_FOLD,
+check('H-⑩ 结论必须露出来：盈亏平衡点 / 达标营业额在折叠块**之外**（老板最关心的不该藏）',
+  I_FOLD >= 0 && wxmlCode.indexOf('t.bePoint') < I_FOLD && wxmlCode.indexOf('t.beHealthy') < I_FOLD,
   `fold@${I_FOLD}`);
+// 🔴 R482（李老师追问「录完确定的数，为什么出来模糊的数」）：
+//   确定值（固定成本 ÷ 边际贡献率）**必须**在结论层；±10% 区间是我方加的容错带，
+//   只能当脚注，且必须写明来源 —— 否则老板会以为"这套系统算不准"。
+check('H-⑫ 结论层给的是**确定的**盈亏平衡点（不是区间）',
+  /pointText/.test(jsCode) && /breakevenFen/.test(jsCode)
+  && wxmlCode.indexOf('t.bePoint') >= 0 && wxmlCode.indexOf('t.bePoint') < I_FOLD);
+check('H-⑬ 区间降级为脚注且标明来源（不许让老板以为是算不准）',
+  /pointNoteText/.test(jsCode) && wxmlCode.indexOf('be.pointNoteText') >= 0
+  && wxmlCode.indexOf('be.pointNoteText') < I_FOLD
+  && /bePointNote/.test(termsSrc));
 const H_VARIANT2 = jsCode.replace('const inds = this.decorateInds(', 'const __moved_inds = this.decorateInds(');
 check('H-⑪ 反恒真：把 inds 定义挪走（顺序失效）的变体必须被判红',
   H_VARIANT2 !== jsCode && H_VARIANT2.indexOf('const inds = this.decorateInds(') < 0);

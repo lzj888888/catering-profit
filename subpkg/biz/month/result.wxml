@@ -84,8 +84,12 @@
        判据：老板第一眼要的是"我在亏吗、要做到多少才不亏、还能撑多少"，其余才是依据。 -->
   <view class="card2" wx:if="{{be && be.ok}}">
     <view class="cell drill-head"><text class="lbl">{{t.beTitle}} · {{be.title}}</text></view>
-    <!-- 结论①：保本营收 -->
-    <view class="cell"><text class="lbl">{{t.beBreakeven}}</text><text class="val">{{t.cur}}{{be.rangeText}}</text></view>
+    <!-- 结论①：盈亏平衡点（**确定的值**，只用老板填的数）—— R482（李老师追问）：
+         原先这里放的是敏感性区间（变动成本上下浮动十个百分点推出的范围），
+         老板问「录完确定的数，为什么出来模糊的数？」
+         ⇒ 结论层改给确定值；那个区间是我方自己加的容错带，降级为小字并标明来源。 -->
+    <view class="cell" wx:if="{{be.pointText}}"><text class="lbl">{{t.bePoint}}</text><text class="val">{{t.cur}}{{be.pointText}}</text></view>
+    <view class="muted" wx:if="{{be.pointNoteText}}">{{be.pointNoteText}}</view>
     <!-- 结论②：达标营业额 + 口径标注（按哪个业态算的、会跟着业态变） -->
     <view class="cell" wx:if="{{be.healthyText}}"><text class="lbl">{{t.beHealthy}}</text><text class="val">{{be.healthyText}}</text></view>
     <view class="muted" wx:if="{{be.healthyScopeText}}">{{be.healthyScopeText}}</view>
