@@ -79,16 +79,28 @@ function restoreDetail(snap, presets) {
       pack,
       subsidy,
       qty: (v.qty === undefined || v.qty === null) ? '' : String(v.qty),
-      subtotal: subtotalOf(goods, pack, subsidy),
+      subtotal: subtotalOf(goods, pack),
       fixed: true,
     };
   });
 }
 
-/** 分项小计（元，字符串）：三项相加（前端预计算，WXML 不支持方法调用）。
- *  ⚠️ R162：**qty 不进小计** —— 有效订单数是数量、不是钱，混进来就是凭空多出一笔收入。 */
-function subtotalOf(goods, pack, subsidy) {
-  const s = (Number(goods) || 0) + (Number(pack) || 0) + (Number(subsidy) || 0);
+/**
+ * 分项小计（元，字符串）= **优惠前总额** = 商品总价 + 打包费（前端预计算，WXML 不支持方法调用）。
+ *
+ * 🔴🔴 R496（2026-10-26 李老师授权拍板，豆包三轮会诊 + 真值实证）：**补贴不进收入**。
+ *   原实现是 `goods + pack + subsidy` 三项相加 ⇒ 补贴**加进收入**，而费用侧又自动带出补贴再扣一次
+ *   ⇒ **一加一减正好抵消，这笔补贴等于一次都没扣**（真值实测：美团净额 2632.93 vs 真实到手 1826.64，
+ *   偏差 806.29 **恰好等于**商家承担补贴额；淘宝偏差 2069.70 同样等于其补贴额）。
+ *   会计定性（豆包【确定】）：商家承担补贴是**商家让利 / 可变对价**，应**冲减收入**，不是收入的一部分。
+ *   ⇒ 收入侧只认优惠前总额；补贴、佣金、配送一律在费用侧扣减（结果等价，且保留结构可分析）。
+ *   真值验算（修复后偏差 0.00）：美团 3166.20−806.29−533.27=1826.64 ✓；淘宝 6585.08−2069.70−158.71−577.02=3779.65 ✓
+ *
+ * ⚠️ R162：**qty 不进小计** —— 有效订单数是数量、不是钱，混进来就是凭空多出一笔收入。
+ * ⚠️ 第三参 subsidy **已移除**（不是"保留但不参与"）：留着不用的形参会被后人当成仍参与计算。
+ */
+function subtotalOf(goods, pack) {
+  const s = (Number(goods) || 0) + (Number(pack) || 0);
   return s ? s.toFixed(2) : '';
 }
 
@@ -274,11 +286,14 @@ const RECONCILE_THRESHOLD = 50; // 元
  *
  * 🔴 本函数**单位无关**（纯加減乘除，无除法/无取整）⇒ 传分得数、传元得元，两处口径必然一致。
  *
- * 两步走（R164 修正，用真值证伪过）：① 收入合计里**含**补贴框的值 ⇒ 先按原符号抵消，还原"优惠前总额"；
- *   ② 再**真实扣一次**补贴（取绝对值 ⇒ 客户填正数/负数都得到同一答案）。
- *   按规范字面只减一次 ⇒ 补贴被完全抵消、一次都没扣 ⇒ 恒定误报（见 NOTE_2026-09-28_round164）。
+ * 🔴🔴 R496（2026-10-26）：**"先还原优惠前总额"这一步已删除**。
+ *   旧实现两步走（① `inc - sub` 还原 ② 再扣一次补贴），是因为当时**收入三框相加本就含补贴**
+ *   （见 `subtotalOf` 旧版）。R496 起收入已是优惠前总额（`subtotalOf(goods, pack)`，不含补贴）
+ *   ⇒ **再还原一次就会把补贴扣两遍**（凭空多扣一个补贴额）⇒ 必须回到直接减一次。
  *
- * @param {number} incomeTotal 收入合计（含补贴框的值）
+ * 仍取绝对值：客户按账单抄成负数也得到同一答案（符号无关）。
+ *
+ * @param {number} incomeTotal 收入合计（**优惠前总额**，不含补贴 —— R496 起的新口径）
  * @param {number} subsidy 商家承担补贴合计（符号随客户填法）
  * @param {number} commission 平台佣金
  * @param {number} deliveryFee 配送服务费
@@ -288,8 +303,7 @@ const RECONCILE_THRESHOLD = 50; // 元
 function expectedReceivable(incomeTotal, subsidy, commission, deliveryFee, deliverySubsidy) {
   const inc = Number(incomeTotal) || 0;
   const sub = Number(subsidy) || 0;
-  const gross = inc - sub;
-  return gross - Math.abs(sub) - (Number(commission) || 0)
+  return inc - Math.abs(sub) - (Number(commission) || 0)
     - (Number(deliveryFee) || 0) - (Number(deliverySubsidy) || 0);
 }
 

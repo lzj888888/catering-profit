@@ -41,7 +41,8 @@ check('A2 平台名单源：页面/工具内不出现平台字面（除 terms）
 const det = restoreDetail([{ platform: PLATFORMS[0], goods: '100', pack: '20', subsidy: '30' }], PLATFORMS);
 check('A3 分项模式 4 平台行（restoreDetail 铺全）', det.length === 4);
 check('A3 每行 3 框 + 小计', det.every((r) => ('goods' in r) && ('pack' in r) && ('subsidy' in r) && ('subtotal' in r)));
-check('A3 小计自动 = goods+pack+subsidy', det[0].subtotal === '150.00', det[0].subtotal);
+// 🔴 R496：期望 150 → 120。fixture 三框值（100/20/30）**一个没动**，动的是"补贴不进收入"这个口径。
+check('A3 小计自动 = goods+pack（R496：补贴不进收入）', det[0].subtotal === '120.00', det[0].subtotal);
 check('A3 分项行 fixed（平台名固定不可删）', det.every((r) => r.fixed === true));
 check('A3 未填平台小计为空', det[1].subtotal === '');
 
@@ -49,7 +50,8 @@ console.log('===== A4 · 模式互斥 + 快照恢复 =====');
 const snap = [{ platform: PLATFORMS[0], goods: '88', pack: '1.5', subsidy: '2.5' }];
 const restored = restoreDetail(snap, PLATFORMS);
 check('A4 快照回填：金额原样恢复', restored[0].goods === '88' && restored[0].pack === '1.5' && restored[0].subsidy === '2.5');
-check('A4 快照回填后小计重算', restored[0].subtotal === '92.00', restored[0].subtotal);
+// 🔴 R496：92.00 → 89.50（88 + 1.5；补贴 2.5 不再计入小计）。fixture 三框值未改。
+check('A4 快照回填后小计重算（R496：只算 goods+pack）', restored[0].subtotal === '89.50', restored[0].subtotal);
 
 console.log('===== A5 · 粘贴提取（只提数字并求和；跳过表头/空/说明列）=====');
 const paste1 = extractPaste('商品名\t金额\n米饭\t12.5\n可乐\t3\n配送说明 无\n\n18.5'); // 表头+说明+空行，数字 12.5+3=15.5
@@ -117,7 +119,12 @@ console.log('===== A9~A12 · 配平校验（只做软提示：不阻断、不参
 // ⚠ R164 改了配平式：expected = (incomeTotal − subsidy) − |subsidy| − 佣金 − 配送 − 配送补贴
 //   本基准 expected = (5000−300) − 300 − 200 − 100 − 50 = 4050（改前是 4350，差恰为一个补贴额 300）
 const recBase = { incomeTotal: 5000, subsidy: 300, commission: 200, deliveryFee: 100, deliverySubsidy: 50, packTotal: 60 };
-const REC_EXPECTED = 4050;
+// 🔴 R496：4050 → 4350。fixture **一个数字都没改**，是 incomeTotal 的**含义**变了：
+//   旧口径 incomeTotal 5000 **含**那 300 补贴 ⇒ expected=(5000−300)−300−200−100−50=4050（先还原再扣一次）。
+//   R496 起 incomeTotal = 优惠前总额、**不含**补贴 ⇒ expected=5000−300−200−100−50=4350（直接扣一次）。
+//   ⚠️ 下面 A9/A10/A11 六条都是围绕 REC_EXPECTED 的**相对**判断（差额 0 / 30 / −150 / −60 / −100），
+//      故只改这一处常量即可，无需逐条改 —— 这正是把期望值抽成常量的价值。
+const REC_EXPECTED = 4350;
 check('A9 未填应收款 → null（跳过，不误报）', reconcile(Object.assign({}, recBase, { actualReceivable: 0 })) === null);
 check('A9 两侧一致（差额 0 ≤ 50）→ pass', reconcile(Object.assign({}, recBase, { actualReceivable: REC_EXPECTED })).status === 'pass');
 check('A9 差额 30 ≤ 50 → pass', reconcile(Object.assign({}, recBase, { actualReceivable: REC_EXPECTED + 30 })).status === 'pass');
@@ -554,7 +561,9 @@ const r162snap = snapshotDetail([{ platform: PLATFORMS[0], goods: '100', pack: '
 check('A26-3 snapshotDetail 带 qty', r162snap[0].qty === '150', String(r162snap[0].qty));
 const r162restored = restoreDetail(r162snap, PLATFORMS);
 check('A26-3 restoreDetail 回填 qty（非空原样回）', r162restored[0].qty === '150', String(r162restored[0].qty));
-check('A26-3 回填后小计仍按三框算（150 不得混进金额）', r162restored[0].subtotal === '150.00', r162restored[0].subtotal);
+// 🔴 R496：150 → 120（goods 100 + pack 20）。本条真正要守的是「qty 150 不得混进金额」，
+//   小计口径变化时**数值跟着变、但守护的语义不变**（120 ≠ 150+，qty 仍未被加进来）。
+check('A26-3 回填后小计仍按两框算 goods+pack（qty 150 不得混进金额）', r162restored[0].subtotal === '120.00', r162restored[0].subtotal);
 const r162zero = restoreDetail([{ platform: PLATFORMS[0], qty: '0' }], PLATFORMS);
 check('A26-3 qty 填 0 不被当空吃掉（字符串形态，用 || 会丢）', r162zero[0].qty === '0', JSON.stringify(r162zero[0].qty));
 // ⚠️ 加严（R162 变异回灌 M2 抓出来的假绿）：上面那条用**字符串** '0'，而字符串 '0' 是 truthy
@@ -566,12 +575,18 @@ check('A26-3 qty 为**数字 0** 同样不得被吃掉（falsy 形态，本条�
 check('A26-3 老数据（无 qty）⇒ 空串而非 undefined', restoreDetail([{ platform: PLATFORMS[0] }], PLATFORMS)[0].qty === '');
 
 console.log('—— A26-4 qty 绝不进金额（本组最硬的一条）——');
-check('A26-4 subtotalOf 只吃三框：qty 不参与小计',
-  subtotalOf('100', '20', '30') === '150.00' && (() => {
+// 🔴 R496（2026-10-26）：签名由 `(goods, pack, subsidy)` 收紧为 `(goods, pack)` —— **补贴不进收入**。
+//   ⚠️ 判据必须**钉签名**而不是"体内不出现 subsidy 字样"：新注释里为了说清来历必然提到 subsidy，
+//   只 grep 词会被注释喂成恒真（本仓已踩过两次：R299 ③ / R298Y）。签名是唯一不会被注释骗的地方。
+check('A26-4 subtotalOf 只吃两框（商品总价+打包费）：qty 与 subsidy 都不参与小计',
+  subtotalOf('100', '20') === '120.00' && (() => {
     const src = fs.readFileSync(path.join(ROOT, 'utils/takeaway.js'), 'utf8');
-    const body = (src.match(/function subtotalOf\([^)]*\) \{[\s\S]{0,400}?\n\}/) || [''])[0];
+    const body = (src.match(/function subtotalOf\([^)]*\) \{[\s\S]{0,900}?\n\}/) || [''])[0];
     return body.length > 0 && !/\bqty\b/.test(body);
   })());
+check('A26-4b 🔴 R496 subtotalOf 签名恰为两参 (goods, pack) —— 补贴不得进收入（钉签名，防被注释喂绿）',
+  /function subtotalOf\(\s*goods\s*,\s*pack\s*\)\s*\{/.test(
+    fs.readFileSync(path.join(ROOT, 'utils/takeaway.js'), 'utf8')));
 check('A26-4 utils 源码里 qty 只出现在 qtyTotal/perOrderYuan/快照 四处（不得进 reconcile）',
   (() => {
     const src = fs.readFileSync(path.join(ROOT, 'utils/takeaway.js'), 'utf8');
@@ -702,6 +717,58 @@ check('A26-12 源码级：补贴取绝对值参与扣减（防回退到只减一
     return /Math\.abs\(\s*sub\s*\)/.test(fbody) && /expectedReceivable\(/.test(rbody);
   })());
 
+// ===== A26-13 · R496 补贴不进收入（口径定罪 + 真值代入 + 反恒真）=====
+// 背景（2026-10-26 李老师授权拍板，豆包三轮会诊 + 真值实证）：
+//   旧实现 subtotalOf = goods + pack + subsidy ⇒ 补贴被**加进收入**；费用侧又自动带出补贴再扣一次
+//   ⇒ 一加一减正好抵消，这笔补贴**等于一次都没扣**（真值实测：美团净额 2632.93 vs 真实到手 1826.64，
+//   偏差 806.29；淘宝偏差 2069.70 —— 偏差恒等于各自补贴额）。
+//   会计定性（豆包【确定】）：商家承担补贴 = 商家让利（可变对价），应**冲减收入**，不是收入的一部分。
+// 🔴 为什么必须立守卫：这个错**不报错、不阻断、配平还显示一致**（配平式走的是另一条路径），
+//   只会让利润静默虚高一个补贴额 —— 本仓最贵的一类病，只能靠真值断言钉死。
+console.log('—— A26-13 R496 补贴不进收入（真值代入 + 反恒真）——');
+const R496_CASES = [
+  // 真值锚点：review/evidence/r161_waimai（8 月实测账单）；commission 栏美团为平台服务费合计
+  { name: '美团2026-08', goods: 3041.20, pack: 125.00, subsidy: 806.29, commission: 533.27, deliveryFee: 0, deliverySubsidy: 0, truth: 1826.64 },
+  { name: '淘宝2026-08', goods: 6585.08, pack: 0, subsidy: 2069.70, commission: 158.71, deliveryFee: 577.02, deliverySubsidy: 0, truth: 3779.65 },
+];
+let r496all = true, r496detail = '';
+for (const c of R496_CASES) {
+  const inc = Number(subtotalOf(String(c.goods), String(c.pack)));
+  const net = takeaway.expectedReceivable(inc, c.subsidy, c.commission, c.deliveryFee, c.deliverySubsidy);
+  if (!(Math.abs(net - c.truth) < 0.01)) r496all = false;
+  r496detail += `${c.name} 净${net.toFixed(2)}/真${c.truth} `;
+}
+check('A26-13 R496 真值代入：收入=商品总价+打包费（不含补贴）⇒ 净额命中真实到手', r496all, r496detail.trim());
+
+// 🔴 反恒真模拟的是**利润链**（不是配平式）—— 这是本轮最关键的一点，别弄错：
+//   配平式 expectedReceivable 在 R164 之后**本来就是对的**（它会先还原再扣一次 ⇒ 命中真值）。
+//   真正错的是**利润链**：收入 = 三框和（含 +补贴），费用侧只扣一次补贴 ⇒ 一加一减**抵消**
+//   ⇒ 这笔补贴等于没扣。所以本条必须按"收入 − 费用"这条链路算，才能复现虚高。
+//   （我第一版误模拟了配平式 ⇒ 虚高算出 0.00、反恒真假绿 —— 差点把守卫写成恒真。）
+let r496old = true, r496oldDetail = '';
+for (const c of R496_CASES) {
+  const incOld = c.goods + c.pack + c.subsidy;                 // 旧收入：补贴被**加进**收入
+  const netOld = incOld - c.subsidy - c.commission - c.deliveryFee - c.deliverySubsidy; // 费用侧扣一次补贴
+  if (!(Math.abs((netOld - c.truth) - c.subsidy) < 0.01)) r496old = false;  // 虚高必须**恰等于**补贴额
+  r496oldDetail += `${c.name} 虚高${(netOld - c.truth).toFixed(2)} `;
+}
+check('A26-13 反恒真：旧**利润链**偏差恰等于补贴额 ⇒ 确证旧实现把补贴抵消掉了', r496old, r496oldDetail.trim());
+
+check('A26-13b R496 expectedReceivable 体内不得再"先还原优惠前总额"（收入已不含补贴，还原=扣两遍）', (() => {
+  const s = fs.readFileSync(path.join(ROOT, 'utils/takeaway.js'), 'utf8');
+  const i = s.indexOf('function expectedReceivable(');
+  if (i < 0) return false;
+  const fbody = s.slice(i, i + 900).split('\nfunction ')[0];
+  return !/\bgross\b/.test(fbody) && /Math\.abs\(\s*sub\s*\)/.test(fbody);
+})());
+
+// ⚠️ twT 在 A21 段已声明（line 442），此处**不得重复声明**（本轮踩到 SyntaxError）。
+check('A26-13c R496 引导文案不得再要求填「三项之和 / 三项相加」（补贴已不进收入）',
+  !/(三项之和|三项相加)/.test(twT.fastHint + twT.scopeGuide + twT.sumAutoHint + twT.detailHint));
+check('A26-13d R496 scopeGuide 必须给出**手机上抄得到**的数（含「营业额」）—— 旧句把手机现成值全排除，却要一个手机上看不到的数',
+  /营业额/.test(twT.scopeGuide));
+check('A26-13e R496 subsidyNote 必须明说补贴「不计入营业收入」', /不计入营业收入/.test(twT.subsidyNote));
+
 // ===== A27 · R166 文案不得与已修算法脱节（"实现改了、说明没跟上" 是静默误导，客户照样算错）=====
 // 背景：R164 修了配平式（只减一次补贴 ⇒ 两步走），但界面上那句「按外卖收入−活动补贴…」仍在描述旧算法。
 //      这类漂移**不影响计算结果**，故不会有任何现有断言变红 —— 只能靠显式语义断言钉住。
@@ -709,8 +776,11 @@ console.log('—— A27 R166 配平/带出文案不得回退到已证伪的旧�
 const twTerms = require(path.join(ROOT, 'miniprogram/i18n/terms.js')).TERMS.ledger.takeawayMode;
 check('A27-1 recCalcHint 不得残留旧算法描述「外卖收入 − 活动补贴」（该式已被 R164 真值证伪）',
   !/外卖收入\s*[−\-]\s*活动补贴/.test(twTerms.recCalcHint), twTerms.recCalcHint);
-check('A27-2 recCalcHint 必须说清「还原优惠前总额」这一步（两步走的第①步，缺了它等式就不成立）',
-  /还原/.test(twTerms.recCalcHint) && /优惠前/.test(twTerms.recCalcHint), twTerms.recCalcHint);
+// 🔴 R496：判据**反向**。R164 时配平必须"先还原优惠前总额"（因为收入含补贴），故要求文案含「还原」；
+//   R496 起收入已是优惠前总额 ⇒ 再还原就是扣两遍 ⇒ 文案必须改说"以优惠前总额为基础"，
+//   且**不得**再出现「还原」二字（出现即说明文案回退到旧算法描述）。
+check('A27-2 recCalcHint 必须说清以「优惠前总额」为基础，且不得再说「还原」（R496 后还原=扣两遍）',
+  /优惠前总额/.test(twTerms.recCalcHint) && !/还原/.test(twTerms.recCalcHint), twTerms.recCalcHint);
 check('A27-3 autoCarryHint 不得再写「配平相抵」（修好后配平已不依赖费用侧那一行，留着会诱导重复记账）',
   !/配平相抵/.test(twTerms.autoCarryHint), twTerms.autoCarryHint);
 check('A27-4 费用项注「外卖活动补贴」引用的是**新字段名**（R161-2 已改名，旧名两边对不上号）',

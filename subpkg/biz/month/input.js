@@ -1208,10 +1208,12 @@ Page({
       const groups = this.data.incomeGroups.slice();
       const g = Object.assign({}, groups[gi]);
       // ⚠️ R162：收拢成单行总额时 qty 一并带回 g.rows（快速模式的订单数就存在这里）
-      // ⚠️ R170：subsidy 独立带回 g.rows[].subsidy（与 amountYuan 并存互不干扰 —— 收入侧那一个数继续含补贴，费用侧出账口单独取 subsidy）。
+      // ⚠️ R170：subsidy 独立带回 g.rows[].subsidy（与 amountYuan 并存互不干扰 —— 费用侧出账口单独取 subsidy）。
+      //   🔴 R496：amountYuan 改为**优惠前总额**（商品总价+打包费，**不含**补贴）—— 补贴只走费用侧扣一次，
+      //     若这里再含补贴，就会和费用侧那一次抵消 ⇒ 这笔补贴等于没扣（真值实测偏差恰等于补贴额）。
       g.rows = this.decorateRows(g, snap.map((r) => ({
         subItem: r.platform,
-        amountYuan: subtotalOf(r.goods, r.pack, r.subsidy),
+        amountYuan: subtotalOf(r.goods, r.pack),
         subsidy: r.subsidy,
         qty: r.qty,
       })));
@@ -1229,7 +1231,7 @@ Page({
     const rows = (this.data.takeoutDetailRows || []).slice();
     const r = Object.assign({}, rows[idx]);
     r[field] = e.detail.value;
-    r.subtotal = subtotalOf(r.goods, r.pack, r.subsidy);
+    r.subtotal = subtotalOf(r.goods, r.pack);
     rows[idx] = r;
     this.setData({ takeoutDetailRows: rows });
     this.syncTakeoutSum();
@@ -1267,7 +1269,7 @@ Page({
       if (!rows[idx]) return;
       const r = Object.assign({}, rows[idx]);
       r[field] = fill;                  // R119：0 是合法金额，不能被当成空
-      r.subtotal = subtotalOf(r.goods, r.pack, r.subsidy);
+      r.subtotal = subtotalOf(r.goods, r.pack);
       rows[idx] = r;
       this.setData({ takeoutDetailRows: rows, twPasteOpen: false });
       // 原始粘贴内容留存可回溯（本地草稿，见 onHide）；fromTotal 标记本次为合计兜底填入
