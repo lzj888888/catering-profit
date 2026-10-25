@@ -126,3 +126,4 @@
 ```
 - [YYYY-MM-DD HH:MM] R<n> <一句话> · 门禁 <N/N> RC=<0/1> · commit <sha> · 队列 #<k> → done
 ```
+| 75 | **R497（`ddf54fe` 01:58）外卖补贴口径按 A 案落地后欠机器证据**：改 `utils/takeaway.js` + `subpkg/biz/month/input.js` + 两份 `terms.js` + `tools/selftest_r85.js` / `tools/check_takeaway_settle.js`（⇒ 挂 preload 跑门禁前必须刷 `mk_force` 两轮），但 `AUTO_LOG` 最大号仍是 01:14 那条巡检、`_gate_r497.log`(00:59) 早于该提交 ⇒ 门禁覆盖不到 | in_progress | no | why: 提交信息自称「门禁 verify_all 211/211 绿（338.2s）」但仓内无对应日志（不采信自述）；本轮只补「RC 可自证的门禁 + 回执 + 队列回写」，**不重复实现**口径改动（已实读：terms 双副本 md5 `3aa2c846…` 全等、`subtotalOf(goods,pack)` 已两参、`input.js:1216/1234/1272` 三处同步、`utils/takeaway.js` 内 `gross` 零残留；单跑 `selftest_r85` 168/0、`check_takeaway_settle` 17/0）。零 wxml/wxss ⇒ 不出码；零云函数 ⇒ 不部署 |
