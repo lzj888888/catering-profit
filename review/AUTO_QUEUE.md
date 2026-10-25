@@ -104,6 +104,8 @@
 | 65 | **导出 Excel 的「经营参考利润」公式说明仍无条件写「本月填写消耗」**：`cloudfunctions/exportData/index.js` 的利润表「＝ 经营参考利润」单元格 + 口径说明表「经营参考利润」行，在库存模式（`ref_material_source='reverse'`）下与实际用的倒轧值矛盾 —— 同一张表上一行已写「减：食材消耗（库存倒轧）」 | done | no | ✅ **R490 已落（commit `b5e190b`）**：两处公式说明按 `refSrc` 分岔 + 守卫 30→33（B-⑦/B-⑧ 就近窗口、C-④ 反恒真；真实变异双红、还原 33/33）；门禁 `211/211` · `GATE_RC=0` · 141.9s；`exportData` 部署 `success=true`/20 文件/61.0 KB、`info` `Active/60s`；零 wxml ⇒ 不出码。why: R490 实读 —— R479 只把「减：食材消耗」行与「消耗差异」行按 `refSrc` 条件化（守卫 `check_m1_diff_explain` B-⑥ 只守那一行），两处**说明性公式**仍写死「本月填写食材消耗」⇒ 导出件自相矛盾、老板按它复核会对不上账。做法：两处按 `refSrc` 分岔 + 守卫补 B-⑦/B-⑧ 与反恒真 C-④；改云函数 ⇒ 须部署 `exportData`；零 wxml ⇒ 不出码 · commit b5e190b
 
 
+| 66 | **R489 在途批次收口（原稿自标 R489，与证据轮撞号 ⇒ 本轮落账取 R491）**：利润解读三件事 —— 标签只说算法（删「按实际耗用算」）+ 摊销 / 一次性投入 / 倒轧期末库存上屏（`utils/profitLabel.js` 出参扩为 `basis`/`closingFen`/`amortText`/`lumpText`，月首页与结果页各加 3 行 `wx:if`） | in_progress | no | why: 18:08–18:20 在途（`terms.js`×2 各 23+/3−、md5 `cba52f79…` 全等；`profitLabel.js` 74 行重写；两页 js/wxml/wxss 各 3 处），18:23 `_gate_r490.log` **211/211 · GATE_RC=0** 已覆盖本批（工作树态）；但 `git log` 无对应提交、`review/evidence/` 无 r489_qr/r491_qr ⇒ 一次 `git checkout .` 即丢。动作：**按现状收口**（不重写内容）+ 出码（改过 wxml/wxss） · R491 |
+
 ## 回执格式（每次执行后追加到 `review/AUTO_LOG.md`）
 
 
