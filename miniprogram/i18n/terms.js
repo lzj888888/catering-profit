@@ -271,9 +271,13 @@ const TERMS = {
     netRef: '经营参考利润',
     netTrue: '真实利润',
     profitDiff: '两口径差异',
-    // 暖化（2026-10-11）：双口径常驻口径解释（P0#2，月首页 tab 下常显，不折叠）
+    // 暖化（2026-10-11）：口径解释（P0#2）
+    // 🔴 R488：月首页已去双 tab ⇒ 这两条只在**月首页结果卡**上用，且必须与那个数同口径：
+    //   · 免费档看 operation_ref_profit_fen ⇒ 用 caliberRefHint（名与数一致）
+    //   · 付费档看 total_factor_real_profit_fen ⇒ 改用 r.profitNote（由 utils/profitLabel.js
+    //     按"盘没盘点 / 开没开摊销"生成）；本键留作兜底，不再单独上屏。
     caliberRefHint: '经营参考利润：日常卖货赚的钱，不含装修/设备等一次性投入',
-    caliberTrueHint: '真实利润：按库存倒轧 + 摊销核算，更贴近实际落袋',
+    caliberTrueHint: '本月利润：按实际耗用算（期初 + 采购 − 期末），已扣当月摊销',
     pendingArchive: '待归档',
     archivedLock: '归档月只读',
     graceArchive: '归档后 7 天内可补录（需确认）',
@@ -285,11 +289,13 @@ const TERMS = {
     noResponse: '服务无响应',
     unlockLater: '开通功能将在后续版本开放',
     // ── R207：首页头卡 hero（v3 UI 方案落地） ────────────────────────────────
-    // 口径：这里的「经营参考利润」与 `TERMS.ui.netRef` **同口径**（= getLedger 的 operation_ref_profit_fen），
-    //       不另起别名，避免首页与月度结果页两个名字打架。
+    // 🔴 R488（口径统一）：首页取的是 getLedger 的 total_factor_real_profit_fen（会计利润），
+    //   所以标签**不能**再说「经营参考利润」—— 那是另一个口径的名字（两个数、两个名才对得上）。
+    //   现由 utils/profitLabel.js 按"盘没盘点"生成（盘点 ⇒ 本月利润 / 没盘点 ⇒ 估算利润）；
+    //   本键只作**取数回来之前的占位**（三态的 else 分支），不再代表参考口径。
     // 🔴 禁用词守卫（check_terms_forbidden）：本段不得出现 盈利/赚钱/投资/理财/付费/订阅。
     //    「利润」不在禁用词表内（既有 netRef 已长期过闸），但写了就必定稳妥的说法需复查：见 check_home_ui_v3 B-④。
-    heroRefLabel: '本月经营参考利润',
+    heroRefLabel: '本月利润',
     heroFirstUse: '本月未录入',
     heroNoData: '还没有本月数据',
     heroNoDataHint: '填上租金、人工、原料，自动算参考利润',
@@ -2271,6 +2277,12 @@ const TERMS = {
     profitNoteStock: '按实际耗用算（期初 + 采购 − 期末），已扣当月摊销',
     profitNotePurchase: '按当月采购入库金额算（你没盘点，先按买进来多少算）',
     noStockTakeTip: '这是按买进来多少算的，不是实际用掉多少 —— 盘点后能算准',
+    // 🔴 R488：上面三条只覆盖了「库存开」的两种情形；下面两条补另外两种**不同算法**，
+    //   否则同一个「估算利润」会套上不匹配的说明（说"按采购入库额算"，实际却是直接填的消耗）。
+    //   · 盘点了但没开摊销 ⇒ 钱的数没扣摊销，必须说出来，否则老板拿它当"落袋"
+    profitNoteStockNoAmort: '按实际耗用算（期初 + 采购 − 期末），未含摊销（这个月没开摊销）',
+    //   · 没开库存 ⇒ 食材成本 = 你直接填的消耗，跟"采购入库额"无关
+    profitNoteEstimateDirect: '按你直接填的消耗算（没开库存，用你填的数）',
     archiveLocked: '归档月只读，无法修改',
     // ===== round115：行业指标对照（李老师 2026-09-24「让客户找到方向」的第一步）=====
     // ⚠️ 指标名 / 评级表 / 业态与城市清单**全部复用 M2 的术语**（单一来源，不另抄一份）：

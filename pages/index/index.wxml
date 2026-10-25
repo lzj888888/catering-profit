@@ -2,7 +2,9 @@
   <!-- ============================================================
        R207 · 首页头卡 hero（v3 UI 方案）
        · 原第一张「当前店铺卡」= 唯一的店铺切换入口 ⇒ **不能删**，降级为 hero 右上「切换店铺」按钮（功能零丢失）
-       · 有本月数据 → 大数字区显示「本月经营参考利润」（口径同月度结果页 netRef）
+       · 有本月数据 → 大数字区显示**会计利润**（total_factor_real_profit_fen，与月首页/结果页同一个数）
+                      标签由 utils/profitLabel.js 按"盘没盘点"生成（盘点⇒本月利润 / 没盘点⇒估算利润）
+                      🔴 R488：这里**不再**写「经营参考利润」—— 那是另一个口径（operation_ref_profit_fen）的名字
        · 无本月数据 → 🔴 **绝不显示 ¥0**（红队结论：老板会读成"这店没赚钱"）
                       ⇒ 改「还没有本月数据」+ 辅助小字 + 「录入本月经营数据」按钮占住 C 位
        · 🔴 按钮文案不叫「记一笔」（会被理解成记当日流水，点进去却是一长串月度科目 ⇒ 觉得被骗）
@@ -21,7 +23,7 @@
          有数据的老用户会先闪一帧「还没有本月数据」再跳成数字，观感像抖屏 ⇒ 必须分开。 -->
     <view class="hero-bot">
       <view class="hero-figure" wx:if="{{hasProfit}}">
-        <view class="hero-lab">{{t.heroRefLabel}}</view>
+        <view class="hero-lab">{{profitTitle}}</view>
         <view class="hero-num money">{{t.cur}} {{refProfit}}<text class="hero-unit">元</text></view>
       </view>
       <view class="hero-figure" wx:elif="{{profitKnown}}">
@@ -29,7 +31,7 @@
         <view class="hero-hint">{{t.heroNoDataHint}}</view>
       </view>
       <view class="hero-figure" wx:else>
-        <view class="hero-lab">{{t.heroRefLabel}}</view>
+        <view class="hero-lab">{{profitTitle}}</view>
         <view class="hero-num money">{{t.loading}}</view>
       </view>
       <!-- 🔴 空态永远不显示 ¥0（老板会读成"这店没赚钱"）；按钮也不叫「记一笔」 -->

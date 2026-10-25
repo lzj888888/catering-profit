@@ -5,6 +5,8 @@ const ui = require('../../utils/ui.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 const app = getApp();
 const shopGuard = require('../../utils/shopGuard.js');
+// R488：利润标签单一来源（名随数走）—— 首页/月首页/结果页三处共用，禁止各自再写一份判断
+const profitLabel = require('../../utils/profitLabel.js');
 
 Page({
   data: {
@@ -52,6 +54,10 @@ Page({
     // 🔴 三态标志：**未确定 ≠ 无数据**。为 false 时既不显示数字、也不显示「还没有本月数据」，
     //    否则老用户每次进首页都会先闪一帧空态文案再跳成数字（观感像抖屏）。
     profitKnown: false,
+    // 🔴 R488：这个数（total_factor_real_profit_fen）叫什么，由 utils/profitLabel.js 决定：
+    //   盘点过 ⇒「本月利润」/ 没盘点 ⇒「估算利润」。取数回来前先用占位（= 常见情形），
+    //   避免先闪一帧「本月利润」再跳成「估算利润」——两帧都带"利润"，不会读成别的意思。
+    profitTitle: TERMS.ui.heroRefLabel,
   },
 
   onShow() {
@@ -98,7 +104,10 @@ Page({
       //   ⇒ 判定改为「**有账本记录**（`account_id` 非空）**且**利润是有限数」才算「有数据」。
       //     （account_id 为空 ⟺ 无记录 ⇒ 走空态；有记录但利润恰为 0 仍显示 0.00 —— 那才是真算出来的 0。）
       if (d && d.account_id && typeof fen === 'number' && Number.isFinite(fen)) {
-        this.setData({ refProfit: api.fenToYuan(fen, 2), hasProfit: true, profitKnown: true });
+        // 🔴 R488：标签由单一来源生成（名随数走）—— 同一个数在这里、月首页、结果页必然同名。
+        //   典型：盘点过 ⇒「本月利润」；没盘点 ⇒「估算利润」。绝不在这里另写判断。
+        const lab = profitLabel.pickProfitLabel(d, 'real');
+        this.setData({ hasProfit: true, refProfit: api.fenToYuan(fen, 2), profitKnown: true, profitTitle: lab.title });
       } else {
         this.setData({ hasProfit: false, profitKnown: true });
       }

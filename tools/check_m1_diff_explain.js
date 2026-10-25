@@ -170,9 +170,15 @@ check('G-⑥ 两个模式标题都带"利润"二字（盘点=本月利润 / 不�
   !!titleKeys.stock && titleKeys.stock.indexOf('利润') >= 0
   && !!titleKeys.estimate && titleKeys.estimate.indexOf('利润') >= 0,
   JSON.stringify(titleKeys));
-check('G-⑦ 页面真按模式选标题（r.profitTitle 上屏且 js 里两分支都在）',
+// 🔴 R488：标题/副标题的判断搬到了 utils/profitLabel.js（**单一来源**，首页/月首页/结果页共用）
+//   ⇒ 锚点跟着搬家，但守的语义没变：①两个分支的文案都必须在；②必须真的赋给 note:（不是只出现在注释里）；
+//   ③页面必须真上屏 r.profitTitle。若有人把某一种说法删掉，本条照样红。
+const labelRel = 'utils/profitLabel.js';
+const labelSrc = fs.existsSync(path.join(ROOT, labelRel)) ? R(labelRel) : '';
+check('G-⑦ 页面真按模式选标题（r.profitTitle 上屏；两种说法在单一来源 utils/profitLabel.js 里真赋值）',
   /profitTitle:/.test(rj) && wxmlSrc.indexOf('r.profitTitle') >= 0
-  && /profitNoteStock/.test(rj) && /profitNotePurchase/.test(rj));
+  && /note:\s*[^\n]*RP\.profitNoteStock\b/.test(labelSrc)
+  && /note:\s*[^\n]*RP\.profitNotePurchase\b/.test(labelSrc));
 
 // ===================== D. 断言数下界 =====================
 console.log('');

@@ -24,11 +24,13 @@
     <view wx:if="{{canArchive}}" class="hint">{{t.pendingArchive}} · {{t.goResult}}</view>
   </view>
 
-  <!-- 结果卡（单数字摘要：按权限显示一个数，不做双 tab 切换，避免"两个利润"错觉） -->
+  <!-- 结果卡（单数字摘要：按权限显示一个数，不做双 tab 切换，避免"两个利润"错觉）
+       🔴 R488：标签必须与这个数同口径 —— 付费档看会计利润 ⇒ 用 r.profitTitle（由 utils/profitLabel.js
+       按"盘没盘点"生成，与首页/结果页同名）；免费档看参考口径 ⇒ 用 t.netRef。 -->
   <view class="card2" wx:if="{{result}}">
-    <view class="muted">{{isPaid ? t.netTrue : t.netRef}}</view>
+    <view class="muted">{{isPaid ? result.profitTitle : t.netRef}}</view>
     <view class="result-num">{{t.cur}}{{isPaid ? result.true_profit : result.ref_profit}}</view>
-    <view class="caliber-hint">{{isPaid ? t.caliberTrueHint : t.caliberRefHint}}</view>
+    <view class="caliber-hint">{{isPaid ? result.profitNote : t.caliberRefHint}}</view>
     <!-- 免费用户：升级提示（保留 hint-fold 守卫 moFreeHint） -->
     <view class="hint-fold" wx:if="{{!isPaid}}">
       <view class="hint-fold-head" data-key="moFreeHint" bindtap="onToggleHintFold">

@@ -1,14 +1,19 @@
 // subpkg/biz/month/index.js —— 批次 4/5 · M1 月度经营首页
-// 月份选择器 + 双口径 tab + 结果卡 + 待归档徽标 + 结账归档。
+// 月份选择器 + 结果卡（单数字摘要）+ 待归档徽标 + 结账归档。
 // ⚠️ 计算下沉：金额一律取 getLedger 返回的整数「分」，前端仅展示不计算。
-// ⚠️ 批次 5 权限 tab（§2.1.1/§2.4）：免费用户只见「经营参考估算」；付费用户（expire_at 有效）见双 tab。
+// ⚠️ 批次 5 权限（§2.1.1/§2.4）：免费用户摘要卡看参考口径（operation_ref_profit_fen），
+//   付费用户（expire_at 有效）看会计利润（total_factor_real_profit_fen）。
+//   🔴 R486：已去掉"经营参考估算 / 真实利润"双 tab（并排两个数 ⇒ 老板不知信哪个）；
+//   🔴 R488：一个数配一个名 —— 名字由 utils/profitLabel.js 按"盘没盘点"生成，与首页/结果页同名。
 //   · 前端只读 payQueryEntitlement 的 expire_at/is_active，不读 plan_id；
-//   · **切换 tab 不触发付费弹窗**（交互边界：仅保存超限/导出触发）；
+//   · 看哪个数不触发付费弹窗（交互边界：仅保存超限/导出触发）；
 //   · 到期前 7 天展示常驻提示条（双渠道之一，订阅消息为另一渠道）。
 const api = require('../../../utils/api.js');
 const ui = require('../../../utils/ui.js');
 const entitle = require('../../../utils/entitlement.js');
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
+// R488：利润标签单一来源（禁止在本页另写"看哪个开关"的判断）
+const profitLabel = require('../../../utils/profitLabel.js');
 const app = getApp();
 
 Page({
@@ -134,6 +139,10 @@ Page({
       //   必须用 account_id 判「有没有账本」——与下方 canArchive、首页 index.js:98 同一单源判据。
       const hasLedger = !!d.account_id;
       const r = hasLedger ? (d.result || null) : null;
+      // 🔴 R488：这个数（total_factor_real_profit_fen）叫什么 —— 与首页、结果页**同一来源、同一判断**。
+      //   盘点过 ⇒「本月利润」；没盘点 ⇒「估算利润」；副标题跟着算法变（摊销开没开也算进去）。
+      //   以前本页固定写「真实利润」而结果页写「本月利润」，同一个数两个名 ⇒ 已消灭。
+      const labReal = profitLabel.pickProfitLabel(d, 'real');
       const fmt = (v) => (v == null ? '0.00' : api.fenToYuan(v, 2));
       this.setData({
         curMonth: month,
@@ -155,6 +164,10 @@ Page({
           ref_profit: fmt(r.operation_ref_profit_fen),
           true_profit: fmt(r.total_factor_real_profit_fen),
           profit_diff: fmt(r.profit_diff_fen),
+          // R488：标签与副标题（付费档渲染 true_profit 时用；免费档走 t.netRef/caliberRefHint）
+          profitTitle: labReal.title,
+          profitNote: labReal.note,
+          noStockTakeTip: labReal.tip,
         } : null,
       });
       // 归档状态：次月 1 日起软提示（待归档徽标）；归档月只读标识

@@ -1,4 +1,7 @@
-// subpkg/biz/month/result.js —— 批次 4/5 · M1 结果展示页（收入/费用/毛利/毛利率/双利润/差异）
+// subpkg/biz/month/result.js —— 批次 4/5 · M1 结果展示页（收入/费用/毛利/毛利率/一个利润）
+//
+// ⚠️ R484 起：本页**只出一个利润**（会计利润 total_factor_real_profit_fen），不再并排参考口径；
+//   🔴 R488：这个数的标题/副标题由 utils/profitLabel.js 按"盘没盘点"生成，与首页/月首页同名。
 //
 // ⚠️ 计算下沉：所有数值来自 getLedger 后端重算返回的分整数，前端仅格式化展示（分→元）。
 // ⚠️ 批次 5 · 到期提醒双渠道：① 结果页**常驻提示条**（到期前 7 天内，读 payQueryEntitlement 的
@@ -14,6 +17,8 @@ const BE = require('../../../utils/breakeven.js');
 const RUNWAY_CASH_KEY = 'runway_cash_v1';
 // R444 收口：金额可读性判定（纯函数）—— 不静默清洗，读不成必须说出来（与 #25 同口径）
 const amt = require('../../../utils/amountInput.js');
+// 🔴 R488：利润标题/副标题的**单一来源** —— 与首页、月首页同一份判断（名随数走）
+const profitLabel = require('../../../utils/profitLabel.js');
 
 // 🔴 R313：上一个月（跨月对比用）。纯字符串运算，不依赖 this / ui。
 function prevMonthOf(m) {
@@ -300,6 +305,10 @@ Page({
       // R464：诊断包只搬「已经算好的数」—— 原始分口径单独留一份，避免从展示串反解
       this._res = res;
       this._ledger = d;
+      // 🔴 R488：利润卡的「标题 / 副标题 / 没盘点提示」统一由单一来源产出 ——
+      //   以前这里是 `inventorySwitchOn ? 本月利润 : 估算利润`，只看开关、不看**有没有真盘点**，
+      //   而且和首页、月首页各判一套 ⇒ 同一个数出现三个名。现在三处共用这一份。
+      const lab = profitLabel.pickProfitLabel(d, 'real');
       // 🔴 R479：差异说明 / 参考口径注释必须按「参考口径用的哪份食材消耗」**条件化** ——
       //   固定写「食材 + 摊销」在两种情形下会说谎：
       //     ① R477 后库存模式没填消耗 ⇒ 参考已回落倒轧 ⇒ 差异**只剩摊销**，没有食材项；
@@ -334,18 +343,11 @@ Page({
           effectiveAmortize: fen(res.effective_amortize_fen),
           refProfit: fen(res.operation_ref_profit_fen),
           trueProfit: fen(res.total_factor_real_profit_fen),
-          // 🔴 R485（李老师：板块得体现"利润"二字）：
-          //   同一个卡，标题按模式变 ——
-          //     · 盘点了 ⇒ 「**本月利润**」（按实际耗用算的会计利润）
-          //     · 没盘点 ⇒ 「**估算利润**」（按当月采购入库金额算，只是估算）
-          //   两个数都带"利润"，老板不会觉得这块没在讲利润；副标题再注明是哪种算法。
-          profitTitle: (d.switches && d.switches.inventorySwitchOn)
-            ? TERMS.resultPage.trueProfit : TERMS.resultPage.profitEstimate,
-          // R484：副标题按"盘没盘点"给不同说法，没盘点时另给一句提示
-          profitNote: (d.switches && d.switches.inventorySwitchOn)
-            ? TERMS.resultPage.profitNoteStock : TERMS.resultPage.profitNotePurchase,
-          noStockTakeTip: (d.switches && d.switches.inventorySwitchOn)
-            ? '' : TERMS.resultPage.noStockTakeTip,
+          // 🔴 R488：标题按"盘没盘点 + 摊销开没开"选，副标题说清算的是哪种账；
+          //   没有真盘点时才给提示（有盘点还给提示 = 噪音）。判断全在 utils/profitLabel.js。
+          profitTitle: lab.title,
+          profitNote: lab.note,
+          noStockTakeTip: lab.tip,
           per100: per100Text,
         },
         loading: false,
