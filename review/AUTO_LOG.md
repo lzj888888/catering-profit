@@ -807,3 +807,12 @@
   - ③ 队列：**0 todo / 0 in_progress / 55 done / 13 blocked**，无僵尸 todo。抽查 #7（真机走查）/ #9（美团销量表样例）/ #12（AppSecret 建第 4 条索引）三条 why 仍成立且仍属「人等」；其余 10 条本轮未逐条复核（上轮 R492 已核、本轮无相关代码提交，如实记，不宣称"逐条"）。
   - ④ NOTE↔代码：`NOTE_R489`（利润解读三件事）逐条对得上 —— `utils/profitLabel.js` 出参 `basis`/`closingFen`/`amortText`/`lumpText` 齐；月首页 `index.wxml:38-40` 三行、结果页 `result.wxml:41-43` 三行。🔴 **踩坑记录**：第三行在两页**键名不同**（月首页 `basisText`（js 算好再 setData）/ 结果页 `profitBasis`），按单个键 grep 会得出「少一行」的假结论；`NOTE_R488` 单源成立（`profitTitle` 两页真上屏）；terms 双副本 md5 `cba52f7929f40cb8d473309a7d0fa244` 全等。`NOTE_R483`（会计会诊）「待拍板」已被 R484 单数字定案覆盖，属时点快照不回写。
   - ⑤ 观察（**未登记、不计缺口**）：月首页 `amortText` 行 `wx:if` 带 `isPaid`、`lumpText` 行不带；结果页三行都不带。一次性投入在两个口径都扣、摊销只属会计口径 ⇒ 现写法自洽，不擅自改。
+
+- [2026-10-25 21:17] R494 补 R493 收尾批次（`b220e8e`）台账与机器证据 · 门禁 211/211 RC=0 · commit 55705d3 · 队列 #69 → done
+  - ① **实读复核（未重复实现任何口径改动）**：真实盘点 5 跳链路逐点命中 —— `subpkg/biz/month/inventory.js:262`（emit）→ `cloudfunctions/saveLedger/validate.js:125`（透传）→ `saveLedger/index.js:183`（落库顶层 `stock_take_done`）→ `getLedger/index.js:203`（回传）→ `utils/profitLabel.js:62/73`（`hasStockTake` 消费）；两守卫单跑 `check_m1_diff_explain` **60/0**、`check_home_ui_v3` **32/0**；terms 双副本 md5 `c3f30cb47366acf29544a607e3aee5d9` 全等。
+  - ② **部署（幂等重做，证据入库）**：`getLedger` success=true / 22 文件 / 64.7 KB，`saveLedger` success=true / 22 文件 / 64.0 KB；`info` 回读均 `Active / timeout=20 / Nodejs16.13` ⇒ `review/evidence/r494_deploy/`。为什么重做：原自述证据只落在 gitignored `_m3/deploy_logs/`，不随仓留痕、后来人无法复核。
+  - ③ **出码**：`√ preview`（CLI 打印，非超时兜底），`review/evidence/r494_qr/qr.png` **47,490 B**；TOTAL 765.9 KB（main 268.3 / biz 325.3 / tools 172.3）。未弹码给用户，真机走查仍归李老师。
+  - ④ **门禁**：`_mkforce_r494_a|b.log` 各 `refreshed 171 / cache size 177` → `_gate_r494.log` **211/211** · **100.8s** · `R92 ✅` · **`GATE_RC=0`**。🔴 原 `_gate_r493_final.log` 只有「总览 211/211」而**无 RC 行**（且 20:54 早于提交 20:56）⇒ 本条的价值就是把「自述绿」换成「可自证 RC 的绿」。
+  - ⑤ **台账**：`tools/check_suite_assert_counts.js` CASES 注释 31→**33**（`check_m1_engine_parity` 实跑 33）、54→**60**（`check_m1_diff_explain` 实跑 60），并改为「分段计数以实跑 pass 数为准」——原注释拆项相加≠总数（4+9+6+3+21+1=44），再抄一遍仍是假数。
+  - ⑥ **取号**：R494 —— `b220e8e`（20:56）与 `54a8296`/`1c5563e`（20:03–20:12）**同标 R493**，后者已在 AUTO_LOG 占号 ⇒ 本轮避让取 R494，不改写历史。
+  - ⑦ **未做（如实登记）**：真机扫码走查（归李老师）；M1+M3 首月 1 元会员计费接入（NOTE §5 已另立批次，本轮不碰）。
