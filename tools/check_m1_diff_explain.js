@@ -107,6 +107,20 @@ check('B-⑤ 旧账兜底：缺字段一律回落 direct（不许拿新口径解
   /ref_material_source === 'reverse' \? 'reverse' : 'direct'/.test(ex));
 check('B-⑥ 利润表那行文案随来源变（不再固定写「本月填写」）',
   /refSrc === 'reverse' \? '减：食材消耗（库存倒轧）'/.test(ex));
+// 🔴 R490：B-⑥ 只守「减：食材消耗」那一行。同一个 sheet 里还有两处**公式说明**（利润表的
+//   「＝ 经营参考利润」单元格、口径说明表「经营参考利润」行）此前无条件写「本月填写消耗」
+//   ⇒ 库存模式（refSrc=reverse）下，上一行说「库存倒轧」、下一行说「本月填写」，导出件自相矛盾。
+//   这两行是老板复核时的核对依据，必须一起条件化。
+//   ⚠️ 判据不用正则（本环境会把反斜杠转成斜杠），改用 indexOf + 就近窗口：既判文案在场，
+//   也判它确实挂在 `refSrc === 'reverse'` 分支上（否则一个从来不会被执行到的字符串也能骗过判据）。
+const REV_ROW = "'= 收入 − 费用 − 倒轧消耗（期初 + 采购 − 期末） − 一次性投入";
+const REV_NOTE = "'= 营业收入 − 费用合计 − 倒轧食材消耗（期初 + 采购 − 期末）";
+const iRevRow = ex.indexOf(REV_ROW);
+const iRevNote = ex.indexOf(REV_NOTE);
+check('B-⑦ 利润表「＝ 经营参考利润」的公式说明随来源变（reverse 分支写倒轧）',
+  iRevRow > 0 && ex.slice(Math.max(0, iRevRow - 300), iRevRow).indexOf("refSrc === 'reverse'") >= 0);
+check('B-⑧ 口径说明表「经营参考利润」的公式随来源变（不是固定「本月填写」）',
+  iRevNote > 0 && ex.slice(Math.max(0, iRevNote - 300), iRevNote).indexOf("refSrc === 'reverse'") >= 0);
 
 // ===================== C. 反恒真：判据必须能分辨 =====================
 console.log('');
@@ -125,6 +139,14 @@ const oldExport = ex.replace(/const gapFen = real - refMat;/, 'const gapFen = re
 check('C-② 变体「旧 gapFen 版」必须被判红（证明 B-③/B-④ 不是恒真）',
   oldExport !== ex && /gapFen\s*=\s*real\s*-\s*direct/.test(oldExport)
   && !/real - refMat/.test(oldExport));
+
+// C-④ 变体：两处公式说明改回固定「本月填写」⇒ 必须被 B-⑦/B-⑧ 判红（证明它们不是恒真）
+const fixedFormula = ex.split(REV_ROW).join("'= 收入 − 费用 − 本月填写消耗 − 一次性投入")
+  .split(REV_NOTE).join("'= 营业收入 − 费用合计 − 本月填写食材消耗 − 一次性投入");
+check('C-④ 变体「公式说明退回固定版」必须被判红（证明 B-⑦/B-⑧ 不是恒真）',
+  fixedFormula !== ex
+  && fixedFormula.indexOf(REV_ROW) < 0 && fixedFormula.indexOf(REV_NOTE) < 0
+  && ex.indexOf(REV_ROW) >= 0 && ex.indexOf(REV_NOTE) >= 0);
 
 // C-③ 变体：两条文案写成一样 ⇒ 必须被 A-⑥ 判红
 if (allRead) {
