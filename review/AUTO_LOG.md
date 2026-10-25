@@ -800,3 +800,10 @@
   - ⑦ **真实变异**：把 `utils/profitLabel.js` 未盘点分支退回二态（只改第一处，第 2 处保留）⇒ **红在 H-③ direct + H-③ purchase**（+ H-⑩ 连带），51/3；还原后 `md5 a1b88a5f6689878c660030deb5b9c387` 与原文件逐字节一致、54/0。证据 `review/evidence/r493_amort_tristate/`（`guard_mutated.txt` / `guard_restored.txt` / `mutate_apply.txt`）。
   - ⑧ **登记同步**：`check_m1_diff_explain` 33→**54**，两处齐（`★知识存储点:44` 唯一声明行 + `check_suite_assert_counts.js` 的 CASES 注释 `23 条` 订正为 `54 条（S4+A9+B6+C3+H21+D1）`）。下界抬到 `>= 50`：`>= 14` 这种旧下界对「整段删掉 H」根本不痛不痒（整段被删必须转红）。
   - ⑨ **门禁**：`tools/**` 有改动 ⇒ 先刷 `mk_force` 两轮（`_mkforce_r493_a/b.log`），再 `_gate_r493.log` → **211/211** · **303.6s** · `R92 ✅` · **`GATE_RC=0`**。零 wxml/wxss ⇒ 不出码；零云函数 ⇒ 不部署。
+
+- [2026-10-25 20:12] R493 巡检（只读，未改代码，队列 0 todo）· 四项全绿
+  - ① `git status`：tracked **0 行**；HEAD `1c5563e` ≡ `origin/dev`；未跟踪过程件 **56 个**（本轮新增 `_gate_r493.log` / `_mkforce_r493_a|b.log` / `_r493_*.py`，只登记不动手 —— 批量清 >50 会触发 safe-delete 确认）。
+  - ② 最近门禁：`_gate_r493.log` **211/211 · 303.6s · `GATE_RC=0` · `R92 ✅`**，覆盖代码提交 `54a8296`；其后的 `1c5563e` 只改 `review/AUTO_LOG.md` + `review/AUTO_QUEUE.md` 两份台账，不进任何套件判据面（`check_queue_status` 已在该内容上单跑 14/0）。
+  - ③ 队列：**0 todo / 0 in_progress / 55 done / 13 blocked**，无僵尸 todo。抽查 #7（真机走查）/ #9（美团销量表样例）/ #12（AppSecret 建第 4 条索引）三条 why 仍成立且仍属「人等」；其余 10 条本轮未逐条复核（上轮 R492 已核、本轮无相关代码提交，如实记，不宣称"逐条"）。
+  - ④ NOTE↔代码：`NOTE_R489`（利润解读三件事）逐条对得上 —— `utils/profitLabel.js` 出参 `basis`/`closingFen`/`amortText`/`lumpText` 齐；月首页 `index.wxml:38-40` 三行、结果页 `result.wxml:41-43` 三行。🔴 **踩坑记录**：第三行在两页**键名不同**（月首页 `basisText`（js 算好再 setData）/ 结果页 `profitBasis`），按单个键 grep 会得出「少一行」的假结论；`NOTE_R488` 单源成立（`profitTitle` 两页真上屏）；terms 双副本 md5 `cba52f7929f40cb8d473309a7d0fa244` 全等。`NOTE_R483`（会计会诊）「待拍板」已被 R484 单数字定案覆盖，属时点快照不回写。
+  - ⑤ 观察（**未登记、不计缺口**）：月首页 `amortText` 行 `wx:if` 带 `isPaid`、`lumpText` 行不带；结果页三行都不带。一次性投入在两个口径都扣、摊销只属会计口径 ⇒ 现写法自洽，不擅自改。
