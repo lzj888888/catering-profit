@@ -122,7 +122,10 @@ function pickProfitLabel(ledger, caliber) {
       tip: invOn ? RP.noStockTakeTip : '',
       basis: invOn ? 'purchase' : 'direct',
       closingFen: null,
-      amortText: (amortOn && amortFen > 0) ? RP.amortLine(yuan(amortFen)) : '',
+      // R492：与盘点分支（下同）保持**同一套三态** —— 摊销关 ⇒ 不说；开且扣了 ⇒ 报金额；开但为 0 ⇒ 明说没有。
+      //   旧写法只在"扣了"时说一句，同样「摊销开 + 本月 0」的组合会因为没盘点而**少一句话**
+      //   （NOTE_R489 §3.3 定的是"摊销开则同上"）⇒ 老板分不清"摊销表空着"和"没扣"，与"钱扣在哪要说清"相反。
+      amortText: !amortOn ? '' : (amortFen > 0 ? RP.amortLine(yuan(amortFen)) : RP.amortNone),
       lumpText,
     };
   }

@@ -1,0 +1,3 @@
+盘点(期末>0)+摊销0 | title=本月利润 | basis=stocktake | amortText="本月没有摊销"
+没盘点(期末0)+摊销0 | title=估算利润 | basis=purchase | amortText="本月没有摊销"
+没盘点+摊销1250 | title=估算利润 | basis=purchase | amortText="其中摊销 ¥1250.00 已扣"
