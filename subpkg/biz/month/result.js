@@ -110,6 +110,8 @@ Page({
       trendTitle: TERMS.resultPage.trendTitle,
       trendNote: TERMS.resultPage.trendNote,
       trueProfit: TERMS.resultPage.trueProfit,
+      // R485：不盘点月份给提示（WXML 引用 t.noStockTakeTip ⇒ 必须在这里注册，否则 page-terms 判红）
+      noStockTakeTip: TERMS.resultPage.noStockTakeTip,
       profitDiff: TERMS.resultPage.profitDiff,
       profitDiffWhy: TERMS.resultPage.profitDiffWhy,
       // C：钱去哪了 故事线（专业术语保留 + 白话流向）
@@ -332,8 +334,14 @@ Page({
           effectiveAmortize: fen(res.effective_amortize_fen),
           refProfit: fen(res.operation_ref_profit_fen),
           trueProfit: fen(res.total_factor_real_profit_fen),
-          // R484：一个月份只出一个数 ⇒ 卡的副标题按"盘没盘点"给不同说法，
-          //   没盘点时另给一句提示（这个数是按采购入库算的，不是实际消耗）。
+          // 🔴 R485（李老师：板块得体现"利润"二字）：
+          //   同一个卡，标题按模式变 ——
+          //     · 盘点了 ⇒ 「**本月利润**」（按实际耗用算的会计利润）
+          //     · 没盘点 ⇒ 「**估算利润**」（按当月采购入库金额算，只是估算）
+          //   两个数都带"利润"，老板不会觉得这块没在讲利润；副标题再注明是哪种算法。
+          profitTitle: (d.switches && d.switches.inventorySwitchOn)
+            ? TERMS.resultPage.trueProfit : TERMS.resultPage.profitEstimate,
+          // R484：副标题按"盘没盘点"给不同说法，没盘点时另给一句提示
           profitNote: (d.switches && d.switches.inventorySwitchOn)
             ? TERMS.resultPage.profitNoteStock : TERMS.resultPage.profitNotePurchase,
           noStockTakeTip: (d.switches && d.switches.inventorySwitchOn)

@@ -158,6 +158,21 @@ check('G-④ 没盘点时给提示（李老师：只给不盘点、填了采购�
 const G_VARIANT = wxmlSrc + '\n<view class="cell"><text class="lbl">{{t.profitDiff}}</text><text class="val">{{t.cur}}{{r.profitDiff}}</text></view>';
 check('G-⑤ 反恒真：把"差异行"加回去的变体必须被判红（证明 G-② 不是恒真）',
   G_VARIANT !== wxmlSrc && G_VARIANT.indexOf('r.profitDiff') >= 0);
+// 🔴 R485（李老师：这个板块就是算利润的，**"利润"二字不能丢**）：
+//   只出一个数之后，若标题变成"本月盈亏/经营结果"之类，老板会以为这块不讲利润了。
+//   ⇒ 守死：盘点⇒「本月利润」、不盘点⇒「估算利润」，两个标题**都必须带"利润"**。
+const T_TERMS = srcs[TERMS_A];
+const titleKeys = (() => {
+  const g = (k) => { const m = new RegExp(k + ":\\s*'([^']*)'").exec(T_TERMS); return m ? m[1] : null; };
+  return { stock: g('trueProfit'), estimate: g('profitEstimate') };
+})();
+check('G-⑥ 两个模式标题都带"利润"二字（盘点=本月利润 / 不盘点=估算利润）',
+  !!titleKeys.stock && titleKeys.stock.indexOf('利润') >= 0
+  && !!titleKeys.estimate && titleKeys.estimate.indexOf('利润') >= 0,
+  JSON.stringify(titleKeys));
+check('G-⑦ 页面真按模式选标题（r.profitTitle 上屏且 js 里两分支都在）',
+  /profitTitle:/.test(rj) && wxmlSrc.indexOf('r.profitTitle') >= 0
+  && /profitNoteStock/.test(rj) && /profitNotePurchase/.test(rj));
 
 // ===================== D. 断言数下界 =====================
 console.log('');

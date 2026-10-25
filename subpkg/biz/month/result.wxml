@@ -31,7 +31,8 @@
          · **没盘点** ⇒ 用当月采购入库金额，出同一个数，并**提示**这不是实际消耗
        「两口径差异」整块随之取消 —— 同月不会有两个数，自然没有差异。 -->
   <view class="card2">
-    <view class="muted">{{t.trueProfit}}</view>
+    <!-- R485：标题按模式变（盘点⇒本月利润 / 不盘点⇒估算利润），都带"利润"二字 -->
+    <view class="muted">{{r.profitTitle}}</view>
     <view class="result-num" style="color:#22a06b;">{{t.cur}}{{r.trueProfit}}</view>
     <view class="muted">{{r.profitNote}}</view>
     <!-- R484：给"不盘点、只填了采购入库金额"的老板一句提示 -->
