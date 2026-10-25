@@ -744,3 +744,13 @@
   - ① 巡检 · 收口态：`HEAD 0b9200a` ≡ `origin/dev`（推送 `398d829..0b9200a`，**7 个滞留提交一次带上**）；tracked **0 行**，仓库根未跟踪过程件 **46 个**（`_r4xx_*.py` / `_mkforce_r48*.log` / `_deploy_r484.log` 等）⇒ 按「批量移动会触发 safe-delete」纪律**只登记不动手**。
   - ② 巡检 · 队列：**0 todo / 0 in_progress / 50 done / 13 blocked**，无僵尸 todo、无残留 in_progress。13 条 blocked 的 why 全属「人等」（扫码 / AppSecret / 美团销量表样例 / 产品拍板）⇒ 无反向漂移。
   - ③ 巡检 · NOTE↔代码：最近 4 篇全是 R483 会计口径会诊（结论「两个消耗数并存＝设计缺陷，待李老师拍板 A/B」），而 R484 已按「盘点用倒轧 / 不盘点用采购入库额」定案落码 ⇒ **NOTE 的「待拍板」是时点快照，已被 R484 覆盖**，按纪律不回写历史，仅登记以免下轮照着旧结论再问一遍。
+
+- [2026-10-25 17:50] R489 补 R488 的机器证据缺口（可自证门禁 + 出码 + 回执），未重复实现标签收口 · 门禁 211/211 RC=0 · 队列 #64 → done
+  - ① **认领 `50ed4b1`**；开工态：`HEAD b0225df` ≡ `origin/dev`（零滞留提交）、tracked **0 行**、仓库根未跟踪过程件 **46 个**（只登记不动手）。
+  - ② **为什么补**：R488（`b0225df`，17:18）改了 3 个 js + 2 个 wxml + `tools/check_m1_diff_explain.js`（8+/2−），但 `grep R488 review/AUTO_LOG.md` **零命中**、`find -newermt 16:55 -name "*.log"` **零命中**、`review/evidence/` 最新目录仍是 `r487_qr` ⇒ 它的「211/211 rc=0」只存在于工作日志自述（裸跑 `node verify_all.js`、未落盘、未挂 preload）。
+  - ③ **单跑相关守卫先绿（不挂 preload，读真文件）**：`check_m1_diff_explain` 30/0 · `selftest_ui_fix` 43/0 · `check_home_ui_v3` 32/0 · `check_paywall_coverage` 26/0（断言数与 `NOTE_R488` §4 自述一致 ⇒ 确实没改断言数、无需动 `★知识存储点`）。
+  - ④ **全量门禁（可自证）**：`mk_force` 两轮各 `refreshed 171 / cache size 177`（`MK1=0` / `MK2=0`）→ `SUITES = 211` · **`总览 211/211 通过`** · **194.5s** · `R92 ✅` · **`GATE_RC=0`** · `❌` 计数 **0**（`_gate_r489.log`，17:46，晚于 HEAD `b0225df`）。
+  - ⑤ **出码**：`√ preview`（`review/evidence/r489_qr/qr.png`，**47,106 B**，17:47）· TOTAL **762.8 KB** / main 267.0 KB / subpkg-biz 323.4 KB / subpkg-tools 172.3 KB。R488 改过 wxml ⇒ 按纪律出码；**未弹二维码给用户扫**。
+  - ⑥ **零云函数改动** ⇒ 不部署；**不重复实现** R488 的标签收口（实读复核：`pages/index/index.js:109`、`subpkg/biz/month/index.js:145`、`subpkg/biz/month/result.js:311` 三处真 `require('utils/profitLabel.js')` 并真调 `pickProfitLabel(d,'real')`；`terms.js` 双副本 md5 `d9a6451210611e0d4089835936ec81ba` 全等）。
+  - ⑦ 巡检四项：`git status` tracked **0 行**（46 个未跟踪过程件属过程件，按纪律只登记）｜最近门禁 = 本轮 `_gate_r489.log` **211/211 · GATE_RC=0**｜队列 **0 todo / 0 in_progress / 51 done / 13 blocked**，无僵尸 todo、13 条 blocked 的 why 仍全属「人等」｜NOTE↔代码：`NOTE_R488` §4 断言数（32/30/43/26）与实跑一致，§5「免费档两口径不同数」属产品拍板未动 ✅。
+  - ⑧ 遗留（非本轮）：R488 §5 的「要不要把会计利润也放开给免费档」= 付费墙决策，**待李老师拍板**；`_r489_queue.py` 等过程件留在仓库根，移动会触发 safe-delete ⇒ 只登记。
