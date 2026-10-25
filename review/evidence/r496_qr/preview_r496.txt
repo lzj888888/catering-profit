@@ -1,0 +1,22 @@
+- initialize
+
+(node:22304) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)
+× IDE may already started at port 10896, trying to connect
+
+√ IDE server started successfully, listening on http://127.0.0.1:10896
+- preparing
+- Fetching AppID () permissions
+√ Using AppID: wx33c110dc57a9c8dc
+- Preview
+√ preview
+
+┌────────────────┬────────────┬─────────────┐
+│ (index)        │ size       │ size (Byte) │
+├────────────────┼────────────┼─────────────┤
+│ TOTAL          │ '768.3 KB' │ 786712      │
+│ main           │ '268.6 KB' │ 275096      │
+│ /subpkg/biz/   │ '327.3 KB' │ 335159      │
+│ /subpkg/tools/ │ '172.3 KB' │ 176457      │
+└────────────────┴────────────┴─────────────┘
+
