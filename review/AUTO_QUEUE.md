@@ -106,6 +106,8 @@
 
 | 66 | **R489 在途批次收口（原稿自标 R489，与证据轮撞号 ⇒ 本轮落账取 R491）**：利润解读三件事 —— 标签只说算法（删「按实际耗用算」）+ 摊销 / 一次性投入 / 倒轧期末库存上屏（`utils/profitLabel.js` 出参扩为 `basis`/`closingFen`/`amortText`/`lumpText`，月首页与结果页各加 3 行 `wx:if`） | done | no | why: 18:08–18:20 在途（`terms.js`×2 各 23+/3−、md5 `cba52f79…` 全等；`profitLabel.js` 74 行重写；两页 js/wxml/wxss 各 3 处），18:23 `_gate_r490.log` **211/211 · GATE_RC=0** 已覆盖本批（工作树态）；但 `git log` 无对应提交、`review/evidence/` 无 r489_qr/r491_qr ⇒ 一次 `git checkout .` 即丢。动作：**按现状收口**（不重写内容）+ 出码（改过 wxml/wxss） · R491 |  **R491 已收口（commit `1a38eeb`）**：按现状落账（内容未改）+ `_gate_r491.log` 211/211 · GATE_RC=0 · 229.3s + `√ preview`（`review/evidence/r491_qr/qr.png` 48,085 B）；零云函数改动 ⇒ 不部署。
 
+| 67 | **「没盘点 + 摊销开 + 本月摊销 0」漏说「本月没有摊销」**：`utils/profitLabel.js:125` 只报金额、不报「没有」，与 NOTE_R489 §3.3 表格「摊销开则同上」不一致 | in_progress | no | why: `pickProfitLabel` 盘点分支 `:139` 是「金额 / 本月没有摊销」二态，没盘点分支 `:125` 只有金额一态 ⇒ 同一个开关组合，老板看到的解释随「有没有盘点」变化，而 NOTE 定的是同一种说法。影响是**少一句**（不是错话），但当月摊销表空着时，老板无法区分"没填"与"没扣" ⇒ 与 R489「钱扣在哪要说清」的目标相反。做法：`:125` 对齐 `:139` 三态；零 wxml ⇒ 不出码；零云函数 ⇒ 不部署 · R492 |
+
 ## 回执格式（每次执行后追加到 `review/AUTO_LOG.md`）
 
 
