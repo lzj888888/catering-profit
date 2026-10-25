@@ -25,6 +25,18 @@
 // C. 反恒真：合成「固定文案版」与「旧 gapFen 版」两个变体，判据**必须判它们红** ——
 //    否则本守卫只是两条恒真的存在性检查（同族病：只 grep 词出现 ⇒ 被注释喂成恒真）。
 // D. 断言数下界。
+// H. R493：`utils/profitLabel.js` 的**摊销三态 / 依据三态**（行为面判据，直接调纯函数）。
+//    为什么单立一段：R492 修的正是「摊销开 + 本月 0 + 没盘点」这三种条件同时成立时
+//    **少说一句**（老板分不清"摊销表空着"与"没扣"）。当时只改了实现、没有判据 ⇒
+//    谁再动 `:125`/`:139` 那两行都不会转红。本段守三件事：
+//      ① 摊销三态（关 ⇒ 不说 / 开且有额 ⇒ 报金额 / 开但为 0 ⇒ 明说没有）在**三个分支**
+//         （库存关·库存开未盘点·已盘点）上**同一套说法**；
+//      ② 依据三态（stocktake / purchase / direct）+ 没有期末数时**绝不**声称按期末倒轧，
+//         也不许把 null 当 0 显示成 ¥0.00；
+//      ③ 参考口径（ref）**永不说已扣摊销**（那个数本来不含摊销）。
+//    🔴 判据跑在**真实现**上（`require` 生产模块 + 合成入参），不扫源码文字 ——
+//       源码里的 `amortText:` 出现几次，与它到底在什么入参下说什么，是两件事（R298Y 教训）。
+//    🔴 并自带四组反恒真样本：旧二态实现 / 永不说 / 假 stocktake / 真实实现零不通过。
 
 const fs = require('fs');
 const path = require('path');
@@ -202,10 +214,136 @@ check('G-⑦ 页面真按模式选标题（r.profitTitle 上屏；两种说法�
   && /note:\s*[^\n]*RP\.profitNoteStock\b/.test(labelSrc)
   && /note:\s*[^\n]*RP\.profitNotePurchase\b/.test(labelSrc));
 
+// ===================== H. R493：摊销 / 依据 三态（行为面） =====================
+console.log('');
+console.log('===== H. R493：profitLabel 三态（真调纯函数，不扫文字）=====');
+
+// 为什么要 require 生产模块而不是重写一份逻辑：重写会"测到我自己写的影子实现"，
+// 实现被改成别的样子时判据照样绿（同族病：判据与被测对象分叉）。
+let labelMod = null;
+try { labelMod = require(path.join(ROOT, 'utils/profitLabel.js')); } catch (e) { labelMod = null; }
+const haveLabel = !!labelMod && typeof labelMod.pickProfitLabel === 'function';
+check('H-⓪a utils/profitLabel.js 可 require 且导出 pickProfitLabel（判据跑在真实现上）', haveLabel);
+
+// 期望文案取自 terms 单源：判据不许自己写死'本月没有摊销'这类字面量，
+// 否则改文案就成了"改判据"（#54 的教训）。
+let TP = null;
+try { TP = require(path.join(ROOT, 'miniprogram/i18n/terms.js')).TERMS.resultPage; } catch (e) { TP = null; }
+const AMT_YUAN = '1234.00';
+const AMT_FEN = 123400;
+const CLOSING_FEN = 500000;
+const AMT_TEXT = (TP && typeof TP.amortLine === 'function') ? TP.amortLine(AMT_YUAN) : '';
+const NONE_TEXT = (TP && typeof TP.amortNone === 'string') ? TP.amortNone : '';
+// 这两条文案是全部期望值的来源 ⇒ 缺了本段所有断言都会退化成"空字符串等于空字符串"（恒真）
+check('H-⓪b 期望文案可用且可区分（amortLine 带金额 / amortNone 非空且与之不同）',
+  !!AMT_TEXT && AMT_TEXT.indexOf(AMT_YUAN) >= 0 && !!NONE_TEXT && AMT_TEXT !== NONE_TEXT);
+
+/** 合成 getLedger 出参。只造本判据读到的字段（switches / inventory.closing_fen / result.*） */
+function mkLedger(o) {
+  const led = {
+    switches: { inventorySwitchOn: !!o.invOn, amortizeSwitchOn: !!o.amortOn },
+    inventory: {},
+    result: { effective_amortize_fen: o.fen == null ? 0 : o.fen },
+    effective_lump_sum_fen: 0,
+  };
+  if (o.hasClosing) led.inventory.closing_fen = o.closing;
+  if (o.refSrc) led.result.ref_material_source = o.refSrc;
+  return led;
+}
+function pick(led, caliber) {
+  if (!haveLabel) return null;
+  try { return labelMod.pickProfitLabel(led, caliber); } catch (e) { return null; }
+}
+// 三个分支 = 老板真实会遇到的三类月（库存关 / 库存开但没盘点 / 真盘点过）。
+// 三态必须在这三个分支上说法一致 —— R492 的缺口正是"只在其中两个分支说了"。
+const BRANCH = {
+  direct: (st) => mkLedger({ invOn: false, amortOn: st.on, fen: st.fen }),
+  purchase: (st) => mkLedger({ invOn: true, hasClosing: true, closing: 0, amortOn: st.on, fen: st.fen }),
+  stocktake: (st) => mkLedger({ invOn: true, hasClosing: true, closing: CLOSING_FEN, amortOn: st.on, fen: st.fen }),
+};
+function amortOf(st, b) { const r = pick(BRANCH[b](st), 'real'); return r ? r.amortText : '__NO_LABEL__'; }
+
+// —— 三态之一：摊销关 ⇒ 一个字都不提（副标题已经说明"未计摊销"，再说一遍是噪音）——
+//   注意入参故意给 fen=AMT_FEN：开关关掉时金额不该冒出来（证明判据看开关、不看金额）。
+for (const b of ['direct', 'purchase', 'stocktake']) {
+  check('H-① 摊销关 · ' + b + ' 分支 ⇒ 不提摊销（开关优先于金额）',
+    amortOf({ on: false, fen: AMT_FEN }, b) === '');
+}
+// —— 三态之二：开关开且真扣了 ⇒ 报金额（三个分支都要报，不能只在盘点时报）——
+for (const b of ['direct', 'purchase', 'stocktake']) {
+  check('H-② 摊销开 + 有额 · ' + b + ' 分支 ⇒ 报金额 ' + AMT_YUAN,
+    amortOf({ on: true, fen: AMT_FEN }, b) === AMT_TEXT);
+}
+// —— 三态之三：开关开但本月为 0 ⇒ 明说「没有」——
+//   🔴 这条就是 R492 修的那一句：旧实现只在"扣了"时说，于是在"没盘点"分支上
+//   同一个开关组合**少一句话**，老板分不清"摊销表空着"与"没扣"。
+for (const b of ['direct', 'purchase', 'stocktake']) {
+  check('H-③ 摊销开 + 本月 0 · ' + b + ' 分支 ⇒ 明说「' + NONE_TEXT + '」',
+    amortOf({ on: true, fen: 0 }, b) === NONE_TEXT);
+}
+
+// —— 依据三态：basis 必须与「这个数是怎么来的」一致 ——
+const rStock = pick(BRANCH.stocktake({ on: true, fen: AMT_FEN }), 'real');
+check('H-④ 已盘点 ⇒ basis=stocktake 且 closingFen 原样带出（分，不做显示换算）',
+  !!rStock && rStock.basis === 'stocktake' && rStock.closingFen === CLOSING_FEN);
+const rPurch = pick(BRANCH.purchase({ on: true, fen: AMT_FEN }), 'real');
+check('H-⑤ 库存开但没盘点 ⇒ basis=purchase 且 closingFen=null（不许当 ¥0.00）',
+  !!rPurch && rPurch.basis === 'purchase' && rPurch.closingFen === null);
+const rDirect = pick(BRANCH.direct({ on: true, fen: AMT_FEN }), 'real');
+check('H-⑥ 库存关 ⇒ basis=direct 且 closingFen=null',
+  !!rDirect && rDirect.basis === 'direct' && rDirect.closingFen === null);
+
+// H-⑦ = 集合面判据（比逐条更狠）：凡 closingFen 为 null，一律不得声称 stocktake。
+//   否则界面会出现「按期末库存倒轧」却没有那个数的自相矛盾（R489 立 `basis`/`closingFen`
+//   本来就是为了把输入摆出来让老板自查，摆不出来还说按它算 = 白摆）。
+const NO_CLOSING_SAMPLES = [
+  mkLedger({ invOn: true, hasClosing: true, closing: 0, amortOn: true, fen: AMT_FEN }),
+  mkLedger({ invOn: true, amortOn: true, fen: AMT_FEN }),          // 字段整条缺失
+  mkLedger({ invOn: true, hasClosing: true, closing: null, amortOn: false }),
+  mkLedger({ invOn: false, amortOn: true, fen: AMT_FEN }),
+];
+function judgeBasis(getLabel) {
+  // 返回"不通过"的样本数：closingFen 必须为 null 且 basis 不得是 stocktake
+  return NO_CLOSING_SAMPLES.filter((l) => {
+    const r = getLabel(l);
+    return !r || r.closingFen != null || r.basis === 'stocktake';
+  }).length;
+}
+check('H-⑦ 会计口径：closingFen 为 null ⇒ 绝不声称按期末倒轧（4 组样本全过）',
+  judgeBasis((l) => pick(l, 'real')) === 0);
+
+// —— 参考口径（免费档月首页那个数）：本来就不含摊销 ⇒ 三态一律「不说」——
+const rRefRev = pick(mkLedger({ invOn: true, hasClosing: true, closing: CLOSING_FEN, amortOn: true, fen: AMT_FEN, refSrc: 'reverse' }), 'ref');
+check('H-⑧ ref + reverse ⇒ 不提摊销，且 basis=stocktake / closingFen 带出',
+  !!rRefRev && rRefRev.amortText === '' && rRefRev.basis === 'stocktake' && rRefRev.closingFen === CLOSING_FEN);
+const rRefDir = pick(mkLedger({ invOn: true, hasClosing: true, closing: CLOSING_FEN, amortOn: true, fen: AMT_FEN, refSrc: 'direct' }), 'ref');
+check('H-⑨ ref + direct ⇒ 不提摊销，basis=direct / closingFen=null',
+  !!rRefDir && rRefDir.amortText === '' && rRefDir.basis === 'direct' && rRefDir.closingFen === null);
+
+// —— 反恒真：判据本身必须有分辨力（否则上面 9 条只是"存在性检查"的另一种写法）——
+function judgeThreeStates(amortFn) {
+  const S = [
+    { on: false, fen: AMT_FEN, exp: '' },
+    { on: true, fen: AMT_FEN, exp: AMT_TEXT },
+    { on: true, fen: 0, exp: NONE_TEXT },
+  ];
+  return S.filter((st) => amortFn(st.on, st.fen) !== st.exp).length;
+}
+check('H-⑩ 真实现在三态判据上零不通过（判据对真实现成立，不是恒红）',
+  judgeThreeStates((on, fen) => amortOf({ on, fen }, 'direct')) === 0);
+check('H-⑪ 反恒真：旧二态实现（开且 0 不说）必须被判红 ⇒ 证明 H-③ 有分辨力',
+  judgeThreeStates((on, fen) => (!on ? '' : (fen > 0 ? AMT_TEXT : ''))) === 1);
+check('H-⑫ 反恒真：永不说摊销的实现必须被判红 ⇒ 证明 H-② 不是恒真',
+  judgeThreeStates(() => '') === 2);
+check('H-⑬ 反恒真：声称 stocktake 却无 closingFen 的假实现必须逐条判红 ⇒ 证明 H-⑦ 不是恒真',
+  judgeBasis(() => ({ basis: 'stocktake', closingFen: null })) === NO_CLOSING_SAMPLES.length);
+
 // ===================== D. 断言数下界 =====================
 console.log('');
 console.log('===== D. 覆盖度 =====');
-check('D-① 断言数 ≥ 14', pass + fail >= 14);
+// 下界抬到 50：R493 加了 H 组 21 条，若有人整段删掉 H，`>= 14` 这种旧下界根本不痛不痒。
+// 下界的作用是"整段被删要转红"，所以它必须贴着当前断言数（54）留一点余量。
+check('D-① 断言数 ≥ 50', pass + fail >= 50);
 
 console.log('');
 console.log('==== R479 M1 差异说明条件化守卫：' + pass + ' 通过 / ' + fail + ' 失败 ====');

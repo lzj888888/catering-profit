@@ -1,0 +1,69 @@
+===== S. 扫描面非退化 =====
+✅ S subpkg/biz/month/result.js 可读且非空（41814 字符）
+✅ S specs/dev-specs/i18n/terms.js 可读且非空（115173 字符）
+✅ S miniprogram/i18n/terms.js 可读且非空（115173 字符）
+✅ S cloudfunctions/exportData/index.js 可读且非空（16852 字符）
+
+===== A. 结果页差异说明按来源分支 =====
+✅ A-① 结果页真读 ref_material_source（出参单源，不是自己猜）
+✅ A-② 分支两条都在（reverse ⇒ 只剩摊销 / direct ⇒ 含食材差）
+✅ A-③ 参考口径注释也按来源分流（refNote 不再固定说「按直接填写」）
+✅ A-④ 取不到来源时有中性兜底（不点名食材，不硬猜）
+✅ A-⑤ terms 三条文案键都在（Amort / Consume / 兜底）
+✅ A-⑥ Amort 与 Consume **值不同**（同值 ⇒ 分支是假的）
+✅ A-⑦ Amort 文案不提"倒轧与直接填的差"（回落时根本没有这项）
+✅ A-⑧ 中性兜底文案不点名食材（旧账取不到来源时用）
+✅ A-⑨ 两份 terms.js md5 全等（双副本纪律）
+
+===== B. 导出侧不重算 ⇒ 必须认得出口径来源 =====
+✅ B-① 导出真读落库字段 ref_material_source（旧账没有该字段 ⇒ 有兜底）
+✅ B-② refMat 由 refSrc 决定（reverse ⇒ 用倒轧 real；否则用填的 direct）
+✅ B-③ gapFen 用 refMat 算（不是旧的 real − direct）
+✅ B-④ 反向：不得再现旧写法 `gapFen = real - direct`（那会让等式对不上账）
+✅ B-⑤ 旧账兜底：缺字段一律回落 direct（不许拿新口径解释旧数字）
+✅ B-⑥ 利润表那行文案随来源变（不再固定写「本月填写」）
+✅ B-⑦ 利润表「＝ 经营参考利润」的公式说明随来源变（reverse 分支写倒轧）
+✅ B-⑧ 口径说明表「经营参考利润」的公式随来源变（不是固定「本月填写」）
+
+===== C. 反恒真（合成变体必须被判红）=====
+✅ C-① 变体「固定文案版」必须被判红（证明 A-② 不是恒真）
+✅ C-② 变体「旧 gapFen 版」必须被判红（证明 B-③/B-④ 不是恒真）
+✅ C-④ 变体「公式说明退回固定版」必须被判红（证明 B-⑦/B-⑧ 不是恒真）
+✅ C-③ 变体「两条文案同值」必须被判红（证明 A-⑥ 不是恒真）
+
+===== G. R484：同页不再并列两个利润、不再有"两口径差异" =====
+✅ G-① 结果页**不再**并列展示经营参考利润（旧 refProfit 卡已删）
+✅ G-② 结果页**不再**展示"两口径差异"那一行（同月一个消耗数 ⇒ 无差异）
+✅ G-③ 唯一利润 = 会计利润（total_factor_real_profit_fen）
+✅ G-④ 没盘点时给提示（李老师：只给不盘点、填了采购入库额的人做个提示）
+✅ G-⑤ 反恒真：把"差异行"加回去的变体必须被判红（证明 G-② 不是恒真）
+✅ G-⑥ 两个模式标题都带"利润"二字（盘点=本月利润 / 不盘点=估算利润）
+✅ G-⑦ 页面真按模式选标题（r.profitTitle 上屏；两种说法在单一来源 utils/profitLabel.js 里真赋值）
+
+===== H. R493：profitLabel 三态（真调纯函数，不扫文字）=====
+✅ H-⓪a utils/profitLabel.js 可 require 且导出 pickProfitLabel（判据跑在真实现上）
+✅ H-⓪b 期望文案可用且可区分（amortLine 带金额 / amortNone 非空且与之不同）
+✅ H-① 摊销关 · direct 分支 ⇒ 不提摊销（开关优先于金额）
+✅ H-① 摊销关 · purchase 分支 ⇒ 不提摊销（开关优先于金额）
+✅ H-① 摊销关 · stocktake 分支 ⇒ 不提摊销（开关优先于金额）
+✅ H-② 摊销开 + 有额 · direct 分支 ⇒ 报金额 1234.00
+✅ H-② 摊销开 + 有额 · purchase 分支 ⇒ 报金额 1234.00
+✅ H-② 摊销开 + 有额 · stocktake 分支 ⇒ 报金额 1234.00
+✅ H-③ 摊销开 + 本月 0 · direct 分支 ⇒ 明说「本月没有摊销」
+✅ H-③ 摊销开 + 本月 0 · purchase 分支 ⇒ 明说「本月没有摊销」
+✅ H-③ 摊销开 + 本月 0 · stocktake 分支 ⇒ 明说「本月没有摊销」
+✅ H-④ 已盘点 ⇒ basis=stocktake 且 closingFen 原样带出（分，不做显示换算）
+✅ H-⑤ 库存开但没盘点 ⇒ basis=purchase 且 closingFen=null（不许当 ¥0.00）
+✅ H-⑥ 库存关 ⇒ basis=direct 且 closingFen=null
+✅ H-⑦ 会计口径：closingFen 为 null ⇒ 绝不声称按期末倒轧（4 组样本全过）
+✅ H-⑧ ref + reverse ⇒ 不提摊销，且 basis=stocktake / closingFen 带出
+✅ H-⑨ ref + direct ⇒ 不提摊销，basis=direct / closingFen=null
+✅ H-⑩ 真实现在三态判据上零不通过（判据对真实现成立，不是恒红）
+✅ H-⑪ 反恒真：旧二态实现（开且 0 不说）必须被判红 ⇒ 证明 H-③ 有分辨力
+✅ H-⑫ 反恒真：永不说摊销的实现必须被判红 ⇒ 证明 H-② 不是恒真
+✅ H-⑬ 反恒真：声称 stocktake 却无 closingFen 的假实现必须逐条判红 ⇒ 证明 H-⑦ 不是恒真
+
+===== D. 覆盖度 =====
+✅ D-① 断言数 ≥ 50
+
+==== R479 M1 差异说明条件化守卫：54 通过 / 0 失败 ====
