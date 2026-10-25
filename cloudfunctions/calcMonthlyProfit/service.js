@@ -18,6 +18,18 @@
 //     老板真机反馈「口径差异为什么等于食材成本？」—— 差异里的食材项其实就是整个食材成本。
 //   修正：库存开 且「直接填的消耗」没有正数 ⇒ 参考口径回落到倒轧值。
 //
+// 🔴🔴 R484 再修正（李老师 2026-10-25 定案，**本段为准**）：
+//   「一个月份只能出一个数」——
+//     · **盘点了**（库存开关开）⇒ 就用倒轧值，老板**不必也不该**再填那个数 ⇒ 参考口径 = 倒轧
+//     · **没盘点**（库存开关关）⇒ 用老板填的「当月采购入库金额」，此时**没有对比对象**，
+//       自然也不存在"差异" ⇒ 参考口径 = 填的数
+//   李老师原话：「你不盘点也不会出现差异，你要是盘点了就不需要填写」。
+//   ⇒ 于是两个利润**恒等**（差只剩当月摊销），「两口径差异」这个展示整块取消，
+//     只在没盘点时给一句提示：这是按采购入库算的，不是实际消耗。
+//   ⚠️ 这**打破了旧的 S2 口径锁锚点**（「开库存后参考利润 = 9,160」⇒ 变 8,160）：
+//      旧锚点立的前提是「开库存仍用手工填的数」，该前提已被本次定案推翻。
+//
+// （以下为 R477 的历史记录，保留供追溯，但**不再生效**）
 // 🔴🔴 判据为什么是「≤ 0」而不是「未填」（本轮实测修正，别按外审原话理解）：
 //   外审建议「未填」与「显式填 0」必须分开，听起来对，**实测在本仓行不通**：
 //   库存页保存时前端写死 `direct_consume_fen: this.data.directConsumeFen || 0`
@@ -95,8 +107,8 @@ function calcMonthlyProfit(clean) {
   // ===== 5. 两个利润口径 =====
   // 🟢 参考口径取数（R477）：库存开且「直接填的消耗」没有正数 ⇒ 回落倒轧。
   //   详见本文件头部「判据为什么是 ≤ 0」那段（库存模式下前端恒传 0，那个 0 是占位不是意图）。
-  const refMaterialSource = (inventorySwitchOn && !(directConsumeFen > 0)) ? 'reverse' : 'direct';
-  const refMaterialFen = refMaterialSource === 'reverse' ? realConsumeFen : directConsumeFen;
+  const refMaterialSource = inventorySwitchOn ? 'reverse' : 'direct';
+  const refMaterialFen = inventorySwitchOn ? realConsumeFen : directConsumeFen;
   // 🟢 经营参考利润：用【参考口径消耗】 + 一次性投入（实际计入值）。
   const operationRefProfitFen = fenRoundN(
     incomeTotalFen - expenseTotalFen - refMaterialFen - effectiveLumpSumFen

@@ -23,16 +23,19 @@
     </view>
   </view>
 
-  <!-- 双利润 -->
-  <view class="card2">
-    <view class="muted">{{t.refProfit}}</view>
-    <view class="result-num">{{t.cur}}{{r.refProfit}}</view>
-    <view class="muted">{{t.refNote}}</view>
-  </view>
+  <!-- 🔴 R484（李老师 2026-10-25 定案）：**一个月只出一个数**。
+       旧版同页并排「经营参考利润」与「全要素真实利润」两个卡 —— 老板不知道信哪个，
+       而那个"差异"的一端（手工填的数）根本没有会计含义（豆包会诊：不盘点直接用采购额
+       计成本属于不符合准则的算法）。现改为：
+         · **盘点了** ⇒ 用倒轧实际耗用，出唯一一个「本月利润」（会计利润）
+         · **没盘点** ⇒ 用当月采购入库金额，出同一个数，并**提示**这不是实际消耗
+       「两口径差异」整块随之取消 —— 同月不会有两个数，自然没有差异。 -->
   <view class="card2">
     <view class="muted">{{t.trueProfit}}</view>
     <view class="result-num" style="color:#22a06b;">{{t.cur}}{{r.trueProfit}}</view>
-    <view class="muted">{{t.trueNote}}</view>
+    <view class="muted">{{r.profitNote}}</view>
+    <!-- R484：给"不盘点、只填了采购入库金额"的老板一句提示 -->
+    <view class="warn" wx:if="{{r.noStockTakeTip}}">{{t.noStockTakeTip}}</view>
 
   <!-- 🔴 R443：从「看到数」到「能去改」—— 结果页不该是死胡同 -->
   <view class="next-link" bindtap="goDishReview">{{t.nextDishReview}}</view>
@@ -242,13 +245,8 @@
       <text class="lbl">{{t.effectiveAmortize}}</text>
       <text class="val">{{t.cur}}{{r.effectiveAmortize}}</text>
     </view>
-    <view class="cell">
-      <text class="lbl">{{t.profitDiff}}</text>
-      <text class="val">{{t.cur}}{{r.profitDiff}}</text>
-    </view>
-    <!-- 🔴 R473：这个数原来只写「口径差异」，老板读不懂它在差什么（真机反馈：
-         "差异不应该是 A 减 B 吗？为什么等于食材成本"）。这里说清它是**哪两个数之差、差从哪来**。 -->
-    <view class="muted">{{t.profitDiffWhy}}</view>
+    <!-- 🔴 R484：「两口径差异」整块取消 —— 一个月份只用一个消耗数，
+         两个口径恒等，差异只剩当月摊销（摊销已在上面单独一行展示）。 -->
   </view>
 
   <!-- round115：行业对照（李老师「让客户找到方向」的第一步）-->

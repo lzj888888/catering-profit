@@ -78,16 +78,18 @@ Page({
   },
 
   /**
-   * R207：头卡的「本月经营参考利润」。
-   * 口径：取 getLedger 的 result.operation_ref_profit_fen —— 与月度结果页 netRef **同一字段**，
-   *       不在这里另算一遍（另算必漂）。
+   * R207：头卡的「本月利润」。
+   * 🔴 R484：口径改为取 result.total_factor_real_profit_fen（**会计利润**，权责发生制）。
+   *   原因：R484 定案"一个月只出一个数"，结果页已取消并排的双利润，首页必须跟到**同一个字段**，
+   *   否则会出现「首页一个数、结果页另一个数」（两者差当月摊销），那正是本次要消灭的困惑。
+   *   —— 与月度结果页**同一字段**，不在这里另算一遍（另算必漂）。
    * 🔴 静默降级：本请求只服务于一块**装饰性总结**，失败/未建档一律转空态，
    *    **不弹 toast、不阻塞主流程** —— 首页已经有一个 getShopContext 的失败提示，再加一个就是噪音。
    */
   async loadRefProfit() {
     try {
       const d = await api.call('getLedger', { month: ui.nowMonth() });
-      const fen = d && d.result && d.result.operation_ref_profit_fen;
+      const fen = d && d.result && d.result.total_factor_real_profit_fen;
       // 🔴 R298（M1-B2，A1 复核 + 豆包独立判断一致）：
       //   `getLedger` 对**没有账本记录**的店回的是「默认空账」（cloudfunctions/getLedger/index.js:4），
       //   它的 operation_ref_profit_fen 也是 0 ⇒ 只按"是不是数字"判定，会把「**从没录过**」

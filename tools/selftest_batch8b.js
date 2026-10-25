@@ -700,13 +700,16 @@ const a9S2Lock = {
 const a9InvBad = A9_ENGINES.filter((f) => {
   const r = require(path.join(ROOT, 'cloudfunctions/' + f))
     .calcMonthlyProfit(JSON.parse(JSON.stringify(a9S2Lock)));
+  // 🔴 R484 定案（锁的方向反转）：开库存 = 盘点了 ⇒ 参考口径**就该**用倒轧 23,000。
+  //   旧锁「参考仍 916,000（仍用手工填的 22,000）」的前提已被本次定案推翻 ⇒ 改为 816,000。
+  //   差异随之从 568,333（含 10 万消耗差）变成 468,333（只剩当月摊销）。
   return !(r.realConsumeFen === 2300000            // 倒轧：期初 + 采购 − 期末
-    && r.operationRefProfitFen === 916000          // 🔴 口径锁：仍用直接填 22,000，不随库存开关改成倒轧
+    && r.operationRefProfitFen === 816000          // R484：开库存就用倒轧 23,000
     && r.totalFactorRealProfitFen === 347667       // 真实利润：用倒轧 23,000 + 摊销 4,683.33
-    && r.profitDiffFen === 568333                  // 差异 = (23,000 − 22,000) + 4,683.33
+    && r.profitDiffFen === 468333                  // 差异只剩当月摊销（两口径同用一份消耗）
     && r.diffCheck === true);
 });
-check('A9-⑱ 「开库存」S2 上锁样本三副本对拍（倒轧 23,000 / 参考利润仍 916,000 口径锁 / 真实 347,667 / 差异 568,333）',
+check('A9-⑱ 「开库存」S2 上锁样本三副本对拍（倒轧 23,000 / 参考 816,000 R484 口径锁 / 真实 347,667 / 差异 468,333）',
   a9InvBad.length === 0, a9InvBad.length ? ('未达标：' + a9InvBad.join(', ')) : '三副本一致且命中上锁锚点');
 
 console.log('');

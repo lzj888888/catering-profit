@@ -39,10 +39,12 @@ check('S1 自洽校验位 diffCheck = true', r1.diffCheck === true);
 
 const r2 = calcMonthlyProfit({ incomeItems: INCOME_ITEMS, expenseItems: EXPENSE_ITEMS, directConsumeFen: DIRECT_CONSUME_FEN, amortizeFen: AMORTIZE_FEN, amortizeSwitchOn: true, inventorySwitchOn: true, inventory: { openingFen: 5000 * YUAN, purchaseFen: 25000 * YUAN, closingFen: 7000 * YUAN } });
 check('S2 真实消耗 = 23,000（倒轧 5000+25000−7000）', r2.realConsumeFen === 2300000, `=${r2.realConsumeFen}`);
-check('🏆 S2 经营参考利润仍 = 9,160（🔴 口径锁：开库存也不改用倒轧，出 8160 即违规）', r2.operationRefProfitFen === 916000, `=${r2.operationRefProfitFen}`);
-check('S2 经营参考 ≠ 816000（反面断言：防"开了开关就倒轧"回归）', r2.operationRefProfitFen !== 816000);
+// 🔴 R484 定案（锁的方向反转）：开库存 = 盘点了 ⇒ **就该**用倒轧 23,000 ⇒ 参考 8,160。
+//   反面断言也随之反转：现在要防的是"把手填数重新塞回盘点模式"。
+check('🏆 S2 经营参考利润 = 8,160（R484：开库存就用倒轧 23,000）', r2.operationRefProfitFen === 816000, `=${r2.operationRefProfitFen}`);
+check('S2 经营参考 ≠ 916000（反面断言：防"手填数又被塞回盘点模式"回归）', r2.operationRefProfitFen !== 916000);
 check('🏆 S2 全要素真实利润 = 3,476.67（347667 分）', r2.totalFactorRealProfitFen === 347667, `=${r2.totalFactorRealProfitFen}`);
-check('S2 两利润差异 = 5,683.33（568333 分）', r2.profitDiffFen === 568333, `=${r2.profitDiffFen}`);
+check('S2 两利润差异 = 4,683.33（468333 分，只剩摊销）', r2.profitDiffFen === 468333, `=${r2.profitDiffFen}`);
 check('S2 毛利 = 64,000 − 23,000 = 41,000（4100000 分）', r2.grossProfitFen === 4100000, `=${r2.grossProfitFen}`);
 check('S2 毛利率 = 64.0625%', r2.grossMarginRatePctDisplay === 64.06, `=${r2.grossMarginRatePctDisplay}`);
 

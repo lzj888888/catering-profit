@@ -41,8 +41,8 @@ function calcMonthlyProfit(clean) {
   // R477：参考口径取数 —— 库存开且「直接填的消耗」没有正数 ⇒ 回落倒轧。
   //   判据为什么是 ≤ 0 而不是「未填」：库存模式下前端恒传 0（subpkg/biz/month/inventory.js:240
   //   写死 `|| 0`），那个 0 是占位、不承载老板意图 ⇒ 按"未填"处理。详见 calcMonthlyProfit/service.js 头部。
-  const refMaterialSource = (inventorySwitchOn && !(directConsumeFen > 0)) ? 'reverse' : 'direct';
-  const refMaterialFen = refMaterialSource === 'reverse' ? realConsumeFen : directConsumeFen;
+  const refMaterialSource = inventorySwitchOn ? 'reverse' : 'direct';
+  const refMaterialFen = inventorySwitchOn ? realConsumeFen : directConsumeFen;
   const profitCaliberVersion = 'm1_v2';
   const operationRefProfitFen = Math.round(incomeTotalFen - expenseTotalFen - refMaterialFen - effectiveLumpSumFen);
   const totalFactorRealProfitFen = Math.round(incomeTotalFen - expenseTotalFen - realConsumeFen - effectiveAmortizeFen - effectiveLumpSumFen);

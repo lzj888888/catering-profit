@@ -332,7 +332,12 @@ Page({
           effectiveAmortize: fen(res.effective_amortize_fen),
           refProfit: fen(res.operation_ref_profit_fen),
           trueProfit: fen(res.total_factor_real_profit_fen),
-          profitDiff: fen(res.profit_diff_fen),
+          // R484：一个月份只出一个数 ⇒ 卡的副标题按"盘没盘点"给不同说法，
+          //   没盘点时另给一句提示（这个数是按采购入库算的，不是实际消耗）。
+          profitNote: (d.switches && d.switches.inventorySwitchOn)
+            ? TERMS.resultPage.profitNoteStock : TERMS.resultPage.profitNotePurchase,
+          noStockTakeTip: (d.switches && d.switches.inventorySwitchOn)
+            ? '' : TERMS.resultPage.noStockTakeTip,
           per100: per100Text,
         },
         loading: false,

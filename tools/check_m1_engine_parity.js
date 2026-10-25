@@ -164,9 +164,11 @@ if (allLoaded) {
   check('C-③ S1 🟢经营参考利润 = 916,000（实测 ' + bs.operationRefProfitFen + '）', bs.operationRefProfitFen === 916000);
   check('C-④ S1 🔵全要素真实利润 = 916,000（库存关无倒轧，实测 ' + bs.totalFactorRealProfitFen + '）', bs.totalFactorRealProfitFen === 916000);
   check('C-⑤ S2 本期真实消耗 = 2,300,000（实测 ' + b2.realConsumeFen + '）', b2.realConsumeFen === 2300000);
-  check('C-⑥ S2 🟢经营参考仍 = 916,000（🔴 口径锁：用填的 22,000 不是倒轧 23,000；实测 ' + b2.operationRefProfitFen + '）', b2.operationRefProfitFen === 916000);
+  // 🔴 R484 定案：开库存 = 盘点了 ⇒ 参考口径就用倒轧 23,000 ⇒ 816,000
+  //   （原 916,000 锚点的前提「开库存仍用手工填的数」已被本次定案推翻）
+  check('C-⑥ S2 🟢经营参考 = 816,000（R484：开库存就用倒轧 23,000；出 916,000 说明又用回手填数；实测 ' + b2.operationRefProfitFen + '）', b2.operationRefProfitFen === 816000);
   check('C-⑦ S2 🔵全要素真实利润 = 347,667（实测 ' + b2.totalFactorRealProfitFen + '）', b2.totalFactorRealProfitFen === 347667);
-  check('C-⑧ S2 两利润差异 = 568,333（实测 ' + b2.profitDiffFen + '）', b2.profitDiffFen === 568333);
+  check('C-⑧ S2 两利润差异 = 468,333（R484：只剩当月摊销；实测 ' + b2.profitDiffFen + '）', b2.profitDiffFen === 468333);
   check('C-⑨ S2-R 本期真实消耗 = 2,100,000（实测 ' + b2r.realConsumeFen + '）', b2r.realConsumeFen === 2100000);
   check('C-⑩ S2-R 🔵全要素真实利润 = 547,667（实测 ' + b2r.totalFactorRealProfitFen + '）', b2r.totalFactorRealProfitFen === 547667);
   check('C-⑪ 锚点回归在**三份副本上同时成立**（任一副本漂了即红）',
@@ -174,8 +176,9 @@ if (allLoaded) {
       try {
         const a = mods[c].calcMonthlyProfit(S1());
         const b = mods[c].calcMonthlyProfit(S2());
-        return a.operationRefProfitFen === 916000 && b.operationRefProfitFen === 916000
-          && b.totalFactorRealProfitFen === 347667 && b.profitDiffFen === 568333;
+        return a.operationRefProfitFen === 916000   // S1 库存关 ⇒ 用填的 22,000
+          && b.operationRefProfitFen === 816000     // S2 库存开 ⇒ 用倒轧 23,000（R484）
+          && b.totalFactorRealProfitFen === 347667 && b.profitDiffFen === 468333;
       } catch (e) { return false; }
     }));
 }
@@ -251,15 +254,15 @@ if (allLoaded) {
   check('E-③ 库存开 + **显式传 0**（前端库存页恒传）⇒ **同样回落**倒轧（实测 ' + rZero.operationRefProfitFen + '，应 = 816000）',
     rZero.operationRefProfitFen === 816000);
 
-  // 库存开 + 只填了 1 分（正数）⇒ 口径锁：仍用填的值，不许回落
+  // 库存开 + 只填了 1 分 ⇒ R484：盘点了就用倒轧，**手填的数不参与**（哪怕它 > 0）
   const rOne = BASE.calcMonthlyProfit(Object.assign({}, invOn, { directConsumeFen: 1 }));
-  check('E-③b 库存开 + 填了正数（哪怕 1 分）⇒ 口径锁成立不回落（实测 ' + rOne.operationRefProfitFen + '）',
-    rOne.operationRefProfitFen === 6400000 - 3284000 - 1);
+  check('E-③b 库存开 + 手填了正数（哪怕 1 分）⇒ 仍用倒轧，手填数不参与（实测 ' + rOne.operationRefProfitFen + '）',
+    rOne.operationRefProfitFen === 816000 && rOne.refMaterialSource === 'reverse');
 
-  // 库存开 + 填了值 ⇒ 口径锁：仍用填的值
+  // 库存开 + 填了值 ⇒ R484：仍用倒轧（手填数在盘点模式下不参与计算）
   const rFilled = BASE.calcMonthlyProfit(Object.assign({}, invOn, { directConsumeFen: DIRECT_FEN }));
-  check('E-④ 库存开 + **填了 22,000** ⇒ 口径锁成立，参考仍 = 916,000（实测 ' + rFilled.operationRefProfitFen + '）',
-    rFilled.operationRefProfitFen === 916000);
+  check('E-④ 库存开 + 填了 22,000 ⇒ 仍用倒轧 23,000，参考 = 816,000（实测 ' + rFilled.operationRefProfitFen + '）',
+    rFilled.operationRefProfitFen === 816000);
 
   // 库存关 ⇒ 参考恒用填的值（未填即 0，无倒轧可用）
   const offInv = Object.assign({}, invOn, { inventorySwitchOn: false });
@@ -282,10 +285,23 @@ if (allLoaded) {
       const o = mods[c].calcMonthlyProfit(invOn);
       return o.refMaterialFen === 2300000 && o.refMaterialSource === 'reverse';
     }));
-  check('E-⑧ 同上：库存开且填了值时 refMaterialSource = \'direct\'',
+  check('E-⑧ 库存开一律 refMaterialSource = \'reverse\'（R484：盘点模式不认手填数）',
     COPIES.every((c) => {
       const o = mods[c].calcMonthlyProfit(Object.assign({}, invOn, { directConsumeFen: DIRECT_FEN }));
+      return o.refMaterialSource === 'reverse' && o.refMaterialFen === 2300000;
+    }));
+  check('E-⑧b 库存关 ⇒ refMaterialSource = \'direct\'（此时用填的采购入库额，没有对比对象）',
+    COPIES.every((c) => {
+      const o = mods[c].calcMonthlyProfit(Object.assign({}, invOn, { inventorySwitchOn: false, directConsumeFen: DIRECT_FEN }));
       return o.refMaterialSource === 'direct' && o.refMaterialFen === DIRECT_FEN;
+    }));
+  // R484 核心：一个月份只出一个数 ⇒ 两个利润恒等，差只剩摊销
+  check('E-⑧c 两个利润恒等（差只剩当月摊销）—— 这是取消"两口径差异"展示的前提',
+    COPIES.every((c) => {
+      const on = mods[c].calcMonthlyProfit(invOn);
+      const off = mods[c].calcMonthlyProfit(Object.assign({}, invOn, { inventorySwitchOn: false, directConsumeFen: DIRECT_FEN }));
+      return (on.operationRefProfitFen - on.totalFactorRealProfitFen) === on.effectiveAmortizeFen
+        && (off.operationRefProfitFen - off.totalFactorRealProfitFen) === off.effectiveAmortizeFen;
     }));
   check('E-⑨ 出参带 profitCaliberVersion（旧快照无此键 ⇒ 前端按旧口径解释，不说谎）',
     COPIES.every((c) => !!mods[c].calcMonthlyProfit(invOn).profitCaliberVersion));

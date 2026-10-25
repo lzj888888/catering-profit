@@ -85,9 +85,13 @@ const CASES = [
   { id: 5,  scene: 'S1',  metric: '🟢经营参考利润',    kind: 'fen',  get: (r) => r.operationRefProfitFen,      exp: 916000 },
   { id: 6,  scene: 'S1',  metric: '🔵全要素真实利润',  kind: 'fen',  get: (r) => r.totalFactorRealProfitFen,   exp: 916000 },
   { id: 7,  scene: 'S2',  metric: '本期真实消耗',      kind: 'fen',  get: (r) => r.realConsumeFen,             exp: 2300000 },
-  { id: 8,  scene: 'S2',  metric: '🟢经营参考利润',    kind: 'fen',  get: (r) => r.operationRefProfitFen,      exp: 916000 }, // 用 22,000 非 23,000（口径锁）
+  // 🔴 R484 定案（李老师 2026-10-25）：开库存 = 盘点了 ⇒ 就用倒轧 23,000，老板不用也不该再填
+  //   ⇒ 参考利润 816,000（原 916,000 锚点的前提「开库存仍用手工填的数」已被本次定案推翻）。
+  //   ⚠️ 若哪天这里又变回 916,000 ⇒ 说明有人把手填数重新塞回了盘点模式，本条立刻红。
+  { id: 8,  scene: 'S2',  metric: '🟢经营参考利润',    kind: 'fen',  get: (r) => r.operationRefProfitFen,      exp: 816000 }, // 用倒轧 23,000（R484 定案）
   { id: 9,  scene: 'S2',  metric: '🔵全要素真实利润',  kind: 'fen',  get: (r) => r.totalFactorRealProfitFen,   exp: 347667 },
-  { id: 10, scene: 'S2',  metric: '两利润差异',        kind: 'fen',  get: (r) => r.profitDiffFen,              exp: 568333 },
+  // R484：两个口径用的是同一份消耗 ⇒ 差异**只剩当月摊销** 468,333（原来 568,333 里含 10 万消耗差）
+  { id: 10, scene: 'S2',  metric: '两利润差异',        kind: 'fen',  get: (r) => r.profitDiffFen,              exp: 468333 },
   { id: 11, scene: '2-R', metric: '本期真实消耗',      kind: 'fen',  get: (r) => r.realConsumeFen,             exp: 2100000 },
   { id: 12, scene: '2-R', metric: '🔵全要素真实利润',  kind: 'fen',  get: (r) => r.totalFactorRealProfitFen,   exp: 547667 },
 ];
@@ -122,11 +126,14 @@ function run() {
 
   console.log('');
 
-  // ===== 专项断言 1：口径锁（S2 经营参考必须 916000 分 = 9,160 元；若为 816000 说明误用倒轧 23,000）=====
+  // ===== 专项断言 1：R484 口径锁（方向已反转）=====
+  //   旧锁：开库存**仍用**手工填的 22,000 ⇒ 参考 916,000（防"开了开关就倒轧"）。
+  //   R484 定案：开库存 = 盘点了 ⇒ **就该**用倒轧 23,000 ⇒ 参考 816,000。
+  //   ⇒ 锁的方向反过来：现在要防的是"把手填数重新塞回盘点模式"（若回到 916,000 即破锁）。
   const s2 = map['S2'];
-  const lockOk = s2.operationRefProfitFen === 916000;
+  const lockOk = s2.operationRefProfitFen === 816000;
   if (!lockOk) { allPass = false; failedCount++; }
-  console.log(`[断言A] 口径锁：S2 经营参考利润 = ${s2.operationRefProfitFen} 分（应 = 916000；若为 816000 说明误用倒轧 23,000）= ${lockOk ? '✅ 锁成立' : '❌ 破锁'}`);
+  console.log(`[断言A] R484 口径锁：S2 经营参考利润 = ${s2.operationRefProfitFen} 分（应 = 816000 = 用倒轧 23,000；若为 916000 说明又用回了手工填的 22,000）= ${lockOk ? '✅ 锁成立' : '❌ 破锁'}`);
 
   // ===== 专项断言 2：两口径自洽（经营参考 − 全要素真实 === 差异），三个场景都必须成立 =====
   const diffBad = [];

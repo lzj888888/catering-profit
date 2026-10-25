@@ -138,6 +138,27 @@ if (allRead) {
     sameValue !== srcs[TERMS_A] && v1 === v2 && !!v1);
 }
 
+// ===================== G. R484：一个月只出一个数 =====================
+console.log('');
+console.log('===== G. R484：同页不再并列两个利润、不再有"两口径差异" =====');
+// 为什么单立这一段：R484 定案后，结果页**必须**只出一个利润。若有人把旧的
+// 「经营参考利润」卡或「差异」行加回去，老板又会回到"两个数不知信哪个"的状态。
+// ⚠️ 本段临时引入 wxml 面（本文件原本只扫 .js 与 terms）
+const wxmlSrc = R('subpkg/biz/month/result.wxml');
+check('G-① 结果页**不再**并列展示经营参考利润（旧 refProfit 卡已删）',
+  wxmlSrc.indexOf('r.refProfit') < 0);
+check('G-② 结果页**不再**展示"两口径差异"那一行（同月一个消耗数 ⇒ 无差异）',
+  wxmlSrc.indexOf('r.profitDiff') < 0 && wxmlSrc.indexOf('t.profitDiffWhy') < 0);
+check('G-③ 唯一利润 = 会计利润（total_factor_real_profit_fen）',
+  /trueProfit: fen\(res\.total_factor_real_profit_fen\)/.test(rj));
+check('G-④ 没盘点时给提示（李老师：只给不盘点、填了采购入库额的人做个提示）',
+  /noStockTakeTip/.test(rj) && wxmlSrc.indexOf('r.noStockTakeTip') >= 0
+  && /noStockTakeTip/.test(srcs[TERMS_A]));
+// 反恒真：把差异行加回去必须被判红
+const G_VARIANT = wxmlSrc + '\n<view class="cell"><text class="lbl">{{t.profitDiff}}</text><text class="val">{{t.cur}}{{r.profitDiff}}</text></view>';
+check('G-⑤ 反恒真：把"差异行"加回去的变体必须被判红（证明 G-② 不是恒真）',
+  G_VARIANT !== wxmlSrc && G_VARIANT.indexOf('r.profitDiff') >= 0);
+
 // ===================== D. 断言数下界 =====================
 console.log('');
 console.log('===== D. 覆盖度 =====');
