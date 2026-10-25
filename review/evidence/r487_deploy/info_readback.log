@@ -1,0 +1,48 @@
+=== calcMonthlyProfit ===
+- initialize
+
+(node:31508) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)
+√ IDE server has started, listening on http://127.0.0.1:10896
+- query cloudfunctions info
+- Preparing to fetch cloudfunctions info
+- Fetching info of cloudfunction calcMonthlyProfit
+√ query cloudfunctions info
+
+┌───────────────────┬──────────┬─────────┬───────────────┐
+│ (index)           │ status   │ timeout │ runtime       │
+├───────────────────┼──────────┼─────────┼───────────────┤
+│ calcMonthlyProfit │ 'Active' │ 20      │ 'Nodejs16.13' │
+└───────────────────┴──────────┴─────────┴───────────────┘
+=== getLedger ===
+- initialize
+
+(node:31500) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)
+√ IDE server has started, listening on http://127.0.0.1:10896
+- query cloudfunctions info
+- Preparing to fetch cloudfunctions info
+- Fetching info of cloudfunction getLedger
+√ query cloudfunctions info
+
+┌───────────┬──────────┬─────────┬───────────────┐
+│ (index)   │ status   │ timeout │ runtime       │
+├───────────┼──────────┼─────────┼───────────────┤
+│ getLedger │ 'Active' │ 20      │ 'Nodejs16.13' │
+└───────────┴──────────┴─────────┴───────────────┘
+=== saveLedger ===
+- initialize
+
+(node:31924) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)
+√ IDE server has started, listening on http://127.0.0.1:10896
+- query cloudfunctions info
+- Preparing to fetch cloudfunctions info
+- Fetching info of cloudfunction saveLedger
+√ query cloudfunctions info
+
+┌────────────┬──────────┬─────────┬───────────────┐
+│ (index)    │ status   │ timeout │ runtime       │
+├────────────┼──────────┼─────────┼───────────────┤
+│ saveLedger │ 'Active' │ 20      │ 'Nodejs16.13' │
+└────────────┴──────────┴─────────┴───────────────┘
