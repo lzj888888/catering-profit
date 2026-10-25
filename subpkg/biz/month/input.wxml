@@ -404,12 +404,7 @@
   </view>
 
   <!-- 费用（A2：四大类；E1：引导文案） -->
-  <!-- R494（2026-10-25）：标题行右侧加「编辑 / 完成」——
-       默认态**不渲染 ×**，上滑填数 / 输完敲旁边空白 / 滚屏都碰不到删除键；删除只在本态出现。 -->
-  <view class="sec sec-act-row">
-    <text>{{t.expenseTitle}}</text>
-    <button class="sec-act" wx:if="{{!readOnly}}" bindtap="toggleExpenseEdit">{{expenseEditMode ? t.expenseEditDone : t.expenseEdit}}</button>
-  </view>
+  <view class="sec">{{t.expenseTitle}}</view>
   <!-- 🔴 R308：沿用上月（**只带费用侧**）。省掉"每月重填十几项"这个最大的弃用原因；
        收入侧**不带**（预填收入会诱导忘改 ⇒ 静默错账）。本月已有费用时先弹确认，不静默覆盖。 -->
   <view class="group-ops" wx:if="{{!readOnly}}">
@@ -449,7 +444,7 @@
         <!-- round189：复制上月带出来的行标「沿用 / 要核对」（只读派生标记，不入库） -->
         <text class="muted" wx:if="{{g.expanded && r.tag === 'check'}}">{{t.needCheck}}</text>
         <text class="muted" wx:elif="{{g.expanded && r.tag === 'fixed'}}">{{t.fixedTag}}</text>
-        <button class="btn-del" wx:if="{{g.expanded && g.rows.length > 1 && expenseEditMode}}"
+        <button class="btn-del" wx:if="{{g.expanded && g.rows.length > 1 && expenseEditGi === gi}}"
           data-kind="expense" data-gidx="{{gi}}" data-ridx="{{ri}}" catchtap="delRow">{{t.delSubItem}}</button>
       </view>
       <view class="sub-line2">
@@ -505,8 +500,13 @@
     <view class="hint preset-hint" wx:if="{{g.expanded && g.unusedText}}" data-kind="expense" data-gidx="{{gi}}"
       catchtap="onOpenPresetPick">{{t.presetHintPrefix}}{{g.unusedText}}</view>
 
-    <view class="group-ops" wx:if="{{g.expanded}}">
+    <!-- R494b（2026-10-25）：增 / 删并排 —— 「+ 添加细项」与「- 删除细项」同源，放一起才不散。
+         点「- 删除细项」只让**本组**进入删除态（expenseEditGi === gi），× 才出现；
+         再点一次或点「完成删除」退出。默认态没有 ×，上滑/敲空白都碰不到删除键。 -->
+    <view class="group-ops group-ops-inline" wx:if="{{g.expanded}}">
       <button class="btn-small ghost" data-kind="expense" data-gidx="{{gi}}" catchtap="onOpenPresetPick">{{t.addSubItem}}</button>
+      <button class="btn-small ghost" wx:if="{{!readOnly && g.rows.length > 1}}" data-gidx="{{gi}}"
+        catchtap="toggleExpenseEdit">{{expenseEditGi === gi ? t.expenseDelDone : t.expenseDelItem}}</button>
     </view>
   </view>
 

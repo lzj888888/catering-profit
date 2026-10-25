@@ -25,17 +25,6 @@
   width: 8rpx; height: 36rpx; border-radius: 4rpx;
   background: linear-gradient(180deg, #2a4e7c 0%, #162c49 100%);
 }
-/* ── R494（2026-10-25）费用区「编辑 / 完成」开关 ─────────────────────────────
-   为什么加：李老师真机反馈「上滑填数时拇指扫过上一行的 ×，整行就被删了」，
-   「输完下意识敲旁边空白」也会误触。⇒ 默认态**不渲染删除键**，删除只在编辑态出现。
-   ⚠️ 触控高度守 88rpx 硬红线（AD-G2 会扫 min-height<88rpx）；视觉靠边框与字号收敛，不缩热区。 */
-.sec-act-row { display: flex; align-items: center; justify-content: space-between; padding-right: 8rpx; }
-.sec-act {
-  margin: 0; min-height: 88rpx; height: 88rpx; line-height: 84rpx;
-  padding: 0 22rpx; font-size: 28rpx; font-weight: 500;
-  color: #1e3a5f; background: #fff; border: 2rpx solid #cfdae8; border-radius: 12rpx;
-}
-.sec-act::after { display: none; }
 
 /* A2：大类组（收入/费用二级细项） */
 .group { background: #fff; border-radius: 12rpx; margin-bottom: 16rpx; padding: 8rpx 24rpx; }
@@ -71,6 +60,11 @@
   padding: 12rpx 18rpx; border: 2rpx solid #cfdae8; border-radius: 10rpx; background: #fff;
 }
 .group-ops { padding: 8rpx 0 16rpx; }
+/* R494b（2026-10-25）：「+ 添加细项 / - 删除细项」并排（李老师：两个动作同源，挨着才不乱）。
+   ⚠️ 只在本行加 .group-ops-inline，不动全局 .group-ops —— 别处（沿用上月 / 清空佣金）仍是单按钮左对齐。
+   ⚠️ button 默认带 auto 左右外边距，flex 里会被居中 ⇒ 必须 margin: 0 压掉。 */
+.group-ops-inline { display: flex; flex-wrap: wrap; gap: 16rpx; }
+.group-ops-inline .btn-small { margin: 0; }
 /* round102：展开态底部的「还没加的有：…」只读提示（点击直开预设面板） */
 .preset-hint { margin: 4rpx 0 0; }
 .group-ops .btn-small { margin-top: 0; }

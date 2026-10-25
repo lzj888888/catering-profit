@@ -360,11 +360,12 @@ check('G11d 非堂食行装配也走唯一入口（不再各自拼装）',
 //   只在**堂食渠道**成立）。⇒ 保留名字只读（防同一笔费用两个名字），放开删除键、只留「至少留一行」护栏。
 //   依据：规范 A.2「费用项支持老板自定义增删」。
 // R494（2026-10-25）：费用侧 × 新增「编辑态」闸门（防上滑/敲空白误删）。
-//   判据仍守「至少留一行」这条主线，同时**独立**守「必须有且仅有一处挂了 expenseEditMode」
+//   判据仍守「至少留一行」这条主线，同时**独立**守「必须有且仅有一处挂 expenseEditGi === gi」
 //   —— 只放宽字面量、不确认闸门真的挂上，等于把防误删改动放空（同族病：守门不守语义）。
-check('G11d 两个 WXML 分支的 × 都受「至少留一行」护栏约束；费用侧另加编辑态闸门（R494）',
-  (dinWxml.match(/class="btn-del" wx:if="\{\{g\.expanded && g\.rows\.length > 1(?:\s*&&\s*expenseEditMode)?\}\}"/g) || []).length === 2
-  && (dinWxml.match(/class="btn-del" wx:if="\{\{g\.expanded && g\.rows\.length > 1 && expenseEditMode\}\}"/g) || []).length === 1);
+check('G11d 两个 WXML 分支的 × 都受「至少留一行」护栏约束；费用侧另加本组删除态闸门（R494b）',
+  (dinWxml.match(/class="btn-del" wx:if="\{\{g\.expanded && g\.rows\.length > 1(?:\s*&&\s*expenseEditGi === gi)?\}\}"/g) || []).length === 2
+  && (dinWxml.match(/class="btn-del" wx:if="\{\{g\.expanded && g\.rows\.length > 1 && expenseEditGi === gi\}\}"/g) || []).length === 1
+  && /data-gidx="\{\{gi\}\}"[\s\S]{0,80}?catchtap="toggleExpenseEdit"/.test(dinWxml));
 check('G11d 反向腿：预算行的 × 已不再带 !r.fixed（防被改回去）',
   !/class="btn-del" wx:if="\{\{g\.expanded && !r\.fixed/.test(dinWxml));
 check('G11d 堂食渠道的 × 仍带 !r.fixed（那里的预设渠道确实会被补回，与 G10j 同口径）',
@@ -392,7 +393,10 @@ check('R102-④ 提示行点击直开预设面板（onOpenPresetPick 三处：�
 //    ⇒ `indexOf` 恒 -1 ⇒ 该断言**自 R102 起从未真正生效**（恒红或恒绿，取决于写法）。
 //    改为「锚点用正则匹配 group-ops 头 + 抓取按钮 data-kind」：判**结构**不判换行字面，
 //    并保留 `r102GoIdx >= 0` 作为锚点在场性检查（防扫描面退化 ⇒ 恒绿，R182）。
-const r102GoRe = /<view class="group-ops"[^>]*>\s*<button class="btn-small ghost" data-kind="expense"/;
+// R494b（2026-10-25）：费用段的 group-ops 多了并排类（group-ops-inline）⇒ 锚点由
+//   `class="group-ops"` 放宽为「class 以 group-ops 开头」。**只放宽定位**，判据内容不变：
+//   仍要求该段首个按钮是 `data-kind="expense"` 的添加键，且段首 300 字符内不得出现 mk-plat。
+const r102GoRe = /<view class="group-ops[^"]*"[^>]*>\s*<button class="btn-small ghost" data-kind="expense"/;
 const r102GoM = r102GoRe.exec(dinWxml);
 const r102GoIdx = r102GoM ? r102GoM.index : -1;
 const r102Win = r102GoIdx >= 0 ? dinWxml.slice(r102GoIdx, r102GoIdx + 300) : '';
