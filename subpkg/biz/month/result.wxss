@@ -14,6 +14,11 @@
 .drill-samt { color: #444; }
 
 
+/* 🔴 R489：倒轧依据行（「本数按期末库存 ¥28,000 倒轧 · 去核对」）——
+ * 它可点（去库存页核对那个数），用主色 + 下划线暗示"能点"，与上方灰色小字区分。
+ * ⚠️ 字号 28rpx（守卫下界），不新起卡片。 */
+.basis-line { color: #1e3a5f; text-decoration: underline; }
+
 /* ===== round115：行业对照（指标对照 + 业态/地区选择）===== */
 /* 🔴 字号下界 28rpx（26rpx 会被守卫判红）；色值单源 app.wxss */
 .ind-head { padding: 4rpx 0 12rpx; }

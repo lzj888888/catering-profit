@@ -32,6 +32,9 @@ Page({
       profitDiff: TERMS.ui.profitDiff,
       caliberRefHint: TERMS.ui.caliberRefHint,
       caliberTrueHint: TERMS.ui.caliberTrueHint,
+      // 🔴 R489：把「倒轧用的期末库存」摆出来 + 一句「去核对」——
+      //   系统不判断老板填得对不对（实测有人随手填 28000），只让他看见自己填的数。
+      basisGo: TERMS.resultPage.basisGo,
       pendingArchive: TERMS.ui.pendingArchive,
       archivedLock: TERMS.ui.archivedLock,
       graceArchive: TERMS.ui.graceArchive,
@@ -144,6 +147,11 @@ Page({
       //   以前本页固定写「真实利润」而结果页写「本月利润」，同一个数两个名 ⇒ 已消灭。
       const labReal = profitLabel.pickProfitLabel(d, 'real');
       const fmt = (v) => (v == null ? '0.00' : api.fenToYuan(v, 2));
+      // 🔴 R489：倒轧用的期末库存**原样上屏**。系统分不出"真盘点"和"随手填"（服务端不返回该事实），
+      //   所以不判断准不准 —— 把老板自己填的那个数摆出来（"本数按期末库存 ¥28,000 倒轧"），
+      //   他一看就想起来"这数我是随手填的"。零判断、零误报，也不撞「不给行业均值」的口径红线。
+      const basisText = (labReal.basis === 'stocktake' && labReal.closingFen != null)
+        ? TERMS.resultPage.basisStock(fmt(labReal.closingFen)) : '';
       this.setData({
         curMonth: month,
         isArchive: !!d.is_archive,
@@ -168,6 +176,10 @@ Page({
           profitTitle: labReal.title,
           profitNote: labReal.note,
           noStockTakeTip: labReal.tip,
+          // 🔴 R489：钱扣在哪 —— 摊销金额、一次算清投入、倒轧用的期末库存（都是"解释这个数"的一部分）
+          basisText,
+          amortText: labReal.amortText,
+          lumpText: labReal.lumpText,
         } : null,
       });
       // 归档状态：次月 1 日起软提示（待归档徽标）；归档月只读标识

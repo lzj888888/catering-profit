@@ -163,6 +163,8 @@ Page({
       loading: TERMS.ui.loading,
       cur: '¥',
       pendingArchive: TERMS.ui.pendingArchive,
+      // 🔴 R489：倒轧依据那行的可点提示（「本数按期末库存 ¥X 倒轧 · 去核对」）
+      basisGo: TERMS.resultPage.basisGo,
       expireSoonTitle: TERMS.pay.expireSoonTitle,
       renewEntry: TERMS.pay.renewEntry,
       subscribeTip: TERMS.pay.subscribeTip,
@@ -348,6 +350,14 @@ Page({
           profitTitle: lab.title,
           profitNote: lab.note,
           noStockTakeTip: lab.tip,
+          // 🔴 R489：钱扣在哪 + 倒轧用了哪个期末库存（都是"解释这个数"，与标题同一来源）
+          //   · amortText：实际扣掉的摊销金额（开关关/没摊销时为空或"本月没有摊销"）
+          //   · lumpText：「一次算清」的投入，只在当月扣、不受摊销开关控制
+          //   · profitBasis：把老板填的期末库存摆出来 —— 系统不判断准不准，让他自己看
+          amortText: lab.amortText,
+          lumpText: lab.lumpText,
+          profitBasis: (lab.basis === 'stocktake' && lab.closingFen != null)
+            ? TERMS.resultPage.basisStock(fen(lab.closingFen)) : '',
           per100: per100Text,
         },
         loading: false,
@@ -667,6 +677,18 @@ Page({
     const m = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.month) || '';
     if (!m || m === this.data.month) return;   // 点当前月 = 原地，不重复入栈
     wx.navigateTo({ url: '/subpkg/biz/month/result?month=' + m });
+  },
+
+  /**
+   * 🔴 R489：从「本数按期末库存 ¥X 倒轧」直接去核对那个数。
+   * 为什么给这个入口：系统分不出"真盘点"和"随手填"（服务端不返回该事实），
+   * 所以不判断、也不弹"可能填错了"，只把**老板自己填的数**摆在利润旁边；
+   * 他要改，一步就到库存页 —— 比任何"异常提示"都准，且零误报。
+   */
+  goInventory() {
+    const m = this.data.month;
+    if (!m) return;
+    wx.navigateTo({ url: '/subpkg/biz/month/inventory?month=' + m });
   },
 
   viewChecklist(cl) {

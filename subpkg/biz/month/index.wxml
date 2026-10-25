@@ -31,6 +31,13 @@
     <view class="muted">{{isPaid ? result.profitTitle : t.netRef}}</view>
     <view class="result-num">{{t.cur}}{{isPaid ? result.true_profit : result.ref_profit}}</view>
     <view class="caliber-hint">{{isPaid ? result.profitNote : t.caliberRefHint}}</view>
+    <!-- 🔴 R489：钱扣在哪 —— 以下三行都"有话说才出现"（空行会把单数字卡撑成小作文）。
+         · 摊销：只对付费档显示（免费档看的是参考口径那个数，**不含摊销**，说出来就是错话）
+         · 一次性投入：两个口径都扣，两边都能显示
+         · 倒轧用的期末库存：把老板填的数摆在他眼前，他自己会判断准不准（系统不猜） -->
+    <view class="caliber-hint" wx:if="{{isPaid && result.amortText}}">{{result.amortText}}</view>
+    <view class="caliber-hint" wx:if="{{result.lumpText}}">{{result.lumpText}}</view>
+    <view class="caliber-hint basis-line" wx:if="{{isPaid && result.basisText}}" bindtap="goInventory">{{result.basisText}} · {{t.basisGo}} ›</view>
     <!-- 免费用户：升级提示（保留 hint-fold 守卫 moFreeHint） -->
     <view class="hint-fold" wx:if="{{!isPaid}}">
       <view class="hint-fold-head" data-key="moFreeHint" bindtap="onToggleHintFold">

@@ -35,6 +35,12 @@
     <view class="muted">{{r.profitTitle}}</view>
     <view class="result-num" style="color:#22a06b;">{{t.cur}}{{r.trueProfit}}</view>
     <view class="muted">{{r.profitNote}}</view>
+    <!-- 🔴 R489：钱扣在哪（摊销 / 一次算清）+ 倒轧用的是哪个期末库存。
+         三行都"有话说才出现"：空行会把利润卡撑长，反而看不出重点。
+         basis 那行可点 —— 老板看见"期末库存 ¥28,000"才想得起来自己是不是随手填的。 -->
+    <view class="muted" wx:if="{{r.amortText}}">{{r.amortText}}</view>
+    <view class="muted" wx:if="{{r.lumpText}}">{{r.lumpText}}</view>
+    <view class="muted basis-line" wx:if="{{r.profitBasis}}" bindtap="goInventory">{{r.profitBasis}} · {{t.basisGo}} ›</view>
     <!-- R484：给"不盘点、只填了采购入库金额"的老板一句提示 -->
     <view class="warn" wx:if="{{r.noStockTakeTip}}">{{t.noStockTakeTip}}</view>
 
