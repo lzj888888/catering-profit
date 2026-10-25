@@ -763,3 +763,14 @@
   - ⑤ **门禁**：`mk_force` 两轮各 `refreshed 171 / cache size 177`（`MK1=0`/`MK2=0`）→ `SUITES = 211` · **`总览 211/211 通过`** · **141.9s** · `R92 ✅` · **`GATE_RC=0`**（`_gate_r490.log`）。⚠️ **本轮工作树含并发会话在途改动**（`terms.js`×2、`subpkg/biz/month/index.{js,wxml,wxss}`、`result.{js,wxml,wxss}`、`utils/profitLabel.js` 均 M，非我改）⇒ 这个绿灯是**工作树态**，不是纯 HEAD 基线；我的提交只含 5 个显式路径（numstat 10/2、22/0、15/0、1/1、22/0）。
   - ⑥ **部署**：`exportData` `success=true` / 20 文件 / 61.0 KB，`info` 回读 `Active / timeout=60 / Nodejs16.13`，证据 `review/evidence/r490_deploy/`。只动 dev（`cloud1-d4gphpoxy337f2a25`，现读 `miniprogram/config/env.js:23`），未碰 prod/控制台。
   - ⑦ **不出码**：零 wxml/wxss 改动 ⇒ 按纪律不做 preview。
+
+- [2026-10-25 18:47] R491 收口「利润解读三件事」在途批次（标签只说算法 + 摊销/一次性投入/期末库存上屏）+ 出码 · 门禁 211/211 RC=0 · commit 1a38eeb · 队列 #66 → done
+  - ① **认领 `daa09db`**；开工态：HEAD `7de0f8a` 比 `origin/dev` 多 1 个纯回执提交 ⇒ 先推（`b5e190b..7de0f8a`）；队列 **0 todo / 0 in_progress / 52 done / 13 blocked**，13 条 why 仍全属「人等」。
+  - ② **为什么是「收口」不是「重做」**：9 个跟踪文件 18:08–18:20 在途（`terms.js`×2、月首页 js/wxml/wxss、结果页 js/wxml/wxss、`utils/profitLabel.js`），NOTE 已写但 `git log` 无对应提交、`review/evidence/` 无出码目录；按「不覆盖、不代提交」先判占用 —— `run_gate_py.py` 无进程、18:20 后零写入 ⇒ 按 #52 先例**按现状收口**，内容一字未改。
+  - ③ **实读核对（不采信 NOTE 自述）**：terms 新增 5 键（`basisStock`/`basisGo`/`lumpNote`/`amortLine`/`amortNone`），双副本 md5 `cba52f7929f40cb8d473309a7d0fa244` 全等；两页 t 映射真挂（`index.js:37/154`、`result.js:167/360`）；两页 wxml 三行均 `wx:if`（空行不会把单数字卡撑长）；`result.js:682 goInventory()` 真跳库存页。
+  - ④ **单跑守卫（不挂 preload，读真文件）**：`check_m1_diff_explain` 33/0 · `check_page_terms` 20/0 · `selftest_ui_fix` 43/0 · `check_home_ui_v3` 32/0（全 RC=0，与 NOTE §6 点名套件一一对应）。
+  - ⑤ **全量门禁（可自证）**：`_gate_r491.log` → `SUITES = 211` · **总览 211/211 通过** · **229.3s** · `R92 ✅` · **`GATE_RC=0`**。刷缓存由上一轮 18:17/18:20 两轮 `mk_force`（各 `refreshed 171 / cache size 177`）完成，晚于 terms 18:18 改动 ⇒ 本轮未重复刷。
+  - ⑥ **出码**：`√ preview` · `review/evidence/r491_qr/qr.png` **48,085 B** · TOTAL **764.7 KB**（main 267.8 / subpkg-biz 324.5 / subpkg-tools 172.3）。改过 wxml/wxss ⇒ 必须出码；**未弹二维码**。
+  - ⑦ **零云函数改动** ⇒ 不部署（`git diff` 里 `cloudfunctions/**` 零命中；禁改四函数 `calcCostCard`/`netUnitCostWan`/`lineNetCostYuan`/`wouldCreateCycle` 未触碰）。
+  - ⑧ **勘误（撞号）**：本批 NOTE 自标 **R489**，与 17:50「R488 证据补齐」轮（`ecb1c2e`）撞号 ⇒ 落账取 **R491**，已在 NOTE 追加 §7 说明（内容不改）。另：18:23 的 `_gate_r490.log` 是**工作树态**绿灯，本轮补的是可自证的 R491 基线。
+  - ⑨ **未做（已登下一批，不代拍板）**：①「本月做了真实盘点」勾选落库（B 方案，能治「随手填」与「清仓期末 0」两处误判）② 免费档是否也放开会计利润（付费墙决策，待李老师）。两处排版微调：`result.wxss` 被压掉的注释换行已还原。
