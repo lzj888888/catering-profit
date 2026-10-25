@@ -1,0 +1,69 @@
+{
+  "shopId": "",
+  "shops": [
+    {
+      "shop_id": "shop_u_mu6j87t1a283_sc_1792852528523",
+      "name": "Abc"
+    },
+    {
+      "shop_id": "shop_u_mu6j87t1a283_sc_1792855514629",
+      "name": "999"
+    }
+  ],
+  "ledgers": {
+    "Abc|528523": {
+      "has": true,
+      "income": 9950000,
+      "expense": 4760000,
+      "material": 700000,
+      "realConsume": 700000,
+      "refProfit": 2990000,
+      "trueProfit": 4490000,
+      "diff": -1500000,
+      "refMaterial": 2200000,
+      "refSrc": "direct",
+      "caliber": "m1_v2",
+      "switches": {
+        "inventorySwitchOn": true,
+        "amortizeSwitchOn": false
+      },
+      "switchSource": "live",
+      "direct": 2200000,
+      "inventory": {
+        "opening_fen": 0,
+        "purchase_fen": 3500000,
+        "closing_fen": 2800000
+      },
+      "amortize": 0,
+      "effectiveAmortize": 0,
+      "lump": 0
+    },
+    "999|514629": {
+      "has": true,
+      "income": 500000,
+      "expense": 540000,
+      "material": 0,
+      "realConsume": 0,
+      "refProfit": -40000,
+      "trueProfit": -40000,
+      "diff": 0,
+      "refMaterial": 0,
+      "refSrc": "direct",
+      "caliber": "m1_v2",
+      "switches": {
+        "inventorySwitchOn": false,
+        "amortizeSwitchOn": false
+      },
+      "switchSource": "live",
+      "direct": 0,
+      "inventory": {
+        "opening_fen": 0,
+        "purchase_fen": 0,
+        "closing_fen": 0
+      },
+      "amortize": 0,
+      "effectiveAmortize": 0,
+      "lump": 0
+    }
+  }
+}
