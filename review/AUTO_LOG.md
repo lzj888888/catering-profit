@@ -910,7 +910,7 @@
   - ⑤ **单跑复核**：`selftest_batch8b` **194/0**（= 声明 194）、`selftest_batch8c` **70/0**（= 声明 70）、`terms.js` 双副本 md5 全等（`20621a16…`，现算）⇒ R500 的断言数同步与 i18n 双副本纪律都没破。
   - ⑥ **本提交零 wxml/wxss ⇒ 不出码；零云函数 ⇒ 不部署。** R500 自己的出码 `review/evidence/r500_qr/qr.png`（47,714 B，03:39:29）已随 `65bf33d` 入库。
   - ⑦ **未做（有意）**：`AUTO_QUEUE` 里「## 回执格式」一节被夹在队列表中段（#75 起落在代码块之后），属文档结构瑕疵但 `check_queue_status` 14/0 仍能解析 ⇒ 只记录不动，避免与并发会话抢同一文件。
-- [2026-10-26 04:47] R502 只读巡检：队列 0 todo / 0 in_progress（84 行 = 64 done + 20 blocked）⇒ 未认领，仅巡检 · 门禁 `_gate_r500b.log` 211/211 RC=0 · commit 本回执提交 · 队列：无（0 todo）
+- [2026-10-26 04:47] R502 只读巡检：队列 0 todo / 0 in_progress（84 行 = 64 done + 20 blocked）⇒ 未认领，仅巡检 · 门禁 `_gate_r500b.log` 211/211 RC=0 · commit 7964eac（本回执提交）· 队列：无（0 todo）
   - ① **跟踪面干净**：`git status --porcelain | grep -v '^??'` = **0 行**；未跟踪 **97 件**全是过程件（`_mkforce_r4xx_*.log` 33 份、`_mut_r498.py`/`_mut_r500.py`、`_probe_tmp/`、`.workbuddy/memory/2026-10-25.md` 等）⇒ 只登记不搬（批量移动会触发 safe-delete 批量确认而挂死）。
   - ② **最近门禁**：`_gate_r500b.log`（03:33:02）`SUITES = 211` · `总览 211/211` · `GATE_RC=0` · 259.3s；同批 `_gate_r500.log`（03:13）是 209/211 `GATE_RC=1` 的**中间态**（`batch8c` 字面量锚点假红 + `suite-assert-counts` 级联），不作基线。覆盖判据：R500 代码写入 ≤03:18，提交 `65bf33d`(03:40) 只是把同一份内容入库 ⇒ **覆盖成立**。进程表无 `run_gate_py.py` ⇒ 未与并发门禁抢跑。
   - ③ **队列无僵尸 todo**（0 条）；同跑 `tools/check_queue_status.js` **14/0**。🔴 顺带勘误：R501 回执写的「63 done / 21 blocked」与实测不符 —— 按列解析（status 列 + blocked 列）实为 **64 done / 20 blocked = 84 行**，且不存在 `blocked=yes` 而 `status≠blocked` 的错配行（R501 当时 #85 还在 in_progress，故真实分布是 63+1+20；「21 blocked」多算了一行）。属台账计数笔误、不涉状态错判，**不改原文**，仅在此留痕。
