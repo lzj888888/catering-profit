@@ -831,3 +831,10 @@
   - ④ 出码：`√ preview` RC=0，`review/evidence/r495_qr/qr.png` **47,204 B** / md5 `54467c1716c258d17d92d684088872a4`，TOTAL 767.4 KB（main 268.6 / biz 326.4 / tools 172.3）；日志 `preview_r495.txt`。`r494_qr` 为 21:19 旧码，覆盖不到本轮 wxml 改动。
   - ⑤ 部署：**零云函数改动**（6 文件 = 两份 terms + input.js/wxml/wxss + tools）⇒ 不部署。
   - ⑥ 撞号留痕：`2984e01` 自标 R494，而 R494 已被 21:17 回执占用 ⇒ 本轮取 R495 避让，不改写历史。
+
+- [2026-10-25 22:42] R495 只读巡检（队列 0 todo / 0 in_progress / 57 done / 13 blocked，未改代码）· 四项全绿
+  - ① 跟踪面干净：`git status --porcelain` 非 `??` 行为 0；HEAD `77679af` ≡ `origin/dev`（本轮三次提交全推）。
+  - ② 最近门禁：`_gate_r495.log` **211/211 · GATE_RC=0 · 159.2s**，晚于 HEAD 及其祖先 `2984e01` ⇒ 覆盖当前树。
+  - ③ 无僵尸 todo：13 条 blocked 的 why 仍成立（#12 AppSecret / #7 扫码 / #9 美团样例 / #21 #33 #35 #55 #60 拍板 / #37 prod / #38 支付手续 / #39 #40 #41 决策）。
+  - ④ NOTE↔代码：R493（`b220e8e`）§1 勾选已核 —— `inventory.js:59-61` 出 `stockTakeDone`/`showStockTake`，`inventory.wxml:39-45` 真渲染 `<switch bindchange="onToggleStockTake">`（🔴 首查用小写 `stocktake` grep 得 0 命中，是按错键名的假阴性，不是缺行）；R489（`1a38eeb`）/R488（`b0225df`）已于 R491/R489 复核，现码未变。
+  - ⑤ 登记 **#71（blocked=yes）**：本页收入侧两处删除键（`input.wxml:124` 堂食自定义渠道、`:388` 收入细项）仍是常驻 ×，未纳入本轮「编辑态」；因共用 `delRow` ⇒ 已有二次确认（不会误删），只剩「多一次弹窗」的摩擦 ⇒ 是否一并收进编辑态属交互取舍，需李老师拍板，不擅自改。

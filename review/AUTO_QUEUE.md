@@ -113,6 +113,8 @@
 
 | 70 | **R494b（`2984e01`，22:14 月度录入「费用区默认态不出删除键 + 删除二次确认」）零回执 / 门禁无 RC 行 / 改过 wxml 未出码**：6 文件 98+/10−（两份 `terms.js` 各 +18、`input.js` 32+/1−、`input.wxml` 7+/2−、`input.wxss` 17+/5−、`tools/selftest_batch8b.js` 6+/2−）只存在于 commit message；`AUTO_LOG` 最大号仍是 21:17 那条 R494；`_gate_r494.log`(21:19) 早于该提交，`_m3/gitcache_helper/gate_r494.txt`(22:13:51) 虽有 211/211 但**无 `GATE_RC=` 行**；`review/evidence/r494_qr` 出码时间 21:19 ⇒ 早于本轮 wxml 改动。why: `tools/**` 在 22:14 被改（`selftest_batch8b.js`）⇒ 挂 preload 跑门禁前**必须**刷 `mk_force` 两轮，否则读到旧缓存；且改过 wxml/wxss ⇒ 按纪律必须 `√ preview` 出码。本轮只补「RC 可自证的门禁 + 出码 + 回执」，**不重复实现**费用区编辑态（已实读复核：terms 双副本 md5 全等、`t.expenseEdit*` 已映射、弹窗按钮 2 字、`doDeleteRow` 保留「至少留一行」护栏） · 取号 R495 避让（`2984e01` 自标 R494 与 21:17 回执轮撞号） | done | no | **R495 已收口**：门禁 211/211 · GATE_RC=0 · 159.2s（前置 mk_force 两轮各 171）；`√ preview` qr.png 47,204 B（`review/evidence/r495_qr/`）；单跑 180/0·20/0·14/0；未重复实现费用区编辑态 · commit c0d9292 |
 
+| 71 | 月度录入页**收入侧两处删除键仍常驻**（`input.wxml:124` 堂食自定义渠道、`:388` 收入细项），与 R494b 费用侧「默认态不出 ×」不对称 | blocked | yes | why: R494b（`2984e01`）只把费用侧收进 `expenseEditMode`（`:452`），收入侧两处 `btn-del` 未加同一条件。**不是数据丢失级**：两处都走同一个 `delRow` ⇒ 已有 `wx.showModal` 二次确认（`:849-853`），误触最多弹一次窗、点「取消」即无事；残留问题只是摩擦与两种交互形态并存。**要拍板的点**：收入侧仅 2–3 项、且堂食渠道行本就窄，是否值得再加一步「编辑」才可删；若拍板「收进去」，改动面 = `input.wxml` 两处 `wx:if` + 标题行开关（收入区无标题行，需另择位置）⇒ 还需同步 `selftest_batch8b` G11d 的「费用侧唯一一处」判据措辞 |
+
 ## 回执格式（每次执行后追加到 `review/AUTO_LOG.md`）
 
 
