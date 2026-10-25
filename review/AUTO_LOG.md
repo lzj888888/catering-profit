@@ -823,3 +823,11 @@
   - ③ **队列**：**0 todo / 0 in_progress / 56 done / 13 blocked**，无僵尸 todo、无反向漂移。13 条 why 逐条核过且仍成立：#7 扫码 · #9 美团销量表样例 · #12 AppSecret 建第 4 索引 · #21/#33/#35/#41/#55/#60 待拍板 · #37 prod 环境 · #38 支付手续前置 · #39 大赛报名 · #40 上线口径（等李老师说「要上线了」）。
   - ④ **NOTE↔代码**：① R493 免费档分流三处一致 —— `pages/index/index.js:113` 按 `isPaid` 三元取数、`:116` 同口径取标签；月首页 `index.wxml:31/32` `isPaid ? result.profitTitle : t.netRef` 与 `isPaid ? true_profit : ref_profit` 同源 ② R489 三行两页**键名不同但都在屏**（月首页 `amortText/lumpText/basisText`、结果页 `amortText/lumpText/profitBasis`）③ R488 `profitTitle` 在首页 `index.wxml:27/35` 真上屏。
   - ⑤ **观察（不登记、不计缺口）**：月首页 `amortText`/`basisText` 的 `wx:if` 带 `isPaid`，`lumpText` 不带 —— 一次性投入在两个口径都扣、摊销只属会计口径 ⇒ 现写法自洽（与 R492 巡检同一结论，现状未变）。
+
+- [2026-10-25 22:35] R495 补 R494b（`2984e01`）机器证据：门禁 RC 可自证 + 出码 · 门禁 211/211 RC=0 · commit c0d9292 · 队列 #70 → done
+  - ① **未重复实现**：`2984e01`「费用区默认态不出删除键 + 删除二次确认」已实读复核自洽 —— 两份 `terms.js` md5 `a8a9f2ce30cc7d10877cbc8ce03fee78` 全等；`input.js:51-52` 有 `t.expenseEdit*` 映射；wxml `:411` 开关、`:452` 费用侧唯一一处 `&& expenseEditMode`；弹窗按钮「删除」「取消」均 2 字（≤4）；`doDeleteRow:864` 保留「至少留一行」护栏。
+  - ② 单跑守卫：`selftest_batch8b` **180/0**、`check_page_terms` **20/0**、`check_queue_status` **14/0**。
+  - ③ 门禁：前置 `mk_force` 两轮（各 `refreshed 171 / cache size 177`）⇒ `SUITES=211` · **总览 211/211** · **GATE_RC=0** · **159.2s**（`_gate_r495.log`，晚于 HEAD `2984e01`；`_m3/gitcache_helper/gate_r494.txt` 那份 211/211 无 RC 行）。本批含 `tools/selftest_batch8b.js` 改动 ⇒ 不刷缓存会读到旧 rc，两轮不可省。
+  - ④ 出码：`√ preview` RC=0，`review/evidence/r495_qr/qr.png` **47,204 B** / md5 `54467c1716c258d17d92d684088872a4`，TOTAL 767.4 KB（main 268.6 / biz 326.4 / tools 172.3）；日志 `preview_r495.txt`。`r494_qr` 为 21:19 旧码，覆盖不到本轮 wxml 改动。
+  - ⑤ 部署：**零云函数改动**（6 文件 = 两份 terms + input.js/wxml/wxss + tools）⇒ 不部署。
+  - ⑥ 撞号留痕：`2984e01` 自标 R494，而 R494 已被 21:17 回执占用 ⇒ 本轮取 R495 避让，不改写历史。
