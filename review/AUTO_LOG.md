@@ -853,3 +853,13 @@
   - ② **最近门禁**：`_gate_r496.log` **211/211 · `GATE_RC=0` · 120.0s**（前置 mk_force 两轮各 171），晚于 `df2e3dc`(23:34) 且早于并发会话 23:42 的写入 ⇒ 覆盖被审代码、不被在途污染。
   - ③ **队列**：0 todo（#72 本轮收口）/ 0 in_progress / 14 blocked（#7 #9 #12 #21 #33 #35 #37 #38 #39 #40 #41 #55 #60 #71）why 逐条仍成立 —— 全是「扫码 / AppSecret / 美团样例 / 拍板 / prod / 支付手续 / 上线口径」。⚠️ #71 的 why 正在被并发会话推翻（见 ①），下轮按 #73 处置，不改 #71 状态。
   - ④ **NOTE↔代码**：R493 库存勾选 `inventory.js:60-62` 出 `stockTakeDone`/`showStockTake`，`inventory.wxml:45` 真挂 `<switch bindchange="onToggleStockTake">`；R489 三行两页键名不同但都上屏（月首页 `amortText:38`/`lumpText:39`/`basisText:40`，结果页 `amortText:41`/`lumpText:42`/`profitBasis:43`）；R494b/c 已于本条 ① 复核。三条均对得上。
+- [2026-10-26 01:06] R497 补齐 #73（`70080dd` 收入侧删除键收进编辑态）机器证据 · 门禁 211/211 RC=0 · commit 924d05d · 队列 #73 → done
+  - ① **认领即发现已被做完**：开工 `git status` 只有未跟踪过程件，`git log` 里 23:55 `70080dd` 已把队列 #73 描述的那批在途改动提交（6 文件 74+/20−：terms×2 `+4`、`★知识存储点` 断言数 1/1、`input.js` 22+/、`input.wxml` 24+/、`selftest_batch8b.js` 38+/）⇒ 按铁律**未重复实现**，只补机器证据（队列行 22:5x 写的「在途」已过期）。
+  - ② **实读复核（不采信提交信息）**：两份 `terms.js` md5 均为 `c14d3f67db534d65bfca03928db4c2b6`；`incomeDelChannel: '- 删除渠道'` 已映射 `subpkg/biz/month/input.js:54`；`incomeEditGi` 复位 4 处（`data:217` / `onLoad:288` / `toggleIncomeEdit:856` / `doDeleteRow:889`）；wxml 两处删除键都挂 `incomeEditGi === gi`（`:126` 堂食自定义渠道、`:394` 收入细项），且 `:394` 保留 `g.rows.length > 1` ⇒ 「至少留一行」护栏未丢。弹窗按钮 2 字。
+  - ③ **单跑守卫**：`selftest_batch8b` **188/0**（与 `★知识存储点:44` 声明 188 一致）、`check_page_terms` **20/0**、`check_wxml_structure` **3/0**、`check_hint_fold` **190/0**、`check_modal_button_len` **15/0**、`selftest_ui_fix` **43/0**。
+  - ④ **门禁**：前置 `mk_force` 两轮（各 `refreshed 171 / cache size 177`，`_mkforce_r497_a/b.log`）⇒ `SUITES=211` · **总览 211/211** · **`GATE_RC=0`** · **194.2s**（`_gate_r497.log`，显式落 RC 行）。该批改过 `tools/selftest_batch8b.js` ⇒ 两轮刷新不可省。
+  - ⑤ **出码**：`√ preview` **RC=0**，`review/evidence/r497_qr/qr.png` **47,247 B** / md5 `77269a4e644defef5d9e0a66e626b86f`，TOTAL 768.3 KB（main 268.6 / biz 327.3 / tools 172.3）；日志同目录 `preview_r497.txt`。`r496_qr`(23:45) 早于 `70080dd`(23:55) ⇒ 覆盖不到本轮 wxml。
+  - ⑥ **部署**：**零云函数改动**（`git show --stat 70080dd` 无 `cloudfunctions/`）⇒ 不部署。
+  - ⑦ **队列反向漂移回写**：#71（「收入侧两处删除键仍常驻 · blocked」）的 why 已被 `70080dd` 推翻 ⇒ 改 done/no，并注明「若不认可该交互，属回退已上线功能、需另立条目拍板」，不静默改产品形态。
+  - ⑧ 撞号留痕：`70080dd` 自标 **R496**（该号当时已被 22:35 回执占用）⇒ 本轮取 R497 避让，不改写历史。
+
