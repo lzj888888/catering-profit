@@ -47,6 +47,9 @@ Page({
       amountBadTip: TERMS.ui.amountBadTip,
       incomeTitle: TERMS.ledger.incomeTitle,
       expenseTitle: TERMS.ledger.expenseTitle,
+      // R494：费用区「编辑 / 完成」开关（默认态不渲染删除键，防误删）
+      expenseEdit: TERMS.ledger.expenseEdit,
+      expenseEditDone: TERMS.ledger.expenseEditDone,
       carryBtn: TERMS.ledger.carryBtn,
       carryOverwrite: TERMS.ledger.carryOverwrite,
       carryEmpty: TERMS.ledger.carryEmpty,
@@ -202,6 +205,10 @@ Page({
     // P0#3：新手/老手模式（仅存本地；默认新手，折叠非核心科目）
     inputMode: 'novice',
     showMore: false,
+    // R494（2026-10-25）：费用区「编辑模式」—— 默认关闭 = **不渲染任何删除键**。
+    //   为什么：常驻 × 在「上滑填数 / 输完敲旁边空白」时会被拇指扫到 ⇒ 整行被删（李老师真机反馈）。
+    //   删除只在这一态下出现，且点 × 仍走 wx.showModal 二次确认 ⇒ 两层兜底。
+    expenseEditMode: false,
     month: '',
     isArchive: false,
     archivedAtMs: 0,
@@ -271,7 +278,8 @@ Page({
   onLoad(q) {
     const month = (q && q.month) || ui.nowMonth();
     // P0#3：读入新手/老手模式（仅存本地；读不到回默认 'novice'）
-    this.setData({ month, inputMode: this.loadInputMode() || 'novice' });
+    // 切月/重进一律退出编辑态：避免上次留下的「可删」状态跨月串台
+    this.setData({ month, inputMode: this.loadInputMode() || 'novice', expenseEditMode: false });
     this.initGroups();
     this.load();
   },
@@ -823,8 +831,31 @@ Page({
     this.setData({ [key]: groups });
     this.syncDineSum();
   },
+  // R494（2026-10-25）：费用区「编辑 / 完成」开关。
+  //   默认态**不渲染 ×** ⇒ 上滑、输完敲旁边空白、滚屏都碰不到删除键；想删必须显式进入本态。
+  toggleExpenseEdit() {
+    this.setData({ expenseEditMode: !this.data.expenseEditMode });
+  },
+  // 删除前二次确认：正文如实说「会回到下方待选项 / 可重新添加」—— 🔴 不写「不可恢复」，
+  //   因为预设项删掉后会出现在下方「还没加的有：…」，点一下就能加回来（李老师 2026-10-25 指出）。
   delRow(e) {
     const { kind, gidx, ridx } = e.currentTarget.dataset;
+    const key = kind === 'income' ? 'incomeGroups' : 'expenseGroups';
+    const groups = this.data[key] || [];
+    const g = groups[Number(gidx)] || {};
+    const row = (g.rows && g.rows[Number(ridx)]) || {};
+    const name = row.subItem || '';
+    wx.showModal({
+      title: TERMS.ledger.delConfirmTitle,
+      content: TERMS.ledger.delConfirmBody(name, row.fixed === true),
+      confirmText: TERMS.ledger.delConfirmOk,
+      cancelText: TERMS.ledger.delConfirmCancel,
+      confirmColor: '#c0392b',
+      success: (res) => { if (res.confirm) this.doDeleteRow(kind, gidx, ridx); },
+    });
+  },
+  // 真正落数据的删除（确认后才走这里；保留原「至少留一行」护栏）
+  doDeleteRow(kind, gidx, ridx) {
     const key = kind === 'income' ? 'incomeGroups' : 'expenseGroups';
     const groups = this.data[key].slice();
     const g = Object.assign({}, groups[Number(gidx)]);

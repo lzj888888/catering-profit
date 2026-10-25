@@ -25,6 +25,17 @@
   width: 8rpx; height: 36rpx; border-radius: 4rpx;
   background: linear-gradient(180deg, #2a4e7c 0%, #162c49 100%);
 }
+/* ── R494（2026-10-25）费用区「编辑 / 完成」开关 ─────────────────────────────
+   为什么加：李老师真机反馈「上滑填数时拇指扫过上一行的 ×，整行就被删了」，
+   「输完下意识敲旁边空白」也会误触。⇒ 默认态**不渲染删除键**，删除只在编辑态出现。
+   ⚠️ 触控高度守 88rpx 硬红线（AD-G2 会扫 min-height<88rpx）；视觉靠边框与字号收敛，不缩热区。 */
+.sec-act-row { display: flex; align-items: center; justify-content: space-between; padding-right: 8rpx; }
+.sec-act {
+  margin: 0; min-height: 88rpx; height: 88rpx; line-height: 84rpx;
+  padding: 0 22rpx; font-size: 28rpx; font-weight: 500;
+  color: #1e3a5f; background: #fff; border: 2rpx solid #cfdae8; border-radius: 12rpx;
+}
+.sec-act::after { display: none; }
 
 /* A2：大类组（收入/费用二级细项） */
 .group { background: #fff; border-radius: 12rpx; margin-bottom: 16rpx; padding: 8rpx 24rpx; }
@@ -33,15 +44,16 @@
 .g-toggle { font-size: 28rpx; color: #1e3a5f; }
 /* 2026-09-20 改两行：行①细项名 + ×；行②金额（整行宽、带边框）
    原一行三控件时金额框仅 220rpx，点中间数字易误删、边框不明显 —— 李老师真机反馈。 */
-.sub-block { padding: 14rpx 0; border-top: 1rpx solid #f5f5f5; }
+/* R494：纵向收紧 —— 原 14rpx 上下留白 + 行间 12rpx，7 项累计近百 px 空白，李老师反馈「松散」。 */
+.sub-block { padding: 10rpx 0; border-top: 1rpx solid #f5f5f5; }
 .sub-line1 { display: flex; align-items: center; gap: 10rpx; }
 .sub-item-inp {
   flex: 1; min-width: 0; font-size: 30rpx; color: #222;
-  padding: 14rpx 18rpx; background: #f7f9fc; border-radius: 10rpx;
+  padding: 10rpx 16rpx; background: #f7f9fc; border-radius: 10rpx;
 }
 /* 预设细项名（不可改）：与可编辑细项同字号同内边距，只是没有输入框底色。
    ⚠️ 别删这条 —— 少了它，固定名与可编辑名会左右错位（2026-09-21）。 */
-.sub-item-fixed { flex: 1; min-width: 0; font-size: 30rpx; color: #222; padding: 14rpx 18rpx; }
+.sub-item-fixed { flex: 1; min-width: 0; font-size: 30rpx; color: #222; padding: 10rpx 16rpx; }
 /* ⚠️ AD 规范（ad-gates G2 硬守）：可点元素 min-height ≥ 88rpx —— **不可下调**。
    2026-09-21 李老师反馈「删除键太大、占地」⇒ 收窄 width + 去掉红底方块：
    视觉上只剩一个 × 字符（不占视觉面积），但**点击热区仍是 88rpx**。
@@ -52,11 +64,11 @@
   padding: 0; margin: 0; font-size: 30rpx; color: #c0392b; background: none;
 }
 .btn-del::after { display: none; }         /* 去掉小程序 button 默认边框 */
-.sub-line2 { display: flex; align-items: center; gap: 14rpx; margin-top: 12rpx; }
+.sub-line2 { display: flex; align-items: center; gap: 14rpx; margin-top: 8rpx; }
 .sub-amt-lbl { flex: 0 0 auto; font-size: 28rpx; color: #6b7a90; }
 .sub-line2 .val-input {
   flex: 1; width: auto; text-align: right; font-size: 34rpx;
-  padding: 16rpx 20rpx; border: 2rpx solid #cfdae8; border-radius: 10rpx; background: #fff;
+  padding: 12rpx 18rpx; border: 2rpx solid #cfdae8; border-radius: 10rpx; background: #fff;
 }
 .group-ops { padding: 8rpx 0 16rpx; }
 /* round102：展开态底部的「还没加的有：…」只读提示（点击直开预设面板） */

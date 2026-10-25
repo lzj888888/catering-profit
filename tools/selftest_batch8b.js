@@ -359,8 +359,12 @@ check('G11d 非堂食行装配也走唯一入口（不再各自拼装）',
 //   rebuildFromItems 只按后端 sub_items 重建，两条装配口**从不补回预设项**（那套「删了会回来」
 //   只在**堂食渠道**成立）。⇒ 保留名字只读（防同一笔费用两个名字），放开删除键、只留「至少留一行」护栏。
 //   依据：规范 A.2「费用项支持老板自定义增删」。
-check('G11d 两个 WXML 分支的 × 只受「至少留一行」护栏约束（预设行也可删）',
-  (dinWxml.match(/class="btn-del" wx:if="\{\{g\.expanded && g\.rows\.length > 1\}\}"/g) || []).length === 2);
+// R494（2026-10-25）：费用侧 × 新增「编辑态」闸门（防上滑/敲空白误删）。
+//   判据仍守「至少留一行」这条主线，同时**独立**守「必须有且仅有一处挂了 expenseEditMode」
+//   —— 只放宽字面量、不确认闸门真的挂上，等于把防误删改动放空（同族病：守门不守语义）。
+check('G11d 两个 WXML 分支的 × 都受「至少留一行」护栏约束；费用侧另加编辑态闸门（R494）',
+  (dinWxml.match(/class="btn-del" wx:if="\{\{g\.expanded && g\.rows\.length > 1(?:\s*&&\s*expenseEditMode)?\}\}"/g) || []).length === 2
+  && (dinWxml.match(/class="btn-del" wx:if="\{\{g\.expanded && g\.rows\.length > 1 && expenseEditMode\}\}"/g) || []).length === 1);
 check('G11d 反向腿：预算行的 × 已不再带 !r.fixed（防被改回去）',
   !/class="btn-del" wx:if="\{\{g\.expanded && !r\.fixed/.test(dinWxml));
 check('G11d 堂食渠道的 × 仍带 !r.fixed（那里的预设渠道确实会被补回，与 G10j 同口径）',
