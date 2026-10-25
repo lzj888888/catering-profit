@@ -869,3 +869,12 @@
   - ③ **队列**：0 todo / 0 in_progress / 13 blocked（#7 #9 #12 #21 #33 #35 #37 #38 #39 #40 #41 #55 #60），why 逐条仍成立 —— 全是「扫码 / AppSecret / 美团销量表样例 / 拍板 / prod 环境 / 支付手续 / 上线口径」。⚠️ 本轮另把 **#71 反向漂移**回写为 done（见本条 #73 回执 ⑦）。
   - ④ **NOTE↔代码（抽检三条）**：R497/#73 已复核（terms md5、`incomeEditGi` 四处、wxml 两道闸门 + 「至少留一行」）；R493 库存勾选 `inventory.js:60-62` ↔ `inventory.wxml:45` 仍在；**R496 外卖口径 NOTE ↔ 代码：机制对得上，但对得上的是错口径** —— `utils/takeaway.js:90 subtotalOf = goods + pack + subsidy`、`terms.js:535 fastPh:'商品总价+打包费+活动补贴（元）'`、`:576 scopeGuide` 三处同口径，探针 `review/evidence/r496_waimai/probe_caliber.js` 本轮独立复跑复现 美团 +806.29 / 淘宝 +2069.70（偏差恒等于商家承担补贴额）⇒ 登记 **#74（blocked=yes）** 等李老师三选一（A 收窄收入口径 / B 改文案要老板填优惠后 / C 只加警告），并注明「R170 的『已自洽』建立在未言明的『填优惠后』前提上，勿用其翻案」。该 NOTE 与探针/会诊件原为未跟踪（01:00 写入、14 分钟无变更）⇒ 本轮**原文入库**防丢，未改一字。
 
+- [2026-10-26 02:36] R498 补齐 #75（`ddf54fe` 外卖「补贴不进收入」口径落地）机器证据 + #74 收口 · 门禁 211/211 RC=0 · commit ddf54fe（代码，并发会话）+ 本回执提交 · 队列 #75 → done
+  - ① **认领**：开工队列 0 todo（#74 blocked / 其余 done）；巡检发现 `ddf54fe`(01:58) 晚于最近门禁 `_gate_r497.log`(00:59)，且改过 `tools/**` ⇒ 覆盖不到 ⇒ 登记 **#75** 并认领 `7c2fd1b`。
+  - ② **实读复核（未重复实现口径）**：`utils/takeaway.js:102 subtotalOf(goods, pack)` 已两参、函数体注释写明「补贴不进收入」的会计定性；调用点三处同步（`subpkg/biz/month/input.js:1216 / 1234 / 1272`）；`utils/takeaway.js` 内 `gross` **零残留**；terms 双副本 md5 `3aa2c8468fa90a77f6f7e0648c66e5eb` 全等，`terms.js:539 fastPh:'商品总价+打包费（优惠前）（元）'`、`:552 subsidyNote` 明说「不计入营业收入」、`:593 recCalcHint` 改为「以优惠前总额为基础」。
+  - ③ **行为实证（独立复跑，不采信提交自述）**：`node review/evidence/r496_waimai/probe_caliber.js` ⇒ 修复后 美团 收入 3166.20 / 净额 **1826.64** = 真实到手、偏差 **-0.00**；淘宝 收入 6585.08 / 净额 **3779.65** = 真实到手、偏差 **0.00**。对照组（旧利润链）虚高 806.29 / 2069.70，且「虚高 == 商家承担补贴额」两条均为 `true`。
+  - ④ **单跑守卫**：`selftest_r85` **168/0**（与 `★知识存储点:44` 声明 168 一致）、`check_takeaway_settle` **17/0**、`check_suite_assert_counts` **93/0**（挂 preload 与裸跑各一次，均绿）。
+  - ⑤ **门禁**：前置 `mk_force` 两轮（各 `refreshed 171 / cache size 177`，`_mkforce_r498_a/b.log`，第二轮无 rc=1）⇒ 首轮 **210/211 · RC=1**，唯一红 `suite-assert-counts`（`_gate_r498.log`）⇒ 先证伪自己的判据：该套件裸跑与挂 preload 均 93/0 ⇒ 判为刷缓存后的**缓存假红**，判据一个字未改；重跑 **211/211 · GATE_RC=0 · 325.3s**（`_gate_r498b.log`，显式落 RC 行）。
+  - ⑥ **出码 / 部署**：`git show --stat ddf54fe` 无 `*.wxml` / `*.wxss` ⇒ 不出码；无 `cloudfunctions/**` ⇒ 不部署。
+  - ⑦ **队列**：#75 → done；**#74 → done**（A 案已落地，注明「若不认可属回退已上线口径变更、需另立条目拍板」）；新登记 **#76（blocked）**：`saveLedger` 只落 `subtotal` ⇒ 已归档月的收入仍按含补贴小计入库，要不要一次性回溯订正需拍板（数据订正，不擅动）。
+  - ⑧ 撞号留痕：`ddf54fe` 自标 **R497**（该号已被 01:06/01:14 两条回执占用）⇒ 本轮取 **R498** 避让，不改写历史。
