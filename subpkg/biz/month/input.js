@@ -49,7 +49,6 @@ Page({
       expenseTitle: TERMS.ledger.expenseTitle,
       // R494b：费用区「－ 删除细项 / 完成删除」开关（与「+ 添加细项」并排）
       expenseDelItem: TERMS.ledger.expenseDelItem,
-      expenseDelDone: TERMS.ledger.expenseDelDone,
       carryBtn: TERMS.ledger.carryBtn,
       carryOverwrite: TERMS.ledger.carryOverwrite,
       carryEmpty: TERMS.ledger.carryEmpty,
@@ -832,9 +831,13 @@ Page({
     this.setData({ [key]: groups });
     this.syncDineSum();
   },
-  // R494b（2026-10-25）：本组「－ 删除细项 / 完成删除」开关（与「+ 添加细项」并排）。
+  // R494b/c（2026-10-25）：本组「- 删除细项」开关（与「+ 添加细项」并排）。
   //   只对**当前这一组**生效（expenseEditGi = 组下标，-1 = 全关）——
-  //   四组同时冒 × 更乱，所以点哪组只有哪组进删除态；再点一次或点「完成删除」退出。
+  //   四组同时冒 × 更乱，所以点哪组只有哪组进删除态。
+  //   🔴 R494c（李老师）：**不再有「完成删除」** —— 点 × 走完二次确认那一刻删除已经完成，
+  //      再让用户点一次「完成」是多出来的一步、且无感 ⇒ 状态只由按钮颜色表达（见 wxml 的 is-del-on），
+  //      删完任意一行由 doDeleteRow 自动把 expenseEditGi 置回 -1（× 自动收起）。
+  //      副作用是有利的：每次删除都要重新点一次按钮才出 × ⇒ 防误删又加一层。
   toggleExpenseEdit(e) {
     const gi = Number((e.currentTarget.dataset || {}).gidx);
     this.setData({ expenseEditGi: this.data.expenseEditGi === gi ? -1 : gi });
@@ -867,7 +870,9 @@ Page({
     if (rows.length === 0) rows = [{ subItem: '', amountYuan: '' }]; // 至少保留一行（老板只填一行也能走）
     g.rows = this.decorateRows(g, rows);
     groups[Number(gidx)] = g;
-    this.setData({ [key]: groups });
+    // R494c：删完即收 —— × 自动收起，不再要求用户点「完成删除」（那一步多余且无感）。
+    //   想再删一行，重新点一次「- 删除细项」即可（每次都显式进入 = 多一层防误删）。
+    this.setData({ [key]: groups, expenseEditGi: -1 });
     this.syncDineSum();
   },
 

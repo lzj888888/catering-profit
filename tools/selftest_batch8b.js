@@ -366,6 +366,21 @@ check('G11d 两个 WXML 分支的 × 都受「至少留一行」护栏约束；�
   (dinWxml.match(/class="btn-del" wx:if="\{\{g\.expanded && g\.rows\.length > 1(?:\s*&&\s*expenseEditGi === gi)?\}\}"/g) || []).length === 2
   && (dinWxml.match(/class="btn-del" wx:if="\{\{g\.expanded && g\.rows\.length > 1 && expenseEditGi === gi\}\}"/g) || []).length === 1
   && /data-gidx="\{\{gi\}\}"[\s\S]{0,80}?catchtap="toggleExpenseEdit"/.test(dinWxml));
+// R494c（2026-10-25 李老师）：**取消「完成删除」** + 删完自动收起 ×。
+//   为什么单独立腿：这三条都是「改一半不报错」的活口 —— ① 删了文案却没接自动退出 ⇒ × 赖在屏幕上，
+//   用户还得再点一次按钮（就是李老师说的那一步）；② 自动退出了但文案仍写「完成删除」⇒ 名不副实；
+//   ③ 状态只靠文案、没有颜色表达 ⇒ 用户看不出自己正在删除态。每条都独立判，不合并。
+check('R494c-① 删除落数据的 doDeleteRow 里自动把 expenseEditGi 置回 -1（删完即收，不再要求点「完成」）',
+  /doDeleteRow\(kind, gidx, ridx\) \{[\s\S]{0,800}?expenseEditGi: -1/.test(dinJs));
+check('R494c-② 「完成删除」文案已从三处彻底移除（页面 / 逻辑 / 文案单源）',
+  !/expenseDelDone/.test(dinWxml) && !/expenseDelDone/.test(dinJs) && !/expenseDelDone/.test(terms));
+check('R494c-③ 删除态改用**颜色**表达：按钮挂 is-del-on 且文案恒为 t.expenseDelItem（无三元换字）',
+  /class="btn-small ghost subop-btn subop-del \{\{expenseEditGi === gi \? 'is-del-on' : ''\}\}"/.test(dinWxml)
+  && !/expenseEditGi === gi \? t\./.test(dinWxml));
+check('R494c-④ 两枚按钮等宽恒在一行（nowrap + flex 1 1 0），且触控高度仍守 88rpx 红线',
+  /\.group-ops-inline \{[^}]*flex-wrap: nowrap/.test(dinWxss)
+  && /\.group-ops-inline \.btn-small \{[^}]*flex: 1 1 0/.test(dinWxss)
+  && /\.btn-small \{[^}]*min-height: 88rpx/.test(read('app.wxss')));
 check('G11d 反向腿：预算行的 × 已不再带 !r.fixed（防被改回去）',
   !/class="btn-del" wx:if="\{\{g\.expanded && !r\.fixed/.test(dinWxml));
 check('G11d 堂食渠道的 × 仍带 !r.fixed（那里的预设渠道确实会被补回，与 G10j 同口径）',
@@ -396,7 +411,10 @@ check('R102-④ 提示行点击直开预设面板（onOpenPresetPick 三处：�
 // R494b（2026-10-25）：费用段的 group-ops 多了并排类（group-ops-inline）⇒ 锚点由
 //   `class="group-ops"` 放宽为「class 以 group-ops 开头」。**只放宽定位**，判据内容不变：
 //   仍要求该段首个按钮是 `data-kind="expense"` 的添加键，且段首 300 字符内不得出现 mk-plat。
-const r102GoRe = /<view class="group-ops[^"]*"[^>]*>\s*<button class="btn-small ghost" data-kind="expense"/;
+// R494c（2026-10-25）：并排按钮各自加了修饰类（subop-btn / subop-del）⇒ 按钮侧锚点同样**只放宽定位**：
+//   `class="btn-small ghost"` → 「class 以 btn-small ghost 开头」。判据内容不变（仍要 data-kind="expense"）。
+//   ⚠️ 别再钉 class 字面量：加一个修饰类就把守卫判红，是「守卫锚点钉字面量」的老毛病（同族病）。
+const r102GoRe = /<view class="group-ops[^"]*"[^>]*>\s*<button class="btn-small ghost[^"]*" data-kind="expense"/;
 const r102GoM = r102GoRe.exec(dinWxml);
 const r102GoIdx = r102GoM ? r102GoM.index : -1;
 const r102Win = r102GoIdx >= 0 ? dinWxml.slice(r102GoIdx, r102GoIdx + 300) : '';

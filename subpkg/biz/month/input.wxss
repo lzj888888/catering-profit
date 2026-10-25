@@ -60,11 +60,17 @@
   padding: 12rpx 18rpx; border: 2rpx solid #cfdae8; border-radius: 10rpx; background: #fff;
 }
 .group-ops { padding: 8rpx 0 16rpx; }
-/* R494b（2026-10-25）：「+ 添加细项 / - 删除细项」并排（李老师：两个动作同源，挨着才不乱）。
+/* R494b/c（2026-10-25）：「+ 添加细项 / - 删除细项」并排（李老师：两个动作同源，挨着才不乱）。
    ⚠️ 只在本行加 .group-ops-inline，不动全局 .group-ops —— 别处（沿用上月 / 清空佣金）仍是单按钮左对齐。
-   ⚠️ button 默认带 auto 左右外边距，flex 里会被居中 ⇒ 必须 margin: 0 压掉。 */
-.group-ops-inline { display: flex; flex-wrap: wrap; gap: 16rpx; }
-.group-ops-inline .btn-small { margin: 0; }
+   ⚠️ button 默认带 auto 左右外边距，flex 里会被居中 ⇒ 必须 margin: 0 压掉。
+   R494c 版式：nowrap + flex:1 1 0 + min-width:0 ⇒ 两枚**等宽胶囊**恒在一行（原 wrap 会掉成上下两排）；
+   圆角 44rpx 全圆、字号 26rpx；⚠️ 高度仍守 88rpx 触控红线（ad-gates G2 硬守，缩了门禁转红）。 */
+.group-ops-inline { display: flex; flex-wrap: nowrap; gap: 16rpx; }
+.group-ops-inline .btn-small { margin: 0; flex: 1 1 0; min-width: 0; padding: 0 12rpx; font-size: 26rpx; border-radius: 44rpx; }
+/* 「- 删除细项」默认中性灰；本组进入删除态才转红 —— **状态由颜色表达**，不再换文案成「完成删除」
+   （李老师 2026-10-25：删完还要再点一次「完成」是多一步且无感）。 */
+.group-ops-inline .subop-del { color: #6b7a90; border-color: #d8e0ea; }
+.group-ops-inline .subop-del.is-del-on { color: #c0392b; border-color: #c0392b; background: #fdf1ef; font-weight: 600; }
 /* round102：展开态底部的「还没加的有：…」只读提示（点击直开预设面板） */
 .preset-hint { margin: 4rpx 0 0; }
 .group-ops .btn-small { margin-top: 0; }

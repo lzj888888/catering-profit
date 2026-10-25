@@ -501,12 +501,16 @@
       catchtap="onOpenPresetPick">{{t.presetHintPrefix}}{{g.unusedText}}</view>
 
     <!-- R494b（2026-10-25）：增 / 删并排 —— 「+ 添加细项」与「- 删除细项」同源，放一起才不散。
-         点「- 删除细项」只让**本组**进入删除态（expenseEditGi === gi），× 才出现；
-         再点一次或点「完成删除」退出。默认态没有 ×，上滑/敲空白都碰不到删除键。 -->
+         点「- 删除细项」只让**本组**进入删除态（expenseEditGi === gi），× 才出现；默认态没有 ×，
+         上滑/敲空白都碰不到删除键。
+         R494c（2026-10-25 李老师）：**不再有「完成删除」** —— 点 × 走完确认那一刻已经删完，
+         再点一次「完成」是多出来的一步且无感 ⇒ 状态改用按钮颜色（is-del-on）表达，
+         删完任意一行由 doDeleteRow 自动把 expenseEditGi 置回 -1，× 自动收起。 -->
     <view class="group-ops group-ops-inline" wx:if="{{g.expanded}}">
-      <button class="btn-small ghost" data-kind="expense" data-gidx="{{gi}}" catchtap="onOpenPresetPick">{{t.addSubItem}}</button>
-      <button class="btn-small ghost" wx:if="{{!readOnly && g.rows.length > 1}}" data-gidx="{{gi}}"
-        catchtap="toggleExpenseEdit">{{expenseEditGi === gi ? t.expenseDelDone : t.expenseDelItem}}</button>
+      <button class="btn-small ghost subop-btn" data-kind="expense" data-gidx="{{gi}}" catchtap="onOpenPresetPick">{{t.addSubItem}}</button>
+      <button class="btn-small ghost subop-btn subop-del {{expenseEditGi === gi ? 'is-del-on' : ''}}"
+        wx:if="{{!readOnly && g.rows.length > 1}}" data-gidx="{{gi}}"
+        catchtap="toggleExpenseEdit">{{t.expenseDelItem}}</button>
     </view>
   </view>
 
