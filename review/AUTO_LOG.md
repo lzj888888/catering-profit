@@ -782,3 +782,10 @@
   - ④ **改后探针**：三个分支全部符合（`probe_after.txt`）；单跑 `check_m1_diff_explain` 33/0、`selftest_ui_fix` 43/0。
   - ⑤ **全量门禁**：`_gate_r492.log` → `SUITES = 211` · **211/211** · **149.9s** · `R92 ✅` · **`GATE_RC=0`**。本轮 `tools/**` / `terms.js` 零改动 ⇒ 未再刷 mk_force（缓存由 18:17/18:20 两轮刷新，晚于最后一次 terms 改动）。
   - ⑥ **边界（如实留痕）**：只改「说不说这一句」，**没有**动金额格式（`yuan()` 无千分位，与 `api.fenToYuan` 同款）、也没有为这条加新断言 —— 现有 `check_m1_diff_explain` G-⑦ 只守「两种说法真赋给 `note:`」，**不守 `amortText` 三态**；若要机器守住，需改 `tools/**` 并同步断言数声明，留作下一批（未擅自改判据）。
+
+- [2026-10-25 19:10] R492 巡检（只读，未改代码）· 队列 0 todo / 0 in_progress → 补登 #68
+  - ① `git status`：tracked **0 行**；`HEAD 8e59fcf` ≡ `origin/dev`；未跟踪过程件 **51 个**（`_gate_*` / `_mkforce_*` / `_r4xx_*.py`，仓库根，移动会触发 safe-delete ⇒ 只登记不动手）。
+  - ② 最近门禁：`_gate_r492.log` **211/211 · GATE_RC=0 · 149.9s**（晚于 HEAD 前的最后一次代码提交 `1dfd0d3`）。
+  - ③ 队列：**0 todo / 0 in_progress / 54 done / 13 blocked**，无僵尸 todo；13 条 why 抽核仍全属「人等」（AppSecret / 真机扫码 / 付费墙与产品口径拍板 / 美团样例 / prod 环境）。
+  - ④ NOTE↔代码：`NOTE_R489`（利润解读）与本轮落账代码逐条对得上（terms 5 键双副本 md5 `cba52f79…` 等、两页 t 映射真挂）；`NOTE_R488`（名随数走）由 `utils/profitLabel.js` 单一来源 + G-⑦ 守住；`NOTE_R483`（会计口径会诊）结论「待李老师拍板 A/B」已被 R484 定案覆盖，属时点快照不回写。
+  - ⑤ 本轮发现的**唯一新缺口**已登 #68：`amortText`/`basisText` 三态无机器判据（R492 靠人眼修，修完仍无守卫）。
