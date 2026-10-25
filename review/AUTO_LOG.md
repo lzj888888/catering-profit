@@ -901,3 +901,12 @@
   - ⑧ **门禁首轮是红的（如实记，不粉饰）**：`_gate_r500.log` **209/211 · `GATE_RC=1`** —— `batch8c` 与 `suite-assert-counts` 两条。根因：`selftest_batch8c` 有一条判据**钉死字面量**「平台佣金与配送费不要在这里扣」，我改 `incomeScope.takeaway` 文案后**语义仍在、字面变了** ⇒ 假红；`suite-assert-counts` 是它级联（`A0 实跑 rc≠0` ⇒ `A2 声明 70 ≠ 实跑 undefined`）。处置：**改判据为语义判据**（真读 TERMS，判「营销费用 + 不要在这里扣/加减 + 佣金·配送费」三要素），**不是**把文案改回旧字面。修后 `batch8c` 70/0、`suite-assert-counts` 93/0；刷缓存两轮后复跑 ⇒ `_gate_r500b.log` **211/211 · `GATE_RC=0` · 259.3s**。
   - ⑨ **出码 / 部署**：**改了 `input.wxss` ⇒ 按纪律必须出码** ⇒ `open --port 10896` + `preview` RC=0，`review/evidence/r500_qr/qr.png` **47,714 B**（03:39 出，TOTAL 770.6 KB）；零云函数改动 ⇒ 不部署。
   - ⑨ NOTE：`review/NOTE_2026-10-26_R500_堂食收入采集口径与填表引导.md`；豆包问答原文 `review/evidence/r500_dinein/`。
+- [2026-10-26 03:50] R501 只读巡检：队列 0 todo；#85 认领即发现 R500 台账已由并发会话落账 ⇒ 未重复实现 · 门禁 `_gate_r500b.log` 211/211 RC=0 · commit 9540d4a（认领）+ 本提交 · 队列 #85 → done
+  - ① **开工即见漂移**：`git status` 有 8 个跟踪文件未暂存（6 个代码 + 2 个台账），mtime 02:58–03:18；进程表无 `run_gate_py.py` ⇒ 判为并发会话 R500 收尾中 ⇒ **不覆盖、不代提交、不抢跑门禁**，先登记 #85 并认领。
+  - ② **认领即发现已被做完**：`65bf33d`(03:40:20) 入库 11 文件（terms×2 各 21+/4−、`input.wxss` 4、`selftest_batch8b` +28、`selftest_batch8c` 7、NOTE 92 行、豆包四份证据）；`98d4931`(03:41:16) 入库 `AUTO_LOG` 11 行 + `AUTO_QUEUE` 4 行，且已推 origin/dev ⇒ #85 描述的两处缺口**均已落账**。按铁律只改状态，不重复实现。
+  - ③ **巡检四项**：(a) 跟踪面干净（本提交前仅我自己的 #85 行）；(b) 最近门禁 `_gate_r500b.log` **211/211 · `GATE_RC=0` · 259.3s**（03:33:02），晚于 R500 全部写入（≤03:18）⇒ **覆盖成立**；其首轮 `_gate_r500.log` 209/211 `GATE_RC=1` 的两条红 = `batch8c` 字面量锚点假红 + `suite-assert-counts` 级联，对方改成语义判据（真读 TERMS 判三要素）后复绿，**未迁就代码改判据**；(c) 队列 **0 todo / 0 in_progress / 63 done / 21 blocked**（原 17 + 新增 #81~#84），四条新 blocked 的 why 逐条实读**均成立**（拆框/默认渠道数/净营业收入/粘贴导入全是结构性或指标性改动，需李老师拍板）；(d) 三条最新 NOTE 对码全绿（见 ④）。
+  - ④ **NOTE ↔ 代码抽检（三条）**：R500 —— `terms.js:477` `fastHint` 已含三家收银系统取数路径（美团管家→营收概览→月报→店内实收；客如云→营业概况/每日对账单；哗啦啦→老板通→收入分类）+ 手抄兜底，`:537` 外卖 `fastHint` 已写「优惠前总额 · **不加**商家承担补贴」，`input.wxss:192` 已有 `white-space: pre-wrap`（否则 `
+` 被 WXML 折叠成一坨）；R498 —— `utils/takeaway.js:291`/`:322` 两处 JSDoc 已改成新口径，`gross` 残留 0 处；R497 —— `subtotalOf(goods, pack)` 两参 + `input.js:1216/1234/1272` 三处调用同步。
+  - ⑤ **单跑复核**：`selftest_batch8b` **194/0**（= 声明 194）、`selftest_batch8c` **70/0**（= 声明 70）、`terms.js` 双副本 md5 全等（`20621a16…`，现算）⇒ R500 的断言数同步与 i18n 双副本纪律都没破。
+  - ⑥ **本提交零 wxml/wxss ⇒ 不出码；零云函数 ⇒ 不部署。** R500 自己的出码 `review/evidence/r500_qr/qr.png`（47,714 B，03:39:29）已随 `65bf33d` 入库。
+  - ⑦ **未做（有意）**：`AUTO_QUEUE` 里「## 回执格式」一节被夹在队列表中段（#75 起落在代码块之后），属文档结构瑕疵但 `check_queue_status` 14/0 仍能解析 ⇒ 只记录不动，避免与并发会话抢同一文件。
