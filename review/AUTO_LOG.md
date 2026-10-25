@@ -754,3 +754,12 @@
   - ⑥ **零云函数改动** ⇒ 不部署；**不重复实现** R488 的标签收口（实读复核：`pages/index/index.js:109`、`subpkg/biz/month/index.js:145`、`subpkg/biz/month/result.js:311` 三处真 `require('utils/profitLabel.js')` 并真调 `pickProfitLabel(d,'real')`；`terms.js` 双副本 md5 `d9a6451210611e0d4089835936ec81ba` 全等）。
   - ⑦ 巡检四项：`git status` tracked **0 行**（46 个未跟踪过程件属过程件，按纪律只登记）｜最近门禁 = 本轮 `_gate_r489.log` **211/211 · GATE_RC=0**｜队列 **0 todo / 0 in_progress / 51 done / 13 blocked**，无僵尸 todo、13 条 blocked 的 why 仍全属「人等」｜NOTE↔代码：`NOTE_R488` §4 断言数（32/30/43/26）与实跑一致，§5「免费档两口径不同数」属产品拍板未动 ✅。
   - ⑧ 遗留（非本轮）：R488 §5 的「要不要把会计利润也放开给免费档」= 付费墙决策，**待李老师拍板**；`_r489_queue.py` 等过程件留在仓库根，移动会触发 safe-delete ⇒ 只登记。
+
+- [2026-10-25 18:30] R490 导出 Excel「经营参考利润」公式说明按口径条件化 · 门禁 211/211 RC=0 · commit b5e190b · 队列 #65 → done（#64 顺带收口）
+  - ① **开工先收口 #64**：R489 的证据其实已落（`_gate_r489.log` `211/211`/`GATE_RC=0`/194.5s、`review/evidence/r489_qr/qr.png` 47,106 B、AUTO_LOG 回执 10 行），只是队列行还挂 `in_progress`、两个提交（`50ed4b1`+`ecb1c2e`）没推 ⇒ 只把行改 `done` 并推送（`b0225df..2d22780`），**不重复实现**。
+  - ② **缺陷（实读，不是推测）**：R479 只把利润表「减：食材消耗」与「消耗差异」两行按 `refSrc` 条件化，同一个 sheet 里还有**两处公式说明**写死「本月填写食材消耗」——`exportData/index.js` 的「＝ 经营参考利润」单元格与口径说明表「经营参考利润」行。库存模式（`ref_material_source='reverse'`）下，上一行说「减：食材消耗（库存倒轧）」，下面说「本月填写消耗」⇒ **导出件自相矛盾**，而老板正是拿这张表复核。
+  - ③ **修法**：两处按 `refSrc` 分岔 —— reverse 分支写「倒轧消耗（期初 + 采购 − 期末）」，direct 分支保持原文；**零数值改动、零引擎改动、零 wxml**（不动 `calcCostCard`/`netUnitCostWan`/`lineNetCostYuan`/`wouldCreateCycle`）。
+  - ④ **守卫不是恒真**：`check_m1_diff_explain` 30→**33**（B-⑦/B-⑧ 用 `indexOf` + 就近 300 字符窗口，判「文案在场」**且**「真挂在 `refSrc === 'reverse'` 分支上」；C-④ 反恒真变体）。真实变异（两处 reverse 文案退回固定）⇒ **B-⑦/B-⑧ 双红**，还原后 `md5 8a700cbc8cb2d09fe35dae8637728190` 一致、**33/33 复绿**。声明同步 `★知识存储点` 的 `check_m1_diff_explain`=30→33（该行是唯一声明处，不跟就红）。
+  - ⑤ **门禁**：`mk_force` 两轮各 `refreshed 171 / cache size 177`（`MK1=0`/`MK2=0`）→ `SUITES = 211` · **`总览 211/211 通过`** · **141.9s** · `R92 ✅` · **`GATE_RC=0`**（`_gate_r490.log`）。⚠️ **本轮工作树含并发会话在途改动**（`terms.js`×2、`subpkg/biz/month/index.{js,wxml,wxss}`、`result.{js,wxml,wxss}`、`utils/profitLabel.js` 均 M，非我改）⇒ 这个绿灯是**工作树态**，不是纯 HEAD 基线；我的提交只含 5 个显式路径（numstat 10/2、22/0、15/0、1/1、22/0）。
+  - ⑥ **部署**：`exportData` `success=true` / 20 文件 / 61.0 KB，`info` 回读 `Active / timeout=60 / Nodejs16.13`，证据 `review/evidence/r490_deploy/`。只动 dev（`cloud1-d4gphpoxy337f2a25`，现读 `miniprogram/config/env.js:23`），未碰 prod/控制台。
+  - ⑦ **不出码**：零 wxml/wxss 改动 ⇒ 按纪律不做 preview。
