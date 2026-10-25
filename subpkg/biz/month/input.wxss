@@ -186,8 +186,10 @@
   min-height: 88rpx; padding: 14rpx 8rpx; }
 .hint-fold-guide { font-size: 28rpx; color: #1e3a5f; }
 .hint-fold-arrow { font-size: 28rpx; color: #1e3a5f; }
+/* 🔴 R500：堂食/外卖的「从哪抄」引导里带了 \n 分段（多家收银系统的路径对照），
+   WXML 默认会把 \n 折叠成空格 ⇒ 必须 pre-wrap，否则老板看到的是一坨不分行的长文。 */
 .hint-fold-body { font-size: 28rpx; color: #6b7a90; line-height: 1.6; padding: 12rpx 16rpx;
-  background: #f5f8fc; border-radius: 10rpx; margin: 0 0 12rpx; }
+  background: #f5f8fc; border-radius: 10rpx; margin: 0 0 12rpx; white-space: pre-wrap; }
 
 /* ===== 2026-09-21 堂食录入模式（快速 / 分项 · 严格互斥 · 方案 A）=====
    ⚠️ 方案 A：选「分项」时总额由各渠道相加自动算出、不可手填 ⇒ 单一数据源，无需校验。

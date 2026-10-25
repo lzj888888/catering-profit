@@ -760,6 +760,34 @@ const a9InvBad = A9_ENGINES.filter((f) => {
 check('A9-⑱ 「开库存」S2 上锁样本三副本对拍（倒轧 23,000 / 参考 816,000 R484 口径锁 / 真实 347,667 / 差异 468,333）',
   a9InvBad.length === 0, a9InvBad.length ? ('未达标：' + a9InvBad.join(', ')) : '三副本一致且命中上锁锚点');
 
+// ===== G12 · R500 堂食收入采集引导（豆包两轮 + 美团管家/客如云/哗啦啦官方字段取证）=====
+// 背景：老板填堂食收入的困扰不是"不会做加法"，而是**不知道去手机上点哪抄**，以及
+//   「收银系统首页那个『营业收入』能不能直接抄」（客如云那个数含未结账/会员卡余额/挂账 ⇒ 抄了虚高）。
+// ⚠️ 同族病：R498 刚修过「实现改了、注释/文案没跟」⇒ 引导文案必须进判据面，否则改回去无人知。
+console.log('—— G12 R500 堂食采集引导（从哪抄 + 三不抄 + 换行真的能显示）——');
+const scopeIn = T.ledger.incomeScope || {};
+const dmT = T.ledger.dineMode || {};
+const notesT = T.ledger.channelNotes || {};
+check('G12-1 R500 收入口径 takeaway 不得再教「三项相加」，必须说「优惠前总额」（R497 已改，教回去=补贴白扣）',
+  !/(三项相加|三项之和)/.test(scopeIn.takeaway || '') && /优惠前总额/.test(scopeIn.takeaway || ''));
+check('G12-2 R500 堂食口径必须写明「未结账不算」+「充值不算收入」+「按消费日、不按到账日」',
+  /未结账|还没结账/.test(scopeIn.dine_in || '') && /充值/.test(scopeIn.dine_in || '')
+  && /消费/.test(scopeIn.dine_in || '') && /到账/.test(scopeIn.dine_in || ''));
+check('G12-3 R500 快速录入必须给出**手机上抄得到**的路径（≥2 家收银系统 + 实收金额/营业概况/收入分类）', (() => {
+  const h = dmT.fastHint || '';
+  const sys = ['美团', '客如云', '哗啦啦'].filter((x) => h.indexOf(x) >= 0).length;
+  return sys >= 2 && /(实收金额|营业概况|收入分类)/.test(h);
+})());
+check('G12-4 R500 快速录入必须说清「系统内 + 系统外」按订单算一次（别两边都加 —— 现金混合的主要错法）',
+  /别两边都加/.test(dmT.fastHint || '') && /没进收银系统|没进系统/.test(dmT.fastHint || ''));
+check('G12-5 R500 挂账注必须说「当月算收入」且「收回不再记一次」（收钱时更像收入，最容易搞反）',
+  /当月算收入|当月就算收入/.test(notesT['个人/单位挂账消费'] || '')
+  && /(不再|不要).{0,4}记一次/.test(notesT['个人/单位挂账消费'] || ''));
+// 🔴 换行可显示：引导文案用 \n 分段（三家路径对照），WXML 默认把 \n 折叠成空格
+//   ⇒ 没有 pre-wrap，老板看到的是一坨不分行的长文（改样式的人不会想到这里有依赖）。
+check('G12-6 R500 折叠提示体必须 white-space:pre-wrap（否则「从哪抄」的分段全塌成一行）',
+  /\.hint-fold-body\s*\{[^}]*white-space:\s*pre-wrap/.test(dinWxss));
+
 console.log('');
 console.log('===== 门禁预检 =====');
 check('K11 双副本逐字一致', terms === termsSpec);

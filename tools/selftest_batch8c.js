@@ -231,7 +231,12 @@ check('堂食口径含「不包括会员充值预收」', /不包括会员充值
 const specA = read('specs/dev-specs/core/开发规范v1.0_ModuleA_收入费用核算.md');
 check('ModuleA 收入口径铁律段在位（T5 决策留痕）',
   /收入金额口径铁律/.test(specA) && /实际成交金额（折后）/.test(specA));
-check('外卖口径指向「费用 · 营销」（不重复扣）', /平台佣金与配送费不要在这里扣/.test(terms));
+// ⚠️ R500：原判据钉的是**字面量**「平台佣金与配送费不要在这里扣」⇒ R497/R500 改文案（语义完全不变）就假红。
+//   本仓 R297 第二轮教训：判据要判**语义**、别钉字面量。改为真读 TERMS 判三要素：
+//   ① 提到「营销费用」② 明说佣金/配送「不要在这里扣/加减」③ 点名佣金或配送费。
+const takeawayScopeT = require(path.join(ROOT, 'miniprogram/i18n/terms.js')).TERMS.ledger.incomeScope.takeaway || '';
+check('外卖口径指向「费用 · 营销」（不重复扣）',
+  /营销费用/.test(takeawayScopeT) && /(不要在这里扣|不要在这里加减)/.test(takeawayScopeT) && /(佣金|配送费)/.test(takeawayScopeT));
 check('terms 有 expenseScope（费用四类口径）', /expenseScope: \{/.test(terms) && /operation: '包括房租/.test(terms));
 check('运营口径含「不包括设备与装修（走摊销资产）」', /不包括设备与装修购置/.test(terms));
 check('其他口径含「加盟费金额大走摊销资产」', /加盟费\/品牌使用费金额大请走「摊销资产」/.test(terms));
