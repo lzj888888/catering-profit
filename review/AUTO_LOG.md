@@ -1066,3 +1066,16 @@
   - ④ 三条最新 NOTE 对码：#517 M2 命名与定位建议（零代码，`terms.js::modules.m2` 仍是现名，改名为待拍板项，与 NOTE「未改任何 terms」一致）；#514 堂食分项渠道三处全在（「刷卡、云闪付」1/1、`channelAliases` 1/1、「退款/退单要扣掉」1/1）；#513 #81/#82 队列行确已标「敲定·不做」。terms 双副本 md5 `dd6d8f9b…` **全等**。
 - 🔴 表外发现（只留痕，未入库、未删、未代提交）：`review/evidence/r517_m2_naming/` 下 4 张候选图（`home_card_candidate.png` / `home_card_candidate2.png` / `nav_candidate.png` / `nav_recommended.png`，13:59–14:01，约 198 KB）**全仓零引用**（对 `.md` / `.js` grep 命中 0）、无 NOTE 指向、无对应提交 ⇒ 判并发出图轮的未跟踪产物，已静默 3 小时。按「不删别人的证据」只登记；如需入库应等拍板后连同结论一起入，避免只留下无结论的图。
 - 零代码 / 零 wxml / 零云函数 ⇒ **不出码、不部署**。本轮仅追加本回执（回执是审计链本体，落地才能让下轮读到「本轮做过巡检」；只提交该文件，可 `git show --numstat` 自证 0 代码夹带）。
+
+### R519 · 只读巡检（0 todo / 0 in_progress，抓到 R518 在途批次 + 门禁 0 字节）
+
+- [2026-10-26 18:20] R519：开工机器解析（拆 `|` 取 status/blocked 列）**96 行 = 76 done / 20 blocked，0 todo / 0 in_progress，0 条 blocked=yes 而 status≠blocked** ⇒ 按规则**不认领、不造任务**，只做第 7 步。取号避让：在途批次注释自标 R518，与 17:09 那条巡检回执 R518 撞号 ⇒ 本轮取 **R519**，下轮收口请取 **R520**。
+- 巡检四项：
+  - ① 跟踪面 **不干净（4 个 M）**，全属并发会话在途：`miniprogram/i18n/terms.js` 19/5、`specs/dev-specs/i18n/terms.js` 19/5（md5 双副本 `7a4c171c…` 全等）、`subpkg/tools/sandbox/index.js` 5/0、`subpkg/tools/sandbox/index.wxml` 2/0；mtime **18:01:25–18:06:19**（距开工 <10 分钟 ⇒ 判活跃在途，不覆盖、不代提交）。HEAD `fed8740` ≡ origin/dev。
+  - ② 最近门禁 `_gate_r517.log`（13:44）**211/211 · GATE_RC=0 · 129.6s**（总览行 + `GATE_RC=` 齐备）——但它**早于在途写入 18:01** ⇒ 对本批**无覆盖**。新出现的 `_gate_r518.log` **0 字节（18:07）**，且 `_m3/gitcache_helper/` 无 `gate_r518.txt`、进程表无 `run_gate_py`/`verify_all` ⇒ 判「起跑即中断」，**不是一次结果**，不可当基线。
+  - ③ **0 条僵尸 todo**；20 条 blocked 的机器前提复验仍立 —— #55 两句字面量锚点各 **1**（`tools/selftest_batch8c.js`）；#9 `review/evidence/r177_meituan/` 仍只有 2026-08 对账 JSON + 脚本，**无销量表列名**；#93 真前置 `grep -rn takeout_track cloudfunctions/` **命中 0** ⇒ 后端仍未落库。
+  - ④ 三条最新 NOTE 对码：#517（M2 命名）**明写「待拍板 3 项」且零代码**，而在途代码注释写「李老师拍板，方案 A」⇒ 拍板结果无留痕（主名取了推荐值、副标题取了 NOTE 未列的第三版、钩子做了）；#514 「拆两框 / 默认 3 行」均判暂不做，与队列 #81/#82（done·不做）一致，无漂移；#513 敲定不做，一致。
+- 🔴 在途批次内容（只读，未改一字）：M2 改名 `开店盈亏平衡点测算` → **`开店盈亏沙盘`**（`internal`/`display`/`navTitle`/`cardTitle` 四键 + 新 `subtitle`「选址先算清：卖多少不亏、多久回本」）+ 新增 `paybackSeeM1`（「去算每月真实账」）与 `onGoM1()`（`wx.navigateTo('/subpkg/biz/month/index')`，M1 非 tab ⇒ 用 navigateTo 保留返回）+ 结果区第二个 `btn ghost`。消费面核实：`pages/index/index.js` 的 `m2`/`m2Sub` 直接取 `display`/`subtitle`、`sandbox/index.js:568` 取 `navTitle`、分享卡 `utils/shareCard.js::m2Share` 只用 `TERMS.share.m2*`（不含模块名）⇒ 改名后全站一致，无残留硬编码。
+- 守卫面核查（防「改名撞字面量锚点」，同 #55 病）：`tools/**` 对旧名**零断言**，仅 `check_indicator_ref.js:5` 注释提及；`check_home_ui_v3.js` 无模块名断言；`check_terms_forbidden` 的「盈利」豁免只给 M1 ⇒「盈亏」安全。文档面**有 2 处旧名待随批跟**：`specs/dev-specs/★知识存储点_2026-09-10.md:352`（三条改名声明行）、`subpkg/tools/sandbox/index.js:1` 头注。
+- 处置：登记 **#98（todo, blocked=no）** 交下轮收口，写明「在库里 ⇒ 只补门禁 + 出码 + 拍板留痕 + 回执；静默 >30 分钟仍全 M ⇒ 按现状收口、内容一字不改」。
+- 零代码 / 零 wxml / 零云函数（本轮只读）⇒ **不出码、不部署**。仅追加本回执 + 队列 #98 一行；提交只带这两个 md，可 `git show --numstat` 自证 0 夹带。
