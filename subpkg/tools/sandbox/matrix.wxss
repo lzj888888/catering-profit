@@ -68,6 +68,15 @@
 .tr.red .td:first-child { background: #fff; }
 /* 窄屏提示：与 .hint 分开写，避免长句被判为需折叠（本句仅 9 字） */
 .swipe-hint { font-size: 28rpx; color: #6b7a90; padding: 4rpx 8rpx 12rpx; }
+/* 🔴 R528：「更多列 / 收起」开关 —— 字号 ≥28rpx（AD-G1 红线），与「高级维度」开关同一视觉语言。
+   ⚠️ 类名已 grep 过 app.wxss，无同名（R362：本页新增类名必须先查全局同名，否则会被全局样式挤成竖排）。 */
+.col-toggle { display: flex; align-items: center; padding: 10rpx 0 14rpx; font-size: 28rpx; color: #2b7fff; }
+.col-arrow { color: #8a97a8; margin-left: 8rpx; font-size: 28rpx; }
+/* 🔴 R528：透视表专用列宽 —— 透视表的格子只有一个数（如「3.2万」/「保本」），
+   不需要明细表那 200rpx 的表头宽度；缩到 130rpx ⇒ 一屏可见档位数从 ~1.7 提到 ~4。
+   字号反而加大到 30rpx（格子内容短，缩列宽换来的空间用来放大字，净效果更易读）。 */
+.pivot-tbl .td { width: 130rpx; font-size: 30rpx; padding: 16rpx 10rpx; }
+.pivot-tbl .td:first-child { width: 150rpx; }
 .nav-row { display: flex; margin-top: 24rpx; }
 /* 🔴 round279 · #9 结论速读卡（结论高亮 + 房租杠杆 + 淡季安全垫）*/
 .insight { background: #fff7ec; border: 1rpx solid #ffd9a0; border-radius: 14rpx; padding: 20rpx 22rpx; margin-bottom: 18rpx; }

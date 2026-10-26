@@ -174,6 +174,9 @@ Page({
       cashNeedBudget: M.cashNeedBudget,
       cashIncompleteNote: M.cashIncompleteNote,
       cashWan: M.cashWan,
+      // 🔴 R528：明细表「更多列」开关的文案（默认只显示 6 列，其余 8 列点开才显示）
+      moreCols: M.moreCols,
+      lessCols: M.lessCols,
     },
     // 🔴 R332 修 bug：原先名字只拼「大类·预设」⇒ 同大类的两个细分（半自助 / 烤肉）**显示成一模一样**，
     //   老板选哪个都看不出区别。现改为「大类 · 细分」；通用兜底不加大类前缀（否则重复成一串）。
@@ -224,6 +227,11 @@ Page({
     //      只有从沙盘页带 `?mode=forward` 进来才切成 A 场景口径。
     // 🔴 R322：高级维度（毛利率/人工）默认收起 —— 小白只填租金与目标利润
     advOpen: false,
+    // 🔴 R528：明细表默认只显示 6 列。14 列 × 200rpx ≈ 1400px，手机上只能看到 2 列半
+    //   ⇒ 老板在表里根本比较不了。默认给「房租/人工/目标利润/保本月营收/目标月营收/回本」6 列，
+    //   其余 8 列（人工费/毛利率/现金保本/保本日营收/目标日营收/房租占比/涨租需多卖/淡季安全垫）
+    //   收进「更多列」。⚠️ 只影响屏幕显示，**导出 Excel 仍是全 14 列**（R349 对齐判据不受影响）。
+    colsOpen: false,
     narrow: false,   // R378：窄屏才显示横滑提示（width < 400）
     advNote: '',
     // 🔴 R325：现金卡输入。租金默认跟透视表的固定租金走（老板已在页面上填过），只需再给一个「手上现金」
@@ -778,6 +786,12 @@ Page({
   onToggleAdv() {
     const open = !this.data.advOpen;
     this.setData({ advOpen: open, advNote: this.buildAdvNote() });
+  },
+
+  // 🔴 R528：明细表「更多列 / 收起」—— 纯显示开关，不重算、不改数据
+  //   （rows 里 14 个字段一直都在，只是屏幕上不渲染那一列）
+  onToggleCols() {
+    this.setData({ colsOpen: !this.data.colsOpen });
   },
 
   buildAdvNote() {
