@@ -982,3 +982,4 @@
   - (1) 判定链：`ok(data)`=`{code,msg,data}`（`cloudfunctions/common/errors.js:50`）不摊平；`api.call`=`return r.data`（`utils/api.js:71`）=> 前端 `d`=data 本体，利润在 `d.result`。`anomalyRules.js:84` 与 result.js 其余 5 处（`res=d.result`）均正确，仅 buildTrend/prevProfitFen 两处读顶层。
   - (2) 守卫防「判据恒真」：初版 `indexOf('buildTrend(')` 命中**调用处** `this.buildTrend(snaps)` => 切到错误函数体；改为「`)` 与 `{` 之间只有空白」定义锚 + 合成样本正反两路自证（⑥-b/⑥-c）。
   - (3) 影响面：#93（趋势图口径断点）的前置 —— 图不显示真实值就没法在「切换点」上做标注；本修让 #93 有可标注的真实柱。零云函数部署，但需重新出码才能在真机看到。
+  - (4) 出码（R510 补）：`review/evidence/r510_qr/qr.png`（46,659 B · 470x470 · cv2 解码 = `https://mp.weixin.qq.com/a/~~znWYzeORax4~Ae5zrWHmHuk4R7tdkwz5Qg~~`）；包体 main **271.5 KB** / TOTAL **773.1 KB**（打包修复后正常，对比修前 7286 KB 超限）；AppID wx33c110dc57a9c8dc。
