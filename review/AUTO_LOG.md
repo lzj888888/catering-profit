@@ -1038,3 +1038,4 @@
   - (1) 实测方法坑：`data.t.*` 是嵌套对象，首版 probe 读 `p.data.unarchive` 得 undefined ⇒ **误判「文案没生效」**；改读 `p.data.t.unarchive` 全部命中。另 `mp.screenshot` 首次调用常 timeout、重试即可（技能已记录）。
   - (2) 已知小瑕疵（无害，未改云函数）：取消归档时 `archived_at` 保留旧值不清零（archiveMonth:63 `acct.archived_at || 0`）。因 saveLedger 只在 `is_archive=true` 时才看宽限、首页 archived_at 也只在归档态展示 ⇒ 无行为影响；要清零需改云函数并部署，本轮不做。
   - (3) 页面语义核对：已归档月 `canArchive=false`（不显示「结账并归档」）；「取消归档」仅 `isArchive=true` 显示；未归档月两者都不出现 —— 无同屏歧义。
+  - (4) 出码（R516）：`review/evidence/r516_qr/qr.png`（46,718 B · 470x470）；main 272.0 KB / TOTAL 774.7 KB（含取消归档入口）。
