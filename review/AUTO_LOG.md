@@ -1039,3 +1039,13 @@
   - (2) 已知小瑕疵（无害，未改云函数）：取消归档时 `archived_at` 保留旧值不清零（archiveMonth:63 `acct.archived_at || 0`）。因 saveLedger 只在 `is_archive=true` 时才看宽限、首页 archived_at 也只在归档态展示 ⇒ 无行为影响；要清零需改云函数并部署，本轮不做。
   - (3) 页面语义核对：已归档月 `canArchive=false`（不显示「结账并归档」）；「取消归档」仅 `isArchive=true` 显示；未归档月两者都不出现 —— 无同屏歧义。
   - (4) 出码（R516）：`review/evidence/r516_qr/qr.png`（46,718 B · 470x470）；main 272.0 KB / TOTAL 774.7 KB（含取消归档入口）。
+
+### R517 · 0 todo 巡检抓到两处反向漂移 + 归档规范句对齐实现（#33 / #87 核销，#97 做完）
+
+- [2026-10-26 14:05] R517：开工机器解析队列 **95 行 = 73 done / 22 blocked，0 todo / 0 in_progress，0 条 blocked=yes 而 status≠blocked** ⇒ 按规则走只读巡检。但巡检抓到两处**反向漂移**（干完了仍标 blocked ⇒ 不报错、只永久空转，比僵尸 todo 更隐蔽），机器取证后逐条核销：
+  - **#33「归档超 7 天无出路、联系客服是空承诺」→ done**：R516 已在首页补「取消归档」（`065ad7b` 加 `onUnarchive()` 调 `archiveMonth({month, archive:false})`，`4320b1e` 出码、`review/evidence/r516_qr/qr.png` 46,718 B），而 `cloudfunctions/archiveMonth/index.js:70-72` 对 `archive:false` **不设任何宽限期限制**（只翻 `is_archive`）⇒ 超 7 天硬锁下也能自助解锁再改，不再需要客服后台改库。原 why 的前提整体失效。
+  - **#87「快速录入到底让老板抄哪个数」→ done**：问句已由 #88/#89/#90 答完并落地（R507，`2116537`）：默认 `takeoutTrack:'net'` + `takeoutMode:'fast'`（`input.js:249` / `:255`）⇒ 只填「结算金额（实际到账·净额）」（`terms.js:554-555`）；gross 侧改为可选折叠「补录平台明细」（`terms.js:611` 已把「商品总价+打包费」限定在该模式、商家补贴单列不进收入）⇒ 两套口径不再互斥，而是「默认净额 / 可选明细」。跨月口径切换的断点标注仍归 #93（真前置是 `takeout_track` 落库，需先审后合）。
+- **#97（本轮认领并做完，commit `252420b`）**：`specs/dev-specs/core/13:25-26` 两处「修改须走客服后台」→「确需修改可在首页点「取消归档」恢复可编辑（改完可重新归档）」。理由：该句是归档宽限的**唯一声明处**，R118 穿透校验只守 `GRACE_DAYS_MS=7` 的数值一致、不守路径描述 ⇒ 规范落后不会自动报红，只能人工发现；而老板照规范去找客服，客服侧又无一函数能改归档月账（双向下错）。
+- 门禁 **211/211 · GATE_RC=0 · 129.6s**（`_gate_r517.log`）。未改 `tools/**` ⇒ 未刷 mk_force（缓存只影响 `tools` 读取面）；判据取「总览 N/N + `GATE_RC=`」两行。单跑 `check_archive_grace` **33/0**、`check_queue_status` **14/0**。
+- 改动面自证：`numstat 2/2`（规范 2 行）、队列 `3/2`、回执纯追加；三个文件 `CRLF=0`，零整文件翻写。零 wxml / 零 wxss / 零云函数 ⇒ **不出码、不部署**。
+- 巡检四项：① 跟踪面开工 0 行、HEAD `4320b1e` ≡ origin/dev ② 最近门禁 `_gate_r516.log`（13:36）**211/211 · GATE_RC=0 · 255.5s**，晚于 R516 代码写入、早于本轮任何改动 ⇒ 原树已有基线，本轮改动后另跑 `_gate_r517.log` 自证 ③ 无僵尸 todo；blocked 22 → 20（核销 2 条、新增 #97 当轮做完）④ 三条 NOTE 对码：R514 的 `channelNotes['银行卡/POS刷卡']`=「刷卡、云闪付（银联码）都填这里」+ `channelAliases` 云闪付/银联→银行卡桶 + `dineMode.fastHint`「退款/退单要扣掉」三处全在；R513 的 #81/#82 仍按「暂不做」留队列；R505 的 net 默认如 #87 所述；terms 双副本 md5 `dd6d8f9b…` 全等。
