@@ -1160,3 +1160,4 @@
   - (1) 守卫同步（改判新意图，非放宽）：`check_m2_biz_inputs` 白名单去 `tablesNum`、V-⑦ 正样本换 `headcountNum`、T-① 下界 4→3→**2**（门店情况只剩两格，且注明"不能再往下调，调 0 等于不设防"）、A-⑧ 注释改语义（`seats` 只许单一出参口 / 透传，判据不变）；`check_input_keyboard` 计数锚点去 `tablesNum`（28→27，该套件不在声明表）；`check_m2_ref_not_prefill` 白名单去 `tablesNum`（仍 13 条）。
   - (2) 更正前一版口径：R525 回执里写"删桌数需改 `calcSandbox/validate` 并部署"—— **不成立**。矩阵走 forward 口径、forward 不校验 seats；那条要求 `seats>0` 的 reverse 路径无调用方 ⇒ **纯前端改动即可，零云函数、零部署**。
   - (3) 刻意不做：`terms.js` 里 `revTurnRate*` / `turnNote*` / `turnLevel*` 等翻台词条**保留** —— 该文件是全项目共享词典（本文件既有注释即此约定），且本轮只删"输入与展示"，不为清理而清理。
+  - (4) 出码（R526）：`review/evidence/r526_qr/qr.png`（47,190 B · 470x470 · 解码 = `https://mp.weixin.qq.com/a/~~rirugNT2Eww~wVSYkk9IlFCXVYk3eZay5A~~`）；main 272.1 KB / TOTAL 775.3 KB（桌数已下线）。
