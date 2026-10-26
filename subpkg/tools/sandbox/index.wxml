@@ -24,6 +24,13 @@
       <text class="tab-sub">{{t.tabReverseSub}}</text>
     </view>
   </view>
+  <!-- 🔴 R527：草稿条从「门店情况」卡内移出 —— 它是**页面级状态**（上次填的数还在 / 可清空），
+       原来夹在「经营类型」和下面几条说明之间，看起来像一道要填的题。 -->
+  <view class="draft-bar" wx:if="{{draftRestored || dirty}}">
+    <text class="draft-note">{{draftRestored ? t.draftRestored : ''}}</text>
+    <button class="btn-small ghost draft-btn" bindtap="onClearDraft">{{t.clearDraft}}</button>
+  </view>
+
   <!-- ① 门店情况：我开什么店 / 多大 / 在哪 —— 这一组决定后面用的行业参考带 -->
   <view class="card2">
     <view class="sec">{{t.secStore}}</view>
@@ -41,24 +48,17 @@
       </picker>
     </view>
     <view class="hint" wx:if="{{presetPicked}}">{{t.presetPickedPre}}{{presetName}}{{t.presetPickedSuf}}</view>
-    <!-- R193：草稿提示行 + 清空重填（M2 此前算完即丢，退出重进要全部重填） -->
-    <view class="draft-bar" wx:if="{{draftRestored || dirty}}">
-      <text class="draft-note">{{draftRestored ? t.draftRestored : ''}}</text>
-      <button class="btn-small ghost draft-btn" bindtap="onClearDraft">{{t.clearDraft}}</button>
-    </view>
     <!-- 🔴 round276：通用兜底业态提示 —— 选「其他/通用餐饮」时出现，明确"通用经验区间、未细分行业、仅供粗估" -->
-    <view class="row-note" wx:if="{{bizIsOther}}">{{t.otherBandLabel}}</view>
     <view class="hint-fold warn-note" wx:if="{{bizIsOther}}">
       <view class="hint-fold-head" data-key="sbOtherBandNote" bindtap="onToggleHintFold">
-        <text class="hint-fold-guide">{{hintFold.sbOtherBandNote ? t.hintFoldHide : t.foldWhy}}</text>
+        <text class="hint-fold-guide">{{t.otherBandLabel}}</text>
         <text class="hint-fold-arrow">{{hintFold.sbOtherBandNote ? '▾' : '▸'}}</text>
       </view>
       <view class="hint-fold-body" wx:if="{{hintFold.sbOtherBandNote}}">{{t.otherBandNote}}</view>
     </view>
-    <view class="row-note">{{t.bandPreviewLabel}}</view>
     <view class="hint-fold">
       <view class="hint-fold-head" data-key="sbBandPreviewNote" bindtap="onToggleHintFold">
-        <text class="hint-fold-guide">{{hintFold.sbBandPreviewNote ? t.hintFoldHide : t.foldWhy}}</text>
+        <text class="hint-fold-guide">{{t.bandPreviewLabel}}</text>
         <text class="hint-fold-arrow">{{hintFold.sbBandPreviewNote ? '▾' : '▸'}}</text>
       </view>
     <view class="hint-fold-body" wx:if="{{hintFold.sbBandPreviewNote}}">{{t.bandPreviewNote}}</view>

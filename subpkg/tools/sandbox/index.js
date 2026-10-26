@@ -76,7 +76,6 @@ Page({
       presetDisplay: M.presetDisplay,
       bandPreviewLabel: M.bandPreviewLabel,
       otherBandLabel: M.otherBandLabel,
-      foldWhy: M.foldWhy,
       secVar: M.secVar,
       secTarget: M.secTarget,
       secResult: M.secResult,
