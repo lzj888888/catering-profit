@@ -990,3 +990,4 @@
   - (1) 口径逐条实测值（非自述）：`twSecTitle`=外卖实际到账怎么填、`twTrackNet`=只填实际到账（推荐）、`twTrackGross`=补录平台明细、`twGoodsField`=商品总价、`twPackField`=打包费、`twSubsidyField`=商家承担全部补贴（合计）、`twOrdersField`=有效订单数。
   - (2) 初始态按数据推断：该月已有明细分项（美团 5000 / 淘宝 2500）⇒ 首次进入 inference 为 gross（不覆盖老板数）；纯空月 ⇒ net。
   - (3) 未做：`takeout_track` 仍未落后端（#93 前置），故趋势图断点标注仍 blocked；本条只修 net 口径一致性与残留提示。
+  - (4) 出码（R511）：`review/evidence/r511_qr/qr.png`（47,993 B · 470x470 · cv2 解码 = `https://mp.weixin.qq.com/a/~~aCGfMxWMsDg~rLpsLIjap28fW57BG4GEoA~~`）；main **271.5 KB** / TOTAL **773.0 KB**（含 R511 修复）。
