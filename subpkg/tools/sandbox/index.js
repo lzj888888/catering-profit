@@ -233,7 +233,6 @@ Page({
       fwdTurnLbl: M.fwdTurnLbl,
       fwdTurnUnit: M.fwdTurnUnit,
       fwdCrowdHintPre: M.fwdCrowdHintPre,
-      fwdCrowdHintMid: M.fwdCrowdHintMid,
       fwdCrowdHintSuf: M.fwdCrowdHintSuf,
       // 🔴 round276 · A 区补齐 round223 §3.1 定案遗漏的「坪效 / 人效」（翻台已 round273 补）。
       fwdEffTitle: M.fwdEffTitle,
@@ -311,13 +310,15 @@ Page({
       //    守卫工具 tools/check_page_terms.js 的 P2-1 已精确点名本处。
       l1TitleRev: M.l1TitleRev,
       l1GuideRev: M.l1GuideRev,
-      // 🔴 R237：座位数输入 ⇒ **桌数 + 单桌座位数**（口径说明见 terms.js 同名注释块）。
+      // 🔴 R237：座位数输入 ⇒ **桌数**（口径说明见 terms.js 同名注释块）。
+      // 🔴 R525：单桌座位数输入已删（李老师 2026-10-27：「这里不考虑翻台率这个事情，去了这个」）
+      //   ⇒ 对应三个文案键一并下线，避免"有键无渲染"的僵尸文案。
       tablesLabel: M.tablesLabel,
       tablesPh: M.tablesPh,
       tablesNote: M.tablesNote,
-      seatsPerTableLabel: M.seatsPerTableLabel,
-      seatsPerTablePh: M.seatsPerTablePh,
-      seatsPerTableNote: M.seatsPerTableNote,   // 🔴 R246：供给侧口径说明
+      // 🔴 R525（方案 B）：2% 杂支摆出来可改
+      otherVarLabel: M.otherVarLabel,
+      otherVarNote: M.otherVarNote,
       tableUnit: M.tableUnit,
       areaLabel: M.areaLabel,
       areaPh: M.areaPh,
@@ -498,16 +499,20 @@ Page({
     //   选预设时仅补 `fieldTouched.x` 为 false 的字段，用户手填过的一律保留。
     // 🔴 R297 第四轮（审计 B10）：补 `seatsPerTable` —— 原实现漏了这一项，选业态预设时
     //   会**无条件覆盖**用户手填的单桌座位数（见 onPreset），与本节机制自相矛盾。
-    fieldTouched: { margin: false, labor: false, avg: false, seatsPerTable: false },
+    // 🔴 R525：该字段已随「单桌座位数」输入一起删除，改登记 `otherPct`（2% 杂支可改 ⇒ 同样不能被预设覆盖）。
+    fieldTouched: { margin: false, labor: false, avg: false, otherPct: false },
     // 🔴 R290：固定 30（李老师原话「每天都正常营业，推演也按每天营业推」）。
     //   ⚠️ 不是删字段——引擎 `open_days` 必填 1~31，留空会发 0 ⇒ fail-closed 报「填写错误」。
     openDaysNum: '30',       // 每月营业天数（常量 30；R361 起**不再渲染**，只供发参/草稿用）
-    // 🔴 R237：输入口径由「座位数」改为「桌数」—— 李老师 2026-10-08 原话：
-    //   「餐饮老板算账都是按桌数来算，比如店里有 20 张桌子，今天火锅卖了 30 桌」。
-    //   引擎入参仍是 `seats`（座位数，云函数契约字段，**名字与形状一字不改**）⇒
-    //   由 `seatsNow()` 做一次换算：座位数 = 桌数 × 单桌座位数 ⇒ **引擎零改动、锚点零漂**。
+    // 🔴 R525（李老师 2026-10-27）：「这里不考虑翻台率这个事情，去了这个」——
+    //   ⇒ **单桌座位数输入已删**（它唯一的用途是折算座位数 → 翻台率，翻台率不再讨论）。
+    //   引擎契约字段 `seats` 仍在（反推模式 validate 要求 > 0 的整数），由
+    //   `seatsNow() = 桌数 × 业态默认每桌人数` 内部折算，**不再向老板提问、也不再展示**。
     tablesNum: '',           // 桌数（含散台；包间按「一张桌」计）
-    seatsPerTableNum: '',    // 单桌座位数（业态默认、**用户可改**）—— 桌数↔座位数的唯一换算系数
+    // 🔴 R525（方案 B）：其他杂支占营业额 %（默认取预设值 2%；老板可改 0 或留空 = 不算这项）。
+    //   为什么从预设里"抬"到界面上：原来它藏在参数包里、老板改不了 ⇒ 已有店铺填了真实水电/管理费
+    //   再被额外扣 2% 未填过的钱 = 重复扣；摆出来可改才是"不替老板假设"。
+    otherPctNum: '2',        // 其他杂支（占营业额 %）
     // 🔴 R234-实测修复：`pixelEffYuan`（坪效）/ `turnNum`（翻台率）**已从输入区移除**。
     //   依据李老师原话「这些本身是咱们计算出来的，不是让客户自己填出来的」。
     //   实测坐实的两个事实（见 review/evidence/r234_m2_v14/probe_engine.js）：
@@ -618,6 +623,8 @@ Page({
         electricYuan: this.data.electricYuan,
         gasYuan: this.data.gasYuan,
         manageYuan: this.data.manageYuan,
+        // 🔴 R525：其他杂支 % 也要进草稿 —— 老板改成 0（不扣这项）后退出重进，不能被默认 2% 顶回来。
+        otherPctNum: this.data.otherPctNum,
         avgPriceYuan: this.data.avgPriceYuan,
         initialInvestYuan: this.data.initialInvestYuan,
         areaNum: this.data.areaNum,
@@ -655,6 +662,10 @@ Page({
       electricYuan: d.electricYuan !== undefined ? d.electricYuan : this.data.electricYuan,
       gasYuan: d.gasYuan !== undefined ? d.gasYuan : this.data.gasYuan,
       manageYuan: d.manageYuan !== undefined ? d.manageYuan : this.data.manageYuan,
+      // 🔴 R525：杂支 % 同样是「空串/0 也是老板的选择」⇒ 用 `!== undefined` 判，别拿默认 2% 顶回来；
+      //   回填了就算"用户已作答"（fieldTouched），后续切业态不得覆盖。
+      otherPctNum: d.otherPctNum !== undefined ? d.otherPctNum : this.data.otherPctNum,
+      'fieldTouched.otherPct': d.otherPctNum !== undefined ? true : this.data.fieldTouched.otherPct,
       avgPriceYuan: d.avgPriceYuan !== undefined ? d.avgPriceYuan : this.data.avgPriceYuan,
       initialInvestYuan: d.initialInvestYuan !== undefined ? d.initialInvestYuan : this.data.initialInvestYuan,
       areaNum: d.areaNum !== undefined ? d.areaNum : this.data.areaNum,
@@ -802,11 +813,20 @@ Page({
   // 🔴 R234：删掉 `onRevRentRate` / `onRevPixelEff` 两个 handler ——
   //    对应输入框已从 wxml 移除（R223 §3.2 明令「L1/L2 严禁以坪效/目标租金率作输入」）。
   //    留着孤立的 handler 会让后续维护误以为还有这条路。
-  // 🔴 R237：`onSeats`（座位数）已改为「桌数」—— 用户填桌、系统换算座位（见 `seatsNow()`）。
+  // 🔴 R237：`onSeats`（座位数）已改为「桌数」—— 用户填桌、系统按业态默认每桌人数内部折算（见 `seatsNow()`）。
   onTables(e) { this.setData({ tablesNum: e.detail.value }); this.scheduleCalc(); },
-  onSeatsPerTable(e) {
-    // 🔴 R297 第四轮（审计 B10）：标记手填 ⇒ 之后切业态预设不再静默覆盖这一格。
-    this.setData({ seatsPerTableNum: e.detail.value, 'fieldTouched.seatsPerTable': true });
+  // 🔴 R525（方案 B）：其他杂支（占营业额 %）—— 老板可改 0 / 留空 = 不算这项。
+  //   走**既有**引擎入参覆盖口 `feeOverrides`（buildPresetParam 里 `fo[v.key]`），不新开参数、
+  //   不碰云端契约；`feeRows` 同步改 pct，让下面那行「≈ 每月多少钱（估算）」跟着变。
+  onOtherPct(e) {
+    const raw = e.detail.value;
+    const n = (raw === '' || raw === null || raw === undefined) ? 0 : Number(raw);
+    const pct = (isFinite(n) && n >= 0) ? n : 0;
+    const fo = Object.assign({}, this.data.feeOverrides, { other: String(pct) });
+    const rows = (this.data.feeRows || []).map((r) =>
+      (r.key === 'other' ? Object.assign({}, r, { pct: String(pct) }) : r));
+    this.setData({ otherPctNum: raw, 'fieldTouched.otherPct': true, feeOverrides: fo, feeRows: rows },
+      () => this.refreshFeeAmt());
     this.scheduleCalc();
   },
 
@@ -1127,6 +1147,12 @@ Page({
       add('margin', d.marginPct);
       add('target', d.targetYuan);
     }
+    // 🔴 R525：其他杂支 % 必须带给矩阵，**0 也要带**（0 = 老板明确不要这项；不带会被当成默认 2%）。
+    //   不带就会出现"单页保本 X、矩阵保本 Y"的双口径，而且两边都不报错。
+    if (d.otherPctNum !== '' && d.otherPctNum !== null && d.otherPctNum !== undefined
+        && isFinite(Number(d.otherPctNum)) && Number(d.otherPctNum) >= 0) {
+      q.push('other=' + Number(d.otherPctNum));
+    }
     wx.navigateTo({ url: '/subpkg/tools/sandbox/matrix?' + q.join('&') });
   },
   goCompare() { wx.navigateTo({ url: '/subpkg/tools/sandbox/compare' }); },
@@ -1199,13 +1225,16 @@ Page({
     const bt = this.data.t.bizTypes[this.data.bizIdx];
     return (bt && bt.key) || 'fastfood';
   },
-  /** 单桌座位数：用户填的优先；空着 ⇒ 取业态默认（火锅/正餐 4、快餐/茶饮 2）。 */
+  /**
+   * 🔴 R525：单桌**人数**（原「单桌座位数」）—— 已无用户输入，恒取业态默认。
+   *   用途只剩一个：把「桌数」折成引擎契约字段 `seats`（反推模式 validate 要求 > 0 的整数）。
+   *   ⚠️ 不再对外展示「座位数」、也不再据此说「翻台率」（李老师 2026-10-27：
+   *      「餐饮翻台率是按桌数计算的，和座位数没关系」→ 本页连翻台率都不再讨论）。
+   */
   seatsPerTableNow() {
-    const n = Math.floor(Number(this.data.seatsPerTableNum));
-    if (isFinite(n) && n >= 1) return n;
     return seatsPerTableOf(this.bizKeyNow());
   },
-  /** 送引擎的座位数 = 桌数 × 单桌座位数（都取正整数；任一无效 ⇒ 0 ⇒ 反推模式被引擎 fail-closed 拒）。 */
+  /** 送引擎的座位数 = 桌数 × 业态默认每桌人数（都取正整数；任一无效 ⇒ 0 ⇒ 反推模式被引擎 fail-closed 拒）。 */
   seatsNow() {
     const t = Math.floor(Number(this.data.tablesNum));
     if (!isFinite(t) || t < 1) return 0;
@@ -1467,8 +1496,10 @@ Page({
   crowdOf(result) {
     if (!result || result.red_alert) return null;
     const price = Number(this.data.avgPriceYuan);
-    const seats = this.seatsNow();
-    if (!(price > 0) || !(seats > 0)) return null;
+    // 🔴 R525：**不再要求座位数/桌数** —— 李老师 2026-10-27「这里不考虑翻台率这个事情。去了这个」。
+    //   翻台率已从本页下线（不设输入、不展示、不派生），所以 crowd 只保留「每天得来多少人」，
+    //   fail-closed 判据同步收窄为「人均消费 > 0」这一条（其余缺一个数就不出数，绝不编造）。
+    if (!(price > 0)) return null;
     const bd = Number(result.break_even_daily);
     const td = Number(result.target_daily);
     if (!isFinite(bd) || !isFinite(td) || bd <= 0 || td <= 0) return null;
@@ -1477,12 +1508,7 @@ Page({
     return {
       breakPeople,
       targetPeople,
-      turn: Math.round((targetPeople / seats) * 100) / 100,
       price: String(price),
-      // ⚠️ 键名必须是 `seatCount` 而不是 `seats`：`check_m2_biz_inputs` 的 A-⑧ 会扫所有
-      //    `seats:` 右值，只放行 `this.seatsNow()` / 透传 —— 这里存的是**已换算好的展示值**，
-      //    写成 `seats:` 会被判成「漏乘单桌座位数」而误伤（守卫守的是口径，不是命名喜好）。
-      seatCount: String(seats),
     };
   },
 
@@ -1527,8 +1553,10 @@ Page({
     const opt = this.data.presetOptions[i];
     // 🔴 round276：兜底选项 key='other'；此处保留空值兜底，统一按通用业态处理（不静默回落 fastfood）。
     if (!opt || !opt.key) {
+      // 🔴 R525：连同「其他杂支」回到通用默认 2%（fieldTouched 一并复位，避免上一业态的手改值黏住）
       this.setData({ presetKey: 'other', presetName: this.data.t.presetNone, presetPicked: false,
-        feeRows: [], feeOverrides: {}, bizIsOther: true });
+        feeRows: [], feeOverrides: {}, bizIsOther: true,
+        otherPctNum: '2', 'fieldTouched.otherPct': false });
       this.scheduleCalc();
       return;
     }
@@ -1539,7 +1567,9 @@ Page({
       presetPicked: true,
       feeRows: (preset.costMeta || [])
         .filter((m) => m.form === 'revenue_rate')
-        .map((m) => ({ key: m.itemKey, label: m.labelKey === 'costLoss' ? this.data.t.costLoss : (this.data.t.fixedItems[m.itemKey] || m.itemKey), pct: String(m.pct) })),
+        // 🔴 R525：'other' 的显示名统一成界面上那行输入的名字（其他杂支），
+        //   否则同一笔钱上面叫「其他杂支」、下面折算行叫「杂支损耗」，老板会以为是两项。
+        .map((m) => ({ key: m.itemKey, label: m.itemKey === 'other' ? this.data.t.otherVarLabel : (m.labelKey === 'costLoss' ? this.data.t.costLoss : (this.data.t.fixedItems[m.itemKey] || m.itemKey)), pct: String(m.pct) })),
       feeOverrides: {},
     };
     // 🔴 R234：选完业态 ⇒ **系统**把 4 大类对齐（用户不再被问这一题）。
@@ -1567,12 +1597,12 @@ Page({
     //   因为有的店要设包间，同样 100 平方米，包间多的店和全散台的店桌数差很远」）。
     //   ⚠️ 同时**不再预填桌数** —— 桌数由用户现场数（豆包：「小白站铺子门口，数桌子远比数椅子简单」）。
     //   这里只做一件事：按业态把「单桌座位数」的默认值刷新（用户改过就以用户的为准）。
-    // 🔴 R297 第四轮（审计 B10）：原实现**无条件覆盖**单桌座位数 —— 与上面 R294-C 的
-    //   「只补用户没改过的字段」自相矛盾（旧注释写着"用户改过就以用户的为准"，代码却没判）。
-    //   包间大桌的店手填 6 人/桌，一切业态预设就被静默重置回默认值（火锅/正餐 4、快餐/茶饮 2）
-    //   ⇒ 座位数（= 桌数 × 单桌座位数）连带 A 区「一天翻几台」一起变，且零提示。
-    if (!this.data.fieldTouched.seatsPerTable) {
-      patch.seatsPerTableNum = String(seatsPerTableOf(bk || this.bizKeyNow()));
+    // 🔴 R525：单桌座位数输入已删 ⇒ 这里不再刷新它（`seatsNow()` 恒按业态默认每桌人数折算）。
+    //   改为刷新「其他杂支 %」（方案 B）：随预设带出参考值，但**用户手改过就不覆盖**
+    //   （沿用 R294-C 的同一纪律，防止"我明明改成 0 了，一切业态又变回 2%"）。
+    if (!this.data.fieldTouched.otherPct) {
+      const om = (preset.costMeta || []).find((m) => m.form === 'revenue_rate' && m.itemKey === 'other');
+      patch.otherPctNum = om ? String(om.pct) : '0';
     }
     this.setData(patch);
     this.scheduleCalc();
@@ -1813,8 +1843,14 @@ Page({
     // 第二道防线：装配产物里再滤一次（将来参数包长出别的形态也不会漏）
     const fixedItems = isReverse ? asm.fixedItems.filter((x) => x.key !== 'rent') : asm.fixedItems;
     const fo = this.data.feeOverrides || {};
-    const varItemsFinal = asm.varItems.map((v) =>
-      (fo[v.key] != null && fo[v.key] !== '' ? { key: v.key, pct: Number(fo[v.key]) } : v));
+    // 🔴 R525（方案 B）：覆盖值允许 0（= 老板明确「这项不算」）⇒ 0 直接从入参里剔除，
+    //   不留一条 `pct:0` 的噪声项；非数字/负数一律按原预设走（不静默改口径）。
+    const varItemsFinal = asm.varItems.map((v) => {
+      if (fo[v.key] == null || fo[v.key] === '') return v;
+      const p = Number(fo[v.key]);
+      if (!isFinite(p) || p < 0) return v;
+      return p > 0 ? { key: v.key, pct: p } : null;
+    }).filter(Boolean);
     // 🔴 R296b：**渠道佣金**并入挂钩费率（占**总流水**%）。老板只填「占比 × 抽点」，此处取加权结果。
     //   ⚠️ 与 costMeta 的 var 项（如"其他=2%损耗"）**键不重叠**（此处只用 takeawayComm/grouponComm/cardFee）⇒ 不重复计。
     const cm = this.data.channel || {};

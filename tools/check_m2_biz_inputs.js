@@ -150,8 +150,8 @@ const ALLOW_INPUTS = {
   planName: '方案名（快照用，非测算入参）',
   presetIdx: '业态预设 picker（枚举，非专业指标）',
   rentYuan: '月租金 → fixed_items.rent；房东报价，填得出',
-  seatsPerTableNum: '单桌座位数（业态默认、用户可改）→ 与桌数相乘得 seats；属"用户输入的派生"，非外部基准',
-  tablesNum: '桌数 → seats（= 桌数 × 单桌座位数，唯一换算点 = index.js::seatsNow）；老板站铺子里数得出',
+  tablesNum: '桌数 → seats（= 桌数 × 业态默认每桌人数，唯一换算点 = index.js::seatsNow）；老板站铺子里数得出',
+  otherPctNum: '其他杂支占营业额 %（R525 方案 B）→ 经 feeOverrides.other 覆盖预设的 2%；0/留空 = 不算这项；老板可判断自家有没有这笔',
   targetYuan: '目标月利润 → target_profit_fen；老板自己定目标',
   // 🔴 2026-10-12（round279d #12 多渠道毛利率）：以下 8 个均为「分渠道」用户输入框，统一走 onChannelInput，
   //   属用户手填/可改值（非参考值、非引擎推导注入），按本守卫纪律登记用途。
@@ -375,8 +375,9 @@ const v6Unknown = ['tableTurnoverYuan'].filter((b) => !ALLOW_INPUTS[b] && !FOR_I
 check('V-⑥ 负样本（未登记的新字段 tableTurnoverYuan）会被 A-⑥ 判红', v6Unknown.length === 1,
   v6Unknown.length === 1 ? '已报红' : '未报（白名单失效）');
 // V7：正样本（已登记的合法字段）⇒ A-⑥ **不得**误报（防反向伤害二型）
-const v7Ok = ['tablesNum', 'seatsPerTableNum', 'avgPriceYuan', 'rentYuan'].filter((b) => !ALLOW_INPUTS[b]);
-check('V-⑦ 正样本（已登记字段 tablesNum/seatsPerTableNum/avgPriceYuan/rentYuan）**不误报**', v7Ok.length === 0,
+//   🔴 R525：`seatsPerTableNum` 已随座位数输入删除 ⇒ 换成新登记的 `otherPctNum`。
+const v7Ok = ['tablesNum', 'otherPctNum', 'avgPriceYuan', 'rentYuan'].filter((b) => !ALLOW_INPUTS[b]);
+check('V-⑦ 正样本（已登记字段 tablesNum/otherPctNum/avgPriceYuan/rentYuan）**不误报**', v7Ok.length === 0,
   v7Ok.length ? `🔴 把合法字段判红了：${v7Ok.join('、')}` : '未误报');
 // V8（#7 配套）：把 verdictOf 退化成「永远绿、不看指标」喂给 C-④ 新判据，必须转红
 //   ⇒ 证明 C-④ 不是假绿（否则"任意永远绿的实现"都会过）。
@@ -385,33 +386,36 @@ const v8Red = /rank\s*[:=]/.test(badVo2) && /\bworst\b/.test(badVo2);
 check('V-⑧ 负样本（verdictOf 退化成永远绿、无 rank/worst）会被 C-④ 判红',
   !v8Red, v8Red ? '🔴 把退化实现漏过了' : '已报红（C-④ 非假绿）');
 
-// ============ F · round273：A 区派生指标（每天来多少人 / 一天翻几台）============
+// ============ F · A 区派生指标（只剩「每天来多少人」；翻台率 R525 已下线）============
 sec('F · A 区派生指标 crowdOf：口径同源 + fail-closed');
-// 🔴 为什么必须有这一段：round273 给「已有铺面」补齐了 round223 §3.1 定案的两项指标，
-//   它们是**前端派生**（正向引擎根本不出这两个数）⇒ **没有引擎自测护着**，
-//   口径一旦漂移（漏乘单桌座位数 / 改成分母 30 / 删掉 fail-closed）**没有任何东西会报错**。
-//   ⇒ 用守卫钉死三件事：与反推同源可比、不给假数、只在 A 区渲染。
+// 🔴 沿革：round273 曾给「已有铺面」补齐「每天来多少人 / 一天翻几台」两项；R525（李老师 2026-10-27
+//   「这里不考虑翻台率这个事情。去了这个」）把翻台率整条链下线 —— 输入（单桌座位数）、派生（turn）、
+//   展示（一天得翻几台 / 共多少座位）全部移除。
+//   ⇒ 守卫随之改判**新意图**（不是放宽）：F-③ 由"turn 必须 = 来客÷座位"改为"**不得再产出 turn**"，
+//      F-④ 的 fail-closed 收窄为只守「人均消费 > 0」。仍保留 F-②（每天来客口径）、F-⑤（只在 A 区渲染）
+//      与两个负样本，防的是"哪天有人把翻台率偷偷加回来"和"删掉 fail-closed 恒出数"。
 const crowdFn = (js.match(/crowdOf\s*\([^)]*\)\s*\{([\s\S]*?)\n  \}/) || [])[1] || '';
-check('F-① 页面存在 `crowdOf(result)`（A 区客流/翻台的**唯一**派生处）',
+check('F-① 页面存在 `crowdOf(result)`（A 区客流指标的**唯一**派生处）',
   /crowdOf\s*\(/.test(js), crowdFn ? `抓到函数体 ${crowdFn.length} 字符` : '未抓到函数体');
 check('F-② 每天来客 = 日均营业额 ÷ 人均消费（ceil，人不能是小数）',
   /breakPeople\s*=\s*Math\.ceil\(\s*bd\s*\/\s*price\s*\)/.test(crowdFn)
   && /targetPeople\s*=\s*Math\.ceil\(\s*td\s*\/\s*price\s*\)/.test(crowdFn),
   /bd\s*\/\s*price/.test(crowdFn) ? '除数=人均消费' : '🔴 除的不是人均消费');
-check('F-③ 翻台 = 日均来客 ÷ 座位数（与反推 `月客流÷(座位×天数)` 同源 ⇒ 两 Tab 可比）',
-  /turn\s*:[^;\n]*targetPeople\s*\/\s*seats/.test(crowdFn),
-  /targetPeople\s*\/\s*seats/.test(crowdFn) ? '分子=日均来客、分母=座位数' : '🔴 口径已漂移');
-check('F-④ fail-closed：人均消费 ≤0 或座位数 ≤0 ⇒ 返回 null（**不给假数**）',
-  /!\s*\(price\s*>\s*0\)/.test(crowdFn) && /!\s*\(seats\s*>\s*0\)/.test(crowdFn) && /return null/.test(crowdFn),
+check('F-③ 🔴 翻台率已下线：`crowdOf` 不得再产出 `turn` 字段（也不得再引用 seats/座位数）',
+  !/\bturn\s*:/.test(crowdFn) && !/\bseats\b/.test(crowdFn),
+  /\bturn\s*:/.test(crowdFn) ? '🔴 turn 又回来了（李老师已明确不做翻台率）'
+    : (/\bseats\b/.test(crowdFn) ? '🔴 仍在引用 seats（座位数已不是输入口径）' : '已下线，只剩「每天来多少人」'));
+check('F-④ fail-closed：人均消费 ≤0 ⇒ 返回 null（**不给假数**）',
+  /!\s*\(price\s*>\s*0\)/.test(crowdFn) && /return null/.test(crowdFn),
   /return null/.test(crowdFn) ? '有 null 兜底' : '🔴 恒出数');
 check('F-⑤ 只在「已有铺面」渲染（同一 wx:if 内含 forward 与 crowd，允许夹其他条件）',
   /mode\s*===\s*['"]forward['"][^"}]*crowd/.test(wx),
   /mode\s*===\s*['"]forward['"][^"}]*crowd/.test(wx) ? '已限定 A 区' : '🔴 B 区也会渲染');
-// 负样本（防假绿）：F-③ 必须能抓到「座位数漏乘桌数」这种**最易犯**的错
-const badCrowd1 = 'crowdOf(r){const p=Number(this.data.avgPriceYuan);const s=Number(this.data.seatsPerTableNum);return {breakPeople:Math.ceil(Number(r.break_even_daily)/p),targetPeople:Math.ceil(Number(r.target_daily)/p),turn:Math.round((Math.ceil(Number(r.target_daily)/p)/s)*100)/100};}';
-check('F-⑥ 负样本（座位数只取 seatsPerTableNum、**漏乘桌数**）会被 F-③ 判红',
-  !/turn\s*:[^;\n]*targetPeople\s*\/\s*seats/.test(badCrowd1),
-  /turn\s*:[^;\n]*targetPeople\s*\/\s*seats/.test(badCrowd1) ? '🔴 把错误实现漏过了' : '已报红');
+// 负样本（防假绿）：把 turn 加回 crowdOf ⇒ F-③ 必须判红
+const badCrowd1 = 'crowdOf(r){const p=Number(this.data.avgPriceYuan);const s=this.seatsNow();return {breakPeople:Math.ceil(Number(r.break_even_daily)/p),targetPeople:Math.ceil(Number(r.target_daily)/p),turn:Math.round((Math.ceil(Number(r.target_daily)/p)/s)*100)/100};}';
+check('F-⑥ 负样本（把 turn 重新加回 crowdOf）会被 F-③ 判红',
+  /\bturn\s*:/.test(badCrowd1),
+  /\bturn\s*:/.test(badCrowd1) ? '已报红' : '🔴 把错误实现漏过了');
 // 负样本（防假绿）：删掉 fail-closed 恒出数 ⇒ F-④ 必须红
 const badCrowd2 = 'crowdOf(r){const price=1;const seats=1;return {breakPeople:1,targetPeople:1,turn:1};}';
 check('F-⑦ 负样本（删掉 fail-closed、恒出数）会被 F-④ 判红',
@@ -517,8 +521,11 @@ sec('T L1 标题数字 ≡ 实际输入行数（R339）');
     return { seg, si, ei, rows: (seg.match(/bindinput=/g) || []).length };
   };
   const s1 = segOf('t.secStore', 't.secFixed');
-  check('T-① 「① 门店情况」段能定位且输入行 ≥ 4（下界，防切段失效变成恒真）',
-    s1.rows >= 4, '实际 ' + s1.rows + ' 行（切片 ' + (s1.si + 1) + '→' + s1.ei + '）');
+  // 🔴 R525：下界 4 → 3 —— 「单桌座位数」输入随翻台率下线一并删除
+  //   （门店情况现为 桌数 / 面积 / 人均消费 三格）。下界用意不变：
+  //   防「切段锚点失效 ⇒ seg 为空 ⇒ rows=0 也过」的恒真。
+  check('T-① 「① 门店情况」段能定位且输入行 ≥ 3（下界，防切段失效变成恒真）',
+    s1.rows >= 3, '实际 ' + s1.rows + ' 行（切片 ' + (s1.si + 1) + '→' + s1.ei + '）');
 
   const s2 = segOf('t.secFixed', 't.secMargin');
   check('T-② 「② 每月固定支出」段输入行 ≥ 5（房租/人数/人工总额/水电气/管理费）',

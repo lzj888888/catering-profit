@@ -162,12 +162,15 @@ chk(/bands_version:\s*BANDS_VERSION/.test(calcIdx) && /out\.bands_version\s*=\s*
     'R378 窄屏未渲染横滑提示（只写条件不算渲染）');
 }
 
-// --- B10：onPreset 不得无条件覆盖手填的单桌座位数 ---
+// --- B10：onPreset 不得无条件覆盖**用户手填**的费率类输入 ---
+//   🔴 R525：原判据守的是「单桌座位数」（seatsPerTable）—— 该输入已随翻台率下线删除。
+//   判据**不删只换对象**（守的意图不变：切业态不得静默重置老板填过的数）：
+//   现守「其他杂支 %」（otherPctNum），它是页面上唯一"预设给参考值、老板可改"的比率为。
 {
-  const guarded = /if\s*\(\s*!this\.data\.fieldTouched\.seatsPerTable\s*\)\s*\{[\s\S]{0,200}?seatsPerTableNum/.test(idxJs);
-  chk(guarded, 'index.js onPreset 仍无条件覆盖 seatsPerTableNum（B10：用户手填值被业态切换静默重置）');
-  chk(/seatsPerTable:\s*false/.test(idxJs), 'index.js fieldTouched 缺 seatsPerTable 键（B10）');
-  chk(/'fieldTouched\.seatsPerTable':\s*true/.test(idxJs), 'index.js onSeatsPerTable 未标记手填（B10）');
+  const guarded = /if\s*\(\s*!this\.data\.fieldTouched\.otherPct\s*\)\s*\{[\s\S]{0,300}?otherPctNum/.test(idxJs);
+  chk(guarded, 'index.js onPreset 仍无条件覆盖 otherPctNum（B10：用户手填的杂支 % 被业态切换静默重置）');
+  chk(/otherPct:\s*false/.test(idxJs), 'index.js fieldTouched 缺 otherPct 键（B10）');
+  chk(/'fieldTouched\.otherPct':\s*true/.test(idxJs), 'index.js onOtherPct 未标记手填（B10）');
 }
 
 // --- B11：【开始测算】按钮不得传事件对象当 isFirst ---

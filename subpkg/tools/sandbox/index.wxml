@@ -82,15 +82,11 @@
         </view>
       </view>
       <view class="row-note">{{t.tablesNote}}</view>
-      <view class="row">
-        <text class="row-name">{{t.seatsPerTableLabel}}</text>
-        <view class="row-in-wrap">
-          <input class="row-in" type="number" placeholder="{{t.seatsPerTablePh}}" value="{{seatsPerTableNum}}" bindinput="onSeatsPerTable" adjust-position="{{true}}" cursor-spacing="20" />
-          <text class="row-unit">{{t.headcountUnit}}</text>
-        </view>
-      </view>
-      <!-- 🔴 R246：供给侧口径说明（防被读成"桌均实际来客人数"）——由 t.seatsPerTableNote 供给，页面零硬编码 -->
-      <view class="row-note">{{t.seatsPerTableNote}}</view>
+      <!-- 🔴 R525：原「一张桌子准备几个座位」输入已删 —— 李老师 2026-10-27：
+           「这里不考虑翻台率这个事情。去了这个」。
+           根因是它唯一的用途就是把桌数折成座位数去算翻台率；而现实里包间 10 座、散台 4 座混搭，
+           一个"平均座位数"既填不准、也不再需要（翻台率本页不再讨论）。
+           引擎契约字段 seats 仍在，由 `seatsNow() = 桌数 × 业态默认每桌人数` 内部折算，不再问老板。 -->
       <view class="row">
         <text class="row-name">{{t.avgPriceLabel}}</text>
         <view class="row-in-wrap">
@@ -184,6 +180,18 @@
         </view>
       </view>
       <view class="row-note">{{t.manageOptNote}}</view>
+      <!-- 🔴 R525（方案 B，李老师拍板）：2% 其他杂支**摆出来可改**。
+           原来它藏在业态参数包里、老板改不了，只在页顶一行小字提过 —— 已有店铺填了真实水电/管理费
+           再被额外扣 2% 从没填过的钱 = 重复扣，且他看不见。现在默认 2%（行业参考），
+           填 0 或留空 = 不算这项。走既有入参覆盖口 `feeOverrides`，引擎与契约零改动。 -->
+      <view class="row">
+        <text class="row-name">{{t.otherVarLabel}}</text>
+        <view class="row-in-wrap">
+          <input class="row-in" type="digit" value="{{otherPctNum}}" bindinput="onOtherPct" adjust-position="{{true}}" cursor-spacing="20" />
+          <text class="row-unit">{{t.channelPct}}</text>
+        </view>
+      </view>
+      <view class="row-note">{{t.otherVarNote}}</view>
       <!-- 🔴 R443：填到一半就能看到每月固定支出合计（只读展示，不参与任何计算；读不成数字时整行不显示） -->
       <view class="row-note total-line" wx:if="{{fixedPreviewText}}">{{t.fixedTotal}} {{fixedPreviewText}}</view>
       <!-- 🔴 R452（D 项）：费率行「≈ 每月多少钱」——李老师拍板**放回，但必须标「估算」**。
@@ -504,7 +512,9 @@
       <view class="sec">{{t.fwdCrowdTitle}}</view>
       <view class="cell"><text class="lbl">{{t.fwdCrowdBreakLbl}}</text><text class="val">{{crowd.breakPeople}}{{t.fwdCrowdUnit}}</text></view>
       <view class="cell"><text class="lbl">{{t.fwdCrowdTargetLbl}}</text><text class="val keynum">{{crowd.targetPeople}}{{t.fwdCrowdUnit}}</text></view>
-      <view class="hint">{{t.fwdCrowdHintPre}}{{crowd.price}}{{t.fwdCrowdHintMid}}{{crowd.seatCount}}{{t.fwdCrowdHintSuf}}</view>
+      <!-- 🔴 R525：本卡只留「每天得来多少人」——翻台率已下线（李老师：「这里不考虑翻台率这个事情」），
+           所以提示里不再提"共多少个座位"（座位数也不再向老板提问）。 -->
+      <view class="hint">{{t.fwdCrowdHintPre}}{{crowd.price}}{{t.fwdCrowdHintSuf}}</view>
     </view>
 
     <!-- 🔴 round276 · A 区补齐 round223 §3.1 定案**遗漏**的「坪效 / 人效」（翻台 round273 已补）。

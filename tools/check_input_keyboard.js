@@ -56,9 +56,13 @@ const PCT_ANCHORS = [
   'channel.takeawayRatio', 'channel.platformRate', 'channel.packRate',
   'channel.groupRatio', 'channel.groupPlatformRate', 'channel.discountRate',
   'channel.cardRate', 'promoRealPct', 'promoCostPct',
+  // 🔴 R525（方案 B）：新增「其他杂支（按营业额 %）」输入 —— 是百分比框，登记进锚点，
+  //   否则 D0「百分比框合计 = 锚点数」会把它当成"判据过宽"的多余命中。
+  'otherPctNum',
 ];
 // 纯计数字段（反向锚点：它们出现在百分比命中集里 ⇒ 判据过宽）
-const INT_BINDS = ['headcountNum', 'tablesNum', 'seatsPerTableNum', 'item.years'];
+// 🔴 R525：`seatsPerTableNum` 已随「单桌座位数」输入删除（翻台率下线）⇒ 从锚点表移除，不留僵尸项。
+const INT_BINDS = ['headcountNum', 'tablesNum', 'item.years'];
 // 换算量（「1 件 = [N] 公斤」）
 const CONV_BIND = 'convQty';
 

@@ -236,6 +236,11 @@ Page({
     mode: 'reverse',
     pivotRowDim: 'rent',   // 透视表**行**维度：forward ⇒ margin，reverse ⇒ rent
     loading: false,
+    // 🔴 R525：「其他杂支占营业额 %」由单测页经 URL 带进来（`?other=`）。
+    //   null = 没带（按业态预设 2% 算）；0 = 老板明确不要这项（从入参里剔除）。
+    //   为什么必须带：否则单页改成 0 后，矩阵仍按 2% 算 ⇒ 同一家店两个页面给出不同保本额，
+    //   而且**零报错**（R292 同族：数字不一致比算错更难发现）。
+    otherPct: null,
     exporting: false,
     result: null, // { rows:[], view, count, pivot }
   },
@@ -251,6 +256,9 @@ Page({
     const patch = {
       mode,
       pivotRowDim,
+      // 🔴 R525：接住单测页带过来的「其他杂支 %」（没带 ⇒ null ⇒ 仍按业态预设）
+      otherPct: (opt.other === undefined || opt.other === '' || !isFinite(Number(opt.other)))
+        ? null : Number(opt.other),
       't.title': mode === 'forward' ? M.titleFwd : M.titleRev,
       't.subtitle': mode === 'forward' ? M.subtitleFwd : M.subtitleRev,
       't.pivotRowLabel': mode === 'forward' ? M.pivotRowLabelFwd : M.pivotRowLabelRev,
@@ -665,11 +673,23 @@ Page({
       buildItems,
     };
     const { fixedItems, varItems } = assembleItems(preset, input, coef);
+    // 🔴 R525：其他杂支 % 覆盖（与 index 的 `buildPresetParam` 同一规则，逐字对齐）：
+    //   0 ⇒ **剔除**该项（老板认为没这笔）；>0 ⇒ 用老板的值；非数字/负数 ⇒ 原样按预设走。
+    //   不做这层，单页改成 0 后矩阵仍扣 2% ⇒ 两页保本额不一致且零报错。
+    const otherRaw = this.data.otherPct;
+    const varFinal = (otherRaw === null || otherRaw === undefined || otherRaw === '')
+      ? varItems
+      : varItems.map((v) => {
+          if (v.key !== 'other') return v;
+          const n = Number(otherRaw);
+          if (!isFinite(n) || n < 0) return v;
+          return n > 0 ? { key: 'other', pct: n } : null;
+        }).filter(Boolean);
     return {
       cityTier,
       bizType: bizKeyOfPreset(preset.presetKey),
       fixedItems,
-      varItems,
+      varItems: varFinal,
       buildItems,
       grossMarginPct: marginPct,
       targetProfitFen: api.yuanToFen(targetYuan),
