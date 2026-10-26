@@ -1198,11 +1198,13 @@ Page({
       takeoutQtyTotal: String(qty),
       takeoutPerOrder: perOrder,
     });
-    // 🔴 R505：net 模式（默认）下费用侧不得自动带出补贴/佣金/配送（净额已扣完，再带出 = 重复扣减 ⇒ 利润失真）；
-    //   仅在 gross 展开（补录平台明细）时才走全套派生与带出。
-    if (this.data.takeoutTrack === 'gross') this.syncSubsidyCarry();
-    // T3′：轻量自查（漏记佣金/配送费）仅在 gross 模式有意义 —— net 模式净额已含，无需提示，避免误导老板。
-    if (this.data.takeoutTrack === 'gross') this.syncTakeoutSelfCheck();
+    // 🔴 R511：两个联动**每次都调**（不能只在 gross 时调）—— 清除逻辑写在函数内部
+    //   （`if (track !== 'gross') { ...clear...; return; }`），调用方若在 net 时直接不调，
+    //   则 gross→net 切换时**旧的自动带出/自查提示清不掉** ⇒ net 模式残留
+    //   「佣金与配送费记得记上」这类 gross 专用提示，与净额口径自相矛盾。
+    //   （真机实测：切到 net 后 twSelfCheck 仍非空 —— review/evidence/r510_walk/walk.json S3）
+    this.syncSubsidyCarry();      // net ⇒ total=0 ⇒ 清掉自动带出的补贴（手改锁定的保留）
+    this.syncTakeoutSelfCheck();  // net ⇒ 清掉「漏记佣金」提示
     this.syncTakeoutFold();    // round109：折叠态摘要（与合计同源同模式，必须一起重算）
   },
 
@@ -1419,13 +1421,16 @@ Page({
   //   · 快速：g.rows[].subsidy 求和（新增出账口）
   //   · 空值兼容：快速模式 subsidy 全空 ⇒ total=0 ⇒ target='' ⇒ 不写费用侧（老用户不回归）。
   syncSubsidyCarry() {
-    // 🔴 R505：net 模式（默认）下净额已扣完补贴/佣金/配送，绝不再带出到费用侧（否则重复扣减）。
-    if (this.data.takeoutTrack !== 'gross') return;
+    // 🔴 R505：net 模式（默认）下净额已扣完补贴/佣金/配送，**不得再把补贴带出到费用侧**（否则重复扣减）。
+    // 🔴 R511 修正：不能「直接 return」—— 那样 gross→net 切换时，**此前自动带出的那笔补贴会留在费用侧**，
+    //   而净额里已扣过一次 ⇒ 同一笔补贴扣两次、利润偏低。改法：net 下 total 恒 0，
+    //   让下面的清除逻辑把「自动带出的值」清空；老板手改过的行有 `twCarryLock=true`，仍保留不清。
+    const trackNet = this.data.takeoutTrack !== 'gross';
     const g = this.data.incomeGroups.find((x) => x.category === 'takeaway');
     const isFast = this.data.takeoutMode === 'fast';
-    const total = isFast
+    const total = trackNet ? 0 : (isFast
       ? ((g && g.rows) || []).reduce((s, r) => s + (Number(r.subsidy) || 0), 0)
-      : subsidyTotal(this.data.takeoutDetailRows || []);
+      : subsidyTotal(this.data.takeoutDetailRows || []));
     const groups = this.data.expenseGroups.slice();
     const mk = groups.findIndex((x) => x.category === 'marketing');
     if (mk < 0) return;

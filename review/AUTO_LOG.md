@@ -983,3 +983,10 @@
   - (2) 守卫防「判据恒真」：初版 `indexOf('buildTrend(')` 命中**调用处** `this.buildTrend(snaps)` => 切到错误函数体；改为「`)` 与 `{` 之间只有空白」定义锚 + 合成样本正反两路自证（⑥-b/⑥-c）。
   - (3) 影响面：#93（趋势图口径断点）的前置 —— 图不显示真实值就没法在「切换点」上做标注；本修让 #93 有可标注的真实柱。零云函数部署，但需重新出码才能在真机看到。
   - (4) 出码（R510 补）：`review/evidence/r510_qr/qr.png`（46,659 B · 470x470 · cv2 解码 = `https://mp.weixin.qq.com/a/~~znWYzeORax4~Ae5zrWHmHuk4R7tdkwz5Qg~~`）；包体 main **271.5 KB** / TOTAL **773.1 KB**（打包修复后正常，对比修前 7286 KB 超限）；AppID wx33c110dc57a9c8dc。
+
+### R511 · 真机（模拟器自动化）走查月度录入 → 抓并修「net 模式残留 gross 专用提示」口径矛盾
+
+- [2026-10-26 12:05] R511：李老师要求真机核对月度录入口径。用开发者工具自动化（cli auto + miniprogram-automator，逻辑层 `wx.reLaunch` + 读 `getCurrentPages().data`）实测 `subpkg/biz/month/input`。**口径核对通过**：默认 net 单框（`netPh`=结算金额（实际到账·净额））、gross 展开四格（商品总价/打包费/商家承担全部补贴（合计）/有效订单数），与 R161/R496/R505 定案一字未改。**但抓到真 bug**：gross→net 切换后 `twSelfCheck` 仍残留「外卖收入已填…佣金与配送费还是空的…」——净额已含佣金/配送，此提示属 gross 专用，残留即口径矛盾。根因：`syncTakeoutSum` **只在 gross 时**调 `syncTakeoutSelfCheck/syncSubsidyCarry`，而清除逻辑写在这两个函数内部 ⇒ net 时根本不调 ⇒ 旧值清不掉（同族：守卫在函数内，但调用方在守卫为假时不调）。修：`syncTakeoutSum` 两个联动**每次都调**；`syncSubsidyCarry` net 下 `total=0` 触发清除（`twCarryLock` 手改行保留，防删老板手填）。实测对照：S1 gross 提示非空 → S2 net 提示为空。门禁 **211/211 · GATE_RC=0 · 352.4s**（`_gate_r511.log`）。证据 `review/evidence/r510_walk/`。
+  - (1) 口径逐条实测值（非自述）：`twSecTitle`=外卖实际到账怎么填、`twTrackNet`=只填实际到账（推荐）、`twTrackGross`=补录平台明细、`twGoodsField`=商品总价、`twPackField`=打包费、`twSubsidyField`=商家承担全部补贴（合计）、`twOrdersField`=有效订单数。
+  - (2) 初始态按数据推断：该月已有明细分项（美团 5000 / 淘宝 2500）⇒ 首次进入 inference 为 gross（不覆盖老板数）；纯空月 ⇒ net。
+  - (3) 未做：`takeout_track` 仍未落后端（#93 前置），故趋势图断点标注仍 blocked；本条只修 net 口径一致性与残留提示。
