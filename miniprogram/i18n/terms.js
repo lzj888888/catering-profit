@@ -283,6 +283,10 @@ const TERMS = {
     graceArchive: '归档后 7 天内可补录（需确认）',
     confirmArchive: '确认结账并归档该月？归档后默认只读（7 天内仍可补录）。',
     confirmArchivePrev: '确认把上月（{m}）归档？归档后上月默认只读（7 天内仍可补录）。',
+    // 🔴 R516：取消归档（云函数 archiveMonth 一直支持 archive:false，但前端从未给入口 ⇒
+    //   归档点错月只能改库；且 ARCHIVED_LOCKED 文案写着「先取消归档再改」却无按钮可点，属断链）。
+    confirmUnarchive: '确认取消归档「{m}」？取消后该月恢复可编辑，随时可再归档。',
+    unarchivedDone: '已取消归档',
     currencySymbol: '¥',
     loadFailed: '加载失败',
     opFailed: '操作失败',
@@ -315,6 +319,8 @@ const TERMS = {
     syncPrice: '同步至原料最新价',
     archiveNow: '结账并归档',
     archivePrev: '归档上月',
+    // 🔴 R516：归档点错月后的自救入口（4 字，满足弹窗/按钮长度红线）
+    unarchive: '取消归档',
     // 🔴 R376（M1 清空某月）：破坏性操作 —— 按钮文案必须自解释，确认弹窗必须写清"能找回"。
     clearMonth: '清空本月数据',
     // ⚠️ confirmText 上限 4 字（tools/check_modal_button_len.js 红线）⇒ 弹窗按钮另起短文案

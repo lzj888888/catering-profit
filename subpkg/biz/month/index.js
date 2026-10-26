@@ -50,6 +50,10 @@ Page({
       clearMonthDone: TERMS.nav.clearMonthDone,
       confirmArchive: TERMS.ui.confirmArchive,
       confirmArchivePrev: TERMS.ui.confirmArchivePrev,
+      // 🔴 R516：归档点错月的自救（云函数早已支持 archive:false，缺的只是前端入口文案）
+      unarchive: TERMS.nav.unarchive,
+      confirmUnarchive: TERMS.ui.confirmUnarchive,
+      unarchivedDone: TERMS.ui.unarchivedDone,
       history: TERMS.ui.history,
       expireSoonTitle: TERMS.pay.expireSoonTitle,
       renewEntry: TERMS.pay.renewEntry,
@@ -273,6 +277,28 @@ Page({
           await api.call('archiveMonth', { month: m, archive: true });
           wx.showToast({ title: TERMS.ui.archivedDone, icon: 'success' });
           this.loadMonth(this.data.curMonth);
+        } catch (e) { api.toastError(e); }
+      },
+    });
+  },
+
+  // 🔴 R516：取消归档（归档点错月的自救入口）
+  //   背景：云函数 archiveMonth 自始支持 archive:false，但前端从未给入口 ⇒ 老板归档错月只能找客服改库；
+  //   且 7 天宽限过后 saveLedger 报「先取消归档再改」，指向的能力并不存在（断链）。
+  //   取消后 is_archive=false、该月恢复可编辑，随时可再归档正确月份（不删任何数据）。
+  onUnarchive() {
+    const m = this.data.curMonth;
+    if (!m) return;
+    wx.showModal({
+      title: TERMS.nav.unarchive,
+      content: (TERMS.ui.confirmUnarchive || '').replace('{m}', m),
+      confirmColor: '#1e3a5f',
+      success: async (r) => {
+        if (!r.confirm) return;
+        try {
+          await api.call('archiveMonth', { month: m, archive: false });
+          wx.showToast({ title: TERMS.ui.unarchivedDone, icon: 'success' });
+          this.loadMonth(m);
         } catch (e) { api.toastError(e); }
       },
     });

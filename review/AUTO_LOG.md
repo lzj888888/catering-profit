@@ -1031,3 +1031,10 @@
   - (2) 为何暂不做「明细/行业指标默认折叠」：行业指标是卖点、且已在页底；折叠收益(少滚两屏) < 需要新增折叠态与守卫的成本。
   - (3) 顺带发现（未处理，属 #93）：趋势图 08月 819958 vs 09/10 ~40000，疑似 gross→net 口径断崖或某月量级填错，建议核 8 月那笔数。
   - (4) 出码（R515）：`review/evidence/r515_qr/qr.png`（47,797 B · 470x470）；main 271.8 KB / TOTAL 773.7 KB（含利润卡折叠改动）。
+
+### R516 · 补「取消归档」入口（归档点错月无法自救 = 断链）
+
+- [2026-10-26 13:36] R516：李老师问「归档月份选错了怎么办」。代码核实：云函数 `archiveMonth` **一直支持 archive:false**（validate.js:2 注释「false = 取消归档（保留，供客服后台用）」、selftest.js:9 有断言），但**前端零入口** —— 三处归档提示（index/input/result 的 archived-bar）**全是纯文字无按钮**，全仓搜不到一处 `archive: false` 调用；而 7 天宽限过后 saveLedger 报「这个月已归档，**先取消归档**再改」（terms ERR.ARCHIVED_LOCKED），**指向一个不存在的能力**。⇒ 归档点错月，老板只能找我改库。**补法（零云函数/零部署）**：index.js 加 `onUnarchive()`（调 `archiveMonth({month, archive:false})`) + `data.t` 三条文案；index.wxml 按钮组加 `wx:if="{{isArchive}}"` 的「取消归档」。实测（模拟器）：`btnText=取消归档`、`confirmText=确认取消归档「{m}」？…`、`handler=function`；强制归档态渲染确认按钮出现在「结账并归档 / 归档上月」之后（`review/evidence/r516_unarchive/index_archive_bottom.png`）。门禁 **211/211 · GATE_RC=0 · 255.5s**（`_gate_r516.log`）。terms 双副本 md5 `dd6d8f9b…` 全等；新增文案零禁用词。
+  - (1) 实测方法坑：`data.t.*` 是嵌套对象，首版 probe 读 `p.data.unarchive` 得 undefined ⇒ **误判「文案没生效」**；改读 `p.data.t.unarchive` 全部命中。另 `mp.screenshot` 首次调用常 timeout、重试即可（技能已记录）。
+  - (2) 已知小瑕疵（无害，未改云函数）：取消归档时 `archived_at` 保留旧值不清零（archiveMonth:63 `acct.archived_at || 0`）。因 saveLedger 只在 `is_archive=true` 时才看宽限、首页 archived_at 也只在归档态展示 ⇒ 无行为影响；要清零需改云函数并部署，本轮不做。
+  - (3) 页面语义核对：已归档月 `canArchive=false`（不显示「结账并归档」）；「取消归档」仅 `isArchive=true` 显示；未归档月两者都不出现 —— 无同屏歧义。

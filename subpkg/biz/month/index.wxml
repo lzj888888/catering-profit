@@ -80,6 +80,9 @@
     <button class="btn ghost" bindtap="goResult">{{t.goResult}}</button>
     <button class="btn ghost" wx:if="{{canArchive}}" bindtap="onArchive">{{t.archiveNow}}</button>
     <button class="btn ghost" wx:if="{{canArchivePrev}}" bindtap="onArchivePrev">{{t.archivePrev}}</button>
+    <!-- 🔴 R516：归档点错月的自救入口。云函数早就支持 archive:false，前端此前没有入口
+         ⇒ 归档错月只能改库，且 saveLedger 报「先取消归档再改」时无按钮可点。 -->
+    <button class="btn ghost" wx:if="{{isArchive}}" bindtap="onUnarchive">{{t.unarchive}}</button>
     <!-- 🔴 R376：清空本月（**软删**，可恢复）。只在"该月有账且未归档"时出现：
          空月没有可清的；归档月要先取消归档（服务端同样拒绝，双保险）。 -->
     <button class="btn ghost btn-clear" wx:if="{{result && !isArchive}}" bindtap="onClearMonth">{{t.clearMonth}}</button>
