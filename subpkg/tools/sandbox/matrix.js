@@ -177,12 +177,22 @@ Page({
     },
     // 🔴 R332 修 bug：原先名字只拼「大类·预设」⇒ 同大类的两个细分（半自助 / 烤肉）**显示成一模一样**，
     //   老板选哪个都看不出区别。现改为「大类 · 细分」；通用兜底不加大类前缀（否则重复成一串）。
-    presets: BIZ_PRESETS.map((p) => {
-      const bt = TERMS.m2.bizTypes.find((b) => b.key === p.bizKey);
-      const sub = TERMS.m2.bizPresets[p.presetKey] || p.presetKey;
-      const cat = (bt && p.bizKey !== 'other') ? bt.name + ' · ' : '';
-      return { key: p.presetKey, name: cat + sub };
-    }),
+    // 🔴 R524：与 `sandbox/index.js` 的 DISPLAY_KEYS **同一套 5 项、同一套名字**
+    //   （4 大类 + 通用兜底，通用放最后）。此前这里是全量 14 个预设 ⇒ 同一家店在
+    //   「已有铺面」页和「场景矩阵（寻找铺面）」页看到的经营类型不一样，且名字拼成
+    //   「中式正餐 · 中式正餐（川湘粤家常菜）」这种重复串。
+    //   ⚠️ 两个页面必须同步改（本数组改动后，下面的 presetIdx 语义仍指向本数组）。
+    //   ⚠️ 顺序也与 index 页一致：**通用在最前**（默认不预设业态，避免"默认按面馆算"的误导）。
+    presets: ['other', 'fastfood_noodle', 'dining_sichuan', 'hotpot_half_self', 'cafe_tea']
+      .map((k) => {
+        const hit = BIZ_PRESETS.find((x) => x.presetKey === k);
+        if (!hit) return null;
+        const label = k === 'other'
+          ? TERMS.m2.presetNone
+          : (TERMS.m2.presetDisplay[k] || TERMS.m2.bizPresets[k] || k);
+        return { key: k, name: label };
+      })
+      .filter(Boolean),
     presetIdx: 0,
     cityIdx: 1, // tier23
     dims: {
@@ -256,7 +266,7 @@ Page({
       const tiers = ['tier1', 'tier23', 'county'];
       const cityTier = tiers[this.data.cityIdx] || 'tier23';
       const rentPool = RENT_DIMS[cityTier] || RENT_DIMS.tier23;
-      const presetNow = findPreset(BIZ_PRESETS[this.data.presetIdx].presetKey);
+      const presetNow = findPreset(this.data.presets[this.data.presetIdx].key);
       const bk = presetNow ? presetNow.bizKey : '';
       const laborDef = LABOR_DIMS[bk] || [2, 3];
       const num = (v) => { const n = Number(v); return isFinite(n) && n > 0 ? Math.round(n) : 0; };
@@ -291,7 +301,7 @@ Page({
 
   // 切换业态预设时，把「开店一次性投入」默认值带出来（有 buildRef 才带，否则留空让用户填）
   syncBuildDefault() {
-    const p = findPreset(BIZ_PRESETS[this.data.presetIdx].presetKey);
+    const p = findPreset(this.data.presets[this.data.presetIdx].key);
     const ref = (p && p.buildRef) || [];
     const by = {};
     for (let i = 0; i < ref.length; i++) by[ref[i].key] = ref[i];
@@ -323,7 +333,7 @@ Page({
 
   onPresetChange(e) {
     const idx = Number(e.detail.value);
-    const p = BIZ_PRESETS[idx] ? findPreset(BIZ_PRESETS[idx].presetKey) : null;
+    const p = this.data.presets[idx] ? findPreset(this.data.presets[idx].key) : null;
     const patch = { presetIdx: idx };
     // 🔴 R331：矩阵页原先毛利率档位**硬编码 45% 起步、切业态不变**，而 index 页用的是业态预设值
     //   （面馆 63% / 火锅 53% / 咖啡 67%）⇒ 同店两页保本点最多差 49%。
@@ -563,7 +573,7 @@ Page({
   //     · 面馆是 labor_total（人数 × 预设工资 × 城市系数）
   //     · **火锅半自助是 fixed 25000（跟人数完全无关）** ⇒ 自己乘就会算错。
   laborOf(rentYuan, laborN) {
-    const preset = findPreset(BIZ_PRESETS[this.data.presetIdx].presetKey);
+    const preset = findPreset(this.data.presets[this.data.presetIdx].key);
     if (!preset) return null;
     const tiers = ['tier1', 'tier23', 'county'];
     const coef = CITY_COEF[tiers[this.data.cityIdx] || 'tier23'] || CITY_COEF.tier23;
@@ -595,7 +605,7 @@ Page({
     const row = r.rows[0];
     if (!row || row.invalid || row.fixedExAmort == null) return null;
 
-    const preset = findPreset(BIZ_PRESETS[this.data.presetIdx].presetKey);
+    const preset = findPreset(this.data.presets[this.data.presetIdx].key);
     if (!preset) return null;
     const tiers = ['tier1', 'tier23', 'county'];
     const coef = CITY_COEF[tiers[this.data.cityIdx] || 'tier23'] || CITY_COEF.tier23;
@@ -687,7 +697,7 @@ Page({
     if (it.length) return it;
     // 一项都没填 ⇒ 退回业态参考值（同 resolveBuild「两条路二选一」，**不叠加**；
     //   也不做「填了一项就替你补其他项」——那会让老板以为填的是全量）
-    const pst = findPreset(BIZ_PRESETS[this.data.presetIdx].presetKey);
+    const pst = findPreset(this.data.presets[this.data.presetIdx].key);
     const ref = (pst && pst.buildRef) || [];
     return ref.map((b) => ({ key: b.key, fen: Number(b.fen), years: Number(b.years) }));
   },
@@ -759,7 +769,7 @@ Page({
 
   async onGenerate() {
     if (this.data.loading) return;
-    const presetKey = BIZ_PRESETS[this.data.presetIdx].presetKey;
+    const presetKey = this.data.presets[this.data.presetIdx].key;
     const preset = findPreset(presetKey);
     if (!preset) { api.toastError({ msg: '请选择经营类型' }); return; }
     const tiers = ['tier1', 'tier23', 'county'];

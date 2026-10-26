@@ -1152,8 +1152,9 @@ Page({
     // 🔴 R523：移除 fastfood_other（参数 100% 继承 fastfood_noodle，属伪选择）；
     //   火锅/烧烤都保留（53% vs 59% 真实差异）。旧方案用到被移除的 key 时，下方「补一条」逻辑兜底。
     //    顺序必须与 M1 的 `bizTypes` 一致（快餐 → 正餐 → 火锅 → 茶饮），否则同一套词在两个模块里排序不同。
-    const DISPLAY_KEYS = ['fastfood_noodle', 'dining_sichuan',
-      'hotpot_half_self', 'hotpot_barbecue', 'cafe_tea'];
+    // 🔴 R524：hotpot_barbecue 也移出白名单 —— 行业基准只有一套 BANDS.hotpot，
+    //   拆两项会让老板误以为火锅/烧烤是两套标准，且与 M1 的单一评价口径冲突。
+    const DISPLAY_KEYS = ['fastfood_noodle', 'dining_sichuan', 'hotpot_half_self', 'cafe_tea'];
     let shownPresets = BIZ_PRESETS.filter((p) => DISPLAY_KEYS.indexOf(p.presetKey) >= 0)
       .sort((a, b) => DISPLAY_KEYS.indexOf(a.presetKey) - DISPLAY_KEYS.indexOf(b.presetKey));
     // 旧方案用到的 key 若不在白名单 ⇒ 临时补一条：否则 findIndex 找不到会回落 presetIdx=0
