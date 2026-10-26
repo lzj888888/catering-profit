@@ -1,4 +1,4 @@
-// subpkg/tools/sandbox/index.js —— M2 开店盈亏平衡点测算（v2 · 2026-09-23 李老师拍板改造）
+// subpkg/tools/sandbox/index.js —— M2 开店盈亏沙盘（v2 · 2026-09-23 李老师拍板改造；R518 改名）
 //
 // ⚠️ 计算下沉（铁律不变）：所有**公式**在云函数 calcSandbox（Service 层）算，前端只展示返回的分整数。
 //   前端只允许做「纯金额求和」这类展示汇总（如各行金额相加），**任何含除法 / 费率的量
@@ -359,6 +359,8 @@ Page({
       paybackNull: M.paybackNull,
       paybackDisclaimer: M.paybackDisclaimer,
       paybackSeeM3: M.paybackSeeM3,
+      // 🔴 R518：M2 → M1 转化口（免费模块的价值出口；此前只有去 M3 的一条钩子）
+      paybackSeeM1: M.paybackSeeM1,
       months: M.months,
       yuanUnit: M.yuanUnit,
       initialInvestLabel: M.initialInvestLabel,
@@ -1664,6 +1666,9 @@ Page({
     this.setData({ hintFold: next });
   },
   onGoM3() { wx.switchTab({ url: '/pages/m3/hub' }); },
+  // 🔴 R518：算完"这家店能不能开" → 去记"每月真实账"（M1 是付费主链路，也是这份测算的落地处）。
+  //   M1 月度页不是 tab（tabBar「核算」指向首页 pages/index/index），故用 navigateTo 而非 switchTab，保留返回。
+  onGoM1() { wx.navigateTo({ url: '/subpkg/biz/month/index' }); },
 
   /**
    * 🔴 R234：本业态 × 本城市的**健康租金上限**（%），由系统自动取，**不再向用户收这个数**。

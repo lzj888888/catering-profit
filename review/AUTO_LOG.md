@@ -1079,3 +1079,10 @@
 - 守卫面核查（防「改名撞字面量锚点」，同 #55 病）：`tools/**` 对旧名**零断言**，仅 `check_indicator_ref.js:5` 注释提及；`check_home_ui_v3.js` 无模块名断言；`check_terms_forbidden` 的「盈利」豁免只给 M1 ⇒「盈亏」安全。文档面**有 2 处旧名待随批跟**：`specs/dev-specs/★知识存储点_2026-09-10.md:352`（三条改名声明行）、`subpkg/tools/sandbox/index.js:1` 头注。
 - 处置：登记 **#98（todo, blocked=no）** 交下轮收口，写明「在库里 ⇒ 只补门禁 + 出码 + 拍板留痕 + 回执；静默 >30 分钟仍全 M ⇒ 按现状收口、内容一字不改」。
 - 零代码 / 零 wxml / 零云函数（本轮只读）⇒ **不出码、不部署**。仅追加本回执 + 队列 #98 一行；提交只带这两个 md，可 `git show --numstat` 自证 0 夹带。
+
+### R518 · 按方案 A 落地 M2 改名（开店盈亏沙盘）+ 副标题 + M2→M1 转化口
+
+- [2026-10-26 18:40] R518：李老师拍板「听你的，就按你说的改」⇒ 执行 NOTE_R517 的方案 A。**改动**：① `terms.js::modules.m2` 五字段 → 开店盈亏沙盘（display/navTitle/cardTitle/internal）；② subtitle → 「选址先算清：卖多少不亏、多久回本」（16 字，保「选址」搜索词但不写死人群）；③ 统一三处用户可见旧简称（AI 授权页 `pExpand`、矩阵/对比返回键 `backToSandbox`、对比空态 `cmpEmpty`）；④ **新增 M2→M1 转化口** `paybackSeeM1='去算每月真实账'` + `onGoM1()`（navigateTo `/subpkg/biz/month/index`）—— 此前只有去 M3 一条钩子，免费模块缺落地点。**实测**：首页卡片新名+新副标题单行完整（`home_new_name.png`）、导航栏字号正常（`m2_new_title.png`）、回本卡两按钮单行等宽（`m2_payback_buttons_final.png`）、`selectorQuery` 查到 `.payback-m3-btn` 2 节点。**首版踩坑**：按钮文案 11 字（开起来后，每月账怎么算）折成两行 ⇒ 改 7 字「去算每月真实账」。门禁 **211/211 · GATE_RC=0 · 260.8s**（`_gate_r518.log`）；terms 双副本 md5 `bfb7ddde…` 全等；零云函数 ⇒ 不部署。**刻意不改**：`bePoint`/`matrix.subtitle` 里的「盈亏平衡点」是指标名/动作描述，非模块名。
+  - (1) 为何不采用「开店&选址盈亏测算沙盘」：11 字压导航栏字号、`&` 口播不出/搜索丢弃/小字号像 8、且「选址」会劝退「已有铺面」tab 的老板；「选址」改挂副标题，搜索词与不排他两头兼顾（DeepSeek 同判）。
+  - (2) 过程记录：全量门禁首次后台跑 11min 未出日志（机器被模拟器/IDE 占满）⇒ TaskStop 后重跑 4m27s 通过；node 探针 0.5s 正常，非通道问题。
+  - (3) 未做：`matrix.subtitle` 措辞、M2 页内「盈亏平衡点」标签均保留（指标术语不与模块名混同）。

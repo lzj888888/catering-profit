@@ -581,6 +581,8 @@
     <view class="hint" wx:if="{{!payback.hasData}}">{{t.paybackNull}}</view>
     <view class="hint payback-disclaimer">{{t.paybackDisclaimer}}</view>
     <button class="btn ghost payback-m3-btn" bindtap="onGoM3">{{t.paybackSeeM3}}</button>
+    <!-- 🔴 R518：M2 → M1 转化口（算完"能不能开"，接着记"每月真实账"；此前只有去 M3 的一条路） -->
+    <button class="btn ghost payback-m3-btn" bindtap="onGoM1">{{t.paybackSeeM1}}</button>
   </view>
 
   <!-- 🔴 #8（P1，round272）：全局测算边界免责声明 —— 与 paybackDisclaimer 互补，点明结果仅参考 -->
