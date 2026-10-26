@@ -1113,3 +1113,4 @@
   - (1) 三模块各锚一个问题：M1 这个月赚多少 / M2 这个铺子该不该拿 / M3 这道菜该卖多少钱 —— 这是"分清"的根，比改名字更有效。
   - (2) 未做（待单独拍板）：M3 副标题「卖多少不亏」→「该定什么价」；属另一模块定位，不擅自改。
   - (3) 过程：模拟器页面栈一度为空（`getCurrentPages()` 返回 `[]`）⇒ 显式 `wx.reLaunch` 建栈后再读，现象与「首次 evaluate 偶发」同族，已记入技能经验。
+  - (4) 出码（R519）：`review/evidence/r519_qr/qr.png`（46,326 B · 470x470 · 解码 = `https://mp.weixin.qq.com/a/~~TiXhsXMacxI~WMLPBCd_VvfXs09svSsldA~~`）；main 272.0 KB / TOTAL 774.9 KB。🔴 通道发现：键鼠 Win+R 被输入法吞字导致 .bat 未执行，改为 **Python `subprocess` 直调 `cli.bat preview --qr-format image --port 10896`**，一次成功（无需用户会话）——后续出码优先走这条。
