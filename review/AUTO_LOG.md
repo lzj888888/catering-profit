@@ -998,3 +998,4 @@
   - (1) 公式出处：`utils/takeaway.js::subtotalOf(goods,pack)`（两项，第3参 subsidy 已移除）、`expectedReceivable`（到手=收入−|补贴|−佣金−配送费−配送补贴）。
   - (2) 修复边界：仅当「营销组无补贴行 + 整类总额行为空」才补行；老板手工填过整类总额时视为已含、不重复追加。
   - (3) 未做：`takeout_track` 仍未落后端（#93 前置）；本轮只修 M1 补贴入账口径。
+  - (4) 出码（R512）：`review/evidence/r512_qr/qr.png`（47,382 B · 470x470）；main 271.5 KB / TOTAL 773.2 KB（含 R512 补贴入账修复）。
