@@ -44,6 +44,41 @@
     <!-- R484：给"不盘点、只填了采购入库金额"的老板一句提示 -->
     <view class="warn" wx:if="{{r.noStockTakeTip}}">{{t.noStockTakeTip}}</view>
 
+    <!-- 🔴 R515（李老师 2026-10-26）：把「这笔钱怎么算出来的」收进利润卡 —— 它原来是独立第 7 张卡，
+         老板看到 ¥41900 想知道"凭什么"却要往下滚 6 张卡。现在原地可展开、默认收起（不撑长首屏）。 -->
+    <view class="cell be-more-head" wx:if="{{showPer100}}" bindtap="onToggleProfitCalc">
+      <text class="lbl">{{t.flowTitle}} {{profitCalcOpen ? '▴' : '▾'}}</text>
+    </view>
+    <block wx:if="{{profitCalcOpen}}">
+      <view style="display:flex;flex-wrap:wrap;align-items:center;gap:10rpx;margin:12rpx 0;">
+        <view style="display:flex;flex-direction:column;align-items:center;min-width:110rpx;">
+          <text class="muted">{{t.flowSell}}</text>
+          <text class="val">{{t.cur}}{{r.income}}</text>
+        </view>
+        <text class="muted">−</text>
+        <view style="display:flex;flex-direction:column;align-items:center;min-width:110rpx;">
+          <text class="muted">{{t.flowMaterial}}</text>
+          <text class="val">{{t.cur}}{{r.realConsume}}</text>
+        </view>
+        <text class="muted">−</text>
+        <view style="display:flex;flex-direction:column;align-items:center;min-width:110rpx;">
+          <text class="muted">{{t.flowExpense}}</text>
+          <text class="val">{{t.cur}}{{r.expense}}</text>
+        </view>
+        <text class="muted">−</text>
+        <view style="display:flex;flex-direction:column;align-items:center;min-width:110rpx;">
+          <text class="muted">{{t.flowAmort}}</text>
+          <text class="val">{{t.cur}}{{r.effectiveAmortize}}</text>
+        </view>
+        <text class="muted">=</text>
+        <view style="display:flex;flex-direction:column;align-items:center;min-width:110rpx;">
+          <text class="muted">{{t.flowLand}}</text>
+          <text class="val" style="color:#22a06b;">{{t.cur}}{{r.trueProfit}}</text>
+        </view>
+      </view>
+      <view class="muted">{{t.flowPer100}} {{t.cur}}{{r.per100}}　{{t.flowHint}}</view>
+    </block>
+
   <!-- 🔴 R443：从「看到数」到「能去改」—— 结果页不该是死胡同 -->
   <view class="next-link" bindtap="goDishReview">{{t.nextDishReview}}</view>
 
@@ -146,38 +181,8 @@
     <view class="ind-note" bindtap="goInput">{{t.anomGo}}</view>
   </view>
 
-  <!-- C：钱去哪了 故事线（专业术语保留，补白话流向，老板秒懂利润怎么算） -->
-  <view class="card2" wx:if="{{showPer100}}">
-    <view class="muted">{{t.flowTitle}}</view>
-    <view style="display:flex;flex-wrap:wrap;align-items:center;gap:10rpx;margin:12rpx 0;">
-      <view style="display:flex;flex-direction:column;align-items:center;min-width:110rpx;">
-        <text class="muted">{{t.flowSell}}</text>
-        <text class="val">{{t.cur}}{{r.income}}</text>
-      </view>
-      <text class="muted">−</text>
-      <view style="display:flex;flex-direction:column;align-items:center;min-width:110rpx;">
-        <text class="muted">{{t.flowMaterial}}</text>
-        <text class="val">{{t.cur}}{{r.realConsume}}</text>
-      </view>
-      <text class="muted">−</text>
-      <view style="display:flex;flex-direction:column;align-items:center;min-width:110rpx;">
-        <text class="muted">{{t.flowExpense}}</text>
-        <text class="val">{{t.cur}}{{r.expense}}</text>
-      </view>
-      <text class="muted">−</text>
-      <view style="display:flex;flex-direction:column;align-items:center;min-width:110rpx;">
-        <text class="muted">{{t.flowAmort}}</text>
-        <text class="val">{{t.cur}}{{r.effectiveAmortize}}</text>
-      </view>
-      <text class="muted">=</text>
-      <view style="display:flex;flex-direction:column;align-items:center;min-width:110rpx;">
-        <text class="muted">{{t.flowLand}}</text>
-        <text class="val" style="color:#22a06b;">{{t.cur}}{{r.trueProfit}}</text>
-      </view>
-    </view>
-    <view class="muted">{{t.flowPer100}} {{t.cur}}{{r.per100}}　{{t.flowHint}}</view>
-  </view>
-
+  <!-- 🔴 R515：原「钱去哪了」独立卡（本位置，第 7 张）已**并入上方利润卡**，由 `onToggleProfitCalc`
+       控制「这笔钱怎么算的」展开/收起（默认收起）。留此注释是防后人以为"这块内容丢了"。 -->
   <!-- ===== R302：外卖到手账（由 M1 **已录**的数反算，零新增输入）=====
        为什么放这里：老板手机上看的就是「营业额 / 回款」这一级粒度，而这张卡把 M1 里
        已录的外卖营收、平台佣金/配送费、商家补贴**变成他看得懂的一个数：到手金额 / 到手率 / 单均到手**。

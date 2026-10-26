@@ -223,6 +223,7 @@ Page({
     //   为什么历史不足时连卡都不出：只有 1 个月不叫「历史」，摆一张空卡会让人以为"没问题"。
     anom: { has: false },
     trend: [],   // R443：近 6 个月走势 [{month,label,text,h,up,isCur}]
+    profitCalcOpen: false,   // R515：利润卡内「这笔钱怎么算的」折叠态（默认收起，点开原地展开）
     bizTypes: TERMS.m2.bizTypes,
     cityTiers: TERMS.m2.cityTiers,
     bizIdx: 1,      // 默认「中式正餐」（bizTypes[1]），与后端 bandOf 的兜底口径一致
@@ -550,6 +551,12 @@ Page({
   //   老板第一眼要的是"我在亏吗、能撑多少、哪里漏钱"，依据想追再看。
   onToggleBeMore() {
     this.setData({ beMore: !this.data.beMore });
+  },
+
+  // 🔴 R515（李老师 2026-10-26）：利润卡内「这笔钱怎么算出来的」展开/收起。
+  //   原来这块水面线是独立第 7 张卡，老板看到利润想知道"凭什么"要往下滚 6 张卡 ⇒ 收进利润卡。
+  onToggleProfitCalc() {
+    this.setData({ profitCalcOpen: !this.data.profitCalcOpen });
   },
 
   _sumByName(rows, kw) {
