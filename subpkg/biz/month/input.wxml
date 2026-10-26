@@ -162,19 +162,19 @@
       <view class="dm-wrap">
         <view class="dm-sec">{{t.twSecTitle}}</view>
         <view class="dm-opts">
-          <view class="dm-opt {{takeoutMode === 'fast' ? 'on' : ''}}" data-val="fast" bindtap="onPickTakeoutMode">
-            <view class="dm-h">{{takeoutMode === 'fast' ? '✓ ' : ''}}{{t.twFast}}</view>
-            <view class="dm-d">{{t.twFastDesc}}</view>
+          <view class="dm-opt {{takeoutTrack === 'net' ? 'on' : ''}}" data-val="net" bindtap="onPickTakeoutTrack">
+            <view class="dm-h">{{takeoutTrack === 'net' ? '✓ ' : ''}}{{t.twTrackNet}}</view>
+            <view class="dm-d">{{t.twTrackNetDesc}}</view>
           </view>
-          <view class="dm-opt {{takeoutMode === 'detail' ? 'on' : ''}}" data-val="detail" bindtap="onPickTakeoutMode">
-            <view class="dm-h">{{takeoutMode === 'detail' ? '✓ ' : ''}}{{t.twDetail}}</view>
-            <view class="dm-d">{{t.twDetailDesc}}</view>
+          <view class="dm-opt {{takeoutTrack === 'gross' ? 'on' : ''}}" data-val="gross" bindtap="onPickTakeoutTrack">
+            <view class="dm-h">{{takeoutTrack === 'gross' ? '✓ ' : ''}}{{t.twTrackGross}}</view>
+            <view class="dm-d">{{t.twTrackGrossDesc}}</view>
           </view>
         </view>
       </view>
 
-      <!-- 平台口径句（A.11.2：这一个数 = 商品总价+打包费+活动补贴；非实付/非到账/非应收款） -->
-      <view class="hint-fold">
+      <!-- 平台口径句（A.11.2：仅 gross 展开时适用，net 默认模式不显示） -->
+      <view class="hint-fold" wx:if="{{takeoutTrack === 'gross'}}">
         <view class="hint-fold-head" data-key="twScopeGuide" bindtap="onToggleHintFold">
           <text class="hint-fold-guide">{{hintFold.twScopeGuide ? t.hintFoldHide : t.hintFoldShow}}</text>
           <text class="hint-fold-arrow">{{hintFold.twScopeGuide ? '▾' : '▸'}}</text>
@@ -185,33 +185,26 @@
       <!-- 🔴 R161-6 归月口径句：结算日 = 账单日 + 3 天，按结算日导月必然串月 -->
       <view class="tw-period">{{t.twPeriodNote}}</view>
 
-      <!-- 快速录入：每平台 1 个金额框（默认） -->
-      <block wx:if="{{takeoutMode === 'fast'}}">
+      <!-- 🔴 R505：net 默认模式 —— 每平台 1 个「外卖实际到账」净额框（不再带出费用侧） -->
+      <block wx:if="{{takeoutTrack === 'net'}}">
         <view class="hint-fold">
-        <view class="hint-fold-head" data-key="twFastHint" bindtap="onToggleHintFold">
-          <text class="hint-fold-guide">{{hintFold.twFastHint ? t.hintFoldHide : t.hintFoldShow}}</text>
-          <text class="hint-fold-arrow">{{hintFold.twFastHint ? '▾' : '▸'}}</text>
+        <view class="hint-fold-head" data-key="twNetHint" bindtap="onToggleHintFold">
+          <text class="hint-fold-guide">{{hintFold.twNetHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+          <text class="hint-fold-arrow">{{hintFold.twNetHint ? '▾' : '▸'}}</text>
         </view>
-        <view class="hint-fold-body" wx:if="{{hintFold.twFastHint}}">{{t.twFastHint}}</view>
+        <view class="hint-fold-body" wx:if="{{hintFold.twNetHint}}">{{t.twNetHint}}</view>
       </view>
         <view class="dine-item" wx:for="{{g.rows}}" wx:key="index" wx:for-item="r" wx:for-index="ri">
           <view class="dine-line1"><text class="dine-name">{{r.subItem}}</text></view>
           <view class="dine-line2">
             <input class="val-input dine-amt" type="digit" confirm-type="done" value="{{r.amountYuan}}"
-              placeholder="{{t.twFastPh}}" data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}"
+              placeholder="{{t.twNetPh}}" data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}"
               bindinput="onSubAmount" disabled="{{readOnly}}"
               adjust-position="{{true}}" cursor-spacing="20" />
-            <!-- 🔴 R161-1：快速模式也要能填有效订单数（否则单均指标在默认模式下永远算不出来） -->
+            <!-- 🔴 R161-1：net 模式也要能填有效订单数（否则单均指标永远算不出来） -->
             <input class="val-input dine-qty" type="number" confirm-type="done" value="{{r.qty}}"
               placeholder="{{t.twOrdersPh}}" data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}"
               bindinput="onFastQty" disabled="{{readOnly}}"
-              adjust-position="{{true}}" cursor-spacing="20" />
-          </view>
-          <!-- 🔴 R170（方案1）：快速模式新增「其中：商家承担补贴」可选框 —— 填了就带出到费用侧外卖活动补贴 -->
-          <view class="dine-line2">
-            <input class="val-input dine-subsidy" type="digit" confirm-type="done" value="{{r.subsidy}}"
-              placeholder="{{t.twSubsidyField}}" data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}"
-              bindinput="onFastSubsidy" disabled="{{readOnly}}"
               adjust-position="{{true}}" cursor-spacing="20" />
           </view>
         </view>

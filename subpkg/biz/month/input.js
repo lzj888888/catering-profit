@@ -143,6 +143,14 @@ Page({
     twTotalLabel: TERMS.ledger.takeawayMode.totalLabel,
       twTotalAutoHint: TERMS.ledger.takeawayMode.totalAutoHint,
       twFastPh: TERMS.ledger.takeawayMode.fastPh,
+      // 🔴 R505：net 默认单框 / gross 展开五格 的 track 切换文案与 net 单框专用句（原 fast/detail 文案保留，gross 展开复用 detail）
+      twNetHint: TERMS.ledger.takeawayMode.netHint,
+      twNetPh: TERMS.ledger.takeawayMode.netPh,
+      twTrackSecTitle: TERMS.ledger.takeawayMode.trackSecTitle,
+      twTrackNet: TERMS.ledger.takeawayMode.trackNet,
+      twTrackNetDesc: TERMS.ledger.takeawayMode.trackNetDesc,
+      twTrackGross: TERMS.ledger.takeawayMode.trackGross,
+      twTrackGrossDesc: TERMS.ledger.takeawayMode.trackGrossDesc,
       // round109：外卖**折叠态**的空态占位（一行都没填时显示）。页面零硬编码 ⇒ 必须在此映射。
       twFoldEmpty: TERMS.ledger.takeawayMode.foldEmpty,
       twGoodsField: TERMS.ledger.takeawayMode.goodsField,
@@ -239,6 +247,11 @@ Page({
     dineSumYuan: '0.00',       // 分项模式：各渠道相加**自动算出**（预计算，WXML 不支持方法调用）
     // R85：外卖录入模式（'fast' | 'detail'，同堂食方案 A 严格互斥）
     takeoutMode: 'fast',
+    // 🔴 R505：外卖录入轨道（'net' | 'gross'）。net = 默认，每平台只填「外卖实际到账」（结算金额净额），
+    //   gross = 可选展开「补录平台明细」（五格 gross，结构可分析、可配平）。
+    //   net 模式下费用侧**不**自动带出补贴/佣金/配送（净额已扣完，再扣 = 重复扣减）；
+    //   gross 模式才走全套派生与配平。本键只存本地（同 takeoutMode），服务端不感知。
+    takeoutTrack: 'net',
     takeoutDetailRows: [],     // 分项模式行快照 [{platform,goods,pack,subsidy,qty}]（切模式/草稿留存）
     takeoutSumYuan: '0.00',    // 外卖收入合计（预计算；按模式取数：快速=Σ平台单值 / 分项=Σ小计）
     takeoutFilledText: '',     // 「已填 N / M 个平台」预计算串（WXML 不支持方法调用）
@@ -309,8 +322,9 @@ Page({
       expenseGroups: draft.expenseGroups || this.data.expenseGroups,
       directConsumeYuan: draft.directConsumeYuan !== undefined ? draft.directConsumeYuan : this.data.directConsumeYuan,
       dineDetailRows: draft.dineDetailRows ? draft.dineDetailRows.map((r) => ({ subItem: r.subItem || '', amountYuan: r.amountYuan || '', fixed: !!r.fixed, note: r.note || '' })) : this.data.dineDetailRows,
-      // R85：外卖段草稿回填（分项明细 / 粘贴原文 / 账单商家应收款；均只存本地，不入库）
-      takeoutMode: (draft.takeoutMode === 'fast' || draft.takeoutMode === 'detail') ? draft.takeoutMode : this.data.takeoutMode,
+      // R85/R505：外卖段草稿回填（轨道优先于模式：轨道决定用哪条录入面，模式随之定）
+      takeoutMode: ((draft.takeoutTrack === 'net' || draft.takeoutTrack === 'gross') ? draft.takeoutTrack : this.data.takeoutTrack) === 'gross' ? 'detail' : 'fast',
+      takeoutTrack: (draft.takeoutTrack === 'net' || draft.takeoutTrack === 'gross') ? draft.takeoutTrack : this.data.takeoutTrack,
       takeoutDetailRows: draft.takeoutDetailRows || this.data.takeoutDetailRows,
       twRecYuan: draft.twRecYuan !== undefined ? draft.twRecYuan : this.data.twRecYuan,
       twPasteRaw: draft.twPasteRaw || this.data.twPasteRaw || [],
@@ -344,7 +358,8 @@ Page({
       expenseGroups: this.data.expenseGroups,
       directConsumeYuan: this.data.directConsumeYuan,
       dineDetailRows: this.data.dineDetailRows,
-      // R85：外卖段草稿（分项明细 / 粘贴原文可回溯 / 账单商家应收款；均不入库）
+      // R85/R505：外卖段草稿（轨道 / 模式 / 分项明细 / 粘贴原文 / 账单商家应收款；均不入库）
+      takeoutTrack: this.data.takeoutTrack,
       takeoutMode: this.data.takeoutMode,
       takeoutDetailRows: this.data.takeoutDetailRows,
       twRecYuan: this.data.twRecYuan,
@@ -606,6 +621,22 @@ Page({
         })),
         TERMS.ledger.income.find((g) => g.category === 'takeaway') ? TERMS.ledger.income.find((g) => g.category === 'takeaway').items : [],
       );
+      // 🔴 R505：推断外卖录入轨道（net 默认 / gross 展开）。
+      //   · 本地记忆优先（用户上次的明确选择）。
+      //   · 否则按数据推断：分项行有任何一项填过（含后端回读的旧 gross 数据）⇒ gross；
+      //     单平台框有值（历史老数据，无法区分 gross/net）⇒ 按 gross 处理（安全：网额不会被误当净额虚高利润）；
+      //     全空 ⇒ 新月份，默认 net（共识默认净额外）。
+      //   ⚠️ net/gross 不互推：本函数只判"用哪条录入面"，绝不把净额反推成 gross（R505 红线）。
+      const takeoutTrack = (() => {
+        const cached = this.loadTakeoutTrack();
+        if (cached === 'net' || cached === 'gross') return cached;
+        const hasDetailData = (takeoutDetailRows || []).some((r) => String(r.goods || '').trim() !== '' || String(r.pack || '').trim() !== '' || String(r.subsidy || '').trim() !== '' || String(r.qty || '').trim() !== '');
+        if (hasDetailData) return 'gross';
+        const rows = (twG && twG.rows) || [];
+        if (rows.some((r) => String(r.subsidy || '').trim() !== '' || String(r.amountYuan || '').trim() !== '')) return 'gross';
+        return 'net';
+      })();
+      const takeoutMode = takeoutTrack === 'gross' ? 'detail' : 'fast';
       // 核算方式读回（服务端权威；口径锁：经营参考利润用直接填值，真实利润才倒轧）
       const inventoryOn = !!sw.inventorySwitchOn;
       const inv = d.inventory || {};
@@ -628,8 +659,9 @@ Page({
         expenseGroups,
         dineMode: this.pickDineMode(incomeGroups),
         dineDetailRows,
-        // R85：外卖模式（本地缓存优先，默认按数据推断）+ 分项行（从小计回铺 goods）
-        takeoutMode: this.pickTakeoutMode(incomeGroups),
+        // R85/R505：外卖轨道（本地记忆优先，默认按数据推断）+ 分项行（从小计回铺 goods）
+        takeoutTrack,
+        takeoutMode,
         takeoutDetailRows,
         inventoryOn, invSummary,
         directConsumeYuan: directConsumeYuan || this.data.directConsumeYuan,
@@ -1091,6 +1123,20 @@ Page({
     } catch (e) { /* 读不到 → 由数据推断 */ }
     return null;
   },
+  // 🔴 R505：track（net/gross）记忆 —— 与 takeoutMode 同款（仅本地、换设备回默认）。
+  takeoutTrackKey() {
+    const app = getApp();
+    const shopId = (app && app.globalData && app.globalData.shop_id) || '';
+    return 'tw_track_' + shopId + '_' + this.data.month;
+  },
+  saveTakeoutTrack(m) { try { wx.setStorageSync(this.takeoutTrackKey(), m); } catch (e) { /* 存不了不影响填表 */ } },
+  loadTakeoutTrack() {
+    try {
+      const v = wx.getStorageSync(this.takeoutTrackKey());
+      if (v === 'net' || v === 'gross') return v;
+    } catch (e) { /* 读不到 → 由数据推断 */ }
+    return null;
+  },
 
   // round109：外卖折叠态（默认折叠；展开过就记住）。与模式记忆同款约定：仅本地、换设备回默认。
   takeoutFoldKey() {
@@ -1152,8 +1198,11 @@ Page({
       takeoutQtyTotal: String(qty),
       takeoutPerOrder: perOrder,
     });
-    this.syncSubsidyCarry();   // 带出联动：活动补贴合计 → 费用侧（仅分项模式生效）
-    this.syncTakeoutSelfCheck();   // T3′：外卖收入变了 → 重算轻量自查提示
+    // 🔴 R505：net 模式（默认）下费用侧不得自动带出补贴/佣金/配送（净额已扣完，再带出 = 重复扣减 ⇒ 利润失真）；
+    //   仅在 gross 展开（补录平台明细）时才走全套派生与带出。
+    if (this.data.takeoutTrack === 'gross') this.syncSubsidyCarry();
+    // T3′：轻量自查（漏记佣金/配送费）仅在 gross 模式有意义 —— net 模式净额已含，无需提示，避免误导老板。
+    if (this.data.takeoutTrack === 'gross') this.syncTakeoutSelfCheck();
     this.syncTakeoutFold();    // round109：折叠态摘要（与合计同源同模式，必须一起重算）
   },
 
@@ -1224,7 +1273,33 @@ Page({
     }
   },
 
-  // ===== 分项三框输入 =====
+  // ===== 🔴 R505：轨道切换（net 默认 / gross 展开；严格互斥）=====
+  //   与堂食 dineMode 同约定：仅存本地、默认按数据推断、切回原面不丢值。
+  //   ⚠️ 红线：net 与 gross 互不反推 —— 切到 gross 若五格为空，从零开始填（不把净额塞进商品总价）；
+  //     切回 net 时五格快照仍在 takeoutDetailRows，回来原样恢复。历史老数据（gross 单框）在 load() 里已铺成五格。
+  onPickTakeoutTrack(e) {
+    if (this.data.readOnly) {
+      wx.showModal({ title: TERMS.inputPage.archiveReadonly, content: TERMS.inputPage.confirmLocked, showCancel: false });
+      return;
+    }
+    const val = e.currentTarget.dataset.val === 'gross' ? 'gross' : 'net';
+    if (this.data.takeoutTrack === val) return;
+    const gi = this.data.incomeGroups.findIndex((g) => g.category === 'takeaway');
+    if (gi < 0) return;
+
+    if (val === 'gross') {
+      // 展开五格：若已有分项数据（含历史老数据），原样接管；否则从零开始（绝不拿净额反推 gross）。
+      let detail = this.data.takeoutDetailRows || [];
+      const hasData = detail.some((r) => String(r.goods || '').trim() !== '' || String(r.pack || '').trim() !== '' || String(r.subsidy || '').trim() !== '');
+      if (!hasData) detail = restoreDetail([], this.takeoutPlatforms());
+      this.setData({ takeoutTrack: val, takeoutMode: 'detail', takeoutDetailRows: detail });
+    } else {
+      // 回到 net 单框：五格快照保留在 takeoutDetailRows（随时可再展开恢复），单框金额取自 g.rows（净额）。
+      this.setData({ takeoutTrack: val, takeoutMode: 'fast' });
+    }
+    this.saveTakeoutTrack(val);
+    this.syncTakeoutSum();
+  },
   onTwDetail(e) {
     const field = e.currentTarget.dataset.field;     // 'goods'|'pack'|'subsidy'
     const idx = Number(e.currentTarget.dataset.idx);
@@ -1344,6 +1419,8 @@ Page({
   //   · 快速：g.rows[].subsidy 求和（新增出账口）
   //   · 空值兼容：快速模式 subsidy 全空 ⇒ total=0 ⇒ target='' ⇒ 不写费用侧（老用户不回归）。
   syncSubsidyCarry() {
+    // 🔴 R505：net 模式（默认）下净额已扣完补贴/佣金/配送，绝不再带出到费用侧（否则重复扣减）。
+    if (this.data.takeoutTrack !== 'gross') return;
     const g = this.data.incomeGroups.find((x) => x.category === 'takeaway');
     const isFast = this.data.takeoutMode === 'fast';
     const total = isFast
@@ -1376,6 +1453,8 @@ Page({
   //   ⇒ 提示「账单这两项记得记上」（直击「不要填少」这个诉求）。
   //   ⚠️ 角色名只取自 terms 单源 reconcileRoles（页面零硬编码）；幂等：值未变则不 setData。
   syncTakeoutSelfCheck() {
+    // 🔴 R505：net 模式（默认）下净额已含佣金/配送，本提示（"漏记佣金"）不适用，反而误导老板去补一笔已含的钱。
+    if (this.data.takeoutTrack !== 'gross') { if ((this.data.twSelfCheck || '') !== '') this.setData({ twSelfCheck: '' }); return; }
     const tw = TERMS.ledger.takeawayMode || {};
     const roles = tw.reconcileRoles || {};
     const mk = (this.data.expenseGroups || []).find((x) => x.category === 'marketing');

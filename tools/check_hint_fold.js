@@ -168,7 +168,7 @@ if (!wxml || !js || !wxss || !terms) {
 const folds = parseFolds(wxml || '');
 const EXPECT = [
   // —— J1（R234，2026-10-07）：首批 9 处高价值长提示（466 字）——
-  'incomeHint', 'dmFastHint', 'twScopeGuide', 'twFastHint',
+  'incomeHint', 'dmFastHint', 'twScopeGuide', 'twNetHint',
   'twTotalAutoHint', 'twRecCalcHint', 'expenseHint', 'twPromoPathHint', 'cmAssetHint',
   // —— J2（R234，2026-10-07）：剩余 ≥18 字的行内提示（177 字）——
   //   分层判据（PLAN §5 拍板点①）：<18 字保持平铺（一句话读完、不占地方）；

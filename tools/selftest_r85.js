@@ -70,7 +70,7 @@ console.log('===== A7 · 手写路径（粘贴非唯一入口：金额框直接�
 // 语义：快速模式金额框直接写合计数，buildItems 只提交填了金额的行（既有逻辑），粘贴只是另一条路
 const inputJs = fs.readFileSync(path.join(ROOT, 'subpkg/biz/month/input.js'), 'utf8');
 const inputWxml = fs.readFileSync(path.join(ROOT, 'subpkg/biz/month/input.wxml'), 'utf8');
-check('A7 快速模式有 4 个金额框（手写可用）', /快速录入：每平台 1 个金额框/.test(inputWxml) && inputWxml.includes('bindinput="onSubAmount"'));
+check('A7 net 默认模式每平台 1 个「外卖实际到账」净额框（手写可用）', /外卖实际到账|net 默认模式/.test(inputWxml) && inputWxml.includes('bindinput="onSubAmount"') && inputWxml.includes('placeholder="{{t.twNetPh}}"'));
 // ⚠️ R162：分项由 3 框变 4 框（加「有效订单数」）⇒ 模板处数 3 → 4。
 //   这条断言正是「加框但忘了同步守卫」的报警器：不同步就当场红。
 check('A7 分项模式金额框仍绑 onTwDetail（wx:for 模板 4 处 → 4 平台 × 4 框，手写可用）', (inputWxml.match(/bindinput="onTwDetail"/g) || []).length === 4, `onTwDetail 模板 ${(inputWxml.match(/bindinput="onTwDetail"/g) || []).length} 处`);
@@ -147,7 +147,7 @@ const t2 = fs.readFileSync(path.join(ROOT, 'specs/dev-specs/i18n/terms.js'), 'ut
 check('A14 双副本一致', t1 === t2);
 
 console.log('===== A15 · 门禁预检（结构）=====');
-check('A15 input.wxml 含外卖模式开关', /onPickTakeoutMode/.test(inputWxml) && /twSecTitle/.test(inputWxml));
+check('A15 input.wxml 含外卖轨道开关', /onPickTakeoutTrack/.test(inputWxml) && /twSecTitle/.test(inputWxml));
 check('A15 input.js 含粘贴处理（openPaste/onPasteExtract）', /openPaste/.test(inputJs) && /onPasteExtract/.test(inputJs) && /extractPaste/.test(inputJs));
 check('A15 input.js 含配平（onRecYuan/runReconcile）', /onRecYuan/.test(inputJs) && /runReconcile/.test(inputJs));
 check('A15 推广费取数路径标注存在', /twPromoPathHint/.test(inputWxml) && /twPromoPathLabel/.test(inputWxml));
@@ -450,15 +450,15 @@ const twT = TERMS.ledger.takeawayMode;
 check('A21 totalLabel / filledTpl / totalAutoHint / fastPh 四键齐备且非空',
   ['totalLabel', 'filledTpl', 'totalAutoHint', 'fastPh'].every((k) => typeof twT[k] === 'string' && twT[k].length > 0));
 const fastBlock = (() => {
-  const i = inputWxml.indexOf("takeoutMode === 'fast'");
+  const i = inputWxml.indexOf("takeoutTrack === 'net'");
   if (i < 0) return '';
   const j = inputWxml.indexOf('</block>', i);
   return j < 0 ? '' : inputWxml.slice(i, j);
 })();
-check('A21 快速块内给出合计（twTotalLabel + takeoutSumYuan）',
+check('A21 net 块内给出合计（twTotalLabel + takeoutSumYuan）',
   fastBlock.length > 0 && /twTotalLabel/.test(fastBlock) && /takeoutSumYuan/.test(fastBlock));
-check('A21 快速块内给出已填平台数（takeoutFilledText）', /takeoutFilledText/.test(fastBlock));
-check('A21 快速块内不复用分项标签 / 配平占位', !/twSumLabel/.test(fastBlock) && !/twRecPh/.test(fastBlock));
+check('A21 net 块内给出已填平台数（takeoutFilledText）', /takeoutFilledText/.test(fastBlock));
+check('A21 net 块内不复用分项标签 / 配平占位', !/twSumLabel/.test(fastBlock) && !/twRecPh/.test(fastBlock));
 check('A21 syncTakeoutSum 按模式取数（快速读各平台 amountYuan）',
   /syncTakeoutSum\(\) \{[\s\S]{0,900}?takeoutMode === 'fast'[\s\S]{0,300}?amountYuan/.test(inputJs));
 check('A21 平台金额变化即重算合计（updateRow 内联动）',
@@ -469,7 +469,7 @@ check('A21 takeoutFilledText 已在 data 声明', /takeoutFilledText: ''/.test(i
 
 console.log('===== A22 · 快速框占位文案不串线（R119）=====');
 check('A22 terms.fastPh 非空且不等同 recPh', twT.fastPh.length > 0 && twT.fastPh !== twT.recPh);
-check('A22 快速金额框占位走 twFastPh', /placeholder="\{\{t\.twFastPh\}\}" data-kind="income"/.test(inputWxml));
+check('A22 net 金额框占位走 twNetPh', /placeholder="\{\{t\.twNetPh\}\}" data-kind="income"/.test(inputWxml));
 check('A22 pasteFillValue 已从纯模块导出', typeof pasteFillValue === 'function');
 check('A22 页面映射了 twFastPh / twTotalLabel / twTotalAutoHint',
   /twFastPh: TERMS\.ledger\.takeawayMode\.fastPh/.test(inputJs)
@@ -668,7 +668,7 @@ check('A26-10 页面渲染归月句（wxml 有 twPeriodNote + input.js 注入）
 check('A26-10 归月句排在口径句之后、模式区之外（两条都不在金额框内 ⇒ 不干扰输入）', (() => {
   const g = inputWxml.indexOf('twScopeGuide');
   const p = inputWxml.indexOf('twPeriodNote');
-  const f = inputWxml.indexOf('twFastHint');
+  const f = inputWxml.indexOf('twNetHint');
   return g > 0 && p > g && f > p;
 })());
 check('A26-10 归月句只是提示，不参与金额（utils/takeaway.js 里不得出现 periodNote）',
