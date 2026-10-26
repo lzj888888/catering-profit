@@ -1055,3 +1055,14 @@
 - [2026-10-26 13:47] R517：李老师问「M2 这么多功能到底叫什么名字、简介怎么写、免费模块对外怎么讲」。**先盘点代码真实功能**（`subpkg/tools/sandbox/` 四页：index 双 tab 正/反算、matrix 四维矩阵、list+compare 多方案对比），再**并行问两个 AI**：DeepSeek（桌面 Harness，10s）与豆包（方舟桥，2m22s），原文入 `review/evidence/r517_m2_naming/`。**两家一致**：①「盈亏平衡点」是老板看不懂也不去搜的财务术语；②现名只覆盖保本点一个数、盖不住矩阵/对比/回本，点进来预期落差（DeepSeek：「预期是"算算子"，看到沙盘反而意外」）。**我方增量发现（两家均未指出）**：名字带「开店」把「已有铺面」这个 tab 的老板排除在外。**推荐**：`开店盈亏沙盘`（6 字、与 M1/M3 对称、「沙盘」一词盖住多档试算与并排对比）；副标题「房租人工一填，卖多少不亏、多久回本」。**合规核实**：`check_terms_forbidden` 的「盈利」仅对 M1 豁免（三件套）⇒ M2 名字不得含「盈利」，「盈亏」安全 ⇒ 否决「开店盈利沙盘」候选。**免费定位**：M2 确无 paywall（全仓无命中），但 `calcSandbox/validate.js:200` 强制 shop_id + `resolveAuth` ⇒ **不能说"不用建店就能算"**；且只有 M2→M3 钩子、缺 M2→M1（付费主链路）钩子，已列为待补。NOTE `review/NOTE_2026-10-26_R517_M2命名与定位建议.md`。**零代码提交**，等拍板 3 项（主名 / 副标题 / 是否补钩子）。
   - (1) 落地成本核实：改名只需改 `terms.js::modules.m2` 5 字段 + 同步 specs 副本；`pages/index/index.js`、`sandbox/index.js:566` 自动跟随；`check_indicator_ref.js:5` 仅注释提及旧名（非断言）。
   - (2) 未做：未改任何 terms / 未动 sandbox 页面 —— 命名属品牌决策，不擅自替换。
+
+### R518 · 只读巡检（0 todo / 0 in_progress）
+
+- [2026-10-26 17:10] R518：开工机器解析（拆 `|` 取 status/blocked 列）**96 行 = 76 done / 20 blocked，0 todo / 0 in_progress，0 条 blocked=yes 而 status≠blocked** ⇒ 按规则**不认领、不造任务**，只做第 7 步。
+- 巡检四项：
+  - ① 跟踪面 **0 行**脏；HEAD `ed15856` ≡ origin/dev；未跟踪 94 件（90 件仓根 `_mkforce_*.log` / `_ask_*.py` 过程件 + 4 件 `review/evidence/r517_m2_naming/*.png`）。
+  - ② 最近门禁 `_gate_r517.log`（13:44）**211/211 · GATE_RC=0 · 129.6s**（总览行 + `GATE_RC=` 两行齐备）。其后唯一提交 `ed15856`(13:47) 的 `numstat` 全为文档/图片（AUTO_LOG 6/0、NOTE 106/0、`doubao_reply.txt` 5/0、`prompt.txt` 17/0、两张 png 二进制）⇒ **零代码、零 wxml、零云函数** ⇒ 门禁覆盖成立，本轮不重跑（理由：代码自 13:44 起一字未改，重跑只会产出一份同树的绿）。
+  - ③ **0 条僵尸 todo**；20 条 blocked 的机器可验前提逐条复验仍成立 —— #55 两句字面量锚点各 **1** 处（`tools/selftest_batch8c.js`）；#9 仍**无美团销量表样例**（`review/evidence/r177_meituan/` 只有 `mt_reconcile_2026-08.json` 与对账脚本，无表名/列名）；#93 真前置仍缺 —— `grep -rn takeout_track cloudfunctions/` **命中 0** ⇒ 后端仍未落库，趋势图无法判定某月口径。其余 17 条属拍板/控制台/AppSecret/真机扫码（#7/#12/#35/#37/#38/#39/#40/#41/#60/#76/#78/#79/#83/#84/#91/#92 及 #55）。
+  - ④ 三条最新 NOTE 对码：#517 M2 命名与定位建议（零代码，`terms.js::modules.m2` 仍是现名，改名为待拍板项，与 NOTE「未改任何 terms」一致）；#514 堂食分项渠道三处全在（「刷卡、云闪付」1/1、`channelAliases` 1/1、「退款/退单要扣掉」1/1）；#513 #81/#82 队列行确已标「敲定·不做」。terms 双副本 md5 `dd6d8f9b…` **全等**。
+- 🔴 表外发现（只留痕，未入库、未删、未代提交）：`review/evidence/r517_m2_naming/` 下 4 张候选图（`home_card_candidate.png` / `home_card_candidate2.png` / `nav_candidate.png` / `nav_recommended.png`，13:59–14:01，约 198 KB）**全仓零引用**（对 `.md` / `.js` grep 命中 0）、无 NOTE 指向、无对应提交 ⇒ 判并发出图轮的未跟踪产物，已静默 3 小时。按「不删别人的证据」只登记；如需入库应等拍板后连同结论一起入，避免只留下无结论的图。
+- 零代码 / 零 wxml / 零云函数 ⇒ **不出码、不部署**。本轮仅追加本回执（回执是审计链本体，落地才能让下轮读到「本轮做过巡检」；只提交该文件，可 `git show --numstat` 自证 0 代码夹带）。
