@@ -991,3 +991,10 @@
   - (2) 初始态按数据推断：该月已有明细分项（美团 5000 / 淘宝 2500）⇒ 首次进入 inference 为 gross（不覆盖老板数）；纯空月 ⇒ net。
   - (3) 未做：`takeout_track` 仍未落后端（#93 前置），故趋势图断点标注仍 blocked；本条只修 net 口径一致性与残留提示。
   - (4) 出码（R511）：`review/evidence/r511_qr/qr.png`（47,993 B · 470x470 · cv2 解码 = `https://mp.weixin.qq.com/a/~~aCGfMxWMsDg~rLpsLIjap28fW57BG4GEoA~~`）；main **271.5 KB** / TOTAL **773.0 KB**（含 R511 修复）。
+
+### R512 · 真机核对「补录平台明细」公式 → 修「商家补贴从未真正进费用侧」（利润虚高一个补贴额）
+
+- [2026-10-26 12:26] R512：李老师追问「总价/打包费/补贴是不是三项相加、算得准吗」。实测结论：**公式正确**（收入 = 商品总价+打包费 两项；补贴为减项，到手 = 收入−补贴−佣金−配送）。数字实证：总价5000/打包200/补贴300 ⇒ 小计=收入=**5200.00**、单均52.00；配平填 **4900**(=5200−300) → 「两侧一致」；填 **5500**(三项相加) → 「差600」报警。**但抓到真 bug**：`initGroups`/`rebuildFromItems` 每类只铺一行空名占位、**从不预铺「外卖活动补贴」** ⇒ `syncSubsidyCarry` 的 `if (ri<0) return;` 把补贴**静默丢弃**；实测 `buildItems(expenseGroups).marketingExpense.sub_items = []` ⇒ 收入照扣费用外的数、利润虚高一个补贴额，而配平用 `subsidyTotal(detailRows)` 单算 ⇒ 出现「配平说对、利润没扣」。修：`ri<0` 且有补贴时**补一行**承载（整类总额行已填钱则不动，防重复扣）。实测：`marketingExpense.sub_items` 由 `[]` → `[{sub_item:外卖活动补贴, amount_fen:30000}]`，`subsidyCarried` 由 `''` → `300.00`；配平/切 net 清空均回归通过。门禁 **211/211 · GATE_RC=0 · 242.2s**（`_gate_r512.log`）。证据 `review/evidence/r511_caliber/`。
+  - (1) 公式出处：`utils/takeaway.js::subtotalOf(goods,pack)`（两项，第3参 subsidy 已移除）、`expectedReceivable`（到手=收入−|补贴|−佣金−配送费−配送补贴）。
+  - (2) 修复边界：仅当「营销组无补贴行 + 整类总额行为空」才补行；老板手工填过整类总额时视为已含、不重复追加。
+  - (3) 未做：`takeout_track` 仍未落后端（#93 前置）；本轮只修 M1 补贴入账口径。

@@ -1436,8 +1436,22 @@ Page({
     if (mk < 0) return;
     const mg = Object.assign({}, groups[mk]);
     // 🔴 R298：定位基准同样取锚点（旧写法用中文字面量 ⇒ 改名后补贴**静默带不过去**）
-    const ri = mg.rows.findIndex((r) => r.subItem === TERMS.semantic.expenseMktSubsidy);
-    if (ri < 0) return;
+    let ri = mg.rows.findIndex((r) => r.subItem === TERMS.semantic.expenseMktSubsidy);
+    if (ri < 0) {
+      // 🔴🔴 R512（真机实测根因）：`initGroups` / `rebuildFromItems` 对每个大类都只铺一行
+      //   空名占位（`subItem:''`）——**从不预铺「外卖活动补贴」**。原 `if (ri < 0) return;`
+      //   于是补贴**从未真正进过费用侧**：实测 `buildItems(expenseGroups)` 的
+      //   `marketingExpense.sub_items = []`，而收入侧照常 = 商品总价+打包费 ⇒ 利润虚高一个补贴额；
+      //   配平却用 `subsidyTotal(detailRows)` 单独算 ⇒ 出现「配平说对、利润多扣没扣」的不一致。
+      //   这里补一行承载补贴（这是 R496「补贴走费用侧扣一次」真正生效的必要条件）。
+      //   ⚠️ 若「整类总额」行（subItem=''）老板已填了钱 ⇒ 说明他自己填了营销总额，
+      //     不再追加，避免与整类总额重复扣（此时视补贴已含在总额里）。
+      const whole = mg.rows.find((r) => (r.subItem || '') === '');
+      if (whole && String(whole.amountYuan || '').trim() !== '') return;
+      if (!total) return;
+      mg.rows = mg.rows.concat([{ subItem: TERMS.semantic.expenseMktSubsidy, amountYuan: '', twCarryLock: false }]);
+      ri = mg.rows.length - 1;
+    }
     const cur = (mg.rows[ri] && mg.rows[ri].amountYuan) || '';
     const target = total ? total.toFixed(2) : '';
     if (mg.rows[ri].twCarryLock) return;              // 仅「本会话手改过费用侧」→ 不覆盖
