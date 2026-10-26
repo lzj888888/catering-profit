@@ -388,6 +388,43 @@ const noReq = reqLineStart >= 0
 ok('⑤-d 反恒真：能定位真 require 行（样本可构造）', reqLineStart >= 0);
 ok('⑤-e 反恒真：删掉 require 后 requireVarOf 为空', noReq.length > 0 && requireVarOf(noReq) === '');
 
+// ================= ⑥ 趋势图取数层（R510：读错层 ⇒ 恒 0 / 静默） =================
+// 为什么必须守：`getLedger` 出参是 `{ ..., result:{ total_factor_real_profit_fen } }`（ok() 不摊平、
+//   api.call 只解到 data）。R510 前 `buildTrend` 与「上月对比 prevProfitFen」都读**顶层**
+//   `d.total_factor_real_profit_fen` ⇒ 恒 undefined ⇒ 趋势图恒「全 0 平线」、上月对比从不生效，
+//   且全仓无任何守卫（静默错数，同 R298Y「读到了 ≠ 送出去了」一族）。判据锚到 buildTrend 函数体、
+//   且对**剥注释后**源码判（注释里写着旧写法不能喂绿，R299 恒真③）。
+function trendBodyOf(src) {
+  const sc = stripComments(String(src == null ? '' : src));
+  let from = 0;
+  while (true) {
+    const i = sc.indexOf('buildTrend(', from);
+    if (i < 0) return '';
+    const closeParen = sc.indexOf(')', i);
+    const open = closeParen >= 0 ? sc.indexOf('{', closeParen) : -1;
+    // 只认**定义**：`{` 必须紧跟参数表 `)`（中间只有空白）。调用处 `this.buildTrend(snaps)` 后面不是 `{`。
+    if (closeParen >= 0 && open > closeParen && sc.slice(closeParen + 1, open).trim() === '') {
+      return bracesFrom(sc, open);
+    }
+    from = i + 1;
+  }
+}
+function trendNestingOk(src) {
+  const body = trendBodyOf(src);
+  if (!body) return false;
+  const readsField = body.indexOf('total_factor_real_profit_fen') >= 0;
+  const viaResult = body.indexOf('.result') >= 0;
+  const bare = body.indexOf('d.total_factor_real_profit_fen') >= 0;
+  return readsField && viaResult && !bare;
+}
+ok('⑥-a 趋势图 buildTrend 经 d.result 取利润（不读顶层）', trendNestingOk(pageSrc));
+ok('⑥-b 反恒真：合成样本读顶层 d.total_factor… ⇒ 判否',
+  trendNestingOk('Page({ buildTrend(s) { return s.map((d)=>d.total_factor_real_profit_fen); } });') === false);
+ok('⑥-c 反恒真：合成样本经 .result 取 ⇒ 判真',
+  trendNestingOk('Page({ buildTrend(s) { return s.map((d)=>(d.result||{}).total_factor_real_profit_fen); } });') === true);
+ok('⑥-d 上月对比 prevProfitFen 不读顶层 pd.total_factor…',
+  stripComments(pageSrc).indexOf('pd.total_factor_real_profit_fen') < 0);
+
 // ================= 扫描面自失效护栏 =================
 ok('S1 四个扫描面文件齐全',
   !!pageSrc && !!wxmlSrc && !!rulesSrc && !!ledgerSrc);

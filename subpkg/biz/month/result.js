@@ -285,8 +285,11 @@ Page({
         const pm = prevMonthOf(curM);
         if (pm) {
           const pd = await api.call('getLedger', { month: pm });
-          if (pd && pd.account_id && pd.total_factor_real_profit_fen != null) {
-            prevProfitFen = Number(pd.total_factor_real_profit_fen);
+          // 🔴 R510：`getLedger` 的利润在 `data.result` 里（ok() 不摊平、api.call 只解到 data），
+          //   原实现读顶层 `pd.total_factor_real_profit_fen` 恒 undefined ⇒ 上月对比从不生效。
+          const pdr = (pd && pd.result) || {};
+          if (pd && pd.account_id && pdr.total_factor_real_profit_fen != null) {
+            prevProfitFen = Number(pdr.total_factor_real_profit_fen);
           }
         }
       } catch (e) { prevProfitFen = null; }
@@ -657,7 +660,10 @@ Page({
   buildTrend(snaps) {
     const rows = (snaps || [])
       .filter((d) => d && d.account_id && d.month)
-      .map((d) => ({ month: d.month, fen: Number(d.total_factor_real_profit_fen) || 0 }))
+      // 🔴 R510：利润在 `d.result` 里（getLedger 出参是 `{ ..., result:{ total_factor_real_profit_fen } }`，
+      //   ok() 不摊平）—— 原实现读顶层 `d.total_factor_real_profit_fen` 恒 undefined ⇒ 每根柱子都算成 0
+      //   ⇒ 趋势图恒为「全 0 平线」（且无任何守卫 ⇒ 静默）。同 R298Y「读到了 ≠ 送出去了」一族。
+      .map((d) => ({ month: d.month, fen: Number((d.result || {}).total_factor_real_profit_fen) || 0 }))
       .sort((a, b) => (a.month < b.month ? -1 : 1))
       .slice(-6);
     if (rows.length < 2) return [];

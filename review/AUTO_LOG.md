@@ -975,3 +975,10 @@
   - 🔴 **撞号留痕**：并发实例于 11:24:49/11:26:50 各提交一份自标 `R509`（`172face` 收口回写 #88/#89/#90/#95、`66e745f` #91/#93 why 订正）并已推；我此前的打包修复提交 `fd000db` 也自标 R509 ⇒ 同一号三份。本条回执改取 **R510**，历史不改写。另：其 `172face` 已把 #95 改 done，与本条结论一致（`2116537` 在库），故本条对 #95 只补 `commit:` 字段，不改状态。
   - 零云函数改动（`2116537` 只动 miniprogram/tools）⇒ 不部署。
   - 🔴 **自纠（同日 11:47）**：#96 初判「`_m3/`（2.7 MB，gitignored）整体丢失」**不成立**。复查实测：`du -sk _m3` = **3,227 KB**、`_m3/gitcache_helper/` 30+ 件齐、`run_gate_py.py` 7,178 B / 162 行且 `ast.parse` 通过、mtime 仍为 2026-10-23 15:07（复制会保留 mtime，但内容结构完整可用）。⇒ 11:10 的 `ls: cannot access _m3/` 属**瞬时不可见**，与 9209 跟踪文件同时出现、同批恢复。结论改写：#96 → done（无需重建）；教训＝**「`ls` 报不存在」不等于「已删除」，必须二次复查 + 内容级校验再下结论**。
+
+### R510 · 修趋势图/上月对比「读错层」静默 bug（buildTrend 恒 0）+ 补守卫
+
+- [2026-10-26 11:43] R510：读 `result.js` 时发现 `buildTrend` 与「上月对比 prevProfitFen」都从**顶层** `d.total_factor_real_profit_fen` 取数，而 `getLedger` 出参是 `{ ..., result:{ total_factor_real_profit_fen } }`（`ok()` 不摊平、`api.call` 只解到 `data`）=> 恒 undefined => **趋势图恒「全 0 平线」、上月对比从不生效**，且全仓无守卫（静默错数，同 R298Y「读到了 ≠ 送出去了」一族）。修法：buildTrend 读数改 `(d.result||{}).total_factor_real_profit_fen`、prevProfitFen 改 `pdr.total_factor_real_profit_fen`（2 处 · 纯客户端 · 零云函数）。守卫：`tools/check_anomaly_wiring.js` 加 ⑥-a~d 4 条（锚 buildTrend **定义体**、剥注释、含合成反恒真正反）；该套件 26->28 断言（不在声明表内）。门禁 **211/211 · GATE_RC=0 · 266.8s**（`_gate_r510.log`）。commit 本次。
+  - (1) 判定链：`ok(data)`=`{code,msg,data}`（`cloudfunctions/common/errors.js:50`）不摊平；`api.call`=`return r.data`（`utils/api.js:71`）=> 前端 `d`=data 本体，利润在 `d.result`。`anomalyRules.js:84` 与 result.js 其余 5 处（`res=d.result`）均正确，仅 buildTrend/prevProfitFen 两处读顶层。
+  - (2) 守卫防「判据恒真」：初版 `indexOf('buildTrend(')` 命中**调用处** `this.buildTrend(snaps)` => 切到错误函数体；改为「`)` 与 `{` 之间只有空白」定义锚 + 合成样本正反两路自证（⑥-b/⑥-c）。
+  - (3) 影响面：#93（趋势图口径断点）的前置 —— 图不显示真实值就没法在「切换点」上做标注；本修让 #93 有可标注的真实柱。零云函数部署，但需重新出码才能在真机看到。
