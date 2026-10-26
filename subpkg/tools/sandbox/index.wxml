@@ -24,9 +24,9 @@
       <text class="tab-sub">{{t.tabReverseSub}}</text>
     </view>
   </view>
-
-  <!-- 0 · 前提：城市层级 + 业态大类（决定下面用的「行业参考带」是哪一套） -->
+  <!-- ① 门店情况：我开什么店 / 多大 / 在哪 —— 这一组决定后面用的行业参考带 -->
   <view class="card2">
+    <view class="sec">{{t.secStore}}</view>
     <view class="sel-row">
       <text class="sel-lbl">{{t.cityLabel}}</text>
       <picker class="sel-pk" range="{{t.cityTiers}}" range-key="name" value="{{cityIdx}}" bindchange="onCity">
@@ -46,12 +46,23 @@
       <text class="draft-note">{{draftRestored ? t.draftRestored : ''}}</text>
       <button class="btn-small ghost draft-btn" bindtap="onClearDraft">{{t.clearDraft}}</button>
     </view>
-  </view>
-
-  <!-- M2v1.3 · L1 小白（必填 5 项：打算开什么店 / 面积 / 月租金 / 员工数 / 目标利润）-->
-  <view class="card2" id="l1l2">
-    <view class="sec">{{mode === 'reverse' ? t.l1TitleRev : t.l1Title}}</view>
-    <view class="hint l1-guide">{{mode === 'reverse' ? t.l1GuideRev : t.l1Guide}}</view>
+    <!-- 🔴 round276：通用兜底业态提示 —— 选「其他/通用餐饮」时出现，明确"通用经验区间、未细分行业、仅供粗估" -->
+    <view class="row-note" wx:if="{{bizIsOther}}">{{t.otherBandLabel}}</view>
+    <view class="hint-fold warn-note" wx:if="{{bizIsOther}}">
+      <view class="hint-fold-head" data-key="sbOtherBandNote" bindtap="onToggleHintFold">
+        <text class="hint-fold-guide">{{hintFold.sbOtherBandNote ? t.hintFoldHide : t.foldWhy}}</text>
+        <text class="hint-fold-arrow">{{hintFold.sbOtherBandNote ? '▾' : '▸'}}</text>
+      </view>
+      <view class="hint-fold-body" wx:if="{{hintFold.sbOtherBandNote}}">{{t.otherBandNote}}</view>
+    </view>
+    <view class="row-note">{{t.bandPreviewLabel}}</view>
+    <view class="hint-fold">
+      <view class="hint-fold-head" data-key="sbBandPreviewNote" bindtap="onToggleHintFold">
+        <text class="hint-fold-guide">{{hintFold.sbBandPreviewNote ? t.hintFoldHide : t.foldWhy}}</text>
+        <text class="hint-fold-arrow">{{hintFold.sbBandPreviewNote ? '▾' : '▸'}}</text>
+      </view>
+    <view class="hint-fold-body" wx:if="{{hintFold.sbBandPreviewNote}}">{{t.bandPreviewNote}}</view>
+    </view>
     <view class="row">
       <text class="row-name">{{t.areaLabel}}</text>
       <view class="row-in-wrap">
@@ -63,37 +74,6 @@
     <!-- R414（队列 #25）：金额栏读不成数字的显式提示。粘贴「12,000」时 yuanToFen 会静默读成 0，
          0 是合法金额 ⇒ 云端拒不了 ⇒ 保本额照常出数但偏小（实测少 40%），原本全程零报错。 -->
     <view class="warn-note" wx:if="{{badAmountCount > 0}}">{{t.amountBadTip}}</view>
-    <view class="row">
-      <text class="row-name">{{t.rentLabel}}</text>
-      <view class="row-in-wrap">
-        <input class="row-in" type="digit" value="{{rentYuan}}" placeholder="{{t.rentPh}}" bindinput="onRent" adjust-position="{{true}}" cursor-spacing="20" />
-        <text class="row-unit">{{t.yuanUnit}}</text>
-      </view>
-    </view>
-    <view class="row-hint">{{t.rentHint}}</view>
-    <view class="row">
-      <text class="row-name">{{mode === 'reverse' ? t.headcountLabelRev : t.headcountLabel}}</text>
-      <view class="row-in-wrap">
-        <input class="row-in" type="number" value="{{headcountNum}}" bindinput="onHeadcount" adjust-position="{{true}}" cursor-spacing="20" />
-        <text class="row-unit">{{t.headcountUnit}}</text>
-      </view>
-    </view>
-    <view class="row-hint">{{mode === 'reverse' ? t.headcountHintRev : t.headcountHint}}</view>
-    <!-- 🔴 round279b · 目标利润归位 L1：原散落在底部「⑤ 目标月利润」卡，与 L1 标注的
-         「必填5项：…目标利润」断开 —— 老手视角下「想赚多少」属开店身份，应与
-         业态/面积/房租/人数并排作为 5 个首答问题（先答5个问题再填成本明细）。 -->
-    <view class="row">
-      <text class="row-name">{{t.targetRow}}</text>
-      <view class="row-in-wrap">
-        <input class="row-in" type="digit" value="{{targetYuan}}" bindinput="onTarget" adjust-position="{{true}}" cursor-spacing="20" />
-      </view>
-    </view>
-    <!-- L2 更多设置 -->
-    <view class="fold-toggle" bindtap="onToggleL2">{{t.l2Toggle}}{{showL2 ? ' ▾' : ' ▸'}}</view>
-    <view wx:if="{{showL2}}">
-      <!-- 🔴 R237：输入口径由「座位数」改为「桌数 + 单桌座位数」（李老师 2026-10-08：
-           「餐饮老板算账都是按桌数来算……桌数只能推论或者顾客自己选填最准」）。
-           ⚠️ 座位数 = 桌数 × 单桌座位数，换算只在 index.js::seatsNow() 一处做 ⇒ 引擎零改动。 -->
       <view class="row">
         <text class="row-name">{{t.tablesLabel}}</text>
         <view class="row-in-wrap">
@@ -118,6 +98,51 @@
           <text class="row-unit">{{t.yuanUnit}}</text>
         </view>
       </view>
+    <!-- 本次测算底层假设（默认折叠可展开） -->
+    <!-- 🔴 R435（李老师 2026-10-22）：已有铺面（forward）**整块删掉**假设区。
+         理由：① 已有店的老板有真实数据（毛利率/工资/客单价都报得出来），系统替他"假设"没意义；
+               ② 它还是**只读**的（`.asm-input` 是 text 不是 input）⇒ 老板看着不对也改不了；
+               ③ 它和毛利率滑块（本页 267 行的 slider）**打架**：一处只读显示"毛利率 60%"、
+                  一处能拖到 55% ⇒ 老板不知道哪个算数。
+         想开的店（reverse）保留：那种场景本来就没有真实数据，需要行业预估。 -->
+    <block wx:if="{{mode === 'reverse'}}">
+      <view class="fold-toggle" bindtap="onToggleAssumptions">{{t.assumptionsTitle}}{{showAssumptions ? ' ▾' : ' ▸'}}</view>
+      <view wx:if="{{showAssumptions}}">
+        <view class="asm" wx:for="{{presetAssumptions}}" wx:key="label">
+          <text class="asm-lbl">{{item.label}}</text>
+          <text class="asm-input">{{item.val}}</text>
+          <text class="asm-src" wx:if="{{presetPicked}}">{{item.src}}</text>
+        </view>
+        <view class="hint-fold">
+          <view class="hint-fold-head" data-key="sbAssumptionsHint" bindtap="onToggleHintFold">
+            <text class="hint-fold-guide">{{hintFold.sbAssumptionsHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+            <text class="hint-fold-arrow">{{hintFold.sbAssumptionsHint ? '▾' : '▸'}}</text>
+          </view>
+          <view class="hint-fold-body" wx:if="{{hintFold.sbAssumptionsHint}}">{{t.assumptionsHint}}</view>
+        </view>
+      </view>
+    </block>
+  </view>
+
+  <!-- ② 每月固定支出：不管卖多少都要付的钱 -->
+  <view class="card2">
+    <view class="sec">{{t.secFixed}}</view>
+    <view class="row">
+      <text class="row-name">{{t.rentLabel}}</text>
+      <view class="row-in-wrap">
+        <input class="row-in" type="digit" value="{{rentYuan}}" placeholder="{{t.rentPh}}" bindinput="onRent" adjust-position="{{true}}" cursor-spacing="20" />
+        <text class="row-unit">{{t.yuanUnit}}</text>
+      </view>
+    </view>
+    <view class="row-hint">{{t.rentHint}}</view>
+    <view class="row">
+      <text class="row-name">{{mode === 'reverse' ? t.headcountLabelRev : t.headcountLabel}}</text>
+      <view class="row-in-wrap">
+        <input class="row-in" type="number" value="{{headcountNum}}" bindinput="onHeadcount" adjust-position="{{true}}" cursor-spacing="20" />
+        <text class="row-unit">{{t.headcountUnit}}</text>
+      </view>
+    </view>
+    <view class="row-hint">{{mode === 'reverse' ? t.headcountHintRev : t.headcountHint}}</view>
       <view class="row">
         <text class="row-name">{{t.laborTotalLabel}}</text>
         <view class="row-in-wrap">
@@ -167,95 +192,7 @@
       <block wx:for="{{feeRows}}" wx:key="key">
         <view class="row-note" wx:if="{{item.amtText}}">{{item.label}} {{item.pct}}% {{item.amtText}}（{{t.feeAmtEst}}）</view>
       </block>
-    </view>
-    <!-- 本次测算底层假设（默认折叠可展开） -->
-    <!-- 🔴 R435（李老师 2026-10-22）：已有铺面（forward）**整块删掉**假设区。
-         理由：① 已有店的老板有真实数据（毛利率/工资/客单价都报得出来），系统替他"假设"没意义；
-               ② 它还是**只读**的（`.asm-input` 是 text 不是 input）⇒ 老板看着不对也改不了；
-               ③ 它和毛利率滑块（本页 267 行的 slider）**打架**：一处只读显示"毛利率 60%"、
-                  一处能拖到 55% ⇒ 老板不知道哪个算数。
-         想开的店（reverse）保留：那种场景本来就没有真实数据，需要行业预估。 -->
-    <block wx:if="{{mode === 'reverse'}}">
-      <view class="fold-toggle" bindtap="onToggleAssumptions">{{t.assumptionsTitle}}{{showAssumptions ? ' ▾' : ' ▸'}}</view>
-      <view wx:if="{{showAssumptions}}">
-        <view class="asm" wx:for="{{presetAssumptions}}" wx:key="label">
-          <text class="asm-lbl">{{item.label}}</text>
-          <text class="asm-input">{{item.val}}</text>
-          <text class="asm-src" wx:if="{{presetPicked}}">{{item.src}}</text>
-        </view>
-        <view class="hint-fold">
-          <view class="hint-fold-head" data-key="sbAssumptionsHint" bindtap="onToggleHintFold">
-            <text class="hint-fold-guide">{{hintFold.sbAssumptionsHint ? t.hintFoldHide : t.hintFoldShow}}</text>
-            <text class="hint-fold-arrow">{{hintFold.sbAssumptionsHint ? '▾' : '▸'}}</text>
-          </view>
-          <view class="hint-fold-body" wx:if="{{hintFold.sbAssumptionsHint}}">{{t.assumptionsHint}}</view>
-        </view>
-      </view>
-    </block>
   </view>
-
-  <!-- ⓪ 行业参考区间 + 参考金额（round113 立 · round114 加"预计月营业额"锚点）
-       —— 用户"还没填"时就知道该填多少量级；填了预计营业额后，每项再给出参考金额（起点）。
-       ⚠️ 参考金额只是灰字起点（在下面各输入框的 placeholder 里），**不会自动填值**。 -->
-  <view class="card2" wx:if="{{bands.length}}">
-    <view class="sec">{{t.bandPreviewTitle}}</view>
-    <!-- 🔴 round276：通用兜底业态提示 —— 选「其他/通用餐饮」时出现，明确"通用经验区间、未细分行业、仅供粗估" -->
-    <view class="hint-fold warn-note" wx:if="{{bizIsOther}}">
-      <view class="hint-fold-head" data-key="sbOtherBandNote" bindtap="onToggleHintFold">
-        <text class="hint-fold-guide">{{hintFold.sbOtherBandNote ? t.hintFoldHide : t.hintFoldShow}}</text>
-        <text class="hint-fold-arrow">{{hintFold.sbOtherBandNote ? '▾' : '▸'}}</text>
-      </view>
-      <view class="hint-fold-body" wx:if="{{hintFold.sbOtherBandNote}}">{{t.otherBandNote}}</view>
-    </view>
-    <view class="hint-fold">
-      <view class="hint-fold-head" data-key="sbBandPreviewNote" bindtap="onToggleHintFold">
-        <text class="hint-fold-guide">{{hintFold.sbBandPreviewNote ? t.hintFoldHide : t.hintFoldShow}}</text>
-        <text class="hint-fold-arrow">{{hintFold.sbBandPreviewNote ? '▾' : '▸'}}</text>
-      </view>
-    <view class="hint-fold-body" wx:if="{{hintFold.sbBandPreviewNote}}">{{t.bandPreviewNote}}</view>
-    </view>
-    <!-- 🔴 实际月营业额输入框已移至页面底部「选填」卡片（不参与保本计算，只用于人效/坪效/指标对比） -->
-    <!-- 🔴 R234：下面这张 6 项占比网格（`bp-grid`）**整块删除**。
-         理由：结果区「你的经营指标对照」表**已经有同名的 6 项 + 行业参考列 + 评级**
-         （ `grossMargin/rent/labor/energy/manage/mkt` 完全同名同项）⇒ 两张卡重复。
-         占比类在这个页面只该出现**一次**，位置就是结果区那里。
-         ⚠️ `bands` 数据本身**仍要算**（`rentRateDefault()` 要从中取房租行规上限），
-           只是不再渲染 —— 所以上面的 `wx:if="{{bands.length}}"` 判据保留，不作改动。 -->
-  </view>
-
-  <!-- ① 开店投入（一次性）—— 按年限摊到每月 -->
-  <view class="card2">
-    <view class="sec">{{t.secBuild}}</view>
-    <view class="hint-fold">
-      <view class="hint-fold-head" data-key="sbBuildNote" bindtap="onToggleHintFold">
-        <text class="hint-fold-guide">{{hintFold.sbBuildNote ? t.hintFoldHide : t.hintFoldShow}}</text>
-        <text class="hint-fold-arrow">{{hintFold.sbBuildNote ? '▾' : '▸'}}</text>
-      </view>
-    <view class="hint-fold-body" wx:if="{{hintFold.sbBuildNote}}">{{t.buildNote}}</view>
-    </view>
-    <view class="rw" wx:for="{{buildRows}}" wx:key="key">
-      <view class="row">
-        <text class="row-name">{{item.name}}</text>
-        <view class="row-in-wrap">
-          <input class="row-in" type="digit" placeholder="{{t.buildPh}}" value="{{item.yuan}}" data-idx="{{index}}" bindinput="onBuildYuan" adjust-position="{{true}}" cursor-spacing="20" />
-          <text class="row-unit">元</text>
-        </view>
-        <view class="row-in-wrap yr">
-          <input class="row-in" type="number" value="{{item.years}}" data-idx="{{index}}" bindinput="onBuildYears" adjust-position="{{true}}" cursor-spacing="20" />
-          <text class="row-unit">{{t.yearsSuffix}}</text>
-        </view>
-        <text class="row-del" data-idx="{{index}}" bindtap="onDelBuild">{{t.delItem}}</text>
-      </view>
-      <view class="row-note" wx:if="{{item.note}}">{{item.note}}</view>
-    </view>
-    <view class="add-row" wx:if="{{buildRows.length < 5}}" bindtap="onAddBuild">{{t.addItem}}</view>
-  </view>
-
-  <!-- 🔴 R296 拍1（李老师 2026-10-14）：「每月固定支出」明细表**整块删除**。
-       为什么删：它是早期 AI 自加的输入项 —— 界面自证"已计入"，实则 preset 态下根本不进引擎
-       （信任陷阱，R294-C 登记）；且与主字段重复（房租在 L1、人工改由 L2「人工每月总额」直填）。
-       固定成本改由**结构化输入**承载：房租(L1) / 人工总额(L2) / 水电气(L2) / 管理费(L2)；
-       「其他固定」的小项（网费/垃圾清运/油烟清洗/收银年费…）挂在各输入行的 note 里，不漏又不啰嗦。 -->
 
   <!-- ③ 菜品毛利率（滑杆：拖动只改数字，松手才重算） -->
   <view class="card2">
@@ -276,15 +213,9 @@
     <view class="hint" wx:if="{{marginBand}}">{{t.marginBandLabel}} {{marginBand}}</view>
   </view>
 
-  <!-- 🔴 R330：做活动会怎样 —— 打折对毛利率与保本线的影响。
-       🔴 只算单价影响，不算活动带来的新客：客流增量算不了，编一个就是假精确。
-       两个选择器都是纯本地重算，不请求云端。 -->
-  <!-- 🔴 R296b 「渠道佣金」（原 #12 多渠道毛利率**改造** · 豆包评审定案）：
-       老板只填「各渠道占比 + 抽点」（他知道的数），系统自动算**加权挂钩费率**进计算公式。
-       🔴 **绝不揉进毛利率** —— 老板认知里毛利率是"菜赚不赚钱"，偷偷扣平台佣金会被当成软件算错。
-       ⚠️ 默认关（不计佣金，与改造前 100% 一致）；外卖占比≥40% / 薄利品类 / 团购>10% 的店建议开。 -->
+  <!-- ④ 平台抽成（外卖 / 团购）：抽成直接吃掉每 100 元营业额 -->
   <view class="card2">
-    <view class="sec">{{t.channelSwitch}}</view>
+    <view class="sec">{{t.secDeduct}}</view>
     <view class="switch-row">
       <text class="switch-label">{{t.channelNote}}</text>
       <switch checked="{{channel.on}}" bindchange="onToggleChannel" color="#1e3a5f" />
@@ -349,6 +280,49 @@
       <view class="hint">{{t.channelTotalNote}}</view>
     </block>
   </view>
+
+  <!-- ⑤ 开店投入（一次性）—— 按年限摊到每月 -->
+  <view class="card2">
+    <view class="sec">{{t.secBuild}}</view>
+    <view class="hint-fold">
+      <view class="hint-fold-head" data-key="sbBuildNote" bindtap="onToggleHintFold">
+        <text class="hint-fold-guide">{{hintFold.sbBuildNote ? t.hintFoldHide : t.hintFoldShow}}</text>
+        <text class="hint-fold-arrow">{{hintFold.sbBuildNote ? '▾' : '▸'}}</text>
+      </view>
+    <view class="hint-fold-body" wx:if="{{hintFold.sbBuildNote}}">{{t.buildNote}}</view>
+    </view>
+    <view class="rw" wx:for="{{buildRows}}" wx:key="key">
+      <view class="row">
+        <text class="row-name">{{item.name}}</text>
+        <view class="row-in-wrap">
+          <input class="row-in" type="digit" placeholder="{{t.buildPh}}" value="{{item.yuan}}" data-idx="{{index}}" bindinput="onBuildYuan" adjust-position="{{true}}" cursor-spacing="20" />
+          <text class="row-unit">元</text>
+        </view>
+        <view class="row-in-wrap yr">
+          <input class="row-in" type="number" value="{{item.years}}" data-idx="{{index}}" bindinput="onBuildYears" adjust-position="{{true}}" cursor-spacing="20" />
+          <text class="row-unit">{{t.yearsSuffix}}</text>
+        </view>
+        <text class="row-del" data-idx="{{index}}" bindtap="onDelBuild">{{t.delItem}}</text>
+      </view>
+      <view class="row-note" wx:if="{{item.note}}">{{item.note}}</view>
+    </view>
+    <view class="add-row" wx:if="{{buildRows.length < 5}}" bindtap="onAddBuild">{{t.addItem}}</view>
+  </view>
+
+  <!-- ⑥ 想赚多少：目标反推「要卖多少」 -->
+  <view class="card2">
+    <view class="sec">{{t.secGoal}}</view>
+    <!-- 🔴 round279b · 目标利润归位 L1：原散落在底部「⑤ 目标月利润」卡，与 L1 标注的
+         「必填5项：…目标利润」断开 —— 老手视角下「想赚多少」属开店身份，应与
+         业态/面积/房租/人数并排作为 5 个首答问题（先答5个问题再填成本明细）。 -->
+    <view class="row">
+      <text class="row-name">{{t.targetRow}}</text>
+      <view class="row-in-wrap">
+        <input class="row-in" type="digit" value="{{targetYuan}}" bindinput="onTarget" adjust-position="{{true}}" cursor-spacing="20" />
+      </view>
+    </view>
+  </view>
+
 
 
   <!-- 🔴 R323（P0-2）：原「寻找铺面」反推卡已删 —— 它挂在 `wx:if="{{mode === 'reverse'}}"` 上，

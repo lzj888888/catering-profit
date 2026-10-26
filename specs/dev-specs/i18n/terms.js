@@ -1005,9 +1005,20 @@ const TERMS = {
       { key: 'cafe', name: '茶饮咖啡' },
       { key: 'other', name: '其他/通用餐饮' },
     ],
-    secBuild: '开店投入（一次性）',
-    secFixed: '每月固定支出',
-    secMargin: '菜品毛利率',
+    // 🔴 R522（2026-10-26 李老师：「已有店铺/寻找店铺 一个说行业标准一个说经营类型，里面还是乱，
+    //   好多二级菜单」）⇒ 按 M1 的成本结构把输入区重排为六段，每段一张卡、标题带序号，
+    //   删掉原来那个只剩一句说明的空壳卡「先估个数」；L1 里的折叠「还有几个能改的」取消（字段全部归位到对应段）。
+    //   ⚠️ 只重排 wxml 与标题，字段绑定/bindinput/计算零改动。
+    bandPreviewLabel: '参考区间怎么来的',
+    otherBandLabel: '你选的是通用业态',
+    foldWhy: '为什么这样估',
+
+    secStore: '① 门店情况',
+    secDeduct: '④ 平台抽成（外卖 / 团购）',
+    secGoal: '⑥ 想赚多少',
+    secBuild: '⑤ 开店投入（一次性）',
+    secFixed: '② 每月固定支出',
+    secMargin: '③ 菜品毛利率',
     secVar: '跟营业额挂钩的费用',
     secTarget: '目标月利润',
     secResult: '测算结果',
@@ -1304,7 +1315,7 @@ const TERMS = {
     //   **预计**月营业额 ⇒ 折出来的金额只能是估算 ⇒ 渲染时必须带这一句，不许裸给数字。
     feeAmtEst: '估算，按你填的预计月营业额折算',
     moreAnalysis: '更多分析（利润阶梯 / 客群 / 效率 / 回本）',
-    presetLabel: '行业标准',
+    presetLabel: '经营类型',
     presetNone: '通用餐饮（经验估算）',
     presetPickedPre: '已按「',
     presetPickedSuf: '」的行规预填',

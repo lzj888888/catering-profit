@@ -69,6 +69,13 @@ Page({
       secBuild: M.secBuild,
       secFixed: M.secFixed,
       secMargin: M.secMargin,
+      // 🔴 R522：输入区六段重排新增的三个卡标题（漏映射 ⇒ t.xxx=undefined ⇒ 卡标题整行空白）
+      secStore: M.secStore,
+      secDeduct: M.secDeduct,
+      secGoal: M.secGoal,
+      bandPreviewLabel: M.bandPreviewLabel,
+      otherBandLabel: M.otherBandLabel,
+      foldWhy: M.foldWhy,
       secVar: M.secVar,
       secTarget: M.secTarget,
       secResult: M.secResult,

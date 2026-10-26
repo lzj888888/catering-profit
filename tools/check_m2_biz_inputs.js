@@ -504,22 +504,31 @@ check('H-⑤ 负样本（fallback 退化成裸 || BIZ_PRESETS[0]）会被 H-③ 
 //      切出 6 个字符的假段、rows 恒为 0 ⇒ 判据变成"永远 0 ≠ 5"的假红/假绿）。
 sec('T L1 标题数字 ≡ 实际输入行数（R339）');
 {
+  // 🔴 R522（2026-10-26）：输入区按「① 门店 ② 每月固定 ③ 毛利率 ④ 平台抽成 ⑤ 开店投入 ⑥ 想赚多少」
+  //   六段重排，L1 卡的 `l1Title/l1TitleRev/l2Toggle` 全部下线 ⇒ 原按 `t.l1Title`→`t.l2Toggle`
+  //   切段的写法切出空段（rows=0），T-② 也随之失去对象（新标题不再宣称"几个"）。
+  //   **判据语义不变、只换锚点**：仍守「段能定位 + 段内输入行数有下界」，
+  //   并保留两条独立判据（分别守「① 门店」与「② 每月固定」），不合并、不减条数。
   const lines = wxmlRaw.split('\n');
-  const si = lines.findIndex((l) => l.includes('t.l1Title'));
-  const ei = lines.findIndex((l, i) => i > si && l.includes('t.l2Toggle'));
-  const seg = (si >= 0 && ei > si) ? lines.slice(si, ei).join('\n') : '';
-  const rows = (seg.match(/bindinput=/g) || []).length;
-  check('T-① L1 段能定位且输入行 ≥ 4（下界，防切段失效变成恒真）',
-    rows >= 4, '实际 ' + rows + ' 行（切片 ' + (si + 1) + '→' + ei + '）');
+  const segOf = (a, b) => {
+    const si = lines.findIndex((l) => l.includes(a));
+    const ei = lines.findIndex((l, i) => i > si && l.includes(b));
+    const seg = (si >= 0 && ei > si) ? lines.slice(si, ei).join('\n') : '';
+    return { seg, si, ei, rows: (seg.match(/bindinput=/g) || []).length };
+  };
+  const s1 = segOf('t.secStore', 't.secFixed');
+  check('T-① 「① 门店情况」段能定位且输入行 ≥ 4（下界，防切段失效变成恒真）',
+    s1.rows >= 4, '实际 ' + s1.rows + ' 行（切片 ' + (s1.si + 1) + '→' + s1.ei + '）');
 
-  const T2 = require('../miniprogram/i18n/terms.js').TERMS;
-  ['l1Title', 'l1TitleRev'].forEach((k) => {
-    const txt = String((T2.m2 && T2.m2[k]) || '');
-    const m = txt.match(/([0-9]+)\s*[个项]/);
-    const n = m ? Number(m[1]) : null;
-    check('T-② ' + k + ' 里的数字 = L1 实际行数（' + rows + '）',
-      n === rows, '文案「' + txt + '」里的数字是 ' + n);
-  });
+  const s2 = segOf('t.secFixed', 't.secMargin');
+  check('T-② 「② 每月固定支出」段输入行 ≥ 5（房租/人数/人工总额/水电气/管理费）',
+    s2.rows >= 5, '实际 ' + s2.rows + ' 行（切片 ' + (s2.si + 1) + '→' + s2.ei + '）');
+
+  // T-③（R522 补位）：原 T-② 是两条（l1Title / l1TitleRev），重排后文案不再宣称项数 ⇒
+  //   改为守「⑥ 想赚多少」段：目标利润必须仍有一个输入框（这张卡空了 = 目标反推静默失效）。
+  const s3 = segOf('t.secGoal', 'id="m2result"');
+  check('T-③ 「⑥ 想赚多少」段仍有目标输入行 ≥ 1（防目标卡被重排搬空）',
+    s3.rows >= 1, '实际 ' + s3.rows + ' 行（切片 ' + (s3.si + 1) + '→' + s3.ei + '）');
 }
 
 // ============ U 组（R341）：L1 三个输入项的语义补答 ============
