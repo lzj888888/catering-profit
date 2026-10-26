@@ -150,7 +150,6 @@ const ALLOW_INPUTS = {
   planName: '方案名（快照用，非测算入参）',
   presetIdx: '业态预设 picker（枚举，非专业指标）',
   rentYuan: '月租金 → fixed_items.rent；房东报价，填得出',
-  tablesNum: '桌数 → seats（= 桌数 × 业态默认每桌人数，唯一换算点 = index.js::seatsNow）；老板站铺子里数得出',
   otherPctNum: '其他杂支占营业额 %（R525 方案 B）→ 经 feeOverrides.other 覆盖预设的 2%；0/留空 = 不算这项；老板可判断自家有没有这笔',
   targetYuan: '目标月利润 → target_profit_fen；老板自己定目标',
   // 🔴 2026-10-12（round279d #12 多渠道毛利率）：以下 8 个均为「分渠道」用户输入框，统一走 onChannelInput，
@@ -216,20 +215,18 @@ check('A-⑥ 每个输入字段都已登记用途（未登记即红 ⇒ 防"填�
   unknownInputs.length === 0,
   unknownInputs.length ? `未登记：${unknownInputs.join('、')} ⇒ 先在 ALLOW_INPUTS 写明"这数是客户填的还是咱们算的"`
     : `已登记 ${binds.filter((b) => ALLOW_INPUTS[b]).length} 项 + ${binds.filter((b) => FOR_ITEM.test(b)).length} 项行内明细`);
-// 🔴🔴 A-⑧（R237 新增）：引擎入参 `seats` 必须经**唯一换算点**得出。
-//   R237 把输入口径由「座位数」改成「桌数」后，`seats` 由 `seatsNow() = 桌数 × 单桌座位数` 得出。
-//   ⚠️ 这条红线的风险是**全静默**的：若有人图省事把 `seats: this.seatsNow()` 改回
-//      `seats: Math.floor(Number(this.data.tablesNum))`（漏乘单桌座位数），
-//      页面一切正常、引擎也照算 —— 只是**所有周转类结论都偏大**
-//      （实测：5 桌时正确 3.70、漏乘 14.81，见 review/evidence/r237_m2_turn/recalc_anchors.js C-①）。
-//   判据：`seats: <rhs>` 的右值**只允许两种形态**（白名单制）：
-//     ① `this.seatsNow()` —— 唯一换算点（桌数 × 单桌座位数）
-//     ② `<标识符>.seats`   —— **透传**上一层已构造好的 payload，不是新换算点
-//   ⚠️ 形态 ② 是**判据自身的修正**，留痕在此：R237 首版判据只看「右边含不含 this.seatsNow()」，
-//      把 `seats: p.seats`（转发 payload）误判成「第二处换算点」⇒ 直接判红。
-//      这是**我方判据错**（R181i 纪律：守卫红先怀疑自己，别改代码迎合判据）。
+// 🔴🔴 A-⑧（R237 新增；R526 语义更新）：`seats` 只能从**单一出参口**取值。
+//   沿革：R237 曾要求 `seats = 桌数 × 单桌座位数`（用于算翻台率）；R525 删座位数、R526 删桌数后，
+//   本页已无任何座位口径输入 ⇒ `seatsNow()` **恒返回 0**（正向引擎不读该字段、validate 对 forward 也不校验）。
+//   判据保留、只是守的东西变了：`seats: <rhs>` 的右值**只允许两种形态**（白名单制）——
+//     ① `this.seatsNow()` —— 唯一出参口（现在恒 0）
+//     ② `<标识符>.seats`   —— **透传**上一层已构造好的 payload，不是新出参口
+//   为什么还留着这条：一旦有人在这里临时写个表达式（"先按面积估个座位吧"），就会**悄悄改变引擎口径**
+//   而页面没有任何变化 —— 与当年"漏乘单桌座位数导致周转结论偏大"是同一类静默错。
+//   ⚠️ 形态 ② 是判据自身的修正留痕（R237 首版把 `seats: p.seats` 误判成第二处换算点 ⇒ 直接判红；
+//      属**我方判据错**，按 R181i「守卫红先怀疑自己」修的）。
 //   反例（下列写法必须判红，见 §九变异回灌）：
-//      `seats: Math.floor(Number(this.data.tablesNum))`（漏乘单桌座位数）
+//      `seats: Math.floor(Number(this.data.area))`（临时按面积估）
 //      `seats: Number(this.data.seatsNum)`（残留旧字段名）
 //      `seats: 20`（写死常量）
 const seatsAssigns = (js.match(/\bseats\s*:[^,\n]*/g) || []).map((s) => s.trim());
@@ -375,9 +372,9 @@ const v6Unknown = ['tableTurnoverYuan'].filter((b) => !ALLOW_INPUTS[b] && !FOR_I
 check('V-⑥ 负样本（未登记的新字段 tableTurnoverYuan）会被 A-⑥ 判红', v6Unknown.length === 1,
   v6Unknown.length === 1 ? '已报红' : '未报（白名单失效）');
 // V7：正样本（已登记的合法字段）⇒ A-⑥ **不得**误报（防反向伤害二型）
-//   🔴 R525：`seatsPerTableNum` 已随座位数输入删除 ⇒ 换成新登记的 `otherPctNum`。
-const v7Ok = ['tablesNum', 'otherPctNum', 'avgPriceYuan', 'rentYuan'].filter((b) => !ALLOW_INPUTS[b]);
-check('V-⑦ 正样本（已登记字段 tablesNum/otherPctNum/avgPriceYuan/rentYuan）**不误报**', v7Ok.length === 0,
+//   🔴 R525 删 `seatsPerTableNum`、R526 删 `tablesNum` ⇒ 正样本改用仍在的合法字段（`headcountNum`）。
+const v7Ok = ['headcountNum', 'otherPctNum', 'avgPriceYuan', 'rentYuan'].filter((b) => !ALLOW_INPUTS[b]);
+check('V-⑦ 正样本（已登记字段 headcountNum/otherPctNum/avgPriceYuan/rentYuan）**不误报**', v7Ok.length === 0,
   v7Ok.length ? `🔴 把合法字段判红了：${v7Ok.join('、')}` : '未误报');
 // V8（#7 配套）：把 verdictOf 退化成「永远绿、不看指标」喂给 C-④ 新判据，必须转红
 //   ⇒ 证明 C-④ 不是假绿（否则"任意永远绿的实现"都会过）。
@@ -521,11 +518,11 @@ sec('T L1 标题数字 ≡ 实际输入行数（R339）');
     return { seg, si, ei, rows: (seg.match(/bindinput=/g) || []).length };
   };
   const s1 = segOf('t.secStore', 't.secFixed');
-  // 🔴 R525：下界 4 → 3 —— 「单桌座位数」输入随翻台率下线一并删除
-  //   （门店情况现为 桌数 / 面积 / 人均消费 三格）。下界用意不变：
-  //   防「切段锚点失效 ⇒ seg 为空 ⇒ rows=0 也过」的恒真。
-  check('T-① 「① 门店情况」段能定位且输入行 ≥ 3（下界，防切段失效变成恒真）',
-    s1.rows >= 3, '实际 ' + s1.rows + ' 行（切片 ' + (s1.si + 1) + '→' + s1.ei + '）');
+  // 🔴 R525/R526：下界 4 → 3 → 2 —— 座位数（R525）、桌数（R526）两个输入相继删除，
+  //   门店情况现只剩 面积 / 人均消费 两格。下界用意不变（防「切段锚点失效 ⇒ seg 为空 ⇒ rows=0 也过」），
+  //   但**不能再往下调**：调到 0 就等于不设防。
+  check('T-① 「① 门店情况」段能定位且输入行 ≥ 2（下界，防切段失效变成恒真）',
+    s1.rows >= 2, '实际 ' + s1.rows + ' 行（切片 ' + (s1.si + 1) + '→' + s1.ei + '）');
 
   const s2 = segOf('t.secFixed', 't.secMargin');
   check('T-② 「② 每月固定支出」段输入行 ≥ 5（房租/人数/人工总额/水电气/管理费）',

@@ -25,12 +25,12 @@ const ChannelRule = require('../../../utils/channelRule.js');
 const AmountInput = require('../../../utils/amountInput.js');
 // M2v1.3：业态参数包（纯数据 + 唯一装配入口 + 回本派生，仓根 utils/）
 // R234：新增 `bizKeyOfPreset`（预设 → 4 大类，供"平铺业态"后自动定参考带）。
-// R237：`estimateSeats`（面积 × 业态密度 → 座位估算）**已删除** —— 李老师否掉了"面积↔桌数"的强关联；
-//   改为 `seatsPerTableOf`（业态默认单桌座位数）+ `turnModeOf`（翻台口径）+ `turnLevelOf`（三档难度）。
+// 🔴 R526：`seatsPerTableOf` / `turnModeOf` / `turnLevelOf` / `turnLevelOfBiz` 的导入**已删除** ——
+//   桌数/座位数输入在 R525~R526 全部下线（翻台率本页不讨论），这些函数在本页已无使用方；
+//   它们本身仍在 `utils/bizPreset.js`（矩阵/其他页与 `check_biz_preset` 仍依赖），只是本页不再引用
+//   —— 留着未使用的导入会让下一个人以为"翻台这套还在跑"。
 const { BIZ_PRESETS, CITY_COEF, assembleItems, resolveBuild, paybackCash, findPreset,
-  // R292：周转难度改按**业态**分档（turnLevelOfBiz）—— 快餐/茶饮翻座天然高，
-  //   套旧的 table/seat 通用档会把常态判成「这数偏高」，属吓跑老板的误导提示。
-  bizKeyOfPreset, seatsPerTableOf, turnModeOf, turnLevelOf, turnLevelOfBiz,
+  bizKeyOfPreset,
   // R297：年限不再各写各的（初始行 / 新增行 / 提交 / 回存草稿 四处同走这一份）
   BUILD_DEFAULT_YEARS, buildYearsOf, cashBreakeven } = require('../../../utils/bizPreset.js');
 
@@ -310,16 +310,11 @@ Page({
       //    守卫工具 tools/check_page_terms.js 的 P2-1 已精确点名本处。
       l1TitleRev: M.l1TitleRev,
       l1GuideRev: M.l1GuideRev,
-      // 🔴 R237：座位数输入 ⇒ **桌数**（口径说明见 terms.js 同名注释块）。
-      // 🔴 R525：单桌座位数输入已删（李老师 2026-10-27：「这里不考虑翻台率这个事情，去了这个」）
-      //   ⇒ 对应三个文案键一并下线，避免"有键无渲染"的僵尸文案。
-      tablesLabel: M.tablesLabel,
-      tablesPh: M.tablesPh,
-      tablesNote: M.tablesNote,
+      // 🔴 R526：桌数输入也已删除（承接 R525「翻台率不讨论」）⇒ 这一组 4 个文案键全部下线
+      //   （tablesLabel / tablesPh / tablesNote / tableUnit），不留"有键无渲染"的僵尸文案。
       // 🔴 R525（方案 B）：2% 杂支摆出来可改
       otherVarLabel: M.otherVarLabel,
       otherVarNote: M.otherVarNote,
-      tableUnit: M.tableUnit,
       areaLabel: M.areaLabel,
       areaPh: M.areaPh,
       areaUnit: M.areaUnit,
@@ -504,11 +499,13 @@ Page({
     // 🔴 R290：固定 30（李老师原话「每天都正常营业，推演也按每天营业推」）。
     //   ⚠️ 不是删字段——引擎 `open_days` 必填 1~31，留空会发 0 ⇒ fail-closed 报「填写错误」。
     openDaysNum: '30',       // 每月营业天数（常量 30；R361 起**不再渲染**，只供发参/草稿用）
-    // 🔴 R525（李老师 2026-10-27）：「这里不考虑翻台率这个事情，去了这个」——
-    //   ⇒ **单桌座位数输入已删**（它唯一的用途是折算座位数 → 翻台率，翻台率不再讨论）。
-    //   引擎契约字段 `seats` 仍在（反推模式 validate 要求 > 0 的整数），由
-    //   `seatsNow() = 桌数 × 业态默认每桌人数` 内部折算，**不再向老板提问、也不再展示**。
-    tablesNum: '',           // 桌数（含散台；包间按「一张桌」计）
+    // 🔴 R526：**桌数 / 座位数两个输入都已删除**（R525 删座位、R526 删桌数）。
+    //   核实结论（回答"桌数在反推里按桌数还是座位数算"）：**两者都不参与** ——
+    //     · 反推（寻找铺面）现在点 Tab 直接进矩阵页，矩阵每格走**正向**口径（clean 默认 mode='forward'），
+    //       产出只有「保本营业额 / 目标营业额 / 房租占比 / 回本」，`matrix.js` 里搜不到 seats；
+    //     · 云端 `calcSandboxReverse`（用 seats 算 turn_rate/月客流）**已无调用方**，只剩契约与自测；
+    //     · 正向引擎不使用 seats，`validate` 对 forward 也不校验它。
+    //   ⇒ 桌数留着就是"填了不影响任何结果"的死输入，故删除。
     // 🔴 R525（方案 B）：其他杂支占营业额 %（默认取预设值 2%；老板可改 0 或留空 = 不算这项）。
     //   为什么从预设里"抬"到界面上：原来它藏在参数包里、老板改不了 ⇒ 已有店铺填了真实水电/管理费
     //   再被额外扣 2% 未填过的钱 = 重复扣；摆出来可改才是"不替老板假设"。
@@ -813,8 +810,9 @@ Page({
   // 🔴 R234：删掉 `onRevRentRate` / `onRevPixelEff` 两个 handler ——
   //    对应输入框已从 wxml 移除（R223 §3.2 明令「L1/L2 严禁以坪效/目标租金率作输入」）。
   //    留着孤立的 handler 会让后续维护误以为还有这条路。
-  // 🔴 R237：`onSeats`（座位数）已改为「桌数」—— 用户填桌、系统按业态默认每桌人数内部折算（见 `seatsNow()`）。
-  onTables(e) { this.setData({ tablesNum: e.detail.value }); this.scheduleCalc(); },
+  // 🔴 R526：`onTables`（桌数输入）已随桌数一起删除。
+  //   按 R234 同一纪律（只删 UI 不删 handler 会让人以为功能还在，下一个加输入框的人一条就能接回来）：
+  //   连根拔，不留孤立 handler。
   // 🔴 R525（方案 B）：其他杂支（占营业额 %）—— 老板可改 0 / 留空 = 不算这项。
   //   走**既有**引擎入参覆盖口 `feeOverrides`（buildPresetParam 里 `fo[v.key]`），不新开参数、
   //   不碰云端契约；`feeRows` 同步改 pct，让下面那行「≈ 每月多少钱（估算）」跟着变。
@@ -1213,35 +1211,21 @@ Page({
     });
   },
 
-  // ===== R237 · 桌数 ⇄ 座位数 换算（全页**唯一**换算点）=====
+  // ===== R526 · `seats` 出参口（桌数/座位数已全部下线）=====
   //
-  // 🔴 为什么要有这一层：引擎入参是 `seats`（座位数，**云函数契约字段，名字与形状一字不改**），
-  //   而李老师定的是「用户填桌数」（餐饮老板都按桌算账：20 张桌子、今天卖了 30 桌 ⇒ 翻台 1.5）。
-  //   ⇒ 换算放在这一层，引擎一行不改、锁定锚点（座位 20 ⇒ 翻台 3.70）一字不漂。
+  // 沿革：R237 曾把「用户填桌数」乘以「单桌座位数」折成引擎契约字段 `seats`（用于算翻台率）；
+  //   R525 删掉座位数、R526 删掉桌数 —— 李老师定的是「翻台率按桌数算、和座位数没关系」，
+  //   且本页不再讨论翻台率（R296 拍4 已停展示、R323 首页反推已改跳矩阵）。
   //
-  // ⚠️ 豆包第 5 轮点名的「最高危静默错」：小数 / 0 / 负数若不拦，会算出"半张桌子"这种
-  //   数学成立、业务无效的数，**而且引擎不会报错**。⇒ 这里一律取整 + 下限 1，无效即 0。
+  // 现状核实：正向引擎**不使用** `seats`（`validate` 对 forward 也不校验）；反推引擎已无调用方；
+  //   矩阵页走正向口径、代码里没有 seats。⇒ 这里恒返回 0，仅保留**单一定义点**：
+  //   让 `seats:` 只有一处取值（A-⑧ 守卫仍生效，防止将来有人在这里临时塞一个算法）。
   bizKeyNow() {
     const bt = this.data.t.bizTypes[this.data.bizIdx];
     return (bt && bt.key) || 'fastfood';
   },
-  /**
-   * 🔴 R525：单桌**人数**（原「单桌座位数」）—— 已无用户输入，恒取业态默认。
-   *   用途只剩一个：把「桌数」折成引擎契约字段 `seats`（反推模式 validate 要求 > 0 的整数）。
-   *   ⚠️ 不再对外展示「座位数」、也不再据此说「翻台率」（李老师 2026-10-27：
-   *      「餐饮翻台率是按桌数计算的，和座位数没关系」→ 本页连翻台率都不再讨论）。
-   */
-  seatsPerTableNow() {
-    return seatsPerTableOf(this.bizKeyNow());
-  },
-  /** 送引擎的座位数 = 桌数 × 业态默认每桌人数（都取正整数；任一无效 ⇒ 0 ⇒ 反推模式被引擎 fail-closed 拒）。 */
-  seatsNow() {
-    const t = Math.floor(Number(this.data.tablesNum));
-    if (!isFinite(t) || t < 1) return 0;
-    return t * this.seatsPerTableNow();
-  },
-  /** 翻台口径：'table'（桌周转，可说「翻台」）/ 'seat'（座位周转，**禁用「翻台」二字**）。 */
-  turnModeNow() { return turnModeOf(this.bizKeyNow()); },
+  /** 送引擎的 `seats`：恒 0（桌数/座位数输入已删除；正向不消费该字段）。 */
+  seatsNow() { return 0; },
   /**
    * 🔴 #1 收口（round272b）：每月营业天数 —— **正向 / 反向共用同一份输入**。
    *   R361 起页面上不再有这一行（只读值已删），值恒为 30；底部假设卡仍展示该口径。
@@ -1597,7 +1581,7 @@ Page({
     //   因为有的店要设包间，同样 100 平方米，包间多的店和全散台的店桌数差很远」）。
     //   ⚠️ 同时**不再预填桌数** —— 桌数由用户现场数（豆包：「小白站铺子门口，数桌子远比数椅子简单」）。
     //   这里只做一件事：按业态把「单桌座位数」的默认值刷新（用户改过就以用户的为准）。
-    // 🔴 R525：单桌座位数输入已删 ⇒ 这里不再刷新它（`seatsNow()` 恒按业态默认每桌人数折算）。
+    // 🔴 R525/R526：座位数与桌数输入均已删除 ⇒ 这里不再刷新任何座位口径（`seatsNow()` 恒 0）。
     //   改为刷新「其他杂支 %」（方案 B）：随预设带出参考值，但**用户手改过就不覆盖**
     //   （沿用 R294-C 的同一纪律，防止"我明明改成 0 了，一切业态又变回 2%"）。
     if (!this.data.fieldTouched.otherPct) {
@@ -1863,8 +1847,8 @@ Page({
     const buildItems = resolveBuild(preset, input);
     const openDays = (this.data.openDaysNum && this.data.openDaysNum !== '') ? Number(this.data.openDaysNum)
       : (preset.params && preset.params.openDays ? preset.params.openDays.v : 30);
-    // 🔴 R237：座位数 = **桌数 × 单桌座位数**（用户填桌，系统换算）—— 换算只发生在 `seatsNow()`，
-    //   引擎入参 `seats` 与锁定锚点（座位 20 ⇒ 翻台 3.70）一字不动。
+    // 🔴 R526：`seats` 恒 0（桌数/座位数输入已删）。正向引擎不读它、validate 对 forward 不校验它；
+    //   反推引擎已无调用方 ⇒ 这里只是保留契约字段。
     return {
       mode: mode || 'forward',
       city_tier: cityKey,
@@ -1879,7 +1863,7 @@ Page({
       //   反推模式下 validate 只读 open_days、忽略本字段 ⇒ 对反推零影响。
       valid_days: this.validDaysNow(),
       rev_price_fen: api.yuanToFen(this.data.avgPriceYuan),
-      // 🔴 R237：座位数 = 桌数 × 单桌座位数（唯一换算点 `seatsNow()`）—— 引擎入参/锚点一字不动。
+      // 🔴 R526：`seats` 唯一出参口（恒 0）—— 桌数/座位数输入已删，详见 `seatsNow()` 注释。
       seats: this.seatsNow(),
       open_days: openDays,
       // R234：不再来自用户输入，改由 `rentRateDefault()` 自动取本业态×本城市的健康上限。
@@ -2074,7 +2058,7 @@ Page({
   // 🔴 R296-E（P2 死代码清理）：`onCalcPresetRev` 整方法已删 —— 首页 mode 恒为 forward
   //   （onMode('reverse') 直接跳矩阵页），且 onCalc 内的 reverse 分派已改为恒走 forward，
   //   故本方法自 R290 起不可达。反推计算现完全由 matrix 页承载（buildClean → assembleItems
-  //   → 云函数批量算），与首页无耦合；`seatsNow`/`validDaysNow` 仍被上方 forward 分支共用，保留。
+  //   → 云函数批量算），与首页无耦合；`seatsNow`（恒 0 的契约出参口）/`validDaysNow` 仍被上方共用，保留。
 
 
 

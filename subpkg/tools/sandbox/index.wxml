@@ -74,21 +74,12 @@
     <!-- R414（队列 #25）：金额栏读不成数字的显式提示。粘贴「12,000」时 yuanToFen 会静默读成 0，
          0 是合法金额 ⇒ 云端拒不了 ⇒ 保本额照常出数但偏小（实测少 40%），原本全程零报错。 -->
     <view class="warn-note" wx:if="{{badAmountCount > 0}}">{{t.amountBadTip}}</view>
-      <view class="row">
-        <text class="row-name">{{t.tablesLabel}}</text>
-        <view class="row-in-wrap">
-          <input class="row-in" type="number" placeholder="{{t.tablesPh}}" value="{{tablesNum}}" bindinput="onTables" adjust-position="{{true}}" cursor-spacing="20" />
-          <text class="row-unit">{{t.tableUnit}}</text>
-        </view>
-      </view>
-      <view class="row-note">{{t.tablesNote}}</view>
-      <!-- 🔴 R525：原「一张桌子准备几个座位」输入已删 —— 李老师 2026-10-27：
-           「这里不考虑翻台率这个事情。去了这个」。
-           根因是它唯一的用途就是把桌数折成座位数去算翻台率；而现实里包间 10 座、散台 4 座混搭，
-           一个"平均座位数"既填不准、也不再需要（翻台率本页不再讨论）。
-           引擎契约字段 seats 仍在，由 `seatsNow() = 桌数 × 业态默认每桌人数` 内部折算，不再问老板。 -->
-      <view class="row">
-        <text class="row-name">{{t.avgPriceLabel}}</text>
+    <!-- 🔴 R525/R526：**座位数与桌数两个输入都已删除**（李老师 2026-10-27：
+         「餐饮翻台率是按桌数计算的，和座位数没关系」「这里不考虑翻台率这个事情。去了这个」）。
+         核实过：反推（寻找铺面）点 Tab 直接进矩阵页、矩阵走正向口径且代码里没有 seats；
+         正向引擎也不读 seats ⇒ 这两个数填了不影响任何结果，属「死输入」，按纪律删干净。 -->
+    <view class="row">
+      <text class="row-name">{{t.avgPriceLabel}}</text>
         <view class="row-in-wrap">
           <input class="row-in" type="digit" value="{{avgPriceYuan}}" placeholder="{{t.avgPricePh}}" bindinput="onAvgPrice" adjust-position="{{true}}" cursor-spacing="20" />
           <text class="row-unit">{{t.yuanUnit}}</text>

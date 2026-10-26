@@ -62,7 +62,8 @@ const PCT_ANCHORS = [
 ];
 // 纯计数字段（反向锚点：它们出现在百分比命中集里 ⇒ 判据过宽）
 // 🔴 R525：`seatsPerTableNum` 已随「单桌座位数」输入删除（翻台率下线）⇒ 从锚点表移除，不留僵尸项。
-const INT_BINDS = ['headcountNum', 'tablesNum', 'item.years'];
+// 🔴 R526：`tablesNum` 也已删除（桌数输入下线）⇒ 计数类反向锚点只剩人数与年限。
+const INT_BINDS = ['headcountNum', 'item.years'];
 // 换算量（「1 件 = [N] 公斤」）
 const CONV_BIND = 'convQty';
 
