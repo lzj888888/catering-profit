@@ -1916,7 +1916,12 @@ Page({
       const d = await api.call('calcSandbox', payload);
       if (seq !== this._seq) return;
       const fen = (v) => (v == null ? null : api.fenToYuan(v, 2));
-      const hasFixed = p.fixed_items.length > 0;
+      // 🔴 D1+D2（2026-10-27 拍板 + 豆包实现咨询确认）：房租或人工没填（装配后分=0）⇒ 整块不出数（fail-closed）。
+      //   原 `p.fixed_items.length > 0` 恒真（rent/labor 总会 push 一个 0 分条目）⇒ 空表单照样出保本 5556、人工 0% 判绿。
+      //   改为按装配后的实际分：房租分 >0 且 人工分 >0 才出数；否则结果区整块换引导语、不显示任何数字、不给参考值（豆包 Q1=A / Q2=不给参考值）。
+      const rentFen = (p.fixed_items || []).reduce((s, x) => s + (x.key === 'rent' ? Number(x.fen) || 0 : 0), 0);
+      const laborFen = (p.fixed_items || []).reduce((s, x) => s + (x.key === 'labor' ? Number(x.fen) || 0 : 0), 0);
+      const hasFixed = rentFen > 0 && laborFen > 0;
       // 回本卡（invest 直读引擎 payback_months；cash 唯一派生在 bizPreset）
       const invest = d.payback_months;
       const cash = paybackCash(d.build_total_fen, p._targetFen, d.build_amort_monthly_fen);
