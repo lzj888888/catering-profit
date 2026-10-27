@@ -76,6 +76,12 @@
       <input class="minp" type="digit" value="{{global.laborTotalYuan}}" data-key="laborTotalYuan" bindinput="onGlobalInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.cashYuanPh}}" />
     </view>
     <view class="hint">{{t.laborTotalNote2}}</view>
+    <!-- 🔴 D4（2026-10-27 拍板）：矩阵补「管理费」输入，与单页（已有铺面）同形状；留空=不评（默认 0，不自动派生） -->
+    <view class="mfield">
+      <text class="mlabel">{{t.manageOptLabel}}</text>
+      <input class="minp" type="digit" value="{{global.manageYuan}}" data-key="manageYuan" bindinput="onGlobalInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.cashYuanPh}}" />
+    </view>
+    <view class="hint">{{t.manageOptNote}}</view>
   </view>
 
   <!-- 维度编辑器 -->

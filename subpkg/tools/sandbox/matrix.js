@@ -162,6 +162,11 @@ Page({
       laborUnitNote: TERMS.m2.laborUnitNote,
       laborTotalLabel2: M.laborTotalLabel2,
       laborTotalNote2: M.laborTotalNote2,
+      // 🔴 D4（2026-10-27 拍板）：矩阵补「管理费」输入，与单页（forward）同形状；
+      //   留空=不评（默认 0，不自动派生），解决同店两页管理费口径相反（单页 0 / 矩阵原派生 房租×80%）的问题。
+      //   文案取自 m2 区块（单源，不复制键）。
+      manageOptLabel: TERMS.m2.manageOptLabel,
+      manageOptNote: TERMS.m2.manageOptNote,
       fixedBreakTitle: M.fixedBreakTitle,
       fixedBreakNote: M.fixedBreakNote,
       fixedBreakRent: M.fixedBreakRent,
@@ -222,7 +227,7 @@ Page({
       buildEquipYuan: '', buildEquipYears: 5,
       buildFranchiseYuan: '', buildFranchiseYears: 3,
       buildTransferYuan: '', buildTransferYears: 3, buildTransferAmort: false,
-      laborTotalYuan: '', laborUnitYuan: '',
+      laborTotalYuan: '', laborUnitYuan: '', manageYuan: '',
     },
     // 合计 / 每月摊销 一行话（纯展示派生，改任一项就跟着变）
     buildSumText: '',
@@ -614,7 +619,7 @@ Page({
       rentYuan,
       laborTotalYuan: lt > 0 ? lt : undefined,
       laborUnitYuan: (lt > 0 || !(un > 0)) ? undefined : un,
-      fixedYuan: { rent: rentYuan },
+      fixedYuan: { rent: rentYuan, manage: this.data.global.manageYuan },
       buildItems: this.buildItems(),
     }, coef);
     let fen = 0;
@@ -644,7 +649,7 @@ Page({
       headcount: row.labor,
       rentYuan: row.rent,
       laborTotalYuan: ltYuan > 0 ? ltYuan : undefined,
-      fixedYuan: { rent: row.rent },
+      fixedYuan: { rent: row.rent, manage: this.data.global.manageYuan },
       buildItems: this.buildItems(),
     }, coef);
 
@@ -689,7 +694,7 @@ Page({
       rentYuan,
       laborTotalYuan: ltYuan > 0 ? ltYuan : undefined,
       laborUnitYuan: (ltYuan > 0 || !(unitYuan > 0)) ? undefined : unitYuan,
-      fixedYuan: { rent: rentYuan },
+      fixedYuan: { rent: rentYuan, manage: this.data.global.manageYuan },
       buildItems,
     };
     const { fixedItems, varItems } = assembleItems(preset, input, coef);
