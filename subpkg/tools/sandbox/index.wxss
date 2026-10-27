@@ -212,6 +212,9 @@
 .calc-basis-formula { color: #4a5b70; font-size: 30rpx; line-height: 1.6; margin-top: 10rpx; padding: 10rpx 14rpx; background: #f3f7fb; border-radius: 10rpx; }
 .payback-m3-btn { margin: 16rpx 0 0; }
 
+/* 🔴 R546：※ 图例 —— 比正文小一号、灰一档，像脚注而不像警告（它不是错，是说明）。 */
+.ref-legend { font-size: 28rpx; color: #8a94a6; line-height: 1.5; }
+
 /* ===== R234/J4 · 行内长提示折叠（句级，与月录入页 .hint-fold 同形）=====
  * 与上面 .fold-toggle 的区别（**必须视觉可分**，否则用户以为是同一套开关）：
  *   · .fold-toggle = **区段级**（30rpx 加粗 + 上边框）—— 收的是「整块参数区」；

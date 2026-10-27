@@ -246,6 +246,15 @@
     </view>
     <block wx:if="{{channel.on}}">
       <view class="hint">{{t.channelSample}}</view>
+      <!-- 🔴 R546（⑦ 平台抽成改造）：四项佣金「在哪看」——老板缺的不是公式，是**去哪儿抄这个数**。
+           放折叠里：填过的人不用每天看见，第一次填的人点开就有。 -->
+      <view class="hint-fold">
+        <view class="hint-fold-head" data-key="sbChannelRef" bindtap="onToggleHintFold">
+          <text class="hint-fold-guide">{{t.channelRefLabel}}</text>
+          <text class="hint-fold-arrow">{{hintFold.sbChannelRef ? '▾' : '▸'}}</text>
+        </view>
+        <view class="hint-fold-body" wx:if="{{hintFold.sbChannelRef}}">{{t.channelRefBody}}</view>
+      </view>
       <view class="rw">
         <view class="row">
           <text class="row-name">{{t.channelTakeawayRatio}}</text>
@@ -255,16 +264,16 @@
           </view>
         </view>
         <view class="row">
-          <text class="row-name">{{t.channelPlatformRate}}</text>
+          <text class="row-name">{{t.channelPlatformRate}}{{channel.refs.platformRate ? ' ※' : ''}}</text>
           <view class="row-in-wrap">
-            <input class="ipt-num" type="digit" value="{{channel.platformRate}}" data-field="platformRate" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
+            <input class="ipt-num" type="digit" value="{{channel.platformRate}}" placeholder="{{channel.phPlatformRate}}" data-field="platformRate" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
             <text class="unit">{{t.channelPct}}</text>
           </view>
         </view>
         <view class="row">
-          <text class="row-name">{{t.channelPackRate}}</text>
+          <text class="row-name">{{t.channelPackRate}}{{channel.refs.packRate ? ' ※' : ''}}</text>
           <view class="row-in-wrap">
-            <input class="ipt-num" type="digit" value="{{channel.packRate}}" data-field="packRate" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
+            <input class="ipt-num" type="digit" value="{{channel.packRate}}" placeholder="{{channel.phPackRate}}" data-field="packRate" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
             <text class="unit">{{t.channelPct}}</text>
           </view>
         </view>
@@ -276,27 +285,29 @@
           </view>
         </view>
         <view class="row">
-          <text class="row-name">{{t.channelGroupPlatform}}</text>
+          <text class="row-name">{{t.channelGroupPlatform}}{{channel.refs.groupPlatformRate ? ' ※' : ''}}</text>
           <view class="row-in-wrap">
-            <input class="ipt-num" type="digit" value="{{channel.groupPlatformRate}}" data-field="groupPlatformRate" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
+            <input class="ipt-num" type="digit" value="{{channel.groupPlatformRate}}" placeholder="{{channel.phGroupPlatformRate}}" data-field="groupPlatformRate" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
             <text class="unit">{{t.channelPct}}</text>
           </view>
         </view>
         <view class="row">
-          <text class="row-name">{{t.channelDiscountRate}}</text>
+          <text class="row-name">{{t.channelDiscountRate}}{{channel.refs.discountRate ? ' ※' : ''}}</text>
           <view class="row-in-wrap">
-            <input class="ipt-num" type="digit" value="{{channel.discountRate}}" data-field="discountRate" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
+            <input class="ipt-num" type="digit" value="{{channel.discountRate}}" placeholder="{{channel.phDiscountRate}}" data-field="discountRate" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
             <text class="unit">{{t.channelPct}}</text>
           </view>
         </view>
+        <view class="row-note">{{t.channelDiscountHint}}</view>
         <view class="row">
-          <text class="row-name">{{t.channelCardRate}}</text>
+          <text class="row-name">{{t.channelCardRate}}{{channel.refs.cardRate ? ' ※' : ''}}</text>
           <view class="row-in-wrap">
-            <input class="ipt-num" type="digit" value="{{channel.cardRate}}" data-field="cardRate" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
+            <input class="ipt-num" type="digit" value="{{channel.cardRate}}" placeholder="{{channel.phCardRate}}" data-field="cardRate" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
             <text class="unit">{{t.channelPct}}</text>
           </view>
         </view>
         <view class="row row-strong"><text class="row-name">{{t.channelTotal}}</text><text class="row-val">{{channel.total}}{{t.channelPct}}</text></view>
+        <view class="row-note ref-legend" wx:if="{{channel.anyRef}}">{{t.channelRefNote}}</view>
       </view>
       <!-- R412（队列 #24）：超 100% 的显式提示。文案键 channelOver100 早就在 terms 里定义，
            但此前 wxml 从不渲染、js 从不判定 ⇒ 是死文案。cost 很高：不提示则佣金按 >100% 流水扣。 -->

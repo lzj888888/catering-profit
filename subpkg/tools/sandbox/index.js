@@ -20,6 +20,10 @@ const shareCard = require('../../../utils/shareCard.js');
 // R412（队列 #24）：渠道占比规则单源 —— 「外卖 + 团购 ≤ 100%」的判定必须可被机器验，
 //   写成纯函数（utils/channelRule.js）后守卫能喂真数字判行为，而不是 grep 字面量。
 const ChannelRule = require('../../../utils/channelRule.js');
+// 🔴 R546：费率参考值单源。placeholder / ※ / 加权计算全读它 —— 术语里不写数字，防止两份真相源。
+const CHANNEL_REF = ChannelRule.CHANNEL_REF;
+// 术语模板 {a}/{b} → 数字（页面 JS 不写中文，数字也不写进术语，两边都不越界）
+const phTpl = (tpl, a, b) => String(tpl || '').split('{a}').join(a).split('{b}').join(b);
 // R414（队列 #25）：金额输入可读性判定（纯函数）—— yuanToFen 对非法输入 fail-soft 返回 0，
 //   0 是合法金额 ⇒ 云端拒不了 ⇒ 必须在这一层**暴露**给老板看（不改数、不静默清洗）。
 const AmountInput = require('../../../utils/amountInput.js');
@@ -145,6 +149,11 @@ Page({
       channelDiscountRate: M.channelDiscountRate,
       channelGroupPlatform: M.channelGroupPlatform,
       channelOver100: M.channelOver100,
+      // 🔴 R546：⑦ 平台抽成改造新增（「这四个数在哪看」折叠 + 折扣换算注 + ※ 图例）
+      channelRefLabel: M.channelRefLabel,
+      channelRefBody: M.channelRefBody,
+      channelRefNote: M.channelRefNote,
+      channelDiscountHint: M.channelDiscountHint,
       // R419：归到公共区（M1 月度录入页同用这一句）
       amountBadTip: TERMS.ui.amountBadTip,
       channelSample: M.channelSample,
@@ -500,12 +509,27 @@ Page({
     channel: {
       on: false,                 // 「渠道佣金」开关，默认关（关 = 不计佣金，零漂移）
       takeawayRatio: 20,         // 外卖占流水%（默认 20）
-      platformRate: 20,          // 外卖平台抽成率%（主流 18~23，取 20）
-      packRate: 0,               // 外卖包装/配送成本率%（选填，主流 0~3）
-      groupRatio: 0,             // 团购占流水%
-      groupPlatformRate: 5,      // 团购平台抽成率%（主流 3~8，取 5）
-      discountRate: 0,           // 团购折扣率%（选填）
-      cardRate: 0.6,             // 刷卡/扫码费率%（通常 <1，可忽略）
+      // 🔴 R546（⑦ 平台抽成改造）：四个费率默认 **空字符串**（= 老板不知道），
+      //   计算时按 CHANNEL_REF 兜底并在界面打 ※。
+      //   原来默认 20 / 0 / 5 / 0 ⇒ 等于替他认定「外卖没包装费、团购没打折」
+      //   ⇒ 渠道费率偏低 ⇒ 保本额偏低（**偏乐观**：老板以为更容易回本）。
+      //   改成 '' 之后：留空 = 不知道（按参考值）；**填 0 = 他明确说「我没有这笔」**。
+      platformRate: '',
+      packRate: '',
+      groupRatio: 0,             // 团购占流水%（这是他的生意结构，必须他自己填，不给参考值）
+      groupPlatformRate: '',
+      discountRate: '',
+      cardRate: '',
+      // 留空提示语：数字一律由 CHANNEL_REF 拼出（术语里只写「怎么理解」，不写数值）
+      phPlatformRate: phTpl(M.channelPhTpl, CHANNEL_REF.platformRate),
+      phPackRate: phTpl(M.channelPhTpl, CHANNEL_REF.packRate),
+      phGroupPlatformRate: phTpl(M.channelPhTpl, CHANNEL_REF.groupPlatformRate),
+      phDiscountRate: phTpl(M.channelPhDiscountTpl, CHANNEL_REF.discountRate,
+        (100 - CHANNEL_REF.discountRate) / 10),
+      phCardRate: phTpl(M.channelPhTpl, CHANNEL_REF.cardRate),
+      // 哪几项用了参考值（wxml 行名后打 ※）；初始全空 ⇒ 全部是 ※
+      refs: { platformRate: 1, packRate: 1, groupPlatformRate: 1, discountRate: 1, cardRate: 1 },
+      anyRef: true,
       // ---- 派生（均按**总流水**口径，供 var_items；合计即「总挂钩费率」）----
       takeawayComm: 0,           // 外卖佣金费率 = 外卖占比% × (抽点+包装)%
       grouponComm: 0,            // 团购佣金费率 = 团购占比% × (抽点+折扣)%
@@ -575,6 +599,19 @@ Page({
         avgPriceYuan: this.data.avgPriceYuan,
         initialInvestYuan: this.data.initialInvestYuan,
         areaNum: this.data.areaNum,
+        // 🔴 R546：渠道参数进草稿 —— 原来 `channel` **整块不存**，老板填了抽成/折扣、
+        //   退出重进全丢、静默回默认值（与 R443 修过的「半份草稿」同族病）。
+        //   只存 8 个输入项，派生值（takeawayComm 等）不存 —— 回来重算，绝不存中间量。
+        channel: {
+          on: this.data.channel.on,
+          takeawayRatio: this.data.channel.takeawayRatio,
+          platformRate: this.data.channel.platformRate,
+          packRate: this.data.channel.packRate,
+          groupRatio: this.data.channel.groupRatio,
+          groupPlatformRate: this.data.channel.groupPlatformRate,
+          discountRate: this.data.channel.discountRate,
+          cardRate: this.data.channel.cardRate,
+        },
       });
     } catch (e) { /* 写盘失败不影响测算：草稿只是锦上添花，不打扰用户 */ }
   },
@@ -627,6 +664,26 @@ Page({
       areaNum: d.areaNum !== undefined ? d.areaNum : this.data.areaNum,
       draftRestored: true,
     });
+    // 🔴 R546：回填渠道参数。老草稿没有 `channel` 字段 ⇒ 保留当前默认（不硬塞一个 0）；
+    //   回填后**立刻重算派生值** —— 否则 on=true 但 takeawayComm 还是 0 ⇒ 渠道费率当 0 用，保本偏低。
+    const dc = d.channel;
+    if (dc && typeof dc === 'object') {
+      const keep = (v, dflt) => (v !== undefined ? v : dflt);
+      const cur = this.data.channel;
+      this.setData({
+        channel: Object.assign({}, cur, {
+          on: !!dc.on,
+          takeawayRatio: keep(dc.takeawayRatio, cur.takeawayRatio),
+          platformRate: keep(dc.platformRate, cur.platformRate),
+          packRate: keep(dc.packRate, cur.packRate),
+          groupRatio: keep(dc.groupRatio, cur.groupRatio),
+          groupPlatformRate: keep(dc.groupPlatformRate, cur.groupPlatformRate),
+          discountRate: keep(dc.discountRate, cur.discountRate),
+          cardRate: keep(dc.cardRate, cur.cardRate),
+        }),
+      });
+      this.recomputeChannel();
+    }
     this.syncPresetOptions();   // 🔴 D：用回存的 presetKey 重建预设选择器显示（presetName/presetPicked 与计算口径对齐）
     return true;
   },
@@ -864,9 +921,32 @@ Page({
     const rg = Number(c.groupRatio) || 0;
     const off = !c.on;
     const r2 = (x) => Math.round(x * 100 + 1e-9) / 100;
-    const takeawayComm = off ? 0 : r2(rt * ((Number(c.platformRate) || 0) + (Number(c.packRate) || 0)) / 100);
-    const grouponComm = off ? 0 : r2(rg * ((Number(c.groupPlatformRate) || 0) + (Number(c.discountRate) || 0)) / 100);
-    const cardFee = off ? 0 : r2(Number(c.cardRate) || 0);
+    // 🔴 R546：三态取值 —— 空 / 读不成 / 负数 ⇒ 按行业参考值算并记 ※；填数 ⇒ 按他填的（含 0）。
+    //   为什么不沿用 `Number(v) || 0`：那个写法把「空」和「0」混成同一个 0，
+    //   正是旧病根源（老板没填 ≠ 老板说没有）。
+    const take = (v, ref) => {
+      if (v === '' || v === null || v === undefined) return { v: ref, useRef: 1 };
+      const n = Number(v);
+      if (!isFinite(n) || n < 0) return { v: ref, useRef: 1 };
+      return { v: n, useRef: 0 };
+    };
+    const pr = take(c.platformRate, CHANNEL_REF.platformRate);
+    const pk = take(c.packRate, CHANNEL_REF.packRate);
+    const gp = take(c.groupPlatformRate, CHANNEL_REF.groupPlatformRate);
+    const dc = take(c.discountRate, CHANNEL_REF.discountRate);
+    const cf = take(c.cardRate, CHANNEL_REF.cardRate);
+    const refs = {
+      platformRate: pr.useRef, packRate: pk.useRef,
+      groupPlatformRate: gp.useRef, discountRate: dc.useRef, cardRate: cf.useRef,
+    };
+    const anyRef = off ? false : !!(pr.useRef || pk.useRef || gp.useRef || dc.useRef || cf.useRef);
+    const takeawayComm = off ? 0 : r2(rt * (pr.v + pk.v) / 100);
+    // 🔴 R544 定案（见 review/NOTE_2026-10-27_R544）：团购渠道费率 = 折扣 + 抽成 − 折扣×抽成。
+    //   依据 `utils/grouponDerive.js` 红线③：**佣金基数 = 顾客实付的团购价**，
+    //   所以折扣与抽成在 d·c 那一小块上**交叠**，直减会重复扣（7 折+5% 时多扣 1.5 个点，保本虚高约 2.9%）。
+    const gRatePct = dc.v + gp.v - (dc.v * gp.v) / 100;
+    const grouponComm = off ? 0 : r2(rg * gRatePct / 100);
+    const cardFee = off ? 0 : r2(cf.v);
     // 🔴 R412：占比合计 > 100% 时**必须提示**。老板填「外卖 60% + 团购 60%」时，
     //   上面两行佣金等于按 120% 的流水扣 ⇒ 挂钩费率虚高 ⇒ 保本额虚高，而全程零报错。
     //   为什么不静默钳到 100%：钳制会掩盖输入错误（钳完的数同样是错的，老板看不出自己填错）。
@@ -878,6 +958,8 @@ Page({
       'channel.cardFee': cardFee,
       'channel.total': r2(takeawayComm + grouponComm + cardFee),
       'channel.over100': over100,
+      'channel.refs': refs,
+      'channel.anyRef': anyRef,
     });
   },
 

@@ -268,6 +268,100 @@ ok('⑤-7 纯函数改成 return false ⇒ 行为面必须红', (function () {
   return mutRule.isChannelRatioOver100(60, 60) !== true;
 })(), '变异模块不可用 ⇒ 无法证明行为面非恒真');
 
+// ================= ⑥ 组：费率三态「留空=行业参考值 / 填 0=真没有」（R546 · ⑦ 平台抽成）=================
+// 为什么守：这四个费率老板**算不出**，原代码把它们默认成 0 —— 等于替他认定
+//   「外卖没包装费、团购没打折」⇒ 渠道费率偏低 ⇒ 保本额偏低 ⇒ 老板以为更容易回本。
+//   方向错的数比不准的数危险。现在改成「留空 = 不知道（走参考值，界面打 ※）；填 0 = 真没有」。
+//   🔴 这三层语义只靠代码注释是保不住的 —— 有人把 `''` 改回 `0`、或把 take() 换回 `Number(x)||0`，
+//      界面照样能跑、数字照样出，**没有任何一个套件会红**。所以在这里钉死。
+console.log('');
+console.log('===== ⑥ 组 · 费率三态：留空走参考值、填 0 才是真没有 =====');
+const REF_KEYS = ['platformRate', 'packRate', 'groupPlatformRate', 'discountRate', 'cardRate'];
+const RULE_TXT = fs.readFileSync(RULE, 'utf8');
+const refMissing = REF_KEYS.filter(function (k) { return RULE_TXT.indexOf(k + ':') < 0; });
+ok('⑥-1 CHANNEL_REF 五个参考值齐全（数字的唯一来源）',
+  RULE_TXT.indexOf('const CHANNEL_REF') >= 0 && refMissing.length === 0, '缺：' + refMissing.join(','));
+
+// ⑥-2 默认值必须是空串 —— 本轮核心修正。改回 0 就等于"替他认定没有这笔"
+const notBlank = REF_KEYS.filter(function (k) { return js.indexOf(k + ": '',") < 0; });
+ok('⑥-2 五个费率在 data 里默认是空串（不是 0）', notBlank.length === 0,
+  '仍默认成数字：' + notBlank.join(',') + ' ⇒ 空与 0 又被混为一谈');
+
+// ⑥-3 take() 三态取值器真在函数体内、且真被调用（防"只定义不用"）
+ok('⑥-3 recomputeChannel 用 take() 取值，且空/读不成/负数一律回落参考值',
+  rcBody.indexOf('const take =') >= 0 &&
+  rcBody.indexOf('take(c.platformRate') >= 0 && rcBody.indexOf('take(c.discountRate') >= 0 &&
+  rcBody.indexOf('useRef: 1') >= 0);
+
+// ⑥-4 旧写法必须绝迹：`Number(x) || 0` 正是"空=0"的病根
+const oldForm = ['Number(c.platformRate)', 'Number(c.packRate)', 'Number(c.groupPlatformRate)', 'Number(c.discountRate)']
+  .filter(function (k) { return rcBody.indexOf(k) >= 0; });
+ok('⑥-4 函数体内不再有 Number(x)||0 旧写法', oldForm.length === 0, oldForm.join(','));
+
+// ⑥-5 R544 的一行修正：佣金基数是"顾客实付团购价"⇒ 折扣与抽成在 d·c 上交叠，直减=重复扣
+ok('⑥-5 团购费率含 d·c 交叠修正（否则重复扣、保本虚高约 2.9%）',
+  rcBody.indexOf('(dc.v * gp.v) / 100') >= 0, '未见交叠项 ⇒ 退回了 d+c');
+
+// ⑥-6/⑥-7 渲染面：替老板按参考值算了，就必须让他**看见**
+ok('⑥-6 留空项在行名后打 ※（外卖抽成 / 包装 / 团购抽成 / 折扣 四处）',
+  xml.indexOf("channel.refs.platformRate ? ' ※' : ''") >= 0 &&
+  xml.indexOf("channel.refs.packRate ? ' ※' : ''") >= 0 &&
+  xml.indexOf("channel.refs.groupPlatformRate ? ' ※' : ''") >= 0 &&
+  xml.indexOf("channel.refs.discountRate ? ' ※' : ''") >= 0,
+  '有项目没打标记 ⇒ 老板不知道哪个数不是他填的');
+ok('⑥-7 ※ 有图例解释（只打星号不解释 = 老板看不懂）',
+  xml.indexOf('channel.anyRef') >= 0 && xml.indexOf('t.channelRefNote') >= 0);
+
+// ⑥-8 placeholder 必须由 CHANNEL_REF 拼出（写死在 wxml / 术语里 = 两份真相源，改一处就漂）
+ok('⑥-8 placeholder 绑 data 里由 CHANNEL_REF 生成的值，不在 wxml/术语里写死数字',
+  xml.indexOf('placeholder="{{channel.phPlatformRate}}"') >= 0 &&
+  xml.indexOf('placeholder="{{channel.phDiscountRate}}"') >= 0);
+const TERMS_TXT = fs.readFileSync(TERMS_A, 'utf8');
+// ⚠️ 只拦「留空按 + 数字」——术语里**该说**「留空按行业参考值算」（那是口径说明），
+//    但绝不能出现「留空按 20%」（那是把 CHANNEL_REF 抄了第二份，改一处就漂）。无正则，逐字看。
+const refLeak = (function () {
+  const needle = '留空按';
+  let i = TERMS_TXT.indexOf(needle);
+  while (i >= 0) {
+    const ch = TERMS_TXT.charAt(i + needle.length);
+    if (ch >= '0' && ch <= '9') return TERMS_TXT.substr(i, 18);
+    i = TERMS_TXT.indexOf(needle, i + 1);
+  }
+  return '';
+})();
+ok('⑥-9 术语里不出现「留空按 <数字>」（参考值只能来自 CHANNEL_REF）',
+  refLeak === '', '命中：' + refLeak);
+
+// ⑥-13/⑥-14 草稿双面（R298Y 教训：「读到了 ≠ 送出去了」—— 必须分别守写入面与读取面）
+//   实测：`channel` 原来**整块不进草稿** ⇒ 老板填了抽成/折扣，退出重进全丢、静默回默认值。
+const saveBody = bodyOf(js, 'saveDraft');
+const restBody = bodyOf(js, 'restoreDraft');
+ok('⑥-13 saveDraft 真把 channel 写进草稿（写入面）',
+  saveBody.indexOf('channel: {') >= 0 &&
+  saveBody.indexOf('discountRate: this.data.channel.discountRate') >= 0,
+  '未写入 ⇒ 填了抽成/折扣退出即丢');
+ok('⑥-14 restoreDraft 真回填 channel、且回填后立刻重算派生（读取面 + 顺序）',
+  restBody.indexOf('d.channel') >= 0 && restBody.indexOf('this.recomputeChannel()') >= 0 &&
+  restBody.indexOf('this.recomputeChannel()') > restBody.indexOf('d.channel'),
+  '回填了但不重算 ⇒ on=true 而 takeawayComm=0 ⇒ 渠道费率当 0 用、保本偏低');
+
+// ⑥-10/⑥-11 反恒真：把关键改动改回去，对应判据必须转红
+const mut6 = [
+  { name: '⑥-10 把 packRate 默认值改回 0 ⇒ ⑥-2 必须红',
+    src: js.split("packRate: '',").join('packRate: 0,'),
+    test: function (s) { return REF_KEYS.filter(function (k) { return s.indexOf(k + ": '',") < 0; }).length === 0; } },
+  { name: '⑥-11 去掉 d·c 交叠项 ⇒ ⑥-5 必须红',
+    src: rcBody.split(' - (dc.v * gp.v) / 100').join(''),
+    test: function (s) { return s.indexOf('(dc.v * gp.v) / 100') >= 0; } },
+  { name: '⑥-15 删掉 saveDraft 的 channel 键 ⇒ ⑥-13 必须红',
+    src: saveBody.split('channel: {').join('ch_x: {'),
+    test: function (s) { return s.indexOf('channel: {') >= 0; } },
+  { name: '⑥-12 把 ※ 标记从 wxml 去掉 ⇒ ⑥-6 必须红',
+    src: xml.split("channel.refs.discountRate ? ' ※' : ''").join(''),
+    test: function (s) { return s.indexOf("channel.refs.discountRate ? ' ※' : ''") >= 0; } },
+];
+mut6.forEach(function (m) { ok(m.name, m.test(m.src) === false, '变异后判据仍为 true ⇒ 该腿恒真'); });
+
 // ================= 汇总 =================
 console.log('');
 if (problems.length === 0) {

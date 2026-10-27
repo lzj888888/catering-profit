@@ -955,13 +955,28 @@ const TERMS = {
     channelBlended: '综合毛利率',
     channelBlendedDiff: '综合毛利率比堂食低',
     channelParams: '调整默认参数（抽成 / 折扣）',
-    channelPlatformRate: '外卖平台抽成率',
-    channelPackRate: '外卖包装 / 配送成本率',
-    channelDiscountRate: '团购折扣率',
-    channelGroupPlatform: '团购平台抽成率',
+    channelPlatformRate: '外卖平台抽成',
+    channelPackRate: '外卖包装 + 配送',
+    // 🔴 R546（⑦ 平台抽成改造）：问法全部改成**老板能回答的话**。
+    //   「折扣率」他分不清是"便宜掉多少"还是"还剩几成"（填 20 到底是 2 折还是 8 折？）
+    //   ⇒ 改成「比原价便宜」，填 20 = 便宜 20% = 打 8 折，与引擎字段 discountRate 同义。
+    channelDiscountRate: '团购比原价便宜',
+    channelGroupPlatform: '团购平台抽成',
+    // ⚠️ 下面这些 placeholder 的**数字不写在这里** —— 由 `utils/channelRule.js::CHANNEL_REF`
+    //   单源生成（页面 data 里拼），避免同一个 20% 在术语和代码里各留一份、日后只改一处。
+    channelDiscountHint: '填 20 = 便宜 20% = 打 8 折',
+    // ⚠️ 下面两条是**模板**：{a}/{b} 由页面用 CHANNEL_REF 的数字替换。
+    //   为什么模板放这里：军规禁止页面 JS 出现中文字面量（check_m2_matrix B9/B14 会判红），
+    //   而数字又不能写死在这里 —— 于是「中文在术语、数字在 CHANNEL_REF、拼接在页面」。
+    channelPhTpl: '留空按{a}%算',
+    channelPhDiscountTpl: '留空按{a}%算（＝{b}折）',
     channelOverride: '如需手动覆盖净毛利率，在下方两行填入（留空则用推导值）',
     channelOver100: '外卖 + 团购占比不可超过 100%，请调整',
-    channelSample: '填「大概多少生意来自外卖 / 团购 + 平台抽几个点」就行，系统自动算加权；抽成率按门店后台实际填',
+    // 🔴 R546：这句是本轮改造的**核心口径** —— 必须让老板一眼分清「留空」和「填 0」。
+    channelSample: '填「大概多少生意来自外卖 / 团购」就行。下面四个佣金数不知道就**留空**——留空按行业参考值算；真没有这笔才填 0。',
+    channelRefLabel: '这四个数在哪看',
+    channelRefBody: '外卖平台抽成：商家后台「结算 / 费用明细」里的技术服务费比例，一般 18~23%。\n外卖包装 + 配送：一单的餐盒、袋子，加上你自己承担的那部分配送费，折成占营业额的比例，一般 2~4%。\n团购平台抽成：团购后台的费用明细，一般 3~8%。\n团购便宜多少：团购价 ÷ 原价就知道打到几折，打 8 折就是便宜 20%。',
+    channelRefNote: '※ 是你没填、按行业参考值算的；填 0 表示这项真没有。',
     channelCardRate: '刷卡 / 扫码费率',
     channelTotal: '合计挂钩费率（按总流水算）',
     channelTotalNote: '佣金按比例自动扣，不用你减',
