@@ -270,7 +270,7 @@ const CASES = [
   // D1（2026-10-27 拍板 + 审计 H1 实证）：空表单 fail-closed 行为守卫 —— 19 条 = P4 + Q2 + A6 + B3 + C2 + E2
   { key: 'check_m2_forward_failclosed', rel: 'tools/check_m2_forward_failclosed.js' }, // 19 条（P/Q/A/B/C/E 六组：空表单装配 rent/labor=0 + 引擎非空保本证门禁必要 + hasFixed(空)=false + 正控 hasFixed(填)=true + 变异 >0→>=0 可抓）
   // D3 + D3-C（2026-10-27 拍板/第二轮）：任一项>0 即采用 —— 20 条 = P3 + A9 + B1 + C5 + E2
-  { key: 'check_m2_energy_split', rel: 'tools/check_m2_energy_split.js' }, // 20 条（P 前置 + A 单填/组合/energyYuan合并/向后兼容 + B 全空派生 + C 旧&&写法+energy+gas锚点 + E 自失效）
+  { key: 'check_m2_energy_split', rel: 'tools/check_m2_energy_split.js' }, // 22 条（P 前置 + A 单填/组合/energyYuan合并/向后兼容 + B 全空派生 + C 旧&&写法+energy+gas锚点 + D 前端两栏/合并开关/装配分流 + E 自失效）
   // D4（2026-10-27 拍板）：矩阵与单页管理费口径统一（manage 键，不再派生房租×占比）—— 19 条 = P4 + A6 + B3 + C4 + E2
   { key: 'check_m2_matrix_manage', rel: 'tools/check_m2_matrix_manage.js' }, // 19 条（P 前置 + A 键在空/填 + B 键缺失派生相异 + C 源锚锁 R533/单页收敛/删键回退 + E 自失效）
   // D6（2026-10-27 拍板）：透视表按人工过滤（fixLabor 生效，不再被覆盖）—— 11 条 = P2 + A4 + B1 + C2 + E2

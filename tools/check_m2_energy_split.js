@@ -11,7 +11,10 @@
 //   装配层新增 `energyYuan` 优先、未传时回落 `waterYuan + electricYuan`（矩阵/旧草稿兼容）。
 //   本守卫补 A-⑤~A-⑧ 四条行为断言 + C-⑤ 源码锚点，锁死「合并后仍任一项 >0 就采用」。 
 //
-// 判据（P/Q/A/B/C/E 六段，全部 fail-closed：读不到 / 提取不到即判红）：
+// 判据（P/Q/A/B/C/D/E 七段，全部 fail-closed：读不到 / 提取不到即判红）：
+//   D 前端填法  R543（李老师 2026-10-27）：「一合了之」不是定案 —— 当时只是给**水电开在一张单子上**的店
+//              一个合并选项 ⇒ 页面必须**同时**有「水费/电费两栏」与「合并开关」两态，缺任一侧即红；
+//              装配按开关分流，分栏态必须 `delete input.energyYuan`（送 0 会被当成"已填合计"⇒ 水费电费被抹掉）
 //   P 前置     bizPreset 可 require + 源码可读
 //   Q 提取     定位 energy_split 分支
 //   A 行为     真实装配：电=1500（水/气=0）→ utility 必须=150000（用填的数，非房租派生）；
@@ -149,10 +152,36 @@ check('C-④ 源码含 `energy + gas > 0`（改回旧 && 写法即转红）',
 check('C-⑤ 源码含 `energyYuan`（水电合并字段；删掉回退即转红）',
   bizSrc.indexOf('energyYuan') >= 0, 'energy_split 分支已接合并字段');
 
+// ============ D 前端填法（R543：水电默认分两栏 + 合并开关）============
+sec('D · 前端填法（分两栏 / 合并开关 / 装配分流）');
+{
+  const WX = readOr(path.join(ROOT, 'subpkg', 'tools', 'sandbox', 'index.wxml'));
+  const SJ = readOr(path.join(ROOT, 'subpkg', 'tools', 'sandbox', 'index.js'));
+  // 四个「输入框 + 处理器」成对在场：水 / 电 / 合并 / 开关。
+  // 按**成对**判而不是「出现过这个词」—— 只留框不定处理器 = 能显示但填了不参与计算。
+  const pairs = [
+    ['水费', /value="\{\{waterYuan\}\}"/, /bindinput="onWater"/],
+    ['电费', /value="\{\{electricYuan\}\}"/, /bindinput="onElectric"/],
+    ['合并', /value="\{\{energyYuan\}\}"/, /bindinput="onEnergy"/],
+    ['开关', /checked="\{\{energyMerged\}\}"/, /bindchange="onToggleEnergyMerge"/],
+  ];
+  const miss = pairs.filter((p) => !WX || !p[1].test(WX) || !p[2].test(WX)).map((p) => p[0]);
+  check('D-① 水费/电费两栏 + 合并态 + 开关**四者同时在场**（缺任一侧即红）',
+    miss.length === 0, miss.length ? '缺：' + miss.join('/') : '四态齐备（分栏与合并都可填）');
+
+  // 装配分流的实证：分栏态必须删掉 energyYuan 键。
+  // 只判「有 energyMerged」不够 —— 分流写反（分栏仍送 energyYuan=0）会让水费电费静默变 0，
+  // 而界面上两个框都有数、固定支出合计却不涨：典型的"看着正常、数不对"。
+  const splitOk = !!SJ && /delete\s+input\.energyYuan/.test(SJ)
+    && /input\.waterYuan\s*=/.test(SJ) && /input\.electricYuan\s*=/.test(SJ);
+  check('D-② 分栏态装配真的换了键（`input.waterYuan/electricYuan` 赋值 + `delete input.energyYuan`）',
+    splitOk, splitOk ? '删键分流在位' : '分流缺失或写反 ⇒ 水费电费会被抹成 0');
+}
+
 // ============ E 自失效护栏（防"扫空 ⇒ 恒绿"）============
 sec('E · 自失效护栏');
 check('E-① 源码非退化（>1500 字符）', bizSrc.length > 1500, bizSrc.length + ' 字符');
-check('E-② 断言数下界（pass ≥ 17，删一批仍 >0）', pass >= 17, `当前 pass=${pass}`);
+check('E-② 断言数下界（pass ≥ 20，删一批仍 >0）', pass >= 20, `当前 pass=${pass}`);
 
 console.log(`\n===== M2 energy_split 守卫结果：${pass} 通过 / ${failN} 失败 =====`);
 process.exit(failN === 0 ? 0 : 1);

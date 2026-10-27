@@ -70,7 +70,6 @@
         <text class="row-unit">{{t.areaUnit}}</text>
       </view>
     </view>
-    <view class="row-hint">{{t.areaHint}}</view>
     <!-- R414（队列 #25）：金额栏读不成数字的显式提示。粘贴「12,000」时 yuanToFen 会静默读成 0，
          0 是合法金额 ⇒ 云端拒不了 ⇒ 保本额照常出数但偏小（实测少 40%），原本全程零报错。 -->
     <view class="warn-note" wx:if="{{badAmountCount > 0}}">{{t.amountBadTip}}</view>
@@ -138,15 +137,41 @@
         </view>
       </view>
       <view class="row-note">{{t.laborTotalNote}}</view>
-      <!-- 🔴 R296 拍3 · D3-C（李老师 2026-10-27）：水、电合并为一个「水电费」输入，燃气可选。
-           适配无燃气业态（燃气留空即可），也少填一格。引擎侧仍是单个 `utility` 键（FIXED_KEYS 零改）。 -->
-      <view class="row">
-        <text class="row-name">{{t.energyFee}}</text>
-        <view class="row-in-wrap">
-          <input class="row-in" type="digit" value="{{energyYuan}}" bindinput="onEnergy" adjust-position="{{true}}" cursor-spacing="20" />
-          <text class="row-unit">{{t.yuanUnit}}</text>
-        </view>
+      <!-- 🔴 R543（李老师 2026-10-27）：「一合了之」不是当时的定案 —— 当时只是要给
+           **水费电费开在一张单子上、分不开的店**一个合并选项，不是把两栏永久删掉。
+           ⇒ 默认**分两栏**（水费 / 电费），开关打开才走「水电合计」。
+           ⚠️ 装配层零改动：`utils/bizPreset.js` 里 `energyYuan` 优先、未传则回落
+              `waterYuan + electricYuan`（R541 已留好这个口子，矩阵/旧草稿也靠它兼容）。 -->
+      <view class="row switch-row">
+        <text class="switch-label">{{t.energyMergeLabel}}</text>
+        <switch checked="{{energyMerged}}" color="#1e3a5f" bindchange="onToggleEnergyMerge" />
       </view>
+      <view class="row-note">{{t.energyMergeNote}}</view>
+      <block wx:if="{{energyMerged}}">
+        <view class="row">
+          <text class="row-name">{{t.energyFee}}</text>
+          <view class="row-in-wrap">
+            <input class="row-in" type="digit" value="{{energyYuan}}" bindinput="onEnergy" adjust-position="{{true}}" cursor-spacing="20" />
+            <text class="row-unit">{{t.yuanUnit}}</text>
+          </view>
+        </view>
+      </block>
+      <block wx:else>
+        <view class="row">
+          <text class="row-name">{{t.waterFee}}</text>
+          <view class="row-in-wrap">
+            <input class="row-in" type="digit" value="{{waterYuan}}" bindinput="onWater" adjust-position="{{true}}" cursor-spacing="20" />
+            <text class="row-unit">{{t.yuanUnit}}</text>
+          </view>
+        </view>
+        <view class="row">
+          <text class="row-name">{{t.electricFee}}</text>
+          <view class="row-in-wrap">
+            <input class="row-in" type="digit" value="{{electricYuan}}" bindinput="onElectric" adjust-position="{{true}}" cursor-spacing="20" />
+            <text class="row-unit">{{t.yuanUnit}}</text>
+          </view>
+        </view>
+      </block>
       <view class="row">
         <text class="row-name">{{t.gasFee}}</text>
         <view class="row-in-wrap">
@@ -335,6 +360,17 @@
        现改为**无条件**锚点、两张卡上的 id 一律卸掉（同页重复 id 也是隐患）。 -->
   <view id="m2result"></view>
 
+  <!-- 🔴 R543（李老师 2026-10-27）：「这本身就是做盈亏平衡点的经营沙盘，保本点必须有明显的位置」。
+       原保本卡排在四张结果卡之后（要往下翻到第 5 屏）⇒ 提到结果区**第一张卡**：大字 + 独立底色。
+       ⚠️ 同一个数只出现一次：原 result 卡里那三行保本数已删（见下方注释）。 -->
+  <view class="card2 be-hero" wx:if="{{mode === 'forward' && result && !result.red_alert}}">
+    <view class="be-cap">{{t.beHeroCap}}</view>
+    <view class="be-num">{{t.cur}}{{result.break_even_monthly}}</view>
+    <view class="be-hint">{{t.beHeroHint}}</view>
+    <view class="be-sub">{{t.resBreakDaily}}：{{t.cur}}{{result.break_even_daily}}</view>
+    <view class="be-sub" wx:if="{{result.break_even_cash}}">{{t.beCashLabel2}}：{{t.cur}}{{result.break_even_cash}}（{{t.beCashNote2}}）</view>
+  </view>
+
   <!-- M2v1.1 反推结果（仅反推 Tab；全部来自云端 reverse 块） -->
   <block wx:if="{{mode === 'reverse' && reverseResult}}">
     <view class="card2" wx:if="{{reverseResult.red_alert}}">
@@ -376,31 +412,11 @@
     </view>
   </view>
 
-  <!-- R234 · 主结论卡「这个铺子租金贵不贵」=====
-       为什么要有它：小白看完「保本营业额 18 万」不知道下一步干什么 —— 他脑子里只有一个问题
-       「**这个铺子值不值得拿**」。⇒ **先给判定，再给数字**，而不要让用户自己在表格里找结论。
-       🔴 判定**不自造**：`verdict.level` 直接读引擎 indicators 里 rent 那行的 level，
-          前端只做 key → 中文映射（见 index.js::verdictOf）。
-       放在结果区**第一位**：结论要在用户往下翻之前就看到。 -->
-  <view class="card2 verdict-card" wx:if="{{mode === 'forward' && verdict && verdict.level !== 'na'}}">
-    <view class="verdict-head">
-      <text class="verdict-title">{{t.verdictHealthTitle}}</text>
-      <text class="verdict-lv lv-{{verdict.level}}">{{verdict.levelName}}</text>
-    </view>
-    <view class="verdict-row">
-      <text class="verdict-lbl">{{verdict.itemName}}</text>
-      <text class="verdict-val">{{verdict.mine}}（参考 {{verdict.band}}）{{verdict.levelName}}</text>
-    </view>
-    <view class="verdict-note">{{verdict.note}}</view>
-    <view class="verdict-health">
-      <text class="vh-cap">{{t.verdictHealthStrip}}</text>
-      <view class="vh-item" wx:for="{{verdict.summary}}" wx:key="key">
-        <text class="vh-name">{{item.name}}</text>
-        <text class="vh-pct">{{item.pct == null ? '—' : item.pct + '%'}}</text>
-        <text class="vh-lv lv-{{item.level}}">{{item.level}}</text>
-      </view>
-    </view>
-  </view>
+  <!-- 🔴 R543（李老师 2026-10-27）：**删除「你这个店健不健康」整卡** —— 它和下面
+       「你的经营指标对照」是同一批 6 项、同一批 level（重复），而且那 6 行渲染的是**英文枚举**
+       （good/ok/warn/bad，老板看不懂）。⇒ 结论与明细合并成一张表：判定看表格最后一列
+       （优秀/合理/偏高/过高，中文，配色沿用 app.wxss 的 .lv-* 单源），不再另设结论卡。
+       ⚠️ `verdict` 数据本身保留：吸底条（refreshStick）还在用它的等级文案改标题。 -->
 
   <!-- 🔴 R367（李老师 2026-10-19）：「想月赚 X，要怎么做」—— 目标反推。
        两个数是**各自单算**（只动这一项就够），所以下面明写"不要叠加"。
@@ -440,16 +456,8 @@
     <view class="derived-note" wx:if="{{derivedNote}}">{{derivedNote}}</view>
 
     <view class="card2">
-      <view class="cell big"><text class="lbl">{{t.resBreakMonthly}}</text><text class="val keynum">{{t.cur}}{{result.break_even_monthly}}</text></view>
-      <view class="cell"><text class="lbl">{{t.resBreakDaily}}</text><text class="val">{{t.cur}}{{result.break_even_daily}}</text></view>
-      <!-- 🔴 R343：现金保本 —— 与账面保本并排，让老板看到"不算折旧，房租工资付得起要卖多少"。
-           无摊销时 js 返回 null，这里自动不渲染（两个数相同没意义）。 -->
-      <view class="cell" wx:if="{{result.break_even_cash}}">
-        <text class="lbl">{{t.beCashLabel2}}</text><text class="val">{{t.cur}}{{result.break_even_cash}}</text>
-      </view>
-      <view class="cell" wx:if="{{result.break_even_cash}}">
-        <text class="lbl">{{t.beCashNote2}}</text>
-      </view>
+      <!-- 🔴 R543：保本三行（月/日/现金）**已上移**到结果区第一张卡 `be-hero`，
+           这里只留目标月营收，避免同一个数在屏上出现两遍。 -->
       <!-- 🔴 R340：目标利润没填时，目标月营收 == 保本营收（引擎口径），两行并排会让老板以为算错了。
            所以整组只在「填了目标」时出现；没填时给一句引导，不编一个目标值。 -->
       <block wx:if="{{result.has_target}}">
@@ -603,6 +611,14 @@
     <view class="tab-row">
       <view class="tab {{indTab === 'break' ? 'on' : ''}}" data-tab="break" bindtap="onIndTab">{{t.indByBreak}}</view>
       <view class="tab {{indTab === 'target' ? 'on' : ''}}" data-tab="target" bindtap="onIndTab">{{t.indByTarget}}</view>
+    </view>
+    <!-- 🔴 R543（李老师 2026-10-27）：「后面 bad/good/ok/warn 有人看不懂」——
+         本表渲染的是中文（item.levelName），颜色走 .lv-* 单源；这里补一行图例说明颜色含义。 -->
+    <view class="ind-legend">
+      <text class="ind-lg lv-good">● {{t.indLvGood}}</text>
+      <text class="ind-lg lv-ok">● {{t.indLvOk}}</text>
+      <text class="ind-lg lv-warn">● {{t.indLvWarn}}</text>
+      <text class="ind-lg lv-bad">● {{t.indLvBad}}</text>
     </view>
     <view class="ind-row ind-head">
       <text class="ind-c1"> </text>

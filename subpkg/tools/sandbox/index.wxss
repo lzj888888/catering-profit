@@ -54,7 +54,10 @@
   border: 1rpx solid #dfe5ec; border-radius: 10rpx; padding: 6rpx 14rpx; background: #fff;
   margin-right: 12rpx; min-height: 88rpx;
 }
-.row-in-wrap.yr { flex: 0 0 168rpx; }
+/* 🔴 R543（李老师 2026-10-27）：「输个 5 万只出来 5000」——
+   年限框原固定 168rpx（只放「5 年」两个字），把金额框挤到 200rpx 出头；金额又是右对齐 ⇒
+   多位数只露得出尾巴几位。⇒ 年限框收到 110rpx，金额框吃满剩余宽度并保底 260rpx。 */
+.row-in-wrap.yr { flex: 0 0 110rpx; }
 .row-in { flex: 1 1 auto; font-size: 30rpx; color: #1e3a5f; text-align: right; min-height: 40rpx; }
 .row-unit { font-size: 30rpx; color: #888; margin-left: 6rpx; }
 .row-del { flex: 0 0 auto; font-size: 30rpx; color: #9aa4b2; padding: 16rpx 0 16rpx 8rpx; }
@@ -71,6 +74,19 @@
 
 /* ===== 结果区 ===== */
 .cell.big .lbl { font-weight: 600; color: #333; }
+/* 🔴 R543：保本线 hero（结果区第一张卡）—— 独立底色 + 大字，让测算完第一眼看到的就是它。
+   配色只用页面既有的墨蓝体系，不另造色板。 */
+.be-hero {
+  background: linear-gradient(135deg, #1e3a5f 0%, #162c49 100%);
+  border: none; padding: 30rpx 28rpx;
+}
+.be-cap { font-size: 30rpx; color: rgba(255, 255, 255, 0.82); }
+.be-num { font-size: 64rpx; font-weight: 800; color: #fff; line-height: 1.25; margin-top: 6rpx; }
+.be-hint { font-size: 28rpx; color: rgba(255, 255, 255, 0.72); margin-top: 2rpx; }
+.be-sub { font-size: 30rpx; color: rgba(255, 255, 255, 0.92); margin-top: 14rpx; }
+/* 指标对照表的颜色图例（颜色由 .lv-* 单源给，这里只管排版） */
+.ind-legend { display: flex; flex-wrap: wrap; padding: 4rpx 0 12rpx; }
+.ind-lg { font-size: 28rpx; margin-right: 22rpx; }
 .keynum { font-size: 40rpx; font-weight: 800; color: #1e3a5f; }
 .calc-btn { margin: 8rpx 0 24rpx; }
 .err-hint { font-size: 30rpx; color: #c0392b; min-height: 88rpx; line-height: 88rpx; }
@@ -95,6 +111,11 @@
    目的：降低"不知道这项该填多少"的门槛（客户多为餐饮小白）。
    ⚠️ 无障碍硬约束（selftest_ad_gates G1/G2）：字号一律 ≥28rpx；min-height 只在 88rpx 用。 */
 .rw { display: block; }
+/* 🔴 R543：开店投入行是「名称 + 金额 + 年限 + 删」四段，名称列比通用行窄一档，
+   把宽度让给金额（5~6 位数不能截断）。 */
+.rw .row-name { flex: 0 0 190rpx; }
+.rw .row-in-wrap:not(.yr) { flex: 1 1 auto; min-width: 260rpx; }
+.rw .row-in { min-width: 200rpx; }
 .row-note { font-size: 30rpx; color: #646a73; line-height: 1.4; padding: 0 0 12rpx; }
 /* R443：输入区「每月固定支出合计」——只加粗，不另造配色（避免与页面既有色板打架） */
 .total-line { font-weight: 600; }

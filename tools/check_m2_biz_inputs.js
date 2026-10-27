@@ -287,23 +287,33 @@ check('B-④ `bizKeyOfPreset` 被 require 且被调用（4 大类的映射只有
   /bizKeyOfPreset/.test(js) && /bizKeyOfPreset\s*\(/.test(js) && /bizKeyOfPreset/.test(presetRaw),
   '页面引用 + 参数包导出均在位');
 
-// ============ C 主判据：主结论卡在场且不自造判定 ============
-sec('C 主判据：结论先给判定（主结论卡）且判定**不自造**');
+// ============ C 主判据：判定必须**可见且是中文**（结论卡与明细表已合并） ============
+// 🔴 R543（李老师 2026-10-27）：「健不健康有两处体现，保留最下面的『你的经营指标对照』就行了，
+//   这个本身就有过低/优秀这些参数」。⇒ 原「你这个店健不健康」卡**整卡删除**（与下表同一批 6 项、
+//   同一批 level，属重复；且那 6 行渲染的是英文枚举 good/ok/warn/bad，老板看不懂）。
+//   ⚠️ 判据不能因为卡片没了就删掉 —— 它守的是「判定要看得见、且必须是中文」这条契约，
+//      只是锚点从「卡片」改到「表格」：中文等级 + 禁止裸英文枚举 + 颜色图例。
+sec('C 主判据：判定可见且为中文（指标对照表）');
 const vo = bodyOf(js, 'verdictOf');
 check('C-⓪ `verdictOf` 函数体可解析', !!vo, vo ? `函数体 ${vo.length} 字符` : '未找到定义');
 // 🔴 三要素**逐条**判，而不是"页面里有 {{verdict.x}} 就算在场"：
 //    首版判据写成了后者 ⇒ 变异 ⑤（只删判定等级那一行）**实测没转红** —— 页面里还有
 //    `{{verdict.mine}}` 等 3 处绑定，正则照样命中 ⇒ 判据恒绿。
 //    ⇒ 主结论卡的**本体是判定**，等级 / 等级文案 / 标题 缺任何一个都不算"结论先给判定"。
-check('C-①a 渲染判定等级 `{{verdict.level}}`（卡片本体）',
-  /\{\{verdict\.level\}\}/.test(wx), /\{\{verdict\.level\}\}/.test(wx) ? '在场' : '缺失 ⇒ 结论卡只剩数字');
-check('C-①b 渲染判定文案 `{{verdict.levelName}}`（等级要有中文）',
-  /\{\{verdict\.levelName\}\}/.test(wx), /\{\{verdict\.levelName\}\}/.test(wx) ? '在场' : '缺失 ⇒ 用户看到英文枚举');
+check('C-①a 指标对照表渲染中文等级 `{{item.levelName}}`',
+  /\{\{item\.levelName\}\}/.test(wx), /\{\{item\.levelName\}\}/.test(wx) ? '在场' : '缺失 ⇒ 只剩英文枚举');
+// 🔴 反向判据（R543 真机问题的正身）：等级**不得**以裸英文当文字渲染。
+//   原「健不健康」卡写的是 `{{item.level}}` ⇒ 屏上直接出现 bad / good / ok / warn。
+//   样式类 `lv-{{item.level}}` 不算（那是 class，不显示）。只判「作为文本节点出现」。
+check('C-①b 不得把英文枚举当文字渲染（`<text>{{item.level}}</text>`）',
+  !/<text[^>]*>\{\{item\.level\}\}<\/text>/.test(wx), '零裸英文等级');
 // 🔴 #7（round272）术语改名：主结论卡标题键由 `verdictTitle` 改为 `verdictHealthTitle`
 //   （含义从「租金贵不贵」拓宽为「铺子健不健康」综合健康度）。terms.js 里 `verdictTitle` 已成孤儿键，
 //   wxml 实际用的是 `verdictHealthTitle` ⇒ 判据须跟新键，否则恒红（判据过期，非代码回退）。
-check('C-①c 渲染卡片标题 `{{t.verdictHealthTitle}}`（说清这张卡在答什么）',
-  /\{\{t\.verdictHealthTitle\}\}/.test(wx), /\{\{t\.verdictHealthTitle\}\}/.test(wx) ? '在场' : '缺失 ⇒ 卡片没有名字');
+// 标题 + 颜色图例（图例说明颜色含义，李老师原话：「要么你标好了是红的白的绿的，用什么颜色表示什么」）
+check('C-①c 表格有标题 `{{t.secIndicators}}` 且有颜色图例（ind-legend）',
+  /\{\{t\.secIndicators\}\}/.test(wx) && /class="ind-legend"/.test(wx),
+  /\{\{t\.secIndicators\}\}/.test(wx) && /class="ind-legend"/.test(wx) ? '标题与图例均在场' : '缺标题或缺颜色图例');
 // 🔴 判据：判定等级必须来自引擎 indicators，前端**不能自己再判一遍**。
 check('C-② `verdictOf` 内**不得**调用 `levelOf`（判定不自造）',
   !!vo && !/\blevelOf\s*\(/.test(vo), !!vo && /\blevelOf\s*\(/.test(vo) ? '发现自造判定' : '零自造（只读引擎 level）');
@@ -538,25 +548,33 @@ sec('T L1 标题数字 ≡ 实际输入行数（R339）');
 }
 
 // ============ U 组（R341）：L1 三个输入项的语义补答 ============
-//   为什么守：这三项在餐饮实务里都有歧义，不问清楚会**直接算错**——
-//     · 面积：使用面积 vs 房本面积（差约 20% ⇒ 坪效错）
+//   为什么守：这几项在餐饮实务里都有歧义，不问清楚会**直接算错**——
+//     · 面积：~~使用面积 vs 房本面积~~ ⇒ 🔴 R543 已删（李老师 2026-10-27）：
+//       **房租是按房本面积交的**，让用户按「实际能用面积」填，租金占比必然对不上 ⇒ 那句是错误引导。
 //     · 房租：含不含物业/取暖（直接进固定费用 ⇒ 保本错）
 //     · 人数：含不含老板夫妻（人效分母错）
 //   而"加一句提示"最容易在改版时被删掉，且删了不影响任何计算 —— 全靠人盯。
 sec('U 输入项语义提示（R341）');
 {
   const U = require('../miniprogram/i18n/terms.js').TERMS.m2;
-  const keys = ['areaHint', 'rentHint', 'headcountHint', 'headcountHintRev'];
+  const keys = ['rentHint', 'headcountHint', 'headcountHintRev'];
 
   const missing = keys.filter((k) => !String(U[k] || '').trim());
-  check('U-① 四个语义提示键都存在且非空', missing.length === 0, '缺：' + missing.join('/'));
+  check('U-① 三个语义提示键都存在且非空', missing.length === 0, '缺：' + missing.join('/'));
 
   const tooLong = keys.filter((k) => String(U[k] || '').length > 18);
   check('U-② 每条 ≤18 字（超过就不算"短提示"，应按分层线改折叠）', tooLong.length === 0,
     tooLong.map((k) => k + '=' + String(U[k]).length + '字').join(' / '));
 
   const n = (wxmlRaw.match(/class="row-hint"/g) || []).length;
-  check('U-③ L1 里真的渲染了 3 条提示', n === 3, '实际 ' + n + ' 条');
+  // 🔴 R543：面积那条提示删除后，L1 只剩「房租 / 人数」两条。
+  //   同时**正向钉住**这两条仍在渲染、且 areaHint 不得回潮（删错/加回都要红）。
+  // ⚠️ 人数那条写在三元里（`{{mode === 'reverse' ? t.headcountHintRev : t.headcountHint}}`）
+  //   ⇒ 判据用 **键名** 而不是整段插值字面量；`\b` 防 `headcountHintRev` 冒充 `headcountHint`。
+  const u3 = n === 2 && /t\.rentHint\b/.test(wxmlRaw) && /t\.headcountHint\b/.test(wxmlRaw)
+    && !/t\.areaHint\b/.test(wxmlRaw);
+  check('U-③ L1 只渲染 2 条提示（房租 / 人数），面积那条已删且不得回潮',
+    u3, '实际 ' + n + ' 条' + (/t\.areaHint\b/.test(wxmlRaw) ? '；areaHint 又回来了' : ''));
 
   // 人数在两种模式下语义不同：已有店铺「含老板夫妻」、找店「打算请几个」
   // —— 只写一条会让另一个模式文不对题。
