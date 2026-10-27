@@ -441,14 +441,19 @@ function assembleItems(preset, input, coef) {
       //   有店 ⇒ 填实数，三数都 >0 则求和进 utility 引擎键（不改 FIXED_KEYS，引擎零改动）；
       //   找店小白未填实数 ⇒ 房租 × 占比(rentPct) 反推总额兜底（与旧 derivedFrom 同口径）。
       const fy = in_.fixedYuan || {};
-      const w = Number(in_.waterYuan != null ? in_.waterYuan : fy.water);
-      const elec = Number(in_.electricYuan != null ? in_.electricYuan : fy.electric);
-      const gas = Number(in_.gasYuan != null ? in_.gasYuan : fy.gas);
-      // 🔴 D3（2026-10-27 拍板）：原 `w>0 && elec>0 && gas>0` 要求三项全填，否则整组丢弃改派生 ⇒
+      // 🔴 D3-A（2026-10-27 拍板）：原 `w>0 && elec>0 && gas>0` 要求三项全填，否则整组丢弃改派生 ⇒
       //   老板填了电 1500 系统却按 房租×40%(3200) 算，用户填的数被静默丢。
       //   改：任一项 >0 就用填的（求和），三项全空才走 rent_rate 派生。
-      if (w + elec + gas > 0) {
-        fixedItems.push({ key: m.itemKey, fen: fenOf(w + elec + gas) });
+      // 🔴 D3-C（2026-10-27 拍板·第二轮）：水/电在界面上**合并为一个输入 `energyYuan`**（水电合计），
+      //   燃气仍独立可选（无燃气业态留空即可）。判定口径不变：合计 >0 就用填的。
+      //   ⚠️ **向后兼容**：矩阵/旧草稿/审计脚本仍传 `waterYuan`+`electricYuan` ⇒ 二者相加视为水电合计；
+      //      传了 `energyYuan`（含 '' / 0）⇒ 以它为准，不再叠加旧字段（否则重复计）。
+      const w = Number(in_.waterYuan != null ? in_.waterYuan : fy.water) || 0;
+      const elec = Number(in_.electricYuan != null ? in_.electricYuan : fy.electric) || 0;
+      const energy = in_.energyYuan != null ? (Number(in_.energyYuan) || 0) : (w + elec);
+      const gas = Number(in_.gasYuan != null ? in_.gasYuan : fy.gas) || 0;
+      if (energy + gas > 0) {
+        fixedItems.push({ key: m.itemKey, fen: fenOf(energy + gas) });
       } else if (m.derivedFrom === 'rent_rate') {
         const base = rentFenRaw > 0 ? rentFenRaw
           : Math.round(fenOf(RATE_COST_FLOOR[bizKey] || 10000) * (co.rent || 1));

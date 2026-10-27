@@ -7,6 +7,9 @@
 //     —— 老板只填了电 1500，系统却按 房租×40%(3200) 算，用户填的数被静默丢（审计实证复现）。
 //   2026-10-27 拍板改成「任一项 >0 就采用填的（求和），三项全空才走 rent_rate 派生」
 //   （bizPreset.js:447-457）。本守卫用**真实装配**喂数字断言行为，并做变异回灌证明分辨力（非恒绿）。
+// 🔴 D3-C（2026-10-27 第二轮）：界面上水、电合并为一个输入 `energyYuan`（水电合计），燃气独立可选。
+//   装配层新增 `energyYuan` 优先、未传时回落 `waterYuan + electricYuan`（矩阵/旧草稿兼容）。
+//   本守卫补 A-⑤~A-⑧ 四条行为断言 + C-⑤ 源码锚点，锁死「合并后仍任一项 >0 就采用」。 
 //
 // 判据（P/Q/A/B/C/E 六段，全部 fail-closed：读不到 / 提取不到即判红）：
 //   P 前置     bizPreset 可 require + 源码可读
@@ -95,6 +98,28 @@ for (const pk of ['fastfood_noodle', 'other']) {
   check('A-④ 水100+电200+气300 → utility 必须 = 60000（求和）', utilFen(e.fixedItems) === 60000,
     `utility=${utilFen(e.fixedItems)} 分`);
 }
+// 🔴 D3-C（2026-10-27 第二轮）：界面把水、电合并为单一输入 `energyYuan`（水电合计），燃气仍可选独立。
+{
+  const e = buildForward('fastfood_noodle', 'tier23', { energyYuan: 1500 });
+  check('A-⑤ 水电合计 1500（燃气空）→ utility 必须 = 150000', utilFen(e.fixedItems) === 150000,
+    `utility=${utilFen(e.fixedItems)} 分`);
+}
+{
+  const e = buildForward('fastfood_noodle', 'tier23', { energyYuan: 1500, gasYuan: 300 });
+  check('A-⑥ 水电 1500 + 燃气 300 → utility 必须 = 180000', utilFen(e.fixedItems) === 180000,
+    `utility=${utilFen(e.fixedItems)} 分`);
+}
+{
+  const e = buildForward('fastfood_noodle', 'tier23', { energyYuan: 0, gasYuan: 600 });
+  check('A-⑦ 水电 0 + 燃气 600（无燃气以外能耗）→ utility 必须 = 60000', utilFen(e.fixedItems) === 60000,
+    `utility=${utilFen(e.fixedItems)} 分`);
+}
+{
+  // 向后兼容：矩阵/旧草稿仍传 waterYuan + electricYuan，二者相加视为水电合计
+  const e = buildForward('fastfood_noodle', 'tier23', { waterYuan: 800, electricYuan: 700 });
+  check('A-⑧ 向后兼容：旧 water800+electric700（无 energyYuan）→ 150000', utilFen(e.fixedItems) === 150000,
+    `utility=${utilFen(e.fixedItems)} 分`);
+}
 
 // ============ B 正控（三项全空 → 走 rent_rate 派生，证明不是"永远求和"）============
 sec('B · 正控（三项全空 → utility 走房租派生，≠ 填的数）');
@@ -119,13 +144,15 @@ check('C-③ 两者在"只填一项"样本上相异 ⇒ 守卫有分辨力（非
   GOOD(onlyElec[0], onlyElec[1], onlyElec[2]) !== BAD(onlyElec[0], onlyElec[1], onlyElec[2]));
 // 静态锚点：源码含现行写法（全仓仅 energy_split 分支出现），改回旧 && 写法即转红
 const esIdx = bizSrc.indexOf("form === 'energy_split'");
-check('C-④ 源码含 `w + elec + gas > 0`（改回旧 && 写法即转红）',
-  /w \+ elec \+ gas > 0/.test(bizSrc), esIdx >= 0 ? '已锚定 energy_split 分支' : '未找到分支');
+check('C-④ 源码含 `energy + gas > 0`（改回旧 && 写法即转红）',
+  /energy \+ gas > 0/.test(bizSrc), esIdx >= 0 ? '已锚定 energy_split 分支' : '未找到分支');
+check('C-⑤ 源码含 `energyYuan`（水电合并字段；删掉回退即转红）',
+  bizSrc.indexOf('energyYuan') >= 0, 'energy_split 分支已接合并字段');
 
 // ============ E 自失效护栏（防"扫空 ⇒ 恒绿"）============
 sec('E · 自失效护栏');
 check('E-① 源码非退化（>1500 字符）', bizSrc.length > 1500, bizSrc.length + ' 字符');
-check('E-② 断言数下界（pass ≥ 9，删一批仍 >0）', pass >= 9, `当前 pass=${pass}`);
+check('E-② 断言数下界（pass ≥ 17，删一批仍 >0）', pass >= 17, `当前 pass=${pass}`);
 
 console.log(`\n===== M2 energy_split 守卫结果：${pass} 通过 / ${failN} 失败 =====`);
 process.exit(failN === 0 ? 0 : 1);

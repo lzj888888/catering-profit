@@ -282,8 +282,7 @@ Page({
       laborTotalPh: M.laborTotalPh,
       laborTotalNote: M.laborTotalNote,
       // 🔴 R296 拍3：水/电/气拆三项输入（引擎仍合成单个 utility 键，零部署）。
-      waterFee: M.waterFee,
-      elecFee: M.elecFee,
+      energyFee: M.energyFee,
       gasFee: M.gasFee,
       utilitySplitNote: M.utilitySplitNote,
       // 🔴 R296 拍2：管理费可选填（留空 = 不评）。
@@ -417,9 +416,9 @@ Page({
     //   内部兜底值（选业态时由预设带出、无输入框）—— 用户没填总额时按「人数 × 该值」估。
     laborUnitYuan: '',       // 单人月人工单价（元）—— 内部兜底，无输入框
     laborTotalYuan: '',      // 🔴 拍1：人工每月总额（元）—— 用户直填，不乘人数
-    // 🔴 R296 拍3：水/电/气三项实数（有店填；找店留空 ⇒ 引擎按「房租×占比」给参考值）。
-    waterYuan: '',
-    electricYuan: '',
+    // 🔴 R296 拍3 · D3-C（2026-10-27）：水、电合并为一个「水电合计」输入（有店填；找店留空 ⇒ 引擎按「房租×占比」给参考值）。
+    //   燃气仍独立可选（无燃气业态留空即可，不再要求三项全填）。
+    energyYuan: '',
     gasYuan: '',
     // 🔴 R296 拍2：管理费（选填）—— 普通单店通常没有，留空 = 不评（不虚高）。
     manageYuan: '',
@@ -549,8 +548,7 @@ Page({
         //   ⚠️ 这些是「元」字符串：原样存取，不做任何换算（换算会引入精度问题，见 check_money_precision）。
         rentYuan: this.data.rentYuan,
         laborTotalYuan: this.data.laborTotalYuan,
-        waterYuan: this.data.waterYuan,
-        electricYuan: this.data.electricYuan,
+        energyYuan: this.data.energyYuan,
         gasYuan: this.data.gasYuan,
         manageYuan: this.data.manageYuan,
         // 🔴 R525：其他杂支 % 也要进草稿 —— 老板改成 0（不扣这项）后退出重进，不能被默认 2% 顶回来。
@@ -575,6 +573,9 @@ Page({
     // 🔴 R296 拍1 / R296b：旧草稿里的 `d.fixed`（明细表）与 `d.varRows`（挂钩明细）**一并忽略**。
     const ci = d.cityIdx || 0;
     const bi = d.bizIdx || 0;
+    // 🔴 D3-C：旧草稿只有 waterYuan/electricYuan（两框）⇒ 迁移为水电合计单值。
+    //   仅在合计 >0 时回填；合计为 0 时保持空串（尊重「用户清空」语义，不把 0 显示出来）。
+    const legacyEnergy = (Number(d.waterYuan) || 0) + (Number(d.electricYuan) || 0);
     this.setData({
       cityIdx: ci, cityName: M.cityTiers[ci].name,
       bizIdx: bi, bizName: M.bizTypes[bi].name,
@@ -588,8 +589,8 @@ Page({
       //   **空串是老板自己清空的状态**，不能被默认值顶回来（否则「我明明清空了，重进又有了」）。
       rentYuan: d.rentYuan !== undefined ? d.rentYuan : this.data.rentYuan,
       laborTotalYuan: d.laborTotalYuan !== undefined ? d.laborTotalYuan : this.data.laborTotalYuan,
-      waterYuan: d.waterYuan !== undefined ? d.waterYuan : this.data.waterYuan,
-      electricYuan: d.electricYuan !== undefined ? d.electricYuan : this.data.electricYuan,
+      energyYuan: d.energyYuan !== undefined ? d.energyYuan
+        : (legacyEnergy > 0 ? String(legacyEnergy) : this.data.energyYuan),
       gasYuan: d.gasYuan !== undefined ? d.gasYuan : this.data.gasYuan,
       manageYuan: d.manageYuan !== undefined ? d.manageYuan : this.data.manageYuan,
       // 🔴 R525：杂支 % 同样是「空串/0 也是老板的选择」⇒ 用 `!== undefined` 判，别拿默认 2% 顶回来；
@@ -892,7 +893,7 @@ Page({
    * 来由、实测数据与边界见 review/NOTE_2026-10-21_R418_金额输入可读性.md（注释不进包体，省体积）。
    */
   checkAmountInputs() {
-    const KEYS = ['rentYuan', 'laborTotalYuan', 'waterYuan', 'electricYuan', 'gasYuan',
+    const KEYS = ['rentYuan', 'laborTotalYuan', 'energyYuan', 'gasYuan',
       'manageYuan', 'targetYuan', 'expectYuan', 'avgPriceYuan', 'initialInvestYuan'];
     const fields = {};
     for (let i = 0; i < KEYS.length; i++) fields[KEYS[i]] = this.data[KEYS[i]];
@@ -1533,10 +1534,9 @@ Page({
   // 🔴 round279e · A：初始总投入（非必填）。不进引擎，只在前端派生回本月数（见 onCalcPresetFwd）。
   onInitialInvest(e) { this.setData({ initialInvestYuan: e.detail.value }); this.scheduleCalc(); },
   onAvgPrice(e) { this.setData({ avgPriceYuan: e.detail.value, 'fieldTouched.avg': true }); this.scheduleCalc(); },
-  // 🔴 R296 拍1/拍2/拍3：结构化固定成本输入（人工总额 / 水电气三项 / 管理费）。
+  // 🔴 R296 拍1/拍2/拍3 · D3-C：结构化固定成本输入（人工总额 / 水电合计 + 燃气 / 管理费）。
   onLaborTotal(e) { this.setData({ laborTotalYuan: e.detail.value }); this.scheduleCalc(); },
-  onWater(e) { this.setData({ waterYuan: e.detail.value }); this.scheduleCalc(); },
-  onElectric(e) { this.setData({ electricYuan: e.detail.value }); this.scheduleCalc(); },
+  onEnergy(e) { this.setData({ energyYuan: e.detail.value }); this.scheduleCalc(); },
   onGas(e) { this.setData({ gasYuan: e.detail.value }); this.scheduleCalc(); },
   onManage(e) { this.setData({ manageYuan: e.detail.value }); this.scheduleCalc(); },
   // ⚠️ 原 `onLaborUnit`（员工月均工资输入）已随输入框删除 —— 人工改「直接填总额」，
@@ -1585,7 +1585,7 @@ Page({
   //   边界：**只做展示**、不参与任何计算（口径单源仍是 buildPresetParam）；任一栏读不成数字
   //   ⇒ **不显示**（宁可不显示，也不显示一个少算的数；原因由金额提示那行说明）。
   refreshFixedPreview() {
-    const KEYS = ['rentYuan', 'laborTotalYuan', 'waterYuan', 'electricYuan', 'gasYuan', 'manageYuan'];
+    const KEYS = ['rentYuan', 'laborTotalYuan', 'energyYuan', 'gasYuan', 'manageYuan'];
     let sum = 0;
     for (const k of KEYS) {
       const v = this.data[k];
@@ -1610,7 +1610,7 @@ Page({
     // 「还差：房租、人工、水电气」比「还差：每月房租多少钱、人工每月总额」读得下去。
     if (!filled('rentYuan')) miss.push(M.fixedItems.rent);
     if (!filled('laborTotalYuan')) miss.push(M.fixedItems.labor);
-    if (!(filled('waterYuan') || filled('electricYuan') || filled('gasYuan'))) miss.push(M.fixedItems.utility);
+    if (!(filled('energyYuan') || filled('gasYuan'))) miss.push(M.fixedItems.utility);
     const txt = miss.length ? (d.t.missingPrefix + miss.join('、')) : '';
     if (txt !== d.missingHint) this.setData({ missingHint: txt });
   },
@@ -1744,9 +1744,8 @@ Page({
       laborTotalYuan: Number(this.data.laborTotalYuan) || 0,
       laborUnitYuan: Number(this.data.laborUnitYuan) || 0,
       rentYuan: Number(this.data.rentYuan) || 0,
-      // 🔴 R296 拍3：水/电/气三项实数（有店填；找店留空 ⇒ assembleItems 走「房租×占比」参考值）。
-      waterYuan: Number(this.data.waterYuan) || 0,
-      electricYuan: Number(this.data.electricYuan) || 0,
+      // 🔴 R296 拍3 · D3-C：水电合计 + 燃气（有店填；找店留空 ⇒ assembleItems 走「房租×占比」参考值）。
+      energyYuan: Number(this.data.energyYuan) || 0,
       gasYuan: Number(this.data.gasYuan) || 0,
       // 🔴 R219 口径（两道防线之一·装配层）：反推模式下 `fixed_items` **不得含 rent**。
       //    房租在此处是**求解目标**，把它当已知固定成本喂进去会**重复计租**。
@@ -1920,13 +1919,12 @@ Page({
         _ind: { break: d.indicators_at_breakeven || [], target: d.indicators_at_target || [] },
       };
       // 🔴 D8（2026-10-27 拍板）：结果区派生项标注。本 handler 仅 forward，管理费键恒在 fixedYuan ⇒ 永不被派生；
-      //   只有水/电/气三项全空时 utility 才走「房租 × 占比」派生。派生项名取自 M.fixedItems（与 fixedBreak 同源），
+      //   只有水电合计 + 燃气都为空时 utility 才走「房租 × 占比」派生。派生项名取自 M.fixedItems（与 fixedBreak 同源），
       //   来源文案走 terms 双副本（K11 守卫），绝不在 JS 里硬编码中文。
       const _derivedKeys = [];
-      const _w = Number(this.data.waterYuan) || 0;
-      const _e = Number(this.data.electricYuan) || 0;
+      const _en = Number(this.data.energyYuan) || 0;
       const _g = Number(this.data.gasYuan) || 0;
-      if (_w + _e + _g === 0) _derivedKeys.push('utility');
+      if (_en + _g === 0) _derivedKeys.push('utility');
       const _derivedNote = _derivedKeys.length
         ? (M.derivedNotePrefix + _derivedKeys.map((k) => (M.fixedItems && M.fixedItems[k]) || k).join('、') + M.derivedNoteSuffix)
         : '';

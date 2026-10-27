@@ -141,9 +141,11 @@ const ALLOW_INPUTS = {
   promoRealPct: '每 100 元实收(元) 0-100 → 折成折扣系数 d=实收率/100 供活动卡算；留空则按折扣档',
   // 🔴 R370（纯堂食·缩小为保本门槛）：新增「商家出资活动成本率」输入（赠送/奖品/自贴券占实收）
   promoCostPct: '活动成本率(%) → 与实收率一起算活动期边际贡献；老板从活动台账/采购能算出',
-  waterYuan: '水费(元/月) → 与电/气求和成 utility；有账单的填实数，没有留空走参考值',
-  electricYuan: '电费(元/月) → 与电/气求和成 utility；有账单的填实数，没有留空走参考值',
-  gasYuan: '燃气费(元/月) → 与电/气求和成 utility；有账单的填实数，没有留空走参考值',
+  // 🔴 D3-C（2026-10-27）：界面把水、电合并为 `energyYuan` 单框；waterYuan/electricYuan 仅装配层向后兼容（已无输入框）。
+  energyYuan: '水电合计(元/月) → utility 固定项；有账单填近 3 月月均（水+电），没有留空走参考值',
+  gasYuan: '燃气费(元/月，可选) → 与水电合计一起进 utility；无燃气业态留空',
+  waterYuan: '（已并入 energyYuan 水电合计，仅装配层向后兼容；无输入框）',
+  electricYuan: '（已并入 energyYuan 水电合计，仅装配层向后兼容；无输入框）',
   manageYuan: '管理费(元/月，选填) → manage 固定项；非加盟店留空 = 不评',
   marginPct: '菜品毛利率 → gross_margin_pct（核心口径，由菜品成本推出或选填）',
   openDaysNum: '每月开门天数 → 正向 valid_days / 反向 open_days（同一份用户输入，两个 Tab 共用）；老板自己定',

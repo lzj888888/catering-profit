@@ -133,7 +133,7 @@ function inputValues(wxml) {
 //         那正是本守卫存在的意义（参考值只当提示，绝不替你填）。
 // 2026-10-12（round279d #12 多渠道毛利率）：新增 8 个「分渠道」用户输入框，绑定 `channel.*`，
 //   均为用户手填/可改值（占比、抽成率、折扣率、覆盖值），非参考值注入 ⇒ 按本守卫纪律入白名单。
-const OK_VALUE = /^\{\{(item\.(yuan|years|pct)|targetYuan|expectYuan|planName|areaNum|rentYuan|headcountNum|avgPriceYuan|laborUnitYuan|openDaysNum|otherPctNum|pixelEffYuan|turnNum|channel\.(takeawayRatio|groupRatio|platformRate|packRate|discountRate|groupPlatformRate|takeawayOverride|groupOverride|cardRate)|initialInvestYuan|laborTotalYuan|waterYuan|electricYuan|gasYuan|manageYuan|promoRealPct|promoCostPct)\}\}$/;
+const OK_VALUE = /^\{\{(item\.(yuan|years|pct)|targetYuan|expectYuan|planName|areaNum|rentYuan|headcountNum|avgPriceYuan|laborUnitYuan|openDaysNum|otherPctNum|pixelEffYuan|turnNum|channel\.(takeawayRatio|groupRatio|platformRate|packRate|discountRate|groupPlatformRate|takeawayOverride|groupOverride|cardRate)|initialInvestYuan|laborTotalYuan|energyYuan|waterYuan|electricYuan|gasYuan|manageYuan|promoRealPct|promoCostPct)\}\}$/;
 // 🔴 R296 拍1/2/3（2026-10-14）：新增结构化固定成本输入 laborTotalYuan / waterYuan / electricYuan /
 //   gasYuan / manageYuan（替换「每月固定支出」明细表），均为**用户手填**（有账单填实数；找店留空走参考值，
 //   参考值只当占位/说明，**不进 value**）⇒ 按本守卫纪律入白名单。

@@ -138,19 +138,12 @@
         </view>
       </view>
       <view class="row-note">{{t.laborTotalNote}}</view>
-      <!-- 🔴 R296 拍3（李老师 2026-10-14）：水/电/燃气拆成三项 —— 有店的填实数，找店的留空走参考值。
-           ⚠️ 引擎侧仍是单个 `utility` 键（FIXED_KEYS 零改）⇒ 装配时三数求和进一个键（零部署）。 -->
+      <!-- 🔴 R296 拍3 · D3-C（李老师 2026-10-27）：水、电合并为一个「水电费」输入，燃气可选。
+           适配无燃气业态（燃气留空即可），也少填一格。引擎侧仍是单个 `utility` 键（FIXED_KEYS 零改）。 -->
       <view class="row">
-        <text class="row-name">{{t.waterFee}}</text>
+        <text class="row-name">{{t.energyFee}}</text>
         <view class="row-in-wrap">
-          <input class="row-in" type="digit" value="{{waterYuan}}" bindinput="onWater" adjust-position="{{true}}" cursor-spacing="20" />
-          <text class="row-unit">{{t.yuanUnit}}</text>
-        </view>
-      </view>
-      <view class="row">
-        <text class="row-name">{{t.elecFee}}</text>
-        <view class="row-in-wrap">
-          <input class="row-in" type="digit" value="{{electricYuan}}" bindinput="onElectric" adjust-position="{{true}}" cursor-spacing="20" />
+          <input class="row-in" type="digit" value="{{energyYuan}}" bindinput="onEnergy" adjust-position="{{true}}" cursor-spacing="20" />
           <text class="row-unit">{{t.yuanUnit}}</text>
         </view>
       </view>
