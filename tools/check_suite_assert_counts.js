@@ -273,6 +273,8 @@ const CASES = [
   { key: 'check_m2_energy_split', rel: 'tools/check_m2_energy_split.js' }, // 15 条（P 前置 + A 单填/组合求和 + B 全空派生 + C 旧&&写法变异可抓 + E 自失效）
   // D4（2026-10-27 拍板）：矩阵与单页管理费口径统一（manage 键，不再派生房租×占比）—— 19 条 = P4 + A6 + B3 + C4 + E2
   { key: 'check_m2_matrix_manage', rel: 'tools/check_m2_matrix_manage.js' }, // 19 条（P 前置 + A 键在空/填 + B 键缺失派生相异 + C 源锚锁 R533/单页收敛/删键回退 + E 自失效）
+  // D6（2026-10-27 拍板）：透视表按人工过滤（fixLabor 生效，不再被覆盖）—— 11 条 = P2 + A4 + B1 + C2 + E2
+  { key: 'check_m2_matrix_pivot', rel: 'tools/check_m2_matrix_pivot.js' }, // 11 条（P 前置加载 + A 真实 buildPivot 按人工过滤/cells 两态相异 + B 回退第一档 + C 源锚锁 R534/删条件回退 + E 自失效）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];
