@@ -1011,16 +1011,24 @@ Page({
     let fixVal = Number(this.data.pivotFix[fixKey]);
     if (pool.indexOf(fixVal) < 0) fixVal = pool[0];
     if (!isFinite(fixVal)) return { has: false };
+    // 🔴 D6：与 buildPivot 同口径 —— 结论框也必须按人工过滤，
+    //   否则结论可能取到被透视表隐藏的另一档人工的行，表里表外对不上。
+    const laborPool = uniqOf((r) => r.labor);
+    let fixLaborVal = Number(this.data.pivotFix.labor);
+    if (laborPool.indexOf(fixLaborVal) < 0) fixLaborVal = laborPool[0];
+    if (!isFinite(fixLaborVal)) return { has: false };
     // 目标利润锚点：取维度里最大的目标利润档（最紧张、最有参考意义）
     const targetDims = this.data.dims.target.map(Number).filter(isFinite);
     const targetAnchor = targetDims.length ? Math.max(...targetDims) : 0;
     let filtered = rows.filter((r) => !r.red
       && Number(r[fixKey === 'rent' ? 'rent' : 'marginPct']) === fixVal
+      && Number(r.labor) === fixLaborVal
       && (targetAnchor === 0 || r.targetYuan === targetAnchor));
     if (!filtered.length) {
       // 退一步：放宽目标利润约束，只看固定维度 + 人工
       filtered = rows.filter((r) => !r.red
         && Number(r[fixKey === 'rent' ? 'rent' : 'marginPct']) === fixVal
+        && Number(r.labor) === fixLaborVal
 );
     }
     if (!filtered.length) return { has: false };
@@ -1069,13 +1077,21 @@ Page({
     let fixVal = Number(this.data.pivotFix[fixKey]);
     if (pool.indexOf(fixVal) < 0) fixVal = pool[0];
     if (!isFinite(fixVal)) return { has: false };
+    // 🔴 D6（2026-10-27 拍板）：人工本就是矩阵维度（dims.labor 可改，默认 [2,3]），
+    //   透视表必须按人工过滤，否则 2 人/3 人的数字叠在同一格被后者覆盖，人工维度在透视视图里完全失效。
+    //   套用 R332 同款"优先 pivotFix、取不到退实际第一档"。
+    const laborPool = uniqOf((r) => r.labor);
+    let fixLaborVal = Number(this.data.pivotFix.labor);
+    if (laborPool.indexOf(fixLaborVal) < 0) fixLaborVal = laborPool[0];
+    if (!isFinite(fixLaborVal)) return { has: false };
     const filtered = rows.filter((r) => !r.red
-      && Number(r[FIELD[fixKey]]) === fixVal);
+      && Number(r[FIELD[fixKey]]) === fixVal
+      && Number(r.labor) === fixLaborVal);
     const cells = {};
     for (const r of filtered) cells[r[FIELD[dim]] + '|' + r.targetYuan] = r.targetDaily;
     return {
       fixMargin: Number(this.data.pivotFix.margin),
-      fixLabor: null,   // 🔴 R334：人工已不是维度，保留字段位防旧模板取空
+      fixLabor: fixLaborVal,
       fixRent: Number(this.data.pivotFix.rent),
       rows: this.data.dims[dim].slice(),
       cols: this.data.dims.target.slice(),
