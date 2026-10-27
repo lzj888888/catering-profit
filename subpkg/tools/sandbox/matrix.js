@@ -489,7 +489,11 @@ Page({
       // 行里的固定费用是按「该行档位租金」算的；老板填的租金可能不在档位上（如填 5500、最近档 5000）
       // ⇒ 用房租金替换档位租金，避免房租部分跟着档位走。
       const rentDelta = rentYuan - (Number(best.rent) || 0);
-      return Math.round(best.fixedExAmort + rentDelta);
+      // 🔴 R530（2026-10-27 审计 P2）：**必须 Number()** —— `fixedExAmort` 来自
+      //   `api.fenToYuan()`（utils/api.js:88-92 `v.toFixed(d)`），返回的是**字符串**。
+      //   不转数字时 `"14250" + 0` = `"142500"`（放大 10 倍）、`"14250" + 3000` = `"142503000"`（放大 1 万倍）
+      //   ⇒ 「每月净流出」暴涨 ⇒ 「能撑几个月」恒判「危险」，真值 6.5 个月/safe 的店会被自己的工具吓退。
+      return Math.round(Number(best.fixedExAmort) + rentDelta);
     }
     // 兜底（旧结果没有该字段）：仍按「保本营收 × 毛利率」反推，宁可保守
     return Math.round(best.breakMonthly * best.marginPct / 100);
