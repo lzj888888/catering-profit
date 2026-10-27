@@ -1,6 +1,17 @@
 <view class="form safe-bottom" wx:if="{{!loading}}">
+  <!-- 🔴 R547（M5）：编辑态读不到这张卡 ⇒ **显式错误页**，且下面整块表单与两个保存按钮都不渲染。
+       改前是「空白表单 + 保存照常可用」⇒ 老板一点保存就把有内容的卡存成空白版本（静默、不可见）。 -->
+  <block wx:if="{{loadMissing}}">
+    <view class="sec-lite">{{t.loadMissingTitle}}</view>
+    <view class="warn-note">{{t.loadMissingBody}}</view>
+    <button class="btn primary" bindtap="onRetryLoad">{{t.loadRetry}}</button>
+    <button class="btn ghost" bindtap="backToList">{{t.loadBack}}</button>
+  </block>
+  <block wx:else>
   <!-- R426（队列 #32）：金额栏读不成数字时的横幅。只提醒、不改数；点保存会被硬拦（edit.js::onSave）。 -->
   <view class="warn-note" wx:if="{{badAmountCount > 0}}">{{t.amountBadTip}}</view>
+  <!-- R547（M8）：模式 B 没填「这批出多少份」⇒ 引擎按 1 份算（整批料钱当一道菜）。单独一条，免得改错格。 -->
+  <view class="warn-note" wx:if="{{badQtyCount > 0}}">{{t.batchOutputBadTip}}</view>
 
   <!-- round156：连续录入 —— 保存成功后**留在本页**，这条横幅是"存到哪了"的凭证 + 显式返回出口。
        改前每存一道菜就 navigateBack 回列表，录 30 道菜要来回 60 次。 -->
@@ -324,6 +335,13 @@
           <text class="muted">{{sp.enabled ? t.specEnable : ''}}</text>
         </view>
         <block wx:if="{{sp.enabled}}">
+          <!-- 🔴 R547（M1）：per100g 必须先填「这一份多少克」——成本按 100÷克重 折算。
+               改前没有这一格，成本按整份算而售价按 100g 填 ⇒ 毛利率被严重低估（真机量级 11.76% vs 真值 82.35%）。 -->
+          <view class="cell2" wx:if="{{sp.spec_key === 'per100g'}}">
+            <text class="lbl">{{t.specPortionLabel}}</text>
+            <input class="val-input" type="digit" value="{{sp.portionG}}" data-spec="{{sp.spec_key}}" bindinput="onSpecPortion" placeholder="{{t.specPortionPh}}"  adjust-position="{{true}}" cursor-spacing="20" />
+          </view>
+          <view class="muted" wx:if="{{sp.spec_key === 'per100g'}}">{{t.specPortionHint}}</view>
           <view class="cell2">
             <text class="lbl">{{t.specPriceLabel}}<text wx:if="{{sp.spec_key === 'per100g'}}">（元/{{t.specPer100gUnit}}）</text></text>
             <input class="val-input" type="digit" value="{{sp.priceYuan}}" data-spec="{{sp.spec_key}}" bindinput="onSpecPrice"  adjust-position="{{true}}" cursor-spacing="20" />
@@ -336,11 +354,15 @@
     <block wx:for="{{specRows}}" wx:for-item="sp" wx:for-index="si" wx:key="spec_key">
       <view class="spec-res" wx:if="{{sp.enabled && sp.result}}">
         <view class="spec-res-name">{{sp.result.name}}</view>
+        <!-- R547（M1）：没填克重 ⇒ 云端 **不给数**（need_portion）。此处显式提示，绝不显示"0 元成本/100% 毛利"。 -->
+        <view class="muted" wx:if="{{sp.result.needPortion}}" style="color:#e74c3c;">{{t.specNeedPortion}}</view>
+        <block wx:else>
         <view class="muted">{{t.specCostLabel}}：<text style="color:#1e3a5f;">{{t.cur}}{{sp.result.costYuan}}</text></view>
         <view class="muted" wx:if="{{sp.result.price_fen > 0}}">{{t.specMarginLabel}}：{{sp.result.marginPct}}%</view>
         <view class="muted" wx:if="{{sp.result.suggestYuan}}">{{t.specSuggestLabel}}：{{t.cur}}{{sp.result.suggestYuan}}
           <text class="spec-apply" data-spec="{{sp.spec_key}}" bindtap="useSpecSuggest">（{{t.reverseApply}}）</text>
         </view>
+        </block>
       </view>
     </block>
   </view>
@@ -363,5 +385,6 @@
     </view>
     <button class="btn primary sa-btn" bindtap="onSave">{{t.saveShort}}</button>
   </view>
+  </block>
 </view>
 <view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

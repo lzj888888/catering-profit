@@ -37,7 +37,12 @@ function emptyManualLine() { return { input_type: 2, material_id: '', material_n
 // round156：规格行的「全新空态」工厂。抽成函数是为了让 data 初始化与「连续录入重置」共用**同一份**定义
 //   —— 否则第二处手抄一遍，将来加一个规格键就会漏掉一处（抄一份必漂）。
 function freshSpecRows() {
-  return Object.keys(TERMS.card.specLabel).map((k) => ({ spec_key: k, name: TERMS.card.specLabel[k], enabled: false, priceYuan: '', result: null }));
+  return Object.keys(TERMS.card.specLabel).map((k) => ({
+    spec_key: k, name: TERMS.card.specLabel[k], enabled: false, priceYuan: '', result: null,
+    // 🔴 R547（M1）：「每100g」的**这一份多少克**（只有这个规格用；其它规格恒空）。
+    //   没有它就算不出 100g 的成本 —— 而按"整份算"正是本缺陷（毛利率 11.76% vs 真值 82.35%）。
+    portionG: '',
+  }));
 }
 
 function renumber(lines) {
@@ -160,6 +165,10 @@ Page({
       // M3v1.2_B（D21/M3.31）：每 100g 计价规格（展示单位 + 口径说明）
       specPer100gUnit: TERMS.card.specPer100gUnit,
       specPer100gNote: TERMS.card.specPer100gNote,
+      specPortionLabel: TERMS.card.specPortionLabel,
+      specPortionPh: TERMS.card.specPortionPh,
+      specPortionHint: TERMS.card.specPortionHint,
+      specNeedPortion: TERMS.card.specNeedPortion,
       // round156：连续录入横幅
       savedOk: TERMS.card.savedOk,
       savedHint: TERMS.card.savedHint,
@@ -205,11 +214,20 @@ Page({
       hintFoldShow: TERMS.ledger.hintFoldShow,
       hintFoldHide: TERMS.ledger.hintFoldHide,
       amountBadTip: TERMS.ui.amountBadTip,
+      // R547（M8）：批量产出没填时单独一条提示（文案只讲这一件事，不与"金额读不成"混用）
+      batchOutputBadTip: TERMS.ui.batchOutputBadTip,
+      // R547（M5）：编辑态读不到卡的错误页文案（4 键）
+      loadMissingTitle: TERMS.card.loadMissingTitle,
+      loadMissingBody: TERMS.card.loadMissingBody,
+      loadRetry: TERMS.card.loadRetry,
+      loadBack: TERMS.card.loadBack,
     },
     // R234/J4f：行内长提示折叠（本页 1 处，默认收起）。仓内统一实现。
     hintFold: {},
     // R426（队列 #32）：读不成金额的**栏数**（0 = 没填错）。只驱动一条横幅，不参与计算。
     badAmountCount: 0,
+    // R547（M8）：模式 B 下「这批出多少份」缺失/读不成 ⇒ 1（0 = 正常）。只驱动一条横幅。
+    badQtyCount: 0,
     card_code: '',
     isEdit: false,
     name: '',
@@ -254,6 +272,8 @@ Page({
     specRows: freshSpecRows(),
     lines: [],
     loading: true,
+    // 🔴 R547（M5）：编辑态读不到卡 ⇒ 真（显式错误页；此时**禁止保存**，见 onSave）
+    loadMissing: false,
     // round156：连续录入 —— 顶部「已保存」横幅记录刚存下的菜名；非空即显示（含返回列表出口）
     savedName: '',
     saving: false,   // 防重复提交（连击保存会生成两个版本）
@@ -462,9 +482,17 @@ Page({
                 enabled: hit.enabled !== false,
                 name: hit.name || r.name,
                 priceYuan: hit.price_fen > 0 ? api.fenToYuan(hit.price_fen, 2) : '',
+                // R547（M1）：克重快照回填（存量卡无此字段 ⇒ 空，进页面时会提示去补）
+                portionG: hit.portion_g > 0 ? String(hit.portion_g) : '',
               });
             });
           }
+        } else {
+          // 🔴 R547（M5）：编辑态读不到卡 ⇒ 显式报错，绝不渲染空白表单。
+          //   改前无 else ⇒ 表单空白但可保存 ⇒ 一保存就把有内容的卡盖成空白版本（或凭 card_code 凭空造卡），
+          //   全程零提示。三条腿一起断：错误页 + 隐藏保存按钮 + onSave 硬拦。
+          this.setData({ loading: false, loadMissing: true });
+          return;
         }
       }
       if (!init.lines || init.lines.length === 0) init.lines = renumber([emptyLine()]);
@@ -487,9 +515,17 @@ Page({
     }
   },
 
+  // R547（M5）：错误页的「重新加载」—— 只重置判据再走**同一条** load()，不自造第二条取数路径
+  onRetryLoad() {
+    this.setData({ loadMissing: false, loading: true });
+    this.load();
+  },
+
   onName(e) { this.setData({ name: e.detail.value }); },
-  onMode(e) { this.setData({ calcMode: e.detail.value }); },
-  onBatch(e) { this.setData({ batchOutput: e.detail.value }); },
+  // R547（M8）：改模式 / 改出货量都要重算体检 —— 否则切到「按一批算」后横幅不出现
+  //   （checkAmounts 只在金额栏的 handler 里被调用，模式与出货量都不是金额栏）。
+  onMode(e) { this.setData({ calcMode: e.detail.value }); this.checkAmounts(); },
+  onBatch(e) { this.setData({ batchOutput: e.detail.value }); this.checkAmounts(); },
 
   // ===== M3.16（批次 C）套餐 =====
   // 切换卡片类型（单品 / 套餐）。切到套餐时，付费墙在**保存**时由后端拦（FEATURE_LOCKED → openPaywall('combo')）。
@@ -528,6 +564,8 @@ Page({
     }
     this.setData(patch);
     this.refreshSpecHints();
+    // R547（M8）：模板会把模式切到 B（火锅锅底这类）⇒ 出货量没预填时必须立刻挂横幅
+    this.checkAmounts();
   },
   // 子卡选择（picker 按 index 取）
   onComboSubCard(e) {
@@ -988,8 +1026,26 @@ Page({
       if (Number(lines[j].input_type) !== 2) continue;
       chk(lines[j].unit_price_yuan);
     }
+    // 🔴 R547（M8）：三项**直接进引擎**的数值栏，原实现一个都不查。它们和金额栏同一个死法
+    //   （提交时 `Number(x) || 0`）：填成「1.5%」/「6 0」/全角 ⇒ 静默读成 0 ⇒
+    //   损耗率归零（成本偏低）、目标毛利率归零（建议价归零却照常显示）、出货量归零。
+    //   不改引擎口径、不改提交写法，只在**体检**这一处把"读不成"暴露出来。
+    chk(this.data.lossRate);
+    chk(this.data.targetMargin);
+    // 出货量：只在模式 B 用（模式 A 提交时强制 0）；但模式 B 下**没填比填错更常见**，
+    //   而引擎对 ≤0 是 `out = 1` 兜底（calcBom/service.js:129）⇒ 整批成本被当成**一份**，
+    //   成本虚高 N 倍且零提示。这属于"必填却没填"，与"读不成数字"分开记一笔。
+    let q = 0;
+    if (this.data.calcMode === 'B') {
+      const raw = this.data.batchOutput;
+      const rr = AmountInput.classifyAmount(raw);
+      if (!rr.readable || !(Number(raw) > 0)) q = 1;
+    }
+    if (q !== this.data.badQtyCount) this.setData({ badQtyCount: q });
+    // 金额类横幅只数金额（文案讲的是"金额栏"）；出货量单独一条横幅（讲的是"必填没填"）。
     if (n !== this.data.badAmountCount) this.setData({ badAmountCount: n });
-    return n;
+    this._badQty = q > 0;
+    return n + q;
   },
 
   // 🔴 R297：出成率**上界**校验（手工行）—— 越界**绝不静默回落 100**（那等于替老板编一个数）。
@@ -1079,20 +1135,41 @@ Page({
     });
     this.checkAmounts();
   },
+  // R547（M1）：改「这一份多少克」⇒ 该行试算结果作废（成本/毛利/建议价全都随克重变）
+  onSpecPortion(e) {
+    const key = e.currentTarget.dataset.spec;
+    const v = e.detail.value;
+    this.setData({
+      specRows: this.data.specRows.map((r) => (r.spec_key === key ? Object.assign({}, r, { portionG: v, result: null }) : r)),
+    });
+    this.checkAmounts();
+  },
   // 把某规格行的输入拼成 spec_prices（整数分）；空/非法 ⇒ 该规格不带价（只出成本与建议价）
   specPriceFen(r) {
     const yuan = Number(r.priceYuan);
     if (!isFinite(yuan) || yuan <= 0) return null;
     return Math.round(Number((yuan * 100).toFixed(10)));
   },
-  // 提交给云端的规格列表：**只送键 + 售价**（系数/名称由服务端单源补齐）
+  // 提交给云端的规格列表：**只送键 + 售价 + 启用位**（系数/名称由服务端单源补齐）
+  // 🔴 R547（M2）：**停用行也必须提交**。改前这里是 `.filter((r) => r.enabled)`
+  //   ⇒ 停用的规格一保存就从 `specs_json` 里消失（服务端按"整份覆盖"落库）——
+  //   老板以为"我先关掉，以后还能打开"，实际是**永久删除**：下次进编辑页没这一行，
+  //   要重新启用只能重新勾选并重新填价，且历史版本里也查不到"曾经有过这个规格"。
+  //   服务端 `sanitizeSpecs` 本就保留了 `enabled` 位（`enabled !== false`）⇒ 只是前端没送。
   collectSpecs() {
-    return this.data.specRows
-      .filter((r) => r.enabled)
-      .map((r) => {
-        const pf = this.specPriceFen(r);
-        return pf == null ? { spec_key: r.spec_key } : { spec_key: r.spec_key, price_fen: pf };
-      });
+    return this.data.specRows.map((r) => {
+      const pf = this.specPriceFen(r);
+      const o = { spec_key: r.spec_key, enabled: !!r.enabled };
+      // 没填价 ⇒ 不带 price_fen（服务端缺省 0），但**行本身保留**
+      if (pf != null) o.price_fen = pf;
+      // R547（M1）：克重随规格一起落库（快照）——它是算 100g 成本的唯一依据。
+      //   没填就不带（服务端存 0），页面会提示补；**绝不替老板猜一个克重**（猜错比不给数更糟）。
+      if (r.spec_key === 'per100g') {
+        const g = Number(r.portionG);
+        if (isFinite(g) && g > 0) o.portion_g = g;
+      }
+      return o;
+    });
   },
   // 规格试算：一次调用把启用的规格全部算回来（成本 / 毛利率 / 建议价），并刷新原成本预览
   async calcSpecs() {
@@ -1104,6 +1181,13 @@ Page({
     for (const r of rows) {
       const pf = this.specPriceFen(r);
       if (pf != null) specPrices[r.spec_key] = pf;
+    }
+    // R547（M1）：克重是 per100g 的**必填入参**（没填 ⇒ 云端返回 need_portion，不出数）
+    const specPortions = {};
+    for (const r of rows) {
+      if (r.spec_key !== 'per100g') continue;
+      const g = Number(r.portionG);
+      if (isFinite(g) && g > 0) specPortions[r.spec_key] = g;
     }
     try {
       ui.setTitle(TERMS.card.specCalc);
@@ -1118,6 +1202,7 @@ Page({
         target_margin_pct: Number(this.data.targetMargin) || 0,
         spec_keys: rows.map((r) => r.spec_key),
         spec_prices: specPrices,
+        spec_portions: specPortions,
       });
       const byKey = {};
       for (const s of (d.spec_results || [])) {
@@ -1128,9 +1213,12 @@ Page({
           coef: s.coef,
           price_fen: s.price_fen,
           unit_cost_fen: s.unit_cost_fen,
-          costYuan: api.fenToYuan(s.unit_cost_fen || 0, 2),
-          marginPct: s.gross_margin_pct,
-          suggestYuan: s.reverse_price_fen > 0 ? api.fenToYuan(s.reverse_price_fen, 2) : '',
+          // R547（M1）：没填克重 ⇒ 云端不出数（need_portion）。这里**不许把 0 元当成本显示**
+          //   （0 成本 = 100% 毛利，是最容易被老板当真的错数）⇒ 成本位留空、毛利率不出。
+          needPortion: !!s.need_portion,
+          costYuan: s.need_portion ? '' : api.fenToYuan(s.unit_cost_fen || 0, 2),
+          marginPct: s.need_portion ? null : s.gross_margin_pct,
+          suggestYuan: (!s.need_portion && s.reverse_price_fen > 0) ? api.fenToYuan(s.reverse_price_fen, 2) : '',
         };
       }
       this.setData({
@@ -1154,6 +1242,10 @@ Page({
 
   // 保存 → saveCostCard（后端重算落库；编辑 = 带 card_code 另存新版本）
   async onSave() {
+    // 🔴 R547（M5）：读不到卡（loadMissing）⇒ **一律不保存**。
+    //   按钮虽然已隐藏，但页面里还有别的入口可能回到保存路径（返回键/二次渲染/未来新增的入口），
+    //   这条判据是最后一道闸：保住"空白表单不会被当成用户本意写进版本链"。
+    if (this.data.loadMissing) { wx.showToast({ title: TERMS.card.loadMissingRetry, icon: 'none' }); return; }
     if (!this.data.name.trim()) { wx.showToast({ title: TERMS.card.dishName, icon: 'none' }); return; }
     // 🔴 R426（队列 #32）：金额栏读不成 ⇒ **拦在提交前**。为什么必须这里拦：
     //   本页金额走 `Number(x) || 0`，读不成会变成 0 / NaN 一路到云端（0 是合法金额 ⇒ 无从拒），
@@ -1161,7 +1253,11 @@ Page({
     //   横幅只能提醒，**保存这条路必须硬拦**，否则「提示归提示、照样存 0 元卡」。
     if (this.checkAmounts() > 0) {
       // title 留空（系统默认「提示」）—— 不为一句标题新造文案（新增可见文案要走 i18n 三处，代价大于收益）
-      wx.showModal({ content: TERMS.ui.amountBadTip, showCancel: false, confirmText: TERMS.buttons.gotIt });
+      // R547（M8）：出货量那条与金额那条**分开讲**，否则老板按"纯数字"去改一格金额，改完还是存不了。
+      const tip = this._badQty ? (this.data.badAmountCount > 0
+        ? TERMS.ui.amountBadTip + '\n' + TERMS.ui.batchOutputBadTip
+        : TERMS.ui.batchOutputBadTip) : TERMS.ui.amountBadTip;
+      wx.showModal({ content: tip, showCancel: false, confirmText: TERMS.buttons.gotIt });
       return;
     }
     // 售价低于成本预警（M3.7 #15）：先反算拿成本对比，不阻断保存

@@ -498,6 +498,14 @@ Page({
       delivery_fee_fen: order.params.delivery_fee_fen,
       delivery_customer_fen: order.params.delivery_customer_fen,
       pack_fee_fen: order.params.pack_fee_fen,
+      // 🔴 R547（M4）：这三项原实现**一个都没送** —— 而它们都在到手口径里扣钱：
+      //   推广费（promo）与配送补贴直接减少实收，固定佣金模式下 `commission_rate` 恒 0
+      //   ⇒ 反算出的挂牌价系统性偏低（老板照它定价就少赚），而界面照常显示"反算挂牌价 ¥X"。
+      //   取值一律走**同一份** `calcTakeawayOrder` 出参（`cur.cash.*`），不自算第二份真相源。
+      delivery_subsidy_fen: cur.cash.delivery_subsidy_fen,
+      promo_fen: cur.cash.promo_fen,
+      commission_mode: order.params.commission_mode,
+      commission_fixed_fen: order.params.commission_fixed_fen,
       commission_rate: order.params.commission_rate,
     });
     this.setData({ reverseResultFen: pStar, reverseResultYuan: pStar > 0 ? (pStar / 100).toFixed(2) : '' });

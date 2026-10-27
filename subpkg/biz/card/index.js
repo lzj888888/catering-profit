@@ -439,7 +439,12 @@ Page({
             return { input_type: 2, name: l.material_name || '', qty: l.quantity, net_unit_cost: l.net_unit_cost, line_kind: lineKind, group_name: groupName };
           });
           const card = {
-            name: (src.name || '') + '',
+            // 🔴 R547（M3）：去掉 `(src.name || '') + ''`。这个 `+ ''` 是死拼接 ——
+            //   `src.name` 本来就是字符串（`getCostCard` 出参 `name: doc.name || ''`），
+            //   拼了也是同一个值；若哪天出参变成数字/对象，它会把后者**静默转成字符串**
+            //   再存进 `shop_cost_card.name`（"123" 而不是 123），问题被藏到下一次读库才现形。
+            //   同族纪律：搬运字段时**不加工**，加工只允许发生在明确标注的单源函数里。
+            name: src.name || '',
             mode: src.calc_mode || 'A',
             lines,
             loss_pct: src.loss_rate || 0,

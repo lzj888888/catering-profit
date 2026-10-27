@@ -12,13 +12,19 @@ const { resolveAuth, assertShopOwner } = common;
 const { ok, fail } = common;
 const { makeAdapter } = common.dataAdapter;
 const { comboInsight } = common.comboDerive;         // M3.16 套餐（派生层单源）
-const { cardToOutput, lineToOutput } = require('./service');
+const { cardToOutput, groupLinesByCard } = require('./service');
 const { validateInput } = require('./validate');
 
-async function loadLines(da, shopId, card) {
-  const res = await da.list('shop_cost_card_line', { shop_id: shopId, cost_card_row_id: card._id });
-  return ((res && res.data) || []).map(lineToOutput);
-}
+// 🔴 R547（M6）：原来这里是 `loadLines` 的**逐卡**版本（在 for 循环里 await），N 张卡 = N 次串行查询
+//   ⇒ 20 张卡要 21 次库往返（本函数还要 listAll 全部版本行，本身就慢），手机端首屏肉眼可见地卡。
+//   改为**一次取全店明细行 + 内存按 `cost_card_row_id` 分组**（纯函数 `groupLinesByCard` 在 service.js，
+//   那条才是能被 node 自测覆盖的地方 —— 放这里 require 了 wx-server-sdk，本机根本跑不起来）。
+//   三点必须同时成立才算修好：
+//     ① 每张卡仍只拿自己的行（分组键 = 行的 `cost_card_row_id`，与卡 `_id` 对齐）；
+//     ② 行**顺序不变**（按库返回顺序 append，不排序 —— 排序属于展示层）；
+//     ③ 取全用 `listAll`（短页判据确认到底）而非 `list`（单页 1000）⇒ 顺带消掉「单卡明细 >1000 行静默截断」；
+//        且 `truncated` 必须透传到出参（达到 2 万行护栏时仍然显式降级，绝不静默少给）。
+//   判据不是"少了几次 await"，而是**行为不变**：`getCostCard/selftest.js` 的 G 组对拍同一份数据。
 
 exports.main = async (event) => {
   const ctx = cloud.getWXContext();
@@ -67,6 +73,10 @@ exports.main = async (event) => {
     byVersion.set(String(c.card_code) + '#' + (c.version || 0), c);
   }
 
+  // 🔴 R547（M6）：**一次**取全店明细行（见 groupLinesByCard 头注）。空店也要能过（返回空 Map）。
+  const linesRes = await da.listAll('shop_cost_card_line', { shop_id: shopId });
+  const linesByRow = groupLinesByCard((linesRes && linesRes.data) || []);
+
   const list = [];
   for (const card of targets) {
     const out = cardToOutput(card);
@@ -86,7 +96,7 @@ exports.main = async (event) => {
       }
     }
     out.prev_total_cost_fen = prevCost && prevCost.cost != null ? prevCost.cost : null;
-    out.lines = await loadLines(da, shopId, card);
+    out.lines = linesByRow.get(card._id) || [];
     // M3.16 套餐：装配三个显示信息（顾客省 / 我少赚 / 成本结构）。
     //   子卡单份成本与挂牌价取**锁定版本**（sub_version）的子卡 doc；子卡已软删 ⇒ 回退明细行快照。
     if (out.card_type === 3) {
@@ -111,7 +121,9 @@ exports.main = async (event) => {
     // R157：可见降级标记 —— 达到 LIST_TOTAL_CAP（2 万行）仍有剩余时为 true。
     //   正常店铺恒为 false；一旦为 true，说明该店数据量已触护栏 ⇒ 前端可据此提示，
     //   而不是像以前那样"看着少了几张卡"却无从判断。
-    truncated: !!cardsRes.truncated,
+    //   🔴 R547（M6）：成本卡与**明细行**两条读取都可能触护栏 ⇒ 两个 truncated 取或，缺一条就会
+    //   "卡齐了、行少了"而页面显示一切正常（静默少料 = 成本偏低）。
+    truncated: !!cardsRes.truncated || !!(linesRes && linesRes.truncated),
     client_request_id: v.input.client_request_id || '',
     list,
   });

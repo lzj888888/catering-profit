@@ -150,7 +150,8 @@ Page({
     locked: false,
     // 🔴 R301：本榜的**统计月份**（YYYY-MM）。为什么必须有：契约要求 `getDishReview` 按
     //   `biz_date_from/to` 取数，而在此之前实现从不过滤 ⇒ 榜是**跨月累计**却按"当前月"呈现。
-    //   注意它与 `curMonth` 是**两件事**：`curMonth` 只用于成本卡快照提示（"该卡成本为 X 月快照"），
+    //   注意它与 `curMonth` 是**两件事**：`curMonth` 只是「进入页面那天是几月」（一次性，此后不更新），
+    //   而快照提示的比对基准**必须是下面这个 `month`**（R547/M7：改前误用 curMonth ⇒ 看历史月时全表误标）。
     //   `month` 才是**数据统计期间**。二者在页面上必须分开讲清（R299 §`snapshot_month` 同一条纪律）。
     month: '',
     // 期间标注文案（由云端回的 `range` 如实生成；**不许前端猜**）
@@ -256,7 +257,15 @@ Page({
   // 预处理一行排行为展示字段（堂食/外卖共用；zeroAmount 仅外卖）
   fmtRanked(x) {
     const snapMonth = x.snapshot_month || '';
-    const isOld = snapMonth && snapMonth !== this.data.curMonth;
+    // 🔴 R547（M7）：比对基准必须是**本次统计月**（`month`），不是「今天所在的月」。
+    //   提示语的含义是「这张卡的成本是 X 月的快照，比你在看的这个月旧」——
+    //   改前拿 `curMonth`（进入页面时的真实当月，之后再没更新过）作基准 ⇒ 两个后果：
+    //     ① 看任何一个**历史月**的榜，全表每一行都误挂「该卡成本为 X 月快照」
+    //        （而 X 恰恰就是这个统计月 ⇒ 成本一点都不过期，纯噪音，老板会开始无视这条提示）；
+    //     ② 反过来，切到未来月/月初跨月时基准漂移 ⇒ 真过期的卡（上月建的）反而不提示。
+    //   基准跟着「你在看哪个月」走，才与文案语义一致。
+    const dataMonth = this.data.month || this.data.curMonth;
+    const isOld = !!snapMonth && !!dataMonth && snapMonth !== dataMonth;
     return {
       // 🔴 R299（缺陷 D1）：`dishKey` **必须带出来** —— 覆盖率「共 N 道」必须按**菜品身份**去重，
       //   而本行的 `name` 是**成本卡名**（service.js:95 `card.name || dishKey`），与未匹配行的

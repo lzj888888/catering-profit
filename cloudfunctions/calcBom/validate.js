@@ -90,6 +90,22 @@ function validateInput(event) {
       specPrices[k] = pv;
     }
   }
+  // 🔴 R547（M1）：`spec_portions` = { spec_key: 这一份多少克 }。**只有 per100g 用得上**。
+  //   为什么必须由入参送、不能从卡里读：本函数是**纯计算**，卡数据由调用方（页面）own；
+  //   而克重是"这张卡这一份多重"的用户事实，不是引擎常量。
+  //   ⚠️ 只认 `spec_keys` 里请求过的键（多余的静默忽略，与 spec_prices 同律）；
+  //     值非法（≤0 / 非数）**直接报错**而不是静默按整份算 —— 静默按整份就是本缺陷的原样。
+  const specPortions = {};
+  const rawPortions = src.spec_portions;
+  if (rawPortions !== undefined && rawPortions !== null) {
+    if (typeof rawPortions !== 'object' || Array.isArray(rawPortions)) return err('spec_portions 必须是对象');
+    for (const k of Object.keys(rawPortions)) {
+      if (specKeys.indexOf(k) < 0) continue;
+      const gv = rawPortions[k];
+      if (!isFiniteNum(gv) || !(gv > 0)) return err(`spec_portions.${k} 必须是大于 0 的克数`);
+      specPortions[k] = gv;
+    }
+  }
 
   return {
     error: null,
@@ -105,6 +121,7 @@ function validateInput(event) {
     },
     spec_keys: specKeys,
     spec_prices: specPrices,
+    spec_portions: specPortions,
     input: { client_request_id: src.client_request_id || '' },
   };
 }

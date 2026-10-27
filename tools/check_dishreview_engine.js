@@ -36,6 +36,24 @@ function rd(rel) { try { return fs.readFileSync(path.join(ROOT, rel), 'utf8'); }
 function stripComments(s) {
   return s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
 }
+// 🔴 R547（M7 副作用修正）：取函数体用**花括号配对**，不用「从函数头数 N 个字符」的窗口。
+//   为什么：12-④ 原判据是 `fmtRanked(x)\s*\{[\s\S]{0,700}?dishKey:` —— 本轮在 `fmtRanked` 里
+//   加了一段 R547 注释（讲比对基准），注释把 `dishKey:` 顶出 700 字窗口 ⇒ 判据**假红**。
+//   窗口判据的两个天敌：① 加注释/空行（长度漂移，与语义无关）② 同文件别处的同名模式（假绿）。
+//   ⇒ 剥注释 + 花括号配对同时解决两者：判据只认「这个函数体内有没有这行」。
+function fnBody(src, name) {
+  const s = stripComments(String(src || ''));
+  const esc = String(name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const m = new RegExp('(^|[^A-Za-z0-9_$])' + esc + '\\s*\\([^)]*\\)\\s*\\{').exec(s);
+  if (!m) return '';
+  const start = s.indexOf('{', m.index + m[0].length - 1);
+  let depth = 0;
+  for (let j = start; j < s.length; j++) {
+    if (s[j] === '{') depth++;
+    else if (s[j] === '}') { depth--; if (depth === 0) return s.slice(start, j + 1); }
+  }
+  return '';
+}
 
 const idxSrc = rd(IDX_REL);
 const svcSrc = rd(SVC_REL);
@@ -664,7 +682,7 @@ function section12() {
   const coverageAddName = (pageSrc.match(/dishKeys\.add\(x\.name\)/g) || []).length;
   check('12-④ 🔴 覆盖率「道数」三侧一律按 `dishKey`（菜品身份）去重，不得用 `.name`'
     + ' —— `.name` 在已匹配行是**成本卡名**、在未匹配行是**菜名**，混算 ⇒「共 N 道 / 已算 M 道」一起错',
-    /fmtRanked\(x\)\s*\{[\s\S]{0,700}?dishKey:\s*x\.dish_key/.test(pageSrc)
+    /dishKey:\s*x\.dish_key/.test(fnBody(pageSrc, 'fmtRanked'))
     && coverageAddKey >= 3
     && coverageAddName === 0
     && /const coverageCount = dishKeys\.size/.test(pageSrc)

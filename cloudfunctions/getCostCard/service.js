@@ -65,4 +65,22 @@ function lineToOutput(doc) {
   };
 }
 
-module.exports = { cardToOutput, lineToOutput, ERROR_CODES };
+// 🔴 R547（M6）：全店明细行 → 「卡行 _id → 该卡的行数组」。
+//   为什么放在 service（纯函数）而不是 Controller：Controller 要 require wx-server-sdk，
+//   本机 node 跑不了 ⇒ 放在那里就**测不到**，只能靠"读代码觉得对"（本仓最忌讳的判据）。
+//   为什么必须"一次取全 + 内存分组"：原来在 for 循环里逐卡查（N 张卡 = N 次串行往返）。
+//   三条不变量（改这段必须同时满足）：
+//     ① 只按 `cost_card_row_id` 分组（卡 `_id` 是版本行的物理主键），孤儿行（无该字段）丢弃；
+//     ② 组内**保持库返回顺序**（不排序：排序属展示层）。
+function groupLinesByCard(rows) {
+  const byRow = new Map();
+  for (const ln of (rows || [])) {
+    const rid = ln && ln.cost_card_row_id;
+    if (!rid) continue;
+    if (!byRow.has(rid)) byRow.set(rid, []);
+    byRow.get(rid).push(lineToOutput(ln));
+  }
+  return byRow;
+}
+
+module.exports = { cardToOutput, lineToOutput, groupLinesByCard, ERROR_CODES };
