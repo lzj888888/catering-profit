@@ -267,6 +267,8 @@ const CASES = [
   //   （分支留着、值一样 ⇒ 形同没条件化，正是本守卫要对付的假条件化）。
   // R493：H 段（摊销/依据三态行为面 21 条）+ I 段（真实盘点 5 跳链路 6 条）⇒ 33→60。
   { key: 'check_m1_diff_explain', rel: 'tools/check_m1_diff_explain.js' },   // 60 条（H21 + I6 为 R493 新增；分段计数以实跑 pass 数为准）
+  // D1（2026-10-27 拍板 + 审计 H1 实证）：空表单 fail-closed 行为守卫 —— 19 条 = P4 + Q2 + A6 + B3 + C2 + E2
+  { key: 'check_m2_forward_failclosed', rel: 'tools/check_m2_forward_failclosed.js' }, // 19 条（P/Q/A/B/C/E 六组：空表单装配 rent/labor=0 + 引擎非空保本证门禁必要 + hasFixed(空)=false + 正控 hasFixed(填)=true + 变异 >0→>=0 可抓）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

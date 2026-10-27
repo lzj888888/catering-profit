@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：211 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：212 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -1310,6 +1310,11 @@ const SUITES = [
   //   / B 导出 refMat 由 refSrc 决定、gapFen 不用旧写法、旧账回落 direct
   //   / C 反恒真三条（固定文案版 · 旧 gapFen 版 · 两文案同值版 都必须被判红）。
   ['m1-diff-explain', 'tools/check_m1_diff_explain.js'],
+  // ===== D1 行为守卫（2026-10-27 拍板 + 审计 H1 实证）：空表单不得出保本数 =====
+  //   见 tools/check_m2_forward_failclosed.js 头注。根因：引擎 calcSandbox 不 fail-closed（空表单仍算出非空保本），
+  //   唯一闸门是页面 const hasFixed = rentFen > 0 && laborFen > 0；审计证明既有 8 守卫对 >0 放宽零告警。
+  //   本套件用真实装配 + 真实引擎路径重现页面决策，并做 >0→>=0 变异回灌证明分辨力。
+  ['m2-forward-failclosed', 'tools/check_m2_forward_failclosed.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
