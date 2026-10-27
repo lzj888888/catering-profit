@@ -33,6 +33,11 @@ function rebuildSnapshotLines(existingLines, materialsById) {
       material_name: mat.name || ln.material_name || '',
       quantity: Number(ln.quantity) || 0,
       net_unit_cost: Number(mat.net_unit_cost) || 0, // 快照：取原料**当前**净料单位成本
+      // 🔴 H2（2026-10-27 审计）：line_kind / group_name 是「规格缩放」与「分组」的唯一依据。
+      //   原实现只搬 8 个字段 ⇒ 同步一次后全部兜底成 'main' ⇒ 半份/小份成本静默算错且不可逆
+      //   （specDerive.kindOf 只认 line_kind：调料/耗材/半成品「不减半」规则全部失效）。
+      line_kind: ln.line_kind || 'main',
+      group_name: ln.group_name || '',
       // 任务1（S0）：快照补 5 字段（与 saveCostCard.buildSnapshotLines 同字段集）
       brand_spec: mat.brand_spec || '',
       purchase_unit: mat.purchase_unit || '',

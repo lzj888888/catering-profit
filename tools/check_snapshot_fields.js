@@ -36,6 +36,10 @@ const WRITE_FILES = [
   'cloudfunctions/syncCostCard/service.js',
 ];
 const CTRL_FILE = 'cloudfunctions/saveCostCard/index.js';
+// 🔴 H2（2026-10-27 审计）：明细 insert 还必须带 line_kind / group_name。
+//   判据落在**两个 Controller 的 insert 字面量**（service 层是重构式字段表、不含它，判 service 会误红）。
+const CTRL_SYNC_FILE = 'cloudfunctions/syncCostCard/index.js';
+const LINE_FIELDS = ['line_kind', 'group_name'];
 const VALIDATE_FILE = 'cloudfunctions/saveCostCard/validate.js';
 
 const results = [];
@@ -130,6 +134,14 @@ for (const [rel] of READ_FILES) {
     'L6 validate.js 对 yield_rate 有区间校验（(0,100]）—— 快照值必须合法');
 }
 
+// ---------- L7 两条写路径的明细 insert 都带 line_kind / group_name（H2） ----------
+for (const rel of [CTRL_FILE, CTRL_SYNC_FILE]) {
+  const src = read(rel);
+  const miss = LINE_FIELDS.filter((f) => !new RegExp('\\b' + f + '\\b').test(src));
+  assert(miss.length === 0,
+    'L7 明细 insert 带 line_kind/group_name（' + rel + '）' + (miss.length ? ' —— 缺 ' + miss.join(', ') : ''));
+}
+
 // ---------- C 反恒真（影子样本，证明判据有分辨力）----------
 function judgeSample(bodyText) {
   // 复刻 L1/L4 的判据，作用在**传入的样本**上（纯函数，不碰磁盘）
@@ -156,6 +168,12 @@ function judgeSample(bodyText) {
   const eq = lines.slice().reverse().join('\n');
   const r3 = judgeSample(eq);
   assert(r3.green, 'C3 等价改写（行序颠倒）仍判绿 ⇒ 判据判**字段存在**不判书写顺序');
+
+  // C4 影子样本：从 sync 侧删掉 line_kind ⇒ L7 判据必红且点名
+  const syncSrc = read(CTRL_SYNC_FILE);
+  const mutated = syncSrc.replace(/[^\n]*\bline_kind\b[^\n]*\n?/g, '');
+  const missLine = LINE_FIELDS.filter((f) => !new RegExp('\\b' + f + '\\b').test(mutated));
+  assert(missLine.indexOf('line_kind') >= 0, 'C4 影子样本「sync 删掉 line_kind」判红且点名该字段');
 }
 
 // ---------- 输出（末尾统一打标准总结行；正文中禁止出现「N 通过 / M 失败」字样）----------

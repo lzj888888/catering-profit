@@ -1266,11 +1266,14 @@ Page({
       } catch (err) { /* 本地字典失败不影响保存 */ }
     }
     if (this.data.saving) return;   // 连击保护：重复提交会生成两个版本
+    // 🔴 H3（2026-10-27 审计）：闸门必须在**首个 await 之前**关上。
+    //   原写法先 `await confirmDupName` 再置位 ⇒ 连点两次都能通过上面那行，
+    //   回来后各发一次 saveCostCard（幂等键各取 Date.now()）⇒ 落两张同名卡。
+    this.setData({ saving: true });
     // 🔴 R443：新建态先查同名卡（编辑态不必查 —— 改的是同一张）
-    if (!this.data.isEdit && !(await this.confirmDupName(card.name))) return;
+    if (!this.data.isEdit && !(await this.confirmDupName(card.name))) { this.setData({ saving: false }); return; }
     // ⚠️ 必须在 afterSaved 之前取：afterSaved 会把 isEdit 清成 false（转新建态）
     const wasEdit = this.data.isEdit;
-    this.setData({ saving: true });
     try {
       ui.setTitle(TERMS.buttons.save);
       const out = await api.call('saveCostCard', { card, client_request_id: 'cc_' + Date.now() });

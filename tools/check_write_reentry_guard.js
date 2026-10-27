@@ -53,6 +53,9 @@ const TARGETS = [
   { file: 'subpkg/biz/card/index.js', fn: 'onBatchSyncRun', flag: 'syncing', write: 'syncCostCard' },
   { file: 'subpkg/biz/card/index.js', fn: 'onCopy', flag: 'copying', write: 'saveCostCard' },
   { file: 'subpkg/biz/card/version.js', fn: 'doRestore', flag: 'restoring', write: 'saveCostCard' },
+  // 🔴 H3（2026-10-27 审计）：新建保存路径漏守 —— 闸门原在 `await confirmDupName` 之后，
+  //   连点两次可落两张同名卡（幂等键各取 Date.now()，服务端认成两次不同请求）。
+  { file: 'subpkg/biz/card/edit.js', fn: 'doSave', flag: 'saving', write: 'saveCostCard' },
 ];
 
 let pass = 0;

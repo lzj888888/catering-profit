@@ -105,7 +105,7 @@ const CASES = [
   // R150 扩面（round150）：多规格派生层守卫同批纳入 —— 它的 L3 三条腿恒等（全 1 / 压力样本 / 空系数表）、
   //   A-e 半份五项锚点与 C1~C4 反恒真正是「非恒真」的凭据；断言数不受守则「删掉压力样本腿 +
   //   删掉一条影子」就等于把守卫悄悄改小（判据仍全绿而证明力归零），与 round73 立本守卫的根因同族。
-  { key: 'check_spec_derive', rel: 'tools/check_spec_derive.js' },     // 24 条（含 C1~C4 影子）
+  { key: 'check_spec_derive', rel: 'tools/check_spec_derive.js' },     // 26 条（含 C1~C5 影子）
   // R151 扩面（round151）：单位池 / 计量族 / 单价单位守卫同批纳入 —— 它的 L3 单源自洽
   //   （两池逐项同源 / 倍率表全覆盖 / 族表全覆盖）与 C1~C6 反恒真正是「非恒真」的凭据；
   //   断言数不受守则「删掉一条影子 + 调低下界」就等于把守卫悄悄改小（判据仍全绿而证明力归零）。
@@ -113,7 +113,7 @@ const CASES = [
   { key: 'check_list_query_limit', rel: 'tools/check_list_query_limit.js' }, // 22 条（R154：L1~L5 + S1~S3 + C1~C7 反恒真含替身正负样本；R157 加 L6/L7 + C8~C11：listAll 必须真的分页取全 + 调用点不得回退 list）
   { key: 'check_list_ux', rel: 'tools/check_list_ux.js' },               // 37 条（R156：L1~L6 + S1~S3 + C1~C6；R298 扩面：L6 通用正则+全仓扫描+剥注释，L6b 渲染源，C4b~C4f 互证）
   { key: 'check_index_field_alignment', rel: 'tools/check_index_field_alignment.js' }, // 11 条（R157：L1 化石索引 + L2 锚点对齐 + L3 字段真在用 + S1~S3 + C1~C3 反恒真）
-  { key: 'check_snapshot_fields', rel: 'tools/check_snapshot_fields.js' }, // 16 条（R144：L1 读侧全集 + L2 写侧全集 + L3 两读侧集合≡ + L4 fail-soft + L5 Controller + L6 validate 区间 + S1~S2 + C1~C3 反恒真）
+  { key: 'check_snapshot_fields', rel: 'tools/check_snapshot_fields.js' }, // 19 条（R144：L1 读侧全集 + L2 写侧全集 + L3 两读侧集合≡ + L4 fail-soft + L5 Controller + L6 validate 区间 + S1~S2 + C1~C3 反恒真）
   { key: 'check_paywall_coverage', rel: 'tools/check_paywall_coverage.js' }, // 26 条（R159：L1 三单源解析 + L2 能力⊆放行 + L3 放行有文案 + L4 四字段非空 + L5 影子正负 + L6 云函数双向 + L7 自失效护栏；R213 修假绿：L6-② 改「穷尽分类」+4 条；R443 扩面：L8 改按页面配清单，外卖 15 下界保留 + 团购 8 下界新增 + L8-⑥ 跨页隔离反恒真，22 → 26）
   // round181c 扩面：M3.16 套餐（引用型卡）守卫同批纳入 —— 它的 A-a/A-b/A-c 三锚点（成本 1275 分 /
   //   锁子卡版本 1275→1508 / 禁嵌套与版本无效）与「把子卡成本当 net_unit_cost 喂同一个 `calcCostCard`、
@@ -129,7 +129,7 @@ const CASES = [
   //   T-a~T-g 七组锚点（佣金基数不含打包费 / 固定佣金保底不生效 / 到手≠总额双口径 / 反算挂牌价 /
   //   输出隔离 M1 月度字段）是「非恒真」凭据；而 21 条删掉一批仍 > 0
   //   ⇒ A0-② 的「通过数为 0」下界抓不到，只有 A2「声明 ≡ 实跑」能发现。
-  { key: 'selftest_m3_takeaway', rel: 'tools/selftest_m3_takeaway.js' }, // 21 条（M3.17：T-a~T-g）
+  { key: 'selftest_m3_takeaway', rel: 'tools/selftest_m3_takeaway.js' }, // 24 条（M3.17：T-a~T-h，含 H1 两口径勾稽）
   { key: 'selftest_m3_impact', rel: 'tools/selftest_m3_impact.js' }, // 17 条（M3.19：C-a/C-a2/C-b/dry-run）
   { key: 'selftest_m3_recon', rel: 'tools/selftest_m3_recon.js' }, // 16 条（M3.21：D 锚点 + 闸门）
   { key: 'selftest_bill_parse', rel: 'tools/selftest_bill_parse.js' }, // 70 条（批次 F 15 + R245 P1 京东串味 5 + P2~P6 京东两形态/取数/日期 17 + 平台枚举三副本 2 + R250 平台自动判定逐候选行试签名 14 + R253 D 段多平台同时命中 17）

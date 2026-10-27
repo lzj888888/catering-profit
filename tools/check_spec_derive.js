@@ -16,7 +16,11 @@
 //
 // 判据（纯函数化 + 正负互证 + 反查真实单源 + 解析器/样本钉死）：
 //   L1 单源在场（specDerive.js 导出齐备 / 聚合入口导出齐备 / 扁平副本 ≡ 单源）
-//   L2 引擎不被污染（无 `function deriveSpec` 内联 / 引擎副本源码零命中 line_kind·spec_key）
+//   L2 引擎不被污染（无 `function deriveSpec` 内联 / **calcCostCard 函数体**零命中 line_kind·spec_key
+//                / 引擎副本零调用派生单源 API（kindOf·coefOf·deriveSpec·findPreset））
+//   ⚠️ L2-② 不能整文件 grep：syncCostCard/service.js 的 rebuildSnapshotLines 合法地把 line_kind
+//      当**数据**搬进快照（不搬就会用 'main' 兜底、半份成本静默算错）；只有 calcCostCard 认它才是
+//      「派生被内联进引擎」。整文件判＝腿锚错地方（会把**正确实现判红**）。
 //   L3 恒等与锚点（**真跑生产件**：全 1 ⇒ 逐字节恒等 + 975/876；半份 ⇒ 用量/辅料/567/1253/68.85）
 //   L4 契约落点（calcBom 保留 line_kind 且返回 spec_results / saveCostCard 落 specs_json 且 total_cost 不被污染
 //                / getCostCard 回填不丢字段）
@@ -38,6 +42,50 @@ function read(rel) {
   try { return fs.readFileSync(path.join(ROOT, rel), 'utf8'); } catch (e) { return null; }
 }
 const norm = (s) => String(s == null ? '' : s).replace(/\r\n/g, '\n');
+
+// ---------- 判据工具：去注释/字符串 + 按括号取函数体 ----------
+// 为何两步都要：① 不去注释会被「注释里提到 line_kind」喂成**假红**；
+//               ② 不按括号切会把整个文件当函数体（又退回腿锚错地方）。
+function stripCode(src) {
+  const s = String(src == null ? '' : src);
+  const n = s.length;
+  let out = '', i = 0;
+  while (i < n) {
+    const c = s[i], c2 = s[i + 1];
+    if (c === '/' && c2 === '/') { while (i < n && s[i] !== '\n') i++; continue; }
+    if (c === '/' && c2 === '*') {
+      i += 2;
+      while (i < n && !(s[i] === '*' && s[i + 1] === '/')) { if (s[i] === '\n') out += '\n'; i++; }
+      i += 2; continue;
+    }
+    if (c === '"' || c === "'" || c === '`') {
+      const q = c; i++;
+      while (i < n && s[i] !== q) { if (s[i] === '\\') i++; i++; }
+      i++; out += '""'; continue;
+    }
+    out += c; i++;
+  }
+  return out;
+}
+// 取不到函数体返回 null（调用方 fail-closed：改名/删函数不能变成「无人守」）
+function funcBody(rel, name) {
+  const src = stripCode(norm(read(rel) || ''));
+  const m = new RegExp('function\\s+' + name + '\\s*\\(').exec(src);
+  if (!m) return null;
+  const open = src.indexOf('{', m.index);
+  if (open < 0) return null;
+  let depth = 0;
+  for (let j = open; j < src.length; j++) {
+    if (src[j] === '{') depth++;
+    else if (src[j] === '}') { depth--; if (depth === 0) return src.slice(open + 1, j); }
+  }
+  return null;
+}
+// 污染判据（单一实现：真样本与 C5 影子共用，避免「判据两份」）
+const engineBodyPolluted = (text) => {
+  const t = stripCode(norm(text || ''));
+  return /line_kind/.test(t) || /spec_key/.test(t);
+};
 
 // ---------- 受管面（顶层声明：多段共用同一份读入结果，避免"各段各读一次"的漂移） ----------
 const SD_REL = 'cloudfunctions/common/specDerive.js';
@@ -104,12 +152,28 @@ const engineCopies = services.filter(isEngineCopy);
   else ok('L2-① 全仓 service.js 零内联 deriveSpec（引擎段干净）');
 }
 {
-  const polluted = engineCopies.filter((f) => {
-    const s = read(f) || '';
-    return /line_kind/.test(s) || /spec_key/.test(s);
+  // 锚到 **calcCostCard 函数体**：只有引擎本体认 line_kind 才是「派生被内联进引擎」。
+  // 同文件其他函数（快照构建）合法地把它当**数据**搬输；整文件 grep 会把它判红。
+  const bads = [];
+  for (const f of engineCopies) {
+    const body = funcBody(f, 'calcCostCard');
+    if (body == null) { bads.push(f + '（取不到 calcCostCard 函数体，判据失效）'); continue; }
+    if (engineBodyPolluted(body)) bads.push(f);
+  }
+  if (bads.length) bad('L2-② 引擎函数体出现 line_kind/spec_key：' + bads.join(' / ') + '（引擎只该认 quantity / net_unit_cost）');
+  else ok('L2-② ' + engineCopies.length + ' 份引擎副本的 calcCostCard 函数体零命中 line_kind/spec_key（规格是入参变换，不是引擎能力）');
+}
+{
+  // 补偿腿（收窄 L2-② 后必须补）：派生逻辑不一定写在 calcCostCard 里，
+  //   也可能装成一个 helper（函数名任取）被它调用 ⇒ 改判「真调派生单源 API」。
+  //   只认调用（带左括号）：注释与字符串已被 stripCode 剥掉（否则页面里写个模块名就恒真）。
+  const APIS = ['kindOf', 'coefOf', 'deriveSpec', 'findPreset'];
+  const hit = services.filter((f) => {
+    const t = stripCode(norm(read(f) || ''));
+    return APIS.some((a) => new RegExp('\\b' + a + '\\s*\\(').test(t));
   });
-  if (polluted.length) bad('L2-② 引擎副本出现 line_kind/spec_key：' + polluted.join(' / ') + '（引擎只该认 quantity / net_unit_cost）');
-  else ok('L2-② ' + engineCopies.length + ' 份引擎副本源码零命中 line_kind/spec_key（规格是入参变换，不是引擎能力）');
+  if (hit.length) bad('L2-③ 引擎副本真调用派生单源 API：' + hit.join(' / ') + '（规范 M3.15 硬约束：派生只能在 Controller 层）');
+  else ok('L2-③ ' + services.length + ' 份 service 零调用 kindOf/coefOf/deriveSpec/findPreset（派生没装成 helper 潜入引擎）');
 }
 
 // ===================== L3 恒等与锚点（真跑生产件） =====================
@@ -354,6 +418,19 @@ if (!SD || !ENG) {
   const p1 = judgeIdentity(SD.deriveSpec), p2 = judgeHalf(SD.deriveSpec);
   if (p1.ok && p2.ok) ok('C4 正样本互证：真派生同时通过恒等与半份两条判据（判据不恒假）');
   else bad('C4 正样本互证失败：恒等 ' + p1.ok + ' / 半份 ' + p2.ok + ' —— ' + p1.why + ' | ' + p2.why);
+}
+
+// C5 反恒真（L2-② 的分辨力）：注入到**函数体**必须判污染；注入到**注释**必须判干净（证明 stripCode 没把判据喂成恒真）。
+{
+  const sample = engineCopies.length ? funcBody(engineCopies[0], 'calcCostCard') : null;
+  if (sample == null) bad('C5 取不到取证用的函数体（L2-② 的分辨力无法证明）');
+  else {
+    const a = engineBodyPolluted(sample + '\nconst __c5 = row.line_kind;\n');
+    const b = engineBodyPolluted(sample + '\n// const __c5 = row.line_kind;\n');
+    const c = engineBodyPolluted(sample);
+    if (a === true && b === false && c === false) ok('C5 反恒真：注入到函数体判污染、注入到注释判干净、真体判干净（判据有分辨力）');
+    else bad('C5 判据无分辨力：注入进函数体=' + a + ' / 注入进注释=' + b + ' / 真体=' + c);
+  }
 }
 
 console.log('');

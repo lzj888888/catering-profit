@@ -332,6 +332,10 @@ exports.main = async (event) => {
         material_name: ln.material_name,
         quantity: ln.quantity,
         net_unit_cost: ln.net_unit_cost,   // 快照：原料最新净料单位成本
+        // 🔴 H2（2026-10-27 审计）：与 saveCostCard/index.js 的明细 insert 字段集保持一致。
+        //   漏这两列 ⇒ sync 重建的 line_kind 落不了库，规格缩放照旧失效。
+        line_kind: ln.line_kind || 'main',
+        group_name: ln.group_name || '',
         // 任务1（S0）：快照补 5 字段
         brand_spec: ln.brand_spec || '',
         purchase_unit: ln.purchase_unit || '',

@@ -119,6 +119,29 @@ check('T-g 输出对象不含任何 M1 月度字段（month/ledger/monthly...）
   deepScan(full, 'out') === false ? 'cash+accrual 仅 *_fen / receipt_rate' : `命中 ${deepScan(full, 'out')}`);
 check('T-g 两套口径分别持有 profit_fen（不混进同一总数）', !!full.cash.profit_fen && !!full.accrual.profit_fen, '');
 
+console.log('===== T-h · 两口径勾稽（H1：推广费/补贴必须两口径同口径）=====');
+const orderH = {
+  items: [{ combo_id: 'combo_gongbao', qty: 1 }],
+  packs: [{ qty: 1, unit_price_fen: 160 }],
+  params: {
+    commission_mode: 'rate', commission_rate: 6, commission_min_fen: 0,
+    delivery_fee_fen: 450, delivery_subsidy_fen: 300, promo_fen: 500,
+    pack_fee_fen: 200, delivery_customer_fen: 200,
+    s_merchant: { amount_fen: 300, payer: 'merchant' },
+    s_user: { amount_fen: 0, payer: null },
+  },
+};
+const rH = calcTakeawayOrder(orderH, lookup);
+check('T-h 两口径利润恒等（cash === accrual，含推广费/配送补贴/顾客配送费）',
+  rH.cash.profit_fen === rH.accrual.profit_fen, `cash=${rH.cash.profit_fen} accrual=${rH.accrual.profit_fen}`);
+check('T-h 收入 = 顾客实付（accrual.revenue === cash.payment）',
+  rH.accrual.revenue_fen === rH.cash.payment_fen, `revenue=${rH.accrual.revenue_fen} payment=${rH.cash.payment_fen}`);
+const rH0 = calcTakeawayOrder(Object.assign({}, orderH, {
+  params: Object.assign({}, orderH.params, { promo_fen: 0 }),
+}), lookup);
+check('T-h 推广费真进到手口径（promo 0→500 ⇒ 到手利润恰好少 500）',
+  rH0.cash.profit_fen - rH.cash.profit_fen === 500, `差 ${rH0.cash.profit_fen - rH.cash.profit_fen}`);
+
 console.log('\n' + '='.repeat(60));
 console.log(`===== M3.17 外卖单均自测结果：${pass} 通过 / ${fail} 失败 =====`);
 process.exit(fail === 0 ? 0 : 1);

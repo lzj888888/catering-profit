@@ -122,12 +122,17 @@ function calcTakeawayOrder(order, lookup) {
 
   // ===== 口径一：到手（现金视角）=====
   const payment = goodsTotal + packFee + deliveryCustomer;       // 顾客支付 P
-  const receipt = payment - sMerchant - commission - d - deliverySubsidy; // 商家实收 R
+  // 🔴 H1（2026-10-27 审计）：推广费是**实打实的现金流出**，到手口径也必须扣。
+  //   原实现只在总额法 expense 里扣 ⇒ 同一单两个利润数、填了推广费到手利润一分不变。
+  const receipt = payment - sMerchant - commission - d - deliverySubsidy - promo; // 商家实收 R
   const profit = receipt - dishCost - packCost;                  // 单均理论利润
   const receiptRate = payment > 0 ? Math.round((receipt / payment) * 10000) / 100 : 0;
 
   // ===== 口径二：总额法（会计视角 · 与 M1 对得上）=====
-  const revenue = goodsTotal + packFee + sMerchant;              // 收入 = 商品总价 + 打包费 + 商家活动补贴
+  // 🔴 H1：收入 = 顾客实际支付（商品总价 + 打包费 + 顾客承担的配送费）。
+  //   原实现把「商家补贴」加进收入、又在费用里减一次（净 0），却让到手口径单边减一次
+  //   ⇒ 两口径利润恒差一个补贴额。改为与到手同一收入定义后，两口径利润恒等（T-h 锁死）。
+  const revenue = goodsTotal + packFee + deliveryCustomer;
   const expense = commission + d + deliverySubsidy + sMerchant + promo; // 费用 = 佣金 + 配送服务费 + 补贴 + 推广
   const accrualProfit = revenue - expense - dishCost - packCost;
 
