@@ -443,6 +443,9 @@
       <view class="cell"><text class="lbl">{{t.fixedBreakNote2}}</text></view>
     </view>
 
+    <!-- 🔴 D8（2026-10-27 拍板）：有派生固定成本时明示来源（说"估了"必须说清估了哪项，否则比不标更糟） -->
+    <view class="derived-note" wx:if="{{derivedNote}}">{{derivedNote}}</view>
+
     <view class="card2">
       <view class="cell big"><text class="lbl">{{t.resBreakMonthly}}</text><text class="val keynum">{{t.cur}}{{result.break_even_monthly}}</text></view>
       <view class="cell"><text class="lbl">{{t.resBreakDaily}}</text><text class="val">{{t.cur}}{{result.break_even_daily}}</text></view>

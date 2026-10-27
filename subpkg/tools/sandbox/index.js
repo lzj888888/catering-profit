@@ -82,6 +82,9 @@ Page({
       // 🔴 D5：输入区（不含摊销）/ 结果区（含摊销）两个标签拆开
       fixedTotalNoAmort: M.fixedTotalNoAmort,
       fixedTotalWithAmort: M.fixedTotalWithAmort,
+      // 🔴 D8：派生项标注（结果区列明哪些固定成本是行业估算、从哪来）
+      derivedNotePrefix: M.derivedNotePrefix,
+      derivedNoteSuffix: M.derivedNoteSuffix,
       marginName: M.marginName,
       marginSub: M.marginSub,
       profitLadderTitle: M.profitLadderTitle,
@@ -1916,6 +1919,17 @@ Page({
         valid_days: d.valid_days,
         _ind: { break: d.indicators_at_breakeven || [], target: d.indicators_at_target || [] },
       };
+      // 🔴 D8（2026-10-27 拍板）：结果区派生项标注。本 handler 仅 forward，管理费键恒在 fixedYuan ⇒ 永不被派生；
+      //   只有水/电/气三项全空时 utility 才走「房租 × 占比」派生。派生项名取自 M.fixedItems（与 fixedBreak 同源），
+      //   来源文案走 terms 双副本（K11 守卫），绝不在 JS 里硬编码中文。
+      const _derivedKeys = [];
+      const _w = Number(this.data.waterYuan) || 0;
+      const _e = Number(this.data.electricYuan) || 0;
+      const _g = Number(this.data.gasYuan) || 0;
+      if (_w + _e + _g === 0) _derivedKeys.push('utility');
+      const _derivedNote = _derivedKeys.length
+        ? (M.derivedNotePrefix + _derivedKeys.map((k) => (M.fixedItems && M.fixedItems[k]) || k).join('、') + M.derivedNoteSuffix)
+        : '';
       this.setData({
         // R234：`bands_preview` **原样留存** —— `rentRateDefault()` 要从这里取 rent.hi，
         //      若只留 decorate 后的 `bands`（只剩拼好的字串），就再也拿不到原始数值了。
@@ -1933,6 +1947,8 @@ Page({
         promoRes: this.promoOf(presetResultObj),
         // 🔴 R342：与 result 同批写入，直接用局部变量 p（不读 this.data，避免时序依赖）
         fixedBreak: this.fixedBreakOf(p.fixed_items, d.fixed_ex_amort_fen),
+        // 🔴 D8：派生项标注（水电气等按行业估算时明示来源，避免"系统悄悄改了老板填的数"）
+        derivedNote: _derivedNote,
         // 🔴 round273：A 区（已有铺面）补齐定案指标（每天来多少人 / 一天翻几台）—— 在新结果上派生
         crowd: presetResultObj ? this.crowdOf(presetResultObj) : null,
         // 🔴 round276：同主链路，A 区坪效 / 人效（派生自用户填的实际营业额 + 面积 + 人数）
@@ -1974,6 +1990,8 @@ Page({
         profitLadder: null,
         promoRes: null,
         fixedBreak: null,
+        // 🔴 D8：派生项标注必须跟着清，否则"派生项变了但旧标注还挂着"会误导老板
+        derivedNote: '',
         crowd: null,
         eff: null,
         indicators: [],

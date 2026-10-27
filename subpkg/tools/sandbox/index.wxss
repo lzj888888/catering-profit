@@ -200,6 +200,10 @@
 .hint-fold-body { font-size: 30rpx; color: #4a5b70; line-height: 1.6; padding: 16rpx 20rpx;
   background: #f3f7fb; border-radius: 12rpx; margin: 0 0 12rpx; }
 
+/* 🔴 D8（2026-10-27 拍板）：派生项标注样式——浅琥珀底 + 左边框，提示"此项为行业估算值" */
+.derived-note { font-size: 26rpx; color: #8a6d3b; background: #fff7e6; border-left: 6rpx solid #f0ad4e;
+  border-radius: 8rpx; padding: 12rpx 16rpx; margin-bottom: 12rpx; line-height: 1.6; }
+
 /* ===== P0#5（2026-10-11）：翻台「?」触发说明 + 结果吸底条 ===== */
 /* 翻台率单元格里的「?」徽标：小圆点、可点、不抢视觉 */
 .lbl-q { display: flex; align-items: center; }
