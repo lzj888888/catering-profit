@@ -444,7 +444,10 @@ function assembleItems(preset, input, coef) {
       const w = Number(in_.waterYuan != null ? in_.waterYuan : fy.water);
       const elec = Number(in_.electricYuan != null ? in_.electricYuan : fy.electric);
       const gas = Number(in_.gasYuan != null ? in_.gasYuan : fy.gas);
-      if (w > 0 && elec > 0 && gas > 0) {
+      // 🔴 D3（2026-10-27 拍板）：原 `w>0 && elec>0 && gas>0` 要求三项全填，否则整组丢弃改派生 ⇒
+      //   老板填了电 1500 系统却按 房租×40%(3200) 算，用户填的数被静默丢。
+      //   改：任一项 >0 就用填的（求和），三项全空才走 rent_rate 派生。
+      if (w + elec + gas > 0) {
         fixedItems.push({ key: m.itemKey, fen: fenOf(w + elec + gas) });
       } else if (m.derivedFrom === 'rent_rate') {
         const base = rentFenRaw > 0 ? rentFenRaw
