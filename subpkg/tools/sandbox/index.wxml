@@ -220,6 +220,13 @@
     </view>
     <slider min="0" max="100" step="1" value="{{marginPct}}" activeColor="#1e3a5f" block-size="22"
             bindchanging="onMarginChanging" bindchange="onMarginChange" />
+    <!-- 🔴 R545：滑块只解决「拖到几」，老板真正的困惑是「我这个数从哪来」⇒ 指到产地（成本卡）。
+         这也是从免费沙盘走向成本核算的自然下一步，不弹窗、不硬推。
+         ⚠️ 按钮单独一层：不与任何金额输入框同父（check_amount_input_row A1 硬判据）。 -->
+    <view class="margin-src">
+      <text class="margin-src-note">{{t.marginSrcNote}}</text>
+      <button class="btn-small ghost margin-src-btn" bindtap="onGoM3">{{t.marginSrcBtn}}</button>
+    </view>
     <view class="hint-fold">
       <view class="hint-fold-head" data-key="sbMarginTip" bindtap="onToggleHintFold">
         <text class="hint-fold-guide">{{hintFold.sbMarginTip ? t.hintFoldHide : t.hintFoldShow}}</text>

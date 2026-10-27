@@ -121,6 +121,9 @@ Page({
       promoRealBad: M.promoRealBad,
       promoNegText: M.promoNegText,
       marginTip: M.marginTip,
+      // 🔴 R545：毛利率「从哪来」引导（指向成本卡）。术语值在 terms.m2，页面只搬不写。
+      marginSrcNote: M.marginSrcNote,
+      marginSrcBtn: M.marginSrcBtn,
       varTotal: M.varTotal,
       targetProfit: M.targetProfit,
       targetRow: M.targetRow,

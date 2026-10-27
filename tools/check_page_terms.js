@@ -29,6 +29,9 @@
 //   判据① 只守「键存在」，**守不到「值被当键」** ⇒ 本判据补上这一面。
 //   精确形态 = 「**含中文 且 ∈ 术语值集**」两个字条件合取（缺一不可）—— 只查"∈ 值集"会把
 //   `category: 'dine_in'` 这类**合法机器码**判红（实测 54 处假阳性）；只查"含中文"则脱离术语单源语义。
+//   ④（R545 新增）**术语值不得出现模块代号 M1/M2/M3**：老板不认代号，只认"账上算的 / 按成本卡算的"。
+//   判据①②③ 都在守「键对不对」，**守不到「话说不说得人懂」**；而这条恰好零报错、零崩溃 ——
+//   老板看了一头雾水也不会有人来报 bug。只判**值**、不判**键**（`paybackSeeM3` 这类键名用户看不到）。
 //
 // 自失效护栏（防本守卫被改小/恒真）：
 //   S1 扫描面文件数 ≥ 40（页面 + 工具 + 前端根）；
@@ -322,6 +325,39 @@
   const sOk3 = findTermValueLiterals(stripCommentsKeepStr("// 注释里写 '外卖活动补贴' 不算\nconst a = 1;"), TERM_VALS);
   check('P3-6 负样本「注释里的术语值」判绿（剥注释生效，避免守卫被自己的说明注释绊红）',
     sOk3.length === 0, JSON.stringify(sOk3));
+
+  // ================= P4 组：用户可见文案不得出现模块代号（R545）=================
+  // 为什么守：老板不认 M1/M2/M3。2026-10-27 实测全仓有 **4 处用户可见**文案带代号
+  //   （对账页两个标签「M3 标准菜单毛利率 / M1 实际菜品毛利率」/ 报表免责句 / 首页四步引导），
+  //   而注释里有几十处（**不该**判红）。与 R124 同族：不报错、不崩溃，只是老板看不懂；
+  //   哪天有人再写回去，没有任何一套件会发现。
+  // 判据：terms 里**每个字符串值**（含模板串；剥注释、保串内容）都不得含独立的 M1/M2/M3。
+  //   🔴 只判「值」不判「键」—— `paybackSeeM3` 是键名，页面里谁都看不到，不该管。
+  console.log('');
+  console.log('===== P4 组 · 用户可见文案不得出现模块代号（M1/M2/M3）=====');
+  const CODE_RE = /\bM[123]\b/;
+  function literalsOf(src) {
+    const t = stripCommentsKeepStr(src);
+    const out = [];
+    const re = /"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)'|`((?:[^`\\]|\\.)*)`/g;
+    let m;
+    while ((m = re.exec(t)) !== null) out.push(m[1] !== undefined ? m[1] : (m[2] !== undefined ? m[2] : m[3]));
+    return out;
+  }
+  const termLits = literalsOf(fs.readFileSync(TERMS_PATH, 'utf8'));
+  const codeVals = termLits.filter((v) => CODE_RE.test(v));
+  check('P4-1 术语值零模块代号（老板看不懂 M1/M2/M3）', codeVals.length === 0,
+    codeVals.length ? '发现 ' + codeVals.length + ' 处：' + codeVals.slice(0, 5).join(' | ')
+      : termLits.length + ' 个字符串值全部干净');
+  // 三条影子样本：一条正样本证明抓得到，两条负样本证明不会误杀（本轮真形态 + 键名形态）
+  check("P4-2 正样本「M2 开口」判红（本轮真事故形态）",
+    literalsOf("x: 'M2 开口'").filter((v) => CODE_RE.test(v)).length === 1);
+  check('P4-3 负样本「注释里写 M2」判绿（剥注释生效，不误杀说明性注释）',
+    literalsOf("// 见 M2 注释\nx: '正常'").filter((v) => CODE_RE.test(v)).length === 0);
+  check("P4-4 负样本「键名带 M3」判绿（键名用户看不到，只管值）",
+    literalsOf("paybackSeeM3: '查看完整回本测算'").filter((v) => CODE_RE.test(v)).length === 0);
+  check('P4-5 自失效：术语值抽样 ≥ 2000 个（低于此说明抽取器坏了或文件被写窄）',
+    termLits.length >= 2000, '实际 ' + termLits.length + ' 个');
 
   // ================= R 组：分叉文案必须真接线（R320）=================
   // 为什么守：`*Rev` 是「另一场景」的文案（已有铺面 vs 想开的店）。实测

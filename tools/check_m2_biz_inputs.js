@@ -582,6 +582,26 @@ sec('U 输入项语义提示（R341）');
     'wxml 里的 headcountHintRev 出现 ' + (wxmlRaw.match(/headcountHintRev/g) || []).length + ' 次');
 }
 
+// ============ W 组：毛利率「从哪来」引导必须真接线（R545）============
+// 为什么守：毛利率是个滑块，老板真正的困惑**不是「拖到几」，而是「我这个数哪来的」**。
+//   R545 在滑块下加了一行说明 + 一个「去建成本卡」按钮（成本卡才是这个数的产地）。
+//   若只加术语不加按钮、或绑了一个不存在/不跳转的方法 ⇒ **点了没反应**，
+//   与 R124「术语在、页面不读」同族：零报错、零崩溃、门禁照样绿。
+sec('W 组 · 毛利率引导三件套（说明 / 按钮 / 处理器）');
+const gText = /\{\{t\.marginSrcNote\}\}/.test(wxmlRaw);
+const gBtn = /\{\{t\.marginSrcBtn\}\}/.test(wxmlRaw);
+// 处理器两面都要：方法体存在 **且** 真的切到配方 tab（只写个空方法也会让上面两项"看着齐"）
+const gHref = /onGoM3\s*\(\s*\)\s*\{[\s\S]{0,120}?switchTab\(\{\s*url:\s*['"]\/pages\/m3\/hub['"]/.test(jsRaw);
+const gMissing = [];
+if (!gText) gMissing.push('说明文案');
+if (!gBtn) gMissing.push('按钮');
+if (!/bindtap="onGoM3"/.test(wxmlRaw)) gMissing.push('bindtap');
+if (!gHref) gMissing.push('处理器跳转');
+check('W-① 毛利率引导四要素齐全，且按钮真能进成本卡（点得动、跳得到）',
+  gMissing.length === 0,
+  gMissing.length ? '缺：' + gMissing.join(',') : '说明 + 按钮 + bindtap + switchTab(/pages/m3/hub) 全在');
+
+
 // ============ E 下界 ============
 sec('E 下界：断言数不得被悄悄删掉');
 // ⚠️ 阈值 = **实测值**（25）：写成"看起来合理"的整数会让它变成摆设；
