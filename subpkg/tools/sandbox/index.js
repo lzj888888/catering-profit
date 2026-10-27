@@ -125,9 +125,9 @@ Page({
       promoRealBad: M.promoRealBad,
       promoNegText: M.promoNegText,
       marginTip: M.marginTip,
-      // 🔴 R545：毛利率「从哪来」引导（指向成本卡）。术语值在 terms.m2，页面只搬不写。
+      // 🔴 R547b：毛利率「从哪来」说明 —— **只有文字，没有按钮**（填表中间不能召唤跳走）。
+      //   R545 那个「去建成本卡」按钮已撤：它打断填表闭环，且「建一张卡就自动算出来了」是假承诺。
       marginSrcNote: M.marginSrcNote,
-      marginSrcBtn: M.marginSrcBtn,
       varTotal: M.varTotal,
       targetProfit: M.targetProfit,
       targetRow: M.targetRow,
@@ -153,6 +153,9 @@ Page({
       channelRefLabel: M.channelRefLabel,
       channelRefBody: M.channelRefBody,
       channelRefNote: M.channelRefNote,
+      // 🔴 R547b：多家平台抽成怎么合成一个数（新增折叠 sbChannelMulti）
+      channelMultiLabel: M.channelMultiLabel,
+      channelMultiBody: M.channelMultiBody,
       channelDiscountHint: M.channelDiscountHint,
       // R419：归到公共区（M1 月度录入页同用这一句）
       amountBadTip: TERMS.ui.amountBadTip,

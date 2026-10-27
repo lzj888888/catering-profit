@@ -58,7 +58,8 @@ function isChannelRatioOver100(takeawayRatio, groupRatio) {
 //   术语里只写"怎么理解"、不写数字（否则同一个 20% 两份真相源，改一处就漂）。
 //   由 `tools/check_channel_over100.js` ⑤ 组核对「术语里没有另写一份数字」。
 const CHANNEL_REF = {
-  platformRate: 20,      // 外卖平台抽成 %：美团/饿了么「技术服务费」常见 18~23
+  // ⚠️ R547b：不再写死平台名（会过期，过期指路比不指路更糟，R283 同族）。
+  platformRate: 20,      // 外卖平台抽成 %：各家「技术服务费」常见 18~23（多家按单量加权取平均）
   packRate: 3,           // 外卖包装 + 自担配送 %：一单餐盒+袋约 1.5~2 元，按客单 50 折算约 3%
   groupPlatformRate: 5,  // 团购平台抽成 %：到店团购常见 3~8
   discountRate: 30,      // 团购便宜掉的比例 %：7 折 ⇒ 30（主流 5~8 折，取 7 折为中位）

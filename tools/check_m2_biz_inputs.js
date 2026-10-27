@@ -582,24 +582,46 @@ sec('U 输入项语义提示（R341）');
     'wxml 里的 headcountHintRev 出现 ' + (wxmlRaw.match(/headcountHintRev/g) || []).length + ' 次');
 }
 
-// ============ W 组：毛利率「从哪来」引导必须真接线（R545）============
-// 为什么守：毛利率是个滑块，老板真正的困惑**不是「拖到几」，而是「我这个数哪来的」**。
-//   R545 在滑块下加了一行说明 + 一个「去建成本卡」按钮（成本卡才是这个数的产地）。
-//   若只加术语不加按钮、或绑了一个不存在/不跳转的方法 ⇒ **点了没反应**，
-//   与 R124「术语在、页面不读」同族：零报错、零崩溃、门禁照样绿。
-sec('W 组 · 毛利率引导三件套（说明 / 按钮 / 处理器）');
+// ============ W 组：毛利率引导「只留文字，不许在填表中间召唤跳走」（R547b 改写）============
+// 为什么改判据（R547b，李老师 2026-10-28 反馈 + 豆包商议）：
+//   R545 原判据守的是「说明 + 按钮 + bindtap + 跳转四件套齐全，点得动跳得到」——
+//   **它把"有按钮"当成正确实现来守**。而李老师实测：按钮在填表正中间召唤跳走 ⇒
+//   填到一半被叫走、回来路断，做不到闭环；且"建一张卡就自动算出来了"是假承诺
+//   （一张卡只给一道菜毛利率，整店要成本卡 + 销量加权，跳过去也不出这个数）。
+//   ⇒ 判据反向：**有按钮即判红**，并守文案三要素 + 禁假承诺词。
+// ⚠️ 判语义不钉单一字面（R297 教训）：每要素给多个等价说法，避免改措辞就假红。
+sec('W 组 · 毛利率引导只剩文字（R547b 反向判据）');
 const gText = /\{\{t\.marginSrcNote\}\}/.test(wxmlRaw);
-const gBtn = /\{\{t\.marginSrcBtn\}\}/.test(wxmlRaw);
-// 处理器两面都要：方法体存在 **且** 真的切到配方 tab（只写个空方法也会让上面两项"看着齐"）
-const gHref = /onGoM3\s*\(\s*\)\s*\{[\s\S]{0,120}?switchTab\(\{\s*url:\s*['"]\/pages\/m3\/hub['"]/.test(jsRaw);
-const gMissing = [];
-if (!gText) gMissing.push('说明文案');
-if (!gBtn) gMissing.push('按钮');
-if (!/bindtap="onGoM3"/.test(wxmlRaw)) gMissing.push('bindtap');
-if (!gHref) gMissing.push('处理器跳转');
-check('W-① 毛利率引导四要素齐全，且按钮真能进成本卡（点得动、跳得到）',
-  gMissing.length === 0,
-  gMissing.length ? '缺：' + gMissing.join(',') : '说明 + 按钮 + bindtap + switchTab(/pages/m3/hub) 全在');
+// 按钮面：wxml 里 margin-src 块内不得再出现 button，也不得再引用 marginSrcBtn
+const gBtnLeft = /margin-src-btn/.test(wxmlRaw) || /marginSrcBtn/.test(wxmlRaw);
+check('W-① 毛利率引导只剩文字：说明仍在渲染，且按钮已撤（填表中间不得召唤跳走）',
+  gText && !gBtnLeft,
+  gText ? (gBtnLeft ? '按钮仍在（margin-src-btn / marginSrcBtn 出现）' : '说明在 · 无按钮') : '说明文案都没了（引导整体消失）');
+
+// W-②：文案三要素 + 禁假承诺（读**术语值**，不读注释 ⇒ 不会被注释喂成恒真）
+const M2T = require('../miniprogram/i18n/terms.js').TERMS.m2;
+const gNote = String((M2T && M2T.marginSrcNote) || '');
+const gAllow = /估|大概数/.test(gNote) && /就行|可以|先/.test(gNote);        // 许可先估
+const gCost = /保本线|保本额/.test(gNote) && /偏|差|跟着/.test(gNote);        // 说清估偏的代价
+const gStay = /不用停|不用[过回]|继续填/.test(gNote);                          // 明说现在不用停
+const gFake = /自动|一键|就出来|建一张(成本)?卡就|马上|立刻/.test(gNote);       // 假承诺词
+const gWhy2 = [];
+if (!gNote) gWhy2.push('术语值为空');
+if (!gAllow) gWhy2.push('未许可先估');
+if (!gCost) gWhy2.push('未说清估偏的代价');
+if (!gStay) gWhy2.push('未说"现在不用停"');
+if (gFake) gWhy2.push('含假承诺词');
+check('W-② 引导文案三要素齐全且不含假承诺（许可先估 / 说清代价 / 不用停）',
+  gWhy2.length === 0,
+  gWhy2.length ? '问题：' + gWhy2.join('、') : gNote.replace(/\n/g, ' ⏎ '));
+
+// W-③：入口**后置到结果页**（豆包商议：不要砍掉精准核算的路，放到算完之后）
+//   ⇒ 结果页那两个出口按钮必须还在，否则"想算准的人"彻底没了路。
+const gExit = /payback-m3-btn/.test(wxmlRaw) && /bindtap="onGoM3"/.test(wxmlRaw)
+  && /onGoM3\s*\(\s*\)\s*\{[\s\S]{0,120}?switchTab/.test(jsRaw);
+check('W-③ 精准核算入口后置在结果页（按钮 + bindtap + 真跳转都在，不在填表中间）',
+  gExit,
+  gExit ? '结果页出口在（payback-m3-btn + onGoM3 → switchTab）' : '结果页出口缺失 ⇒ 想算准的人没路了');
 
 
 // ============ E 下界 ============

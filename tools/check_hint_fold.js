@@ -178,6 +178,9 @@ const EXPECT = [
   //      —— 共用一个键会让「点开上面那个、下面那个也开了」，属可见的交互错乱。
   'dmDetailHintF', 'twDetailHintF', 'twOrdersHintF', 'twOrdersHintF2',
   'mkPlatHintF', 'twRecNoInputF',
+  // 🔴 沙盘页**不能**登记在这里（R546 踩过，R547b 又踩一次）：
+  //   本 EXPECT 只服务 F.wxml 一个扫描面；sandbox 的折叠键要进 `PAGE_CASES[].keys`。
+  //   错登记 ⇒ A6「未落地」+ S2「块数 < 目标」+ F2「期望外」**三条同时转红**。
 ];
 
 if (folds.length === 0) {
@@ -529,6 +532,10 @@ const PAGE_CASES = [
            //   老板缺的不是公式，是**去哪儿抄这个数**；填过的人不必每天看见 ⇒ 收进折叠块。
            //   ⚠️ 只能登记在这里，**不能进全局 EXPECT** —— 那个清单只针对 F.wxml 一个扫描面。
            'sbChannelRef',
+           // ── R547b（2026-10-28）：「开了多家平台，抽成不一样怎么填？」 ──
+           //   老板手上有 2~3 个平台的抽成却不会加权平均 ⇒ 补一段带真实例子的说明。
+           //   ⚠️ 只能登记在 `PAGE_CASES`（sandbox 面），**绝不能进全局 EXPECT**（R546/R547b 双踩）。
+           'sbChannelMulti',
            // ── R234/J4f 补漏两处（26 字 redAlertHint）──
            // 🔴 **两处必须两个独立 key**：同一句文案出现在正推 Tab 与反推 Tab 的红牌卡里。
            //   两处虽互斥显示，但若共用一个 key，用户在正推点开后切到反推

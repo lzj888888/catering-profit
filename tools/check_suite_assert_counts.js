@@ -198,7 +198,7 @@ const CASES = [
   // R234/M2v1.4：M2 小白输入面 —— 把 R223 **定案却零守卫**的铁律变成断言
   //   （专业指标不得进输入区 / 业态预设平铺 / 结论先给判定且不自造 / 术语餐饮化）。
   //   ⚠️ 不登记这里会被 A5-② 判「声明行含未受守 key」—— 新增套件的同步面之一。
-  { key: 'check_m2_biz_inputs', rel: 'tools/check_m2_biz_inputs.js' },  // 65 条（P/A/B/C/D/V/T/U/W/E 十组；A-⑧=R237 唯一换算点白名单；V-⑧=#7 配套反假绿；T=R339 标题数字 ≡ 实际输入行数；U=R341 三项语义提示）
+  { key: 'check_m2_biz_inputs', rel: 'tools/check_m2_biz_inputs.js' },  // 67 条（P/A/B/C/D/V/T/U/W/E 十组；A-⑧=R237 唯一换算点白名单；V-⑧=#7 配套反假绿；T=R339 标题数字 ≡ 实际输入行数；U=R341 三项语义提示；W 组 R547b 反向改写 1→3 条：只剩文字 / 文案三要素禁假承诺 / 入口后置结果页）
   // R247：形态 C 平台 picker 一致性守卫 —— S 段三道下界护栏（picker ≥4 / enum ≥6 / 术语键 ≥4）
   //   + C 段 4 条合成样本自检是「非恒真」凭据；断言数不受守则「删掉 B 组两条」会静默通过。
   { key: 'check_picker_platform', rel: 'tools/check_picker_platform.js' },  // 15 条（S 4 + A 4 + B 3 + C 4）

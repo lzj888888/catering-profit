@@ -1,11 +1,7 @@
 /* pages/sandbox/index.wxss —— M2 开店盈亏平衡点测算（v2）
-   色值单源见 app.wxss 头部声明（品牌墨蓝 #1e3a5f / 渐变 #2a4e7c → #162c49）；本文件不引入新的品牌色。
-   板块区隔手法与 M1 一致（李老师 round109 拍板）：一级标题「大字 + 左侧墨蓝渐变竖条」，
-   与二级信息拉开**量级**而非只加粗 —— 让餐饮小白一眼看出「这是新的一个板块」。
-
-   ⚠️ 无障碍硬约束（tools/selftest_ad_gates.js G1/G2 判据，两条都是真规则不是建议）：
-     G1 字号一律 ≥28rpx（本文件无 <28rpx）
-     G2 min-height 一律 ≥88rpx，或恰为 20/40rpx 占位（本文件用 88rpx + 40rpx） */
+   色值单源见 app.wxss 头部声明；本文件不引入新的品牌色。
+   ⚠️ 无障碍硬约束（selftest_ad_gates.js 真判据，非建议）：
+     G1 字号一律 ≥28rpx · G2 min-height ≥88rpx 或恰为 20/40rpx 占位（本文件 88rpx + 40rpx） */
 
 /* v1 遗留（结论行样式；v2 结果区改为表格化展示，保留以防其他引用） */
 .val-input { text-align: right; font-size: 32rpx; width: 280rpx; }
@@ -74,8 +70,8 @@
 /* 🔴 R545：毛利率「从哪来」引导条 —— 轻底色（不用卡片，避免一张卡里再套一张卡），
    字号 28rpx 起（AD 门禁下界），按钮沿用 .btn-small 的 88rpx 触控红线。 */
 .margin-src { margin-top: 14rpx; padding: 16rpx 18rpx; background: #f6f8fb; border-radius: 10rpx; }
-.margin-src-note { display: block; font-size: 28rpx; color: #4a5b70; line-height: 1.55; }
-.margin-src-btn { margin-top: 14rpx; }
+/* 🔴 R547b：pre-line —— 否则 \n 被压成空格、两行挤成一段。.margin-src-btn 随按钮撤掉。 */
+.margin-src-note { display: block; font-size: 28rpx; color: #4a5b70; line-height: 1.55; white-space: pre-line; }
 
 /* ===== 结果区 ===== */
 .cell.big .lbl { font-weight: 600; color: #333; }
@@ -215,19 +211,17 @@
 /* 🔴 R546：※ 图例 —— 比正文小一号、灰一档，像脚注而不像警告（它不是错，是说明）。 */
 .ref-legend { font-size: 28rpx; color: #8a94a6; line-height: 1.5; }
 
-/* ===== R234/J4 · 行内长提示折叠（句级，与月录入页 .hint-fold 同形）=====
- * 与上面 .fold-toggle 的区别（**必须视觉可分**，否则用户以为是同一套开关）：
- *   · .fold-toggle = **区段级**（30rpx 加粗 + 上边框）—— 收的是「整块参数区」；
- *   · .hint-fold   = **句级**（28rpx 常规 + 无边框）—— 收的是「一句说明文案」。
- * body 底色 #f3f7fb 与全局 `.hint` **同色**：折叠前是浅蓝块，折叠后展开仍是同一块 ⇒ 视觉连贯。
- * 🔴 本块无外层背景，故不套 .guide-fold 那种白卡（否则 body 嵌白卡 = 双层圆角）。 */
+/* 🔴 R234/J4 句级折叠 .hint-fold（与区段级 .fold-toggle 必须视觉可分）：
+   .fold-toggle 收「整块参数区」（30rpx 加粗 + 上边框）；.hint-fold 收「一句说明」（28rpx 常规、无边框）。
+   body 底色 #f3f7fb 与全局 .hint 同色 ⇒ 折叠前后视觉连贯；本块无外层背景，不套白卡。 */
 .hint-fold { padding: 0 0 6rpx; }
 .hint-fold-head { display: flex; align-items: center; justify-content: space-between;
   min-height: 88rpx; padding: 14rpx 8rpx; }
 .hint-fold-guide { font-size: 30rpx; color: #1e3a5f; }
 .hint-fold-arrow { font-size: 30rpx; color: #1e3a5f; }
+/* 🔴 R547b：pre-line —— 折叠正文里的 \n 要真换行（多平台说明是 4 段，挤成一段读不动） */
 .hint-fold-body { font-size: 30rpx; color: #4a5b70; line-height: 1.6; padding: 16rpx 20rpx;
-  background: #f3f7fb; border-radius: 12rpx; margin: 0 0 12rpx; }
+  background: #f3f7fb; border-radius: 12rpx; margin: 0 0 12rpx; white-space: pre-line; }
 
 /* 🔴 D8（2026-10-27 拍板）：派生项标注样式——浅琥珀底 + 左边框，提示"此项为行业估算值" */
 .derived-note { font-size: 26rpx; color: #8a6d3b; background: #fff7e6; border-left: 6rpx solid #f0ad4e;

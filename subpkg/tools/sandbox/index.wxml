@@ -84,13 +84,9 @@
           <text class="row-unit">{{t.yuanUnit}}</text>
         </view>
       </view>
-    <!-- 本次测算底层假设（默认折叠可展开） -->
-    <!-- 🔴 R435（李老师 2026-10-22）：已有铺面（forward）**整块删掉**假设区。
-         理由：① 已有店的老板有真实数据（毛利率/工资/客单价都报得出来），系统替他"假设"没意义；
-               ② 它还是**只读**的（`.asm-input` 是 text 不是 input）⇒ 老板看着不对也改不了；
-               ③ 它和毛利率滑块（本页 267 行的 slider）**打架**：一处只读显示"毛利率 60%"、
-                  一处能拖到 55% ⇒ 老板不知道哪个算数。
-         想开的店（reverse）保留：那种场景本来就没有真实数据，需要行业预估。 -->
+    <!-- 🔴 R435：已有铺面（forward）**整块删掉**假设区：① 老板有真实数据，替他假设没意义；
+         ② 它只读（.asm-input 是 text）改不了；③ 与毛利率滑块"打架"（一处显示 60%、一处能拖到 55%）。
+         想开的店（reverse）保留：那种场景本来没有真实数据，需要行业预估。 -->
     <block wx:if="{{mode === 'reverse'}}">
       <view class="fold-toggle" bindtap="onToggleAssumptions">{{t.assumptionsTitle}}{{showAssumptions ? ' ▾' : ' ▸'}}</view>
       <view wx:if="{{showAssumptions}}">
@@ -220,12 +216,10 @@
     </view>
     <slider min="0" max="100" step="1" value="{{marginPct}}" activeColor="#1e3a5f" block-size="22"
             bindchanging="onMarginChanging" bindchange="onMarginChange" />
-    <!-- 🔴 R545：滑块只解决「拖到几」，老板真正的困惑是「我这个数从哪来」⇒ 指到产地（成本卡）。
-         这也是从免费沙盘走向成本核算的自然下一步，不弹窗、不硬推。
-         ⚠️ 按钮单独一层：不与任何金额输入框同父（check_amount_input_row A1 硬判据）。 -->
+    <!-- 🔴 R547b：只留文字，不放按钮（填表中间跳走 = 路断）；
+         原句「建一张卡就自动算出来」是假承诺。精准入口后置到结果页。 -->
     <view class="margin-src">
       <text class="margin-src-note">{{t.marginSrcNote}}</text>
-      <button class="btn-small ghost margin-src-btn" bindtap="onGoM3">{{t.marginSrcBtn}}</button>
     </view>
     <view class="hint-fold">
       <view class="hint-fold-head" data-key="sbMarginTip" bindtap="onToggleHintFold">
@@ -254,6 +248,15 @@
           <text class="hint-fold-arrow">{{hintFold.sbChannelRef ? '▾' : '▸'}}</text>
         </view>
         <view class="hint-fold-body" wx:if="{{hintFold.sbChannelRef}}">{{t.channelRefBody}}</view>
+      </view>
+      <!-- 🔴 R547b：老板手上有多家平台抽成却不会加权平均。不拆行（加权合并 ≡ 拆开再合，R544）。
+           ⚠️ 新折叠键登记在 check_hint_fold.js 的 PAGE_CASES，不是全局 EXPECT。 -->
+      <view class="hint-fold">
+        <view class="hint-fold-head" data-key="sbChannelMulti" bindtap="onToggleHintFold">
+          <text class="hint-fold-guide">{{t.channelMultiLabel}}</text>
+          <text class="hint-fold-arrow">{{hintFold.sbChannelMulti ? '▾' : '▸'}}</text>
+        </view>
+        <view class="hint-fold-body" wx:if="{{hintFold.sbChannelMulti}}">{{t.channelMultiBody}}</view>
       </view>
       <view class="rw">
         <view class="row">
@@ -430,15 +433,11 @@
     </view>
   </view>
 
-  <!-- 🔴 R543（李老师 2026-10-27）：**删除「你这个店健不健康」整卡** —— 它和下面
-       「你的经营指标对照」是同一批 6 项、同一批 level（重复），而且那 6 行渲染的是**英文枚举**
-       （good/ok/warn/bad，老板看不懂）。⇒ 结论与明细合并成一张表：判定看表格最后一列
-       （优秀/合理/偏高/过高，中文，配色沿用 app.wxss 的 .lv-* 单源），不再另设结论卡。
-       ⚠️ `verdict` 数据本身保留：吸底条（refreshStick）还在用它的等级文案改标题。 -->
+  <!-- 🔴 R543：**删掉「你这个店健不健康」整卡**（与下面指标对照是同 6 项、同 level，重复）。
+       ⚠️ `verdict` 数据保留：吸底条 refreshStick 还在用它的等级文案。 -->
 
-  <!-- 🔴 R367（李老师 2026-10-19）：「想月赚 X，要怎么做」—— 目标反推。
-       两个数是**各自单算**（只动这一项就够），所以下面明写"不要叠加"。
-       口径已逐项对过引擎：固定总额含摊销、毛利率要先加回渠道费率。 -->
+  <!-- 🔴 R367：目标反推。两个数**各自单算**（只动这一项就够）⇒ 明写"不要叠加"。
+       口径：固定总额含摊销、毛利率要先加回渠道费率。 -->
   <view class="card2 tgt-back-card" wx:if="{{mode === 'forward' && targetReverse}}">
     <block wx:if="{{targetReverse.has}}">
       <view class="sec">{{targetReverse.title}}</view>
