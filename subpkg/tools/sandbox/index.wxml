@@ -184,7 +184,7 @@
       </view>
       <view class="row-note">{{t.otherVarNote}}</view>
       <!-- 🔴 R443：填到一半就能看到每月固定支出合计（只读展示，不参与任何计算；读不成数字时整行不显示） -->
-      <view class="row-note total-line" wx:if="{{fixedPreviewText}}">{{t.fixedTotal}} {{fixedPreviewText}}</view>
+      <view class="row-note total-line" wx:if="{{fixedPreviewText}}">{{t.fixedTotalNoAmort}} {{fixedPreviewText}}</view>
       <!-- 🔴 R452（D 项）：费率行「≈ 每月多少钱」——李老师拍板**放回，但必须标「估算」**。
            基数 = 你填的预计月营业额（见 refreshFeeAmt）：营业额没填或读不成 ⇒ amtText 为空 ⇒
            整行不显示（宁可不显示，也不显示一个错算的数）。只做展示，不参与任何计算。 -->
@@ -428,7 +428,7 @@
       <view class="sec">{{t.secResult}}</view>
       <view class="cell"><text class="lbl">{{t.buildTotal}}</text><text class="val">{{t.cur}}{{result.build_total}}</text></view>
       <view class="cell"><text class="lbl">{{t.amortMonthly}}</text><text class="val">{{t.cur}}{{result.build_amort}}</text></view>
-      <view class="cell"><text class="lbl">{{t.fixedTotal}}</text><text class="val">{{t.cur}}{{result.fixed_total}}</text></view>
+      <view class="cell"><text class="lbl">{{t.fixedTotalWithAmort}}</text><text class="val">{{t.cur}}{{result.fixed_total}}</text></view>
       <view class="cell"><text class="lbl">{{t.marginName}}</text><text class="val">{{result.margin_rate}}%</text></view>
       <view class="cell"><text class="lbl">{{t.varTotal}}</text><text class="val">{{result.platform_pct}}%</text></view>
     </view>
@@ -523,7 +523,7 @@
 
     <view class="card2 calc-basis" wx:if="{{result.valid_days}}">
       <view class="sec">{{t.calcBasisTitle}}</view>
-      <view class="cell"><text class="lbl">{{t.fixedTotal}}</text><text class="val">{{t.cur}}{{result.fixed_total}}</text></view>
+      <view class="cell"><text class="lbl">{{t.fixedTotalWithAmort}}</text><text class="val">{{t.cur}}{{result.fixed_total}}</text></view>
       <view class="cell"><text class="lbl">{{t.marginName}}</text><text class="val">{{result.margin_rate}}%</text></view>
       <view class="cell"><text class="lbl">{{t.calcBasisDays}}</text><text class="val">{{result.valid_days}} 天</text></view>
       <view class="hint calc-basis-formula">{{t.calcBasisFormula}}</view>

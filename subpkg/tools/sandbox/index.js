@@ -85,7 +85,9 @@ Page({
       yearsSuffix: M.yearsSuffix,
       buildTotal: M.buildTotal,
       amortMonthly: M.amortMonthly,
-      fixedTotal: M.fixedTotal,
+      // 🔴 D5：输入区（不含摊销）/ 结果区（含摊销）两个标签拆开
+      fixedTotalNoAmort: M.fixedTotalNoAmort,
+      fixedTotalWithAmort: M.fixedTotalWithAmort,
       marginName: M.marginName,
       marginSub: M.marginSub,
       profitLadderTitle: M.profitLadderTitle,

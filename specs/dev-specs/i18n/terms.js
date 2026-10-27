@@ -1052,7 +1052,10 @@ const TERMS = {
     buildTotal: '开店共投入',
     amortMonthly: '折算到每月',
     fixedItems: { rent: '房租', labor: '人工', utility: '水电气', manage: '管理费', other: '其他固定' },
-    fixedTotal: '每月固定支出合计',
+    // 🔴 D5（2026-10-27 拍板）：原来输入区与结果区共用同一标签但数字不同（一个不含摊销、一个含摊销），
+    //   老板以为系统算错。拆成两个标签，口径各自说清。
+    fixedTotalNoAmort: '每月要付的固定支出（不含装修设备摊销）',
+    fixedTotalWithAmort: '每月固定支出合计（含摊销）',
     marginName: '菜品毛利率',
     marginSub: '毛利率越高，需要卖出的营业额越少',
     // 🔴 R327：正推 —— 做到某营业额能赚多少（M2 原只有倒推，补上另一端）
