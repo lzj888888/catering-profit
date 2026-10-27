@@ -271,6 +271,8 @@ const CASES = [
   { key: 'check_m2_forward_failclosed', rel: 'tools/check_m2_forward_failclosed.js' }, // 19 条（P/Q/A/B/C/E 六组：空表单装配 rent/labor=0 + 引擎非空保本证门禁必要 + hasFixed(空)=false + 正控 hasFixed(填)=true + 变异 >0→>=0 可抓）
   // D3（2026-10-27 拍板）：水电气任一项>0 即采用 energy_split —— 15 条 = P3 + A5 + B1 + C4 + E2
   { key: 'check_m2_energy_split', rel: 'tools/check_m2_energy_split.js' }, // 15 条（P 前置 + A 单填/组合求和 + B 全空派生 + C 旧&&写法变异可抓 + E 自失效）
+  // D4（2026-10-27 拍板）：矩阵与单页管理费口径统一（manage 键，不再派生房租×占比）—— 19 条 = P4 + A6 + B3 + C4 + E2
+  { key: 'check_m2_matrix_manage', rel: 'tools/check_m2_matrix_manage.js' }, // 19 条（P 前置 + A 键在空/填 + B 键缺失派生相异 + C 源锚锁 R533/单页收敛/删键回退 + E 自失效）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];
