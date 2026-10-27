@@ -89,8 +89,9 @@ Page({
       addDim: M.addDim,
       delDim: M.delDim,
       buildLabel: M.buildLabel,
-      buildTotalLabel: M.buildTotalLabel,
-      buildYearsLabel: M.buildYearsLabel,
+      // 🔴 R529：原 `buildTotalLabel` / `buildYearsLabel` 两行已删 —— terms 全仓**没有这两个键**
+      //   （`M.` 取出来恒 undefined），且 wxml/js 也从未引用 ⇒ 纯死映射，留着只会误导后来人
+      //   以为"这个键是有的"。全仓 grep 只有这两行本身。
       areaLabel: M.areaLabel,
       generate: M.generate,
       generating: M.generating,
@@ -148,10 +149,17 @@ Page({
       colBreakCash: M.colBreakCash,
       buildYearsUnit: M.buildYearsUnit,
       buildSumNote: M.buildSumNote,
+      // 🔴 R529（2026-10-27 审计）：`buildSumOf()`（:748）读 `T.buildSumText`，但这里**一直没映射**
+      //   ⇒ 恒走兜底串 `'{total} · {amort}'` ⇒ 那行显示成「15万 · 4167」两个裸数字，
+      //   "合计 / 每月摊"四个字凭空消失、零报错（文案在 terms.js 的 matrix 区块里躺着）。
+      buildSumText: M.buildSumText,
       beCashNote: M.beCashNote,
       laborTotalHint: M.laborTotalHint,
-      laborUnitLabel: M.laborUnitLabel,
-      laborUnitNote: M.laborUnitNote,
+      // 🔴 R529（2026-10-27 审计）：这两个键**只在 terms.m2 区块**（全仓仅一处），
+      //   而本页 `M = TERMS.matrix`（:20）⇒ 原写法 `M.laborUnitLabel` 恒 undefined
+      //   ⇒ 「员工月均工资」输入框**没有标签**、下面的说明也空白。改取 m2 区块（不复制键，保持单源）。
+      laborUnitLabel: TERMS.m2.laborUnitLabel,
+      laborUnitNote: TERMS.m2.laborUnitNote,
       laborTotalLabel2: M.laborTotalLabel2,
       laborTotalNote2: M.laborTotalNote2,
       fixedBreakTitle: M.fixedBreakTitle,

@@ -1,0 +1,99 @@
+=== E · 变异测试：改动业务语义后，各守卫是否转红（红=能抓到，绿=盲区）===
+
+（先跑一遍基线）
+   基线 tools/check_biz_preset.js              失败=0 exit=0
+   基线 tools/check_m2_biz_inputs.js           失败=0 exit=0
+   基线 tools/check_m2_entry_parity.js         失败=0 exit=0
+   基线 tools/check_m2_matrix.js               失败=0 exit=0
+   基线 tools/check_m2_reverse_rent.js         失败=0 exit=0
+   基线 tools/check_m2_no_cost_rate.js         失败=0 exit=0
+   基线 tools/check_m2_partial_behavior.js     失败=0 exit=0
+   基线 tools/check_m2_ref_not_prefill.js      失败=0 exit=0
+
+--- H2  水电气「三项全>0」⇒「任一>0」
+   🟢 漏过 tools/check_biz_preset.js              失败=0（基线 0） 注入=3
+   🟢 漏过 tools/check_m2_biz_inputs.js           失败=0（基线 0） 注入=2
+   🟢 漏过 tools/check_m2_entry_parity.js         失败=0（基线 0） 注入=0
+   🟢 漏过 tools/check_m2_matrix.js               失败=0（基线 0） 注入=1
+   🟢 漏过 tools/check_m2_reverse_rent.js         失败=0（基线 0） 注入=0
+   🟢 漏过 tools/check_m2_no_cost_rate.js         失败=0（基线 0） 注入=2
+   🟢 漏过 tools/check_m2_partial_behavior.js     失败=0（基线 0） 注入=1
+   🟢 漏过 tools/check_m2_ref_not_prefill.js      失败=0（基线 0） 注入=0
+   ⇒ 注入已生效（次数 3）；0/8 个守卫能抓到
+
+--- H1  hasFixed 判据放宽为恒真
+   🟢 漏过 tools/check_biz_preset.js              失败=0（基线 0） 注入=0
+   🟢 漏过 tools/check_m2_biz_inputs.js           失败=0（基线 0） 注入=1
+   🟢 漏过 tools/check_m2_entry_parity.js         失败=0（基线 0） 注入=1
+   🟢 漏过 tools/check_m2_matrix.js               失败=0（基线 0） 注入=2
+   🟢 漏过 tools/check_m2_reverse_rent.js         失败=0（基线 0） 注入=0
+   🟢 漏过 tools/check_m2_no_cost_rate.js         失败=0（基线 0） 注入=2
+   🟢 漏过 tools/check_m2_partial_behavior.js     失败=0（基线 0） 注入=0
+   🟢 漏过 tools/check_m2_ref_not_prefill.js      失败=0（基线 0） 注入=1
+   ⇒ 注入已生效（次数 2）；0/8 个守卫能抓到
+
+--- H3  forward 的 fixedYuan 去掉 manage 键
+   🟢 漏过 tools/check_biz_preset.js              失败=0（基线 0） 注入=0
+   🟢 漏过 tools/check_m2_biz_inputs.js           失败=0（基线 0） 注入=1
+   🟢 漏过 tools/check_m2_entry_parity.js         失败=0（基线 0） 注入=1
+   🟢 漏过 tools/check_m2_matrix.js               失败=0（基线 0） 注入=2
+   🟢 漏过 tools/check_m2_reverse_rent.js         失败=0（基线 0） 注入=0
+   🟢 漏过 tools/check_m2_no_cost_rate.js         失败=0（基线 0） 注入=2
+   🟢 漏过 tools/check_m2_partial_behavior.js     失败=0（基线 0） 注入=0
+   🟢 漏过 tools/check_m2_ref_not_prefill.js      失败=0（基线 0） 注入=1
+   ⇒ 注入已生效（次数 2）；0/8 个守卫能抓到
+
+--- H4  前端固定合计少算房租
+   🟢 漏过 tools/check_biz_preset.js              失败=0（基线 0） 注入=0
+   🟢 漏过 tools/check_m2_biz_inputs.js           失败=0（基线 0） 注入=1
+   🟢 漏过 tools/check_m2_entry_parity.js         失败=0（基线 0） 注入=1
+   🟢 漏过 tools/check_m2_matrix.js               失败=0（基线 0） 注入=2
+   🟢 漏过 tools/check_m2_reverse_rent.js         失败=0（基线 0） 注入=0
+   🟢 漏过 tools/check_m2_no_cost_rate.js         失败=0（基线 0） 注入=2
+   🟢 漏过 tools/check_m2_partial_behavior.js     失败=0（基线 0） 注入=0
+   🟢 漏过 tools/check_m2_ref_not_prefill.js      失败=0（基线 0） 注入=1
+   ⇒ 注入已生效（次数 2）；0/8 个守卫能抓到
+
+--- E5  RATE_COST_FLOOR 全部改 999999
+   🟢 漏过 tools/check_biz_preset.js              失败=0（基线 0） 注入=3
+   🟢 漏过 tools/check_m2_biz_inputs.js           失败=0（基线 0） 注入=2
+   🟢 漏过 tools/check_m2_entry_parity.js         失败=0（基线 0） 注入=0
+   🟢 漏过 tools/check_m2_matrix.js               失败=0（基线 0） 注入=1
+   🟢 漏过 tools/check_m2_reverse_rent.js         失败=0（基线 0） 注入=0
+   🟢 漏过 tools/check_m2_no_cost_rate.js         失败=0（基线 0） 注入=2
+   🟢 漏过 tools/check_m2_partial_behavior.js     失败=0（基线 0） 注入=1
+   🟢 漏过 tools/check_m2_ref_not_prefill.js      失败=0（基线 0） 注入=0
+   ⇒ 注入已生效（次数 3）；0/8 个守卫能抓到
+
+--- L2  回本月数改成带 2 位小数
+   🟢 漏过 tools/check_biz_preset.js              失败=0（基线 0） 注入=0
+   🟢 漏过 tools/check_m2_biz_inputs.js           失败=0（基线 0） 注入=1
+   🟢 漏过 tools/check_m2_entry_parity.js         失败=0（基线 0） 注入=1
+   🟢 漏过 tools/check_m2_matrix.js               失败=0（基线 0） 注入=2
+   🟢 漏过 tools/check_m2_reverse_rent.js         失败=0（基线 0） 注入=0
+   🟢 漏过 tools/check_m2_no_cost_rate.js         失败=0（基线 0） 注入=2
+   🟢 漏过 tools/check_m2_partial_behavior.js     失败=0（基线 0） 注入=0
+   🟢 漏过 tools/check_m2_ref_not_prefill.js      失败=0（基线 0） 注入=1
+   ⇒ 注入已生效（次数 2）；0/8 个守卫能抓到
+
+--- M1  切业态时永远覆盖 otherPctNum
+   🟢 漏过 tools/check_biz_preset.js              失败=0（基线 0） 注入=0
+   🟢 漏过 tools/check_m2_biz_inputs.js           失败=0（基线 0） 注入=1
+   🟢 漏过 tools/check_m2_entry_parity.js         失败=0（基线 0） 注入=1
+   🔴 抓到 tools/check_m2_matrix.js               失败=1（基线 0） 注入=2
+   🟢 漏过 tools/check_m2_reverse_rent.js         失败=0（基线 0） 注入=0
+   🟢 漏过 tools/check_m2_no_cost_rate.js         失败=0（基线 0） 注入=2
+   🟢 漏过 tools/check_m2_partial_behavior.js     失败=0（基线 0） 注入=0
+   🟢 漏过 tools/check_m2_ref_not_prefill.js      失败=0（基线 0） 注入=1
+   ⇒ 注入已生效（次数 2）；1/8 个守卫能抓到
+
+--- F5  房租 rentPct 派生比例翻倍（fastfood 40→80）
+   🔴 抓到 tools/check_biz_preset.js              失败=1（基线 0） 注入=3
+   🟢 漏过 tools/check_m2_biz_inputs.js           失败=0（基线 0） 注入=2
+   🟢 漏过 tools/check_m2_entry_parity.js         失败=0（基线 0） 注入=0
+   🟢 漏过 tools/check_m2_matrix.js               失败=0（基线 0） 注入=1
+   🟢 漏过 tools/check_m2_reverse_rent.js         失败=0（基线 0） 注入=0
+   🟢 漏过 tools/check_m2_no_cost_rate.js         失败=0（基线 0） 注入=2
+   🟢 漏过 tools/check_m2_partial_behavior.js     失败=0（基线 0） 注入=1
+   🟢 漏过 tools/check_m2_ref_not_prefill.js      失败=0（基线 0） 注入=0
+   ⇒ 注入已生效（次数 3）；1/8 个守卫能抓到

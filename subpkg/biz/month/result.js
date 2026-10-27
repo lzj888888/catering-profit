@@ -84,6 +84,10 @@ Page({
       beMarginDrop: TERMS.card.beMarginDrop,
       beMarginRise: TERMS.card.beMarginRise,
       beHealthyText: TERMS.card.beHealthyText,
+      // 🔴 R529（2026-10-27 审计）：`result.js:542` 读 `T.beHealthyScope`，但这里**一直没映射**这个键
+      //   ⇒ `|| ''` 兜底 ⇒ 那句「按「业态 · 城市」的行业区间算」**恒空白、零报错**（R480 修完的可见凭证是空的）。
+      //   守卫只守「terms 里有这个键」，不守「页面把它映射进了 data.t」⇒ 盲区。现补上。
+      beHealthyScope: TERMS.card.beHealthyScope,
       beRangeText: TERMS.card.beRangeText,
       beWan: TERMS.card.beWan,
       beGmText: TERMS.card.beGmText,
