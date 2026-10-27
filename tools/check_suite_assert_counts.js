@@ -269,6 +269,8 @@ const CASES = [
   { key: 'check_m1_diff_explain', rel: 'tools/check_m1_diff_explain.js' },   // 60 条（H21 + I6 为 R493 新增；分段计数以实跑 pass 数为准）
   // D1（2026-10-27 拍板 + 审计 H1 实证）：空表单 fail-closed 行为守卫 —— 19 条 = P4 + Q2 + A6 + B3 + C2 + E2
   { key: 'check_m2_forward_failclosed', rel: 'tools/check_m2_forward_failclosed.js' }, // 19 条（P/Q/A/B/C/E 六组：空表单装配 rent/labor=0 + 引擎非空保本证门禁必要 + hasFixed(空)=false + 正控 hasFixed(填)=true + 变异 >0→>=0 可抓）
+  // D3（2026-10-27 拍板）：水电气任一项>0 即采用 energy_split —— 15 条 = P3 + A5 + B1 + C4 + E2
+  { key: 'check_m2_energy_split', rel: 'tools/check_m2_energy_split.js' }, // 15 条（P 前置 + A 单填/组合求和 + B 全空派生 + C 旧&&写法变异可抓 + E 自失效）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];
