@@ -87,6 +87,8 @@ Page({
       insightMaxRentEst: M.insightMaxRentEst,
       insightNoRent: M.insightNoRent,
       insightNeedEst: M.insightNeedEst,
+      insightSafeRent: M.insightSafeRent,
+      insightOnlyMax: M.insightOnlyMax,
       realMonthPh: M.realMonthPh,
       realMonthNote: M.realMonthNote,
       readMyData: M.readMyData,
@@ -1121,7 +1123,7 @@ Page({
         rent: meta.rent, labor: meta.labor, marginPct: meta.marginPct, targetYuan: meta.targetYuan,
         breakMonthly: null, breakDaily: null, targetMonthly: null, targetDaily: null,
         rentPct: null, leverYuan: null, cushionPct: null, payback: null, rentCls: '',
-        netMarginPct: null, platformPct: null,
+        netMarginPct: null, platformPct: null, rentPerM2: null,
         red: false, invalid: true, fixedExAmort: null, laborYuan: null, beCashMonthly: null,
       };
     }
@@ -1173,6 +1175,11 @@ Page({
       //   （实测四类店：账面 55~65% → 到手只有 41~49%）。账面值仍在档位区看得见。
       netMarginPct: round1Of(meta.marginPct - (Number(res.platform_pct) || 0)),
       platformPct: round1Of(Number(res.platform_pct) || 0),
+      // 🔴 R555：**元/㎡/月** —— 找铺面时唯一可横向比的口径。
+      //   中介报「8000/月 60㎡」和「8000/月 45㎡」完全是两回事，只给总租金没法比。
+      //   面积是已有输入 ⇒ 一个除法，零新增填写负担。
+      rentPerM2: (Number(this.data.global.area) > 0)
+        ? Math.round(meta.rent / Number(this.data.global.area) * 10) / 10 : null,
       // 房租占目标营收的三色档（≤10 健康 / 10~15 预警 / ≥15 高压 —— 房租越高越差）
       rentCls: (rentPct == null ? '' : (rentPct <= 10 ? 'ok' : (rentPct < 15 ? 'warn' : 'bad'))),
       targetYuan: meta.targetYuan,
@@ -1246,17 +1253,42 @@ Page({
         bestVal = null;
         bestText = M.insightNeedEst;          // 没填就不给结论（宁可不说，不编）
       } else {
-        const feasible = filtered.filter((r) => r.breakMonthly != null && r.breakMonthly <= estM);
-        if (!feasible.length) {
-          let low = null;
-          filtered.forEach((r) => {
-            if (r.breakMonthly != null && (!low || r.breakMonthly < low.breakMonthly)) low = r;
-          });
+        // 🔴 R555：给「最稳租金」和「上限租金」两个数，而不是一个。
+        //   找铺面时毛利率是**猜的**（只能按业态参考带），而不同毛利率能扛的租金差 1~2 档；
+        //   只给单值会让老板把"最乐观情况"当成"我的情况"。
+        const base = rows.filter((r) => !r.red && Number(r.labor) === fixLaborVal
+          && (targetAnchor === 0 || r.targetYuan === targetAnchor) && r.breakMonthly != null);
+        const byMargin = {};
+        base.forEach((r) => {
+          const mg = Number(r.marginPct);
+          if (!isFinite(mg)) return;
+          if (!byMargin[mg]) byMargin[mg] = { maxRent: null, minBe: null };
+          const g = byMargin[mg];
+          if (r.breakMonthly <= estM) {
+            g.maxRent = (g.maxRent == null) ? Number(r.rent) : Math.max(g.maxRent, Number(r.rent));
+          }
+          g.minBe = (g.minBe == null) ? r.breakMonthly : Math.min(g.minBe, r.breakMonthly);
+        });
+        const mgs = Object.keys(byMargin).map(Number).sort((a, b) => a - b);
+        const okMgs = mgs.filter((k) => byMargin[k].maxRent != null);
+        if (!okMgs.length) {
           bestVal = null;
-          bestText = fmt(M.insightNoRent, { est: estM, need: low ? Math.round(low.breakMonthly) : '—' });
+          let minBe = null;
+          mgs.forEach((k) => { const v = byMargin[k].minBe; if (v != null && (minBe == null || v < minBe)) minBe = v; });
+          bestText = fmt(M.insightNoRent, { est: estM, need: minBe != null ? Math.round(minBe) : '—' });
         } else {
-          bestVal = Math.max(...feasible.map((r) => r.rent));
-          bestText = fmt(M.insightMaxRentEst, { est: estM, rent: bestVal });
+          const safe = Math.min.apply(null, okMgs.map((k) => byMargin[k].maxRent));
+          const max = Math.max.apply(null, okMgs.map((k) => byMargin[k].maxRent));
+          const mlo = okMgs[0];
+          const mhigh = mgs[mgs.length - 1];
+          bestVal = max;
+          if (safe === max) {
+            bestText = fmt(M.insightMaxRentEst, { est: estM, rent: safe });
+          } else if (okMgs.length === mgs.length) {
+            bestText = fmt(M.insightSafeRent, { est: estM, safe: safe, max: max, mlo: mlo, mhigh: mhigh });
+          } else {
+            bestText = fmt(M.insightOnlyMax, { est: estM, max: max, mhigh: mhigh, mlow: mgs[0] });
+          }
         }
       }
     } else {

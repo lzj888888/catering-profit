@@ -46,6 +46,9 @@
    又不换行 ⇒ 真机成"竖着的文字"。200rpx = 6 字/行配 3~4 字短表头 ⇒ 一行横排；
    white-space: normal 让超长值折行而不是溢出到隔壁列。 */
 /* 🔴 R552：房租占目标营收的三色档 —— 只改字色，不动字号（AD-G1 ≥28rpx 由 .td 保底） */
+/* 🔴 R555：房租单元格第二行「元/㎡/月」—— 同样 ≥28rpx（AD-G1），只用颜色弱化 */
+.td-l1 { display: block; }
+.td-l2 { display: block; color: #8a94a6; }
 .td.rent-ok { color: #1f9254; }
 .td.rent-warn { color: #a9761b; }
 .td.rent-bad { color: #c0392b; font-weight: 600; }

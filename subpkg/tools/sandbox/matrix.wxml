@@ -239,14 +239,15 @@
           <view class="tr th">
             <text class="td" wx:if="{{dims.rent.length>1}}">{{t.colRent}}</text>
             <text class="td">{{t.colMargin}}</text>
-            <text class="td">{{t.colLabor}}</text><text class="td">{{t.colLaborFee}}</text>
+            <text class="td">{{t.colLabor}}</text>
+            <text class="td" wx:if="{{colsOpen || mode === 'forward'}}">{{t.colLaborFee}}</text>
             <text class="td">{{t.colBreakMonthly}}</text>
             <text class="td">{{t.colTargetMonthly}}</text>
             <!-- 🔴 淡季安全垫：已有店铺默认给（那里没有现金卡），找铺面收进更多列。
                  ⚠️ 只能一个条目 —— 拆两个 wx:if 会让页面列数变 15，撞 R349 对齐全。 -->
             <text class="td" wx:if="{{colsOpen || mode === 'forward'}}">{{t.colCushion}}</text>
             <text class="td" wx:if="{{colsOpen}}">{{t.colTarget}}</text>
-            <text class="td" wx:if="{{colsOpen}}">{{t.payback}}</text>
+            <text class="td" wx:if="{{colsOpen || mode !== 'forward'}}">{{t.payback}}</text>
             <text class="td" wx:if="{{colsOpen}}">{{t.colBreakCash}}</text><text class="td" wx:if="{{colsOpen}}">{{t.colBreakDaily}}</text>
             <text class="td" wx:if="{{colsOpen}}">{{t.colTargetDaily}}</text><text class="td" wx:if="{{colsOpen}}">{{t.rentPct}}</text>
             <text class="td" wx:if="{{colsOpen}}">{{t.colLever}}</text>
@@ -255,15 +256,15 @@
                —— 与"正常但无数"的行长得一样，老板在表里定位不到是哪几档算不出来（只有一句 toast）。
                现加 .invalid 灰显 + 首列 ⚠ 标记。 -->
           <view class="tr {{item.red?'red':''}}{{item.invalid?' invalid':''}}" wx:for="{{result.rows}}" wx:key="index">
-            <text class="td" wx:if="{{dims.rent.length>1}}">{{item.rent}}{{t.yuan}}{{item.invalid?' ⚠':''}}</text>
+            <text class="td" wx:if="{{dims.rent.length>1}}"><text class="td-l1">{{item.rent}}{{t.yuan}}{{item.invalid?' ⚠':''}}</text><text class="td-l2" wx:if="{{item.rentPerM2}}">{{item.rentPerM2}}元/㎡</text></text>
             <text class="td">{{item.netMarginPct!=null?item.netMarginPct:'—'}}{{t.pct}}</text>
             <text class="td">{{item.labor}}{{t.person}}</text>
-            <text class="td">{{item.laborYuan!=null?item.laborYuan:'—'}}</text>
+            <text class="td" wx:if="{{colsOpen || mode === 'forward'}}">{{item.laborYuan!=null?item.laborYuan:'—'}}</text>
             <text class="td">{{item.breakMonthly!=null?item.breakMonthly:'—'}}</text>
             <text class="td">{{item.targetMonthly!=null?item.targetMonthly:'—'}}</text>
             <text class="td" wx:if="{{colsOpen || mode === 'forward'}}">{{item.cushionPct!=null?item.cushionPct+t.pct:t.cushionBreakEven}}</text>
             <text class="td" wx:if="{{colsOpen}}">{{item.targetYuan}}{{t.yuan}}</text>
-            <text class="td" wx:if="{{colsOpen}}">{{item.payback!=null?item.payback:'—'}}</text>
+            <text class="td" wx:if="{{colsOpen || mode !== 'forward'}}">{{item.payback!=null?item.payback:'—'}}</text>
             <text class="td" wx:if="{{colsOpen}}">{{item.beCashMonthly!=null?item.beCashMonthly:'—'}}</text>
             <text class="td" wx:if="{{colsOpen}}">{{item.breakDaily!=null?item.breakDaily:'—'}}</text>
             <text class="td" wx:if="{{colsOpen}}">{{item.targetDaily!=null?item.targetDaily:'—'}}</text>
