@@ -208,8 +208,10 @@
             bindchanging="onMarginChanging" bindchange="onMarginChange" />
     <!-- 🔴 R547b：只留文字，不放按钮（填表中间跳走 = 路断）；
          原句「建一张卡就自动算出来」是假承诺。精准入口后置到结果页。 -->
-    <!-- 🔴 R549 口径二选一：选「已扣平台抽成」⇒ ④ 不再重复扣渠道费率（引擎口径见 NOTE）。 -->
-    <view class="mscope">
+    <!-- 🔴 R549 口径二选一：选「已扣平台抽成」⇒ ④ 不再重复扣渠道费率（引擎口径见 NOTE）。
+         🔴 R554 收尾：**只在开了渠道时显示** —— 渠道关着时渠道费率恒 0，"算没算抽成"两种选择
+         对结果**完全等价**，摆在这里只是让人多做一个无意义的决定（找铺面的人更不可能知道）。 -->
+    <view class="mscope" wx:if="{{channel.on}}">
       <view class="mscope-q">{{t.marginScopeLabel}}</view>
       <view class="mscope-row">
         <view class="mscope-item {{marginScope==='dish'?'on':''}}" data-scope="dish" bindtap="onMarginScope">{{t.marginScopeDish}}</view>

@@ -153,15 +153,20 @@
       <!-- 🔴 R553（李老师 2026-10-28 + 豆包）：你现在卖多少 ——
            矩阵只回答"要卖多少"时还不构成决策，老板要的是"我差多少"。
            放在结果区最上面：两种视图（明细/透视）都能看到。 -->
+      <!-- 🔴 R554 收尾：「你现在月营收」只对**已有店铺**有意义 ——
+           找铺面的人还没开店，没有"现在营收"；显示出来是废话，还会让他误填成"预计"。 -->
       <view class="real-row">
-        <text class="real-lb">{{t.realMonthLabel}}</text>
+        <text class="real-lb">{{mode === 'forward' ? t.realMonthLabel : t.realMonthLabelRev}}</text>
         <view class="real-in-wrap">
           <input class="real-in" type="digit" value="{{realMonthYuan}}" placeholder="{{t.realMonthPh}}" bindinput="onRealInput" adjust-position="{{true}}" cursor-spacing="20" />
           <text class="real-unit">元</text>
         </view>
       </view>
+      <!-- 差额结论只对已有店铺（找铺面的结论在下面的「结论速读」里，那里才算得了租金上限） -->
+      <block wx:if="{{mode === 'forward'}}">
       <view class="real-gap {{realGap.cls}}" wx:if="{{realGap}}">{{realGap.text}}</view>
       <view class="hint" wx:else>{{t.realMonthNote}}</view>
+      </block>
 
       <!-- 🔴 round279 · #9 结论速读：结论高亮 + 房租杠杆提示 + 淡季安全垫 -->
       <view class="insight" wx:if="{{result.insight && result.insight.has}}">
@@ -269,6 +274,7 @@
       </scroll-view>
       <!-- 🔴 R336：两个保本并排，必须说清差别（不然老板以为哪个算错了） -->
       <view class="hint">{{t.beCashNote}}</view>
+      <view class="hint">{{t.rentPctNote}}</view>
       </block>
 
       <!-- 透视表 -->

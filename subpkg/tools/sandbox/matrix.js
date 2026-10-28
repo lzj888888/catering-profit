@@ -83,6 +83,10 @@ Page({
       // 🔴 R548：折叠撤掉 ⇒ advDimsShow/Hide 不再映射。名字不用"高级维度"。
       dimsTitle: M.dimsTitle,
       realMonthLabel: M.realMonthLabel,
+      realMonthLabelRev: M.realMonthLabelRev,
+      insightMaxRentEst: M.insightMaxRentEst,
+      insightNoRent: M.insightNoRent,
+      insightNeedEst: M.insightNeedEst,
       realMonthPh: M.realMonthPh,
       realMonthNote: M.realMonthNote,
       readMyData: M.readMyData,
@@ -118,6 +122,7 @@ Page({
       empty: M.empty,
       count: M.count,
       rentPct: M.rentPct,
+      rentPctNote: M.rentPctNote,
       payback: M.payback,
       unfeasible: M.unfeasible,
       colBreakMonthly: M.colBreakMonthly,
@@ -582,7 +587,13 @@ Page({
   //   为什么不改成「人数 × 人均」：老板手上只有工资表合计，逼他拆人均是本末倒置（R296 拍1 的设计）。
   // 🔴 R553：老板的真实月营收（来自首页「预计月营业额」，也可在本页直接改）
   onRealInput(e) {
-    this.setData({ realMonthYuan: e.detail.value }, () => this.computeRealGap());
+    this.setData({ realMonthYuan: e.detail.value }, () => {
+      this.computeRealGap();
+      // 🔴 R554：找铺面模式下这个数决定「可承受最高月租」⇒ 必须重算结论（不只是重算差额）
+      if (this.data.mode !== 'forward' && this.data.result) {
+        this.setData({ 'result.insight': this.buildInsight(this.data.result.rows) });
+      }
+    });
   },
 
   // 🔴 R553：让矩阵回答「我差多少」而不只是「要卖多少」。
@@ -1117,8 +1128,18 @@ Page({
     const rentFen = Math.round(Number((meta.rent * 100).toFixed(10)));   // R298-B2：原式**连取整都没有** ⇒ 分不是整数，违约铁律
     const targetMonthlyFen = res.target_monthly_fen;
     // 房租占比：两个引擎返回数值的简单比值（展示用，非测算公式）
-    const rentPct = (targetMonthlyFen && targetMonthlyFen > 0)
-      ? Math.round((rentFen / targetMonthlyFen) * 1000) / 10
+    // 🔴 R554 收尾（口径一致性）：行业参考带（BANDS.rent 5~10%）的分母是**实际营业额**。
+    //   原来两种情况都用「目标营收」当分母 —— 已有店铺明明有真实营收（R553 已接 realMonthYuan）却不用，
+    //   算出来的占比会偏高（目标利润填得越低越夸张），让老板误以为铺子贵。
+    //   ⇒ forward 且填了真实营收 ⇒ 用它；否则（找铺面/没填）回落目标营收，并在列头上标明口径。
+    const realM = Number(this.data.realMonthYuan);
+    // ⚠️ 走 api.yuanToFen（全仓元→分单源），不要自己 `* 100` —— 那会被 check_money_precision 判红，
+    //   而且元→分的四舍五入规则只应有一份。
+    const rentDenomFen = (this.data.mode === 'forward' && realM > 0)
+      ? api.yuanToFen(this.data.realMonthYuan)
+      : targetMonthlyFen;
+    const rentPct = (rentDenomFen && rentDenomFen > 0)
+      ? Math.round((rentFen / rentDenomFen) * 1000) / 10
       : null;
     const breakMonthly = res.break_even_monthly_fen != null ? res.break_even_monthly_fen / 100 : null;
     // 🔴 R336：现金保本（不含摊销）—— 纯比例派生，不需要前端知道边际贡献率：
@@ -1216,8 +1237,28 @@ Page({
 
     let bestLabel, bestVal, bestText;
     if (dim === 'rent') {
-      bestVal = Math.max(...filtered.map((r) => r.rent));
-      bestText = fmt(M.insightMaxRent, { rent: bestVal, target: targetAnchor, margin: fixVal });
+      // 🔴 R554：原实现 bestVal = max(rent of filtered)，而 filtered 只要求 !red
+      //   （即毛利率 > 渠道费率）—— 8 个租金档全部满足 ⇒ 结论**恒等于档位上限**，
+      //   等于说「你能扛最高那档」，方向乐观且没有约束力。
+      //   现在必须用「预估月营收」当锚：保本营收 ≤ 预估营收 的最高租金档，才是真答案。
+      const estM = Number(this.data.realMonthYuan);
+      if (!(estM > 0)) {
+        bestVal = null;
+        bestText = M.insightNeedEst;          // 没填就不给结论（宁可不说，不编）
+      } else {
+        const feasible = filtered.filter((r) => r.breakMonthly != null && r.breakMonthly <= estM);
+        if (!feasible.length) {
+          let low = null;
+          filtered.forEach((r) => {
+            if (r.breakMonthly != null && (!low || r.breakMonthly < low.breakMonthly)) low = r;
+          });
+          bestVal = null;
+          bestText = fmt(M.insightNoRent, { est: estM, need: low ? Math.round(low.breakMonthly) : '—' });
+        } else {
+          bestVal = Math.max(...feasible.map((r) => r.rent));
+          bestText = fmt(M.insightMaxRentEst, { est: estM, rent: bestVal });
+        }
+      }
     } else {
       bestVal = Math.min(...filtered.map((r) => r.marginPct));
       bestText = fmt(M.insightMinMargin, { margin: bestVal, rent: fixVal, target: targetAnchor });
