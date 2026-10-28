@@ -524,7 +524,9 @@ const PAGE_CASES = [
     wxml: 'subpkg/tools/sandbox/index.wxml',
     js: 'subpkg/tools/sandbox/index.js',
     wxss: 'subpkg/tools/sandbox/index.wxss',
-    keys: ['sbAssumptionsHint', 'sbBandPreviewNote', 'sbExpectRevNote', 'sbBuildNote',
+    // 🔴 R549：`sbBandPreviewNote`（「这两个数从哪看」）**整段删除** ⇒ 移出期望键集。
+    //   理由：已有店铺的老板本来就知道面积/客单价从哪看；找铺面的人没店、从哪都看不到。
+    keys: ['sbAssumptionsHint', 'sbExpectRevNote', 'sbBuildNote',
            // 🔴 R296 拍1：`sbFixedNote`（「每月固定支出」卡的折叠说明）**随明细表整块删除** ⇒ 移出期望键集。
            // 🔴 R296b：`sbVarNote`（④「挂钩费用」卡的折叠说明）**随该卡整块删除** ⇒ 移出期望键集。
            'sbMarginTip',

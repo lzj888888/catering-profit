@@ -56,13 +56,7 @@
       </view>
       <view class="hint-fold-body" wx:if="{{hintFold.sbOtherBandNote}}">{{t.otherBandNote}}</view>
     </view>
-    <view class="hint-fold">
-      <view class="hint-fold-head" data-key="sbBandPreviewNote" bindtap="onToggleHintFold">
-        <text class="hint-fold-guide">{{t.bandPreviewLabel}}</text>
-        <text class="hint-fold-arrow">{{hintFold.sbBandPreviewNote ? '▾' : '▸'}}</text>
-      </view>
-    <view class="hint-fold-body" wx:if="{{hintFold.sbBandPreviewNote}}">{{t.bandPreviewNote}}</view>
-    </view>
+    <!-- 🔴 R549：「这两个数从哪看」整段删除（已有店铺本来就知道；找铺面的没店）。 -->
     <view class="row">
       <text class="row-name">{{t.areaLabel}}</text>
       <view class="row-in-wrap">
@@ -76,7 +70,8 @@
     <!-- 🔴 R525/R526：座位数与桌数两个输入**已删**（"翻台率按桌数算，和座位数没关系"）。
          核实：矩阵走正向口径且无 seats、正向引擎也不读 ⇒ 填了不影响结果，属死输入。 -->
     <view class="row">
-      <text class="row-name">{{t.avgPriceLabel}}</text>
+      <!-- 🔴 R549：标签补成「人均消费（客单价）」9 字 ⇒ 这一行标签列放宽到 300rpx，金额框跟着变窄 -->
+      <text class="row-name wide">{{t.avgPriceLabel}}</text>
         <view class="row-in-wrap">
           <input class="row-in" type="digit" value="{{avgPriceYuan}}" placeholder="{{t.avgPricePh}}" bindinput="onAvgPrice" adjust-position="{{true}}" cursor-spacing="20" />
           <text class="row-unit">{{t.yuanUnit}}</text>
@@ -213,6 +208,17 @@
             bindchanging="onMarginChanging" bindchange="onMarginChange" />
     <!-- 🔴 R547b：只留文字，不放按钮（填表中间跳走 = 路断）；
          原句「建一张卡就自动算出来」是假承诺。精准入口后置到结果页。 -->
+    <!-- 🔴 R549 口径二选一：选「已扣平台抽成」⇒ ④ 不再重复扣渠道费率（引擎口径见 NOTE）。 -->
+    <view class="mscope">
+      <view class="mscope-q">{{t.marginScopeLabel}}</view>
+      <view class="mscope-row">
+        <view class="mscope-item {{marginScope==='dish'?'on':''}}" data-scope="dish" bindtap="onMarginScope">{{t.marginScopeDish}}</view>
+        <view class="mscope-item {{marginScope==='net'?'on':''}}" data-scope="net" bindtap="onMarginScope">{{t.marginScopeNet}}</view>
+      </view>
+      <view class="mscope-note">{{marginScope==='net' ? t.marginScopeNetNote : t.marginScopeDishNote}}</view>
+      <!-- 智能提醒：填的比本业态参考带下界还低很多 ⇒ 多半是口径填反了（不是他店真差这么多） -->
+      <view class="warn-note" wx:if="{{marginScope==='dish' && marginLowWarn}}">{{marginLowHintText}}</view>
+    </view>
     <view class="margin-src">
       <text class="margin-src-note">{{t.marginSrcNote}}</text>
     </view>
@@ -234,6 +240,8 @@
       <switch checked="{{channel.on}}" bindchange="onToggleChannel" color="#1e3a5f" />
     </view>
     <block wx:if="{{channel.on}}">
+      <!-- 🔴 R549：「已扣平台抽成」时这两段指引也没用了 ⇒ 一并收起 -->
+      <block wx:if="{{marginScope !== 'net'}}">
       <view class="hint">{{t.channelSample}}</view>
       <!-- 🔴 R546（⑦ 平台抽成改造）：四项佣金「在哪看」——老板缺的不是公式，是**去哪儿抄这个数**。
            放折叠里：填过的人不用每天看见，第一次填的人点开就有。 -->
@@ -253,6 +261,7 @@
         </view>
         <view class="hint-fold-body" wx:if="{{hintFold.sbChannelMulti}}">{{t.channelMultiBody}}</view>
       </view>
+      </block>
       <view class="rw">
         <view class="row">
           <text class="row-name">{{t.channelTakeawayRatio}}</text>
@@ -261,6 +270,15 @@
             <text class="unit">{{t.channelPct}}</text>
           </view>
         </view>
+        <!-- 🔴 R549：两个占比=生意结构，两种口径都要；五个费率只在「只算菜品」下需要。 -->
+        <view class="row">
+          <text class="row-name">{{t.channelGroupRatio}}</text>
+          <view class="row-in-wrap">
+            <input class="ipt-num" type="digit" value="{{channel.groupRatio}}" data-field="groupRatio" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
+            <text class="unit">{{t.channelPct}}</text>
+          </view>
+        </view>
+        <block wx:if="{{marginScope !== 'net'}}">
         <view class="row">
           <text class="row-name">{{t.channelPlatformRate}}{{channel.refs.platformRate ? ' ※' : ''}}</text>
           <view class="row-in-wrap">
@@ -272,13 +290,6 @@
           <text class="row-name">{{t.channelPackRate}}{{channel.refs.packRate ? ' ※' : ''}}</text>
           <view class="row-in-wrap">
             <input class="ipt-num" type="digit" value="{{channel.packRate}}" placeholder="{{channel.phPackRate}}" data-field="packRate" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
-            <text class="unit">{{t.channelPct}}</text>
-          </view>
-        </view>
-        <view class="row">
-          <text class="row-name">{{t.channelGroupRatio}}</text>
-          <view class="row-in-wrap">
-            <input class="ipt-num" type="digit" value="{{channel.groupRatio}}" data-field="groupRatio" bindinput="onChannelInput" adjust-position="{{true}}" cursor-spacing="20" />
             <text class="unit">{{t.channelPct}}</text>
           </view>
         </view>
@@ -306,11 +317,13 @@
         </view>
         <view class="row row-strong"><text class="row-name">{{t.channelTotal}}</text><text class="row-val">{{channel.total}}{{t.channelPct}}</text></view>
         <view class="row-note ref-legend" wx:if="{{channel.anyRef}}">{{t.channelRefNote}}</view>
+        </block>
       </view>
       <!-- R412（队列 #24）：超 100% 的显式提示。文案键 channelOver100 早就在 terms 里定义，
            但此前 wxml 从不渲染、js 从不判定 ⇒ 是死文案。cost 很高：不提示则佣金按 >100% 流水扣。 -->
-      <view class="warn-note" wx:if="{{channel.over100}}">{{t.channelOver100}}</view>
-      <view class="hint">{{t.channelTotalNote}}</view>
+      <view class="warn-note" wx:if="{{marginScope !== 'net' && channel.over100}}">{{t.channelOver100}}</view>
+      <!-- 🔴 R549：说清为什么收起这五个数（别让老板以为界面坏了） -->
+      <view class="hint">{{marginScope === 'net' ? t.channelNetNote : t.channelTotalNote}}</view>
     </block>
   </view>
 

@@ -623,6 +623,23 @@ check('W-③ 精准核算入口后置在结果页（按钮 + bindtap + 真跳转
   gExit,
   gExit ? '结果页出口在（payback-m3-btn + onGoM3 → switchTab）' : '结果页出口缺失 ⇒ 想算准的人没路了');
 
+// ============ W 组续：毛利率口径闸门（R549）============
+// 为什么守：引擎 = 固定成本 ÷（毛利率 − 渠道费率 − 杂支）⇒ 毛利率**必须不含**平台抽成。
+//   老板选了「已扣平台抽成」还把这三次 push 留在这儿 = **重复扣**，实测保本额虚高 51%，
+//   而且全程零报错（数字看着很正常，只是偏大）。这类"静默多扣一遍"只能靠判据守。
+sec('W 组续 · 毛利率口径闸门（R549）');
+const gScopeDefault = /marginScope:\s*'dish'/.test(jsRaw);
+const gGate = /cm\.on\s*&&\s*this\.data\.marginScope\s*!==\s*'net'/.test(jsRaw);
+check('W-④ 渠道佣金入参被口径闸门守住（默认 dish · net 时不 push 三项）',
+  gScopeDefault && gGate,
+  gScopeDefault ? (gGate ? '默认 dish + 闸门在' : '闸门丢了 ⇒ 选「已扣平台抽成」仍然重复扣') : '默认口径不是 dish');
+// 口径必须进草稿：不存的话退出重进回默认 dish ⇒ 选 net 的店被悄悄扣两遍（R443 半份草稿同族）
+const gDraftSave = /marginScope:\s*this\.data\.marginScope/.test(jsRaw);
+const gDraftRestore = /marginScope:\s*d\.marginScope\s*===\s*'net'\s*\?\s*'net'\s*:\s*'dish'/.test(jsRaw);
+check('W-⑤ 口径进草稿并回填（否则重进回默认 ⇒ 悄悄扣两遍）',
+  gDraftSave && gDraftRestore,
+  gDraftSave ? (gDraftRestore ? '存 + 回填都在' : '回填缺失（老草稿默认 dish，但 net 会丢）') : '草稿没存口径');
+
 
 // ============ E 下界 ============
 sec('E 下界：断言数不得被悄悄删掉');

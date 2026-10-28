@@ -74,7 +74,6 @@ Page({
       secDeduct: M.secDeduct,
       secGoal: M.secGoal,
       presetDisplay: M.presetDisplay,
-      bandPreviewLabel: M.bandPreviewLabel,
       otherBandLabel: M.otherBandLabel,
       secResult: M.secResult,
       secIndicators: M.secIndicators,
@@ -128,6 +127,12 @@ Page({
       // 🔴 R547b：毛利率「从哪来」说明 —— **只有文字，没有按钮**（填表中间不能召唤跳走）。
       //   R545 那个「去建成本卡」按钮已撤：它打断填表闭环，且「建一张卡就自动算出来了」是假承诺。
       marginSrcNote: M.marginSrcNote,
+      // 🔴 R549：口径二选一
+      marginScopeLabel: M.marginScopeLabel,
+      marginScopeDish: M.marginScopeDish,
+      marginScopeDishNote: M.marginScopeDishNote,
+      marginScopeNet: M.marginScopeNet,
+      marginScopeNetNote: M.marginScopeNetNote,
       varTotal: M.varTotal,
       targetProfit: M.targetProfit,
       targetRow: M.targetRow,
@@ -153,6 +158,7 @@ Page({
       channelRefLabel: M.channelRefLabel,
       channelRefBody: M.channelRefBody,
       channelRefNote: M.channelRefNote,
+      channelNetNote: M.channelNetNote,
       // 🔴 R547b：多家平台抽成怎么合成一个数（新增折叠 sbChannelMulti）
       channelMultiLabel: M.channelMultiLabel,
       channelMultiBody: M.channelMultiBody,
@@ -186,7 +192,6 @@ Page({
       addItem: M.addItem,
       delItem: M.delItem,
       otherBandNote: M.otherBandNote,
-      bandPreviewNote: M.bandPreviewNote,
       buildNote: M.buildNote,
       marginBandLabel: M.marginBandLabel,
       expectRevLabel: M.expectRevLabel,
@@ -381,6 +386,14 @@ Page({
     // 🔴 R296b：`varRows`（④「跟营业额挂钩的费用」明细）**整块删除** —— 挂钩费率改由
     //   「渠道佣金」卡（各渠道占比 × 抽点）自动算，见 `recomputeChannel` + `buildPresetParam`。
     marginPct: 65,
+    // 🔴 R549 毛利率口径：'dish'=只算菜品（④ 照常扣，默认零回归）/ 'net'=已扣平台抽成
+    //   （④ 收起且**不再进 var_items**）。引擎=固定成本÷(毛利率−渠道费率−杂支)，毛利率必须不含抽成；
+    //   老板把到手毛利填进来又扣一遍 ⇒ 实测保本额虚高 51%。
+    marginScope: 'dish',
+    // 🔴 R549 派生：netMarginPct = 菜品 − 渠道费率（分步口径下的综合毛利率）；marginLowWarn 见 syncScopeDerived
+    netMarginPct: 0,
+    marginLowWarn: false,
+    marginLowHintText: '',
     expectYuan: '',      // 预计月营业额（选填）—— 锚点：后端据此反算各项参考金额
     targetYuan: '',
     // 结果（全部来自后端）
@@ -605,6 +618,8 @@ Page({
         // 🔴 R546：渠道参数进草稿 —— 原来 `channel` **整块不存**，老板填了抽成/折扣、
         //   退出重进全丢、静默回默认值（与 R443 修过的「半份草稿」同族病）。
         //   只存 8 个输入项，派生值（takeawayComm 等）不存 —— 回来重算，绝不存中间量。
+        // 🔴 R549：口径必须进草稿，否则重进回默认「只算菜品」⇒ 悄悄扣两遍（R443 半份草稿同族）。
+        marginScope: this.data.marginScope,
         channel: {
           on: this.data.channel.on,
           takeawayRatio: this.data.channel.takeawayRatio,
@@ -665,6 +680,8 @@ Page({
       avgPriceYuan: d.avgPriceYuan !== undefined ? d.avgPriceYuan : this.data.avgPriceYuan,
       initialInvestYuan: d.initialInvestYuan !== undefined ? d.initialInvestYuan : this.data.initialInvestYuan,
       areaNum: d.areaNum !== undefined ? d.areaNum : this.data.areaNum,
+      // 🔴 R549：老草稿没这字段 ⇒ 默认 'dish'（既有行为，老数据不受影响）
+      marginScope: d.marginScope === 'net' ? 'net' : 'dish',
       draftRestored: true,
     });
     // 🔴 R546：回填渠道参数。老草稿没有 `channel` 字段 ⇒ 保留当前默认（不硬塞一个 0）；
@@ -766,10 +783,13 @@ Page({
   //    对外不出现"食材成本率"（客户看不懂）。成本率只在云函数内部参与计算。
   onMarginChanging(e) {
     this.setData({ marginPct: Number(e.detail.value) });
+    // 🔴 R549：拖动时同步"综合毛利率"（纯展示，不重算引擎）
+    this.syncScopeDerived();
   },
   onMarginChange(e) {
     this.setData({ marginPct: Number(e.detail.value), 'fieldTouched.margin': true });
     if (this.data.channel.on) this.recomputeChannel();
+    else this.syncScopeDerived();
     this.scheduleCalc();
   },
 
@@ -964,6 +984,37 @@ Page({
       'channel.refs': refs,
       'channel.anyRef': anyRef,
     });
+    this.syncScopeDerived();
+  },
+
+  // 🔴 R549：前者=分步口径"算出来的综合毛利率"（李老师原话"最后出的一个综合毛利率"），
+  //   不给出来老板还得自己拿 55% 减 11.15%；后者=比参考带下界低 8 点以上（留余量，别天天弹）。
+  syncScopeDerived() {
+    const m = Number(this.data.marginPct) || 0;
+    const c = this.data.channel || {};
+    const t = c.on ? (Number(c.total) || 0) : 0;
+    const net = Math.round((m - t) * 10 + 1e-9) / 10;
+    const band = (this.data.bandsRaw || []).filter((x) => x && x.key === 'grossMargin')[0];
+    const lo = band && band.lo != null ? Number(band.lo) : null;
+    const warn = (lo != null) && m > 0 && m < lo - 8;
+    const patch = {};
+    if (net !== this.data.netMarginPct) patch.netMarginPct = net;
+    if (warn !== this.data.marginLowWarn) patch.marginLowWarn = warn;
+    if (warn) {
+      const txt = String(M.marginLowHint || '').replace('{band}', lo + '%~' + band.hi + '%');
+      if (txt !== this.data.marginLowHintText) patch.marginLowHintText = txt;
+    }
+    if (Object.keys(patch).length) this.setData(patch);
+  },
+
+  // 🔴 R549：口径切换 —— 必须**清掉旧结果**，否则屏上留着上一个口径的保本额，老板以为切了没用。
+  onMarginScope(e) {
+    const v = e.currentTarget.dataset.scope === 'net' ? 'net' : 'dish';
+    if (v === this.data.marginScope) return;
+    this.setData({ marginScope: v, result: null, profitLadder: null, targetReverse: null, sandboxId: '' }, () => {
+      this.syncScopeDerived();
+      this.scheduleCalc();
+    });
   },
 
   onToggleChannel() {
@@ -1015,12 +1066,10 @@ Page({
 
   /**
    * 重算（唯一云端交互点）。
-   * @param {boolean} isFirst 首次进页面=true ⇒ 走整页 loading（wxml 用 `wx:if="{{!loading}}"` 整页切换）
-   *
-   * ⚠️ round114 修 ①：此前每次自动重算都把 loading 置 true ⇒ 用户每改一个数、停顿 700ms 后
-   *    **整页闪成"加载中"**（输入框被整页重绘，体验差且易丢光标）。改为只有首算才整页 loading。
-   * ⚠️ round114 修 ②：加请求序号 _seq —— 云函数有网络延迟，慢响应的**旧结果**可能晚于新结果返回，
-   *    把界面覆盖成上一次的数（改了数却看到旧保本点）。序号不匹配即丢弃过期响应。
+   * @param {boolean} isFirst 首次进页面=true ⇒ 走整页 loading（wxml `wx:if="{{!loading}}"` 整页切换）
+   *   ⚠️ round114 ①：只有首算才整页 loading，否则每改一个数就整页闪、丢光标。
+   *   ⚠️ round114 ②：`_seq` 请求序号 —— 慢响应的**旧结果**会晚于新结果返回并覆盖界面
+   *      （改了数却看到旧保本点），序号不匹配即丢弃。
    */
   async onCalc(isFirst) {
     if (this._timer) { clearTimeout(this._timer); this._timer = null; }
@@ -1033,14 +1082,9 @@ Page({
   },
 
   /**
-   * 🔴 R297 第四轮（M2 整体审计 B11）：【开始测算】按钮专用入口。
-   *
-   * 为什么必须有这一层：`bindtap="onCalc"` 会把**事件对象**当作第一个实参传进来
-   * ⇒ `onCalc(isFirst)` 里 `isFirst` 恒为真 ⇒ 每次点按钮都 `setData({loading:true})`
-   * ⇒ 根节点 `wx:if="{{!loading}}"` 整页切走再切回 = **整页重绘 + 滚动位置丢失**
-   * （round114 明确修过的"改一个数就整页闪成加载中"，被按钮这条路重新引入；
-   *  而 `onCalc(true)` 的本意只给首屏 bootstrap 用）。
-   * ⇒ 按钮走这里、显式传 false；首屏仍由 bootstrap 走 `onCalc(true)`。
+   * 🔴 R297 B11：【开始测算】按钮专用入口。
+   *   `bindtap="onCalc"` 会把**事件对象**当第一个实参 ⇒ isFirst 恒真 ⇒ 每次点按钮都整页 loading
+   *   + 滚动位置丢失（round114 修过的病被按钮这条路重新引入）。⇒ 按钮走这里显式传 false。
    */
   onCalcBtn() { return this.onCalc(false); },
 
@@ -1290,14 +1334,10 @@ Page({
   /** 送引擎的 `seats`：恒 0（桌数/座位数输入已删除；正向不消费该字段）。 */
   seatsNow() { return 0; },
   /**
-   * 🔴 #1 收口（round272b）：每月营业天数 —— **正向 / 反向共用同一份输入**。
-   *   R361 起页面上不再有这一行（只读值已删），值恒为 30；底部假设卡仍展示该口径。
-   *   返回 1~31 的整数；未填 / 非法（0 / 非整数 / 越界）⇒ 返回 0，交由后端按「缺省回退 30」处理。
-   *   为什么必须在页面侧夹一次：正向入参 `valid_days` 走**严格校验**（非 1~31 的整数直接拒），
-   *   用户可能填 28.5 ⇒ 不夹就会把一个"本来能算"的表单变成一条契约名报错。
-   *   ⚠️ 反推的 `open_days` 保持原样（其 fail-closed 语义由 validate 层守着，不在此处改）。
-   *   🔴 R290：该项已改为**常量 30**（老板不再填）⇒ 正常路径恒返回 30；
-   *      「未填返回 0」这一哨兵分支仍需保留——防止历史草稿里存了空串/非法值时把整表变成「填写错误」。
+   * 🔴 round272b：每月营业天数 —— 正/反共用同一份输入。R290 起恒为常量 30（页面已无该行）。
+   *   返回 1~31 整数；未填/非法 ⇒ 返回 **0 哨兵**（云端 validate 按"未填"处理、service 回退 30）。
+   *   ⚠️ 必须夹：正向 valid_days 严格校验，28.5 不夹会变成一条契约名报错。
+   *   ⚠️ 哨兵分支不能删：历史草稿存了空串时，否则整表变「填写错误」。
    */
   validDaysNow() {
     const n = Number(this.data.openDaysNum);
@@ -1309,17 +1349,13 @@ Page({
   },
 
   /**
-   * 🔴 round273 · A 区（已有铺面）补齐 round223 §3.1 定案的两项指标：**每天来多少人 / 一天翻几台**。
-   *
-   * ⚠️ 为什么是**前端派生**而不是引擎出参：正向引擎出参**根本不含**客流与翻台（只有反推有
-   *   `traffic` / `turn_rate`），而引擎红线＝**禁改源码** ⇒ 走既定扩展法「入参变换 + 前端派生」，
-   *   引擎零改动（service.js / validate.js 本次都没碰）。
-   *
-   * 口径（与反推**完全同源**，保证两个 Tab 里同一个铺子的数字可比）：
-   *   每天来客 = 日均营业额 ÷ 人均消费（向上取整，人不能是 0.7 个）
-   *   一天翻台 = 每天来客 ÷ 座位数（反推是 `月客流 ÷(座位×天数)` ≡ `日均客流 ÷ 座位`，同一个数）
-   *
-   * fail-closed：人均消费 ≤0 或座位数 ≤0 ⇒ 返回 null（卡片整块不渲染，**不给假数**）。
+   * 🔴 round273：A 区补「每天来多少人 / 一天翻几台」。
+   *   ⚠️ 前端派生而非引擎出参：正向引擎出参根本没有客流与翻台（只有反推有 traffic/turn_rate），
+   *   引擎禁改源码 ⇒ 走「入参变换 + 前端派生」，service/validate 都没碰。
+   *   口径与反推**完全同源**（两个 Tab 同一个铺子的数字可比）：
+   *     每天来客 = 日均营业额 ÷ 人均消费（向上取整，人不能是 0.7 个）
+   *     一天翻台 = 每天来客 ÷ 座位数（≡ 反推的 月客流 ÷(座位×天数)）
+   *   fail-closed：人均消费或座位数 ≤0 ⇒ null（整块不渲染，不给假数）。
    */
   // 🔴 R327：正推 —— 做到某个营业额，能赚多少。
   //   为什么补：M2 原先只有**倒推**（要赚 X 需要卖多少），老板紧接着会问「那我大概能做到 15 万，能赚多少」。
@@ -1560,22 +1596,12 @@ Page({
   },
 
   /**
-   * 🔴 round276 · A 区（已有铺面）补齐 round223 §3.1 定案**遗漏**的「坪效 / 人效」
-   *   （翻台已 round273 补；这两项 grep 全仓零命中 ⇒ 从来没建过）。
-   *
-   * 为什么同样是**前端派生**：正向引擎出参里根本没有这两项（正向只回答"每月/每天卖多少够本"），
-   *   引擎红线＝**禁改源码** ⇒ 走既定扩展法（入参变换 + 前端派生），引擎零改动。
-   *
-   * 口径（餐饮通行定义，不是我造的）：
-   *   坪效 = 月营业额 ÷ 营业面积（元/㎡·月）—— 答"这面积用得值不值"
-   *   人效 = 月营业额 ÷ 员工人数（元/人·月）—— 答"这些人产出够不够"
-   *
-   * ⚠️ 分子必须是**用户填的实际月营业额**（A 区语义＝已发生的真实流水）：
-   *   拿"保本营业额"当分子算出来的是**保本坪效**，不是老板要的"我这店实际坪效"。
-   *
-   * 🔴 两项**都不挂行业区间**：R223 §3.2 红线＝不得编造分位数，而仓内 BANDS（`indicatorRef.js`）
-   *   只有毛利率/房租占比/人工占比/能耗/管理/推广六项 —— **没有坪效、也没有人效**。
-   *   ⇒ 只出数值、不做评级、不给区间，留给老板自家横比（换面积/换人数自己看变化）。
+   * 🔴 round276：A 区补「坪效 / 人效」—— 同样是前端派生（引擎出参没有这两项，禁改源码）。
+   *   坪效 = 月营业额 ÷ 营业面积（元/㎡·月，答"这面积用得值不值"）
+   *   人效 = 月营业额 ÷ 员工人数（元/人·月，答"这些人产出够不够"）
+   *   ⚠️ 分子必须是**用户填的实际月营业额**：拿保本额算出来的是"保本坪效"，不是他要的数。
+   *   🔴 都不挂行业区间：BANDS 只有毛利率/房租/人工/能耗/管理/推广六项，没有这两项，
+   *   R223 §3.2 红线＝不得编造分位数 ⇒ 只出数值、不评级，留给自家横比。
    *
    * fail-closed：没填实际营业额 ⇒ 整块不渲染（**不给假数**）；
    *   面积或人数没填 ⇒ 只出填了的那一（几）项，缺的那项不出现。
@@ -1772,18 +1798,11 @@ Page({
   onGoM1() { wx.navigateTo({ url: '/subpkg/biz/month/index' }); },
 
   /**
-   * 🔴 R234：本业态 × 本城市的**健康租金上限**（%），由系统自动取，**不再向用户收这个数**。
-   *
-   * 为什么是「健康区间上限」而不是豆包那组「保本极限红线」（快餐≤15%/中餐18~20%/火锅≤20%）：
-   *   那组数据豆包已自述为「一线经验估算、非公开调研、样本仅重庆街边店」，并明确
-   *   「不适合作为健康经营标准采信，你们 5~10%/8~15% 数据源更严谨，优先采信」。
-   *   两者语义也不同：我方=健康盈利区间（有利润缓冲），它=保本临界（几无缓冲）。
-   *   且只给一个数时应取**更保守**的 —— 新手最容易高估自己，给极限红线会让他
-   *   误以为「不超过 20% 就没问题」。（同 R224 处理「火锅水电 8~12%」的套路。）
-   *
-   * ⚠️ 单源：数值来自云端 `bands_preview`（`indicatorRef.BANDS.rent` × 城市系数），
-   *    前端**不复制、不硬编码**任何一个百分比 —— 复制一份立刻就有两份真相源。
-   * @returns {number} 健康租金上限（%）；取不到 ⇒ 0（调用方按 0 处理）
+   * 🔴 R234：本业态×本城市的**健康租金上限（%）**，系统自动取，不再向用户收这个数。
+   *   取"健康区间上限"而非豆包的"保本极限红线"：那组数据豆包自述为一线经验估算、不适合当健康
+   *   经营标准；且只给一个数时应取**更保守**的（新手最容易高估自己）。
+   *   ⚠️ 单源：来自云端 bands_preview（indicatorRef.BANDS.rent × 城市系数），前端不复制、不硬编码。
+   * @returns {number} 上限%；取不到 ⇒ 0
    */
   rentRateDefault() {
     const key = this.data.cityIdx + ':' + this.data.bizIdx;
@@ -1918,7 +1937,9 @@ Page({
     // 🔴 R296b：**渠道佣金**并入挂钩费率（占**总流水**%）。老板只填「占比 × 抽点」，此处取加权结果。
     //   ⚠️ 与 costMeta 的 var 项（如"其他=2%损耗"）**键不重叠**（此处只用 takeawayComm/grouponComm/cardFee）⇒ 不重复计。
     const cm = this.data.channel || {};
-    if (cm.on) {
+    // 🔴 R549 口径闸门：选「已扣平台抽成」⇒ 不再推进这三项（否则重复扣，保本虚高 51%）。
+    //   只挡渠道三项，otherPct（损耗/杂支）照常扣 —— 与平台无关。
+    if (cm.on && this.data.marginScope !== 'net') {
       const addComm = (k, p) => { const n = Number(p) || 0; if (n > 0) varItemsFinal.push({ key: k, pct: n }); };
       addComm('takeawayComm', cm.takeawayComm);
       addComm('grouponComm', cm.grouponComm);

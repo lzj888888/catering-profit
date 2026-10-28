@@ -69,6 +69,18 @@
 .mg-sub { font-size: 30rpx; color: #888; }
 /* 🔴 R545：毛利率「从哪来」引导条 —— 轻底色（不用卡片，避免一张卡里再套一张卡），
    字号 28rpx 起（AD 门禁下界），按钮沿用 .btn-small 的 88rpx 触控红线。 */
+/* 🔴 R549 口径二选一（互斥）；28rpx 满足 AD-G1；选中态墨蓝实底 */
+.mscope { margin-top: 16rpx; padding: 16rpx 18rpx; background: #f6f8fb; border-radius: 10rpx; }
+.mscope-q { font-size: 28rpx; color: #4a5b70; margin-bottom: 12rpx; }
+.mscope-row { display: flex; }
+.mscope-item { flex: 1; text-align: center; font-size: 28rpx; color: #4a5b70;
+  padding: 16rpx 8rpx; border: 1rpx solid #dfe5ec; background: #fff; }
+.mscope-item:first-child { border-radius: 10rpx 0 0 10rpx; }
+.mscope-item:last-child { border-radius: 0 10rpx 10rpx 0; border-left: none; }
+.mscope-item.on { background: #1e3a5f; color: #fff; border-color: #1e3a5f; }
+.mscope-note { font-size: 28rpx; color: #6b7a90; margin-top: 10rpx; }
+/* 🔴 R549：9 字放不进 220rpx ⇒ 该行放宽，金额框随之变窄 */
+.row-name.wide { flex: 0 0 300rpx; }
 .margin-src { margin-top: 14rpx; padding: 16rpx 18rpx; background: #f6f8fb; border-radius: 10rpx; }
 /* 🔴 R547b：pre-line —— 否则 \n 被压成空格、两行挤成一段。.margin-src-btn 随按钮撤掉。 */
 .margin-src-note { display: block; font-size: 28rpx; color: #4a5b70; line-height: 1.55; white-space: pre-line; }
