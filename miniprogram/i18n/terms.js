@@ -2647,8 +2647,13 @@ const TERMS = {
     colLaborFee: '月人工费',
     colBreakCash: '现金保本/月',
     // 🔴 R333：人数档位不是对所有业态都有效 —— 说清楚，别让老板白调
-    laborTotalHint: '已按你填的总额算，人数只影响人效',
-    colMargin: '毛利率',
+    // 🔴 R552：原句「已按你填的总额算，人数只影响人效」—— 现在人数真的会算加人了（按当前人均递增），
+    //   旧文案会让人以为改人数没用 ⇒ 换成直说每加一人加多少钱。
+    laborStepHint: '填的是人工总额 {a}；每 +1 人按 {b}（你现在的平均工资）加',
+    laborTotalHint: '已按你填的总额算',
+    // 🔴 R552：这一列表头与取值**同时改**——列名「到手毛利率」、值取扣完平台与杂支的净额
+    //   （账面毛利率在档位区与结果卡都还看得见，不会丢）。
+    colMargin: '到手毛利率',
     colTarget: '目标利润',
     addDim: '加一档',
     delDim: '删',
@@ -2711,7 +2716,8 @@ const TERMS = {
     insightCushion: '淡季安全垫 ≈ {cushion}%：营收跌这么多才到保本',
     leverRule: '公式：房租增量 ÷ 毛利率 = 需多做的月营收',
     colLever: '涨租需多卖',
-    colCushion: '淡季安全垫',
+    // 🔴 R552：原名有歧义 —— 它算的是「营收比目标最多跌多少仍保本」，不是季节性，也不是现金垫。
+    colCushion: '抗跌空间',
     colLeverExport: '房租每涨1000需多做到手(元)',
     colCushionExport: '淡季安全垫(%)',
     cushionBreakEven: '保本线',

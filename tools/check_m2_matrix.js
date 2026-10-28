@@ -484,8 +484,24 @@ for (const rel of Object.keys(CJK_BASELINE)) {
 //   ② 毛利率档位写死 45% 且切业态不变 ⇒ 与 index 页同店差最多 49%
 //   ③ 构成拆项不与引擎对账 ⇒ 拆错也不报错
 {
-  chk(/laborTotalYuan:\s*ltYuan\s*>\s*0\s*\?\s*ltYuan/.test(mtxJs),
+  // 🔴 R552：总额不再直接透传，改走 `laborTotalFor()`（有总额时按当前人均递增，否则"多请一个人"算不出来）。
+  //   原判据钉死直传写法 ⇒ 会把新实现判红。改为接受两种合法形态，
+  //   另**独立**守「递增逻辑真的存在且按当前人均」——见下面 R552 那组。
+  const ltDirect = /laborTotalYuan:\s*ltYuan\s*>\s*0\s*\?\s*ltYuan/.test(mtxJs);
+  const ltHelper = /laborTotalYuan:\s*this\.laborTotalFor\(/.test(mtxJs);
+  chk(ltDirect || ltHelper,
     'matrix.js buildClean 未把人工总额传给装配（R331：老板填了也不生效，仍按人数×均值估）');
+
+  // --- R552：填了人工总额时，「多请一个人」必须真能算出来 ---
+  // 实测过的静默假结论：总额 18000 时 3人/4人/6人算出的人工都是 18000、保本线一模一样，
+  //   而矩阵的核心卖点就是"多请一个人会怎样" ⇒ 老板会得出"多请人不要紧"的错误结论。
+  chk(/laborTotalFor\(laborN\)\s*\{/.test(mtxJs),
+    'matrix.js 缺 laborTotalFor()（R552：有总额时人数档位会变成假维度）');
+  chk(/lt\s*\+\s*\(n\s*-\s*base\)\s*\*\s*\(lt\s*\/\s*base\)/.test(mtxJs),
+    'laborTotalFor 未按「当前人均」递增（应为 总额 + (人数 − 当前人数) × 总额 ÷ 当前人数）');
+  // 提示曾经在 js 里算了却**从未渲染** ⇒ 老板永远看不到"人数怎么算"
+  chk(/laborHint/.test(mtxWxml),
+    'matrix.wxml 未渲染 laborHint（R552：人数算法说明没人看得到）');
   chk(/grossMarginPct[\s\S]{0,120}?dims\.margin\[0\]/.test(mtxJs),
     'matrix.js 切业态时未用业态预设更新毛利率第一档（R331：与 index 页最多差 49%）');
   chk(/!this\.data\.fieldTouched\.margin/.test(mtxJs),

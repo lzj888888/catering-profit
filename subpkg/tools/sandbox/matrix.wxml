@@ -117,6 +117,8 @@
         <input class="minp dim-inp" type="digit" value="{{item}}" data-dim="labor" data-idx="{{idx}}" bindinput="onDimInput" adjust-position="{{true}}" cursor-spacing="20" />
         <view class="del" wx:if="{{dims.labor.length>1}}" bindtap="delDim" data-dim="labor" data-idx="{{idx}}">{{t.delDim}}</view>
       </view>
+      <!-- 🔴 R552：这句原来在 js 里算了却**从未渲染** ⇒ 老板永远看不到"人数怎么算"的说明 -->
+      <view class="hint" wx:if="{{laborHint}}">{{laborHint}}</view>
     </view>
     <view class="dim-block">
       <view class="dim-head"><text>{{t.dimMargin}}</text><view class="add" bindtap="addDim" data-dim="margin">{{t.addDim}}</view></view>
@@ -236,7 +238,7 @@
                现加 .invalid 灰显 + 首列 ⚠ 标记。 -->
           <view class="tr {{item.red?'red':''}}{{item.invalid?' invalid':''}}" wx:for="{{result.rows}}" wx:key="index">
             <text class="td" wx:if="{{dims.rent.length>1}}">{{item.rent}}{{t.yuan}}{{item.invalid?' ⚠':''}}</text>
-            <text class="td">{{item.marginPct}}{{t.pct}}</text>
+            <text class="td">{{item.netMarginPct!=null?item.netMarginPct:'—'}}{{t.pct}}</text>
             <text class="td">{{item.labor}}{{t.person}}</text>
             <text class="td">{{item.laborYuan!=null?item.laborYuan:'—'}}</text>
             <text class="td">{{item.breakMonthly!=null?item.breakMonthly:'—'}}</text>
@@ -247,7 +249,7 @@
             <text class="td" wx:if="{{colsOpen}}">{{item.beCashMonthly!=null?item.beCashMonthly:'—'}}</text>
             <text class="td" wx:if="{{colsOpen}}">{{item.breakDaily!=null?item.breakDaily:'—'}}</text>
             <text class="td" wx:if="{{colsOpen}}">{{item.targetDaily!=null?item.targetDaily:'—'}}</text>
-            <text class="td" wx:if="{{colsOpen}}">{{item.rentPct!=null?item.rentPct:'—'}}</text>
+            <text class="td rent-{{item.rentCls}}" wx:if="{{colsOpen}}">{{item.rentPct!=null?item.rentPct:'—'}}</text>
             <text class="td" wx:if="{{colsOpen}}">{{item.leverYuan!=null?item.leverYuan:'—'}}</text>
           </view>
         </view>

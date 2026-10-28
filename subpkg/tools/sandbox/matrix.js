@@ -22,6 +22,11 @@ const OpenCash = require('../../../utils/openCash.js');
 const M = TERMS.matrix;
 
 // 🔴 round279 · 模板替换（术语单源：文案在 terms.js，数字在此填，避免 wxml 里拼字符串）
+function round1Of(n) {
+  const v = Number(n);
+  return isFinite(v) ? Math.round(v * 10 + 1e-9) / 10 : null;
+}
+
 function fmt(tpl, map) {
   return String(tpl).replace(/\{(\w+)\}/g, (_, k) => (map[k] != null ? map[k] : ''));
 }
@@ -161,6 +166,7 @@ Page({
       buildSumText: M.buildSumText,
       beCashNote: M.beCashNote,
       laborTotalHint: M.laborTotalHint,
+      laborStepHint: M.laborStepHint,
       // 🔴 R529（2026-10-27 审计）：这两个键**只在 terms.m2 区块**（全仓仅一处），
       //   而本页 `M = TERMS.matrix`（:20）⇒ 原写法 `M.laborUnitLabel` 恒 undefined
       //   ⇒ 「员工月均工资」输入框**没有标签**、下面的说明也空白。改取 m2 区块（不复制键，保持单源）。
@@ -560,10 +566,31 @@ Page({
   //   （"本业态人工按固定 X 元/月"），但 R335 把火锅的 `fixed 25000` 改成了 `labor_total`
   //   ⇒ 实测 **13 个业态已全部是 labor_total** ⇒ 那段分支永远走不到，是死代码。
   //   现在只剩一种有效提示：老板直接填了人工总额时，告诉他"人数只影响人效"。
+  // 🔴 R552（豆包方案 C）：填了「人工每月总额」时，**人数档位不能变成假维度**。
+  //   实测过：总额 18000 时，3人/4人/6人算出的人工都是 18000、保本线一模一样
+  //   ⇒ 矩阵的核心问句「多请一个人会怎样」变成假的，而且当时连提示都没渲染。
+  //   做法：基准档（= 进页时的当前人数，即档位第 1 档）用实填总额；
+  //        每 +1 人按**当前人均**（总额 ÷ 当前人数）递增。
+  //   为什么不改成「人数 × 人均」：老板手上只有工资表合计，逼他拆人均是本末倒置（R296 拍1 的设计）。
+  laborTotalFor(laborN) {
+    const lt = Number(this.data.global.laborTotalYuan);
+    if (!(lt > 0)) return undefined;
+    const base = Number((this.data.dims.labor || [])[0]);
+    const n = Number(laborN);
+    if (!(base > 0) || !(n > 0)) return lt;
+    return Math.round(lt + (n - base) * (lt / base));
+  },
+
   laborHintOf() {
     const T = this.data.t;
-    if (Number(this.data.global.laborTotalYuan) > 0) return T.laborTotalHint;
-    return '';
+    const lt = Number(this.data.global.laborTotalYuan);
+    if (!(lt > 0)) return '';
+    const base = Number((this.data.dims.labor || [])[0]);
+    const unit = base > 0 ? Math.round(lt / base) : 0;
+    if (!(unit > 0)) return T.laborTotalHint;
+    // ⚠️ 这条原来是「已按你填的总额算，人数只影响人效」—— 现在人数真的会算加人了，
+    //   旧文案会让人以为改人数没用。改成直说每加一人加多少钱。
+    return fmt(T.laborStepHint, { a: MoneyFmt.formatYuan(lt), b: MoneyFmt.formatYuan(unit) });
   },
 
   // ===== 🔴 R325：钱够不够开 · 能撑几个月 =====
@@ -723,7 +750,8 @@ Page({
       area: Number(this.data.global.area) || 0,
       headcount: laborN,
       rentYuan,
-      laborTotalYuan: lt > 0 ? lt : undefined,
+      // 🔴 R552：走 laborTotalFor（有总额时按当前人均递增），否则人数档位是假的
+      laborTotalYuan: this.laborTotalFor(laborN),
       laborUnitYuan: (lt > 0 || !(un > 0)) ? undefined : un,
       fixedYuan: { rent: rentYuan, manage: this.data.global.manageYuan },
       buildItems: this.buildItems(),
@@ -754,7 +782,7 @@ Page({
       area: Number(this.data.global.area) || 0,
       headcount: row.labor,
       rentYuan: row.rent,
-      laborTotalYuan: ltYuan > 0 ? ltYuan : undefined,
+      laborTotalYuan: this.laborTotalFor(row.labor),   // 🔴 R552：同 buildClean，按当前人均递增
       fixedYuan: { rent: row.rent, manage: this.data.global.manageYuan },
       buildItems: this.buildItems(),
     }, coef);
@@ -798,7 +826,8 @@ Page({
       area: Number(this.data.global.area) || 0,
       headcount: laborN,
       rentYuan,
-      laborTotalYuan: ltYuan > 0 ? ltYuan : undefined,
+      // 🔴 R552：同 laborOf —— 有总额时按当前人均递增，否则"多请一个人"算不出来
+      laborTotalYuan: this.laborTotalFor(laborN),
       laborUnitYuan: (ltYuan > 0 || !(unitYuan > 0)) ? undefined : unitYuan,
       fixedYuan: { rent: rentYuan, manage: this.data.global.manageYuan },
       buildItems,
@@ -1028,7 +1057,8 @@ Page({
       return {
         rent: meta.rent, labor: meta.labor, marginPct: meta.marginPct, targetYuan: meta.targetYuan,
         breakMonthly: null, breakDaily: null, targetMonthly: null, targetDaily: null,
-        rentPct: null, leverYuan: null, cushionPct: null, payback: null,
+        rentPct: null, leverYuan: null, cushionPct: null, payback: null, rentCls: '',
+        netMarginPct: null, platformPct: null,
         red: false, invalid: true, fixedExAmort: null, laborYuan: null, beCashMonthly: null,
       };
     }
@@ -1065,6 +1095,13 @@ Page({
       rent: meta.rent,
       labor: meta.labor,
       marginPct: meta.marginPct,
+      // 🔴 R552：**到手毛利率** = 菜品毛利率 − 平台与杂支扣点（= 引擎的 margin_rate）。
+      //   为什么默认列要给它而不是账面毛利率：老板按 60% 心算保本会**低估约 29%**
+      //   （实测四类店：账面 55~65% → 到手只有 41~49%）。账面值仍在档位区看得见。
+      netMarginPct: round1Of(meta.marginPct - (Number(res.platform_pct) || 0)),
+      platformPct: round1Of(Number(res.platform_pct) || 0),
+      // 房租占目标营收的三色档（≤10 健康 / 10~15 预警 / ≥15 高压 —— 房租越高越差）
+      rentCls: (rentPct == null ? '' : (rentPct <= 10 ? 'ok' : (rentPct < 15 ? 'warn' : 'bad'))),
       targetYuan: meta.targetYuan,
       breakMonthly,
       beCashMonthly,
@@ -1233,7 +1270,7 @@ Page({
     const body = rows.map((r) => [
       markInvalid(r), r.labor,
       r.laborYuan != null ? r.laborYuan : '—',
-      r.marginPct, r.targetYuan,
+      r.netMarginPct, r.targetYuan,   // 🔴 R552：与屏幕列同口径（到手毛利率）
       r.breakMonthly != null ? r.breakMonthly : '—',
       r.beCashMonthly != null ? r.beCashMonthly : '—',
       r.breakDaily != null ? r.breakDaily : '—',
