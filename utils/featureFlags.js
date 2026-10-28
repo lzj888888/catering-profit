@@ -28,4 +28,14 @@
 //     `BILL_IMPORT_ENABLED`（两处取值必须一致，守卫做同源比对）。
 const BILL_IMPORT_ENABLED = false;
 
-module.exports = { BILL_IMPORT_ENABLED };
+// ===== 沙盘「做活动会怎样」=====
+// 李老师 2026-10-28 决定暂停展示（原话：「这个功能牵扯面比较大，而且不好统计真实数据」）。
+//   「牵扯面大」的具体含义：它要老板填两个反常识的数（折扣后实收率、活动成本率），
+//   而这两个数只能从收银日报/活动台账手工倒推；填错一个，整张试验台的结论（要多卖多少才不亏）
+//   全错且不报错。与其给一个「看着专业、其实靠猜」的模块，不如先藏起来。
+// 🔴 关闭只影响**沙盘页那张试验台卡**（`trial-card`）：`utils/promoImpact.js`、
+//   `promoOf()` / `onPromoRealInput` / `onPromoCostInput`、`terms.m2.promo*` 全部原样保留，
+//   云函数不涉及（纯前端派生）。恢复 = 这里改回 true。
+const PROMO_ENABLED = false;
+
+module.exports = { BILL_IMPORT_ENABLED, PROMO_ENABLED };

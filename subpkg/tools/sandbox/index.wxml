@@ -463,8 +463,12 @@
       <view class="cell"><text class="lbl">{{t.buildTotal}}</text><text class="val">{{t.cur}}{{result.build_total}}</text></view>
       <view class="cell"><text class="lbl">{{t.amortMonthly}}</text><text class="val">{{t.cur}}{{result.build_amort}}</text></view>
       <view class="cell"><text class="lbl">{{t.fixedTotalWithAmort}}</text><text class="val">{{t.cur}}{{result.fixed_total}}</text></view>
-      <view class="cell"><text class="lbl">{{t.marginName}}</text><text class="val">{{result.margin_rate}}%</text></view>
+      <!-- 🔴 R550（李老师 2026-10-28）：「菜品毛利率就是 64，那 2% 是管理费用，不能说毛利率降到 62」。
+           原来第一行显示的是引擎的**边际贡献率**（64 − 2 = 62）却挂着「菜品毛利率」的标签 ⇒ 两处都错。
+           现拆三行，各自身份分明：毛利率 = 你填的原值；扣点 = 平台+杂支；实际可用 = 两者之差。 -->
+      <view class="cell"><text class="lbl">{{t.marginName}}</text><text class="val">{{marginPct}}%</text></view>
       <view class="cell"><text class="lbl">{{t.varTotal}}</text><text class="val">{{result.platform_pct}}%</text></view>
+      <view class="cell"><text class="lbl">{{t.usableMargin}}</text><text class="val">{{result.margin_rate}}%</text></view>
     </view>
 
     <!-- 🔴 R342：固定费用构成 —— 老板能核对「这 2.16 万人工怎么来的」。
@@ -654,7 +658,10 @@
   <!-- 🔴 R364（李老师「整个版面一坨」）：试验台 —— 做活动默认**收起**。
        它问的是"如果"，不是老板要填的事实；收起时只给一句结论（打几折要多卖多少），
        位置也从"第 6 个参数"移到结果之后 ⇒ 独立成台，但仍吃同一份基准数据。 -->
-  <view class="card2 trial-card" wx:if="{{mode === 'forward'}}">
+  <!-- 🔴 R550：`promoOn` 来自 utils/featureFlags.js（PROMO_ENABLED=false）——
+       李老师 2026-10-28：「这个功能牵扯面比较大，而且不好统计真实数据」⇒ 先藏起来。
+       代码与术语全部保留，恢复 = 把开关改回 true。 -->
+  <view class="card2 trial-card" wx:if="{{mode === 'forward' && promoOn}}">
     <view class="fold-toggle" bindtap="onTogglePromo">{{t.promoTitle}}{{showPromo ? ' ▾' : ' ▸'}}</view>
     <view class="hint" wx:if="{{!showPromo}}">
       <block wx:if="{{promoRes && !promoRes.bad}}">{{promoRes.gaText}} · {{promoRes.dropText}}</block>

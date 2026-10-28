@@ -362,8 +362,15 @@ for (const rel of Object.keys(CJK_BASELINE)) {
 //      （实测 63% 毛利率打 8 折：显示 +17.2%，真值 +46.5%，与同一张卡的"要多来 46.5%"自相矛盾）。
 //   ⇒ 现在只保留两个输入（实收率 / 活动成本率），保本额统一**原价流水**口径。
 {
-  chk(/promoRes:\s*this\.promoOf\(presetResultObj\)/.test(idxJs),
+  // 🔴 R550：活动卡已按 `featureFlags.PROMO_ENABLED` 隐藏（李老师 2026-10-28：「牵扯面大、
+  //   不好统计真实数据」）⇒ 原判据钉死「必须原样算」这一种写法，会把"按开关不算"判红。
+  //   改为接受两种合法形态，并另加**门控一致性**：js 不算时 wxml 也必须不渲染（否则就是半开半关）。
+  const pmPlain = /promoRes:\s*this\.promoOf\(presetResultObj\)/.test(idxJs);
+  const pmGate = /promoRes:\s*PROMO_ENABLED\s*\?\s*this\.promoOf\(presetResultObj\)\s*:\s*null/.test(idxJs);
+  chk(pmPlain || pmGate,
     'index.js 结果出来时未算活动门槛（R370：卡片会一直是空的或显示旧数）');
+  chk(!pmGate || /mode === 'forward' && promoOn/.test(idxWxml),
+    '活动卡门控不一致：js 按 PROMO_ENABLED 不算，wxml 却仍渲染（半开半关）');
   // ① 两个输入都必须重算，且必须「先落状态再算」（写在 setData 对象字面量里 = 求值早于生效）
   const firstObj = (body) => {
     const i = body.indexOf('setData({');

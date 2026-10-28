@@ -17,6 +17,43 @@ const ss = require('../../../utils/shopSwitcher.js');   // R443：草稿必须�
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 // 🔴 R395：分享卡片标题装配（纯函数单源）—— 见 `utils/shareCard.js` 头注
 const shareCard = require('../../../utils/shareCard.js');
+// 🔴 R550：产品级开关单源（见 utils/featureFlags.js）。PROMO_ENABLED=false ⇒ 沙盘「做活动会怎样」整卡隐藏。
+const { PROMO_ENABLED } = require('../../../utils/featureFlags.js');
+// 🔴 R550：矩阵种子的 key / 字段映射单源（utils/matrixSeed.js）—— 首页写、矩阵页读，绝不各写一份。
+const matrixSeed = require('../../../utils/matrixSeed.js');
+
+// 把本页「已有店铺」口径的事实打包成种子（只收**填过的**；未填 ≠ 0，交给矩阵页默认值）。
+// ⚠️ 含 `presetKey` / `cityIdx` —— R548 漏了这两项，所以"读取经营类型"根本无从谈起。
+function writeSeed(d) {
+  const num = (v) => {
+    if (v === '' || v === null || v === undefined) return undefined;
+    const n = Number(v);
+    return (isFinite(n) && n >= 0) ? Math.round(n) : undefined;
+  };
+  const seed = { v: 1, mode: d.mode, presetKey: d.presetKey || '', cityIdx: d.cityIdx };
+  const put = (k, v) => { const n = num(v); if (n !== undefined) seed[k] = n; };
+  put('rent', d.rentYuan);
+  put('labor', d.headcountNum);
+  put('margin', d.marginPct);
+  put('target', d.targetYuan);
+  // 🔴 R525：其他杂支 **0 也要带**（0 = 老板明确不要这项；不带会被当成默认 2%）
+  put('other', d.otherPctNum);
+  const bk = { transfer: 'tf', decor: 'dc', equip: 'eq', franchise: 'fr' };
+  (d.buildRows || []).forEach((r) => {
+    const s = bk[r.key];
+    if (!s) return;
+    put(s + 'Y', r.yuan);
+    put(s + 'N', r.years);
+  });
+  put('area', d.areaNum);
+  put('lu', d.laborUnitYuan);
+  put('lt', d.laborTotalYuan);
+  put('mg', d.manageYuan);
+  // 🔴 R549：毛利率口径也要带 —— 否则矩阵页按默认 dish 重算，与单页口径不一致（双轨）
+  if (d.marginScope === 'net' || d.marginScope === 'dish') seed.marginScope = d.marginScope;
+  try { wx.setStorageSync(matrixSeed.KEY, seed); } catch (e) { /* 存储失败不阻断跳转：矩阵页会回落默认 */ }
+  return seed;
+}
 // R412（队列 #24）：渠道占比规则单源 —— 「外卖 + 团购 ≤ 100%」的判定必须可被机器验，
 //   写成纯函数（utils/channelRule.js）后守卫能喂真数字判行为，而不是 grep 字面量。
 const ChannelRule = require('../../../utils/channelRule.js');
@@ -134,6 +171,7 @@ Page({
       marginScopeNet: M.marginScopeNet,
       marginScopeNetNote: M.marginScopeNetNote,
       varTotal: M.varTotal,
+      usableMargin: M.usableMargin,
       targetProfit: M.targetProfit,
       targetRow: M.targetRow,
       // 🔴 round279c · #10 敏感度（前端派生，引擎零改）
@@ -406,6 +444,8 @@ Page({
     promoRealPct: '',   // 折扣后实收率（%）：实收 ÷ 原价 × 100；空 = 还没填
     promoCostPct: '',   // 商家出资的活动成本率（% 实收）：赠送/奖品/自贴券
     promoRes: null,
+    // 🔴 R550：李老师 2026-10-28 拍板暂停展示「做活动会怎样」（牵扯面大、真实数据难统计）
+    promoOn: PROMO_ENABLED,
     // 🔴 R342：固定费用构成（前端同源重算 + 与引擎对账，对不上就整块不显示）
     fixedBreak: null,
     crowd: null,         // 🔴 round273：A 区派生指标（每天来多少人 / 一天翻几台）；算不出则为 null（不渲染）
@@ -1225,40 +1265,10 @@ Page({
   //   老板会以为"这表跟我没关系"。reverse（寻找铺面）不带：那时房租还是变量。
   goMatrix() {
     const d = this.data;
-    const q = ['mode=' + d.mode];
-    if (d.mode === 'forward') {
-      const add = (k, v) => { const n = Number(v); if (isFinite(n) && n > 0) q.push(k + '=' + Math.round(n)); };
-      add('rent', d.rentYuan);
-      add('labor', d.headcountNum);
-      add('margin', d.marginPct);
-      add('target', d.targetYuan);
-      // 🔴 R548：上面 4 项是扫描档位种子；下面这批「全局投入」此前一项都没带 ⇒ 进矩阵页要重填一遍。
-      //   ⚠️ 年限也要带：只带金额 ⇒ 年限回落默认 ⇒ 月摊销变、保本线跟着变（口径双轨）。
-      //   ⚠️ 只带填过的（含 0，0 = 他明确没有这项）；未填的不带，交给矩阵页默认值。
-      const addAny = (k, v) => {
-        if (v === '' || v === null || v === undefined) return;
-        const n = Number(v);
-        if (isFinite(n) && n >= 0) q.push(k + '=' + Math.round(n));
-      };
-      const bk = { transfer: 'tf', decor: 'dc', equip: 'eq', franchise: 'fr' };
-      (d.buildRows || []).forEach((r) => {
-        const s = bk[r.key];
-        if (!s) return;
-        addAny(s + 'Y', r.yuan);
-        addAny(s + 'N', r.years);
-      });
-      addAny('area', d.areaNum);
-      addAny('lu', d.laborUnitYuan);
-      addAny('lt', d.laborTotalYuan);
-      addAny('mg', d.manageYuan);
-    }
-    // 🔴 R525：其他杂支 % 必须带给矩阵，**0 也要带**（0 = 老板明确不要这项；不带会被当成默认 2%）。
-    //   不带就会出现"单页保本 X、矩阵保本 Y"的双口径，而且两边都不报错。
-    if (d.otherPctNum !== '' && d.otherPctNum !== null && d.otherPctNum !== undefined
-        && isFinite(Number(d.otherPctNum)) && Number(d.otherPctNum) >= 0) {
-      q.push('other=' + Number(d.otherPctNum));
-    }
-    wx.navigateTo({ url: '/subpkg/tools/sandbox/matrix?' + q.join('&') });
+    writeSeed(this.data);
+    // 🔴 R550：数据不再走 URL —— 统一写一份**种子**到 storage，矩阵页「进页自动读」+「按钮重读」
+    //   共用同一份（单源）。URL 只留 mode，避免"URL 一份、storage 一份"的双真相。
+    wx.navigateTo({ url: '/subpkg/tools/sandbox/matrix?mode=' + d.mode });
   },
   goCompare() { wx.navigateTo({ url: '/subpkg/tools/sandbox/compare' }); },
 
@@ -2113,7 +2123,7 @@ Page({
         profitLadder: this.profitLadderOf(presetResultObj),
         // 🔴 R367：目标反推（想月赚 X 要怎么做）
         targetReverse: this.targetReverseOf(presetResultObj, p),
-        promoRes: this.promoOf(presetResultObj),
+        promoRes: PROMO_ENABLED ? this.promoOf(presetResultObj) : null,
         // 🔴 R342：与 result 同批写入，直接用局部变量 p（不读 this.data，避免时序依赖）
         fixedBreak: this.fixedBreakOf(p.fixed_items, d.fixed_ex_amort_fen),
         // 🔴 D8：派生项标注（水电气等按行业估算时明示来源，避免"系统悄悄改了老板填的数"）

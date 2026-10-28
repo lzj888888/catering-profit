@@ -9,6 +9,8 @@ const api = require('../../../utils/api.js');
 // R411：金额展示单源（万/元口径与小数位只在这里定，页面不许再各写一份）
 const MoneyFmt = require('../../../utils/moneyFmt.js');
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
+// 🔴 R550：种子契约单源（首页写、本页读）；字段映射不在此另写一份。
+const matrixSeed = require('../../../utils/matrixSeed.js');
 const {
   BIZ_PRESETS, CITY_COEF, assembleItems, resolveBuild, findPreset, bizKeyOfPreset,
   // R297：全局开店投入的年限兜底（与云端 indicatorRef 同口径，不再硬写 1）
@@ -75,6 +77,8 @@ Page({
       dimRent: M.dimRent,
       // 🔴 R548：折叠撤掉 ⇒ advDimsShow/Hide 不再映射。名字不用"高级维度"。
       dimsTitle: M.dimsTitle,
+      readMyData: M.readMyData,
+      readMyDataNote: M.readMyDataNote,
       resetDims: M.resetDims,
       resetDimsNote: M.resetDimsNote,
       dimLabor: M.dimLabor,
@@ -305,24 +309,14 @@ Page({
       patch['dims.target'] = seed.target;
       // 副标题里把"房租已固定"讲明白 —— 否则老板会以为页面还是让他扫租金
       patch['t.subtitle'] = String(M.subtitleFwdLocked || '').replace('{rent}', String(seed.rent[0]));
-      // 🔴 R548：接住上一页「全局投入」8 项（含 4 个年限）—— 此前一项都没带，要重填一遍。
-      //   ⚠️ 只覆盖传过来的项；没传的保留本页默认（未填 ≠ 0）。
-      const gi = (k) => {
-        if (opt[k] === undefined || opt[k] === '' || !isFinite(Number(opt[k]))) return null;
-        const n = Number(opt[k]);
-        return n >= 0 ? String(Math.round(n)) : null;
-      };
-      const gk = { dcY: 'buildDecorYuan', dcN: 'buildDecorYears', eqY: 'buildEquipYuan',
-                   eqN: 'buildEquipYears', frY: 'buildFranchiseYuan', frN: 'buildFranchiseYears',
-                   tfY: 'buildTransferYuan', tfN: 'buildTransferYears', area: 'area',
-                   lu: 'laborUnitYuan', lt: 'laborTotalYuan', mg: 'manageYuan' };
-      Object.keys(gk).forEach((k) => {
-        const v = gi(k);
-        if (v !== null) patch['global.' + gk[k]] = v;
-      });
+      // 🔴 R550：全局投入 / 经营类型 / 城市不再走 URL —— 统一由 `applySeed()` 从 storage 种子读
+      //   （首页 `writeSeed()` 写、本页读，字段映射在 utils/matrixSeed.js 单源）。
     }
     this.setData(patch);
     this.syncBuildDefault();
+    // 🔴 R550：进页自动读种子（李老师要的"读取我填的数据"默认就生效；按钮只是可以**再读一次**）
+    const seed = this.readSeed();
+    if (seed && seed.mode === mode) this.applySeed(seed, true);
   },
 
   // 切换业态预设时，把「开店一次性投入」默认值带出来（有 buildRef 才带，否则留空让用户填）
@@ -397,6 +391,60 @@ Page({
   },
 
   // ===== 维度档位编辑 =====
+
+  // 🔴 R550（李老师 2026-10-28）：**「读取我填的数据」** —— 首页 `goMatrix()` 写的种子在这里落地。
+  //   带过来的：经营类型 / 城市 / 房租 / 人数 / 毛利率 / 目标利润 / 其他杂支 / 装修·设备·加盟·转让
+  //   （含 4 个年限）/ 面积 / 人均工资 / 人工总额 / 管理费 / 毛利率口径。
+  //   ⚠️ R548 只带了 8 项投入、**没带经营类型与城市** ⇒ 这就是"看不到读取入口"的真因。
+  readSeed() {
+    let s = null;
+    try { s = wx.getStorageSync(matrixSeed.KEY); } catch (e) { s = null; }
+    return (s && s.v === 1) ? s : null;
+  },
+
+  // 把种子写进页面状态。silent=true 用于进页自动读（不弹 toast），false 用于按钮（要反馈）。
+  applySeed(seed, silent) {
+    if (!seed) {
+      if (!silent) wx.showToast({ title: M.seedNone, icon: 'none' });
+      return false;
+    }
+    const patch = {};
+    // 经营类型 / 城市要**先**落到 data，因为 buildSeedDims() 依赖 presetIdx / cityIdx 取默认档位
+    if (seed.presetKey) {
+      const i = (this.data.presets || []).findIndex((x) => x.key === seed.presetKey);
+      if (i >= 0) patch.presetIdx = i;
+    }
+    if (Number.isInteger(seed.cityIdx) && seed.cityIdx >= 0) patch.cityIdx = seed.cityIdx;
+    this._seed = seed;
+    this.setData(patch, () => {
+      const d = this.buildSeedDims();
+      const set = {
+        'dims.rent': d.rent, 'dims.labor': d.labor,
+        'dims.margin': d.margin, 'dims.target': d.target,
+      };
+      // 全局投入：只覆盖种子里**有**的项（未填 ≠ 0，别把本页默认值冲成 0）
+      Object.keys(matrixSeed.GK).forEach((k) => {
+        const v = seed[k];
+        if (v === undefined || v === null || v === '') return;
+        const n = Number(v);
+        if (isFinite(n) && n >= 0) set['global.' + matrixSeed.GK[k]] = String(Math.round(n));
+      });
+      if (this.data.mode === 'forward') {
+        set['t.subtitle'] = String(M.subtitleFwdLocked || '').replace('{rent}', String(d.rent[0]));
+      }
+      set['fieldTouched.margin'] = false;
+      set['fieldTouched.labor'] = false;
+      set['fieldTouched.rent'] = false;
+      this.setData(set, () => {
+        this.syncBuildDefault();
+        if (!silent) wx.showToast({ title: M.seedRead, icon: 'none' });
+      });
+    });
+    return true;
+  },
+
+  // 按钮入口：再读一次（老板手改乱了、或从首页回来想重新同步）
+  onReadSeed() { this.applySeed(this.readSeed(), false); },
 
   // 🔴 R548：档位「基准值」唯一产出点（进页 + 清除重填共用，防两份真相源）。
   //   forward：按上一页真实值生成（房租 1 档 / 人数 ±1 / 毛利率 ±5 / 目标 0 与他填的）；

@@ -120,10 +120,14 @@
         <view class="del" wx:if="{{dims.target.length>1}}" bindtap="delDim" data-dim="target" data-idx="{{idx}}">{{t.delDim}}</view>
       </view>
     </view>
-    <!-- 🔴 R548：「清除重填」只重置档位，**不动**上面那 8 项投入（否则清一次要重填 8 个框）。 -->
-    <view class="reset-row" bindtap="onResetDims">
-      <text class="reset-tx">{{t.resetDims}}</text>
+    <!-- 🔴 R550：两个动作并列、语义分开（李老师 2026-10-28 要的就是这个）：
+         「读取我填的数据」= 把首页填过的经营类型/城市/装修/设备/人工… 重新拉过来；
+         「清除重填」= 只把档位恢复成按他店里算出的基准值，**不动**上面那 8 项投入。 -->
+    <view class="reset-row">
+      <text class="reset-tx" bindtap="onReadSeed">{{t.readMyData}}</text>
+      <text class="reset-tx" bindtap="onResetDims">{{t.resetDims}}</text>
     </view>
+    <view class="hint">{{t.readMyDataNote}}</view>
     <view class="hint">{{t.resetDimsNote}}</view>
   </view>
 

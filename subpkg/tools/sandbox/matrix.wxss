@@ -78,7 +78,8 @@
    下面是「清除重填」：只重置档位、不动 8 项投入 ⇒ 做成弱操作，不能抢主按钮。 */
 .reset-row { display: flex; align-items: center; justify-content: center; margin-top: 20rpx;
   padding: 14rpx 0; border-top: 1rpx solid #eee; }
-.reset-tx { font-size: 28rpx; color: #6b7a90; }
+.reset-tx { font-size: 28rpx; color: #6b7a90; padding: 10rpx 28rpx; }
+.reset-tx + .reset-tx { border-left: 1rpx solid #e6ebf2; }
 
 /* 🔴 R325：钱够不够开 · 能撑几个月
    ⚠️ 字号一律 ≥28rpx（AD-G1 可读性红线：老板多老花眼），层级只靠颜色/字重区分。 */
