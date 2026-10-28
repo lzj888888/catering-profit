@@ -82,7 +82,9 @@ const AmountInput = require('../../../utils/amountInput.js');
 const { BIZ_PRESETS, CITY_COEF, assembleItems, resolveBuild, paybackCash, findPreset,
   bizKeyOfPreset,
   // R297：年限不再各写各的（初始行 / 新增行 / 提交 / 回存草稿 四处同走这一份）
-  BUILD_DEFAULT_YEARS, buildYearsOf, cashBreakeven } = require('../../../utils/bizPreset.js');
+  BUILD_DEFAULT_YEARS, buildYearsOf, cashBreakeven,
+  // 🔴 R559：水电费率推导（与矩阵同一函数）⇒ 两页口径一致
+  energyFeeRate } = require('../../../utils/bizPreset.js');
 
 // 🔴 R330：做活动会怎样（纯假设推演，不依赖账本/成本卡）
 const Promo = require('../../../utils/promoImpact.js');
@@ -1933,6 +1935,17 @@ Page({
       fixedYuan: isReverse ? {} : { rent: this.data.rentYuan, manage: this.data.manageYuan },
       buildItems: userBuild,
     };
+    // 🔴 R559：单页也统一成「费率」口径（与矩阵一致）。
+    //   否则单页按金额进分子、矩阵按费率进分母 ⇒ 两页保本额差 3%~4.8%，且矩阵**偏低**（乐观），违反"宁可说紧不说松"。
+    //   只有「水电账单合计 > 0 且 实际月营收 > 0」才启用；否则不传 energyFeePct ⇒ 装配层沿用原逻辑（金额进 fixed 或房租派生）⇒ 向后兼容。
+    const _eSum = this.data.energyMerged
+      ? (Number(this.data.energyYuan) || 0)
+      : ((Number(this.data.waterYuan) || 0) + (Number(this.data.electricYuan) || 0) + (Number(this.data.gasYuan) || 0));
+    if (_eSum > 0) {
+      const _er = energyFeeRate(_eSum, this.data.expectYuan, bizKeyOfPreset(this.data.presetKey) || 'other');
+      if (_er.src === 'bill') input.energyFeePct = _er.rate;   // 仅反算成功才切费率口径
+    }
+
     // 🔴 R543：水电两套填法 → 一套入参。装配层（utils/bizPreset.js）零改动。
     if (this.data.energyMerged) {
       delete input.waterYuan;

@@ -371,6 +371,11 @@ function assembleItems(preset, input, coef) {
   // 房租（分）：用户填的已知（页面 input.rentYuan）；找店/反推模式未填 ⇒ 0（下方走 floor 兜底）
   const rentFenRaw = in_.rentYuan != null ? fenOf(in_.rentYuan) : 0;
   const bizKey = p.bizKey;
+  // 🔴 R559：水电燃气改成「费率」。给了费率 ⇒ utility **不再进 fixed_items**，改为一条 var 项。
+  //   为什么必须统一（不是只在矩阵改）：单页按金额进分子、矩阵按费率进分母 ⇒ 两个页面算出的保本额
+  //   差 3%~4.8%，且矩阵**偏低**（乐观方向，违反我们"宁可说紧不说松"的红线）。统一后两页一致。
+  const eFeePct = Number(in_.energyFeePct);
+  const useEnergyRate = isFinite(eFeePct) && eFeePct > 0;
 
   for (const m of costMeta) {
     const form = m.form;
@@ -452,7 +457,10 @@ function assembleItems(preset, input, coef) {
       const elec = Number(in_.electricYuan != null ? in_.electricYuan : fy.electric) || 0;
       const energy = in_.energyYuan != null ? (Number(in_.energyYuan) || 0) : (w + elec);
       const gas = Number(in_.gasYuan != null ? in_.gasYuan : fy.gas) || 0;
-      if (energy + gas > 0) {
+      if (useEnergyRate) {
+        // 费率形态：utility 不进固定成本（进分母由引擎扣）
+        varItems.push({ key: 'energy', pct: round1(eFeePct), src: 'U' });
+      } else if (energy + gas > 0) {
         fixedItems.push({ key: m.itemKey, fen: fenOf(energy + gas) });
       } else if (m.derivedFrom === 'rent_rate') {
         const base = rentFenRaw > 0 ? rentFenRaw
@@ -598,7 +606,7 @@ function findPreset(key) {
 //   两套口径会导致同一个店两页保本额不同 ⇒ 用一个函数统一推出费率，三处页面都调它。
 //
 //   规则（照 DeepSeek 给的原文实现）：
-//     fee = clamp(账单合计 ÷ 实际月营收, 带下界, 带上界)   账单与营收都有
+//     fee = 反算值（账单合计 ÷ 实际月营收）；**只兜下界、不压上界**   账单与营收都有
 //         = 带中值                                        只有业态
 //         = 4%                                            都没有（兜底）
 //   🔴 三条纪律（写死在这里，别在页面各写一遍）：
@@ -627,12 +635,17 @@ function energyFeeRate(billYuan, revenueYuan, bizKey) {
   const rev = Number(revenueYuan);
   if (isFinite(bill) && bill > 0 && isFinite(rev) && rev > 0) {
     const raw = (bill / rev) * 100;
+    // 🔴 R559 改：**只夹下界、不再夹上界**。
+    //   原来两侧都夹，会把"这家店真实能耗 6.7%"压成 4% ⇒ 保本营收被算**低**（乐观），违反我们
+    //   「宁可说紧不说松」的红线（审计实测：矩阵因此比单页低 3%~4.8%）。
+    //   ⇒ 现在：费率 = 反算值（下界仍兜住，防账单漏填导致过低）；超出业态带上界时只给**提示**（clamped=true 由页面说清）。
     if (!band) return { rate: round1(raw), src: 'bill', clamped: false, raw: round1(raw) };
     const lo = band[0], hi = band[1];
-    const rate = Math.min(hi, Math.max(lo, raw));
+    const rate = Math.max(lo, raw);
     return {
       rate: round1(rate), src: 'bill',
-      clamped: Math.abs(rate - raw) > 0.05, raw: round1(raw),
+      clamped: raw > hi + 0.05,
+      raw: round1(raw),
     };
   }
   if (band) return { rate: round1((band[0] + band[1]) / 2), src: 'band', clamped: false, raw: null };

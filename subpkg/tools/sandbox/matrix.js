@@ -496,6 +496,8 @@ Page({
       set.energySrc = er.src;
       set.energyClamped = !!er.clamped;
       set.energyRaw = er.raw;
+      // 🔴 R559：存一份原始账单金额，供「非 bill 源（band/fallback）」时回落金额口径（与单页一致，不静默用假设费率）。
+      set.energyBillYuan = Number(seed.energy) || 0;
       set.energyClampedText = er.clamped ? fmt(M.energyClampedHint, { raw: er.raw }) : '';
       set.energyHint = fmt(M.energyRateHint, {
         rate: er.rate,
@@ -961,17 +963,20 @@ Page({
       fixedYuan: { rent: rentYuan, manage: this.data.global.manageYuan },
       buildItems,
     };
+    // 🔴 R559：矩阵与单页**统一**走 assembleItems 的 energyFeePct 分支（不再自己 push var）。
+    //   判据与单页 buildPresetParam 逐字对齐：energyFeeRate 反算成功（src==='bill'，即「账单+营收」都有）
+    //   ⇒ 费率口径；否则回落「账单金额」口径（合并态）。⇒ 两页在任意路径上产出完全相同的 energy 项。
+    if (this.data.energySrc === 'bill') {
+      input.energyFeePct = this.data.energyRate;
+    } else if (Number(this.data.energyBillYuan) > 0) {
+      input.energyYuan = Number(this.data.energyBillYuan);
+    }
     const { fixedItems, varItems } = assembleItems(preset, input, coef);
     // 🔴 R525：其他杂支 % 覆盖（与 index 的 `buildPresetParam` 同一规则，逐字对齐）：
     //   0 ⇒ **剔除**该项（老板认为没这笔）；>0 ⇒ 用老板的值；非数字/负数 ⇒ 原样按预设走。
     //   不做这层，单页改成 0 后矩阵仍扣 2% ⇒ 两页保本额不一致且零报错。
     // 🔴 R557：`otherPct` 现在由**每一行**传入（它成了可扫维度）；不传才回落全局值。
     const otherRaw = (otherPctArg === undefined) ? this.data.otherPct : otherPctArg;
-    // 🔴 R558：能耗费率作为一条普通挂钩费率进分母（引擎零改，与平台抽成同一形态）。
-    const eRate = Number(this.data.energyRate);
-    if (isFinite(eRate) && eRate > 0) {
-      varItems.push({ key: 'energy', pct: eRate });
-    }
     const varFinal = (otherRaw === null || otherRaw === undefined || otherRaw === '')
       ? varItems
       : varItems.map((v) => {
