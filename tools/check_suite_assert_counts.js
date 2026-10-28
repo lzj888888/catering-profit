@@ -84,7 +84,7 @@ const CASES = [
   //   POC2 七函数，calcSandbox 是后加的批次 4，不在其集合内）—— round113 它 46→53、
   //   round114 又 53→66，两次都无人校验。它满足「非恒真」条件：66 条里删掉一批仍 > 0 ⇒
   //   A0-② 的「通过数为 0」下界抓不到，只有本守卫的 A2「声明 ≡ 实跑」能发现。
-  { key: 'calcSandbox_selftest', rel: 'cloudfunctions/calcSandbox/selftest.js' },
+  { key: 'calcSandbox_selftest', rel: 'cloudfunctions/calcSandbox/selftest.js' },  // 101 条（R556 加 L14/L15/L16：years=0 的两种语义）
   // R128 扩面（round114）：M2「参考值不预填」守卫同批纳入 —— 它的 D 段四组正负样本互证
   //   （剥注释器 / 判别器 / bodyOf 锚定义不锚调用 / value 提取器）与 E 段断言数下界正是
   //   「非恒真」的凭据；断言数不受守则「删掉两组正负样本」就等于把守卫悄悄改小

@@ -94,6 +94,11 @@ Page({
       readMyData: M.readMyData,
       readMyDataNote: M.readMyDataNote,
       resetDims: M.resetDims,
+      resetConfirmTitle: M.resetConfirmTitle,
+      resetConfirmBody: M.resetConfirmBody,
+      resetConfirmOk: M.resetConfirmOk,
+      resetConfirmCancel: M.resetConfirmCancel,
+      resetDone: M.resetDone,
       resetDimsNote: M.resetDimsNote,
       dimLabor: M.dimLabor,
       dimMargin: M.dimMargin,
@@ -513,17 +518,36 @@ Page({
   },
 
   // 🔴 R548：「清除重填」只重置档位，**不动**全局投入那 8 项（否则清一次要重填 8 个框）。
+  // 🔴 R556（李老师："清除不了"）：原来这里只把档位重置成"按他的店算出来的基准值"，
+  //   而进页时档位本来就等于基准 ⇒ **视觉上什么都没变**，看起来就是按钮没反应。
+  //   现在改成**真清空**：档位回系统默认、投入全清、结果清掉；再配合「读取我填的数据」读回来。
+  //   两个按钮因此成为一对：清空 ⇄ 读回，语义闭环。
   onResetDims() {
-    const seed = this.buildSeedDims();
-    this.setData({
-      'dims.rent': seed.rent,
-      'dims.labor': seed.labor,
-      'dims.margin': seed.margin,
-      'dims.target': seed.target,
-      // 手改标记一并清掉 ⇒ 之后切业态/切城市能正常带出预设档位
-      'fieldTouched.margin': false,
-      'fieldTouched.labor': false,
-      'fieldTouched.rent': false,
+    wx.showModal({
+      title: M.resetConfirmTitle,
+      content: M.resetConfirmBody,
+      confirmText: M.resetConfirmOk,
+      cancelText: M.resetConfirmCancel,
+      success: (r) => {
+        if (!r.confirm) return;
+        this.setData({
+          'dims.rent': DEFAULT_DIMS.rent.slice(),
+          'dims.labor': DEFAULT_DIMS.labor.slice(),
+          'dims.margin': DEFAULT_DIMS.margin.slice(),
+          'dims.target': DEFAULT_DIMS.target.slice(),
+          'global.buildDecorYuan': '', 'global.buildEquipYuan': '',
+          'global.buildFranchiseYuan': '', 'global.buildTransferYuan': '',
+          'global.laborTotalYuan': '', 'global.laborUnitYuan': '', 'global.manageYuan': '',
+          'global.area': '',
+          'fieldTouched.margin': false, 'fieldTouched.labor': false,
+          'fieldTouched.rent': false, 'fieldTouched.area': false,
+          // 清空后旧结果必须撤掉，否则屏上留着上一套参数的保本额
+          result: null, fixedBreak: null, realGap: null, buildSumText: '',
+        }, () => {
+          this.setData({ laborHint: this.laborHintOf() });
+          wx.showToast({ title: M.resetDone, icon: 'none' });
+        });
+      },
     });
   },
 
@@ -930,7 +954,11 @@ Page({
       // forceYears 用 0 表示「不摊」——引擎是 `if (years > 0) amort += ...`，
       // 所以 years:0 **不参与摊销但仍计入 build_total**（回本月数要用总额），正是转让费要的。
       const years = (forceYears === 0) ? 0 : buildYearsOf(key, yearsRaw);
-      it.push({ key, fen, years });
+      // 🔴 R556：`years: 0` 必须带 `no_amort: true` 才能过云端校验 ——
+      //   否则会和"老板清空了年限输入框"混成同一种输入（那种必须拒，防静默出数）。
+      const item = { key: key, fen: fen, years: years };
+      if (years === 0) item.no_amort = true;
+      it.push(item);
     };
     add('decor', g.buildDecorYuan, g.buildDecorYears);
     add('equip', g.buildEquipYuan, g.buildEquipYears);

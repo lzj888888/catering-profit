@@ -91,8 +91,16 @@ function checkClean(c, isReverse) {
     const f = fen(it.fen, `buildItems[${i}].fen`);
     if (isErr(f)) return f;
     const years = it.years;
-    if (typeof years !== 'number' || !Number.isInteger(years) || years < 1 || years > MAX_BUILD_YEARS) {
-      return err(`buildItems[${i}].years 必须是 1~${MAX_BUILD_YEARS} 的整数`);
+    // 🔴 R556：`years: 0` 有两种含义，必须分开 —— 混在一起就是 bug：
+    //   ① 老板把年限输入框**清空**了（未填）⇒ 必须拒（否则会按"不摊销"静默出数，而以为是按某年限摊）；
+    //   ② 程序**故意**表达"这笔钱不摊销"（矩阵页的转让费）⇒ 合法，引擎 service.js:64 本就支持
+    //      `if (years > 0) amort += ...`（0 仍计入 build_total，回本要用）。
+    //   ⇒ 用显式标记 `no_amort: true` 区分：只有带这个标记才允许 years=0。
+    //   ⚠️ 这样 check_matrix_validate A-⑤ / check_m2_entry_parity A-⑧（"年限 0 必须拒"）继续成立。
+    const noAmort = it.no_amort === true;
+    if (typeof years !== 'number' || !Number.isInteger(years) || years > MAX_BUILD_YEARS
+        || years < 1 && !(noAmort && years === 0)) {
+      return err(`buildItems[${i}].years 必须是 1~${MAX_BUILD_YEARS} 的整数（不摊销须标 no_amort 且 years=0）`);
     }
   }
 

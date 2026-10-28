@@ -166,6 +166,7 @@ Page({
       marginTip: M.marginTip,
       // 🔴 R547b：毛利率「从哪来」说明 —— **只有文字，没有按钮**（填表中间不能召唤跳走）。
       //   R545 那个「去建成本卡」按钮已撤：它打断填表闭环，且「建一张卡就自动算出来了」是假承诺。
+      recalc: M.recalc,
       marginSrcNote: M.marginSrcNote,
       // 🔴 R549：口径二选一
       marginScopeLabel: M.marginScopeLabel,

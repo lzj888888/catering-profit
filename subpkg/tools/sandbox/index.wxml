@@ -380,10 +380,10 @@
   <view class="err-hint" wx:if="{{calcError}}">{{calcError}}</view>
   <!-- 🔴 R297 第四轮（审计 B11）：原 `bindtap="onCalc"` 会把**事件对象**当 isFirst 传进去（恒真）
        ⇒ 每次点按钮整页 loading 重绘、滚动位置丢失。改走 `onCalcBtn`（显式传 false）。 -->
-  <button class="btn primary calc-btn" bindtap="onCalcBtn">{{t.calc}}</button>
-
-  <!-- M2v1.2：保存沙盘（底部主按钮） -->
-  <button class="btn ghost save-sandbox-btn" bindtap="onOpenSave">{{t.savePlanBtn}}</button>
+  <!-- 🔴 R556（李老师："点不动，不点也自动出数"）：它确实冗余 —— 改任意数字 700ms 后会自动重算。
+       但保留成**次要的重试入口**有用（网络失败时可手动再算一次）⇒ 降级成 ghost + 改文案「重新测算」。
+       ⚠️ 不在这里加平铺说明：会破坏 check_hint_fold 的「短提示 ≤18 字」分层线（实测 23→25 判红）。 -->
+  <button class="btn ghost calc-btn" bindtap="onCalcBtn">{{t.recalc}}</button>
 
   <!-- 🔴 R297 第四轮（审计 B12）：结果区**唯一锚点**。原先把 `id="m2result"` 挂在两张结果卡上
        （反推卡 + 主结论卡），而主结论卡带 `verdict.level !== 'na'` 条件 ⇒ 无判定时锚点整块不存在，
@@ -711,7 +711,10 @@
   </view>
 
   <!-- M2 G1/G2（2026-10-11 改造）：场景矩阵生成器 / 多方案对比 入口 -->
+  <!-- 🔴 R556（李老师："保存沙盘放在测算按钮下面是否适合"）：不适合。
+       它不属于"测算"这一步，而是"这套方案接下来做什么" ⇒ 与「场景矩阵 / 多方案对比」并列在页尾。 -->
   <view class="entry-row">
+    <button class="btn ghost entry-btn" bindtap="onOpenSave">{{t.savePlanBtn}}</button>
     <button class="btn ghost entry-btn" bindtap="goMatrix">{{t.matrixEntry}}</button>
     <button class="btn ghost entry-btn" bindtap="goCompare">{{t.compareEntry}}</button>
   </view>

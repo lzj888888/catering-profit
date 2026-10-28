@@ -344,5 +344,29 @@ const vWd32 = validateInput(Object.assign({}, wire, { valid_days: 32 }));
 check('L13 经 validate 全链路：真填了越界值 32 ⇒ 仍拒（防「放行 0」被误写成「不校验」）',
   !!vWd32.error, vWd32.error ? `err=${vWd32.error}` : 'no error (BAD)');
 
+// 🔴 L14~L15（R556）：建店投入的 `years: 0` = 「这笔钱不摊销」（矩阵页转让费默认不摊）。
+//   踩到的真 bug：引擎 service 本来就是 `if (years > 0) amort += ...`（支持 0），
+//   但 validate 写的是 `years < 1` ⇒ 一填转让费点「生成矩阵」就报「填写有误」，单页没这个选项所以长期没暴露。
+//   L14=「0 必须放行，且计入 build_total 但不进摊销」；L15=「真越界仍拒」（防放宽被写成不校验）。
+// ⚠️ 两种 0 必须分开：老板清空年限（未填）⇒ 仍拒；程序标了 no_amort ⇒ 放行。
+const wireY0 = Object.assign({}, wire, {
+  build_items: [{ key: 'transfer', fen: 15000000, years: 0, no_amort: true }],
+});
+const vY0 = validateInput(wireY0);
+const rY0 = vY0.error ? null : calcSandbox(vY0.clean);
+check('L14 years=0 + no_amort（不摊销）⇒ 放行、计入建店总额、摊销为 0',
+  !vY0.error && !!rY0 && rY0.build_total_fen === 15000000 && rY0.build_amort_monthly_fen === 0,
+  vY0.error ? `err=${vY0.error}` : `build_total=${rY0 && rY0.build_total_fen} · amort=${rY0 && rY0.build_amort_monthly_fen}`);
+const vY21 = validateInput(Object.assign({}, wire, {
+  build_items: [{ key: 'transfer', fen: 15000000, years: 21 }],
+}));
+check('L15 years=21 超上限 ⇒ 仍拒（防「放行 0」被误写成「不校验」）',
+  !!vY21.error, vY21.error ? `err=${vY21.error}` : 'no error (BAD)');
+const vY0NoFlag = validateInput(Object.assign({}, wire, {
+  build_items: [{ key: 'transfer', fen: 15000000, years: 0 }],
+}));
+check('L16 years=0 但**没标** no_amort（= 老板清空年限）⇒ 仍拒（防静默产数）',
+  !!vY0NoFlag.error, vY0NoFlag.error ? `err=${vY0NoFlag.error}` : 'no error (BAD)');
+
 console.log(`\n==== calcSandbox M2 v2 自测结果：${pass} 通过 / ${failN} 失败 ====`);
 process.exit(failN === 0 ? 0 : 1);

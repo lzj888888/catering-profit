@@ -992,6 +992,9 @@ const TERMS = {
     channelPureTakeaway: '检测到无堂食营收：请务必确认外卖抽成 / 包装填写准确，否则保本偏差可能超 20%',
     channelPct: '%',
     calc: '开始测算',
+    // 🔴 R556：这个按钮本就冗余（改数字会自动重算）⇒ 降级成「重新测算」当手动重试入口。
+    recalc: '重新测算',
+    // 🔴 R556：这个按钮本就冗余（改数字会自动重算）⇒ 降级成「重新测算」当手动重试入口。
     // R193：M2 算完即丢 —— 本地草稿（零云端改动）
     draftRestored: '已载入上次填的数',
     clearDraft: '清空重填',
@@ -1233,8 +1236,9 @@ const TERMS = {
     //   而老板还没开店。本条与下面 Label/Note 的三个 Rev 键一起，必须由页面按 mode 分叉引用。
     expectRevTitleRev: '选填 · 预计月营业额（算坪效/人效用，不参与保本）',
     expectRevLabel: '实际月营业额（看收银 / 外卖后台，取最近一月）',
+    // 🔴 R556：填了实际营业额会多算出四项，但它们在「更多分析」折叠里 ⇒ 必须提前指路
     expectRevPh: '选填，如 150000',
-    expectRevNote: '已有铺面填真实流水：用来算坪效 / 人效，对照保本线',
+    expectRevNote: '已有铺面填真实流水：用来算每天来客 / 翻台 / 坪效 / 人效，对照保本线（结果在下面「更多分析」里）',
     // 🔴 R296b：营业额口径提示（豆包）—— 填**总流水（毛额）**，佣金由「渠道佣金」卡自动扣，不用自己减。
     revGrossHint: '填总卖钱额，佣金系统自动扣',
     expectRevLabelRev: '预计月营业额（心里大概能做到的量）',
@@ -2632,6 +2636,11 @@ const TERMS = {
     seedNone: '没读到数据 —— 先在上一页填几项再进来',
     readMyDataNote: '「读取」= 把首页填的经营类型、装修、设备、人工等一起拉过来；「清除」= 只把档位恢复成按你店里算的值，不动这些投入',
     resetDims: '清除重填',
+    resetConfirmTitle: '清除重填？',
+    resetConfirmBody: '会把档位恢复成默认值、并清空装修/设备等投入（经营类型和城市保留）。想找回你填的，点「读取我填的数据」。',
+    resetConfirmOk: '清除',
+    resetConfirmCancel: '算了',
+    resetDone: '已清空，可点「读取我填的数据」找回',
     resetDimsNote: '只把档位恢复成按你的店算出来的值；上面填的投入不动',
     // 🔴 R443：进来看不出这表在算什么的人不少 —— 两句短话（<18 字，保持平铺、不触发折叠判据）
     matrixEmptyTip: '选几档，一次算出各自保本点',
@@ -2752,7 +2761,8 @@ const TERMS = {
     //   补一个可选填的总额：填了就用，不填才估算（与 index 页同一套口径）。
     laborTotalLabel2: '人工每月总额（选填）',
     laborTotalNote2: '不填就按人数 × 行业平均工资估',
-    fixedBreakTitle: '固定费用怎么构成',
+    // 🔴 R556：这四行就是保本公式的分子，标题里点明关系，老板才知道保本营收怎么来的。
+    fixedBreakTitle: '固定费用怎么构成（保本营收 = 这些合计 ÷ 毛利率）',
     fixedBreakNote: '按上表第一档房租算；换档位时房租与水电气会跟着变',
     fixedBreakRent: '房租',
     fixedBreakLabor: '人工',
