@@ -38,6 +38,9 @@ function writeSeed(d) {
   put('target', d.targetYuan);
   // 🔴 R525：其他杂支 **0 也要带**（0 = 老板明确不要这项；不带会被当成默认 2%）
   put('other', d.otherPctNum);
+  // 🔴 R553：把「预计/实际月营业额」也带过去 —— 矩阵有了它才能回答「你差多少」，
+  //   否则只能回答「要卖多少」，老板没法判断自己现在是在亏还是在赚。
+  put('expect', d.expectYuan);
   const bk = { transfer: 'tf', decor: 'dc', equip: 'eq', franchise: 'fr' };
   (d.buildRows || []).forEach((r) => {
     const s = bk[r.key];

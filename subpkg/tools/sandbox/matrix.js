@@ -82,6 +82,9 @@ Page({
       dimRent: M.dimRent,
       // 🔴 R548：折叠撤掉 ⇒ advDimsShow/Hide 不再映射。名字不用"高级维度"。
       dimsTitle: M.dimsTitle,
+      realMonthLabel: M.realMonthLabel,
+      realMonthPh: M.realMonthPh,
+      realMonthNote: M.realMonthNote,
       readMyData: M.readMyData,
       readMyDataNote: M.readMyDataNote,
       resetDims: M.resetDims,
@@ -258,6 +261,10 @@ Page({
     //     寻找铺面 = 月租金 / 毛利率 / 人工人数 / 月人工费 / 保本月营收 / 目标月营收
     //   ⚠️ 只影响屏幕显示，**导出 Excel 仍是全 14 列**（R349 对齐判据不受影响）。
     colsOpen: false,
+    // 🔴 R553：老板的**真实月营收**（种子带过来，也可在本页直接改）。
+    //   为什么必须有：矩阵只回答「要卖多少」时还不构成决策 —— 他要的是「我差多少」。
+    realMonthYuan: '',
+    realGap: null,
     narrow: false,   // R378：窄屏才显示横滑提示（width < 400）
     // 🔴 R325：现金卡输入。租金默认跟透视表的固定租金走（老板已在页面上填过），只需再给一个「手上现金」
     cash: { rentYuan: 5000, budgetYuan: '', equipYuan: '', stockYuan: '' },
@@ -443,6 +450,7 @@ Page({
       if (this.data.mode === 'forward') {
         set['t.subtitle'] = String(M.subtitleFwdLocked || '').replace('{rent}', String(d.rent[0]));
       }
+      if (seed.expect !== undefined) set.realMonthYuan = String(Math.round(Number(seed.expect)));
       set['fieldTouched.margin'] = false;
       set['fieldTouched.labor'] = false;
       set['fieldTouched.rent'] = false;
@@ -572,6 +580,48 @@ Page({
   //   做法：基准档（= 进页时的当前人数，即档位第 1 档）用实填总额；
   //        每 +1 人按**当前人均**（总额 ÷ 当前人数）递增。
   //   为什么不改成「人数 × 人均」：老板手上只有工资表合计，逼他拆人均是本末倒置（R296 拍1 的设计）。
+  // 🔴 R553：老板的真实月营收（来自首页「预计月营业额」，也可在本页直接改）
+  onRealInput(e) {
+    this.setData({ realMonthYuan: e.detail.value }, () => this.computeRealGap());
+  },
+
+  // 🔴 R553：让矩阵回答「我差多少」而不只是「要卖多少」。
+  //   取「现状行」= 人数/毛利率都取档位第 1 档（进页时就是他的真实值）+ 目标利润那行；
+  //   再拿他的真实月营收到这两条线上比，给一句话结论（日亏 / 日差 / 日超）。
+  //   为什么不给每行都标：差额依赖"现状"这一行，标满整表只是噪声（豆包同判）。
+  computeRealGap() {
+    const r = this.data.result;
+    const real = Number(this.data.realMonthYuan);
+    if (!r || !r.rows || !r.rows.length || !(real > 0)) {
+      if (this.data.realGap) this.setData({ realGap: null });
+      return;
+    }
+    // ⚠️ "现状"取他**填的那个数**（种子里的），不是档位第一档 ——
+    //   毛利率档位是 [m−5, m, m+5]，第一档是 m−5，拿它当现状会匹配到错误的行。
+    const seed = this._seed || {};
+    const baseLabor = Number(seed.labor) || Number((this.data.dims.labor || [])[0]);
+    const baseMargin = Number(seed.margin) || Number((this.data.dims.margin || [])[0]);
+    let row = null;
+    for (let i = 0; i < r.rows.length; i++) {
+      const x = r.rows[i];
+      if (x.invalid) continue;
+      if (Number(x.labor) !== baseLabor || Number(x.marginPct) !== baseMargin) continue;
+      // 目标利润取最大的那档（= 他填的目标；保本行是 0）
+      if (!row || Number(x.targetYuan) > Number(row.targetYuan)) row = x;
+    }
+    if (!row || row.breakMonthly == null) { this.setData({ realGap: null }); return; }
+    const beM = Number(row.breakMonthly);
+    const tgM = row.targetMonthly == null ? beM : Number(row.targetMonthly);
+    const dBe = Math.round(real - beM);            // 月差额 vs 保本
+    const dTg = Math.round(real - tgM);            // 月差额 vs 目标
+    const daily = Math.round(dBe / 30);
+    let text;
+    if (dBe < 0) text = fmt(M.realGapLoss, { a: Math.abs(dBe), b: Math.abs(daily) });
+    else if (dTg < 0) text = fmt(M.realGapShort, { a: Math.abs(dTg), b: Math.abs(Math.round(dTg / 30)) });
+    else text = fmt(M.realGapOver, { a: dTg, b: Math.round(dTg / 30) });
+    this.setData({ realGap: { text, cls: dBe < 0 ? 'bad' : (dTg < 0 ? 'warn' : 'ok') } });
+  },
+
   laborTotalFor(laborN) {
     const lt = Number(this.data.global.laborTotalYuan);
     if (!(lt > 0)) return undefined;
@@ -1036,6 +1086,8 @@ Page({
       this.buildCash();
       // 🔴 R331：固定费用构成（前端同源装配 + 与引擎对账）
       this.setData({ fixedBreak: this.fixedBreakOf() });
+      // 🔴 R553：结果就绪后立刻算「你差多少」（否则要等老板改一次输入才出现）
+      this.computeRealGap();
       if (rejected.length) {
         wx.showToast({
           title: `有 ${rejected.length} 档算不出来：${rejected[0].msg}`,

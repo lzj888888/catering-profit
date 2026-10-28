@@ -150,6 +150,19 @@
         </view>
       </view>
 
+      <!-- 🔴 R553（李老师 2026-10-28 + 豆包）：你现在卖多少 ——
+           矩阵只回答"要卖多少"时还不构成决策，老板要的是"我差多少"。
+           放在结果区最上面：两种视图（明细/透视）都能看到。 -->
+      <view class="real-row">
+        <text class="real-lb">{{t.realMonthLabel}}</text>
+        <view class="real-in-wrap">
+          <input class="real-in" type="digit" value="{{realMonthYuan}}" placeholder="{{t.realMonthPh}}" bindinput="onRealInput" adjust-position="{{true}}" cursor-spacing="20" />
+          <text class="real-unit">元</text>
+        </view>
+      </view>
+      <view class="real-gap {{realGap.cls}}" wx:if="{{realGap}}">{{realGap.text}}</view>
+      <view class="hint" wx:else>{{t.realMonthNote}}</view>
+
       <!-- 🔴 round279 · #9 结论速读：结论高亮 + 房租杠杆提示 + 淡季安全垫 -->
       <view class="insight" wx:if="{{result.insight && result.insight.has}}">
         <view class="insight-title">{{t.insightTitle}}</view>

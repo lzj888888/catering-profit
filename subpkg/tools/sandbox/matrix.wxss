@@ -80,6 +80,18 @@
 
 /* 🔴 R551：动作区已上移到「城市层级」下面 ⇒ 去掉原来的上分隔线与上外边距
    （那是按"卡片底部"排的，放顶部会多出一条无来由的横线）。*/
+/* 🔴 R553：你现在卖多少（真实月营收）+ 差额结论 */
+.real-row { display: flex; align-items: center; justify-content: space-between; padding: 8rpx 0 12rpx; }
+.real-lb { font-size: 28rpx; color: #333; }
+.real-in-wrap { display: flex; align-items: center; border: 1rpx solid #dfe5ec; border-radius: 10rpx;
+  padding: 6rpx 14rpx; background: #fff; }
+.real-in { font-size: 28rpx; color: #1e3a5f; text-align: right; min-height: 40rpx; width: 240rpx; }
+.real-unit { font-size: 28rpx; color: #888; margin-left: 6rpx; }
+.real-gap { font-size: 28rpx; padding: 12rpx 16rpx; border-radius: 10rpx; margin-bottom: 12rpx; line-height: 1.5; }
+.real-gap.ok { background: #eef8f1; color: #1f9254; }
+.real-gap.warn { background: #fff7e6; color: #a9761b; }
+.real-gap.bad { background: #fdeeec; color: #c0392b; }
+
 .reset-row { display: flex; align-items: center; justify-content: center; padding: 4rpx 0 12rpx; }
 .reset-tx { font-size: 28rpx; color: #6b7a90; padding: 10rpx 28rpx; }
 .reset-tx + .reset-tx { border-left: 1rpx solid #e6ebf2; }
