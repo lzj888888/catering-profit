@@ -417,6 +417,11 @@ Page({
     if (Number.isInteger(seed.cityIdx) && seed.cityIdx >= 0) patch.cityIdx = seed.cityIdx;
     this._seed = seed;
     this.setData(patch, () => {
+      // 🔴🔴 R551 修 bug（"点按钮没反应、装修设备没带过来"的真因）：
+      //   `syncBuildDefault()` 里的 `fill()` 会**无条件**把装修/设备/加盟/转让四项重写成
+      //   业态预设值（没有预设就写空串），面积也会被改 ⇒ 它必须在**写种子之前**跑。
+      //   原来我放在写完之后 ⇒ 老板填的 12 万装修被冲成空，界面上看着就是"点了没反应"。
+      this.syncBuildDefault();
       const d = this.buildSeedDims();
       const set = {
         'dims.rent': d.rent, 'dims.labor': d.labor,
@@ -435,8 +440,11 @@ Page({
       set['fieldTouched.margin'] = false;
       set['fieldTouched.labor'] = false;
       set['fieldTouched.rent'] = false;
+      // 面积也标成"已作答" ⇒ 之后再切业态，不会被 AREA_DEFAULT 冲掉老板刚读进来的面积
+      if (seed.area !== undefined) set['fieldTouched.area'] = true;
       this.setData(set, () => {
-        this.syncBuildDefault();
+        // 汇总行依赖 global 的最终值 ⇒ 必须**写完种子之后**再算一次（syncBuildDefault 里那次算早了）
+        this.setData({ buildSumText: this.buildSumOf() });
         if (!silent) wx.showToast({ title: M.seedRead, icon: 'none' });
       });
     });

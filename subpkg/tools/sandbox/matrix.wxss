@@ -74,10 +74,9 @@
 .insight-line.lever { color: #1a1a1a; font-weight: 600; }
 .insight-rule { font-size: 28rpx; color: #9a7b50; margin-top: 8rpx; }
 
-/* 🔴 R548：折叠取消 ⇒ .adv-toggle/.adv-arrow 随折叠块撤掉。
-   下面是「清除重填」：只重置档位、不动 8 项投入 ⇒ 做成弱操作，不能抢主按钮。 */
-.reset-row { display: flex; align-items: center; justify-content: center; margin-top: 20rpx;
-  padding: 14rpx 0; border-top: 1rpx solid #eee; }
+/* 🔴 R551：动作区已上移到「城市层级」下面 ⇒ 去掉原来的上分隔线与上外边距
+   （那是按"卡片底部"排的，放顶部会多出一条无来由的横线）。*/
+.reset-row { display: flex; align-items: center; justify-content: center; padding: 4rpx 0 12rpx; }
 .reset-tx { font-size: 28rpx; color: #6b7a90; padding: 10rpx 28rpx; }
 .reset-tx + .reset-tx { border-left: 1rpx solid #e6ebf2; }
 

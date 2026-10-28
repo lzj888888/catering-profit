@@ -371,6 +371,21 @@ for (const rel of Object.keys(CJK_BASELINE)) {
     'index.js 结果出来时未算活动门槛（R370：卡片会一直是空的或显示旧数）');
   chk(!pmGate || /mode === 'forward' && promoOn/.test(idxWxml),
     '活动卡门控不一致：js 按 PROMO_ENABLED 不算，wxml 却仍渲染（半开半关）');
+
+// --- R551：「读取我填的数据」不许被 syncBuildDefault 冲掉 ---
+// 踩到的真 bug：applySeed 先写种子、后调 syncBuildDefault()，而 syncBuildDefault 里的 fill()
+//   **无条件**把装修/设备/加盟/转让四项重写成业态预设值（无预设就写空串）⇒ 老板填的 12 万装修
+//   被冲成空，界面上看着就是"点了按钮没反应"（零报错、零提示，只是数字没变）。
+//   ⇒ 唯一正确的顺序：**先铺默认，再写用户真实值**。这条顺序无法靠肉眼长期守住，必须机器判。
+{
+  const a = mtxJs.indexOf('applySeed(seed, silent)');
+  const b = mtxJs.indexOf('onReadSeed()', a > 0 ? a : 0);
+  const body = a >= 0 ? mtxJs.slice(a, b > a ? b : a + 4000) : '';
+  const iSync = body.indexOf('this.syncBuildDefault()');
+  const iWrite = body.indexOf("set['global.'");
+  chk(!!body && iSync >= 0 && iWrite >= 0 && iSync < iWrite,
+    'applySeed 顺序错：syncBuildDefault() 必须在写种子之前（否则装修/设备等会被预设值冲掉，且零报错）');
+}
   // ① 两个输入都必须重算，且必须「先落状态再算」（写在 setData 对象字面量里 = 求值早于生效）
   const firstObj = (body) => {
     const i = body.indexOf('setData({');

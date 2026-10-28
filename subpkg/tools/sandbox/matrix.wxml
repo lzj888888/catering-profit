@@ -21,6 +21,18 @@
     </view>
   </view>
 
+  <!-- 🔴 R551（李老师 2026-10-28）：两个动作**上移到城市层级下面** ——
+       它们影响的是整页（经营类型/城市/装修/设备/档位），放在档位卡最底部既看不见、
+       也让人以为只作用于档位。放在这里就位于"整页输入区"的入口处。 -->
+  <view class="mcard">
+    <view class="reset-row">
+      <text class="reset-tx" bindtap="onReadSeed">{{t.readMyData}}</text>
+      <text class="reset-tx" bindtap="onResetDims">{{t.resetDims}}</text>
+    </view>
+    <view class="hint">{{t.readMyDataNote}}</view>
+    <view class="hint">{{t.resetDimsNote}}</view>
+  </view>
+
   <!-- 全局投入 -->
   <view class="mcard">
     <view class="card-title">{{t.buildLabel}}</view>
@@ -120,15 +132,6 @@
         <view class="del" wx:if="{{dims.target.length>1}}" bindtap="delDim" data-dim="target" data-idx="{{idx}}">{{t.delDim}}</view>
       </view>
     </view>
-    <!-- 🔴 R550：两个动作并列、语义分开（李老师 2026-10-28 要的就是这个）：
-         「读取我填的数据」= 把首页填过的经营类型/城市/装修/设备/人工… 重新拉过来；
-         「清除重填」= 只把档位恢复成按他店里算出的基准值，**不动**上面那 8 项投入。 -->
-    <view class="reset-row">
-      <text class="reset-tx" bindtap="onReadSeed">{{t.readMyData}}</text>
-      <text class="reset-tx" bindtap="onResetDims">{{t.resetDims}}</text>
-    </view>
-    <view class="hint">{{t.readMyDataNote}}</view>
-    <view class="hint">{{t.resetDimsNote}}</view>
   </view>
 
   <view class="hint" wx:if="{{!result}}">{{t.matrixEmptyTip}}</view>
