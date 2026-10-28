@@ -67,6 +67,10 @@ const DEFAULT_DIMS = {
   labor: [2, 3],
   margin: [45, 55, 60, 65],
   target: [0, 10000, 15000], // 0=保本
+  // 🔴 R557（李老师拍板）：「其他杂费」和毛利率一样**可以选几档**（默认 2%，可调成 3% 或加更多档）。
+  //   它一直是"暗扣"（默认 2% 直接进 var_items，老板只看到毛利率变小）⇒ 现在摆成显式维度，
+  //   想让老板知道"这 2% 是可调的、也是能对比的"，而不是被系统默默扣掉。
+  other: [2],
 };
 
 Page({
@@ -110,6 +114,9 @@ Page({
       matrixReadGrid: M.matrixReadGrid,
       colLabor: M.colLabor,
       colMargin: M.colMargin,
+      colNetMargin: M.colNetMargin,
+      dimOther: M.dimOther,
+      otherDimHint: M.otherDimHint,
       colTarget: M.colTarget,
       addDim: M.addDim,
       delDim: M.delDim,
@@ -245,6 +252,7 @@ Page({
       labor: DEFAULT_DIMS.labor.slice(),
       margin: DEFAULT_DIMS.margin.slice(),
       target: DEFAULT_DIMS.target.slice(),
+      other: DEFAULT_DIMS.other.slice(),
     },
     // 🔴 R336：开店投入拆 4 项、各自年限（原来「一个总额 + 一个年限」把 5 年摊的设备压成 3 年
     //   ⇒ 月摊销虚高 11~20% ⇒ 保本线连锁虚高）。转让费默认**不摊**（买位置，不是可摊资产）。
@@ -463,6 +471,10 @@ Page({
         set['t.subtitle'] = String(M.subtitleFwdLocked || '').replace('{rent}', String(d.rent[0]));
       }
       if (seed.expect !== undefined) set.realMonthYuan = String(Math.round(Number(seed.expect)));
+      // 🔴 R557：首页填的「其他杂费」要成为**默认档位的初值**，否则老板填 3%、矩阵还是按 2% 算（双口径）。
+      if (seed.other !== undefined && seed.other !== null && isFinite(Number(seed.other)) && Number(seed.other) >= 0) {
+        set['dims.other'] = [Number(seed.other)];
+      }
       set['fieldTouched.margin'] = false;
       set['fieldTouched.labor'] = false;
       set['fieldTouched.rent'] = false;
@@ -902,7 +914,7 @@ Page({
   },
 
   // ===== 装配单行的 clean 参数（与单测口径一致，走 assembleItems 唯一入口）=====
-  buildClean(preset, coef, rentYuan, laborN, marginPct, targetYuan, cityTier) {
+  buildClean(preset, coef, rentYuan, laborN, marginPct, targetYuan, cityTier, otherPctArg) {
     const buildItems = this.buildItems();
     // 🔴 R335（B 方案）：两条路都留，优先级从高到低
     //   ① 老板直接填了「人工总额」⇒ 用它（覆盖人数×人均）
@@ -923,7 +935,8 @@ Page({
     // 🔴 R525：其他杂支 % 覆盖（与 index 的 `buildPresetParam` 同一规则，逐字对齐）：
     //   0 ⇒ **剔除**该项（老板认为没这笔）；>0 ⇒ 用老板的值；非数字/负数 ⇒ 原样按预设走。
     //   不做这层，单页改成 0 后矩阵仍扣 2% ⇒ 两页保本额不一致且零报错。
-    const otherRaw = this.data.otherPct;
+    // 🔴 R557：`otherPct` 现在由**每一行**传入（它成了可扫维度）；不传才回落全局值。
+    const otherRaw = (otherPctArg === undefined) ? this.data.otherPct : otherPctArg;
     const varFinal = (otherRaw === null || otherRaw === undefined || otherRaw === '')
       ? varItems
       : varItems.map((v) => {
@@ -1049,13 +1062,17 @@ Page({
     // 🔴 R548：四维一律全量参与（原收起态只取第 1 档）。行数由上限 1000 守，不用靠折叠压。
     const laborUse = labor || [];
     const marginUse = margin || [];
+    // 🔴 R557：「其他杂费」也参与扫描（老板可只留一档 = 不扫；加档就对比）。
+    const otherUse = (this.data.dims.other && this.data.dims.other.length) ? this.data.dims.other : [null];
     const cleanArr = [];
     const meta = []; // 与 cleanArr 对齐的维度标注
-    for (const r of rent) for (const l of laborUse) for (const m of marginUse) for (const tg of target) {
+    for (const r of rent) for (const l of laborUse) for (const m of marginUse) for (const tg of target) for (const ov of otherUse) {
       const rv = Number(r), lv = Number(l), mv = Number(m), tgv = Number(tg);
       if (![rv, lv, mv, tgv].every((x) => isFinite(x))) continue;
-      cleanArr.push(this.buildClean(preset, coef, rv, lv, mv, tgv, cityTier));
-      meta.push({ rent: rv, labor: lv, marginPct: mv, targetYuan: tgv });
+      const oraw = (ov === null || ov === undefined || ov === '') ? null : Number(ov);
+      if (oraw !== null && (!isFinite(oraw) || oraw < 0)) continue;
+      cleanArr.push(this.buildClean(preset, coef, rv, lv, mv, tgv, cityTier, oraw === null ? undefined : oraw));
+      meta.push({ rent: rv, labor: lv, marginPct: mv, targetYuan: tgv, otherPct: oraw });
     }
     if (!cleanArr.length) { api.toastError({ msg: '维度档位不能为空' }); return; }
     // 🔴 R356：云端矩阵分支的 clean_array 上限是 1000（超过直接 fail）。
@@ -1151,7 +1168,7 @@ Page({
         rent: meta.rent, labor: meta.labor, marginPct: meta.marginPct, targetYuan: meta.targetYuan,
         breakMonthly: null, breakDaily: null, targetMonthly: null, targetDaily: null,
         rentPct: null, leverYuan: null, cushionPct: null, payback: null, rentCls: '',
-        netMarginPct: null, platformPct: null, rentPerM2: null,
+        netMarginPct: null, platformPct: null, rentPerM2: null, otherPct: meta.otherPct,
         red: false, invalid: true, fixedExAmort: null, laborYuan: null, beCashMonthly: null,
       };
     }
@@ -1198,6 +1215,7 @@ Page({
       rent: meta.rent,
       labor: meta.labor,
       marginPct: meta.marginPct,
+      otherPct: (meta.otherPct == null ? null : meta.otherPct),
       // 🔴 R552：**到手毛利率** = 菜品毛利率 − 平台与杂支扣点（= 引擎的 margin_rate）。
       //   为什么默认列要给它而不是账面毛利率：老板按 60% 心算保本会**低估约 29%**
       //   （实测四类店：账面 55~65% → 到手只有 41~49%）。账面值仍在档位区看得见。
@@ -1411,7 +1429,7 @@ Page({
     //   老板在页面看到两列，导出 Excel 却没有 ⇒ 导出件比他看到的少信息，且**不报错**。
     //   顺序与 matrix.wxml 表头逐列一致，改一处必须改另一处（列数由守卫钉住）。
     const header = [
-      t.dimRent, t.dimLabor, t.colLaborFee, t.dimMargin, t.dimTarget,
+      t.dimRent, t.dimLabor, t.colLaborFee, t.dimMargin, t.colNetMargin, t.dimTarget,
       t.colBreakMonthly, t.colBreakCash, t.colBreakDaily,
       t.colTargetMonthly, t.colTargetDaily,
       t.rentPct, t.payback, t.colLeverExport, t.colCushionExport,
@@ -1423,7 +1441,7 @@ Page({
     const body = rows.map((r) => [
       markInvalid(r), r.labor,
       r.laborYuan != null ? r.laborYuan : '—',
-      r.netMarginPct, r.targetYuan,   // 🔴 R552：与屏幕列同口径（到手毛利率）
+      r.marginPct, r.netMarginPct, r.targetYuan,   // 🔴 R552：与屏幕列同口径（到手毛利率）
       r.breakMonthly != null ? r.breakMonthly : '—',
       r.beCashMonthly != null ? r.beCashMonthly : '—',
       r.breakDaily != null ? r.breakDaily : '—',

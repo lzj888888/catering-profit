@@ -127,6 +127,16 @@
         <view class="del" wx:if="{{dims.margin.length>1}}" bindtap="delDim" data-dim="margin" data-idx="{{idx}}">{{t.delDim}}</view>
       </view>
     </view>
+    <!-- 🔴 R557：「其他杂费」也做成可扫档位（默认 2%，可加删档）——它原来是**暗扣**，
+         老板只看到毛利率变小、不知道能调。摆在档位区就和毛利率一样显式。 -->
+    <view class="dim-block">
+      <view class="dim-head"><text>{{t.dimOther}}</text><view class="add" bindtap="addDim" data-dim="other">{{t.addDim}}</view></view>
+      <view class="dim-row" wx:for="{{dims.other}}" wx:key="index" wx:for-index="idx">
+        <input class="minp dim-inp" type="digit" value="{{item}}" data-dim="other" data-idx="{{idx}}" bindinput="onDimInput" adjust-position="{{true}}" cursor-spacing="20" />
+        <view class="del" wx:if="{{dims.other.length>1}}" bindtap="delDim" data-dim="other" data-idx="{{idx}}">{{t.delDim}}</view>
+      </view>
+      <view class="hint">{{t.otherDimHint}}</view>
+    </view>
     <view class="dim-block">
       <view class="dim-head"><text>{{t.dimTarget}}</text><view class="add" bindtap="addDim" data-dim="target">{{t.addDim}}</view></view>
       <view class="dim-row" wx:for="{{dims.target}}" wx:key="index" wx:for-index="idx">
@@ -246,6 +256,7 @@
             <!-- 🔴 淡季安全垫：已有店铺默认给（那里没有现金卡），找铺面收进更多列。
                  ⚠️ 只能一个条目 —— 拆两个 wx:if 会让页面列数变 15，撞 R349 对齐全。 -->
             <text class="td" wx:if="{{colsOpen || mode === 'forward'}}">{{t.colCushion}}</text>
+            <text class="td" wx:if="{{colsOpen}}">{{t.colNetMargin}}</text>
             <text class="td" wx:if="{{colsOpen}}">{{t.colTarget}}</text>
             <text class="td" wx:if="{{colsOpen || mode !== 'forward'}}">{{t.payback}}</text>
             <text class="td" wx:if="{{colsOpen}}">{{t.colBreakCash}}</text><text class="td" wx:if="{{colsOpen}}">{{t.colBreakDaily}}</text>
@@ -257,7 +268,7 @@
                现加 .invalid 灰显 + 首列 ⚠ 标记。 -->
           <view class="tr {{item.red?'red':''}}{{item.invalid?' invalid':''}}" wx:for="{{result.rows}}" wx:key="index">
             <text class="td" wx:if="{{dims.rent.length>1}}"><text class="td-l1">{{item.rent}}{{t.yuan}}{{item.invalid?' ⚠':''}}</text><text class="td-l2" wx:if="{{item.rentPerM2}}">{{item.rentPerM2}}元/㎡</text></text>
-            <text class="td">{{item.netMarginPct!=null?item.netMarginPct:'—'}}{{t.pct}}</text>
+            <text class="td">{{item.marginPct}}{{t.pct}}</text>
             <text class="td">{{item.labor}}{{t.person}}</text>
             <text class="td" wx:if="{{colsOpen || mode === 'forward'}}">{{item.laborYuan!=null?item.laborYuan:'—'}}</text>
             <text class="td">{{item.breakMonthly!=null?item.breakMonthly:'—'}}</text>
@@ -268,6 +279,7 @@
             <text class="td" wx:if="{{colsOpen}}">{{item.beCashMonthly!=null?item.beCashMonthly:'—'}}</text>
             <text class="td" wx:if="{{colsOpen}}">{{item.breakDaily!=null?item.breakDaily:'—'}}</text>
             <text class="td" wx:if="{{colsOpen}}">{{item.targetDaily!=null?item.targetDaily:'—'}}</text>
+            <text class="td" wx:if="{{colsOpen}}">{{item.netMarginPct!=null?item.netMarginPct:'—'}}{{t.pct}}</text>
             <text class="td rent-{{item.rentCls}}" wx:if="{{colsOpen}}">{{item.rentPct!=null?item.rentPct:'—'}}</text>
             <text class="td" wx:if="{{colsOpen}}">{{item.leverYuan!=null?item.leverYuan:'—'}}</text>
           </view>
