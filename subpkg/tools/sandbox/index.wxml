@@ -73,10 +73,8 @@
     <!-- R414（队列 #25）：金额栏读不成数字的显式提示。粘贴「12,000」时 yuanToFen 会静默读成 0，
          0 是合法金额 ⇒ 云端拒不了 ⇒ 保本额照常出数但偏小（实测少 40%），原本全程零报错。 -->
     <view class="warn-note" wx:if="{{badAmountCount > 0}}">{{t.amountBadTip}}</view>
-    <!-- 🔴 R525/R526：**座位数与桌数两个输入都已删除**（李老师 2026-10-27：
-         「餐饮翻台率是按桌数计算的，和座位数没关系」「这里不考虑翻台率这个事情。去了这个」）。
-         核实过：反推（寻找铺面）点 Tab 直接进矩阵页、矩阵走正向口径且代码里没有 seats；
-         正向引擎也不读 seats ⇒ 这两个数填了不影响任何结果，属「死输入」，按纪律删干净。 -->
+    <!-- 🔴 R525/R526：座位数与桌数两个输入**已删**（"翻台率按桌数算，和座位数没关系"）。
+         核实：矩阵走正向口径且无 seats、正向引擎也不读 ⇒ 填了不影响结果，属死输入。 -->
     <view class="row">
       <text class="row-name">{{t.avgPriceLabel}}</text>
         <view class="row-in-wrap">
@@ -133,11 +131,8 @@
         </view>
       </view>
       <view class="row-note">{{t.laborTotalNote}}</view>
-      <!-- 🔴 R543（李老师 2026-10-27）：「一合了之」不是当时的定案 —— 当时只是要给
-           **水费电费开在一张单子上、分不开的店**一个合并选项，不是把两栏永久删掉。
-           ⇒ 默认**分两栏**（水费 / 电费），开关打开才走「水电合计」。
-           ⚠️ 装配层零改动：`utils/bizPreset.js` 里 `energyYuan` 优先、未传则回落
-              `waterYuan + electricYuan`（R541 已留好这个口子，矩阵/旧草稿也靠它兼容）。 -->
+      <!-- 🔴 R543：默认**分两栏**（水费/电费），开关打开才走「水电合计」—— 原定案是给"水电开在一张
+           单子上"的店一个选项，不是永久合并。装配零改动：energyYuan 优先，未传回落 water+electric。 -->
       <view class="row switch-row">
         <text class="switch-label">{{t.energyMergeLabel}}</text>
         <switch checked="{{energyMerged}}" color="#1e3a5f" bindchange="onToggleEnergyMerge" />
@@ -493,13 +488,10 @@
       </view>
     </view>
 
-    <!-- 🔴 R327：正推表 —— 做到这么多营业额能赚多少。
-         M2 原先只有倒推（要赚 X 需要卖多少），老板紧接着会问「我大概能做到 15 万，能赚多少」。
-         以保本线为基准取 4 档，不写死 8万/10万 —— 每个店保本线不同，绝对档位对多数店无意义。 -->
-    <!-- 🔴 R442（李老师 2026-10-22：「通篇太长」）：这四张卡（利润阶梯/客群/效率/回本）
-         都是「分析」，不是老板第一眼要看的结论 ⇒ 默认收起，点开才展开。
-         ⚠️ 只改四张卡各自的 wx:if，**不动 block 结构**（495-540 与 541 的 </block> 是跨层配对，
-            硬包一层会破坏层级）。 -->
+    <!-- 🔴 R327：正推表（做到这么多营业额能赚多少）。档位**以保本线为基准取 4 档**，
+         不写死 8万/10万 —— 每个店保本线不同，绝对档位对多数店无意义。 -->
+    <!-- 🔴 R442：这四张卡（利润阶梯/客群/效率/回本）都是"分析"不是第一眼结论 ⇒ 默认收起。
+         ⚠️ 只改各自 wx:if，**不动 block 结构**（跨层配对，硬包一层会破坏层级）。 -->
     <view class="fold-toggle" bindtap="onToggleMore">{{t.moreAnalysis}}{{showMore ? ' ▾' : ' ▸'}}</view>
     <view class="card2" wx:if="{{mode === 'forward' && showMore && profitLadder}}">
       <view class="sec">{{t.profitLadderTitle}}</view>
@@ -514,12 +506,9 @@
       </view>
     </view>
 
-    <!-- 🔴 round273 · A 区（已有铺面）补齐 round223 §3.1 定案的两项指标：**每天来多少人 / 一天翻几台**。
-         定案原文 A 输出 = 每天卖多少够本 / 每天来多少人 / 一天翻几台 / 房租占营业额 X%（附行业对比）/ 几年回本
-         —— 后三项界面上早就有，**前两项一直缺**（只有「寻找铺面」Tab 有客流与翻台）。
-         ⚠️ 由前端 `crowdOf()` 派生（正向引擎不出这两个数），引擎零改动。
-         为什么放这个位置：先答「每月要卖多少钱」，紧接着答老板的下一句「那得来多少人」。
-         fail-closed：人均消费或桌数没填 ⇒ crowd=null ⇒ 整块不渲染，**不给假数**。 -->
+    <!-- 🔴 round273：补齐「每天来多少人 / 一天翻几台」（正向引擎不出这两个数 ⇒ 前端 crowdOf() 派生）。
+         位置在「每月要卖多少」之后：紧接着答老板那句"那得来多少人"。
+         fail-closed：人均消费或桌数没填 ⇒ crowd=null ⇒ 整块不渲染，不给假数。 -->
     <view class="card2" wx:if="{{mode === 'forward' && showMore && crowd}}">
       <view class="sec">{{t.fwdCrowdTitle}}</view>
       <view class="cell"><text class="lbl">{{t.fwdCrowdBreakLbl}}</text><text class="val">{{crowd.breakPeople}}{{t.fwdCrowdUnit}}</text></view>
@@ -529,12 +518,10 @@
       <view class="hint">{{t.fwdCrowdHintPre}}{{crowd.price}}{{t.fwdCrowdHintSuf}}</view>
     </view>
 
-    <!-- 🔴 round276 · A 区补齐 round223 §3.1 定案**遗漏**的「坪效 / 人效」（翻台 round273 已补）。
-         为什么放这里：老板的提问顺序是「每月要卖多少」→「要来多少人」→「**我现在这家店用得值不值**」。
-         分子 = 用户填的**实际月营业额**（A 区＝已发生流水；拿保本额当分子算的是"保本坪效"，不是他要的数）。
-         🔴 两项**都不挂行业区间**：仓内 BANDS 只有毛利率/房租占比/人工占比/能耗/管理/推广六项，
-            **没有坪效、没有人效** —— R223 §3.2 红线＝不得编造分位数 ⇒ 只出数值，留给老板自家横比。
-         fail-closed：没填实际营业额 ⇒ eff=null ⇒ 整块不渲染；面积/人数缺哪个就少哪一行。 -->
+    <!-- 🔴 round276：「坪效 / 人效」—— 答老板那句"我现在这家店用得值不值"。
+         分子 = 他填的**实际月营业额**（拿保本额当分子算的是"保本坪效"，不是他要的数）。
+         🔴 都不挂行业区间：仓内 BANDS 没有坪效/人效，编不得分位数 ⇒ 只出数值，留给自家横比。
+         fail-closed：营业额没填 ⇒ eff=null 整块不渲染；面积/人数缺哪个少哪行。 -->
     <view class="card2" wx:if="{{mode === 'forward' && showMore && eff}}">
       <view class="sec">{{t.fwdEffTitle}}</view>
       <view class="cell" wx:if="{{eff.pixel}}"><text class="lbl">{{t.fwdPixelEffLbl}}</text><text class="val">{{t.cur}}{{eff.pixel}}{{t.fwdPixelEffUnit}}</text></view>
@@ -664,11 +651,9 @@
     <block wx:if="{{showPromo}}">
 
     <view class="hint">{{t.promoSub}}</view>
-    <!-- 🔴 R370（李老师 2026-10-20 · 纯堂食）：活动只算堂食，外卖那套佣金不参与。
-         输入从"选折扣档 + 选几成订单"缩成**两个数**（都从收银日报/活动台账上直接抄）：
-           ① 折扣后实收率 = 实收 ÷ 原价（打八折且全部参与 ≈ 80）
-           ② 活动成本率   = 赠酒/奖品/自贴券 ÷ 实收
-         公式 GA = (G0 − cut)/(1 − cut) − 成本率，保本额一律按**原价流水**口径。 -->
+    <!-- 🔴 R370：活动只算堂食（外卖佣金不参与）。输入缩成两个数（都能从收银日报/活动台账抄）：
+           ① 折扣后实收率 = 实收÷原价  ② 活动成本率 = 赠酒/奖品/自贴券÷实收
+         GA = (G0 − cut)/(1 − cut) − 成本率，保本额一律按**原价流水**口径。 -->
     <view class="promo-row">
       <text class="promo-lb">{{t.promoRealLabel}}</text>
       <input class="promo-real-inp" type="digit" value="{{promoRealPct}}" bindinput="onPromoRealInput" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.promoRealPh}}" />

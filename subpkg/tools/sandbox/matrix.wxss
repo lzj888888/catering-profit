@@ -2,23 +2,14 @@
 .head { margin: 8rpx 0 20rpx; }
 .title { font-size: 40rpx; font-weight: 700; color: #1a1a1a; }
 .subtitle { font-size: 28rpx; color: #8a8a8a; margin-top: 8rpx; line-height: 1.5; }
-/* 🔴🔴 R296c 根治「竖版文字」：本页原用全局类名 `.card`，而 `app.wxss` 里
-   `.card { width: 48%; margin: 1%; }`（给首页九宫格用的）⇒ 矩阵页卡片只剩 **48% 宽**
-   （290px 视口下 ≈140px），卡片内 `.field` 的 `<text class="label">` 被右侧
-   `.picker/.inp`（min-width 200rpx）挤到 **~1 字宽** ⇒ 一字一行 = 「竖版」。
-   前几次只把表格 `.td` 加宽（round276），没碰到这个**类名冲突** ⇒ 一直没修好。
-   ⇒ 改用**唯一类名 `.mcard`**（配 matrix.wxml 同步改），彻底断开与全局 `.card` 的耦合。 */
+/* 🔴🔴 R296c：本页原用全局 `.card`（`app.wxss` 给首页九宫格的 `width:48%`）⇒ 卡片只剩 48% 宽，
+   卡片内 label 被右侧 min-width 200rpx 的输入挤到 ~1 字宽 ⇒ 一字一行（竖版）。
+   ⇒ 改唯一类名 `.mcard`（wxml 同步改），断开与全局 `.card` 的耦合。 */
 .mcard { width: auto; margin: 0 0 20rpx 0; background: #fff; border-radius: 16rpx; padding: 24rpx; box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04); }
 .card-title { font-size: 28rpx; font-weight: 600; color: #333; margin-bottom: 16rpx; }
-/* 🔴🔴 R362（2026-10-19 李老师反馈「开店要投多少下面 装修/门头/软装/设备… 文字挤着向下排列」）
-   —— R296c 只解决了 `.card` 那处类名冲突，**`.field/.label/.inp` 三个仍与全局同名**，所以竖排没断根：
-     · `app.wxss:33` `.field input { min-width: 320rpx; padding: 14rpx 18rpx }`
-       ⇒ **min-width 压过本页的 `width`**，`.inp`(240rpx) 与 `.yr-inp`(80rpx) 双双被抬到 **185px**（模拟器实测）
-       ⇒ 一行两个输入框 370px > 行宽 342px ⇒ label 被挤成 **28px 宽 / 100~120px 高**（实测）= 一字一行。
-     · `app.wxss:51` 的 `.inp` 还是**另一种东西**（卡片容器：padding 24rpx / min-height 88rpx / margin-bottom 16rpx）
-       ⇒ 顺带把本页输入框撑高。
-   ⇒ 与 R296c 同一手法：本页改用专属类名 `.mfield / .mlabel / .minp`，与全局彻底断开。
-   ⚠️ 本页以后新增类名，先 grep `app.wxss` 有没有同名。 */
+/* 🔴🔴 R362：`.field/.label/.inp` 与全局同名 ⇒ 被 `app.wxss:33` 的 min-width 抬到 185px、
+   `app.wxss:51` 的 `.inp`（卡片容器）撑高 ⇒ label 挤成 28px 宽 = 一字一行（竖排）。
+   ⇒ 本页改用专属类名 `.mfield/.mlabel/.minp` 与全局断开。⚠️ 新增类名先 grep app.wxss 有无同名。 */
 .mfield { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 12rpx 0; }
 .mlabel { flex: 0 0 auto; white-space: nowrap; margin-right: 12rpx; font-size: 28rpx; color: #444; }
 .picker { background: #f2f3f7; padding: 14rpx 24rpx; border-radius: 10rpx; font-size: 28rpx; color: #222; min-width: 200rpx; text-align: center; }
@@ -26,7 +17,9 @@
 .dim-block { border-top: 1rpx solid #eee; padding-top: 16rpx; margin-top: 8rpx; }
 .dim-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12rpx; }
 .dim-head text { font-size: 28rpx; font-weight: 600; color: #333; }
-.add { font-size: 28rpx; color: #2b7fff; padding: 6rpx 16rpx; }
+/* 🔴 R548：**必须显式给底色** —— `app.wxss:29` 有全局 `.add{background:#1e3a5f;color:#fff}`；
+   本页原只改字色 ⇒ 墨蓝底+亮蓝字（"蓝底蓝色字不好看"）。浅蓝底 = 弱按钮（一屏 4 个不抢主按钮）。 */
+.add { font-size: 28rpx; color: #2b7fff; background: #eef4ff; padding: 8rpx 20rpx; border-radius: 999rpx; }
 .dim-row { display: flex; align-items: center; margin-bottom: 12rpx; }
 .dim-inp { flex: 1; text-align: left; width: auto; }
 .del { font-size: 28rpx; color: #e2533a; margin-left: 16rpx; padding: 6rpx 12rpx; }
@@ -49,18 +42,13 @@
 /* 🔴 R297 第四轮（审计 B7）：被云端拒掉的档位（算不出，各列为 —）灰显，与"有数"的行区分开。 */
 .tr.invalid { background: #fafafa; }
 .tr.invalid .td { color: #b0b4ba; }
-/* 🔴 round276：列宽 150 → 200rpx，并**放开换行**。
-   原状：`.tbl-scroll` 上的 `white-space: nowrap` 会被 `.td` 继承 ⇒ 表头「月租金档位（元）」
-   在 150rpx（内容区仅 126rpx）里既排不下又不换行 ⇒ 真机上呈现成"竖着的文字"。
-   改法：① 列宽给到 200rpx（内容区 176rpx = 6 个字/行，配合 3~4 字短表头 ⇒ **一行横排**）；
-        ② `white-space: normal` 让**超长的单元格值**正常折行，而不是溢出到隔壁列。 */
+/* 🔴 round276：列宽 150→200rpx 并放开换行。原 `.td` 继承 nowrap ⇒ 表头在 126rpx 里排不下
+   又不换行 ⇒ 真机成"竖着的文字"。200rpx = 6 字/行配 3~4 字短表头 ⇒ 一行横排；
+   white-space: normal 让超长值折行而不是溢出到隔壁列。 */
 .td { flex: none; width: 200rpx; padding: 16rpx 12rpx; font-size: 28rpx; color: #333; box-sizing: border-box; white-space: normal; }
 .tr.th .td { font-weight: 600; color: #222; }
-/* ===== R378：冻结首列（窄屏可读性的关键）=====
- * 14 列 × 200rpx ≈ 1400px，手机内容区 ~350px ⇒ 只能看到 2 列半；
- * 横滑时若首列跟着滚走，老板就不知道这一行是「房租 8000」还是「房租 30000」。
- * 做法：首列 sticky left + 右侧投影（影子代替描边，横滑时能看出"叠在上面"）。
- * ⚠️ 不缩短列宽：200rpx 是 round276 按「表头 6 字一行」定的，缩了表头会竖排（R362 同族）。 */
+/* 🔴 R378：冻结首列。14 列 ≈1400px vs 手机 ~350px ⇒ 只看到 2 列半；首列跟着滚走老板就
+   不知道这行是哪档。做法：sticky left + 右侧投影。⚠️ 别缩列宽（200rpx 是按"表头 6 字一行"定的）。 */
 .td:first-child { position: sticky; left: 0; z-index: 2; background: #fff;
   box-shadow: 6rpx 0 10rpx -6rpx rgba(30, 58, 95, 0.18); }
 .tr.th .td:first-child { background: #f5f6fa; z-index: 3; }
@@ -86,9 +74,11 @@
 .insight-line.lever { color: #1a1a1a; font-weight: 600; }
 .insight-rule { font-size: 28rpx; color: #9a7b50; margin-top: 8rpx; }
 
-/* 🔴 R322：高级维度折叠头 —— 只压颜色，不缩字号（AD-G1 字号 ≥28rpx 红线） */
-.adv-toggle .dim-head { color: #8a97a8; }
-.adv-arrow { color: #8a97a8; margin-left: 8rpx; }
+/* 🔴 R548：折叠取消 ⇒ .adv-toggle/.adv-arrow 随折叠块撤掉。
+   下面是「清除重填」：只重置档位、不动 8 项投入 ⇒ 做成弱操作，不能抢主按钮。 */
+.reset-row { display: flex; align-items: center; justify-content: center; margin-top: 20rpx;
+  padding: 14rpx 0; border-top: 1rpx solid #eee; }
+.reset-tx { font-size: 28rpx; color: #6b7a90; }
 
 /* 🔴 R325：钱够不够开 · 能撑几个月
    ⚠️ 字号一律 ≥28rpx（AD-G1 可读性红线：老板多老花眼），层级只靠颜色/字重区分。 */

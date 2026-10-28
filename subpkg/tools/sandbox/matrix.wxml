@@ -85,7 +85,10 @@
   </view>
 
   <!-- 维度编辑器 -->
+  <!-- 🔴 R548：取消折叠（李老师"折叠着莫名其妙"）。原折叠还会让扫描只取第 1 档 = 悄悄关掉两个维度。
+       不新增维度（组合会指数膨胀）；名字改「可调参数档位」——毛利率/人数不是"高级"。 -->
   <view class="mcard">
+    <view class="card-title">{{t.dimsTitle}}</view>
     <view class="dim-block">
       <view class="dim-head"><text>{{t.dimRent}}</text><view class="add" bindtap="addDim" data-dim="rent">{{t.addDim}}</view></view>
       <view class="dim-row" wx:for="{{dims.rent}}" wx:key="index" wx:for-index="idx">
@@ -93,17 +96,6 @@
         <view class="del" wx:if="{{dims.rent.length>1}}" bindtap="delDim" data-dim="rent" data-idx="{{idx}}">{{t.delDim}}</view>
       </view>
     </view>
-    <!-- 🔴 R322：小白模式默认收起「毛利率 / 人工」两个专业维度 ——
-         找店的人答不出毛利率（那是他要问的答案，不是他能填的输入）。
-         收起时两者各取第 1 档（行业默认），矩阵只剩「租金 × 目标利润」。 -->
-    <view class="dim-block adv-toggle" bindtap="onToggleAdv">
-      <view class="dim-head">
-        <text>{{advOpen ? t.advDimsHide : t.advDimsShow}}</text>
-        <text class="adv-arrow">{{advOpen ? '▾' : '▸'}}</text>
-      </view>
-      <view class="hint" wx:if="{{!advOpen}}">{{advNote}}</view>
-    </view>
-    <block wx:if="{{advOpen}}">
     <!-- 🔴 R334：人工档位整块删除 —— 人数每店都不同（麻辣烫有 8 人的也有 3 人的），人均工资也无统一值，
          用「人数 × 人均」估只会算错。人工改为在上方「人工每月总额」直接填。 -->
     <!-- 🔴 R335：人数档位回来了（按业态给默认：快餐 2/3、火锅正餐 5/6）-->
@@ -121,7 +113,6 @@
         <view class="del" wx:if="{{dims.margin.length>1}}" bindtap="delDim" data-dim="margin" data-idx="{{idx}}">{{t.delDim}}</view>
       </view>
     </view>
-    </block>
     <view class="dim-block">
       <view class="dim-head"><text>{{t.dimTarget}}</text><view class="add" bindtap="addDim" data-dim="target">{{t.addDim}}</view></view>
       <view class="dim-row" wx:for="{{dims.target}}" wx:key="index" wx:for-index="idx">
@@ -129,6 +120,11 @@
         <view class="del" wx:if="{{dims.target.length>1}}" bindtap="delDim" data-dim="target" data-idx="{{idx}}">{{t.delDim}}</view>
       </view>
     </view>
+    <!-- 🔴 R548：「清除重填」只重置档位，**不动**上面那 8 项投入（否则清一次要重填 8 个框）。 -->
+    <view class="reset-row" bindtap="onResetDims">
+      <text class="reset-tx">{{t.resetDims}}</text>
+    </view>
+    <view class="hint">{{t.resetDimsNote}}</view>
   </view>
 
   <view class="hint" wx:if="{{!result}}">{{t.matrixEmptyTip}}</view>
@@ -166,9 +162,10 @@
         <view class="hint">{{t.fixedBreakNote}}</view>
       </view>
 
-      <!-- 🔴 R325：最后一道闸 —— 钱够不够开 / 能撑几个月。
-           上面答「稳态能不能赚钱」，这里答「有没有命等到稳态」；两件事，不重复。 -->
-      <view class="cash-card">
+      <!-- 🔴 R325：钱够不够开 / 能撑几个月 —— 上面答"稳态赚不赚钱"，这里答"有没有命等到稳态"。
+           🔴 R548：**已有店铺整块隐藏**（李老师拍板）——店都开了再问"够不够开"没意义；
+           他要算现金流该去月度核算（真实账）。抗风险由表里的「淡季安全垫」列承担。 -->
+      <view class="cash-card" wx:if="{{mode === 'reverse'}}">
         <view class="cash-title">{{t.cashTitle}}</view>
         <view class="cash-lead">{{t.cashLead}}</view>
         <view class="cash-row">
@@ -203,8 +200,9 @@
            首列（指标名）已冻结（见 matrix.wxss `.td:first-child`），横滑时行名不会跟着滚走。 -->
       <view class="hint">{{t.matrixReadGrid}}</view>
       <view class="swipe-hint" wx:if="{{narrow && result}}">{{t.matrixSwipeHint}}</view>
-      <!-- 🔴 R528：默认只给 6 列（房租/人工/目标利润/保本月营收/目标月营收/回本），
-           其余 8 列收进「更多列」。⚠️ 只管屏幕显示；导出 Excel 仍是全 14 列（R349 对齐判据按源码计列，不受影响）。 -->
+      <!-- 🔴 R548 默认列（各 6 列）：已有店铺 = 毛利率/人工人数/月人工费/保本月营收/目标月营收/
+           淡季安全垫；寻找铺面首列换月租金。毛利率必进默认列（否则分不清差异来自成本端还是毛利端）。
+           房租只 1 档时不占列。⚠️ 只管显示；导出仍全 14 列（R349 按源码计列） -->
       <view class="col-toggle" bindtap="onToggleCols">
         <text>{{colsOpen ? t.lessCols : t.moreCols}}</text>
         <text class="col-arrow">{{colsOpen ? '▾' : '▸'}}</text>
@@ -212,29 +210,38 @@
       <scroll-view scroll-x="true" class="tbl-scroll">
         <view class="tbl">
           <view class="tr th">
-            <text class="td">{{t.colRent}}</text><text class="td">{{t.colLabor}}</text><text class="td" wx:if="{{colsOpen}}">{{t.colLaborFee}}</text><text class="td" wx:if="{{colsOpen}}">{{t.colMargin}}</text>
-            <text class="td">{{t.colTarget}}</text><text class="td">{{t.colBreakMonthly}}</text><text class="td" wx:if="{{colsOpen}}">{{t.colBreakCash}}</text><text class="td" wx:if="{{colsOpen}}">{{t.colBreakDaily}}</text>
-            <text class="td">{{t.colTargetMonthly}}</text><text class="td" wx:if="{{colsOpen}}">{{t.colTargetDaily}}</text><text class="td" wx:if="{{colsOpen}}">{{t.rentPct}}</text><text class="td">{{t.payback}}</text>
-            <text class="td" wx:if="{{colsOpen}}">{{t.colLever}}</text><text class="td" wx:if="{{colsOpen}}">{{t.colCushion}}</text>
+            <text class="td" wx:if="{{dims.rent.length>1}}">{{t.colRent}}</text>
+            <text class="td">{{t.colMargin}}</text>
+            <text class="td">{{t.colLabor}}</text><text class="td">{{t.colLaborFee}}</text>
+            <text class="td">{{t.colBreakMonthly}}</text>
+            <text class="td">{{t.colTargetMonthly}}</text>
+            <!-- 🔴 淡季安全垫：已有店铺默认给（那里没有现金卡），找铺面收进更多列。
+                 ⚠️ 只能一个条目 —— 拆两个 wx:if 会让页面列数变 15，撞 R349 对齐全。 -->
+            <text class="td" wx:if="{{colsOpen || mode === 'forward'}}">{{t.colCushion}}</text>
+            <text class="td" wx:if="{{colsOpen}}">{{t.colTarget}}</text>
+            <text class="td" wx:if="{{colsOpen}}">{{t.payback}}</text>
+            <text class="td" wx:if="{{colsOpen}}">{{t.colBreakCash}}</text><text class="td" wx:if="{{colsOpen}}">{{t.colBreakDaily}}</text>
+            <text class="td" wx:if="{{colsOpen}}">{{t.colTargetDaily}}</text><text class="td" wx:if="{{colsOpen}}">{{t.rentPct}}</text>
+            <text class="td" wx:if="{{colsOpen}}">{{t.colLever}}</text>
           </view>
           <!-- 🔴 R297 第四轮（审计 B7）：被云端拒掉的档位（toRow 给 invalid:true）此前**无任何视觉区分**
                —— 与"正常但无数"的行长得一样，老板在表里定位不到是哪几档算不出来（只有一句 toast）。
                现加 .invalid 灰显 + 首列 ⚠ 标记。 -->
           <view class="tr {{item.red?'red':''}}{{item.invalid?' invalid':''}}" wx:for="{{result.rows}}" wx:key="index">
-            <text class="td">{{item.rent}}{{t.yuan}}{{item.invalid?' ⚠':''}}</text>
+            <text class="td" wx:if="{{dims.rent.length>1}}">{{item.rent}}{{t.yuan}}{{item.invalid?' ⚠':''}}</text>
+            <text class="td">{{item.marginPct}}{{t.pct}}</text>
             <text class="td">{{item.labor}}{{t.person}}</text>
-            <text class="td" wx:if="{{colsOpen}}">{{item.laborYuan!=null?item.laborYuan:'—'}}</text>
-            <text class="td" wx:if="{{colsOpen}}">{{item.marginPct}}{{t.pct}}</text>
-            <text class="td">{{item.targetYuan}}{{t.yuan}}</text>
+            <text class="td">{{item.laborYuan!=null?item.laborYuan:'—'}}</text>
             <text class="td">{{item.breakMonthly!=null?item.breakMonthly:'—'}}</text>
+            <text class="td">{{item.targetMonthly!=null?item.targetMonthly:'—'}}</text>
+            <text class="td" wx:if="{{colsOpen || mode === 'forward'}}">{{item.cushionPct!=null?item.cushionPct+t.pct:t.cushionBreakEven}}</text>
+            <text class="td" wx:if="{{colsOpen}}">{{item.targetYuan}}{{t.yuan}}</text>
+            <text class="td" wx:if="{{colsOpen}}">{{item.payback!=null?item.payback:'—'}}</text>
             <text class="td" wx:if="{{colsOpen}}">{{item.beCashMonthly!=null?item.beCashMonthly:'—'}}</text>
             <text class="td" wx:if="{{colsOpen}}">{{item.breakDaily!=null?item.breakDaily:'—'}}</text>
-            <text class="td">{{item.targetMonthly!=null?item.targetMonthly:'—'}}</text>
             <text class="td" wx:if="{{colsOpen}}">{{item.targetDaily!=null?item.targetDaily:'—'}}</text>
             <text class="td" wx:if="{{colsOpen}}">{{item.rentPct!=null?item.rentPct:'—'}}</text>
-            <text class="td">{{item.payback!=null?item.payback:'—'}}</text>
             <text class="td" wx:if="{{colsOpen}}">{{item.leverYuan!=null?item.leverYuan:'—'}}</text>
-            <text class="td" wx:if="{{colsOpen}}">{{item.cushionPct!=null?item.cushionPct+t.pct:t.cushionBreakEven}}</text>
           </view>
         </view>
       </scroll-view>

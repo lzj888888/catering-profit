@@ -2599,10 +2599,11 @@ const TERMS = {
     pivotRowLabelFwd: '毛利率',
     pivotRowLabelRev: '月租金',
     presetLabel: '经营类型',
-    // 🔴 R322：矩阵默认收起「毛利率 / 人工」两个专业维度（找店的人答不出毛利率）
-    advDimsShow: '高级维度：毛利率 / 人工',
-    advDimsHide: '收起高级维度',
-    advDimsUsed: '按毛利率 {m}% 测算（人工用你在上面填的总额）',
+    // 🔴 R548：「高级维度」折叠撤掉（李老师"折叠着看莫名其妙"）：每档都有默认值、展开也不拦他填
+    //   ⇒ 折叠只剩把核心变量藏起来。四维平铺；名字不叫"高级"（毛利率/人数是他天天在管的数）。
+    dimsTitle: '可调参数档位',
+    resetDims: '清除重填',
+    resetDimsNote: '只把档位恢复成按你的店算出来的值；上面填的投入不动',
     // 🔴 R443：进来看不出这表在算什么的人不少 —— 两句短话（<18 字，保持平铺、不触发折叠判据）
     matrixEmptyTip: '选几档，一次算出各自保本点',
     matrixReadGrid: '每格 = 该档每月要卖多少',
@@ -2621,7 +2622,8 @@ const TERMS = {
     //   文案刻意 <18 字：≥18 字会被 check_hint_fold 判为需折叠的长提示。
     matrixSwipeHint: '← 左右滑动看全表',
     colLabor: '人工',
-    colLaborFee: '人工/月',
+    // 🔴 R548：原名「人工/月」歧义 ⇒ 改「月人工费」；本列起进默认可见列（人工是第二大刚性成本）。
+    colLaborFee: '月人工费',
     colBreakCash: '现金保本/月',
     // 🔴 R333：人数档位不是对所有业态都有效 —— 说清楚，别让老板白调
     laborTotalHint: '已按你填的总额算，人数只影响人效',

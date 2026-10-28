@@ -210,18 +210,29 @@ for (const rel of Object.keys(CJK_BASELINE)) {
     '硬编码中文回升：' + rel + ' 现有 ' + cur + ' 处 > 基线 ' + CJK_BASELINE[rel] + '（B9/B14：新文案请进 terms.js）');
 }
 
-// --- R322：矩阵「小白降维」—— 高级维度默认收起 ---
-// 为什么守：毛利率是找店人要**问的答案**，不是他能填的输入。默认展开四维度 = 一进来就撞墙。
-//   三种静默退化：① advOpen 初值改回 true（又变四维度，零报错）
-//                ② 生成循环改回裸 labor/margin（行数被撑 8 倍，表变成噪声）
-//                ③ 收起后不写「按毛利率 X% · 人工 N 人测算」（老板以为只按租金算 = 另一种假精确）
+// --- R548：矩阵「高级维度」折叠**撤掉** —— 四维全部平铺、全量参与扫描 ---
+// 为什么改判据（R548，李老师 2026-10-28 反馈 + 豆包商议）：
+//   R322 原判据守「advOpen 初值必须 false」—— **它把"折叠"当成正确实现来守**。
+//   而李老师实测"折叠着看莫名其妙"；豆包同判：问题不是内容不够，是**核心变量被错误归类**
+//   （毛利率/人数对已有店铺是他天天在管的数，不是"高级"）。更硬的一条：折叠不只是 UI ——
+//   它还让 onGenerate 里人工/毛利率**只取第 1 档**，等于把两个维度悄悄关掉。
+//   ⇒ 判据反向：**折叠机制零残留** + **四维一律全量参与**。
+//   ⚠️ 一律先 stripSrc 剥注释 —— 本页注释里大量提到 advOpen（说明为什么删它），
+//      不剥会被自己的注释判红（同族病：反向伤害二型）。
 {
   const mjs = read('subpkg/tools/sandbox/matrix.js');
   const mwxml = read('subpkg/tools/sandbox/matrix.wxml');
-  chk(/advOpen:\s*false/.test(mjs),
-    'matrix.js 的 advOpen 初值不是 false（R322：高级维度必须默认收起）');
-  chk(/for \(const m of marginUse\)/.test(mjs),
-    'matrix.js 生成循环未走 marginUse（R322：收起态必须只取第 1 档，否则行数被撑 8 倍）');
+  const mjsS = stripSrc(mjs, '.js');
+  const mwxmlS = stripSrc(mwxml, '.wxml');
+  chk(!/advOpen/.test(mjsS) && !/onToggleAdv/.test(mjsS) && !/buildAdvNote/.test(mjsS),
+    'matrix.js 仍有折叠门控残留（R548：advOpen / onToggleAdv / buildAdvNote 应随折叠一并删除）');
+  chk(!/advOpen/.test(mwxmlS) && !/adv-toggle/.test(mwxmlS),
+    'matrix.wxml 仍有折叠块残留（R548：四维全部平铺）');
+  // 全量参与：不能再出现 slice(0,1) 那套"只取第 1 档"
+  chk(/const laborUse = labor \|\| \[\];/.test(mjsS) && /const marginUse = margin \|\| \[\];/.test(mjsS),
+    'matrix.js 生成循环又退回"只取第 1 档"（R548：四维必须全量参与扫描）');
+  chk(/for \(const m of marginUse\)/.test(mjsS),
+    'matrix.js 生成循环未走 marginUse');
   // --- R356：矩阵计算必须**分批**，且超上限要明说 ---
   //   失效形态（零有效提示）：一次性把 N 行 clean_array 发给云端，响应 ≈1.1KB/行，
   //   960 行 ⇒ 1.05MB > 云开发响应上限 1MB ⇒ `-501000 response size exceeded`，
@@ -263,8 +274,13 @@ for (const rel of Object.keys(CJK_BASELINE)) {
     && /for \(const l of laborUse\)/.test(mjs)
     && /dims\.labor/.test(mwxml),
     'matrix 缺人数档位（R335：矩阵的核心是扫档，去掉这一维就只剩单价推演）');
-  chk(/onToggleAdv/.test(mwxml) && /advNote/.test(mwxml),
-    'matrix.wxml 缺高级维度开关或「按毛利率 X% · 人工 N 人测算」说明（R322：收起不等于不告知）');
+  // 🔴 R548：原判「必须有折叠开关 + 收起态告知」作废 —— 折叠整个撤掉了，
+  //   "告知"也就不再需要（四维都在屏幕上摆着，不存在隐藏输入）。
+  //   换成守**取消折叠后不能丢东西**：四个档位块必须都在，且标题不再是"高级维度"。
+  chk(/dimRent/.test(mwxml) && /dimLabor/.test(mwxml) && /dimMargin/.test(mwxml) && /dimTarget/.test(mwxml),
+    'matrix.wxml 四个档位块不全（R548：取消折叠后四维必须都平铺可见）');
+  chk(!/高级维度/.test(stripSrc(mwxml, '.wxml')) && !/高级维度/.test(stripSrc(mjs, '.js')),
+    'matrix 仍出现「高级维度」字样（R548：毛利率/人数不是高级概念，已改「可调参数档位」）');
 }
 
 // --- R325：现金卡（钱够不够开 · 能撑几个月）---
@@ -875,7 +891,10 @@ chk(/if \(pool\.indexOf\(fixVal\) < 0\) fixVal = pool\[0\]/.test(mtxJs),
 //   这类漏洞每加一列就会复发一次，所以钉「列数相等」而不是钉某两列的名字。
 {
   const thBody = (mtxWxml.match(/<view class="tr th">([\s\S]*?)<\/view>/) || [])[1] || '';
-  const pageCols = (thBody.match(/t\.\w+/g) || []).length;
+  // 🔴 R548：原判据用 `/t\.\w+/g` ⇒ 会把 `{{dims.rent.length>1}}` 里的 **`t.length`** 也数成一列
+  //   （`ren|t.length`），页面列数凭空 +1、对齐全假红。收紧为**只数真正的列绑定 `{{t.xxx}}`**，
+  //   判据更准、不是放宽：`wx:if` 里的表达式一律不计（`{{colsOpen || mode === 'forward'}}` 不是列）。
+  const pageCols = (thBody.match(/\{\{t\.\w+\}\}/g) || []).length;
 
   const hm = mtxJs.match(/const header = \[([\s\S]*?)\];/);
   const expCols = hm ? hm[1].split(',').map((x) => x.trim()).filter(Boolean).length : 0;

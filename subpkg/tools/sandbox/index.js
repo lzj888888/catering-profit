@@ -1188,6 +1188,25 @@ Page({
       add('labor', d.headcountNum);
       add('margin', d.marginPct);
       add('target', d.targetYuan);
+      // 🔴 R548：上面 4 项是扫描档位种子；下面这批「全局投入」此前一项都没带 ⇒ 进矩阵页要重填一遍。
+      //   ⚠️ 年限也要带：只带金额 ⇒ 年限回落默认 ⇒ 月摊销变、保本线跟着变（口径双轨）。
+      //   ⚠️ 只带填过的（含 0，0 = 他明确没有这项）；未填的不带，交给矩阵页默认值。
+      const addAny = (k, v) => {
+        if (v === '' || v === null || v === undefined) return;
+        const n = Number(v);
+        if (isFinite(n) && n >= 0) q.push(k + '=' + Math.round(n));
+      };
+      const bk = { transfer: 'tf', decor: 'dc', equip: 'eq', franchise: 'fr' };
+      (d.buildRows || []).forEach((r) => {
+        const s = bk[r.key];
+        if (!s) return;
+        addAny(s + 'Y', r.yuan);
+        addAny(s + 'N', r.years);
+      });
+      addAny('area', d.areaNum);
+      addAny('lu', d.laborUnitYuan);
+      addAny('lt', d.laborTotalYuan);
+      addAny('mg', d.manageYuan);
     }
     // 🔴 R525：其他杂支 % 必须带给矩阵，**0 也要带**（0 = 老板明确不要这项；不带会被当成默认 2%）。
     //   不带就会出现"单页保本 X、矩阵保本 Y"的双口径，而且两边都不报错。
@@ -2145,17 +2164,10 @@ Page({
 
 
   /**
-   * R234 · 主结论卡「这个铺子租金贵不贵」的数据组装。
-   *
-   * 🔴 **零自算**：判定等级**直接读引擎** `indicators` 里 rent 那行的 `level`
-   *    （good/ok/warn/bad/na 由云端 `indicatorRef.levelOf` 判得出）；
-   *    前端只做 `level → 中文文案` 映射 + "你的值 / 行规区间"的**原样搬运**。
-   *    这样"什么叫贵"永远只有一个真相源 —— 前端改文案不会悄悄换掉判据。
-   *
-   * ⚠️ 为什么取 `target` 那份分母：A Tab 填的是"我想月赚多少"，判定就该站在
-   *    **实现目标利润**那个营业额水位上判；用 break 那份会把目标利润漏掉。
-   *
-   * @param {Array} indTarget 后端 `indicators_at_target`（原始形态，未 decorate）
+   * R234 · 主结论卡「租金贵不贵」。🔴 **零自算**：等级直接读引擎 `indicators` 的 rent `level`
+   *   （云端 indicatorRef.levelOf 判），前端只做 level→中文 + 原样搬运 ⇒ "什么叫贵"只有一个真相源。
+   *   ⚠️ 取 `target` 那份分母：判定该站在"实现目标利润"的水位上，用 break 会漏掉目标利润。
+   *   @param {Array} indTarget 后端 `indicators_at_target`（未 decorate）
    */
   verdictOf(indTarget) {
     const NAME = {
@@ -2225,12 +2237,8 @@ Page({
   },
 
   /**
-   * 🔴 R395（队列 #11）：分享卡片 —— 标题带本次算出的**保本营业额**。
-   *
-   * 为什么：开店测算最常见的传播场景就是「我把这个数发给合伙人/家人看看」，
-   *   不自定义标题时微信只显示小程序名 ⇒ 对方不知道这张卡片里是什么结论。
-   * 为什么只认 `shareFacts.ready`：`result` 在 red_alert / 计算失败时会变成空壳，
-   *   拿空壳去拼标题会说出「要卖到 0 元才保本」这种假话（本仓最忌讳的静默错账）。
+   * 🔴 R395：分享卡片标题带本次算出的**保本营业额**（不自定义时微信只显示小程序名）。
+   *   只认 `shareFacts.ready`：`result` 在 red_alert / 失败时会变空壳 ⇒ 会说出「卖到 0 元才保本」。
    */
   onShareAppMessage() {
     return shareCard.m2Share(this.data.shareFacts || {});

@@ -73,8 +73,10 @@ Page({
       bizLabel: TERMS.m2.bizLabel,
       bizTypes: TERMS.m2.bizTypes,
       dimRent: M.dimRent,
-      advDimsShow: M.advDimsShow,
-      advDimsHide: M.advDimsHide,
+      // 🔴 R548：折叠撤掉 ⇒ advDimsShow/Hide 不再映射。名字不用"高级维度"。
+      dimsTitle: M.dimsTitle,
+      resetDims: M.resetDims,
+      resetDimsNote: M.resetDimsNote,
       dimLabor: M.dimLabor,
       dimMargin: M.dimMargin,
       dimTarget: M.dimTarget,
@@ -238,15 +240,15 @@ Page({
     // 🔴 round273 · 场景：'forward' 已有铺面（店已开，扫毛利率）/ 'reverse' 寻找铺面（扫租金档位）。
     //   ⚠️ 默认 reverse：本页最初就是按「扫租金档位」造的（G1），**保持原行为不回退**；
     //      只有从沙盘页带 `?mode=forward` 进来才切成 A 场景口径。
-    // 🔴 R322：高级维度（毛利率/人工）默认收起 —— 小白只填租金与目标利润
-    advOpen: false,
+    // 🔴 R548：**折叠已取消**，四维全部平铺。原 advOpen 不只是 UI 开关：
+    //   它还让 onGenerate 只取第 1 档 = 悄悄关掉两个维度（李老师："折叠着看莫名其妙"）。
     // 🔴 R528：明细表默认只显示 6 列。14 列 × 200rpx ≈ 1400px，手机上只能看到 2 列半
-    //   ⇒ 老板在表里根本比较不了。默认给「房租/人工/目标利润/保本月营收/目标月营收/回本」6 列，
-    //   其余 8 列（人工费/毛利率/现金保本/保本日营收/目标日营收/房租占比/涨租需多卖/淡季安全垫）
-    //   收进「更多列」。⚠️ 只影响屏幕显示，**导出 Excel 仍是全 14 列**（R349 对齐判据不受影响）。
+    //   ⇒ 老板在表里根本比较不了。R548 重排为：
+    //     已有店铺 = 毛利率 / 人工人数 / 月人工费 / 保本月营收 / 目标月营收 / 淡季安全垫
+    //     寻找铺面 = 月租金 / 毛利率 / 人工人数 / 月人工费 / 保本月营收 / 目标月营收
+    //   ⚠️ 只影响屏幕显示，**导出 Excel 仍是全 14 列**（R349 对齐判据不受影响）。
     colsOpen: false,
     narrow: false,   // R378：窄屏才显示横滑提示（width < 400）
-    advNote: '',
     // 🔴 R325：现金卡输入。租金默认跟透视表的固定租金走（老板已在页面上填过），只需再给一个「手上现金」
     cash: { rentYuan: 5000, budgetYuan: '', equipYuan: '', stockYuan: '' },
     cashRes: null,
@@ -270,6 +272,8 @@ Page({
     // 🔴 R378：矩阵 14 列 ≈ 1400px，手机屏只能看到 2 列半 ⇒ 窄屏给一句横滑提示。
     try { const wi = wx.getSystemInfoSync(); this.setData({ narrow: (wi.windowWidth || 375) < 400 }); } catch (e) {}
     const opt = options || {};
+    // 🔴 R548：把进页参数存成"种子" ⇒ 「清除重填」时能按同一套口径重算基准档位（不写两遍）。
+    this._seed = opt;
     const mode = (opt.mode === 'forward') ? 'forward' : 'reverse';
     // 🔴 round273：按进来的场景切「透视行维度」与标题/引导语（维度**全保留**，只是透视主轴不同 ——
     //   A 也可以扫租金做敏感性分析，故不删维度，只换默认主轴）。
@@ -285,46 +289,39 @@ Page({
       't.pivotRowLabel': mode === 'forward' ? M.pivotRowLabelFwd : M.pivotRowLabelRev,
     };
     // 🔴🔴 R366（李老师 2026-10-19）：「已有店铺的矩阵」和「寻找铺面的矩阵」原来**是同一张表**——
-    //   默认（高级维度收起）两种模式都只扫 8 个**租金档**（onGenerate: advOpen ? dims : slice(0,1)）。
+    //   （R548 前：默认"高级维度收起" ⇒ 两种模式都只扫租金档 —— 那正是本条要修的错。）
     //   而房租对已有店铺是**既定前提**（房东报价，签了就是签了），扫它等于给老板看一堆与他无关的假设。
     //   他真正能动的只有：请几个人、毛利率定多少、目标利润要多少。
     //   ⇒ 已有铺面（forward）：房租**固定成他填的那一档**（不再作为扫描维），改扫
     //      「人工（当前人数 / +1 人）× 毛利率（±5%）× 目标利润」；
     //      reverse（寻找铺面）保持原样：扫 8 个租金档 —— 那才是"还没签、可以选"的人该看的。
     if (mode === 'forward') {
-      const tiers = ['tier1', 'tier23', 'county'];
-      const cityTier = tiers[this.data.cityIdx] || 'tier23';
-      const rentPool = RENT_DIMS[cityTier] || RENT_DIMS.tier23;
-      const presetNow = findPreset(this.data.presets[this.data.presetIdx].key);
-      const bk = presetNow ? presetNow.bizKey : '';
-      const laborDef = LABOR_DIMS[bk] || [2, 3];
-      const num = (v) => { const n = Number(v); return isFinite(n) && n > 0 ? Math.round(n) : 0; };
-      // 房租：优先用首页填的实际房租；没传就用本城市中位档（说明见页面副标题）
-      const rentIn = num(opt.rent);
-      const rentAnchor = rentIn > 0 ? rentIn : rentPool[Math.floor(rentPool.length / 2)];
-      // 人工：当前人数 + 1 人 —— 矩阵的核心问句是「多请一个人会怎样」（R335 注释原话）
-      const laborBase = num(opt.labor) || laborDef[0];
-      const labor = [laborBase, laborBase + 1];
-      // 毛利率：他现在的毛利率，上下各 5 个百分点（越界不收）
-      const mIn = Number(opt.margin);
-      const margin = isFinite(mIn) && mIn > 0
-        ? [mIn - 5, mIn, mIn + 5].map((x) => Math.round(x)).filter((x) => x > 0 && x < 100)
-          .filter((x, i, a) => a.indexOf(x) === i)
-        : [55, 60, 65];
-      // 目标利润：0（保本）+ 他填的目标
-      const tIn = num(opt.target);
-      const target = tIn > 0 ? [0, tIn] : [0, 10000];
-      patch.advOpen = true;          // 展开"高级维度"，否则下面这些档位不参与扫描
-      patch['dims.rent'] = [rentAnchor];
-      patch['dims.labor'] = labor;
-      patch['dims.margin'] = margin;
-      patch['dims.target'] = target;
+      // 🔴 R548：基准值由 buildSeedDims() 统一产出（进页与「清除重填」同一套口径）。
+      const seed = this.buildSeedDims();
+      //   （R548 前：默认"高级维度收起" ⇒ 两种模式都只扫租金档 —— 那正是本条要修的错。）
+      patch['dims.rent'] = seed.rent;
+      patch['dims.labor'] = seed.labor;
+      patch['dims.margin'] = seed.margin;
+      patch['dims.target'] = seed.target;
       // 副标题里把"房租已固定"讲明白 —— 否则老板会以为页面还是让他扫租金
-      patch['t.subtitle'] = String(M.subtitleFwdLocked || '').replace('{rent}', String(rentAnchor));
+      patch['t.subtitle'] = String(M.subtitleFwdLocked || '').replace('{rent}', String(seed.rent[0]));
+      // 🔴 R548：接住上一页「全局投入」8 项（含 4 个年限）—— 此前一项都没带，要重填一遍。
+      //   ⚠️ 只覆盖传过来的项；没传的保留本页默认（未填 ≠ 0）。
+      const gi = (k) => {
+        if (opt[k] === undefined || opt[k] === '' || !isFinite(Number(opt[k]))) return null;
+        const n = Number(opt[k]);
+        return n >= 0 ? String(Math.round(n)) : null;
+      };
+      const gk = { dcY: 'buildDecorYuan', dcN: 'buildDecorYears', eqY: 'buildEquipYuan',
+                   eqN: 'buildEquipYears', frY: 'buildFranchiseYuan', frN: 'buildFranchiseYears',
+                   tfY: 'buildTransferYuan', tfN: 'buildTransferYears', area: 'area',
+                   lu: 'laborUnitYuan', lt: 'laborTotalYuan', mg: 'manageYuan' };
+      Object.keys(gk).forEach((k) => {
+        const v = gi(k);
+        if (v !== null) patch['global.' + gk[k]] = v;
+      });
     }
     this.setData(patch);
-    // 🔴 R322：收起态下要显示「按毛利率 X% · 人工 N 人测算」，进页就先把这句算好
-    this.setData({ advNote: this.buildAdvNote() });
     this.syncBuildDefault();
   },
 
@@ -400,6 +397,59 @@ Page({
   },
 
   // ===== 维度档位编辑 =====
+
+  // 🔴 R548：档位「基准值」唯一产出点（进页 + 清除重填共用，防两份真相源）。
+  //   forward：按上一页真实值生成（房租 1 档 / 人数 ±1 / 毛利率 ±5 / 目标 0 与他填的）；
+  //   reverse：用业态默认档位（那时房租才是变量）。
+  buildSeedDims() {
+    const opt = this._seed || {};
+    if (this.data.mode !== 'forward') {
+      return {
+        rent: DEFAULT_DIMS.rent.slice(),
+        labor: DEFAULT_DIMS.labor.slice(),
+        margin: DEFAULT_DIMS.margin.slice(),
+        target: DEFAULT_DIMS.target.slice(),
+      };
+    }
+    const tiers = ['tier1', 'tier23', 'county'];
+    const cityTier = tiers[this.data.cityIdx] || 'tier23';
+    const rentPool = RENT_DIMS[cityTier] || RENT_DIMS.tier23;
+    const presetNow = findPreset(this.data.presets[this.data.presetIdx].key);
+    const bk = presetNow ? presetNow.bizKey : '';
+    const laborDef = LABOR_DIMS[bk] || [2, 3];
+    const num = (v) => { const n = Number(v); return isFinite(n) && n > 0 ? Math.round(n) : 0; };
+    const rentIn = num(opt.rent);
+    const rentAnchor = rentIn > 0 ? rentIn : rentPool[Math.floor(rentPool.length / 2)];
+    const laborBase = num(opt.labor) || laborDef[0];
+    const mIn = Number(opt.margin);
+    const margin = isFinite(mIn) && mIn > 0
+      ? [mIn - 5, mIn, mIn + 5].map((x) => Math.round(x)).filter((x) => x > 0 && x < 100)
+        .filter((x, i, a) => a.indexOf(x) === i)
+      : [55, 60, 65];
+    const tIn = num(opt.target);
+    return {
+      rent: [rentAnchor],
+      labor: [laborBase, laborBase + 1],
+      margin,
+      target: tIn > 0 ? [0, tIn] : [0, 10000],
+    };
+  },
+
+  // 🔴 R548：「清除重填」只重置档位，**不动**全局投入那 8 项（否则清一次要重填 8 个框）。
+  onResetDims() {
+    const seed = this.buildSeedDims();
+    this.setData({
+      'dims.rent': seed.rent,
+      'dims.labor': seed.labor,
+      'dims.margin': seed.margin,
+      'dims.target': seed.target,
+      // 手改标记一并清掉 ⇒ 之后切业态/切城市能正常带出预设档位
+      'fieldTouched.margin': false,
+      'fieldTouched.labor': false,
+      'fieldTouched.rent': false,
+    });
+  },
+
   onDimInput(e) {
     const { dim, idx } = e.currentTarget.dataset;
     const val = e.detail.value;
@@ -796,26 +846,13 @@ Page({
   },
 
   // ===== 生成矩阵（批量送云）=====
-  // 🔴 R322：展开/收起「高级维度（毛利率 / 人工）」。
-  //   收起时两维各取第 1 档（= 参数包默认/行业值），矩阵只剩「租金 × 目标利润」。
-  //   为什么必须给一句「按毛利率 X% · 人工 N 人测算」：收起的维度**仍然是测算输入**，
-  //   不写明等于让老板以为只按租金算 —— 那是另一种假精确。
-  onToggleAdv() {
-    const open = !this.data.advOpen;
-    this.setData({ advOpen: open, advNote: this.buildAdvNote() });
-  },
+  // 🔴 R548：「高级维度」折叠整块撤掉 —— 四维全部平铺。原 onToggleAdv/buildAdvNote/advOpen
+  //   一并删除（连带"只取第 1 档"门控）：每档都有默认值、展开也不拦他填，折叠只剩藏变量。
 
   // 🔴 R528：明细表「更多列 / 收起」—— 纯显示开关，不重算、不改数据
   //   （rows 里 14 个字段一直都在，只是屏幕上不渲染那一列）
   onToggleCols() {
     this.setData({ colsOpen: !this.data.colsOpen });
-  },
-
-  buildAdvNote() {
-    const m = (this.data.dims.margin || [])[0];
-    const tpl = (TERMS.matrix && TERMS.matrix.advDimsUsed) || '';
-    // 🔴 R334：人工不再是档位（老板直接填总额），这里只交代毛利率这一个隐含维度
-    return String(tpl).replace('{m}', String(m == null ? '' : m));
   },
 
   async onGenerate() {
@@ -833,10 +870,9 @@ Page({
     const badDim = this.badDimOf();
     if (badDim) { api.toastError({ msg: badDim }); return; }
     const { rent, labor, margin, target } = this.data.dims;
-    // 🔴 R322：高级维度收起 ⇒ 人工/毛利率各只取第 1 档（否则行数被撑 8 倍，小白看到噪声表）。
-    // 🔴 R335：人数档位已恢复（按业态给默认值），所以这里两维都要处理。
-    const laborUse = this.data.advOpen ? labor : (labor || []).slice(0, 1);
-    const marginUse = this.data.advOpen ? margin : (margin || []).slice(0, 1);
+    // 🔴 R548：四维一律全量参与（原收起态只取第 1 档）。行数由上限 1000 守，不用靠折叠压。
+    const laborUse = labor || [];
+    const marginUse = margin || [];
     const cleanArr = [];
     const meta = []; // 与 cleanArr 对齐的维度标注
     for (const r of rent) for (const l of laborUse) for (const m of marginUse) for (const tg of target) {
