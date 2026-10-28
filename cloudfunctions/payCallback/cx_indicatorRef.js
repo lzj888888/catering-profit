@@ -133,7 +133,10 @@ const REDLINE_KEYS = ['rent', 'labor', 'grossMargin', 'loss'];
 
 // ===== 六、对外参数（供 validate 白名单复用，避免两处枚举漂移）=====
 const FIXED_KEYS = ['rent', 'labor', 'utility', 'manage', 'other'];
-const VAR_KEYS = ['takeawayComm', 'grouponComm', 'cardFee', 'other'];
+// 🔴 R558：加 `energy` —— 水电燃气从「固定金额」改成「占营业额费率」时用这个 key。
+//   引擎 service.js 已经把它当普通挂钩费率求和（进分母），这里只是放开白名单。
+//   ⚠️ 加完必须重跑 tools/sync_common.js 并部署 calcSandbox，否则云端仍按旧白名单拒成「填写有误」。
+const VAR_KEYS = ['takeawayComm', 'grouponComm', 'cardFee', 'other', 'energy'];
 // 🔴 R296 新段（李老师 2026-10-14：「转让费确实是个大头需要摊销」）：建店白名单**新增 `transfer`（转让费）**。
 //   为什么单列（而非埋进 `other`）：转让费是开店最大的一笔一次性支出（常见 5~30 万），
 //   ★ 摊销年限语义与「证照/首批物料」等小额杂项不同（按**剩余租期**摊，通常 3 年）⇒ 埋一起会让回本周期算不准。
@@ -332,7 +335,16 @@ function evaluateIndicators(o) {
     } else if (ind.from.indexOf('fixed:') === 0) {
       const k = ind.from.slice(6);
       const fen = Number(fixed[k]);
-      pct = (isFinite(rev) && rev > 0 && isFinite(fen)) ? (fen / rev) * 100 : null;
+      // 🔴 R558：能耗有两种形态 —— ①固定金额（老板填账单，fixed.utility）
+      //   ②挂钩费率（矩阵按费率算，var.energy%）。改成费率后 utility=0，此处必须把两者相加，
+      //   否则「能耗占比」会显示 0%、评级永远"优秀"（比不显示更糟）。
+      // ⚠️ 必须用 `varE > 0` 判"有没有能耗费率"：
+      //   service 侧的 energyVarPct 默认是 **0**（不是 NaN），拿 isFinite 判会把它当成
+      //   "老板填了 0% 能耗费率" ⇒ 未填也从 null 变 0%（D13 就是这么抓到的）。
+      const varE = (k === 'utility') ? Number(opt.varEnergyPct) : NaN;
+      const hasVar = isFinite(varE) && varE > 0;
+      const fenTotal = (isFinite(fen) ? fen : 0) + (hasVar ? rev * varE / 100 : 0);
+      pct = (isFinite(rev) && rev > 0 && (isFinite(fen) || hasVar)) ? (fenTotal / rev) * 100 : null;
     }
     const band = bandOf(opt.bizKey, ind.key, opt.cityKey);
     const p = pct == null ? null : round1(pct);

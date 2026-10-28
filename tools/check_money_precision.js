@@ -236,6 +236,8 @@ const REGISTRY = {
   },
   'utils/bizPreset.js': {
     'IDENT|n * 100|#1': ['money', 'fenOf()：元 → 分；⚠️ 第 3 份元→分实现（前端未走 api.yuanToFen，收敛待判）'],
+    // 🔴 R558：水电费率 = 账单金额 ÷ 实际月营收 → 百分数（元/元，不是元→分，故 kind=ratio）
+    'PAREN|) * 100|#1': ['ratio', 'energyFeeRate()：水电账单 ÷ 实际月营收 → 费率%（元/元）'],
   },
   'utils/calc.js': {
     'PAREN|) * 100|#1': ['ratio', '利润率：利润 ÷ 收入 → 百分数'],

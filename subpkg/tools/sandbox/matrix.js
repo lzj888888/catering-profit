@@ -14,7 +14,9 @@ const matrixSeed = require('../../../utils/matrixSeed.js');
 const {
   BIZ_PRESETS, CITY_COEF, assembleItems, resolveBuild, findPreset, bizKeyOfPreset,
   // R297：全局开店投入的年限兜底（与云端 indicatorRef 同口径，不再硬写 1）
-  BUILD_DEFAULT_YEARS, buildYearsOf, cashBreakeven } = require('../../../utils/bizPreset.js');
+  BUILD_DEFAULT_YEARS, buildYearsOf, cashBreakeven,
+  // 🔴 R558：水电费率推导（反算 + clamp 到业态带）唯一入口
+  energyFeeRate } = require('../../../utils/bizPreset.js');
 const { deliver } = require('../../../utils/exportFile.js');
 // 🔴 R325：开店现金需求（装修/押金/预付/设备/货款）+ 周转金能撑几个月
 const OpenCash = require('../../../utils/openCash.js');
@@ -115,6 +117,12 @@ Page({
       colLabor: M.colLabor,
       colMargin: M.colMargin,
       colNetMargin: M.colNetMargin,
+      colEnergy: M.colEnergy,
+      energyRateHint: M.energyRateHint,
+      energySrcBill: M.energySrcBill,
+      energySrcBand: M.energySrcBand,
+      energySrcFallback: M.energySrcFallback,
+      energyClampedHint: M.energyClampedHint,
       dimOther: M.dimOther,
       otherDimHint: M.otherDimHint,
       colTarget: M.colTarget,
@@ -285,6 +293,15 @@ Page({
     //   为什么必须有：矩阵只回答「要卖多少」时还不构成决策 —— 他要的是「我差多少」。
     realMonthYuan: '',
     realGap: null,
+    // 🔴 R558：水电燃气按**费率**算（进分母）。费率由 energyFeeRate 推：
+    //   有账单+有营收 ⇒ 反算（夹到业态带）；只有业态 ⇒ 带中值；都没有 ⇒ 4%。
+    //   energySrc 必须显示给老板（bill/band/fallback）—— 绝不静默用参考值。
+    energyRate: 4,
+    energySrc: 'fallback',
+    energyClamped: false,
+    energyRaw: null,
+    energyHint: '',
+    energyClampedText: '',
     narrow: false,   // R378：窄屏才显示横滑提示（width < 400）
     // 🔴 R325：现金卡输入。租金默认跟透视表的固定租金走（老板已在页面上填过），只需再给一个「手上现金」
     cash: { rentYuan: 5000, budgetYuan: '', equipYuan: '', stockYuan: '' },
@@ -471,6 +488,19 @@ Page({
         set['t.subtitle'] = String(M.subtitleFwdLocked || '').replace('{rent}', String(d.rent[0]));
       }
       if (seed.expect !== undefined) set.realMonthYuan = String(Math.round(Number(seed.expect)));
+      // 🔴 R558：水电费率 —— 账单（种子 energy）+ 实际月营收（种子 expect）反算，夹业态带
+      const bkForEnergy = this.data.presets[this.data.presetIdx]
+        ? bizKeyOfPreset(this.data.presets[this.data.presetIdx].key) : 'other';
+      const er = energyFeeRate(seed.energy, seed.expect, bkForEnergy);
+      set.energyRate = er.rate;
+      set.energySrc = er.src;
+      set.energyClamped = !!er.clamped;
+      set.energyRaw = er.raw;
+      set.energyClampedText = er.clamped ? fmt(M.energyClampedHint, { raw: er.raw }) : '';
+      set.energyHint = fmt(M.energyRateHint, {
+        rate: er.rate,
+        src: er.src === 'bill' ? M.energySrcBill : (er.src === 'band' ? M.energySrcBand : M.energySrcFallback),
+      });
       // 🔴 R557：首页填的「其他杂费」要成为**默认档位的初值**，否则老板填 3%、矩阵还是按 2% 算（双口径）。
       if (seed.other !== undefined && seed.other !== null && isFinite(Number(seed.other)) && Number(seed.other) >= 0) {
         set['dims.other'] = [Number(seed.other)];
@@ -937,6 +967,11 @@ Page({
     //   不做这层，单页改成 0 后矩阵仍扣 2% ⇒ 两页保本额不一致且零报错。
     // 🔴 R557：`otherPct` 现在由**每一行**传入（它成了可扫维度）；不传才回落全局值。
     const otherRaw = (otherPctArg === undefined) ? this.data.otherPct : otherPctArg;
+    // 🔴 R558：能耗费率作为一条普通挂钩费率进分母（引擎零改，与平台抽成同一形态）。
+    const eRate = Number(this.data.energyRate);
+    if (isFinite(eRate) && eRate > 0) {
+      varItems.push({ key: 'energy', pct: eRate });
+    }
     const varFinal = (otherRaw === null || otherRaw === undefined || otherRaw === '')
       ? varItems
       : varItems.map((v) => {
@@ -1168,7 +1203,7 @@ Page({
         rent: meta.rent, labor: meta.labor, marginPct: meta.marginPct, targetYuan: meta.targetYuan,
         breakMonthly: null, breakDaily: null, targetMonthly: null, targetDaily: null,
         rentPct: null, leverYuan: null, cushionPct: null, payback: null, rentCls: '',
-        netMarginPct: null, platformPct: null, rentPerM2: null, otherPct: meta.otherPct,
+        netMarginPct: null, platformPct: null, rentPerM2: null, otherPct: meta.otherPct, energyYuan: null,
         red: false, invalid: true, fixedExAmort: null, laborYuan: null, beCashMonthly: null,
       };
     }
@@ -1224,6 +1259,8 @@ Page({
       // 🔴 R555：**元/㎡/月** —— 找铺面时唯一可横向比的口径。
       //   中介报「8000/月 60㎡」和「8000/月 45㎡」完全是两回事，只给总租金没法比。
       //   面积是已有输入 ⇒ 一个除法，零新增填写负担。
+      energyYuan: (breakMonthly != null && isFinite(Number(this.data.energyRate)))
+        ? Math.round(breakMonthly * Number(this.data.energyRate) / 100) : null,
       rentPerM2: (Number(this.data.global.area) > 0)
         ? Math.round(meta.rent / Number(this.data.global.area) * 10) / 10 : null,
       // 房租占目标营收的三色档（≤10 健康 / 10~15 预警 / ≥15 高压 —— 房租越高越差）
@@ -1429,7 +1466,7 @@ Page({
     //   老板在页面看到两列，导出 Excel 却没有 ⇒ 导出件比他看到的少信息，且**不报错**。
     //   顺序与 matrix.wxml 表头逐列一致，改一处必须改另一处（列数由守卫钉住）。
     const header = [
-      t.dimRent, t.dimLabor, t.colLaborFee, t.dimMargin, t.colNetMargin, t.dimTarget,
+      t.dimRent, t.dimLabor, t.colLaborFee, t.dimMargin, t.colNetMargin, t.colEnergy, t.dimTarget,
       t.colBreakMonthly, t.colBreakCash, t.colBreakDaily,
       t.colTargetMonthly, t.colTargetDaily,
       t.rentPct, t.payback, t.colLeverExport, t.colCushionExport,
@@ -1441,7 +1478,7 @@ Page({
     const body = rows.map((r) => [
       markInvalid(r), r.labor,
       r.laborYuan != null ? r.laborYuan : '—',
-      r.marginPct, r.netMarginPct, r.targetYuan,   // 🔴 R552：与屏幕列同口径（到手毛利率）
+      r.marginPct, r.netMarginPct, r.energyYuan, r.targetYuan,   // 🔴 R552：与屏幕列同口径（到手毛利率）
       r.breakMonthly != null ? r.breakMonthly : '—',
       r.beCashMonthly != null ? r.beCashMonthly : '—',
       r.breakDaily != null ? r.breakDaily : '—',

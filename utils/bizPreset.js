@@ -591,6 +591,54 @@ function findPreset(key) {
   });
 }
 
+// ============================================================
+// 🔴 R558：水电燃气的「费率」推导（DeepSeek 定案 A3：反算 + clamp 到业态带）
+//
+//   为什么需要它：矩阵按「费率」算水电（进分母），而单页老板填的是**账单金额**（进分子）。
+//   两套口径会导致同一个店两页保本额不同 ⇒ 用一个函数统一推出费率，三处页面都调它。
+//
+//   规则（照 DeepSeek 给的原文实现）：
+//     fee = clamp(账单合计 ÷ 实际月营收, 带下界, 带上界)   账单与营收都有
+//         = 带中值                                        只有业态
+//         = 4%                                            都没有（兜底）
+//   🔴 三条纪律（写死在这里，别在页面各写一遍）：
+//     ① **绝不静默用参考值** —— 必须回传来源，页面要标「反算/估算/兜底」；
+//     ② **负反馈是诚实的**：卖得少 ⇒ 反算偏高 ⇒ 保本线抬高 ⇒ 更显该关。
+//        营业额低时固定水电占比本来就高，掩盖它才是骗老板；clamp 只为挡"淡季一个月顶到 8%"的噪声；
+//     ③ 反算值超出业态带时**保留原值的提示义务**（页面负责说"高于同业态中值，已按你的实际值算"）。
+// ⚠️ 本表的数字必须与 `cloudfunctions/common/indicatorRef.js::BANDS[*].energy` 完全一致，
+//    由 `tools/check_m2_matrix.js` 的 R558 断言比对（防两处漂移）。
+const ENERGY_BAND = {
+  fastfood: [2, 4], dining: [3, 5], hotpot: [4, 6], cafe: [1, 3], other: [1, 6],
+};
+const ENERGY_FALLBACK = 4;   // 无业态无账单时的兜底（全业态中位）
+
+/**
+ * 水电燃气费率（%）。
+ * @param {number} billYuan 月账单合计（元；水+电+燃气）
+ * @param {number} revenueYuan 实际月营业额（元）
+ * @param {string} bizKey 业态键（fastfood/dining/hotpot/cafe/other）
+ * @returns {{rate:number, src:'bill'|'band'|'fallback', clamped:boolean, raw:number|null}}
+ *   src = 费率来源（页面必须显示出来）；clamped = 反算值是否被夹到带边界
+ */
+function energyFeeRate(billYuan, revenueYuan, bizKey) {
+  const band = ENERGY_BAND[bizKey] || null;
+  const bill = Number(billYuan);
+  const rev = Number(revenueYuan);
+  if (isFinite(bill) && bill > 0 && isFinite(rev) && rev > 0) {
+    const raw = (bill / rev) * 100;
+    if (!band) return { rate: round1(raw), src: 'bill', clamped: false, raw: round1(raw) };
+    const lo = band[0], hi = band[1];
+    const rate = Math.min(hi, Math.max(lo, raw));
+    return {
+      rate: round1(rate), src: 'bill',
+      clamped: Math.abs(rate - raw) > 0.05, raw: round1(raw),
+    };
+  }
+  if (band) return { rate: round1((band[0] + band[1]) / 2), src: 'band', clamped: false, raw: null };
+  return { rate: ENERGY_FALLBACK, src: 'fallback', clamped: false, raw: null };
+}
+
 module.exports = {
   BIZ_PRESETS, CITY_COEF, FORMS,
   assembleItems, resolveBuild, paybackCash, cashBreakeven, findPreset, round1,
@@ -603,4 +651,6 @@ module.exports = {
   seatsPerTableOf, turnModeOf, turnLevelOf,
   // R292：按业态细分档（快餐/茶饮不再被判「很难」）
   turnLevelOfBiz,
+  // R558：水电燃气费率（反算 + clamp 到业态带）与业态能耗带（单源，守卫比对 indicatorRef）
+  ENERGY_BAND, ENERGY_FALLBACK, energyFeeRate,
 };

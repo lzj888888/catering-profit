@@ -41,6 +41,12 @@ function writeSeed(d) {
   // 🔴 R553：把「预计/实际月营业额」也带过去 —— 矩阵有了它才能回答「你差多少」，
   //   否则只能回答「要卖多少」，老板没法判断自己现在是在亏还是在赚。
   put('expect', d.expectYuan);
+  // 🔴 R558：水电燃气**账单合计**也要带 —— 矩阵要拿它反算费率（账单 ÷ 实际月营收，再夹到业态带）。
+  //   ⚠️ 合并态（energyMerged）用 energyYuan；分栏态是三项相加。反算不出来时矩阵会回落业态带中值。
+  const eSum = d.energyMerged
+    ? (Number(d.energyYuan) || 0)
+    : ((Number(d.waterYuan) || 0) + (Number(d.electricYuan) || 0) + (Number(d.gasYuan) || 0));
+  if (eSum > 0) seed.energy = Math.round(eSum);
   const bk = { transfer: 'tf', decor: 'dc', equip: 'eq', franchise: 'fr' };
   (d.buildRows || []).forEach((r) => {
     const s = bk[r.key];

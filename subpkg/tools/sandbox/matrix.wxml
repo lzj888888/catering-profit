@@ -165,6 +165,10 @@
            放在结果区最上面：两种视图（明细/透视）都能看到。 -->
       <!-- 🔴 R554 收尾：「你现在月营收」只对**已有店铺**有意义 ——
            找铺面的人还没开店，没有"现在营收"；显示出来是废话，还会让他误填成"预计"。 -->
+      <!-- 🔴 R558：水电费率必须**标来源**（反算/参考/默认）—— 绝不静默用参考值，
+           否则老板拿真账单对不上系统数，一次就失信。 -->
+      <view class="hint" wx:if="{{energyHint}}">{{energyHint}}</view>
+      <view class="hint" wx:if="{{energyClamped}}">{{energyClampedText}}</view>
       <view class="real-row">
         <text class="real-lb">{{mode === 'forward' ? t.realMonthLabel : t.realMonthLabelRev}}</text>
         <view class="real-in-wrap">
@@ -251,6 +255,7 @@
             <text class="td">{{t.colMargin}}</text>
             <text class="td">{{t.colLabor}}</text>
             <text class="td" wx:if="{{colsOpen || mode === 'forward'}}">{{t.colLaborFee}}</text>
+            <text class="td">{{t.colEnergy}}</text>
             <text class="td">{{t.colBreakMonthly}}</text>
             <text class="td">{{t.colTargetMonthly}}</text>
             <!-- 🔴 淡季安全垫：已有店铺默认给（那里没有现金卡），找铺面收进更多列。
@@ -271,6 +276,7 @@
             <text class="td">{{item.marginPct}}{{t.pct}}</text>
             <text class="td">{{item.labor}}{{t.person}}</text>
             <text class="td" wx:if="{{colsOpen || mode === 'forward'}}">{{item.laborYuan!=null?item.laborYuan:'—'}}</text>
+            <text class="td">{{item.energyYuan!=null?item.energyYuan:'—'}}</text>
             <text class="td">{{item.breakMonthly!=null?item.breakMonthly:'—'}}</text>
             <text class="td">{{item.targetMonthly!=null?item.targetMonthly:'—'}}</text>
             <text class="td" wx:if="{{colsOpen || mode === 'forward'}}">{{item.cushionPct!=null?item.cushionPct+t.pct:t.cushionBreakEven}}</text>

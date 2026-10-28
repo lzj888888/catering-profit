@@ -110,7 +110,14 @@ function calcSandbox(clean) {
   }
 
   // ---- 6) 餐饮指标对照（两套分母）----
-  const base = { bizKey: bizType, cityKey: cityTier, fixedFen, grossMarginPct, platformPct };
+  // 🔴 R558：把「能耗费率」单独取出来传给指标对照 —— 它已含在 platformPct 里（影响保本），
+  //   但对照表需要单独知道能耗那一段，否则改成费率后「能耗占比」会算成 0%。
+  let energyVarPct = 0;
+  for (let i = 0; i < varItems.length; i++) {
+    if (varItems[i] && varItems[i].key === 'energy') energyVarPct += num0(varItems[i].pct);
+  }
+  const base = { bizKey: bizType, cityKey: cityTier, fixedFen, grossMarginPct, platformPct,
+                 varEnergyPct: energyVarPct };
   const indAtBreakEven = redAlert ? [] : indicatorRef.evaluateIndicators(
     mix(base, { revenueFen: breakEvenMonthlyFen }));
   const indAtTarget = redAlert ? [] : indicatorRef.evaluateIndicators(

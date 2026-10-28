@@ -2676,6 +2676,13 @@ const TERMS = {
     //   净额另立一列 `colNetMargin`（进「更多列」），想看的人能看。
     colMargin: '菜品毛利率',
     colNetMargin: '到手毛利率',
+    // 🔴 R558：水电气按月金额进表（= 该行保本营收 × 费率 ⇒ 每行不同，体现"不同营业额不同水电"）
+    colEnergy: '水电气/月',
+    energyRateHint: '水电燃气按 {rate}% 算（{src}）',
+    energySrcBill: '按你的账单反算',
+    energySrcBand: '按行业参考',
+    energySrcFallback: '按通用默认',
+    energyClampedHint: '你账单折算是 {raw}%，超出同业态参考带，已按带上限算（避免淡季单月把费率顶高）',
     colTarget: '目标利润',
     addDim: '加一档',
     delDim: '删',

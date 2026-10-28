@@ -372,6 +372,27 @@ for (const rel of Object.keys(CJK_BASELINE)) {
   chk(!pmGate || /mode === 'forward' && promoOn/.test(idxWxml),
     '活动卡门控不一致：js 按 PROMO_ENABLED 不算，wxml 却仍渲染（半开半关）');
 
+// --- R558：水电费率 —— 业态能耗带必须与云端单源一致 + 云端白名单已放开 energy ---
+// 为什么守：`utils/bizPreset.js::ENERGY_BAND`（前端算费率用）与
+//   `cloudfunctions/common/indicatorRef.js::BANDS[*].energy`（云端做行业对照用）是**同一组数**。
+//   两处各写一份必然漂移，漂移的表现是"页面说 3%、对照表说 2~4 里的另一段"，且零报错。
+//   另一条：VAR_KEYS 不含 energy 时，前端一发就被 validate 拒成「填写有误」（R556 同款）。
+{
+  const feBand = require('../utils/bizPreset.js').ENERGY_BAND;
+  const irBand = require('../cloudfunctions/common/indicatorRef.js').BANDS;
+  const keys = ['fastfood', 'dining', 'hotpot', 'cafe', 'other'];
+  const drift = keys.filter((k) => {
+    const a = feBand && feBand[k];
+    const b = irBand && irBand[k] && irBand[k].energy;
+    return !a || !b || a[0] !== b[0] || a[1] !== b[1];
+  });
+  chk(drift.length === 0,
+    '能耗费率带与云端不一致：' + (drift.join(',') || '（缺项）'));
+  const vk = require('../cloudfunctions/common/indicatorRef.js').VAR_KEYS;
+  chk(vk.indexOf('energy') >= 0,
+    '云端 VAR_KEYS 缺 energy（前端发能耗费率会被 validate 拒成「填写有误」）');
+}
+
 // --- R551：「读取我填的数据」不许被 syncBuildDefault 冲掉 ---
 // 踩到的真 bug：applySeed 先写种子、后调 syncBuildDefault()，而 syncBuildDefault 里的 fill()
 //   **无条件**把装修/设备/加盟/转让四项重写成业态预设值（无预设就写空串）⇒ 老板填的 12 万装修
@@ -539,8 +560,11 @@ chk(/if \(pool\.indexOf\(fixVal\) < 0\) fixVal = pool\[0\]/.test(mtxJs),
   // ③ 现金保本必须由「不含摊销 / 含摊销」比例派生（不能自己编一个固定折扣率）
   // 🔴 R343 改判据语义：不再钉算式字面量，改为「必须调唯一函数 cashBreakeven」——
   //   因为 index 页也要算同一个数，两边各写一套算式必然漂移（漂移的表现是两个页面给出两个保本数）。
+  // 🔴 R558 收窄：原判据禁的是 `Math.round(breakMonthly *` —— 那是为了防"自造一个固定折扣率算现金保本"。
+  //   但 R558 用 `Math.round(breakMonthly * Number(energyRate) / 100)` 算**水电气金额**，语义完全不同，
+  //   被这条形状判据误判。⇒ 只禁「乘以**字面量**小数」（即真的写死折扣率），乘变量一律放行。
   chk(/cashBreakeven\(\s*breakMonthly\s*,\s*res\.fixed_ex_amort_fen\s*,\s*res\.fixed_total_fen\s*\)/.test(mtxJs)
-    && !/Math\.round\(\s*breakMonthly\s*\*/.test(mtxJs),
+    && !/Math\.round\(\s*breakMonthly\s*\*\s*0?\.\d/.test(mtxJs),
     'matrix.js 现金保本未走 utils/bizPreset.js::cashBreakeven（R343：两页各写一套算式必然漂移）');
 
   // ④ 页面必须真渲染这一列（算了不显示 = 没做）
