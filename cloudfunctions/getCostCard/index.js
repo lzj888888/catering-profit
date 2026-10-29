@@ -14,6 +14,7 @@ const { makeAdapter } = common.dataAdapter;
 const { comboInsight } = common.comboDerive;         // M3.16 套餐（派生层单源）
 const { cardToOutput, groupLinesByCard } = require('./service');
 const { validateInput } = require('./validate');
+const { resolveEffectiveCards } = require('./resolve'); // P0-0 护栏：所有成本计算经此取「生效卡」
 
 // 🔴 R547（M6）：原来这里是 `loadLines` 的**逐卡**版本（在 for 循环里 await），N 张卡 = N 次串行查询
 //   ⇒ 20 张卡要 21 次库往返（本函数还要 listAll 全部版本行，本身就慢），手机端首屏肉眼可见地卡。
@@ -49,14 +50,8 @@ exports.main = async (event) => {
   //   后面的卡会被**静默丢掉**，而列表无排序 ⇒ 丢哪张随机、老板以为数据没了。
   const cardsRes = await da.listAll('shop_cost_card', { shop_id: shopId });
 
-  // 按 card_code 分组，etake version 最大者
-  const latestByCode = new Map();
-  for (const c of ((cardsRes && cardsRes.data) || [])) {
-    const cc = c.card_code;
-    if (!cc) continue;
-    const cur = latestByCode.get(cc);
-    if (!cur || (c.version || 0) > (cur.version || 0)) latestByCode.set(cc, c);
-  }
+  // 按 card_code 取版本最大者（统一走 resolveEffectiveCards 入口，连锁后期只在此加 merge）
+  const latestByCode = resolveEffectiveCards((cardsRes && cardsRes.data) || [], shopId);
 
   let targets;
   if (v.card_code) {

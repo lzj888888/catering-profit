@@ -2,6 +2,7 @@
 // 运行： node cloudfunctions/getCostCard/selftest.js
 const { cardToOutput, lineToOutput, groupLinesByCard } = require('./service');
 const { validateInput } = require('./validate');
+const { resolveEffectiveCards, resolveEffectiveCard, assessCardTrust } = require('./resolve');
 
 let pass = 0, failN = 0;
 function check(name, cond, detail) {
@@ -55,4 +56,30 @@ const gOrphan = groupLinesByCard([{ _id: 'x', material_name: '孤儿' }].concat(
 check('G-6 缺 cost_card_row_id 的行被丢弃（不会聚成一个"无主"桶）', gOrphan.size === 3, `size=${gOrphan.size}`);
 check('G-7 空输入 ⇒ 空 Map（空店不炸）', groupLinesByCard([]).size === 0 && groupLinesByCard(null).size === 0, '');
 
-console.log(`\n==== getCostCard 批次 3 自测结果：${pass} 通过 / ${failN} 失败 ====`);
+// ===== H 组（P0-0 护栏 · 2026-10-29）：resolveEffectiveCards / assessCardTrust =====
+console.log('===== H 组 · 解析生效卡单一入口（连锁后期零返工前提）=====');
+const docs = [
+  { _id: 'r1', card_code: 'A', version: 1, name: '宫保鸡丁 v1' },
+  { _id: 'r2', card_code: 'A', version: 3, name: '宫保鸡丁 v3' }, // 同 code 取最大版本
+  { _id: 'r3', card_code: 'B', version: 2, name: '鱼香肉丝' },
+  { _id: 'r4', card_code: 'A', version: 2, name: '宫保鸡丁 v2' }, // 被 v3 盖过
+  { card_code: '', version: 1, name: '缺 code 应丢弃' },            // 缺 code 丢弃
+];
+const byCode = resolveEffectiveCards(docs, 'shop_x');
+check('H-1 按 card_code 取最新版本（A=v3）', byCode.get('A') && byCode.get('A').version === 3, `A=${byCode.get('A') && byCode.get('A').version}`);
+check('H-2 同 code 旧版本被覆盖（A 不含 v1/v2）', byCode.get('A')._id === 'r2');
+check('H-3 不同 code 互不影响（B=v2 仍在）', byCode.get('B') && byCode.get('B').card_code === 'B');
+check('H-4 缺 card_code 的行被丢弃', byCode.size === 2, `size=${byCode.size}`);
+check('H-5 空输入 ⇒ 空 Map（不炸）', resolveEffectiveCards([]).size === 0 && resolveEffectiveCards(null).size === 0);
+check('H-6 详情模式取单卡', resolveEffectiveCard(docs, 'shop_x', 'B')._id === 'r3');
+check('H-7 详情模式取不存在的卡 ⇒ null', resolveEffectiveCard(docs, 'shop_x', 'Z') === null);
+
+console.log('===== H2 组 · fail-closed 可信度评估（禁止凑数算毛利）=====');
+const goodLines = [{ quantity: 200, net_unit_cost: 333 }];
+const emptyLines = [];
+const badLines = [{ quantity: 0, net_unit_cost: 0 }]; // 用量/成本全 0 ⇒ 不可信
+check('H2-1 有有效行 ⇒ 可信', assessCardTrust({ card_code: 'A' }, goodLines).trustworthy === true);
+check('H2-2 无任何明细行 ⇒ 不可信 + 缺「明细行」', (() => { const r = assessCardTrust({ card_code: 'A' }, emptyLines); return !r.trustworthy && r.missing.includes('明细行'); })());
+check('H2-3 全 0 行 ⇒ 不可信 + 缺「有效用量/成本」', (() => { const r = assessCardTrust({ card_code: 'A' }, badLines); return !r.trustworthy && r.missing.includes('有效用量/成本'); })());
+
+console.log(`\n==== getCostCard 全自测结果：${pass} 通过 / ${failN} 失败 ====`);
