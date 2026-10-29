@@ -141,38 +141,46 @@
     </block>
 
     <!-- 临时手工录入行（仅本卡生效） -->
+    <!-- 🔴 R570：四行压成**两行** —— 老板"录一个菜要拉很久"的主因是 4 个字段各占一整行。
+         分组按「输入时的思维顺序」：先叫啥 + 多少钱（行 1），再损耗 + 用多少（行 2）。
+         ⚠️ 单位 picker 一格不减（round151：单价单位可选项是"6 元/斤能直接填 6"的前提），
+         只是从"独占一行"改成"跟在数字框右边"。 -->
     <block wx:else>
-      <view class="cell2">
-        <text class="lbl">{{t.manualName}}</text>
-        <input class="val-input" value="{{lines[index].material_name}}" placeholder="{{t.manualNamePh}}" data-idx="{{index}}" bindinput="onManualName" />
-      </view>
-      <!-- round151：单价 = 「输入框 + 单位 ▾」并排（对齐参考产品实测布局）。
-           改前单位写死在 label 里（「单价（元/克）」）⇒ 老板买 6 元/斤的肉，得先心算 0.012 才敢填。 -->
-      <!-- round153：单价 = 「[数字框] ｜ 元/斤」—— 单位格带独立浅底 + 左侧留白，
-           把"这是单位、不是数字的一部分"在视觉上切开。改前二者紧挨着，实测被连读成
-           「50 克」（老板在疑惑自己是不是在填 50 克的数量）。
-           ⚠️ 显示用 t.cur 拼，不写死货币符；单位值仍由 price_unit 驱动。 -->
-      <view class="cell2">
-        <text class="lbl">{{t.manualUnitPrice}}</text>
-        <view class="price-wrap">
-          <input class="val-input price-input" type="digit" value="{{lines[index].unit_price_yuan}}" data-idx="{{index}}" bindinput="onManualPrice"  adjust-position="{{true}}" cursor-spacing="20" />
-          <picker mode="selector" range="{{priceUnits}}" value="{{lines[index].priceUnitIdx}}" data-idx="{{index}}" bindchange="onManualPriceUnit">
-            <view class="picker unit-pick price-unit">{{t.cur}}/{{lines[index].price_unit || baseUnit}}</view>
-          </picker>
+      <view class="cell2 line-row2">
+        <view class="lr-cell">
+          <text class="lbl">{{t.manualName}}</text>
+          <input class="val-input" value="{{lines[index].material_name}}" placeholder="{{t.manualNamePh}}" data-idx="{{index}}" bindinput="onManualName" />
+        </view>
+        <!-- round151：单价 = 「输入框 + 单位 ▾」并排（对齐参考产品实测布局）。
+             改前单位写死在 label 里（「单价（元/克）」）⇒ 老板买 6 元/斤的肉，得先心算 0.012 才敢填。
+             round153：单价 = 「[数字框] ｜ 元/斤」—— 单位格带独立浅底 + 左侧留白，
+             把"这是单位、不是数字的一部分"在视觉上切开。改前二者紧挨着，实测被连读成
+             「50 克」（老板在疑惑自己是不是在填 50 克的数量）。
+             ⚠️ 显示用 t.cur 拼，不写死货币符；单位值仍由 price_unit 驱动。 -->
+        <view class="lr-cell">
+          <text class="lbl">{{t.manualUnitPrice}}</text>
+          <view class="price-wrap">
+            <input class="val-input price-input" type="digit" value="{{lines[index].unit_price_yuan}}" data-idx="{{index}}" bindinput="onManualPrice"  adjust-position="{{true}}" cursor-spacing="20" />
+            <picker mode="selector" range="{{priceUnits}}" value="{{lines[index].priceUnitIdx}}" data-idx="{{index}}" bindchange="onManualPriceUnit">
+              <view class="picker unit-pick price-unit">{{t.cur}}/{{lines[index].price_unit || baseUnit}}</view>
+            </picker>
+          </view>
         </view>
       </view>
-      <view class="cell2">
-        <text class="lbl">{{t.manualYield}}</text>
-        <input class="val-input" type="digit" value="{{lines[index].yield_rate}}" data-idx="{{index}}" bindinput="onManualYield"  adjust-position="{{true}}" cursor-spacing="20" />
-      </view>
-      <!-- round153：用量 + 单位同一排（同上，档案行）。 -->
-      <view class="cell2">
-        <text class="lbl">{{t.qty}}</text>
-        <view class="qty-wrap">
-          <input class="val-input qty-input" type="digit" value="{{lines[index].qty}}" data-idx="{{index}}" bindinput="onQty"  adjust-position="{{true}}" cursor-spacing="20" />
-          <picker mode="selector" range="{{qtyUnits}}" value="{{lines[index].qtyUnitIdx}}" data-idx="{{index}}" bindchange="onQtyUnit">
-            <view class="picker unit-pick">{{lines[index].qty_unit || baseUnit}}</view>
-          </picker>
+      <view class="cell2 line-row2">
+        <view class="lr-cell">
+          <text class="lbl">{{t.manualYield}}</text>
+          <input class="val-input" type="digit" value="{{lines[index].yield_rate}}" data-idx="{{index}}" bindinput="onManualYield"  adjust-position="{{true}}" cursor-spacing="20" />
+        </view>
+        <!-- round153：用量 + 单位同一排（同上，档案行）。 -->
+        <view class="lr-cell">
+          <text class="lbl">{{t.qty}}</text>
+          <view class="qty-wrap">
+            <input class="val-input qty-input" type="digit" value="{{lines[index].qty}}" data-idx="{{index}}" bindinput="onQty"  adjust-position="{{true}}" cursor-spacing="20" />
+            <picker mode="selector" range="{{qtyUnits}}" value="{{lines[index].qtyUnitIdx}}" data-idx="{{index}}" bindchange="onQtyUnit">
+              <view class="picker unit-pick">{{lines[index].qty_unit || baseUnit}}</view>
+            </picker>
+          </view>
         </view>
       </view>
     </block>

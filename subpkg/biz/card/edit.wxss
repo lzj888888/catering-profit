@@ -163,3 +163,29 @@
 .line-est { background: #fff8e1; border-left: 6rpx solid #f0a020; }
 .est-tag { display: inline-block; font-size: 22rpx; color: #a86a00; background: #ffe9b0; border-radius: 6rpx; padding: 2rpx 12rpx; margin-bottom: 8rpx; }
 .est-banner { background: #fff4d6; border: 2rpx solid #f0c060; color: #7a5a00; font-size: 26rpx; padding: 16rpx 20rpx; border-radius: 12rpx; margin: 16rpx 0; line-height: 1.5; }
+
+/* 🔴 R570：明细行两列布局（四行压两行的配套样式）
+   宽度账：750rpx − 页面左右 padding 48rpx = 702rpx ⇒ 两列各 ~339rpx（gap 24rpx）。
+   每列 = 标签 112rpx + 输入控件 flex 占满剩余；单价列还要塞下「数字框 + 单位格」。
+   ⚠️ 触控高度 88rpx、字号 ≥28rpx（AD G1/G2）是红线，压行不压这两项。 */
+.line-row2 { display: flex; align-items: center; }
+.line-row2 .lr-cell { flex: 1 1 0; min-width: 0; display: flex; align-items: center; margin-right: 24rpx; }
+.line-row2 .lr-cell:last-child { margin-right: 0; }
+/* 🔴 R570-2：标签**按内容宽度 + 禁止换行**（不写死 112rpx）。
+   写死后「出成率（%）」这种长标签会把 (%) 挤到下一行（实测截图：换行成两行），
+   而「单价」这种短标签又白白占掉 112rpx ⇒ 数字框被挤窄。 */
+.line-row2 .lbl { flex: 0 0 auto; width: auto; min-width: 0; margin-right: 12rpx; font-size: 28rpx; white-space: nowrap; }
+/* 🔴 R570-3（模拟器几何实测）：两列后单价框只剩 123rpx ⇒ 32rpx 字号下**第 5 个字符就顶住边框**。
+   为什么是改 padding 而不是抢邻居宽度：左侧 label 已被「出成率（%）」占满（159rpx），
+   右侧原料名框也只有 202rpx（6 字菜名已经开始滚）—— 拆东墙补西墙只会把菜名挤坏。
+   数字本来就是右对齐，左右各 20rpx 的留白纯属浪费 ⇒ 收到 12rpx，同等外框多出 16rpx 内容宽。 */
+.line-row2 .val-input { flex: 1 1 auto; min-width: 0; width: auto; padding: 8rpx 12rpx; }
+.line-row2 .price-wrap, .line-row2 .qty-wrap { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; }
+/* 🔴 R570-2：单位格**不许被 flex 压扁**（上一版被压成竖排且右侧裁切 —— 正是李老师说的"格子留窄"）。
+   手段：flex 不收缩 + min-width 96rpx + nowrap + 居中。
+   R570-3：padding 16→8rpx —— 「¥/克」内容本身约 93rpx，两侧各 16rpx 的留白把这一格撑到 125rpx，
+   等于白吃单价框 16rpx。留白收到 8rpx 后仍与白底输入框有明确边界（另有浅底 + 圆角兜底）。 */
+.line-row2 .unit-pick { flex: 0 0 auto; margin-left: 6rpx; padding: 0 8rpx; min-width: 96rpx;
+  text-align: center; font-size: 28rpx; white-space: nowrap; }
+/* 整体收紧一点（李老师："松松垮垮"）：行块内边距与块间距各减 2~4rpx，不动触控高度 */
+.line { padding: 8rpx 20rpx; margin-bottom: 8rpx; }
