@@ -16,6 +16,7 @@ const { openPaywall } = require('../../../utils/paywall.js');
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 const { TEMPLATES, applyTemplate } = require('../../../utils/dishTemplates.js');   // M3.20 菜品模板（只预填，不写库）
 const { CATEGORY_PRESETS, CONDIMENT_NAME } = require('../../../utils/categoryPresets.js');  // P0-2 品类默认模板（单源）
+const { isEstimatedCard } = require('../../../utils/cardEst.js');  // P0-3 估算卡判定（单源）
 const { calcGrouponOrder } = require('../../../utils/grouponDerive.js');            // M3.37 团购渠道层（纯计算，不落库）
 
 // 本店填过的菜品分类（本地记忆，供下次点选；不新建集合、不上云 —— M3 v1.1 零新建集合红线）
@@ -111,6 +112,8 @@ Page({
       catFrom: TERMS.card.catFrom,
       catPickPh: TERMS.card.catPickPh,
       catHint: TERMS.card.catHint,
+      estRowTag: TERMS.card.estRowTag,
+      estCardHint: TERMS.card.estCardHint,
       save: TERMS.card.save,
       reverseTitle: TERMS.card.reverseTitle,
       reverseHint: TERMS.card.reverseHint,
@@ -306,6 +309,9 @@ Page({
     catPicked: -1,
     catYieldDefault: '',
     catLabel: '',
+    // P0-3 估算卡：hasPreset=本卡是否仍含系统估行；estBanner=卡片级横幅文案（含品类名）
+    hasPreset: false,
+    estBanner: '',
   },
 
   // R234/J4f：行内提示折叠开关（仓内统一形态 —— 多页同一实现）。
@@ -391,7 +397,7 @@ Page({
       // round151：换原料 ⇒ 跨族提示要跟着换（提示取决于该原料的采购单位）
       unit_warn: this.unitWarnOf(m, lines[idx]),
     });
-    this.setData({ lines });
+    this.editLineStripPreset(idx, lines);
   },
 
   async load() {
@@ -615,6 +621,8 @@ Page({
       catLabel: cat.label,
       catPicked: i,
       lines: renumber(lines),
+      hasPreset: true,
+      estBanner: TERMS.card.estCardBanner.replace('{cat}', cat.label),
     });
     this.refreshSpecHints();
     this.checkAmounts();
@@ -809,7 +817,7 @@ Page({
     const from = cur.qty_unit || units.BASE_UNIT;
     if (from === next) return;
     lines[idx] = Object.assign({}, cur, { qty_unit: next, qty: units.convertQtyText(cur.qty, from, next) });
-    this.setData({ lines: renumber(lines) });
+    this.editLineStripPreset(idx, lines);
     // round151：跨族提示是「用量单位 × 原料采购单位」的函数 ⇒ 换完单位必须重算，
     //   否则提示停在换单位之前的状态（用户看到的是过期提示）。
     this.refreshSpecHints(this.data.lines);
@@ -830,20 +838,20 @@ Page({
     const val = (e && e.detail && e.detail.value) || 'archive';   // 'archive' | 'manual'
     const lines = this.data.lines.slice();
     lines[idx] = val === 'manual' ? Object.assign(emptyManualLine(), { yield_rate: this.data.catYieldDefault || '100' }) : emptyLine();
-    this.setData({ lines: renumber(lines) });
+    this.commitLines(lines);
   },
   // 手工行：名称 / 单价 / 出成率
   onManualName(e) {
     const idx = Number(e.currentTarget.dataset.idx);
     const lines = this.data.lines.slice();
     lines[idx] = Object.assign({}, lines[idx], { material_name: e.detail.value });
-    this.setData({ lines });
+    this.editLineStripPreset(idx, lines);
   },
   onManualPrice(e) {
     const idx = Number(e.currentTarget.dataset.idx);
     const lines = this.data.lines.slice();
     lines[idx] = Object.assign({}, lines[idx], { unit_price_yuan: e.detail.value });
-    this.setData({ lines });
+    this.editLineStripPreset(idx, lines);
     this.checkAmounts();
   },
   // round151：手工行的**单价单位**（元/X）。
@@ -856,21 +864,34 @@ Page({
     const next = this.data.priceUnits[Number(e.detail.value)] || units.BASE_UNIT;
     const lines = this.data.lines.slice();
     lines[idx] = Object.assign({}, lines[idx], { price_unit: next });
-    this.setData({ lines });
+    this.editLineStripPreset(idx, lines);
   },
   onManualYield(e) {
     const idx = Number(e.currentTarget.dataset.idx);
     const lines = this.data.lines.slice();
     lines[idx] = Object.assign({}, lines[idx], { yield_rate: e.detail.value });
-    this.setData({ lines });
+    this.editLineStripPreset(idx, lines);
   },
   onQty(e) {
     const idx = e.currentTarget.dataset.idx;
     const lines = this.data.lines.slice();
     lines[idx] = Object.assign({}, lines[idx], { qty: e.detail.value });
-    this.setData({ lines });
+    this.editLineStripPreset(idx, lines);
   },
-  addLine() { this.setData({ lines: renumber(this.data.lines.concat([emptyLine()])) }); },
+  addLine() { this.commitLines(this.data.lines.concat([emptyLine()])); },
+
+  // ===== P0-3 估算卡：落盘明细行并重算「估算卡」标记（黄标 + 横幅） =====
+  // 所有改动明细行的入口都走这里，避免「改了行却忘了更新 hasPreset」的漂移。
+  commitLines(lines) {
+    const rn = renumber(lines);
+    this.setData({ lines: rn, hasPreset: isEstimatedCard(rn), estBanner: isEstimatedCard(rn) ? TERMS.card.estCardBanner.replace('{cat}', this.data.catLabel || '品类') : '' });
+    return rn;
+  },
+  // 用户动了某行 → 该行不再是「系统估」（自校正：系统估标记只认未被人碰过的行）
+  editLineStripPreset(idx, lines) {
+    if (idx >= 0 && lines[idx]) lines[idx] = Object.assign({}, lines[idx], { isPreset: false });
+    return this.commitLines(lines);
+  },
 
   // ===== R443：批量粘贴配料（解析在 utils/cardPaste.js，这里只做展示与导入）=====
   onPasteToggle() { this.setData({ pasteOpen: !this.data.pasteOpen }); },
@@ -905,8 +926,8 @@ Page({
     }));
     // 全空行先丢掉，别让导入的行上面挂一条空行
     const cur = (this.data.lines || []).filter((l) => l.qty || l.material_id || l.material_name);
+    this.commitLines(cur.concat(add));
     this.setData({
-      lines: renumber(cur.concat(add)),
       pasteRows: [], pasteText: '', pasteOkCount: 0, pasteImportLabel: '', pasteOpen: false,
     });
     wx.showToast({ title: this.fillTpl(TERMS.card.pasteImported, { n: add.length }), icon: 'success' });
@@ -922,7 +943,7 @@ Page({
     const filled = !!cur.material_id || !!name || Number(cur.qty) > 0 || Number(cur.unit_price_yuan) > 0;
     const doDel = () => {
       const rest = this.data.lines.filter((l, i) => i !== idx);
-      this.setData({ lines: renumber(rest.length ? rest : [emptyLine()]) });
+      this.commitLines(rest.length ? rest : [emptyLine()]);
     };
     if (!filled) { doDel(); return; }
     wx.showModal({
@@ -1162,7 +1183,7 @@ Page({
     if (!key) return;
     const lines = this.data.lines.slice();
     lines[idx] = Object.assign({}, lines[idx], { line_kind: key });
-    this.setData({ lines });
+    this.editLineStripPreset(idx, lines);
   },
 
   // ===== round150（M3.15）规格 =====
@@ -1329,7 +1350,7 @@ Page({
           });
           costFen = d.unit_cost_fen || 0;
         } catch (e) { /* 预警失败不阻断 */ }
-        if (costFen > 0 && priceFen < costFen) {
+        if (costFen > 0 && priceFen < costFen && !this.data.hasPreset) {
           wx.showModal({
             title: TERMS.card.warnPriceBelowCost,
             content: TERMS.card.warnPriceBelowCost,

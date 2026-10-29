@@ -89,9 +89,12 @@
   </view>
 
   <view class="sec-lite">{{t.secCost}}</view>
+  <!-- P0-3 估算卡横幅：本卡仍含系统估行时提示（黄底格子=估的默认值，都能改） -->
+  <view class="est-banner" wx:if="{{hasPreset}}">{{estBanner}}</view>
   <!-- 明细行（录入方式：档案选择 / 临时手工）—— 仅单品 -->
   <block wx:if="{{cardType === '1'}}">
-  <view class="line" wx:for="{{lines}}" wx:key="idx">
+  <view class="line {{lines[index].isPreset ? 'line-est' : ''}}" wx:for="{{lines}}" wx:key="idx">
+    <view class="est-tag" wx:if="{{lines[index].isPreset}}">{{t.estRowTag}}</view>
     <view class="cell2">
       <text class="lbl">{{t.inputType}}</text>
       <!-- round153：红「×」删行按钮原本挂在这一行的最右边 ⇒ 实测被读成"取消临时手工录入"
