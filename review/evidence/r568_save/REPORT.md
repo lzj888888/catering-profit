@@ -3,8 +3,8 @@
 日期：2026-10-29　环境：微信开发者工具模拟器（iPhone 12/13），自动化通道 `ws://127.0.0.1:9420`
 账号店铺：`shop_u_mu6j87t1a283_sc_1792852528523`（走查用同一家店，测试卡跑完即删）
 
-> ⚠️ **本节性质不同：本次走查不是纯读**。为了证明「保存→列表」，全程对云端做了**写操作**：
-> 建成本卡 3 张、删成本卡 3 张（含软删），均落在上述同一家店，收尾时列表已归零。
+> ⚠️ **本次走查含一次云侧写入**（实测口径）：为证明「保存→列表」，对云端建成本卡 3 张、
+> 删成本卡 3 张（含软删），均落在上述同一家店，收尾时列表已归零。
 
 ---
 
@@ -98,6 +98,6 @@ let lines = wasEmpty ? [] : this.data.lines.slice();
 ## 5 文件
 
 - `walk_r568b_save.js`（品类路径，首版，用于定位）、`walk_r568e_import.js`（导入→保存全链）
-- `mk3_verify.js`（修复后 11 项复验）、`verify_list2.js`（列表核对 + 删除）
+- `mk3_verify.js`（修复后 11 项复验）、`d2_list_check.js`（列表核对 + 删除）
 - `report_save2.json` / `report_import_save.json` / `report_list.json` / `report_fix.json`
 - `e1_edit_saved.png`（编辑页「已保存」横幅）、`e2_list_card.png` / `e2_list_crop.png`（列表 98.66% 假数留证）
