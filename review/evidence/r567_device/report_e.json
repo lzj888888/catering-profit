@@ -1,0 +1,64 @@
+{
+ "startedAt": "2026-10-29T15:19:54.657Z",
+ "checks": [
+  {
+   "id": "1-filled",
+   "expect": "示例主料价已补齐（猪肉 15 / 青椒 0.10）",
+   "actual": "[{\"n\":\"调料(含油盐酱醋)\",\"p\":\"0.50\"},{\"n\":\"猪肉\",\"p\":\"15.00\"},{\"n\":\"青椒\",\"p\":\"0.10\"}]",
+   "pass": true
+  },
+  {
+   "id": "2-saved",
+   "expect": "保存后列表出现该卡",
+   "actual": 0,
+   "pass": false
+  },
+  {
+   "id": "2-cost",
+   "expect": "成本 = 15.6 元（调料0.50+猪肉15+青椒0.10）",
+   "pass": false
+  },
+  {
+   "id": "2-margin",
+   "expect": "毛利为负（售价 10）",
+   "pass": false
+  },
+  {
+   "id": "2-loseCount",
+   "expect": "亏本道数 = 1",
+   "actual": 0,
+   "pass": false
+  },
+  {
+   "id": "2-warn",
+   "expect": "亏本提示条出现",
+   "actual": "",
+   "pass": false
+  },
+  {
+   "id": "2-filter",
+   "expect": "点提示条只剩亏本卡",
+   "actual": "{\"before\":0,\"after\":0,\"lossOnly\":false,\"warn\":\"\",\"names\":[],\"back\":0,\"lossOnlyBack\":false}",
+   "pass": false
+  },
+  {
+   "id": "2-restore",
+   "expect": "再点恢复全量",
+   "actual": "{\"before\":0,\"after\":0,\"lossOnly\":false,\"warn\":\"\",\"names\":[],\"back\":0,\"lossOnlyBack\":false}",
+   "pass": true
+  },
+  {
+   "id": "6-clean",
+   "expect": "走查卡已清理（列表回到原状）",
+   "actual": "null",
+   "pass": false
+  }
+ ],
+ "notes": [
+  "1 预置 {\"name\":\"【走查】亏本菜A\",\"price\":\"10\",\"lines\":[{\"n\":\"调料(含油盐酱醋)\",\"p\":\"0.50\"},{\"n\":\"猪肉\",\"p\":\"15.00\"},{\"n\":\"青椒\",\"p\":\"0.10\"}],\"badAmount\":0,\"hasPreset\":true}",
+  "2 保存调用 {\"logs\":[],\"name\":\"【走查】亏本菜A\",\"price\":\"10\"}",
+  "3 列表 {\"loading\":false,\"len\":0,\"loseCount\":0,\"loseWarn\":\"\",\"rows\":[]}",
+  "4 待删 []"
+ ],
+ "fails": []
+}
