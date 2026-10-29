@@ -24,6 +24,11 @@ const drink = getCategoryPreset('drink');
 check('取饮品奶茶：出净率 98%', drink && drink.yield_rate === 98);
 check('取饮品奶茶：单位合法(毫升)', drink && drink.sample_lines[0].unit === '毫升');
 
+const staple = getCategoryPreset('staple');
+check('取面点主食：调料(含油盐酱醋) 20分(白饭/原味米面调料极少·豆包质证校准)', staple && staple.condiment_fen === 20);
+const cold = getCategoryPreset('cold');
+check('取凉拌沙拉：调料(含油盐酱醋) 40分(香油酱汁用量大·豆包质证校准)', cold && cold.condiment_fen === 40);
+
 check('未知 key 返回 null', getCategoryPreset('nope') === null);
 check('调料固定名 = 调料(含油盐酱醋)', CONDIMENT_NAME === '调料(含油盐酱醋)');
 

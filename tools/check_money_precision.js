@@ -250,6 +250,9 @@ const REGISTRY = {
     'PAREN|) * 100|#1': ['ratio', '团购净得率：净得 ÷ 售价 → 百分数（分/分）'],
     'PAREN|) * 100|#2': ['ratio', '团购利润率：利润 ÷ 净得 → 百分数（分/分）'],
   },
+  'utils/marginAlert.selftest.js': {
+    'IDENT|costFen * 100|#1': ['scaled_int', '构造成本引擎对拍夹具：整数分 ×100 → 万分之元（net_unit_cost 单位；1 分 = 100 万分），整数乘精确'],
+  },
   'utils/materialBatch.js': {
     'PAREN|) * 100|#1': ['money', '批量导原料单价（元）→ 分（Excel 导入，可带三位小数 ⇒ 真风险面）'],
   },

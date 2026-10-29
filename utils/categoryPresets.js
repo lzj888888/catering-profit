@@ -48,7 +48,7 @@ const CATEGORY_PRESETS = [
   },
   {
     key: 'staple', label: '面点主食',
-    yield_rate: 95, loss_rate: 5, condiment_fen: 30, energy_fen: 0,
+    yield_rate: 95, loss_rate: 5, condiment_fen: 20, energy_fen: 0,
     sample_lines: [{ name: '面粉', qty: 200, unit: '克' }],
   },
   {
@@ -73,7 +73,7 @@ const CATEGORY_PRESETS = [
   },
   {
     key: 'cold', label: '凉拌沙拉',
-    yield_rate: 90, loss_rate: 2, condiment_fen: 30, energy_fen: 0,
+    yield_rate: 90, loss_rate: 2, condiment_fen: 40, energy_fen: 0,
     sample_lines: [{ name: '黄瓜', qty: 200, unit: '克' }],
   },
   {
