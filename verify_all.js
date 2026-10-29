@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：215 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：216 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -1321,6 +1321,8 @@ const SUITES = [
   ['m2-matrix-manage', 'tools/check_m2_matrix_manage.js'],
   // ===== D6 行为守卫（2026-10-27 拍板）：透视表按人工过滤（fixLabor 生效，不再被覆盖）=====
   ['m2-matrix-pivot', 'tools/check_m2_matrix_pivot.js'],
+  // ===== P0-2 · 品类默认模板数据守卫（2026-10-29）：11 个品类默认值单源，预填出净率/损耗/调料油火/示例主料，validatePresets 零错误 =====
+  ['category-presets', 'utils/categoryPresets.selftest.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

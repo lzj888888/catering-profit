@@ -15,6 +15,7 @@ const AmountInput = require('../../../utils/amountInput.js');   // R426（队列
 const { openPaywall } = require('../../../utils/paywall.js');
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 const { TEMPLATES, applyTemplate } = require('../../../utils/dishTemplates.js');   // M3.20 菜品模板（只预填，不写库）
+const { CATEGORY_PRESETS, CONDIMENT_NAME } = require('../../../utils/categoryPresets.js');  // P0-2 品类默认模板（单源）
 const { calcGrouponOrder } = require('../../../utils/grouponDerive.js');            // M3.37 团购渠道层（纯计算，不落库）
 
 // 本店填过的菜品分类（本地记忆，供下次点选；不新建集合、不上云 —— M3 v1.1 零新建集合红线）
@@ -107,6 +108,9 @@ Page({
       pastePlaceholder: TERMS.card.pastePlaceholder,
       pasteParseBtn: TERMS.card.pasteParseBtn,
       pasteImportBtn: TERMS.card.pasteImportBtn,
+      catFrom: TERMS.card.catFrom,
+      catPickPh: TERMS.card.catPickPh,
+      catHint: TERMS.card.catHint,
       save: TERMS.card.save,
       reverseTitle: TERMS.card.reverseTitle,
       reverseHint: TERMS.card.reverseHint,
@@ -297,6 +301,11 @@ Page({
     // M3.20（批次 B 收尾）菜品模板：picker range（20 道菜名）+ 当前选中项（-1 = 未选）
     tplNames: TEMPLATES.map((t) => t.dish_name),
     tplPicked: -1,
+    // P0-2 品类默认模板：选品类后预填出净率/损耗/调料油火/示例主料
+    catOptions: CATEGORY_PRESETS.map((c) => c.label),
+    catPicked: -1,
+    catYieldDefault: '',
+    catLabel: '',
   },
 
   // R234/J4f：行内提示折叠开关（仓内统一形态 —— 多页同一实现）。
@@ -551,6 +560,7 @@ Page({
       material_name: r.line_name,
       qty: String(r.qty),
       qty_unit: r.unit,
+      yield_rate: this.data.catYieldDefault || '100',
     }));
     // 🔴 R317：**模式随模板走**。火锅锅底这类「炒一批料 → 打 N 锅」必须 mode B + 批量产出；
     //   若仍按 mode A 套用，整批料的成本会被当成「一锅」的成本 ⇒ **静默算错 N 倍**（界面看不出）。
@@ -565,6 +575,48 @@ Page({
     this.setData(patch);
     this.refreshSpecHints();
     // R547（M8）：模板会把模式切到 B（火锅锅底这类）⇒ 出货量没预填时必须立刻挂横幅
+    this.checkAmounts();
+  },
+
+  // ===== P0-2 品类默认模板：选品类 → 预填出净率/损耗/调料油火/示例主料（均可改） =====
+  // 只给「行业默认估算」，不替老板定死：所有预填值用户都能改；出净率留空回退到品类默认（fail-closed）。
+  onPickCategory(e) {
+    const i = Number(e.detail.value);
+    const cat = CATEGORY_PRESETS[i];
+    if (!cat) return;
+    const y = String(cat.yield_rate);
+    const wasEmpty = this.data.lines.length === 0;
+    let lines = this.data.lines.slice();
+    // ① 已有手工行若仍是出厂默认 100，套品类默认出净率
+    lines = lines.map((l) => (l.input_type === 2 && (l.yield_rate === '100' || !l.yield_rate)
+      ? Object.assign({}, l, { yield_rate: y }) : l));
+    // ② 调料油火（油盐酱醋+燃料合并项）：没有则追加一条手动行，预填默认每份单价，黄标可改
+    const hasCond = lines.some((l) => (l.material_name || '') === CONDIMENT_NAME);
+    if (!hasCond) {
+      lines.push(Object.assign(emptyManualLine(), {
+        material_name: CONDIMENT_NAME,
+        qty: '1', qty_unit: '份', price_unit: '份',
+        unit_price_yuan: (cat.condiment_fen / 100).toFixed(2),
+        yield_rate: '100', line_kind: 'condiment', isPreset: true,
+      }));
+    }
+    // ③ 空卡（首建）补示例主料（价格留空，黄标可改）
+    if (wasEmpty && Array.isArray(cat.sample_lines)) {
+      for (const s of cat.sample_lines) {
+        lines.push(Object.assign(emptyManualLine(), {
+          material_name: s.name, qty: String(s.qty), qty_unit: s.unit,
+          yield_rate: y, isPreset: true,
+        }));
+      }
+    }
+    this.setData({
+      lossRate: String(cat.loss_rate),
+      catYieldDefault: y,
+      catLabel: cat.label,
+      catPicked: i,
+      lines: renumber(lines),
+    });
+    this.refreshSpecHints();
     this.checkAmounts();
   },
   // 子卡选择（picker 按 index 取）
@@ -777,7 +829,7 @@ Page({
     const idx = Number(e.currentTarget.dataset.idx);
     const val = (e && e.detail && e.detail.value) || 'archive';   // 'archive' | 'manual'
     const lines = this.data.lines.slice();
-    lines[idx] = val === 'manual' ? emptyManualLine() : emptyLine();
+    lines[idx] = val === 'manual' ? Object.assign(emptyManualLine(), { yield_rate: this.data.catYieldDefault || '100' }) : emptyLine();
     this.setData({ lines: renumber(lines) });
   },
   // 手工行：名称 / 单价 / 出成率

@@ -63,6 +63,15 @@
     <text class="muted">{{t.templateHint}}</text>
   </view>
 
+  <!-- P0-2 品类默认模板：选品类 → 自动给默认出净率/损耗/调料油火（只估算，都可改）。仅新建态 + 单品。 -->
+  <view class="field" wx:if="{{!isEdit && cardType === '1'}}">
+    <text class="lbl">{{t.catFrom}}</text>
+    <picker mode="selector" range="{{catOptions}}" value="{{catPicked}}" bindchange="onPickCategory">
+      <view class="picker">{{catPicked >= 0 ? catOptions[catPicked] : t.catPickPh}}</view>
+    </picker>
+    <text class="muted">{{t.catHint}}</text>
+  </view>
+
   <!-- 核算模式（仅单品）· 🔴 P0#7：新手模式默认收起，展开专业项才显示 -->
   <view class="field" wx:if="{{cardType === '1' && (inputMode === 'pro' || showMore)}}">
     <text class="lbl">{{t.calcMode}}</text>
