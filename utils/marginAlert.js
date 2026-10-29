@@ -63,20 +63,64 @@ function grossMarginPct(priceFen, costFen) {
  * @returns {{marginPct:number|null, band:string, level:'ok'|'warn'|'danger'|'none', msg:string}}
  */
 function marginAlert(priceFen, costFen) {
-  const marginPct = grossMarginPct(priceFen, costFen);
+  return levelOfMargin(grossMarginPct(priceFen, costFen));
+}
+
+/**
+ * 由**已知毛利率**判级别（影响面页面的数据来自云端引擎，毛利率已算好，不再重算）。
+ * @param {number|null} marginPct
+ */
+function levelOfMargin(marginPct) {
   const b = band.bandOf(marginPct);
-  if (marginPct === null) {
+  if (marginPct === null || marginPct === undefined || !Number.isFinite(Number(marginPct))) {
     return { marginPct: null, band: b, level: 'none', msg: '未定价或成本缺失，无法判断毛利' };
   }
-  if (marginPct < BREAK_EVEN) {
-    return { marginPct: marginPct, band: b, level: 'danger', msg: '亏本卖：售价低于食材成本' };
+  const m = Number(marginPct);
+  if (m < BREAK_EVEN) {
+    return { marginPct: m, band: b, level: 'danger', msg: '亏本卖：售价低于食材成本' };
   }
   const MSG = {
     [band.KEYS.high]: '毛利率达标（≥' + band.HIGH + '%）',
     [band.KEYS.mid]: '毛利率中等（' + band.MID + '%~' + band.HIGH + '%）',
     [band.KEYS.low]: '毛利率偏低（<' + band.MID + '%）',
   };
-  return { marginPct: marginPct, band: b, level: LEVEL_OF_BAND[b], msg: MSG[b] };
+  return { marginPct: m, band: b, level: LEVEL_OF_BAND[b], msg: MSG[b] };
+}
+
+/**
+ * 毛利率漂移：**已知改前/改后毛利率**时判「降档 / 跌进低毛利 / 亏本」。
+ * 影响面页面的数据来自云端引擎（已算好两个毛利率），走这条；成本变动场景走 costDriftAlert。
+ * @returns {{oldMargin,newMargin,oldBand,newBand,dropPct,downgraded,crossedLow,level,msg}}
+ */
+function marginDrift(oldMarginPct, newMarginPct) {
+  const oldA = levelOfMargin(oldMarginPct);
+  const newA = levelOfMargin(newMarginPct);
+  if (oldA.level === 'none' || newA.level === 'none') {
+    return {
+      oldMargin: oldA.marginPct, newMargin: newA.marginPct,
+      oldBand: oldA.band, newBand: newA.band,
+      dropPct: 0, downgraded: false, crossedLow: false,
+      level: 'none', msg: '数据缺失，无法判断成本漂移',
+    };
+  }
+  const oldBand = oldA.band;
+  const newBand = newA.band;
+  const dropPct = round1(newA.marginPct - oldA.marginPct); // 负 = 毛利率下降
+  const downgraded = RANK[newBand] < RANK[oldBand];
+  const crossedLow = oldBand !== band.KEYS.low && newBand === band.KEYS.low;
+  const level = (newA.marginPct < BREAK_EVEN) ? 'danger' : LEVEL_OF_BAND[newBand];
+
+  let msg = '成本变动后毛利率' + (dropPct <= 0 ? '降 ' : '升 ') + Math.abs(dropPct).toFixed(1) + ' 个百分点';
+  if (newA.marginPct < BREAK_EVEN) msg += '，已亏本';
+  else if (crossedLow) msg += '，已跌进低毛利区';
+  else if (downgraded) msg += '，档位由「' + BAND_CN[oldBand] + '」降为「' + BAND_CN[newBand] + '」';
+
+  return {
+    oldMargin: oldA.marginPct, newMargin: newA.marginPct,
+    oldBand: oldBand, newBand: newBand,
+    dropPct: dropPct, downgraded: downgraded, crossedLow: crossedLow,
+    level: level, msg: msg,
+  };
 }
 
 /**
@@ -86,37 +130,20 @@ function marginAlert(priceFen, costFen) {
  *            dropPct:number,downgraded:boolean,crossedLow:boolean,level:string,msg:string}}
  */
 function costDriftAlert(priceFen, oldCostFen, newCostFen) {
-  const oldMargin = grossMarginPct(priceFen, oldCostFen);
-  const newMargin = grossMarginPct(priceFen, newCostFen);
-  if (oldMargin === null || newMargin === null) {
-    return {
-      oldMargin: oldMargin, newMargin: newMargin,
-      oldBand: band.KEYS.none, newBand: band.KEYS.none,
-      dropPct: 0, downgraded: false, crossedLow: false,
-      level: 'none', msg: '数据缺失，无法判断成本漂移',
-    };
-  }
-  const oldBand = band.bandOf(oldMargin);
-  const newBand = band.bandOf(newMargin);
-  const dropPct = round1(newMargin - oldMargin); // 负 = 毛利率下降
-  const downgraded = RANK[newBand] < RANK[oldBand];
-  const crossedLow = oldBand !== band.KEYS.low && newBand === band.KEYS.low;
-  const level = (newMargin < BREAK_EVEN) ? 'danger' : LEVEL_OF_BAND[newBand];
+  return marginDrift(grossMarginPct(priceFen, oldCostFen), grossMarginPct(priceFen, newCostFen));
+}
 
-  let msg = '成本变动后毛利率' + (dropPct <= 0 ? '降 ' : '升 ') + Math.abs(dropPct).toFixed(1) + ' 个百分点';
-  if (newMargin < BREAK_EVEN) msg += '，已亏本';
-  else if (crossedLow) msg += '，已跌进低毛利区';
-  else if (downgraded) msg += '，档位由「' + BAND_CN[oldBand] + '」降为「' + BAND_CN[newBand] + '」';
-
-  return {
-    oldMargin: oldMargin, newMargin: newMargin,
-    oldBand: oldBand, newBand: newBand,
-    dropPct: dropPct, downgraded: downgraded, crossedLow: crossedLow,
-    level: level, msg: msg,
-  };
+/**
+ * 是否「亏本卖」：毛利率为负（售价连食材成本都不够）。
+ * 单列一个函数，是因为列表页/详情页都要判它，各处自己写 `< 0` 迟早漂移。
+ */
+function isLossMaking(marginPct) {
+  if (marginPct === null || marginPct === undefined || marginPct === '') return false;
+  const m = Number(marginPct);
+  return Number.isFinite(m) && m < BREAK_EVEN;
 }
 
 module.exports = {
-  grossMarginPct, marginAlert, costDriftAlert,
+  grossMarginPct, levelOfMargin, marginAlert, marginDrift, costDriftAlert, isLossMaking,
   LEVEL_OF_BAND, BAND_CN, BREAK_EVEN,
 };

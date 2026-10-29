@@ -40,6 +40,10 @@
     <text class="link" wx:if="{{selectMode}}" bindtap="onBatchSyncCancel">{{t.cancel}}</text>
   </view>
 
+  <!-- 🔴 R564：亏本卖的卡数。色带只能表达「低毛利(<40%)」，而负毛利是「卖一道亏一道」，
+       严重程度不同 ⇒ 单独一行点名。未定价与保本(0%)都不计入（见 utils/marginAlert.js::isLossMaking）。 -->
+  <view class="muted warn-line" wx:if="{{loseWarn}}">{{loseWarn}}</view>
+
   <view wx:if="{{selectMode}}" class="batch-bar">
     <text class="muted">{{t.selectSync}}</text>
     <button class="btn-small" bindtap="onBatchSyncRun">{{t.batchSync}}</button>

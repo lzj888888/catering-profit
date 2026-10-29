@@ -1966,6 +1966,11 @@ const TERMS = {
     impactCostChange: '原成本 → 新成本',
     impactMargin: '毛利率',
     impactBelowBand: (x) => `已跌破本业态参考带下限（${x}%）`,
+    impactDriftDown: (o, n) => `档位 ${o}→${n}`,
+    impactDriftLow: '已跌进低毛利',
+    impactDriftLoss: '已亏本',
+    impactSummary: (down, low) => '本次调价：' + down + ' 道降档' + (low > 0 ? '，其中 ' + low + ' 道跌进低毛利' : ''),
+    loseWarn: (n) => `有 ${n} 道在亏本卖（售价低于食材成本）`,
     impactTrend: '成本趋势',
     impactTrendSingle: '只有 1 个版本，暂无成本趋势',
     // ===== M3.21（批次 E）· M1↔M3 率对率对账 =====

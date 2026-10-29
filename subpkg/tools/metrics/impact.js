@@ -6,6 +6,11 @@
 const api = require('../../../utils/api.js');
 const ui = require('../../../utils/ui.js');
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
+// 🔴 档位/颜色一律走单源（marginBand），级别判定走 marginAlert（同一处映射）——
+//   本页不得自己写「低于 40% 就算低」这类阈值：成本卡列表的色带由同一套阈值产出，
+//   两处各写一套就会出现「列表黄、影响面红」。
+const band = require('../../../utils/marginBand.js');
+const { marginDrift, BAND_CN } = require('../../../utils/marginAlert.js');
 
 // 🔴 R203：路由参数里的**中文名必须自行解码**。
 //   跳转侧（subpkg/biz/material/index.js::goImpact）用 encodeURIComponent 编过一次，
@@ -41,6 +46,7 @@ Page({
     material_id: '',
     material_name: '',
     affected: [],
+    summary: '',
     loading: true,
   },
 
@@ -66,21 +72,42 @@ Page({
         dry_run: true,
         client_request_id: 'mimp_' + Date.now(),
       });
-      const affected = (d.affected || []).map((a) => ({
-        card_code: a.card_code,
-        name: a.name || '',
-        price: a.price_fen > 0 ? api.fenToYuan(a.price_fen, 2) : '—',
-        old_cost: api.fenToYuan(a.old_total_cost_fen, 2),
-        new_cost: api.fenToYuan(a.new_total_cost_fen, 2),
-        old_margin: a.old_gross_margin_pct != null ? a.old_gross_margin_pct.toFixed(1) : '—',
-        new_margin: a.new_gross_margin_pct != null ? a.new_gross_margin_pct.toFixed(1) : '—',
-        margin_delta: (a.old_gross_margin_pct != null && a.new_gross_margin_pct != null)
-          ? (a.new_gross_margin_pct - a.old_gross_margin_pct).toFixed(1) : '—',
-        below_band: !!a.below_band,
-        band_floor: a.band_floor_pct != null ? a.band_floor_pct : 0,
-        band_hint: a.below_band ? TERMS.card.impactBelowBand(a.band_floor_pct) : '',
-      }));
-      this.setData({ affected, loading: false });
+      const rows = (d.affected || []).map((a) => {
+        const oldM = a.old_gross_margin_pct;
+        const newM = a.new_gross_margin_pct;
+        const drift = marginDrift(oldM, newM);
+        // 只在「真的变差」时给一行提示：升档/持平不出声（改价不总是坏事）
+        let driftTag = '';
+        if (drift.level === 'danger' && newM != null && newM < 0) driftTag = TERMS.card.impactDriftLoss;
+        else if (drift.crossedLow) driftTag = TERMS.card.impactDriftLow;
+        else if (drift.downgraded) driftTag = TERMS.card.impactDriftDown(BAND_CN[drift.oldBand], BAND_CN[drift.newBand]);
+        return {
+          card_code: a.card_code,
+          name: a.name || '',
+          price: a.price_fen > 0 ? api.fenToYuan(a.price_fen, 2) : '—',
+          old_cost: api.fenToYuan(a.old_total_cost_fen, 2),
+          new_cost: api.fenToYuan(a.new_total_cost_fen, 2),
+          old_margin: oldM != null ? oldM.toFixed(1) : '—',
+          new_margin: newM != null ? newM.toFixed(1) : '—',
+          margin_delta: (oldM != null && newM != null) ? (newM - oldM).toFixed(1) : '—',
+          below_band: !!a.below_band,
+          band_floor: a.band_floor_pct != null ? a.band_floor_pct : 0,
+          band_hint: a.below_band ? TERMS.card.impactBelowBand(a.band_floor_pct) : '',
+          drift_tag: driftTag,
+          // 颜色也取单源：新档位的色值（未定价灰）
+          drift_color: band.colorOf(newM),
+          drift_down: !!driftTag,
+          new_low: drift.newBand === band.KEYS.low,
+        };
+      });
+      // 汇总一行：降档几道、其中跌进低毛利几道（老板最想先看这两个数）
+      const downN = rows.filter((r) => r.drift_down).length;
+      const lowN = rows.filter((r) => r.drift_down && r.new_low).length;
+      this.setData({
+        affected: rows,
+        summary: downN > 0 ? TERMS.card.impactSummary(downN, lowN) : '',
+        loading: false,
+      });
     } catch (e) {
       this.setData({ loading: false });
       api.toastError(e);

@@ -1,5 +1,6 @@
 <view class="container safe-bottom" wx:if="{{!loading}}">
   <view class="hint" wx:if="{{material_name}}">{{material_name}} · {{t.impactTitle}}</view>
+  <view class="warn" wx:if="{{summary}}">{{summary}}</view>
 
   <view class="empty" wx:if="{{affected.length === 0}}">{{t.impactEmpty}}</view>
 
@@ -18,6 +19,7 @@
       <text class="val">{{item.old_margin}}% → {{item.new_margin}}%（{{item.margin_delta}}pp）</text>
     </view>
     <view class="warn" wx:if="{{item.below_band}}">{{item.band_hint}}</view>
+    <view class="muted" wx:if="{{item.drift_down}}" style="color:{{item.drift_color}};">{{item.drift_tag}}</view>
   </view>
 </view>
 <view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

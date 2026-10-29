@@ -3,7 +3,7 @@
 //
 // 🔴 本文件不只测「算得对」，还测**单源**：预警级别必须与 utils/marginBand.js 的档位一一对应，
 //   否则同一道菜会在成本卡列表（色带）和预警里显示不同颜色 —— 那正是 R298Y 修过的同族病。
-const { grossMarginPct, marginAlert, costDriftAlert, LEVEL_OF_BAND } = require('./marginAlert.js');
+const { grossMarginPct, marginAlert, marginDrift, costDriftAlert, isLossMaking, LEVEL_OF_BAND } = require('./marginAlert.js');
 const band = require('./marginBand.js');   // 单源：用于交叉核对，不在本文件写任何阈值
 
 let pass = 0, failN = 0;
@@ -96,6 +96,37 @@ check('与成本引擎真行为对拍：' + PAIRS.length + ' 组毛利率逐位�
 check('精度须为两位小数（1/7 类舍入不可被截成一位）', grossMarginPct(700, 300) === 57.14);
 check('未定价分叉是刻意的：引擎返回 0(哨兵)，本模块返回 null',
   engineMargin(0, 400).gross_margin_pct === 0 && grossMarginPct(0, 400) === null);
+
+// ===== 已知毛利率直接判（影响面页：云端引擎已算好，不重算）=====
+const m1 = marginDrift(60, 50); // 高→中
+check('已知毛利率漂移 60→50：降档但不进低毛利 → warn', m1.level === 'warn' && m1.downgraded === true && m1.crossedLow === false);
+const m2 = marginDrift(55, 38); // 中→低
+check('已知毛利率漂移 55→38：跌进低毛利 → danger + crossedLow', m2.level === 'danger' && m2.crossedLow === true);
+const m3 = marginDrift(null, 38); // 改前未定价
+check('改前未定价(旧卡无价) → level=none（不臆造降档）', m3.level === 'none' && m3.downgraded === false);
+const m4 = marginDrift(60, -5);
+check('改后亏本 → danger 且提示已亏本', m4.level === 'danger' && /亏本/.test(m4.msg));
+check('已知毛利率路径与成本路径同判（60→50 两处都是 warn）',
+  marginDrift(60, 50).level === costDriftAlert(1000, 400, 500).level);
+
+// ===== 亏本判定（列表页/详情页共用的单点）=====
+check('isLossMaking(-0.1) = true（负毛利＝亏本）', isLossMaking(-0.1) === true);
+check('isLossMaking(0) = false（保本不算亏）', isLossMaking(0) === false);
+check('isLossMaking(39) = false（低毛利≠亏本）', isLossMaking(39) === false);
+check('isLossMaking(null) = false（未定价不算亏）', isLossMaking(null) === false);
+
+// ===== 接线面：核心必须**真被页面使用**（否则又是「写完没人用」的死代码，本仓高频坑）=====
+//   ⚠️ 判据不能只 grep 词出现：页面注释里写着模块名也会命中（R299 的「被注释喂成恒真」）。
+//   ⇒ 认「真 require + 真调用」：require 路径必须出现在 require(...) 里，调用必须是带实参的实调用。
+const fs = require('fs');
+const path = require('path');
+const readSrc = (rel) => fs.readFileSync(path.join(__dirname, '..', rel), 'utf8');
+const impactSrc = readSrc('subpkg/tools/metrics/impact.js');
+const cardSrc = readSrc('subpkg/biz/card/index.js');
+check('接线：影响面页 require marginAlert 且真调用 marginDrift(oldM, newM)',
+  /require\([^)]*utils\/marginAlert\.js/.test(impactSrc) && /marginDrift\(oldM,\s*newM\)/.test(impactSrc));
+check('接线：成本卡列表 require marginAlert 且真调用 isLossMaking(c.margin)',
+  /require\([^)]*utils\/marginAlert\.js/.test(cardSrc) && /isLossMaking\(c\.margin\)/.test(cardSrc));
 
 console.log('\n==== 毛利/成本漂移预警核心自测：' + pass + ' 通过 / ' + failN + ' 失败 ====');
 process.exit(failN === 0 ? 0 : 1);

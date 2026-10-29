@@ -28,6 +28,8 @@ function costDriftText(c) {
   return String(tpl || '').replace('{p}', String(Math.abs(d)));
 }
 const band = require('../../../utils/marginBand.js');   // 🔴 R298Y：毛利色阶/区间**唯一单源**（数值 + 文案 + 色值）
+// 🔴 R564：亏本判定同样走单源 —— 页面不写 `margin < 0`（各处自己写迟早漂移，且「保本/未定价算不算亏」会各有各的答案）
+const { isLossMaking } = require('../../../utils/marginAlert.js');
 const dh = require('../../../utils/dataHealth.js');     // 🔴 R299：出参 `truncated` 的可见降级（单源）
 
 // 本店用过的菜品分类（本地字典，与 edit.js 同一 key；不新建集合 —— M3 v1.1 零新建集合红线）
@@ -140,6 +142,9 @@ Page({
     // R299：本店成本卡读取是否被服务端标记「已达读取上限」（截断 ⇒ 列表可能少卡，
     //   且因列表无排序「丢哪张随机」）。为 true ⇒ 顶部显示可见降级提示。见 utils/dataHealth.js。
     truncated: false,
+    // 🔴 R564：亏本卖的卡数 + 对应提示语（0 道 ⇒ 空串，不占位）
+    loseCount: 0,
+    loseWarn: '',
   },
 
   // R234/J4e：行内提示折叠开关（仓内统一形态 —— 多页同一实现，不各写一套）。
@@ -220,11 +225,19 @@ Page({
         low: priced.filter((c) => Number(c.margin) < band.MID).length,
         band: band.MID,
       };
-      this.setData({ all, categoryOptions, tagOptions, pinned, loading: false, truncated, shareFacts });
+      // 🔴 R564：亏本卖的道数 —— 未定价不算、保本(0%)不算亏。
+      //   为什么单独统计：色带只能表达「低毛利(<40%)」，而「亏本」(负毛利) 严重程度不同，
+      //   老板要先知道「有几道是卖一道亏一道」。
+      const loseN = all.filter((c) => isLossMaking(c.margin)).length;
+      this.setData({
+        all, categoryOptions, tagOptions, pinned, loading: false, truncated, shareFacts,
+        loseCount: loseN,
+        loseWarn: loseN > 0 ? TERMS.card.loseWarn(loseN) : '',
+      });
       this.applyFilter();
     } catch (e) {
       // 🔴 R395：分享取数跟着清 —— 否则「列表都没加载出来，分享还在报 N 道菜」
-      this.setData({ loading: false, shareFacts: null });
+      this.setData({ loading: false, shareFacts: null, loseCount: 0, loseWarn: '' });
       api.toastError(e);
     }
   },
