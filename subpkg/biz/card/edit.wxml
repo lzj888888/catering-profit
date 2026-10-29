@@ -71,6 +71,12 @@
     </picker>
     <text class="muted">{{t.catHint}}</text>
   </view>
+  <!-- 三司会诊裁定·燃气燃料分摊：仅高耗能品类（energyFen>0）可开；默认不进卡 -->
+  <view class="field" wx:if="{{!isEdit && cardType === '1' && energyFen > 0}}">
+    <text class="lbl">{{t.energyToggle}}</text>
+    <switch checked="{{energyOn}}" bindchange="onToggleEnergy" color="#1e3a5f"/>
+    <text class="muted">{{t.energyHint}}</text>
+  </view>
 
   <!-- 核算模式（仅单品）· 🔴 P0#7：新手模式默认收起，展开专业项才显示 -->
   <view class="field" wx:if="{{cardType === '1' && (inputMode === 'pro' || showMore)}}">
@@ -298,6 +304,7 @@
     <button class="btn-small" style="min-height:88rpx;margin-left:12rpx;" wx:if="{{reversePriceFen > 0}}" bindtap="applyReverse">{{t.reverseApply}}</button>
     <view class="muted" wx:if="{{reversePriceFen > 0}}">{{t.reverseResult}}：{{t.cur}}{{reverseResultPreview}}</view>
     <view class="muted" wx:if="{{previewCostFen > 0}}">{{t.totalCost}}：<text style="color:#1e3a5f;">{{t.cur}}{{previewCost}}</text></view>
+    <view class="muted" style="font-size:22rpx;margin-top:-4rpx;" wx:if="{{previewCostFen > 0}}">{{t.costNote}}</view>
   </view>
 
   <!-- 🔴 P0#7：新手模式「展开专业项」入口（点一下全部专业项都显示；切模式会重置） -->

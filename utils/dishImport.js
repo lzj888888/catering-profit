@@ -92,7 +92,7 @@ function buildDraftCard(line, catKey) {
       input_type: 2, material_name: CONDIMENT_NAME,
       qty: '1', qty_unit: '份', price_unit: '份',
       unit_price_yuan: (cat.condiment_fen / 100).toFixed(2),
-      yield_rate: '100', line_kind: 'condiment', isPreset: true,
+      yield_rate: '100', line_kind: 'main', isPreset: true,
     });
     for (const sl of (cat.sample_lines || [])) {
       lines.push({
@@ -118,11 +118,14 @@ function buildDraftCard(line, catKey) {
 //   橙 orange = 其余（有主材有售价，但仍含系统估默认值，待老板逐道变准）。
 function draftStatusOf(card) {
   const lines = (card && card.lines) || [];
-  const hasMain = lines.some((l) => (l.material_name || '') && (l.qty || '') && (l.line_kind || 'main') !== 'condiment');
+  // 三司会诊（2026-10-29）：调料行 line_kind 改为合法 'main'（规避引擎白名单硬拒），
+  //   故「是否调料行」改用 material_name 判定（与 buildDraftCard 同单源 CONDIMENT_NAME）。
+  const isCond = (l) => (l.material_name || '') === CONDIMENT_NAME;
+  const hasMain = lines.some((l) => (l.material_name || '') && (l.qty || '') && !isCond(l));
   const hasPrice = Number(card && card.priceYuan) > 0;
   if (!hasMain || !hasPrice) return 'red';
   if (!isEstimatedCard(lines)) {
-    const anyMainPriced = lines.some((l) => (l.line_kind || 'main') !== 'condiment' && Number(l.unit_price_yuan) > 0);
+    const anyMainPriced = lines.some((l) => !isCond(l) && Number(l.unit_price_yuan) > 0);
     if (anyMainPriced) return 'green';
   }
   return 'orange';

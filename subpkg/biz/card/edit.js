@@ -15,7 +15,7 @@ const AmountInput = require('../../../utils/amountInput.js');   // R426（队列
 const { openPaywall } = require('../../../utils/paywall.js');
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 const { TEMPLATES, applyTemplate } = require('../../../utils/dishTemplates.js');   // M3.20 菜品模板（只预填，不写库）
-const { CATEGORY_PRESETS, CONDIMENT_NAME } = require('../../../utils/categoryPresets.js');  // P0-2 品类默认模板（单源）
+const { CATEGORY_PRESETS, CONDIMENT_NAME, ENERGY_NAME } = require('../../../utils/categoryPresets.js');  // P0-2 品类默认模板（单源）
 const { isEstimatedCard } = require('../../../utils/cardEst.js');  // P0-3 估算卡判定（单源）
 const { calcGrouponOrder } = require('../../../utils/grouponDerive.js');            // M3.37 团购渠道层（纯计算，不落库）
 
@@ -77,6 +77,15 @@ function manualNetUnitWan(unitPriceYuan, yieldRate, priceUnit) {
   const y = units.yieldRateOf(yieldRate);
   if (!(p > 0) || y === null) return 0;
   return Math.round((p * 10000) / (y / 100));
+}
+
+// 组件类型 line_kind 白名单（与 cloudfunctions 各函数 common 模块的 LINE_KINDS 同源；服务端只认这 5 类，
+//   非法的「调料(含油盐酱醋)/燃气燃料分摊」等语义标签会被 saveCostCard/calcBom 硬拒）。
+//   ⚠️ 2026-10-29 修复：P0-2 把 condiment 行写成 `line_kind:'condiment'`，真实保存/试算会触发
+//   「明细行 line_kind 非法」——这里统一兜底成 'main'（单份成本计算与 line_kind 无关，只影响规格缩放）。
+function normalizeKind(k) {
+  const KINDS = ['main', 'aux', 'season', 'semi', 'pack'];
+  return (typeof k === 'string' && KINDS.indexOf(k) >= 0) ? k : 'main';
 }
 
 Page({
@@ -228,6 +237,10 @@ Page({
       loadMissingBody: TERMS.card.loadMissingBody,
       loadRetry: TERMS.card.loadRetry,
       loadBack: TERMS.card.loadBack,
+      // 三司会诊裁定（2026-10-29）：燃气燃料分摊开关文案 + 成本预览口径标注
+      energyToggle: TERMS.card.energyToggle,
+      energyHint: TERMS.card.energyHint,
+      costNote: TERMS.card.costNote,
     },
     // R234/J4f：行内长提示折叠（本页 1 处，默认收起）。仓内统一实现。
     hintFold: {},
@@ -309,6 +322,9 @@ Page({
     catPicked: -1,
     catYieldDefault: '',
     catLabel: '',
+    // P0-2×三司会诊：燃气燃料分摊是否计入（仅高耗能品类 cat.energy_fen>0 时可开）。默认不进卡。
+    energyOn: false,
+    energyFen: 0,
     // P0-3 估算卡：hasPreset=本卡是否仍含系统估行；estBanner=卡片级横幅文案（含品类名）
     hasPreset: false,
     estBanner: '',
@@ -584,7 +600,9 @@ Page({
     this.checkAmounts();
   },
 
-  // ===== P0-2 品类默认模板：选品类 → 预填出净率/损耗/调料油火/示例主料（均可改） =====
+  // ===== P0-2 品类默认模板 × 三司会诊裁定：选品类 → 预填出净率/损耗/调料(含油盐酱醋)/示例主料（均可改）=====
+  // 口径（2026-10-29）：火=燃气燃料费属期间费用，不进默认食材毛利率；故默认只带「调料(含油盐酱醋)」，
+  //   燃气燃料作可选折叠项（仅高耗能品类 cat.energy_fen>0 可开），默认不进卡。
   // 只给「行业默认估算」，不替老板定死：所有预填值用户都能改；出净率留空回退到品类默认（fail-closed）。
   onPickCategory(e) {
     const i = Number(e.detail.value);
@@ -596,15 +614,20 @@ Page({
     // ① 已有手工行若仍是出厂默认 100，套品类默认出净率
     lines = lines.map((l) => (l.input_type === 2 && (l.yield_rate === '100' || !l.yield_rate)
       ? Object.assign({}, l, { yield_rate: y }) : l));
-    // ② 调料油火（油盐酱醋+燃料合并项）：没有则追加一条手动行，预填默认每份单价，黄标可改
+    // ② 调料(含油盐酱醋)：没有则追加一条手动行，预填默认每份单价（line_kind='main'，规避引擎拒 line_kind）
     const hasCond = lines.some((l) => (l.material_name || '') === CONDIMENT_NAME);
     if (!hasCond) {
       lines.push(Object.assign(emptyManualLine(), {
         material_name: CONDIMENT_NAME,
         qty: '1', qty_unit: '份', price_unit: '份',
         unit_price_yuan: (cat.condiment_fen / 100).toFixed(2),
-        yield_rate: '100', line_kind: 'condiment', isPreset: true,
+        yield_rate: '100', line_kind: 'main', isPreset: true,
       }));
+    }
+    // ②b 燃气燃料分摊：默认不进卡。切到「无能源建议值」的品类时清掉残留燃料行（重选场景）
+    const energyFen = Number(cat.energy_fen) || 0;
+    if (energyFen <= 0) {
+      lines = lines.filter((l) => (l.material_name || '') !== ENERGY_NAME);
     }
     // ③ 空卡（首建）补示例主料（价格留空，黄标可改）
     if (wasEmpty && Array.isArray(cat.sample_lines)) {
@@ -620,12 +643,32 @@ Page({
       catYieldDefault: y,
       catLabel: cat.label,
       catPicked: i,
+      energyOn: false,           // 重选品类 ⇒ 复位开关（燃料默认不进卡）
+      energyFen,
       lines: renumber(lines),
       hasPreset: true,
       estBanner: TERMS.card.estCardBanner.replace('{cat}', cat.label),
     });
     this.refreshSpecHints();
     this.checkAmounts();
+  },
+  // ===== 三司会诊裁定·燃气燃料分摊开关：仅高耗能品类（energyFen>0）可开；开 ⇒ 追加燃料行，关 ⇒ 移除 =====
+  onToggleEnergy(e) {
+    const on = !!e.detail.value;
+    let lines = this.data.lines.slice();
+    const hasEnergy = lines.some((l) => (l.material_name || '') === ENERGY_NAME);
+    if (on && !hasEnergy && this.data.energyFen > 0) {
+      lines.push(Object.assign(emptyManualLine(), {
+        material_name: ENERGY_NAME,
+        qty: '1', qty_unit: '份', price_unit: '份',
+        unit_price_yuan: (this.data.energyFen / 100).toFixed(2),
+        yield_rate: '100', line_kind: 'main', isPreset: true,
+      }));
+    } else if (!on && hasEnergy) {
+      lines = lines.filter((l) => (l.material_name || '') !== ENERGY_NAME);
+    }
+    this.setData({ energyOn: on });
+    this.commitLines(lines);   // 重排 + 同步 hasPreset / 横幅
   },
   // 子卡选择（picker 按 index 取）
   onComboSubCard(e) {
@@ -1164,12 +1207,12 @@ Page({
         // 手工行：前端算净料单位成本（录入换算），反算与保存用同一值（单源）
         const wan = manualNetUnitWan(l.unit_price_yuan, l.yield_rate, l.price_unit);
         if (wan <= 0) continue;      // 🔴 R297：出成率越界已在 `badYieldOf` 前置拦下并提示，此处兜底
-        out.push({ quantity: qtyBase, net_unit_cost: wan, line_kind: l.line_kind || 'main' });
+        out.push({ quantity: qtyBase, net_unit_cost: wan, line_kind: normalizeKind(l.line_kind) });
       } else {
         if (!l.material_id) continue;
         const m = this.data.materials.find((x) => x.id === l.material_id);
         if (!m) continue;
-        out.push({ quantity: qtyBase, net_unit_cost: m.net_unit_cost, line_kind: l.line_kind || 'main' });
+        out.push({ quantity: qtyBase, net_unit_cost: m.net_unit_cost, line_kind: normalizeKind(l.line_kind) });
       }
     }
     if (out.length === 0) { wx.showToast({ title: TERMS.card.qty, icon: 'none' }); return null; }
@@ -1388,7 +1431,7 @@ Page({
         const qtyBase = units.toBase(l.qty, l.qty_unit);
         if (!(qtyBase > 0)) continue;
         // round150：组件类型随行上云（规格缩放的唯一依据）；缺省 main（服务端同样兜底）
-        const kind = l.line_kind || 'main';
+        const kind = normalizeKind(l.line_kind);
         if (l.input_type === 2) {
           const wan = manualNetUnitWan(l.unit_price_yuan, l.yield_rate, l.price_unit);
           if (wan <= 0) {

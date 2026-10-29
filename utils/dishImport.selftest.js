@@ -34,9 +34,9 @@ ok('无匹配 → null', matchCategory('神秘料理') === null);
 // 6) buildDraftCard：套模板 → 含调料油火 + 示例主料，isPreset=true，is_draft=true
 (() => {
   const c = buildDraftCard({ name: '宫保鸡丁', category: '热炒荤菜', priceYuan: 32 }, 'hot_meat');
-  const hasCond = c.lines.some((l) => l.material_name === '调料油火' && l.isPreset === true);
+  const hasCond = c.lines.some((l) => l.material_name === '调料(含油盐酱醋)' && l.isPreset === true);
   const hasSample = c.lines.some((l) => l.material_name === '猪肉' && l.isPreset === true);
-  ok('草稿卡含调料油火估行', hasCond);
+  ok('草稿卡含调料估行', hasCond);
   ok('草稿卡含示例主料估行', hasSample);
   ok('草稿卡标记 is_draft', c.is_draft === true && c.priceYuan === 32);
 })();
@@ -55,7 +55,7 @@ ok('无匹配 → null', matchCategory('神秘料理') === null);
   const orange = buildDraftCard({ name: '宫保鸡丁', category: '热炒荤菜', priceYuan: 32 }, 'hot_meat');
   ok('含估行 → orange', draftStatusOf(orange) === 'orange');
   // 绿：无估行且主材已填价
-  const green = { priceYuan: 32, lines: [{ material_name: '猪肉', qty: '150', unit_price_yuan: '20', line_kind: 'main' }, { material_name: '调料油火', qty: '1', unit_price_yuan: '0.8', line_kind: 'condiment' }] };
+  const green = { priceYuan: 32, lines: [{ material_name: '猪肉', qty: '150', unit_price_yuan: '20', line_kind: 'main' }, { material_name: '调料(含油盐酱醋)', qty: '1', unit_price_yuan: '0.5', line_kind: 'main' }] };
   ok('已核对 → green', draftStatusOf(green) === 'green');
 })();
 
