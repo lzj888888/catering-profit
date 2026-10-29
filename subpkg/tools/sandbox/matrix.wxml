@@ -155,8 +155,8 @@
       <view class="result-bar">
         <text class="count">{{t.count}}</text>
         <view class="view-tabs">
-          <view class="tab {{result.view==='detail'?'on':''}}" bindtap="onViewChange" data-view="detail">{{t.detail}}</view>
-          <view class="tab {{result.view==='pivot'?'on':''}}" bindtap="onViewChange" data-view="pivot">{{t.pivot}}</view>
+          <view class="tab {{view==='detail'?'on':''}}" bindtap="onViewChange" data-view="detail">{{t.detail}}</view>
+          <view class="tab {{view==='pivot'?'on':''}}" bindtap="onViewChange" data-view="pivot">{{t.pivot}}</view>
         </view>
       </view>
 
@@ -234,7 +234,7 @@
       </view>
 
       <!-- 明细表 -->
-      <block wx:if="{{result.view==='detail'}}">
+      <block wx:if="{{view==='detail'}}">
       <!-- 🔴 R357：分批中途失败 ⇒ 已算出的先给，并说清哪一段没算（不整表空白） -->
       <view class="partial-note" wx:if="{{result.partialText}}">{{result.partialText}}</view>
       <!-- 🔴 R378：14 列 × 200rpx ≈ 1400px，手机只能看到 2 列半 ⇒ 窄屏明说"可以横滑"。

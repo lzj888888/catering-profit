@@ -319,7 +319,11 @@ Page({
     //   而且**零报错**（R292 同族：数字不一致比算错更难发现）。
     otherPct: null,
     exporting: false,
-    result: null, // { rows:[], view, count, pivot }
+    // 🔴 R570：**视图选择提到页面级**。改前 view 存在 result 里，而每次算完 result 被整块回写
+    //   且 view 被硬编码成 'detail' ⇒ 老板切到「透视表」后，只要改一个数（触发重算）
+    //   视图就被打回明细表 ⇒ 真机观感「切不动 / 点了没反应」。
+    view: 'detail', // 'detail' 明细表 | 'pivot' 透视表
+    result: null, // { rows:[], count, pivot }
   },
 
   onLoad(options) {
@@ -1177,7 +1181,8 @@ Page({
       // 🔴 R297：云端拒掉的档位（rejected）**必须让人看见** —— 静默丢档 = 老板以为算过了。
       this.setData({
         loading: false,
-        result: { rows, view: 'detail', count: rows.length, pivot, insight, rejected, partialText },
+        // 🔴 R570：这里**故意不再带 view** —— 视图是用户的选择，不属于「一次计算的结果」。
+        result: { rows, count: rows.length, pivot, insight, rejected, partialText },
       });
       shown = true;
       // 🔴 R325：结果变了 ⇒ 反推的「每月固定支出」也变了，现金卡必须跟着重算（否则显示上一次的数）
@@ -1459,7 +1464,9 @@ Page({
 
   onViewChange(e) {
     const view = e.currentTarget.dataset.view;
-    if (this.data.result) this.setData({ 'result.view': view });
+    // 🔴 R570：不再依赖 result 存在、也不再写进 result（写进去就会被下一次回写冲掉）。
+    if (view !== 'detail' && view !== 'pivot') return;
+    this.setData({ view: view });
   },
 
   // ===== 导出 Excel（免费引流，G4）=====

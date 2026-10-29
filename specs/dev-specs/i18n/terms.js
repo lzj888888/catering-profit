@@ -1891,7 +1891,9 @@ const TERMS = {
     comboPickEmpty: '暂无可用子菜（先建单品菜品）',
     // 🔴 R443：菜品卡「批量粘贴配料」——老板手上是 Excel/微信里的配方，别逼他一格一格敲
     pasteTitle: '批量粘贴配料',
-    pasteHint: '从 Excel / 微信复制过来，一行一样：名称 + 数量 + 单位',
+    // 🔴 R570（李老师：「在那个空格长按就能粘贴嘛」）：控件本来就是 textarea（长按天然出粘贴、
+    //   maxlength=-1 不截断），但**没人知道可以这么干** ⇒ 提示里把动作讲明白。
+    pasteHint: '复制整段后长按这里选「粘贴」，一行一样：名称 + 数量 + 单位',
     pastePlaceholder: '鸡腿肉 200g\n土豆 100\n牛奶 2kg',
     pasteParseBtn: '识别',
     pasteImportBtn: '导入 {n} 行',

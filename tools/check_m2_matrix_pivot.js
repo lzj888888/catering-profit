@@ -43,8 +43,8 @@ if (!matrixSrc) {
   process.exit(1);
 }
 let buildPivot = null;
+const captured = {};   // 🔴 R570：D 段（视图选择）复用同一次加载
 try {
-  const captured = {};
   global.Page = (o) => { captured.obj = o; };
   require(MATRIX);          // 模块加载时调用 Page({...})，捕获页面对象
   buildPivot = captured.obj ? captured.obj.buildPivot : null;
@@ -115,6 +115,45 @@ check('C-① 矩阵 buildPivot 含 `Number(r.labor) === fixLaborVal`（锁 R534 
   const mutated = matrixSrc.replace(/Number\(r\.labor\) === fixLaborVal/g, 'true'); // 模拟删掉人工过滤条件
   check('C-② 变异：删掉 labor 过滤条件 ⇒ 锚点判 false（守卫能抓回退，非恒绿）',
     !mutated.includes('Number(r.labor) === fixLaborVal'));
+}
+
+// ============ D 视图选择不得被重算冲掉（R570 · 李老师真机「明细表/透视表点了没反应」）============
+// 真因：view 原先存在 result 里，而每次算完 result 被整块回写且 view 硬编码 'detail'
+//   ⇒ 老板切到透视表后，只要在透视表里改一个数（触发重算），视图就被打回明细表。
+//   修法＝视图是**用户的选择**，提到页面级 data.view，不属于「一次计算的结果」。
+sec('D · 视图选择不得被结果回写冲掉（R570 真机）');
+function newMatrixPage(obj) {
+  const p = Object.assign({}, obj);
+  p.data = JSON.parse(JSON.stringify(obj.data || {}));
+  p.setData = function (d) {
+    for (const k in d) {
+      if (k.indexOf('.') > 0) { const [a, b] = k.split('.'); this.data[a] = Object.assign({}, this.data[a], { [b]: d[k] }); }
+      else this.data[k] = d[k];
+    }
+  };
+  return p;
+}
+{
+  const pg = newMatrixPage(captured.obj);
+  check('D-① data 有页面级 view 且默认 detail', pg.data.view === 'detail', String(pg.data.view));
+  if (typeof pg.onViewChange === 'function') {
+    pg.onViewChange({ currentTarget: { dataset: { view: 'pivot' } } });
+    check('D-② 点「透视表」⇒ data.view=pivot', pg.data.view === 'pivot', String(pg.data.view));
+    // 模拟一次结果整块回写（现网写法：result 已不含 view）
+    pg.data.result = { rows: [{ a: 1 }], count: 1, pivot: {}, insight: null, rejected: 0, partialText: '' };
+    check('D-③ 结果整块回写后 view 仍是 pivot（不被打回 detail）', pg.data.view === 'pivot', String(pg.data.view));
+  } else { check('D-② 点「透视表」⇒ data.view=pivot', false, 'onViewChange 不是函数'); check('D-③ 结果回写后仍 pivot', false, 'onViewChange 不是函数'); }
+  // D-④ 只看**结果回写那一处**（`result: { rows, … }` 之后的一段），别把 data 里的 `view: 'detail'` 初值误判为硬编码。
+  //   用子串切片而不是正则：本仓多次吃过「正则里写反斜杠/大括号 ⇒ 语法或转义被改坏」的亏。
+  const atResult = matrixSrc.indexOf('result: { rows');
+  const resultSeg = atResult >= 0 ? matrixSrc.slice(atResult, atResult + 160) : '';
+  check('D-④ 结果回写处不再硬编码 view（防改回：它一回来就会把老板选的视图冲掉）',
+    atResult >= 0 && resultSeg.indexOf('view') < 0,
+    atResult < 0 ? '找不到 result 赋值锚点' : (resultSeg.indexOf('view') < 0 ? '零命中' : resultSeg.slice(0, 80)));
+  // D-⑤ 变异：把 onViewChange 改回写 'result.view' ⇒ D-③ 必须转红
+  const mut = matrixSrc.replace("this.setData({ view: view });", "this.setData({ 'result.view': view });");
+  check('D-⑤ 变异：写回 result.view ⇒ D-③ 应转红（守卫有分辨力）',
+    mut !== matrixSrc && /'result\.view'/.test(mut), mut === matrixSrc ? '变异未生效（锚点不在）' : '已变异');
 }
 
 // ============ E 自失效护栏（防"扫空 ⇒ 恒绿"）============
