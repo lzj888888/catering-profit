@@ -329,3 +329,8 @@
 
 /* R439：费率行「≈ 每月多少钱」—— 灰色小字但走 28rpx 底线；宽度不够时换行不挤掉输入框。 */
 .fee-amt { font-size: 30rpx; color: #646a73; margin-left: 12rpx; flex: 0 0 auto; }
+
+/* 🔴 R570：人效/坪效缺数态 —— 数值位显示「—」，整卡可点（点了去填预计月营业额）。
+   灰掉是刻意的：它表示「不是算不出来，是缺你一个数」，比整块消失诚实。 */
+.eff-need .val.muted { color: #9aa3af; }
+.eff-need .hint { color: #6b7280; }

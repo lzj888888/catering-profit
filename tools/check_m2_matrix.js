@@ -177,7 +177,13 @@ chk(/bands_version:\s*BANDS_VERSION/.test(calcIdx) && /out\.bands_version\s*=\s*
 chk(!/bindtap\s*=\s*"onCalc"/.test(idxWxmlS),
   'index.wxml 仍 `bindtap="onCalc"`（B11：事件对象恒真 ⇒ 每次点按钮整页重绘、丢滚动位置）');
 chk(/bindtap\s*=\s*"onCalcBtn"/.test(idxWxmlS), 'index.wxml 的【开始测算】未改走 onCalcBtn（B11）');
-chk(/onCalcBtn\s*\(\s*\)\s*\{\s*return this\.onCalc\(false\)/.test(idxJs), 'index.js 缺 onCalcBtn 包装（B11）');
+// 🔴 R570：改前钉的是「单行 `onCalcBtn() { return this.onCalc(false)`」这个**字面写法** ——
+//   R570 给它加了一句点击提示（函数体从 1 行变多行）⇒ 字面判据立刻判红，而**语义完全没变**。
+//   与 R297 同族教训：判据要钉语义（按钮这条路上必须显式传 false），不要钉排版。
+const atCalcBtn = idxJs.indexOf('onCalcBtn');
+const segCalcBtn = atCalcBtn >= 0 ? idxJs.slice(atCalcBtn, atCalcBtn + 320) : '';
+chk(atCalcBtn >= 0 && /onCalc\(\s*false\s*\)/.test(segCalcBtn),
+  'index.js 缺 onCalcBtn 包装（B11：按钮这条路必须显式传 false，不得把事件对象当 isFirst）');
 chk(/isFirst\s*===\s*true/.test(idxJs), 'index.js onCalc 未把 isFirst 收紧为 `=== true`（B11）');
 
 // --- B12：结果区锚点恰好一处 ---

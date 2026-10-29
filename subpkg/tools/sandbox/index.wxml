@@ -541,11 +541,19 @@
          分子 = 他填的**实际月营业额**（拿保本额当分子算的是"保本坪效"，不是他要的数）。
          🔴 都不挂行业区间：仓内 BANDS 没有坪效/人效，编不得分位数 ⇒ 只出数值，留给自家横比。
          fail-closed：营业额没填 ⇒ eff=null 整块不渲染；面积/人数缺哪个少哪行。 -->
-    <view class="card2" wx:if="{{mode === 'forward' && showMore && eff}}">
+    <!-- 🔴 R570（李老师真机：「人效/坪效没体现」）：改前要同时满足 showMore 展开 + 填过营业额**两个**条件才渲染，
+         老板根本遇不到。现在：有数就常驻显示（不再藏在折叠里）；没数也**留一张缺数卡**，
+         点了直接聚焦到「预计月营业额」——把「产品要我填」变成「我为了看坪效主动填」（豆包 R570 方案②）。 -->
+    <view class="card2" wx:if="{{mode === 'forward' && eff}}">
       <view class="sec">{{t.fwdEffTitle}}</view>
       <view class="cell" wx:if="{{eff.pixel}}"><text class="lbl">{{t.fwdPixelEffLbl}}</text><text class="val">{{t.cur}}{{eff.pixel}}{{t.fwdPixelEffUnit}}</text></view>
       <view class="cell" wx:if="{{eff.perHead}}"><text class="lbl">{{t.fwdPerHeadLbl}}</text><text class="val keynum">{{t.cur}}{{eff.perHead}}{{t.fwdPerHeadUnit}}</text></view>
       <view class="hint">{{t.fwdEffHint}}</view>
+    </view>
+    <view class="card2 eff-need" wx:elif="{{mode === 'forward'}}" bindtap="onGoExpectRev">
+      <view class="sec">{{t.fwdEffTitle}}</view>
+      <view class="cell"><text class="lbl">{{t.fwdPixelEffLbl}}</text><text class="val muted">{{t.fwdEffNeedRev}}</text></view>
+      <view class="cell"><text class="lbl">{{t.fwdPerHeadLbl}}</text><text class="val muted">{{t.fwdEffNeedRev}}</text></view>
     </view>
 
     <view class="card2 calc-basis" wx:if="{{result.valid_days}}">
@@ -613,7 +621,7 @@
     <view class="row">
       <text class="row-name">{{mode === 'reverse' ? t.expectRevLabelRev : t.expectRevLabel}}</text>
       <view class="row-in-wrap">
-        <input class="row-in" type="digit" placeholder="{{t.expectRevPh}}" value="{{expectYuan}}" bindinput="onExpect" adjust-position="{{true}}" cursor-spacing="20" />
+        <input class="row-in" type="digit" placeholder="{{t.expectRevPh}}" value="{{expectYuan}}" focus="{{expectFocus}}" bindinput="onExpect" adjust-position="{{true}}" cursor-spacing="20" />
         <text class="row-unit">元</text>
       </view>
     </view>

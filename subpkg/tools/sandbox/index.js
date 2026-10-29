@@ -175,6 +175,7 @@ Page({
       // 🔴 R547b：毛利率「从哪来」说明 —— **只有文字，没有按钮**（填表中间不能召唤跳走）。
       //   R545 那个「去建成本卡」按钮已撤：它打断填表闭环，且「建一张卡就自动算出来了」是假承诺。
       recalc: M.recalc,
+      recalcDone: M.recalcDone,
       marginSrcNote: M.marginSrcNote,
       // 🔴 R549：口径二选一
       marginScopeLabel: M.marginScopeLabel,
@@ -277,6 +278,7 @@ Page({
       // 🔴 round276 · A 区补齐 round223 §3.1 定案遗漏的「坪效 / 人效」（翻台已 round273 补）。
       fwdEffTitle: M.fwdEffTitle,
       fwdPixelEffLbl: M.fwdPixelEffLbl,
+      fwdEffNeedRev: M.fwdEffNeedRev,
       fwdPixelEffUnit: M.fwdPixelEffUnit,
       fwdPerHeadLbl: M.fwdPerHeadLbl,
       fwdPerHeadUnit: M.fwdPerHeadUnit,
@@ -445,6 +447,7 @@ Page({
     marginLowWarn: false,
     marginLowHintText: '',
     expectYuan: '',      // 预计月营业额（选填）—— 锚点：后端据此反算各项参考金额
+    expectFocus: false,  // 🔴 R570：缺数态点击后短暂聚焦「预计月营业额」（input 的 focus 需要 true→false 才会再触发）
     targetYuan: '',
     // 结果（全部来自后端）
     result: null,
@@ -1138,7 +1141,20 @@ Page({
    *   `bindtap="onCalc"` 会把**事件对象**当第一个实参 ⇒ isFirst 恒真 ⇒ 每次点按钮都整页 loading
    *   + 滚动位置丢失（round114 修过的病被按钮这条路重新引入）。⇒ 按钮走这里显式传 false。
    */
-  onCalcBtn() { return this.onCalc(false); },
+  // 🔴 R570（李老师真机：「重新测算」点不动）：它**真的会算**，但改数字 700ms 就自动重算过了，
+  //   所以点完数字不变、也没有 loading ⇒ 观感就是「点不动」。补一句 1 秒提示，让老板知道点到了。
+  onCalcBtn() {
+    wx.showToast({ title: this.data.t.recalcDone, icon: 'none', duration: 1000 });
+    return this.onCalc(false);
+  },
+
+  // 🔴 R570：人效/坪效缺数态的补填入口 —— 点了直接定位到「预计月营业额」输入框并聚焦。
+  //   为什么不用「滚到某个 id」：本页输入框在专业项区里，滚过去还要自己找格子；
+  //   聚焦是唯一能让老板「下一步就知道往哪敲」的动作。
+  onGoExpectRev() {
+    this.setData({ expectFocus: true });
+    setTimeout(() => { this.setData({ expectFocus: false }); }, 1200);   // 复位：否则 blur 后再次点击不再聚焦
+  },
 
   // 行业参考区间（round113）：key → 中文名 + "lo~hi%"。
   // round114：追加参考**金额**（amt）—— 用户填了"预计月营业额"后，每项旁边给出该量级下的
