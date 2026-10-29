@@ -371,7 +371,9 @@ Page({
     } catch (e) { return; }              // 读不到就当没预填（不打断新建流程）
     if (!d || !d.name) return;
     const p = DI.prefillOf(d);
-    if (!p.lines || !p.lines.length) return;   // 空草稿没内容可填，按没预填处理
+    // ⚠️ 不能因 `p.lines` 为空就整体放弃：品类未识别的菜**本来就没有示例主料**，
+    //   若这里 return，用户点「去补价」会落到一张连菜名/售价都没填的空表单（点了像没反应）。
+    //   空行交给 load() 的默认空行即可，菜名/售价照常带过去。
     this._draftPrefill = p;              // 交给 load() 在 setData(init) 之后应用
   },
 
@@ -386,7 +388,8 @@ Page({
       catPicked: catIdx,
       lossRate: p.lossRate,
     });
-    this.commitLines(p.lines);            // commitLines 负责补 idx 与单位下标、并刷新「含系统估行」横幅
+    // 有示例主料才覆盖明细行；没有（未识别品类）就保留 load() 给的那一行空行
+    if (p.lines && p.lines.length) this.commitLines(p.lines);
   },
 
   // 🔴 P0#7：新手/专业模式（与 M1 录入页同形）—— 本地记忆、按 shop 区分
