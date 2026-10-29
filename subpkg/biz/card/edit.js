@@ -653,8 +653,19 @@ Page({
     const cat = CATEGORY_PRESETS[i];
     if (!cat) return;
     const y = String(cat.yield_rate);
-    const wasEmpty = this.data.lines.length === 0;
-    let lines = this.data.lines.slice();
+    // 🔴 R568：判据从「行数为 0」改为「没有任何已填内容」。
+    //   改前 `lines.length === 0` 对新建页**恒假**——`load()` 初始化就塞了一行空原料行（emptyLine），
+    //   于是下面 ③「空卡补示例主料」整段成了死代码。实测（模拟器，2026-10-29）：
+    //   新建 → 选「热炒荤菜」只得到调料行 ⇒ 单份成本 ¥0.51、毛利率 **98.66%** ——
+    //   品类预填承诺的「示例主料」没进来，成本低估 ⇒ 一张看着很赚的**假数卡**。
+    //   判据取「空行」而非「行数」：出厂空行 = 没有 material_id、没有行名、没有用量。
+    const isBlankLine = (l) => !String((l && l.material_id) || '').trim()
+      && !String((l && l.material_name) || '').trim()
+      && !String((l && l.qty) || '').trim();
+    const wasEmpty = this.data.lines.length === 0 || this.data.lines.every(isBlankLine);
+    // 空卡 ⇒ 丢掉出厂空行再预填：否则用户看到「一行空原料行 + 调料行」，
+    // 空行虽被保存时跳过，但它会顶掉第一行的说明位（界面像"没预填上"）。
+    let lines = wasEmpty ? [] : this.data.lines.slice();
     // ① 已有手工行若仍是出厂默认 100，套品类默认出净率
     lines = lines.map((l) => (l.input_type === 2 && (l.yield_rate === '100' || !l.yield_rate)
       ? Object.assign({}, l, { yield_rate: y }) : l));

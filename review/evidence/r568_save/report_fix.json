@@ -1,0 +1,71 @@
+{
+  "at": "2026-10-29T16:20:48.955Z",
+  "checks": [
+    {
+      "id": "A1_LIST",
+      "pass": true,
+      "expect": "在列表页",
+      "actual": "subpkg/biz/card/index"
+    },
+    {
+      "id": "A2_EDIT",
+      "pass": true,
+      "expect": "进入新建编辑页",
+      "actual": "subpkg/biz/card/edit"
+    },
+    {
+      "id": "B1_SAMPLE_LINES",
+      "pass": true,
+      "expect": "选「热炒荤菜」应带出 3 行（调料+猪肉+青椒）",
+      "actual": "3 行: [\"调料(含油盐酱醋)|0.50|1|t2\",\"猪肉||150|t2\",\"青椒||100|t2\"]"
+    },
+    {
+      "id": "B2_NO_BLANK",
+      "pass": true,
+      "expect": "不再残留出厂空行",
+      "actual": "[\"调料(含油盐酱醋)|0.50|1|t2\",\"猪肉||150|t2\",\"青椒||100|t2\"]"
+    },
+    {
+      "id": "B3_HAS_PORK",
+      "pass": true,
+      "expect": "示例主料 猪肉/青椒 都在",
+      "actual": "[\"调料(含油盐酱醋)|0.50|1|t2\",\"猪肉||150|t2\",\"青椒||100|t2\"]"
+    },
+    {
+      "id": "C1_BLOCKED",
+      "pass": true,
+      "expect": "示例主料未补价 ⇒ 保存被「单价」拦住",
+      "actual": "{\"saved\":\"\",\"toasts\":[\"用量\",\"原料\",\"已保存\",\"单价\"]}"
+    },
+    {
+      "id": "D1_SAVED",
+      "pass": true,
+      "expect": "补价后保存成功",
+      "actual": "\"走查修复验证3624\""
+    },
+    {
+      "id": "E1_ROW",
+      "pass": true,
+      "expect": "列表出现新卡",
+      "actual": "{\"code\":\"cc_mvtr8vdmj2uz\",\"name\":\"走查修复验证3624\",\"gm\":90.45,\"cost\":\"3.63\",\"price\":3800}"
+    },
+    {
+      "id": "E2_COST",
+      "pass": true,
+      "expect": "成本 ≈ 3.63 元（示例主料真的进了卡）",
+      "actual": "3.63"
+    },
+    {
+      "id": "E3_GM",
+      "pass": true,
+      "expect": "毛利率回落到 ~90%（不再是 98.66% 的假数）",
+      "actual": 90.45
+    },
+    {
+      "id": "F1_CLEAN",
+      "pass": true,
+      "expect": "测试卡已删除",
+      "actual": "{\"shop_id\":\"shop_u_mu6j87t1a283_sc_1792852528523\",\"card_code\":\"cc_mvtr8vdmj2uz\",\"deleted\":true,\"versions\":1,\"client_request_id\":\"ccd_1793290848291\"}"
+    }
+  ]
+}
