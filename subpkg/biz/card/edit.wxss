@@ -1,9 +1,14 @@
 .val-input { text-align: right; font-size: 30rpx; width: 260rpx; }
 /* 菜品分类：自由输入 + 候选 chips。色值取 app.wxss 头注单源（墨蓝 #1e3a5f / 浅底 #e8eff7）；
    字号 28rpx = 新增字号下界（26rpx 必红）。 */
-.cat-input { width: 100%; box-sizing: border-box; text-align: left; font-size: 30rpx; padding: 14rpx 18rpx; background: #f3f7fb; border-radius: 10rpx; min-height: 88rpx; }
+.cat-input { width: 100%; box-sizing: border-box; text-align: left; font-size: 32rpx; padding: 16rpx 20rpx; background: #f3f7fb; border-radius: 12rpx; min-height: 88rpx; }
 .chip-row { display: flex; flex-wrap: wrap; margin-top: 12rpx; }
-.chip { font-size: 28rpx; padding: 10rpx 22rpx; margin: 0 12rpx 12rpx 0; border-radius: 24rpx; background: #e8eff7; color: #1e3a5f; }
+/* 🔴 R570（李老师真机：「chip 格子留得窄，数字显示不全」）：加 min-width 72rpx + 左右 padding 到 24rpx
+   + 固定行高 44rpx，并禁止内部折行（nowrap）⇒ 数字永远整块显示。
+   ⚠️ 豆包原建议字号 24rpx，本仓 **AD G1 下界是 28rpx** ⇒ 取 28，不跟。 */
+.chip { font-size: 28rpx; padding: 0 24rpx; min-width: 72rpx; line-height: 72rpx; white-space: nowrap;
+  margin: 0 16rpx 12rpx 0; border-radius: 24rpx; background: #e8eff7; color: #1e3a5f;
+  box-sizing: border-box; text-align: center; }
 .chip-on { background: #1e3a5f; color: #fff; }
 /* round149：明细行里的「买→用」换算说明（一行小字，避免把采购价当成净料价填） */
 .spec-hint { margin: 0 0 8rpx 4rpx; line-height: 1.5; }
@@ -35,8 +40,11 @@
 /* round153：明细行输入框补边框 —— 本页用 `.cell2`（不是 `.field`），拿不到 app.wxss 那条
    `.field input` 的边框/底色 ⇒ 改前所有输入框就是"右对齐的一行字"，跟纯文本没有区别
    （真机实测：老板找不到能下手的地方）。边框色沿用 app.wxss:29 的 #cfdae8，不另起一套。 */
-.cell2 .val-input { box-sizing: border-box; text-align: right; padding: 14rpx 18rpx;
-  min-height: 88rpx; border: 2rpx solid #cfdae8; border-radius: 10rpx; background: #fff; }
+/* 🔴 R570（李老师真机：「框大、字小、看着空」）：字号 30→32rpx、内边距 14→16rpx、圆角 10→12rpx、
+   边框色降到 #d9dce3（更浅 ⇒ 框看起来不那么"空旷"）。
+   ⚠️ 触控下界 88rpx、字号下界 28rpx（AD G1/G2）**只增不减**，本仓红线不动。 */
+.cell2 .val-input { box-sizing: border-box; text-align: right; padding: 16rpx 20rpx;
+  min-height: 88rpx; border: 2rpx solid #d9dce3; border-radius: 12rpx; background: #fff; font-size: 32rpx; }
 /* round153：单位格 —— 给"这一格是单位、不是数字的一部分"划出视觉边界。
    改前数字与单位紧挨着，实测被连读成「50 克」（老板以为自己在填数量）。
    手段：浅底 + 自身圆角 + 左侧留白，三者叠加，跟白底输入框自然分开。 */
