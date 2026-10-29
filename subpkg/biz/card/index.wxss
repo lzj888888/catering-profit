@@ -27,3 +27,12 @@
 .hint-fold-arrow { font-size: 28rpx; color: #1e3a5f; }
 .hint-fold-body { font-size: 28rpx; color: #4a5b70; line-height: 1.6; padding: 16rpx 20rpx;
   background: #f3f7fb; border-radius: 12rpx; margin: 0 0 12rpx; }
+
+/* ===== R566 · 亏本提示条可点态（全局 .warn-line 是静态黄条，这里补「已筛选」的激活色）=====
+ * 只改颜色与左侧色条，尺寸/内边距沿用全局 .warn-line ⇒ 切换时行高不跳。*/
+.warn-line-on { color: #fff; background: #b4532a; border-left-color: #b4532a; }
+
+/* ===== R566 · meta 行右侧两个文字链（批量导入 / 批量同步）=====
+ * 原来只有一个 link 时靠 .meta-row 的 space-between 分成两端；
+ * 加第二个后必须包一层 flex，否则两个 link 被推到两侧、中间空一大片。*/
+.meta-links { display: flex; align-items: center; flex: none; }

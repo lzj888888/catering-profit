@@ -100,6 +100,8 @@ Page({
       // R191：结果计数（筛选后必须回报「找到了多少」，否则看着像没数据）
       countPrefix: TERMS.card.countPrefix,
       countSuffix: TERMS.card.countSuffix,
+      // R566（P0-4）：批量导入入口（列表页 meta 行右侧文字链）
+      impEntry: TERMS.card.impEntry,
       // round156：列表排序/置顶
       pinOn: TERMS.card.pinOn,
       pinOff: TERMS.card.pinOff,
@@ -145,6 +147,10 @@ Page({
     // 🔴 R564：亏本卖的卡数 + 对应提示语（0 道 ⇒ 空串，不占位）
     loseCount: 0,
     loseWarn: '',
+    // 🔴 R566：把「有 N 道亏本」从静态提示变成**可点筛选**（提示不落到动作上等于没说）。
+    //   判定仍走 utils/marginAlert.js::isLossMaking 单源 —— 与 loseCount **同一口径**，
+    //   所以点进去必然是 N 张，不会出现「写着 3 道、筛出来 5 张」。
+    lossOnly: false,
   },
 
   // R234/J4e：行内提示折叠开关（仓内统一形态 —— 多页同一实现，不各写一套）。
@@ -160,7 +166,8 @@ Page({
   onShow() { this.load(); },
 
   async load() {
-    this.setData({ loading: true });
+    // R566：重载回默认视图（否则上次「只看亏本」会静默延续，老板以为卡丢了）
+    this.setData({ loading: true, lossOnly: false });
     try {
       await api.ensureShop();
       ui.setTitle(TERMS.card.listTitle);
@@ -259,6 +266,16 @@ Page({
     this.applyFilter();
   },
 
+  // 🔴 R566：点「有 N 道在亏本卖」⇒ 只看这 N 张；再点一次回全量。
+  //   为什么做成切换而不是跳新页：亏本卡本来就在本页列表里、筛出来即见，跳页反而多一步。
+  onToggleLossOnly() {
+    if (!(this.data.loseCount > 0)) return;   // 无亏本卡 ⇒ 提示条本就不显示，防误触
+    const next = !this.data.lossOnly;
+    const n = this.data.loseCount;
+    this.setData({ lossOnly: next, loseWarn: TERMS.card[next ? 'loseWarnOn' : 'loseWarn'](n) });
+    this.applyFilter();
+  },
+
   // 名称模糊 + 分类 + 标签 + 毛利率区间（「与」关系，统一在此过滤）
   applyFilter() {
     const kw = this.data.keyword.trim().toLowerCase();
@@ -275,6 +292,8 @@ Page({
       // 🔴 R298Y：区间判定与色带色阶**同源**（`utils/marginBand.js`）。
       //   改前这里写 `>= 30 / < 30`，而同页 `index.wxml:66` 色带写 `>= 40` ⇒ 两套口径并存。
       if (mf && mf !== 'all' && !band.matchBand(mf, c.margin)) return false;
+      // 🔴 R566：只看亏本 —— 与 loseCount 同用 isLossMaking，口径唯一 ⇒ 数量必然对得上。
+      if (this.data.lossOnly && !isLossMaking(c.margin)) return false;
       return true;
     });
     // round156：过滤完再排序（置顶在前 + 最近编辑在前），并给每条打 `pinned` 标记
@@ -503,6 +522,13 @@ Page({
     } catch (err) { wx.hideLoading(); api.toastError(err); }
     // ⚠️ 必须复位：否则一次网络失败就把同步按钮永久锁死，老板只能杀进程重进。
     finally { this.setData({ syncing: false }); }
+  },
+
+  // R566（P0-4）：批量导入入口。选择模式中点它会与多选状态打架（两个 state 同时生效），
+  //   故先退出选择模式再跳；导入页是独立页，返回后 onShow 会重新 load()。
+  goImport() {
+    if (this.data.selectMode) this.setData({ selectMode: false, selected: {} });
+    wx.navigateTo({ url: '/subpkg/biz/card/import' });
   },
 
   // 批量同步：进入选择模式 → 多选 → 执行

@@ -157,6 +157,23 @@ function convertQtyText(qtyText, fromUnit, toUnit) {
   return String(rounded);
 }
 
+/**
+ * 手工行 → **净料单位成本快照**（`net_unit_cost`，单位「万分之元」= ¥/基准单位 × 10000）。
+ *
+ * 公式：round( 单价元/基准单位 × 10000 ÷ (出成率/100) )
+ *   `priceToBase` 先把「6 元/斤」折成「0.012 元/克」，再除以出成率得净料成本。
+ *
+ * 🔴 单源（R566）：本函数原为 `subpkg/biz/card/edit.js::manualNetUnitWan` 私有实现，
+ *   批量导入页也要把草稿行换成同一快照 ⇒ 若不收归此处就会长出**第二份公式**。
+ *   出成率越界一律返回 0（由 `yieldRateOf` 判非法），调用方据此提示，**不静默按 100 算**。
+ */
+function netUnitWanOf(unitPriceYuan, yieldRate, priceUnit) {
+  const p = priceToBase(unitPriceYuan, priceUnit || BASE_UNIT);
+  const y = yieldRateOf(yieldRate);
+  if (!(p > 0) || y === null) return 0;
+  return Math.round((p * 10000) / (y / 100));
+}
+
 module.exports = {
   PURCHASE_UNITS,
   CONVERT_SUGGEST,
@@ -174,6 +191,8 @@ module.exports = {
   baseWordOf,
   isCrossFamily,
   priceToBase,
+  // R566：单价+出成率 → net_unit_cost 快照（万分之元）。编辑页与批量导入页共用。
+  netUnitWanOf,
   // R297：出成率归一（上界校验的唯一入口，防「填 150 ⇒ 成本被 ÷1.5 ⇒ 毛利虚高」）
   yieldRateOf,
 };

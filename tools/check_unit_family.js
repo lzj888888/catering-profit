@@ -494,9 +494,20 @@ if (rSl.ok) ok('L4 原料列表页 spec_line —— ' + rSl.why);
 else bad('L4 原料列表页 spec_line —— ' + rSl.why + (rSl.line ? '（' + rSl.line + '）' : ''));
 
 // ④ 手工行单价折算（纯函数判据，反恒真样本见 C4）
-const rPb = judgePriceBase(fnBody(CARDJS, 'manualNetUnitWan'));
-if (rPb.ok) ok('L4 手工行净料成本 —— ' + rPb.why);
-else bad('L4 手工行净料成本 —— ' + rPb.why);
+// 🔴 R566：公式已**收归** `utils/units.js::netUnitWanOf`（编辑页与批量导入页共用同一快照公式）。
+//   判据跟着**公式所在地**走：若仍去页面里找那份私有函数，公式一搬家就把正确实现判红；
+//   而真正的风险恰恰是「搬走后两份各写一套」⇒ 页面侧改为守「消费单源、无第二份实现」。
+const rPb = judgePriceBase(fnBody(UNITS_SRC, 'netUnitWanOf'));
+if (rPb.ok) ok('L4 手工行净料成本（单源 utils/units.js::netUnitWanOf）—— ' + rPb.why);
+else bad('L4 手工行净料成本（单源 utils/units.js::netUnitWanOf）—— ' + rPb.why);
+
+if (/function\s+manualNetUnitWan\s*\(/.test(CARDJS)) {
+  bad('L4 编辑页又自建了 manualNetUnitWan 私有实现（应直接用 units.netUnitWanOf）');
+} else if (!/netUnitWanOf/.test(CARDJS)) {
+  bad('L4 编辑页没有引用 units.netUnitWanOf（手工行净料成本没有单源）');
+} else {
+  ok('L4 编辑页消费单源 netUnitWanOf（无第二份公式）');
+}
 
 // ⑤ 手工行单价单位（字段 + handler + 枚举）
 if (!/price_unit/.test(CARDJS)) bad('L4 手工行没有 price_unit 字段（单价单位无处落）');
@@ -632,9 +643,10 @@ if (c5.ok) bad('C5 影子样本「页面自写族判据」被判绿 ⇒ 族表�
 else ok('C5 影子样本「页面自写族判据」被判红 —— ' + c5.why);
 
 // 解析器自带钉死样本（防"函数体切不出来 ⇒ 上面 L4 全是空跑"）
-const sampleBody = fnBody(CARDJS, 'manualNetUnitWan');
-if (!sampleBody || sampleBody.length < 40) bad('C6 函数体切分失效（fnBody 拿不到 manualNetUnitWan 主体）⇒ L4-④ 会是空跑');
-else ok('C6 函数体切分器自检通过（manualNetUnitWan 主体 ' + sampleBody.length + ' 字符）');
+// R566：样本改取公式新家（utils/units.js::netUnitWanOf）
+const sampleBody = fnBody(UNITS_SRC, 'netUnitWanOf');
+if (!sampleBody || sampleBody.length < 40) bad('C6 函数体切分失效（fnBody 拿不到 netUnitWanOf 主体）⇒ L4-④ 会是空跑');
+else ok('C6 函数体切分器自检通过（netUnitWanOf 主体 ' + sampleBody.length + ' 字符）');
 
 // ---- round152 反恒真：把坏样本喂给同一条判据 ⇒ 必须判红 ----
 const CHIPS_BAD = 'unitChipsOpen: true,';

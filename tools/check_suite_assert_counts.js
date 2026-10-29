@@ -109,7 +109,7 @@ const CASES = [
   // R151 扩面（round151）：单位池 / 计量族 / 单价单位守卫同批纳入 —— 它的 L3 单源自洽
   //   （两池逐项同源 / 倍率表全覆盖 / 族表全覆盖）与 C1~C6 反恒真正是「非恒真」的凭据；
   //   断言数不受守则「删掉一条影子 + 调低下界」就等于把守卫悄悄改小（判据仍全绿而证明力归零）。
-  { key: 'check_unit_family', rel: 'tools/check_unit_family.js' },     // 75 条（含 C1~C37 影子；round152 加 ⑩~⑬ 与 C7~C12；round153 加 ⑭~⑳ 与 C13~C23；round155 加 ㉑~㉕/整包口径 与 C24~C37）
+  { key: 'check_unit_family', rel: 'tools/check_unit_family.js' },     // 76 条（含 C1~C37 影子；round152 加 ⑩~⑬ 与 C7~C12；round153 加 ⑭~⑳ 与 C13~C23；round155 加 ㉑~㉕/整包口径 与 C24~C37；R566 公式收归 units.js 后加「编辑页消费单源、无第二份实现」1 条）
   { key: 'check_list_query_limit', rel: 'tools/check_list_query_limit.js' }, // 22 条（R154：L1~L5 + S1~S3 + C1~C7 反恒真含替身正负样本；R157 加 L6/L7 + C8~C11：listAll 必须真的分页取全 + 调用点不得回退 list）
   { key: 'check_list_ux', rel: 'tools/check_list_ux.js' },               // 37 条（R156：L1~L6 + S1~S3 + C1~C6；R298 扩面：L6 通用正则+全仓扫描+剥注释，L6b 渲染源，C4b~C4f 互证）
   { key: 'check_index_field_alignment', rel: 'tools/check_index_field_alignment.js' }, // 11 条（R157：L1 化石索引 + L2 锚点对齐 + L3 字段真在用 + S1~S3 + C1~C3 反恒真）

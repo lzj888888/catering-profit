@@ -76,6 +76,7 @@
         "month/result",
         "card/index",
         "card/edit",
+        "card/import",
         "card/version",
         "material/index",
         "material/edit",

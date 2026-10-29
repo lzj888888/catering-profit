@@ -36,13 +36,19 @@
   <!-- 结果计数：筛选后必须回报"找到了多少"，否则看着像没数据；批量同步降级为文字链 -->
   <view class="meta-row">
     <text class="muted">{{t.countPrefix}}{{list.length}}{{t.countSuffix}}</text>
-    <text class="link" wx:if="{{!selectMode}}" bindtap="onBatchSyncEnter">{{t.batchSync}}</text>
+    <view class="meta-links" wx:if="{{!selectMode}}">
+      <!-- R566（P0-4）：批量导入入口。放在这里而不是顶栏 —— 顶栏的「新增」是最高频动作，
+           导入是偶尔一次，不该抢它的视觉权重。 -->
+      <text class="link" bindtap="goImport">{{t.impEntry}}</text>
+      <text class="link" bindtap="onBatchSyncEnter">{{t.batchSync}}</text>
+    </view>
     <text class="link" wx:if="{{selectMode}}" bindtap="onBatchSyncCancel">{{t.cancel}}</text>
   </view>
 
   <!-- 🔴 R564：亏本卖的卡数。色带只能表达「低毛利(<40%)」，而负毛利是「卖一道亏一道」，
-       严重程度不同 ⇒ 单独一行点名。未定价与保本(0%)都不计入（见 utils/marginAlert.js::isLossMaking）。 -->
-  <view class="muted warn-line" wx:if="{{loseWarn}}">{{loseWarn}}</view>
+       严重程度不同 ⇒ 单独一行点名。未定价与保本(0%)都不计入（见 utils/marginAlert.js::isLossMaking）。
+       🔴 R566：这一行**可点** —— 点开只显示这些卡（提示不落到动作上等于没说）。 -->
+  <view class="warn-line {{lossOnly ? 'warn-line-on' : ''}}" wx:if="{{loseWarn}}" bindtap="onToggleLossOnly">{{loseWarn}}</view>
 
   <view wx:if="{{selectMode}}" class="batch-bar">
     <text class="muted">{{t.selectSync}}</text>

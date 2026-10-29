@@ -1,0 +1,52 @@
+<!-- subpkg/biz/card/import.wxml —— P0-4 批量导入（R566）
+     三条布局约束（本仓踩过的坑）：
+     ① 金额输入框不与按钮同父 —— 同父时按钮挤占宽度，窄屏下输入框只剩 180px（AD 门禁记录）。
+     ② WXML 表达式**不支持方法调用** ⇒ 所有带参文案（汇总、缺项原因）都在 import.js 里算好。
+     ③ 触控区 ≥88rpx、字号 ≥28rpx（AD-G1/G2）。 -->
+<view class="imp-page">
+
+  <view class="hint">{{t.intro}}</view>
+
+  <view class="card2">
+    <view class="card-title">{{t.pasteLabel}}</view>
+    <textarea class="imp-ta" value="{{text}}" bindinput="onInput"
+      placeholder="{{t.pastePh}}" placeholder-class="imp-ta-ph"
+      maxlength="-1" auto-height />
+    <view class="muted imp-tip">{{t.pasteHint}}</view>
+  </view>
+
+  <view class="btn primary" bindtap="onParse">{{t.parse}}</view>
+
+  <block wx:if="{{rows.length}}">
+    <view class="imp-summary">{{summaryText}}</view>
+
+    <!-- 🔴 这条不是免责声明，是产品口径：示例主料没有价，直接保存会算出 90%+ 的假毛利 -->
+    <view class="warn-line">{{t.noAuto}}</view>
+    <view class="muted imp-go-hint">{{t.goFillHint}}</view>
+
+    <view class="imp-item" wx:for="{{rows}}" wx:key="key">
+      <view class="imp-head">
+        <text class="imp-name">{{item.name}}</text>
+        <text class="imp-badge imp-badge-{{item.status}}">{{item.statusText}}</text>
+      </view>
+
+      <view class="imp-meta">
+        <picker range="{{catOptions}}" value="{{item.catIdx}}" data-idx="{{index}}" bindchange="onPickCat">
+          <view class="imp-cat {{item.catKey ? '' : 'imp-cat-none'}}">{{item.catLabel || t.catUnknown}}</view>
+        </picker>
+        <view class="imp-price">
+          <input class="imp-price-input" type="digit" value="{{item.price}}"
+            data-idx="{{index}}" bindinput="onPrice" bindblur="onPriceBlur"
+            placeholder="{{t.pricePh}}" />
+          <text class="imp-unit">元</text>
+        </view>
+      </view>
+
+      <view class="imp-reason" wx:if="{{item.reason}}">{{item.reason}}</view>
+
+      <view class="btn ghost btn-small imp-go" data-idx="{{index}}" bindtap="onGoFill">{{t.goFill}}</view>
+    </view>
+  </block>
+
+  <view class="imp-empty" wx:if="{{parsed && !rows.length}}">{{t.noRows}}</view>
+</view>

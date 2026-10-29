@@ -1,0 +1,43 @@
+/* subpkg/biz/card/import.wxss —— P0-4 批量导入（R566）
+ * 色沿用主色 #1e3a5f；三色徽标与成本卡列表的「绿/橙/红」同义（绿=已齐、橙=待补价、红=缺信息）。
+ * 字号 ≥28rpx、触控 ≥88rpx（AD-G1/G2）。 */
+.imp-page { padding: 16rpx 24rpx 40rpx; }
+
+.imp-ta { width: 100%; min-height: 220rpx; box-sizing: border-box;
+  font-size: 28rpx; line-height: 1.6; color: #1e3a5f;
+  background: #f7fafd; border: 2rpx solid #dde7f2; border-radius: 12rpx;
+  padding: 16rpx; margin-top: 8rpx; }
+.imp-ta-ph { color: #a8b6c8; font-size: 28rpx; }
+.imp-tip { margin-top: 12rpx; line-height: 1.6; }
+
+.imp-summary { font-size: 30rpx; font-weight: 600; color: #1e3a5f;
+  padding: 20rpx 4rpx 12rpx; }
+.imp-go-hint { margin: 4rpx 4rpx 16rpx; line-height: 1.6; }
+
+.imp-item { background: #fff; border-radius: 16rpx; padding: 20rpx; margin-bottom: 14rpx; }
+.imp-head { display: flex; align-items: center; justify-content: space-between; }
+.imp-name { font-size: 32rpx; font-weight: 600; color: #1e3a5f; flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.imp-badge { flex: none; font-size: 28rpx; border-radius: 8rpx; padding: 6rpx 14rpx; margin-left: 12rpx; }
+.imp-badge-green { color: #1f7a4d; background: #e6f6ec; }
+.imp-badge-orange { color: #92610a; background: #fdf3d8; }
+.imp-badge-red { color: #b3261e; background: #fdeceb; }
+
+.imp-meta { display: flex; align-items: center; justify-content: space-between;
+  margin-top: 14rpx; gap: 16rpx; }
+/* 分类选择器（左侧，可点区域 ≥88rpx 高） */
+.imp-cat { min-height: 88rpx; min-width: 240rpx; display: flex; align-items: center;
+  font-size: 28rpx; color: #1e3a5f; background: #eef4fb; border-radius: 10rpx;
+  padding: 0 16rpx; box-sizing: border-box; }
+.imp-cat-none { color: #b3261e; background: #fdeceb; }
+/* 售价（右侧，独立容器 ⇒ 不与按钮同父） */
+.imp-price { display: flex; align-items: center; flex: none; }
+.imp-price-input { width: 180rpx; height: 88rpx; box-sizing: border-box;
+  text-align: right; font-size: 30rpx; color: #1e3a5f;
+  background: #f7fafd; border: 2rpx solid #dde7f2; border-radius: 10rpx; padding: 0 12rpx; }
+.imp-unit { font-size: 28rpx; color: #6b7a90; margin-left: 8rpx; }
+
+.imp-reason { margin-top: 12rpx; font-size: 28rpx; color: #b3261e; line-height: 1.5; }
+.imp-go { margin-top: 16rpx; }
+
+.imp-empty { font-size: 28rpx; color: #6b7a90; text-align: center; padding: 60rpx 0; }

@@ -16,6 +16,9 @@ const { openPaywall } = require('../../../utils/paywall.js');
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 const { TEMPLATES, applyTemplate } = require('../../../utils/dishTemplates.js');   // M3.20 菜品模板（只预填，不写库）
 const { CATEGORY_PRESETS, CONDIMENT_NAME, ENERGY_NAME } = require('../../../utils/categoryPresets.js');  // P0-2 品类默认模板（单源）
+// 🔴 R566：批量导入草稿的映射与暂存键（单源）—— 本页只消费，不自己拼字段名/键名
+const DI = require('../../../utils/dishImport.js');
+const DRAFT_PREFILL_KEY = DI.DRAFT_PREFILL_KEY;
 const { isEstimatedCard } = require('../../../utils/cardEst.js');  // P0-3 估算卡判定（单源）
 const { calcGrouponOrder } = require('../../../utils/grouponDerive.js');            // M3.37 团购渠道层（纯计算，不落库）
 
@@ -72,12 +75,9 @@ function renumber(lines) {
 //   原 `Number(yieldRate) || 100` 只兜 0/NaN，**没有上界** ⇒ 老板填 150 ⇒ 成本被 ÷1.5
 //   ⇒ 毛利虚高，且**零报错**（云端只收 net_unit_cost 快照，那条 (0,100] 校验永远走不到）。
 //   现在：非法/越界 ⇒ `yieldRateOf` 返回 null ⇒ 本函数返回 0 ⇒ 调用方**响亮提示**（不静默编数）。
-function manualNetUnitWan(unitPriceYuan, yieldRate, priceUnit) {
-  const p = units.priceToBase(unitPriceYuan, priceUnit || units.BASE_UNIT);
-  const y = units.yieldRateOf(yieldRate);
-  if (!(p > 0) || y === null) return 0;
-  return Math.round((p * 10000) / (y / 100));
-}
+// 🔴 R566：本函数**已收归** `utils/units.js::netUnitWanOf` —— 批量导入页也要把草稿行换成同一快照，
+//   若留在页面里就会长出第二份公式（成本口径分叉最贵）。此处只保留别名，调用点不动。
+const manualNetUnitWan = units.netUnitWanOf;
 
 // 组件类型 line_kind 白名单（与 cloudfunctions 各函数 common 模块的 LINE_KINDS 同源；服务端只认这 5 类，
 //   非法的「调料(含油盐酱醋)/燃气燃料分摊」等语义标签会被 saveCostCard/calcBom 硬拒）。
@@ -349,9 +349,44 @@ Page({
     //   ⚠️ 只在**新建**时生效：编辑态下面 load() 会用卡里的名字回填，预填不该覆盖它。
     const prefillName = (q && q.dish_name) ? decodeURIComponent(q.dish_name) : '';
     if (prefillName && !((q && q.card_code) || '').length) this.setData({ name: prefillName });
+    // 🔴 R566（P0-4 UI）：批量导入页点「去补价」⇒ 整张草稿预填进来。
+    //   传参走本地暂存而不是 URL：草稿含几十行动态字段，URL 有长度上限且中文要逐层编码。
+    //   ⚠️ 只在新建态生效（编辑态 load() 要用卡里的真实数据回填，不能被草稿盖掉）。
+    if (!this.data.isEdit && q && q.from_draft) this.loadDraftPrefill();
     // 🔴 P0#7：读本地记的专业/新手偏好（按 shop 区分；换设备回默认 novice）
     this.setData({ inputMode: this.loadInputMode() || 'novice' });
     this.load();
+  },
+
+  // 🔴 R566：消费导入页暂存的草稿（**读完即删** —— 否则下次手动新建也会被这张草稿污染）。
+  //   映射全部走 utils/dishImport.js::prefillOf（单源），本页只负责 setData 与 commitLines。
+  //   ⚠️⚠️ 本函数只**读取暂存**、不 setData：必须等 `load()` 跑完再落。
+  //     新建态 `load()` 有 `if (!init.lines.length) init.lines = renumber([emptyLine()])`，
+  //     若在 onLoad 里先 commitLines，那行会把整张草图**覆盖成单个空行**（一行不报错、界面看着"没预填上"）。
+  loadDraftPrefill() {
+    let d = null;
+    try {
+      d = wx.getStorageSync(DRAFT_PREFILL_KEY);
+      wx.removeStorageSync(DRAFT_PREFILL_KEY);
+    } catch (e) { return; }              // 读不到就当没预填（不打断新建流程）
+    if (!d || !d.name) return;
+    const p = DI.prefillOf(d);
+    if (!p.lines || !p.lines.length) return;   // 空草稿没内容可填，按没预填处理
+    this._draftPrefill = p;              // 交给 load() 在 setData(init) 之后应用
+  },
+
+  // load() 完成 setData(init) 后调用（此时 materials 已就位，commitLines 的换算说明才算得出来）
+  applyDraftPrefill(p) {
+    const catIdx = p.catKey ? CATEGORY_PRESETS.findIndex((c) => c.key === p.catKey) : -1;
+    this.setData({
+      name: p.name,
+      priceYuan: p.priceYuan,
+      category: p.category,
+      catLabel: p.catLabel,
+      catPicked: catIdx,
+      lossRate: p.lossRate,
+    });
+    this.commitLines(p.lines);            // commitLines 负责补 idx 与单位下标、并刷新「含系统估行」横幅
   },
 
   // 🔴 P0#7：新手/专业模式（与 M1 录入页同形）—— 本地记忆、按 shop 区分
@@ -531,6 +566,12 @@ Page({
       init.catChips = this.buildCatChips(init.category);
       this.setData(init);
       if (init.cardType === '3') this.refreshComboStale();
+      // 🔴 R566：导入草稿在此落盘（必须在 init 之后 —— 见 loadDraftPrefill 的覆盖坑说明）
+      if (this._draftPrefill) {
+        const p = this._draftPrefill;
+        this._draftPrefill = null;
+        this.applyDraftPrefill(p);
+      }
       // 明细行的原料换算说明（须在 setData(materials) 之后算，否则找不到原料）
       this.refreshSpecHints();
       // round156：从原料选择页返回时原料表还没到 ⇒ 在此补做（见 onShow 的 _pendingPick）。
