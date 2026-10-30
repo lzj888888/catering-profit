@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：220 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：221 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -966,6 +966,9 @@ const SUITES = [
   // R194：manageShop 云函数自测（店铺增 / 改名 / 删除三 op）—— R67（check_selftest_shape）
   //   与 check_suite_coverage 的 S5 做「树内 selftest.js ↔ SUITES」双向差集，漏挂即判红（整文件静默不跑）。
   ['manageShop 自测', 'cloudfunctions/manageShop/selftest.js'],
+  // R571：建店选业态「真送出去了」行为守卫 —— 页面桩真跑 switch.js 生产源码，
+  //   截获 wx.cloud.callFunction 的真实载荷断言 biz_type 在场（防「写到了 ≠ 送出去了」R298Y 同族）。
+  ['shop-create-biztype', 'tools/check_shop_create_biztype.js'],
   // R200：底部 tabBar 守卫 —— 根因＝R199 落地了底部三入口 tabBar，但**全仓零机器判据守它**：
   //   ① 结构层：R44（check_pages.js）虽把 tabBar.list 的 pagePath 并入 declared，
   //     但**只查文件在不在，不查 list 少两项 / pagePath 不在 pages / 图标缺文件 / 路径重复**；
