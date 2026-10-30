@@ -46,6 +46,9 @@ const MARGIN_OPTIONS = [
   { value: 'high', label: band.LABEL.high },
   { value: 'mid', label: band.LABEL.mid },
   { value: 'low', label: band.LABEL.low },
+  // 🔴 R570-H：未定价档。改前这一档不存在 ⇒ `margin=null` 的卡只能混在「全部」里，
+  //   老板问「我还差几道没弄完」时无路可走（李老师「100 多道菜，从哪儿看已建好的卡」）。
+  { value: band.KEYS.none, label: band.LABEL.none },
 ];
 
 Page({
@@ -151,6 +154,9 @@ Page({
     //   判定仍走 utils/marginAlert.js::isLossMaking 单源 —— 与 loseCount **同一口径**，
     //   所以点进去必然是 N 张，不会出现「写着 3 道、筛出来 5 张」。
     lossOnly: false,
+    // 🔴 R570-H：未定价卡数 + 提示条文案（文案在 applyFilter 里算，理由见那处注释）
+    unpricedCount: 0,
+    unpricedWarn: '',
   },
 
   // R234/J4e：行内提示折叠开关（仓内统一形态 —— 多页同一实现，不各写一套）。
@@ -167,7 +173,7 @@ Page({
 
   async load() {
     // R566：重载回默认视图（否则上次「只看亏本」会静默延续，老板以为卡丢了）
-    this.setData({ loading: true, lossOnly: false });
+    this.setData({ loading: true, lossOnly: false, unpricedWarn: '' });
     try {
       await api.ensureShop();
       ui.setTitle(TERMS.card.listTitle);
@@ -226,7 +232,9 @@ Page({
       // 🔴 R395：分享取数 —— **只统计已定价的卡**（未定价 `margin=null`）。
       //   把未定价算进分母 ⇒ 标题会说「12 道菜里 5 道毛利低」，而其中几道根本没定价（假结论）。
       //   档位线取 `marginBand.MID`（单源），不在本页再写一个 40。
-      const priced = all.filter((c) => c.margin !== null && c.margin !== undefined);
+      // 🔴 R570-H：判据改走单源 `bandOf`（改前写 `margin !== null && !== undefined`，
+      //   等于在本页再定义一次「什么算已定价」；顺带把 NaN 也排除掉 —— 那不是有效毛利）。
+      const priced = all.filter((c) => band.bandOf(c.margin) !== band.KEYS.none);
       const shareFacts = {
         priced: priced.length,
         low: priced.filter((c) => Number(c.margin) < band.MID).length,
@@ -236,15 +244,19 @@ Page({
       //   为什么单独统计：色带只能表达「低毛利(<40%)」，而「亏本」(负毛利) 严重程度不同，
       //   老板要先知道「有几道是卖一道亏一道」。
       const loseN = all.filter((c) => isLossMaking(c.margin)).length;
+      // 🔴 R570-H：未定价 = 算不出毛利（售价或成本缺一样）。判据走单源 `bandOf`，
+      //   本页**不写** `margin === null`（那等于在页面里再定义一次"什么算未定价"）。
+      const unpricedN = all.filter((c) => band.bandOf(c.margin) === band.KEYS.none).length;
       this.setData({
         all, categoryOptions, tagOptions, pinned, loading: false, truncated, shareFacts,
         loseCount: loseN,
         loseWarn: loseN > 0 ? TERMS.card.loseWarn(loseN) : '',
+        unpricedCount: unpricedN,
       });
       this.applyFilter();
     } catch (e) {
       // 🔴 R395：分享取数跟着清 —— 否则「列表都没加载出来，分享还在报 N 道菜」
-      this.setData({ loading: false, shareFacts: null, loseCount: 0, loseWarn: '' });
+      this.setData({ loading: false, shareFacts: null, loseCount: 0, loseWarn: '', unpricedCount: 0, unpricedWarn: '' });
       api.toastError(e);
     }
   },
@@ -276,6 +288,15 @@ Page({
     this.applyFilter();
   },
 
+  // 🔴 R570-H：点「还有 N 道没填价」⇒ 直接把毛利率筛选切到「未定价」档。
+  //   为什么复用筛选档、不另做开关：两个入口表达同一件事、却各存一份状态 ⇒ 迟早出现
+  //   「提示条说 3 道、列表筛出 5 张」。这里样式与状态都只有一个来源。
+  onShowUnpriced() {
+    if (!(this.data.unpricedCount > 0)) return;   // 没有未定价卡 ⇒ 提示条本就不显示，防误触
+    this.setData({ marginFilter: band.KEYS.none, marginLabel: band.LABEL.none });
+    this.applyFilter();
+  },
+
   // 名称模糊 + 分类 + 标签 + 毛利率区间（「与」关系，统一在此过滤）
   applyFilter() {
     const kw = this.data.keyword.trim().toLowerCase();
@@ -300,7 +321,12 @@ Page({
     //   ⚠️ 标记必须在这里打：WXML 表达式**不支持方法调用**（写 `pinned.indexOf(...)` 是无效的）。
     const pins = this.data.pinned || [];
     const marked = list.map((c) => Object.assign({}, c, { pinned: pins.indexOf(c.card_code) >= 0 }));
-    this.setData({ list: this.sortList(marked) });
+    // 🔴 R570-H：未定价提示条只在「确有未定价卡 且 当前不是未定价档」时出现 ——
+    //   已经在只看未定价了还说「点此只看这些」是废话。
+    const unpricedN = this.data.unpricedCount;
+    const unpricedWarn = (unpricedN > 0 && this.data.marginFilter !== band.KEYS.none)
+      ? TERMS.card.unpricedWarn(unpricedN) : '';
+    this.setData({ list: this.sortList(marked), unpricedWarn });
   },
 
   // round156：列表排序 —— ① 置顶的在前（顺序 = 老板点选先后）② 其余「最近编辑在前」。

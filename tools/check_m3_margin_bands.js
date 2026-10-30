@@ -87,6 +87,10 @@ if (!band) {
     ['matchBand(mid,null)=false（未定价三档永不命中）', band.matchBand('mid', null) === false],
     ['matchBand(all,35)=true', band.matchBand('all', 35) === true],
     ['matchBand(\'\',35)=true（空 = 不筛）', band.matchBand('', 35) === true],
+    // 🔴 R570-H：未定价档（改前 `margin=null` 三档一个都不命中、也无提示 ⇒ 老板"还差几道"无解）
+    ['matchBand(none,null)=true（未定价必须能单独筛出来）', band.matchBand('none', null) === true],
+    ['matchBand(none,50)=false（未定价档不得吞掉已定价的卡）', band.matchBand('none', 50) === false],
+    ['LABEL.none === 未定价', band.LABEL.none === '未定价'],
     ['colorOf(35)=#e74c3c（35 必须红）', band.colorOf(35) === '#e74c3c'],
     ['colorOf(45)=#b45309', band.colorOf(45) === '#b45309'],
     ['colorOf(65)=#22a06b', band.colorOf(65) === '#22a06b'],
@@ -129,6 +133,17 @@ ok('⑤-c 正样本：index.js 用 band.matchBand', /band\.matchBand\(/.test(idx
 ok('⑤-d 正样本：index.js 用 band.LABEL', /band\.LABEL\./.test(idxJs));
 ok('⑤-e 正样本：index.wxml 用 item.margin_color', /item\.margin_color/.test(idxWxml));
 ok('⑤-f 正样本：index.js 产出 margin_color', /margin_color\s*:/.test(idxJs));
+// 🔴 R570-H：单源新增了「未定价」档 ⇒ 页面必须真挂进下拉、提示条必须真绑动作。
+//   判据按 **MARGIN_OPTIONS 代码块**取（不钉整行字面量）：块内出现 KEYS.none + LABEL.none 即可，
+//   换个行/调顺序都不至于假红（R297 家族：钉字面量会把正确实现判红）。
+(() => {
+  const m = idxJs.match(/const MARGIN_OPTIONS = \[([\s\S]*?)\];/);
+  const blk = m ? m[1] : '';
+  ok('⑤-g 未定价档进了下拉（MARGIN_OPTIONS 块内含 KEYS.none + LABEL.none）',
+    blk.indexOf('band.KEYS.none') >= 0 && blk.indexOf('band.LABEL.none') >= 0, blk ? '块长 ' + blk.length : '块未找到');
+  ok('⑤-h 提示条真绑了动作（写了 onShowUnpriced ≠ 点得到）',
+    /onShowUnpriced\s*\(/.test(idxJs) && idxWxml.indexOf('bindtap="onShowUnpriced"') >= 0);
+})();
 
 // ============ ④ terms.js 双副本的键定义不得回流 ============
 const TERMS_COPIES = ['miniprogram/i18n/terms.js', 'specs/dev-specs/i18n/terms.js'];

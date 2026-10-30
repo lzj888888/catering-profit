@@ -50,6 +50,11 @@
        🔴 R566：这一行**可点** —— 点开只显示这些卡（提示不落到动作上等于没说）。 -->
   <view class="warn-line {{lossOnly ? 'warn-line-on' : ''}}" wx:if="{{loseWarn}}" bindtap="onToggleLossOnly">{{loseWarn}}</view>
 
+  <!-- 🔴 R570-H（李老师「100 多道菜…从哪儿看已建好的卡」）：未定价的卡算不出毛利，
+       改前在三个毛利档里**一个都不命中**，也没有任何提示 ⇒ 「还差几道没弄完」无解。
+       这一行既是答案、也是入口（点一下把筛选切到「未定价」，与下拉选同一状态，不另存一份）。 -->
+  <view class="warn-line" wx:if="{{unpricedWarn}}" bindtap="onShowUnpriced">{{unpricedWarn}}</view>
+
   <view wx:if="{{selectMode}}" class="batch-bar">
     <text class="muted">{{t.selectSync}}</text>
     <button class="btn-small" bindtap="onBatchSyncRun">{{t.batchSync}}</button>

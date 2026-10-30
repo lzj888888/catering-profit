@@ -37,6 +37,10 @@ const LABEL = {
   high: '高（≥' + HIGH + '%）',
   mid: '中（' + MID + '%~' + HIGH + '%）',
   low: '低（<' + MID + '%）',
+  // 🔴 R570-H（李老师「100 多道菜…从哪儿去看已经建好的成本卡」）：
+  //   未定价 = `margin` 为 null（还没填售价 / 还没填成本）⇒ 色带灰、三档都不命中，
+  //   于是**筛不出来**。老板「建到哪儿了 / 哪些还没弄完」只有这个筛法能回答 ⇒ 补一档。
+  none: '未定价',
 };
 
 // 毛利率 → 档位键。未定价（null/undefined/非有限数）⇒ 'none'（灰）
@@ -52,11 +56,14 @@ function bandOf(margin) {
 // 毛利率 → 色值（未定价 ⇒ 灰）
 function colorOf(margin) { return COLOR[bandOf(margin)]; }
 
-// 筛选命中判定：key='all'/空 ⇒ 恒真；未定价 ⇒ 三档**永不命中**（与改前 `c.margin !== null` 语义一致）
+// 筛选命中判定：key='all'/空 ⇒ 恒真；未定价 ⇒ **只有 'none' 档命中**，三档一律不命中。
+// 🔴 R570-H 改了这一行：改前是「未定价三档永不命中」（对它自己也不命中）⇒ 未定价的卡
+//   只能混在「全部」里，且没有任何办法把它们单独捞出来。现在 key='none' 是显式档位。
+//   ⚠️ 语义仍保留：`matchBand('mid'|'high'|'low', null)` **必须 false**（守卫 R298Y ② 钉着这条）。
 function matchBand(key, margin) {
   if (!key || key === KEYS.all) return true;
   const b = bandOf(margin);
-  if (b === KEYS.none) return false;
+  if (b === KEYS.none) return key === KEYS.none;
   return b === key;
 }
 
