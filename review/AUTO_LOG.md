@@ -1169,3 +1169,13 @@
   - (2) 未做（待拍板）：矩阵页 `matrix.wxss` 仍是 28rpx —— 它是 14 列横滑表，放大需重排列宽/字号分级，属另一件事；需要的话单开一轮。
   - (3) 守卫无一处被放宽：AD-G1 只设下限（≥28），本轮是**上调**；`check_hint_fold` C1/C2 同样只判下限，实测报 30rpx。
   - (4) 出码（R527）：`review/evidence/r527_qr/qr.png`（46,605 B · 470x470）；main 272.1 KB / TOTAL 775.0 KB（字号放大版）。
+
+### R572 · #21 syncCostCard 内容级幂等（同内容不建版本）
+
+- [2026-10-31 01:39] R572 已落：`syncContentEqual` 纯函数 + INSERT 前 6.5 闸；前端消费 `unchanged`；commit `8654f3c`
+  - (1) 判据：卡级 `total_cost` + 行级 9 字段（material_id/material_name/quantity/net_unit_cost/line_type/input_type/group_name/sub_card_ref/sub_version），数值 1e-6 容差
+  - (2) 刻意不比 `line_net_cost`（由 quantity×net_unit_cost 派生）、不比 loss/aux/price（从最新版透传 ⇒ 同步不可能改）；`sub_version` 必须比（锁版本语义）
+  - (3) 变异 1/1：去掉 `sub_version` 比较 ⇒ **恰 1 条红在「子卡升版」断言**，还原后 9/9（证明判据不是恒真）
+  - (4) 计数同步：POC2 合计 131→136；`13_上线前查缺补漏` syncCostCard 4/4→9/9（`check_fn_selftest_counts` 13/13）
+  - (5) 出码：**无**（本次只改 js + terms，未动 wxml/wxss）
+  - (6) 已部署：`syncCostCard` → `status=Active` / `timeout=20` / `Nodejs16.13`；`_deploy_r572.log` success=true · 22 文件 · 65.9 KB（机器回读，非自述）
