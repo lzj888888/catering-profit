@@ -30,6 +30,7 @@ Page({
       pasteLabel: TERMS.card.impPasteLabel,
       pastePh: TERMS.card.impPastePh,
       pasteHint: TERMS.card.impPasteHint,
+      clipBtn: TERMS.card.impClipBtn,
       parse: TERMS.card.impParse,
       noAuto: TERMS.card.impNoAuto,
       goFill: TERMS.card.impGoFill,
@@ -50,9 +51,33 @@ Page({
   onInput(e) { this.setData({ text: e.detail.value }); },
 
   // ===== 解析 =====
-  onParse() {
+  // 🔴 R570-G：单击读系统剪贴板。为什么不是「教老板长按」——长按弹出的系统菜单是原生 UI，
+  //   自动化点不到、也不是每台安卓机都稳定出得来；一个自带按钮既稳又能被门禁验证。
+  //   三条口径：① 读不到必须说人话（不许静默失败）；② 已有内容**追加**不覆盖（老板可能手改过）；
+  //   ③ 贴完直接出三色预览（少一次点击，也避免「贴了没反应」的错觉）。
+  onPasteClip() {
+    if (typeof wx.getClipboardData !== 'function') {
+      wx.showToast({ title: TERMS.card.impClipFail, icon: 'none' });
+      return;
+    }
+    wx.getClipboardData({
+      success: (res) => {
+        const clip = String((res && res.data) || '').trim();
+        if (!clip) { wx.showToast({ title: TERMS.card.impClipEmpty, icon: 'none' }); return; }
+        const old = String(this.data.text || '').replace(/\s+$/, '');
+        const next = old ? (old + '\n' + clip) : clip;
+        this.setData({ text: next });
+        this.onParse(next);
+      },
+      fail: () => { wx.showToast({ title: TERMS.card.impClipFail, icon: 'none' }); },
+    });
+  },
+
+  onParse(text) {
+    // text 可选：剪贴板贴完直接把新文本递进来，避免依赖 setData 之后 this.data 的时序。
+    const src = (typeof text === 'string') ? text : String(this.data.text || '');
     // 保留原始行用于「千分位」提示：parseDishLines 会跳过空行，索引对不上 ⇒ 这里自己逐行走。
-    const raws = String(this.data.text || '').split('\n')
+    const raws = src.split('\n')
       .map((s) => s.replace(/\r/g, ''))
       .filter((s) => s.trim());
     const rows = [];

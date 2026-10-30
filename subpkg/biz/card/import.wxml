@@ -12,6 +12,12 @@
     <textarea class="imp-ta" value="{{text}}" bindinput="onInput"
       placeholder="{{t.pastePh}}" placeholder-class="imp-ta-ph"
       maxlength="-1" auto-height />
+    <!-- 🔴 R570-G：长按菜单是系统原生 UI（自动化点不到、机型差异大）⇒ 给一个单击入口。
+         约束校验：不与金额 input 同父（本页金额框在下方 .imp-price 内，独立的 .imp-price-input）；
+         触控高度走 .btn-small 的 min-height:88rpx，字号 28rpx，均满足 AD-G1/G2。 -->
+    <view class="imp-clip-row">
+      <view class="btn ghost btn-small imp-clip" bindtap="onPasteClip">{{t.clipBtn}}</view>
+    </view>
     <view class="muted imp-tip">{{t.pasteHint}}</view>
   </view>
 

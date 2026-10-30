@@ -9,6 +9,10 @@
   padding: 16rpx; margin-top: 8rpx; }
 .imp-ta-ph { color: #a8b6c8; font-size: 28rpx; }
 .imp-tip { margin-top: 12rpx; line-height: 1.6; }
+/* 🔴 R570-G：只占内容宽度（块级 .btn 会长到满宽 ⇒ 看起来像「主操作」，把解析按钮比下去）；
+   margin-top 清零是因为 .btn 自带 24rpx，叠加后与输入框离得太远。 */
+.imp-clip-row { display: flex; margin-top: 16rpx; }
+.imp-clip-row .imp-clip { flex: 0 0 auto; margin-top: 0; min-width: 280rpx; }
 
 .imp-summary { font-size: 30rpx; font-weight: 600; color: #1e3a5f;
   padding: 20rpx 4rpx 12rpx; }

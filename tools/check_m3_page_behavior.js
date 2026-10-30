@@ -15,11 +15,13 @@
 //   · 本套件 = **行为**面（页面源码真 require + 真调 onPickCategory，看 setData 真正送出什么）。
 //   ⚠️ 抄一份循环出来测会掩盖「页面根本没接上」（R298Y 教训：**读到了 ≠ 送出去了**）。
 //
-// 判据（A 空卡 / B 已有真行 / C 全品类 / D 变异回灌 / S 自失效）：
+// 判据（A 空卡 / B 已有真行 / C 全品类 / D 变异回灌 / G 导入页剪贴板 / S 自失效）：
 //   A 空卡（只有出厂空行）⇒ 必须带出示例主料（猪肉/青椒）+ 调料，且**不留出厂空行**
 //   B 已有真行再选品类 ⇒ 示例主料**不得重复追加**，原有行保留
 //   C 11 个品类逐一 ⇒ 每个都至少带出 1 条非调料示例行（防「换个品类又漏」）
 //   D 变异：把判据改回 `lines.length === 0` ⇒ A-①/② 必须转红（否则本守卫是假绿）
+//   G 导入页「从剪贴板粘贴」（R570-G）：绑定在场 / 有内容就填并自动出预览 / 已有内容**追加不覆盖** /
+//     剪贴板空与读失败都要说人话 / API 缺失不崩 / 变异回灌（改成覆盖式必须转红）
 //   S 自失效护栏：页面源码可达 / onPickCategory 在场 / 品类单源非空 / A 组样本确有区分力
 //
 // fail-closed：源码缺失 / 捕获不到 Page 配置 / 变异不转红 ⇒ 一律判红，绝不静默跳过。
@@ -63,17 +65,19 @@ function makeStubs() {
   return { getCfg: () => cfg, toasts };
 }
 
-/** 用给定的源码文本加载页面（正常态 = 原文件；变异态 = 替换后的文本） */
-function loadPage(srcText, tag) {
+/** 用给定的源码文本加载页面（正常态 = 原文件；变异态 = 替换后的文本）
+ *  file 必填时指向另一个页面（R570-G 用它测 subpkg/biz/card/import.js）；不传则默认编辑页。 */
+function loadPage(srcText, tag, file) {
+  const target = file || EDIT;
   const stubs = makeStubs();
-  const dir = path.dirname(EDIT);
+  const dir = path.dirname(target);
   const fakeRequire = (p) => {
     const abs = /^[./]/.test(String(p)) ? path.resolve(dir, p) : String(p);
     return require(abs);
   };
   const mod = { exports: {} };
   new Function('module', 'exports', 'require', '__dirname', '__filename', srcText)(
-    mod, mod.exports, fakeRequire, dir, EDIT
+    mod, mod.exports, fakeRequire, dir, target
   );
   const cfg = stubs.getCfg();
   if (!cfg) throw new Error(tag + '：捕获不到 Page 配置');
@@ -185,6 +189,89 @@ const mutNames = namesOf(mutLines);
 check('D-② 变异后 A-② 判据确实转红（示例主料不再出现 ⇒ 本守卫有分辨力）',
   !(mutNames.indexOf('猪肉') >= 0 && mutNames.indexOf('青椒') >= 0),
   '变异体行数 ' + (mutLines ? mutLines.length : 'null') + '：' + mutNames.join(' / '));
+
+// ============ G 导入页「从剪贴板粘贴」（R570-G）============
+// 为什么守这一层：长按弹系统菜单是**原生 UI**，自动化点不到、机型差异大；若只教长按，
+// 「能不能贴」这件事永远无法被门禁证明。所以产品改成单击按钮，行为面就必须有人守。
+console.log('\n===== G 导入页剪贴板：能贴 / 追加不覆盖 / 读不到要说人话 =====');
+const IMPORT = path.join(ROOT, 'subpkg', 'biz', 'card', 'import.js');
+const IMPORT_WXML = path.join(ROOT, 'subpkg', 'biz', 'card', 'import.wxml');
+let impSrc = '';
+try { impSrc = fs.readFileSync(IMPORT, 'utf8'); } catch (e) { /* G-⑧ 会红 */ }
+let impWxml = '';
+try { impWxml = fs.readFileSync(IMPORT_WXML, 'utf8'); } catch (e) { /* G-① 会红 */ }
+
+// 桩：makeStubs 不提供 getClipboardData ⇒ 默认就是「API 缺失」；每个场景前按需装一个。
+// 🔴 必须在**调用前**装/卸，不能写在回调体里 delete（那样页面已判过 typeof 为 function，
+//    表现为「静默什么都不做」，正是本条要防的失败形态）。
+function installClip(mode, data) {
+  if (mode === 'missing') { global.wx.getClipboardData = undefined; return; }
+  global.wx.getClipboardData = (o) => {
+    if (mode === 'fail') { o && o.fail && o.fail({ errMsg: 'getClipboardData:fail' }); return; }
+    o && o.success && o.success({ data: data });
+  };
+}
+function runClip(srcText, initText, mode, data) {
+  const env = loadPage(srcText, '导入页', IMPORT);
+  installClip(mode, data);
+  const pg = newPage(env.cfg, null);
+  pg.data.text = initText;
+  pg.data.rows = [];
+  pg.data.parsed = false;
+  pg.onPasteClip();
+  return { page: pg, toasts: env.toasts };
+}
+
+let impBase = null;
+try { impBase = loadPage(impSrc, '导入页', IMPORT); } catch (e) { /* G-⑧ 会红 */ }
+check('G-⑧ 导入页源码可加载且 onPasteClip 在场',
+  !!impSrc && !!(impBase && typeof impBase.cfg.onPasteClip === 'function'));
+
+check('G-① 已绑到 wxml（写了函数 ≠ 点得到）',
+  impWxml.indexOf('bindtap="onPasteClip"') >= 0 && impWxml.indexOf('t.clipBtn') >= 0,
+  'bindtap=' + (impWxml.indexOf('bindtap="onPasteClip"') >= 0) + ' clipBtn=' + (impWxml.indexOf('t.clipBtn') >= 0));
+
+let g2 = null;
+try { g2 = runClip(impSrc, '', 'ok', '鱼香肉丝 热炒荤菜 38\n凉拌黄瓜 凉拌 16\n'); } catch (e) { /* G-② 会红 */ }
+check('G-② 空输入 + 剪贴板两行 ⇒ 填入并自动出预览',
+  !!g2 && g2.page.data.text.indexOf('鱼香肉丝') >= 0 && (g2.page.data.rows || []).length === 2,
+  g2 ? JSON.stringify(g2.page.data.text) + ' rows=' + (g2.page.data.rows || []).length : 'null');
+
+let g3 = null;
+try { g3 = runClip(impSrc, '宫保鸡丁 热炒荤菜 32', 'ok', '干锅花菜 热炒素菜 22'); } catch (e) { /* G-③ 会红 */ }
+check('G-③ 已有内容 ⇒ 追加不覆盖（原菜名必须还在）',
+  !!g3 && g3.page.data.text.indexOf('宫保鸡丁') >= 0 && g3.page.data.text.indexOf('干锅花菜') >= 0,
+  g3 ? JSON.stringify(g3.page.data.text) : 'null');
+check('G-④ 追加后是两行（没粘成一行）',
+  !!g3 && g3.page.data.text.split('\n').filter((x) => x.trim()).length === 2,
+  g3 ? JSON.stringify(g3.page.data.text) : 'null');
+
+let g5 = null;
+try { g5 = runClip(impSrc, '原文本', 'ok', '   '); } catch (e) { /* G-⑤ 会红 */ }
+check('G-⑤ 剪贴板空 ⇒ 说人话且不动原文',
+  !!g5 && g5.toasts.some((t) => String(t).indexOf('没有文字') >= 0) && g5.page.data.text === '原文本',
+  g5 ? JSON.stringify(g5.toasts) + ' text=' + JSON.stringify(g5.page.data.text) : 'null');
+
+let g6 = null;
+try { g6 = runClip(impSrc, '', 'fail', ''); } catch (e) { /* G-⑥ 会红 */ }
+check('G-⑥ 读失败 ⇒ 不静默（有提示）',
+  !!g6 && g6.toasts.some((t) => String(t).indexOf('读不到剪贴板') >= 0),
+  g6 ? JSON.stringify(g6.toasts) : 'null');
+
+let g7 = null;
+try { g7 = runClip(impSrc, '', 'missing', ''); } catch (e) { /* G-⑦ 会红 */ }
+check('G-⑦ API 缺失 ⇒ 不崩且同一句人话',
+  !!g7 && g7.toasts.some((t) => String(t).indexOf('读不到剪贴板') >= 0),
+  g7 ? JSON.stringify(g7.toasts) : 'null');
+
+// 变异回灌：把「追加」改成「覆盖」⇒ G-③ 必须转红
+const MUT_CLIP = "const next = old ? (old + '\\n' + clip) : clip;";
+check('G-⑨ 变异锚点在源码中（判据原文可定位）', impSrc.indexOf(MUT_CLIP) >= 0);
+let g9 = null;
+try { g9 = runClip(impSrc.replace(MUT_CLIP, 'const next = clip;'), '宫保鸡丁 热炒荤菜 32', 'ok', '干锅花菜 热炒素菜 22'); } catch (e) { /* G-⑩ 会红 */ }
+check('G-⑩ 变异回灌：改成覆盖式 ⇒ G-③ 判据确实转红（本守卫有分辨力）',
+  !(g9 && g9.page.data.text.indexOf('宫保鸡丁') >= 0),
+  g9 ? JSON.stringify(g9.page.data.text) : 'null');
 
 const failCount = bad.length;
 console.log('\n===== M3 成本卡编辑页行为守卫结果：' + pass + ' 通过 / ' + failCount + ' 失败 =====');
