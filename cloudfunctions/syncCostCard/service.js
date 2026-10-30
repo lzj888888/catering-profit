@@ -104,4 +104,44 @@ function cardParamFromDoc(doc) {
   };
 }
 
-module.exports = { netUnitCostWan, rebuildSnapshotLines, calcCostCard, cardParamFromDoc, ERROR_CODES };
+/**
+ * #21（2026-10-31）内容级幂等：判断「这次同步算出来的内容，与最新版本是否逐行相同」。
+ *
+ * 为什么需要：R408 只挡得住**本页面**的重复点击（`syncing` 标志 + 幂等键），挡不住
+ *   旧版客户端 / 越权直调 / 脚本 —— 这些来源每调一次都会 INSERT 一个新版本（版本号连跳、
+ *   内容完全重复）。真正的兜底只能由服务端自己判「内容没变就别建版本」。
+ *
+ * 判据（只比会写进新版本的字段，不比 `_id` / `sort_order` / 时间戳）：
+ *   - 卡级：`total_cost`（整数分，成本变了必然要出新版本）
+ *   - 行级：material_id / material_name / quantity / net_unit_cost /
+ *           line_type / input_type / group_name / sub_card_ref / sub_version
+ *   - 数值用 1e-6 容差（`0.1+0.2` 类浮点噪声不该造出新版本）
+ *
+ * ⚠️ `sub_version` 必须比：子卡升版但成本恰好没变时，套餐仍要记下新版本号（锁版本语义）。
+ * ⚠️ 不比 `line_net_cost`：它由 quantity × net_unit_cost 派生，前两项相同则它必然相同。
+ *
+ * @returns {boolean} true = 与最新版内容完全相同（不必新建版本）
+ */
+function syncContentEqual(latestCard, existingLines, newLines, result) {
+  if (!latestCard || !result) return false;
+  if (Number(latestCard.total_cost || 0) !== Number(result.unit_cost_fen || 0)) return false;
+  if (!Array.isArray(existingLines) || !Array.isArray(newLines)) return false;
+  if (existingLines.length !== newLines.length) return false;
+  const eqNum = (a, b) => Math.abs((Number(a) || 0) - (Number(b) || 0)) < 1e-6;
+  for (let i = 0; i < existingLines.length; i++) {
+    const a = existingLines[i] || {};
+    const b = newLines[i] || {};
+    if (String(a.material_id || '') !== String(b.material_id || '')) return false;
+    if (String(a.material_name || '') !== String(b.material_name || '')) return false;
+    if (!eqNum(a.quantity, b.quantity)) return false;
+    if (!eqNum(a.net_unit_cost, b.net_unit_cost)) return false;
+    if (Number(a.line_type || 1) !== Number(b.line_type || 1)) return false;
+    if (Number(a.input_type || 1) !== Number(b.input_type || 1)) return false;
+    if (String(a.group_name || '') !== String(b.group_name || '')) return false;
+    if (String(a.sub_card_ref || '') !== String(b.sub_card_ref || '')) return false;
+    if (!eqNum(a.sub_version, b.sub_version)) return false;
+  }
+  return true;
+}
+
+module.exports = { netUnitCostWan, rebuildSnapshotLines, calcCostCard, cardParamFromDoc, ERROR_CODES, syncContentEqual };

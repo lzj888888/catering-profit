@@ -17,7 +17,7 @@ const { ERROR_CODES, ok, fail } = common;
 const { makeAdapter } = common.dataAdapter;
 const { nowUtc } = common.utilTime;
 const { buildComboLines, judgeComboRef } = common.comboDerive;   // M3.16 套餐（派生层单源）
-const { rebuildSnapshotLines, calcCostCard, cardParamFromDoc } = require('./service');
+const { rebuildSnapshotLines, calcCostCard, cardParamFromDoc, syncContentEqual } = require('./service');
 const { validateInput } = require('./validate');
 
 // 🔒 R213 写限流（批次 0 §2.2.5 · openid 维度 60 次/分钟）
@@ -278,6 +278,49 @@ exports.main = async (event) => {
     // R81：引擎对非法 mode 抛 INVALID_PARAM（透传为响亮失败），其余按系统错误兜底
     if (e && e.code) return fail(e.code, e.msg || e.message);
     return fail(ERROR_CODES.SYSTEM_ERROR, (e && e.message) || '成本计算失败');
+  }
+
+  // ===== 6.5 内容级幂等（#21，2026-10-31）=====
+  // 为什么放在这里：`result` 已算完（成本是「内容是否相同」的权威判据），但**还没 INSERT**。
+  //   与 §2 的幂等键是两道不同的闸：
+  //     ① 幂等键（client_request_id）挡「同一次请求被重投」；
+  //     ② 本闸挡「不同请求、同一内容」——旧版客户端 / 越权直调 / 脚本点两次，键都不一样，
+  //        但内容完全一样 ⇒ 原先会连建两个版本（版本号连跳、数据重复）。
+  //   ⇒ 内容相同就**不落库**，直接把现有版本回给前端（带 `unchanged` 标记，让老板看见"没白点"）。
+  if (syncContentEqual(latestCard, existingLines, newLines, result)) {
+    const unchangedOut = {
+      shop_id: shopId,
+      card_code: cardCode,
+      new_version: latestCard.version || 0,
+      old_version: latestCard.version || 0,
+      unchanged: true,                      // 🔴 前端据此提示「与现有版本一致，未新建版本」
+      total_cost_fen: result.unit_cost_fen,
+      material_total_fen: result.material_total_fen,
+      gross_profit_fen: result.gross_profit_fen,
+      gross_margin_pct: result.gross_margin_pct,
+      reverse_price_fen: result.reverse_price_fen,
+      lines: existingLines.map((l) => ({
+        material_id: l.material_id,
+        net_unit_cost: l.net_unit_cost,
+        line_net_cost_fen: l.line_net_cost != null ? l.line_net_cost : 0,
+      })),
+      virtual_material_id: null,             // 没有新版本 ⇒ 虚拟原料也无需回写
+      client_request_id: clientRequestId || '',
+    };
+    // 幂等登记照写（同一 client_request_id 重试时直接回这条，不重复算）
+    if (clientRequestId) {
+      try {
+        await common.audit.writeAudit(db, {
+          action: 'SYNC_COST_CARD',
+          operator_type: 'user',
+          operator_id: userId,
+          shop_id: shopId,
+          after_data: unchangedOut,
+          idempotency_key: common.idempotency.shopKey(shopId, clientRequestId),
+        });
+      } catch (e) { /* 审计失败不阻断主流程 */ }
+    }
+    return ok(unchangedOut);
   }
 
   // ===== 7. 计算新版本号（该 card_code 最大版本 + 1）=====

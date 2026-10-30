@@ -541,9 +541,12 @@ Page({
     const cc = e.currentTarget.dataset.code;
     try {
       wx.showLoading({ title: TERMS.card.syncIng, mask: true });
-      await api.call('syncCostCard', { card_code: cc, client_request_id: 'ccs_' + Date.now() });
+      const r = await api.call('syncCostCard', { card_code: cc, client_request_id: 'ccs_' + Date.now() });
       wx.hideLoading();
-      wx.showToast({ title: TERMS.card.syncDone, icon: 'success' });
+      // #21（2026-10-31）：服务端内容级幂等 —— 成本/明细都没变时不建新版本，回 `unchanged`。
+      //   这里必须显式说一句，否则"版本号没涨"会被老板当成没生效。
+      if (r && r.unchanged) wx.showToast({ title: TERMS.card.syncNoChange, icon: 'none' });
+      else wx.showToast({ title: TERMS.card.syncDone, icon: 'success' });
       this.load();
     } catch (err) { wx.hideLoading(); api.toastError(err); }
     // ⚠️ 必须复位：否则一次网络失败就把同步按钮永久锁死，老板只能杀进程重进。
@@ -584,11 +587,15 @@ Page({
         this.setData({ syncing: true });
         wx.showLoading({ title: TERMS.card.syncIng, mask: true });
         try {
+          let unchanged = 0;
           for (const cc of codes) {
-            await api.call('syncCostCard', { card_code: cc, client_request_id: 'ccb_' + cc + '_' + Date.now() });
+            const r = await api.call('syncCostCard', { card_code: cc, client_request_id: 'ccb_' + cc + '_' + Date.now() });
+            if (r && r.unchanged) unchanged++;
           }
           wx.hideLoading();
-          wx.showToast({ title: TERMS.card.syncDone, icon: 'success' });
+          // #21：全部都没变化才说"未新建版本"；只要有一张真建了新版本，仍报"已生成新版本"（列表刷新即见）
+          if (codes.length > 0 && unchanged === codes.length) wx.showToast({ title: TERMS.card.syncNoChange, icon: 'none' });
+          else wx.showToast({ title: TERMS.card.syncDone, icon: 'success' });
           this.setData({ selectMode: false, selected: {} });
           this.load();
         } catch (err) { wx.hideLoading(); api.toastError(err); }
