@@ -74,6 +74,11 @@ Page({
     editingId: '',
     editName: '',
     nameMax: NAME_MAX,
+    // R571：建店时选业态（火锅/烧烤/快餐老板建完即分流，不用再记得去结果页补选）。
+    //   首项 = 明确「不选」，绝不静默写默认业态（fail-closed：不猜）。
+    //   业态键/名与 M1 结果页 picker 同源（TERMS.m2.bizTypes ≡ indicatorRef.BIZ_KEYS）。
+    bizOpts: [{ key: '', name: TERMS.exp.bizTypeSkip }].concat(TERMS.m2.bizTypes),
+    editBizIdx: 0,
     busy: false,
     loading: true,
   },
@@ -213,8 +218,10 @@ Page({
   },
 
   onEditName(e) { this.setData({ editName: e.detail.value }); },
+  // R571：业态 picker（值 = bizOpts 下标；首项 '' = 明确不选）
+  onEditBiz(e) { this.setData({ editBizIdx: Number(e.detail.value) || 0 }); },
 
-  onEditCancel() { this.setData({ mode: '', editingId: '', editName: '' }); },
+  onEditCancel() { this.setData({ mode: '', editingId: '', editName: '', editBizIdx: 0 }); },
 
   async onRenameSave() {
     const name = (this.data.editName || '').trim();
@@ -294,7 +301,7 @@ Page({
       openPaywall('saveLimit', { shopId: this.data.currentShopId || '' });
       return;
     }
-    this.setData({ mode: 'create', editingId: '', editName: '' });
+    this.setData({ mode: 'create', editingId: '', editName: '', editBizIdx: 0 });
   },
 
   async onCreate() {
@@ -303,13 +310,14 @@ Page({
     if (this.data.busy) return;
     this.setData({ busy: true });
     try {
+      const bizKey = ((this.data.bizOpts || [])[this.data.editBizIdx] || {}).key || '';
       const d = await api.call('manageShop', {
-        op: 'create', name, client_request_id: 'sc_' + Date.now(),
+        op: 'create', name, biz_type: bizKey, client_request_id: 'sc_' + Date.now(),
       });
       // 建完直接切到新店（用户意图就是"去这家新店"；否则建完还停在老店，会以为没建成）
       if (d && d.shop_id) sw.switchShop(d.shop_id);
       wx.showToast({ title: TERMS.exp.created, icon: 'success' });
-      this.setData({ mode: '', editingId: '', editName: '' });
+      this.setData({ mode: '', editingId: '', editName: '', editBizIdx: 0 });
       await this.load();
     } catch (e) { api.toastError(e); }
     this.setData({ busy: false });

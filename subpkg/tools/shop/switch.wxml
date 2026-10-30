@@ -49,6 +49,11 @@
   <view class="card2" wx:if="{{mode === 'create'}}">
     <input class="edit-inp edit-inp-block" value="{{editName}}" maxlength="{{nameMax}}"
            placeholder="{{t.namePh}}" bindinput="onEditName" />
+    <!-- R571：建店时选业态（首项 = 明确不选，不静默写默认值） -->
+    <picker class="edit-inp edit-inp-block" range="{{bizOpts}}" range-key="name"
+            value="{{editBizIdx}}" bindchange="onEditBiz">
+      <view class="biz-pick-val">{{bizOpts[editBizIdx].name}}</view>
+    </picker>
     <view class="edit-row fill">
       <button class="btn btn-small primary edit-btn" bindtap="onCreate" disabled="{{busy}}">{{t.createOk}}</button>
       <button class="btn btn-small ghost edit-btn" bindtap="onEditCancel">{{t.cancel}}</button>

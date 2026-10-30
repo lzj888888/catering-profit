@@ -17,7 +17,8 @@
 
 // 判断口径版本：每条结论都带它 ⇒ 事后能指回「当时用的是哪套规则」
 // （与 M2 的 bands_version、M3 的 ENGINE_VERSION、anomalyRules 的 RULES_VERSION 同一族）。
-const RULES_VERSION = 'interp-1';
+//   R571 升 interp-2：新增 PROFIT_ATTRIBUTION（亏损归因）与 BREAKEVEN_GAP_KIND（缺口定性）两条判断。
+const RULES_VERSION = 'interp-2';
 
 const LEVELS = { INFO: 'info', AMBER: 'amber', RED: 'red' };
 const SEVERITY = { info: 0, amber: 1, red: 2 };
@@ -44,6 +45,8 @@ function num(v) {
  *   · profitFen        {number}  真钱利润（分，取 total_factor_real_profit_fen）
  *   · revenueFen       {number}  营业收入（分）
  *   · profitDiffFen    {number}  两口径差异（分）
+ *   · grossProfitFen   {number}  毛利（分，取 gross_profit_fen；R571 归因用，缺失不判）
+ *   · grossMarginPct   {number}  毛利率（%，取 gross_margin_pct；R571 缺口定性用，缺失不判）
  *   · breakeven        {object}  `utils/breakeven.js::breakeven()` 的原样出参
  *   · anomalies        {object}  `utils/anomalyRules.js::buildChecklist()` 的原样出参
  * @returns {{version:string, level:string, items:Array<{code:string,level:string,params:object}>}}
@@ -73,12 +76,41 @@ function buildInterpretation(facts) {
     push('LOSS', LEVELS.RED, { profitFen: profitFen });
   }
 
+  // ②b R571（三司会审首批规则 #2）：亏损归因 —— 拆「成本/定价结构」与「固定成本/规模」两路，
+  //   老板看到亏损后最需要的是「先动哪一头」，不是再看一遍负数。
+  //   判据只用毛利的**符号**（确定性事实，零假设）：
+  //     毛利 ≤ 0 ⇒ cost_or_pricing（单客结构问题，等价 GPC ≤ 0：客单价恒正）；
+  //     毛利 > 0 而净利 < 0 ⇒ fixed_cost_or_scale（毛利被固定成本吃掉，动固定成本/规模）。
+  //   毛利字段缺失 ⇒ 不判（fail-closed，不拿 0 冒充毛利）。
+  const gp = num(f.grossProfitFen);
+  if (profitFen != null && profitFen < 0 && gp != null) {
+    push('PROFIT_ATTRIBUTION', LEVELS.RED, {
+      grossProfitFen: gp,
+      cause: gp <= 0 ? 'cost_or_pricing' : 'fixed_cost_or_scale',
+    });
+  }
+
   // ③ 没到保本线：只在保本线真的算得出来（`ok`）时才判，算不出来不硬说。
-  if (be.ok && revenueFen != null && num(be.breakevenFen) != null && revenueFen < num(be.breakevenFen)) {
+  const beFen = num(be.breakevenFen);
+  const belowBE = !!(be.ok && revenueFen != null && beFen != null && revenueFen < beFen);
+  if (belowBE) {
     push('BELOW_BREAKEVEN', LEVELS.RED, {
       revenueFen: revenueFen,
-      breakevenFen: num(be.breakevenFen),
-      gapFen: num(be.breakevenFen) - revenueFen,
+      breakevenFen: beFen,
+      gapFen: beFen - revenueFen,
+    });
+  }
+
+  // ③b R571（三司会审首批规则 #3）：缺口定性「差在量还是差在价」。
+  //   只用毛利率的**符号**（确定性事实，零假设；GPC=客单价×销售毛利率、客单价恒正 ⇒ GPC≤0 ⟺ 毛利率≤0）：
+  //     毛利率 ≤ 0 ⇒ pricing_structure（卖得越多越亏，先动定价/成本结构，level=red）；
+  //     毛利率 > 0 ⇒ volume_gap（每单都在贡献，缺的是客流/规模，level=amber）。
+  //   毛利率缺失 ⇒ 不判（fail-closed）。
+  const gmp = num(f.grossMarginPct);
+  if (belowBE && gmp != null) {
+    push('BREAKEVEN_GAP_KIND', gmp <= 0 ? LEVELS.RED : LEVELS.AMBER, {
+      grossMarginPct: gmp,
+      kind: gmp <= 0 ? 'pricing_structure' : 'volume_gap',
     });
   }
 

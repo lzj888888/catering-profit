@@ -141,6 +141,38 @@ ok('②-8 异常项最多带 ' + interp.THRESHOLDS.maxAnomalyItems + ' 条（不
     return !!it && it.params.count === 9 && it.params.top.length === interp.THRESHOLDS.maxAnomalyItems;
   })());
 
+// ===== R571 新增两条判断：亏损归因（②b）+ 缺口定性（③b）=====
+ok('②-9 亏损归因双向：毛利>0 ⇒ fixed_cost_or_scale；毛利≤0 ⇒ cost_or_pricing（含 0 边界）',
+  (function () {
+    const a = BI(Object.assign({}, LOSS_FACTS, { grossProfitFen: 80000 }));
+    const b = BI(Object.assign({}, LOSS_FACTS, { grossProfitFen: -5000 }));
+    const c = BI(Object.assign({}, LOSS_FACTS, { grossProfitFen: 0 }));
+    const pa = (a.items || []).find((x) => x.code === 'PROFIT_ATTRIBUTION');
+    const pb = (b.items || []).find((x) => x.code === 'PROFIT_ATTRIBUTION');
+    const pc = (c.items || []).find((x) => x.code === 'PROFIT_ATTRIBUTION');
+    return !!pa && pa.params.cause === 'fixed_cost_or_scale' && pa.level === 'red' &&
+      !!pb && pb.params.cause === 'cost_or_pricing' &&
+      !!pc && pc.params.cause === 'cost_or_pricing';
+  })(), '归因只用毛利符号（确定性事实），0 归入 cost_or_pricing');
+ok('②-10 亏损归因 fail-closed：缺毛利字段 ⇒ 不出 PROFIT_ATTRIBUTION（不拿 0 冒充）',
+  codesOf(lossOut).indexOf('PROFIT_ATTRIBUTION') < 0, 'codes=' + JSON.stringify(codesOf(lossOut)));
+ok('②-11 盈利 ⇒ 不出 PROFIT_ATTRIBUTION（反面证判据非恒真）',
+  codesOf(goodOut).indexOf('PROFIT_ATTRIBUTION') < 0);
+ok('②-12 缺口定性双向：毛利>0 ⇒ volume_gap/amber；毛利≤0 ⇒ pricing_structure/red',
+  (function () {
+    const a = BI(Object.assign({}, LOSS_FACTS, { grossMarginPct: 40 }));
+    const b = BI(Object.assign({}, LOSS_FACTS, { grossMarginPct: -5 }));
+    const c = BI(Object.assign({}, LOSS_FACTS, { grossMarginPct: 0 }));
+    const pa = (a.items || []).find((x) => x.code === 'BREAKEVEN_GAP_KIND');
+    const pb = (b.items || []).find((x) => x.code === 'BREAKEVEN_GAP_KIND');
+    const pc = (c.items || []).find((x) => x.code === 'BREAKEVEN_GAP_KIND');
+    return !!pa && pa.params.kind === 'volume_gap' && pa.level === 'amber' &&
+      !!pb && pb.params.kind === 'pricing_structure' && pb.level === 'red' &&
+      !!pc && pc.params.kind === 'pricing_structure';
+  })(), '缺口定性只用毛利率符号（GPC 同号），0 归入 pricing_structure');
+ok('②-13 缺口定性 fail-closed：缺毛利率 ⇒ 不出 BREAKEVEN_GAP_KIND',
+  codesOf(lossOut).indexOf('BREAKEVEN_GAP_KIND') < 0);
+
 // ================= ③ 装配面 =================
 const LEDGER = {
   account_id: 'acc_1',
@@ -288,6 +320,22 @@ ok('⑤-2 把金额白名单删掉 income_total_fen ⇒ 该字段必须消失（
     if (r.err) return false;
     const p2 = r.m.buildDiagnosisPack(PACK_IN);
     return !p2.month_facts || !('income_total_fen' in p2.month_facts);
+  })());
+
+ok('⑤-3 把归因条件改成 false ⇒ 亏损归因必须消失（证②-9 非恒真）',
+  (function () {
+    const r = loadMut(INTERP_REL, [['profitFen != null && profitFen < 0 && gp != null', 'false']]);
+    if (r.err) return false;
+    return codesOf(r.m.buildInterpretation(Object.assign({}, LOSS_FACTS, { grossProfitFen: 80000 })))
+      .indexOf('PROFIT_ATTRIBUTION') < 0;
+  })());
+
+ok('⑤-4 把缺口定性条件改成 false ⇒ BREAKEVEN_GAP_KIND 必须消失（证②-12 非恒真）',
+  (function () {
+    const r = loadMut(INTERP_REL, [['belowBE && gmp != null', 'false']]);
+    if (r.err) return false;
+    return codesOf(r.m.buildInterpretation(Object.assign({}, LOSS_FACTS, { grossMarginPct: 40 })))
+      .indexOf('BREAKEVEN_GAP_KIND') < 0;
   })());
 
 // ================= ⑥ 渠道面（外卖进 / 团购不进）=================

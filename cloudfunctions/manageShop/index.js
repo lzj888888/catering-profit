@@ -99,7 +99,7 @@ async function onCreate(da, userId, v, crid, now) {
 
   // 4. 落库（`_id` 确定性派生 ⇒ 幂等由构造保证）
   const newId = S.buildCreateShopId(userId, crid) || genId(S.CREATE_ID_PREFIX);
-  const docx = S.buildShopDoc({ _id: newId, userId, name: v.name, now });
+  const docx = S.buildShopDoc({ _id: newId, userId, name: v.name, bizType: v.biz_type, now });
   try {
     await da.insert('shop', docx);
   } catch (e) {

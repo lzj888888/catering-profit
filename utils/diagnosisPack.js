@@ -185,6 +185,9 @@ function buildDiagnosisPack(input) {
     profitFen: ledger.total_factor_real_profit_fen,
     revenueFen: ledger.income_total_fen,
     profitDiffFen: ledger.profit_diff_fen,
+    // R571：归因与缺口定性用（interpretation ②b/③b）——缺失时规则层自行 fail-closed 不判
+    grossProfitFen: ledger.gross_profit_fen,
+    grossMarginPct: ledger.gross_margin_pct,
     breakeven: be,
     anomalies: anom,
   };

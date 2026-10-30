@@ -17,6 +17,8 @@
 .edit-inp { flex: 1 1 auto; min-width: 0; background: #f6f8fb; border-radius: 12rpx;
   padding: 0 20rpx; min-height: 88rpx; font-size: 30rpx; }
 .edit-inp-block { margin-bottom: 12rpx; }
+/* R571：业态 picker 的显示层 —— 撑满 edit-inp 的触控高（AD-G2 ≥88rpx）与字号（AD-G1 ≥28rpx） */
+.biz-pick-val { display: flex; align-items: center; min-height: 88rpx; font-size: 30rpx; color: #46536a; }
 /* 🔴 R194 实测修正（真机口径，勿凭直觉改回 `width`）：行内按钮**在本 flex 行内**用 flex-basis 定宽最稳。
  *   R194 原始实测（`pages/shop/switch.wxss`，机读矩形）：写 `width:140rpx; min-width:140rpx` **完全无效**（仍 184）；
  *          写 `width:200rpx !important` 有效；写 `flex: 0 0 160rpx`（无需 !important）有效 ⇒ **选它**。
