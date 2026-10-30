@@ -268,7 +268,7 @@ const CASES = [
   // R493：H 段（摊销/依据三态行为面 21 条）+ I 段（真实盘点 5 跳链路 6 条）⇒ 33→60。
   { key: 'check_m1_diff_explain', rel: 'tools/check_m1_diff_explain.js' },   // 60 条（H21 + I6 为 R493 新增；分段计数以实跑 pass 数为准）
   // D1（2026-10-27 拍板 + 审计 H1 实证）：空表单 fail-closed 行为守卫 —— 19 条 = P4 + Q2 + A6 + B3 + C2 + E2
-  { key: 'check_m2_forward_failclosed', rel: 'tools/check_m2_forward_failclosed.js' }, // 19 条（P/Q/A/B/C/E 六组：空表单装配 rent/labor=0 + 引擎非空保本证门禁必要 + hasFixed(空)=false + 正控 hasFixed(填)=true + 变异 >0→>=0 可抓）
+  { key: 'check_m2_forward_failclosed', rel: 'tools/check_m2_forward_failclosed.js' }, // 25 条（P/Q/A/B/C/E/F 七组；F=人效坪效缺项感知 6 条：空表单装配 rent/labor=0 + 引擎非空保本证门禁必要 + hasFixed(空)=false + 正控 hasFixed(填)=true + 变异 >0→>=0 可抓）
   // D3 + D3-C（2026-10-27 拍板/第二轮）：任一项>0 即采用 —— 20 条 = P3 + A9 + B1 + C5 + E2
   { key: 'check_m2_energy_split', rel: 'tools/check_m2_energy_split.js' }, // 22 条（P 前置 + A 单填/组合/energyYuan合并/向后兼容 + B 全空派生 + C 旧&&写法+energy+gas锚点 + D 前端两栏/合并开关/装配分流 + E 自失效）
   // D4（2026-10-27 拍板）：矩阵与单页管理费口径统一（manage 键，不再派生房租×占比）—— 19 条 = P4 + A6 + B3 + C4 + E2

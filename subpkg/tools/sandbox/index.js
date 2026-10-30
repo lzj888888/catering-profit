@@ -279,6 +279,8 @@ Page({
       fwdEffTitle: M.fwdEffTitle,
       fwdPixelEffLbl: M.fwdPixelEffLbl,
       fwdEffNeedRev: M.fwdEffNeedRev,
+      fwdEffNeedArea: M.fwdEffNeedArea,
+      fwdEffNeedHead: M.fwdEffNeedHead,
       fwdPixelEffUnit: M.fwdPixelEffUnit,
       fwdPerHeadLbl: M.fwdPerHeadLbl,
       fwdPerHeadUnit: M.fwdPerHeadUnit,
@@ -1659,6 +1661,28 @@ Page({
     };
   },
 
+  /**
+   * 🔴 R570-F：缺数态**到底缺什么**（页桩实测：`effOf()` 为 null 有两种完全不同的原因）。
+   *   true  = 营业额没填（`effOf` 第一道闸）⇒ 该说「填营业额后出」，点卡聚焦营业额框
+   *   false = 营业额填了，是面积/人手都没填 ⇒ 该说「填面积后出 / 填人手后出」，点卡聚焦面积框
+   * ⚠️ 为什么单独一个函数而不是塞进 `effOf()` 返回值：`effOf()` 的 null 是**既有契约**
+   *   （wxml 用 `wx:if="{{eff}}"` 判两分支，M1/M2 对拍脚本也这么用），不能改它的返回形状。
+   */
+  effNeedRevNow() {
+    return !(Number(this.data.expectYuan) > 0);
+  },
+  // 缺数卡点击：缺什么聚焦什么（否则老板点完还是不知道往哪敲）
+  onGoEffInput() {
+    if (this.effNeedRevNow()) { this.onGoExpectRev(); return; }
+    if (!(Number(this.data.areaNum) > 0)) {
+      this.setData({ areaFocus: true });
+      setTimeout(() => { this.setData({ areaFocus: false }); }, 1200);
+      return;
+    }
+    this.setData({ headFocus: true });
+    setTimeout(() => { this.setData({ headFocus: false }); }, 1200);
+  },
+
   onPreset(e) {
     const i = Number(e.detail.value);
     const opt = this.data.presetOptions[i];
@@ -2171,6 +2195,8 @@ Page({
         crowd: presetResultObj ? this.crowdOf(presetResultObj) : null,
         // 🔴 round276：同主链路，A 区坪效 / 人效（派生自用户填的实际营业额 + 面积 + 人数）
         eff: this.effOf(),
+        // 🔴 R570-F：缺数态该说什么（见 effNeedRevNow 注释）
+        effNeedRev: this.effNeedRevNow(),
         indicators: hasFixed ? this.decorate(d.indicators_at_breakeven || []) : [],
         indTab: 'break',
         payback,
@@ -2212,6 +2238,7 @@ Page({
         derivedNote: '',
         crowd: null,
         eff: null,
+        effNeedRev: this.effNeedRevNow(),
         indicators: [],
         payback: null,
         presetAssumptions: [],

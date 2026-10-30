@@ -28,6 +28,7 @@ const ROOT = path.resolve(__dirname, '..');
 const BIZ = path.join(ROOT, 'utils', 'bizPreset.js');
 const CALC = path.join(ROOT, 'cloudfunctions', 'calcSandbox', 'service.js');
 const PAGE = path.join(ROOT, 'subpkg', 'tools', 'sandbox', 'index.js');
+const WXML_P = path.join(ROOT, 'subpkg', 'tools', 'sandbox', 'index.wxml');
 
 let pass = 0, failN = 0;
 function check(name, cond, detail) {
@@ -137,6 +138,46 @@ if (mutExpr) {
     mutEmpty === true, `变异后 hasFixed=${mutEmpty}`);
 }
 
+// ============ F 人效/坪效「缺什么说什么」（R570-F，页桩实测坐实的真因）============
+// 页桩实测（项目外 probe_eff.js）：`effOf()` 为 null 有两种完全不同的原因 ——
+//   营业额没填 / 营业额填了但面积和人手都空。原来两种都写「填营业额后出」⇒ 老板填过营业额之后
+//   卡片还在让他填营业额 ⇒ 他认定「人效坪效没体现」。有数时缺的那一项也整行消失（wx:if 挂掉）。
+// 判据全部锚在页面源码 / wxml 的可提取结构上，并做变异回灌（三元→单常量必须转红）。
+sec('F · 人效/坪效缺项感知');
+const wxmlSrc = readOr(WXML_P);
+check('F-① 页面 wxml 可读且人效块在场', !!wxmlSrc && wxmlSrc.indexOf('fwdEffTitle') >= 0,
+  wxmlSrc ? wxmlSrc.length + ' 字符' : '读不到');
+const effAnchor = wxmlSrc ? wxmlSrc.indexOf('bindtap="onGoEffInput"') : -1;
+const needBlock = (effAnchor >= 0 && wxmlSrc) ? wxmlSrc.slice(Math.max(0, effAnchor - 900), effAnchor + 400) : '';
+check('F-② 缺数卡按原因分支（不是一句通用文案）',
+  !!needBlock && needBlock.indexOf('effNeedRev') >= 0 && /effNeedRev\s*\?/.test(needBlock),
+  needBlock ? ('块长 ' + needBlock.length) : '找不到 onGoEffInput 锚点');
+const effVisAnchor = wxmlSrc ? wxmlSrc.indexOf("wx:if=\"{{mode === 'forward' && eff}}\"") : -1;
+const visBlock = (effVisAnchor >= 0 && wxmlSrc) ? wxmlSrc.slice(effVisAnchor, effVisAnchor + 1400) : '';
+check('F-③ 有数时缺项行不整行消失',
+  !!visBlock && visBlock.indexOf('eff.pixel') >= 0 && visBlock.indexOf('wx:if="{{eff.pixel}}"') < 0
+  && visBlock.indexOf('wx:if="{{eff.perHead}}"') < 0,
+  visBlock ? ('有数块 ' + visBlock.length + ' 字符') : '找不到有数分支锚点');
+// 缺因判据必须锚在营业额上（改名/换字段都要能被看见）
+const mNeedFn = pageSrc.match(/effNeedRevNow\s*\([^)]*\)\s*\{([\s\S]{0,300}?)\},/);
+const needFnBody = mNeedFn ? mNeedFn[1] : '';
+check('F-④ 缺因判据锚在营业额字段', !!needFnBody && needFnBody.indexOf('expectYuan') >= 0,
+  needFnBody ? needFnBody.replace(/\s+/g, ' ').trim().slice(0, 70) : '提取不到 effNeedRevNow 函数体');
+// 点击分流：缺营业额聚焦营业额；缺面积/人手聚焦对应框（否则点完还是不知道往哪敲）
+const goIdx = pageSrc.indexOf('onGoEffInput(');
+const goBody = goIdx >= 0 ? pageSrc.slice(goIdx, goIdx + 700) : '';
+check('F-⑤ 缺数卡点击按缺项分流',
+  !!goBody && goBody.indexOf('areaFocus') >= 0 && goBody.indexOf('headFocus') >= 0
+  && goBody.indexOf('onGoExpectRev') >= 0,
+  goBody ? 'body 含 areaFocus/headFocus/onGoExpectRev' : '找不到 onGoEffInput 定义');
+// 变异回灌：把 effNeedRev 三元整体换成单常量 ⇒ F-② 的判据必须转红
+if (needBlock) {
+  const mut = needBlock.replace(/\{\{[^}]*effNeedRev[^}]*\}\}/g, '{{t.fwdEffNeedRev}}');
+  const stillPass = mut.indexOf('effNeedRev') >= 0 && /effNeedRev\s*\?/.test(mut);
+  check('F-⑥ 变异回灌：三元→单常量后 F-② 转红（非恒绿）', mut !== needBlock && !stillPass);
+} else {
+  check('F-⑥ 变异回灌：三元→单常量后 F-② 转红（非恒绿）', false, '无 needBlock，无法自证');
+}
 // ============ E 自失效护栏（防"扫空 ⇒ 恒绿"）============
 sec('E · 自失效护栏');
 check('E-① 页面源码非退化（>1500 字符）', pageSrc.length > 1500, pageSrc.length + ' 字符');

@@ -60,7 +60,7 @@
     <view class="row">
       <text class="row-name">{{t.areaLabel}}</text>
       <view class="row-in-wrap">
-        <input class="row-in" type="digit" value="{{areaNum}}" placeholder="{{t.areaPh}}" bindinput="onArea" adjust-position="{{true}}" cursor-spacing="20" />
+        <input class="row-in" type="digit" value="{{areaNum}}" placeholder="{{t.areaPh}}" focus="{{areaFocus}}" bindinput="onArea" adjust-position="{{true}}" cursor-spacing="20" />
         <text class="row-unit">{{t.areaUnit}}</text>
       </view>
     </view>
@@ -113,7 +113,7 @@
     <view class="row">
       <text class="row-name">{{mode === 'reverse' ? t.headcountLabelRev : t.headcountLabel}}</text>
       <view class="row-in-wrap">
-        <input class="row-in" type="number" value="{{headcountNum}}" bindinput="onHeadcount" adjust-position="{{true}}" cursor-spacing="20" />
+        <input class="row-in" type="number" value="{{headcountNum}}" focus="{{headFocus}}" bindinput="onHeadcount" adjust-position="{{true}}" cursor-spacing="20" />
         <text class="row-unit">{{t.headcountUnit}}</text>
       </view>
     </view>
@@ -544,16 +544,27 @@
     <!-- 🔴 R570（李老师真机：「人效/坪效没体现」）：改前要同时满足 showMore 展开 + 填过营业额**两个**条件才渲染，
          老板根本遇不到。现在：有数就常驻显示（不再藏在折叠里）；没数也**留一张缺数卡**，
          点了直接聚焦到「预计月营业额」——把「产品要我填」变成「我为了看坪效主动填」（豆包 R570 方案②）。 -->
+    <!-- 🔴 R570-F（页桩实测真因）：`eff` 需要「营业额 + 面积/人手」三样，缺任意一样都是 null。
+         ① 有数时：缺的那一项**不再整行消失**（原来 wx:if 一挂，老板「人效没体现」）
+            ⇒ 留在原位写「填面积后出 / 填人手后出」，缺什么说什么。
+         ② 一个数都没有时：原来不分原因一律写「填营业额后出」⇒ 营业额已填、只差面积/人手时
+            等于让老板重填他刚填过的格子 ⇒ 他会认定这功能坏了。现在按 `effNeedRev` 分两种。 -->
     <view class="card2" wx:if="{{mode === 'forward' && eff}}">
       <view class="sec">{{t.fwdEffTitle}}</view>
-      <view class="cell" wx:if="{{eff.pixel}}"><text class="lbl">{{t.fwdPixelEffLbl}}</text><text class="val">{{t.cur}}{{eff.pixel}}{{t.fwdPixelEffUnit}}</text></view>
-      <view class="cell" wx:if="{{eff.perHead}}"><text class="lbl">{{t.fwdPerHeadLbl}}</text><text class="val keynum">{{t.cur}}{{eff.perHead}}{{t.fwdPerHeadUnit}}</text></view>
+      <view class="cell">
+        <text class="lbl">{{t.fwdPixelEffLbl}}</text>
+        <text class="val {{eff.pixel ? '' : 'muted'}}">{{eff.pixel ? t.cur + eff.pixel + t.fwdPixelEffUnit : t.fwdEffNeedArea}}</text>
+      </view>
+      <view class="cell">
+        <text class="lbl">{{t.fwdPerHeadLbl}}</text>
+        <text class="val {{eff.perHead ? 'keynum' : 'muted'}}">{{eff.perHead ? t.cur + eff.perHead + t.fwdPerHeadUnit : t.fwdEffNeedHead}}</text>
+      </view>
       <view class="hint">{{t.fwdEffHint}}</view>
     </view>
-    <view class="card2 eff-need" wx:elif="{{mode === 'forward'}}" bindtap="onGoExpectRev">
+    <view class="card2 eff-need" wx:elif="{{mode === 'forward'}}" bindtap="onGoEffInput">
       <view class="sec">{{t.fwdEffTitle}}</view>
-      <view class="cell"><text class="lbl">{{t.fwdPixelEffLbl}}</text><text class="val muted">{{t.fwdEffNeedRev}}</text></view>
-      <view class="cell"><text class="lbl">{{t.fwdPerHeadLbl}}</text><text class="val muted">{{t.fwdEffNeedRev}}</text></view>
+      <view class="cell"><text class="lbl">{{t.fwdPixelEffLbl}}</text><text class="val muted">{{effNeedRev ? t.fwdEffNeedRev : t.fwdEffNeedArea}}</text></view>
+      <view class="cell"><text class="lbl">{{t.fwdPerHeadLbl}}</text><text class="val muted">{{effNeedRev ? t.fwdEffNeedRev : t.fwdEffNeedHead}}</text></view>
     </view>
 
     <view class="card2 calc-basis" wx:if="{{result.valid_days}}">
