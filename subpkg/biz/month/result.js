@@ -125,6 +125,10 @@ Page({
       profitDiffWhy: TERMS.resultPage.profitDiffWhy,
       // C：钱去哪了 故事线（专业术语保留 + 白话流向）
       flowTitle: TERMS.resultPage.flowTitle,
+      // 🔴 R579 / #108：利润≠卡里的钱 说明卡（文案全在 terms 单源，页面不写中文）
+      cashExplainTitle: TERMS.resultPage.cashExplainTitle,
+      cashExplainItems: TERMS.resultPage.cashExplainItems,
+      cashExplainAction: TERMS.resultPage.cashExplainAction,
       flowSell: TERMS.resultPage.flowSell,
       flowMaterial: TERMS.resultPage.flowMaterial,
       flowExpense: TERMS.resultPage.flowExpense,
@@ -228,6 +232,7 @@ Page({
     anom: { has: false },
     trend: [],   // R443：近 6 个月走势 [{month,label,text,h,up,isCur}]
     profitCalcOpen: false,   // R515：利润卡内「这笔钱怎么算的」折叠态（默认收起，点开原地展开）
+    cashExplainOpen: false,  // R579 / #108：「利润和卡里的钱对不上」折叠态（默认收起）
     bizTypes: TERMS.m2.bizTypes,
     cityTiers: TERMS.m2.cityTiers,
     bizIdx: 1,      // 默认「中式正餐」（bizTypes[1]），与后端 bandOf 的兜底口径一致
@@ -561,6 +566,11 @@ Page({
   //   原来这块水面线是独立第 7 张卡，老板看到利润想知道"凭什么"要往下滚 6 张卡 ⇒ 收进利润卡。
   onToggleProfitCalc() {
     this.setData({ profitCalcOpen: !this.data.profitCalcOpen });
+  },
+
+  // 🔴 R579 / #108：说明卡开合（与 profitCalcOpen 同款：默认收起，点开原地展开）
+  onToggleCashExplain() {
+    this.setData({ cashExplainOpen: !this.data.cashExplainOpen });
   },
 
   _sumByName(rows, kw) {

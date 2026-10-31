@@ -79,6 +79,20 @@
       <view class="muted">{{t.flowPer100}} {{t.cur}}{{r.per100}}　{{t.flowHint}}</view>
     </block>
 
+  <!-- 🔴 R579 / 队列 #108：**利润 ≠ 卡里的钱**（两司均判为最高频投诉点）。
+       老板看到「利润 5000」但银行卡只多 2000，第一反应是「这系统算错了」——
+       不解释一句，后面所有数字他都不信了。
+       默认收起（不撑长首屏），点开原地展开；文案全在 terms 单源，页面不写中文。 -->
+  <view class="card2">
+    <view class="cell be-more-head" bindtap="onToggleCashExplain">
+      <text class="lbl">{{t.cashExplainTitle}} {{cashExplainOpen ? '▴' : '▾'}}</text>
+    </view>
+    <block wx:if="{{cashExplainOpen}}">
+      <view class="muted" wx:for="{{t.cashExplainItems}}" wx:key="index" wx:for-item="line">{{line}}</view>
+      <view class="hint">{{t.cashExplainAction}}</view>
+    </block>
+  </view>
+
   <!-- 🔴 R443：从「看到数」到「能去改」—— 结果页不该是死胡同 -->
   <view class="next-link" bindtap="goDishReview">{{t.nextDishReview}}</view>
 
