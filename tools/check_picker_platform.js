@@ -159,5 +159,25 @@ check('C-④ 合成「enum 新增平台但不在排除名单」⇒ 必须判出�
   (() => { const s = JSON.parse(JSON.stringify(SAMPLE_BASE)); s.enumList = s.enumList.concat(['douyin']); return hasIssue(auditPicker(s), 'enum-member-unaccounted'); })(),
   '云端 enum 加 douyin、picker 与排除名单都不动');
 
+// ===== D · R580：饿了么 / 淘宝闪购是**同一实体** =====
+//   依据（一手）：阿里 2026 财年年报原文「在2026財年，我們將『餓了麼』更名為『淘寶閃購』」；
+//   2025-12-05 官方宣布饿了么 App 全面焕新，覆盖 App / 小程序 / 商家后台 / 骑手端。
+//   两个静默失效：
+//     ① 账单识别若把 eleme 列进 PLATFORM_ORDER ⇒ 新数据会产出 eleme 键
+//        ⇒ 同一平台在复盘页被拆成两个组各显示一半（老板以为是两家店）；
+//     ② 显示名仍写「饿了么」⇒ 老板手机上早看不到这个品牌了，会以为是两家。
+const _svcSrc = readOrNull('cloudfunctions/importSalesBill/service.js') || '';
+const _orderLine = (_svcSrc.match(/const PLATFORM_ORDER = \[([^\]]*)\]/) || [])[1] || '';
+const _termsSrc = readOrNull('miniprogram/i18n/terms.js') || '';
+const _elemeLabel = (_termsSrc.match(/eleme:\s*'([^']*)'/) || [])[1] || '';
+// 判据抽成纯函数 —— 只为让 D-③ 能用同一判据跑假数据（证明它非常量）
+const noElemeInOrder = (line) => line.length > 0 && line.indexOf('eleme') < 0;
+check('D-① 🔴 账单识别**不产出** eleme（产出即把同一平台拆成两组）',
+  noElemeInOrder(_orderLine), _orderLine || '(取不到 PLATFORM_ORDER，fail-closed)');
+check('D-② 🔴 eleme 的历史显示名已跟上（含「淘宝闪购」，不再单独叫「饿了么」）',
+  _elemeLabel.indexOf('淘宝闪购') >= 0, _elemeLabel || '(取不到，fail-closed)');
+check('D-③ 反恒真：把 eleme 塞进 PLATFORM_ORDER ⇒ 同一判据必须为 false',
+  noElemeInOrder(_orderLine + ", 'eleme'") === false);
+
 console.log('\n' + pass + ' 通过 / ' + failN + ' 失败');
 process.exitCode = failN ? 1 : 0;

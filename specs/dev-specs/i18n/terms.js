@@ -2150,7 +2150,11 @@ const TERMS = {
     // 🔴 R246：补京东两形态（jd_order 订单级 / jd_sku SKU 级）。
     //   ⚠️ 京东「订单级」是**账单**（走对账路），「SKU 级」才是**商品销量表**（走形态 C 路）
     //   ⇒ 两者都要在榜单里能显示名；但 picker 只列 jd_sku（见 subpkg/biz/takeaway/index.js 注释）。
-    reviewPlatformNames: { taobao: '淘宝闪购', meituan: '美团', eleme: '饿了么', jd_order: '京东（订单）', jd_sku: '京东（SKU）', other: '其他' },
+    // 🔴 R580（李老师 2026-10-31 问「饿了么和淘宝闪购是不是统一了」）：**是同一平台**。
+    //   依据：阿里 2026 财年年报原文「在2026財年，我們將『餓了麼』更名為『淘寶閃購』」；2025-12-05 官方宣布饿了么 App 全面焕新，覆盖 App/小程序/商家后台/骑手端。
+    //   ⇒ `eleme` 是**历史键**（枚举里保留，防存量数据被 schema 拒收），但显示名必须跟上，
+    //     否则老板在复盘页会看到「饿了么」这个他已经看不到的品牌名，还以为是两家。
+    reviewPlatformNames: { taobao: '淘宝闪购', meituan: '美团', eleme: '淘宝闪购（原饿了么）', jd_order: '京东（订单）', jd_sku: '京东（SKU）', other: '其他' },
     reviewRankTitle: '单品毛利排行榜',
     reviewDish: '菜品',
     reviewQty: '份数',
