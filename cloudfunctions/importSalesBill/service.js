@@ -329,6 +329,13 @@ const SALES_SCHEMA = {
     platform: { type: 'string', required: true, enum: ['taobao', 'meituan', 'jd_order', 'jd_sku', 'eleme', 'pos', 'other'] },
     source: { type: 'string', required: true, enum: ['oauth', 'excel', 'manual'] },
     created_at: { type: 'number', required: true, integer: true },
+    // 🔴 R574 / #109：粒度三字段（**非必填**，为旧数据留出缺口）。
+    //   为什么非必填：库里已有大量没有这三个字段的历史行，设成 required 会让重导旧表直接失败；
+    //   缺省语义由读侧定 —— 无 granularity ⇒ unknown ⇒ 按单日计但**打标记**，绝不臆测成 interval。
+    //   🔴 本段须与 `utils/gradeGate.js::SALES_SCHEMA.fields` **逐值一致**（check_grade_gate_dual 守）。
+    granularity: { type: 'string', required: false, enum: ['daily', 'interval', 'unknown'] },
+    period_from: { type: 'string', required: false, pattern: /^\d{4}-\d{2}-\d{2}$/ },
+    period_to: { type: 'string', required: false, pattern: /^\d{4}-\d{2}-\d{2}$/ },
   },
 };
 
@@ -590,15 +597,67 @@ function diagnoseColumns(matrix) {
 }
 
 // 从 R2 参数行提取营业日期（取「至」= 结束日，确定性 ⇒ 幂等）。返回 YYYY-MM-DD，取不到返回 ''。
-function extractBizDate(sheetRows) {
+/**
+ * 从表头参数行抽出**营业日期区间两端**（R574 / 队列 #109）。
+ *
+ * 🔴 为什么必须有（机制，不是新需求）：
+ *   堂食《菜品销售统计》的表头参数行原文是
+ *   `营业日期：【2026/09/07 至 2026/09/13】` —— 这是**7 天的区间汇总表**，
+ *   而本文件此前只取「最后一个日期」当 `biz_date` ⇒ 36 行全部落到区间末日，
+ *   `external_sales_daily` 又只有一个 `biz_date` 字段、**没有地方写"这是一段时间"**
+ *   ⇒ 下游 `getDishReview::countDataDays` 按 `biz_date` 去重 ⇒ 这份堂食只算 **1 天**
+ *   ⇒ 该日堂食收入 = 真实日均的 **7 倍**，且**全程零报错**。
+ *
+ * 口径（fail-closed）：
+ *   · 表头一个日期都没有 ⇒ `{from:'',to:''}`（由调用方判 `bizDate` 缺失并阻断，**不猜**）。
+ *   · 只有一个日期 ⇒ `from === to`（单日表，granularity 判 daily）。
+ *   · 两个及以上 ⇒ 取**首、末**（区间表的标准写法；中间夹的日期不参与）。
+ *   · 首 > 末（写反）⇒ **交换**，不返回空。
+ *
+ * @param {Array<Array>} sheetRows
+ * @returns {{from:string, to:string}} `YYYY-MM-DD`，取不到为空串
+ */
+function extractPeriod(sheetRows) {
   const r2 = ((sheetRows || [])[1] || []).map((x) => (x == null ? '' : String(x))).join('');
   const dates = r2.match(/\d{4}[/\-]\d{1,2}[/\-]\d{1,2}/g) || [];
-  if (!dates.length) return '';
-  const last = dates[dates.length - 1];
-  const m = last.match(/^(\d{4})[/\-](\d{1,2})[/\-](\d{1,2})$/);
-  if (!m) return '';
-  const pad = (n) => String(n).padStart(2, '0');
-  return m[1] + '-' + pad(m[2]) + '-' + pad(m[3]);
+  const norm = (s) => {
+    const m = String(s).match(/^(\d{4})[/\-](\d{1,2})[/\-](\d{1,2})$/);
+    if (!m) return '';
+    const pad = (n) => String(n).padStart(2, '0');
+    return m[1] + '-' + pad(m[2]) + '-' + pad(m[3]);
+  };
+  if (!dates.length) return { from: '', to: '' };
+  const first = norm(dates[0]);
+  const last = norm(dates[dates.length - 1]);
+  if (!first || !last) return { from: '', to: '' };
+  return first <= last ? { from: first, to: last } : { from: last, to: first };
+}
+
+/**
+ * 营业日期（单值）。
+ * 🔴 语义**保持不变**（`_id` 与 `biz_date` 都靠它 ⇒ 改了会让同表重导覆盖不到旧文档）；
+ *   但实现改为**复用 `extractPeriod`** —— 日期解析只此一份，避免两处正则漂移。
+ *   "这段覆盖哪些天"由 `period_from` / `period_to` 表达，不再由它暗示。
+ */
+function extractBizDate(sheetRows) {
+  return extractPeriod(sheetRows).to;
+}
+
+/**
+ * 粒度判定（纯函数 · 零 IO）。
+ * 🔴 三值封闭集，**不许出现第四种**：`external_sales_daily.granularity` 的取值面由此单源。
+ *   · `daily`    = 一行的数量金额就是**那一天**的
+ *   · `interval` = 一行的数量金额是**一段期间**（堂食《菜品销售统计》标准形态）的汇总
+ *   · `unknown`  = 端点缺失 / 历史数据无此字段 ⇒ 下游**按单日计并打标记**，绝不臆测成 interval
+ * @param {string} from `YYYY-MM-DD`
+ * @param {string} to   `YYYY-MM-DD`
+ * @returns {'daily'|'interval'|'unknown'}
+ */
+function classifyGranularity(from, to) {
+  const f = (from == null ? '' : String(from)).trim();
+  const t = (to == null ? '' : String(to)).trim();
+  if (!f || !t) return 'unknown';
+  return f === t ? 'daily' : 'interval';
 }
 
 // external_ref_id 编码（§5.1）：必含 dish_key 段 —— 否则唯一索引 (shop_id, biz_date, external_ref_id)
@@ -623,6 +682,8 @@ const round1 = (n) => Math.round(n * 10) / 10;
 function parseDishSales(sheetRows, opts) {
   const rows = sheetRows || [];
   const c = DISH_A_STRUCT;
+  // 区间端点只抽一次，函数尾部原样带出（见 return 处注释）。
+  const period = extractPeriod(rows);
   const out = [];
   const nonInt = [];
   const unmatched = [];
@@ -660,6 +721,11 @@ function parseDishSales(sheetRows, opts) {
   return {
     shape: DISH_SHAPES.A,
     bizDate: extractBizDate(rows),
+    // 🔴 R574 / #109：区间端点必须随解析结果一起出去 —— 否则"7 天汇总"落库后无法复原。
+    //   granularity 由端点判定（from<to ⇒ interval），**不让调用方猜**。
+    periodFrom: period.from,
+    periodTo: period.to,
+    granularity: classifyGranularity(period.from, period.to),
     rows: out,
     totals,
     nonInt,
@@ -922,6 +988,7 @@ module.exports = {
   DISH_SHAPES, DISH_A_STRUCT, normalizeDishName, detectDishShape, detectDishMatrix,
   DISH_C_ALIAS, canonDishCHeader, findDishCCol,   // R245 P7：形态 C 列名别名单源（守卫用）
   extractBizDate, dishRefId, saleDocId, parseDishSales,
+  extractPeriod, classifyGranularity,   // R574 / #109：区间端点与粒度三值单源（守卫直接验）
   detectDupImport, DUP_MIN_SCAN, DUP_MIN_HIT, DUP_RATE,   // R271：跨平台重复导入检测（防销量翻倍）
   normalizeDate, parseDishSalesC,   // v1.7 形态 C（外卖商品销量）
   parseDishSalesD,                  // R432 形态 D（京东外卖订单导出，商品混装在一列）

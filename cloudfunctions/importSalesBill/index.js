@@ -174,6 +174,12 @@ exports.main = async (event) => {
         qty: r.qty,
         amount: r.amountFen,          // 整数分
         platform,
+        // 🔴 R574 / #109：粒度三字段必写。账单是**逐日**的 ⇒ daily，两端都等于该日。
+        //   一律显式写入（哪怕恒为 daily），理由：读侧据"字段缺不缺"区分
+        //   「明确是逐日」与「历史数据不知道」，缺字段会让旧行被迫按 unknown 处理。
+        granularity: 'daily',
+        period_from: r.bizDate,
+        period_to: r.bizDate,
         source: 'excel',
         created_at: now,
         // 🔴 R249：`.set()` = 整文档替换 ⇒ 不写 is_deleted 的文档**没有该字段**，
@@ -227,6 +233,10 @@ async function handleDishImport({ shopId, userId, clientRequestId, dishDetect, m
       grade,
       preview: {
         bizDate: parsed.bizDate,
+        // R574 / #109：预览就把"这是几天"告诉前端（不落库也要能看见）。
+        periodFrom: parsed.periodFrom,
+        periodTo: parsed.periodTo,
+        granularity: parsed.granularity,
         rows: parsed.rows,
         totals: parsed.totals,
         nonInt: parsed.nonInt,
@@ -257,6 +267,13 @@ async function handleDishImport({ shopId, userId, clientRequestId, dishDetect, m
         qty: r.qty,
         amount: r.amountFen,          // 实际收入（元→分，整数）
         platform: 'pos',
+        // 🔴 R574 / #109：堂食《菜品销售统计》是**区间汇总表**（表头「营业日期：【A 至 B】」），
+        //   一行代表整段而不是某一天。三个字段把这件事记下来 —— 只靠 biz_date（= 区间末日）
+        //   会让下游把它当"那一天"的量，实测该日收入会 = 真实日均的 7 倍且零报错。
+        //   兜底：端点缺失时退回 bizDate（此时 granularity 已是 unknown，不会谎称 interval）。
+        granularity: parsed.granularity || 'unknown',
+        period_from: parsed.periodFrom || parsed.bizDate,
+        period_to: parsed.periodTo || parsed.bizDate,
         source: 'excel',
         created_at: now,
         // 🔴 R249：见上方外卖账单同款注释 —— 缺 is_deleted ⇒ 写入成功、读侧（强制 is_deleted:false）读不出。
@@ -272,6 +289,10 @@ async function handleDishImport({ shopId, userId, clientRequestId, dishDetect, m
     source: 'excel',
     platform: 'pos',
     biz_date: parsed.bizDate,
+    // R574 / #109：摘要里记粒度 —— 老板下次看"上次导入"时能知道那批是"一段"还是"一天"。
+    granularity: parsed.granularity,
+    period_from: parsed.periodFrom || parsed.bizDate,
+    period_to: parsed.periodTo || parsed.bizDate,
     row_count: parsed.rows.length,
     unmatched_count: parsed.unmatched.length,
     nonint_qty_count: parsed.nonInt.length,
@@ -285,6 +306,10 @@ async function handleDishImport({ shopId, userId, clientRequestId, dishDetect, m
     platform: 'pos',
     shape: DISH_SHAPES.A,
     biz_date: parsed.bizDate,
+    // R574 / #109：回执里如实报粒度，前端据此提示"这批是 7 天汇总，不是一天"。
+    period_from: parsed.periodFrom || parsed.bizDate,
+    period_to: parsed.periodTo || parsed.bizDate,
+    granularity: parsed.granularity,
     written,
     totals: parsed.totals,
     nonInt: parsed.nonInt,
@@ -395,6 +420,10 @@ async function handleFormCImport({ shopId, userId, clientRequestId, dishDetect, 
           qty: r.qty,
           amount: r.amountFen,          // 销售额(元) → 分整数（🔴 非订单交易额）
           platform,
+          // 🔴 R574 / #109：外卖商品销量表是**逐日**的（每个 g.bizDate 一组）⇒ daily，两端同该日。
+          granularity: 'daily',
+          period_from: g.bizDate,
+          period_to: g.bizDate,
           source: 'excel',
           created_at: now,
           // 🔴 R249：缺 is_deleted ⇒ 落库 354 行却「单品毛利复盘·外卖」全程空态的根因（读侧强制 is_deleted:false）。

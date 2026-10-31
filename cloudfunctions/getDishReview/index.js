@@ -32,7 +32,7 @@ const { toMonth } = common.utilTime;
 
 // 🔴 R232f：算法层已外提到 service.js（纯函数 · 零 db）⇒ 6 处口径首次可被独立复算。
 //   本文件只负责：鉴权 → 付费墙 → 取数 → 调 service → 返回。
-const { buildDishReview, buildTakeawayReview, splitSales, mergeTotals, computeCoverage, filterByRange } = require('./service');
+const { buildDishReview, buildTakeawayReview, splitSales, mergeTotals, computeCoverage, filterByRange, coverageStats } = require('./service');
 
 exports.main = async (event) => {
   const ctx = cloud.getWXContext();
@@ -66,6 +66,10 @@ exports.main = async (event) => {
   const salesRes = await da.listAll('external_sales_daily', { shop_id: shopId });
   const rawSales = (salesRes && salesRes.data) || [];
   const { rows: allSales, from: rangeFrom, to: rangeTo, days: rangeDays } = filterByRange(rawSales, bizFrom, bizTo);
+  // 🔴 R574 / #110：`rangeDays` 只按 biz_date 去重 —— 堂食 7 天汇总表落库后 36 行同一个 biz_date
+  //   ⇒ 它会报「1 天」，而实际覆盖 7 天。故另算一份**粒度感知**的覆盖天数，**不改 rangeDays 旧语义**
+  //   （旧语义已被前端文案与套件锁定），只在出参里如实多给三项，由前端决定怎么说。
+  const cov = coverageStats(allSales);
 
   // ===== 4. 读成本卡（listAll，取各 card_code 最新版本；软删自动过滤）=====
   const cardsRes = await da.listAll('shop_cost_card', { shop_id: shopId });
@@ -154,7 +158,18 @@ exports.main = async (event) => {
     //   · `from`/`to` 为空串 ⇒ **未按区间过滤**（调用方没给 / 只给了一端）⇒ 前端必须显示
     //     "全部期间"而不是假装单月 —— 期间口径**不许由前端猜**。
     //   · `days` = 该期间内**实际有数据的天数**（去重）⇒ 直接把"这个月只有 7 天数据"暴露出来。
-    range: { from: rangeFrom, to: rangeTo, days: rangeDays },
+    //   · R574 / #110 增三项（**均为如实回，不是估计**）：
+    //       `covered_days` = 真实覆盖天数（区间行按期间并集算；与 days 不等 ⇒ 说明含汇总表）；
+    //       `has_interval` = 存在「一段=一行」的汇总表数据 ⇒ 前端**必须**提示，不许当逐日比；
+    //       `has_unknown`  = 存在粒度未知的行（主要是本功能上线前的历史导入）⇒ 提示可重导补齐。
+    range: {
+      from: rangeFrom,
+      to: rangeTo,
+      days: rangeDays,
+      covered_days: cov.coveredDays,
+      has_interval: cov.hasInterval,
+      has_unknown: cov.hasUnknown,
+    },
     dine_in: ranked,        // 堂食排行
     // 无外卖数据 ⇒ null（空态，不默认 0，红线 18）；有数据 ⇒ { by_platform, totals }
     takeaway: Object.keys(takeawayResult.by_platform).length ? takeawayResult : null,

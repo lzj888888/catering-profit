@@ -248,6 +248,89 @@ function countDataDays(rows) {
   return set.size;
 }
 
+// ===================== R574 / #110：真实覆盖天数（粒度感知） =====================
+
+/** `YYYY-MM-DD` 含首尾的天数；非法/反向 ⇒ 0，上限 366（防脏数据把数组撑爆）。 */
+function spanDaysInclusive(a, b) {
+  const t0 = Date.parse(String(a) + 'T00:00:00Z');
+  const t1 = Date.parse(String(b) + 'T00:00:00Z');
+  if (!isFinite(t0) || !isFinite(t1) || t1 < t0) return 0;
+  return Math.min(Math.round((t1 - t0) / 86400000) + 1, 366);
+}
+
+/** 合并重叠/相邻区间（输入 `[[from,to],...]`；`YYYY-MM-DD` 字符串可直接比较）。 */
+function mergeRanges(ranges) {
+  const list = (ranges || [])
+    .filter((r) => r && r[0] && r[1] && r[0] <= r[1])
+    .map((r) => [String(r[0]), String(r[1])])
+    .sort((x, y) => (x[0] < y[0] ? -1 : (x[0] > y[0] ? 1 : 0)));
+  const out = [];
+  for (const r of list) {
+    const last = out[out.length - 1];
+    if (!last || r[0] > last[1]) out.push([r[0], r[1]]);
+    else if (r[1] > last[1]) last[1] = r[1];
+  }
+  return out;
+}
+
+/**
+ * 按**粒度**统计真实覆盖天数与构成（纯函数 · 零 db · 可复算）。
+ *
+ * 🔴 R574 / #110 为什么需要它（这是"1 天"与"7 天"的分野，不是美化文案）：
+ *   `countDataDays` 只按 `biz_date` 去重。堂食《菜品销售统计》是**7 天区间汇总**、
+ *   落库时 36 行共用同一个 `biz_date`（= 区间末日）⇒ `days` 会报 **1**，
+ *   而实际覆盖 **7 天**。同一屏的外卖是逐日 7 行 ⇒ 两栏都显示"7"，看着可以直接比，
+ *   其实一个是「7 天的汇总被记在 1 天」、一个是「7 天逐日」。
+ *
+ * 口径：
+ *   · `days`        = 按 `biz_date` 去重的**有数据日期数**（**保持旧语义**，不动既有断言/展示）。
+ *   · `coveredDays` = 真实覆盖天数：`interval` 行按区间并集算，`daily` 行记 1 天，
+ *                     两者重叠**不重复计**；`unknown`（含无字段的旧数据）按单日计。
+ *   · `hasInterval` = 存在区间行 ⇒ 前端必须提示"其中含汇总表"，不许当逐日比。
+ *   · `hasUnknown`  = 存在粒度未知的行（**主要是历史数据**）⇒ 前端提示可重导以补齐口径。
+ *
+ * @param {Array<{biz_date:string, granularity?:string, period_from?:string, period_to?:string}>} rows
+ * @returns {{days:number, coveredDays:number, hasInterval:boolean, hasUnknown:boolean,
+ *            intervalRows:number, unknownRows:number}}
+ */
+function coverageStats(rows) {
+  const daily = new Set();
+  const intervals = [];
+  let intervalRows = 0;
+  let unknownRows = 0;
+  for (const s of (rows || [])) {
+    const g = (s && s.granularity == null ? '' : String(s.granularity)).trim();
+    const pf = (s && s.period_from == null ? '' : String(s.period_from)).trim();
+    const pt = (s && s.period_to == null ? '' : String(s.period_to)).trim();
+    const bd = (s && s.biz_date == null ? '' : String(s.biz_date)).trim();
+    if (g === 'interval' && pf && pt && pf <= pt) { intervals.push([pf, pt]); intervalRows++; continue; }
+    if (g === 'daily') { if (bd) daily.add(bd); continue; }
+    // unknown / 字段缺失（历史行）/ 非法取值 ⇒ 一律按单日计，并计入 unknownRows（不静默）
+    if (bd) daily.add(bd);
+    unknownRows++;
+  }
+  const merged = mergeRanges(intervals);
+  let covered = 0;
+  for (const [a, b] of merged) covered += spanDaysInclusive(a, b);
+  // 单日行若落在某个区间内 ⇒ 已计过，不重复加
+  let extra = 0;
+  for (const d of daily) {
+    let inside = false;
+    for (const [a, b] of merged) { if (d >= a && d <= b) { inside = true; break; } }
+    if (!inside) extra++;
+  }
+  return {
+    // ⚠️ `days` **必须**与 countDataDays(rows) 逐值相等（旧语义：所有行按 biz_date 去重）。
+    //   不能改用下面那个 daily 集合 —— 它刻意不含 interval 行，用它会让"有数据天数"暗降。
+    days: countDataDays(rows),
+    coveredDays: covered + extra,
+    hasInterval: merged.length > 0,
+    hasUnknown: unknownRows > 0,
+    intervalRows,
+    unknownRows,
+  };
+}
+
 /**
  * 把全量销量行**在 service 层**分流（可复算；不在 index 做业务判断）。
  * @param {Array<{platform:string}>} sales
@@ -377,4 +460,6 @@ function computeCoverage(allSales, matchedKeys, buffetFoodCostTotalFen) {
   };
 }
 
-module.exports = { buildDishReview, buildTakeawayReview, rankReview, splitSales, mergeTotals, TOTALS_FIELDS, computeCoverage, classifyDishKey, filterByRange, countDataDays };
+module.exports = { buildDishReview, buildTakeawayReview, rankReview, splitSales, mergeTotals, TOTALS_FIELDS, computeCoverage, classifyDishKey, filterByRange, countDataDays,
+  // R574 / #110：粒度感知的覆盖天数（守卫直接验）
+  coverageStats, spanDaysInclusive, mergeRanges };

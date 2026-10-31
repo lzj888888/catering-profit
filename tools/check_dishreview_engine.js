@@ -767,8 +767,18 @@ function section14() {
     && /filterByRange\(/.test(idxStripped));
 
   // ② 出参如实回 `range`（前端不许猜期间）
-  check('14-② 出参含 `range: { from, to, days }`（期间口径由云端给，前端不猜）',
-    /range:\s*\{\s*from:\s*rangeFrom,\s*to:\s*rangeTo,\s*days:\s*rangeDays\s*\}/.test(idxSrc));
+  // ⚠️ R574 修正：原判据把**单行字面量**钉死（`range: { from: rangeFrom, to: rangeTo, days: rangeDays }`）
+  //   ⇒ #109 给 range 加三个字段并换行后，语义没变却判红。判据改为**判语义**：
+  //   同一个对象字面量里必须含 from/to/days 三个键（允许换行，**允许额外键**），
+  //   且必须在**剥掉注释之后**的源码里判（否则注释里写一句就能喂成恒真）。
+  check('14-② 出参含 `range{from,to,days}`（期间口径由云端给，前端不猜；允许换行与额外键）',
+    /range:\s*\{[^}]*\bfrom:\s*rangeFrom\b[^}]*\bto:\s*rangeTo\b[^}]*\bdays:\s*rangeDays\b[^}]*\}/.test(idxStripped));
+  // ②b 🔴 R574 / #110：粒度三项必须**真的出现在出参**（不是只在注释里写着）
+  //   反恒真思路：三个键名各自独立匹配；少任何一个即红。
+  check('14-②b 出参含粒度三项 `covered_days` / `has_interval` / `has_unknown`（#110 前端据此选文案）',
+    /range:\s*\{[^}]*\bcovered_days:\s*cov\.coveredDays\b/.test(idxStripped)
+    && /range:\s*\{[^}]*\bhas_interval:\s*cov\.hasInterval\b/.test(idxStripped)
+    && /range:\s*\{[^}]*\bhas_unknown:\s*cov\.hasUnknown\b/.test(idxStripped));
 
   // ③ ④ **行为级**：真调 filterByRange 验四条语义（区间内 / 任一端缺⇒不过滤 / 区间反⇒空 / 非法日期行剔除）
   const SVC_P = path.join(ROOT, 'cloudfunctions/getDishReview/service.js');
@@ -870,6 +880,87 @@ function section13() {
     !/actualFlag\b/.test(pageNoCmt13.replace(/actualFlagCode/g, '')));
 }
 section13();
+
+// ===== ⑮ 段（R574 / #110）：**粒度感知的覆盖天数** =====
+// 为什么（真缺陷，不是美化）：
+//   `countDataDays` 只按 `biz_date` 去重。堂食《菜品销售统计》是 **7 天区间汇总**，
+//   36 行共用同一个 biz_date（= 区间末日）⇒ 它报 **1 天**，而实际覆盖 **7 天**；
+//   同一屏的外卖是逐日 7 行 ⇒ 两栏都显示"7"，看着能直接比 —— 其实一个是「7 天记在 1 天」。
+// 本段**全部是行为级**（真调 coverageStats 算），不是读源码字面。
+function section15() {
+  let S = null;
+  try { S = require(path.join(ROOT, 'cloudfunctions/getDishReview/service.js')); } catch (e) { S = null; }
+  check('15-⓪ service 真的导出 coverageStats / spanDaysInclusive / mergeRanges（功能不在 = 后面全假绿）',
+    !!S && typeof S.coverageStats === 'function'
+    && typeof S.spanDaysInclusive === 'function' && typeof S.mergeRanges === 'function');
+  if (!S || typeof S.coverageStats !== 'function') return;
+
+  const mk = (n, o) => Array.from({ length: n }, () => Object.assign({ dish_key: 'x', qty: 1, amount: 100 }, o));
+  const week = ['07', '08', '09', '10', '11', '12', '13'].map((d) => ({
+    dish_key: 'y', qty: 1, amount: 100, biz_date: '2026-09-' + d,
+    granularity: 'daily', period_from: '2026-09-' + d, period_to: '2026-09-' + d,
+  }));
+  const tangshi = mk(36, { biz_date: '2026-09-13', granularity: 'interval', period_from: '2026-09-07', period_to: '2026-09-13' });
+
+  const c1 = S.coverageStats(tangshi);
+  check('15-① 🔴 堂食 7 天汇总（36 行同 biz_date）：days=1 而 coveredDays=7 —— "1 天"与"7 天"的分野',
+    c1.days === 1 && c1.coveredDays === 7 && c1.hasInterval === true,
+    'days=' + c1.days + ' covered=' + c1.coveredDays);
+
+  const c2 = S.coverageStats(week);
+  check('15-② 外卖逐日 7 行：days=7 且 coveredDays=7，hasInterval=false',
+    c2.days === 7 && c2.coveredDays === 7 && c2.hasInterval === false,
+    'days=' + c2.days + ' covered=' + c2.coveredDays);
+
+  const c3 = S.coverageStats(tangshi.concat(week));
+  check('15-③ 🔴 混合：两栏都报 7，但 hasInterval=true ⇒ 不许当同一种"天"比',
+    c3.days === 7 && c3.coveredDays === 7 && c3.hasInterval === true,
+    'days=' + c3.days + ' covered=' + c3.coveredDays + ' interval=' + c3.hasInterval);
+
+  const c4 = S.coverageStats(mk(36, { biz_date: '2026-09-13' }));
+  check('15-④ 旧数据（无 granularity 字段）：按单日计但 hasUnknown=true —— 不静默、不臆测成区间',
+    c4.days === 1 && c4.coveredDays === 1 && c4.hasUnknown === true && c4.hasInterval === false,
+    'unknown=' + c4.hasUnknown);
+
+  const c5 = S.coverageStats([
+    { biz_date: '2026-09-07', granularity: 'interval', period_from: '2026-09-01', period_to: '2026-09-03' },
+    { biz_date: '2026-09-20', granularity: 'interval', period_from: '2026-09-10', period_to: '2026-09-13' },
+  ]);
+  check('15-⑤ 两段不重叠区间：并集 3+4=7 天（不取最长、不相加行数）',
+    c5.coveredDays === 7, 'covered=' + c5.coveredDays);
+
+  const c6 = S.coverageStats([
+    { biz_date: '2026-09-05', granularity: 'interval', period_from: '2026-09-01', period_to: '2026-09-07' },
+    { biz_date: '2026-09-03', granularity: 'interval', period_from: '2026-09-05', period_to: '2026-09-10' },
+  ]);
+  check('15-⑥ 两段重叠区间：合并后 09-01~09-10 = 10 天（重叠不重复计）',
+    c6.coveredDays === 10, 'covered=' + c6.coveredDays);
+
+  // days 旧语义必须逐值等于 countDataDays（否则页面"有数据天数"会被暗改而无人知）
+  const cases = [tangshi, week, mk(3, { biz_date: '2026-09-13' }), [], tangshi.concat(week)];
+  check('15-⑦ days 与 countDataDays 逐值一致（旧语义不许暗改，含空输入）',
+    cases.every((rows) => S.coverageStats(rows).days === S.countDataDays(rows)));
+
+  // 自失效护栏：空输入必须全零/全 false ⇒ 证明上面几条不是恒真
+  const c0 = S.coverageStats([]);
+  check('15-⑧ 自失效护栏：空输入 ⇒ days=0 / covered=0 / 两 flag 均 false（判据非常量）',
+    c0.days === 0 && c0.coveredDays === 0 && c0.hasInterval === false && c0.hasUnknown === false);
+}
+section15();
+
+// ⑯ 段（R574 / #110）：前端**真的**按云端 flag 选文案（不是把三种情况都写成一句话）
+function section16() {
+  const P = rd('pages/m3/dishreview/index.js').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+  check('16-① 前端消费 `has_interval` / `has_unknown` / `covered_days` 三个云端字段（缺一即红）',
+    /has_interval/.test(P) && /has_unknown/.test(P) && /covered_days/.test(P));
+  check('16-② 三条文案分支都在用（reviewRangeSpan / reviewRangeLegacy / reviewRangeOf）',
+    /reviewRangeSpan\(/.test(P) && /reviewRangeLegacy\(/.test(P) && /reviewRangeOf\(/.test(P));
+  // 反恒真：把"只有一条文案"的旧形态喂给 ② ⇒ 必须判不通过
+  const oldForm = 'rangeText = TERMS.card.reviewRangeOf(month, rg.days || 0);';
+  check('16-③ 反恒真：只有一条文案的旧形态 ⇒ ② 的判据必须不通过',
+    !(/reviewRangeSpan\(/.test(oldForm) && /reviewRangeLegacy\(/.test(oldForm)));
+}
+section16();
 
 console.log('\n===== getDishReview 算法层守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);

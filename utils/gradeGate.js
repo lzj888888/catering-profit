@@ -20,6 +20,13 @@ const SALES_SCHEMA = {
     platform: { type: 'string', required: true, enum: ['taobao', 'meituan', 'jd_order', 'jd_sku', 'eleme', 'pos', 'other'] },
     source: { type: 'string', required: true, enum: ['oauth', 'excel', 'manual'] },
     created_at: { type: 'number', required: true, integer: true },
+    // 🔴 R574 / #109：粒度三字段（**非必填**，为旧数据留出缺口）。
+    //   语义：daily=一行就是那天；interval=一行是一段期间的汇总（堂食《菜品销售统计》标准形态）；
+    //         unknown=端点缺失或历史数据 ⇒ 读侧按单日计但**打标记**，绝不臆测成 interval。
+    //   🔴 本段须与 `cloudfunctions/importSalesBill/service.js::SALES_SCHEMA.fields` **逐值一致**。
+    granularity: { type: 'string', required: false, enum: ['daily', 'interval', 'unknown'] },
+    period_from: { type: 'string', required: false, pattern: /^\d{4}-\d{2}-\d{2}$/ },
+    period_to: { type: 'string', required: false, pattern: /^\d{4}-\d{2}-\d{2}$/ },
   },
 };
 

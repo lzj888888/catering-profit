@@ -313,9 +313,18 @@ Page({
     //   「本榜统计 YYYY-MM，共 N 天有数据」（N 直接把"这个月只有 7 天数据"暴露出来）；
     //   没有区间（旧客户端 / 只给一端 ⇒ 云端不过滤）就**明说"不是单月"**，**绝不假装是本月**。
     const rg = (d && d.range) || {};
-    const rangeText = (rg.from && rg.to)
-      ? TERMS.card.reviewRangeOf(month, rg.days || 0)
-      : TERMS.card.reviewRangeAll(rg.days || 0);
+    // 🔴 R574 / #110：云端额外如实回了 `has_interval` / `has_unknown` / `covered_days`
+    //   ⇒ 三条文案分支（优先级：含汇总表 > 含旧版导入 > 常规）。
+    //   **前端不许自己推粒度** —— 判据全在云端 `coverageStats`，前端只负责把它讲成人话。
+    //   典型场景：堂食 7 天汇总表 + 外卖 7 天逐日，两栏都显示"7"，但前者其实是"7 天记在 1 天"。
+    let rangeText;
+    if (rg.from && rg.to) {
+      if (rg.has_interval) rangeText = TERMS.card.reviewRangeSpan(month, rg.covered_days || rg.days || 0);
+      else if (rg.has_unknown) rangeText = TERMS.card.reviewRangeLegacy(month, rg.days || 0);
+      else rangeText = TERMS.card.reviewRangeOf(month, rg.days || 0);
+    } else {
+      rangeText = TERMS.card.reviewRangeAll(rg.days || 0);
+    }
     // 🔴 R299（缺陷 D2）：消费服务端 `truncated`（可见降级）。见 utils/dataHealth.js 头注。
     this._setTrunc('review', dh.isTruncated(d));
     // 🔴 R255：成本卡列表（「关联」picker 用）。**必须在这里先拉** —— 下面构造
