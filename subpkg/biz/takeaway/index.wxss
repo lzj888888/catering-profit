@@ -62,6 +62,15 @@
 .ok-bar .btn { margin-top: 16rpx; }
 .btn-block { width: 100%; }
 
+/* R590 认不出表时的「让 AI 帮你转」逃生口。
+   copied-hint 用绿色＝「这一步成了」，与 warn（红＝要改）区分开；
+   ai-fix-text 只在复制失败时摊开正文，所以要可选、可滚动，字号 28rpx 守 G1 下限。 */
+.ai-fix-hint { font-size: 28rpx; color: #4a5b70; line-height: 1.5; margin: 12rpx 4rpx 8rpx; }
+.copied-hint { font-size: 28rpx; color: #1e9e5a; line-height: 1.5; margin: 12rpx 4rpx 0; }
+.ai-fix-text { display: block; font-size: 28rpx; color: #4a5b70; line-height: 1.6;
+  background: #f5f7fa; border-radius: 8rpx; padding: 16rpx 20rpx; margin-top: 12rpx;
+  white-space: pre-wrap; word-break: break-all; max-height: 600rpx; overflow-y: auto; }
+
 /* P1 · 逐行毛利（本单各菜品/套餐毛利；字号一律 ≥28rpx，守 selftest_ad_gates G1）*/
 .ci-left { display: flex; align-items: center; flex: 1; min-width: 0; }
 .ci-name { font-size: 28rpx; color: #1e3a5f; }

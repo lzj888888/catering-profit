@@ -185,6 +185,21 @@
       <view class="warn">{{t.importDiagTitle}}</view>
       <view class="muted">{{importDiagText}}</view>
       <view class="muted" wx:if="{{importDiagFoundText}}">{{importDiagFoundText}}</view>
+
+      <!-- 🔴 R590：认不出表时的**逃生口** —— 老板手上这张表结构不对，除了去 Excel 里改没有出路，
+           而「改列名 / 删合计行 / 分列」正是 AI 最擅长、他最不会的事。
+           所以我们不教他改表，给他一段能直接粘给 AI 的话。
+           ⚠️ 指令正文**只在复制失败时才摊开**（448 字铺在页面上会撑长首屏，老板只划不读）。 -->
+      <!-- ⚠️ 用独立类 ai-fix-hint，**不复用 .hint**：
+           · .hint 在本页被 check_hint_fold::F9 当作"原有平铺短提示"计数（期望 1 处），
+             复用会把计数变成 2 ⇒ 判红；那条判据守的是"别把原有短提示折了"，是对的，不为新增让路。
+           · 语义上也该分开：这是**失败态的逃生口说明**，不是常驻提示。
+             分层线要求「≥18 字要折叠」的前提是"常驻提示会占首屏"；
+             而这块只在 importDiagText 非空时渲染（一次性、不占正常首屏），折叠反而多一次点击。 -->
+      <view class="ai-fix-hint">{{t.importAiFixHint}}</view>
+      <button class="btn ghost btn-block" bindtap="onCopyAiFix">{{t.importAiFixBtn}}</button>
+      <view class="copied-hint" wx:if="{{importAiFixCopiedText}}">{{importAiFixCopiedText}}</view>
+      <text class="ai-fix-text" wx:if="{{importAiFixText}}" user-select="true">{{importAiFixText}}</text>
     </view>
 
     <!-- 预览（解析 + 甲级门禁后展示；确认后才落库）—— 形态 C 与账单分开展示 -->

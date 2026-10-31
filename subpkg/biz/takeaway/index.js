@@ -43,6 +43,13 @@ const DISH_SHAPES = {
   S2: 'dsi1_summary',
 };
 
+// 🔴 R590：DSI-1 的列名（给「让 AI 帮我转」那段指令用）。
+//   ⚠️ 为什么前端要抄一份：小程序包**不能 require 云函数目录**（云函数不在包内）。
+//   所以这里是**第二份副本** —— 与 subpkg 之于 DISH_SHAPES 同款问题。
+//   待遇也同款：tools/check_import_ai_fix.js 跨目录对拍两边逐字一致，改了云函数没改这里就判红。
+//   意义：这份列名会**写进给 AI 的指令**，一旦和解析器不一致，就是在教 AI 产一个我们不认的表。
+const DSI_HEADERS = ['日期', '渠道', '平台', '商品名称', '销量', '销售额', '备注'];
+
 // v1.7 形态 C（外卖商品销量）：外卖平台选择项（label 来自 terms 单源；不含 pos —— 堂食不走这条路）
 // 🔴 R246：加京东 —— 但**只列 `jd_sku`**（SKU 级 = 商品销量表，正是形态 C 要的表型）；
 //   `jd_order`（订单级）是**账单**、走对账路（M3 外卖账单导入），不是"商品销量表" ⇒ 不进本 picker。
@@ -224,6 +231,9 @@ Page({
       importDiagTitle: TK.importDiagTitle,
       importDiagBody: TK.importDiagBody,
       importDiagFound: TK.importDiagFound,
+      // R590：认不出表时的「让 AI 帮你转」逃生口（正文只进剪贴板，界面上只留说明+按钮）
+      importAiFixHint: TK.importAiFixHint,
+      importAiFixBtn: TK.importAiFixBtn,
       importDiagExcluded: TK.importDiagExcluded,
       importDiagMixed: TK.importDiagMixed,
       importDiagEmpty: TK.importDiagEmpty,
@@ -279,6 +289,8 @@ Page({
     // 🔴 R303：一级校验结论（表内自洽的错）。空串 ⇒ 不渲染（没发现问题，**不假报"一切正常"**）
     importSanityText: '',
     importDiagFoundText: '', // R286：表里实际读到的列名（给老板对照自己导的表对不对）
+    importAiFixCopiedText: '', // R590：点完复制后的下一步说明（空串 ⇒ 不渲染；不弹窗，原地变文字）
+    importAiFixText: '',        // R590：仅在**复制失败**时摊开正文，让老板长按手动选（空串 ⇒ 不渲染）
     importPreview: null,   // 预览 { rows, totals, months, excluded }
     // R585：DSI-1 三条说明（空串 ⇒ 不渲染；与 importSanityText 同款「不假报没问题」约定）
     importDsiNonIntText: '',
@@ -866,6 +878,37 @@ Page({
 
   // P0#8：导入成功结果条 —— 两个出口 + 收起
   goRecon() { wx.navigateTo({ url: '/subpkg/tools/recon/index' }); },
+  /**
+   * 🔴 R590：把「让 AI 帮我转格式」的指令复制进剪贴板。
+   *
+   * 设计取舍：
+   *   · 正文不渲染到页面（448 字会把首屏撑长，老板只划不读）⇒ 只进剪贴板；
+   *   · 不弹窗（老板不喜欢多余弹窗）⇒ 复制成功后**原地**把提示换成下一步怎么做；
+   *   · 年份取当前年、列名取 DSI_HEADERS —— 都不硬编码，契约改了这里自动跟上。
+   *
+   * ⚠️ 为什么不校验「粘到哪」：老板可能用豆包、元宝、WorkBuddy 或随便哪个 AI，
+   *   我们管不了也不需要管 —— 只要产出的表符合 DSI-1，回来就能导。
+   */
+  onCopyAiFix() {
+    const text = TK.importAiPrompt(DSI_HEADERS.join(','), String(new Date().getFullYear()));
+    wx.setClipboardData({
+      data: text,
+      success: () => {
+        // 系统自带的「内容已复制」toast 会被下面这行盖掉：我们给的是**下一步怎么做**，信息量更大
+        wx.hideToast();
+        this.setData({ importAiFixCopiedText: TK.importAiFixCopied, importAiFixText: '' });
+      },
+      fail: () => {
+        // 🔴 复制失败 = 老板卡死在这一步。只报「失败了」等于把他扔在半路 ——
+        //   所以把正文**摊在页面上**（wxml 里 user-select），让他长按手动选。
+        this.setData({
+          importAiFixCopiedText: TK.importAiFixCopyFail,
+          importAiFixText: text,
+        });
+      },
+    });
+  },
+
   goDishReview() { wx.navigateTo({ url: '/pages/m3/dishreview/index' }); },
   dismissDone() { this.setData({ importDone: false, importDoneText: '' }); },
 });

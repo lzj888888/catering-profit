@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：226 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：227 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -1363,6 +1363,11 @@ const SUITES = [
   //   DSI-1 掉进账单分支 p.totals 抛 TypeError、被 catch 吞成一句「导入失败」。
   //   门禁 V-1/V-2 当时只在 A/B/C 上成立，抓不到。
   ['DSI-1 导入页装配桩 R585', 'tools/check_dsi1_page_stub.js'],
+  // ===== R590：「让 AI 帮你转格式」逃生口（导入失败时给一段可复制的指令）
+  //   守两件事：① 指令是**教 AI 产表**的规格 —— 列名必须与 dsi1.HEADERS 逐字一致、
+  //   年份与渠道必须写死（R589 实测 AI 会自己编这两处，渠道错了我们根本发现不了）；
+  //   ② 接线真通：按钮真调 setClipboardData、复制失败要摊开正文（只报失败 = 老板卡死）。
+  ['导入 AI 转格式逃生口 R590', 'tools/check_import_ai_fix.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
