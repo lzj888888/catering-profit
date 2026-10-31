@@ -188,8 +188,39 @@
     </view>
 
     <!-- 预览（解析 + 甲级门禁后展示；确认后才落库）—— 形态 C 与账单分开展示 -->
+    <!-- 🔴 R585：DSI-1 标准格式（AI 整理好的表）。它排在形态 C 之前，因为一份表可**同时含
+         堂食 + 多个外卖平台** —— 只显示一个「合计」老板会把它当某一个平台的钱。
+         这里**不给平台 picker**：平台已由表里的「平台」列写死，不再由用户选（选了反而会覆盖）。 -->
+    <view class="card2" wx:if="{{importPreview && importShape === shapeS}}">
+      <view class="cell">
+        <text class="lbl">{{t.importRowsLabel}}</text>
+        <text class="val">{{importPreview.rowCount}} {{t.importRowUnit}}</text>
+      </view>
+      <view class="cell">
+        <text class="lbl">{{t.importDsiDaysLabel}}</text>
+        <text class="val">{{importPreview.dateRangeText}}（{{importPreview.dayCount}} {{t.importDaysUnit}}）</text>
+      </view>
+      <view class="cell">
+        <text class="lbl">{{t.importDsiDishesLabel}}</text>
+        <text class="val">{{importPreview.dishCount}}</text>
+      </view>
+      <!-- 分渠道：一个渠道一行（堂食在前、外卖按金额降序，排序在 JS 里做完，wxml 不排） -->
+      <view class="cell" wx:for="{{importPreview.channels}}" wx:key="name">
+        <text class="lbl">{{t.importDsiChannelsLabel}} · {{item.name}}</text>
+        <text class="val">{{t.cur}}{{item.amountYuan}}</text>
+      </view>
+      <view class="cell">
+        <text class="lbl">{{t.importTotalLabel}}</text>
+        <text class="val">{{t.cur}}{{importPreview.amountYuan}}</text>
+      </view>
+      <!-- 三条说明都是「老板最容易当 bug 报」的点；空串 ⇒ 不渲染（不假报"一切正常"） -->
+      <view class="muted" wx:if="{{importDsiNonIntText}}">{{importDsiNonIntText}}</view>
+      <view class="muted" wx:if="{{importDsiRefundsText}}">{{importDsiRefundsText}}</view>
+      <view class="muted" wx:if="{{importDsiNoPackText}}">{{importDsiNoPackText}}</view>
+      <button class="btn primary" wx:if="{{!importGrade || importGrade.pass}}" style="margin-top:24rpx;" bindtap="onConfirmImport">{{t.importConfirm}}</button>
+    </view>
     <!-- 形态 C（外卖商品销量）：platform 机器判不出 ⇒ 必须选平台 -->
-    <view class="card2" wx:if="{{importPreview && importShape === shapeC}}">
+    <view class="card2" wx:elif="{{importPreview && importShape === shapeC}}">
       <!-- 🔴 R303 一级校验结论（表内自洽的错，导之前就报；空串 ⇒ 不渲染，也不假报"一切正常"） -->
       <view class="warn" wx:if="{{importSanityText}}">{{importSanityText}}</view>
       <!-- R234/J4d：20 字（≥18）⇒ 折叠。它出在**预览之后**（用户在核对数字），

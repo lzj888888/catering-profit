@@ -767,6 +767,20 @@ const TERMS = {
       importRowsLabel: '识别到',
       importMonthsLabel: '归月到',
       importTotalLabel: '合计',
+      // 🔴 R585：DSI-1 标准格式（AI 整理好的表）预览文案。
+      //   与形态 C 的区别：一份表可能同时含堂食 + 多个外卖平台 ⇒ 必须**分渠道展示**，
+      //   否则老板看到「合计」会把它当成某一个平台的钱。
+      importDsiChannelsLabel: '分渠道',
+      importDsiDaysLabel: '覆盖',
+      importDsiDishesLabel: '商品数',
+      // 两条「已处理」说明：都是**老板最可能以为是 bug** 的地方。
+      importDsiNonInt: (n) => `有 ${n} 行按斤/按重卖（销量带小数），已按整份记，金额按原样`,
+      importDsiRefunds: (n) => `含 ${n} 行退款，已按负数抵扣（不会算成销量）`,
+      // 🔴 契约 S1-③：这张表只有菜品、没有打包费 ⇒ 与月度账的渠道汇总天然对不上。
+      //   不提前说，老板一定当成「你们漏算了」。
+      importDsiNoPack: '这张表只算菜品，不含打包费 —— 和月度账里的渠道汇总对不上是正常的',
+      // 导入成功回执：必须说清「哪几个渠道」，否则老板不知道这份表把哪些平台的数据带进来了
+      importDoneDsi: (n, s) => `已导入 ${n} 行，含 ${s}。`,
       importExcludedLabel: '已排除',
       importRowUnit: '行',
       importDaysUnit: '天',

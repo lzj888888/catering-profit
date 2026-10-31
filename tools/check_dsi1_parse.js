@@ -24,6 +24,19 @@ const sec = (t) => console.log(`\n===== ${t} =====`);
 
 let D = null;
 try { D = require(path.join(ROOT, 'cloudfunctions/importSalesBill/dsi1.js')); } catch (e) { D = null; }
+// R585：链路对拍要用 service（detectDishShape / saleDocId）。它 require 了 xlsx，
+//   而本机没装这个包 ⇒ 用**空桩**顶住（本文件只调判定与 _id 生成，不碰真实表格解析）。
+let S = null;
+try {
+  const Module = require('module');
+  const origLoad = Module._load;
+  Module._load = function (req) {
+    if (req === 'xlsx') return {};
+    return origLoad.apply(this, arguments);
+  };
+  try { S = require(path.join(ROOT, 'cloudfunctions/importSalesBill/service.js')); }
+  finally { Module._load = origLoad; }
+} catch (e) { S = null; }
 
 console.log('[R583] DSI-1 标准导入格式解析守卫\n');
 
@@ -124,6 +137,79 @@ if (D && typeof D.groupByPlatformDate === 'function') {
   const byDateOnly = new Set(pm.rows.map((x) => x.bizDate)).size;
   check('D2-⑤ 🔴 反证：按日期单维只有 2 组 ⇒ 平台维度被压平（证明分组不能省 platform）',
     byDateOnly === 2 && gs.length !== byDateOnly, '单维 ' + byDateOnly + ' vs 双维 ' + gs.length);
+}
+
+sec('D3 · 链路对拍（检测 → 解析 → 分组 → _id）：这一步才是"真能导进去"');
+{
+  const H3 = ['日期', '渠道', '平台', '商品名称', '销量', '销售额', '备注'];
+  const MIX3 = [
+    H3,
+    ['2026-09-07', '堂食', '', '重庆小面', 12, 216, ''],
+    ['2026-09-07', '外卖', '美团', '重庆小面', 5, 95, ''],
+    ['2026-09-07', '外卖', '淘宝闪购', '重庆小面', 3, 57, ''],
+    ['2026-09-08', '堂食', '', '重庆小面', 10, 180, ''],
+  ];
+  check('D3-⓪ service 已加载（取不到 ⇒ 下面全 fail-closed，不假绿）', !!S);
+  const shape = S ? S.detectDishShape(MIX3) : '';
+  check('D3-① detectDishShape 把这 7 列认成 S（不是 C：C 没有渠道列）',
+    shape === 'dsi1_standard', String(shape));
+
+  const pr = D.parse(MIX3);
+  const gs = D.groupByPlatformDate(pr.rows);
+  const ids = [];
+  for (const g of gs) {
+    for (let seq = 0; seq < g.rows.length; seq++) ids.push(S.saleDocId('shop1', g.platform, g.bizDate, seq));
+  }
+  check('D3-② 生成的 _id **两两不重复**（重复 = 后写的把先写的覆盖掉，且不报错）',
+    new Set(ids).size === ids.length, ids.length + ' 个 / 去重后 ' + new Set(ids).size);
+  check('D3-③ 同一天三个平台的 _id 互不冲突（platform 进了 _id）',
+    new Set(gs.filter((g) => g.bizDate === '2026-09-07')
+      .map((g) => S.saleDocId('shop1', g.platform, g.bizDate, 0))).size === 3);
+  // 幂等：同一份表再跑一遍，_id 集合必须逐字相同（重导是覆盖不是翻倍）
+  const pr2 = D.parse(MIX3);
+  const gs2 = D.groupByPlatformDate(pr2.rows);
+  const ids2 = [];
+  for (const g of gs2) {
+    for (let seq = 0; seq < g.rows.length; seq++) ids2.push(S.saleDocId('shop1', g.platform, g.bizDate, seq));
+  }
+  check('D3-④ 同一份表重导 ⇒ _id 集合逐字相同（覆盖而非翻倍）',
+    ids.join(',') === ids2.join(','));
+  // 反证：把两行挪到别的日期 ⇒ _id 必须变（否则"改了日期还是覆盖旧数据"）
+  const SHIFT = JSON.parse(JSON.stringify(MIX3));
+  SHIFT[1][0] = '2026-09-09';
+  const pr3 = D.parse(SHIFT);
+  const g3 = D.groupByPlatformDate(pr3.rows)[0];
+  check('D3-⑤ 日期变了 ⇒ _id 必须变（否则改日期会覆盖旧数据）',
+    S.saleDocId('shop1', g3.platform, g3.bizDate, 0) !== S.saleDocId('shop1', 'pos', '2026-09-07', 0));
+}
+
+sec('D4 · 仓库里的样例 xlsx 必须真能被吃下（不是"看起来像"）');
+{
+  // 样例行的 JSON 由 review/evidence/r585_dsi_e2e/verify_examples.py 用 openpyxl 读回生成。
+  // 🔴 为什么不直接读 .xlsx：门禁是 node、本机没装 xlsx 包；而这里要验的是
+  //   "Excel 落盘后再读回来，值还是不是我们认的样子"（日期变 datetime、1.5 变字符串都会翻车）。
+  //   所以链路是：python 读 xlsx → JSON → 本文件喂 parse。xlsx 若被人改坏，JSON 不刷新就抓不到
+  //   ⇒ 判据里额外比对 xlsx 的字节数，提醒"改了表要重跑生成脚本"。
+  let EX = null;
+  try { EX = require(path.join(ROOT, 'review/evidence/r585_dsi_e2e/examples_rows.json')); } catch (e) { EX = null; }
+  check('D4-⓪ 样例行 JSON 在场（缺 ⇒ 下面 fail-closed）', !!(EX && EX.s1 && EX.s2));
+  if (EX && EX.s1) {
+    check('D4-① 样例 S1 表头逐字合规', JSON.stringify(EX.s1[0]) === JSON.stringify(H));
+    const r = D.parse(EX.s1);
+    check('D4-② 样例 S1 解析通过', !!(r && r.ok), (r && r.error) || '');
+    if (r && r.ok) {
+      const s2 = r.summary;
+      check('D4-③ 样例 S1 数字对得上（堂食 711 / 美团 184 含退款 / 淘宝 57 / 合计 952 元）',
+        s2.byChannel['堂食'].amountFen === 71100
+        && s2.byChannel['外卖:meituan'].amountFen === 18400
+        && s2.byChannel['外卖:taobao'].amountFen === 5700
+        && s2.totalAmountFen === 95200,
+        JSON.stringify(Object.keys(s2.byChannel).map((k) => k + '=' + s2.byChannel[k].amountFen)));
+      check('D4-④ 样例里的称重行(1.5)与退款行(-1)都进了各自的单列',
+        s2.nonInt.length === 1 && s2.refunds.length === 1,
+        'nonInt ' + s2.nonInt.length + ' / refunds ' + s2.refunds.length);
+    }
+  }
 }
 
 sec('E · 反恒真');

@@ -176,6 +176,10 @@ Page({
       importMonthsLabel: TK.importMonthsLabel,
       importTotalLabel: TK.importTotalLabel,
       importExcludedLabel: TK.importExcludedLabel,
+      // R585：DSI-1 分渠道预览（一份表可含多平台）
+      importDsiChannelsLabel: TK.importDsiChannelsLabel,
+      importDsiDaysLabel: TK.importDsiDaysLabel,
+      importDsiDishesLabel: TK.importDsiDishesLabel,
       importRowUnit: TK.importRowUnit,
       importDaysUnit: TK.importDaysUnit,
       importSuccessPlat: TK.importSuccessPlat,
@@ -266,10 +270,16 @@ Page({
     importSanityText: '',
     importDiagFoundText: '', // R286：表里实际读到的列名（给老板对照自己导的表对不对）
     importPreview: null,   // 预览 { rows, totals, months, excluded }
+    // R585：DSI-1 三条说明（空串 ⇒ 不渲染；与 importSanityText 同款「不假报没问题」约定）
+    importDsiNonIntText: '',
+    importDsiRefundsText: '',
+    importDsiNoPackText: '',
     importing: false,      // 防重复提交
     // v1.7 形态 C（外卖商品销量）：platform 机器判不出 ⇒ 必须选平台
     importShape: '',                    // 机器值：'' | 'dish_sales' | 'waimai_goods'（见顶部 DISH_SHAPES）
     shapeC: DISH_SHAPES.C,              // wxml 不读 JS 常量 ⇒ 单源经 data 下发（禁止在 wxml 里写字面量）
+    // 🔴 R585：DSI-1 标准格式（AI 整理好的表）—— wxml 靠它切换「分渠道」预览卡
+    shapeS: DISH_SHAPES.S,
     importPlatformOptions: IMPORT_PLATFORM_OPTIONS,   // [{ value, label }]（label 来自 terms 单源）
     importPlatformIndex: -1,            // -1 = 未选
     importPlatformChoice: '',           // 提交值（形态 C 落库用）
@@ -582,10 +592,47 @@ Page({
       // R432：形态 D（京东外卖订单导出）的输出结构与 C 完全一致（groups/totals）
       //   ⇒ 共用同一段分组预览。变量名沿用 isC（下面 6 处都读它），语义 = 走分组路径。
       const isC = d.shape === DISH_SHAPES.C || d.shape === DISH_SHAPES.D;
+      // 🔴 R585：DSI-1 走**独立预览分支**。它的 preview 里**没有 totals**（结构是 rowCount/dayFrom/...
+      //   + byChannel），若落进下面的账单 else 分支，`p.totals.amountFen` 会直接抛 TypeError
+      //   ⇒ 整块预览空白、且被 catch 吞成一句 toast（老板只看到"导入失败"）。
+      const isDsi = d.shape === DISH_SHAPES.S;
       let preview = null;
+      let dsiInfo = null;
       // 🔴 R303：一级校验结论（默认空串 ⇒ 不渲染；不假报"一切正常"）
       let sanityText = '';
-      if (isC) {
+      if (isDsi) {
+        // DSI-1：一份表可同时含堂食 + 多个外卖平台 ⇒ **必须分渠道展示**。
+        //   若只显示一个「合计」，老板会把它当某一个平台的钱（同店三平台实测差 5.67 个百分点，
+        //   合在一起的数对哪个平台都不成立）。排序：堂食在前，外卖按金额降序。
+        const amtFen = (p && typeof p.totalAmountFen === 'number') ? p.totalAmountFen : 0;
+        const chMap = (p && p.byChannel) ? p.byChannel : {};
+        const chs = Object.keys(chMap).map((k) => chMap[k]).sort((a, b) => {
+          const ap = (a && a.platform === 'pos') ? 0 : 1;
+          const bp = (b && b.platform === 'pos') ? 0 : 1;
+          if (ap !== bp) return ap - bp;
+          return (b.amountFen || 0) - (a.amountFen || 0);
+        });
+        preview = {
+          rowCount: (p && p.rowCount) || 0,
+          dateRangeText: (p && p.dayFrom && p.dayTo)
+            ? (p.dayFrom === p.dayTo ? p.dayFrom : (p.dayFrom + ' ~ ' + p.dayTo)) : '',
+          dayCount: (p && p.dayCount) || 0,
+          dishCount: (p && p.dishCount) || 0,
+          amountYuan: (amtFen / 100).toFixed(2),
+          // 平台名走 platformLabel 单源（pos → 堂食、美团/淘宝闪购/京东 → 中文名），不在 wxml 里拼
+          channels: chs.map((c) => ({
+            name: platformLabel(c.platform) || '其他',
+            amountYuan: ((c.amountFen || 0) / 100).toFixed(2),
+            qty: c.qty || 0,
+          })),
+        };
+        // 两条「已替你处理」说明 + 一条口径差异说明：都是老板最容易当 bug 报的地方。
+        dsiInfo = {
+          nonIntText: (p && p.nonInt && p.nonInt.length) ? TK.importDsiNonInt(p.nonInt.length) : '',
+          refundsText: (p && p.refunds && p.refunds.length) ? TK.importDsiRefunds(p.refunds.length) : '',
+          noPackText: (p && p.noteNoPackFee) ? TK.importDsiNoPack : '',
+        };
+      } else if (isC) {
         // 形态 C：按天分组（groups），无 months/excluded；零元行必须可见（v1.7 C-5）。
         // 🔴 分 → 元 必须**在括号外**除（R232j 修）：原写法 `(x || 0 / 100).toFixed(2)`
         //   把 `/100` 放进了 `||` 右支 ⇒ 只在 x 为假时才除，真值时原样输出分值（182308.00，放大 100 倍）。
@@ -633,6 +680,10 @@ Page({
         // 🔴 R303：一级校验结论（空串 ⇒ 不渲染）
         importSanityText: sanityText,
         importPreview: preview,
+        // R585：DSI-1 的三条说明（空串 ⇒ 不渲染，避免"没问题"也占一行）
+        importDsiNonIntText: dsiInfo ? dsiInfo.nonIntText : '',
+        importDsiRefundsText: dsiInfo ? dsiInfo.refundsText : '',
+        importDsiNoPackText: dsiInfo ? dsiInfo.noPackText : '',
         importZeroAmountQty: (isC && p && p.zeroAmountQty) ? p.zeroAmountQty : [],
         // 形态 C 平台选择重置
         importPlatformIndex: -1,
@@ -754,7 +805,12 @@ Page({
     this.setData({ importing: true });
     try {
       wx.showLoading({ title: TK.importIng, mask: true });
-      await api.call('importSalesBill', { fileID: this.data.importFileID, platform, confirm: true });
+      const res = await api.call('importSalesBill', { fileID: this.data.importFileID, platform, confirm: true });
+      // 🔴 R585：DSI-1 的 platform 是空的（一份表可含多平台）⇒ 不能用「已按某平台导入完成」。
+      //   改说「导入了多少行、含哪几个渠道」—— 这才是老板真正要核对的信息。
+      const dsiNames = (res && res.shape === DISH_SHAPES.S)
+        ? Array.from(new Set((res.groups || []).map((g) => platformLabel(g.platform) || '其他')))
+        : null;
       wx.hideLoading();
       // 🔴 R271：记住本次平台（下次预选），并在结果条文里**说清是按哪个平台落库的**
       //   —— 此前回执只说"导入完成"，老板回头看到复盘页某个平台下有数据，对不上自己刚才选的啥。
@@ -772,9 +828,11 @@ Page({
         importDup: null, importDupText: '', importDupFixText: '', importDupBlock: false,
         // P0#8：成功结果条（常驻：标题=importSuccess、正文=importDoneText、两个出口按钮）
         importDone: true,
-        importDoneText: platName
-          ? (TK.importSuccessPlat || '').replace('{name}', platName)
-          : (TK.importDoneBodyPlain || ''),
+        importDoneText: dsiNames
+          ? TK.importDoneDsi((res && res.written) || 0, dsiNames.join('、'))
+          : (platName
+            ? (TK.importSuccessPlat || '').replace('{name}', platName)
+            : (TK.importDoneBodyPlain || '')),
       });
     } catch (e) {
       wx.hideLoading();

@@ -96,9 +96,15 @@ check('A-⑤ 🔴 每一处账单开关条件都必须与「是不是账单」�
   gateConds.length ? gateConds.join('  |  ') : '未找到任何 billImportOn 条件（开关没接上）');
 check('A-⑥ 「暂停」分支只在**真账单**上出现（无 shape ⇒ 是账单）',
   /wx:if="\{\{!billImportOn && !importShape\}\}"/.test(wxml));
-check('A-⑦ 形态 C（外卖商品销量）卡**不受**账单开关影响（它的 wx:if 里不得出现 billImportOn）',
-  /wx:if="\{\{importPreview && importShape === shapeC\}\}"/.test(wxml)
-  && !/importPreview && importShape === shapeC[^"]*billImportOn/.test(wxml));
+// 🔴 R585：原判据把形态 C 卡的写法钉成 `wx:if="{{importPreview && importShape === shapeC}}"`
+//   —— R585 给 DSI-1 加了一块更靠前的预览卡，C 卡顺势变成 `wx:elif`，判据就假红了
+//   （语义完全没变：C 卡仍然不看账单开关）。
+//   ⇒ 改成**按语义取条件**：wx:if / wx:elif 都算，只判「含 shapeC 且不含 billImportOn」。
+const shapeCConds = (wxml.match(/wx:(?:if|elif)="\{\{([^}"]*importShape === shapeC[^}"]*)\}\}"/g) || [])
+  .map((s) => s.replace(/^wx:(?:if|elif)="\{\{/, '').replace(/\}\}"$/, ''));
+check('A-⑦ 形态 C（外卖商品销量）卡**不受**账单开关影响（它的条件里不得出现 billImportOn）',
+  shapeCConds.length >= 1 && shapeCConds.every((c) => c.indexOf('billImportOn') < 0),
+  shapeCConds.length ? shapeCConds.join('  |  ') : '未找到形态 C 卡的条件（卡片可能被改名/删掉）');
 // 🔴 云函数兜底：必须拦在"确认落库"这一条路上，且**早于首个写库**
 const iFlag = fnIdx.indexOf('if (!BILL_IMPORT_ENABLED)');
 const iWrite = fnIdx.indexOf("db.collection('external_sales_daily').doc(_id).set(");
