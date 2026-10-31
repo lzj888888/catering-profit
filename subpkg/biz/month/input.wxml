@@ -7,6 +7,12 @@
   <!-- R419：金额栏读不成数字的提示（与 M2 同一句文案；详见 NOTE_R419） -->
   <view class="warn-note" wx:if="{{badAmountCount > 0}}">{{t.amountBadTip}}</view>
 
+  <!-- R592：进门第一眼 = 填完能得到什么（详见 NOTE_2026-11-01_R592） -->
+  <view class="start-card" wx:if="{{entryCompletion && entryCompletion.note}}">
+    <view class="start-title">{{entryCompletion.noteTitle}}</view>
+    <view class="start-list">{{entryCompletion.note}}</view>
+  </view>
+
   <!-- E2（批次 8c）：顶部「填写口径」折叠块（默认收起）—— 防重填漏填 -->
   <view class="fill-guide">
     <view class="fill-guide-head" bindtap="onToggleFillGuide">
@@ -17,12 +23,6 @@
       <view class="fg-line" wx:for="{{t.fillGuide}}" wx:key="index" wx:for-item="line">{{line}}</view>
     </view>
   </view>
-
-  <!-- 🔴 R578 / #101：核心 4 组（堂食/外卖/运营/人工）完成度提示。
-       **本地算、零采集、不上报**（两司一致建议：不新增数据收集，避开隐私合规改动）。
-       只提示「还差哪几组」，不阻断保存、不参与任何计算；四组全填完 ⇒ note 为空 ⇒ 整条不渲染。
-       位置在「填写口径」之后：老板先看口径、再看自己还差什么。 -->
-  <view class="muted" wx:if="{{entryCompletion && entryCompletion.note}}">{{entryCompletion.note}}</view>
 
   <!-- round189：上月一键复制（有上月才显示）+ 首月常规科目说明 -->
   <view class="copy-bar" wx:if="{{!readOnly}}">

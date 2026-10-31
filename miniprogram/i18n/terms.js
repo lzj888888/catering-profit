@@ -355,6 +355,9 @@ const TERMS = {
     // R591：从「组」改成「项」—— 第 5 项（原料用掉多少）是字段不是分组，说「组」会让人对不上。
     entryMissing: (n, s) => `还差 ${n} 项没填：${s}`,
     entryConsumeLabel: '原料用掉多少',
+    // R592：两态标题，数字由参数传（库存开着时 4 项）
+    entryStartTitle: (n) => `先填这 ${n} 项，就能看到你店赚不赚钱`,
+    entryLeftTitle: (n) => `还差 ${n} 项就能看结果`,
     incomeTitle: '收入',
     // 🔴 R308：沿用上月（只带费用侧）。每条 ≤17 字（≥18 字会触发 check_hint_fold 的折叠要求）。
     carryBtn: '沿用上月费用',

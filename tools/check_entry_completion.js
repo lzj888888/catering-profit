@@ -93,6 +93,12 @@ sec('B · 静态面（边界：只提示、不阻断）');
 const pageSrc = fs.readFileSync(path.join(ROOT, PAGE), 'utf8');
 const pageStripped = pageSrc.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
 const wxmlSrc = fs.readFileSync(path.join(ROOT, WXML), 'utf8');
+const WXSS = PAGE.replace(/\.js$/, '.wxss');
+let cssSrc = '';
+try { cssSrc = fs.readFileSync(path.join(ROOT, WXSS), 'utf8'); } catch (e) { cssSrc = ''; }
+// R592：这两条要判「输出长什么样」，所以从 terms 取真函数来跑，不是只判有没有调用
+let T0 = {};
+try { T0 = require(path.join(ROOT, 'miniprogram/i18n/terms.js')).TERMS.ledger || {}; } catch (e) { T0 = {}; }
 
 check('B-① 页面真的 require 并调用 completionOf（读了不等于用了）',
   /require\([^)]*entryCompletion\.js/.test(pageStripped)
@@ -136,6 +142,38 @@ check('B-⑨ 🔴 页面把 consumeMode / directConsumeYuan / consumeLabel 都�
 
 check('B-⑩ 原料填 0 不算（与「组内 >0」同口径，免租期式误催）',
   E.completionOf(INC5, EXP5, null, { consumeMode: 'direct', directConsumeYuan: '0' }).done === false);
+
+// 🔴 R592（C 路线）：进门第一眼 = 填完能得到什么，而不是"别填错"
+//   两态：一项没填 ⇒ 报总数并承诺结果；填了一半 ⇒ 只说还差几项（别再数一遍总数，烦）
+check('B-⑪ 一项没填时，标题承诺「就能看到你店赚不赚钱」（含真实总数，不写死 5）',
+  (function () {
+    const t = T0.entryStartTitle(5);
+    return /先填这 5 项/.test(t) && /就能看到/.test(t) && /赚不赚钱/.test(t);
+  })(), T0.entryStartTitle(5));
+
+check('B-⑫ 填了一半时，只说「还差 N 项就能看结果」（不重复总数）',
+  (function () {
+    const t = T0.entryLeftTitle(3);
+    return /还差 3 项/.test(t) && !/先填这/.test(t) && !/5 项/.test(t);
+  })(), T0.entryLeftTitle(3));
+
+check('B-⑬ 🔴 页面按 filled === 0 分两态取标题（写死一种 ⇒ 老用户每次都被数一遍总数）',
+  /filled === 0/.test(pageStripped)
+  && /entryStartTitle/.test(pageStripped)
+  && /entryLeftTitle/.test(pageStripped));
+
+check('B-⑭ 🔴 引导卡在「填写口径」**之前**（进门第一眼要看到填完能干嘛，不是别填错）',
+  (function () {
+    const iCard = wxmlSrc.indexOf('class="start-card"');
+    const iGuide = wxmlSrc.indexOf('class="fill-guide"');
+    return iCard > 0 && iGuide > 0 && iCard < iGuide;
+  })());
+
+check('B-⑮ 引导卡的三个样式类都有定义（没定义 = 白底黑字，等于没做）',
+  /\.start-card\s*\{/.test(cssSrc) && /\.start-title\s*\{/.test(cssSrc) && /\.start-list\s*\{/.test(cssSrc));
+
+check('B-⑯ 🔴 反恒真：全填完时 done=true（否则「还差 0 项」会常驻）',
+  E.completionOf(INC5, EXP5, null, { consumeMode: 'direct', directConsumeYuan: '9000' }).done === true);
 
 sec('C · 反恒真（证明 A 组不是常量）');
 check('C-① 把「填 0」改判成已填 ⇒ A-④ 的判据必须翻转',

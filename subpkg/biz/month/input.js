@@ -1668,7 +1668,13 @@ Page({
       directConsumeYuan: this.data.directConsumeYuan,
       consumeLabel: TERMS.ledger.entryConsumeLabel,
     });
-    comp.note = comp.done ? '' : TERMS.ledger.entryMissing(comp.total - comp.filled, comp.missingText);
+    // 🔴 R592：拆成「标题 + 名单」两行 —— 标题说清填完能得到什么，名单说清还差谁。
+    //   一项没填时说总数并承诺结果（第一次进来的老板最需要这句）；
+    //   填了一半就只说还差几项（已经填过的人不需要再被告知总共有几项）。
+    comp.note = comp.done ? '' : comp.missingText;
+    comp.noteTitle = comp.done ? '' : (comp.filled === 0
+      ? TERMS.ledger.entryStartTitle(comp.total)
+      : TERMS.ledger.entryLeftTitle(comp.total - comp.filled));
     this.setData({ entryCompletion: comp });
   },
 
