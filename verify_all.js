@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：221 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：222 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -1335,6 +1335,12 @@ const SUITES = [
   // ===== R568 · 成本卡编辑页行为守卫（2026-10-29）：真跑 onPickCategory —— 空卡必须带出示例主料
   //   （改前 `lines.length === 0` 恒假 ⇒ 38 元的菜只剩调料成本、毛利率 98.66%）+ 全 11 品类 + 变异回灌
   ['m3-page-behavior', 'tools/check_m3_page_behavior.js'],
+  // ===== R574 · 菜品明细采集契约守卫（2026-10-31）：
+  //   堂食《菜品销售统计》是**区间汇总表**（表头写明营业日期 2026/09/07 至 2026/09/13），
+  //   入库却把 36 行全写 biz_date=区间末日 ⇒ 下游按 biz_date 去重数天数时算成 1 天 ⇒
+  //   该日堂食收入 = 真实日均的 **7 倍**，且**零报错**。
+  //   守卫让「哪条通道能采到什么颗粒度」变成机器可查的事实：行为面 + 实现面 + 元数据面 + 反恒真。
+  ['菜品明细契约守卫 R574', 'tools/check_dish_ingest_contract.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
