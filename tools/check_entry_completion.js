@@ -46,16 +46,30 @@ if (!E || typeof E.completionOf !== 'function') {
 const g = (cat, label, amt) => [{ category: cat, label, rows: [{ amountYuan: amt }] }];
 
 const c0 = E.completionOf([], []);
-check('A-① 全空 ⇒ 0/4，四组全在 missing', c0.filled === 0 && c0.total === 4 && c0.missing.length === 4);
+// 🔴 R591：默认（不传 opts）按 fail-closed 纳入第 5 项「原料用掉多少」⇒ 总数 5
+check('A-① 全空 ⇒ 0/5（4 组 + 原料），5 项全在 missing',
+  c0.filled === 0 && c0.total === 5 && c0.missing.length === 5, c0.filled + '/' + c0.total);
 
 const c1 = E.completionOf(g('dine_in', '堂食', '43000'), []);
-check('A-② 只填堂食 ⇒ 1/4', c1.filled === 1 && c1.total === 4, c1.filled + '/' + c1.total);
+check('A-② 只填堂食 ⇒ 1/5', c1.filled === 1 && c1.total === 5, c1.filled + '/' + c1.total);
+
+// 🔴 R591：这是本轮修的**静默错账**的正面断言 —— 只填 4 组、原料空，绝不能算完成
+const cAllNoConsume = E.completionOf(
+  [].concat(g('dine_in', '堂食', 1), g('takeaway', '外卖', 1)),
+  [].concat(g('operation', '运营费用', 1), g('labor', '人工费用', 1)),
+  null, { consumeMode: 'direct', directConsumeYuan: '', consumeLabel: '原料用掉多少' });
+check('A-③ 🔴 四组全填但**原料留空** ⇒ 不算完成（否则利润没扣食材，虚高 30%+）',
+  cAllNoConsume.filled === 4 && cAllNoConsume.done === false
+  && cAllNoConsume.missingText === '原料用掉多少',
+  cAllNoConsume.filled + '/' + cAllNoConsume.total + ' done=' + cAllNoConsume.done);
 
 const cAll = E.completionOf(
   [].concat(g('dine_in', '堂食', 1), g('takeaway', '外卖', 1)),
-  [].concat(g('operation', '运营费用', 1), g('labor', '人工费用', 1)));
-check('A-③ 四组全填 ⇒ 4/4 且 done=true、note 为空的前提成立',
-  cAll.filled === 4 && cAll.done === true && cAll.missing.length === 0);
+  [].concat(g('operation', '运营费用', 1), g('labor', '人工费用', 1)),
+  null, { consumeMode: 'direct', directConsumeYuan: '8000', consumeLabel: '原料用掉多少' });
+check('A-③b 四组 + 原料全填 ⇒ 5/5 且 done=true、note 为空的前提成立',
+  cAll.filled === 5 && cAll.total === 5 && cAll.done === true && cAll.missing.length === 0,
+  cAll.filled + '/' + cAll.total);
 
 // 🔴 填 0 不算 —— 这是最容易写错的一条（"0" 与 "没填" 在数据上都是空行）
 const cZero = E.completionOf(g('dine_in', '堂食', '0'), []);
@@ -71,8 +85,9 @@ check('A-⑥ 🔴 组名缺失时**不回落成英文 category**（missingText �
 
 // labelMap 兜底
 const cMap = E.completionOf([], [], { dine_in: '堂食', takeaway: '外卖', operation: '运营费用', labor: '人工费用' });
-check('A-⑦ 传 labelMap 时用中文名兜底（4 组都缺也该有中文）',
-  cMap.missingText === '堂食、外卖、运营费用、人工费用', cMap.missingText);
+// R591：第 5 项也必须是中文（labelMap 里没有 consume，靠 opts.consumeLabel 或中文兜底）
+check('A-⑦ 传 labelMap 时用中文名兜底（5 项都缺也该全是中文）',
+  cMap.missingText === '堂食、外卖、运营费用、人工费用、原料消耗', cMap.missingText);
 
 sec('B · 静态面（边界：只提示、不阻断）');
 const pageSrc = fs.readFileSync(path.join(ROOT, PAGE), 'utf8');
@@ -97,6 +112,30 @@ check('B-④ 🔴 完成度在独立方法 refreshCompletion 里算，且被摘�
   `定义@${_rcDef} 调用@${pageStripped.indexOf('this.refreshCompletion();')}`);
 check('B-⑤ 零采集：本模块不 import 任何云/存储/网络能力',
   !/require\((['"])(wx|\.\.\/api|\.\/api)/.test(fs.readFileSync(path.join(ROOT, REL), 'utf8')));
+
+// 🔴 R591：第 5 项（原料消耗）的两条关键行为 + 一条"防页面漏传"
+const g5 = (cat, label, amt) => [{ category: cat, label, rows: [{ amountYuan: amt }] }];
+const INC5 = [].concat(g5('dine_in', '堂食', 1), g5('takeaway', '外卖', 1));
+const EXP5 = [].concat(g5('operation', '运营费用', 1), g5('labor', '人工费用', 1));
+
+const cInv = E.completionOf(INC5, EXP5, null, {
+  consumeMode: 'inventory', directConsumeYuan: '', consumeLabel: '原料用掉多少',
+});
+check('B-⑦ 🔴 库存核算开着 ⇒ **不催原料**（消耗由系统倒轧，催了就是瞎催）',
+  cInv.total === 4 && cInv.done === true, cInv.filled + '/' + cInv.total + ' done=' + cInv.done);
+
+check('B-⑧ 🔴 不传 opts ⇒ 默认**纳入**原料（fail-closed：宁可多催一项，不许漏催）',
+  E.completionOf(INC5, EXP5).total === 5);
+
+check('B-⑨ 🔴 页面把 consumeMode / directConsumeYuan / consumeLabel 都真传了'
+  + '（漏传 = 库存开时瞎催、或提示里没有中文名）',
+  /completionOf\(/.test(pageStripped)
+  && /consumeMode:/.test(pageStripped)
+  && /directConsumeYuan:/.test(pageStripped)
+  && /consumeLabel:/.test(pageStripped));
+
+check('B-⑩ 原料填 0 不算（与「组内 >0」同口径，免租期式误催）',
+  E.completionOf(INC5, EXP5, null, { consumeMode: 'direct', directConsumeYuan: '0' }).done === false);
 
 sec('C · 反恒真（证明 A 组不是常量）');
 check('C-① 把「填 0」改判成已填 ⇒ A-④ 的判据必须翻转',

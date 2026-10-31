@@ -56,17 +56,30 @@ const wxssSrc = read('subpkg/biz/takeaway/index.wxss') || '';
 
 // ---------- 判据抽成纯函数：既给正例用，也给反证用 ----------
 // 同一份判据跑两遍（真值 / 篡改值），才能证明它不是恒真（R299 纪律）
-const hasHeaders = (prompt, headers) =>
-  !!(headers && headers.length && prompt && prompt.indexOf(headers.join(',')) >= 0);
+// 🔴 R591：判「列名与顺序对不对」，**不判分隔符长什么样**。
+//   起因：指令里自然语言写的是「日期、渠道（堂食或外卖）、平台…」（顿号 + 括注），
+//   而旧判据找的是「日期,渠道,平台…」这串逗号字面量 ⇒ **把正确实现判红**（反向伤害二型）。
+//   现在的判法：7 个列名必须**按顺序**逐个出现（允许中间夹括注）。
+//   分辨力仍在：漏一个 ⇒ 找不到；顺序颠倒 ⇒ 后面的 pos 越过了它，也找不到。
+const hasHeaders = (prompt, headers) => {
+  if (!headers || !headers.length || !prompt) return false;
+  let pos = 0;
+  for (const h of headers) {
+    const i = prompt.indexOf(h, pos);
+    if (i < 0) return false;
+    pos = i + h.length;
+  }
+  return true;
+};
 
 const saysDontGuess = (prompt) =>
   !!(/看不(出|到)[^。\n]*[问别]/.test(prompt || '') || /不要自己猜/.test(prompt || ''));
 
 const saysDeleteTotalRow = (prompt) => /删掉?[^。\n]*合计行/.test(prompt || '');
 
-// 防「编数据」：这条比格式约束更要紧 —— 编出来的表格式全对、解析器全过，会静默入库
-const saysDontFabricate = (prompt) =>
-  /不要编[^。\n]*商品/.test(prompt || '') && /告诉我缺什么/.test(prompt || '');
+// ⚠️ R591：原来还有 saysDontGuess / saysDontFabricate 两条判据，
+//   实测发现 AI 面对缺明细/缺渠道时**本身就不编**（两家都拒答），且「不许编」那句
+//   在 148 字版里已删除、行为不变 ⇒ 判据随之删除。**判据要跟着事实走，不能留着占位。**
 
 const pageHeadersMatch = (pageHeaders, svcHeaders) =>
   !!(pageHeaders && pageHeaders.length && svcHeaders && svcHeaders.length
@@ -83,48 +96,45 @@ const PAGE_HEADERS = extractPageHeaders();
 console.log('[R590] 「让 AI 帮你转格式」逃生口守卫\n');
 
 // ================= A · 指令正文（它决定 AI 产什么表） =================
-sec('A · 指令正文：AI 照着它产表，所以每一条都是硬约束');
+// 🔴 R591 重写：旧版 11 条规则里**大半被实测判定可省**（512 字 → 148 字，砍 71%）。
+//   实验证据（review/evidence/r591_simplify/，逐版喂解析器）：
+//     · 84 字（漏「备注」）      ⇒ 表头 6 列，豆包 + DeepSeek 都被拒收
+//     · 137 字（漏「这张表是__的」）⇒ 两家都留空渠道，被拒收
+//     · 148 字（补上这两处）     ⇒ 两家 **100% 正确**（10 行 / 1265.00 / 销量 60 / 4 商品）
+//     · 148 字 + 无明细诱饵      ⇒ 两家**都拒答不编**（AI 自己有底线，不靠我们叮嘱）
+//   ⇒ 本节只守「实测必需」的几条。**不要凭直觉往里加规则**——加一条就多一分说明书味。
+sec('A · 指令正文：只守实测必需的那几条');
 
 check('A-⓪ 指令正文可取到（取不到 ⇒ 后面全 fail-closed，不假绿）',
-  PROMPT.length > 50, PROMPT.length + ' 字');
+  PROMPT.length > 30, PROMPT.length + ' 字');
 
-// A-① 列名与解析器逐字一致 —— 最重要的一条：不一致就是"教 AI 产我们不认的表"
-check('A-① 🔴 指令里的列名与 dsi1.HEADERS 逐字且同序一致',
+// A-① 列名与解析器逐字一致 —— 实测：漏「备注」⇒ 表头 6 列 ⇒ 两家全被拒收
+check('A-① 🔴 列名与 dsi1.HEADERS **逐字且同序**一致（含「备注」，漏了必被拒）',
   hasHeaders(PROMPT, SVC_HEADERS), SVC_HEADERS.join(',') || 'dsi1 未加载');
 
-// A-② 年份必须写死（R589：两家 AI 都自己编了年份，且互不相同）
-check('A-② 🔴 指令写死年份并明说不要改（AI 会把缺年份的 9/7 编成 2024/2025）',
-  PROMPT.indexOf(YEAR) >= 0 && /不要改|别改|不要修改/.test(PROMPT),
-  PROMPT.indexOf(YEAR) >= 0 ? '含 ' + YEAR : '未含年份');
+// A-② 年份写死（R589 实测：缺年份时豆包编 2024、DeepSeek 编 2025，两家还互不相同）
+check('A-② 🔴 写死年份（缺年份 AI 会自己编，且不同 AI 编得不一样）',
+  PROMPT.indexOf(YEAR) >= 0, PROMPT.indexOf(YEAR) >= 0 ? '含 ' + YEAR : '未含年份');
 
-// A-③ 渠道不许猜（R589：原料没渠道列时两家都自己填「堂食」）
-check('A-③ 🔴 指令要求「看不出就别猜、先问我」', saysDontGuess(PROMPT));
+// A-③ 渠道占位 —— 实测：不指定时两家一个留空、一个瞎猜，**两种都不可接受**
+check('A-③ 🔴 有「这张表是【___】的」让老板填渠道（缺这句 ⇒ 留空或瞎猜，两条都是错账）',
+  /这张表是【[^】]*】的/.test(PROMPT));
 
-// A-④ 合计行 / 两级表头必须删（最常见的"导不进来"成因）
-check('A-④ 指令要求删掉合计行', saysDeleteTotalRow(PROMPT));
-check('A-⑤ 指令要求删掉两级表头 / 合并单元格',
-  /两级表头/.test(PROMPT) && /合并单元格/.test(PROMPT));
+// A-④ 删合计行（实测原料带「合计」行；不删会被当商品入库）
+check('A-④ 要求删掉合计行', saysDeleteTotalRow(PROMPT));
 
-// A-⑥ 纯数字（实测原料带「元」「¥」「斤」，解析器会当字符串拒收）
-check('A-⑥ 指令要求纯数字、不带「元/¥/斤」等单位',
-  /纯数字/.test(PROMPT) && /元/.test(PROMPT) && /斤/.test(PROMPT));
+// A-⑤ 纯数字（实测原料带「元」「斤」，解析器会当字符串拒收）
+check('A-⑤ 要求金额纯数字、不带「元」；并按斤的填小数',
+  /只写数字/.test(PROMPT) && /元/.test(PROMPT) && /小数/.test(PROMPT));
 
-// A-⑦ 小数与负数（豆包评审指出的称重类、DeepSeek 指出的退款）
-check('A-⑦ 指令允许称重小数（1.5 不要写成 2）',
-  /1\.5/.test(PROMPT) && /不(要|能)写成 ?2/.test(PROMPT));
-check('A-⑧ 指令要求退款填负数、不许删行或转正',
-  /退款填负数/.test(PROMPT) && /不要删除?行|不要删行/.test(PROMPT));
+// A-⑥ 只输出 CSV —— 实测：没这句时**豆包会吐 Markdown 表格**（DeepSeek 不会），一眼看不出的坑
+check('A-⑥ 🔴 要求直接给 CSV、不要表格样式/解释（没这句豆包会吐 Markdown）',
+  /CSV/.test(PROMPT) && /不要表格样式/.test(PROMPT));
 
-// A-⑨ 输出形态：只给 CSV、不要解释（否则产物里混说明文字，解析器认不出表头）
-check('A-⑨ 指令要求只输出 CSV、不要解释/代码块标记',
-  /CSV/.test(PROMPT) && /不要解释/.test(PROMPT) && /代码块/.test(PROMPT));
-
-// A-⑩ 🔴 最要紧的一条：**允许 AI 交白卷**。
-//   没有它，AI 为了让"任务完成"会在源表缺明细时**编商品名和销量** ——
-//   而编出来的表格式全对、解析器全过 ⇒ 静默入库 ⇒ 毛利榜出现他根本没卖过的菜。
-//   ⇒ 这比"导不进来"严重得多：导不进来他会重试，编错了账他看不出来。
-check('A-⑩ 🔴 指令明确要求「没有明细就不许编，直接说缺什么」',
-  saysDontFabricate(PROMPT));
+// A-⑦ 🔴 长度上限：把「简单」变成制度，而不是这次记得、下次膨胀
+//   512 字那版就是一路「再补一条规则」堆出来的。上限 200 字 = 当前 148 的 1.35 倍余量。
+check('A-⑦ 🔴 正文 ≤ 200 字（防规则一路堆回去 —— 512 字那版就是这么胖起来的）',
+  PROMPT.length <= 200, PROMPT.length + ' 字 / 上限 200');
 
 // ================= B · 接线（算出来不显示 = 没做） =================
 sec('B · 接线：按钮真的接上了吗、只在失败态出现吗');
@@ -168,15 +178,15 @@ check('C-① 🔴 页面 DSI_HEADERS 与 dsi1.HEADERS 逐字且同序一致',
 // ================= D · 反恒真（同一份判据跑篡改值，必须翻红） =================
 sec('D · 反恒真：把约束去掉 / 改一个字，同一判据必须翻红');
 
-check('D-① 去掉「别猜」那句 ⇒ saysDontGuess 必须为 false',
+check('D-① 去掉「这张表是【___】的」⇒ A-③ 判据必须为 false',
   (function () {
-    const broken = PROMPT.replace(/表里看不出来就先问我，不要自己猜。?/g, '');
-    return broken !== PROMPT && saysDontGuess(broken) === false;
+    const broken = PROMPT.replace(/这张表是【[^】]*】的。?/g, '');
+    return broken !== PROMPT && !/这张表是【[^】]*】的/.test(broken);
   })());
 
-check('D-② 去掉「删掉合计行」那句 ⇒ saysDeleteTotalRow 必须为 false',
+check('D-② 去掉「删掉合计行」⇒ saysDeleteTotalRow 必须为 false',
   (function () {
-    const broken = PROMPT.replace(/^6\. 删掉合计行[^\n]*$/m, '');
+    const broken = PROMPT.replace(/删掉合计行/g, '');
     return broken !== PROMPT && saysDeleteTotalRow(broken) === false;
   })());
 
@@ -188,16 +198,17 @@ check('D-③ 列名改一个字（销量→数量）⇒ hasHeaders 必须为 fal
     return bad.join(',') !== SVC_HEADERS.join(',') && hasHeaders(PROMPT, bad) === false;
   })());
 
-check('D-⑤ 去掉「不许编」那条 ⇒ saysDontFabricate 必须为 false',
-  (function () {
-    const broken = PROMPT.replace(/^★ 最重要：[^\n]*$/m, '');
-    return broken !== PROMPT && saysDontFabricate(broken) === false;
-  })());
-
-check('D-④ 页面副本少一列 ⇒ pageHeadersMatch 必须为 false（证明它真在比，不是恒真）',
+check('D-④ 页面列名副本少一列 ⇒ pageHeadersMatch 必须为 false（证明它真在比，不是恒真）',
   (function () {
     if (!PAGE_HEADERS || !SVC_HEADERS.length) return false;
     return pageHeadersMatch(PAGE_HEADERS.slice(0, -1), SVC_HEADERS) === false;
+  })());
+
+// D-⑤ 长度上限必须有分辨力：塞回旧版 512 字的内容必须判红
+check('D-⑤ 把 512 字旧版塞回去 ⇒ A-⑦ 判据必须为 false（证明上限不是摆设）',
+  (function () {
+    const fat = PROMPT + '\n' + '规则：' + new Array(60).join('某条冗长规则说明；');
+    return fat.length > 200;
   })());
 
 console.log('\n' + (failN ? '❌ ' : '✅ ') + pass + ' 通过 / ' + failN + ' 失败');

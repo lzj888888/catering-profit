@@ -1661,7 +1661,13 @@ Page({
    * 只读 groups，**绝不 setData groups**；四组全填完 ⇒ note 为空 ⇒ 界面整条不渲染。
    */
   refreshCompletion() {
-    const comp = completionOf(this.data.incomeGroups, this.data.expenseGroups);
+    // 🔴 R591：第 5 项原料消耗必须一起算 —— 漏了它，老板填满 4 组就看到"齐了"，
+    //   而利润里根本没扣食材（虚高 30%+），且不报错。库存开着时由系统倒轧，不催。
+    const comp = completionOf(this.data.incomeGroups, this.data.expenseGroups, null, {
+      consumeMode: this.data.inventoryOn ? 'inventory' : 'direct',
+      directConsumeYuan: this.data.directConsumeYuan,
+      consumeLabel: TERMS.ledger.entryConsumeLabel,
+    });
     comp.note = comp.done ? '' : TERMS.ledger.entryMissing(comp.total - comp.filled, comp.missingText);
     this.setData({ entryCompletion: comp });
   },
