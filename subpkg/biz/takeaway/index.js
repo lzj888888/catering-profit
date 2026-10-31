@@ -31,6 +31,16 @@ const DISH_SHAPES = {
   C: 'waimai_goods',
   // R432（队列 #43）：京东外卖「订单导出」—— 商品混装在一列，云函数侧新解
   D: 'jd_order_export',
+  // 🔴 R585：DSI-1 标准格式（AI 整理好的表）。**必须与云函数逐字一致** ——
+  //   这是本页第二份副本，改云函数时极易漏改 ⇒ 漏了就是 `DISH_SHAPES.S === undefined`
+  //   ⇒ `d.shape === undefined` 恒假 ⇒ DSI-1 掉进账单分支 `p.totals.amountFen` 抛 TypeError
+  //   ⇒ 被 catch 吞成一句「导入失败」（实测：R585 桩跑抓到，静态守卫当时没覆盖键集）。
+  //   伴侣守卫：tools/check_shape_machine_value.js 现查「页面键集 ⊇ 云函数键集」。
+  S: 'dsi1_standard',
+  // S2 = 月渠道汇总：**云函数认得但不受理**（回的是 fail + 人话理由，不走预览分支）。
+  //   页面当前不判它，但键集必须与云函数一致 —— 否则「页面漏改副本」这类错就没有判据能抓
+  //   （守卫 V-2-⑤ 正是按键集覆盖来判的）。
+  S2: 'dsi1_summary',
 };
 
 // v1.7 形态 C（外卖商品销量）：外卖平台选择项（label 来自 terms 单源；不含 pos —— 堂食不走这条路）

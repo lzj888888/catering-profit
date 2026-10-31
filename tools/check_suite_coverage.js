@@ -52,6 +52,9 @@ const FACE_B_NAME = /(^|\/)(check_|verify_|selftest_|test_)[^/]*\.(js|py)$/;
 
 // 豁免白名单（面 B）—— 取证脚本，非生产判据；改动须带 by/date/reason，且双向防腐
 const EXEMPT = {
+  'review/evidence/r585_dsi_e2e/verify_examples.py':
+    { by: 'R585', date: '2026-10-31', reason: '把 DSI-1 样例 xlsx 读回成行数组 JSON 的一次性取证脚本；'
+        + '生产判据是 tools/check_dsi1_parse.js 的 D4 组（读它产出的 JSON），本脚本不进门禁' },
   'review/evidence/batch8c_verify_20260918/verify_8c_all.js':
     { by: 'round60', date: '2026-09-20', reason: 'batch8c 批次验收的一次性取证脚本，非生产判据' },
   'review/evidence/ui_fix_20260918/verify_ui_fix.js':

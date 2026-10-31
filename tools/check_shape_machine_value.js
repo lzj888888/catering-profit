@@ -44,18 +44,22 @@ let S = null;
   finally { Module._load = orig; }
 }
 
-// ---------- 从页面源码静态提取 DISH_SHAPES 对象字面量 ----------
-// 只认 `const DISH_SHAPES = { ... };` 这一种形态，取其中的 A/B/C 三键。
+// ---------- 从源码静态提取 DISH_SHAPES 对象字面量 ----------
+// 🔴 R585：原实现**写死只取 A/B/C 三键**，新增 D/S 后提取器照样返回「三项齐全」⇒
+//   后面所有"两侧一致"的断言都只在 A/B/C 上成立，**新增形态漏改副本查不出来**。
+//   ⇒ 改成通用提取：剥注释后取对象体内**所有** `键: '值'` 对。这样以后加形态不用改本文件。
 function extractPageShapes(src) {
-  const m = src.match(/const\s+DISH_SHAPES\s*=\s*\{([\s\S]*?)\};/);
+  const noCmt = src
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+  const m = noCmt.match(/const\s+DISH_SHAPES\s*=\s*\{([\s\S]*?)\};/);
   if (!m) return null;
-  const body = m[1];
   const out = {};
-  for (const k of ['A', 'B', 'C']) {
-    const km = body.match(new RegExp('\\b' + k + '\\s*:\\s*\'([^\']+)\''));
-    if (km) out[k] = km[1];
-  }
-  return Object.keys(out).length === 3 ? out : null;
+  const re = /([A-Za-z_]\w*)\s*:\s*'([^']*)'/g;
+  let mm;
+  while ((mm = re.exec(m[1]))) out[mm[1]] = mm[2];
+  // 下界只防"取到空对象 ⇒ 后面都为空所以相等"这种退化为真的情况
+  return Object.keys(out).length >= 3 ? out : null;
 }
 
 const svcSrc = fs.readFileSync(path.join(ROOT, SVC_REL), 'utf8');
@@ -82,6 +86,23 @@ check('V-2-③ C 值一致', !!svcShapes && !!pageShapes && svcShapes.C === page
 check('V-2-④ C 值是机器值不是字母序号',
   !!svcShapes && svcShapes.C !== 'C' && /^[a-z_]+$/.test(svcShapes.C),
   svcShapes && svcShapes.C);
+
+// 🔴 R585：原判据只逐字比 A/B/C（后来补了 D 的语义也没覆盖键集）——
+//   加 DSI-1 的 S 形态时，云函数加了 S、**页面这份副本忘了加**，
+//   ⇒ `DISH_SHAPES.S === undefined` ⇒ `d.shape === undefined` 恒假 ⇒ 该形态在前端永远判不出，
+//   掉进账单分支 `p.totals.amountFen` 抛 TypeError、被 catch 吞成一句「导入失败」。
+//   A/B/C 三条断言全绿，因为**没人问"页面是否认得云函数新增的那个键"**。
+//   ⇒ 判据升级为「页面键集必须覆盖云函数键集」：新增形态漏改副本必红，且不用改这条判据。
+const missingShapeKeys = Object.keys(svcShapes || {}).filter((k) => !(pageShapes && (k in pageShapes)));
+check('V-2-⑤ 🔴 页面键集必须**覆盖**云函数键集（缺一个 ⇒ 该形态在前端恒判不出）',
+  !!svcShapes && !!pageShapes && missingShapeKeys.length === 0,
+  missingShapeKeys.length ? ('页面缺 ' + missingShapeKeys.join(',')) : '覆盖完整');
+// 反恒真：同一套检测喂一个"缺键"的假对象，必须报缺（否则上面那条永远绿）
+const fakePage = Object.assign({}, pageShapes);
+if (fakePage && Object.keys(fakePage).length) delete fakePage[Object.keys(fakePage)[0]];
+const fakeMissing = Object.keys(svcShapes || {}).filter((k) => !(fakePage && (k in fakePage)));
+check('V-2-⑥ 自失效护栏：删掉页面任一形态键 ⇒ 同一检测必须报缺',
+  fakeMissing.length >= 1, '报缺 ' + fakeMissing.join(','));
 
 sec('V-3 页面不得再用字母序号比对 shape（行为判据：真值必须判得出 C）');
 // 行为判据：把「云函数真返回值」喂给页面声明的比较式，必须为真。

@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：225 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：226 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -1357,6 +1357,12 @@ const SUITES = [
   //   ② 两条从双司评审学来的硬规则不能被优化掉——销量允许小数（称重类）、退款允许负数；
   //   ③ 顺序/列名即契约，模糊匹配一律不认（改了会让依赖它的 AI 静默失配）。
   ['DSI-1 标准格式解析守卫 R583', 'tools/check_dsi1_parse.js'],
+  // ===== R585：DSI-1 导入页装配（桩 Page/wx，真跑页面源码）
+  //   为什么需要：静态判据看不出"分支到不到"。本轮实测：云函数加了 S 形态，
+  //   页面那份 DISH_SHAPES 副本漏改 ⇒ DISH_SHAPES.S 为 undefined ⇒ 判断恒假 ⇒
+  //   DSI-1 掉进账单分支 p.totals 抛 TypeError、被 catch 吞成一句「导入失败」。
+  //   门禁 V-1/V-2 当时只在 A/B/C 上成立，抓不到。
+  ['DSI-1 导入页装配桩 R585', 'tools/check_dsi1_page_stub.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
