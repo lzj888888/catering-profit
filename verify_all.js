@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：223 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：224 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -1347,6 +1347,11 @@ const SUITES = [
   //   ④ 把行业参考值也顺手填进来（R128 明令禁止，边界是数据来源而非字段名）。
   //   含变异回灌：删掉 account_id 判据后无档案月必须真的被填，证明判据非常量。
   ['M2 M1 预填守卫 R576', 'tools/check_m2_m1_prefill.js'],
+  // ===== R578 / 队列 #101：月度录入完成度（零采集，两司一致建议的合规路线）
+  //   守四类静默失效：① 把「填 0」当成没填（免租期是真实情形，误催会让老板觉得系统瞎报）；
+  //   ② 组名缺失时回落成英文 key（dine_in 出现在界面 = 事故）；
+  //   ③ 核心组清单与 terms 的 core:true 漂移；④ 被接进保存流程变成硬拦（本功能只提示不阻断）。
+  ['录入完成度守卫 R578', 'tools/check_entry_completion.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

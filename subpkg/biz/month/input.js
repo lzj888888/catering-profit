@@ -12,6 +12,7 @@ const ui = require('../../../utils/ui.js');
 const ss = require('../../../utils/shopSwitcher.js');   // R443：草稿必须按店隔离
 const AmountInput = require('../../../utils/amountInput.js');
 const { normalizeDineRows, markFixedRows } = require('../../../utils/dineChannels.js');
+const { completionOf } = require('../../../utils/entryCompletion.js');   // R578 / #101 完成度（零采集）
 const { pickTakeawayMode, takeawayModeKey, snapshotDetail, restoreDetail, subtotalOf,
   extractPaste, pasteFillValue, pasteFilledFromTotal, filledLabel, subsidyTotal, reconcile,
   mkByPlatTotal, mkByPlatFilled,
@@ -229,6 +230,8 @@ Page({
     inGrace: false,            // 归档后 7 天内
     readOnly: false,           // 归档且超宽限 → 硬锁
     // A2：每大类一组细项行 rows: [{ subItem, amountYuan }]；expanded 控制该大类展开
+    // R578 / #101：核心 4 组（堂食/外卖/运营/人工）的完成度 —— 本地算，零采集
+    entryCompletion: null,
     incomeGroups: [],          // [{ category, label, items(模板), expanded, rows }]
     expenseGroups: [],
     fillGuideOpen: false,      // E2：顶部「填写口径」折叠块（默认收起）
@@ -1647,6 +1650,20 @@ Page({
       });
       this.loadAssetCount();   // round107：两行摘要无条件拉（内部已静默兜底）
     } catch (e) { /* 摘要刷新失败不打扰：本页主流程不受影响 */ }
+    // 🔴 R578 / #101：完成度在**独立方法**里算（放在 try 之外 ⇒ 云失败时这条提示仍要显示）。
+    //   为什么拆出去：本函数被 A8-⑤ 约束「不得出现 groups 字面」（防后端值覆盖未保存草稿），
+    //   而完成度必须读 groups ⇒ 只能单独一个方法，读与写分开守。
+    this.refreshCompletion();
+  },
+
+  /**
+   * 🔴 R578 / #101：核心 4 组完成度（本地算、零采集、不上报、不参与计算）。
+   * 只读 groups，**绝不 setData groups**；四组全填完 ⇒ note 为空 ⇒ 界面整条不渲染。
+   */
+  refreshCompletion() {
+    const comp = completionOf(this.data.incomeGroups, this.data.expenseGroups);
+    comp.note = comp.done ? '' : TERMS.ledger.entryMissing(comp.total - comp.filled, comp.missingText);
+    this.setData({ entryCompletion: comp });
   },
 
   goInventory() { wx.navigateTo({ url: '/subpkg/biz/month/inventory?month=' + this.data.month }); },

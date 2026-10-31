@@ -18,6 +18,12 @@
     </view>
   </view>
 
+  <!-- 🔴 R578 / #101：核心 4 组（堂食/外卖/运营/人工）完成度提示。
+       **本地算、零采集、不上报**（两司一致建议：不新增数据收集，避开隐私合规改动）。
+       只提示「还差哪几组」，不阻断保存、不参与任何计算；四组全填完 ⇒ note 为空 ⇒ 整条不渲染。
+       位置在「填写口径」之后：老板先看口径、再看自己还差什么。 -->
+  <view class="muted" wx:if="{{entryCompletion && entryCompletion.note}}">{{entryCompletion.note}}</view>
+
   <!-- round189：上月一键复制（有上月才显示）+ 首月常规科目说明 -->
   <view class="copy-bar" wx:if="{{!readOnly}}">
     <button class="btn ghost btn-small" style="min-height:88rpx;" wx:if="{{prevHasData}}" bindtap="copyPrev">{{t.copyPrevBtn}}</button>
