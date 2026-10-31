@@ -20,12 +20,12 @@ const base = {
 };
 
 const CASES = [
-  ['① 佣金÷商品金额（我方 R573 曾建议的 2.47%）', 2.47],
-  ['② 平台扣点÷商品金额·淘宝闪购实测', 11.46],
-  ['③ 平台扣点÷商品金额·美团实测', 17.53],
+  ['① 纯佣金 ÷ 流水（我方 R573 曾建议）', 2.47],
+  ['② 平台扣点 ÷ 流水 · 淘宝闪购实测', 11.17],
+  ['③ 平台扣点 ÷ 流水 · 美团实测', 16.84],
   ['④ 文案写的 18~23% 取下沿', 18],
   ['⑤ 文案写的 18~23% 取上沿', 23],
-  ['⑥ 平台扣点÷实收·淘宝闪购', 19.47],
+  ['⑥ 平台扣点 ÷ 实收 · 淘宝闪购', 19.47],
 ];
 
 const out = [];
@@ -34,7 +34,7 @@ for (const [label, pct] of CASES) {
   out.push({ label, pct, beFen: r.break_even_monthly_fen, varRate: r.composite_var_rate_pct });
 }
 
-const ref = out[1]; // 以淘宝实测 11.46% 为基准
+const ref = out[1]; // 以淘宝实测 11.17% 为基准
 console.log('固定成本 20000 元 / 毛利率 65% / 只改「外卖抽成%」一个参数\n');
 console.log('%-40s %6s %10s %10s' .replace(/%-40s/, '') || '');
 for (const o of out) {
@@ -47,7 +47,7 @@ for (const o of out) {
     (' vs ② ' + (diff >= 0 ? '+' : '') + diff + '%').padStart(14));
 }
 console.log('\n结论读数：');
-console.log('  · ②（11.46%）→ ①（2.47%）：保本被算低 ' +
+console.log('  · ②（11.17%）→ ①（2.47%）：保本被算低 ' +
   (((out[0].beFen / out[1].beFen) - 1) * 100).toFixed(1) + '% ⇒ 结论偏「能开」（危险方向）');
-console.log('  · ②（11.46%）→ ⑤（23%）  ：保本被算高 ' +
+console.log('  · ②（11.17%）→ ⑤（23%）  ：保本被算高 ' +
   (((out[4].beFen / out[1].beFen) - 1) * 100).toFixed(1) + '% ⇒ 结论偏「不能开」（保守方向）');
