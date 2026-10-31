@@ -27,6 +27,7 @@ const {
   diagnoseColumns,       // R286：认不出表形态时「缺哪几列」诊断（走 ok 通道，见 :111 附近说明）
 } = require('./service');
 const { validateInput } = require('./validate');
+const { parse: parseDSI1, groupByPlatformDate: parseDSI1Groups } = require('./dsi1');   // R584：DSI-1 标准格式解析与分组
 
 // ===== R271：跨平台重复导入检测（查库版）=====
 // 为什么要单独一层：detectDupImport 是**零 IO 纯函数**（可直测），IO 全隔离在本函数内。
@@ -84,6 +85,12 @@ exports.main = async (event) => {
   // ===== 5. 分流：堂食菜品销售表（批次 G）优先，识别不出再走外卖账单（批次 F）=====
   const dishDetect = detectDishMatrix(matrix);
   if (dishDetect.shape) {
+    // 🔴 R584：DSI-1 标准格式走**独立 handler** —— 它一份文件可能含多个渠道/平台
+    //   （堂食 + 美团 + 淘宝闪购），而其余形态一份文件只有一个 platform。
+    //   复用 C 分支会丢掉渠道列信息、且落库 _id 会互相覆盖。
+    if (dishDetect.shape === DISH_SHAPES.S) {
+      return handleDSI1Import({ shopId, userId, clientRequestId, dishDetect, matrix, confirm: v.confirm });
+    }
     return handleDishImport({ shopId, userId, clientRequestId, dishDetect, matrix, confirm: v.confirm, platform: v.platform });
   }
 
@@ -450,6 +457,112 @@ async function handleFormCImport({ shopId, userId, clientRequestId, dishDetect, 
     try {
       await common.audit.writeAudit(db, {
         action: 'IMPORT_DISH_SALES_C', operator_type: 'user', operator_id: userId, shop_id: shopId,
+        after_data: out,
+        idempotency_key: common.idempotency.shopKey(shopId, clientRequestId),
+      });
+    } catch (e) { /* 审计失败不阻断主流程 */ }
+  }
+  return ok(out);
+}
+
+// ===== R584：DSI-1 标准格式导入 =====
+// 契约：specs/core/店算标准导入格式_v1.md；解析器：dsi1.js（纯函数，已由第 225 套件守住）
+//
+// 🔴 为什么它必须独立、不能复用 C 分支：
+//   一份 DSI-1 可以同时含堂食 + 美团 + 淘宝闪购（老板一个月的数据就一张表），
+//   而 C 分支的入参只有一个 `platform` ⇒ 落库时全部写成同一个平台、_id 也会互相覆盖
+//   （同 bizDate 同 seq ⇒ 后写的把先写的冲掉，且**不报错**）。
+//
+// 🔴 为什么不再套 checkGradeA：
+//   那道闸是为「平台原始导出表」设计的（列名不固定、单位不统一、可能有合计行）。
+//   DSI-1 是**已经标准化过的表**，dsi1.parse 已逐列校验（日期/渠道/数字/名称），
+//   再套一层只会把「格式问题」报成「数据问题」，反而更难懂。
+//   ⇒ 门禁口径改为：解析不过 ⇒ 直接把 dsi1 的**人话错误**回给用户（带行号）。
+
+async function handleDSI1Import({ shopId, userId, clientRequestId, dishDetect, matrix, confirm }) {
+  const sheetRows = matrix.sheets[dishDetect.sheet].rows;
+  const parsed = parseDSI1(sheetRows);
+  if (!parsed.ok) {
+    // 人话 + 行号原样透出（老板能照着改表，而不是只看到「格式错误」）
+    return fail(ERROR_CODES.INVALID_PARAM, parsed.error);
+  }
+
+  // 按 (platform, bizDate) 分组 —— 抽成纯函数以便单测（第 225 套件 D 组）
+  const groups = parseDSI1Groups(parsed.rows);
+
+  const summary = parsed.summary;
+
+  if (!confirm) {
+    return ok({
+      shop_id: shopId,
+      shape: DISH_SHAPES.S,
+      platform: '',                       // DSI-1 一份表可含多平台 ⇒ 顶层不填单值，明细见 by_channel
+      preview: {
+        rowCount: summary.rowCount,
+        dayFrom: summary.dayFrom,
+        dayTo: summary.dayTo,
+        dayCount: summary.dayCount,
+        dishCount: summary.dishCount,
+        totalQty: summary.totalQty,
+        totalAmountFen: summary.totalAmountFen,
+        byChannel: summary.byChannel,
+        nonInt: summary.nonInt,
+        refunds: summary.refunds,
+        // 🔴 契约 §S1-③：S1 不含打包费 ⇒ 汇总金额天然小于 S2 营业额。前端要如实说明，别让老板以为漏了。
+        noteNoPackFee: summary.noteNoPackFee,
+      },
+    });
+  }
+
+  // 幂等（重放形态）：命中即返回首次结果
+  const prior = await common.idempotency.findPriorResult(db, shopId, clientRequestId);
+  if (prior) return ok(prior);
+
+  const now = nowUtc();
+  let written = 0;
+  for (const g of groups) {
+    for (let seq = 0; seq < g.rows.length; seq++) {
+      const r = g.rows[seq];
+      // _id 确定性 ⇒ 同一份表重导是**覆盖**而不是翻倍（与 A/C/D 同一套 saleDocId）
+      const _id = saleDocId(shopId, g.platform, g.bizDate, seq);
+      await db.collection('external_sales_daily').doc(_id).set({
+        data: {
+          shop_id: shopId,
+          biz_date: g.bizDate,
+          external_ref_id: dishRefId(g.platform, g.bizDate, r.dishKey),
+          dish_key: r.dishKey,
+          qty: r.qty,
+          amount: r.amountFen,
+          platform: g.platform,
+          granularity: 'daily',
+          period_from: g.bizDate,
+          period_to: g.bizDate,
+          // 🔴 来源标记：与普通 excel 导入区分开（R581 提的"来源维度"，这里先落第一笔）
+          source: 'dsi1',
+          created_at: now,
+          is_deleted: false,
+        },
+      });
+      written++;
+    }
+  }
+
+  const out = {
+    shop_id: shopId,
+    shape: DISH_SHAPES.S,
+    written,
+    groups: groups.map((g) => ({ platform: g.platform, bizDate: g.bizDate, count: g.rows.length })),
+    byChannel: summary.byChannel,
+    totals: { qty: summary.totalQty, amountFen: summary.totalAmountFen },
+    nonInt: summary.nonInt,
+    refunds: summary.refunds,
+    client_request_id: clientRequestId || '',
+  };
+
+  if (clientRequestId) {
+    try {
+      await common.audit.writeAudit(db, {
+        action: 'IMPORT_DSI1', operator_type: 'user', operator_id: userId, shop_id: shopId,
         after_data: out,
         idempotency_key: common.idempotency.shopKey(shopId, clientRequestId),
       });

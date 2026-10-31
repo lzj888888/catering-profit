@@ -197,17 +197,19 @@ check('6-⑤ 端点缺失 ⇒ granularity=unknown（绝不猜 daily/interval）'
 const rev = svc.extractPeriod([[], ['营业日期：【2026/09/13 至 2026/09/07】']]);
 check('6-⑥ 端点写反 ⇒ 自动交换',
   rev.from === '2026-09-07' && rev.to === '2026-09-13', rev.from + ' → ' + rev.to);
-// 6-⑦ 落库面：**三处**写入都必须带三字段。少改一处 ⇒ 那条通道的"这是一段"信息永远丢失，
+// 6-⑦ 落库面：**每一处**写入都必须带三字段。少改一处 ⇒ 那条通道的"这是一段"信息永远丢失，
 //   而解析层断言照样全绿（"解析对了"≠"写下去了"——这是本仓踩过多次的同族坑）。
 //   判法：按 `db.collection('external_sales_daily')` 切成写入块、再从每块里取 `data: {...}`，
 //   逐块查三字段；**剥注释后判**（注释里写一句就能喂成恒真）。
+//   ⚠️ R584 修正：原判据把数量**钉死成 3** ⇒ 新增 DSI-1 落库点（第 4 处、字段齐全）时假红。
+//      改为「≥3 且零缺字段」：新增合规写入点不假红，新增**漏字段**的仍会红（分辨力保留在 badBlocks 上）。
 const idxSrcP = fs.readFileSync(path.join(ROOT, 'cloudfunctions/importSalesBill/index.js'), 'utf8');
 const idxStripP = idxSrcP.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
 const writeBlocks = idxStripP.split("db.collection('external_sales_daily')").slice(1)
   .map((b) => { const m = b.match(/data:\s*\{([\s\S]*?)\n\s*\},?\s*\)/); return m ? m[1] : b.slice(0, 1200); });
 const badBlocks = writeBlocks.map((b, i) => ({ i, b })).filter(({ b }) => !(/granularity:/.test(b) && /period_from:/.test(b) && /period_to:/.test(b)));
-check('6-⑦ 落库面：三处 external_sales_daily 写入**全部**带 granularity/period_from/period_to',
-  writeBlocks.length === 3 && badBlocks.length === 0,
+check('6-⑦ 落库面：每一处 external_sales_daily 写入都带 granularity/period_from/period_to（≥3 处）',
+  writeBlocks.length >= 3 && badBlocks.length === 0,
   '写入点 ' + writeBlocks.length + ' 个 / 缺字段 ' + badBlocks.length + ' 个'
   + (badBlocks.length ? ' → 第 ' + badBlocks.map((x) => x.i + 1).join(',') + ' 处' : ''));
 

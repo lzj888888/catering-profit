@@ -13,6 +13,7 @@ const XLSX = require('xlsx');
 //   写法与仓内其它云函数完全一致（const { ... } = require('./common')）；
 //   common/ 全层零外部依赖（已实测可直接加载），不污染本文件「纯逻辑」的定位。
 const common = require('./common');
+const { isDSI1, parse: parseDSI1 } = require('./dsi1');   // R584：标准格式解析
 const { normalizeDishName } = common;
 
 // ===================== 通用：字符串 → 数值（移植 parse_bill.py::to_num）=====================
@@ -406,6 +407,8 @@ const DISH_SHAPES = {
   C: 'waimai_goods',  // 外卖「商品销量」—— 🔴 样例已到货（R258/R259 实测：淘宝闪购「商品下载」355 行 = 7 天 × 51 商品）
   // R432（队列 #43）：京东外卖「订单导出」—— 20 列，商品混装在一列，无独立销量/销售额列
   D: 'jd_order_export',
+  // 🔴 R584：DSI-1 标准导入格式（契约 specs/core/店算标准导入格式_v1.md，解析器 dsi1.js）。
+  S: 'dsi1_standard',
 };
 
 // 形态 A 表结构常量（§2.1.2 实测 · 六项必核）
@@ -471,6 +474,10 @@ function findDishCCol(hdr, canon) {
 //         即使删掉也不会误判 —— 见 v1.7 §4.2 与锚点 C-1i~C-1l。保留以防将来列名趋同。）
 function detectDishShape(sheetRows) {
   const rows = sheetRows || [];
+  // 🔴 R584：DSI-1 **必须最先判**。它同样是「商品名称+销量+销售额」三列齐全，
+  //   但形态 C 的判据更松（允许「菜品名称」别名）⇒ 放 C 之后会被抢走，
+  //   结果是标准表被当外卖商品表解析、渠道列丢失。判据本身最严，放最前不误吞别形态。
+  if (isDSI1(rows[0] || [])) return DISH_SHAPES.S;
   const hdr3 = (rows[2] || []).map((x) => (x == null ? '' : String(x).trim()));  // R3（形态 A/B）
   const hdr1 = (rows[0] || []).map((x) => (x == null ? '' : String(x).trim()));  // R1（形态 C）
   const hdr = hdr3.concat(hdr1);

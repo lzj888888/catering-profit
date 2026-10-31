@@ -190,4 +190,29 @@ function parse(rows) {
   };
 }
 
-module.exports = { HEADERS, isDSI1, parse, normDate, toNum, ERR, PLATFORM_MAP };
+/**
+ * 按 (platform, bizDate) 分组 —— 落库 _id 的两个维度。
+ *
+ * 🔴 为什么单独抽成纯函数：这是整条 DSI-1 链路**最易错的一步**。
+ *   一份 DSI-1 可同时含堂食 + 美团 + 淘宝闪购，若按 bizDate 单维分组，
+ *   同一天不同平台的行会被塞进同一组、seq 连号 ⇒ `saleDocId(shop, platform, date, seq)`
+ *   里的 platform 只能取一个值 ⇒ **另一平台的行整批丢失或互相覆盖，且不报错**。
+ *
+ * @param {Array} rows parse() 产出的行
+ * @returns {Array<{platform:string, bizDate:string, rows:Array}>} 按 bizDate 升序、同日按 platform 名升序
+ */
+function groupByPlatformDate(rows) {
+  const m = new Map();
+  for (const r of (rows || [])) {
+    const k = r.platform + '|' + r.bizDate;
+    if (!m.has(k)) m.set(k, { platform: r.platform, bizDate: r.bizDate, rows: [] });
+    m.get(k).rows.push(r);
+  }
+  return Array.from(m.values()).sort((a, b) => (
+    a.bizDate === b.bizDate
+      ? (a.platform < b.platform ? -1 : (a.platform > b.platform ? 1 : 0))
+      : (a.bizDate < b.bizDate ? -1 : 1)
+  ));
+}
+
+module.exports = { HEADERS, isDSI1, parse, normDate, toNum, ERR, PLATFORM_MAP, groupByPlatformDate };

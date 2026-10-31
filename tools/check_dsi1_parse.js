@@ -99,6 +99,33 @@ check('D-⑥ 错误信息带行号（老板能定位到第几行）',
     return x.ok === false && /第 3 行/.test(x.error);
   })());
 
+sec('D2 · 多平台分组（落库 _id 的两个维度，最易错的一步）');
+const MIX = [
+  H,
+  ['2026-09-07', '堂食', '', '重庆小面', 12, 216, ''],
+  ['2026-09-07', '外卖', '美团', '重庆小面', 5, 95, ''],
+  ['2026-09-07', '外卖', '淘宝闪购', '重庆小面', 3, 57, ''],
+  ['2026-09-08', '堂食', '', '重庆小面', 10, 180, ''],
+  ['2026-09-08', '外卖', '美团', '重庆小面', 2, 38, ''],
+];
+const pm = D.parse(MIX);
+check('D2-⓪ 分组函数已导出（取不到 ⇒ 后面全假绿）', !!D && typeof D.groupByPlatformDate === 'function');
+if (D && typeof D.groupByPlatformDate === 'function') {
+  const gs = D.groupByPlatformDate(pm.rows);
+  check('D2-① 🔴 同一天三个平台 ⇒ **3 组**（不是 1 组）',
+    gs.filter((g) => g.bizDate === '2026-09-07').length === 3,
+    '实得 ' + gs.filter((g) => g.bizDate === '2026-09-07').length);
+  check('D2-② 两天两平台 ⇒ 共 5 组（3 + 2）', gs.length === 5, String(gs.length));
+  check('D2-③ 每组都同时带 platform 与 bizDate（_id 的两个维度缺一即覆盖）',
+    gs.every((g) => g.platform && g.bizDate));
+  check('D2-④ 组内行数守恒（5 行分完还是 5 行）',
+    gs.reduce((a, g) => a + g.rows.length, 0) === pm.rows.length);
+  // 反证：按日期单维分组只有 2 组 ⇒ 平台维度会被压平（这就是"互相覆盖"的形态）
+  const byDateOnly = new Set(pm.rows.map((x) => x.bizDate)).size;
+  check('D2-⑤ 🔴 反证：按日期单维只有 2 组 ⇒ 平台维度被压平（证明分组不能省 platform）',
+    byDateOnly === 2 && gs.length !== byDateOnly, '单维 ' + byDateOnly + ' vs 双维 ' + gs.length);
+}
+
 sec('E · 反恒真');
 check('E-① 空输入必须拒（防"恒返回成功"）', D.parse([]).ok === false);
 check('E-② 把小数规则改回取整吞掉 ⇒ C-① 的判据会失效（证明它盯着 rawQty 而非 qty）',
