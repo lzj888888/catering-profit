@@ -214,6 +214,8 @@
         <text class="val">{{t.cur}}{{importPreview.amountYuan}}</text>
       </view>
       <!-- 三条说明都是「老板最容易当 bug 报」的点；空串 ⇒ 不渲染（不假报"一切正常"） -->
+      <!-- 🔴 R589：日期太旧（>12 个月）用 warn 而不是 muted —— 这是"可能要改"的提示，不是说明 -->
+      <view class="warn" wx:if="{{importAgeWarnText}}">{{importAgeWarnText}}</view>
       <view class="muted" wx:if="{{importDsiNonIntText}}">{{importDsiNonIntText}}</view>
       <view class="muted" wx:if="{{importDsiRefundsText}}">{{importDsiRefundsText}}</view>
       <view class="muted" wx:if="{{importDsiNoPackText}}">{{importDsiNoPackText}}</view>

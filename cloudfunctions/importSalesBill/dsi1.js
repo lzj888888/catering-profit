@@ -24,6 +24,15 @@ const HEADERS = ['日期', '渠道', '平台', '商品名称', '销量', '销售
 //   而不是回一句「未识别」让他以为文件坏了（那样他会放弃，而不是换一张表）。
 const HEADERS_S2 = ['月份', '渠道', '平台', '营业额', '到手额', '订单数'];
 
+// 🔴 R589：年份合理性护栏 —— 为什么需要（实测）：
+//   给 AI 的原料里只有「9/7」这种**没有年份**的日期时，它会自己编一个：
+//   同一次实测，豆包编成 2024、DeepSeek 编成 2025，而正确是 2026。
+//   日期错一年 ⇒ 数据落到错误的月份 ⇒ 毛利榜/月度账照样出数、**看起来一切正常**。
+//   餐饮店的账都是近年数据 ⇒ 明显不合理的年份一律拒收，并说清楚年份范围（fail-closed）。
+//   ⚠️ 上界用「今年 +1」：允许提前录下月数据（月底导入、跨年补录）。
+const YEAR_MIN = 2015;
+const yearMax = () => new Date().getUTCFullYear() + 1;
+
 // 渠道 → 落库 platform（复用现有枚举：pos = 堂食，takeaway 由平台列决定）
 const CHANNEL_DINE = '堂食';
 const CHANNEL_TAKEAWAY = '外卖';
@@ -43,6 +52,7 @@ const ERR = {
   BAD_NAME: '商品名称不能为空',
   BAD_NUM: '销量或销售额不是数字',
   EMPTY: '表里没有数据行',
+  BAD_YEAR: '年份看着不对',
 };
 
 /** 单元格取字符串（去首尾空格） */
@@ -116,6 +126,12 @@ function parse(rows) {
 
     const bizDate = normDate(date0);
     if (!bizDate) return { ok: false, error: `${ERR.BAD_DATE}：第 ${i + 1} 行「${date0}」` };
+    // 🔴 R589：年份护栏（见 YEAR_MIN 处注释）—— 防 AI 猜错年、防老板手滑写错年
+    const _y = Number(String(bizDate).slice(0, 4));
+    if (!(_y >= YEAR_MIN && _y <= yearMax())) {
+      return { ok: false, error: `${ERR.BAD_YEAR}：第 ${i + 1} 行「${date0}」识别成 ${bizDate}，`
+        + `年份应在 ${YEAR_MIN}~${yearMax()} 之间。如果是「${date0}」这种没写年份的日期，请先补全年份再导` };
+    }
 
     const channel = s(r[1]);
     if (channel !== CHANNEL_DINE && channel !== CHANNEL_TAKEAWAY) {
@@ -174,12 +190,27 @@ function parse(rows) {
     byChannel[k].rows += 1;
   }
 
+  // 🔴 R589：这批数据"距今多少个月" —— 用来抓「AI 猜错年份」这类**范围检查抓不住**的错。
+  //   实测：原料写「9/7」（无年份）时，豆包编成 2024、DeepSeek 编成 2025，正确是 2026。
+  //   2024/2025 都是**合法年份**，光看范围永远判不出来；而"距今 26 个月"一眼就不对。
+  //   ⚠️ 只做提示、不拒收：老板确实可能补录两三年前的账，拒收会挡合法场景。
+  const _nowD = new Date();
+  const _nowYm = _nowD.getUTCFullYear() * 12 + (_nowD.getUTCMonth() + 1);
+  let maxMonthsAgo = 0;
+  for (const d of days) {
+    const ym = Number(String(d).slice(0, 4)) * 12 + Number(String(d).slice(5, 7));
+    const ago = _nowYm - ym;
+    if (ago > maxMonthsAgo) maxMonthsAgo = ago;
+  }
+
   return {
     ok: true,
     rows: out,
     summary: {
       rowCount: out.length,
       skipped,
+      // 最老的那一天距现在几个月（0 = 本月；负数 = 未来）。前端据此提示"这批数据是不是太旧了"
+      maxMonthsAgo,
       dayFrom: days[0],
       dayTo: days[days.length - 1],
       dayCount: days.length,

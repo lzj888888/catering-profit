@@ -575,6 +575,9 @@ async function handleDSI1Import({ shopId, userId, clientRequestId, dishDetect, m
         dayFrom: summary.dayFrom,
         dayTo: summary.dayTo,
         dayCount: summary.dayCount,
+        // 🔴 R589：最老一天距今几个月 —— 前端据此提示"这批数据是不是太旧了"
+        //   （抓 AI 猜错年份这类**范围检查抓不住**的错：2024/2025 都是合法年份）
+        maxMonthsAgo: summary.maxMonthsAgo,
         dishCount: summary.dishCount,
         totalQty: summary.totalQty,
         totalAmountFen: summary.totalAmountFen,

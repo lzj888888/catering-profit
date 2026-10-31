@@ -45,6 +45,8 @@ const PREVIEW_RESP = {
     rowCount: s.rowCount, dayFrom: s.dayFrom, dayTo: s.dayTo, dayCount: s.dayCount,
     dishCount: s.dishCount, totalQty: s.totalQty, totalAmountFen: s.totalAmountFen,
     byChannel: s.byChannel, nonInt: s.nonInt, refunds: s.refunds, noteNoPackFee: s.noteNoPackFee,
+    // R589：默认给"太旧"的值（25 个月）⇒ 用来验警告一定会出现
+    maxMonthsAgo: 25,
   },
 };
 const CONFIRM_RESP = {
@@ -108,7 +110,26 @@ page.setData = function (o) { Object.assign(this.data, o); };
     check('P-⑧ 退款说明被拼出来（1 行退款）', /1 行/.test(page.data.importDsiRefundsText || ''),
       page.data.importDsiRefundsText);
     check('P-⑨ 打包费说明常显（S1 不含打包费）', !!page.data.importDsiNoPackText);
+    // R589：日期太旧必须提示（AI 猜错年份时这是唯一能看出来的信号）
+    check('P-⑨b 🔴 数据距今 25 个月 ⇒ 必须出"日期太旧"警告',
+      !!page.data.importAgeWarnText && /25 个月/.test(page.data.importAgeWarnText),
+      page.data.importAgeWarnText);
     check('P-⑩ 不得残留账单分支的 monthsText/amountYuan 混用', pv.monthsText === undefined);
+  }
+
+  // ---- R589：临近月份不该报警（不能每次导入都吓人一跳）----
+  {
+    const near = JSON.parse(JSON.stringify(PREVIEW_RESP));
+    near.preview.maxMonthsAgo = 1;
+    const saveResp = nextResp;
+    nextResp = near;
+    const p2 = Object.assign({}, cfg);
+    p2.data = JSON.parse(JSON.stringify(cfg.data));
+    p2.setData = function (o) { Object.assign(this.data, o); };
+    await p2.onChooseFile();
+    check('P-⑨c 距今 1 个月 ⇒ **不得**出现日期警告',
+      p2.data.importAgeWarnText === '', p2.data.importAgeWarnText);
+    nextResp = saveResp;
   }
 
   // ---- 确认导入 ----

@@ -297,6 +297,55 @@ sec('D6 · 重导残留：菜变少时旧行会留下并把毛利算高（R586�
     (idxSrc6.match(/async function pruneStaleGroup\(/g) || []).length === 1);
 }
 
+sec('D7 · 日期护栏：防"AI 猜错年份"这类范围检查抓不住的错（R589）');
+{
+  // 背景（实测）：原料里只有「9/7」时，豆包编成 2024、DeepSeek 编成 2025，正确是 2026。
+  //   2024/2025 都是**合法年份** ⇒ 光看范围判不出来；只有"距今多少个月"能一眼看出不对。
+  const H7 = ['日期', '渠道', '平台', '商品名称', '销量', '销售额', '备注'];
+  const one = (d) => [H7, [d, '堂食', '', '重庆小面', 12, 216, '']];
+  const now = new Date();
+  const nowYm = now.getUTCFullYear() * 12 + (now.getUTCMonth() + 1);
+  const ymOf = (d) => Number(d.slice(0, 4)) * 12 + Number(d.slice(5, 7));
+
+  // ① 正常月份：距今月数应与手算一致（不是恒 0、也不是恒某个值）
+  const cur = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 15));
+  const curStr = cur.toISOString().slice(0, 10);
+  const r1 = D.parse(one(curStr));
+  check('D7-① 本月数据 ⇒ maxMonthsAgo = 0', r1.ok && r1.summary.maxMonthsAgo === 0,
+    r1.ok ? String(r1.summary.maxMonthsAgo) : r1.error);
+
+  const oldStr = (now.getUTCFullYear() - 2) + '-09-07';
+  const r2 = D.parse(one(oldStr));
+  check('D7-② 两年前的数据 ⇒ maxMonthsAgo 明显 > 12（能触发前端提示）',
+    r2.ok && r2.summary.maxMonthsAgo > 12,
+    r2.ok ? (oldStr + ' → ' + r2.summary.maxMonthsAgo + ' 个月') : r2.error);
+  check('D7-③ maxMonthsAgo 与手算一致（不是魔数）',
+    r2.ok && r2.summary.maxMonthsAgo === (nowYm - ymOf(oldStr)),
+    r2.ok ? (r2.summary.maxMonthsAgo + ' vs 手算 ' + (nowYm - ymOf(oldStr))) : '');
+
+  // ④ 极端年份一律拒收（明显是垃圾/打错）
+  check('D7-④ 1900 年 ⇒ 拒收且理由里说清年份范围',
+    (function () { const r = D.parse(one('1900-01-01'));
+      return !r.ok && /年份/.test(r.error); })());
+  check('D7-⑤ 2099 年 ⇒ 拒收（未来太远，多半是打错）',
+    (function () { const r = D.parse(one('2099-01-01')); return !r.ok; })());
+  // ⑥ 明年允许（月底提前录下月数据是真实场景）
+  const nextY = (now.getUTCFullYear() + 1) + '-01-15';
+  check('D7-⑥ 明年 1 月 ⇒ 放行（允许提前录下月数据）', D.parse(one(nextY)).ok);
+
+  // ⑦ 前端真的会提示（静态：DSI 预览里有 ageWarn 的渲染位与判定）
+  const pgSrc7 = (function () {
+    try { return require('fs').readFileSync(path.join(ROOT, 'subpkg/biz/takeaway/index.js'), 'utf8'); }
+    catch (e) { return ''; }
+  })();
+  const wxmlSrc7 = (function () {
+    try { return require('fs').readFileSync(path.join(ROOT, 'subpkg/biz/takeaway/index.wxml'), 'utf8'); }
+    catch (e) { return ''; }
+  })();
+  check('D7-⑦ 🔴 前端有「日期太旧」判定（maxMonthsAgo > 12）且渲染位存在（算出来不显示等于没做）',
+    /maxMonthsAgo\s*>\s*12/.test(pgSrc7) && /importAgeWarnText/.test(wxmlSrc7));
+}
+
 sec('E · 反恒真');
 check('E-① 空输入必须拒（防"恒返回成功"）', D.parse([]).ok === false);
 check('E-② 把小数规则改回取整吞掉 ⇒ C-① 的判据会失效（证明它盯着 rawQty 而非 qty）',

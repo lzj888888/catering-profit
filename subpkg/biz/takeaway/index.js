@@ -285,6 +285,7 @@ Page({
     importDsiRefundsText: '',
     importDsiNoPackText: '',
     importPruneWarnText: '',   // R586：清理失败提示（空串 ⇒ 不渲染）
+    importAgeWarnText: '',     // R589：日期太旧提示（空串 ⇒ 不渲染）
     importing: false,      // 防重复提交
     // v1.7 形态 C（外卖商品销量）：platform 机器判不出 ⇒ 必须选平台
     importShape: '',                    // 机器值：'' | 'dish_sales' | 'waimai_goods'（见顶部 DISH_SHAPES）
@@ -639,6 +640,9 @@ Page({
         };
         // 两条「已替你处理」说明 + 一条口径差异说明：都是老板最容易当 bug 报的地方。
         dsiInfo = {
+          // R589：日期太旧（>12 个月）要提示 —— 最常见成因是 AI 把缺年份的「9/7」猜错年
+          ageWarnText: (p && typeof p.maxMonthsAgo === 'number' && p.maxMonthsAgo > 12)
+            ? TK.importAgeWarn(preview.dateRangeText, p.maxMonthsAgo) : '',
           nonIntText: (p && p.nonInt && p.nonInt.length) ? TK.importDsiNonInt(p.nonInt.length) : '',
           refundsText: (p && p.refunds && p.refunds.length) ? TK.importDsiRefunds(p.refunds.length) : '',
           noPackText: (p && p.noteNoPackFee) ? TK.importDsiNoPack : '',
@@ -695,6 +699,7 @@ Page({
         importDsiNonIntText: dsiInfo ? dsiInfo.nonIntText : '',
         importDsiRefundsText: dsiInfo ? dsiInfo.refundsText : '',
         importDsiNoPackText: dsiInfo ? dsiInfo.noPackText : '',
+        importAgeWarnText: dsiInfo ? dsiInfo.ageWarnText : '',
         // R586：清理失败提示（空串 ⇒ 不渲染）。放在确认后的结果条上，不在预览态。
         importPruneWarnText: '',
         importZeroAmountQty: (isC && p && p.zeroAmountQty) ? p.zeroAmountQty : [],
