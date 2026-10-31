@@ -284,6 +284,7 @@ Page({
     importDsiNonIntText: '',
     importDsiRefundsText: '',
     importDsiNoPackText: '',
+    importPruneWarnText: '',   // R586：清理失败提示（空串 ⇒ 不渲染）
     importing: false,      // 防重复提交
     // v1.7 形态 C（外卖商品销量）：platform 机器判不出 ⇒ 必须选平台
     importShape: '',                    // 机器值：'' | 'dish_sales' | 'waimai_goods'（见顶部 DISH_SHAPES）
@@ -694,6 +695,8 @@ Page({
         importDsiNonIntText: dsiInfo ? dsiInfo.nonIntText : '',
         importDsiRefundsText: dsiInfo ? dsiInfo.refundsText : '',
         importDsiNoPackText: dsiInfo ? dsiInfo.noPackText : '',
+        // R586：清理失败提示（空串 ⇒ 不渲染）。放在确认后的结果条上，不在预览态。
+        importPruneWarnText: '',
         importZeroAmountQty: (isC && p && p.zeroAmountQty) ? p.zeroAmountQty : [],
         // 形态 C 平台选择重置
         importPlatformIndex: -1,
@@ -838,8 +841,12 @@ Page({
         importDup: null, importDupText: '', importDupFixText: '', importDupBlock: false,
         // P0#8：成功结果条（常驻：标题=importSuccess、正文=importDoneText、两个出口按钮）
         importDone: true,
+        // R586：后端报"有组清理失败" ⇒ 必须让老板看到（否则金额偏高且无人知晓）
+        importPruneWarnText: (dsiNames && res && res.pruneFailed > 0) ? TK.importPruneWarn : '',
         importDoneText: dsiNames
-          ? TK.importDoneDsi((res && res.written) || 0, dsiNames.join('、'))
+          ? (TK.importDoneDsi((res && res.written) || 0, dsiNames.join('、'))
+            // R586：重导替换了旧行就说明替换了多少 —— 不说，老板会以为"怎么少了几条"
+            + ((res && res.pruned > 0) ? TK.importDonePruned(res.pruned) : ''))
           : (platName
             ? (TK.importSuccessPlat || '').replace('{name}', platName)
             : (TK.importDoneBodyPlain || '')),

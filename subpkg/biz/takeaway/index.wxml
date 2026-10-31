@@ -321,6 +321,9 @@
     <view class="card2 ok-bar" wx:if="{{importDone}}">
       <view class="ok-title">{{t.importSuccess}}</view>
       <view class="muted">{{importDoneText}}</view>
+      <!-- 🔴 R586：后端报「有组旧记录没清干净」时必须让人看见 —— 新数据是对的，
+           但残留旧行会让毛利偏高。空串 ⇒ 不渲染（不假报"一切正常"）。 -->
+      <view class="warn" wx:if="{{importPruneWarnText}}">{{importPruneWarnText}}</view>
       <button class="btn primary" bindtap="goRecon">{{t.goRecon}}</button>
       <button class="btn ghost" bindtap="goDishReview">{{t.goDishReview}}</button>
       <button class="btn ghost btn-block" bindtap="dismissDone">{{t.importGoLater}}</button>

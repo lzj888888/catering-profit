@@ -236,6 +236,58 @@ sec('D5 · S2（月渠道汇总）：认得出来、但明确不受理');
     && /商品明细/.test(idxSrc2));
 }
 
+sec('D6 · 重导残留：菜变少时旧行会留下并把毛利算高（R586）');
+{
+  // 问题：_id = SALE_<店>_<平台>_<日期>_<seq> ⇒ 重导只覆盖 seq 重合部分。
+  //   读侧 getDishReview 按 shop_id 读全量、**不按来源过滤** ⇒ 残留旧行会被算进毛利榜。
+  // 解法：写完后清掉"该组旧 _id 里、不在本次写入集合里"的行（集合差，不解析 _id）。
+  const H6 = ['日期', '渠道', '平台', '商品名称', '销量', '销售额', '备注'];
+  const mk = (n) => {
+    const rows = [H6];
+    for (let i = 0; i < n; i++) rows.push(['2026-09-07', '堂食', '', '菜' + i, 1, 10, '']);
+    return rows;
+  };
+  const idsOf = (rows) => {
+    const r = D.parse(rows);
+    const gs = D.groupByPlatformDate(r.rows);
+    const out = [];
+    for (const g of gs) for (let q = 0; q < g.rows.length; q++) out.push(S.saleDocId('shop1', g.platform, g.bizDate, q));
+    return out;
+  };
+  const first = idsOf(mk(5));
+  const second = idsOf(mk(3));
+
+  // ① 问题真实：只按 _id 覆盖时，第二次导完仍有 2 条旧行在库里
+  const leftover = first.filter((x) => second.indexOf(x) < 0);
+  check('D6-① 🔴 只按 _id 覆盖 ⇒ 5 行重导成 3 行会残留 2 条（金额虚高，且不报错）',
+    leftover.length === 2, '残留 ' + leftover.length + ' 条：' + leftover.join(','));
+
+  // ② 解法有效：集合差应恰好覆盖这 2 条
+  const writtenSet = new Set(second);
+  const toPrune = first.filter((id) => !writtenSet.has(id));
+  check('D6-② 集合差清理 ⇒ 恰好清掉这 2 条，且不动本次写入的行',
+    toPrune.length === 2 && toPrune.every((id) => leftover.indexOf(id) >= 0)
+    && second.every((id) => toPrune.indexOf(id) < 0),
+    '待清 ' + toPrune.length + ' 条');
+
+  // ③ 反恒真：两次行数相同 ⇒ 不该有多余清理动作（否则每次重导都在误删）
+  check('D6-③ 行数相同重导 ⇒ 待清理 0 条（不能每次重导都误删）',
+    (function () { const a2 = idsOf(mk(4)), b2 = idsOf(mk(4)); const st = new Set(b2);
+      return a2.filter((id) => !st.has(id)).length === 0; })());
+
+  // ④ 静态：handler 里真有清理动作，且**写在写库之后**（先写对、再删多）
+  const idxSrc6 = (function () {
+    try { return require('fs').readFileSync(path.join(ROOT, 'cloudfunctions/importSalesBill/index.js'), 'utf8'); }
+    catch (e) { return ''; }
+  })();
+  const iWrite = idxSrc6.indexOf('writtenIds.add(');
+  const iPrune = idxSrc6.indexOf('toPrune');
+  check('D6-④ 🔴 handler 里清理动作在写入之后（先保证新数据落地，再删多余）',
+    iWrite > 0 && iPrune > iWrite, '写@' + iWrite + ' 清理@' + iPrune);
+  check('D6-⑤ 清理结果回报给前端（pruned / pruneFailed 都在 out 里，不静默）',
+    /pruned/.test(idxSrc6) && /pruneFailed/.test(idxSrc6));
+}
+
 sec('E · 反恒真');
 check('E-① 空输入必须拒（防"恒返回成功"）', D.parse([]).ok === false);
 check('E-② 把小数规则改回取整吞掉 ⇒ C-① 的判据会失效（证明它盯着 rawQty 而非 qty）',

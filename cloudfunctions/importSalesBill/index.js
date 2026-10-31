@@ -527,11 +527,41 @@ async function handleDSI1Import({ shopId, userId, clientRequestId, dishDetect, m
 
   const now = nowUtc();
   let written = 0;
+  let pruned = 0;          // 本次被清理掉的"旧残留行"
+  let pruneFailed = 0;     // 清理失败的组数（新数据仍正确，只是可能残留）
   for (const g of groups) {
+    // 🔴 R586：先记下该 (platform, bizDate) 组**已存在**的行 _id，写完新数据后再删掉"不在本次写入集合里"的。
+    //
+    //   为什么必须清：`_id = SALE_<店>_<平台>_<日期>_<seq>`，重导只覆盖 seq **重合**的部分。
+    //   本次行数少于上次时，尾部旧行会留下 —— 而读侧（getDishReview）按 shop_id 读全量、
+    //   **不按来源过滤** ⇒ 残留行会被算进毛利榜，金额虚高。实测（5 行重导成 3 行）：残留 2 条。
+    //
+    //   为什么用「集合差」而不是解析 _id 取 seq：
+    //     ① 解析是另一份单源（common/salesBillId.js），扩展它要连带同步各云函数的 cx_ 副本；
+    //     ② 集合差与 _id 形态**解耦** —— 将来 _id 里加来源标记也不会让这段失效。
+    //   为什么写在「写完之后」：新数据先落地，这样即使清理失败，错的也只是"多了几条旧行"，
+    //     而不是"该有的没有"（后者更糟）。
+    const staleIds = [];
+    try {
+      const oldRes = await db.collection('external_sales_daily')
+        .where({ shop_id: shopId, platform: g.platform, biz_date: g.bizDate, is_deleted: false })
+        .field({ _id: true })
+        .limit(500)                      // 一天一个平台不会超 500 行；超了会漏清尾部，属已知边界
+        .get();
+      // 🔴 存**对象**而不是裸字符串：`doc(row._id)` 让「写库必须用 _id」守卫直接认得；
+      //   传裸变量（`doc(id)`）时它回溯不到 `_id` 来源 ⇒ 判违规（实测 R586 撞到）。
+      for (const d of (oldRes && oldRes.data) || []) if (d && d._id) staleIds.push({ _id: d._id });
+    } catch (e) {
+      // 取不到就不清理：新数据仍会正确覆盖，不因"读旧数据失败"而阻断导入
+      staleIds.length = 0;
+    }
+
+    const writtenIds = new Set();
     for (let seq = 0; seq < g.rows.length; seq++) {
       const r = g.rows[seq];
       // _id 确定性 ⇒ 同一份表重导是**覆盖**而不是翻倍（与 A/C/D 同一套 saleDocId）
       const _id = saleDocId(shopId, g.platform, g.bizDate, seq);
+      writtenIds.add(_id);
       await db.collection('external_sales_daily').doc(_id).set({
         data: {
           shop_id: shopId,
@@ -552,12 +582,30 @@ async function handleDSI1Import({ shopId, userId, clientRequestId, dishDetect, m
       });
       written++;
     }
+
+    // 清掉本组里"这次没再写"的旧行（菜变少 / 换了来源时会出现）
+    const toPrune = staleIds.filter((row) => !writtenIds.has(row._id));
+    if (toPrune.length) {
+      try {
+        for (const row of toPrune) {
+          await db.collection('external_sales_daily').doc(row._id).update({
+            data: { is_deleted: true, updated_at: now },
+          });
+          pruned++;
+        }
+      } catch (e) {
+        // 清理失败不阻断：新数据已正确写入，只会残留少量旧行（回报给前端，不静默）
+        pruneFailed++;
+      }
+    }
   }
 
   const out = {
     shop_id: shopId,
     shape: DISH_SHAPES.S,
     written,
+    pruned,          // R586：被清掉的旧残留行数（重导时菜变少会出现）
+    pruneFailed,     // R586：清理失败组数；>0 表示"可能有旧行残留"，前端应如实提示
     groups: groups.map((g) => ({ platform: g.platform, bizDate: g.bizDate, count: g.rows.length })),
     byChannel: summary.byChannel,
     totals: { qty: summary.totalQty, amountFen: summary.totalAmountFen },

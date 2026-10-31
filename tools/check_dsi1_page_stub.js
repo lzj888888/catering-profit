@@ -49,9 +49,13 @@ const PREVIEW_RESP = {
 };
 const CONFIRM_RESP = {
   shop_id: 'shop1', shape: 'dsi1_standard', written: s.rowCount,
+  // R586：重导时清掉了 2 条旧残留行 —— 页面必须把它说出来，否则老板以为"少了几条"
+  pruned: 2, pruneFailed: 0,
   groups: [{ platform: 'pos', bizDate: '2026-09-07', count: 3 },
            { platform: 'meituan', bizDate: '2026-09-07', count: 1 }],
 };
+// 第二场景：清理失败（新数据对、但旧行残留 ⇒ 金额可能偏高，必须提示）
+const CONFIRM_PRUNE_FAIL = Object.assign({}, CONFIRM_RESP, { pruned: 0, pruneFailed: 1 });
 
 // ---- 桩 ----
 let nextResp = PREVIEW_RESP;
@@ -117,6 +121,20 @@ page.setData = function (o) { Object.assign(this.data, o); };
   check('C-② 成功回执说清「几行 + 哪几个渠道」', /已导入 6 行/.test(page.data.importDoneText || '')
     && /堂食/.test(page.data.importDoneText || ''), page.data.importDoneText);
   check('C-③ 预览态已清空、importDone=true', page.data.importPreview === null && page.data.importDone === true);
+  // R586：替换了多少条旧记录要说出来
+  check('C-④ 回执说明「替换了之前的 2 条旧记录」', /替换了之前的 2 条/.test(page.data.importDoneText || ''),
+    page.data.importDoneText);
+  check('C-⑤ 没清理失败 ⇒ 不得出现告警（不能每次成功都吓人一跳）', page.data.importPruneWarnText === '',
+    page.data.importPruneWarnText);
+
+  // ---- 清理失败场景 ----
+  nextResp = CONFIRM_PRUNE_FAIL;
+  page.data.importFileID = 'cloud://fake/dsi1.xlsx';
+  page.data.importShape = 'dsi1_standard';
+  await page.onConfirmImport();
+  check('C-⑥ 🔴 后端报清理失败 ⇒ 页面必须显示告警（金额可能偏高，不能静默）',
+    !!page.data.importPruneWarnText && /偏高/.test(page.data.importPruneWarnText),
+    page.data.importPruneWarnText);
 
   console.log('\n' + (failN ? '❌ ' + failN + ' 失败 / ' : '✅ ') + pass + ' 通过');
   process.exit(failN ? 1 : 0);

@@ -207,11 +207,24 @@ const idxSrcP = fs.readFileSync(path.join(ROOT, 'cloudfunctions/importSalesBill/
 const idxStripP = idxSrcP.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
 const writeBlocks = idxStripP.split("db.collection('external_sales_daily')").slice(1)
   .map((b) => { const m = b.match(/data:\s*\{([\s\S]*?)\n\s*\},?\s*\)/); return m ? m[1] : b.slice(0, 1200); });
-const badBlocks = writeBlocks.map((b, i) => ({ i, b })).filter(({ b }) => !(/granularity:/.test(b) && /period_from:/.test(b) && /period_to:/.test(b)));
-check('6-⑦ 落库面：每一处 external_sales_daily 写入都带 granularity/period_from/period_to（≥3 处）',
+// 🔴 R586：区分「业务写入」与「状态更新」。
+//   软删/恢复只动 `is_deleted`（+ updated_at），它不产生新数据行、也不改变"这是一段还是单日"，
+//   要求它带 granularity/period_from/period_to 是无意义的 —— 那是**写业务数据**才要的。
+//   判法：data 里出现 is_deleted、且不出现任何业务字段（dish_key/qty/amount）⇒ 视为状态更新。
+//   ⚠️ 反向仍保留分辨力：业务块少一个字段照样红（见下方自失效断言）。
+const isStateOnly = (b) => /is_deleted\s*:/.test(b)
+  && !/dish_key\s*:/.test(b) && !/qty\s*:/.test(b) && !/amount\s*:/.test(b);
+const hasTriple = (b) => /granularity:/.test(b) && /period_from:/.test(b) && /period_to:/.test(b);
+const badBlocks = writeBlocks.map((b, i) => ({ i, b }))
+  .filter(({ b }) => !isStateOnly(b) && !hasTriple(b));
+check('6-⑦ 落库面：每一处**业务**写入都带 granularity/period_from/period_to（≥3 处；软删除外）',
   writeBlocks.length >= 3 && badBlocks.length === 0,
   '写入点 ' + writeBlocks.length + ' 个 / 缺字段 ' + badBlocks.length + ' 个'
   + (badBlocks.length ? ' → 第 ' + badBlocks.map((x) => x.i + 1).join(',') + ' 处' : ''));
+// 自失效护栏：把一个真正的业务块去掉 granularity ⇒ 同一判据必须报缺（否则上面那条恒真）
+const fakeBad = 'shop_id: 1, dish_key: \'a\', qty: 1, period_from: \'2026-09-07\', period_to: \'2026-09-07\'';
+check('6-⑦-b 自失效：业务写入块缺 granularity ⇒ 必须判缺', !isStateOnly(fakeBad) && !hasTriple(fakeBad));
+check('6-⑦-c 自失效：只有 is_deleted 的块 ⇒ 必须判为状态更新', isStateOnly('is_deleted: true, updated_at: 1'));
 
 console.log('\n===== m333-parse 守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);
