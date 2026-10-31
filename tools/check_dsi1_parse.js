@@ -280,12 +280,21 @@ sec('D6 · 重导残留：菜变少时旧行会留下并把毛利算高（R586�
     try { return require('fs').readFileSync(path.join(ROOT, 'cloudfunctions/importSalesBill/index.js'), 'utf8'); }
     catch (e) { return ''; }
   })();
-  const iWrite = idxSrc6.indexOf('writtenIds.add(');
-  const iPrune = idxSrc6.indexOf('toPrune');
-  check('D6-④ 🔴 handler 里清理动作在写入之后（先保证新数据落地，再删多余）',
+  // 🔴 R587：清理逻辑已抽成共用函数 pruneStaleGroup，三个通道（A / C·D / DSI-1）都调它。
+  //   判据改为：① DSI-1 handler 内"先写后清"；② 全文件至少 3 处调用（三通道各一）。
+  const iDsi = idxSrc6.indexOf('async function handleDSI1Import');
+  const dsiSeg = iDsi >= 0 ? idxSrc6.slice(iDsi) : '';
+  const iWrite = dsiSeg.indexOf('writtenIds.add(');
+  const iPrune = dsiSeg.indexOf('pruneStaleGroup(');
+  check('D6-④ 🔴 DSI-1 handler 里清理动作在写入之后（先保证新数据落地，再删多余）',
     iWrite > 0 && iPrune > iWrite, '写@' + iWrite + ' 清理@' + iPrune);
   check('D6-⑤ 清理结果回报给前端（pruned / pruneFailed 都在 out 里，不静默）',
     /pruned/.test(idxSrc6) && /pruneFailed/.test(idxSrc6));
+  const pruneCalls = (idxSrc6.match(/await pruneStaleGroup\(/g) || []).length;
+  check('D6-⑥ 🔴 三个通道都接了清理（A / C·D / DSI-1 各一处调用，别只修一个）',
+    pruneCalls >= 3, '调用 ' + pruneCalls + ' 处');
+  check('D6-⑦ 清理只有一份实现（共用函数定义 1 处；禁止各 handler 各写一遍）',
+    (idxSrc6.match(/async function pruneStaleGroup\(/g) || []).length === 1);
 }
 
 sec('E · 反恒真');

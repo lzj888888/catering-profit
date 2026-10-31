@@ -842,14 +842,15 @@ Page({
         // P0#8：成功结果条（常驻：标题=importSuccess、正文=importDoneText、两个出口按钮）
         importDone: true,
         // R586：后端报"有组清理失败" ⇒ 必须让老板看到（否则金额偏高且无人知晓）
-        importPruneWarnText: (dsiNames && res && res.pruneFailed > 0) ? TK.importPruneWarn : '',
-        importDoneText: dsiNames
-          ? (TK.importDoneDsi((res && res.written) || 0, dsiNames.join('、'))
-            // R586：重导替换了旧行就说明替换了多少 —— 不说，老板会以为"怎么少了几条"
-            + ((res && res.pruned > 0) ? TK.importDonePruned(res.pruned) : ''))
+        importPruneWarnText: (res && res.pruneFailed > 0) ? TK.importPruneWarn : '',
+        // R587：`pruned` 现在**三个通道都会回**（形态 A / C·D / DSI-1），所以拼接放在公共位置，
+        //   不只在 DSI 分支 —— 否则老通道清了旧行却不告诉老板。
+        importDoneText: (dsiNames
+          ? TK.importDoneDsi((res && res.written) || 0, dsiNames.join('、'))
           : (platName
             ? (TK.importSuccessPlat || '').replace('{name}', platName)
-            : (TK.importDoneBodyPlain || '')),
+            : (TK.importDoneBodyPlain || '')))
+          + ((res && res.pruned > 0) ? TK.importDonePruned(res.pruned) : ''),
       });
     } catch (e) {
       wx.hideLoading();

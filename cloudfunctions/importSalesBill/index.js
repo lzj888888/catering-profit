@@ -221,6 +221,56 @@ exports.main = async (event) => {
  * 堂食《菜品销售统计》（形态 A）导入：解析 → 甲级门禁 → 落库 → 摘要写 shop_switch.m3_review_last。
  * 🔴 形态 B（套餐明细）不入库（套餐组分已并入菜品表，§6 重复计算禁令）；形态 C 预留（待样例）。
  */
+/**
+ * 🔴 R587：清掉某 (shop, platform, bizDate) 组里"**本次没再写**"的旧行（软删）。
+ *
+ * 为什么需要（R586 实测）：
+ *   `_id = SALE_<店>_<平台>_<日期>_<seq>`，重导只覆盖 seq **重合**的部分。
+ *   本次行数少于上次（改表删了菜 / 换了数据来源）时，尾部旧行会留下 ——
+ *   而读侧（getDishReview）按 shop_id 读全量、**不按来源过滤** ⇒ 残留行被算进毛利榜，
+ *   金额虚高且不报错。实测 5 行重导成 3 行：残留 2 条。
+ *
+ * 为什么用「集合差」而不是解析 `_id` 取 seq：
+ *   ① 解析是另一份单源（common/salesBillId.js），扩展它要连带同步各云函数的 cx_ 副本；
+ *   ② 与 `_id` 形态解耦 —— 将来 `_id` 里加来源标记也不会让这段失效。
+ *
+ * 为什么由调用方在「写完之后」调：新数据先落地，最坏情况只是"多了几条旧行"，
+ *   而不是"该有的没有"（后者老板完全无从发现）。
+ *
+ * ⚠️ 语义代价（有意的）：同一天同一渠道**分两次导不同部分**时，第二次会覆盖掉第一次的。
+ *   我们的表本来就是"一整天的完整导出"，分次导属误用；数据正确性优先于容忍误用。
+ *
+ * @returns {{pruned:number, failed:number}} pruned=清掉的行数；failed=清理失败的行数
+ */
+async function pruneStaleGroup(db, shopId, platform, bizDate, writtenIds, now) {
+  let stale = [];
+  try {
+    const oldRes = await db.collection('external_sales_daily')
+      .where({ shop_id: shopId, platform: platform, biz_date: bizDate, is_deleted: false })
+      .field({ _id: true })
+      .limit(500)          // 一天一个平台不会超 500 行；超了会漏清尾部，属已知边界
+      .get();
+    const done = writtenIds || new Set();
+    stale = ((oldRes && oldRes.data) || [])
+      .filter((d) => d && d._id && !done.has(d._id));
+  } catch (e) {
+    // 取不到旧数据就不清理：新数据仍会正确覆盖，不该因"读旧数据失败"阻断导入
+    return { pruned: 0, failed: 0 };
+  }
+  let pruned = 0, failed = 0;
+  for (const row of stale) {
+    try {
+      await db.collection('external_sales_daily').doc(row._id).update({
+        data: { is_deleted: true, updated_at: now },
+      });
+      pruned++;
+    } catch (e) {
+      failed++;
+    }
+  }
+  return { pruned: pruned, failed: failed };
+}
+
 async function handleDishImport({ shopId, userId, clientRequestId, dishDetect, matrix, confirm, platform }) {
   // 形态 B：套餐明细表 —— 不入库（组分已并入菜品表，禁止两表相加）
   if (dishDetect.shape === DISH_SHAPES.B) {
@@ -269,9 +319,11 @@ async function handleDishImport({ shopId, userId, clientRequestId, dishDetect, m
 
   const now = nowUtc();
   let written = 0;
+  const writtenIds = new Set();   // R587：本次写了哪些 _id（用于清掉多余的旧行）
   for (let seq = 0; seq < parsed.rows.length; seq++) {
     const r = parsed.rows[seq];
     const _id = saleDocId(shopId, 'pos', parsed.bizDate, seq);
+    writtenIds.add(_id);
     await db.collection('external_sales_daily').doc(_id).set({
       data: {
         shop_id: shopId,
@@ -296,6 +348,9 @@ async function handleDishImport({ shopId, userId, clientRequestId, dishDetect, m
     });
     written++;
   }
+
+  // 🔴 R587：清掉这一天里"本次没再写"的旧行（改表删了菜 / 换了来源时会留下）
+  const prA = await pruneStaleGroup(db, shopId, 'pos', parsed.bizDate, writtenIds, now);
 
   // 摘要写 shop_switch.m3_review_last（批次时间 / 来源 / 行数 / 未匹配数 / 非整数 qty 数）
   const summary = {
@@ -325,6 +380,8 @@ async function handleDishImport({ shopId, userId, clientRequestId, dishDetect, m
     period_to: parsed.periodTo || parsed.bizDate,
     granularity: parsed.granularity,
     written,
+    pruned: prA.pruned,          // R587：清掉的旧残留行数
+    pruneFailed: prA.failed,     // R587：清理失败行数（>0 ⇒ 可能残留旧行）
     totals: parsed.totals,
     nonInt: parsed.nonInt,
     unmatched: parsed.unmatched,
@@ -421,10 +478,13 @@ async function handleFormCImport({ shopId, userId, clientRequestId, dishDetect, 
 
   const now = nowUtc();
   let written = 0;
+  let prunedC = 0, pruneFailC = 0;
   for (const g of parsed.groups) {
+    const writtenIds = new Set();   // R587：本组写了哪些 _id
     for (let seq = 0; seq < g.rows.length; seq++) {
       const r = g.rows[seq];
       const _id = saleDocId(shopId, platform, g.bizDate, seq);
+      writtenIds.add(_id);
       await db.collection('external_sales_daily').doc(_id).set({
         data: {
           shop_id: shopId,
@@ -446,6 +506,10 @@ async function handleFormCImport({ shopId, userId, clientRequestId, dishDetect, 
       });
       written++;
     }
+    // 🔴 R587：本组写完后清掉多余的旧行（与形态 A / DSI-1 同一套语义）
+    const pr = await pruneStaleGroup(db, shopId, platform, g.bizDate, writtenIds, now);
+    prunedC += pr.pruned;
+    pruneFailC += pr.failed;
   }
 
   const out = {
@@ -453,6 +517,8 @@ async function handleFormCImport({ shopId, userId, clientRequestId, dishDetect, 
     platform,
     shape: parsed.shape,
     written,
+    pruned: prunedC,          // R587：清掉的旧残留行数
+    pruneFailed: pruneFailC,  // R587：清理失败行数（>0 ⇒ 可能残留旧行）
     groups: parsed.groups.map((g) => ({ bizDate: g.bizDate, count: g.rows.length })),
     totals: parsed.totals,
     zeroAmountQty: parsed.zeroAmountQty,
@@ -530,33 +596,7 @@ async function handleDSI1Import({ shopId, userId, clientRequestId, dishDetect, m
   let pruned = 0;          // 本次被清理掉的"旧残留行"
   let pruneFailed = 0;     // 清理失败的组数（新数据仍正确，只是可能残留）
   for (const g of groups) {
-    // 🔴 R586：先记下该 (platform, bizDate) 组**已存在**的行 _id，写完新数据后再删掉"不在本次写入集合里"的。
-    //
-    //   为什么必须清：`_id = SALE_<店>_<平台>_<日期>_<seq>`，重导只覆盖 seq **重合**的部分。
-    //   本次行数少于上次时，尾部旧行会留下 —— 而读侧（getDishReview）按 shop_id 读全量、
-    //   **不按来源过滤** ⇒ 残留行会被算进毛利榜，金额虚高。实测（5 行重导成 3 行）：残留 2 条。
-    //
-    //   为什么用「集合差」而不是解析 _id 取 seq：
-    //     ① 解析是另一份单源（common/salesBillId.js），扩展它要连带同步各云函数的 cx_ 副本；
-    //     ② 集合差与 _id 形态**解耦** —— 将来 _id 里加来源标记也不会让这段失效。
-    //   为什么写在「写完之后」：新数据先落地，这样即使清理失败，错的也只是"多了几条旧行"，
-    //     而不是"该有的没有"（后者更糟）。
-    const staleIds = [];
-    try {
-      const oldRes = await db.collection('external_sales_daily')
-        .where({ shop_id: shopId, platform: g.platform, biz_date: g.bizDate, is_deleted: false })
-        .field({ _id: true })
-        .limit(500)                      // 一天一个平台不会超 500 行；超了会漏清尾部，属已知边界
-        .get();
-      // 🔴 存**对象**而不是裸字符串：`doc(row._id)` 让「写库必须用 _id」守卫直接认得；
-      //   传裸变量（`doc(id)`）时它回溯不到 `_id` 来源 ⇒ 判违规（实测 R586 撞到）。
-      for (const d of (oldRes && oldRes.data) || []) if (d && d._id) staleIds.push({ _id: d._id });
-    } catch (e) {
-      // 取不到就不清理：新数据仍会正确覆盖，不因"读旧数据失败"而阻断导入
-      staleIds.length = 0;
-    }
-
-    const writtenIds = new Set();
+    const writtenIds = new Set();   // R587：本组写了哪些 _id
     for (let seq = 0; seq < g.rows.length; seq++) {
       const r = g.rows[seq];
       // _id 确定性 ⇒ 同一份表重导是**覆盖**而不是翻倍（与 A/C/D 同一套 saleDocId）
@@ -583,21 +623,12 @@ async function handleDSI1Import({ shopId, userId, clientRequestId, dishDetect, m
       written++;
     }
 
-    // 清掉本组里"这次没再写"的旧行（菜变少 / 换了来源时会出现）
-    const toPrune = staleIds.filter((row) => !writtenIds.has(row._id));
-    if (toPrune.length) {
-      try {
-        for (const row of toPrune) {
-          await db.collection('external_sales_daily').doc(row._id).update({
-            data: { is_deleted: true, updated_at: now },
-          });
-          pruned++;
-        }
-      } catch (e) {
-        // 清理失败不阻断：新数据已正确写入，只会残留少量旧行（回报给前端，不静默）
-        pruneFailed++;
-      }
-    }
+    // 🔴 R587：清掉本组里"这次没再写"的旧行（菜变少 / 换了来源时会出现）。
+    //   与形态 A / C/D 共用同一个 pruneStaleGroup —— **同一套语义只许有一份实现**
+    //   （R586 曾把这段内联在这里，A/C/D 各自再写一遍就会分叉，正是本轮反复踩的坑）。
+    const pr = await pruneStaleGroup(db, shopId, g.platform, g.bizDate, writtenIds, now);
+    pruned += pr.pruned;
+    pruneFailed += pr.failed;
   }
 
   const out = {
