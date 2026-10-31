@@ -97,6 +97,13 @@
 .be-num { font-size: 64rpx; font-weight: 800; color: #fff; line-height: 1.25; margin-top: 6rpx; }
 .be-hint { font-size: 28rpx; color: rgba(255, 255, 255, 0.72); margin-top: 2rpx; }
 .be-sub { font-size: 30rpx; color: rgba(255, 255, 255, 0.92); margin-top: 14rpx; }
+/* 🔴 #100（R576）：M1 真实数据预填的来源说明 + 缺口卡。
+   字号一律 ≥28rpx（本仓 AD 红线）；颜色只表"差/超"，不做好坏评级（无市场数据可判）。 */
+.m1-prefill-note { font-size: 28rpx; color: #6b7280; padding: 2rpx 0 10rpx; }
+.m1-gap { padding: 24rpx 28rpx; }
+.m1-gap-text { font-size: 30rpx; line-height: 1.5; }
+.m1-gap-text.is-behind { color: #c0392b; }
+.m1-gap-text.is-above { color: #2e7d32; }
 /* 指标对照表的颜色图例（颜色由 .lv-* 单源给，这里只管排版） */
 .ind-legend { display: flex; flex-wrap: wrap; padding: 4rpx 0 12rpx; }
 .ind-lg { font-size: 28rpx; margin-right: 22rpx; }

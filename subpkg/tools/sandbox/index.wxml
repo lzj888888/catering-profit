@@ -102,6 +102,10 @@
   <!-- ② 每月固定支出：不管卖多少都要付的钱 -->
   <view class="card2">
     <view class="sec">{{t.secFixed}}</view>
+    <!-- 🔴 #100（R576）：预填**来源说明** —— 必须让老板一眼看出"这是按我的账填的"，
+         否则会误以为是系统给的行业参考值（R128 恰恰禁止那种静默填值）。
+         `m1Prefill` 为 null（没预填过 / 没有 M1 数据）时整行不存在。 -->
+    <view class="m1-prefill-note" wx:if="{{m1Prefill}}">{{m1Prefill.note}}</view>
     <view class="row">
       <text class="row-name">{{t.rentLabel}}</text>
       <view class="row-in-wrap">
@@ -400,6 +404,14 @@
     <view class="be-hint">{{t.beHeroHint}}</view>
     <view class="be-sub">{{t.resBreakDaily}}：{{t.cur}}{{result.break_even_daily}}</view>
     <view class="be-sub" wx:if="{{result.break_even_cash}}">{{t.beCashLabel2}}：{{t.cur}}{{result.break_even_cash}}（{{t.beCashNote2}}）</view>
+  </view>
+
+  <!-- 🔴 #100（R576）：缺口卡 —— 用**你自己的固定成本**算出的保本额，对上**你自己**做到的营业额。
+       位置紧跟保本大字（同一个数换个说法，老板不用翻屏）。
+       ⚠️ 没有 M1 真实营收时整块**不存在**（不编一个缺口出来）；文案只陈述事实，
+          **不许**出现"升级可解决 / 付费解锁"之类承诺。 -->
+  <view class="card2 m1-gap" wx:if="{{mode === 'forward' && m1Gap}}">
+    <view class="m1-gap-text {{m1Gap.behind ? 'is-behind' : 'is-above'}}">{{m1Gap.text}}</view>
   </view>
 
   <!-- M2v1.1 反推结果（仅反推 Tab；全部来自云端 reverse 块） -->

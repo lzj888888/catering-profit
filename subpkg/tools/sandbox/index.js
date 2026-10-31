@@ -571,6 +571,12 @@ Page({
     bandsRaw: [],            // R234：云端 bands_preview **原样留存**（拿到 rent.hi 用，见 rentRateDefault）
     bandsRawKey: '',         // 上面这份数据对应哪一组「城市 × 业态」（= cityIdx + ':' + bizIdx）
     verdict: null,           // R234：主结论卡 {level, levelName, note, mine, band, rentPct}
+    // 🔴 #100（R576）：M1 真实数据预填的留痕 —— 只有真预填过才有值。
+    //   { month, items:['rent','labor','utility'], incomeFen, note }
+    //   为什么必须留痕：① 界面要如实说"这是按你 X 月的账填的"；② 悬念卡要用 incomeFen；
+    //   ③ 判据要能区分"用户自己填的"与"系统预填的"（守卫据此验只填空、不覆盖）。
+    m1Prefill: null,
+    m1Gap: null,             // 缺口卡 {month, breakEven, actual, gap, behind}
     // 🔴 round279c · #10 敏感度（前端派生，引擎零改）：毛利率 ±5% 看保本额变化
     sens: { open: false, loading: false, disabled: false, rows: null },
     // 🔴 R296b 「渠道佣金」（原 #12 多渠道毛利率**改造** · 豆包评审定案）：
@@ -624,6 +630,10 @@ Page({
       this.syncPresetOptions();
       // R193：首算**之前**恢复本地草稿 ⇒ 进来看到的就是上次那版结果（不用重填一遍才有数）
       this.restoreDraft();
+      // 🔴 #100（R576）：再用 M1 的**真实数**补齐**还空着**的固定成本（草稿填过的一个不动）。
+      //   位置在 restoreDraft 之后、首算之前 ⇒ 首算一次就带着真实数，不会闪两版。
+      //   失败静默（M2 不依赖 M1）。
+      await this.loadM1Baseline();
       // round113：进页面先拿一次"行业参考区间" —— 用户**还没填任何数**就能看到该填多少量级
       //（开店前手里没数字，是本页的主要流失点）
       // ⚠️ round114：改为 await + 首算保持整页 loading —— 拿到结果一次性渲染。
@@ -633,6 +643,81 @@ Page({
       this.setData({ loading: false });
       api.toastError(e);
     }
+  },
+
+  /**
+   * 🔴 #100（R576）：用**你自己店**在 M1 填过的真实固定成本预填本页。
+   *
+   * 为什么值得做：M2 是「开店前沙盘」，老板手里一个数字都没有 ⇒ 这是本页的主要流失点
+   *   （round113 注释已记）。但**已经在用的店**其实早把这些数填过一遍（M1 月账）
+   *   ⇒ 让他再抄一遍纯属浪费，而且抄错的比例不低。
+   *
+   * 🔴 四条边界（都有守卫）：
+   *   ① **只填空字段** —— 用户填过的（含草稿恢复的）一个都不覆盖；
+   *   ② **缺项不填** —— M1 没填房租就是 null，绝不按 0 填（0 会把保本点算低、结论变乐观）；
+   *   ③ **标明来源** —— `m1Prefill.note` 必须渲染给用户看，他得能分辨"这不是系统猜的"；
+   *   ④ **与 R128 不冲突** —— R128 禁的是**行业参考值**自动填（别人的平均数，会替用户自证合理）；
+   *      本条填的是**用户自己的数据**（房租多少是他自己的租约）。
+   *      实现上刻意**不碰 `applyRefAmount`**（R128 的判据锚在那个函数体上）。
+   *
+   * 取**上一月**而不是本月：本月常没填完，拿它预填等于把半份数据当基准。
+   * 取不到就安静退出 —— M2 不依赖 M1，任何失败都不许打断沙盘主流程。
+   */
+  async loadM1Baseline() {
+    try {
+      const month = ui.prevMonth(ui.nowMonth());
+      const d = await api.call('getLedger', { month });
+      // 🔴 `account_id` 非空才说明这个月真建了档 —— getLedger 对没建档的月**返回一份默认空账**，
+      //   只判对象存在会被它骗过（R298 同族：判据写成"有返回值"就等于恒真）。
+      if (!d || !d.account_id) return null;
+      const fx = d.fixed_items_fen || {};
+      const incomeFen = Number((d.result && d.result.income_total_fen) || 0);
+      const yuan = (v) => (v == null ? '' : String(Math.round(Number(v) / 100)));
+      const patch = {};
+      const items = [];
+      if (!this.data.rentYuan && fx.rent != null) { patch.rentYuan = yuan(fx.rent); items.push('rent'); }
+      // 人工取**总额**口径（与 R296 拍1 一致：不乘人数、不乘城市系数）
+      if (!this.data.laborTotalYuan && fx.labor != null) { patch.laborTotalYuan = yuan(fx.labor); items.push('labor'); }
+      // 水电：M1 只记**一个合计**（指标 utility），拆不成水/电/气 ⇒ 四项全空时切到「水电合计」态
+      //   （这正是 R543 说的"账单本来就是合并的店"，不是把默认分栏改掉）。
+      const noEnergy = !this.data.waterYuan && !this.data.electricYuan
+        && !this.data.gasYuan && !this.data.energyYuan;
+      if (noEnergy && fx.utility != null) {
+        patch.energyMerged = true;
+        patch.energyYuan = yuan(fx.utility);
+        items.push('utility');
+      }
+      if (!items.length) return null;
+      patch.m1Prefill = { month, items, incomeFen, note: M.m1PrefillNote(month) };
+      this.setData(patch);
+      return patch.m1Prefill;
+    } catch (e) {
+      return null;   // 预填是增强，失败静默（不 toast、不阻断）
+    }
+  },
+
+  /**
+   * 🔴 #100（R576）：缺口卡 —— 用**他自己的固定成本**算出的保本额，对上**他自己**做到的营业额。
+   *
+   * 为什么这是免费→付费唯一的钩子：行业参考区间只能告诉他"你该填多少"，
+   *   而他自己的账能告诉他"你差多少" —— 后者才是会让他想继续看的东西。
+   *
+   * 🔴 纪律：只陈述事实，**不许**写"升级可解决 / 付费解锁"之类承诺（文案里也没有）。
+   * @param {number} beFen 本次算出的保本月营业额（引擎**原始分**；不从格式化串反解，避免误差）
+   * @returns {{month:string, behind:boolean, text:string}|null}
+   */
+  m1GapOf(beFen) {
+    const pf = this.data.m1Prefill;
+    const be = Number(beFen) || 0;
+    if (!pf || !pf.incomeFen || !be) return null;   // 没有 M1 真实营收 ⇒ 不编一个缺口出来
+    const gapFen = be - pf.incomeFen;
+    const yuan = (v) => api.fenToYuan(v, 2);
+    const args = [yuan(be), pf.month, yuan(pf.incomeFen), yuan(Math.abs(gapFen))];
+    return {
+      month: pf.month,
+      behind: gapFen > 0,
+      text: gapFen > 0 ? M.m1GapBehind.apply(null, args) : M.m1GapAbove.apply(null, args),
+    };
   },
 
   // ===== R193：本地草稿（M2 算完即丢 ⇒ 以前退出重进要全部重填）=====
@@ -2180,6 +2265,9 @@ Page({
         bands: this.decorateBands(d.bands_preview || [], amt),
         marginBand: this.pickBand(d.bands_preview, 'grossMargin'),
         verdict: !hasFixed ? null : this.verdictOf(indTarget),
+        // 🔴 #100（R576）：缺口卡 —— 必须用 `d.break_even_monthly_fen` 原始分，
+        //   `presetResultObj.break_even_monthly` 是格式化串，反解会带误差。
+        m1Gap: hasFixed ? this.m1GapOf(Number(d.break_even_monthly_fen) || 0) : null,
         result: presetResultObj,
         // 🔴 R395：分享卡片取数 —— 只留原始分（展示串 `break_even_monthly` 已 toFixed，反解会带误差）
         shareFacts: { ready: !!presetResultObj, breakEvenFen: Number(d.break_even_monthly_fen) || 0 },        // 🔴 R327：正推表 —— 与 result 同批写入，直接用局部变量算（不读 this.data，避免时序依赖）

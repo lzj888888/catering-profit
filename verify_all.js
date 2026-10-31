@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：222 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：223 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -1341,6 +1341,12 @@ const SUITES = [
   //   该日堂食收入 = 真实日均的 **7 倍**，且**零报错**。
   //   守卫让「哪条通道能采到什么颗粒度」变成机器可查的事实：行为面 + 实现面 + 元数据面 + 反恒真。
   ['菜品明细契约守卫 R574', 'tools/check_dish_ingest_contract.js'],
+  // ===== R576 / 队列 #100：M2 用 M1 真实数据预填（页面桩真跑 loadM1Baseline）
+  //   守四类静默失效：① 覆盖老板已填的值；② 缺项按 0 填（保本点算低、结论变乐观）；
+  //   ③ 没建档的月也预填（getLedger 对无账月返回默认空账，只判有返回值就恒真）；
+  //   ④ 把行业参考值也顺手填进来（R128 明令禁止，边界是数据来源而非字段名）。
+  //   含变异回灌：删掉 account_id 判据后无档案月必须真的被填，证明判据非常量。
+  ['M2 M1 预填守卫 R576', 'tools/check_m2_m1_prefill.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
