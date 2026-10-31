@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：224 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：225 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -1352,6 +1352,11 @@ const SUITES = [
   //   ② 组名缺失时回落成英文 key（dine_in 出现在界面 = 事故）；
   //   ③ 核心组清单与 terms 的 core:true 漂移；④ 被接进保存流程变成硬拦（本功能只提示不阻断）。
   ['录入完成度守卫 R578', 'tools/check_entry_completion.js'],
+  // ===== R583：DSI-1 标准导入格式解析（给 AI 看的契约，实现必须跟上）
+  //   守三件事：① 格式对认得出、格式错拒得掉且**说人话带行号**；
+  //   ② 两条从双司评审学来的硬规则不能被优化掉——销量允许小数（称重类）、退款允许负数；
+  //   ③ 顺序/列名即契约，模糊匹配一律不认（改了会让依赖它的 AI 静默失配）。
+  ['DSI-1 标准格式解析守卫 R583', 'tools/check_dsi1_parse.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
