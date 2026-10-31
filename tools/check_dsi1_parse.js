@@ -212,6 +212,30 @@ sec('D4 · 仓库里的样例 xlsx 必须真能被吃下（不是"看起来像"�
   }
 }
 
+sec('D5 · S2（月渠道汇总）：认得出来、但明确不受理');
+{
+  // 为什么要这一段：契约里写了 S2，但它的落库目标是**月度账**（ledger），
+  //   与 S1 的 external_sales_daily 是两条链路 —— v1 不做。
+  //   可「不做」不等于「可以说成未识别」：老板手里的表是对的，只是选错了类型。
+  //   回一句更准的理由，他会换一张表；回「未识别」，他会以为文件坏了然后放弃。
+  const S2H = ['月份', '渠道', '平台', '营业额', '到手额', '订单数'];
+  check('D5-① isDSI1S2 认得 S2 表头', D.isDSI1S2(S2H) === true);
+  check('D5-② 🔴 isDSI1 **不认** S2（两个判据不许互相吞）', D.isDSI1(S2H) === false);
+  check('D5-③ 🔴 isDSI1S2 **不认** S1（反向也不许吞）', D.isDSI1S2(H) === false);
+  check('D5-④ detectDishShape 把 S2 认成 dsi1_summary（不是 null）',
+    S && S.detectDishShape([S2H, ['2026-09', '堂食', '', '48600', '48600', '1620']]) === 'dsi1_summary',
+    S ? String(S.detectDishShape([S2H, ['2026-09', '堂食', '', '48600', '48600', '1620']])) : 'service 未加载');
+  // 静态：分发处必须给出**具体理由**，不能只 fail 一句笼统话
+  const idxSrc2 = (function () {
+    try { return require('fs').readFileSync(path.join(ROOT, 'cloudfunctions/importSalesBill/index.js'), 'utf8'); }
+    catch (e) { return ''; }
+  })();
+  check('D5-⑤ 🔴 分发处有 S2 分支，且理由里点明「月渠道汇总」+「商品明细」（否则老板不知道换哪张）',
+    idxSrc2.indexOf('DISH_SHAPES.S2') >= 0
+    && idxSrc2.indexOf('月渠道汇总') >= 0
+    && /商品明细/.test(idxSrc2));
+}
+
 sec('E · 反恒真');
 check('E-① 空输入必须拒（防"恒返回成功"）', D.parse([]).ok === false);
 check('E-② 把小数规则改回取整吞掉 ⇒ C-① 的判据会失效（证明它盯着 rawQty 而非 qty）',

@@ -13,7 +13,7 @@ const XLSX = require('xlsx');
 //   写法与仓内其它云函数完全一致（const { ... } = require('./common')）；
 //   common/ 全层零外部依赖（已实测可直接加载），不污染本文件「纯逻辑」的定位。
 const common = require('./common');
-const { isDSI1, parse: parseDSI1 } = require('./dsi1');   // R584：标准格式解析
+const { isDSI1, isDSI1S2, parse: parseDSI1 } = require('./dsi1');   // R584/R585：标准格式
 const { normalizeDishName } = common;
 
 // ===================== 通用：字符串 → 数值（移植 parse_bill.py::to_num）=====================
@@ -409,6 +409,10 @@ const DISH_SHAPES = {
   D: 'jd_order_export',
   // 🔴 R584：DSI-1 标准导入格式（契约 specs/core/店算标准导入格式_v1.md，解析器 dsi1.js）。
   S: 'dsi1_standard',
+  // 🔴 R585：S2（月渠道汇总）**认得但不受理** —— 只用于回一句正确的拒收理由。
+  //   它的落库目标是月度账（ledger），与 S1 的 external_sales_daily 是两条链路，
+  //   v1 不做。但不认出来就会回「未识别」，老板会以为文件坏了而放弃。
+  S2: 'dsi1_summary',
 };
 
 // 形态 A 表结构常量（§2.1.2 实测 · 六项必核）
@@ -478,6 +482,8 @@ function detectDishShape(sheetRows) {
   //   但形态 C 的判据更松（允许「菜品名称」别名）⇒ 放 C 之后会被抢走，
   //   结果是标准表被当外卖商品表解析、渠道列丢失。判据本身最严，放最前不误吞别形态。
   if (isDSI1(rows[0] || [])) return DISH_SHAPES.S;
+  // S2 必须排在 S 之后判（S 的判据更严，两者表头首列都是中文但列名完全不同，不会互相吞）。
+  if (isDSI1S2(rows[0] || [])) return DISH_SHAPES.S2;
   const hdr3 = (rows[2] || []).map((x) => (x == null ? '' : String(x).trim()));  // R3（形态 A/B）
   const hdr1 = (rows[0] || []).map((x) => (x == null ? '' : String(x).trim()));  // R1（形态 C）
   const hdr = hdr3.concat(hdr1);

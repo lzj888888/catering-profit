@@ -18,6 +18,11 @@ const { normalizeDishName } = require('./cx_dishKey');
 const { yuanToFen } = require('./cx_money');   // 元→分单源（十进制安全；不许自己乘一百再取整）
 
 const HEADERS = ['日期', '渠道', '平台', '商品名称', '销量', '销售额', '备注'];
+// 🔴 R585：S2（月渠道汇总）的表头。**v1 不支持导入** —— 它的落库目标是月度账（ledger），
+//   与 S1 的 external_sales_daily（天×平台×菜品）是两条完全不同的链路。
+//   但**必须认得出来**：老板拿 S2 来导时，要告诉他"这是月汇总表，请交商品明细表"，
+//   而不是回一句「未识别」让他以为文件坏了（那样他会放弃，而不是换一张表）。
+const HEADERS_S2 = ['月份', '渠道', '平台', '营业额', '到手额', '订单数'];
 
 // 渠道 → 落库 platform（复用现有枚举：pos = 堂食，takeaway 由平台列决定）
 const CHANNEL_DINE = '堂食';
@@ -215,4 +220,17 @@ function groupByPlatformDate(rows) {
   ));
 }
 
-module.exports = { HEADERS, isDSI1, parse, normDate, toNum, ERR, PLATFORM_MAP, groupByPlatformDate };
+/**
+ * 认得 S2（月渠道汇总）—— 只用于**给出正确的拒收理由**，不解析、不落库。
+ * 判据：前 6 列逐字等于 HEADERS_S2（尾部多余列容忍，与 isDSI1 同款）。
+ */
+function isDSI1S2(headers) {
+  const h = (headers || []).map((x) => String(x == null ? '' : x).trim());
+  if (h.length < HEADERS_S2.length) return false;
+  for (let i = 0; i < HEADERS_S2.length; i++) {
+    if (h[i] !== HEADERS_S2[i]) return false;
+  }
+  return true;
+}
+
+module.exports = { HEADERS, HEADERS_S2, isDSI1, isDSI1S2, parse, normDate, toNum, ERR, PLATFORM_MAP, groupByPlatformDate };

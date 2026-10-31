@@ -91,6 +91,13 @@ exports.main = async (event) => {
     if (dishDetect.shape === DISH_SHAPES.S) {
       return handleDSI1Import({ shopId, userId, clientRequestId, dishDetect, matrix, confirm: v.confirm });
     }
+    // 🔴 R585：S2 认得但不收。**必须给具体理由** —— 只说「未识别」老板会以为文件坏了，
+    //   而实际上他手里的表是对的，只是选错了类型（要交商品明细，不是月汇总）。
+    if (dishDetect.shape === DISH_SHAPES.S2) {
+      return fail(ERROR_CODES.INVALID_PARAM,
+        '这张是「月渠道汇总」表，用来记月度账的，不能算单品毛利。'
+        + '要算每道菜的毛利，请交「商品明细」表（列名：日期、渠道、平台、商品名称、销量、销售额）。');
+    }
     return handleDishImport({ shopId, userId, clientRequestId, dishDetect, matrix, confirm: v.confirm, platform: v.platform });
   }
 
