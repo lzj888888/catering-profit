@@ -371,6 +371,128 @@ ok('②-44 onRecYuan 调体检且覆盖 twRecYuan（对账"实收"读不成的�
 ok('②-45 onDirectConsume 调体检且覆盖 directConsumeYuan',
   bodyOf(m1, 'onDirectConsume').indexOf('checkAmounts(') >= 0 && m1Chk.indexOf('directConsumeYuan') >= 0);
 
+// ---- #548 / #549（队列 #25）：M1 库存页 + 一次性资产编辑页 ----
+// 为什么单独守：这两页的金额**直接喂** `api.yuanToFen`（不经 M1 的 groups / 不经 M3 的 Number 路），
+//   而 yuanToFen 对「12,000」fail-soft 返回 0（被 check_money_precision 钉住不能改）⇒ 读不成的金额被静默按 0 算。
+//   库存三栏进倒轧真实消耗、资产值进台账 ⇒ 数字全盘偏、零报错。上面所有腿（②-3 / ②-13 / ②-20 / ②-26 / ②-34）
+//   都摸不到这两页 ⇒ 没有本段就等于没接。
+const INV_JS = 'subpkg/biz/month/inventory.js';
+const INV_WXML = 'subpkg/biz/month/inventory.wxml';
+const ASSET_JS = 'subpkg/biz/month/assetEdit.js';
+const ASSET_WXML = 'subpkg/biz/month/assetEdit.wxml';
+const invJs = stripComments(readOr(INV_JS, ''));
+const invXml = stripComments(readOr(INV_WXML, '').replace(/<!--[\s\S]*?-->/g, ''));
+const assetJs = stripComments(readOr(ASSET_JS, ''));
+const assetXml = stripComments(readOr(ASSET_WXML, '').replace(/<!--[\s\S]*?-->/g, ''));
+
+const invSave = bodyOf(invJs, 'save');
+const invChk = bodyOf(invJs, 'checkAmounts');
+ok('②-46 库存页真 require utils/amountInput.js', invJs.indexOf('amountInput.js') >= 0);
+ok('②-47 库存页 checkAmounts 函数体可取（fail-closed）', invChk.length > 0);
+ok('②-48 库存页 checkAmounts 真调纯函数 findUnreadable', invChk.indexOf('findUnreadable(') >= 0);
+ok('②-49 库存页 save() 读不成金额就拦（checkAmounts 之后必须 return + showModal）',
+  invSave.indexOf('checkAmounts()') >= 0 && invSave.indexOf('showModal') >= 0
+  && invSave.indexOf('return', invSave.indexOf('checkAmounts()')) > 0);
+ok('②-50 库存页 wxml 按 badAmountCount 渲染提示 + 文案键真绑定',
+  invXml.indexOf('badAmountCount > 0') >= 0 && invXml.indexOf('t.amountBadTip') >= 0
+  && invJs.indexOf('amountBadTip: TERMS.ui.amountBadTip') >= 0);
+
+const assetOnSave = bodyOf(assetJs, 'onSave');
+const assetChk = bodyOf(assetJs, 'checkAmounts');
+ok('②-51 资产页真 require utils/amountInput.js', assetJs.indexOf('amountInput.js') >= 0);
+ok('②-52 资产页 checkAmounts 函数体可取且真调 classifyAmount',
+  assetChk.length > 0 && assetChk.indexOf('classifyAmount(') >= 0);
+ok('②-53 资产页 onSave 读不成金额就拦（classifyAmount 之后必须 return + showModal）',
+  assetOnSave.indexOf('classifyAmount(') >= 0 && assetOnSave.indexOf('showModal') >= 0
+  && assetOnSave.indexOf('return', assetOnSave.indexOf('classifyAmount(')) > 0);
+ok('②-54 资产页 wxml 按 badAmountCount 渲染提示 + 文案键真绑定',
+  assetXml.indexOf('badAmountCount > 0') >= 0 && assetXml.indexOf('t.amountBadTip') >= 0
+  && assetJs.indexOf('amountBadTip: TERMS.ui.amountBadTip') >= 0);
+// 单源：六页（sandbox / M1 / M3 成本卡 / M3 原料 / 库存 / 资产）共用同一句文案
+ok('②-55 六页共用同一文案键 TERMS.ui.amountBadTip',
+  js.indexOf('TERMS.ui.amountBadTip') >= 0 && m1.indexOf('TERMS.ui.amountBadTip') >= 0
+  && cardJs.indexOf('TERMS.ui.amountBadTip') >= 0 && matJs.indexOf('TERMS.ui.amountBadTip') >= 0
+  && invJs.indexOf('TERMS.ui.amountBadTip') >= 0 && assetJs.indexOf('TERMS.ui.amountBadTip') >= 0);
+
+// ---- R595：M2 场景矩阵页（matrix）----
+// 为什么单独守：matrix 的「开店投入 4 项 / 真实月营收」直接喂 `api.yuanToFen`（读不成按 0），
+//   而「维度档位 rent/target/margin/other/labor」走 `isFinite` ⇒ 读不成被**静默跳过**（少算一档）。
+//   两种都零报错。②-46~②-55 只覆盖 inventory/assetEdit，摸不到 matrix ⇒ 没有本段就等于没接。
+const MATRIX_JS = 'subpkg/tools/sandbox/matrix.js';
+const MATRIX_WXML = 'subpkg/tools/sandbox/matrix.wxml';
+const matrixJs = stripComments(readOr(MATRIX_JS, ''));
+const matrixXml = stripComments(readOr(MATRIX_WXML, '').replace(/<!--[\s\S]*?-->/g, ''));
+const matrixChk = bodyOf(matrixJs, 'checkAmounts');
+const matrixGen = bodyOf(matrixJs, 'onGenerate');
+const matrixFields = bodyOf(matrixJs, 'amountFields');
+
+ok('②-56 矩阵页真 require utils/amountInput.js', matrixJs.indexOf('amountInput.js') >= 0);
+ok('②-57 矩阵页 checkAmounts 函数体可取且真调 findUnreadable',
+  matrixChk.length > 0 && matrixChk.indexOf('findUnreadable(') >= 0);
+ok('②-58 矩阵页 onGenerate 读不成金额就硬拦（findUnreadable + showModal + return）',
+  matrixGen.indexOf('findUnreadable(') >= 0 && matrixGen.indexOf('showModal') >= 0
+  && matrixGen.indexOf('return', matrixGen.indexOf('findUnreadable(')) > 0);
+ok('②-59 矩阵页 amountFields 覆盖三类真漏网（开店投入 / 真实月营收 / 维度档位）',
+  matrixFields.indexOf('buildDecorYuan') >= 0 && matrixFields.indexOf('realMonthYuan') >= 0
+  && /dims\s*=\s*\[[^\]]*'rent'[^\]]*'target'/.test(matrixFields));
+ok('②-60 矩阵页 wxml 按 badAmountCount 渲染提示 + 文案键真绑定',
+  matrixXml.indexOf('badAmountCount > 0') >= 0 && matrixXml.indexOf('t.amountBadTip') >= 0
+  && matrixJs.indexOf('amountBadTip: TERMS.ui.amountBadTip') >= 0);
+// 单源：七页（sandbox / M1 / M3 成本卡 / M3 原料 / 库存 / 资产 / 矩阵）共用同一句文案
+ok('②-61 七页共用同一文案键 TERMS.ui.amountBadTip',
+  js.indexOf('TERMS.ui.amountBadTip') >= 0 && m1.indexOf('TERMS.ui.amountBadTip') >= 0
+  && cardJs.indexOf('TERMS.ui.amountBadTip') >= 0 && matJs.indexOf('TERMS.ui.amountBadTip') >= 0
+  && invJs.indexOf('TERMS.ui.amountBadTip') >= 0 && assetJs.indexOf('TERMS.ui.amountBadTip') >= 0
+  && matrixJs.indexOf('TERMS.ui.amountBadTip') >= 0);
+
+// ---- R596：外卖单订单页（takeaway）----
+// 为什么单独守：本页**不用** `yuanToFen`，而用 `Number(v) || 0` 转分 ——
+//   「1,200」「１２００」「88元」静默变 0；佣金率读不成 ⇒ 佣金按 0 ⇒ 到手虚高。
+//   这是同族坑的**另一条路径**：前几轮只扫 `yuanToFen`，摸不到 `Number()||0`。
+const TK_JS = 'subpkg/biz/takeaway/index.js';
+const TK_WXML = 'subpkg/biz/takeaway/index.wxml';
+const tkJs = stripComments(readOr(TK_JS, ''));
+const tkXml = stripComments(readOr(TK_WXML, '').replace(/<!--[\s\S]*?-->/g, ''));
+const tkChk = bodyOf(tkJs, 'checkAmounts');
+const tkCalc = bodyOf(tkJs, 'onCalc');
+const tkRev = bodyOf(tkJs, 'onReverse');
+
+ok('②-62 外卖页真 require utils/amountInput.js', tkJs.indexOf('amountInput.js') >= 0);
+ok('②-63 外卖页 checkAmounts 函数体可取且真调 findUnreadable',
+  tkChk.length > 0 && tkChk.indexOf('findUnreadable(') >= 0);
+ok('②-64 外卖页体检覆盖佣金率 / 配送费 / 补贴 / 打包单价（少一个 ⇒ 那框等于没接）',
+  tkChk.indexOf('commission_rate') >= 0 && tkChk.indexOf('delivery_fee_yuan') >= 0
+  && tkChk.indexOf('subsidy_user_yuan') >= 0 && tkChk.indexOf('unit_price_yuan') >= 0);
+ok('②-65 外卖页 onCalc 读不成金额就拦（checkAmounts + return）',
+  tkCalc.indexOf('checkAmounts(') >= 0 && tkCalc.indexOf('return', tkCalc.indexOf('checkAmounts(')) > 0);
+ok('②-66 外卖页 onReverse 读不成金额就拦（反算按 0 会把人带向亏本定价）',
+  tkRev.indexOf('checkAmounts(') >= 0 && tkRev.indexOf('return', tkRev.indexOf('checkAmounts(')) > 0);
+ok('②-67 外卖页 wxml 按 badAmountCount 渲染提示 + 文案键真绑定',
+  tkXml.indexOf('badAmountCount > 0') >= 0 && tkXml.indexOf('t.amountBadTip') >= 0
+  && tkJs.indexOf('amountBadTip: TERMS.ui.amountBadTip') >= 0);
+ok('②-68 八页共用同一文案键 TERMS.ui.amountBadTip',
+  js.indexOf('TERMS.ui.amountBadTip') >= 0 && m1.indexOf('TERMS.ui.amountBadTip') >= 0
+  && cardJs.indexOf('TERMS.ui.amountBadTip') >= 0 && matJs.indexOf('TERMS.ui.amountBadTip') >= 0
+  && invJs.indexOf('TERMS.ui.amountBadTip') >= 0 && assetJs.indexOf('TERMS.ui.amountBadTip') >= 0
+  && matrixJs.indexOf('TERMS.ui.amountBadTip') >= 0 && tkJs.indexOf('TERMS.ui.amountBadTip') >= 0);
+// R598：份数（items/packs 的 qty）不是金额，但读不成同样让该行金额按 0 算
+ok('②-71 外卖页份数栏也体检（items[].qty + packs[].qty 读不成 ⇒ 该行金额按 0）',
+  tkChk.indexOf('chkQ(') >= 0 && tkChk.indexOf('badQtyCount') >= 0
+  && /items\[i\]\.qty/.test(tkChk) && /packs\[i\]\.qty/.test(tkChk));
+ok('②-72 外卖页 wxml 按 badQtyCount 渲染 + 份数文案键真绑定',
+  tkXml.indexOf('badQtyCount > 0') >= 0 && tkXml.indexOf('t.qtyBadTip') >= 0
+  && tkJs.indexOf('qtyBadTip: TK.qtyBadTip') >= 0);
+
+// ---- R597：M3 成本卡「用量」栏（不是金额，但读不成同样静默算错）----
+// 为什么单独守：`units.toBase` 对「1,000」返回 0 ⇒ `buildCalcLines` 里 `if (!(qtyBase > 0)) continue;`
+//   **静默跳过整行** ⇒ 成本少算、毛利虚高；只有所有行都被跳过才提示。金额守卫（②-25 等）不看 qty。
+ok('②-69 M3 成本卡用量栏也体检（lines[].qty + comboLines[].qty 读不成 ⇒ 整行会被静默跳过）',
+  cardChk.indexOf('chkQty(') >= 0 && /lines\[i\]\.qty/.test(cardChk)
+  && cardChk.indexOf('comboLines') >= 0 && cardChk.indexOf('badUsageCount') >= 0);
+ok('②-70 M3 成本卡 wxml 按 badUsageCount 渲染 + 用量文案键真绑定',
+  cardXml.indexOf('badUsageCount > 0') >= 0 && cardXml.indexOf('t.usageBadTip') >= 0
+  && cardJs.indexOf('usageBadTip: TERMS.card.usageBadTip') >= 0);
+
 // ================= ③ 反恒真 =================
 ok('③-1 反恒真：删掉 scheduleCalc 里的调用 ⇒ ②-3 会红',
   (() => { const b = calcBody.replace('checkAmountInputs(', ''); return b.indexOf('checkAmountInputs(') < 0; })());
@@ -403,6 +525,23 @@ ok('③-9 反恒真：体检体里抹掉一个金额字段 ⇒ ②-27 必红',
   && cardChk.split('grouponPromoYuan').join('').indexOf('grouponPromoYuan') < 0);
 ok('③-10 反恒真：把 onSave 的拦截条件改成恒假 ⇒ ②-29 必红',
   cardSave.split('checkAmounts() > 0').join('false').indexOf('checkAmounts()') < 0);
+// #548 / #549：证明新加的两条拦截不是恒真（摘掉关键调用 ⇒ 对应 ② 必红）
+ok('③-11 反恒真：把库存 save() 里的 checkAmounts() 调用摘掉 ⇒ ②-49 必红',
+  invSave.replace('this.checkAmounts()', '').indexOf('checkAmounts()') < 0);
+ok('③-12 反恒真：把资产 onSave 里的 classifyAmount 调用摘掉 ⇒ ②-53 必红',
+  assetOnSave.replace('classifyAmount(', '').indexOf('classifyAmount(') < 0);
+// R595：证明矩阵页的拦截不是恒真（摘掉 findUnreadable ⇒ ②-58 必红）
+ok('③-13 反恒真：把矩阵 onGenerate 里的 findUnreadable 调用摘掉 ⇒ ②-58 必红',
+  matrixGen.replace('findUnreadable(', '').indexOf('findUnreadable(') < 0);
+// R596：证明外卖页的拦截不是恒真
+ok('③-14 反恒真：把外卖 onCalc 里的 checkAmounts 调用摘掉 ⇒ ②-65 必红',
+  tkCalc.replace('checkAmounts(', '').indexOf('checkAmounts(') < 0);
+// R597：证明成本卡用量体检不是恒真
+ok('③-15 反恒真：把成本卡体检里的 chkQty 调用全摘掉 ⇒ ②-69 必红',
+  cardChk.replace(/chkQty\(/g, '').indexOf('chkQty(') < 0);
+// R598：证明外卖份数体检不是恒真
+ok('③-16 反恒真：把外卖体检里的 chkQ 调用全摘掉 ⇒ ②-71 必红',
+  tkChk.replace(/chkQ\(/g, '').indexOf('chkQ(') < 0);
 
 // ================= ④ 下界 =================
 ok('④ 断言数下界（≥40）', pass + fail >= 40, '实际 ' + (pass + fail));

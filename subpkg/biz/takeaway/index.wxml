@@ -94,6 +94,8 @@
     </picker>
   </view>
 
+  <view class="warn" wx:if="{{badAmountCount > 0}}">{{t.amountBadTip}}</view>
+  <view class="warn" wx:if="{{badQtyCount > 0}}">{{t.qtyBadTip}}</view>
   <button class="btn primary" style="margin-top:24rpx;" bindtap="onCalc">{{t.resultTitle}}</button>
 
   <!-- 结果区（双口径分别展示） -->

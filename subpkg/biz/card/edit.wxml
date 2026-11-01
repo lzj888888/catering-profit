@@ -12,6 +12,7 @@
   <view class="warn-note" wx:if="{{badAmountCount > 0}}">{{t.amountBadTip}}</view>
   <!-- R547（M8）：模式 B 没填「这批出多少份」⇒ 引擎按 1 份算（整批料钱当一道菜）。单独一条，免得改错格。 -->
   <view class="warn-note" wx:if="{{badQtyCount > 0}}">{{t.batchOutputBadTip}}</view>
+  <view class="warn-note" wx:if="{{badUsageCount > 0}}">{{t.usageBadTip}}</view>
 
   <!-- round156：连续录入 —— 保存成功后**留在本页**，这条横幅是"存到哪了"的凭证 + 显式返回出口。
        改前每存一道菜就 navigateBack 回列表，录 30 道菜要来回 60 次。 -->

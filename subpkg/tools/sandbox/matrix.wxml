@@ -147,6 +147,7 @@
   </view>
 
   <view class="hint" wx:if="{{!result}}">{{t.matrixEmptyTip}}</view>
+  <view class="warn-note" wx:if="{{badAmountCount > 0}}">{{t.amountBadTip}}</view>
   <button class="btn-primary" bindtap="onGenerate" disabled="{{loading}}">{{loading ? t.generating : t.generate}}</button>
 
   <!-- 结果区 -->

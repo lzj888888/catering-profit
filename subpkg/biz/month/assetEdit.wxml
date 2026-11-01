@@ -23,6 +23,7 @@
       bindinput="onAmount" adjust-position="{{true}}" cursor-spacing="20" />
   </view>
   <view class="hint">{{t.fAmountHint}}</view>
+  <view class="warn-note" wx:if="{{badAmountCount > 0}}">{{t.amountBadTip}}</view>
 
   <!-- 月份：一次性投入叫「计入月份」，摊销叫「开始月份」 -->
   <view class="field">

@@ -702,6 +702,8 @@ const TERMS = {
       dishPick: '选菜品 / 套餐',
       dishPickPh: '点选一个菜品或套餐',
       qty: '份数',
+      // 🔴 R598：份数读不成 ⇒ `Number(qty)||0` ⇒ 该行金额按 0 算（行还在、钱变 0）
+      qtyBadTip: '有份数栏填的内容读不成数字（常见：带逗号、全角、带空格），这一行会按 0 份算、金额变 0。请改成纯数字。',
       addDish: '+ 加一道',
       // 包材
       packTitle: '包材',
@@ -1709,6 +1711,8 @@ const TERMS = {
     stickyEmpty: '还没算成本',
     // R383：空明细不许试算 —— 引擎对空数组返回 0 成本/100% 毛利（实测），会显示一个假数。
     needLineForCalc: '先填一行原料再算成本',
+    // 🔴 R597：用量栏读不成 ⇒ buildCalcLines 会静默跳过整行（成本少算、毛利虚高）
+    usageBadTip: '有用量栏填的内容读不成数字（常见：带逗号「1,000」、全角、带空格），这一行会被当成没填、不参与成本计算。请改成纯数字。',
     stickyLast: '上次试算',
     saveShort: '保存',
     dishName: '菜品名称',
@@ -2829,6 +2833,10 @@ const TERMS = {
     realMonthLabelRev: '这铺子你预估月营收',
     realMonthPh: '填实际或预计，例 82000',
     realMonthNote: '填了才知你离保本/目标差多少；不填只看测算',
+    // 🔴 R595：金额读不成的硬拦文案（横幅那句同上层的 ui.amountBadTip，这里只放弹窗三句）
+    amountBadTitle: '金额读不成数字',
+    amountBadBody: '以下栏填的内容系统读不成金额（常见：带逗号「12,000」、全角、带空格），会被按 0 或跳过：{list}。请改成纯数字后再生成。',
+    amountDimAt: '{name}第{n}档',
     realGapLoss: '离保本还差每月 {a} 元（每天约 {b} 元）',
     realGapShort: '已过保本线，但离目标还差每月 {a}（每天约 {b}）',
     realGapOver: '已超过目标，每月多赚 {a}（每天约 {b}）',

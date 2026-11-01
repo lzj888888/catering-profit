@@ -13,6 +13,10 @@
 const api = require('../../../utils/api.js');
 const ui = require('../../../utils/ui.js');
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
+// 🔴 #549（队列 #25）：金额可读性判定。本页 amountYuan 直接喂 api.yuanToFen，而 yuanToFen 对
+//   「12,000」fail-soft 返回 0（被 check_money_precision 钉住不能改）⇒ 读不成的金额被静默按 0 算，
+//   资产值进台账 ⇒ 一次性/摊销金额全错、零报错。故保存前单独拦一遍（不改 yuanToFen，不静默清洗）。
+const AmountInput = require('../../../utils/amountInput.js');
 
 const T = TERMS.amortizePage;
 
@@ -40,6 +44,7 @@ Page({
       fDelete: T.lumpDelete,
       confirmDelete: T.confirmDeleteLump,
       optional: T.optional,
+      amountBadTip: TERMS.ui.amountBadTip, // #549：金额读不成数字的统一提示（与 M1/M3 四页同源）
       monthUnit: T.monthUnit,
       loading: TERMS.ui.loading,
       cancel: TERMS.buttons.cancel,
@@ -73,6 +78,7 @@ Page({
     saving: false,
     // R234/J4：行内长提示折叠（本页仅 1 处，默认收起）。与月录入页 / M2 选址页**同一实现**。
     hintFold: {},
+    badAmountCount: 0, // #549：金额读不成数字（>0 时横幅提示 + 保存硬拦）
   },
 
   // R234/J4：行内提示折叠开关（仓内统一形态 —— 月录入页 / M2 选址页 / 本页同一实现）。
@@ -155,7 +161,14 @@ Page({
 
   onName(e) { this.setData({ name: e.detail.value }); },
   onBack() { wx.navigateBack(); },
-  onAmount(e) { this.setData({ amountYuan: e.detail.value }); },
+  onAmount(e) { this.setData({ amountYuan: e.detail.value }); this.checkAmounts(); },
+  // 🔴 #549：金额可读性体检（只判定、不改数、不静默清洗）。返回 readable，并把栏数写进 data.badAmountCount。
+  checkAmounts() {
+    const readable = AmountInput.classifyAmount(this.data.amountYuan).readable;
+    const n = readable ? 0 : 1;
+    if (n !== this.data.badAmountCount) this.setData({ badAmountCount: n });
+    return readable;
+  },
   onTotalMonths(e) { this.setData({ totalMonths: e.detail.value }); },
   // B1：年月选择统一用原生 picker（mode=date fields=month），返回 YYYY-MM
   onMonthPick(e) {
@@ -168,6 +181,15 @@ Page({
   onSave() {
     const name = (this.data.name || '').trim();
     if (!name) { wx.showToast({ title: T.fErrName, icon: 'none' }); return; }
+    // 🔴 #549：金额读不成数字 ⇒ 硬拦保存（指名提示，不静默按 0 存）。保留下方「必须 >0」正数校验。
+    if (!AmountInput.classifyAmount(this.data.amountYuan).readable) {
+      wx.showModal({
+        title: '金额读不成数字',
+        content: '金额栏填的内容系统读不成金额（常见：带逗号「12,000」、全角、带空格），会被按 0 元计算。请改成纯数字后再保存。',
+        showCancel: false,
+      });
+      return;
+    }
     const fen = api.yuanToFen(this.data.amountYuan);
     if (!(fen > 0)) { wx.showToast({ title: T.fErrAmount, icon: 'none' }); return; }
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(this.data.startMonth)) {

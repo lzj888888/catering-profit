@@ -7,6 +7,10 @@ const api = require('../../../utils/api.js');
 const ui = require('../../../utils/ui.js');
 const ss = require('../../../utils/shopSwitcher.js');   // R443：草稿必须按店隔离
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
+// 🔴 #548（队列 #25）：金额可读性判定。库存三栏直接喂 api.yuanToFen，而 yuanToFen 对
+//   「12,000」fail-soft 返回 0（被 check_money_precision 钉住不能改）⇒ 读不成的金额被静默按 0 算，
+//   真实消耗倒轧会全盘偏掉、零报错。故此处单独拦一遍（不改 yuanToFen，不静默清洗）。
+const AmountInput = require('../../../utils/amountInput.js');
 
 const DRAFT_KEY = 'draft_month_inv_';
 
@@ -28,6 +32,7 @@ Page({
       realConsumePreview: TERMS.inventoryPage.realConsumePreview,
       realConsumePreviewNote: TERMS.inventoryPage.realConsumePreviewNote,
       cur: '¥',
+      amountBadTip: TERMS.ui.amountBadTip, // #548：金额读不成数字的统一提示（与 M1/M3 四页同源）
       loading: TERMS.ui.loading,
       archiveReadonly: TERMS.inputPage.archiveReadonly,
       graceNote: TERMS.inputPage.graceNote,
@@ -48,6 +53,7 @@ Page({
     },
     // R234/J4e：行内长提示折叠（本页 1 处，默认收起）。仓内统一实现。
     hintFold: {},
+    badAmountCount: 0, // #548：金额读不成数字的栏数（>0 时横幅提示 + 保存硬拦）
     month: '',
     inventorySwitchOn: false,
     isArchive: false,
@@ -199,7 +205,7 @@ Page({
     } catch (e) { /* 静默：本页主流程不受影响 */ }
   },
 
-  onOpening(e) { this.setData({ openingYuan: e.detail.value }); },
+  onOpening(e) { this.setData({ openingYuan: e.detail.value }); this.checkAmounts(); },
 
   // round103：期初默认是「上月期末结转」的**只读**态。老板发现期初算错时给两条腿 ——
   //   ① 根因修正：去改**上月期末**（期初是它的影射，改源头才不会出现「上月 3000 / 本月 5000」两数打架）
@@ -209,11 +215,23 @@ Page({
     if (!this.data.prevMonth) return;
     wx.navigateTo({ url: '/subpkg/biz/month/inventory?month=' + this.data.prevMonth });
   },
-  onPurchase(e) { this.setData({ purchaseYuan: e.detail.value }); },
+  onPurchase(e) { this.setData({ purchaseYuan: e.detail.value }); this.checkAmounts(); },
   onClosing(e) {
     const v = e.detail.value;
     const n = Number(v);
     this.setData({ closingYuan: v, showStockTake: !(n > 0) });
+    this.checkAmounts();
+  },
+  // 🔴 #548：库存三栏（期初/采购/期末）金额可读性体检。只判定、不改数、不静默清洗。
+  //   返回读不成的栏（含字段 key），并把栏数写进 data.badAmountCount 供横幅提示。
+  checkAmounts() {
+    const bad = AmountInput.findUnreadable({
+      opening: this.data.openingYuan,
+      purchase: this.data.purchaseYuan,
+      closing: this.data.closingYuan,
+    });
+    if (bad.length !== this.data.badAmountCount) this.setData({ badAmountCount: bad.length });
+    return bad;
   },
   // R493：勾选「本月已盘点」（仅期末=0 时出现）。勾上=清仓但确实盘了；不勾=按没盘点算
   onToggleStockTake(e) { this.setData({ stockTakeDone: !!(e.detail && e.detail.value) }); },
@@ -241,6 +259,19 @@ Page({
     const _app = getApp && getApp();
     if (!(_app && _app.globalData && _app.globalData.shop_id)) {
       wx.showModal({ title: TERMS.exp.noShop, content: TERMS.exp.noShopHint, showCancel: false });
+      return;
+    }
+    // 🔴 #548：保存前硬拦金额读不成数字的栏。库存直接进倒轧真实消耗，
+    //   读不成的按 0 ⇒ 真实消耗偏掉、保本/净利跟着偏，且零报错 ⇒ 必须拦在保存前点出来。
+    const bad = this.checkAmounts();
+    if (bad.length) {
+      const nameMap = { opening: this.data.t.opening, purchase: this.data.t.purchase, closing: this.data.t.closing };
+      const list = bad.map((b) => (nameMap[b.key] || b.key)).join('、');
+      wx.showModal({
+        title: '金额读不成数字',
+        content: '以下栏填的内容系统读不成金额（常见：带逗号「12,000」、全角、带空格），会被按 0 元计算：' + list + '。请改成纯数字后再保存。',
+        showCancel: false,
+      });
       return;
     }
     // 元 → 分（适配层）

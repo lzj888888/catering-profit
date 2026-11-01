@@ -63,6 +63,7 @@
   </view>
 
   <view style="height:20rpx;"></view>
+  <view class="warn-note" wx:if="{{badAmountCount > 0}}">{{t.amountBadTip}}</view>
   <button class="btn primary" style="margin-top:0;" bindtap="onSave" disabled="{{readOnly}}">{{t.save}}</button>
 </view>
 <view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

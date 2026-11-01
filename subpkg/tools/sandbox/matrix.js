@@ -20,6 +20,8 @@ const {
 const { deliver } = require('../../../utils/exportFile.js');
 // 🔴 R325：开店现金需求（装修/押金/预付/设备/货款）+ 周转金能撑几个月
 const OpenCash = require('../../../utils/openCash.js');
+// 🔴 R595：金额可读性判定（只判定、不改数）—— 与 M1/M3/库存/资产同一套口径
+const AmountInput = require('../../../utils/amountInput.js');
 
 const M = TERMS.matrix;
 
@@ -82,6 +84,7 @@ Page({
       subtitle: M.subtitle,
       presetLabel: M.presetLabel,
       cityLabel: TERMS.m2.cityLabel,
+      amountBadTip: TERMS.ui.amountBadTip,
       cityTiers: TERMS.m2.cityTiers,
       bizLabel: TERMS.m2.bizLabel,
       bizTypes: TERMS.m2.bizTypes,
@@ -318,6 +321,8 @@ Page({
     //   为什么必须带：否则单页改成 0 后，矩阵仍按 2% 算 ⇒ 同一家店两个页面给出不同保本额，
     //   而且**零报错**（R292 同族：数字不一致比算错更难发现）。
     otherPct: null,
+    // 🔴 R595：读不成金额的框数（>0 时页面横幅提示；onGenerate 前硬拦）
+    badAmountCount: 0,
     exporting: false,
     // 🔴 R570：**视图选择提到页面级**。改前 view 存在 result 里，而每次算完 result 被整块回写
     //   且 view 被硬编码成 'detail' ⇒ 老板切到「透视表」后，只要改一个数（触发重算）
@@ -599,6 +604,75 @@ Page({
     });
   },
 
+  // 🔴 R595：手填「金额/数值」字段统一收集（只判定、不改数）。
+  //   覆盖：开店投入 4 项、人工单价/总额、管理费、真实月营收、租金/目标利润/毛利率/杂费/人数档位、
+  //         现金需求 4 项、透视表固定租金。
+  //   ⚠️ 维度档位是自由文本数组，onGenerate 原本只用 isFinite **静默跳过** ——
+  //      读不成的档位会「悄悄少算一档」，老板不知道。这里把同一批框纳入同一个可读性判据。
+  amountFields() {
+    const g = this.data.global || {};
+    const c = this.data.cash || {};
+    const d = this.data.dims || {};
+    const pf = this.data.pivotFix || {};
+    const f = {
+      buildDecorYuan: g.buildDecorYuan,
+      buildEquipYuan: g.buildEquipYuan,
+      buildFranchiseYuan: g.buildFranchiseYuan,
+      buildTransferYuan: g.buildTransferYuan,
+      laborUnitYuan: g.laborUnitYuan,
+      laborTotalYuan: g.laborTotalYuan,
+      manageYuan: g.manageYuan,
+      realMonthYuan: this.data.realMonthYuan,
+      cashRentYuan: c.rentYuan,
+      cashBudgetYuan: c.budgetYuan,
+      cashEquipYuan: c.equipYuan,
+      cashStockYuan: c.stockYuan,
+      pivotFixRent: pf.rent,
+    };
+    // 维度档位是数组：rent/target 是「元」，margin/other 是「%」，labor 是人数 ——
+    //   一律按「能否读成数字」判（千分位/全角对哪个都对不了，正常值都是纯数字，不会误伤）。
+    const dims = ['rent', 'target', 'margin', 'other', 'labor'];
+    for (let i = 0; i < dims.length; i++) {
+      const arr = d[dims[i]] || [];
+      for (let j = 0; j < arr.length; j++) {
+        f[dims[i] + j] = arr[j];
+      }
+    }
+    return f;
+  },
+
+  checkAmounts() {
+    const bad = AmountInput.findUnreadable(this.amountFields());
+    // 只在数量变化时 setData（与 M1 同法，避免每次按键都触发渲染）
+    if (bad.length !== this.data.badAmountCount) this.setData({ badAmountCount: bad.length });
+  },
+
+  // 🔴 R595：把 amountFields 的 key 译成人话 —— 硬拦时指名哪一栏，别让老板满页找。
+  amountLabelOf(key) {
+    const t = this.data.t;
+    const map = {
+      buildDecorYuan: t.buildDecorLabel,
+      buildEquipYuan: t.buildEquipLabel,
+      buildFranchiseYuan: t.buildFranchiseLabel,
+      buildTransferYuan: t.buildTransferLabel,
+      laborUnitYuan: t.laborUnitLabel,
+      laborTotalYuan: t.laborTotalLabel2,
+      manageYuan: t.manageOptLabel,
+      realMonthYuan: t.realMonthLabel,
+      cashRentYuan: t.cashRentLabel,
+      cashBudgetYuan: t.cashBudgetLabel,
+      cashEquipYuan: t.cashEquipLabel,
+      cashStockYuan: t.cashStockLabel,
+      pivotFixRent: t.pivotFixRent,
+    };
+    const m = /^(rent|target|margin|other|labor)(\d+)$/.exec(String(key));
+    if (m) {
+      const dimMap = { rent: t.dimRent, target: t.dimTarget, margin: t.dimMargin, other: t.dimOther, labor: t.dimLabor };
+      return fmt(M.amountDimAt, { name: dimMap[m[1]] || m[1], n: Number(m[2]) + 1 });
+    }
+    return map[key] || key;
+  },
+
   onDimInput(e) {
     const { dim, idx } = e.currentTarget.dataset;
     const val = e.detail.value;
@@ -610,6 +684,7 @@ Page({
     // 🔴 R345：改过租金档位就是"手改过" —— 没有这一行，onCityChange 的保护就是空修复
     else if (dim === 'rent') this.setData({ dims, 'fieldTouched.rent': true });
     else this.setData({ dims });
+    this.checkAmounts(); // 🔴 R595：改档位即体检
   },
   addDim(e) {
     const dim = e.currentTarget.dataset.dim;
@@ -643,6 +718,7 @@ Page({
     this.setData(patch, () => {
       // 🔴 R336：投入 4 项任一项或年限变了 ⇒ 合计/月摊销必须跟着变（否则显示旧数）
       if (String(key).indexOf('build') === 0) this.setData({ buildSumText: this.buildSumOf() });
+      this.checkAmounts(); // 🔴 R595：改金额即体检
     });
   },
 
@@ -667,6 +743,7 @@ Page({
       if (this.data.mode !== 'forward' && this.data.result) {
         this.setData({ 'result.insight': this.buildInsight(this.data.result.rows) });
       }
+      this.checkAmounts(); // 🔴 R595：改真实月营收即体检
     });
   },
 
@@ -736,6 +813,7 @@ Page({
     const cash = this.data.cash;
     cash[key] = e.detail.value;
     this.setData({ cash });
+    this.checkAmounts(); // 🔴 R595：改现金需求即体检
     this.buildCash();
   },
 
@@ -1102,6 +1180,20 @@ Page({
     //   这里先挡一道：省一次云调用，且当场说清"第几档、哪一项、超了什么范围"。
     const badDim = this.badDimOf();
     if (badDim) { api.toastError({ msg: badDim }); return; }
+    // 🔴 R595：金额/数值读不成 ⇒ 生成前硬拦。
+    //   为什么必须拦：① 开店投入/真实月营收走 yuanToFen，对「12,000」fail-soft 返回 0（0 是合法值）
+    //   ② 维度档位走 isFinite，读不成会被**静默跳过**（悄悄少算一档）。
+    //   两种都零报错，老板会拿一张算错的矩阵去做决策。⇒ 只判定、不改数、不替老板去逗号。
+    const badAmounts = AmountInput.findUnreadable(this.amountFields());
+    if (badAmounts.length) {
+      const names = badAmounts.map((b) => this.amountLabelOf(b.key)).join('、');
+      wx.showModal({
+        title: M.amountBadTitle,
+        content: fmt(M.amountBadBody, { list: names }),
+        showCancel: false,
+      });
+      return;
+    }
     const { rent, labor, margin, target } = this.data.dims;
     // 🔴 R548：四维一律全量参与（原收起态只取第 1 档）。行数由上限 1000 守，不用靠折叠压。
     const laborUse = labor || [];
@@ -1459,6 +1551,7 @@ Page({
           'result.insight': this.buildInsight(this.data.result.rows),
         });
       }
+      this.checkAmounts(); // 🔴 R595：改透视表固定租金即体检
     });
   },
 

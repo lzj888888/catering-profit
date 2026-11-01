@@ -230,6 +230,7 @@ Page({
       hintFoldShow: TERMS.ledger.hintFoldShow,
       hintFoldHide: TERMS.ledger.hintFoldHide,
       amountBadTip: TERMS.ui.amountBadTip,
+      usageBadTip: TERMS.card.usageBadTip,
       // R547（M8）：批量产出没填时单独一条提示（文案只讲这一件事，不与"金额读不成"混用）
       batchOutputBadTip: TERMS.ui.batchOutputBadTip,
       // R547（M5）：编辑态读不到卡的错误页文案（4 键）
@@ -248,6 +249,8 @@ Page({
     badAmountCount: 0,
     // R547（M8）：模式 B 下「这批出多少份」缺失/读不成 ⇒ 1（0 = 正常）。只驱动一条横幅。
     badQtyCount: 0,
+    // 🔴 R597：用量（克/份）读不成 ⇒ 整行会被 buildCalcLines 静默跳过 ⇒ 成本少算。
+    badUsageCount: 0,
     card_code: '',
     isEdit: false,
     name: '',
@@ -1213,10 +1216,20 @@ Page({
       if (!rr.readable || !(Number(raw) > 0)) q = 1;
     }
     if (q !== this.data.badQtyCount) this.setData({ badQtyCount: q });
-    // 金额类横幅只数金额（文案讲的是"金额栏"）；出货量单独一条横幅（讲的是"必填没填"）。
+    // 🔴 R597：用量栏（克/份）读不成 ⇒ `units.toBase` 返回 0 ⇒ buildCalcLines 里 `continue` **跳过整行**
+    //   ⇒ 成本少算、毛利虚高（只有所有行都被跳过时才提示"用量"）。与金额/出货量分开计数、分开讲。
+    let u = 0;
+    const chkQty = (v) => { if (!AmountInput.classifyAmount(v).readable) u++; };
+    for (let i = 0; i < lines.length; i++) chkQty(lines[i] && lines[i].qty);
+    if (this.data.cardType === '3') {
+      const cl = this.data.comboLines || [];
+      for (let i = 0; i < cl.length; i++) chkQty(cl[i] && cl[i].qty);
+    }
+    if (u !== this.data.badUsageCount) this.setData({ badUsageCount: u });
+    // 金额类横幅只数金额（文案讲的是"金额栏"）；出货量/用量各自一条横幅。
     if (n !== this.data.badAmountCount) this.setData({ badAmountCount: n });
     this._badQty = q > 0;
-    return n + q;
+    return n + q + u;
   },
 
   // 🔴 R297：出成率**上界**校验（手工行）—— 越界**绝不静默回落 100**（那等于替老板编一个数）。
@@ -1425,10 +1438,12 @@ Page({
     if (this.checkAmounts() > 0) {
       // title 留空（系统默认「提示」）—— 不为一句标题新造文案（新增可见文案要走 i18n 三处，代价大于收益）
       // R547（M8）：出货量那条与金额那条**分开讲**，否则老板按"纯数字"去改一格金额，改完还是存不了。
-      const tip = this._badQty ? (this.data.badAmountCount > 0
-        ? TERMS.ui.amountBadTip + '\n' + TERMS.ui.batchOutputBadTip
-        : TERMS.ui.batchOutputBadTip) : TERMS.ui.amountBadTip;
-      wx.showModal({ content: tip, showCancel: false, confirmText: TERMS.buttons.gotIt });
+      // R597：三种"读不成/没填"分开讲 —— 金额 / 出货量 / 用量，各自改各自的格。
+      const tips = [];
+      if (this.data.badAmountCount > 0) tips.push(TERMS.ui.amountBadTip);
+      if (this._badQty) tips.push(TERMS.ui.batchOutputBadTip);
+      if (this.data.badUsageCount > 0) tips.push(TERMS.card.usageBadTip);
+      wx.showModal({ content: tips.join('\n'), showCancel: false, confirmText: TERMS.buttons.gotIt });
       return;
     }
     // 售价低于成本预警（M3.7 #15）：先反算拿成本对比，不阻断保存

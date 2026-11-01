@@ -17,6 +17,8 @@ const { calcTakeawayOrder, reverseListedPrice } = require('../../../utils/takeaw
 const FLAGS = require('../../../utils/featureFlags.js');
 // 🔴 R303：形态 C 导入的**一级校验**（纯函数 · 零外部依赖）—— 表内自洽的错，导之前就报出来
 const { checkImportShape, coveredDates } = require('../../../utils/importSanity.js');
+// 🔴 R596：金额「读不成」判定（与 M1/M2/M3/库存/资产/矩阵/团购同一件，见 utils/amountInput.js 头注）
+const AmountInput = require('../../../utils/amountInput.js');
 
 const TK = TERMS.ledger.takeaway;
 
@@ -136,6 +138,8 @@ Page({
       modeCashDesc: TK.modeCashDesc,
       modeAccrualDesc: TK.modeAccrualDesc,
       commissionBaseNote: TK.commissionBaseNote,
+      amountBadTip: TERMS.ui.amountBadTip,
+      qtyBadTip: TK.qtyBadTip,
       dishTitle: TK.dishTitle,
       dishPick: TK.dishPick,
       dishPickPh: TK.dishPickPh,
@@ -275,6 +279,8 @@ Page({
     // 承担方 picker：值序 = ['', 'merchant', 'platform']（未选/商家/平台）
     payerOptions: ['', 'merchant', 'platform'],
     payerLabels: [TK.payerUnset, TK.payerMerchant, TK.payerPlatform],
+    badAmountCount: 0,     // 🔴 R596：读不成金额的框数（>0 时横幅提示；计算/反算前硬拦）
+    badQtyCount: 0,        // 🔴 R598：读不成份数的框数（行还在，但该行金额按 0 算）
     result: null,          // calcTakeawayOrder 双口径输出
     reverseResultFen: 0,
     targetProfitYuan: '',
@@ -398,6 +404,7 @@ Page({
     const packs = this.data.packs.slice();
     packs[idx] = Object.assign({}, packs[idx], { unit_price_yuan: e.detail.value });
     this.setData({ packs });
+    this.checkAmounts(); // 🔴 R596：改打包单价即体检
   },
   onPackQty(e) {
     const idx = Number(e.currentTarget.dataset.idx);
@@ -416,6 +423,7 @@ Page({
     const params = this.data.params;
     params[field] = e.detail.value;
     this.setData({ params });
+    this.checkAmounts(); // 🔴 R596：改费率/补贴/配送/打包即体检
   },
   onCommissionMode(e) {
     this.setData({ 'params.commission_mode': e.detail.value });
@@ -425,6 +433,7 @@ Page({
     const params = this.data.params;
     params[which].amount_yuan = e.detail.value;
     this.setData({ params });
+    this.checkAmounts(); // 🔴 R596：改补贴金额即体检
   },
   onPayer(e) {
     const which = e.currentTarget.dataset.which;
@@ -433,7 +442,40 @@ Page({
     params[which].payer = this.data.payerOptions[idx] || '';
     this.setData({ params });
   },
-  onTargetProfit(e) { this.setData({ targetProfitYuan: e.detail.value }); },
+  onTargetProfit(e) { this.setData({ targetProfitYuan: e.detail.value }, () => this.checkAmounts()); },
+
+  // 🔴 R596：金额/百分比可读性体检（只判定、不改数、不静默清洗）。
+  //   为什么必须：buildOrder 用 `Number(v) || 0` 转分 —— 「1,200」「１２００」「88元」静默变 0；
+  //   佣金率读不成 ⇒ 佣金按 0 ⇒ 到手虚高；补贴/配送/打包读不成 ⇒ 到手同样虚高，全程零报错。
+  checkAmounts() {
+    const p = this.data.params || {};
+    const f = {
+      commission_rate: p.commission_rate,
+      commission_min_yuan: p.commission_min_yuan,
+      commission_fixed_yuan: p.commission_fixed_yuan,
+      delivery_fee_yuan: p.delivery_fee_yuan,
+      delivery_subsidy_yuan: p.delivery_subsidy_yuan,
+      promo_yuan: p.promo_yuan,
+      pack_fee_yuan: p.pack_fee_yuan,
+      delivery_customer_yuan: p.delivery_customer_yuan,
+      subsidy_user_yuan: (p.s_user || {}).amount_yuan,
+      subsidy_merchant_yuan: (p.s_merchant || {}).amount_yuan,
+      targetProfitYuan: this.data.targetProfitYuan,
+    };
+    const packs = this.data.packs || [];
+    for (let i = 0; i < packs.length; i++) f['pack' + i] = packs[i] && packs[i].unit_price_yuan;
+    const bad = AmountInput.findUnreadable(f);
+    // 🔴 R598：份数（items[].qty / packs[].qty）读不成 ⇒ `Number(qty)||0` ⇒ 该行金额按 0 算。
+    //   行还在（金额变 0），比"整行消失"可见，但仍会少算收入/成本 ⇒ 与金额分开计数、分开讲。
+    let q = 0;
+    const chkQ = (v) => { if (!AmountInput.classifyAmount(v).readable) q++; };
+    const items = this.data.items || [];
+    for (let i = 0; i < items.length; i++) chkQ(items[i] && items[i].qty);
+    for (let i = 0; i < packs.length; i++) chkQ(packs[i] && packs[i].qty);
+    if (bad.length !== this.data.badAmountCount) this.setData({ badAmountCount: bad.length });
+    if (q !== this.data.badQtyCount) this.setData({ badQtyCount: q });
+    return bad.length + q;
+  },
 
   // ===== 组装订单（元→分） =====
   buildOrder() {
@@ -468,6 +510,8 @@ Page({
       openPaywall('takeaway', { shopId: (getApp().globalData && getApp().globalData.shop_id) || '' });
       return;
     }
+    // 🔴 R596：金额读不成 ⇒ 不出数（否则 0 会被当真实金额算出一份"假结果"）
+    if (this.checkAmounts() > 0) return;
     const order = this.buildOrder();
     if (order.items.length === 0) { wx.showToast({ title: TK.dishPick, icon: 'none' }); return; }
     const result = calcTakeawayOrder(order, (id) => this.lookup(id));
@@ -517,6 +561,8 @@ Page({
       openPaywall('takeaway', { shopId: (getApp().globalData && getApp().globalData.shop_id) || '' });
       return;
     }
+    // 🔴 R596：金额读不成 ⇒ 不反算（否则 0 会被当真实金额，反算出的挂牌价直接把人带向亏本定价）
+    if (this.checkAmounts() > 0) return;
     const order = this.buildOrder();
     // 🔴 未选菜品 ⇒ 与「计算」**同一句提示**且**不产出数**（否则会用零成本算出一个看着合理的挂牌价）
     if (order.items.length === 0) { wx.showToast({ title: TK.dishPick, icon: 'none' }); return; }
