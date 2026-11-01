@@ -477,6 +477,15 @@ Page({
     return bad.length + q;
   },
 
+  // 🔴 R599b：读不成时**不能静默 return** —— 横幅在按钮上方，老板滑到按钮就看不见，
+  //   点了没反应 = 以为"按钮坏了"。照成本卡页（R547/R597）的做法弹窗，金额/份数分开讲。
+  warnBadAmounts() {
+    const tips = [];
+    if (this.data.badAmountCount > 0) tips.push(this.data.t.amountBadTip);
+    if (this.data.badQtyCount > 0) tips.push(this.data.t.qtyBadTip);
+    wx.showModal({ content: tips.join('\n'), showCancel: false, confirmText: TERMS.buttons.gotIt });
+  },
+
   // ===== 组装订单（元→分） =====
   buildOrder() {
     const fen = (v) => Math.round(Number(((Number(v) || 0) * 100).toFixed(10)));
@@ -511,7 +520,7 @@ Page({
       return;
     }
     // 🔴 R596：金额读不成 ⇒ 不出数（否则 0 会被当真实金额算出一份"假结果"）
-    if (this.checkAmounts() > 0) return;
+    if (this.checkAmounts() > 0) { this.warnBadAmounts(); return; }
     const order = this.buildOrder();
     if (order.items.length === 0) { wx.showToast({ title: TK.dishPick, icon: 'none' }); return; }
     const result = calcTakeawayOrder(order, (id) => this.lookup(id));
@@ -562,7 +571,7 @@ Page({
       return;
     }
     // 🔴 R596：金额读不成 ⇒ 不反算（否则 0 会被当真实金额，反算出的挂牌价直接把人带向亏本定价）
-    if (this.checkAmounts() > 0) return;
+    if (this.checkAmounts() > 0) { this.warnBadAmounts(); return; }
     const order = this.buildOrder();
     // 🔴 未选菜品 ⇒ 与「计算」**同一句提示**且**不产出数**（否则会用零成本算出一个看着合理的挂牌价）
     if (order.items.length === 0) { wx.showToast({ title: TK.dishPick, icon: 'none' }); return; }

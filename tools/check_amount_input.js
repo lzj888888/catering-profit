@@ -482,6 +482,11 @@ ok('②-71 外卖页份数栏也体检（items[].qty + packs[].qty 读不成 ⇒
 ok('②-72 外卖页 wxml 按 badQtyCount 渲染 + 份数文案键真绑定',
   tkXml.indexOf('badQtyCount > 0') >= 0 && tkXml.indexOf('t.qtyBadTip') >= 0
   && tkJs.indexOf('qtyBadTip: TK.qtyBadTip') >= 0);
+// R599b：光 `return` 不算拦住 —— 横幅在按钮上方，老板滑到按钮就看不见 ⇒ 点了没反应 = 以为"按钮坏了"。
+//   判据锚到**函数体内**（tkCalc / tkRev 已是 bodyOf 取出的体），不全文 grep，防被别处同名调用喂成恒真。
+ok('②-73 外卖页被拦时必须给可见反馈（onCalc / onReverse 都调 warnBadAmounts，且该方法真弹窗）',
+  tkCalc.indexOf('warnBadAmounts(') >= 0 && tkRev.indexOf('warnBadAmounts(') >= 0
+  && bodyOf(tkJs, 'warnBadAmounts').indexOf('showModal') >= 0);
 
 // ---- R597：M3 成本卡「用量」栏（不是金额，但读不成同样静默算错）----
 // 为什么单独守：`units.toBase` 对「1,000」返回 0 ⇒ `buildCalcLines` 里 `if (!(qtyBase > 0)) continue;`
@@ -542,6 +547,10 @@ ok('③-15 反恒真：把成本卡体检里的 chkQty 调用全摘掉 ⇒ ②-6
 // R598：证明外卖份数体检不是恒真
 ok('③-16 反恒真：把外卖体检里的 chkQ 调用全摘掉 ⇒ ②-71 必红',
   tkChk.replace(/chkQ\(/g, '').indexOf('chkQ(') < 0);
+// R599b：证明「必须有可见反馈」这条不是恒真（摘掉 warnBadAmounts 调用 ⇒ ②-73 必红）
+ok('③-17 反恒真：把外卖 onCalc/onReverse 的 warnBadAmounts 调用摘掉 ⇒ ②-73 必红',
+  tkCalc.replace('warnBadAmounts(', '').indexOf('warnBadAmounts(') < 0
+  && tkRev.replace('warnBadAmounts(', '').indexOf('warnBadAmounts(') < 0);
 
 // ================= ④ 下界 =================
 ok('④ 断言数下界（≥40）', pass + fail >= 40, '实际 ' + (pass + fail));
