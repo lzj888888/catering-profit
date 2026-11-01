@@ -346,6 +346,9 @@ Page({
     //   原来只在 load()（= onLoad）里算 ⇒ 返回后恒显旧数字
     //   （李老师实机反馈 2026-09-23：「去填库存盘点」下面那行不变）。
     //   ⚠️ 首次 onShow 紧跟 onLoad，load() 已经拉过 ⇒ 用 _shown 跳过，省一次云调用。
+    // 🔴 R594：完成度是**纯本地计算**（不碰云），所以无条件算 —— 首次 onShow 也要，
+    //   否则冷启动第一屏永远没有引导卡。`_shown` 那道跳过只为省**云调用**，不该连累它。
+    this.refreshCompletion();
     if (this._shown) this.refreshCalcSummaries();
     this._shown = true;
   },
@@ -683,6 +686,12 @@ Page({
       // 🔴 R443b：冷启动时 onShow 早于 ensureShop（shop_id 还是 ''）⇒ 这里必须兜一次，
       //   且位置要在**云端装配完成之后**，否则会被随后 setData 的云端数据覆盖。
       this.applyDraftFromStorage();
+      // 🔴 R594（真机暴露）：完成度**首次进入时从没算过** —— onShow 首次为省云调用被 `_shown` 跳过，
+      //   而 load() 里又没调 ⇒ entryCompletion 恒为 null ⇒ 引导卡永远不显示。
+      //   为什么能漏：check_entry_completion 只测「纯函数算什么」和「wxml 有没有渲染位」，
+      //   **没测"谁在什么时候调用它"** —— 又是"只测函数不测接线"。
+      //   位置必须在 applyDraftFromStorage 之后：草稿回填会改 groups，早算会算成旧值。
+      this.refreshCompletion();
     } catch (e) {
       this.setData({ loading: false });
       api.toastError(e);
@@ -1668,12 +1677,12 @@ Page({
       directConsumeYuan: this.data.directConsumeYuan,
       consumeLabel: TERMS.ledger.entryConsumeLabel,
     });
-    // 🔴 R592：拆成「标题 + 名单」两行 —— 标题说清填完能得到什么，名单说清还差谁。
-    //   一项没填时说总数并承诺结果（第一次进来的老板最需要这句）；
-    //   填了一半就只说还差几项（已经填过的人不需要再被告知总共有几项）。
+    // 🔴 R592：拆成「标题 + 名单」两行 —— 标题说清这是怎么算的，名单说清还差谁。
+    //   R595：一项没填时标题换成**利润公式**（不再是「就能看到赚不赚钱」那种断言式承诺）；
+    //   填了一半就只说还差几项（已经填过的人不需要再被数一遍总数）。
     comp.note = comp.done ? '' : comp.missingText;
     comp.noteTitle = comp.done ? '' : (comp.filled === 0
-      ? TERMS.ledger.entryStartTitle(comp.total)
+      ? TERMS.ledger.entryStartFormula
       : TERMS.ledger.entryLeftTitle(comp.total - comp.filled));
     this.setData({ entryCompletion: comp });
   },

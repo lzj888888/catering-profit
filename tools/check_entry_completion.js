@@ -143,13 +143,23 @@ check('B-⑨ 🔴 页面把 consumeMode / directConsumeYuan / consumeLabel 都�
 check('B-⑩ 原料填 0 不算（与「组内 >0」同口径，免租期式误催）',
   E.completionOf(INC5, EXP5, null, { consumeMode: 'direct', directConsumeYuan: '0' }).done === false);
 
-// 🔴 R592（C 路线）：进门第一眼 = 填完能得到什么，而不是"别填错"
-//   两态：一项没填 ⇒ 报总数并承诺结果；填了一半 ⇒ 只说还差几项（别再数一遍总数，烦）
-check('B-⑪ 一项没填时，标题承诺「就能看到你店赚不赚钱」（含真实总数，不写死 5）',
+// 🔴 R595（2026-11-01 李老师定稿）：抬头改**利润公式**，不再用「就能看到你店赚不赚钱」这种断言式承诺。
+//   旧文案的问题：它隐含「填完 = 数准」，而这 5 项只是**能算出结果的最低要求**（组内一笔 > 0 即算已填）。
+//   为什么判**顺序**而不只判词在不在：公式顺序错了就是错的（老板照错的顺序理解账），而「词都在、顺序乱」
+//   用逐个 includes 是判不出来的 ⇒ 按递增下标查找，查不到即「缺词 或 顺序错」。
+check('B-⑪ 一项没填时，标题给出利润公式（5 个词按 赚多少←营业额←房租水电←人工←原料 顺序）',
   (function () {
-    const t = T0.entryStartTitle(5);
-    return /先填这 5 项/.test(t) && /就能看到/.test(t) && /赚不赚钱/.test(t);
-  })(), T0.entryStartTitle(5));
+    const t = typeof T0.entryStartFormula === 'string' ? T0.entryStartFormula : '';
+    const seq = ['赚多少', '营业额', '房租水电', '人工', '原料'];
+    let at = -1;
+    for (let i = 0; i < seq.length; i++) {
+      const j = t.indexOf(seq[i], at + 1);
+      if (j < 0) return false;   // 缺词 or 顺序错 —— 两种都要红
+      at = j;
+    }
+    // 有 '=' 才是公式，有 '-' 才是减项（缺任一个都退化成一句口号）
+    return /=/.test(t) && /-/.test(t);
+  })(), T0.entryStartFormula);
 
 check('B-⑫ 填了一半时，只说「还差 N 项就能看结果」（不重复总数）',
   (function () {
@@ -159,7 +169,7 @@ check('B-⑫ 填了一半时，只说「还差 N 项就能看结果」（不重�
 
 check('B-⑬ 🔴 页面按 filled === 0 分两态取标题（写死一种 ⇒ 老用户每次都被数一遍总数）',
   /filled === 0/.test(pageStripped)
-  && /entryStartTitle/.test(pageStripped)
+  && /entryStartFormula/.test(pageStripped)
   && /entryLeftTitle/.test(pageStripped));
 
 check('B-⑭ 🔴 引导卡在「填写口径」**之前**（进门第一眼要看到填完能干嘛，不是别填错）',
@@ -174,6 +184,40 @@ check('B-⑮ 引导卡的三个样式类都有定义（没定义 = 白底黑字�
 
 check('B-⑯ 🔴 反恒真：全填完时 done=true（否则「还差 0 项」会常驻）',
   E.completionOf(INC5, EXP5, null, { consumeMode: 'direct', directConsumeYuan: '9000' }).done === true);
+
+// 🔴 R594（真机暴露）：完成度**首次进入时从没算过** —— onShow 首次被 `_shown` 跳过（省云调用），
+//   而 load() 里又没调 ⇒ entryCompletion 恒 null ⇒ 引导卡永远不显示。
+//   上面 12 条断言全绿，因为**它们只测「函数算什么」和「wxml 有没有渲染位」，
+//   没测「谁在什么时候调用它」** —— 这正是本仓反复的"只测函数不测接线"。
+check('B-⑰ 🔴 load() 里真调 refreshCompletion（首次进入的数据到位后必须算一次）',
+  (function () {
+    // 🔴 这条判据三次写错，都同一个病根：**用"附近有没有"代替"就在这个方法里"**。
+    //   ① `R443b` 作锚：该词在文件里出现 3 次（309/357/686），indexOf 取到最早 ⇒ 假红；
+    //   ② 用 pageStripped 找注释里的词 ⇒ 注释已剥 ⇒ 恒 -1 ⇒ 假红；
+    //   ③ 用 `lastIndexOf('applyDraftFromStorage()')` ⇒ 窗口跨进 onShow，**两处都有那次调用
+    //      ⇒ 删掉 load 里那行仍判绿（反证实测：删了还是 true）**。
+    //   现在改成**按方法体界定**：从 `async load()` 到它自己的 `\n  },` 之间找。
+    const iLoad = pageStripped.indexOf('async load()');
+    if (iLoad < 0) return false;
+    const iEnd = pageStripped.indexOf('\n  },', iLoad);
+    const seg = pageStripped.slice(iLoad, iEnd > iLoad ? iEnd : iLoad + 6000);
+    return seg.indexOf('this.refreshCompletion()') > 0;
+  })());
+
+check('B-⑱ 🔴 onShow 里**无条件**调 refreshCompletion（不能被 `_shown` 跳过连累）',
+  (function () {
+    const iShow = pageStripped.indexOf('onShow()');
+    if (iShow < 0) return false;
+    const seg = pageStripped.slice(iShow, iShow + 900);
+    const iComp = seg.indexOf('this.refreshCompletion()');
+    const iShown = seg.indexOf('if (this._shown)');
+    // 必须在 `if (this._shown)` **之前**（之后 = 又被跳过了）
+    return iComp > 0 && iShown > 0 && iComp < iShown;
+  })());
+
+check('B-⑲ 完成度计算仍是纯本地（不得为了省事去 await 云调用 —— 那会让首屏卡住）',
+  /refreshCompletion\(\)[\s\S]{0,600}?completionOf\(/.test(pageStripped)
+  && !/refreshCompletion\(\)[\s\S]{0,400}?await /.test(pageStripped));
 
 sec('C · 反恒真（证明 A 组不是常量）');
 check('C-① 把「填 0」改判成已填 ⇒ A-④ 的判据必须翻转',
