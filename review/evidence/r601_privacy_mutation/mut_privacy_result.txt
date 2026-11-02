@@ -1,0 +1,5 @@
+M1 rc=1 红项=2
+   ❌ C4-① 声明数 ≡ 表格行数 —— 声明 8 / 表格 7
+   ❌ C6 小程序端出现的隐私 API 必须已登记（表内收集 或 显式零命中） —— getClipboardData @ subpkg/biz/card/import.js | setClipboardData @ subpkg/biz/month/result.js, subpkg/biz/takeaway/index.js
+还原 md5 一致: True
+还原后 rc=0 红项=0
