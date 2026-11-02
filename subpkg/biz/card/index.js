@@ -409,7 +409,12 @@ Page({
     try {
       const q = await api.call('checkQuota', { scope: 'cost_card' });
       if (q.hit_free_limit) {
-        openPaywall('saveLimit', { shopId: (getApp().globalData && getApp().globalData.shop_id) || '' });
+        // R603：配额类走「当前版本上限」说明（showFreeLimit），不走「功能完善中」。
+        openPaywall('saveLimit', {
+          shopId: (getApp().globalData && getApp().globalData.shop_id) || '',
+          scope: 'cost_card',
+          limit: q.free_limit,
+        });
         return;
       }
       if (q.hit_hard_limit) {

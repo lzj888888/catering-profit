@@ -261,6 +261,14 @@ const A15_EXEMPT = [
   /^cloudfunctions\/common\//,                          // round147：付费判定单源本体（entitlement.js + 聚合入口补齐导出）
   /^cloudfunctions\/exportData\//,                      // round147：唯一既有付费消费者，切到判定单源（避免第二份 `expireAt > now`）
   /^cloudfunctions\/[^/]+\/cx_entitlement\.js$/,        // round147：sync_common 派生（全函数，同 cx_indicatorRef.js 性质）
+  // ⚠️ 2026-11-02（R603）**新增登记** —— 「收费保留、功能放行」：关售卖 ≠ 关功能。
+  //   ① 单源 `common/payFlags.js`（FREE_ACCESS 开关）+ `common/entitlement.js::hasFeature` 免费期短路
+  //      —— 前者落在已有的 `/^cloudfunctions\/common\//` 条目内，无需另登记；
+  //   ② 派生面：sync_common 因新增单源文件产出 `cx_payFlags.js`（同 round110/147 的 cx_* 性质，
+  //      55 个函数目录各一份）。**同步动作**，非各函数自有逻辑。
+  //   仍按白名单式登记（精确到文件名），**绝不放宽成 `cloudfunctions/` 全豁免**：
+  //   by=WorkBuddy / date=2026-11-02 / reason=R603 授权：个人主体提审期免费开放（云端 hasFeature 短路 + 新增 payFlags 单源）
+  /^cloudfunctions\/[^/]+\/cx_payFlags\.js$/,           // R603：sync_common 派生（全函数，同 cx_entitlement.js 性质）
   // ⚠️ 2026-09-26（round150）**十一次触发** —— 同一时机关卡第 11 次：M3 v1.3 批次 **R150** 授权落地
   //   ① M3.14 组件分类：明细行新增 `line_kind`（主/辅/调/半/耗）——落库侧 `saveCostCard/`（已在内）、
   //      读侧 `getCostCard/` `getCardVersions/`（已在内）；

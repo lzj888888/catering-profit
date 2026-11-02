@@ -56,4 +56,18 @@ const PROMO_ENABLED = false;
 //   前端其余一行不改，守卫 `tools/check_paywall_coverage.js` L9 会跟着翻面。
 const PAYWALL_ENABLED = false;
 
-module.exports = { BILL_IMPORT_ENABLED, PROMO_ENABLED, PAYWALL_ENABLED };
+// ===== 免费期（R603 修正 R602 的方向错误）=====
+// 🔴 **关售卖 ≠ 关功能**。R602 把闸门挂在 `openPaywall` 入口，而它的 11 个调用点
+//    **全部是「付费域判定失败后的出口」**（外卖 onCalc、团购 onCalc、复盘 load、
+//    导出 onExport、套餐保存 catch、多店/成本卡配额）⇒ 关掉售卖的结果是：
+//    外卖算不了、套餐存不了、复盘整页 locked、导出点不动 —— 把「暂不收费」错做成了「不可用」。
+//
+// 🔴 正确语义：售卖关闭时，付费域**免费放行**（功能照常可用），只是不出现任何购买入口。
+//    ⇒ 本常量由 `PAYWALL_ENABLED` **派生**，不另设独立开关：两个独立布尔量会造出
+//      「关售卖但仍拦功能」或「开着售卖却免费」这类半开半关态，且都不报错（本仓 §26 老病）。
+//
+// 🔴 与后端同源：`cloudfunctions/common/payFlags.js::FREE_ACCESS` 必须与本值等值，
+//    由 `tools/check_paywall_coverage.js` L9-⑧ 双向比对（改一处忘另一处 ⇒ 前端放行但后端 FEATURE_LOCKED）。
+const FREE_ACCESS_MODE = !PAYWALL_ENABLED;
+
+module.exports = { BILL_IMPORT_ENABLED, PROMO_ENABLED, PAYWALL_ENABLED, FREE_ACCESS_MODE };

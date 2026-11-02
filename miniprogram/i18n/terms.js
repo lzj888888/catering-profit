@@ -3080,6 +3080,15 @@ const TERMS = {
     //   守卫 tools/check_paywall_coverage.js L9-③ 扫 showNotOpen 函数体，禁止出现诱导词。
     notOpenTitle: '功能完善中',
     notOpenBody: '该功能还在完善，将在后续版本开放。成本卡、原料库与月度核算可正常使用。',
+    // 🔴 R603：免费期**配额上限**文案（只用于 saveLimit：多店 / 成本卡张数）。
+    //   与 notOpen 分开的原因：配额是"当前版本能建几个"的产品限制，不是"功能没做好"。
+    //   口径同上：**零价格、零购买引导、零客服**；{n} 由后端出参的 free_limit 填入。
+    //   守卫 tools/check_paywall_coverage.js L9-③ 同时扫 showNotOpen 与 showFreeLimit。
+    freeLimitShopTitle: '已达当前版本上限',
+    freeLimitShopBody: '当前版本最多支持 {n} 家门店，暂不支持继续新增。',
+    freeLimitCardTitle: '已达当前版本上限',
+    freeLimitCardBody: '当前版本最多支持 {n} 道菜计算成本（按算过成本的菜品去重计数），暂不支持继续新增。',
+    freeLimitGeneric: '当前版本已达使用上限，暂不支持继续新增。',
     // 支付结果
     successTitle: '已开通',
     successBody: (dateStr) => `有效期至 ${dateStr}`,

@@ -298,7 +298,13 @@ Page({
   onAdd() {
     // 若已达免费上限（1 家），新增即保存超限 → 触发付费墙；否则就地展开新建输入
     if (this.data.hitFreeLimit) {
-      openPaywall('saveLimit', { shopId: this.data.currentShopId || '' });
+      // R603：配额类走「当前版本上限」说明（showFreeLimit），不走「功能完善中」。
+      //   scope/limit 供 utils/paywall.js 出准确文案；limit 取后端出参，前端不写死数字。
+      openPaywall('saveLimit', {
+        shopId: this.data.currentShopId || '',
+        scope: 'shop',
+        limit: this.data.freeLimit,
+      });
       return;
     }
     this.setData({ mode: 'create', editingId: '', editName: '', editBizIdx: 0 });

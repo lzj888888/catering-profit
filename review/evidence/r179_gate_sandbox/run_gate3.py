@@ -19,7 +19,7 @@ WHY：本会话 Bash 环境里 **node 无法派生任何子进程**（实测 spa
 import json, os, re, subprocess, sys, time, hashlib
 
 REPO = r"C:/Users/lzj/WorkBuddy/Claw/catering-profit"
-NODE = r"C:/Users/lzj/.workbuddy/binaries/node/versions/22.22.2-3/node.exe"
+NODE = r"C:/Users/lzj/.workbuddy/binaries/node/versions/22.22.2-6/node.exe"
 TMP = r"C:/Users/lzj/AppData/Local/Temp/inscode"
 DUMP = os.path.join(TMP, "suites.json")
 
@@ -106,11 +106,17 @@ for name, rel, *rest in SUITES:
         failed.append((name, rel, "TIMEOUT>180s"))
         lines.append(f"  [{name}] ❌ FAIL (timeout>180s)")
         continue
-    out = (r.stdout or "") + (r.stderr or "")
+    # 🔴 2026-11-02（R603）修正驱动缺陷：原实现把 stderr 拼在 stdout 之后，
+    #   而部分套件会往 stderr 打调试日志（如 `[api.call] 云调用失败: ... mock batch`）⇒
+    #   R69 的「末行必须是收尾行」判据被 stderr 顶掉 ⇒ 套件实跑全绿却被判「未走完收尾」
+    #   （check_m2_partial_behavior / check_export_roundtrip 两例，单独跑均 0 失败）。
+    #   ⇒ R69/R66 一律只判 **stdout**；stderr 仅用于失败诊断展示。
+    out = (r.stdout or "")
+    err = (r.stderr or "")
     if r.returncode != 0:
         failed.append((name, rel, f"exit={r.returncode}"))
         lines.append(f"  [{name}] ❌ FAIL (exit={r.returncode})")
-        lines.append(out[-2000:])
+        lines.append((out + err)[-2000:])
         continue
     a = audit(out, rel)
     lines.append(out.rstrip())

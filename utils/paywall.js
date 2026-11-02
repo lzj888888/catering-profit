@@ -15,7 +15,6 @@ const { TERMS } = require('../miniprogram/i18n/terms.js');
 const api = require('./api.js');
 const { isIOS } = require('./platform.js');
 const { PAYWALL_ENABLED } = require('./featureFlags.js');
-
 /**
  * 允许的触发类型。**新增付费能力时只改这一处**（配 terms.paywall 同名键 + 守卫 check_paywall_coverage）。
  * 用常量数组，而不是 `type !== 'a' && type !== 'b'` —— 后者每加一个能力就多一截 `&&`，
@@ -34,9 +33,16 @@ const PAYWALL_TYPES = ['saveLimit', 'export', 'combo', 'takeaway', 'dishreview',
  */
 function openPaywall(type, opts) {
   if (PAYWALL_TYPES.indexOf(type) < 0) return; // 防误触发
-  // 🔴 提审期交易闸门（PAYWALL_ENABLED=false）：不报价、不引导客服、不建单。
-  //   放在这里而不是各调用点：11 处调用点一处不改，且新增调用点自动受管。
-  if (!PAYWALL_ENABLED) return showNotOpen();
+  // 🔴 提审期/免费期（PAYWALL_ENABLED=false）：不报价、不引导客服、不建单。
+  //   ⚠️ R603 修正：能力类（export/combo/takeaway/dishreview/groupon）在免费期**根本不该走到这里**
+  //      —— `utils/entitlement.js::fetchEntitlement` 已短路为 is_active=true，调用点自动放行。
+  //      仍会到达本函数的只有**配额类**（saveLimit：多店 / 成本卡张数），它不走权益判定、
+  //      走 checkQuota / getShopList 的 hit_free_limit。配额是**产品额度**，不是收费，
+  //      故给「当前版本上限」说明，而不是「功能完善中」——后者会让用户以为功能坏了。
+  if (!PAYWALL_ENABLED) {
+    if (type === 'saveLimit') return showFreeLimit(opts || {});
+    return showNotOpen(); // 兜底：任何绕过 entitlement 直达的调用都不许出现售卖信息
+  }
   // R45：iOS 端不得提供虚拟商品购买入口 ⇒ 弹窗改为纯提示，**不给确认下单按钮**
   if (isIOS()) return showIOSBlocked();
   const def = TERMS.paywall[type];
@@ -95,6 +101,31 @@ function showNotOpen() {
     confirmColor: '#1e3a5f',
     fail(err) {
       wx.showToast({ title: (err && err.errMsg) || TERMS.pay.notOpenTitle, icon: 'none', duration: 2500 });
+    },
+  });
+}
+
+/**
+ * 免费期 · **配额上限**说明（仅 saveLimit）。
+ * 🔴 为什么单独一条，不复用 showNotOpen：配额是「当前版本能建几个」的产品限制，
+ *    用「功能完善中」解释不了「为什么第 2 家店建不了」，用户会以为功能坏了。
+ * 🔴 零营销词：不得出现价格 / 升级 / 开通 / 购买 / 客服 —— 提审期出现任一即判诱导交易。
+ *    守卫 L9-③ 对 showNotOpen 与 showFreeLimit **两个函数体**同时扫禁词。
+ * @param {{scope?:string, limit?:number}} opts scope='shop'|'cost_card'，limit 为后端出参的免费额度
+ */
+function showFreeLimit(opts) {
+  const isShop = opts.scope === 'shop';
+  const n = Number(opts.limit) || 0;
+  const raw = isShop ? TERMS.pay.freeLimitShopBody : TERMS.pay.freeLimitCardBody;
+  const body = n > 0 ? raw.replace('{n}', String(n)) : TERMS.pay.freeLimitGeneric;
+  wx.showModal({
+    title: isShop ? TERMS.pay.freeLimitShopTitle : TERMS.pay.freeLimitCardTitle,
+    content: body,
+    showCancel: false,
+    confirmText: TERMS.buttons.gotIt,
+    confirmColor: '#1e3a5f',
+    fail(err) {
+      wx.showToast({ title: (err && err.errMsg) || TERMS.pay.freeLimitShopTitle, icon: 'none', duration: 2500 });
     },
   });
 }

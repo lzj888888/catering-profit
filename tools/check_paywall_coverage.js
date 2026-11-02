@@ -335,14 +335,21 @@ function fnBody(src, name) {
 }
 
 // 判据本体（单独抽出来，才能拿影子样本反证它"真的会判红"）。
-//   要求：① 函数体内出现 `if (!PAYWALL_ENABLED) return showNotOpen();`
-//        ② 该闸门必须**先于** `wx.showModal`（否则用户先看到报价、再被拦，等于已经展示了售卖信息）
-const GATE_RE = /if\s*\(\s*!\s*PAYWALL_ENABLED\s*\)\s*return\s+showNotOpen\s*\(\s*\)/;
+//   要求：① 函数体内出现 `if (!PAYWALL_ENABLED)`；
+//        ② 该闸门**确实通向关闭态出口**（showNotOpen / showFreeLimit 之一）；
+//        ③ 闸门必须**先于** `wx.showModal`（否则用户先看到报价、再被拦，等于已经展示了售卖信息）。
+//   ⚠️ R603：原判据钉死单行写法 `if (!PAYWALL_ENABLED) return showNotOpen();`，
+//      而本轮把关闭态拆成「配额类 → showFreeLimit / 其余 → showNotOpen」的块状写法，
+//      钉字面量会把**正确实现**判红（R297 同族：断言要判语义、别钉字面量）。
+const GATE_RE = /if\s*\(\s*!\s*PAYWALL_ENABLED\s*\)/;
 function gateOk(body) {
   if (!body) return false;
   const g = body.search(GATE_RE);
+  if (g < 0) return false;
+  const hasExit = /showNotOpen|showFreeLimit/.test(body);
+  if (!hasExit) return false;
   const m = body.indexOf('wx.showModal');
-  return g >= 0 && (m < 0 || g < m);
+  return m < 0 || g < m;
 }
 
 const openBody = fnBody(pwSrc, 'openPaywall');
@@ -354,16 +361,25 @@ check('L9-② 🔴 openPaywall 函数体内必须有提审期闸门，且**先�
 //      函数体里只有 `TERMS.pay.notOpenBody` 这个**引用**，真正的字在 terms.js；
 //      只扫函数体的话，把文案改成「请联系客服开通」判据照样绿（同族病：读到引用 ≠ 读到内容）。
 const notOpenBody = fnBody(pwSrc, 'showNotOpen');
-const BAD_WORDS = ['联系客服', '客服', '开通', '购买', '续费', '支付', '付款', '元/', '¥', '价格', '订阅', '会员'];
-const notOpenText = [TERMS && TERMS.pay && TERMS.pay.notOpenTitle, TERMS && TERMS.pay && TERMS.pay.notOpenBody]
-  .filter(Boolean).join('');
+// 🔴 R603：关闭态现在有**两个**出口 —— showNotOpen（兜底）+ showFreeLimit（配额类）。
+//   只扫前一个 ⇒ 配额弹窗里写「升级后可开 10 家店」照样判绿（同族病：只守一个分支）。
+const freeLimitBody = fnBody(pwSrc, 'showFreeLimit');
+const BAD_WORDS = ['联系客服', '客服', '开通', '购买', '续费', '支付', '付款', '元/', '¥', '价格', '订阅', '会员', '升级', '付费'];
+const payT = (TERMS && TERMS.pay) || {};
+const notOpenText = [
+  payT.notOpenTitle, payT.notOpenBody,
+  payT.freeLimitShopTitle, payT.freeLimitShopBody,
+  payT.freeLimitCardTitle, payT.freeLimitCardBody, payT.freeLimitGeneric,
+].filter(Boolean).join('');
 const notOpenHits = BAD_WORDS.filter((w) => notOpenText.indexOf(w) >= 0);
-// 同时要求函数体**引用**单源文案（防绕开 terms 直接硬编码一句诱导话）
-const usesTerms = /TERMS\.pay\.notOpenTitle/.test(notOpenBody) && /TERMS\.pay\.notOpenBody/.test(notOpenBody);
-check('L9-③ 🔴 关闭态出口必须引用单源文案，且文案值不得含价格/支付/开通/客服/续费类词 —— 闸门在但话诱导 = 白关',
-  notOpenBody.length > 0 && usesTerms && notOpenHits.length === 0,
+// 同时要求两个函数体都**引用**单源文案（防绕开 terms 直接硬编码一句诱导话）
+const usesTerms = /TERMS\.pay\.notOpenTitle/.test(notOpenBody) && /TERMS\.pay\.notOpenBody/.test(notOpenBody)
+  && /TERMS\.pay\.freeLimit/.test(freeLimitBody);
+check('L9-③ 🔴 关闭态两个出口（兜底/配额）都必须引用单源文案，且文案值不得含价格/支付/开通/客服/续费/升级类词 —— 闸门在但话诱导 = 白关',
+  notOpenBody.length > 0 && freeLimitBody.length > 0 && usesTerms && notOpenHits.length === 0,
   notOpenHits.length ? `文案命中禁词：${notOpenHits.join('、')}`
-    : (usesTerms ? `出口文案干净（标题+正文 ${notOpenText.length} 字符）` : '函数体未引用 TERMS.pay.notOpen*（疑似硬编码）'));
+    : (!usesTerms ? '函数体未引用 TERMS.pay.notOpen* / freeLimit*（疑似硬编码）'
+      : `两个出口文案干净（合计 ${notOpenText.length} 字符）`));
 
 // L9-④ 纵深：绕过弹窗直调下单函数时也必须被拦。
 //   `onConfirm` 是 payCreateOrder 的唯一前端入口；`orders.onRenew` 是 payRenew 的唯一入口。
@@ -401,6 +417,35 @@ const SHADOW_GATE_AFTER = '{ wx.showModal({ title: x }); if (!PAYWALL_ENABLED) r
 check('L9-⑥ 反恒真：无闸门样本必须判红、闸门在弹窗之后也必须判红（证明 L9-② 有分辨力）',
   gateOk(SHADOW_NO_GATE) === false && gateOk(SHADOW_GATE_AFTER) === false && gateOk(openBody) === true,
   `无闸门=${gateOk(SHADOW_NO_GATE)} 闸门后置=${gateOk(SHADOW_GATE_AFTER)} 真实=${gateOk(openBody)}`);
+
+// L9-⑦ 🔴 反方向守卫：**关售卖 ≠ 关功能**（R603 修正 R602 的错）。
+//   为什么必须有这一条：L9-①~⑥ 只回答「闸门在不在」，**没有一条**回答「关掉之后功能还能不能用」。
+//   R602 把闸门挂在 openPaywall（它的 11 个调用点全是"付费域判定失败后的出口"）⇒
+//   外卖算不了、套餐存不了、复盘 locked、导出点不动，而门禁 227 全绿。
+//   ⇒ 同族病第九例：**守卫只守「分支在不在」，不守「分支到不到」**。
+//   判据：关闭态下前后端都要有免费期短路，且短路必须**先于**取库（证明是短路、不是兜底）。
+const feEntBody = fnBody(read('utils/entitlement.js'), 'fetchEntitlement');
+const feFreeOk = (b) => !!b && /if\s*\(\s*FREE_ACCESS_MODE\s*\)/.test(b) && /is_active\s*:\s*true/.test(b);
+const beEntBody = fnBody(read('cloudfunctions/common/entitlement.js'), 'hasFeature');
+const beFreePos = beEntBody.indexOf('if (FREE_ACCESS)');
+const beFreeOk = !!beEntBody && beFreePos >= 0
+  && /if\s*\(\s*FREE_ACCESS\s*\)\s*return\s+true\s*;/.test(beEntBody)
+  && (beEntBody.indexOf('loadExpireAt') < 0 || beFreePos < beEntBody.indexOf('loadExpireAt'));
+const SHADOW_NO_FREE = '{ const d = await api.call(x); return { is_active: !!d.is_active }; }';
+check('L9-⑦ 🔴 关闭态下付费域必须**仍可用**：前端 fetchEntitlement + 后端 hasFeature 都要有免费期短路（否则「不收费」被做成「不可用」）',
+  feFreeOk(feEntBody) && beFreeOk && feFreeOk(SHADOW_NO_FREE) === false,
+  `前端短路=${feFreeOk(feEntBody)} / 后端短路=${beFreeOk} / 无短路样本判红=${feFreeOk(SHADOW_NO_FREE) === false}`
+    + (!beFreeOk ? ' ⇒ 后端缺短路：导出/套餐/复盘/映射仍返 FEATURE_LOCKED' : ''));
+
+// L9-⑧ 🔴 前后端开关同源：只改一处 ⇒ 「前端放行、后端仍锁」半开半关，全程不报错（§26 老病）。
+//   前端是派生（FREE_ACCESS_MODE = !PAYWALL_ENABLED），云端是独立字面量 ⇒ 必须逐值比对。
+const mBack = read('cloudfunctions/common/payFlags.js').match(/const\s+FREE_ACCESS\s*=\s*(true|false)\s*;/);
+const backVal = mBack ? mBack[1] : '';
+const derivedOk = /const\s+FREE_ACCESS_MODE\s*=\s*!\s*PAYWALL_ENABLED\s*;/.test(flagsSrc);
+const expectBack = flagVal === 'true' ? 'false' : 'true';
+check('L9-⑧ 前后端开关同源：云端 FREE_ACCESS === !前端 PAYWALL_ENABLED，且前端必须由开关派生（防半开半关）',
+  !!backVal && derivedOk && backVal === expectBack,
+  `前端 PAYWALL_ENABLED=${flagVal || '解析失败'} / 派生=${derivedOk} / 云端 FREE_ACCESS=${backVal || '解析失败'}（期望 ${expectBack}）`);
 
 // ⚠️ R69：本守卫的**最后一行必须**是「N 通过 / M 失败」收尾行 —— 收尾文案一律排在它**之前**。
 if (fails.length) console.log('失败项：' + fails.join(' | '));

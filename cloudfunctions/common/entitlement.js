@@ -15,6 +15,9 @@
 
 const nowUtc = () => Date.now();
 
+// 🔴 R603：免费期开关（与前端 utils/featureFlags.js::FREE_ACCESS_MODE 同值，守卫 L9-⑧ 比对）。
+const { FREE_ACCESS } = require('./payFlags');
+
 /**
  * 是否已付费（纯函数，便于 selftest）。0 / undefined / 已过期的时间戳 ⇒ false。
  * @param {number} expireAt 权益到期毫秒
@@ -46,6 +49,12 @@ async function loadExpireAt(db, userId) {
  */
 async function hasFeature(db, userId, featureKey) {
   if (PAID_FEATURES.indexOf(featureKey) < 0) return true;
+  // 🔴 R603：免费期 ⇒ 付费域一律放行。
+  //   放在这里而不是各业务函数：exportData / getDishReview / saveCostCard / syncCostCard /
+  //   saveDishMapping 五处 `hasFeature` 调用点一行不改，新增消费方自动受管。
+  //   ⚠️ 必须与前端 `utils/entitlement.js::fetchEntitlement` 的短路**同时生效**：
+  //     只改前端 ⇒ 导出/复盘/套餐仍返 FEATURE_LOCKED（后端这一道才是真判据）。
+  if (FREE_ACCESS) return true;
   return isPaid(await loadExpireAt(db, userId));
 }
 

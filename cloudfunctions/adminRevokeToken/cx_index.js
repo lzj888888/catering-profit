@@ -47,6 +47,10 @@ module.exports = {
   hasFeature: require('./cx_entitlement').hasFeature,
   isPaid: require('./cx_entitlement').isPaid,
   PAID_FEATURES: require('./cx_entitlement').PAID_FEATURES,
+  // 🔴 R603：商业化开关（免费期）。新增单源符号必须在此聚合导出，
+  //    否则调用点 `common.FREE_ACCESS` 在真云上 undefined（genId 事故族）。
+  payFlags: require('./cx_payFlags'),
+  FREE_ACCESS: require('./cx_payFlags').FREE_ACCESS,
 
   // M3.14/M3.15（R150）：组件分类 + 多规格**派生层单源** —— 入参变换，5 份引擎副本一个不碰。
   //   ⚠️ 同 genId 教训：新符号务必在此聚合入口导出，否则云端 `const { deriveSpec } = common` 会 TypeError。
