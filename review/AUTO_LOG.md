@@ -1282,5 +1282,32 @@
   - (8) 门禁：**227/227 · RC=0**（中途 `suite-assert-counts` 红一次，已同步存储点口径行，未抬基线）。
   - (9) 仍待李老师：① 微信认证 30 元 ② **今天提交备案（7~20 工作日，最长关键路径）**
     ③ 隐私指引勾「剪贴板」 ④ 真机走查付费入口应只见「功能完善中」。
+    ⚠️ 本条 (4)(9) 已被 **R603 回改**：付费入口不再一律「功能完善中」——功能改为全开，
+    只有配额类（1 店 / 20 道菜）给「当前版本上限」说明。见下条。
+
+- **R603（2026-11-02 18:10）收费保留·功能放行 —— 修正 R602 的方向错误**（提交 `b8cd731`）
+  - (1) 起因（李老师原话）：「导出、套餐、外卖、复盘 为什么要显示功能完善中，个人也支持这些功能呀」。
+  - (2) 根因：R602 的闸门挂在 `openPaywall`，而它的 **11 个调用点全是「付费域判定失败后的出口」**
+    （外卖 onCalc/onReverse、团购 onCalc、复盘 load、导出 onExport、套餐 save catch、多店/卡数配额）
+    ⇒ 关售卖 = 外卖算不了、套餐存不了、复盘 locked、导出点不动。门禁 227 全绿却没发现，
+    因为守卫只守「分支在不在」、不守「分支到不到」（同族第九例）。
+  - (3) 修法：`FREE_ACCESS_MODE = !PAYWALL_ENABLED`（**派生**，不设第二个开关）；
+    前端 `fetchEntitlement` + 云端 `hasFeature` 双短路 ⇒ 11 处调用点与 5 处云函数零改动；
+    新增 `common/payFlags.js::FREE_ACCESS`；`sync_common` 同步 55 个函数目录；
+    配额类改走 `showFreeLimit`（文案零价格/零购买引导/零客服），`scope`/`limit` 取后端出参。
+  - (4) 守卫：新增 **L9-⑦**（关闭态付费域必须可用：前后端都要有短路且先于取库）
+    + **L9-⑧**（云端 `FREE_ACCESS` ≡ `!前端 PAYWALL_ENABLED`）；L9-③ 扩到 `showNotOpen` 与
+    `showFreeLimit` **两个出口**；GATE_RE 由字面量改语义判据（原写法会把块状正确实现判红）。
+  - (5) 真变异 `review/evidence/r603_free_access/mut_free.py`：删前端短路 / 删后端短路 / 翻云端开关
+    ⇒ **3/3 全红**，还原 md5 一致、`git status` 无残留（含 SIGTERM 显式还原）。
+  - (6) 运行时取证（不只读码）：`fetchEntitlement()` → `{is_active:true, source:'free_mode'}`；
+    `hasFeature(db,'u1','m3_takeaway')` → `true`（fakeDb 未被访问 = 真短路、非查库兜底）。
+  - (7) 门禁 **227/227 · RC=0**（另修驱动：`run_gate3.py` 的 R69/R66 只判 stdout ——
+    stderr 调试日志会顶掉收尾行，导致 `m2-partial-behavior`/`export-roundtrip` 被误判「未走完收尾」）。
+  - (8) 收费模型与主体路线见 `review/PLAN_2026-11-02_收费模型与主体路线.md`：
+    个人 vs 个体户**功能零差异**；虚拟商品 2026-04-01 起强制走虚拟支付 ⇒ 个体户的商户号对本业务用不上
+    ⇒ 主体选择不改变代码路径，只改变提交材料与限额（个人月限 10 万）。
+  - (9) 待办：部署 5 个云函数（`exportData`/`getDishReview`/`saveCostCard`/`syncCostCard`/`saveDishMapping`）
+    —— **不部署则云端仍返 FEATURE_LOCKED**；李老师：认证 → 备案 → 类目「工具」→ 开通虚拟支付。
 
 
