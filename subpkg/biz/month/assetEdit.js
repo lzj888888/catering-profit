@@ -184,8 +184,9 @@ Page({
     // 🔴 #549：金额读不成数字 ⇒ 硬拦保存（指名提示，不静默按 0 存）。保留下方「必须 >0」正数校验。
     if (!AmountInput.classifyAmount(this.data.amountYuan).readable) {
       wx.showModal({
-        title: '金额读不成数字',
-        content: '金额栏填的内容系统读不成金额（常见：带逗号「12,000」、全角、带空格），会被按 0 元计算。请改成纯数字后再保存。',
+        // 🔴 R600：文案走 terms 单源（原先硬编码；栏名直接取页面标签 t.fAmount）
+        title: TERMS.ui.amountBadTitle,
+        content: TERMS.ui.amountBadBodySave.replace('{list}', T.fAmount),
         showCancel: false,
       });
       return;

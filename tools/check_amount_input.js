@@ -498,6 +498,43 @@ ok('②-70 M3 成本卡 wxml 按 badUsageCount 渲染 + 用量文案键真绑定
   cardXml.indexOf('badUsageCount > 0') >= 0 && cardXml.indexOf('t.usageBadTip') >= 0
   && cardJs.indexOf('usageBadTip: TERMS.card.usageBadTip') >= 0);
 
+// ---- R600：技术债清偿（弹窗文案单源 + M1 保存前出声）----
+// 来由：库存 / 资产两页把「金额读不成数字」的**标题+正文硬编码在页面里**，矩阵页却走 terms
+//   ⇒ 同一件事两套说法；术语改名时硬编码那两页静默失灵，且任何"文案单源"守卫都扫不到它们。
+//   M1 则只有页顶横幅、保存按钮在页底 ⇒ 老板看不见 ⇒ 读不成的金额被按 0 存进去、零报错。
+const m1Save = bodyOf(m1, 'onSave');
+const TERMS_MOD = require('../miniprogram/i18n/terms.js').TERMS;
+
+ok('②-74 库存 / 资产页的拦截弹窗走 terms 单源（页面里不再出现硬编码标题「金额读不成数字」）',
+  invSave.indexOf('TERMS.ui.amountBadTitle') >= 0
+  && invSave.indexOf('TERMS.ui.amountBadBodySave') >= 0
+  && assetOnSave.indexOf('TERMS.ui.amountBadTitle') >= 0
+  && assetOnSave.indexOf('TERMS.ui.amountBadBodySave') >= 0
+  && invJs.indexOf("'金额读不成数字'") < 0
+  && assetJs.indexOf("'金额读不成数字'") < 0);
+ok('②-75 矩阵页与库存/资产共用同一批 ui 文案键（矩阵自有那对键已删）',
+  matrixGen.indexOf('TERMS.ui.amountBadTitle') >= 0
+  && matrixGen.indexOf('TERMS.ui.amountBadBodyGen') >= 0
+  && matrixJs.indexOf('M.amountBadTitle') < 0
+  && TERMS_MOD.matrix.amountBadTitle === undefined);
+// 🔴 只判"代码里写了键名"不够 —— 键在 terms 里不存在时，弹窗会**空白**（wx.showModal 传 undefined 不报错）。
+//   所以独立判一面：键真存在且有值、函数键真是函数。
+ok('②-76 四个文案键在 terms 里真有值（防 undefined ⇒ 弹窗空白）',
+  typeof TERMS_MOD.ui.amountBadTitle === 'string' && TERMS_MOD.ui.amountBadTitle.length > 0
+  && typeof TERMS_MOD.ui.amountBadBodySave === 'string' && TERMS_MOD.ui.amountBadBodySave.indexOf('{list}') >= 0
+  && typeof TERMS_MOD.ui.amountBadBodyGen === 'string' && TERMS_MOD.ui.amountBadBodyGen.indexOf('{list}') >= 0
+  && typeof TERMS_MOD.ui.amountBadBodyCount === 'function'
+  && String(TERMS_MOD.ui.amountBadBodyCount(3)).indexOf('3') >= 0);
+ok('②-77 M1 保存前出声（onSave 体内取计数 ⇒ >0 就弹窗 ⇒ return，不再只靠页顶横幅）',
+  m1Save.indexOf('this.checkAmounts()') >= 0
+  && m1Save.indexOf('TERMS.ui.amountBadBodyCount(badN)') >= 0
+  && m1Save.indexOf('showModal') >= 0);
+ok('②-78 M1 弹窗给「去修改 / 仍保存」两条路（费用行允许负数冲红 ⇒ 不夺走保存权）',
+  m1Save.indexOf('TERMS.ui.amountBadGoFix') >= 0 && m1Save.indexOf('TERMS.ui.amountBadSaveAnyway') >= 0
+  && m1Save.indexOf('if (r.cancel) proceed();') >= 0);
+ok('②-79 checkAmounts 真把计数返回出去（原先只写 data、无 return ⇒ 保存前拿不到数）',
+  /return\s+n\s*;/.test(m1Chk));
+
 // ================= ③ 反恒真 =================
 ok('③-1 反恒真：删掉 scheduleCalc 里的调用 ⇒ ②-3 会红',
   (() => { const b = calcBody.replace('checkAmountInputs(', ''); return b.indexOf('checkAmountInputs(') < 0; })());
@@ -551,6 +588,12 @@ ok('③-16 反恒真：把外卖体检里的 chkQ 调用全摘掉 ⇒ ②-71 必
 ok('③-17 反恒真：把外卖 onCalc/onReverse 的 warnBadAmounts 调用摘掉 ⇒ ②-73 必红',
   tkCalc.replace('warnBadAmounts(', '').indexOf('warnBadAmounts(') < 0
   && tkRev.replace('warnBadAmounts(', '').indexOf('warnBadAmounts(') < 0);
+// R600：证明「M1 保存前取计数」不是恒真（摘掉 checkAmounts 调用 ⇒ ②-77 必红）
+ok('③-18 反恒真：把 M1 onSave 里的 checkAmounts 调用摘掉 ⇒ ②-77 必红',
+  m1Save.replace('this.checkAmounts()', '').indexOf('this.checkAmounts()') < 0);
+// R600：证明「资产页走 terms 单源」不是恒真（把键引用抹掉 ⇒ ②-74 必红）
+ok('③-19 反恒真：把资产页的 TERMS.ui.amountBadTitle 抹掉 ⇒ ②-74 必红',
+  assetOnSave.replace(/TERMS\.ui\.amountBadTitle/g, '').indexOf('TERMS.ui.amountBadTitle') < 0);
 
 // ================= ④ 下界 =================
 ok('④ 断言数下界（≥40）', pass + fail >= 40, '实际 ' + (pass + fail));

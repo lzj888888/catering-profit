@@ -1217,3 +1217,24 @@
 - 同步：`CHECKLIST_真机验收_R599` 的 A4 段判据由「有横幅」改为「**横幅 + 弹窗**」，并补「点了完全没反应」为不合格样。
 - 登记未做（技术债，非本轮）：库存/资产页弹窗文案仍硬编码（未走 `terms.js`）；M1 录入页（R426）**只有横幅、保存不硬拦**，
   属既有设计，动它风险大，留待真机反馈后单独评估。
+
+### R600 · 技术债清偿（文案单源 / M1 保存前出声 / 记忆瘦身）
+
+- [2026-11-02 14:xx] 三条已登记技术债一次清完，零计算逻辑改动。
+  - (1) 事故与恢复：`Edit` 中断把 `miniprogram/i18n/terms.js` 写成 **258114 字节全 `\0`**
+    （`Read` 报 binary、`git status` 仍是 ` M`）⇒ `git show HEAD:<path> > <path>` 恢复，
+    md5 `e45bd2ae…` 与 specs 副本一致；扫近 3 小时 js/wxml/wxss/json **仅此一个**被污染。
+  - (2) 债一：库存/资产弹窗文案由硬编码上提 `TERMS.ui.amountBadTitle / amountBadBodySave`；
+    矩阵改共用 `TERMS.ui.*`，`matrix.amountBadTitle/amountBadBody` **已删**（注释留「勿再引用」）。
+    双副本 md5 `18a8200d…`。
+  - (3) 债二：M1 `checkAmounts()` 末尾 `return n;`；`onSave()` 加**确认弹窗**（去修改/仍保存），
+    位置在 `proceed` 之后、缺项提示之前 ⇒ 数字错优先于漏填，且「仍保存」仍走原流程。
+    **刻意不硬拦**：费用行允许负数冲红，`classifyAmount` 判 NEGATIVE 不可读 ⇒ 硬拦会堵死合法录入。
+  - (4) 债三：主记忆 8037 → **7598** 字符；外移 〔R600〕 小节（R570 两坑全文 + R303 部署通道全文 +
+    两条截断残行合并指针），只搬不删。守卫仍提示（阈值 >7000，设计内），余量 402。
+  - (5) 守卫：`check_amount_input.js` 断言 **98 → 106**（②-74~②-79 + ③-18/③-19）。
+    **真变异**：`badN = 0` ⇒ 105/1 红在 ②-77；资产页改回硬编码 ⇒ 105/1 红在 ②-74；均还原并复核 md5。
+  - (6) 实测：金额守卫 106/0；周边 wxml 3/0、hint_fold 190/0、class 4/0、断言数 97/0、m2_matrix 191/0、
+    money 30/0、page_terms 25/0、terms_forbidden 13/0、memory_budget 1/0；
+    `mk_force` 两轮 `refreshed 171 / cache 177`；**门禁 227/227 · GATE_RC=0**（`_gate_r600.log`）。
+  - (7) 出码：本批提交后出（`miniprogram-preview-qr`），码 25 分钟有效。

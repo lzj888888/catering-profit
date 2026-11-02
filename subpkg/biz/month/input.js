@@ -832,6 +832,9 @@ Page({
     if (!AmountInput.classifyAmount(this.data.directConsumeYuan).readable) n++;
     // 只在数量变化时 setData（避免每次按键都触发一次渲染）
     if (n !== this.data.badAmountCount) this.setData({ badAmountCount: n });
+    // 🔴 R600：**必须把计数返回出去**。原先只写 data、无返回值 ⇒ 保存前拿不到数字，
+    //   只能靠页顶横幅提示；而保存按钮在页底、横幅在页顶 ⇒ 老板看不见 ⇒ 等于静默按 0 存。
+    return n;
   },
   // T4b（round97）：费用段「+ 添加细项」→ 先弹该类**尚未添加**的预设项清单。
   //   ⚠️ 本轮只作用于费用侧（data-kind="expense"）；收入侧仍走 addRow（空白行）—— 范围刻意限定。
@@ -1746,6 +1749,23 @@ Page({
         doSave();
       }
     };
+    // 🔴 R600（技术债清偿）：保存前**必须让读不成的金额出声**。
+    //   原先只有页顶横幅（R426/R419 设计），而保存按钮在页底 ⇒ 老板滑到按钮时横幅早出视野，
+    //   读不成的金额被按 0 存进去、零报错 = 本仓头号危害。
+    //   为什么这里**用确认弹窗而不是硬拦**：M1 的费用行允许负数（冲红/退款），`classifyAmount` 判 NEGATIVE 为不可读，
+    //   硬拦会把合法录入堵死 ⇒ 给「去修改 / 仍保存」两条路，默认动作是去核对，但不夺走他的保存权。
+    const badN = this.checkAmounts();
+    if (badN > 0) {
+      wx.showModal({
+        title: TERMS.ui.amountBadTitle,
+        content: TERMS.ui.amountBadBodyCount(badN),
+        confirmText: TERMS.ui.amountBadGoFix,
+        cancelText: TERMS.ui.amountBadSaveAnyway,
+        success: (r) => { if (r.cancel) proceed(); },   // 「仍保存」⇒ 照常走后续（缺项提示 / 归档确认）
+        fail: () => proceed(),                          // 弹窗失败绝不阻断保存（与缺项提示同一条纪律）
+      });
+      return;
+    }
     // round217：先过一次「缺项软提示」（每个账套每月只问一次；问过就不再打扰）
     const miss = this.missingRecurringNames();
     if (miss.length && !this.missingWarned()) {

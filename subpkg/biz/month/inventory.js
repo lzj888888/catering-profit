@@ -268,8 +268,9 @@ Page({
       const nameMap = { opening: this.data.t.opening, purchase: this.data.t.purchase, closing: this.data.t.closing };
       const list = bad.map((b) => (nameMap[b.key] || b.key)).join('、');
       wx.showModal({
-        title: '金额读不成数字',
-        content: '以下栏填的内容系统读不成金额（常见：带逗号「12,000」、全角、带空格），会被按 0 元计算：' + list + '。请改成纯数字后再保存。',
+        // 🔴 R600：文案走 terms 单源（原先硬编码在页面里 ⇒ 与矩阵页两套说法、改名时静默失灵）
+        title: TERMS.ui.amountBadTitle,
+        content: TERMS.ui.amountBadBodySave.replace('{list}', list),
         showCancel: false,
       });
       return;

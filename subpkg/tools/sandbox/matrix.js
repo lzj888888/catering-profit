@@ -1188,8 +1188,8 @@ Page({
     if (badAmounts.length) {
       const names = badAmounts.map((b) => this.amountLabelOf(b.key)).join('、');
       wx.showModal({
-        title: M.amountBadTitle,
-        content: fmt(M.amountBadBody, { list: names }),
+        title: TERMS.ui.amountBadTitle,
+        content: fmt(TERMS.ui.amountBadBodyGen, { list: names }),
         showCancel: false,
       });
       return;
