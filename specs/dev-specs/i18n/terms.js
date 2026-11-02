@@ -3075,6 +3075,11 @@ const TERMS = {
 
   // ===== 二十二、批次 5 付费全流程文案 =====
   pay: {
+    // 🔴 提审期交易闸门（featureFlags.PAYWALL_ENABLED=false）唯一出口文案。
+    //   口径：**不报价、不提支付、不给客服**；只说"完善中 + 哪些还能免费用"。
+    //   守卫 tools/check_paywall_coverage.js L9-③ 扫 showNotOpen 函数体，禁止出现诱导词。
+    notOpenTitle: '功能完善中',
+    notOpenBody: '该功能还在完善，将在后续版本开放。成本卡、原料库与月度核算可正常使用。',
     // 支付结果
     successTitle: '已开通',
     successBody: (dateStr) => `有效期至 ${dateStr}`,

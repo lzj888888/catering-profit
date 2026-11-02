@@ -9,6 +9,8 @@ const ui = require('../../../utils/ui.js');
 const entitle = require('../../../utils/entitlement.js');
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 const { isIOS } = require('../../../utils/platform.js');
+const { PAYWALL_ENABLED } = require('../../../utils/featureFlags.js');
+const { showNotOpen } = require('../../../utils/paywall.js');
 
 Page({
   data: {
@@ -65,7 +67,8 @@ Page({
         expireText,
         // 续费入口：到期前 30 天内（days_left<=30）或已到期均可见；长期有效不显示
         // ⚠️ R45：iOS 端不展示续费入口（虚拟商品不得在 iOS 小程序内购买）
-        showRenew: !isIOS() && (ent.expire_at === 0 || ent.days_left <= 30),
+        // 🔴 提审期（PAYWALL_ENABLED=false）同样不展示：入口一旦可见就是"售卖虚拟商品"的表态
+        showRenew: PAYWALL_ENABLED && !isIOS() && (ent.expire_at === 0 || ent.days_left <= 30),
         loading: false,
       });
     } catch (e) {
@@ -89,6 +92,9 @@ Page({
 
   // 续费：下单（复用 payCreateOrder 逻辑的 payRenew）；私域阶段提示联系客服
   async onRenew() {
+    // 🔴 纵深：入口已隐藏，此处再拦一道（防 wxml 改版 / deep link 直达漏网）；
+    //    提审期（PAYWALL_ENABLED=false）连建单都不允许 ⇒ 直接回「暂未开放」，不调 payRenew。
+    if (!PAYWALL_ENABLED) return showNotOpen();
     // ⚠️ R45 纵深：入口已隐藏，此处再拦一道（防 wxml 改版或 deep link 直达时漏网）
     if (isIOS()) {
       wx.showModal({

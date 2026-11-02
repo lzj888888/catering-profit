@@ -14,6 +14,7 @@
 const { TERMS } = require('../miniprogram/i18n/terms.js');
 const api = require('./api.js');
 const { isIOS } = require('./platform.js');
+const { PAYWALL_ENABLED } = require('./featureFlags.js');
 
 /**
  * 允许的触发类型。**新增付费能力时只改这一处**（配 terms.paywall 同名键 + 守卫 check_paywall_coverage）。
@@ -33,6 +34,9 @@ const PAYWALL_TYPES = ['saveLimit', 'export', 'combo', 'takeaway', 'dishreview',
  */
 function openPaywall(type, opts) {
   if (PAYWALL_TYPES.indexOf(type) < 0) return; // 防误触发
+  // 🔴 提审期交易闸门（PAYWALL_ENABLED=false）：不报价、不引导客服、不建单。
+  //   放在这里而不是各调用点：11 处调用点一处不改，且新增调用点自动受管。
+  if (!PAYWALL_ENABLED) return showNotOpen();
   // R45：iOS 端不得提供虚拟商品购买入口 ⇒ 弹窗改为纯提示，**不给确认下单按钮**
   if (isIOS()) return showIOSBlocked();
   const def = TERMS.paywall[type];
@@ -77,6 +81,25 @@ function showIOSBlocked() {
 }
 
 /**
+ * 提审期（PAYWALL_ENABLED=false）统一出口：只告知「暂未开放」。
+ * 🔴 这里**绝不能**出现：价格/金额、「去开通/购买/续费」、客服入口 —— 三者任一都会踩
+ *    「诱导线下支付」或「虚拟商品未接入虚拟支付」。守卫 L9-③ 扫本函数体把关。
+ * 🔴 fail-closed：showModal 失败也要给可见反馈，不能"点了没反应"。
+ */
+function showNotOpen() {
+  wx.showModal({
+    title: TERMS.pay.notOpenTitle,
+    content: TERMS.pay.notOpenBody,
+    showCancel: false,
+    confirmText: TERMS.buttons.gotIt,
+    confirmColor: '#1e3a5f',
+    fail(err) {
+      wx.showToast({ title: (err && err.errMsg) || TERMS.pay.notOpenTitle, icon: 'none', duration: 2500 });
+    },
+  });
+}
+
+/**
  * 主按钮确认：创建订单 → 当前阶段（enable_real_payment=false）提示联系客服开通。
  * 不接真实支付时，订单仍写入 shop_payment_flow（订单记录页可见），权益由后台 source=manual 发放。
  *
@@ -84,6 +107,8 @@ function showIOSBlocked() {
  *    （守卫 tools/check_ios_pay.js 只保证"文件里做了判断"，本行保证"运行时真挡住"）。
  */
 async function onConfirm(type, opts) {
+  // 🔴 纵深第一道：绕过 openPaywall 直调本函数（deep link / 改版）时，同样不得建单
+  if (!PAYWALL_ENABLED) return showNotOpen();
   if (isIOS()) return showIOSBlocked();
   const shopId = (opts && opts.shopId) || (getApp && getApp().globalData && getApp().globalData.shop_id) || '';
   const planId = (opts && opts.planId) || 'plan_basic_month';
@@ -132,4 +157,4 @@ function openService() {
   return false;
 }
 
-module.exports = { openPaywall, openService, TERMS };
+module.exports = { openPaywall, openService, showNotOpen, TERMS };

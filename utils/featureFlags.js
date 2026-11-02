@@ -38,4 +38,22 @@ const BILL_IMPORT_ENABLED = false;
 //   云函数不涉及（纯前端派生）。恢复 = 这里改回 true。
 const PROMO_ENABLED = false;
 
-module.exports = { BILL_IMPORT_ENABLED, PROMO_ENABLED };
+// ===== 付费交易闸门（提审期）=====
+// 李老师 2026-11-02 定：**主体 = 个人**。
+//
+// 为什么必须整体关掉交易链路（不是"改文案"）：
+//   ① 个人主体**开不了普通微信支付商户号** ⇒ 现有 `payCreateOrder` 那条真金链路根本走不通；
+//      个人收费的唯一合规通道是「个人虚拟支付」（2026-08 开放，需认证+备案+类目）。
+//   ② 提审期只要出现「标价 / 去开通 / 加客服转账」三者之一，就会踩两条审核红线：
+//      「诱导线下支付」与「虚拟商品未接入虚拟支付」—— 这是**整包驳回**，不是改一行能补的。
+//   ③ 但也不能只删文案：`onConfirm` 仍会建单、`onRenew` 仍会下单，deep link / 改版都能绕过。
+//   ⇒ 故在**交易入口**上加单一闸门：弹窗、确认下单、续费三处各判一次（纵深），
+//     关闭态一律只回「该功能暂未开放」，**不报价、不引导客服、不建单**。
+//
+// 关闭 ≠ 删代码：`PAYWALL_TYPES`、`TERMS.paywall`、云函数 `payCreateOrder`/`payRenew`/`payCallback`
+//   与付费能力判定**全部原样保留**，只是前端不把用户导进交易。
+// 恢复 = 个人虚拟支付接好（或主体升级为企业并开通商户号）后，把这里改回 true；
+//   前端其余一行不改，守卫 `tools/check_paywall_coverage.js` L9 会跟着翻面。
+const PAYWALL_ENABLED = false;
+
+module.exports = { BILL_IMPORT_ENABLED, PROMO_ENABLED, PAYWALL_ENABLED };

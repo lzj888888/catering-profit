@@ -307,6 +307,101 @@ check('L8-⑥ 跨页隔离反恒真：团购函数喂外卖清单、外卖函数
   unpaidPaidCallers(X_TAK, PAGES[0].fns).length === 0 && unpaidPaidCallers(X_GRP, PAGES[1].fns).length === 0,
   `外卖清单认领团购入口=${unpaidPaidCallers(X_TAK, PAGES[0].fns).length} 团购清单认领外卖入口=${unpaidPaidCallers(X_GRP, PAGES[1].fns).length}`);
 
+// ---- L9 提审期交易闸门（R601 新增；主体=个人 ⇒ 普通商户号走不通，交易必须先关）----
+//   为什么单立这一组：L1~L8 只保证「付费能力都配了墙」，**不保证墙后面在卖东西**。
+//   而个人主体提审的红线是「不许出现虚拟商品售卖」—— 判据必须回答：
+//     「开关关掉时，用户点付费入口 → 到底会不会建单 / 引导客服 / 看到价格」。
+//   判据全部**锚到函数体内**（教训 R299：全文匹配会被同文件另一处同名模式喂成恒真）。
+const FLAGS_REL = 'utils/featureFlags.js';
+const ORDERS_REL = 'subpkg/tools/pay/orders.js';
+const flagsSrc = read(FLAGS_REL);
+const mFlag = flagsSrc.match(/const\s+PAYWALL_ENABLED\s*=\s*(true|false)\s*;/);
+const flagVal = mFlag ? mFlag[1] : '';
+check('L9-① PAYWALL_ENABLED 可解析为布尔字面量（fail-closed：解析不到即红，防开关被改名后静默失效）',
+  !!flagVal, flagVal ? `PAYWALL_ENABLED = ${flagVal}` : '解析失败');
+
+/** 取顶层 `function name(...) {...}` / `async function name(...) {...}` 的函数体；配平失败 ⇒ ''（fail-closed）。 */
+function fnBody(src, name) {
+  const re = new RegExp('(?:async\\s+)?function\\s+' + name + '\\s*\\([^)]*\\)\\s*\\{');
+  const m = re.exec(src);
+  if (!m) return '';
+  const start = src.indexOf('{', m.index);
+  let depth = 0;
+  for (let i = start; i < src.length; i++) {
+    if (src[i] === '{') depth++;
+    else if (src[i] === '}') { depth--; if (depth === 0) return src.slice(start, i + 1); }
+  }
+  return '';
+}
+
+// 判据本体（单独抽出来，才能拿影子样本反证它"真的会判红"）。
+//   要求：① 函数体内出现 `if (!PAYWALL_ENABLED) return showNotOpen();`
+//        ② 该闸门必须**先于** `wx.showModal`（否则用户先看到报价、再被拦，等于已经展示了售卖信息）
+const GATE_RE = /if\s*\(\s*!\s*PAYWALL_ENABLED\s*\)\s*return\s+showNotOpen\s*\(\s*\)/;
+function gateOk(body) {
+  if (!body) return false;
+  const g = body.search(GATE_RE);
+  const m = body.indexOf('wx.showModal');
+  return g >= 0 && (m < 0 || g < m);
+}
+
+const openBody = fnBody(pwSrc, 'openPaywall');
+check('L9-② 🔴 openPaywall 函数体内必须有提审期闸门，且**先于**报价弹窗（关掉时用户看不到任何售卖信息）',
+  gateOk(openBody), openBody ? (gateOk(openBody) ? '闸门在 wx.showModal 之前' : '缺闸门或闸门在弹窗之后') : 'openPaywall 未解析到');
+
+// L9-③ 关闭态出口的**文案面**：不许出现价格、支付、开通、客服、续费。
+//   🔴 这条必须判**文案的实际字符串值**，不能只判函数体 ——
+//      函数体里只有 `TERMS.pay.notOpenBody` 这个**引用**，真正的字在 terms.js；
+//      只扫函数体的话，把文案改成「请联系客服开通」判据照样绿（同族病：读到引用 ≠ 读到内容）。
+const notOpenBody = fnBody(pwSrc, 'showNotOpen');
+const BAD_WORDS = ['联系客服', '客服', '开通', '购买', '续费', '支付', '付款', '元/', '¥', '价格', '订阅', '会员'];
+const notOpenText = [TERMS && TERMS.pay && TERMS.pay.notOpenTitle, TERMS && TERMS.pay && TERMS.pay.notOpenBody]
+  .filter(Boolean).join('');
+const notOpenHits = BAD_WORDS.filter((w) => notOpenText.indexOf(w) >= 0);
+// 同时要求函数体**引用**单源文案（防绕开 terms 直接硬编码一句诱导话）
+const usesTerms = /TERMS\.pay\.notOpenTitle/.test(notOpenBody) && /TERMS\.pay\.notOpenBody/.test(notOpenBody);
+check('L9-③ 🔴 关闭态出口必须引用单源文案，且文案值不得含价格/支付/开通/客服/续费类词 —— 闸门在但话诱导 = 白关',
+  notOpenBody.length > 0 && usesTerms && notOpenHits.length === 0,
+  notOpenHits.length ? `文案命中禁词：${notOpenHits.join('、')}`
+    : (usesTerms ? `出口文案干净（标题+正文 ${notOpenText.length} 字符）` : '函数体未引用 TERMS.pay.notOpen*（疑似硬编码）'));
+
+// L9-④ 纵深：绕过弹窗直调下单函数时也必须被拦。
+//   `onConfirm` 是 payCreateOrder 的唯一前端入口；`orders.onRenew` 是 payRenew 的唯一入口。
+const confirmBody = fnBody(pwSrc, 'onConfirm');
+check('L9-④a 🔴 onConfirm 函数体内有独立闸门（防 deep link / 改版绕过 openPaywall 直接建单）',
+  GATE_RE.test(confirmBody), confirmBody ? (GATE_RE.test(confirmBody) ? '已拦' : '缺闸门') : 'onConfirm 未解析到');
+
+let ordersSrc = '';
+try { ordersSrc = fs.readFileSync(path.join(ROOT, ORDERS_REL), 'utf8'); } catch (_) { ordersSrc = ''; }
+const ordersBodies = pageMethodBodies(ordersSrc) || [];
+const renewBody = (ordersBodies.find((b) => b.name === 'onRenew') || {}).body || '';
+// 🔴 必须锚到 `load()` 体内：同文件 `data.showRenew: false` 也命中 `showRenew:`，
+//    全文匹配会抓到 data 那行（恒不带开关）⇒ 判据永久判红/或反过来被喂绿（R299 同族）。
+const loadBody = (ordersBodies.find((b) => b.name === 'load') || {}).body || '';
+const entryGated = /showRenew\s*:\s*PAYWALL_ENABLED\s*&&/.test(loadBody);
+check('L9-④b 🔴 续费页 onRenew 有独立闸门，且 load() 里的 showRenew 入口受开关约束（否则订单页仍是一个"续费"按钮）',
+  GATE_RE.test(renewBody) && entryGated,
+  renewBody ? `onRenew ${GATE_RE.test(renewBody) ? '已拦' : '缺闸门'} / showRenew ${entryGated ? '受控' : '未受控'}`
+    : 'onRenew 未解析到');
+
+// L9-⑤ 单源：开关只允许在 featureFlags.js 定义（本仓反复踩「同一开关多处写死 ⇒ 半开半关」）。
+const FRONT_ROOTS = ['pages', 'subpkg', 'utils'];
+const frontFiles = FRONT_ROOTS.reduce((acc, r) => walk(path.join(ROOT, r), acc), []);
+const dupDef = frontFiles
+  .map((f) => path.relative(ROOT, f).replace(/\\/g, '/'))
+  .filter((rel) => rel !== FLAGS_REL)
+  .filter((rel) => /(?:const|let|var)\s+PAYWALL_ENABLED\s*=/.test(read(rel)));
+check('L9-⑤ 开关单源：PAYWALL_ENABLED 只允许在 utils/featureFlags.js 定义（防半开半关）',
+  dupDef.length === 0 && frontFiles.length > 50,
+  dupDef.length ? `重复定义：${dupDef.join(', ')}` : `扫描面 ${frontFiles.length} 个 .js，无重复定义`);
+
+// L9-⑥ 反恒真：影子样本必须被判红（否则上面几条只是"恒绿装饰"）。
+const SHADOW_NO_GATE = '{ const def = TERMS.paywall[type]; wx.showModal({ title: def.title }); }';
+const SHADOW_GATE_AFTER = '{ wx.showModal({ title: x }); if (!PAYWALL_ENABLED) return showNotOpen(); }';
+check('L9-⑥ 反恒真：无闸门样本必须判红、闸门在弹窗之后也必须判红（证明 L9-② 有分辨力）',
+  gateOk(SHADOW_NO_GATE) === false && gateOk(SHADOW_GATE_AFTER) === false && gateOk(openBody) === true,
+  `无闸门=${gateOk(SHADOW_NO_GATE)} 闸门后置=${gateOk(SHADOW_GATE_AFTER)} 真实=${gateOk(openBody)}`);
+
 // ⚠️ R69：本守卫的**最后一行必须**是「N 通过 / M 失败」收尾行 —— 收尾文案一律排在它**之前**。
 if (fails.length) console.log('失败项：' + fails.join(' | '));
 console.log(fails.length === 0
