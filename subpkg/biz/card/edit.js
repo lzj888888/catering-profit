@@ -32,12 +32,12 @@ const INPUT_MODE_KEY = 'card_input_mode_';
 //   两者都是**本页展示/录入层**的东西 —— 提交给云端时 qty 一律换算成基准单位(克)，
 //   ⚠️ 不新增云函数字段、不改快照契约、不碰引擎（红线段）。
 // round150：新增 `line_kind`（组件类型，M3.14）—— 它**要**上云（是规格缩放的唯一依据）。
-function emptyLine() { return { input_type: 1, material_id: '', material_name: '', qty: '', qty_unit: units.BASE_UNIT, spec_hint: '', line_kind: 'main' }; }
+function emptyLine() { return ensureRid({ input_type: 1, material_id: '', material_name: '', qty: '', qty_unit: units.BASE_UNIT, spec_hint: '', line_kind: 'main' }); }
 // 手工行工厂
 // round151：新增 `price_unit`（**单价单位**，读作「元/X」）。改前单价恒被读作「元/克」——
 //   老板买 6 元/斤的肉，得自己心算成 0.012 才敢填。现在选「斤」直接填 6，
 //   提交前由 `units.priceToBase` 折算回元/克（折算只发生在录入层）。
-function emptyManualLine() { return { input_type: 2, material_id: '', material_name: '', qty: '', qty_unit: units.BASE_UNIT, price_unit: units.BASE_UNIT, spec_hint: '', unit_warn: '', unit_price_yuan: '', yield_rate: '100', line_kind: 'main' }; }
+function emptyManualLine() { return ensureRid({ input_type: 2, material_id: '', material_name: '', qty: '', qty_unit: units.BASE_UNIT, price_unit: units.BASE_UNIT, spec_hint: '', unit_warn: '', unit_price_yuan: '', yield_rate: '100', line_kind: 'main' }); }
 
 // round156：规格行的「全新空态」工厂。抽成函数是为了让 data 初始化与「连续录入重置」共用**同一份**定义
 //   —— 否则第二处手抄一遍，将来加一个规格键就会漏掉一处（抄一份必漂）。
@@ -50,9 +50,23 @@ function freshSpecRows() {
   }));
 }
 
+// R606-bis：行为行级可编辑循环提供**稳定身份键**（不随数组重排/重赋值而漂），
+// 原生 <input> 用下标复用 DOM 会导致「框填不进/丢焦点」。镜像 month/input.js 写法。
+const _ridPrefix = 'k' + Date.now().toString(36) + '_';
+let _ridSeq = 0;
+function ensureRid(r) {
+  if (!r) r = {};
+  if (!r.rid) r.rid = _ridPrefix + (_ridSeq++).toString(36);
+  return r;
+}
+
 function renumber(lines) {
   return lines.map((l, i) => Object.assign({}, l, {
     idx: i,
+    // R606-bis：注入**稳定身份键**（不随数组重排/重赋值而漂）。原生 <input> 按下标复用 DOM
+    // ⇒ 位置键会在每次按键整体重赋值后错位，表现为「框填不进/丢焦点」。rid 为渲染层专用键，
+    // 提交给云端时由 doSave/buildCalcLines 重建干净 payload（不含 rid），不影响契约。
+    rid: l.rid || (_ridPrefix + (_ridSeq++).toString(36)),
     // 🔴 R297-⑥（审计 M3-B8）：**单位选择器的当前值必须由数据驱动**。
     //   本页三个单位 picker 原先都没绑 `value`，而 `<picker mode="selector">` 缺省 value=0
     //   ⇒ 打开时高亮**永远停在第一项「克」**，与行上真正的单位不符。
@@ -513,7 +527,7 @@ Page({
             init.calcMode = 'A';
             init.comboLines = (c.lines || [])
               .filter((l) => l.line_type === 2 && l.sub_card_ref)
-              .map((l) => ({
+              .map((l) => ensureRid({
                 sub_card_ref: l.sub_card_ref,
                 sub_card_name: (subCards.find((s) => s.card_code === l.sub_card_ref) || {}).name || l.material_name || '',
                 qty: String(l.quantity),
@@ -827,12 +841,12 @@ Page({
   },
 
   addComboLine() {
-    this.setData({ comboLines: this.data.comboLines.concat([{ sub_card_ref: '', sub_card_name: '', qty: '1' }]) });
+    this.setData({ comboLines: this.data.comboLines.concat([ensureRid({ sub_card_ref: '', sub_card_name: '', qty: '1' })]) });
   },
   delComboLine(e) {
     const idx = Number(e.currentTarget.dataset.idx);
     const rest = this.data.comboLines.filter((l, i) => i !== idx);
-    this.setData({ comboLines: rest.length ? rest : [{ sub_card_ref: '', sub_card_name: '', qty: '1' }] });
+    this.setData({ comboLines: rest.length ? rest : [ensureRid({ sub_card_ref: '', sub_card_name: '', qty: '1' })] });
   },
 
   onLoss(e) { this.setData({ lossRate: e.detail.value }); },
@@ -1582,8 +1596,9 @@ Page({
       }
     } catch (e) {
       this.setData({ saving: false });
-      // M3.16（批次 C）：套餐未开通 → 弹付费墙（openPaywall('combo')，与云端 PAID_FEATURES.m3_combo 对齐）。
-      if (e && e.code === 'FEATURE_LOCKED' && this.data.cardType === '3') { openPaywall('combo'); return; }
+      // 🔴 A10（2026-11-05）：套餐已**并入成本卡配额**，云端不再返回套餐专属的 FEATURE_LOCKED
+      //   ⇒ 这里不再有 `openPaywall('combo')` 分支。套餐超限走通用配额错误码（FREE_LIMIT_EXCEEDED），
+      //   由 `api.toastError` 统一映射成人话，与普通成本卡超限**同一个提示**。
       api.toastError(e);
     }
   },

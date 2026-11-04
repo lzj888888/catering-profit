@@ -145,8 +145,11 @@ check('L6-① 反向：代码里 hasFeature(...,\'X\') 的 X 必须 ∈ PAID_FEA
 //      ⇒ fnWallGaps 恒空 ⇒ 断言**恒绿**（R212 §5-2 挖出；与 R182「扫描面一空即恒绿」同族）。
 //   `at: null` = 「云侧确无可挂点」——必须写理由；这是**显式登记的设计边界**，不是"忘了"。
 const WALL_ANCHORS = [
-  { key: 'm3_combo', at: 'cloudfunctions/saveCostCard/index.js',
-    why: '套餐是 saveCostCard 的 card_type===3 分支（无独立云函数目录），墙接在该分支上（见 L6-① 实调用点）。' },
+  { key: 'm3_combo', at: null,
+    why: 'A10（2026-11-05 · 规范 v1.1 §1）：套餐专属付费墙**已按规范删除**，云侧确已无可挂点。'
+       + '套餐是 card_type===3 的 shop_cost_card，保存时统一走 saveCostCard 第 8.5 步的**成本卡配额**'
+       + '（按 card_code 去重计数：免费 5 张 / 付费按套餐表）⇒ 权益已经收到，不需要第二道墙。'
+       + '能力键 `m3_combo` 仍留在 PAID_FEATURES（防旧客户端 / 回滚），但「键存在」不等于「有墙」。' },
   { key: 'm3_takeaway', at: null,
     why: '外卖为纯前端试算（utils/takeawayDerive.js 纯计算、不落库、无服务端接口）⇒ 云侧无校验点可挂；'
        + '属已知设计边界（core/13 与 NOTE_round212 已留档），非遗漏。' },

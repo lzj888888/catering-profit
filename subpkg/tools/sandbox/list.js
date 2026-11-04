@@ -253,7 +253,9 @@ Page({
     return null;
   },
 
-  // Excel · 付费（复用 'export' 能力键）：hasFeature 假 ⇒ 弹既有 export 墙；否则调 exportData
+  // Excel · **免费**（A6/2026-11-05 规范 v1.1 §1：M2 全链路永久免费，含导出）。
+  //   矩阵导出早已免费，对比表此次补齐 ⇒ 同一模块不再有两个口径。
+  //   保留 FEATURE_LOCKED 分支仅作兜底（旧版本后端/灰度期仍可能返回），不再主动弹墙。
   async onExportExcel() {
     if (!this.data.compareRows.length) { api.toastError({ msg: P.notSelected }); return; }
     const planIds = this.data.selIds.slice();

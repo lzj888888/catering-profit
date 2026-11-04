@@ -186,9 +186,12 @@ exports.main = async (event) => {
   const isCombo = latestCard.card_type === 3;
   let newLines;
   if (isCombo) {
-    const unlocked = await common.hasFeature(db, userId, 'm3_combo');
-    if (!unlocked) return fail(ERROR_CODES.FEATURE_LOCKED);
-
+    // 🔴 A10（2026-11-05 · 规范 v1.1 §1）：**删除独立的 m3_combo 付费墙**。
+    //   理由：套餐本身就是一张 `shop_cost_card`（card_type=3），保存时已经统一走
+    //   `saveCostCard` 第 8.5 步的成本卡配额（按 card_code 去重计数，免费 5 张 / 付费按套餐表）。
+    //   再叠一道「套餐专属」付费 = 同一张卡收两次钱，且用户必然问
+    //   「我买了成本卡，为什么建不了套餐」—— 两套 SKU、三套判定，是最难向老板解释的结构。
+    //   ⚠️ 不在这里补配额判断：配额只允许有**一个**判定点（saveCostCard 8.5），此处再判一遍就是第二份真相源。
     const comboSubCards = [];
     for (const ln of existingLines) {
       if (ln.line_type !== 2 || !ln.sub_card_ref) continue;

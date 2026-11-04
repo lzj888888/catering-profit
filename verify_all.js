@@ -1,6 +1,7 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：227 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：231 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+//       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -585,6 +586,12 @@
 //         不用固定字符数，否则下一行的百分号会把上一行的整数框误判成百分比框）+ B 换算量必须 digit
 //         + C 纯计数字段不得被判成百分比框（反向防过宽）+ D 已知 9 个百分比字段必须全被扫到
 //         （空集会让 A 腿恒真）。合成样本 7 段 + 真实变异 4/4 反恒真。28 断言。
+//       + wx:key 稳定性守卫（tools/check_wxkey_stable.js，R606-bis：**含 <input>/<textarea> 的 wx:for 循环不得用位置键 index/idx、须稳定键 rid**）。
+//         根因=R606 外卖收入「填入总数后下方输入框填不进/丢焦点」：行级 wx:for 用 wx:key="index"（位置键）+
+//         每次按键 setData 整体重赋值数组 ⇒ 原生 <input> 按下标复用 DOM 节点 ⇒ 重渲染后节点身份错位。
+//         同族 5 处对象数组循环已注入稳定 rid 键并闭环；matrix 五个维度档位经审计为标量按位更新（非 R606 形态），
+//         已回退原始标量数组并列入本守卫白名单（详见守卫内 WHITELIST 注释）。本守卫锁死整类缺陷复发
+//         （含 6 项影子样本自证 + 扫描面下界 31 文件 + R606 锚点命中 input.wxml 4 处 g.rows 循环均 wx:key="rid"）。
 // ⚠️ 不在 CI 之外假定任何 secrets；纯本地静态 + 单测。
 
 const { execFileSync } = require('child_process');
@@ -1368,6 +1375,26 @@ const SUITES = [
   //   年份与渠道必须写死（R589 实测 AI 会自己编这两处，渠道错了我们根本发现不了）；
   //   ② 接线真通：按钮真调 setClipboardData、复制失败要摊开正文（只报失败 = 老板卡死）。
   ['导入 AI 转格式逃生口 R590', 'tools/check_import_ai_fix.js'],
+  // ===== R298·C1 M1 结果页三态判据守卫（#443 收口）：未建档月（getLedger 默认空账、无 account_id）
+  //   必须走空态分支、不挂红带「亏损」；判据 = 账本存在性 !!d.account_id（与首页同源），
+  //   WXML 用 wx:elif hasLedger 切结果/空态；含变异回灌反恒真；6 断言。
+  ['m1-result-tristate', 'tools/check_m1_result_tristate.js'],
+  // ===== R606-bis wx:key 稳定性守卫（同族病第 25 例，round 续作）：见头部注释同名条目。
+  //   判据＝含 <input>/<textarea> 的 wx:for 循环不得使用位置键（index/idx），必须稳定键（rid）。
+  //   含 6 项影子样本自证（C1 位置键必红 / C2 等价 rid 改正必绿 / C3 字面量 idx 必红 /
+  //   C4 无输入循环不误伤 / C5 注释举例不误杀 / C6 嵌套 input 必抓）+ 扫描面下界 31 文件 +
+  //   R606 锚点（input.wxml 的 g.rows 4 处循环必 wx:key="rid"）。
+  ['wxkey-stable', 'tools/check_wxkey_stable.js'],
+  // ===== R507 利润恒可比守卫（既有遗留补挂，2026-11-05）：该文件 11-03 已生成且自测 9/0 全绿，
+  //   却一直没登记进 SUITES ⇒ `check_suite_coverage` 判「有守卫未挂载」转红（门禁常年红一条）。
+  //   本批顺手收口：它验的是「经营参考利润 vs 会计利润恒可比」+ 变异回灌证伪假绿，属有效守卫。
+  ['r507-profit-parity', 'tools/check_r507_profit_parity.js'],
+  // ===== A6/A7 M2 导出免费口径守卫（2026-11-05）：做 A6 变异复核时实测发现——
+  //   把 m2_compare 从豁免集合去掉，check_export_delivery / check_paywall_coverage **全照绿**，
+  //   即「M2 对比表导出免费」这条口径当时没有任何机器在看。本守卫补这个洞：
+  //   A1 豁免集合必须同时含 matrix+compare / A2「无需店铺」必须独立且只含 matrix（并入会崩）/
+  //   A3 免费仍做方案归属校验 / A4 必须带「关于本表」署名页；含内存变异回灌证伪恒真。
+  ['m2-export-free', 'tools/check_m2_export_free.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

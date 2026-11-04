@@ -117,7 +117,7 @@
         <!-- 没有有效订单数 ⇒ 不算（**不编 0 单**），只给去补的指引 -->
         <view class="warn" wx:if="{{!splitHasOrder}}">{{t.splitNoOrder}}</view>
         <block wx:if="{{splitHasOrder}}">
-          <view class="cell" wx:for="{{splitRows}}" wx:key="index" wx:for-index="si">
+          <view class="cell" wx:for="{{splitRows}}" wx:key="rid" wx:for-index="si">
             <picker class="lbl" range="{{splitOptions}}" value="{{item.cardIdx}}" data-idx="{{si}}" bindchange="onSplitPick">
               <text>{{item.name || t.splitPickPh}}</text>
             </picker>
@@ -142,15 +142,17 @@
       </block>
     </view>
 
-    <!-- 堂食榜（两来源分开呈现；外卖空态另列，不混榜） -->
-    <view class="section-title">{{t.reviewDineIn}} · {{t.reviewRankTitle}}</view>
+    <!-- 堂食榜（两来源分开呈现；外卖空态另列，不混榜）
+         🔴 A8（2026-11-05）：免费档只给「销量排行」—— 表头与行都**隐藏毛利/毛利率两列**
+         （用 wx:if 而不是显示「—」：五列表头写着"毛利排行榜"、下面全是横杠，老板会以为页面坏了）。 -->
+    <view class="section-title">{{t.reviewDineIn}} · {{tier === 'free' ? t.reviewFreeRankTitle : t.reviewRankTitle}}</view>
     <view class="card2" wx:if="{{dineIn.length}}">
       <view class="row head">
         <text class="c-name">{{t.reviewDish}}</text>
         <text class="c-qty">{{t.reviewQty}}</text>
         <text class="c-num">{{t.reviewRevenue}}</text>
-        <text class="c-num">{{t.reviewGross}}</text>
-        <text class="c-num">{{t.reviewMargin}}</text>
+        <text class="c-num" wx:if="{{tier !== 'free'}}">{{t.reviewGross}}</text>
+        <text class="c-num" wx:if="{{tier !== 'free'}}">{{t.reviewMargin}}</text>
       </view>
       <view class="row {{item.below ? 'below' : ''}}" wx:for="{{dineIn}}" wx:key="name">
         <view class="c-name">
@@ -159,8 +161,19 @@
         </view>
         <text class="c-qty">{{item.qty}}</text>
         <text class="c-num">{{t.cur}}{{item.revenueText}}</text>
-        <text class="c-num">{{t.cur}}{{item.grossText}}</text>
-        <text class="c-num">{{item.marginText}}</text>
+        <text class="c-num" wx:if="{{tier !== 'free'}}">{{t.cur}}{{item.grossText}}</text>
+        <text class="c-num" wx:if="{{tier !== 'free'}}">{{item.marginText}}</text>
+      </view>
+    </view>
+
+    <!-- A8 免费档说明 + 升级入口（付费档不渲染）
+         措辞顺序：先讲他已拿到什么，再讲还差什么 —— 见 terms.js reviewFree* 注释。 -->
+    <view class="card2" wx:if="{{tier === 'free'}}">
+      <view class="subtitle">{{t.reviewFreeTitle}}</view>
+      <view class="muted">{{t.reviewFreeBody}}</view>
+      <view class="muted" wx:if="{{freeMoreText}}">{{freeMoreText}}</view>
+      <view class="field-save">
+        <button class="btn btn-small ghost" bindtap="goUpgrade">{{t.reviewFreeBtn}}</button>
       </view>
     </view>
 
@@ -173,8 +186,9 @@
     <view class="card2" wx:if="{{totals}}">
       <view class="cell"><text class="lbl">{{t.reviewTotalQty}}</text><text class="val">{{totals.qty}}</text></view>
       <view class="cell"><text class="lbl">{{t.reviewTotalRevenue}}</text><text class="val">{{t.cur}}{{totals.revenueText}}</text></view>
-      <view class="cell"><text class="lbl">{{t.reviewTotalCost}}</text><text class="val">{{t.cur}}{{totals.costText}}</text></view>
-      <view class="cell"><text class="lbl">{{t.reviewTotalGross}}</text><text class="val">{{t.cur}}{{totals.grossText}}</text></view>
+      <!-- A8：免费档合计里没有成本/毛利（那是加工结论）⇒ 整行不渲染，而不是显示 0.00 -->
+      <view class="cell" wx:if="{{tier !== 'free'}}"><text class="lbl">{{t.reviewTotalCost}}</text><text class="val">{{t.cur}}{{totals.costText}}</text></view>
+      <view class="cell" wx:if="{{tier !== 'free'}}"><text class="lbl">{{t.reviewTotalGross}}</text><text class="val">{{t.cur}}{{totals.grossText}}</text></view>
     </view>
 
     <!-- 🔴 R451：两款毛利率口径并列提示（李老师拍板「并列摆、不强行统一」）。

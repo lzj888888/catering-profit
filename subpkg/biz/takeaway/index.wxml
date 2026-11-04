@@ -17,7 +17,7 @@
 
   <!-- 本单菜品 -->
   <view class="sec">{{t.dishTitle}}</view>
-  <view class="row" wx:for="{{items}}" wx:key="index">
+  <view class="row" wx:for="{{items}}" wx:key="rid">
     <picker class="pick-grow" mode="selector" range="{{dishes}}" range-key="name" data-idx="{{index}}" bindchange="onItemPick">
       <view class="pick">{{items[index].card_name || t.dishPickPh}}</view>
     </picker>
@@ -28,7 +28,7 @@
 
   <!-- 包材 -->
   <view class="sec">{{t.packTitle}}</view>
-  <view class="row" wx:for="{{packs}}" wx:key="index">
+  <view class="row" wx:for="{{packs}}" wx:key="rid">
     <input class="price-input" type="digit" value="{{packs[index].unit_price_yuan}}" data-idx="{{index}}" bindinput="onPackPrice" placeholder="{{t.packTempPh}}" adjust-position="{{true}}" cursor-spacing="20" />
     <input class="qty-input" type="number" value="{{packs[index].qty}}" data-idx="{{index}}" bindinput="onPackQty" placeholder="{{t.packQty}}" adjust-position="{{true}}" cursor-spacing="20" />
     <view class="del" data-idx="{{index}}" bindtap="delPack">×</view>

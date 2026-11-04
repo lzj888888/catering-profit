@@ -127,14 +127,17 @@ exports.main = async (event) => {
     return ok({ shop_id: shopId, card_code: v.card.card_code, deleted: true, versions: versions.length, client_request_id: clientRequestId || '' });
   }
 
-  // ===== 4. M3.16 套餐（card_type=3）：付费墙 + 读子卡 + 校验引用 =====
+  // ===== 4. M3.16 套餐（card_type=3）：读子卡 + 校验引用 =====
   const card = v.card;
   const isCombo = card.card_type === 3;
   let comboSnapLines = null;   // 套餐快照明细（喂引擎；非套餐为 null）
   if (isCombo) {
-    // 付费墙（铁律：付费墙必须先于付费功能落地）—— m3_combo 已登记在 common/entitlement.js::PAID_FEATURES
-    const unlocked = await common.hasFeature(db, userId, 'm3_combo');
-    if (!unlocked) return fail(ERROR_CODES.FEATURE_LOCKED);
+    // 🔴 A10（2026-11-05 · 规范 v1.1 §1）：**删除套餐专属付费墙（m3_combo）**。
+    //   套餐就是一张 shop_cost_card，走到本函数末尾的第 8.5 步时**照样受成本卡配额约束**
+    //   （按 card_code 去重计数：免费 5 张，付费按套餐表）⇒ 权益已经收到了，不需要第二道墙。
+    //   ⚠️ 别在这里补配额判断：配额只允许一个判定点（8.5 步），此处再判 = 第二份真相源。
+    //   能力键 `m3_combo` 仍留在 common/entitlement.js::PAID_FEATURES 里（防旧客户端/回滚），
+    //   但**已无调用点** —— 「键存在」不等于「有墙」。
 
     // 读每个子卡的最新版本（同店 card_code 下 version 最大者；软删由 DataAdapter 过滤）
     const comboSubCards = [];

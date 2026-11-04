@@ -24,6 +24,16 @@ const { splitRank, MAX_ROWS, qtyText } = require('../../../utils/shareSplit.js')
 const fenYuan = (fen) => (Number(fen) || 0) / 100;
 const fmtYuan = (fen) => fenYuan(fen).toFixed(2);
 const fmtPct = (p) => (Number(p) || 0).toFixed(2) + '%';
+// R606-bis：行级可编辑循环的稳定身份键工厂（与 month/input.js 同款）。
+//   wx:for 用位置键 + 每次按键整体重赋值数组 ⇒ 原生 <input> 按下标复用 DOM ⇒ 节点身份错位、
+//   表现为「框填不进/丢焦点」。rid 仅渲染层用，提交时由 onSplitCalc 重建干净 payload（不含 rid）。
+const _ridPrefix = 'k' + Date.now().toString(36) + '_';
+let _ridSeq = 0;
+function ensureRid(r) {
+  if (!r) r = {};
+  if (!r.rid) r.rid = _ridPrefix + (_ridSeq++).toString(36);
+  return r;
+}
 
 Page({
   data: {
@@ -60,6 +70,11 @@ Page({
       reviewRevenue: TERMS.card.reviewRevenue,
       reviewCost: TERMS.card.reviewCost,
       reviewGross: TERMS.card.reviewGross,
+      // A8：免费档说明 + 升级入口（wxml 用到就必须在这里登记，否则真机静默空白 —— 守卫 page-terms P2-1）
+      reviewFreeTitle: TERMS.card.reviewFreeTitle,
+      reviewFreeBody: TERMS.card.reviewFreeBody,
+      reviewFreeBtn: TERMS.card.reviewFreeBtn,
+      reviewFreeRankTitle: TERMS.card.reviewFreeRankTitle,
       // R259：外卖毛利率的**口径说明** —— 李老师 2026-10-10 裁定指标名保持「毛利率」，
       //   所以防误导不靠改名，靠**同屏把差在哪讲清**（外卖侧金额是平台侧金额、非商家到手）。
       reviewTakeawayMarginNote: TERMS.card.reviewTakeawayMarginNote,
@@ -221,6 +236,9 @@ Page({
     batchCount: 0,        // 已选行数（按钮上的计数）
     batchSaving: false,   // 提交中（防连点）
     mappingBusy: false,   // 写操作进行中（防连点重复提交）
+    // A8：'free' = 只给销量榜 Top10 + 覆盖率 + 未匹配；'full' = 完整毛利排行
+    tier: '',
+    freeRankedTotal: 0,
   },
 
   onLoad() { this._shown = false; this.init(); },
@@ -245,6 +263,8 @@ Page({
       await this.load();
     } catch (e) {
       this.setData({ loading: false });
+      // 🔴 A8（2026-11-05）：云端**已改为两层出参**，正常不再返回 FEATURE_LOCKED。
+      //   此分支保留仅作兜底（旧版云端 / 灰度期），不再是主路径 —— 别据它认为本页仍是整页锁。
       if (e && e.code === 'FEATURE_LOCKED') {
         this.setData({ locked: true });
         openPaywall('dishreview', { shopId: (getApp().globalData && getApp().globalData.shop_id) || '' });
@@ -252,6 +272,11 @@ Page({
       }
       api.toastError(e);
     }
+  },
+
+  // A8：免费档页面内的升级入口（榜单下方的「看完整毛利排行」按钮）
+  goUpgrade() {
+    openPaywall('dishreview', { shopId: (getApp().globalData && getApp().globalData.shop_id) || '' });
   },
 
   // 预处理一行排行为展示字段（堂食/外卖共用；zeroAmount 仅外卖）
@@ -278,10 +303,14 @@ Page({
       revenueText: fmtYuan(x.amountFen),
       // 🔴 R264：覆盖率要按**金额**算 ⇒ 数值必须带到展示层（`revenueText` 是字符串，不能相减）
       amountFen: x.amountFen || 0,
-      costText: fmtYuan(x.totalCostFen),
-      grossText: fmtYuan(x.grossFen),
-      marginPct: x.marginPct,
-      marginText: fmtPct(x.marginPct),
+      // 🔴 A8（2026-11-05）：免费档后端**不下发** totalCostFen / grossFen / marginPct。
+      //   这里必须判 `== null` 显示「—」，**绝不能走 fmtYuan(undefined)** ——
+      //   那会渲染成「0.00」，让老板以为「成本是 0、毛利等于营收」，比不显示更坏（红线 18 同款）。
+      costText: x.totalCostFen == null ? '—' : fmtYuan(x.totalCostFen),
+      grossText: x.grossFen == null ? '—' : fmtYuan(x.grossFen),
+      marginPct: x.marginPct == null ? null : x.marginPct,
+      marginText: x.marginPct == null ? '—' : fmtPct(x.marginPct),
+      hasMargin: x.grossFen != null,
       snapshotNote: isOld ? TERMS.card.reviewSnapshotOf(snapMonth) : '',
       zeroAmount: !!x.zeroAmount,   // v1.7 C-5：口味询问类 SKU
       below: false,
@@ -292,8 +321,10 @@ Page({
     return t ? {
       qty: t.qty,
       revenueText: fmtYuan(t.amountFen),
-      costText: fmtYuan(t.costFen),
-      grossText: fmtYuan(t.grossFen),
+      // A8：免费档的合计只回数量口径（毛利合计 = 加工结论，付费才有）⇒ 缺失一律「—」
+      costText: t.costFen == null ? '—' : fmtYuan(t.costFen),
+      grossText: t.grossFen == null ? '—' : fmtYuan(t.grossFen),
+      hasMargin: t.grossFen != null,
       // 🔴 R251：`unmatchedCount` 必须带出来 —— 它是**判「平台块为什么是空的」的唯一准确依据**
       //   （前端**不许**自己猜：拿 qty>0 当判据会把「全 0 份的菜」误判成账单级）。
       unmatchedCount: t.unmatchedCount || 0,
@@ -334,7 +365,11 @@ Page({
     // R307：占比估算的候选卡（与「关联」picker 同源，不额外读库）
     this.setData({ splitCards, splitOptions: (splitCards || []).map((c) => c.name) });
 
-    const dineIn = (d.dine_in || []).map((x) => this.fmtRanked(x));
+    // 🔴 A8（2026-11-05）：免费档云端只回 `free_top`（销量 Top N，**不含成本/毛利字段**），
+    //   付费档回完整 `dine_in`。这里只是**换数据源**，下游覆盖率/未匹配/映射逻辑一行不动 ——
+    //   免费档拿到的仍是「销量 + 营收」，够算覆盖率，也够让老板看出「我这 20 道菜只算全了 3 道」。
+    const isFree = (d && d.tier) === 'free';
+    const dineIn = (((isFree ? d.free_top : d.dine_in) || [])).map((x) => this.fmtRanked(x));
 
     // 🔴 R249-B（附带发现，与 is_deleted 同轮修）：外卖的「未匹配菜品」**只**嵌在
     //   `takeaway.by_platform[p].unmatched` 里，而前端**从不读**它（只读顶层 `d.unmatched`，
@@ -515,9 +550,19 @@ Page({
     const BUFFET_FLAG_CLS = { high: 'warn', low: 'note' };
     const buffet_flagClass = BUFFET_FLAG_CLS[buffet_flagCode] || '';
 
+    // A8：免费档「共 N 道已建卡，本榜只显示前 10 道」—— 让老板自己看出还差多少没看到
+    //   （N ≤ 10 时不显示：数字一样，说了等于重复，只会显得啰嗦）
+    const freeMoreText = (isFree && (d.free_ranked_total || 0) > 10)
+      ? String(TERMS.card.reviewFreeMore).replace('{n}', String(d.free_ranked_total))
+      : '';
+
     this.setData({
       loading: false,
       locked: false,
+      // A8：'free' = 只给销量榜 + 覆盖率 + 未匹配；'full' = 完整毛利排行
+      tier: isFree ? 'free' : 'full',
+      freeRankedTotal: (d && d.free_ranked_total) || 0,
+      freeMoreText,
       rangeText,
       dineIn,
       takeaway,
@@ -605,10 +650,12 @@ Page({
     }
   },
 
+  // R606-bis：行为行级可编辑循环提供稳定身份键（不随数组重排/重赋值而漂），
+  // 原生 <input> 按下标复用 DOM ⇒ 位置键会导致「框填不进/丢焦点」。rid 仅渲染层用。
   onSplitAdd() {
     const rows = (this.data.splitRows || []).slice();
     if (rows.length >= MAX_ROWS) return;
-    rows.push({ cardIdx: -1, name: '', pctText: '' });
+    rows.push(ensureRid({ cardIdx: -1, name: '', pctText: '' }));
     // 改了输入 ⇒ 旧结果作废（防"结果区还显示上一次的数"）
     this.setData({ splitRows: rows, splitResult: null, splitErr: '' });
   },
@@ -626,7 +673,8 @@ Page({
     const ci = Number(e.detail.value);
     const card = (this.data.splitCards || [])[ci] || {};
     // ⚠️ 选重了**不自动去重**（静默改用户输入更糟）⇒ 交给 checkShares 报 `dupCard`
-    rows[i] = { cardIdx: ci, name: card.name || '', pctText: rows[i].pctText || '' };
+    // R606-bis：用 Object.assign 保留原行的 rid（否则整行重建会丢稳定键 ⇒ 输入框错位）
+    rows[i] = Object.assign({}, rows[i], { cardIdx: ci, name: card.name || '', pctText: rows[i].pctText || '' });
     this.setData({ splitRows: rows, splitResult: null, splitErr: '' });
   },
 

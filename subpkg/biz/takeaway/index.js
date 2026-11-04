@@ -111,8 +111,15 @@ function failReasonText(grade) {
   return TK[key] || '';
 }
 
-function newItem() { return { card_id: '', card_name: '', qty: '1' }; }
-function newPack() { return { material_id: '', qty: '1', unit_price_yuan: '' }; }
+const _ridPrefix = 'k' + Date.now().toString(36) + '_';
+let _ridSeq = 0;
+function ensureRid(r) {
+  if (!r) r = {};
+  if (!r.rid) r.rid = _ridPrefix + (_ridSeq++).toString(36);
+  return r;
+}
+function newItem() { return ensureRid({ card_id: '', card_name: '', qty: '1' }); }
+function newPack() { return ensureRid({ material_id: '', qty: '1', unit_price_yuan: '' }); }
 function defaultParams() {
   return {
     commission_mode: 'rate',

@@ -82,6 +82,28 @@ function xlsxBase64(header, rows, sheetName) {
 // 工作表名（≤31 字符，Excel 硬限）
 const SHEET_NAME = { m1_report: '月度报表', m3_cards: '菜品成本卡', m2_compare: '方案对比', m2_matrix: '场景矩阵' };
 
+// ===== A7（2026-11-05 · 规范 v1.1 §1）：M2 免费导出的署名页 =====
+//   免费导出是为了**传播**（老板拿去跟合伙人商量、跟房东谈租、给加盟商看、去银行谈贷），
+//   不是为了白送 ⇒ 每一份出去的件都要能指回我们，否则免费导出等于纯流失。
+//   ⚠️ 为什么不是「往表里嵌小程序码图片」（如实交代，别当成做完了）：
+//     ① 本函数用的是 SheetJS **社区版**（xlsx@0.18.5），插图属于 Pro 版能力，社区版写不进图片；
+//     ② 小程序当前**尚未发布**，没有可调 `wxacode.getUnlimited` 拿到的码图。
+//   ⇒ 现阶段落「文字引导」；真码图待发布后由前端 canvas 图片出口绘制（挂账 A7-b，见规范 §11）。
+function buildAboutRows(c) {
+  const shopName = (c && c.shopName) || '';
+  const stamp = (c && c.stamp) || 0;
+  const t = stamp ? new Date(stamp).toISOString().replace('T', ' ').slice(0, 16) + ' UTC' : '';
+  return [
+    ['本表由', '店算 · 餐饮盈亏平衡测算'],
+    ['生成时间', t],
+    ['测算对象', shopName || '—'],
+    ['数据来源', '全部来自你自己填写的测算参数；未做任何外部取值、未编造任何数字'],
+    ['继续测算', '微信搜一搜「店算」'],
+    ['口径说明', '单位：元；毛利率/占比为百分比数值；空值一律显示「—」，不填 0（0 与「没填」含义不同）'],
+    ['免责', '本表为经营测算参考，不构成经营决策建议'],
+  ];
+}
+
 // R266：分 → 元（**仅导出展示用**；库内与引擎一律「分」整数）
 function yuan(fen) { return Math.round(Number(fen) || 0) / 100; }
 
@@ -140,6 +162,9 @@ function buildMonthlySheets(c) {
       ['', '', ''],
       ['〔全要素调整〕', '', '把「这个月没掏钱、但确实花掉了的成本」加进来'],
       ['　消耗差异（真实 − 参考口径用的消耗）', yuan(gapFen),
+        // 🔴 A12（2026-11-05）：`refSrc==='direct' && invOn` 这个组合**永不成立**
+        //   （库存开恒给 'reverse'；direct 只出现在库存关，此时两者相等）。
+        //   保留该分支只为不改变既有输出宽度，但它实际不可达 —— 别据此以为「库存开会有消耗差」。
         refSrc === 'reverse'
           ? '参考口径已用倒轧值 ⇒ 两者相等，无差异'
           : (invOn ? '库存开关开：真实消耗 = 期初 + 采购 − 期末' : '库存开关关：两者相等，无差异')],
@@ -235,10 +260,19 @@ exports.main = async (event) => {
   //   矩阵与对比表导出一律免费。这是**有意的引流产品决策**，不是付费墙漏洞 ——
   //   后续复审请勿把它当 bug 修掉。矩阵数据全部来自前端已算结果、不读店铺资产，
   //   故也不校验店铺归属（避免把免费引流工具误绑成「需先开店铺」）。
-  const isM2FreeExport = scope === 'm2_matrix';
+  // 🔴 A6（2026-11-05 李老师拍板·规范 v1.1 §1）：M2 **对比表导出同样免费** ——
+  //   此前只有矩阵免费、对比表仍收费，同一模块两个口径，本身不自洽（矩阵导出早已免费）。
+  //   判据是「拿走的东西用来传播还是用来留档」：对比表是拿去跟合伙人/房东/银行谈的传单，
+  //   锁住它等于锁住唯一的口碑路径；M1 月报（留档）与 M3 成本卡（核心资产）仍收费。
+  const isM2FreeExport = scope === 'm2_matrix' || scope === 'm2_compare';
+
+  // ⚠️ 与上面**必须分开**：只有矩阵是「连店铺都不需要」。
+  //   对比表数据虽也来自前端 table，但仍要按 plan_ids 校验方案归属（下方 m2_compare 分支会
+  //   `da.list('shop_sandbox')`）—— 若把它并进 isM2NoShop，shopId/da 都不会被赋值，该分支直接崩。
+  const isM2NoShop = scope === 'm2_matrix';
 
   let da, shopDoc, shopName, shopId;
-  if (isM2FreeExport) {
+  if (isM2NoShop) {
     shopName = (typeof v.shop_name === 'string' && v.shop_name) ? v.shop_name : '选址测算';
   } else {
     shopId = event && event.shop_id;
@@ -264,7 +298,7 @@ exports.main = async (event) => {
   // ===== 2. 导出权限（只读 expire_at）=====
   // M3.28（批次 Q3）：判定下沉到单源 common/entitlement.js —— 理由见该文件头注。
   //   ⚠️ 不许在本函数里写第二遍 `expireAt > nowUtc()`：付费语义一旦分叉，"导出"与"S1 套餐"就会给出两个答案。
-  //   🔴 M2 矩阵导出（isM2FreeExport）**跳过**此判定（引流免费，见上方注释）。
+  //   🔴 M2 导出（矩阵 + 对比表，isM2FreeExport）**跳过**此判定（引流免费，见上方 A6 注释）。
   if (!isM2FreeExport) {
     const canExport = await hasFeature(db, userId, 'export');
     if (!canExport) return fail(ERROR_CODES.FEATURE_LOCKED, '导出需开通真实利润');
@@ -297,6 +331,8 @@ exports.main = async (event) => {
   } else if (scope === 'm2_compare') {
     // M2 对比表：前端已用 calcSandbox 重算好 `table`（= 图片/Excel 两出口共用同一份已算结果）。
     // 本函数只做归属校验（不泄漏他人方案）+ 序列化。
+    // 🔴 A6（2026-11-05）：本导出已**免费**（isM2FreeExport 含 m2_compare），但归属校验**保留** ——
+    //   免费不等于可以导出别人的方案。shop_id 由 utils/api.js 的 call() 自动注入。
     const planIds = v.plan_ids.filter((s) => typeof s === 'string' && s);
     for (const pid of planIds) {
       const r = await da.list('shop_sandbox', { shop_id: shopId, sandbox_id: pid });
@@ -346,9 +382,15 @@ exports.main = async (event) => {
       return o;
     });
   } else if (format === 'xlsx') {
-    content = sheets
-      ? xlsxSheetsBase64(sheets)
-      : xlsxBase64(header, body, SHEET_NAME[scope] || 'Sheet1');
+    // A7：M2 免费导出附带「关于本表」工作表（署名 + 口径 + 来源指引）。
+    //   做成**第二张表**而不是往数据表尾塞行 —— 塞行会把首列撑宽、破坏表格版式，
+    //   而这份件正是要拿给外人看的，版式就是专业度。
+    content = (isM2FreeExport && !sheets)
+      ? xlsxSheetsBase64([
+        { name: SHEET_NAME[scope] || 'Sheet1', header: header, rows: body },
+        { name: '关于本表', header: ['项目', '内容'], rows: buildAboutRows({ shopName: shopName, stamp: stamp }) },
+      ])
+      : (sheets ? xlsxSheetsBase64(sheets) : xlsxBase64(header, body, SHEET_NAME[scope] || 'Sheet1'));
     // 🔴 依赖缺失必须**响亮失败**：静默回退成 CSV 会让用户又回到「导出完成但打不开」的原点。
     if (!content) return fail(ERROR_CODES.SYSTEM_ERROR, '导出服务未安装 xlsx 依赖，暂时无法生成 Excel');
     encoding = 'base64';

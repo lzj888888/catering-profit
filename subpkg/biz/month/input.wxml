@@ -118,7 +118,7 @@
         </view>
         <view class="hint-fold-body" wx:if="{{hintFold.dmDetailHintF}}">{{t.dmDetailHint}}</view>
       </view>
-      <view class="dine-item" wx:for="{{g.rows}}" wx:key="index" wx:for-item="r" wx:for-index="ri">
+      <view class="dine-item" wx:for="{{g.rows}}" wx:key="rid" wx:for-item="r" wx:for-index="ri">
         <!-- 2026-09-21 李老师真机反馈：原一行三列把渠道名挤成竖排、金额框只剩 240rpx
              ⇒ 改两行：行① 渠道名（整行，永不竖排）+ ×；行② 金额（整行宽，好点好改） -->
         <view class="dine-line1">
@@ -200,7 +200,7 @@
         </view>
         <view class="hint-fold-body" wx:if="{{hintFold.twNetHint}}">{{t.twNetHint}}</view>
       </view>
-        <view class="dine-item" wx:for="{{g.rows}}" wx:key="index" wx:for-item="r" wx:for-index="ri">
+        <view class="dine-item" wx:for="{{g.rows}}" wx:key="rid" wx:for-item="r" wx:for-index="ri">
           <view class="dine-line1"><text class="dine-name">{{r.subItem}}</text></view>
           <view class="dine-line2">
             <input class="val-input dine-amt" type="digit" confirm-type="done" value="{{r.amountYuan}}"
@@ -378,7 +378,7 @@
             之后**是过期引用** ⇒ 改读它会静默退回"预设名可编辑、标丢失"（R297 的 M1-B1 就是这么回归的）。
             `selftest_batch8b` 已加钉子：`input.js` 里 `g.showRows =` **不得复活**。 -->
     <block wx:else>
-      <view class="sub-block" wx:for="{{g.rows}}" wx:key="index" wx:if="{{g.expanded || ri === 0}}"
+      <view class="sub-block" wx:for="{{g.rows}}" wx:key="rid" wx:if="{{g.expanded || ri === 0}}"
         wx:for-item="r" wx:for-index="ri">
         <view class="sub-line1">
           <!-- 预设细项（fixed）：**名字**固定（防同一笔费用两个名字），但**可以删** ——
@@ -443,7 +443,7 @@
 
     <!-- 🔴 R297-⑥（M1-B1）：同收入侧 —— 渲染源恒为已装饰的 `g.rows`，折叠用 `wx:if` 数据表达式。
          原式 `{{g.expanded ? g.rows : g.rows.slice(0, 1)}}` 在模板里调 `slice` ⇒ 费用细项整段不渲染。 -->
-    <view class="sub-block" wx:for="{{g.rows}}" wx:key="index" wx:if="{{g.expanded || ri === 0}}"
+    <view class="sub-block" wx:for="{{g.rows}}" wx:key="rid" wx:if="{{g.expanded || ri === 0}}"
       wx:for-item="r" wx:for-index="ri">
       <view class="sub-line1">
         <!-- 预设细项（fixed）：名字固定、但可删（同收入侧口径，G11d 守） -->

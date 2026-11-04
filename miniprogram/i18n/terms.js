@@ -2260,6 +2260,14 @@ const TERMS = {
     reviewRevenue: '营收',
     reviewCost: '物料成本',
     reviewGross: '毛利',
+    // 🔴 A8（2026-11-05 · 规范 v1.1 §1「拆墙」）：单品复盘**免费档**的页面内说明。
+    //   免费给「销量榜 Top10 + 覆盖率 + 未匹配清单」，付费给「完整毛利排行」。
+    //   ⚠️ 措辞顺序不能反：先讲**他已经拿到了什么**，再讲还差什么。
+    reviewFreeTitle: '你的销量榜已经算好了',
+    reviewFreeBody: '这份榜按卖出的份数排，用的是你自己导入的数据。每道菜的毛利额与毛利率，开通后才有。',
+    reviewFreeMore: '共 {n} 道已建卡，本榜显示卖得最多的前 10 道',
+    reviewFreeBtn: '看完整毛利排行',
+    reviewFreeRankTitle: '销量排行（按份数）',
     // R259：外卖毛利率的口径说明。李老师 2026-10-10 裁定**指标名保持「毛利率」**
     //   （不叫"食材毛利率"——大家平时都这么叫），故防误导改走"同屏说清差在哪"：
     //   外卖侧那个金额是**平台侧金额（顾客实付/商品原价）**，不是商家到手 ⇒
@@ -2676,8 +2684,18 @@ const TERMS = {
     //   固定文案会指着"只剩摊销"的差异说"这里有食材差"，那叫说谎（外审第二轮点名）。
     //   · profitDiffWhyAmort   ← ref_material_source === 'reverse'（回落倒轧）或库存关：差异只剩摊销
     //   · profitDiffWhyConsume ← ref_material_source === 'direct' 且库存开：差异含食材差 + 摊销
+    // 🔴 A12（2026-11-05）：上面这条 `Consume` 的触发条件在实现上**永不可能成立**，原文案是死文案。
+    //   实据 getLedger/service.js：
+    //     `refMaterialSource = inventorySwitchOn ? 'reverse' : 'direct'`
+    //     `refMaterialFen    = inventorySwitchOn ? realConsumeFen : directConsumeFen`
+    //   ⇒ 「direct」只会在**库存关**时出现，而此时 `realConsumeFen === directConsumeFen`，
+    //     两个口径取的是同一个食材数，差异里**根本没有食材项**。
+    //   ⇒ 「direct 且库存开」这个组合不存在（库存开恒给 reverse）。
+    //   原文案会让老板去核对自己填的食材数（白忙一场），已改为真话：
     profitDiffWhyAmort: '= 经营参考估算 − 真实利润；两个口径用的是同一份食材消耗，差的这部分就是当月摊销',
-    profitDiffWhyConsume: '= 经营参考估算 − 真实利润；差在食材消耗上（你填的数 vs 库存倒轧出来的数）+ 当月摊销',
+    // 与上面**同义**（差异恒为摊销）。保留独立键不删，只为兼容已落库的旧调用点；
+    //   哪天确认无引用可合并，别在这里另造一套说法。
+    profitDiffWhyConsume: '= 经营参考估算 − 真实利润；两个口径的食材消耗取的是同一个数，差的这部分就是当月摊销',
     // 兜底（旧账 / 取不到来源时）：不点名食材，只说"两个口径的差"
     profitDiffWhy: '= 经营参考估算 − 真实利润；差异来自两个口径对成本的处理不同',
     refNoteDirect: '按直接填写的消耗估算',

@@ -115,7 +115,7 @@ async function run(label, ledger, expectHas, expectOk) {
 }
 
 (async () => {
-  console.log('=== M1 结果页三态判据守卫（R298·C1 / #443）===');
+  console.log('\nM1 结果页三态判据守卫（R298·C1 / #443）');
 
   loadCfg(); // 加载真实 result.js 到全局 cfg（A/B 场景用）
 
@@ -142,7 +142,6 @@ async function run(label, ledger, expectHas, expectOk) {
   console.log(`  [C-变异] loadErr=${mutErr ? (mutErr.message || mutErr) : 'null'} hasLedger=${pMut.data.hasLedger}`);
   check('C: 同未建档账本 → hasLedger 退化成 true（证明若回退代码本守卫会转红）', pMut.data.hasLedger === true);
 
-  console.log('\n===== M1 结果页三态守卫结果 =====');
-  console.log(`通过 ${pass} / 失败 ${failN}`);
+  console.log(`\n===== M1 结果页三态守卫结果：${pass} 通过 / ${failN} 失败 =====`);
   process.exit(failN ? 1 : 0);
 })();

@@ -100,7 +100,7 @@
   <view class="est-banner" wx:if="{{hasPreset}}">{{estBanner}}</view>
   <!-- 明细行（录入方式：档案选择 / 临时手工）—— 仅单品 -->
   <block wx:if="{{cardType === '1'}}">
-  <view class="line {{lines[index].isPreset ? 'line-est' : ''}}" wx:for="{{lines}}" wx:key="idx">
+  <view class="line {{lines[index].isPreset ? 'line-est' : ''}}" wx:for="{{lines}}" wx:key="rid">
     <view class="est-tag" wx:if="{{lines[index].isPreset}}">{{t.estRowTag}}</view>
     <view class="cell2">
       <text class="lbl">{{t.inputType}}</text>
@@ -225,7 +225,7 @@
     <view class="combo-box">
       <view class="spec-title">{{t.comboSubCardTitle}}</view>
       <view class="muted" wx:if="{{subCardOptions.length === 0}}">{{t.comboPickEmpty}}</view>
-      <block wx:for="{{comboLines}}" wx:for-item="cl" wx:for-index="ci" wx:key="index">
+      <block wx:for="{{comboLines}}" wx:for-item="cl" wx:for-index="ci" wx:key="rid">
         <view class="combo-row">
           <picker mode="selector" range="{{subCardOptions}}" range-key="label" data-idx="{{ci}}" bindchange="onComboSubCard">
             <view class="picker combo-pick">{{comboLines[ci].sub_card_name || t.comboSubCardPh}}</view>

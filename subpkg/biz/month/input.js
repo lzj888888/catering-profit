@@ -23,6 +23,22 @@ const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 const DRAFT_KEY = 'draft_month_input_';
 // 堂食录入模式（快速 / 分项）**仅存本地**，不动后端契约；换设备或清缓存回默认，默认值由数据推断
 const DINE_MODE_KEY = 'dine_mode_';
+
+// 🔴 R606：行级稳定键（wx:key 必须稳定唯一，禁用 index）。
+//   多行录入时 `wx:key="index"` 会让原生 <input> 在每次 setData 重渲染后身份错位 ⇒
+//   表现为「第一行能填、下面的框填不进 / 输入即丢」（见 miniprogram-page-review 模式2）。
+//   此处装配时一次性写入 `rid`；updateRow 走 Object.assign 会保留它，故跨次键入稳定。
+//   用「会话前缀 + 自增序号」保证：会话内唯一、跨会话（含已落库行回填）不重号。
+const _ridPrefix = 'k' + Date.now().toString(36) + '_';
+let _ridSeq = 0;
+function ensureRid(r) {
+  if (r && r.rid === undefined) {
+    const o = Object.assign({}, r);
+    o.rid = _ridPrefix + (++_ridSeq);
+    return o;
+  }
+  return r;
+}
 // R85：外卖录入模式（快速 / 分项），同堂食约定（仅存本地；默认按数据推断）
 const TAKEOUT_MODE_KEY = 'takeout_mode_';
 // round109：外卖分组的**展开状态**记忆键（仅存本地）。
@@ -951,14 +967,23 @@ Page({
   // ⚠️ 渠道清单只来自 terms.js，本页不写死渠道名（G10h 守）。
   decorateDineRows(rows) {
     const def = TERMS.ledger.income.find((g) => g.category === 'dine_in');
-    return normalizeDineRows(rows, (def && def.items) || [], TERMS.ledger.channelNotes || {},
+    // 🔴 R606：行级稳定键（预设渠道用「p:<渠道名>」天然稳定唯一；自定义行用会话序号，更新时由 Object.assign 保留）
+    const out = normalizeDineRows(rows, (def && def.items) || [], TERMS.ledger.channelNotes || {},
       TERMS.ledger.channelAliases || {});
+    return out.map((r) => {
+      if (r && r.rid === undefined) {
+        const o = Object.assign({}, r);
+        o.rid = r.fixed ? ('p:' + r.subItem) : (_ridPrefix + (++_ridSeq));
+        return o;
+      }
+      return r;
+    });
   },
 
   // 任意大类行装配（🔒 唯一入口）：堂食走渠道装配；其余大类只标「预设行不可删」（fixed）。
   // ⚠️ 别在这里另写分支逻辑，堂食的渠道全集/别名规则只在 dineChannels.js 里（G11 守）。
   decorateRows(g, rows) {
-    let out = g.category === 'dine_in' ? this.decorateDineRows(rows) : markFixedRows(rows, g.items);
+    let out = g.category === 'dine_in' ? this.decorateDineRows(rows) : markFixedRows(rows, g.items).map(ensureRid);
     // round217：费用组行内说明（`g.notesOn` 由构造处置位；收入组为 false ⇒ 这里天然 no-op）。
     //   ⚠️ 同样放在这个**唯一装配口**里 —— 初始化 / 读回 / 复制上月 / 加行 / 删行 / 铺常规科目 全过它，
     //      若在各自的 setData 点各补一遍，必然漏一处（round102 已踩过同款）。
