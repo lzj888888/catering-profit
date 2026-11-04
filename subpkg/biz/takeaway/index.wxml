@@ -129,6 +129,12 @@
       </view>
     </view>
   </block>
+  <!-- A9：汇总已免费给出，明细按权益分层。先讲「你已经拿到什么」，再给展开入口。 -->
+  <block wx:if="{{view.itemsLocked}}">
+    <view class="sec">{{t.itemGrossTitle}}</view>
+    <view class="warn">{{t.itemGrossLocked}}</view>
+    <button class="btn ghost btn-small" bindtap="onUnlockItems">{{t.itemGrossUnlockBtn}}</button>
+  </block>
 
   <!-- 挂牌价反算 -->
   <view class="sec">{{t.reverseTitle}}</view>

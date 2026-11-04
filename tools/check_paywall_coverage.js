@@ -230,8 +230,13 @@ check('L7-③ 反恒真前提：影子判据确实能被触发（judge 非恒真
 const PAGES = [
   { key: 'takeaway', label: '外卖单均', page: 'subpkg/biz/takeaway/index.js',
     fns: ['calcTakeawayOrder', 'reverseListedPrice'], floor: 15 },
+  // 🔴 A9（2026-11-05 · 规范 v1.1 §1）团购**已转永久免费**，不再是付费能力 ⇒ 判据**翻转**：
+  //   从「调付费纯函数必须过墙」→「任何方法体都**不得**再挂墙」。
+  //   为什么不保留原判据：团购页只有一个产出（这一单到手多少），没有「汇总 vs 明细」可分层，
+  //   硬留一道墙就是纯拦人；而保留旧判据会逼后来者**把删掉的墙加回去**才过门禁 ——
+  //   规范明令禁止「为过门禁恢复旧行为」。翻转后仍有分辨力：谁把墙塞回去，立即判红（L8-③f）。
   { key: 'groupon', label: '到店团购', page: 'subpkg/biz/groupon/index.js',
-    fns: ['calcGrouponOrder'], floor: 8 },
+    fns: ['calcGrouponOrder'], floor: 8, freeTier: true },
 ];
 
 /** 取出「Page({...}) 顶层方法」的方法体（花括号配平）；配平失败 ⇒ 返回 null（fail-closed）。 */
@@ -263,25 +268,64 @@ function unpaidPaidCallers(bodies, fns) {
 }
 
 const pageState = {};
+/** 「出现过任何放行/判定调用」的方法名（只取方法体，不吃全文 —— 教训 R299：全文匹配会被同文件别处喂成恒真） */
+const walledCallers = (bodies) => (bodies || [])
+  .filter((b) => /openPaywall\s*\(|fetchEntitlement\s*\(/.test(b.body)).map((b) => b.name);
+
 PAGES.forEach((p) => {
   let src = '';
   try { src = fs.readFileSync(path.join(ROOT, p.page), 'utf8'); } catch (_) { src = ''; }
   const bodies = pageMethodBodies(src);
-  const unpaid = bodies ? unpaidPaidCallers(bodies, p.fns) : ['<抽取失败>'];
-  pageState[p.key] = { bodies, unpaid };
-  check(`L8-① 🔴 ${p.label}页内调用付费能力纯函数的方法，必须**在同一方法体内**过付费墙`
-    + ' —— 否则同一付费能力出现"有的入口拦、有的不拦"（未开通用户绕道用）',
-    bodies !== null && unpaid.length === 0,
-    unpaid.length ? `未过墙：${unpaid.join(', ')}` : `方法体 ${bodies ? bodies.length : 0} 个`);
+  if (p.freeTier) {
+    const walled = bodies ? walledCallers(bodies) : ['<抽取失败>'];
+    pageState[p.key] = { bodies, unpaid: walled };
+    check(`L8-①f 🔴 ${p.label}页已按规范 v1.1 铁律 R1 转为**永久免费**：任何方法体不得再挂墙`
+      + ' —— 拦住唯一产出（这一单到手多少）等于什么都不给，且保留旧判据会逼人把墙加回去',
+      bodies !== null && walled.length === 0,
+      walled.length ? `仍有墙：${walled.join(', ')}` : `方法体 ${bodies ? bodies.length : 0} 个，零墙`);
+    // 反恒真：把墙塞回去必须判红（否则 L8-①f 可能是恒绿的空判据）
+    const FIX_REWALLED = [{ name: 'onCalc', body: "{ const e = await fetchEntitlement(); if (!e) { openPaywall('groupon', {}); return; } }" }];
+    const FIX_FREE_OK = [{ name: 'onCalc', body: '{ const r = ' + p.fns[0] + '({}); this.setData({ r }); }' }];
+    check(`L8-③f ${p.label}页反恒真：塞回墙样本必须判红、纯算样本必须判绿（证明 L8-①f 有分辨力）`,
+      walledCallers(FIX_REWALLED).length === 1 && walledCallers(FIX_FREE_OK).length === 0,
+      `rewalled=${walledCallers(FIX_REWALLED).length} free=${walledCallers(FIX_FREE_OK).length}`);
+  } else {
+    const unpaid = bodies ? unpaidPaidCallers(bodies, p.fns) : ['<抽取失败>'];
+    pageState[p.key] = { bodies, unpaid };
+    check(`L8-① 🔴 ${p.label}页内调用付费能力纯函数的方法，必须**在同一方法体内**过付费墙`
+      + ' —— 否则同一付费能力出现"有的入口拦、有的不拦"（未开通用户绕道用）',
+      bodies !== null && unpaid.length === 0,
+      unpaid.length ? `未过墙：${unpaid.join(', ')}` : `方法体 ${bodies ? bodies.length : 0} 个`);
+    // 反恒真：用**本页自己的**函数清单造两个样本 —— 「调了付费纯函数但没过墙」必须判红；「两者都有」必须判绿。
+    const FIX_FAKE_BAD = [{ name: 'onNoWall', body: '{ const r = ' + p.fns[0] + '({}); this.setData({ r }); }' }];
+    const FIX_FAKE_OK = [{ name: 'onWithWall', body: '{ const e = await fetchEntitlement(); const r = ' + p.fns[0] + '({}, f); }' }];
+    check(`L8-③ ${p.label}页反恒真：无墙样本必须判红、有墙样本必须判绿（证明 L8-① 有分辨力，不是恒真）`,
+      unpaidPaidCallers(FIX_FAKE_BAD, p.fns).length === 1 && unpaidPaidCallers(FIX_FAKE_OK, p.fns).length === 0,
+      `bad=${unpaidPaidCallers(FIX_FAKE_BAD, p.fns).length} ok=${unpaidPaidCallers(FIX_FAKE_OK, p.fns).length}`);
+  }
   check(`L8-② ${p.label}页扫描面下界：方法体解析到 ≥ ${p.floor} 个（防抽取失效 ⇒ L8-① 恒真）`,
     bodies !== null && bodies.length >= p.floor, bodies ? `${bodies.length} 个` : '抽取失败');
-  // 反恒真：用**本页自己的**函数清单造两个样本 —— 「调了付费纯函数但没过墙」必须判红；「两者都有」必须判绿。
-  const FIX_FAKE_BAD = [{ name: 'onNoWall', body: '{ const r = ' + p.fns[0] + '({}); this.setData({ r }); }' }];
-  const FIX_FAKE_OK = [{ name: 'onWithWall', body: '{ const e = await fetchEntitlement(); const r = ' + p.fns[0] + '({}, f); }' }];
-  check(`L8-③ ${p.label}页反恒真：无墙样本必须判红、有墙样本必须判绿（证明 L8-① 有分辨力，不是恒真）`,
-    unpaidPaidCallers(FIX_FAKE_BAD, p.fns).length === 1 && unpaidPaidCallers(FIX_FAKE_OK, p.fns).length === 0,
-    `bad=${unpaidPaidCallers(FIX_FAKE_BAD, p.fns).length} ok=${unpaidPaidCallers(FIX_FAKE_OK, p.fns).length}`);
 });
+
+// L8-⑦ 🔴 「算免费、拿走收费」的**机判形式**（A9 · 2026-11-05 变异复核实测抓出的空档）：
+//   变异实测：把外卖 onCalc 改回「isPaid 假 ⇒ openPaywall 并 return」，本守卫 **35 条判据全部照绿**
+//   ⇒ 规范 v1.1 的第一条铁律 R1 当时**没有任何守卫在看**，谁改回去都没人发现。
+//   （与 A6 那次同族：口径写进文档 ≠ 口径有机器看护。）
+//   判据不是钉某个字面量，而是钉一个不变量：**「算」这个动作所在的入口方法体内，不得出现开墙调用**。
+const onCalcBody = (() => {
+  const b = ((pageState.takeaway || {}).bodies || []).find((x) => x.name === 'onCalc');
+  return b ? b.body : '';
+})();
+const CALC_WALLED = /openPaywall\s*\(/.test(onCalcBody);
+check('L8-⑦a 🔴 「算」入口不得挂墙（铁律 R1：算免费、拿走收费）—— 拦在算上 = 用户什么都没拿到就收钱',
+  onCalcBody.length > 0 && !CALC_WALLED,
+  onCalcBody.length ? (CALC_WALLED ? 'onCalc 内仍有 openPaywall' : '算入口无墙') : 'onCalc 未解析到');
+check('L8-⑦b 外卖 onCalc 必须**按权益分层**（含 isPaid）—— 否则要么全给（白送加工价值）要么全不给（等于旧墙）',
+  onCalcBody.length > 0 && /\bisPaid\b/.test(onCalcBody),
+  onCalcBody.length ? (/\bisPaid\b/.test(onCalcBody) ? '已按权益分层' : '未见 isPaid') : 'onCalc 未解析到');
+check('L8-⑦c 反恒真：把「点算就拦」的旧实现喂给 L8-⑦a ⇒ 必须判红（证明 ⑦a 有分辨力）',
+  /openPaywall\s*\(/.test("{ const ent = await fetchEntitlement(); if (!ent || !ent.is_active) { openPaywall('takeaway', {}); return; } }")
+  && !/openPaywall\s*\(/.test("{ const isPaid = true; const result = calcTakeawayOrder(order, f); }"));
 
 // L8-④ 反算的**输入新鲜度**（R299 实测的真缺陷 T3，与付费墙无关但同一轮修的）：
 //   原实现把 `dish_cost_fen` / `pack_cost_fen` 取自 `this.data.result`（只有点过「计算」才有）

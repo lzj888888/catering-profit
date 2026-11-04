@@ -2,8 +2,16 @@
 //
 // ⚠️ 计算下沉：本页**不做任何金额口径计算**，只把用户录入转成分、喂给纯计算单源
 //   `utils/grouponDerive.js::calcGrouponOrder`。试算结果**不落库**。
-// ⚠️ 付费域：团购复用外卖权益（m3_takeaway）⇒ 点「算到手」时经 fetchEntitlement 判定，
-//   未开通走 openPaywall('takeaway')（与 R159 付费墙口径一致，不自造判断分支）。
+// ⚠️ 付费域：**A9（2026-11-05）起团购永久免费，不再挂任何付费墙。**
+//   原实现「点『算到手』时过 fetchEntitlement，未开通走 openPaywall('groupon')」已删除。
+//   为什么不保留一道墙（这不是让利，是判据）：
+//     ① 团购页**只有一个产出**「这一单到手多少」，而它恰好是老板点进来的唯一目的。
+//        锁住唯一结论 = 什么都不给；它又没有「汇总 vs 明细」可分层，硬拆只能拆成"算一半"，比不做更糟。
+//     ② 团购与外卖是**同一条决策链的上下游**（外卖算线上、团购算到店）。外卖已按 R1「算免费」，
+//        团购继续拦会出现「同一个动作，一个给数一个弹窗」的口径撕裂 —— 老板只会认为你随机收钱。
+//   能力收益已由「成本卡配额 / 导出 / 单品复盘 / 挂牌价反算」承接，不靠团购这道墙。
+// 🔴 原注释说「复用外卖权益 m3_takeaway」，但代码实际调的是 openPaywall('groupon') ——
+//   两者本来就不一致（权益键与墙键对不上），这次一并消除。
 // 🔴 R190：团购是 M3 的**第二个渠道**（外卖是第一个）。成本侧只在选卡时取一次
 //   （card_type 仅 1/3），到手侧按渠道算多次；本页只补「到手侧」——**不新增卡类型**。
 // 🔴 红线（与 grouponDerive.js 头部一致）：
@@ -11,8 +19,7 @@
 //   ③ 与堂食对比只在给了挂牌价时才出；④ 结果不进 M1（输出不含任何 monthly 字段）。
 const api = require('../../../utils/api.js');
 const ui = require('../../../utils/ui.js');
-const { openPaywall } = require('../../../utils/paywall.js');
-const { fetchEntitlement } = require('../../../utils/entitlement.js');
+// A9：团购已转永久免费 ⇒ openPaywall / fetchEntitlement 均不再需要（不留死引用，防误判"还有墙"）
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 const { calcGrouponOrder } = require('../../../utils/grouponDerive.js');
 const dh = require('../../../utils/dataHealth.js'); // R299：getCostCard 出参 truncated 必须透传（选卡清单可能不全）
@@ -114,13 +121,8 @@ Page({
     return n;
   },
 
-  // ===== 计算（付费墙：点「算到手」时拦）=====
+  // ===== 计算（A9：团购永久免费，不挂墙）=====
   async onCalc() {
-    const ent = await fetchEntitlement().catch(() => null);
-    if (!ent || !ent.is_active) {
-      openPaywall('groupon', { shopId: (getApp().globalData && getApp().globalData.shop_id) || '' });
-      return;
-    }
     const idx = this.data.cardIndex;
     if (idx < 0 || !this.data.dishes[idx]) { wx.showToast({ title: this.data.t.pick, icon: 'none' }); return; }
     if (!this.data.priceYuan) { wx.showToast({ title: G.grouponNeedPrice, icon: 'none' }); return; }

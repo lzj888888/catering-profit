@@ -752,6 +752,10 @@ const TERMS = {
       expense: '费用',
       // P1 · 外卖单订单逐菜品/套餐毛利
       itemGrossTitle: '本单各菜品毛利',
+      // A9（2026-11-05 · 规范 v1.1 §1「算免费、拿走收费」）：逐行明细由「拦在点计算」改为「汇总免费、明细收费」。
+      //   措辞顺序不能反：先讲**他已经拿到了什么**（本单汇总），再讲还差什么 —— 否则等于把旧墙换个位置继续挡人。
+      itemGrossLocked: '本单汇总已算出。逐行毛利（哪道菜在亏、哪个套餐在给平台白干）需开通后展开。',
+      itemGrossUnlockBtn: '展开逐行毛利',
       itemComboTag: '套餐',
       itemGrossProfit: '毛利',
       itemGrossMargin: '毛利率',

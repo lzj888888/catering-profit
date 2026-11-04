@@ -3,8 +3,13 @@
 // ⚠️ 计算下沉：本页**不做任何金额口径计算**，只把用户录入转成分、喂给纯计算单源
 //   `utils/takeawayDerive.js`（calcTakeawayOrder / resolveCommission / reverseListedPrice）。
 //   试算结果**不落库**；只把「平台参数默认值」经 saveShopSetting 存 shop_switch。
-// ⚠️ 付费域：M3 外卖属付费功能（m3_takeaway）⇒ 点「计算」时经 fetchEntitlement 判定，
-//   未开通走 openPaywall('takeaway')（与 R159 付费墙口径一致，不自造判断分支）。
+// ⚠️ 付费域：M3 外卖属付费功能（m3_takeaway）。**A9（2026-11-05）后墙的位置变了**：
+//   原为「点计算时拦」（fetchEntitlement 假 ⇒ openPaywall 并 return，用户一个字看不到）——
+//   违反规范 v1.1 铁律 R1「算免费、拿走收费」。现为：
+//     · 「算」→ 免费，汇总恒出；
+//     · 「逐行毛利明细」→ 按权益分层（免费档不下发行数据，不是前端隐藏）；
+//     · 「挂牌价反算」→ 仍收费（这是"该定多少钱"，本页最值钱的结论）。
+//   三处口径统一走 fetchEntitlement，不自造判断分支（与 R159 一致）。
 const api = require('../../../utils/api.js');
 const ui = require('../../../utils/ui.js');
 const { openPaywall } = require('../../../utils/paywall.js');
@@ -260,9 +265,12 @@ Page({
       loading: TERMS.ui.loading,
       // P1 · 逐行毛利（外卖单订单 套餐毛利）
       itemGrossTitle: TK.itemGrossTitle,
-      itemComboTag: TK.itemComboTag,
       itemGrossProfit: TK.itemGrossProfit,
       itemGrossMargin: TK.itemGrossMargin,
+      // A9（2026-11-05）：明细锁定条文案（漏映射 ⇒ 渲染成空白且零报错，R124 同族）
+      itemGrossLocked: TK.itemGrossLocked,
+      itemGrossUnlockBtn: TK.itemGrossUnlockBtn,
+      itemComboTag: TK.itemComboTag,
       // ── R234/J4d 行内长提示折叠（本页 2 处：importPickHint 33 字 / importShapeCHint 20 字）──
       // ⚠️ R238：importPickHint 由 22 字改到 **33 字**（补「堂食《菜品销售统计》也从这里导」）——
       //    改的是**文案、不是节点** ⇒ 仍 ≥18 字、仍在折叠块内，`check_hint_fold` 的分层线
@@ -519,13 +527,18 @@ Page({
     return d ? { unit_cost_fen: d.unit_cost_fen, price_fen: d.price_fen, card_type: d.card_type, name: d.name } : {};
   },
 
-  // ===== 计算（付费墙：点「计算」时拦）=====
+  // ===== 计算（A9：算免费，逐行明细按权益分层）=====
+  // 🔴 A9（2026-11-05 · 规范 v1.1 §1 铁律 R1「算免费、拿走收费」）：
+  //   原实现在这里**直接 openPaywall 并 return** ⇒ 老板一个字都没看到就被弹窗。
+  //   拦在「算」上，等于在价值产生那一刻收钱，而用户什么都没拿到 —— 这是 R1 明确禁止的位置。
+  //   现改为：**汇总恒出**（付款/实收/毛利/到手率/成本，都是"这一单挣不挣"的直接判断依据），
+  //   **逐行毛利明细**按权益分层 —— 那才是加工结论（哪道菜在亏、哪个套餐给平台白干）。
+  // 🔴 仍保留 `fetchEntitlement` 调用，但它的角色从「拦截」变成「分层判据」，**不许删**：
+  //   守卫 L8-① 要求「调用付费能力纯函数的方法体，必须在同一方法体内过 fetchEntitlement」，
+  //   删了会让"同页面有的入口拦、有的不拦"这条不变量失去看护。
   async onCalc() {
     const ent = await fetchEntitlement().catch(() => null);
-    if (!ent || !ent.is_active) {
-      openPaywall('takeaway', { shopId: (getApp().globalData && getApp().globalData.shop_id) || '' });
-      return;
-    }
+    const isPaid = !!(ent && ent.is_active);
     // 🔴 R596：金额读不成 ⇒ 不出数（否则 0 会被当真实金额算出一份"假结果"）
     if (this.checkAmounts() > 0) { this.warnBadAmounts(); return; }
     const order = this.buildOrder();
@@ -533,7 +546,8 @@ Page({
     const result = calcTakeawayOrder(order, (id) => this.lookup(id));
     const fmt = (fen) => (fen / 100).toFixed(2);
     // 🔴 P1 · 逐行毛利明细：本单每道菜/套餐的毛利额与毛利率（套餐行单独特「套餐」标签）。
-    const items = (result.lines || []).map((ln) => ({
+    //   A9：免费档**不返回**这些行（不是前端隐藏，是压根不下发 —— 前端隐藏能被调试工具看到）。
+    const items = !isPaid ? [] : (result.lines || []).map((ln) => ({
       name: ln.name || '',
       is_combo: ln.is_combo,
       qty: ln.qty,
@@ -555,8 +569,15 @@ Page({
         rate_low: result.cash.receipt_rate < 70,
         // P1 · 逐行毛利（外卖单订单 套餐毛利）
         items,
+        // A9：明细未下发 ⇒ 出「已算出汇总 + 展开入口」，不出空白区（空白区会被当成"坏了"）
+        itemsLocked: !isPaid,
       },
     });
+  },
+
+  // A9：从「明细锁定条」进升级。**不重算**（汇总已在页面上，重算等于把免费的东西再收费一次）。
+  onUnlockItems() {
+    openPaywall('takeaway', { shopId: (getApp().globalData && getApp().globalData.shop_id) || '' });
   },
 
   // ===== 挂牌价反算（P* = 商品挂牌总价，不含打包费）=====
