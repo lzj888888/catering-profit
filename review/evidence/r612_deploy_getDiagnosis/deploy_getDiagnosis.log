@@ -1,0 +1,42 @@
+
+===== R611 deploy getDiagnosis  2026-11-06 03:04:58 =====
+- initialize
+
+(node:40092) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)
+√ IDE server has started, listening on http://127.0.0.1:10896
+- deploy cloudfunctions
+- fetching cloud env list
+- [getDiagnosis] Fetching info of cloudfunction getDiagnosis
+√ [getDiagnosis] cloudfunction getDiagnosis doesn't exist in the cloud, will create it
+- [getDiagnosis] upload cloud function getDiagnosis - preparing
+× [getDiagnosis] upload cloud function getDiagnosis - deploy
+× deploy cloudfunctions
+
+┌──────────────┬─────────┐
+│ (index)      │ success │
+├──────────────┼─────────┤
+│ getDiagnosis │ false   │
+└──────────────┴─────────┘
+[error] fail to deploy cloudfunction getDiagnosis :
+{"message":"Error: TencentCloud API error: {\n    \"Response\": {\n        \"Error\": {\n            \"Code\": \"FailedOperation.UpdateFunctionCode\",\n            \"Message\": \"当前函数处于Creating状态，无法进行此操作，请稍后重试。\"\n        },\n        \"RequestId\": \"9e209f34-5bcd-4266-b7fe-49ef09210dc1\"\n    }\n}"}
+
+===== R611 deploy getDiagnosis  2026-11-06 03:06:18 =====
+- initialize
+
+(node:51344) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)
+√ IDE server has started, listening on http://127.0.0.1:10896
+- deploy cloudfunctions
+- fetching cloud env list
+- [getDiagnosis] Fetching info of cloudfunction getDiagnosis
+√ [getDiagnosis] cloudfunction getDiagnosis exists in the cloud, will update it
+- [getDiagnosis] upload cloud function getDiagnosis - preparing
+√ [getDiagnosis] upload cloud function getDiagnosis - deploy
+√ deploy cloudfunctions
+
+┌──────────────┬─────────┬────────────┬───────────┐
+│ (index)      │ success │ filesCount │ packSize  │
+├──────────────┼─────────┼────────────┼───────────┤
+│ getDiagnosis │ true    │ 25         │ '82.9 KB' │
+└──────────────┴─────────┴────────────┴───────────┘
