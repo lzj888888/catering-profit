@@ -280,6 +280,7 @@ const CASES = [
   { key: 'check_m1_extra_fields', rel: 'tools/check_m1_extra_fields.js' }, // 32 条（含 4 条反面断言：禁参考利润 / 禁 ?0 兜底 / 禁裸键 / 禁中文枚举进载荷；变异复核 3/3 点名转红）
   { key: 'check_three_cost', rel: 'tools/check_three_cost.js' }, // 25 条（A17/A18：两处阈值逐业态相等 5 + 三项刚性行为 6 + 会员占比 5 + 接线 7 + 派生防漂移 2）
   { key: 'check_copy_compliance', rel: 'tools/check_copy_compliance.js' }, // 24 条（A14/A15/A21：扫描器自证 4 + 禁词 5 + 必备文案 6 + 退款规则行为 9）
+  { key: 'check_m1_new_cards', rel: 'tools/check_m1_new_cards.js' }, // 12 条（运行时：前置自证 3 + 基线全绿/断言数 2 + 5 条变异点名转红 5 + 自证 2；内含 18 条场景断言）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];
