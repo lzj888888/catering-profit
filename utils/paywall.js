@@ -1,30 +1,36 @@
 // utils/paywall.js —— 批次 5 · 付费弹窗（仅「保存超限 / 导出」两类触发 + 接真实下单流）
 //
-// ⚠️ 交互边界（批次 5 §2.1；R159 扩了触发面）：
-//   · 只在「保存数量超限 FREE_LIMIT_EXCEEDED」「导出操作」「套餐 / 外卖 点计算时」触发；
+// ⚠️ 交互边界（批次 5 §2.1；R159 扩触发面；**A9/A10（2026-11-05）收口后**）：
+//   · 只在「保存数量超限 FREE_LIMIT_EXCEEDED」「导出」「深度诊断」三类触发；
+//   · **套餐 / 外卖 / 团购 已不再弹墙**：套餐并入成本卡配额（走 saveLimit），
+//     外卖「点算」直接出汇总（明细后端不下发），团购整块免费 ⇒ 数组里保留的类型仅为兼容旧调用点，
+//     真正的判据是 `check_paywall_coverage` 的 L8 系列（按 `freeTier` 翻转判）。
 //   · 进入页面 / 录入 / 试算 / 查看历史 **均不触发**（付费能力"可录入、算钱才拦"）；
-//   · **M2 模块永不触发**。
+//   · **M2 模块永不触发**；**R1 铁律：算免费、拿走收费**（只许拦在保存/导出/生成报告）。
 // ⚠️ R159：放行类型集合 = `PAYWALL_TYPES`（下方常量）。它与云端 `PAID_FEATURES`
 //   派生出的键集合**必须一致**，由 `tools/check_paywall_coverage.js` 强制
 //   —— 防「云端登记了付费能力、前端却弹不出墙」（本仓 m3_combo / m3_takeaway 曾长期如此）。
 // ⚠️ 文案全部来自 miniprogram/i18n/terms.js（terms.paywall / terms.buttons / terms.pay），禁止 wxml 硬编码。
-// ⚠️ 当前阶段 enable_real_payment=false：主按钮走 payCreateOrder 生成订单 → 提示「联系客服开通」；
-//   执照下来改后端配置即接真实支付，**前端一行不改**（§2.6）。
+// ⚠️ 当前阶段 enable_real_payment=false：主按钮走 payCreateOrder 生成订单 → 提示「联系客服开通」。
+//   🔴 修正旧说法「执照下来前端一行不改」（**这句是错的**，规范 v1.1 已自纠）：
+//     接真实支付仍要改前端 —— ① 把 `payCreateOrder` 返回的 `pay_params` 交给
+//     `wx.requestVirtualPayment`（虚拟支付 SDK，不是 requestPayment）② 支付结果回调与失败重试
+//     ③ A14 退款入口。改的是**本文件与订单页**，不动各业务页的收费判据（那层才是"一行不改"的部分）。
 
 const { TERMS } = require('../miniprogram/i18n/terms.js');
 const api = require('./api.js');
 const { isIOS } = require('./platform.js');
-
+const { PAYWALL_ENABLED } = require('./featureFlags.js');
 /**
  * 允许的触发类型。**新增付费能力时只改这一处**（配 terms.paywall 同名键 + 守卫 check_paywall_coverage）。
  * 用常量数组，而不是 `type !== 'a' && type !== 'b'` —— 后者每加一个能力就多一截 `&&`，
  * 漏加的表现是"点了没反应"（静默），正是 R159 要根治的形态。
  */
-const PAYWALL_TYPES = ['saveLimit', 'export', 'combo', 'takeaway', 'dishreview'];
+const PAYWALL_TYPES = ['saveLimit', 'export', 'combo', 'takeaway', 'dishreview', 'groupon'];
 
 /**
  * 打开付费弹窗。
- * @param {'saveLimit'|'export'|'combo'|'takeaway'} type 触发类型（不在集合内直接忽略 = 防误触发）
+ * @param {'saveLimit'|'export'|'combo'|'takeaway'|'dishreview'|'groupon'} type 触发类型（不在集合内直接忽略 = 防误触发）
  * @param {object} opts
  *   - shopId: 下单来源店铺
  *   - planId: 默认套餐（可选）
@@ -33,13 +39,28 @@ const PAYWALL_TYPES = ['saveLimit', 'export', 'combo', 'takeaway', 'dishreview']
  */
 function openPaywall(type, opts) {
   if (PAYWALL_TYPES.indexOf(type) < 0) return; // 防误触发
+  // 🔴 提审期/免费期（PAYWALL_ENABLED=false）：不报价、不引导客服、不建单。
+  //   ⚠️ R603 修正：能力类（export/combo/takeaway/dishreview/groupon）在免费期**根本不该走到这里**
+  //      —— `utils/entitlement.js::fetchEntitlement` 已短路为 is_active=true，调用点自动放行。
+  //      仍会到达本函数的只有**配额类**（saveLimit：多店 / 成本卡张数），它不走权益判定、
+  //      走 checkQuota / getShopList 的 hit_free_limit。配额是**产品额度**，不是收费，
+  //      故给「当前版本上限」说明，而不是「功能完善中」——后者会让用户以为功能坏了。
+  if (!PAYWALL_ENABLED) {
+    if (type === 'saveLimit') return showFreeLimit(opts || {});
+    return showNotOpen(); // 兜底：任何绕过 entitlement 直达的调用都不许出现售卖信息
+  }
   // R45：iOS 端不得提供虚拟商品购买入口 ⇒ 弹窗改为纯提示，**不给确认下单按钮**
   if (isIOS()) return showIOSBlocked();
   const def = TERMS.paywall[type];
   const buttons = TERMS.buttons;
+  // A14（2026-11-05）：**购买前明示退款规则**（规范 §6 硬要求；虚拟商品投诉重灾区）。
+  //   🔴 拼进同一个 modal 的 content，而不是"再弹一次说明" —— 两次弹窗用户只会点掉第一个，
+  //      等于没明示；事后也拿不出"已告知"的证据。
+  //   ⚠️ 文案单源在 terms.pay.refundNotice，禁在此硬编码（守卫 check_refund_policy 扫本文件禁词）。
+  const content = def.content + '\n\n' + TERMS.pay.refundTitle + '：' + TERMS.pay.refundNotice;
   wx.showModal({
     title: def.title,
-    content: def.content,
+    content,
     cancelText: def.secondary || buttons.cancel,
     // ⚠️ 平台限制：confirmText ≤4 字符 —— 用 paywall.ctaShort，不用 primary（6 字会 fail）
     confirmText: TERMS.paywall.ctaShort || def.primary,
@@ -77,6 +98,50 @@ function showIOSBlocked() {
 }
 
 /**
+ * 提审期（PAYWALL_ENABLED=false）统一出口：只告知「暂未开放」。
+ * 🔴 这里**绝不能**出现：价格/金额、「去开通/购买/续费」、客服入口 —— 三者任一都会踩
+ *    「诱导线下支付」或「虚拟商品未接入虚拟支付」。守卫 L9-③ 扫本函数体把关。
+ * 🔴 fail-closed：showModal 失败也要给可见反馈，不能"点了没反应"。
+ */
+function showNotOpen() {
+  wx.showModal({
+    title: TERMS.pay.notOpenTitle,
+    content: TERMS.pay.notOpenBody,
+    showCancel: false,
+    confirmText: TERMS.buttons.gotIt,
+    confirmColor: '#1e3a5f',
+    fail(err) {
+      wx.showToast({ title: (err && err.errMsg) || TERMS.pay.notOpenTitle, icon: 'none', duration: 2500 });
+    },
+  });
+}
+
+/**
+ * 免费期 · **配额上限**说明（仅 saveLimit）。
+ * 🔴 为什么单独一条，不复用 showNotOpen：配额是「当前版本能建几个」的产品限制，
+ *    用「功能完善中」解释不了「为什么第 2 家店建不了」，用户会以为功能坏了。
+ * 🔴 零营销词：不得出现价格 / 升级 / 开通 / 购买 / 客服 —— 提审期出现任一即判诱导交易。
+ *    守卫 L9-③ 对 showNotOpen 与 showFreeLimit **两个函数体**同时扫禁词。
+ * @param {{scope?:string, limit?:number}} opts scope='shop'|'cost_card'，limit 为后端出参的免费额度
+ */
+function showFreeLimit(opts) {
+  const isShop = opts.scope === 'shop';
+  const n = Number(opts.limit) || 0;
+  const raw = isShop ? TERMS.pay.freeLimitShopBody : TERMS.pay.freeLimitCardBody;
+  const body = n > 0 ? raw.replace('{n}', String(n)) : TERMS.pay.freeLimitGeneric;
+  wx.showModal({
+    title: isShop ? TERMS.pay.freeLimitShopTitle : TERMS.pay.freeLimitCardTitle,
+    content: body,
+    showCancel: false,
+    confirmText: TERMS.buttons.gotIt,
+    confirmColor: '#1e3a5f',
+    fail(err) {
+      wx.showToast({ title: (err && err.errMsg) || TERMS.pay.freeLimitShopTitle, icon: 'none', duration: 2500 });
+    },
+  });
+}
+
+/**
  * 主按钮确认：创建订单 → 当前阶段（enable_real_payment=false）提示联系客服开通。
  * 不接真实支付时，订单仍写入 shop_payment_flow（订单记录页可见），权益由后台 source=manual 发放。
  *
@@ -84,6 +149,8 @@ function showIOSBlocked() {
  *    （守卫 tools/check_ios_pay.js 只保证"文件里做了判断"，本行保证"运行时真挡住"）。
  */
 async function onConfirm(type, opts) {
+  // 🔴 纵深第一道：绕过 openPaywall 直调本函数（deep link / 改版）时，同样不得建单
+  if (!PAYWALL_ENABLED) return showNotOpen();
   if (isIOS()) return showIOSBlocked();
   const shopId = (opts && opts.shopId) || (getApp && getApp().globalData && getApp().globalData.shop_id) || '';
   const planId = (opts && opts.planId) || 'plan_basic_month';
@@ -132,4 +199,4 @@ function openService() {
   return false;
 }
 
-module.exports = { openPaywall, openService, TERMS };
+module.exports = { openPaywall, openService, showNotOpen, TERMS };

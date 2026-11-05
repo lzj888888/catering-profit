@@ -1,0 +1,60 @@
+[
+  {
+    "k": "connected",
+    "v": true
+  },
+  {
+    "k": "S0_loaded",
+    "v": {
+      "route": "subpkg/biz/month/input",
+      "month": "2026-10",
+      "takeoutTrack": "net",
+      "takeoutMode": "fast",
+      "twSelfCheck": "",
+      "sum": "7500.00",
+      "marketing": [
+        {
+          "name": "",
+          "amt": "",
+          "lock": false
+        }
+      ]
+    }
+  },
+  {
+    "k": "S1_gross",
+    "v": {
+      "route": "subpkg/biz/month/input",
+      "month": "2026-10",
+      "takeoutTrack": "gross",
+      "takeoutMode": "detail",
+      "twSelfCheck": "外卖收入已填，营销费用里的佣金与配送费还是空的 —— 这两项记得按账单记上，不然利润会偏高。",
+      "sum": "7500.00",
+      "marketing": [
+        {
+          "name": "",
+          "amt": "",
+          "lock": false
+        }
+      ]
+    }
+  },
+  {
+    "k": "S2_net",
+    "v": {
+      "route": "subpkg/biz/month/input",
+      "month": "2026-10",
+      "takeoutTrack": "net",
+      "takeoutMode": "fast",
+      "twSelfCheck": "",
+      "sum": "7500.00",
+      "marketing": [
+        {
+          "name": "",
+          "amt": "",
+          "lock": false
+        }
+      ]
+    }
+  }
+]

@@ -32,7 +32,7 @@ const { toMonth } = common.utilTime;
 
 // 🔴 R232f：算法层已外提到 service.js（纯函数 · 零 db）⇒ 6 处口径首次可被独立复算。
 //   本文件只负责：鉴权 → 付费墙 → 取数 → 调 service → 返回。
-const { buildDishReview, buildTakeawayReview, splitSales, mergeTotals, computeCoverage } = require('./service');
+const { buildDishReview, buildTakeawayReview, splitSales, mergeTotals, computeCoverage, filterByRange, coverageStats } = require('./service');
 
 exports.main = async (event) => {
   const ctx = cloud.getWXContext();
@@ -46,15 +46,38 @@ exports.main = async (event) => {
   const owner = await assertShopOwner(db, shopId, userId);
   if (owner.error) return fail(owner.error, owner.msg);
 
-  // ===== 2. 付费墙（铁律：付费墙必须先于付费功能落地）=====
+  // ===== 2. 付费墙（A8：由「整页锁」改为「两层」）=====
+  //  🔴 改前：`if (!unlocked) return fail(FEATURE_LOCKED)` —— 点开就整页弹窗，一个数都不给。
+  //     而本页的前置成本是全站最高的：老板必须先 ①导入销量表 ②建成本卡 ③逐条做菜名映射，
+  //     三件苦力做完、点开想看结果的那一刻被整页拦住 ⇒ 这不是转化，是赶人（规范 v1.1 §1 拆墙）。
+  //  ⇒ 改为两层：
+  //     · 免费档给他**自己的原始数据**：销量 Top10 + 覆盖率 + 未匹配清单（锁住这些只会招恨，
+  //       而「你有 8 道菜没建卡」这句本身就是驱动他去建卡的动力）
+  //     · 付费档给他**我们加工出的结论**：完整毛利排行 + 全渠道合计 + 导出
+  //  ⚠️ 分层**必须在后端按权益判**，不接受前端传 tier —— 否则改个参数就白嫖，付费墙形同虚设。
   const unlocked = await hasFeature(db, userId, 'm3_dishreview');
-  if (!unlocked) return fail(ERROR_CODES.FEATURE_LOCKED);
+  const tier = unlocked ? 'full' : 'free';
 
   const da = makeAdapter(db);
 
   // ===== 3. 读全部销量行（去掉 platform 过滤；listAll 分页取全，突破单页 1000）=====
+  // 🔴 R301：**契约入参 `biz_date_from` / `biz_date_to` 的补实现**。
+  //   契约（`specs/dev-specs/core/10_云函数清单与接口契约.md`）**一直**声明这两个入参，
+  //   而实现从未读取 ⇒ 复盘榜把历次导入的**多个月份全部累加**、页面却按"当前月"呈现
+  //   ⇒ 「这道菜这个月卖过」是错的（**静默错数**；真样本就是 7 天表，"一段"冒充"整月"）。
+  //   为什么在 **service 纯函数层**过滤而不在 `where` 里加范围条件：
+  //     `common/dataAdapter.js` 的 `where` 只支持**等值**，加范围支持要动全仓 **51 份**
+  //     `cx_dataAdapter.js` 派生副本（要跑 sync_common）⇒ 改动面与风险不成比例；
+  //     而**在内存里过滤与在库里过滤结果逐行等价**（`listAll` 本来就读该店全量行，读的量不变）。
+  const bizFrom = event && event.biz_date_from;
+  const bizTo = event && event.biz_date_to;
   const salesRes = await da.listAll('external_sales_daily', { shop_id: shopId });
-  const allSales = (salesRes && salesRes.data) || [];
+  const rawSales = (salesRes && salesRes.data) || [];
+  const { rows: allSales, from: rangeFrom, to: rangeTo, days: rangeDays } = filterByRange(rawSales, bizFrom, bizTo);
+  // 🔴 R574 / #110：`rangeDays` 只按 biz_date 去重 —— 堂食 7 天汇总表落库后 36 行同一个 biz_date
+  //   ⇒ 它会报「1 天」，而实际覆盖 7 天。故另算一份**粒度感知**的覆盖天数，**不改 rangeDays 旧语义**
+  //   （旧语义已被前端文案与套件锁定），只在出参里如实多给三项，由前端决定怎么说。
+  const cov = coverageStats(allSales);
 
   // ===== 4. 读成本卡（listAll，取各 card_code 最新版本；软删自动过滤）=====
   const cardsRes = await da.listAll('shop_cost_card', { shop_id: shopId });
@@ -136,9 +159,90 @@ exports.main = async (event) => {
     });
   }
 
+  // ⚠️ 下面两个出参分支里的 `range` 是**内联字面量**，看着重复，但**不许提成公共变量** ——
+  //   `tools/check_dishreview_engine.js` 14-②/②b 是**文本正则**守卫，它按
+  //   `range: { … from: rangeFrom … }` 这个结构判「云端如实回了期间」；
+  //   一旦抽成 `range: rangeObj`，守卫就匹配不到（语义没变却判红，R574 已经踩过一次）。
+  //   ⇒ 两处必须逐字一致；改一处就得改另一处。
+  const truncatedFlag = !!(salesRes.truncated || cardsRes.truncated);
+  const reqId = (event && event.client_request_id) || '';
+
+  // ===== A8 免费档（tier='free'）=====
+  //   只回「销量榜 Top10 + 覆盖率 + 未匹配清单」，**剥掉 totalCostFen / grossFen / marginPct**。
+  //   ⚠️ 排序**不能沿用 ranked 的毛利降序** —— 那等于用排序把「谁毛利高」泄出去。
+  //      改按销量降序（同量比金额、再比菜名兜底 ⇒ 顺序稳定，两次 load 不会抖）。
+  //   ⚠️ 外卖的毛利榜不给，但**外卖的未匹配清单必须合并回顶层** —— 那是老板自己导入的数据，
+  //      也是「去建卡」的入口；把它一起藏了，免费档就变成一张空壳，谁也不会因此付钱。
+  if (tier === 'free') {
+    const FREE_TOP_N = 10;
+    const byQty = ranked.slice().sort((a, b) =>
+      (b.qty - a.qty) || (b.amountFen - a.amountFen) || String(a.name).localeCompare(String(b.name)));
+    const freeTop = byQty.slice(0, FREE_TOP_N).map((x) => ({
+      dish_key: x.dish_key,
+      name: x.name,
+      card_code: x.card_code,
+      qty: x.qty,
+      amountFen: x.amountFen,
+      snapshot_month: x.snapshot_month,
+    }));
+    const freeUnmatched = (unmatched || []).slice();
+    if (takeawayResult.by_platform) {
+      for (const p of Object.keys(takeawayResult.by_platform)) {
+        const u = (takeawayResult.by_platform[p] || {}).unmatched;
+        if (Array.isArray(u)) freeUnmatched.push(...u);
+      }
+    }
+    return ok({
+      shop_id: shopId,
+      tier: 'free',
+      free_top: freeTop,             // 销量 Top N（无成本/毛利字段）
+      free_top_n: FREE_TOP_N,
+      free_ranked_total: ranked.length,   // 「一共 N 道已建卡」⇒ 让他自己看出还差多少没看到
+      mapping: mappingList,
+      range: {
+        from: rangeFrom,
+        to: rangeTo,
+        days: rangeDays,
+        covered_days: cov.coveredDays,
+        has_interval: cov.hasInterval,
+        has_unknown: cov.hasUnknown,
+      },
+      unmatched: freeUnmatched,
+      // 合计只给**数量口径**：给了 costFen/grossFen 就等于把毛利白送出去
+      totals: {
+        qty: totals.qty,
+        amountFen: totals.amountFen,
+        dishCount: totals.dishCount,
+        unmatchedCount: totals.unmatchedCount,
+      },
+      coverageA: coverage.coverageA,
+      coverageC: coverage.coverageC,
+      buffet: coverage.buffet,
+      truncated: truncatedFlag,
+      client_request_id: reqId,
+    });
+  }
+
   return ok({
     shop_id: shopId,
+    tier: 'full',
     mapping: mappingList,   // 🔴 R255：本店现有菜名映射（前端据此可展示 / 解除，防「挂错卡无入口」）
+    // 🔴 R301：**如实回报统计期间**（契约出参里的 `range{from,to}`）。
+    //   · `from`/`to` 为空串 ⇒ **未按区间过滤**（调用方没给 / 只给了一端）⇒ 前端必须显示
+    //     "全部期间"而不是假装单月 —— 期间口径**不许由前端猜**。
+    //   · `days` = 该期间内**实际有数据的天数**（去重）⇒ 直接把"这个月只有 7 天数据"暴露出来。
+    //   · R574 / #110 增三项（**均为如实回，不是估计**）：
+    //       `covered_days` = 真实覆盖天数（区间行按期间并集算；与 days 不等 ⇒ 说明含汇总表）；
+    //       `has_interval` = 存在「一段=一行」的汇总表数据 ⇒ 前端**必须**提示，不许当逐日比；
+    //       `has_unknown`  = 存在粒度未知的行（主要是本功能上线前的历史导入）⇒ 提示可重导补齐。
+    range: {
+      from: rangeFrom,
+      to: rangeTo,
+      days: rangeDays,
+      covered_days: cov.coveredDays,
+      has_interval: cov.hasInterval,
+      has_unknown: cov.hasUnknown,
+    },
     dine_in: ranked,        // 堂食排行
     // 无外卖数据 ⇒ null（空态，不默认 0，红线 18）；有数据 ⇒ { by_platform, totals }
     takeaway: Object.keys(takeawayResult.by_platform).length ? takeawayResult : null,
@@ -148,7 +252,7 @@ exports.main = async (event) => {
     coverageA: coverage.coverageA,
     coverageC: coverage.coverageC,
     buffet: coverage.buffet,
-    truncated: !!(salesRes.truncated || cardsRes.truncated),
-    client_request_id: (event && event.client_request_id) || '',
+    truncated: truncatedFlag,
+    client_request_id: reqId,
   });
 };

@@ -1,6 +1,7 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：169 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：235 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+//       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
 //       + 自测形状守卫（tools/check_selftest_shape.js，R66：顶层 IIFE ≤1 / exit 仅在末块）
@@ -45,7 +46,7 @@
 //         （集合双向）+ 下界护栏（总项数 ≥ 20 / 每 category ≥ 2））
 //       + 全仓 .js 语法编译守卫（tools/check_js_syntax.js，R122：**每个受管 .js 至少能被引擎编译一次**，
 //         用 `vm.Script` 同进程编译 675 个文件、不执行不 spawn）。
-//         根因=round97 T1 把 `pages/month/input.js` 的 require 解构**拆成两条**（第 13 行已 `}` 收尾、
+//         根因=round97 T1 把 `subpkg/biz/month/input.js` 的 require 解构**拆成两条**（第 13 行已 `}` 收尾、
 //         第 14 行又接一段）⇒ 微信出码 `Unexpected token (14:32)`、**小程序根本起不来**，
 //         而门禁当时报 **94/94 全绿**：check_requires 只查「require 路径**存在**」（存在 ≠ 可编译），
 //         全部 selftest/check_* 都是**文本级 grep**，而前端 `pages/`+`miniprogram/` **无任何套件 require**
@@ -58,7 +59,7 @@
 //         防扫描面被悄悄写窄）
 //       + WXML 结构完整性守卫（tools/check_wxml_structure.js，R123：**WXML 不得把属性暴露成文本**）。
 //         根因=round97 T1 的**同一支插入脚本**在把 input.js 的 require 拆成两条（R122 记）之后，
-//         **同一轮**又把 pages/month/input.wxml 的金额 <input> 从**属性集合中间**用 `/>` 收掉
+//         **同一轮**又把 subpkg/biz/month/input.wxml 的金额 <input> 从**属性集合中间**用 `/>` 收掉
 //         ⇒ 其后的属性行失去归属、成了文本节点；而 WXML 的文本节点**仍会插值 {{}}**
 //         ⇒ 真机屏上是**求值后**的 `data-gidx="0"` / `disabled="false"`（所以像"英文报错"
 //         却看不到双花括号）。缺口：95 个套件里**没有任何一条读 .wxml** —— R122 只覆盖 .js，
@@ -66,11 +67,11 @@
 //         判据 A＝裸属性行（该行形如 attr="…" 而**上一非空行以 > 或 /> 结尾** ⇒ 属性无归属）；
 //         判据 B＝标签配平（骨架化抹 `{{…}}` / `<!--…-->` 后单趟 tag 栈：未闭合 / 错配 / 缺 > 均判红）。
 //         骨架化时**保留换行**⇒ 报出的行号与源文件一致、不漂移；
-//         下界护栏＝文件数 ≥ 10 + 四个锚点页面（含事故现场 pages/month/input.wxml）必须命中）
+//         下界护栏＝文件数 ≥ 10 + 四个锚点页面（含事故现场 subpkg/biz/month/input.wxml）必须命中）
 //       + 页面术语键「引用即存在」守卫（tools/check_page_terms.js，R124：**WXML 拿不到的术语键
 //         会静默渲染成空** —— 空白按钮/空白文案/空白 placeholder，而门禁全绿）。
 //         根因=round108 李老师真机反馈「再投一笔下面的按钮是纯蓝色、上面没有文字」：
-//         `pages/month/amortize.js` 写 `TERMS.amortizePage.amortAdd`，而该键**在 terms.js 里不存在**
+//         `subpkg/biz/month/amortize.js` 写 `TERMS.amortizePage.amortAdd`，而该键**在 terms.js 里不存在**
 //         （本体是 `amortizePage.add`）⇒ undefined ⇒ 主按钮只剩底色。顺着这一处全仓扫出**同族 7 处**
 //         （空按钮 1 + 空文案 4 + 空 placeholder 2），全部漏在「术语本体是好的、只是没搬进页面的 t」。
 //         缺口：R122 只验 .js 能不能编译、R123 只验 WXML 属性有没有错成文本，
@@ -286,8 +287,8 @@
 //         任意用户改 shop_id 即可读写他人店铺数据（真云可达）。判据=G1 扫描面非退化 + G2 每个 return
 //         分支都带 error + G3 单源无 ok()/fail() + G4 派生副本同形 + G5 关键锚点在场 + G6 调用点判据与形状一致）
 //       + 路由编解码配对守卫（tools/check_uri_codec_pairs.js，R203：**编码了却不解码** ——
-//         跳转侧 pages/material/index.js 用 encodeURIComponent(m.name) 编过原料名，目标页
-//         pages/metrics/impact.js 直接 q.name 赋值 ⇒ 顶部渲染 %E7%82%B8%E9%B8%A1%E8%85%BF
+//         跳转侧 subpkg/biz/material/index.js 用 encodeURIComponent(m.name) 编过原料名，目标页
+//         subpkg/tools/metrics/impact.js 直接 q.name 赋值 ⇒ 顶部渲染 %E7%82%B8%E9%B8%A1%E8%85%BF
 //         （真机反馈「涨价影响面前面很多英文和百分号」）。⚠️ 长期存在却从未暴露：上游店铺鉴权 404
 //         让这页从没真正渲染出来 —— **修好上游会把下游老毛病一并照亮**。判据=A 编码跳转的目标页必须解码
 //         + B 扫描面非退化且至少存在一处编码跳转 + C impact.js 自反锚点在位；含 5 条影子用例）
@@ -504,9 +505,93 @@
 //         + 三处调用点全走单源（禁第二份 downloadContent）+ 文案三处齐。25 断言 + S/A/B/C/D 五组）
 //       🔒 另：本文件对**每个套件的 stdout**做「段标题下零断言即判红」审计（R66 主体，见 auditAssertions）。
 // 🔒 上面这句数量由本文件内的 guardSuiteCount() **自动校验**（R59）；改这句以外的任何套件增删都会立刻转红。
+//       + 金额精度守卫（tools/check_money_precision.js，R298：「元 → 分」是**唯一必须做浮点乘法的边界**
+//         （× 100），而单源 `common/money.js::yuanToFen` 写了、sync 进 51 个云函数包，**业务代码一处都没用**
+//         —— 19 处各自裸写 `Math.round(元 * 100)`。裸写在 IEEE754 下半步（真值恰为 x.xx5）会**静默少进 1 分**：
+//         三位小数全域 18 万点错 1147 点、成本引擎 qty×(净料万分之元) 600 万组合错 3528 处，方向恒为偏小。
+//         ⚠️ 免责面：两位小数（老板日常输入形态）穷举 100 万点原本就 0 错 —— 不是"金额体系全错"。
+//         判据 = S 扫描面 + A 行为穷举 + B 前后端双副本等价（合法域逐点 / 差异精确落在非法域）
+//         + C **登记清单 fail-closed**（全仓 78 处 `* 100` 按 IDENT/PAREN/LITERAL 三形态桶穷尽对账，
+//           逐点具名登记 kind + 语义理由；未登记 / 登记失效 / 计数不符一律判红；money 必十进制安全、
+//           带 money 下界防"批量改标成 ratio 绕过"）+ D 正负样本互证 + 断言数下界）
+//         🔴 观测覆盖率（立此判据的根因）：旧判据只认**命名像"分"**的标识符 ⇒ 面内 77 处仅见 17 处
+//            （22.1%），`promoFen`/`packTotal` 之外的 `c.sum`、`)](`、`448 * 100` 三种书写形态全在盲区；
+//            升级为登记清单后 78/78 全登记 —— 覆盖面由**语义**决定而非命名习惯。
+//       + M3 毛利率色阶单源守卫（tools/check_m3_margin_bands.js，R298Y：规范 §M3.8 的「≥60 绿 / 40~60 黄 /
+//         <40 红」被抄三份且互相打架 —— 筛选 30 / 色带 40 / 文案 30 ⇒ 毛利 35% 的卡**色带判红、筛选取中**
+//         （用户可见自相矛盾），而 `marginHigh|marginMid|marginLow` 在 tools/ 下**零命中**（判据只守形态不守行为）。
+//         修 = 单源化到 `utils/marginBand.js`（阈值 + 文案 + 色值，页面与 wxml 一律引用；terms 那三个键整体撤掉
+//         —— 双副本无法 require 同一相对路径）。判据 = ① 单源取值 ② **行为实跑 22 例**（含反恒真锚点
+//         `matchBand('mid',35)===false`、`colorOf(35)==='#e74c3c'`）③ 全仓无游离阈值字面量 ④ 双副本键定义不回流
+//         ⑤ 扫描面下界（81 文件）+ 正样本锚点）
+//       + M3 成本卡跨页往返保真守卫（tools/check_m3_card_roundtrip.js，R298Y：抓两处零覆盖缺陷 ——
+//         ① `onCopy` 把套餐子卡行当手工行送、丢 `sub_card_ref` ⇒ validate 强制要求 ⇒ **复制套餐卡 100% 失败**；
+//         ② `version.js::doRestore` 读 `v.card_type`/`v.specs`，而 `load()` 的 list 映射**从未赋值**这两键
+//         ⇒ R297-⑥ 注释声称"恢复不再降级"实为**空修复**（行为仍是它描述的 bug）——本仓同族病第 4 型「修了一半」。
+//         判据 = ① 卡级往返（doRestore 的每个 `v.X` ⊆ load 映射产物 = 顶层键 ∪ 直接引用，容 `calc_mode_key` 派生键）
+//         + ② 行级往返（同族；且必须 ∈ 出参层 lineToOut）+ ③ 复制面（onCopy 的 `l.X` ⊆ getCostCard::lineToOutput）
+//         + ④ 函数体抽取 fail-closed / 集合下界 / 正样本。⚠️ **剥注释是判据成立的前提**：不剥则注释里的字段名
+//         会喂饱两个集合 ⇒ 缺陷②永远抓不出来（首版实测））
+//       + 云函数出参 `truncated` **消费面**守卫（tools/check_truncated_surfaced.js，R299：本仓同族病
+//         的**最后一公里** —— `dataAdapter.js::listAll` 明文要求「达上限仍有剩余 ⇒ 调用方**必须**把这个
+//         事实透传到出参（**可见降级**）」，四个云函数照做了、**前端曾零消费**（全仓 grep `truncated`
+//         在 pages/utils/miniprogram 下为空）⇒ 超 LIST_TOTAL_CAP(20000) 时复盘榜 / 账单列表 / 成本卡列表
+//         **静默少行**，页面照常渲染、零提示。判据 = ①**生产者面**（从 `cloudfunctions/*/index.js` 的
+//         `ok({...})` 里**实扫**出真的回了 `truncated` 的函数 —— 不写死名单，且必须同时认 `truncated:` 与
+//         **简写** `truncated,`，首版只认冒号曾漏掉 getSalesBills）+ ②**契约面**（`dataAdapter` 的
+//         「必须透传 / 可见降级 / LIST_TOTAL_CAP 是显式常量」原话仍在）+ ③**消费者面 fail-closed 登记表**
+//         （每个碰过 emitter 的页面文件：要么消费 `isTruncated`、要么在 `EXEMPT` 里带 why ⇒ 未表态即判红；
+//         且登记表**无僵尸键**（文件改名后豁免悄悄失效）**无空转键**（豁免表变成躲避修复的垃圾桶））
+//         + ④**反恒真**（未消费样本必须判不通过）+ 三个真消费点正样本）
 // ⚠️ 另有两处在重启键 specs/dev-specs/★知识存储点_2026-09-10.md（§1.1 一键校验入口行 + 「套件数会漂」行），
 //    那两处仍是**人工面**，改 SUITES 后须手动跟（A–L 无一组能发现重启键自相矛盾）。
 // 用同一个 node（process.execPath）跑子进程，避免多解释器/环境问题。
+//       + 分享卡片守卫（tools/check_share_card.js，R395：此前全仓零 onShareAppMessage ⇒ 微信一律
+//         拿小程序名当分享标题，对方只看到「店算」两个字；三页（M1 结果 / M2 测算 / M3 菜品）接线
+//         `utils/shareCard.js` 单源，判据 = 标题真带本店算出的数 + 页面不自己拼 + 反恒真）
+//       + 异常核对清单接线守卫（tools/check_anomaly_wiring.js，R399：规则层 R396 曾**全仓零生产调用**
+//         ⇒ 规则再对、老板也看不见。判据 = 真 require + 真调用且**锚在 loadChecklist 函数体内** +
+//         目标月快照必须来自本页 getLedger 出参 + 契约面「toSnapshot 需求集 ⊆ getLedger 产出集」+ 反恒真）
+//       + AI 授权两函数自测（cloudfunctions/grantAiConsent/selftest.js、revokeAiConsent/selftest.js，R403）：规则层守的是**授权语义**不是接口形状 —— scope 是能力粒度（布尔与未知能力必须拒收）、条款版本必须与服务端当前一致（旧同意不得覆盖新条款）、已过期有效期不许落库、撤回三态与"已撤回不刷新时间戳"、派生结论按 consent_id 清且清不干净必须 clear_pending 显式降级；接线面另判幂等早于首个写与 stats.updated。
+//       + AI 授权**读侧**自测（cloudfunctions/getAiConsent/selftest.js，R405）：守的是「记录 → 前端能直接用的状态」这一层翻译 ——
+//         四态穷尽（none/active/expired/revoked）、撤回优先于过期、`expire_at=0` 不算过期、条款升级时能力必须为空、
+//         出参键集合精确（不外泄 user_id）、读函数**零写库/零审计**、无记录也走 ok（正常态不报错）。
+//       + 原料改价「成本卡不会自己跟着变」告知守卫（tools/check_material_price_impact.js，R406 · 队列 #19）：
+//         守的是**文案与机制一致** —— O5 原拟文案「所有用该原料的菜成本已自动更新」在本仓是假承诺
+//         （成本卡快照隔离，只有 syncCostCard 才生成新版本）⇒ 老板会按没变的成本定价。
+//         六条腿：基线真赋值（防"判据在、数据没有"恒真）/ onSave 体内真比对 + 真调用（剥注释 + 锚函数定义体）/
+//         tellPriceImpact 内真弹窗 + dry_run 探测 + 跳影响面页 / 话术不得含「已自动更新」且必须点明「还是旧价」/
+//         两个弹窗按钮 ≤4 字符（平台硬限制，变量引用时 check_modal_button_len 抓不到）/ 合成样本 + 真实变异反恒真。
+//       + 成本卡「追加型写」前端重入保护守卫（tools/check_write_reentry_guard.js，R408 · 队列 #20）：
+//         守的是**双击语义** —— 这是「修了但没修好」的典型：R73 服务端幂等注释自称挡「网络重试 / 双击」，
+//         但 `findPriorResult` 按 `(shop_id, idempotency_key)` 查，而前端 38 处键全是 `前缀 + Date.now()`
+//         ⇒ 每次点击都是新键 ⇒ 双击被认成两次不同请求 ⇒ 照旧 INSERT 第二个版本。
+//         而 `showLoading({mask:true})` 的遮罩是**渲染后**才拦点击的，同一帧派发的第二个 tap 早已入队。
+//         ⇒ 唯一有效位置是「首个 await 之前同步置位并返回」。五条腿：函数仍在 / 仍含写调用 /
+//         守卫早于首个 await / 标志真被置位（否则判据恒假）/ 标志真被复位（否则一次失败永久锁死）；
+//         另守幂等键仍在下传（拆掉它连网络重投都失守）。合成样本 5 段 + 真实变异 6 组反恒真。
+//       + 发布前清单数字与单源一致守卫（tools/check_release_checklist.js，R410 · 队列 #22）：
+//         守的是**活文档与单源之间没有机器契约** —— `review/CHECKLIST_正式版发布前必做.md` 自称活文档、
+//         是发布当天照着执行的清单，R410 实测其数字全面漂移且**文件内部自相矛盾**（标题 27 集合 / B1 写 25；
+//         云函数 43/42/44 三套并存 vs 单源 55）。照它执行会漏建 4 条索引，其中 `shop_ai_consent` 的
+//         `idx_ai_consent_user_shop` 是 unique ⇒ 重复授权产生多条记录、判定取错行（静默错，真机只表现为"慢"）。
+//         七条腿：库结构三元组 / §B 标题 / B1 集合数 / B2 索引数 / D1 部署数 / 云函数数与目录数 / **全局反查**；
+//         全局反查带「历史快照必须显式标注」的豁免 —— 豁免来自"标注"而非"恰好不匹配"（B8/B9 同形态对照证明）。
+//         单源用 require 运行时实读（不数行、不手抄）；合成样本 11 段 + 真实变异 5 组反恒真。
+// R412 新增 input-keyboard（`tools/check_input_keyboard.js`，输入框键盘类型必须能表达字段定义域）：
+//         小程序 `<input type="number">` 是**纯整数键盘**（无小数点），而「刷卡费率」默认值就是 0.6、
+//         平台抽成常见 21.5 / 22.5、「一件 12.5 公斤」的换算量也带小数 ⇒ 老板**填不进真值**，
+//         只能填 6 / 22 / 13 ⇒ 挂钩费率被放大 10 倍/抹掉 0.5 个点 ⇒ 保本额静默失真、零报错。
+//         判据 = A 与同一父容器 `%` 单位配对的 input 必须 digit（窗口取到下一个 `</view>`，
+//         不用固定字符数，否则下一行的百分号会把上一行的整数框误判成百分比框）+ B 换算量必须 digit
+//         + C 纯计数字段不得被判成百分比框（反向防过宽）+ D 已知 9 个百分比字段必须全被扫到
+//         （空集会让 A 腿恒真）。合成样本 7 段 + 真实变异 4/4 反恒真。28 断言。
+//       + wx:key 稳定性守卫（tools/check_wxkey_stable.js，R606-bis：**含 <input>/<textarea> 的 wx:for 循环不得用位置键 index/idx、须稳定键 rid**）。
+//         根因=R606 外卖收入「填入总数后下方输入框填不进/丢焦点」：行级 wx:for 用 wx:key="index"（位置键）+
+//         每次按键 setData 整体重赋值数组 ⇒ 原生 <input> 按下标复用 DOM 节点 ⇒ 重渲染后节点身份错位。
+//         同族 5 处对象数组循环已注入稳定 rid 键并闭环；matrix 五个维度档位经审计为标量按位更新（非 R606 形态），
+//         已回退原始标量数组并列入本守卫白名单（详见守卫内 WHITELIST 注释）。本守卫锁死整类缺陷复发
+//         （含 6 项影子样本自证 + 扫描面下界 31 文件 + R606 锚点命中 input.wxml 4 处 g.rows 循环均 wx:key="rid"）。
 // ⚠️ 不在 CI 之外假定任何 secrets；纯本地静态 + 单测。
 
 const { execFileSync } = require('child_process');
@@ -756,7 +841,7 @@ const SUITES = [
   //   背景：费用项清单四处副本此前**零守卫**（收入侧 R110 守的是 SEED_INCOME_ITEMS，不看费用侧）。
   ['expense-item-seed', 'tools/check_expense_item_seed.js'],
   // ===== R122 全仓 .js 语法编译守卫（round99）：见头部注释同名条目。
-  //   背景：round97 T1 的插入脚本把 pages/month/input.js 的 require 解构**拆成两条** ⇒
+  //   背景：round97 T1 的插入脚本把 subpkg/biz/month/input.js 的 require 解构**拆成两条** ⇒
   //   微信开发者工具出码时编译失败、小程序根本起不来，而门禁报 94/94 全绿 ——
   //   因为**全仓没有任何套件编译过 .js**（check_requires 只查「require 路径存在」，
   //   前端 pages/ 与 miniprogram/ 又无任何套件 require，只在真机/模拟器里跑）。
@@ -764,11 +849,18 @@ const SUITES = [
   ['js-syntax', 'tools/check_js_syntax.js'],
   // ===== R123 WXML 结构完整性守卫（同族病第 26 例，round100）：见头部注释同名条目。
   //   背景：round97 T1 的**同一支插入脚本**（为 R85 补互斥 disabled）在把 input.js 的 require
-  //   拆成两条（R122 记）之后，**同一轮**又把 pages/month/input.wxml 的金额 <input> 从
+  //   拆成两条（R122 记）之后，**同一轮**又把 subpkg/biz/month/input.wxml 的金额 <input> 从
   //   **属性集合中间**用 `/>` 收掉 ⇒ 其后属性行成了文本节点，真机渲染出整片英文
   //   （WXML 文本节点仍会插值 {{}} ⇒ 屏上是**求值后**的值，故像"英文报错"）。
   //   判据 A＝裸属性行（上一非空行已闭合）；判据 B＝标签配平（未闭合 / 错配 / 缺 >）。
   ['wxml-struct', 'tools/check_wxml_structure.js'],
+  // ===== R351 · 「class 用了但没样式」守卫（2026-10-19）
+  //   实扫发现 7 个 class 被 subpkg/tools/sandbox/*.wxml 引用、却从无定义：warn / warn-note /
+  //   ipt-num / unit / entry-row / entry-btn / cmp。
+  //   **能编译、能跑、零报错，只是长得不对** —— 最关键的那句「让价超过毛利率」的警告
+  //   渲染成了普通黑字。既有守卫只看标签/属性/if-else 相邻性，没有一条把 wxml 的 class
+  //   与 wxss 选择器做集合比对，本条补的就是这个缺口。
+  ['wxml-class-defined', 'tools/check_wxml_class_defined.js'],
   // ===== R296c 页面卡片宽度冲突守卫（2026-10-14）：见头部注释同名条目。
   //   根因：`app.wxss .card { width:48% }`（首页九宫格专用）被 matrix/compare 两页复用而不覆盖
   //   width ⇒ 卡片半宽 ⇒ 卡内 flex 行的 <text> 被挤成「一字一行」（用户：「原来都是竖版的字体」）。
@@ -858,6 +950,9 @@ const SUITES = [
   // M3.17 + M3.32（批次 D · 外卖单均 + 补贴拆行/固定佣金）：T-a~T-g 七组锚点。
   //   佣金基数恒为商品总价（不含打包费）；双口径不混；补贴承担方未选不计入（fail-closed）；输出不含 M1 字段。
   ['m3-takeaway', 'tools/selftest_m3_takeaway.js'],
+  // M3.37 / R190（R443 批次 · 到店团购＝M3 第二渠道）：G-a~G-f 六组锚点。
+  //   佣金基数恒为顾客实付价（不是原价）；费率无默认（R128）；vsDineFen<0 = 团购多赚；输出不含 M1 月度字段。
+  ['m3-groupon', 'tools/selftest_m3_groupon.js'],
   // M3.19（批次 E · 原料变动与影响面）：C-a/C-a2 两组锚点 + dry_run 零写库 + 未挂牌价抑制。
   ['m3-impact', 'tools/selftest_m3_impact.js'],
   // M3.21（批次 E · M1↔M3 率对率对账）：D 锚点 + 覆盖率闸门 + 套餐排除 + 细项名单源。
@@ -878,6 +973,9 @@ const SUITES = [
   // R194：manageShop 云函数自测（店铺增 / 改名 / 删除三 op）—— R67（check_selftest_shape）
   //   与 check_suite_coverage 的 S5 做「树内 selftest.js ↔ SUITES」双向差集，漏挂即判红（整文件静默不跑）。
   ['manageShop 自测', 'cloudfunctions/manageShop/selftest.js'],
+  // R571：建店选业态「真送出去了」行为守卫 —— 页面桩真跑 switch.js 生产源码，
+  //   截获 wx.cloud.callFunction 的真实载荷断言 biz_type 在场（防「写到了 ≠ 送出去了」R298Y 同族）。
+  ['shop-create-biztype', 'tools/check_shop_create_biztype.js'],
   // R200：底部 tabBar 守卫 —— 根因＝R199 落地了底部三入口 tabBar，但**全仓零机器判据守它**：
   //   ① 结构层：R44（check_pages.js）虽把 tabBar.list 的 pagePath 并入 declared，
   //     但**只查文件在不在，不查 list 少两项 / pagePath 不在 pages / 图标缺文件 / 路径重复**；
@@ -1014,6 +1112,10 @@ const SUITES = [
   ['export-delivery', 'tools/check_export_delivery.js'],
   // ===== M2 矩阵/对比改造守卫（2026-10-11）=====
   ['m2-matrix-guard', 'tools/check_m2_matrix.js'],
+  // ===== R357 矩阵分批中断「行为面」守卫（2026-10-19）=====
+  //   静态判据只守代码形状；R357 修的是**失败路径**，正常数据下永不触发
+  //   ⇒ 必须真跑：原样 require 页面源码 + 桩 callFunction 按批次抛错，看 setData 真送出了什么。
+  ['m2-partial-behavior', 'tools/check_m2_partial_behavior.js'],
   // ===== R284 注入层记忆预算守卫（2026-10-13）=====
   //   「主 MEMORY.md 超 8000 字符即被截断 = 记忆失效」此前**只写在文件抬头里**，靠自律守
   //   ⇒ 2026-10-13 实测 9208 字符（字节 16.4K）仍无人报警，与 round53「判据未挂 SUITES」同族：
@@ -1022,6 +1124,297 @@ const SUITES = [
   ['memory-budget', 'tools/check_memory_budget.js'],
   // ===== 导入诊断守卫（R286 · 2026-10-13）=====
   ['import-diagnosis', 'tools/check_import_diagnosis.js'],
+  // ===== R297 建店投入「摊销年限默认值」单源守卫（2026-10-15 · 第一轮查缺补漏抓出的真漏洞）=====
+  //   页面侧原硬兜 `years: Number(r.years) || 1` ⇒ 用户清空年限就按 **1 年**摊销 ⇒ 月摊销虚高 3 倍
+  //   ⇒ 保本点/目标营收同步虚高，**零报错**（静默错账）；同时把云端 BUILD_DEFAULT_YEARS 单源兜底
+  //   架空成死代码 —— 「写了单源 ≠ 生效」的同族病。
+  //   判据 = A 前端副本 ≡ 云端单源（双向）+ B 云端年限表 ≡ BUILD_KEYS 自洽
+  //        + C buildYearsOf 九例行为（含"清空 ⇒ ≠1"正向钉死）
+  //        + D 页面层零「|| 1 / >0?x:1」年限兜底（剥注释 + 正负样本互证）
+  //        + E 变异互证 + 扫描面非空 + 断言数下界。
+  ['build-default-years', 'tools/check_build_default_years.js'],
+  // ===== R297 M3「出成率」上界守卫（同上轮抓出的第二个真漏洞）=====
+  //   净料成本 = 单价 ÷ 出成率，而前端 `Number(yieldRate) || 100` **没有上界** ⇒
+  //   填 150 ⇒ 成本被 ÷1.5 ⇒ 实测单份成本 24.00→16.00 元（−33.3%）、毛利率 64.71%→76.47%，
+  //   且**零报错**（老板拿到的是一个好看的假数字）。云端 saveCostCard 那条「大于 0 且 ≤100」校验
+  //   **永远走不到** —— 前端只送 net_unit_cost 快照，出成率不上云（单源被架空的同族病第二例）。
+  //   ⚠️ SUITES 区间内的注释**禁止出现方括号**：check_selftest_shape.js 的括号配平器不剥注释，
+  //      注释里出现一个右方括号就会把 SUITES 判成提前闭合 ⇒ 求值失败 ⇒ 该守卫 fail-closed 转红。
+  //   判据 = A yieldRateOf 十三例 + 整区间 −10~110 逐点扫描（仅 1~100 放行）
+  //        + B 页面层零旧裸兜（剥注释 + 正负样本互证）+ C 反算/保存两条路都前置拦截
+  //        + D 云端单源在位 + 变异互证 + 断言数下界。
+  ['yield-rate-range', 'tools/check_yield_rate_range.js'],
+  // ===== R297 第二轮「场景矩阵」逐行入参校验守卫 =====
+  //   calcSandbox 的 action:'matrix'（G1 场景矩阵，免费引流）分支改前**完全绕过 validate**，
+  //   直接把前端送来的裸 clean 喂引擎；而矩阵页四档维度是自由文本、只判 isFinite
+  //   ⇒ 老板填「毛利率 150」⇒ 保本 46111→18444 元、房租填负数 ⇒ 19444 元，零报错（同族病第三例：
+  //   **单源写了、被另一条入口架空成死代码**）。
+  //   修：字段级判据抽成 checkClean 单源，wire 入口与 clean 入口共用；算不出的档位给 null + rejected 人话。
+  //   判据 = P 接线真实 + A 十负四正行为级 + B 两入口共用单源 + C 变异互证 + D 页面层/断言数下界。
+  ['matrix-validate', 'tools/check_matrix_validate.js'],
+  // ===== R297 第三轮「M2 两条入口判据等价」守卫 =====
+  //   M2 同一套参数有两条入库路径：calcSandbox（算）与 savePlan（**服务端自算快照后落库**）。
+  //   savePlan 原实现只判 typeof number && isFinite ⇒ 把 calcSandbox 的范围判据整个绕开
+  //   ⇒ 实测毛利率 150 ⇒ 快照保本 42564→18444 元**落库成"方案"**（同族病第四例）。
+  //   修：savePlan/validate.js 补 checkParamRanges（口径与 calcSandbox 等价；跨包不能 require，
+  //   故用「副本 + 本守卫同表双跑钉等价」）。
+  //   判据 = P 接线真实 + A 十六例两入口判决一致 + B 九类越界逐个拒 + C 变异互证 + D 单源/断言下界。
+  ['m2-entry-parity', 'tools/check_m2_entry_parity.js'],
+  // ===== R298 金额精度守卫（「元 → 分」十进制安全）=====
+  //   见头部注释同名条目。根因：`Math.round(元 * 100)` 在 IEEE754 下半步会静默少进 1 分。
+  //   判据 = S 扫描面 + A 行为穷举 + B 前后端双副本等价 + C 形态 + D 正负样本互证。
+  ['money-precision', 'tools/check_money_precision.js'],
+  // ===== R298·B3 导出件「真能读回 + 内容保真」守卫 =====
+  //   见头部注释同名条目。根因：check_export_delivery 只判**源码形态**（bookType / base64 / 依赖声明 / 文案），
+  //   从没有任何测试真解码过 base64 ⇒ 导出件「行数对不对、金额是不是数字（会计能不能 SUM）、值有没有变」
+  //   这一整面环上零判据（同族病：判据只覆盖写法、不覆盖产出物）。
+  //   判据 = S 扫描面与依赖三级 fail-closed + A 真写→真读回结构守恒 + B 单元格类型
+  //        + C 分↔元往返逐点等值 + D 多 scope 覆盖 + E 边界行为登记 + F 判据分辨力 + W 已知缺口登记。
+  ['export-roundtrip', 'tools/check_export_roundtrip.js'],
+  // ===== R324 · 开店资金测算（utils/openCash.js）=====
+  //   李老师 2026-10-18 当场否掉「预算→能开多大」：店多大由业态/商圈决定，钱只回答「够不够/能撑多久」。
+  //   守的三种静默漂移：① 押金/预付没乘租金 ② 装修没乘面积 ③ 有人又写回「按预算反推面积」。
+  ['opencash', 'tools/selftest_opencash.js'],
+  // ===== R330 · 促销对毛利率/保本线的影响（utils/promoImpact.js）=====
+  //   豆包第一版公式漏了分母：把「毛利额占原价」当成毛利率，算 49%，正确 52.13%，而它自称验算过。
+  //   守的四种静默漂移：① 漏分母 ② 折扣方向反 ③ 让价超过毛利率仍输出保本 ④ 保本涨幅与客流涨幅混为一谈。
+  ['promo-impact', 'tools/selftest_promo.js'],
+  // ===== R298Y ·M3 毛利率「色阶 / 区间」阈值单源守卫 =====
+  //   见头部注释同名条目。根因：规范 §M3.8 的 60/40 被抄了三份且不一致（筛选 30 / 色带 40 / 文案 30）
+  //   ⇒ 35% 的卡色带判红却被「中」筛出，用户可见自相矛盾，而 `marginHigh|marginMid|marginLow` 在 tools/ 下零命中。
+  //   修 = 单源化到 `utils/marginBand.js`（阈值 + 文案 + 色值），页面与 wxml 一律引用。
+  //   判据 = ① 单源取值 + ② 行为实跑 22 例（含反恒真锚点 matchBand('mid',35)===false）
+  //        + ③ 全仓无游离阈值字面量 + ④ terms 双副本键定义不得回流 + ⑤ 扫描面下界与正样本锚点。
+  ['m3-margin-bands', 'tools/check_m3_margin_bands.js'],
+  // ===== R298Y ·M3 成本卡「出参 → 页面映射 → 提交入参」往返保真守卫 =====
+  //   见头部注释同名条目。抓两处零覆盖缺陷：① onCopy 丢 sub_card_ref ⇒ 复制套餐卡 100% 失败；
+  //   ② version.js::doRestore 读 `v.card_type`/`v.specs` 而 `load()` 从未赋值 ⇒ R297-⑥ **空修复**。
+  //   判据 = ① 卡级往返（doRestore 的 v.X ⊆ load 映射产物：顶层键 ∪ 直接引用）
+  //        + ② 行级往返（同族，且必须可出参）+ ③ 复制面 + ④ 函数体抽取 fail-closed 与集合下界、正样本。
+  //   ⚠️ 剥注释是判据成立的前提：不剥则注释里的字段名会喂饱集合 ⇒ 缺陷 C 永远抓不出（实测）。
+  ['m3-card-roundtrip', 'tools/check_m3_card_roundtrip.js'],
+  // ===== R299 ·云函数出参 `truncated` 的**消费面**守卫 =====
+  //   见头部注释同名条目。为什么需要：`dataAdapter.js::listAll` 明文要求「达上限仍有剩余 ⇒
+  //   调用方**必须**把这个事实透传到出参（**可见降级**）」，四个云函数照做了、**前端曾零消费**
+  //   ⇒ 超 LIST_TOTAL_CAP(20000) 时复盘榜/账单/成本卡列表**静默少行**。
+  //   判据 = ① 生产者面（从 cloudfunctions 的 ok({...}) 里**扫**出真的回 truncated 的函数，
+  //        不写死名单；含简写属性 `truncated,`）+ ② 契约面（dataAdapter 的原话仍在）
+  //        + ③ 消费者面 **fail-closed 登记表**（未消费未登记 ⇒ 判红；且登记表无僵尸键/空转键）
+  //        + ④ 反恒真（未消费样本必须判不通过）+ 三个真消费点正样本。
+  ['truncated-surfaced', 'tools/check_truncated_surfaced.js'],
+  // ===== R301 ·云函数「契约入参 vs 实现」守卫 =====
+  //   见头部注释同名条目。抓的真缺陷：契约**一直**声明 `getDishReview` 的入参
+  //   `biz_date_from/biz_date_to`、出参 `range{from,to}`，而实现**从未读取** ⇒ 复盘榜
+  //   把历次导入的多个月份**全部累加**、页面却按"当前月"呈现（静默错数，真样本是 7 天表）。
+  //   判据 = ① 契约表解析 + 两处扫描面下界 + ② 每个入参必须被实现引用（否则显式登记 why）
+  //        + ③ 登记表双向防腐（无僵尸键 / 无空转键）+ ④ 反恒真（注释喂不饱判据 / 解析器形状自证）。
+  ['fn-contract-params', 'tools/check_fn_contract_params.js'],
+  // ===== R302 ·M1「外卖到手账」守卫 =====
+  //   见头部注释同名条目。抓的第一件事是「**不许出现两份公式**」：到手金额与配平校验
+  //   （`reconcile` 的应有应收款）是同一口径 ⇒ 判据钉「reconcile 必须**调用** `expectedReceivable`」
+  //   + 该函数必须**单位无关**（元/分共用一份）+ 行为对拍（分与元算出同一到手额）
+  //   + 不编数（营收 0 ⇒ 到手率 null 而非 0；无订单数 ⇒ 单均空串而非 0.00）+ 页面消费面。
+  ['takeaway-settle', 'tools/check_takeaway_settle.js'],
+  // ===== R303 ·导入「承诺面 + 平台范围 + 一级校验」守卫 =====
+  //   见头部注释同名条目。防的真危害是**静默错账**：对已知不准的平台（李老师 10-17 口供：
+  //   京东/美团表不准确）做确定性承诺 ⇒ 老板导进来、毛利榜照常出数并显示得很确定。
+  ['import-scope-claims', 'tools/check_import_scope_claims.js'],
+  // ===== R307 ·「占比拆分参考榜」守卫 =====
+  //   见头部注释同名条目。外卖销量拿不到时的轻量补位：按老板填的占比 × M1 有效订单数拆参考毛利榜。
+  //   守三条铁律：估算不得冒充实测（只挂空态 + 必须声明）· 不替老板编数（>100 拒绝、无订单不算）·
+  //   亏损菜原样露出。
+  ['share-split', 'tools/check_share_split.js'],
+  // ===== R308 ·「沿用上月」（只带费用侧）守卫 =====
+  //   见头部注释同名条目。M1 手填十几项费用、月月重复 ⇒ 第二个月就懒得填 ⇒ 月度趋势死。
+  //   一键带费用侧，省 ~80% 填写量。红线：绝不带收入（诱导忘改=静默错账）· 不许静默覆盖 · 归档拦截。
+  ['carry-over', 'tools/check_carry_over.js'],
+  // ===== R309 · 成本变动提醒守卫 =====
+  //   成本卡版本里已有两版成本 ⇒ 主动告诉老板这道菜涨了多少，不增加任何填写负担。
+  //   守不许编数：无上一版回 null（不是 0）· 上版<=0 不显示（不许除零）· 变化<1% 不打扰 · 断号版本取前一版。
+  ['cost-drift', 'tools/check_cost_drift.js'],
+  // 🔴 R376：**追加在末尾**，不插中间 —— SUITES 是**有序表**，插中间会让后面所有
+  //   「第 N 套件」引用整体错位（check_suite_count_claims C3 会一次性点名 4 处）。
+  ['batch4-clearMonth',   'cloudfunctions/clearMonth/selftest.js'],
+  // ===== R395 · 分享卡片守卫 =====
+  //   见头部注释同名条目。此前全仓零 onShareAppMessage ⇒ 微信一律拿小程序名当分享标题，
+  //   对方只看得到「店算」两个字。守三条：标题真带本店算出的数 · 三页真接线且不自己拼 · 反恒真。
+  ['share-card', 'tools/check_share_card.js'],
+  // ===== R396 · 异常核对清单「规则层」守卫（队列 #13 / PLAN_AI §3 §8-P0） =====
+  //   见头部注释同名条目。这一层只回答「哪几项跟你自己的历史不一样」，
+  //   所以判据必须同时守住**两头**：该报的要报（手算锚点 5 项）· 不该报的不许报（小额/短历史/无偏离）。
+  //   反恒真靠改阈值复算（倍数调到 4 ⇒ 同一输入不再报），不是靠"函数能跑"。
+  ['anomaly-rules', 'tools/selftest_anomaly_rules.js'],
+  // ===== R399 · 异常核对清单「页面接线」守卫（队列 #16） =====
+  //   见头部注释同名条目。规则层此前零生产调用，所以这一守的是**接线**不是算法：
+  //   真 require、真调用锚在函数体内、目标月快照来自本页 getLedger 出参、契约面两边都从源码抽。
+  ['anomaly-wiring', 'tools/check_anomaly_wiring.js'],
+  // ===== R403 · AI 授权写侧两函数（队列 #12 步 2）=====
+  //   守的是**授权语义**：能力粒度 / 条款版本 / 有效期 / 撤回三态 / 派生数据清理与显式降级。
+  ['ai-grant-consent', 'cloudfunctions/grantAiConsent/selftest.js'],
+  ['ai-revoke-consent', 'cloudfunctions/revokeAiConsent/selftest.js'],
+  // ===== R405 · AI 授权读侧（队列 #18）=====
+  //   守的是**状态翻译**：记录里的 scope 是历史事实，页面要的是「现在能不能用」（effective_scope）。
+  ['ai-get-consent', 'cloudfunctions/getAiConsent/selftest.js'],
+  // ===== R406 · 原料改价「成本卡不会自己跟着变」告知（队列 #19 · O5 遗留子项）=====
+  //   见头部注释同名条目。守的是**文案与机制一致**：成本卡是快照隔离，
+  //   任何"已自动更新"类说法都会被判红；同时守住「改价后必须告知 + 能给到影响面」这条链路。
+  ['material-price-impact', 'tools/check_material_price_impact.js'],
+  // ===== R408 · 成本卡「追加型写」前端重入保护（队列 #20）=====
+  //   见头部注释同名条目。守的是**双击语义**：幂等键按 Date.now() 每次新造 ⇒ 挡不住"点了两次"；
+  //   遮罩是渲染后才拦点击的 ⇒ 守卫必须同步写在首个 await 之前，且标志要真置位、真复位。
+  ['write-reentry', 'tools/check_write_reentry_guard.js'],
+  // ===== R410 · 发布前清单数字与单源一致（队列 #22）=====
+  //   见头部注释同名条目。守的是**活文档与单源之间没有机器契约**这个缺口：
+  //   该清单是发布当天照着执行的，数字漂移会直接导致漏建 unique 索引（静默错）。
+  //   同时守「历史快照必须显式标注」—— 未来把旧数字写回来会当场转红。
+  ['release-checklist', 'tools/check_release_checklist.js'],
+  //   金额展示单源（R411：此前 7 份手写实现，其中 1 份会把小数切成千分位、2 份万的小数位还不一致）
+  ['money-fmt', 'tools/check_money_fmt.js'],
+  ['input-keyboard', 'tools/check_input_keyboard.js'],
+  //   渠道占比上限（R414 · 队列 #24：`channelOver100` 文案早就在 terms 里，但 wxml 从不渲染、js 从不判定 ⇒ 死文案）
+  ['channel-over100', 'tools/check_channel_over100.js'],
+  //   金额输入可读性（R414 · 队列 #25：粘贴「12,000」被 yuanToFen 静默读成 0 ⇒ 保本额少 40% 且零报错）
+  ['amount-input', 'tools/check_amount_input.js'],
+  //   出站 k-匿名门槛（R423 · 队列 #28：设计稿 §7 步 3 一直空着 —— 有授权就等于能出站，
+  //   而聚合值在单店单 SKU 时等于原始值，脱敏失效）。守三关：授权态（消费读侧判定，不判第二遍）
+  //   + 用途显式授权 + 样本量（行 ≥5 且 供应商 ≥3）。含两条鉴别力断言：样本足但用途未授权必须拒、
+  //   传原始 doc（无 state）必须拒 —— 防「只看样本量就放行」与「偷偷实现第二份四态判定」。
+  ['ai-gate', 'tools/selftest_ai_gate.js'],
+  // R431：提交前查「整文件行尾翻写」。门禁跑的时候工作树常不干净（迁移/修复中），
+  //   所以它能真查；提交后再跑则恒绿，属正常。真正的用途是提交前手工跑一次。
+  //   判据是逐字节比 CRLF 计数（HEAD vs 工作树），不是「改动行数占比」那种启发式。
+  ['line-endings', 'tools/check_line_endings.js'],
+  // R437 · 队列 #6：M3 三页（枢纽/物料/成本卡）风格 B 外壳一致性。
+  //   守的是"视觉统一靠人自觉"这个缺口：三页看起来一样，靠的是都引用同一组声明；
+  //   任何一页把底色/圆角/阴影写回自己 wxss，界面照样渲染、零报错，只有对比着看才发现。
+  //   枢纽页不能加类名（check_hub_guide 的 S2/G4 按字面量 class 定位卡片）
+  //   ⇒ 它的统一只能在 app.wxss 的声明组里体现，谁删掉那个选择器就会悄悄回到旧形态。
+  ['m3-style-b', 'tools/check_m3_style_b.js'],
+  // R456 · 队列状态与代码事实一致性（R449 ⑥ 登记的缺口）：自驱队列是「下一条做什么」的唯一真源，
+  //   但 status 是人手写的，而它描述的事实（提交/部署/控制台操作）在仓库里。已实测 3 例不一致：
+  //   #45 备注数字与实读不符、#48 标 done 而 blocked 列仍是 yes、#27 页数与 app.json 实读不符。
+  //   守 4 件事：status 合法、blocked 必带 why、done 必须有可机器验证的落点（真 commit 或可检索的
+  //   轮次号或显式「无代码提交」声明）、自称「已落/已部署」的条目同样要能查到实据。
+  //   反恒真：3 组合成样本 + 1 组真实变异（抹掉一条 done 行的全部落点必须转红，且必还原无残污）。
+  ['queue-status', 'tools/check_queue_status.js'],
+  // ===== R463 · AI 诊断包 + L0 判断（P0：零资质零成本，数字原样搬运、判断不下放给模型）=====
+  ['ai-pack', 'tools/check_ai_pack.js'],
+  // R469 · 队列 #49：app.json 的 preloadRule（分包预下载）配置守卫。
+  //   守的是"配置项与代码分居两处、对不上也不报错"这个缺口：页面搬家/分包改名/字段名写错
+  //   三种情况全部**静默** —— 不报错、页面照常能进，只是预下载永不发生（第一次进页慢慢等）。
+  //   判据 A 页面对照 / B 分包对照 + 字段名 / C network 白名单 / D 不得预载自身所在包；
+  //   E 段 7 条护栏里 5 条是合成负样本（证明 A~D 不恒真，且"规则删空"必须显式判红）。
+  ['preload-rule', 'tools/check_preload_rule.js'],
+  // ===== R477 · M1 双利润引擎三副本行为等价守卫（本文件头注套件数 209 → 210）=====
+  //   起因＝老板真机「口径差异为什么等于食材成本？」，根因是库存模式下参考口径恒取 0
+  //   ⇒ 参考利润完全没扣食材。修它要同时改 calcMonthlyProfit / saveLedger / getLedger 三份副本，
+  //   而此前**只有 M3 有等价比对守卫**，M1 这一侧零覆盖 ⇒ 先立守卫再改口径（顺序不能反）。
+  //   判据 = A 三副本可加载 / B 确定性伪随机 3000 组逐字段对拍 / C S1·S2·S2R 锚点三副本同立
+  //   / D 反恒真四条 / E R477 口径专项九条（未填回落倒轧、填正数则口径锁不变、差异恒等式、出参可追溯）。
+  ['m1-engine-parity', 'tools/check_m1_engine_parity.js'],
+  // ===== R479 · M1「两口径差异」说明的条件化守卫（本文件头注套件数 210 → 211）=====
+  //   R477 修完引擎，说明文案还在说旧话：固定写「差异来自食材 + 摊销」，
+  //   而回落后差异**只剩摊销** ⇒ 那不是说不清，是**说谎**（外审第二轮点名）。
+  //   同族风险在导出侧更狠：页面重算、导出读落库快照 ⇒ 两边会对不上账且都不报错。
+  //   判据 = A 结果页按 ref_material_source 分支且两条文案值不同 + 中性兜底 + terms 双副本 md5
+  //   / B 导出 refMat 由 refSrc 决定、gapFen 不用旧写法、旧账回落 direct
+  //   / C 反恒真三条（固定文案版 · 旧 gapFen 版 · 两文案同值版 都必须被判红）。
+  ['m1-diff-explain', 'tools/check_m1_diff_explain.js'],
+  // ===== D1 行为守卫（2026-10-27 拍板 + 审计 H1 实证）：空表单不得出保本数 =====
+  //   见 tools/check_m2_forward_failclosed.js 头注。根因：引擎 calcSandbox 不 fail-closed（空表单仍算出非空保本），
+  //   唯一闸门是页面 const hasFixed = rentFen > 0 && laborFen > 0；审计证明既有 8 守卫对 >0 放宽零告警。
+  //   本套件用真实装配 + 真实引擎路径重现页面决策，并做 >0→>=0 变异回灌证明分辨力。
+  ['m2-forward-failclosed', 'tools/check_m2_forward_failclosed.js'],
+  // ===== D3 行为守卫（2026-10-27 拍板）：水电气任一项>0 即采用 energy_split =====
+  ['m2-energy-split', 'tools/check_m2_energy_split.js'],
+  // ===== D4 行为守卫（2026-10-27 拍板）：矩阵与单页管理费口径统一（manage 键，不再派生房租×占比）=====
+  ['m2-matrix-manage', 'tools/check_m2_matrix_manage.js'],
+  // ===== D6 行为守卫（2026-10-27 拍板）：透视表按人工过滤（fixLabor 生效，不再被覆盖）=====
+  ['m2-matrix-pivot', 'tools/check_m2_matrix_pivot.js'],
+  // ===== P0-2 · 品类默认模板数据守卫（2026-10-29）：11 个品类默认值单源，预填出净率/损耗/调料油火/示例主料，validatePresets 零错误 =====
+  ['category-presets', 'utils/categoryPresets.selftest.js'],
+  // ===== P0-3 · 估算卡判定单源守卫（2026-10-29）：isEstimatedCard 只认布尔 true，字符串/0/缺失均判 false =====
+  ['card-est', 'utils/cardEst.selftest.js'],
+  // ===== P0-4 · 批量导入纯逻辑单源守卫（2026-10-29）：解析粘贴清单/分类匹配品类模板/草稿卡骨架/三色状态 =====
+  ['dish-import', 'utils/dishImport.selftest.js'],
+  // ===== P1 · 毛利预警/成本漂移预警纯计算核心守卫（2026-10-29）：毛利率口径 + 单品达标分级 + 成本涨击穿目标 =====
+  ['margin-alert', 'utils/marginAlert.selftest.js'],
+  // ===== R568 · 成本卡编辑页行为守卫（2026-10-29）：真跑 onPickCategory —— 空卡必须带出示例主料
+  //   （改前 `lines.length === 0` 恒假 ⇒ 38 元的菜只剩调料成本、毛利率 98.66%）+ 全 11 品类 + 变异回灌
+  ['m3-page-behavior', 'tools/check_m3_page_behavior.js'],
+  // ===== R574 · 菜品明细采集契约守卫（2026-10-31）：
+  //   堂食《菜品销售统计》是**区间汇总表**（表头写明营业日期 2026/09/07 至 2026/09/13），
+  //   入库却把 36 行全写 biz_date=区间末日 ⇒ 下游按 biz_date 去重数天数时算成 1 天 ⇒
+  //   该日堂食收入 = 真实日均的 **7 倍**，且**零报错**。
+  //   守卫让「哪条通道能采到什么颗粒度」变成机器可查的事实：行为面 + 实现面 + 元数据面 + 反恒真。
+  ['菜品明细契约守卫 R574', 'tools/check_dish_ingest_contract.js'],
+  // ===== R576 / 队列 #100：M2 用 M1 真实数据预填（页面桩真跑 loadM1Baseline）
+  //   守四类静默失效：① 覆盖老板已填的值；② 缺项按 0 填（保本点算低、结论变乐观）；
+  //   ③ 没建档的月也预填（getLedger 对无账月返回默认空账，只判有返回值就恒真）；
+  //   ④ 把行业参考值也顺手填进来（R128 明令禁止，边界是数据来源而非字段名）。
+  //   含变异回灌：删掉 account_id 判据后无档案月必须真的被填，证明判据非常量。
+  ['M2 M1 预填守卫 R576', 'tools/check_m2_m1_prefill.js'],
+  // ===== R578 / 队列 #101：月度录入完成度（零采集，两司一致建议的合规路线）
+  //   守四类静默失效：① 把「填 0」当成没填（免租期是真实情形，误催会让老板觉得系统瞎报）；
+  //   ② 组名缺失时回落成英文 key（dine_in 出现在界面 = 事故）；
+  //   ③ 核心组清单与 terms 的 core:true 漂移；④ 被接进保存流程变成硬拦（本功能只提示不阻断）。
+  ['录入完成度守卫 R578', 'tools/check_entry_completion.js'],
+  // ===== R583：DSI-1 标准导入格式解析（给 AI 看的契约，实现必须跟上）
+  //   守三件事：① 格式对认得出、格式错拒得掉且**说人话带行号**；
+  //   ② 两条从双司评审学来的硬规则不能被优化掉——销量允许小数（称重类）、退款允许负数；
+  //   ③ 顺序/列名即契约，模糊匹配一律不认（改了会让依赖它的 AI 静默失配）。
+  ['DSI-1 标准格式解析守卫 R583', 'tools/check_dsi1_parse.js'],
+  // ===== R585：DSI-1 导入页装配（桩 Page/wx，真跑页面源码）
+  //   为什么需要：静态判据看不出"分支到不到"。本轮实测：云函数加了 S 形态，
+  //   页面那份 DISH_SHAPES 副本漏改 ⇒ DISH_SHAPES.S 为 undefined ⇒ 判断恒假 ⇒
+  //   DSI-1 掉进账单分支 p.totals 抛 TypeError、被 catch 吞成一句「导入失败」。
+  //   门禁 V-1/V-2 当时只在 A/B/C 上成立，抓不到。
+  ['DSI-1 导入页装配桩 R585', 'tools/check_dsi1_page_stub.js'],
+  // ===== R590：「让 AI 帮你转格式」逃生口（导入失败时给一段可复制的指令）
+  //   守两件事：① 指令是**教 AI 产表**的规格 —— 列名必须与 dsi1.HEADERS 逐字一致、
+  //   年份与渠道必须写死（R589 实测 AI 会自己编这两处，渠道错了我们根本发现不了）；
+  //   ② 接线真通：按钮真调 setClipboardData、复制失败要摊开正文（只报失败 = 老板卡死）。
+  ['导入 AI 转格式逃生口 R590', 'tools/check_import_ai_fix.js'],
+  // ===== R298·C1 M1 结果页三态判据守卫（#443 收口）：未建档月（getLedger 默认空账、无 account_id）
+  //   必须走空态分支、不挂红带「亏损」；判据 = 账本存在性 !!d.account_id（与首页同源），
+  //   WXML 用 wx:elif hasLedger 切结果/空态；含变异回灌反恒真；6 断言。
+  ['m1-result-tristate', 'tools/check_m1_result_tristate.js'],
+  // ===== R606-bis wx:key 稳定性守卫（同族病第 25 例，round 续作）：见头部注释同名条目。
+  //   判据＝含 <input>/<textarea> 的 wx:for 循环不得使用位置键（index/idx），必须稳定键（rid）。
+  //   含 6 项影子样本自证（C1 位置键必红 / C2 等价 rid 改正必绿 / C3 字面量 idx 必红 /
+  //   C4 无输入循环不误伤 / C5 注释举例不误杀 / C6 嵌套 input 必抓）+ 扫描面下界 31 文件 +
+  //   R606 锚点（input.wxml 的 g.rows 4 处循环必 wx:key="rid"）。
+  ['wxkey-stable', 'tools/check_wxkey_stable.js'],
+  // ===== R507 利润恒可比守卫（既有遗留补挂，2026-11-05）：该文件 11-03 已生成且自测 9/0 全绿，
+  //   却一直没登记进 SUITES ⇒ `check_suite_coverage` 判「有守卫未挂载」转红（门禁常年红一条）。
+  //   本批顺手收口：它验的是「经营参考利润 vs 会计利润恒可比」+ 变异回灌证伪假绿，属有效守卫。
+  ['r507-profit-parity', 'tools/check_r507_profit_parity.js'],
+  // ===== A6/A7 M2 导出免费口径守卫（2026-11-05）：做 A6 变异复核时实测发现——
+  //   把 m2_compare 从豁免集合去掉，check_export_delivery / check_paywall_coverage **全照绿**，
+  //   即「M2 对比表导出免费」这条口径当时没有任何机器在看。本守卫补这个洞：
+  //   A1 豁免集合必须同时含 matrix+compare / A2「无需店铺」必须独立且只含 matrix（并入会崩）/
+  //   A3 免费仍做方案归属校验 / A4 必须带「关于本表」署名页；含内存变异回灌证伪恒真。
+  ['m2-export-free', 'tools/check_m2_export_free.js'],
+  // ===== A4/A5 深度诊断引擎与权益判定（2026-11-05 批次 2）：======
+  //   为什么要单立：诊断分数会直接变成老板眼里的结论，它最危险的失效不是崩，
+  //   而是**悄悄给一个看起来合理的错数**（缺数据按 0 分算 / 按中位数补 / 把"没数据"当"没命中红线"）。
+  //   判据分四组：E 引擎（11 指标/权重 100/缺项不计分母/覆盖率闸门/红线优先/未判定≠未命中）
+  //   J 权益判定（分支穷尽 + 顺序不可换：缓存先于权益、限流先于权益）/ F 指纹 / S 数据层一致性。
+  ['diag-engine', 'tools/check_diag_engine.js'],
+  // 2-D 批次（2026-11-05）：M1 三字段 + A11 摊销三件套 + A20 补录通道的**语义**守卫。
+  //   这四件事的共同点：算错了不报错、页面还很好看（拿参考利润算"摊完后利润"、把没填的客流当 0、
+  //   保存一次清空老客户数、自抄一份枚举导致"选了却不计分"）。没有断言就永远没人发现。
+  //   32 断言，含 4 条反面断言（禁参考利润 / 禁 ?0 兜底 / 禁裸键 / 禁中文枚举进载荷），
+  //   变异复核 3/3 全部点名转红（详见文件头）。
+  ['m1-extra-fields', 'tools/check_m1_extra_fields.js'],
+  // 批次 3（2026-11-05）：
+  //   three-cost     = A17/A18 三项刚性成本率（V钱-4）+ 会员销售占比（V客²-1）。
+  //                    重点是**两处阈值必须相等**（indicatorRef.THREE_COST ≡ diagnosisEngine.BIZ_HARD）
+  //                    与「缺项不按 0 补」——这两条失效时数字全绿、结论却是错的。
+  //   copy-compliance= A14/A15/A21 退款规则 + 诊断术语 + 合规话术。
+  //                    直接 require terms.js 遍历字符串值扫描（注释天然不计，避免裸扫误杀）。
+  ['three-cost', 'tools/check_three_cost.js'],
+  ['copy-compliance', 'tools/check_copy_compliance.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

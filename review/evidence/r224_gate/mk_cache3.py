@@ -5,7 +5,7 @@ import json, os, subprocess
 
 REPO = r"C:/Users/lzj/WorkBuddy/Claw/catering-profit"
 TMP = r"C:/Users/lzj/AppData/Local/Temp/inscode"
-NODE = r"C:/Users/lzj/.workbuddy/binaries/node/versions/22.22.2-3/node.exe"
+NODE = r"C:/Users/lzj/.workbuddy/binaries/node/versions/22.22.2-6/node.exe"
 PY = r"C:/Users/lzj/.workbuddy/binaries/python/envs/default/Scripts/python.exe"
 ENV = dict(os.environ)
 ENV["PATH"] = os.pathsep.join([r"C:\Program Files\Git\bin", r"C:\Program Files\Git\cmd"]) + os.pathsep + ENV.get("PATH", "")

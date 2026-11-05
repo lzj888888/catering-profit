@@ -131,7 +131,7 @@ const R38 = calcCostCard({ mode: 'A', lines: R38_LINES, auxFen: 0, lossPct: 0, p
 check('R38：高精度累积 → unit_cost_fen = 2498（非 2499）', R38.unit_cost_fen === 2498, `=${R38.unit_cost_fen}分`);
 backcheckFen('R38 高精度累积', R38.unit_cost_fen, 2498);
 // 变异回验：证明判据对「逐行 round」有鉴别力（= 判据真的覆盖了这条规范）
-const perLineWrong = R38_LINES.reduce((s, l) => s + Math.round(lineNetCostYuan(l.quantity, l.net_unit_cost) * 100), 0);
+const perLineWrong = R38_LINES.reduce((s, l) => s + Math.round(Number((lineNetCostYuan(l.quantity, l.net_unit_cost) * 100).toFixed(10))), 0);
 check('R38 变异：逐行 round 会得 2499 ≠ 规范值 2498（判据能抓住此 bug）',
   perLineWrong === 2499 && R38.unit_cost_fen !== perLineWrong, `逐行 round=${perLineWrong}分, 正确=2498分`);
 check('R38 总成本即明细合计（无损耗无辅料）', R38.material_total_fen === 2498 && R38.unit_cost_fen === R38.material_total_fen);

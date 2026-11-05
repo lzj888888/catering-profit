@@ -89,6 +89,8 @@ function buildShopDoc(p) {
     _id: id, id, shop_id: id,
     user_id: (p && p.userId) || '',
     name: (p && p.name) || '',
+    // R571：业态（火锅/烧烤/快餐…）建店即落库；不传 = 空串（不猜，稍后可在店铺设置/M1 结果页补选）
+    biz_type: (p && p.bizType) || '',
     remark: '',
     created_at: now, updated_at: now, is_deleted: false,
   };

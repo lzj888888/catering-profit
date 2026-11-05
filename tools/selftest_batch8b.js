@@ -11,6 +11,15 @@ function check(name, cond, detail) {
   else { failN++; console.log(`❌ ${name}${detail ? '  (' + detail + ')' : ''}`); }
 }
 const read = (p) => fs.readFileSync(path.join(ROOT, p), "utf8");
+// 🔴 R304：等长剥注释（保留换行与位置）—— 判"某标识符是否被赋值"时必须剥，
+//   否则**注释里提到它**就会把判据喂成恒真/恒假（本仓 R298Y「被注释喂成恒真」同族，踩过）。
+// ⚠️ 必须写成 **function 声明**：`check_selftest_shape` 的 R68 顶层块切分靠「块尾是 `;` 或 `}`」定界，
+//   多行**链式** arrow（`.replace().replace()` 跨行）无法定界 ⇒ 整个文件形状结论 fail-closed 判红（实测踩到）。
+function stripJsComments(s) {
+  return String(s)
+    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
+    .replace(/(^|[^:])\/\/[^\n]*/g, (m, p1) => p1 + ' '.repeat(m.length - p1.length));
+}
 const terms = read("miniprogram/i18n/terms.js");
 const termsSpec = read("specs/dev-specs/i18n/terms.js");
 
@@ -35,18 +44,31 @@ check('旧费用分类(房租租金/人员工资/水电物业)已移除', !terms
 
 console.log('');
 console.log('===== A2 · 二级细项（前端 UI + 后端契约）=====');
-const inputJs = read("pages/month/input.js");
-const inputWxml = read("pages/month/input.wxml");
+const inputJs = read("subpkg/biz/month/input.js");
+const inputWxml = read("subpkg/biz/month/input.wxml");
 check('input.js 有 incomeGroups/expenseGroups 组模型', /incomeGroups: \[\],/.test(inputJs) && /expenseGroups: \[\],/.test(inputJs));
 // round102（2026-09-22）判据放宽到**语义级**：原判据绑死了 initGroups 里的局部变量名（const rows）——
 //   本轮把 initGroups/rebuildFromItems 改成「先建页面对象、再装配 rows」后变量名变成 raw ⇒ 误报。
-//   守卫意图是「有 rows/showRows 细项行模型」（折叠态取首行、展开态全量），与局部变量名无关。
+// 🔴 R304：腿② 锚点**搬到语义新家** —— 死槽 `showRows` 已**整体删除**
+//   （13 处赋值 / **零消费者**；R297 的 M1-B1 修法曾因改读它引入静默语义回归）。
+//   "折叠只显示首行 / 展开全量" 现在的表达处是 **wxml 对全量 `g.rows` 的条件渲染**：
+//     `wx:for="{{g.rows}}"` + `wx:if="{{g.expanded || ri === 0}}"`（R297-⑥ 已禁掉"模板里算 slice"）。
+//   ⚠️ 原判据钉在死槽名上 ⇒ 清理死代码时**必然假红**（R299 记的「腿锚错地方」同族）。
 //   腿①：行数组以「单个空行」初始化（= [{ subItem: ... }]，不限 const/let/变量名）
-//   腿②：showRows 按 expanded 取首行 / 全量（showRows: 与 g.showRows = 两种写法均算）
-check('input.js 有 rows/showRows 细项行模型（折叠取首行 / 展开全量）',
+//   腿②：折叠/展开由 wxml 条件渲染表达（`g.expanded || ri === 0`）—— 不再依赖任何预计算槽
+check('input.js 有 rows 细项行模型 + wxml 条件渲染（折叠取首行 / 展开全量）',
   /=\s*\[\{ subItem: '', amountYuan: '' \}\]/.test(inputJs)
-  && /showRows\s*[:=]\s*(?:g\.|out\.)?expanded\s*\?\s*(?:g\.|out\.)?rows\s*:\s*(?:g\.|out\.)?rows\.slice\(0, 1\)/.test(inputJs));
+  && /wx:for="\{\{g\.rows\}\}"/.test(inputWxml)
+  && /wx:if="\{\{g\.expanded \|\| ri === 0\}\}"/.test(inputWxml));
 check('input.js 有 buildItems（提交 sub_items，前端不汇总）', /buildItems\(groups\)/.test(inputJs) && /sub_items:/.test(inputJs));
+// 🔴 R304：**死槽不得复活**。`showRows` 曾是 13 处赋值 / 零消费者的死槽，且 R297 的 M1-B1 修法
+//   **曾因改读它引入静默语义回归**（未装饰 raw ⇒ 丢 fixed/tag）而门禁全绿。
+//   ⇒ 钉死「`input.js` 内不得再出现 `showRows` 的赋值或初始化」（注释里提到它不算）。
+// ⚠️ 判据用 `\bshowRows\s*[:=]`：**不能用 `(^|[^\w.])`** —— 那会把 `.` 排除掉，
+//   而真实形态正是 `g.showRows = …`（前面就是点）⇒ **恰好漏掉最该抓的一种**。
+//   本版首稿就是这么写的，被变异 M24 当场抓出（变异不只验"抓得到"，还验**判据覆盖面**）。
+check('input.js 不得复活 showRows 死槽（R304：13 处赋值/零消费者 ⇒ 已整体删除）',
+  !/\bshowRows\s*[:=]/.test(stripJsComments(inputJs)));
 check('input.wxml 有 sub_item 输入与 addRow/delRow', /onSubItem/.test(inputWxml) && /addRow/.test(inputWxml) && /delRow/.test(inputWxml));
 check('input.wxml 用 group-head 展开/收起', /group-head/.test(inputWxml) && /onToggleGroup/.test(inputWxml));
 const slv = read("cloudfunctions/saveLedger/validate.js");
@@ -63,13 +85,13 @@ check('getLedger 兼容旧格式并返回 snake_case（含 inventory）',
 console.log('');
 console.log('===== B1 · 摊销年月 picker（round107：随表单搬到 assetEdit 独立页）=====');
 // round107：表单不再用摊销页的底部弹层（弹层 × 键盘 = 死结，真机截图已证），已搬去
-//   pages/month/assetEdit（独立页）⇒ 年月选择的**宿主文件**同步换成 assetEdit.{wxml,js}。
+//   subpkg/biz/month/assetEdit（独立页）⇒ 年月选择的**宿主文件**同步换成 assetEdit.{wxml,js}。
 //   ⚠️ 只换宿主路径，语义一字不改（原生 picker + mode=date + fields=month + 起/止两个字段各一）
 //      —— 换文件 ≠ 放宽判据；若有人把 picker 退回手输 input，本条仍会红。
-const aeWxmlB1 = read("pages/month/assetEdit.wxml");
+const aeWxmlB1 = read("subpkg/biz/month/assetEdit.wxml");
 check('开始月用 picker mode=date fields=month', /<picker mode="date" fields="month" value="\{\{startMonth\}\}"[\s\S]{0,160}?data-field="start"/.test(aeWxmlB1));
 check('终止月用 picker mode=date fields=month', /<picker mode="date" fields="month" value="\{\{terminateMonth\}\}"[\s\S]{0,160}?data-field="end"/.test(aeWxmlB1));
-check('assetEdit.js 有 onMonthPick 处理', /onMonthPick\(e\)/.test(read("pages/month/assetEdit.js")));
+check('assetEdit.js 有 onMonthPick 处理', /onMonthPick\(e\)/.test(read("subpkg/biz/month/assetEdit.js")));
 
 console.log('');
 console.log('===== C1 · mine 页 版本/客服/免责声明 =====');
@@ -82,8 +104,8 @@ check('disclaimer 词条被引用（不再是幽灵）', terms.includes("disclai
 
 console.log('');
 console.log('===== D1 · result 下钻明细 =====');
-const resWxml = read("pages/month/result.wxml");
-const resJs = read("pages/month/result.js");
+const resWxml = read("subpkg/biz/month/result.wxml");
+const resJs = read("subpkg/biz/month/result.js");
 check('result 营业收入行可点下钻', /data-kind="income" bindtap="toggleDrill"/.test(resWxml));
 check('result 费用合计行可点下钻', /data-kind="expense" bindtap="toggleDrill"/.test(resWxml));
 check('result 有展开明细面板（大类→细项）', /drill-body/.test(resWxml) && /drill-sub/.test(resWxml));
@@ -95,8 +117,8 @@ console.log('===== E1 · 录入页引导文案 =====');
 // 问题在于这条原文是**错的**——违反规范 A.0-1 权责发生制，且与「佣金记营销费用」自相矛盾（佣金会被扣两次）。
 // 锁死原文 ⇒ 谁去修正错误口径，守卫就红谁 ⇒ 守卫成了错误口径的保护伞。
 // 改为守「字段存在且非空（≥10 字）+ 页面确实渲染它」，另加一条**口径守卫**（下），比锁原文更强。
-check('input 收入引导 incomeHint 渲染', /t\.incomeHint/.test(read("pages/month/input.wxml")) && /incomeHint: '[^']{10,}'/.test(terms));
-check('input 费用引导 expenseHint 渲染', /t\.expenseHint/.test(read("pages/month/input.wxml")) && /expenseHint: '[^']{10,}'/.test(terms));
+check('input 收入引导 incomeHint 渲染', /t\.incomeHint/.test(read("subpkg/biz/month/input.wxml")) && /incomeHint: '[^']{10,}'/.test(terms));
+check('input 费用引导 expenseHint 渲染', /t\.expenseHint/.test(read("subpkg/biz/month/input.wxml")) && /expenseHint: '[^']{10,}'/.test(terms));
 // 口径守卫（2026-09-20 round57 新增，round58 加固为**语义级**）：
 //   round57 版判据 = 「必须含『出了餐就算』且 不得含『按当月实际到账金额填写』」——两条都绑死单一字面。
 //   round58 独立变异回灌证明它两头都不严（与 round55 的 c24e0a2 同族：守的是拼写，不是意图）：
@@ -128,8 +150,8 @@ console.log('===== G · 堂食录入模式（2026-09-21 李老师拍板 · 方�
 // 判据原则：守「李老师点名的结构」而非泛展示文案。
 //   - 渠道清单是本次交付的核心内容，改名即回归 ⇒ 守名；
 //   - 引导句 / 描述句**不锁原文**（round57 教训：锁死原文会让守卫变成错误口径的保护伞）。
-const dinWxml = read("pages/month/input.wxml");
-const dinJs = read("pages/month/input.js");
+const dinWxml = read("subpkg/biz/month/input.wxml");
+const dinJs = read("subpkg/biz/month/input.js");
 
 const incBlock = terms.slice(terms.indexOf('income: ['), terms.indexOf('subItemPh:'));
 const dineBlock = incBlock.slice(incBlock.indexOf("category: 'dine_in'"), incBlock.indexOf("category: 'takeaway'"));
@@ -171,7 +193,7 @@ check('G6 口径：收回挂账的回款不算营收', terms.includes('挂账的
 // ===== G7 / G8（2026-09-21 真机反馈）：口径句折叠 + 渠道行两行 + × 高度不可下调 =====
 // 背景：原「堂食」下方整段口径句常展开、渠道行一行三列把渠道名挤成竖排 —— 都是**版面回归**，
 //       旧守卫一条都抓不到（它们只守数据/文案）。这里补上结构判据。
-const dinWxss = read("pages/month/input.wxss");
+const dinWxss = read("subpkg/biz/month/input.wxss");
 check('G7 口径句收进折叠块（引导行 + 按需展开）',
   /class="scope-head"/.test(dinWxml) && /class="scope" wx:if="\{\{g\.scopeOpen\}\}"/.test(dinWxml));
 check('G7 有 onToggleScope 且默认收起（scopeOpen 初值 false）',
@@ -263,7 +285,8 @@ check('G10e round-trip 后渠道全集 + 数值俱在', backToDetail.length === 
 check('G10g decorateDineRows 转调唯一装配口',
   /decorateDineRows\(rows\) \{[\s\S]{0,400}?normalizeDineRows\(rows/.test(dinJs));
 check('G10g 页面 require 了装配模块',
-  /require\('\.\.\/\.\.\/utils\/dineChannels\.js'\)/.test(dinJs));
+  // R423 分包化：页面在 subpkg/biz/month ⇒ 深度由 2 级变 3 级，正则不绑死级数
+  /require\('(?:\.\.\/){2,3}utils\/dineChannels\.js'\)/.test(dinJs));
 check('G10h 页面不写死任何渠道名（清单只认 terms.js）',
   !PRESETS.some((n) => dinJs.includes(`'${n}'`) || dinWxml.includes(n)));
 // ⚠️ 判据不能只认「有 .filter(」—— 变异回灌 M4（改成 .filter((r) => true)）照样命中，属假绿（恒真）。
@@ -276,7 +299,7 @@ check('G10i 保存只提交填了金额的行（空渠道不落库）',
 check('G10k 新增行带 custom 标记（点了「添加渠道」立刻出现空行）',
   /concat\(\[\{ subItem: '', amountYuan: '', custom: true \}\]\)/.test(dinJs));
 check('G10j 预设行不给删除键（× 只对自定义行）',
-  /class="btn-del" wx:if="\{\{!r\.fixed\}\}"/.test(dinWxml));
+  /class="btn-del" wx:if="\{\{!r\.fixed && incomeEditGi === gi\}\}"/.test(dinWxml));
 
 // ===== G11（2026-09-21 李老师真机反馈「美团和现金后面有红色X、和上面重复了」）=====
 // 现场（真云 getLedger 实测）：2026-09 堂食 sub_items = [{美团: 50000}, {现金: 2000}]
@@ -336,12 +359,54 @@ check('G11d 非堂食行装配也走唯一入口（不再各自拼装）',
 //   rebuildFromItems 只按后端 sub_items 重建，两条装配口**从不补回预设项**（那套「删了会回来」
 //   只在**堂食渠道**成立）。⇒ 保留名字只读（防同一笔费用两个名字），放开删除键、只留「至少留一行」护栏。
 //   依据：规范 A.2「费用项支持老板自定义增删」。
-check('G11d 两个 WXML 分支的 × 只受「至少留一行」护栏约束（预设行也可删）',
-  (dinWxml.match(/class="btn-del" wx:if="\{\{g\.expanded && g\.rows\.length > 1\}\}"/g) || []).length === 2);
+// R494（2026-10-25）：费用侧 × 新增「编辑态」闸门（防上滑/敲空白误删）。
+//   判据仍守「至少留一行」这条主线，同时**独立**守「必须有且仅有一处挂 expenseEditGi === gi」
+//   —— 只放宽字面量、不确认闸门真的挂上，等于把防误删改动放空（同族病：守门不守语义）。
+// R496（2026-10-25）：收入侧套用同一套 ⇒ × 由 2 处变 3 处（堂食渠道 / 其他收入 / 费用），
+//   且**每一处**都必须挂本组删除态闸门（收入 incomeEditGi、费用 expenseEditGi）。
+//   ⚠️ 判据改成「先抽出全部 wx:if 条件再逐条判」而不是钉整串字面量：
+//      钉字面量的写法每加一个修饰条件就红一次（本轮已第 N 次），且**容易把"加了但加错侧"判成绿**。
+// ⚠️ R68（形状守卫）：顶层**多行链式调用**会被判「无法定界」并 fail-closed ⇒ 必须写成单行。
+const delIfConds = (dinWxml.match(/class="btn-del" wx:if="\{\{([^"]*)\}\}"/g) || []).map((s) => s.replace(/^class="btn-del" wx:if="\{\{/, '').replace(/\}\}"$/, ''));
+check('G11d/R496 三处 × **无一常驻**，全部挂本组删除态闸门（收入 incomeEditGi / 费用 expenseEditGi === gi）',
+  delIfConds.length === 3 && delIfConds.every((c) => /(incomeEditGi|expenseEditGi) === gi/.test(c)));
+check('G11d/R496 「至少留一行」护栏仍在（g.rows.length > 1 恰好两处：其他收入 + 费用；堂食渠道不适用）',
+  delIfConds.filter((c) => /g\.rows\.length > 1/.test(c)).length === 2);
+check('G11d/R496 闸门分侧正确：收入侧两处用 incomeEditGi、费用侧一处用 expenseEditGi',
+  delIfConds.filter((c) => /incomeEditGi === gi/.test(c)).length === 2
+  && delIfConds.filter((c) => /expenseEditGi === gi/.test(c)).length === 1);
+check('G11d/R496 两侧开关按钮都真接上处理函数（防「按钮加了却没接线」）',
+  /data-gidx="\{\{gi\}\}"[\s\S]{0,80}?catchtap="toggleExpenseEdit"/.test(dinWxml)
+  && /data-gidx="\{\{gi\}\}"[\s\S]{0,80}?catchtap="toggleIncomeEdit"/.test(dinWxml)
+  && /toggleIncomeEdit\(e\) \{[\s\S]{0,200}?incomeEditGi:/.test(dinJs));
+// R494c（2026-10-25 李老师）：**取消「完成删除」** + 删完自动收起 ×。
+//   为什么单独立腿：这三条都是「改一半不报错」的活口 —— ① 删了文案却没接自动退出 ⇒ × 赖在屏幕上，
+//   用户还得再点一次按钮（就是李老师说的那一步）；② 自动退出了但文案仍写「完成删除」⇒ 名不副实；
+//   ③ 状态只靠文案、没有颜色表达 ⇒ 用户看不出自己正在删除态。每条都独立判，不合并。
+// R496：由「固定清 expenseEditGi」改为**按 kind 只收起本次删的那一侧**（收入/费用各一个下标）。
+check('R494c-① 删除落数据的 doDeleteRow 自动收起 ×：按 kind 收起对应侧（删完即收，不再要求点「完成」）',
+  /doDeleteRow\(kind, gidx, ridx\) \{[\s\S]{0,900}?\[kind === 'income' \? 'incomeEditGi' : 'expenseEditGi'\]: -1/.test(dinJs));
+check('R494c-② 「完成删除」文案已从三处彻底移除（页面 / 逻辑 / 文案单源）',
+  !/expenseDelDone/.test(dinWxml) && !/expenseDelDone/.test(dinJs) && !/expenseDelDone/.test(terms));
+check('R494c-③ 删除态改用**颜色**表达：按钮挂 is-del-on 且文案恒为 t.expenseDelItem（无三元换字）',
+  /class="btn-small ghost subop-btn subop-del \{\{expenseEditGi === gi \? 'is-del-on' : ''\}\}"/.test(dinWxml)
+  && !/expenseEditGi === gi \? t\./.test(dinWxml));
+check('R494c-④ 两枚按钮等宽恒在一行（nowrap + flex 1 1 0），且触控高度仍守 88rpx 红线',
+  /\.group-ops-inline \{[^}]*flex-wrap: nowrap/.test(dinWxss)
+  && /\.group-ops-inline \.btn-small \{[^}]*flex: 1 1 0/.test(dinWxss)
+  && /\.btn-small \{[^}]*min-height: 88rpx/.test(read('app.wxss')));
 check('G11d 反向腿：预算行的 × 已不再带 !r.fixed（防被改回去）',
   !/class="btn-del" wx:if="\{\{g\.expanded && !r\.fixed/.test(dinWxml));
 check('G11d 堂食渠道的 × 仍带 !r.fixed（那里的预设渠道确实会被补回，与 G10j 同口径）',
-  /class="btn-del" wx:if="\{\{!r\.fixed\}\}"/.test(dinWxml));
+  /class="btn-del" wx:if="\{\{!r\.fixed && incomeEditGi === gi\}\}"/.test(dinWxml));
+// R496（2026-10-25 李老师：「收入侧也可以套用同一套」）：收入两处（其他收入组=细项 / 堂食组=渠道）
+//   必须与费用侧同款 —— 并排等宽胶囊 + is-del-on 表达删除态 + 文案恒定（无三元换字）。
+//   为什么单独立腿：收入与费用是两套 wx:for 分支，「费用改好了收入没跟上」是典型的改一半不报错。
+check('R496 收入侧两枚按钮同款：并排 subop-btn + is-del-on 表达删除态 + 文案恒为 t.incomeDelItem / t.incomeDelChannel',
+  (dinWxml.match(/class="btn-small ghost subop-btn subop-del \{\{incomeEditGi === gi \? 'is-del-on' : ''\}\}"/g) || []).length === 2
+  && /catchtap="toggleIncomeEdit">\{\{t\.incomeDelItem\}\}/.test(dinWxml)
+  && /catchtap="toggleIncomeEdit">\{\{t\.incomeDelChannel\}\}/.test(dinWxml)
+  && !/incomeEditGi === gi \? t\./.test(dinWxml));
 check('G11d 预设行名以纯文本渲染（不可编辑）',
   (dinWxml.match(/class="sub-item-fixed" wx:elif="\{\{g\.expanded\}\}"/g) || []).length === 2);
 
@@ -365,7 +430,13 @@ check('R102-④ 提示行点击直开预设面板（onOpenPresetPick 三处：�
 //    ⇒ `indexOf` 恒 -1 ⇒ 该断言**自 R102 起从未真正生效**（恒红或恒绿，取决于写法）。
 //    改为「锚点用正则匹配 group-ops 头 + 抓取按钮 data-kind」：判**结构**不判换行字面，
 //    并保留 `r102GoIdx >= 0` 作为锚点在场性检查（防扫描面退化 ⇒ 恒绿，R182）。
-const r102GoRe = /<view class="group-ops"[^>]*>\s*<button class="btn-small ghost" data-kind="expense"/;
+// R494b（2026-10-25）：费用段的 group-ops 多了并排类（group-ops-inline）⇒ 锚点由
+//   `class="group-ops"` 放宽为「class 以 group-ops 开头」。**只放宽定位**，判据内容不变：
+//   仍要求该段首个按钮是 `data-kind="expense"` 的添加键，且段首 300 字符内不得出现 mk-plat。
+// R494c（2026-10-25）：并排按钮各自加了修饰类（subop-btn / subop-del）⇒ 按钮侧锚点同样**只放宽定位**：
+//   `class="btn-small ghost"` → 「class 以 btn-small ghost 开头」。判据内容不变（仍要 data-kind="expense"）。
+//   ⚠️ 别再钉 class 字面量：加一个修饰类就把守卫判红，是「守卫锚点钉字面量」的老毛病（同族病）。
+const r102GoRe = /<view class="group-ops[^"]*"[^>]*>\s*<button class="btn-small ghost[^"]*" data-kind="expense"/;
 const r102GoM = r102GoRe.exec(dinWxml);
 const r102GoIdx = r102GoM ? r102GoM.index : -1;
 const r102Win = r102GoIdx >= 0 ? dinWxml.slice(r102GoIdx, r102GoIdx + 300) : '';
@@ -382,8 +453,8 @@ console.log('');
 console.log('===== A5 · 快速模式轻量自查（T3\u2032，round97）=====');
 // 背景修正：快速模式**没有补贴数据源**（只填每平台一个总额）⇒ A.11.4 配平等式硬套会稳定误报；
 //   故改为零依赖判据（营销段三个角色是否全空）。本段锁住「它不读分项快照」这件事。
-const a5Js = read('pages/month/input.js');
-const a5Wxml = read('pages/month/input.wxml');
+const a5Js = read('subpkg/biz/month/input.js');
+const a5Wxml = read('subpkg/biz/month/input.wxml');
 const a5Body = (a5Js.match(/syncTakeoutSelfCheck\(\) \{[\s\S]{0,1400}?\n  \},/) || [''])[0];
 check('A5-① 自查文案在位且非空', /selfCheckMiss: '[^']{10,}'/.test(terms));
 check('A5-② 方法在位且接线 ≥3 处（定义 + 合计变化 + 费用行变化）', /syncTakeoutSelfCheck\s*\(/.test(a5Js) && (a5Js.match(/syncTakeoutSelfCheck\(\)/g) || []).length >= 3);
@@ -392,8 +463,8 @@ check('A5-④ 判据不读分项快照/补贴合计（方法体非空且零依�
 console.log('');
 console.log('===== A4 · 费用细项「预设项选择」入口（T4b，round97）=====');
 // 背景：预设项清单（含 round97 新增的营销 3 项）若没有「可选入口」，用户只能手打项名 ⇒ 补了也看不见。
-const a4Js = read('pages/month/input.js');
-const a4Wxml = read('pages/month/input.wxml');
+const a4Js = read('subpkg/biz/month/input.js');
+const a4Wxml = read('subpkg/biz/month/input.wxml');
 check('A4-① 三条文案均在位且非空', /presetPickTitle: '[^']{2,}'/.test(terms) && /presetPickCustom: '[^']{2,}'/.test(terms) && /presetPickEmpty: '[^']{2,}'/.test(terms));
 check('A4-② 费用侧「+ 添加细项」接预设选择入口', /data-kind="expense"[^>]*catchtap="onOpenPresetPick"/.test(a4Wxml));
 check('A4-③ 三个处理函数均在位（打开 / 选中 / 加行）', /onOpenPresetPick\s*\(/.test(a4Js) && /onPickPreset\s*\(/.test(a4Js) && /addSubRow\s*\(/.test(a4Js));
@@ -403,8 +474,8 @@ console.log('');
 console.log('===== A6 · 营销段「分平台佣金小计」（T1，round97）=====');
 // 背景：收入侧外卖分 4 平台、费用侧只有 1 个佣金总额 ⇒ 客户要自己把 4 份账单分别求和再相加，
 //   漏平台 = 佣金少记 = 利润虚高。本区按平台逐行填、自动汇成那一行（只回显不入库）。
-const a6Js = read('pages/month/input.js');
-const a6Wxml = read('pages/month/input.wxml');
+const a6Js = read('subpkg/biz/month/input.js');
+const a6Wxml = read('subpkg/biz/month/input.wxml');
 check('A6-① 五条文案均在位且非空', ['mkPlatTitle', 'mkPlatHintTpl', 'mkPlatPh', 'mkPlatSumLabel', 'mkPlatClear']
   .every((k) => new RegExp(k + ": '[^']{2,}'").test(terms)));
 check('A6-② 五条文案已在 data.t 里映射（否则 wxml 取到空串）',
@@ -427,9 +498,9 @@ console.log('===== A7 · 库存期初结转 / 命名一元化 / 静默清零（r
 // 背景（真机反馈触发）：① 库存页「原来填过的数字不出来」= getLedger 把 DB 的 camelCase 原样透传、
 //   而页面**照契约**读 snake_case ⇒ 预填恒空；② 更重的一件：月度录入页保存一次就把盘点
 //   **静默清零**（saveLedger 把可选入参 `inventory?` 的缺省读成全 0 并整体覆盖，实跑复现零报错）。
-const a7InvJs = read('pages/month/inventory.js');
-const a7InvWxml = read('pages/month/inventory.wxml');
-const a7InJs = read('pages/month/input.js');
+const a7InvJs = read('subpkg/biz/month/inventory.js');
+const a7InvWxml = read('subpkg/biz/month/inventory.wxml');
+const a7InJs = read('subpkg/biz/month/input.js');
 const a7Gl = read('cloudfunctions/getLedger/index.js');
 const a7Slv = read('cloudfunctions/saveLedger/validate.js');
 const a7Sli = read('cloudfunctions/saveLedger/index.js');
@@ -467,8 +538,8 @@ console.log('===== A8 · 子页返回后摘要必须重读（round104）=====');
 //   **已有实例**（只触发 onShow）⇒ 摘要恒显旧值。全量扫查：其它页面都是 onShow(){ this.load(); }，
 //   只有 month/input.js 与 month/inventory.js 是「只回填草稿、不重拉」。
 //   同族病：库存页的「期初自动结转」在上月期末改完之后也不刷新（会把旧期初落库）。
-const a8InJs = read('pages/month/input.js');
-const a8InvJs = read('pages/month/inventory.js');
+const a8InJs = read('subpkg/biz/month/input.js');
+const a8InvJs = read('subpkg/biz/month/inventory.js');
 // 取方法体：到下一个顶层方法闭合（\n + 2 空格 + },）为止 —— 判据只看「有没有触发重读」，
 //   不绑死 refreshCalcSummaries 之外的写法（round103 曾因绑死写法误红一次）。
 const a8InShow = (a8InJs.match(/onShow\(\) \{[\s\S]{0,2200}?\n  \},/) || [''])[0];
@@ -501,11 +572,11 @@ console.log('===== A9 · 一次性投入入口 / 弹窗底色 / 留存数据（r
 //      选「一次性」后**整块什么都不显示**，而文案已承诺「就当这个月的费用」⇒ 这笔钱无处可录、当月利润虚高。
 //   ② 「点 追加采购 窗口变成透明的，和原来摊销窗口在一起，没办法操作」—— 面板底色与 page 背景同值。
 //   ③ 「要有留存数据，后面月份显示 还剩余多少未摊销」。
-const a9InWxml = read('pages/month/input.wxml');
-const a9InJs = read('pages/month/input.js');
-const a9AmoWxml = read('pages/month/amortize.wxml');
-const a9AmoJs = read('pages/month/amortize.js');
-const a9AmoWxss = read('pages/month/amortize.wxss');
+const a9InWxml = read('subpkg/biz/month/input.wxml');
+const a9InJs = read('subpkg/biz/month/input.js');
+const a9AmoWxml = read('subpkg/biz/month/amortize.wxml');
+const a9AmoJs = read('subpkg/biz/month/amortize.js');
+const a9AmoWxss = read('subpkg/biz/month/amortize.wxss');
 const a9AppWxss = read('app.wxss');
 const a9Gas = read('cloudfunctions/getAmortSchedule/index.js');
 
@@ -517,8 +588,8 @@ const a9Gas = read('cloudfunctions/getAmortSchedule/index.js');
 //     ① 扫描面内 WXSS **代码面**不得出现 inset 简写声明（剔注释，免本仓「注释不写字面」纪律自伤）；
 //     ② 底部弹层不得在摊销页复活（表单已迁 assetEdit 独立页）。
 //   ⚠️ 只扫 5 个已知含遮罩/面板的文件（app + 4 个页面），不是全仓裸扫 —— 避免误伤未来的合法用法。
-const A9_INSET_FILES = ['app.wxss', 'pages/month/input.wxss', 'pages/month/amortize.wxss',
-  'pages/month/assetEdit.wxss', 'pages/month/inventory.wxss'];
+const A9_INSET_FILES = ['app.wxss', 'subpkg/biz/month/input.wxss', 'subpkg/biz/month/amortize.wxss',
+  'subpkg/biz/month/assetEdit.wxss', 'subpkg/biz/month/inventory.wxss'];
 const a9InsetHits = [];
 for (const f of A9_INSET_FILES) {
   let src = '';
@@ -535,19 +606,21 @@ check('A9-① 扫描面 WXSS 不得用 inset 简写（round107 真因：简写�
 //   它有三个结构性毛病（李老师 round107 真机反馈全中）：
 //     ① 只出一个框、无提示，容易看不见；② 一个月只能记**一笔**（真实场景常有多笔小额）；
 //     ③ 与「按月摊销」做成 shop 级二选一 ⇒ 排除了「本月既摊一笔、又有几笔一次算清」。
-//   新设计：两类投入**可共存**，逐笔登记在 pages/month/assetEdit；录入页只给口径说明 + 两行摘要 + 入口。
+//   新设计：两类投入**可共存**，逐笔登记在 subpkg/biz/month/assetEdit；录入页只给口径说明 + 两行摘要 + 入口。
 //   ⚠️ ③④ 是**反转腿**（原为「必须有」→ 现为「**不得有**」）：防有人把旧实现照搬回来。
 const a9InJsCode = a9InJs.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
 const a9SlvCode = read('cloudfunctions/saveLedger/validate.js').replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
-const a9AeWxml = read('pages/month/assetEdit.wxml');
-const a9AeJs = read('pages/month/assetEdit.js');
+const a9AeWxml = read('subpkg/biz/month/assetEdit.wxml');
+const a9AeJs = read('subpkg/biz/month/assetEdit.js');
 // ⚠️ 判据必须**剔注释**再查 `.mask{` / `.sheet{` —— 本文件注释里正是拿这两个选择器当例子说明「已移除」，
 //    裸查会被自己的说明文字绊红（本仓「注释里不写字面」纪律的由来；这里是第 N 次踩到，故两边都防）。
 const a9AmoCode = a9AmoWxss.replace(/\/\*[\s\S]*?\*\//g, '');
 check('A9-② 摊销表单在 assetEdit 独立页，且摊销页底部弹层（.mask/.sheet）不得复活（弹层 × 键盘 = 死结）',
   /<picker mode="date"/.test(a9AeWxml) && /bindinput="onAmount"/.test(a9AeWxml)
   && !/\.mask\s*\{/.test(a9AmoCode) && !/\.sheet\s*\{/.test(a9AmoCode)
-  && /pages\/month\/assetEdit/.test(read('app.json')));
+  // R423 分包化：分包页在 app.json 里是 root + "month/assetEdit" 两段，完整路径不再出现
+  //   ⇒ 判据改为「assetEdit 已注册」（month/assetEdit 任位置出现即可）
+  && /month\/assetEdit/.test(read('app.json')));
 check('A9-③ 录入页**不得**再持有一次性金额状态位（round107：改由台账逐笔登记 ⇒ 前端不留标量）',
   !/lumpSumYuan/.test(a9InJsCode) && !/onLumpSum/.test(a9InJsCode));
 check('A9-④ 录入页提交**不得**再传 lump_sum_fen，且 saveLedger 代码面不得再收该入参（入参已退休）',
@@ -675,14 +748,45 @@ const a9S2Lock = {
 const a9InvBad = A9_ENGINES.filter((f) => {
   const r = require(path.join(ROOT, 'cloudfunctions/' + f))
     .calcMonthlyProfit(JSON.parse(JSON.stringify(a9S2Lock)));
+  // 🔴 R484 定案（锁的方向反转）：开库存 = 盘点了 ⇒ 参考口径**就该**用倒轧 23,000。
+  //   旧锁「参考仍 916,000（仍用手工填的 22,000）」的前提已被本次定案推翻 ⇒ 改为 816,000。
+  //   差异随之从 568,333（含 10 万消耗差）变成 468,333（只剩当月摊销）。
   return !(r.realConsumeFen === 2300000            // 倒轧：期初 + 采购 − 期末
-    && r.operationRefProfitFen === 916000          // 🔴 口径锁：仍用直接填 22,000，不随库存开关改成倒轧
+    && r.operationRefProfitFen === 816000          // R484：开库存就用倒轧 23,000
     && r.totalFactorRealProfitFen === 347667       // 真实利润：用倒轧 23,000 + 摊销 4,683.33
-    && r.profitDiffFen === 568333                  // 差异 = (23,000 − 22,000) + 4,683.33
+    && r.profitDiffFen === 468333                  // 差异只剩当月摊销（两口径同用一份消耗）
     && r.diffCheck === true);
 });
-check('A9-⑱ 「开库存」S2 上锁样本三副本对拍（倒轧 23,000 / 参考利润仍 916,000 口径锁 / 真实 347,667 / 差异 568,333）',
+check('A9-⑱ 「开库存」S2 上锁样本三副本对拍（倒轧 23,000 / 参考 816,000 R484 口径锁 / 真实 347,667 / 差异 468,333）',
   a9InvBad.length === 0, a9InvBad.length ? ('未达标：' + a9InvBad.join(', ')) : '三副本一致且命中上锁锚点');
+
+// ===== G12 · R500 堂食收入采集引导（豆包两轮 + 美团管家/客如云/哗啦啦官方字段取证）=====
+// 背景：老板填堂食收入的困扰不是"不会做加法"，而是**不知道去手机上点哪抄**，以及
+//   「收银系统首页那个『营业收入』能不能直接抄」（客如云那个数含未结账/会员卡余额/挂账 ⇒ 抄了虚高）。
+// ⚠️ 同族病：R498 刚修过「实现改了、注释/文案没跟」⇒ 引导文案必须进判据面，否则改回去无人知。
+console.log('—— G12 R500 堂食采集引导（从哪抄 + 三不抄 + 换行真的能显示）——');
+const scopeIn = T.ledger.incomeScope || {};
+const dmT = T.ledger.dineMode || {};
+const notesT = T.ledger.channelNotes || {};
+check('G12-1 R500 收入口径 takeaway 不得再教「三项相加」，必须说「优惠前总额」（R497 已改，教回去=补贴白扣）',
+  !/(三项相加|三项之和)/.test(scopeIn.takeaway || '') && /优惠前总额/.test(scopeIn.takeaway || ''));
+check('G12-2 R500 堂食口径必须写明「未结账不算」+「充值不算收入」+「按消费日、不按到账日」',
+  /未结账|还没结账/.test(scopeIn.dine_in || '') && /充值/.test(scopeIn.dine_in || '')
+  && /消费/.test(scopeIn.dine_in || '') && /到账/.test(scopeIn.dine_in || ''));
+check('G12-3 R500 快速录入必须给出**手机上抄得到**的路径（≥2 家收银系统 + 实收金额/营业概况/收入分类）', (() => {
+  const h = dmT.fastHint || '';
+  const sys = ['美团', '客如云', '哗啦啦'].filter((x) => h.indexOf(x) >= 0).length;
+  return sys >= 2 && /(实收金额|营业概况|收入分类)/.test(h);
+})());
+check('G12-4 R500 快速录入必须说清「系统内 + 系统外」按订单算一次（别两边都加 —— 现金混合的主要错法）',
+  /别两边都加/.test(dmT.fastHint || '') && /没进收银系统|没进系统/.test(dmT.fastHint || ''));
+check('G12-5 R500 挂账注必须说「当月算收入」且「收回不再记一次」（收钱时更像收入，最容易搞反）',
+  /当月算收入|当月就算收入/.test(notesT['个人/单位挂账消费'] || '')
+  && /(不再|不要).{0,4}记一次/.test(notesT['个人/单位挂账消费'] || ''));
+// 🔴 换行可显示：引导文案用 \n 分段（三家路径对照），WXML 默认把 \n 折叠成空格
+//   ⇒ 没有 pre-wrap，老板看到的是一坨不分行的长文（改样式的人不会想到这里有依赖）。
+check('G12-6 R500 折叠提示体必须 white-space:pre-wrap（否则「从哪抄」的分段全塌成一行）',
+  /\.hint-fold-body\s*\{[^}]*white-space:\s*pre-wrap/.test(dinWxss));
 
 console.log('');
 console.log('===== 门禁预检 =====');

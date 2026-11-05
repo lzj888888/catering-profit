@@ -28,9 +28,26 @@ exports.main = async (event) => {
 
   const da = makeAdapter(db);
 
-  // ===== 2. 取该用户店铺（**仅**「从未建过店」的新用户才自动建档）=====
-  const shopsRes = await da.list('shop', { user_id: userId });
-  let shop = (shopsRes && shopsRes.data && shopsRes.data[0]) || null;
+  // ===== 2. 取店铺（**仅**「从未建过店」的新用户才自动建档）=====
+  // 🔴 R470：**必须认调用方传的 shop_id**。
+  //   原来只取「该用户名下第一家」（data[0]）⇒ 前端切店铺只是本地改了 shop_id，云端每次仍回第一家
+  //   ⇒ 界面表现「有『已切换』提示、但店名不变」；更严重的是**读写分叉**：
+  //   写操作（saveLedger 等）带的是新 id，读回来的却是第一家 ⇒ 老板以为在 B 店，看到的是 A 店数据。
+  //   归属校验不能省：`shop_id` 由客户端传入，必须同时按 user_id 过滤，否则等于越权读别家。
+  // ⚠️ 取值必须用 `v.shop_id`：本函数的 `validate.js` 把 shop_id 放在**返回值顶层**，
+  //   `v.input` 里只有 client_request_id（见 validate.js:9-10）。R470 第一版写成
+  //   `v.input.shop_id` ⇒ 恒 undefined ⇒ 回落第一家 ⇒ 修了等于没修（真机复测仍切不动）。
+  const wantedId = v.shop_id || '';
+  let shop = null;
+  if (wantedId) {
+    const oneRes = await da.list('shop', { shop_id: wantedId, user_id: userId });
+    shop = (oneRes && oneRes.data && oneRes.data[0]) || null;
+    // 传了但不属于本人 / 已删 ⇒ 不猜也不报错，走下面的兜底（回第一家，或落到 no_shop 分支）
+  }
+  if (!shop) {
+    const shopsRes = await da.list('shop', { user_id: userId });
+    shop = (shopsRes && shopsRes.data && shopsRes.data[0]) || null;
+  }
   let created = false;
 
   // 🔴 R208：**必须先分清「从未建店的新用户」与「主动删空的老用户」**，两者处理完全不同。
@@ -111,6 +128,10 @@ exports.main = async (event) => {
     //   存量店铺没有这两个字段 ⇒ 给 []（fail-soft，不回填、不报错）。
     pinned_cards: Array.isArray(shop.pinned_cards) ? shop.pinned_cards : [],
     pinned_materials: Array.isArray(shop.pinned_materials) ? shop.pinned_materials : [],
+    // A20（2026-11-05）：诊断补录 6 项（店铺时点属性）。存量店铺没有 ⇒ 给 {}（fail-soft）。
+    //   🔴 缺键在诊断里是「未判定」，不是 0 —— 前端与引擎都按 null 处理。
+    diag_facts: (shop.diag_facts && typeof shop.diag_facts === 'object' && !Array.isArray(shop.diag_facts))
+      ? shop.diag_facts : {},
     is_new_shop: created,
     client_request_id: v.input.client_request_id || '',
   });

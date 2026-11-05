@@ -1,0 +1,125 @@
+{
+  "at": "2026-10-29T16:10:55.717Z",
+  "checks": [
+    {
+      "id": "A1_AT_LIST",
+      "pass": true,
+      "expect": "进入成本卡列表",
+      "actual": "subpkg/biz/card/index"
+    },
+    {
+      "id": "A2_ENTRY",
+      "pass": true,
+      "expect": "列表页存在批量导入入口",
+      "actual": "{\"impEntry\":\"批量导入\",\"hasGoImport\":true}"
+    },
+    {
+      "id": "B1_AT_IMPORT",
+      "pass": true,
+      "expect": "进入批量导入页",
+      "actual": "subpkg/biz/card/import"
+    },
+    {
+      "id": "C1_PARSE",
+      "pass": true,
+      "expect": "粘贴两行解析出 2 条",
+      "actual": 2
+    },
+    {
+      "id": "C2_PRICE",
+      "pass": true,
+      "expect": "售价 28 已解析",
+      "actual": "{\"name\":\"走查导入菜5237\",\"price\":\"28.00\",\"status\":\"red\",\"cat\":\"\"}"
+    },
+    {
+      "id": "C3_SUMMARY",
+      "pass": true,
+      "expect": "汇总文案已生成：共 2 道 · 已齐 0 · 待补价 0 · 缺信息 2",
+      "actual": "共 2 道 · 已齐 0 · 待补价 0 · 缺信息 2"
+    },
+    {
+      "id": "C4_CAT",
+      "pass": true,
+      "expect": "行内选品类生效",
+      "actual": "热炒荤菜"
+    },
+    {
+      "id": "C5_DRAFT",
+      "pass": true,
+      "expect": "草稿带售价 28",
+      "actual": 28
+    },
+    {
+      "id": "C6_STATUS",
+      "pass": true,
+      "expect": "仍为「待补价」（示例主料无价）",
+      "actual": "orange lines=[\"调料(含油盐酱醋)/0.50\",\"猪肉/\",\"青椒/\"]"
+    },
+    {
+      "id": "D1_AT_EDIT",
+      "pass": true,
+      "expect": "跳转编辑页（from_draft）",
+      "actual": "subpkg/biz/card/edit"
+    },
+    {
+      "id": "E1_PREFILL_NAME",
+      "pass": true,
+      "expect": "编辑页预填菜名 走查导入菜5237",
+      "actual": "走查导入菜5237"
+    },
+    {
+      "id": "E2_PREFILL_PRICE",
+      "pass": true,
+      "expect": "编辑页预填售价 28",
+      "actual": "28"
+    },
+    {
+      "id": "E3_PREFILL_CAT",
+      "pass": true,
+      "expect": "编辑页预填品类",
+      "actual": "热炒荤菜"
+    },
+    {
+      "id": "E4_PREFILL_LINES",
+      "pass": true,
+      "expect": "编辑页预填明细行",
+      "actual": "[\"调料(含油盐酱醋)|0.50|1\",\"猪肉||150\",\"青椒||100\"]"
+    },
+    {
+      "id": "F1_FILLED",
+      "pass": true,
+      "expect": "两个示例主料补上单价",
+      "actual": "[\"调料(含油盐酱醋)|0.50\",\"猪肉|0.01\",\"青椒|0.01\"]"
+    },
+    {
+      "id": "G1_SAVE_BTN",
+      "pass": true,
+      "expect": "吸底保存按钮存在",
+      "actual": true
+    },
+    {
+      "id": "G2_SAVED",
+      "pass": true,
+      "expect": "保存成功（走查导入菜5237）",
+      "actual": "{\"savedName\":\"走查导入菜5237\",\"saving\":false}"
+    },
+    {
+      "id": "H1_BACK",
+      "pass": false,
+      "expect": "返回列表",
+      "actual": "subpkg/biz/card/import"
+    },
+    {
+      "id": "H2_ROW",
+      "pass": false,
+      "expect": "列表出现导入并保存的卡",
+      "actual": ""
+    },
+    {
+      "id": "I1_CLEANUP",
+      "pass": false,
+      "expect": "走查临时卡已删除",
+      "actual": "{\"code\":\"INVALID_PARAM\",\"msg\":\"删除菜品需提供 card.card_code\",\"data\":{}}"
+    }
+  ]
+}

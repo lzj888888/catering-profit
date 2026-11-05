@@ -166,5 +166,65 @@ check('5-③ 未匹配：菜名 "-" 行归 unmatched（不落为菜名、不静�
 check('5-③b 未匹配行的 qty/amount 保留（不归零）', !!dash && dash.qty === 5 && dash.amountFen === 4500,
   dash ? 'qty ' + dash.qty + ' / amountFen ' + dash.amountFen : '未命中');
 
+// ============ R574 / #109 · 区间端点与粒度（"一段"必须能被表达）============
+// 背景：堂食《菜品销售统计》表头写「营业日期：【2026/09/07 至 2026/09/13】」= **7 天区间汇总**，
+//   而本文件此前只取最后一个日期当 biz_date ⇒ 36 行全落区间末日 ⇒ 下游按 biz_date 去重数天数
+//   只算 1 天 ⇒ 该日堂食收入 = 真实日均的 7 倍，且全程零报错。
+//   ⇒ 断言要求：解析结果必须把"这是一段"带出来，且**不许猜**（端点缺失就是 unknown）。
+sec('R574 · 区间端点与粒度（#109：7 天汇总表必须留下"这是一段"的痕迹）');
+const per = svc.extractPeriod(dishRows);
+check('6-① 真表抽到区间两端（from < to）',
+  !!per.from && !!per.to && per.from < per.to, per.from + ' → ' + per.to);
+check('6-② 真表 granularity = interval（不是 daily）',
+  parsed.granularity === 'interval', String(parsed.granularity));
+check('6-③ biz_date 仍是区间末日（旧语义不回归：_id 靠它覆盖旧文档）',
+  parsed.bizDate === per.to, parsed.bizDate + ' vs ' + per.to);
+// 单日表 ⇒ daily：把表头参数行里所有日期改成同一天（不手搓假矩阵，改的是真表那一行）
+const oneDay = dishRows.slice();
+oneDay[1] = (oneDay[1] || []).map((x) => String(x == null ? '' : x).replace(/\d{4}[/\-]\d{1,2}[/\-]\d{1,2}/g, '2026/09/09'));
+const pOne = svc.parseDishSales(oneDay);
+check('6-④ 单日表 ⇒ granularity=daily 且两端相等',
+  pOne.granularity === 'daily' && pOne.periodFrom === pOne.periodTo,
+  pOne.granularity + ' / ' + pOne.periodFrom + '→' + pOne.periodTo);
+// 端点缺失 ⇒ unknown（fail-closed：宁可说不知道，也不许默认成 daily）
+const noDate = dishRows.slice();
+noDate[1] = (noDate[1] || []).map((x) => String(x == null ? '' : x).replace(/\d{4}[/\-]\d{1,2}[/\-]\d{1,2}/g, ''));
+const pNone = svc.parseDishSales(noDate);
+check('6-⑤ 端点缺失 ⇒ granularity=unknown（绝不猜 daily/interval）',
+  pNone.granularity === 'unknown' && pNone.periodFrom === '' && pNone.periodTo === '',
+  pNone.granularity + ' / from=' + JSON.stringify(pNone.periodFrom));
+// 写反 ⇒ 自动交换（不返回反向区间，否则下游区间并集会算成 0 天）
+const rev = svc.extractPeriod([[], ['营业日期：【2026/09/13 至 2026/09/07】']]);
+check('6-⑥ 端点写反 ⇒ 自动交换',
+  rev.from === '2026-09-07' && rev.to === '2026-09-13', rev.from + ' → ' + rev.to);
+// 6-⑦ 落库面：**每一处**写入都必须带三字段。少改一处 ⇒ 那条通道的"这是一段"信息永远丢失，
+//   而解析层断言照样全绿（"解析对了"≠"写下去了"——这是本仓踩过多次的同族坑）。
+//   判法：按 `db.collection('external_sales_daily')` 切成写入块、再从每块里取 `data: {...}`，
+//   逐块查三字段；**剥注释后判**（注释里写一句就能喂成恒真）。
+//   ⚠️ R584 修正：原判据把数量**钉死成 3** ⇒ 新增 DSI-1 落库点（第 4 处、字段齐全）时假红。
+//      改为「≥3 且零缺字段」：新增合规写入点不假红，新增**漏字段**的仍会红（分辨力保留在 badBlocks 上）。
+const idxSrcP = fs.readFileSync(path.join(ROOT, 'cloudfunctions/importSalesBill/index.js'), 'utf8');
+const idxStripP = idxSrcP.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+const writeBlocks = idxStripP.split("db.collection('external_sales_daily')").slice(1)
+  .map((b) => { const m = b.match(/data:\s*\{([\s\S]*?)\n\s*\},?\s*\)/); return m ? m[1] : b.slice(0, 1200); });
+// 🔴 R586：区分「业务写入」与「状态更新」。
+//   软删/恢复只动 `is_deleted`（+ updated_at），它不产生新数据行、也不改变"这是一段还是单日"，
+//   要求它带 granularity/period_from/period_to 是无意义的 —— 那是**写业务数据**才要的。
+//   判法：data 里出现 is_deleted、且不出现任何业务字段（dish_key/qty/amount）⇒ 视为状态更新。
+//   ⚠️ 反向仍保留分辨力：业务块少一个字段照样红（见下方自失效断言）。
+const isStateOnly = (b) => /is_deleted\s*:/.test(b)
+  && !/dish_key\s*:/.test(b) && !/qty\s*:/.test(b) && !/amount\s*:/.test(b);
+const hasTriple = (b) => /granularity:/.test(b) && /period_from:/.test(b) && /period_to:/.test(b);
+const badBlocks = writeBlocks.map((b, i) => ({ i, b }))
+  .filter(({ b }) => !isStateOnly(b) && !hasTriple(b));
+check('6-⑦ 落库面：每一处**业务**写入都带 granularity/period_from/period_to（≥3 处；软删除外）',
+  writeBlocks.length >= 3 && badBlocks.length === 0,
+  '写入点 ' + writeBlocks.length + ' 个 / 缺字段 ' + badBlocks.length + ' 个'
+  + (badBlocks.length ? ' → 第 ' + badBlocks.map((x) => x.i + 1).join(',') + ' 处' : ''));
+// 自失效护栏：把一个真正的业务块去掉 granularity ⇒ 同一判据必须报缺（否则上面那条恒真）
+const fakeBad = 'shop_id: 1, dish_key: \'a\', qty: 1, period_from: \'2026-09-07\', period_to: \'2026-09-07\'';
+check('6-⑦-b 自失效：业务写入块缺 granularity ⇒ 必须判缺', !isStateOnly(fakeBad) && !hasTriple(fakeBad));
+check('6-⑦-c 自失效：只有 is_deleted 的块 ⇒ 必须判为状态更新', isStateOnly('is_deleted: true, updated_at: 1'));
+
 console.log('\n===== m333-parse 守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);

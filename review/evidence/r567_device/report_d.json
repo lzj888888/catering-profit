@@ -1,0 +1,104 @@
+{
+ "startedAt": "2026-10-29T15:17:18.104Z",
+ "checks": [
+  {
+   "id": "D-navUrl",
+   "expect": "去补价跳编辑页且带 from_draft=1",
+   "actual": "/subpkg/biz/card/edit?from_draft=1",
+   "pass": true
+  },
+  {
+   "id": "D-stash",
+   "expect": "草稿写入本地暂存",
+   "actual": "{\"name\":\"鱼香肉丝\",\"priceYuan\":38,\"lineN\":3,\"cat\":\"热炒荤菜\"}",
+   "pass": true
+  },
+  {
+   "id": "D-route",
+   "expect": "进入编辑页",
+   "actual": "subpkg/biz/card/edit",
+   "pass": true
+  },
+  {
+   "id": "D-name",
+   "expect": "菜名预填",
+   "actual": "鱼香肉丝",
+   "pass": true
+  },
+  {
+   "id": "D-price",
+   "expect": "售价预填 38",
+   "actual": "38",
+   "pass": true
+  },
+  {
+   "id": "D-cat",
+   "expect": "品类预填（热炒荤菜）",
+   "actual": "热炒荤菜",
+   "pass": true
+  },
+  {
+   "id": "D-lines",
+   "expect": "示例主料行带过来（≥1 行且有主料名）",
+   "actual": "3:调料(含油盐酱醋)/猪肉/青椒",
+   "pass": true
+  },
+  {
+   "id": "E-high",
+   "expect": "烧烤炸物 energyFen=40",
+   "actual": 40,
+   "pass": true
+  },
+  {
+   "id": "E-defaultOff",
+   "expect": "默认不入卡",
+   "actual": "调料(含油盐酱醋)/猪肉/青椒",
+   "pass": true
+  },
+  {
+   "id": "E-on",
+   "expect": "开启→燃料行 0.40",
+   "actual": "{\"n\":\"燃气燃料分摊\",\"p\":\"0.40\",\"k\":\"main\"}",
+   "pass": true
+  },
+  {
+   "id": "E-kind",
+   "expect": "line_kind 合法",
+   "actual": "main",
+   "pass": true
+  },
+  {
+   "id": "E-off",
+   "expect": "关闭→燃料行移除",
+   "actual": "{\"on\":false,\"has\":false}",
+   "pass": true
+  },
+  {
+   "id": "E-low",
+   "expect": "热炒荤菜 energyFen=0（开关不出现）",
+   "actual": 0,
+   "pass": true
+  },
+  {
+   "id": "G-save",
+   "expect": "保存后列表出现走查卡",
+   "actual": 0,
+   "pass": false
+  },
+  {
+   "id": "G-save",
+   "expect": "保存后列表出现走查卡",
+   "actual": "列表仍 0 张 ⇒ 保存未落库",
+   "pass": false
+  }
+ ],
+ "notes": [
+  "D1 {\"row0\":{\"name\":\"鱼香肉丝\",\"price\":\"38.00\",\"cat\":\"热炒荤菜\",\"status\":\"orange\"},\"navUrl\":\"/subpkg/biz/card/edit?from_draft=1\",\"stash\":{\"name\":\"鱼香肉丝\",\"priceYuan\":38,\"lineN\":3,\"cat\":\"热炒荤菜\"}}",
+  "D2 预填 {\"route\":\"subpkg/biz/card/edit\",\"isEdit\":false,\"name\":\"鱼香肉丝\",\"price\":\"38\",\"cat\":\"热炒荤菜\",\"loss\":\"2\",\"lineN\":3,\"lines\":[{\"n\":\"调料(含油盐酱醋)\",\"p\":\"0.50\"},{\"n\":\"猪肉\",\"p\":\"\"},{\"n\":\"青椒\",\"p\":\"\"}]}",
+  "E {\"high\":{\"cat\":\"烧烤炸物\",\"e\":40,\"on\":false,\"lines\":[{\"n\":\"调料(含油盐酱醋)\",\"p\":\"0.50\"},{\"n\":\"猪肉\",\"p\":\"\"},{\"n\":\"青椒\",\"p\":\"\"}]},\"on\":{\"on\":true,\"lines\":[{\"n\":\"调料(含油盐酱醋)\",\"p\":\"0.50\",\"k\":\"main\"},{\"n\":\"猪肉\",\"p\":\"\",\"k\":\"main\"},{\"n\":\"青椒\",\"p\":\"\",\"k\":\"main\"},{\"n\":\"燃气燃料分摊\",\"p\":\"0.40\",\"k\":\"main\"}]},\"off\":{\"on\":false,\"has\":false},\"low\":{\"cat\":\"热炒荤菜\",\"e\":0}}",
+  "F 保存 {\"snapshot\":{\"name\":\"【走查】亏本菜A\",\"price\":\"10\",\"lines\":[{\"n\":\"调料(含油盐酱醋)\",\"p\":\"0.50\"},{\"n\":\"猪肉\",\"p\":\"15.00\"},{\"n\":\"青椒\",\"p\":\"\"}],\"badAmount\":0,\"hasPreset\":true},\"logs\":[\"toast:单价\"],\"after\":{\"name\":\"【走查】亏本菜A\",\"price\":\"10\",\"saving\":false,\"badAmount\":0},\"isPromise\":true}",
+  "F 保存后路由 {\"n\":0,\"route\":null}",
+  "G 列表 {\"loading\":false,\"len\":0,\"loseCount\":0,\"loseWarn\":\"\",\"rows\":[]}"
+ ],
+ "fails": []
+}

@@ -5,7 +5,14 @@ const { ERROR_CODES } = require('./common');
 // 与 calcBom/service.js 完全一致（单源同口径）：净料单位成本 = round 到 4 位小数（元）→ 万分整数。
 // 保持与 calcBom.service.netUnitCostWan 相同的实现，防止快照口径漂移。
 function netUnitCostWan(purchasePriceFen, convertFactor, yieldRate) {
-  const yuan = (purchasePriceFen / 100) / convertFactor / (yieldRate / 100);
+  // 🔴 R298（D2）：出成率 / 换算系数**夹紧**（口径同前端 utils/units.js::yieldRateOf：未填=100）。
+  //   原实现裸除 ⇒ yieldRate=0 时 ÷0 = Infinity、缺失时 NaN、>100 时成本被系统性低估（静默错账）。
+  //   手工行路径（saveCostCard/index.js）云端**无 validate 兜底** ⇒ 必须在本函数内 fail-closed。
+  //   越界 / 缺失 / 非数 ⇒ 100（不折损，中性值）；换算系数 ≤0 ⇒ 1。
+  const y = Number(yieldRate);
+  const yr = (Number.isFinite(y) && y > 0 && y <= 100) ? y : 100;
+  const cf = Number(convertFactor) > 0 ? Number(convertFactor) : 1;
+  const yuan = (purchasePriceFen / 100) / cf / (yr / 100);
   return Math.round(yuan * 10000);
 }
 

@@ -5,6 +5,10 @@ const ui = require('../../utils/ui.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 const app = getApp();
 const shopGuard = require('../../utils/shopGuard.js');
+// R493：免费档锁在付费墙后 ⇒ 首页也要读权益，免费显示参考口径、付费才显示会计利润
+const entitle = require('../../utils/entitlement.js');
+// R488：利润标签单一来源（名随数走）—— 首页/月首页/结果页三处共用，禁止各自再写一份判断
+const profitLabel = require('../../utils/profitLabel.js');
 
 Page({
   data: {
@@ -52,6 +56,10 @@ Page({
     // 🔴 三态标志：**未确定 ≠ 无数据**。为 false 时既不显示数字、也不显示「还没有本月数据」，
     //    否则老用户每次进首页都会先闪一帧空态文案再跳成数字（观感像抖屏）。
     profitKnown: false,
+    // 🔴 R488：这个数（total_factor_real_profit_fen）叫什么，由 utils/profitLabel.js 决定：
+    //   盘点过 ⇒「本月利润」/ 没盘点 ⇒「估算利润」。取数回来前先用占位（= 常见情形），
+    //   避免先闪一帧「本月利润」再跳成「估算利润」——两帧都带"利润"，不会读成别的意思。
+    profitTitle: TERMS.ui.heroRefLabel,
   },
 
   onShow() {
@@ -78,20 +86,35 @@ Page({
   },
 
   /**
-   * R207：头卡的「本月经营参考利润」。
-   * 口径：取 getLedger 的 result.operation_ref_profit_fen —— 与月度结果页 netRef **同一字段**，
-   *       不在这里另算一遍（另算必漂）。
+   * R207：头卡的「本月利润」。
+   * 🔴 R484：口径改为取 result.total_factor_real_profit_fen（**会计利润**，权责发生制）。
+   *   原因：R484 定案"一个月只出一个数"，结果页已取消并排的双利润，首页必须跟到**同一个字段**，
+   *   否则会出现「首页一个数、结果页另一个数」（两者差当月摊销），那正是本次要消灭的困惑。
+   *   —— 与月度结果页**同一字段**，不在这里另算一遍（另算必漂）。
    * 🔴 静默降级：本请求只服务于一块**装饰性总结**，失败/未建档一律转空态，
    *    **不弹 toast、不阻塞主流程** —— 首页已经有一个 getShopContext 的失败提示，再加一个就是噪音。
    */
   async loadRefProfit() {
     try {
       const d = await api.call('getLedger', { month: ui.nowMonth() });
-      const fen = d && d.result && d.result.operation_ref_profit_fen;
-      if (typeof fen === 'number' && Number.isFinite(fen)) {
-        // 有建档月（含利润恰为 0 的极端情况：这里 fen===0 仍算「有数据」，因为那是一个**真实算出来的 0**，
-        // 与「没录过」是两回事 ⇒ 显示 0.00 是诚实的，不显示才是虚报）
-        this.setData({ refProfit: api.fenToYuan(fen, 2), hasProfit: true, profitKnown: true });
+      // 🔴 R298 判据：有账本记录（account_id 非空）才算"有数据"，否则走空态（绝不显示 ¥0）。
+      if (!d || !d.account_id) {
+        this.setData({ hasProfit: false, profitKnown: true });
+        return;
+      }
+      // R493：免费档（未开通）锁在付费墙后 ⇒ 只显示**参考口径**（operation_ref_profit_fen / 经营参考利润）；
+      //   付费档才显示**会计利润**（total_factor_real_profit_fen / 本月利润）。两口径取数来源不同，
+      //   必须按权益分流，否则免费档在首页看到的数会跟月首页（已按权益分流）对不上。
+      const ent = await entitle.fetchEntitlement();
+      const isPaid = entitle.isPaid(ent);
+      const res = d.result || {};
+      // 🔴 R298 判据：hasProfit 为真必须以「有账本记录（account_id）+ 有限数」为前置（无记录情形上面已 early-return）。
+      //   R493：两档口径取数不同（付费=会计利润 / 免费=经营参考利润），按 isPaid 选字段，仍是同一个 if 守"有记录+有限数"。
+      const fen = isPaid ? res.total_factor_real_profit_fen : res.operation_ref_profit_fen;
+      if (d.account_id && typeof fen === 'number' && Number.isFinite(fen)) {
+        // 🔴 R488：标签由单一来源生成（名随数走）—— 同一个数在这里、月首页、结果页必然同名。
+        const lab = profitLabel.pickProfitLabel(d, isPaid ? 'real' : 'ref');
+        this.setData({ hasProfit: true, refProfit: api.fenToYuan(fen, 2), profitKnown: true, profitTitle: lab.title });
       } else {
         this.setData({ hasProfit: false, profitKnown: true });
       }
@@ -100,8 +123,8 @@ Page({
     }
   },
 
-  goMonth() { wx.navigateTo({ url: '/pages/month/index' }); },
-  goSandbox() { wx.navigateTo({ url: '/pages/sandbox/index' }); },
+  goMonth() { wx.navigateTo({ url: '/subpkg/biz/month/index' }); },
+  goSandbox() { wx.navigateTo({ url: '/subpkg/tools/sandbox/index' }); },
   // R191：M3 入口改指向**枢纽页**（pages/m3/hub），不再直接落进成本卡列表页。
   //   原因：原料库 / 外卖 / 对账 此前只能寄生在列表页顶部当按钮 ⇒ 分类说不明白。
   //   枢纽页只做「去哪」，列表页只做「找东西 + 新增」。
@@ -109,8 +132,8 @@ Page({
   //   （微信限制：tabBar 页只能 `switchTab`，且不能带参数）。故改用 `wx.switchTab`。
   //   同理 `goMine()`（`pages/mine/index` 也在 tabBar 里）。
   goCard() { wx.switchTab({ url: '/pages/m3/hub' }); },
-  goSettings() { wx.navigateTo({ url: '/pages/shop/setting' }); },
-  goSwitch() { wx.navigateTo({ url: '/pages/shop/switch' }); },
+  goSettings() { wx.navigateTo({ url: '/subpkg/tools/shop/setting' }); },
+  goSwitch() { wx.navigateTo({ url: '/subpkg/tools/shop/switch' }); },
   goMine() { wx.switchTab({ url: '/pages/mine/index' }); },
 
   // R234/J3：首页折叠引导条开关。

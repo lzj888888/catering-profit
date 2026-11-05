@@ -1,31 +1,8 @@
 {
   "pages": [
     "pages/index/index",
-    "pages/month/index",
-    "pages/month/input",
-    "pages/month/inventory",
-    "pages/month/amortize",
-    "pages/month/assetEdit",
-    "pages/month/result",
-    "pages/shop/setting",
-    "pages/sandbox/index",
-    "pages/sandbox/list",
-    "pages/sandbox/matrix",
-    "pages/sandbox/compare",
     "pages/m3/hub",
-    "pages/card/index",
-    "pages/card/edit",
-    "pages/card/version",
-    "pages/material/index",
-    "pages/material/edit",
-    "pages/material/pick",
-    "pages/material/batch",
-    "pages/takeaway/index",
-    "pages/metrics/impact",
-    "pages/recon/index",
     "pages/m3/dishreview/index",
-    "pages/pay/orders",
-    "pages/shop/switch",
     "pages/mine/index"
   ],
   "window": {
@@ -33,7 +10,7 @@
     "navigationBarBackgroundColor": "#1e3a5f",
     "navigationBarTextStyle": "white",
     "backgroundColor": "#f5f6f8",
-    "enablePullDownRefresh": true
+    "enablePullDownRefresh": false
   },
   "tabBar": {
     "color": "#8a94a6",
@@ -62,5 +39,54 @@
     ]
   },
   "style": "v2",
-  "lazyCodeLoading": "requiredComponents"
+  "lazyCodeLoading": "requiredComponents",
+  "preloadRule": {
+    "pages/index/index": {
+      "network": "wifi",
+      "packages": ["subpkg/biz"]
+    },
+    "pages/m3/hub": {
+      "network": "wifi",
+      "packages": ["subpkg/tools"]
+    }
+  },
+  "subpackages": [
+    {
+      "root": "subpkg/tools",
+      "pages": [
+        "metrics/impact",
+        "sandbox/index",
+        "sandbox/list",
+        "sandbox/matrix",
+        "sandbox/compare",
+        "recon/index",
+        "pay/orders",
+        "shop/setting",
+        "shop/switch"
+      ]
+    },
+    {
+      "root": "subpkg/biz",
+      "pages": [
+        "month/index",
+        "month/input",
+        "month/inventory",
+        "month/amortize",
+        "month/assetEdit",
+        "month/result",
+        "card/index",
+        "card/edit",
+        "card/import",
+        "card/version",
+        "material/index",
+        "material/edit",
+        "material/pick",
+        "material/batch",
+        "takeaway/index",
+        "groupon/index",
+        "diag/input",
+        "ai/consent"
+      ]
+    }
+  ]
 }

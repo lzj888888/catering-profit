@@ -1,0 +1,139 @@
+.page { padding: 24rpx 24rpx 60rpx; background: #f6f7fb; min-height: 100vh; box-sizing: border-box; }
+.head { margin: 8rpx 0 20rpx; }
+.title { font-size: 40rpx; font-weight: 700; color: #1a1a1a; }
+.subtitle { font-size: 28rpx; color: #8a8a8a; margin-top: 8rpx; line-height: 1.5; }
+/* 🔴🔴 R296c：本页原用全局 `.card`（`app.wxss` 给首页九宫格的 `width:48%`）⇒ 卡片只剩 48% 宽，
+   卡片内 label 被右侧 min-width 200rpx 的输入挤到 ~1 字宽 ⇒ 一字一行（竖版）。
+   ⇒ 改唯一类名 `.mcard`（wxml 同步改），断开与全局 `.card` 的耦合。 */
+.mcard { width: auto; margin: 0 0 20rpx 0; background: #fff; border-radius: 16rpx; padding: 24rpx; box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04); }
+.card-title { font-size: 28rpx; font-weight: 600; color: #333; margin-bottom: 16rpx; }
+/* 🔴🔴 R362：`.field/.label/.inp` 与全局同名 ⇒ 被 `app.wxss:33` 的 min-width 抬到 185px、
+   `app.wxss:51` 的 `.inp`（卡片容器）撑高 ⇒ label 挤成 28px 宽 = 一字一行（竖排）。
+   ⇒ 本页改用专属类名 `.mfield/.mlabel/.minp` 与全局断开。⚠️ 新增类名先 grep app.wxss 有无同名。 */
+.mfield { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 12rpx 0; }
+.mlabel { flex: 0 0 auto; white-space: nowrap; margin-right: 12rpx; font-size: 28rpx; color: #444; }
+.picker { background: #f2f3f7; padding: 14rpx 24rpx; border-radius: 10rpx; font-size: 28rpx; color: #222; min-width: 200rpx; text-align: center; }
+.minp { background: #f2f3f7; padding: 14rpx 20rpx; border-radius: 10rpx; font-size: 28rpx; width: 240rpx; text-align: right; box-sizing: border-box; }
+.dim-block { border-top: 1rpx solid #eee; padding-top: 16rpx; margin-top: 8rpx; }
+.dim-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12rpx; }
+.dim-head text { font-size: 28rpx; font-weight: 600; color: #333; }
+/* 🔴 R548：**必须显式给底色** —— `app.wxss:29` 有全局 `.add{background:#1e3a5f;color:#fff}`；
+   本页原只改字色 ⇒ 墨蓝底+亮蓝字（"蓝底蓝色字不好看"）。浅蓝底 = 弱按钮（一屏 4 个不抢主按钮）。 */
+.add { font-size: 28rpx; color: #2b7fff; background: #eef4ff; padding: 8rpx 20rpx; border-radius: 999rpx; }
+.dim-row { display: flex; align-items: center; margin-bottom: 12rpx; }
+.dim-inp { flex: 1; text-align: left; width: auto; }
+.del { font-size: 28rpx; color: #e2533a; margin-left: 16rpx; padding: 6rpx 12rpx; }
+.btn-primary { background: #2b7fff; color: #fff; font-size: 32rpx; border-radius: 12rpx; margin: 12rpx 0 24rpx; }
+.btn-export { background: #07b36b; color: #fff; font-size: 30rpx; border-radius: 12rpx; margin-top: 20rpx; }
+.btn-ghost { flex: 1; background: #fff; color: #555; font-size: 28rpx; border: 1rpx solid #ddd; border-radius: 12rpx; margin: 0 8rpx; }
+.result-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16rpx; }
+.count { font-size: 28rpx; color: #888; }
+.view-tabs { display: flex; }
+.tab { font-size: 28rpx; color: #666; padding: 8rpx 22rpx; border: 1rpx solid #ddd; }
+.tab.on { background: #2b7fff; color: #fff; border-color: #2b7fff; }
+.tab:first-child { border-radius: 10rpx 0 0 10rpx; }
+.tab:last-child { border-radius: 0 10rpx 10rpx 0; }
+.pivot-fix { display: flex; }
+.tbl-scroll { width: 100%; white-space: nowrap; overflow-x: auto; }
+.tbl { display: inline-block; min-width: 100%; }
+.tr { display: flex; border-bottom: 1rpx solid #eee; }
+.tr.th { background: #f5f6fa; }
+.tr.red .td { color: #e2533a; }
+/* 🔴 R297 第四轮（审计 B7）：被云端拒掉的档位（算不出，各列为 —）灰显，与"有数"的行区分开。 */
+.tr.invalid { background: #fafafa; }
+.tr.invalid .td { color: #b0b4ba; }
+/* 🔴 round276：列宽 150→200rpx 并放开换行。原 `.td` 继承 nowrap ⇒ 表头在 126rpx 里排不下
+   又不换行 ⇒ 真机成"竖着的文字"。200rpx = 6 字/行配 3~4 字短表头 ⇒ 一行横排；
+   white-space: normal 让超长值折行而不是溢出到隔壁列。 */
+/* 🔴 R552：房租占目标营收的三色档 —— 只改字色，不动字号（AD-G1 ≥28rpx 由 .td 保底） */
+/* 🔴 R555：房租单元格第二行「元/㎡/月」—— 同样 ≥28rpx（AD-G1），只用颜色弱化 */
+.td-l1 { display: block; }
+.td-l2 { display: block; color: #8a94a6; }
+.td.rent-ok { color: #1f9254; }
+.td.rent-warn { color: #a9761b; }
+.td.rent-bad { color: #c0392b; font-weight: 600; }
+.td { flex: none; width: 200rpx; padding: 16rpx 12rpx; font-size: 28rpx; color: #333; box-sizing: border-box; white-space: normal; }
+.tr.th .td { font-weight: 600; color: #222; }
+/* 🔴 R378：冻结首列。14 列 ≈1400px vs 手机 ~350px ⇒ 只看到 2 列半；首列跟着滚走老板就
+   不知道这行是哪档。做法：sticky left + 右侧投影。⚠️ 别缩列宽（200rpx 是按"表头 6 字一行"定的）。 */
+.td:first-child { position: sticky; left: 0; z-index: 2; background: #fff;
+  box-shadow: 6rpx 0 10rpx -6rpx rgba(30, 58, 95, 0.18); }
+.tr.th .td:first-child { background: #f5f6fa; z-index: 3; }
+.tr.invalid .td:first-child { background: #fafafa; }
+.tr.red .td:first-child { background: #fff; }
+/* 窄屏提示：与 .hint 分开写，避免长句被判为需折叠（本句仅 9 字） */
+.swipe-hint { font-size: 28rpx; color: #6b7a90; padding: 4rpx 8rpx 12rpx; }
+/* 🔴 R528：「更多列 / 收起」开关 —— 字号 ≥28rpx（AD-G1 红线），与「高级维度」开关同一视觉语言。
+   ⚠️ 类名已 grep 过 app.wxss，无同名（R362：本页新增类名必须先查全局同名，否则会被全局样式挤成竖排）。 */
+.col-toggle { display: flex; align-items: center; padding: 10rpx 0 14rpx; font-size: 28rpx; color: #2b7fff; }
+.col-arrow { color: #8a97a8; margin-left: 8rpx; font-size: 28rpx; }
+/* 🔴 R528：透视表专用列宽 —— 透视表的格子只有一个数（如「3.2万」/「保本」），
+   不需要明细表那 200rpx 的表头宽度；缩到 130rpx ⇒ 一屏可见档位数从 ~1.7 提到 ~4。
+   字号反而加大到 30rpx（格子内容短，缩列宽换来的空间用来放大字，净效果更易读）。 */
+.pivot-tbl .td { width: 130rpx; font-size: 30rpx; padding: 16rpx 10rpx; }
+.pivot-tbl .td:first-child { width: 150rpx; }
+.nav-row { display: flex; margin-top: 24rpx; }
+/* 🔴 round279 · #9 结论速读卡（结论高亮 + 房租杠杆 + 淡季安全垫）*/
+.insight { background: #fff7ec; border: 1rpx solid #ffd9a0; border-radius: 14rpx; padding: 20rpx 22rpx; margin-bottom: 18rpx; }
+.insight.none { background: #f4f5f7; border-color: #e2e4e8; }
+.insight-title { font-size: 28rpx; font-weight: 700; color: #b35a00; margin-bottom: 10rpx; }
+.insight-line { font-size: 28rpx; color: #444; line-height: 1.6; }
+.insight-line.lever { color: #1a1a1a; font-weight: 600; }
+.insight-rule { font-size: 28rpx; color: #9a7b50; margin-top: 8rpx; }
+
+/* 🔴 R551：动作区已上移到「城市层级」下面 ⇒ 去掉原来的上分隔线与上外边距
+   （那是按"卡片底部"排的，放顶部会多出一条无来由的横线）。*/
+/* 🔴 R553：你现在卖多少（真实月营收）+ 差额结论 */
+.real-row { display: flex; align-items: center; justify-content: space-between; padding: 8rpx 0 12rpx; }
+.real-lb { font-size: 28rpx; color: #333; }
+.real-in-wrap { display: flex; align-items: center; border: 1rpx solid #dfe5ec; border-radius: 10rpx;
+  padding: 6rpx 14rpx; background: #fff; }
+.real-in { font-size: 28rpx; color: #1e3a5f; text-align: right; min-height: 40rpx; width: 240rpx; }
+.real-unit { font-size: 28rpx; color: #888; margin-left: 6rpx; }
+.real-gap { font-size: 28rpx; padding: 12rpx 16rpx; border-radius: 10rpx; margin-bottom: 12rpx; line-height: 1.5; }
+.real-gap.ok { background: #eef8f1; color: #1f9254; }
+.real-gap.warn { background: #fff7e6; color: #a9761b; }
+.real-gap.bad { background: #fdeeec; color: #c0392b; }
+
+.reset-row { display: flex; align-items: center; justify-content: center; padding: 4rpx 0 12rpx; }
+.reset-tx { font-size: 28rpx; color: #6b7a90; padding: 10rpx 28rpx; }
+.reset-tx + .reset-tx { border-left: 1rpx solid #e6ebf2; }
+
+/* 🔴 R325：钱够不够开 · 能撑几个月
+   ⚠️ 字号一律 ≥28rpx（AD-G1 可读性红线：老板多老花眼），层级只靠颜色/字重区分。 */
+.cash-card { margin-top: 20rpx; padding: 24rpx; border-top: 1rpx solid #f0f0f0; }
+.cash-title { font-size: 32rpx; font-weight: 600; color: #1a1a1a; }
+.cash-lead { font-size: 28rpx; color: #8a97a8; margin-top: 8rpx; line-height: 1.5; }
+.cash-row { display: flex; align-items: center; margin-top: 16rpx; }
+.cash-lb { flex: 0 0 300rpx; font-size: 28rpx; color: #333; }
+.cash-inp { flex: 1; height: 64rpx; font-size: 30rpx; text-align: right; border-bottom: 1rpx solid #e6e6e6; }
+.cash-need { font-size: 32rpx; font-weight: 600; color: #1a1a1a; margin-top: 20rpx; }
+.cash-parts { font-size: 28rpx; color: #8a97a8; margin-top: 8rpx; line-height: 1.5; }
+.cash-verdict { font-size: 30rpx; font-weight: 600; margin-top: 16rpx; }
+.cash-verdict.ok { color: #1f7a4d; }
+.cash-verdict.warn { color: #b3491d; }
+.cash-note { font-size: 28rpx; color: #8a97a8; margin-top: 10rpx; line-height: 1.5; }
+
+/* 🔴 R331：固定费用构成 —— 字号 ≥28rpx（AD-G1），只靠字重/颜色分层 */
+.fixed-break { margin-top: 20rpx; padding: 24rpx; border-top: 1rpx solid #f0f0f0; }
+.fb-title { font-size: 32rpx; font-weight: 600; color: #1a1a1a; }
+.fb-row { display: flex; justify-content: space-between; align-items: center; margin-top: 14rpx; }
+.fb-lb { font-size: 28rpx; color: #333; }
+.fb-val { font-size: 30rpx; font-weight: 600; color: #1a1a1a; }
+
+/* 🔴 R336：开店投入 4 项 —— 金额 + 年限同行，字号 ≥28rpx（AD-G1） */
+.bd-inp { width: 200rpx; }
+.yr-inp { width: 80rpx; margin-left: 12rpx; text-align: center; }
+.yr-lb { font-size: 28rpx; color: #888; margin-left: 8rpx; }
+.amort-row { justify-content: flex-start; padding: 4rpx 0 0; }
+.amort-chk { display: flex; align-items: center; }
+.amort-box { display: inline-block; width: 34rpx; height: 34rpx; line-height: 34rpx; text-align: center;
+  border: 1rpx solid #c8c8c8; border-radius: 6rpx; font-size: 28rpx; color: #fff; background: #fff; }
+.amort-chk.on .amort-box { background: #2b7fff; border-color: #2b7fff; }
+.amort-tx { font-size: 28rpx; color: #333; margin-left: 12rpx; }
+.build-sum { font-size: 30rpx; font-weight: 600; color: #1a1a1a; margin-top: 12rpx; }
+
+/* 🔴 R357：分批中断提示 —— 字号 ≥28rpx（AD-G1），沿用琥珀告警口径 */
+.partial-note { font-size: 28rpx; color: #92610a; background: #fdf3d8;
+  border-left: 8rpx solid #e8a33d; border-radius: 0 12rpx 12rpx 0;
+  padding: 16rpx 20rpx; margin: 12rpx 0; line-height: 1.6; }

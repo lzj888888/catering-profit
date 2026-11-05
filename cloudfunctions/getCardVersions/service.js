@@ -8,6 +8,9 @@ function cardToOut(doc) {
   return {
     card_code: doc.card_code || '',
     version: doc.version || 1,
+    // 🔴 R387：与 getCostCard.cardToOutput **逐字段一致**（selftest 会逐项比对 22 项）。
+    //   多副本不同步的代价：版本历史页拿不到 inputs_ref，AI/客服引用这一版时说不出是哪张卡哪一版。
+    inputs_ref: { kind: 'cost_card', card_code: doc.card_code || '', version: doc.version || 1 },
     name: doc.name || '',
     category: doc.category || '',
     tags: doc.tags || '',

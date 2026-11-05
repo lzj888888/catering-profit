@@ -40,8 +40,12 @@ function validateInput(event) {
     if (typeof pv === 'number') return pv; // 已是分
     return -1; // 缺失/非法 → 上层回落 yuan
   };
-  const auxFen = isFiniteNum(src.aux_fen) ? src.aux_fen : (isFiniteNum(src.auxYuan) ? Math.round(src.auxYuan * 100) : 0);
-  const priceFen = isFiniteNum(src.price_fen) ? src.price_fen : (isFiniteNum(src.priceYuan) ? Math.round(src.priceYuan * 100) : 0);
+  // 🔴 R298（B2）：**十进制安全** —— 原式 `Math.round(<元> * 100)` 在半步（真值恰为 x.xx5）会
+  //   **少进 1 分**（实测 qty=0.1 × 净料 14500 万分之元 ⇒ 真值 14.5 分，原式取 14）。根因与
+  //   `money.yuanToFen` 同一处浮点：`toFixed(10)` 只消 1e-13 量级噪声、不动真实半步。
+  //   成本引擎三副本（calcBom / saveCostCard / syncCostCard）**必须同源同口径**。
+  const auxFen = isFiniteNum(src.aux_fen) ? src.aux_fen : (isFiniteNum(src.auxYuan) ? Math.round(Number((src.auxYuan * 100).toFixed(10))) : 0);
+  const priceFen = isFiniteNum(src.price_fen) ? src.price_fen : (isFiniteNum(src.priceYuan) ? Math.round(Number((src.priceYuan * 100).toFixed(10))) : 0);
   if (!Number.isInteger(auxFen) || auxFen < 0) return err('辅料分摊必须是非负整数分');
   if (!Number.isInteger(priceFen) || priceFen < 0) return err('建议售价必须是非负整数分');
 
@@ -86,6 +90,22 @@ function validateInput(event) {
       specPrices[k] = pv;
     }
   }
+  // 🔴 R547（M1）：`spec_portions` = { spec_key: 这一份多少克 }。**只有 per100g 用得上**。
+  //   为什么必须由入参送、不能从卡里读：本函数是**纯计算**，卡数据由调用方（页面）own；
+  //   而克重是"这张卡这一份多重"的用户事实，不是引擎常量。
+  //   ⚠️ 只认 `spec_keys` 里请求过的键（多余的静默忽略，与 spec_prices 同律）；
+  //     值非法（≤0 / 非数）**直接报错**而不是静默按整份算 —— 静默按整份就是本缺陷的原样。
+  const specPortions = {};
+  const rawPortions = src.spec_portions;
+  if (rawPortions !== undefined && rawPortions !== null) {
+    if (typeof rawPortions !== 'object' || Array.isArray(rawPortions)) return err('spec_portions 必须是对象');
+    for (const k of Object.keys(rawPortions)) {
+      if (specKeys.indexOf(k) < 0) continue;
+      const gv = rawPortions[k];
+      if (!isFiniteNum(gv) || !(gv > 0)) return err(`spec_portions.${k} 必须是大于 0 的克数`);
+      specPortions[k] = gv;
+    }
+  }
 
   return {
     error: null,
@@ -101,6 +121,7 @@ function validateInput(event) {
     },
     spec_keys: specKeys,
     spec_prices: specPrices,
+    spec_portions: specPortions,
     input: { client_request_id: src.client_request_id || '' },
   };
 }

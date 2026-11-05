@@ -1,0 +1,1646 @@
+// subpkg/biz/card/edit.js —— M3 成本卡新建 / 编辑（另存新版本）+ 反算售价 + 批次 P0 补全
+//
+// ⚠️ 计算下沉：本页**不做任何金额/成本/反算计算**。
+//   · 保存 → saveCostCard（后端内嵌引擎算 total_cost 落库）
+//   · 反算售价 / 预览成本 → calcBom（纯计算云函数，返回 reverse_price_fen / unit_cost_fen）
+// ⚠️ 批次 P0（任务 3）补全：① 明细行临时手工录入（input_type=2，仅本卡生效）；
+//   ② 分类 + 标签字段；③ 活动特价（第二条毛利率）；④ 售价低于成本预警；⑤ 反算结果填入建议售价。
+//   · 手工行净料单位成本（万分）= round(单价元 × 10000 ÷ (出成率/100))，前端算一次（录入换算），
+//     保存传 net_unit_cost 快照、反算传同一值 —— 单源，不做第二份真相源。
+const api = require('../../../utils/api.js');
+const ui = require('../../../utils/ui.js');
+const units = require('../../../utils/units.js');
+const CardPaste = require('../../../utils/cardPaste.js');
+const AmountInput = require('../../../utils/amountInput.js');   // R426（队列 #32）：金额栏体检（纯判定，不改数）
+const { openPaywall } = require('../../../utils/paywall.js');
+const { TERMS } = require('../../../miniprogram/i18n/terms.js');
+const { TEMPLATES, applyTemplate } = require('../../../utils/dishTemplates.js');   // M3.20 菜品模板（只预填，不写库）
+const { CATEGORY_PRESETS, CONDIMENT_NAME, ENERGY_NAME } = require('../../../utils/categoryPresets.js');  // P0-2 品类默认模板（单源）
+// 🔴 R566：批量导入草稿的映射与暂存键（单源）—— 本页只消费，不自己拼字段名/键名
+const DI = require('../../../utils/dishImport.js');
+const DRAFT_PREFILL_KEY = DI.DRAFT_PREFILL_KEY;
+const { isEstimatedCard } = require('../../../utils/cardEst.js');  // P0-3 估算卡判定（单源）
+const { calcGrouponOrder } = require('../../../utils/grouponDerive.js');            // M3.37 团购渠道层（纯计算，不落库）
+
+// 本店填过的菜品分类（本地记忆，供下次点选；不新建集合、不上云 —— M3 v1.1 零新建集合红线）
+const EDIT_CATS_KEY = 'm3_dish_cats';
+// 🔴 P0#7：新手/专业模式（与 M1 录入页同形）—— 本地记忆、按 shop 区分、换设备回默认
+const INPUT_MODE_KEY = 'card_input_mode_';
+
+// 明细行空行工厂（档案行）
+// round149：新增 `qty_unit`（用量单位，枚举见 utils/units.js）+ `spec_hint`（该原料的换算说明）。
+//   两者都是**本页展示/录入层**的东西 —— 提交给云端时 qty 一律换算成基准单位(克)，
+//   ⚠️ 不新增云函数字段、不改快照契约、不碰引擎（红线段）。
+// round150：新增 `line_kind`（组件类型，M3.14）—— 它**要**上云（是规格缩放的唯一依据）。
+function emptyLine() { return ensureRid({ input_type: 1, material_id: '', material_name: '', qty: '', qty_unit: units.BASE_UNIT, spec_hint: '', line_kind: 'main' }); }
+// 手工行工厂
+// round151：新增 `price_unit`（**单价单位**，读作「元/X」）。改前单价恒被读作「元/克」——
+//   老板买 6 元/斤的肉，得自己心算成 0.012 才敢填。现在选「斤」直接填 6，
+//   提交前由 `units.priceToBase` 折算回元/克（折算只发生在录入层）。
+function emptyManualLine() { return ensureRid({ input_type: 2, material_id: '', material_name: '', qty: '', qty_unit: units.BASE_UNIT, price_unit: units.BASE_UNIT, spec_hint: '', unit_warn: '', unit_price_yuan: '', yield_rate: '100', line_kind: 'main' }); }
+
+// round156：规格行的「全新空态」工厂。抽成函数是为了让 data 初始化与「连续录入重置」共用**同一份**定义
+//   —— 否则第二处手抄一遍，将来加一个规格键就会漏掉一处（抄一份必漂）。
+function freshSpecRows() {
+  return Object.keys(TERMS.card.specLabel).map((k) => ({
+    spec_key: k, name: TERMS.card.specLabel[k], enabled: false, priceYuan: '', result: null,
+    // 🔴 R547（M1）：「每100g」的**这一份多少克**（只有这个规格用；其它规格恒空）。
+    //   没有它就算不出 100g 的成本 —— 而按"整份算"正是本缺陷（毛利率 11.76% vs 真值 82.35%）。
+    portionG: '',
+  }));
+}
+
+// R606-bis：行为行级可编辑循环提供**稳定身份键**（不随数组重排/重赋值而漂），
+// 原生 <input> 用下标复用 DOM 会导致「框填不进/丢焦点」。镜像 month/input.js 写法。
+const _ridPrefix = 'k' + Date.now().toString(36) + '_';
+let _ridSeq = 0;
+function ensureRid(r) {
+  if (!r) r = {};
+  if (!r.rid) r.rid = _ridPrefix + (_ridSeq++).toString(36);
+  return r;
+}
+
+function renumber(lines) {
+  return lines.map((l, i) => Object.assign({}, l, {
+    idx: i,
+    // R606-bis：注入**稳定身份键**（不随数组重排/重赋值而漂）。原生 <input> 按下标复用 DOM
+    // ⇒ 位置键会在每次按键整体重赋值后错位，表现为「框填不进/丢焦点」。rid 为渲染层专用键，
+    // 提交给云端时由 doSave/buildCalcLines 重建干净 payload（不含 rid），不影响契约。
+    rid: l.rid || (_ridPrefix + (_ridSeq++).toString(36)),
+    // 🔴 R297-⑥（审计 M3-B8）：**单位选择器的当前值必须由数据驱动**。
+    //   本页三个单位 picker 原先都没绑 `value`，而 `<picker mode="selector">` 缺省 value=0
+    //   ⇒ 打开时高亮**永远停在第一项「克」**，与行上真正的单位不符。
+    //   用户为了"看一眼当前值"点开、再直接按确定 ⇒ `detail.value = 0` ⇒ 单位被静默改成「克」。
+    //   单价那条尤其危险：`onManualPriceUnit` **故意不做数值换算**（保住老板敲的那个数，见其注释），
+    //   于是「6 元/斤」摇身变成「6 元/克」⇒ **成本放大 1000 倍、零提示**。
+    //   ⚠️ 不能写在 WXML 里：WXML 表达式**不支持方法调用**（`subpkg/biz/material/index.js:139` 已有同款注释），
+    //      故下标在 js 侧算好。挂 `renumber` 是因为它是**所有行变更的公共出口** ⇒
+    //      新增 / 回填 / 换单位三条路径自动全覆盖，不必在 6 处调用点各补一次（抄多份必漂）。
+    qtyUnitIdx: Math.max(0, units.QTY_UNITS.indexOf(l.qty_unit || units.BASE_UNIT)),
+    priceUnitIdx: Math.max(0, units.QTY_UNITS.indexOf(l.price_unit || units.BASE_UNIT)),
+  }));
+}
+
+// 手工行净料单位成本（万分）：round(单价元/基准单位 × 10000 ÷ (出成率/100))
+//   round151：加第三参 `priceUnit` —— 单价先折算到基准单位（元/克）再进这条**既有公式**。
+//   ⚠️ 公式本体一字不改（引擎口径）；折算只发生在录入层，云端契约与快照格式零改动。
+//
+// 🔴🔴 R297 真漏洞修复：出成率改走 `units.yieldRateOf`（唯一入口，**带 (0,100] 上界**）。
+//   原 `Number(yieldRate) || 100` 只兜 0/NaN，**没有上界** ⇒ 老板填 150 ⇒ 成本被 ÷1.5
+//   ⇒ 毛利虚高，且**零报错**（云端只收 net_unit_cost 快照，那条 (0,100] 校验永远走不到）。
+//   现在：非法/越界 ⇒ `yieldRateOf` 返回 null ⇒ 本函数返回 0 ⇒ 调用方**响亮提示**（不静默编数）。
+// 🔴 R566：本函数**已收归** `utils/units.js::netUnitWanOf` —— 批量导入页也要把草稿行换成同一快照，
+//   若留在页面里就会长出第二份公式（成本口径分叉最贵）。此处只保留别名，调用点不动。
+const manualNetUnitWan = units.netUnitWanOf;
+
+// 组件类型 line_kind 白名单（与 cloudfunctions 各函数 common 模块的 LINE_KINDS 同源；服务端只认这 5 类，
+//   非法的「调料(含油盐酱醋)/燃气燃料分摊」等语义标签会被 saveCostCard/calcBom 硬拒）。
+//   ⚠️ 2026-10-29 修复：P0-2 把 condiment 行写成 `line_kind:'condiment'`，真实保存/试算会触发
+//   「明细行 line_kind 非法」——这里统一兜底成 'main'（单份成本计算与 line_kind 无关，只影响规格缩放）。
+function normalizeKind(k) {
+  const KINDS = ['main', 'aux', 'season', 'semi', 'pack'];
+  return (typeof k === 'string' && KINDS.indexOf(k) >= 0) ? k : 'main';
+}
+
+Page({
+  data: {
+    t: {
+      dishName: TERMS.card.dishName,
+      secBasic: TERMS.card.secBasic,
+      secCost: TERMS.card.secCost,
+      secPrice: TERMS.card.secPrice,
+      grossMargin: TERMS.card.grossMargin,
+      stickyRecalc: TERMS.card.stickyRecalc,
+      stickyEmpty: TERMS.card.stickyEmpty,
+      needLineForCalc: TERMS.card.needLineForCalc,
+      stickyLast: TERMS.card.stickyLast,
+      saveShort: TERMS.card.saveShort,
+      dishNamePh: TERMS.card.dishNamePh,
+      calcMode: TERMS.card.calcMode,
+      calcModeA: TERMS.card.calcModeA,
+      calcModeB: TERMS.card.calcModeB,
+      batchOutput: TERMS.card.batchOutput,
+      batchHint: TERMS.card.batchHint,
+      lossRate: TERMS.card.lossRate,
+      auxAmount: TERMS.card.auxAmount,
+      price: TERMS.card.price,
+      material: TERMS.card.material,
+      qty: TERMS.card.qty,
+      addLine: TERMS.card.addLine,
+      pasteTitle: TERMS.card.pasteTitle,
+      pasteHint: TERMS.card.pasteHint,
+      pastePlaceholder: TERMS.card.pastePlaceholder,
+      pasteParseBtn: TERMS.card.pasteParseBtn,
+      pasteImportBtn: TERMS.card.pasteImportBtn,
+      catFrom: TERMS.card.catFrom,
+      catPickPh: TERMS.card.catPickPh,
+      catHint: TERMS.card.catHint,
+      estRowTag: TERMS.card.estRowTag,
+      estCardHint: TERMS.card.estCardHint,
+      save: TERMS.card.save,
+      reverseTitle: TERMS.card.reverseTitle,
+      reverseHint: TERMS.card.reverseHint,
+      targetMargin: TERMS.card.targetMargin,
+      reverseResult: TERMS.card.reverseResult,
+      totalCost: TERMS.card.totalCost,
+      cur: '¥',
+      cancel: TERMS.buttons.cancel,
+      loading: TERMS.ui.loading,
+      copyVersion: TERMS.card.copyVersion,
+      // 批次 P0（任务 3）
+      inputType: TERMS.card.inputType,
+      inputTypeArchive: TERMS.card.inputTypeArchive,
+      inputTypeManual: TERMS.card.inputTypeManual,
+      // round153：删行按钮文案（挪到明细行末尾后的新语义）
+      delLine: TERMS.card.delLine,
+      manualName: TERMS.card.manualName,
+      manualNamePh: TERMS.card.manualNamePh,
+      manualUnitPrice: TERMS.card.manualUnitPrice,
+      manualYield: TERMS.card.manualYield,
+      activityPrice: TERMS.card.activityPrice,
+      activityPriceHint: TERMS.card.activityPriceHint,
+      warnPriceBelowCost: TERMS.card.warnPriceBelowCost,
+      reverseApply: TERMS.card.reverseApply,
+      // 🔴 P0#7：反算前置说明 + 新手/专业模式（wxml 用到就必须登记）
+      reversePre: TERMS.card.reversePre,
+      inputModeTitle: TERMS.card.inputModeTitle,
+      inputModeNovice: TERMS.card.inputModeNovice,
+      inputModeNoviceDesc: TERMS.card.inputModeNoviceDesc,
+      inputModePro: TERMS.card.inputModePro,
+      inputModeProDesc: TERMS.card.inputModeProDesc,
+      expandProBtn: TERMS.card.expandProBtn,
+      noviceTip: TERMS.card.noviceTip,
+      category: TERMS.card.category,
+      categoryPh: TERMS.card.categoryPh,
+      categoryHint: TERMS.card.categoryHint,
+      tagsPh: TERMS.card.tagsPh,
+      tagsHint: TERMS.card.tagsHint,
+      materialArchive: TERMS.card.materialListTitle,
+      tags: TERMS.card.tags,
+      qtyUnit: TERMS.card.qtyUnit,
+      qtyUnitHint: TERMS.card.qtyUnitHint,
+      matSpecHintEmpty: TERMS.card.matSpecHintEmpty,
+      // round150（M3.14/M3.15）
+      lineKindTitle: TERMS.card.lineKindTitle,
+      lineKindHint: TERMS.card.lineKindHint,
+      specTitle: TERMS.card.specTitle,
+      specHint: TERMS.card.specHint,
+      specEnable: TERMS.card.specEnable,
+      specPriceLabel: TERMS.card.specPriceLabel,
+      specCostLabel: TERMS.card.specCostLabel,
+      specMarginLabel: TERMS.card.specMarginLabel,
+      specSuggestLabel: TERMS.card.specSuggestLabel,
+      specCalc: TERMS.card.specCalc,
+      specEmpty: TERMS.card.specEmpty,
+      // M3v1.2_B（D21/M3.31）：每 100g 计价规格（展示单位 + 口径说明）
+      specPer100gUnit: TERMS.card.specPer100gUnit,
+      specPer100gNote: TERMS.card.specPer100gNote,
+      specPortionLabel: TERMS.card.specPortionLabel,
+      specPortionPh: TERMS.card.specPortionPh,
+      specPortionHint: TERMS.card.specPortionHint,
+      specNeedPortion: TERMS.card.specNeedPortion,
+      // round156：连续录入横幅
+      savedOk: TERMS.card.savedOk,
+      savedHint: TERMS.card.savedHint,
+      backToList: TERMS.card.backToList,
+      // M3.16（批次 C）套餐
+      cardTypeLabel: TERMS.card.cardType,
+      cardTypeDish: TERMS.card.cardTypeDish,
+      cardTypeCombo: TERMS.card.cardTypeCombo,
+      cardTypeHint: TERMS.card.cardTypeHint,
+      comboSubCardTitle: TERMS.card.comboSubCardTitle,
+      comboSubCardPh: TERMS.card.comboSubCardPh,
+      comboSubCardQty: TERMS.card.comboSubCardQty,
+      comboAddSubCard: TERMS.card.comboAddSubCard,
+      comboPickEmpty: TERMS.card.comboPickEmpty,
+      comboInsightCustomerSave: TERMS.card.comboInsightCustomerSave,
+      comboInsightMerchantLose: TERMS.card.comboInsightMerchantLose,
+      comboInsightLoseWarn: TERMS.card.comboInsightLoseWarn,
+      comboInsightCostShare: TERMS.card.comboInsightCostShare,
+      // P1 · 套餐本身毛利（售价 − 套餐成本）
+      comboSelfMarginTitle: TERMS.card.comboSelfMarginTitle,
+      comboSelfMarginHint: TERMS.card.comboSelfMarginHint,
+      // M3.37（R190）到店团购渠道层
+      grouponTitle: TERMS.card.grouponTitle,
+      grouponHint: TERMS.card.grouponHint,
+      grouponPrice: TERMS.card.grouponPrice,
+      grouponPricePh: TERMS.card.grouponPricePh,
+      grouponRate: TERMS.card.grouponRate,
+      grouponRatePh: TERMS.card.grouponRatePh,
+      grouponPromo: TERMS.card.grouponPromo,
+      grouponCalc: TERMS.card.grouponCalc,
+      grouponCommission: TERMS.card.grouponCommission,
+      grouponNet: TERMS.card.grouponNet,
+      grouponProfit: TERMS.card.grouponProfit,
+      grouponNetRate: TERMS.card.grouponNetRate,
+      grouponVsDine: TERMS.card.grouponVsDine,
+      // M3.20（批次 B 收尾）菜品模板
+      templateFrom: TERMS.card.templateFrom,
+      templatePickPh: TERMS.card.templatePickPh,
+      templateHint: TERMS.card.templateHint,
+      // ── R234/J4f 行内长提示折叠（本页 1 处）──
+      // 🔴 三处登记的第二处：漏映射 ⇒ 页面渲染成**空白**且零报错（R124 同族）
+      // ⚠️ 引导语在 `TERMS.ledger` 组（跨页复用的通用模式引导语）。
+      hintFoldShow: TERMS.ledger.hintFoldShow,
+      hintFoldHide: TERMS.ledger.hintFoldHide,
+      amountBadTip: TERMS.ui.amountBadTip,
+      usageBadTip: TERMS.card.usageBadTip,
+      // R547（M8）：批量产出没填时单独一条提示（文案只讲这一件事，不与"金额读不成"混用）
+      batchOutputBadTip: TERMS.ui.batchOutputBadTip,
+      // R547（M5）：编辑态读不到卡的错误页文案（4 键）
+      loadMissingTitle: TERMS.card.loadMissingTitle,
+      loadMissingBody: TERMS.card.loadMissingBody,
+      loadRetry: TERMS.card.loadRetry,
+      loadBack: TERMS.card.loadBack,
+      // 三司会诊裁定（2026-10-29）：燃气燃料分摊开关文案 + 成本预览口径标注
+      energyToggle: TERMS.card.energyToggle,
+      energyHint: TERMS.card.energyHint,
+      costNote: TERMS.card.costNote,
+    },
+    // R234/J4f：行内长提示折叠（本页 1 处，默认收起）。仓内统一实现。
+    hintFold: {},
+    // R426（队列 #32）：读不成金额的**栏数**（0 = 没填错）。只驱动一条横幅，不参与计算。
+    badAmountCount: 0,
+    // R547（M8）：模式 B 下「这批出多少份」缺失/读不成 ⇒ 1（0 = 正常）。只驱动一条横幅。
+    badQtyCount: 0,
+    // 🔴 R597：用量（克/份）读不成 ⇒ 整行会被 buildCalcLines 静默跳过 ⇒ 成本少算。
+    badUsageCount: 0,
+    card_code: '',
+    isEdit: false,
+    name: '',
+    calcMode: 'A',
+    batchOutput: '',
+    lossRate: 0,
+    auxYuan: 0,
+    priceYuan: 0,
+    activityPriceYuan: '',
+    category: '',
+    // 分类是**自由文本**（v1.0 §菜品分类 明写"支持自定义"）；下列只是冷启动建议 + 本店历史。
+    // 组件已从 picker 改为「input + chips」（picker 只能选预设，火锅的锅底/荤菜/素菜、营销栏目
+    // "大口吃肉"这类根本选不出来）。categoryOptions 保留变量名为兼容既有引用，语义=建议池。
+    categoryOptions: TERMS.card.dishCats.slice(),
+    catChips: [],
+    tags: '',
+    targetMargin: 60,
+    reversePriceFen: 0,
+    previewCostFen: 0,
+    // 🔴 R374：吸底条上的毛利率。**不是实时**——它对应 previewCostFen 那次试算，
+    //   所以文案写「上次试算」。与后端 saveCostCard/service.js:105 同式：
+    //   round((priceFen − unitCostFen) / priceFen × 10000) / 100。
+    stickyMargin: '',
+    reverseResultPreview: '',
+    previewCost: '',
+    // M3.37 团购试算（纯前端、不落库；费率无默认值 ⇒ 只进 placeholder）
+    grouponPriceYuan: '',
+    grouponRate: '',
+    grouponPromoYuan: '',
+    grouponView: null,
+    materials: [],
+    // 用量单位枚举（单源 utils/units.js；round151 起 = 与采购单位同池，基准单位仍恒为克）
+    qtyUnits: units.QTY_UNITS.slice(),
+    // round153：wxml 兜底用的基准单位词 —— 改前在模板里写死 `'克'`，那等于在页面存了第二份单位口径。
+    //   ⚠️ 只作 `|| baseUnit` 兜底，真正的枚举值一律来自 qtyUnits / priceUnits（单源 units.js）。
+    baseUnit: units.BASE_UNIT,
+    // round151：单价单位枚举 —— 与用量单位同池（老板按什么单位报的价，就该能选什么）
+    priceUnits: units.QTY_UNITS.slice(),
+    // round150（M3.14）组件类型 chips：**只有键 + 中文名**，键集 ≡ 服务端 LINE_KINDS。
+    kindChips: Object.keys(TERMS.card.lineKind).map((k) => ({ key: k, label: TERMS.card.lineKind[k] })),
+    // round150（M3.15）规格行：**只有键 + 中文名**（系数单源在服务端 ⇒ 页面只送 spec_key + 售价）。
+    specRows: freshSpecRows(),
+    lines: [],
+    loading: true,
+    // 🔴 R547（M5）：编辑态读不到卡 ⇒ 真（显式错误页；此时**禁止保存**，见 onSave）
+    loadMissing: false,
+    // round156：连续录入 —— 顶部「已保存」横幅记录刚存下的菜名；非空即显示（含返回列表出口）
+    savedName: '',
+    saving: false,   // 防重复提交（连击保存会生成两个版本）
+    // M3.16（批次 C）套餐：卡片类型（'1'=单品 / '3'=套餐）+ 子卡选择行 + 三个显示数。
+    cardType: '1',
+    subCards: [],       // 候选子卡（非套餐的最新版本卡）：[{ card_code, name, total_cost_fen, price_fen }]
+    subCardOptions: [], // picker range（[{ card_code, label }]）
+    comboLines: [],     // 子卡行：[{ sub_card_ref, sub_card_name, qty }]
+    comboInsight: null, // 回填的套餐三数（{ customer_save_fen, merchant_lose_fen, cost_share }）
+    comboStaleText: '', // R443：子卡成本已变时的提示（空 = 不显示）
+    // 🔴 R443：批量粘贴配料（只在本页暂存，导入后才进 lines；不落库、不联网）
+    pasteOpen: false,
+    pasteText: '',
+    pasteRows: [],
+    pasteOkCount: 0,
+    pasteImportLabel: '',
+    comboSelfMargin: null, // P1 · 套餐本身毛利（售价 − 套餐成本）：{ profit, rate } 或 null
+    // 🔴 P0#7（2026-10-11）：新手/专业模式（与 M1 录入页同形）—— 默认新手，专业项收起
+    inputMode: 'novice',
+    showMore: false,
+    // M3.20（批次 B 收尾）菜品模板：picker range（20 道菜名）+ 当前选中项（-1 = 未选）
+    tplNames: TEMPLATES.map((t) => t.dish_name),
+    tplPicked: -1,
+    // P0-2 品类默认模板：选品类后预填出净率/损耗/调料油火/示例主料
+    catOptions: CATEGORY_PRESETS.map((c) => c.label),
+    catPicked: -1,
+    catYieldDefault: '',
+    catLabel: '',
+    // P0-2×三司会诊：燃气燃料分摊是否计入（仅高耗能品类 cat.energy_fen>0 时可开）。默认不进卡。
+    energyOn: false,
+    energyFen: 0,
+    // P0-3 估算卡：hasPreset=本卡是否仍含系统估行；estBanner=卡片级横幅文案（含品类名）
+    hasPreset: false,
+    estBanner: '',
+  },
+
+  // R234/J4f：行内提示折叠开关（仓内统一形态 —— 多页同一实现）。
+  onToggleHintFold(e) {
+    const key = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.key) || '';
+    if (!key) return;
+    const cur = this.data.hintFold || {};
+    const next = Object.assign({}, cur);
+    next[key] = !cur[key];
+    this.setData({ hintFold: next });
+  },
+
+  onLoad(q) {
+    // round156：本页进入时刻 —— 用作「原料选择页回传」的哨兵（见 onShow）
+    this._loadedAt = Date.now();
+    this.setData({ card_code: (q && q.card_code) || '', isEdit: !!((q && q.card_code) || '').length > 0 });
+    // R264：从「单品毛利复盘」的未匹配行点「去建卡」带过来的菜名 ⇒ **预填**。
+    //   🔴 必须 `decodeURIComponent`（复盘页用 `encodeURIComponent` 编码，防空格/括号/加号截断）。
+    //   ⚠️ 只在**新建**时生效：编辑态下面 load() 会用卡里的名字回填，预填不该覆盖它。
+    const prefillName = (q && q.dish_name) ? decodeURIComponent(q.dish_name) : '';
+    if (prefillName && !((q && q.card_code) || '').length) this.setData({ name: prefillName });
+    // 🔴 R566（P0-4 UI）：批量导入页点「去补价」⇒ 整张草稿预填进来。
+    //   传参走本地暂存而不是 URL：草稿含几十行动态字段，URL 有长度上限且中文要逐层编码。
+    //   ⚠️ 只在新建态生效（编辑态 load() 要用卡里的真实数据回填，不能被草稿盖掉）。
+    if (!this.data.isEdit && q && q.from_draft) this.loadDraftPrefill();
+    // 🔴 P0#7：读本地记的专业/新手偏好（按 shop 区分；换设备回默认 novice）
+    this.setData({ inputMode: this.loadInputMode() || 'novice' });
+    this.load();
+  },
+
+  // 🔴 R566：消费导入页暂存的草稿（**读完即删** —— 否则下次手动新建也会被这张草稿污染）。
+  //   映射全部走 utils/dishImport.js::prefillOf（单源），本页只负责 setData 与 commitLines。
+  //   ⚠️⚠️ 本函数只**读取暂存**、不 setData：必须等 `load()` 跑完再落。
+  //     新建态 `load()` 有 `if (!init.lines.length) init.lines = renumber([emptyLine()])`，
+  //     若在 onLoad 里先 commitLines，那行会把整张草图**覆盖成单个空行**（一行不报错、界面看着"没预填上"）。
+  loadDraftPrefill() {
+    let d = null;
+    try {
+      d = wx.getStorageSync(DRAFT_PREFILL_KEY);
+      wx.removeStorageSync(DRAFT_PREFILL_KEY);
+    } catch (e) { return; }              // 读不到就当没预填（不打断新建流程）
+    if (!d || !d.name) return;
+    const p = DI.prefillOf(d);
+    // ⚠️ 不能因 `p.lines` 为空就整体放弃：品类未识别的菜**本来就没有示例主料**，
+    //   若这里 return，用户点「去补价」会落到一张连菜名/售价都没填的空表单（点了像没反应）。
+    //   空行交给 load() 的默认空行即可，菜名/售价照常带过去。
+    this._draftPrefill = p;              // 交给 load() 在 setData(init) 之后应用
+  },
+
+  // load() 完成 setData(init) 后调用（此时 materials 已就位，commitLines 的换算说明才算得出来）
+  applyDraftPrefill(p) {
+    const catIdx = p.catKey ? CATEGORY_PRESETS.findIndex((c) => c.key === p.catKey) : -1;
+    this.setData({
+      name: p.name,
+      priceYuan: p.priceYuan,
+      category: p.category,
+      catLabel: p.catLabel,
+      catPicked: catIdx,
+      lossRate: p.lossRate,
+    });
+    // 有示例主料才覆盖明细行；没有（未识别品类）就保留 load() 给的那一行空行
+    if (p.lines && p.lines.length) this.commitLines(p.lines);
+  },
+
+  // 🔴 P0#7：新手/专业模式（与 M1 录入页同形）—— 本地记忆、按 shop 区分
+  inputModeKey() {
+    const app = getApp();
+    const shopId = (app && app.globalData && app.globalData.shop_id) || '';
+    return INPUT_MODE_KEY + shopId;
+  },
+  saveInputMode(m) {
+    try { wx.setStorageSync(this.inputModeKey(), m); } catch (e) { /* 本地记忆失败不影响主流程 */ }
+  },
+  loadInputMode() {
+    try { const v = wx.getStorageSync(this.inputModeKey()); if (v === 'novice' || v === 'pro') return v; } catch (e) { /* 忽略 */ }
+    return null;
+  },
+  onPickInputMode(e) {
+    const val = e.currentTarget.dataset.val === 'pro' ? 'pro' : 'novice';
+    if (this.data.inputMode === val) return;
+    this.setData({ inputMode: val, showMore: false });
+    this.saveInputMode(val);
+  },
+  onExpandPro() { this.setData({ showMore: true }); },
+
+  // round156：从「原料选择页」返回 → 消费回传。
+  //   哨兵 `at`：进选择页**没选就返回**时，globalData 里没有新值（或还是上一轮的旧值），
+  //   靠 `at < this._loadedAt` 丢弃旧值，避免"我只是点进去看了一眼"就把某一行原料换掉。
+  onShow() {
+    const app = getApp();
+    const p = app && app.globalData && app.globalData.pickMaterial;
+    if (!p || !p.at) return;
+    app.globalData.pickMaterial = null;
+    if (this._loadedAt && p.at < this._loadedAt) return;   // 上一轮遗留 ⇒ 丢弃
+    // 原料表还没到（load 尚未返回）⇒ 挂起，等 load 末尾补做，避免"选了却没填上"
+    if ((this.data.materials || []).length) this.applyPickedMaterial(Number(p.idx), p.id);
+    else this._pendingPick = p;
+  },
+
+  // round156：原料选择改为**独立页**（`subpkg/biz/material/pick`）。
+  //   改前是原生 `<picker mode="selector" range="{{materials}}">` —— 100 个原料只能靠手指滚，
+  //   没有搜索、没有分组（李老师真机反馈：「如果有 100 道菜品，来回查找会很麻烦」）。
+  goPickMaterial(e) {
+    const idx = Number(e.currentTarget.dataset.idx);
+    wx.navigateTo({ url: '/subpkg/biz/material/pick?idx=' + idx });
+  },
+
+  // 把选中的原料填进第 idx 行（原 onMaterialChange 的语义；改为按 **id** 取而非按下标取 ——
+  //   独立页回传的是 id，比下标稳：中途列表顺序变了也不会填错行）。
+  applyPickedMaterial(idx, materialId) {
+    if (!(idx >= 0)) return;
+    const lines = this.data.lines.slice();
+    if (!lines[idx]) return;
+    const m = (this.data.materials || []).find((x) => x.id === materialId);
+    if (!m) return;
+    lines[idx] = Object.assign({}, lines[idx], {
+      input_type: 1,
+      material_id: m.id,
+      material_name: m.name,
+      spec_hint: this.specHintOf(m),
+      // round151：换原料 ⇒ 跨族提示要跟着换（提示取决于该原料的采购单位）
+      unit_warn: this.unitWarnOf(m, lines[idx]),
+    });
+    this.editLineStripPreset(idx, lines);
+  },
+
+  async load() {
+    try {
+      await api.ensureShop();
+      ui.setTitle(TERMS.card.listTitle);
+      const mat = await api.call('getMaterial', {});
+      // round149：把「买」的那一侧也带进来（采购单位/换算系数/出成率/采购价），
+      //   好让老板在明细行直接看见「36 元/斤 ÷ 500 ÷ 92% ⇒ 0.0783 元/克」，不用去档案页心算。
+      const materials = (mat.list || []).map((m) => ({
+        id: m.id,
+        name: m.name,
+        is_virtual: m.is_virtual,
+        net_unit_cost: m.net_unit_cost,
+        purchase_unit: m.purchase_unit || '',
+        purchase_price_fen: m.purchase_price_fen || 0,
+        convert_factor: m.convert_factor || 0,
+        yield_rate: m.yield_rate || 0,
+      }));
+      // M3.16（批次 C）：拉一次成本卡列表 —— 候选子卡（非套餐）+ 编辑回填（单品/套餐都用它）。
+      let cardList = [];
+      try {
+        const cd = await api.call('getCostCard', {});
+        cardList = cd.list || [];
+      } catch (e) { cardList = []; }
+      const subCards = cardList
+        .filter((x) => x.card_type !== 3)
+        .map((x) => ({ card_code: x.card_code, name: x.name, total_cost_fen: x.total_cost_fen, price_fen: x.price_fen }));
+      const subCardOptions = subCards.map((x) => ({ card_code: x.card_code, label: x.name }));
+      const init = { materials, subCards, subCardOptions, loading: false };
+      if (this.data.isEdit) {
+        const c = cardList.find((x) => x.card_code === this.data.card_code);
+        if (c) {
+          init.name = c.name || '';
+          init.lossRate = c.loss_rate || 0;
+          init.auxYuan = api.fenToYuan(c.aux_fen, 2);
+          init.priceYuan = c.price_fen > 0 ? api.fenToYuan(c.price_fen, 2) : '';
+          init.category = c.category || '';
+          init.tags = c.tags || '';
+          init.previewCostFen = c.total_cost_fen || 0;
+          // 🔴 R297-⑥（审计 M3-B2）：这里只设了「显示判据」previewCostFen，却没设「值」previewCost
+          //   ⇒ wxml 的 `wx:if="{{previewCostFen > 0}}"` 成立、而 `{{previewCost}}` 是空串
+          //   ⇒ 屏上渲染成「单份成本：¥」（有标题有货币符、没有数字）。原先只有用户手点一次
+          //   反算/规格试算才会被填上 ⇒ 每次进编辑态都先看到一个"没算出来"的假象。
+          init.previewCost = c.total_cost_fen ? api.fenToYuan(c.total_cost_fen, 2) : '';
+          init.stickyMargin = this.marginTextOf(c.total_cost_fen || 0, init.priceYuan);
+          // 🔴 R297-⑥（审计 M3-B1）：活动特价**从不回填** —— 后端其实早把它送出来了
+          //   （getCostCard/service.js::price_promo_fen），这里却没用。
+          //   后果不是"少显示"而是**静默清零**：输入框空着，老板以为本来没设，直接保存就把
+          //   `activity_price_yuan` 提交成 0（第二档毛利率随之消失），全程零提示。
+          init.activityPriceYuan = c.price_promo_fen > 0 ? api.fenToYuan(c.price_promo_fen, 2) : '';
+          init.copyVersion = TERMS.card.copyVersion;
+          if (c.card_type === 3) {
+            // M3.16 套餐：回填子卡行 + 三个显示数（顾客省 / 我少赚 / 成本结构）
+            init.cardType = '3';
+            init.calcMode = 'A';
+            init.comboLines = (c.lines || [])
+              .filter((l) => l.line_type === 2 && l.sub_card_ref)
+              .map((l) => ensureRid({
+                sub_card_ref: l.sub_card_ref,
+                sub_card_name: (subCards.find((s) => s.card_code === l.sub_card_ref) || {}).name || l.material_name || '',
+                qty: String(l.quantity),
+                // 🔴 R443：把**保存时**的子卡单份成本记下来（net_unit_cost 是万分之元 ⇒ 换成**分**存）——
+                //   套餐成本是快照，子卡后来涨价/改配方不会自动更新（syncCostCard 跳过 card_type=3）。
+                //   ⚠️ 一律在「分」上比较，不做 `fen * 100`（check_money_precision C-① 要求每处 ×100 登记，
+                //      而这里本质是整数换算，没必要引入一处浮点乘法）。
+                saved_fen: Math.round((Number(l.net_unit_cost) || 0) / 100),
+              }));
+            init.comboInsight = c.combo ? {
+              customer_save_yuan: api.fenToYuan(c.combo.customerSaveFen, 2),
+              merchant_lose_yuan: api.fenToYuan(Math.abs(c.combo.merchantLoseFen), 2),
+              merchant_lose_neg: c.combo.merchantLoseFen < 0,
+              cost_share: (c.combo.costShare || []).map((s) => ({ name: s.name, share_pct: s.share_pct })),
+            } : null;
+            // P1 · 套餐本身毛利（售价 − 套餐成本）：编辑回填时成本来自 c.total_cost_fen，售价来自 price_fen
+            init.comboSelfMargin = this.comboSelfMarginOf(c.total_cost_fen || 0, init.priceYuan);
+            init.comboStaleText = '';
+          } else {
+            // 单品：现有原料 / 手工行回填
+            init.calcMode = c.calc_mode;
+            init.batchOutput = c.batch_output || '';
+            // ⚠️ 回填的单位口径：库里存的 quantity **恒为基准单位(克)**（round149 起前端提交前已换算），
+            //   故回填一律按「克」显示 —— 这是**确定**的，不做"猜你原来填的是千克"（猜错会显示错数）。
+            init.lines = renumber((c.lines || []).map((l) => {
+              if (l.material_id) {
+                return { input_type: 1, material_id: l.material_id, material_name: l.material_name, qty: String(l.quantity), qty_unit: units.BASE_UNIT, line_kind: l.line_kind || 'main' };
+              }
+              // 手工行（material_id 空）：从快照反推净料单价（元/克），出成率固定 100（快照已是净料）
+              const unitPriceYuan = l.net_unit_cost ? (l.net_unit_cost / 10000).toFixed(4) : '';
+              return { input_type: 2, material_id: '', material_name: l.material_name, qty: String(l.quantity), qty_unit: units.BASE_UNIT, unit_price_yuan: unitPriceYuan, yield_rate: '100', line_kind: l.line_kind || 'main' };
+            }));
+            // round150：规格快照回填（specs_json ⇒ 数组）。存量卡无此字段 ⇒ []。
+            init.specRows = this.data.specRows.map((r) => {
+              const hit = (c.specs || []).find((s) => s && s.spec_key === r.spec_key);
+              if (!hit) return r;
+              return Object.assign({}, r, {
+                enabled: hit.enabled !== false,
+                name: hit.name || r.name,
+                priceYuan: hit.price_fen > 0 ? api.fenToYuan(hit.price_fen, 2) : '',
+                // R547（M1）：克重快照回填（存量卡无此字段 ⇒ 空，进页面时会提示去补）
+                portionG: hit.portion_g > 0 ? String(hit.portion_g) : '',
+              });
+            });
+          }
+        } else {
+          // 🔴 R547（M5）：编辑态读不到卡 ⇒ 显式报错，绝不渲染空白表单。
+          //   改前无 else ⇒ 表单空白但可保存 ⇒ 一保存就把有内容的卡盖成空白版本（或凭 card_code 凭空造卡），
+          //   全程零提示。三条腿一起断：错误页 + 隐藏保存按钮 + onSave 硬拦。
+          this.setData({ loading: false, loadMissing: true });
+          return;
+        }
+      }
+      if (!init.lines || init.lines.length === 0) init.lines = renumber([emptyLine()]);
+      // 分类回显：自由文本，直接回显；候选 chips = 本店填过的 + 建议池（不再做"补进枚举"）
+      init.catChips = this.buildCatChips(init.category);
+      this.setData(init);
+      if (init.cardType === '3') this.refreshComboStale();
+      // 🔴 R566：导入草稿在此落盘（必须在 init 之后 —— 见 loadDraftPrefill 的覆盖坑说明）
+      if (this._draftPrefill) {
+        const p = this._draftPrefill;
+        this._draftPrefill = null;
+        this.applyDraftPrefill(p);
+      }
+      // 明细行的原料换算说明（须在 setData(materials) 之后算，否则找不到原料）
+      this.refreshSpecHints();
+      // round156：从原料选择页返回时原料表还没到 ⇒ 在此补做（见 onShow 的 _pendingPick）。
+      //   没有它就会出现"明明选了原料、界面却没填上"这种最气人的静默失败。
+      if (this._pendingPick) {
+        const p = this._pendingPick;
+        this._pendingPick = null;
+        this.applyPickedMaterial(Number(p.idx), p.id);
+      }
+    } catch (e) {
+      this.setData({ loading: false });
+      api.toastError(e);
+    }
+  },
+
+  // R547（M5）：错误页的「重新加载」—— 只重置判据再走**同一条** load()，不自造第二条取数路径
+  onRetryLoad() {
+    this.setData({ loadMissing: false, loading: true });
+    this.load();
+  },
+
+  onName(e) { this.setData({ name: e.detail.value }); },
+  // R547（M8）：改模式 / 改出货量都要重算体检 —— 否则切到「按一批算」后横幅不出现
+  //   （checkAmounts 只在金额栏的 handler 里被调用，模式与出货量都不是金额栏）。
+  onMode(e) { this.setData({ calcMode: e.detail.value }); this.checkAmounts(); },
+  onBatch(e) { this.setData({ batchOutput: e.detail.value }); this.checkAmounts(); },
+
+  // ===== M3.16（批次 C）套餐 =====
+  // 切换卡片类型（单品 / 套餐）。切到套餐时，付费墙在**保存**时由后端拦（FEATURE_LOCKED → openPaywall('combo')）。
+  onCardType(e) {
+    const val = e.detail.value;   // '1' | '3'
+    const patch = { cardType: val };
+    if (val === '3') {
+      patch.calcMode = 'A';   // 套餐固定按份聚合
+      if (!this.data.comboLines.length) patch.comboLines = [{ sub_card_ref: '', sub_card_name: '', qty: '1' }];
+    }
+    this.setData(patch);
+  },
+
+  // ===== M3.20（批次 B 收尾）菜品模板：一键起行 =====
+  // 选模板 → 预填行名 + 用量 + 单位（**价格全部留空**）；模板只省打字，保存仍走 saveCostCard、配额照扣。
+  onPickTemplate(e) {
+    const i = Number(e.detail.value);
+    const tpl = TEMPLATES[i];
+    if (!tpl) return;
+    const rows = applyTemplate(tpl);
+    // 模板行 → 手工行（input_type=2）：行名 + 用量 + 单位预填，单价留空等用户填
+    const lines = rows.map((r) => Object.assign({}, emptyManualLine(), {
+      material_name: r.line_name,
+      qty: String(r.qty),
+      qty_unit: r.unit,
+      yield_rate: this.data.catYieldDefault || '100',
+    }));
+    // 🔴 R317：**模式随模板走**。火锅锅底这类「炒一批料 → 打 N 锅」必须 mode B + 批量产出；
+    //   若仍按 mode A 套用，整批料的成本会被当成「一锅」的成本 ⇒ **静默算错 N 倍**（界面看不出）。
+    //   mode B 时顺手把专业项展开（核算模式 / 批量产出就在那一区，不展开老板看不到、改不了）。
+    const tplMode = tpl.mode === 'B' ? 'B' : 'A';
+    const batch = Number(tpl.batch_output);
+    const patch = { name: tpl.dish_name, lines: renumber(lines), tplPicked: i, cardType: '1', calcMode: tplMode };
+    if (tplMode === 'B') {
+      patch.batchOutput = batch > 0 ? String(batch) : '';
+      patch.showMore = true;
+    }
+    this.setData(patch);
+    this.refreshSpecHints();
+    // R547（M8）：模板会把模式切到 B（火锅锅底这类）⇒ 出货量没预填时必须立刻挂横幅
+    this.checkAmounts();
+  },
+
+  // ===== P0-2 品类默认模板 × 三司会诊裁定：选品类 → 预填出净率/损耗/调料(含油盐酱醋)/示例主料（均可改）=====
+  // 口径（2026-10-29）：火=燃气燃料费属期间费用，不进默认食材毛利率；故默认只带「调料(含油盐酱醋)」，
+  //   燃气燃料作可选折叠项（仅高耗能品类 cat.energy_fen>0 可开），默认不进卡。
+  // 只给「行业默认估算」，不替老板定死：所有预填值用户都能改；出净率留空回退到品类默认（fail-closed）。
+  onPickCategory(e) {
+    const i = Number(e.detail.value);
+    const cat = CATEGORY_PRESETS[i];
+    if (!cat) return;
+    const y = String(cat.yield_rate);
+    // 🔴 R568：判据从「行数为 0」改为「没有任何已填内容」。
+    //   改前 `lines.length === 0` 对新建页**恒假**——`load()` 初始化就塞了一行空原料行（emptyLine），
+    //   于是下面 ③「空卡补示例主料」整段成了死代码。实测（模拟器，2026-10-29）：
+    //   新建 → 选「热炒荤菜」只得到调料行 ⇒ 单份成本 ¥0.51、毛利率 **98.66%** ——
+    //   品类预填承诺的「示例主料」没进来，成本低估 ⇒ 一张看着很赚的**假数卡**。
+    //   判据取「空行」而非「行数」：出厂空行 = 没有 material_id、没有行名、没有用量。
+    const isBlankLine = (l) => !String((l && l.material_id) || '').trim()
+      && !String((l && l.material_name) || '').trim()
+      && !String((l && l.qty) || '').trim();
+    const wasEmpty = this.data.lines.length === 0 || this.data.lines.every(isBlankLine);
+    // 空卡 ⇒ 丢掉出厂空行再预填：否则用户看到「一行空原料行 + 调料行」，
+    // 空行虽被保存时跳过，但它会顶掉第一行的说明位（界面像"没预填上"）。
+    let lines = wasEmpty ? [] : this.data.lines.slice();
+    // ① 已有手工行若仍是出厂默认 100，套品类默认出净率
+    lines = lines.map((l) => (l.input_type === 2 && (l.yield_rate === '100' || !l.yield_rate)
+      ? Object.assign({}, l, { yield_rate: y }) : l));
+    // ② 调料(含油盐酱醋)：没有则追加一条手动行，预填默认每份单价（line_kind='main'，规避引擎拒 line_kind）
+    const hasCond = lines.some((l) => (l.material_name || '') === CONDIMENT_NAME);
+    if (!hasCond) {
+      lines.push(Object.assign(emptyManualLine(), {
+        material_name: CONDIMENT_NAME,
+        qty: '1', qty_unit: '份', price_unit: '份',
+        unit_price_yuan: (cat.condiment_fen / 100).toFixed(2),
+        yield_rate: '100', line_kind: 'main', isPreset: true,
+      }));
+    }
+    // ②b 燃气燃料分摊：默认不进卡。切到「无能源建议值」的品类时清掉残留燃料行（重选场景）
+    const energyFen = Number(cat.energy_fen) || 0;
+    if (energyFen <= 0) {
+      lines = lines.filter((l) => (l.material_name || '') !== ENERGY_NAME);
+    }
+    // ③ 空卡（首建）补示例主料（价格留空，黄标可改）
+    if (wasEmpty && Array.isArray(cat.sample_lines)) {
+      for (const s of cat.sample_lines) {
+        lines.push(Object.assign(emptyManualLine(), {
+          material_name: s.name, qty: String(s.qty), qty_unit: s.unit,
+          yield_rate: y, isPreset: true,
+        }));
+      }
+    }
+    this.setData({
+      lossRate: String(cat.loss_rate),
+      catYieldDefault: y,
+      catLabel: cat.label,
+      catPicked: i,
+      energyOn: false,           // 重选品类 ⇒ 复位开关（燃料默认不进卡）
+      energyFen,
+      lines: renumber(lines),
+      hasPreset: true,
+      estBanner: TERMS.card.estCardBanner.replace('{cat}', cat.label),
+    });
+    this.refreshSpecHints();
+    this.checkAmounts();
+  },
+  // ===== 三司会诊裁定·燃气燃料分摊开关：仅高耗能品类（energyFen>0）可开；开 ⇒ 追加燃料行，关 ⇒ 移除 =====
+  onToggleEnergy(e) {
+    const on = !!e.detail.value;
+    let lines = this.data.lines.slice();
+    const hasEnergy = lines.some((l) => (l.material_name || '') === ENERGY_NAME);
+    if (on && !hasEnergy && this.data.energyFen > 0) {
+      lines.push(Object.assign(emptyManualLine(), {
+        material_name: ENERGY_NAME,
+        qty: '1', qty_unit: '份', price_unit: '份',
+        unit_price_yuan: (this.data.energyFen / 100).toFixed(2),
+        yield_rate: '100', line_kind: 'main', isPreset: true,
+      }));
+    } else if (!on && hasEnergy) {
+      lines = lines.filter((l) => (l.material_name || '') !== ENERGY_NAME);
+    }
+    this.setData({ energyOn: on });
+    this.commitLines(lines);   // 重排 + 同步 hasPreset / 横幅
+  },
+  // 子卡选择（picker 按 index 取）
+  onComboSubCard(e) {
+    const idx = Number(e.currentTarget.dataset.idx);
+    const opt = this.data.subCardOptions[Number(e.detail.value)];
+    if (!opt) return;
+    const comboLines = this.data.comboLines.slice();
+    // ⚠️ 换了子卡 ⇒ 旧快照作废（否则会把「换了子卡」误报成「子卡成本变了」）
+    comboLines[idx] = Object.assign({}, comboLines[idx], { sub_card_ref: opt.card_code, sub_card_name: opt.label, saved_fen: 0 });
+    this.setData({ comboLines });
+  },
+  onComboQty(e) {
+    const idx = Number(e.currentTarget.dataset.idx);
+    const comboLines = this.data.comboLines.slice();
+    comboLines[idx] = Object.assign({}, comboLines[idx], { qty: e.detail.value });
+    this.setData({ comboLines });
+    this.refreshComboStale();
+  },
+
+  // ===== R443：三处「说出来」的辅助 =====
+  /**
+   * 把 {name} 这类占位符替换掉（3 行模板串替换，与 sandbox/matrix 同一写法；不涉及任何计算）。
+   */
+  // eslint-disable-next-line
+  fillTpl(tpl, map) {
+    return String(tpl || '').replace(/\{(\w+)\}/g, (m, k) => (map[k] != null ? map[k] : m));
+  },
+
+  /**
+   * 🔴 R443：套餐成本是**保存时的子卡快照** —— 子卡后来改价/改配方不会自动更新套餐
+   *   （`cloudfunctions/syncCostCard/index.js:77` 明确 `card_type === 3` 跳过）。
+   *   结果：老板看到的套餐毛利可能是几个月前的成本，**零提示**。
+   *   这里只做「告诉你一声」，**绝不自动改数**（与 R406 原料改价同口径：不自动改，但必须让人知道）。
+   */
+  refreshComboStale() {
+    if (this.data.cardType !== '3') {
+      if (this.data.comboStaleText) this.setData({ comboStaleText: '' });
+      return;
+    }
+    let n = 0;
+    let deltaFen = 0;
+    for (const cl of (this.data.comboLines || [])) {
+      if (!cl || !cl.sub_card_ref) continue;
+      const cur = (this.data.subCards || []).find((s) => s.card_code === cl.sub_card_ref);
+      if (!cur) continue;
+      const curFen = Math.round(Number(cur.total_cost_fen || 0));   // 整数分
+      const savedFen = Math.round(Number(cl.saved_fen || 0));        // 整数分
+      if (!(savedFen > 0)) continue;                                 // 没快照（新建行）⇒ 无从判断，不报
+      if (curFen === savedFen) continue;
+      n += 1;
+      deltaFen += (curFen - savedFen) * (Number(cl.qty) || 0);       // 整数分 × 份数，无浮点
+    }
+    const text = n > 0
+      ? this.fillTpl(TERMS.card.comboStaleTip, {
+        n: n,
+        sign: deltaFen >= 0 ? '+' : '−',
+        money: api.fenToYuan(Math.abs(Math.round(deltaFen)), 2),
+      })
+      : '';
+    if (text !== this.data.comboStaleText) this.setData({ comboStaleText: text });
+  },
+
+  /**
+   * 🔴 R443：新建前查同名 —— 老板很容易建两张「宫保鸡丁」（一张 12.75、一张 11.90），
+   *   外卖/团购选卡时不知道选哪张 ⇒ 选错就按错成本算毛利。
+   *   ⚠️ 查询失败**放行**（不能因为一次网络抖动挡住保存）。
+   * @returns {Promise<boolean>} true = 继续保存
+   */
+  async confirmDupName(name) {
+    const nm = String(name || '').trim();
+    if (!nm) return true;
+    let list = [];
+    try {
+      const r = await api.call('getCostCard', {});
+      list = (r && r.list) || [];
+    } catch (e) { return true; }
+    const hit = list.find((x) => String(x.name || '').trim() === nm);
+    if (!hit) return true;
+    const cost = api.fenToYuan(hit.total_cost_fen || 0, 2);
+    return new Promise((resolve) => {
+      wx.showModal({
+        title: TERMS.card.dupCardTitle,
+        content: this.fillTpl(TERMS.card.dupCardTip, { name: nm, cost: cost }),
+        cancelText: TERMS.card.dupCardGoEdit,
+        confirmText: TERMS.card.dupCardKeepNew,
+        success: (res) => {
+          if (!res.confirm && hit.card_code) {
+            // 去改那张：redirectTo 顶掉当前新建页，避免栈里留一个空白新建页
+            wx.redirectTo({ url: '/subpkg/biz/card/edit?card_code=' + hit.card_code });
+            resolve(false);
+            return;
+          }
+          resolve(!!res.confirm);
+        },
+        fail: () => resolve(true),
+      });
+    });
+  },
+
+  addComboLine() {
+    this.setData({ comboLines: this.data.comboLines.concat([ensureRid({ sub_card_ref: '', sub_card_name: '', qty: '1' })]) });
+  },
+  delComboLine(e) {
+    const idx = Number(e.currentTarget.dataset.idx);
+    const rest = this.data.comboLines.filter((l, i) => i !== idx);
+    this.setData({ comboLines: rest.length ? rest : [ensureRid({ sub_card_ref: '', sub_card_name: '', qty: '1' })] });
+  },
+
+  onLoss(e) { this.setData({ lossRate: e.detail.value }); },
+  onAux(e) { this.setData({ auxYuan: e.detail.value }); this.checkAmounts(); },
+  onPrice(e) {
+    const patch = { priceYuan: e.detail.value, stickyMargin: this.marginTextOf(this.data.previewCostFen, e.detail.value) };
+    // P1 · 套餐本身毛利：售价变动即时重算（仅套餐卡）
+    if (this.data.cardType === '3') patch.comboSelfMargin = this.comboSelfMarginOf(this.data.previewCostFen, e.detail.value);
+    this.setData(patch);
+    this.checkAmounts();
+  },
+  onActivityPrice(e) { this.setData({ activityPriceYuan: e.detail.value }); this.checkAmounts(); },
+  onCategoryInput(e) { this.setData({ category: e.detail.value }); },
+  pickCat(e) {
+    const ds = (e && e.currentTarget && e.currentTarget.dataset) || {};
+    if (!ds.cat) return;
+    this.setData({ category: ds.cat });
+  },
+  // 候选分类 = 当前值 + **本店填过的**（记住即复用，火锅店不会每次重打"锅底"）+ 建议池补齐。
+  // 上限 14：再多会刷屏，且老板实际用的分类就那么几个。
+  buildCatChips(cur) {
+    const seen = [];
+    const push = (v) => {
+      const s = String(v == null ? '' : v).trim();
+      if (s && seen.indexOf(s) < 0) seen.push(s);
+    };
+    push(cur);
+    let hist = [];
+    try { hist = wx.getStorageSync(EDIT_CATS_KEY) || []; } catch (err) { hist = []; }
+    if (Array.isArray(hist)) hist.forEach(push);
+    (this.data.categoryOptions || TERMS.card.dishCats).forEach(push);
+    return seen.slice(0, 14);
+  },
+  onTags(e) { this.setData({ tags: e.detail.value }); },
+  onTargetMargin(e) { this.setData({ targetMargin: e.detail.value }); },
+  // 真机反馈：改第 N 道菜的原料必须回列表页最顶部 ⇒ 编辑页给直达入口
+  goMaterial() { wx.navigateTo({ url: '/subpkg/biz/material/index' }); },
+
+  // ===== round149：用量单位 / 原料换算说明 =====
+  // 单条原料的换算说明：采购价 ÷ 换算系数 ÷ 出成率 ⇒ 净料单价（元/克）。
+  //   这几步都是**原料档案里已存的**，此处只做展示串联，不重算成本、不改任何落库值。
+  specHintOf(m) {
+    const f = Number(m.convert_factor) || 0;
+    const yr = Number(m.yield_rate) || 0;
+    if (!m || !f || !yr) return TERMS.card.matSpecHintEmpty;
+    return TERMS.card.matSpecHintOf(
+      api.fenToYuan(m.purchase_price_fen || 0, 2),
+      m.purchase_unit || TERMS.card.matUnitDefault,
+      f, yr,
+      ((Number(m.net_unit_cost) || 0) / 10000).toFixed(4)
+    );
+  },
+  refreshSpecHints(lines) {
+    const src = lines || this.data.lines;
+    const mats = this.data.materials || [];
+    const out = src.map((l) => {
+      if (l.input_type === 2) return Object.assign({}, l, { spec_hint: '', unit_warn: '' });
+      const m = l.material_id ? mats.find((x) => x.id === l.material_id) : null;
+      return Object.assign({}, l, {
+        spec_hint: m ? this.specHintOf(m) : TERMS.card.matSpecHintEmpty,
+        unit_warn: m ? this.unitWarnOf(m, l) : '',
+      });
+    });
+    this.setData({ lines: out });
+  },
+  // round151：跨计量族提示（**只提示、不拦截**）。
+  //   由来：参考产品在这里栽过 —— 采购单位选「个」、用量单位选「千克」，它静默按 1:1 硬算，
+  //   界面直接跳出 ¥6,000,000.00，**一个字都不提示**（2026-09-26 键鼠实测）。
+  //   规则：只有「计数族 ↔ 计量族」才算跨族。重量↔体积**不算** —— 既有口径就是 1 毫升≈1 克
+  //   （水/油/酱油密度≈1），那是**有意支持**的换算，不该报警。
+  unitWarnOf(m, l) {
+    const pu = m.purchase_unit || TERMS.card.matUnitDefault;
+    const qu = l.qty_unit || units.BASE_UNIT;
+    return units.isCrossFamily(pu, qu) ? TERMS.card.unitCrossWarn(pu, qu) : '';
+  },
+  // 换用量单位：**必须同步换算数值**（1000 克 → 1 千克），否则同一个菜换个单位成本差 1000 倍。
+  //   ⚠️ 这是本页最容易写错的一格，守卫 tools/check_unit_convert.js 专盯「只改标签不改数」。
+  onQtyUnit(e) {
+    const idx = Number(e.currentTarget.dataset.idx);
+    const next = this.data.qtyUnits[Number(e.detail.value)] || units.BASE_UNIT;
+    const lines = this.data.lines.slice();
+    const cur = lines[idx] || {};
+    const from = cur.qty_unit || units.BASE_UNIT;
+    if (from === next) return;
+    lines[idx] = Object.assign({}, cur, { qty_unit: next, qty: units.convertQtyText(cur.qty, from, next) });
+    this.editLineStripPreset(idx, lines);
+    // round151：跨族提示是「用量单位 × 原料采购单位」的函数 ⇒ 换完单位必须重算，
+    //   否则提示停在换单位之前的状态（用户看到的是过期提示）。
+    this.refreshSpecHints(this.data.lines);
+  },
+
+  // ===== 明细行 =====
+  // round156：原 `onMaterialChange`（原生 picker 的 bindchange，按下标取）已由
+  //   `goPickMaterial` + `onShow` + `applyPickedMaterial` 取代。**不保留死代码**：
+  //   留着会让下一个人以为还有第二条选原料的路径（两条路径 = 两份真相）。
+  // 切换录入方式（档案 ↔ 手工）
+  // 🔴 round129 修复（真机「临时手工录入点不了」根因）：
+  //   `radio-group` 的选中值在 `e.detail.value`，而此前读的是 `e.currentTarget.dataset.val`
+  //   —— wxml 从未传过 `data-val` ⇒ 恒为 undefined ⇒ 每次都走 else 分支重建为**档案行**，
+  //   用户点「临时手工录入」界面毫无变化（看起来就是"点不了"）。
+  //   ⚠️ 配套：wxml 的 radio-group 必须带受控 `value`（子 radio 的 checked 仅认初始值）。
+  onLineType(e) {
+    const idx = Number(e.currentTarget.dataset.idx);
+    const val = (e && e.detail && e.detail.value) || 'archive';   // 'archive' | 'manual'
+    const lines = this.data.lines.slice();
+    lines[idx] = val === 'manual' ? Object.assign(emptyManualLine(), { yield_rate: this.data.catYieldDefault || '100' }) : emptyLine();
+    this.commitLines(lines);
+  },
+  // 手工行：名称 / 单价 / 出成率
+  onManualName(e) {
+    const idx = Number(e.currentTarget.dataset.idx);
+    const lines = this.data.lines.slice();
+    lines[idx] = Object.assign({}, lines[idx], { material_name: e.detail.value });
+    this.editLineStripPreset(idx, lines);
+  },
+  onManualPrice(e) {
+    const idx = Number(e.currentTarget.dataset.idx);
+    const lines = this.data.lines.slice();
+    lines[idx] = Object.assign({}, lines[idx], { unit_price_yuan: e.detail.value });
+    this.editLineStripPreset(idx, lines);
+    this.checkAmounts();
+  },
+  // round151：手工行的**单价单位**（元/X）。
+  //   ⚠️ 与「用量单位」是两件事，且**故意不做数值换算**（与 onQtyUnit 相反）：
+  //     用量单位变了必须换数（否则同一个菜成本差 1000 倍）；单价单位变了则是
+  //     「我报的价本来就按这个单位」—— 老板要的是保住他敲的那个数字
+  //     （6 元/斤 改成 6 元/千克 = 我报的就是 6，别替我算成 12）。
+  onManualPriceUnit(e) {
+    const idx = Number(e.currentTarget.dataset.idx);
+    const next = this.data.priceUnits[Number(e.detail.value)] || units.BASE_UNIT;
+    const lines = this.data.lines.slice();
+    lines[idx] = Object.assign({}, lines[idx], { price_unit: next });
+    this.editLineStripPreset(idx, lines);
+  },
+  onManualYield(e) {
+    const idx = Number(e.currentTarget.dataset.idx);
+    const lines = this.data.lines.slice();
+    lines[idx] = Object.assign({}, lines[idx], { yield_rate: e.detail.value });
+    this.editLineStripPreset(idx, lines);
+  },
+  onQty(e) {
+    const idx = e.currentTarget.dataset.idx;
+    const lines = this.data.lines.slice();
+    lines[idx] = Object.assign({}, lines[idx], { qty: e.detail.value });
+    this.editLineStripPreset(idx, lines);
+  },
+  addLine() { this.commitLines(this.data.lines.concat([emptyLine()])); },
+
+  // ===== P0-3 估算卡：落盘明细行并重算「估算卡」标记（黄标 + 横幅） =====
+  // 所有改动明细行的入口都走这里，避免「改了行却忘了更新 hasPreset」的漂移。
+  commitLines(lines) {
+    const rn = renumber(lines);
+    this.setData({ lines: rn, hasPreset: isEstimatedCard(rn), estBanner: isEstimatedCard(rn) ? TERMS.card.estCardBanner.replace('{cat}', this.data.catLabel || '品类') : '' });
+    return rn;
+  },
+  // 用户动了某行 → 该行不再是「系统估」（自校正：系统估标记只认未被人碰过的行）
+  editLineStripPreset(idx, lines) {
+    if (idx >= 0 && lines[idx]) lines[idx] = Object.assign({}, lines[idx], { isPreset: false });
+    return this.commitLines(lines);
+  },
+
+  // ===== R443：批量粘贴配料（解析在 utils/cardPaste.js，这里只做展示与导入）=====
+  onPasteToggle() { this.setData({ pasteOpen: !this.data.pasteOpen }); },
+  onPasteInput(e) { this.setData({ pasteText: e.detail.value }); },
+  pasteStatusText(r) {
+    if (r.status === 'ok') return '';
+    if (r.status === 'no_match') return TERMS.card.pasteNoMatch;
+    if (r.status === 'bad_unit') return TERMS.card.pasteBadUnit;
+    return TERMS.card.pasteBadQty;
+  },
+  onPasteParse() {
+    const r = CardPaste.parseCardPaste(this.data.pasteText, this.data.materials || []);
+    const rows = r.rows.map((x) => Object.assign({}, x, { statusText: this.pasteStatusText(x) }));
+    this.setData({
+      pasteRows: rows,
+      pasteOkCount: r.okCount,
+      pasteImportLabel: this.fillTpl(TERMS.card.pasteImportBtn, { n: r.okCount }),
+    });
+  },
+  onPasteImport() {
+    const ok = (this.data.pasteRows || []).filter((r) => r.status === 'ok' && r.material);
+    if (!ok.length) { wx.showToast({ title: TERMS.card.pasteNoOk, icon: 'none' }); return; }
+    const add = ok.map((r) => ({
+      input_type: 1,
+      material_id: r.material.id,
+      material_name: r.material.name,
+      qty: String(r.qtyText),
+      // ⚠️ 存**老板写的单位**，不存折克后的数：保存时 `units.toBase(l.qty, l.qty_unit)` 还要再换算一次
+      qty_unit: r.unit,
+      spec_hint: '',
+      line_kind: 'main',
+    }));
+    // 全空行先丢掉，别让导入的行上面挂一条空行
+    const cur = (this.data.lines || []).filter((l) => l.qty || l.material_id || l.material_name);
+    this.commitLines(cur.concat(add));
+    this.setData({
+      pasteRows: [], pasteText: '', pasteOkCount: 0, pasteImportLabel: '', pasteOpen: false,
+    });
+    wx.showToast({ title: this.fillTpl(TERMS.card.pasteImported, { n: add.length }), icon: 'success' });
+  },
+  // round153：删行按钮从「录入方式」那行的红 × 挪到行尾并改名 ⇒ 顺手补上防误触。
+  //   规则：**只有这行已经填了东西才问一句**，空行直接删 —— 不为没内容的东西增加摩擦。
+  //   ⚠️ wx.showModal 的 confirmText/cancelText 上限 4 字符（真机事故见 terms.js paywall 注释）
+  //      ⇒ 「删除」「取消」都在限内，长文案只放 title/content。
+  delLine(e) {
+    const idx = Number(e.currentTarget.dataset.idx);
+    const cur = this.data.lines[idx] || {};
+    const name = String(cur.material_name || '').trim();
+    const filled = !!cur.material_id || !!name || Number(cur.qty) > 0 || Number(cur.unit_price_yuan) > 0;
+    const doDel = () => {
+      const rest = this.data.lines.filter((l, i) => i !== idx);
+      this.commitLines(rest.length ? rest : [emptyLine()]);
+    };
+    if (!filled) { doDel(); return; }
+    wx.showModal({
+      title: TERMS.card.delLineTitle,
+      content: name ? TERMS.card.delLineConfirmOf(name) : TERMS.card.delLineConfirmBare,
+      confirmText: TERMS.card.delLineConfirmOk,
+      cancelText: TERMS.buttons.cancel,
+      success: (r) => { if (r.confirm) doDel(); },
+    });
+  },
+
+  // 🔴 R374：吸底条的毛利率 —— 只用**页面上已有的两个数**（售价、上次试算成本），
+  //   公式与后端 saveCostCard/service.js 完全一致（两位小数）。
+  //   ⚠️ 不在这里重算成本：成本必须走 calcBom（引擎单源），本页**不抄成本算法**。
+  marginTextOf(costFen, priceYuan) {
+    const p = Math.round(Number(((Number(priceYuan) || 0) * 100).toFixed(10)));
+    if (!(p > 0) || !(costFen > 0)) return '';
+    return (Math.round(((p - costFen) / p) * 10000) / 100) + '%';
+  },
+
+  // 🔴 P1 · 套餐本身毛利（售价 − 套餐成本）：成本走引擎（calcBom / 回填 total_cost_fen），本方法只做展示换算。
+  //   返回 { profit: '¥X.XX', rate: 'Y%' }，金额或售价缺失时返回 null（fail-closed，不显示假数）。
+  comboSelfMarginOf(costFen, priceYuan) {
+    const cost = Number(costFen) || 0;
+    const p = Math.round(Number(((Number(priceYuan) || 0) * 100).toFixed(10)));
+    if (!(p > 0) || !(cost > 0)) return null;
+    const profitFen = p - cost;
+    const rate = Math.round((profitFen / p) * 10000) / 100;
+    return { profit: (profitFen / 100).toFixed(2), rate: rate + '%' };
+  },
+
+  // 反算售价 / 预览成本：调 calcBom（后端纯计算），不本地算
+  async reverseCalc() {
+    const linesInput = this.buildCalcLines();
+    if (!linesInput) return;
+    // 🔴 R383：空明细**不许试算**。实测 calcBom 对 `lines: []` 返回 `unit_cost_fen=0 / margin=100`，
+    //   吸底条会显示「成本 ¥0.00 · 毛利率 100%」——一个看起来很美的假数（R380 结论②）。
+    //   为什么不在引擎里拦：calcCostCard 属禁区；且"空数组"对引擎是合法的（套餐派生等场景）。
+    if (linesInput.length === 0) {
+      wx.showToast({ title: TERMS.card.needLineForCalc, icon: 'none' });
+      return;
+    }
+    try {
+      ui.setTitle(TERMS.card.reverseTitle);
+      // 套餐固定按「份」聚合（M3.16：calc_mode 对套餐无意义）⇒ 强制 mode='A'
+      const mode = this.data.cardType === '3' ? 'A' : this.data.calcMode;
+      const d = await api.call('calcBom', {
+        lines: linesInput,
+        mode,
+        batch_output: mode === 'B' ? Number(this.data.batchOutput) : 0,
+        loss_pct: Number(this.data.lossRate) || 0,
+        auxYuan: Number(this.data.auxYuan) || 0,
+        target_margin_pct: Number(this.data.targetMargin) || 0,
+      });
+      const rp = d.reverse_price_fen || 0;
+      this.setData({
+        reversePriceFen: rp,
+        previewCostFen: d.unit_cost_fen || 0,
+        reverseResultPreview: rp > 0 ? api.fenToYuan(rp, 2) : '',
+        previewCost: d.unit_cost_fen ? api.fenToYuan(d.unit_cost_fen, 2) : '',
+        stickyMargin: this.marginTextOf(d.unit_cost_fen || 0, this.data.priceYuan),
+      });
+      if (rp > 0) {
+        wx.showToast({ title: TERMS.card.reverseResult + ' ' + api.fenToYuan(rp, 2), icon: 'none' });
+      }
+      // P1 · 套餐本身毛利：反算拿到套餐成本后即时补算（仅套餐卡）
+      if (this.data.cardType === '3') {
+        this.setData({ comboSelfMargin: this.comboSelfMarginOf(d.unit_cost_fen || 0, this.data.priceYuan) });
+      }
+    } catch (e) { api.toastError(e); }
+  },
+
+  // 反算结果填入建议售价（用户可再手改）
+  applyReverse() {
+    if (!this.data.reversePriceFen) { this.reverseCalc(); return; }
+    this.setData({ priceYuan: api.fenToYuan(this.data.reversePriceFen, 2) });
+  },
+
+  // ============ M3.37 团购到手试算（R190） ============
+  // 口径（李老师 2026-10-02 定）：佣金基数 = **顾客实付的团购价**（不是原价）；费率店家自己填、无默认值。
+  // 成本来自引擎 calcBom（与单品/套餐同一条路，不另算一份）；费用侧纯前端，**不落库**。
+  onGrouponPrice(e) { this.setData({ grouponPriceYuan: e.detail.value, grouponView: null }); this.checkAmounts(); },
+  onGrouponRate(e) { this.setData({ grouponRate: e.detail.value, grouponView: null }); },
+  onGrouponPromo(e) { this.setData({ grouponPromoYuan: e.detail.value, grouponView: null }); this.checkAmounts(); },
+  async calcGroupon() {
+    const priceYuan = Number(this.data.grouponPriceYuan) || 0;
+    if (!(priceYuan > 0)) { wx.showToast({ title: TERMS.card.grouponNeedPrice, icon: 'none' }); return; }
+    const linesInput = this.buildCalcLines();
+    if (!linesInput) return;
+    try {
+      ui.setTitle(TERMS.card.grouponCalc);
+      const mode = this.data.cardType === '3' ? 'A' : this.data.calcMode;
+      const d = await api.call('calcBom', {
+        lines: linesInput,
+        mode,
+        batch_output: mode === 'B' ? Number(this.data.batchOutput) : 0,
+        loss_pct: Number(this.data.lossRate) || 0,
+        auxYuan: Number(this.data.auxYuan) || 0,
+      });
+      const costFen = d.unit_cost_fen || 0;
+      if (!(costFen > 0)) { wx.showToast({ title: TERMS.card.grouponNeedCost, icon: 'none' }); return; }
+      const v = calcGrouponOrder({
+        // 🔴 R298（B2）：**十进制安全** —— 原式 `Math.round(<元> * 100)` 在半步（真值恰为 x.xx5）会
+        //   **少进 1 分**（实测 qty=0.1 × 净料 14500 万分之元 ⇒ 真值 14.5 分，原式取 14）。根因与
+        //   `money.yuanToFen` 同一处浮点：`toFixed(10)` 只消 1e-13 量级噪声、不动真实半步。
+        //   成本引擎三副本（calcBom / saveCostCard / syncCostCard）**必须同源同口径**。
+        priceFen: Math.round(Number((priceYuan * 100).toFixed(10))),
+        costFen,
+        ratePct: Number(this.data.grouponRate) || 0,
+        promoFen: Math.round(Number(((Number(this.data.grouponPromoYuan) || 0) * 100).toFixed(10))),
+        dineFen: Math.round(Number(((Number(this.data.priceYuan) || 0) * 100).toFixed(10))),
+      });
+      // vsDineNeg = 堂食毛利 − 团购到手毛利 > 0 ⇒ 这个团购在拉低毛利 ⇒ 红字
+      this.setData({
+        grouponView: {
+          cost: api.fenToYuan(v.costFen, 2),
+          commission: api.fenToYuan(v.commissionFen, 2),
+          net: api.fenToYuan(v.netFen, 2),
+          profit: api.fenToYuan(v.profitFen, 2),
+          netRate: v.netRatePct,
+          profitRate: v.profitRatePct,
+          vsDine: api.fenToYuan(Math.abs(v.vsDineFen), 2),
+          vsDineNeg: v.vsDineFen > 0,
+          hasDine: v.hasDine,
+        },
+        previewCostFen: costFen,
+        previewCost: api.fenToYuan(costFen, 2),
+      });
+    } catch (e) { api.toastError(e); }
+  },
+
+  // 🔴 R426（队列 #32）：本页金额栏体检 —— 与 M1 录入页**同一个** `utils/amountInput`、同一套判定。
+  //   为什么这页更需要它（比 M1 更狠）：本页金额全是 `Number(x) || 0` 直转（没走 `yuanToFen`），
+  //   粘贴「12,000」⇒ `Number` 得 **NaN** ⇒ `Math.round(NaN * 100)` 仍是 NaN ⇒ 提交上云的
+  //   `price_fen` / `aux_fen` 变 null 或 0，而 0 是**合法金额** ⇒ 云端校验无从拒 ⇒
+  //   成本卡按 0 元落库、毛利率显示照常 ⇒ 老板拿它去定价，**全程零报错**。
+  //   🔴 边界（与 R419/R425 同口径）：**只判定、只暴露，不改数** ——
+  //     不替老板去掉逗号（`1,5` 可能是欧洲写法 15 或 1.5，猜错比不猜更糟）。
+  //   返回：读不成的栏数（onSave 据此拦提交；0 = 全部读得成）。
+  checkAmounts() {
+    const rows = this.data.specRows || [];
+    const lines = this.data.lines || [];
+    let n = 0;
+    const chk = (v) => { if (!AmountInput.classifyAmount(v).readable) n++; };
+    chk(this.data.priceYuan);
+    chk(this.data.auxYuan);
+    chk(this.data.activityPriceYuan);
+    chk(this.data.grouponPriceYuan);
+    chk(this.data.grouponPromoYuan);
+    for (let i = 0; i < rows.length; i++) chk(rows[i] && rows[i].priceYuan);
+    // 手工行单价（input_type=2）——它直接进净料成本，最不能读错的一格
+    for (let j = 0; j < lines.length; j++) {
+      if (Number(lines[j].input_type) !== 2) continue;
+      chk(lines[j].unit_price_yuan);
+    }
+    // 🔴 R547（M8）：三项**直接进引擎**的数值栏，原实现一个都不查。它们和金额栏同一个死法
+    //   （提交时 `Number(x) || 0`）：填成「1.5%」/「6 0」/全角 ⇒ 静默读成 0 ⇒
+    //   损耗率归零（成本偏低）、目标毛利率归零（建议价归零却照常显示）、出货量归零。
+    //   不改引擎口径、不改提交写法，只在**体检**这一处把"读不成"暴露出来。
+    chk(this.data.lossRate);
+    chk(this.data.targetMargin);
+    // 出货量：只在模式 B 用（模式 A 提交时强制 0）；但模式 B 下**没填比填错更常见**，
+    //   而引擎对 ≤0 是 `out = 1` 兜底（calcBom/service.js:129）⇒ 整批成本被当成**一份**，
+    //   成本虚高 N 倍且零提示。这属于"必填却没填"，与"读不成数字"分开记一笔。
+    let q = 0;
+    if (this.data.calcMode === 'B') {
+      const raw = this.data.batchOutput;
+      const rr = AmountInput.classifyAmount(raw);
+      if (!rr.readable || !(Number(raw) > 0)) q = 1;
+    }
+    if (q !== this.data.badQtyCount) this.setData({ badQtyCount: q });
+    // 🔴 R597：用量栏（克/份）读不成 ⇒ `units.toBase` 返回 0 ⇒ buildCalcLines 里 `continue` **跳过整行**
+    //   ⇒ 成本少算、毛利虚高（只有所有行都被跳过时才提示"用量"）。与金额/出货量分开计数、分开讲。
+    let u = 0;
+    const chkQty = (v) => { if (!AmountInput.classifyAmount(v).readable) u++; };
+    for (let i = 0; i < lines.length; i++) chkQty(lines[i] && lines[i].qty);
+    if (this.data.cardType === '3') {
+      const cl = this.data.comboLines || [];
+      for (let i = 0; i < cl.length; i++) chkQty(cl[i] && cl[i].qty);
+    }
+    if (u !== this.data.badUsageCount) this.setData({ badUsageCount: u });
+    // 金额类横幅只数金额（文案讲的是"金额栏"）；出货量/用量各自一条横幅。
+    if (n !== this.data.badAmountCount) this.setData({ badAmountCount: n });
+    this._badQty = q > 0;
+    return n + q + u;
+  },
+
+  // 🔴 R297：出成率**上界**校验（手工行）—— 越界**绝不静默回落 100**（那等于替老板编一个数）。
+  //   返回第一处越界 { idx, raw }；全部合法返回 null。
+  //   为什么必须前置：净料成本 = 单价 ÷ 出成率，出成率 150 ⇒ 成本被 ÷1.5 ⇒ **毛利虚高**，
+  //   而云端只收 net_unit_cost 快照、验不到出成率 ⇒ 不在这里拦就一路静默到老板眼前。
+  badYieldOf() {
+    const lines = this.data.lines || [];
+    for (let i = 0; i < lines.length; i++) {
+      const l = lines[i];
+      if (Number(l.input_type) !== 2) continue;
+      if (units.yieldRateOf(l.yield_rate) === null) return { idx: i, raw: l.yield_rate };
+    }
+    return null;
+  },
+
+  buildCalcLines() {
+    const out = [];
+    // 🔴 R297：先过出成率上界（反算 / 保存两条路共用，防「试算出的成本也偏低」）
+    if (this.badYieldOf()) {
+      wx.showToast({ title: TERMS.card.yieldRangeErr, icon: 'none' });
+      return null;
+    }
+    // M3.16 / R190：**套餐也能算**（此前反算区只给单品用，套餐点了没反应）
+    //   子卡行 → 引擎行：net_unit_cost = 子卡单份成本(分) × 100（与引擎「万分之一元」同尺度）；quantity = 份数。
+    if (this.data.cardType === '3') {
+      for (const l of this.data.comboLines) {
+        const qty = Number(l.qty) || 0;
+        if (!(qty > 0)) continue;
+        const sub = this.data.subCards.find((x) => x.card_code === l.sub_card_ref);
+        if (!sub || !(Number(sub.total_cost_fen) > 0)) continue;
+        out.push({ quantity: qty, net_unit_cost: Number(sub.total_cost_fen) * 100, line_kind: 'main' });
+      }
+      if (out.length === 0) { wx.showToast({ title: TERMS.card.comboSubCardPh, icon: 'none' }); return null; }
+      return out;
+    }
+    for (const l of this.data.lines) {
+      if (!l.qty) continue;
+      // round149：用量一律换算成**基准单位(克)**再送引擎（引擎口径一字不改）
+      const qtyBase = units.toBase(l.qty, l.qty_unit);
+      if (!(qtyBase > 0)) continue;
+      if (l.input_type === 2) {
+        // 手工行：前端算净料单位成本（录入换算），反算与保存用同一值（单源）
+        const wan = manualNetUnitWan(l.unit_price_yuan, l.yield_rate, l.price_unit);
+        if (wan <= 0) continue;      // 🔴 R297：出成率越界已在 `badYieldOf` 前置拦下并提示，此处兜底
+        out.push({ quantity: qtyBase, net_unit_cost: wan, line_kind: normalizeKind(l.line_kind) });
+      } else {
+        if (!l.material_id) continue;
+        const m = this.data.materials.find((x) => x.id === l.material_id);
+        if (!m) continue;
+        out.push({ quantity: qtyBase, net_unit_cost: m.net_unit_cost, line_kind: normalizeKind(l.line_kind) });
+      }
+    }
+    if (out.length === 0) { wx.showToast({ title: TERMS.card.qty, icon: 'none' }); return null; }
+    return out;
+  },
+
+  // ===== round150（M3.14）组件类型 =====
+  pickKind(e) {
+    const idx = Number(e.currentTarget.dataset.idx);
+    const key = e.currentTarget.dataset.kind;
+    if (!key) return;
+    const lines = this.data.lines.slice();
+    lines[idx] = Object.assign({}, lines[idx], { line_kind: key });
+    this.editLineStripPreset(idx, lines);
+  },
+
+  // ===== round150（M3.15）规格 =====
+  toggleSpec(e) {
+    const key = e.currentTarget.dataset.spec;
+    this.setData({
+      specRows: this.data.specRows.map((r) => (r.spec_key === key ? Object.assign({}, r, { enabled: !r.enabled, result: r.enabled ? null : r.result }) : r)),
+    });
+  },
+  onSpecPrice(e) {
+    const key = e.currentTarget.dataset.spec;
+    const v = e.detail.value;
+    // 🔴 R298Y 修复：**改了售价就必须清掉该行试算结果**。
+    //   改前只改 `priceYuan`、保留 `result` ⇒ 老板把该规格从 100 改成 200 后，
+    //   该行仍显示**按 100 算出的**毛利率/成本/建议价（`result.marginPct` 直接来自服务端试算入参），
+    //   数字看着正常、其实已经过期 —— 而**同一页**的失效策略本来是齐的：
+    //     · `toggleSpec`（启用/停用）⇒ `result: ... null ...`
+    //     · `onGrouponPrice/Rate/Promo` ⇒ `grouponView: null`
+    //   （「同一个修复合集的另一半没做完」——同族病第 4 型。）
+    this.setData({
+      specRows: this.data.specRows.map((r) => (r.spec_key === key ? Object.assign({}, r, { priceYuan: v, result: null }) : r)),
+    });
+    this.checkAmounts();
+  },
+  // R547（M1）：改「这一份多少克」⇒ 该行试算结果作废（成本/毛利/建议价全都随克重变）
+  onSpecPortion(e) {
+    const key = e.currentTarget.dataset.spec;
+    const v = e.detail.value;
+    this.setData({
+      specRows: this.data.specRows.map((r) => (r.spec_key === key ? Object.assign({}, r, { portionG: v, result: null }) : r)),
+    });
+    this.checkAmounts();
+  },
+  // 把某规格行的输入拼成 spec_prices（整数分）；空/非法 ⇒ 该规格不带价（只出成本与建议价）
+  specPriceFen(r) {
+    const yuan = Number(r.priceYuan);
+    if (!isFinite(yuan) || yuan <= 0) return null;
+    return Math.round(Number((yuan * 100).toFixed(10)));
+  },
+  // 提交给云端的规格列表：**只送键 + 售价 + 启用位**（系数/名称由服务端单源补齐）
+  // 🔴 R547（M2）：**停用行也必须提交**。改前这里是 `.filter((r) => r.enabled)`
+  //   ⇒ 停用的规格一保存就从 `specs_json` 里消失（服务端按"整份覆盖"落库）——
+  //   老板以为"我先关掉，以后还能打开"，实际是**永久删除**：下次进编辑页没这一行，
+  //   要重新启用只能重新勾选并重新填价，且历史版本里也查不到"曾经有过这个规格"。
+  //   服务端 `sanitizeSpecs` 本就保留了 `enabled` 位（`enabled !== false`）⇒ 只是前端没送。
+  collectSpecs() {
+    return this.data.specRows.map((r) => {
+      const pf = this.specPriceFen(r);
+      const o = { spec_key: r.spec_key, enabled: !!r.enabled };
+      // 没填价 ⇒ 不带 price_fen（服务端缺省 0），但**行本身保留**
+      if (pf != null) o.price_fen = pf;
+      // R547（M1）：克重随规格一起落库（快照）——它是算 100g 成本的唯一依据。
+      //   没填就不带（服务端存 0），页面会提示补；**绝不替老板猜一个克重**（猜错比不给数更糟）。
+      if (r.spec_key === 'per100g') {
+        const g = Number(r.portionG);
+        if (isFinite(g) && g > 0) o.portion_g = g;
+      }
+      return o;
+    });
+  },
+  // 规格试算：一次调用把启用的规格全部算回来（成本 / 毛利率 / 建议价），并刷新原成本预览
+  async calcSpecs() {
+    const linesInput = this.buildCalcLines();
+    if (!linesInput) return;
+    const rows = this.data.specRows.filter((r) => r.enabled);
+    if (rows.length === 0) { wx.showToast({ title: TERMS.card.specEmpty, icon: 'none' }); return; }
+    const specPrices = {};
+    for (const r of rows) {
+      const pf = this.specPriceFen(r);
+      if (pf != null) specPrices[r.spec_key] = pf;
+    }
+    // R547（M1）：克重是 per100g 的**必填入参**（没填 ⇒ 云端返回 need_portion，不出数）
+    const specPortions = {};
+    for (const r of rows) {
+      if (r.spec_key !== 'per100g') continue;
+      const g = Number(r.portionG);
+      if (isFinite(g) && g > 0) specPortions[r.spec_key] = g;
+    }
+    try {
+      ui.setTitle(TERMS.card.specCalc);
+      // 套餐固定按「份」聚合（M3.16：calc_mode 对套餐无意义）⇒ 强制 mode='A'
+      const mode = this.data.cardType === '3' ? 'A' : this.data.calcMode;
+      const d = await api.call('calcBom', {
+        lines: linesInput,
+        mode,
+        batch_output: mode === 'B' ? Number(this.data.batchOutput) : 0,
+        loss_pct: Number(this.data.lossRate) || 0,
+        auxYuan: Number(this.data.auxYuan) || 0,
+        target_margin_pct: Number(this.data.targetMargin) || 0,
+        spec_keys: rows.map((r) => r.spec_key),
+        spec_prices: specPrices,
+        spec_portions: specPortions,
+      });
+      const byKey = {};
+      for (const s of (d.spec_results || [])) {
+        // 出参 → 展示字段（页面零计算：元/百分号都在这里格式化，wxml 只摆位）
+        byKey[s.spec_key] = {
+          spec_key: s.spec_key,
+          name: s.name,
+          coef: s.coef,
+          price_fen: s.price_fen,
+          unit_cost_fen: s.unit_cost_fen,
+          // R547（M1）：没填克重 ⇒ 云端不出数（need_portion）。这里**不许把 0 元当成本显示**
+          //   （0 成本 = 100% 毛利，是最容易被老板当真的错数）⇒ 成本位留空、毛利率不出。
+          needPortion: !!s.need_portion,
+          costYuan: s.need_portion ? '' : api.fenToYuan(s.unit_cost_fen || 0, 2),
+          marginPct: s.need_portion ? null : s.gross_margin_pct,
+          suggestYuan: (!s.need_portion && s.reverse_price_fen > 0) ? api.fenToYuan(s.reverse_price_fen, 2) : '',
+        };
+      }
+      this.setData({
+        previewCostFen: d.unit_cost_fen || 0,
+        previewCost: d.unit_cost_fen ? api.fenToYuan(d.unit_cost_fen, 2) : '',
+        stickyMargin: this.marginTextOf(d.unit_cost_fen || 0, this.data.priceYuan),
+        specRows: this.data.specRows.map((r) => (r.enabled && byKey[r.spec_key] ? Object.assign({}, r, { result: byKey[r.spec_key] }) : r)),
+      });
+    } catch (e) { api.toastError(e); }
+  },
+  // 用「按目标毛利率的建议价」回填该规格售价（老板可再手改）
+  useSpecSuggest(e) {
+    const key = e.currentTarget.dataset.spec;
+    this.setData({
+      specRows: this.data.specRows.map((r) => {
+        if (r.spec_key !== key || !r.result || !(r.result.reverse_price_fen > 0)) return r;
+        return Object.assign({}, r, { priceYuan: api.fenToYuan(r.result.reverse_price_fen, 2) });
+      }),
+    });
+  },
+
+  // 保存 → saveCostCard（后端重算落库；编辑 = 带 card_code 另存新版本）
+  async onSave() {
+    // 🔴 R547（M5）：读不到卡（loadMissing）⇒ **一律不保存**。
+    //   按钮虽然已隐藏，但页面里还有别的入口可能回到保存路径（返回键/二次渲染/未来新增的入口），
+    //   这条判据是最后一道闸：保住"空白表单不会被当成用户本意写进版本链"。
+    if (this.data.loadMissing) { wx.showToast({ title: TERMS.card.loadMissingRetry, icon: 'none' }); return; }
+    if (!this.data.name.trim()) { wx.showToast({ title: TERMS.card.dishName, icon: 'none' }); return; }
+    // 🔴 R426（队列 #32）：金额栏读不成 ⇒ **拦在提交前**。为什么必须这里拦：
+    //   本页金额走 `Number(x) || 0`，读不成会变成 0 / NaN 一路到云端（0 是合法金额 ⇒ 无从拒），
+    //   而 `utils/api.js` 会把后端 fail 的 msg 覆盖成通用文案（R271）⇒ 真出错老板也不知道是哪一格。
+    //   横幅只能提醒，**保存这条路必须硬拦**，否则「提示归提示、照样存 0 元卡」。
+    if (this.checkAmounts() > 0) {
+      // title 留空（系统默认「提示」）—— 不为一句标题新造文案（新增可见文案要走 i18n 三处，代价大于收益）
+      // R547（M8）：出货量那条与金额那条**分开讲**，否则老板按"纯数字"去改一格金额，改完还是存不了。
+      // R597：三种"读不成/没填"分开讲 —— 金额 / 出货量 / 用量，各自改各自的格。
+      const tips = [];
+      if (this.data.badAmountCount > 0) tips.push(TERMS.ui.amountBadTip);
+      if (this._badQty) tips.push(TERMS.ui.batchOutputBadTip);
+      if (this.data.badUsageCount > 0) tips.push(TERMS.card.usageBadTip);
+      wx.showModal({ content: tips.join('\n'), showCancel: false, confirmText: TERMS.buttons.gotIt });
+      return;
+    }
+    // 售价低于成本预警（M3.7 #15）：先反算拿成本对比，不阻断保存
+    const priceFen = Math.round(Number(((Number(this.data.priceYuan) || 0) * 100).toFixed(10)));
+    if (priceFen > 0) {
+      const linesInput = this.buildCalcLines();
+      if (linesInput) {
+        let costFen = 0;
+        try {
+          const d = await api.call('calcBom', {
+            lines: linesInput,
+            mode: this.data.calcMode,
+            batch_output: this.data.calcMode === 'B' ? Number(this.data.batchOutput) : 0,
+            loss_pct: Number(this.data.lossRate) || 0,
+            auxYuan: Number(this.data.auxYuan) || 0,
+            target_margin_pct: 0,
+          });
+          costFen = d.unit_cost_fen || 0;
+        } catch (e) { /* 预警失败不阻断 */ }
+        if (costFen > 0 && priceFen < costFen && !this.data.hasPreset) {
+          wx.showModal({
+            title: TERMS.card.warnPriceBelowCost,
+            content: TERMS.card.warnPriceBelowCost,
+            confirmColor: '#e74c3c',
+            cancelText: TERMS.buttons.cancel,
+            success: (r) => { if (r.confirm) this.doSave(); },
+          });
+          return;
+        }
+      }
+    }
+    this.doSave();
+  },
+
+  async doSave() {
+    const lines = [];
+    // 🔴 R297：保存前同样先过出成率上界（与反算同一入口，两条路口径一致）
+    if (this.badYieldOf()) {
+      wx.showToast({ title: TERMS.card.yieldRangeErr, icon: 'none' });
+      return;
+    }
+    // M3.16（批次 C）套餐：明细行 = 子卡引用行（sub_card_ref + 份数），不走原料/手工分支。
+    if (this.data.cardType === '3') {
+      for (const cl of this.data.comboLines) {
+        if (!cl.sub_card_ref) { wx.showToast({ title: TERMS.card.comboSubCardPh, icon: 'none' }); return; }
+        const qty = Number(cl.qty);
+        if (!isFinite(qty) || qty <= 0) { wx.showToast({ title: TERMS.card.comboSubCardQty, icon: 'none' }); return; }
+        lines.push({ sub_card_ref: cl.sub_card_ref, qty: qty });
+      }
+      if (lines.length === 0) { wx.showToast({ title: TERMS.card.comboSubCardPh, icon: 'none' }); return; }
+    } else {
+      for (const l of this.data.lines) {
+        if (!l.qty) continue;
+        // round149：同 buildCalcLines —— 提交前换算到基准单位(克)，云端契约与引擎零改动
+        const qtyBase = units.toBase(l.qty, l.qty_unit);
+        if (!(qtyBase > 0)) continue;
+        // round150：组件类型随行上云（规格缩放的唯一依据）；缺省 main（服务端同样兜底）
+        const kind = normalizeKind(l.line_kind);
+        if (l.input_type === 2) {
+          const wan = manualNetUnitWan(l.unit_price_yuan, l.yield_rate, l.price_unit);
+          if (wan <= 0) {
+            // 🔴 R297：区分「单价没填」与「出成率越界」—— 改前两者共用「单价」提示，
+            //   老板填错出成率却被告知"单价有问题"，等于指错路（且越界那条本会**静默按 100 算**）。
+            const bad = units.yieldRateOf(l.yield_rate) === null;
+            wx.showToast({ title: bad ? TERMS.card.yieldRangeErr : TERMS.card.manualUnitPrice, icon: 'none' });
+            return;
+          }
+          lines.push({ input_type: 2, name: (l.material_name || '').trim(), qty: qtyBase, net_unit_cost: wan, line_kind: kind });
+        } else {
+          if (!l.material_id) continue;
+          lines.push({ material_id: l.material_id, qty: qtyBase, line_kind: kind });
+        }
+      }
+      if (lines.length === 0) { wx.showToast({ title: TERMS.card.material, icon: 'none' }); return; }
+    }
+    const card = {
+      name: this.data.name.trim(),
+      mode: this.data.calcMode,
+      lines,
+      loss_pct: Number(this.data.lossRate) || 0,
+      auxYuan: Number(this.data.auxYuan) || 0,
+      priceYuan: Number(this.data.priceYuan) || 0,
+      category: this.data.category,
+      tags: this.data.tags,
+      activity_price_yuan: Number(this.data.activityPriceYuan) || 0,
+      // round150：规格只送 **键 + 售价**（系数与可读名由服务端单源补齐并**快照**落库）
+      specs: this.collectSpecs(),
+    };
+    // M3.16：套餐卡类型（3）上云
+    if (this.data.cardType === '3') card.card_type = 3;
+    if (this.data.calcMode === 'B') card.batch_output = Number(this.data.batchOutput) || 0;
+    if (this.data.card_code) card.card_code = this.data.card_code;
+    // 分类归一化：只 trim（去首尾空格）。⚠️ 不做"折叠中间空格/同义词归并"——
+    //   老板填"大口吃肉"是有意的营销栏目名，程序替他改字会造成"我明明填了却变了"。
+    card.category = String(this.data.category || '').trim();
+    if (card.category) {
+      try {
+        const hist = wx.getStorageSync(EDIT_CATS_KEY) || [];
+        const arr = Array.isArray(hist) ? hist.slice() : [];
+        if (arr.indexOf(card.category) < 0) arr.push(card.category);
+        wx.setStorageSync(EDIT_CATS_KEY, arr.slice(-40));
+      } catch (err) { /* 本地字典失败不影响保存 */ }
+    }
+    if (this.data.saving) return;   // 连击保护：重复提交会生成两个版本
+    // 🔴 H3（2026-10-27 审计）：闸门必须在**首个 await 之前**关上。
+    //   原写法先 `await confirmDupName` 再置位 ⇒ 连点两次都能通过上面那行，
+    //   回来后各发一次 saveCostCard（幂等键各取 Date.now()）⇒ 落两张同名卡。
+    this.setData({ saving: true });
+    // 🔴 R443：新建态先查同名卡（编辑态不必查 —— 改的是同一张）
+    if (!this.data.isEdit && !(await this.confirmDupName(card.name))) { this.setData({ saving: false }); return; }
+    // ⚠️ 必须在 afterSaved 之前取：afterSaved 会把 isEdit 清成 false（转新建态）
+    const wasEdit = this.data.isEdit;
+    try {
+      ui.setTitle(TERMS.buttons.save);
+      const out = await api.call('saveCostCard', { card, client_request_id: 'cc_' + Date.now() });
+      if (wasEdit) {
+        // 编辑态：**改完即走**（老板改的是一道具体的菜，不是要连录一批）。
+        //   ⚠️ 这里**不能**走 afterSaved —— 那会把 card_code 清掉，老板以为还在改这道菜。
+        // 🔴 R443：保存回执 —— 不只说「已保存」，直接把这张卡的结果报给老板，
+        //   他当场就能判断对不对，不用再点进版本页核对。数字全部来自服务端返回值。
+        const o = out || {};
+        wx.showModal({
+          title: TERMS.ui.savedDone,
+          content: this.fillTpl(TERMS.card.savedReceipt, {
+            cost: api.fenToYuan(o.total_cost_fen || 0, 2),
+            gross: api.fenToYuan(o.gross_profit_fen || 0, 2),
+            margin: o.gross_margin_pct != null ? o.gross_margin_pct : '—',
+          }),
+          showCancel: false,
+          success: () => wx.navigateBack(),
+        });
+      } else {
+        // round156（新增态）：**不跳走**。改前是 `setTimeout(navigateBack, 600)` —— 存一道菜就被踢回列表，
+        //   录 30 道菜要来回 60 次（李老师「100 道菜品，来回查找会很麻烦」的痛点之一）。
+        this.afterSaved(card.name);
+      }
+    } catch (e) {
+      this.setData({ saving: false });
+      // 🔴 A10（2026-11-05）：套餐已**并入成本卡配额**，云端不再返回套餐专属的 FEATURE_LOCKED
+      //   ⇒ 这里不再有 `openPaywall('combo')` 分支。套餐超限走通用配额错误码（FREE_LIMIT_EXCEEDED），
+      //   由 `api.toastError` 统一映射成人话，与普通成本卡超限**同一个提示**。
+      api.toastError(e);
+    }
+  },
+
+  // round156：连续录入 —— 保存成功后**留在本页**，清掉这道菜特有的字段，接着录下一道。
+  //   🔴 必须清 `card_code` + `isEdit`：否则第二道菜会被当成「编辑第一道」⇒ 后端按同一 card_code
+  //      **另存新版本**，第一道菜的内容被静默顶掉。这是**数据正确性**问题，不是手感问题。
+  //   ✅ **刻意保留门店级默认**（核算模式 / 损耗率 / 辅料 / 分类 / 标签 / 目标毛利率）：
+  //      连续录同一家店的同类菜时这些大概率一样，留着才叫"连续"。
+  afterSaved(name) {
+    this.setData({
+      savedName: name || '',
+      saving: false,
+      // —— 这道菜特有的：清 ——
+      name: '',
+      lines: renumber([emptyLine()]),
+      priceYuan: '',
+      activityPriceYuan: '',
+      batchOutput: '',
+      reversePriceFen: 0, previewCostFen: 0, reverseResultPreview: '', previewCost: '',
+      // 🔴 R297-⑥（审计 M3-B10）：团购那一组**同属「这道菜特有」**，必须跟 priceYuan 一起清。
+      //   原先只清了反算类结果、漏了团购 ⇒ 连续录下一道菜时，屏上还挂着上一道菜的
+      //   佣金/到手/毛利（含红字「比堂食低」）—— 那组数字对新菜根本不成立。
+      //   ⚠️ 与上方「刻意保留的门店级默认」（核算模式/损耗率/辅料/分类/标签/目标毛利率）不同类：
+      //      团购价与补贴是逐菜填的，留着就是错的。
+      grouponPriceYuan: '', grouponRate: '', grouponPromoYuan: '', grouponView: null,
+      specRows: freshSpecRows(),
+      // M3.16（批次 C）套餐：清空套餐特有字段（连续录入下一道默认回到单品）
+      cardType: '1',
+      comboLines: [],
+      comboInsight: null,
+      // M3.20（批次 B 收尾）模板：清空选中项（连续录入下一道回到空模板态）
+      tplPicked: -1,
+      // —— 编辑态 → 新建态（见上 🔴）——
+      isEdit: false,
+      card_code: '',
+      catChips: this.buildCatChips(this.data.category),
+    });
+    wx.showToast({ title: TERMS.card.savedOk, icon: 'success' });
+    wx.pageScrollTo({ scrollTop: 0, duration: 200 });
+  },
+
+  // 连续录入的显式出口（横幅上的「返回列表」）——不打断，也不把人困在本页
+  backToList() { wx.navigateBack(); },
+});

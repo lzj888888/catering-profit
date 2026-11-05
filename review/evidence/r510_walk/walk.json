@@ -1,0 +1,170 @@
+[
+  {
+    "k": "connected",
+    "v": true
+  },
+  {
+    "k": "routes",
+    "v": [
+      "subpkg/biz/month/input"
+    ]
+  },
+  {
+    "k": "poll0",
+    "v": {
+      "n": 0,
+      "month": "2026-10"
+    }
+  },
+  {
+    "k": "poll1",
+    "v": {
+      "n": 0,
+      "month": "2026-10"
+    }
+  },
+  {
+    "k": "poll2",
+    "v": {
+      "n": 0,
+      "month": "2026-10"
+    }
+  },
+  {
+    "k": "poll3",
+    "v": {
+      "n": 0,
+      "month": "2026-10"
+    }
+  },
+  {
+    "k": "poll4",
+    "v": {
+      "n": 0,
+      "month": "2026-10"
+    }
+  },
+  {
+    "k": "poll5",
+    "v": {
+      "n": 0,
+      "month": "2026-10"
+    }
+  },
+  {
+    "k": "poll6",
+    "v": {
+      "n": 0,
+      "month": "2026-10"
+    }
+  },
+  {
+    "k": "poll7",
+    "v": {
+      "n": 0,
+      "month": "2026-10"
+    }
+  },
+  {
+    "k": "poll8",
+    "v": {
+      "n": 0,
+      "month": "2026-10"
+    }
+  },
+  {
+    "k": "poll9",
+    "v": {
+      "n": 0,
+      "month": "2026-10"
+    }
+  },
+  {
+    "k": "groups_ready",
+    "v": false
+  },
+  {
+    "k": "S1_initial",
+    "v": {
+      "route": "subpkg/biz/month/input",
+      "month": "2026-10",
+      "takeoutTrack": "gross",
+      "takeoutMode": "detail",
+      "hasTakeawayGroup": false,
+      "netRowCount": 0,
+      "netRows": [],
+      "labels": {
+        "secTitle": "外卖实际到账怎么填",
+        "trackNet": "只填实际到账（推荐）",
+        "trackGross": "补录平台明细",
+        "netPh": "结算金额（实际到账·净额）（元）",
+        "goodsField": "商品总价",
+        "packField": "打包费",
+        "subsidyField": "商家承担全部补贴（合计）",
+        "ordersField": "有效订单数"
+      },
+      "detailRowCount": 4,
+      "detailSample": {
+        "platform": "美团外卖",
+        "goods": "5000.00",
+        "pack": "",
+        "subsidy": "",
+        "qty": "0",
+        "subtotal": "5000.00",
+        "fixed": true
+      }
+    }
+  },
+  {
+    "k": "S2_gross",
+    "v": {
+      "takeoutTrack": "gross",
+      "takeoutMode": "detail",
+      "rowCount": 4,
+      "rows": [
+        {
+          "platform": "美团外卖",
+          "goods": "5000.00",
+          "pack": "",
+          "subsidy": "",
+          "qty": "0"
+        },
+        {
+          "platform": "淘宝闪购",
+          "goods": "2500.00",
+          "pack": "",
+          "subsidy": "",
+          "qty": "0"
+        },
+        {
+          "platform": "京东外卖",
+          "goods": "",
+          "pack": "",
+          "subsidy": "",
+          "qty": ""
+        },
+        {
+          "platform": "其他外卖",
+          "goods": "",
+          "pack": "",
+          "subsidy": "",
+          "qty": ""
+        }
+      ],
+      "sum": "7500.00"
+    }
+  },
+  {
+    "k": "S3_net_again",
+    "v": {
+      "takeoutTrack": "net",
+      "takeoutMode": "fast",
+      "twSelfCheck": "外卖收入已填，营销费用里的佣金与配送费还是空的 —— 这两项记得按账单记上，不然利润会偏高。",
+      "twSubsidy": ""
+    }
+  },
+  {
+    "k": "screenshot",
+    "v": "ok"
+  }
+]

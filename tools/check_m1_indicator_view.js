@@ -22,8 +22,8 @@ const read = (p) => fs.readFileSync(rel(p), 'utf8');
 
 const REF_REL = 'cloudfunctions/common/indicatorRef.js';
 const TERMS_REL = 'miniprogram/i18n/terms.js';
-const PAGE_JS_REL = 'pages/month/result.js';
-const PAGE_WXML_REL = 'pages/month/result.wxml';
+const PAGE_JS_REL = 'subpkg/biz/month/result.js';
+const PAGE_WXML_REL = 'subpkg/biz/month/result.wxml';
 const GETLEDGER_REL = 'cloudfunctions/getLedger/index.js';
 
 let pass = 0, failN = 0;
@@ -148,6 +148,52 @@ check('C-⑨ 结果页新增文案已进 terms（三处同步里的术语侧）'
 check('C-⑩ 结果页 js 的 t 块已映射这些新文案（少一处 wxml 会取空串）',
   /indTitle:\s*TERMS\.resultPage\.indTitle/.test(jsSrc) && /indBand:\s*TERMS\.m2\.indBand/.test(jsSrc));
 
+// ================= F 体检卡「依据折叠」（R314）=================
+// 为什么必须机器守：折叠这类改动的失效方式**全是静默的** ——
+//   默认值改回 true ⇒ 又变回 6 行（观感回退，零报错）；
+//   bindtap 写错一个字母 ⇒ 点了没反应（零报错）；
+//   `beMore` 在 js 里没有 data 键 ⇒ 恒 undefined ⇒ 恒收起（点了永远不展开，零报错）。
+console.log('');
+console.log('===== F 体检卡依据折叠（R314）=====');
+check('F-① wxml 有折叠控件且绑定 onToggleBeMore（不是死代码）',
+  /bindtap="onToggleBeMore"/.test(wxmlCode) && /\{\{beMore \?/.test(wxmlCode));
+check('F-② handler 真翻转 beMore（不是空函数）',
+  /onToggleBeMore\s*\(\s*\)\s*\{[\s\S]{0,200}setData\s*\(\s*\{\s*beMore\s*:\s*!this\.data\.beMore/.test(jsCode));
+const dataSeg = (jsCode.match(/data:\s*\{([\s\S]{0,1200})/) || [])[1] || '';
+check('F-③ 默认**收起**（data 里 beMore: false，不是 true）', dataSeg.indexOf('beMore: false') >= 0);
+const foldSeg = (wxmlCode.match(/<block wx:if="\{\{beMore\}\}">([\s\S]*?)<\/block>/) || [])[1] || '';
+// 🔴 F-④ **判据于 2026-10-25 变更（李老师真机亲自拍板，非"改判据迎合代码"）**：
+//   原判据＝「保本区间 / 达标营业额 / 房租归因**都在折叠区内**」（R314 定的"依据折叠"）。
+//   李老师真机反馈：「这个结论恰恰倒该露出来，大家很关注这个（做到多少才不亏），藏起来不行」。
+//   ⇒ 定案改为：**结论（保本营收 / 达标营业额）露出，依据（回本路径 / 毛利结构 / 房租归因）才折叠**。
+//   故本条改为判「该露的在外面、该藏的在里面」，两头都守住（不是放松）。
+check('F-④ 结论露出、依据折叠（R480/R482 定案：盈亏平衡点 / 达标营业额在折叠区**外**，房租归因在**内**）',
+  foldSeg.indexOf('bePoint') < 0 && foldSeg.indexOf('beHealthy') < 0
+  && /beAttrLead/.test(foldSeg)
+  && wxmlCode.indexOf('t.bePoint') < wxmlCode.indexOf('<block wx:if="{{beMore}}">')
+  && wxmlCode.indexOf('t.beHealthy') < wxmlCode.indexOf('<block wx:if="{{beMore}}">'));
+check('F-⑤ 自失效护栏：默认 true 的样本必须判红（防本组恒绿）',
+  'data: { beMore: true, t: {} }'.indexOf('beMore: false') < 0);
+
+// ================= G 回本两条路（R315）=================
+// 为什么机器守：亏损月如果只给"营收要涨 X%"，等于只指一条路；而"降变动成本"这条
+//   必须真的算出来（v 压到 1 - F/R），不能写死一句空话；反过来 F >= R 时又**不能**
+//   给这条路（v 要压到 <=0，不可能）—— 这两种失效都零报错。
+console.log('');
+console.log('===== G 回本两条路（R315）=====');
+const BE2 = require('../utils/breakeven.js');
+check('G-① recoverPaths 已导出', typeof BE2.recoverPaths === 'function');
+const rp9 = BE2.recoverPaths({ revenueFen: 9200000, fixedFen: 3282800, variableFen: 6687300 });
+check('G-② 锚点：9 月样本回本营收 12019644 / 变动率压到 64.3 / 需降 8.4 个点',
+  rp9.ok === true && rp9.needRevenueFen === 12019644 && rp9.targetVarRatePct === 64.3 && rp9.varGapPp === 8.4);
+const rpF = BE2.recoverPaths({ revenueFen: 100000, fixedFen: 120000, variableFen: 10000 });
+check('G-③ 固定成本超过营收时，路径二**不存在**（不许编「压到 0%」）',
+  rpF.ok === true && rpF.varPathPossible === false);
+check('G-④ 页面亏损月切到 pathText、赚钱月才显示 marginText',
+  /pathText:/.test(jsCode) && /BE\.recoverPaths\(/.test(jsCode) && /safeMarginPct < 0\) \? ''/.test(jsCode));
+check('G-⑤ 自失效护栏：把 F>R 的样本判成「路径二可行」必须被抓（防本组恒绿）',
+  BE2.recoverPaths({ revenueFen: 100000, fixedFen: 120000, variableFen: 10000 }).varPathPossible !== true);
+
 // ================= D 工具自证（判据不是恒真）=================
 console.log('\n===== D 工具自证（正负样本互证）=====');
 const S1 = 'var a = 1; // 阈值 15%\nvar b = 2;';
@@ -161,6 +207,54 @@ check('D-⑤ hasHardcodedPct 正样本：写死的「房租 15%」被抓住', ha
 check('D-⑥ hasHardcodedPct 负样本：模板 {{x}}% 不误伤', !hasHardcodedPct('{{item.pct}}%'));
 check('D-⑦ missingItemNames 正样本：全命中返回空', missingItemNames({ rent: ['房租'] }, ['房租', '电费']).length === 0);
 check('D-⑧ missingItemNames 负样本：失配能被列出', missingItemNames({ rent: ['租金'] }, ['房租']).join() === 'rent:租金');
+
+// ================= H 口径同源（R480）=================
+console.log('\n===== H 口径同源：达标营业额必须与指标卡同一套「业态 × 城市」区间 =====');
+// 为什么单独立这一段：
+//   原先「达标营业额」用前端**写死**的房租 15% / 人工 22% / 房租目标 12%，而下方指标卡的
+//   参考带来自后端 indicatorRef（分业态 × 分城市）⇒ **同一页两个"正常"口径**：
+//   老板改业态时只有下面那块跟着变，上面这块纹丝不动（真机：一块能改、一块不能改，不知信哪个）。
+// ⚠️ 旧判据 hasHardcodedPct **抓不到这个** —— 它只认「数字 + %」，而这里是 `hiPct: 15`（无百分号），
+//    所以必须单立一条（同一族病：判据在真因之外的位置全绿）。
+const hasHardcodedHi = (s) => /hiPct:\s*(15|22)\b/.test(s) || /targetRatePct:\s*12\b/.test(s);
+check('H-① buildBreakeven 收 inds 参数（后端指标进得来）', /buildBreakeven\(d, res, prevProfitFen, inds\)/.test(jsCode));
+check('H-② 调用处真的把 inds 传进去了', /buildBreakeven\(d, res, prevProfitFen, inds\)/.test(jsCode));
+check('H-③ 达标营业额的房租/人工上限不再写死（改用后端指标）',
+  /hiPct: rentHi/.test(jsCode) && /hiPct: laborHi/.test(jsCode) && !/hiPct:\s*(15|22)\b/.test(jsCode));
+check('H-④ 房租目标率不再写死 12（改用该业态区间中点）',
+  /targetRatePct: rentTarget/.test(jsCode) && !/targetRatePct:\s*12\b/.test(jsCode));
+check('H-⑤ 取不到后端指标时仍有兜底（零回归，不许硬崩）',
+  /hiOf\('rent',\s*15\)/.test(jsCode) && /hiOf\('labor',\s*22\)/.test(jsCode));
+check('H-⑥ 页面把「按哪个业态算的」写在旁边（说了才不作假）',
+  /healthyScopeText/.test(jsCode) && /be\.healthyScopeText/.test(wxmlCode));
+check('H-⑦ terms 有 beHealthyScope 文案键', /beHealthyScope:/.test(termsSrc));
+const H_VARIANT = jsCode.replace(/hiPct: rentHi/, 'hiPct: 15').replace(/hiPct: laborHi/, 'hiPct: 22');
+check('H-⑧ 反恒真：改回写死 15/22 的变体必须被判红（证明 H-③ 不是恒真）',
+  H_VARIANT !== jsCode && hasHardcodedHi(H_VARIANT));
+// 🔴 R480 真机暴露：**顺序本身就是判据** —— `const inds` 若写在 `const be` 之后，
+//   同一块作用域内触发 TDZ ⇒ be 拿不到业态区间、回落写死常数 ⇒ 改业态时数字不跟着变。
+//   静态判据全绿也照样崩（判据不读执行顺序就看不见），故单独立一条。
+const I_INDS = jsCode.indexOf('const inds = this.decorateInds(');
+const I_BE = jsCode.indexOf('buildBreakeven(d, res, prevProfitFen, inds)');
+check('H-⑨ 顺序即判据：inds 的定义必须**早于** be 的计算（晚一步就 TDZ）',
+  I_INDS >= 0 && I_BE >= 0 && I_INDS < I_BE, `inds@${I_INDS} / be@${I_BE}`);
+const I_FOLD = wxmlCode.indexOf('wx:if="{{beMore}}"');
+check('H-⑩ 结论必须露出来：盈亏平衡点 / 达标营业额在折叠块**之外**（老板最关心的不该藏）',
+  I_FOLD >= 0 && wxmlCode.indexOf('t.bePoint') < I_FOLD && wxmlCode.indexOf('t.beHealthy') < I_FOLD,
+  `fold@${I_FOLD}`);
+// 🔴 R482（李老师追问「录完确定的数，为什么出来模糊的数」）：
+//   确定值（固定成本 ÷ 边际贡献率）**必须**在结论层；±10% 区间是我方加的容错带，
+//   只能当脚注，且必须写明来源 —— 否则老板会以为"这套系统算不准"。
+check('H-⑫ 结论层给的是**确定的**盈亏平衡点（不是区间）',
+  /pointText/.test(jsCode) && /breakevenFen/.test(jsCode)
+  && wxmlCode.indexOf('t.bePoint') >= 0 && wxmlCode.indexOf('t.bePoint') < I_FOLD);
+check('H-⑬ 区间降级为脚注且标明来源（不许让老板以为是算不准）',
+  /pointNoteText/.test(jsCode) && wxmlCode.indexOf('be.pointNoteText') >= 0
+  && wxmlCode.indexOf('be.pointNoteText') < I_FOLD
+  && /bePointNote/.test(termsSrc));
+const H_VARIANT2 = jsCode.replace('const inds = this.decorateInds(', 'const __moved_inds = this.decorateInds(');
+check('H-⑪ 反恒真：把 inds 定义挪走（顺序失效）的变体必须被判红',
+  H_VARIANT2 !== jsCode && H_VARIANT2.indexOf('const inds = this.decorateInds(') < 0);
 
 // ================= E 下界：断言数不被悄悄删小 =================
 console.log('\n===== E 下界 =====');

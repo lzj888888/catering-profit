@@ -1,0 +1,37 @@
+- initialize
+
+(node:28628) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)
+√ IDE server has started, listening on http://127.0.0.1:10896
+- deploy cloudfunctions
+- fetching cloud env list
+- [saveLedger] Fetching info of cloudfunction saveLedger
+√ [saveLedger] cloudfunction saveLedger exists in the cloud, will update it
+- [saveLedger] upload cloud function saveLedger - preparing
+√ [saveLedger] upload cloud function saveLedger - deploy
+- [saveLedger] Fetching info of cloudfunction saveLedger
+√ [saveLedger] cloudfunction saveLedger exists in the cloud, will update it
+- [saveLedger] upload cloud function saveLedger - preparing
+√ [saveLedger] upload cloud function saveLedger - deploy
+√ deploy cloudfunctions
+
+┌────────────┬─────────┬────────────┬───────────┐
+│ (index)    │ success │ filesCount │ packSize  │
+├────────────┼─────────┼────────────┼───────────┤
+│ saveLedger │ true    │ 22         │ '62.8 KB' │
+└────────────┴─────────┴────────────┴───────────┘
+- initialize
+
+(node:32880) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)
+√ IDE server has started, listening on http://127.0.0.1:10896
+- query cloudfunctions info
+- Preparing to fetch cloudfunctions info
+- Fetching info of cloudfunction saveLedger
+√ query cloudfunctions info
+
+┌────────────┬──────────┬─────────┬───────────────┐
+│ (index)    │ status   │ timeout │ runtime       │
+├────────────┼──────────┼─────────┼───────────────┤
+│ saveLedger │ 'Active' │ 20      │ 'Nodejs16.13' │
+└────────────┴──────────┴─────────┴───────────────┘

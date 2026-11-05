@@ -10,6 +10,25 @@
     <!-- 事后复盘口径（v1.2 §M3.35 原文，落 card 命名空间） -->
     <view class="afterfact">{{t.reviewAfterFact}}</view>
 
+    <!-- ===== R301：统计期间（**必须先于任何数字**）=====
+         为什么放最上面：在此之前本榜是**跨月累计**却按"当前月"呈现 ⇒ 老板会以为"这道菜这个月卖过"
+         （真样本就是 7 天表，"一段"冒充"整月"）。**期间口径决定下面每个数怎么读**，不能埋在末尾。
+         · 月份选择用系统 `<picker fields="month">`（零新术语、零新数据源）
+         · 期间文案来自云端回的 `range`（`rangeText`），**前端不猜** -->
+    <view class="field">
+      <text class="lbl">{{t.reviewMonthPick}}</text>
+      <picker mode="date" fields="month" value="{{month}}" bindchange="onMonth">
+        <view class="val-input">{{month}}</view>
+      </picker>
+    </view>
+    <view class="muted">{{rangeText}}</view>
+
+    <!-- ===== R299：数据截断的**可见降级** =====
+         云函数出参 `truncated`（`dataAdapter.js::listAll` 的契约要求"必须透传到出参、可见降级"），
+         复盘 / 成本卡 / 账单三次读取任一命中 ⇒ 屏幕上看到的可能不全。
+         🔴 放在最上方：这是"整页数字还准不准"的前提，不能折进「更多分析」里。 -->
+    <view class="muted warn-line" wx:if="{{truncated}}">{{t.dataTruncated}}</view>
+
     <!-- ===== R281 O2：顶部红色待办条（未匹配菜品）=====
          原来未匹配区埋在 21 行堂食榜 + 一长串清单之后 ⇒ 老板进来看不到"还有活没干"。
          ⇒ 顶部红条 + 「去挂」直达（滚到下方未匹配区）；详情仍在下方，**不删只提提示**。 -->
@@ -83,15 +102,57 @@
       <view class="muted">{{t.reviewEmpty}}</view>
     </view>
 
-    <!-- 堂食榜（两来源分开呈现；外卖空态另列，不混榜） -->
-    <view class="section-title">{{t.reviewDineIn}} · {{t.reviewRankTitle}}</view>
+    <!-- ===== R307：占比拆分参考榜（**估算**）=====
+         为什么只放空态：实测销量拿不到时，这是唯一能让 M3「打开就有东西看」的路（见 utils/shareSplit.js 头注）。
+         放在空态 ⇒ **天然不与实测榜混排**（R306 铁律①），不需要额外做互斥逻辑。
+         ⚠️ 结果区必须固定挂一行「按你填的占比估算，不是实测」(splitNote) —— 不许让老板以为是实测。 -->
+    <view class="card2" wx:if="{{empty && splitCards.length}}">
+      <view class="cell drill-head" bindtap="onSplitOpen">
+        <text class="lbl">{{t.splitTitle}}</text>
+        <text class="val">{{splitOpen ? '▾' : '▸'}}</text>
+      </view>
+      <block wx:if="{{splitOpen}}">
+        <view class="muted">{{t.splitIntro}}</view>
+        <view class="muted">{{t.splitOrderLabel}}：{{splitHasOrder ? splitOrderCount : '—'}}</view>
+        <!-- 没有有效订单数 ⇒ 不算（**不编 0 单**），只给去补的指引 -->
+        <view class="warn" wx:if="{{!splitHasOrder}}">{{t.splitNoOrder}}</view>
+        <block wx:if="{{splitHasOrder}}">
+          <view class="cell" wx:for="{{splitRows}}" wx:key="rid" wx:for-index="si">
+            <picker class="lbl" range="{{splitOptions}}" value="{{item.cardIdx}}" data-idx="{{si}}" bindchange="onSplitPick">
+              <text>{{item.name || t.splitPickPh}}</text>
+            </picker>
+            <input class="val" type="digit" value="{{item.pctText}}" placeholder="{{t.splitPctPh}}"
+              data-idx="{{si}}" bindinput="onSplitPct" adjust-position="{{true}}" cursor-spacing="20" />
+            <text class="btn-del" data-idx="{{si}}" bindtap="onSplitDel">×</text>
+          </view>
+          <view class="group-ops">
+            <button class="btn-mini" wx:if="{{splitRows.length < splitMax}}" bindtap="onSplitAdd">{{t.splitAdd}}</button>
+            <button class="btn-mini" bindtap="onSplitCalc">{{t.splitCalc}}</button>
+          </view>
+          <view class="warn" wx:if="{{splitErr}}">{{splitErr}}</view>
+          <block wx:if="{{splitResult}}">
+            <view class="muted">{{t.splitResultTitle}} · {{t.splitTotal}} {{t.cur}}{{splitResult.sumContribText}}</view>
+            <view class="cell" wx:for="{{splitResult.list}}" wx:key="index" wx:for-index="ri">
+              <text class="lbl">{{item.name}}<text class="warn" wx:if="{{item.loss}}"> {{t.splitLossTag}}</text></text>
+              <text class="val">{{t.splitQty}} {{item.qtyText}} · {{t.splitContrib}} {{t.cur}}{{item.contribText}}</text>
+            </view>
+            <view class="muted">{{t.splitNote}}</view>
+          </block>
+        </block>
+      </block>
+    </view>
+
+    <!-- 堂食榜（两来源分开呈现；外卖空态另列，不混榜）
+         🔴 A8（2026-11-05）：免费档只给「销量排行」—— 表头与行都**隐藏毛利/毛利率两列**
+         （用 wx:if 而不是显示「—」：五列表头写着"毛利排行榜"、下面全是横杠，老板会以为页面坏了）。 -->
+    <view class="section-title">{{t.reviewDineIn}} · {{tier === 'free' ? t.reviewFreeRankTitle : t.reviewRankTitle}}</view>
     <view class="card2" wx:if="{{dineIn.length}}">
       <view class="row head">
         <text class="c-name">{{t.reviewDish}}</text>
         <text class="c-qty">{{t.reviewQty}}</text>
         <text class="c-num">{{t.reviewRevenue}}</text>
-        <text class="c-num">{{t.reviewGross}}</text>
-        <text class="c-num">{{t.reviewMargin}}</text>
+        <text class="c-num" wx:if="{{tier !== 'free'}}">{{t.reviewGross}}</text>
+        <text class="c-num" wx:if="{{tier !== 'free'}}">{{t.reviewMargin}}</text>
       </view>
       <view class="row {{item.below ? 'below' : ''}}" wx:for="{{dineIn}}" wx:key="name">
         <view class="c-name">
@@ -100,18 +161,40 @@
         </view>
         <text class="c-qty">{{item.qty}}</text>
         <text class="c-num">{{t.cur}}{{item.revenueText}}</text>
-        <text class="c-num">{{t.cur}}{{item.grossText}}</text>
-        <text class="c-num">{{item.marginText}}</text>
+        <text class="c-num" wx:if="{{tier !== 'free'}}">{{t.cur}}{{item.grossText}}</text>
+        <text class="c-num" wx:if="{{tier !== 'free'}}">{{item.marginText}}</text>
       </view>
     </view>
 
-    <!-- 汇总 -->
+    <!-- A8 免费档说明 + 升级入口（付费档不渲染）
+         措辞顺序：先讲他已拿到什么，再讲还差什么 —— 见 terms.js reviewFree* 注释。 -->
+    <view class="card2" wx:if="{{tier === 'free'}}">
+      <view class="subtitle">{{t.reviewFreeTitle}}</view>
+      <view class="muted">{{t.reviewFreeBody}}</view>
+      <view class="muted" wx:if="{{freeMoreText}}">{{freeMoreText}}</view>
+      <view class="field-save">
+        <button class="btn btn-small ghost" bindtap="goUpgrade">{{t.reviewFreeBtn}}</button>
+      </view>
+    </view>
+
+    <!-- 汇总（**全渠道合计** = 堂食 + 各外卖平台，见 cloudfunctions/getDishReview/index.js:101 mergeTotals）
+         🔴 R299-Q（豆包评审采纳）：这张卡此前**没有标题**，而它夹在「堂食榜」与「外卖榜」之间
+         ⇒ 老板极易读成「堂食小计」（读错一次就误判堂食盈利）。术语 `reviewTotals` 自引入起
+         从未被渲染（死键）⇒ 借它补上标题（零新增键），并把口径写进键值「汇总（堂食+外卖）」。
+         ⚠️ 卡片**位置**下移到外卖榜之后属**版式调整**（需老板拍板）⇒ 本轮只补标题、不动位置（已登记）。 -->
+    <view class="section-title">{{t.reviewTotals}}</view>
     <view class="card2" wx:if="{{totals}}">
       <view class="cell"><text class="lbl">{{t.reviewTotalQty}}</text><text class="val">{{totals.qty}}</text></view>
       <view class="cell"><text class="lbl">{{t.reviewTotalRevenue}}</text><text class="val">{{t.cur}}{{totals.revenueText}}</text></view>
-      <view class="cell"><text class="lbl">{{t.reviewTotalCost}}</text><text class="val">{{t.cur}}{{totals.costText}}</text></view>
-      <view class="cell"><text class="lbl">{{t.reviewTotalGross}}</text><text class="val">{{t.cur}}{{totals.grossText}}</text></view>
+      <!-- A8：免费档合计里没有成本/毛利（那是加工结论）⇒ 整行不渲染，而不是显示 0.00 -->
+      <view class="cell" wx:if="{{tier !== 'free'}}"><text class="lbl">{{t.reviewTotalCost}}</text><text class="val">{{t.cur}}{{totals.costText}}</text></view>
+      <view class="cell" wx:if="{{tier !== 'free'}}"><text class="lbl">{{t.reviewTotalGross}}</text><text class="val">{{t.cur}}{{totals.grossText}}</text></view>
     </view>
+
+    <!-- 🔴 R451：两款毛利率口径并列提示（李老师拍板「并列摆、不强行统一」）。
+         本页毛利＝菜品卡现算，M2 选址测算的毛利＝用户手填 ⇒ 保本数会不同，同屏把差在哪讲清即可。
+         样式复用本页 .muted（index.wxss:7，28rpx ≥ AD 门禁），零新增样式。 -->
+    <view class="muted" wx:if="{{totals}}">{{t.reviewTwoMarginNote}}</view>
 
     <!-- R272c：自助餐块已上移到覆盖率 C 档之后（页面顶部），此处不再重复渲染。 -->
 

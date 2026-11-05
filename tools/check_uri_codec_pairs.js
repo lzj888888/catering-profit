@@ -19,6 +19,9 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
 const PAGES_DIR = path.join(ROOT, 'pages');
+// R422：分包化后页面不再全在 `pages/` 下 —— 扫描面必须同时覆盖 `subpkg/`，
+//   否则「关键锚点不在扫描面内」会红（那是扫描面过期，不是代码坏）。正则同步放宽为 (pages|subpkg)。
+const SUBPKG_DIR = path.join(ROOT, 'subpkg');
 
 let pass = 0;
 let fail = 0;
@@ -40,7 +43,7 @@ function judgeHasDecode(src) {
  * 覆盖三种写法：'…url: "/pages/a/b?x=" + encodeURIComponent(y)'、模板串、多段拼接。
  */
 function judgeTargetPath(line) {
-  const m = String(line || '').match(/['"`]\/?(pages\/[A-Za-z0-9_/-]+)\?/);
+  const m = String(line || '').match(/['"`]\/?((?:pages|subpkg)\/[A-Za-z0-9_/-]+)\?/);
   return m ? m[1] : '';
 }
 
@@ -62,7 +65,9 @@ function walkJs(dir, out) {
   return out;
 }
 
-const pageFiles = fs.existsSync(PAGES_DIR) ? walkJs(PAGES_DIR, []) : [];
+const pageFiles = []
+  .concat(fs.existsSync(PAGES_DIR) ? walkJs(PAGES_DIR, []) : [])
+  .concat(fs.existsSync(SUBPKG_DIR) ? walkJs(SUBPKG_DIR, []) : []);
 const srcCache = new Map();
 for (const f of pageFiles) srcCache.set(f, fs.readFileSync(f, 'utf8'));
 
@@ -97,8 +102,9 @@ for (const e of encoders) {
 
 /* ================= C 组：自反锚点（防判据被绕过） ================= */
 
-const IMPACT = path.join(PAGES_DIR, 'metrics', 'impact.js');
-check('C-① 关键锚点 pages/metrics/impact.js 在扫描面内', srcCache.has(IMPACT));
+// R422：metrics 已移入分包 —— 这里不能用 PAGES_DIR 拼（它是 pages/），否则锚点恒不在扫描面内。
+const IMPACT = path.join(SUBPKG_DIR, 'tools', 'metrics', 'impact.js');
+check('C-① 关键锚点 subpkg/tools/metrics/impact.js 在扫描面内', srcCache.has(IMPACT));
 check('C-② impact.js 确实解了 URL 参数名（decodeURIComponent 在位）',
   srcCache.has(IMPACT) && judgeHasDecode(srcCache.get(IMPACT)));
 check('C-③ impact.js 的 onLoad 用了解码后的值（material_name 不再直接吃 q.name）',
@@ -109,14 +115,14 @@ check('C-③ impact.js 的 onLoad 用了解码后的值（material_name 不再�
 
 const GOOD_SRC = "const n = decodeURIComponent(q.name); // 正确：解码";
 const BAD_SRC = "const n = q.name; // 错误：直接吃编码串";
-const GOOD_LINE = "wx.navigateTo({ url: '/pages/metrics/impact?material_id=1&name=' + encodeURIComponent(m.name || '') });";
+const GOOD_LINE = "wx.navigateTo({ url: '/subpkg/tools/metrics/impact?material_id=1&name=' + encodeURIComponent(m.name || '') });";
 
 check('S-① 影子正样本：合规实现被判绿', judgePair(GOOD_LINE, GOOD_SRC) === true);
 check('S-② 影子负样本：违规实现被判红', judgePair(GOOD_LINE, BAD_SRC) === false);
 check('S-③ 影子：非页面跳转行不误伤（无 ? ⇒ 不归本守卫管）',
   judgePair("const a = encodeURIComponent(x);", BAD_SRC) === true);
 check('S-④ 影子：目标路径提取准确',
-  judgeTargetPath(GOOD_LINE) === 'pages/metrics/impact');
+  judgeTargetPath(GOOD_LINE) === 'subpkg/tools/metrics/impact');
 check('S-⑤ 影子：裸 decodeURIComponent 也算解码能力（不依赖某个具体函数名）',
   judgeHasDecode("const x = decodeURIComponent (s);") === true);
 

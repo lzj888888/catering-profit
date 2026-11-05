@@ -19,7 +19,7 @@
 //   C4 计数三方一致             声明 ≡ §二 表格行数 ≡ 引用行数字
 //   C5 文档→代码（逐条）        表内每个 `代码出处` token，凡形如标识符者必须 ≡ 云函数目录 或 ∈ 白名单
 //                              （改名 / 删除 / 拼错都红）
-//   C6 代码→文档（反向）        小程序端（pages/ utils/ app.js miniprogram/，剥注释后）出现的隐私 API，
+//   C6 代码→文档（反向）        小程序端（pages/ subpkg/ utils/ app.js miniprogram/，剥注释后）出现的隐私 API，
 //                              必须**已被登记**：要么在表内（收集），要么在「不收集」段被显式点名为零命中
 //                              ⇒ 防「代码加了收集能力而材料没更新」。扫描面**排除 tools/ specs/ review/**
 //                              （守卫自身与文档会命中 ⇒ 自指误报，坑⑫/⑮）
@@ -50,6 +50,11 @@ const PRIV_APIS = [
   'chooseAddress', 'chooseMedia', 'chooseImage', 'chooseMessageFile',
   'chooseContact', 'chooseWeChatContact', 'startRecord', 'saveImageToPhotosAlbum',
   'saveVideoToPhotosAlbum', 'addPhoneContact', 'authorize',
+  // R601（2026-11-02）：剪切板是微信**明列**的隐私接口（写入与读取都算），
+  //   未在《用户隐私保护指引》申报即提审驳回（原话：「涉及收集"剪切板"相关接口或组件」），
+  //   运行时还会 fail：api scope is not declared in the privacy agreement。
+  //   此前清单漏列 ⇒ 本仓 3 处调用（成本卡导入读、外卖/月度结果写）**一直是提审必卡的暗雷**。
+  'getClipboardData', 'setClipboardData',
 ];
 
 // 表内「代码出处」列允许出现的非云函数标识符（云函数之外的合法出处）
@@ -59,6 +64,8 @@ const TOKEN_WHITELIST = new Set([
   'chooseMessageFile', 'uploadFile',
   'onNetworkStatusChange', 'getUpdateManager', 'recordScene',
   'OPENID', 'openid',
+  // R601：剪切板读写（第 8 项收集项）—— 仅在用户主动点「粘贴/复制」时调用
+  'getClipboardData', 'setClipboardData',
 ]);
 
 const LEAST_FN = 4;  // 云函数 token 命中下限（防列错位零命中假绿）
@@ -98,7 +105,7 @@ function walkDir(rel) {
   } catch (_) { /* 不可读目录跳过 */ }
   return out;
 }
-const WT_ROOTS = ['pages', 'utils', 'miniprogram', 'app.js', 'cloudfunctions'];
+const WT_ROOTS = ['pages', 'utils', 'miniprogram', 'app.js', 'cloudfunctions', 'subpkg'];
 const wtFiles = [];
 WT_ROOTS.forEach((r) => walkDir(r).forEach((f) => wtFiles.push(f.replace(/\\/g, '/'))));
 const idxSet = new Set(files);
@@ -117,7 +124,7 @@ files.forEach((f) => {
   if (f.startsWith('cloudfunctions/') && f.split('/').length >= 3) cfDirs.add(f.split('/')[1]);
 });
 const MINI = files.filter((f) => f.startsWith('pages/') || f.startsWith('utils/')
-  || f === 'app.js' || f.startsWith('miniprogram/'))
+  || f === 'app.js' || f.startsWith('miniprogram/') || f.startsWith('subpkg/'))
   .filter((f) => /\.(js|wxml|wxss|json|html)$/.test(f));
 check('C2-① 云函数目录集可解析（fail-closed）', cfDirs.size >= 40, `${cfDirs.size} 个目录`);
 check('C2-② 小程序端源码扫描面可解析（fail-closed）', MINI.length >= 40, `${MINI.length} 个文件`);

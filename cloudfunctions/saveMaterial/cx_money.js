@@ -3,11 +3,18 @@
 const { ERROR_CODES } = require('./cx_errors');
 
 // 元 → 分（整数）。非数/非有限 → 抛 INVALID_PARAM。
+// 🔴 R298（B2）：**十进制安全**。原式 `Math.round(yuan * 100)` 在 IEEE754 下会因
+//   「乘 100 后的二进制表示略小于十进制真值」而**少进 1 分** —— 实测三位小数全域 18 万点
+//   错 1147 点（0.145→14 / 0.285→28 / 1.005→100 真值 101 …），方向恒为**偏小**。
+//   两位小数（老板日常输入形态）穷举 100 万点原本就 0 错 ⇒ 本修法**对合法日常输入零漂移**。
+//   `toFixed(10)` 只消掉 1e-13 量级的浮点噪声、不动真实半步 ⇒ x.xx5 恢复十进制语义。
+//   ⚠️ 前端同源实现见 `utils/api.js::yuanToFen` —— 两份**必须同款**，否则两端算出的「分」不同。
+//   伴侣守卫：tools/check_money_precision.js（A 组行为穷举 + B 组双副本等价）。
 function yuanToFen(yuan) {
   if (typeof yuan !== 'number' || !isFinite(yuan)) {
     throw { code: ERROR_CODES.INVALID_PARAM, msg: 'yuan must be a finite number' };
   }
-  return Math.round(yuan * 100);
+  return Math.round(Number((yuan * 100).toFixed(10)));
 }
 
 // 分 → 元（展示用）。必须整数分。

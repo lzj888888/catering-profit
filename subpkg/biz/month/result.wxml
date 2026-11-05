@@ -1,0 +1,407 @@
+<!-- 修 1：三态拆分 —— loading / 有结果 / 空态（无账本或接口异常，中性表述 + 去录入出口）
+     R298·C1 修：结果分支判据由 `r` 改为 `hasLedger`（账本存在性）—— 缘由见文末空态分支处注释。 -->
+<view class="container safe-bottom" wx:if="{{loading}}">
+  <view class="muted" style="text-align:center;padding:60rpx 0;">{{t.loading}}</view>
+</view>
+
+<view class="container safe-bottom" wx:elif="{{hasLedger}}">
+  <view class="archived-bar" wx:if="{{isArchive}}">{{t.archiveLocked}}</view>
+
+
+  <!-- 暖化：顶部「一句话结论 + 红黄绿带」（装饰性，只看真利润正负，不碰引擎口径） -->
+  <view class="band band-{{bandClass}}" wx:if="{{bandClass}}">
+    <text class="band-label">{{t.bandLabel}}</text>
+    <text class="band-text">{{bandText}}</text>
+  </view>
+
+  <!-- 批次 5 · 到期提醒常驻提示条（双渠道兜底） -->
+  <view class="expire-banner" wx:if="{{expireSoonDays > 0}}">
+    <view class="muted">{{t.expireSoonTitle}} · {{expireSoonText}}</view>
+    <view class="expire-ops">
+      <button class="btn-small ghost" style="margin:0;" bindtap="onAskSubscribe">{{t.subscribeTip}}</button>
+      <button class="btn-small ghost" style="margin:0;color:#1e3a5f;border-color:#1e3a5f;" bindtap="goOrders">{{t.renewEntry}}</button>
+    </view>
+  </view>
+
+  <!-- 🔴 R484（李老师 2026-10-25 定案）：**一个月只出一个数**。
+       旧版同页并排「经营参考利润」与「全要素真实利润」两个卡 —— 老板不知道信哪个，
+       而那个"差异"的一端（手工填的数）根本没有会计含义（豆包会诊：不盘点直接用采购额
+       计成本属于不符合准则的算法）。现改为：
+         · **盘点了** ⇒ 用倒轧实际耗用，出唯一一个「本月利润」（会计利润）
+         · **没盘点** ⇒ 用当月采购入库金额，出同一个数，并**提示**这不是实际消耗
+       「两口径差异」整块随之取消 —— 同月不会有两个数，自然没有差异。 -->
+  <view class="card2">
+    <!-- R485：标题按模式变（盘点⇒本月利润 / 不盘点⇒估算利润），都带"利润"二字 -->
+    <view class="muted">{{r.profitTitle}}</view>
+    <view class="result-num" style="color:#22a06b;">{{t.cur}}{{r.trueProfit}}</view>
+    <view class="muted">{{r.profitNote}}</view>
+    <!-- 🔴 R489：钱扣在哪（摊销 / 一次算清）+ 倒轧用的是哪个期末库存。
+         三行都"有话说才出现"：空行会把利润卡撑长，反而看不出重点。
+         basis 那行可点 —— 老板看见"期末库存 ¥28,000"才想得起来自己是不是随手填的。 -->
+    <view class="muted" wx:if="{{r.amortText}}">{{r.amortText}}</view>
+    <view class="muted" wx:if="{{r.lumpText}}">{{r.lumpText}}</view>
+    <view class="muted basis-line" wx:if="{{r.profitBasis}}" bindtap="goInventory">{{r.profitBasis}} · {{t.basisGo}} ›</view>
+    <!-- R484：给"不盘点、只填了采购入库金额"的老板一句提示 -->
+    <view class="warn" wx:if="{{r.noStockTakeTip}}">{{t.noStockTakeTip}}</view>
+
+    <!-- 🔴 R515（李老师 2026-10-26）：把「这笔钱怎么算出来的」收进利润卡 —— 它原来是独立第 7 张卡，
+         老板看到 ¥41900 想知道"凭什么"却要往下滚 6 张卡。现在原地可展开、默认收起（不撑长首屏）。 -->
+    <view class="cell be-more-head" wx:if="{{showPer100}}" bindtap="onToggleProfitCalc">
+      <text class="lbl">{{t.flowTitle}} {{profitCalcOpen ? '▴' : '▾'}}</text>
+    </view>
+    <block wx:if="{{profitCalcOpen}}">
+      <view style="display:flex;flex-wrap:wrap;align-items:center;gap:10rpx;margin:12rpx 0;">
+        <view style="display:flex;flex-direction:column;align-items:center;min-width:110rpx;">
+          <text class="muted">{{t.flowSell}}</text>
+          <text class="val">{{t.cur}}{{r.income}}</text>
+        </view>
+        <text class="muted">−</text>
+        <view style="display:flex;flex-direction:column;align-items:center;min-width:110rpx;">
+          <text class="muted">{{t.flowMaterial}}</text>
+          <text class="val">{{t.cur}}{{r.realConsume}}</text>
+        </view>
+        <text class="muted">−</text>
+        <view style="display:flex;flex-direction:column;align-items:center;min-width:110rpx;">
+          <text class="muted">{{t.flowExpense}}</text>
+          <text class="val">{{t.cur}}{{r.expense}}</text>
+        </view>
+        <text class="muted">−</text>
+        <view style="display:flex;flex-direction:column;align-items:center;min-width:110rpx;">
+          <text class="muted">{{t.flowAmort}}</text>
+          <text class="val">{{t.cur}}{{r.effectiveAmortize}}</text>
+        </view>
+        <text class="muted">=</text>
+        <view style="display:flex;flex-direction:column;align-items:center;min-width:110rpx;">
+          <text class="muted">{{t.flowLand}}</text>
+          <text class="val" style="color:#22a06b;">{{t.cur}}{{r.trueProfit}}</text>
+        </view>
+      </view>
+      <view class="muted">{{t.flowPer100}} {{t.cur}}{{r.per100}}　{{t.flowHint}}</view>
+    </block>
+
+  <!-- 🔴 R579 / 队列 #108：**利润 ≠ 卡里的钱**（两司均判为最高频投诉点）。
+       老板看到「利润 5000」但银行卡只多 2000，第一反应是「这系统算错了」——
+       不解释一句，后面所有数字他都不信了。
+       默认收起（不撑长首屏），点开原地展开；文案全在 terms 单源，页面不写中文。 -->
+  <view class="card2">
+    <view class="cell be-more-head" bindtap="onToggleCashExplain">
+      <text class="lbl">{{t.cashExplainTitle}} {{cashExplainOpen ? '▴' : '▾'}}</text>
+    </view>
+    <block wx:if="{{cashExplainOpen}}">
+      <view class="muted" wx:for="{{t.cashExplainItems}}" wx:key="index" wx:for-item="line">{{line}}</view>
+      <view class="hint">{{t.cashExplainAction}}</view>
+    </block>
+  </view>
+
+  <!-- 🔴 R443：从「看到数」到「能去改」—— 结果页不该是死胡同 -->
+  <view class="next-link" bindtap="goDishReview">{{t.nextDishReview}}</view>
+
+  <!-- 🔴 R443：近几个月走势 —— 用老板自己的历史数据（零额外云调用，复用 checklist 那批账本） -->
+  <view class="card2" wx:if="{{trend.length}}">
+    <view class="cell drill-head"><text class="lbl">{{t.trendTitle}}</text></view>
+    <view class="trend">
+      <view class="tb" wx:for="{{trend}}" wx:key="month" data-month="{{item.month}}" bindtap="goMonthResult">
+        <view class="tb-col"><view class="tb-bar {{item.up ? 'up' : 'down'}}" style="height:{{item.h}}rpx;"></view></view>
+        <text class="tb-lb {{item.isCur ? 'on' : ''}}">{{item.label}}</text>
+        <text class="tb-v">{{item.text}}</text>
+      </view>
+    </view>
+    <view class="muted">{{t.trendNote}}</view>
+  </view>
+  </view>
+
+  <!-- 🔴 R443（2026-10-23）：钱还能撑多久 —— 参照桌面「餐饮闭店决策模型 v1.0」的现金流维度
+       （权重 15）与红线 R1（可撑 <1 个月刚性支出）。
+       放在利润卡之后：老板刚看到「这个月亏多少」，下一个念头就是「我还能撑几个月」。
+       ⚠️ 缺项不算：房租/人工/水电任一没填 ⇒ 显示「算不出来」，**绝不按 0 元算**
+          （按 0 算会把可撑月数放大到无穷）。 -->
+  <view class="card2" wx:if="{{hasLedger}}">
+    <view class="cell drill-head"><text class="lbl">{{t.runwayTitle}}</text></view>
+    <view class="cell">
+      <text class="lbl">{{t.runwayLabel}}</text>
+      <input class="runway-in" type="digit" value="{{cashYuan}}" bindinput="onCash"
+             placeholder="{{t.runwayNeedInput}}" adjust-position="{{true}}" cursor-spacing="20" />
+    </view>
+    <view class="muted">{{t.runwayHint}} · {{t.runwaySaved}}</view>
+    <view class="cell" wx:if="{{runwayText}}">
+      <text class="lbl">{{t.runwayMonthsPre}}</text>
+      <text class="val runway-big">{{runwayText}}</text>
+    </view>
+    <view class="warn" wx:if="{{runwayBadCash}}">{{t.runwayBadCash}}</view>
+    <view class="warn" wx:if="{{runwayNoData}}">{{t.runwayNoData}}</view>
+  </view>
+
+  <!-- ===== A11（2026-11-05）：摊销三件套 =====
+       「还剩几期 / 哪个月摊完 / 摊完后月利润」。摊销每月压着利润，但有尽头；
+       把尽头摆出来，老板才能回答「还值不值得再扛几个月」。
+       ⚠️ 三个数全部由 getLedger.amort_extra 算好下发 —— 本页**不许**再算一遍摊销公式。
+       ⚠️ 开关关着时显示「不适用」而不是「提升 0 元」：后者会被读成「摊完了也没区别」。 -->
+  <view class="card2" wx:if="{{hasLedger && amortView.show}}">
+    <view class="cell drill-head"><text class="lbl">{{t.amortTitle}}</text></view>
+    <view class="muted" wx:if="{{!amortView.on}}">{{t.amortOff}}</view>
+    <view class="muted" wx:elif="{{!amortView.has}}">{{t.amortNone}}</view>
+    <block wx:else>
+      <view class="cell">
+        <text class="lbl">{{t.amortRemainPre}}</text>
+        <text class="val runway-big">{{amortView.remain}} {{t.amortRemainSuf}}</text>
+      </view>
+      <view class="cell">
+        <text class="lbl">{{t.amortEndPre}}</text>
+        <text class="val">{{amortView.endMonth}} {{t.amortEndSuf}}</text>
+      </view>
+      <view class="cell">
+        <text class="lbl">{{t.amortAfterLbl}}</text>
+        <text class="val">¥{{amortView.afterFen}}</text>
+      </view>
+      <view class="muted">{{t.amortAfterHint}}</view>
+    </block>
+  </view>
+
+  <!-- ===== A13/A19：客流与会员 =====
+       null（没填）一律显示【待补】，**绝不显示 0** —— 「复购率零」会让老板以为老客全跑了。 -->
+  <view class="card2" wx:if="{{trView.show}}">
+    <view class="cell drill-head"><text class="lbl">{{t.trTitle}}</text></view>
+    <view class="cell">
+      <text class="lbl">{{t.trThis}}</text>
+      <text class="val">{{trView.thisMonth || t.trPending}}</text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.trOld}}</text>
+      <text class="val">{{trView.oldCustomer || t.trPending}}</text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.trRepeat}}</text>
+      <text class="val">{{trView.repeatRate || t.trPending}}</text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.trMember}}</text>
+      <text class="val">{{trView.memberRatio || t.trPending}}</text>
+    </view>
+    <!-- A18（2026-11-05）：会员销售占比低于警戒时报警。留空（没会员体系）时后端 level='na' ⇒ 此处不出现 -->
+    <view class="warn" wx:if="{{trView.memberRatioWarn}}">{{t.trMemberWarn}}</view>
+    <view class="muted">{{t.trHint}}</view>
+    <!-- A20：诊断补录入口。补的是账里没有的客观值（客流同比/口碑/商圈/租约/借贷/现金），补一次长期有效 -->
+    <view class="muted">{{t.diagInputHint}}</view>
+    <button class="btn ghost" bindtap="goDiagInput">{{t.diagInputGo}}</button>
+  </view>
+
+  <!-- 🔴 R311：体检结论卡（保本区间 + 健康营收 + 结构性诊断）。
+       ⚠️ 报**区间**不报单点 —— 贡献率低时区间会宽到三成以上，报单点就是假精确。
+       ⚠️ 不改任何既有计算：本卡只解释 M1 已经算出的数。 -->
+  <!-- 🔴 R314 + R480 修正（李老师真机 2026-10-25 拍板）：**什么该露出、什么该折叠**。
+       原实现把「保本营收」「达标营业额」藏在"展开看依据"里 —— 恰恰把老板最关心的
+       「做到多少才不亏」藏了（李老师："这个结论恰恰倒该露出来，大家很关注这个"）。
+       现改为：
+         · **结论层（默认可见）** = 保本营收 / 达标营业额（带口径标注）/ 安全垫
+         · **依据层（折叠）**   = 回本两条路 / 毛利结构 / 结构性诊断 / 认不出的费用项 / 房租归因
+       判据：老板第一眼要的是"我在亏吗、要做到多少才不亏、还能撑多少"，其余才是依据。 -->
+  <view class="card2" wx:if="{{be && be.ok}}">
+    <view class="cell drill-head"><text class="lbl">{{t.beTitle}} · {{be.title}}</text></view>
+    <!-- 结论①：盈亏平衡点（**确定的值**，只用老板填的数）—— R482（李老师追问）：
+         原先这里放的是敏感性区间（变动成本上下浮动十个百分点推出的范围），
+         老板问「录完确定的数，为什么出来模糊的数？」
+         ⇒ 结论层改给确定值；那个区间是我方自己加的容错带，降级为小字并标明来源。 -->
+    <view class="cell" wx:if="{{be.pointText}}"><text class="lbl">{{t.bePoint}}</text><text class="val">{{t.cur}}{{be.pointText}}</text></view>
+    <view class="muted" wx:if="{{be.pointNoteText}}">{{be.pointNoteText}}</view>
+    <!-- 结论②：达标营业额 + 口径标注（按哪个业态算的、会跟着业态变） -->
+    <view class="cell" wx:if="{{be.healthyText}}"><text class="lbl">{{t.beHealthy}}</text><text class="val">{{be.healthyText}}</text></view>
+    <view class="muted" wx:if="{{be.healthyScopeText}}">{{be.healthyScopeText}}</view>
+    <!-- 结论③：安全垫 -->
+    <view class="cell" wx:if="{{be.marginText}}"><text class="lbl">{{t.beMargin}}</text><text class="val {{be.marginNeg ? 'warn' : ''}}">{{be.marginText}}</text></view>
+    <view class="cell be-more-head" bindtap="onToggleBeMore">
+      <text class="lbl">{{beMore ? t.beMoreHide : t.beMoreShow}}</text>
+    </view>
+    <block wx:if="{{beMore}}">
+      <!-- 依据（R480 起默认收起）-->
+      <view class="muted" wx:if="{{be.pathText}}">{{be.pathText}}</view>
+      <view class="muted" wx:if="{{be.gm}}">{{be.gm.text}}</view>
+      <view class="warn" wx:if="{{be.diag === 'structural'}}">{{t.beStructural}}</view>
+      <view class="muted" wx:if="{{be.unknownText}}">{{be.unknownText}}</view>
+      <view class="muted" wx:if="{{be.attr}}">{{t.beAttrLead}} {{be.attr.rate}}：{{be.attr.denom}} {{t.beAttrDenom}}｜{{be.attr.numer}} {{t.beAttrNumer}}</view>
+    </block>
+  </view>
+  <view class="warn" wx:if="{{be && be.noDataText}}">{{be.noDataText}}</view>
+
+  <!-- 🔴 R473：原先此处还有一块**不含业态/地区选择**的「指标对照」（R433 加的），
+       与下方 round115 那块（可选业态/城市、参考带随之变化）**同页重复**。
+       李老师真机判定：同一页两块名字一样、数值也可能不一样，反而让人不知道信哪个。
+       ⇒ 只保留**能选的那一块**（下方），这里删除；R433 的展示目的由下方那块承接。
+       数据仍来自 getLedger 的 round115 指标（inds），本页零阈值、零新增计算。 -->
+
+  <!-- 🔴 R399（队列 #16）：异常核对清单 —— 只跟**本店自己的历史**比。
+       口径红线（PLAN_AI §3）：只给「哪一项跟过去不一样 + 差多少百分比」，**不给金额差、不给行业均值**
+       （没有同业真实数据，给出来就是编出来的确定性）。
+       历史不足 2 个月时 anom.has=false ⇒ 整卡不渲染，绝不摆空壳（空卡会被读成"没问题"）。 -->
+  <view class="card2" wx:if="{{anom.has}}">
+    <view class="cell drill-head">
+      <text class="lbl">{{t.anomTitle}}</text>
+      <text class="val">{{anom.basisText}}</text>
+    </view>
+    <view class="muted">{{t.anomSub}}</view>
+    <block wx:for="{{anom.items}}" wx:key="key">
+      <view class="cell" wx:if="{{item.show}}">
+        <text class="lbl {{item.tone}}">{{item.text}}</text>
+        <text class="val {{item.tone}}" wx:if="{{item.tag}}">{{item.tag}}</text>
+      </view>
+    </block>
+    <view class="muted" wx:if="{{anom.emptyText}}">{{anom.emptyText}}</view>
+    <view class="ind-note" wx:if="{{anom.more}}">{{anom.more}}</view>
+    <view class="ind-note" bindtap="goInput">{{t.anomGo}}</view>
+  </view>
+
+  <!-- 🔴 R515：原「钱去哪了」独立卡（本位置，第 7 张）已**并入上方利润卡**，由 `onToggleProfitCalc`
+       控制「这笔钱怎么算的」展开/收起（默认收起）。留此注释是防后人以为"这块内容丢了"。 -->
+  <!-- ===== R302：外卖到手账（由 M1 **已录**的数反算，零新增输入）=====
+       为什么放这里：老板手机上看的就是「营业额 / 回款」这一级粒度，而这张卡把 M1 里
+       已录的外卖营收、平台佣金/配送费、商家补贴**变成他看得懂的一个数：到手金额 / 到手率 / 单均到手**。
+       🔴 只在**有外卖营收**时才出现（没做外卖的店不显示空卡）。 -->
+  <view class="card2" wx:if="{{settle.has}}">
+    <view class="muted">{{t.settleTitle}}</view>
+    <view class="cell"><text class="lbl">{{t.settleIncome}}</text><text class="val">{{t.cur}}{{settle.income}}</text></view>
+    <view class="cell"><text class="lbl">{{t.settlePlatformFee}}</text><text class="val">{{settle.platformFeeText}}</text></view>
+    <view class="cell"><text class="lbl">{{t.settleNet}}</text><text class="val">{{t.cur}}{{settle.net}}</text></view>
+    <view class="cell" wx:if="{{settle.netRate !== null}}"><text class="lbl">{{t.settleNetRate}}</text><text class="val">{{settle.netRate}}%</text></view>
+    <view class="cell" wx:if="{{settle.showPerOrder}}"><text class="lbl">{{t.settlePerOrder}}</text><text class="val">{{t.cur}}{{settle.perOrder}}</text></view>
+    <!-- 🔴 佣金/配送费一项都没录 ⇒ 到手额必然偏高：必须说出来并给去补录的出口，不静默 -->
+    <view class="warn" wx:if="{{settle.showMissingFee}}">{{t.settleMissingFee}}</view>
+    <view class="muted">{{t.settleNote}}</view>
+  </view>
+
+  <!-- 收入/费用/毛利 -->
+  <view class="card2">
+    <!-- D1：营业收入行可点下钻（大类 → 细项） -->
+    <view class="cell drill-head" data-kind="income" bindtap="toggleDrill">
+      <text class="lbl">{{t.income}}</text>
+      <text class="val">{{t.cur}}{{r.income}} <text class="drill-caret">{{showIncDrill ? '▴' : '▾'}}</text></text>
+    </view>
+    <view class="drill-body" wx:if="{{showIncDrill}}">
+      <view class="drill-row" wx:for="{{incDetail}}" wx:key="name" wx:for-item="g">
+        <view class="drill-gname">{{g.name}} <text class="drill-gamt">{{t.cur}}{{g.amount}}</text></view>
+        <view class="drill-sub" wx:for="{{g.sub_items}}" wx:key="index" wx:for-item="s">
+          <text class="drill-sname">{{s.name || t.subItem}}</text>
+          <text class="drill-samt">{{t.cur}}{{s.amount}}</text>
+        </view>
+      </view>
+      <view class="muted" wx:if="{{incDetail.length === 0}}">—</view>
+    </view>
+
+    <!-- D1：费用合计行可点下钻 -->
+    <view class="cell drill-head" data-kind="expense" bindtap="toggleDrill">
+      <text class="lbl">{{t.expense}}</text>
+      <text class="val">{{t.cur}}{{r.expense}} <text class="drill-caret">{{showExpDrill ? '▴' : '▾'}}</text></text>
+    </view>
+    <view class="drill-body" wx:if="{{showExpDrill}}">
+      <view class="drill-row" wx:for="{{expDetail}}" wx:key="name" wx:for-item="g">
+        <view class="drill-gname">{{g.name}} <text class="drill-gamt">{{t.cur}}{{g.amount}}</text></view>
+        <view class="drill-sub" wx:for="{{g.sub_items}}" wx:key="index" wx:for-item="s">
+          <text class="drill-sname">{{s.name || t.subItem}}</text>
+          <text class="drill-samt">{{t.cur}}{{s.amount}}</text>
+        </view>
+      </view>
+      <view class="muted" wx:if="{{expDetail.length === 0}}">—</view>
+    </view>
+
+    <view class="cell">
+      <text class="lbl">{{t.grossProfit}}</text>
+      <text class="val">{{t.cur}}{{r.grossProfit}}</text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.grossMargin}}</text>
+      <text class="val">{{r.grossMargin}}%</text>
+    </view>
+  </view>
+
+  <!-- 明细（消耗/摊销/差异） -->
+  <view class="card2">
+    <view class="cell">
+      <text class="lbl">{{t.materialCost}}</text>
+      <text class="val">{{t.cur}}{{r.materialCost}}</text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.realConsume}}</text>
+      <text class="val">{{t.cur}}{{r.realConsume}}</text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.effectiveAmortize}}</text>
+      <text class="val">{{t.cur}}{{r.effectiveAmortize}}</text>
+    </view>
+    <!-- 🔴 R484：「两口径差异」整块取消 —— 一个月份只用一个消耗数，
+         两个口径恒等，差异只剩当月摊销（摊销已在上面单独一行展示）。 -->
+  </view>
+
+  <!-- round115：行业对照（李老师「让客户找到方向」的第一步）-->
+  <!-- 🔴 本页**零阈值**：所有行业数值都来自 getLedger 出参，页面不得写死任何数字 -->
+  <view class="card2" wx:if="{{inds.length}}">
+    <view class="ind-head">
+      <text class="ind-title">{{t.indTitle}}</text>
+      <text class="ind-sub">{{t.indSub}}</text>
+    </view>
+
+    <!-- 业态 / 地区：参考带是分业态 × 分地区的，选错了对照就没意义 -->
+    <view class="ind-scope">
+      <picker mode="selector" range="{{bizTypes}}" range-key="name" value="{{bizIdx}}" bindchange="onBiz">
+        <view class="ind-pk">{{bizText}} ▾</view>
+      </picker>
+      <picker mode="selector" range="{{cityTiers}}" range-key="name" value="{{cityIdx}}" bindchange="onCity">
+        <view class="ind-pk">{{cityText}} ▾</view>
+      </picker>
+      <text class="ind-scope-tip" wx:if="{{scope.is_default_scope}}">{{t.indScopeTip}}</text>
+    </view>
+
+    <view class="ind-row" wx:for="{{inds}}" wx:key="key">
+      <view class="ind-line1">
+        <text class="ind-name">{{item.name}}</text>
+        <text class="ind-lv lv-{{item.level}}" wx:if="{{item.has}}">{{item.lvText}}</text>
+        <text class="ind-lv" wx:else>—</text>
+      </view>
+      <view class="ind-line2">
+        <text class="ind-mine" wx:if="{{item.has}}">{{t.indMine}} {{item.pct}}%</text>
+        <text class="ind-missing" wx:else>{{t.indMissing}}</text>
+        <text class="ind-band" wx:if="{{item.lo !== null && item.lo !== undefined}}">　{{t.indBand}} {{item.lo}}~{{item.hi}}%</text>
+      </view>
+    </view>
+
+    <!-- 两项口径与 M2 不同义，必须明示（否则客户跨模块对比会误判） -->
+    <view class="ind-note">{{t.indMarginNote}} · {{t.indMktNote}}</view>
+  </view>
+
+  <!-- ===== A17（2026-11-05）：三项刚性成本率（房租 + 人工 + 食材）=====
+       它不是"第七个独立指标"，而是上面**房租/人工/毛利率三行的合计**（后端 threeCostOf 单源算）。
+       🔴 缺任一项 ⇒ 只显示「缺房租，补上才能算」，**绝不按 0 补** ——
+         缺房租却算出「三项很健康」，比不显示更害人（本仓「缺项 ≠ 0」红线）。
+         注：本页注释同样受「无硬编码百分数」扫描约束（它只剥 JS 注释、不剥 wxml 注释）⇒ 注释里别写数字百分号。 -->
+  <view class="card2" wx:if="{{threeView.show}}">
+    <view class="cell">
+      <text class="lbl">{{t.threeTitle}}</text>
+      <text class="val lv-{{threeView.level}}" wx:if="{{threeView.has}}">{{threeView.pct}}%</text>
+      <text class="val" wx:else>—</text>
+    </view>
+    <view class="ind-note" wx:if="{{threeView.has}}">{{threeView.lvText}} · {{threeView.bandText}}</view>
+    <view class="ind-note" wx:else>{{threeView.missText}}</view>
+    <view class="warn" wx:if="{{threeView.hint}}">{{threeView.hint}}</view>
+    <view class="ind-note">{{t.threeHint}}</view>
+  </view>
+
+  <!-- ===== A21（2026-11-05）合规兜底 =====
+       规范 §12.7：**所有诊断结论页必须有底部兜底**「仅供参考，经营决策请结合实情」。
+       为什么必须常驻而不是折叠：老板会截图转发这一段当依据，页面必须自己说清边界。 -->
+  <view class="ind-note">{{t.disclaimer}}</view>
+
+  <button class="btn ghost" bindtap="onExport">{{t.exportBtn}}</button>
+  <!-- R464：诊断包 = 给 AI 读的事实包（不是报表），与导出分开、不占付费墙 -->
+  <button class="btn ghost" bindtap="onCopyPack">{{t.aiPackBtn}}</button>
+  <view class="ind-note">{{t.aiPackHint}}</view>
+  <!-- R265：用户反馈「点了导出只看到『导出完成』，不知道什么格式、去哪看」⇒ 常驻一行说明 -->
+  <view class="ind-note">{{t.exportHint}}</view>
+</view>
+
+<!-- 空态（hasLedger 为 false：无账本或接口异常；中性表述 + 去录入出口）
+     R298·C1 修：判据原为 `r`，但 getLedger 对无账本记录月返回「默认空账」⇒ r 在成功路径恒真
+     ⇒ 本分支只在 catch（接口异常）路径可达，「无账本」这个正常态走不到 ⇒ 未建档月份误显示红带「亏损」。
+     现改用账本存在性判据 hasLedger（= !!d.account_id，与首页 index.js:98 同源）。 -->
+<view class="container safe-bottom" wx:else>
+  <view class="empty-state">
+    <view class="muted" style="text-align:center;padding:60rpx 0 0;">{{t.resultEmpty}}</view>
+    <button class="btn primary" style="margin-top:32rpx;" bindtap="goInput">{{t.resultEmptyGoInput}}</button>
+  </view>
+</view>

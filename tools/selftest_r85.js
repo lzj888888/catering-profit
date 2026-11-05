@@ -41,7 +41,8 @@ check('A2 平台名单源：页面/工具内不出现平台字面（除 terms）
 const det = restoreDetail([{ platform: PLATFORMS[0], goods: '100', pack: '20', subsidy: '30' }], PLATFORMS);
 check('A3 分项模式 4 平台行（restoreDetail 铺全）', det.length === 4);
 check('A3 每行 3 框 + 小计', det.every((r) => ('goods' in r) && ('pack' in r) && ('subsidy' in r) && ('subtotal' in r)));
-check('A3 小计自动 = goods+pack+subsidy', det[0].subtotal === '150.00', det[0].subtotal);
+// 🔴 R496：期望 150 → 120。fixture 三框值（100/20/30）**一个没动**，动的是"补贴不进收入"这个口径。
+check('A3 小计自动 = goods+pack（R496：补贴不进收入）', det[0].subtotal === '120.00', det[0].subtotal);
 check('A3 分项行 fixed（平台名固定不可删）', det.every((r) => r.fixed === true));
 check('A3 未填平台小计为空', det[1].subtotal === '');
 
@@ -49,7 +50,8 @@ console.log('===== A4 · 模式互斥 + 快照恢复 =====');
 const snap = [{ platform: PLATFORMS[0], goods: '88', pack: '1.5', subsidy: '2.5' }];
 const restored = restoreDetail(snap, PLATFORMS);
 check('A4 快照回填：金额原样恢复', restored[0].goods === '88' && restored[0].pack === '1.5' && restored[0].subsidy === '2.5');
-check('A4 快照回填后小计重算', restored[0].subtotal === '92.00', restored[0].subtotal);
+// 🔴 R496：92.00 → 89.50（88 + 1.5；补贴 2.5 不再计入小计）。fixture 三框值未改。
+check('A4 快照回填后小计重算（R496：只算 goods+pack）', restored[0].subtotal === '89.50', restored[0].subtotal);
 
 console.log('===== A5 · 粘贴提取（只提数字并求和；跳过表头/空/说明列）=====');
 const paste1 = extractPaste('商品名\t金额\n米饭\t12.5\n可乐\t3\n配送说明 无\n\n18.5'); // 表头+说明+空行，数字 12.5+3=15.5
@@ -66,9 +68,9 @@ check('A6 无合计 → hasTotal=false', extractPaste('1\n2\n3').hasTotal === fa
 
 console.log('===== A7 · 手写路径（粘贴非唯一入口：金额框直接填合计数可保存）=====');
 // 语义：快速模式金额框直接写合计数，buildItems 只提交填了金额的行（既有逻辑），粘贴只是另一条路
-const inputJs = fs.readFileSync(path.join(ROOT, 'pages/month/input.js'), 'utf8');
-const inputWxml = fs.readFileSync(path.join(ROOT, 'pages/month/input.wxml'), 'utf8');
-check('A7 快速模式有 4 个金额框（手写可用）', /快速录入：每平台 1 个金额框/.test(inputWxml) && inputWxml.includes('bindinput="onSubAmount"'));
+const inputJs = fs.readFileSync(path.join(ROOT, 'subpkg/biz/month/input.js'), 'utf8');
+const inputWxml = fs.readFileSync(path.join(ROOT, 'subpkg/biz/month/input.wxml'), 'utf8');
+check('A7 net 默认模式每平台 1 个「外卖实际到账」净额框（手写可用）', /外卖实际到账|net 默认模式/.test(inputWxml) && inputWxml.includes('bindinput="onSubAmount"') && inputWxml.includes('placeholder="{{t.twNetPh}}"'));
 // ⚠️ R162：分项由 3 框变 4 框（加「有效订单数」）⇒ 模板处数 3 → 4。
 //   这条断言正是「加框但忘了同步守卫」的报警器：不同步就当场红。
 check('A7 分项模式金额框仍绑 onTwDetail（wx:for 模板 4 处 → 4 平台 × 4 框，手写可用）', (inputWxml.match(/bindinput="onTwDetail"/g) || []).length === 4, `onTwDetail 模板 ${(inputWxml.match(/bindinput="onTwDetail"/g) || []).length} 处`);
@@ -117,7 +119,12 @@ console.log('===== A9~A12 · 配平校验（只做软提示：不阻断、不参
 // ⚠ R164 改了配平式：expected = (incomeTotal − subsidy) − |subsidy| − 佣金 − 配送 − 配送补贴
 //   本基准 expected = (5000−300) − 300 − 200 − 100 − 50 = 4050（改前是 4350，差恰为一个补贴额 300）
 const recBase = { incomeTotal: 5000, subsidy: 300, commission: 200, deliveryFee: 100, deliverySubsidy: 50, packTotal: 60 };
-const REC_EXPECTED = 4050;
+// 🔴 R496：4050 → 4350。fixture **一个数字都没改**，是 incomeTotal 的**含义**变了：
+//   旧口径 incomeTotal 5000 **含**那 300 补贴 ⇒ expected=(5000−300)−300−200−100−50=4050（先还原再扣一次）。
+//   R496 起 incomeTotal = 优惠前总额、**不含**补贴 ⇒ expected=5000−300−200−100−50=4350（直接扣一次）。
+//   ⚠️ 下面 A9/A10/A11 六条都是围绕 REC_EXPECTED 的**相对**判断（差额 0 / 30 / −150 / −60 / −100），
+//      故只改这一处常量即可，无需逐条改 —— 这正是把期望值抽成常量的价值。
+const REC_EXPECTED = 4350;
 check('A9 未填应收款 → null（跳过，不误报）', reconcile(Object.assign({}, recBase, { actualReceivable: 0 })) === null);
 check('A9 两侧一致（差额 0 ≤ 50）→ pass', reconcile(Object.assign({}, recBase, { actualReceivable: REC_EXPECTED })).status === 'pass');
 check('A9 差额 30 ≤ 50 → pass', reconcile(Object.assign({}, recBase, { actualReceivable: REC_EXPECTED + 30 })).status === 'pass');
@@ -140,7 +147,7 @@ const t2 = fs.readFileSync(path.join(ROOT, 'specs/dev-specs/i18n/terms.js'), 'ut
 check('A14 双副本一致', t1 === t2);
 
 console.log('===== A15 · 门禁预检（结构）=====');
-check('A15 input.wxml 含外卖模式开关', /onPickTakeoutMode/.test(inputWxml) && /twSecTitle/.test(inputWxml));
+check('A15 input.wxml 含外卖轨道开关', /onPickTakeoutTrack/.test(inputWxml) && /twSecTitle/.test(inputWxml));
 check('A15 input.js 含粘贴处理（openPaste/onPasteExtract）', /openPaste/.test(inputJs) && /onPasteExtract/.test(inputJs) && /extractPaste/.test(inputJs));
 check('A15 input.js 含配平（onRecYuan/runReconcile）', /onRecYuan/.test(inputJs) && /runReconcile/.test(inputJs));
 check('A15 推广费取数路径标注存在', /twPromoPathHint/.test(inputWxml) && /twPromoPathLabel/.test(inputWxml));
@@ -194,6 +201,11 @@ const A15_EXEMPT = [
   /^cloudfunctions\/exportData\/index\.js$/,     // round265：导出改出真 xlsx（SheetJS + base64 + encoding 出参），属缺陷修复而非同步动作
   /^cloudfunctions\/exportData\/package\.json$/, // round265：新增 xlsx 依赖声明（require 与依赖必须同源，由 check_fn_deps 另守）
   /^cloudfunctions\/initDb\//,
+  // by=WorkBuddy / date=2026-10-20 / reason=R376 授权：M1「清空某月」需要新函数 clearMonth
+  //   （软删 + 归档锁 + 审计留痕）与 saveLedger 的**复活软删行**（唯一索引 shop_id+month
+  //   不允许重建同月）；两者是同一需求的两端，缺任一端清空后该月就再也存不进去。
+  /^cloudfunctions\/clearMonth\//,
+  /^cloudfunctions\/saveLedger\/index\.js$/,
   /^cloudfunctions\/getLedger\//,
   /^cloudfunctions\/saveLedger\//,
   /^cloudfunctions\/calcMonthlyProfit\//,
@@ -216,6 +228,7 @@ const A15_EXEMPT = [
   // R181l（批次 F 阶段①）：新增授权云函数 importSalesBill（账单导入：xlsx → 解析 → 甲级门禁 →
   //   落 external_sales_daily）。按 round103 白名单式登记，**不放宽成全豁免**：
   /^cloudfunctions\/importSalesBill\//,
+  /^cloudfunctions\/verifyTangshi\//,                 // R298（B4）：加来源校验（有用户 OPENID 即拒）—— 越权面修补，非同步动作
   // ⚠️ 2026-09-25（round127/r128）**八次触发** —— 同一时机关卡第 8 次：M3 v1.2 批次 P0 授权改
   //   saveCostCard / saveMaterial / syncCostCard（**已在 round116 白名单内**）+ getMaterial（新增登记）。
   //   本批改动内容：M3.2 原料软删分支、M3.3 临时手工行（input_type=2）、M3.7 成本卡软删（按 card_code 全版本）、
@@ -248,6 +261,14 @@ const A15_EXEMPT = [
   /^cloudfunctions\/common\//,                          // round147：付费判定单源本体（entitlement.js + 聚合入口补齐导出）
   /^cloudfunctions\/exportData\//,                      // round147：唯一既有付费消费者，切到判定单源（避免第二份 `expireAt > now`）
   /^cloudfunctions\/[^/]+\/cx_entitlement\.js$/,        // round147：sync_common 派生（全函数，同 cx_indicatorRef.js 性质）
+  // ⚠️ 2026-11-02（R603）**新增登记** —— 「收费保留、功能放行」：关售卖 ≠ 关功能。
+  //   ① 单源 `common/payFlags.js`（FREE_ACCESS 开关）+ `common/entitlement.js::hasFeature` 免费期短路
+  //      —— 前者落在已有的 `/^cloudfunctions\/common\//` 条目内，无需另登记；
+  //   ② 派生面：sync_common 因新增单源文件产出 `cx_payFlags.js`（同 round110/147 的 cx_* 性质，
+  //      55 个函数目录各一份）。**同步动作**，非各函数自有逻辑。
+  //   仍按白名单式登记（精确到文件名），**绝不放宽成 `cloudfunctions/` 全豁免**：
+  //   by=WorkBuddy / date=2026-11-02 / reason=R603 授权：个人主体提审期免费开放（云端 hasFeature 短路 + 新增 payFlags 单源）
+  /^cloudfunctions\/[^/]+\/cx_payFlags\.js$/,           // R603：sync_common 派生（全函数，同 cx_entitlement.js 性质）
   // ⚠️ 2026-09-26（round150）**十一次触发** —— 同一时机关卡第 11 次：M3 v1.3 批次 **R150** 授权落地
   //   ① M3.14 组件分类：明细行新增 `line_kind`（主/辅/调/半/耗）——落库侧 `saveCostCard/`（已在内）、
   //      读侧 `getCostCard/` `getCardVersions/`（已在内）；
@@ -359,6 +380,51 @@ const A15_EXEMPT = [
   /^cloudfunctions\/saveDishMapping\//,
   /^cloudfunctions\/common\/salesBillId\.js$/,        // R252：新增单源（_id 形态解析）
   /^cloudfunctions\/[^/]+\/cx_salesBillId\.js$/,      // R252：sync_common 派生（全函数）
+  // ⚠️ 2026-10-16（R298 · B2）**第二十次触发**（顺延 R252=第十九次；中间 B4 追加的
+  //   `/^cloudfunctions\/verifyTangshi\//` 属同一时刻、未单列序号）—— 同一时机关卡第 20 次：
+  //   金额精度「元 → 分」十进制安全。改动面 = ① 单源 `cloudfunctions/common/money.js::yuanToFen`
+  //   补齐 `toFixed(10)`（消 IEEE754 下半步 x.xx5 静默少进 1 分；已有 100 万点穷举证明两位小数域 0 错）；
+  //   ② `sync_common` 把该单源派生到全部 51 个函数目录的 `cx_money.js`（**同步动作**，非各函数自有逻辑）；
+  //   ③ 消费侧 `calcBom/selftest.js` 与 `importSalesBill/service.js` 的裸乘改十进制安全形态
+  //   （**两者目录均已在白名单内**）。均为**本批显式授权**的后端改动，非「顺手改云函数逻辑」；
+  //   沿用**白名单式**登记（精确到**派生文件名**、**不做 `cx_*` 泛化**，同 `cx_dataAdapter.js` 性质），
+  //   **绝不放宽成 `cloudfunctions/` 全豁免**（那样等于守卫作废）：
+  //   by=WorkBuddy / date=2026-10-16 / reason=R298 B2 授权金额精度修复（单源 common/money.js + 全函数派生 cx_money.js）
+  /^cloudfunctions\/[^/]+\/cx_money\.js$/,            // R298 B2：sync_common 派生（全函数，同 cx_dataAdapter.js 性质）
+  // ⚠️ 2026-10-21（R423 · 队列 #28）**第二十一次触发** —— 新增单源 `cloudfunctions/common/aiGate.js`
+  //   （AI「出站」k-匿名门槛：授权态 + 用途 + 样本量三关，纯函数零 IO；设计稿 §7 步 3 的缺口）
+  //   ⇒ `sync_common` 把它派生到全部函数目录的 `cx_aiGate.js`（**同步动作**，非各函数自有逻辑；
+  //   各函数没有引用它的代码，带旧副本无影响，R389 已核）。`common/index.js` 已在 round110 白名单内。
+  //   仍按**白名单式**登记（精确到**派生文件名**、**不做 `cx_*` 泛化**），**绝不放宽成 `cloudfunctions/` 全豁免**：
+  //   by=WorkBuddy / date=2026-10-21 / reason=R423 授权新增 AI 出站 k-匿名门槛单源（common/aiGate.js + 全函数派生 cx_aiGate.js）
+  /^cloudfunctions\/common\/aiGate\.js$/,
+  /^cloudfunctions\/[^/]+\/cx_aiGate\.js$/,
+  // ⚠️ 2026-11-05（批次 2 · A4/A5）**第二十二次触发** —— 新增两个单源：
+  //   `common/diagnosisEntitlement.js`（深度诊断旁路判定：去重/限流/额度，**不碰 isPaid**）
+  //   + `common/diagnosisEngine.js`（11 指标 + 6 红线，纯函数）。
+  //   均为 `review/收费与权益_总设计师规范_20261105.md` §5.2 显式授权的新增，非「顺手改云函数逻辑」。
+  //   ⚠️ 本轮 **不改任何既有云函数业务逻辑**：其余变动全是 `sync_common` 派生的 `cx_index.js`
+  //      （common/index.js 加 4 个导出所致，已在 round110 条目内）+ `initDb/`（种子与集合，已豁免）。
+  //   仍按**白名单式**登记（精确到**文件名**、**不做 `cx_*` 泛化**），**绝不放宽成 `cloudfunctions/` 全豁免**：
+  //   by=WorkBuddy / date=2026-11-05 / reason=批次2 A4/A5 授权新增诊断判定与诊断引擎单源
+  /^cloudfunctions\/common\/diagnosisEntitlement\.js$/,
+  /^cloudfunctions\/common\/diagnosisEngine\.js$/,
+  /^cloudfunctions\/[^/]+\/cx_diagnosisEntitlement\.js$/,
+  /^cloudfunctions\/[^/]+\/cx_diagnosisEngine\.js$/,
+  // ⚠️ 2026-11-05（批次 3 · A14/A16/A17）**第二十三次触发** —— 本批改了三处云函数侧的单源/自测：
+  //   ① `common/indicatorRef.js::BANDS` 参考带校准 8 项（A16）⇒ `sync_common` 派生 51 份 `cx_indicatorRef.js`
+  //      跟着变（**同步动作**，各函数没有引用它的代码，带旧副本无影响）；
+  //   ② 新增 `common/refundPolicy.js`（A14 退款规则唯一判定处，纯函数零 IO）⇒ 派生 `cx_refundPolicy.js`；
+  //   ③ `common/diagnosisEngine.js::RENT_WARN_HI` 由**手抄值**改为从 BANDS 派生
+  //      （A16 把 other.rent 从 [5,15] 改到 [8,18]，手抄的 15 当场过期且不报错 —— 这条是修洞不是加功能）。
+  //   均属 `review/收费与权益_总设计师规范_20261105.md` A14/A16/A17 显式授权，非「顺手改云函数逻辑」。
+  //   `calcSandbox/selftest.js` 同步旧带值（D3/D10/D15/D16/E1/E2/E4/H2 期望值），属**测试随口径更新**。
+  //   仍按**白名单式**登记（精确到**文件名**、**不做 `cx_*` 泛化**），**绝不放宽成 `cloudfunctions/` 全豁免**：
+  //   by=WorkBuddy / date=2026-11-05 / reason=批次3 A14/A16/A17 授权：参考带校准 + 退款判定单源 + 房租警戒派生
+  /^cloudfunctions\/[^/]+\/cx_indicatorRef\.js$/,
+  /^cloudfunctions\/common\/refundPolicy\.js$/,
+  /^cloudfunctions\/[^/]+\/cx_refundPolicy\.js$/,
+  /^cloudfunctions\/calcSandbox\/selftest\.js$/,
 ];
 check('A15 云函数逻辑零改动（仅 initDb 建库单源 + 本批授权函数豁免）', (() => {
   const { execFileSync } = require('child_process');
@@ -395,7 +461,7 @@ check('A18 promoItem 单源在营销 items 内', MARKETING.indexOf(TERMS.ledger.
 check('A18 promo 判断不再由文案内容驱动', !/推广中心\/\.test\(note\)/.test(inputJs));
 
 console.log('===== A19 · 主题色单源（旧橘黄已全线下线，不得回流）=====');
-const wxssSrc = fs.readFileSync(path.join(ROOT, 'pages/month/input.wxss'), 'utf8');
+const wxssSrc = fs.readFileSync(path.join(ROOT, 'subpkg/biz/month/input.wxss'), 'utf8');
 // 判据只扫「生效样式」：逐行滤掉注释行（块注释首行 /* 与续行 *、含 */ 的收尾行）
 // ⚠️ 必须写成**单行**：R68 顶层块切分要求「深度回 0 时以 ; 或 } 收尾」，链式调用换行会让首行括号即平衡 ⇒ 判「不确定」而 fail-closed
 const wxssLive = wxssSrc.split('\n').filter((l) => !/^\s*(\/\*|\*)/.test(l) && l.indexOf('*/') < 0).join('\n');
@@ -418,15 +484,15 @@ const twT = TERMS.ledger.takeawayMode;
 check('A21 totalLabel / filledTpl / totalAutoHint / fastPh 四键齐备且非空',
   ['totalLabel', 'filledTpl', 'totalAutoHint', 'fastPh'].every((k) => typeof twT[k] === 'string' && twT[k].length > 0));
 const fastBlock = (() => {
-  const i = inputWxml.indexOf("takeoutMode === 'fast'");
+  const i = inputWxml.indexOf("takeoutTrack === 'net'");
   if (i < 0) return '';
   const j = inputWxml.indexOf('</block>', i);
   return j < 0 ? '' : inputWxml.slice(i, j);
 })();
-check('A21 快速块内给出合计（twTotalLabel + takeoutSumYuan）',
+check('A21 net 块内给出合计（twTotalLabel + takeoutSumYuan）',
   fastBlock.length > 0 && /twTotalLabel/.test(fastBlock) && /takeoutSumYuan/.test(fastBlock));
-check('A21 快速块内给出已填平台数（takeoutFilledText）', /takeoutFilledText/.test(fastBlock));
-check('A21 快速块内不复用分项标签 / 配平占位', !/twSumLabel/.test(fastBlock) && !/twRecPh/.test(fastBlock));
+check('A21 net 块内给出已填平台数（takeoutFilledText）', /takeoutFilledText/.test(fastBlock));
+check('A21 net 块内不复用分项标签 / 配平占位', !/twSumLabel/.test(fastBlock) && !/twRecPh/.test(fastBlock));
 check('A21 syncTakeoutSum 按模式取数（快速读各平台 amountYuan）',
   /syncTakeoutSum\(\) \{[\s\S]{0,900}?takeoutMode === 'fast'[\s\S]{0,300}?amountYuan/.test(inputJs));
 check('A21 平台金额变化即重算合计（updateRow 内联动）',
@@ -437,7 +503,7 @@ check('A21 takeoutFilledText 已在 data 声明', /takeoutFilledText: ''/.test(i
 
 console.log('===== A22 · 快速框占位文案不串线（R119）=====');
 check('A22 terms.fastPh 非空且不等同 recPh', twT.fastPh.length > 0 && twT.fastPh !== twT.recPh);
-check('A22 快速金额框占位走 twFastPh', /placeholder="\{\{t\.twFastPh\}\}" data-kind="income"/.test(inputWxml));
+check('A22 net 金额框占位走 twNetPh', /placeholder="\{\{t\.twNetPh\}\}" data-kind="income"/.test(inputWxml));
 check('A22 pasteFillValue 已从纯模块导出', typeof pasteFillValue === 'function');
 check('A22 页面映射了 twFastPh / twTotalLabel / twTotalAutoHint',
   /twFastPh: TERMS\.ledger\.takeawayMode\.fastPh/.test(inputJs)
@@ -529,7 +595,9 @@ const r162snap = snapshotDetail([{ platform: PLATFORMS[0], goods: '100', pack: '
 check('A26-3 snapshotDetail 带 qty', r162snap[0].qty === '150', String(r162snap[0].qty));
 const r162restored = restoreDetail(r162snap, PLATFORMS);
 check('A26-3 restoreDetail 回填 qty（非空原样回）', r162restored[0].qty === '150', String(r162restored[0].qty));
-check('A26-3 回填后小计仍按三框算（150 不得混进金额）', r162restored[0].subtotal === '150.00', r162restored[0].subtotal);
+// 🔴 R496：150 → 120（goods 100 + pack 20）。本条真正要守的是「qty 150 不得混进金额」，
+//   小计口径变化时**数值跟着变、但守护的语义不变**（120 ≠ 150+，qty 仍未被加进来）。
+check('A26-3 回填后小计仍按两框算 goods+pack（qty 150 不得混进金额）', r162restored[0].subtotal === '120.00', r162restored[0].subtotal);
 const r162zero = restoreDetail([{ platform: PLATFORMS[0], qty: '0' }], PLATFORMS);
 check('A26-3 qty 填 0 不被当空吃掉（字符串形态，用 || 会丢）', r162zero[0].qty === '0', JSON.stringify(r162zero[0].qty));
 // ⚠️ 加严（R162 变异回灌 M2 抓出来的假绿）：上面那条用**字符串** '0'，而字符串 '0' 是 truthy
@@ -541,12 +609,18 @@ check('A26-3 qty 为**数字 0** 同样不得被吃掉（falsy 形态，本条�
 check('A26-3 老数据（无 qty）⇒ 空串而非 undefined', restoreDetail([{ platform: PLATFORMS[0] }], PLATFORMS)[0].qty === '');
 
 console.log('—— A26-4 qty 绝不进金额（本组最硬的一条）——');
-check('A26-4 subtotalOf 只吃三框：qty 不参与小计',
-  subtotalOf('100', '20', '30') === '150.00' && (() => {
+// 🔴 R496（2026-10-26）：签名由 `(goods, pack, subsidy)` 收紧为 `(goods, pack)` —— **补贴不进收入**。
+//   ⚠️ 判据必须**钉签名**而不是"体内不出现 subsidy 字样"：新注释里为了说清来历必然提到 subsidy，
+//   只 grep 词会被注释喂成恒真（本仓已踩过两次：R299 ③ / R298Y）。签名是唯一不会被注释骗的地方。
+check('A26-4 subtotalOf 只吃两框（商品总价+打包费）：qty 与 subsidy 都不参与小计',
+  subtotalOf('100', '20') === '120.00' && (() => {
     const src = fs.readFileSync(path.join(ROOT, 'utils/takeaway.js'), 'utf8');
-    const body = (src.match(/function subtotalOf\([^)]*\) \{[\s\S]{0,400}?\n\}/) || [''])[0];
+    const body = (src.match(/function subtotalOf\([^)]*\) \{[\s\S]{0,900}?\n\}/) || [''])[0];
     return body.length > 0 && !/\bqty\b/.test(body);
   })());
+check('A26-4b 🔴 R496 subtotalOf 签名恰为两参 (goods, pack) —— 补贴不得进收入（钉签名，防被注释喂绿）',
+  /function subtotalOf\(\s*goods\s*,\s*pack\s*\)\s*\{/.test(
+    fs.readFileSync(path.join(ROOT, 'utils/takeaway.js'), 'utf8')));
 check('A26-4 utils 源码里 qty 只出现在 qtyTotal/perOrderYuan/快照 四处（不得进 reconcile）',
   (() => {
     const src = fs.readFileSync(path.join(ROOT, 'utils/takeaway.js'), 'utf8');
@@ -628,7 +702,7 @@ check('A26-10 页面渲染归月句（wxml 有 twPeriodNote + input.js 注入）
 check('A26-10 归月句排在口径句之后、模式区之外（两条都不在金额框内 ⇒ 不干扰输入）', (() => {
   const g = inputWxml.indexOf('twScopeGuide');
   const p = inputWxml.indexOf('twPeriodNote');
-  const f = inputWxml.indexOf('twFastHint');
+  const f = inputWxml.indexOf('twNetHint');
   return g > 0 && p > g && f > p;
 })());
 check('A26-10 归月句只是提示，不参与金额（utils/takeaway.js 里不得出现 periodNote）',
@@ -664,8 +738,96 @@ check('A26-12 真漏填补贴仍要报 miss（修公式不得把漏填检测一�
   const r = reconcile(Object.assign({}, R164, { incomeTotal: 6585.08, subsidy: 0 }));
   return r.status === 'miss' && Math.abs(Math.abs(r.diff) - 2069.70) < 0.01;
 })());
-check('A26-12 源码级：reconcile 内补贴取绝对值参与扣减（防回退到只减一次）',
-  /Math\.abs\(subsidy\)/.test(fs.readFileSync(path.join(ROOT, 'utils/takeaway.js'), 'utf8')));
+check('A26-12 源码级：补贴取绝对值参与扣减（防回退到只减一次）'
+  + ' —— 🔴 R302 起锚点移到**公式所在函数** `expectedReceivable`，并要求 `reconcile` **委托**给它：'
+  + '原判据钉在 `reconcile` 函数体内，公式被抽成单源（元/分共用）后**假红**（腿锚错地方）',
+  (() => {
+    const s = fs.readFileSync(path.join(ROOT, 'utils/takeaway.js'), 'utf8');
+    const i = s.indexOf('function expectedReceivable(');
+    const ri = s.indexOf('function reconcile(');
+    if (i < 0 || ri < 0) return false;
+    const fbody = s.slice(i, i + 900).split('\nfunction ')[0];
+    const rbody = s.slice(ri, ri + 2000);
+    return /Math\.abs\(\s*sub\s*\)/.test(fbody) && /expectedReceivable\(/.test(rbody);
+  })());
+
+// ===== A26-13 · R496 补贴不进收入（口径定罪 + 真值代入 + 反恒真）=====
+// 背景（2026-10-26 李老师授权拍板，豆包三轮会诊 + 真值实证）：
+//   旧实现 subtotalOf = goods + pack + subsidy ⇒ 补贴被**加进收入**；费用侧又自动带出补贴再扣一次
+//   ⇒ 一加一减正好抵消，这笔补贴**等于一次都没扣**（真值实测：美团净额 2632.93 vs 真实到手 1826.64，
+//   偏差 806.29；淘宝偏差 2069.70 —— 偏差恒等于各自补贴额）。
+//   会计定性（豆包【确定】）：商家承担补贴 = 商家让利（可变对价），应**冲减收入**，不是收入的一部分。
+// 🔴 为什么必须立守卫：这个错**不报错、不阻断、配平还显示一致**（配平式走的是另一条路径），
+//   只会让利润静默虚高一个补贴额 —— 本仓最贵的一类病，只能靠真值断言钉死。
+console.log('—— A26-13 R496 补贴不进收入（真值代入 + 反恒真）——');
+const R496_CASES = [
+  // 真值锚点：review/evidence/r161_waimai（8 月实测账单）；commission 栏美团为平台服务费合计
+  { name: '美团2026-08', goods: 3041.20, pack: 125.00, subsidy: 806.29, commission: 533.27, deliveryFee: 0, deliverySubsidy: 0, truth: 1826.64 },
+  { name: '淘宝2026-08', goods: 6585.08, pack: 0, subsidy: 2069.70, commission: 158.71, deliveryFee: 577.02, deliverySubsidy: 0, truth: 3779.65 },
+];
+let r496all = true, r496detail = '';
+for (const c of R496_CASES) {
+  const inc = Number(subtotalOf(String(c.goods), String(c.pack)));
+  const net = takeaway.expectedReceivable(inc, c.subsidy, c.commission, c.deliveryFee, c.deliverySubsidy);
+  if (!(Math.abs(net - c.truth) < 0.01)) r496all = false;
+  r496detail += `${c.name} 净${net.toFixed(2)}/真${c.truth} `;
+}
+check('A26-13 R496 真值代入：收入=商品总价+打包费（不含补贴）⇒ 净额命中真实到手', r496all, r496detail.trim());
+
+// 🔴 反恒真模拟的是**利润链**（不是配平式）—— 这是本轮最关键的一点，别弄错：
+//   配平式 expectedReceivable 在 R164 之后**本来就是对的**（它会先还原再扣一次 ⇒ 命中真值）。
+//   真正错的是**利润链**：收入 = 三框和（含 +补贴），费用侧只扣一次补贴 ⇒ 一加一减**抵消**
+//   ⇒ 这笔补贴等于没扣。所以本条必须按"收入 − 费用"这条链路算，才能复现虚高。
+//   （我第一版误模拟了配平式 ⇒ 虚高算出 0.00、反恒真假绿 —— 差点把守卫写成恒真。）
+let r496old = true, r496oldDetail = '';
+for (const c of R496_CASES) {
+  const incOld = c.goods + c.pack + c.subsidy;                 // 旧收入：补贴被**加进**收入
+  const netOld = incOld - c.subsidy - c.commission - c.deliveryFee - c.deliverySubsidy; // 费用侧扣一次补贴
+  if (!(Math.abs((netOld - c.truth) - c.subsidy) < 0.01)) r496old = false;  // 虚高必须**恰等于**补贴额
+  r496oldDetail += `${c.name} 虚高${(netOld - c.truth).toFixed(2)} `;
+}
+check('A26-13 反恒真：旧**利润链**偏差恰等于补贴额 ⇒ 确证旧实现把补贴抵消掉了', r496old, r496oldDetail.trim());
+
+check('A26-13b R496 expectedReceivable 体内不得再"先还原优惠前总额"（收入已不含补贴，还原=扣两遍）', (() => {
+  const s = fs.readFileSync(path.join(ROOT, 'utils/takeaway.js'), 'utf8');
+  const i = s.indexOf('function expectedReceivable(');
+  if (i < 0) return false;
+  const fbody = s.slice(i, i + 900).split('\nfunction ')[0];
+  return !/\bgross\b/.test(fbody) && /Math\.abs\(\s*sub\s*\)/.test(fbody);
+})());
+
+// ⚠️ twT 在 A21 段已声明（line 442），此处**不得重复声明**（本轮踩到 SyntaxError）。
+check('A26-13c R496 引导文案不得再要求填「三项之和 / 三项相加」（补贴已不进收入）',
+  !/(三项之和|三项相加)/.test(twT.fastHint + twT.scopeGuide + twT.sumAutoHint + twT.detailHint));
+check('A26-13d R496 scopeGuide 必须给出**手机上抄得到**的数（含「营业额」）—— 旧句把手机现成值全排除，却要一个手机上看不到的数',
+  /营业额/.test(twT.scopeGuide));
+check('A26-13e R496 subsidyNote 必须明说补贴「不计入营业收入」', /不计入营业收入/.test(twT.subsidyNote));
+
+// ===== A26-14 · R498 文档面：入参说明不得回退到旧口径（注释说反了比没注释更危险）=====
+// 🔴 来历（2026-10-26 R498 巡检发现）：R496 修了 `subtotalOf`/`expectedReceivable` 的**实现**，
+//   但 `reconcile` / `settleSummary` 的 JSDoc 仍写着「收入**含**补贴框的值 + 两步走还原」—— 与新口径
+//   **正好相反**。零行为影响 ⇒ 现有断言一条都不会红；但后人照注释改代码 ⇒ 补贴被扣两遍。
+//   本仓已踩过「注释喂恒真 / 注释误导」三轮（R299 ③ / R298Y / R496 A26-4），注释必须进判据面。
+// ⚠️ 判据细节：先剥掉「**不含**补贴」再判 —— 「不含补贴」含「含补贴」子串，不剥会自伤（修好了也判红）。
+// ⚠️ 只取 `@param` 行（`incomeTotal, //`）而非 `@returns` 里的 `incomeFen:number`，否则后者的行会被正向出口误判。
+console.log('—— A26-14 R498 收入入参说明不得再写「含补贴」——');
+check('A26-14 R498 reconcile/settleSummary 的收入入参必须写明「优惠前总额/不含」且不得再写「含补贴」', (() => {
+  const s = fs.readFileSync(path.join(ROOT, 'utils/takeaway.js'), 'utf8');
+  const docOf = (fn) => {
+    const i = s.indexOf('function ' + fn + '(');
+    if (i < 0) return '';
+    const j = s.lastIndexOf('/**', i);
+    const k = s.indexOf('*/', j);
+    return (j >= 0 && k > j) ? s.slice(j, k) : '';
+  };
+  const lines = ['reconcile', 'settleSummary'].map(docOf).join('\n').split('\n')
+    .filter((l) => /^\s*\*\s+(incomeTotal|incomeFen),\s+\/\//.test(l));
+  // 自失效护栏：两处说明都必须真抽得到（改名/删注释 ⇒ 判红，不许静默变绿）
+  return lines.length >= 2
+    && lines.every((l) => !/含补贴/.test(l.replace(/不含补贴/g, '')) && /(优惠前|不含)/.test(l));
+})());
+check('A26-14b R498 带出注释不得再写「净额为零」（R496 后收入不含补贴 ⇒ 带出是唯一一次扣减，不是一进一出）',
+  /R170/.test(inputJs) && !/净额为零/.test(inputJs));
 
 // ===== A27 · R166 文案不得与已修算法脱节（"实现改了、说明没跟上" 是静默误导，客户照样算错）=====
 // 背景：R164 修了配平式（只减一次补贴 ⇒ 两步走），但界面上那句「按外卖收入−活动补贴…」仍在描述旧算法。
@@ -674,8 +836,11 @@ console.log('—— A27 R166 配平/带出文案不得回退到已证伪的旧�
 const twTerms = require(path.join(ROOT, 'miniprogram/i18n/terms.js')).TERMS.ledger.takeawayMode;
 check('A27-1 recCalcHint 不得残留旧算法描述「外卖收入 − 活动补贴」（该式已被 R164 真值证伪）',
   !/外卖收入\s*[−\-]\s*活动补贴/.test(twTerms.recCalcHint), twTerms.recCalcHint);
-check('A27-2 recCalcHint 必须说清「还原优惠前总额」这一步（两步走的第①步，缺了它等式就不成立）',
-  /还原/.test(twTerms.recCalcHint) && /优惠前/.test(twTerms.recCalcHint), twTerms.recCalcHint);
+// 🔴 R496：判据**反向**。R164 时配平必须"先还原优惠前总额"（因为收入含补贴），故要求文案含「还原」；
+//   R496 起收入已是优惠前总额 ⇒ 再还原就是扣两遍 ⇒ 文案必须改说"以优惠前总额为基础"，
+//   且**不得**再出现「还原」二字（出现即说明文案回退到旧算法描述）。
+check('A27-2 recCalcHint 必须说清以「优惠前总额」为基础，且不得再说「还原」（R496 后还原=扣两遍）',
+  /优惠前总额/.test(twTerms.recCalcHint) && !/还原/.test(twTerms.recCalcHint), twTerms.recCalcHint);
 check('A27-3 autoCarryHint 不得再写「配平相抵」（修好后配平已不依赖费用侧那一行，留着会诱导重复记账）',
   !/配平相抵/.test(twTerms.autoCarryHint), twTerms.autoCarryHint);
 check('A27-4 费用项注「外卖活动补贴」引用的是**新字段名**（R161-2 已改名，旧名两边对不上号）',

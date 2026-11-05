@@ -1,0 +1,54 @@
+[
+  {
+    "n": "到达 pages/sandbox/index",
+    "ok": true
+  },
+  {
+    "n": "算出结果",
+    "ok": true,
+    "d": "{\"has\":true,\"has_target\":true,\"cushion\":\"营收再掉47.9%就亏\",\"be\":\"34523.81\",\"beCash\":null,\"fb\":[\"房租=5000\","
+  },
+  {
+    "n": "目标填了 ⇒ has_target 真",
+    "ok": true
+  },
+  {
+    "n": "安全垫有文案",
+    "ok": true,
+    "d": "营收再掉47.9%就亏"
+  },
+  {
+    "n": "账面保本有值",
+    "ok": true,
+    "d": "34523.81"
+  },
+  {
+    "n": "现金保本：有值或明确 null",
+    "ok": true,
+    "d": "beCash=null"
+  },
+  {
+    "n": "🔴 固定费用拆项真的出现（R353 修的）",
+    "ok": true,
+    "d": "房租=5000 / 人工=15000 / 水电气=1750"
+  },
+  {
+    "n": "活动卡三项 + 同营收对比齐全",
+    "ok": true,
+    "d": "60.6% | 10.5% 的客人（多来的，不是总共）"
+  },
+  {
+    "n": "目标清空 ⇒ has_target 假（目标两行应隐藏）",
+    "ok": true,
+    "d": "{\"has_target\":false,\"targetEqBreak\":true}"
+  },
+  {
+    "n": "到达 pages/sandbox/matrix",
+    "ok": true
+  },
+  {
+    "n": "手填人均 7000 后切业态不被覆盖",
+    "ok": true,
+    "d": "{\"before\":\"7000\",\"after\":\"7000\",\"touched\":true}"
+  }
+]

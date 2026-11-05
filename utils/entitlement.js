@@ -5,12 +5,20 @@
 //   有效期以服务端 UTC 为准（payQueryEntitlement 返回），前端只负责展示转北京时间。
 
 const api = require('./api.js');
+const { FREE_ACCESS_MODE } = require('./featureFlags.js');
 
 /**
  * 拉取当前权益（payQueryEntitlement）。
  * @returns {Promise<{expire_at:number, is_active:boolean, source:string, days_left:number}>}
  */
 async function fetchEntitlement() {
+  // 🔴 免费期（R603）：售卖关闭 ⇒ 付费域一律视为已开通。
+  //   必须在这里短路，而不是只改弹窗：11 处调用点写的是 `if (!ent || !ent.is_active) { openPaywall(); return; }`
+  //   —— 弹窗换文案不改这个 return，功能仍然不可用（R602 就是这么错的）。
+  //   ⚠️ 放在**唯一**取权益的函数里，调用点一行不改、将来新增入口自动受管。
+  if (FREE_ACCESS_MODE) {
+    return { expire_at: 0, is_active: true, source: 'free_mode', days_left: 0 };
+  }
   const shopId = (getApp && getApp().globalData && getApp().globalData.shop_id) || '';
   const d = await api.call('payQueryEntitlement', { shop_id: shopId });
   return {

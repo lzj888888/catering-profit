@@ -1,0 +1,91 @@
+<view class="container safe-bottom" wx:if="{{!loading}}">
+  <!-- 批次 5 · 权限状态条（只读 expire_at 判定） -->
+  <view class="card2 banner" wx:if="{{isExpired}}">
+    <view class="muted">{{t.expiredLocked}}</view>
+  </view>
+  <view class="card2 banner warn" wx:if="{{expireSoonDays > 0}}">
+    <view class="muted">{{t.expireSoonTitle}} · {{expireSoonText}}</view>
+    <button class="btn-small ghost" style="margin-top:12rpx;" bindtap="goOrders">{{t.renewEntry}}</button>
+  </view>
+
+  <!-- 月份选择 -->
+  <view class="card2">
+    <picker mode="selector" range="{{months}}" value="{{monthIndex}}" bindchange="onMonthChange">
+      <view class="cell">
+        <text class="lbl">{{t.month}}</text>
+        <!-- 修 3：curMonth 为空时显示占位，不空白 -->
+        <text class="val" wx:if="{{curMonth}}">{{curMonth}}</text>
+        <text class="val muted" wx:else>{{t.monthEmpty}}</text>
+      </view>
+    </picker>
+    <view wx:if="{{isArchive}}" class="archived-bar">
+      {{t.archivedLock}}<text wx:if="{{archivedAtMs}}">（{{t.graceArchive}}）</text>
+    </view>
+    <view wx:if="{{canArchive}}" class="hint">{{t.pendingArchive}} · {{t.goResult}}</view>
+  </view>
+
+  <!-- 结果卡（单数字摘要：按权限显示一个数，不做双 tab 切换，避免"两个利润"错觉）
+       🔴 R488：标签必须与这个数同口径 —— 付费档看会计利润 ⇒ 用 r.profitTitle（由 utils/profitLabel.js
+       按"盘没盘点"生成，与首页/结果页同名）；免费档看参考口径 ⇒ 用 t.netRef。 -->
+  <view class="card2" wx:if="{{result}}">
+    <view class="muted">{{isPaid ? result.profitTitle : t.netRef}}</view>
+    <view class="result-num">{{t.cur}}{{isPaid ? result.true_profit : result.ref_profit}}</view>
+    <view class="caliber-hint">{{isPaid ? result.profitNote : t.caliberRefHint}}</view>
+    <!-- 🔴 R489：钱扣在哪 —— 以下三行都"有话说才出现"（空行会把单数字卡撑成小作文）。
+         · 摊销：只对付费档显示（免费档看的是参考口径那个数，**不含摊销**，说出来就是错话）
+         · 一次性投入：两个口径都扣，两边都能显示
+         · 倒轧用的期末库存：把老板填的数摆在他眼前，他自己会判断准不准（系统不猜） -->
+    <view class="caliber-hint" wx:if="{{isPaid && result.amortText}}">{{result.amortText}}</view>
+    <view class="caliber-hint" wx:if="{{result.lumpText}}">{{result.lumpText}}</view>
+    <view class="caliber-hint basis-line" wx:if="{{isPaid && result.basisText}}" bindtap="goInventory">{{result.basisText}} · {{t.basisGo}} ›</view>
+    <!-- 免费用户：升级提示（保留 hint-fold 守卫 moFreeHint） -->
+    <view class="hint-fold" wx:if="{{!isPaid}}">
+      <view class="hint-fold-head" data-key="moFreeHint" bindtap="onToggleHintFold">
+        <text class="hint-fold-guide">{{hintFold.moFreeHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+        <text class="hint-fold-arrow">{{hintFold.moFreeHint ? '▾' : '▸'}}</text>
+      </view>
+      <view class="hint-fold-body" wx:if="{{hintFold.moFreeHint}}">{{t.freeHint}}</view>
+    </view>
+    <view class="row" style="margin-top:20rpx;">
+      <text class="lbl">{{t.totalRevenue}}</text>
+      <text class="val">{{t.cur}}{{result.income_total}}</text>
+    </view>
+    <view class="row">
+      <text class="lbl">{{t.totalExpense}}</text>
+      <text class="val">{{t.cur}}{{result.expense_total}}</text>
+    </view>
+    <view class="row">
+      <text class="lbl">{{t.grossProfit}}</text>
+      <text class="val">{{t.cur}}{{result.gross_profit}}</text>
+    </view>
+  </view>
+
+  <!-- 🔴 R372：无账本月份的空态。结果卡 `wx:if="{{result}}"` 一隐藏，整页只剩几个按钮，
+       老板分不清"这月没记账"还是"加载失败"。这里给一句中性说明 + 去录入入口。
+       ⚠️ 文案复用 result 页的 resultEmpty（中性表述，接口异常时也不说谎）。 -->
+  <view class="card2" wx:if="{{!result}}">
+    <view class="muted">{{t.resultEmpty}}</view>
+    <!-- 🔴 R472：无账本时**这里就是唯一入口** ⇒ 用主按钮样式，别再在下面重复一排 -->
+    <button class="btn primary" style="margin-top:16rpx;" bindtap="goInput">{{t.resultEmptyGoInput}}</button>
+  </view>
+
+  <!-- 🔴 R472：有账本才出现「操作区」。无账本时下面这些按钮全部不渲染 ——
+       原来空月会同时出现「空态卡的去录入」+「录入收入·费用·消耗」+「查看结果」三个入口，
+       同一件事两个按钮、再加一个点了只能得到空结果的按钮。 -->
+  <block wx:if="{{result}}">
+    <!-- 快捷入口 -->
+    <button class="btn primary" bindtap="goInput">{{t.goInput}}</button>
+    <button class="btn" wx:if="{{switches.inventorySwitchOn}}" bindtap="goInventory">{{t.goInventory}}</button>
+    <button class="btn" wx:if="{{switches.amortizeSwitchOn}}" bindtap="goAmortize">{{t.goAmortize}}</button>
+    <button class="btn ghost" bindtap="goResult">{{t.goResult}}</button>
+    <button class="btn ghost" wx:if="{{canArchive}}" bindtap="onArchive">{{t.archiveNow}}</button>
+    <button class="btn ghost" wx:if="{{canArchivePrev}}" bindtap="onArchivePrev">{{t.archivePrev}}</button>
+    <!-- 🔴 R516：归档点错月的自救入口。云函数早就支持 archive:false，前端此前没有入口
+         ⇒ 归档错月只能改库，且 saveLedger 报「先取消归档再改」时无按钮可点。 -->
+    <button class="btn ghost" wx:if="{{isArchive}}" bindtap="onUnarchive">{{t.unarchive}}</button>
+    <!-- 🔴 R376：清空本月（**软删**，可恢复）。只在"该月有账且未归档"时出现：
+         空月没有可清的；归档月要先取消归档（服务端同样拒绝，双保险）。 -->
+    <button class="btn ghost btn-clear" wx:if="{{result && !isArchive}}" bindtap="onClearMonth">{{t.clearMonth}}</button>
+  </block>
+</view>
+<view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

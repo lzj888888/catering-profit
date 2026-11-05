@@ -80,15 +80,32 @@ function calcTakeawayOrder(order, lookup) {
   const packs = (order && Array.isArray(order.packs)) ? order.packs : [];
   const params = (order && order.params) || {};
 
-  // 商品总价 + 菜品成本
+  // 商品总价 + 菜品成本 + 逐行毛利（P1 · 外卖单订单 套餐毛利可读）
   let goodsTotal = 0;
   let dishCost = 0;
+  const lines = [];
   for (const it of items) {
     const id = (it && (it.card_id || it.combo_id)) || '';
     const qty = Number(it && it.qty) || 0;
     const card = (lookup && lookup(id)) || {};
-    goodsTotal += (Number(card.price_fen) || 0) * qty;
-    dishCost += (Number(card.unit_cost_fen) || 0) * qty;
+    const priceFen = Number(card.price_fen) || 0;
+    const costFen = Number(card.unit_cost_fen) || 0;
+    const lineAmount = priceFen * qty;
+    const lineCost = costFen * qty;
+    goodsTotal += lineAmount;
+    dishCost += lineCost;
+    const lineGross = lineAmount - lineCost;
+    const lineMargin = lineAmount > 0 ? Math.round((lineGross / lineAmount) * 10000) / 100 : 0;
+    lines.push({
+      card_id: id,
+      name: card.name || '',
+      is_combo: !!card.card_type && Number(card.card_type) === 3,
+      qty,
+      price_fen: Math.round(priceFen),
+      unit_cost_fen: Math.round(costFen),
+      gross_profit_fen: Math.round(lineGross),
+      gross_margin_pct: lineMargin,
+    });
   }
 
   // 包材成本
@@ -105,12 +122,17 @@ function calcTakeawayOrder(order, lookup) {
 
   // ===== 口径一：到手（现金视角）=====
   const payment = goodsTotal + packFee + deliveryCustomer;       // 顾客支付 P
-  const receipt = payment - sMerchant - commission - d - deliverySubsidy; // 商家实收 R
+  // 🔴 H1（2026-10-27 审计）：推广费是**实打实的现金流出**，到手口径也必须扣。
+  //   原实现只在总额法 expense 里扣 ⇒ 同一单两个利润数、填了推广费到手利润一分不变。
+  const receipt = payment - sMerchant - commission - d - deliverySubsidy - promo; // 商家实收 R
   const profit = receipt - dishCost - packCost;                  // 单均理论利润
   const receiptRate = payment > 0 ? Math.round((receipt / payment) * 10000) / 100 : 0;
 
   // ===== 口径二：总额法（会计视角 · 与 M1 对得上）=====
-  const revenue = goodsTotal + packFee + sMerchant;              // 收入 = 商品总价 + 打包费 + 商家活动补贴
+  // 🔴 H1：收入 = 顾客实际支付（商品总价 + 打包费 + 顾客承担的配送费）。
+  //   原实现把「商家补贴」加进收入、又在费用里减一次（净 0），却让到手口径单边减一次
+  //   ⇒ 两口径利润恒差一个补贴额。改为与到手同一收入定义后，两口径利润恒等（T-h 锁死）。
+  const revenue = goodsTotal + packFee + deliveryCustomer;
   const expense = commission + d + deliverySubsidy + sMerchant + promo; // 费用 = 佣金 + 配送服务费 + 补贴 + 推广
   const accrualProfit = revenue - expense - dishCost - packCost;
 
@@ -138,20 +160,38 @@ function calcTakeawayOrder(order, lookup) {
       pack_cost_fen: Math.round(packCost),
       profit_fen: Math.round(accrualProfit),
     },
+    // 🔴 P1 · 逐行毛利明细（外卖单订单 套餐毛利可读）：每道菜/套餐的售价、成本、毛利额、毛利率；
+    //   套餐行 is_combo=true（消费方据此打「套餐」标签）；不进 M1（守卫 R135 仅约束聚合输出，明细同理不外溢）。
+    lines,
   };
 }
 
 // ===================== 挂牌价反算 =====================
 /**
  * 挂牌价反算：给定目标到手利润 M，反推商品挂牌总价 P*（不含打包费）。
- * 公式：P* = (Cf + Cp + M + s + d + 配送费(顾客承担) − 打包费收入) ÷ (1 − c)
- *   分母 (1 − c) 体现佣金按商品总价计；配送费顾客承担须同侧一致（分子补该项）。
+ *
+ * 推导（与 `calcTakeawayOrder` 的到手口径**同一条式子**，反解 P*）：
+ *   到手利润 = P* + 打包费 + 顾客配送费 − s − 佣金(P*) − d − 配送补贴 − 推广费 − Cf − Cp = M
+ *   ⇒ 分子 = Cf + Cp + M + s + d + 配送补贴 + 推广费 − 打包费 − 顾客配送费
+ *
+ * 🔴 R547（M4）：分子**必须包含推广费与配送补贴**。二者在到手口径里都是实打实的现金流出
+ *   （H1 已把 promo 补进 `receipt`，反算侧却漏了 ⇒ 反算出的挂牌价偏低，
+ *   老板照它定价就是「按目标利润定价、实际到手少一块」——且零报错）。
+ * 🔴 R547 同批修正：**顾客承担的配送费符号反了**（原式 `+ 顾客配送费`）。它在正算里是**实收**
+ *   （`payment = 商品总价 + 打包费 + 配送费(顾客承担)`）⇒ 反解时必须**减**；原符号会让反算价虚高
+ *   2×dc。存量用例 dc 恒为 0 ⇒ 长期不可见，由 T-i 回带用例首次暴露。
+ *   判据不靠"记得补"，靠 T-i 回带：反算出的价喂回 `calcTakeawayOrder`，到手利润必须 ≡ 目标利润。
+ *
  * @param {object} input
  *   - dish_cost_fen / pack_cost_fen / target_profit_fen
- *   - subsidy_merchant_fen（商家承担补贴合计）
- *   - delivery_fee_fen（配送服务费 d）/ delivery_customer_fen（配送费顾客承担）
- *   - pack_fee_fen（打包费收入）/ commission_rate（%）
+ *   - subsidy_merchant_fen（商家承担补贴合计）/ delivery_subsidy_fen（配送补贴）
+ *   - promo_fen（推广费）/ delivery_fee_fen（配送服务费 d）/ delivery_customer_fen（配送费顾客承担）
+ *   - pack_fee_fen（打包费收入）
+ *   - commission_mode（'rate' 默认 | 'fixed'）/ commission_rate（%）/ commission_fixed_fen（fixed 模式的固定佣金）
  * @returns {number} P*（商品挂牌总价，分；round 到分）
+ *
+ * ⚠️ 已知边界（不修，登记）：`commission_min_fen` 保底佣金在「挂牌价低到比例佣金 < 保底」时才生效，
+ *   反算不对该分段求解（分段点是 P = min/c，本函数一律按纯比例）。命中该段时反算价**偏低一档**。
  */
 function reverseListedPrice(input) {
   const p = input || {};
@@ -163,8 +203,16 @@ function reverseListedPrice(input) {
   const deliveryCustomer = Number(p.delivery_customer_fen) || 0;
   const packFee = Number(p.pack_fee_fen) || 0;
   const c = Number(p.commission_rate) || 0;
-  if (c >= 100) return 0;
-  const numerator = cf + cp + m + s + d + deliveryCustomer - packFee;
+  const deliverySubsidy = Number(p.delivery_subsidy_fen) || 0;
+  const promo = Number(p.promo_fen) || 0;
+  const isFixed = p.commission_mode === 'fixed';
+  const fixedFen = Number(p.commission_fixed_fen) || 0;
+  if (!isFixed && c >= 100) return 0;
+  // 分子 = 所有「要靠挂牌价收回来的东西」（成本 + 目标利润 + 各项现金流出 − 打包费收入 − 顾客配送费实收）
+  const numerator = cf + cp + m + s + d + deliverySubsidy + promo - packFee - deliveryCustomer;
+  // 🔴 fixed 模式：佣金是常数（与挂牌价无关）⇒ 不除分母，直接加回固定佣金
+  //   （原实现一律 ÷(1−c) 且 c 恒为 0 ⇒ 固定佣金**完全没收回** ⇒ 反算价每个订单少一个固定佣金）
+  if (isFixed) return Math.round(numerator + fixedFen);
   return Math.round(numerator / (1 - c / 100));
 }
 

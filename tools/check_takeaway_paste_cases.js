@@ -144,7 +144,7 @@ for (const c of emptyCases) {
 
 // ============ A5 页面接线 ============
 section('A5 页面接线与文案单源');
-const inputJsRaw = readAbs('pages/month/input.js');
+const inputJsRaw = readAbs('subpkg/biz/month/input.js');
 const inputJs = stripComments(inputJsRaw);   // ⚠️ 先剥注释：修复注释里就写着旧判据原文
 if (/const fill = pasteFillValue\(res\);/.test(inputJs) && /if \(fill === ''\)/.test(inputJs))
   ok('A5-①', '判据走 fill === \'\'（「最终能不能填出值」）');

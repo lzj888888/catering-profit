@@ -1,0 +1,23 @@
+{
+  "size": {
+    "total": 862136,
+    "packages": [
+      {
+        "name": "TOTAL",
+        "size": 862136
+      },
+      {
+        "name": "main",
+        "size": 300984
+      },
+      {
+        "name": "/subpkg/biz/",
+        "size": 360289
+      },
+      {
+        "name": "/subpkg/tools/",
+        "size": 200863
+      }
+    ]
+  }
+}

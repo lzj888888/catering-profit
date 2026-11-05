@@ -192,13 +192,27 @@ let digOK = false;
           return i < 0 ? null : flat.slice(i, i + 400);
         };
         const wWin = near(writeSrc, "insert('shop_cost_card_line'");
-        const rWin = near(readSrc, "list('shop_cost_card_line'");
+        const rWin = near(readSrc, "('shop_cost_card_line'");
         const wOK = !!(wWin && /cost_card_row_id\s*:/.test(wWin));
-        const rOK = !!(rWin && /cost_card_row_id\s*:/.test(rWin));
+        // 🔴 R547（M6）：读侧现在有**两种合法形态**，判据必须跟着行为走，不能只认写法①
+        //   （只认一种写法 = 本仓反复踩的"判据恒真第三型"：优化一次就假红，回头把优化撤掉）。
+        //   ① 逐卡查：`where` 里直接带 `cost_card_row_id`（原形态）
+        //   ② 全店取全 + 内存分组：`listAll('shop_cost_card_line', {shop_id})` + `service.js::groupLinesByCard`
+        //      按 `cost_card_row_id` 分组 —— 等价性由 `cloudfunctions/getCostCard/selftest.js` 的
+        //      G-1~G-7（逐卡查 ≡ 批量分组，含顺序/孤儿行/空输入）**行为对拍**钉住，不是靠这句 grep。
+        const readSvc = readOrNull(path.join(CF, 'getCostCard/service.js'));
+        const rPerCard = !!(rWin && /cost_card_row_id\s*:/.test(rWin));
+        const rBatch = /listAll\('shop_cost_card_line'/.test(stripComments(readSrc))
+          && /cost_card_row_id/.test(stripComments(readSvc));
+        const rOK = rPerCard || rBatch;
         if (wOK) ok('L3 写入点带 `cost_card_row_id`（saveCostCard 的 da.insert(\'shop_cost_card_line\')）—— 字段是活的');
         else bad('L3 写入点找不到 `cost_card_row_id`（saveCostCard 没写这个字段？）⇒ L2 的字段可能是"换个名字继续死"');
-        if (rOK) ok('L3 查询点带 `cost_card_row_id`（getCostCard 的 da.list(\'shop_cost_card_line\')）—— 索引确实会被用到');
-        else bad('L3 查询点找不到 `cost_card_row_id`（getCostCard 没按它查？）⇒ 索引建了也没人用');
+        if (rOK) ok('L3 查询点用到 `cost_card_row_id`（' + (rPerCard ? '逐卡 where 直查' : '全店取全 + 内存分组') + '）—— 索引确实会被用到');
+        else bad('L3 查询点找不到 `cost_card_row_id`（getCostCard 既没按它查、也没按它分组？）⇒ 索引建了也没人用');
+        // C4 反恒真：把「批式」两条腿各打断一条 ⇒ 判据必须判假（否则上面那条可被注释/无关字段喂成恒真）
+        const rBatchNoSvc = /listAll\('shop_cost_card_line'/.test(stripComments(readSrc)) && /cost_card_row_id/.test(stripComments(''));
+        if (!rBatchNoSvc) ok('C4 反恒真：service 侧没有 `cost_card_row_id` 时，批式判据不成立（非恒真）');
+        else bad('C4 批式判据被喂成恒真（service 侧为空也判成立）');
       }
 
       // ---------- C1~C3 反恒真 ----------

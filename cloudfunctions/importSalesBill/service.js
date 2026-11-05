@@ -13,6 +13,7 @@ const XLSX = require('xlsx');
 //   写法与仓内其它云函数完全一致（const { ... } = require('./common')）；
 //   common/ 全层零外部依赖（已实测可直接加载），不污染本文件「纯逻辑」的定位。
 const common = require('./common');
+const { isDSI1, isDSI1S2, parse: parseDSI1 } = require('./dsi1');   // R584/R585：标准格式
 const { normalizeDishName } = common;
 
 // ===================== 通用：字符串 → 数值（移植 parse_bill.py::to_num）=====================
@@ -294,7 +295,7 @@ function parseBillMatrix(matrix, opts) {
         qty = 1;
       }
     }
-    orders.push({ bizDate, qty, amountFen: Math.round(net * 100) });
+    orders.push({ bizDate, qty, amountFen: Math.round(Number((net * 100).toFixed(10))) });
   }
 
   const byDate = new Map();
@@ -329,6 +330,13 @@ const SALES_SCHEMA = {
     platform: { type: 'string', required: true, enum: ['taobao', 'meituan', 'jd_order', 'jd_sku', 'eleme', 'pos', 'other'] },
     source: { type: 'string', required: true, enum: ['oauth', 'excel', 'manual'] },
     created_at: { type: 'number', required: true, integer: true },
+    // 🔴 R574 / #109：粒度三字段（**非必填**，为旧数据留出缺口）。
+    //   为什么非必填：库里已有大量没有这三个字段的历史行，设成 required 会让重导旧表直接失败；
+    //   缺省语义由读侧定 —— 无 granularity ⇒ unknown ⇒ 按单日计但**打标记**，绝不臆测成 interval。
+    //   🔴 本段须与 `utils/gradeGate.js::SALES_SCHEMA.fields` **逐值一致**（check_grade_gate_dual 守）。
+    granularity: { type: 'string', required: false, enum: ['daily', 'interval', 'unknown'] },
+    period_from: { type: 'string', required: false, pattern: /^\d{4}-\d{2}-\d{2}$/ },
+    period_to: { type: 'string', required: false, pattern: /^\d{4}-\d{2}-\d{2}$/ },
   },
 };
 
@@ -397,6 +405,14 @@ const DISH_SHAPES = {
   A: 'dish_sales',    // 堂食《菜品销售统计》（美团收银 POS）—— 主路径
   B: 'combo_detail',  // 团购《套餐销售明细》—— 仅交叉校验，不入库
   C: 'waimai_goods',  // 外卖「商品销量」—— 🔴 样例已到货（R258/R259 实测：淘宝闪购「商品下载」355 行 = 7 天 × 51 商品）
+  // R432（队列 #43）：京东外卖「订单导出」—— 20 列，商品混装在一列，无独立销量/销售额列
+  D: 'jd_order_export',
+  // 🔴 R584：DSI-1 标准导入格式（契约 specs/core/店算标准导入格式_v1.md，解析器 dsi1.js）。
+  S: 'dsi1_standard',
+  // 🔴 R585：S2（月渠道汇总）**认得但不受理** —— 只用于回一句正确的拒收理由。
+  //   它的落库目标是月度账（ledger），与 S1 的 external_sales_daily 是两条链路，
+  //   v1 不做。但不认出来就会回「未识别」，老板会以为文件坏了而放弃。
+  S2: 'dsi1_summary',
 };
 
 // 形态 A 表结构常量（§2.1.2 实测 · 六项必核）
@@ -462,6 +478,12 @@ function findDishCCol(hdr, canon) {
 //         即使删掉也不会误判 —— 见 v1.7 §4.2 与锚点 C-1i~C-1l。保留以防将来列名趋同。）
 function detectDishShape(sheetRows) {
   const rows = sheetRows || [];
+  // 🔴 R584：DSI-1 **必须最先判**。它同样是「商品名称+销量+销售额」三列齐全，
+  //   但形态 C 的判据更松（允许「菜品名称」别名）⇒ 放 C 之后会被抢走，
+  //   结果是标准表被当外卖商品表解析、渠道列丢失。判据本身最严，放最前不误吞别形态。
+  if (isDSI1(rows[0] || [])) return DISH_SHAPES.S;
+  // S2 必须排在 S 之后判（S 的判据更严，两者表头首列都是中文但列名完全不同，不会互相吞）。
+  if (isDSI1S2(rows[0] || [])) return DISH_SHAPES.S2;
   const hdr3 = (rows[2] || []).map((x) => (x == null ? '' : String(x).trim()));  // R3（形态 A/B）
   const hdr1 = (rows[0] || []).map((x) => (x == null ? '' : String(x).trim()));  // R1（形态 C）
   const hdr = hdr3.concat(hdr1);
@@ -479,6 +501,12 @@ function detectDishShape(sheetRows) {
     && hasC('销售额')
     && r2.indexOf('销售方式') < 0
     && !has('费用类型')) return DISH_SHAPES.C;
+  // 🔴 R432（队列 #43）：京东外卖「订单导出」—— 商品混装在「商品信息」一列
+  //   为什么单列一支：它根本没有独立的「商品名称/销量/销售额」三列，形态 C 的判据永远不成立；
+  //   而在老板眼里「我明明有商品信息」，只说「缺三列」会让人觉得是自己导错了表。
+  //   判据取「商品信息」+（「顾客实付」或「订单编号」）—— 这三列是京东外卖订单导出的稳定签名。
+  //   ⚠️ 必须放在 C 之后：C 的判据更严（三列齐），先判 C 不会误吞 D。
+  if (has('商品信息') && (has('顾客实付') || has('订单编号'))) return DISH_SHAPES.D;
   return null;
 }
 
@@ -502,6 +530,14 @@ const DIAG_REQUIRED = {
   C: ['商品名称', '销量', '销售额'],   // 形态 C（外卖商品销量）：正名，判定前先过别名归一
   A: ['菜品名称', '销售数量'],         // 形态 A（堂食《菜品销售统计》）：**原样**列名判，不做别名归一
 };
+// 🔴 R434（队列 #44）：商品明细「挤在一列」的列名清单 —— 与「真缺列」是两回事。
+//   为什么必须分开：这类表**不是**少列，而是结构不同（一格里写着「商品名,单价,数量」）。
+//   回执只报「缺：商品名称、销量、销售额」时，老板看着自己的表明明有「商品信息」列，
+//   只会以为是自己导错了表，反复换文件（R431 实测的误导线）。
+//   为什么用**精确等名**而不是子串：`商品编号`/`商品条码`/`商品分类` 都含「商品」二字，
+//   子串匹配会把结构正常的表也判成混装列 ⇒ 给出错误的处置建议。
+//   顺序 = 具体优先：命中「商品信息」就报它，不报笼统的「商品」。
+const MIXED_GOODS_COLS = ['商品信息', '商品明细', '订单商品', '商品'];
 const DIAG_MAX_COLS = 30;   // 回显列名上限（防一张 100 列的宽表把回执撑爆）
 const DIAG_SCAN_ROWS = 5;   // 表头候选行数（与 detectDishShape 扫 R1/R3 的范围一致）
 
@@ -527,7 +563,7 @@ function diagnoseColumns(matrix) {
   const sheets = (matrix && matrix.sheets) || {};
   const names = Object.keys(sheets);
   if (!names.length) {
-    return { shape: null, sheet: '', headerRow: -1, foundCols: [], missing: missAll, nearest: 'C', reason: 'empty_table', excludedBy: '' };
+    return { shape: null, sheet: '', headerRow: -1, foundCols: [], missing: missAll, nearest: 'C', reason: 'empty_table', excludedBy: '', mixedCol: '' };
   }
   // 只诊断第一张 sheet：导入是单表操作，多表时取第一张，避免「换张表就换个说法」。
   const name = names[0];
@@ -537,6 +573,8 @@ function diagnoseColumns(matrix) {
   const hdrC = canonDishCHeader(hdr);                       // C 用别名归一后的列名
   const missC = DIAG_REQUIRED.C.filter((c) => hdrC.indexOf(c) < 0);
   const missA = DIAG_REQUIRED.A.filter((c) => hdr.indexOf(c) < 0);   // A 按原样列
+  // R434：混装列（商品明细挤在一格）—— 只在表头**精确等名**命中时才认，取最具体的那一个
+  const mixedCol = MIXED_GOODS_COLS.filter((c) => hdr.indexOf(c) >= 0)[0] || '';
   // nearest：缺得少的那个形态更可能是老板的本意；打平时取 C（本页目标形态是外卖销量表）。
   const nearest = missC.length <= missA.length ? 'C' : 'A';
   // 🔴 reason：必须与「缺列清单」**自洽** —— 列齐却报「缺列」是自相矛盾的回执（老板会照着补不存在的列）。
@@ -551,6 +589,12 @@ function diagnoseColumns(matrix) {
     reason = 'cols_ok_but_excluded';
     if (hdr.indexOf('费用类型') >= 0) excludedBy = '费用类型';
     else if (((rows[1] || []).map((x) => (x == null ? '' : String(x))).join('')).indexOf('销售方式') >= 0) excludedBy = '销售方式';
+  } else if (mixedCol) {
+    // 🔴 R434（队列 #44）：缺列清单非空，但表里有一列装的是**商品明细**（形如「商品名,单价,数量」）。
+    //   ⇒ 这比「缺三列」更接近真相：老板不需要"补列"，需要"分列"。
+    //   优先级放在缺列之上、排除态之下：列都齐（missC 为空）却仍判不出，通常是负向条件挡的，
+    //   那时报混装列会把人引向错误的处置（去分列一张本来不该导的表）。
+    reason = 'mixed_goods_column';
   }
   return {
     shape: null,
@@ -561,19 +605,72 @@ function diagnoseColumns(matrix) {
     nearest,
     reason,
     excludedBy,
+    mixedCol,
   };
 }
 
 // 从 R2 参数行提取营业日期（取「至」= 结束日，确定性 ⇒ 幂等）。返回 YYYY-MM-DD，取不到返回 ''。
-function extractBizDate(sheetRows) {
+/**
+ * 从表头参数行抽出**营业日期区间两端**（R574 / 队列 #109）。
+ *
+ * 🔴 为什么必须有（机制，不是新需求）：
+ *   堂食《菜品销售统计》的表头参数行原文是
+ *   `营业日期：【2026/09/07 至 2026/09/13】` —— 这是**7 天的区间汇总表**，
+ *   而本文件此前只取「最后一个日期」当 `biz_date` ⇒ 36 行全部落到区间末日，
+ *   `external_sales_daily` 又只有一个 `biz_date` 字段、**没有地方写"这是一段时间"**
+ *   ⇒ 下游 `getDishReview::countDataDays` 按 `biz_date` 去重 ⇒ 这份堂食只算 **1 天**
+ *   ⇒ 该日堂食收入 = 真实日均的 **7 倍**，且**全程零报错**。
+ *
+ * 口径（fail-closed）：
+ *   · 表头一个日期都没有 ⇒ `{from:'',to:''}`（由调用方判 `bizDate` 缺失并阻断，**不猜**）。
+ *   · 只有一个日期 ⇒ `from === to`（单日表，granularity 判 daily）。
+ *   · 两个及以上 ⇒ 取**首、末**（区间表的标准写法；中间夹的日期不参与）。
+ *   · 首 > 末（写反）⇒ **交换**，不返回空。
+ *
+ * @param {Array<Array>} sheetRows
+ * @returns {{from:string, to:string}} `YYYY-MM-DD`，取不到为空串
+ */
+function extractPeriod(sheetRows) {
   const r2 = ((sheetRows || [])[1] || []).map((x) => (x == null ? '' : String(x))).join('');
   const dates = r2.match(/\d{4}[/\-]\d{1,2}[/\-]\d{1,2}/g) || [];
-  if (!dates.length) return '';
-  const last = dates[dates.length - 1];
-  const m = last.match(/^(\d{4})[/\-](\d{1,2})[/\-](\d{1,2})$/);
-  if (!m) return '';
-  const pad = (n) => String(n).padStart(2, '0');
-  return m[1] + '-' + pad(m[2]) + '-' + pad(m[3]);
+  const norm = (s) => {
+    const m = String(s).match(/^(\d{4})[/\-](\d{1,2})[/\-](\d{1,2})$/);
+    if (!m) return '';
+    const pad = (n) => String(n).padStart(2, '0');
+    return m[1] + '-' + pad(m[2]) + '-' + pad(m[3]);
+  };
+  if (!dates.length) return { from: '', to: '' };
+  const first = norm(dates[0]);
+  const last = norm(dates[dates.length - 1]);
+  if (!first || !last) return { from: '', to: '' };
+  return first <= last ? { from: first, to: last } : { from: last, to: first };
+}
+
+/**
+ * 营业日期（单值）。
+ * 🔴 语义**保持不变**（`_id` 与 `biz_date` 都靠它 ⇒ 改了会让同表重导覆盖不到旧文档）；
+ *   但实现改为**复用 `extractPeriod`** —— 日期解析只此一份，避免两处正则漂移。
+ *   "这段覆盖哪些天"由 `period_from` / `period_to` 表达，不再由它暗示。
+ */
+function extractBizDate(sheetRows) {
+  return extractPeriod(sheetRows).to;
+}
+
+/**
+ * 粒度判定（纯函数 · 零 IO）。
+ * 🔴 三值封闭集，**不许出现第四种**：`external_sales_daily.granularity` 的取值面由此单源。
+ *   · `daily`    = 一行的数量金额就是**那一天**的
+ *   · `interval` = 一行的数量金额是**一段期间**（堂食《菜品销售统计》标准形态）的汇总
+ *   · `unknown`  = 端点缺失 / 历史数据无此字段 ⇒ 下游**按单日计并打标记**，绝不臆测成 interval
+ * @param {string} from `YYYY-MM-DD`
+ * @param {string} to   `YYYY-MM-DD`
+ * @returns {'daily'|'interval'|'unknown'}
+ */
+function classifyGranularity(from, to) {
+  const f = (from == null ? '' : String(from)).trim();
+  const t = (to == null ? '' : String(to)).trim();
+  if (!f || !t) return 'unknown';
+  return f === t ? 'daily' : 'interval';
 }
 
 // external_ref_id 编码（§5.1）：必含 dish_key 段 —— 否则唯一索引 (shop_id, biz_date, external_ref_id)
@@ -598,6 +695,8 @@ const round1 = (n) => Math.round(n * 10) / 10;
 function parseDishSales(sheetRows, opts) {
   const rows = sheetRows || [];
   const c = DISH_A_STRUCT;
+  // 区间端点只抽一次，函数尾部原样带出（见 return 处注释）。
+  const period = extractPeriod(rows);
   const out = [];
   const nonInt = [];
   const unmatched = [];
@@ -613,9 +712,9 @@ function parseDishSales(sheetRows, opts) {
     const qty = rawQty == null ? 0 : Math.round(rawQty);   // §5.2 恒整数
     const isNonInt = rawQty != null && !Number.isInteger(rawQty);
     if (isNonInt) nonInt.push({ name: name0, raw: rawQty, rounded: qty });
-    const amountFen = Math.round((income == null ? 0 : income) * 100);       // 收入元→分整数
-    const salesFen = Math.round((sales == null ? 0 : sales) * 100);
-    const discountFen = Math.round((discount == null ? 0 : discount) * 100);
+    const amountFen = Math.round(Number(((income == null ? 0 : income) * 100).toFixed(10)));       // 收入元→分整数
+    const salesFen = Math.round(Number(((sales == null ? 0 : sales) * 100).toFixed(10)));
+    const discountFen = Math.round(Number(((discount == null ? 0 : discount) * 100).toFixed(10)));
     const dishKey = normalizeDishName(name0);
     // 菜名 '-' 或空（外卖未建映射 / 空行）⇒ 归未匹配（§1.3-2 / 红线 17），不落为菜名
     if (dishKey === '' || dishKey === '-') { unmatched.push({ name: name0, dishKey, rawQty, qty, amountFen }); continue; }
@@ -635,6 +734,11 @@ function parseDishSales(sheetRows, opts) {
   return {
     shape: DISH_SHAPES.A,
     bizDate: extractBizDate(rows),
+    // 🔴 R574 / #109：区间端点必须随解析结果一起出去 —— 否则"7 天汇总"落库后无法复原。
+    //   granularity 由端点判定（from<to ⇒ interval），**不让调用方猜**。
+    periodFrom: period.from,
+    periodTo: period.to,
+    granularity: classifyGranularity(period.from, period.to),
     rows: out,
     totals,
     nonInt,
@@ -689,7 +793,7 @@ function parseDishSalesC(sheetRows, opts) {
     const qty = rawQty == null ? 0 : Math.round(rawQty);
     const isNonInt = rawQty != null && !Number.isInteger(rawQty);
     if (isNonInt) nonInt.push({ name: name0, raw: rawQty, rounded: qty });
-    const amountFen = Math.round((sales == null ? 0 : sales) * 100);   // amount_fen = 销售额 × 100（v1.7 C-3）
+    const amountFen = Math.round(Number(((sales == null ? 0 : sales) * 100).toFixed(10)));   // amount_fen = 销售额 × 100（v1.7 C-3）
     const bizDate = normalizeDate(get(r, '日期'));   // 行内「日期」列（v1.7 C-7：形态 C 无参数行）
     const dishKey = normalizeDishName(name0);        // 单源 common/dishKey（R232 C-9）
 
@@ -728,6 +832,106 @@ function parseDishSalesC(sheetRows, opts) {
   };
 
   return { shape: DISH_SHAPES.C, rows: out, groups, totals, nonInt, zeroAmountQty, unmatched };
+}
+
+// ===== R432（队列 #43）：京东外卖「订单导出」形态 D =====
+// 为什么需要：京东外卖订单导出的商品是**混装**的 —— 20 列里没有独立的
+//   商品名称/销量/销售额，商品全部塞在「商品信息」一列，格式为「商品名,单价,数量」，多商品用 `/` 分隔。
+//   现有 4 个平台签名与形态 A/B/C 都认不出 ⇒ 直接拒收（老板会觉得「我明明有商品信息」）。
+//
+// 🔴 口径（必须写死在这里，否则下一个人会算错钱）：
+//   · amount_fen = Σ(单价 × 数量) × 100 —— **原价口径**，与形态 C 的「商品销售额」对齐，便于跨平台对比。
+//   · 京东订单的**顾客实付**常只有原价的 40%~60%（大额让利）⇒ 本形态入库的是
+//     「卖了什么、卖了多少份」，**不是到手多少钱**。毛利必须拿成本卡另算，不能拿这个金额减成本。
+//
+// 🔴 一个订单多个商品 ⇒ 拆开后按「日期 + 菜品键」聚合：
+//   不聚合的话，同一天同一道菜会出多行，下游按行累加 ⇒ 销量与金额都会重复计。
+function parseDishSalesD(sheetRows, opts) {
+  const rows = sheetRows || [];
+  const hdr = (rows[0] || []).map((x) => (x == null ? '' : String(x).trim()));
+  const iDate = hdr.indexOf('日期');
+  const iGoods = hdr.indexOf('商品信息');
+  const iOrder = hdr.indexOf('订单编号');
+
+  const empty = {
+    shape: DISH_SHAPES.D, rows: [], groups: [], totals: { qty: 0, amountFen: 0 },
+    nonInt: [], zeroAmountQty: [], unmatched: [],
+  };
+  // 缺关键列 ⇒ 回空结果，由上层 fail-closed；不在这里造数
+  if (iDate < 0 || iGoods < 0) return empty;
+
+  const agg = new Map();       // 'YYYY-MM-DD|dishKey' → { bizDate, name, dishKey, qty, amountFen }
+  const nonInt = [];
+  const unmatched = [];
+
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i] || [];
+    const bizDate = normalizeDate(r[iDate]);
+    const goodsRaw = r[iGoods] == null ? '' : String(r[iGoods]);
+    if (!bizDate || !goodsRaw.trim()) continue;
+
+    for (const seg0 of goodsRaw.split('/')) {
+      const seg = seg0.trim();
+      if (!seg) continue;
+      // 从右往左切两次（商品名里可能本身带逗号，从左切会切坏）
+      const p2 = seg.lastIndexOf(',');
+      if (p2 < 0) { unmatched.push({ name: seg, dishKey: '', qty: 0, amountFen: 0, bizDate }); continue; }
+      const p1 = seg.lastIndexOf(',', p2 - 1);
+      if (p1 < 0) { unmatched.push({ name: seg, dishKey: '', qty: 0, amountFen: 0, bizDate }); continue; }
+
+      const name0 = seg.slice(0, p1).trim();
+      const price = toNum(seg.slice(p1 + 1, p2));
+      const rawQty = toNum(seg.slice(p2 + 1));
+      const qty = rawQty == null ? 0 : Math.round(rawQty);
+      if (rawQty != null && !Number.isInteger(rawQty)) {
+        nonInt.push({ name: name0, raw: rawQty, rounded: qty });
+      }
+      // 🔴 金额：先按「元」算行小计，再一次性转分并 round —— 与形态 C 同形态。
+      //   不许先 `price * 100` 转分再乘数量：那会带着二进制残差去乘，误差被放大。
+      const lineYuan = (price == null ? 0 : price) * qty;
+      const amountFen = Math.round(Number((lineYuan * 100).toFixed(10)));
+      const dishKey = normalizeDishName(name0);
+
+      if (dishKey === '' || dishKey === '-') {
+        unmatched.push({ name: name0, dishKey, qty, amountFen, bizDate });
+        continue;
+      }
+      const k = bizDate + '|' + dishKey;
+      const cur = agg.get(k) || { bizDate, name: name0, dishKey, qty: 0, amountFen: 0 };
+      cur.qty += qty;
+      cur.amountFen += amountFen;
+      agg.set(k, cur);
+    }
+  }
+
+  const out = Array.from(agg.values());
+  // 金额 0 但有销量（加料/赠品）—— 与形态 C 同口径：按名聚合单列，不剔除
+  const zeroMap = new Map();
+  for (const r of out) {
+    if (r.amountFen === 0 && r.qty > 0) {
+      const z = zeroMap.get(r.name) || { name: r.name, qty: 0 };
+      z.qty += r.qty;
+      zeroMap.set(r.name, z);
+    }
+  }
+  const groupMap = new Map();
+  for (const r of out) {
+    const g = groupMap.get(r.bizDate) || { bizDate: r.bizDate, rows: [] };
+    g.rows.push(r);
+    groupMap.set(r.bizDate, g);
+  }
+  return {
+    shape: DISH_SHAPES.D,
+    rows: out,
+    groups: Array.from(groupMap.values()).sort((a, b) => (a.bizDate < b.bizDate ? -1 : 1)),
+    totals: {
+      qty: out.reduce((s, x) => s + x.qty, 0),
+      amountFen: out.reduce((s, x) => s + x.amountFen, 0),
+    },
+    nonInt,
+    zeroAmountQty: Array.from(zeroMap.values()),
+    unmatched,
+  };
 }
 
 // ===== R271：跨平台重复导入检测（防「同一份表用两个平台各导一次 ⇒ 销量翻倍」）=====
@@ -797,8 +1001,10 @@ module.exports = {
   DISH_SHAPES, DISH_A_STRUCT, normalizeDishName, detectDishShape, detectDishMatrix,
   DISH_C_ALIAS, canonDishCHeader, findDishCCol,   // R245 P7：形态 C 列名别名单源（守卫用）
   extractBizDate, dishRefId, saleDocId, parseDishSales,
+  extractPeriod, classifyGranularity,   // R574 / #109：区间端点与粒度三值单源（守卫直接验）
   detectDupImport, DUP_MIN_SCAN, DUP_MIN_HIT, DUP_RATE,   // R271：跨平台重复导入检测（防销量翻倍）
   normalizeDate, parseDishSalesC,   // v1.7 形态 C（外卖商品销量）
+  parseDishSalesD,                  // R432 形态 D（京东外卖订单导出，商品混装在一列）
   BILL_IMPORT_ENABLED,              // R259：账单导入开关（前端 utils/featureFlags.js 同源同值）
   diagnoseColumns, pickHeaderRow, DIAG_REQUIRED, DIAG_MAX_COLS,   // R286：认不出表时「缺哪几列」诊断
 };

@@ -14,16 +14,52 @@ const { openPaywall } = require('../../../utils/paywall.js');
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 // R260：菜名映射「建议卡」纯函数（**只预选、不落库**，规范 v1.9 §0 D32）
 const { suggestCardIndex, BATCH_CHUNK } = require('../../../utils/dishMapSuggest.js');
+// R299：云函数出参 `truncated` 的**可见降级**唯一谓词（单源）。
+//   为什么：`dataAdapter.js::listAll` 明文要求调用方把「已到读取上限、可能不全」透传到**用户面前**
+//   （可见降级），服务端照做了、前端此前零消费 ⇒ 超上限时静默少行。见 `utils/dataHealth.js` 头注。
+const dh = require('../../../utils/dataHealth.js');
+// 🔴 R307：占比拆分参考榜（纯函数）—— 外卖销量拿不到时的**轻量补位**，见模块头注（含三条铁律）
+const { splitRank, MAX_ROWS, qtyText } = require('../../../utils/shareSplit.js');
 
 const fenYuan = (fen) => (Number(fen) || 0) / 100;
 const fmtYuan = (fen) => fenYuan(fen).toFixed(2);
 const fmtPct = (p) => (Number(p) || 0).toFixed(2) + '%';
+// R606-bis：行级可编辑循环的稳定身份键工厂（与 month/input.js 同款）。
+//   wx:for 用位置键 + 每次按键整体重赋值数组 ⇒ 原生 <input> 按下标复用 DOM ⇒ 节点身份错位、
+//   表现为「框填不进/丢焦点」。rid 仅渲染层用，提交时由 onSplitCalc 重建干净 payload（不含 rid）。
+const _ridPrefix = 'k' + Date.now().toString(36) + '_';
+let _ridSeq = 0;
+function ensureRid(r) {
+  if (!r) r = {};
+  if (!r.rid) r.rid = _ridPrefix + (_ridSeq++).toString(36);
+  return r;
+}
 
 Page({
   data: {
     t: {
       reviewTitle: TERMS.card.reviewTitle,
       reviewAfterFact: TERMS.card.reviewAfterFact,
+      // 🔴 R307：占比拆分参考榜（估算）—— 逐条列举，漏登记 = 页面静默空白（守 check_page_terms）
+      splitTitle: TERMS.card.splitTitle,
+      splitIntro: TERMS.card.splitIntro,
+      splitOrderLabel: TERMS.card.splitOrderLabel,
+      splitNoOrder: TERMS.card.splitNoOrder,
+      splitPickPh: TERMS.card.splitPickPh,
+      splitPctPh: TERMS.card.splitPctPh,
+      splitAdd: TERMS.card.splitAdd,
+      splitCalc: TERMS.card.splitCalc,
+      splitResultTitle: TERMS.card.splitResultTitle,
+      splitNote: TERMS.card.splitNote,
+      splitQty: TERMS.card.splitQty,
+      splitContrib: TERMS.card.splitContrib,
+      splitLossTag: TERMS.card.splitLossTag,
+      splitTotal: TERMS.card.splitTotal,
+      splitErrNoRows: TERMS.card.splitErrNoRows,
+      splitErrDup: TERMS.card.splitErrDup,
+      splitErrPct: TERMS.card.splitErrPct,
+      splitErrSum: TERMS.card.splitErrSum,
+      splitErrNoPrice: TERMS.card.splitErrNoPrice,
       reviewDineIn: TERMS.card.reviewDineIn,
       reviewTakeaway: TERMS.card.reviewTakeaway,
       reviewTakeawayEmpty: TERMS.card.reviewTakeawayEmpty,
@@ -34,6 +70,11 @@ Page({
       reviewRevenue: TERMS.card.reviewRevenue,
       reviewCost: TERMS.card.reviewCost,
       reviewGross: TERMS.card.reviewGross,
+      // A8：免费档说明 + 升级入口（wxml 用到就必须在这里登记，否则真机静默空白 —— 守卫 page-terms P2-1）
+      reviewFreeTitle: TERMS.card.reviewFreeTitle,
+      reviewFreeBody: TERMS.card.reviewFreeBody,
+      reviewFreeBtn: TERMS.card.reviewFreeBtn,
+      reviewFreeRankTitle: TERMS.card.reviewFreeRankTitle,
       // R259：外卖毛利率的**口径说明** —— 李老师 2026-10-10 裁定指标名保持「毛利率」，
       //   所以防误导不靠改名，靠**同屏把差在哪讲清**（外卖侧金额是平台侧金额、非商家到手）。
       reviewTakeawayMarginNote: TERMS.card.reviewTakeawayMarginNote,
@@ -103,6 +144,8 @@ Page({
       reviewTotalRevenue: TERMS.card.reviewTotalRevenue,
       reviewTotalCost: TERMS.card.reviewTotalCost,
       reviewTotalGross: TERMS.card.reviewTotalGross,
+      // 🔴 R451：两款毛利率口径并列提示（terms.js 同名键，逐键登记——漏登记 ⇒ 真机静默空白）
+      reviewTwoMarginNote: TERMS.card.reviewTwoMarginNote,
       // 🔴 R281 O2：首屏重构新增键（第三处登记 —— 漏登记 ⇒ 真机静默空白）
       reviewTodoPre: TERMS.card.reviewTodoPre,
       reviewTodoSuf: TERMS.card.reviewTodoSuf,
@@ -113,9 +156,24 @@ Page({
       reviewDataTitle: TERMS.card.reviewDataTitle,
       cur: '¥',
       loading: TERMS.ui.loading,
+      // R299：数据截断的可见降级文案（单源 TERMS.ui.dataTruncated）
+      dataTruncated: TERMS.ui.dataTruncated,
+      // 🔴 R301：统计月份选择器的标签（期间口径必须让用户看得见）
+      reviewMonthPick: TERMS.card.reviewMonthPick,
     },
     loading: true,
     locked: false,
+    // 🔴 R301：本榜的**统计月份**（YYYY-MM）。为什么必须有：契约要求 `getDishReview` 按
+    //   `biz_date_from/to` 取数，而在此之前实现从不过滤 ⇒ 榜是**跨月累计**却按"当前月"呈现。
+    //   注意它与 `curMonth` 是**两件事**：`curMonth` 只是「进入页面那天是几月」（一次性，此后不更新），
+    //   而快照提示的比对基准**必须是下面这个 `month`**（R547/M7：改前误用 curMonth ⇒ 看历史月时全表误标）。
+    //   `month` 才是**数据统计期间**。二者在页面上必须分开讲清（R299 §`snapshot_month` 同一条纪律）。
+    month: '',
+    // 期间标注文案（由云端回的 `range` 如实生成；**不许前端猜**）
+    rangeText: '',
+    // R299：本页是否有**已被服务端标记为「已达读取上限」**的读取（复盘榜 / 成本卡 / 账单任一）。
+    //   为 true ⇒ 页面顶部显示可见降级提示 —— 见 utils/dataHealth.js 头注（为什么不能静默）。
+    truncated: false,
     // 🔴 R281 O2：两个折叠区默认**收起** —— 首屏只留「未匹配待办条 + 堂食榜 + 外卖榜」。
     //   覆盖率 / 自助餐 / 阈值 / 已关联 / 账单 只是**折层级，不删**（守 R264/R272/R255/R252）。
     moreOpen: false,
@@ -128,6 +186,17 @@ Page({
     unmatched: [],           // 未匹配菜品
     totals: null,
     empty: false,
+    // 🔴 R307：占比拆分参考榜（**估算**）。只在空态渲染 ⇒ 天然不与实测榜混排（R306 铁律①）。
+    //   `splitCards` 与 `loadCards()` 同一次 `getCostCard({})` 派生，**不新增读接口**。
+    splitOpen: false,
+    splitCards: [],        // [{ code, name, priceFen, costFen }]
+    splitOptions: [],      // picker 显示名
+    splitRows: [],         // [{ cardIdx, name, pctText }]
+    splitOrderCount: 0,    // 本月外卖有效订单数（来自 M1 已落库的 sub_items[].qty）
+    splitHasOrder: false,
+    splitResult: null,     // 算完才赋值；null ⇒ 不渲染结果区
+    splitErr: '',          // 人话（按 code 查 terms）
+    splitMax: 5,
     // R252：已导入账单列表（getSalesBills 读侧；与复盘榜同源集合，但**独立读取**）
     bills: [],
     billsSummary: null,
@@ -167,19 +236,35 @@ Page({
     batchCount: 0,        // 已选行数（按钮上的计数）
     batchSaving: false,   // 提交中（防连点）
     mappingBusy: false,   // 写操作进行中（防连点重复提交）
+    // A8：'free' = 只给销量榜 Top10 + 覆盖率 + 未匹配；'full' = 完整毛利排行
+    tier: '',
+    freeRankedTotal: 0,
   },
 
-  onLoad() { this.init(); },
-  onShow() { if (this.data.locked) this.init(); },   // 从付费弹窗返回后重试
+  onLoad() { this._shown = false; this.init(); },
+  // 🔴 R299（缺陷 D3）：「去建卡 / 去映射」在本页是 `navigateTo` 跳走再回来（R264 专门设计的闭环），
+  //   而本页 `enablePullDownRefresh: false`（无下拉刷新）、旧 onShow 又**只在 locked 时**重载
+  //   ⇒ 返回后页面全然不刷新：刚建的卡不进关联 picker、刚挂的菜不进榜、unmatched 也不减少
+  //   ⇒ 用户会以为「卡没建上 / 关联失败」并重复操作。
+  //   本页是**只读页**（零未保存输入）⇒ 返回时重载是安全且期待的。
+  //   对照 `subpkg/biz/card/index.js:122` 同类只读页即 `onShow(){this.load()}` —— 说明这是遗漏，不是设计选择。
+  //   首次进入不重复拉：onLoad 的 init() 已经在拉，`_shown` 此时仍为 false。
+  onShow() {
+    if (this.data.locked) { this.init(); return; }   // 从付费弹窗返回后重试
+    if (this._shown) this.load();
+    this._shown = true;
+  },
 
   async init() {
     try {
       await api.ensureShop();
       ui.setTitle(TERMS.card.reviewTitle);
-      this.setData({ curMonth: ui.nowMonth() });
+      this.setData({ curMonth: ui.nowMonth(), month: ui.nowMonth() });
       await this.load();
     } catch (e) {
       this.setData({ loading: false });
+      // 🔴 A8（2026-11-05）：云端**已改为两层出参**，正常不再返回 FEATURE_LOCKED。
+      //   此分支保留仅作兜底（旧版云端 / 灰度期），不再是主路径 —— 别据它认为本页仍是整页锁。
       if (e && e.code === 'FEATURE_LOCKED') {
         this.setData({ locked: true });
         openPaywall('dishreview', { shopId: (getApp().globalData && getApp().globalData.shop_id) || '' });
@@ -189,20 +274,43 @@ Page({
     }
   },
 
+  // A8：免费档页面内的升级入口（榜单下方的「看完整毛利排行」按钮）
+  goUpgrade() {
+    openPaywall('dishreview', { shopId: (getApp().globalData && getApp().globalData.shop_id) || '' });
+  },
+
   // 预处理一行排行为展示字段（堂食/外卖共用；zeroAmount 仅外卖）
   fmtRanked(x) {
     const snapMonth = x.snapshot_month || '';
-    const isOld = snapMonth && snapMonth !== this.data.curMonth;
+    // 🔴 R547（M7）：比对基准必须是**本次统计月**（`month`），不是「今天所在的月」。
+    //   提示语的含义是「这张卡的成本是 X 月的快照，比你在看的这个月旧」——
+    //   改前拿 `curMonth`（进入页面时的真实当月，之后再没更新过）作基准 ⇒ 两个后果：
+    //     ① 看任何一个**历史月**的榜，全表每一行都误挂「该卡成本为 X 月快照」
+    //        （而 X 恰恰就是这个统计月 ⇒ 成本一点都不过期，纯噪音，老板会开始无视这条提示）；
+    //     ② 反过来，切到未来月/月初跨月时基准漂移 ⇒ 真过期的卡（上月建的）反而不提示。
+    //   基准跟着「你在看哪个月」走，才与文案语义一致。
+    const dataMonth = this.data.month || this.data.curMonth;
+    const isOld = !!snapMonth && !!dataMonth && snapMonth !== dataMonth;
     return {
+      // 🔴 R299（缺陷 D1）：`dishKey` **必须带出来** —— 覆盖率「共 N 道」必须按**菜品身份**去重，
+      //   而本行的 `name` 是**成本卡名**（service.js:95 `card.name || dishKey`），与未匹配行的
+      //   `name`（service.js:86 `dishKey`，**菜名**）**不是同一个命名空间**。
+      //   此前覆盖率把两者塞进同一个 Set ⇒ 多张卡挂到同一张卡时「共 N 道」少算、卡名与菜名
+      //   碰巧同名时两个数一起错（用户可见的错数，见 evidence FINDINGS §2）。
+      dishKey: x.dish_key || x.name || '',
       name: x.name || x.dish_key,
       qty: x.qty,
       revenueText: fmtYuan(x.amountFen),
       // 🔴 R264：覆盖率要按**金额**算 ⇒ 数值必须带到展示层（`revenueText` 是字符串，不能相减）
       amountFen: x.amountFen || 0,
-      costText: fmtYuan(x.totalCostFen),
-      grossText: fmtYuan(x.grossFen),
-      marginPct: x.marginPct,
-      marginText: fmtPct(x.marginPct),
+      // 🔴 A8（2026-11-05）：免费档后端**不下发** totalCostFen / grossFen / marginPct。
+      //   这里必须判 `== null` 显示「—」，**绝不能走 fmtYuan(undefined)** ——
+      //   那会渲染成「0.00」，让老板以为「成本是 0、毛利等于营收」，比不显示更坏（红线 18 同款）。
+      costText: x.totalCostFen == null ? '—' : fmtYuan(x.totalCostFen),
+      grossText: x.grossFen == null ? '—' : fmtYuan(x.grossFen),
+      marginPct: x.marginPct == null ? null : x.marginPct,
+      marginText: x.marginPct == null ? '—' : fmtPct(x.marginPct),
+      hasMargin: x.grossFen != null,
       snapshotNote: isOld ? TERMS.card.reviewSnapshotOf(snapMonth) : '',
       zeroAmount: !!x.zeroAmount,   // v1.7 C-5：口味询问类 SKU
       below: false,
@@ -213,8 +321,10 @@ Page({
     return t ? {
       qty: t.qty,
       revenueText: fmtYuan(t.amountFen),
-      costText: fmtYuan(t.costFen),
-      grossText: fmtYuan(t.grossFen),
+      // A8：免费档的合计只回数量口径（毛利合计 = 加工结论，付费才有）⇒ 缺失一律「—」
+      costText: t.costFen == null ? '—' : fmtYuan(t.costFen),
+      grossText: t.grossFen == null ? '—' : fmtYuan(t.grossFen),
+      hasMargin: t.grossFen != null,
       // 🔴 R251：`unmatchedCount` 必须带出来 —— 它是**判「平台块为什么是空的」的唯一准确依据**
       //   （前端**不许**自己猜：拿 qty>0 当判据会把「全 0 份的菜」误判成账单级）。
       unmatchedCount: t.unmatchedCount || 0,
@@ -223,12 +333,43 @@ Page({
 
   async load() {
     this.setData({ loading: true });
-    const d = await api.call('getDishReview', {});
+    // 🔴 R301：**必须传**契约入参 `biz_date_from` / `biz_date_to`（月 → 区间走 `utils/ui.js::monthRange` 单源）。
+    //   不传 ⇒ 云端不过滤 ⇒ 榜**跨月累计**（正是 R301 修的缺陷）⇒ 由守卫钉住"必须传"（见 NOTE 的判据）。
+    //   `month` 缺省自愈为当前月：与 `init()` 的默认**同一个口径**（只此一处兜底，不新增语义），
+    //   避免"某条路径没先 init 就 load"时静默退回**不过滤**（那会把跨月累计这个缺陷放回来）。
+    const month = this.data.month || ui.nowMonth();
+    const rng = ui.monthRange(month);
+    const d = await api.call('getDishReview', { biz_date_from: rng.from, biz_date_to: rng.to });
+    // 🔴 R301 期间标注：云端**如实回** `range{from,to,days}` ⇒ 有区间就报
+    //   「本榜统计 YYYY-MM，共 N 天有数据」（N 直接把"这个月只有 7 天数据"暴露出来）；
+    //   没有区间（旧客户端 / 只给一端 ⇒ 云端不过滤）就**明说"不是单月"**，**绝不假装是本月**。
+    const rg = (d && d.range) || {};
+    // 🔴 R574 / #110：云端额外如实回了 `has_interval` / `has_unknown` / `covered_days`
+    //   ⇒ 三条文案分支（优先级：含汇总表 > 含旧版导入 > 常规）。
+    //   **前端不许自己推粒度** —— 判据全在云端 `coverageStats`，前端只负责把它讲成人话。
+    //   典型场景：堂食 7 天汇总表 + 外卖 7 天逐日，两栏都显示"7"，但前者其实是"7 天记在 1 天"。
+    let rangeText;
+    if (rg.from && rg.to) {
+      if (rg.has_interval) rangeText = TERMS.card.reviewRangeSpan(month, rg.covered_days || rg.days || 0);
+      else if (rg.has_unknown) rangeText = TERMS.card.reviewRangeLegacy(month, rg.days || 0);
+      else rangeText = TERMS.card.reviewRangeOf(month, rg.days || 0);
+    } else {
+      rangeText = TERMS.card.reviewRangeAll(rg.days || 0);
+    }
+    // 🔴 R299（缺陷 D2）：消费服务端 `truncated`（可见降级）。见 utils/dataHealth.js 头注。
+    this._setTrunc('review', dh.isTruncated(d));
     // 🔴 R255：成本卡列表（「关联」picker 用）。**必须在这里先拉** —— 下面构造
     //   unmatched（显示已关联卡名）与 mappings（显示卡名）都要用它做 code→name。
-    const { cardOptions, cardCodes, nameByCode } = await this.loadCards();
+    const { cardOptions, cardCodes, nameByCode, splitCards, truncated: cardsTruncated } = await this.loadCards();
+    this._setTrunc('cards', cardsTruncated);
+    // R307：占比估算的候选卡（与「关联」picker 同源，不额外读库）
+    this.setData({ splitCards, splitOptions: (splitCards || []).map((c) => c.name) });
 
-    const dineIn = (d.dine_in || []).map((x) => this.fmtRanked(x));
+    // 🔴 A8（2026-11-05）：免费档云端只回 `free_top`（销量 Top N，**不含成本/毛利字段**），
+    //   付费档回完整 `dine_in`。这里只是**换数据源**，下游覆盖率/未匹配/映射逻辑一行不动 ——
+    //   免费档拿到的仍是「销量 + 营收」，够算覆盖率，也够让老板看出「我这 20 道菜只算全了 3 道」。
+    const isFree = (d && d.tier) === 'free';
+    const dineIn = (((isFree ? d.free_top : d.dine_in) || [])).map((x) => this.fmtRanked(x));
 
     // 🔴 R249-B（附带发现，与 is_deleted 同轮修）：外卖的「未匹配菜品」**只**嵌在
     //   `takeaway.by_platform[p].unmatched` 里，而前端**从不读**它（只读顶层 `d.unmatched`，
@@ -346,18 +487,27 @@ Page({
     //   🔴 覆盖率按**金额**算，不按行数：真表里有 43 份 0 元的「口味询问类 SKU」，
     //      按行数算会把它们计入分母 ⇒ 覆盖率被稀释，且不能反映"钱有没有算到"。
     //   🔴 道数按**菜名去重**：同一道菜会出现在堂食 + 多个外卖平台，按行加总会把一道菜数成三道。
+    // 🔴 R299（缺陷 D1）：道数去重**必须按 `dishKey`（菜品身份）**，两侧同一命名空间。
+    //   改动前用的是 `.name`，而 `.name` 在两类行上语义不同：
+    //     · 已匹配行 `service.js:95` ⇒ `card.name || dishKey`（**成本卡名**）
+    //     · 未匹配行 `service.js:86` ⇒ `dishKey`（**菜名**）
+    //   ⇒ 多张菜挂同一张卡时「共 N 道」少算；卡名与某未匹配菜名碰巧同名时两个数一起错。
+    //   服务端**本来就返回** `dish_key`，是前端 discard 掉了 ⇒ 零云端改动的纯前端修复。
     const sumFen = (arr) => (arr || []).reduce((s, x) => s + (Number(x.amountFen) || 0), 0);
     let rankedFen = sumFen(dineIn);
-    const dishNames = new Set();
-    dineIn.forEach((x) => dishNames.add(x.name));
+    const dishKeys = new Set();
+    dineIn.forEach((x) => dishKeys.add(x.dishKey));
     (takeaway || []).forEach((b) => {
       rankedFen += sumFen(b.ranked);
-      (b.ranked || []).forEach((x) => dishNames.add(x.name));
+      (b.ranked || []).forEach((x) => dishKeys.add(x.dishKey));
     });
     const unmatchedFen = unmatchedSorted.reduce((s, x) => s + (Number(x.amountFen) || 0), 0);
-    unmatched.forEach((x) => dishNames.add(x.name));
-    const coverageCount = dishNames.size;
-    const coverageMatched = dishNames.size - new Set(unmatched.map((x) => x.name)).size;
+    unmatched.forEach((x) => dishKeys.add(x.dishKey));
+    const coverageCount = dishKeys.size;
+    // ⚠️ 保留原公式语义（共 = 两侧并集；已算 = 共 − 未匹配数），**只统一命名空间**。
+    //   跨平台「同一道菜在堂食已匹配、在外卖未匹配」会被记为「未算全」—— 改动前即如此，本轮不改（已登记）。
+    const unmatchedKeys = new Set(unmatched.map((x) => x.dishKey));
+    const coverageMatched = coverageCount - Array.from(unmatchedKeys).filter((k) => dishKeys.has(k)).length;
     const allFen = rankedFen + unmatchedFen;
     const coveragePct = allFen > 0 ? Math.round((rankedFen * 100) / allFen) : 0;
     const coverageText = String(TERMS.card.reviewCoverage)
@@ -390,13 +540,30 @@ Page({
     const buffet_rateLowPct = bm.rateLowPct || 0;
     const buffet_rateMidPct = bm.rateMidPct || 0;
     const buffet_rateHighPct = bm.rateHighPct || 0;
+    // 🔴 R298：只认云端回的**机器码**（'' | high | low | ok）—— 不再用中文字面量比较。
+    //   旧写法 `bm.actualFlag === '偏高'`：云端一改文案，警示色会**静默丢失**（老板看不到告警）。
+    //   文案走术语单源 `TERMS.card.buffetFlag`；色号在页面层（同一张码表，两处只共享"码"这个契约）。
+    const buffet_flagCode = bm.actualFlagCode || '';
+    const buffet_flagText = TERMS.card.buffetFlag[buffet_flagCode] || '';
     const buffet_actualRateText = (bm.actualRatePct != null)
-      ? (bm.actualRatePct + '%（' + (bm.actualFlag || '') + '）') : '';
-    const buffet_flagClass = (bm.actualFlag === '偏高') ? 'warn' : ((bm.actualFlag === '偏低') ? 'note' : '');
+      ? (bm.actualRatePct + '%' + (buffet_flagText ? '（' + buffet_flagText + '）' : '')) : '';
+    const BUFFET_FLAG_CLS = { high: 'warn', low: 'note' };
+    const buffet_flagClass = BUFFET_FLAG_CLS[buffet_flagCode] || '';
+
+    // A8：免费档「共 N 道已建卡，本榜只显示前 10 道」—— 让老板自己看出还差多少没看到
+    //   （N ≤ 10 时不显示：数字一样，说了等于重复，只会显得啰嗦）
+    const freeMoreText = (isFree && (d.free_ranked_total || 0) > 10)
+      ? String(TERMS.card.reviewFreeMore).replace('{n}', String(d.free_ranked_total))
+      : '';
 
     this.setData({
       loading: false,
       locked: false,
+      // A8：'free' = 只给销量榜 + 覆盖率 + 未匹配；'full' = 完整毛利排行
+      tier: isFree ? 'free' : 'full',
+      freeRankedTotal: (d && d.free_ranked_total) || 0,
+      freeMoreText,
+      rangeText,
       dineIn,
       takeaway,
       unmatched,
@@ -411,7 +578,11 @@ Page({
       // R272：覆盖率 C 档 + 自助餐人均食材成本
       coverageC_pct,
       coverageCText,
-      buffetMeals,
+      // 🔴 R297-⑥（审计 M3-B3）：本页 wxml 的自助餐一族键名**一律 `buffet_xxx`**，只有这一个原先是驼峰
+      //   （`buffetMeals`）⇒ `index.wxml:50` 的 `wx:if="{{buffet_meals > 0}}"` 拿到的是 `undefined`
+      //   ⇒ 恒 false ⇒「人均食材成本 + 行业基准带 + 实际成本率」**整块永不渲染**（R272 专门做的能力，静默空转）。
+      //   ⚠️ R272 那轮把 `t.reviewBuffet*` 文案补齐了、却没对上**数据键** ⇒ 症状从"文字空白"变成"整块不见"，更难被发现。
+      buffet_meals: buffetMeals,
       buffet_revenueText,
       buffet_perCapitaPriceText,
       buffet_perCapitaCostText,
@@ -439,6 +610,120 @@ Page({
     await this.loadBills();
   },
 
+  // ===== R299：数据截断（可见降级）==========
+  //   为什么单立一个方法：复盘 / 成本卡 / 账单是**三次独立读取**，任一处被服务端标记
+  //   `truncated` 都意味着"屏幕上看到的可能不全" ⇒ 只要有一处，就显示提示。
+  //   用 `_trunc` 而不是三处各写一次 `setData({truncated})` —— 否则后一次读取会把前一次的
+  //   标记**覆盖掉**（三处互相冲掉 = 提示时有时无，比不提示更难查）。
+  _setTrunc(source, truncated) {
+    this._trunc = this._trunc || {};
+    this._trunc[source] = !!truncated;
+    const any = Object.keys(this._trunc).some((k) => this._trunc[k]);
+    if (any !== this.data.truncated) this.setData({ truncated: any });
+  },
+
+  // ===== R307：占比拆分参考榜（估算 · 仅在空态）=====
+  // 🔴 为什么在空态：实测销量拿不到时这是唯一能让 M3「打开就有东西看」的路；
+  //   放在空态 ⇒ **天然不与实测榜混排**（R306 铁律①），不用额外做互斥逻辑。
+
+  async onSplitOpen() {
+    const next = !this.data.splitOpen;
+    this.setData({ splitOpen: next });
+    // 懒加载：只有真打开才去读 M1（避免每次进页多一次云调用）
+    if (!next || this.data.splitHasOrder) return;
+    const n = await this.fetchOrderCount();
+    this.setData({ splitOrderCount: n, splitHasOrder: n > 0 });
+  },
+
+  /** 本月外卖有效订单数（M1 已落库的 `sub_items[].qty`，与 R302「到手账」同一取法） */
+  async fetchOrderCount() {
+    try {
+      const d = await api.call('getLedger', { month: this.data.month });
+      let n = 0;
+      for (const it of (d.income_items || [])) {
+        if (!it || it.category !== 'takeaway') continue;
+        for (const si of (it.sub_items || [])) n += Number(si && si.qty) || 0;
+      }
+      return n;
+    } catch (e) {
+      return 0;   // 读不到 ⇒ 当"没填"处理，页面会让他去补（**不编 0 单**）
+    }
+  },
+
+  // R606-bis：行为行级可编辑循环提供稳定身份键（不随数组重排/重赋值而漂），
+  // 原生 <input> 按下标复用 DOM ⇒ 位置键会导致「框填不进/丢焦点」。rid 仅渲染层用。
+  onSplitAdd() {
+    const rows = (this.data.splitRows || []).slice();
+    if (rows.length >= MAX_ROWS) return;
+    rows.push(ensureRid({ cardIdx: -1, name: '', pctText: '' }));
+    // 改了输入 ⇒ 旧结果作废（防"结果区还显示上一次的数"）
+    this.setData({ splitRows: rows, splitResult: null, splitErr: '' });
+  },
+
+  onSplitDel(e) {
+    const i = Number(e.currentTarget.dataset.idx);
+    const rows = (this.data.splitRows || []).slice();
+    rows.splice(i, 1);
+    this.setData({ splitRows: rows, splitResult: null, splitErr: '' });
+  },
+
+  onSplitPick(e) {
+    const i = Number(e.currentTarget.dataset.idx);
+    const rows = (this.data.splitRows || []).slice();
+    const ci = Number(e.detail.value);
+    const card = (this.data.splitCards || [])[ci] || {};
+    // ⚠️ 选重了**不自动去重**（静默改用户输入更糟）⇒ 交给 checkShares 报 `dupCard`
+    // R606-bis：用 Object.assign 保留原行的 rid（否则整行重建会丢稳定键 ⇒ 输入框错位）
+    rows[i] = Object.assign({}, rows[i], { cardIdx: ci, name: card.name || '', pctText: rows[i].pctText || '' });
+    this.setData({ splitRows: rows, splitResult: null, splitErr: '' });
+  },
+
+  onSplitPct(e) {
+    const i = Number(e.currentTarget.dataset.idx);
+    const rows = (this.data.splitRows || []).slice();
+    rows[i] = Object.assign({}, rows[i], { pctText: e.detail.value });
+    this.setData({ splitRows: rows, splitResult: null, splitErr: '' });
+  },
+
+  onSplitCalc() {
+    const rows = (this.data.splitRows || []).map((r) => {
+      const c = (this.data.splitCards || [])[r.cardIdx] || {};
+      return { cardCode: c.code || '', name: c.name || '', priceFen: c.priceFen, costFen: c.costFen, pctText: r.pctText };
+    });
+    const res = splitRank({ orderCount: this.data.splitOrderCount, rows });
+    const T = this.data.t;
+    if (res.needOrderCount) { this.setData({ splitResult: null, splitErr: T.splitNoOrder }); return; }
+    if (res.errors.length) {
+      const map = {
+        noRows: T.splitErrNoRows, dupCard: T.splitErrDup, pctInvalid: T.splitErrPct,
+        pctOver: T.splitErrPct, pctSumOver: T.splitErrSum, noPrice: T.splitErrNoPrice,
+      };
+      const msgs = res.errors.map((c) => map[c]).filter((x) => !!x);
+      this.setData({ splitResult: null, splitErr: msgs.join('；') });
+      return;
+    }
+    const list = (res.list || []).map((x) => ({
+      name: x.name,
+      sharePct: x.sharePct,
+      qtyText: qtyText(x.estQty),
+      unitGrossText: api.fenToYuan(x.unitGrossFen, 2),
+      contribText: api.fenToYuan(x.contribFen, 2),
+      // 亏损菜**必须原样露出**（负号 + 标记），不许显示成 0 或省略
+      loss: x.loss,
+      neg: x.contribFen < 0,
+    }));
+    this.setData({
+      splitErr: '',
+      splitResult: {
+        list,
+        totalPctText: String(res.totalPct),
+        sumQtyText: qtyText(res.sumEstQty),
+        sumContribText: api.fenToYuan(res.sumContribFen, 2),
+        sumNeg: res.sumContribFen < 0,
+      },
+    });
+  },
+
   // ===== R255：成本卡列表（供「关联」picker 用）=====
   //   复用既有 `getCostCard({})`（出参 list[] = 该店各卡的最新版本），**不新增读接口**。
   //   🔴 失败不阻断：卡列表拉不到 ⇒ 只影响「关联」入口（数组置空 ⇒ picker 不渲染），
@@ -461,9 +746,22 @@ Page({
         nameByCode[cc] = nm;
         return nm;
       });
-      return { cardCodes: codes, cardOptions, nameByCode };
+      // 🔴 R299：把 `truncated` **带出去**（由调用方统一汇总显示，见 _setTrunc）。
+      //   卡少了 ⇒ picker 选项少 ⇒ 用户明明有卡却挂不上，且零提示（静默少卡）。
+      // 🔴 R307：同时派生 `splitCards`（占比估算用）—— **同一次读、不新增接口**。
+      //   售价/成本取该卡**最新版本**（byCode 已按 version 取大）；缺值按 0（后面 `checkShares` 会拦 `noPrice`）。
+      const splitCards = codes.map((cc) => {
+        const c = byCode.get(cc) || {};
+        return {
+          code: cc,
+          name: nameByCode[cc] || cc,
+          priceFen: Number(c.price_fen) || 0,
+          costFen: Number(c.total_cost_fen) || 0,
+        };
+      });
+      return { cardCodes: codes, cardOptions, nameByCode, splitCards, truncated: dh.isTruncated(res) };
     } catch (e) {
-      return { cardCodes: [], cardOptions: [], nameByCode: {} };
+      return { cardCodes: [], cardOptions: [], nameByCode: {}, splitCards: [], truncated: false };
     }
   },
 
@@ -521,7 +819,7 @@ Page({
   onToggleBatch() {
     if (this.data.batchSaving) return;
     if (this.data.batchMode) { this.setData({ batchMode: false, batchCount: 0 }); return; }
-    if (!this.data.cardOptions.length) { wx.showToast({ title: TERMS.card.reviewMapNoCard, icon: 'none' }); return; }
+    if (!this.data.cardOptions.length) { api.say(TERMS.card.reviewMapNoCard); return; }
     const rows = this.applyBatchSuggestions(this.data.unmatched);
     this.setData({ batchMode: true, unmatched: rows, batchCount: this.countBatchSel(rows) });
   },
@@ -623,9 +921,14 @@ Page({
         cleared: !!x.cleared,
       }));
       this.setData({ bills, billsSummary: res.summary || null });
+      // 🔴 R299（缺陷 D2）：账单列表是所有已导入账单的"账"，少行 = 用户以为没导过 ⇒ 同样必须可见降级。
+      //   ⚠️ `getSalesBills` 的 `truncated` 判据与其它函数**不同源**（它用 `>= LIST_LIMIT`，
+      //      见 `cloudfunctions/getSalesBills/index.js:41-44` 注释），但出参字段名相同 ⇒ 谓词通用。
+      this._setTrunc('bills', dh.isTruncated(res));
     } catch (e) {
       // 账单区是"附加信息"：失败就留空，不 toast（复盘主区已渲染，不该被它打断）
       this.setData({ bills: [], billsSummary: null });
+      this._setTrunc('bills', false);
     }
   },
 
@@ -685,6 +988,16 @@ Page({
   toggleMore() { this.setData({ moreOpen: !this.data.moreOpen }); },
   toggleData() { this.setData({ dataOpen: !this.data.dataOpen }); },
 
+  // 🔴 R301：切「统计月份」⇒ 按新区间重新取数。用 `<picker mode="date" fields="month">`
+  //   （系统选择器、**零新术语/零新数据源**），值是 `YYYY-MM`。
+  //   只读页 ⇒ 直接重载，无未保存输入可丢（与 onShow 返回刷新同一条依据）。
+  onMonth(e) {
+    const m = (e && e.detail && e.detail.value) || '';
+    if (!m || m === this.data.month) return;
+    this.setData({ month: m });
+    this.load();
+  },
+
   // 顶部红色待办条「去挂」⇒ 直接滚到未匹配区（不新增页面、不跳走，免得打断看榜）
   gotoUnmatched() {
     wx.pageScrollTo({ selector: '#unmatched', duration: 200 });
@@ -712,16 +1025,16 @@ Page({
   },
 
   // 「去映射」= 去建缺失的成本卡（未匹配菜品没有对应卡 ⇒ 建了卡即自动匹配）
-  goMap() { wx.navigateTo({ url: '/pages/card/index' }); },
+  goMap() { wx.navigateTo({ url: '/subpkg/biz/card/index' }); },
 
   // ===== R264：带着菜名去建卡（**预填**）=====
   //   原路径：退出复盘 → M3 → 菜品卡 → 新建 → 手打菜名。51 道菜来回切，最容易错的就是菜名
   //   （打错一个字 = 建了另一道菜的卡，回来照样匹配不上 ⇒ 白建一张）。
-  //   ⇒ 直接跳建卡页并把菜名带上（`pages/card/edit` 的 onLoad 负责回填）。
+  //   ⇒ 直接跳建卡页并把菜名带上（`subpkg/biz/card/edit` 的 onLoad 负责回填）。
   //   🔴 菜名必须 `encodeURIComponent`：菜名里有空格/括号/加号（如「肥牛(大)」「A+B 套餐」），
   //      不编码会被 URL 截断或把 `+` 解成空格 ⇒ 预填出来是错的名字（静默错）。
   goNewCard(e) {
     const nm = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.name) || '';
-    wx.navigateTo({ url: '/pages/card/edit?card_code=&dish_name=' + encodeURIComponent(nm) });
+    wx.navigateTo({ url: '/subpkg/biz/card/edit?card_code=&dish_name=' + encodeURIComponent(nm) });
   },
 });

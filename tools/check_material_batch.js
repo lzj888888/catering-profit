@@ -91,22 +91,31 @@ check('A-⑨ 空行不计入行集合', r9.rows.length === 2 && r9.blankLines ==
   '行数=' + r9.rows.length + ' 空行=' + r9.blankLines);
 
 // —— B 组：页面接线 ——
-const FOUR = ['pages/material/batch.js', 'pages/material/batch.json', 'pages/material/batch.wxml', 'pages/material/batch.wxss'];
+const FOUR = ['subpkg/biz/material/batch.js', 'subpkg/biz/material/batch.json', 'subpkg/biz/material/batch.wxml', 'subpkg/biz/material/batch.wxss'];
 const missing = FOUR.filter((f) => !fs.existsSync(path.join(ROOT, f)));
 check('B-① 批量页四件套齐全', missing.length === 0, missing.length ? '缺：' + missing.join(' | ') : FOUR.length + ' 个齐全');
 
 let appPages = [];
-try { appPages = JSON.parse(read('app.json')).pages || []; } catch (e) { appPages = []; }
-check('B-② 批量页已在 app.json::pages 注册', appPages.indexOf('pages/material/batch') >= 0,
+try {
+  // R423 分包化：页面全集 = 主包 + 分包展开（旧写法只取 pages ⇒ 分包页被判未注册）
+  const _a = JSON.parse(read('app.json'));
+  const _sub = [].concat.apply([], ((_a.subpackages || _a.subPackages) || []).map(function (sp) {
+    var r = String(sp.root || '').replace(/\/+$/, '');
+    return (sp.pages || []).map(function (x) { return r ? r + '/' + x : x; });
+  }));
+  appPages = (Array.isArray(_a.pages) ? _a.pages : []).concat(_sub);
+} catch (e) { appPages = []; }
+check('B-② 批量页已在 app.json::pages 注册', appPages.indexOf('subpkg/biz/material/batch') >= 0,
   'app.json 共 ' + appPages.length + ' 页');
 
-const idxWxml = read('pages/material/index.wxml') || '';
-const idxJs = read('pages/material/index.js') || '';
+const idxWxml = read('subpkg/biz/material/index.wxml') || '';
+const idxJs = read('subpkg/biz/material/index.js') || '';
 check('B-③ 原料库列表页有批量入口（wxml 按钮 + js 跳转，两处都在）',
-  /bindtap="goBatch"/.test(idxWxml) && /goBatch\s*\(/.test(idxJs) && /\/pages\/material\/batch/.test(idxJs),
+  // R423 分包化：跳转目标改为 /subpkg/biz/material/batch（兼容主包旧形式）
+  /bindtap="goBatch"/.test(idxWxml) && /goBatch\s*\(/.test(idxJs) && /\/(?:pages\/material|subpkg\/biz\/material)\/batch/.test(idxJs),
   'wxml=' + /bindtap="goBatch"/.test(idxWxml) + ' js=' + /goBatch\s*\(/.test(idxJs));
 
-const bJs = read('pages/material/batch.js') || '';
+const bJs = read('subpkg/biz/material/batch.js') || '';
 check('B-④ 保存复用既有 saveMaterial（不新增云函数，避免牵动四处同步面）',
   /api\.call\(\s*'saveMaterial'/.test(bJs), '命中 saveMaterial 调用');
 
@@ -120,15 +129,15 @@ check('B-⑥ 解析有问题的行默认不勾选（fail-closed：脏数据不�
 check('B-⑦ 页面调纯函数解析，不在页面里内联重写一套解析',
   /batch\.parsePaste\(/.test(bJs), '命中 parsePaste 调用');
 
-const bWxml = read('pages/material/batch.wxml') || '';
+const bWxml = read('subpkg/biz/material/batch.wxml') || '';
 const callInWxml = /\{\{[^}]*[A-Za-z_$][\w$]*\s*\(/.test(bWxml);
 check('B-⑧ WXML 插值内不调方法（微信不支持，且恒 false 不报错）', !callInWxml,
   callInWxml ? '发现插值内函数调用' : '零命中');
 
 // —— C 组：自失效护栏 ——
 let matFiles = 0;
-try { matFiles = fs.readdirSync(path.join(ROOT, 'pages', 'material')).length; } catch (e) { matFiles = 0; }
-check('C-① 扫描面非退化（pages/material 下文件数 ≥ 8）', matFiles >= 8, matFiles + ' 个');
+try { matFiles = fs.readdirSync(path.join(ROOT, 'subpkg', 'biz', 'material')).length; } catch (e) { matFiles = 0; }
+check('C-① 扫描面非退化（subpkg/biz/material 下文件数 ≥ 8）', matFiles >= 8, matFiles + ' 个');
 
 check('C-② 解析纯函数可 require 且导出 parsePaste',
   typeof batch.parsePaste === 'function' && typeof batch.buildRow === 'function',
@@ -173,6 +182,53 @@ const r9c = batch.parsePaste('土豆,,斤,3\n' + ' , , , , , \n'.repeat(40) + '�
 check('A-⑫ 模板级压力：40 行「含空格的空行」夹在中间，只留 2 条真数据且都合格（不许真数据被红海淹没）',
   r9c.rows.length === 2 && r9c.rows.every((x) => x.ok) && r9c.blankLines === 40,
   '行数=' + r9c.rows.length + ' 空行=' + r9c.blankLines);
+
+
+// ===================== C2 · 菜品卡「粘贴配料表」解析（R443）=====================
+// 与上面原料档案的批量录入同族，但**落点不同**：那边产出 saveMaterial 入参，这边产出**卡内配料行候选**。
+// 三条红线的判据都在这：不自动建原料 / 单位必须过单位池 / 数量读不成不静默当 0。
+const cp = require('../utils/cardPaste.js');
+const MATS = [{ id: 'm1', name: '鸡腿肉' }, { id: 'm2', name: '土豆' }];
+
+const c1 = cp.parseCardPaste('鸡腿肉\t200\t克\n土豆\t100\t克', MATS);
+check('C2-① Tab 三列还原：名称/数量/单位 ⇒ 2 行全 ok，净重 200 / 100 克',
+  c1.rows.length === 2 && c1.okCount === 2 && c1.rows[0].qtyBase === 200 && c1.rows[1].qtyBase === 100,
+  JSON.stringify(c1.rows.map((r) => [r.name, r.qtyBase, r.status])));
+
+const c2 = cp.parseCardPaste('鸡腿肉 200g', MATS);
+check('C2-② 单空格速记「鸡腿肉 200g」能拆（g 视作克），不是把整行当成名称',
+  c2.rows.length === 1 && c2.rows[0].status === 'ok' && c2.rows[0].unit === '克' && c2.rows[0].qtyBase === 200,
+  JSON.stringify(c2.rows[0]));
+
+const c3 = cp.parseCardPaste('土豆\t100', MATS);
+check('C2-③ 没写单位 ⇒ 按克（基准单位 = 定义，不是猜测）',
+  c3.rows[0].status === 'ok' && c3.rows[0].unit === '克' && c3.rows[0].qtyBase === 100,
+  JSON.stringify(c3.rows[0]));
+
+const c4 = cp.parseCardPaste('土豆\t0.2kg', MATS);
+check('C2-④ kg 别名必须换成「千克」⇒ 0.2kg = 200 克（原样喂 factorOf 当 1 倍 ⇒ 1000 倍错账）',
+  c4.rows[0].status === 'ok' && c4.rows[0].qtyBase === 200,
+  'qtyBase=' + c4.rows[0].qtyBase);
+
+const c5 = cp.parseCardPaste('牛排\t200\t克', MATS);
+check('C2-⑤ 名称对不上原料档案 ⇒ no_match（绝不自动建原料）',
+  c5.rows[0].status === 'no_match' && c5.rows[0].material === null && c5.okCount === 0,
+  JSON.stringify(c5.rows[0]));
+
+const c6 = cp.parseCardPaste('土豆\t2\t把', MATS);
+check('C2-⑥ 单位不在单位池 ⇒ bad_unit（「把」不在 QTY_UNITS，不许 fail-soft 当 1 倍）',
+  c6.rows[0].status === 'bad_unit',
+  JSON.stringify(c6.rows[0]));
+
+const c7 = cp.parseCardPaste('土豆\t两斤\t克', MATS);
+check('C2-⑦ 数量读不成 ⇒ bad_qty（不静默当 0）',
+  c7.rows[0].status === 'bad_qty',
+  JSON.stringify(c7.rows[0]) + ' / ' + c7.rows[0].status);
+
+const c8 = cp.parseCardPaste('   \n# 注释行\n土豆\t100\t克', MATS);
+check('C2-⑧ 空行与 # 注释不产出行（防噪音行 + 防"扫空恒绿"）',
+  c8.rows.length === 1 && c8.okCount === 1,
+  'rows=' + c8.rows.length);
 
 console.log('\n===== 原料批量录入守卫：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);

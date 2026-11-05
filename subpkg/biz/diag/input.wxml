@@ -1,0 +1,64 @@
+<!-- subpkg/biz/diag/input.wxml —— A20（2026-11-05）· 深度诊断 · 补录页
+     🔴 所有输入框的 value 只绑**用户自己填的**字段（不预填系统参考值），placeholder 只做提示。
+     🔴 picker 显示中文、提交只送 key（见 js buildFacts）。 -->
+<view class="page">
+  <view class="hd">{{t.title}}</view>
+  <view class="hint">{{t.hint}}</view>
+
+  <view class="card">
+    <view class="field">
+      <text class="lbl">{{t.trafficLastYear}}</text>
+      <input class="val-input" type="number" confirm-type="done"
+        placeholder="{{t.trafficLastYearPh}}" value="{{trafficLastYear}}"
+        bindinput="onTrafficLastYear" adjust-position="{{true}}" cursor-spacing="20" />
+    </view>
+
+    <view class="field">
+      <text class="lbl">{{t.rating}}</text>
+      <input class="val-input" type="digit" confirm-type="done"
+        placeholder="{{t.ratingPh}}" value="{{rating}}"
+        bindinput="onRating" adjust-position="{{true}}" cursor-spacing="20" />
+    </view>
+
+    <view class="field">
+      <text class="lbl">{{t.reviewTrend}}</text>
+      <picker mode="selector" range="{{t.trendOpts}}" value="{{trendIdx < 0 ? 0 : trendIdx}}"
+        bindchange="onPickTrend">
+        <view class="val-pick">{{trendIdx < 0 ? t.pending : t.trendOpts[trendIdx]}}</view>
+      </picker>
+    </view>
+
+    <view class="field">
+      <text class="lbl">{{t.district}}</text>
+      <picker mode="selector" range="{{t.districtOpts}}" value="{{districtIdx < 0 ? 0 : districtIdx}}"
+        bindchange="onPickDistrict">
+        <view class="val-pick">{{districtIdx < 0 ? t.pending : t.districtOpts[districtIdx]}}</view>
+      </picker>
+    </view>
+
+    <view class="field">
+      <text class="lbl">{{t.leaseMonths}}</text>
+      <input class="val-input" type="number" confirm-type="done"
+        placeholder="{{t.leaseMonthsPh}}" value="{{leaseMonths}}"
+        bindinput="onLeaseMonths" adjust-position="{{true}}" cursor-spacing="20" />
+    </view>
+
+    <view class="field">
+      <text class="lbl">{{t.debt}}</text>
+      <picker mode="selector" range="{{t.debtOpts}}" value="{{debtIdx < 0 ? 0 : debtIdx}}"
+        bindchange="onPickDebt">
+        <view class="val-pick">{{debtIdx < 0 ? t.pending : t.debtOpts[debtIdx]}}</view>
+      </picker>
+    </view>
+
+    <view class="field">
+      <text class="lbl">{{t.cash}}</text>
+      <input class="val-input" type="digit" confirm-type="done"
+        value="{{cashYuan}}" bindinput="onCash"
+        adjust-position="{{true}}" cursor-spacing="20" />
+    </view>
+    <view class="hint small">{{t.cashHint}}</view>
+  </view>
+
+  <button class="btn primary" bindtap="onSave" disabled="{{saving}}">{{t.save}}</button>
+</view>

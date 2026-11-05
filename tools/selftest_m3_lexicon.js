@@ -70,8 +70,10 @@ const badUnit = LEXICON.filter((it) => PURCHASE_UNITS.indexOf(it.default_unit) <
 check(`L-e 全部 default_unit ∈ PURCHASE_UNITS（16 项）`, badUnit.length === 0,
   badUnit.length ? `非法：${badUnit.map((x) => x.default_unit).join(',')}` : `${LEXICON.length} 条均合法`);
 
-console.log('===== L-f · 模板 20 道 =====');
-check('L-f 模板 20 道', TEMPLATES.length === 20, `length=${TEMPLATES.length}`);
+console.log('===== L-f · 模板规模（20~35，封顶 35）=====');
+// 为什么是区间而不是定值：模板会继续按业态补（火锅/小面/卤味），定值每加一道就要改一次判据，
+//   而**真正的红线是上限**——模板超过 35 道后，picker 滚轮变成负担，且会强化"系统只有这些菜"的错觉。
+check('L-f 模板 20~35 道（封顶 35）', TEMPLATES.length >= 20 && TEMPLATES.length <= 35, `length=${TEMPLATES.length}`);
 const PRICE_KEYS = ['price', 'unit_cost', 'cost', 'price_fen', 'unit_cost_fen', 'cost_fen'];
 const deepHasPrice = (obj, path) => {
   if (Array.isArray(obj)) return obj.some((o, i) => deepHasPrice(o, `${path}[${i}]`));
@@ -102,6 +104,21 @@ const rowBadKeys = rows.filter((r) => Object.keys(r).some((k) => PRICE_KEYS.some
 check('L-g 返回行不含 price/unit_cost/cost 键', rowBadKeys.length === 0,
   rowBadKeys.length ? `非法键：${JSON.stringify(rowBadKeys[0])}` : '行只含 line_name/qty/unit');
 check("L-g 返回行键集合 = {line_name, qty, unit}", rows.every((r) => Object.keys(r).sort().join(',') === 'line_name,qty,unit'), '');
+
+console.log('===== L-h · 模板模式随行（R317）=====');
+// 为什么守：火锅锅底是「炒一批料 → 打 N 锅」。模板若只带料单不带 mode B，
+//   套用后整批料成本会被当成「一锅」的成本 —— 静默算错 N 倍，界面完全看不出来。
+const badMode = TEMPLATES.filter((t) => t.mode !== undefined && t.mode !== 'A' && t.mode !== 'B');
+check('L-h mode 仅允许 省略 / A / B', badMode.length === 0,
+  badMode.length ? `非法：${badMode.map((t) => t.tpl_key + ':' + t.mode).join(',')}` : '全部合法');
+const badBatch = TEMPLATES.filter((t) => t.mode === 'B' && !(Number(t.batch_output) > 1));
+check('L-h mode=B 必须带 batch_output > 1（缺了就等于没分批）', badBatch.length === 0,
+  badBatch.length ? `缺失：${badBatch.map((t) => t.tpl_key).join(',')}` : '全部齐备');
+const editSrc = require('fs').readFileSync(require('path').join(__dirname, '../subpkg/biz/card/edit.js'), 'utf8');
+check('L-h 页面套用模板时把模式带出（不是只带料单）',
+  editSrc.indexOf("tpl.mode === 'B'") >= 0 && editSrc.indexOf('patch.batchOutput') >= 0);
+check('L-h 自失效：mode=B 缺 batch 的样本必须判红',
+  [ { tpl_key: 'x', mode: 'B' } ].filter((t) => t.mode === 'B' && !(Number(t.batch_output) > 1)).length === 1);
 
 console.log('\n' + '='.repeat(60));
 console.log(`===== M3.20 词库/模板自测结果：${pass} 通过 / ${fail} 失败 =====`);

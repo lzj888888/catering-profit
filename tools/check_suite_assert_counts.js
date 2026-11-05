@@ -60,7 +60,8 @@ const CASES = [
   { key: 'check_takeaway_paste_cases', rel: 'tools/check_takeaway_paste_cases.js' },
   // R121 扩面（round97）：费用项清单守卫同批纳入 —— 它的 E5 下界护栏（总项数 ≥20 / 每类 ≥2）与
   //   E6 前提证明正是「非恒真」的凭据；断言数不受守则「删掉下界 + 删一处副本比对」同样静默通过。
-  { key: 'check_expense_item_seed', rel: 'tools/check_expense_item_seed.js' },
+  // R298 扩面：新增 E8 语义锚点真单源（4 条：声明 / ∈ 清单 / 被引用 / 判据自证）⇒ 17 → 21。
+  { key: 'check_expense_item_seed', rel: 'tools/check_expense_item_seed.js' },      // 21 条
   // R123 扩面（round100）：WXML 结构完整性守卫同批纳入 —— 它是**唯一有两个独立判据**的守卫
   //   （A 裸属性行 / B 标签配平），删掉其中任一条 ⇒ 实跑通过数 2→1，**仍 > 0**
   //   ⇒ A0-② 的「通过数为 0」下界抓不到，只有本守卫的 A2「声明 ≡ 实跑」能发现。
@@ -83,7 +84,7 @@ const CASES = [
   //   POC2 七函数，calcSandbox 是后加的批次 4，不在其集合内）—— round113 它 46→53、
   //   round114 又 53→66，两次都无人校验。它满足「非恒真」条件：66 条里删掉一批仍 > 0 ⇒
   //   A0-② 的「通过数为 0」下界抓不到，只有本守卫的 A2「声明 ≡ 实跑」能发现。
-  { key: 'calcSandbox_selftest', rel: 'cloudfunctions/calcSandbox/selftest.js' },
+  { key: 'calcSandbox_selftest', rel: 'cloudfunctions/calcSandbox/selftest.js' },  // 101 条（R556 加 L14/L15/L16：years=0 的两种语义）
   // R128 扩面（round114）：M2「参考值不预填」守卫同批纳入 —— 它的 D 段四组正负样本互证
   //   （剥注释器 / 判别器 / bodyOf 锚定义不锚调用 / value 提取器）与 E 段断言数下界正是
   //   「非恒真」的凭据；断言数不受守则「删掉两组正负样本」就等于把守卫悄悄改小
@@ -104,16 +105,16 @@ const CASES = [
   // R150 扩面（round150）：多规格派生层守卫同批纳入 —— 它的 L3 三条腿恒等（全 1 / 压力样本 / 空系数表）、
   //   A-e 半份五项锚点与 C1~C4 反恒真正是「非恒真」的凭据；断言数不受守则「删掉压力样本腿 +
   //   删掉一条影子」就等于把守卫悄悄改小（判据仍全绿而证明力归零），与 round73 立本守卫的根因同族。
-  { key: 'check_spec_derive', rel: 'tools/check_spec_derive.js' },     // 24 条（含 C1~C4 影子）
+  { key: 'check_spec_derive', rel: 'tools/check_spec_derive.js' },     // 26 条（含 C1~C5 影子）
   // R151 扩面（round151）：单位池 / 计量族 / 单价单位守卫同批纳入 —— 它的 L3 单源自洽
   //   （两池逐项同源 / 倍率表全覆盖 / 族表全覆盖）与 C1~C6 反恒真正是「非恒真」的凭据；
   //   断言数不受守则「删掉一条影子 + 调低下界」就等于把守卫悄悄改小（判据仍全绿而证明力归零）。
-  { key: 'check_unit_family', rel: 'tools/check_unit_family.js' },     // 75 条（含 C1~C37 影子；round152 加 ⑩~⑬ 与 C7~C12；round153 加 ⑭~⑳ 与 C13~C23；round155 加 ㉑~㉕/整包口径 与 C24~C37）
+  { key: 'check_unit_family', rel: 'tools/check_unit_family.js' },     // 76 条（含 C1~C37 影子；round152 加 ⑩~⑬ 与 C7~C12；round153 加 ⑭~⑳ 与 C13~C23；round155 加 ㉑~㉕/整包口径 与 C24~C37；R566 公式收归 units.js 后加「编辑页消费单源、无第二份实现」1 条）
   { key: 'check_list_query_limit', rel: 'tools/check_list_query_limit.js' }, // 22 条（R154：L1~L5 + S1~S3 + C1~C7 反恒真含替身正负样本；R157 加 L6/L7 + C8~C11：listAll 必须真的分页取全 + 调用点不得回退 list）
-  { key: 'check_list_ux', rel: 'tools/check_list_ux.js' },               // 32 条（R156：L1~L6 + S1~S3 + C1~C6 反恒真影子样本）
+  { key: 'check_list_ux', rel: 'tools/check_list_ux.js' },               // 37 条（R156：L1~L6 + S1~S3 + C1~C6；R298 扩面：L6 通用正则+全仓扫描+剥注释，L6b 渲染源，C4b~C4f 互证）
   { key: 'check_index_field_alignment', rel: 'tools/check_index_field_alignment.js' }, // 11 条（R157：L1 化石索引 + L2 锚点对齐 + L3 字段真在用 + S1~S3 + C1~C3 反恒真）
-  { key: 'check_snapshot_fields', rel: 'tools/check_snapshot_fields.js' }, // 16 条（R144：L1 读侧全集 + L2 写侧全集 + L3 两读侧集合≡ + L4 fail-soft + L5 Controller + L6 validate 区间 + S1~S2 + C1~C3 反恒真）
-  { key: 'check_paywall_coverage', rel: 'tools/check_paywall_coverage.js' }, // 17 条（R159：L1 三单源解析 + L2 能力⊆放行 + L3 放行有文案 + L4 四字段非空 + L5 影子正负 + L6 云函数双向 + L7 自失效护栏；R213 修假绿：L6-② 改「穷尽分类」+4 条）
+  { key: 'check_snapshot_fields', rel: 'tools/check_snapshot_fields.js' }, // 19 条（R144：L1 读侧全集 + L2 写侧全集 + L3 两读侧集合≡ + L4 fail-soft + L5 Controller + L6 validate 区间 + S1~S2 + C1~C3 反恒真）
+  { key: 'check_paywall_coverage', rel: 'tools/check_paywall_coverage.js' }, // 26 条（R159：L1 三单源解析 + L2 能力⊆放行 + L3 放行有文案 + L4 四字段非空 + L5 影子正负 + L6 云函数双向 + L7 自失效护栏；R213 修假绿：L6-② 改「穷尽分类」+4 条；R443 扩面：L8 改按页面配清单，外卖 15 下界保留 + 团购 8 下界新增 + L8-⑥ 跨页隔离反恒真，22 → 26）
   // round181c 扩面：M3.16 套餐（引用型卡）守卫同批纳入 —— 它的 A-a/A-b/A-c 三锚点（成本 1275 分 /
   //   锁子卡版本 1275→1508 / 禁嵌套与版本无效）与「把子卡成本当 net_unit_cost 喂同一个 `calcCostCard`、
   //   引擎一字不改」的入参变换证明，正是本守卫要求的「非恒真」凭据；而 17 条断言删掉一批仍 > 0
@@ -128,7 +129,7 @@ const CASES = [
   //   T-a~T-g 七组锚点（佣金基数不含打包费 / 固定佣金保底不生效 / 到手≠总额双口径 / 反算挂牌价 /
   //   输出隔离 M1 月度字段）是「非恒真」凭据；而 21 条删掉一批仍 > 0
   //   ⇒ A0-② 的「通过数为 0」下界抓不到，只有 A2「声明 ≡ 实跑」能发现。
-  { key: 'selftest_m3_takeaway', rel: 'tools/selftest_m3_takeaway.js' }, // 21 条（M3.17：T-a~T-g）
+  { key: 'selftest_m3_takeaway', rel: 'tools/selftest_m3_takeaway.js' }, // 24 条（M3.17：T-a~T-h，含 H1 两口径勾稽）
   { key: 'selftest_m3_impact', rel: 'tools/selftest_m3_impact.js' }, // 17 条（M3.19：C-a/C-a2/C-b/dry-run）
   { key: 'selftest_m3_recon', rel: 'tools/selftest_m3_recon.js' }, // 16 条（M3.21：D 锚点 + 闸门）
   { key: 'selftest_bill_parse', rel: 'tools/selftest_bill_parse.js' }, // 70 条（批次 F 15 + R245 P1 京东串味 5 + P2~P6 京东两形态/取数/日期 17 + 平台枚举三副本 2 + R250 平台自动判定逐候选行试签名 14 + R253 D 段多平台同时命中 17）
@@ -141,11 +142,11 @@ const CASES = [
   //   断言数不受守则「把 20 处调用点判据改回 owner.code / 删掉 G2 分支遍历」同样静默通过。
   { key: 'check_auth_guard_shape', rel: 'tools/check_auth_guard_shape.js' }, // 17 条（R194：G1 扫描面非退化 / G2 分支带 error / G3 无 ok()·fail() / G4 派生同形 / G5 锚点在场 / G6 调用点形状）
   { key: 'check_tabbar', rel: 'tools/check_tabbar.js' },
-  { key: 'check_material_batch', rel: 'tools/check_material_batch.js' }, // 26 条（R204：A 解析行为 9 / B 页面接线 8 / C 护栏 4 / D 正负样本 2；R211 补 3：带分隔符的空行必须按空行跳过——逗号 ⑩ / 分号 ⑪ / 40 行模板压力 ⑫）
-  { key: 'check_home_ui_v3', rel: 'tools/check_home_ui_v3.js' }, // 29 条（R207：S 护栏 5 / A 头卡 10 / B 口径 4 / C 模块卡与入口保全 7 / D 全局单源 3）
+  { key: 'check_material_batch', rel: 'tools/check_material_batch.js' }, // 34 条（R204：A 解析行为 9 / B 页面接线 8 / C 护栏 4 / D 正负样本 2；R211 补 3：带分隔符的空行必须按空行跳过——逗号 ⑩ / 分号 ⑪ / 40 行模板压力 ⑫；R443 补 8：菜品卡「粘贴配料表」解析 C2-①~⑧）
+  { key: 'check_home_ui_v3', rel: 'tools/check_home_ui_v3.js' }, // 32 条（R207：S 护栏 5 / A 头卡 13 / B 口径 4 / C 模块卡与入口保全 7 / D 全局单源 3；A-⑬~⑮=R298 hasProfit 必须以「有账本记录」为前置，否则新用户看到 ¥0.00）
   { key: 'check_shop_lifecycle', rel: 'tools/check_shop_lifecycle.js' }, // 29 条（R208：S 护栏 4 / A 配额语义 5（实跑 decideDelete）/ B 删空不死锁 6 / C 入口不藏 10 / D 文案对齐 4）
   { key: 'check_month_picker', rel: 'tools/check_month_picker.js' }, // 18 条（R209：S 护栏 4 / A handler 实跑 5 / B 后端实跑 4 / C 全仓回归 3 / D UI 一致 2）
-  { key: 'check_shop_reset', rel: 'tools/check_shop_reset.js' }, // 52 条（R210：S 护栏 / A 实跑 decideReset / B 实跑 validateInput / C 范围恰三表不含资产 / D 前端三按钮 / E 文案量级 / F 写库纪律）
+  { key: 'check_shop_reset', rel: 'tools/check_shop_reset.js' }, // 53 条（R210：S 护栏 / A 实跑 decideReset / B 实跑 validateInput / C 范围恰三表不含资产 / D 前端三按钮 / E 文案量级 / F 写库纪律）
   { key: 'check_entitlement_flow', rel: 'tools/check_entitlement_flow.js' }, // 28 条（R213：E-A 实跑单源 9 / E-B 实跑配额 7 / E-C 链路在场 9 / E-D 护栏 3）
   { key: 'check_fn_public_surface', rel: 'tools/check_fn_public_surface.js' },
   { key: 'check_paid_quota_unlock', rel: 'tools/check_paid_quota_unlock.js' }, // 8 条（R215b：S 扫描面 2 / A 免费额度须被 paid 短路 1 / B 硬上限不得被 paid 豁免 1 / C 注入与单源 2 / D 解析器正负样本 2） // 17 条（R215：S 扫描面 5 / A 三分穷尽 2 / B 登记双向 4 / C 来源自保 4 / D 自失效 2）
@@ -156,7 +157,7 @@ const CASES = [
   // M2v1.3 扩面（批次 第三期）：业态参数包守卫同批纳入 —— 它的 S 扫描面（预设数 ≥4 + 断言数下界）
   //   与 C 形态参数完备（缺一即 NaN）、D L1/L2 禁入、E 回本唯一出口正是「非恒真」的凭据；
   //   断言数不受守则「删掉反例 / 调低下界」静默通过，与 round73 立本守卫的根因同族。
-  { key: 'check_biz_preset', rel: 'tools/check_biz_preset.js' }, // 24 条（S/A/B/C/D/E/F/G 八组；R293 增 G 组 3 条：占比 ≡ BANDS 指数派生、毛利率 ∈ BANDS 带内、禁 src='E' 自定占比）
+  { key: 'check_biz_preset', rel: 'tools/check_biz_preset.js' }, // 33 条（S/A/B/C/D/E/F/G 八组；R293 增 G 组 3 条；R332 增 H 组 8 条 + R334 增 H-⑥：各大类须有「其他XX」兜底 / 兜底不得复制参数 / base 可解析 / 继承真生效 / 显示名不重复）
   // R232 扩面：gradeGate 双副本等价守卫同批纳入 —— 它的 C 组两道自失效护栏（样本数下界 / 影子反例必须报差异）
   //   与 B-②「电池须同时产出过 pass=true 与 pass=false」正是「非恒真」凭据；
   //   12 条删掉一批仍 > 0 ⇒ A0-② 的「通过数为 0」下界抓不到，只有 A2「声明 ≡ 实跑」能发现（同 round73 立本守卫根因）。
@@ -179,7 +180,7 @@ const CASES = [
   // R232f：getDishReview 算法层守卫 —— 阶段②读侧原「零判据」（算法内联在 exports.main 里，无法 require）。
   //   32 条 = ⓪ 模块在场 4 + ① 真调生产 buildDishReview 16（含 C-10 回归 + 反恒真）+ ② 架构防退化 5 + ③ 单源 3 + ④ 自失效护栏 4。
   //   变异回灌 6/6 有效红（版本选取/未匹配归零/零除/漏项/本地时区/聚合覆盖），全部命中目标断言名。
-  { key: 'check_dishreview_engine', rel: 'tools/check_dishreview_engine.js' }, // 99 条（⓪~⑫；⑤=R249-B 页面消费契约；⑥=R251 平台块不得只留光标题；⑨=R259 外卖毛利率口径说明；⑩=R261 未匹配按营收降序；⑪=R262「卡不够挂」引导；⑫=R264 覆盖率按金额+行内去建卡预填+卡不够不给批量按钮）
+  { key: 'check_dishreview_engine', rel: 'tools/check_dishreview_engine.js' }, // 119 条（⓪~⑭；⑤=R249-B 页面消费契约；⑥=R251 平台块不得只留光标题；⑨=R259 外卖毛利率口径说明；⑩=R261 未匹配按营收降序；⑪=R262「卡不够挂」引导；⑫=R264 覆盖率按金额+行内去建卡预填+卡不够不给批量按钮；⑬=R298 跨端契约机器码：云端只回 high/low/ok、前端色号表 ⊆ 术语表键集）
   // H-1 扩面（M3.33 形态 C 解析层）：parseDishSalesC 守卫同批纳入 —— 它的 R-C2 三组反例（订单交易额 2974.91≠1823.08 /
   //   补零 357≠354 / 销量文本 isFinite("43")=false）与 R-C4 自失效护栏正是「非恒真」凭据；
   //   16 条删掉一批仍 > 0 ⇒ A0-② 的「通过数为 0」下界抓不到，只有 A2「声明 ≡ 实跑」能发现（同 round73 立本守卫根因）。
@@ -197,7 +198,7 @@ const CASES = [
   // R234/M2v1.4：M2 小白输入面 —— 把 R223 **定案却零守卫**的铁律变成断言
   //   （专业指标不得进输入区 / 业态预设平铺 / 结论先给判定且不自造 / 术语餐饮化）。
   //   ⚠️ 不登记这里会被 A5-② 判「声明行含未受守 key」—— 新增套件的同步面之一。
-  { key: 'check_m2_biz_inputs', rel: 'tools/check_m2_biz_inputs.js' },  // 35 条（P/A/B/C/D/V/E 七组；A-⑧=R237 唯一换算点白名单；V-⑧=#7 配套反假绿）
+  { key: 'check_m2_biz_inputs', rel: 'tools/check_m2_biz_inputs.js' },  // 69 条（P/A/B/C/D/V/T/U/W/E 十组；A-⑧=R237 唯一换算点白名单；V-⑧=#7 配套反假绿；T=R339 标题数字 ≡ 实际输入行数；U=R341 三项语义提示；W 组 R547b 反向改写 1→3 条：只剩文字 / 文案三要素禁假承诺 / 入口后置结果页）
   // R247：形态 C 平台 picker 一致性守卫 —— S 段三道下界护栏（picker ≥4 / enum ≥6 / 术语键 ≥4）
   //   + C 段 4 条合成样本自检是「非恒真」凭据；断言数不受守则「删掉 B 组两条」会静默通过。
   { key: 'check_picker_platform', rel: 'tools/check_picker_platform.js' },  // 15 条（S 4 + A 4 + B 3 + C 4）
@@ -225,7 +226,60 @@ const CASES = [
   { key: 'check_bill_import_gate', rel: 'tools/check_bill_import_gate.js' },  // 48 条（R271 增 F 段 20 条：跨平台重复导入防护）
   { key: 'check_hub_guide', rel: 'tools/check_hub_guide.js' },  // 17 条（R263：枢纽页三步走/分层/空状态；G2 空状态严格 === 0 + G4 位置不变式）
   { key: 'check_export_delivery', rel: 'tools/check_export_delivery.js' },  // 44 条（R265 导出投递 25 + R266 报表内容 18：E11 摊销在场 / E12~E14 表上加减对得上账 / E15~E16 摊销来源台账 / E18 两个开关状态）
-  { key: 'check_page_card_width', rel: 'tools/check_page_card_width.js' },  // 3 条（R296c 立 / R296d 拆雷反转：A-① 全局 app.wxss 必须零精确类名 `.card`（否则任何页面复用即继承 width:48% ⇒ 卡片半宽 ⇒ 标签逐字断行成竖排）+ A-② 页面用了 `class="card"` 就得自己声明 width + A-③ 负样本互证不误伤 .card2/.card-title/.mcard）
+  { key: 'check_page_card_width', rel: 'tools/check_page_card_width.js' },
+  // R351：wxml class ↔ wxss 选择器集合比对。为什么值得受守：它守的是「用了但没定义样式」
+  //   这一类**能编译、能跑、零报错**的问题（R351 实扫出 7 处，含活动卡最关键的告警块）。
+  // R396 扩面（队列 #13）：异常核对清单规则层自测同批纳入 —— 它的 S 组自失效护栏
+  //   （锚点样本非空 / 阈值自洽 / 清单非空）与 D 组五条反恒真（改阈值结论必须变）正是「非恒真」凭据；
+  //   47 条删掉一批仍 > 0 ⇒ A0-② 的「通过数为 0」下界抓不到，只有 A2「声明 ≡ 实跑」能发现。
+  { key: 'selftest_anomaly_rules', rel: 'tools/selftest_anomaly_rules.js' }, // 47 条（S4 + A20 + B7 + C4 + D5 + E5 + F2）
+  { key: 'check_wxml_class_defined', rel: 'tools/check_wxml_class_defined.js' },   // 4 条（A-①未定义 / A-②白名单过期 / A-③文件面 / A-④动态前缀自检）  // 3 条（R296c 立 / R296d 拆雷反转：A-① 全局 app.wxss 必须零精确类名 `.card`（否则任何页面复用即继承 width:48% ⇒ 卡片半宽 ⇒ 标签逐字断行成竖排）+ A-② 页面用了 `class="card"` 就得自己声明 width + A-③ 负样本互证不误伤 .card2/.card-title/.mcard）
+  // R298 金额精度：「元 → 分」十进制安全（x.xx5 半步静默少进 1 分）+ 前后端双副本等价。
+  //   S 扫描面 6（S-⑤ 三形态桶 IDENT/PAREN/LITERAL 穷尽对账 —— 防"只扫命名像分的标识符"
+  //   而漏 LITERAL 字面量与 PAREN 括号两种形态）+ A 行为穷举 4 + B 双副本等价 2
+  //   + C 登记清单 fail-closed 10（未登记/登记失效/守恒/kind 合法/money 必安全/money 下界防批量改标/
+  //     四类非空/理由非空/单源含 toFixed(10)/三副本同源）+ D 正负样本互证 8（D-⑤~D-⑦ 对账分辨力 + 断言数下界）。
+  { key: 'check_money_precision', rel: 'tools/check_money_precision.js' },  // 30 条
+  // R298·B3 导出件可回读：真写→真读回 + 内容保真（详见 tools/check_export_roundtrip.js 头注）
+  { key: 'check_export_roundtrip', rel: 'tools/check_export_roundtrip.js' },  // 46 条
+  // R324：开店资金测算（utils/openCash.js）—— 口径被李老师当场纠正过（预算不决定店面大小），
+  //   纠正过的口径最容易漂回原样，故把 27 条行为判据纳入受守面。
+  { key: 'selftest_opencash', rel: 'tools/selftest_opencash.js' },        // 27 条（A~G 七组 + 反恒真）
+  // R330：促销影响测算（utils/promoImpact.js）—— 豆包第一版公式漏了分母（算 49%，正确 52.13%），
+  //   且自称"代入算例验证过" ⇒ 这类「步骤自洽但数字错」的口径必须钉手算锚点，纳入受守面。
+  { key: 'selftest_promo', rel: 'tools/selftest_promo.js' },              // 27 条（A~G 七组 + 反恒真；R370 加 A-④b 实收口径）
+  // R437 · 队列 #6：M3 三页风格 B 外壳一致性。纳入受守面的理由同上 —— 三页"看起来一样"
+  //   全靠共同引用一组声明，任何一页把底色/圆角/阴影写回自己 wxss 都是**零报错**漂移；
+  //   18 条含 4 条反漂移（B 组）与 2 条合成负样本（C-③/C-④，证明 A/B 判据不恒真）。
+  { key: 'check_m3_style_b', rel: 'tools/check_m3_style_b.js' },          // 18 条（A9 + B4 + C5）
+  // R463 · PLAN_AI P0：AI 诊断包 + L0 判断。纳入受守面的理由同上 —— 这两件最容易写成
+  //   「包能生成、文本能打印、门禁全绿」，而数字被重算 / 判断被下放给模型 / 缺板块静默留空。
+  //   42 条含 2 条反恒真变异（⑤-1 亏损条件改 false / ⑤-2 金额白名单删一项）。
+  { key: 'check_ai_pack', rel: 'tools/check_ai_pack.js' },                // 42 条（①7 + ②8 + ③18 + ④3 + ⑤2 + ⑥4）
+  // R469 · 队列 #49：app.json 的 preloadRule（分包预下载）配置守卫。纳入受守面的理由：
+  //   它的 5 条合成负样本（E-③~E-⑦）是本守卫"非恒真"的唯一凭据，而这 5 条又全在文件内、
+  //   删掉后门禁照旧全绿（A~D 在真配置上本来就全绿）⇒ 断言数不受守就等于没人知道护栏少了。
+  { key: 'check_preload_rule', rel: 'tools/check_preload_rule.js' },      // 14 条（A2 + B3 + C1 + D1 + E7）
+  // R477：M1 双利润引擎三副本行为等价 —— 断言数不受守则「删掉 E 段口径专项」会静默通过
+  //   （而那正是本轮改动的落点）；B 段 3000 组对拍若被改成 1 组也无人报警 ⇒ 必须受守。
+  { key: 'check_m1_engine_parity', rel: 'tools/check_m1_engine_parity.js' }, // 33 条（R483 增 2；分段计数以实跑 pass 数为准）
+  // R479：差异说明条件化 —— 断言数不受守则「把 A-⑥ 两条文案写成同值」会静默通过
+  //   （分支留着、值一样 ⇒ 形同没条件化，正是本守卫要对付的假条件化）。
+  // R493：H 段（摊销/依据三态行为面 21 条）+ I 段（真实盘点 5 跳链路 6 条）⇒ 33→60。
+  { key: 'check_m1_diff_explain', rel: 'tools/check_m1_diff_explain.js' },   // 60 条（H21 + I6 为 R493 新增；分段计数以实跑 pass 数为准）
+  // D1（2026-10-27 拍板 + 审计 H1 实证）：空表单 fail-closed 行为守卫 —— 19 条 = P4 + Q2 + A6 + B3 + C2 + E2
+  { key: 'check_m2_forward_failclosed', rel: 'tools/check_m2_forward_failclosed.js' }, // 25 条（P/Q/A/B/C/E/F 七组；F=人效坪效缺项感知 6 条：空表单装配 rent/labor=0 + 引擎非空保本证门禁必要 + hasFixed(空)=false + 正控 hasFixed(填)=true + 变异 >0→>=0 可抓）
+  // D3 + D3-C（2026-10-27 拍板/第二轮）：任一项>0 即采用 —— 20 条 = P3 + A9 + B1 + C5 + E2
+  { key: 'check_m2_energy_split', rel: 'tools/check_m2_energy_split.js' }, // 22 条（P 前置 + A 单填/组合/energyYuan合并/向后兼容 + B 全空派生 + C 旧&&写法+energy+gas锚点 + D 前端两栏/合并开关/装配分流 + E 自失效）
+  // D4（2026-10-27 拍板）：矩阵与单页管理费口径统一（manage 键，不再派生房租×占比）—— 19 条 = P4 + A6 + B3 + C4 + E2
+  { key: 'check_m2_matrix_manage', rel: 'tools/check_m2_matrix_manage.js' }, // 19 条（P 前置 + A 键在空/填 + B 键缺失派生相异 + C 源锚锁 R533/单页收敛/删键回退 + E 自失效）
+  // D6（2026-10-27 拍板）：透视表按人工过滤（fixLabor 生效，不再被覆盖）—— 11 条 = P2 + A4 + B1 + C2 + E2
+  { key: 'check_m2_matrix_pivot', rel: 'tools/check_m2_matrix_pivot.js' }, // 11 条（P 前置加载 + A 真实 buildPivot 按人工过滤/cells 两态相异 + B 回退第一档 + C 源锚锁 R534/删条件回退 + E 自失效）
+  { key: 'check_diag_engine', rel: 'tools/check_diag_engine.js' }, // 42 条（E 引擎 18 + J 权益判定 12 + F 指纹 5 + S 数据层 7；含缺项不计分母/红线优先/未判定≠未命中/缓存不扣额度四组反恒真）
+  // 2-D 批次（2026-11-05）：M1 三字段 + A11 摊销三件套 + A20 补录通道 —— 32 条 = S2 + A7 + B7 + C4 + D9 + E1 + 下界自证 2
+  { key: 'check_m1_extra_fields', rel: 'tools/check_m1_extra_fields.js' }, // 32 条（含 4 条反面断言：禁参考利润 / 禁 ?0 兜底 / 禁裸键 / 禁中文枚举进载荷；变异复核 3/3 点名转红）
+  { key: 'check_three_cost', rel: 'tools/check_three_cost.js' }, // 25 条（A17/A18：两处阈值逐业态相等 5 + 三项刚性行为 6 + 会员占比 5 + 接线 7 + 派生防漂移 2）
+  { key: 'check_copy_compliance', rel: 'tools/check_copy_compliance.js' }, // 24 条（A14/A15/A21：扫描器自证 4 + 禁词 5 + 必备文案 6 + 退款规则行为 9）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

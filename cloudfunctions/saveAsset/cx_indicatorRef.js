@@ -84,15 +84,54 @@ const BIZ_KEYS = ['fastfood', 'dining', 'hotpot', 'cafe', 'other'];
 //    属**允许**（一线人工绝对成本高；系数本身是 [E1] 待校准项，见 CITY_TIERS 注）。
 // ⚠️ 不变式（由 tools/check_indicator_ref.js C-⑫ 守）：基准档 cost 类 **lo ≤ REDLINE**、
 //    gain 类 **hi ≥ REDLINE** —— 否则会出现「既优秀又命中警戒线」这种自相矛盾。
+// 🔴🔴 A16（2026-11-05）**参考带一次校准 8 项** —— 依据 `review/占比口径校准_房租人工毛利率_20261104.md`
+//   §3（三套数据 A/B/C 对照 + Web 实证 + 豆包票）与 `HANDOFF_2026-11-04_占比口径交接单.md` §2.1 终值表。
+//   改的是**参考带层**（"你在行业什么位置"），**没动红线/健康单点层**（[D4] 单点仍管闭店硬判定）——
+//   两层并列不互覆盖，这是文件头的既有设计（详见 HANDOFF §2）。
+//
+//   | 项 | 旧 | 新 | 为什么 |
+//   |---|---|---|---|
+//   | fastfood.rent      | [5,10]  | [8,15]  | 白皮书房租 8–15；旧 hi=10 会把正常铺面判成"偏高" |
+//   | dining.rent        | [8,15]  | [9,15]  | lo 8→9（合理下限 9），hi=15 通用警戒 |
+//   | cafe.rent          | [5,12]  | [9,18]  | 旧带整体偏低：茶饮点位租金真实 12–18；lo 5 → 9 |
+//   | hotpot.labor.lo    | 14      | 15      | 14% 太容易得"优秀" |
+//   | cafe.labor.lo      | 14      | 15      | 同上 |
+//   | fastfood.grossMargin | [58,68] | [60,66] | lo 偏低（会漏判"偏低"店）+ hi 过宽 |
+//   | dining.grossMargin   | [55,65] | [60,66] | 正餐健康毛利 60–70，旧 lo 55 太低 |
+//   | hotpot.grossMargin   | [52,67] | [55,65] | 火锅/烧烤并集过宽，收窄到 55–65 |
+//   | cafe.grossMargin.hi  | 72      | 70      | hi 偏高（咖啡 75 另计，茶饮 70 到顶） |
+//
+//   ⚠️ 未改（有意为之，别"顺手对齐"）：`fastfood.labor` / `dining.labor` / `hotpot.rent` —— 三方（本库/[D4]/行业通值）本就一致。
+//   ⚠️ 未改：`labor` 城市系数 1.15/1.00/0.85 —— 李老师 2026-11-04 拍板**保留** [E1] 经验值，闭卷不再议。
+//   🔴 **级联影响（改带值必查这四处，漏一处就静默漂移）**：
+//     ① `utils/bizPreset.js` 的 `rentPct`（= 指标中值 ÷ rent 中值 × 100）⇒ 5 业态各 2 项要重算；
+//     ② `specs/.../ModuleM2_选址沙盘.md` §M2.4b 权威 JSON（A-③ 双向校验，不改即红）；
+//     ③ `tools/check_indicator_ref.js` 的钉死样本（C-④/C-⑤/C-⑧/C-⑬/C-⑯）；
+//     ④ `tools/sync_common.js` 重生成 51 份 `cx_` 副本（不重生 ⇒ 云端仍跑旧带）。
 const BANDS = {
-  fastfood: { grossMargin: [58, 68], labor: [16, 20], rent: [5, 10], mkt: [3, 8], energy: [2, 4], manage: [4, 8] },
-  dining: { grossMargin: [55, 65], labor: [17, 22], rent: [8, 15], mkt: [5, 10], energy: [3, 5], manage: [4, 8] },
-  hotpot: { grossMargin: [52, 67], labor: [14, 18], rent: [8, 15], mkt: [5, 10], energy: [4, 6], manage: [4, 8] },
-  cafe: { grossMargin: [62, 72], labor: [14, 18], rent: [5, 12], mkt: [3, 8], energy: [1, 3], manage: [4, 8] },
-  // 🔴 通用兜底（4 类带并集）：grossMargin[52,72]/labor[14,22]/rent[5,15]/mkt[3,10]/energy[1,6]/manage[5,10]
-  //   —— 满足 C-⑫（gain.hi≥55、cost.lo≤警戒线：rent.lo5≤15 / labor.lo14≤20）；前端标注"未细分行业，仅供粗估"。
-  other: { grossMargin: [52, 72], labor: [14, 22], rent: [5, 15], mkt: [3, 10], energy: [1, 6], manage: [4, 8] },
+  fastfood: { grossMargin: [60, 66], labor: [16, 20], rent: [8, 15], mkt: [3, 8], energy: [2, 4], manage: [4, 8] },
+  dining: { grossMargin: [60, 66], labor: [17, 22], rent: [9, 15], mkt: [5, 10], energy: [3, 5], manage: [4, 8] },
+  hotpot: { grossMargin: [55, 65], labor: [15, 18], rent: [8, 15], mkt: [5, 10], energy: [4, 6], manage: [4, 8] },
+  cafe: { grossMargin: [62, 70], labor: [15, 18], rent: [9, 18], mkt: [3, 8], energy: [1, 3], manage: [4, 8] },
+  // 🔴 通用兜底（4 类带**并集**，随上面 8 项改值同步重算）：grossMargin[55,70]/labor[15,22]/rent[8,18]/mkt[3,10]/energy[1,6]/manage[4,8]
+  //   —— 满足 C-⑫（gain.hi≥55、cost.lo≤警戒线：rent.lo8≤15 / labor.lo15≤20）；前端标注"未细分行业，仅供粗估"。
+  //   ⚠️ 它是**派生量不是独立口径**：4 类带任一改动后，必须按「lo 取各类最小、hi 取各类最大」重算，否则兜底会收紧到漏判。
+  other: { grossMargin: [55, 70], labor: [15, 22], rent: [8, 18], mkt: [3, 10], energy: [1, 6], manage: [4, 8] },
 };
+
+// 🔴 R386（AI 解释锚点）：BANDS 必须有**版本号**，否则同一句「你的毛利率低于行业带」
+//   在改过区间之后就变成两句话，事后无法解释（PLAN_AI §6 第 1 条）。
+//   做法：对 BANDS 内容做 FNV-1a 短哈希 ⇒ **改了自动变、不用人维护**（手写版本号必腐）。
+//   ⚠️ 只依赖 JSON.stringify 的**声明顺序**（对象字面量顺序稳定）；改 BANDS 请保持这个文件内改。
+function _fnv1a(str) {
+  let h = 0x811c9dc5;
+  for (let k = 0; k < str.length; k++) {
+    h ^= str.charCodeAt(k);
+    h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+  }
+  return ('0000000' + h.toString(16)).slice(-8);
+}
+const BANDS_VERSION = 'bands-' + _fnv1a(JSON.stringify(BANDS));
 const BAND_KEYS = ['grossMargin', 'labor', 'rent', 'mkt', 'energy', 'manage'];
 
 // ===== 四、指标元数据 =====
@@ -117,9 +156,93 @@ const IND_KEYS = INDICATORS.map((i) => i.key);
 const REDLINE = { rent: 15, labor: 20, grossMargin: 55, loss: 5 };
 const REDLINE_KEYS = ['rent', 'labor', 'grossMargin', 'loss'];
 
+// ===== 五-2、A17（2026-11-05）三项刚性成本率（V钱-4）=====
+// 定义：`食材成本率 + 人工占比 + 房租占比`（占营业额 %）。**零新增输入字段** —— 三项 M1 台账里都有。
+//
+// 🔴 为什么必须分业态、不能一刀切 70%：三司（巴迪/豆包/DeepSeek）**零分歧** ——
+//   正餐 73% 按 70% 会被判"危险"，而 [D4] 权威警戒线是 75% ⇒ 把合规门店误判成倒闭边缘，
+//   这是比"不判"严重得多的错误（老板会因为一个错数去砸店/换铺）。
+//
+// 数值出处：`[D4]` 闭店决策模型 v1.0 参数库 C16（`review/evidence/closedown_model_v1_param_snapshot.md`）
+//   警戒：快餐 68 / 正餐 75 / 火锅 74 / 茶饮 71；健康线 ≈ 警戒 × 0.93（63/70/69/66）；危险线统一 80。
+//   `other` 无 [D4] 值 ⇒ 取四类中**最宽**（正餐/火锅的 75/70），理由同 BANDS.other：兜底宁可漏判不可误判。
+//
+// ⚠️ 与 `diagnosisEngine.js::BIZ_PARAMS.threeCostWarn` 是**同一个数**，两处都在用：
+//   后者给诊断引擎的现金流/成本项打分，前者给 M1 页面判级。守卫 `check_m1_three_cost.js`
+//   强制两边逐业态相等（改一处不改另一处即判红）—— 同一指标两个阈值是最典型的静默分裂。
+const THREE_COST = {
+  fastfood: { healthy: 63, warn: 68, danger: 80 },
+  dining: { healthy: 70, warn: 75, danger: 80 },
+  hotpot: { healthy: 69, warn: 74, danger: 80 },
+  cafe: { healthy: 66, warn: 71, danger: 80 },
+  other: { healthy: 70, warn: 75, danger: 80 },
+};
+
+/**
+ * 三项刚性成本率判级。**任一输入缺失 ⇒ pct=null / level='na'，并列出缺哪几项**。
+ *
+ * 🔴 不做"缺一项就按 0 补"的降级：缺房租 ⇒ 三项和必然偏低 ⇒ 永远显示"健康"，
+ *   这是把"没数据"包装成"没问题"，比不显示更坏（本仓「缺项 ≠ 0」红线第 N 例）。
+ * @param {string} bizKey 业态
+ * @param {{grossMarginPct:number|null, rentPct:number|null, laborPct:number|null}} o
+ * @returns {{pct:number|null, level:string, healthy:number, warn:number, danger:number,
+ *            warnHit:boolean, dangerHit:boolean, missing:string[]}}
+ */
+function threeCostOf(bizKey, o) {
+  const opt = o || {};
+  const t = THREE_COST[bizKey] || THREE_COST.other;
+  const gm = pctOrNull(opt.grossMarginPct);
+  const rent = pctOrNull(opt.rentPct);
+  const labor = pctOrNull(opt.laborPct);
+  const missing = [];
+  if (gm == null) missing.push('grossMargin');
+  if (rent == null) missing.push('rent');
+  if (labor == null) missing.push('labor');
+  const base = {
+    healthy: t.healthy, warn: t.warn, danger: t.danger,
+    warnHit: false, dangerHit: false, missing,
+  };
+  if (missing.length) return Object.assign(base, { pct: null, level: 'na' });
+  // 食材成本率 = 100 − 毛利率（**内部中间量，对外只说毛利率**；这里只用于求和，不单独出参）
+  const pct = round1((100 - gm) + rent + labor);
+  let level = 'ok';
+  if (pct >= t.danger) level = 'bad';
+  else if (pct > t.warn) level = 'warn';
+  else if (pct <= t.healthy) level = 'good';
+  return Object.assign(base, {
+    pct, level,
+    warnHit: pct > t.warn,
+    dangerHit: pct >= t.danger,
+  });
+}
+
+// ===== 五-3、A18（2026-11-05）会员销售占比（V客²-1）=====
+// 规格：`会员销售额 ÷ 总销售额 < 20%` 报警（标杆：锅圈会员占比 63.7%）。
+// 🔴 留空（老板没会员体系）**必须"不判"**，不得按 0 分 —— 否则「没填 = 严重扣分」，
+//   等于惩罚一个连会员系统都没有的小店老板，这是本仓最伤人的一类语义反转。
+const MEMBER_RATIO_WARN = 20;
+const MEMBER_RATIO_GOOD = 40;   // 40% 以上算"做得不错"（不到标杆 63.7% 的一半，属保守定档）
+
+/**
+ * 会员销售占比判级：null（没填）⇒ 'na'；< 20% ⇒ 'warn'；< 40% ⇒ 'ok'；≥ 40% ⇒ 'good'。
+ * @param {number|null} pct
+ * @returns {{pct:number|null, level:string, warnAt:number}}
+ */
+function memberRatioOf(pct) {
+  const p = pctOrNull(pct);
+  if (p == null) return { pct: null, level: 'na', warnAt: MEMBER_RATIO_WARN };
+  let level = 'ok';
+  if (p < MEMBER_RATIO_WARN) level = 'warn';
+  else if (p >= MEMBER_RATIO_GOOD) level = 'good';
+  return { pct: round1(p), level, warnAt: MEMBER_RATIO_WARN };
+}
+
 // ===== 六、对外参数（供 validate 白名单复用，避免两处枚举漂移）=====
 const FIXED_KEYS = ['rent', 'labor', 'utility', 'manage', 'other'];
-const VAR_KEYS = ['takeawayComm', 'grouponComm', 'cardFee', 'other'];
+// 🔴 R558：加 `energy` —— 水电燃气从「固定金额」改成「占营业额费率」时用这个 key。
+//   引擎 service.js 已经把它当普通挂钩费率求和（进分母），这里只是放开白名单。
+//   ⚠️ 加完必须重跑 tools/sync_common.js 并部署 calcSandbox，否则云端仍按旧白名单拒成「填写有误」。
+const VAR_KEYS = ['takeawayComm', 'grouponComm', 'cardFee', 'other', 'energy'];
 // 🔴 R296 新段（李老师 2026-10-14：「转让费确实是个大头需要摊销」）：建店白名单**新增 `transfer`（转让费）**。
 //   为什么单列（而非埋进 `other`）：转让费是开店最大的一笔一次性支出（常见 5~30 万），
 //   ★ 摊销年限语义与「证照/首批物料」等小额杂项不同（按**剩余租期**摊，通常 3 年）⇒ 埋一起会让回本周期算不准。
@@ -318,7 +441,16 @@ function evaluateIndicators(o) {
     } else if (ind.from.indexOf('fixed:') === 0) {
       const k = ind.from.slice(6);
       const fen = Number(fixed[k]);
-      pct = (isFinite(rev) && rev > 0 && isFinite(fen)) ? (fen / rev) * 100 : null;
+      // 🔴 R558：能耗有两种形态 —— ①固定金额（老板填账单，fixed.utility）
+      //   ②挂钩费率（矩阵按费率算，var.energy%）。改成费率后 utility=0，此处必须把两者相加，
+      //   否则「能耗占比」会显示 0%、评级永远"优秀"（比不显示更糟）。
+      // ⚠️ 必须用 `varE > 0` 判"有没有能耗费率"：
+      //   service 侧的 energyVarPct 默认是 **0**（不是 NaN），拿 isFinite 判会把它当成
+      //   "老板填了 0% 能耗费率" ⇒ 未填也从 null 变 0%（D13 就是这么抓到的）。
+      const varE = (k === 'utility') ? Number(opt.varEnergyPct) : NaN;
+      const hasVar = isFinite(varE) && varE > 0;
+      const fenTotal = (isFinite(fen) ? fen : 0) + (hasVar ? rev * varE / 100 : 0);
+      pct = (isFinite(rev) && rev > 0 && (isFinite(fen) || hasVar)) ? (fenTotal / rev) * 100 : null;
     }
     const band = bandOf(opt.bizKey, ind.key, opt.cityKey);
     const p = pct == null ? null : round1(pct);
@@ -408,11 +540,13 @@ function redlineOf(indKey) {
 module.exports = {
   CITY_TIERS, CITY_KEYS,
   BIZ_KEYS,
-  BANDS, BAND_KEYS,
+  BANDS, BANDS_VERSION, BAND_KEYS,
   INDICATORS, IND_KEYS,
   REDLINE, REDLINE_KEYS,
   FIXED_KEYS, VAR_KEYS, BUILD_KEYS, BUILD_DEFAULT_YEARS,
   bandOf, levelOf, evaluateIndicators, redlineOf, listBands, suggestAmounts,
+  // A17/A18：三项刚性成本率（V钱-4）· 会员销售占比（V客²-1）
+  THREE_COST, threeCostOf, MEMBER_RATIO_WARN, MEMBER_RATIO_GOOD, memberRatioOf,
   // round115：M1 台账细项归属（见 §七）
   ITEM_TAGS, CATEGORY_TAG, M1_IND_KEYS, FIXED_FEN_KEY,
   indFenKeyOf, tagOfItem, sumByTag, toFixedFen, m1IndicatorsOf,

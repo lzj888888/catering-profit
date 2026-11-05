@@ -36,7 +36,13 @@ function restoreShopId() {
 /** 切换店铺：写入 globalData（api.js 自动带新 shop_id）+ 持久化。 */
 function switchShop(shopId) {
   const app = getApp();
-  if (app && app.globalData) app.globalData.shop_id = shopId || '';
+  if (app && app.globalData) {
+    app.globalData.shop_id = shopId || '';
+    // 🔴 R470：切店必须让**上下文缓存失效**。`api.ensureShop` 靠 `shopLoaded` 短路
+    //   （api.js:110），不置 false 的话，切完返回上一页仍拿到旧店的 name/switches
+    //   ⇒ 真机表现「提示已切换、店名不变」。
+    app.globalData.shopLoaded = false;
+  }
   persistShopId(shopId);
 }
 
@@ -52,4 +58,16 @@ async function restoreLastShop(list) {
   return false; // 上次店铺已软删/不存在 → 保持当前（默认）
 }
 
-module.exports = { fetchShopList, persistShopId, restoreShopId, switchShop, restoreLastShop, PERSIST_KEY };
+/**
+ * 当前店铺 id —— **本地草稿隔离的唯一取法**（只认 app.globalData，与 card/edit.js::inputModeKey 同口径）。
+ * ⚠️ node 单测环境没有 getApp ⇒ 返回 ''：此时草稿一律不恢复（fail-closed，宁丢草稿不串店）。
+ */
+function currentShopId() {
+  try {
+    if (typeof getApp !== 'function') return '';
+    const app = getApp();
+    return (app && app.globalData && app.globalData.shop_id) || '';
+  } catch (e) { return ''; }
+}
+
+module.exports = { fetchShopList, persistShopId, restoreShopId, switchShop, restoreLastShop, PERSIST_KEY, currentShopId };

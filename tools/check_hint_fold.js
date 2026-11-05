@@ -43,9 +43,9 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 
 const F = {
-  wxml: 'pages/month/input.wxml',
-  js: 'pages/month/input.js',
-  wxss: 'pages/month/input.wxss',
+  wxml: 'subpkg/biz/month/input.wxml',
+  js: 'subpkg/biz/month/input.js',
+  wxss: 'subpkg/biz/month/input.wxss',
   terms: 'miniprogram/i18n/terms.js',
 };
 
@@ -168,7 +168,7 @@ if (!wxml || !js || !wxss || !terms) {
 const folds = parseFolds(wxml || '');
 const EXPECT = [
   // —— J1（R234，2026-10-07）：首批 9 处高价值长提示（466 字）——
-  'incomeHint', 'dmFastHint', 'twScopeGuide', 'twFastHint',
+  'incomeHint', 'dmFastHint', 'twScopeGuide', 'twNetHint',
   'twTotalAutoHint', 'twRecCalcHint', 'expenseHint', 'twPromoPathHint', 'cmAssetHint',
   // —— J2（R234，2026-10-07）：剩余 ≥18 字的行内提示（177 字）——
   //   分层判据（PLAN §5 拍板点①）：<18 字保持平铺（一句话读完、不占地方）；
@@ -178,6 +178,9 @@ const EXPECT = [
   //      —— 共用一个键会让「点开上面那个、下面那个也开了」，属可见的交互错乱。
   'dmDetailHintF', 'twDetailHintF', 'twOrdersHintF', 'twOrdersHintF2',
   'mkPlatHintF', 'twRecNoInputF',
+  // 🔴 沙盘页**不能**登记在这里（R546 踩过，R547b 又踩一次）：
+  //   本 EXPECT 只服务 F.wxml 一个扫描面；sandbox 的折叠键要进 `PAGE_CASES[].keys`。
+  //   错登记 ⇒ A6「未落地」+ S2「块数 < 目标」+ F2「期望外」**三条同时转红**。
 ];
 
 if (folds.length === 0) {
@@ -518,13 +521,23 @@ section('F 组 · R234/J4 多页面句级折叠（数据驱动）');
 const PAGE_CASES = [
   {
     name: 'sandbox',
-    wxml: 'pages/sandbox/index.wxml',
-    js: 'pages/sandbox/index.js',
-    wxss: 'pages/sandbox/index.wxss',
-    keys: ['sbAssumptionsHint', 'sbBandPreviewNote', 'sbExpectRevNote', 'sbBuildNote',
+    wxml: 'subpkg/tools/sandbox/index.wxml',
+    js: 'subpkg/tools/sandbox/index.js',
+    wxss: 'subpkg/tools/sandbox/index.wxss',
+    // 🔴 R549：`sbBandPreviewNote`（「这两个数从哪看」）**整段删除** ⇒ 移出期望键集。
+    //   理由：已有店铺的老板本来就知道面积/客单价从哪看；找铺面的人没店、从哪都看不到。
+    keys: ['sbAssumptionsHint', 'sbExpectRevNote', 'sbBuildNote',
            // 🔴 R296 拍1：`sbFixedNote`（「每月固定支出」卡的折叠说明）**随明细表整块删除** ⇒ 移出期望键集。
            // 🔴 R296b：`sbVarNote`（④「挂钩费用」卡的折叠说明）**随该卡整块删除** ⇒ 移出期望键集。
            'sbMarginTip',
+           // 🔴 R546（2026-10-27 · ⑦ 平台抽成）：四项佣金「在哪看」（4 行、约 130 字）。
+           //   老板缺的不是公式，是**去哪儿抄这个数**；填过的人不必每天看见 ⇒ 收进折叠块。
+           //   ⚠️ 只能登记在这里，**不能进全局 EXPECT** —— 那个清单只针对 F.wxml 一个扫描面。
+           'sbChannelRef',
+           // ── R547b（2026-10-28）：「开了多家平台，抽成不一样怎么填？」 ──
+           //   老板手上有 2~3 个平台的抽成却不会加权平均 ⇒ 补一段带真实例子的说明。
+           //   ⚠️ 只能登记在 `PAGE_CASES`（sandbox 面），**绝不能进全局 EXPECT**（R546/R547b 双踩）。
+           'sbChannelMulti',
            // ── R234/J4f 补漏两处（26 字 redAlertHint）──
            // 🔴 **两处必须两个独立 key**：同一句文案出现在正推 Tab 与反推 Tab 的红牌卡里。
            //   两处虽互斥显示，但若共用一个 key，用户在正推点开后切到反推
@@ -536,7 +549,12 @@ const PAGE_CASES = [
            //   ⇒ 搬到「寻找铺面」Tab 才是它该在的位置（信息要给到正要看的人）。
            //   ⚠️ 换了 key 但**没有改短文案** —— 用"搬"而不是"改短"来满足分层判据，
            //      否则 L723 那条「改短回避折叠」的锚点会把这一手认成同一个规避动作。
-           'sbRevRateAuto', 'sbOtherBandNote'],
+           // 🔴 R323（P0-2）：`sbRevRateAuto` **随「寻找铺面」反推卡整块删除** ⇒ 移出期望键集。
+           //   原因：该卡挂在 `wx:if="{{mode === 'reverse'}}"`，而首页 `data.mode` **恒为 'forward'**
+           //   （点反推 Tab 直接跳矩阵页）⇒ 整块永不渲染，同 key 的折叠块也不可能被点到。
+           //   找店的口径/档位在 `subpkg/tools/sandbox/matrix`（R322 已做小白降维）。
+           //   ⚠️ 这是「**整块功能按设计删除**」⇒ 改预期、不改分层线（与 R296 删 sbFixedNote 同判据）。
+           'sbOtherBandNote'],
     //   ⚠️ R234/M2v1.4：6 → 7，新增的是 L1 引导句 `l1Guide`（**10 字，合规平铺**）。
     //      「这里多一处」是**正确的**：我们新增了一句给用户看的引导，预期就该跟着变；
     //      若是"顺手把某处长提示展平"，那才是分层线被破坏。故改预期、不改代码。
@@ -548,9 +566,44 @@ const PAGE_CASES = [
     //   ⚠️ round276：9 → 10，新增的是 A 区坪效/人效卡的一句短注「坪效越高，这面积用得越值」（**12 字，合规平铺**）。
     //      同 round273 那条判据逻辑：新增**一句给用户看的短提示** ⇒ 改预期；
     //      若是"把长提示展平"或"把短提示改短来回避折叠"才是破坏分层线（那会被 F9 的另一侧判红）。
-    keepPlain: 14,  // 本页 <18 字的提示平铺数（分层判据的另一侧；2026-10-14 R296b:17→14 —— ④挂钩卡删 sbVarNote 说明 + 多渠道卡改渠道佣金后仅留 channelSample/channelTotalNote 两处 + 新增 revGrossHint 短提示）
+    //   ⚠️ R327：14 → 15，新增正推表的口径注「按上面毛利率算，改一项就跟着变」（15 字，合规平铺）。
+    //      同 R234/round273 判据：新增一句给用户看的**短提示** ⇒ 改预期；若是把长提示展平才是破坏分层线。
+    //   ⚠️ R330：15 → 17，新增促销卡两句短提示（「只算降价，不算活动带来的新客」14 字 /
+    //      「先点【开始测算】，这里才有数」15 字），均 <18 字合规平铺。同 R234/round273 判据。
+    //   ⚠️ R337（M2-A1）：17 → 18，新增促销卡口径注「按单数比例近似（假设客单价接近）」（16 字）。
+    //      这是**新增一句给用户看的短提示**（≈ 把"几成客人"改成"几成订单"必须交代的近似条件），
+    //      16 字 < 18 ⇒ 按分层线应平铺；若是把长提示展平才该判红。同前几轮判据。
+    //   ⚠️ R344：18 → 19，新增活动卡口径注「按客流不变算；多来客人看上面」（14 字，合规平铺）。
+    //      同 R234/R330 判据：新增一句给用户看的短提示 ⇒ 改预期；把长提示展平才是破坏分层线。
+    //   ⚠️ R350：19 → 20，新增活动形态口径注「满减/团购/代金券都填这（1-100）」（17 字，合规平铺）。
+    //   ⚠️ R364（2026-10-19）：20 → 21、4 → 5 —— 两处都是**有意新增**：
+    //      ① 试验台（做活动）默认收起，收起态给一句结论（`promoRes.gaText · dropText`，短提示，合规平铺）；
+    //      ② 试验台本身是一处**区段级折叠**（`onTogglePromo`），把"如果…"从表单里独立出来。
+    //      同 R234/R330 判据：新增短提示 + 新增区段折叠 ⇒ 改预期；若是"把长提示展平"才该判红。
+    //   ⚠️ R367：21 → 23 —— 目标反推卡加了两句短提示（反推结论行 note / 缺输入时的 tip），
+    //      都是 <18 字合规平铺。同 R234/R330 判据：新增短提示 ⇒ 改预期。
+    //   ⚠️ R370：23 → 24 —— 删掉 promoApproxNote(-1)、新增 promoCostNote(+1)、
+    //      新增「还没填实收率」的空态提示(+1) ⇒ 净 +1。三条都是 <18 字合规平铺。
+    //   ⚠️ R522（2026-10-26 李老师「里面还是乱、好多二级菜单」拍板重排输入区）：
+    //      **24 → 23、5 → 4**，两处都是**整块功能按设计删除**，不是把长提示展平：
+    //      ① L1 卡的引导句 `l1Guide`（「面积房租人数都有，目标可后填」）随该卡拆分而取消 ⇒ 平铺 -1；
+    //      ② L1 卡里的区段级折叠「还有几个能改的（选填）」（`onToggleL2` / `showL2`）**整个取消**
+    //         —— 桌数/座位/客单价归入「① 门店情况」，人工总额/水电气/管理费归入「② 每月固定支出」，
+    //         字段全部直达，不再需要"更多设置"这一层 ⇒ 区段折叠 -1。
+    //      同 R296/R323/R441 判据：删的是**功能与折叠层**，分层线（≥18 字必须折）一个字没动；
+    //      若有人把某句长提示改短来回避折叠，F9 的另一侧仍会判红。
+    keepPlain: 23,  // 本页 <18 字的提示平铺数（分层判据的另一侧；2026-10-14 R296b:17→14 —— ④挂钩卡删 sbVarNote 说明 + 多渠道卡改渠道佣金后仅留 channelSample/channelTotalNote 两处 + 新增 revGrossHint 短提示）
     // 本页**区段级**折叠（.fold-toggle）——必须与句级并存、不得互相吃掉
     // （2026-10-14 R296b:5→4 —— 多渠道卡的「默认参数」折叠区随 onToggleChannelParams 删除）
+    // 🔴 R441（李老师 2026-10-22 拍板）：5 → 4 —— **整块删掉「L3 专业参数」**（一处区段级折叠
+    //   `onToggleL3` 也随之消失）。删它的理由：R296 拍板后房租/人工/水电气/管理费全部改成
+    //   L2 的金额输入 ⇒ L3 只剩「其他/损耗 2%」一行，有的预设连一行都没有，点开像"没反应"。
+    //   这不是"把长提示展平"，是**删功能** ⇒ 改预期是对的。
+    // ⚠️ R442：4 → 5 —— 结果区新增一处区段折叠「更多分析」（onToggleMore），
+    //   把利润阶梯/客群/效率/回本四张分析卡收进去（它们默认收起，解决"通篇太长"）。
+    // ⚠️ R522：5 → 4 —— 取消 L1 卡的「还有几个能改的」（onToggleL2/showL2）：
+    //   输入区按「① 门店 ② 每月固定 ③ 毛利率 ④ 平台抽成 ⑤ 开店投入 ⑥ 想赚多少」六段重排，
+    //   L2 里的字段全部归位到对应段、默认可见 ⇒ 这一层折叠失去存在理由（删功能，非展平）。
     segFolds: 4,
   },
   {
@@ -561,9 +614,9 @@ const PAGE_CASES = [
     //   ⚠️ data-key 只给**一个**（不按文案长短分两个键）：同一位置的开关，
     //      否则用户切 kind 时开合状态会跳变（这是设计约束，F1/F2 守住键集=只此一个）。
     name: 'assetEdit',
-    wxml: 'pages/month/assetEdit.wxml',
-    js: 'pages/month/assetEdit.js',
-    wxss: 'pages/month/assetEdit.wxss',
+    wxml: 'subpkg/biz/month/assetEdit.wxml',
+    js: 'subpkg/biz/month/assetEdit.js',
+    wxss: 'subpkg/biz/month/assetEdit.wxss',
     keys: ['aeMonthHint', 'aeTotalHint'],
     keepPlain: 2,   // fAmountHint 13 / fStartHint 7 / fTerminateHint 14 字 ⇒ 保持平铺
                     // ⚠️ J4f 补漏 `aeTotalHint`（fTotalHint 20 字，此前被我误判为平铺）
@@ -580,9 +633,9 @@ const PAGE_CASES = [
     //   ⚠️ 同页 `lumpSectionHint`（16 字）必须保持平铺 —— 16 与 18 只差 2 字，
     //      是检验"分层线没被挪动"的最贴近样本。
     name: 'amortize',
-    wxml: 'pages/month/amortize.wxml',
-    js: 'pages/month/amortize.js',
-    wxss: 'pages/month/amortize.wxss',
+    wxml: 'subpkg/biz/month/amortize.wxml',
+    js: 'subpkg/biz/month/amortize.js',
+    wxss: 'subpkg/biz/month/amortize.wxss',
     keys: ['amScopeHint', 'amSwitchHint'],
     keepPlain: 2,   // lumpSectionHint 16 字 + 另一处短提示 ⇒ 保持平铺（旧预期 1 被过期缓存掩盖）
     segFolds: 0,
@@ -595,9 +648,9 @@ const PAGE_CASES = [
     //     🔴 新增折叠块**必须同步登记到这里**，否则 F2「不得出现期望外折叠块」判红
     //     （守卫这个设计是对的：防止随手乱加折叠块把首屏撑爆）。
     name: 'takeaway',
-    wxml: 'pages/takeaway/index.wxml',
-    js: 'pages/takeaway/index.js',
-    wxss: 'pages/takeaway/index.wxss',
+    wxml: 'subpkg/biz/takeaway/index.wxml',
+    js: 'subpkg/biz/takeaway/index.js',
+    wxss: 'subpkg/biz/takeaway/index.wxss',
     keys: ['tkPickHint', 'tkShapeCHint', 'tkWhereHint', 'tkColsHint'],
     keepPlain: 1,   // importPickPlatformHint 17 字（确认按钮紧下方）⇒ 保持平铺
     segFolds: 0,
@@ -608,9 +661,9 @@ const PAGE_CASES = [
   {
     // 44 字 —— 全站第二长；在「月度盈利」首页给免费用户解释「参考估算 vs 真实利润」的差别。
     name: 'monthIndex',
-    wxml: 'pages/month/index.wxml',
-    js: 'pages/month/index.js',
-    wxss: 'pages/month/index.wxss',
+    wxml: 'subpkg/biz/month/index.wxml',
+    js: 'subpkg/biz/month/index.js',
+    wxss: 'subpkg/biz/month/index.wxss',
     keys: ['moFreeHint'],
     keepPlain: 1,   // `pendingArchive · goResult`（拼接后仍短）⇒ 保持平铺
     segFolds: 0,
@@ -618,9 +671,9 @@ const PAGE_CASES = [
   {
     // 27 字 —— 切换店铺页顶部说明（免费版可建 1 家店）。
     name: 'shopSwitch',
-    wxml: 'pages/shop/switch.wxml',
-    js: 'pages/shop/switch.js',
-    wxss: 'pages/shop/switch.wxss',
+    wxml: 'subpkg/tools/shop/switch.wxml',
+    js: 'subpkg/tools/shop/switch.js',
+    wxss: 'subpkg/tools/shop/switch.wxss',
     keys: ['swSwitchHint'],
     keepPlain: 0,   // 本页仅此一处 hint
     segFolds: 0,
@@ -628,9 +681,9 @@ const PAGE_CASES = [
   {
     // 20 字 —— 原料别名说明（「不会替换原料名」是**防止误用**的关键提示）。
     name: 'materialEdit',
-    wxml: 'pages/material/edit.wxml',
-    js: 'pages/material/edit.js',
-    wxss: 'pages/material/edit.wxss',
+    wxml: 'subpkg/biz/material/edit.wxml',
+    js: 'subpkg/biz/material/edit.js',
+    wxss: 'subpkg/biz/material/edit.wxss',
     keys: ['matAliasesHint'],
     keepPlain: 1,   // convertHint（`{{convertHint}}` 动态值）⇒ 保持平铺
     segFolds: 0,
@@ -638,9 +691,9 @@ const PAGE_CASES = [
   {
     // 19 字 —— 菜品卡列表页顶部「理论配方成本 ≠ 真实门店毛利」。
     name: 'cardIndex',
-    wxml: 'pages/card/index.wxml',
-    js: 'pages/card/index.js',
-    wxss: 'pages/card/index.wxss',
+    wxml: 'subpkg/biz/card/index.wxml',
+    js: 'subpkg/biz/card/index.js',
+    wxss: 'subpkg/biz/card/index.wxss',
     keys: ['ciHintAlways'],
     keepPlain: 0,   // 本页仅此一处 hint
     segFolds: 0,
@@ -648,9 +701,9 @@ const PAGE_CASES = [
   {
     // 19 字 —— 盘点页「保存后由服务端按库存倒轧计算真实消耗」。
     name: 'inventory',
-    wxml: 'pages/month/inventory.wxml',
-    js: 'pages/month/inventory.js',
-    wxss: 'pages/month/inventory.wxss',
+    wxml: 'subpkg/biz/month/inventory.wxml',
+    js: 'subpkg/biz/month/inventory.js',
+    wxss: 'subpkg/biz/month/inventory.wxss',
     keys: ['invHintFormula'],
     keepPlain: 1,   // openingNote（`{{openingNote}}` 动态值）⇒ 保持平铺
     segFolds: 0,
@@ -662,9 +715,9 @@ const PAGE_CASES = [
     //      写成恒绿又会漏掉"该页平铺数被误改"。⇒ keepPlain 必须**逐页显式声明**（数据驱动）。
     //   ⚠️ 本页 wxml 近 19K（全站最大），F11 下界按 keys 缩放后为 max(1500, 1×800)=1500 ⇒ 覆盖。
     name: 'cardEdit',
-    wxml: 'pages/card/edit.wxml',
-    js: 'pages/card/edit.js',
-    wxss: 'pages/card/edit.wxss',
+    wxml: 'subpkg/biz/card/edit.wxml',
+    js: 'subpkg/biz/card/edit.js',
+    wxss: 'subpkg/biz/card/edit.wxss',
     keys: ['ceActPriceHint'],
     keepPlain: 0,   // 本页仅此一处 hint
     segFolds: 0,

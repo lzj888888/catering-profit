@@ -1,0 +1,1988 @@
+// subpkg/biz/month/input.js —— 批次 4/8 · M1 收入/费用/食材消耗录入页
+//
+// ⚠️ 计算下沉：金额一律「元」界面输入 → 适配层 Math.round(元×100) 转「分」number 传后端；
+//   大类金额由云函数按细项汇总（saveLedger/validate cleanItems），前端不汇总、不重算。
+// ⚠️ A1/A2（批次 8）：收入/费用为「大类 → 二级细项」两级结构；
+//   每大类默认单行（细项名可空 = 整类总额），可展开添加多行细项（新增/删除）。
+// ⚠️ 归档守卫：is_archive=true → 全字段只读；归档后 7 天内补录需二次确认 + archive_override=true。
+// ⚠️ AD-10/AD-23：onHide 自动存草稿（wx.setStorageSync），返回自动回填，不静默丢数据。
+const api = require('../../../utils/api.js');
+const ui = require('../../../utils/ui.js');
+// R419：金额输入可读性判定（详见 review/NOTE_2026-10-21_R419_M1金额体检.md）
+const ss = require('../../../utils/shopSwitcher.js');   // R443：草稿必须按店隔离
+const AmountInput = require('../../../utils/amountInput.js');
+const { normalizeDineRows, markFixedRows } = require('../../../utils/dineChannels.js');
+const { completionOf } = require('../../../utils/entryCompletion.js');   // R578 / #101 完成度（零采集）
+const { pickTakeawayMode, takeawayModeKey, snapshotDetail, restoreDetail, subtotalOf,
+  extractPaste, pasteFillValue, pasteFilledFromTotal, filledLabel, subsidyTotal, reconcile,
+  mkByPlatTotal, mkByPlatFilled,
+  // R162：有效订单数（qty）—— 只用于单均回显，绝不进金额
+  qtyTotal, perOrderYuan } = require('../../../utils/takeaway.js');
+const { TERMS } = require('../../../miniprogram/i18n/terms.js');
+
+const DRAFT_KEY = 'draft_month_input_';
+// 堂食录入模式（快速 / 分项）**仅存本地**，不动后端契约；换设备或清缓存回默认，默认值由数据推断
+const DINE_MODE_KEY = 'dine_mode_';
+
+// 🔴 R606：行级稳定键（wx:key 必须稳定唯一，禁用 index）。
+//   多行录入时 `wx:key="index"` 会让原生 <input> 在每次 setData 重渲染后身份错位 ⇒
+//   表现为「第一行能填、下面的框填不进 / 输入即丢」（见 miniprogram-page-review 模式2）。
+//   此处装配时一次性写入 `rid`；updateRow 走 Object.assign 会保留它，故跨次键入稳定。
+//   用「会话前缀 + 自增序号」保证：会话内唯一、跨会话（含已落库行回填）不重号。
+const _ridPrefix = 'k' + Date.now().toString(36) + '_';
+let _ridSeq = 0;
+function ensureRid(r) {
+  if (r && r.rid === undefined) {
+    const o = Object.assign({}, r);
+    o.rid = _ridPrefix + (++_ridSeq);
+    return o;
+  }
+  return r;
+}
+// R85：外卖录入模式（快速 / 分项），同堂食约定（仅存本地；默认按数据推断）
+const TAKEOUT_MODE_KEY = 'takeout_mode_';
+// round109：外卖分组的**展开状态**记忆键（仅存本地）。
+//   李老师真机：「外卖那个一直是全部显示全部的状态，可以把外卖也做成折叠吗？」
+//   ⇒ 默认**折叠**（外卖满屏 2~3 个平台 × 三框，占地方）；展开过一次就记住，下次进来保持。
+//   ⚠️ 与 TAKEOUT_MODE_KEY 分开存：一个是「怎么填」（快速/分项），一个是「看不看」（展开/折叠），
+//      两件事。合在一个键里会让「切模式」误改「展开状态」（口径串味）。
+const TAKEOUT_FOLD_KEY = 'takeout_fold_';
+// round217：保存前「缺项软提示」的"该月已提示过"记忆键（仅存本地）。
+//   ⚠️ 与草稿/模式键一样只存本地：换设备会再提示一次 —— 可接受（提示是软的，不阻断保存）。
+const MISS_WARN_KEY = 'miss_warn_';
+// P0#3（2026-10-11）：新手/老手模式记忆键（仅存本地；复用 DINE_MODE_KEY 同族约定）。
+//   新手 = 只渲染 core 组（堂食/外卖/运营/人工），折叠其他收入/营销/其他费用。
+const INPUT_MODE_KEY = 'input_mode_';
+
+Page({
+  data: {
+    // R419：读不成数字的金额行数（>0 时页面顶部提示；只提示不改数）
+    badAmountCount: 0,
+    t: {
+      title: TERMS.inputPage.title,
+      // R419：金额栏读不成数字的提示（与 M2 测算页共用 TERMS.ui 里的同一句）
+      amountBadTip: TERMS.ui.amountBadTip,
+      incomeTitle: TERMS.ledger.incomeTitle,
+      expenseTitle: TERMS.ledger.expenseTitle,
+      // R494b/c：费用区「- 删除细项」开关（与「+ 添加细项」并排，删完自动收起）
+      expenseDelItem: TERMS.ledger.expenseDelItem,
+      // R496（2026-10-25）：收入侧套用同一套 —— 其他收入组叫「细项」、堂食组叫「渠道」（两者不是一回事）
+      incomeDelItem: TERMS.ledger.incomeDelItem,
+      incomeDelChannel: TERMS.ledger.incomeDelChannel,
+      carryBtn: TERMS.ledger.carryBtn,
+      carryOverwrite: TERMS.ledger.carryOverwrite,
+      carryEmpty: TERMS.ledger.carryEmpty,
+      carryDone: TERMS.ledger.carryDone,
+      income: TERMS.ledger.income,          // [{category,label,items:[...]}]
+      expense: TERMS.ledger.expense,        // [{category,label,items:[...]}]
+      subItem: TERMS.ledger.subItem,
+      subItemPh: TERMS.ledger.subItemPh,
+      addSubItem: TERMS.ledger.addSubItem,
+      // round189：常规科目预置 + 上月复制（⚠️ wxml 用到的每个 t.<键> 都必须在此映射，
+      //   否则取到空串 ⇒ 静默空白 —— guard `check_page_terms` P2-1 就是守这条）
+      copyPrevBtn: TERMS.ledger.copyPrevBtn,
+      copyPrevNone: TERMS.ledger.copyPrevNone,
+      recurringHint: TERMS.ledger.recurringHint,
+      needCheck: TERMS.ledger.needCheck,
+      fixedTag: TERMS.ledger.fixedTag,
+      // T4b（round97）：预设项选择面板文案（页面零硬编码 ⇒ 必须在此映射，否则 wxml 取到空串）
+      presetPickTitle: TERMS.ledger.presetPickTitle,
+      presetPickCustom: TERMS.ledger.presetPickCustom,
+      presetPickEmpty: TERMS.ledger.presetPickEmpty,
+      delSubItem: TERMS.ledger.delSubItem,
+      amount: TERMS.ledger.amount,
+      incomeHint: TERMS.ledger.incomeHint,   // E1
+      expenseHint: TERMS.ledger.expenseHint, // E1
+      // E2（批次 8c）：每类「包括 / 不包括」+ 顶部填写口径折叠块
+      fillGuideTitle: TERMS.ledger.fillGuideTitle,
+      fillGuide: TERMS.ledger.fillGuide,
+      // round108 修复（同族病：**wxml 用了、t 里没映射 ⇒ 渲染成空串**）：
+      //   下面 4 个键 input.wxml 一直在用，却从来没映射进来 —— 术语本体一直在 TERMS.ledger 里。
+      //   症状：「怎么填？点开看口径」/「收起口径」的引导文字变空白、小计后缀（「食材合计」的「合计」）
+      //   与预设项提示前缀（「还没加的有：」）消失。守卫 check_page_terms 已补上防复发。
+      scopeShow: TERMS.ledger.scopeShow,
+      scopeHide: TERMS.ledger.scopeHide,
+      // R234/J1：通用「行内提示折叠」引导语（与上面 scopeShow/Hide 并存，语义不同）
+      hintFoldShow: TERMS.ledger.hintFoldShow,
+      hintFoldHide: TERMS.ledger.hintFoldHide,
+      classTotalSuffix: TERMS.ledger.classTotalSuffix,
+      presetHintPrefix: TERMS.ledger.presetHintPrefix,
+      // 核算方式（2026-09-20：库存 / 摊销开关从店铺设置页迁入本页，就地二选一）
+      cmSecTitle: TERMS.calcMethod.secTitle,
+      cmSecHint: TERMS.calcMethod.secHint,
+      cmConsumeTitle: TERMS.calcMethod.consumeTitle,
+      cmConsumeDirect: TERMS.calcMethod.consumeDirect,
+      cmConsumeDirectDesc: TERMS.calcMethod.consumeDirectDesc,
+      cmConsumeInv: TERMS.calcMethod.consumeInv,
+      cmConsumeInvDesc: TERMS.calcMethod.consumeInvDesc,
+      cmConsumeDirectField: TERMS.calcMethod.consumeDirectField,
+      cmConsumeDirectHint: TERMS.calcMethod.consumeDirectHint,
+      cmConsumeInvGo: TERMS.calcMethod.consumeInvGo,
+      cmConsumeInvEmpty: TERMS.calcMethod.consumeInvEmpty,
+      cmConsumeInvHint: TERMS.calcMethod.consumeInvHint,
+      // round107：「一次性投入」段 —— 二选一卡片整块删除（那对选项写的是 shop 级 amortize_switch，
+      //   结构上排除了「本月既有一笔摊销、又有几笔小额一次算清」）。现在只留：口径说明 + 两行摘要 + 一个入口。
+      cmAssetTitle: TERMS.calcMethod.assetTitle,
+      cmAssetHint: TERMS.calcMethod.assetHint,
+      cmAssetGo: TERMS.calcMethod.assetGo,
+      cmAssetSumEmpty: TERMS.calcMethod.assetSumEmpty,
+      // A13/A19：经营客流三字段（全部选填）
+      trTitle: TERMS.traffic.title,
+      trHint: TERMS.traffic.hint,
+      trThisMonth: TERMS.traffic.thisMonth,
+      trThisMonthPh: TERMS.traffic.thisMonthPh,
+      trOld: TERMS.traffic.oldCustomer,
+      trOldPh: TERMS.traffic.oldCustomerPh,
+      trMember: TERMS.traffic.memberSales,
+      trMemberPh: TERMS.traffic.memberSalesPh,
+      save: TERMS.buttons.save,
+      archiveReadonly: TERMS.inputPage.archiveReadonly,
+      graceNote: TERMS.inputPage.graceNote,
+      saveArchiveOverride: TERMS.inputPage.saveArchiveOverride,
+      confirmGraceSave: TERMS.inputPage.confirmGraceSave,
+      confirmLocked: TERMS.inputPage.confirmLocked,
+      // 堂食录入模式（2026-09-21 李老师拍板 · 方案 A 严格互斥）
+      dmSecTitle: TERMS.ledger.dineMode.secTitle,
+      dmFast: TERMS.ledger.dineMode.fast,
+      dmFastDesc: TERMS.ledger.dineMode.fastDesc,
+      dmDetail: TERMS.ledger.dineMode.detail,
+      dmDetailDesc: TERMS.ledger.dineMode.detailDesc,
+      dmFastField: TERMS.ledger.dineMode.fastField,
+      dmFastHint: TERMS.ledger.dineMode.fastHint,
+      dmDetailHint: TERMS.ledger.dineMode.detailHint,
+      dmSumLabel: TERMS.ledger.dineMode.sumLabel,
+      dmSumAutoHint: TERMS.ledger.dineMode.sumAutoHint,
+      dmAddChannel: TERMS.ledger.dineMode.addChannel,
+      dmChannelPh: TERMS.ledger.dineMode.channelPh,
+      // round108 修复：渠道金额输入框的 placeholder（「填金额（元）」）此前取到 undefined ⇒ 空白
+      dmAmtPh: TERMS.ledger.dineMode.amtPh,
+      // R85：外卖段（规范 §A.11）—— 模式开关 / 分项三框 / 粘贴 / 配平 / 带出 / 推广费取数路径
+      twSecTitle: TERMS.ledger.takeawayMode.secTitle,
+      twFast: TERMS.ledger.takeawayMode.fast,
+      twFastDesc: TERMS.ledger.takeawayMode.fastDesc,
+      twDetail: TERMS.ledger.takeawayMode.detail,
+      twDetailDesc: TERMS.ledger.takeawayMode.detailDesc,
+      twFastHint: TERMS.ledger.takeawayMode.fastHint,
+      twDetailHint: TERMS.ledger.takeawayMode.detailHint,
+      twSumLabel: TERMS.ledger.takeawayMode.sumLabel,
+      twSumAutoHint: TERMS.ledger.takeawayMode.sumAutoHint,
+    twTotalLabel: TERMS.ledger.takeawayMode.totalLabel,
+      twTotalAutoHint: TERMS.ledger.takeawayMode.totalAutoHint,
+      twFastPh: TERMS.ledger.takeawayMode.fastPh,
+      // 🔴 R505：net 默认单框 / gross 展开五格 的 track 切换文案与 net 单框专用句（原 fast/detail 文案保留，gross 展开复用 detail）
+      twNetHint: TERMS.ledger.takeawayMode.netHint,
+      twNetPh: TERMS.ledger.takeawayMode.netPh,
+      twTrackSecTitle: TERMS.ledger.takeawayMode.trackSecTitle,
+      twTrackNet: TERMS.ledger.takeawayMode.trackNet,
+      twTrackNetDesc: TERMS.ledger.takeawayMode.trackNetDesc,
+      twTrackGross: TERMS.ledger.takeawayMode.trackGross,
+      twTrackGrossDesc: TERMS.ledger.takeawayMode.trackGrossDesc,
+      // round109：外卖**折叠态**的空态占位（一行都没填时显示）。页面零硬编码 ⇒ 必须在此映射。
+      twFoldEmpty: TERMS.ledger.takeawayMode.foldEmpty,
+      twGoodsField: TERMS.ledger.takeawayMode.goodsField,
+      twPackField: TERMS.ledger.takeawayMode.packField,
+      twSubsidyField: TERMS.ledger.takeawayMode.subsidyField,
+      twGoodsPh: TERMS.ledger.takeawayMode.goodsPh,
+      twPackPh: TERMS.ledger.takeawayMode.packPh,
+      twSubsidyPh: TERMS.ledger.takeawayMode.subsidyPh,
+      // R161-2：补贴框下的固定口径小字（商家承担补贴 = 三列相加，只抄一列会少扣钱）
+      twSubsidyNote: TERMS.ledger.takeawayMode.subsidyNote,
+      // R161-3：外卖专段顶部的防双记边界句
+      twBoundaryNote: TERMS.ledger.takeawayMode.boundaryNote,
+      // R161-1：第 4 个必填「有效订单数」+ 单均回显
+      twOrdersField: TERMS.ledger.takeawayMode.ordersField,
+      twOrdersPh: TERMS.ledger.takeawayMode.ordersPh,
+      twOrdersHint: TERMS.ledger.takeawayMode.ordersHint,
+      twOrdersTotalLabel: TERMS.ledger.takeawayMode.ordersTotalLabel,
+      twPerOrderLabel: TERMS.ledger.takeawayMode.perOrderLabel,
+      twPerOrderHint: TERMS.ledger.takeawayMode.perOrderHint,
+      twPasteBtn: TERMS.ledger.takeawayMode.pasteBtn,
+      twPasteAreaTitle: TERMS.ledger.takeawayMode.pasteAreaTitle,
+      twPasteAreaPh: TERMS.ledger.takeawayMode.pasteAreaPh,
+      twPasteExtract: TERMS.ledger.takeawayMode.pasteExtract,
+      twPasteCancel: TERMS.ledger.takeawayMode.pasteCancel,
+      twSelfCheckMiss: TERMS.ledger.takeawayMode.selfCheckMiss,
+      // T1（round97）：营销段「分平台佣金小计」（只回显不入库）；提示句里的项名走 reconcileRoles 单源
+      mkPlatTitle: TERMS.ledger.takeawayMode.mkPlatTitle,
+      mkPlatHint: (TERMS.ledger.takeawayMode.mkPlatHintTpl || '').replace('{name}', (TERMS.ledger.takeawayMode.reconcileRoles || {}).commission || ''),
+      mkPlatPh: TERMS.ledger.takeawayMode.mkPlatPh,
+      mkPlatSumLabel: TERMS.ledger.takeawayMode.mkPlatSumLabel,
+      mkPlatClear: TERMS.ledger.takeawayMode.mkPlatClear,
+      twPasteConfirmTitle: TERMS.ledger.takeawayMode.pasteConfirmTitle,
+      twPasteConfirmBody: TERMS.ledger.takeawayMode.pasteConfirmBody,
+      twPasteDone: TERMS.ledger.takeawayMode.pasteDone,
+      twPasteFromTotal: TERMS.ledger.takeawayMode.pasteFromTotal,
+      twPasteEmpty: TERMS.ledger.takeawayMode.pasteEmpty,
+      twPasteRawKept: TERMS.ledger.takeawayMode.pasteRawKept,
+      twScopeGuide: TERMS.ledger.takeawayMode.scopeGuide,
+      // R161-6：归月口径句（按账单日/订单完成时间归月，不要按结算日）—— 结算日通常晚 3 天会串月
+      twPeriodNote: TERMS.ledger.takeawayMode.periodNote,
+      twRecTitle: TERMS.ledger.takeawayMode.reconcileTitle,
+      twRecField: TERMS.ledger.takeawayMode.recField,
+      twRecPh: TERMS.ledger.takeawayMode.recPh,
+      twRecCalcHint: TERMS.ledger.takeawayMode.recCalcHint,
+      twRecNoInput: TERMS.ledger.takeawayMode.recNoInput,
+      twAutoCarryLabel: TERMS.ledger.takeawayMode.autoCarryLabel,
+      twAutoCarryHint: TERMS.ledger.takeawayMode.autoCarryHint,
+      twPromoPathLabel: TERMS.ledger.takeawayMode.promoPathLabel,
+      twPromoPathHint: TERMS.ledger.takeawayMode.promoPathHint,
+      expenseItemNotes: TERMS.ledger.expenseItemNotes || {},
+      // P0#3：新手/老手模式
+      inputModeTitle: TERMS.ledger.inputModeTitle,
+      inputModeNovice: TERMS.ledger.inputModeNovice,
+      inputModeNoviceDesc: TERMS.ledger.inputModeNoviceDesc,
+      inputModePro: TERMS.ledger.inputModePro,
+      inputModeProDesc: TERMS.ledger.inputModeProDesc,
+      expandAllBtn: TERMS.ledger.expandAllBtn,
+      noviceTip: TERMS.ledger.noviceTip,
+      cur: '¥',
+      loading: TERMS.ui.loading,
+    },
+    // P0#3：新手/老手模式（仅存本地；默认新手，折叠非核心科目）
+    inputMode: 'novice',
+    showMore: false,
+    // R494b（2026-10-25）：本组删除态 = 组下标；-1 = 全关（默认）。
+    //   为什么用下标而不是布尔：删除键与「+ 添加细项」并排（李老师要求），若用全局布尔，
+    //   点任一组就会让**四组同时**冒出一片 ×，反而更乱 ⇒ 只让当前这一组进入删除态。
+    //   默认态仍不渲染任何 × ⇒ 上滑/敲空白/滚屏都碰不到删除键；点 × 还有 wx.showModal 二次确认。
+    expenseEditGi: -1,
+    // R496（2026-10-25）：收入侧同一套（组下标，-1 = 全关）。与费用侧**各用各的下标** ⇒
+    //   在某组开删除态不会牵连另一侧；删掉一行后按 kind 只收起对应那一侧。
+    incomeEditGi: -1,
+    month: '',
+    isArchive: false,
+    archivedAtMs: 0,
+    inGrace: false,            // 归档后 7 天内
+    readOnly: false,           // 归档且超宽限 → 硬锁
+    // A2：每大类一组细项行 rows: [{ subItem, amountYuan }]；expanded 控制该大类展开
+    // R578 / #101：核心 4 组（堂食/外卖/运营/人工）的完成度 —— 本地算，零采集
+    entryCompletion: null,
+    incomeGroups: [],          // [{ category, label, items(模板), expanded, rows }]
+    expenseGroups: [],
+    fillGuideOpen: false,      // E2：顶部「填写口径」折叠块（默认收起）
+    // R234/J1：行内提示折叠状态（key = wxml 里写死的字面量；缺键 = 收起）。
+    //   🔴 默认空对象 ⇒ **一切默认收起**，与 scope 的「默认收起」保持一致观感。
+    //   ⚠️ 只放**展示态**，不参与任何计算、不入库、不进快照（切月不串状态）。
+    hintFold: {},
+    // round189：上月一键复制（prevHasData = 上月有没有账；没账 ⇒ 走首月常规科目预置）
+    prevMonth: '',
+    prevHasData: false,
+    copyBannerOn: false,
+    copyBannerText: '',
+    recurringOn: false,        // 首月已铺常规科目 ⇒ 顶部给一句说明
+    dineMode: 'fast',          // 堂食录入模式：'fast' | 'detail'（严格互斥；方案 A）
+    dineDetailRows: [],        // 分项行**快照**：切到快速前保留，切回分项时原样恢复（防 round-trip 丢值）
+    dineSumYuan: '0.00',       // 分项模式：各渠道相加**自动算出**（预计算，WXML 不支持方法调用）
+    // R85：外卖录入模式（'fast' | 'detail'，同堂食方案 A 严格互斥）
+    takeoutMode: 'fast',
+    // 🔴 R505：外卖录入轨道（'net' | 'gross'）。net = 默认，每平台只填「外卖实际到账」（结算金额净额），
+    //   gross = 可选展开「补录平台明细」（五格 gross，结构可分析、可配平）。
+    //   net 模式下费用侧**不**自动带出补贴/佣金/配送（净额已扣完，再扣 = 重复扣减）；
+    //   gross 模式才走全套派生与配平。本键只存本地（同 takeoutMode），服务端不感知。
+    takeoutTrack: 'net',
+    takeoutDetailRows: [],     // 分项模式行快照 [{platform,goods,pack,subsidy,qty}]（切模式/草稿留存）
+    takeoutSumYuan: '0.00',    // 外卖收入合计（预计算；按模式取数：快速=Σ平台单值 / 分项=Σ小计）
+    takeoutFilledText: '',     // 「已填 N / M 个平台」预计算串（WXML 不支持方法调用）
+    // R162：有效订单数合计（单）与单均（元）—— **只回显**，不进任何金额、不参与利润
+    takeoutQtyTotal: '0',
+    takeoutPerOrder: '',
+    twPasteFor: '',            // 当前粘贴目标（'goods'|'pack'|'subsidy'|'platform' + idx）
+    twPasteText: '',           // 粘贴区文本（textarea v-model）
+    twPasteOpen: false,        // 粘贴面板是否打开
+    // round109：外卖**折叠态**摘要（各平台已填金额 + 是否有过填写）。
+    //   ⚠️ 为什么不用 wxml 直接渲染 g.rows：两种模式的金额**不在同一处**
+    //      （快速 = groups.rows[].amountYuan；分项 = takeoutDetailRows[].subtotal），
+    //      分项模式下 g.rows 是切模式时的旧值 ⇒ 折叠起来会显示过期数字（口径串味）。
+    //      所以由 js 按**当前模式**取数、预计算好再交给 wxml（WXML 不支持方法调用）。
+    takeoutFoldRows: [],       // [{name, amt}] —— 仅含有金额的平台，按平台顺序
+    takeoutAnyFilled: false,   // 一行都没填 ⇒ 折叠态显示 twFoldEmpty 占位
+    // T4b（round97）：费用段「+ 添加细项」的预设项选择面板（清单每次打开现算 = 该类预设 ∖ 已有行名）
+    presetPick: { open: false, kind: '', gi: 0, list: [] },
+    twSelfCheck: '',           // T3′（round97）：快速模式轻量自查提示（预计算，WXML 直接取）
+    // T1（round97）：分平台佣金小计（只回显、不入库；进本地草稿，同分项三明细待遇）
+    twMkByPlat: [],            // [{platform, amountYuan}] —— 平台名取自收入侧外卖 items 单源
+    twMkByPlatSum: '0.00',     // 分平台合计（预计算，WXML 直接取）
+    twMkByPlatActive: false,   // 任一小计非空 ⇒ 接管佣金总额那一行（该行转只读）
+    twMkRowGi: -1,             // 被接管的佣金行所在组下标（-1 = 未接管）
+    twMkRowRi: -1,             // 被接管的佣金行在组内下标
+    twRecYuan: '',             // 账单商家应收款（客户手填，选填）
+    twRecText: '',             // 配平提示文案（软提示；不阻断、不入库）
+    directConsumeYuan: '',
+    // A13/A19（2026-11-05）：经营客流三字段（**全部选填**）。'' = 没填 ⇒ 提交 null（不是 0）：
+    //   「这个月一个客人都没有」和「这个月没填」是两句完全不同的话，用 0 兜底会把后者说成前者。
+    trafficThisMonth: '',
+    trafficOldCustomer: '',
+    memberSalesYuan: '',
+    // 核算方式（就地二选一）：真值以服务端 switches 为准；改动即时写库，失败回滚
+    inventoryOn: false,
+    invSummary: '',
+    // round107：「一次性投入」两行摘要 —— ① 本月一次算清（lumps）② 本月分月摊（assets）。
+    //   两行都由 getAmortSchedule 出参拼文案，空串 = 该行不显示。
+    assetSummaryLump: '',
+    assetSummaryAmort: '',
+    // 切换口径时必须把店铺名/备注原样回传：saveShopSetting 对未传字段归一 '' 并写库
+    shopName: '',
+    shopRemark: '',
+    shopBaseLoaded: false,
+    loading: true,
+  },
+
+  onLoad(q) {
+    const month = (q && q.month) || ui.nowMonth();
+    // P0#3：读入新手/老手模式（仅存本地；读不到回默认 'novice'）
+    // 切月/重进一律退出删除态：避免上次留下的「可删」状态跨月串台
+    this.setData({ month, inputMode: this.loadInputMode() || 'novice', expenseEditGi: -1, incomeEditGi: -1 });
+    this.initGroups();
+    this.load();
+  },
+  /**
+   * 🔴 R443b：草稿回填（**必须可重复调用**）。
+   *   为什么抽成方法：冷启动时 `onShow` 早于 `load()` 里的 `await api.ensureShop()`
+   *   ⇒ 此刻 `globalData.shop_id` 仍是 '' ⇒ 判据 `draft.shop_id === currentShopId()` 必然不等
+   *   ⇒ 真草稿不恢复；更糟的是随后 `onHide` 用 `shop_id:''` 写盘，把真草稿覆盖掉（★数据丢失）。
+   *   ⇒ 两个调用点：① onShow（热返回，shop_id 已就绪）② load() 末尾（ensureShop + 装配完成之后）。
+   *   幂等：无店铺 / 不匹配 / 已保存 三个判据都在这里，重复调用无副作用。
+   */
+  applyDraftFromStorage() {
+    const sid = ss.currentShopId();
+    if (!sid) return;   // 店铺上下文未就绪 ⇒ 什么都不做（等 load 末尾再调，绝不用空店覆盖）
+    const draft = wx.getStorageSync(DRAFT_KEY + this.data.month);
+    // 🔴 草稿必须属于**当前店铺**：切店后老草稿仍躺在本地，若照读 ⇒ 把 A 店填了一半的数
+    //   当 B 店的初始值，老板一点保存就把 A 店数据写进 B 店账本（跨店污染，事后难查）。
+    if (!draft || this.data.saved || draft.shop_id !== sid) return;
+    this.setData({
+      incomeGroups: draft.incomeGroups || this.data.incomeGroups,
+      expenseGroups: draft.expenseGroups || this.data.expenseGroups,
+      directConsumeYuan: draft.directConsumeYuan !== undefined ? draft.directConsumeYuan : this.data.directConsumeYuan,
+      dineDetailRows: draft.dineDetailRows ? draft.dineDetailRows.map((r) => ({ subItem: r.subItem || '', amountYuan: r.amountYuan || '', fixed: !!r.fixed, note: r.note || '' })) : this.data.dineDetailRows,
+      // R85/R505：外卖段草稿回填（轨道优先于模式：轨道决定用哪条录入面，模式随之定）
+      takeoutMode: ((draft.takeoutTrack === 'net' || draft.takeoutTrack === 'gross') ? draft.takeoutTrack : this.data.takeoutTrack) === 'gross' ? 'detail' : 'fast',
+      takeoutTrack: (draft.takeoutTrack === 'net' || draft.takeoutTrack === 'gross') ? draft.takeoutTrack : this.data.takeoutTrack,
+      takeoutDetailRows: draft.takeoutDetailRows || this.data.takeoutDetailRows,
+      twRecYuan: draft.twRecYuan !== undefined ? draft.twRecYuan : this.data.twRecYuan,
+      twPasteRaw: draft.twPasteRaw || this.data.twPasteRaw || [],
+      // T1：分平台小计（只存本地、不入库）
+      twMkByPlat: this.buildMkByPlat(draft.twMkByPlat || this.data.twMkByPlat),
+    });
+    this.syncTakeoutSum();   // R119：两种模式都要重算（快速模式的合计取自 groups）
+    this.syncMkByPlat();     // T1：小计回草稿后重算（全空 ⇒ 不碰那一行）
+  },
+
+  onShow() {
+    // AD-10/AD-23：回来回填草稿（仅当本页还有未保存内容时）—— 冷启动那次由 load() 末尾兜底
+    this.applyDraftFromStorage();
+    // round104：从「库存盘点 / 摊销」子页返回时，按钮下面那行摘要必须重读 ——
+    //   invSummary / 两行投入摘要（assetSummaryLump / assetSummaryAmort，round107 前身是 assetSummary）
+    //   原来只在 load()（= onLoad）里算 ⇒ 返回后恒显旧数字
+    //   （李老师实机反馈 2026-09-23：「去填库存盘点」下面那行不变）。
+    //   ⚠️ 首次 onShow 紧跟 onLoad，load() 已经拉过 ⇒ 用 _shown 跳过，省一次云调用。
+    // 🔴 R594：完成度是**纯本地计算**（不碰云），所以无条件算 —— 首次 onShow 也要，
+    //   否则冷启动第一屏永远没有引导卡。`_shown` 那道跳过只为省**云调用**，不该连累它。
+    this.refreshCompletion();
+    if (this._shown) this.refreshCalcSummaries();
+    this._shown = true;
+  },
+  onHide() {
+    // AD-10：自动存草稿（含已录入值）
+    // 🔴 R443b：**拿不到店铺就不写盘**。冷启动未选店时 shop_id 为 ''，
+    //   照写会用"空店草稿"覆盖真草稿（老板退出那一刻 ensureShop 可能还没完成 ⇒ 数据白丢）。
+    const sid = ss.currentShopId();
+    if (!sid) return;
+    wx.setStorageSync(DRAFT_KEY + this.data.month, {
+      shop_id: sid,   // R443：切店后不得回填到别的店
+      incomeGroups: this.data.incomeGroups,
+      expenseGroups: this.data.expenseGroups,
+      directConsumeYuan: this.data.directConsumeYuan,
+      dineDetailRows: this.data.dineDetailRows,
+      // R85/R505：外卖段草稿（轨道 / 模式 / 分项明细 / 粘贴原文 / 账单商家应收款；均不入库）
+      takeoutTrack: this.data.takeoutTrack,
+      takeoutMode: this.data.takeoutMode,
+      takeoutDetailRows: this.data.takeoutDetailRows,
+      twRecYuan: this.data.twRecYuan,
+      twPasteRaw: this.data.twPasteRaw || [],
+      // T1：分平台小计（只回显不入库 ⇒ 只进草稿）
+      twMkByPlat: this.data.twMkByPlat,
+      // A13/A19：客流三字段也进草稿（改完没保存就退出，回来还在）
+      trafficThisMonth: this.data.trafficThisMonth,
+      trafficOldCustomer: this.data.trafficOldCustomer,
+      memberSalesYuan: this.data.memberSalesYuan,
+    });
+  },
+
+  // A2：按模板初始化大类组（每类默认单行：细项名空 = 整类总额）
+  // 🔴 R304：原 `showRows` 槽已**整体删除**（13 处赋值、**零消费者**）。它是未装饰的 raw，丢 fixed/tag ——
+  //   R297 的 M1-B1 修法**曾因改读它引入静默语义回归**而门禁全绿（同族病）。渲染直接用 `rows`（已装饰、折叠与否在 wxml 侧用 expanded 判断）。
+  // E2：每类带一句 scope（包括 / 不包括），来源 i18n（incomeScope / expenseScope），页面不写死文案
+  initGroups() {
+    // T1：分平台小计行按收入侧平台单源铺开（此时通常全空 ⇒ 不接管任何行）
+    const byPlat = this.buildMkByPlat(this.data.twMkByPlat);
+    // ⚠️ round102：先建出**页面对象**再装配 rows —— decorateRows 会往 g 上挂只读派生字段
+    //   （unused / mkPlatAfterRi），若把 terms 单源元素直接传进去会污染单源。
+    // round217：第三个参数标记「这一组的细项要不要挂行内说明」——费用侧传 `TERMS.ledger.expenseItemNotes`
+    //   （只取真假，不把整张表塞进 data），收入侧不传。⚠️ 之所以挂到 g 上而不是在各条 setData 路径各补一次：
+    //   `decorateRows` 是行的**唯一装配口**，初始化 / 读回 / 复制上月 / 加行 / 删行 / 铺常规科目六条路径都过它。
+    const mk = (defs, scopeMap, notesMap) => defs.map((d) => {
+      const raw = [{ subItem: '', amountYuan: '' }];
+      const g = {
+        category: d.category, label: d.label, items: d.items || [],
+        core: !!d.core,     // P0#3：核心组标记（来自 terms 单源），新手模式折叠非核心组
+        scope: (scopeMap || {})[d.category] || '',
+        scopeOpen: false,   // 2026-09-21：口径句默认收起（李老师反馈原样展开太占地方）
+        expanded: false,
+        notesOn: !!notesMap,   // round217：该组细项挂不挂行内说明（收入组 false ⇒ decorateRows 里天然 no-op）
+        rows: [],
+      };
+      g.rows = this.decorateRows(g, raw);
+      return g;
+    });
+    this.setData({
+      incomeGroups: mk(TERMS.ledger.income, TERMS.ledger.incomeScope),
+      expenseGroups: mk(TERMS.ledger.expense, TERMS.ledger.expenseScope, TERMS.ledger.expenseItemNotes),
+      twMkByPlat: byPlat,
+      twMkByPlatSum: mkByPlatTotal(byPlat) ? mkByPlatTotal(byPlat).toFixed(2) : '0.00',
+      twMkByPlatActive: mkByPlatFilled(byPlat),
+    });
+  },
+
+  // E2：顶部「填写口径」折叠块开关
+  onToggleFillGuide() {
+    this.setData({ fillGuideOpen: !this.data.fillGuideOpen });
+  },
+
+  // R234/J1：**通用「行内提示折叠」开关**（一个 handler 服务全部 16 处，不逐处写方法）。
+  //   为什么这么做：逐处写 16 个方法 ⇒ 16 个可被改坏的点、没有判据守得住；
+  //   单一 handler + `data-key` ⇒ 折叠状态集中在 `hintFold` 一个 map 里，
+  //   新增位置只是往 map 里加一个键，**不新增代码路径**（本仓「减数量非增代码」的一贯做法）。
+  //   ⚠️ key 由 wxml 侧写死字面量（如 `data-key="incomeHint"`），js 侧不推导 —— 避免第二套命名真相源。
+  //   ⚠️ 与 `onToggleFillGuide` / `onToggleScope` 并存不冲突：三者管三块不同的折叠，语义不重叠。
+  onToggleHintFold(e) {
+    const key = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.key) || '';
+    if (!key) return;                       // 无 key ⇒ 静默返回（不误翻别人的状态）
+    const cur = this.data.hintFold || {};
+    const next = Object.assign({}, cur);
+    next[key] = !cur[key];
+    this.setData({ hintFold: next });
+  },
+
+  // ===== round189 · 常规科目预置 + 上月一键复制 =====
+  // 设计要点（为什么这样最省）：`getLedger` 本来就支持**任意 month**（云端按 month 查账单），
+  //   ⇒ 「复制上月」**不用改云端一行**：再调一次 getLedger、传上月月份即可。
+  //   （这条正是「先穷举入参变换，再考虑改引擎」：引擎零改动 ⇒ 无副本同步、无契约变更、锚点零漂风险。）
+  // 🔴 三条边界：
+  //   ① 只复制 income / expense 细项 —— **库存期初 / 摊销 / 一次性投入一律不碰**
+  //      （期初已有 round103 自动结转，重复带入会打架；资产跨月复制 = 重复算钱）；
+  //   ② 只预置「行」，**金额一律留空** —— 与 M2「参考金额只作 placeholder」同一条纪律：**系统绝不替老板编数**；
+  //   ③ fixed（房租一类月月不变）沿用不标待核对，variable（水/电/燃气会变）带值但标待核对 —— 防「复制完忘了改」。
+  prevMonthOf(m) {
+    const mt = /^(\d{4})-(\d{2})$/.exec(String(m || ''));
+    if (!mt) return '';
+    let y = Number(mt[1]);
+    let mo = Number(mt[2]) - 1;
+    if (mo === 0) { mo = 12; y -= 1; }
+    return y + '-' + String(mo).padStart(2, '0');
+  },
+
+  // 探测上月有没有账（没有 ⇒ 不显示「复制上月」，改为首月铺常规科目）
+  async probePrevMonth() {
+    const pm = this.prevMonthOf(this.data.month);
+    if (!pm) return;
+    try {
+      const pd = await api.call('getLedger', { month: pm });
+      const has = (arr) => (arr || []).some((it) => ((it.sub_items || []).length > 0) || !!it.amount_fen);
+      this.setData({ prevMonth: pm, prevHasData: has(pd.income_items) || has(pd.expense_items) });
+    } catch (e) {
+      // 上月不存在 / 读失败 ⇒ 按「没有上月」处理（不打扰用户，走首月预置路径）
+      this.setData({ prevMonth: pm, prevHasData: false });
+    }
+  },
+
+  // 本月是否已经填过（用于「复制上月会不会覆盖」的二次确认）
+  hasAnyFilled() {
+    const scan = (groups) => (groups || []).some((g) => (g.rows || []).some((r) => String(r.amountYuan || '').trim() !== ''));
+    const tw = (this.data.takeoutDetailRows || []).some((r) => String(r.goods || '').trim() !== '');
+    return scan(this.data.incomeGroups) || scan(this.data.expenseGroups) || tw;
+  },
+
+  // 给复制出来的行打「沿用 / 要核对」标记（只读派生，不入库）
+  markRecurringTags(groups) {
+    const fixed = TERMS.ledger.recurringFixed || [];
+    const variable = TERMS.ledger.recurringVariable || [];
+    return (groups || []).map((g) => {
+      const rows = (g.rows || []).map((r) => {
+        const n = (r.subItem || '').trim();
+        if (!n) return r;
+        if (fixed.indexOf(n) >= 0) return Object.assign({}, r, { tag: 'fixed' });
+        if (variable.indexOf(n) >= 0) return Object.assign({}, r, { tag: 'check', needCheck: true });
+        return r;
+      });
+      return Object.assign({}, g, { rows });
+    });
+  },
+
+  async copyPrev() {
+    const pm = this.data.prevMonth;
+    if (!pm || this.data.readOnly) return;
+    if (this.hasAnyFilled()) {
+      const go = await new Promise((res) => {
+        wx.showModal({
+          title: TERMS.ledger.copyPrevConfirmTitle,
+          content: TERMS.ledger.copyPrevConfirmBody,
+          confirmText: TERMS.ledger.copyPrevOkBtn,
+          cancelText: TERMS.ledger.copyPrevCancelBtn,
+          success: (r) => res(!!r.confirm),
+          fail: () => res(false),
+        });
+      });
+      if (!go) return;
+    }
+    wx.showLoading({ title: TERMS.ui.loading, mask: true });
+    try {
+      const pd = await api.call('getLedger', { month: pm });
+      let incomeGroups = this.rebuildFromItems(TERMS.ledger.income, pd.income_items, TERMS.ledger.incomeScope);
+      let expenseGroups = this.rebuildFromItems(TERMS.ledger.expense, pd.expense_items, TERMS.ledger.expenseScope, TERMS.ledger.expenseItemNotes);
+      incomeGroups = this.markRecurringTags(incomeGroups);
+      expenseGroups = this.markRecurringTags(expenseGroups);
+      let total = 0;
+      let needCheck = 0;
+      incomeGroups.concat(expenseGroups).forEach((g) => {
+        (g.rows || []).forEach((r) => {
+          if (!(r.subItem || '').trim()) return;
+          total += 1;
+          if (r.needCheck) needCheck += 1;
+        });
+      });
+      this.setData({
+        incomeGroups,
+        expenseGroups,
+        // ⚠️ wxml 不做法调用 ⇒ 横幅文案在这里预计算成字符串
+        copyBannerText: TERMS.ledger.copyPrevBanner(pm, total, needCheck),
+        copyBannerOn: true,
+      });
+      this.syncDineSum();
+      this.syncTakeoutSum();
+      wx.showToast({ title: TERMS.ledger.copyPrevOk });
+    } catch (e) {
+      api.toastError(e);
+    }
+    wx.hideLoading();
+  },
+
+  // 首月（上月也没账、本月还没填）⇒ 把「每月都有、占比大」的常规科目**直接铺成行**，金额留空。
+  //   🔴 只铺行不填值：老板仍然要自己敲数，但不用再去 36 个预设项里「找」该加哪几项。
+  ensureRecurring() {
+    if (this.data.prevHasData || this.hasAnyFilled()) return;
+    const want = (TERMS.ledger.recurringFixed || []).concat(TERMS.ledger.recurringVariable || []);
+    const expenseGroups = (this.data.expenseGroups || []).map((g) => {
+      const pick = (g.items || []).filter((n) => want.indexOf(n) >= 0);
+      if (!pick.length) return g;
+      const ng = Object.assign({}, g, { expanded: true });
+      ng.rows = this.decorateRows(ng, pick.map((n) => ({ subItem: n, amountYuan: '', recurring: true })));
+      return ng;
+    });
+    this.setData({ expenseGroups, recurringOn: true });
+  },
+
+  // 2026-09-21：每类「怎么填」口径句折叠开关（默认收起，只留一行引导语）
+  //   ⚠️ 与 onToggleGroup 同为「就地改一份 + 整数组回写」，不要图省事直接改 this.data。
+  onToggleScope(e) {
+    const kind = e.currentTarget.dataset.kind;   // 'income' | 'expense'
+    const idx = Number(e.currentTarget.dataset.idx);
+    const key = kind === 'income' ? 'incomeGroups' : 'expenseGroups';
+    const groups = this.data[key].slice();
+    const g = Object.assign({}, groups[idx]);
+    g.scopeOpen = !g.scopeOpen;
+    groups[idx] = g;
+    this.setData({ [key]: groups });
+  },
+
+  // 从后端明细（snake_case income_items/expense_items）重建组：每大类 → rows = sub_items（无细项则单行整类）
+  // round217：第四个参数同 initGroups 的 mk —— 费用侧传 `TERMS.ledger.expenseItemNotes` 以挂行内说明。
+  rebuildFromItems(defs, items, scopeMap, notesMap) {
+    return defs.map((d) => {
+      const found = (items || []).find((it) => (it.category || '') === d.category);
+      let rows = [{ subItem: '', amountYuan: '' }];
+      if (found) {
+        const subs = found.sub_items || [];
+        if (subs.length > 0) {
+          // R162：有效订单数（qty）随细项一起回读；没有该字段的老数据 ⇒ ''（不填，不臆造）
+          rows = subs.map((si) => ({
+            subItem: si.sub_item || '',
+            amountYuan: si.amount_fen ? api.fenToYuan(si.amount_fen) : '',
+            qty: (si.qty === undefined || si.qty === null) ? '' : String(si.qty),
+          }));
+        } else if (found.amount_fen) {
+          rows = [{ subItem: '', amountYuan: api.fenToYuan(found.amount_fen) }];
+        }
+      }
+      const expanded = rows.length > 1;
+      // ⚠️ round102：同 initGroups —— 先建页面对象再装配（decorateRows 会往 g 挂只读派生字段）
+      const g = {
+        category: d.category, label: d.label, items: d.items || [],
+        core: !!d.core,     // P0#3：核心组标记（来自 terms 单源），新手模式折叠非核心组
+        scope: (scopeMap || {})[d.category] || '',
+        scopeOpen: false,   // 与 initGroups 一致：读回后端数据也默认收起
+        expanded,
+        notesOn: !!notesMap,   // round217：见 initGroups —— 费用组挂行内说明，收入组不挂
+        rows: [],
+      };
+      g.rows = this.decorateRows(g, rows);
+      return g;
+    });
+  },
+
+  async load() {
+    this.setData({ loading: true });
+    try {
+      await api.ensureShop();
+      ui.setTitle(TERMS.inputPage.title);
+      const d = await api.call('getLedger', { month: this.data.month });
+      const sw = d.switches || {};
+      const isArchive = !!d.is_archive;
+      const archivedAtMs = d.archived_at || 0;
+      const inGrace = ui.withinGrace(archivedAtMs, Date.now());
+      const readOnly = isArchive && !inGrace;   // 归档且超 7 天 → 硬锁
+      const incomeGroups = this.rebuildFromItems(TERMS.ledger.income, d.income_items, TERMS.ledger.incomeScope);
+      const expenseGroups = this.rebuildFromItems(TERMS.ledger.expense, d.expense_items, TERMS.ledger.expenseScope, TERMS.ledger.expenseItemNotes);
+      const directConsumeYuan = d.direct_consume_fen ? api.fenToYuan(d.direct_consume_fen) : '';
+      // 堂食分项快照：若后端已存分项（>1 行），原样带入 dineDetailRows，切回分项可恢复（防 round-trip 丢值）
+      const dG = incomeGroups.find((x) => x.category === 'dine_in');
+      const dineDetailRows = (dG && dG.rows && dG.rows.length > 1)
+        ? dG.rows.map((r) => ({ subItem: r.subItem || '', amountYuan: r.amountYuan || '', fixed: !!r.fixed, note: r.note || '' }))
+        : [];
+      // R85：外卖段 —— 从后端回读的 takeaway 行（每平台 1 个数）铺到分项「商品总价」行
+      //   （分项三明细不落库，只有小计回后端；切分项时按小计铺 goods，用户可继续拆）
+      const twG = incomeGroups.find((x) => x.category === 'takeaway');
+      const takeoutDetailRows = restoreDetail(
+        // R162：回读时把 qty 一起带进分项行（否则保存过的订单数一进页面就"丢"了）
+        (twG && twG.rows || []).map((r) => ({
+          platform: r.subItem || '',
+          goods: r.amountYuan || '',
+          qty: (r.qty === undefined || r.qty === null) ? '' : String(r.qty),
+        })),
+        TERMS.ledger.income.find((g) => g.category === 'takeaway') ? TERMS.ledger.income.find((g) => g.category === 'takeaway').items : [],
+      );
+      // 🔴 R505：推断外卖录入轨道（net 默认 / gross 展开）。
+      //   · 本地记忆优先（用户上次的明确选择）。
+      //   · 否则按数据推断：分项行有任何一项填过（含后端回读的旧 gross 数据）⇒ gross；
+      //     单平台框有值（历史老数据，无法区分 gross/net）⇒ 按 gross 处理（安全：网额不会被误当净额虚高利润）；
+      //     全空 ⇒ 新月份，默认 net（共识默认净额外）。
+      //   ⚠️ net/gross 不互推：本函数只判"用哪条录入面"，绝不把净额反推成 gross（R505 红线）。
+      const takeoutTrack = (() => {
+        const cached = this.loadTakeoutTrack();
+        if (cached === 'net' || cached === 'gross') return cached;
+        const hasDetailData = (takeoutDetailRows || []).some((r) => String(r.goods || '').trim() !== '' || String(r.pack || '').trim() !== '' || String(r.subsidy || '').trim() !== '' || String(r.qty || '').trim() !== '');
+        if (hasDetailData) return 'gross';
+        const rows = (twG && twG.rows) || [];
+        if (rows.some((r) => String(r.subsidy || '').trim() !== '' || String(r.amountYuan || '').trim() !== '')) return 'gross';
+        return 'net';
+      })();
+      const takeoutMode = takeoutTrack === 'gross' ? 'detail' : 'fast';
+      // 核算方式读回（服务端权威；口径锁：经营参考利润用直接填值，真实利润才倒轧）
+      const inventoryOn = !!sw.inventorySwitchOn;
+      const inv = d.inventory || {};
+      // round103：getLedger 出参 inventory 已按契约转 snake_case。此前后端透传 DB 的 camelCase，
+      //   本页读 camelCase「碰巧能跑」—— 一旦后端按契约修好，这里会静默变空（同族隐患，一并统一）。
+      // round104：摘要算法抽到 invSummaryOf()，与「子页返回刷新」共用同一份（防两处漂移）
+      const invSummary = this.invSummaryOf(d);
+      // round109：外卖分组的展开状态 = 记忆优先，**默认折叠**。
+      //   rebuildFromItems 会把 expanded 推断成「细项行 >1 ⇒ 展开」—— 那条推断是给
+      //   「其他业务收入 / 费用类」的大类细项用的；外卖平台全集本来就有 2~3 行，
+      //   沿用同一条推断 ⇒ 每次进来都全摊开（正是李老师反馈的现象）。这里就地覆盖。
+      this.applyTakeoutFold(incomeGroups);
+      // 若草稿存在且已保存过 → 用后端值（服务端为准）；否则后端值直接回填
+      this.setData({
+        isArchive, archivedAtMs, inGrace, readOnly,
+        // round103：**不再回带库存**。契约里 saveLedger 的 `inventory?` 是可选的，缺省即「不动库存」；
+        //   原先把 getLedger 的 camelCase 原样回带，而 saveLedger 只认 snake_case
+        //   ⇒ 保存一次就把盘点**静默清零**（实跑复现：真实消耗 23,000 → 0，零报错）。
+        incomeGroups,
+        expenseGroups,
+        dineMode: this.pickDineMode(incomeGroups),
+        dineDetailRows,
+        // R85/R505：外卖轨道（本地记忆优先，默认按数据推断）+ 分项行（从小计回铺 goods）
+        takeoutTrack,
+        takeoutMode,
+        takeoutDetailRows,
+        inventoryOn, invSummary,
+        directConsumeYuan: directConsumeYuan || this.data.directConsumeYuan,
+        // A13/A19：客流三字段回填。null（没填）回显为 ''，**不回显 0** —— 否则老板会以为系统替他填了 0。
+        trafficThisMonth: (d.traffic && d.traffic.this_month != null) ? String(d.traffic.this_month) : '',
+        trafficOldCustomer: (d.traffic && d.traffic.old_customer != null) ? String(d.traffic.old_customer) : '',
+        memberSalesYuan: (d.traffic && d.traffic.member_sales_fen != null) ? api.fenToYuan(d.traffic.member_sales_fen) : '',
+        loading: false,
+      });
+      // R85/R119：模式确定后算合计与带出。**两种模式都要算合计** —— 快速模式的合计取自各平台单值
+      //   （原先只在分项模式算 ⇒ 快速模式合计恒显 0.00）。配平仍只在分项：快速模式拆不出「活动补贴」。
+      this.syncTakeoutSum();
+      if (this.data.takeoutMode === 'detail') this.runReconcile();
+      this.loadAssetCount();   // round107：两行摘要与「按月分摊」开关无关（一次性投入也走这里）⇒ 无条件拉
+      this.loadShopBase();                     // 切换口径时要原样回传店铺名 / 备注
+      // round189：装配完成后再判「上月有没有账」+「首月要不要铺常规科目」
+      //   ⚠️ 顺序不能反：ensureRecurring 依赖 prevHasData（有上月 ⇒ 走复制，不重复铺行）
+      await this.probePrevMonth();
+      this.ensureRecurring();
+      // 🔴 R443b：冷启动时 onShow 早于 ensureShop（shop_id 还是 ''）⇒ 这里必须兜一次，
+      //   且位置要在**云端装配完成之后**，否则会被随后 setData 的云端数据覆盖。
+      this.applyDraftFromStorage();
+      // 🔴 R594（真机暴露）：完成度**首次进入时从没算过** —— onShow 首次为省云调用被 `_shown` 跳过，
+      //   而 load() 里又没调 ⇒ entryCompletion 恒为 null ⇒ 引导卡永远不显示。
+      //   为什么能漏：check_entry_completion 只测「纯函数算什么」和「wxml 有没有渲染位」，
+      //   **没测"谁在什么时候调用它"** —— 又是"只测函数不测接线"。
+      //   位置必须在 applyDraftFromStorage 之后：草稿回填会改 groups，早算会算成旧值。
+      this.refreshCompletion();
+    } catch (e) {
+      this.setData({ loading: false });
+      api.toastError(e);
+    }
+  },
+
+  // 堂食模式初始判定：本地缓存优先；无缓存则按数据推断（细项行 > 1 ⇒ 分项）
+  pickDineMode(incomeGroups) {
+    const cached = this.loadDineMode();
+    if (cached) return cached;
+    const g = (incomeGroups || []).find((x) => x.category === 'dine_in');
+    return (g && g.rows && g.rows.length > 1) ? 'detail' : 'fast';
+  },
+
+  // round109：把「外卖分组的展开状态」落到 incomeGroups 上（就地替换该组对象，其余不动）。
+  //   ⚠️ 只碰 category==='takeaway' 那一组 —— 别的组的展开语义是「手风琴看细项」，与它无关。
+  applyTakeoutFold(groups) {
+    const gi = (groups || []).findIndex((x) => x.category === 'takeaway');
+    if (gi < 0) return groups;
+    const expanded = this.loadTakeoutFold();
+    const g = Object.assign({}, groups[gi], { expanded });
+    groups[gi] = g;
+    return groups;
+  },
+
+  // ===== 大类展开/收起 =====
+  // ⚠️ 堂食走「快速 / 分项」模式开关（dineMode），不再用这里的手风琴展开
+  onToggleGroup(e) {
+    const kind = e.currentTarget.dataset.kind;   // 'income' | 'expense'
+    const idx = Number(e.currentTarget.dataset.idx);
+    const key = kind === 'income' ? 'incomeGroups' : 'expenseGroups';
+    const groups = this.data[key].slice();
+    const g = Object.assign({}, groups[idx]);
+    g.expanded = !g.expanded;
+    groups[idx] = g;
+    this.setData({ [key]: groups });
+    // round109：外卖分组的展开/折叠要记住（下次进来保持），其余组不记（手风琴状态本就不跨次保留）
+    if (key === 'income' && g.category === 'takeaway') this.saveTakeoutFold(g.expanded);
+  },
+
+  // ===== 细项行：细项名 / 金额 / 新增 / 删除 =====
+  onSubItem(e) {
+    const { kind, gidx, ridx } = e.currentTarget.dataset;
+    this.updateRow(kind, Number(gidx), Number(ridx), { subItem: e.detail.value });
+  },
+  onSubAmount(e) {
+    const { kind, gidx, ridx } = e.currentTarget.dataset;
+    this.updateRow(kind, Number(gidx), Number(ridx), { amountYuan: e.detail.value });
+  },
+  // 🔴 R162（R161-1）：快速模式的「有效订单数」框。
+  //   ⚠️ 与金额框并列但**不同字段**：qty 是数量，不进金额、不进小计、不进利润（见 utils/takeaway.js qtyTotal 注释）。
+  onFastQty(e) {
+    const { kind, gidx, ridx } = e.currentTarget.dataset;
+    this.updateRow(kind, Number(gidx), Number(ridx), { qty: e.detail.value });
+    this.syncTakeoutSum();   // 订单数变了 ⇒ 合计/单均都要重算
+  },
+
+  // 🔴 R170（方案1）：快速模式「其中：商家承担补贴」输入 → 写 g.rows[i].subsidy。
+  //   updateRow 内部对 income+takeaway 行已自动调 syncTakeoutSum（→ syncSubsidyCarry 带出到费用侧），
+  //   这里**不重复调用**，避免双重 setData。
+    onFastSubsidy(e) {
+      const { kind, gidx, ridx } = e.currentTarget.dataset;
+      this.updateRow(kind, Number(gidx), Number(ridx), { subsidy: e.detail.value });
+      this.checkAmounts();   // R426：updateRow 的触发条件只认 patch.amountYuan ⇒ 这里必须自己补
+    },
+  // 「这一格算不算填了」的统一判据（R162 引入，供 buildItems 两个分支共用）。
+  //   ⚠️ 只看"有没有输入"，不看数值大小 ⇒ 填 0 也算填过（与 mkByPlatFilled 同语义，防"填了 0 被当空丢掉"）。
+  _hasVal(v) {
+    return String(v === undefined || v === null ? '' : v).trim() !== '';
+  },
+  updateRow(kind, gidx, ridx, patch) {
+    const key = kind === 'income' ? 'incomeGroups' : 'expenseGroups';
+    const groups = this.data[key].slice();
+    const g = Object.assign({}, groups[gidx]);
+    const rows = g.rows.slice();
+    rows[ridx] = Object.assign({}, rows[ridx], patch);
+    // R85：费用侧「外卖活动补贴」被用户手改 → 上锁（syncSubsidyCarry 不再覆盖；除非再动收入侧分项值）
+    // 🔴 R298：基准取自 `TERMS.semantic.expenseMktSubsidy`（锚点），**不再写中文字面量** ——
+    //   旧写法在术语改名时会**静默失灵**（上锁失效，用户手改被自动值覆盖），门禁全绿。
+    if (kind === 'expense' && g.category === 'marketing' && rows[ridx].subItem === TERMS.semantic.expenseMktSubsidy && patch.amountYuan !== undefined) {
+      rows[ridx].twCarryLock = true;
+    }
+    // round217：费用行**改了细项名** ⇒ 行内说明必须跟着换（否则「房租」的注会留在老板新起的名字底下）
+    if (kind === 'expense' && patch.subItem !== undefined) {
+      rows[ridx] = this.attachRowNote(rows[ridx]);
+    }
+    g.rows = rows;
+    groups[gidx] = g;
+    this.setData({ [key]: groups });
+    this.syncDineSum();
+    // R119：外卖收入（收入侧 takeaway 组）在快速模式下就在这里改 → 合计必须跟着重算
+    if (kind === 'income' && g.category === 'takeaway') this.syncTakeoutSum();
+    // T3′：费用侧营销行被改 → 轻量自查提示要跟着消/显（幂等，无变化不 setData）
+    if (kind === 'expense') this.syncTakeoutSelfCheck();
+    // R419：金额栏体检（只在改了金额时跑；几十行纯字符串判断，无云端调用）
+    if (patch.amountYuan !== undefined) this.checkAmounts();
+  },
+
+  /**
+   * R419：M1 金额栏体检（读不成数字的行数 → data，wxml 提示）。只暴露，不改数。
+   * 来由与实测见 review/NOTE_2026-10-21_R419_M1金额体检.md（这几行注释不写进包体，省体积）。
+   */
+  checkAmounts() {
+    let n = 0;
+    const groups = (this.data.incomeGroups || []).concat(this.data.expenseGroups || []);
+    for (let i = 0; i < groups.length; i++) {
+      const rows = groups[i].rows || [];
+      for (let j = 0; j < rows.length; j++) {
+        if (!AmountInput.classifyAmount(rows[j].amountYuan).readable) n++;
+        // R426（队列 #42）：快速模式的「平台补贴」写在 subsidy（不是 amountYuan）
+        //   ⇒ onFastSubsidy 虽然走了 updateRow，但 updateRow 的触发条件只认 patch.amountYuan
+        //   ⇒ 这一格永远是"体检静默跳过"。判据要盯"这格是不是钱"，不是盯字段名。
+        if (!AmountInput.classifyAmount(rows[j].subsidy).readable) n++;
+      }
+    }
+    // 🔴 R425（队列 #31）：**分平台佣金小计**是独立 handler（onMkByPlat），不经 updateRow ⇒
+    //   上面两组 rows 的扫描**永远看不到它**。漏掉的后果不是"少提示一次"：
+    //   `syncMkPlat` 用 `mkByPlatTotal` 的合计（读不成的按 0）去**覆写营销段佣金行**
+    //   ⇒ 粘贴「12,000」= 佣金整行被清成 0.00，佣金虚低 ⇒ 利润虚高，全程零报错。
+    //   ⇒ 这份"不在 groups 里"的金额口径必须与两组 rows 一起计入同一个计数（同一句提示）。
+    const byPlat = this.data.twMkByPlat || [];
+    for (let k = 0; k < byPlat.length; k++) {
+      if (!AmountInput.classifyAmount(byPlat[k] && byPlat[k].amountYuan).readable) n++;
+    }
+    // 🔴 R426（队列 #42）：以下 3 处也是「写金额但不经 groups / 不经 amountYuan」的入口。
+    //   共同后果与 #31 同构：**读不成的按 0 算** ⇒ 数字静默偏 ⇒ 利润虚高/虚低，全程零报错。
+    //   ④ 分项模式外卖三框（goods/pack/subsidy，onTwDetail 写）—— subtotalOf 会把读不成的按 0 求和
+    const twd = this.data.takeoutDetailRows || [];
+    for (let i = 0; i < twd.length; i++) {
+      const r = twd[i] || {};
+      if (!AmountInput.classifyAmount(r.goods).readable) n++;
+      if (!AmountInput.classifyAmount(r.pack).readable) n++;
+      if (!AmountInput.classifyAmount(r.subsidy).readable) n++;
+    }
+    //   ⑤ 对账「实收」twRecYuan（onRecYuan 直接 setData）
+    if (!AmountInput.classifyAmount(this.data.twRecYuan).readable) n++;
+    //   ⑥ 直接消费 directConsumeYuan（onDirectConsume 直接 setData）
+    if (!AmountInput.classifyAmount(this.data.directConsumeYuan).readable) n++;
+    // 只在数量变化时 setData（避免每次按键都触发一次渲染）
+    if (n !== this.data.badAmountCount) this.setData({ badAmountCount: n });
+    // 🔴 R600：**必须把计数返回出去**。原先只写 data、无返回值 ⇒ 保存前拿不到数字，
+    //   只能靠页顶横幅提示；而保存按钮在页底、横幅在页顶 ⇒ 老板看不见 ⇒ 等于静默按 0 存。
+    return n;
+  },
+  // T4b（round97）：费用段「+ 添加细项」→ 先弹该类**尚未添加**的预设项清单。
+  //   ⚠️ 本轮只作用于费用侧（data-kind="expense"）；收入侧仍走 addRow（空白行）—— 范围刻意限定。
+  //   ⚠️ 清单**每次打开现算**（= g.items 去掉已有行名），不预存 data ⇒ 不会与 rows 状态不一致。
+  onOpenPresetPick(e) {
+    const kind = e.currentTarget.dataset.kind;
+    const gi = Number(e.currentTarget.dataset.gidx);
+    const key = kind === 'income' ? 'incomeGroups' : 'expenseGroups';
+    const g = (this.data[key] || [])[gi];
+    if (!g) return;
+    const used = (g.rows || []).map((r) => (r.subItem || '').trim()).filter(Boolean);
+    const list = (g.items || []).filter((n) => used.indexOf(n) < 0);
+    this.setData({ presetPick: { open: true, kind, gi, list } });
+  },
+  closePresetPick() {
+    this.setData({ 'presetPick.open': false });
+  },
+  // 选中预设项（name 非空）或末位「自定义」（name 空 ⇒ 空白行，行为与旧 addRow 一致）
+  onPickPreset(e) {
+    const pp = this.data.presetPick || {};
+    const name = e.currentTarget.dataset.name || '';
+    this.setData({ 'presetPick.open': false });
+    this.addSubRow(pp.kind, pp.gi, name);
+  },
+  // 加一行细项（name 空 = 自定义空白行）；其余与 addRow 完全同构，避免两条装配路径分叉
+  addSubRow(kind, gidx, name) {
+    const key = kind === 'income' ? 'incomeGroups' : 'expenseGroups';
+    const groups = this.data[key].slice();
+    const g = Object.assign({}, groups[Number(gidx)]);
+    // custom:true = 「刚点添加、还没填」的空行，装配时要放行（否则点了没反应）
+    g.rows = g.rows.concat([{ subItem: name || '', amountYuan: '', custom: !name }]);
+    g.rows = this.decorateRows(g, g.rows);
+    groups[Number(gidx)] = g;
+    this.setData({ [key]: groups });
+    this.syncDineSum();
+    if (kind === 'income' && g.category === 'takeaway') this.syncTakeoutSum();
+  },
+  addRow(e) {
+    const { kind, gidx } = e.currentTarget.dataset;
+    const key = kind === 'income' ? 'incomeGroups' : 'expenseGroups';
+    const groups = this.data[key].slice();
+    const g = Object.assign({}, groups[Number(gidx)]);
+    // custom:true = 「刚点添加、还没填」的空行，装配时要放行（否则点了没反应）
+    g.rows = g.rows.concat([{ subItem: '', amountYuan: '', custom: true }]);
+    g.rows = this.decorateRows(g, g.rows);
+    groups[Number(gidx)] = g;
+    this.setData({ [key]: groups });
+    this.syncDineSum();
+  },
+  // R494b/c（2026-10-25）：本组「- 删除细项」开关（与「+ 添加细项」并排）。
+  //   只对**当前这一组**生效（expenseEditGi = 组下标，-1 = 全关）——
+  //   四组同时冒 × 更乱，所以点哪组只有哪组进删除态。
+  //   🔴 R494c（李老师）：**不再有「完成删除」** —— 点 × 走完二次确认那一刻删除已经完成，
+  //      再让用户点一次「完成」是多出来的一步、且无感 ⇒ 状态只由按钮颜色表达（见 wxml 的 is-del-on），
+  //      删完任意一行由 doDeleteRow 自动把 expenseEditGi 置回 -1（× 自动收起）。
+  //      副作用是有利的：每次删除都要重新点一次按钮才出 × ⇒ 防误删又加一层。
+  toggleExpenseEdit(e) {
+    const gi = Number((e.currentTarget.dataset || {}).gidx);
+    this.setData({ expenseEditGi: this.data.expenseEditGi === gi ? -1 : gi });
+  },
+  // R496（2026-10-25 李老师：收入侧也套用同一套）—— 与费用侧**同口径不同键**：
+  //   默认态不渲染 ×；点本组「- 删除细项 / - 删除渠道」才出 ×；删完自动收起（见 doDeleteRow）。
+  //   ⚠️ 堂食渠道行额外保留 `!r.fixed`：那里的预设渠道装配时会补回，给了 × 只会让人以为删不掉（G10j/G11d 守）。
+  toggleIncomeEdit(e) {
+    const gi = Number((e.currentTarget.dataset || {}).gidx);
+    this.setData({ incomeEditGi: this.data.incomeEditGi === gi ? -1 : gi });
+  },
+  // 删除前二次确认：正文如实说「会回到下方待选项 / 可重新添加」—— 🔴 不写「不可恢复」，
+  //   因为预设项删掉后会出现在下方「还没加的有：…」，点一下就能加回来（李老师 2026-10-25 指出）。
+  delRow(e) {
+    const { kind, gidx, ridx } = e.currentTarget.dataset;
+    const key = kind === 'income' ? 'incomeGroups' : 'expenseGroups';
+    const groups = this.data[key] || [];
+    const g = groups[Number(gidx)] || {};
+    const row = (g.rows && g.rows[Number(ridx)]) || {};
+    const name = row.subItem || '';
+    wx.showModal({
+      title: TERMS.ledger.delConfirmTitle,
+      content: TERMS.ledger.delConfirmBody(name, row.fixed === true),
+      confirmText: TERMS.ledger.delConfirmOk,
+      cancelText: TERMS.ledger.delConfirmCancel,
+      confirmColor: '#c0392b',
+      success: (res) => { if (res.confirm) this.doDeleteRow(kind, gidx, ridx); },
+    });
+  },
+  // 真正落数据的删除（确认后才走这里；保留原「至少留一行」护栏）
+  doDeleteRow(kind, gidx, ridx) {
+    const key = kind === 'income' ? 'incomeGroups' : 'expenseGroups';
+    const groups = this.data[key].slice();
+    const g = Object.assign({}, groups[Number(gidx)]);
+    let rows = g.rows.slice();
+    rows.splice(Number(ridx), 1);
+    if (rows.length === 0) rows = [{ subItem: '', amountYuan: '' }]; // 至少保留一行（老板只填一行也能走）
+    g.rows = this.decorateRows(g, rows);
+    groups[Number(gidx)] = g;
+    // R494c / R496：删完即收 —— × 自动收起，不再要求用户点「完成删除」（那一步多余且无感）。
+    //   想再删一行，重新点一次「- 删除细项」即可（每次都显式进入 = 多一层防误删）。
+    //   按 kind 只收起**本次删的那一侧**：收入与费用各用一个下标，别一刀切全清（避免误伤另一侧已开的状态）。
+    this.setData({ [key]: groups, [kind === 'income' ? 'incomeEditGi' : 'expenseEditGi']: -1 });
+    this.syncDineSum();
+  },
+
+  // ===== 堂食录入模式（严格互斥二选一 · 方案 A）=====
+  // ⚠️ 方案 A 语义：选「分项」时总额由各渠道相加**自动得出、不可手填** ⇒ 单一数据源，
+  //    天然一致，压根不需要「分项之和==总额」的校验（互斥单选下两模式不并存，本就无两值可比）。
+  // ⚠️ 防 round-trip 丢值（李老师 2026-09-21 反馈）：分项→快速→分项 来回切，原填的各渠道数值必须原样恢复，
+  //    不能重铺成「总额塞第一行让你手填」。做法：切到快速前把分项行快照进 dineDetailRows，
+  //    切回分项时若快照非空则整体恢复，只有【从未填过分项】才走「总额铺首行、交人分配」旧逻辑。
+  // ⚠️ 模式只存本地（wx.setStorageSync），不动后端；换设备/清缓存回默认，默认值由数据推断。
+
+  // 堂食渠道行装配（🔒 唯一入口）：预设渠道全集常在 + 别名归并 + 自定义行留末尾 + 金额按名回填。
+  // ⚠️ 所有产出堂食行的路径都必须调这里（读后端/加行/删行/切模式/初始化），
+  //    不许任何地方自己 map 拼装 —— 否则「改一处漏三处」（渠道凭空消失）会复发（G10g 守）。
+  // ⚠️ 渠道清单只来自 terms.js，本页不写死渠道名（G10h 守）。
+  decorateDineRows(rows) {
+    const def = TERMS.ledger.income.find((g) => g.category === 'dine_in');
+    // 🔴 R606：行级稳定键（预设渠道用「p:<渠道名>」天然稳定唯一；自定义行用会话序号，更新时由 Object.assign 保留）
+    const out = normalizeDineRows(rows, (def && def.items) || [], TERMS.ledger.channelNotes || {},
+      TERMS.ledger.channelAliases || {});
+    return out.map((r) => {
+      if (r && r.rid === undefined) {
+        const o = Object.assign({}, r);
+        o.rid = r.fixed ? ('p:' + r.subItem) : (_ridPrefix + (++_ridSeq));
+        return o;
+      }
+      return r;
+    });
+  },
+
+  // 任意大类行装配（🔒 唯一入口）：堂食走渠道装配；其余大类只标「预设行不可删」（fixed）。
+  // ⚠️ 别在这里另写分支逻辑，堂食的渠道全集/别名规则只在 dineChannels.js 里（G11 守）。
+  decorateRows(g, rows) {
+    let out = g.category === 'dine_in' ? this.decorateDineRows(rows) : markFixedRows(rows, g.items).map(ensureRid);
+    // round217：费用组行内说明（`g.notesOn` 由构造处置位；收入组为 false ⇒ 这里天然 no-op）。
+    //   ⚠️ 同样放在这个**唯一装配口**里 —— 初始化 / 读回 / 复制上月 / 加行 / 删行 / 铺常规科目 全过它，
+    //      若在各自的 setData 点各补一遍，必然漏一处（round102 已踩过同款）。
+    if (g.notesOn) out = out.map((r) => this.attachRowNote(r));
+    // round102（2026-09-22）· 顺带算两个**只读派生字段**（挂到 g 上；不入库、不影响 fixed）：
+    //   · g.unused / g.unusedText —— 该类「还没用上的预设项」（供 WXML 底部提示行）
+    //   · g.mkPlatAfterRi —— 「分平台佣金小计」块该渲染在哪一行**之后**（营销组专用）
+    //   ⚠️ 放在这里是因为它正是所有 rows 变更路径的**唯一装配口**；散到各 setData 点必漏一处。
+    //   ⚠️ 因此调用方传进来的 g **必须是可写的页面对象**，不能是 terms 单源数组的元素（会污染单源）。
+    const used = out.map((r) => (r.subItem || '').trim()).filter(Boolean);
+    const items = g.items || [];
+    const unused = (g.category === 'dine_in' || !items.length)
+      ? [] : items.filter((n) => used.indexOf(n) < 0);
+    g.unused = unused;
+    g.unusedText = unused.join(TERMS.ledger.presetHintSep || '');
+    g.mkPlatAfterRi = this.calcMkPlatAfterRi(g, out);
+    return out;
+  },
+
+  // round102：营销组「分平台佣金小计」块的渲染锚点（返回**行下标** —— WXML 在该行之后插块）
+  //   · 佣金项名单源 = takeawayMode.reconcileRoles.commission（页面零硬编码）
+  //   · 找不到（老板删了 / 从没加过）⇒ 退化为**末行之后** —— 块仍可见、功能不丢
+  //   · 非营销组 ⇒ -1（WXML 里 ri 永不等于 -1，自然不渲染）
+  calcMkPlatAfterRi(g, rows) {
+    if (g.category !== 'marketing') return -1;
+    const name = ((TERMS.ledger.takeawayMode || {}).reconcileRoles || {}).commission || '';
+    const list = rows || [];
+    if (name) {
+      const ri = list.findIndex((r) => r.subItem === name);
+      if (ri >= 0) return ri;
+    }
+    return list.length - 1;
+  },
+
+  // round217：给单行挂 / 换「行内说明」（纯只读派生字段，不入库）。
+  //   · 原文案单源 = `TERMS.ledger.expenseItemNotes`，本页不写死任何项名 / 句子。
+  //   · 🔴 命中不了就**摘掉旧注** —— 老板把细项名改掉后若不摘，上一项的解释会留在新名字底下（比"没注"更误导）。
+  //   · 前身是 R85 的 `decorateExpenseNotes()`（只对 marketing 组生效）；round217 起由 decorateRows 统一调用 ⇒ 已删除。
+  attachRowNote(r) {
+    if (!r) return r;
+    const notes = TERMS.ledger.expenseItemNotes || {};
+    const name = (r.subItem || '').trim();
+    const note = name ? (notes[name] || '') : '';
+    // 推广费单独高亮取数路径（项名走 terms 单源 promoItem；不用文案内容判断，避免改文案即失效）
+    const promo = !!note && name === ((TERMS.ledger.takeawayMode || {}).promoItem);
+    if (!note) {
+      if (r.note === undefined && r.promo === undefined) return r;
+      const c = Object.assign({}, r);
+      delete c.note;
+      delete c.promo;
+      return c;
+    }
+    if (r.note === note && r.promo === promo) return r;
+    return Object.assign({}, r, { note, promo });
+  },
+
+  // 分项模式合计（预计算，WXML 不支持方法调用）
+  syncDineSum() {
+    const g = this.data.incomeGroups.find((x) => x.category === 'dine_in');
+    if (!g) return;
+    const sum = (g.rows || []).reduce((s, r) => s + (Number(r.amountYuan) || 0), 0);
+    this.setData({ dineSumYuan: sum ? sum.toFixed(2) : '0.00' });
+  },
+
+  dineModeKey() {
+    const app = getApp();
+    const shopId = (app && app.globalData && app.globalData.shop_id) || '';
+    return DINE_MODE_KEY + shopId + '_' + this.data.month;
+  },
+  saveDineMode(m) { try { wx.setStorageSync(this.dineModeKey(), m); } catch (e) { /* 存不了不影响填表 */ } },
+  loadDineMode() {
+    try {
+      const v = wx.getStorageSync(this.dineModeKey());
+      if (v === 'fast' || v === 'detail') return v;
+    } catch (e) { /* 读不到 → 由数据推断 */ }
+    return null;
+  },
+
+  // P0#3：新手/老手模式记忆（仅存本地；换设备/清缓存回默认 'novice'）。
+  //   ⚠️ 与 DINE_MODE_KEY 同族：按 shopId 区分，不同店各自记偏好。
+  inputModeKey() {
+    const app = getApp();
+    const shopId = (app && app.globalData && app.globalData.shop_id) || '';
+    return INPUT_MODE_KEY + shopId;
+  },
+  saveInputMode(m) { try { wx.setStorageSync(this.inputModeKey(), m); } catch (e) { /* 存不了不影响填表 */ } },
+  loadInputMode() {
+    try {
+      const v = wx.getStorageSync(this.inputModeKey());
+      if (v === 'novice' || v === 'pro') return v;
+    } catch (e) { /* 读不到 → 默认 novice */ }
+    return null;
+  },
+  onPickInputMode(e) {
+    if (this.data.readOnly) {
+      wx.showModal({ title: TERMS.inputPage.archiveReadonly, content: TERMS.inputPage.confirmLocked, showCancel: false });
+      return;
+    }
+    const val = e.currentTarget.dataset.val === 'pro' ? 'pro' : 'novice';
+    if (this.data.inputMode === val) return;
+    // 切模式即重置 showMore：老手本就全显、新手回到折叠态（让状态可预期）
+    this.setData({ inputMode: val, showMore: false });
+    this.saveInputMode(val);
+  },
+  // 新手模式下一键展开被折叠的非核心科目（仅本会话；不写库、不持久）
+  onExpandAll() {
+    this.setData({ showMore: true });
+  },
+
+  onPickDineMode(e) {
+    if (this.data.readOnly) {
+      wx.showModal({
+        title: TERMS.inputPage.archiveReadonly,
+        content: TERMS.inputPage.confirmLocked,
+        showCancel: false,
+      });
+      return;
+    }
+    const val = e.currentTarget.dataset.val === 'detail' ? 'detail' : 'fast';
+    if (this.data.dineMode === val) return;
+    const gi = this.data.incomeGroups.findIndex((g) => g.category === 'dine_in');
+    if (gi < 0) return;
+    const groups = this.data.incomeGroups.slice();
+    const g = Object.assign({}, groups[gi]);
+
+    if (val === 'detail') {
+      // 切回分项：优先恢复快照（原样回填各渠道数值，不重铺、不弹提示）
+      const snap = this.data.dineDetailRows || [];
+      if (snap.length > 0) {
+        g.rows = this.decorateDineRows(snap.map((r) => ({ subItem: r.subItem || '', amountYuan: r.amountYuan || '' })));
+      } else {
+        // 从未填过分项（或已清空）：把快速总额铺到第一行，交人分配（系统不知道拆分比例）
+        const total = (g.rows[0] && g.rows[0].amountYuan) || '';
+        const def = TERMS.ledger.income.find((x) => x.category === 'dine_in');
+        const seed = ((def && def.items) || []).map((name, i) => ({ subItem: name, amountYuan: i === 0 ? total : '' }));
+        g.rows = this.decorateDineRows(seed.length ? seed : [{ subItem: '', amountYuan: total }]);
+        if (total) api.say(TERMS.ledger.dineMode.splitNotice);
+      }
+      g.expanded = true;
+    } else {
+      // 切到快速：先把当前分项行**快照**保住（原样恢复用），再收拢为单行总额
+      const cur = (g.rows || []).map((r) => ({ subItem: r.subItem || '', amountYuan: r.amountYuan || '' }));
+      const sum = cur.reduce((s2, r) => s2 + (Number(r.amountYuan) || 0), 0);
+      g.rows = this.decorateDineRows([{ subItem: '', amountYuan: sum ? sum.toFixed(2) : '' }]);
+      g.expanded = false;
+      groups[gi] = g;
+      this.setData({ incomeGroups: groups, dineMode: val, dineDetailRows: this.decorateDineRows(cur) });
+      this.syncDineSum();
+      this.saveDineMode(val);
+      return;
+    }
+    groups[gi] = g;
+    this.setData({ incomeGroups: groups, dineMode: val, dineDetailRows: g.rows.map((r) => ({ subItem: r.subItem || '', amountYuan: r.amountYuan || '', fixed: !!r.fixed, note: r.note || '' })) });
+    this.syncDineSum();
+    this.saveDineMode(val);
+  },
+
+  // ===================== R85 · 外卖段（规范 §A.11，2026-09-22 锁定）=====================
+  // ⚠️ 后端零改动：提交仍走现有契约（category='takeaway' → sub_items[].sub_item/amount_fen），
+  //   分项三明细只在本页当场计算小计，不落库（留存走本地草稿，见 §2.6）。
+  // ⚠️ 平台名与顺序严格取自 TERMS.ledger.income[takeaway].items（页面不写死平台名）。
+  takeoutPlatforms() {
+    const def = TERMS.ledger.income.find((g) => g.category === 'takeaway');
+    return (def && def.items) || [];
+  },
+
+  takeoutModeKey() {
+    const app = getApp();
+    const shopId = (app && app.globalData && app.globalData.shop_id) || '';
+    return TAKEOUT_MODE_KEY + shopId + '_' + this.data.month;
+  },
+  saveTakeoutMode(m) { try { wx.setStorageSync(this.takeoutModeKey(), m); } catch (e) { /* 存不了不影响填表 */ } },
+  loadTakeoutMode() {
+    try {
+      const v = wx.getStorageSync(this.takeoutModeKey());
+      if (v === 'fast' || v === 'detail') return v;
+    } catch (e) { /* 读不到 → 由数据推断 */ }
+    return null;
+  },
+  // 🔴 R505：track（net/gross）记忆 —— 与 takeoutMode 同款（仅本地、换设备回默认）。
+  takeoutTrackKey() {
+    const app = getApp();
+    const shopId = (app && app.globalData && app.globalData.shop_id) || '';
+    return 'tw_track_' + shopId + '_' + this.data.month;
+  },
+  saveTakeoutTrack(m) { try { wx.setStorageSync(this.takeoutTrackKey(), m); } catch (e) { /* 存不了不影响填表 */ } },
+  loadTakeoutTrack() {
+    try {
+      const v = wx.getStorageSync(this.takeoutTrackKey());
+      if (v === 'net' || v === 'gross') return v;
+    } catch (e) { /* 读不到 → 由数据推断 */ }
+    return null;
+  },
+
+  // round109：外卖折叠态（默认折叠；展开过就记住）。与模式记忆同款约定：仅本地、换设备回默认。
+  takeoutFoldKey() {
+    const app = getApp();
+    const shopId = (app && app.globalData && app.globalData.shop_id) || '';
+    return TAKEOUT_FOLD_KEY + shopId + '_' + this.data.month;
+  },
+  saveTakeoutFold(expanded) { try { wx.setStorageSync(this.takeoutFoldKey(), !!expanded); } catch (e) { /* 存不了不影响填表 */ } },
+  // ⚠️ 默认值必须是 **false（折叠）**：李老师的诉求是「别老是全部摊开」，
+  //   读不到记忆（首次进入 / 清缓存 / 换设备）时回到折叠，而不是回到展开。
+  loadTakeoutFold() {
+    try {
+      const v = wx.getStorageSync(this.takeoutFoldKey());
+      if (v === true || v === false) return v;
+    } catch (e) { /* 读不到 → 默认折叠 */ }
+    return false;
+  },
+
+  // 默认模式由数据推断：该组细项行 >1 ⇒ 分项（同堂食 pickDineMode 约定）
+  pickTakeoutMode(incomeGroups) {
+    const cached = this.loadTakeoutMode();
+    if (cached === 'fast' || cached === 'detail') return cached;
+    const g = (incomeGroups || []).find((x) => x.category === 'takeaway');
+    return (g && g.rows && g.rows.length > 1) ? 'detail' : 'fast';
+  },
+
+  // 分项模式行：平台全集常驻（名称固定、不可删），三框 + 小计预计算
+  buildTakeoutDetail() {
+    const snap = this.data.takeoutDetailRows || [];
+    const rows = restoreDetail(snap, this.takeoutPlatforms());
+    this.setData({ takeoutDetailRows: rows });
+    this.syncTakeoutSum();
+  },
+
+  // R119：快速 / 分项共用 —— 按当前模式取数算合计，并算「已填 N / M 个平台」。
+  //   ⚠️ 两种模式的钱**不在同一处**：快速 = groups.rows[].amountYuan；分项 = takeoutDetailRows[].subtotal。
+  //   合计只用于回显与自查，不写入任何金额（口径见规范 §A.11）。
+  syncTakeoutSum() {
+    const g = this.data.incomeGroups.find((x) => x.category === 'takeaway');
+    const platforms = (g && g.rows) || [];
+    const detail = this.data.takeoutDetailRows || [];
+    const isFast = this.data.takeoutMode === 'fast';
+    const sum = isFast
+      ? platforms.reduce((s, r) => s + (Number(r.amountYuan) || 0), 0)
+      : detail.reduce((s, r) => s + (Number(r.subtotal) || 0), 0);
+    // 已填平台数：快速看单值；分项看三项里填过任意一个
+    const filled = isFast
+      ? platforms.filter((r) => Number(r.amountYuan) > 0).length
+      : detail.filter((r) => Number(r.goods) > 0 || Number(r.pack) > 0 || Number(r.subsidy) > 0).length;
+    // 🔴 R162：有效订单数按**当前模式**取数（与金额同源同模式，避免两处各写一份 ⇒ 改一眼漏一眼）。
+    //   ⚠️ qty 只喂给 qtyTotal / perOrderYuan，**绝不进 sum**（数量与金额相加没有意义）。
+    const qty = qtyTotal(isFast ? platforms : detail);
+    const perOrder = perOrderYuan(sum, qty);
+    const t = TERMS.ledger.takeawayMode || {};
+    this.setData({
+      takeoutSumYuan: sum ? sum.toFixed(2) : '0.00',
+      // 只有 1 个平台行（整类总额）时不给这句，避免噪音（见 filledLabel 注释）
+      takeoutFilledText: filledLabel(t.filledTpl || '已填 {n} / {m} 个平台', filled, platforms.length),
+      takeoutQtyTotal: String(qty),
+      takeoutPerOrder: perOrder,
+    });
+    // 🔴 R511：两个联动**每次都调**（不能只在 gross 时调）—— 清除逻辑写在函数内部
+    //   （`if (track !== 'gross') { ...clear...; return; }`），调用方若在 net 时直接不调，
+    //   则 gross→net 切换时**旧的自动带出/自查提示清不掉** ⇒ net 模式残留
+    //   「佣金与配送费记得记上」这类 gross 专用提示，与净额口径自相矛盾。
+    //   （真机实测：切到 net 后 twSelfCheck 仍非空 —— review/evidence/r510_walk/walk.json S3）
+    this.syncSubsidyCarry();      // net ⇒ total=0 ⇒ 清掉自动带出的补贴（手改锁定的保留）
+    this.syncTakeoutSelfCheck();  // net ⇒ 清掉「漏记佣金」提示
+    this.syncTakeoutFold();    // round109：折叠态摘要（与合计同源同模式，必须一起重算）
+  },
+
+  // round109：外卖**折叠态**摘要 —— 各平台已填金额（金额为 0/空的平台不渲染，免得折叠态出现一排 ¥0.00）。
+  //   ⚠️ 取数口径与 syncTakeoutSum 完全一致（快速 = groups.rows[].amountYuan；分项 = takeoutDetailRows[].subtotal）：
+  //      两处若各写一份，改一眼必漏另一眼（同族病）。这里只做「取数 + 过滤 + 定值」，
+  //      模式判断与 syncTakeoutSum 用同一个 this.data.takeoutMode。
+  //   ⚠️ 平台名：快速模式的 subItem 就是平台名（固定不可改）；分项模式的 platform 同源。
+  syncTakeoutFold() {
+    const isFast = this.data.takeoutMode === 'fast';
+    const g = this.data.incomeGroups.find((x) => x.category === 'takeaway');
+    const src = isFast
+      ? ((g && g.rows) || []).map((r) => ({ name: r.subItem || '', amt: Number(r.amountYuan) || 0 }))
+      : ((this.data.takeoutDetailRows) || []).map((r) => ({ name: r.platform || '', amt: Number(r.subtotal) || 0 }));
+    const rows = src.filter((r) => r.amt > 0).map((r) => ({ name: r.name, amt: r.amt.toFixed(2) }));
+    this.setData({ takeoutFoldRows: rows, takeoutAnyFilled: rows.length > 0 });
+  },
+
+  // ===== 模式切换（严格互斥；快照恢复防 round-trip 丢值）=====
+  onPickTakeoutMode(e) {
+    if (this.data.readOnly) {
+      wx.showModal({ title: TERMS.inputPage.archiveReadonly, content: TERMS.inputPage.confirmLocked, showCancel: false });
+      return;
+    }
+    const val = e.currentTarget.dataset.val === 'detail' ? 'detail' : 'fast';
+    if (this.data.takeoutMode === val) return;
+    const gi = this.data.incomeGroups.findIndex((g) => g.category === 'takeaway');
+    if (gi < 0) return;
+
+    if (val === 'detail') {
+      // 快速 → 分项：把快速模式的各平台金额铺到分项「商品总价」行（单一数据源，不重铺、不丢数）
+      const groups = this.data.incomeGroups.slice();
+      const g = Object.assign({}, groups[gi]);
+      // ⚠️ R162：qty 必须跟着走 —— 快速模式填的订单数切到分项要还在（反之亦然）。
+      // ⚠️ R170：subsidy 也必须跟着走 —— 快速模式填的「其中商家承担补贴」切到分项要还在（同族病防丢值）。
+      const snap = (g.rows || []).map((r) => ({
+        platform: r.subItem || '',
+        goods: r.amountYuan || '',
+        pack: '',
+        subsidy: r.subsidy || '',
+        qty: r.qty === undefined || r.qty === null ? '' : String(r.qty),
+      }));
+      this.setData({ takeoutMode: val, takeoutDetailRows: restoreDetail(snap, this.takeoutPlatforms()) });
+      this.saveTakeoutMode(val);
+      this.syncTakeoutSum();
+    } else {
+      // 分项 → 快速：先快照（草稿留存），再按平台小计收拢为单行总额
+      const snap = (this.data.takeoutDetailRows || []).map((r) => ({
+        platform: r.platform || '', goods: r.goods || '', pack: r.pack || '', subsidy: r.subsidy || '',
+        qty: r.qty === undefined || r.qty === null ? '' : String(r.qty),
+      }));
+      const groups = this.data.incomeGroups.slice();
+      const g = Object.assign({}, groups[gi]);
+      // ⚠️ R162：收拢成单行总额时 qty 一并带回 g.rows（快速模式的订单数就存在这里）
+      // ⚠️ R170：subsidy 独立带回 g.rows[].subsidy（与 amountYuan 并存互不干扰 —— 费用侧出账口单独取 subsidy）。
+      //   🔴 R496：amountYuan 改为**优惠前总额**（商品总价+打包费，**不含**补贴）—— 补贴只走费用侧扣一次，
+      //     若这里再含补贴，就会和费用侧那一次抵消 ⇒ 这笔补贴等于没扣（真值实测偏差恰等于补贴额）。
+      g.rows = this.decorateRows(g, snap.map((r) => ({
+        subItem: r.platform,
+        amountYuan: subtotalOf(r.goods, r.pack),
+        subsidy: r.subsidy,
+        qty: r.qty,
+      })));
+      groups[gi] = g;
+      this.setData({ incomeGroups: groups, takeoutMode: val, takeoutDetailRows: snap });
+      this.saveTakeoutMode(val);
+      this.syncTakeoutSum();
+    }
+  },
+
+  // ===== 🔴 R505：轨道切换（net 默认 / gross 展开；严格互斥）=====
+  //   与堂食 dineMode 同约定：仅存本地、默认按数据推断、切回原面不丢值。
+  //   ⚠️ 红线：net 与 gross 互不反推 —— 切到 gross 若五格为空，从零开始填（不把净额塞进商品总价）；
+  //     切回 net 时五格快照仍在 takeoutDetailRows，回来原样恢复。历史老数据（gross 单框）在 load() 里已铺成五格。
+  onPickTakeoutTrack(e) {
+    if (this.data.readOnly) {
+      wx.showModal({ title: TERMS.inputPage.archiveReadonly, content: TERMS.inputPage.confirmLocked, showCancel: false });
+      return;
+    }
+    const val = e.currentTarget.dataset.val === 'gross' ? 'gross' : 'net';
+    if (this.data.takeoutTrack === val) return;
+    const gi = this.data.incomeGroups.findIndex((g) => g.category === 'takeaway');
+    if (gi < 0) return;
+
+    if (val === 'gross') {
+      // 展开五格：若已有分项数据（含历史老数据），原样接管；否则从零开始（绝不拿净额反推 gross）。
+      let detail = this.data.takeoutDetailRows || [];
+      const hasData = detail.some((r) => String(r.goods || '').trim() !== '' || String(r.pack || '').trim() !== '' || String(r.subsidy || '').trim() !== '');
+      if (!hasData) detail = restoreDetail([], this.takeoutPlatforms());
+      this.setData({ takeoutTrack: val, takeoutMode: 'detail', takeoutDetailRows: detail });
+    } else {
+      // 回到 net 单框：五格快照保留在 takeoutDetailRows（随时可再展开恢复），单框金额取自 g.rows（净额）。
+      this.setData({ takeoutTrack: val, takeoutMode: 'fast' });
+    }
+    this.saveTakeoutTrack(val);
+    this.syncTakeoutSum();
+  },
+  onTwDetail(e) {
+    const field = e.currentTarget.dataset.field;     // 'goods'|'pack'|'subsidy'
+    const idx = Number(e.currentTarget.dataset.idx);
+    const rows = (this.data.takeoutDetailRows || []).slice();
+    const r = Object.assign({}, rows[idx]);
+    r[field] = e.detail.value;
+    r.subtotal = subtotalOf(r.goods, r.pack);
+    rows[idx] = r;
+    this.setData({ takeoutDetailRows: rows });
+    this.syncTakeoutSum();
+    this.checkAmounts();   // R426：三框不经 updateRow ⇒ 体检要自己触发
+  },
+
+  // ===== 粘贴（A.11.5：加速器，非唯一入口）=====
+  openPaste(e) {
+    // data-target: 'goods'|'pack'|'subsidy', data-idx: 平台行
+    this.setData({
+      twPasteFor: (e.currentTarget.dataset.target || 'goods') + ':' + String(e.currentTarget.dataset.idx),
+      twPasteText: '',
+      twPasteOpen: true,
+    });
+  },
+  onPasteText(e) { this.setData({ twPasteText: e.detail.value }); },
+  closePaste() { this.setData({ twPasteOpen: false, twPasteFor: '', twPasteText: '' }); },
+  onPasteExtract() {
+    const text = this.data.twPasteText;
+    const res = extractPaste(text);
+    const fill = pasteFillValue(res);
+    // 🔴 R120：判据 = 「**最终**能不能填出值」，而不是「有没有明细数字」。
+    //   旧判据 `res.numbers.length === 0` 会把「只复制了合计那一行」误判成没粘到东西 ⇒ 报「未提取到数字」；
+    //   而同一份账单换成「合计⏎7140.00」的写法又会直接填 —— 同一语义两种结果。
+    if (fill === '') {
+      wx.showToast({ title: TERMS.ledger.takeawayMode.pasteEmpty, icon: 'none' });
+      return;
+    }
+    // 本次填入来自「合计兜底」（无任何明细数字）⇒ 必须换一种提示，提醒可能与明细重复
+    const fromTotal = pasteFilledFromTotal(res);
+    const doFill = () => {
+      const [field, idxStr] = (this.data.twPasteFor || 'goods:0').split(':');
+      const idx = Number(idxStr) || 0;
+      const rows = (this.data.takeoutDetailRows || []).slice();
+      if (!rows[idx]) return;
+      const r = Object.assign({}, rows[idx]);
+      r[field] = fill;                  // R119：0 是合法金额，不能被当成空
+      r.subtotal = subtotalOf(r.goods, r.pack);
+      rows[idx] = r;
+      this.setData({ takeoutDetailRows: rows, twPasteOpen: false });
+      // 原始粘贴内容留存可回溯（本地草稿，见 onHide）；fromTotal 标记本次为合计兜底填入
+      this.setData({ twPasteRaw: (this.data.twPasteRaw || []).concat([{ at: Date.now(), field, idx, raw: res.raw, fromTotal }]) });
+      this.syncTakeoutSum();
+      wx.showToast({
+        title: fromTotal ? TERMS.ledger.takeawayMode.pasteFromTotal : TERMS.ledger.takeawayMode.pasteDone,
+        icon: fromTotal ? 'none' : 'success',
+      });
+    };
+    // 只有「有明细 + 有合计」才需要确认明细口径；纯合计兜底场景没有明细可确认，直接填并提示
+    if (res.hasTotal && !fromTotal) {
+      wx.showModal({
+        title: TERMS.ledger.takeawayMode.pasteConfirmTitle,
+        content: TERMS.ledger.takeawayMode.pasteConfirmBody,
+        confirmColor: '#1e3a5f',
+        success: (r) => { if (r.confirm) doFill(); },
+      });
+    } else {
+      doFill();
+    }
+  },
+
+  // ===== 配平校验（A.11.4 · 只做软提示）=====
+  onRecYuan(e) { this.setData({ twRecYuan: e.detail.value }); this.runReconcile(); this.checkAmounts(); },
+
+  runReconcile() {
+    const rows = this.data.takeoutDetailRows || [];
+    // 外卖收入合计：分项 = Σ 小计；快速 = Σ 各平台行金额（回读 groups）
+    let incomeTotal = rows.reduce((s, r) => s + (Number(r.subtotal) || 0), 0);
+    const g = this.data.incomeGroups.find((x) => x.category === 'takeaway');
+    if (g && this.data.takeoutMode === 'fast') {
+      incomeTotal = (g.rows || []).reduce((s, r) => s + (Number(r.amountYuan) || 0), 0);
+    }
+    // 费用侧读数（营销项按展示名找；⚠️ 项名**只**取自 terms 单源 reconcileRoles，页面不写死）
+    const mk = (this.data.expenseGroups || []).find((x) => x.category === 'marketing');
+    const roles = (TERMS.ledger.takeawayMode && TERMS.ledger.takeawayMode.reconcileRoles) || {};
+    const mrow = (name) => { if (!name) return 0; const r = (mk && mk.rows || []).find((x) => x.subItem === name); return r ? (Number(r.amountYuan) || 0) : 0; };
+    // 🔴 R170：subsidy 取数与收入合计同模式 —— 快速模式用 g.rows[].subsidy 求和（配平差额才正确）。
+    const subsidy = (g && this.data.takeoutMode === 'fast')
+      ? (g.rows || []).reduce((s, r) => s + (Number(r.subsidy) || 0), 0)
+      : rows.reduce((s, r) => s + (Number(r.subsidy) || 0), 0);
+    const packTotal = rows.reduce((s, r) => s + (Number(r.pack) || 0), 0);
+    const rec = reconcile({
+      incomeTotal,
+      subsidy,
+      commission: mrow(roles.commission),
+      deliveryFee: mrow(roles.deliveryFee),
+      deliverySubsidy: mrow(roles.deliverySubsidy),
+      actualReceivable: Number(this.data.twRecYuan) || 0,
+      packTotal,
+    });
+    if (!rec) { this.setData({ twRecText: '' }); return; }
+    const t = TERMS.ledger.takeawayMode;
+    let text;
+    if (rec.status === 'pass') text = t.recPass;
+    else if (rec.status === 'packaging') text = t.recPack;
+    else if (rec.status === 'delivery') text = t.recDeliv;
+    else text = t.recMiss.replace('{diff}', String(Math.abs(rec.diff)));
+    this.setData({ twRecText: text });
+  },
+
+  // ===== 自动带出（A.11.3 sort 30：外卖活动补贴 = 收入侧补贴合计；手改后不覆盖）=====
+  // ⚠️ 语义：仅当费用侧该行**为空**时带出；已有值且与合计不同 = 用户手改过 → 加锁不再覆盖
+  //   （回读加载时若两边恰好一致也保持幂等不重写）。
+  // 🔴 R170（方案1）：快速模式也走这条带出 —— 老板在收入侧额外填了「其中：商家承担补贴」时，
+  //   把它带出到费用侧「外卖活动补贴」。
+  //   🔴🔴 R496（2026-10-26）更正本条的**理由**：旧注释说「收入那个数含补贴 ⇒ 一进一出正好抵消」，
+  //   那是旧口径（已证伪）。R496 起收入 = 优惠前总额（**不含**补贴）⇒ 这里的带出是**唯一那一次扣减**，
+  //   不带出 = 这笔补贴一分没扣、利润虚高一整个补贴额（真值实测：美团 +806.29 / 淘宝 +2069.70）。
+  //   · 分项：subsidyTotal(takeoutDetailRows)（现状）
+  //   · 快速：g.rows[].subsidy 求和（新增出账口）
+  //   · 空值兼容：快速模式 subsidy 全空 ⇒ total=0 ⇒ target='' ⇒ 不写费用侧（老用户不回归）。
+  syncSubsidyCarry() {
+    // 🔴 R505：net 模式（默认）下净额已扣完补贴/佣金/配送，**不得再把补贴带出到费用侧**（否则重复扣减）。
+    // 🔴 R511 修正：不能「直接 return」—— 那样 gross→net 切换时，**此前自动带出的那笔补贴会留在费用侧**，
+    //   而净额里已扣过一次 ⇒ 同一笔补贴扣两次、利润偏低。改法：net 下 total 恒 0，
+    //   让下面的清除逻辑把「自动带出的值」清空；老板手改过的行有 `twCarryLock=true`，仍保留不清。
+    const trackNet = this.data.takeoutTrack !== 'gross';
+    const g = this.data.incomeGroups.find((x) => x.category === 'takeaway');
+    const isFast = this.data.takeoutMode === 'fast';
+    const total = trackNet ? 0 : (isFast
+      ? ((g && g.rows) || []).reduce((s, r) => s + (Number(r.subsidy) || 0), 0)
+      : subsidyTotal(this.data.takeoutDetailRows || []));
+    const groups = this.data.expenseGroups.slice();
+    const mk = groups.findIndex((x) => x.category === 'marketing');
+    if (mk < 0) return;
+    const mg = Object.assign({}, groups[mk]);
+    // 🔴 R298：定位基准同样取锚点（旧写法用中文字面量 ⇒ 改名后补贴**静默带不过去**）
+    let ri = mg.rows.findIndex((r) => r.subItem === TERMS.semantic.expenseMktSubsidy);
+    if (ri < 0) {
+      // 🔴🔴 R512（真机实测根因）：`initGroups` / `rebuildFromItems` 对每个大类都只铺一行
+      //   空名占位（`subItem:''`）——**从不预铺「外卖活动补贴」**。原 `if (ri < 0) return;`
+      //   于是补贴**从未真正进过费用侧**：实测 `buildItems(expenseGroups)` 的
+      //   `marketingExpense.sub_items = []`，而收入侧照常 = 商品总价+打包费 ⇒ 利润虚高一个补贴额；
+      //   配平却用 `subsidyTotal(detailRows)` 单独算 ⇒ 出现「配平说对、利润多扣没扣」的不一致。
+      //   这里补一行承载补贴（这是 R496「补贴走费用侧扣一次」真正生效的必要条件）。
+      //   ⚠️ 若「整类总额」行（subItem=''）老板已填了钱 ⇒ 说明他自己填了营销总额，
+      //     不再追加，避免与整类总额重复扣（此时视补贴已含在总额里）。
+      const whole = mg.rows.find((r) => (r.subItem || '') === '');
+      if (whole && String(whole.amountYuan || '').trim() !== '') return;
+      if (!total) return;
+      mg.rows = mg.rows.concat([{ subItem: TERMS.semantic.expenseMktSubsidy, amountYuan: '', twCarryLock: false }]);
+      ri = mg.rows.length - 1;
+    }
+    const cur = (mg.rows[ri] && mg.rows[ri].amountYuan) || '';
+    const target = total ? total.toFixed(2) : '';
+    if (mg.rows[ri].twCarryLock) return;              // 仅「本会话手改过费用侧」→ 不覆盖
+    // 🔴 R85 修复：**不得**把「回读旧值 ≠ 当前合计」判为用户手改 —— 那是**用户改了收入侧**的
+    //    正常信号，判错会锁死旧值 ⇒ 费用侧不跟随、配平与利润都错（跨月二次录入必踩）。
+    if (!cur && !target) return;                     // 两边都空，无事可做
+    if (cur === target) return;                      // 已一致 → 幂等不重写（省一次 setData）
+    const nr = Object.assign({}, mg.rows[ri], { amountYuan: target, twCarryLock: false });
+    const rows2 = mg.rows.slice();
+    rows2[ri] = nr;
+    mg.rows = rows2;
+    groups[mk] = mg;
+    this.setData({ expenseGroups: groups });
+  },
+
+  // T3′（round97）：快速模式的轻量自查 —— 零依赖判据（**不读分项快照、不看补贴**）。
+  //   判据：外卖收入合计 > 0 且营销段三个角色（佣金 / 配送服务费 / 配送补贴）全空
+  //   ⇒ 提示「账单这两项记得记上」（直击「不要填少」这个诉求）。
+  //   ⚠️ 角色名只取自 terms 单源 reconcileRoles（页面零硬编码）；幂等：值未变则不 setData。
+  syncTakeoutSelfCheck() {
+    // 🔴 R505：net 模式（默认）下净额已含佣金/配送，本提示（"漏记佣金"）不适用，反而误导老板去补一笔已含的钱。
+    if (this.data.takeoutTrack !== 'gross') { if ((this.data.twSelfCheck || '') !== '') this.setData({ twSelfCheck: '' }); return; }
+    const tw = TERMS.ledger.takeawayMode || {};
+    const roles = tw.reconcileRoles || {};
+    const mk = (this.data.expenseGroups || []).find((x) => x.category === 'marketing');
+    const filled = (name) => {
+      if (!name) return false;
+      const r = ((mk && mk.rows) || []).find((x) => x.subItem === name);
+      return !!r && String(r.amountYuan || '').trim() !== '';
+    };
+    const anyRole = filled(roles.commission) || filled(roles.deliveryFee) || filled(roles.deliverySubsidy);
+    const income = Number(this.data.takeoutSumYuan) || 0;
+    const next = (income > 0 && !anyRole) ? (tw.selfCheckMiss || '') : '';
+    if ((this.data.twSelfCheck || '') === next) return;   // 幂等
+    this.setData({ twSelfCheck: next });
+  },
+
+  // （营销「外卖活动补贴」手改加锁逻辑已并入 updateRow：expense+marketing+该行 → twCarryLock=true）
+  // ===== T1（round97）· 营销段「分平台佣金小计」（只回显、不入库）=====
+  // ⚠️ 语义：客户按各平台账单逐行填佣金 ⇒ 合计**自动汇成**营销段佣金总额那一行（该行随即转只读，
+  //   避免「分平台」与「手填总额」两个来源打架）；**一行都不填则完全不碰那一行**（第一红线）。
+  // ⚠️ 只回显不入库：本区状态不进 buildItems / saveLedger，只进本地草稿。
+  // ⚠️ 平台名单源 = 收入侧外卖 items；佣金项名单源 = terms.reconcileRoles.commission ⇒ 页面零硬编码。
+  buildMkByPlat(prev) {
+    const map = {};
+    (prev || []).forEach((p) => { if (p && p.platform) map[p.platform] = p.amountYuan || ''; });
+    return this.takeoutPlatforms().map((p) => ({ platform: p, amountYuan: map[p] !== undefined ? map[p] : '' }));
+  },
+  onMkByPlat(e) {
+    const idx = Number(e.currentTarget.dataset.idx);
+    const list = (this.data.twMkByPlat || []).slice();
+    if (!list[idx]) return;
+    list[idx] = Object.assign({}, list[idx], { amountYuan: e.detail.value });
+    this.setData({ twMkByPlat: list });
+    this.syncMkByPlat();
+    this.checkAmounts();   // R425：本 handler 不经 updateRow ⇒ 体检要自己触发
+  },
+  clearMkByPlat() {
+    this.setData({
+      twMkByPlat: (this.data.twMkByPlat || []).map((p) => ({ platform: p.platform, amountYuan: '' })),
+    });
+    this.syncMkByPlat();
+    this.checkAmounts();   // R425：清空后坏值随之消失 ⇒ 计数要回落（否则提示挂着不走）
+  },
+  syncMkByPlat() {
+    const list = this.data.twMkByPlat || [];
+    const active = mkByPlatFilled(list);
+    const total = mkByPlatTotal(list);
+    const name = ((TERMS.ledger.takeawayMode && TERMS.ledger.takeawayMode.reconcileRoles) || {}).commission || '';
+    const mk = (this.data.expenseGroups || []).findIndex((x) => x.category === 'marketing');
+    const patch = { twMkByPlatActive: active, twMkByPlatSum: total ? total.toFixed(2) : '0.00' };
+    if (!active || mk < 0 || !name) {   // 全空 / 无营销组 / 无项名单源 ⇒ 一律不碰那一行
+      patch.twMkRowGi = -1;
+      patch.twMkRowRi = -1;
+      this.setData(patch);
+      this.syncTakeoutSelfCheck();
+      return;
+    }
+    const groups = this.data.expenseGroups.slice();
+    const g = Object.assign({}, groups[mk]);
+    const rows = (g.rows || []).slice();
+    const ri = rows.findIndex((r) => r.subItem === name);
+    const target = total.toFixed(2);
+    const cur = ri < 0 ? '' : String(rows[ri].amountYuan === undefined || rows[ri].amountYuan === null ? '' : rows[ri].amountYuan);
+    if (ri >= 0 && cur === target) {    // 已一致 ⇒ 幂等，不重铺、不 setData 业务面
+      patch.twMkRowGi = mk;
+      patch.twMkRowRi = ri;
+      this.setData(patch);
+      this.syncTakeoutSelfCheck();
+      return;
+    }
+    if (ri < 0) rows.push({ subItem: name, amountYuan: target });
+    else rows[ri] = Object.assign({}, rows[ri], { amountYuan: target });
+    g.rows = this.decorateRows(g, rows);   // 走同一装配口：名字命中预设清单 ⇒ fixed、无删除键
+    groups[mk] = g;
+    patch.expenseGroups = groups;
+    patch.twMkRowGi = mk;
+    patch.twMkRowRi = g.rows.findIndex((r) => r.subItem === name);
+    this.setData(patch);
+    this.syncTakeoutSelfCheck();
+  },
+
+
+  onDirectConsume(e) { this.setData({ directConsumeYuan: e.detail.value }); this.checkAmounts(); },
+  // A13/A19：客流三字段（纯文本暂存，校验在 save 前一次做完 —— 边打边报错会让人没法输入中间态）
+  onTrafficThisMonth(e) { this.setData({ trafficThisMonth: e.detail.value }); },
+  onTrafficOldCustomer(e) { this.setData({ trafficOldCustomer: e.detail.value }); },
+  onMemberSales(e) { this.setData({ memberSalesYuan: e.detail.value }); },
+  /**
+   * A13/A19：把三个输入框变成 saveLedger 的入参（**三态**：'' ⇒ null，整数/金额 ⇒ 数值）。
+   * 🔴 不合法时**返回错误、绝不静默清洗**：静默把「3,600」洗成 0（api.yuanToFen 的 fail-soft 行为）
+   *   会让老板以为存住了 3600，实际上存了 0，复购率还算成 0%。
+   */
+  buildTrafficPayload() {
+    const t = String(this.data.trafficThisMonth == null ? '' : this.data.trafficThisMonth).trim();
+    const o = String(this.data.trafficOldCustomer == null ? '' : this.data.trafficOldCustomer).trim();
+    const m = String(this.data.memberSalesYuan == null ? '' : this.data.memberSalesYuan).trim();
+    const intOf = (s) => {
+      if (s === '') return null;
+      if (!/^\d+$/.test(s)) return { error: TERMS.traffic.errNotInteger };
+      const n = Number(s);
+      return Number.isSafeInteger(n) ? n : { error: TERMS.traffic.errNotInteger };
+    };
+    const tv = intOf(t);
+    if (tv && tv.error) return { error: TERMS.traffic.errNotInteger };
+    const ov = intOf(o);
+    if (ov && ov.error) return { error: TERMS.traffic.errNotInteger };
+    if (tv != null && ov != null && ov > tv) return { error: TERMS.traffic.errOldGtTraffic };
+    let mv = null;
+    if (m !== '') {
+      if (!/^\d+(\.\d{1,2})?$/.test(m)) return { error: TERMS.traffic.errNotInteger };
+      mv = api.yuanToFen(m);
+    }
+    return { error: null, traffic_count: tv, old_customer_count: ov, member_sales_fen: mv };
+  },
+
+  // ===== 核算方式（就地二选一 · 2026-09-20 从店铺设置页迁入）=====
+  // ⚠️ 服务端唯一权威：这里只做「乐观更新 → 写库 → 失败回滚」，不自行推导计算口径。
+  // ⚠️ name / remark 必须一并回传：saveShopSetting 对未传字段归一为 '' 并写库 → 会把店铺名清空。
+  async onPickMethod(e) {
+    if (this.data.readOnly) {
+      wx.showModal({
+        title: TERMS.inputPage.archiveReadonly,
+        content: TERMS.inputPage.confirmLocked,
+        showCancel: false,
+      });
+      return;
+    }
+    // round107：本卡片只剩「食材消耗」一项（库存口径）。「一次性投入」的处置方式**不在店铺级开关里**，
+    //   而是逐笔登记在台账行上（见「一次性投入」页）⇒ 此处不再有 amortize 分支。
+    const val = String(e.currentTarget.dataset.val) === '1';   // dataset 一律字符串
+    const key = 'inventoryOn';
+    if (this.data[key] === val) return;                        // 已选中，不重复写库
+
+    if (!this.data.shopBaseLoaded) await this.loadShopBase();
+    const prev = this.data[key];
+    this.setData({ [key]: val });                              // 乐观更新
+    try {
+      await api.call('saveShopSetting', {
+        name: this.data.shopName,
+        remark: this.data.shopRemark,
+        switches: { inventory: val },
+        client_request_id: 'cm_' + Date.now(),
+      });
+      wx.showToast({ title: TERMS.calcMethod.switchSaved, icon: 'success' });
+      this.refreshCalcSummaries();   // 口径变了 ⇒ 摘要跟着变
+    } catch (err) {
+      this.setData({ [key]: prev });                           // 服务端才是权威 → 回滚
+      api.toastError(err);
+    }
+  },
+
+  // 店铺名 / 备注（仅用于切换口径时原样回传，避免被写空）
+  async loadShopBase() {
+    try {
+      const ctx = await api.call('getShopContext', {});
+      this.setData({ shopName: ctx.shop_name || '', shopRemark: ctx.shop_remark || '', shopBaseLoaded: true });
+    } catch (e) {
+      this.setData({ shopBaseLoaded: true });   // 取不到就不回传（后端 undefined = 不动库）
+    }
+  },
+
+  // round107：「一次性投入」两行摘要（纯提示位，失败不打断填表）
+  //   ① 本月一次算清：笔数 + 金额（台账里 mode='lump' 且 start_month = 本月）
+  //   ② 本月分月摊：项数 + 本月合计（摊销引擎对 mode='amort' 行的当月计提）
+  //   ⚠️ 数据全来自 getAmortSchedule，前端只拼文案 —— 不在前端算钱（口径单源在服务端）。
+  async loadAssetCount() {
+    try {
+      const d = await api.call('getAmortSchedule', { month: this.data.month });
+      const lumps = d.lumps || [];
+      const assets = d.assets || [];
+      const lumpSum = lumps.reduce((s, x) => s + (x.amount_fen || 0), 0);
+      this.setData({
+        assetSummaryLump: lumps.length > 0
+          ? TERMS.calcMethod.assetLumpSum(lumps.length, api.fenToYuan(lumpSum, 2)) : '',
+        assetSummaryAmort: assets.length > 0
+          ? TERMS.calcMethod.assetAmortSum(assets.length, api.fenToYuan(d.total_amount_fen || 0, 2)) : '',
+      });
+    } catch (e) {
+      this.setData({ assetSummaryLump: '', assetSummaryAmort: '' });
+    }
+  },
+
+  // round104：库存摘要的唯一算法 —— load() 与 refreshCalcSummaries() 共用，避免两处各写一份
+  invSummaryOf(d) {
+    const inv = (d && d.inventory) || {};
+    return (inv.opening_fen || inv.purchase_fen || inv.closing_fen)
+      ? TERMS.calcMethod.consumeInvSummary(
+          api.fenToYuan(inv.opening_fen || 0, 2),
+          api.fenToYuan(inv.purchase_fen || 0, 2),
+          api.fenToYuan(inv.closing_fen || 0, 2))
+      : '';
+  },
+
+  // round104：只刷新「库存摘要 / 摊销笔数」—— 这两项在子页（inventory / amortize）里改。
+  //   **不重建 groups**：重建会用后端值覆盖本页还没保存的草稿（与 onShow 的草稿回填打架）。
+  async refreshCalcSummaries() {
+    try {
+      const d = await api.call('getLedger', { month: this.data.month });
+      const sw = d.switches || {};
+      this.setData({
+        inventoryOn: !!sw.inventorySwitchOn,
+        invSummary: this.invSummaryOf(d),
+      });
+      this.loadAssetCount();   // round107：两行摘要无条件拉（内部已静默兜底）
+    } catch (e) { /* 摘要刷新失败不打扰：本页主流程不受影响 */ }
+    // 🔴 R578 / #101：完成度在**独立方法**里算（放在 try 之外 ⇒ 云失败时这条提示仍要显示）。
+    //   为什么拆出去：本函数被 A8-⑤ 约束「不得出现 groups 字面」（防后端值覆盖未保存草稿），
+    //   而完成度必须读 groups ⇒ 只能单独一个方法，读与写分开守。
+    this.refreshCompletion();
+  },
+
+  /**
+   * 🔴 R578 / #101：核心 4 组完成度（本地算、零采集、不上报、不参与计算）。
+   * 只读 groups，**绝不 setData groups**；四组全填完 ⇒ note 为空 ⇒ 界面整条不渲染。
+   */
+  refreshCompletion() {
+    // 🔴 R591：第 5 项原料消耗必须一起算 —— 漏了它，老板填满 4 组就看到"齐了"，
+    //   而利润里根本没扣食材（虚高 30%+），且不报错。库存开着时由系统倒轧，不催。
+    const comp = completionOf(this.data.incomeGroups, this.data.expenseGroups, null, {
+      consumeMode: this.data.inventoryOn ? 'inventory' : 'direct',
+      directConsumeYuan: this.data.directConsumeYuan,
+      consumeLabel: TERMS.ledger.entryConsumeLabel,
+    });
+    // 🔴 R592：拆成「标题 + 名单」两行 —— 标题说清这是怎么算的，名单说清还差谁。
+    //   R595：一项没填时标题换成**利润公式**（不再是「就能看到赚不赚钱」那种断言式承诺）；
+    //   填了一半就只说还差几项（已经填过的人不需要再被数一遍总数）。
+    comp.note = comp.done ? '' : comp.missingText;
+    comp.noteTitle = comp.done ? '' : (comp.filled === 0
+      ? TERMS.ledger.entryStartFormula
+      : TERMS.ledger.entryLeftTitle(comp.total - comp.filled));
+    this.setData({ entryCompletion: comp });
+  },
+
+  goInventory() { wx.navigateTo({ url: '/subpkg/biz/month/inventory?month=' + this.data.month }); },
+  goAmortize() { wx.navigateTo({ url: '/subpkg/biz/month/amortize?month=' + this.data.month }); },
+
+  // ===== round217 · 保存前缺项软提示（接 v1.1 §六 的二期「不硬拦」）=====
+  //   🔴 为什么做：M1 的输出是利润，「房租忘填」是**方向性错误**（利润虚高、看着赚钱其实亏），
+  //      远比「多填一项」严重；而费用侧已经铺了行，判「铺的行里有没有空值」成本极低。
+  //   🔴 为什么软：免租期 / 自有物业 / 租金已含水费都是真实情形 ⇒ 只问一句，**绝不阻断保存、不参与计算**。
+  //   🔴 项名单源 = `TERMS.ledger.missingWarnItems`（本页不写死任何项名）；命中不了种子项即失守，由 E7 守卫。
+  missingWarnKey() {
+    const app = getApp();
+    const shopId = (app && app.globalData && app.globalData.shop_id) || '';
+    return MISS_WARN_KEY + shopId + '_' + this.data.month;
+  },
+  missingWarned() { try { return !!wx.getStorageSync(this.missingWarnKey()); } catch (e) { return false; } },
+  markMissingWarned() { try { wx.setStorageSync(this.missingWarnKey(), 1); } catch (e) { /* 存不了不影响保存 */ } },
+
+  // 返回「单源点名要填、但这一行还是空的」项名清单（行被删掉也算 —— 那正是要让人确认的情形）
+  missingRecurringNames() {
+    const want = TERMS.ledger.missingWarnItems || [];
+    if (!want.length) return [];
+    const g = (this.data.expenseGroups || []).find((x) => x.category === 'operation');
+    if (!g) return [];
+    const filled = {};
+    (g.rows || []).forEach((r) => {
+      const n = (r.subItem || '').trim();
+      if (n && this._hasVal(r.amountYuan)) filled[n] = true;
+    });
+    return want.filter((n) => !filled[n]);
+  },
+  // 「去填」⇒ 把运营费用那一组展开（不保存、不跳页），让老板就地补数
+  revealMissingExpense() {
+    const gi = (this.data.expenseGroups || []).findIndex((g) => g.category === 'operation');
+    if (gi < 0) return;
+    const groups = this.data.expenseGroups.slice();
+    const g = Object.assign({}, groups[gi], { expanded: true });
+    groups[gi] = g;
+    this.setData({ expenseGroups: groups });
+  },
+
+  // 归档守卫 + 保存（保存时带已有库存数据，避免丢失）
+  onSave() {
+    if (this.data.readOnly) {
+      wx.showModal({ title: TERMS.inputPage.archiveReadonly, content: TERMS.inputPage.confirmLocked, showCancel: false });
+      return;
+    }
+    const doSave = () => this.save(!!this.data.isArchive); // 归档补录 → archive_override
+    // 归档宽限期的二次确认（原逻辑，原样保留）
+    const proceed = () => {
+      if (this.data.isArchive && this.data.inGrace) {
+        wx.showModal({
+          title: TERMS.inputPage.saveArchiveOverride,
+          content: TERMS.inputPage.confirmGraceSave,
+          confirmColor: '#1e3a5f',
+          success: (r) => { if (r.confirm) doSave(); },
+        });
+      } else {
+        doSave();
+      }
+    };
+    // 🔴 R600（技术债清偿）：保存前**必须让读不成的金额出声**。
+    //   原先只有页顶横幅（R426/R419 设计），而保存按钮在页底 ⇒ 老板滑到按钮时横幅早出视野，
+    //   读不成的金额被按 0 存进去、零报错 = 本仓头号危害。
+    //   为什么这里**用确认弹窗而不是硬拦**：M1 的费用行允许负数（冲红/退款），`classifyAmount` 判 NEGATIVE 为不可读，
+    //   硬拦会把合法录入堵死 ⇒ 给「去修改 / 仍保存」两条路，默认动作是去核对，但不夺走他的保存权。
+    const badN = this.checkAmounts();
+    if (badN > 0) {
+      wx.showModal({
+        title: TERMS.ui.amountBadTitle,
+        content: TERMS.ui.amountBadBodyCount(badN),
+        confirmText: TERMS.ui.amountBadGoFix,
+        cancelText: TERMS.ui.amountBadSaveAnyway,
+        success: (r) => { if (r.cancel) proceed(); },   // 「仍保存」⇒ 照常走后续（缺项提示 / 归档确认）
+        fail: () => proceed(),                          // 弹窗失败绝不阻断保存（与缺项提示同一条纪律）
+      });
+      return;
+    }
+    // round217：先过一次「缺项软提示」（每个账套每月只问一次；问过就不再打扰）
+    const miss = this.missingRecurringNames();
+    if (miss.length && !this.missingWarned()) {
+      wx.showModal({
+        title: TERMS.ledger.missingWarnTitle,
+        content: TERMS.ledger.missingWarnBody(miss.join(TERMS.ledger.presetHintSep || '、')),
+        confirmText: TERMS.ledger.missingWarnGo,
+        cancelText: TERMS.ledger.missingWarnSave,
+        success: (r) => {
+          this.markMissingWarned();   // 两个分支都记：本月不再重复打扰
+          if (r.confirm) { this.revealMissingExpense(); return; }   // 「去填」⇒ 不保存
+          proceed();                                                // 「仍保存」⇒ 照常走归档确认
+        },
+        fail: () => { this.markMissingWarned(); proceed(); },       // 弹窗失败也绝不阻断保存
+      });
+      return;
+    }
+    proceed();
+  },
+
+  // ===== R308：沿用上月（**只带费用侧**）=====
+  // 🔴 为什么只带费用：餐饮的**费用结构月度稳定**（房租/人工/水电/固定支出），而**收入月月变**。
+  //   预填收入 = 诱导老板"忘了改" ⇒ 静默错账（本仓头号危害）⇒ 收入侧**一律留空**，让他照实填。
+  // 🔴 不能静默覆盖：本月费用侧只要已有任何非空金额，必须先弹确认（不许悄悄抹掉已填的数）。
+  async onCarryExpense() {
+    if (this.data.readOnly) {
+      wx.showModal({ title: TERMS.inputPage.archiveReadonly, content: TERMS.inputPage.confirmLocked, showCancel: false });
+      return;
+    }
+    if (this._carryBusy) return;
+    const prev = this.prevMonthOf(this.data.month);
+    if (!prev) return;
+    const hasAmount = (r) => String((r && r.amountYuan) || '').trim() !== '';
+    const dirty = (this.data.expenseGroups || []).some((g) => (g.rows || []).some(hasAmount));
+    const run = async () => {
+      this._carryBusy = true;
+      try {
+        const d = await api.call('getLedger', { month: prev });
+        // 只带**有金额**的项：上月全空的细项不铺出来（否则本月凭空多出一堆空行）
+        const items = (d.expense_items || []).filter((it) => (Number(it && it.amount_fen) || 0) !== 0
+          || (it.sub_items || []).some((si) => (Number(si && si.amount_fen) || 0) !== 0));
+        if (!items.length) { wx.showToast({ title: TERMS.ledger.carryEmpty, icon: 'none' }); return; }
+        // 复用既有装配口（与「读回本月账」同一函数）⇒ 行模型/decorate/notes 全部一致，不另造一套
+        const expenseGroups = this.rebuildFromItems(TERMS.ledger.expense, items, TERMS.ledger.expenseScope, TERMS.ledger.expenseItemNotes);
+        this.setData({ expenseGroups });
+        wx.showToast({ title: TERMS.ledger.carryDone, icon: 'none' });
+      } catch (e) {
+        api.toastError(e);
+      } finally {
+        this._carryBusy = false;
+      }
+    };
+    if (dirty) {
+      wx.showModal({
+        title: TERMS.ledger.carryBtn,
+        content: TERMS.ledger.carryOverwrite,
+        success: (r) => { if (r.confirm) run(); },
+      });
+      return;
+    }
+    await run();
+  },
+
+  // 组装提交：每大类 → sub_items（云函数汇总大类金额，前端不汇总）；旧调用兼容（无细项时也走 sub_items 单行）
+  buildItems(groups) {
+    return groups.map((g) => {
+      // R85：外卖组 —— 分项模式按平台小计提交（3 明细只参与当场小计，不落库）
+      if (g.category === 'takeaway' && this.data.takeoutMode === 'detail') {
+        const rows = this.data.takeoutDetailRows || [];
+        return {
+          category: g.category,
+          name: g.label,
+          // 🔴 R162：过滤判据由「只看了金额」放宽为「有金额 **或** 有有效订单数」——
+          //   只填了订单数、金额还没填的行若被滤掉 ⇒ 用户刚填的第 4 个必填**保存即丢**。
+          //   amount_fen 补 0（api.yuanToFen('') === 0，合法非负整数）。
+          sub_items: rows
+            .filter((r) => this._hasVal(r.subtotal) || this._hasVal(r.qty))
+            .map((r) => {
+              const it = { sub_item: (r.platform || '').trim(), amount_fen: api.yuanToFen(r.subtotal) };
+              const q = Number(r.qty);
+              if (Number.isInteger(q) && q >= 0) it.qty = q;   // 只提交合法非负整数；其余不提交（云端严校验会拒）
+              return it;
+            }),
+        };
+      }
+      return {
+        category: g.category,
+        name: g.label,
+        // ⚠️ 堂食预设渠道是「全集常驻」，多数行是空的 ⇒ 只提交**填了金额**的行，
+        //    否则每保存一次就往后端塞一堆空 sub_item（G10i 守）。
+        //    注意：快速模式单行（无名、有金额）必须保留 ⇒ 判据看金额，不看名字。
+        // 🔴 R162：外卖快速模式的行**可能只有订单数、还没填金额** ⇒ 判据同样放宽为「金额 或 订单数」。
+        //   堂食/费用类行没有 qty ⇒ `_hasVal(r.qty)` 恒 false，行为与改动前**逐行等价**（无回归）。
+        sub_items: g.rows
+          .filter((r) => this._hasVal(r.amountYuan) || this._hasVal(r.qty))
+          .map((r) => {
+            const it = { sub_item: (r.subItem || '').trim(), amount_fen: api.yuanToFen(r.amountYuan) };
+            const q = Number(r.qty);
+            if (Number.isInteger(q) && q >= 0) it.qty = q;
+            return it;
+          }),
+      };
+    });
+  },
+
+  async save(archiveOverride) {
+    try {
+      // 🔴 R470：**无店铺态不要发写请求**。服务端只会回 INVALID_PARAM，
+      //   而前端把参数错误映射成「填写有误」⇒ 老板以为是自己填错了，其实是一家店都没有。
+      const _app = getApp && getApp();
+      if (!(_app && _app.globalData && _app.globalData.shop_id)) {
+        wx.showModal({ title: TERMS.exp.noShop, content: TERMS.exp.noShopHint, showCancel: false });
+        return;
+      }
+      ui.setTitle(TERMS.buttons.save);
+      // A13/A19：客流三字段先校验（非法 ⇒ 中止，不静默清洗；见 buildTrafficPayload 头注）
+      const tr = this.buildTrafficPayload();
+      if (tr.error) { wx.showToast({ title: tr.error, icon: 'none' }); return; }
+      await api.call('saveLedger', {
+        month: this.data.month,
+        income_items: this.buildItems(this.data.incomeGroups),
+        expense_items: this.buildItems(this.data.expenseGroups),
+        direct_consume_fen: api.yuanToFen(this.data.directConsumeYuan),
+        // A13/A19：空 ⇒ null（主动清空），0 ⇒ 0（真的是零客流）。三态原样送后端，不在前端做任何兜底。
+        traffic_count: tr.traffic_count,
+        old_customer_count: tr.old_customer_count,
+        member_sales_fen: tr.member_sales_fen,
+        // round107：`lump_sum_fen` **入参已退休** —— 一次性投入改为服务端从台账（shop_amortize 里
+        //   mode='lump' 的行）求和，前端不再传标量。少一个可变真相源 ⇒ 也就少一处静默清零的机会。
+        // round103：库存不在这里提交（见上）；saveLedger 缺省即可保留库内现值。
+        archive_override: archiveOverride || undefined,
+        client_request_id: 'li_' + Date.now(),
+      });
+      this.setData({ saved: true });
+      wx.removeStorageSync(DRAFT_KEY + this.data.month); // 已保存 → 清草稿
+      wx.showToast({ title: TERMS.ui.savedDone, icon: 'success' });
+      setTimeout(() => wx.navigateBack(), 500);
+    } catch (e) { api.toastError(e); }
+  },
+
+  onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()); },
+});

@@ -10,7 +10,7 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 
 const common = require('./common');                 // 扁平派生副本（sync_common 生成）
-const { resolveAuth } = common;
+const { resolveAuth, assertShopOwner } = common;
 const { ERROR_CODES, ok, fail } = common;
 const { makeAdapter } = common.dataAdapter;
 const { checkQuota } = require('./service');
@@ -30,6 +30,18 @@ exports.main = async (event) => {
   // ===== 2. 校验 =====
   const v = validateInput(event);
   if (v.error) return fail(v.error, v.msg);
+
+  // ===== 2.2. 店铺归属校验（🔴 R298 · B4 越权面修补）=====
+  //  契约 `specs/dev-specs/core/10_云函数清单与接口契约.md` §9 的「鉴权」列写的是 **`user+shop`**，
+  //  而本函数此前**只做了 user**（resolveAuth），**没有 shop 归属校验** ⇒ 契约 ≡ 实然不一致。
+  //  真实后果（行为级实证，非静态推断）：任意已登录用户把 `shop_id` 换成别人的，即可拿到
+  //  他人店铺的**成本卡计数**（`used`）。取证件：
+  //    `review/evidence/r298_b4_tenant/probe_checkquota_cross_tenant.js`
+  //    —— 修前：调用者 B + shop_A ⇒ `{code:'SUCCESS', used:3}`（= A 店的卡数）。
+  //  ⚠️ `shop_cost_card` 没有 `user_id` 字段，成本卡维度**只能按 shop_id 计数**
+  //     （见本文件头注与 service.js），所以归属校验在这里不是可选项，是**唯一**的隔离手段。
+  const owner = await assertShopOwner(db, shopId, userId);
+  if (owner.error) return fail(owner.error, owner.msg);
 
   // ===== 2.5. 读免费配额配置（唯一真相源 feature_permissions.plan_free.limits）=====
   const fpRes = await db.collection('feature_permissions').where({ plan_id: 'plan_free' }).limit(1).get();

@@ -12,6 +12,7 @@ const api = require('../../utils/api.js');
 const ui = require('../../utils/ui.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 const shopGuard = require('../../utils/shopGuard.js');
+const dh = require('../../utils/dataHealth.js');   // 🔴 R299：出参 `truncated` 的可见降级（单源）
 
 Page({
   data: {
@@ -24,12 +25,16 @@ Page({
       materialSub: TERMS.hub.materialSub,
       takeawayTitle: TERMS.hub.takeawayTitle,
       takeawaySub: TERMS.hub.takeawaySub,
+      grouponTitle: TERMS.hub.grouponTitle,
+      grouponSub: TERMS.hub.grouponSub,
       reconTitle: TERMS.hub.reconTitle,
       reconSub: TERMS.hub.reconSub,
       reviewTitle: TERMS.hub.reviewTitle,
       reviewSub: TERMS.hub.reviewSub,
       countPrefix: TERMS.card.countPrefix,
       countSuffix: TERMS.card.countSuffix,
+      // R299：数据截断的可见降级文案（单源 TERMS.ui.dataTruncated）
+      dataTruncated: TERMS.ui.dataTruncated,
       // R263：三步走 / 分层 / 空状态（wxml 用到就必须登记 —— 漏登记 ⇒ 页面静默空白）
       flowTitle: TERMS.hub.flowTitle,
       flowSteps: TERMS.hub.flowSteps,
@@ -38,10 +43,12 @@ Page({
       emptyTitle: TERMS.hub.emptyTitle,
       emptyDesc: TERMS.hub.emptyDesc,
       emptyBtn: TERMS.hub.emptyBtn,
+      emptyTplHint: TERMS.hub.emptyTplHint,
       // R192：图标块单字（wxml 用到就必须登记 —— 漏登记 ⇒ 页面静默空白，本仓 R189 P2-1 同族）
       icoCard: TERMS.hub.icoCard,
       icoMaterial: TERMS.hub.icoMaterial,
       icoTakeaway: TERMS.hub.icoTakeaway,
+      icoGroupon: TERMS.hub.icoGroupon,
       icoRecon: TERMS.hub.icoRecon,
       icoReview: TERMS.hub.icoReview,
       // 🔴 P0#6：快捷操作 + 付费小字（wxml 用到就必须登记 —— 漏登记 ⇒ 静默空白）
@@ -55,6 +62,12 @@ Page({
     // -1 = 没取到（就不显示这行）。🔴 **绝不能默认 0**：读不到时显示「共 0 张」
     //   会让老板以为卡丢了 —— 与本仓「不替用户编数」同一条纪律（M2 参考值只提示不预填）。
     cardCount: -1,
+    // 🔴 R299（豆包评审采纳 · 修正我自己的初判）：本页把 `card.list.length` 当**精确张数**显示
+    //   （`hub.wxml:47` 「共 N 张」）。若 `getCostCard` 命中 `LIST_TOTAL_CAP`（20000 行）被截断，
+    //   这个数就是**偏小的精确数** —— 属豆包给的判断标准里的「**精确计数**」一类
+    //   ⇒ 必须可见降级（我原先把它列入 EXEMPT 是**判错了**：它不只是"取 length 做入口判断"，
+    //   它把那个 length **渲染给用户看了**）。见 utils/dataHealth.js 头注。
+    truncated: false,
     // 🔴 R281 O3：三步完成态（初值全 false = 未完成；fail-closed：读失败也保持 false）。
     //   nextStep = 第一个未完成的步序号；全部完成 = -1（此时显示「三步都做完了」而不是按钮）。
     stepFlags: [false, false, false],
@@ -92,23 +105,30 @@ Page({
       cardN > 0,
       !!(sales && Array.isArray(sales.list) && sales.list.length > 0),
     ];
-    this.setData({ cardCount: cardN, stepFlags: flags, nextStep: flags.indexOf(false) });
+    // 🔴 R299：三次读取任一被服务端标记 `truncated` ⇒ 上方「共 N 张」是偏小的精确数 ⇒ 可见降级。
+    this.setData({
+      cardCount: cardN,
+      stepFlags: flags,
+      nextStep: flags.indexOf(false),
+      truncated: dh.isTruncated(card) || dh.isTruncated(sales),
+    });
   },
 
   // 🔴 R281 O3：从引导块直接跳到「当前该做的那一步」，不用老板自己在 5 张卡里猜。
   goStep(e) {
     const i = Number((e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.step) || 0);
-    if (i === 0) return wx.navigateTo({ url: '/pages/material/index' });
-    if (i === 1) return wx.navigateTo({ url: '/pages/card/index' });
+    if (i === 0) return wx.navigateTo({ url: '/subpkg/biz/material/index' });
+    if (i === 1) return wx.navigateTo({ url: '/subpkg/biz/card/index' });
     // 第③步落在「外卖」页的第二个 tab（销量导入入口，R259 起该 tab 主载形态 A/B/C 销量）
-    return wx.navigateTo({ url: '/pages/takeaway/index?tab=import' });
+    return wx.navigateTo({ url: '/subpkg/biz/takeaway/index?tab=import' });
   },
 
   // ===== 四个分区（跳转目标均已在 app.json::pages 注册）=====
-  goCard() { wx.navigateTo({ url: '/pages/card/index' }); },
-  goMaterial() { wx.navigateTo({ url: '/pages/material/index' }); },
-  goTakeaway() { wx.navigateTo({ url: '/pages/takeaway/index' }); },
-  goRecon() { wx.navigateTo({ url: '/pages/recon/index' }); },
+  goCard() { wx.navigateTo({ url: '/subpkg/biz/card/index' }); },
+  goMaterial() { wx.navigateTo({ url: '/subpkg/biz/material/index' }); },
+  goTakeaway() { wx.navigateTo({ url: '/subpkg/biz/takeaway/index' }); },
+  goGroupon() { wx.navigateTo({ url: '/subpkg/biz/groupon/index' }); },
+  goRecon() { wx.navigateTo({ url: '/subpkg/tools/recon/index' }); },
   goReview() { wx.navigateTo({ url: '/pages/m3/dishreview/index' }); },
 
   // R193：全局开了下拉刷新但本页未实现 ⇒ 下拉转圈、松手没反应（假刷新）。

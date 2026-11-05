@@ -17,7 +17,7 @@ const { ERROR_CODES, ok, fail } = common;
 const { makeAdapter } = common.dataAdapter;
 const { nowUtc } = common.utilTime;
 const { buildComboLines, judgeComboRef } = common.comboDerive;   // M3.16 套餐（派生层单源）
-const { rebuildSnapshotLines, calcCostCard, cardParamFromDoc } = require('./service');
+const { rebuildSnapshotLines, calcCostCard, cardParamFromDoc, syncContentEqual } = require('./service');
 const { validateInput } = require('./validate');
 
 // 🔒 R213 写限流（批次 0 §2.2.5 · openid 维度 60 次/分钟）
@@ -168,7 +168,10 @@ exports.main = async (event) => {
   if (prior) return ok(prior);
 
   // ===== 3. 找该 card_code 的最新版本卡 =====
-  const cardsRes = await da.list('shop_cost_card', { shop_id: shopId, card_code: cardCode });
+  // 🔴 R297-⑥（审计 M3-B12）：版本模型取全（`list()` 单页上限 1000 ⇒ 版本多的卡会取漏，
+  //   连带把 `nextVersion` 算小、覆盖出重复版本号）。与 getCostCard/index.js:41-44 的 R157 判据同源。
+  //   ⚠️ 下一行的明细行查询保持 `list`（唯一键过滤，与 getCostCard/index.js:19 口径一致）。
+  const cardsRes = await da.listAll('shop_cost_card', { shop_id: shopId, card_code: cardCode });
   const versions = (cardsRes && cardsRes.data) || [];
   if (versions.length === 0) return fail(ERROR_CODES.RESOURCE_NOT_FOUND, `成本卡 ${cardCode} 不存在或已软删`);
   let latestCard = versions[0];
@@ -183,9 +186,12 @@ exports.main = async (event) => {
   const isCombo = latestCard.card_type === 3;
   let newLines;
   if (isCombo) {
-    const unlocked = await common.hasFeature(db, userId, 'm3_combo');
-    if (!unlocked) return fail(ERROR_CODES.FEATURE_LOCKED);
-
+    // 🔴 A10（2026-11-05 · 规范 v1.1 §1）：**删除独立的 m3_combo 付费墙**。
+    //   理由：套餐本身就是一张 `shop_cost_card`（card_type=3），保存时已经统一走
+    //   `saveCostCard` 第 8.5 步的成本卡配额（按 card_code 去重计数，免费 5 张 / 付费按套餐表）。
+    //   再叠一道「套餐专属」付费 = 同一张卡收两次钱，且用户必然问
+    //   「我买了成本卡，为什么建不了套餐」—— 两套 SKU、三套判定，是最难向老板解释的结构。
+    //   ⚠️ 不在这里补配额判断：配额只允许有**一个**判定点（saveCostCard 8.5），此处再判一遍就是第二份真相源。
     const comboSubCards = [];
     for (const ln of existingLines) {
       if (ln.line_type !== 2 || !ln.sub_card_ref) continue;
@@ -277,6 +283,49 @@ exports.main = async (event) => {
     return fail(ERROR_CODES.SYSTEM_ERROR, (e && e.message) || '成本计算失败');
   }
 
+  // ===== 6.5 内容级幂等（#21，2026-10-31）=====
+  // 为什么放在这里：`result` 已算完（成本是「内容是否相同」的权威判据），但**还没 INSERT**。
+  //   与 §2 的幂等键是两道不同的闸：
+  //     ① 幂等键（client_request_id）挡「同一次请求被重投」；
+  //     ② 本闸挡「不同请求、同一内容」——旧版客户端 / 越权直调 / 脚本点两次，键都不一样，
+  //        但内容完全一样 ⇒ 原先会连建两个版本（版本号连跳、数据重复）。
+  //   ⇒ 内容相同就**不落库**，直接把现有版本回给前端（带 `unchanged` 标记，让老板看见"没白点"）。
+  if (syncContentEqual(latestCard, existingLines, newLines, result)) {
+    const unchangedOut = {
+      shop_id: shopId,
+      card_code: cardCode,
+      new_version: latestCard.version || 0,
+      old_version: latestCard.version || 0,
+      unchanged: true,                      // 🔴 前端据此提示「与现有版本一致，未新建版本」
+      total_cost_fen: result.unit_cost_fen,
+      material_total_fen: result.material_total_fen,
+      gross_profit_fen: result.gross_profit_fen,
+      gross_margin_pct: result.gross_margin_pct,
+      reverse_price_fen: result.reverse_price_fen,
+      lines: existingLines.map((l) => ({
+        material_id: l.material_id,
+        net_unit_cost: l.net_unit_cost,
+        line_net_cost_fen: l.line_net_cost != null ? l.line_net_cost : 0,
+      })),
+      virtual_material_id: null,             // 没有新版本 ⇒ 虚拟原料也无需回写
+      client_request_id: clientRequestId || '',
+    };
+    // 幂等登记照写（同一 client_request_id 重试时直接回这条，不重复算）
+    if (clientRequestId) {
+      try {
+        await common.audit.writeAudit(db, {
+          action: 'SYNC_COST_CARD',
+          operator_type: 'user',
+          operator_id: userId,
+          shop_id: shopId,
+          after_data: unchangedOut,
+          idempotency_key: common.idempotency.shopKey(shopId, clientRequestId),
+        });
+      } catch (e) { /* 审计失败不阻断主流程 */ }
+    }
+    return ok(unchangedOut);
+  }
+
   // ===== 7. 计算新版本号（该 card_code 最大版本 + 1）=====
   let nextVersion = 1;
   for (const c of versions) if ((c.version || 0) >= nextVersion) nextVersion = (c.version || 0) + 1;
@@ -296,6 +345,13 @@ exports.main = async (event) => {
     loss_rate: p.lossPct,
     aux_cost: p.auxFen,
     price_list: p.priceFen,
+    // 🔴 R297-⑥（审计 M3-B4）：活动特价与多规格**必须随版本透传**（与上面 card_type 同一类）。
+    //   原先 cardDoc 不带这两项 ⇒ 点一次「同步至原料最新价格」，卡上的活动特价与规格定义就**永久消失**
+    //   （版本模型只 INSERT、最新版本即全部真相）。而 saveCostCard 是落的
+    //   （saveCostCard/index.js:343 `price_promo` / :355 `specs_json`）⇒ 同族两条写路径口径不一致。
+    //   ⚠️ 丢的是"定义"不是"成本" ⇒ 成本曲线/毛利率看着照旧正常，属**纯静默丢失**。
+    price_promo: latestCard.price_promo || 0,
+    specs_json: latestCard.specs_json || '',
     total_cost: result.unit_cost_fen,   // 整数分
     material_total_fen: result.material_total_fen,
     gross_profit_fen: result.gross_profit_fen,
@@ -322,6 +378,10 @@ exports.main = async (event) => {
         material_name: ln.material_name,
         quantity: ln.quantity,
         net_unit_cost: ln.net_unit_cost,   // 快照：原料最新净料单位成本
+        // 🔴 H2（2026-10-27 审计）：与 saveCostCard/index.js 的明细 insert 字段集保持一致。
+        //   漏这两列 ⇒ sync 重建的 line_kind 落不了库，规格缩放照旧失效。
+        line_kind: ln.line_kind || 'main',
+        group_name: ln.group_name || '',
         // 任务1（S0）：快照补 5 字段
         brand_spec: ln.brand_spec || '',
         purchase_unit: ln.purchase_unit || '',

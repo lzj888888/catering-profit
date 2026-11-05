@@ -39,6 +39,7 @@ Page({
       guideBody: TERMS.exp.guideBody,
       guideOk: TERMS.exp.guideOk,
       disclaimerLabel: TERMS.exp.disclaimerLabel,
+      aiConsentLabel: TERMS.exp.aiConsentLabel,
       disclaimer: TERMS.auditSafe.disclaimer,
       // G5：头像昵称（AD-15 新能力，本地保存展示）
       avatarLabel: TERMS.exp.avatarLabel,
@@ -91,7 +92,7 @@ Page({
 
   // R193：我的订阅 / 订单 —— 此前 pay/orders 只能从「到期提醒条 / 月列表 / 成本卡列表」进，
   //   已付费用户在「我的」里根本找不到自己的有效期与续费入口（提醒条只在快到期才出现）。
-  goOrders() { wx.navigateTo({ url: '/pages/pay/orders' }); },
+  goOrders() { wx.navigateTo({ url: '/subpkg/tools/pay/orders' }); },
 
   // R193：使用指引 —— 新用户打开就是四张卡，M1 要填 40+ 字段，没有"第一次怎么用"。
   // 🔴 showModal confirmText ≤4 字符（文案已按此约束给「知道了」）。
@@ -106,6 +107,11 @@ Page({
   },
 
   // C1：免责声明弹窗
+  // R434（队列 #29）：AI 辅助分析授权页
+  onAiConsent() {
+    wx.navigateTo({ url: '/subpkg/biz/ai/consent' });
+  },
+
   onDisclaimer() {
     wx.showModal({
       title: TERMS.exp.disclaimerLabel,
@@ -174,7 +180,7 @@ Page({
           app.globalData.no_shop = false;
           app.globalData.noShopPrompted = false;
         }
-        wx.showToast({ title: TERMS.exp.logoutDone, icon: 'none', duration: 3000 });
+        api.say(TERMS.exp.logoutDone);
         // 🔴 R199：`pages/index/index` 已改为**底部 tabBar 页** ⇒ `wx.reLaunch` 到 tabBar 页会失败
         //   （微信限制：tabBar 页只能 `switchTab`）。登出后回首页同样用 `wx.switchTab`。
         setTimeout(() => wx.switchTab({ url: '/pages/index/index' }), 1200);

@@ -1,0 +1,30 @@
+{
+  "before": {
+    "stickKpi": false,
+    "lbl": "",
+    "val": "",
+    "showPromo": false,
+    "promoRes": false,
+    "hasResult": false
+  },
+  "withExpect": {
+    "profit": "",
+    "lvl": "",
+    "margin": null,
+    "fixed": null
+  },
+  "order": {
+    "result": null,
+    "trial": null,
+    "entry": null
+  },
+  "measure": {
+    ".stick-bar": [],
+    ".stick-l": [],
+    ".stick-m": [],
+    ".stick-r": [],
+    ".trial-card": [],
+    ".entry-row": [],
+    ".card2": []
+  }
+}

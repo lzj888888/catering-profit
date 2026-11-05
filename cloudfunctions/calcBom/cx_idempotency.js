@@ -9,11 +9,18 @@
 //     用户侧写操作（saveLedger / saveAsset / saveMaterial / saveCostCard / syncCostCard）走这一形态。
 //     key 格式由本模块 `shopKey()` **统一提供**，调用点禁止自己拼字符串。
 //
-//   历史（已废除，勿复活）：
-//     · 曾导出 `(db, shopId, clientRequestId)` 三参形态，但**零生产调用** —— 真正生效的 3 处
+//   历史（R72/R73 改造前后）：
+//     · 曾导出 `(db, shopId, clientRequestId)` 三参形态。**R72 当时**它零生产调用 —— 真正生效的 3 处
 //       （adminGrantEntitlement / adminManualOrder / adminRefundMark）各自在 index.js 里**逐字内联**了
 //       同一段查询；saveCostCard 又**另起一套**重放形态内联实现（自带一个 `getIdempotent`）。
-//       ⇒ 同一语义 5 份实现，而最该被复用的那份（本模块）是死的（另有 42 份 `cx_` 派生副本同样是死的）。
+//       ⇒ 当时确实"同一语义 5 份实现，而最该被复用的本模块是死的"。
+//       ✅ **R298W 校正（2026-10-16）**：该描述**已过期**，单源化已达标 ——
+//         · 本模块现被 **15 个云函数** require 使用：saveLedger / saveAsset / saveMaterial / saveCostCard /
+//           syncCostCard / savePlan / saveDishMapping / clearSalesBills / importSalesBill / deleteAccount /
+//           manageShop / adminExport / adminGrantEntitlement / adminManualOrder / adminRefundMark；
+//         · saveCostCard 的内联 `getIdempotent` **已删**（见该文件 R73 注），三处 admin 也已改用本模块；
+//         · 扁平派生副本 `cx_idempotency.js` 共 **51 份**（旧注写 42 份，系 R72 改造前的数）。
+//       ⚠️ 改本文件**必须**跑 `node tools/sync_common.js` 重派生那 51 份（门禁逐字比对，漂移即红）。
 //     · 曾导出 `markIdempotent(db, key)`：**同样零调用**，且实现只是 `return { idempotency_key: key }`
 //       （纯数据构造器，不落库）—— 真正落库的是 `common/audit.writeAudit`，它本来就认这个字段。
 //       ⇒ R73 删除：留着一个"看起来是官方登记入口"的死函数，比没有更坏（会诱导新代码走死路）。

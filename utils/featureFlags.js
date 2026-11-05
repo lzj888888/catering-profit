@@ -28,4 +28,46 @@
 //     `BILL_IMPORT_ENABLED`（两处取值必须一致，守卫做同源比对）。
 const BILL_IMPORT_ENABLED = false;
 
-module.exports = { BILL_IMPORT_ENABLED };
+// ===== 沙盘「做活动会怎样」=====
+// 李老师 2026-10-28 决定暂停展示（原话：「这个功能牵扯面比较大，而且不好统计真实数据」）。
+//   「牵扯面大」的具体含义：它要老板填两个反常识的数（折扣后实收率、活动成本率），
+//   而这两个数只能从收银日报/活动台账手工倒推；填错一个，整张试验台的结论（要多卖多少才不亏）
+//   全错且不报错。与其给一个「看着专业、其实靠猜」的模块，不如先藏起来。
+// 🔴 关闭只影响**沙盘页那张试验台卡**（`trial-card`）：`utils/promoImpact.js`、
+//   `promoOf()` / `onPromoRealInput` / `onPromoCostInput`、`terms.m2.promo*` 全部原样保留，
+//   云函数不涉及（纯前端派生）。恢复 = 这里改回 true。
+const PROMO_ENABLED = false;
+
+// ===== 付费交易闸门（提审期）=====
+// 李老师 2026-11-02 定：**主体 = 个人**。
+//
+// 为什么必须整体关掉交易链路（不是"改文案"）：
+//   ① 个人主体**开不了普通微信支付商户号** ⇒ 现有 `payCreateOrder` 那条真金链路根本走不通；
+//      个人收费的唯一合规通道是「个人虚拟支付」（2026-08 开放，需认证+备案+类目）。
+//   ② 提审期只要出现「标价 / 去开通 / 加客服转账」三者之一，就会踩两条审核红线：
+//      「诱导线下支付」与「虚拟商品未接入虚拟支付」—— 这是**整包驳回**，不是改一行能补的。
+//   ③ 但也不能只删文案：`onConfirm` 仍会建单、`onRenew` 仍会下单，deep link / 改版都能绕过。
+//   ⇒ 故在**交易入口**上加单一闸门：弹窗、确认下单、续费三处各判一次（纵深），
+//     关闭态一律只回「该功能暂未开放」，**不报价、不引导客服、不建单**。
+//
+// 关闭 ≠ 删代码：`PAYWALL_TYPES`、`TERMS.paywall`、云函数 `payCreateOrder`/`payRenew`/`payCallback`
+//   与付费能力判定**全部原样保留**，只是前端不把用户导进交易。
+// 恢复 = 个人虚拟支付接好（或主体升级为企业并开通商户号）后，把这里改回 true；
+//   前端其余一行不改，守卫 `tools/check_paywall_coverage.js` L9 会跟着翻面。
+const PAYWALL_ENABLED = false;
+
+// ===== 免费期（R603 修正 R602 的方向错误）=====
+// 🔴 **关售卖 ≠ 关功能**。R602 把闸门挂在 `openPaywall` 入口，而它的 11 个调用点
+//    **全部是「付费域判定失败后的出口」**（外卖 onCalc、团购 onCalc、复盘 load、
+//    导出 onExport、套餐保存 catch、多店/成本卡配额）⇒ 关掉售卖的结果是：
+//    外卖算不了、套餐存不了、复盘整页 locked、导出点不动 —— 把「暂不收费」错做成了「不可用」。
+//
+// 🔴 正确语义：售卖关闭时，付费域**免费放行**（功能照常可用），只是不出现任何购买入口。
+//    ⇒ 本常量由 `PAYWALL_ENABLED` **派生**，不另设独立开关：两个独立布尔量会造出
+//      「关售卖但仍拦功能」或「开着售卖却免费」这类半开半关态，且都不报错（本仓 §26 老病）。
+//
+// 🔴 与后端同源：`cloudfunctions/common/payFlags.js::FREE_ACCESS` 必须与本值等值，
+//    由 `tools/check_paywall_coverage.js` L9-⑧ 双向比对（改一处忘另一处 ⇒ 前端放行但后端 FEATURE_LOCKED）。
+const FREE_ACCESS_MODE = !PAYWALL_ENABLED;
+
+module.exports = { BILL_IMPORT_ENABLED, PROMO_ENABLED, PAYWALL_ENABLED, FREE_ACCESS_MODE };

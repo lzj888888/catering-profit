@@ -60,8 +60,30 @@ exports.main = async (event) => {
   // 用月主键查（id 或复合字段），回落 where 查
   const exRes = await da.list('shop_monthly_account', { shop_id: shopId, month: v.month });
   existing = (exRes && exRes.data && exRes.data[0]) || null;
+  // 🔴 R376（M1 清空某月）：被清空的月份是**软删行**，`da.list` 一律过滤 is_deleted=false ⇒ 查不到。
+  //   但唯一索引 `(shop_id, month)` 还在 ⇒ 若直接 INSERT 会撞唯一键，当月再也存不进去。
+  //   ⇒ 保存前先"复活"同一行（保住 account_id，也让清空可逆）。
+  if (!existing) {
+    // 🔴 R469：按**唯一键**查，不再要求 `is_deleted === true`。
+    //   唯一索引就是 (shop_id, month)（initDb/collections.js:63）—— 一行被"藏起来"不一定恰好是 true
+    //   （历史行缺该字段 / 写入中间态）。原来查不到就会去 INSERT ⇒ 撞唯一键 ⇒ 函数抛异常
+    //   ⇒ `api.js` 把任何 `callFunction:fail` 一律显示成「网络不可用」，真实原因被吞。
+    const rawRes = await db.collection('shop_monthly_account')
+      .where({ shop_id: shopId, month: v.month }).limit(1).get();
+    const soft = (rawRes && rawRes.data && rawRes.data[0]) || null;
+    if (soft) {
+      await db.collection('shop_monthly_account').doc(soft._id).update({
+        data: { is_deleted: false, deleted_at: 0, updated_at: now },
+      });
+      existing = Object.assign({}, soft, { is_deleted: false });
+    }
+  }
   if (existing && existing.is_archive) {
-    const archivedAt = existing.archived_at || now;
+    // R298·C3 fail-closed（与前端 utils/ui.js::withinGrace 同口径）：缺 archived_at ⇒ 视作 0（纪元）⇒ 必在宽限外。
+    //   原先 `|| now` ⇒ (now-now)=0 < 宽限 ⇒ **fail-open 放行**，而前端对同一条记录却显示「已锁」⇒ 两端判决相反。
+    //   本仓 archived_at 的约定默认值处处为 0：archiveMonth:55/63（取消归档）、getLedger:179（出参）、
+    //   本函数 insert 分支（新建时 `archived_at: 0`）。⇒ `|| 0` 与全仓口径一致；未知归档时间不敢承诺「在 7 天内」⇒ 锁。
+    const archivedAt = existing.archived_at || 0;
     const withinGrace = (now - archivedAt) < GRACE_DAYS_MS;
     if (!(v.archiveOverride && withinGrace)) {
       return fail(ERROR_CODES.ARCHIVED_LOCKED, '归档月份为只读，仅归档后 7 天内可补录（需二次确认）');
@@ -131,6 +153,21 @@ exports.main = async (event) => {
   const expenseItemsSnake = toSnake(v.expenseItems);
 
   // ===== 7. 落库（upsert shop_monthly_account，归档标记原样保留）=====
+  // A13/A19（2026-11-05）：经营客流三字段三态合并。
+  //   keep ⇒ 沿用库内现值（缺字段的老数据 = null，保持 null，**不补 0**）
+  //   clear ⇒ 写 null
+  //   set   ⇒ 写数值
+  const mergeTri = (st, cur) => (st.state === 'set' ? st.value : (st.state === 'clear' ? null : (cur == null ? null : cur)));
+  const trIn = v.traffic;
+  const trafficThisMonth = mergeTri(trIn.thisMonth, existing && existing.traffic_count);
+  const trafficOldCustomer = mergeTri(trIn.oldCustomer, existing && existing.old_customer_count);
+  const memberSalesFen = mergeTri(trIn.memberSales, existing && existing.member_sales_fen);
+  // 一致性：老客是客流的**子集** ⇒ 老客 > 客流 必是打字错误（不是业务异常）。
+  //   只在两个值都有时才判；缺一个就无从比较，直接放过（缺的那项会以【待补】呈现）。
+  if (trafficThisMonth != null && trafficOldCustomer != null && trafficOldCustomer > trafficThisMonth) {
+    return fail(ERROR_CODES.INVALID_PARAM, '其中老客数不能超过本月客流');
+  }
+
   const doc = {
     shop_id: shopId, month: v.month,
     income_items: incomeItemsSnake, expense_items: expenseItemsSnake,
@@ -147,19 +184,48 @@ exports.main = async (event) => {
     total_factor_real_profit_fen: result.totalFactorRealProfitFen,
     profit_diff_fen: result.profitDiffFen,
     switch_used: result.switchUsed,
+    // R477：口径版本 + 参考口径取数来源 —— 落库是因为**导出走的是落库快照，不重算**
+    //   （cloudfunctions/exportData/index.js 直读 row.operation_ref_profit_fen）。
+    //   （存了版本，旧账才认得出自己是按哪套口径算的，页面与导出口径才不会互相打架。）
+    ref_material_fen: result.refMaterialFen,
+    ref_material_source: result.refMaterialSource,
+    profit_caliber_version: result.profitCaliberVersion,
+    // A13/A19：经营客流三字段（null = 没填，**不是 0**）
+    traffic_count: trafficThisMonth,
+    old_customer_count: trafficOldCustomer,
+    member_sales_fen: memberSalesFen,
     updated_at: now,
   };
   // round103：本次带了库存才写该字段；缺省则**保留库内原值**（防静默清零）
   if (v.inventory) doc.inventory = v.inventory;
+  // R493：本月是否真实盘点（清仓月期末=0 时据此区分"盘了"与"没盘"）；落库覆盖，缺省=false
+  doc.stock_take_done = v.stockTakeDone;
   // round107：一次算清合计**每次都由台账重算并落库**（快照值，供列表/审计直接读，不再依赖前端传参）
   doc.lump_sum_fen = effectiveLumpSumFen;
   let accountId;
   if (existing) {
     accountId = existing._id || existing.id;
+    // 🔴 R473：更新分支必须**补齐 account_id**。结果页"有没有账本"的判据就是 `!!d.account_id`
+    //   （R298 定的单源判据）⇒ 历史行缺这个字段时，会出现**保存成功、结果页却说"还没有账本"、
+    //   反复引导去录入**（李老师真机现象）。这里补一次，已有则不动（幂等）。
+    if (!existing.account_id) doc.account_id = genId('acc_');
     await db.collection('shop_monthly_account').doc(accountId).update({ data: doc });
   } else {
-    const ins = await da.insert('shop_monthly_account', Object.assign({ account_id: genId('acc_'), is_archive: false, archived_at: 0 }, doc));
-    accountId = ins && ins._id;
+    try {
+      const ins = await da.insert('shop_monthly_account', Object.assign({ account_id: genId('acc_'), is_archive: false, archived_at: 0 }, doc));
+      accountId = ins && ins._id;
+    } catch (e) {
+      // 🔴 R469 兜底：唯一索引 (shop_id, month) 被占用（历史软删行 / 并发两次保存 / 上一步查询与写入之间的竞态）
+      //   ⇒ 按唯一键回查后改成 upsert 更新，**绝不把「库里有行」报成「网络不可用」**。
+      const again = await db.collection('shop_monthly_account')
+        .where({ shop_id: shopId, month: v.month }).limit(1).get();
+      const row = (again && again.data && again.data[0]) || null;
+      if (!row) throw e;   // 不是唯一键冲突 ⇒ 原样抛出，不掩盖真实故障
+      await db.collection('shop_monthly_account').doc(row._id).update({
+        data: Object.assign({}, doc, { is_deleted: false, deleted_at: 0 }),
+      });
+      accountId = row._id;
+    }
   }
 
   const out = {
@@ -171,6 +237,10 @@ exports.main = async (event) => {
     lump_sum_fen: result.effectiveLumpSumFen,
     real_consume_fen: result.realConsumeFen,
     switch_used: result.switchUsed,
+    // A13/A19：只回原始值，派生比例（复购率/会员占比）由 getLedger 单一算出，避免两处各算一套
+    traffic_count: trafficThisMonth,
+    old_customer_count: trafficOldCustomer,
+    member_sales_fen: memberSalesFen,
     client_request_id: clientRequestId || '',
   };
 

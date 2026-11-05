@@ -1,0 +1,8 @@
+/* subpkg/biz/diag/input.wxss —— A20（2026-11-05）· 诊断补录页
+   只补 app.wxss 里没有的类；.field / .hint / .btn 全部继承全局，不重复定义（重复＝两处改一处就漂）。 */
+.page { padding: 24rpx 24rpx 60rpx; }
+.hd { font-size: 34rpx; font-weight: 700; color: #1e3a5f; margin-bottom: 12rpx; }
+.lbl { font-size: 30rpx; color: #1e3a5f; }
+.val-input { text-align: right; font-size: 32rpx; width: 320rpx; }
+.val-pick { text-align: right; font-size: 32rpx; color: #1e3a5f; min-width: 240rpx; }
+.hint.small { font-size: 24rpx; padding: 10rpx 16rpx; }

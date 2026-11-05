@@ -29,13 +29,22 @@ const SPEC_PRESETS = [
   { spec_key: 'half', name: '半份', coef: { main: 0.5, aux: 0.7, season: 1, semi: 0.5, pack: 1 } },
   { spec_key: 'small', name: '小份', coef: { main: 0.7, aux: 0.85, season: 1, semi: 0.7, pack: 1 } },
   // M3v1.2_B（D21/M3.31）：每 100g 计价（麻辣烫/卤味/凉菜按重量卖）。
-  //   🔴 系数**全 1（恒等）**：该规格成本 ≡ 该卡标准成本（不缩放）；差异只在展示层。
-  //   unit_label 是**展示单位**（页面拼「¥X / 100g」用），不参与任何金额计算。
+  //   🔴 系数组**仍是全 1** —— 它描述的只是「本规格与整份之间**没有按组件类型**的差别」
+  //     （不像半份那样"调料不减半"）。**份量换算不写在这里**：100g 成本 = 整份成本 × 100 ÷ 克重，
+  //     克重是**老板填的卡数据**（`portion_g`），不是预设定量 ⇒ 换算在 calcBom 里按入参做
+  //     （见 `portionOf` / `uniformCoef`）。
+  //   🔴 R547（M1）：改前这里只有 `unit_label`，**没有任何换算** ⇒ 售价填「元/100g」而成本按
+  //     「整份」算 ⇒ 毛利率被腰斩再腰斩（实测量级：成本 3.00 / 每100g 售价 3.40 / 一份 500g
+  //     真值 82.35%，旧实现算出 **11.76%**），且建议价按整份成本反推 ⇒ 老板照它定价必然亏。
+  //     `unit_label` 是**展示单位**（页面拼「¥X / 100g」用），依然不参与任何金额计算。
   { spec_key: 'per100g', name: '每100g', coef: { main: 1, aux: 1, season: 1, semi: 1, pack: 1 }, unit_label: '100g' },
 ];
 
 const MAX_COEF = 1;      // 系数上界（见上：规范定死 0~1）
 const MAX_SPECS = 4;     // 单卡规格条数上界（防滥用）
+const PER100G_KEY = 'per100g';
+const PER100G_UNIT_G = 100;   // 计价单位（克）
+const MAX_PORTION_G = 100000; // 一份克重上界（100kg；超过必是填错，如把 250 敲成 2500000）
 
 function findPreset(specKey) {
   const k = String(specKey == null ? '' : specKey).trim();
@@ -92,6 +101,33 @@ function unitCoef() {
   return c;
 }
 
+// ===== R547（M1）「每100g」份量换算 =====
+// 口径：**成本随重量线性变化**（同配方按比例缩），所以 100g 的成本 = 整份成本 × 100 ÷ 一份克重。
+//   ⚠️ 这个线性假设对 half/small 那类"调料不减半"的规格**不成立**，所以那条路仍走 `coef`；
+//     per100g 是"同一锅料按重量卖"，缩的是**售卖重量**，不是配方结构 ⇒ 线性成立。
+//   ⚠️ 克重是**必填**：没填就不给数（fail-closed）。改前的实现是"当整份算"——那是**错数**，不是兜底。
+function portionOf(raw) {
+  const v = Number(raw);
+  if (!isFinite(v) || v <= 0 || v > MAX_PORTION_G) return 0;
+  return v;
+}
+
+// 均匀系数（五项同值）—— 喂 `deriveSpec` 用，从而**复用同一个引擎**算 100g 的成本/毛利/建议价，
+// 不在这里另写一份"毛利公式"（两份口径 = 迟早漂移）。
+function uniformCoef(k) {
+  const c = {};
+  const v = Number(k);
+  const kk = (isFinite(v) && v > 0) ? v : 1;
+  for (const key of LINE_KINDS) c[key] = kk;
+  return c;
+}
+
+// per100g 的换算系数：100 ÷ 克重；克重非法 ⇒ 0（调用方据此不发数）
+function per100gFactor(raw) {
+  const g = portionOf(raw);
+  return g > 0 ? PER100G_UNIT_G / g : 0;
+}
+
 /**
  * 清洗一份系数表：只保留已知组件键、数值域 [0, MAX_COEF]。
  * @returns {{ok:boolean, value?:object, why?:string}}
@@ -140,7 +176,18 @@ function sanitizeSpecs(raw) {
     const name = String(s.name == null || s.name === '' ? (preset ? preset.name : key) : s.name).trim() || key;
     // unit_label：展示单位（per100g 预设给 '100g'）；仅展示、不参与金额计算。快照落库。
     const unitLabel = (preset && preset.unit_label) ? preset.unit_label : '';
-    out.push({ spec_key: key, name, coef: cs.value, price_fen: price, unit_label: unitLabel, enabled: s.enabled !== false });
+    // 🔴 R547（M1）：`portion_g` = 「这张卡这一份多少克」，per100g 专属（其它规格一律存 0）。
+    //   落库即快照：克重是**算 100g 成本的唯一依据**，跟着版本走（改克重 = 新版本），
+    //   与"成本卡快照隔离"的哲学一致 —— 老版本回看时仍按当时的克重算，不会拿今天的值去解释历史。
+    //   ⚠️ 缺省不报错（存量卡没有这个字段），但 per100g 没填克重时 calcBom **不给数**（见 index.js）。
+    let portionG = 0;
+    if (key === PER100G_KEY && s.portion_g != null && s.portion_g !== '') {
+      const pg = Number(s.portion_g);
+      if (!isFinite(pg) || pg <= 0) return { error: `规格 ${key} 的份量克重必须大于 0（当前：${JSON.stringify(s.portion_g)}）` };
+      if (pg > MAX_PORTION_G) return { error: `规格 ${key} 的份量克重不得超过 ${MAX_PORTION_G} 克（当前：${pg}）` };
+      portionG = pg;
+    }
+    out.push({ spec_key: key, name, coef: cs.value, price_fen: price, unit_label: unitLabel, portion_g: portionG, enabled: s.enabled !== false });
   }
   return { error: null, value: out };
 }
@@ -161,11 +208,17 @@ module.exports = {
   SPEC_PRESETS,
   MAX_COEF,
   MAX_SPECS,
+  PER100G_KEY,
+  PER100G_UNIT_G,
+  MAX_PORTION_G,
   findPreset,
   kindOf,
   coefOf,
   isIdentityCoef,
   unitCoef,
+  portionOf,
+  uniformCoef,
+  per100gFactor,
   deriveSpec,
   sanitizeCoef,
   sanitizeSpecs,

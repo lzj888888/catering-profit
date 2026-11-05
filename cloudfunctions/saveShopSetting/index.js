@@ -64,6 +64,15 @@ exports.main = async (event) => {
     // round156：列表置顶（店铺级偏好，零新建集合）—— 同样只在「真的传了」时才写
     if (v.pinned_cards !== undefined) patch.pinned_cards = v.pinned_cards;
     if (v.pinned_materials !== undefined) patch.pinned_materials = v.pinned_materials;
+    // A20（2026-11-05）：诊断补录 6 项 —— **逐键合并**（validate 只回了"真的传了的键"）。
+    //   · null（显式清空）⇒ 写空对象（云开发 update 无 remove，写 {} 等价于清空）
+    //   · undefined ⇒ 上面 already 没进 patch ⇒ 一个键都不动
+    //   ⚠️ 必须 merge 而不是覆盖：补录页可能只改「剩余租期」一项，覆盖会把口碑分抹掉。
+    if (v.diag_facts === null) patch.diag_facts = {};
+    else if (v.diag_facts !== undefined) {
+      const curFacts = (shopDoc && shopDoc.diag_facts && typeof shopDoc.diag_facts === 'object') ? shopDoc.diag_facts : {};
+      patch.diag_facts = Object.assign({}, curFacts, v.diag_facts);
+    }
     const upRes = await db.collection('shop').doc(shopRid).update({ data: patch });
     const updated = (upRes && upRes.stats && upRes.stats.updated) || 0;
     if (!updated) return fail(ERROR_CODES.SYSTEM_ERROR, '店铺设置未写入（target=' + shopRid + '）');

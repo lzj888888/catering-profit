@@ -81,7 +81,11 @@ const src = fs.readFileSync(path.join(__dirname, 'index.js'), 'utf8');
 const body = src.slice(src.indexOf('exports.main'));
 const at = (s) => body.indexOf(s);
 check('顺序：resolveAuth → assertShopOwner → validateInput', at('resolveAuth') < at('assertShopOwner') && at('assertShopOwner') < at('validateInput'));
-check('按 shop_id + card_code 双条件查（防跨店串号）', /da\.list\('shop_cost_card',\s*\{\s*shop_id:\s*shopId,\s*card_code:\s*v\.card_code\s*\}\)/.test(body));
+// 🔴 R298 修**判据过窄**（不是源码错）：原判据把入口钉死成字面量 `da.list(`，而本查询是
+//   **版本模型**（`shop_cost_card` 只 INSERT 不 UPDATE，一卡的版本数随保存次数增长）⇒ 已改走
+//   `da.listAll(`（分页取全）。判据要判的**语义**是"按 shop_id + card_code 双条件过滤"，
+//   与该走哪个入口无关 ⇒ 放宽为 `list|listAll`（同 R297 教训：守卫别钉字面量，钉语义）。
+check('按 shop_id + card_code 双条件查（防跨店串号）', /da\.list(?:All)?\('shop_cost_card',\s*\{\s*shop_id:\s*shopId,\s*card_code:\s*v\.card_code\s*\}\)/.test(body));
 check('🔴 版本倒序（b.version − a.version）', /\(b\.version\s*\|\|\s*0\)\s*-\s*\(a\.version\s*\|\|\s*0\)/.test(body));
 check('🔴 明细按 sort_order 升序（与录入顺序一致）', /\(a\.sort_order\s*\|\|\s*0\)\s*-\s*\(b\.sort_order\s*\|\|\s*0\)/.test(body));
 check('明细按 cost_card_row_id 关联（每版各装配自己的明细）', /cost_card_row_id:\s*card\._id/.test(body));

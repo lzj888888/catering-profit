@@ -1,0 +1,7 @@
+NODE = C:/Users/lzj/.workbuddy/binaries/node/versions\22.22.2-6\node.exe
+SUITES = 187
+❌ [suite-tracked] 未入库套件: ['tools/check_wxml_class_defined.js']
+
+============================================================
+总览：186/187 通过   耗时 320.6s
+R92: ❌ ['tools/check_wxml_class_defined.js']

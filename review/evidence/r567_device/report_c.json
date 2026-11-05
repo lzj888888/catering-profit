@@ -1,0 +1,226 @@
+{
+ "startedAt": "2026-10-29T15:13:04.053Z",
+ "checks": [
+  {
+   "id": "A-title",
+   "expect": "标题=批量导入菜品",
+   "actual": "批量导入菜品",
+   "pass": true
+  },
+  {
+   "id": "A-tkeys",
+   "expect": "t 文案无空键",
+   "actual": "[]",
+   "pass": true
+  },
+  {
+   "id": "A-empty",
+   "expect": "首进不出空态提示",
+   "actual": "parsed=false rows=0",
+   "pass": true
+  },
+  {
+   "id": "A-noAuto",
+   "expect": "页内明说「不直接算毛利」",
+   "actual": "导入只做预填，不会直接算毛利：示例主料还",
+   "pass": true
+  },
+  {
+   "id": "B-rows",
+   "expect": "5 行全部解析",
+   "actual": 5,
+   "pass": true
+  },
+  {
+   "id": "B-name",
+   "expect": "菜名正确",
+   "actual": "鱼香肉丝",
+   "pass": true
+  },
+  {
+   "id": "B-price",
+   "expect": "售价 38",
+   "actual": "38.00",
+   "pass": true
+  },
+  {
+   "id": "B-cat",
+   "expect": "品类识别（热炒荤菜）",
+   "actual": "热炒荤菜",
+   "pass": true
+  },
+  {
+   "id": "B-orange",
+   "expect": "认出品类的=待补价",
+   "actual": "待补价",
+   "pass": true
+  },
+  {
+   "id": "B-thousands",
+   "expect": "1,280 报千分位",
+   "actual": "售价里有千分位逗号（如 1,280），请去掉逗号再解析",
+   "pass": true
+  },
+  {
+   "id": "B-noCat",
+   "expect": "未识别=缺信息",
+   "actual": "品类没认出来",
+   "pass": true
+  },
+  {
+   "id": "B-summary",
+   "expect": "汇总含 5 道",
+   "actual": "共 5 道 · 已齐 0 · 待补价 3 · 缺信息 2",
+   "pass": true
+  },
+  {
+   "id": "C-pickCat",
+   "expect": "手选品类→待补价",
+   "actual": "{\"c\":\"热炒荤菜\",\"s\":\"orange\"}",
+   "pass": true
+  },
+  {
+   "id": "C-clear",
+   "expect": "清空售价→缺售价标红",
+   "actual": "{\"s\":\"red\",\"why\":\"缺售价\"}",
+   "pass": true
+  },
+  {
+   "id": "C-refill",
+   "expect": "填回→待补价",
+   "actual": "{\"s\":\"orange\"}",
+   "pass": true
+  },
+  {
+   "id": "D-route",
+   "expect": "跳编辑页",
+   "actual": null,
+   "pass": false
+  },
+  {
+   "id": "D-stash",
+   "expect": "草稿进暂存",
+   "actual": null,
+   "pass": false
+  },
+  {
+   "id": "D-name",
+   "expect": "菜名预填",
+   "actual": null,
+   "pass": false
+  },
+  {
+   "id": "D-price",
+   "expect": "售价预填 38",
+   "actual": null,
+   "pass": false
+  },
+  {
+   "id": "D-cat",
+   "expect": "品类预填",
+   "actual": null,
+   "pass": false
+  },
+  {
+   "id": "D-lines",
+   "expect": "示例主料带过来",
+   "actual": null,
+   "pass": false
+  },
+  {
+   "id": "E-high",
+   "expect": "烧烤炸物 energyFen=40",
+   "actual": null,
+   "pass": false
+  },
+  {
+   "id": "E-defaultOff",
+   "expect": "默认不入卡",
+   "actual": null,
+   "pass": false
+  },
+  {
+   "id": "E-on",
+   "expect": "开启→燃料行 0.40",
+   "actual": "null",
+   "pass": false
+  },
+  {
+   "id": "E-kind",
+   "expect": "line_kind 合法",
+   "actual": null,
+   "pass": false
+  },
+  {
+   "id": "E-off",
+   "expect": "关闭→移除",
+   "actual": null,
+   "pass": false
+  },
+  {
+   "id": "E-low",
+   "expect": "热炒荤菜 energyFen=0",
+   "actual": null,
+   "pass": false
+  },
+  {
+   "id": "G-loaded",
+   "expect": "列表加载完成",
+   "actual": "loading=false all=0",
+   "pass": false
+  },
+  {
+   "id": "G-costA",
+   "expect": "亏本卡成本≈15.5 元",
+   "pass": false
+  },
+  {
+   "id": "G-marginA",
+   "expect": "亏本卡毛利为负",
+   "pass": false
+  },
+  {
+   "id": "G-marginB",
+   "expect": "正常卡毛利为正",
+   "pass": false
+  },
+  {
+   "id": "G-loseCount",
+   "expect": "亏本计数=1",
+   "actual": 0,
+   "pass": false
+  },
+  {
+   "id": "G-warn",
+   "expect": "提示条出现",
+   "actual": "",
+   "pass": false
+  },
+  {
+   "id": "G-filter",
+   "expect": "点提示条只剩 1 张亏本卡",
+   "actual": "{\"before\":0,\"after\":0,\"lossOnly\":false,\"warn\":\"\",\"names\":[],\"back\":0,\"lossOnlyBack\":false}",
+   "pass": false
+  },
+  {
+   "id": "G-restore",
+   "expect": "再点恢复全量",
+   "actual": "{\"before\":0,\"after\":0,\"lossOnly\":false,\"warn\":\"\",\"names\":[],\"back\":0,\"lossOnlyBack\":false}",
+   "pass": true
+  },
+  {
+   "id": "H-clean",
+   "expect": "走查卡已清理（列表回到原状）",
+   "actual": "null",
+   "pass": false
+  }
+ ],
+ "notes": [
+  "ws=ws://127.0.0.1:9420 at 2026-10-29T15:13:04.498Z",
+  "造卡A {\"prep\":{\"filled\":true,\"hasPreset\":true,\"lines\":[{\"n\":\"调料(含油盐酱醋)\",\"p\":\"0.50\"},{\"n\":\"猪肉\",\"p\":\"15.00\"},{\"n\":\"青椒\",\"p\":\"\"}]},\"called\":{\"ok\":1},\"after\":{\"n\":1,\"route\":\"subpkg/biz/card/edit\"}}",
+  "造卡B {\"prep\":{\"filled\":false,\"hasPreset\":true,\"lines\":[{\"n\":\"\"},{\"n\":\"调料(含油盐酱醋)\",\"p\":\"0.50\"}]},\"called\":{\"ok\":1},\"after\":{\"n\":1,\"route\":\"subpkg/biz/card/edit\"}}",
+  "列表态 {\"loading\":false,\"len\":0,\"shown\":0,\"loseCount\":0,\"loseWarn\":\"\",\"rows\":[]}",
+  "待删 {\"codes\":[]}"
+ ],
+ "fails": []
+}

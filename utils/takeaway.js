@@ -79,16 +79,28 @@ function restoreDetail(snap, presets) {
       pack,
       subsidy,
       qty: (v.qty === undefined || v.qty === null) ? '' : String(v.qty),
-      subtotal: subtotalOf(goods, pack, subsidy),
+      subtotal: subtotalOf(goods, pack),
       fixed: true,
     };
   });
 }
 
-/** 分项小计（元，字符串）：三项相加（前端预计算，WXML 不支持方法调用）。
- *  ⚠️ R162：**qty 不进小计** —— 有效订单数是数量、不是钱，混进来就是凭空多出一笔收入。 */
-function subtotalOf(goods, pack, subsidy) {
-  const s = (Number(goods) || 0) + (Number(pack) || 0) + (Number(subsidy) || 0);
+/**
+ * 分项小计（元，字符串）= **优惠前总额** = 商品总价 + 打包费（前端预计算，WXML 不支持方法调用）。
+ *
+ * 🔴🔴 R496（2026-10-26 李老师授权拍板，豆包三轮会诊 + 真值实证）：**补贴不进收入**。
+ *   原实现是 `goods + pack + subsidy` 三项相加 ⇒ 补贴**加进收入**，而费用侧又自动带出补贴再扣一次
+ *   ⇒ **一加一减正好抵消，这笔补贴等于一次都没扣**（真值实测：美团净额 2632.93 vs 真实到手 1826.64，
+ *   偏差 806.29 **恰好等于**商家承担补贴额；淘宝偏差 2069.70 同样等于其补贴额）。
+ *   会计定性（豆包【确定】）：商家承担补贴是**商家让利 / 可变对价**，应**冲减收入**，不是收入的一部分。
+ *   ⇒ 收入侧只认优惠前总额；补贴、佣金、配送一律在费用侧扣减（结果等价，且保留结构可分析）。
+ *   真值验算（修复后偏差 0.00）：美团 3166.20−806.29−533.27=1826.64 ✓；淘宝 6585.08−2069.70−158.71−577.02=3779.65 ✓
+ *
+ * ⚠️ R162：**qty 不进小计** —— 有效订单数是数量、不是钱，混进来就是凭空多出一笔收入。
+ * ⚠️ 第三参 subsidy **已移除**（不是"保留但不参与"）：留着不用的形参会被后人当成仍参与计算。
+ */
+function subtotalOf(goods, pack) {
+  const s = (Number(goods) || 0) + (Number(pack) || 0);
   return s ? s.toFixed(2) : '';
 }
 
@@ -266,6 +278,36 @@ function subsidyTotal(detailRows) {
 const RECONCILE_THRESHOLD = 50; // 元
 
 /**
+ * 「应有商家应收款」（＝**到手金额**）的**唯一口径处**。
+ *
+ * 🔴 R302：为什么必须抽出来 —— 本函数原先是 `reconcile` 的内联三行；到手账（`settleSummary`）
+ *   要把**同一个口径**再用一次。若各写一份，两处一旦漂移就会出现「配平校验说对、到手账说另一个数」
+ *   （本仓最贵的病：同一语义两份实现）。⇒ 抽成一处，**reconcile（元）与 settleSummary（分）共用**。
+ *
+ * 🔴 本函数**单位无关**（纯加減乘除，无除法/无取整）⇒ 传分得数、传元得元，两处口径必然一致。
+ *
+ * 🔴🔴 R496（2026-10-26）：**"先还原优惠前总额"这一步已删除**。
+ *   旧实现两步走（① `inc - sub` 还原 ② 再扣一次补贴），是因为当时**收入三框相加本就含补贴**
+ *   （见 `subtotalOf` 旧版）。R496 起收入已是优惠前总额（`subtotalOf(goods, pack)`，不含补贴）
+ *   ⇒ **再还原一次就会把补贴扣两遍**（凭空多扣一个补贴额）⇒ 必须回到直接减一次。
+ *
+ * 仍取绝对值：客户按账单抄成负数也得到同一答案（符号无关）。
+ *
+ * @param {number} incomeTotal 收入合计（**优惠前总额**，不含补贴 —— R496 起的新口径）
+ * @param {number} subsidy 商家承担补贴合计（符号随客户填法）
+ * @param {number} commission 平台佣金
+ * @param {number} deliveryFee 配送服务费
+ * @param {number} deliverySubsidy 配送补贴
+ * @returns {number} 应有应收款（与入参同单位）
+ */
+function expectedReceivable(incomeTotal, subsidy, commission, deliveryFee, deliverySubsidy) {
+  const inc = Number(incomeTotal) || 0;
+  const sub = Number(subsidy) || 0;
+  return inc - Math.abs(sub) - (Number(commission) || 0)
+    - (Number(deliveryFee) || 0) - (Number(deliverySubsidy) || 0);
+}
+
+/**
  * 机器近似校验式（A.11.4 b，🔴 R164 修正实现）：
  *   应有商家应收款 ≈ 优惠前总额 − 商家承担补贴 − 佣金 − 配送服务费 − 配送补贴
  *
@@ -275,8 +317,12 @@ const RECONCILE_THRESHOLD = 50; // 元
  *   真值验算（8 月实测账单 156 行，见 review/evidence/r161_waimai）：expected 恒 = 5849.35，而真实到手 3779.65，
  *   **差恰好 = 商家承担补贴 2069.70 ⇒ 恒定误报「漏填 2069.70」，客户改无可改**。
  *   正确做法两步走：① `incomeTotal − subsidy` 还原优惠前总额；② 再**真实扣一次**补贴（取绝对值 ⇒ 正负号都算对）。
+ *
+ * 🔴🔴 ⚠️ 该"两步走"已被 **R496/R497（2026-10-26）推翻，勿照抄**：它成立的前提是「收入三框和**含**补贴」。
+ *   R496 起收入侧已是优惠前总额（`subtotalOf(goods, pack)`，**不含**补贴）⇒ 收入里根本没有补贴可"还原"，
+ *   照 ① 再减一次就是把补贴**扣两遍**（净额凭空少一个补贴额）。现实现 = 只减一次，见 `expectedReceivable` 的 R496 注。
  * @param {object} p {
- *   incomeTotal,     // 外卖收入合计（快速模式 = 各平台总额之和；分项模式 = 各平台小计之和）（元，含补贴框的值）
+ *   incomeTotal,     // 外卖收入合计（快速模式 = 各平台总额之和；分项模式 = 各平台小计之和）（元，**优惠前总额、不含补贴** —— R496 起）
  *   subsidy,         // 商家承担补贴合计（元，符号随客户填法，取绝对值参与扣减）
  *   commission,      // 外卖平台佣金（元）
  *   deliveryFee,     // 外卖配送服务费（元）
@@ -291,20 +337,17 @@ function reconcile(p) {
   const actual = Number(p && p.actualReceivable);
   if (!(actual > 0)) return null; // 未填 → 不校验（选填框）
 
-  const incomeTotal = Number(p && p.incomeTotal) || 0;
   const subsidy = Number(p && p.subsidy) || 0;
   const commission = Number(p && p.commission) || 0;
   const deliveryFee = Number(p && p.deliveryFee) || 0;
   const deliverySubsidy = Number(p && p.deliverySubsidy) || 0;
-  // R164：两步走。① 还原优惠前总额（收入合计里含了补贴框的值，先按原符号抵消掉）；
-  //          ② 真实扣一次补贴（取绝对值 ⇒ 客户填正数/负数都得同一个正确答案）。
-  const gross = incomeTotal - subsidy;
-  const expected = gross - Math.abs(subsidy) - commission - deliveryFee - deliverySubsidy;
-  const diff = Math.round((actual - expected) * 100) / 100;
+  // R164 两步走 + R302 抽成唯一口径处：公式在 `expectedReceivable`（单位无关，到手账共用同一份）。
+  const expected = expectedReceivable(p && p.incomeTotal, subsidy, commission, deliveryFee, deliverySubsidy);
+  const diff = Math.round(Number(((actual - expected) * 100).toFixed(10))) / 100;
   const absDiff = Math.abs(diff);
 
   // 专项：差额恰等于打包费合计（A.11.4 c）—— 先于漏填判断（更具体）
-  const packTotal = Math.round((Number(p && p.packTotal) || 0) * 100) / 100;
+  const packTotal = Math.round(Number(((Number(p && p.packTotal) || 0) * 100).toFixed(10))) / 100;
   if (packTotal > 0 && Math.abs(absDiff - packTotal) <= 0.01) {
     return { status: 'packaging', diff, expected, actual };
   }
@@ -348,11 +391,72 @@ function mkByPlatFilled(list) {
   });
 }
 
+// ===================== R302 · 「外卖到手账」（由 M1 已录入的数反算） =====================
+
+/**
+ * 「外卖到手账」——**纯函数 · 零新增输入 · 零新口径**。
+ *
+ * 🔴 为什么做它（R300 决策 §2「D 主」）：李老师拿不到京东/美团的《商品销量》表，且**平台 App 上
+ *   老板每天看的就是汇总级**（营业额 / 回款）。⇒ 把 M1 **已录**的外卖整体口径（收入侧按平台分 +
+ *   费用侧佣金/配送费/配送补贴/商家补贴 + 有效订单数）**用起来**，算出老板手机上看得到的粒度：
+ *   到手金额 / 到手率 / 单均到手。**不新增任何输入、不新建页面**（避免与 M1 重复 ⇒ 第二套口径）。
+ *
+ * 🔴 单位：**入参与出参都是「分」**（本仓金额单源）。唯一的除法（到手率、单均）只在展示层收尾。
+ * 🔴 「到手金额」用的就是 `expectedReceivable`（与配平校验**同一份公式**）——
+ *   口径若与配平校验不一致，会出现"校验说对、到手账说另一个数"。
+ *
+ * ⚠️ 缺项**不编数**：`netRatePct` 在营收为 0 时回 `null`（不是 0）；`perOrderText` 在没订单数时回 `''`。
+ *   页面据此显示「未填」而不是 0 —— 与本仓「不替用户编数」同一条纪律。
+ *
+ * @param {object} p {
+ *   incomeFen,           // 外卖营收合计（收入侧 category='takeaway' 各行之和；**优惠前总额、不含**商家补贴 —— R496 起）
+ *   commissionFen,       // 外卖平台佣金
+ *   deliveryFeeFen,      // 外卖配送服务费
+ *   deliverySubsidyFen,  // 外卖配送补贴
+ *   subsidyFen,          // 商家承担补贴合计（符号随客户填法）
+ *   orderCount,          // 有效订单数（单，来自收入侧子项 qty；**不参与任何金额**）
+ * }
+ * @returns {{
+ *   incomeFen:number, platformFeeFen:number, subsidyFen:number, netFen:number,
+ *   netRatePct:(number|null), perOrderText:string, hasIncome:boolean, hasOrderCount:boolean,
+ *   platformFeeKnown:boolean,
+ * }}
+ */
+function settleSummary(p) {
+  const o = p || {};
+  const fen = (v) => Math.round(Number(v) || 0);          // 分，整数（入参已是分；防御非整数/字符串）
+  const incomeFen = fen(o.incomeFen);
+  const commissionFen = fen(o.commissionFen);
+  const deliveryFeeFen = fen(o.deliveryFeeFen);
+  const deliverySubsidyFen = fen(o.deliverySubsidyFen);
+  const subsidyFen = fen(o.subsidyFen);
+  const platformFeeFen = commissionFen + deliveryFeeFen + deliverySubsidyFen;
+  const netFen = Math.round(expectedReceivable(
+    incomeFen, subsidyFen, commissionFen, deliveryFeeFen, deliverySubsidyFen));
+  // 到手率：营收为 0 ⇒ null（**不是 0**）—— 0% 会被读成"一分没到手"
+  const netRatePct = incomeFen > 0 ? Math.round((netFen / incomeFen) * 100) : null;
+  const orderCount = Number(o.orderCount) || 0;
+  return {
+    incomeFen,
+    platformFeeFen,
+    subsidyFen,
+    netFen,
+    netRatePct,
+    perOrderText: perOrderYuan(netFen / 100, orderCount),
+    hasIncome: incomeFen > 0,
+    hasOrderCount: orderCount > 0,
+    // 平台扣费三项全 0 ⇒ 老板还没录佣金/配送费 ⇒ 到手额会**偏高**，页面必须提示去补录（不静默）
+    platformFeeKnown: platformFeeFen !== 0,
+  };
+}
+
 module.exports = {
   pickTakeawayMode, takeawayModeKey, snapshotDetail, restoreDetail, subtotalOf,
   extractPaste, firstNumber, stripNonMoney, pasteFillValue, pasteFilledFromTotal, filledLabel,
-  subsidyTotal, reconcile, RECONCILE_THRESHOLD,
+  subsidyTotal, reconcile, RECONCILE_THRESHOLD, expectedReceivable,
   mkByPlatTotal, mkByPlatFilled,
   // R162：有效订单数（只回显，不进金额）
   qtyTotal, perOrderYuan,
+  // R302：外卖到手账（M1 已录数反算）
+  settleSummary,
 };

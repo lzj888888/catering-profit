@@ -34,6 +34,7 @@
   "simulatorPluginLibVersion": {},
   "packOptions": {
     "ignore": [
+      { "type": "folder", "value": "_归档_过程件_202610" },
       { "type": "folder", "value": "specs" },
       { "type": "folder", "value": "review" },
       { "type": "folder", "value": "_m3" },

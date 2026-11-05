@@ -1,0 +1,4 @@
+[1020/070508.883:ERROR:third_party\crashpad\crashpad\client\crashpad_client_win.cc:869] not connected
+[1020/071019.036:ERROR:third_party\crashpad\crashpad\client\crashpad_client_win.cc:188] crash server did not respond, self-terminating
+[1020/071033.751:ERROR:third_party\crashpad\crashpad\util\win\registration_protocol_win.cc:108] CreateFile: 系统找不到指定的文件。 (0x2)
+[1020/073110.314:ERROR:third_party\crashpad\crashpad\util\win\registration_protocol_win.cc:108] CreateFile: 系统找不到指定的文件。 (0x2)

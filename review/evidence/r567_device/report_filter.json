@@ -1,0 +1,32 @@
+{
+ "checks": [
+  {
+   "id": "X-baseline",
+   "expect": "注入后默认显示 4 行",
+   "actual": 4,
+   "pass": true
+  },
+  {
+   "id": "X-filter",
+   "expect": "点提示条只剩负毛利那 1 行",
+   "actual": [
+    "注入-亏本"
+   ],
+   "pass": true
+  },
+  {
+   "id": "X-restore",
+   "expect": "再点恢复 4 行",
+   "actual": [
+    "注入-亏本",
+    "注入-低毛利",
+    "注入-健康",
+    "注入-未定价"
+   ],
+   "pass": true
+  }
+ ],
+ "notes": [
+  "页面已重新 load() 复原真实数据: 1"
+ ]
+}

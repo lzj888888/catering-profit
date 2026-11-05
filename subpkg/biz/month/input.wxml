@@ -1,0 +1,636 @@
+<view class="form safe-bottom" wx:if="{{!loading}}">
+  <!-- 归档状态条 -->
+  <view class="archived-bar" wx:if="{{isArchive}}">
+    {{t.archiveReadonly}}<text wx:if="{{inGrace}}"> · {{t.graceNote}}</text>
+  </view>
+
+  <!-- R419：金额栏读不成数字的提示（与 M2 同一句文案；详见 NOTE_R419） -->
+  <view class="warn-note" wx:if="{{badAmountCount > 0}}">{{t.amountBadTip}}</view>
+
+  <!-- R592：进门第一眼 = 填完能得到什么（详见 NOTE_2026-11-01_R592） -->
+  <view class="start-card" wx:if="{{entryCompletion && entryCompletion.note}}">
+    <view class="start-title">{{entryCompletion.noteTitle}}</view>
+    <view class="start-list">{{entryCompletion.note}}</view>
+  </view>
+
+  <!-- E2（批次 8c）：顶部「填写口径」折叠块（默认收起）—— 防重填漏填 -->
+  <view class="fill-guide">
+    <view class="fill-guide-head" bindtap="onToggleFillGuide">
+      <text class="fg-title">{{t.fillGuideTitle}}</text>
+      <text class="fg-toggle">{{fillGuideOpen ? '▾' : '▸'}}</text>
+    </view>
+    <view class="fill-guide-body" wx:if="{{fillGuideOpen}}">
+      <view class="fg-line" wx:for="{{t.fillGuide}}" wx:key="index" wx:for-item="line">{{line}}</view>
+    </view>
+  </view>
+
+  <!-- round189：上月一键复制（有上月才显示）+ 首月常规科目说明 -->
+  <view class="copy-bar" wx:if="{{!readOnly}}">
+    <button class="btn ghost btn-small" style="min-height:88rpx;" wx:if="{{prevHasData}}" bindtap="copyPrev">{{t.copyPrevBtn}}</button>
+    <view class="muted" wx:if="{{copyBannerOn}}">{{copyBannerText}}</view>
+    <view class="muted" wx:elif="{{!prevHasData && prevMonth}}">{{t.copyPrevNone}}</view>
+    <view class="muted" wx:if="{{recurringOn}}">{{t.recurringHint}}</view>
+  </view>
+
+  <!-- P0#3：新手/老手模式切换（仅存本地；新手折叠非核心科目） -->
+  <view class="im-wrap">
+    <view class="im-sec">{{t.inputModeTitle}}</view>
+    <view class="im-opts">
+      <view class="im-opt {{inputMode === 'novice' ? 'on' : ''}}" data-val="novice" bindtap="onPickInputMode">
+        <view class="im-h">{{inputMode === 'novice' ? '✓ ' : ''}}{{t.inputModeNovice}}</view>
+        <view class="im-d">{{t.inputModeNoviceDesc}}</view>
+      </view>
+      <view class="im-opt {{inputMode === 'pro' ? 'on' : ''}}" data-val="pro" bindtap="onPickInputMode">
+        <view class="im-h">{{inputMode === 'pro' ? '✓ ' : ''}}{{t.inputModePro}}</view>
+        <view class="im-d">{{t.inputModeProDesc}}</view>
+      </view>
+    </view>
+  </view>
+  <view class="im-tip" wx:if="{{inputMode === 'novice' && !showMore}}">{{t.noviceTip}}</view>
+
+  <!-- 收入（A2：大类 → 二级细项；E1：引导文案）
+       R234/J1：47 字长提示收进折叠块（原先平铺占 2 行） -->
+  <view class="sec">{{t.incomeTitle}}</view>
+  <view class="hint-fold">
+    <view class="hint-fold-head" data-key="incomeHint" bindtap="onToggleHintFold">
+      <text class="hint-fold-guide">{{hintFold.incomeHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+      <text class="hint-fold-arrow">{{hintFold.incomeHint ? '▾' : '▸'}}</text>
+    </view>
+    <view class="hint-fold-body" wx:if="{{hintFold.incomeHint}}">{{t.incomeHint}}</view>
+  </view>
+
+  <view class="group" wx:if="{{inputMode === 'pro' || showMore || g.core}}" wx:for="{{incomeGroups}}" wx:key="category" wx:for-item="g" wx:for-index="gi">
+    <!-- 堂食由「快速 / 分项」模式开关接管，不再用手风琴展开 -->
+    <view class="group-head" wx:if="{{g.category === 'dine_in'}}">
+      <text class="g-label">{{g.label}}</text>
+    </view>
+    <view class="group-head" wx:else data-kind="income" data-idx="{{gi}}" bindtap="onToggleGroup">
+      <text class="g-label">{{g.label}}</text>
+      <text class="g-toggle">{{g.expanded ? '▾' : '▸'}}</text>
+    </view>
+    <!-- E2 + 2026-09-21：该类的「包括 / 不包括」口径 —— 收进折叠块，默认只留一行引导语 -->
+    <view class="scope-fold" wx:if="{{g.scope}}">
+      <view class="scope-head" data-kind="income" data-idx="{{gi}}" bindtap="onToggleScope">
+        <text class="scope-guide">{{g.scopeOpen ? t.scopeHide : t.scopeShow}}</text>
+        <text class="scope-arrow">{{g.scopeOpen ? '▾' : '▸'}}</text>
+      </view>
+      <view class="scope" wx:if="{{g.scopeOpen}}">{{g.scope}}</view>
+    </view>
+
+    <!-- ===== 堂食·模式开关（严格互斥二选一）===== -->
+    <view class="dm-wrap" wx:if="{{g.category === 'dine_in'}}">
+      <view class="dm-sec">{{t.dmSecTitle}}</view>
+      <view class="dm-opts">
+        <view class="dm-opt {{dineMode === 'fast' ? 'on' : ''}}" data-val="fast" bindtap="onPickDineMode">
+          <view class="dm-h">{{dineMode === 'fast' ? '✓ ' : ''}}{{t.dmFast}}</view>
+          <view class="dm-d">{{t.dmFastDesc}}</view>
+        </view>
+        <view class="dm-opt {{dineMode === 'detail' ? 'on' : ''}}" data-val="detail" bindtap="onPickDineMode">
+          <view class="dm-h">{{dineMode === 'detail' ? '✓ ' : ''}}{{t.dmDetail}}</view>
+          <view class="dm-d">{{t.dmDetailDesc}}</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 堂食·快速录入：只填一个总额 -->
+    <view class="dine-fast" wx:if="{{g.category === 'dine_in' && dineMode === 'fast'}}">
+      <view class="dine-fast-line">
+        <text class="sub-amt-lbl">{{t.dmFastField}}</text>
+        <input class="val-input dine-fast-inp" type="digit" confirm-type="done" value="{{g.rows[0].amountYuan}}"
+          data-kind="income" data-gidx="{{gi}}" data-ridx="0" bindinput="onSubAmount" disabled="{{readOnly}}"
+          adjust-position="{{true}}" cursor-spacing="20" />
+      </view>
+      <view class="hint-fold">
+        <view class="hint-fold-head" data-key="dmFastHint" bindtap="onToggleHintFold">
+          <text class="hint-fold-guide">{{hintFold.dmFastHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+          <text class="hint-fold-arrow">{{hintFold.dmFastHint ? '▾' : '▸'}}</text>
+        </view>
+        <view class="hint-fold-body" wx:if="{{hintFold.dmFastHint}}">{{t.dmFastHint}}</view>
+      </view>
+    </view>
+
+    <!-- 堂食·分项渠道录入：两行（行①渠道名+× / 行②金额整行宽）+ 合计自动算 -->
+    <block wx:elif="{{g.category === 'dine_in'}}">
+      <view class="hint-fold">
+        <view class="hint-fold-head" data-key="dmDetailHintF" bindtap="onToggleHintFold">
+          <text class="hint-fold-guide">{{hintFold.dmDetailHintF ? t.hintFoldHide : t.hintFoldShow}}</text>
+          <text class="hint-fold-arrow">{{hintFold.dmDetailHintF ? '▾' : '▸'}}</text>
+        </view>
+        <view class="hint-fold-body" wx:if="{{hintFold.dmDetailHintF}}">{{t.dmDetailHint}}</view>
+      </view>
+      <view class="dine-item" wx:for="{{g.rows}}" wx:key="rid" wx:for-item="r" wx:for-index="ri">
+        <!-- 2026-09-21 李老师真机反馈：原一行三列把渠道名挤成竖排、金额框只剩 240rpx
+             ⇒ 改两行：行① 渠道名（整行，永不竖排）+ ×；行② 金额（整行宽，好点好改） -->
+        <view class="dine-line1">
+          <input wx:if="{{!r.fixed}}" class="dine-name inp" value="{{r.subItem}}" placeholder="{{t.dmChannelPh}}"
+            data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubItem" disabled="{{readOnly}}" />
+          <text wx:else class="dine-name">{{r.subItem}}</text>
+          <!-- 预设渠道（fixed）不给删除键：清单是单一数据源，装配时必然补回，
+               给了 × 只会让人以为「删不掉」（G10j 守）；自定义渠道行仍可删。
+               R496：与费用侧同口径 —— 再挂本组删除态闸门 incomeEditGi === gi，
+               默认态不渲染 ×（上滑/敲空白/滚屏都碰不到）。 -->
+          <button class="btn-del" wx:if="{{!r.fixed && incomeEditGi === gi}}"
+            data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" catchtap="delRow">{{t.delSubItem}}</button>
+        </view>
+        <view class="dine-note" wx:if="{{r.note}}">{{r.note}}</view>
+        <view class="dine-line2">
+          <input class="val-input dine-amt" type="digit" confirm-type="done" value="{{r.amountYuan}}"
+            placeholder="{{t.dmAmtPh}}" data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}"
+            bindinput="onSubAmount" disabled="{{readOnly}}"
+            adjust-position="{{true}}" cursor-spacing="20" />
+        </view>
+      </view>
+      <view class="dine-sum">
+        <text class="dine-sum-lbl">{{t.dmSumLabel}}</text>
+        <text class="dine-sum-val">{{dineSumYuan}}</text>
+      </view>
+      <view class="hint">{{t.dmSumAutoHint}}</view>
+      <!-- R496：与费用侧同一套 —— 「+ 添加渠道」右侧并排「- 删除渠道」，等宽胶囊、删完自动收起 -->
+      <view class="group-ops group-ops-inline">
+        <button class="btn-small ghost subop-btn" data-kind="income" data-gidx="{{gi}}" catchtap="addRow">{{t.dmAddChannel}}</button>
+        <button class="btn-small ghost subop-btn subop-del {{incomeEditGi === gi ? 'is-del-on' : ''}}"
+          wx:if="{{!readOnly}}" data-gidx="{{gi}}" catchtap="toggleIncomeEdit">{{t.incomeDelChannel}}</button>
+      </view>
+    </block>
+
+    <!-- ===== 外卖（R85 · 规范 §A.11）：快速 / 分项 模式开关（严格互斥二选一）=====
+         round109（李老师真机「外卖那个一直是全部显示全部的状态，可以把外卖也做成折叠吗？」）：
+         本块原来**不受 g.expanded 控制** —— 标题行明明有 ▾/▸，但内容块压根不读它，
+         点下去只有符号翻转、内容纹丝不动（「假开关」）。
+         现在接上真折叠：展开 = 完整录入（本块）；折叠 = 只读摘要（紧随其后的 elif 分支）。
+         ⚠️ 条件必须写成「takeaway && g.expanded」并**排在摘要分支之前** —— wx:elif 按顺序匹配。 -->
+    <block wx:elif="{{g.category === 'takeaway' && g.expanded}}">
+      <!-- 🔴 R161-3 防双记边界句（固定，挂在整段最上方、先于模式开关）：
+           平台的「商家配送费活动补贴」已含在补贴合计里 ⇒ 费用侧两项不得再记一次。 -->
+      <view class="tw-boundary">{{t.twBoundaryNote}}</view>
+
+      <!-- 模式开关（复用堂食 dineMode 约定：仅存本地、默认按数据推断、快照恢复） -->
+      <view class="dm-wrap">
+        <view class="dm-sec">{{t.twSecTitle}}</view>
+        <view class="dm-opts">
+          <view class="dm-opt {{takeoutTrack === 'net' ? 'on' : ''}}" data-val="net" bindtap="onPickTakeoutTrack">
+            <view class="dm-h">{{takeoutTrack === 'net' ? '✓ ' : ''}}{{t.twTrackNet}}</view>
+            <view class="dm-d">{{t.twTrackNetDesc}}</view>
+          </view>
+          <view class="dm-opt {{takeoutTrack === 'gross' ? 'on' : ''}}" data-val="gross" bindtap="onPickTakeoutTrack">
+            <view class="dm-h">{{takeoutTrack === 'gross' ? '✓ ' : ''}}{{t.twTrackGross}}</view>
+            <view class="dm-d">{{t.twTrackGrossDesc}}</view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 平台口径句（A.11.2：仅 gross 展开时适用，net 默认模式不显示） -->
+      <view class="hint-fold" wx:if="{{takeoutTrack === 'gross'}}">
+        <view class="hint-fold-head" data-key="twScopeGuide" bindtap="onToggleHintFold">
+          <text class="hint-fold-guide">{{hintFold.twScopeGuide ? t.hintFoldHide : t.hintFoldShow}}</text>
+          <text class="hint-fold-arrow">{{hintFold.twScopeGuide ? '▾' : '▸'}}</text>
+        </view>
+        <view class="hint-fold-body" wx:if="{{hintFold.twScopeGuide}}">{{t.twScopeGuide}}</view>
+      </view>
+
+      <!-- 🔴 R161-6 归月口径句：结算日 = 账单日 + 3 天，按结算日导月必然串月 -->
+      <view class="tw-period">{{t.twPeriodNote}}</view>
+
+      <!-- 🔴 R505：net 默认模式 —— 每平台 1 个「外卖实际到账」净额框（不再带出费用侧） -->
+      <block wx:if="{{takeoutTrack === 'net'}}">
+        <view class="hint-fold">
+        <view class="hint-fold-head" data-key="twNetHint" bindtap="onToggleHintFold">
+          <text class="hint-fold-guide">{{hintFold.twNetHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+          <text class="hint-fold-arrow">{{hintFold.twNetHint ? '▾' : '▸'}}</text>
+        </view>
+        <view class="hint-fold-body" wx:if="{{hintFold.twNetHint}}">{{t.twNetHint}}</view>
+      </view>
+        <view class="dine-item" wx:for="{{g.rows}}" wx:key="rid" wx:for-item="r" wx:for-index="ri">
+          <view class="dine-line1"><text class="dine-name">{{r.subItem}}</text></view>
+          <view class="dine-line2">
+            <input class="val-input dine-amt" type="digit" confirm-type="done" value="{{r.amountYuan}}"
+              placeholder="{{t.twNetPh}}" data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}"
+              bindinput="onSubAmount" disabled="{{readOnly}}"
+              adjust-position="{{true}}" cursor-spacing="20" />
+            <!-- 🔴 R161-1：net 模式也要能填有效订单数（否则单均指标永远算不出来） -->
+            <input class="val-input dine-qty" type="number" confirm-type="done" value="{{r.qty}}"
+              placeholder="{{t.twOrdersPh}}" data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}"
+              bindinput="onFastQty" disabled="{{readOnly}}"
+              adjust-position="{{true}}" cursor-spacing="20" />
+          </view>
+        </view>
+        <!-- 汇总（R119：各平台填完后给「合计 + 已填平台数」；合计只回显，不写入金额） -->
+        <view class="dine-sum">
+          <text class="dine-sum-lbl">{{t.twTotalLabel}}</text>
+          <text class="dine-sum-val">{{takeoutSumYuan}}</text>
+        </view>
+        <!-- R162：有效订单合计 + 单均（只回显，不写入任何金额） -->
+        <view class="dine-sum">
+          <text class="dine-sum-lbl">{{t.twOrdersTotalLabel}}</text>
+          <text class="dine-sum-val">{{takeoutQtyTotal}}</text>
+        </view>
+        <view class="dine-sum" wx:if="{{takeoutPerOrder}}">
+          <text class="dine-sum-lbl">{{t.twPerOrderLabel}}</text>
+          <text class="dine-sum-val">{{takeoutPerOrder}}</text>
+        </view>
+        <view class="hint-fold">
+          <view class="hint-fold-head" data-key="twOrdersHintF" bindtap="onToggleHintFold">
+            <text class="hint-fold-guide">{{hintFold.twOrdersHintF ? t.hintFoldHide : t.hintFoldShow}}</text>
+            <text class="hint-fold-arrow">{{hintFold.twOrdersHintF ? '▾' : '▸'}}</text>
+          </view>
+          <view class="hint-fold-body" wx:if="{{hintFold.twOrdersHintF}}">{{t.twOrdersHint}}</view>
+        </view>
+        <view class="hint">{{takeoutFilledText}}</view>
+        <view class="hint-fold">
+          <view class="hint-fold-head" data-key="twTotalAutoHint" bindtap="onToggleHintFold">
+            <text class="hint-fold-guide">{{hintFold.twTotalAutoHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+            <text class="hint-fold-arrow">{{hintFold.twTotalAutoHint ? '▾' : '▸'}}</text>
+          </view>
+          <view class="hint-fold-body" wx:if="{{hintFold.twTotalAutoHint}}">{{t.twTotalAutoHint}}</view>
+        </view>
+        <!-- T3′（round97）：快速模式轻量自查 —— 零依赖判据（不看补贴，只看营销段是否记了佣金/配送费） -->
+        <view class="tw-rec-msg" wx:if="{{twSelfCheck}}">{{twSelfCheck}}</view>
+      </block>
+
+      <!-- 分项录入：每平台 3 框（商品总价 / 打包费 / 商家活动补贴），小计自动 -->
+      <block wx:else>
+        <view class="hint-fold">
+          <view class="hint-fold-head" data-key="twDetailHintF" bindtap="onToggleHintFold">
+            <text class="hint-fold-guide">{{hintFold.twDetailHintF ? t.hintFoldHide : t.hintFoldShow}}</text>
+            <text class="hint-fold-arrow">{{hintFold.twDetailHintF ? '▾' : '▸'}}</text>
+          </view>
+          <view class="hint-fold-body" wx:if="{{hintFold.twDetailHintF}}">{{t.twDetailHint}}</view>
+        </view>
+        <view class="tw-detail-row" wx:for="{{takeoutDetailRows}}" wx:key="platform" wx:for-item="r" wx:for-index="ri">
+          <view class="tw-plat-name">{{r.platform}}</view>
+          <view class="tw-fields">
+            <view class="tw-field">
+              <view class="tw-field-head">
+                <text class="tw-field-lbl">{{t.twGoodsField}}</text>
+                <button class="btn-small paste-btn" data-target="goods" data-idx="{{ri}}" catchtap="openPaste">{{t.twPasteBtn}}</button>
+              </view>
+              <input class="val-input" type="digit" confirm-type="done" value="{{r.goods}}" placeholder="{{t.twGoodsPh}}"
+                data-field="goods" data-idx="{{ri}}" bindinput="onTwDetail" disabled="{{readOnly}}"
+                adjust-position="{{true}}" cursor-spacing="20" />
+            </view>
+            <view class="tw-field">
+              <view class="tw-field-head">
+                <text class="tw-field-lbl">{{t.twPackField}}</text>
+                <button class="btn-small paste-btn" data-target="pack" data-idx="{{ri}}" catchtap="openPaste">{{t.twPasteBtn}}</button>
+              </view>
+              <input class="val-input" type="digit" confirm-type="done" value="{{r.pack}}" placeholder="{{t.twPackPh}}"
+                data-field="pack" data-idx="{{ri}}" bindinput="onTwDetail" disabled="{{readOnly}}"
+                adjust-position="{{true}}" cursor-spacing="20" />
+            </view>
+            <view class="tw-field">
+              <view class="tw-field-head">
+                <text class="tw-field-lbl">{{t.twSubsidyField}}</text>
+                <button class="btn-small paste-btn" data-target="subsidy" data-idx="{{ri}}" catchtap="openPaste">{{t.twPasteBtn}}</button>
+              </view>
+              <input class="val-input" type="digit" confirm-type="done" value="{{r.subsidy}}" placeholder="{{t.twSubsidyPh}}"
+                data-field="subsidy" data-idx="{{ri}}" bindinput="onTwDetail" disabled="{{readOnly}}"
+                adjust-position="{{true}}" cursor-spacing="20" />
+              <!-- 🔴 R161-2：口径钉死在框下（商家承担补贴在账单里是三列，只抄一列会少扣钱） -->
+              <view class="tw-field-note">{{t.twSubsidyNote}}</view>
+            </view>
+            <!-- 🔴 R161-1：第 4 个必填 —— 有效订单数（只用于单均，不进金额） -->
+            <view class="tw-field">
+              <view class="tw-field-head">
+                <text class="tw-field-lbl">{{t.twOrdersField}}</text>
+              </view>
+              <input class="val-input" type="number" confirm-type="done" value="{{r.qty}}" placeholder="{{t.twOrdersPh}}"
+                data-field="qty" data-idx="{{ri}}" bindinput="onTwDetail" disabled="{{readOnly}}"
+                adjust-position="{{true}}" cursor-spacing="20" />
+            </view>
+          </view>
+          <view class="tw-subtotal">{{t.twSumLabel}}：{{r.subtotal || '0.00'}}</view>
+        </view>
+        <view class="dine-sum">
+          <text class="dine-sum-lbl">{{t.twSumLabel}}</text>
+          <text class="dine-sum-val">{{takeoutSumYuan}}</text>
+        </view>
+        <view class="hint">{{t.twSumAutoHint}}</view>
+        <!-- R162：有效订单合计 + 单均（只回显，不写入任何金额） -->
+        <view class="dine-sum">
+          <text class="dine-sum-lbl">{{t.twOrdersTotalLabel}}</text>
+          <text class="dine-sum-val">{{takeoutQtyTotal}}</text>
+        </view>
+        <view class="dine-sum" wx:if="{{takeoutPerOrder}}">
+          <text class="dine-sum-lbl">{{t.twPerOrderLabel}}</text>
+          <text class="dine-sum-val">{{takeoutPerOrder}}</text>
+        </view>
+        <view class="hint-fold">
+          <view class="hint-fold-head" data-key="twOrdersHintF2" bindtap="onToggleHintFold">
+            <text class="hint-fold-guide">{{hintFold.twOrdersHintF2 ? t.hintFoldHide : t.hintFoldShow}}</text>
+            <text class="hint-fold-arrow">{{hintFold.twOrdersHintF2 ? '▾' : '▸'}}</text>
+          </view>
+          <view class="hint-fold-body" wx:if="{{hintFold.twOrdersHintF2}}">{{t.twOrdersHint}}</view>
+        </view>
+
+        <!-- 配平校验（A.11.4 · 只做软提示：不阻断保存、不参与利润、不写入金额） -->
+        <view class="tw-rec">
+          <view class="tw-rec-field">
+            <text class="tw-field-lbl">{{t.twRecField}}</text>
+            <input class="val-input" type="digit" confirm-type="done" value="{{twRecYuan}}" placeholder="{{t.twRecPh}}"
+              bindinput="onRecYuan" disabled="{{readOnly}}" adjust-position="{{true}}" cursor-spacing="20" />
+          </view>
+          <view class="hint-fold">
+            <view class="hint-fold-head" data-key="twRecCalcHint" bindtap="onToggleHintFold">
+              <text class="hint-fold-guide">{{hintFold.twRecCalcHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+              <text class="hint-fold-arrow">{{hintFold.twRecCalcHint ? '▾' : '▸'}}</text>
+            </view>
+            <view class="hint-fold-body" wx:if="{{hintFold.twRecCalcHint}}">{{t.twRecCalcHint}}</view>
+          </view>
+          <view class="tw-rec-msg" wx:if="{{twRecText}}">{{twRecText}}</view>
+          <view class="hint-fold" wx:elif="{{!twRecYuan}}">
+            <view class="hint-fold-head" data-key="twRecNoInputF" bindtap="onToggleHintFold">
+              <text class="hint-fold-guide">{{hintFold.twRecNoInputF ? t.hintFoldHide : t.hintFoldShow}}</text>
+              <text class="hint-fold-arrow">{{hintFold.twRecNoInputF ? '▾' : '▸'}}</text>
+            </view>
+            <view class="hint-fold-body" wx:if="{{hintFold.twRecNoInputF}}">{{t.twRecNoInput}}</view>
+          </view>
+        </view>
+      </block>
+    </block>
+
+    <!-- round109：外卖**折叠态** —— 只读摘要（各平台已填金额 + 合计），点标题行展开才录入。
+         ⚠️ 逐平台列表取 js 预计算的 takeoutFoldRows，**不直接渲染 g.rows** ——
+            两种模式的金额不在同一处（快速 = groups.rows；分项 = takeoutDetailRows），
+            g.rows 在分项模式下是切模式时的旧值 ⇒ 直接渲染会显示过期数字（见 syncTakeoutFold 注释）。
+            金额为 0 / 空的平台不出来，免得折叠态出现一排 ¥0.00。
+         ⚠️ 本分支必须**排在展开分支之后** —— wx:elif 是按顺序匹配的。 -->
+    <block wx:elif="{{g.category === 'takeaway'}}">
+      <view class="tw-fold">
+        <view class="tw-fold-row" wx:for="{{takeoutFoldRows}}" wx:key="name" wx:for-item="r">
+          <text class="tw-fold-name">{{r.name}}</text>
+          <text class="tw-fold-amt">{{t.cur}}{{r.amt}}</text>
+        </view>
+        <view class="tw-fold-empty" wx:if="{{!takeoutAnyFilled}}">{{t.twFoldEmpty}}</view>
+      </view>
+      <view class="dine-sum">
+        <text class="dine-sum-lbl">{{t.twTotalLabel}}</text>
+        <text class="dine-sum-val">{{takeoutSumYuan}}</text>
+      </view>
+    </block>
+
+    <!-- 非堂食 / 非外卖（其他业务收入等）：保持原两行细项 -->
+    <!-- 🔴 R297-⑥（M1-B1）：折叠**不得**在模板里算 —— 原写 `{{g.expanded ? g.rows : g.rows.slice(0, 1)}}`，
+         而 **WXML 表达式不支持方法调用** ⇒ `slice` 求值失败 ⇒ 该组细项行**整段不渲染**（费用细项直接消失）。
+         修法：渲染源恒为**已装饰的 `g.rows`**（`fixed` 预设名只读 / `tag` 沿用·要核对 都挂在这层，
+         见 input.js 的 decorateRows「唯一装配口」），折叠只用一个**数据表达式** `wx:if` 决策。
+         ⚠️ 那个 `showRows` 槽**已在 R304 整体删除**（13 处赋值 / 零消费者），不是"不用"而是"不存在"了。
+            它当时对非堂食组是**未装饰**的 raw（丢 fixed/tag），且多处赋值在 markRecurringTags / updateRow
+            之后**是过期引用** ⇒ 改读它会静默退回"预设名可编辑、标丢失"（R297 的 M1-B1 就是这么回归的）。
+            `selftest_batch8b` 已加钉子：`input.js` 里 `g.showRows =` **不得复活**。 -->
+    <block wx:else>
+      <view class="sub-block" wx:for="{{g.rows}}" wx:key="rid" wx:if="{{g.expanded || ri === 0}}"
+        wx:for-item="r" wx:for-index="ri">
+        <view class="sub-line1">
+          <!-- 预设细项（fixed）：**名字**固定（防同一笔费用两个名字），但**可以删** ——
+               round102（2026-09-22）修正：原判据「名字在预设清单里就不给删除键」的立论
+               「清单是单一数据源，装配时必然补回」**实测不成立**（装配口只铺空行 / 只按后端数据重建，
+               从不补回预设项），故放开删除键、只留「至少留一行」护栏（规范 A.2：费用项支持老板自定义增删）。
+               ⚠️ 堂食渠道行是**例外**：那里的预设渠道确实会被补回，仍不给删除键（G10j 守）。 -->
+          <input class="sub-item-inp" wx:if="{{g.expanded && !r.fixed}}" value="{{r.subItem}}" placeholder="{{t.subItemPh}}"
+            data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubItem" disabled="{{readOnly}}" />
+          <text class="sub-item-fixed" wx:elif="{{g.expanded}}">{{r.subItem}}</text>
+          <!-- R496：挂本组删除态闸门 incomeEditGi === gi（与费用侧同口径：默认态不渲染 ×） -->
+          <button class="btn-del" wx:if="{{g.expanded && g.rows.length > 1 && incomeEditGi === gi}}"
+            data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" catchtap="delRow">{{t.delSubItem}}</button>
+        </view>
+        <view class="sub-line2">
+          <text class="sub-amt-lbl">{{g.expanded ? t.amount : g.label + t.classTotalSuffix}}</text>
+          <input class="val-input" type="digit" confirm-type="done" value="{{r.amountYuan}}"
+            data-kind="income" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubAmount" disabled="{{readOnly}}"  adjust-position="{{true}}" cursor-spacing="20" />
+        </view>
+      </view>
+      <!-- round102：未用预设项只读提示（点它直开预设面板）—— 补「添加」这条腿的可发现性 -->
+      <view class="hint preset-hint" wx:if="{{g.expanded && g.unusedText}}" data-kind="income" data-gidx="{{gi}}"
+        catchtap="onOpenPresetPick">{{t.presetHintPrefix}}{{g.unusedText}}</view>
+      <!-- R496：与费用侧同一套 —— 「+ 添加细项」右侧并排「- 删除细项」，等宽胶囊、删完自动收起 -->
+      <view class="group-ops group-ops-inline" wx:if="{{g.expanded}}">
+        <button class="btn-small ghost subop-btn" data-kind="income" data-gidx="{{gi}}" catchtap="addRow">{{t.addSubItem}}</button>
+        <button class="btn-small ghost subop-btn subop-del {{incomeEditGi === gi ? 'is-del-on' : ''}}"
+          wx:if="{{!readOnly && g.rows.length > 1}}" data-gidx="{{gi}}"
+          catchtap="toggleIncomeEdit">{{t.incomeDelItem}}</button>
+      </view>
+    </block>
+  </view>
+
+  <!-- 费用（A2：四大类；E1：引导文案） -->
+  <view class="sec">{{t.expenseTitle}}</view>
+  <!-- 🔴 R308：沿用上月（**只带费用侧**）。省掉"每月重填十几项"这个最大的弃用原因；
+       收入侧**不带**（预填收入会诱导忘改 ⇒ 静默错账）。本月已有费用时先弹确认，不静默覆盖。 -->
+  <view class="group-ops" wx:if="{{!readOnly}}">
+    <button class="btn-mini" bindtap="onCarryExpense">{{t.carryBtn}}</button>
+  </view>
+  <view class="hint-fold">
+    <view class="hint-fold-head" data-key="expenseHint" bindtap="onToggleHintFold">
+      <text class="hint-fold-guide">{{hintFold.expenseHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+      <text class="hint-fold-arrow">{{hintFold.expenseHint ? '▾' : '▸'}}</text>
+    </view>
+    <view class="hint-fold-body" wx:if="{{hintFold.expenseHint}}">{{t.expenseHint}}</view>
+  </view>
+
+  <view class="group" wx:if="{{inputMode === 'pro' || showMore || g.core}}" wx:for="{{expenseGroups}}" wx:key="category" wx:for-item="g" wx:for-index="gi">
+    <view class="group-head" data-kind="expense" data-idx="{{gi}}" bindtap="onToggleGroup">
+      <text class="g-label">{{g.label}}</text>
+      <text class="g-toggle">{{g.expanded ? '▾' : '▸'}}</text>
+    </view>
+    <!-- E2 + 2026-09-21：该类的「包括 / 不包括」口径 —— 收进折叠块，默认只留一行引导语 -->
+    <view class="scope-fold" wx:if="{{g.scope}}">
+      <view class="scope-head" data-kind="expense" data-idx="{{gi}}" bindtap="onToggleScope">
+        <text class="scope-guide">{{g.scopeOpen ? t.scopeHide : t.scopeShow}}</text>
+        <text class="scope-arrow">{{g.scopeOpen ? '▾' : '▸'}}</text>
+      </view>
+      <view class="scope" wx:if="{{g.scopeOpen}}">{{g.scope}}</view>
+    </view>
+
+    <!-- 🔴 R297-⑥（M1-B1）：同收入侧 —— 渲染源恒为已装饰的 `g.rows`，折叠用 `wx:if` 数据表达式。
+         原式 `{{g.expanded ? g.rows : g.rows.slice(0, 1)}}` 在模板里调 `slice` ⇒ 费用细项整段不渲染。 -->
+    <view class="sub-block" wx:for="{{g.rows}}" wx:key="rid" wx:if="{{g.expanded || ri === 0}}"
+      wx:for-item="r" wx:for-index="ri">
+      <view class="sub-line1">
+        <!-- 预设细项（fixed）：名字固定、但可删（同收入侧口径，G11d 守） -->
+        <input class="sub-item-inp" wx:if="{{g.expanded && !r.fixed}}" value="{{r.subItem}}" placeholder="{{t.subItemPh}}"
+          data-kind="expense" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubItem" disabled="{{readOnly}}" />
+        <text class="sub-item-fixed" wx:elif="{{g.expanded}}">{{r.subItem}}</text>
+        <!-- round189：复制上月带出来的行标「沿用 / 要核对」（只读派生标记，不入库） -->
+        <text class="muted" wx:if="{{g.expanded && r.tag === 'check'}}">{{t.needCheck}}</text>
+        <text class="muted" wx:elif="{{g.expanded && r.tag === 'fixed'}}">{{t.fixedTag}}</text>
+        <button class="btn-del" wx:if="{{g.expanded && g.rows.length > 1 && expenseEditGi === gi}}"
+          data-kind="expense" data-gidx="{{gi}}" data-ridx="{{ri}}" catchtap="delRow">{{t.delSubItem}}</button>
+      </view>
+      <view class="sub-line2">
+        <text class="sub-amt-lbl">{{g.expanded ? t.amount : g.label + t.classTotalSuffix}}</text>
+        <input class="val-input" type="digit" confirm-type="done" value="{{r.amountYuan}}"
+          data-kind="expense" data-gidx="{{gi}}" data-ridx="{{ri}}" bindinput="onSubAmount"
+          disabled="{{readOnly || (twMkByPlatActive && gi === twMkRowGi && ri === twMkRowRi)}}"  adjust-position="{{true}}" cursor-spacing="20" />
+      </view>
+      <!-- R85 引入 / round217 放开：各费用细项的「行内说明」（由 js 按 terms.expenseItemNotes 预计算挂到 r.note / r.promo，页面不写死项名）。
+           ⚠️ 原先判据写死 `g.category === 'marketing'` ⇒ 运营类就算配了注也渲染不出来；现改为「有注就渲染」（组内无注自然不显示）。 -->
+      <view class="exp-note {{r.promo ? 'promo' : ''}}" wx:if="{{r.note}}">
+        {{r.note}}
+        <text wx:if="{{r.promo}}" class="promo-path">{{t.twPromoPathLabel}}</text>
+        <view wx:if="{{r.promo}}" class="hint-fold">
+          <view class="hint-fold-head" data-key="twPromoPathHint" bindtap="onToggleHintFold">
+            <text class="hint-fold-guide">{{hintFold.twPromoPathHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+            <text class="hint-fold-arrow">{{hintFold.twPromoPathHint ? '▾' : '▸'}}</text>
+          </view>
+          <view class="hint-fold-body" wx:if="{{hintFold.twPromoPathHint}}">{{t.twPromoPathHint}}</view>
+        </view>
+      </view>
+      <!-- T1（round97）+ round102 · 营销段「分平台佣金小计」：只回显、不入库；填了即**自动汇成**佣金总额那一行
+           （该行随即转只读，避免两个来源打架）；一行都不填则完全不碰那一行。
+           ⚠️ 平台名 / 项名一律取自单源（收入侧外卖 items + reconcileRoles），页面零硬编码。
+           ⚠️ round102：块从「段末操作区里」移到**佣金行之后**（下标 g.mkPlatAfterRi 由 js 单源算好；
+              营销组没有佣金行时该下标退化为末行下标 ⇒ 块仍可见、功能不丢）。 -->
+      <view class="mk-plat" wx:if="{{g.category === 'marketing' && g.expanded && ri === g.mkPlatAfterRi}}">
+        <view class="mk-plat-title">{{t.mkPlatTitle}}</view>
+        <view class="hint-fold">
+          <view class="hint-fold-head" data-key="mkPlatHintF" bindtap="onToggleHintFold">
+            <text class="hint-fold-guide">{{hintFold.mkPlatHintF ? t.hintFoldHide : t.hintFoldShow}}</text>
+            <text class="hint-fold-arrow">{{hintFold.mkPlatHintF ? '▾' : '▸'}}</text>
+          </view>
+          <view class="hint-fold-body" wx:if="{{hintFold.mkPlatHintF}}">{{t.mkPlatHint}}</view>
+        </view>
+        <view class="mk-plat-row" wx:for="{{twMkByPlat}}" wx:key="platform" wx:for-item="p" wx:for-index="pi">
+          <text class="mk-plat-name">{{p.platform}}</text>
+          <input class="val-input mk-plat-amt" type="digit" confirm-type="done" value="{{p.amountYuan}}"
+            placeholder="{{t.mkPlatPh}}" data-idx="{{pi}}" bindinput="onMkByPlat" disabled="{{readOnly}}"
+            adjust-position="{{true}}" cursor-spacing="20" />
+        </view>
+        <view class="mk-plat-sum">
+          <text class="mk-plat-sum-lbl">{{t.mkPlatSumLabel}}</text>
+          <text class="mk-plat-sum-val">{{twMkByPlatSum}}</text>
+        </view>
+        <view class="group-ops" wx:if="{{twMkByPlatActive}}">
+          <button class="btn-small ghost" catchtap="clearMkByPlat">{{t.mkPlatClear}}</button>
+        </view>
+      </view>
+    </view>
+
+    <!-- round102：未用预设项只读提示（点它直开预设面板）—— 补「添加」这条腿的可发现性 -->
+    <view class="hint preset-hint" wx:if="{{g.expanded && g.unusedText}}" data-kind="expense" data-gidx="{{gi}}"
+      catchtap="onOpenPresetPick">{{t.presetHintPrefix}}{{g.unusedText}}</view>
+
+    <!-- R494b（2026-10-25）：增 / 删并排 —— 「+ 添加细项」与「- 删除细项」同源，放一起才不散。
+         点「- 删除细项」只让**本组**进入删除态（expenseEditGi === gi），× 才出现；默认态没有 ×，
+         上滑/敲空白都碰不到删除键。
+         R494c（2026-10-25 李老师）：**不再有「完成删除」** —— 点 × 走完确认那一刻已经删完，
+         再点一次「完成」是多出来的一步且无感 ⇒ 状态改用按钮颜色（is-del-on）表达，
+         删完任意一行由 doDeleteRow 自动把 expenseEditGi 置回 -1，× 自动收起。 -->
+    <view class="group-ops group-ops-inline" wx:if="{{g.expanded}}">
+      <button class="btn-small ghost subop-btn" data-kind="expense" data-gidx="{{gi}}" catchtap="onOpenPresetPick">{{t.addSubItem}}</button>
+      <button class="btn-small ghost subop-btn subop-del {{expenseEditGi === gi ? 'is-del-on' : ''}}"
+        wx:if="{{!readOnly && g.rows.length > 1}}" data-gidx="{{gi}}"
+        catchtap="toggleExpenseEdit">{{t.expenseDelItem}}</button>
+    </view>
+  </view>
+
+  <!-- P0#3：新手模式下一键展开被折叠的非核心科目（其他收入/营销/其他费用） -->
+  <view class="im-expand" wx:if="{{inputMode === 'novice' && !showMore}}">
+    <button class="btn ghost btn-block" bindtap="onExpandAll">{{t.expandAllBtn}}</button>
+  </view>
+
+  <!-- 核算方式（2026-09-20：库存/摊销开关从店铺设置页迁入此处，就地二选一） -->
+  <view class="sec">{{t.cmSecTitle}}</view>
+  <view class="hint">{{t.cmSecHint}}</view>
+
+  <!-- ① 食材消耗 -->
+  <view class="cm-sub">{{t.cmConsumeTitle}}</view>
+  <view class="cm-card">
+    <view class="cm-opt {{inventoryOn ? '' : 'on'}}" data-kind="inventory" data-val="0" bindtap="onPickMethod">
+      <view class="cm-opt-h"><text wx:if="{{!inventoryOn}}">✓ </text>{{t.cmConsumeDirect}}</view>
+      <view class="cm-opt-d">{{t.cmConsumeDirectDesc}}</view>
+    </view>
+    <view class="cm-opt {{inventoryOn ? 'on' : ''}}" data-kind="inventory" data-val="1" bindtap="onPickMethod">
+      <view class="cm-opt-h"><text wx:if="{{inventoryOn}}">✓ </text>{{t.cmConsumeInv}}</view>
+      <view class="cm-opt-d">{{t.cmConsumeInvDesc}}</view>
+    </view>
+  </view>
+  <block wx:if="{{inventoryOn}}">
+    <button class="btn ghost" bindtap="goInventory">{{t.cmConsumeInvGo}}</button>
+    <view class="cm-state">{{invSummary || t.cmConsumeInvEmpty}}</view>
+    <view class="hint">{{t.cmConsumeInvHint}}</view>
+  </block>
+  <block wx:else>
+    <view class="field">
+      <text class="lbl">{{t.cmConsumeDirectField}}</text>
+      <input class="val-input" type="digit" confirm-type="done" disabled="{{readOnly}}"
+        value="{{directConsumeYuan}}" bindinput="onDirectConsume"  adjust-position="{{true}}" cursor-spacing="20" />
+    </view>
+    <view class="hint">{{t.cmConsumeDirectHint}}</view>
+  </block>
+
+  <!-- ② 一次性投入（round107 重做）-->
+  <!-- 原来这里是一对二选一卡片（一次性计入当月 / 按月分摊）。它写的是 shop 级 amortize_switch，
+       结构上就排除了「本月既有一笔摊销、又有几笔小额一次算清」—— 而这正是真实场景（李老师真机反馈）。
+       现在两类投入**可以同时存在**，按笔登记在「一次性投入」页；本页只给口径说明 + 两行摘要 + 一个入口。 -->
+  <view class="cm-sub">{{t.cmAssetTitle}}</view>
+  <view class="hint-fold">
+    <view class="hint-fold-head" data-key="cmAssetHint" bindtap="onToggleHintFold">
+      <text class="hint-fold-guide">{{hintFold.cmAssetHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+      <text class="hint-fold-arrow">{{hintFold.cmAssetHint ? '▾' : '▸'}}</text>
+    </view>
+    <view class="hint-fold-body" wx:if="{{hintFold.cmAssetHint}}">{{t.cmAssetHint}}</view>
+  </view>
+  <button class="btn ghost" bindtap="goAmortize">{{t.cmAssetGo}}</button>
+  <view class="cm-state" wx:if="{{assetSummaryLump}}">{{assetSummaryLump}}</view>
+  <view class="cm-state" wx:if="{{assetSummaryAmort}}">{{assetSummaryAmort}}</view>
+  <view class="cm-state" wx:if="{{!assetSummaryLump && !assetSummaryAmort}}">{{t.cmAssetSumEmpty}}</view>
+
+  <!-- ③ 经营客流（A13/A19 · 全部选填）
+       三项留空 ⇒ 复购率与会员销售占比不显示（标【待补】），**不按 0 算**。
+       为什么要这三项：这两个指标一直算不出来，不是公式缺，是没人录客流。 -->
+  <view class="cm-sub">{{trTitle}}</view>
+  <view class="hint">{{trHint}}</view>
+  <view class="field">
+    <text class="lbl">{{trThisMonth}}</text>
+    <input class="val-input" type="number" confirm-type="done" disabled="{{readOnly}}"
+      placeholder="{{trThisMonthPh}}" value="{{trafficThisMonth}}"
+      bindinput="onTrafficThisMonth" adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+  <view class="field">
+    <text class="lbl">{{trOld}}</text>
+    <input class="val-input" type="number" confirm-type="done" disabled="{{readOnly}}"
+      placeholder="{{trOldPh}}" value="{{trafficOldCustomer}}"
+      bindinput="onTrafficOldCustomer" adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+  <view class="field">
+    <text class="lbl">{{trMember}}</text>
+    <input class="val-input" type="digit" confirm-type="done" disabled="{{readOnly}}"
+      placeholder="{{trMemberPh}}" value="{{memberSalesYuan}}"
+      bindinput="onMemberSales" adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+
+  <view style="height:20rpx;"></view>
+  <button class="btn primary" style="margin-top:0;" bindtap="onSave"
+    disabled="{{readOnly}}">{{isArchive ? t.saveArchiveOverride : t.save}}</button>
+
+  <!-- R85 · 粘贴面板（加速器，非唯一录入入口；手写金额同样可用） -->
+  <view class="paste-mask" wx:if="{{twPasteOpen}}" catchtap="closePaste">
+    <view class="paste-sheet" catchtap="">
+      <view class="paste-title">{{t.twPasteAreaTitle}}</view>
+      <textarea class="paste-area" value="{{twPasteText}}" placeholder="{{t.twPasteAreaPh}}"
+        bindinput="onPasteText" maxlength="2000" adjust-position="{{true}}" cursor-spacing="30" />
+      <view class="paste-ops">
+        <button class="btn-small ghost" catchtap="closePaste">{{t.twPasteCancel}}</button>
+        <button class="btn-small primary-btn" catchtap="onPasteExtract">{{t.twPasteExtract}}</button>
+      </view>
+      <view class="hint">{{t.twPasteRawKept}}</view>
+    </view>
+  </view>
+
+  <!-- T4b · 预设细项选择面板（费用段「+ 添加细项」先弹此项；清单 = 该类预设项 ∖ 已添加项） -->
+  <view class="paste-mask" wx:if="{{presetPick.open}}" catchtap="closePresetPick">
+    <view class="paste-sheet" catchtap="">
+      <view class="paste-title">{{t.presetPickTitle}}</view>
+      <view class="preset-list">
+        <view class="preset-item" wx:for="{{presetPick.list}}" wx:key="*this"
+          data-name="{{item}}" catchtap="onPickPreset">{{item}}</view>
+        <view class="preset-item custom" data-name="" catchtap="onPickPreset">{{t.presetPickCustom}}</view>
+      </view>
+      <view class="hint" wx:if="{{presetPick.list.length === 0}}">{{t.presetPickEmpty}}</view>
+      <view class="paste-ops">
+        <button class="btn-small ghost" catchtap="closePresetPick">{{t.twPasteCancel}}</button>
+      </view>
+    </view>
+  </view>
+</view>
+<view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

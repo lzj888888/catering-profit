@@ -95,7 +95,17 @@ let appPages = [];
 let appOk = false;
 try {
   const app = JSON.parse(fs.readFileSync(path.join(ROOT, 'app.json'), 'utf8').replace(/^\uFEFF/, ''));
-  appPages = Array.isArray(app.pages) ? app.pages.slice() : [];
+  // R422 分包化：「页面全集」= 主包 pages + 所有 subpackages[].pages（按 root 拼回全路径）。
+  //   旧写法只取 app.pages ⇒ 移进分包的页面会被判成「材料里登记了不存在的页」（死条目），
+  //   而它明明还在、只是换了包。这是扫描面过期，不是材料错。
+  const mainPages = Array.isArray(app.pages) ? app.pages : [];
+  const subs = app.subpackages || app.subPackages || [];
+  const subPages = [];
+  for (const sp of subs) {
+    const root = String(sp.root || '').replace(/\/+$/, '');
+    for (const p of (sp.pages || [])) subPages.push(root ? root + '/' + p : p);
+  }
+  appPages = mainPages.concat(subPages);
   appOk = true;
 } catch (e) {
   appOk = false;

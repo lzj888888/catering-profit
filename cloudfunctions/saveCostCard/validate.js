@@ -100,7 +100,11 @@ function validateInput(event) {
   }
   const mode = card.mode;
   const auxFen = (typeof card.aux_fen === 'number') ? card.aux_fen
-    : (typeof card.auxYuan === 'number' ? Math.round(card.auxYuan * 100) : 0);
+    // 🔴 R298（B2）：**十进制安全** —— 原式 `Math.round(<元> * 100)` 在半步（真值恰为 x.xx5）会
+    //   **少进 1 分**（实测 qty=0.1 × 净料 14500 万分之元 ⇒ 真值 14.5 分，原式取 14）。根因与
+    //   `money.yuanToFen` 同一处浮点：`toFixed(10)` 只消 1e-13 量级噪声、不动真实半步。
+    //   成本引擎三副本（calcBom / saveCostCard / syncCostCard）**必须同源同口径**。
+    : (typeof card.auxYuan === 'number' ? Math.round(Number((card.auxYuan * 100).toFixed(10))) : 0);
   if (!Number.isInteger(auxFen) || auxFen < 0) return err('card.aux_fen/auxYuan 辅料分摊必须是非负值');
 
   const lossPct = (typeof card.loss_pct === 'number') ? card.loss_pct : 0;
@@ -112,12 +116,12 @@ function validateInput(event) {
   if (mode === 'B' && !(batchOutput > 0)) return err('模式 B 必须提供 card.batch_output（>0 整数份数）');
 
   const priceFen = (typeof card.price_fen === 'number') ? card.price_fen
-    : (typeof card.priceYuan === 'number' ? Math.round(card.priceYuan * 100) : 0);
+    : (typeof card.priceYuan === 'number' ? Math.round(Number((card.priceYuan * 100).toFixed(10))) : 0);
   if (!Number.isInteger(priceFen) || priceFen < 0) return err('card.price_fen/priceYuan 建议售价必须是非负值');
 
   // M3.3（批次 P0）活动特价：可选，非负分（或元 → 分）
   const activityPriceFen = (typeof card.activity_price_fen === 'number') ? card.activity_price_fen
-    : (typeof card.activity_price_yuan === 'number' ? Math.round(card.activity_price_yuan * 100) : 0);
+    : (typeof card.activity_price_yuan === 'number' ? Math.round(Number((card.activity_price_yuan * 100).toFixed(10))) : 0);
   if (!Number.isInteger(activityPriceFen) || activityPriceFen < 0) return err('card.activity_price_* 活动特价必须是非负值');
 
   const targetMarginPct = (typeof card.target_margin_pct === 'number') ? card.target_margin_pct : 0;

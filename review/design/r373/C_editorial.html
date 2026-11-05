@@ -1,0 +1,170 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#fff;font-family:"Microsoft YaHei","PingFang SC",sans-serif;-webkit-font-smoothing:antialiased}
+.board{width:1180px;padding:34px 36px 30px;background:#FBF9F5}
+.head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:24px}
+.h1{font-size:30px;font-weight:800;color:#1B1B1B;letter-spacing:.5px}
+.h2{font-size:14px;color:#6B645C;margin-top:8px;line-height:1.6;max-width:760px}
+.tagline{font-size:12px;letter-spacing:2px;color:#B4552D;font-weight:700;text-transform:uppercase}
+.tokens{display:flex;gap:10px;align-items:center}
+.sw{width:26px;height:26px;border-radius:6px;border:1px solid rgba(0,0,0,.08)}
+.frames{display:flex;gap:34px;align-items:stretch}
+.phone{width:352px;min-height:660px;background:#FFFDF9;border-radius:26px;overflow:hidden;
+  border:1px solid #E7DFD3;box-shadow:0 20px 44px rgba(80,60,40,.14);display:flex;flex-direction:column;position:relative}
+.pbar{height:26px;display:flex;justify-content:space-between;align-items:center;padding:0 18px;
+  font-size:10px;color:#6B645C}
+.dots{letter-spacing:2px;font-size:8px}
+.phead{height:44px;display:flex;align-items:center;padding:0 14px;border-bottom:1px solid #EFE7DA}
+.pback{width:22px;font-size:20px;color:#1B1B1B}
+.ptitle{flex:1;text-align:center;font-size:15px;font-weight:600;color:#1B1B1B}
+.pmore{width:22px;text-align:right;color:#6B645C}
+.pscroll{flex:1;min-height:0;padding:14px 14px 8px;overflow:hidden}
+.kpi{display:flex;justify-content:space-between;align-items:flex-end;padding:4px 2px 10px}
+.kpi-cap{font-size:11px;color:#6B645C;margin-bottom:4px}
+.kpi-num{font-size:34px;font-weight:800;color:#1B1B1B;font-variant-numeric:tabular-nums;line-height:1}
+.kpi-num2{font-size:22px;font-weight:700;color:#2F6B4F;font-variant-numeric:tabular-nums}
+.verdict{font-size:11px;color:#6B645C;padding:8px 10px;background:#F6F1E7;border-radius:3px;
+  border-left:3px solid #B4552D;margin-bottom:12px}
+.secname{font-size:11px;font-weight:700;color:#6B645C;letter-spacing:1px;margin:10px 2px 6px}
+.secname2{font-size:11px;font-weight:700;color:#6B645C;letter-spacing:1px;margin:12px 2px 6px}
+.tbl{background:#FFFFFF;border-radius:4px;border:1px solid #EFE7DA;overflow:hidden}
+.trow{display:flex;align-items:center;height:38px;padding:0 12px;border-bottom:1px solid #EFE7DA}
+.trow:last-child{border-bottom:none}
+.tl{width:74px;font-size:12px;color:#1B1B1B}
+.tv{width:52px;text-align:right;font-size:12px;font-weight:700;color:#1B1B1B;font-variant-numeric:tabular-nums}
+.tv.hot{color:#B4552D}
+.track{flex:1;height:6px;background:#F0E9DC;border-radius:3px;position:relative;margin:0 10px}
+.track b{position:absolute;top:0;height:6px;background:#F0D9C8;border-radius:3px}
+.track i{position:absolute;top:-3px;width:12px;height:12px;border-radius:50%;background:#1B1B1B;
+  transform:translateX(-6px);border:2px solid #fff}
+.advice{background:#FFFFFF;border:1px solid #EFE7DA;border-radius:4px;padding:10px 12px}
+.arow{display:flex;align-items:baseline;height:30px;border-bottom:1px dashed #EFE7DA}
+.arow:last-of-type{border-bottom:none}
+.ak{width:78px;font-size:12px;color:#6B645C}
+.av{width:86px;font-size:16px;font-weight:800;color:#1B1B1B;font-variant-numeric:tabular-nums}
+.an{font-size:11px;color:#A39A8E}
+.anote{font-size:10px;color:#A39A8E;line-height:1.5;margin-top:6px}
+.gcard{background:#FFFFFF;border:1px solid #EFE7DA;border-radius:4px;overflow:hidden}
+.grow{display:flex;align-items:center;justify-content:space-between;height:44px;padding:0 12px;
+  border-bottom:1px solid #EFE7DA}
+.grow:last-child{border-bottom:none}
+.gl{font-size:13px;color:#1B1B1B}
+.gv{font-size:13px;color:#6B645C;font-variant-numeric:tabular-nums}
+.gv.strong{font-weight:800;color:#1B1B1B;font-size:15px}
+.gv.dim{color:#A39A8E}
+.pstick{flex:0 0 52px;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;
+  background:#1B1B1B;border-top:1px solid #EFE7DA}
+.sl{font-size:10px;color:#BDB3A6;margin-right:6px}
+.sv{font-size:16px;font-weight:800;color:#FFFFFF;font-variant-numeric:tabular-nums}
+.sv2{font-size:16px;font-weight:800;color:#F0B48F;font-variant-numeric:tabular-nums}
+.sgo{font-size:11px;color:#BDB3A6}
+.foot{margin-top:20px;display:flex;gap:26px;font-size:12px;color:#6B645C}
+.foot b{color:#1B1B1B}
+
+/* ===== C：编辑排版 —— 超大数字 + 竖色条 + 纸感 ===== */
+.vC .kpi{padding:2px 2px 14px;border-bottom:2px solid #1B1B1B;margin-bottom:14px}
+.vC .kpi-num{font-family:"Songti SC","SimSun",serif;font-size:46px;letter-spacing:-1px}
+.vC .kpi-num2{font-family:"Songti SC","SimSun",serif;font-size:26px}
+.vC .kpi-cap{font-size:10px;letter-spacing:1px;color:#A39A8E}
+.vC .verdict{background:transparent;border-left:3px solid #B4552D;border-radius:0;
+  padding:6px 0 6px 10px;margin-bottom:16px;font-size:11px}
+.vC .secname,.vC .secname2{border-left:3px solid #B4552D;padding-left:8px;font-size:12px;
+  color:#1B1B1B;font-weight:800;letter-spacing:0;margin:16px 0 8px}
+.vC .tbl,.vC .advice,.vC .gcard{border:1px solid #EFE7DA;border-radius:2px;box-shadow:none}
+.vC .grow{height:48px}
+.vC .gv.strong{font-family:"Songti SC","SimSun",serif;font-size:18px}
+.vC .track{background:#F0E9DC}
+.vC .track b{background:#F0D9C8;border-radius:0}
+.vC .track i{background:#B4552D;border-radius:0;width:3px;height:12px;top:-3px;border:none}
+</style></head><body>
+<div class="board vC">
+  <div class="head">
+    <div>
+      <div class="tagline">UI DIRECTION C</div>
+      <div class="h1" style="margin-top:6px">C · 编辑排版风（Editorial）</div>
+      <div class="h2">用杂志式层级解决「通篇一个颜色」：米白纸感、超大数字、左侧细色条分段，暖赭色只做点睛，信息依旧可核对。</div>
+    </div>
+    <div class="tokens"><div class="sw" style="background:#1B1B1B"></div><div class="sw" style="background:#B4552D"></div><div class="sw" style="background:#FBF9F5"></div><div class="sw" style="background:#2F6B4F"></div></div>
+  </div>
+  <div class="frames">
+<div class="phone">
+  <div class="pbar"><span>9:41</span><span class="dots">●●●</span></div>
+  <div class="phead">
+    <div class="pback">‹</div>
+    <div class="ptitle">已有铺面 · 本月测算</div>
+    <div class="pmore">⋯</div>
+  </div>
+  <div class="pscroll">
+    <div class="kpi">
+      <div class="kpi-l">
+        <div class="kpi-cap">保本营业额 / 月</div>
+        <div class="kpi-num">¥9,160</div>
+      </div>
+      <div class="kpi-r">
+        <div class="kpi-cap">按实际营业额算</div>
+        <div class="kpi-num2">+¥8,400</div>
+      </div>
+    </div>
+    <div class="verdict">结构健康 · 六项指标中 4 项在行业带内</div>
+
+    <div class="secname">指标对照</div>
+    <div class="tbl">
+      <div class="trow"><span class="tl">房租占比</span><span class="track"><i style="left:46%"></i><b style="left:38%;width:30%"></b></span><span class="tv">18.4%</span></div>
+      <div class="trow"><span class="tl">人工占比</span><span class="track"><i style="left:62%"></i><b style="left:52%;width:26%"></b></span><span class="tv hot">23.1%</span></div>
+      <div class="trow"><span class="tl">菜品毛利率</span><span class="track"><i style="left:64%"></i><b style="left:58%;width:22%"></b></span><span class="tv">63.0%</span></div>
+      <div class="trow"><span class="tl">能耗占比</span><span class="track"><i style="left:34%"></i><b style="left:28%;width:32%"></b></span><span class="tv">3.2%</span></div>
+    </div>
+
+    <div class="secname">想月赚 10,000，要怎么做</div>
+    <div class="advice">
+      <div class="arow"><span class="ak">毛利率做到</span><span class="av">49.5%</span><span class="an">现在 63.0%</span></div>
+      <div class="arow"><span class="ak">人工压到</span><span class="av">¥29,300</span><span class="an">现在 ¥20,000</span></div>
+      <div class="anote">两项各自单算：做到其中一项就够了，不要同时按最紧的算</div>
+    </div>
+  </div>
+  <div class="pstick">
+    <div><span class="sl">保本</span><span class="sv">¥9,160</span></div>
+    <div><span class="sl">月赚</span><span class="sv2">+¥8,400</span></div>
+    <div class="sgo">明细 ›</div>
+  </div>
+</div>
+
+<div class="phone">
+  <div class="pbar"><span>9:41</span><span class="dots">●●●</span></div>
+  <div class="phead">
+    <div class="pback">‹</div>
+    <div class="ptitle">菜品成本卡 · 编辑</div>
+    <div class="pmore">⋯</div>
+  </div>
+  <div class="pscroll">
+    <div class="secname2">基本信息</div>
+    <div class="gcard">
+      <div class="grow"><span class="gl">菜品名称</span><span class="gv">耙牛肉</span></div>
+      <div class="grow"><span class="gl">卡片类型</span><span class="gv">单品</span></div>
+      <div class="grow"><span class="gl">菜品分类</span><span class="gv">招牌 / 荤菜</span></div>
+    </div>
+
+    <div class="secname2">成本明细</div>
+    <div class="gcard">
+      <div class="grow"><span class="gl">牛腩（净料）</span><span class="gv">320 g</span></div>
+      <div class="grow"><span class="gl">香料包</span><span class="gv">1 份</span></div>
+      <div class="grow"><span class="gl">损耗率</span><span class="gv">4%</span></div>
+      <div class="grow"><span class="gl">单份成本</span><span class="gv strong">¥12.40</span></div>
+    </div>
+
+    <div class="secname2">定价与收益</div>
+    <div class="gcard">
+      <div class="grow"><span class="gl">建议售价</span><span class="gv">¥38.00</span></div>
+      <div class="grow"><span class="gl">活动价</span><span class="gv dim">未设置</span></div>
+      <div class="grow"><span class="gl">毛利率</span><span class="gv strong">67.4%</span></div>
+    </div>
+  </div>
+  <div class="pstick">
+    <div><span class="sl">成本</span><span class="sv">¥12.40</span></div>
+    <div><span class="sl">毛利率</span><span class="sv2">67.4%</span></div>
+    <div class="sgo">保存</div>
+  </div>
+</div>
+</div>
+  <div class="foot"><div>· 大号数字 + 小号说明，层级差拉开到 3 倍</div><div>· 分段用 3px 竖色条，不用整块色带</div><div>· 暖色只出现在「要你注意」的地方</div></div>
+</div></body></html>

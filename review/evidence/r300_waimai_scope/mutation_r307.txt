@@ -1,0 +1,134 @@
+
+--- M1 · D1 原样复现：覆盖率把**堂食**一侧的去重实参换回 `.name`（成本卡名命名空间）
+    文件：pages/m3/dishreview/index.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M2 · D1 原样复现：未匹配一侧换回 `.name`（与堂食混算 ⇒「共 N 道 / 已算 M 道」一起错）
+    文件：pages/m3/dishreview/index.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M3 · D1 前置腿：fmtRanked 不再带出 `dishKey`（前端拿不到菜品身份）
+    文件：pages/m3/dishreview/index.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M4 · D3 原样复现：onShow 退回「只在 locked 时重载」（去建卡回来页面不刷新）
+    文件：pages/m3/dishreview/index.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M5 · D2 原样复现：manageShop::onStats 不再回 `truncated`（删除确认框的"后果量级"被低估且零提示）
+    文件：cloudfunctions/manageShop/index.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M6 · 生产者面：getSalesBills 出参删掉**简写属性** `truncated,`（首版只认冒号时正是此漏）
+    文件：cloudfunctions/getSalesBills/index.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M7 · 消费者面 fail-closed：删掉 dishreview 的 dataHealth 引入（该页整体不再消费 truncated）
+    文件：pages/m3/dishreview/index.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M8 · 登记表**空转键**：往 EXEMPT 塞一个"存在但根本没碰过 emitter"的文件 ⇒ ③-f 必须判红
+    文件：tools/check_truncated_surfaced.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M9 · Q1 原样复现：删掉汇总卡的标题行（"全渠道合计"被读成堂食小计）
+    文件：pages/m3/dishreview/index.wxml
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M10 · Q3 反向：hub.js 撤回消费（该页把 length 当**精确张数**渲染 ⇒ 不许豁免）
+    文件：pages/m3/hub.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M11 · T4 原样复现：反算不再过付费墙（同页「计算」过了、反算没过）
+    文件：pages/takeaway/index.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M12 · T3 原样复现：反算改回读 `this.data.result`（未点计算时成本取 0 ⇒ 挂牌价偏低）
+    文件：pages/takeaway/index.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M13 · R301 原样复现（**新守卫**）：实现不再读契约入参 `biz_date_from` ⇒ 契约与实现分歧重现
+    文件：cloudfunctions/getDishReview/index.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M14 · R301 原样复现（**复盘页守卫**）：实现不再读契约入参 ⇒ 14-① 必须红（同一次变异两条判据都抓）
+    文件：cloudfunctions/getDishReview/index.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M15 · R301 反向：前端 load() 不再传区间（回到 `{}`）⇒ 跨月累计这个缺陷会悄悄回来
+    文件：pages/m3/dishreview/index.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M16 · R301 行为面：`filterByRange` 过滤后仍回原全集 ⇒ 14-③ 的行为判据必须红
+    文件：cloudfunctions/getDishReview/service.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M17 · R302 原样复现：`reconcile` 内联回自己的公式（＝两处口径各写一份 ⇒ 会漂移）
+    文件：utils/takeaway.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M18 · R302 反向：`expectedReceivable` 里掺进单位换算（`/ 100`）⇒ 元/分再也不能共用同一份
+    文件：utils/takeaway.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M19 · R302 原样复现：页面改用**中文字面量**定位费用项（术语改名即静默失效）
+    文件：pages/month/result.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M20 · R302 不编数面：营收 0 时到手率回 0（而不是 null）⇒ 会被读成"一分没到手"
+    文件：utils/takeaway.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M21 · R303 原样复现：picker 加回 `meituan`（对已知不准的平台重新做承诺）
+    文件：pages/takeaway/index.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M22 · R303 原样复现：引导文案把「美团外卖：找带商品名…」加回去（承诺面回收前形态）
+    文件：miniprogram/i18n/terms.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M23 · R303 反向：一级校验去掉「跨月」判断 ⇒ 跨月表不再被报出来
+    文件：utils/importSanity.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M24 · R304 原样复现：把 `showRows` 死槽重新写活（R297 M1-B1 的回归就是从改读它开始的）
+    文件：pages/month/input.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M25 · R307 原样复现：占比合计 >100% 不再拒绝（改成"能算就算"，等于替老板编数）
+    文件：utils/shareSplit.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M26 · R307 原样复现：把估算区块挂到**非空态**（估算与实测混排 ⇒ 老板会把估算当实测）
+    文件：pages/m3/dishreview/index.wxml
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+===== R299 变异回灌汇总 =====
+✅ M1  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M2  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M3  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M4  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M5  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M6  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M7  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M8  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M9  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M10  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M11  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M12  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M13  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M14  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M15  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M16  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M17  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M18  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M19  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M20  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M21  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M22  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M23  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M24  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M25  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M26  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+变异 26/26 全部：真红 + 点名腿命中 + 保留腿仍绿 + 逐字节还原 + 还原后归绿
+结论：两个守卫均**非恒真**，且守的是真实回归（D1 命名空间 / D3 返回不刷新 / D2 截断不告知 原样复现）

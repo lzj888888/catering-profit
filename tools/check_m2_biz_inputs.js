@@ -37,8 +37,8 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
-const PAGE_JS = 'pages/sandbox/index.js';
-const PAGE_WXML = 'pages/sandbox/index.wxml';
+const PAGE_JS = 'subpkg/tools/sandbox/index.js';
+const PAGE_WXML = 'subpkg/tools/sandbox/index.wxml';
 const TERMS_REL = 'miniprogram/i18n/terms.js';
 const PRESET_REL = 'utils/bizPreset.js';
 
@@ -136,26 +136,32 @@ const ALLOW_INPUTS = {
   laborUnitYuan: '（已无输入框）单人月人工单价 → labor 兜底；今由预设自动带出',
   // 🔴 R296 拍1/2/3（2026-10-14）：替换「每月固定支出」明细表的结构化固定成本输入。
   laborTotalYuan: '人工每月总额(元) → labor 固定项（不乘人数）；老板自己填实际工资合计',
-  waterYuan: '水费(元/月) → 与电/气求和成 utility；有账单的填实数，没有留空走参考值',
-  electricYuan: '电费(元/月) → 与电/气求和成 utility；有账单的填实数，没有留空走参考值',
-  gasYuan: '燃气费(元/月) → 与电/气求和成 utility；有账单的填实数，没有留空走参考值',
+  // 🔴 R350：活动形态入口（满减/团购/代金券折算成「每 100 实收多少」）。
+  //   客户填：他能从收银机/团购后台看到实际到账；不是咱们算的。
+  promoRealPct: '每 100 元实收(元) 0-100 → 折成折扣系数 d=实收率/100 供活动卡算；留空则按折扣档',
+  // 🔴 R370（纯堂食·缩小为保本门槛）：新增「商家出资活动成本率」输入（赠送/奖品/自贴券占实收）
+  promoCostPct: '活动成本率(%) → 与实收率一起算活动期边际贡献；老板从活动台账/采购能算出',
+  // 🔴 D3-C（2026-10-27）：界面把水、电合并为 `energyYuan` 单框；waterYuan/electricYuan 仅装配层向后兼容（已无输入框）。
+  energyYuan: '水电合计(元/月) → utility 固定项；有账单填近 3 月月均（水+电），没有留空走参考值',
+  gasYuan: '燃气费(元/月，可选) → 与水电合计一起进 utility；无燃气业态留空',
+  waterYuan: '（已并入 energyYuan 水电合计，仅装配层向后兼容；无输入框）',
+  electricYuan: '（已并入 energyYuan 水电合计，仅装配层向后兼容；无输入框）',
   manageYuan: '管理费(元/月，选填) → manage 固定项；非加盟店留空 = 不评',
   marginPct: '菜品毛利率 → gross_margin_pct（核心口径，由菜品成本推出或选填）',
   openDaysNum: '每月开门天数 → 正向 valid_days / 反向 open_days（同一份用户输入，两个 Tab 共用）；老板自己定',
   planName: '方案名（快照用，非测算入参）',
   presetIdx: '业态预设 picker（枚举，非专业指标）',
   rentYuan: '月租金 → fixed_items.rent；房东报价，填得出',
-  seatsPerTableNum: '单桌座位数（业态默认、用户可改）→ 与桌数相乘得 seats；属"用户输入的派生"，非外部基准',
-  tablesNum: '桌数 → seats（= 桌数 × 单桌座位数，唯一换算点 = index.js::seatsNow）；老板站铺子里数得出',
+  otherPctNum: '其他杂支占营业额 %（R525 方案 B）→ 经 feeOverrides.other 覆盖预设的 2%；0/留空 = 不算这项；老板可判断自家有没有这笔',
   targetYuan: '目标月利润 → target_profit_fen；老板自己定目标',
   // 🔴 2026-10-12（round279d #12 多渠道毛利率）：以下 8 个均为「分渠道」用户输入框，统一走 onChannelInput，
   //   属用户手填/可改值（非参考值、非引擎推导注入），按本守卫纪律登记用途。
   'channel.takeawayRatio': '外卖营收占比(%) → 与团购占比一起折算综合毛利率；用户按门店实际外卖单量填',
   'channel.groupRatio': '团购营收占比(%) → 与外卖占比一起折算综合毛利率；用户按门店实际团购单量填',
-  'channel.platformRate': '外卖平台抽成率(%) → 推导外卖毛利率（默认示例值 20%，用户可改/按后台校准）',
-  'channel.packRate': '外卖包装/配送成本率(%) → 推导外卖毛利率（默认示例值 3%）',
-  'channel.discountRate': '团购折扣率(%) → 推导团购毛利率（默认示例值 30%=7 折）',
-  'channel.groupPlatformRate': '团购平台抽成率(%) → 推导团购毛利率（默认示例值 5%）',
+  'channel.platformRate': '外卖平台抽成(%) → 加权进挂钩费率；**留空 = 按 CHANNEL_REF 参考值 20 算并打 ※**，填 0 = 真没有（R546）',
+  'channel.packRate': '外卖包装 + 配送(%) → 加权进挂钩费率；留空 = 参考值 3 并打 ※，填 0 = 真没有（R546）',
+  'channel.discountRate': '团购比原价便宜(%)= 折扣掉的比例；留空 = 参考值 30（＝7 折）并打 ※，填 0 = 真不打折（R546）',
+  'channel.groupPlatformRate': '团购平台抽成(%) → 加权进挂钩费率；留空 = 参考值 5 并打 ※，填 0 = 真没有（R546）',
   'channel.takeawayOverride': '外卖净毛利率手动覆盖(%) → 选填，覆盖推导值',
   'channel.groupOverride': '团购净毛利率手动覆盖(%) → 选填，覆盖推导值',
   // 🔴 R296b（渠道佣金改造）：新增「刷卡/扫码费率」输入（占**总流水**%），用户手填不可推导 ⇒ 登记。
@@ -211,20 +217,18 @@ check('A-⑥ 每个输入字段都已登记用途（未登记即红 ⇒ 防"填�
   unknownInputs.length === 0,
   unknownInputs.length ? `未登记：${unknownInputs.join('、')} ⇒ 先在 ALLOW_INPUTS 写明"这数是客户填的还是咱们算的"`
     : `已登记 ${binds.filter((b) => ALLOW_INPUTS[b]).length} 项 + ${binds.filter((b) => FOR_ITEM.test(b)).length} 项行内明细`);
-// 🔴🔴 A-⑧（R237 新增）：引擎入参 `seats` 必须经**唯一换算点**得出。
-//   R237 把输入口径由「座位数」改成「桌数」后，`seats` 由 `seatsNow() = 桌数 × 单桌座位数` 得出。
-//   ⚠️ 这条红线的风险是**全静默**的：若有人图省事把 `seats: this.seatsNow()` 改回
-//      `seats: Math.floor(Number(this.data.tablesNum))`（漏乘单桌座位数），
-//      页面一切正常、引擎也照算 —— 只是**所有周转类结论都偏大**
-//      （实测：5 桌时正确 3.70、漏乘 14.81，见 review/evidence/r237_m2_turn/recalc_anchors.js C-①）。
-//   判据：`seats: <rhs>` 的右值**只允许两种形态**（白名单制）：
-//     ① `this.seatsNow()` —— 唯一换算点（桌数 × 单桌座位数）
-//     ② `<标识符>.seats`   —— **透传**上一层已构造好的 payload，不是新换算点
-//   ⚠️ 形态 ② 是**判据自身的修正**，留痕在此：R237 首版判据只看「右边含不含 this.seatsNow()」，
-//      把 `seats: p.seats`（转发 payload）误判成「第二处换算点」⇒ 直接判红。
-//      这是**我方判据错**（R181i 纪律：守卫红先怀疑自己，别改代码迎合判据）。
+// 🔴🔴 A-⑧（R237 新增；R526 语义更新）：`seats` 只能从**单一出参口**取值。
+//   沿革：R237 曾要求 `seats = 桌数 × 单桌座位数`（用于算翻台率）；R525 删座位数、R526 删桌数后，
+//   本页已无任何座位口径输入 ⇒ `seatsNow()` **恒返回 0**（正向引擎不读该字段、validate 对 forward 也不校验）。
+//   判据保留、只是守的东西变了：`seats: <rhs>` 的右值**只允许两种形态**（白名单制）——
+//     ① `this.seatsNow()` —— 唯一出参口（现在恒 0）
+//     ② `<标识符>.seats`   —— **透传**上一层已构造好的 payload，不是新出参口
+//   为什么还留着这条：一旦有人在这里临时写个表达式（"先按面积估个座位吧"），就会**悄悄改变引擎口径**
+//   而页面没有任何变化 —— 与当年"漏乘单桌座位数导致周转结论偏大"是同一类静默错。
+//   ⚠️ 形态 ② 是判据自身的修正留痕（R237 首版把 `seats: p.seats` 误判成第二处换算点 ⇒ 直接判红；
+//      属**我方判据错**，按 R181i「守卫红先怀疑自己」修的）。
 //   反例（下列写法必须判红，见 §九变异回灌）：
-//      `seats: Math.floor(Number(this.data.tablesNum))`（漏乘单桌座位数）
+//      `seats: Math.floor(Number(this.data.area))`（临时按面积估）
 //      `seats: Number(this.data.seatsNum)`（残留旧字段名）
 //      `seats: 20`（写死常量）
 const seatsAssigns = (js.match(/\bseats\s*:[^,\n]*/g) || []).map((s) => s.trim());
@@ -256,9 +260,26 @@ const hasBizFilter = !!spo && /\.filter\s*\(/.test(spo) && /\bbizKey\b/.test(spo
 check('B-① 函数体内**不得**按 `bizKey` 过滤选项（否则又变回两级 picker）',
   !hasBizFilter, hasBizFilter ? '发现 .filter( 与 bizKey 同现 ⇒ 又在做类内过滤' : '无 bizKey 过滤（6 项全给）');
 // 正向：选项必须来自 BIZ_PRESETS **整体**（map 出全部，而不是先筛后 map）。
-check('B-② 选项由 `BIZ_PRESETS` 整体 `map` 得出（不是先筛后 map）',
-  !!spo && /BIZ_PRESETS\s*\.\s*map/.test(spo.replace(/\s+/g, ' ')),
-  !!spo ? (spo.match(/BIZ_PRESETS[^;]{0,60}/) || [''])[0].replace(/\s+/g, ' ').trim() : 'N/A');
+// 🔴 R438（李老师 2026-10-22）：B-② 从「只许整体 map」放宽为「整体 map，或展示白名单筛」。
+//   为什么放宽（不是迎合代码，是原判据过严）：
+//   原判据用「禁一切 filter」来反证 B-①（防两级 picker），但它连带禁止了**白名单筛**。
+//   而白名单筛是产品决策：14 个预设只映射 4 个 bizKey，光 dining 就占 5 个
+//   （川菜/湘菜/粤菜/家常/其他）⇒ 选哪个算出来一样，李老师原话「选择更细的二级也没意义」。
+//   区分点：B-① 禁的是「按 bizKey 筛」（选中餐只剩 1 项）；白名单筛**不按 bizKey 筛**。
+//   ⇒ 放宽同时**加一道更强的守**：白名单必须覆盖全部 4 个 bizKey（否则等于把某个业态藏没了）。
+const _BP = require('../utils/bizPreset.js').BIZ_PRESETS;
+const _spoFlat = (spo || '').replace(/\s+/g, ' ');
+const _isWholeMap = /BIZ_PRESETS\s*\.\s*map/.test(_spoFlat);
+const _wlMatch = (spo || '').match(/DISPLAY_KEYS\s*=\s*\[([^\]]+)\]/);
+const _wlKeys = _wlMatch ? ((_wlMatch[1].match(/'([^']+)'/g) || []).map((s) => s.replace(/'/g, ''))) : [];
+const _isWhitelist = /BIZ_PRESETS\s*\.\s*filter/.test(_spoFlat) && _wlKeys.length > 0;
+const _covered = new Set(_wlKeys.map((k) => ((_BP.find((p) => p.presetKey === k) || {}).bizKey)).filter(Boolean));
+const _coversAll = _covered.size >= 4;
+check('B-② 选项来自 `BIZ_PRESETS`（整体 map｜或白名单筛且白名单覆盖 4 大业态）',
+  !!spo && (_isWholeMap || (_isWhitelist && _coversAll)),
+  !!spo
+    ? (_isWholeMap ? '整体 map' : ('白名单 ' + _wlKeys.length + ' 项覆盖 ' + _covered.size + ' 个业态'))
+    : 'N/A');
 const op = bodyOf(js, 'onPreset') || '';
 check('B-③ 选完预设必须回写 `bizIdx`（否则参考带停在旧业态，且零报错）',
   /\bbizIdx\b/.test(op), /\bbizIdx\b/.test(op) ? 'onPreset 内有 bizIdx' : '未回写 bizIdx ⇒ 换业态后行规不跟');
@@ -266,23 +287,33 @@ check('B-④ `bizKeyOfPreset` 被 require 且被调用（4 大类的映射只有
   /bizKeyOfPreset/.test(js) && /bizKeyOfPreset\s*\(/.test(js) && /bizKeyOfPreset/.test(presetRaw),
   '页面引用 + 参数包导出均在位');
 
-// ============ C 主判据：主结论卡在场且不自造判定 ============
-sec('C 主判据：结论先给判定（主结论卡）且判定**不自造**');
+// ============ C 主判据：判定必须**可见且是中文**（结论卡与明细表已合并） ============
+// 🔴 R543（李老师 2026-10-27）：「健不健康有两处体现，保留最下面的『你的经营指标对照』就行了，
+//   这个本身就有过低/优秀这些参数」。⇒ 原「你这个店健不健康」卡**整卡删除**（与下表同一批 6 项、
+//   同一批 level，属重复；且那 6 行渲染的是英文枚举 good/ok/warn/bad，老板看不懂）。
+//   ⚠️ 判据不能因为卡片没了就删掉 —— 它守的是「判定要看得见、且必须是中文」这条契约，
+//      只是锚点从「卡片」改到「表格」：中文等级 + 禁止裸英文枚举 + 颜色图例。
+sec('C 主判据：判定可见且为中文（指标对照表）');
 const vo = bodyOf(js, 'verdictOf');
 check('C-⓪ `verdictOf` 函数体可解析', !!vo, vo ? `函数体 ${vo.length} 字符` : '未找到定义');
 // 🔴 三要素**逐条**判，而不是"页面里有 {{verdict.x}} 就算在场"：
 //    首版判据写成了后者 ⇒ 变异 ⑤（只删判定等级那一行）**实测没转红** —— 页面里还有
 //    `{{verdict.mine}}` 等 3 处绑定，正则照样命中 ⇒ 判据恒绿。
 //    ⇒ 主结论卡的**本体是判定**，等级 / 等级文案 / 标题 缺任何一个都不算"结论先给判定"。
-check('C-①a 渲染判定等级 `{{verdict.level}}`（卡片本体）',
-  /\{\{verdict\.level\}\}/.test(wx), /\{\{verdict\.level\}\}/.test(wx) ? '在场' : '缺失 ⇒ 结论卡只剩数字');
-check('C-①b 渲染判定文案 `{{verdict.levelName}}`（等级要有中文）',
-  /\{\{verdict\.levelName\}\}/.test(wx), /\{\{verdict\.levelName\}\}/.test(wx) ? '在场' : '缺失 ⇒ 用户看到英文枚举');
+check('C-①a 指标对照表渲染中文等级 `{{item.levelName}}`',
+  /\{\{item\.levelName\}\}/.test(wx), /\{\{item\.levelName\}\}/.test(wx) ? '在场' : '缺失 ⇒ 只剩英文枚举');
+// 🔴 反向判据（R543 真机问题的正身）：等级**不得**以裸英文当文字渲染。
+//   原「健不健康」卡写的是 `{{item.level}}` ⇒ 屏上直接出现 bad / good / ok / warn。
+//   样式类 `lv-{{item.level}}` 不算（那是 class，不显示）。只判「作为文本节点出现」。
+check('C-①b 不得把英文枚举当文字渲染（`<text>{{item.level}}</text>`）',
+  !/<text[^>]*>\{\{item\.level\}\}<\/text>/.test(wx), '零裸英文等级');
 // 🔴 #7（round272）术语改名：主结论卡标题键由 `verdictTitle` 改为 `verdictHealthTitle`
 //   （含义从「租金贵不贵」拓宽为「铺子健不健康」综合健康度）。terms.js 里 `verdictTitle` 已成孤儿键，
 //   wxml 实际用的是 `verdictHealthTitle` ⇒ 判据须跟新键，否则恒红（判据过期，非代码回退）。
-check('C-①c 渲染卡片标题 `{{t.verdictHealthTitle}}`（说清这张卡在答什么）',
-  /\{\{t\.verdictHealthTitle\}\}/.test(wx), /\{\{t\.verdictHealthTitle\}\}/.test(wx) ? '在场' : '缺失 ⇒ 卡片没有名字');
+// 标题 + 颜色图例（图例说明颜色含义，李老师原话：「要么你标好了是红的白的绿的，用什么颜色表示什么」）
+check('C-①c 表格有标题 `{{t.secIndicators}}` 且有颜色图例（ind-legend）',
+  /\{\{t\.secIndicators\}\}/.test(wx) && /class="ind-legend"/.test(wx),
+  /\{\{t\.secIndicators\}\}/.test(wx) && /class="ind-legend"/.test(wx) ? '标题与图例均在场' : '缺标题或缺颜色图例');
 // 🔴 判据：判定等级必须来自引擎 indicators，前端**不能自己再判一遍**。
 check('C-② `verdictOf` 内**不得**调用 `levelOf`（判定不自造）',
   !!vo && !/\blevelOf\s*\(/.test(vo), !!vo && /\blevelOf\s*\(/.test(vo) ? '发现自造判定' : '零自造（只读引擎 level）');
@@ -353,8 +384,9 @@ const v6Unknown = ['tableTurnoverYuan'].filter((b) => !ALLOW_INPUTS[b] && !FOR_I
 check('V-⑥ 负样本（未登记的新字段 tableTurnoverYuan）会被 A-⑥ 判红', v6Unknown.length === 1,
   v6Unknown.length === 1 ? '已报红' : '未报（白名单失效）');
 // V7：正样本（已登记的合法字段）⇒ A-⑥ **不得**误报（防反向伤害二型）
-const v7Ok = ['tablesNum', 'seatsPerTableNum', 'avgPriceYuan', 'rentYuan'].filter((b) => !ALLOW_INPUTS[b]);
-check('V-⑦ 正样本（已登记字段 tablesNum/seatsPerTableNum/avgPriceYuan/rentYuan）**不误报**', v7Ok.length === 0,
+//   🔴 R525 删 `seatsPerTableNum`、R526 删 `tablesNum` ⇒ 正样本改用仍在的合法字段（`headcountNum`）。
+const v7Ok = ['headcountNum', 'otherPctNum', 'avgPriceYuan', 'rentYuan'].filter((b) => !ALLOW_INPUTS[b]);
+check('V-⑦ 正样本（已登记字段 headcountNum/otherPctNum/avgPriceYuan/rentYuan）**不误报**', v7Ok.length === 0,
   v7Ok.length ? `🔴 把合法字段判红了：${v7Ok.join('、')}` : '未误报');
 // V8（#7 配套）：把 verdictOf 退化成「永远绿、不看指标」喂给 C-④ 新判据，必须转红
 //   ⇒ 证明 C-④ 不是假绿（否则"任意永远绿的实现"都会过）。
@@ -363,33 +395,36 @@ const v8Red = /rank\s*[:=]/.test(badVo2) && /\bworst\b/.test(badVo2);
 check('V-⑧ 负样本（verdictOf 退化成永远绿、无 rank/worst）会被 C-④ 判红',
   !v8Red, v8Red ? '🔴 把退化实现漏过了' : '已报红（C-④ 非假绿）');
 
-// ============ F · round273：A 区派生指标（每天来多少人 / 一天翻几台）============
+// ============ F · A 区派生指标（只剩「每天来多少人」；翻台率 R525 已下线）============
 sec('F · A 区派生指标 crowdOf：口径同源 + fail-closed');
-// 🔴 为什么必须有这一段：round273 给「已有铺面」补齐了 round223 §3.1 定案的两项指标，
-//   它们是**前端派生**（正向引擎根本不出这两个数）⇒ **没有引擎自测护着**，
-//   口径一旦漂移（漏乘单桌座位数 / 改成分母 30 / 删掉 fail-closed）**没有任何东西会报错**。
-//   ⇒ 用守卫钉死三件事：与反推同源可比、不给假数、只在 A 区渲染。
+// 🔴 沿革：round273 曾给「已有铺面」补齐「每天来多少人 / 一天翻几台」两项；R525（李老师 2026-10-27
+//   「这里不考虑翻台率这个事情。去了这个」）把翻台率整条链下线 —— 输入（单桌座位数）、派生（turn）、
+//   展示（一天得翻几台 / 共多少座位）全部移除。
+//   ⇒ 守卫随之改判**新意图**（不是放宽）：F-③ 由"turn 必须 = 来客÷座位"改为"**不得再产出 turn**"，
+//      F-④ 的 fail-closed 收窄为只守「人均消费 > 0」。仍保留 F-②（每天来客口径）、F-⑤（只在 A 区渲染）
+//      与两个负样本，防的是"哪天有人把翻台率偷偷加回来"和"删掉 fail-closed 恒出数"。
 const crowdFn = (js.match(/crowdOf\s*\([^)]*\)\s*\{([\s\S]*?)\n  \}/) || [])[1] || '';
-check('F-① 页面存在 `crowdOf(result)`（A 区客流/翻台的**唯一**派生处）',
+check('F-① 页面存在 `crowdOf(result)`（A 区客流指标的**唯一**派生处）',
   /crowdOf\s*\(/.test(js), crowdFn ? `抓到函数体 ${crowdFn.length} 字符` : '未抓到函数体');
 check('F-② 每天来客 = 日均营业额 ÷ 人均消费（ceil，人不能是小数）',
   /breakPeople\s*=\s*Math\.ceil\(\s*bd\s*\/\s*price\s*\)/.test(crowdFn)
   && /targetPeople\s*=\s*Math\.ceil\(\s*td\s*\/\s*price\s*\)/.test(crowdFn),
   /bd\s*\/\s*price/.test(crowdFn) ? '除数=人均消费' : '🔴 除的不是人均消费');
-check('F-③ 翻台 = 日均来客 ÷ 座位数（与反推 `月客流÷(座位×天数)` 同源 ⇒ 两 Tab 可比）',
-  /turn\s*:[^;\n]*targetPeople\s*\/\s*seats/.test(crowdFn),
-  /targetPeople\s*\/\s*seats/.test(crowdFn) ? '分子=日均来客、分母=座位数' : '🔴 口径已漂移');
-check('F-④ fail-closed：人均消费 ≤0 或座位数 ≤0 ⇒ 返回 null（**不给假数**）',
-  /!\s*\(price\s*>\s*0\)/.test(crowdFn) && /!\s*\(seats\s*>\s*0\)/.test(crowdFn) && /return null/.test(crowdFn),
+check('F-③ 🔴 翻台率已下线：`crowdOf` 不得再产出 `turn` 字段（也不得再引用 seats/座位数）',
+  !/\bturn\s*:/.test(crowdFn) && !/\bseats\b/.test(crowdFn),
+  /\bturn\s*:/.test(crowdFn) ? '🔴 turn 又回来了（李老师已明确不做翻台率）'
+    : (/\bseats\b/.test(crowdFn) ? '🔴 仍在引用 seats（座位数已不是输入口径）' : '已下线，只剩「每天来多少人」'));
+check('F-④ fail-closed：人均消费 ≤0 ⇒ 返回 null（**不给假数**）',
+  /!\s*\(price\s*>\s*0\)/.test(crowdFn) && /return null/.test(crowdFn),
   /return null/.test(crowdFn) ? '有 null 兜底' : '🔴 恒出数');
-check('F-⑤ 只在「已有铺面」渲染（wxml 判 `mode === forward && crowd`）',
-  /mode\s*===\s*['"]forward['"]\s*&&\s*crowd/.test(wx),
-  /mode\s*===\s*['"]forward['"]\s*&&\s*crowd/.test(wx) ? '已限定 A 区' : '🔴 B 区也会渲染');
-// 负样本（防假绿）：F-③ 必须能抓到「座位数漏乘桌数」这种**最易犯**的错
-const badCrowd1 = 'crowdOf(r){const p=Number(this.data.avgPriceYuan);const s=Number(this.data.seatsPerTableNum);return {breakPeople:Math.ceil(Number(r.break_even_daily)/p),targetPeople:Math.ceil(Number(r.target_daily)/p),turn:Math.round((Math.ceil(Number(r.target_daily)/p)/s)*100)/100};}';
-check('F-⑥ 负样本（座位数只取 seatsPerTableNum、**漏乘桌数**）会被 F-③ 判红',
-  !/turn\s*:[^;\n]*targetPeople\s*\/\s*seats/.test(badCrowd1),
-  /turn\s*:[^;\n]*targetPeople\s*\/\s*seats/.test(badCrowd1) ? '🔴 把错误实现漏过了' : '已报红');
+check('F-⑤ 只在「已有铺面」渲染（同一 wx:if 内含 forward 与 crowd，允许夹其他条件）',
+  /mode\s*===\s*['"]forward['"][^"}]*crowd/.test(wx),
+  /mode\s*===\s*['"]forward['"][^"}]*crowd/.test(wx) ? '已限定 A 区' : '🔴 B 区也会渲染');
+// 负样本（防假绿）：把 turn 加回 crowdOf ⇒ F-③ 必须判红
+const badCrowd1 = 'crowdOf(r){const p=Number(this.data.avgPriceYuan);const s=this.seatsNow();return {breakPeople:Math.ceil(Number(r.break_even_daily)/p),targetPeople:Math.ceil(Number(r.target_daily)/p),turn:Math.round((Math.ceil(Number(r.target_daily)/p)/s)*100)/100};}';
+check('F-⑥ 负样本（把 turn 重新加回 crowdOf）会被 F-③ 判红',
+  /\bturn\s*:/.test(badCrowd1),
+  /\bturn\s*:/.test(badCrowd1) ? '已报红' : '🔴 把错误实现漏过了');
 // 负样本（防假绿）：删掉 fail-closed 恒出数 ⇒ F-④ 必须红
 const badCrowd2 = 'crowdOf(r){const price=1;const seats=1;return {breakPeople:1,targetPeople:1,turn:1};}';
 check('F-⑦ 负样本（删掉 fail-closed、恒出数）会被 F-④ 判红',
@@ -437,9 +472,9 @@ check('G-⑦ 人效 = 实际月营业额 ÷ 员工人数',
 check('G-⑧ fail-closed：没填实际月营业额 ⇒ 返回 null（**不给假数**）',
   /!\s*\(rev\s*>\s*0\)/.test(effFn) && /return null/.test(effFn),
   /return null/.test(effFn) ? '有 null 兜底' : '🔴 恒出数');
-check('G-⑨ 只在「已有铺面」渲染（wxml 判 `mode === forward && eff`）',
-  /mode\s*===\s*['"]forward['"]\s*&&\s*eff\b/.test(wx),
-  /mode\s*===\s*['"]forward['"]\s*&&\s*eff\b/.test(wx) ? '已限定 A 区' : '🔴 B 区也会渲染');
+check('G-⑨ 只在「已有铺面」渲染（同一 wx:if 内含 forward 与 eff，允许夹其他条件）',
+  /mode\s*===\s*['"]forward['"][^"}]*eff\b/.test(wx),
+  /mode\s*===\s*['"]forward['"][^"}]*eff\b/.test(wx) ? '已限定 A 区' : '🔴 B 区也会渲染');
 // 负样本（防假绿）：拿保本营业额当分子 —— 老板要的是"我这店实际坪效"，不是"保本坪效"
 const badEff = 'effOf(){const rev=Number(this.data.result.break_even_monthly);const area=Number(this.data.areaNum);return {rev:String(rev),pixel:String(Math.round(rev/area)),perHead:null};}';
 check('G-⑩ 负样本（分子改成**保本营业额** + 删掉 fail-closed）会被 G-⑥/G-⑧ 判红',
@@ -473,6 +508,138 @@ const badFb = 'const preset = findPreset(this.data.presetKey) || BIZ_PRESETS[0];
 check('H-⑤ 负样本（fallback 退化成裸 || BIZ_PRESETS[0]）会被 H-③ 判红',
   !/findPreset\(this\.data\.presetKey\)\s*\|\|\s*findPreset\('other'\)\s*\|\|\s*BIZ_PRESETS\[0\]/.test(badFb),
   /findPreset\('other'\)/.test(badFb) ? '🔴 把错误实现漏过了' : '已报红');
+
+// ============ T 组（R339）：L1 标题里的数字必须等于实际输入行数 ============
+//   为什么守：标题写「先答 5 个」，L1 实际只有 4 个输入框（面积/房租/人数/目标）——
+//   老板照着数，数不出来，第一屏就失信。而这类"文案里的数字"最容易被增删输入项时漏改，
+//   因为没有一条机器判据盯着它（同族病：定案写在注释里却没守卫）。
+//   ⚠️ 切段必须**按行**切：`t.l1TitleRev` 含子串 `t.l1Title`，用 split 会切错段（本轮踩过，
+//      切出 6 个字符的假段、rows 恒为 0 ⇒ 判据变成"永远 0 ≠ 5"的假红/假绿）。
+sec('T L1 标题数字 ≡ 实际输入行数（R339）');
+{
+  // 🔴 R522（2026-10-26）：输入区按「① 门店 ② 每月固定 ③ 毛利率 ④ 平台抽成 ⑤ 开店投入 ⑥ 想赚多少」
+  //   六段重排，L1 卡的 `l1Title/l1TitleRev/l2Toggle` 全部下线 ⇒ 原按 `t.l1Title`→`t.l2Toggle`
+  //   切段的写法切出空段（rows=0），T-② 也随之失去对象（新标题不再宣称"几个"）。
+  //   **判据语义不变、只换锚点**：仍守「段能定位 + 段内输入行数有下界」，
+  //   并保留两条独立判据（分别守「① 门店」与「② 每月固定」），不合并、不减条数。
+  const lines = wxmlRaw.split('\n');
+  const segOf = (a, b) => {
+    const si = lines.findIndex((l) => l.includes(a));
+    const ei = lines.findIndex((l, i) => i > si && l.includes(b));
+    const seg = (si >= 0 && ei > si) ? lines.slice(si, ei).join('\n') : '';
+    return { seg, si, ei, rows: (seg.match(/bindinput=/g) || []).length };
+  };
+  const s1 = segOf('t.secStore', 't.secFixed');
+  // 🔴 R525/R526：下界 4 → 3 → 2 —— 座位数（R525）、桌数（R526）两个输入相继删除，
+  //   门店情况现只剩 面积 / 人均消费 两格。下界用意不变（防「切段锚点失效 ⇒ seg 为空 ⇒ rows=0 也过」），
+  //   但**不能再往下调**：调到 0 就等于不设防。
+  check('T-① 「① 门店情况」段能定位且输入行 ≥ 2（下界，防切段失效变成恒真）',
+    s1.rows >= 2, '实际 ' + s1.rows + ' 行（切片 ' + (s1.si + 1) + '→' + s1.ei + '）');
+
+  const s2 = segOf('t.secFixed', 't.secMargin');
+  check('T-② 「② 每月固定支出」段输入行 ≥ 5（房租/人数/人工总额/水电气/管理费）',
+    s2.rows >= 5, '实际 ' + s2.rows + ' 行（切片 ' + (s2.si + 1) + '→' + s2.ei + '）');
+
+  // T-③（R522 补位）：原 T-② 是两条（l1Title / l1TitleRev），重排后文案不再宣称项数 ⇒
+  //   改为守「⑥ 想赚多少」段：目标利润必须仍有一个输入框（这张卡空了 = 目标反推静默失效）。
+  const s3 = segOf('t.secGoal', 'id="m2result"');
+  check('T-③ 「⑥ 想赚多少」段仍有目标输入行 ≥ 1（防目标卡被重排搬空）',
+    s3.rows >= 1, '实际 ' + s3.rows + ' 行（切片 ' + (s3.si + 1) + '→' + s3.ei + '）');
+}
+
+// ============ U 组（R341）：L1 三个输入项的语义补答 ============
+//   为什么守：这几项在餐饮实务里都有歧义，不问清楚会**直接算错**——
+//     · 面积：~~使用面积 vs 房本面积~~ ⇒ 🔴 R543 已删（李老师 2026-10-27）：
+//       **房租是按房本面积交的**，让用户按「实际能用面积」填，租金占比必然对不上 ⇒ 那句是错误引导。
+//     · 房租：含不含物业/取暖（直接进固定费用 ⇒ 保本错）
+//     · 人数：含不含老板夫妻（人效分母错）
+//   而"加一句提示"最容易在改版时被删掉，且删了不影响任何计算 —— 全靠人盯。
+sec('U 输入项语义提示（R341）');
+{
+  const U = require('../miniprogram/i18n/terms.js').TERMS.m2;
+  const keys = ['rentHint', 'headcountHint', 'headcountHintRev'];
+
+  const missing = keys.filter((k) => !String(U[k] || '').trim());
+  check('U-① 三个语义提示键都存在且非空', missing.length === 0, '缺：' + missing.join('/'));
+
+  const tooLong = keys.filter((k) => String(U[k] || '').length > 18);
+  check('U-② 每条 ≤18 字（超过就不算"短提示"，应按分层线改折叠）', tooLong.length === 0,
+    tooLong.map((k) => k + '=' + String(U[k]).length + '字').join(' / '));
+
+  const n = (wxmlRaw.match(/class="row-hint"/g) || []).length;
+  // 🔴 R543：面积那条提示删除后，L1 只剩「房租 / 人数」两条。
+  //   同时**正向钉住**这两条仍在渲染、且 areaHint 不得回潮（删错/加回都要红）。
+  // ⚠️ 人数那条写在三元里（`{{mode === 'reverse' ? t.headcountHintRev : t.headcountHint}}`）
+  //   ⇒ 判据用 **键名** 而不是整段插值字面量；`\b` 防 `headcountHintRev` 冒充 `headcountHint`。
+  const u3 = n === 2 && /t\.rentHint\b/.test(wxmlRaw) && /t\.headcountHint\b/.test(wxmlRaw)
+    && !/t\.areaHint\b/.test(wxmlRaw);
+  check('U-③ L1 只渲染 2 条提示（房租 / 人数），面积那条已删且不得回潮',
+    u3, '实际 ' + n + ' 条' + (/t\.areaHint\b/.test(wxmlRaw) ? '；areaHint 又回来了' : ''));
+
+  // 人数在两种模式下语义不同：已有店铺「含老板夫妻」、找店「打算请几个」
+  // —— 只写一条会让另一个模式文不对题。
+  check('U-④ 人数提示分正/反两套', /headcountHintRev/.test(wxmlRaw),
+    'wxml 里的 headcountHintRev 出现 ' + (wxmlRaw.match(/headcountHintRev/g) || []).length + ' 次');
+}
+
+// ============ W 组：毛利率引导「只留文字，不许在填表中间召唤跳走」（R547b 改写）============
+// 为什么改判据（R547b，李老师 2026-10-28 反馈 + 豆包商议）：
+//   R545 原判据守的是「说明 + 按钮 + bindtap + 跳转四件套齐全，点得动跳得到」——
+//   **它把"有按钮"当成正确实现来守**。而李老师实测：按钮在填表正中间召唤跳走 ⇒
+//   填到一半被叫走、回来路断，做不到闭环；且"建一张卡就自动算出来了"是假承诺
+//   （一张卡只给一道菜毛利率，整店要成本卡 + 销量加权，跳过去也不出这个数）。
+//   ⇒ 判据反向：**有按钮即判红**，并守文案三要素 + 禁假承诺词。
+// ⚠️ 判语义不钉单一字面（R297 教训）：每要素给多个等价说法，避免改措辞就假红。
+sec('W 组 · 毛利率引导只剩文字（R547b 反向判据）');
+const gText = /\{\{t\.marginSrcNote\}\}/.test(wxmlRaw);
+// 按钮面：wxml 里 margin-src 块内不得再出现 button，也不得再引用 marginSrcBtn
+const gBtnLeft = /margin-src-btn/.test(wxmlRaw) || /marginSrcBtn/.test(wxmlRaw);
+check('W-① 毛利率引导只剩文字：说明仍在渲染，且按钮已撤（填表中间不得召唤跳走）',
+  gText && !gBtnLeft,
+  gText ? (gBtnLeft ? '按钮仍在（margin-src-btn / marginSrcBtn 出现）' : '说明在 · 无按钮') : '说明文案都没了（引导整体消失）');
+
+// W-②：文案三要素 + 禁假承诺（读**术语值**，不读注释 ⇒ 不会被注释喂成恒真）
+const M2T = require('../miniprogram/i18n/terms.js').TERMS.m2;
+const gNote = String((M2T && M2T.marginSrcNote) || '');
+const gAllow = /估|大概数/.test(gNote) && /就行|可以|先/.test(gNote);        // 许可先估
+const gCost = /保本线|保本额/.test(gNote) && /偏|差|跟着/.test(gNote);        // 说清估偏的代价
+const gStay = /不用停|不用[过回]|继续填/.test(gNote);                          // 明说现在不用停
+const gFake = /自动|一键|就出来|建一张(成本)?卡就|马上|立刻/.test(gNote);       // 假承诺词
+const gWhy2 = [];
+if (!gNote) gWhy2.push('术语值为空');
+if (!gAllow) gWhy2.push('未许可先估');
+if (!gCost) gWhy2.push('未说清估偏的代价');
+if (!gStay) gWhy2.push('未说"现在不用停"');
+if (gFake) gWhy2.push('含假承诺词');
+check('W-② 引导文案三要素齐全且不含假承诺（许可先估 / 说清代价 / 不用停）',
+  gWhy2.length === 0,
+  gWhy2.length ? '问题：' + gWhy2.join('、') : gNote.replace(/\n/g, ' ⏎ '));
+
+// W-③：入口**后置到结果页**（豆包商议：不要砍掉精准核算的路，放到算完之后）
+//   ⇒ 结果页那两个出口按钮必须还在，否则"想算准的人"彻底没了路。
+const gExit = /payback-m3-btn/.test(wxmlRaw) && /bindtap="onGoM3"/.test(wxmlRaw)
+  && /onGoM3\s*\(\s*\)\s*\{[\s\S]{0,120}?switchTab/.test(jsRaw);
+check('W-③ 精准核算入口后置在结果页（按钮 + bindtap + 真跳转都在，不在填表中间）',
+  gExit,
+  gExit ? '结果页出口在（payback-m3-btn + onGoM3 → switchTab）' : '结果页出口缺失 ⇒ 想算准的人没路了');
+
+// ============ W 组续：毛利率口径闸门（R549）============
+// 为什么守：引擎 = 固定成本 ÷（毛利率 − 渠道费率 − 杂支）⇒ 毛利率**必须不含**平台抽成。
+//   老板选了「已扣平台抽成」还把这三次 push 留在这儿 = **重复扣**，实测保本额虚高 51%，
+//   而且全程零报错（数字看着很正常，只是偏大）。这类"静默多扣一遍"只能靠判据守。
+sec('W 组续 · 毛利率口径闸门（R549）');
+const gScopeDefault = /marginScope:\s*'dish'/.test(jsRaw);
+const gGate = /cm\.on\s*&&\s*this\.data\.marginScope\s*!==\s*'net'/.test(jsRaw);
+check('W-④ 渠道佣金入参被口径闸门守住（默认 dish · net 时不 push 三项）',
+  gScopeDefault && gGate,
+  gScopeDefault ? (gGate ? '默认 dish + 闸门在' : '闸门丢了 ⇒ 选「已扣平台抽成」仍然重复扣') : '默认口径不是 dish');
+// 口径必须进草稿：不存的话退出重进回默认 dish ⇒ 选 net 的店被悄悄扣两遍（R443 半份草稿同族）
+const gDraftSave = /marginScope:\s*this\.data\.marginScope/.test(jsRaw);
+const gDraftRestore = /marginScope:\s*d\.marginScope\s*===\s*'net'\s*\?\s*'net'\s*:\s*'dish'/.test(jsRaw);
+check('W-⑤ 口径进草稿并回填（否则重进回默认 ⇒ 悄悄扣两遍）',
+  gDraftSave && gDraftRestore,
+  gDraftSave ? (gDraftRestore ? '存 + 回填都在' : '回填缺失（老草稿默认 dish，但 net 会丢）') : '草稿没存口径');
+
 
 // ============ E 下界 ============
 sec('E 下界：断言数不得被悄悄删掉');

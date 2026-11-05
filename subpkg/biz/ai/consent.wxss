@@ -1,0 +1,26 @@
+/* subpkg/biz/ai/consent.wxss —— R434 AI 授权页（风格 B：卡片化）
+   骨架类（.sb-page/.sb-card/.sb-itm/.sb-badge）在 app.wxss，这里只写本页特有。 */
+
+.hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12rpx; }
+.ttl { font-size: 34rpx; font-weight: 700; color: #1f2329; }
+.lead { font-size: 28rpx; color: #646a73; line-height: 1.7; }
+
+/* 能力行：左边名称，右边说明 —— 说明允许换行、右对齐 */
+.sb-itm .sb-itm-v { font-weight: 400; font-size: 28rpx; color: #646a73; text-align: right; margin-left: 24rpx; max-width: 55%; line-height: 1.5; }
+
+.dline { font-size: 28rpx; color: #4e5969; line-height: 1.75; padding: 10rpx 0; }
+.dline::before { content: "·"; color: #8a94a6; margin-right: 10rpx; }
+
+.btn {
+  margin: 8rpx 0 40rpx;
+  height: 92rpx;
+  line-height: 92rpx;
+  border-radius: 20rpx;
+  background: #1f7a53;
+  color: #fff;
+  font-size: 30rpx;
+  font-weight: 600;
+  border: none;
+}
+.btn::after { border: none; }
+.btn.ghost { background: #fff; color: #c0392b; border: 1rpx solid #f0d5d2; }

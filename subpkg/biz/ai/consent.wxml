@@ -1,0 +1,30 @@
+<view class="sb-page">
+  <!-- R434（队列 #29）：AI 辅助分析授权页 · 风格 B（卡片化）
+       🔴 判"是否已开"用 effective_scope 是否有值，**不依赖 state 枚举字符串**
+          （枚举值改了页面不会跟着坏；权限才是老板真正关心的东西）。 -->
+  <view class="sb-card">
+    <view class="hdr">
+      <text class="ttl">{{t.title}}</text>
+      <text class="sb-badge {{granted ? 'ok' : (stale ? 'warn' : 'na')}}">{{granted ? t.stOk : (stale ? t.stStale : t.stNone)}}</text>
+    </view>
+    <view class="lead">{{t.lead}}</view>
+  </view>
+
+  <view class="sb-card">
+    <view class="sb-sec">{{t.secWhat}}</view>
+    <view class="sb-itm"><text>{{t.pDiagnose}}</text><text class="sb-itm-v">{{t.pDiagnoseDesc}}</text></view>
+    <view class="sb-itm"><text>{{t.pPricing}}</text><text class="sb-itm-v">{{t.pPricingDesc}}</text></view>
+    <view class="sb-itm"><text>{{t.pExpand}}</text><text class="sb-itm-v">{{t.pExpandDesc}}</text></view>
+  </view>
+
+  <view class="sb-card">
+    <view class="sb-sec">{{t.secData}}</view>
+    <view class="dline">{{t.data1}}</view>
+    <view class="dline">{{t.data2}}</view>
+    <view class="dline">{{t.data3}}</view>
+  </view>
+
+  <button class="btn {{granted ? 'ghost' : ''}}" bindtap="onToggle" disabled="{{busy}}">
+    {{granted ? t.btnRevoke : (stale ? t.btnReagree : t.btnGrant)}}
+  </button>
+</view>

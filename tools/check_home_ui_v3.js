@@ -30,7 +30,7 @@ const F = {
   idxWxml: 'pages/index/index.wxml',
   idxJs: 'pages/index/index.js',
   idxWxss: 'pages/index/index.wxss',
-  matWxss: 'pages/material/index.wxss',
+  matWxss: 'subpkg/biz/material/index.wxss',
   terms: 'miniprogram/i18n/terms.js',
 };
 
@@ -148,6 +148,45 @@ for (const k of HERO_KEYS) {
 ensure('A-⑨', 'CTA 文案不叫「记一笔」（会被理解成记当日流水，点进去却是月度科目 ⇒ 觉得被骗）',
   src.idxWxml.indexOf('记一笔') < 0 && heroTexts.indexOf('记一笔') < 0,
   '首页渲染面里出现了「记一笔」');
+
+// ══════ A-⑬~A-⑮（R298）：hasProfit 的**触发条件**必须含「有账本记录」 ══════
+// （编号续在末尾：本组按**主题**插在 A-⑨ 之后，但 ⑩~⑫ 号已被下方既有断言占用 ⇒ 不撞号）
+// 为什么（R297 第七轮 A1 复核实测）：`getLedger` 对**没有记录**的店回「默认空账」
+//   （cloudfunctions/getLedger/index.js:4），其 operation_ref_profit_fen 也是 0 ⇒ 旧写法
+//   `if (typeof fen === 'number' && Number.isFinite(fen))` 会把「从没录过」渲染成 **¥0.00**。
+//   wxml 侧（A-⑦）只能保证「空态分支不出现金额」—— 但 `hasProfit` 被**错置为真**时，
+//   走的是「有数据」分支，wxml 侧那几条**全都看不见** ⇒ 必须在**触发条件**上补一条。
+/** 纯判据：取「置 hasProfit:true 的那个 if」的条件，必须同时含「有记录」与「是有限数」 */
+function fnBody(srcText, head) {
+  const i = srcText.indexOf(head);
+  if (i < 0) return '';
+  const b0 = srcText.indexOf('{', i);
+  let d = 0;
+  for (let k = b0; k < srcText.length; k++) {
+    if (srcText[k] === '{') d++;
+    else if (srcText[k] === '}') { d--; if (d === 0) return srcText.slice(b0, k + 1); }
+  }
+  return '';
+}
+function hasProfitGatedByRecord(body) {
+  if (!body) return false;
+  const m = /if\s*\(([\s\S]{0,300}?)\)\s*\{[\s\S]{0,400}?hasProfit:\s*true/.exec(body);
+  if (!m) return false;
+  const cond = m[1];
+  return /account_id/.test(cond) && /isFinite|typeof/.test(cond);
+}
+const refBody = fnBody(src.idxJs, 'async loadRefProfit(');
+ensure('A-⑬', '取得到 loadRefProfit 函数体（取不到 ⇒ 下面两条是空转）', !!refBody,
+  'index.js 里定位不到 loadRefProfit 的完整函数体');
+ensure('A-⑭', '🔴 hasProfit 为真的前置条件必须含「有账本记录」（account_id）'
+  + ' —— 否则「从没录过」会被渲染成 ¥0.00，老板读成"这月不赚不赔"',
+  hasProfitGatedByRecord(refBody),
+  '置 hasProfit:true 的 if 条件里没看到 account_id（只判"是不是数字"就会把空账当有数据）');
+// 判据自证（影子样本）：旧写法必须判不过 —— 否则 A-⑭ 是恒真（假绿）
+const OLD_FORM = 'async loadRefProfit() { const d = await api.call(); const fen = d.result.operation_ref_profit_fen;'
+  + ' if (typeof fen === \'number\' && Number.isFinite(fen)) { this.setData({ hasProfit: true }); } }';
+ensure('A-⑮', '判据自证：旧写法（只判"是不是数字"）判不过 ⇒ A-⑭ 有分辨力，不是恒真',
+  hasProfitGatedByRecord(fnBody(OLD_FORM, 'async loadRefProfit(')) === false);
 ensure('A-⑩', '六个 hero 术语键全部取到值（少一个 ⇒ 页面上就是空白按钮/空白标签）',
   HERO_KEYS.every((k) => (src.terms || '').indexOf(k + ':') >= 0),
   'terms.js 里 hero 键不全；wxml 引用了不存在的键会**静默渲染成空**');
@@ -156,9 +195,15 @@ ensure('A-⑩', '六个 hero 术语键全部取到值（少一个 ⇒ 页面上�
 section('B 数据口径（当月来源 / 利润字段 / 三态防抖）');
 ensure('B-①', '当月用 ui.nowMonth() 取（不硬编码月份 ⇒ 跨月不会停在旧月份）',
   src.idxJs.indexOf('ui.nowMonth()') >= 0, 'index.js 里没有 ui.nowMonth()');
-ensure('B-②', '利润取 getLedger 的 operation_ref_profit_fen（与月度结果页 netRef **同字段**，不在这里另算）',
-  src.idxJs.indexOf('getLedger') >= 0 && src.idxJs.indexOf('operation_ref_profit_fen') >= 0,
-  'index.js 没有按要求取数 ⇒ 口径会与月度页漂移');
+// 🔴 R484：字段**改了**，判据跟着改（不是放松，是换守正确的那个）。
+//   旧：首页取 operation_ref_profit_fen（经营参考利润）。
+//   R493：首页按权益分流——付费档取 total_factor_real_profit_fen（会计利润）、
+//       免费档取 operation_ref_profit_fen（经营参考利润，参考口径、不含摊销），两档口径**都必须在场**。
+//   ⚠️ 两个字段都引用 = 自由/付费分流已落；若只留其一，免费档或付费档会缺失对应数。
+ensure('B-②', '利润取数：付费取 total_factor_real_profit_fen、免费取 operation_ref_profit_fen（R493：两口径都必须在场，按权益分流）',
+  src.idxJs.indexOf('getLedger') >= 0 && src.idxJs.indexOf('total_factor_real_profit_fen') >= 0
+  && src.idxJs.indexOf('operation_ref_profit_fen') >= 0,
+  'index.js 没按要求取数（付费/免费两档口径必须都在场）⇒ 免费档或付费档会缺数');
 ensure('B-③', '**三态**标志在 data 里（未确定 ≠ 无数据，否则老用户每次进首页先闪一帧空态）',
   src.idxJs.indexOf('profitKnown') >= 0, 'data 里没有 profitKnown');
 ensure('B-④', '取数失败**静默降级**（这块只是装饰性总结，不该弹第二个 toast 制造噪音）',

@@ -1,0 +1,643 @@
+// subpkg/biz/card/index.js —— 批次 4/5 / 批次 P0（M3 v1.2）· M3 成本卡列表
+// ⚠️ 批次 5 付费边界：只有「保存超限」「导出」才触发付费弹窗；M2 永不弹。
+// ⚠️ M3.22（批次 A1）：免费张数不再硬编码，一律取 checkQuota 出参。
+// ⚠️ 批次 P0（任务 2）：补齐搜索/筛选/删除（软删全部版本）/复制（新 card_code）/
+//   同步至原料最新价（接 syncCostCard，单张+批量）；加「原料档案」入口。
+const api = require('../../../utils/api.js');
+const ui = require('../../../utils/ui.js');
+const { openPaywall, openService } = require('../../../utils/paywall.js');
+const exportFile = require('../../../utils/exportFile.js');   // R265：导出投递单源（落盘 + 打开 + 转发兜底）
+const { TERMS } = require('../../../miniprogram/i18n/terms.js');
+// 🔴 R395：分享卡片标题装配（纯函数单源）—— 见 `utils/shareCard.js` 头注
+const shareCard = require('../../../utils/shareCard.js');
+
+// 🔴 R309：成本变动标签（纯展示，不改任何计算）
+//   食材涨价是餐饮最痛的变量，而**成本卡的版本模型里已经存着两版的成本** ——
+//   不用老板多填一个字，就能主动告诉他"这道菜成本涨了 8%"。
+//   三条不显示（都不许编数）：没有上一版 / 上一版成本 ≤0（不许除零）/ 变化不足 1%（不打扰）。
+function costDriftText(c) {
+  const pv = c && c.prev_total_cost_fen;
+  const nw = c && c.total_cost_fen;
+  if (pv === null || pv === undefined || nw === null || nw === undefined) return '';
+  const p = Number(pv);
+  const n = Number(nw);
+  if (!(p > 0) || !(n >= 0)) return '';
+  const d = Math.round(((n - p) * 100) / p);
+  if (!d) return '';
+  const tpl = d > 0 ? TERMS.card.costDriftUp : TERMS.card.costDriftDown;
+  return String(tpl || '').replace('{p}', String(Math.abs(d)));
+}
+const band = require('../../../utils/marginBand.js');   // 🔴 R298Y：毛利色阶/区间**唯一单源**（数值 + 文案 + 色值）
+// 🔴 R564：亏本判定同样走单源 —— 页面不写 `margin < 0`（各处自己写迟早漂移，且「保本/未定价算不算亏」会各有各的答案）
+const { isLossMaking } = require('../../../utils/marginAlert.js');
+const dh = require('../../../utils/dataHealth.js');     // 🔴 R299：出参 `truncated` 的可见降级（单源）
+
+// 本店用过的菜品分类（本地字典，与 edit.js 同一 key；不新建集合 —— M3 v1.1 零新建集合红线）
+const LIST_CATS_KEY = 'm3_dish_cats';
+
+// 毛利率区间筛选项（v1.0 M3.8：≥60% 绿 / 40%~60% 黄 / <40% 红，未定价灰）
+// 🔴 R298Y 修复：三档的**数值与文案一律取自 `utils/marginBand.js`**。
+//   改前这里写 30（「中」= 30%~60%），而同页 `index.wxml` 色带写 40、`terms.js` 文案又写 30
+//   ⇒ 一张 35% 的卡：色带判红（<40）、筛选却归「中」（≥30）—— 用户可见的自相矛盾。
+//   ⚠️ 文案也不再走 `TERMS.card.margin*`（那三个键已删）：它们落在**双副本** terms.js 里，
+//      而双副本被 K11 要求逐字节一致、目录深度不同 ⇒ 无法 require 同一相对路径 ⇒ 阈值只能放非副本模块。
+const MARGIN_OPTIONS = [
+  { value: 'all', label: band.LABEL.all },
+  { value: 'high', label: band.LABEL.high },
+  { value: 'mid', label: band.LABEL.mid },
+  { value: 'low', label: band.LABEL.low },
+  // 🔴 R570-H：未定价档。改前这一档不存在 ⇒ `margin=null` 的卡只能混在「全部」里，
+  //   老板问「我还差几道没弄完」时无路可走（李老师「100 多道菜，从哪儿看已建好的卡」）。
+  { value: band.KEYS.none, label: band.LABEL.none },
+];
+
+Page({
+  data: {
+    t: {
+      costDriftUp: TERMS.card.costDriftUp,
+      costDriftDown: TERMS.card.costDriftDown,
+      listTitle: TERMS.card.listTitle,
+      addCard: TERMS.buttons.addCostCard,
+      totalCost: TERMS.card.totalCost,
+      price: TERMS.card.price,
+      grossMargin: TERMS.card.grossMargin,
+      version: TERMS.card.version,
+      viewVersion: TERMS.nav.viewVersion,
+      syncPrice: TERMS.nav.syncPrice,
+      empty: TERMS.card.empty,
+      noMatch: TERMS.card.noMatch,
+      hintAlways: TERMS.card.hintAlways,
+      loading: TERMS.ui.loading,
+      // R299：数据截断的可见降级文案（单源 TERMS.ui.dataTruncated）
+      dataTruncated: TERMS.ui.dataTruncated,
+      cur: '¥',
+      calcModeA: TERMS.card.calcModeA,
+      calcModeB: TERMS.card.calcModeB,
+      export: TERMS.buttons.export,
+      exportHint: TERMS.expFile.hint,
+      goOrders: TERMS.pay.goOrders,
+      exportIng: TERMS.exp.exportIng,
+      exportDone: TERMS.exp.exportDone,
+      // 批次 P0（任务 2）
+      searchPh: TERMS.card.searchPh,
+      filterMargin: TERMS.card.filterMargin,
+      filterCategory: TERMS.card.filterCategory,
+      marginAll: TERMS.card.marginAll,
+      // ⚠️ R298Y：`marginHigh/marginMid/marginLow` 三键**已从 terms.js 删除**（会随双副本漂移，
+      //   且与色带数值来源不同）⇒ 三档文案改由 `utils/marginBand.js::LABEL` 提供（见 MARGIN_OPTIONS）。
+      deleteCard: TERMS.card.deleteCard,
+      // R192：「⋯」菜单里的「编辑」（卡片主体点击也是进编辑，但菜单里必须还能找到）
+      editCard: TERMS.card.editCard,
+      deleteCardConfirm: TERMS.card.deleteCardConfirm,
+      copyCard: TERMS.card.copyCard,
+      copyCardConfirm: TERMS.card.copyCardConfirm,
+      syncCard: TERMS.card.syncCard,
+      // R192：卡片按钮上的短文案（全名 8 字并排会挤到换行）
+      syncShort: TERMS.card.syncShort,
+      batchSync: TERMS.card.batchSync,
+      batchSyncConfirm: TERMS.card.batchSyncConfirm,
+      syncDone: TERMS.card.syncDone,
+      selectSync: TERMS.card.selectSync,
+      cancel: TERMS.buttons.cancel,
+      filterTags: TERMS.card.filterTags,
+      // R191：结果计数（筛选后必须回报「找到了多少」，否则看着像没数据）
+      countPrefix: TERMS.card.countPrefix,
+      countSuffix: TERMS.card.countSuffix,
+      // R566（P0-4）：批量导入入口（列表页 meta 行右侧文字链）
+      impEntry: TERMS.card.impEntry,
+      // round156：列表排序/置顶
+      pinOn: TERMS.card.pinOn,
+      pinOff: TERMS.card.pinOff,
+      pinTag: TERMS.card.pinTag,
+      // M3.16（批次 C）套餐标记
+      cardTypeCombo: TERMS.card.cardTypeCombo,
+      comboInsightLoseWarn: TERMS.card.comboInsightLoseWarn,
+      // R191：原料库 / 外卖 / 对账 的入口已从本页顶部撤走 —— 改由 pages/m3/hub 枢纽页承接
+      //   （「找东西」与「去别处」混在同一行、还共用同一个 .tool-btn 样式 ⇒ 分类说不明白）。
+      // ── R234/J4e 行内长提示折叠（本页 1 处）──
+      // 🔴 三处登记的第二处：漏映射 ⇒ 页面渲染成**空白**且零报错（R124 同族）
+      // ⚠️ 引导语在 `TERMS.ledger` 组（跨页复用的通用模式引导语）。
+      hintFoldShow: TERMS.ledger.hintFoldShow,
+      hintFoldHide: TERMS.ledger.hintFoldHide,
+    },
+    // R234/J4e：行内长提示折叠（本页 1 处，默认收起）。仓内统一实现。
+    hintFold: {},
+    all: [],           // 全量列表（前端过滤）
+    list: [],
+    // round156：置顶的 card_code（顺序 = 老板点选先后）。店铺级偏好，存 shop 文档 ⇒ 零新建集合。
+    pinned: [],
+    keyword: '',
+    marginFilter: 'all',
+    marginLabel: '',   // 当前选中毛利率区间展示名
+    marginOptions: MARGIN_OPTIONS,
+    categoryFilter: '',   // S0（任务 3）：分类筛选（''=全部）
+    categoryLabel: '',
+    categoryOptions: [],  // [{ value, label }]（从数据去重，不写死枚举）
+    tagFilter: '',        // S0：标签筛选
+    tagLabel: '',
+    tagOptions: [],
+    selectMode: false, // 批量同步选择模式
+    selected: {},      // { card_code: true }
+    // 🔴 R408：写操作重入标志。`syncCostCard` / `saveCostCard` 都是 **INSERT 新版本**（不是 upsert），
+    //   重复执行只会在版本链上多出内容完全相同的版本。这两个标志是**同步**（在首个 await 之前）
+    //   置位的最后一道闸 —— 幂等键与 loading 遮罩都拦不住"两次点击"，理由见 onSync 注释。
+    syncing: false,    // 单卡 / 批量同步成本卡
+    copying: false,    // 复制成本卡（新建 card_code）
+    loading: true,
+    // R299：本店成本卡读取是否被服务端标记「已达读取上限」（截断 ⇒ 列表可能少卡，
+    //   且因列表无排序「丢哪张随机」）。为 true ⇒ 顶部显示可见降级提示。见 utils/dataHealth.js。
+    truncated: false,
+    // 🔴 R564：亏本卖的卡数 + 对应提示语（0 道 ⇒ 空串，不占位）
+    loseCount: 0,
+    loseWarn: '',
+    // 🔴 R566：把「有 N 道亏本」从静态提示变成**可点筛选**（提示不落到动作上等于没说）。
+    //   判定仍走 utils/marginAlert.js::isLossMaking 单源 —— 与 loseCount **同一口径**，
+    //   所以点进去必然是 N 张，不会出现「写着 3 道、筛出来 5 张」。
+    lossOnly: false,
+    // 🔴 R570-H：未定价卡数 + 提示条文案（文案在 applyFilter 里算，理由见那处注释）
+    unpricedCount: 0,
+    unpricedWarn: '',
+  },
+
+  // R234/J4e：行内提示折叠开关（仓内统一形态 —— 多页同一实现，不各写一套）。
+  onToggleHintFold(e) {
+    const key = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.key) || '';
+    if (!key) return;                       // 无 key ⇒ 静默返回（不误翻别人的状态）
+    const cur = this.data.hintFold || {};
+    const next = Object.assign({}, cur);
+    next[key] = !cur[key];
+    this.setData({ hintFold: next });
+  },
+
+  onShow() { this.load(); },
+
+  async load() {
+    // R566：重载回默认视图（否则上次「只看亏本」会静默延续，老板以为卡丢了）
+    this.setData({ loading: true, lossOnly: false, unpricedWarn: '' });
+    try {
+      await api.ensureShop();
+      ui.setTitle(TERMS.card.listTitle);
+      const d = await api.call('getCostCard', {});
+      // 🔴 R299：消费出参 `truncated`（可见降级）—— 卡少了 ⇒ 用户以为"我就这几张卡"，
+      //   且列表无排序 ⇒ 丢哪张随机。`dataAdapter.js::listAll` 明文要求调用方必须透传到用户面前。
+      const truncated = dh.isTruncated(d);
+      // round156：置顶（店铺级偏好）—— 读失败**不阻断列表**：它只是排序偏好，不是数据。
+      let pinned = [];
+      try {
+        const sc = await api.call('getShopContext', {});
+        pinned = Array.isArray(sc.pinned_cards) ? sc.pinned_cards : [];
+      } catch (err) { pinned = []; }
+      const all = (d.list || []).map((c) => {
+        // R298Y：未定价（price_fen=0）⇒ margin = null ⇒ 色带显「—」+ 灰，且三档筛选**永不命中**
+        const margin = c.price_fen > 0 ? c.gross_margin_pct : null;
+        return {
+          card_code: c.card_code,
+          version: c.version,
+          name: c.name || '',
+          category: c.category || '',
+          tags: c.tags || '',
+          total_cost: api.fenToYuan(c.total_cost_fen, 2),
+          price: c.price_fen > 0 ? api.fenToYuan(c.price_fen, 2) : '—',
+          price_fen: c.price_fen,
+          margin,
+          // 🔴 R298Y：色值也取自单源（改前是 wxml 里内联的三元表达式，与筛选口径各写各的 ⇒ 35% 的卡自相矛盾）
+          margin_color: band.colorOf(margin),
+          calc_mode: c.calc_mode,
+          // M3.16（批次 C）：卡片类型（1=单品 / 3=套餐）；套餐「我少赚」为负 ⇒ 红字提示。
+          card_type: c.card_type,
+          combo_lose_neg: !!(c.combo && c.combo.merchantLoseFen < 0),
+          // round156：排序键（「最近编辑在前」）。存量卡没有 updated_at ⇒ 0（排最后，不插队到新卡前面）
+          updated_at: Number(c.updated_at) || 0,
+          // 🔴 R309：成本变动提醒 —— 本版 vs 上一版的**单份成本**。
+          //   只在「上一版存在 且 成本真的变了」才出标签；涨幅取整到 1%（不显示 0.3% 这种噪声）。
+          //   ⚠️ 上一版为 `null`（第一次建卡）或 上一版成本 ≤0（数据不全）⇒ **不显示**，
+          //      绝不能用 0 当分母算出"涨了无穷多"或"涨了 100%"。
+          driftText: costDriftText(c),
+        };
+      });
+      // S0（任务 3）：分类/标签筛选选项 —— 从数据去重（不写死枚举；tag 按逗号分隔后取单项去重）
+      const catSeen = new Set();
+      const tagSeen = new Set();
+      const categoryOptions = [{ value: '', label: TERMS.card.marginAll }];
+      for (const c of TERMS.card.dishCats) categoryOptions.push({ value: c, label: c });
+      const tagOptions = [{ value: '', label: TERMS.card.marginAll }];
+      for (const c of all) {
+        if (c.category && !catSeen.has(c.category)) { catSeen.add(c.category); categoryOptions.push({ value: c.category, label: c.category }); }
+        for (const t of c.tags.split(/[,，]/).map((x) => x.trim()).filter(Boolean)) {
+          if (!tagSeen.has(t)) { tagSeen.add(t); tagOptions.push({ value: t, label: t }); }
+        }
+      }
+      // 本店用过的分类写进本地字典 ⇒ 编辑页 chips 直接可点（新建卡也不用重打"锅底"）
+      try { wx.setStorageSync(LIST_CATS_KEY, Array.from(catSeen).slice(0, 40)); } catch (err) { /* 忽略 */ }
+      // 🔴 R395：分享取数 —— **只统计已定价的卡**（未定价 `margin=null`）。
+      //   把未定价算进分母 ⇒ 标题会说「12 道菜里 5 道毛利低」，而其中几道根本没定价（假结论）。
+      //   档位线取 `marginBand.MID`（单源），不在本页再写一个 40。
+      // 🔴 R570-H：判据改走单源 `bandOf`（改前写 `margin !== null && !== undefined`，
+      //   等于在本页再定义一次「什么算已定价」；顺带把 NaN 也排除掉 —— 那不是有效毛利）。
+      const priced = all.filter((c) => band.bandOf(c.margin) !== band.KEYS.none);
+      const shareFacts = {
+        priced: priced.length,
+        low: priced.filter((c) => Number(c.margin) < band.MID).length,
+        band: band.MID,
+      };
+      // 🔴 R564：亏本卖的道数 —— 未定价不算、保本(0%)不算亏。
+      //   为什么单独统计：色带只能表达「低毛利(<40%)」，而「亏本」(负毛利) 严重程度不同，
+      //   老板要先知道「有几道是卖一道亏一道」。
+      const loseN = all.filter((c) => isLossMaking(c.margin)).length;
+      // 🔴 R570-H：未定价 = 算不出毛利（售价或成本缺一样）。判据走单源 `bandOf`，
+      //   本页**不写** `margin === null`（那等于在页面里再定义一次"什么算未定价"）。
+      const unpricedN = all.filter((c) => band.bandOf(c.margin) === band.KEYS.none).length;
+      this.setData({
+        all, categoryOptions, tagOptions, pinned, loading: false, truncated, shareFacts,
+        loseCount: loseN,
+        loseWarn: loseN > 0 ? TERMS.card.loseWarn(loseN) : '',
+        unpricedCount: unpricedN,
+      });
+      this.applyFilter();
+    } catch (e) {
+      // 🔴 R395：分享取数跟着清 —— 否则「列表都没加载出来，分享还在报 N 道菜」
+      this.setData({ loading: false, shareFacts: null, loseCount: 0, loseWarn: '', unpricedCount: 0, unpricedWarn: '' });
+      api.toastError(e);
+    }
+  },
+
+  onKeyword(e) { this.setData({ keyword: e.detail.value }); this.applyFilter(); },
+  onMarginFilter(e) {
+    const opt = this.data.marginOptions[Number(e.detail.value)];
+    this.setData({ marginFilter: opt ? opt.value : 'all', marginLabel: opt ? opt.label : '' });
+    this.applyFilter();
+  },
+  onCategoryFilter(e) {
+    const opt = this.data.categoryOptions[Number(e.detail.value)];
+    this.setData({ categoryFilter: opt ? opt.value : '', categoryLabel: opt ? opt.label : '' });
+    this.applyFilter();
+  },
+  onTagFilter(e) {
+    const opt = this.data.tagOptions[Number(e.detail.value)];
+    this.setData({ tagFilter: opt ? opt.value : '', tagLabel: opt ? opt.label : '' });
+    this.applyFilter();
+  },
+
+  // 🔴 R566：点「有 N 道在亏本卖」⇒ 只看这 N 张；再点一次回全量。
+  //   为什么做成切换而不是跳新页：亏本卡本来就在本页列表里、筛出来即见，跳页反而多一步。
+  onToggleLossOnly() {
+    if (!(this.data.loseCount > 0)) return;   // 无亏本卡 ⇒ 提示条本就不显示，防误触
+    const next = !this.data.lossOnly;
+    const n = this.data.loseCount;
+    this.setData({ lossOnly: next, loseWarn: TERMS.card[next ? 'loseWarnOn' : 'loseWarn'](n) });
+    this.applyFilter();
+  },
+
+  // 🔴 R570-H：点「还有 N 道没填价」⇒ 直接把毛利率筛选切到「未定价」档。
+  //   为什么复用筛选档、不另做开关：两个入口表达同一件事、却各存一份状态 ⇒ 迟早出现
+  //   「提示条说 3 道、列表筛出 5 张」。这里样式与状态都只有一个来源。
+  onShowUnpriced() {
+    if (!(this.data.unpricedCount > 0)) return;   // 没有未定价卡 ⇒ 提示条本就不显示，防误触
+    this.setData({ marginFilter: band.KEYS.none, marginLabel: band.LABEL.none });
+    this.applyFilter();
+  },
+
+  // 名称模糊 + 分类 + 标签 + 毛利率区间（「与」关系，统一在此过滤）
+  applyFilter() {
+    const kw = this.data.keyword.trim().toLowerCase();
+    const mf = this.data.marginFilter;
+    const cat = this.data.categoryFilter;
+    const tag = this.data.tagFilter;
+    const list = this.data.all.filter((c) => {
+      if (kw && !c.name.toLowerCase().includes(kw)) return false;
+      if (cat && c.category !== cat) return false;
+      if (tag) {
+        const tags = c.tags.split(/[,，]/).map((x) => x.trim());
+        if (!tags.includes(tag)) return false;
+      }
+      // 🔴 R298Y：区间判定与色带色阶**同源**（`utils/marginBand.js`）。
+      //   改前这里写 `>= 30 / < 30`，而同页 `index.wxml:66` 色带写 `>= 40` ⇒ 两套口径并存。
+      if (mf && mf !== 'all' && !band.matchBand(mf, c.margin)) return false;
+      // 🔴 R566：只看亏本 —— 与 loseCount 同用 isLossMaking，口径唯一 ⇒ 数量必然对得上。
+      if (this.data.lossOnly && !isLossMaking(c.margin)) return false;
+      return true;
+    });
+    // round156：过滤完再排序（置顶在前 + 最近编辑在前），并给每条打 `pinned` 标记
+    //   ⚠️ 标记必须在这里打：WXML 表达式**不支持方法调用**（写 `pinned.indexOf(...)` 是无效的）。
+    const pins = this.data.pinned || [];
+    const marked = list.map((c) => Object.assign({}, c, { pinned: pins.indexOf(c.card_code) >= 0 }));
+    // 🔴 R570-H：未定价提示条只在「确有未定价卡 且 当前不是未定价档」时出现 ——
+    //   已经在只看未定价了还说「点此只看这些」是废话。
+    const unpricedN = this.data.unpricedCount;
+    const unpricedWarn = (unpricedN > 0 && this.data.marginFilter !== band.KEYS.none)
+      ? TERMS.card.unpricedWarn(unpricedN) : '';
+    this.setData({ list: this.sortList(marked), unpricedWarn });
+  },
+
+  // round156：列表排序 —— ① 置顶的在前（顺序 = 老板点选先后）② 其余「最近编辑在前」。
+  //   ⚠️ 为什么在**前端**排、不做服务端 orderBy：本页本就持有**全量**列表做搜索/筛选（`all`），
+  //     排序只是把已到手的数据再排一次 —— 不新增查询、不改 DataAdapter、不动 42 份派生副本。
+  //   ⚠️ 排序键 missing（存量卡没有 updated_at）按 0 ⇒ 排最后，不会插队到新卡前面。
+  sortList(list) {
+    const pins = this.data.pinned || [];
+    const rank = (c) => {
+      const i = pins.indexOf(c.card_code);
+      return i < 0 ? pins.length + 1 : i;
+    };
+    return list.slice().sort((a, b) => {
+      const ra = rank(a), rb = rank(b);
+      if (ra !== rb) return ra - rb;
+      return (Number(b.updated_at) || 0) - (Number(a.updated_at) || 0);
+    });
+  },
+
+  // round156：置顶 / 取消置顶（店铺级偏好，复用 saveShopSetting ⇒ 零新建集合、零新云函数。
+  //   ⚠️ 为什么不存在成本卡记录上：M3 成本卡是**版本模型（只 INSERT 不 UPDATE）**，
+  //     置顶写进卡记录就得插新版本 ⇒ 每置顶一次多一版历史，纯污染）。
+  //   乐观更新：点击立刻有反馈；**失败必须回滚** —— 界面不能停在"看起来成功"的状态。
+  async onPin(e) {
+    const cc = e.currentTarget.dataset.code;
+    if (!cc) return;
+    const backup = (this.data.pinned || []).slice();
+    const pins = backup.slice();
+    const i = pins.indexOf(cc);
+    const wasPinned = i >= 0;
+    if (wasPinned) pins.splice(i, 1);
+    else pins.unshift(cc);        // 新置顶的排最前（刚点的就是最想要的）
+    this.setData({ pinned: pins });
+    this.applyFilter();
+    try {
+      await api.call('saveShopSetting', { pinned_cards: pins, client_request_id: 'pc_' + Date.now() });
+      wx.showToast({ title: wasPinned ? TERMS.card.unpinnedDone : TERMS.card.pinnedDone, icon: 'none' });
+    } catch (err) {
+      this.setData({ pinned: backup });
+      this.applyFilter();
+      api.toastError(err);
+    }
+  },
+
+  // ===== R192：卡片操作 =====
+  // 高频两项（版本历史 / 同步至原料最新价）已**常驻在卡片上**（ops-mini 行），
+  //   ⇒ 这里只收低频 + 破坏性操作：置顶 / 复制 / 删除。
+  // 🔴 R191 曾把 5 个按钮全收进「⋯」⇒ 李老师反馈「历史版本、同步最新价都丢了」。
+  //    **教训（写进红线）：高频操作不能只靠「⋯」承载 —— 藏起来的功能等于没有。**
+  // 🔴 为什么「⋯」而不是缩小按钮：.btn-small { min-height: 88rpx } 是触控硬红线
+  //    （老板在店里手湿、手抖、边走边点），缩小＝引入误触。⇒ 正解是**分级**，不是全收。
+  // 🔴 为什么用原生 showActionSheet 而不是自绘浮层：触控区/安全区/取消手势全部由平台保证，
+  //    自绘要自己处理遮挡与底部安全区，风险面大得多，收益只是"能给删除上红色"
+  //    —— 而红色已经在删除的**二次确认弹窗**里给到了（confirmColor: #e74c3c）。
+  onMore(e) {
+    const cc = e.currentTarget.dataset.code;
+    if (!cc) return;
+    const item = (this.data.list || []).filter((x) => x.card_code === cc)[0];
+    const T = TERMS.card;
+    // 置顶是**开关**，文案必须按当前状态走（否则点了像没反应）
+    const pinLabel = item && item.pinned ? T.pinOff : T.pinOn;
+    // 「编辑」也列出来：卡片主体点了就是进编辑，但**按钮不能凭空消失** ——
+    //   老板的肌肉记忆在按钮上（李老师 2026-10-03：「编辑按钮也没有了」）⇒ 菜单里必须还能找到。
+    wx.showActionSheet({
+      itemList: [pinLabel, T.editCard, T.copyCard, T.deleteCard],
+      success: (r) => {
+        const ev = { currentTarget: { dataset: { code: cc } } };
+        const idx = r.tapIndex;
+        if (idx === 0) this.onPin(ev);
+        else if (idx === 1) this.goEdit(ev);
+        else if (idx === 2) this.onCopy(ev);
+        else if (idx === 3) this.onDelete(ev);
+      },
+      fail: () => { /* 用户取消：不做任何事 */ },
+    });
+  },
+
+  // 新增：先配额预检（免费张数由后端 checkQuota 出参决定；进列表不弹）
+  async goAdd() {
+    try {
+      const q = await api.call('checkQuota', { scope: 'cost_card' });
+      if (q.hit_free_limit) {
+        // R603：配额类走「当前版本上限」说明（showFreeLimit），不走「功能完善中」。
+        openPaywall('saveLimit', {
+          shopId: (getApp().globalData && getApp().globalData.shop_id) || '',
+          scope: 'cost_card',
+          limit: q.free_limit,
+        });
+        return;
+      }
+      if (q.hit_hard_limit) {
+        // R193：硬上限（2000 张）—— 原是 toast 一句「请联系客服」，**没有任何可点的地方**
+        //   ⇒ 改成可点：确认键直接进客服会话（fail-closed 兜底见 utils/paywall.js::openService）。
+        wx.showModal({
+          title: TERMS.pay.contactService,
+          content: TERMS.pay.contactServiceHint,
+          cancelText: TERMS.buttons.thinkAgain,
+          confirmText: TERMS.exp.serviceEntry,
+          confirmColor: '#1e3a5f',
+          success: (r) => { if (r.confirm) openService(); },
+        });
+        return;
+      }
+      wx.navigateTo({ url: '/subpkg/biz/card/edit?card_code=' });
+    } catch (e) { api.toastError(e); }
+  },
+  goEdit(e) {
+    const cc = e.currentTarget.dataset.code;
+    wx.navigateTo({ url: '/subpkg/biz/card/edit?card_code=' + (cc || '') });
+  },
+  goVersion(e) {
+    const cc = e.currentTarget.dataset.code;
+    wx.navigateTo({ url: '/subpkg/biz/card/version?card_code=' + (cc || '') });
+  },
+  goOrders() { wx.navigateTo({ url: '/subpkg/tools/pay/orders' }); },
+
+  // ===== 批次 P0（任务 2）· 删除 / 复制 / 同步 =====
+  // 删除 = 软删该 card_code 所有版本（二次确认；历史版本不物理删）
+  onDelete(e) {
+    const cc = e.currentTarget.dataset.code;
+    wx.showModal({
+      title: TERMS.card.deleteCard,
+      content: TERMS.card.deleteCardConfirm,
+      confirmColor: '#e74c3c',
+      cancelText: TERMS.buttons.cancel,
+      success: async (r) => {
+        if (!r.confirm) return;
+        try {
+          await api.call('saveCostCard', { card: { _delete: true, card_code: cc }, client_request_id: 'ccd_' + Date.now() });
+          wx.showToast({ title: TERMS.ui.deletedDone, icon: 'success' });
+          this.load();
+        } catch (err) { api.toastError(err); }
+      },
+    });
+  },
+
+  // 复制 = 基于最新版生成全新 card_code（复用 saveCostCard 不带 card_code → 新卡）
+  async onCopy(e) {
+    // 🔴 R408：复制是**新建一张卡**（不是覆盖），双击就是两张一模一样的卡 —— 而卡片列表
+    //   没有"唯一名"约束，老板很难看出哪张是重复的，只会越用越乱。同 onBatchSyncRun：
+    //   modal 前后各挡一次（前者挡重复弹窗，后者挡两个弹窗都 confirm）。
+    if (this.data.copying) return;
+    const cc = e.currentTarget.dataset.code;
+    wx.showModal({
+      title: TERMS.card.copyCard,
+      content: TERMS.card.copyCardConfirm,
+      confirmColor: '#1e3a5f',
+      cancelText: TERMS.buttons.cancel,
+      success: async (r) => {
+        if (!r.confirm) return;
+        if (this.data.copying) return;
+        this.setData({ copying: true });
+        try {
+          const d = await api.call('getCostCard', { card_code: cc });
+          const src = d.list && d.list[0];
+          if (!src) { api.toastError({ msg: TERMS.card.empty }); return; }
+          // 复制明细行（R298Y 修复）—— 三种行各有自己的形态，**必须按 line_type 分流**：
+          //   ① 子卡行（套餐）：line_type=2 + sub_card_ref ⇒ `{ sub_card_ref, qty }`
+          //      🔴 改前**丢了 `sub_card_ref`** ⇒ 子卡行落进「手工行」分支送出 ⇒
+          //      `saveCostCard/validate.js:51` 对 card_type=3 的每一行强制要求 sub_card_ref
+          //      ⇒ 后端报「套餐明细行必须提供 sub_card_ref」⇒ **复制套餐卡 100% 失败**。
+          //   ② 档案行：material_id + qty；③ 手工行：input_type=2 + name + net_unit_cost 快照。
+          // ⚠️ 同族提醒（R297-⑥ 的教训）：这类「出参 → 再提交」的搬运，补一处就要把**同一族的字段**一并补齐，
+          //    否则只是修了其中一半（R297-⑥ 补了 card_type 却漏了整条行级往返）。
+          const lines = (src.lines || []).map((l) => {
+            if (l.line_type === 2 || l.sub_card_ref) {
+              return { sub_card_ref: l.sub_card_ref || '', qty: Number(l.quantity) || 0 };
+            }
+            // round150：`line_kind` 是**规格缩放的唯一依据**（M3.14）—— 复制丢了它，新卡的规格成本按 main 重算。
+            const lineKind = l.line_kind || 'main';
+            const groupName = l.group_name || '';
+            if (l.material_id) return { material_id: l.material_id, qty: l.quantity, line_kind: lineKind, group_name: groupName };
+            return { input_type: 2, name: l.material_name || '', qty: l.quantity, net_unit_cost: l.net_unit_cost, line_kind: lineKind, group_name: groupName };
+          });
+          const card = {
+            // 🔴 R547（M3）：去掉 `(src.name || '') + ''`。这个 `+ ''` 是死拼接 ——
+            //   `src.name` 本来就是字符串（`getCostCard` 出参 `name: doc.name || ''`），
+            //   拼了也是同一个值；若哪天出参变成数字/对象，它会把后者**静默转成字符串**
+            //   再存进 `shop_cost_card.name`（"123" 而不是 123），问题被藏到下一次读库才现形。
+            //   同族纪律：搬运字段时**不加工**，加工只允许发生在明确标注的单源函数里。
+            name: src.name || '',
+            mode: src.calc_mode || 'A',
+            lines,
+            loss_pct: src.loss_rate || 0,
+            aux_fen: src.aux_fen || 0,
+            price_fen: src.price_fen || 0,
+            activity_price_fen: src.price_promo_fen || 0,   // 任务4：复制带活动特价（分，validate 认 activity_price_fen）
+            category: src.category || '',
+            tags: src.tags || '',
+            // 🔴 R297-⑥（审计 M3-B5）：**复制必须带 `card_type`** —— 与版本恢复同族：
+            //   服务端缺省 = 1（单品）⇒ 复制套餐卡会静默降级成单品、永久失去子卡联动。
+            //   出参已带该字段（getCostCard/service.js:15）与规格（:33），照抄即可。
+            card_type: src.card_type === 3 ? 3 : 1,
+            specs: src.specs || [],
+          };
+          if (card.mode === 'B') card.batch_output = src.batch_output || 0;
+          await api.call('saveCostCard', { card, client_request_id: 'ccc_' + Date.now() });
+          wx.showToast({ title: TERMS.ui.copiedDone, icon: 'success' });
+          this.load();
+        } catch (err) { api.toastError(err); }
+        finally { this.setData({ copying: false }); }
+      },
+    });
+  },
+
+  // 同步单张至原料最新价（生成新版本，旧版本保留）
+  async onSync(e) {
+    // 🔴 R408 连点保护（放在**第一个 await 之前**，这是唯一有效的位置）：
+    //   为什么不能只靠下面的 `client_request_id`：它拼的是 `Date.now()`，**每次点击都重新取值**。
+    //   双击 ⇒ 两个不同的幂等键 ⇒ 服务端 `findPriorResult` 查不到前一次 ⇒ 认成两次不同请求
+    //   ⇒ 照样 INSERT 第二个版本（版本号连跳、内容完全重复）。幂等键真正挡的是「同一次请求
+    //   被网络层原样重投」，不是「用户点了两次」。
+    //   为什么也不能只靠 `showLoading({mask:true})`：遮罩是渲染后才拦点击的，同一帧派发的
+    //   第二个 tap 早已进队列，等它执行时遮罩还没上屏。
+    if (this.data.syncing) return;
+    this.setData({ syncing: true });
+    const cc = e.currentTarget.dataset.code;
+    try {
+      wx.showLoading({ title: TERMS.card.syncIng, mask: true });
+      const r = await api.call('syncCostCard', { card_code: cc, client_request_id: 'ccs_' + Date.now() });
+      wx.hideLoading();
+      // #21（2026-10-31）：服务端内容级幂等 —— 成本/明细都没变时不建新版本，回 `unchanged`。
+      //   这里必须显式说一句，否则"版本号没涨"会被老板当成没生效。
+      if (r && r.unchanged) wx.showToast({ title: TERMS.card.syncNoChange, icon: 'none' });
+      else wx.showToast({ title: TERMS.card.syncDone, icon: 'success' });
+      this.load();
+    } catch (err) { wx.hideLoading(); api.toastError(err); }
+    // ⚠️ 必须复位：否则一次网络失败就把同步按钮永久锁死，老板只能杀进程重进。
+    finally { this.setData({ syncing: false }); }
+  },
+
+  // R566（P0-4）：批量导入入口。选择模式中点它会与多选状态打架（两个 state 同时生效），
+  //   故先退出选择模式再跳；导入页是独立页，返回后 onShow 会重新 load()。
+  goImport() {
+    if (this.data.selectMode) this.setData({ selectMode: false, selected: {} });
+    wx.navigateTo({ url: '/subpkg/biz/card/import' });
+  },
+
+  // 批量同步：进入选择模式 → 多选 → 执行
+  onBatchSyncEnter() { this.setData({ selectMode: true, selected: {} }); },
+  onBatchSyncCancel() { this.setData({ selectMode: false, selected: {} }); },
+  onSelect(e) {
+    const cc = e.currentTarget.dataset.code;
+    const selected = Object.assign({}, this.data.selected);
+    if (selected[cc]) delete selected[cc]; else selected[cc] = true;
+    this.setData({ selected });
+  },
+  onBatchSyncRun() {
+    // 🔴 R408：modal 之前先挡一次。双击会在 confirm 之前排队弹出**两个** modal，
+    //   两个都 confirm 就会跑两遍整批同步（每张卡各多一个重复版本）。
+    if (this.data.syncing) return;
+    const codes = Object.keys(this.data.selected).filter((k) => this.data.selected[k]);
+    if (codes.length === 0) { wx.showToast({ title: TERMS.card.selectSync, icon: 'none' }); return; }
+    wx.showModal({
+      title: TERMS.card.batchSync,
+      content: TERMS.card.batchSyncConfirm,
+      confirmColor: '#1e3a5f',
+      cancelText: TERMS.buttons.cancel,
+      success: async (r) => {
+        if (!r.confirm) return;
+        // 两个 modal 都 confirm 时，第二个在这里被挡（上面的检查发生在弹窗之前，管不到这里）
+        if (this.data.syncing) return;
+        this.setData({ syncing: true });
+        wx.showLoading({ title: TERMS.card.syncIng, mask: true });
+        try {
+          let unchanged = 0;
+          for (const cc of codes) {
+            const r = await api.call('syncCostCard', { card_code: cc, client_request_id: 'ccb_' + cc + '_' + Date.now() });
+            if (r && r.unchanged) unchanged++;
+          }
+          wx.hideLoading();
+          // #21：全部都没变化才说"未新建版本"；只要有一张真建了新版本，仍报"已生成新版本"（列表刷新即见）
+          if (codes.length > 0 && unchanged === codes.length) wx.showToast({ title: TERMS.card.syncNoChange, icon: 'none' });
+          else wx.showToast({ title: TERMS.card.syncDone, icon: 'success' });
+          this.setData({ selectMode: false, selected: {} });
+          this.load();
+        } catch (err) { wx.hideLoading(); api.toastError(err); }
+        finally { this.setData({ syncing: false }); }
+      },
+    });
+  },
+
+  // 导出：付费功能，免费触发付费墙
+  async onExport() {
+    const ent = await require('../../../utils/entitlement.js').fetchEntitlement().catch(() => null);
+    if (!ent || !ent.is_active) {
+      openPaywall('export', { shopId: (getApp().globalData && getApp().globalData.shop_id) || '' });
+      return;
+    }
+    await this.doExport();
+  },
+
+  async doExport() {
+    wx.showLoading({ title: TERMS.exp.exportIng, mask: true });
+    try {
+      // R265：'excel'(=CSV) 在微信里打不开（openDocument 不认 csv）⇒ 改要真 xlsx
+      const d = await api.call('exportData', { scope: 'm3_cards', format: 'xlsx', client_request_id: 'ex3_' + Date.now() });
+      wx.hideLoading();
+      exportFile.deliver(d);   // 单源投递：落盘 + 打开 + 打不开时转发兜底
+    } catch (e) { wx.hideLoading(); api.toastError(e); }
+  },
+  onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()); },
+
+  /**
+   * 🔴 R395（队列 #11）：分享卡片 —— 标题带「算了几道菜、几道毛利偏低」。
+   *
+   * 为什么挑这两个数：菜品成本卡是 M3 的核心产出，而"我算了多少道菜"是老板能立刻说出口的
+   *   进展指标；不写 onShareAppMessage 时微信只显示小程序名，对方看不出这张卡片的价值。
+   * 为什么口径只认「已定价」：见 load() 里的取数注释 —— 未定价进分母会造出"毛利偏低"的假结论。
+   */
+  onShareAppMessage() {
+    return shareCard.m3Share(this.data.shareFacts || {});
+  },
+});

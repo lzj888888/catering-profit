@@ -1,0 +1,38 @@
+/* pages/card/index.wxss —— M3 成本卡列表 */
+/* R191：row-ops（平铺操作按钮区）已废弃 —— 5 个按钮收成卡片右上「⋯」，勿再加回。 */
+.ops-row { display: flex; align-items: center; }
+.toolbar { display: flex; align-items: center; gap: 12rpx; margin: 16rpx 0; flex-wrap: wrap; }
+.tool-btn { margin-top: 0; }
+.batch-bar { display: flex; justify-content: space-between; align-items: center; background: #e8eff7; border-radius: 12rpx; padding: 16rpx 24rpx; margin-bottom: 12rpx; }
+.batch-bar .btn-small { margin-top: 0; }
+.card-title checkbox { margin-right: 12rpx; }
+/* round156：置顶标记 —— 与「核算模式」标签同排，用主色实底区分。
+   排序把置顶项排到了最前，界面就必须说清"为什么它在前面"，否则看起来还是乱的。 */
+.tag-pin { background: #1e3a5f; color: #fff; margin-left: 12rpx; }
+
+/* ===== R191：左侧色条（形态在本页，色值一律走 app.wxss 的 .stripe-* 单源）=====
+   为什么不放 app.wxss：全局 .card2 加边框 ⇒ 没配 .stripe-* 的页面会露出默认色条。 */
+.card2 { border-left-width: 8rpx; border-left-style: solid; }
+/* 顶部「搜索 + 新增」/ 结果计数 / 卡片头部 / 「⋯」/ 三行压一行 均为**两个列表页共用**
+   ⇒ 一律定义在 app.wxss 的「R191 列表页通用布局」段，本页不复制第二份。 */
+
+/* ===== R234/J4e · 行内长提示折叠（句级，与月录入页 / M2 / assetEdit / amortize / takeaway 同形）=====
+ * body 底色 #f3f7fb 与全局 `.hint` 同色 ⇒ 折叠前后视觉连贯。
+ * 🔴 字号一律 ≥28rpx（AD-G1）、头行 min-height ≥88rpx（AD-G2）。
+ * ⚠️ **不套外层白卡**（R234/J3 首版自伤教训）：外层只留间距，否则 body 嵌白卡 = 双层圆角。 */
+.hint-fold { padding: 0 0 6rpx; }
+.hint-fold-head { display: flex; align-items: center; justify-content: space-between;
+  min-height: 88rpx; padding: 14rpx 8rpx; }
+.hint-fold-guide { font-size: 28rpx; color: #1e3a5f; }
+.hint-fold-arrow { font-size: 28rpx; color: #1e3a5f; }
+.hint-fold-body { font-size: 28rpx; color: #4a5b70; line-height: 1.6; padding: 16rpx 20rpx;
+  background: #f3f7fb; border-radius: 12rpx; margin: 0 0 12rpx; }
+
+/* ===== R566 · 亏本提示条可点态（全局 .warn-line 是静态黄条，这里补「已筛选」的激活色）=====
+ * 只改颜色与左侧色条，尺寸/内边距沿用全局 .warn-line ⇒ 切换时行高不跳。*/
+.warn-line-on { color: #fff; background: #b4532a; border-left-color: #b4532a; }
+
+/* ===== R566 · meta 行右侧两个文字链（批量导入 / 批量同步）=====
+ * 原来只有一个 link 时靠 .meta-row 的 space-between 分成两端；
+ * 加第二个后必须包一层 flex，否则两个 link 被推到两侧、中间空一大片。*/
+.meta-links { display: flex; align-items: center; flex: none; }

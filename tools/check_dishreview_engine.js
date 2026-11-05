@@ -36,6 +36,24 @@ function rd(rel) { try { return fs.readFileSync(path.join(ROOT, rel), 'utf8'); }
 function stripComments(s) {
   return s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
 }
+// 🔴 R547（M7 副作用修正）：取函数体用**花括号配对**，不用「从函数头数 N 个字符」的窗口。
+//   为什么：12-④ 原判据是 `fmtRanked(x)\s*\{[\s\S]{0,700}?dishKey:` —— 本轮在 `fmtRanked` 里
+//   加了一段 R547 注释（讲比对基准），注释把 `dishKey:` 顶出 700 字窗口 ⇒ 判据**假红**。
+//   窗口判据的两个天敌：① 加注释/空行（长度漂移，与语义无关）② 同文件别处的同名模式（假绿）。
+//   ⇒ 剥注释 + 花括号配对同时解决两者：判据只认「这个函数体内有没有这行」。
+function fnBody(src, name) {
+  const s = stripComments(String(src || ''));
+  const esc = String(name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const m = new RegExp('(^|[^A-Za-z0-9_$])' + esc + '\\s*\\([^)]*\\)\\s*\\{').exec(s);
+  if (!m) return '';
+  const start = s.indexOf('{', m.index + m[0].length - 1);
+  let depth = 0;
+  for (let j = start; j < s.length; j++) {
+    if (s[j] === '{') depth++;
+    else if (s[j] === '}') { depth--; if (depth === 0) return s.slice(start, j + 1); }
+  }
+  return '';
+}
 
 const idxSrc = rd(IDX_REL);
 const svcSrc = rd(SVC_REL);
@@ -271,7 +289,17 @@ try {
     if (/utils[\\/]api\.js$/.test(request)) {
       return { ensureShop: async () => true, call: async () => FIX_R251, toastError: () => {} };
     }
-    if (/utils[\\/]ui\.js$/.test(request)) return { setTitle: () => {}, nowMonth: () => '2026-10' };
+    // 🔴 R301：ui 替身必须**从真实模块派生**，只覆盖测试要钉死的那两个函数。
+    //   原写法是**手写白名单** `{ setTitle, nowMonth }` ⇒ 页面一用上 `ui` 的新函数
+    //   （本轮 `ui.monthRange`）替身就缺符号 ⇒ `load()` 抛异常 ⇒ 6-① 误红。
+    //   这是 R97「mock 没有真云的 `_id` 语义」的**同族**：**替身会漂**。
+    //   ⇒ 改为 spread 真实模块 + 只覆盖 `setTitle`（会调 wx）/ `nowMonth`（要**确定性**月份）。
+    if (/utils[\\/]ui\.js$/.test(request)) {
+      return Object.assign({}, origLoadM.apply(this, arguments), {
+        setTitle: () => {},
+        nowMonth: () => '2026-10',
+      });
+    }
     if (/utils[\\/]paywall\.js$/.test(request)) return { openPaywall: () => {} };
     return origLoadM.apply(this, arguments);
   };
@@ -618,7 +646,7 @@ section11();
 function section12() {
   const pageSrc = rd('pages/m3/dishreview/index.js');
   const wxmlSrc = rd('pages/m3/dishreview/index.wxml');
-  const editSrc = rd('pages/card/edit.js');
+  const editSrc = rd('subpkg/biz/card/edit.js');
   const termsSrc = rd('miniprogram/i18n/terms.js');
 
   check('12-① 文案单源：terms.js 有 reviewCoverage 且带 {n}/{m}/{p} 三个占位（页面不拼中文）',
@@ -638,8 +666,28 @@ function section12() {
     && /const allFen = rankedFen \+ unmatchedFen/.test(pageSrc)
     && /Number\(x\.amountFen\)/.test(pageSrc)
     && /amountFen: x\.amountFen \|\| 0/.test(pageSrc));
-  check('12-④ 道数按菜名去重（同一道菜会出现在堂食 + 多个外卖平台，按行加总会数重）',
-    /dishNames\.add/.test(pageSrc) && /dishNames\.size/.test(pageSrc));
+  // 🔴 R299 升级（原判据的盲区）：旧判据只问「用没用 Set 去重」（`/dishNames\.add/ && /dishNames\.size/`），
+  //   **不问「去重用的那个字段在两侧是不是同一个命名空间」** —— 属"守了形状、没守语义"（R298Y 同族）。
+  //   实况（修复前）：两侧都取 `.name`，而 `.name` 语义不同 ——
+  //     · 已匹配行 `service.js:95` ⇒ `card.name || dishKey`（**成本卡名**）
+  //     · 未匹配行 `service.js:86` ⇒ `dishKey`（**菜名**）
+  //   ⇒ 多张菜挂到同一张卡时「共 N 道」少算；卡名与某未匹配菜名碰巧同名时两个数一起错（用户可见的错数）。
+  //   新判据 = 「菜品身份 `dishKey` 被带出 + 三侧(堂食/外卖/未匹配)都按它去重 + 旧命名空间不得复活」。
+  //   ⚠️ 必须**钉住去重参数的实参**（`dishKeys.add(x.dishKey)`）而不只是"调了 add"：
+  //      只数 `dishKeys.add(` 的次数时，把实参换成 `x.name` 照样是 3 次 ⇒ 判据恒真（本判据首版即此病）。
+  //   ⚠️ `dishKey:` 那条腿必须**锚定在 `fmtRanked` 函数体内**：同文件 `pushUnmatched` 里另有一处
+  //      `dishKey: x.dish_key || nm`，若只做全文匹配，把 `fmtRanked` 的那行删掉判据**照样绿**
+  //      （变异 M3 实测抓到 —— "探测器坏了与命中 0 长得一样"）。
+  const coverageAddKey = (pageSrc.match(/dishKeys\.add\(x\.dishKey\)/g) || []).length;
+  const coverageAddName = (pageSrc.match(/dishKeys\.add\(x\.name\)/g) || []).length;
+  check('12-④ 🔴 覆盖率「道数」三侧一律按 `dishKey`（菜品身份）去重，不得用 `.name`'
+    + ' —— `.name` 在已匹配行是**成本卡名**、在未匹配行是**菜名**，混算 ⇒「共 N 道 / 已算 M 道」一起错',
+    /dishKey:\s*x\.dish_key/.test(fnBody(pageSrc, 'fmtRanked'))
+    && coverageAddKey >= 3
+    && coverageAddName === 0
+    && /const coverageCount = dishKeys\.size/.test(pageSrc)
+    && /new Set\(unmatched\.map\(\(x\) => x\.dishKey\)\)/.test(pageSrc)
+    && !/dishNames/.test(pageSrc));
   check('12-⑤ 覆盖率条真的渲染出来（wxml 引用 coverageText，且只在有菜时显示）',
     /coverageCount/.test(wxmlSrc) && /coverageText/.test(wxmlSrc));
   check('12-⑥ 除零保护：营收为 0 时覆盖率取 0，不得产出 NaN/Infinity',
@@ -664,8 +712,255 @@ function section12() {
   check('12-⑫ 自失效护栏：四份源码非空且关键锚点在场',
     pageSrc.length > 1000 && wxmlSrc.length > 200 && editSrc.length > 1000 && termsSrc.length > 1000
     && /coverageText/.test(pageSrc) && /goNewCard/.test(pageSrc) && /shortCardGap/.test(pageSrc));
+
+  // 🔴 R299 新增（缺陷 D3）：**只读页「返回本页必须刷新」**。
+  //   「去建卡 / 去映射」在本页是 `navigateTo` 跳走再回来（R264 专门设计的闭环），而本页
+  //   `enablePullDownRefresh: false`（无下拉刷新）、旧 `onShow` 又**只在 locked 时**重载
+  //   ⇒ 返回后页面全然不刷新：刚建的卡不进关联 picker、刚挂的菜不进榜、`unmatched` 也不减少
+  //   ⇒ 用户以为「卡没建上 / 关联失败」并重复操作。
+  //   本页是**只读页**（零未保存输入）⇒ 返回时重载是安全且期待的；对照 `subpkg/biz/card/index.js:122`
+  //   同类只读页即 `onShow(){this.load()}` ⇒ 说明这是遗漏，不是设计选择。
+  //   判据 = `onShow` 的非 locked 路径必须重载 + 用 `_shown` 哨兵避免首次进入重复拉。
+  const ON_SHOW_RELOAD = /onShow\(\)\s*\{[\s\S]{0,400}?if\s*\(this\._shown\)\s*this\.load\(\)/;
+  check('12-⑬ 🔴 只读页返回时必须刷新（`onShow` 非 locked 路径重载 + `_shown` 哨兵防首次重复拉）'
+    + ' —— 旧写法只在 locked 时重载 ⇒「去建卡」回来卡列表还是旧的，用户以为没建上',
+    ON_SHOW_RELOAD.test(pageSrc) && /onLoad\(\)\s*\{\s*this\._shown\s*=\s*false;/.test(pageSrc)
+    && /enablePullDownRefresh"\s*:\s*false/.test(rd('pages/m3/dishreview/index.json')));
+  // 反恒真：把**旧写法**（只在 locked 时重载）喂给上面那条判据 ⇒ 必须判不通过。
+  const OLD_ONSHOW = "onShow() { if (this.data.locked) this.init(); },";
+  check('12-⑭ 反恒真：旧 onShow（只在 locked 时重载）必须判不通过（证明 ⑬ 有分辨力，不是恒真）',
+    !ON_SHOW_RELOAD.test(OLD_ONSHOW));
+
+  // 🔴 R299-Q（豆包评审采纳）：**汇总卡必须带标题**，且标题要写明口径「堂食+外卖」。
+  //   为什么：那张「份数/营收/成本/毛利」卡的数据源是 `mergeTotals(堂食, 外卖)`＝**全渠道合计**，
+  //   却无标题地夹在「堂食榜」与「外卖榜」之间 ⇒ 极易被读成"堂食小计"（读错一次就误判堂食盈利）。
+  //   术语 `reviewTotals` 自引入（bcd3326）起**从未被渲染**（死键）⇒ 本轮借它补标题（零新增键），
+  //   并把口径写进键值「汇总（堂食+外卖）」（键值也必须带口径 —— 只写"汇总"仍会被读成小计）。
+  check('12-⑮ 🔴 汇总卡必须渲染标题，且标题键值写明口径「堂食+外卖」'
+    + ' —— 无标题会被读成堂食小计（该卡实为全渠道合计）',
+    /t\.reviewTotals/.test(wxmlSrc)
+    && /section-title[^>]*>\s*\{\{t\.reviewTotals\}\}/.test(wxmlSrc)
+    && /reviewTotals:\s*'[^']*堂食\s*\+\s*外卖[^']*'/.test(termsSrc));
+  check('12-⑯ 反恒真：把"无标题"版本（只有 totals 卡、无 reviewTotals 引用）喂给 ⑮ ⇒ 必须判不通过',
+    !(/section-title[^>]*>\s*\{\{t\.reviewTotals\}\}/.test('<view class="card2" wx:if="{{totals}}"></view>')));
 }
 section12();
+
+// ===== ⑭ 段（R301）：**统计期间**（契约入参 `biz_date_from/to` 的补实现）=====
+// 为什么（真缺陷，实锤"契约与实现分歧"）：
+//   契约 `specs/dev-specs/core/10_云函数清单与接口契约.md` 的 `getDishReview` 一行**一直**声明
+//   入参 `biz_date_from` / `biz_date_to`、出参 `range{from,to}`，而实现**从未读取** ⇒
+//   复盘榜把该店**历次导入的多个月份全部累加**当成一份榜、页面却按"当前月"呈现
+//   ⇒「这道菜这个月卖过」是错的（**静默错数**）。真样本就是 **7 天表**，"一段"冒充"整月"。
+// 本段是**行为级**判据（真调 `filterByRange` 算），不是读源码字面 —— 防"改了字面量但函数没变"。
+function section14() {
+  const pageSrc = rd('pages/m3/dishreview/index.js');
+  const wxmlSrc = rd('pages/m3/dishreview/index.wxml');
+  const idxSrc = rd('cloudfunctions/getDishReview/index.js');
+  const svcSrc = rd('cloudfunctions/getDishReview/service.js');
+  const uiSrc = rd('utils/ui.js');
+
+  // ① 实现**真的读**了契约入参（不是只写在注释里 —— 剥注释后再判，本仓「被注释喂成恒真」同族）
+  const idxStripped = idxSrc.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+  check('14-① 🔴 实现真的读契约入参 `biz_date_from` / `biz_date_to`（剥注释后判）',
+    /event\.biz_date_from/.test(idxStripped) && /event\.biz_date_to/.test(idxStripped)
+    && /filterByRange\(/.test(idxStripped));
+
+  // ② 出参如实回 `range`（前端不许猜期间）
+  // ⚠️ R574 修正：原判据把**单行字面量**钉死（`range: { from: rangeFrom, to: rangeTo, days: rangeDays }`）
+  //   ⇒ #109 给 range 加三个字段并换行后，语义没变却判红。判据改为**判语义**：
+  //   同一个对象字面量里必须含 from/to/days 三个键（允许换行，**允许额外键**），
+  //   且必须在**剥掉注释之后**的源码里判（否则注释里写一句就能喂成恒真）。
+  check('14-② 出参含 `range{from,to,days}`（期间口径由云端给，前端不猜；允许换行与额外键）',
+    /range:\s*\{[^}]*\bfrom:\s*rangeFrom\b[^}]*\bto:\s*rangeTo\b[^}]*\bdays:\s*rangeDays\b[^}]*\}/.test(idxStripped));
+  // ②b 🔴 R574 / #110：粒度三项必须**真的出现在出参**（不是只在注释里写着）
+  //   反恒真思路：三个键名各自独立匹配；少任何一个即红。
+  check('14-②b 出参含粒度三项 `covered_days` / `has_interval` / `has_unknown`（#110 前端据此选文案）',
+    /range:\s*\{[^}]*\bcovered_days:\s*cov\.coveredDays\b/.test(idxStripped)
+    && /range:\s*\{[^}]*\bhas_interval:\s*cov\.hasInterval\b/.test(idxStripped)
+    && /range:\s*\{[^}]*\bhas_unknown:\s*cov\.hasUnknown\b/.test(idxStripped));
+
+  // ③ ④ **行为级**：真调 filterByRange 验四条语义（区间内 / 任一端缺⇒不过滤 / 区间反⇒空 / 非法日期行剔除）
+  const SVC_P = path.join(ROOT, 'cloudfunctions/getDishReview/service.js');
+  let SVC = null;
+  try { SVC = require(SVC_P); } catch (e) { SVC = null; }
+  const ROWS = [
+    { biz_date: '2026-09-30', qty: 1 }, { biz_date: '2026-10-01', qty: 1 },
+    { biz_date: '2026-10-07', qty: 1 }, { biz_date: '2026-10-31', qty: 1 },
+    { biz_date: '2026-11-01', qty: 1 },
+  ];
+  const r1 = SVC ? SVC.filterByRange(ROWS, '2026-10-01', '2026-10-31') : null;
+  check('14-③ 🔴 行为：按区间过滤（跨月数据只留区间内 3 行 / days=3；9-30 与 11-01 必须被剔除）',
+    !!r1 && r1.rows.length === 3 && r1.days === 3 && r1.from === '2026-10-01' && r1.to === '2026-10-31'
+    && r1.rows.every((x) => x.biz_date >= '2026-10-01' && x.biz_date <= '2026-10-31'));
+  const r2 = SVC ? SVC.filterByRange(ROWS, '2026-10-01', '') : null;
+  const r3 = SVC ? SVC.filterByRange(ROWS, '2026-11-01', '2026-10-01') : null;
+  check('14-④ 行为：**任一端缺 ⇒ 不过滤**（`range.from` 回空串，前端据此明说"不是单月"）'
+    + ' + **区间反了 ⇒ 空集**（不静默当全量）',
+    !!r2 && r2.rows.length === 5 && r2.from === '' && r2.days === 5
+    && !!r3 && r3.rows.length === 0 && r3.days === 0);
+
+  // ⑤ 前端**必须传**区间（这是"不许退回跨月累计"的前端侧钉子）+ 月→区间走单源
+  check('14-⑤ 🔴 复盘页 load() 必须传 `biz_date_from/to`，且月→区间走单源 `utils/ui.js::monthRange`'
+    + ' —— 不传 ⇒ 云端不过滤 ⇒ 跨月累计这个缺陷会**悄悄回来**',
+    /api\.call\('getDishReview',\s*\{\s*biz_date_from:\s*rng\.from,\s*biz_date_to:\s*rng\.to\s*\}\)/.test(pageSrc)
+    && /ui\.monthRange\(month\)/.test(pageSrc)
+    && /monthRange\(ym\)\s*\{/.test(uiSrc));
+
+  // ⑥ 期间**可见**：月份选择器 + 期间文案渲染；且"没有区间"时必须**明说不是单月**（不许假装本月）
+  check('14-⑥ 期间可见：页面有月份选择器 + 渲染期间文案；且未过滤时必须**明说"不是单月"**',
+    /fields="month"/.test(wxmlSrc) && /bindchange="onMonth"/.test(wxmlSrc)
+    && /\{\{rangeText\}\}/.test(wxmlSrc) && /reviewRangeAll/.test(pageSrc)
+    && /reviewRangeAll:/.test(rd('miniprogram/i18n/terms.js')));
+  const lf = (a) => a.replace(/\r?\n/g, ' ');
+  check('14-⑦ 反恒真：把「不传区间」的旧前端形态喂给 14-⑤ 的判据 ⇒ 必须判不通过',
+    !/api\.call\('getDishReview',\s*\{\s*biz_date_from:\s*rng\.from,\s*biz_date_to:\s*rng\.to\s*\}\)/
+      .test(lf("const d = await api.call('getDishReview', {});")));
+  check('14-⑧ 自失效护栏：五份源码非空且关键锚点在场（防读空文件 ⇒ 恒真）',
+    pageSrc.length > 1000 && wxmlSrc.length > 200 && idxSrc.length > 500
+    && svcSrc.length > 1000 && uiSrc.length > 500
+    && /filterByRange/.test(svcSrc) && /countDataDays/.test(svcSrc));
+}
+section14();
+// 为什么（R297 第七轮 A1 复核实测的真缺陷）：
+//   旧形态是 `service.js` 回中文字符串 `'偏高'/'偏低'/'合理'`，前端 `index.js` 再拿中文字符串
+//   `bm.actualFlag === '偏高'` 取警示色 ⇒ **前后端靠中文字面量做接口契约**，两端还可能不同人改。
+//   任一端改文案 ⇒ `buffet_flagClass` 静默变空 ⇒ 「成本偏高」的红色告警**消失**，零报错。
+//   ⇒ 契约改为机器码（`'' | high | low | ok`），文案由 `TERMS.card.buffetFlag` 单源映射。
+// 本段是**行为级**判据（真调 `computeCoverage` 算三档），不是读源码字面 —— 防"改了字面量但函数没变"。
+function section13() {
+  const TERMS_P = path.join(ROOT, 'miniprogram/i18n/terms.js');
+  const SVC_P = path.join(ROOT, 'cloudfunctions/getDishReview/service.js');
+  let FLAG_MAP = null, computeCoverage = null;
+  try { FLAG_MAP = require(TERMS_P).TERMS.card.buffetFlag || null; } catch (e) { FLAG_MAP = null; }
+  try { computeCoverage = require(SVC_P).computeCoverage || null; } catch (e) { computeCoverage = null; }
+
+  if (!FLAG_MAP || typeof computeCoverage !== 'function') {
+    check('13-① 前置：术语表 buffetFlag 与 computeCoverage 均可解析（fail-closed）', false,
+      'flagMap=' + (FLAG_MAP ? 'ok' : 'null') + ' / fn=' + typeof computeCoverage);
+    return;
+  }
+  const KEYS = Object.keys(FLAG_MAP);
+  const SALES = [{ dish_key: '自助餐', category: 'buffet', amount: 10000, qty: 1 }];
+  const codeOf = (costFen) => computeCoverage(SALES, new Set(), costFen).buffet.benchmark.actualFlagCode;
+  const cHigh = codeOf(6000);     // 成本率 60% > 55% ⇒ 高
+  const cOk = codeOf(4000);       // 40% ⇒ 合理
+  const cLow = codeOf(2000);      // 20% < 25% ⇒ 低
+  const cNone = codeOf(null);     // 本月自助食材消耗未填
+
+  check('13-① 云端三档产出的码均 ∈ 术语表 buffetFlag 的键集（跨端契约 = 机器码）',
+    cHigh !== '' && cOk !== '' && cLow !== '' &&
+    KEYS.indexOf(cHigh) >= 0 && KEYS.indexOf(cOk) >= 0 && KEYS.indexOf(cLow) >= 0,
+    'keys=' + KEYS.join('/') + ' 实测=' + [cHigh, cOk, cLow].join('/'));
+  // ⚠️ 只判"三档互不相同"，**不钉死 'high'/'ok'/'low' 这三个字面量**（钉字面量会把改名判红、属反向伤害第二型）
+  check('13-② 三档码互不相同（阈值方向没反、也没被压成同一档）',
+    cHigh !== cOk && cOk !== cLow && cHigh !== cLow, [cHigh, cOk, cLow].join('/'));
+  check('13-③ 未填成本 ⇒ 空码（不得把「没数据」当成「合理」）', cNone === '', JSON.stringify(cNone));
+  check('13-④ 码里不含中文（一旦云端回中文，前端取色就会静默丢失）',
+    !/[一-龥]/.test(String(cHigh) + cOk + cLow), cHigh + cOk + cLow);
+  check('13-⑤ 契约里不再有中文字段 actualFlag（旧形态已移除，防回退）',
+    computeCoverage(SALES, new Set(), 6000).buffet.benchmark.actualFlag === undefined);
+
+  // 前端侧：色号表的键必须 ⊆ 云端码集 —— 否则云端新增/改名档位时，该档在前端**静默无色**
+  const pageSrc13 = rd('pages/m3/dishreview/index.js');
+  const clsBlock = (pageSrc13.match(/BUFFET_FLAG_CLS\s*=\s*\{([^}]*)\}/) || ['', ''])[1];
+  const clsKeys = clsBlock.split(',').map((s) => (s.split(':')[0] || '').trim().replace(/^['"]|['"]$/g, '')).filter(Boolean);
+  check('13-⑥ 前端色号表键集 ⊆ 术语表键集（云端档位改名/新增不会静默无色）',
+    clsKeys.length > 0 && clsKeys.every((k) => KEYS.indexOf(k) >= 0),
+    'cls=[' + clsKeys.join('/') + '] keys=[' + KEYS.join('/') + ']');
+  check('13-⑦ 判据自证：掺一个不存在的键进色号表 ⇒ 上面的包含判据必须不通过（证明 ⑥ 有分辨力，不是恒真）',
+    !['high', '__round298_不存在的档__'].every((k) => KEYS.indexOf(k) >= 0));
+  // 防回退：前端不得再拿中文字段取色（strip 掉 Code 后缀再查，避免 actualFlagCode 误命中）
+  // 🔴 必须先剥注释：本判据的**说明注释里就举了旧写法 `bm.actualFlag === '偏高'` 这个例子**
+  //   —— 直接扫源码会把注释判红（本仓已第三次踩「守卫被自己的说明注释绊红」，见 round107 A9-②）。
+  const pageNoCmt13 = pageSrc13
+    .replace(/^[ \t]*\/\/[^\n]*/gm, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+  check('13-⑧ 前端不再按中文字段 actualFlag 取色（旧形态已移除，防回退）',
+    !/actualFlag\b/.test(pageNoCmt13.replace(/actualFlagCode/g, '')));
+}
+section13();
+
+// ===== ⑮ 段（R574 / #110）：**粒度感知的覆盖天数** =====
+// 为什么（真缺陷，不是美化）：
+//   `countDataDays` 只按 `biz_date` 去重。堂食《菜品销售统计》是 **7 天区间汇总**，
+//   36 行共用同一个 biz_date（= 区间末日）⇒ 它报 **1 天**，而实际覆盖 **7 天**；
+//   同一屏的外卖是逐日 7 行 ⇒ 两栏都显示"7"，看着能直接比 —— 其实一个是「7 天记在 1 天」。
+// 本段**全部是行为级**（真调 coverageStats 算），不是读源码字面。
+function section15() {
+  let S = null;
+  try { S = require(path.join(ROOT, 'cloudfunctions/getDishReview/service.js')); } catch (e) { S = null; }
+  check('15-⓪ service 真的导出 coverageStats / spanDaysInclusive / mergeRanges（功能不在 = 后面全假绿）',
+    !!S && typeof S.coverageStats === 'function'
+    && typeof S.spanDaysInclusive === 'function' && typeof S.mergeRanges === 'function');
+  if (!S || typeof S.coverageStats !== 'function') return;
+
+  const mk = (n, o) => Array.from({ length: n }, () => Object.assign({ dish_key: 'x', qty: 1, amount: 100 }, o));
+  const week = ['07', '08', '09', '10', '11', '12', '13'].map((d) => ({
+    dish_key: 'y', qty: 1, amount: 100, biz_date: '2026-09-' + d,
+    granularity: 'daily', period_from: '2026-09-' + d, period_to: '2026-09-' + d,
+  }));
+  const tangshi = mk(36, { biz_date: '2026-09-13', granularity: 'interval', period_from: '2026-09-07', period_to: '2026-09-13' });
+
+  const c1 = S.coverageStats(tangshi);
+  check('15-① 🔴 堂食 7 天汇总（36 行同 biz_date）：days=1 而 coveredDays=7 —— "1 天"与"7 天"的分野',
+    c1.days === 1 && c1.coveredDays === 7 && c1.hasInterval === true,
+    'days=' + c1.days + ' covered=' + c1.coveredDays);
+
+  const c2 = S.coverageStats(week);
+  check('15-② 外卖逐日 7 行：days=7 且 coveredDays=7，hasInterval=false',
+    c2.days === 7 && c2.coveredDays === 7 && c2.hasInterval === false,
+    'days=' + c2.days + ' covered=' + c2.coveredDays);
+
+  const c3 = S.coverageStats(tangshi.concat(week));
+  check('15-③ 🔴 混合：两栏都报 7，但 hasInterval=true ⇒ 不许当同一种"天"比',
+    c3.days === 7 && c3.coveredDays === 7 && c3.hasInterval === true,
+    'days=' + c3.days + ' covered=' + c3.coveredDays + ' interval=' + c3.hasInterval);
+
+  const c4 = S.coverageStats(mk(36, { biz_date: '2026-09-13' }));
+  check('15-④ 旧数据（无 granularity 字段）：按单日计但 hasUnknown=true —— 不静默、不臆测成区间',
+    c4.days === 1 && c4.coveredDays === 1 && c4.hasUnknown === true && c4.hasInterval === false,
+    'unknown=' + c4.hasUnknown);
+
+  const c5 = S.coverageStats([
+    { biz_date: '2026-09-07', granularity: 'interval', period_from: '2026-09-01', period_to: '2026-09-03' },
+    { biz_date: '2026-09-20', granularity: 'interval', period_from: '2026-09-10', period_to: '2026-09-13' },
+  ]);
+  check('15-⑤ 两段不重叠区间：并集 3+4=7 天（不取最长、不相加行数）',
+    c5.coveredDays === 7, 'covered=' + c5.coveredDays);
+
+  const c6 = S.coverageStats([
+    { biz_date: '2026-09-05', granularity: 'interval', period_from: '2026-09-01', period_to: '2026-09-07' },
+    { biz_date: '2026-09-03', granularity: 'interval', period_from: '2026-09-05', period_to: '2026-09-10' },
+  ]);
+  check('15-⑥ 两段重叠区间：合并后 09-01~09-10 = 10 天（重叠不重复计）',
+    c6.coveredDays === 10, 'covered=' + c6.coveredDays);
+
+  // days 旧语义必须逐值等于 countDataDays（否则页面"有数据天数"会被暗改而无人知）
+  const cases = [tangshi, week, mk(3, { biz_date: '2026-09-13' }), [], tangshi.concat(week)];
+  check('15-⑦ days 与 countDataDays 逐值一致（旧语义不许暗改，含空输入）',
+    cases.every((rows) => S.coverageStats(rows).days === S.countDataDays(rows)));
+
+  // 自失效护栏：空输入必须全零/全 false ⇒ 证明上面几条不是恒真
+  const c0 = S.coverageStats([]);
+  check('15-⑧ 自失效护栏：空输入 ⇒ days=0 / covered=0 / 两 flag 均 false（判据非常量）',
+    c0.days === 0 && c0.coveredDays === 0 && c0.hasInterval === false && c0.hasUnknown === false);
+}
+section15();
+
+// ⑯ 段（R574 / #110）：前端**真的**按云端 flag 选文案（不是把三种情况都写成一句话）
+function section16() {
+  const P = rd('pages/m3/dishreview/index.js').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+  check('16-① 前端消费 `has_interval` / `has_unknown` / `covered_days` 三个云端字段（缺一即红）',
+    /has_interval/.test(P) && /has_unknown/.test(P) && /covered_days/.test(P));
+  check('16-② 三条文案分支都在用（reviewRangeSpan / reviewRangeLegacy / reviewRangeOf）',
+    /reviewRangeSpan\(/.test(P) && /reviewRangeLegacy\(/.test(P) && /reviewRangeOf\(/.test(P));
+  // 反恒真：把"只有一条文案"的旧形态喂给 ② ⇒ 必须判不通过
+  const oldForm = 'rangeText = TERMS.card.reviewRangeOf(month, rg.days || 0);';
+  check('16-③ 反恒真：只有一条文案的旧形态 ⇒ ② 的判据必须不通过',
+    !(/reviewRangeSpan\(/.test(oldForm) && /reviewRangeLegacy\(/.test(oldForm)));
+}
+section16();
 
 console.log('\n===== getDishReview 算法层守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);

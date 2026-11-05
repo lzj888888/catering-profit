@@ -47,6 +47,33 @@ module.exports = {
   hasFeature: require('./entitlement').hasFeature,
   isPaid: require('./entitlement').isPaid,
   PAID_FEATURES: require('./entitlement').PAID_FEATURES,
+  // 🔴 R603：商业化开关（免费期）。新增单源符号必须在此聚合导出，
+  //    否则调用点 `common.FREE_ACCESS` 在真云上 undefined（genId 事故族）。
+  payFlags: require('./payFlags'),
+  FREE_ACCESS: require('./payFlags').FREE_ACCESS,
+
+  // A4（2026-11-05 · 规范 v1.1 §5.2）：深度诊断的**旁路**判定。
+  //   🔴 与上方 entitlement 是**两个维度**：entitlement 回答"付没付钱"，本模块回答
+  //      "这一次能不能跑诊断（去重/限流/额度）"。绝不加入 PAID_FEATURES —— 加了会牵连既有 hasFeature 语义。
+  //   ⚠️ 同 genId 教训：新符号必须在此聚合导出，否则云端 `common.canRunDiagnosis` 是 undefined。
+  diagnosisEntitlement: require('./diagnosisEntitlement'),
+  canRunDiagnosis: require('./diagnosisEntitlement').canRunDiagnosis,
+  DIAG_TYPES: require('./diagnosisEntitlement').DIAG_TYPES,
+  DIAG_REPORT_COLL: require('./diagnosisEntitlement').DIAG_REPORT_COLL,
+  DIAG_CREDIT_COLL: require('./diagnosisEntitlement').DIAG_CREDIT_COLL,
+
+  // A5（2026-11-05）：诊断引擎（11 指标 + 6 红线）。**纯函数**，零 IO、零 db 依赖 ⇒ 可被 selftest 直接跑。
+  diagnosisEngine: require('./diagnosisEngine'),
+  evaluateDiagnosis: require('./diagnosisEngine').evaluateDiagnosis,
+  // A20-bis（2026-11-05）：补录枚举白名单 —— 校验层（saveShopSetting）与引擎认同一张表，禁止自抄。
+  DIAG_ENUM: require('./diagnosisEngine').DIAG_ENUM,
+
+  // A14（2026-11-05）：退款规则唯一判定处（纯函数，零 IO）。
+  //   🔴 为什么放 common：下单、退款、客服后台三处都要判"能不能退"，写三份必然三种结论。
+  //   ⚠️ 只判定不动钱 —— 真实退款待阶段 B（虚拟支付接通）由调用方执行并落 order_refund 台账。
+  refundPolicy: require('./refundPolicy'),
+  judgeRefund: require('./refundPolicy').judgeRefund,
+  REFUND_CODES: require('./refundPolicy').CODES,
 
   // M3.14/M3.15（R150）：组件分类 + 多规格**派生层单源** —— 入参变换，5 份引擎副本一个不碰。
   //   ⚠️ 同 genId 教训：新符号务必在此聚合入口导出，否则云端 `const { deriveSpec } = common` 会 TypeError。
@@ -80,4 +107,15 @@ module.exports = {
   //   伴侣守卫：tools/check_salesbills.js。
   salesBillId: require('./salesBillId'),
   parseSalesBillId: require('./salesBillId').parseSalesBillId,
+
+  // R423 · 队列 #28：AI「出站」k-匿名门槛单源（设计稿 §5）——
+  //   `canSendToModel` 消费读侧 `getAiConsent` 的判定态，**不再判一遍四态**（避免第二份实现）；
+  //   不满足门槛时显式给 `fallback:'L0'`，调用方没有自由发挥的空间。
+  //   ⚠️ 同 genId 教训：新符号务必在此聚合入口导出，否则云端 `const { canSendToModel } = common`
+  //   会 TypeError（本地 require 单源文件测不出）。伴侣守卫：tools/check_requires.js §2。
+  aiGate: require('./aiGate'),
+  canSendToModel: require('./aiGate').canSendToModel,
+  judgeSample: require('./aiGate').judgeSample,
+  SAMPLE_MIN: require('./aiGate').SAMPLE_MIN,
+  AI_PURPOSES: require('./aiGate').PURPOSES,
 };

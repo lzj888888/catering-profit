@@ -21,12 +21,13 @@ const {
   pickSheet,   // R245：🔴 京东表名不固定 ⇒ 判定 sheet 是否存在必须按签名找，不能硬编码表名
   detectPlatformInRows, detectPlatformInMatrix,   // R250：平台自动判定逐行试签名（京东订单级两级表头）
   PLATFORM_AMBIGUOUS,   // R253：多平台同时命中哨兵 —— 🔴 必须 import，truthy 陷阱见 :73 附近
-  DISH_SHAPES, detectDishMatrix, parseDishSales, parseDishSalesC, dishRefId, saleDocId,
+  DISH_SHAPES, detectDishMatrix, parseDishSales, parseDishSalesC, parseDishSalesD, dishRefId, saleDocId,
   BILL_IMPORT_ENABLED,   // R259：账单导入开关（只作用账单，形态 A/B/C 不受影响）
   detectDupImport,       // R271：跨平台重复导入检测（纯函数，零 IO ⇒ 守卫/探针可直测）
   diagnoseColumns,       // R286：认不出表形态时「缺哪几列」诊断（走 ok 通道，见 :111 附近说明）
 } = require('./service');
 const { validateInput } = require('./validate');
+const { parse: parseDSI1, groupByPlatformDate: parseDSI1Groups } = require('./dsi1');   // R584：DSI-1 标准格式解析与分组
 
 // ===== R271：跨平台重复导入检测（查库版）=====
 // 为什么要单独一层：detectDupImport 是**零 IO 纯函数**（可直测），IO 全隔离在本函数内。
@@ -84,6 +85,19 @@ exports.main = async (event) => {
   // ===== 5. 分流：堂食菜品销售表（批次 G）优先，识别不出再走外卖账单（批次 F）=====
   const dishDetect = detectDishMatrix(matrix);
   if (dishDetect.shape) {
+    // 🔴 R584：DSI-1 标准格式走**独立 handler** —— 它一份文件可能含多个渠道/平台
+    //   （堂食 + 美团 + 淘宝闪购），而其余形态一份文件只有一个 platform。
+    //   复用 C 分支会丢掉渠道列信息、且落库 _id 会互相覆盖。
+    if (dishDetect.shape === DISH_SHAPES.S) {
+      return handleDSI1Import({ shopId, userId, clientRequestId, dishDetect, matrix, confirm: v.confirm });
+    }
+    // 🔴 R585：S2 认得但不收。**必须给具体理由** —— 只说「未识别」老板会以为文件坏了，
+    //   而实际上他手里的表是对的，只是选错了类型（要交商品明细，不是月汇总）。
+    if (dishDetect.shape === DISH_SHAPES.S2) {
+      return fail(ERROR_CODES.INVALID_PARAM,
+        '这张是「月渠道汇总」表，用来记月度账的，不能算单品毛利。'
+        + '要算每道菜的毛利，请交「商品明细」表（列名：日期、渠道、平台、商品名称、销量、销售额）。');
+    }
     return handleDishImport({ shopId, userId, clientRequestId, dishDetect, matrix, confirm: v.confirm, platform: v.platform });
   }
 
@@ -174,6 +188,12 @@ exports.main = async (event) => {
         qty: r.qty,
         amount: r.amountFen,          // 整数分
         platform,
+        // 🔴 R574 / #109：粒度三字段必写。账单是**逐日**的 ⇒ daily，两端都等于该日。
+        //   一律显式写入（哪怕恒为 daily），理由：读侧据"字段缺不缺"区分
+        //   「明确是逐日」与「历史数据不知道」，缺字段会让旧行被迫按 unknown 处理。
+        granularity: 'daily',
+        period_from: r.bizDate,
+        period_to: r.bizDate,
         source: 'excel',
         created_at: now,
         // 🔴 R249：`.set()` = 整文档替换 ⇒ 不写 is_deleted 的文档**没有该字段**，
@@ -201,13 +221,63 @@ exports.main = async (event) => {
  * 堂食《菜品销售统计》（形态 A）导入：解析 → 甲级门禁 → 落库 → 摘要写 shop_switch.m3_review_last。
  * 🔴 形态 B（套餐明细）不入库（套餐组分已并入菜品表，§6 重复计算禁令）；形态 C 预留（待样例）。
  */
+/**
+ * 🔴 R587：清掉某 (shop, platform, bizDate) 组里"**本次没再写**"的旧行（软删）。
+ *
+ * 为什么需要（R586 实测）：
+ *   `_id = SALE_<店>_<平台>_<日期>_<seq>`，重导只覆盖 seq **重合**的部分。
+ *   本次行数少于上次（改表删了菜 / 换了数据来源）时，尾部旧行会留下 ——
+ *   而读侧（getDishReview）按 shop_id 读全量、**不按来源过滤** ⇒ 残留行被算进毛利榜，
+ *   金额虚高且不报错。实测 5 行重导成 3 行：残留 2 条。
+ *
+ * 为什么用「集合差」而不是解析 `_id` 取 seq：
+ *   ① 解析是另一份单源（common/salesBillId.js），扩展它要连带同步各云函数的 cx_ 副本；
+ *   ② 与 `_id` 形态解耦 —— 将来 `_id` 里加来源标记也不会让这段失效。
+ *
+ * 为什么由调用方在「写完之后」调：新数据先落地，最坏情况只是"多了几条旧行"，
+ *   而不是"该有的没有"（后者老板完全无从发现）。
+ *
+ * ⚠️ 语义代价（有意的）：同一天同一渠道**分两次导不同部分**时，第二次会覆盖掉第一次的。
+ *   我们的表本来就是"一整天的完整导出"，分次导属误用；数据正确性优先于容忍误用。
+ *
+ * @returns {{pruned:number, failed:number}} pruned=清掉的行数；failed=清理失败的行数
+ */
+async function pruneStaleGroup(db, shopId, platform, bizDate, writtenIds, now) {
+  let stale = [];
+  try {
+    const oldRes = await db.collection('external_sales_daily')
+      .where({ shop_id: shopId, platform: platform, biz_date: bizDate, is_deleted: false })
+      .field({ _id: true })
+      .limit(500)          // 一天一个平台不会超 500 行；超了会漏清尾部，属已知边界
+      .get();
+    const done = writtenIds || new Set();
+    stale = ((oldRes && oldRes.data) || [])
+      .filter((d) => d && d._id && !done.has(d._id));
+  } catch (e) {
+    // 取不到旧数据就不清理：新数据仍会正确覆盖，不该因"读旧数据失败"阻断导入
+    return { pruned: 0, failed: 0 };
+  }
+  let pruned = 0, failed = 0;
+  for (const row of stale) {
+    try {
+      await db.collection('external_sales_daily').doc(row._id).update({
+        data: { is_deleted: true, updated_at: now },
+      });
+      pruned++;
+    } catch (e) {
+      failed++;
+    }
+  }
+  return { pruned: pruned, failed: failed };
+}
+
 async function handleDishImport({ shopId, userId, clientRequestId, dishDetect, matrix, confirm, platform }) {
   // 形态 B：套餐明细表 —— 不入库（组分已并入菜品表，禁止两表相加）
   if (dishDetect.shape === DISH_SHAPES.B) {
     return fail(ERROR_CODES.INVALID_PARAM, '这是套餐销售明细表，套餐组分已并入菜品销售表，本表仅作交叉校验、不单独导入。');
   }
   // 形态 C：外卖商品销量 —— v1.7 C-2~C-7 本批实现真导入（platform 由调用方显式传入）
-  if (dishDetect.shape === DISH_SHAPES.C) {
+  if (dishDetect.shape === DISH_SHAPES.C || dishDetect.shape === DISH_SHAPES.D) {
     return handleFormCImport({ shopId, userId, clientRequestId, dishDetect, matrix, confirm, platform });
   }
   // 仅形态 A 走主路径
@@ -227,6 +297,10 @@ async function handleDishImport({ shopId, userId, clientRequestId, dishDetect, m
       grade,
       preview: {
         bizDate: parsed.bizDate,
+        // R574 / #109：预览就把"这是几天"告诉前端（不落库也要能看见）。
+        periodFrom: parsed.periodFrom,
+        periodTo: parsed.periodTo,
+        granularity: parsed.granularity,
         rows: parsed.rows,
         totals: parsed.totals,
         nonInt: parsed.nonInt,
@@ -245,9 +319,11 @@ async function handleDishImport({ shopId, userId, clientRequestId, dishDetect, m
 
   const now = nowUtc();
   let written = 0;
+  const writtenIds = new Set();   // R587：本次写了哪些 _id（用于清掉多余的旧行）
   for (let seq = 0; seq < parsed.rows.length; seq++) {
     const r = parsed.rows[seq];
     const _id = saleDocId(shopId, 'pos', parsed.bizDate, seq);
+    writtenIds.add(_id);
     await db.collection('external_sales_daily').doc(_id).set({
       data: {
         shop_id: shopId,
@@ -257,6 +333,13 @@ async function handleDishImport({ shopId, userId, clientRequestId, dishDetect, m
         qty: r.qty,
         amount: r.amountFen,          // 实际收入（元→分，整数）
         platform: 'pos',
+        // 🔴 R574 / #109：堂食《菜品销售统计》是**区间汇总表**（表头「营业日期：【A 至 B】」），
+        //   一行代表整段而不是某一天。三个字段把这件事记下来 —— 只靠 biz_date（= 区间末日）
+        //   会让下游把它当"那一天"的量，实测该日收入会 = 真实日均的 7 倍且零报错。
+        //   兜底：端点缺失时退回 bizDate（此时 granularity 已是 unknown，不会谎称 interval）。
+        granularity: parsed.granularity || 'unknown',
+        period_from: parsed.periodFrom || parsed.bizDate,
+        period_to: parsed.periodTo || parsed.bizDate,
         source: 'excel',
         created_at: now,
         // 🔴 R249：见上方外卖账单同款注释 —— 缺 is_deleted ⇒ 写入成功、读侧（强制 is_deleted:false）读不出。
@@ -266,12 +349,19 @@ async function handleDishImport({ shopId, userId, clientRequestId, dishDetect, m
     written++;
   }
 
+  // 🔴 R587：清掉这一天里"本次没再写"的旧行（改表删了菜 / 换了来源时会留下）
+  const prA = await pruneStaleGroup(db, shopId, 'pos', parsed.bizDate, writtenIds, now);
+
   // 摘要写 shop_switch.m3_review_last（批次时间 / 来源 / 行数 / 未匹配数 / 非整数 qty 数）
   const summary = {
     batch_at: now,
     source: 'excel',
     platform: 'pos',
     biz_date: parsed.bizDate,
+    // R574 / #109：摘要里记粒度 —— 老板下次看"上次导入"时能知道那批是"一段"还是"一天"。
+    granularity: parsed.granularity,
+    period_from: parsed.periodFrom || parsed.bizDate,
+    period_to: parsed.periodTo || parsed.bizDate,
     row_count: parsed.rows.length,
     unmatched_count: parsed.unmatched.length,
     nonint_qty_count: parsed.nonInt.length,
@@ -285,7 +375,13 @@ async function handleDishImport({ shopId, userId, clientRequestId, dishDetect, m
     platform: 'pos',
     shape: DISH_SHAPES.A,
     biz_date: parsed.bizDate,
+    // R574 / #109：回执里如实报粒度，前端据此提示"这批是 7 天汇总，不是一天"。
+    period_from: parsed.periodFrom || parsed.bizDate,
+    period_to: parsed.periodTo || parsed.bizDate,
+    granularity: parsed.granularity,
     written,
+    pruned: prA.pruned,          // R587：清掉的旧残留行数
+    pruneFailed: prA.failed,     // R587：清理失败行数（>0 ⇒ 可能残留旧行）
     totals: parsed.totals,
     nonInt: parsed.nonInt,
     unmatched: parsed.unmatched,
@@ -310,7 +406,11 @@ async function handleDishImport({ shopId, userId, clientRequestId, dishDetect, m
  */
 async function handleFormCImport({ shopId, userId, clientRequestId, dishDetect, matrix, confirm, platform }) {
   const sheetRows = matrix.sheets[dishDetect.sheet].rows;
-  const parsed = parseDishSalesC(sheetRows, { platform });
+  // R432（队列 #43）：形态 D（京东外卖订单导出）与 C 的输出结构完全一致
+  //   ⇒ 只在这一处分叉解析，门禁/预览/落库/重复检测全部复用，避免两套逻辑漂移。
+  const parsed = dishDetect.shape === DISH_SHAPES.D
+    ? parseDishSalesD(sheetRows, { platform })
+    : parseDishSalesC(sheetRows, { platform });
 
   // 甲级门禁（fail-closed）：逐组展开成行喂 checkGradeA；platform 由 opts 传入（R181m）
   const gradeRows = [];
@@ -337,7 +437,7 @@ async function handleFormCImport({ shopId, userId, clientRequestId, dishDetect, 
     return ok({
       shop_id: shopId,
       platform: platform || '',
-      shape: DISH_SHAPES.C,
+      shape: parsed.shape,
       // 预览期门禁：剔掉 platform 项（平台的阻断留给 confirm；见上方注释）
       grade: platform ? grade : gradeNonPlatform,
       platform_missing: !platform,
@@ -378,10 +478,13 @@ async function handleFormCImport({ shopId, userId, clientRequestId, dishDetect, 
 
   const now = nowUtc();
   let written = 0;
+  let prunedC = 0, pruneFailC = 0;
   for (const g of parsed.groups) {
+    const writtenIds = new Set();   // R587：本组写了哪些 _id
     for (let seq = 0; seq < g.rows.length; seq++) {
       const r = g.rows[seq];
       const _id = saleDocId(shopId, platform, g.bizDate, seq);
+      writtenIds.add(_id);
       await db.collection('external_sales_daily').doc(_id).set({
         data: {
           shop_id: shopId,
@@ -391,6 +494,10 @@ async function handleFormCImport({ shopId, userId, clientRequestId, dishDetect, 
           qty: r.qty,
           amount: r.amountFen,          // 销售额(元) → 分整数（🔴 非订单交易额）
           platform,
+          // 🔴 R574 / #109：外卖商品销量表是**逐日**的（每个 g.bizDate 一组）⇒ daily，两端同该日。
+          granularity: 'daily',
+          period_from: g.bizDate,
+          period_to: g.bizDate,
           source: 'excel',
           created_at: now,
           // 🔴 R249：缺 is_deleted ⇒ 落库 354 行却「单品毛利复盘·外卖」全程空态的根因（读侧强制 is_deleted:false）。
@@ -399,13 +506,19 @@ async function handleFormCImport({ shopId, userId, clientRequestId, dishDetect, 
       });
       written++;
     }
+    // 🔴 R587：本组写完后清掉多余的旧行（与形态 A / DSI-1 同一套语义）
+    const pr = await pruneStaleGroup(db, shopId, platform, g.bizDate, writtenIds, now);
+    prunedC += pr.pruned;
+    pruneFailC += pr.failed;
   }
 
   const out = {
     shop_id: shopId,
     platform,
-    shape: DISH_SHAPES.C,
+    shape: parsed.shape,
     written,
+    pruned: prunedC,          // R587：清掉的旧残留行数
+    pruneFailed: pruneFailC,  // R587：清理失败行数（>0 ⇒ 可能残留旧行）
     groups: parsed.groups.map((g) => ({ bizDate: g.bizDate, count: g.rows.length })),
     totals: parsed.totals,
     zeroAmountQty: parsed.zeroAmountQty,
@@ -417,6 +530,128 @@ async function handleFormCImport({ shopId, userId, clientRequestId, dishDetect, 
     try {
       await common.audit.writeAudit(db, {
         action: 'IMPORT_DISH_SALES_C', operator_type: 'user', operator_id: userId, shop_id: shopId,
+        after_data: out,
+        idempotency_key: common.idempotency.shopKey(shopId, clientRequestId),
+      });
+    } catch (e) { /* 审计失败不阻断主流程 */ }
+  }
+  return ok(out);
+}
+
+// ===== R584：DSI-1 标准格式导入 =====
+// 契约：specs/core/店算标准导入格式_v1.md；解析器：dsi1.js（纯函数，已由第 225 套件守住）
+//
+// 🔴 为什么它必须独立、不能复用 C 分支：
+//   一份 DSI-1 可以同时含堂食 + 美团 + 淘宝闪购（老板一个月的数据就一张表），
+//   而 C 分支的入参只有一个 `platform` ⇒ 落库时全部写成同一个平台、_id 也会互相覆盖
+//   （同 bizDate 同 seq ⇒ 后写的把先写的冲掉，且**不报错**）。
+//
+// 🔴 为什么不再套 checkGradeA：
+//   那道闸是为「平台原始导出表」设计的（列名不固定、单位不统一、可能有合计行）。
+//   DSI-1 是**已经标准化过的表**，dsi1.parse 已逐列校验（日期/渠道/数字/名称），
+//   再套一层只会把「格式问题」报成「数据问题」，反而更难懂。
+//   ⇒ 门禁口径改为：解析不过 ⇒ 直接把 dsi1 的**人话错误**回给用户（带行号）。
+
+async function handleDSI1Import({ shopId, userId, clientRequestId, dishDetect, matrix, confirm }) {
+  const sheetRows = matrix.sheets[dishDetect.sheet].rows;
+  const parsed = parseDSI1(sheetRows);
+  if (!parsed.ok) {
+    // 人话 + 行号原样透出（老板能照着改表，而不是只看到「格式错误」）
+    return fail(ERROR_CODES.INVALID_PARAM, parsed.error);
+  }
+
+  // 按 (platform, bizDate) 分组 —— 抽成纯函数以便单测（第 225 套件 D 组）
+  const groups = parseDSI1Groups(parsed.rows);
+
+  const summary = parsed.summary;
+
+  if (!confirm) {
+    return ok({
+      shop_id: shopId,
+      shape: DISH_SHAPES.S,
+      platform: '',                       // DSI-1 一份表可含多平台 ⇒ 顶层不填单值，明细见 by_channel
+      preview: {
+        rowCount: summary.rowCount,
+        dayFrom: summary.dayFrom,
+        dayTo: summary.dayTo,
+        dayCount: summary.dayCount,
+        // 🔴 R589：最老一天距今几个月 —— 前端据此提示"这批数据是不是太旧了"
+        //   （抓 AI 猜错年份这类**范围检查抓不住**的错：2024/2025 都是合法年份）
+        maxMonthsAgo: summary.maxMonthsAgo,
+        dishCount: summary.dishCount,
+        totalQty: summary.totalQty,
+        totalAmountFen: summary.totalAmountFen,
+        byChannel: summary.byChannel,
+        nonInt: summary.nonInt,
+        refunds: summary.refunds,
+        // 🔴 契约 §S1-③：S1 不含打包费 ⇒ 汇总金额天然小于 S2 营业额。前端要如实说明，别让老板以为漏了。
+        noteNoPackFee: summary.noteNoPackFee,
+      },
+    });
+  }
+
+  // 幂等（重放形态）：命中即返回首次结果
+  const prior = await common.idempotency.findPriorResult(db, shopId, clientRequestId);
+  if (prior) return ok(prior);
+
+  const now = nowUtc();
+  let written = 0;
+  let pruned = 0;          // 本次被清理掉的"旧残留行"
+  let pruneFailed = 0;     // 清理失败的组数（新数据仍正确，只是可能残留）
+  for (const g of groups) {
+    const writtenIds = new Set();   // R587：本组写了哪些 _id
+    for (let seq = 0; seq < g.rows.length; seq++) {
+      const r = g.rows[seq];
+      // _id 确定性 ⇒ 同一份表重导是**覆盖**而不是翻倍（与 A/C/D 同一套 saleDocId）
+      const _id = saleDocId(shopId, g.platform, g.bizDate, seq);
+      writtenIds.add(_id);
+      await db.collection('external_sales_daily').doc(_id).set({
+        data: {
+          shop_id: shopId,
+          biz_date: g.bizDate,
+          external_ref_id: dishRefId(g.platform, g.bizDate, r.dishKey),
+          dish_key: r.dishKey,
+          qty: r.qty,
+          amount: r.amountFen,
+          platform: g.platform,
+          granularity: 'daily',
+          period_from: g.bizDate,
+          period_to: g.bizDate,
+          // 🔴 来源标记：与普通 excel 导入区分开（R581 提的"来源维度"，这里先落第一笔）
+          source: 'dsi1',
+          created_at: now,
+          is_deleted: false,
+        },
+      });
+      written++;
+    }
+
+    // 🔴 R587：清掉本组里"这次没再写"的旧行（菜变少 / 换了来源时会出现）。
+    //   与形态 A / C/D 共用同一个 pruneStaleGroup —— **同一套语义只许有一份实现**
+    //   （R586 曾把这段内联在这里，A/C/D 各自再写一遍就会分叉，正是本轮反复踩的坑）。
+    const pr = await pruneStaleGroup(db, shopId, g.platform, g.bizDate, writtenIds, now);
+    pruned += pr.pruned;
+    pruneFailed += pr.failed;
+  }
+
+  const out = {
+    shop_id: shopId,
+    shape: DISH_SHAPES.S,
+    written,
+    pruned,          // R586：被清掉的旧残留行数（重导时菜变少会出现）
+    pruneFailed,     // R586：清理失败组数；>0 表示"可能有旧行残留"，前端应如实提示
+    groups: groups.map((g) => ({ platform: g.platform, bizDate: g.bizDate, count: g.rows.length })),
+    byChannel: summary.byChannel,
+    totals: { qty: summary.totalQty, amountFen: summary.totalAmountFen },
+    nonInt: summary.nonInt,
+    refunds: summary.refunds,
+    client_request_id: clientRequestId || '',
+  };
+
+  if (clientRequestId) {
+    try {
+      await common.audit.writeAudit(db, {
+        action: 'IMPORT_DSI1', operator_type: 'user', operator_id: userId, shop_id: shopId,
         after_data: out,
         idempotency_key: common.idempotency.shopKey(shopId, clientRequestId),
       });

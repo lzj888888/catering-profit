@@ -1,0 +1,7 @@
+NODE = C:/Users/lzj/.workbuddy/binaries/node/versions\22.22.2-6\node.exe
+SUITES = 185
+❌ [suite-tracked] 未入库套件: ['tools/selftest_opencash.js']
+
+============================================================
+总览：184/185 通过   耗时 295.5s
+R92: ❌ ['tools/selftest_opencash.js']

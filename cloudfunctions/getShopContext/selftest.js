@@ -45,11 +45,144 @@ const s4 = switchesFromRows([{ switch_key: 'unknown_switch', enabled: true }]);
 check('未知 switch_key 不污染出参', s4.inventorySwitchOn === false && s4.amortizeSwitchOn === false);
 check('出参仅两枚键（不多带行原文）', Object.keys(s0).length === 2 && Object.keys(s1).sort().join(',') === 'amortizeSwitchOn,inventorySwitchOn');
 
-console.log('===== 3. 跨函数常量守卫（读侧 ≡ 写侧）=====');
-check('inventory 键读≡写', SWITCH_KEYS.inventory === writeSide.SWITCH_KEYS.inventory);
-check('amortize 键读≡写', SWITCH_KEYS.amortize === writeSide.SWITCH_KEYS.amortize);
-check('键名 = inventory_switch', SWITCH_KEYS.inventory === 'inventory_switch');
-check('键名 = amortize_switch', SWITCH_KEYS.amortize === 'amortize_switch');
+console.log('===== 3. 跨函数常量守卫（读侧键集 ≡ 写侧，逐键逐值）=====');
+// 🔴 R298X 扩面（根因）：修前这里只断言了 5 个键里的 **2 个**（inventory / amortize），
+//   另外 3 个（takeawayParams / menuDishCount / buffetFoodCostTotal）**零判据**。
+//   而写侧 `saveShopSetting/service.js` 的注释明写「与 getShopContext 同款开关键，**防漂移**」
+//   —— 注释声称一致、机器只守 2/5 ⇒ 漂移**真的长在了盲区里**：读侧 SWITCH_KEYS 缺
+//   `buffetFoodCostTotal`（写侧有、读侧无），而门禁全绿、无一条转红。
+//   （同族于本仓「判据只守形态、不守行为」与「单源不扩散」两型：这里是有判据但只覆盖子集。）
+//   ⇒ 判据从「两键硬编码」升为四条腿：
+//     J1 同名键 ⇒ 值逐字相同（**全键集**）
+//     J2 读侧缺的键 ⇒ 必须**显式登记 + why**（把"不对称"变成声明出来的东西，不许发生在盲区）
+//     J3 全仓**生产**代码的 switch_key 字面量 ⇒ 必须 ∈ 注册表（新造的键无处藏身）
+//     J4 每个注册键 ⇒ 必须真被某处引用（防"注册了却没人用"的死键）
+const W = writeSide.SWITCH_KEYS;
+const R = SWITCH_KEYS;
+const r298xBase = pass;   // J5 以此算本段实跑条数（不写死字面量，删腿即跌破）
+
+// ---- 前提：写侧键集非退化（防写侧被删空后 J1/J2 恒真）----
+const wNames = Object.keys(W);
+check('R298X-S1 前提：写侧 SWITCH_KEYS 键数 ≥ 5（删键即转红）', wNames.length >= 5,
+  `实 ${wNames.length} 键：${wNames.join('/')}`);
+
+// ---- J1 同名键 ⇒ 值逐字相同（全键集）----
+const sameNameBad = wNames.filter((n) => R[n] !== undefined && R[n] !== W[n]).map((n) => `${n}: 读"${R[n]}" ≠ 写"${W[n]}"`);
+check('R298X-J1 读侧每个**同名键**的值都 ≡ 写侧（全键集，不再只挑两键）', sameNameBad.length === 0,
+  sameNameBad.join(' · ') || `逐键逐值一致（同名 ${wNames.filter((n) => R[n] !== undefined).length} 键）`);
+
+// ---- J2 读侧缺的键必须显式登记 + why（fail-closed）----
+const READ_ABSENT = {
+  buffetFoodCostTotal: 'getShopContext 不读该键：消费方是 getDishReview（直读 shop_switch），读侧无需声明。',
+};
+const absent = wNames.filter((n) => R[n] === undefined);
+const unregistered = absent.filter((n) => !READ_ABSENT[n]);
+check('R298X-J2 读侧**缺**的键必须显式登记（新键只加在写侧 ⇒ 转红）', unregistered.length === 0,
+  unregistered.length ? '未登记：' + unregistered.join('、') : `缺 ${absent.length} 键，均已登记`);
+check('R298X-J2b 每条缺键登记都带 why（≥12 字，说明读侧为什么不需要）',
+  absent.every((n) => String(READ_ABSENT[n] || '').length >= 12),
+  absent.map((n) => `${n}:${String(READ_ABSENT[n] || '').length}字`).join(' · ') || '（无缺键）');
+// 双向防腐：登记了却其实不缺 / 登记了写侧根本没这个键 ⇒ 红
+const staleAbsent = Object.keys(READ_ABSENT).filter((n) => R[n] !== undefined || W[n] === undefined);
+check('R298X-J2c 缺键登记表无陈旧键（读侧已补回 / 写侧无此键 ⇒ 红）', staleAbsent.length === 0,
+  staleAbsent.length ? '陈旧：' + staleAbsent.join('、') : `${Object.keys(READ_ABSENT).length} 条登记均有效`);
+
+// ---- J3 全仓 switch_key **词表**（repo-wide）不得有未登记的字面量 ----
+//   🔴 为什么词表必须 repo-wide，而不能只看 SWITCH_KEYS：
+//     `SWITCH_KEYS` 只是「**saveShopSetting 会写的那些键**」，**不是全仓词表**。
+//     R298X 实扫发现第 6 个键 `m3_review_last` —— `importSalesBill` 写「上次堂食导入摘要」，
+//     `core/开发规范v1.2` 明写登记为新增 switch_key，却**不在任何 SWITCH_KEYS 里**
+//     ⇒ 只守 SWITCH_KEYS 的话，它永远在盲区里（与 `buffetFoodCostTotal` 同族的第二个实例）。
+//   ⚠️ 同时登记「看着像键、其实不是键」的字面量，否则按命名约定扫描会误杀。
+const REPO_SWITCH_KEYS = {
+  inventory_switch: { writer: 'saveShopSetting', reader: 'getShopContext / getLedger / calcMonthlyProfit / saveLedger' },
+  amortize_switch: { writer: 'saveShopSetting', reader: 'getShopContext / getLedger / getAmortSchedule / saveLedger' },
+  'm3_takeaway_params': { writer: 'saveShopSetting', reader: 'getShopContext' },
+  'm3_menu_dish_count': { writer: 'saveShopSetting', reader: 'getShopContext' },
+  'm3_buffet_food_cost_total': { writer: 'saveShopSetting', reader: 'getDishReview' },
+  'm3_review_last': { writer: 'importSalesBill', reader: '（暂无读方 —— 摘要落库但无人读回，已登记未闭环）' },
+};
+const NON_KEY_ALLOW = {
+  'shop_switch': '集合名（collections.js 登记），不是 switch_key 取值',
+  'm3_cards': 'exportData 的导出 scope 名，不是 switch_key 取值',
+  'm3_combo': '付费能力键（common/entitlement.js::PAID_FEATURES）',
+  'm3_takeaway': '付费能力键（common/entitlement.js::PAID_FEATURES）',
+  'm3_dishreview': '付费能力键（common/entitlement.js::PAID_FEATURES）',
+};
+const registered = new Set(Object.keys(REPO_SWITCH_KEYS));
+// 词表 ⊇ 写侧键值（fail-closed：写侧加了新键却没进词表 ⇒ 红）
+const notInRepo = Object.values(W).filter((v) => !registered.has(v));
+check('R298X-J3 词表 ⊇ 写侧 SWITCH_KEYS 全部键值（新键必须进词表）', notInRepo.length === 0,
+  notInRepo.length ? '词表缺：' + notInRepo.join('、') : `词表 ${registered.size} 键 ⊇ 写侧 ${wNames.length} 键`);
+check('R298X-J3b 词表每条都有归属（writer 与 reader 均非空）',
+  Object.keys(REPO_SWITCH_KEYS).every((k) => REPO_SWITCH_KEYS[k].writer && REPO_SWITCH_KEYS[k].reader),
+  Object.keys(REPO_SWITCH_KEYS).length + ' 条均带 writer/reader');
+
+//   扫描面：cloudfunctions/ 下的 .js，**排除** cx_*（common 单源的派生副本，逐字跟随单源）、
+//           selftest.js（测试自身要写字面量）、node_modules / __tests__。
+const CF = path.join(__dirname, '..');
+const prodFiles = [];
+(function walk(dir) {
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (e.name === 'node_modules' || e.name === '__tests__') continue;
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) { walk(p); continue; }
+    if (!e.name.endsWith('.js')) continue;
+    if (e.name.startsWith('cx_')) continue;         // 派生副本：逐字跟随 common 单源，不单独判
+    if (e.name === 'selftest.js') continue;         // 测试自身会写字面量
+    prodFiles.push(p);
+  }
+})(CF);
+
+// J3c 直连形态：`switch_key === 'X'` / `switch_key: 'X'`
+const KEY_LIT = /switch_key\s*(?:===|==|:)\s*'([^']+)'/g;
+const badDirect = [];
+let directHits = 0;
+for (const f of prodFiles) {
+  const src = fs.readFileSync(f, 'utf8');
+  let m;
+  KEY_LIT.lastIndex = 0;
+  while ((m = KEY_LIT.exec(src)) !== null) {
+    directHits++;
+    if (!registered.has(m[1])) badDirect.push(`${path.relative(CF, f)} → '${m[1]}'`);
+  }
+}
+check('R298X-J3c 直连字面量（switch_key ===/: \'X\'）必须在词表内', badDirect.length === 0,
+  badDirect.length ? '未登记：' + badDirect.join(' · ') : `${directHits} 处直连字面量全部在册`);
+
+// J3d 命名约定形态：任何 `'m3_*'` / `'*_switch'` 字面量都必须在 词表 ∪ 非键白名单 内。
+//   🔴 这一腿是为了堵 J3c 的绕过：把键存成变量再比较（`const k = 'm3_brand_new'`），
+//     或把键当**位置参数**传给辅助函数（`upsertSwitch(db, shopId, 'm3_review_last', ...)`），
+//     J3c 的正则都抓不到 —— 变异证明 B3 当场把它证出来过。
+const NAME_LIT = /'(m3_[a-z0-9_]+|[a-z0-9]+(?:_[a-z0-9]+)*_switch)'/g;
+const badName = [];
+const seenName = new Set();
+for (const f of prodFiles) {
+  const src = fs.readFileSync(f, 'utf8');
+  let m;
+  NAME_LIT.lastIndex = 0;
+  while ((m = NAME_LIT.exec(src)) !== null) {
+    seenName.add(m[1]);
+    if (!registered.has(m[1]) && !NON_KEY_ALLOW[m[1]]) badName.push(`${path.relative(CF, f)} → '${m[1]}'`);
+  }
+}
+check('R298X-J3d 命名约定字面量（m3_* / *_switch）必须在 词表 ∪ 非键白名单 内',
+  badName.length === 0, badName.length ? '未登记：' + badName.join(' · ') : `实扫 ${seenName.size} 种字面量，全部有归属`);
+check('R298X-J3e 前提：扫描面非退化（生产 .js ≥ 80）且两腿都有命中（直连 ≥2 / 命名 ≥5）',
+  prodFiles.length >= 80 && directHits >= 2 && seenName.size >= 5,
+  `扫描 ${prodFiles.length} 个 .js · 直连 ${directHits} · 命名 ${seenName.size}`);
+
+// ---- J4 每个注册键必须真被引用（防死键：注册了却没人用）----
+const deadKeys = wNames.filter((n) => {
+  const re = new RegExp('SWITCH_KEYS\\s*\\.\\s*' + n + '\\b');
+  return !prodFiles.some((f) => re.test(fs.readFileSync(f, 'utf8')));
+});
+check('R298X-J4 每个注册键都真被某处引用（防"注册了却没人用"的死键）', deadKeys.length === 0,
+  deadKeys.length ? '死键：' + deadKeys.join('、') : `${wNames.length} 键均有引用点`);
+
+// ---- J5 断言数下界（防后人删腿：本段实跑条数由 pass 差值算，不写死字面量）----
+const r298xCount = pass - r298xBase;
+check('R298X-J5 本段断言数 ≥ 10（删掉任一腿即跌破下界）', r298xCount >= 10, `本段实跑 ${r298xCount} 条`);
 
 console.log('===== 4. 静态形状守卫 =====');
 const src = fs.readFileSync(path.join(__dirname, 'index.js'), 'utf8');

@@ -38,6 +38,14 @@ check('R210：拼错的近义 op 一律拒（防"子串/大小写"式宽松白�
 check('name 首尾空格被 trim（不写进库）', validateInput({ op: 'create', name: '  小面馆  ' }).name === '小面馆');
 check('全空格 name 视为空 → INVALID_PARAM', validateInput({ op: 'create', name: '   ' }).error === 'INVALID_PARAM');
 check('缺 client_request_id ⇒ 空串（不炸）', validateInput({ op: 'create', name: 'x' }).input.client_request_id === '');
+check('R571：create 带合法 biz_type 通过并回传', validateInput({ op: 'create', name: 'x', biz_type: 'hotpot' }).biz_type === 'hotpot');
+check('R571：create 非白名单 biz_type → INVALID_PARAM（不静默归一）',
+  validateInput({ op: 'create', name: 'x', biz_type: 'nonsense' }).error === 'INVALID_PARAM'
+  && validateInput({ op: 'create', name: 'x', biz_type: 'Hotpot' }).error === 'INVALID_PARAM');
+check('R571：create 不传 biz_type ⇒ 空串（不猜业态）', validateInput({ op: 'create', name: 'x' }).biz_type === '');
+check('R571：create 显式空串/ null biz_type 合法（= 明确不选）',
+  validateInput({ op: 'create', name: 'x', biz_type: '' }).biz_type === ''
+  && validateInput({ op: 'create', name: 'x', biz_type: null }).biz_type === '');
 check('R210：OPS 恰好五个（create/rename/delete/reset/stats 不多不少）',
   OPS.length === 5 && OPS.join(',') === 'create,rename,delete,reset,stats');
 
@@ -96,6 +104,10 @@ const doc = S.buildShopDoc({ _id: idA1, userId: 'u_1', name: '小面馆', now: 1
 check('文档 _id ≡ id ≡ shop_id（三键同值，防「业务主键≠_id」重演）', doc._id === idA1 && doc.id === idA1 && doc.shop_id === idA1);
 check('文档 is_deleted=false（新建即可见）', doc.is_deleted === false);
 check('文档带 created_at/updated_at', doc.created_at === 111 && doc.updated_at === 111);
+check('R571：建店文档落 biz_type（三业态老板建店即分流）',
+  S.buildShopDoc({ _id: idA1, userId: 'u_1', name: '小面馆', bizType: 'cafe', now: 111 }).biz_type === 'cafe');
+check('R571：未传 bizType ⇒ 文档 biz_type 空串（不猜）',
+  S.buildShopDoc({ _id: idA1, userId: 'u_1', name: 'n', now: 1 }).biz_type === '');
 const patch = S.buildRenamePatch({ name: '新名', now: 222 });
 check('重命名补丁只含 name + updated_at（不顺手清备注/业态）', Object.keys(patch).sort().join(',') === 'name,updated_at');
 check('重命名补丁值正确', patch.name === '新名' && patch.updated_at === 222);
@@ -114,6 +126,8 @@ check('R210：四个**写** op 都留痕（writeAudit ≥ 4 处：create/rename/
   (src.match(/writeAudit\(db,/g) || []).length >= 4);
 check('幂等：rename/delete 走 findPriorResult + shopKey', /findPriorResult\(db,\s*target,\s*crid\)/.test(src) && /shopKey\(target,\s*crid\)/.test(src));
 check('create 幂等：撞 _id 即回读（isDuplicateKeyError）', /isDuplicateKeyError\(e\)/.test(src));
+check('R571：create 真把 biz_type 透传给 buildShopDoc（调用点形态，非注释）',
+  /buildShopDoc\(\{[^}]*bizType:\s*v\.biz_type/.test(src));
 check('额度真相源读 feature_permissions 而非硬编码数字', /collection\('feature_permissions'\)/.test(src) && !/shop:\s*1\b/.test(src));
 check('三个 op 的错误码语义在场（FREE_LIMIT_EXCEEDED / HARD_CAP_EXCEEDED / INVALID_PARAM）',
   /FREE_LIMIT_EXCEEDED/.test(src) && /HARD_CAP_EXCEEDED/.test(src) && /INVALID_PARAM/.test(src));

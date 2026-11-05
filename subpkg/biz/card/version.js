@@ -1,0 +1,224 @@
+// subpkg/biz/card/version.js —— 批次 4 / 批次 S0 · M3 成本卡版本历史 + 恢复入口
+//
+// 数据来自 getCardVersions（后端只 INSERT 不 UPDATE 的版本模型，历史版本永不改写）。
+// 展示每版：版本号、保存时间、单份成本、配方明细行（含净料单位成本快照 + 5 字段快照）。
+// S0（任务 2）：每个版本加「恢复此版本」—— 恢复 = 把历史版本数据 INSERT 成新版本（复用 saveCostCard），
+//   旧版本原样保留（只 INSERT 不 UPDATE；最新 = card_code 下 version 最大者，不用 is_latest）。
+const api = require('../../../utils/api.js');
+const ui = require('../../../utils/ui.js');
+const { TERMS } = require('../../../miniprogram/i18n/terms.js');
+
+Page({
+  data: {
+    t: {
+      title: TERMS.card.versionHistory,
+      version: TERMS.card.version,
+      totalCost: TERMS.card.totalCost,
+      versionCreatedAt: TERMS.card.versionCreatedAt,
+      versionCostDiff: TERMS.card.versionCostDiff,
+      versionLines: TERMS.card.versionLines,
+      versionReadonly: TERMS.card.versionReadonly,
+      oldVersionNote: TERMS.card.oldVersionNote,
+      price: TERMS.card.price,
+      qty: TERMS.card.qty,
+      loading: TERMS.ui.loading,
+      cur: '¥',
+      calcModeA: TERMS.card.calcModeA,
+      calcModeB: TERMS.card.calcModeB,
+      cancel: TERMS.buttons.cancel,
+      // S0（任务 2）
+      restoreVersion: TERMS.card.restoreVersion,
+      restoreVersionConfirm: TERMS.card.restoreVersionConfirm,
+      restoreDone: TERMS.card.restoreDone,
+      snapshotBrand: TERMS.card.snapshotBrand,
+      snapshotUnit: TERMS.card.snapshotUnit,
+      snapshotPrice: TERMS.card.snapshotPrice,
+      snapshotConvert: TERMS.card.snapshotConvert,
+      snapshotYield: TERMS.card.snapshotYield,
+      // M3.19（批次 E）成本趋势折线
+      impactTrend: TERMS.card.impactTrend,
+      impactTrendSingle: TERMS.card.impactTrendSingle,
+    },
+    card_code: '',
+    list: [],
+    // M3.19（A3）：成本趋势（数据全来自 list，前端算，不新增调用、不落库）
+    chartRows: [],
+    showChart: false,
+    // 🔴 R408：恢复历史版本 = `saveCostCard` 带 card_code ⇒ **INSERT 新版本**（不是回滚指针）。
+    //   双击就会在版本链上多一条与目标版本内容相同的记录，老板看到"版本数比我操作次数多"。
+    restoring: false,
+    loading: true,
+  },
+
+  onLoad(q) {
+    const cc = (q && q.card_code) || '';
+    this.setData({ card_code: cc });
+    this.load();
+  },
+
+  async load() {
+    this.setData({ loading: true });
+    try {
+      await api.ensureShop();
+      ui.setTitle(TERMS.card.versionHistory);
+      const d = await api.call('getCardVersions', { card_code: this.data.card_code });
+      // ⚠️ 计算下沉：版本差异不在前端算（减法也算金额计算，禁止）。
+      //  每版金额均为后端 getCardVersions 返回的分整数，前端仅格式化展示。
+      // S0：保留恢复所需原始字段（name/mode/loss/aux/price/category/tags/promo/lines 原始 material_id+net_unit_cost）。
+      const list = (d.list || []).map((v) => ({
+        version: v.version,
+        name: v.name || '',
+        total_cost: api.fenToYuan(v.total_cost_fen, 2),
+        created_at: this.fmtTime(v.created_at),
+        calc_mode: v.calc_mode === 'B' ? this.data.t.calcModeB : this.data.t.calcModeA,
+        calc_mode_key: v.calc_mode || 'A',
+        price: v.price_fen > 0 ? api.fenToYuan(v.price_fen, 2) : '—',
+        // 恢复用原始字段
+        loss_rate: v.loss_rate || 0,
+        aux_fen: v.aux_fen || 0,
+        price_fen: v.price_fen || 0,
+        price_promo_fen: v.price_promo_fen || 0,
+        category: v.category || '',
+        tags: v.tags || '',
+        batch_output: v.batch_output || 0,
+        // 🔴 R298Y 修复 —— R297-⑥ 的**空修复**（本仓「修了一半」同族病第 4 型）：
+        //   `doRestore` 读 `v.card_type` / `v.specs`，但这两个字段**从未被本映射搬出来**（下面的键里根本没有）
+        //   ⇒ 恒 `undefined` ⇒ `card_type` 恒取 1、`specs` 恒 `[]`
+        //   ⇒ R297-⑥ 注释里声称的「恢复套餐卡不再静默降级」**实际上一个字都没生效**（行为仍是它描述的 bug）。
+        //   ⚠️ 教训：**写读取方 ≠ 修好**。判据必须守「`doRestore` 用到的每个 `v.X` 都在本映射被赋值」，
+        //      而不是只 grep 「`card_type` 这个词出现过」—— 后者在改前就是绿的（注释里有该词）。
+        //   出参本来就齐（getCardVersions/service.js:15 / :33，与 getCostCard 同字段集）⇒ 照抄即可。
+        card_type: v.card_type === 3 ? 3 : 1,
+        specs: v.specs || [],
+        lines: (v.lines || []).map((l) => ({
+          material_id: l.material_id || '',
+          material_name: l.material_name || '',
+          quantity: l.quantity != null ? String(l.quantity) : '',
+          net_unit_cost: l.net_unit_cost != null ? l.net_unit_cost : 0,
+          line_net_cost: api.fenToYuan(l.line_net_cost_fen, 2),
+          // S0 快照 5 字段（灰字展示）
+          brand_spec: l.brand_spec || '',
+          purchase_unit: l.purchase_unit || '',
+          purchase_price: l.purchase_price != null ? api.fenToYuan(l.purchase_price, 2) : '',
+          convert_factor: l.convert_factor != null ? String(l.convert_factor) : '',
+          yield_rate: l.yield_rate != null ? String(l.yield_rate) : '',
+          // 🔴 R298Y：行级往返字段（与卡级 card_type/specs 同族）——
+          //   缺了它们，套餐子卡行在 `doRestore` 里会被当成「手工行」送出 ⇒ 与 onCopy 同一处失败。
+          input_type: l.input_type === 2 ? 2 : 1,
+          line_kind: l.line_kind || 'main',
+          group_name: l.group_name || '',
+          line_type: l.line_type === 2 ? 2 : 1,
+          sub_card_ref: l.sub_card_ref || '',
+          sub_version: l.sub_version != null ? l.sub_version : 0,
+        })),
+      }));
+      this.setData({ list, loading: false });
+      // M3.19（A3）：成本趋势（数据全来自 list，前端算，不新增调用、不落库）
+      const raw = d.list || [];
+      const chart = raw.slice().sort((a, b) => (a.version || 0) - (b.version || 0));
+      // 🔴 R192：双柱**同尺度**（李老师 2026-10-03："比较图要有价格，也要有版本"）。
+      //   R191 版只画成本一根柱 ⇒ 看不出"售价有没有跟着动"。
+      //   ⚠️ 基准取 max(成本, 售价) 而不是 max(成本)：两根柱必须**同一把尺子**，否则高度不可比
+      //      （成本按成本归一、售价按售价归一 ⇒ 两根永远一样高，图就骗人了）。
+      //   ⚠️ 只做格式化 + 等比换算（金额计算仍在后端），前端不产生新金额。
+      const vals = [];
+      chart.forEach((v) => { vals.push(Number(v.total_cost_fen) || 0, Number(v.price_fen) || 0); });
+      const maxVal = Math.max.apply(null, vals.concat([1]));
+      const pct = (n) => Math.round((n / maxVal) * 100);
+      const chartRows = chart.map((v) => {
+        const cost = Number(v.total_cost_fen) || 0;
+        const price = Number(v.price_fen) || 0;
+        return {
+          version: v.version,
+          costText: api.fenToYuan(cost, 2),
+          // 未定价（price_fen=0）⇒ 售价条长 0 且文案给「—」，不允许画一根假条
+          priceText: price > 0 ? api.fenToYuan(price, 2) : '—',
+          priceKnown: price > 0,   // wxml 据此决定要不要加「¥」前缀（「¥—」很怪）
+          heightPct: pct(cost),
+          priceHeightPct: price > 0 ? pct(price) : 0,
+        };
+      });
+      this.setData({ chartRows, showChart: chart.length >= 2 });
+    } catch (e) {
+      this.setData({ loading: false });
+      api.toastError(e);
+    }
+  },
+
+  // S0（任务 2）恢复此版本：二次确认 → 复用 saveCostCard 生成新版本
+  onRestore(e) {
+    const v = e.currentTarget.dataset.v;
+    wx.showModal({
+      title: TERMS.card.restoreVersion,
+      content: TERMS.card.restoreVersionConfirm,
+      confirmColor: '#1e3a5f',
+      cancelText: TERMS.buttons.cancel,
+      success: async (r) => {
+        if (!r.confirm) return;
+        await this.doRestore(v);
+      },
+    });
+  },
+
+  async doRestore(v) {
+    // 🔴 R408 连点保护（必须在第一个 await 之前）：恢复不是"回滚指针"，而是拿旧版本内容
+    //   **再存一版新的**（`saveCostCard` 带 card_code）。幂等键拼的是 `Date.now()`，每次点击
+    //   都是新键 ⇒ 双击 = 两个内容相同的版本。
+    if (this.data.restoring) return;
+    // 明细行（R298Y 修复）：三种行分流 —— 子卡行 / 档案行 / 手工行。
+    //   🔴 改前只按 `material_id` 二分 ⇒ **套餐子卡行（material_id 为空）落进「手工行」分支**，
+    //   丢 `sub_card_ref` ⇒ `saveCostCard/validate.js:51` 强制要求 ⇒ 恢复套餐卡必失败。
+    //   ⚠️ `line_kind` 一并带（规格缩放依据，M3.14），否则恢复后规格成本按 main 重算。
+    const lines = (v.lines || []).map((l) => {
+      if (l.line_type === 2 && l.sub_card_ref) return { sub_card_ref: l.sub_card_ref, qty: Number(l.quantity) || 0 };
+      const lineKind = l.line_kind || 'main';
+      const groupName = l.group_name || '';
+      if (l.material_id) return { material_id: l.material_id, qty: Number(l.quantity) || 0, line_kind: lineKind, group_name: groupName };
+      return { input_type: 2, name: l.material_name || '', qty: Number(l.quantity) || 0, net_unit_cost: l.net_unit_cost, line_kind: lineKind, group_name: groupName };
+    });
+    if (lines.length === 0) { wx.showToast({ title: TERMS.card.versionLines, icon: 'none' }); return; }
+    const card = {
+      name: v.name || '',
+      mode: v.calc_mode_key,
+      lines,
+      loss_pct: v.loss_rate || 0,
+      aux_fen: v.aux_fen || 0,
+      price_fen: v.price_fen || 0,
+      activity_price_fen: v.price_promo_fen || 0,
+      category: v.category,
+      tags: v.tags,
+      // 🔴 R297-⑥（审计 M3-B5）：**恢复必须带 `card_type`**。
+      //   服务端对缺省值取 **1（单品）**（saveCostCard/validate.js:32），而版本出参本来就带
+      //   card_type（getCardVersions/service.js:15）⇒ 原先不带 ⇒ **恢复套餐卡会静默降级成单品**：
+      //   配方从「引用子卡」变成一串手工行、此后子卡改价不再联动这张卡。
+      //   之所以毫无报错：套餐子卡快照行恰好落进 validate 的「手工行」分支（name + net_unit_cost），
+      //   且引擎 `quantity × net_unit_cost / 100` 把 ×100 抵消 ⇒ 金额当场还是对的，只有联动永久失效。
+      //   `specs` 同理要带（出参 `specsFromJson` 与入参 `sanitizeSpecs` 是同一函数 ⇒ 格式天然一致）。
+      // ⚠️ R298Y 补正：R297-⑥ **只写了这两行读取、没把字段搬进 `load()` 的 list 映射** ⇒ 该修复
+      //   一整轮内都是**空转**（`v.card_type`/`v.specs` 恒 undefined）。现在 load() 已补（见其注释），
+      //   并新增守卫 `tools/check_m3_card_roundtrip.js` 死守「这里用到的 `v.X` ⇔ load() 必须赋值」。
+      card_type: v.card_type === 3 ? 3 : 1,
+      specs: v.specs || [],
+      card_code: this.data.card_code,   // 带 card_code → saveCostCard 生成新版本
+    };
+    if (v.calc_mode_key === 'B') card.batch_output = v.batch_output || 0;
+    this.setData({ restoring: true });
+    try {
+      wx.showLoading({ title: TERMS.card.restoring, mask: true });
+      await api.call('saveCostCard', { card, client_request_id: 'rc_' + Date.now() });
+      wx.hideLoading();
+      wx.showToast({ title: TERMS.card.restoreDone, icon: 'success' });
+      this.load();
+    } catch (err) { wx.hideLoading(); api.toastError(err); }
+    finally { this.setData({ restoring: false }); }
+  },
+
+  fmtTime(ms) {
+    if (!ms) return '';
+    const d = new Date(ms);
+    const p = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  },
+
+  onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()); },
+});

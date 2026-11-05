@@ -1,0 +1,29 @@
+[
+  {
+    "k": "BUILD_ITEMS",
+    "v": {
+      "takeawayIncome": {
+        "category": "takeaway",
+        "name": "外卖",
+        "sub_items": [
+          {
+            "sub_item": "美团外卖",
+            "amount_fen": 520000,
+            "qty": 100
+          }
+        ]
+      },
+      "marketingExpense": {
+        "category": "marketing",
+        "name": "营销费用",
+        "sub_items": [
+          {
+            "sub_item": "外卖活动补贴",
+            "amount_fen": 30000
+          }
+        ]
+      },
+      "expTotalFen": 4790000
+    }
+  }
+]

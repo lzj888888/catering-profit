@@ -1,0 +1,31 @@
+===== R298 · B4 变异回灌 =====
+基线 md5：
+  cloudfunctions/checkQuota/index.js           c3eb1a1a9875
+  cloudfunctions/verifyTangshi/index.js        62ca9c18afd1
+  tools/check_fn_public_surface.js             c29b7e629aa9
+
+[ 1] OK  M1 撤掉 checkQuota 归属校验（退回原样）                    guard=check_fn_public_surface rc=1 红=True
+      首个 ❌：❌ E-② 契约含 shop 的函数都必须有归属校验（或显式豁免）  (缺归属校验：checkQuota)
+[ 2] OK  M2 给 checkQuota 塞豁免以绕过 E-②（豁免表腐化）              guard=check_fn_public_surface rc=1 红=True
+      首个 ❌：❌ E-④ 豁免表反向防腐：已补归属校验却仍登记豁免 ⇒ 红  (已补仍登记：checkQuota)
+[ 3] OK  M3 删掉 getShopContext 豁免项（该豁免是必须的）              guard=check_fn_public_surface rc=1 红=True
+      首个 ❌：❌ E-② 契约含 shop 的函数都必须有归属校验（或显式豁免）  (缺归属校验：getShopContext)
+[ 4] OK  M4 撤掉 verifyTangshi 来源校验（退回原样）                 guard=check_fn_public_surface rc=1 红=True
+      首个 ❌：❌ C-② 每个必须自保的函数都真的判了来源（OPENID 后 return 拒绝）  (未自保：verifyTangshi)
+[ 5] OK  M5 把 verifyTangshi 改回 mustSelfGuard:false（登记表缩表） guard=check_fn_public_surface rc=1 红=True
+      首个 ❌：❌ C-① 必须自保的登记项数 ≥ 3（定时 + 两个探针）  (实测 2 项：payExpireNotify / smokeTest)
+[ 6] OK  M6 契约表解析退回朴素 split("|")（丢掉转义竖线处理）              guard=check_fn_public_surface rc=1 红=True
+      首个 ❌：❌ E-⑨ 解析器自证：鉴权格**内含转义竖线**（user+shop\|幂等）⇒ 仍读出该格且含 shop  (auth=幂等)
+[ 7] OK  M7 把豁免表的 why 改短（<12 字）                         guard=check_fn_public_surface rc=1 红=True
+      首个 ❌：❌ E-⑤ 每条豁免都有 why（≥12 字，说明为什么不需要归属校验）  (缺 why：getShopContext)
+[ 8] OK  M8 归属校验判据改成 .code（跨守卫：check_auth_guard_shape G6 必须抓到） guard=check_auth_guard_shape rc=1 红=True
+      首个 ❌：❌ G6 无 owner.code 变体（成功返回已无 code 字段，判它会恒假）  (混用：checkQuota)
+[ 9] OK  M9 等价改写：owner.error 加空值兜底（行为不变）                guard=check_fn_public_surface rc=0 红=False
+[10] OK  M10 纯注释插入（不改行为）                                guard=check_fn_public_surface rc=0 红=False
+
+===== 还原校验（逐字节 md5）=====
+  cloudfunctions/checkQuota/index.js           md5 一致
+  cloudfunctions/verifyTangshi/index.js        md5 一致
+  tools/check_fn_public_surface.js             md5 一致
+
+结果：10/10 如期；未如期：无

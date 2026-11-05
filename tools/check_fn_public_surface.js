@@ -20,7 +20,11 @@
 //   B C 类必须**逐条登记**在 PUBLIC_FNS（缺一即红且点名）。
 //   C 登记表双向防腐：每项 why ≥ 12 字 + 目录必须存在（陈旧键 ⇒ 红）+ **已带鉴权却仍登记 ⇒ 红**。
 //   D `mustSelfGuard: true` 的项必须**真的判了来源**（`getWXContext` 取到 OPENID 后有 return 拒绝）。
-//   E 自失效护栏：断言数下界 + 扫描面文件数下界（防"扫空 ⇒ 0 ≤ 预算 ⇒ 恒绿"）。
+//   E 契约「鉴权」列 ≡ 实然归属校验（**R298 / B4 越权面**）：契约说 `user+shop` 的函数，
+//     代码里必须真的做归属校验（`= await assertShopOwner(`），或显式登记进 SHOP_AUTH_WAIVED；
+//     豁免表双向防腐 + 解析器自证（含「入参格里带转义竖线」的样本 —— 手切列会切歪）。
+//     ⚠️ E 组**置于 D 组之前**，使 D-①「断言数下界」覆盖全部判据（D 是收尾的自失效护栏）。
+//   F 自失效护栏：断言数下界 + 扫描面文件数下界（防"扫空 ⇒ 0 ≤ 预算 ⇒ 恒绿"）。
 //
 // ⚠️ 诚实边界（本守卫**不**守的，别当它守了）：
 //   ① 不判 A/B 类鉴权的**强度**（如 `requireRole(sess.role, ['super'])` 的角色串是否正确）—— 属业务语义；
@@ -40,7 +44,7 @@ const NON_FN = ['common', '_adminCore'];     // 非函数目录（共享模块 /
 const MIN_FNS = 40;                          // 实测 43 个函数目录 ⇒ 保守下界
 const MIN_AUTHED = 25;                       // 实测 A 类 29 个 ⇒ 保守下界
 const MIN_PUBLIC = 4;                        // 实测 C 类 6 个 ⇒ 保守下界
-const MIN_ASSERTIONS = 15;                   // 实测 16 条 ⇒ 保守下沿
+const MIN_ASSERTIONS = 20;                   // R298 扩 E 组后实测 27 条 ⇒ 保守下沿 20（原 17 条时为 15）
 const ANCHOR_AUTHED = ['getShopContext', 'saveCostCard', 'getLedger'];   // 必然有鉴权的锚点
 
 // 用户鉴权（**生产形态**：解构导入后直接 await 取返回值的 .error 判失败）
@@ -69,7 +73,22 @@ const PUBLIC_FNS = [
   { fn: 'payCallback', why: '微信支付回调 —— 平台调用无登录态，改由 verifyCallbackSign 验签 fail-closed 兜底', mustSelfGuard: false },
   { fn: 'payExpireNotify', why: '定时触发器任务 —— R215 已加固：有用户 OPENID 即拒绝（只放行定时/控制台）', mustSelfGuard: true },
   { fn: 'smokeTest', why: '真云诊断探针（会建集合/写库）—— R215 已加固：有用户 OPENID 即拒绝', mustSelfGuard: true },
-  { fn: 'verifyTangshi', why: 'M3.33 一次性只读探针：固定 where 聚合 external_sales_daily，不读 OPENID、不写库、仅 dev 诊断用', mustSelfGuard: false },
+  // 🔴 R298（B4）：本项原先 `mustSelfGuard: false`，理由写的是「不读 OPENID、不写库」——
+  //   那句**只回答了「它自己会不会写坏数据」，没回答「别人能不能调它」**。实测：
+  //   `wx.cloud.callFunction({name:'verifyTangshi'})` 是**客户端可直达**的（其自身头注的触发方式就是 `mp.evaluate`），
+  //   返回 `{count, sumYuan, shopIds, ...}` ⇒ **跨租户**暴露（含他人 `shop_id` 列表 + 全库聚合）。
+  //   ⇒ 与 `payExpireNotify` / `smokeTest` 同族，按 R215 定式改为必须自保（同批已在源码侧加来源校验）。
+  { fn: 'verifyTangshi', why: 'M3.33 一次性只读探针（固定 where 聚合 external_sales_daily；不写库）—— R298 已加固：有用户 OPENID 即拒绝', mustSelfGuard: true },
+];
+
+// ===== E 组配套：契约「鉴权」列含 shop、但**有意不做** `assertShopOwner` 的登记表 =====
+// 双向防腐（同 §B 组手法）：① 陈旧键（契约里其实不含 shop）⇒ 红；② 腐化（代码其实做了归属校验）⇒ 红。
+// 每条必须写 why ≥12 字。
+const SHOP_AUTH_WAIVED = [
+  {
+    fn: 'getShopContext',
+    why: '恒取「本人第一店」（da.list(shop,{user_id})[0]），**完全忽略** event.shop_id ⇒ 按构造不可能读到他人店',
+  },
 ];
 
 let pass = 0, failN = 0;
@@ -148,7 +167,9 @@ check('B-④ 反向：「已带鉴权却仍登记为免鉴权」⇒ 红（登记
 
 console.log('\n===== C · 定时/探针类必须自带来源校验 =====');
 const mustGuard = PUBLIC_FNS.filter((x) => x.mustSelfGuard === true);
-check('C-① 必须自保的登记项数 ≥ 2（定时 + 探针）', mustGuard.length >= 2, '实测 ' + mustGuard.length + ' 项：' + mustGuard.map((x) => x.fn).join(' / '));
+// 🔴 R298：下界由 2 抬到 3 —— 原下界=2 时，**把某一项改回 mustSelfGuard:false 就能静默缩表**
+//   （实测：verifyTangshi 改回 false 后 C-① 仍绿、C-② 只查剩下 2 项也绿）⇒ 覆盖数必须钉住。
+check('C-① 必须自保的登记项数 ≥ 3（定时 + 两个探针）', mustGuard.length >= 3, '实测 ' + mustGuard.length + ' 项：' + mustGuard.map((x) => x.fn).join(' / '));
 const guardBad = [];
 for (const x of mustGuard) {
   const p = path.join(CF, x.fn, 'index.js');
@@ -162,6 +183,70 @@ const SAMPLE_GUARDED = 'exports.main = async () => { const ctx = cloud.getWXCont
 const SAMPLE_OPEN = 'exports.main = async () => { const ctx = cloud.getWXContext(); const out = { openid: ctx.OPENID }; return out; };';
 check('C-③ 解析器自证：判了来源的样本 ⇒ true', selfGuarded(SAMPLE_GUARDED) === true);
 check('C-④ 解析器自证：只取 OPENID 不拒绝的样本 ⇒ false', selfGuarded(SAMPLE_OPEN) === false);
+
+
+console.log('\n===== E · 契约「鉴权」列 ≡ 实然归属校验（R298 · B4 越权面）=====');
+// 解析契约表行。🔴 必须按**未转义**的竖线切：`|` 在 markdown 表格里可用 `\|` 转义，
+//   而本表「入参」格里的联合类型写作 `'cc'\|'user'\|'shop'\|'all'` ⇒ 朴素 split('|') 会把列**整体切歪**，
+//   于是「鉴权」列会读到邻格内容（实测：smokeTest 的入参格含 'shop' ⇒ 它的鉴权格被误读成含 shop）。
+function contractAuthByFn(lines) {
+  const out = [];
+  for (const l of lines) {
+    const m = /^\|\s*`([A-Za-z_][A-Za-z0-9_]*)`\s*\|/.exec(l);
+    if (!m) continue;
+    const parts = l.split(/(?<!\\)\|/);
+    if (parts.length < 7) continue;
+    out.push({ fn: m[1], auth: parts[parts.length - 2].trim() });
+  }
+  return out;
+}
+const contractRows = contractAuthByFn(docLines);
+const shopAuthFns = contractRows.filter((r) => /shop/i.test(r.auth)).map((r) => r.fn).filter((n) => withIdx.includes(n));
+check('E-① 契约「鉴权」列含 shop 的函数数 ≥ 24（解析器非退化）', shopAuthFns.length >= 24, '实测 ' + shopAuthFns.length + ' 个');
+// 生产形态归属校验（与 A 组同口径：解构导入后直接 await 取返回值）
+const OWNER_PROD_RE = /=\s*await\s+assertShopOwner\s*\(/;
+function hasOwnerCheck(fn) {
+  const p = path.join(CF, fn, 'index.js');
+  if (!fs.existsSync(p)) return false;
+  return OWNER_PROD_RE.test(stripComments(fs.readFileSync(p, 'utf8')));
+}
+const waivedFns = SHOP_AUTH_WAIVED.map((x) => x.fn);
+const noOwner = shopAuthFns.filter((n) => !hasOwnerCheck(n) && !waivedFns.includes(n));
+check('E-② 契约含 shop 的函数都必须有归属校验（或显式豁免）', noOwner.length === 0,
+  noOwner.length ? '缺归属校验：' + noOwner.join(' / ') : shopAuthFns.length + ' 个已覆盖（含 ' + waivedFns.length + ' 条豁免）');
+const staleWaive = SHOP_AUTH_WAIVED.filter((x) => !shopAuthFns.includes(x.fn));
+check('E-③ 豁免表无陈旧键（契约里确实标了含 shop）', staleWaive.length === 0,
+  staleWaive.length ? '陈旧：' + staleWaive.map((x) => x.fn).join(' / ') : waivedFns.length + ' 条均对应');
+const rotWaive = SHOP_AUTH_WAIVED.filter((x) => hasOwnerCheck(x.fn));
+check('E-④ 豁免表反向防腐：已补归属校验却仍登记豁免 ⇒ 红', rotWaive.length === 0,
+  rotWaive.length ? '已补仍登记：' + rotWaive.map((x) => x.fn).join(' / ') : '无腐化');
+const noWhy2 = SHOP_AUTH_WAIVED.filter((x) => !x.why || x.why.length < 12);
+check('E-⑤ 每条豁免都有 why（≥12 字，说明为什么不需要归属校验）', noWhy2.length === 0,
+  noWhy2.length ? '缺 why：' + noWhy2.map((x) => x.fn).join(' / ') : SHOP_AUTH_WAIVED.length + ' 条全有');
+const ownerCount = withIdx.filter(hasOwnerCheck).length;
+check('E-⑥ 有归属校验的函数数 ≥ 26（扫描面非退化）', ownerCount >= 26, '实测 ' + ownerCount + ' 个');
+// 解析器自证（合成样本）：正样本含转义竖线的入参格，负样本鉴权列不含 shop
+const SAMPLE_SHOP = '| `fakeShopFn` | 用途 | `{ x: \'a\'\\|\'b\' }` | `{}` | user+shop |';
+const SAMPLE_USER = '| `fakeUserFn` | 用途 | `{ shop_id }` | `{}` | user |';
+const parsedShop = contractAuthByFn([SAMPLE_SHOP]);
+const parsedUser = contractAuthByFn([SAMPLE_USER]);
+check('E-⑦ 解析器自证：带转义竖线的 user+shop 行 ⇒ 认出该函数且鉴权含 shop',
+  parsedShop.length === 1 && parsedShop[0].fn === 'fakeShopFn' && /shop/i.test(parsedShop[0].auth),
+  parsedShop.length ? (parsedShop[0].fn + ' / auth=' + parsedShop[0].auth) : '未解析出');
+check('E-⑧ 解析器自证：鉴权列=user 的行 ⇒ 不落入 shop 面（哪怕入参格含 shop_id）',
+  parsedUser.length === 1 && !/shop/i.test(parsedUser[0].auth),
+  parsedUser.length ? ('auth=' + parsedUser[0].auth) : '未解析出');
+// 🔴 R298 变异回灌实证（M6，第一次跑「未如期」）：只写 E-⑦/E-⑧ 时，把 `split(/(?<!\\)\|/)`
+//   退回朴素 `split('|')` **判据照样全绿** —— 因为转义竖线落在**中间**格子，
+//   而取法是 `parts[parts.length - 2]`（倒数第二格），对"中部多切几刀"天然免疫。
+//   ⇒ 那次的 M6 属**变异太弱**（测的是假的），不是守卫太弱。
+//   真正的分辨点在**鉴权格自身含转义竖线**（如 `user+shop\|幂等`）：朴素切法会把该格劈成两段，
+//   倒数第二格只剩「幂等」⇒ 判据必须能抓到。下面这条样本就是为此补的。
+const SAMPLE_AUTH_PIPE = '| `fakePipeFn` | 用途 | `{ }` | `{}` | user+shop\\|幂等 |';
+const parsedPipe = contractAuthByFn([SAMPLE_AUTH_PIPE]);
+check('E-⑨ 解析器自证：鉴权格**内含转义竖线**（user+shop\\|幂等）⇒ 仍读出该格且含 shop',
+  parsedPipe.length === 1 && /shop/i.test(parsedPipe[0].auth) && /幂等/.test(parsedPipe[0].auth),
+  parsedPipe.length ? ('auth=' + parsedPipe[0].auth) : '未解析出');
 
 console.log('\n===== D · 自失效护栏 =====');
 const total = pass + failN + 2;    // +2 = 本段两条断言自身

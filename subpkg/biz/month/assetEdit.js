@@ -1,0 +1,262 @@
+// subpkg/biz/month/assetEdit.js —— round107 · 一次性投入的**独立编辑页**
+//
+// 为什么单独一页（而不是继续用摊销页的底部弹层）：
+//   真机截图显示，底部弹层（.mask{position:fixed} + .sheet 底部对齐）碰上 5 个字段 + 键盘时必然打架 ——
+//   面板整个被键盘盖住、输入框浮到卡片上，用户「看不见、存不了」。独立页没有「弹层 + 键盘」这层耦合：
+//   字段、提示、报错都有位置放，键盘顶起来也只是正常滚动。M3 菜品卡（subpkg/biz/card/edit）已是同款先例。
+//
+// ⚠️ 计算下沉：本页**不做任何金额/摊销/合计计算**
+//   · kind='lump'  → saveAsset({ asset: { mode:'lump', total_months:1, start_month } })
+//                     —— 金额进台账；当月「一次算清合计」由 saveLedger 服务端求和后进双利润引擎。
+//   · kind='amort' → saveAsset（分期摊销）
+//   · 删除         → saveAsset({ asset: { asset_id, delete:true } })（软删，不可复活）
+const api = require('../../../utils/api.js');
+const ui = require('../../../utils/ui.js');
+const { TERMS } = require('../../../miniprogram/i18n/terms.js');
+// 🔴 #549（队列 #25）：金额可读性判定。本页 amountYuan 直接喂 api.yuanToFen，而 yuanToFen 对
+//   「12,000」fail-soft 返回 0（被 check_money_precision 钉住不能改）⇒ 读不成的金额被静默按 0 算，
+//   资产值进台账 ⇒ 一次性/摊销金额全错、零报错。故保存前单独拦一遍（不改 yuanToFen，不静默清洗）。
+const AmountInput = require('../../../utils/amountInput.js');
+
+const T = TERMS.amortizePage;
+
+Page({
+  data: {
+    t: {
+      lumpTitle: T.editLumpTitle,
+      amortTitle: T.editAmortTitle,
+      lumpHint: T.editLumpHint,
+      amortHint: T.editAmortHint,
+      appendTitle: T.appendTitle,
+      appendHint: T.appendHint,
+      fName: T.fName,
+      fNamePh: T.fNamePh,
+      fAmount: T.fAmount,
+      fAmountHint: T.fAmountHint,
+      fStartMonth: T.fStartMonth,
+      fStartHint: T.fStartHint,
+      fStartPh: T.fStartPh,
+      fTotalMonths: T.fTotalMonths,
+      fTotalHint: T.fTotalHint,
+      fTerminateMonth: T.fTerminateMonth,
+      fTerminateHint: T.fTerminateHint,
+      fSave: T.fSave,
+      fDelete: T.lumpDelete,
+      confirmDelete: T.confirmDeleteLump,
+      optional: T.optional,
+      amountBadTip: TERMS.ui.amountBadTip, // #549：金额读不成数字的统一提示（与 M1/M3 四页同源）
+      monthUnit: T.monthUnit,
+      loading: TERMS.ui.loading,
+      cancel: TERMS.buttons.cancel,
+      save: TERMS.buttons.save,
+      archiveReadonly: TERMS.inputPage.archiveReadonly,
+      lumpMonthLabel: T.lumpMonthLabel,
+      lumpMonthHint: T.lumpMonthHint,
+      // ── R234/J4 + J4f 行内长提示折叠（本页 **2** 处：aeMonthHint / aeTotalHint）──
+      // 🔴 J4f 补漏：`aeTotalHint`（fTotalHint 20 字）此前被误判为平铺 —— 根因是
+      //   清点用 `class="hint"` 精确匹配，而该处外层是复合 class ⇒ 匹配不上（R234 三大发现之二）。
+      //   两处折叠块共用同一个 `t:{}` 里登记的两个引导语键（引导语是**共用**的，与折叠项数量无关）。
+      // 🔴 三处登记的第二处：漏映射 ⇒ 页面渲染成**空白**且零报错（R124 同族）
+      // ⚠️ 引导语在 `TERMS.ledger` 组（与月录入页同一处），**不在** T(=amortizePage) 里 ——
+      //   它是「行内提示折叠」这一通用模式的引导语，被多页复用 ⇒ 放 ledger 作单源。
+      hintFoldShow: TERMS.ledger.hintFoldShow,
+      hintFoldHide: TERMS.ledger.hintFoldHide,
+    },
+    kind: 'lump',        // 'lump'（一次算清）| 'amort'（分期摊销）
+    month: '',
+    mode: 'new',         // 'new' | 'edit' | 'append'
+    assetId: '',
+    groupKey: '',
+    batchSeq: 1,
+    name: '',
+    amountYuan: '',
+    startMonth: '',
+    totalMonths: '',
+    terminateMonth: '',
+    readOnly: false,
+    loading: true,
+    saving: false,
+    // R234/J4：行内长提示折叠（本页仅 1 处，默认收起）。与月录入页 / M2 选址页**同一实现**。
+    hintFold: {},
+    badAmountCount: 0, // #549：金额读不成数字（>0 时横幅提示 + 保存硬拦）
+  },
+
+  // R234/J4：行内提示折叠开关（仓内统一形态 —— 月录入页 / M2 选址页 / 本页同一实现）。
+  onToggleHintFold(e) {
+    const key = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.key) || '';
+    if (!key) return;                       // 无 key ⇒ 静默返回（不误翻别人的状态）
+    const cur = this.data.hintFold || {};
+    const next = Object.assign({}, cur);
+    next[key] = !cur[key];
+    this.setData({ hintFold: next });
+  },
+
+  onLoad(q) {
+    const o = q || {};
+    const kind = o.kind === 'amort' ? 'amort' : 'lump';
+    const month = o.month || ui.nowMonth();
+    const assetId = o.asset_id || '';
+    const groupKey = o.group || '';
+    const mode = assetId ? 'edit' : (groupKey ? 'append' : 'new');
+    this.setData({
+      kind, month, assetId, groupKey, mode,
+      batchSeq: 1,
+      // 新建默认值：一次性投入固定摊 1 个月（= 当月一次算清）；摊销默认从本月起、月数留空让老板填
+      startMonth: month,
+      totalMonths: kind === 'lump' ? '1' : '',
+      name: '', amountYuan: '', terminateMonth: '',
+      // round109：删除键的文案按 kind 分流 —— 摊销删掉影响「从起摊月起的各月」，一次算清只影响当月。
+      //   ⚠️ 必须用 setData **路径写法**（'t.fDelete'），整块覆盖 t 会把其它键全丢掉。
+      't.fDelete': kind === 'lump' ? T.lumpDelete : T.amortDelete,
+      't.confirmDelete': kind === 'lump' ? T.confirmDeleteLump : T.confirmDeleteAmort,
+    });
+    ui.setTitle(kind === 'lump' ? T.editLumpTitle : T.editAmortTitle);
+    this.load();
+  },
+
+  // 预填一律回源后端（getAmortSchedule）：不靠上一页把对象塞进 URL
+  async load() {
+    try {
+      await api.ensureShop();
+      const d = await api.call('getAmortSchedule', { month: this.data.month });
+      const init = { loading: false, readOnly: !!d.is_archive };
+      const rows = (d.assets || []).filter((a) => a.asset_id);
+
+      if (this.data.mode === 'edit') {
+        if (this.data.kind === 'lump') {
+          const it = (d.lumps || []).find((x) => x.item_id === this.data.assetId);
+          if (it) {
+            init.name = it.name || '';
+            init.amountYuan = api.fenToYuan(it.amount_fen || 0, 2);
+            init.startMonth = it.month || this.data.month;
+            init.totalMonths = '1';
+          }
+        } else {
+          const a = rows.find((x) => x.asset_id === this.data.assetId);
+          if (a) {
+            init.name = a.name || '';
+            init.amountYuan = api.fenToYuan(a.value_fen || 0, 2);
+            init.startMonth = a.start_month || this.data.month;
+            init.totalMonths = String(a.total_months || '');
+            init.terminateMonth = a.terminate_month || '';
+          }
+        }
+      } else if (this.data.mode === 'append') {
+        // 「再投一笔」：沿用同一组的名称，起摊月默认本月（每笔各自独立起摊）
+        const gk = this.data.groupKey;
+        const sibs = rows.filter((x) => (x.group_id || x.asset_id) === gk);
+        if (sibs.length) {
+          init.name = sibs[0].name || '';
+          init.batchSeq = sibs.length + 1;
+        } else {
+          init.batchSeq = 1;
+        }
+      }
+      this.setData(init);
+    } catch (e) {
+      this.setData({ loading: false });
+      api.toastError(e);
+    }
+  },
+
+  onName(e) { this.setData({ name: e.detail.value }); },
+  onBack() { wx.navigateBack(); },
+  onAmount(e) { this.setData({ amountYuan: e.detail.value }); this.checkAmounts(); },
+  // 🔴 #549：金额可读性体检（只判定、不改数、不静默清洗）。返回 readable，并把栏数写进 data.badAmountCount。
+  checkAmounts() {
+    const readable = AmountInput.classifyAmount(this.data.amountYuan).readable;
+    const n = readable ? 0 : 1;
+    if (n !== this.data.badAmountCount) this.setData({ badAmountCount: n });
+    return readable;
+  },
+  onTotalMonths(e) { this.setData({ totalMonths: e.detail.value }); },
+  // B1：年月选择统一用原生 picker（mode=date fields=month），返回 YYYY-MM
+  onMonthPick(e) {
+    const field = e.currentTarget.dataset.field;   // 'start' | 'end'
+    const v = e.detail.value || '';
+    if (field === 'start') this.setData({ startMonth: v });
+    else this.setData({ terminateMonth: v });
+  },
+
+  onSave() {
+    const name = (this.data.name || '').trim();
+    if (!name) { wx.showToast({ title: T.fErrName, icon: 'none' }); return; }
+    // 🔴 #549：金额读不成数字 ⇒ 硬拦保存（指名提示，不静默按 0 存）。保留下方「必须 >0」正数校验。
+    if (!AmountInput.classifyAmount(this.data.amountYuan).readable) {
+      wx.showModal({
+        // 🔴 R600：文案走 terms 单源（原先硬编码；栏名直接取页面标签 t.fAmount）
+        title: TERMS.ui.amountBadTitle,
+        content: TERMS.ui.amountBadBodySave.replace('{list}', T.fAmount),
+        showCancel: false,
+      });
+      return;
+    }
+    const fen = api.yuanToFen(this.data.amountYuan);
+    if (!(fen > 0)) { wx.showToast({ title: T.fErrAmount, icon: 'none' }); return; }
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(this.data.startMonth)) {
+      wx.showToast({ title: T.fErrStart, icon: 'none' }); return;
+    }
+    if (this.data.kind === 'amort') {
+      const n = Number(this.data.totalMonths);
+      if (!Number.isInteger(n) || n < 1) { wx.showToast({ title: T.fErrMonths, icon: 'none' }); return; }
+    }
+    this.saveAsset(fen, name);
+  },
+
+  async saveAsset(valueFen, name) {
+    if (this.data.saving) return;
+    this.setData({ saving: true });
+    const isLump = this.data.kind === 'lump';
+    const asset = {
+      name,
+      value_fen: valueFen,
+      start_month: this.data.startMonth,
+      // 一次算清 = 只摊 1 个月（等价「全部算进 start_month 当月」），口径由后端 mode 决定
+      total_months: isLump ? 1 : Number(this.data.totalMonths),
+      mode: isLump ? 'lump' : 'amort',
+    };
+    if (!isLump && this.data.terminateMonth) asset.terminate_month = this.data.terminateMonth;
+    if (this.data.mode === 'edit') {
+      asset.asset_id = this.data.assetId;
+    } else if (this.data.mode === 'append') {
+      asset.group_id = this.data.groupKey;
+      asset.batch_seq = this.data.batchSeq;
+    }
+    try {
+      await api.call('saveAsset', { asset, client_request_id: 'as_' + Date.now() });
+      wx.showToast({ title: TERMS.ui.savedDone, icon: 'success' });
+      setTimeout(() => wx.navigateBack(), 600);
+    } catch (e) {
+      this.setData({ saving: false });
+      api.toastError(e);
+    }
+  },
+
+  // 删除（round109：对「一次算清」与「分期摊销」都开放）
+  //   · 一次算清（lump）：删掉只影响它挂的那个月 ⇒ 文案讲「本月费用会跟着变小」
+  //   · 分期摊销（amort）：删掉会影响**从起摊月起的各月** ⇒ 文案讲「各月摊销都会跟着变小」
+  //   ⚠️ 后端 saveAsset 也同步给摊销资产加了归档锁：只要它覆盖到的月份里有已归档的，
+  //     删除会被拒（提示改用「提前报废」保留痕迹）—— 防「账锁了、但钱从台账被挪走」。
+  onDelete() {
+    if (this.data.mode !== 'edit') return;
+    const label = this.data.t.fDelete;          // 按 kind 分流后的文案（onLoad 里已 setData）
+    wx.showModal({
+      title: label,
+      content: this.data.t.confirmDelete,
+      confirmColor: '#e74c3c',
+      success: async (r) => {
+        if (!r.confirm) return;
+        // G6：不可逆操作 → 触觉反馈
+        if (wx.vibrateShort) { try { wx.vibrateShort({ type: 'medium' }); } catch (err) { /* 部分机型不支持，忽略 */ } }
+        try {
+          await api.call('saveAsset', {
+            asset: { asset_id: this.data.assetId, delete: true },
+            client_request_id: 'ad_' + Date.now(),
+          });
+          wx.showToast({ title: TERMS.ui.deletedDone, icon: 'success' });
+          setTimeout(() => wx.navigateBack(), 600);
+        } catch (e) { api.toastError(e); }
+      },
+    });
+  },
+});

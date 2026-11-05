@@ -1,0 +1,117 @@
+<view class="container safe-bottom sb-page">
+  <!-- ===== R299：数据截断的**可见降级** =====
+       云函数出参 `truncated`（`dataAdapter.js::listAll` 契约要求"必须透传到出参、可见降级"）。
+       成本卡是版本模型（只 INSERT）⇒ 卡多/改得勤的店会先撞上限；截断时列表少卡且**无排序**，
+       "丢哪张随机" ⇒ 用户会以为卡丢了。 -->
+  <view class="muted warn-line" wx:if="{{truncated}}">{{t.dataTruncated}}</view>
+  <!-- R234/J4e：本句 ≥18 字 ⇒ 折叠（R234 完整清点口径：剥注释 + 含复合 class）。 -->
+  <view class="hint-fold">
+    <view class="hint-fold-head" data-key="ciHintAlways" bindtap="onToggleHintFold">
+      <text class="hint-fold-guide">{{hintFold.ciHintAlways ? t.hintFoldHide : t.hintFoldShow}}</text>
+      <text class="hint-fold-arrow">{{hintFold.ciHintAlways ? '▾' : '▸'}}</text>
+    </view>
+    <view class="hint-fold-body" wx:if="{{hintFold.ciHintAlways}}">{{t.hintAlways}}</view>
+  </view>
+
+  <!-- R191：顶部只留「找东西」+「新增」。
+       跳转按钮（原料库 / 外卖 / 对账）全部撤走 —— 已由 pages/m3/hub 枢纽页承接。
+       🔴 为什么必须**先建枢纽页再撤按钮**：直接撤 = 把入口删掉，用户到不了那三块。 -->
+  <view class="top-row">
+    <view class="inp top-inp"><input value="{{keyword}}" placeholder="{{t.searchPh}}" bindinput="onKeyword" /></view>
+    <button class="btn primary top-add" bindtap="goAdd">{{t.addCard}}</button>
+  </view>
+
+  <view class="toolbar">
+    <picker mode="selector" range="{{marginOptions}}" range-key="label" bindchange="onMarginFilter">
+      <view class="tool-btn">{{t.filterMargin}}：{{marginLabel || t.marginAll}}</view>
+    </picker>
+    <picker mode="selector" range="{{categoryOptions}}" range-key="label" bindchange="onCategoryFilter">
+      <view class="tool-btn">{{t.filterCategory}}：{{categoryLabel || t.marginAll}}</view>
+    </picker>
+    <picker mode="selector" range="{{tagOptions}}" range-key="label" bindchange="onTagFilter">
+      <view class="tool-btn">{{t.filterTags}}：{{tagLabel || t.marginAll}}</view>
+    </picker>
+  </view>
+
+  <!-- 结果计数：筛选后必须回报"找到了多少"，否则看着像没数据；批量同步降级为文字链 -->
+  <view class="meta-row">
+    <text class="muted">{{t.countPrefix}}{{list.length}}{{t.countSuffix}}</text>
+    <view class="meta-links" wx:if="{{!selectMode}}">
+      <!-- R566（P0-4）：批量导入入口。放在这里而不是顶栏 —— 顶栏的「新增」是最高频动作，
+           导入是偶尔一次，不该抢它的视觉权重。 -->
+      <text class="link" bindtap="goImport">{{t.impEntry}}</text>
+      <text class="link" bindtap="onBatchSyncEnter">{{t.batchSync}}</text>
+    </view>
+    <text class="link" wx:if="{{selectMode}}" bindtap="onBatchSyncCancel">{{t.cancel}}</text>
+  </view>
+
+  <!-- 🔴 R564：亏本卖的卡数。色带只能表达「低毛利(<40%)」，而负毛利是「卖一道亏一道」，
+       严重程度不同 ⇒ 单独一行点名。未定价与保本(0%)都不计入（见 utils/marginAlert.js::isLossMaking）。
+       🔴 R566：这一行**可点** —— 点开只显示这些卡（提示不落到动作上等于没说）。 -->
+  <view class="warn-line {{lossOnly ? 'warn-line-on' : ''}}" wx:if="{{loseWarn}}" bindtap="onToggleLossOnly">{{loseWarn}}</view>
+
+  <!-- 🔴 R570-H（李老师「100 多道菜…从哪儿看已建好的卡」）：未定价的卡算不出毛利，
+       改前在三个毛利档里**一个都不命中**，也没有任何提示 ⇒ 「还差几道没弄完」无解。
+       这一行既是答案、也是入口（点一下把筛选切到「未定价」，与下拉选同一状态，不另存一份）。 -->
+  <view class="warn-line" wx:if="{{unpricedWarn}}" bindtap="onShowUnpriced">{{unpricedWarn}}</view>
+
+  <view wx:if="{{selectMode}}" class="batch-bar">
+    <text class="muted">{{t.selectSync}}</text>
+    <button class="btn-small" bindtap="onBatchSyncRun">{{t.batchSync}}</button>
+  </view>
+
+  <!-- 左侧色条区隔类型（色值走 app.wxss 的 .stripe-*，本页只给边框形态）
+       🔴 R437（队列 #6）：加 `sb-card` = 风格 B 外壳（底色/圆角/阴影单源在 app.wxss） -->
+  <view class="card2 sb-card {{item.card_type === 3 ? 'stripe-combo' : 'stripe-dish'}}" wx:for="{{list}}" wx:key="card_code" bindtap="{{selectMode ? 'onSelect' : 'goEdit'}}" data-code="{{item.card_code}}">
+    <view class="card-head">
+      <view class="card-title card-title-flex">
+        <checkbox wx:if="{{selectMode}}" checked="{{selected[item.card_code]}}" data-code="{{item.card_code}}" catchtap="onSelect" />
+        {{item.name}}
+        <!-- round156：置顶标记（排序会把它们排到最前，但必须"看得出为什么在前面"） -->
+        <text class="tag tag-pin" wx:if="{{item.pinned}}">{{t.pinTag}}</text>
+        <text class="tag">{{item.calc_mode === 'A' ? t.calcModeA : t.calcModeB}}</text>
+        <!-- 🔴 R309：成本变动（本版 vs 上一版单份成本）。只在"真的变了 & 上版成本>0"时才出现
+             （见 subpkg/biz/card/index.js::costDriftText —— 三种情况一律不显示，绝不编数）。 -->
+        <text class="tag" wx:if="{{item.driftText}}">{{item.driftText}}</text>
+        <!-- M3.16（批次 C）：套餐标记 -->
+        <text class="tag" wx:if="{{item.card_type === 3}}">{{t.cardTypeCombo}}</text>
+      </view>
+      <!-- 🔴 R192：此处**不再放「⋯」** —— 收纳过度被判「功能丢了」（李老师 2026-10-03）。
+           高频操作下移到 ops-mini 行并**可见**；标题行只留名字 + 标签，扫读更干净。 -->
+    </view>
+    <!-- M3.16 套餐：我少赚为负 ⇒ 红字提示「这个套餐在拉低你的毛利」 -->
+    <view class="muted" wx:if="{{item.card_type === 3 && item.combo_lose_neg}}" style="color:#e74c3c;font-size:28rpx;">{{t.comboInsightLoseWarn}}</view>
+    <!-- R191：成本 / 毛利 / 版本 三行压一行 ⇒ 一屏能放的卡数翻倍 -->
+    <view class="cell-inline">
+      <text class="lbl">{{t.totalCost}}</text>
+      <text class="val">{{t.cur}}{{item.total_cost}}</text>
+      <text class="dot">·</text>
+      <text class="lbl">{{t.grossMargin}}</text>
+      <text class="val" style="color:{{item.margin_color}};">{{item.margin === null ? '—' : (item.margin) + '%'}}</text>
+      <text class="dot">·</text>
+      <text class="lbl">{{t.version}} {{item.version}}</text>
+    </view>
+
+    <!-- 🔴 R192：操作行 —— 「历史版本」「同步最新价」**必须看得见**。
+         R191 把 5 个按钮全收进「⋯」⇒ 李老师反馈「最重要的东西丢了」。
+         教训：藏起来的功能 = 没有的功能。⇒ 高频两项常驻，⋯ 只收低频/破坏性（置顶 / 复制 / 删除）。
+         ⚠️ 三个控件**同一行**（R191 反馈"每个按钮占一行"的根因是块级堆叠，不是按钮本身）。
+         ⚠️ 尺寸一律 ≥88rpx（触控硬红线，绝不缩）。 -->
+    <view class="ops-mini" wx:if="{{!selectMode}}">
+      <button class="btn-small ghost ops-btn" catchtap="goVersion" data-code="{{item.card_code}}">{{t.viewVersion}}</button>
+      <button class="btn-small ghost ops-btn" catchtap="onSync" data-code="{{item.card_code}}">{{t.syncShort}}</button>
+      <view class="more round" catchtap="onMore" data-code="{{item.card_code}}">⋯</view>
+    </view>
+  </view>
+
+  <!-- 🔴 R385：同上，搜索无结果与空库分开 -->
+  <view wx:if="{{list.length === 0 && !loading && keyword}}" class="empty">{{t.noMatch}}</view>
+  <view wx:elif="{{list.length === 0 && !loading}}" class="empty">{{t.empty}}</view>
+  <view wx:if="{{loading}}" class="muted" style="text-align:center;padding:40rpx;">{{t.loading}}</view>
+
+  <view class="ops-row">
+    <button class="btn ghost" style="flex:1;margin-top:24rpx;" bindtap="onExport">{{t.export}}</button>
+  </view>
+  <!-- R265：导出后「去哪看 / 什么格式」此前完全没提示 ⇒ 常驻一行 -->
+  <view class="muted" style="margin-top:8rpx;">{{t.exportHint}}</view>
+</view>

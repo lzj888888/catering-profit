@@ -1,0 +1,119 @@
+{
+  "at": "2026-10-29T15:58:39.396Z",
+  "checks": [
+    {
+      "id": "A1_CONNECT",
+      "pass": true,
+      "expect": "自动化通道可连接",
+      "actual": "ws://127.0.0.1:9420"
+    },
+    {
+      "id": "A2_AT_LIST",
+      "pass": true,
+      "expect": "在成本卡列表页",
+      "actual": "subpkg/biz/card/index"
+    },
+    {
+      "id": "A3_SHOP_CTX",
+      "pass": true,
+      "expect": "店铺上下文已加载",
+      "actual": "shop_u_mu6j87t1a283_sc_1792852528523"
+    },
+    {
+      "id": "A4_LIST_READY",
+      "pass": true,
+      "expect": "列表数据已加载（建卡前 0 张）",
+      "actual": 0
+    },
+    {
+      "id": "B1_ADD_BTN",
+      "pass": true,
+      "expect": "列表页「新建成本卡」按钮可见",
+      "actual": "found"
+    },
+    {
+      "id": "B2_NAV_EDIT",
+      "pass": true,
+      "expect": "进入编辑页（新建态）",
+      "actual": "subpkg/biz/card/edit"
+    },
+    {
+      "id": "C1_PICK_CAT",
+      "pass": true,
+      "expect": "选品类后写入 catLabel",
+      "actual": "热炒荤菜"
+    },
+    {
+      "id": "C2_LINES",
+      "pass": true,
+      "expect": "预填 3 行（猪肉/青椒/调料）",
+      "actual": "[{\"n\":\"调料(含油盐酱醋)\",\"q\":\"1\",\"u\":\"份\",\"p\":\"0.50\",\"t\":2,\"y\":\"100\"},{\"n\":\"猪肉\",\"q\":\"150\",\"u\":\"克\",\"p\":\"\",\"t\":2,\"y\":\"85\"},{\"n\":\"青椒\",\"q\":\"100\",\"u\":\"克\",\"p\":\"\",\"t\":2,\"y\":\"85\"}]"
+    },
+    {
+      "id": "C3_LINE_KIND2",
+      "pass": true,
+      "expect": "三行都是手工行 input_type=2（可保存）",
+      "actual": "2,2,2"
+    },
+    {
+      "id": "C4_COND_PRICED",
+      "pass": true,
+      "expect": "调料行已带价（品类默认）",
+      "actual": "[{\"n\":\"调料(含油盐酱醋)\",\"q\":\"1\",\"u\":\"份\",\"p\":\"0.50\",\"t\":2,\"y\":\"100\"}]"
+    },
+    {
+      "id": "D1_MANUAL_PRICE",
+      "pass": true,
+      "expect": "猪肉单价已填 0.012 元/克",
+      "actual": "[{\"n\":\"调料(含油盐酱醋)\",\"p\":\"0.50\",\"q\":\"1\",\"y\":\"100\"},{\"n\":\"猪肉\",\"p\":\"0.012\",\"q\":\"150\",\"y\":\"85\"},{\"n\":\"青椒\",\"p\":\"0.008\",\"q\":\"100\",\"y\":\"85\"}]"
+    },
+    {
+      "id": "E1_COST",
+      "pass": false,
+      "expect": "实时试算成本 > 0（引擎真回值）",
+      "actual": "costFen=0 margin= err="
+    },
+    {
+      "id": "E2_MARGIN",
+      "pass": false,
+      "expect": "毛利率与式 (20-成本)/20 一致 ≈ null%",
+      "actual": " → NaN"
+    },
+    {
+      "id": "F1_SAVE_BTN",
+      "pass": true,
+      "expect": "吸底保存按钮存在",
+      "actual": "found"
+    },
+    {
+      "id": "F2_SAVED",
+      "pass": false,
+      "expect": "保存成功且横幅显示「走查临时菜4113」",
+      "actual": "{\"savedName\":\"\",\"saving\":false}"
+    },
+    {
+      "id": "G1_BACK",
+      "pass": false,
+      "expect": "返回成本卡列表",
+      "actual": "subpkg/biz/card/edit"
+    },
+    {
+      "id": "G2_GROW",
+      "pass": false,
+      "expect": "列表 0 → 1 张",
+      "actual": 0
+    },
+    {
+      "id": "G3_ROW",
+      "pass": false,
+      "expect": "列表出现「走查临时菜4113」",
+      "actual": ""
+    },
+    {
+      "id": "H1_CLEANUP",
+      "pass": false,
+      "expect": "走查临时卡已删除（不留脏数据）",
+      "actual": "{\"code\":\"INVALID_PARAM\",\"msg\":\"INVALID_PARAM\",\"data\":{}}"
+    }
+  ]
+}

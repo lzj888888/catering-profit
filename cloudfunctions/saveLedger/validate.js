@@ -116,11 +116,39 @@ function validateInput(event) {
     }
   }
 
+  // ===== A13/A19（2026-11-05）：经营客流三字段（**可选**）=====
+  //   本月客流 traffic_count / 其中老客 old_customer_count / 会员销售额 member_sales_fen。
+  //   🔴 三态语义（缺键 ≠ 清空，同 round103 库存教训）：
+  //      · 键不存在      ⇒ keep  —— 本次不动，沿用库内现值（老客户端/局部提交不会被静默清零）
+  //      · null 或 ''    ⇒ clear —— 用户主动清空（页面把输入框删光后提交的就是这个）
+  //      · 非负整数      ⇒ set   —— 写入
+  //   🔴 绝不用 0 兜底：「这个月一个客人都没有」与「这个月没填」是两句完全不同的话，
+  //      而 0 会让复购率算出 0/0、让诊断把「没填」当成「客流归零」判死。
+  const intOpt = (val, name) => {
+    if (val === undefined) return { state: 'keep' };
+    if (val === null || val === '') return { state: 'clear' };
+    if (typeof val !== 'number' || !Number.isInteger(val) || val < 0) {
+      return { error: ERROR_CODES.INVALID_PARAM, msg: `${name} 必须是非负整数（人次/分，不接受字符串）` };
+    }
+    return { state: 'set', value: val };
+  };
+  const trafficThisMonth = intOpt(src.traffic_count, 'traffic_count');
+  if (trafficThisMonth.error) return trafficThisMonth;
+  const trafficOldCustomer = intOpt(src.old_customer_count, 'old_customer_count');
+  if (trafficOldCustomer.error) return trafficOldCustomer;
+  const memberSales = intOpt(src.member_sales_fen, 'member_sales_fen');
+  if (memberSales.error) return memberSales;
+
   return {
     error: null,
     shop_id: src.shop_id, month: src.month,
     incomeItems, expenseItems,
     directConsumeFen, inventory,
+    // 三态原样交给 Controller：一致性（老客 ≤ 客流）必须用**合并后**的值判，
+    // 而合并需要库内现值 ⇒ 只能落在 Controller，这里不预设。
+    traffic: { thisMonth: trafficThisMonth, oldCustomer: trafficOldCustomer, memberSales },
+    // R493：本月是否真实盘点（清仓月期末=0 时据此区分"盘了"与"没盘"）；缺省=false，不强制
+    stockTakeDone: src.stock_take_done === true,
     archiveOverride: src.archive_override === true,
     input: { client_request_id: src.client_request_id || '' },
   };

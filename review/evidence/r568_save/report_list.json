@@ -1,0 +1,66 @@
+{
+  "at": "2026-10-29T16:12:02.036Z",
+  "code": "",
+  "checks": [
+    {
+      "id": "A1_AT_LIST",
+      "pass": true,
+      "expect": "进入成本卡列表",
+      "actual": "subpkg/biz/card/index"
+    },
+    {
+      "id": "A2_LIST_NONEMPTY",
+      "pass": true,
+      "expect": "列表已加载出成本卡",
+      "actual": 1
+    },
+    {
+      "id": "A3_ROW",
+      "pass": true,
+      "expect": "列表出现刚保存的卡 走查导入菜5237",
+      "actual": "{\"code\":\"cc_mvtqvf0rabbe\",\"name\":\"走查导入菜5237\",\"gm\":87.43,\"cost\":\"3.52\",\"price\":2800,\"cat\":\"热炒荤菜\"}"
+    },
+    {
+      "id": "A4_NAME",
+      "pass": false,
+      "expect": "列表菜名 = 刚保存的名字",
+      "actual": "走查导入菜5237"
+    },
+    {
+      "id": "A4_MARGIN",
+      "pass": true,
+      "expect": "列表毛利率在 (0,100)",
+      "actual": 87.43
+    },
+    {
+      "id": "A5_COST",
+      "pass": true,
+      "expect": "列表成本 > 0",
+      "actual": "3.52"
+    },
+    {
+      "id": "A6_PRICE",
+      "pass": true,
+      "expect": "列表售价 = 2800 分（28 元）",
+      "actual": 2800
+    },
+    {
+      "id": "A7_NO_LOSS_WARN",
+      "pass": true,
+      "expect": "81.85% 的卡不触发亏本提示条",
+      "actual": "{\"loseWarn\":\"\",\"loseCount\":0,\"lossOnly\":false}"
+    },
+    {
+      "id": "B1_DELETE",
+      "pass": true,
+      "expect": "走查临时卡已软删",
+      "actual": "{\"code\":\"SUCCESS\",\"msg\":\"ok\",\"data\":{\"shop_id\":\"shop_u_mu6j87t1a283_sc_1792852528523\",\"card_code\":\"cc_mvtqvf0rabbe\",\"deleted\":true,\"versions\":1,\"client_request_id\":\"ccd_1793290316098\"}}"
+    },
+    {
+      "id": "B2_CLEAN",
+      "pass": true,
+      "expect": "列表里已无该卡（不留脏数据）",
+      "actual": "{\"len\":0,\"codes\":[]}"
+    }
+  ]
+}

@@ -26,9 +26,11 @@ check('S1 全要素真实利润 = 9,160（口径锁，库存关无倒轧）', r1
 // ===== S2：库存开 / 摊销开 =====
 const r2 = calcMonthlyProfit({ incomeItems: INCOME_ITEMS, expenseItems: EXPENSE_ITEMS, directConsumeFen: DIRECT_CONSUME_FEN, amortizeFen: AMORTIZE_FEN, amortizeSwitchOn: true, inventorySwitchOn: true, inventory: { openingFen: 5000 * YUAN, purchaseFen: 25000 * YUAN, closingFen: 7000 * YUAN } });
 check('S2 真实消耗 = 23,000（倒轧）', r2.realConsumeFen === 2300000, `=${r2.realConsumeFen}`);
-check('S2 经营参考仍 = 9,160（口径锁：开库存也不改用倒轧）', r2.operationRefProfitFen === 916000, `=${r2.operationRefProfitFen}`);
+// 🔴 R484 定案：开库存 = 盘点了 ⇒ 参考口径就用倒轧 23,000（原来"仍用手工填的 22,000"已作废）
+check('S2 经营参考 = 8,160（R484：开库存就用倒轧，出 9160 说明又用回了手填数）', r2.operationRefProfitFen === 816000, `=${r2.operationRefProfitFen}`);
 check('🏆 S2 全要素真实利润 = 3,476.67（347667分）', r2.totalFactorRealProfitFen === 347667, `=${r2.totalFactorRealProfitFen}`);
-check('S2 两利润差异 = 5,683.33（568333分）', r2.profitDiffFen === 568333, `=${r2.profitDiffFen}`);
+// R484：两口径同用一份消耗 ⇒ 差异只剩当月摊销 4,683.33（原 5,683.33 含 10 万消耗差）
+check('S2 两利润差异 = 4,683.33（468333分，只剩摊销）', r2.profitDiffFen === 468333, `=${r2.profitDiffFen}`);
 
 // ===== S3：摊销末月尾差倒挤（装修 120,000/36 月，末月 3,333.45）=====
 const decor = { asset_id: 'a', total_value: 120000 * YUAN, start_month: '2026-01', total_months: 36, terminate_month: '' };

@@ -43,12 +43,23 @@
   const CFG_REL = 'project.config.json';
 
   // ---- 阈值（全部取实测值的保守侧；实测证据见 review/evidence/r181p_pack_guard/README.md）----
-  const TOTAL_BUDGET_MB = 1.5;      // 实测入包 0.615 MB ⇒ 预算留约 2.4 倍余量，仍能抓到任何 >=0.9 MB 的新增垃圾
+  // 🔴 2026-10-28 re-baseline（R549）：实测 **1.7039 MB**。1.7 是 2026-10-21（R419）按当时 1.4718 MB 定的。
+  //   为什么要抬：R547b / R548 / R549 **连续三轮**都靠删「为什么」注释换 KB —— 那正好在伤本仓最贵的资产
+  //   （注释里存的是"为什么这么定、踩过什么坑"）。这不是守卫该干的事。
+  //   ⚠️ 口径：微信的 2 MB 是**每个包**的上限，而本项统计的是**主包 + 分包合计**
+  //   （当前主包 ≈0.69 / subpkg ≈1.01，各自离 2 MB 都很远）⇒ 1.9 仍留 0.1 MB 余量且 < 硬上限。
+  //   🔴 下一步：若再撑满，**应改判「每包 ≤ 1.9」而不是继续抬这个合计值** —— 合计口径本身就不贴平台规则。
+  // 🔴 R593：按微信**真实规则**分档，不再把分包算进主包预算。
+  //   微信：主包 ≤ 2MB（单个包）、**任一分包 ≤ 2MB**、主包+全部分包 ≤ 20MB。
+  //   旧实现只有一个「入包总量 ≤ 1.9MB」，把 subpkg（分包）也算进去了 ⇒
+  //   实测主包只有 0.79MB 却报「超预算」，逼着人删注释腾空间（用可维护性换体积）。
+  const MAIN_BUDGET_MB = 1.9;      // 主包预算（硬上限 2MB，留 100KB 余）
+  const SUB_BUDGET_MB = 1.9;       // 每个分包预算（同上）
+  const TOTAL_HARD_LIMIT_MB = 20;  // 主包 + 全部分包（微信硬上限）
+                                    //   ⚠️ **这是权宜，不是解法**：正解是把非首屏页移入分包（见 review/AUTO_QUEUE「包体必须分包」）。
   const WECHAT_HARD_LIMIT_MB = 2;   // 微信预览 / 上传硬上限，不可协商
-  const PER_TOP_CAP_MB = 1.0;       // 🔴 2026-10-12 re-baseline（round279e）：实测最大合法顶层项 = pages ≈0.8005 MB
-                                    //   （M2 sandbox 模块 rounds 274–279e 增长，从 0.426 MB 翻倍到 ~0.8 MB，非垃圾/临时目录）；
-                                    //   取 ≈1.25 倍留余，仍 < 总量预算 1.5 MB 与微信硬上限 2.0 MB。原 0.8 MB 基线建立在 pages=0.426 MB 时，
-                                    //   已被真实业务增长吃满 ⇒ 重设基线让 P-③ 继续只对「真新增大顶层项（如 _m3 型 116 MB  dump）」转红。
+  const PER_TOP_CAP_MB = 1.2;       // 🔴 2026-10-21 re-baseline（R419）：实测最大顶层项 = pages **1.0005 MB**（原顶格 1.0 当场破）；
+                                    //   同时总量 1.4718/1.5 也已贴满。取 1.2 只买到一次性余量 ⇒ 必须尽快分包化。
   const MIN_KEPT_FILES = 60;        // 实测未忽略 108 个 ⇒ 保守下沿
   const MIN_RULES = 16;             // 实测 20 条
   const VALID_TYPES = ['folder', 'file', 'suffix', 'prefix', 'regexp', 'glob'];
@@ -79,7 +90,7 @@
   ];
 
   // S2 非退化锚点：这些文件若不在入包集合内，说明扫描面被扫空 / 根路径写错（而非「包变小了」）
-  const ANCHORS = ['app.js', 'app.json', 'app.wxss', 'pages/card/index.js', 'pages/takeaway/index.js'];
+  const ANCHORS = ['app.js', 'app.json', 'app.wxss', 'subpkg/biz/card/index.js', 'subpkg/biz/takeaway/index.js'];
 
   // S3 匹配器正负样本（自带规则表，不依赖真实配置 ⇒ 配置坏了也能自证匹配器是否还活着）
   const SAMPLE_RULES = [
@@ -220,20 +231,76 @@
     anchorMiss.length ? '缺失 ' + anchorMiss.join(', ') : '锚点 ' + ANCHORS.length + ' 个全部命中');
 
   // =====================================================================
-  console.log('\n===== P · 入包体积（微信预览 / 上传硬上限 ' + WECHAT_HARD_LIMIT_MB + ' MB）=====');
+  console.log('\n===== P · 入包体积（主包/分包分别校验，微信硬上限 ' + WECHAT_HARD_LIMIT_MB + ' MB）=====');
   const totalBytes = kept.reduce((a, b) => a + b.size, 0);
-  const sortedTops = Array.from(tops.entries()).sort((a, b) => b[1] - a[1]);
+
+  // 🔴 R593：从 app.json 读分包 root，把 kept 按「落在哪个 root 下」分组。
+  //   为什么必须分开算：subpkg/** 是**分包**，微信不为它算进主包 2MB。
+  //   合并算会让主包明明只有 0.79MB 也报超预算 ⇒ 逼人删注释。
+  let subRoots = [];
+  try {
+    const appJson = JSON.parse(fs.readFileSync(path.join(ROOT, 'app.json'), 'utf8'));
+    const subs = appJson.subPackages || appJson.subpackages || [];
+    subRoots = subs.map((x) => String((x && x.root) || '').replace(/\/+$/, '')).filter(Boolean);
+  } catch (e) {
+    subRoots = [];
+  }
+  const rootOf = (rel) => {
+    for (const r of subRoots) if (rel === r || rel.indexOf(r + '/') === 0) return r;
+    return null;
+  };
+  const subBytes = {};
+  subRoots.forEach((r) => { subBytes[r] = 0; });
+  let mainBytes = 0;
+  for (const k of kept) {
+    const r = rootOf(k.rel);
+    if (r) subBytes[r] += k.size; else mainBytes += k.size;
+  }
+
+  // 主包顶层条目（**排除分包 root**）—— P-③ 只看主包，分包体积由 P-①b 单独判
+  const mainTops = new Map();
+  for (const k of kept) {
+    if (rootOf(k.rel)) continue;
+    const top = k.rel.split('/')[0];
+    mainTops.set(top, (mainTops.get(top) || 0) + k.size);
+  }
+  const sortedTops = Array.from(mainTops.entries()).sort((a, b) => b[1] - a[1]);
+
   console.log('   入包总量 ' + mb(totalBytes) + ' · 未忽略文件 ' + kept.length + ' 个');
-  console.log('   未忽略顶层条目（按体积）：' + (sortedTops.length
+  console.log('   主包 ' + mb(mainBytes) + ' / 预算 ' + MAIN_BUDGET_MB + ' MB');
+  console.log('   分包 ' + (subRoots.length
+    ? subRoots.map((r) => r + '=' + mb(subBytes[r])).join(' / ') : '(未配置)'));
+  console.log('   主包顶层条目（按体积）：' + (sortedTops.length
     ? sortedTops.map((t) => t[0] + '=' + mb(t[1])).join(' / ') : '(无)'));
-  check('P-① 入包总量 ≤ 预算', totalBytes <= TOTAL_BUDGET_MB * 1048576,
-    '实测 ' + mb(totalBytes) + ' / 预算 ' + TOTAL_BUDGET_MB + ' MB');
-  check('P-② 预算常量自洽：预算 < 微信硬上限（防「改大预算绕过」）',
-    TOTAL_BUDGET_MB < WECHAT_HARD_LIMIT_MB && PER_TOP_CAP_MB <= TOTAL_BUDGET_MB,
-    '预算 ' + TOTAL_BUDGET_MB + ' MB < 硬上限 ' + WECHAT_HARD_LIMIT_MB + ' MB，且单条目顶格 '
-    + PER_TOP_CAP_MB + ' MB ≤ 预算');
+
+  check('P-① 主包体积 ≤ 预算（**不含分包**，分包由 P-①b 单独判）',
+    mainBytes <= MAIN_BUDGET_MB * 1048576,
+    '实测 ' + mb(mainBytes) + ' / 预算 ' + MAIN_BUDGET_MB + ' MB');
+
+  // 分包配置为空时这条会空转 ⇒ 用 S 段之外的一道护栏兜住：有 subpkg 目录却没配分包，直接红
+  const orphanSub = kept.filter((k) => k.rel.indexOf('subpkg/') === 0 && !rootOf(k.rel));
+  check('P-①b 🔴 每个分包 ≤ 预算，且 `subpkg/` 下**没有落在分包配置之外**的文件',
+    subRoots.length > 0 && orphanSub.length === 0
+    && subRoots.every((r) => subBytes[r] <= SUB_BUDGET_MB * 1048576),
+    orphanSub.length
+      ? '孤儿文件 ' + orphanSub.length + ' 个（不在任何 subPackages.root 下，会被打进**主包**）：'
+        + orphanSub.slice(0, 3).map((k) => k.rel).join('、') + (orphanSub.length > 3 ? ' …' : '')
+      : subRoots.map((r) => r + '=' + mb(subBytes[r]) + '/' + SUB_BUDGET_MB + ' MB').join(' · '));
+
+  check('P-①c 总包（主包 + 全部分包）≤ 微信总上限 ' + TOTAL_HARD_LIMIT_MB + ' MB',
+    totalBytes <= TOTAL_HARD_LIMIT_MB * 1048576,
+    '实测 ' + mb(totalBytes) + ' / 上限 ' + TOTAL_HARD_LIMIT_MB + ' MB');
+
+  check('P-② 预算常量自洽：各档预算 < 微信硬上限（防「改大预算绕过」）',
+    MAIN_BUDGET_MB < WECHAT_HARD_LIMIT_MB
+    && SUB_BUDGET_MB < WECHAT_HARD_LIMIT_MB
+    && PER_TOP_CAP_MB <= MAIN_BUDGET_MB
+    && TOTAL_HARD_LIMIT_MB > WECHAT_HARD_LIMIT_MB,
+    '主包 ' + MAIN_BUDGET_MB + ' / 分包 ' + SUB_BUDGET_MB + ' / 单条目 ' + PER_TOP_CAP_MB
+    + ' / 总包 ' + TOTAL_HARD_LIMIT_MB + '（均 < 单包硬上限 ' + WECHAT_HARD_LIMIT_MB + ' 或为其整数倍上限）');
+
   const overTop = sortedTops.filter((t) => t[1] > PER_TOP_CAP_MB * 1048576);
-  check('P-③ 无单个未忽略顶层条目超顶格', overTop.length === 0,
+  check('P-③ 主包内无单个顶层条目超顶格', overTop.length === 0,
     overTop.length
       ? '罪魁：' + overTop.map((t) => t[0] + '=' + mb(t[1]) + '（> ' + PER_TOP_CAP_MB + ' MB）').join('；')
         + ' ⇒ 多半是新的临时目录 / 截图堆没进 packOptions.ignore'

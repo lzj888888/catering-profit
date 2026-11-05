@@ -316,7 +316,7 @@ function parseBillMatrix(matrix, opts) {
         qty = 1;
       }
     }
-    orders.push({ bizDate, qty, amountFen: Math.round(net * 100) });
+    orders.push({ bizDate, qty, amountFen: Math.round(Number((net * 100).toFixed(10))) });
   }
 
   // 按日期归组 → 日汇总

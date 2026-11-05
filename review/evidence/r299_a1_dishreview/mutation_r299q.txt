@@ -1,0 +1,54 @@
+
+--- M1 · D1 原样复现：覆盖率把**堂食**一侧的去重实参换回 `.name`（成本卡名命名空间）
+    文件：pages/m3/dishreview/index.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M2 · D1 原样复现：未匹配一侧换回 `.name`（与堂食混算 ⇒「共 N 道 / 已算 M 道」一起错）
+    文件：pages/m3/dishreview/index.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M3 · D1 前置腿：fmtRanked 不再带出 `dishKey`（前端拿不到菜品身份）
+    文件：pages/m3/dishreview/index.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M4 · D3 原样复现：onShow 退回「只在 locked 时重载」（去建卡回来页面不刷新）
+    文件：pages/m3/dishreview/index.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M5 · D2 原样复现：manageShop::onStats 不再回 `truncated`（删除确认框的"后果量级"被低估且零提示）
+    文件：cloudfunctions/manageShop/index.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M6 · 生产者面：getSalesBills 出参删掉**简写属性** `truncated,`（首版只认冒号时正是此漏）
+    文件：cloudfunctions/getSalesBills/index.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M7 · 消费者面 fail-closed：删掉 dishreview 的 dataHealth 引入（该页整体不再消费 truncated）
+    文件：pages/m3/dishreview/index.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M8 · 登记表**空转键**：往 EXEMPT 塞一个"存在但根本没碰过 emitter"的文件 ⇒ ③-f 必须判红
+    文件：tools/check_truncated_surfaced.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M9 · Q1 原样复现：删掉汇总卡的标题行（"全渠道合计"被读成堂食小计）
+    文件：pages/m3/dishreview/index.wxml
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+--- M10 · Q3 反向：hub.js 撤回消费（该页把 length 当**精确张数**渲染 ⇒ 不许豁免）
+    文件：pages/m3/hub.js
+    守卫 RC=1（须非 0）· 点名腿命中=true · 保留腿仍绿=true · 还原 sha 一致=true · 还原后复跑归绿=true  ⇒ PASS
+
+===== R299 变异回灌汇总 =====
+✅ M1  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M2  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M3  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M4  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M5  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M6  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M7  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M8  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M9  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+✅ M10  RC=1 还原=true 点名=true 保留腿=true 复绿=true
+变异 10/10 全部：真红 + 点名腿命中 + 保留腿仍绿 + 逐字节还原 + 还原后归绿
+结论：两个守卫均**非恒真**，且守的是真实回归（D1 命名空间 / D3 返回不刷新 / D2 截断不告知 原样复现）

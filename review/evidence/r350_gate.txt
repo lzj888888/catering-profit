@@ -1,0 +1,10 @@
+NODE = C:/Users/lzj/.workbuddy/binaries/node/versions\22.22.2-6\node.exe
+SUITES = 186
+✅ [suite-tracked] 186 个套件文件全部已入库（R92 守卫 · 真 git）
+
+============================================================
+总览：183/186 通过   耗时 200.5s
+R92: ✅
+  ❌ [suite-assert-counts] tools/check_suite_assert_counts.js :: exit=1
+  ❌ [ref-not-prefill] tools/check_m2_ref_not_prefill.js :: exit=1
+  ❌ [m2-biz-inputs] tools/check_m2_biz_inputs.js :: exit=1

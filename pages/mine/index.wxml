@@ -70,6 +70,12 @@
       <text class="lbl">{{t.disclaimerLabel}}</text>
       <text class="val muted">›</text>
     </view>
+    <!-- R434（队列 #29）：AI 辅助分析授权入口。放在"关于/免责"上面一格：
+         它和"数据怎么用"是同一类事，老板找的时候会先看这一块。 -->
+    <view class="cell" bindtap="onAiConsent">
+      <text class="lbl">{{t.aiConsentLabel}}</text>
+      <text class="val muted">›</text>
+    </view>
   </view>
 
   <view class="card2">

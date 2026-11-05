@@ -1,6 +1,6 @@
 // cloudfunctions/saveShopSetting/validate.js —— 入参校验（纯函数）。
 // 入参 { shop_id, name?, remark?, switches:{inventory,amortize}? }。
-const { ERROR_CODES, indicatorRef } = require('./common');
+const { ERROR_CODES, indicatorRef, DIAG_ENUM } = require('./common');
 
 function validateInput(event) {
   const err = (m) => ({ error: ERROR_CODES.INVALID_PARAM, msg: m });
@@ -91,6 +91,62 @@ function validateInput(event) {
     else return err('buffet_food_cost_total 必须是非负整数（单位：分）');
   }
 
+  // ===== A20（2026-11-05 · 规范 §12.3）：诊断补录 =====
+  //   M1 能自动算 65 分；剩下 35 分靠这几个**客观可核验**的值：去年同期客流 / 平台口碑分 / 差评趋势 /
+  //   商圈五档 / 剩余租期 / 借贷三档 / 账面现金。
+  //   落点 `shop.diag_facts`：这些都是**店铺时点属性**（不是月度发生额），与 biz_type/city_tier 同级。
+  //   🔴 零新建集合、零新建云函数 —— 复用本函数已有的白名单 patch（未传键一律不动库）。
+  //   三态：undefined = 不动；null = 整块清空；object = **逐键合并**（缺键不动，null 清空该键）。
+  //   ⚠️ 枚举从 `common.DIAG_ENUM` 单源取（引擎打分认同一张表），本文件**不得自抄**。
+  let diagFacts;
+  if (src.diag_facts !== undefined) {
+    if (src.diag_facts === null) {
+      diagFacts = null;
+    } else if (typeof src.diag_facts !== 'object' || Array.isArray(src.diag_facts)) {
+      return err('diag_facts 必须是对象');
+    } else {
+      const df = src.diag_facts;
+      const out = {};
+      const takeInt = (k, name, max) => {
+        const v = df[k];
+        if (v === undefined) return null;
+        if (v === null || v === '') { out[k] = null; return null; }
+        if (!Number.isInteger(v) || v < 0 || v > max) return `${name} 必须是 0~${max} 的整数`;
+        out[k] = v; return null;
+      };
+      const takeEnum = (k, name, list) => {
+        const v = df[k];
+        if (v === undefined) return null;
+        if (v === null || v === '') { out[k] = null; return null; }
+        if (typeof v !== 'string' || list.indexOf(v) < 0) return `${name} 必须是 ${list.join(' / ')} 之一`;
+        out[k] = v; return null;
+      };
+      // 客流（人次）：去年同期；上限 100 万 —— 超过必是打字错误（不是业务异常）
+      let e = takeInt('traffic_last_year', 'traffic_last_year', 1000000);
+      if (e) return err(e);
+      // 剩余租期（月）：上限 600（50 年），不足 0 无意义
+      e = takeInt('lease_months_left', 'lease_months_left', 600);
+      if (e) return err(e);
+      // 账面现金（分）：上限 100 亿分（1 亿元）—— 再高不是这家店的钱
+      e = takeInt('cash_on_hand_fen', 'cash_on_hand_fen', 10000000000);
+      if (e) return err(e);
+      e = takeEnum('review_trend', 'review_trend', DIAG_ENUM.reviewTrend);
+      if (e) return err(e);
+      e = takeEnum('business_district', 'business_district', DIAG_ENUM.businessDistrict);
+      if (e) return err(e);
+      e = takeEnum('debt_level', 'debt_level', DIAG_ENUM.debtLevel);
+      if (e) return err(e);
+      // 口碑分：0~5，保留一位小数（平台都是 4.x 这种精度）
+      if (df.rating !== undefined) {
+        const rv = df.rating;
+        if (rv === null || rv === '') out.rating = null;
+        else if (typeof rv !== 'number' || !Number.isFinite(rv) || rv < 0 || rv > 5) return err('rating 必须是 0~5 的数字');
+        else out.rating = Math.round(rv * 10) / 10;
+      }
+      diagFacts = out;
+    }
+  }
+
   return {
     error: null,
     shop_id: src.shop_id,
@@ -100,6 +156,7 @@ function validateInput(event) {
     takeaway_params: takeawayParams,
     menu_dish_count: menuDishCount,
     buffet_food_cost_total: buffetFoodCostTotal,
+    diag_facts: diagFacts,
     input: { client_request_id: src.client_request_id || '' },
   };
 }

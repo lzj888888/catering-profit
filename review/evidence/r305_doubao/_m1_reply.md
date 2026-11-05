@@ -1,0 +1,254 @@
+[
+  {
+    "month": "2026-08",
+    "income_items": [
+      {
+        "category": "dine_in",
+        "name": "堂食收入",
+        "amount_fen": 6480000,
+        "sub_items": [
+          {
+            "sub_item": "",
+            "amount_fen": 6480000,
+            "qty": 0
+          }
+        ]
+      },
+      {
+        "category": "takeaway",
+        "name": "外卖收入",
+        "amount_fen": 4460000,
+        "sub_items": [
+          {
+            "sub_item": "美团外卖",
+            "amount_fen": 2590000,
+            "qty": 720
+          },
+          {
+            "sub_item": "饿了么",
+            "amount_fen": 1530000,
+            "qty": 460
+          },
+          {
+            "sub_item": "打包费",
+            "amount_fen": 180000,
+            "qty": 0
+          },
+          {
+            "sub_item": "平台补贴",
+            "amount_fen": 160000,
+            "qty": 0
+          }
+        ]
+      }
+    ],
+    "expense_items": [
+      {
+        "category": "operation",
+        "name": "门店运营费用",
+        "amount_fen": 1588000,
+        "sub_items": [
+          {
+            "sub_item": "房租",
+            "amount_fen": 1200000
+          },
+          {
+            "sub_item": "物业费",
+            "amount_fen": 60000
+          },
+          {
+            "sub_item": "水费",
+            "amount_fen": 28000
+          },
+          {
+            "sub_item": "电费",
+            "amount_fen": 180000
+          },
+          {
+            "sub_item": "燃气费",
+            "amount_fen": 120000
+          }
+        ]
+      },
+      {
+        "category": "labor",
+        "name": "人工成本",
+        "amount_fen": 2520000,
+        "sub_items": [
+          {
+            "sub_item": "工资绩效",
+            "amount_fen": 2200000
+          },
+          {
+            "sub_item": "社保",
+            "amount_fen": 320000
+          }
+        ]
+      },
+      {
+        "category": "marketing",
+        "name": "营销及平台费用",
+        "amount_fen": 1042800,
+        "sub_items": [
+          {
+            "sub_item": "外卖平台佣金",
+            "amount_fen": 802800
+          },
+          {
+            "sub_item": "活动补贴",
+            "amount_fen": 240000
+          }
+        ]
+      },
+      {
+        "category": "other",
+        "name": "管理及摊销",
+        "amount_fen": 230000,
+        "sub_items": [
+          {
+            "sub_item": "管理费",
+            "amount_fen": 80000
+          },
+          {
+            "sub_item": "折旧摊销",
+            "amount_fen": 150000
+          }
+        ]
+      }
+    ],
+    "direct_consume_fen": 380000,
+    "inventory": {
+      "opening_fen": 750000,
+      "purchase_fen": 3300000,
+      "closing_fen": 680000
+    }
+  },
+  {
+    "month": "2026-09",
+    "income_items": [
+      {
+        "category": "dine_in",
+        "name": "堂食收入",
+        "amount_fen": 4930000,
+        "sub_items": [
+          {
+            "sub_item": "",
+            "amount_fen": 4930000,
+            "qty": 0
+          }
+        ]
+      },
+      {
+        "category": "takeaway",
+        "name": "外卖收入",
+        "amount_fen": 3720000,
+        "sub_items": [
+          {
+            "sub_item": "美团外卖",
+            "amount_fen": 2160000,
+            "qty": 610
+          },
+          {
+            "sub_item": "饿了么",
+            "amount_fen": 1290000,
+            "qty": 375
+          },
+          {
+            "sub_item": "打包费",
+            "amount_fen": 150000,
+            "qty": 0
+          },
+          {
+            "sub_item": "平台补贴",
+            "amount_fen": 120000,
+            "qty": 0
+          }
+        ]
+      }
+    ],
+    "expense_items": [
+      {
+        "category": "operation",
+        "name": "门店运营费用",
+        "amount_fen": 1588000,
+        "sub_items": [
+          {
+            "sub_item": "房租",
+            "amount_fen": 1200000
+          },
+          {
+            "sub_item": "物业费",
+            "amount_fen": 60000
+          },
+          {
+            "sub_item": "水费",
+            "amount_fen": 28000
+          },
+          {
+            "sub_item": "电费",
+            "amount_fen": 180000
+          },
+          {
+            "sub_item": "燃气费",
+            "amount_fen": 120000
+          }
+        ]
+      },
+      {
+        "category": "labor",
+        "name": "人工成本",
+        "amount_fen": 2520000,
+        "sub_items": [
+          {
+            "sub_item": "工资绩效",
+            "amount_fen": 2200000
+          },
+          {
+            "sub_item": "社保",
+            "amount_fen": 320000
+          }
+        ]
+      },
+      {
+        "category": "marketing",
+        "name": "营销及平台费用",
+        "amount_fen": 929600,
+        "sub_items": [
+          {
+            "sub_item": "外卖平台佣金",
+            "amount_fen": 669600
+          },
+          {
+            "sub_item": "活动补贴",
+            "amount_fen": 260000
+          }
+        ]
+      },
+      {
+        "category": "other",
+        "name": "管理及摊销",
+        "amount_fen": 530000,
+        "sub_items": [
+          {
+            "sub_item": "管理费",
+            "amount_fen": 80000
+          },
+          {
+            "sub_item": "折旧摊销",
+            "amount_fen": 150000
+          },
+          {
+            "sub_item": "临时装修摊销",
+            "amount_fen": 300000
+          }
+        ]
+      }
+    ],
+    "direct_consume_fen": 420000,
+    "inventory": {
+      "opening_fen": 680000,
+      "purchase_fen": 3450000,
+      "closing_fen": 590000
+    }
+  }
+]

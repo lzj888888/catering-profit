@@ -3,7 +3,7 @@
 //
 // 为什么需要它
 // 形态 C（外卖商品销量）的导入必须由用户**手选平台**（机器判不出），选项来自
-//   `pages/takeaway/index.js::IMPORT_PLATFORM_OPTIONS`，label 来自术语单源
+//   `subpkg/biz/takeaway/index.js::IMPORT_PLATFORM_OPTIONS`，label 来自术语单源
 //   `miniprogram/i18n/terms.js::card.reviewPlatformNames`。
 // 这条链上有三个**都静默**的失效点：
 //   ① picker 的 value 不在云端 `SALES_SCHEMA.platform.enum` 内 ⇒ 云函数校验直接拒收，
@@ -23,14 +23,21 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
-const PAGE_REL = 'pages/takeaway/index.js';
+const PAGE_REL = 'subpkg/biz/takeaway/index.js';
 const SVC_REL = 'cloudfunctions/importSalesBill/service.js';
 const TERMS_REL = 'miniprogram/i18n/terms.js';
 
 // 有意**不进** picker 的 enum 成员（附理由；改这张表 = 显式决定，不是漏）。
 //   pos      —— 堂食平台；本 picker 专给「外卖商品销量表」，堂食不走这条路
 //   jd_order —— 京东**订单级**是「账单」，走 M3 外卖账单导入（对账路），不是"商品销量表"
-const PICKER_EXCLUDED = ['pos', 'jd_order'];
+// 🔴 R303（R300 §5.5 定案）：以下三项**新增有意排除** —— 这是**显式决定**，不是静默漏。
+//   meituan  —— 李老师 2026-10-17 口供「**京东、美团提供的表不准确**」，且**无任何实测样本**。
+//               军规「**先补验再窄范围承诺**」：列在 picker 里＝我们承诺他能导。
+//   jd_sku   —— 同上（京东 SKU 级商品销量表：已知不准 + 无样本）。
+//   eleme    —— 从未验证过 ⇒ 同纪律不列名。
+//   ⚠️ 三者都**不是删除能力**：`other` 仍在 picker 里（导入区明文承诺"自己用 Excel 列 3 列也行"），
+//      手上有准确表的老板仍可走 `other`；历史 `meituan/jd_sku` 数据的**显示名照常**（`reviewPlatformNames` 6 键全留）。
+const PICKER_EXCLUDED = ['pos', 'jd_order', 'meituan', 'jd_sku', 'eleme'];
 
 let pass = 0, failN = 0;
 const sec = (t) => console.log('\n===== ' + t + ' =====');
@@ -95,8 +102,11 @@ sec('S 扫描面（防退化）');
 check('S-① 三个源文件全部读到（页面 / 云端 service / 术语单源）',
   !!(pageSrc && svcSrc && termsSrc),
   [PAGE_REL, SVC_REL, TERMS_REL].map((r, i) => r + '=' + (!![pageSrc, svcSrc, termsSrc][i])).join(' | '));
-check('S-② picker 选项数 ≥ 4（实测 5 的保守下沿；扫空即红）',
-  !!picker && picker.length >= 4, picker ? ('实测 ' + picker.length + ' 项 [' + picker.join(', ') + ']') : '未解析出 picker ⇒ 扫描面退化');
+// 🔴 下沿随**决策**更新，不是放宽：R303 前实测 5 项（下沿取 4）；R303 按「只确认为已验平台」收窄到
+//   2 项（`taobao` + `other`）⇒ 下沿取 **2**（仍能抓"扫空/只剩 1 项"这种退化）。
+//   为什么这个下沿不能删：没有它，解析失效（picker=[]）会被 auditPicker 判成"没有问题"⇒ 恒绿。
+check('S-② picker 选项数 ≥ 2（R303 收窄后实测 2 的保守下沿；扫空即红）',
+  !!picker && picker.length >= 2, picker ? ('实测 ' + picker.length + ' 项 [' + picker.join(', ') + ']') : '未解析出 picker ⇒ 扫描面退化');
 check('S-③ 云端 platform.enum 成员数 ≥ 6（实测 7 的保守下沿；扫空即红）',
   !!enumList && enumList.length >= 6, enumList ? ('实测 ' + enumList.length + ' 项 [' + enumList.join(', ') + ']') : '未解析出 enum ⇒ 扫描面退化');
 check('S-④ 术语单源的 reviewPlatformNames 键数 ≥ 4（实测 6 的保守下沿）',
@@ -148,6 +158,26 @@ check('C-③ 合成「picker value 缺术语键」⇒ 必须判出（这就是 l
 check('C-④ 合成「enum 新增平台但不在排除名单」⇒ 必须判出（防静默漏）',
   (() => { const s = JSON.parse(JSON.stringify(SAMPLE_BASE)); s.enumList = s.enumList.concat(['douyin']); return hasIssue(auditPicker(s), 'enum-member-unaccounted'); })(),
   '云端 enum 加 douyin、picker 与排除名单都不动');
+
+// ===== D · R580：饿了么 / 淘宝闪购是**同一实体** =====
+//   依据（一手）：阿里 2026 财年年报原文「在2026財年，我們將『餓了麼』更名為『淘寶閃購』」；
+//   2025-12-05 官方宣布饿了么 App 全面焕新，覆盖 App / 小程序 / 商家后台 / 骑手端。
+//   两个静默失效：
+//     ① 账单识别若把 eleme 列进 PLATFORM_ORDER ⇒ 新数据会产出 eleme 键
+//        ⇒ 同一平台在复盘页被拆成两个组各显示一半（老板以为是两家店）；
+//     ② 显示名仍写「饿了么」⇒ 老板手机上早看不到这个品牌了，会以为是两家。
+const _svcSrc = readOrNull('cloudfunctions/importSalesBill/service.js') || '';
+const _orderLine = (_svcSrc.match(/const PLATFORM_ORDER = \[([^\]]*)\]/) || [])[1] || '';
+const _termsSrc = readOrNull('miniprogram/i18n/terms.js') || '';
+const _elemeLabel = (_termsSrc.match(/eleme:\s*'([^']*)'/) || [])[1] || '';
+// 判据抽成纯函数 —— 只为让 D-③ 能用同一判据跑假数据（证明它非常量）
+const noElemeInOrder = (line) => line.length > 0 && line.indexOf('eleme') < 0;
+check('D-① 🔴 账单识别**不产出** eleme（产出即把同一平台拆成两组）',
+  noElemeInOrder(_orderLine), _orderLine || '(取不到 PLATFORM_ORDER，fail-closed)');
+check('D-② 🔴 eleme 的历史显示名已跟上（含「淘宝闪购」，不再单独叫「饿了么」）',
+  _elemeLabel.indexOf('淘宝闪购') >= 0, _elemeLabel || '(取不到，fail-closed)');
+check('D-③ 反恒真：把 eleme 塞进 PLATFORM_ORDER ⇒ 同一判据必须为 false',
+  noElemeInOrder(_orderLine + ", 'eleme'") === false);
 
 console.log('\n' + pass + ' 通过 / ' + failN + ' 失败');
 process.exitCode = failN ? 1 : 0;

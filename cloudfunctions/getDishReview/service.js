@@ -199,6 +199,139 @@ function mergeTotals(a, b) {
 }
 
 /**
+ * 按业务日期区间过滤销量行（**纯函数** · 零 db · 可复算）。
+ *
+ * 🔴 R301 · 为什么必须有（**契约与实现分歧**的实锤，不是新加需求）：
+ *   契约 `specs/dev-specs/core/10_云函数清单与接口契约.md` 的 `getDishReview` 一行
+ *   **一直**声明入参 `{ shop_id, biz_date_from, biz_date_to, platform?, ... }`，
+ *   而实现**从未读取过 `biz_date_from/to`** ⇒ 复盘榜把该店**历次导入的多个月份全部累加**
+ *   当成一份榜，而页面按"当前月"呈现 ⇒ 「这道菜这个月卖过」是**错的**（静默错数）。
+ *   真样本就是 **7 天表**（`importSalesBill/service.js` 注释：淘宝闪购 355 行 = 7 天 × 51 商品）
+ *   ⇒ **"一段"冒充"整月"**。
+ *
+ * 口径：
+ *   · `biz_date` 是 `YYYY-MM-DD` 字符串 ⇒ **直接按字符串比较**（等长前缀可比，零时区风险）。
+ *   · **两端都给** ⇒ 过滤；**任一端缺** ⇒ **不过滤**（与改动前**逐行等价** ⇒ 旧客户端不被打断），
+ *     并由出参 `range` 如实回报（`from/to` 为空串）⇒ 前端据此显示"全部期间"，**不许假装是单月**。
+ *   · ⚠️ 不做"单边过滤"：半开区间算出来的榜既不是本月也不是全部，**比不过滤更糟**。
+ *   · 区间反了（`from > to`）⇒ **空集**（不静默当全量）。
+ *
+ * @param {Array<{biz_date:string}>} sales
+ * @param {string} from `YYYY-MM-DD`
+ * @param {string} to   `YYYY-MM-DD`
+ * @returns {{rows:Array, from:string, to:string, days:number}} `days` = 结果集内**实际有数据的天数**（去重）
+ */
+function filterByRange(sales, from, to) {
+  const rows0 = sales || [];
+  const f = (from == null ? '' : String(from)).trim();
+  const t = (to == null ? '' : String(to)).trim();
+  if (!f || !t) return { rows: rows0, from: '', to: '', days: countDataDays(rows0) };
+  if (f > t) return { rows: [], from: f, to: t, days: 0 };
+  const rows = rows0.filter((s) => {
+    const d = (s && s.biz_date == null ? '' : String(s.biz_date)).trim();
+    return !!d && d >= f && d <= t;
+  });
+  return { rows, from: f, to: t, days: countDataDays(rows) };
+}
+
+/**
+ * 一组销量行里**实际有数据的天数**（按 `biz_date` 去重）。
+ * 🔴 它的唯一用途是**把"这是 7 天段，不是整月"直接暴露给老板** ——
+ *   期间口径不能只说"YYYY-MM"，还得说"这个月里其实只有 N 天有数据"。
+ */
+function countDataDays(rows) {
+  const set = new Set();
+  for (const s of (rows || [])) {
+    const d = (s && s.biz_date == null ? '' : String(s.biz_date)).trim();
+    if (d) set.add(d);
+  }
+  return set.size;
+}
+
+// ===================== R574 / #110：真实覆盖天数（粒度感知） =====================
+
+/** `YYYY-MM-DD` 含首尾的天数；非法/反向 ⇒ 0，上限 366（防脏数据把数组撑爆）。 */
+function spanDaysInclusive(a, b) {
+  const t0 = Date.parse(String(a) + 'T00:00:00Z');
+  const t1 = Date.parse(String(b) + 'T00:00:00Z');
+  if (!isFinite(t0) || !isFinite(t1) || t1 < t0) return 0;
+  return Math.min(Math.round((t1 - t0) / 86400000) + 1, 366);
+}
+
+/** 合并重叠/相邻区间（输入 `[[from,to],...]`；`YYYY-MM-DD` 字符串可直接比较）。 */
+function mergeRanges(ranges) {
+  const list = (ranges || [])
+    .filter((r) => r && r[0] && r[1] && r[0] <= r[1])
+    .map((r) => [String(r[0]), String(r[1])])
+    .sort((x, y) => (x[0] < y[0] ? -1 : (x[0] > y[0] ? 1 : 0)));
+  const out = [];
+  for (const r of list) {
+    const last = out[out.length - 1];
+    if (!last || r[0] > last[1]) out.push([r[0], r[1]]);
+    else if (r[1] > last[1]) last[1] = r[1];
+  }
+  return out;
+}
+
+/**
+ * 按**粒度**统计真实覆盖天数与构成（纯函数 · 零 db · 可复算）。
+ *
+ * 🔴 R574 / #110 为什么需要它（这是"1 天"与"7 天"的分野，不是美化文案）：
+ *   `countDataDays` 只按 `biz_date` 去重。堂食《菜品销售统计》是**7 天区间汇总**、
+ *   落库时 36 行共用同一个 `biz_date`（= 区间末日）⇒ `days` 会报 **1**，
+ *   而实际覆盖 **7 天**。同一屏的外卖是逐日 7 行 ⇒ 两栏都显示"7"，看着可以直接比，
+ *   其实一个是「7 天的汇总被记在 1 天」、一个是「7 天逐日」。
+ *
+ * 口径：
+ *   · `days`        = 按 `biz_date` 去重的**有数据日期数**（**保持旧语义**，不动既有断言/展示）。
+ *   · `coveredDays` = 真实覆盖天数：`interval` 行按区间并集算，`daily` 行记 1 天，
+ *                     两者重叠**不重复计**；`unknown`（含无字段的旧数据）按单日计。
+ *   · `hasInterval` = 存在区间行 ⇒ 前端必须提示"其中含汇总表"，不许当逐日比。
+ *   · `hasUnknown`  = 存在粒度未知的行（**主要是历史数据**）⇒ 前端提示可重导以补齐口径。
+ *
+ * @param {Array<{biz_date:string, granularity?:string, period_from?:string, period_to?:string}>} rows
+ * @returns {{days:number, coveredDays:number, hasInterval:boolean, hasUnknown:boolean,
+ *            intervalRows:number, unknownRows:number}}
+ */
+function coverageStats(rows) {
+  const daily = new Set();
+  const intervals = [];
+  let intervalRows = 0;
+  let unknownRows = 0;
+  for (const s of (rows || [])) {
+    const g = (s && s.granularity == null ? '' : String(s.granularity)).trim();
+    const pf = (s && s.period_from == null ? '' : String(s.period_from)).trim();
+    const pt = (s && s.period_to == null ? '' : String(s.period_to)).trim();
+    const bd = (s && s.biz_date == null ? '' : String(s.biz_date)).trim();
+    if (g === 'interval' && pf && pt && pf <= pt) { intervals.push([pf, pt]); intervalRows++; continue; }
+    if (g === 'daily') { if (bd) daily.add(bd); continue; }
+    // unknown / 字段缺失（历史行）/ 非法取值 ⇒ 一律按单日计，并计入 unknownRows（不静默）
+    if (bd) daily.add(bd);
+    unknownRows++;
+  }
+  const merged = mergeRanges(intervals);
+  let covered = 0;
+  for (const [a, b] of merged) covered += spanDaysInclusive(a, b);
+  // 单日行若落在某个区间内 ⇒ 已计过，不重复加
+  let extra = 0;
+  for (const d of daily) {
+    let inside = false;
+    for (const [a, b] of merged) { if (d >= a && d <= b) { inside = true; break; } }
+    if (!inside) extra++;
+  }
+  return {
+    // ⚠️ `days` **必须**与 countDataDays(rows) 逐值相等（旧语义：所有行按 biz_date 去重）。
+    //   不能改用下面那个 daily 集合 —— 它刻意不含 interval 行，用它会让"有数据天数"暗降。
+    days: countDataDays(rows),
+    coveredDays: covered + extra,
+    hasInterval: merged.length > 0,
+    hasUnknown: unknownRows > 0,
+    intervalRows,
+    unknownRows,
+  };
+}
+
+/**
  * 把全量销量行**在 service 层**分流（可复算；不在 index 做业务判断）。
  * @param {Array<{platform:string}>} sales
  * @returns {{dineIn:Array, takeaway:Array}} dineIn = platform==='pos'；takeaway = 其余非空平台
@@ -286,12 +419,15 @@ function computeCoverage(allSales, matchedKeys, buffetFoodCostTotalFen) {
   const benchCostMidFen = perCapitaPriceFen ? Math.round(perCapitaPriceFen * BENCH.mid) : 0;
   const benchCostHighFen = perCapitaPriceFen ? Math.round(perCapitaPriceFen * BENCH.high) : 0;
   // 用户实际成本率（仅在已填月消耗时判）
-  let actualRatePct = null, actualFlag = '';
+  // 🔴 R298 契约机械化：本函数只回**机器码**（'' | high | low | ok），中文文案由前端 terms 映射
+  //   （`TERMS.card.buffetFlag`）—— 术语单源。旧版回中文字符串、前端再拿中文字符串比较 ⇒
+  //   任一端改文案，「成本偏高」的警示色会**静默丢失**（无报错，老板看不到告警）。
+  let actualRatePct = null, actualFlagCode = '';
   if (perCapitaCostFen != null && perCapitaPriceFen > 0) {
     actualRatePct = Math.round((perCapitaCostFen * 100) / perCapitaPriceFen);
-    if (actualRatePct > 55) actualFlag = '偏高';        // 食材成本吃紧，注意控损/调价
-    else if (actualRatePct < 25) actualFlag = '偏低';    // 冻品为主或数据待核
-    else actualFlag = '合理';
+    if (actualRatePct > 55) actualFlagCode = 'high';        // 食材成本吃紧，注意控损/调价
+    else if (actualRatePct < 25) actualFlagCode = 'low';    // 冻品为主或数据待核
+    else actualFlagCode = 'ok';
   }
   return {
     coverageA: { pct: coverageA_pct },
@@ -318,10 +454,12 @@ function computeCoverage(allSales, matchedKeys, buffetFoodCostTotalFen) {
         costMidFen: benchCostMidFen,
         costHighFen: benchCostHighFen,
         actualRatePct,
-        actualFlag,            // '' | '合理' | '偏高' | '偏低'
+        actualFlagCode,        // '' | 'high' | 'low' | 'ok'（机器码；文案见前端 terms.card.buffetFlag）
       },
     },
   };
 }
 
-module.exports = { buildDishReview, buildTakeawayReview, rankReview, splitSales, mergeTotals, TOTALS_FIELDS, computeCoverage, classifyDishKey };
+module.exports = { buildDishReview, buildTakeawayReview, rankReview, splitSales, mergeTotals, TOTALS_FIELDS, computeCoverage, classifyDishKey, filterByRange, countDataDays,
+  // R574 / #110：粒度感知的覆盖天数（守卫直接验）
+  coverageStats, spanDaysInclusive, mergeRanges };

@@ -6,9 +6,9 @@
 //   且同时是**用户可见承诺**与**写操作拦截边界**。实扫（round89，回源实扫、不采信任何自述）却发现有
 //   **四类互不引用的落点**，任何一类改了另外三类都不会报警：
 //     ① **计算常量**（唯一真正决定放不放行的点）
-//        `cloudfunctions/saveLedger/index.js:25` `const GRACE_DAYS_MS = 7 * 24 * 3600 * 1000;`
+//        `cloudfunctions/saveLedger/index.js` `const GRACE_DAYS_MS = 7 * 24 * 3600 * 1000;`
 //     ② **服务端错误文案**（用户被拒时看到的话，硬编码字面、不引用常量）
-//        `cloudfunctions/saveLedger/index.js:63` 「归档月份为只读，仅归档后 7 天内可补录（需二次确认）」
+//        `cloudfunctions/saveLedger/index.js`「归档月份为只读，仅归档后 7 天内可补录（需二次确认）」
 //     ③ **前端 i18n 四条文案**（归档弹窗 + 补录确认弹窗，双副本）
 //        `miniprogram/i18n/terms.js:153/154/557/559` 与 `specs/dev-specs/i18n/terms.js` 同四行
 //     ④ **决策文档声明** `core/13 §3` 「补录（7 天宽限）…超过 7 天硬锁」
@@ -35,6 +35,8 @@
 //   B4 服务端错误文案 ≡ 实算（用户被拒时看到的天数必须就是真实边界）。
 //   B5 前端 i18n 四条文案 ≡ 实算（**双副本**都要对；双副本这四条取值也要相等）。
 //   B6 前提守卫：目标文件确在扫描面内 + md 扫描面达下界（排除面没打错）。
+//   B7 缺字段默认值口径（**R298·C3 新增**）：两端对「archived_at 缺失」必须**同判**（fail-closed）；
+//      前四腿只守「天数」，这条守「默认值」—— 缺一即红。
 //   W  弱面：明示「N 天」的其它合法口径（只打印不判红）——证明本守卫不能裸扫。
 //
 // ⚠️ 明写边界：本守卫**不校验** `REFRESH_WINDOW_MS`（admin token 刷新窗口 24h）——
@@ -48,6 +50,7 @@ const ROOT = path.resolve(__dirname, '..');
 const SRC_REL = 'cloudfunctions/saveLedger/index.js';          // ① 计算常量 + ② 服务端文案都在这一份
 const I18N_REL = 'miniprogram/i18n/terms.js';                   // ③ 前端文案主副本
 const I18N_MIRROR_REL = 'specs/dev-specs/i18n/terms.js';        // ③ 前端文案派生副本
+const UI_REL = 'utils/ui.js';                                   // ⑤ 前端归档宽限判据（R298·C3 新增的第五腿）
 const DECL_REL = 'specs/dev-specs/core/13_上线前查缺补漏_决策与待办总览.md'; // ④ 唯一声明处
 const SPEC_MD_DIR = path.join(ROOT, 'specs');
 
@@ -188,6 +191,62 @@ check('B6-① 前提：四份目标文件都在扫描面内（路径没写错）
   src.ok && i18n.ok && i18nM.ok && decl.ok, `${SRC_REL} / ${I18N_REL} / ${I18N_MIRROR_REL} / ${DECL_REL}`);
 check('B6-② 前提：md 扫描面确含唯一声明处（排除面没打错）',
   mdFiles.some((f) => f.replace(/\\/g, '/').endsWith('core/13_上线前查缺补漏_决策与待办总览.md')), 'core/13 在内');
+
+// —— B7 缺字段默认值口径（前后端等价 · fail-closed）【R298·C3 新增 · 第五腿】
+//   前四腿守的全是「**天数**口径」（7 天 ≡ 常量 ≡ 服务端文案 ≡ i18n ≡ 决策声明），
+//   没有一条守「archived_at **缺失**时两端各自当什么」—— 而这正是 R298 审计挖出的分叉：
+//     ① 云端 `existing.archived_at || now` ⇒ (now-now)=0 < 宽限 ⇒ **fail-open 放行补录**；
+//     ② 前端 `if (!archivedAtMs) return false` ⇒ **fail-closed 锁死**；
+//   ⇒ 同一条记录两端判决相反。后果比前四腿更直接：用户照界面看到「已锁」，云端却收下了这笔写。
+//   本仓 archived_at 的约定默认值处处为 0：archiveMonth:55/63（取消归档）、getLedger:179（出参）、saveLedger insert。
+console.log('\n===== B7 缺字段默认值口径（前后端等价 · fail-closed）=====');
+const CLOUD_DEF_RE = /const\s+archivedAt\s*=\s*existing\.archived_at\s*\|\|\s*([A-Za-z0-9_.]+)\s*;/;
+const cdM = src.text.match(CLOUD_DEF_RE);
+const cloudDefault = cdM ? cdM[1].trim() : null;
+check('B7-① 云端 archivedAt 默认值可解析（fail-closed：该行被改写即红）', cdM !== null,
+  cdM ? `existing.archived_at || ${cloudDefault}` : '未匹配 ⇒ 守卫赋值行被改写');
+check('B7-② 🔴 云端默认值 = 0（未知归档时间 ⇒ 视作纪元 ⇒ 必在宽限外）',
+  cloudDefault === '0', `实际 = ${cloudDefault}`);
+
+const uiSrc = readRel(UI_REL);
+check('B7-③ 前端 utils/ui.js 在扫描面内且非空（路径写错即红）', uiSrc.ok && uiSrc.bytes >= MIN_BYTES, `${uiSrc.bytes}B`);
+check('B7-④ 前端 withinGrace 对缺失归档时间 **fail-closed**（早退 false）',
+  /\bwithinGrace\b/.test(uiSrc.text) && /if\s*\(\s*!\s*archivedAtMs\s*\)\s*return\s+false\s*;/.test(uiSrc.text),
+  'withinGrace 内 if (!archivedAtMs) return false;');
+
+// —— 行为级复算：把「缺 archived_at」这一输入**同时**喂给「真前端函数」与「云端表达式按解析出的默认值」
+const UI = require(path.join(ROOT, UI_REL));
+const NOW = Date.now();
+const feMissing = UI.withinGrace(0, NOW);                     // 真函数：缺归档时间
+const beMissing = (cloudDefault === '0' && gVal !== null) ? ((NOW - 0) < gVal) : true;   // 云端复算
+check('B7-⑤ 🔴 缺 archived_at 时两端判决**相同**（本腿的全部意义所在）',
+  feMissing === beMissing, `前端 ${feMissing} vs 云端 ${beMissing}`);
+check('B7-⑥ 且该共同判决 = 锁（false）—— 未知归档时间不敢承诺「在 7 天内」',
+  feMissing === false && beMissing === false);
+
+// —— 影子样本：证明 B7-⑤ 有分辨力（把云端默认值换回 now ⇒ 必须判「不等价」），且替换确实生效
+const SRC_DEFECT = src.text.replace(CLOUD_DEF_RE, 'const archivedAt = existing.archived_at || now;');
+const cdM2 = SRC_DEFECT.match(CLOUD_DEF_RE);
+const defectDefault = cdM2 ? cdM2[1].trim() : null;
+const beDefect = (defectDefault === '0' && gVal !== null) ? ((NOW - 0) < gVal) : ((NOW - NOW) < gVal);
+check('影子 A：云端默认值换回 now（缺陷原样）⇒ 复算判决与前端**不同**（证明 B7-⑤ 非恒真）',
+  feMissing !== beDefect, `前端 ${feMissing} vs 缺陷云端 ${beDefect}`);
+check('影子 B：替换真的改变了复算结果（防「表达式没生效 ⇒ 看似通过」）',
+  beDefect !== beMissing);
+
+// —— C4：宽限窗口的「时间」必须可注入（否则边界不可测 ⇒ 这条腿等于没守）
+const t3 = NOW - 3 * 24 * 3600 * 1000;                       // 3 天前归档
+const realPast = UI.withinGrace(t3, NOW);                    // 3 天 < 7 天 ⇒ 应在宽限内
+const realFuture = UI.withinGrace(t3, t3 + 8 * 24 * 3600 * 1000);  // 同一归档时刻、往后 8 天 ⇒ 已出宽限
+check('B7-⑦ 🔴 nowMs 可注入（第二参是活的：同一归档时刻、喂不同「现在」得出不同判决）',
+  realPast === true && realFuture === false, `喂 NOW ⇒ ${realPast}；喂 NOW+8天 ⇒ ${realFuture}`);
+// 影子 C：把 withinGrace 复刻成「读死参」版（R298 修复前的实现）⇒ 喂 NOW+8 天仍返 true ⇒ 与真实现相反
+const deadParamGrace = (a, _ignored) => (!a ? false : ((Date.now() - a) < 7 * 24 * 3600 * 1000));
+check('影子 C：死参复刻版对 NOW+8 天仍返 true ⇒ 与真实现相反（证明 B7-⑦ 有分辨力）',
+  deadParamGrace(t3, t3 + 8 * 24 * 3600 * 1000) === true && realFuture === false,
+  `死参版 ${deadParamGrace(t3, t3 + 8 * 24 * 3600 * 1000)} vs 真实现 ${realFuture}`);
+check('B7-⑧ nowMs 用 Number.isFinite 判定（不放行 NaN/Infinity，也不吞掉合法的 0）',
+  /Number\.isFinite\(nowMs\)/.test(uiSrc.text), 'Number.isFinite(nowMs)');
 
 // —— W 弱面（只明示不判红）
 console.log('\n===== W 弱面（只明示不判红）=====');

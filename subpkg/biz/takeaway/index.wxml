@@ -1,0 +1,358 @@
+<view class="container safe-bottom" wx:if="{{!loading}}">
+  <!-- 顶层 tab：单均测算 / 账单导入（批次 F 阶段① 加第二 tab） -->
+  <view class="tab-bar">
+    <view class="tab-item {{tab === 'calc' ? 'on' : ''}}" data-tab="calc" bindtap="onTab">{{t.title}}</view>
+    <view class="tab-item {{tab === 'import' ? 'on' : ''}}" data-tab="import" bindtap="onTab">{{t.importTab}}</view>
+  </view>
+
+  <!-- ===== tab 1：单均测算（现有内容）===== -->
+  <block wx:if="{{tab === 'calc'}}">
+  <!-- 口径切换 + 顶部口径名 + 人话解释（两套数字不混） -->
+  <view class="mode-switch">
+    <view class="mode-tab {{mode === 'cash' ? 'on' : ''}}" data-mode="cash" bindtap="onMode">{{t.modeCash}}</view>
+    <view class="mode-tab {{mode === 'accrual' ? 'on' : ''}}" data-mode="accrual" bindtap="onMode">{{t.modeAccrual}}</view>
+  </view>
+  <view class="mode-desc">{{mode === 'cash' ? t.modeCashDesc : t.modeAccrualDesc}}</view>
+  <view class="base-note">{{t.commissionBaseNote}}</view>
+
+  <!-- 本单菜品 -->
+  <view class="sec">{{t.dishTitle}}</view>
+  <view class="row" wx:for="{{items}}" wx:key="rid">
+    <picker class="pick-grow" mode="selector" range="{{dishes}}" range-key="name" data-idx="{{index}}" bindchange="onItemPick">
+      <view class="pick">{{items[index].card_name || t.dishPickPh}}</view>
+    </picker>
+    <input class="qty-input" type="number" value="{{items[index].qty}}" data-idx="{{index}}" bindinput="onItemQty" placeholder="{{t.qty}}" adjust-position="{{true}}" cursor-spacing="20" />
+    <view class="del" data-idx="{{index}}" bindtap="delItem">×</view>
+  </view>
+  <button class="btn ghost btn-small" bindtap="addItem">{{t.addDish}}</button>
+
+  <!-- 包材 -->
+  <view class="sec">{{t.packTitle}}</view>
+  <view class="row" wx:for="{{packs}}" wx:key="rid">
+    <input class="price-input" type="digit" value="{{packs[index].unit_price_yuan}}" data-idx="{{index}}" bindinput="onPackPrice" placeholder="{{t.packTempPh}}" adjust-position="{{true}}" cursor-spacing="20" />
+    <input class="qty-input" type="number" value="{{packs[index].qty}}" data-idx="{{index}}" bindinput="onPackQty" placeholder="{{t.packQty}}" adjust-position="{{true}}" cursor-spacing="20" />
+    <view class="del" data-idx="{{index}}" bindtap="delPack">×</view>
+  </view>
+  <button class="btn ghost btn-small" bindtap="addPack">{{t.addPack}}</button>
+
+  <!-- 平台参数 -->
+  <view class="sec">{{t.paramsTitle}}</view>
+  <view class="field">
+    <text class="lbl">{{t.commissionMode}}</text>
+    <radio-group class="mode-group" bindchange="onCommissionMode">
+      <label class="mode-item"><radio value="rate" checked="{{params.commission_mode === 'rate'}}" color="#1e3a5f"/>{{t.commissionModeRate}}</label>
+      <label class="mode-item"><radio value="fixed" checked="{{params.commission_mode === 'fixed'}}" color="#1e3a5f"/>{{t.commissionModeFixed}}</label>
+    </radio-group>
+  </view>
+  <view class="field" wx:if="{{params.commission_mode === 'rate'}}">
+    <text class="lbl">{{t.commissionRate}}</text>
+    <input class="val-input" type="digit" value="{{params.commission_rate}}" data-field="commission_rate" bindinput="onParam" adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+  <view class="field" wx:if="{{params.commission_mode === 'rate'}}">
+    <text class="lbl">{{t.commissionMin}}</text>
+    <input class="val-input" type="digit" value="{{params.commission_min_yuan}}" data-field="commission_min_yuan" bindinput="onParam" adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+  <view class="field" wx:if="{{params.commission_mode === 'fixed'}}">
+    <text class="lbl">{{t.commissionFixed}}</text>
+    <input class="val-input" type="digit" value="{{params.commission_fixed_yuan}}" data-field="commission_fixed_yuan" bindinput="onParam" adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+  <view class="field">
+    <text class="lbl">{{t.deliveryFee}}</text>
+    <input class="val-input" type="digit" value="{{params.delivery_fee_yuan}}" data-field="delivery_fee_yuan" bindinput="onParam" adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+  <view class="field">
+    <text class="lbl">{{t.deliverySubsidy}}</text>
+    <input class="val-input" type="digit" value="{{params.delivery_subsidy_yuan}}" data-field="delivery_subsidy_yuan" bindinput="onParam" adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+  <view class="field">
+    <text class="lbl">{{t.promoFee}}</text>
+    <input class="val-input" type="digit" value="{{params.promo_yuan}}" data-field="promo_yuan" bindinput="onParam" adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+  <view class="field">
+    <text class="lbl">{{t.packFee}}</text>
+    <input class="val-input" type="digit" value="{{params.pack_fee_yuan}}" data-field="pack_fee_yuan" bindinput="onParam" adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+  <view class="field">
+    <text class="lbl">{{t.deliveryCustomer}}</text>
+    <input class="val-input" type="digit" value="{{params.delivery_customer_yuan}}" data-field="delivery_customer_yuan" bindinput="onParam" adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+
+  <!-- 补贴拆两行（承担方未选 ⇒ 不计入） -->
+  <view class="sec">{{t.subsidyTitle}}</view>
+  <view class="field">
+    <text class="lbl">{{t.subsidyUser}}</text>
+    <input class="val-input" type="digit" value="{{params.s_user.amount_yuan}}" data-which="s_user" bindinput="onSubsidyAmount" adjust-position="{{true}}" cursor-spacing="20" />
+    <picker mode="selector" range="{{payerLabels}}" value="{{params.s_user.payer === 'merchant' ? 1 : (params.s_user.payer === 'platform' ? 2 : 0)}}" data-which="s_user" bindchange="onPayer">
+      <view class="payer-pick">{{payerLabels[params.s_user.payer === 'merchant' ? 1 : (params.s_user.payer === 'platform' ? 2 : 0)]}}</view>
+    </picker>
+  </view>
+  <view class="field">
+    <text class="lbl">{{t.subsidyMerchant}}</text>
+    <input class="val-input" type="digit" value="{{params.s_merchant.amount_yuan}}" data-which="s_merchant" bindinput="onSubsidyAmount" adjust-position="{{true}}" cursor-spacing="20" />
+    <picker mode="selector" range="{{payerLabels}}" value="{{params.s_merchant.payer === 'merchant' ? 1 : (params.s_merchant.payer === 'platform' ? 2 : 0)}}" data-which="s_merchant" bindchange="onPayer">
+      <view class="payer-pick">{{payerLabels[params.s_merchant.payer === 'merchant' ? 1 : (params.s_merchant.payer === 'platform' ? 2 : 0)]}}</view>
+    </picker>
+  </view>
+
+  <view class="warn" wx:if="{{badAmountCount > 0}}">{{t.amountBadTip}}</view>
+  <view class="warn" wx:if="{{badQtyCount > 0}}">{{t.qtyBadTip}}</view>
+  <button class="btn primary" style="margin-top:24rpx;" bindtap="onCalc">{{t.resultTitle}}</button>
+
+  <!-- 结果区（双口径分别展示） -->
+  <view class="sec" wx:if="{{result}}">{{t.resultTitle}}</view>
+  <block wx:if="{{result && mode === 'cash'}}">
+    <view class="cell"><text class="lbl">{{t.payment}}</text><text class="val">{{t.cur}}{{view.payment}}</text></view>
+    <view class="cell"><text class="lbl">{{t.receipt}}</text><text class="val">{{t.cur}}{{view.receipt}}</text></view>
+    <view class="cell"><text class="lbl">{{t.dishCost}}</text><text class="val">{{t.cur}}{{view.dish_cost}}</text></view>
+    <view class="cell"><text class="lbl">{{t.packCost}}</text><text class="val">{{t.cur}}{{view.pack_cost}}</text></view>
+    <view class="cell"><text class="lbl">{{t.profit}}</text><text class="val strong">{{t.cur}}{{view.profit}}</text></view>
+    <view class="cell"><text class="lbl">{{t.receiptRate}}</text><text class="val">{{view.receipt_rate}}%</text></view>
+    <view class="warn" wx:if="{{view.rate_low}}">{{t.rateLowHint}}</view>
+  </block>
+  <block wx:if="{{result && mode === 'accrual'}}">
+    <view class="cell"><text class="lbl">{{t.revenue}}</text><text class="val">{{t.cur}}{{view.revenue}}</text></view>
+    <view class="cell"><text class="lbl">{{t.expense}}</text><text class="val">{{t.cur}}{{view.expense}}</text></view>
+    <view class="cell"><text class="lbl">{{t.profit}}</text><text class="val strong">{{t.cur}}{{view.profit_accrual}}</text></view>
+  </block>
+
+  <!-- P1 · 本单各菜品/套餐毛利（外卖单订单 套餐毛利可读性）-->
+  <block wx:if="{{view.items.length}}">
+    <view class="sec">{{t.itemGrossTitle}}</view>
+    <view class="cell" wx:for="{{view.items}}" wx:key="index">
+      <view class="ci-left">
+        <text class="ci-name">{{item.name}}</text>
+        <text class="tag-combo" wx:if="{{item.is_combo}}">{{t.itemComboTag}}</text>
+      </view>
+      <view class="ci-right">
+        <text class="ci-meta">{{item.qty}} 份 · {{t.itemGrossMargin}} {{item.gross_margin}}%</text>
+        <text class="ci-profit">{{t.cur}}{{item.gross_profit}}</text>
+      </view>
+    </view>
+  </block>
+  <!-- A9：汇总已免费给出，明细按权益分层。先讲「你已经拿到什么」，再给展开入口。 -->
+  <block wx:if="{{view.itemsLocked}}">
+    <view class="sec">{{t.itemGrossTitle}}</view>
+    <view class="warn">{{t.itemGrossLocked}}</view>
+    <button class="btn ghost btn-small" bindtap="onUnlockItems">{{t.itemGrossUnlockBtn}}</button>
+  </block>
+
+  <!-- 挂牌价反算 -->
+  <view class="sec">{{t.reverseTitle}}</view>
+  <view class="field">
+    <text class="lbl">{{t.targetProfit}}</text>
+    <input class="val-input" type="digit" value="{{targetProfitYuan}}" bindinput="onTargetProfit" adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+  <button class="btn ghost btn-small" bindtap="onReverse">{{t.reverseBtn}}</button>
+  <view class="muted" wx:if="{{reverseResultYuan}}">{{t.reverseResult}}：{{t.cur}}{{reverseResultYuan}}</view>
+
+  <button class="btn ghost" style="margin-top:24rpx;" bindtap="onSaveParams">{{t.save}}</button>
+  </block>
+
+  <!-- ===== tab 2：账单导入（批次 F 阶段①）===== -->
+  <block wx:if="{{tab === 'import'}}">
+    <!-- R234/J4d：22 字（≥18）⇒ 折叠。这是「导入」tab 的第一句话，占用首屏最大 ——
+         且它说的「支持哪些账单格式」属于**点开文件前看一次就够**的信息。 -->
+    <view class="hint-fold">
+      <view class="hint-fold-head" data-key="tkPickHint" bindtap="onToggleHintFold">
+        <text class="hint-fold-guide">{{hintFold.tkPickHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+        <text class="hint-fold-arrow">{{hintFold.tkPickHint ? '▾' : '▸'}}</text>
+      </view>
+      <view class="hint-fold-body" wx:if="{{hintFold.tkPickHint}}">{{t.importPickHint}}</view>
+    </view>
+
+    <!-- ===== R282：老板「不知道去哪下载表」—— 导入出错的**体验层根因** =====
+         实测：导入页此前只说「支持哪些表」，从不说「去哪拿这张表」
+           ⇒ 老板随便导一张 Excel ⇒ 判不出来 ⇒ 结论是「这功能不好用」。
+         位置：放在**选文件按钮之前**（老板的动线是：先去下载表 → 再回来选文件）。
+         折叠块是纯数据驱动（data-key + hintFold）⇒ 加项**零 js 改动**。
+         🔴 只给「表名级」指引，不写平台后台的具体菜单路径（编造=替用户编数，本仓禁止）。 -->
+    <view class="hint-fold">
+      <view class="hint-fold-head" data-key="tkWhereHint" bindtap="onToggleHintFold">
+        <text class="hint-fold-title">{{t.importWhereTitle}}</text>
+        <text class="hint-fold-guide">{{hintFold.tkWhereHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+        <text class="hint-fold-arrow">{{hintFold.tkWhereHint ? '▾' : '▸'}}</text>
+      </view>
+      <view class="hint-fold-body" wx:if="{{hintFold.tkWhereHint}}">{{t.importWhereBody}}</view>
+    </view>
+    <view class="hint-fold">
+      <view class="hint-fold-head" data-key="tkColsHint" bindtap="onToggleHintFold">
+        <text class="hint-fold-title">{{t.importColsTitle}}</text>
+        <text class="hint-fold-guide">{{hintFold.tkColsHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+        <text class="hint-fold-arrow">{{hintFold.tkColsHint ? '▾' : '▸'}}</text>
+      </view>
+      <view class="hint-fold-body" wx:if="{{hintFold.tkColsHint}}">{{t.importColsBody}}</view>
+    </view>
+
+    <button class="btn primary" bindtap="onChooseFile">{{t.importPick}}</button>
+
+    <!-- 🔴 R286：认不出这张表 ⇒ 「缺哪几列」诊断回执。
+         ⚠️ 必须**独立成块**、不能挂进下面预览区的 wx:if：诊断态下 preview/grade 全为空，
+            挂进去就永远不显示（老板只会看到"没反应"，正是 R283 记录的痛点）。
+         ⚠️ 文案来自后端**结构化列名** + 前端 terms 模板，后端不造文案（i18n 单源）。 -->
+    <view class="card2" wx:if="{{importDiagText}}">
+      <view class="warn">{{t.importDiagTitle}}</view>
+      <view class="muted">{{importDiagText}}</view>
+      <view class="muted" wx:if="{{importDiagFoundText}}">{{importDiagFoundText}}</view>
+
+      <!-- 🔴 R590：认不出表时的**逃生口** —— 老板手上这张表结构不对，除了去 Excel 里改没有出路，
+           而「改列名 / 删合计行 / 分列」正是 AI 最擅长、他最不会的事。
+           所以我们不教他改表，给他一段能直接粘给 AI 的话。
+           ⚠️ 指令正文**只在复制失败时才摊开**（448 字铺在页面上会撑长首屏，老板只划不读）。 -->
+      <!-- ⚠️ 用独立类 ai-fix-hint，**不复用 .hint**：
+           · .hint 在本页被 check_hint_fold::F9 当作"原有平铺短提示"计数（期望 1 处），
+             复用会把计数变成 2 ⇒ 判红；那条判据守的是"别把原有短提示折了"，是对的，不为新增让路。
+           · 语义上也该分开：这是**失败态的逃生口说明**，不是常驻提示。
+             分层线要求「≥18 字要折叠」的前提是"常驻提示会占首屏"；
+             而这块只在 importDiagText 非空时渲染（一次性、不占正常首屏），折叠反而多一次点击。 -->
+      <view class="ai-fix-hint">{{t.importAiFixHint}}</view>
+      <button class="btn ghost btn-block" bindtap="onCopyAiFix">{{t.importAiFixBtn}}</button>
+      <view class="copied-hint" wx:if="{{importAiFixCopiedText}}">{{importAiFixCopiedText}}</view>
+      <text class="ai-fix-text" wx:if="{{importAiFixText}}" user-select="true">{{importAiFixText}}</text>
+    </view>
+
+    <!-- 预览（解析 + 甲级门禁后展示；确认后才落库）—— 形态 C 与账单分开展示 -->
+    <!-- 🔴 R585：DSI-1 标准格式（AI 整理好的表）。它排在形态 C 之前，因为一份表可**同时含
+         堂食 + 多个外卖平台** —— 只显示一个「合计」老板会把它当某一个平台的钱。
+         这里**不给平台 picker**：平台已由表里的「平台」列写死，不再由用户选（选了反而会覆盖）。 -->
+    <view class="card2" wx:if="{{importPreview && importShape === shapeS}}">
+      <view class="cell">
+        <text class="lbl">{{t.importRowsLabel}}</text>
+        <text class="val">{{importPreview.rowCount}} {{t.importRowUnit}}</text>
+      </view>
+      <view class="cell">
+        <text class="lbl">{{t.importDsiDaysLabel}}</text>
+        <text class="val">{{importPreview.dateRangeText}}（{{importPreview.dayCount}} {{t.importDaysUnit}}）</text>
+      </view>
+      <view class="cell">
+        <text class="lbl">{{t.importDsiDishesLabel}}</text>
+        <text class="val">{{importPreview.dishCount}}</text>
+      </view>
+      <!-- 分渠道：一个渠道一行（堂食在前、外卖按金额降序，排序在 JS 里做完，wxml 不排） -->
+      <view class="cell" wx:for="{{importPreview.channels}}" wx:key="name">
+        <text class="lbl">{{t.importDsiChannelsLabel}} · {{item.name}}</text>
+        <text class="val">{{t.cur}}{{item.amountYuan}}</text>
+      </view>
+      <view class="cell">
+        <text class="lbl">{{t.importTotalLabel}}</text>
+        <text class="val">{{t.cur}}{{importPreview.amountYuan}}</text>
+      </view>
+      <!-- 三条说明都是「老板最容易当 bug 报」的点；空串 ⇒ 不渲染（不假报"一切正常"） -->
+      <!-- 🔴 R589：日期太旧（>12 个月）用 warn 而不是 muted —— 这是"可能要改"的提示，不是说明 -->
+      <view class="warn" wx:if="{{importAgeWarnText}}">{{importAgeWarnText}}</view>
+      <view class="muted" wx:if="{{importDsiNonIntText}}">{{importDsiNonIntText}}</view>
+      <view class="muted" wx:if="{{importDsiRefundsText}}">{{importDsiRefundsText}}</view>
+      <view class="muted" wx:if="{{importDsiNoPackText}}">{{importDsiNoPackText}}</view>
+      <button class="btn primary" wx:if="{{!importGrade || importGrade.pass}}" style="margin-top:24rpx;" bindtap="onConfirmImport">{{t.importConfirm}}</button>
+    </view>
+    <!-- 形态 C（外卖商品销量）：platform 机器判不出 ⇒ 必须选平台 -->
+    <view class="card2" wx:elif="{{importPreview && importShape === shapeC}}">
+      <!-- 🔴 R303 一级校验结论（表内自洽的错，导之前就报；空串 ⇒ 不渲染，也不假报"一切正常"） -->
+      <view class="warn" wx:if="{{importSanityText}}">{{importSanityText}}</view>
+      <!-- R234/J4d：20 字（≥18）⇒ 折叠。它出在**预览之后**（用户在核对数字），
+           此时页面已有大量信息，20 字说明会把 picker 挤下去。 -->
+      <view class="hint-fold">
+        <view class="hint-fold-head" data-key="tkShapeCHint" bindtap="onToggleHintFold">
+          <text class="hint-fold-guide">{{hintFold.tkShapeCHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+          <text class="hint-fold-arrow">{{hintFold.tkShapeCHint ? '▾' : '▸'}}</text>
+        </view>
+        <view class="hint-fold-body" wx:if="{{hintFold.tkShapeCHint}}">{{t.importShapeCHint}}</view>
+      </view>
+      <view class="field">
+        <text class="lbl">{{t.importPlatformLabel}}</text>
+        <picker mode="selector" range="{{importPlatformOptions}}" range-key="label" value="{{importPlatformIndex}}" bindchange="onImportPlatformPick">
+          <view class="pick">{{importPlatformChoiceLabel || t.importPickPlatform}}</view>
+        </picker>
+      </view>
+      <view class="cell">
+        <text class="lbl">{{t.importRowsLabel}}</text>
+        <text class="val">{{importPreview.groupCount}} {{t.importDaysUnit}}</text>
+      </view>
+      <view class="cell">
+        <text class="lbl">{{t.importMonthsLabel}}</text>
+        <text class="val">{{importPreview.dateRangeText}}</text>
+      </view>
+      <view class="cell">
+        <text class="lbl">{{t.importTotalLabel}}</text>
+        <text class="val">{{t.cur}}{{importPreview.amountYuan}}</text>
+      </view>
+      <view class="cell" wx:if="{{importZeroAmountQty.length}}">
+        <text class="lbl">{{t.importZeroAmountLabel}}</text>
+        <text class="val">{{importZeroAmountQty.length}} {{t.importRowUnit}}</text>
+      </view>
+      <view class="warn" wx:if="{{importGrade && !importGrade.pass}}">{{t.importFail}}</view>
+      <!-- 🔴 R250：门禁失败的**原因**（此前只渲染上面那句笼统话，用户看不出是"这份文件没数据"）。
+           `importFailReason` 为空串时整行不渲染（例如形态 C 预览期的 platform_missing 不算门禁失败）。 -->
+      <view class="muted" wx:if="{{importGrade && !importGrade.pass && importFailReason}}">{{importFailReason}}</view>
+      <!-- 🔴 确认按钮**不看 grade.pass 里的 platform 项**（云函数预览期已剔掉它）：形态 C 的
+           平台由用户在下面 picker 里选，若这里按 grade 拦，picker 与按钮同屏却永远点不到 = 死锁。
+           未选平台时按钮**可见但禁用**（disabled 绑定 importPlatformChoice），提示语在按钮下方。 -->
+      <!-- 🔴 R271：命中「跨平台重复」⇒ 禁用确认按钮（同一份表用两个平台各导一次会翻倍）。
+           不提供"仍然导入"出口：留后门等于让"随手选平台"继续发生；正解是改回原平台覆盖。 -->
+      <button class="btn primary" wx:if="{{!importGrade || importGrade.pass}}" style="margin-top:24rpx;" disabled="{{!importPlatformChoice || importDupBlock}}" bindtap="onConfirmImport">{{t.importConfirm}}</button>
+      <view class="warn" wx:if="{{importDupBlock}}">{{t.importDupTitle}}</view>
+      <view class="muted" wx:if="{{importDupText}}">{{importDupText}}</view>
+      <view class="muted" wx:if="{{importDupFixText}}">{{importDupFixText}}</view>
+      <!-- R234/J4d：本句 17 字 —— ⚠️ **保持平铺**（<18 字分层线下）。
+           它是「确认导入」按钮**紧下方**的操作提示，用户此刻正要动手 ⇒ 必须一眼可见。 -->
+      <view class="hint" wx:if="{{!importGrade || importGrade.pass}}">{{t.importPickPlatformHint}}</view>
+    </view>
+    <!-- 账单 / 形态 A（堂食菜品销售统计）预览 —— 🔴 R259：**只对"真账单"**受单源开关控制。
+         ⚠️ 判据是「**有没有 shape**」而不是「这是哪张卡」：本卡同时承载
+            ① 账单（云函数 handleBillImport **不回 shape** ⇒ `importShape === ''`）
+            ② 形态 A 堂食《菜品销售统计》(`d.shape === 'dish_sales'`)
+            ⇒ 若按卡片整块关，会**连带关掉堂食单品复盘的导入**（正是本轮要重点做的）。
+         ⚠️ 关的是"账单"：不展示账单数字、不给「确认导入」按钮，只留"正在打磨 + 数据还在 + 替代路径"。
+         ⚠️ 云函数侧另有同值兜底（`importSalesBill` confirm 分支），双保险。 -->
+    <view class="card2" wx:elif="{{importPreview}}">
+      <view wx:if="{{!billImportOn && !importShape}}">
+        <view class="warn">{{t.importBillPaused}}</view>
+        <!-- 🔴 R271：把"这张表被认成了什么"说清楚 —— 只说"打磨中"老板不知道该换哪张表，
+             会误以为是"京东不行"（真实判据是：表里有菜品/商品行就能导，只有订单号金额的就是账单）。 -->
+        <view class="muted" wx:if="{{importBillRecognizedText}}">{{importBillRecognizedText}}</view>
+        <view class="muted">{{t.importBillPausedHint}}</view>
+      </view>
+      <block wx:if="{{billImportOn || !!importShape}}">
+      <view class="cell">
+        <text class="lbl">{{t.importPlatformLabel}}</text>
+        <text class="val">{{importPlatformLabel}}</text>
+      </view>
+      <view class="cell">
+        <text class="lbl">{{t.importRowsLabel}}</text>
+        <text class="val">{{importPreview.rowCount}} {{t.importRowUnit}}</text>
+      </view>
+      <view class="cell">
+        <text class="lbl">{{t.importMonthsLabel}}</text>
+        <text class="val">{{importPreview.monthsText}}</text>
+      </view>
+      <view class="cell">
+        <text class="lbl">{{t.importTotalLabel}}</text>
+        <text class="val">{{t.cur}}{{importPreview.amountYuan}}</text>
+      </view>
+      <view class="cell" wx:if="{{importPreview.excludedRows > 0}}">
+        <text class="lbl">{{t.importExcludedLabel}}</text>
+        <text class="val">{{importPreview.excludedRows}} {{t.importRowUnit}}</text>
+      </view>
+
+      <!-- 甲级门禁结果 -->
+      <view class="warn" wx:if="{{importGrade && !importGrade.pass}}">{{t.importFail}}</view>
+      <!-- 🔴 R250：同上分支 —— 门禁失败原因必须透出（现场：京东 SKU 级空模板 ⇒ CHANNEL_EMPTY）。 -->
+      <view class="muted" wx:if="{{importGrade && !importGrade.pass && importFailReason}}">{{importFailReason}}</view>
+      <button class="btn primary" wx:if="{{importGrade && importGrade.pass}}" style="margin-top:24rpx;" bindtap="onConfirmImport">{{t.importConfirm}}</button>
+      </block>
+    </view>
+    <view class="muted" wx:elif="{{!importDone}}">{{t.importEmpty}}</view>
+    <view wx:else></view>
+    <!-- P0#8：导入成功结果条（常驻，给老板明确下一步 —— 看单品毛利 / 去对账） -->
+    <view class="card2 ok-bar" wx:if="{{importDone}}">
+      <view class="ok-title">{{t.importSuccess}}</view>
+      <view class="muted">{{importDoneText}}</view>
+      <!-- 🔴 R586：后端报「有组旧记录没清干净」时必须让人看见 —— 新数据是对的，
+           但残留旧行会让毛利偏高。空串 ⇒ 不渲染（不假报"一切正常"）。 -->
+      <view class="warn" wx:if="{{importPruneWarnText}}">{{importPruneWarnText}}</view>
+      <button class="btn primary" bindtap="goRecon">{{t.goRecon}}</button>
+      <button class="btn ghost" bindtap="goDishReview">{{t.goDishReview}}</button>
+      <button class="btn ghost btn-block" bindtap="dismissDone">{{t.importGoLater}}</button>
+    </view>
+  </block>
+</view>
+<view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

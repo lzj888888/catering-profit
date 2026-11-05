@@ -1,0 +1,27 @@
+/* pages/month/index.wxss —— M1 月度经营首页（继承 app.wxss 共享组件） */
+/* 双 tab 切换已移除（R486）：首页只显单数字摘要卡，避免"两个利润"错觉 */
+.banner.warn { background: #fef3c7; }
+.banner .btn-small { width: 160rpx; }
+
+/* ===== R234/J4e · 行内长提示折叠（句级，与月录入页 / M2 / assetEdit / amortize / takeaway 同形）=====
+ * body 底色 #f3f7fb 与全局 `.hint` 同色 ⇒ 折叠前后视觉连贯。
+ * 🔴 字号一律 ≥28rpx（AD-G1）、头行 min-height ≥88rpx（AD-G2）。
+ * ⚠️ **不套外层白卡**（R234/J3 首版自伤教训）：外层只留间距，否则 body 嵌白卡 = 双层圆角。 */
+.hint-fold { padding: 0 0 6rpx; }
+.hint-fold-head { display: flex; align-items: center; justify-content: space-between;
+  min-height: 88rpx; padding: 14rpx 8rpx; }
+.hint-fold-guide { font-size: 28rpx; color: #1e3a5f; }
+.hint-fold-arrow { font-size: 28rpx; color: #1e3a5f; }
+.hint-fold-body { font-size: 28rpx; color: #4a5b70; line-height: 1.6; padding: 16rpx 20rpx;
+  background: #f3f7fb; border-radius: 12rpx; margin: 0 0 12rpx; }
+
+/* 暖化：双口径常驻口径解释（P0#2，tab 下常显一行小字，不折叠） */
+.caliber-hint { font-size: 28rpx; color: #8a94a6; line-height: 1.5; margin-top: 12rpx; }
+
+/* 🔴 R489：倒轧依据行（「本数按期末库存 ¥28,000 倒轧 · 去核对」）——
+ * 它可点（去库存页核对），所以要跟上面的静态小字区分开：用主色 + 下划线暗示"能点"。
+ * ⚠️ 字号仍 ≥28rpx（AD-G1）；不新起卡片，避免单数字卡又被切碎。 */
+.basis-line { color: #1e3a5f; text-decoration: underline; }
+
+/* ===== R376：清空本月 —— 危险操作与普通 ghost 按钮区分（红边红字，沿用既有危险色 #c0392b） ===== */
+.btn-clear { color: #c0392b; border-color: #e6b3ad; }

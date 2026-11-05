@@ -1,0 +1,40 @@
+[
+  {
+    "k": "connected",
+    "v": true
+  },
+  {
+    "k": "SET_values",
+    "v": {
+      "row0": {
+        "goods": "5000",
+        "pack": "200",
+        "subsidy": "300",
+        "qty": "100",
+        "subtotal": ""
+      },
+      "sum": "0.00",
+      "perOrder": "0.00",
+      "marketing": [
+        {
+          "name": "",
+          "amt": ""
+        }
+      ]
+    }
+  },
+  {
+    "k": "RECONCILE_4900",
+    "v": {
+      "twRecYuan": "4900",
+      "twRecText": "差 5200 元，可能漏填了某项扣款。常见漏项：推广费 / 商家配送补贴 / 违规扣款。"
+    }
+  },
+  {
+    "k": "RECONCILE_5500_wrong",
+    "v": {
+      "twRecYuan": "5500",
+      "twRecText": "差 5800 元，可能漏填了某项扣款。常见漏项：推广费 / 商家配送补贴 / 违规扣款。"
+    }
+  }
+]

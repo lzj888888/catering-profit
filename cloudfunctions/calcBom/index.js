@@ -54,8 +54,38 @@ exports.main = async (event) => {
     const preset = common.specDerive.findPreset(key);
     if (!preset) continue;
     const priceFen = (v.spec_prices && v.spec_prices[key] != null) ? v.spec_prices[key] : 0;
+    // 🔴 R547（M1）：「每100g」不是"系数全 1 的恒等规格"，而是**单位换算**：
+    //   100g 成本 = 整份成本 × 100 ÷ 这一份的克重（克重由页面送 `spec_portions`）。
+    //   实现仍走 `deriveSpec`（喂一个**五项同值**的均匀系数）—— 好处是成本/毛利/建议价全部由
+    //   **同一个 calcCostCard** 算，不在这里另写一份毛利公式（两份口径迟早漂移）。
+    //   改前：coef 全 1 ⇒ 成本按**整份**算，而售价填的是「元/100g」⇒ 毛利率被严重低估
+    //   （实测：成本 3.00 / 每100g 售价 3.40 / 一份 500g ⇒ 真值 82.35%，旧实现 11.76%），
+    //   建议价也按整份成本反推 ⇒ 老板照它定价必亏。**零报错**，故必须靠守卫与回带用例钉住。
+    //   克重没填 ⇒ **不给数**（fail-closed）：返回 `need_portion:true` + 全 0，页面显式提示去补克重。
+    let coef = preset.coef;
+    let needPortion = false;
+    if (preset.spec_key === common.specDerive.PER100G_KEY) {
+      const factor = common.specDerive.per100gFactor(v.spec_portions && v.spec_portions[key]);
+      if (factor > 0) coef = common.specDerive.uniformCoef(factor);
+      else needPortion = true;
+    }
+    if (needPortion) {
+      specResults.push({
+        spec_key: preset.spec_key,
+        name: preset.name,
+        coef: preset.coef,
+        price_fen: priceFen,
+        need_portion: true,
+        material_total_fen: 0,
+        unit_cost_fen: 0,
+        gross_profit_fen: 0,
+        gross_margin_pct: 0,
+        reverse_price_fen: 0,
+      });
+      continue;
+    }
     try {
-      const d = common.deriveSpec(v.card.lines, v.card.auxFen, preset.coef);
+      const d = common.deriveSpec(v.card.lines, v.card.auxFen, coef);
       const sr = calcCostCard({
         mode: v.card.mode,
         lines: d.lines,
@@ -68,8 +98,9 @@ exports.main = async (event) => {
       specResults.push({
         spec_key: preset.spec_key,
         name: preset.name,
-        coef: preset.coef,                    // 用的是哪套系数（页面据此显示"主料×0.5"）
+        coef,                                 // 用的是哪套系数（per100g = 均匀系数 100/克重）
         price_fen: priceFen,
+        need_portion: false,
         material_total_fen: sr.material_total_fen,
         unit_cost_fen: sr.unit_cost_fen,      // 规格成本（**展示/试算值**，不落库）
         gross_profit_fen: sr.gross_profit_fen,

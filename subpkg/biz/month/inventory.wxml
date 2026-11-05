@@ -1,0 +1,69 @@
+<view class="form safe-bottom" wx:if="{{!loading}}">
+  <view class="archived-bar" wx:if="{{isArchive}}">
+    {{t.archiveReadonly}}<text wx:if="{{inGrace}}"> · {{t.graceNote}}</text>
+  </view>
+
+  <view class="field">
+    <view class="lbl-col">
+      <text class="lbl">{{t.opening}}</text>
+      <text class="muted">{{t.openingHint}}</text>
+      <text class="muted">{{t.openingAux}}</text>
+    </view>
+    <input class="val-input" type="digit" confirm-type="done" disabled="{{readOnly || openingAuto}}"
+      value="{{openingYuan}}" bindinput="onOpening"  adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+  <view class="hint" wx:if="{{openingNote}}">{{openingNote}}</view>
+  <view class="group-ops" wx:if="{{openingAuto || prevMonth}}">
+    <button class="btn-small ghost" wx:if="{{openingAuto}}" bindtap="onUnlockOpening">{{t.openingUnlock}}</button>
+    <button class="btn-small ghost" wx:if="{{prevMonth}}" bindtap="onFixPrev">{{t.openingFix}}</button>
+  </view>
+  <view class="field">
+    <view class="lbl-col">
+      <text class="lbl">{{t.purchase}}</text>
+      <text class="muted">{{t.purchaseHint}}</text>
+      <text class="muted">{{t.purchaseAux}}</text>
+    </view>
+    <input class="val-input" type="digit" confirm-type="done" disabled="{{readOnly}}"
+      value="{{purchaseYuan}}" bindinput="onPurchase"  adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+  <view class="field">
+    <view class="lbl-col">
+      <text class="lbl">{{t.closing}}</text>
+      <text class="muted">{{t.closingHint}}</text>
+      <text class="muted">{{t.closingAux}}</text>
+    </view>
+    <input class="val-input" type="digit" confirm-type="done" disabled="{{readOnly}}"
+      value="{{closingYuan}}" bindinput="onClosing"  adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+
+  <!-- R493：期末库存=0（含未填）时才让老板确认"是否真的盘了点"；填了正数直接视为已盘点 -->
+  <view wx:if="{{showStockTake}}" class="field stock-take">
+    <view class="lbl-col">
+      <text class="lbl">{{t.stockTakeDone}}</text>
+      <text class="muted">{{t.stockTakeDoneHint}}</text>
+    </view>
+    <switch checked="{{stockTakeDone}}" bindchange="onToggleStockTake" disabled="{{readOnly}}" color="#1e3a5f" />
+  </view>
+  <view wx:else class="muted">{{t.stockTakeNotePos}}</view>
+
+  <!-- B：实时预览（保存后自动算出，帮老板马上看到「这三个月数字会算出啥」）-->
+  <view class="card2" wx:if="{{realConsumeFen > 0}}">
+    <view class="muted">{{t.realConsumePreview}}</view>
+    <view class="result-num">{{t.cur}}{{realConsumeYuan}}</view>
+    <view class="muted">{{t.realConsumePreviewNote}}</view>
+  </view>
+
+  <!-- R234/J4e：本句 ≥18 字 ⇒ 折叠（R234 完整清点口径：剥注释 + 含复合 class）。 -->
+  <view class="hint-fold">
+    <view class="hint-fold-head" data-key="invHintFormula" bindtap="onToggleHintFold">
+      <text class="hint-fold-guide">{{hintFold.invHintFormula ? t.hintFoldHide : t.hintFoldShow}}</text>
+      <text class="hint-fold-arrow">{{hintFold.invHintFormula ? '▾' : '▸'}}</text>
+    </view>
+    <view class="hint-fold-body" wx:if="{{hintFold.invHintFormula}}">{{t.hintFormula}}</view>
+  </view>
+
+  <view style="height:20rpx;"></view>
+  <view class="warn-note" wx:if="{{badAmountCount > 0}}">{{t.amountBadTip}}</view>
+  <button class="btn primary" style="margin-top:0;" bindtap="onSave" disabled="{{readOnly}}">{{t.save}}</button>
+</view>
+<view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

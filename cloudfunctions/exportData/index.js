@@ -43,22 +43,66 @@ function loadXlsx() {
 // R266：多工作表（月度报表 = 利润表 / 收入费用明细 / 摊销来源 / 口径说明 四张）。
 //   起因（李老师真机反馈）：导出能出 Excel 了，但「月度报表」里**没有摊销**，
 //   两个利润数字并列却看不出差在哪、每个数怎么来的 ⇒ 拿到表也对不上账。
+// R298·B3-W2：工作表名去重。SheetJS 的 `book_append_sheet` 遇重名会**抛 `already exists`**，
+//   而重名有两处天然制造法：`slice(0, 31)` 把两个长名截成同一个、`(name || 'Sheet1')` 让两个
+//   缺名表都落成 `Sheet1`。⇒ 统一入口改名：先按 Excel 硬限截到 31 字符，再对已存在名追加 `_2`/`_3`…
+function uniqueSheetName(wb, rawName) {
+  const base = String(rawName || 'Sheet1').slice(0, 31) || 'Sheet1';
+  if (wb.SheetNames.indexOf(base) < 0) return base;
+  for (let i = 2; i <= 9999; i++) {
+    const suffix = '_' + i;
+    const cand = base.slice(0, 31 - suffix.length) + suffix;
+    if (wb.SheetNames.indexOf(cand) < 0) return cand;
+  }
+  return base.slice(0, 29) + '_x';   // 理论不可达（万张同名表）：保底留痕
+}
+// R298·B3-W1：本函数契约是「只返回字符串」——`loadXlsx` 缺失已 fail-soft 成 `''`，
+//   但 SheetJS 自身也会抛（空工作簿 `Workbook is empty` / 非法表名等）。若让异常逃逸，
+//   `main` 里那句「导出服务未安装 xlsx 依赖」人话就轮不到说，前端只会拿到 undefined。
+//   ⇒ 一并兜成 `''`，交 `main` 的 `if (!content) return fail(...)` 统一转人话。
 function xlsxSheetsBase64(sheets) {
   const XLSX = loadXlsx();
   if (!XLSX) return '';
-  const wb = XLSX.utils.book_new();
-  (sheets || []).forEach((s) => {
-    const aoa = [s.header].concat((s.rows || []).map((r) => r.map((v) => (typeof v === 'number' ? v : String(v == null ? '' : v)))));
-    const ws = XLSX.utils.aoa_to_sheet(aoa);
-    XLSX.utils.book_append_sheet(wb, ws, String(s.name || 'Sheet1').slice(0, 31));
-  });
-  return XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
+  try {
+    const wb = XLSX.utils.book_new();
+    (sheets || []).forEach((s) => {
+      const aoa = [s.header].concat((s.rows || []).map((r) => r.map((v) => (typeof v === 'number' ? v : String(v == null ? '' : v)))));
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      XLSX.utils.book_append_sheet(wb, ws, uniqueSheetName(wb, s.name));
+    });
+    return XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
+  } catch (e) {
+    console.error('[exportData] xlsx 序列化失败：' + ((e && e.message) || e));
+    return '';
+  }
 }
 function xlsxBase64(header, rows, sheetName) {
   return xlsxSheetsBase64([{ name: sheetName, header: header, rows: rows }]);
 }
 // 工作表名（≤31 字符，Excel 硬限）
 const SHEET_NAME = { m1_report: '月度报表', m3_cards: '菜品成本卡', m2_compare: '方案对比', m2_matrix: '场景矩阵' };
+
+// ===== A7（2026-11-05 · 规范 v1.1 §1）：M2 免费导出的署名页 =====
+//   免费导出是为了**传播**（老板拿去跟合伙人商量、跟房东谈租、给加盟商看、去银行谈贷），
+//   不是为了白送 ⇒ 每一份出去的件都要能指回我们，否则免费导出等于纯流失。
+//   ⚠️ 为什么不是「往表里嵌小程序码图片」（如实交代，别当成做完了）：
+//     ① 本函数用的是 SheetJS **社区版**（xlsx@0.18.5），插图属于 Pro 版能力，社区版写不进图片；
+//     ② 小程序当前**尚未发布**，没有可调 `wxacode.getUnlimited` 拿到的码图。
+//   ⇒ 现阶段落「文字引导」；真码图待发布后由前端 canvas 图片出口绘制（挂账 A7-b，见规范 §11）。
+function buildAboutRows(c) {
+  const shopName = (c && c.shopName) || '';
+  const stamp = (c && c.stamp) || 0;
+  const t = stamp ? new Date(stamp).toISOString().replace('T', ' ').slice(0, 16) + ' UTC' : '';
+  return [
+    ['本表由', '店算 · 餐饮盈亏平衡测算'],
+    ['生成时间', t],
+    ['测算对象', shopName || '—'],
+    ['数据来源', '全部来自你自己填写的测算参数；未做任何外部取值、未编造任何数字'],
+    ['继续测算', '微信搜一搜「店算」'],
+    ['口径说明', '单位：元；毛利率/占比为百分比数值；空值一律显示「—」，不填 0（0 与「没填」含义不同）'],
+    ['免责', '本表为经营测算参考，不构成经营决策建议'],
+  ];
+}
 
 // R266：分 → 元（**仅导出展示用**；库内与引擎一律「分」整数）
 function yuan(fen) { return Math.round(Number(fen) || 0) / 100; }
@@ -90,19 +134,40 @@ function buildMonthlySheets(c) {
     const gross = row.gross_profit_fen != null ? nz(row.gross_profit_fen) : incTotal - real;
     const gmPct = row.gross_margin_pct != null ? nz(row.gross_margin_pct)
       : (incTotal === 0 ? 0 : Math.round(((gross / incTotal) * 100 + Number.EPSILON) * 100) / 100);
-    const gapFen = real - direct;
+    // 🔴 R479：参考口径用的**不一定**是你填的那个消耗 —— R477 之后，库存模式没填消耗时
+    //   参考口径已回落到倒轧值（real），此时"消耗差异"应为 0，而不是 real − direct。
+    //   若仍按 real − direct 算 ⇒ 利润表里的「经营参考 − 消耗差异 − 摊销」等式**对不上账**，
+    //   且导出的"消耗差异"与页面显示的差异互相矛盾（页面走 getLedger 重算、导出读落库快照）。
+    //   落库字段 `ref_material_source` 由 saveLedger 写入；**旧账没有该字段** ⇒ 一律按 'direct'
+    //   （与它当时落库的值自洽 —— 不许拿新口径去解释旧数字）。
+    const refSrc = row.ref_material_source === 'reverse' ? 'reverse' : 'direct';
+    const refMat = refSrc === 'reverse' ? real : direct;
+    const gapFen = real - refMat;
     const diffFen = row.profit_diff_fen != null ? nz(row.profit_diff_fen) : gapFen + amort;
 
     // —— 表1：利润表（从上往下加减，能对上账）——
     const profitRows = [
       ['营业收入', yuan(incTotal), '收入明细逐项累加（见「收入费用明细」）'],
       ['减：费用合计', yuan(expTotal), '费用明细逐项累加（见「收入费用明细」）'],
-      ['减：食材消耗（本月填写）', yuan(direct), '本月填写的食材总消耗'],
+      [refSrc === 'reverse' ? '减：食材消耗（库存倒轧）' : '减：食材消耗（本月填写）',
+        yuan(refMat),
+        refSrc === 'reverse'
+          ? '库存模式下没填消耗 ⇒ 按「期初 + 采购 − 期末」倒轧（与页面同源）'
+          : '本月填写的食材总消耗'],
       ['减：一次性投入（本月）', yuan(lump), '资产台账里「一次算清」且计入本月的投入（见「摊销来源」）'],
-      ['＝ 经营参考利润', yuan(opRef), '= 收入 − 费用 − 本月填写消耗 − 一次性投入（不含摊销·现金流视角）'],
+      ['＝ 经营参考利润', yuan(opRef),
+        refSrc === 'reverse'
+          ? '= 收入 − 费用 − 倒轧消耗（期初 + 采购 − 期末） − 一次性投入（不含摊销·现金流视角）'
+          : '= 收入 − 费用 − 本月填写消耗 − 一次性投入（不含摊销·现金流视角）'],
       ['', '', ''],
       ['〔全要素调整〕', '', '把「这个月没掏钱、但确实花掉了的成本」加进来'],
-      ['　消耗差异（真实 − 填写）', yuan(gapFen), invOn ? '库存开关开：真实消耗 = 期初 + 采购 − 期末' : '库存开关关：两者相等，无差异'],
+      ['　消耗差异（真实 − 参考口径用的消耗）', yuan(gapFen),
+        // 🔴 A12（2026-11-05）：`refSrc==='direct' && invOn` 这个组合**永不成立**
+        //   （库存开恒给 'reverse'；direct 只出现在库存关，此时两者相等）。
+        //   保留该分支只为不改变既有输出宽度，但它实际不可达 —— 别据此以为「库存开会有消耗差」。
+        refSrc === 'reverse'
+          ? '参考口径已用倒轧值 ⇒ 两者相等，无差异'
+          : (invOn ? '库存开关开：真实消耗 = 期初 + 采购 − 期末' : '库存开关关：两者相等，无差异')],
       ['　减：当月摊销', yuan(amort), amOn ? '资产台账按分摊月数逐笔计算（见「摊销来源」）' : '摊销开关关闭 ⇒ 本月不计入'],
       ['＝ 全要素真实利润', yuan(realP), '= 经营参考利润 − 消耗差异 − 当月摊销'],
       ['', '', ''],
@@ -151,7 +216,12 @@ function buildMonthlySheets(c) {
       ['金额单位', '元（库内与引擎一律以「分」整数计算，本表展示保留 2 位小数）'],
       ['库存开关', invOn ? '开' : '关'],
       ['摊销开关', amOn ? '开' : '关'],
-      ['经营参考利润', '= 营业收入 − 费用合计 − 本月填写食材消耗 − 一次性投入（不含摊销，现金流视角）'],
+      // 🔴 R490：R479 只条件化了「减：食材消耗」与「消耗差异」两行，这两处**公式说明**仍写死「本月填写」
+      //   ⇒ 库存模式（倒轧）下，同一张表上一行说「库存倒轧」、下一行说「本月填写」，导出件自相矛盾。
+      //   说明必须跟着 refSrc 走：老板拿这张表复核时，公式行就是他的核对依据。
+      ['经营参考利润', refSrc === 'reverse'
+        ? '= 营业收入 − 费用合计 − 倒轧食材消耗（期初 + 采购 − 期末） − 一次性投入（不含摊销，现金流视角）'
+        : '= 营业收入 − 费用合计 − 本月填写食材消耗 − 一次性投入（不含摊销，现金流视角）'],
       ['全要素真实利润', '= 营业收入 − 费用合计 − 真实食材消耗 − 当月摊销 − 一次性投入'],
       ['真实食材消耗', invOn ? '库存开关开 ⇒ 期初库存 + 本月采购 − 期末库存' : '库存开关关 ⇒ 等于本月填写值'],
       ['当月摊销', '由资产台账逐笔按分摊月数计算（末月尾差倒挤）；摊销开关关闭时为 0'],
@@ -160,7 +230,7 @@ function buildMonthlySheets(c) {
       ['待结算', '本表不列：待结算是现金流指标，不进入毛利与利润'],
     ];
 
-    sheets = [
+    const sheets = [
       { name: '利润表', header: ['项目', '金额(元)', '说明（这个数怎么来的）'], rows: profitRows },
       { name: '收入费用明细', header: ['类别', '项目', '层级', '金额(元)', '来源'], rows: detailRows },
       { name: '摊销来源', header: ['处置方式', '名称', '原值(元)', '起始月', '分摊月数', '提前终止月', '月均参考(元)'], rows: assetRows },
@@ -190,10 +260,19 @@ exports.main = async (event) => {
   //   矩阵与对比表导出一律免费。这是**有意的引流产品决策**，不是付费墙漏洞 ——
   //   后续复审请勿把它当 bug 修掉。矩阵数据全部来自前端已算结果、不读店铺资产，
   //   故也不校验店铺归属（避免把免费引流工具误绑成「需先开店铺」）。
-  const isM2FreeExport = scope === 'm2_matrix';
+  // 🔴 A6（2026-11-05 李老师拍板·规范 v1.1 §1）：M2 **对比表导出同样免费** ——
+  //   此前只有矩阵免费、对比表仍收费，同一模块两个口径，本身不自洽（矩阵导出早已免费）。
+  //   判据是「拿走的东西用来传播还是用来留档」：对比表是拿去跟合伙人/房东/银行谈的传单，
+  //   锁住它等于锁住唯一的口碑路径；M1 月报（留档）与 M3 成本卡（核心资产）仍收费。
+  const isM2FreeExport = scope === 'm2_matrix' || scope === 'm2_compare';
+
+  // ⚠️ 与上面**必须分开**：只有矩阵是「连店铺都不需要」。
+  //   对比表数据虽也来自前端 table，但仍要按 plan_ids 校验方案归属（下方 m2_compare 分支会
+  //   `da.list('shop_sandbox')`）—— 若把它并进 isM2NoShop，shopId/da 都不会被赋值，该分支直接崩。
+  const isM2NoShop = scope === 'm2_matrix';
 
   let da, shopDoc, shopName, shopId;
-  if (isM2FreeExport) {
+  if (isM2NoShop) {
     shopName = (typeof v.shop_name === 'string' && v.shop_name) ? v.shop_name : '选址测算';
   } else {
     shopId = event && event.shop_id;
@@ -219,7 +298,7 @@ exports.main = async (event) => {
   // ===== 2. 导出权限（只读 expire_at）=====
   // M3.28（批次 Q3）：判定下沉到单源 common/entitlement.js —— 理由见该文件头注。
   //   ⚠️ 不许在本函数里写第二遍 `expireAt > nowUtc()`：付费语义一旦分叉，"导出"与"S1 套餐"就会给出两个答案。
-  //   🔴 M2 矩阵导出（isM2FreeExport）**跳过**此判定（引流免费，见上方注释）。
+  //   🔴 M2 导出（矩阵 + 对比表，isM2FreeExport）**跳过**此判定（引流免费，见上方 A6 注释）。
   if (!isM2FreeExport) {
     const canExport = await hasFeature(db, userId, 'export');
     if (!canExport) return fail(ERROR_CODES.FEATURE_LOCKED, '导出需开通真实利润');
@@ -252,6 +331,8 @@ exports.main = async (event) => {
   } else if (scope === 'm2_compare') {
     // M2 对比表：前端已用 calcSandbox 重算好 `table`（= 图片/Excel 两出口共用同一份已算结果）。
     // 本函数只做归属校验（不泄漏他人方案）+ 序列化。
+    // 🔴 A6（2026-11-05）：本导出已**免费**（isM2FreeExport 含 m2_compare），但归属校验**保留** ——
+    //   免费不等于可以导出别人的方案。shop_id 由 utils/api.js 的 call() 自动注入。
     const planIds = v.plan_ids.filter((s) => typeof s === 'string' && s);
     for (const pid of planIds) {
       const r = await da.list('shop_sandbox', { shop_id: shopId, sandbox_id: pid });
@@ -264,7 +345,11 @@ exports.main = async (event) => {
     body = table.rows || [];
     fileBase = `${shopName || '店铺'}_方案对比`;
   } else {
-    const res = await da.list('shop_cost_card', { shop_id: shopId });
+    // 🔴 R297-⑥（审计 M3-B6）：**必须是 listAll（分页取全）** —— `shop_cost_card` 是版本模型
+    //   （只 INSERT 不 UPDATE），行数 = Σ(各 card_code 的版本数)；`list()` 单页硬上限 1000
+    //   ⇒ 卡/版本多的店导出会**静默少卡**（导出件是给老板存档、给会计的东西，少行不报错）。
+    //   R157 修过列表页那条腿（getCostCard/index.js:41-44），导出这条腿当时漏了 ⇒ 同族两条取数口径不一致。
+    const res = await da.listAll('shop_cost_card', { shop_id: shopId });
     const cards = ((res && res.data) || []);
     // 按 card_code 取最新版本
     const latest = new Map();
@@ -297,9 +382,15 @@ exports.main = async (event) => {
       return o;
     });
   } else if (format === 'xlsx') {
-    content = sheets
-      ? xlsxSheetsBase64(sheets)
-      : xlsxBase64(header, body, SHEET_NAME[scope] || 'Sheet1');
+    // A7：M2 免费导出附带「关于本表」工作表（署名 + 口径 + 来源指引）。
+    //   做成**第二张表**而不是往数据表尾塞行 —— 塞行会把首列撑宽、破坏表格版式，
+    //   而这份件正是要拿给外人看的，版式就是专业度。
+    content = (isM2FreeExport && !sheets)
+      ? xlsxSheetsBase64([
+        { name: SHEET_NAME[scope] || 'Sheet1', header: header, rows: body },
+        { name: '关于本表', header: ['项目', '内容'], rows: buildAboutRows({ shopName: shopName, stamp: stamp }) },
+      ])
+      : (sheets ? xlsxSheetsBase64(sheets) : xlsxBase64(header, body, SHEET_NAME[scope] || 'Sheet1'));
     // 🔴 依赖缺失必须**响亮失败**：静默回退成 CSV 会让用户又回到「导出完成但打不开」的原点。
     if (!content) return fail(ERROR_CODES.SYSTEM_ERROR, '导出服务未安装 xlsx 依赖，暂时无法生成 Excel');
     encoding = 'base64';

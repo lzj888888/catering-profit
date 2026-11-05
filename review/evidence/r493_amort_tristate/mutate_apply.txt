@@ -1,0 +1,4 @@
+orig_md5 a1b88a5f6689878c660030deb5b9c387 occurrences 2
+mutated first occurrence only; new len diff -10
+orig_md5 f9c6e64eefab2000d54c3d613a4a6502 occurrences 1
+restored md5 a1b88a5f6689878c660030deb5b9c387

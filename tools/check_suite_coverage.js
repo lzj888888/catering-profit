@@ -52,6 +52,13 @@ const FACE_B_NAME = /(^|\/)(check_|verify_|selftest_|test_)[^/]*\.(js|py)$/;
 
 // 豁免白名单（面 B）—— 取证脚本，非生产判据；改动须带 by/date/reason，且双向防腐
 const EXEMPT = {
+  'review/evidence/r589_ai_contract/check_output.js':
+    { by: 'R589', date: '2026-11-01', reason: '把外部 AI 产出的文本喂给 dsi1.parse 的一次性取证脚本；'
+        + '产物由豆包/DeepSeek 现场生成、不稳定，不适合进常驻门禁。'
+        + '生产判据是 tools/check_dsi1_parse.js（解析器本身）与 tools/check_import_ai_fix.js（指令内容）' },
+  'review/evidence/r585_dsi_e2e/verify_examples.py':
+    { by: 'R585', date: '2026-10-31', reason: '把 DSI-1 样例 xlsx 读回成行数组 JSON 的一次性取证脚本；'
+        + '生产判据是 tools/check_dsi1_parse.js 的 D4 组（读它产出的 JSON），本脚本不进门禁' },
   'review/evidence/batch8c_verify_20260918/verify_8c_all.js':
     { by: 'round60', date: '2026-09-20', reason: 'batch8c 批次验收的一次性取证脚本，非生产判据' },
   'review/evidence/ui_fix_20260918/verify_ui_fix.js':
@@ -73,6 +80,15 @@ const EXEMPT = {
   // r272 补：堂食 270 行 ↔ 成本卡通关的建卡取证脚本（核验已建卡是否覆盖 Top 营收菜），纯一次性取证件，非生产判据。
   'review/evidence/r272_tangshi_jiakan/verify_cards.js':
     { by: 'r272', date: '2026-10-12', reason: '堂食建卡覆盖核验的一次性取证脚本，非生产判据' },
+  // R393 补：R391（出参契约补充声明）的取证脚本 —— 逐函数核对契约声明字段是否齐全。
+  //   它在 R391 收尾时才写入，而当轮门禁跑在那之前 ⇒ 当场没人报红。
+  //   属「新证据文件赶在门禁之后落地」，纯一次性取证件，不参与生产链路（S7 仍守它不被 SUITES 引用）。
+  'review/evidence/r391_contract_outparams/verify_out_params.py':
+    { by: 'r393', date: '2026-10-20', reason: 'R391 出参契约字段完备性的一次性取证脚本，非生产判据' },
+  // R444 补：部署器 UnicodeDecodeError 修复的复现取证脚本 —— 验证修复前 judge msg 为空串、修复后 201 字符且 OK=true。
+  //   纯一次性取证件，不参与任何生产链路（S7 仍守它不被 SUITES 引用）。
+  'review/evidence/r444_runway/verify_judge_enc.py':
+    { by: 'r444', date: '2026-10-23', reason: 'R444 部署器解码修复复现的一次性取证脚本，非生产判据' },
 };
 
 function gitTracked() {
