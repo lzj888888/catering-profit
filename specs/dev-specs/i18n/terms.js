@@ -68,6 +68,29 @@ const TERMS = {
       indBandLbl: '参考区间',
       indEmpty: '未填',
       indFoot: '参考区间按「业态 × 城市层级」折算；没填的项不评级（不按 0 算）。',
+      // ===== A11（2026-11-05）：摊销三件套 =====
+      // 「还剩几期 / 哪个月摊完 / 摊完后月利润」-- 摊销每月压着利润，但它有尽头。
+      // 把尽头摆出来，才是老板判断「再扛几个月」的唯一可算依据（不是打气话）。
+      amortTitle: '摊销还有多久',
+      amortRemainPre: '还剩',
+      amortRemainSuf: '期',
+      amortEndPre: '预计',
+      amortEndSuf: '摊完',
+      amortAfterLbl: '摊完后每月真实利润',
+      amortAfterHint: '假设收入与开支都不变，只把摊销这笔减项去掉',
+      amortOff: '摊销没开启，这三项不适用（去「一次性投入」页打开）',
+      amortNone: '还没有在摊的投入，不存在「摊完」这回事',
+      // ===== A13/A19：客流与会员（录入在月度录入页，这里只读展示）=====
+      trTitle: '客流与会员',
+      trThis: '本月客流',
+      trOld: '其中老客',
+      trRepeat: '复购率',
+      trMember: '会员销售占比',
+      trPending: '待补',
+      trHint: '在「月度录入」页填写，填了才显示',
+      // A20：深度诊断补录入口（结果页客流卡下方）
+      diagInputGo: '补全诊断数据（选填 7 项）',
+      diagInputHint: '诊断要看客流同比、口碑、租约、借贷这些账里没有的东西，补一次就够，以后每月通用',
     },
     m2: {
       // 🔴 R518（2026-10-26 李老师拍板，方案 A）：改名「开店盈亏平衡点测算」→「开店盈亏沙盘」。
@@ -2805,6 +2828,58 @@ const TERMS = {
     switchSaved: '已切换',
     switchFail: '切换失败，请重试',
     movedNote: '核算方式（食材怎么算）在「月度录入」页里选；一次性投入在「一次性投入」页里登记',
+  },
+
+  // ===== A13/A19（2026-11-05）：月度录入 · 经营客流三字段（全部选填）=====
+  // 为什么要有这一段：复购率、会员销售占比两个指标一直算不出来，根因不是公式缺，是**没人录客流**。
+  // 三项都能留空 ⇒ 留空时派生指标为 null（页面显示【待补】），**绝不当 0 算**。
+  traffic: {
+    title: '③ 经营客流（选填）',
+    hint: '三项都能留空。填了能算复购率和会员销售占比，做诊断时才不用靠猜',
+    thisMonth: '本月客流（人次）',
+    thisMonthPh: '整月进店人次',
+    oldCustomer: '其中老客（人次）',
+    oldCustomerPh: '来过不止一次的算老客',
+    memberSales: '会员销售额',
+    memberSalesPh: '会员消费合计，没有会员体系就留空',
+    pending: '待补',
+    repeatRate: (v) => `复购率 ${v}%`,
+    memberRatio: (v) => `会员销售占比 ${v}%`,
+    errOldGtTraffic: '「其中老客」不能超过「本月客流」',
+    errNotInteger: '人次只能填整数',
+  },
+
+  // ===== A20（2026-11-05）：深度诊断 · 补录页 =====
+  // M1 的账能自动算 65 分；这 7 个客观值补上才能算满 100 分并判 6 条红线。
+  // 🔴 全部可留空：留空 = 那几分不进分母（"未判定"），**绝不按 0 分算**（引擎底线 1）。
+  // 🔴 枚举键（trendKeys/districtKeys/debtKeys）与 common/diagnosisEngine.js::DIAG_ENUM 必须同名，
+  //    页面只送 key、不送中文，否则引擎认不出 ⇒ 选中了却不计分。
+  diagInput: {
+    title: '补录 7 项（诊断用）',
+    hint: '月度账能自动算 65 分；这几项补上才算满 100 分、才判得了红线。都能留空，留空只是那几项不判，不会按 0 算。',
+    trafficLastYear: '去年同期客流（人次）',
+    trafficLastYearPh: '去年同一个月的进店人次',
+    rating: '平台评分',
+    ratingPh: '如 4.6',
+    reviewTrend: '差评趋势',
+    district: '商圈变化',
+    leaseMonths: '租约还剩（月）',
+    leaseMonthsPh: '如 18；自有房产填 600',
+    debt: '借贷情况',
+    cash: '账面能动的现金',
+    cashHint: '每月刚性支出（房租+人工+水电）由月度账自动算，不用填',
+    save: '保存补录',
+    saved: '已保存',
+    pending: '待补',
+    errInteger: '只能填整数',
+    errRating: '评分填 0~5 之间的数',
+    errCash: '金额只填数字，别带逗号或单位',
+    trendOpts: ['变好了', '略差一点', '没什么变化', '明显变差'],
+    trendKeys: ['better', 'slight', 'stable', 'worse'],
+    districtOpts: ['在涨', '平稳', '略降', '明显降', '结构性流失'],
+    districtKeys: ['growing', 'stable', 'slight_down', 'clear_down', 'structural_loss'],
+    debtOpts: ['没有借贷', '有一点', '压力很大'],
+    debtKeys: ['none', 'light', 'heavy'],
   },
 
   // ===== 十九、店铺设置页 =====

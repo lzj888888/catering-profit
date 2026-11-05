@@ -68,6 +68,20 @@ function prevMonthOf(ym) {
   if (!Number.isInteger(y) || !Number.isInteger(m) || m < 1 || m > 12) return '';
   return m === 1 ? (y - 1) + '-12' : y + '-' + String(m - 1).padStart(2, '0');
 }
+// A11：月份序号（'YYYY-MM' → 连续整数），与 getAmortSchedule 的 monthIndex **同口径**。
+//   不合法返回 NaN（上游据此跳过该资产，不猜）。
+function monthIdxOf(ym) {
+  const p = String(ym || '').split('-');
+  const y = Number(p[0]), m = Number(p[1]);
+  if (!Number.isInteger(y) || !Number.isInteger(m) || m < 1 || m > 12) return NaN;
+  return y * 12 + (m - 1);
+}
+// 序号 → 'YYYY-MM'（monthIdxOf 的逆；越界返回 ''）
+function monthOfIdx(i) {
+  if (!Number.isFinite(i)) return '';
+  const y = Math.floor(i / 12), m = (i % 12) + 1;
+  return y + '-' + String(m).padStart(2, '0');
+}
 
 exports.main = async (event) => {
   const ctx = cloud.getWXContext();
@@ -151,6 +165,37 @@ exports.main = async (event) => {
     lumpSumFen,
   });
 
+  // ===== A11（2026-11-05）：摊销三件套 —— 还剩几期 / 哪个月摊完 / 摊完后月利润 =====
+  //   摊销是老板最容易忽略的一笔钱：它每月压着利润，但**有尽头**。把「尽头」和「尽头之后的利润」
+  //   摆出来，是他判断「再扛几个月」的唯一可算依据。
+  //   口径必须与 getAmortSchedule::progressOf 一致（两处各算一套 ⇒ 摊销页说剩 3 期、结果页说剩 5 期）。
+  //   · 只吃 mode='amort' 的行（mode='lump' 当月就结束了，没有「还剩几期」）
+  //   · 起 = start_month；止 = min(自然到期月, terminate_month)
+  //   · 剩余期数**含本月**（本月这期还得摊）
+  //   · 多条资产并存时取**最晚摊完**的那条撑时间轴（「全部摊完」才有意义）
+  const amortRes = await da.list('shop_amortize', { shop_id: shopId });
+  const amortRows = ((amortRes && amortRes.data) || []).filter((a) => a.mode !== 'lump' && a.start_month);
+  const mi = monthIdxOf(v.month);
+  let remainPeriods = 0;
+  let endMonthMax = '';
+  for (const a of amortRows) {
+    const st = monthIdxOf(a.start_month);
+    const tm = Number(a.total_months);
+    if (!Number.isFinite(st) || !Number.isFinite(mi)) continue;
+    if (!Number.isInteger(tm) || tm <= 0) continue;
+    let end = st + tm - 1;
+    if (a.terminate_month) {
+      const t = monthIdxOf(a.terminate_month);
+      if (Number.isFinite(t) && t < end) end = t;
+    }
+    if (mi > end) continue;                        // 这笔已摊完
+    const from = Math.max(mi, st);                 // 本月早于开始月 ⇒ 从开始月起算
+    const r = end - from + 1;
+    if (r > remainPeriods) remainPeriods = r;
+    const em = monthOfIdx(end);
+    if (em && (!endMonthMax || em > endMonthMax)) endMonthMax = em;
+  }
+
   // ===== round115：M1 行业指标对照 =====
   // 口径（李老师 2026-09-24 拍板 + 本仓既立红线）：
   //   · 分母 = M1 自己的**权责发生制收入**（incomeTotalFen），与上方 result **同源** ——
@@ -206,6 +251,34 @@ exports.main = async (event) => {
     opening_source_month: openingAuto ? prevMonth : '',
     opening_prev_fen: prevClosingFen,
     amortize_fen: amortizeFen,
+    // A11：摊销三件套。after_profit_fen 的口径是**总因素真实利润 + 本月摊销**，依据
+    //   getLedger/service.js:73（摊销只进真实利润；参考利润本来就不扣摊销 ⇒ 拿参考利润去加等于凭空多算一笔）。
+    //   switch_on=false 时 this_fen 恒 0、after 恒等当前真实利润 ⇒ 前端必须显示「未开启摊销」而不是「0 元提升」。
+    amort_extra: {
+      switch_on: amortizeSwitchOn,
+      this_fen: result.effectiveAmortizeFen,
+      remaining_periods: remainPeriods,
+      end_month: endMonthMax,
+      after_profit_fen: result.totalFactorRealProfitFen + result.effectiveAmortizeFen,
+      profit_basis: 'total_factor',
+    },
+    // A13/A19：经营客流三字段 + 两个派生比例。
+    //   🔴 任一输入缺失 ⇒ 对应派生为 null，**绝不按 0 算**（A18 同源纪律）：
+    //      「复购率 0%」与「没填客流」是两句完全不同的话，前者会让老板以为老客全跑了。
+    traffic: (() => {
+      const t = (acct && acct.traffic_count != null) ? Number(acct.traffic_count) : null;
+      const o = (acct && acct.old_customer_count != null) ? Number(acct.old_customer_count) : null;
+      const m = (acct && acct.member_sales_fen != null) ? Number(acct.member_sales_fen) : null;
+      const pct1 = (a, b) => (a == null || b == null || !(b > 0) ? null : Math.round((a / b) * 1000) / 10);
+      return {
+        this_month: t,
+        old_customer: o,
+        member_sales_fen: m,
+        repeat_rate_pct: pct1(o, t),
+        // 会员销售占比的分母是**权责发生制收入**（与本页其余占比同源，不另立口径）
+        member_ratio_pct: pct1(m, incomeTotal),
+      };
+    })(),
     // round106（F2）/ round107：一次性投入（落库原值）+ 生效值。**两者恒等** ——
     //   round107 去掉了「按月分摊时恒 0」的互斥规则（摊销与一次算清是两笔不同的钱，可共存）。
     lump_sum_fen: lumpSumFen,

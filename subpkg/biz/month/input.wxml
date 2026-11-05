@@ -575,6 +575,30 @@
   <view class="cm-state" wx:if="{{assetSummaryAmort}}">{{assetSummaryAmort}}</view>
   <view class="cm-state" wx:if="{{!assetSummaryLump && !assetSummaryAmort}}">{{t.cmAssetSumEmpty}}</view>
 
+  <!-- ③ 经营客流（A13/A19 · 全部选填）
+       三项留空 ⇒ 复购率与会员销售占比不显示（标【待补】），**不按 0 算**。
+       为什么要这三项：这两个指标一直算不出来，不是公式缺，是没人录客流。 -->
+  <view class="cm-sub">{{trTitle}}</view>
+  <view class="hint">{{trHint}}</view>
+  <view class="field">
+    <text class="lbl">{{trThisMonth}}</text>
+    <input class="val-input" type="number" confirm-type="done" disabled="{{readOnly}}"
+      placeholder="{{trThisMonthPh}}" value="{{trafficThisMonth}}"
+      bindinput="onTrafficThisMonth" adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+  <view class="field">
+    <text class="lbl">{{trOld}}</text>
+    <input class="val-input" type="number" confirm-type="done" disabled="{{readOnly}}"
+      placeholder="{{trOldPh}}" value="{{trafficOldCustomer}}"
+      bindinput="onTrafficOldCustomer" adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+  <view class="field">
+    <text class="lbl">{{trMember}}</text>
+    <input class="val-input" type="digit" confirm-type="done" disabled="{{readOnly}}"
+      placeholder="{{trMemberPh}}" value="{{memberSalesYuan}}"
+      bindinput="onMemberSales" adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+
   <view style="height:20rpx;"></view>
   <button class="btn primary" style="margin-top:0;" bindtap="onSave"
     disabled="{{readOnly}}">{{isArchive ? t.saveArchiveOverride : t.save}}</button>

@@ -65,6 +65,8 @@ module.exports = {
   // A5（2026-11-05）：诊断引擎（11 指标 + 6 红线）。**纯函数**，零 IO、零 db 依赖 ⇒ 可被 selftest 直接跑。
   diagnosisEngine: require('./cx_diagnosisEngine'),
   evaluateDiagnosis: require('./cx_diagnosisEngine').evaluateDiagnosis,
+  // A20-bis（2026-11-05）：补录枚举白名单 —— 校验层（saveShopSetting）与引擎认同一张表，禁止自抄。
+  DIAG_ENUM: require('./cx_diagnosisEngine').DIAG_ENUM,
 
   // M3.14/M3.15（R150）：组件分类 + 多规格**派生层单源** —— 入参变换，5 份引擎副本一个不碰。
   //   ⚠️ 同 genId 教训：新符号务必在此聚合入口导出，否则云端 `const { deriveSpec } = common` 会 TypeError。

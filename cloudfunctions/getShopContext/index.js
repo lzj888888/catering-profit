@@ -128,6 +128,10 @@ exports.main = async (event) => {
     //   存量店铺没有这两个字段 ⇒ 给 []（fail-soft，不回填、不报错）。
     pinned_cards: Array.isArray(shop.pinned_cards) ? shop.pinned_cards : [],
     pinned_materials: Array.isArray(shop.pinned_materials) ? shop.pinned_materials : [],
+    // A20（2026-11-05）：诊断补录 6 项（店铺时点属性）。存量店铺没有 ⇒ 给 {}（fail-soft）。
+    //   🔴 缺键在诊断里是「未判定」，不是 0 —— 前端与引擎都按 null 处理。
+    diag_facts: (shop.diag_facts && typeof shop.diag_facts === 'object' && !Array.isArray(shop.diag_facts))
+      ? shop.diag_facts : {},
     is_new_shop: created,
     client_request_id: v.input.client_request_id || '',
   });

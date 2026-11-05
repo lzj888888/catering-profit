@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：232 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：233 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1401,6 +1401,12 @@ const SUITES = [
   //   判据分四组：E 引擎（11 指标/权重 100/缺项不计分母/覆盖率闸门/红线优先/未判定≠未命中）
   //   J 权益判定（分支穷尽 + 顺序不可换：缓存先于权益、限流先于权益）/ F 指纹 / S 数据层一致性。
   ['diag-engine', 'tools/check_diag_engine.js'],
+  // 2-D 批次（2026-11-05）：M1 三字段 + A11 摊销三件套 + A20 补录通道的**语义**守卫。
+  //   这四件事的共同点：算错了不报错、页面还很好看（拿参考利润算"摊完后利润"、把没填的客流当 0、
+  //   保存一次清空老客户数、自抄一份枚举导致"选了却不计分"）。没有断言就永远没人发现。
+  //   32 断言，含 4 条反面断言（禁参考利润 / 禁 ?0 兜底 / 禁裸键 / 禁中文枚举进载荷），
+  //   变异复核 3/3 全部点名转红（详见文件头）。
+  ['m1-extra-fields', 'tools/check_m1_extra_fields.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

@@ -55,6 +55,9 @@ Page({
     runwayText: '',     // R443：可撑月数文案
     runwayNoData: false, // R443：固定支出没填全
     runwayBadCash: false, // R444：现金那格读不成金额（带逗号/空格/全角…）
+    // A11：摊销三件套（getLedger.amort_extra 的展示态）/ A13：客流与会员
+    amortView: { show: false },
+    trView: { show: false },
     t: {
       beMoreShow: TERMS.card.beMoreShow,
       beMoreHide: TERMS.card.beMoreHide,
@@ -76,6 +79,25 @@ Page({
       runwaySaved: TERMS.modules.m1.runwaySaved,
       runwayOver2y: TERMS.modules.m1.runwayOver2y,
       runwayBadCash: TERMS.modules.m1.runwayBadCash,
+      // A11：摊销三件套 / A13/A19：客流与会员
+      amortTitle: TERMS.modules.m1.amortTitle,
+      amortRemainPre: TERMS.modules.m1.amortRemainPre,
+      amortRemainSuf: TERMS.modules.m1.amortRemainSuf,
+      amortEndPre: TERMS.modules.m1.amortEndPre,
+      amortEndSuf: TERMS.modules.m1.amortEndSuf,
+      amortAfterLbl: TERMS.modules.m1.amortAfterLbl,
+      amortAfterHint: TERMS.modules.m1.amortAfterHint,
+      amortOff: TERMS.modules.m1.amortOff,
+      amortNone: TERMS.modules.m1.amortNone,
+      trTitle: TERMS.modules.m1.trTitle,
+      trThis: TERMS.modules.m1.trThis,
+      trOld: TERMS.modules.m1.trOld,
+      trRepeat: TERMS.modules.m1.trRepeat,
+      trMember: TERMS.modules.m1.trMember,
+      trPending: TERMS.modules.m1.trPending,
+      trHint: TERMS.modules.m1.trHint,
+      diagInputGo: TERMS.modules.m1.diagInputGo,
+      diagInputHint: TERMS.modules.m1.diagInputHint,
       bePathText: TERMS.card.bePathText,
       bePathRevOnly: TERMS.card.bePathRevOnly,
       beMomMore: TERMS.card.beMomMore,
@@ -339,6 +361,37 @@ Page({
       this.setData({
         isArchive: !!d.is_archive,
         t,
+        // ===== A11（2026-11-05）：摊销三件套 =====
+        //   「还剩几期 / 哪个月摊完 / 摊完后月利润」全部由 getLedger 算好（amort_extra），
+        //   本页只拼展示串 —— 摊销公式**不许**在前端再算一遍（两处各算一套必然打架）。
+        amortView: (() => {
+          const ae = d.amort_extra;
+          if (!ae) return { show: false };
+          const on = !!ae.switch_on;
+          const has = on && Number(ae.remaining_periods) > 0;
+          return {
+            show: true,
+            on,                       // 摊销开关（关 ⇒ 显示"不适用"，不显示"0 元提升"）
+            has,                      // 真的还有在摊的投入
+            remain: has ? Number(ae.remaining_periods) : 0,
+            endMonth: has ? (ae.end_month || '') : '',
+            thisFen: on ? fen(ae.this_fen) : '',
+            afterFen: on ? fen(ae.after_profit_fen) : '',
+          };
+        })(),
+        // ===== A13/A19：客流与会员（null ⇒ 显示"待补"，绝不显示 0）=====
+        trView: (() => {
+          const tv = d.traffic || {};
+          const pct = (v) => (v == null ? '' : String(v) + '%');
+          return {
+            show: !!d.account_id,
+            thisMonth: tv.this_month != null ? String(tv.this_month) : '',
+            oldCustomer: tv.old_customer != null ? String(tv.old_customer) : '',
+            repeatRate: pct(tv.repeat_rate_pct),
+            memberRatio: pct(tv.member_ratio_pct),
+            memberSales: tv.member_sales_fen != null ? fen(tv.member_sales_fen) : '',
+          };
+        })(),
         // R298·C1：账本存在性单源判据 —— 与首页 pages/index/index.js:98 同一字段、同一含义。
         //   缺它 ⇒ 「无账本」这个正常态永远走结果分支 ⇒ 未建档月份显示红带「亏损」+ 全 ¥0.00 + 可导出空报表。
         hasLedger: !!(d && d.account_id),
@@ -896,6 +949,8 @@ Page({
   // 🔴 R443：去「单品毛利复盘」——把「毛利低」变成「是哪道菜」
   //   ⚠️ 目标页在 pages/ 下（非分包），路径与 app.json 一致；没建卡时那边有自己的空态。
   goDishReview() { wx.navigateTo({ url: '/pages/m3/dishreview/index' }); },
+  // A20：诊断补录页（7 项客观值；店级时点属性，补一次长期有效）
+  goDiagInput() { wx.navigateTo({ url: '/subpkg/biz/diag/input' }); },
   goInput() { wx.navigateTo({ url: '/subpkg/biz/month/input?month=' + this.data.month }); },
 
   // M1 报表导出：权限只读 expire_at（前端先查，后端 exportData 再兜底校验）；免费用户触发付费墙

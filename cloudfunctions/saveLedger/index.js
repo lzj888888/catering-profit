@@ -153,6 +153,21 @@ exports.main = async (event) => {
   const expenseItemsSnake = toSnake(v.expenseItems);
 
   // ===== 7. 落库（upsert shop_monthly_account，归档标记原样保留）=====
+  // A13/A19（2026-11-05）：经营客流三字段三态合并。
+  //   keep ⇒ 沿用库内现值（缺字段的老数据 = null，保持 null，**不补 0**）
+  //   clear ⇒ 写 null
+  //   set   ⇒ 写数值
+  const mergeTri = (st, cur) => (st.state === 'set' ? st.value : (st.state === 'clear' ? null : (cur == null ? null : cur)));
+  const trIn = v.traffic;
+  const trafficThisMonth = mergeTri(trIn.thisMonth, existing && existing.traffic_count);
+  const trafficOldCustomer = mergeTri(trIn.oldCustomer, existing && existing.old_customer_count);
+  const memberSalesFen = mergeTri(trIn.memberSales, existing && existing.member_sales_fen);
+  // 一致性：老客是客流的**子集** ⇒ 老客 > 客流 必是打字错误（不是业务异常）。
+  //   只在两个值都有时才判；缺一个就无从比较，直接放过（缺的那项会以【待补】呈现）。
+  if (trafficThisMonth != null && trafficOldCustomer != null && trafficOldCustomer > trafficThisMonth) {
+    return fail(ERROR_CODES.INVALID_PARAM, '其中老客数不能超过本月客流');
+  }
+
   const doc = {
     shop_id: shopId, month: v.month,
     income_items: incomeItemsSnake, expense_items: expenseItemsSnake,
@@ -175,6 +190,10 @@ exports.main = async (event) => {
     ref_material_fen: result.refMaterialFen,
     ref_material_source: result.refMaterialSource,
     profit_caliber_version: result.profitCaliberVersion,
+    // A13/A19：经营客流三字段（null = 没填，**不是 0**）
+    traffic_count: trafficThisMonth,
+    old_customer_count: trafficOldCustomer,
+    member_sales_fen: memberSalesFen,
     updated_at: now,
   };
   // round103：本次带了库存才写该字段；缺省则**保留库内原值**（防静默清零）
@@ -218,6 +237,10 @@ exports.main = async (event) => {
     lump_sum_fen: result.effectiveLumpSumFen,
     real_consume_fen: result.realConsumeFen,
     switch_used: result.switchUsed,
+    // A13/A19：只回原始值，派生比例（复购率/会员占比）由 getLedger 单一算出，避免两处各算一套
+    traffic_count: trafficThisMonth,
+    old_customer_count: trafficOldCustomer,
+    member_sales_fen: memberSalesFen,
     client_request_id: clientRequestId || '',
   };
 

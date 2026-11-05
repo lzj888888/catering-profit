@@ -56,6 +56,16 @@ const TUNABLE = {
 /** 等级阈值（本仓约定，第一版试跑值，未做市场验证 —— 不许当行业标准对外宣称） */
 const LEVEL_CUT = { good: 75, watch: 55, warn: 40 };
 
+// ===== 二·bis：补录枚举的**单一真相源** =====
+//   为什么放在引擎里而不是各校验文件各抄一份：这些 key 是**引擎打分的输入**（商圈五档直接映射分数、
+//   借贷三档、差评趋势调整）。若校验层另抄一份，加一档就会出现「页面能选、引擎不认识」
+//   ⇒ 选中了却不计分，且界面全绿。取数、校验、渲染三处必须认同一张表。
+const DIAG_ENUM = {
+  reviewTrend: ['better', 'slight', 'stable', 'worse'],
+  businessDistrict: ['growing', 'stable', 'slight_down', 'clear_down', 'structural_loss'],
+  debtLevel: ['none', 'light', 'heavy'],
+};
+
 // ===== 三、工具 =====
 const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : null; };
 const has = (v) => v !== null && v !== undefined && v !== '' && Number.isFinite(Number(v));
@@ -371,6 +381,7 @@ module.exports = {
   LABOR_COEF,
   TUNABLE,
   LEVEL_CUT,
+  DIAG_ENUM,
   METRICS,
   REDLINES,
   evaluateDiagnosis,

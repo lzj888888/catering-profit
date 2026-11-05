@@ -131,6 +131,58 @@
     <view class="warn" wx:if="{{runwayNoData}}">{{t.runwayNoData}}</view>
   </view>
 
+  <!-- ===== A11（2026-11-05）：摊销三件套 =====
+       「还剩几期 / 哪个月摊完 / 摊完后月利润」。摊销每月压着利润，但有尽头；
+       把尽头摆出来，老板才能回答「还值不值得再扛几个月」。
+       ⚠️ 三个数全部由 getLedger.amort_extra 算好下发 —— 本页**不许**再算一遍摊销公式。
+       ⚠️ 开关关着时显示「不适用」而不是「提升 0 元」：后者会被读成「摊完了也没区别」。 -->
+  <view class="card2" wx:if="{{hasLedger && amortView.show}}">
+    <view class="cell drill-head"><text class="lbl">{{t.amortTitle}}</text></view>
+    <view class="muted" wx:if="{{!amortView.on}}">{{t.amortOff}}</view>
+    <view class="muted" wx:elif="{{!amortView.has}}">{{t.amortNone}}</view>
+    <block wx:else>
+      <view class="cell">
+        <text class="lbl">{{t.amortRemainPre}}</text>
+        <text class="val runway-big">{{amortView.remain}} {{t.amortRemainSuf}}</text>
+      </view>
+      <view class="cell">
+        <text class="lbl">{{t.amortEndPre}}</text>
+        <text class="val">{{amortView.endMonth}} {{t.amortEndSuf}}</text>
+      </view>
+      <view class="cell">
+        <text class="lbl">{{t.amortAfterLbl}}</text>
+        <text class="val">¥{{amortView.afterFen}}</text>
+      </view>
+      <view class="muted">{{t.amortAfterHint}}</view>
+    </block>
+  </view>
+
+  <!-- ===== A13/A19：客流与会员 =====
+       null（没填）一律显示【待补】，**绝不显示 0** —— 「复购率零」会让老板以为老客全跑了。 -->
+  <view class="card2" wx:if="{{trView.show}}">
+    <view class="cell drill-head"><text class="lbl">{{t.trTitle}}</text></view>
+    <view class="cell">
+      <text class="lbl">{{t.trThis}}</text>
+      <text class="val">{{trView.thisMonth || t.trPending}}</text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.trOld}}</text>
+      <text class="val">{{trView.oldCustomer || t.trPending}}</text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.trRepeat}}</text>
+      <text class="val">{{trView.repeatRate || t.trPending}}</text>
+    </view>
+    <view class="cell">
+      <text class="lbl">{{t.trMember}}</text>
+      <text class="val">{{trView.memberRatio || t.trPending}}</text>
+    </view>
+    <view class="muted">{{t.trHint}}</view>
+    <!-- A20：诊断补录入口。补的是账里没有的客观值（客流同比/口碑/商圈/租约/借贷/现金），补一次长期有效 -->
+    <view class="muted">{{t.diagInputHint}}</view>
+    <button class="btn ghost" bindtap="goDiagInput">{{t.diagInputGo}}</button>
+  </view>
+
   <!-- 🔴 R311：体检结论卡（保本区间 + 健康营收 + 结构性诊断）。
        ⚠️ 报**区间**不报单点 —— 贡献率低时区间会宽到三成以上，报单点就是假精确。
        ⚠️ 不改任何既有计算：本卡只解释 M1 已经算出的数。 -->
