@@ -204,7 +204,8 @@ Page({
       const neg = Number.isFinite(p) && p < 0;
       return {
         month: x.month || '',
-        profitText: Number.isFinite(p) ? ((neg ? '-' : '') + T.cur + yuanText(Math.abs(p))) : T.indNoData,
+        // 符号放在货币符之后（¥-20000），与全站 `{{t.cur}}{{金额}}` 的写法一致
+        profitText: Number.isFinite(p) ? (T.cur + (neg ? '-' : '') + yuanText(Math.abs(p))) : T.indNoData,
         neg,
       };
     });
