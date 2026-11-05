@@ -276,6 +276,8 @@ const CASES = [
   // D6（2026-10-27 拍板）：透视表按人工过滤（fixLabor 生效，不再被覆盖）—— 11 条 = P2 + A4 + B1 + C2 + E2
   { key: 'check_m2_matrix_pivot', rel: 'tools/check_m2_matrix_pivot.js' }, // 11 条（P 前置加载 + A 真实 buildPivot 按人工过滤/cells 两态相异 + B 回退第一档 + C 源锚锁 R534/删条件回退 + E 自失效）
   { key: 'check_diag_engine', rel: 'tools/check_diag_engine.js' }, // 42 条（E 引擎 18 + J 权益判定 12 + F 指纹 5 + S 数据层 7；含缺项不计分母/红线优先/未判定≠未命中/缓存不扣额度四组反恒真）
+  // 2-D 批次（2026-11-05）：M1 三字段 + A11 摊销三件套 + A20 补录通道 —— 32 条 = S2 + A7 + B7 + C4 + D9 + E1 + 下界自证 2
+  { key: 'check_m1_extra_fields', rel: 'tools/check_m1_extra_fields.js' }, // 32 条（含 4 条反面断言：禁参考利润 / 禁 ?0 兜底 / 禁裸键 / 禁中文枚举进载荷；变异复核 3/3 点名转红）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];
