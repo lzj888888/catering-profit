@@ -52,6 +52,20 @@ module.exports = {
   payFlags: require('./payFlags'),
   FREE_ACCESS: require('./payFlags').FREE_ACCESS,
 
+  // A4（2026-11-05 · 规范 v1.1 §5.2）：深度诊断的**旁路**判定。
+  //   🔴 与上方 entitlement 是**两个维度**：entitlement 回答"付没付钱"，本模块回答
+  //      "这一次能不能跑诊断（去重/限流/额度）"。绝不加入 PAID_FEATURES —— 加了会牵连既有 hasFeature 语义。
+  //   ⚠️ 同 genId 教训：新符号必须在此聚合导出，否则云端 `common.canRunDiagnosis` 是 undefined。
+  diagnosisEntitlement: require('./diagnosisEntitlement'),
+  canRunDiagnosis: require('./diagnosisEntitlement').canRunDiagnosis,
+  DIAG_TYPES: require('./diagnosisEntitlement').DIAG_TYPES,
+  DIAG_REPORT_COLL: require('./diagnosisEntitlement').DIAG_REPORT_COLL,
+  DIAG_CREDIT_COLL: require('./diagnosisEntitlement').DIAG_CREDIT_COLL,
+
+  // A5（2026-11-05）：诊断引擎（11 指标 + 6 红线）。**纯函数**，零 IO、零 db 依赖 ⇒ 可被 selftest 直接跑。
+  diagnosisEngine: require('./diagnosisEngine'),
+  evaluateDiagnosis: require('./diagnosisEngine').evaluateDiagnosis,
+
   // M3.14/M3.15（R150）：组件分类 + 多规格**派生层单源** —— 入参变换，5 份引擎副本一个不碰。
   //   ⚠️ 同 genId 教训：新符号务必在此聚合入口导出，否则云端 `const { deriveSpec } = common` 会 TypeError。
   //   伴侣守卫：tools/check_spec_derive.js（L1 符号齐备）+ tools/check_requires.js §2。

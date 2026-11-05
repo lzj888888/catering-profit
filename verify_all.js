@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：231 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：232 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1395,6 +1395,12 @@ const SUITES = [
   //   A1 豁免集合必须同时含 matrix+compare / A2「无需店铺」必须独立且只含 matrix（并入会崩）/
   //   A3 免费仍做方案归属校验 / A4 必须带「关于本表」署名页；含内存变异回灌证伪恒真。
   ['m2-export-free', 'tools/check_m2_export_free.js'],
+  // ===== A4/A5 深度诊断引擎与权益判定（2026-11-05 批次 2）：======
+  //   为什么要单立：诊断分数会直接变成老板眼里的结论，它最危险的失效不是崩，
+  //   而是**悄悄给一个看起来合理的错数**（缺数据按 0 分算 / 按中位数补 / 把"没数据"当"没命中红线"）。
+  //   判据分四组：E 引擎（11 指标/权重 100/缺项不计分母/覆盖率闸门/红线优先/未判定≠未命中）
+  //   J 权益判定（分支穷尽 + 顺序不可换：缓存先于权益、限流先于权益）/ F 指纹 / S 数据层一致性。
+  ['diag-engine', 'tools/check_diag_engine.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

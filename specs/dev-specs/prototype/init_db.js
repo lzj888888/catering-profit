@@ -31,6 +31,8 @@ const COLLECTIONS = [
   // R402（2026-10-21）：AI 授权模型两表（与单源 collections.js 同步；线上 dev 已建成）
   //   ⚠️ 索引**故意不在此处**：单源也没登记，理由见 collections.js 同名注释（落码同批登索引）。
   'shop_ai_consent', 'shop_ai_insight',
+  // A3（2026-11-05）：诊断台账 + 单次诊断额度（与单源 collections.js 同步）
+  'shop_diagnosis_report', 'shop_diagnosis_credit',
 ];
 
 // ===== 2. 索引定义（复合/唯一按批次 0 §2.4 索引段）=====
@@ -159,6 +161,14 @@ const INDEXES = {
   shop_ai_insight: [
     { name: 'idx_ai_insight_consent', keys: { consent_id: 1 } },
     { name: 'idx_ai_insight_shop_month', keys: { shop_id: 1, month: 1, kind: 1 } },
+  ],
+  // A3（2026-11-05）：诊断两表索引 —— 与 cloudfunctions/initDb/collections.js **逐条同源**。
+  shop_diagnosis_report: [
+    { name: 'idx_dgr_user_shop_type', keys: { user_id: 1, shop_id: 1, diag_type: 1, created_at: -1 } },
+    { name: 'idx_dgr_shop_hash', keys: { shop_id: 1, snapshot_hash: 1 } },
+  ],
+  shop_diagnosis_credit: [
+    { name: 'idx_dgc_user', keys: { user_id: 1 } },
   ],
 };
 

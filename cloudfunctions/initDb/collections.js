@@ -31,6 +31,14 @@ const COLLECTIONS = [
   //     而 `consent_id` / `revoked_at` 在 grant/revoke 落码**之前**全树零出现 ⇒ 先登索引会被正确地判红。
   //     ⇒ 机械判据给了顺序：先有读写这些字段的代码，索引才不是化石。
 'shop_ai_consent', 'shop_ai_insight',
+  // A3（2026-11-05 · 规范 v1.1 §5.2 + 定稿 §6）：诊断两张表。
+  //   · shop_diagnosis_report：**诊断台账**（付费资产凭证）。一店一类型一条，报告永久可看 ——
+  //     订阅到期只锁「再跑」，不锁「已出的报告」（锁了＝退款＋差评，定稿 §3 底线 2）。
+  //   · shop_diagnosis_credit：**单次诊断额度**（19.9 买的那 1 次）。
+  //     🔴 为什么不塞进 shop_entitlement：`payRenew` / `payCallback` 是**整条覆盖写** expire_at 的，
+  //        额度字段混在同一条 doc 里，一旦续费就会被连带清掉（用户买了单次、续了月卡、额度消失）。
+  //        额度是资产凭证，必须与订阅到期时间**物理隔离**。
+  'shop_diagnosis_report', 'shop_diagnosis_credit',
 ];
 
 // ===== 2. 索引定义 =====
@@ -191,18 +199,56 @@ const INDEXES = {
     { name: 'idx_ai_insight_consent', keys: { consent_id: 1 } },
     { name: 'idx_ai_insight_shop_month', keys: { shop_id: 1, month: 1, kind: 1 } },
   ],
+  // A3（2026-11-05）：诊断两张表的索引。
+  //   · idx_dgr_user_shop_type：算「同店同类型已有几份」= 对比功能的唯一入口（定稿 §5 触发条件），
+  //     也是限流计数（近 1 小时 / 今天跑了几次）的查询面 ⇒ created_at 倒序同在这个索引里，避免回表排序。
+  //   · idx_dgr_shop_hash：24h 去重的定位面（同店同 snapshot_hash 是否有近期报告）。
+  //     没有它，去重退化成全表扫描，且随报告累积越来越慢。
+  //   · idx_dgc_user：额度是**账号级**（单次档权益表写「店铺数 1」），按 user_id 一次定位余额。
+  shop_diagnosis_report: [
+    { name: 'idx_dgr_user_shop_type', keys: { user_id: 1, shop_id: 1, diag_type: 1, created_at: -1 } },
+    { name: 'idx_dgr_shop_hash', keys: { shop_id: 1, snapshot_hash: 1 } },
+  ],
+  shop_diagnosis_credit: [
+    { name: 'idx_dgc_user', keys: { user_id: 1 } },
+  ],
 };
 
 // ===== 3. 种子数据（套餐 + 功能权限；价格/名从表读，禁硬编码）=====
 // 价格/天数严格对齐商业化方案_v1.4 四档套餐（price=分整数，days=自然日）
+//
+// 🔴 A1/A2（2026-11-05 · 规范 v1.1 §5.1 + 权益定价拍板定稿 §3）三处改动：
+//
+//   ① `plan_auto_subscribe` → `enabled:false`（**停用不删除**）
+//      为什么停用不删：它是 `auto_subscribe` 类型里唯一的档，删掉会让历史订单/续费页读到空档
+//      （`payRenew` / 订单页按 plan_id 反查名称，读到 undefined 会渲染成空白）。
+//      `enabled:false` 后前台不再列出、不可下单，但历史数据仍可解析。
+//
+//   ② 新增 `plan_diag_single`（19.9 / 次，一次性额度）
+//      🔴 它**不是订阅**，`days:0` 是刻意的：它不发 expire_at，发的是**诊断次数**（`diag_credits:1`）。
+//      🔴 `grants:'diag_credit'` 是给支付链路的**分流开关**：`payCallback` 必须按 grants 分流，
+//         订阅档写 `shop_entitlement.expire_at`，单次档写 `shop_diagnosis_credit.credits_left`。
+//         ⚠️ 若不特判就按 `days:0` 算 expire_at，会把「买单次诊断」写成「expire_at = now」
+//         ⇒ **用户已付费的月卡会被当场清零**（静默、无报错、事后无法解释）。阶段 B 接支付时必须先做这一步。
+//      🔴 单次档**不含导出**（权益表：19.9 导出为锁）⇒ 见下方 SEED_FEATURES 的排除。
+//
+//   ③ 月/季/年加 `diag_unlimited:true`（李老师 2026-11-05 拍板：付费期内深度诊断不限次）
+//      阶梯：单次 19.9 → 月 25.9 → 季 69 → 年 199。「不限次」由 `diagnosisEntitlement` 读此标记，
+//      **不写死档位名**（否则以后加档就要改判定代码）。
 const SEED_PLANS = [
-  { plan_id: 'plan_basic_month', name: '真实利润·月', price: 2590, days: 31, type: 'one_time', enabled: true, sort: 1 },
-  { plan_id: 'plan_basic_quarter', name: '真实利润·季', price: 6900, days: 90, type: 'one_time', enabled: true, sort: 2 },
-  { plan_id: 'plan_basic_year', name: '真实利润·年', price: 19900, days: 365, type: 'one_time', enabled: true, sort: 3 },
-  { plan_id: 'plan_auto_subscribe', name: '真实利润·自动续费(月)', price: 1990, days: 31, type: 'auto_subscribe', enabled: true, sort: 4 },
+  { plan_id: 'plan_basic_month', name: '真实利润·月', price: 2590, days: 31, type: 'one_time', enabled: true, sort: 1, diag_unlimited: true },
+  { plan_id: 'plan_basic_quarter', name: '真实利润·季', price: 6900, days: 90, type: 'one_time', enabled: true, sort: 2, diag_unlimited: true },
+  { plan_id: 'plan_basic_year', name: '真实利润·年', price: 19900, days: 365, type: 'one_time', enabled: true, sort: 3, diag_unlimited: true },
+  { plan_id: 'plan_auto_subscribe', name: '真实利润·自动续费(月)', price: 1990, days: 31, type: 'auto_subscribe', enabled: false, sort: 4 },
+  // sort 5：排在订阅档之后 —— 它是**价格锚 + 升单台阶**（只差 6 元就能买月卡），不是主力成交品。
+  //   排序把它放最后，避免用户第一眼选中单次（定稿 §4 已认领这个事实，不是我改主意）。
+  { plan_id: 'plan_diag_single', name: '深度诊断·单次', price: 1990, days: 0, type: 'one_time', enabled: true, sort: 5, grants: 'diag_credit', diag_credits: 1, diag_unlimited: false },
 ];
-const SEED_FEATURES = SEED_PLANS.map((p) => ({ plan_id: p.plan_id, feature_key: 'real_profit', enabled: true }))
-  .concat(SEED_PLANS.map((p) => ({ plan_id: p.plan_id, feature_key: 'export', enabled: true })))
+// 🔴 单次诊断档**不发** real_profit / export 权限：它买的是一次诊断，不是记账会员。
+//   用 `grants` 过滤而不是按 plan_id 写死 —— 以后加第二张一次性档（如「开店测算单次」）自动适用。
+const SUBSCRIPTION_PLANS = SEED_PLANS.filter((p) => p.grants !== 'diag_credit');
+const SEED_FEATURES = SUBSCRIPTION_PLANS.map((p) => ({ plan_id: p.plan_id, feature_key: 'real_profit', enabled: true }))
+  .concat(SUBSCRIPTION_PLANS.map((p) => ({ plan_id: p.plan_id, feature_key: 'export', enabled: true })))
   // M3.22（批次 A1）：免费档配额配置（plan_free，载 limits）。⚠️ 免费档不在 subscription_plan 价格表里，
   //   否则 payCreateOrder 按 plan_id 读它会变成可下单的付费档；额度唯一真相源就是这一行 limits。
   // M3.28（批次 Q1）：cost_card 由 5 → 20（「M3 免费额度决策」五轮交叉核验定案 q=20）。

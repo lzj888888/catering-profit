@@ -122,6 +122,14 @@ const REGISTRY = {
   'cloudfunctions/common/money.js': {
     'IDENT|yuan * 100|#1': ['money', '**单源** yuanToFen：全仓元→分唯一权威实现'],
   },
+  // A5（2026-11-05 批次 2）：诊断引擎的三处 `* 100` 全部是**比率→百分数**，不涉及元/分换算。
+  //   ⚠️ 诊断引擎只吃 M1 已算好的分值与百分比，**本文件内不存在任何金额换算** ——
+  //      若将来有人在这里做元→分，必须走 common/money.js::yuanToFen，不许裸乘。
+  'cloudfunctions/common/diagnosisEngine.js': {
+    'PAREN|) * 100|#1': ['ratio', 'pct() 通用占比：分子 ÷ 分母 → 百分数（净利率等）'],
+    'PAREN|) * 100|#2': ['ratio', '客流同比：(本月 − 去年同期) ÷ 去年同期 → 百分数'],
+    'PAREN|) * 100|#3': ['ratio', '权重覆盖率：已用权重 ÷ 总权重 → 百分数'],
+  },
   'cloudfunctions/exportData/index.js': {
     'PAREN|) * 100|#1': ['ratio', '导出毛利率：毛利 ÷ 收入 → 百分数'],
     'PAREN|) * 100|#2': ['ratio', '导出毛利率位归一保留 2 位；⚠️ `+Number.EPSILON` 容差已退化（见下）'],

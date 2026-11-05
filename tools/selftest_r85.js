@@ -399,6 +399,18 @@ const A15_EXEMPT = [
   //   by=WorkBuddy / date=2026-10-21 / reason=R423 授权新增 AI 出站 k-匿名门槛单源（common/aiGate.js + 全函数派生 cx_aiGate.js）
   /^cloudfunctions\/common\/aiGate\.js$/,
   /^cloudfunctions\/[^/]+\/cx_aiGate\.js$/,
+  // ⚠️ 2026-11-05（批次 2 · A4/A5）**第二十二次触发** —— 新增两个单源：
+  //   `common/diagnosisEntitlement.js`（深度诊断旁路判定：去重/限流/额度，**不碰 isPaid**）
+  //   + `common/diagnosisEngine.js`（11 指标 + 6 红线，纯函数）。
+  //   均为 `review/收费与权益_总设计师规范_20261105.md` §5.2 显式授权的新增，非「顺手改云函数逻辑」。
+  //   ⚠️ 本轮 **不改任何既有云函数业务逻辑**：其余变动全是 `sync_common` 派生的 `cx_index.js`
+  //      （common/index.js 加 4 个导出所致，已在 round110 条目内）+ `initDb/`（种子与集合，已豁免）。
+  //   仍按**白名单式**登记（精确到**文件名**、**不做 `cx_*` 泛化**），**绝不放宽成 `cloudfunctions/` 全豁免**：
+  //   by=WorkBuddy / date=2026-11-05 / reason=批次2 A4/A5 授权新增诊断判定与诊断引擎单源
+  /^cloudfunctions\/common\/diagnosisEntitlement\.js$/,
+  /^cloudfunctions\/common\/diagnosisEngine\.js$/,
+  /^cloudfunctions\/[^/]+\/cx_diagnosisEntitlement\.js$/,
+  /^cloudfunctions\/[^/]+\/cx_diagnosisEngine\.js$/,
 ];
 check('A15 云函数逻辑零改动（仅 initDb 建库单源 + 本批授权函数豁免）', (() => {
   const { execFileSync } = require('child_process');
