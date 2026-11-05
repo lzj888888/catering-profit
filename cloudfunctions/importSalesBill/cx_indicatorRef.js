@@ -216,6 +216,65 @@ function threeCostOf(bizKey, o) {
   });
 }
 
+// ===== 五-2b、M2 净利率参考（2026-11-05 · 中小单体门店口径，**不是行业平均**）=====
+// 用途：M2 沙盘老板填「目标月利润 + 预计月营业额」后，派生目标净利率，判这个预期是否脱离实际。
+// 只判「偏不偏」，**不判对错、不改用户填的数**（M2 是前瞻沙盘，参考值必须由老板自己判断）。
+//
+// 🔴 口径裁定（这一条最容易被后人"修正"成错的方向，改前务必读完）：
+//   M2 服务的是**中小单体老板**，不是连锁总部。用行业平均（含头部连锁）去要求他，
+//   会把「净利率 3%」判成不及格 —— 而 3% 恰恰是当下中小门店的常态。
+//   故本表取**中小单体门店**区间，头部连锁的高位数一律**不收**。
+//
+// 数据交叉验证（2026-11-05，三方独立，结论一致）：
+//   ① 中国饭店协会《2025中国餐饮业年度报告》：头部连锁净利率 5%~10%，大量中小门店跌破 3% 生存线；
+//   ② 豆包盲测（未告知本方结论，只问"各业态净利率区间 + 标注依据"）：
+//      中小门店 快餐 3~7 / 正餐 1~5 / 火锅 3~8 / 茶饮咖啡 0~8，且明确"头部比中小高 2~5 个百分点"；
+//   ③ **已剔除**招商加盟类网站数字（正餐 5~10、快餐 10~15、火锅 8~12）——
+//      招商标的有系统性高估动机（数字好看才招得到商），与①②差 2 倍，不具备参考性。
+//
+// ⚠️ `other` 取四类**并集**（下界取最小 0、上界取最大 8），理由同 BANDS.other：
+//   兜底宁可漏报（不误伤）不可误报（把正常判成离谱）。
+//
+// 🔴 刻意**不进 `INDICATORS` 数组**（与 A17-scope 同一纪律）：
+//   进去会让 M2「综合健康度 = 取最差项」多出第 7 行，而 M2 的分母是**保本营业额**、
+//   与真实营业额不同义 ⇒ 会静默改变开店测算的结论。此处只作**独立软提示**。
+const NET_MARGIN_REF = {
+  fastfood: [3, 7],
+  dining: [1, 5],
+  hotpot: [3, 8],
+  cafe: [0, 8],
+  other: [0, 8],
+};
+
+/**
+ * 目标净利率合理性判定。**任一侧缺数/非正 ⇒ pct=null / level='na'（不判）**。
+ *
+ * 🔴 缺数不按 0 补：没填预计营业额时若按 0 算，会得出「净利率 0% ⇒ 偏低」的假结论，
+ *   而真相是"还没填，算不出来"（本仓「缺项 ≠ 0」红线第 N 例）。
+ * 🔴 上界只做**提示**，不做拦截 —— 老板确实可能靠独特选址做到 15%，
+ *   我们的职责是提醒他"这高于同行"，不是替他把数改小。
+ *
+ * @param {string} bizKey 业态
+ * @param {number|null} profitFen 目标月利润（分）
+ * @param {number|null} revenueFen 预计月营业额（分）
+ * @returns {{pct:number|null, level:string, lo:number, hi:number}}
+ */
+function netMarginRefOf(bizKey, profitFen, revenueFen) {
+  const b = NET_MARGIN_REF[bizKey] || NET_MARGIN_REF.other;
+  const base = { lo: b[0], hi: b[1] };
+  const p = Number(profitFen);
+  const r = Number(revenueFen);
+  if (profitFen == null || revenueFen == null || !isFinite(p) || !isFinite(r) || r <= 0) {
+    return Object.assign({ pct: null, level: 'na' }, base);
+  }
+  const pct = round1((p / r) * 100);
+  let level = 'ok';
+  if (pct > b[1]) level = 'high';
+  else if (pct < b[0]) level = 'low';
+  return Object.assign({ pct, level }, base);
+}
+
+
 // ===== 五-3、A18（2026-11-05）会员销售占比（V客²-1）=====
 // 规格：`会员销售额 ÷ 总销售额 < 20%` 报警（标杆：锅圈会员占比 63.7%）。
 // 🔴 留空（老板没会员体系）**必须"不判"**，不得按 0 分 —— 否则「没填 = 严重扣分」，
@@ -547,6 +606,8 @@ module.exports = {
   bandOf, levelOf, evaluateIndicators, redlineOf, listBands, suggestAmounts,
   // A17/A18：三项刚性成本率（V钱-4）· 会员销售占比（V客²-1）
   THREE_COST, threeCostOf, MEMBER_RATIO_WARN, MEMBER_RATIO_GOOD, memberRatioOf,
+  // M2 净利率参考（中小单体门店口径，只作软提示、不进 INDICATORS）
+  NET_MARGIN_REF, netMarginRefOf,
   // round115：M1 台账细项归属（见 §七）
   ITEM_TAGS, CATEGORY_TAG, M1_IND_KEYS, FIXED_FEN_KEY,
   indFenKeyOf, tagOfItem, sumByTag, toFixedFen, m1IndicatorsOf,

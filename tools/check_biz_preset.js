@@ -21,6 +21,7 @@ const ROOT = path.resolve(__dirname, '..');
 const BIZ_PRESET = path.join(ROOT, 'utils', 'bizPreset.js');
 const INDICATOR = path.join(ROOT, 'cloudfunctions', 'common', 'indicatorRef.js');
 const PAGE_WXML = path.join(ROOT, 'subpkg', 'tools', 'sandbox', 'index.wxml');
+const PAGE_JS = path.join(ROOT, 'subpkg', 'tools', 'sandbox', 'index.js');
 const TERMS = path.join(ROOT, 'miniprogram', 'i18n', 'terms.js');
 
 const FORMS = ['fixed', 'area_linear', 'headcount_linear', 'labor_total', 'energy_split', 'fixed_opt', 'revenue_rate', 'step'];
@@ -347,6 +348,79 @@ sec('G · R293 预设占比 ≡ BANDS 指数派生（禁自定）');
       }
     }
   }
+}
+
+// ===== I：M2 净利率参考（2026-11-05）=====
+// 为什么单独守：这是**前端复刻 + 云端单源**的双份实现。两份实现最容易静默分裂
+//   —— 改了云端忘了前端 ⇒ 老板看到的判定与云端不一致，而两边各自"自洽"，静态守卫全绿。
+// 守两层：① 数据逐业态相等 ② 行为逐组（业态 × 利润 × 营收）输出逐字段相等。
+sec('I M2 净利率参考（中小单体门店口径）：前端复刻 ≡ 云端单源');
+try {
+  const bp = require(BIZ_PRESET);
+  const ir = require(INDICATOR);
+  const NBIZ = ['fastfood', 'dining', 'hotpot', 'cafe', 'other'];
+
+  const refMissing = NBIZ.filter((k) => !bp.NET_MARGIN_REF || !bp.NET_MARGIN_REF[k] || !ir.NET_MARGIN_REF || !ir.NET_MARGIN_REF[k]);
+  check('I-① 五业态两端都有参考区间', refMissing.length === 0, refMissing.length ? '缺：' + refMissing.join('、') : '5/5 齐');
+
+  const dataSame = NBIZ.every((k) => JSON.stringify(bp.NET_MARGIN_REF[k]) === JSON.stringify(ir.NET_MARGIN_REF[k]));
+  check('I-② NET_MARGIN_REF 逐业态逐值 ≡ 云端（防复刻漂移）', dataSame,
+    NBIZ.map((k) => k + '[' + ir.NET_MARGIN_REF[k].join(',') + ']').join(' '));
+
+  // 行为比对：6 业态（含未知）× 7 利润档（含 null/0）× 4 营收档（含 null/0）= 168 组
+  const PROFS = [null, 0, 1000000, 3000000, 5000000, 8000000, 15000000];
+  const REVS = [null, 0, 50000000, 100000000];
+  let mismatch = [];
+  NBIZ.concat(['__unknown__']).forEach((b) => {
+    PROFS.forEach((p) => REVS.forEach((r) => {
+      const a = bp.netMarginRefOf(b, p, r);
+      const c = ir.netMarginRefOf(b, p, r);
+      if (JSON.stringify(a) !== JSON.stringify(c)) mismatch.push(b + '/' + p + '/' + r);
+    }));
+  });
+  check('I-③ netMarginRefOf 行为逐组 ≡ 云端（168 组：业态×利润×营收）', mismatch.length === 0,
+    mismatch.length ? mismatch.slice(0, 3).join(' | ') : '168 组全同');
+
+  // 口径判据：本表是**中小单体门店**，上界不得出现行业平均/招商口径的高位数（快餐 10~15）
+  const hiTooHigh = NBIZ.filter((k) => ir.NET_MARGIN_REF[k][1] > 8);
+  check('I-④ 上界全部 ≤ 8%（中小门店口径；行业平均/招商口径的快餐 10~15 不得混入）',
+    hiTooHigh.length === 0, hiTooHigh.length ? '越界：' + hiTooHigh.join('、') : '最高 ' + Math.max.apply(null, NBIZ.map((k) => ir.NET_MARGIN_REF[k][1])) + '%');
+  const loBad = NBIZ.filter((k) => ir.NET_MARGIN_REF[k][0] > ir.NET_MARGIN_REF[k][1]);
+  check('I-⑤ 下界 ≤ 上界（区间不自相矛盾）', loBad.length === 0, loBad.length ? '倒挂：' + loBad.join('、') : '5/5 正常');
+
+  // 缺数不判：这条最容易在"优化"时被改成按 0 补（⇒ 得出"净利率 0%"的假结论）
+  const naCases = [
+    ['缺营收', ir.netMarginRefOf('dining', 5000000, null)],
+    ['营收为 0', ir.netMarginRefOf('dining', 5000000, 0)],
+    ['缺利润', ir.netMarginRefOf('dining', null, 100000000)],
+  ];
+  const naBad = naCases.filter(([, v]) => v.level !== 'na' || v.pct !== null);
+  check('I-⑥ 任一侧缺数/非正 ⇒ level=na 且 pct=null（不按 0 补）', naBad.length === 0,
+    naBad.length ? naBad.map(([n]) => n).join('、') : '3/3 全部 na');
+
+  // 边界：恰好等于上界 ⇒ ok（不得判 high，否则"正好达标"被说成超标）
+  const edge = ir.netMarginRefOf('dining', 5000000, 100000000);   // 5% = dining 上界
+  check('I-⑦ 边界：恰好等于上界 ⇒ ok（不误判 high）', edge.pct === 5 && edge.level === 'ok',
+    'pct=' + edge.pct + ' level=' + edge.level);
+
+  // 接线：派生了必须真展示，登记了不用 = 静默空白（同 check_export_delivery C4 的教训）
+  const idxSrc = readOr(PAGE_JS) || '';
+  const wxmlSrc = readOr(PAGE_WXML) || '';
+  const wired1 = /netMarginView:\s*this\.netMarginViewOf\(\)/.test(idxSrc);
+  // ⚠️ 正则可以容忍 `{{netMarginView && netMarginView.show}}` 这种**空值保护**写法：
+  //   要求精确 `{{netMarginView.show}}` 会把正确实现判红（首版即踩，别改回窄的）。
+  const wired2 = /\{\{[^}]*netMarginView\.show[^}]*\}\}/.test(wxmlSrc);
+  const wired3 = /netMarginView:\s*null/.test(idxSrc);   // 失败分支必须清（R359 同族）
+  check('I-⑧ index.js 真派发 + wxml 真渲染 + 失败分支真清空', wired1 && wired2 && wired3,
+    '派发=' + wired1 + ' 渲染=' + wired2 + ' 清空=' + wired3);
+
+  // 文案：term 必须在、且带三个占位符（少一个 ⇒ 页面出现字面量 {hi}）
+  const tm = require(TERMS);
+  const nh = (tm.TERMS && tm.TERMS.m2 && tm.TERMS.m2.netMarginHigh) || '';
+  const ph = ['{pct}', '{lo}', '{hi}'].filter((x) => nh.indexOf(x) >= 0);
+  check('I-⑨ netMarginHigh 文案存在且三个占位符齐全', ph.length === 3, '占位符 ' + ph.length + '/3');
+} catch (e) {
+  check('I-⓪ 加载/执行异常（本段未能完成校验）', false, (e && e.message) || String(e));
 }
 
 // 断言数下界（用于 check_suite_assert_counts 登记；file 末尾打印「N 通过 / M 失败」）

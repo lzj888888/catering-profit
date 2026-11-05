@@ -659,6 +659,42 @@ function energyFeeRate(billYuan, revenueYuan, bizKey) {
   return { rate: ENERGY_FALLBACK, src: 'fallback', clamped: false, raw: null };
 }
 
+// ===== M2 净利率参考（复刻自 `cloudfunctions/common/indicatorRef.js::NET_MARGIN_REF`）=====
+// 🔴 单源在云端，这里是**复刻**（前端不便 require 云函数），`check_biz_preset` 逐业态比对两边相等，
+//   并喂同一组输入比对 `netMarginRefOf` 的输出逐项相等 —— 只比数据不够，判级边界也得对上。
+// 🔴 口径 = **中小单体门店**，不是行业平均。用行业平均会把「净利率 3%」判成不及格，
+//   而 3% 正是当下中小门店的常态（中国饭店协会 2025：大量中小门店跌破 3% 生存线）。
+const NET_MARGIN_REF = {
+  fastfood: [3, 7],
+  dining: [1, 5],
+  hotpot: [3, 8],
+  cafe: [0, 8],
+  other: [0, 8],
+};
+
+/**
+ * 目标净利率合理性判定（复刻自云端同名单源函数，行为必须逐项一致）。
+ * 任一侧缺数/非正 ⇒ pct=null / level='na'（不判，不按 0 补）。
+ * @param {string} bizKey 业态
+ * @param {number|null} profitFen 目标月利润（分）
+ * @param {number|null} revenueFen 预计月营业额（分）
+ * @returns {{pct:number|null, level:string, lo:number, hi:number}}
+ */
+function netMarginRefOf(bizKey, profitFen, revenueFen) {
+  const b = NET_MARGIN_REF[bizKey] || NET_MARGIN_REF.other;
+  const base = { lo: b[0], hi: b[1] };
+  const p = Number(profitFen);
+  const r = Number(revenueFen);
+  if (profitFen == null || revenueFen == null || !isFinite(p) || !isFinite(r) || r <= 0) {
+    return Object.assign({ pct: null, level: 'na' }, base);
+  }
+  const pct = round1((p / r) * 100);
+  let level = 'ok';
+  if (pct > b[1]) level = 'high';
+  else if (pct < b[0]) level = 'low';
+  return Object.assign({ pct, level }, base);
+}
+
 module.exports = {
   BIZ_PRESETS, CITY_COEF, FORMS,
   assembleItems, resolveBuild, paybackCash, cashBreakeven, findPreset, round1,
@@ -673,4 +709,6 @@ module.exports = {
   turnLevelOfBiz,
   // R558：水电燃气费率（反算 + clamp 到业态带）与业态能耗带（单源，守卫比对 indicatorRef）
   ENERGY_BAND, ENERGY_FALLBACK, energyFeeRate,
+  // M2 净利率参考（复刻云端 indicatorRef.NET_MARGIN_REF，守卫逐业态 + 逐行为比对）
+  NET_MARGIN_REF, netMarginRefOf,
 };

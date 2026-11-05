@@ -118,6 +118,9 @@ const REGISTRY = {
   },
   'cloudfunctions/common/indicatorRef.js': {
     'PAREN|) * 100|#1': ['ratio', '细项占收入比：分 ÷ 分 → 百分数'],
+    // 2026-11-05：M2 目标净利率 = 目标月利润（分）÷ 预计月营业额（分）→ 百分数。
+    //   分子分母同为**分**，比值无量纲 ⇒ 与元→分换算无关（这里不做任何金额换算）。
+    'PAREN|) * 100|#2': ['ratio', 'netMarginRefOf()：目标月利润 ÷ 预计月营业额 → 净利率%（分/分）'],
   },
   'cloudfunctions/common/money.js': {
     'IDENT|yuan * 100|#1': ['money', '**单源** yuanToFen：全仓元→分唯一权威实现'],
@@ -246,6 +249,8 @@ const REGISTRY = {
     'IDENT|n * 100|#1': ['money', 'fenOf()：元 → 分；⚠️ 第 3 份元→分实现（前端未走 api.yuanToFen，收敛待判）'],
     // 🔴 R558：水电费率 = 账单金额 ÷ 实际月营收 → 百分数（元/元，不是元→分，故 kind=ratio）
     'PAREN|) * 100|#1': ['ratio', 'energyFeeRate()：水电账单 ÷ 实际月营收 → 费率%（元/元）'],
+    // 2026-11-05：netMarginRefOf() 的**前端复刻**，与云端同名函数同语义（分/分 → 百分数）。
+    'PAREN|) * 100|#2': ['ratio', 'netMarginRefOf() 复刻：目标月利润 ÷ 预计月营业额 → 净利率%（分/分）'],
   },
   'utils/calc.js': {
     'PAREN|) * 100|#1': ['ratio', '利润率：利润 ÷ 收入 → 百分数'],
