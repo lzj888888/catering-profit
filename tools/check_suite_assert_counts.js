@@ -282,6 +282,10 @@ const CASES = [
   { key: 'check_copy_compliance', rel: 'tools/check_copy_compliance.js' }, // 24 条（A14/A15/A21：扫描器自证 4 + 禁词 5 + 必备文案 6 + 退款规则行为 9）
   { key: 'check_m1_new_cards', rel: 'tools/check_m1_new_cards.js' }, // 12 条（运行时：前置自证 3 + 基线全绿/断言数 2 + 5 条变异点名转红 5 + 自证 2；内含 18 条场景断言）
   { key: 'check_auto_queue', rel: 'tools/check_auto_queue.js' }, // 28 条（S 自证 4 + Q 自洽 6 + Y 语义 2 + M 鉴别力 10 + N 轮次编号 6；判据全走纯函数 audit(text)，故可用内存合成样本证鉴别力）
+  // R611：页面顶层绑定守卫 —— S 自证 3 + P 判据 2 + M 变异自证 4 = 9 条。
+  //   非恒真凭据：M-① 合成 ghostBinding 必须被点名 / M-④ 补上该键后必须放行；
+  //   断言数不受守则「删掉 M 组四条 + 放宽 S-③ 下界」会静默通过，与 round73 同族。
+  { key: 'check_page_top_bindings', rel: 'tools/check_page_top_bindings.js' }, // 9 条（S 3 + P 2 + M 4）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

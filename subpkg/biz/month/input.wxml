@@ -578,24 +578,28 @@
   <!-- ③ 经营客流（A13/A19 · 全部选填）
        三项留空 ⇒ 复购率与会员销售占比不显示（标【待补】），**不按 0 算**。
        为什么要这三项：这两个指标一直算不出来，不是公式缺，是没人录客流。 -->
-  <view class="cm-sub">{{trTitle}}</view>
-  <view class="hint">{{trHint}}</view>
+  <!-- 🔴 R611：本段 8 个文案此前误写成顶层绑定（tr 前缀那一组），但页面只在 `data.t` 里映射了它们
+       （`input.js:130-137` 的 `t` 对象）⇒ 顶层恒 undefined ⇒ 真机渲染成「有容器没文字」的一排空白，
+       李老师真机反馈「去登记 / 管理 下面出了很多空格」。统一改回术语表取值，零新增数据、仍取单源。
+       防复发：tools/check_page_top_bindings.js（第 238 套件）用页面桩真跑 data 顶层键做严格判据。 -->
+  <view class="cm-sub">{{t.trTitle}}</view>
+  <view class="hint">{{t.trHint}}</view>
   <view class="field">
-    <text class="lbl">{{trThisMonth}}</text>
+    <text class="lbl">{{t.trThisMonth}}</text>
     <input class="val-input" type="number" confirm-type="done" disabled="{{readOnly}}"
-      placeholder="{{trThisMonthPh}}" value="{{trafficThisMonth}}"
+      placeholder="{{t.trThisMonthPh}}" value="{{trafficThisMonth}}"
       bindinput="onTrafficThisMonth" adjust-position="{{true}}" cursor-spacing="20" />
   </view>
   <view class="field">
-    <text class="lbl">{{trOld}}</text>
+    <text class="lbl">{{t.trOld}}</text>
     <input class="val-input" type="number" confirm-type="done" disabled="{{readOnly}}"
-      placeholder="{{trOldPh}}" value="{{trafficOldCustomer}}"
+      placeholder="{{t.trOldPh}}" value="{{trafficOldCustomer}}"
       bindinput="onTrafficOldCustomer" adjust-position="{{true}}" cursor-spacing="20" />
   </view>
   <view class="field">
-    <text class="lbl">{{trMember}}</text>
+    <text class="lbl">{{t.trMember}}</text>
     <input class="val-input" type="digit" confirm-type="done" disabled="{{readOnly}}"
-      placeholder="{{trMemberPh}}" value="{{memberSalesYuan}}"
+      placeholder="{{t.trMemberPh}}" value="{{memberSalesYuan}}"
       bindinput="onMemberSales" adjust-position="{{true}}" cursor-spacing="20" />
   </view>
 
