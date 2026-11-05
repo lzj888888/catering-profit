@@ -37,7 +37,16 @@ const BIZ_HARD = {
 const BIZ_KEYS = Object.keys(BIZ_HARD);
 // 房租警戒 = 参考带上沿（BANDS.rent[1]）× 城市系数。取上沿而非基准值：
 // "基准"是行业中心，超过它只是"偏高"，超过**上沿**才是"不合理"。
-const RENT_WARN_HI = { fastfood: 15, dining: 15, hotpot: 15, cafe: 18, other: 15 };
+// 🔴 A16（2026-11-05）教训：这里原是**手抄的数**（15/15/15/18/15），而 A16 把
+//   other.rent 从 [5,15] 改成 [8,18] ⇒ 抄写值当场过期（other 实际 18 却按 15 判），
+//   且不会报错（15 是合法数字）。现改为**从 BANDS 派生**：改带值即自动跟随，不可能漂。
+//   ⚠️ 依赖方向：indicatorRef 不 require 本文件（单向），无循环依赖。
+const _BANDS_FOR_WARN = require('./cx_indicatorRef').BANDS;
+const RENT_WARN_HI = BIZ_KEYS.reduce((acc, k) => {
+  const row = _BANDS_FOR_WARN[k] || _BANDS_FOR_WARN.other;
+  acc[k] = row.rent[1];
+  return acc;
+}, {});
 // 城市系数（§12.4 已拍板，闭卷不再议）：房租 [D4] 1.2/1.0/0.75；人工 [E1] 1.15/1.0/0.85
 const RENT_COEF = { tier1: 1.2, tier2: 1.0, tier3: 0.75 };
 const LABOR_COEF = { tier1: 1.15, tier2: 1.0, tier3: 0.85 };

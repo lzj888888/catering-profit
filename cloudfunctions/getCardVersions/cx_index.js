@@ -68,6 +68,13 @@ module.exports = {
   // A20-bis（2026-11-05）：补录枚举白名单 —— 校验层（saveShopSetting）与引擎认同一张表，禁止自抄。
   DIAG_ENUM: require('./cx_diagnosisEngine').DIAG_ENUM,
 
+  // A14（2026-11-05）：退款规则唯一判定处（纯函数，零 IO）。
+  //   🔴 为什么放 common：下单、退款、客服后台三处都要判"能不能退"，写三份必然三种结论。
+  //   ⚠️ 只判定不动钱 —— 真实退款待阶段 B（虚拟支付接通）由调用方执行并落 order_refund 台账。
+  refundPolicy: require('./cx_refundPolicy'),
+  judgeRefund: require('./cx_refundPolicy').judgeRefund,
+  REFUND_CODES: require('./cx_refundPolicy').CODES,
+
   // M3.14/M3.15（R150）：组件分类 + 多规格**派生层单源** —— 入参变换，5 份引擎副本一个不碰。
   //   ⚠️ 同 genId 教训：新符号务必在此聚合入口导出，否则云端 `const { deriveSpec } = common` 会 TypeError。
   //   伴侣守卫：tools/check_spec_derive.js（L1 符号齐备）+ tools/check_requires.js §2。

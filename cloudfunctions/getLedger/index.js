@@ -217,6 +217,19 @@ exports.main = async (event) => {
     platformPct: (byInd.mkt != null && incomeTotal > 0) ? (byInd.mkt / incomeTotal) * 100 : null,
   }));
 
+  // ===== A17（2026-11-05）：三项刚性成本率（V钱-4）=====
+  // 由上面 indicators 的三行**直接派生**（毛利率/房租/人工），零新增输入、零二次口径：
+  //   🔴 不重算一遍占比 —— 那会造出第二个分母来源，页面上的「房租 12%」与三项和里的房租可能对不上。
+  //   缺任一项 ⇒ pct=null + missing 列表（前端提示"缺房租"），**绝不按 0 补**。
+  const indByKey = {};
+  indicators.forEach((r) => { indByKey[r.key] = r; });
+  const pctOfInd = (k) => (indByKey[k] ? indByKey[k].pct : null);
+  const threeCost = indicatorRef.threeCostOf(bizType, {
+    grossMarginPct: pctOfInd('grossMargin'),
+    rentPct: pctOfInd('rent'),
+    laborPct: pctOfInd('labor'),
+  });
+
   return ok({
     shop_id: shopId, month: v.month,
     // 🔴 R443（2026-10-23）：现金流体检 —— 前端算「钱还能撑几个月」需要**金额**，
@@ -270,13 +283,17 @@ exports.main = async (event) => {
       const o = (acct && acct.old_customer_count != null) ? Number(acct.old_customer_count) : null;
       const m = (acct && acct.member_sales_fen != null) ? Number(acct.member_sales_fen) : null;
       const pct1 = (a, b) => (a == null || b == null || !(b > 0) ? null : Math.round((a / b) * 1000) / 10);
+      const memRatio = pct1(m, incomeTotal);
       return {
         this_month: t,
         old_customer: o,
         member_sales_fen: m,
         repeat_rate_pct: pct1(o, t),
         // 会员销售占比的分母是**权责发生制收入**（与本页其余占比同源，不另立口径）
-        member_ratio_pct: pct1(m, incomeTotal),
+        member_ratio_pct: memRatio,
+        // A18：会员占比判级（<20% 报警）。留空 ⇒ level='na'，**不判**（不按 0 分罚没会员体系的小店）。
+        //   阈值单源在 indicatorRef.MEMBER_RATIO_WARN，页面不得写死 20。
+        member_ratio_level: indicatorRef.memberRatioOf(memRatio).level,
       };
     })(),
     // round106（F2）/ round107：一次性投入（落库原值）+ 生效值。**两者恒等** ——
@@ -307,6 +324,9 @@ exports.main = async (event) => {
     //   每项含 { key, pct, lo, hi, level, redline, redlineHit }；**pct=null 表示该项没数据（不评级）**
     //   —— 前端遇到 null 必须显示「—」，不得显示 0%
     indicators,
+    // A17：三项刚性成本率（食材+人工+房租，分业态警戒 68/75/74/71 —— **不是统一 70%**）
+    //   字段：pct / level / healthy / warn / danger / warnHit / dangerHit / missing[]
+    three_cost: threeCost,
     // 参考带所依据的范围（供前端 picker 回显 + 明示「是否用的是默认口径」）
     indicator_scope: {
       biz_type: bizType,

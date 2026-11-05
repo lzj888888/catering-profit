@@ -411,6 +411,20 @@ const A15_EXEMPT = [
   /^cloudfunctions\/common\/diagnosisEngine\.js$/,
   /^cloudfunctions\/[^/]+\/cx_diagnosisEntitlement\.js$/,
   /^cloudfunctions\/[^/]+\/cx_diagnosisEngine\.js$/,
+  // ⚠️ 2026-11-05（批次 3 · A14/A16/A17）**第二十三次触发** —— 本批改了三处云函数侧的单源/自测：
+  //   ① `common/indicatorRef.js::BANDS` 参考带校准 8 项（A16）⇒ `sync_common` 派生 51 份 `cx_indicatorRef.js`
+  //      跟着变（**同步动作**，各函数没有引用它的代码，带旧副本无影响）；
+  //   ② 新增 `common/refundPolicy.js`（A14 退款规则唯一判定处，纯函数零 IO）⇒ 派生 `cx_refundPolicy.js`；
+  //   ③ `common/diagnosisEngine.js::RENT_WARN_HI` 由**手抄值**改为从 BANDS 派生
+  //      （A16 把 other.rent 从 [5,15] 改到 [8,18]，手抄的 15 当场过期且不报错 —— 这条是修洞不是加功能）。
+  //   均属 `review/收费与权益_总设计师规范_20261105.md` A14/A16/A17 显式授权，非「顺手改云函数逻辑」。
+  //   `calcSandbox/selftest.js` 同步旧带值（D3/D10/D15/D16/E1/E2/E4/H2 期望值），属**测试随口径更新**。
+  //   仍按**白名单式**登记（精确到**文件名**、**不做 `cx_*` 泛化**），**绝不放宽成 `cloudfunctions/` 全豁免**：
+  //   by=WorkBuddy / date=2026-11-05 / reason=批次3 A14/A16/A17 授权：参考带校准 + 退款判定单源 + 房租警戒派生
+  /^cloudfunctions\/[^/]+\/cx_indicatorRef\.js$/,
+  /^cloudfunctions\/common\/refundPolicy\.js$/,
+  /^cloudfunctions\/[^/]+\/cx_refundPolicy\.js$/,
+  /^cloudfunctions\/calcSandbox\/selftest\.js$/,
 ];
 check('A15 云函数逻辑零改动（仅 initDb 建库单源 + 本批授权函数豁免）', (() => {
   const { execFileSync } = require('child_process');

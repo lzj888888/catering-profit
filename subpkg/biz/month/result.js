@@ -98,6 +98,12 @@ Page({
       trHint: TERMS.modules.m1.trHint,
       diagInputGo: TERMS.modules.m1.diagInputGo,
       diagInputHint: TERMS.modules.m1.diagInputHint,
+      // A17/A18（2026-11-05）：三项刚性 + 会员占比报警
+      threeTitle: TERMS.modules.m1.threeTitle,
+      threeHint: TERMS.modules.m1.threeHint,
+      trMemberWarn: TERMS.modules.m1.trMemberWarn,
+      // A21：结论页合规兜底（单源在 terms.diag，不在页面硬编码）
+      disclaimer: TERMS.diag.disclaimer,
       bePathText: TERMS.card.bePathText,
       bePathRevOnly: TERMS.card.bePathRevOnly,
       beMomMore: TERMS.card.beMomMore,
@@ -390,6 +396,33 @@ Page({
             repeatRate: pct(tv.repeat_rate_pct),
             memberRatio: pct(tv.member_ratio_pct),
             memberSales: tv.member_sales_fen != null ? fen(tv.member_sales_fen) : '',
+            // A18：<20% 报警。level 由后端判（阈值单源 indicatorRef.MEMBER_RATIO_WARN），
+            //   页面只做"要不要显示提示"的开关，不自己比 20。
+            memberRatioLevel: tv.member_ratio_level || 'na',
+            memberRatioWarn: tv.member_ratio_level === 'warn',
+          };
+        })(),
+        // A17：三项刚性成本率（后端 threeCostOf 单源；本层只拼串，不重算）
+        //   ⚠️ 与 trView 一样的纪律：**缺项 ≠ 0** —— 缺房租时 pct 恒 null，只提示缺什么。
+        threeView: (() => {
+          const tc = d.three_cost || {};
+          const m = TERMS.modules.m1;
+          const has = tc.pct != null;
+          const nameMap = { grossMargin: m.threeMissGm, rent: m.threeMissRent, labor: m.threeMissLabor };
+          const miss = (tc.missing || []).map((k) => nameMap[k] || k).join('、');
+          const lvMap = { good: m.threeLevelGood, ok: m.threeLevelOk, warn: m.threeLevelWarn, bad: m.threeLevelBad };
+          return {
+            // show 也看 three_cost 是否下发：老后端/缓存里没有这个键时，
+            //   只露出「—」+ 空提示会让人以为是"算不出来"，宁可不显示这张卡（灰度期友好）。
+            show: !!d.account_id && !!d.three_cost,
+            has,
+            pct: has ? String(tc.pct) : '',
+            level: has ? (tc.level || 'na') : 'na',
+            lvText: has ? (lvMap[tc.level] || '') : '',
+            bandText: (tc.healthy != null && tc.warn != null)
+              ? m.threeHealthyAt(tc.healthy) + ' · ' + m.threeWarnAt(tc.warn) : '',
+            missText: miss ? (m.threeMissingPre + miss + m.threeMissingSuf) : '',
+            hint: has && tc.dangerHit ? m.threeDangerHint : (has && tc.warnHit ? m.threeWarnHint : ''),
           };
         })(),
         // R298·C1：账本存在性单源判据 —— 与首页 pages/index/index.js:98 同一字段、同一含义。

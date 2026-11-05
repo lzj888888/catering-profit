@@ -48,6 +48,8 @@ const CITY_COEF = {
 //     水电取 3%（energy[2,4] 中值）⇒ 3% × 13.3 = **房租的 40%** ⇒ rentPct = 40。
 //   ⚠️ 误差来源：当房租占比偏离带中值时（如一线铺面贵到 12%），派生值会同步偏高 ——
 //     方向是「房租贵 ⇒ 面积/规模大 ⇒ 水电高」，属合理同向，已在此写明，非静默错。
+//   🔴 A16（2026-11-05）参考带校准后，上面 R292 的**示例数字已失效**（fastfood 房租中值 7.5% → 11.5%）
+//     ⇒ 现值见下方 R293 表；语义（分母是房租、分子取 BANDS 中值）未变。
 //   ⚠️ R292 当时把 src 标为 **'E'（经验折算，待校准）** —— 因为「占营收率」那一头是我方自定值。
 //
 // 🔴🔴 R293（李老师 2026-10-14 拍板：「咱们数据库有的指数，比如各种占比，按咱们的指数走」）：
@@ -56,11 +58,12 @@ const CITY_COEF = {
 //   推导式（`ind` = energy | manage）：
 //     rentPct = BANDS[biz][ind] 中值 ÷ BANDS[biz].rent 中值 × 100
 //   各业态结果（BANDS 中值：rent / energy / manage）：
-//     fastfood 7.5 / 3 / 6 ⇒ utility 40 · manage **80**
-//     dining   11.5 / 4 / 6 ⇒ utility 35 · manage **52**
-//     hotpot   11.5 / 5 / 6 ⇒ utility 43 · manage **52**
-//     cafe      8.5 / 2 / 6 ⇒ utility 24 · manage **71**
-//     other      10 / 3.5 / 6 ⇒ utility 35 · manage **60**
+//     fastfood 11.5 / 3 / 6 ⇒ utility **26** · manage **52**   （A16：rent 中值 7.5→11.5）
+//     dining    12 / 4 / 6 ⇒ utility **33** · manage **50**     （A16：rent 中值 11.5→12）
+//     hotpot  11.5 / 5 / 6 ⇒ utility 43 · manage 52             （未变：hotpot.rent 未改）
+//     cafe    13.5 / 2 / 6 ⇒ utility **15** · manage **44**     （A16：rent 中值 8.5→13.5）
+//     other     13 / 3.5 / 6 ⇒ utility **27** · manage **46**   （A16：并集 rent 中值 10→13）
+//   ⚠️ A16 之前的值（40/80 · 35/52 · 43/52 · 24/71 · 35/60）**已作废**，勿回填。
 //   ⇒ src 由 'E' 改为 **'B'（BANDS 指数派生）**；**不再有自定占比**。
 //   ⚠️ 已知代价（诚实标注）：BANDS.manage [4,8] 是**连锁口径**（含总部管理费/系统/办公/招待），
 //     小微单店真实管理杂费约 1~4% ⇒ 按库中值执行后管理费等额偏高，**方向是保守（保本偏高）**，
@@ -83,10 +86,10 @@ const BIZ_PRESETS = [
       { itemKey: 'rent', form: 'fixed', src: 'U' },
       { itemKey: 'labor', form: 'labor_total', src: 'U' },              // 直接填人工总额（不×人数/不×系数）
       // R293：rentPct **一律取 BANDS 指数中值**（推导见 RATE_COST_FLOOR 处，禁自定）：
-      //   utility 3%（BANDS.energy[2,4] 中值）÷ 房租 7.5%（BANDS.rent[5,10] 中值）= 40%
-      //   manage 6%（BANDS.manage[4,8] 中值）÷ 7.5% = 80%
-      { itemKey: 'utility', form: 'energy_split', derivedFrom: 'rent_rate', rentPct: 40, src: 'B' },
-      { itemKey: 'manage', form: 'fixed_opt', derivedFrom: 'rent_rate', rentPct: 80, src: 'B' },
+      //   utility 3%（BANDS.energy[2,4] 中值）÷ 房租 11.5%（BANDS.rent[8,15] 中值）= 26%
+      //   manage 6%（BANDS.manage[4,8] 中值）÷ 11.5% = 52%
+      { itemKey: 'utility', form: 'energy_split', derivedFrom: 'rent_rate', rentPct: 26, src: 'B' },
+      { itemKey: 'manage', form: 'fixed_opt', derivedFrom: 'rent_rate', rentPct: 52, src: 'B' },
       { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'P', labelKey: 'costLoss' },
     ],
   },
@@ -98,7 +101,11 @@ const BIZ_PRESETS = [
   },
   {
     presetKey: 'hotpot_half_self', bizKey: 'hotpot', paybackView: 'cash',
-    params: { grossMarginPct: { v: 53, src: 'P' }, laborUnitYuan: { v: 5000, src: 'S' }, openDays: { v: 30, src: 'P' } },   // 标准 60% → 实际 53%（自助浪费）；人均 5000 由 BP 2.5 万 ÷ 5 人反推
+    // 🔴 A16（2026-11-05）：毛利率 53 → **55**。53 是 [P] BP 实测（自助浪费拉低），但 A16 把
+    //   hotpot.grossMargin 下限从 52 抬到 55 ⇒ 53 会落在带外、老板一进 M2 就被判「毛利率偏低」。
+    //   取带下限 55（仍低于标准 60），保留"自助浪费"的方向、消灭"一进来就报警"的误判。
+    //   ⚠️ 若李老师更信 BP 实测 53，改回即被 check_biz_preset G-② 判红（这是设计：默认值不得自带告警）。
+    params: { grossMarginPct: { v: 55, src: 'P' }, laborUnitYuan: { v: 5000, src: 'S' }, openDays: { v: 30, src: 'P' } },
     costMeta: [
       { itemKey: 'rent', form: 'fixed', src: 'U' },
       // 🔴 R335：fixed 25000 → labor_total（人数 × 人均）。
@@ -152,9 +159,9 @@ const BIZ_PRESETS = [
     costMeta: [
       { itemKey: 'rent', form: 'fixed', src: 'U' },
       { itemKey: 'labor', form: 'labor_total', src: 'U' },
-      // R293：utility 4%（BANDS.energy[3,5] 中值）÷ 11.5%房租 = 35%；manage 6% ÷ 11.5% = 52%
-      { itemKey: 'utility', form: 'energy_split', derivedFrom: 'rent_rate', rentPct: 35, src: 'B' },
-      { itemKey: 'manage', form: 'fixed_opt', derivedFrom: 'rent_rate', rentPct: 52, src: 'B' },
+      // R293：utility 4%（BANDS.energy[3,5] 中值）÷ 12%房租（A16：rent[9,15] 中值）= 33%；manage 6% ÷ 12% = 50%
+      { itemKey: 'utility', form: 'energy_split', derivedFrom: 'rent_rate', rentPct: 33, src: 'B' },
+      { itemKey: 'manage', form: 'fixed_opt', derivedFrom: 'rent_rate', rentPct: 50, src: 'B' },
       { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'S', labelKey: 'costLoss' },
     ],
   },
@@ -165,9 +172,9 @@ const BIZ_PRESETS = [
     costMeta: [
       { itemKey: 'rent', form: 'fixed', src: 'U' },
       { itemKey: 'labor', form: 'labor_total', src: 'U' },
-      // R293：utility 4%（BANDS.energy[3,5] 中值）÷ 11.5%房租 = 35%；manage 6% ÷ 11.5% = 52%
-      { itemKey: 'utility', form: 'energy_split', derivedFrom: 'rent_rate', rentPct: 35, src: 'B' },
-      { itemKey: 'manage', form: 'fixed_opt', derivedFrom: 'rent_rate', rentPct: 52, src: 'B' },
+      // R293：utility 4%（BANDS.energy[3,5] 中值）÷ 12%房租（A16：rent[9,15] 中值）= 33%；manage 6% ÷ 12% = 50%
+      { itemKey: 'utility', form: 'energy_split', derivedFrom: 'rent_rate', rentPct: 33, src: 'B' },
+      { itemKey: 'manage', form: 'fixed_opt', derivedFrom: 'rent_rate', rentPct: 50, src: 'B' },
       { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'S', labelKey: 'costLoss' },
     ],
   },
@@ -178,9 +185,9 @@ const BIZ_PRESETS = [
     costMeta: [
       { itemKey: 'rent', form: 'fixed', src: 'U' },
       { itemKey: 'labor', form: 'labor_total', src: 'U' },
-      // R293：utility 4%（BANDS.energy[3,5] 中值）÷ 11.5%房租 = 35%；manage 6% ÷ 11.5% = 52%
-      { itemKey: 'utility', form: 'energy_split', derivedFrom: 'rent_rate', rentPct: 35, src: 'B' },
-      { itemKey: 'manage', form: 'fixed_opt', derivedFrom: 'rent_rate', rentPct: 52, src: 'B' },
+      // R293：utility 4%（BANDS.energy[3,5] 中值）÷ 12%房租（A16：rent[9,15] 中值）= 33%；manage 6% ÷ 12% = 50%
+      { itemKey: 'utility', form: 'energy_split', derivedFrom: 'rent_rate', rentPct: 33, src: 'B' },
+      { itemKey: 'manage', form: 'fixed_opt', derivedFrom: 'rent_rate', rentPct: 50, src: 'B' },
       { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'S', labelKey: 'costLoss' },
     ],
   },
@@ -191,9 +198,9 @@ const BIZ_PRESETS = [
     costMeta: [
       { itemKey: 'rent', form: 'fixed', src: 'U' },
       { itemKey: 'labor', form: 'labor_total', src: 'U' },
-      // R293：utility 4%（BANDS.energy[3,5] 中值）÷ 11.5%房租 = 35%；manage 6% ÷ 11.5% = 52%
-      { itemKey: 'utility', form: 'energy_split', derivedFrom: 'rent_rate', rentPct: 35, src: 'B' },
-      { itemKey: 'manage', form: 'fixed_opt', derivedFrom: 'rent_rate', rentPct: 52, src: 'B' },
+      // R293：utility 4%（BANDS.energy[3,5] 中值）÷ 12%房租（A16：rent[9,15] 中值）= 33%；manage 6% ÷ 12% = 50%
+      { itemKey: 'utility', form: 'energy_split', derivedFrom: 'rent_rate', rentPct: 33, src: 'B' },
+      { itemKey: 'manage', form: 'fixed_opt', derivedFrom: 'rent_rate', rentPct: 50, src: 'B' },
       { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'S', labelKey: 'costLoss' },
     ],
   },
@@ -209,9 +216,9 @@ const BIZ_PRESETS = [
     costMeta: [
       { itemKey: 'rent', form: 'fixed', src: 'U' },
       { itemKey: 'labor', form: 'labor_total', src: 'U' },
-      // R293：utility 2%（BANDS.energy[1,3] 中值）÷ 8.5%房租 = 24%；manage 6% ÷ 8.5% = 71%
-      { itemKey: 'utility', form: 'energy_split', derivedFrom: 'rent_rate', rentPct: 24, src: 'B' },
-      { itemKey: 'manage', form: 'fixed_opt', derivedFrom: 'rent_rate', rentPct: 71, src: 'B' },
+      // R293：utility 2%（BANDS.energy[1,3] 中值）÷ 13.5%房租（A16：rent[9,18] 中值）= 15%；manage 6% ÷ 13.5% = 44%
+      { itemKey: 'utility', form: 'energy_split', derivedFrom: 'rent_rate', rentPct: 15, src: 'B' },
+      { itemKey: 'manage', form: 'fixed_opt', derivedFrom: 'rent_rate', rentPct: 44, src: 'B' },
       { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'S', labelKey: 'costLoss' },
     ],
   },
@@ -230,8 +237,8 @@ const BIZ_PRESETS = [
     costMeta: [
       { itemKey: 'rent', form: 'fixed', src: 'U' },
       { itemKey: 'labor', form: 'labor_total', src: 'U' },
-      { itemKey: 'utility', form: 'energy_split', derivedFrom: 'rent_rate', rentPct: 35, src: 'B' },  // 3.5%（energy[1,6] 中值）÷ 10%（rent[5,15] 中值）
-      { itemKey: 'manage', form: 'fixed_opt', derivedFrom: 'rent_rate', rentPct: 60, src: 'B' },   // 6%（manage[4,8] 中值）÷ 10% = 60%
+      { itemKey: 'utility', form: 'energy_split', derivedFrom: 'rent_rate', rentPct: 27, src: 'B' },  // 3.5%（energy[1,6] 中值）÷ 13%（A16：rent[8,18] 中值）= 27%
+      { itemKey: 'manage', form: 'fixed_opt', derivedFrom: 'rent_rate', rentPct: 46, src: 'B' },   // 6%（manage[4,8] 中值）÷ 13% = 46%
       { itemKey: 'other', form: 'revenue_rate', pct: 2, src: 'S', labelKey: 'costLoss' },
     ],
   },

@@ -1,15 +1,21 @@
 // utils/paywall.js —— 批次 5 · 付费弹窗（仅「保存超限 / 导出」两类触发 + 接真实下单流）
 //
-// ⚠️ 交互边界（批次 5 §2.1；R159 扩了触发面）：
-//   · 只在「保存数量超限 FREE_LIMIT_EXCEEDED」「导出操作」「套餐 / 外卖 点计算时」触发；
+// ⚠️ 交互边界（批次 5 §2.1；R159 扩触发面；**A9/A10（2026-11-05）收口后**）：
+//   · 只在「保存数量超限 FREE_LIMIT_EXCEEDED」「导出」「深度诊断」三类触发；
+//   · **套餐 / 外卖 / 团购 已不再弹墙**：套餐并入成本卡配额（走 saveLimit），
+//     外卖「点算」直接出汇总（明细后端不下发），团购整块免费 ⇒ 数组里保留的类型仅为兼容旧调用点，
+//     真正的判据是 `check_paywall_coverage` 的 L8 系列（按 `freeTier` 翻转判）。
 //   · 进入页面 / 录入 / 试算 / 查看历史 **均不触发**（付费能力"可录入、算钱才拦"）；
-//   · **M2 模块永不触发**。
+//   · **M2 模块永不触发**；**R1 铁律：算免费、拿走收费**（只许拦在保存/导出/生成报告）。
 // ⚠️ R159：放行类型集合 = `PAYWALL_TYPES`（下方常量）。它与云端 `PAID_FEATURES`
 //   派生出的键集合**必须一致**，由 `tools/check_paywall_coverage.js` 强制
 //   —— 防「云端登记了付费能力、前端却弹不出墙」（本仓 m3_combo / m3_takeaway 曾长期如此）。
 // ⚠️ 文案全部来自 miniprogram/i18n/terms.js（terms.paywall / terms.buttons / terms.pay），禁止 wxml 硬编码。
-// ⚠️ 当前阶段 enable_real_payment=false：主按钮走 payCreateOrder 生成订单 → 提示「联系客服开通」；
-//   执照下来改后端配置即接真实支付，**前端一行不改**（§2.6）。
+// ⚠️ 当前阶段 enable_real_payment=false：主按钮走 payCreateOrder 生成订单 → 提示「联系客服开通」。
+//   🔴 修正旧说法「执照下来前端一行不改」（**这句是错的**，规范 v1.1 已自纠）：
+//     接真实支付仍要改前端 —— ① 把 `payCreateOrder` 返回的 `pay_params` 交给
+//     `wx.requestVirtualPayment`（虚拟支付 SDK，不是 requestPayment）② 支付结果回调与失败重试
+//     ③ A14 退款入口。改的是**本文件与订单页**，不动各业务页的收费判据（那层才是"一行不改"的部分）。
 
 const { TERMS } = require('../miniprogram/i18n/terms.js');
 const api = require('./api.js');
@@ -47,9 +53,14 @@ function openPaywall(type, opts) {
   if (isIOS()) return showIOSBlocked();
   const def = TERMS.paywall[type];
   const buttons = TERMS.buttons;
+  // A14（2026-11-05）：**购买前明示退款规则**（规范 §6 硬要求；虚拟商品投诉重灾区）。
+  //   🔴 拼进同一个 modal 的 content，而不是"再弹一次说明" —— 两次弹窗用户只会点掉第一个，
+  //      等于没明示；事后也拿不出"已告知"的证据。
+  //   ⚠️ 文案单源在 terms.pay.refundNotice，禁在此硬编码（守卫 check_refund_policy 扫本文件禁词）。
+  const content = def.content + '\n\n' + TERMS.pay.refundTitle + '：' + TERMS.pay.refundNotice;
   wx.showModal({
     title: def.title,
-    content: def.content,
+    content,
     cancelText: def.secondary || buttons.cancel,
     // ⚠️ 平台限制：confirmText ≤4 字符 —— 用 paywall.ctaShort，不用 primary（6 字会 fail）
     confirmText: TERMS.paywall.ctaShort || def.primary,

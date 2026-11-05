@@ -76,46 +76,49 @@ check('D1 指标条数 = 6（毛利率/房租/人工/能耗/管理/平台）', i
 const pick = (k) => ib.filter((x) => x.key === k)[0] || {};
 const irent = pick('rent'), ilabor = pick('labor'), igm = pick('grossMargin'), imkt = pick('mkt'), ienergy = pick('energy');
 check('D2 房租占比 = 12,000 ÷ 76,000 = 15.8%', irent.pct === 15.8, `=${irent.pct}%`);
-check('D3 房租参考带（正餐·二三线）= 8%~15%', irent.lo === 8 && irent.hi === 15, `=${irent.lo}%~${irent.hi}%`);
+// A16（2026-11-05）：dining.rent 由 [8,15] 校准为 [9,15]（lo 抬到合理下限 9）
+check('D3 房租参考带（正餐·二三线）= 9%~15%', irent.lo === 9 && irent.hi === 15, `=${irent.lo}%~${irent.hi}%`);
 check('D4 房租超带上限 ⇒ level=warn', irent.level === 'warn', `=${irent.level}`);
 check('D5 房租命中 M1.6 警戒线 15%（15.8 > 15）', irent.redline === 15 && irent.redlineHit === true, `警戒线=${irent.redline} 命中=${irent.redlineHit}`);
 check('D6 人工占比 = 9.2%（7,000 ÷ 76,000）', ilabor.pct === 9.2, `=${ilabor.pct}%`);
 check('D7 人工低于参考带下限 ⇒ level=good', ilabor.level === 'good', `=${ilabor.level}`);
 check('D8 人工未命中警戒线 20%', ilabor.redlineHit === false, `命中=${ilabor.redlineHit}`);
 check('D9 菜品毛利率 = 65%（**用户直填值直接对照** —— round111 起不再换算成成本率）', igm.pct === 65, `=${igm.pct}%`);
-check('D10 毛利率 65% 达带上限（正餐 55~65）⇒ level=good · gain 方向越高越好', igm.level === 'good', `=${igm.level}`);
+// ⚠️ A16 后正餐毛利率带是 [60,66]：65% 落在**带内** ⇒ ok（不再是 good）。
+//   本条同时钉住"带内不判优秀"这层语义 —— 若谁把 levelOf 改成"带内也 good"，整张对照表就失去区分力。
+check('D10 毛利率 65% 落在正餐带 60~66 内 ⇒ level=ok（达上限 66 才是 good）', igm.level === 'ok', `=${igm.level}`);
 check('D11 毛利率未命中 M1.6 警戒线 55%（gain 方向判"低于"才命中 ⇒ 65 不命中）', igm.redline === 55 && igm.redlineHit === false, `警戒线=${igm.redline} 命中=${igm.redlineHit}`);
 check('D12 平台费率 = 15% 超参考带上限 10% ⇒ level=bad', imkt.pct === 15 && imkt.level === 'bad', `=${imkt.pct}% / ${imkt.level}`);
 check('D13 未填的能耗项占比 = null（未填 ≠ 0 元，前端渲染「—」而不编造 0%）', ienergy.pct === null, `=${ienergy.pct}`);
 // ---- round111 新增：口径统一到毛利率 + [D5] 行业校准（钉死，防被"优化"回去）----
-check('D14 🔴 方向分区：毛利率 50%（正餐带 55~65）⇒ warn，**不是 good**',
-  indicatorRef.levelOf(50, 55, 65, 'gain') === 'warn' && indicatorRef.levelOf(65, 55, 65, 'gain') === 'good',
-  `50⇒${indicatorRef.levelOf(50, 55, 65, 'gain')} / 65⇒${indicatorRef.levelOf(65, 55, 65, 'gain')}`);
+check('D14 🔴 方向分区：毛利率 55%（正餐带 60~66）⇒ warn，**不是 good**（A16 后带值 60~66）',
+  indicatorRef.levelOf(55, 60, 66, 'gain') === 'warn' && indicatorRef.levelOf(66, 60, 66, 'gain') === 'good',
+  `55⇒${indicatorRef.levelOf(55, 60, 66, 'gain')} / 66⇒${indicatorRef.levelOf(66, 60, 66, 'gain')}`);
 // ---- round113（2026-09-24）：labor 四业态带按 [D4] 警戒线重定（hi=警戒 / lo=floor(警戒×0.8)）----
 // ⚠️ 本条**替换**了 round111 的 D15（原钉 hotpot [18,24]）—— 那组值自身有真错：lo(18) 恰等于警戒线(18)，
 //    零余量，"优秀线 == 警戒线"语义不成立；且 dining/cafe 的 lo 更是**高于**警戒线。见 indicatorRef 注。
-check('D15 🔴 人工带四业态 = 快餐16~20 / 正餐17~22 / 火锅14~18 / 茶饮14~18（[D4] 警戒线派生 · round113）',
+check('D15 🔴 人工带四业态 = 快餐16~20 / 正餐17~22 / 火锅15~18 / 茶饮15~18（[D4] 警戒线派生 · round113，A16 抬 lo 14→15）',
   JSON.stringify(indicatorRef.BANDS.fastfood.labor) === '[16,20]'
   && JSON.stringify(indicatorRef.BANDS.dining.labor) === '[17,22]'
-  && JSON.stringify(indicatorRef.BANDS.hotpot.labor) === '[14,18]'
-  && JSON.stringify(indicatorRef.BANDS.cafe.labor) === '[14,18]',
+  && JSON.stringify(indicatorRef.BANDS.hotpot.labor) === '[15,18]'
+  && JSON.stringify(indicatorRef.BANDS.cafe.labor) === '[15,18]',
   Object.keys(indicatorRef.BANDS).map((b) => b + ':' + indicatorRef.BANDS[b].labor.join('~')).join(' '));
 check('D17 🔴 labor 的 lo ≤ 本仓警戒线 20%（否则"优秀"与"命中警戒"会同时成立）',
   Object.keys(indicatorRef.BANDS).every((b) => indicatorRef.BANDS[b].labor[0] <= indicatorRef.REDLINE.labor),
   Object.keys(indicatorRef.BANDS).map((b) => b + ':lo' + indicatorRef.BANDS[b].labor[0]).join(' '));
-check('D16 四业态毛利率带（快餐58~68 / 正餐55~65 / 火锅52~67 / 茶饮62~72 · [D5] 校准）',
-  JSON.stringify(indicatorRef.BANDS.fastfood.grossMargin) === '[58,68]'
-  && JSON.stringify(indicatorRef.BANDS.dining.grossMargin) === '[55,65]'
-  && JSON.stringify(indicatorRef.BANDS.hotpot.grossMargin) === '[52,67]'
-  && JSON.stringify(indicatorRef.BANDS.cafe.grossMargin) === '[62,72]',
+check('D16 四业态毛利率带（快餐60~66 / 正餐60~66 / 火锅55~65 / 茶饮62~70 · A16 校准）',
+  JSON.stringify(indicatorRef.BANDS.fastfood.grossMargin) === '[60,66]'
+  && JSON.stringify(indicatorRef.BANDS.dining.grossMargin) === '[60,66]'
+  && JSON.stringify(indicatorRef.BANDS.hotpot.grossMargin) === '[55,65]'
+  && JSON.stringify(indicatorRef.BANDS.cafe.grossMargin) === '[62,70]',
   Object.keys(indicatorRef.BANDS).map((b) => b + ':' + indicatorRef.BANDS[b].grossMargin.join('~')).join(' '));
 
 console.log('\n===== E 城市层级只调「有据可依」的项 =====');
 const g = (biz, ind, city) => indicatorRef.bandOf(biz, ind, city);
-check('E1 正餐·一线 房租带 = 9.6%~18%（×1.2）', g('dining', 'rent', 'tier1').lo === 9.6 && g('dining', 'rent', 'tier1').hi === 18, JSON.stringify(g('dining', 'rent', 'tier1')));
-check('E2 正餐·县城 房租带 = 6%~11.3%（×0.75）', g('dining', 'rent', 'county').lo === 6 && g('dining', 'rent', 'county').hi === 11.3, JSON.stringify(g('dining', 'rent', 'county')));
+check('E1 正餐·一线 房租带 = 10.8%~18%（[9,15]×1.2 · A16 后）', g('dining', 'rent', 'tier1').lo === 10.8 && g('dining', 'rent', 'tier1').hi === 18, JSON.stringify(g('dining', 'rent', 'tier1')));
+check('E2 正餐·县城 房租带 = 6.8%~11.3%（[9,15]×0.75 · A16 后）', g('dining', 'rent', 'county').lo === 6.8 && g('dining', 'rent', 'county').hi === 11.3, JSON.stringify(g('dining', 'rent', 'county')));
 check('E3 正餐·一线 人工带 = 19.6%~25.3%（[17,22]×1.15 · 17×1.15 的浮点边界由 check_indicator_ref C-④ 钉死）', g('dining', 'labor', 'tier1').lo === 19.6 && g('dining', 'labor', 'tier1').hi === 25.3, JSON.stringify(g('dining', 'labor', 'tier1')));
-check('E4 毛利率带**不随城市变**（一线采购贵但售价同步高）', g('dining', 'grossMargin', 'tier1').hi === g('dining', 'grossMargin', 'county').hi && g('dining', 'grossMargin', 'tier1').hi === 65, `一线 ${g('dining', 'grossMargin', 'tier1').hi} / 县城 ${g('dining', 'grossMargin', 'county').hi}`);
+check('E4 毛利率带**不随城市变**（一线采购贵但售价同步高）', g('dining', 'grossMargin', 'tier1').hi === g('dining', 'grossMargin', 'county').hi && g('dining', 'grossMargin', 'tier1').hi === 66, `一线 ${g('dining', 'grossMargin', 'tier1').hi} / 县城 ${g('dining', 'grossMargin', 'county').hi}`);
 
 console.log('\n===== F 红警与边界（不编造数据）=====');
 const red = calcSandbox({ ...base, grossMarginPct: 10, varItems: [{ key: 'takeawayComm', pct: 95 }] });
@@ -158,7 +161,8 @@ const withRev = calcSandbox(Object.assign({}, base, { expectedRevenueFen: 100000
 const am = withRev.amount_preview || [];
 const amOf = (k) => am.filter((x) => x.key === k)[0] || {};
 check('H1 填了预计营业额 ⇒ 反算 4 项（房租/人工/水电气/管理费）', am.length === 4, `=${am.length} 项`);
-check('H2 房租参考金额 = 100,000 × 11.5% = 11,500（1150000分）', amOf('rent').fen === 1150000, `=${amOf('rent').fen}分`);
+// A16：dining.rent 中值 11.5% → 12% ⇒ 100,000 × 12% = 12,000（1200000 分）
+check('H2 房租参考金额 = 100,000 × 12% = 12,000（1200000分 · A16 后中值 12%）', amOf('rent').fen === 1200000, `=${amOf('rent').fen}分`);
 check('H3 人工参考金额 = 19,500（1950000分）', amOf('labor').fen === 1950000, `=${amOf('labor').fen}分`);
 check('H4 能耗/管理 = 4,000 / 6,000（固定项 key=utility，指标 indKey=energy —— 双键各归其位）',
   amOf('utility').fen === 400000 && amOf('utility').indKey === 'energy' && amOf('manage').fen === 600000,

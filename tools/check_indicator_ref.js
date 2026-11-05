@@ -255,11 +255,23 @@ for (const ind of ['rent', 'labor']) {
     b && b.lo === 19.6 && naked === 19.5,
     `实得 ${b && b.lo} / 裸 round 反面样本 ${naked}`);
 }
-// C-⑤ 另一条浮点边界：fastfood.rent@county = [5,10] × 0.75 ⇒ 3.8 / 7.5
+// C-⑤ 系数精确性：fastfood.rent@county = [8,15] × 0.75 ⇒ 6 / 11.3
+//   （⚠️ bandOf 对结果做 1 位小数定标：11.25 → 11.3；断言写的是**定标后**的值，别按裸乘写 11.25）
+//   ⚠️ A16（2026-11-05）换带值后，本样本**不再带浮点陷阱**（8×0.75 与 15×0.75 都是精确十进制）。
+//      ⇒ 本条的职责降为「系数确实乘上去了」，**陷阱鉴别力由 C-④ 独家承担**（dining.labor 17×1.15=19.55）。
+//      纪律：将来再换带值，若 C-④ 也失去陷阱形态（tol === naked），必须**另找新样本**，
+//      否则两条都退化成"恒真的系数检查"，容差 bug 会静默复活。
 {
   const b = code.bandOf('fastfood', 'rent', 'county');
-  check('C-⑤ 浮点容差：fastfood.rent@county = 3.8 ~ 7.5', !!b && b.lo === 3.8 && b.hi === 7.5,
-    b ? `${b.lo} ~ ${b.hi}` : 'null');
+  const trapStillLives = (() => {
+    // 用**当前** dining.labor 下限 × 1.15 现算，不写死 17（写死会在带宽变化后变成假证据）
+    const v = Number(code.BANDS.dining.labor[0]);
+    const t = Math.round(v * 1.15 * 10 + 1e-9) / 10, n = Math.round(v * 1.15 * 10) / 10;
+    return t !== n;
+  })();
+  check('C-⑤ 系数精确性：fastfood.rent@county = 6 ~ 11.3（陷阱鉴别力仍在 C-④）',
+    !!b && b.lo === 6 && b.hi === 11.3 && trapStillLives,
+    b ? `${b.lo} ~ ${b.hi} · C-④ 陷阱仍有效=${trapStillLives}` : 'null');
 }
 
 // C-⑥ level 边界（cost / gain 两个方向 + na）
@@ -296,15 +308,18 @@ for (const ind of ['rent', 'labor']) {
     bizKey: 'dining', cityKey: 'tier23',
     revenueFen: 1000000,                                   // 10,000.00 元
     fixedFen: { rent: 100000, labor: 150000, utility: 30000, manage: 50000 },
-    grossMarginPct: 65, platformPct: 15,
+    grossMarginPct: 66, platformPct: 15,
   });
   const by = {};
   got.forEach((r) => { by[r.key] = r; });
-  // 期望：**毛利率 65%（dining 带 55~65 ⇒ 达上限 good —— gain 方向越高越好）**
-  //       房租 10%（dining 带 8~15 ⇒ ok，未过 15 警戒线）/ 人工 15%（带 25~35 ⇒ good）
-  //       能耗 3%（带 3~5 ⇒ good）/ 管理 5%（带 4~8 ⇒ ok；R296：manage 5,10→4,8，5 落在带内）
+  // 期望：**毛利率 66%（A16 后 dining 带 60~66 ⇒ 达上限 good —— gain 方向越高越好）**
+  //       ⚠️ A16 前这里用 65，旧带 [55,65] 的 65 恰在上限；新带 66 若仍用 65 只到 ok
+  //          ⇒ 样本必须跟着带值走，否则断言会变成"永远 ok"的假绿（换值必须重算期望，不能只改数字）。
+  //       房租 10%（dining 带 9~15 ⇒ ok，未过 15 警戒线；lo 已从 8 抬到 9 ⇒ 10 仍在带内）
+  //       人工 15%（带 17~22 ⇒ good）/ 能耗 3%（带 3~5 ⇒ good）
+  //       管理 5%（带 4~8 ⇒ ok；R296：manage 5,10→4,8，5 落在带内）
   //       营销 15%（带 5~10，超上限 25%（12.5）之外 ⇒ bad）
-  const want = { grossMargin: ['65', 'good'], rent: ['10', 'ok'], labor: ['15', 'good'], energy: ['3', 'good'], manage: ['5', 'ok'], mkt: ['15', 'bad'] };
+  const want = { grossMargin: ['66', 'good'], rent: ['10', 'ok'], labor: ['15', 'good'], energy: ['3', 'good'], manage: ['5', 'ok'], mkt: ['15', 'bad'] };
   const bad = Object.keys(want).filter((k) => !by[k] || String(by[k].pct) !== want[k][0] || by[k].level !== want[k][1]);
   check('C-⑧ evaluateIndicators 语义样本 6 项（占比 + 评级）', bad.length === 0,
     bad.length ? bad.map((k) => `${k}=${by[k] ? by[k].pct + '/' + by[k].level : 'null'}`).join('，')
@@ -377,9 +392,9 @@ for (const ind of ['rent', 'labor']) {
   const got = code.suggestAmounts('dining', 'tier23', REV);
   const by = {};
   got.forEach((x) => { by[x.key] = x; });
-  // 手算：房租 [8,15]→11.5% ⇒ 1150000；人工 [17,22]→19.5% ⇒ 1950000；
+  // 手算（A16 后）：房租 [9,15]→12% ⇒ 1200000；人工 [17,22]→19.5% ⇒ 1950000；
   //       能耗 [3,5]→4% ⇒ 400000；管理 [4,8]→6% ⇒ 600000（R296：manage 5,10→4,8）
-  const wantFen = { rent: 1150000, labor: 1950000, utility: 400000, manage: 600000 };
+  const wantFen = { rent: 1200000, labor: 1950000, utility: 400000, manage: 600000 };
   const bad = Object.keys(wantFen).filter((k) => !by[k] || by[k].fen !== wantFen[k]);
   check('C-⑬ 🔴 参考金额正样本：正餐·二三线·10万 ⇒ 4 项且金额 = 营业额 × 中值%',
     got.length === 4 && bad.length === 0,
@@ -402,13 +417,13 @@ for (const ind of ['rent', 'labor']) {
   ];
   check('C-⑮ 未填 / 非法营业额 ⇒ 空数组（不编造 0 元）',
     empty.every((a) => Array.isArray(a) && a.length === 0), empty.map((a) => a.length).join('/'));
-  // 城市系数：房租 tier1 ×1.2 ⇒ [9.6,18] 中值 13.8% ⇒ 1380000；
+  // 城市系数（A16 后）：房租 tier1 ×1.2 ⇒ [10.8,18] 中值 14.4% ⇒ 1440000；
   //          人工 tier1 ×1.15 ⇒ [19.6,25.3] 中值 22.45 → **先定标 22.5%** ⇒ 2250000
   const t1 = code.suggestAmounts('dining', 'tier1', REV);
   const rent1 = t1.find((x) => x.key === 'rent') || {};
   const labor1 = t1.find((x) => x.key === 'labor') || {};
-  check('C-⑯ 城市系数生效：一线房租 13.8%→1380000 / 人工 22.5%→2250000（先定标再算）',
-    rent1.pct === 13.8 && rent1.fen === 1380000 && labor1.pct === 22.5 && labor1.fen === 2250000,
+  check('C-⑯ 城市系数生效：一线房租 14.4%→1440000 / 人工 22.5%→2250000（先定标再算）',
+    rent1.pct === 14.4 && rent1.fen === 1440000 && labor1.pct === 22.5 && labor1.fen === 2250000,
     `rent=${rent1.pct}%/${rent1.fen} labor=${labor1.pct}%/${labor1.fen}`);
   // 🔴 展示的 pct 与 fen 必须能**互相反算** —— 客户拿计算器一按就要对得上。
   //    若先用未定标的 22.45% 算金额、却展示 22.5%，两个数就对不上（本仓 S4 锚点精神）。

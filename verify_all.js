@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：233 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：235 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1407,6 +1407,14 @@ const SUITES = [
   //   32 断言，含 4 条反面断言（禁参考利润 / 禁 ?0 兜底 / 禁裸键 / 禁中文枚举进载荷），
   //   变异复核 3/3 全部点名转红（详见文件头）。
   ['m1-extra-fields', 'tools/check_m1_extra_fields.js'],
+  // 批次 3（2026-11-05）：
+  //   three-cost     = A17/A18 三项刚性成本率（V钱-4）+ 会员销售占比（V客²-1）。
+  //                    重点是**两处阈值必须相等**（indicatorRef.THREE_COST ≡ diagnosisEngine.BIZ_HARD）
+  //                    与「缺项不按 0 补」——这两条失效时数字全绿、结论却是错的。
+  //   copy-compliance= A14/A15/A21 退款规则 + 诊断术语 + 合规话术。
+  //                    直接 require terms.js 遍历字符串值扫描（注释天然不计，避免裸扫误杀）。
+  ['three-cost', 'tools/check_three_cost.js'],
+  ['copy-compliance', 'tools/check_copy_compliance.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

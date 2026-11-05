@@ -278,6 +278,8 @@ const CASES = [
   { key: 'check_diag_engine', rel: 'tools/check_diag_engine.js' }, // 42 条（E 引擎 18 + J 权益判定 12 + F 指纹 5 + S 数据层 7；含缺项不计分母/红线优先/未判定≠未命中/缓存不扣额度四组反恒真）
   // 2-D 批次（2026-11-05）：M1 三字段 + A11 摊销三件套 + A20 补录通道 —— 32 条 = S2 + A7 + B7 + C4 + D9 + E1 + 下界自证 2
   { key: 'check_m1_extra_fields', rel: 'tools/check_m1_extra_fields.js' }, // 32 条（含 4 条反面断言：禁参考利润 / 禁 ?0 兜底 / 禁裸键 / 禁中文枚举进载荷；变异复核 3/3 点名转红）
+  { key: 'check_three_cost', rel: 'tools/check_three_cost.js' }, // 25 条（A17/A18：两处阈值逐业态相等 5 + 三项刚性行为 6 + 会员占比 5 + 接线 7 + 派生防漂移 2）
+  { key: 'check_copy_compliance', rel: 'tools/check_copy_compliance.js' }, // 24 条（A14/A15/A21：扫描器自证 4 + 禁词 5 + 必备文案 6 + 退款规则行为 9）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];
