@@ -82,6 +82,9 @@ Page({
       trHint: TERMS.modules.m1.trHint,
       diagInputGo: TERMS.modules.m1.diagInputGo,
       diagInputHint: TERMS.modules.m1.diagInputHint,
+      // 🔴 R612：深度诊断主入口（利润卡内第一屏）
+      diagEntry: TERMS.modules.m1.diagEntry,
+      diagEntrySub: TERMS.modules.m1.diagEntrySub,
       // A17/A18（2026-11-05）：三项刚性 + 会员占比报警
       threeTitle: TERMS.modules.m1.threeTitle,
       threeHint: TERMS.modules.m1.threeHint,
@@ -923,8 +926,10 @@ Page({
   // 🔴 R443：去「单品毛利复盘」——把「毛利低」变成「是哪道菜」
   //   ⚠️ 目标页在 pages/ 下（非分包），路径与 app.json 一致；没建卡时那边有自己的空态。
   goDishReview() { wx.navigateTo({ url: '/pages/m3/dishreview/index' }); },
-  // A20：诊断补录页（7 项客观值；店级时点属性，补一次长期有效）
+  // A20：诊断补录页（9 项客观值；店级时点属性，补一次长期有效）
   goDiagInput() { wx.navigateTo({ url: '/subpkg/biz/diag/input' }); },
+  // 🔴 R612：深度诊断结论页（引擎唯一出口 getDiagnosis 的前端入口）
+  goDiagnosis() { wx.navigateTo({ url: '/subpkg/biz/diag/result' }); },
   goInput() { wx.navigateTo({ url: '/subpkg/biz/month/input?month=' + this.data.month }); },
 
   // M1 报表导出：权限只读 expire_at（前端先查，后端 exportData 再兜底校验）；免费用户触发付费墙

@@ -90,11 +90,19 @@ const PAGES = [
   ['首页', 'pages/index/index'],
   ['M3hub', 'pages/m3/hub'],
   ['我的', 'pages/mine/index'],
+  // 🔴 R613（2026-11-06）：诊断两页 —— 新增页面必须**手动登记**到这里，
+  //   否则就是"未受守的盲区"（本套件不会自动发现新页面，这一点在文件头有声明）。
+  ['diag/input', 'subpkg/biz/diag/input'],
+  ['diag/result', 'subpkg/biz/diag/result'],
 ];
 
 seg('S 自证：扫描面与判据不是空的');
-ck('S-① 页面清单非空且含事故锚点 input 页', PAGES.length >= 9 &&
+ck('S-① 页面清单非空且含事故锚点 input 页', PAGES.length >= 11 &&
   PAGES.some(p => p[1] === 'subpkg/biz/month/input'));
+// S-② 防"登记面被写窄"：新增页面若只加页面不加这里，等于没守。
+//   判据取**诊断页必须在册**——它是这套守卫最近一次救回来的现场（客流 8 个顶层绑定空白）。
+ck('S-② 新增的诊断两页在册（防登记面缩水）', PAGES.some(p => p[1] === 'subpkg/biz/diag/result') &&
+  PAGES.some(p => p[1] === 'subpkg/biz/diag/input'));
 let loadable = 0, bindingTotal = 0;
 const missing = [];
 for (const [name, base] of PAGES) {

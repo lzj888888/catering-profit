@@ -79,6 +79,16 @@
       <view class="muted">{{t.flowPer100}} {{t.cur}}{{r.per100}}　{{t.flowHint}}</view>
     </block>
 
+    <!-- 🔴 R612（2026-11-06）：深度诊断**主入口** —— 放在利润卡内部底部，紧跟利润数字。
+         位置理由（豆包会诊，我原方案放页底被否）：老板看完利润那个数，
+         下一个念头就是"我照这样还能撑多久"；放页底或做成独立入口卡都会滑不到，
+         等于把整块诊断埋了。这里只放**入口**，结论在 diag/result 页
+         （云函数 getDiagnosis 是诊断引擎的唯一出口）。 -->
+    <view class="diag-entry" bindtap="goDiagnosis">
+      <view class="diag-entry-t">{{t.diagEntry}}</view>
+      <view class="diag-entry-s">{{t.diagEntrySub}}</view>
+    </view>
+
   <!-- 🔴 R579 / 队列 #108：**利润 ≠ 卡里的钱**（两司均判为最高频投诉点）。
        老板看到「利润 5000」但银行卡只多 2000，第一反应是「这系统算错了」——
        不解释一句，后面所有数字他都不信了。

@@ -80,3 +80,14 @@
 .tb-lb { font-size: 28rpx; color: #646a73; margin-top: 8rpx; }
 .tb-lb.on { color: #1e3a5f; font-weight: 600; }
 .tb-v { font-size: 28rpx; color: #646a73; }
+
+/* 🔴 R612（2026-11-06）：深度诊断**主入口**（就放在利润卡里，紧跟利润数字）。
+   为什么用深色实心块而不是普通文字链：它是本页第二重要的动作，
+   老板滚过利润那一眼就得看见；浅色链接会和"依据/说明"混成一片。
+   配色沿用全局主蓝渐变（与 .btn.primary 同一套），不新增颜色。 */
+.diag-entry {
+  margin-top: 20rpx; padding: 20rpx 22rpx; border-radius: 14rpx;
+  background: linear-gradient(135deg, #2a4e7c 0%, #162c49 100%);
+}
+.diag-entry-t { font-size: 30rpx; font-weight: 700; color: #fff; }
+.diag-entry-s { font-size: 24rpx; color: #d7e2f0; margin-top: 6rpx; }

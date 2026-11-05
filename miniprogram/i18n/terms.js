@@ -108,8 +108,14 @@ const TERMS = {
       threeDangerHint: '三项吃掉八成流水，几乎没有容错空间',
       threeWarnHint: '已经在警戒线以上，先压房租或人工，别指望多卖几份就翻身',
       // A20：深度诊断补录入口（结果页客流卡下方）
-      diagInputGo: '补全诊断数据（选填 7 项）',
+      // R612 订正：实际可补项为 **9 项**（原写 7 项，新增续租涨幅 + 重大食安后未同步）
+      diagInputGo: '补全诊断数据（选填 9 项）',
       diagInputHint: '诊断要看客流同比、口碑、租约、借贷这些账里没有的东西，补一次就够，以后每月通用',
+      // 🔴 R612（2026-11-06）：深度诊断**主入口** —— 放在结果页利润卡内部底部（第一屏）。
+      //   位置理由（豆包会诊）：老板看完利润那个数，下一个念头就是"我还撑得住吗"；
+      //   放页底或做成独立入口卡都会滑不到，等于把这块埋了。
+      diagEntry: '深度诊断：这家店还能撑多久',
+      diagEntrySub: '按 11 项指标 + 你的历史账算一份结论 ›',
     },
     m2: {
       // 🔴 R518（2026-10-26 李老师拍板，方案 A）：改名「开店盈亏平衡点测算」→「开店盈亏沙盘」。
@@ -2883,8 +2889,8 @@ const TERMS = {
   // 🔴 枚举键（trendKeys/districtKeys/debtKeys）与 common/diagnosisEngine.js::DIAG_ENUM 必须同名，
   //    页面只送 key、不送中文，否则引擎认不出 ⇒ 选中了却不计分。
   diagInput: {
-    title: '补录 7 项（诊断用）',
-    hint: '月度账能自动算 65 分；这几项补上才算满 100 分、才判得了红线。都能留空，留空只是那几项不判，不会按 0 算。',
+    title: '补录 9 项（诊断用）',
+    hint: '月度账能自动算 50 分（利润/连亏/毛利率/人工率/房租率）；这几项补上才算满 100 分，风险信号也才判得全。都能留空，留空只是那几项不判，不会按 0 算。',
     trafficLastYear: '去年同期客流（人次）',
     trafficLastYearPh: '去年同一个月的进店人次',
     rating: '平台评分',
@@ -2920,6 +2926,79 @@ const TERMS = {
     foodSafetyOpts: ['没有', '发生过（影响经营）'],
     foodSafetyKeys: ['no', 'yes'],
     errRenew: '续租涨幅填数字，如 10 或 12.5（不填就留空）',
+  },
+
+  // ===== 深度诊断 · 结论页（R612 / 2026-11-06）=====
+  // 🔴 三条对外口径（豆包会诊结论，改文案时勿破）：
+  //   1. 不叫「红线」、不叫「一票否决」⇒ 对外一律叫「风险信号」，且**一次只显示最严重一条**。
+  //   2. 用事实句，不用判决句：「账上的钱撑不到下个月」✅ /「现金枯竭·高危」❌。
+  //   3. 数据不足时必须说清「还差哪几项」，不能只甩一个「数据不足」。
+  diagResult: {
+    cur: '¥',
+    title: '深度诊断',
+    loading: '正在按你的历史账算…',
+    errLoad: '这次没算出来，稍后再试一次',
+    retry: '重新算',
+
+    lvGood: '健康',
+    lvWatch: '需关注',
+    lvWarn: '预警',
+    lvCritical: '高危',
+    lvInsufficient: '数据不足',
+    scorePre: '综合 ',
+    scoreSuf: ' 分',
+    covPre: '数据覆盖 ',
+    covSuf: '%',
+
+    conclGood: '按现在这几个月的账看，这家店撑得住；重点是别把好日子过成侥幸。',
+    conclWatch: '有一两处开始松，现在动手还来得及。',
+    conclWarn: '已经在往下走了，不碰这几处会继续恶化。',
+    conclCritical: '按现在的账看，这家店很难撑过下一轮。',
+    conclInsufficient: '能算的都算了，但数据还不够下一个定论——下面这些可以先看。',
+
+    signalTitle: '最该看的一条',
+    signalNone: '没有触发风险信号',
+    signalMorePre: '另外还有 ',
+    signalMoreSuf: ' 条',
+    sigR1: '账上的钱撑不到下个月的开支',
+    sigR2: '连亏已经超过这门生意的可扛上限，而且还在亏',
+    sigR3: '客流在结构性流失，不是淡旺季波动',
+    sigR4: '近 12 个月发生过影响经营的重大食安事件',
+    sigR5: '靠借钱维持，现金又快见底',
+    sigR6: '租约快到期，续租涨幅会明显推高成本',
+
+    indTitle: '11 项拆解',
+    indHint: '按丢分多少排，最上面的最该动',
+    indNoData: '待补',
+    indLostPre: '丢 ',
+    indLostSuf: ' 分',
+
+    missTitle: '补这一两项，结论会更准',
+    missHint: '缺项不算 0 分，只是不参与判断；补上覆盖率就上去了',
+    missGo: '去补录',
+    scoreNa: '分数还不够算',
+    focusTitle: '最该动的一项',
+    focusJoin: '：',
+    missMorePre: '还有 ',
+    missMoreSuf: ' 项没补',
+    missAutoHint: '利润/连亏/毛利/人工/房租这几项是记账自动算的，先把一个月账记完，它们自然就有了',
+    missWeightPre: '权重 ',
+
+    basisTitle: '这份结论是按什么算的',
+    asOfPre: '数据截止 ',
+    basisMonthsTitle: '最近几个月（利润）',
+    basisMonthsPre: '用了近 ',
+    basisMonthsSuf: ' 个月账',
+    basisLossPre: '连续亏损 ',
+    basisLossSuf: ' 个月',
+    basisBurnPre: '月均净亏 ',
+    basisBurnSuf: ' 元',
+    basisCashPre: '账上现金还能撑 ',
+    basisCashSuf: ' 个月',
+    basisNoCash: '还没填账面现金，撑多久算不出来',
+    basisTrunc: '中途有月份缺利润，连亏只数到断点为止',
+
+    disclaimer: '本诊断按你录入的月度账与补录项自动算，只作经营参考，不构成财务、法律或会计意见；账一改，结论就会跟着变。',
   },
 
   // ===== 十九、店铺设置页 =====

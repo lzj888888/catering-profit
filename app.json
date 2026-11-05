@@ -85,6 +85,7 @@
         "takeaway/index",
         "groupon/index",
         "diag/input",
+        "diag/result",
         "ai/consent"
       ]
     }

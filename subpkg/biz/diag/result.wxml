@@ -1,0 +1,84 @@
+<!-- subpkg/biz/diag/result.wxml —— R612（2026-11-06）· 深度诊断 · 结论页
+     结构固定四段（顺序即优先级，改顺序前先读 result.js 头注的三条口径）：
+       ① 结论（等级 + 一句话 + 最严重那 1 条风险信号）  ← 第一屏，不滚就能看完
+       ② 11 项拆解（按丢分×权重降序，最该动的在最上）
+       ③ 补哪一两项最值（单点引导，不是问卷）
+       ④ 依据 + 免责
+     🔴 页面零中文：所有文案来自 TERMS.diagResult（单源），避免两处改一处漂。 -->
+<view class="page" wx:if="{{loading}}">
+  <view class="muted center">{{t.loading}}</view>
+</view>
+
+<view class="page" wx:elif="{{errText}}">
+  <view class="warn-line">{{errText}}</view>
+  <button class="btn" bindtap="onRetry">{{t.retry}}</button>
+</view>
+
+<view class="page" wx:else>
+
+  <!-- 数据截止：诊断是跨月趋势，必须让老板知道算到哪个月为止 -->
+  <view class="muted dg-asof" wx:if="{{asOfText}}">{{asOfText}}</view>
+
+  <!-- ① 结论 -->
+  <view class="dg-card lv-{{levelClass}}">
+    <view class="dg-hd">
+      <text class="dg-badge">{{levelLabel}}</text>
+      <text class="muted">{{covText}}</text>
+    </view>
+    <view class="dg-score" wx:if="{{scoreText}}">{{scoreText}}</view>
+    <view class="dg-concl">{{concl}}</view>
+
+    <view class="dg-sig" wx:if="{{signal}}">
+      <view class="dg-sig-hd">{{focusIsSignal ? t.signalTitle : t.focusTitle}}</view>
+      <view class="dg-sig-tx">{{signal.text}}</view>
+      <view class="muted" wx:if="{{signal.evidence}}">{{signal.evidence}}</view>
+      <view class="muted" wx:if="{{signalMoreText}}">{{signalMoreText}}</view>
+    </view>
+    <view class="dg-sig none" wx:else>{{t.signalNone}}</view>
+  </view>
+
+  <!-- ② 11 项拆解 -->
+  <view class="dg-card">
+    <view class="dg-sec-hd">{{t.indTitle}}</view>
+    <view class="muted">{{t.indHint}}</view>
+    <view class="ind" wx:for="{{inds}}" wx:key="key" wx:for-item="m">
+      <view class="ind-hd">
+        <text class="ind-lbl">{{m.label}}</text>
+        <text class="ind-sc sc-{{m.cls}}">{{m.scoreText}}</text>
+      </view>
+      <view class="bar">
+        <view class="bar-in bar-{{m.cls}}" style="width:{{m.barW}}%"></view>
+      </view>
+      <view class="muted ind-note">{{m.note}}<text wx:if="{{m.lostText}}">　{{m.lostText}}</text></view>
+    </view>
+  </view>
+
+  <!-- ③ 补这一两项最值（只列**补录页真能填**的手填项；自动算的缺项另给一句指引） -->
+  <view class="dg-card" wx:if="{{miss.length || missAutoHint}}">
+    <view class="dg-sec-hd">{{t.missTitle}}</view>
+    <view class="muted">{{t.missHint}}</view>
+    <view class="miss-row" wx:for="{{miss}}" wx:key="key" wx:for-item="x">
+      <text class="miss-lbl">{{x.label}}</text>
+      <text class="muted">{{x.weightText}}</text>
+    </view>
+    <view class="muted" wx:if="{{missMoreText}}">{{missMoreText}}</view>
+    <view class="hint" wx:if="{{missAutoHint}}">{{missAutoHint}}</view>
+    <button class="btn" wx:if="{{miss.length}}" bindtap="goInput">{{t.missGo}}</button>
+  </view>
+
+  <!-- ④ 依据 -->
+  <view class="dg-card">
+    <view class="dg-sec-hd">{{t.basisTitle}}</view>
+    <view class="muted basis-line" wx:for="{{basisLines}}" wx:key="index" wx:for-item="line">{{line}}</view>
+    <!-- 近几个月利润明细：结论要能被老板自己核对（"连亏 3 个月"最想知道哪三个月、各亏多少） -->
+    <block wx:if="{{basisMonths.length}}">
+      <view class="muted bm-hd">{{t.basisMonthsTitle}}</view>
+      <view class="bm" wx:for="{{basisMonths}}" wx:key="month" wx:for-item="b">
+        <text class="bm-m">{{b.month}}</text>
+        <text class="bm-v {{b.neg ? 'neg' : 'pos'}}">{{b.profitText}}</text>
+      </view>
+    </block>
+  </view>
+
+  <view class="dg-disclaimer">{{t.disclaimer}}</view>
+</view>
