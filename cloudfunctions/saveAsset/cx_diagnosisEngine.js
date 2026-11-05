@@ -91,7 +91,15 @@ const DIAG_ENUM = {
 };
 
 // ===== 三、工具 =====
-const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : null; };
+// 🔴 R612：`num()` 必须把 null/undefined/'' 判成 **null（缺数据）**，不能靠 Number() 强转。
+//   踩过的坑：`Number(null) === 0` 且 Number.isFinite(0) === true ⇒ 改之前 `num(null)` 返回 0，
+//   于是"没填账面现金/没有连亏月数"被当成"等于 0" —— 前者会让 R1 判成命中，
+//   后者会让"连亏未知"显示成"连亏 0 个月、满分"。**缺项 ≠ 0** 是本仓贯穿始终的红线。
+const num = (v) => {
+  if (v === null || v === undefined || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
 const has = (v) => v !== null && v !== undefined && v !== '' && Number.isFinite(Number(v));
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 /** 线性插值：(x0→y0, x1→y1)，x 落在区间外自动取端值 */
@@ -395,7 +403,15 @@ function evaluateDiagnosis(input) {
   // ---- 覆盖率闸门：不足则**不出等级**（否则"数据少反而高分"会误导）----
   let level;
   let levelLabel;
-  if (coverage < TUNABLE.coverageMin) {
+  // 🔴 R612 新增闸门①：**没有当月营收/利润 ⇒ 一律「数据不足」**。
+  //   原来只卡覆盖率（70%），而 diag_facts 填满时覆盖率能到 85% ⇒ 一个**一本账都没有**的店
+  //   靠补录项也能凑出「健康」。这是比算错更坏的错：等于告诉没记账的人"你店挺好"。
+  //   诊断的第一性数据是账，不是问卷。
+  const hasCoreFinance = (num(i.revenueFen) !== null && num(i.netProfitFen) !== null);
+  if (!hasCoreFinance) {
+    level = 'insufficient';
+    levelLabel = '数据不足';
+  } else if (coverage < TUNABLE.coverageMin) {
     level = 'insufficient';
     levelLabel = '数据不足';
   } else if (redlineHit.length > 0) {
@@ -409,6 +425,24 @@ function evaluateDiagnosis(input) {
   else if (score >= LEVEL_CUT.watch) { level = 'watch'; levelLabel = '需关注'; }
   else if (score >= LEVEL_CUT.warn) { level = 'warn'; levelLabel = '预警'; }
   else { level = 'critical'; levelLabel = '高危'; }
+
+  // 🔴 R612 新增闸门②：**亏损中的店，等级封顶**（不许判「健康」）。
+  //   为什么必须加：11 项加权里「盈利能力」只占 15 分。实测一家快餐店连亏 3 个月、净利率 −6.7%，
+  //   其余项（房租/人工/租约/借贷都正常）把总分拉到 76.2 ⇒ 判「健康」。
+  //   对老板来说这是**一眼假**：我这三个月都在赔，你说我健康？—— 一次就毁掉整个工具的可信度。
+  //   封顶规则（按业态阈值，与 R2 同源）：
+  //     · 连亏已达本业态可扛上限，或净利率 ≤ −5%  ⇒ 最高只能「预警」
+  //     · 有任何一个月在亏（连亏 ≥1），或净利率 < 0  ⇒ 最高只能「需关注」
+  //   仅封顶、不抬升：本就判得更差的维持原判。
+  if (level === 'good' || level === 'watch' || level === 'warn') {
+    const nm = pct(i.netProfitFen, i.revenueFen);
+    const lm = num(i.lossMonths);
+    const tol = tOf('lossMonthsTolerableByBiz', i.bizType);
+    const severe = (lm !== null && lm >= tol) || (nm !== null && nm <= -5);
+    const losing = (lm !== null && lm >= 1) || (nm !== null && nm < 0);
+    if (severe && (level === 'good' || level === 'watch')) { level = 'warn'; levelLabel = '预警'; }
+    else if (losing && level === 'good') { level = 'watch'; levelLabel = '需关注'; }
+  }
 
   // ---- 短板排序（只对 hasData 的项按 失分×权重 降序，前 3）----
   //   为什么乘权重：一项 5 分权重扣 20 分 = 丢 1 分，一项 15 分权重扣 20 分 = 丢 3 分。

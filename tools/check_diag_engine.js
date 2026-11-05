@@ -200,6 +200,48 @@ check('E-⑱ 城市系数真生效：一线人工/房租警戒上抬后，同一
     !!foodEv && /影响经营|重大/.test(foodEv.evidence), foodEv ? foodEv.evidence : '未命中');
 }
 
+// ---------- L 组：R612 等级闸门（防「没记账也判健康」与「连亏却判健康」）----------
+{
+  // L-① 一本账都没有（只有补录项 + 占比类）⇒ 必须 insufficient，不能靠补录项凑出"健康"
+  //   刻意把**除 profit(15) 与 cash(15) 之外**的项全填满 ⇒ 覆盖率恰为 70%，刚好过旧闸门，
+  //   这样才真正测到"有账才有诊断"这条新闸门，而不是被覆盖率顺带拦下。
+  const noLedger = {
+    bizType: 'fastfood', cityTier: 'tier2',
+    // 刻意**不给** revenueFen / netProfitFen / avgMonthlyNetLossFen / cashOnHandFen
+    lossMonths: 0,
+    trafficThisMonth: 4200, trafficLastYear: 4000,
+    foodCostRatePct: 38, laborCostRatePct: 18, rentRatePct: 12,
+    rating: 4.8, reviewTrend: 'better', businessDistrict: 'growing',
+    leaseMonthsLeft: 30, renewIncreasePct: 0, debtLevel: 'none',
+    foodSafetyEvent: false,
+  };
+  const rNL = E.evaluateDiagnosis(noLedger);
+  check('L-① 🔴 无当月营收/利润 ⇒ 必须「数据不足」（哪怕补录项把覆盖率凑到 70%+）',
+    rNL.level === 'insufficient' && rNL.coverage >= 70,
+    `level=${rNL.level} coverage=${rNL.coverage}%`);
+
+  // L-② 连亏 3 个月 + 净利率 −6.7%：其他项都正常 ⇒ 等级**不得**是 good
+  const bleeding = Object.assign({}, FULL, {
+    netProfitFen: -2000000, revenueFen: 30000000, lossMonths: 3,
+    avgMonthlyNetLossFen: 2000000, cashOnHandFen: 10000000,
+  });
+  const rBL = E.evaluateDiagnosis(bleeding);
+  check('L-② 🔴 亏损中的店不得判「健康」（盈利项只占 15 分，不封顶会被其他项拉回 75+）',
+    rBL.level !== 'good', `score=${rBL.score} level=${rBL.level}（本业态连亏上限 ${E.tOf('lossMonthsTolerableByBiz', 'fastfood')}）`);
+
+  // L-③ 反证：同店若净利为正 ⇒ 封顶不生效，仍可 good/watch 及以上
+  const healthy = Object.assign({}, FULL, { netProfitFen: 1500000, lossMonths: 0, avgMonthlyNetLossFen: 0 });
+  check('L-③ 反恒真：盈利店不受封顶影响（否则封顶就变成"一律降级"的死规则）',
+    E.evaluateDiagnosis(healthy).level === 'good', E.evaluateDiagnosis(healthy).level);
+
+  // L-④ num(null) 不得等于 0：缺连亏月数 ⇒ 该项 must be hasData=false，而不是"连亏 0 个月"满分
+  const noLoss = Object.assign({}, FULL);
+  delete noLoss.lossMonths;
+  const lmMetric = E.evaluateDiagnosis(noLoss).metrics.find((m) => m.key === 'loss');
+  check('L-④ 🔴 `num(null)` 不得当成 0：缺连亏月数 ⇒ 该项无分，不得显示「连亏 0 个月」满分',
+    lmMetric.hasData === false && lmMetric.score === null, `hasData=${lmMetric.hasData} score=${lmMetric.score}`);
+}
+
 // ---------- J 组：权益判定（纯函数，无 IO）----------
 const okArgs = true;
 const J = D.judgeDiagnosis;

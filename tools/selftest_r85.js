@@ -425,6 +425,10 @@ const A15_EXEMPT = [
   /^cloudfunctions\/common\/refundPolicy\.js$/,
   /^cloudfunctions\/[^/]+\/cx_refundPolicy\.js$/,
   /^cloudfunctions\/calcSandbox\/selftest\.js$/,
+  // R612（2026-11-06 李老师拍板授权）：新增只读云函数 getDiagnosis —— 把已存在但**零调用**的
+  //   diagnosisEngine 组装成可达接口（现金流改失血口径 + 分区业态阈值 + 两条等级闸门）。
+  //   引擎与副本条目已在 A5 批次登记，此处只补新函数目录。
+  /^cloudfunctions\/getDiagnosis\//,
 ];
 check('A15 云函数逻辑零改动（仅 initDb 建库单源 + 本批授权函数豁免）', (() => {
   const { execFileSync } = require('child_process');
