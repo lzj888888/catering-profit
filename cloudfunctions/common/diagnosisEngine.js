@@ -51,16 +51,31 @@ const RENT_WARN_HI = BIZ_KEYS.reduce((acc, k) => {
 const RENT_COEF = { tier1: 1.2, tier2: 1.0, tier3: 0.75 };
 const LABOR_COEF = { tier1: 1.15, tier2: 1.0, tier3: 0.85 };
 
-// ===== 二、可扛上限与安全下限（原模型未给具体数，此处显式定义并标注为「本仓约定」）=====
-// ⚠️ 这几个数字原表只写"超可扛上限"而未给值，不定义就无法计算。全部集中在此，便于日后校准。
+// ===== 二、可扛上限与安全下限（**按智库分业态校准**）=====
+// 🔴 R612（2026-11-06 李老师拍板）：原先这里是**全业态统一经验值**（连亏 6 月 / 现金 3 月 /
+//   客流 −20% / 评分 4.0），而 `REVIEW_2026-09-23_闭店决策模型v1.0_与本仓口径对照.md` §5 末尾
+//   明确记录原模型给的是**分业态值**：连亏可扛 4/5/4/5 月、现金安全 3/3/3/4 月、
+//   客流下滑警戒 −20/−15/−20/−15%、综合评分警戒 3.8/3.9/3.9/3.8。
+//   ⇒ 现改为按业态取值，**统一值只作兜底**（未知业态）。这是"按智库走"的具体落点。
+//   ⚠️ 顺序与 BIZ_KEYS 一致：fastfood / dining / hotpot / cafe / other。
 const TUNABLE = {
-  lossMonthsTolerable: 6,   // 连续亏损超过 6 个月视为"失血"，每多 1 月额外扣分
-  cashSafeMonths: 3,        // 现金 ≥3 个月刚性支出视为安全（<1 个月触 R1 红线）
-  trafficDropWarnPct: 20,   // 客流同比下滑 20% 视为"下滑警戒"
-  ratingFloor: 4.0,         // 平台评分 4.0 以下封底
-  ratingGood: 4.8,          // 4.8 以上满分
+  // 连续亏损可扛月数（原模型：快餐 4 / 正餐 5 / 火锅 4 / 茶饮 5；other 取最宽 5）
+  lossMonthsTolerableByBiz: { fastfood: 4, dining: 5, hotpot: 4, cafe: 5, other: 5 },
+  // 现金安全下限（原模型：3/3/3/4；other 取 3）
+  cashSafeMonthsByBiz: { fastfood: 3, dining: 3, hotpot: 3, cafe: 4, other: 3 },
+  // 客流同比下滑警戒（原模型：−20/−15/−20/−15；other 取 −20）
+  trafficDropWarnPctByBiz: { fastfood: 20, dining: 15, hotpot: 20, cafe: 15, other: 20 },
+  // 综合评分警戒下限（原模型：3.8/3.9/3.9/3.8；other 取 3.8）
+  ratingFloorByBiz: { fastfood: 3.8, dining: 3.9, hotpot: 3.9, cafe: 3.8, other: 3.8 },
+  ratingGood: 4.8,          // 4.8 以上满分（原表口径，不分业态）
   coverageMin: 70,          // 权重覆盖率下限：低于它不出等级（只给「数据不足」）
 };
+/** 按业态取阈值的统一入口：未知业态/缺省一律走 other，**绝不回落到 0 或 undefined** */
+function tOf(key, bizType) {
+  const m = TUNABLE[key] || {};
+  const k = (bizType && m[bizType] !== undefined) ? bizType : 'other';
+  return m[k];
+}
 
 /** 等级阈值（本仓约定，第一版试跑值，未做市场验证 —— 不许当行业标准对外宣称） */
 const LEVEL_CUT = { good: 75, watch: 55, warn: 40 };
@@ -112,25 +127,45 @@ const METRICS = [
     score: (i) => {
       const m = num(i.lossMonths);
       if (m === null || m < 0) return { score: null, note: '缺连续亏损月数', basis: '' };
-      const tol = TUNABLE.lossMonthsTolerable;
+      const tol = tOf('lossMonthsTolerableByBiz', i.bizType);
       const s = m <= tol ? 100 - m * 10 : Math.max(0, 40 - (m - tol) * 10);
       return { score: Math.round(s), note: `连续亏损 ${m} 个月`, basis: `可扛上限 ${tol} 个月` };
     },
   },
-  // 3 现金流 15 —— 现金可撑月数 <1 得 0；≥3 得 100；中间线性
-  //   🔴 必须用**账面现金**，不许用净现金流近似（见文件头底线 2）
+  // 3 现金流 15 —— **失血速度**：现金可撑月数 = 账面现金 ÷ 月均净亏损
+  //   🔴 R612（2026-11-06 李老师拍板）口径变更，这是本轮最重要的算法修正：
+  //     旧口径 = 现金 ÷ 月刚性支出（房租+人工+水电），语义是「假如明天起一分钱不进账」的**断粮测试**。
+  //       它对「突发停业」有意义，但对「还在营业、只是每月亏」的店**系统性高估危险**：
+  //       账上 10 万、月固定支出 5 万、每月净亏 1 万 ⇒ 旧算法得「2 个月」（恐吓），
+  //       真实答案是「10 个月」（照这个亏法还能撑十个月）。
+  //     新口径 = 现金 ÷ 月均净亏损，回答的是老板真正问的那句「照现在这样还能撑几个月」。
+  //     ⇒ 断粮测试**不再作为主指标展示**；需要极端情况时由上层另行提示，不进 15 分权重。
+  //   🔴 分母优先用 `avgMonthlyNetLossFen`（近 3 个月平均净亏损，正数）；
+  //     缺它才退回当月 `netProfitFen` 反推，且 note 必须标明「仅按当月」——
+  //     单月波动大（年节/装修/一次进货），不标注就等于用一个偶然数当趋势。
   {
     key: 'cash', label: '现金流', weight: 15, kind: 'manual',
     score: (i) => {
       const cash = num(i.cashOnHandFen);
-      const rigid = num(i.monthlyRigidFen);
-      if (cash === null || rigid === null || rigid <= 0) {
-        return { score: null, note: '缺账面现金或月刚性支出', basis: '' };
+      if (cash === null) return { score: null, note: '缺账面现金', basis: '' };
+      const avgLoss = num(i.avgMonthlyNetLossFen);
+      const cur = pct(i.netProfitFen, i.revenueFen);
+      // 分母：优先 3 月均净亏损；缺失则用当月净利反推（并标注）
+      let burn = null; let burnBasis = '';
+      if (avgLoss !== null) { burn = avgLoss; burnBasis = '近 3 个月平均净亏损'; }
+      else if (i.netProfitFen !== null && i.netProfitFen !== undefined) {
+        const np = num(i.netProfitFen);
+        if (np !== null) { burn = -np; burnBasis = '仅按当月净利推算（单月波动大）'; }
       }
-      const months = cash / rigid;
-      const safe = TUNABLE.cashSafeMonths;
+      if (burn === null) return { score: null, note: '缺月均净亏损或当月净利', basis: '' };
+      // 不亏损（burn ≤ 0）：不存在"撑几个月"的问题，现金流项满分
+      if (burn <= 0) {
+        return { score: 100, note: '当前不亏损，现金在积累', basis: burnBasis };
+      }
+      const months = cash / burn;
+      const safe = tOf('cashSafeMonthsByBiz', i.bizType);
       const s = months < 1 ? 0 : (months >= safe ? 100 : lerp(months, 1, 0, safe, 100));
-      return { score: Math.round(s), note: `账面现金可撑 ${months.toFixed(1)} 个月`, basis: `安全线 ${safe} 个月` };
+      return { score: Math.round(s), note: `照当前亏损速度还能撑 ${months.toFixed(1)} 个月`, basis: `${burnBasis}；安全线 ${safe} 个月` };
     },
   },
   // 4 客流与营收趋势 10 —— 同比 ≥0 得 100；达下滑警戒得 20
@@ -140,12 +175,12 @@ const METRICS = [
       const a = num(i.trafficThisMonth); const b = num(i.trafficLastYear);
       if (a === null || b === null || b <= 0) return { score: null, note: '缺本月客流或去年同期客流', basis: '' };
       const yoy = ((a - b) / b) * 100;
-      const warn = -TUNABLE.trafficDropWarnPct;
+      const warn = -tOf('trafficDropWarnPctByBiz', i.bizType);
       let s;
       if (yoy >= 0) s = 100;
       else if (yoy >= warn) s = lerp(yoy, warn, 20, 0, 100);
       else s = Math.max(0, lerp(yoy, warn * 2.5, 0, warn, 20));
-      return { score: Math.round(s), note: `客流同比 ${yoy >= 0 ? '+' : ''}${yoy.toFixed(1)}%`, basis: `下滑警戒 ${TUNABLE.trafficDropWarnPct}%` };
+      return { score: Math.round(s), note: `客流同比 ${yoy >= 0 ? '+' : ''}${yoy.toFixed(1)}%`, basis: `下滑警戒 ${tOf('trafficDropWarnPctByBiz', i.bizType)}%` };
     },
   },
   // 5 毛利率 8 —— ≤健康线 100；健康线→红线 线性降；≥红线 0
@@ -195,7 +230,7 @@ const METRICS = [
     score: (i) => {
       const r = num(i.rating);
       if (r === null) return { score: null, note: '缺平台评分', basis: '' };
-      const good = TUNABLE.ratingGood; const floor = TUNABLE.ratingFloor;
+      const good = TUNABLE.ratingGood; const floor = tOf('ratingFloorByBiz', i.bizType);
       let s = r >= good ? 100 : (r <= floor ? lerp(r, 0, 0, floor, 60) : lerp(r, floor, 60, good, 100));
       // 趋势调整（原表：恶化 −20 / 略增 −8 / 改善 +）
       const t = String(i.reviewTrend || '');
@@ -250,10 +285,17 @@ const REDLINES = [
   {
     code: 'R1', label: '现金枯竭',
     check: (i) => {
-      const cash = num(i.cashOnHandFen); const rigid = num(i.monthlyRigidFen);
-      if (cash === null || rigid === null || rigid <= 0) return { judged: false, evidence: '缺账面现金或月刚性支出，无法判定' };
-      const months = cash / rigid;
-      return { judged: true, hit: months < 1, evidence: `账面现金可撑 ${months.toFixed(1)} 个月（<1 个月即触发）` };
+      // 🔴 R612：与 15 分现金流项**同一口径**（现金 ÷ 月均净亏损），不再用刚性支出。
+      //   若用旧口径会出现自相矛盾：页面说"还能撑 10 个月"，红线却判"现金枯竭"。
+      const cash = num(i.cashOnHandFen);
+      if (cash === null) return { judged: false, evidence: '缺账面现金，无法判定' };
+      const avgLoss = num(i.avgMonthlyNetLossFen);
+      let burn = avgLoss;
+      if (burn === null) { const np = num(i.netProfitFen); burn = np === null ? null : -np; }
+      if (burn === null) return { judged: false, evidence: '缺月均净亏损或当月净利，无法判定' };
+      if (burn <= 0) return { judged: true, hit: false, evidence: '当前不亏损，现金在积累' };
+      const months = cash / burn;
+      return { judged: true, hit: months < 1, evidence: `照当前亏损速度还能撑 ${months.toFixed(1)} 个月（<1 个月即触发）` };
     },
   },
   {
@@ -261,8 +303,9 @@ const REDLINES = [
     check: (i) => {
       const m = num(i.lossMonths); const r = pct(i.netProfitFen, i.revenueFen);
       if (m === null || r === null) return { judged: false, evidence: '缺连续亏损月数或净利率，无法判定' };
-      const hit = m > TUNABLE.lossMonthsTolerable && r <= 0;
-      return { judged: true, hit, evidence: `连续亏损 ${m} 个月（上限 ${TUNABLE.lossMonthsTolerable}），净利率 ${r.toFixed(1)}%` };
+      const tol = tOf('lossMonthsTolerableByBiz', i.bizType);
+      const hit = m > tol && r <= 0;
+      return { judged: true, hit, evidence: `连续亏损 ${m} 个月（本业态上限 ${tol}），净利率 ${r.toFixed(1)}%` };
     },
   },
   {
@@ -276,19 +319,31 @@ const REDLINES = [
     },
   },
   {
-    code: 'R4', label: '食安重大事件',
+    code: 'R4', label: '重大食安事件',
     check: (i) => {
-      if (i.foodSafetyEvent === undefined || i.foodSafetyEvent === null) return { judged: false, evidence: '未填报食安事件情况，无法判定' };
-      return { judged: true, hit: !!i.foodSafetyEvent, evidence: i.foodSafetyEvent ? '填报存在食安处罚或重大客诉' : '未填报食安事件' };
+      // 🔴 R612（李老师拍板）：**不拆档**。普通抽检不合格/内部整改这类"对经营没影响"的，按没事处理；
+      //   只有「影响店铺经营的重大食安」——集体食物中毒、被媒体曝光、被通报停业整顿 —— 才算。
+      //   理由（李老师原话）：对店铺没影响的，说白了即使有大家也认为没有；拆档拆不明白，还得来回记数。
+      //   字段仍是布尔，语义收窄为「重大」。
+      if (i.foodSafetyEvent === undefined || i.foodSafetyEvent === null) return { judged: false, evidence: '未填报食安情况，无法判定' };
+      return { judged: true, hit: !!i.foodSafetyEvent, evidence: i.foodSafetyEvent ? '存在影响经营的重大食安事件' : '无重大食安事件' };
     },
   },
   {
     code: 'R5', label: '借贷输血失控',
     check: (i) => {
-      const d = String(i.debtLevel || ''); const cash = num(i.cashOnHandFen); const rigid = num(i.monthlyRigidFen);
-      if (!d || cash === null || rigid === null || rigid <= 0) return { judged: false, evidence: '缺借贷情况或现金数据，无法判定' };
-      const months = cash / rigid;
-      return { judged: true, hit: d === 'heavy' && months < 3, evidence: `借贷 ${d}，现金可撑 ${months.toFixed(1)} 个月（<3 且大量持续即触发）` };
+      // 🔴 R612：与 R1 同口径（现金 ÷ 月均净亏损）。"输血失控"的前提是**还在失血**，
+      //   盈利的店借大量钱更可能是扩张，不该被判"失控"。
+      const d = String(i.debtLevel || '');
+      const cash = num(i.cashOnHandFen);
+      if (!d || cash === null) return { judged: false, evidence: '缺借贷情况或现金数据，无法判定' };
+      const avgLoss = num(i.avgMonthlyNetLossFen);
+      let burn = avgLoss;
+      if (burn === null) { const np = num(i.netProfitFen); burn = np === null ? null : -np; }
+      if (burn === null) return { judged: false, evidence: '缺月均净亏损或当月净利，无法判定' };
+      if (burn <= 0) return { judged: true, hit: false, evidence: `借贷 ${d}，但当前不亏损（不像输血维持）` };
+      const months = cash / burn;
+      return { judged: true, hit: d === 'heavy' && months < 3, evidence: `借贷 ${d}，照当前亏损速度还能撑 ${months.toFixed(1)} 个月（<3 且大量持续即触发）` };
     },
   },
   {
@@ -389,6 +444,7 @@ module.exports = {
   RENT_COEF,
   LABOR_COEF,
   TUNABLE,
+  tOf,
   LEVEL_CUT,
   DIAG_ENUM,
   METRICS,

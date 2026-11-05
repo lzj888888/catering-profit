@@ -2908,6 +2908,18 @@ const TERMS = {
     districtKeys: ['growing', 'stable', 'slight_down', 'clear_down', 'structural_loss'],
     debtOpts: ['没有借贷', '有一点', '压力很大'],
     debtKeys: ['none', 'light', 'heavy'],
+    // ===== R612（2026-11-06）：补两问 =====
+    // 续租涨幅：R6「租约断崖」三条件之一（租期≤3 + 涨≥20% + 仍在亏），没它 R6 永远判不了
+    renewIncrease: '续租预计涨多少（%）',
+    renewIncreasePh: '如 10；不清楚就留空（留空=这项不判）',
+    // 重大食安：**只问一个**，不拆档。
+    //   李老师拍板：普通抽检不合格/内部整改这类"对经营没影响"的按没事处理；
+    //   只有影响经营的（集体中毒、被媒体曝光、被通报停业整顿）才算。
+    foodSafety: '重大食安事件',
+    foodSafetyHint: '指影响店铺经营的那种：集体食物中毒、被媒体曝光、被通报停业整顿。普通的抽检不合格、内部整改不算。只用于本店算账，不对外。',
+    foodSafetyOpts: ['没有', '发生过（影响经营）'],
+    foodSafetyKeys: ['no', 'yes'],
+    errRenew: '续租涨幅填数字，如 10 或 12.5（不填就留空）',
   },
 
   // ===== 十九、店铺设置页 =====

@@ -42,8 +42,9 @@ const FULL = {
   foodCostRatePct: 38,         // → 毛利率 62%（快餐健康线 64，略低于健康线）
   laborCostRatePct: 18,        // 快餐警戒 20 → 优秀
   rentRatePct: 12,             // 快餐上沿 15 → 优秀
-  monthlyRigidFen: 12000000,   // 12 万
-  cashOnHandFen: 36000000,     // 36 万 → 可撑 3 个月
+  monthlyRigidFen: 12000000,   // 12 万（R612 起**不再**用于现金流判据，仅留作断粮参考）
+  cashOnHandFen: 36000000,     // 36 万；本样本净利为正 ⇒ 现金流项满分（不亏损就没有"撑几个月"）
+  avgMonthlyNetLossFen: 0,     // R612：近 3 月平均净亏损（正数=亏）。0 ⇒ 不亏
   trafficThisMonth: 4200, trafficLastYear: 4000,   // 同比 +5%
   rating: 4.7, reviewTrend: 'slight',
   businessDistrict: 'stable',
@@ -93,7 +94,12 @@ check('E-⑨ 覆盖率不足 ⇒ 等级必须是 insufficient（不能因为没�
   `coverage=${rSparse.coverage} level=${rSparse.level}`);
 
 // 红线优先于分数
-const redHit = Object.assign({}, FULL, { cashOnHandFen: 5000000 });   // 现金 5 万 / 刚性 12 万 = 0.4 月 → R1
+// R612：R1 改为「现金 ÷ 月均净亏损」口径 ⇒ 触发样本必须**真的在亏**（净利为负 + 月均净亏损）
+const redHit = Object.assign({}, FULL, {
+  cashOnHandFen: 5000000,          // 现金 5 万
+  netProfitFen: -2000000,          // 当月净亏 2 万
+  avgMonthlyNetLossFen: 6000000,   // 近 3 月平均净亏 6 万 ⇒ 5/6 = 0.83 月 < 1 ⇒ R1
+});
 const rRed = E.evaluateDiagnosis(redHit);
 check('E-⑩ 🔴 红线优先于分数：命中 R1 后等级直接 critical，不看总分',
   rRed.redlineHit.some((r) => r.code === 'R1') && rRed.level === 'critical',
@@ -144,6 +150,55 @@ check('E-⑱ 城市系数真生效：一线人工/房租警戒上抬后，同一
   + '（反证：若系数是死代码，两边会完全相等）',
   laborT1 >= laborT3 && rentT1 >= rentT3 && (laborT1 !== laborT3 || rentT1 !== rentT3),
   `人工 ${laborT1}/${laborT3} 房租 ${rentT1}/${rentT3}（一线/三线）`);
+
+// ---------- K 组：R612 现金流口径变更 + 智库分业态阈值（防悄悄改回旧口径）----------
+// 🔴 这组的价值在「反证」：旧口径（现金÷固定支出）下这些断言必然红，从而证明口径真的换了。
+{
+  // K-① 🔴 最关键的反证：现金 5 万、月固定支出 12 万 —— 旧口径算 0.42 月必然触发 R1；
+  //   但若店是**盈利**的，就不存在"现金枯竭"，R1 必须不命中。
+  const profitable = Object.assign({}, FULL, {
+    cashOnHandFen: 5000000, monthlyRigidFen: 12000000,
+    netProfitFen: 1500000, avgMonthlyNetLossFen: 0,
+  });
+  const rP = E.evaluateDiagnosis(profitable);
+  check('K-① 🔴 口径反证：现金 5 万/固定支出 12 万但**净利为正** ⇒ R1 不得命中'
+    + '（旧「断粮口径」会算 0.42 月并误判现金枯竭，这条就是防它回来）',
+    !rP.redlineHit.some((r) => r.code === 'R1'),
+    `R1 命中=${rP.redlineHit.some((r) => r.code === 'R1')}`);
+
+  // K-② 分母必须是「亏损额」而不是「固定支出」：同样的现金，亏得越多撑得越短
+  const lossSmall = Object.assign({}, FULL, { cashOnHandFen: 10000000, netProfitFen: -2000000, avgMonthlyNetLossFen: 2000000 });
+  const lossBig = Object.assign({}, FULL, { cashOnHandFen: 10000000, netProfitFen: -5000000, avgMonthlyNetLossFen: 5000000 });
+  const mSmall = E.evaluateDiagnosis(lossSmall).metrics.find((m) => m.key === 'cash');
+  const mBig = E.evaluateDiagnosis(lossBig).metrics.find((m) => m.key === 'cash');
+  check('K-② 现金 10 万：月亏 2 万 ⇒ 撑 5 个月、月亏 5 万 ⇒ 撑 2 个月（分母是亏损额，得分必须不同）',
+    mSmall.score > mBig.score && /5\.0/.test(mSmall.note) && /2\.0/.test(mBig.note),
+    `亏2万=${mSmall.score}分(${mSmall.note}) / 亏5万=${mBig.score}分(${mBig.note})`);
+
+  // K-③ 不亏损 ⇒ 现金流项满分（既不判 0 也不判 null，避免"没亏却说你危险"）
+  check('K-③ 不亏损时现金流项必须满分且不出"撑几个月"',
+    (() => { const m = E.evaluateDiagnosis(FULL).metrics.find((x) => x.key === 'cash');
+      return m.score === 100 && /不亏损/.test(m.note); })(),
+    (() => { const m = E.evaluateDiagnosis(FULL).metrics.find((x) => x.key === 'cash'); return m.note; })());
+
+  // K-④ 智库分业态阈值真生效：连亏 5 月 ⇒ 快餐命中 R2（上限 4）、正餐不命中（上限 5，尚未"超"）
+  const ff4 = Object.assign({}, FULL, { bizType: 'fastfood', lossMonths: 5, netProfitFen: -1000000 });
+  const dn4 = Object.assign({}, FULL, { bizType: 'dining', lossMonths: 5, netProfitFen: -1000000 });
+  check('K-④ 🔴 分业态阈值生效：连亏 5 月 ⇒ 快餐命中 R2、正餐不命中（快餐上限 4 / 正餐 5，判据是"超过"）',
+    E.evaluateDiagnosis(ff4).redlineHit.some((r) => r.code === 'R2')
+    && !E.evaluateDiagnosis(dn4).redlineHit.some((r) => r.code === 'R2'),
+    `快餐=${E.evaluateDiagnosis(ff4).redlineHit.map((r) => r.code).join(',') || '无'} / 正餐=${E.evaluateDiagnosis(dn4).redlineHit.map((r) => r.code).join(',') || '无'}`);
+
+  // K-⑤ 不亏损时大量借贷不判"输血失控"（盈利借大钱更像扩张）
+  const richDebt = Object.assign({}, FULL, { debtLevel: 'heavy', netProfitFen: 1500000, avgMonthlyNetLossFen: 0, cashOnHandFen: 1000000 });
+  check('K-⑤ 盈利 + 大量借贷 ≠ R5「输血失控」（前提是还在失血）',
+    !E.evaluateDiagnosis(richDebt).redlineHit.some((r) => r.code === 'R5'));
+
+  // K-⑥ 重大食安：不拆档，布尔即可，且描述必须是"影响经营"
+  const foodEv = E.evaluateDiagnosis(Object.assign({}, FULL, { foodSafetyEvent: true })).redlineHit.find((r) => r.code === 'R4');
+  check('K-⑥ 重大食安为单一布尔档（不拆分），且证据串写明"影响经营"',
+    !!foodEv && /影响经营|重大/.test(foodEv.evidence), foodEv ? foodEv.evidence : '未命中');
+}
 
 // ---------- J 组：权益判定（纯函数，无 IO）----------
 const okArgs = true;

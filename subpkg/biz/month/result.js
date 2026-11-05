@@ -14,9 +14,7 @@ const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 // 🔴 R311：体检算法（纯函数）—— 保本区间/归因/健康营收/结构性诊断
 const BE = require('../../../utils/breakeven.js');
 // R443：现金存本机（不上云 —— 这是老板最敏感的数，先本地）
-const RUNWAY_CASH_KEY = 'runway_cash_v1';
 // R444 收口：金额可读性判定（纯函数）—— 不静默清洗，读不成必须说出来（与 #25 同口径）
-const amt = require('../../../utils/amountInput.js');
 // 🔴 R488：利润标题/副标题的**单一来源** —— 与首页、月首页同一份判断（名随数走）
 const profitLabel = require('../../../utils/profitLabel.js');
 
@@ -51,10 +49,6 @@ Page({
   data: {
     // 🔴 R314：体检卡「依据」默认收起（老板先看结论/动作，想追依据再展开）
     beMore: false,
-    cashYuan: '',       // R443：账面可动用现金（本机保存）
-    runwayText: '',     // R443：可撑月数文案
-    runwayNoData: false, // R443：固定支出没填全
-    runwayBadCash: false, // R444：现金那格读不成金额（带逗号/空格/全角…）
     // A11：摊销三件套（getLedger.amort_extra 的展示态）/ A13：客流与会员
     amortView: { show: false },
     trView: { show: false },
@@ -69,16 +63,6 @@ Page({
       // R443：结果页「下一步」—— 去看是哪道菜在拖毛利
       nextDishReview: TERMS.m2.nextDishReview,
       // R443：现金流体检
-      runwayTitle: TERMS.modules.m1.runwayTitle,
-      runwayLabel: TERMS.modules.m1.runwayLabel,
-      runwayHint: TERMS.modules.m1.runwayHint,
-      runwayMonthsPre: TERMS.modules.m1.runwayMonthsPre,
-      runwayMonthsSuf: TERMS.modules.m1.runwayMonthsSuf,
-      runwayNoData: TERMS.modules.m1.runwayNoData,
-      runwayNeedInput: TERMS.modules.m1.runwayNeedInput,
-      runwaySaved: TERMS.modules.m1.runwaySaved,
-      runwayOver2y: TERMS.modules.m1.runwayOver2y,
-      runwayBadCash: TERMS.modules.m1.runwayBadCash,
       // A11：摊销三件套 / A13/A19：客流与会员
       amortTitle: TERMS.modules.m1.amortTitle,
       amortRemainPre: TERMS.modules.m1.amortRemainPre,
@@ -272,11 +256,6 @@ Page({
   onLoad(q) {
     const month = (q && q.month) || ui.nowMonth();
     this.setData({ month });
-    // R443：恢复上次填的现金（本机保存，不读云 —— 这个数老板最敏感）
-    try {
-      const c = wx.getStorageSync(RUNWAY_CASH_KEY);
-      if (c !== '' && c != null) this.setData({ cashYuan: String(c) });
-    } catch (err) { /* 忽略 */ }
     this.load();
   },
 
@@ -342,9 +321,8 @@ Page({
         profitFen: Number(res.total_factor_real_profit_fen) || 0,
       };
       // （inds / scope / sv 已在上方定义 —— 见上面 R480 顺序注释，勿挪动）
-      // R443：固定支出金额（分）留给「可撑月数」用；缺项为 null，不按 0 算
-      this._fixedFen = (d && d.fixed_items_fen) || null;
-      this.recalcRunway();
+      // 🔴 R612：原先此处调 `this.recalcRunway()` 重算「可撑月数」。
+      //   该指标已迁入「深度诊断」并改用新口径（现金 ÷ 月均净亏损），本页不再计算，故删除调用。
       // R464：诊断包只搬「已经算好的数」—— 原始分口径单独留一份，避免从展示串反解
       this._res = res;
       this._ledger = d;
@@ -852,49 +830,12 @@ Page({
   // 后端只回 { key, pct, lo, hi, level, redline, redlineHit }；中文名与评级文案在前端补（术语单源在前端）。
   // 🔴 pct === null 表示「这项没数据」⇒ has=false ⇒ 页面显示「本月没填」，**绝不显示 0%**
   //    （算成 0% 会得出「房租占比 0%，优秀」这种荒谬结论 —— round115 后端真有此 bug，已修并被 selftest 钉住）。
-  // R443：现金输入 —— 存本机（不上云），并立刻重算可撑月数
-  onCash(e) {
-    const v = e.detail.value;
-    this.setData({ cashYuan: v });
-    try { wx.setStorageSync(RUNWAY_CASH_KEY, v); } catch (err) { /* 忽略 */ }
-    this.recalcRunway();
-  },
-
-  // R443：可撑月数 = 账面现金 ÷ 月刚性支出（房租+人工+水电）
-  // 🔴 三项任一缺失 ⇒ 不计算（显示「算不出来」），**绝不按 0 元算**
-  //    （按 0 算会让可撑月数变成无穷大，是"静默错账"里最危险的一种）。
-  // 🔴 R444 收口：现金输入改走 `classifyAmount` 三态，**不做 `replace(/[^\d.]/g,'')` 静默清洗** ——
-  //    静默清洗会把「12,000」读成 12000（看似帮了忙），也会把「1,2」读成 12（凭猜测改数），
-  //    而猜错的方向既可能是高估也可能是低估 ⇒ 违反「不猜数、如实暴露」。
-  recalcRunway() {
-    const t = this.data.t || {};
-    const fi = this._fixedFen;
-    const r = amt.classifyAmount(this.data.cashYuan);
-    const hasCash = r.readable && r.state === amt.STATE.OK && r.fen > 0;
-    // 读不成金额（带逗号/全角/空格/负号…）：只提示怎么改，**不参与任何计算**
-    if (!r.readable) {
-      this.setData({ runwayText: '', runwayBadCash: true, runwayNoData: false });
-      return;
-    }
-    if (!fi || fi.rent == null || fi.labor == null || fi.utility == null) {
-      this.setData({ runwayText: '', runwayBadCash: false, runwayNoData: hasCash });
-      return;
-    }
-    const fixedFen = fi.rent + fi.labor + fi.utility;
-    if (!(fixedFen > 0)) {
-      this.setData({ runwayText: '', runwayBadCash: false, runwayNoData: hasCash });
-      return;
-    }
-    if (!hasCash) {
-      this.setData({ runwayText: '', runwayBadCash: false, runwayNoData: false });
-      return;
-    }
-    const m = r.fen / fixedFen;
-    // 保留 1 位小数；≥24 个月就不再刺激老板（"两年以上"比"31.4 个月"更稳）
-    // 🔴 R444：文案走 terms（新增可见文案三处同步，不在页面里留硬编码中文）
-    const txt = m >= 24 ? (t.runwayOver2y || '') : (Math.round(m * 10) / 10) + ' ' + (t.runwayMonthsSuf || '');
-    this.setData({ runwayText: txt, runwayBadCash: false, runwayNoData: false });
-  },
+  // 🔴 R612（2026-11-06 李老师拍板）：`onCash` / `recalcRunway` 已**整体移除**。
+  //   原因：旧口径 = 现金 ÷ 月固定支出（房租+人工+水电），答的是"假如一分钱不进账"的断粮测试；
+  //   而老板要的是"照现在的亏法还能撑几个月"（分母应为月均净亏损）。两个口径能差数倍。
+  //   该指标已迁入「深度诊断」，新口径实现在
+  //   `cloudfunctions/common/diagnosisEngine.js::METRICS[cash]`（现金 ÷ 月均净亏损）。
+  //   现金输入的唯一入口 = 诊断补录页的「账面能动现金」（云端 diag_facts，不再本地另存一份）。
 
   decorateInds(list) {
     const lvCost = TERMS.m2.indLevels, lvGain = TERMS.m2.indLevelsGain;

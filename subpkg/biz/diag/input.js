@@ -31,6 +31,12 @@ Page({
       district: T.district,
       leaseMonths: T.leaseMonths,
       leaseMonthsPh: T.leaseMonthsPh,
+      renewIncrease: T.renewIncrease,
+      renewIncreasePh: T.renewIncreasePh,
+      foodSafety: T.foodSafety,
+      foodSafetyHint: T.foodSafetyHint,
+      foodSafetyOpts: T.foodSafetyOpts,
+      errRenew: T.errRenew,
       debt: T.debt,
       cash: T.cash,
       cashHint: T.cashHint,
@@ -45,10 +51,12 @@ Page({
     trendIdx: -1,
     districtIdx: -1,
     debtIdx: -1,
+    foodIdx: -1,
     // 三个数字输入（字符串，'' = 没填）
     trafficLastYear: '',
     rating: '',
     leaseMonths: '',
+    renewIncrease: '',
     cashYuan: '',
     loading: true,
     saving: false,
@@ -68,11 +76,14 @@ Page({
         trafficLastYear: df.traffic_last_year != null ? String(df.traffic_last_year) : '',
         rating: df.rating != null ? String(df.rating) : '',
         leaseMonths: df.lease_months_left != null ? String(df.lease_months_left) : '',
+        renewIncrease: df.renew_increase_pct != null ? String(df.renew_increase_pct) : '',
         cashYuan: df.cash_on_hand_fen != null ? api.fenToYuan(df.cash_on_hand_fen) : '',
         // 枚举回显：拿 key 反查下标。查不到（脏数据/旧枚举）⇒ -1（显示"待补"），不猜成第 0 项
         trendIdx: T.trendKeys.indexOf(df.review_trend),
         districtIdx: T.districtKeys.indexOf(df.business_district),
         debtIdx: T.debtKeys.indexOf(df.debt_level),
+        // 重大食安是布尔：true→1(发生过) / false→0(没有) / 缺省→-1(待补)
+        foodIdx: df.food_safety_event === true ? 1 : (df.food_safety_event === false ? 0 : -1),
         loading: false,
       });
     } catch (e) {
@@ -84,10 +95,12 @@ Page({
   onTrafficLastYear(e) { this.setData({ trafficLastYear: e.detail.value }); },
   onRating(e) { this.setData({ rating: e.detail.value }); },
   onLeaseMonths(e) { this.setData({ leaseMonths: e.detail.value }); },
+  onRenewIncrease(e) { this.setData({ renewIncrease: e.detail.value }); },
   onCash(e) { this.setData({ cashYuan: e.detail.value }); },
   onPickTrend(e) { this.setData({ trendIdx: Number(e.detail.value) }); },
   onPickDistrict(e) { this.setData({ districtIdx: Number(e.detail.value) }); },
   onPickDebt(e) { this.setData({ debtIdx: Number(e.detail.value) }); },
+  onPickFood(e) { this.setData({ foodIdx: Number(e.detail.value) }); },
 
   /**
    * 把表单变成 saveShopSetting 的 diag_facts。
@@ -105,6 +118,16 @@ Page({
     if (tly && tly.error) return { error: T.errInteger + '（去年同期客流）' };
     const lm = intOf(this.data.leaseMonths);
     if (lm && lm.error) return { error: T.errInteger + '（剩余租期）' };
+
+    // R612：续租涨幅（%）—— 允许一位小数，0~500；留空 = 不判
+    let renew = null;
+    const rv = String(this.data.renewIncrease == null ? '' : this.data.renewIncrease).trim();
+    if (rv !== '') {
+      if (!/^\d{1,3}(\.\d)?$/.test(rv)) return { error: T.errRenew };
+      const n = Number(rv);
+      if (!(n >= 0 && n <= 500)) return { error: T.errRenew };
+      renew = n;
+    }
 
     // 评分：0~5，一位小数
     let rating = null;
@@ -134,7 +157,17 @@ Page({
         review_trend: pick(T.trendKeys, this.data.trendIdx),
         business_district: pick(T.districtKeys, this.data.districtIdx),
         lease_months_left: lm,
+        renew_increase_pct: renew,
         debt_level: pick(T.debtKeys, this.data.debtIdx),
+        // 重大食安：三态（true 有 / false 无 / null 未填）
+        //   🔴 未填必须是 null，不能是 false —— 引擎把 false 当"确认没有"，把 null 当"未判定"；
+        //   混用会把"没填"谎报成"查过没问题"，那是这套模型最危险的谎。
+        food_safety_event: (() => {
+          const k = pick(T.foodSafetyKeys, this.data.foodIdx);
+          if (k === 'yes') return true;
+          if (k === 'no') return false;
+          return null;
+        })(),
         cash_on_hand_fen: cashFen,
       },
     };

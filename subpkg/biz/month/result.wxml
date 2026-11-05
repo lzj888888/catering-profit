@@ -110,26 +110,17 @@
   </view>
   </view>
 
-  <!-- 🔴 R443（2026-10-23）：钱还能撑多久 —— 参照桌面「餐饮闭店决策模型 v1.0」的现金流维度
-       （权重 15）与红线 R1（可撑 <1 个月刚性支出）。
-       放在利润卡之后：老板刚看到「这个月亏多少」，下一个念头就是「我还能撑几个月」。
-       ⚠️ 缺项不算：房租/人工/水电任一没填 ⇒ 显示「算不出来」，**绝不按 0 元算**
-          （按 0 算会把可撑月数放大到无穷）。 -->
-  <view class="card2" wx:if="{{hasLedger}}">
-    <view class="cell drill-head"><text class="lbl">{{t.runwayTitle}}</text></view>
-    <view class="cell">
-      <text class="lbl">{{t.runwayLabel}}</text>
-      <input class="runway-in" type="digit" value="{{cashYuan}}" bindinput="onCash"
-             placeholder="{{t.runwayNeedInput}}" adjust-position="{{true}}" cursor-spacing="20" />
-    </view>
-    <view class="muted">{{t.runwayHint}} · {{t.runwaySaved}}</view>
-    <view class="cell" wx:if="{{runwayText}}">
-      <text class="lbl">{{t.runwayMonthsPre}}</text>
-      <text class="val runway-big">{{runwayText}}</text>
-    </view>
-    <view class="warn" wx:if="{{runwayBadCash}}">{{t.runwayBadCash}}</view>
-    <view class="warn" wx:if="{{runwayNoData}}">{{t.runwayNoData}}</view>
-  </view>
+  <!-- 🔴 R612（2026-11-06 李老师拍板）：原「钱还能撑多久」卡片**已移除**。
+       移除原因不是漏了，是**口径错**：它算的是「现金 ÷ 月固定支出（房租+人工+水电）」，
+       语义为"假如明天起一分钱不进账"的断粮测试。而老板真正要问的是
+       「照现在这个亏法还能撑几个月」——分母该是**月均净亏损**，不是固定支出。
+       两个口径能差一大截（账上 10 万、月固定支出 5 万、月净亏 1 万 ⇒ 旧算法 2 个月、真答案 10 个月）。
+       ⇒ 该指标整体迁入「深度诊断」，用新口径（现金 ÷ 月均净亏损）呈现，见
+         `cloudfunctions/common/diagnosisEngine.js::METRICS[cash]` 与
+         `review/PLAN_2026-11-06_深度诊断设计定稿_R612.md`。
+       同时消除了一处静默错账：现金原先**本地存一份**（runway_cash_v1）、
+       诊断补录页**云端再存一份**（diag_facts.cash_on_hand_fen），两处可填不同值且互不同步。
+       现只保留云端那一份。 -->
 
   <!-- ===== A11（2026-11-05）：摊销三件套 =====
        「还剩几期 / 哪个月摊完 / 摊完后月利润」。摊销每月压着利润，但有尽头；

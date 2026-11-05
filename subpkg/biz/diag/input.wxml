@@ -43,6 +43,14 @@
         bindinput="onLeaseMonths" adjust-position="{{true}}" cursor-spacing="20" />
     </view>
 
+    <!-- R612：续租涨幅 —— R6「租约断崖」三条件之一，缺它这条永远判不了 -->
+    <view class="field">
+      <text class="lbl">{{t.renewIncrease}}</text>
+      <input class="val-input" type="digit" confirm-type="done"
+        placeholder="{{t.renewIncreasePh}}" value="{{renewIncrease}}"
+        bindinput="onRenewIncrease" adjust-position="{{true}}" cursor-spacing="20" />
+    </view>
+
     <view class="field">
       <text class="lbl">{{t.debt}}</text>
       <picker mode="selector" range="{{t.debtOpts}}" value="{{debtIdx < 0 ? 0 : debtIdx}}"
@@ -50,6 +58,16 @@
         <view class="val-pick">{{debtIdx < 0 ? t.pending : t.debtOpts[debtIdx]}}</view>
       </picker>
     </view>
+
+    <!-- R612：重大食安 —— **只问一个**，不拆档（李老师拍板，见 terms 注释） -->
+    <view class="field">
+      <text class="lbl">{{t.foodSafety}}</text>
+      <picker mode="selector" range="{{t.foodSafetyOpts}}" value="{{foodIdx < 0 ? 0 : foodIdx}}"
+        bindchange="onPickFood">
+        <view class="val-pick">{{foodIdx < 0 ? t.pending : t.foodSafetyOpts[foodIdx]}}</view>
+      </picker>
+    </view>
+    <view class="hint small">{{t.foodSafetyHint}}</view>
 
     <view class="field">
       <text class="lbl">{{t.cash}}</text>
