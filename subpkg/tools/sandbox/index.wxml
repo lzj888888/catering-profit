@@ -549,6 +549,12 @@
       <view class="hint">{{t.fwdCrowdHintPre}}{{crowd.price}}{{t.fwdCrowdHintSuf}}</view>
     </view>
 
+    <!-- 2026-11-05：目标净利率合理性（**只在"偏高"时出现**，偏低不打扰）。
+         口径 = 中小单体门店（不是行业平均，否则会把常态的 3% 判成不及格）；
+         阈值单源 indicatorRef.NET_MARGIN_REF，前端复刻经 check_biz_preset 逐业态 + 逐行为比对。
+         🔴 只提示、**不改用户填的数**：靠独特选址做到高净利是可能的，我们不能替他改前提。 -->
+    <view class="warn" wx:if="{{netMarginView && netMarginView.show}}">{{netMarginView.text}}</view>
+
     <!-- 🔴 round276：「坪效 / 人效」—— 答老板那句"我现在这家店用得值不值"。
          分子 = 他填的**实际月营业额**（拿保本额当分子算的是"保本坪效"，不是他要的数）。
          🔴 都不挂行业区间：仓内 BANDS 没有坪效/人效，编不得分位数 ⇒ 只出数值，留给自家横比。

@@ -84,7 +84,9 @@ const { BIZ_PRESETS, CITY_COEF, assembleItems, resolveBuild, paybackCash, findPr
   // R297：年限不再各写各的（初始行 / 新增行 / 提交 / 回存草稿 四处同走这一份）
   BUILD_DEFAULT_YEARS, buildYearsOf, cashBreakeven,
   // 🔴 R559：水电费率推导（与矩阵同一函数）⇒ 两页口径一致
-  energyFeeRate } = require('../../../utils/bizPreset.js');
+  energyFeeRate,
+  // 2026-11-05：M2 目标净利率合理性提示（阈值单源在云端 indicatorRef，此处为复刻 + 守卫比对）
+  netMarginRefOf } = require('../../../utils/bizPreset.js');
 
 // 🔴 R330：做活动会怎样（纯假设推演，不依赖账本/成本卡）
 const Promo = require('../../../utils/promoImpact.js');
@@ -453,6 +455,8 @@ Page({
     targetYuan: '',
     // 结果（全部来自后端）
     result: null,
+    // 2026-11-05：目标净利率合理性（纯前端派生，不参与任何既有计算）
+    netMarginView: null,
     // 🔴 R327：正推表（做到某营业额能赚多少）—— 由 profitLadderOf(result) 派生
     profitLadder: null,
     targetReverse: null,   // R367：想月赚 X 要怎么做（反推毛利率 / 人工上限）
@@ -1153,7 +1157,7 @@ Page({
   onMarginScope(e) {
     const v = e.currentTarget.dataset.scope === 'net' ? 'net' : 'dish';
     if (v === this.data.marginScope) return;
-    this.setData({ marginScope: v, result: null, profitLadder: null, targetReverse: null, sandboxId: '' }, () => {
+    this.setData({ marginScope: v, result: null, profitLadder: null, targetReverse: null, sandboxId: '', netMarginView: null }, () => {
       this.syncScopeDerived();
       this.scheduleCalc();
     });
@@ -1607,6 +1611,35 @@ Page({
     this.setData({ promoRealPct: e.detail.value }, () => {
       this.setData({ promoRes: this.promoOf(this.data.result) });
     });
+  },
+
+  /**
+   * M2 目标净利率合理性（2026-11-05）
+   *
+   * 为什么要有：老板填「目标月利润」时几乎没有参照系，容易填一个同行做不到的数，
+   *   沙盘照他的数算出一条"能开"的结论 —— 结论没错，是前提错了。
+   *
+   * 🔴 只提示「偏高」，**绝不改用户填的数**（M2 是前瞻沙盘，参考值必须由老板自己判断）。
+   *   「偏低」不提示：目标定得保守是他的自由，不该被打扰。
+   * 🔴 阈值单源 = `indicatorRef.NET_MARGIN_REF`（**中小单体门店**口径，非行业平均），
+   *   本页经 `bizPreset` 复刻取得，`check_biz_preset` 逐业态 + 逐行为比对两边相等。
+   * 🔴 缺「预计月营业额」⇒ 不判（不按 0 补，否则算出"净利率 0%"这种假结论）。
+   */
+  netMarginViewOf() {
+    const r = this.data.result;
+    if (!r || r.red_alert) return { show: false };
+    const revFen = api.yuanToFen(this.data.expectYuan);
+    const profFen = api.yuanToFen(this.data.targetYuan);
+    const v = netMarginRefOf(this.bizKeyNow(), profFen, revFen);
+    if (v.level !== 'high') return { show: false };
+    return {
+      show: true,
+      pct: v.pct,
+      text: String(M.netMarginHigh || '')
+        .replace('{pct}', String(v.pct))
+        .replace('{lo}', String(v.lo))
+        .replace('{hi}', String(v.hi)),
+    };
   },
 
   promoOf(r) {
@@ -2281,6 +2314,8 @@ Page({
         derivedNote: _derivedNote,
         // 🔴 round273：A 区（已有铺面）补齐定案指标（每天来多少人 / 一天翻几台）—— 在新结果上派生
         crowd: presetResultObj ? this.crowdOf(presetResultObj) : null,
+        // 2026-11-05：目标净利率合理性（只提示偏高，不改数、不参与任何计算）
+        netMarginView: this.netMarginViewOf(),
         // 🔴 round276：同主链路，A 区坪效 / 人效（派生自用户填的实际营业额 + 面积 + 人数）
         eff: this.effOf(),
         // 🔴 R570-F：缺数态该说什么（见 effNeedRevNow 注释）
@@ -2300,7 +2335,7 @@ Page({
     } catch (e) {
       if (seq !== this._seq) return;
       if (e.code === 'M2_RED_ALERT') {
-        this.setData({ loading: false, result: { red_alert: true }, calcError: '', shareFacts: null });
+        this.setData({ loading: false, result: { red_alert: true }, calcError: '', shareFacts: null, netMarginView: null });
         return;
       }
       // 🔴 R359（与 R358 同族）：本次**没算出来** ⇒ 必须把上一次的结果整套清掉。
@@ -2315,6 +2350,8 @@ Page({
         result: null,
         // 🔴 R395：分享取数必须跟着清 —— 否则「保本数已经没了，分享出去还在说旧保本线」（静默错账同族）
         shareFacts: null,
+        // 2026-11-05：净利率提示同理 —— 结果没了还留着"你的预期偏高"就是一封空口指控
+        netMarginView: null,
         bands: [],
         bandsRaw: [],
         marginBand: '',
