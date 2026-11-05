@@ -281,6 +281,7 @@ const CASES = [
   { key: 'check_three_cost', rel: 'tools/check_three_cost.js' }, // 25 条（A17/A18：两处阈值逐业态相等 5 + 三项刚性行为 6 + 会员占比 5 + 接线 7 + 派生防漂移 2）
   { key: 'check_copy_compliance', rel: 'tools/check_copy_compliance.js' }, // 24 条（A14/A15/A21：扫描器自证 4 + 禁词 5 + 必备文案 6 + 退款规则行为 9）
   { key: 'check_m1_new_cards', rel: 'tools/check_m1_new_cards.js' }, // 12 条（运行时：前置自证 3 + 基线全绿/断言数 2 + 5 条变异点名转红 5 + 自证 2；内含 18 条场景断言）
+  { key: 'check_auto_queue', rel: 'tools/check_auto_queue.js' }, // 28 条（S 自证 4 + Q 自洽 6 + Y 语义 2 + M 鉴别力 10 + N 轮次编号 6；判据全走纯函数 audit(text)，故可用内存合成样本证鉴别力）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];
