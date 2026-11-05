@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：236 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：237 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1415,6 +1415,12 @@ const SUITES = [
   //                    直接 require terms.js 遍历字符串值扫描（注释天然不计，避免裸扫误杀）。
   ['three-cost', 'tools/check_three_cost.js'],
   ['copy-compliance', 'tools/check_copy_compliance.js'],
+  // R609（2026-11-05）：auto-queue = `review/AUTO_QUEUE.md` 自身的自洽性。
+  //   这份文件自称「全仓待办只看这张表」⇒ 它是自驱流程的**唯一输入**，写错不是"看着旧"，
+  //   而是整条流水线照着错的走。R609 实测出 status=blocked 却 blocked=no（#114/#115）、
+  //   status=in_progress 却无人在做（#108，会永久卡死）、done 却仍 blocked=yes 三类。
+  //   另有 N 段守**轮次编号**（全局共享资源，靠人记必然撞车 —— R609 本轮自己就撞了 R607）。
+  ['auto-queue', 'tools/check_auto_queue.js'],
   //   new-cards      = 批次 3 三块新 UI 的**运行时**守卫（L2 页面桩：真跑 subpkg/biz/month/result.js）。
   //                    上面两套是静态文本断言，只能证「源码里有这一句」；证不了
   //                    「show 判据写错 ⇒ 卡片永不显示、而字符串一个没少」这类病。
