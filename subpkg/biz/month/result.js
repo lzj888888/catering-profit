@@ -51,7 +51,6 @@ Page({
     beMore: false,
     // A11：摊销三件套（getLedger.amort_extra 的展示态）/ A13：客流与会员
     amortView: { show: false },
-    trView: { show: false },
     t: {
       beMoreShow: TERMS.card.beMoreShow,
       beMoreHide: TERMS.card.beMoreHide,
@@ -73,18 +72,11 @@ Page({
       amortAfterHint: TERMS.modules.m1.amortAfterHint,
       amortOff: TERMS.modules.m1.amortOff,
       amortNone: TERMS.modules.m1.amortNone,
-      trTitle: TERMS.modules.m1.trTitle,
-      trThis: TERMS.modules.m1.trThis,
-      trOld: TERMS.modules.m1.trOld,
-      trRepeat: TERMS.modules.m1.trRepeat,
-      trMember: TERMS.modules.m1.trMember,
-      trPending: TERMS.modules.m1.trPending,
-      trHint: TERMS.modules.m1.trHint,
-      diagInputGo: TERMS.modules.m1.diagInputGo,
-      diagInputHint: TERMS.modules.m1.diagInputHint,
-      // 🔴 R612：深度诊断主入口（利润卡内第一屏）
+      // 🔴 R614：深度诊断专属区块（页面最末，不用 card2）
+      diagKicker: TERMS.modules.m1.diagKicker,
       diagEntry: TERMS.modules.m1.diagEntry,
       diagEntrySub: TERMS.modules.m1.diagEntrySub,
+      diagEntryAct: TERMS.modules.m1.diagEntryAct,
       // A17/A18（2026-11-05）：三项刚性 + 会员占比报警
       threeTitle: TERMS.modules.m1.threeTitle,
       threeHint: TERMS.modules.m1.threeHint,
@@ -366,23 +358,10 @@ Page({
             afterFen: on ? fen(ae.after_profit_fen) : '',
           };
         })(),
-        // ===== A13/A19：客流与会员（null ⇒ 显示"待补"，绝不显示 0）=====
-        trView: (() => {
-          const tv = d.traffic || {};
-          const pct = (v) => (v == null ? '' : String(v) + '%');
-          return {
-            show: !!d.account_id,
-            thisMonth: tv.this_month != null ? String(tv.this_month) : '',
-            oldCustomer: tv.old_customer != null ? String(tv.old_customer) : '',
-            repeatRate: pct(tv.repeat_rate_pct),
-            memberRatio: pct(tv.member_ratio_pct),
-            memberSales: tv.member_sales_fen != null ? fen(tv.member_sales_fen) : '',
-            // A18：<20% 报警。level 由后端判（阈值单源 indicatorRef.MEMBER_RATIO_WARN），
-            //   页面只做"要不要显示提示"的开关，不自己比 20。
-            memberRatioLevel: tv.member_ratio_level || 'na',
-            memberRatioWarn: tv.member_ratio_level === 'warn',
-          };
-        })(),
+        // 🔴 R614（2026-11-06 李老师定案）：原 `trView`（本月客流 / 老客 / 复购率 / 会员占比卡）
+        //   **已从结果页整体下线** —— 客流数据不再在录账时采集，改由「深度诊断」统一承载
+        //   （营业额同比自动算 + 主观三档兜底 + 会员占比填百分比）。
+        //   本页只回答"这个月赚多少/钱去哪了"，不再掺经营观测值，避免东一块西一块的割裂感。
         // A17：三项刚性成本率（后端 threeCostOf 单源；本层只拼串，不重算）
         //   ⚠️ 与 trView 一样的纪律：**缺项 ≠ 0** —— 缺房租时 pct 恒 null，只提示缺什么。
         threeView: (() => {

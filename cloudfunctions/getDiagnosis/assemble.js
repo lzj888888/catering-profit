@@ -80,6 +80,29 @@ function assemble(args) {
     }
   }
 
+  // ---------- 2b. 营业额同比（R614 新增：替代"客流人次同比"） ----------
+  // 为什么用营业额而不是客流：老板拿不到"人次"（收银系统只有单数/营业额），
+  //   而营业额他一定有 —— 它本身就是"客流 × 客单价"，对"这家店在不在退"更直接。
+  // 条件：库里存在「去年同月」那本账且营业额 > 0。不足 13 个月的店算不出来，
+  //   交给补录页的主观三档兜底（引擎侧的 note 会写明"按你的判断"，不冒充精确值）。
+  let revenueYoyPct = null;
+  let revenueYoyBaseMonth = '';
+  if (cur && cur.month) {
+    const ym = /^(\d{4})-(\d{2})$/.exec(cur.month);
+    if (ym) {
+      const lastKey = (Number(ym[1]) - 1) + '-' + ym[2];
+      const last = byMonth.get(lastKey);
+      if (last) {
+        const a = numOrNull(cur.income_total_fen);
+        const b = numOrNull(last.income_total_fen);
+        if (a !== null && b !== null && b > 0) {
+          revenueYoyPct = ((a - b) / b) * 100;
+          revenueYoyBaseMonth = lastKey;
+        }
+      }
+    }
+  }
+
   // ---------- 3. 月均净亏损（近 3 个有利润数的月份取平均；平均为正 ⇒ 0） ----------
   const withProfit = months
     .filter((m) => numOrNull(m.total_factor_real_profit_fen) !== null)
@@ -134,8 +157,11 @@ function assemble(args) {
     laborCostRatePct: laborPct,
     rentRatePct: rentPct,
     monthlyRigidFen: rigidFen,
-    trafficThisMonth: cur ? numOrNull(cur.traffic_count) : null,
-    trafficLastYear: numOrNull(df.traffic_last_year),
+    // 🔴 R614：原 `trafficThisMonth` / `trafficLastYear` 两个"人次数"输入**已移除**（老板填报不出来），
+    //   改为营业额同比（自动算）+ 主观三档（兜底）。字段仍从库里读旧值是不必要的 ——
+    //   历史 traffic_count 只是留档，不再参与任何判断。
+    revenueYoyPct,
+    revenueFeel: df.revenue_trend_feel || null,
     rating: numOrNull(df.rating),
     reviewTrend: df.review_trend || null,
     businessDistrict: df.business_district || null,
@@ -161,6 +187,8 @@ function assemble(args) {
       lossChecked,
       avgMonthlyNetLossFen,
       avgWindow,
+      revenueYoyPct,
+      revenueYoyBaseMonth,
       monthlyRigidFen: rigidFen,
       hasDiagFacts: Object.keys(df).length > 0,
     },

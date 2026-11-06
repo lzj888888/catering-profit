@@ -86,6 +86,8 @@ const LEVEL_CUT = { good: 75, watch: 55, warn: 40 };
 //   ⇒ 选中了却不计分，且界面全绿。取数、校验、渲染三处必须认同一张表。
 const DIAG_ENUM = {
   reviewTrend: ['better', 'slight', 'stable', 'worse'],
+  // 🔴 R614：营收趋势的**主观兜底**档（账不满 13 个月、算不出精确同比时才用）
+  revenueFeel: ['better', 'same', 'worse'],
   businessDistrict: ['growing', 'stable', 'slight_down', 'clear_down', 'structural_loss'],
   debtLevel: ['none', 'light', 'heavy'],
 };
@@ -178,17 +180,45 @@ const METRICS = [
   },
   // 4 客流与营收趋势 10 —— 同比 ≥0 得 100；达下滑警戒得 20
   {
-    key: 'traffic', label: '客流趋势', weight: 10, kind: 'manual',
+    key: 'traffic', label: '营收趋势', weight: 10, kind: 'manual',
+    // 🔴 R614（2026-11-06 李老师拍板）**数据源整体更换**，这是本轮最重要的一处口径修正：
+    //   旧输入 = 「本月客流人次 vs 去年同期客流人次」两个数。问题不是放哪填，是**老板答不出**：
+    //     收银系统只给"单数/营业额"，一桌 3 个人算 3 人次还是 1 人次，没有正确答案。
+    //     问一个填不准的数比不问更糟：空着只是不计分（覆盖率掉一点），
+    //     填个估的数会判出「客流在流失」这种**错误结论**——那是拿假数据下判断。
+    //   新口径 = **营业额同比**（= 客流 × 客单价的综合结果，对"店在不在退"更直接）：
+    //     ① 有 13 个月以上的账 ⇒ assemble 自动算，**零输入**（老板什么都不用填）
+    //     ② 不足 13 个月 ⇒ 问一句主观三档「和去年同期比生意怎么样」，他一定答得出
+    //     ③ 两者都没有 ⇒ 该项不判（不计分，绝不按 0）
+    //   ⚠️ 阈值沿用 `trafficDropWarnPctByBiz`（分业态 −20/−15/−20/−15）：
+    //      语义从"客流下滑警戒"扩成"营收下滑警戒"，数值不动（同一批智库标定）。
     score: (i) => {
-      const a = num(i.trafficThisMonth); const b = num(i.trafficLastYear);
-      if (a === null || b === null || b <= 0) return { score: null, note: '缺本月客流或去年同期客流', basis: '' };
-      const yoy = ((a - b) / b) * 100;
       const warn = -tOf('trafficDropWarnPctByBiz', i.bizType);
-      let s;
-      if (yoy >= 0) s = 100;
-      else if (yoy >= warn) s = lerp(yoy, warn, 20, 0, 100);
-      else s = Math.max(0, lerp(yoy, warn * 2.5, 0, warn, 20));
-      return { score: Math.round(s), note: `客流同比 ${yoy >= 0 ? '+' : ''}${yoy.toFixed(1)}%`, basis: `下滑警戒 ${tOf('trafficDropWarnPctByBiz', i.bizType)}%` };
+      // ① 精确：营业额同比（自动算出来的，优先）
+      const yoy = num(i.revenueYoyPct);
+      if (yoy !== null) {
+        let s;
+        if (yoy >= 0) s = 100;
+        else if (yoy >= warn) s = lerp(yoy, warn, 20, 0, 100);
+        else s = Math.max(0, lerp(yoy, warn * 2.5, 0, warn, 20));
+        return {
+          score: Math.round(s),
+          note: `营业额同比 ${yoy >= 0 ? '+' : ''}${yoy.toFixed(1)}%（自动对比去年同月）`,
+          basis: `下滑警戒 ${-warn}%`,
+        };
+      }
+      // ② 兜底：老板的主观三档。分数给得保守（better 封顶 100 / same 75 / worse 35），
+      //   并在 note 里**明写"按你的判断"** —— 不能让主观估计冒充精确同比。
+      const feel = String(i.revenueFeel || '');
+      const FEEL = { better: 100, same: 75, worse: 35 };
+      if (FEEL[feel] !== undefined) {
+        return {
+          score: FEEL[feel],
+          note: `营业额趋势：${{ better: '比去年好', same: '和去年差不多', worse: '比去年差' }[feel]}（按你的判断）`,
+          basis: '账不满 13 个月，暂无自动同比',
+        };
+      }
+      return { score: null, note: '缺营业额同比（账不满 13 个月，也没填趋势判断）', basis: '' };
     },
   },
   // 5 毛利率 8 —— ≤健康线 100；健康线→红线 线性降；≥红线 0

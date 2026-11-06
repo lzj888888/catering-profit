@@ -78,6 +78,8 @@ const REGISTRY = {
   //   不是元→分换算。与 getLedger 里同一处算法同语义（那里已有同名登记）。
   'cloudfunctions/getDiagnosis/assemble.js': {
     'PAREN|) * 100|#1': ['ratio', '营销费占营收比（分÷分）→ 百分数，供 indicatorRef 对照，非金额换算'],
+    // R614：营业额同比 = (本月 − 去年同月) ÷ 去年同月 → 百分数（分子分母同为「分」，不是元→分换算）
+    'PAREN|) * 100|#2': ['ratio', '营业额同比 → 百分数（供引擎 traffic 项判级）'],
   },
   // R414（队列 #25）：金额输入可读性判定 —— 这里的 ×100 是**元→整数分**（与 yuanToFen 同语义），
   //   但**不入引擎**，只用来回答「这个框里填的数读得成金额吗」。不登记会被 C-① 判红。
@@ -135,8 +137,8 @@ const REGISTRY = {
   //      若将来有人在这里做元→分，必须走 common/money.js::yuanToFen，不许裸乘。
   'cloudfunctions/common/diagnosisEngine.js': {
     'PAREN|) * 100|#1': ['ratio', 'pct() 通用占比：分子 ÷ 分母 → 百分数（净利率等）'],
-    'PAREN|) * 100|#2': ['ratio', '客流同比：(本月 − 去年同期) ÷ 去年同期 → 百分数'],
-    'PAREN|) * 100|#3': ['ratio', '权重覆盖率：已用权重 ÷ 总权重 → 百分数'],
+    // R614：'客流同比'那处已随口径换源删除（营收同比改在 assemble 算），登记同步销掉
+    'PAREN|) * 100|#2': ['ratio', '权重覆盖率：已用权重 ÷ 总权重 → 百分数'],
   },
   'cloudfunctions/exportData/index.js': {
     'PAREN|) * 100|#1': ['ratio', '导出毛利率：毛利 ÷ 收入 → 百分数'],

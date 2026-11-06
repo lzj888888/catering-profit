@@ -71,6 +71,8 @@
     <view class="dg-sec-hd">{{t.basisTitle}}</view>
     <view class="muted basis-line" wx:for="{{basisLines}}" wx:key="index" wx:for-item="line">{{line}}</view>
     <!-- 近几个月利润明细：结论要能被老板自己核对（"连亏 3 个月"最想知道哪三个月、各亏多少） -->
+    <!-- 会员销售占比：展示用，不进评分（引擎不消费它，但填了必须看得见） -->
+    <view class="muted basis-line" wx:if="{{memberLine}}">{{memberLine}}</view>
     <block wx:if="{{basisMonths.length}}">
       <view class="muted bm-hd">{{t.basisMonthsTitle}}</view>
       <view class="bm" wx:for="{{basisMonths}}" wx:key="month" wx:for-item="b">

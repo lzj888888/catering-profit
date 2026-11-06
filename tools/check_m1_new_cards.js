@@ -146,7 +146,8 @@ async function runAll(src) {
   rec('S1 level=warn 且 lvText 非空', !!(p.data.threeView && p.data.threeView.level === 'warn' && p.data.threeView.lvText));
   rec('S1 bandText 非空', !!(p.data.threeView && p.data.threeView.bandText));
   rec('S1 warnHit ⇒ hint 非空', !!(p.data.threeView && p.data.threeView.hint));
-  rec('S1 memberRatioWarn 为 true', !!(p.data.trView && p.data.trView.memberRatioWarn === true));
+  // 🔴 R614：客流/会员卡已整卡下线（数据改由深度诊断承载）⇒ 反向断言它真的没回来
+  rec('S1 结果页无 trView（客流卡已下线）', p.data.trView === undefined);
   rec('S1 disclaimer 非空', !!p.data.t.disclaimer);
 
   // 场景 2：三项成本缺房租 ⇒ 不得给数字、必须说缺什么
@@ -160,15 +161,16 @@ async function runAll(src) {
   rec('S2 缺项 has 为 false', !!(p.data.threeView && p.data.threeView.has === false));
   rec('S2 missText 含「房租」', /房租/.test((p.data.threeView && p.data.threeView.missText) || ''));
 
-  // 场景 3：会员恰好 20%（服务端判 ok）⇒ 不得报警
+  // 场景 3（R614 改造）：后端**仍然下发** traffic（老数据/老云端）⇒ 页面必须**忽略**它。
+  //   这是兼容性反证：只要 result.js 把 trView 构造删干净了，下不下发都不会再冒出那张卡。
   installGlobals(ledgerOf({
     traffic: { this_month: 1200, old_customer: 300, repeat_rate_pct: 25, member_ratio_pct: 20, member_sales_fen: 200000, member_ratio_level: 'ok' },
   }));
   p = makePage(loadPage(src));
   p.data.month = '2026-10';
   await p.load();
-  rec('S3 20% 不报警', !!(p.data.trView && p.data.trView.memberRatioWarn === false));
-  rec('S3 展示串为 20%', !!(p.data.trView && p.data.trView.memberRatio === '20%'));
+  rec('S3 后端仍下发 traffic 时页面仍不渲染客流卡', p.data.trView === undefined);
+  rec('S3 其余卡片不受影响（threeView 仍在）', !!(p.data.threeView && p.data.threeView.show === true));
 
   // 场景 4：响应里没有 three_cost 键（老后端/缓存）⇒ 整卡不显示、不得报错
   installGlobals(ledgerOf({ three_cost: undefined }));
@@ -185,7 +187,7 @@ async function runAll(src) {
   await p.load();
   rec('S5 无账本 hasLedger false', p.data.hasLedger === false);
   rec('S5 threeView.show false', !!(p.data.threeView && p.data.threeView.show === false));
-  rec('S5 trView.show false', !!(p.data.trView && p.data.trView.show === false));
+  rec('S5 无账本时也无 trView（键已不存在）', p.data.trView === undefined);
 
   return res;
 }
@@ -198,12 +200,14 @@ const MUTS = [
   { id: 'M2', desc: '缺项 pct 用 0 兜底（缺房租显示 0%）',
     from: "pct: has ? String(tc.pct) : '',", to: "pct: has ? String(tc.pct) : '0',",
     expect: 'S2 缺项 pct 为空串（不得为 0）' },
-  { id: 'M3', desc: '会员报警判据错位成 === ok',
-    from: "memberRatioWarn: tv.member_ratio_level === 'warn',", to: "memberRatioWarn: tv.member_ratio_level === 'ok',",
-    expect: 'S1 memberRatioWarn 为 true' },
-  { id: 'M4', desc: '会员报警恒 true（20% 也报）',
-    from: "memberRatioWarn: tv.member_ratio_level === 'warn',", to: 'memberRatioWarn: true,',
-    expect: 'S3 20% 不报警' },
+  // R614：原 M3/M4 守的是"会员报警判据"（trView）。该卡整卡下线后锚点不存在，
+  //   换成两条守 threeView 的等价变异 —— **变异数量不减少**，鉴别力不削弱。
+  { id: 'M3', desc: '三项刚性百分比错取 healthy 值（把健康线当实际值）',
+    from: "pct: has ? String(tc.pct) : '',", to: "pct: has ? String(tc.healthy) : '',",
+    expect: 'S1 threeView.pct 串为 71.5' },
+  { id: 'M4', desc: '三项刚性等级恒取 good（任何值都算健康）',
+    from: "level: has ? (tc.level || 'na') : 'na',", to: "level: has ? 'good' : 'na',",
+    expect: 'S1 level=warn 且 lvText 非空' },
   { id: 'M5', desc: '结论页兜底声明取空串',
     from: 'disclaimer: TERMS.diag.disclaimer,', to: "disclaimer: '',",
     expect: 'S1 disclaimer 非空' },
@@ -216,8 +220,10 @@ const MUTS = [
   installGlobals(ledgerOf());
   const cfg = loadPage(src);
   ck('A-② Page 配置被捕获', !!cfg, cfg ? Object.keys(cfg).length + ' 个键' : 'null');
-  ck('A-③ 源码含三个新字段的构造点（锚点在，变异才有意义）',
-    /threeView:/.test(src) && /memberRatioWarn:/.test(src) && /disclaimer: TERMS\.diag\.disclaimer/.test(src));
+  ck('A-③ 源码含构造点（threeView / 页底诊断区块 / 兜底声明），且 trView 已下线',
+    /threeView:/.test(src) && /diagEntry:/.test(src) &&
+    /disclaimer: TERMS\.diag\.disclaimer/.test(src) &&
+    !/trView\s*:/.test(src));   // 判「没有 trView 这个键」，不判注释里提到的字样
 
   seg('B 基线：原始源码跑 5 场景');
   const base = await runAll(src);

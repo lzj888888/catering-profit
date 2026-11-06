@@ -79,16 +79,6 @@
       <view class="muted">{{t.flowPer100}} {{t.cur}}{{r.per100}}　{{t.flowHint}}</view>
     </block>
 
-    <!-- 🔴 R612（2026-11-06）：深度诊断**主入口** —— 放在利润卡内部底部，紧跟利润数字。
-         位置理由（豆包会诊，我原方案放页底被否）：老板看完利润那个数，
-         下一个念头就是"我照这样还能撑多久"；放页底或做成独立入口卡都会滑不到，
-         等于把整块诊断埋了。这里只放**入口**，结论在 diag/result 页
-         （云函数 getDiagnosis 是诊断引擎的唯一出口）。 -->
-    <view class="diag-entry" bindtap="goDiagnosis">
-      <view class="diag-entry-t">{{t.diagEntry}}</view>
-      <view class="diag-entry-s">{{t.diagEntrySub}}</view>
-    </view>
-
   <!-- 🔴 R579 / 队列 #108：**利润 ≠ 卡里的钱**（两司均判为最高频投诉点）。
        老板看到「利润 5000」但银行卡只多 2000，第一反应是「这系统算错了」——
        不解释一句，后面所有数字他都不信了。
@@ -158,33 +148,14 @@
     </block>
   </view>
 
-  <!-- ===== A13/A19：客流与会员 =====
-       null（没填）一律显示【待补】，**绝不显示 0** —— 「复购率零」会让老板以为老客全跑了。 -->
-  <view class="card2" wx:if="{{trView.show}}">
-    <view class="cell drill-head"><text class="lbl">{{t.trTitle}}</text></view>
-    <view class="cell">
-      <text class="lbl">{{t.trThis}}</text>
-      <text class="val">{{trView.thisMonth || t.trPending}}</text>
-    </view>
-    <view class="cell">
-      <text class="lbl">{{t.trOld}}</text>
-      <text class="val">{{trView.oldCustomer || t.trPending}}</text>
-    </view>
-    <view class="cell">
-      <text class="lbl">{{t.trRepeat}}</text>
-      <text class="val">{{trView.repeatRate || t.trPending}}</text>
-    </view>
-    <view class="cell">
-      <text class="lbl">{{t.trMember}}</text>
-      <text class="val">{{trView.memberRatio || t.trPending}}</text>
-    </view>
-    <!-- A18（2026-11-05）：会员销售占比低于警戒时报警。留空（没会员体系）时后端 level='na' ⇒ 此处不出现 -->
-    <view class="warn" wx:if="{{trView.memberRatioWarn}}">{{t.trMemberWarn}}</view>
-    <view class="muted">{{t.trHint}}</view>
-    <!-- A20：诊断补录入口。补的是账里没有的客观值（客流同比/口碑/商圈/租约/借贷/现金），补一次长期有效 -->
-    <view class="muted">{{t.diagInputHint}}</view>
-    <button class="btn ghost" bindtap="goDiagInput">{{t.diagInputGo}}</button>
-  </view>
+  <!-- 🔴 R614（2026-11-06 李老师定案）：原「客流与会员」卡**已整卡下线**。
+       下线理由：这张卡展示的是"本月客流人次 / 其中老客 / 复购率 / 会员销售占比"，
+       而前两项老板统计不出来（收银系统只有单数/营业额），第三项依赖前两项。
+       留着它等于让老板面对一行他从没填过、也永远不会填的空格子。
+       ⇒ 经营观测值统一收进「深度诊断」：营业额同比自动算、主观趋势三档兜底、
+         会员销售占比填百分比（诊断结论页展示判级）。本页只管"这个月赚多少"。 -->
+  <!-- 🔴 R614：原来的「诊断补录」独立按钮**也一并撤掉** —— 入口统一收到页底那一个区块，
+       不再"这里一个补录按钮、那里一个诊断区块"。李老师原话：不要东一下西一下。 -->
 
   <!-- 🔴 R311：体检结论卡（保本区间 + 健康营收 + 结构性诊断）。
        ⚠️ 报**区间**不报单点 —— 贡献率低时区间会宽到三成以上，报单点就是假精确。
@@ -394,6 +365,21 @@
   <view class="ind-note">{{t.aiPackHint}}</view>
   <!-- R265：用户反馈「点了导出只看到『导出完成』，不知道什么格式、去哪看」⇒ 常驻一行说明 -->
   <view class="ind-note">{{t.exportHint}}</view>
+
+  <!-- 🔴 R614（2026-11-06 李老师定案）：**深度诊断专属区块**，放在页面最末。
+       为什么从利润卡里挪出来（我上一轮的方案被否，认账）：
+         塞进利润卡内部 = 白卡里突然冒出一块深色，视觉割裂，而且抢了"这个月赚多少"的主视线。
+       为什么放页底反而更对（修正豆包"页底没人到"的通用判断——它不适用于本页）：
+         本页底部是**导出 / 复制诊断包**，那是老板一定会滑到的动作；
+         而且浏览路径天然是「看本月数 → 往下核对 → 到最底想"那我到底还能不能撑"」，
+         诊断正好接在这个念头上。
+       视觉上刻意**不用 card2**：深色整块 + 圆角 + 独立留白，一眼看出"这跟上面的账不是一回事"。 -->
+  <view class="diag-banner" bindtap="goDiagnosis">
+    <view class="diag-banner-kicker">{{t.diagKicker}}</view>
+    <view class="diag-banner-title">{{t.diagEntry}}</view>
+    <view class="diag-banner-sub">{{t.diagEntrySub}}</view>
+    <view class="diag-banner-act">{{t.diagEntryAct}} ›</view>
+  </view>
 </view>
 
 <!-- 空态（hasLedger 为 false：无账本或接口异常；中性表述 + 去录入出口）

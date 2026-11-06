@@ -575,34 +575,16 @@
   <view class="cm-state" wx:if="{{assetSummaryAmort}}">{{assetSummaryAmort}}</view>
   <view class="cm-state" wx:if="{{!assetSummaryLump && !assetSummaryAmort}}">{{t.cmAssetSumEmpty}}</view>
 
-  <!-- ③ 经营客流（A13/A19 · 全部选填）
-       三项留空 ⇒ 复购率与会员销售占比不显示（标【待补】），**不按 0 算**。
-       为什么要这三项：这两个指标一直算不出来，不是公式缺，是没人录客流。 -->
-  <!-- 🔴 R611：本段 8 个文案此前误写成顶层绑定（tr 前缀那一组），但页面只在 `data.t` 里映射了它们
-       （`input.js:130-137` 的 `t` 对象）⇒ 顶层恒 undefined ⇒ 真机渲染成「有容器没文字」的一排空白，
-       李老师真机反馈「去登记 / 管理 下面出了很多空格」。统一改回术语表取值，零新增数据、仍取单源。
-       防复发：tools/check_page_top_bindings.js（第 238 套件）用页面桩真跑 data 顶层键做严格判据。 -->
-  <view class="cm-sub">{{t.trTitle}}</view>
-  <view class="hint">{{t.trHint}}</view>
-  <view class="field">
-    <text class="lbl">{{t.trThisMonth}}</text>
-    <input class="val-input" type="number" confirm-type="done" disabled="{{readOnly}}"
-      placeholder="{{t.trThisMonthPh}}" value="{{trafficThisMonth}}"
-      bindinput="onTrafficThisMonth" adjust-position="{{true}}" cursor-spacing="20" />
-  </view>
-  <view class="field">
-    <text class="lbl">{{t.trOld}}</text>
-    <input class="val-input" type="number" confirm-type="done" disabled="{{readOnly}}"
-      placeholder="{{t.trOldPh}}" value="{{trafficOldCustomer}}"
-      bindinput="onTrafficOldCustomer" adjust-position="{{true}}" cursor-spacing="20" />
-  </view>
-  <view class="field">
-    <text class="lbl">{{t.trMember}}</text>
-    <input class="val-input" type="digit" confirm-type="done" disabled="{{readOnly}}"
-      placeholder="{{t.trMemberPh}}" value="{{memberSalesYuan}}"
-      bindinput="onMemberSales" adjust-position="{{true}}" cursor-spacing="20" />
-  </view>
-
+  <!-- 🔴 R614（2026-11-06 李老师定案）：原「③ 经营客流」整个区块**已从这里移除**。
+       移除理由（不是嫌麻烦）：这三项问的都是"人次数"，而个体餐饮老板**统计不出来**——
+       收银系统只给"单数/营业额"，一桌 3 个人算 3 人次还是 1 人次，他没法答；
+       让他估，得到的就是假数，而假数比不填更糟：不填只是不计分，填个估的数会判出
+       「客流在流失」这种错误结论。
+       ⇒ 数据采集改为：① 营业额同比（有 13 个月账时自动算，零输入）
+                     ② 和去年同期比生意怎么样（三档主观判断，老板一定答得出）
+                     ③ 会员销售占总营业额的比例（收银系统能导出，填百分比）
+       全部收进「深度诊断」的补录页，录账时只管钱，不再掺客流。
+       ⚠️ 库里的历史客流字段**不删不改**（saveLedger 缺键=keep），老账仍可查。 -->
   <view style="height:20rpx;"></view>
   <button class="btn primary" style="margin-top:0;" bindtap="onSave"
     disabled="{{readOnly}}">{{isArchive ? t.saveArchiveOverride : t.save}}</button>

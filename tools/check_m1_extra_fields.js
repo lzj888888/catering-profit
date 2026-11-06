@@ -135,7 +135,15 @@ ok('B-⑤ 🔴 三字段缺省 ⇒ 保持 null（不得出现 `? 0`）',
   mergeLine.indexOf('cur == null ? null : cur') >= 0 && !/\?\s*0\s*:/.test(mergeLine),
   mergeLine.trim().slice(0, 110));
 ok('B-⑥ 老客 > 客流 ⇒ 拒绝（子集关系校验）', sL.indexOf('trafficOldCustomer > trafficThisMonth') >= 0);
-ok('B-⑦ 录入页三字段都进 saveLedger 载荷', SRC.inputJs.indexOf('traffic_count: tr.traffic_count') >= 0);
+// 🔴 R614（2026-11-06 李老师拍板）：客流三字段**整区移出录入页** —— 老板统计不出"人次"。
+//   判据从"三字段都进载荷"反转为"**一个都不许进载荷**"：
+//   不传键 ⇒ saveLedger 的 intOpt 判 keep ⇒ 库内历史值原样保留（不清零）。
+//   ⚠️ 这条是反向断言，谁把三键加回录入页（哪怕值传 null）会立刻红 ——
+//     因为传 null 是 'clear'，会把历史客流数据抹掉，那是最难发现的一类数据损失。
+ok('B-⑦ 🔴 R614：录入页**不再**传客流三键（缺键=keep，历史不清零）',
+  SRC.inputJs.indexOf('traffic_count:') < 0 &&
+  SRC.inputJs.indexOf('old_customer_count:') < 0 &&
+  SRC.inputJs.indexOf('member_sales_fen:') < 0);
 
 // ================= C · 三态语义 =================
 console.log('===== C · saveLedger 三态（缺键不清零）=====');
@@ -156,11 +164,16 @@ ok('D-③ 落库是逐键合并（不是整块覆盖）', shopI.indexOf('Object.
 ok('D-④ getShopContext 出参带 diag_facts（缺省 {}）', ctxSrc.indexOf('diag_facts:') >= 0);
 ok('D-⑤ 补录页只送枚举 key（三个 pick 都走 *Keys）', dp.indexOf('T.trendKeys') >= 0 && dp.indexOf('T.districtKeys') >= 0 && dp.indexOf('T.debtKeys') >= 0);
 ok('D-⑥ 补录页不送中文选项（禁 trendOpts[...] 进载荷）', blockFrom(dp, 'const pick =').indexOf('Opts') < 0);
-ok('D-⑦ 补录页七项全部进载荷', ['traffic_last_year', 'rating', 'review_trend', 'business_district', 'lease_months_left', 'debt_level', 'cash_on_hand_fen'].every((k) => dp.indexOf(k) >= 0));
+// R614：补录项由 7 → 10 —— 删「去年同期客流人次」、加「生意趋势三档 + 会员销售占比」
+ok('D-⑦ 补录页十项全部进载荷', ['revenue_trend_feel', 'rating', 'review_trend', 'business_district',
+  'lease_months_left', 'renew_increase_pct', 'food_safety_event', 'debt_level',
+  'member_ratio_pct', 'cash_on_hand_fen'].every((k) => dp.indexOf(k) >= 0));
+// D-⑦b 反向：旧的「去年同期客流」不得再进载荷（否则引擎会拿它算人次同比）
+ok('D-⑦b 🔴 R614：旧的 traffic_last_year 已从载荷移除', dp.indexOf('traffic_last_year') < 0);
 ok('D-⑧ 补录页不顺手带 name / remark / switches（白名单 patch 也不许乱传）', dp.indexOf('name:') < 0 && dp.indexOf('switches:') < 0);
 const dw = SRC.diagWxml || '';
-ok('D-⑨ 补录页 7 个字段都有输入出口（input/picker 各 ≥3）',
-  (dw.split('<input').length - 1) >= 4 && (dw.split('mode="selector"').length - 1) >= 3);
+ok('D-⑨ 补录页 10 个字段都有输入出口（input ≥5 / picker ≥5）',
+  (dw.split('<input').length - 1) >= 5 && (dw.split('mode="selector"').length - 1) >= 5);
 
 // ================= E 下界 =================
 console.log('===== E 下界 =====');

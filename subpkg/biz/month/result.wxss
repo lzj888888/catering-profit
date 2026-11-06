@@ -81,13 +81,22 @@
 .tb-lb.on { color: #1e3a5f; font-weight: 600; }
 .tb-v { font-size: 28rpx; color: #646a73; }
 
-/* 🔴 R612（2026-11-06）：深度诊断**主入口**（就放在利润卡里，紧跟利润数字）。
-   为什么用深色实心块而不是普通文字链：它是本页第二重要的动作，
-   老板滚过利润那一眼就得看见；浅色链接会和"依据/说明"混成一片。
-   配色沿用全局主蓝渐变（与 .btn.primary 同一套），不新增颜色。 */
-.diag-entry {
-  margin-top: 20rpx; padding: 20rpx 22rpx; border-radius: 14rpx;
-  background: linear-gradient(135deg, #2a4e7c 0%, #162c49 100%);
+/* 🔴 R614（2026-11-06 李老师定案）：深度诊断**专属区块**（页面最末）。
+   为什么不用 .card2：常规卡片是"数据"的容器，诊断是"换一个问题"——
+   必须一眼看出性质不同。深色整块 + 独立留白，跳出白卡片的节奏。
+   配色沿用全局主蓝渐变（与 .btn.primary 同源），不新增颜色。
+   按钮做胶囊白底：在深色块里，白色实心是唯一能压住视觉重量的元素。 */
+.diag-banner {
+  margin: 32rpx 0 12rpx;
+  padding: 34rpx 30rpx 30rpx;
+  border-radius: 24rpx;
+  background: linear-gradient(150deg, #2a4e7c 0%, #162c49 100%);
 }
-.diag-entry-t { font-size: 30rpx; font-weight: 700; color: #fff; }
-.diag-entry-s { font-size: 24rpx; color: #d7e2f0; margin-top: 6rpx; }
+.diag-banner-kicker { font-size: 24rpx; color: #9fb6d4; letter-spacing: 2rpx; }
+.diag-banner-title { font-size: 40rpx; font-weight: 700; color: #fff; margin-top: 10rpx; line-height: 1.35; }
+.diag-banner-sub { font-size: 26rpx; color: #c8d8ea; margin-top: 12rpx; line-height: 1.6; }
+.diag-banner-act {
+  display: inline-block; margin-top: 26rpx;
+  font-size: 30rpx; font-weight: 700; color: #162c49;
+  background: #fff; border-radius: 999rpx; padding: 16rpx 40rpx;
+}

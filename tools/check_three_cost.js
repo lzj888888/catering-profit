@@ -155,16 +155,21 @@ sec('D 接线：getLedger 出参 + 页面真的渲染');
   ok('D-④ 结果页渲染三项刚性卡（threeView.has / bandText / missText）',
     wxml.indexOf('threeView.has') >= 0 && wxml.indexOf('threeView.bandText') >= 0 && wxml.indexOf('threeView.missText') >= 0,
     'threeView 已渲染');
-  ok('D-⑤ 结果页渲染会员占比报警（memberRatioWarn）',
-    wxml.indexOf('trView.memberRatioWarn') >= 0, wxml.indexOf('trView.memberRatioWarn') >= 0 ? '已渲染' : '未渲染');
+  // 🔴 R614：会员占比从结果页迁到诊断结论页（录入页客流区整体下线，结果页不再有这张卡）。
+  //   判据改成"新的地方必须有、旧的地方必须没有" —— 只查新地方会漏掉"两处都显示"的重复。
+  const dwx = READ('subpkg/biz/diag/result.wxml');
+  ok('D-⑤ 🔴 R614：会员占比改在诊断结论页渲染，且结果页已下线（防两处各显示一套）',
+    dwx.indexOf('memberLine') >= 0 && wxml.indexOf('trView.memberRatioWarn') < 0,
+    dwx.indexOf('memberLine') >= 0 ? '诊断页已渲染 / 结果页已下线' : '诊断页未渲染');
 }
 {
   const js = READ('subpkg/biz/month/result.js');
   ok('D-⑥ 结果页不重算占比（threeView 里不得出现加法式重算）',
     /threeView[\s\S]{0,900}?(rentPct\s*\+|100\s*-\s*gm)/.test(js) === false,
     '未发现前端重算');
-  ok('D-⑦ 页面文案走 terms（threeTitle / trMemberWarn 已映射进 t）',
-    js.indexOf('TERMS.modules.m1.threeTitle') >= 0 && js.indexOf('TERMS.modules.m1.trMemberWarn') >= 0,
+  ok('D-⑦ 页面文案走 terms（threeTitle 在结果页 / memberRatio* 在诊断页，都是单源映射）',
+    js.indexOf('TERMS.modules.m1.threeTitle') >= 0 &&
+    READ('subpkg/biz/diag/result.js').indexOf('T.memberRatioNa') >= 0,
     '文案单源');
 }
 

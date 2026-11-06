@@ -23,8 +23,11 @@ Page({
     t: {
       title: T.title,
       hint: T.hint,
-      trafficLastYear: T.trafficLastYear,
-      trafficLastYearPh: T.trafficLastYearPh,
+      revenueFeel: T.revenueFeel,
+      revenueFeelOpts: T.revenueFeelOpts,
+      memberRatio: T.memberRatio,
+      memberRatioPh: T.memberRatioPh,
+      memberRatioHint: T.memberRatioHint,
       rating: T.rating,
       ratingPh: T.ratingPh,
       reviewTrend: T.reviewTrend,
@@ -52,8 +55,9 @@ Page({
     districtIdx: -1,
     debtIdx: -1,
     foodIdx: -1,
+    feelIdx: -1,
     // 三个数字输入（字符串，'' = 没填）
-    trafficLastYear: '',
+    memberRatio: '',
     rating: '',
     leaseMonths: '',
     renewIncrease: '',
@@ -73,7 +77,8 @@ Page({
       const ctx = await api.call('getShopContext', {});
       const df = (ctx && ctx.diag_facts) || {};
       this.setData({
-        trafficLastYear: df.traffic_last_year != null ? String(df.traffic_last_year) : '',
+        feelIdx: T.revenueFeelKeys.indexOf(df.revenue_trend_feel),
+        memberRatio: df.member_ratio_pct != null ? String(df.member_ratio_pct) : '',
         rating: df.rating != null ? String(df.rating) : '',
         leaseMonths: df.lease_months_left != null ? String(df.lease_months_left) : '',
         renewIncrease: df.renew_increase_pct != null ? String(df.renew_increase_pct) : '',
@@ -92,7 +97,8 @@ Page({
     }
   },
 
-  onTrafficLastYear(e) { this.setData({ trafficLastYear: e.detail.value }); },
+  onMemberRatio(e) { this.setData({ memberRatio: e.detail.value }); },
+  onPickFeel(e) { this.setData({ feelIdx: Number(e.detail.value) }); },
   onRating(e) { this.setData({ rating: e.detail.value }); },
   onLeaseMonths(e) { this.setData({ leaseMonths: e.detail.value }); },
   onRenewIncrease(e) { this.setData({ renewIncrease: e.detail.value }); },
@@ -114,8 +120,6 @@ Page({
       if (!/^\d+$/.test(v)) return { error: T.errInteger };
       return Number(v);
     };
-    const tly = intOf(this.data.trafficLastYear);
-    if (tly && tly.error) return { error: T.errInteger + '（去年同期客流）' };
     const lm = intOf(this.data.leaseMonths);
     if (lm && lm.error) return { error: T.errInteger + '（剩余租期）' };
 
@@ -139,6 +143,16 @@ Page({
       rating = Math.round(r * 10) / 10;
     }
 
+    // 会员销售占比：0~100 的整数（百分比）。留空 = 不判（没会员体系的小店不该被扣分）
+    let memberPct = null;
+    const mr = String(this.data.memberRatio == null ? '' : this.data.memberRatio).trim();
+    if (mr !== '') {
+      if (!/^\d{1,3}$/.test(mr)) return { error: T.errInteger + '（会员占比）' };
+      const n = Number(mr);
+      if (!(n >= 0 && n <= 100)) return { error: T.errInteger + '（会员占比 0~100）' };
+      memberPct = n;
+    }
+
     // 现金：只接受纯数字（可带两位小数），不接受逗号/单位
     let cashFen = null;
     const cs = String(this.data.cashYuan == null ? '' : this.data.cashYuan).trim();
@@ -152,7 +166,13 @@ Page({
     return {
       error: null,
       facts: {
-        traffic_last_year: tly,
+        // R614：原来的 traffic_last_year（去年同期客流人次）已废弃；
+        //   改为"和去年同期比的生意趋势"。'unknown'（说不清）必须落 null，不能落 false 语义。
+        revenue_trend_feel: (() => {
+          const k = pick(T.revenueFeelKeys, this.data.feelIdx);
+          return (k === 'better' || k === 'same' || k === 'worse') ? k : null;
+        })(),
+        member_ratio_pct: memberPct,
         rating,
         review_trend: pick(T.trendKeys, this.data.trendIdx),
         business_district: pick(T.districtKeys, this.data.districtIdx),

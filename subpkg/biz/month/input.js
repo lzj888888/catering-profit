@@ -310,9 +310,6 @@ Page({
     directConsumeYuan: '',
     // A13/A19（2026-11-05）：经营客流三字段（**全部选填**）。'' = 没填 ⇒ 提交 null（不是 0）：
     //   「这个月一个客人都没有」和「这个月没填」是两句完全不同的话，用 0 兜底会把后者说成前者。
-    trafficThisMonth: '',
-    trafficOldCustomer: '',
-    memberSalesYuan: '',
     // 核算方式（就地二选一）：真值以服务端 switches 为准；改动即时写库，失败回滚
     inventoryOn: false,
     invSummary: '',
@@ -402,10 +399,6 @@ Page({
       twPasteRaw: this.data.twPasteRaw || [],
       // T1：分平台小计（只回显不入库 ⇒ 只进草稿）
       twMkByPlat: this.data.twMkByPlat,
-      // A13/A19：客流三字段也进草稿（改完没保存就退出，回来还在）
-      trafficThisMonth: this.data.trafficThisMonth,
-      trafficOldCustomer: this.data.trafficOldCustomer,
-      memberSalesYuan: this.data.memberSalesYuan,
     });
   },
 
@@ -705,10 +698,6 @@ Page({
         takeoutDetailRows,
         inventoryOn, invSummary,
         directConsumeYuan: directConsumeYuan || this.data.directConsumeYuan,
-        // A13/A19：客流三字段回填。null（没填）回显为 ''，**不回显 0** —— 否则老板会以为系统替他填了 0。
-        trafficThisMonth: (d.traffic && d.traffic.this_month != null) ? String(d.traffic.this_month) : '',
-        trafficOldCustomer: (d.traffic && d.traffic.old_customer != null) ? String(d.traffic.old_customer) : '',
-        memberSalesYuan: (d.traffic && d.traffic.member_sales_fen != null) ? api.fenToYuan(d.traffic.member_sales_fen) : '',
         loading: false,
       });
       // R85/R119：模式确定后算合计与带出。**两种模式都要算合计** —— 快速模式的合计取自各平台单值
@@ -1619,36 +1608,11 @@ Page({
 
   onDirectConsume(e) { this.setData({ directConsumeYuan: e.detail.value }); this.checkAmounts(); },
   // A13/A19：客流三字段（纯文本暂存，校验在 save 前一次做完 —— 边打边报错会让人没法输入中间态）
-  onTrafficThisMonth(e) { this.setData({ trafficThisMonth: e.detail.value }); },
-  onTrafficOldCustomer(e) { this.setData({ trafficOldCustomer: e.detail.value }); },
-  onMemberSales(e) { this.setData({ memberSalesYuan: e.detail.value }); },
-  /**
-   * A13/A19：把三个输入框变成 saveLedger 的入参（**三态**：'' ⇒ null，整数/金额 ⇒ 数值）。
-   * 🔴 不合法时**返回错误、绝不静默清洗**：静默把「3,600」洗成 0（api.yuanToFen 的 fail-soft 行为）
-   *   会让老板以为存住了 3600，实际上存了 0，复购率还算成 0%。
-   */
-  buildTrafficPayload() {
-    const t = String(this.data.trafficThisMonth == null ? '' : this.data.trafficThisMonth).trim();
-    const o = String(this.data.trafficOldCustomer == null ? '' : this.data.trafficOldCustomer).trim();
-    const m = String(this.data.memberSalesYuan == null ? '' : this.data.memberSalesYuan).trim();
-    const intOf = (s) => {
-      if (s === '') return null;
-      if (!/^\d+$/.test(s)) return { error: TERMS.traffic.errNotInteger };
-      const n = Number(s);
-      return Number.isSafeInteger(n) ? n : { error: TERMS.traffic.errNotInteger };
-    };
-    const tv = intOf(t);
-    if (tv && tv.error) return { error: TERMS.traffic.errNotInteger };
-    const ov = intOf(o);
-    if (ov && ov.error) return { error: TERMS.traffic.errNotInteger };
-    if (tv != null && ov != null && ov > tv) return { error: TERMS.traffic.errOldGtTraffic };
-    let mv = null;
-    if (m !== '') {
-      if (!/^\d+(\.\d{1,2})?$/.test(m)) return { error: TERMS.traffic.errNotInteger };
-      mv = api.yuanToFen(m);
-    }
-    return { error: null, traffic_count: tv, old_customer_count: ov, member_sales_fen: mv };
-  },
+  // 🔴 R614（2026-11-06）：`buildTrafficPayload` **已整体删除**。
+  //   它负责把「本月客流人次 / 其中老客 / 会员销售额」转成 saveLedger 入参，
+  //   但那一组数老板统计不出来（详见 input.wxml 同位置的说明）。
+  //   ⇒ 现在保存时**完全不传这三个键**，saveLedger 的 `intOpt` 把 undefined 判为 `keep`
+  //     （不动库内现值），所以历史账里的客流数据不会被抹掉，只是不再有新输入。
 
   // ===== 核算方式（就地二选一 · 2026-09-20 从店铺设置页迁入）=====
   // ⚠️ 服务端唯一权威：这里只做「乐观更新 → 写库 → 失败回滚」，不自行推导计算口径。
@@ -1959,18 +1923,11 @@ Page({
         return;
       }
       ui.setTitle(TERMS.buttons.save);
-      // A13/A19：客流三字段先校验（非法 ⇒ 中止，不静默清洗；见 buildTrafficPayload 头注）
-      const tr = this.buildTrafficPayload();
-      if (tr.error) { wx.showToast({ title: tr.error, icon: 'none' }); return; }
       await api.call('saveLedger', {
         month: this.data.month,
         income_items: this.buildItems(this.data.incomeGroups),
         expense_items: this.buildItems(this.data.expenseGroups),
         direct_consume_fen: api.yuanToFen(this.data.directConsumeYuan),
-        // A13/A19：空 ⇒ null（主动清空），0 ⇒ 0（真的是零客流）。三态原样送后端，不在前端做任何兜底。
-        traffic_count: tr.traffic_count,
-        old_customer_count: tr.old_customer_count,
-        member_sales_fen: tr.member_sales_fen,
         // round107：`lump_sum_fen` **入参已退休** —— 一次性投入改为服务端从台账（shop_amortize 里
         //   mode='lump' 的行）求和，前端不再传标量。少一个可变真相源 ⇒ 也就少一处静默清零的机会。
         // round103：库存不在这里提交（见上）；saveLedger 缺省即可保留库内现值。

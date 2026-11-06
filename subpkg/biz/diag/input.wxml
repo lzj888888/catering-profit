@@ -6,11 +6,15 @@
   <view class="hint">{{t.hint}}</view>
 
   <view class="card">
+    <!-- 🔴 R614：这里原来是「去年同期客流（人次）」输入框，已删除。
+         那个数老板填不出来（收银系统只有单数/营业额），问出来的只能是估值，
+         拿估值算同比会得出"客流在流失"这种错误判断。改问三档，他一定答得出。 -->
     <view class="field">
-      <text class="lbl">{{t.trafficLastYear}}</text>
-      <input class="val-input" type="number" confirm-type="done"
-        placeholder="{{t.trafficLastYearPh}}" value="{{trafficLastYear}}"
-        bindinput="onTrafficLastYear" adjust-position="{{true}}" cursor-spacing="20" />
+      <text class="lbl">{{t.revenueFeel}}</text>
+      <picker mode="selector" range="{{t.revenueFeelOpts}}" value="{{feelIdx < 0 ? 0 : feelIdx}}"
+        bindchange="onPickFeel">
+        <view class="val-pick">{{feelIdx < 0 ? t.pending : t.revenueFeelOpts[feelIdx]}}</view>
+      </picker>
     </view>
 
     <view class="field">
@@ -68,6 +72,16 @@
       </picker>
     </view>
     <view class="hint small">{{t.foodSafetyHint}}</view>
+
+    <!-- 🔴 R614：会员销售**占比**（原来录入页让填金额，老板还得自己算比例）。
+         收银系统一般能导出「会员消费额 ÷ 总营业额」，直接填百分比。 -->
+    <view class="field">
+      <text class="lbl">{{t.memberRatio}}</text>
+      <input class="val-input" type="digit" confirm-type="done"
+        placeholder="{{t.memberRatioPh}}" value="{{memberRatio}}"
+        bindinput="onMemberRatio" adjust-position="{{true}}" cursor-spacing="20" />
+    </view>
+    <view class="hint small">{{t.memberRatioHint}}</view>
 
     <view class="field">
       <text class="lbl">{{t.cash}}</text>

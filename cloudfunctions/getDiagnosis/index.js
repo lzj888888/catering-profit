@@ -42,6 +42,12 @@ exports.main = async (event) => {
 
     const out = assemble({ shop, accounts });
 
+    // 只回传**展示用**的非敏感摘要（含账面现金的 input 原始值一律不回传，见下）
+    const df = (shop.diag_facts && typeof shop.diag_facts === 'object') ? shop.diag_facts : {};
+    const mrRaw = df.member_ratio_pct;
+    const mrPct = (mrRaw === null || mrRaw === undefined || mrRaw === '') ? null : Number(mrRaw);
+    const mrOk = Number.isFinite(mrPct) ? mrPct : null;
+
     return ok({
       shop_id: shopId,
       client_request_id: v.input.client_request_id || '',
@@ -50,6 +56,13 @@ exports.main = async (event) => {
       // 派生量：让前端能解释"这个结论是按哪几个月算的"
       derived: out.derived,
       basis: out.basis,
+      // 🔴 R614：会员销售占比的**展示用**摘要（不进评分，引擎不消费它）。
+      //   为什么单独回传：老板在补录页填了这个数，就必须在结论页看到它，否则等于白填。
+      //   判级复用 indicatorRef.memberRatioOf（阈值单源 <20% warn / <40% ok / ≥40% good）。
+      display: {
+        memberRatioPct: mrOk,
+        memberRatioLevel: (common.indicatorRef.memberRatioOf(mrOk) || {}).level || 'na',
+      },
       // 🔴 不回传 input 原始值：里面含账面现金等敏感数，前端要展示时走 diag_facts 回显即可，避免重复口径。
     });
   } catch (e) {

@@ -121,12 +121,23 @@ ck('S-③ 确实扫到了足够多的顶层绑定（防空扫描恒绿）', bind
 seg('P 判据：顶层绑定必须真的在 data 顶层');
 ck('P-① 全站零「顶层绑定但未定义」', missing.length === 0,
   missing.length ? missing.join(' / ') : '零违规');
-ck('P-② 事故锚点：input 页客流 8 键已改为 t.xxx 形式', (() => {
+// P-② 事故锚点（R611 修过、R614 整区下线，两个阶段都要守）：
+//   · R611 的事故是那 8 个词条写成**顶层绑定**（trTitle…）⇒ 渲染成"有容器没文字"的空白；
+//   · R614 李老师拍板整块**移出录入页**（老板填不出"人次"）⇒ 这些绑定现在一个都不该有。
+//   所以判据从"8 个都用 t. 形式"升级为"**一个都不许出现**（无论顶层还是 t. 形式）"——
+//   既守住老事故（顶层绑定重现），也守住新决定（别把已下线的区块偷偷加回来）。
+ck('P-② 事故锚点：input 页客流 8 键已整体下线（顶层与 t. 形式都不得出现）', (() => {
   const wf = path.join(ROOT, 'subpkg/biz/month/input.wxml');
   const t = fs.readFileSync(wf, 'utf8').replace(/<!--[\s\S]*?-->/g, '');
-  return ['trTitle', 'trHint', 'trThisMonth', 'trThisMonthPh', 'trOld', 'trOldPh', 'trMember', 'trMemberPh']
-    .every(k => t.includes('{{t.' + k + '}}') && !t.includes('{{' + k + '}}'));
-})(), '8/8 取 t 单源');
+  const keys = ['trTitle', 'trHint', 'trThisMonth', 'trThisMonthPh', 'trOld', 'trOldPh', 'trMember', 'trMemberPh'];
+  return keys.every(k => !t.includes('{{t.' + k + '}}') && !t.includes('{{' + k + '}}'));
+})(), '8/8 已下线');
+// P-③ 反向自证：P-② 不能恒真 —— 在一个合成片段里塞回顶层绑定，判据必须能认出来
+ck('P-③ P-② 判据不恒真：合成片段里塞回顶层绑定即应命中', (() => {
+  const synthetic = '<view class="cm-sub">{{trTitle}}</view>';
+  const keys = ['trTitle', 'trHint'];
+  return keys.some(k => synthetic.includes('{{' + k + '}}'));
+})(), '合成样本命中 trTitle');
 
 seg('M 变异自证：判据能抓住故意造的未定义绑定');
 {

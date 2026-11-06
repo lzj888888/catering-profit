@@ -67,6 +67,7 @@ Page({
       basisTitle: T.basisTitle,
       asOfPre: T.asOfPre,
       basisMonthsTitle: T.basisMonthsTitle,
+      memberRatioNa: T.memberRatioNa,
       disclaimer: T.disclaimer,
     },
     levelClass: 'na',
@@ -85,6 +86,7 @@ Page({
     basisLines: [],
     asOfText: '',
     basisMonths: [],
+    memberLine: '',
   },
 
   onLoad() {
@@ -213,6 +215,18 @@ Page({
     basisLines.push((cashM && cashM.hasData && cashM.note) ? cashM.note : T.basisNoCash);
     if (dv.lossTruncated) basisLines.push(T.basisTrunc);
 
+    // ---- 会员销售占比（R614：展示用，不进评分）----
+    //   老板在补录页填了这个数，就必须在这里看到 —— 填了看不见 = 白填。
+    //   判级由云函数给（阈值单源 indicatorRef.memberRatioOf：<20 偏低 / <40 一般 / ≥40 不错）。
+    const disp = (d && d.display) || {};
+    let memberLine = T.memberRatioNa;
+    if (disp.memberRatioPct !== null && disp.memberRatioPct !== undefined) {
+      const lv = disp.memberRatioLevel;
+      const lvText = lv === 'warn' ? T.memberRatioLvWarn
+        : (lv === 'good' ? T.memberRatioLvGood : T.memberRatioLvOk);
+      memberLine = T.memberRatioPre + disp.memberRatioPct + '%（' + lvText + '）';
+    }
+
     // ---- 分数：数据不足时**不给分** ----
     //   覆盖率不到 70% 的"100 分"是归一化出来的幻觉（只剩口碑/租约在算），
     //   摆在"数据不足"旁边就是自相矛盾，直接不说分。
@@ -240,6 +254,7 @@ Page({
       basisLines,
       asOfText: dv.month ? (T.asOfPre + dv.month) : '',
       basisMonths,
+      memberLine,
     });
   },
 });

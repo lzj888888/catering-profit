@@ -45,7 +45,8 @@ const FULL = {
   monthlyRigidFen: 12000000,   // 12 万（R612 起**不再**用于现金流判据，仅留作断粮参考）
   cashOnHandFen: 36000000,     // 36 万；本样本净利为正 ⇒ 现金流项满分（不亏损就没有"撑几个月"）
   avgMonthlyNetLossFen: 0,     // R612：近 3 月平均净亏损（正数=亏）。0 ⇒ 不亏
-  trafficThisMonth: 4200, trafficLastYear: 4000,   // 同比 +5%
+  // R614: 客流人次退场，改营业额同比（老板填不出“人次”，见引擎 METRICS[traffic] 头注）
+  revenueYoyPct: 5,            // 营业额同比 +5%
   rating: 4.7, reviewTrend: 'slight',
   businessDistrict: 'stable',
   leaseMonthsLeft: 20, renewIncreasePct: 8,
@@ -200,6 +201,39 @@ check('E-⑱ 城市系数真生效：一线人工/房租警戒上抬后，同一
     !!foodEv && /影响经营|重大/.test(foodEv.evidence), foodEv ? foodEv.evidence : '未命中');
 }
 
+// ---------- M 组：R614 营收趋势换源（防「客流人次」偷偷回到判据里）----------
+// 反证思路：M-④ 给足旧字段但**不给新字段**，分数必须仍是 null。
+//   若有人把口径改回旧字段，M-④ 会立刻变绿成"有分"，当场暴露。
+{
+  const tOf = (i) => E.evaluateDiagnosis(i).metrics.find((m) => m.key === 'traffic');
+  const base = Object.assign({}, FULL, { revenueYoyPct: undefined, revenueFeel: undefined });
+
+  // M-① 精确同比优先于主观判断
+  const r1 = tOf(Object.assign({}, base, { revenueYoyPct: 3, revenueFeel: 'worse' }));
+  check('M-① 🔴 精确同比优先于主观：同时给了 +3% 与「比去年差」⇒ 按 +3% 判（满分），note 写明自动',
+    r1.score === 100 && /自动对比/.test(r1.note), `score=${r1.score} note=${r1.note}`);
+
+  // M-② 主观三档真生效，且 note 必须声明"按你的判断"（不许冒充精确值）
+  const r2 = tOf(Object.assign({}, base, { revenueFeel: 'worse' }));
+  check('M-② 无同比时主观三档兜底：worse ⇒ 35 分，且 note 明写「按你的判断」',
+    r2.score === 35 && /按你的判断/.test(r2.note), `score=${r2.score} note=${r2.note}`);
+
+  // M-③ 两者都没有 ⇒ 不判（绝不按 0）
+  const r3 = tOf(base);
+  check('M-③ 同比与主观都缺 ⇒ 该项不判（null），绝不按 0 分算',
+    r3.score === null && r3.hasData === false, `score=${r3.score} hasData=${r3.hasData}`);
+
+  // M-④ 🔴 反证：给足旧版「客流人次」字段，分数必须仍为 null —— 证明口径真的换了源
+  const r4 = tOf(Object.assign({}, base, { trafficThisMonth: 4200, trafficLastYear: 4000 }));
+  check('M-④ 🔴 反证：喂旧字段（本月客流/去年同期客流）不得产生分数 —— 口径已换源',
+    r4.score === null, `score=${r4.score} note=${r4.note}`);
+
+  // M-⑤ 精确同比的分数映射与旧口径一致（下滑超警戒 ⇒ 低分），防止换源时把梯度改坏
+  const r5 = tOf(Object.assign({}, base, { revenueYoyPct: -25 }));
+  check('M-⑤ 同比 -25%（超过快餐警戒 20%）⇒ 分数落在 0~20 之间',
+    r5.score !== null && r5.score >= 0 && r5.score <= 20, `score=${r5.score} note=${r5.note}`);
+}
+
 // ---------- L 组：R612 等级闸门（防「没记账也判健康」与「连亏却判健康」）----------
 {
   // L-① 一本账都没有（只有补录项 + 占比类）⇒ 必须 insufficient，不能靠补录项凑出"健康"
@@ -209,7 +243,7 @@ check('E-⑱ 城市系数真生效：一线人工/房租警戒上抬后，同一
     bizType: 'fastfood', cityTier: 'tier2',
     // 刻意**不给** revenueFen / netProfitFen / avgMonthlyNetLossFen / cashOnHandFen
     lossMonths: 0,
-    trafficThisMonth: 4200, trafficLastYear: 4000,
+    revenueFeel: 'better',
     foodCostRatePct: 38, laborCostRatePct: 18, rentRatePct: 12,
     rating: 4.8, reviewTrend: 'better', businessDistrict: 'growing',
     leaseMonthsLeft: 30, renewIncreasePct: 0, debtLevel: 'none',
