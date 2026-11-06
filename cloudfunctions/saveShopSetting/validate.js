@@ -121,8 +121,16 @@ function validateInput(event) {
         if (typeof v !== 'string' || list.indexOf(v) < 0) return `${name} 必须是 ${list.join(' / ')} 之一`;
         out[k] = v; return null;
       };
-      // 客流（人次）：去年同期；上限 100 万 —— 超过必是打字错误（不是业务异常）
-      let e = takeInt('traffic_last_year', 'traffic_last_year', 1000000);
+      // 🔴 R614 补丁（2026-11-06 真机反馈）：原白名单只有 7 个旧字段，而 R612/R614 新增的
+      //   `revenue_trend_feel` / `member_ratio_pct` / `renew_increase_pct` / `food_safety_event`
+      //   **一个都没登记**。takeInt/takeEnum 只把白名单内的 key 写进 out ⇒ 这四个键被**静默丢弃**：
+      //   前端提交了、toast 也提示「已保存」、库里一个字没写。真机表现 =「补录完保存，数字一点没变」。
+      //   同时删掉 `traffic_last_year` —— 该字段 R614 已废弃（老板统计不出人次），留着会误导后人。
+      // 营收趋势（主观三档）：账不满 13 个月、算不出精确同比时的兜底
+      let e = takeEnum('revenue_trend_feel', 'revenue_trend_feel', DIAG_ENUM.revenueFeel);
+      if (e) return err(e);
+      // 会员销售占比（%）：0~100，**不进评分**，只在结论页做展示判级
+      e = takeInt('member_ratio_pct', 'member_ratio_pct', 100);
       if (e) return err(e);
       // 剩余租期（月）：上限 600（50 年），不足 0 无意义
       e = takeInt('lease_months_left', 'lease_months_left', 600);
@@ -142,6 +150,22 @@ function validateInput(event) {
         if (rv === null || rv === '') out.rating = null;
         else if (typeof rv !== 'number' || !Number.isFinite(rv) || rv < 0 || rv > 5) return err('rating 必须是 0~5 的数字');
         else out.rating = Math.round(rv * 10) / 10;
+      }
+      // 续租涨幅（%）：0~500，允许一位小数；留空 = 不判（R6「租约断崖」三条件之一，缺它永远判不了）
+      if (df.renew_increase_pct !== undefined) {
+        const kv = df.renew_increase_pct;
+        if (kv === null || kv === '') out.renew_increase_pct = null;
+        else if (typeof kv !== 'number' || !Number.isFinite(kv) || kv < 0 || kv > 500) return err('renew_increase_pct 必须是 0~500 的数字');
+        else out.renew_increase_pct = Math.round(kv * 10) / 10;
+      }
+      // 重大食安：**三态**（true 有 / false 无 / null 未填）。
+      //   🔴 未填必须是 null，不能是 false —— 引擎把 false 当「确认没有」，把 null 当「未判定」；
+      //   混用会把「没填」谎报成「查过没问题」，那是这套模型最危险的谎。
+      if (df.food_safety_event !== undefined) {
+        const fv = df.food_safety_event;
+        if (fv === null) out.food_safety_event = null;
+        else if (typeof fv !== 'boolean') return err('food_safety_event 必须是 true / false / null');
+        else out.food_safety_event = fv;
       }
       diagFacts = out;
     }

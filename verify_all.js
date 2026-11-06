@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：238 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：239 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1422,6 +1422,15 @@ const SUITES = [
   //   另有 N 段守**轮次编号**（全局共享资源，靠人记必然撞车 —— R609 本轮自己就撞了 R607）。
   ['auto-queue', 'tools/check_auto_queue.js'],
   ['page-top-bindings', 'tools/check_page_top_bindings.js'],
+  //   diag-facts-sync = 诊断补录「前端提交 ≡ 保存端白名单」守卫（R614 补丁 · 第 239 套件）。
+  //                    起因＝真机实测：补录页 R612/R614 新增 4 个字段，而
+  //                    `saveShopSetting/validate.js` 的 diag_facts 白名单没登记 ⇒
+  //                    takeInt/takeEnum 只写白名单内的 key ⇒ 四个字段被**静默丢弃**，
+  //                    保存成功 + toast 报成功 + 库里一个字没写 ⇒ 老板看到「补录完全没反应」。
+  //                    同族第二例（第一例：R611 三项刚性卡＝云端未部署）。
+  //                    判据＝A 前端 facts 键 ⊆ 保存端白名单（+孤儿键）+ B diag/result 必须有
+  //                    onShow 且真调 load（防「返回不刷新」）+ C 变异反证（漏一个字段必须点名）。
+  ['diag-facts-sync', 'tools/check_diag_facts_sync.js'],
   //   new-cards      = 批次 3 三块新 UI 的**运行时**守卫（L2 页面桩：真跑 subpkg/biz/month/result.js）。
   //                    上面两套是静态文本断言，只能证「源码里有这一句」；证不了
   //                    「show 判据写错 ⇒ 卡片永不显示、而字符串一个没少」这类病。

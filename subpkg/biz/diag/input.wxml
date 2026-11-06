@@ -31,6 +31,7 @@
         <view class="val-pick">{{trendIdx < 0 ? t.pending : t.trendOpts[trendIdx]}}</view>
       </picker>
     </view>
+    <view class="hint small">{{t.reviewTrendHint}}</view>
 
     <view class="field">
       <text class="lbl">{{t.district}}</text>
@@ -39,6 +40,7 @@
         <view class="val-pick">{{districtIdx < 0 ? t.pending : t.districtOpts[districtIdx]}}</view>
       </picker>
     </view>
+    <view class="hint small">{{t.districtHint}}</view>
 
     <view class="field">
       <text class="lbl">{{t.leaseMonths}}</text>
@@ -62,6 +64,7 @@
         <view class="val-pick">{{debtIdx < 0 ? t.pending : t.debtOpts[debtIdx]}}</view>
       </picker>
     </view>
+    <view class="hint small">{{t.debtHint}}</view>
 
     <!-- R612：重大食安 —— **只问一个**，不拆档（李老师拍板，见 terms 注释） -->
     <view class="field">

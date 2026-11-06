@@ -86,3 +86,17 @@
 /* 亏损 = 红（中国经营语境：亏是坏事，不是股市跌绿红涨那套；这里是账，不是行情） */
 .bm-v.neg { color: #c0392b; }
 .bm-v.pos { color: #22a06b; }
+
+/* 🔴 R614 补丁：账本不足引导块。
+   刻意与页底深色 banner 区分：这里是「信息 + 一条出路」，用浅底 + 左侧琥珀色条，
+   不用深色（深色留给"去体检"那个 CTA，避免页面上出现两个同等重量的暗块）。 */
+.dg-mm {
+  margin-top: 20rpx;
+  padding: 22rpx 22rpx 18rpx;
+  background: #f7f9fc;
+  border-left: 6rpx solid #d9a441;
+  border-radius: 12rpx;
+}
+.dg-mm-t { font-size: 28rpx; color: #2b3a4d; line-height: 1.6; }
+.dg-mm-h { margin-top: 8rpx; font-size: 28rpx; color: #6b7a8d; line-height: 1.6; }
+.dg-mm-a { margin-top: 14rpx; font-size: 28rpx; color: #2a4e7c; font-weight: 600; }

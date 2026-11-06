@@ -286,6 +286,11 @@ const CASES = [
   //   非恒真凭据：M-① 合成 ghostBinding 必须被点名 / M-④ 补上该键后必须放行；
   //   断言数不受守则「删掉 M 组四条 + 放宽 S-③ 下界」会静默通过，与 round73 同族。
   { key: 'check_page_top_bindings', rel: 'tools/check_page_top_bindings.js' }, // 9 条（S 3 + P 2 + M 4）
+  // R614 补丁（2026-11-06 真机事故后新增）：诊断补录「前端提交 ≡ 保存端白名单」守卫。
+  //   它守的正是「前后端字段表必须同时改」这条缝 —— 自身断言数若不受守，
+  //   删掉 A-③（漏字段必须点名）或 B-②（onShow 必须真调 load）就静默退回事故状态，
+  //   而门禁照旧全绿。9 条 = A 4 + B 3 + C 2。
+  { key: 'check_diag_facts_sync', rel: 'tools/check_diag_facts_sync.js' }, // 9 条（A 4 + B 3 + C 2）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

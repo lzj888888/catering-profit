@@ -68,6 +68,8 @@ Page({
       asOfPre: T.asOfPre,
       basisMonthsTitle: T.basisMonthsTitle,
       memberRatioNa: T.memberRatioNa,
+      moreMonthsHint: T.moreMonthsHint,
+      moreMonthsGo: T.moreMonthsGo,
       elapsedPre: T.elapsedPre,
       elapsedSuf: T.elapsedSuf,
       disclaimer: T.disclaimer,
@@ -89,21 +91,34 @@ Page({
     asOfText: '',
     basisMonths: [],
     memberLine: '',
+    moreMonthsText: '',
     devNote: '',
   },
 
+  // 🔴 R614 补丁（2026-11-06 真机反馈）：原先只有 onLoad 拉数 ⇒ 从补录页 `navigateBack` 回来时，
+  //   诊断页还是**同一个页面实例**，onLoad 不再触发、onShow 又没人接 ⇒ 结论永远停在进去之前那份，
+  //   老板看到的就是「补录完保存了，数字一点没变」（其实是没重新读）。
+  //   改为 onShow 拉数：首次进入 onLoad→onShow 只 load 一次（不会重复请求），
+  //   从补录页回来 onShow 再触发一次 ⇒ 自动重算。
   onLoad() {
     ui.setTitle(T.title);
-    this.load();
   },
+
+  onShow() { this.load(); },
 
   onRetry() { this.load(); },
 
-  // 去补录页填完回来，下拉就重算 —— 不让老板以为必须退出去重进
+  // 下拉也能重算 —— 双保险，不让老板以为必须退出去重进
   onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()); },
 
   goInput() {
     wx.navigateTo({ url: '/subpkg/biz/diag/input' });
+  },
+
+  // 账本不足时跳去补历史账。月度核算页**不是** tabBar 页（tabBar = pages/index/index），
+  // 所以用 navigateTo；哪天把它挪进 tabBar，check_tabbar 守卫会要求改成 wx.switchTab。
+  goMonthList() {
+    wx.navigateTo({ url: '/subpkg/biz/month/index' });
   },
 
   async load() {
@@ -226,6 +241,14 @@ Page({
     basisLines.push((cashM && cashM.hasData && cashM.note) ? cashM.note : T.basisNoCash);
     if (dv.lossTruncated) basisLines.push(T.basisTrunc);
 
+    // 🔴 R614 补丁：账本不足（少于 3 个月）时，给「能补、去哪补」的明确出路。
+    //   李老师原问：「只经营一个月没有 4 个月账怎么办？以前有账没录进系统怎么填？这个一定需要吗？」
+    //   核实结论：月度核算页月份选择器 = recentMonths(24) ∪ 已有账月 ⇒ **最近 24 个月都能补**；
+    //   不是必须，但不补趋势与连亏就只能判「数据不足」。以前页面只写「数据不足」不说怎么补，老板就卡死。
+    //   只在「有账但不够」时提示；一本账都没有（monthsUsed = 0）交给 missAutoHint，避免两句重复。
+    const usedN = Number(dv.monthsUsed) || 0;
+    const moreMonthsText = (usedN > 0 && usedN < 3) ? (T.moreMonthsPre + usedN + T.moreMonthsSuf) : '';
+
     // ---- 会员销售占比（R614：展示用，不进评分）----
     //   老板在补录页填了这个数，就必须在这里看到 —— 填了看不见 = 白填。
     //   判级由云函数给（阈值单源 indicatorRef.memberRatioOf：<20 偏低 / <40 一般 / ≥40 不错）。
@@ -266,6 +289,7 @@ Page({
       asOfText: dv.month ? (T.asOfPre + dv.month) : '',
       basisMonths,
       memberLine,
+      moreMonthsText,
     });
   },
 });

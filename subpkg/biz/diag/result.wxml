@@ -70,6 +70,13 @@
   <view class="dg-card">
     <view class="dg-sec-hd">{{t.basisTitle}}</view>
     <view class="muted basis-line" wx:for="{{basisLines}}" wx:key="index" wx:for-item="line">{{line}}</view>
+    <!-- 🔴 R614 补丁：账本不足的出路 —— 「能不能补 / 去哪补 / 补完会不会变」三句话答完，
+         否则老板只看到「数据不足」就卡死（李老师原问：只经营一个月怎么办）。 -->
+    <view class="dg-mm" wx:if="{{moreMonthsText}}">
+      <view class="dg-mm-t">{{moreMonthsText}}</view>
+      <view class="dg-mm-h">{{t.moreMonthsHint}}</view>
+      <view class="dg-mm-a" bindtap="goMonthList">{{t.moreMonthsGo}} ›</view>
+    </view>
     <!-- 近几个月利润明细：结论要能被老板自己核对（"连亏 3 个月"最想知道哪三个月、各亏多少） -->
     <!-- 会员销售占比：展示用，不进评分（引擎不消费它，但填了必须看得见） -->
     <view class="muted basis-line" wx:if="{{memberLine}}">{{memberLine}}</view>
