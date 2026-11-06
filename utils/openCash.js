@@ -52,6 +52,7 @@ const num = (v) => {
  * @param {number} [o.equipFen]      设备投入（分）；不传 = 未填（结果里 equipMissing=true）
  * @param {number} [o.stockFen]      首批货款（分）；不传 = 未填
  * @param {number} [o.budgetFen]     手里可用预算（分）
+ * @param {number} [o.decorFen] 老板已填的装修投入（分）；>0 时优先采用，否则按面积×单价估算
  * @param {number} [o.fixedMonthlyFen] 每月固定支出（分）—— 来自 assembleItems 的 fixedItems 合计
  * @returns {{
  *   ok:boolean, reason?:string,
@@ -69,9 +70,10 @@ function estimateOpenCash(o) {
   if (!(area > 0)) return { ok: false, reason: 'noArea' };
   if (!(rent > 0)) return { ok: false, reason: 'noRent' };
 
-  // 装修缺省取区间中值 900 元/㎡（区间本身在 DECOR_UNIT_YUAN 里，页面可让用户改）
+  // 装修：优先用老板在「开店要投多少」里填的实数（R615 审计 P9）；
+  //   没填才按面积×单价估（缺省区间中值 900 元/㎡），此时页面两处口径才一致。
   const decorUnit = num(c.decorUnitFen) || 90000; // 900 元 = 90000 分
-  const decorFen = Math.round(area * decorUnit);
+  const decorFen = num(c.decorFen) > 0 ? num(c.decorFen) : Math.round(area * decorUnit);
 
   const dm = c.depositMonths == null ? 1 : num(c.depositMonths);
   const pm = c.prepayMonths == null ? 3 : num(c.prepayMonths);

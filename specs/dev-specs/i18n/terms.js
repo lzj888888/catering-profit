@@ -3244,7 +3244,7 @@ const TERMS = {
     // 🔴 R357：分批中途失败 ⇒ 已算出的先给，**并说清哪一段没算**（不能整张表空白）
     matrixPartial: '第 {a}-{b} 档没算出来（共 {n} 档），下表只显示已算出的 {m} 档',
     insightMinMargin: '最低可行毛利率 {margin}%（月租 ¥{rent} @ 目标利润 ¥{target}）',
-    insightLever: '房租每涨 ¥1000，需多做到手营收 ≈ ¥{lever}（按毛利率 {margin}% 计）',
+    insightLever: '房租每涨 ¥1000，需多做到手营收 ≈ ¥{lever}（按相邻租金档实测）',
     insightCushion: '抗跌空间 ≈ {cushion}%：营收跌这么多才到保本',
     leverRule: '公式：房租增量 ÷ 毛利率 = 需多做的月营收',
     colLever: '涨租需多卖',

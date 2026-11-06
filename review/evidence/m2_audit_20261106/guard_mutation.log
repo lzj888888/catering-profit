@@ -1,0 +1,8 @@
+守卫基线 RC=0（应 0）
+  P5 删空档跳过 ⇒ RC=1 转红=True OK
+  P4 不调用差分 ⇒ RC=1 转红=True OK
+  P9 不读装修 ⇒ RC=1 转红=True OK
+  P11 直渲模板 ⇒ RC=1 转红=True OK
+还原后 RC=0（应 0）
+守卫变异复核：4/4 真命中
+PASS

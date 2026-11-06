@@ -329,6 +329,9 @@ Page({
     //   视图就被打回明细表 ⇒ 真机观感「切不动 / 点了没反应」。
     view: 'detail', // 'detail' 明细表 | 'pivot' 透视表
     result: null, // { rows:[], count, pivot }
+    // 🔴 R615 审计 P11：`terms.count` 是模板「共 {n} 组组合」，
+    //   wxml 直渲会显示花括号占位符。这里存替换后的成品串。
+    countText: '',
   },
 
   onLoad(options) {
@@ -595,7 +598,7 @@ Page({
           'fieldTouched.margin': false, 'fieldTouched.labor': false,
           'fieldTouched.rent': false, 'fieldTouched.area': false,
           // 清空后旧结果必须撤掉，否则屏上留着上一套参数的保本额
-          result: null, fixedBreak: null, realGap: null, buildSumText: '',
+          result: null, fixedBreak: null, realGap: null, buildSumText: '', countText: '',
         }, () => {
           this.setData({ laborHint: this.laborHintOf() });
           wx.showToast({ title: M.resetDone, icon: 'none' });
@@ -853,6 +856,7 @@ Page({
   buildCash() {
     const T = this.data.t;
     const c = this.data.cash;
+    const g = this.data.global || {};
     const area = Number(this.data.global.area) || 0;
     const rentYuan = Number(c.rentYuan) || 0;
     const budgetYuan = Number(c.budgetYuan) || 0;
@@ -867,6 +871,9 @@ Page({
     const fixedMonthly = this.fixedMonthlyYuan(rentYuan);
     const r = OpenCash.estimateOpenCash({
       areaM2: area,
+      // 🔴 R615 审计 P9：老板在「开店要投多少」里填过装修 ⇒ 现金卡必须用这笔钱，
+      //   不能再按 面积×900 元/㎡ 另估一个（同屏同一笔钱两个数）。留空才回落估算。
+      decorFen: y2f(g.buildDecorYuan),
       rentFen: y2f(rentYuan),
       budgetFen: y2f(budgetYuan),
       equipFen: y2f(c.equipYuan),
@@ -1203,6 +1210,11 @@ Page({
     const cleanArr = [];
     const meta = []; // 与 cleanArr 对齐的维度标注
     for (const r of rent) for (const l of laborUse) for (const m of marginUse) for (const tg of target) for (const ov of otherUse) {
+      // 🔴 R615 审计 P5：空档 = 「没填」，必须与 badDimOf 同语义直接跳过。
+      //   旧码 Number('') === 0 ⇒ 生成 rent=0 / labor=0 的假行（人工归零使保本腰斩），
+      //   零报错且方向乐观。实测空 1 档 ⇒ 8 行里 6 行含 0。
+      //   注意：数字 0 是合法档位（目标利润 0 = 保本行），不在跳过之列。
+      if ([r, l, m, tg].some((x) => x === '' || x === null || x === undefined)) continue;
       const rv = Number(r), lv = Number(l), mv = Number(m), tgv = Number(tg);
       if (![rv, lv, mv, tgv].every((x) => isFinite(x))) continue;
       const oraw = (ov === null || ov === undefined || ov === '') ? null : Number(ov);
@@ -1267,12 +1279,15 @@ Page({
           m: allRows.length,
         })
         : '';
-      const rows = allRows.map((res, i) => this.toRow(meta[i], res));
+      let rows = allRows.map((res, i) => this.toRow(meta[i], res));
+      // 🔴 R615 审计 P4：杠杆必须在 rows 齐了之后用**引擎相邻档差分**回填，不能逐行编公式。
+      rows = this.applyLeverByDiff(rows);
       const pivot = this.buildPivot(rows);
       const insight = this.buildInsight(rows);
       // 🔴 R297：云端拒掉的档位（rejected）**必须让人看见** —— 静默丢档 = 老板以为算过了。
       this.setData({
         loading: false,
+        countText: fmt(this.data.t.count, { n: rows.length }),
         // 🔴 R570：这里**故意不再带 view** —— 视图是用户的选择，不属于「一次计算的结果」。
         result: { rows, count: rows.length, pivot, insight, rejected, partialText },
       });
@@ -1338,10 +1353,12 @@ Page({
     const targetDaily = res.target_daily_fen != null ? res.target_daily_fen / 100 : null;
     // 🔴 R331：引擎的「不含摊销固定费用」——用于和前端同源装配对账（对不上就不显示构成）
     const fixedExAmort = res.fixed_ex_amort_fen != null ? api.fenToYuan(res.fixed_ex_amort_fen, 0) : null;
-    // 🔴 round279 · #9 派生（纯展示，引擎零改）：
-    //   ① 房租杠杆：房租每涨 ¥1000，需多做到手营收 = 1000 ÷ 毛利率（按本行毛利率计）
-    const mRate = meta.marginPct > 0 ? meta.marginPct / 100 : 0;
-    const leverYuan = mRate > 0 ? Math.round(1000 / mRate) : null;
+    // 🔴 R615 审计 P4：房租杠杆**不在这里算**。
+    //   旧式「1000 ÷ 毛利率」漏了随房租派生的水电/管理费与杂支费率，
+    //   实测低估 1.30×（页面 1587 vs 引擎差分 2065.57 元/千元），方向乐观。
+    //   真值由 applyLeverByDiff(rows) 在整批结果上用相邻档差分回填；
+    //   这里先占位 null ⇒ 单档 / 算不出来的行 fail-closed 不给数。
+    const leverYuan = null;
     //   ② 淡季安全垫：目标营收相对保本线的缓冲百分比（营收可跌这么多才到保本；
     //      目标利润=0 即保本线本身 ⇒ 缓冲为 0，前端标「保本线」而非 0%）
     let cushionPct = null;
@@ -1388,6 +1405,33 @@ Page({
   // 🔴 round279 · 纯前端派生，引擎零改。结论跟着透视固定维度走：
   //   reverse（寻找铺面，扫租金档位）→ 固定毛利率/人工 ⇒ 结论「可承受最高月租」
   //   forward（已有铺面，扫毛利率）  → 固定月租金/人工 ⇒ 结论「最低可行毛利率」
+  // 🔴 R615 审计 P4：房租每涨 ¥1000 需多做到手营收 = 引擎相邻档保本的实测差分。
+  //   不编公式、不猜派生系数 —— 相邻两档的 fixed_items / var_items 已经被 assembleItems
+  //   按真实口径装配过，差分天然包含「房租上涨带动的派生固定费用」和边际贡献率。
+  //   分组键 = 除房租外的全部维度（人工/毛利率/目标利润/杂费），组内按租金升序；
+  //   线性关系下各段斜率相同，取第一段即可。组内不足两档 ⇒ leverYuan = null（不编）。
+  applyLeverByDiff(rows) {
+    const groups = {};
+    for (const r of rows) {
+      if (r.invalid || r.red || r.breakMonthly == null || r.rent == null) { r.leverYuan = null; continue; }
+      const k = [r.labor, r.marginPct, r.targetYuan, r.otherPct].join('|');
+      (groups[k] || (groups[k] = [])).push(r);
+    }
+    for (const k in groups) {
+      const g = groups[k].slice().sort((a, b) => Number(a.rent) - Number(b.rent));
+      let lever = null;
+      for (let i = 1; i < g.length; i++) {
+        const dRent = Number(g[i].rent) - Number(g[i - 1].rent);
+        if (!(dRent > 0)) continue;
+        lever = Math.round((g[i].breakMonthly - g[i - 1].breakMonthly) / dRent * 1000);
+        break;
+      }
+      const v = (lever != null && isFinite(lever) && lever > 0) ? lever : null;
+      for (const r of g) r.leverYuan = v;
+    }
+    return rows;
+  },
+
   buildInsight(rows) {
     if (!rows || !rows.length) return { has: false };
     const dim = this.data.pivotRowDim;                 // 'rent' | 'margin'
@@ -1480,10 +1524,10 @@ Page({
       bestVal = Math.min(...filtered.map((r) => r.marginPct));
       bestText = fmt(M.insightMinMargin, { margin: bestVal, rent: fixVal, target: targetAnchor });
     }
-    // 房租杠杆：按锚定毛利率计（reverse=fixVal 毛利率；forward=最低可行毛利率本身）
-    const leverMargin = dim === 'rent' ? fixVal : bestVal;
-    const leverYuan = Math.round(1000 / (leverMargin / 100));
-    const leverText = fmt(M.insightLever, { lever: leverYuan, margin: leverMargin });
+    // 🔴 R615 审计 P4：结论卡与明细表**共用同一个真值**，不再自己按毛利率另算一遍。
+    //   单档（无法差分）⇒ 行 leverYuan 为 null ⇒ 这句不显示，不编一个数糊弄。
+    const leverRow = filtered.find((r) => r.leverYuan != null);
+    const leverText = leverRow ? fmt(M.insightLever, { lever: leverRow.leverYuan }) : '';
     // 淡季安全垫：取最优档那一行
     const bestRow = filtered.find((r) => (dim === 'rent' ? r.rent === bestVal : r.marginPct === bestVal));
     let cushionText = null;

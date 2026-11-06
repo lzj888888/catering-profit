@@ -154,7 +154,7 @@
   <block wx:if="{{result}}">
     <view class="mcard">
       <view class="result-bar">
-        <text class="count">{{t.count}}</text>
+        <text class="count">{{countText}}</text>
         <view class="view-tabs">
           <view class="tab {{view==='detail'?'on':''}}" bindtap="onViewChange" data-view="detail">{{t.detail}}</view>
           <view class="tab {{view==='pivot'?'on':''}}" bindtap="onViewChange" data-view="pivot">{{t.pivot}}</view>
@@ -187,7 +187,7 @@
       <view class="insight" wx:if="{{result.insight && result.insight.has}}">
         <view class="insight-title">{{t.insightTitle}}</view>
         <view class="insight-line" wx:if="{{result.insight.bestText}}">{{result.insight.bestText}}</view>
-        <view class="insight-line lever">{{result.insight.leverText}}</view>
+        <view class="insight-line lever" wx:if="{{result.insight.leverText}}">{{result.insight.leverText}}</view>
         <view class="insight-line" wx:if="{{result.insight.cushionText}}">{{result.insight.cushionText}}</view>
         <view class="insight-rule">{{t.leverRule}}</view>
       </view>
