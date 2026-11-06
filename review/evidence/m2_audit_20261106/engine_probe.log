@@ -1,0 +1,68 @@
+
+===== A. 规范锚点回归（生产引擎实跑） =====
+  [PASS] A 建店总投入 | 实跑=66000000 参照=66000000
+  [PASS] A 月摊销 | 实跑=1700000 参照=1700000
+  [PASS] A 固定(不含摊) | 实跑=2100000 参照=2100000
+  [PASS] A 固定(含摊) | 实跑=3800000 参照=3800000
+  [PASS] A 综合变动率% | 实跑=50 参照=50
+  [PASS] A 边际贡献率 | 实跑=0.5 参照=0.5
+  [PASS] A 保本月营收(分) | 实跑=7600000 参照=7600000
+  [PASS] A 保本日均(分) | 实跑=253333 参照=253333
+  [PASS] A 目标月营收(分) | 实跑=10600000 参照=10600000
+  [PASS] A 目标日均(分) | 实跑=353333 参照=353333
+  [PASS] A 回本月数 | 实跑=44 参照=44
+  → 标准工况四核心（元）：保本月=76000.00 保本日均=2533.33 目标月=106000.00 目标日均=3533.33 回本=44月
+  → 指标@保本：房租={"key":"rent","pct":15.8,"lo":9,"hi":15,"level":"warn","redline":15,"redlineHit":true} 人工={"key":"labor","pct":9.2,"lo":17,"hi":22,"level":"good","redline":20,"redlineHit":false}
+  [PASS] A 指标@保本 房租占比 15.8% | 15.8
+  [PASS] A 指标@保本 人工占比 9.2% | 9.2
+
+===== B. 双引擎对拍（随机 3000 组，逐字段） =====
+  样本0 保本月营收=1757400.93 元
+  样本1 保本月营收=213681.44 元
+  样本2 保本月营收=null 元
+  [PASS] B 3000 组逐字段零漂移 | diff=0 
+  [PASS] B 两文件 md5 一致
+
+===== C. 精度探针（月摊销逐项浮点累加） =====
+  [PASS] C 20000 组月摊销与独立参照零偏差 | diff=0 
+
+===== D. 边界 / 口径探针 =====
+  · 正常 65% 毛利率 ⇒ 变动率=35% 边际=0.65 红警=false 保本月=15384.62 日均=512.82 validDays=30
+  · 毛利率 0.1%（综合变动率 99.9%，未触红警） ⇒ 变动率=99.9% 边际=0.001 红警=false 保本月=10000000.00 日均=333333.33 validDays=30
+  · 毛利率 0%（综合变动率 100%，红警） ⇒ 变动率=100% 边际=0 红警=true 保本月=null 日均=null validDays=30
+  · 毛利率 120%（食材成本率为负） ⇒ 变动率=-20% 边际=1.2 红警=false 保本月=8333.33 日均=277.78 validDays=30
+  · 毛利率 −10% ⇒ 变动率=110% 边际=-0.1 红警=true 保本月=null 日均=null validDays=30
+  · 目标利润为负 ⇒ 变动率=35% 边际=0.65 红警=false 保本月=15384.62 日均=512.82 validDays=30
+  · 建店投入 years=0 ⇒ 变动率=35% 边际=0.65 红警=false 保本月=15384.62 日均=512.82 validDays=30
+  · validDays=26 ⇒ 变动率=35% 边际=0.65 红警=false 保本月=15384.62 日均=591.72 validDays=26
+  · validDays=0（回退30） ⇒ 变动率=35% 边际=0.65 红警=false 保本月=15384.62 日均=512.82 validDays=30
+  · validDays=99（引擎不设防） ⇒ 变动率=35% 边际=0.65 红警=false 保本月=15384.62 日均=155.40 validDays=99
+  🔴 边界实跑：毛利率 0.1% ⇒ 红警=false，保本月营收=10000000.00 元（固定成本 10000 元的 1000 倍）
+
+===== E. 反推（reverse）日均分母一致性 =====
+  reverse.target_daily_fen = 334448（÷26）
+  同一变换下 calcSandbox.target_daily_fen = 289855（÷30）
+  [FAIL] E 反推两处日均分母一致 | 差 44593 分；reverse 用 open_days=26，正算回退 30
+  validate clean.validDays 来源 = src.valid_days（正向字段），reverse 前端送 open_days ⇒ 见报告口径段
+
+===== F. 前端控件 / 引擎字段差集（静态，逐项归因） =====
+  ✅ build_total_fen
+  ✅ build_amort_monthly_fen
+  ✅ fixed_ex_amort_fen
+  ✅ fixed_total_fen
+  ✅ break_even_monthly_fen
+  ✅ break_even_daily_fen
+  ✅ target_monthly_fen
+  ✅ target_daily_fen
+  ✅ payback_months
+  ✅ valid_days
+  ✅ bands_preview
+  ✅ amount_preview
+  ✅ indicators_at_breakeven
+  ✅ indicators_at_target
+  ✅ red_alert
+  ✅ composite_var_rate_pct
+  ✅ margin_rate_ratio
+  → 未被 M2 四页直接引用的出参：无
+
+===== 汇总：16 PASS / 1 FAIL =====

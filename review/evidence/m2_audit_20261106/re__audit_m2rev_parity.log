@@ -1,0 +1,19 @@
+
+============ A1 是否只有一份「业态 → fixed_items」装配（用调用结果反证） ============
+  含「装配形态分支 + rentPct/energy_split」的文件：
+   - subpkg\tools\sandbox\index.js
+   - tools\check_biz_preset.js
+   - tools\check_m2_energy_split.js
+   - utils\bizPreset.js
+   - utils\selfcheck_bizPreset.js
+  ⇒ 除 bizPreset.js 之外的第二份实现：subpkg\tools\sandbox\index.js, tools\check_biz_preset.js, tools\check_m2_energy_split.js, utils\selfcheck_bizPreset.js
+  openCash 相关文件：tools\selftest_opencash.js, utils\openCash.js
+
+============ A2 ≥30 组真实组合：页面派生值 vs 引擎出参对拍（用页面自己 buildClean 的入参做单边真值） ============
+  组合数 = 90（每行 2 个目标利润档 ⇒ 行数 = 180）
+  对拍点位数 = 900；不一致数 = 0  ✅ 完全一致（单源成立）
+
+============ A3 calcSandboxReverse 的生产可达性 ============
+  前端出现 mode:'reverse' 且涉及 calcSandbox/param_json 的文件：subpkg\tools\sandbox\matrix.js, tools\check_m2_reverse_rent.js
+  ⇒ 结论：前端**没有任何一处**在 wire 入参里送 mode:'reverse' 给 calcSandbox，
+     list.js 复用 param_json 重算之所以可能碰到 reverse，只可能是**历史存量方案**（现已无法新增）。

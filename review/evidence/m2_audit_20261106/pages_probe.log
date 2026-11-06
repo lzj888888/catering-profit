@@ -1,0 +1,78 @@
+
+===== T1 透视表人工维过滤（具鉴别力变异 2→3） =====
+  labor=2 cells={"3000|0":718.87}
+  labor=3 cells={"3000|0":959.43}
+  [PASS] T1 D6 人工维真过滤：改 2→3 后 cells 变化
+  [PASS] T1 R331 回落：999 不在档位 ⇒ 退到第一档（等于 labor=2）
+
+===== T2 房租杠杆：页面公式 vs 引擎真跑差分 =====
+  租=1000 保本月=14606.56 页面leverYuan=1587
+  租=2000 保本月=16672.13 页面leverYuan=1587
+  租=3000 保本月=18737.7 页面leverYuan=1587
+  租=4000 保本月=20803.28 页面leverYuan=1587
+  租=5000 保本月=22868.85 页面leverYuan=1587
+  结论卡 leverText = 房租每涨 ¥1000，需多做到手营收 ≈ ¥1587（按毛利率 63% 计）
+  🔴 引擎真跑：房租 1000→2000 ⇒ 保本 +2065.57 元 ⇒ 每千元真实需多卖 2065.57 元；页面写 1587 元
+  ⇒ 低估倍数 = 1.30×（<1 表示高估）
+  [ISSUE] P4 房租杠杆口径 | 页面 1587 元/千元 vs 引擎差分 2065.57 元/千元
+
+===== T3 现金卡装修 vs 上方「开店投入」 =====
+  老板填：装修 50000 元 / 设备 80000 元 / 面积 40㎡
+  页面上方 buildSumText = ""
+  现金卡 partsText = 装修 3.6万 ＋ 押金 3000元 ＋ 预付租金 9000元 ＋ 设备 8.0万 ＋ 首批货款 1.0万
+  [FAIL] T3 现金卡装修采用老板填的 5 万 | 装修 3.6万 ＋ 押金 3000元 ＋ 预付租金 9000元 ＋ 设备 8.0万 ＋ 首批货款 1.0万
+  [ISSUE] P9 现金卡装修按面积自算 | 老板填 5 万，现金卡仍写「装修 3.6万」（40㎡×900）
+
+===== T4 组合数文案 =====
+  data.t.count = "共 {n} 组组合"
+  wxml 渲染 = <text class="count">{{t.count}}</text>
+  [FAIL] T4 {n} 有 fmt 替换 | wxml 直接渲染 {{t.count}} ⇒ 显示「共 {n} 组组合」
+  [ISSUE] P11 组合数占位符未替换 | {{t.count}} = 「共 {n} 组组合」，result.count 无人渲染
+
+===== T5 可承受最高月租（P1 修复复验） =====
+  未填预估营收 ⇒ 填一个「预估月营收」：填了才能算出租金多少以内扛得住
+  填 3 万 / 目标 1 万 ⇒ 按你预估每月 30000 元：租金 ≤ 5000 元才扛得住
+  填 3 万 / 目标 50 万 ⇒ 按你预估每月 30000 元：租金 ≤ 5000 元才扛得住
+  [PASS] T5 P1 未填营收不出结论
+  [FAIL] T5 P1 结论随目标利润变化 | t2=按你预估每月 30000 元：租金 ≤ 5000 元才扛得住 t3=按你预估每月 30000 元：租金 ≤ 5000 元才扛得住
+
+===== T6 维度留空 ⇒ 0 值行（P5 复验，真跑 onGenerate） =====
+  badDimOf() = ""
+  行数=8 含 0 值档位行数=6
+  [FAIL] T6 P5 空档不生成 0 值行 | zero=6
+  [ISSUE] P5 空档生成 0 值行 | 6 行含 rent=0 或 labor=0，人工归零使保本被低估
+
+===== T7 M2 四页事件绑定 vs handler 差集 =====
+  index: 绑定 50 个，缺 handler = 0
+  [PASS] T7 index 零漏绑
+  matrix: 绑定 18 个，缺 handler = 0
+  [PASS] T7 matrix 零漏绑
+  compare: 绑定 3 个，缺 handler = 0
+  [PASS] T7 compare 零漏绑
+  list: 绑定 4 个，缺 handler = 0
+  [PASS] T7 list 零漏绑
+
+===== T8 10-27 九条拍板落地扫描 =====
+  [PASS] T8 序1 现金卡 Number(fixedExAmort)
+  [PASS] T8 序2 D1/D2 hasFixed = rent>0 && labor>0
+  [PASS] T8 序3 D3 水电气任一项 >0 生效
+  [PASS] T8 序3 D3-C 水电合并 energyYuan
+  [PASS] T8 序4 D4 矩阵 manage 同形状
+  [PASS] T8 序5 D5 两个标签
+  [PASS] T8 序6 D6 透视按人工过滤
+  [PASS] T8 序7 D7-a 死键映射已清（t.length 收缩）
+  [PASS] T8 序8 D8 派生项标注
+  [PASS] T8 序9 行为守卫 ≥4 个
+
+===== T9 validate 真实链路 =====
+  毛利率 0.1% ⇒ 放行 clean.grossMarginPct=0.1
+  毛利率 65% ⇒ 放行 clean.grossMarginPct=65
+  毛利率 100% ⇒ 放行 clean.grossMarginPct=100
+  毛利率 120% ⇒ 拒：grossMarginPct 必须是 ∈ [0,100] 的 number（%）
+  毛利率 -10% ⇒ 拒：grossMarginPct 必须是 ∈ [0,100] 的 number（%）
+  reverse wire（不带 valid_days）⇒ clean.validDays=0 clean.open_days=26
+  reverse.target_daily_fen=145138（÷26）
+  正算同变换 target_daily_fen=125786（÷30）
+  [FAIL] T9 reverse 两处日均分母一致（真实 validate 链路） | 差 193.52 元/天
+
+===== 汇总：17 PASS / 5 FAIL / 4 ISSUE =====

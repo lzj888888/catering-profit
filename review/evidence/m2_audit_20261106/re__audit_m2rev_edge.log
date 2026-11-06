@@ -1,0 +1,81 @@
+
+================ E1 透视表 cells 是否含人工维（labor=[2,3]，advOpen=true） ================
+总行数 = 16（应为 2租 × 2人 × 2毛 × 2目标 = 16）
+  rent=3000 labor=2 margin=55 target=0 targetMonthly=21566.04 targetDaily=718.87
+  rent=3000 labor=2 margin=55 target=10000 targetMonthly=40433.96 targetDaily=1347.8
+  rent=3000 labor=2 margin=63 target=0 targetMonthly=18737.7 targetDaily=624.59
+  rent=3000 labor=2 margin=63 target=10000 targetMonthly=35131.15 targetDaily=1171.04
+  rent=3000 labor=3 margin=55 target=0 targetMonthly=28783.02 targetDaily=959.43
+  rent=3000 labor=3 margin=55 target=10000 targetMonthly=47650.94 targetDaily=1588.36
+  rent=3000 labor=3 margin=63 target=0 targetMonthly=25008.2 targetDaily=833.61
+  rent=3000 labor=3 margin=63 target=10000 targetMonthly=41401.64 targetDaily=1380.05
+  rent=5000 labor=2 margin=55 target=0 targetMonthly=26320.75 targetDaily=877.36
+  rent=5000 labor=2 margin=55 target=10000 targetMonthly=45188.68 targetDaily=1506.29
+  rent=5000 labor=2 margin=63 target=0 targetMonthly=22868.85 targetDaily=762.3
+  rent=5000 labor=2 margin=63 target=10000 targetMonthly=39262.3 targetDaily=1308.74
+  rent=5000 labor=3 margin=55 target=0 targetMonthly=33537.74 targetDaily=1117.92
+  rent=5000 labor=3 margin=55 target=10000 targetMonthly=52405.66 targetDaily=1746.86
+  rent=5000 labor=3 margin=63 target=0 targetMonthly=29139.34 targetDaily=971.31
+  rent=5000 labor=3 margin=63 target=10000 targetMonthly=45532.79 targetDaily=1517.76
+  pivot.rows = [3000,5000] cols = [0,10000]
+  pivot.cells = {
+ "3000|0": 718.87,
+ "3000|10000": 1347.8,
+ "5000|0": 877.36,
+ "5000|10000": 1506.29
+}
+  ※ 3000|0 单元格 = 718.87 ；labor=2 那行 daily=718.87 ；labor=3 那行 daily=959.43
+  ⇒ 页面上「透视表固定人工」输入框的值 = 2，改它会不会重算透视？见 E2
+
+================ E2 改 pivotFix.labor 是否真的改变透视表 ================
+  改前 pivotFix.labor=999 cells={"3000|0":718.87,"3000|10000":1347.8,"5000|0":877.36,"5000|10000":1506.29}
+  改后 cells={"3000|0":718.87,"3000|10000":1347.8,"5000|0":877.36,"5000|10000":1506.29}
+  ⇒ cells 是否变化: ❌ 完全不变（输入被静默忽略）
+  改 pivotFix.margin=63（不在结果档位里 55）后 cells={"3000|0":718.87,"3000|10000":1347.8,"5000|0":877.36,"5000|10000":1506.29}
+  ⇒ R331 回落生效否: fixMargin 显示=63（仍可能是原值，见下）
+
+================ E3 手改档位为带小数的字符串 ⇒ 单元格能否命中 ================
+  dims.rent = ["3000.00","5000"]
+  pivot.rows = ["3000.00","5000"]
+  pivot.cells = {"3000|0":718.87,"3000|10000":1347.8,"5000|0":877.36,"5000|10000":1506.29}
+  ⇒ 页面会渲染成「—」的行档位: ["3000.00"] ❌
+
+================ E4 维度留空 ⇒ Number("")=0 ⇒ 是否生成 rent=0 / labor=0 的行 ================
+  badDimOf() = ""（空 ⇒ 空串：不拦截）
+  行数 = 8
+   rent=3000 labor=2 target=0 invalid=false red=false breakMonthly=21566.04 laborYuan=7650
+   rent=3000 labor=2 target=0 invalid=false red=false breakMonthly=21566.04 laborYuan=7650
+   rent=3000 labor=0 target=0 invalid=false red=false breakMonthly=7132.08 laborYuan=null
+   rent=3000 labor=0 target=0 invalid=false red=false breakMonthly=7132.08 laborYuan=null
+   rent=0 labor=2 target=0 invalid=false red=false breakMonthly=17377.36 laborYuan=7650
+   rent=0 labor=2 target=0 invalid=false red=false breakMonthly=17377.36 laborYuan=7650
+   rent=0 labor=0 target=0 invalid=false red=false breakMonthly=2943.4 laborYuan=null
+   rent=0 labor=0 target=0 invalid=false red=false breakMonthly=2943.4 laborYuan=null
+  ⇒ 含 0 值的档位行数 = 6
+
+================ E5 结论卡 maxRent 的判别力（改业态/改目标/改投入，结论是否变） ================
+  面馆 tier23 target1万 margin55 ⇒ 填一个「预估月营收」：填了才能算出租金多少以内扛得住
+  面馆 tier23 target50万 margin55 ⇒ 填一个「预估月营收」：填了才能算出租金多少以内扛得住
+  面馆 tier23 target1万 margin5  ⇒ 填一个「预估月营收」：填了才能算出租金多少以内扛得住
+  面馆 tier23 target1万 margin1  ⇒ {"has":false}
+  （四组的最高租金档都是 10000 ⇒ 若四组结论全是 10000，说明结论不含任何可行性判据）
+
+================ E6 现金卡 fixedMonthly（fixedExAmort 是字符串？） ================
+  row.fixedExAmort = "11430" (typeof string)
+  fixedMonthlyYuan(3000) = 11430
+  fixedMonthlyYuan(5500)（老板填的租金不在档位上）= 13930
+  cashRes = {
+ "needText": "签约到开业要拿 10.8万",
+ "partsText": "装修 3.6万 ＋ 押金 3000元 ＋ 预付租金 9000元 ＋ 设备 5.0万 ＋ 首批货款 1.0万",
+ "noteText": "",
+ "verdictText": "够。开完还能撑 8 个月，可以开业了",
+ "levelCls": "ok"
+}
+  【对照】若每月净流出用正确的 14250 元 ⇒ runway=6.5 个月, level=safe
+
+================ E7 导出 14 列顺序 vs wxml 表头顺序 ================
+  wxml 表头键 = ["colRent","colMargin","colLabor","colLaborFee","colEnergy","colBreakMonthly","colTargetMonthly","colCushion","colNetMargin","colTarget","payback","colBreakCash","colBreakDaily","colTargetDaily","rentPct","colLever"] 共 16 列
+  导出表头键 = ["dimRent","dimLabor","colLaborFee","dimMargin","colNetMargin","colEnergy","dimTarget","colBreakMonthly","colBreakCash","colBreakDaily","colTargetMonthly","colTargetDaily","rentPct","payback","colLeverExport","colCushionExport"] 共 16 列
+  顺序是否逐列一致: ❌ 不一致（键名不同属预期：屏幕短名 vs 导出长名，但**顺序**必须一致）
+
+TOASTS = []
