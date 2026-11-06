@@ -37,6 +37,25 @@
     <view class="dg-sig none" wx:else>{{t.signalNone}}</view>
   </view>
 
+  <!-- ①b R615 处方层：下一步怎么做（紧接结论，不让老板滚到依据区才找到）
+       动作句来自云端预设规则表（带老板自己的数），本页只渲染、不拼中文、不生成判断。 -->
+  <view class="dg-card dg-plan">
+    <view class="dg-sec-hd">{{t.actTitle}}</view>
+    <view class="muted">{{t.actHint}}</view>
+    <view class="dg-plan-tier" wx:if="{{planTierText}}">{{planTierText}}</view>
+    <view class="hint" wx:if="{{planInsufficient}}">{{planInsufficient}}</view>
+    <view class="hint" wx:if="{{planEmpty}}">{{planEmpty}}</view>
+    <view class="dg-act" wx:for="{{planActions}}" wx:key="key" wx:for-item="a">
+      <view class="dg-act-hd">
+        <text class="dg-act-lv lv-{{a.levelClass}}">{{a.levelText}}</text>
+        <text class="dg-act-lbl">{{a.label}}</text>
+      </view>
+      <view class="dg-act-tx">{{a.text}}</view>
+      <view class="muted dg-act-bd" wx:if="{{a.boundary}}">{{a.boundary}}</view>
+      <view class="muted dg-act-src" wx:if="{{a.source}}">{{a.source}}</view>
+    </view>
+  </view>
+
   <!-- ② 11 项拆解 -->
   <view class="dg-card">
     <view class="dg-sec-hd">{{t.indTitle}}</view>

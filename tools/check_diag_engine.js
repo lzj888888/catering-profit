@@ -182,13 +182,29 @@ check('E-⑱ 城市系数真生效：一线人工/房租警戒上抬后，同一
       return m.score === 100 && /不亏损/.test(m.note); })(),
     (() => { const m = E.evaluateDiagnosis(FULL).metrics.find((x) => x.key === 'cash'); return m.note; })());
 
-  // K-④ 智库分业态阈值真生效：连亏 5 月 ⇒ 快餐命中 R2（上限 4）、正餐不命中（上限 5，尚未"超"）
-  const ff4 = Object.assign({}, FULL, { bizType: 'fastfood', lossMonths: 5, netProfitFen: -1000000 });
-  const dn4 = Object.assign({}, FULL, { bizType: 'dining', lossMonths: 5, netProfitFen: -1000000 });
-  check('K-④ 🔴 分业态阈值生效：连亏 5 月 ⇒ 快餐命中 R2、正餐不命中（快餐上限 4 / 正餐 5，判据是"超过"）',
-    E.evaluateDiagnosis(ff4).redlineHit.some((r) => r.code === 'R2')
-    && !E.evaluateDiagnosis(dn4).redlineHit.some((r) => r.code === 'R2'),
-    `快餐=${E.evaluateDiagnosis(ff4).redlineHit.map((r) => r.code).join(',') || '无'} / 正餐=${E.evaluateDiagnosis(dn4).redlineHit.map((r) => r.code).join(',') || '无'}`);
+  // K-④ 🔴 R615 方案③：分业态阈值仍在生效，但换到了**现金安全线**（不是连亏月数上限）。
+  //   构造：营收 10 万 / 月亏 2 万 ⇒ 失血率 20%（到警戒）；现金 7 万 ⇒ 可撑 3.5 个月。
+  //   快餐安全线 3 ⇒ 3.5 未跌破，不命中 R2；茶饮安全线 4 ⇒ 3.5 已跌破，命中 R2。
+  //   反证价值：若有人把 R2 改回「连亏超过固定月数」，或把安全线写成全业态统一值，此条立刻红。
+  const bleedBase = Object.assign({}, FULL, {
+    revenueFen: 10000000, netProfitFen: -2000000, avgMonthlyNetLossFen: 2000000,
+    cashOnHandFen: 7000000, lossMonths: 6, monthlyRigidFen: 4000000,
+  });
+  const ffSafe = E.evaluateDiagnosis(Object.assign({}, bleedBase, { bizType: 'fastfood' }));
+  const cfSafe = E.evaluateDiagnosis(Object.assign({}, bleedBase, { bizType: 'cafe' }));
+  check('K-④ 🔴 R615 分业态阈值生效（现金安全线）：失血率20%+可撑3.5月 ⇒ 快餐(安全线3)不命中R2、茶饮(安全线4)命中R2',
+    !ffSafe.redlineHit.some((r) => r.code === 'R2') && cfSafe.redlineHit.some((r) => r.code === 'R2'),
+    `快餐=${ffSafe.redlineHit.map((r) => r.code).join(',') || '无'} / 茶饮=${cfSafe.redlineHit.map((r) => r.code).join(',') || '无'}`);
+
+  // K-⑦ 🔴 R615 反证：连亏月数**降级为证据**，不再单独决定红线/等级。
+  //   同样「连亏 6 个月」，账上撑得住 ⇒ 预警且不命中 R2；撑不住 ⇒ 高危且命中 R2。
+  //   旧口径（连亏 > 固定 4/5 月即命中）会让前者也命中 R2，与现金流项「还能撑 8 个月」打架。
+  const enoughCash = E.evaluateDiagnosis(Object.assign({}, bleedBase, { bizType: 'dining', cashOnHandFen: 16000000 }));
+  const shortCash = E.evaluateDiagnosis(Object.assign({}, bleedBase, { bizType: 'dining', cashOnHandFen: 4000000 }));
+  check('K-⑦ 🔴 连亏 6 月不再是判据：账上撑 8 个月 ⇒ 不命中 R2 且非高危；撑 2 个月 ⇒ 命中 R2 且高危',
+    !enoughCash.redlineHit.some((r) => r.code === 'R2') && enoughCash.level !== 'critical'
+    && shortCash.redlineHit.some((r) => r.code === 'R2') && shortCash.level === 'critical',
+    `撑8月=${enoughCash.level}/${enoughCash.redlineHit.map(r=>r.code).join(',') || '无'} / 撑2月=${shortCash.level}/${shortCash.redlineHit.map(r=>r.code).join(',') || '无'}`);
 
   // K-⑤ 不亏损时大量借贷不判"输血失控"（盈利借大钱更像扩张）
   const richDebt = Object.assign({}, FULL, { debtLevel: 'heavy', netProfitFen: 1500000, avgMonthlyNetLossFen: 0, cashOnHandFen: 1000000 });
@@ -237,12 +253,16 @@ check('E-⑱ 城市系数真生效：一线人工/房租警戒上抬后，同一
 // ---------- L 组：R612 等级闸门（防「没记账也判健康」与「连亏却判健康」）----------
 {
   // L-① 一本账都没有（只有补录项 + 占比类）⇒ 必须 insufficient，不能靠补录项凑出"健康"
-  //   刻意把**除 profit(15) 与 cash(15) 之外**的项全填满 ⇒ 覆盖率恰为 70%，刚好过旧闸门，
-  //   这样才真正测到"有账才有诊断"这条新闸门，而不是被覆盖率顺带拦下。
+  //   🔴 R615 方案③后 loss 项要营业额才能算失血率，纯补录项覆盖率上限从 70 降到 60。
+  //   ⇒ 构造**给足除当月营收/利润外的一切**（含现金与月均净亏）让覆盖率回到 70+，
+  //     唯独不给 revenueFen / netProfitFen，这样才真正测到"有当月账才有诊断"这条闸门，
+  //     而不是被覆盖率闸门顺带拦下（否则断言会假绿）。
   const noLedger = {
     bizType: 'fastfood', cityTier: 'tier2',
-    // 刻意**不给** revenueFen / netProfitFen / avgMonthlyNetLossFen / cashOnHandFen
-    lossMonths: 0,
+    // 刻意**不给** revenueFen / netProfitFen（诊断的第一性数据）
+    lossMonths: 6,
+    avgMonthlyNetLossFen: 2000000, cashOnHandFen: 16000000,
+    monthlyRigidFen: 4000000,
     revenueFeel: 'better',
     foodCostRatePct: 38, laborCostRatePct: 18, rentRatePct: 12,
     rating: 4.8, reviewTrend: 'better', businessDistrict: 'growing',
@@ -250,7 +270,7 @@ check('E-⑱ 城市系数真生效：一线人工/房租警戒上抬后，同一
     foodSafetyEvent: false,
   };
   const rNL = E.evaluateDiagnosis(noLedger);
-  check('L-① 🔴 无当月营收/利润 ⇒ 必须「数据不足」（哪怕补录项把覆盖率凑到 70%+）',
+  check('L-① 🔴 无当月营收/利润 ⇒ 必须「数据不足」（哪怕其余项把覆盖率凑到 70%+）',
     rNL.level === 'insufficient' && rNL.coverage >= 70,
     `level=${rNL.level} coverage=${rNL.coverage}%`);
 

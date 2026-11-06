@@ -15,8 +15,14 @@
 //    不许用近似量顶替（例：R1 现金枯竭必须用账面现金，不许用"当月净现金流为负"推断现金枯竭）。
 //    理由：红线是"一票否决"级别的结论，用一个近似量触发它，等于用一个猜测否定一个人的生意。
 //
-// 🔴 3. 输出**不给行动指令**。给数字、给事实、给命中哪条线；不给"建议闭店"。
-//    责任边界：给数字 ≠ 替他做决定。报告末尾必须由上层渲染免责兜底（规范 §12.7）。
+// 🔴 3. 【R615 李老师授权总设计师拍板 · 划清边界】输出**给可执行选项，不给终局判决**。
+//    旧版写「不给行动指令」，把两件事混为一谈：
+//      ❌ 替老板做终局决定（「建议闭店」「该关了」「一定能救活」「保证不亏」）—— 仍然禁止；
+//      ✅ 给带他自己数字的改善动作（「房租占 18%，降到 15% 每月约省 ¥X：谈降租或提坪效」）—— 放行。
+//    回查规范 §12.7 原文：只禁算命类措辞 / 绝对化承诺 / 「食材成本率」对外，
+//    **并未禁「给带数的改善动作」** ⇒ 旧版是扩大解释，本轮按李老师「老板要的是那我该干嘛」订正。
+//    责任边界不变且更清楚：给的是选项 + 依据，决定权仍在老板手里；动作一律来自**预设规则表**
+//    （`getDiagnosis/actions.js`），不是生成式自由发挥；报告末尾必须渲染合规兜底句。
 //    另：§12.7 明令「食材成本率」对外禁用 ⇒ 本引擎对外 label 一律用「毛利率」，
 //    食材成本率只作内部中间量（字段名保留 foodCostRatePct 以便与 M1 对账）。
 //
@@ -58,9 +64,18 @@ const LABOR_COEF = { tier1: 1.15, tier2: 1.0, tier3: 0.85 };
 //   客流下滑警戒 −20/−15/−20/−15%、综合评分警戒 3.8/3.9/3.9/3.8。
 //   ⇒ 现改为按业态取值，**统一值只作兜底**（未知业态）。这是"按智库走"的具体落点。
 //   ⚠️ 顺序与 BIZ_KEYS 一致：fastfood / dining / hotpot / cafe / other。
+//
+// 🔴 R615 方案③（李老师授权总设计师拍板）：**撤销「连续亏损可扛月数」这个固定上限**。
+//   它与账上现金无关（4/5 月是拍出来的经验值），而现金流项用的是「现金 ÷ 月均净亏」；
+//   真机可复现的冲突：账上 16 万、月亏 2 万、连亏 6 月的正餐店 ⇒ 现金流项 100 分「还能撑 8 个月」，
+//   连亏项 30 分「超过可扛上限 5 个月」——同一页两个相反结论，工具当场失信。
+//   ⇒ 连亏月数**降级为证据**（照常显示、进处方、进红线证据句），不再单独决定分数/红线/等级；
+//   生死判定统一到「现金可撑月数」+「失血率（月均净亏 ÷ 营业额）」两个都用钱量纲的判据。
+//   ⚠️ 不改 11 项数量、不改权重、不改覆盖率归一化口径 ⇒ 历史分数仍可比。
 const TUNABLE = {
-  // 连续亏损可扛月数（原模型：快餐 4 / 正餐 5 / 火锅 4 / 茶饮 5；other 取最宽 5）
-  lossMonthsTolerableByBiz: { fastfood: 4, dining: 5, hotpot: 4, cafe: 5, other: 5 },
+  // 失血率警戒（月均净亏 ÷ 月营业额）：**第一版试跑值，未做市场验证，不许当行业标准对外宣称**。
+  //   与 LEVEL_CUT 同规格：可校准、单源、不许散落手写。
+  bleedRateWarnPct: 20,
   // 现金安全下限（原模型：3/3/3/4；other 取 3）
   cashSafeMonthsByBiz: { fastfood: 3, dining: 3, hotpot: 3, cafe: 4, other: 3 },
   // 客流同比下滑警戒（原模型：−20/−15/−20/−15；other 取 −20）
@@ -131,15 +146,41 @@ const METRICS = [
       return { score: Math.round(s), note: `净利率 ${r.toFixed(1)}%`, basis: '净利率 −5%~12% 线性' };
     },
   },
-  // 2 亏损持续性 10 —— 0 月 100；≤可扛上限内每多 1 月 −10；超上限后每多 1 月再 −10，封底 0
+  // 2 失血速度 10 —— 🔴 R615 方案③：不再数「连亏几个月」，改看「每月亏掉营业额的百分之几」。
+  //   为什么必须换：月亏 500 与月亏 5 万都记「连亏 1 个月」得同分；且固定 4/5 月上限与账上现金无关。
+  //   连亏月数仍是**证据**（note 里照实写「已连亏 N 个月」），但不再独自决定分数。
+  //   判据与 cash 项同源：都用「钱」的量纲 ⇒ 不会同页一个说没事一个说危险。
   {
-    key: 'loss', label: '亏损持续性', weight: 10, kind: 'auto',
+    key: 'loss', label: '失血速度', weight: 10, kind: 'auto',
     score: (i) => {
       const m = num(i.lossMonths);
       if (m === null || m < 0) return { score: null, note: '缺连续亏损月数', basis: '' };
-      const tol = tOf('lossMonthsTolerableByBiz', i.bizType);
-      const s = m <= tol ? 100 - m * 10 : Math.max(0, 40 - (m - tol) * 10);
-      return { score: Math.round(s), note: `连续亏损 ${m} 个月`, basis: `可扛上限 ${tol} 个月` };
+      const rev = num(i.revenueFen);
+      let burn = num(i.avgMonthlyNetLossFen);
+      let burnBasis = '近 3 个月平均净亏损';
+      if (burn === null) {
+        const np = num(i.netProfitFen);
+        if (np !== null) { burn = -np; burnBasis = '仅按当月净利推算（单月波动大）'; }
+      }
+      if (burn === null || rev === null || rev <= 0) {
+        return { score: null, note: '缺月均净亏损或营业额', basis: '' };
+      }
+      if (burn <= 0) {
+        // 连亏是**历史**，近 3 月平均不亏是**现状**：不撒谎，也不把两者写成自相矛盾的一句话。
+        return {
+          score: 100,
+          note: m > 0 ? `近 3 个月平均已不再失血（此前连亏 ${m} 个月）` : '当前不亏损，现金在积累',
+          basis: burnBasis,
+        };
+      }
+      const bleed = (burn / rev) * 100;                 // 失血率 = 月均净亏 ÷ 月营业额
+      const warn = TUNABLE.bleedRateWarnPct;
+      const s = bleed >= warn ? 0 : lerp(bleed, 0, 100, warn, 0);
+      return {
+        score: Math.round(s),
+        note: `已连亏 ${m} 个月；每月亏掉营业额的 ${bleed.toFixed(1)}%`,
+        basis: `${burnBasis} ÷ 营业额；警戒 ${warn}%`,
+      };
     },
   },
   // 3 现金流 15 —— **失血速度**：现金可撑月数 = 账面现金 ÷ 月均净亏损
@@ -339,11 +380,33 @@ const REDLINES = [
   {
     code: 'R2', label: '长期亏损仍失血',
     check: (i) => {
-      const m = num(i.lossMonths); const r = pct(i.netProfitFen, i.revenueFen);
-      if (m === null || r === null) return { judged: false, evidence: '缺连续亏损月数或净利率，无法判定' };
-      const tol = tOf('lossMonthsTolerableByBiz', i.bizType);
-      const hit = m > tol && r <= 0;
-      return { judged: true, hit, evidence: `连续亏损 ${m} 个月（本业态上限 ${tol}），净利率 ${r.toFixed(1)}%` };
+      // 🔴 R615 方案③：撤销「连亏超过固定 4/5 月上限」这个与现金无关的判据。
+      //   ⚠️ 也不能留「连亏 ≥3 月」当判据 —— 首版这么写过，实测立刻暴露新矛盾：
+      //     营收 10 万 / 月亏 2 万 / 连亏 6 月 / 账上 16 万 ⇒ 失血率 20% 触警戒 ⇒ R2 判高危，
+      //     而现金流项说「还能撑 8 个月」⇒ 又是同页两个相反结论。根因是红线里还留着「月数」。
+      //   ⇒ 连亏月数**彻底降级为证据**（只在 evidence 里如实带一句），
+      //     判定统一走两个都用钱量纲、且方向一致的量：**失血率到警戒 且 现金撑不到安全线**。
+      //     亏得凶但账上还撑得住 ⇒ 预警（给动作），不是高危；又凶又撑不住 ⇒ 才一票否决。
+      //   底线 2 不变：任一数据缺失一律「未判定」，不许拿近似量顶替。
+      const cash = num(i.cashOnHandFen);
+      const rev = num(i.revenueFen);
+      let burn = num(i.avgMonthlyNetLossFen);
+      if (burn === null) { const np = num(i.netProfitFen); burn = np === null ? null : -np; }
+      if (cash === null || burn === null || rev === null || rev <= 0) {
+        return { judged: false, evidence: '缺现金/月均净亏损/营业额，无法判定' };
+      }
+      if (burn <= 0) return { judged: true, hit: false, evidence: '当前不亏损，不构成持续失血' };
+      const bleed = (burn / rev) * 100;
+      const months = cash / burn;
+      const warn = TUNABLE.bleedRateWarnPct;
+      const safe = tOf('cashSafeMonthsByBiz', i.bizType);
+      const m = num(i.lossMonths);
+      const hit = bleed >= warn && months < safe;
+      return {
+        judged: true, hit,
+        evidence: `每月亏掉营业额 ${bleed.toFixed(1)}%（警戒 ${warn}%）、照当前亏损速度还能撑 ${months.toFixed(1)} 个月`
+          + `（本业态安全线 ${safe}）${m === null ? '' : `；已连亏 ${m} 个月（仅作参考）`}`,
+      };
     },
   },
   {
@@ -467,9 +530,17 @@ function evaluateDiagnosis(input) {
   if (level === 'good' || level === 'watch' || level === 'warn') {
     const nm = pct(i.netProfitFen, i.revenueFen);
     const lm = num(i.lossMonths);
-    const tol = tOf('lossMonthsTolerableByBiz', i.bizType);
-    const severe = (lm !== null && lm >= tol) || (nm !== null && nm <= -5);
-    const losing = (lm !== null && lm >= 1) || (nm !== null && nm < 0);
+    // 🔴 R615 方案③：severe 不再用「连亏达固定上限」，改用与 R2/loss 项同源的失血率。
+    //   「连亏 6 月但账上能撑 8 个月」不该被封顶成预警；「月亏掉营业额 20%」才该。
+    const revL = num(i.revenueFen);
+    let burnL = num(i.avgMonthlyNetLossFen);
+    if (burnL === null) { const npL = num(i.netProfitFen); burnL = npL === null ? null : -npL; }
+    const bleedL = (burnL !== null && burnL > 0 && revL !== null && revL > 0) ? (burnL / revL) * 100 : null;
+    const severe = (bleedL !== null && bleedL >= TUNABLE.bleedRateWarnPct) || (nm !== null && nm <= -5);
+    // 🔴 R615 方案③：`losing` 也不再看历史连亏月数，只看**当月是不是还在亏**。
+    //   实测反例：当月净利为正、近 3 月平均不亏，但账上有 6 个月连亏史 ⇒
+    //   旧规则仍把它压成「需关注」（一眼假）。历史是证据，不是当下的病。
+    const losing = (burnL !== null && burnL > 0) || (nm !== null && nm < 0);
     if (severe && (level === 'good' || level === 'watch')) { level = 'warn'; levelLabel = '预警'; }
     else if (losing && level === 'good') { level = 'watch'; levelLabel = '需关注'; }
   }

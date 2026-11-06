@@ -291,6 +291,7 @@ const CASES = [
   //   删掉 A-③（漏字段必须点名）或 B-②（onShow 必须真调 load）就静默退回事故状态，
   //   而门禁照旧全绿。9 条 = A 4 + B 3 + C 2。
   { key: 'check_diag_facts_sync', rel: 'tools/check_diag_facts_sync.js' }, // 9 条（A 4 + B 3 + C 2）
+  { key: 'check_diag_actions', rel: 'tools/check_diag_actions.js' },       // 36 条（A 7 + B 10 + C 4 + D 5 + E 4 + F 6）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

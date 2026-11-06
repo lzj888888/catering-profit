@@ -17,6 +17,7 @@ const { resolveAuth, assertShopOwner, ok, fail } = common;
 const { makeAdapter } = common.dataAdapter;
 const { validateInput } = require('./validate');
 const { assemble } = require('./assemble');
+const { buildActions } = require('./actions');   // R615 处方层（纯函数，零 IO）
 
 exports.main = async (event) => {
   const ctx = cloud.getWXContext();
@@ -48,6 +49,11 @@ exports.main = async (event) => {
 
     const out = assemble({ shop, accounts });
 
+    // 🔴 R615 处方层：把智库「动作」列接进结论。纯函数、零 IO、零新增录入字段。
+    //   `out.input` 含账面现金等敏感原值，**只在服务端用于填空，绝不回传**；
+    //   回传的只有预设规则表里的动作句（数字已填好）。
+    const plan = buildActions({ diagnosis: out.diagnosis, derived: out.derived, input: out.input });
+
     // 只回传**展示用**的非敏感摘要（含账面现金的 input 原始值一律不回传，见下）
     const df = (shop.diag_facts && typeof shop.diag_facts === 'object') ? shop.diag_facts : {};
     const mrRaw = df.member_ratio_pct;
@@ -62,6 +68,9 @@ exports.main = async (event) => {
       // 派生量：让前端能解释"这个结论是按哪几个月算的"
       derived: out.derived,
       basis: out.basis,
+      // 🔴 R615：下一步怎么做（分档说明 + 最多 3 条带数动作 + 业态边界 + 智库 ruleId）。
+      //   数据不足时 actions 为空，前端需显示「先补账再看动作」，不给半本账开药方。
+      plan,
       // 🔴 R614：会员销售占比的**展示用**摘要（不进评分，引擎不消费它）。
       //   为什么单独回传：老板在补录页填了这个数，就必须在结论页看到它，否则等于白填。
       //   判级复用 indicatorRef.memberRatioOf（阈值单源 <20% warn / <40% ok / ≥40% good）。

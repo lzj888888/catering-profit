@@ -100,3 +100,28 @@
 .dg-mm-t { font-size: 28rpx; color: #2b3a4d; line-height: 1.6; }
 .dg-mm-h { margin-top: 8rpx; font-size: 28rpx; color: #6b7a8d; line-height: 1.6; }
 .dg-mm-a { margin-top: 14rpx; font-size: 28rpx; color: #2a4e7c; font-weight: 600; }
+
+/* ===== R615 处方层：下一步怎么做 =====
+   刻意用浅底 + 左侧蓝条，与「去体检」深色 CTA 区分（页面只留一个最重的暗块）。
+   字号全 ≥28rpx 守 AD-G1；动作句行高放宽，老板在手机上能一屏读完一条。 */
+.dg-plan { border-left: 6rpx solid #2a4e7c; }
+.dg-plan-tier {
+  margin-top: 16rpx; padding: 16rpx 20rpx;
+  font-size: 28rpx; line-height: 1.6; color: #1e3a5f;
+  background: #eef4fb; border-radius: 12rpx;
+}
+.dg-act {
+  margin-top: 20rpx; padding: 20rpx 20rpx 16rpx;
+  background: #f7f9fc; border-radius: 12rpx;
+}
+.dg-act-hd { display: flex; align-items: center; margin-bottom: 10rpx; }
+.dg-act-lv {
+  flex-shrink: 0; margin-right: 14rpx; padding: 4rpx 14rpx;
+  font-size: 28rpx; border-radius: 8rpx;
+  color: #1e3a5f; background: #e3edf9;
+}
+.dg-act-lv.lv-now { color: #8a3b12; background: #f8e6d8; }
+.dg-act-lv.lv-later { color: #3b6d11; background: #e9f2dd; }
+.dg-act-lbl { font-size: 28rpx; color: #2b3a4d; font-weight: 600; }
+.dg-act-tx { font-size: 28rpx; color: #2b3a4d; line-height: 1.7; }
+.dg-act-bd, .dg-act-src { margin-top: 8rpx; font-size: 28rpx; line-height: 1.6; }

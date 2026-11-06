@@ -72,6 +72,17 @@ Page({
       moreMonthsGo: T.moreMonthsGo,
       elapsedPre: T.elapsedPre,
       elapsedSuf: T.elapsedSuf,
+      // R615 处方层：固定文案（动作句本身由云端规则表下发，页面不拼中文）
+      actTitle: T.actTitle,
+      actHint: T.actHint,
+      actInsufficient: T.actInsufficient,
+      actEmpty: T.actEmpty,
+      actBoundaryPre: T.actBoundaryPre,
+      actSourcePre: T.actSourcePre,
+      actSourceSuf: T.actSourceSuf,
+      actLevelNow: T.actLevelNow,
+      actLevelTry: T.actLevelTry,
+      actLevelLater: T.actLevelLater,
       disclaimer: T.disclaimer,
     },
     levelClass: 'na',
@@ -93,6 +104,11 @@ Page({
     memberLine: '',
     moreMonthsText: '',
     devNote: '',
+    // R615 处方层（data 顶层键必须声明，否则 wxml 顶层绑定静默空白 —— 第 238 套件守的就是这个）
+    planTierText: '',
+    planActions: [],
+    planInsufficient: '',
+    planEmpty: '',
   },
 
   // 🔴 R614 补丁（2026-11-06 真机反馈）：原先只有 onLoad 拉数 ⇒ 从补录页 `navigateBack` 回来时，
@@ -261,6 +277,23 @@ Page({
       memberLine = T.memberRatioPre + disp.memberRatioPct + '%（' + lvText + '）';
     }
 
+    // ---- R615 处方层：下一步怎么做 ----
+    //   动作句由云端预设规则表下发（带老板自己的数），本页**只做展示**：
+    //   不拼中文、不算数、不生成新判断。数据不足/无短板时给明确出路，不给空卡片。
+    const planRaw = (d && d.plan) || {};
+    const LV_AC = { now: T.actLevelNow, try: T.actLevelTry, later: T.actLevelLater };
+    const planActions = (planRaw.actions || []).map((a) => ({
+      key: a.key || '',
+      label: a.label || '',
+      text: a.text || '',
+      boundary: a.boundary ? (T.actBoundaryPre + a.boundary) : '',
+      source: a.ruleId ? (T.actSourcePre + a.ruleId + T.actSourceSuf) : '',
+      levelText: LV_AC[a.level] || '',
+      levelClass: a.level || 'try',
+    }));
+    const planInsufficient = (level === 'insufficient') ? T.actInsufficient : '';
+    const planEmpty = (!planInsufficient && planActions.length === 0) ? T.actEmpty : '';
+
     // ---- 分数：数据不足时**不给分** ----
     //   覆盖率不到 70% 的"100 分"是归一化出来的幻觉（只剩口碑/租约在算），
     //   摆在"数据不足"旁边就是自相矛盾，直接不说分。
@@ -290,6 +323,10 @@ Page({
       basisMonths,
       memberLine,
       moreMonthsText,
+      planTierText: planRaw.tierText || '',
+      planActions,
+      planInsufficient,
+      planEmpty,
     });
   },
 });
