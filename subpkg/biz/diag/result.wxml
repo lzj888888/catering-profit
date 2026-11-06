@@ -82,5 +82,7 @@
     </block>
   </view>
 
+  <!-- 开发版可见：服务端耗时（判断 3 秒超时够不够），正式版不渲染 -->
+  <view class="muted dg-asof" wx:if="{{devNote}}">{{devNote}}</view>
   <view class="dg-disclaimer">{{t.disclaimer}}</view>
 </view>

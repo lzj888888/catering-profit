@@ -32,8 +32,14 @@ exports.main = async (event) => {
   if (v.error) return fail(v.error, v.msg);
 
   try {
+    const t0 = Date.now();
     const da = makeAdapter(db);
-    const shop = await da.get('shop', shopId);
+    // 🔴 R614（2026-11-06）：**不再重复查 shop**。
+    //   `assertShopOwner` 内部已经把 shop 文档读出来并校验了归属，返回在 `owner.data` 里；
+    //   这里原先又 `da.get('shop', shopId)` 查了一遍 —— 纯多余的 1~3 次库往返
+    //   （assertShopOwner 走快路径是 1 次，走兼容兜底最多 3 次）。
+    //   云函数超时只有 3 秒（控制台改不了，见队列 #129），省掉这一轮往返是唯一能拿到的确定性收益。
+    const shop = owner.data;
     if (!shop) return fail(common.ERROR_CODES.NOT_FOUND, '店铺不存在');
 
     // 读全部月份账（诊断要看趋势，必须历史）。分页上限由 dataAdapter 负责；本店月数天然有界。
@@ -63,6 +69,10 @@ exports.main = async (event) => {
         memberRatioPct: mrOk,
         memberRatioLevel: (common.indicatorRef.memberRatioOf(mrOk) || {}).level || 'na',
       },
+      // 🔴 R614：本函数**服务端耗时**（毫秒）。用途只有一个 —— 判断 3 秒超时够不够。
+      //   前端在开发/预览版（envVersion !== 'release'）会把它显示在诊断页底部，
+      //   正式版不显示（老板不需要知道这个数）。冷启动 ≈ 1.5~2.5s，热启动 ≈ 0.2~0.5s。
+      elapsedMs: Date.now() - t0,
       // 🔴 不回传 input 原始值：里面含账面现金等敏感数，前端要展示时走 diag_facts 回显即可，避免重复口径。
     });
   } catch (e) {

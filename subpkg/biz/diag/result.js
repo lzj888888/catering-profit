@@ -68,6 +68,8 @@ Page({
       asOfPre: T.asOfPre,
       basisMonthsTitle: T.basisMonthsTitle,
       memberRatioNa: T.memberRatioNa,
+      elapsedPre: T.elapsedPre,
+      elapsedSuf: T.elapsedSuf,
       disclaimer: T.disclaimer,
     },
     levelClass: 'na',
@@ -87,6 +89,7 @@ Page({
     asOfText: '',
     basisMonths: [],
     memberLine: '',
+    devNote: '',
   },
 
   onLoad() {
@@ -110,7 +113,15 @@ Page({
       if (!shopId) await api.ensureShop();
       const d = await api.call('getDiagnosis', {});
       this.buildView(d || {});
-      this.setData({ loading: false });
+      // 仅开发/预览版显示服务端耗时 —— 用来判断 3 秒超时够不够（正式版对老板无意义）
+      let devNote = '';
+      try {
+        const ev = (wx.getAccountInfoSync && wx.getAccountInfoSync().miniProgram.envVersion) || 'release';
+        if (ev !== 'release' && d && d.elapsedMs) {
+          devNote = T.elapsedPre + d.elapsedMs + T.elapsedSuf;
+        }
+      } catch (ignore) { /* 取不到环境版本就不显示，不影响主流程 */ }
+      this.setData({ loading: false, devNote });
     } catch (e) {
       // 失败必须说出来，不许停在转圈（老板会以为卡死）
       this.setData({ loading: false, errText: (e && e.msg) || T.errLoad });
