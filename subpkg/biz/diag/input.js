@@ -12,6 +12,39 @@
 //      送中文 ⇒ 引擎 map 认不出 ⇒ 选了却不计分，且页面全绿（静默失效）。
 // 🔴 3. 本次表单**只提交本页字段**。saveShopSetting 是白名单 patch，未传键一律不动库 ——
 //      所以这里绝不能顺手带上 name/remark/switches（那会把别处的设置覆盖掉）。
+/**
+ * 🔴 R615 补丁（2026-11-06 真机反馈）：补录页「有遗漏项时保存，原来存的数据全没了」。
+ *
+ * 根因：`buildFacts()` **全量**输出 10 个键，空着的给 `null`；而 `saveShopSetting` 把
+ *   `null` 解释为「显式清空该键」、`undefined` 才是「不动库」。
+ *   ⇒ 老板只想补 1 项，其余 9 项即使原本存过值（或压根没动），也会被全量提交成 null 抹掉。
+ *   本页**没有「主动清空某一项」的入口**，所以表单里的空值在这个页面上只有一种语义：
+ *   「这项没填」，绝不该被当成清空指令。
+ *
+ * 修法：**只提交变化键**。用回显快照（load 成功后的表单态 == 库里的值）与当前态逐键比对：
+ *   · 值没变（含「本来就空、现在还空」）⇒ 不出现在提交里 ⇒ 后端 keep，历史值不动；
+ *   · 值变了 ⇒ 提交新值；「原来有值 → 现在空」也是变化 ⇒ 提交 null，保留用户主动删空的语义；
+ *   · 快照缺失（读回失败/脏数据）⇒ fail-closed：只允许提交**本次真填了值**的键，绝不提交 null。
+ *
+ * ⚠️ 为什么不改保存端全局语义：saveShopSetting 是通用接口，别的调用方可能依赖 null=清空；
+ *   在**本页**这一侧收敛，改动最小、不牵动 56 份副本与其它设置页。
+ */
+function diffFacts(snapshot, current) {
+  const out = {};
+  if (!current || typeof current !== 'object') return out;
+  for (const k of Object.keys(current)) {
+    const now = current[k];
+    const filled = now !== null && now !== undefined && now !== '';
+    if (!snapshot || !(k in snapshot)) {
+      // 没有可信快照：只提交「本次填了值」的键，绝不发 null（发一个就可能清空一条历史数据）
+      if (filled) out[k] = now;
+      continue;
+    }
+    if (snapshot[k] !== now) out[k] = now;
+  }
+  return out;
+}
+
 const api = require('../../../utils/api.js');
 const ui = require('../../../utils/ui.js');
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
@@ -72,6 +105,10 @@ Page({
   onShow() { this.load(); },
 
   async load() {
+    // 🔴 只加载一次。本页是叶子页，`onShow` 在切后台回来时会再次触发；
+    //   重新拉库会**覆盖用户正在填但还没保存的输入**（草稿丢失），也会让回显快照漂移。
+    //   从补录页 navigateBack 出去后页面即销毁，不存在「需要刷新别人改动」的场景。
+    if (this._snapshotReady) return;
     this.setData({ loading: true });
     try {
       await api.ensureShop();
@@ -94,8 +131,14 @@ Page({
         foodIdx: df.food_safety_event === true ? 1 : (df.food_safety_event === false ? 0 : -1),
         loading: false,
       });
+      // 🔴 回显快照：此刻表单态 == 库里的值。保存时只提交与它**不同**的键，
+      //   未改动的项（尤其是本来就空着的）就不会被当成 null 清库。
+      const snap = this.buildFacts();
+      this._snapshot = snap.error ? null : snap.facts;
+      this._snapshotReady = true;
     } catch (e) {
       this.setData({ loading: false });
+      // 读回失败 ⇒ 不设快照，onSave 会走 fail-closed（只提交本次真填了值的键）
       api.toastError(e);
     }
   },
@@ -200,10 +243,16 @@ Page({
     if (this.data.saving) return;
     const b = this.buildFacts();
     if (b.error) { wx.showToast({ title: b.error, icon: 'none' }); return; }
+    // 🔴 只提交变化键（防「补 1 项、抹掉其余 9 项」）。详见 diffFacts 头注。
+    const patch = diffFacts(this._snapshot, b.facts);
+    if (Object.keys(patch).length === 0) {
+      wx.showToast({ title: T.noChange, icon: 'none' });
+      return;
+    }
     this.setData({ saving: true });
     try {
       ui.setTitle(T.save);
-      await api.call('saveShopSetting', { diag_facts: b.facts });
+      await api.call('saveShopSetting', { diag_facts: patch });
       wx.showToast({ title: T.saved, icon: 'success' });
       setTimeout(() => wx.navigateBack(), 400);
     } catch (e) {
@@ -212,4 +261,7 @@ Page({
       this.setData({ saving: false });
     }
   },
+
+  // 供页面桩 / 守卫真跑（不参与页面交互）
+  diffFacts,
 });

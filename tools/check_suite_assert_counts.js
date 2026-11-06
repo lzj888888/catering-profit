@@ -290,7 +290,7 @@ const CASES = [
   //   它守的正是「前后端字段表必须同时改」这条缝 —— 自身断言数若不受守，
   //   删掉 A-③（漏字段必须点名）或 B-②（onShow 必须真调 load）就静默退回事故状态，
   //   而门禁照旧全绿。9 条 = A 4 + B 3 + C 2。
-  { key: 'check_diag_facts_sync', rel: 'tools/check_diag_facts_sync.js' }, // 9 条（A 4 + B 3 + C 2）
+  { key: 'check_diag_facts_sync', rel: 'tools/check_diag_facts_sync.js' }, // 19 条（A 4 + B 3 + C 2 + D 7 + E 3）
   { key: 'check_diag_actions', rel: 'tools/check_diag_actions.js' },       // 36 条（A 7 + B 10 + C 4 + D 5 + E 4 + F 6）
 ];
 
