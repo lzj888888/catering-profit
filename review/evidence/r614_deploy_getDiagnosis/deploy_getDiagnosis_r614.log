@@ -1,0 +1,20 @@
+
+===== R611 deploy getDiagnosis  2026-11-06 09:13:08 =====
+- initialize
+
+(node:44772) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)
+√ IDE server has started, listening on http://127.0.0.1:10896
+- deploy cloudfunctions
+- fetching cloud env list
+- [getDiagnosis] Fetching info of cloudfunction getDiagnosis
+√ [getDiagnosis] cloudfunction getDiagnosis exists in the cloud, will update it
+- [getDiagnosis] upload cloud function getDiagnosis - preparing
+√ [getDiagnosis] upload cloud function getDiagnosis - deploy
+√ deploy cloudfunctions
+
+┌──────────────┬─────────┬────────────┬───────────┐
+│ (index)      │ success │ filesCount │ packSize  │
+├──────────────┼─────────┼────────────┼───────────┤
+│ getDiagnosis │ true    │ 25         │ '85.0 KB' │
+└──────────────┴─────────┴────────────┴───────────┘
