@@ -363,6 +363,10 @@ const TERMS = {
     pendingArchive: '待归档',
     archivedLock: '归档月只读',
     graceArchive: '归档后 7 天内可补录（需确认）',
+    // R611 真机反馈：三个归档按钮一个没删，是条件渲染；但界面不解释，老板以为功能丢了。
+    // 只加说明，不改 canArchive / canArchivePrev / isArchive 任何判据。
+    archiveHintNoPrev: '上月还没记账，所以这里只显示「结账并归档」。等上月也有账了，才会多出「归档上月」。',
+    archiveHintLocked: '本月已归档，改账请先点下面的「取消归档」。',
     confirmArchive: '确认结账并归档该月？归档后默认只读（7 天内仍可补录）。',
     confirmArchivePrev: '确认把上月（{m}）归档？归档后上月默认只读（7 天内仍可补录）。',
     // 🔴 R516：取消归档（云函数 archiveMonth 一直支持 archive:false，但前端从未给入口 ⇒

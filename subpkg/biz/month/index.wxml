@@ -22,6 +22,10 @@
       {{t.archivedLock}}<text wx:if="{{archivedAtMs}}">（{{t.graceArchive}}）</text>
     </view>
     <view wx:if="{{canArchive}}" class="hint">{{t.pendingArchive}} · {{t.goResult}}</view>
+    <!-- R611 真机反馈：三个归档按钮一个没删，是条件渲染；不解释会被当成功能丢失。
+         只加说明，canArchive / canArchivePrev / isArchive 三个判据一个都不改。 -->
+    <view wx:if="{{canArchive && !canArchivePrev}}" class="archive-note">{{t.archiveHintNoPrev}}</view>
+    <view wx:if="{{isArchive}}" class="archive-note">{{t.archiveHintLocked}}</view>
   </view>
 
   <!-- 结果卡（单数字摘要：按权限显示一个数，不做双 tab 切换，避免"两个利润"错觉）

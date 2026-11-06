@@ -38,6 +38,9 @@ Page({
       pendingArchive: TERMS.ui.pendingArchive,
       archivedLock: TERMS.ui.archivedLock,
       graceArchive: TERMS.ui.graceArchive,
+      // R611：归档按钮是条件渲染，不解释会被当成功能丢失。只加说明，不动判据。
+      archiveHintNoPrev: TERMS.ui.archiveHintNoPrev,
+      archiveHintLocked: TERMS.ui.archiveHintLocked,
       goInput: TERMS.nav.goInput,
       goInventory: TERMS.nav.goInventory,
       goAmortize: TERMS.nav.goAmortize,

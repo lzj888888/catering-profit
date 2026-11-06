@@ -25,3 +25,8 @@
 
 /* ===== R376：清空本月 —— 危险操作与普通 ghost 按钮区分（红边红字，沿用既有危险色 #c0392b） ===== */
 .btn-clear { color: #c0392b; border-color: #e6b3ad; }
+
+/* R611：归档按钮状态说明 —— 解释「为什么这月只看到一个按钮」，不新增卡片、不刺眼。
+   字号 28rpx 守 AD-G1；浅底与上方「待归档」纯文字行区分开。 */
+.archive-note { margin-top: 10rpx; padding: 12rpx 16rpx; font-size: 28rpx;
+  line-height: 1.55; color: #4a5b70; background: #f3f7fb; border-radius: 12rpx; }
