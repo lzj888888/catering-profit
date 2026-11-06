@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：240 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：241 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1434,6 +1434,9 @@ const SUITES = [
   //   diag-actions    = R615 处方层守卫（第 240 套件）：智库「动作」列接进结论页后，
   //                    防接线断/退化成通用鸡汤/合规红线回潮/S1 口径倒退。判行为不判字面。
   ['diag-actions', 'tools/check_diag_actions.js'],
+  //   m2-input-box    = R615 M2 沙盘守卫：矩阵页输入框不得裁字（line-height/min-height）
+  //                    + 选填「本月实际营业额」必须落在 ⑤ 之后、⑥ 之前。
+  ['m2-input-box', 'tools/check_m2_input_box.js'],
   //   new-cards      = 批次 3 三块新 UI 的**运行时**守卫（L2 页面桩：真跑 subpkg/biz/month/result.js）。
   //                    上面两套是静态文本断言，只能证「源码里有这一句」；证不了
   //                    「show 判据写错 ⇒ 卡片永不显示、而字符串一个没少」这类病。

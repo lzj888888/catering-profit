@@ -13,7 +13,19 @@
 .mfield { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 12rpx 0; }
 .mlabel { flex: 0 0 auto; white-space: nowrap; margin-right: 12rpx; font-size: 28rpx; color: #444; }
 .picker { background: #f2f3f7; padding: 14rpx 24rpx; border-radius: 10rpx; font-size: 28rpx; color: #222; min-width: 200rpx; text-align: center; }
-.minp { background: #f2f3f7; padding: 14rpx 20rpx; border-radius: 10rpx; font-size: 28rpx; width: 240rpx; text-align: right; box-sizing: border-box; }
+/* 🔴 R615（2026-11-06 李老师真机反馈）：「点开场景矩阵测算，输入框小了一点，
+     输入数字时数字上半部分丢失」。
+   根因：`.minp` 原先只给了 padding/font-size，**没给 height / line-height / min-height**。
+   小程序 `input` 的默认行盒按字号算，叠加 14rpx 上下 padding 后，在部分机型/字号设置下
+   文字上下会被裁（上半部分尤其明显），且不报错、静态守卫也看不见。
+   修法：补 `min-height` + `line-height`，并把上下 padding 略收紧。
+   ⚠️ 刻意**不写死 height**：写死高度在用户调大系统字体时又会裁一次；
+     用 min-height 让盒子只增不减、line-height 与字号成比例，不同机型都不会切字。
+   同页 `.cash-inp`（height:64rpx / font-size:30rpx）是既有对照，那里没出现裁切。
+   字号 28rpx 守 AD-G1；触控高度 ≥64rpx 靠 min-height 保证。 */
+.minp { background: #f2f3f7; padding: 12rpx 20rpx; border-radius: 10rpx;
+  font-size: 28rpx; line-height: 40rpx; min-height: 64rpx;
+  width: 240rpx; text-align: right; box-sizing: border-box; }
 .dim-block { border-top: 1rpx solid #eee; padding-top: 16rpx; margin-top: 8rpx; }
 .dim-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12rpx; }
 .dim-head text { font-size: 28rpx; font-weight: 600; color: #333; }
@@ -88,7 +100,10 @@
 .real-lb { font-size: 28rpx; color: #333; }
 .real-in-wrap { display: flex; align-items: center; border: 1rpx solid #dfe5ec; border-radius: 10rpx;
   padding: 6rpx 14rpx; background: #fff; }
-.real-in { font-size: 28rpx; color: #1e3a5f; text-align: right; min-height: 40rpx; width: 240rpx; }
+/* 🔴 R615 同族：`.real-in`（场景矩阵「实际营业额」框）原先 min-height 仅 40rpx、无 line-height，
+   与 `.minp` 同一裁字病 ⇒ 一并补齐（不写死 height，理由见 .minp 头注）。 */
+.real-in { font-size: 28rpx; line-height: 40rpx; min-height: 64rpx;
+  color: #1e3a5f; text-align: right; width: 240rpx; }
 .real-unit { font-size: 28rpx; color: #888; margin-left: 6rpx; }
 .real-gap { font-size: 28rpx; padding: 12rpx 16rpx; border-radius: 10rpx; margin-bottom: 12rpx; line-height: 1.5; }
 .real-gap.ok { background: #eef8f1; color: #1f9254; }

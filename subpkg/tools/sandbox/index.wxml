@@ -361,6 +361,27 @@
     <view class="add-row" wx:if="{{buildRows.length < 5}}" bindtap="onAddBuild">{{t.addItem}}</view>
   </view>
 
+  <!-- 🔴 选填·本月实际营业额：人效/坪效与指标对比的唯一输入；明确不参与保本计算（保本只看房租/人工/毛利率/目标利润） -->
+  <view class="card2">
+    <view class="sec">{{mode === 'reverse' ? t.expectRevTitleRev : t.expectRevTitle}}</view>
+    <view class="row">
+      <text class="row-name">{{mode === 'reverse' ? t.expectRevLabelRev : t.expectRevLabel}}</text>
+      <view class="row-in-wrap">
+        <input class="row-in" type="digit" placeholder="{{t.expectRevPh}}" value="{{expectYuan}}" focus="{{expectFocus}}" bindinput="onExpect" adjust-position="{{true}}" cursor-spacing="20" />
+        <text class="row-unit">元</text>
+      </view>
+    </view>
+    <!-- 🔴 R296b：口径提示（豆包）—— 老板普遍把"平台打款净额"当收入；此处明确填**总流水**、佣金系统自动扣 -->
+    <view class="hint">{{t.revGrossHint}}</view>
+    <view class="hint-fold">
+      <view class="hint-fold-head" data-key="sbExpectRevNote" bindtap="onToggleHintFold">
+        <text class="hint-fold-guide">{{hintFold.sbExpectRevNote ? t.hintFoldHide : t.hintFoldShow}}</text>
+        <text class="hint-fold-arrow">{{hintFold.sbExpectRevNote ? '▾' : '▸'}}</text>
+      </view>
+    <view class="hint-fold-body" wx:if="{{hintFold.sbExpectRevNote}}">{{mode === 'reverse' ? t.expectRevNoteRev : t.expectRevNote}}</view>
+    </view>
+  </view>
+
   <!-- ⑥ 想赚多少：目标反推「要卖多少」 -->
   <view class="card2">
     <view class="sec">{{t.secGoal}}</view>
@@ -641,27 +662,6 @@
           <text class="sens-delta {{item.deltaPct > 0 ? 'up' : (item.deltaPct < 0 ? 'down' : '')}}" wx:if="{{item.deltaText}}">{{item.deltaText}}</text>
         </view>
       </block>
-    </view>
-  </view>
-
-  <!-- 🔴 选填·本月实际营业额：人效/坪效与指标对比的唯一输入；明确不参与保本计算（保本只看房租/人工/毛利率/目标利润） -->
-  <view class="card2">
-    <view class="sec">{{mode === 'reverse' ? t.expectRevTitleRev : t.expectRevTitle}}</view>
-    <view class="row">
-      <text class="row-name">{{mode === 'reverse' ? t.expectRevLabelRev : t.expectRevLabel}}</text>
-      <view class="row-in-wrap">
-        <input class="row-in" type="digit" placeholder="{{t.expectRevPh}}" value="{{expectYuan}}" focus="{{expectFocus}}" bindinput="onExpect" adjust-position="{{true}}" cursor-spacing="20" />
-        <text class="row-unit">元</text>
-      </view>
-    </view>
-    <!-- 🔴 R296b：口径提示（豆包）—— 老板普遍把"平台打款净额"当收入；此处明确填**总流水**、佣金系统自动扣 -->
-    <view class="hint">{{t.revGrossHint}}</view>
-    <view class="hint-fold">
-      <view class="hint-fold-head" data-key="sbExpectRevNote" bindtap="onToggleHintFold">
-        <text class="hint-fold-guide">{{hintFold.sbExpectRevNote ? t.hintFoldHide : t.hintFoldShow}}</text>
-        <text class="hint-fold-arrow">{{hintFold.sbExpectRevNote ? '▾' : '▸'}}</text>
-      </view>
-    <view class="hint-fold-body" wx:if="{{hintFold.sbExpectRevNote}}">{{mode === 'reverse' ? t.expectRevNoteRev : t.expectRevNote}}</view>
     </view>
   </view>
 
