@@ -299,7 +299,7 @@ const CASES = [
   { key: 'check_import_encoding', rel: 'tools/check_import_encoding.js' },   // 23 条（A 10 + B 8 + C 5）
   { key: 'check_revenue_daily', rel: 'tools/check_revenue_daily.js' },       // 54 条（A 4 + B 11 + C 3 + D 5 + E 11 + F 9 + G 11 覆盖范围算法）
   { key: 'check_revenue_page', rel: 'tools/check_revenue_page.js' },         // 42 条（A 12 + B 12 + C 6 + D 4 + F 8 覆盖范围装配）
-  { key: 'check_revenue_store', rel: 'tools/check_revenue_store.js' },       // 32 条（A 5 结构 + B 15 行为 + C 4 红线 + D 8 接线）
+  { key: 'check_revenue_store', rel: 'tools/check_revenue_store.js' },       // 35 条（A 5 结构 + B 18 行为 + C 4 红线 + D 8 接线）
   { key: 'check_comment_safety', rel: 'tools/check_comment_safety.js' },     // 7 条（A/B 行注释 + C 兜底 + D-G 自证）
 ];
 

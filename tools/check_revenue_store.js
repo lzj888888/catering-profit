@@ -37,9 +37,20 @@ const COLL_JS = require(P('cloudfunctions/initDb/collections.js'));
 const Store = require(P('cloudfunctions/importSalesBill/revenueStore.js'));
 
 // ============ 最小 db 桩：只支持落库代码实际用到的那几个链式方法 ============
-function mockDb() {
+// opts.failFirstAdd ⇒ 首次 add 抛 502005（模拟「集合还没建」）
+// opts.failGet      ⇒ 所有 get 抛 502005（模拟「集合不存在时读库」）
+function mockDb(opts) {
+  const o = opts || {};
+  let addFails = o.failFirstAdd ? 1 : 0;
+  const created = [];
   const rows = [];
   let seq = 0;
+  const err502005 = () => {
+    const e = new Error('database collection not exists');
+    e.errCode = -502005;
+    e.errMsg = 'collection not exists. [ResourceNotFound] Db or Table not exist: revenue_batch';
+    return e;
+  };
   const match = (w) => (row) => Object.keys(w || {}).every((k) => row[k] === w[k]);
   const coll = {
     where(w) {
@@ -50,13 +61,14 @@ function mockDb() {
     limit() { return this; },
     field() { return this; },
     async get() {
+      if (o.failGet) throw err502005();
       const f = match(this._w);
-      // 模拟 orderBy('created_at','desc')：按 created_at 倒序
       const out = rows.filter(f).slice().sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
       this._w = null;
       return { data: out };
     },
     async add({ data }) {
+      if (addFails > 0) { addFails--; throw err502005(); }
       seq++;
       const id = 'id' + seq;
       rows.push(Object.assign({ _id: id }, data));
@@ -72,7 +84,11 @@ function mockDb() {
       };
     },
   };
-  return { db: { collection: () => coll }, rows, size: () => rows.length };
+  const db = {
+    collection: () => coll,
+    createCollection: async (name) => { created.push(name); },
+  };
+  return { db, rows, created, size: () => rows.length };
 }
 
 // 造一份最小可用的解析结果（只放落库会用到的字段）
@@ -209,6 +225,27 @@ sec('B 行为面（桩 db 真跑落库）');
   });
   ok('B-⑮ 表里没有可识别日期 ⇒ 拒绝落库（不能落一条月份为空的脏数据）',
     bad.ok === false && bad.reason === 'no_month', JSON.stringify(bad));
+
+  // 集合自愈：云函数 CLI 调不动函数，老板也不该为了用个功能去控制台建集合
+  const m2 = mockDb({ failFirstAdd: true });
+  const r7 = await Store.commit({
+    db: m2.db, userId: UID, shopId: SID, fileMd5: 'ddd',
+    fileName: '首次导入.xlsx', result: mkResult(1000, 5, '2026-07'),
+  });
+  ok('B-⑯ 🔴 集合还没建时自愈：首次写入报 502005 ⇒ 自动建集合并重写成功（老板不用去控制台）',
+    r7.ok && r7.mode === 'created' && m2.size() === 1
+    && m2.created.indexOf('revenue_batch') >= 0,
+    'mode=' + r7.mode + ' rows=' + m2.size() + ' created=' + JSON.stringify(m2.created));
+
+  const got3 = await Store.getActive({ db: mockDb({ failGet: true }).db, userId: UID, shopId: SID, month: '' });
+  ok('B-⑰ 🔴 集合不存在时读库返回 null（页面显示上传入口，而不是「加载失败」）',
+    got3 === null);
+
+  ok('B-⑱ 自愈只认「集合不存在」这一个错误码，别的错照抛（不能把权限错/网络错吞成空数据）',
+    (() => {
+      const s = stripComments(STORE_SRC);
+      return /502005/.test(s) && /throw e/.test(s);
+    })());
 
   // ============ C 红线面 ============
   sec('C 红线面（不碰 M1 / 不硬封账）');

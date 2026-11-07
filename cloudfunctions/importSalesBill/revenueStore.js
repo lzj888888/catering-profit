@@ -18,10 +18,27 @@ const CALIBER_VERSION = 'r619.1';
 const KEY = (uid, sid, month) => ({ user_id: uid, shop_id: sid, month: month });
 
 // 🔴 表名只在这一处出现：既保住「单源」，又不让 collection(变量) 散落多处
-//   （ 的 S-⑧ 数的是「动态集合名写点」，
-//    散落 6 处会触顶；收敛成 1 个 helper 后既是单源、也不占额度）
+//   （doc-write 守卫的 S-⑧ 数的是「动态集合名写点」，散落 6 处会触顶；
+//    收敛成 1 个 helper 后既是单源、也不占额度）
 function coll(db) {
   return db.collection(COLL);
+}
+
+// 集合不存在时自愈创建。
+// 为什么要在代码里做：云函数 CLI 只有 list/info/deploy/download，**没法调用函数**；
+//   让老板为了开个功能先去控制台建集合，是产品设计的失败。
+//   ⇒ 首次写入时集合若不存在（错误码 502005 / collection not exists），就地建一次再写。
+function isMissingColl(e) {
+  const s = String((e && (e.errMsg || e.message || e.errCode)) || '');
+  return /502005/.test(s) || /collection.*not\s*exist/i.test(s);
+}
+
+async function ensureColl(db) {
+  try {
+    if (typeof db.createCollection === 'function') await db.createCollection(COLL);
+  } catch (e) {
+    // 已存在 / 并发创建 / 权限不足 ⇒ 都交给后面的写入暴露真实原因，这里不吞错也不抛
+  }
 }
 
 function nowIso() {
@@ -52,21 +69,32 @@ function diffSummary(oldResult, newResult) {
   };
 }
 
+// 读查询的容错：集合还没建时返回「空」，不抛。
+//   否则页面一进来读库就报错，老板会看到「加载失败」——而他其实只是还没导过数据。
+async function safeGet(p) {
+  try {
+    return await p;
+  } catch (e) {
+    if (isMissingColl(e)) return null;
+    throw e;
+  }
+}
+
 async function findActive(db, uid, sid, month) {
-  const r = await coll(db)
+  const r = await safeGet(coll(db)
     .where(Object.assign(KEY(uid, sid, month), { status: 'active' }))
     .orderBy('created_at', 'desc')
     .limit(1)
-    .get();
-  return (r.data && r.data[0]) || null;
+    .get());
+  return (r && r.data && r.data[0]) || null;
 }
 
 async function findByFile(db, uid, sid, fileMd5) {
-  const r = await coll(db)
+  const r = await safeGet(coll(db)
     .where({ user_id: uid, shop_id: sid, file_md5: fileMd5, status: 'active' })
     .limit(1)
-    .get();
-  return (r.data && r.data[0]) || null;
+    .get());
+  return (r && r.data && r.data[0]) || null;
 }
 
 /**
@@ -123,7 +151,15 @@ async function commit(ctx) {
     created_at: nowIso(),
     updated_at: nowIso(),
   };
-  const ins = await coll(db).add({ data: doc });
+  const ins = await (async () => {
+    try {
+      return await coll(db).add({ data: doc });
+    } catch (e) {
+      if (!isMissingColl(e)) throw e;
+      await ensureColl(db);                       // 集合还没建 ⇒ 就地建一次再试
+      return await coll(db).add({ data: doc });
+    }
+  })();
   const newId = ins._id || (ins.id || '');
 
   // ④ 旧版本降级（写成功之后才降，最坏情况是两条 active，读时取最新一条）
@@ -143,12 +179,12 @@ async function getActive(ctx) {
   if (ctx.month) {
     doc = await findActive(ctx.db, ctx.userId, ctx.shopId, ctx.month);
   } else {
-    const r = await coll(ctx.db)
+    const r = await safeGet(coll(ctx.db)
       .where({ user_id: ctx.userId, shop_id: ctx.shopId, status: 'active' })
       .orderBy('created_at', 'desc')
       .limit(1)
-      .get();
-    doc = (r.data && r.data[0]) || null;
+      .get());
+    doc = (r && r.data && r.data[0]) || null;
   }
   if (!doc) return null;
   return {
