@@ -1,0 +1,20 @@
+守卫基线 RC=0（应 0）
+
+  ① 复现本轮原错：注释写 common/**（斜杠+星号）
+    期望含「A 行注释」的红项 => 命中 OK
+      ❌ A 行注释里不得出现「斜杠+星号」（会被 stripComments 当块注释开头、吞掉大段代码） ｜ 共 1 处：cloudfunctions/importSalesBill/index.js:37
+      ❌ E 点名：cloudfunctions/importSalesBill/index.js 的行注释干净（R616 就是在它里面写坏过一次）
+
+  ② markdown 粗体相邻（**甲**/**乙** = 星号斜杠+斜杠星号）
+    期望含「A 行注释」的红项 => 命中 OK
+      ❌ A 行注释里不得出现「斜杠+星号」（会被 stripComments 当块注释开头、吞掉大段代码） ｜ 共 1 处：cloudfunctions/importSalesBill/revenueDailyParse.j
+      ❌ B 行注释里不得出现「星号+斜杠」（会让块注释提前结束、同样吞代码） ｜ 共 1 处：cloudfunctions/importSalesBill/revenueDailyParse.js:24
+
+  ③ 注释里出现独立的星号斜杠（块注释提前结束）
+    期望含「B 行注释」的红项 => 命中 OK
+      ❌ B 行注释里不得出现「星号+斜杠」（会让块注释提前结束、同样吞代码） ｜ 共 1 处：cloudfunctions/importSalesBill/index.js:37
+      ❌ C 剥掉块注释后不得残留「星号+斜杠」（说明块注释配对错乱） ｜ cloudfunctions/importSalesBill/index.js
+
+还原后 RC=0（应 0）
+注释安全变异：3/3 命中
+PASS 源码逐字节还原

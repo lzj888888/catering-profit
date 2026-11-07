@@ -27,7 +27,7 @@ const COLLECTIONS = [
   //   · shop_ai_insight：T+1 预计算的结论（**派生数据**，撤回时必须能一次性清掉，否则"撤回了但结论还在被引用"）
   //   R403（2026-10-21）：**四索引已随 `grantAiConsent` / `revokeAiConsent` 落码同批登记**（见 §2 尾部）。
   //     顺序不是随手定的：`tools/check_index_field_alignment.js` 的 L1 判据要求索引字段必须在
-  //     `cloudfunctions/**` 源码里以独立标识符出现（防"索引建在没人用的字段上"的化石索引），
+  //     全仓云函数源码里以独立标识符出现（防"索引建在没人用的字段上"的化石索引），
   //     而 `consent_id` / `revoked_at` 在 grant/revoke 落码**之前**全树零出现 ⇒ 先登索引会被正确地判红。
   //     ⇒ 机械判据给了顺序：先有读写这些字段的代码，索引才不是化石。
 'shop_ai_consent', 'shop_ai_insight',

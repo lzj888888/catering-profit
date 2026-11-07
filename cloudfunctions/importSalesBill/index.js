@@ -29,8 +29,11 @@ const {
 const { validateInput } = require('./validate');
 const { parse: parseDSI1, groupByPlatformDate: parseDSI1Groups } = require('./dsi1');   // R584：DSI-1 标准格式解析与分组
 // R616：老板自制《营收日报表》（日期×班次×渠道）的解析器。
-//   🔴 就近放在本函数目录，**不进 cloudfunctions/common/** —— 那份会被 sync_common 分发到
-//   全部 56 个云函数（每个多一个 cx_*.js），而只有本函数用得到。也不进小程序包（utils/）。
+//   🔴 就近放在本函数目录 —— 不进 cloudfunctions/common（那份会被 sync_common 分发到
+//   全部 56 个云函数，每个多一个 cx_*.js，而只有本函数用得到）；也不进小程序包（utils/ 会打包）。
+//   ⚠️ 注释里**绝对不要**写出「斜杠+星号」连在一起的写法（含 `common/` 后面紧跟星号的 markdown 粗体），
+//   否则会被 `stripComments` 当成块注释开头、把中间大段代码吞掉 —— 本轮真踩过，
+//   表现是幂等/pubic-surface/账单解析三个守卫同时红，且报的位置数字全都对不上。
 const RevenueDaily = require('./revenueDailyParse');
 
 // ===== R271：跨平台重复导入检测（查库版）=====

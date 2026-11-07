@@ -77,7 +77,8 @@ const REGISTRY = {
   // R615 营收日报表解析：两处 `* 100` 都收在单源函数里（原本四处各写一遍
   //   Math.round(x*100)/100，既重复、又因 `a[b] * 100` 落不进三形态桶而漏登记）。
   //   两处都是**元 ⇄ 分**的金额换算 ⇒ money（必须十进制安全形态，且都是 Math.round 形态）。
-  'utils/revenueDailyParse.js': {
+  // R616：解析器已 git mv 到云函数目录（不进 common/不分发副本、不进小程序包），登记路径同步
+  'cloudfunctions/importSalesBill/revenueDailyParse.js': {
     'IDENT|yuan * 100|#1': ['money', 'fen()：元 → 整数分（入库单位）'],
     'IDENT|v * 100|#1': ['money', 'round2()：元 → 保留 2 位小数（四舍五入，单源）'],
     // 差额桥的百分比：差额 ÷ 现金流入 → 百分数（分子分母同为「元」，比值不是金额）
