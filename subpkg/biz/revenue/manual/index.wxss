@@ -8,6 +8,11 @@
 
 .mn-tip { font-size: 28rpx; color: #5a6678; line-height: 1.7; padding: 0 8rpx 20rpx; }
 
+/* R621 上月参考 / 本月已填：ref 是"帮忙看"（灰），prefill 是"已经在库里"（蓝）—— 都不报警色 */
+.mn-base { font-size: 28rpx; line-height: 1.6; padding: 20rpx 24rpx; border-radius: 14rpx; margin: 0 8rpx 20rpx; }
+.mn-base.ref { background: #f4f6f9; color: #5a6678; }
+.mn-base.prefill { background: #eef4ff; color: #2b5aa8; }
+
 .mn-group { background: #fff; border-radius: 16rpx; padding: 8rpx 24rpx 20rpx; margin-bottom: 20rpx; }
 .mn-gh { display: flex; align-items: center; justify-content: space-between; min-height: 88rpx; }
 .mn-gt { font-size: 32rpx; color: #1a2233; font-weight: 600; }

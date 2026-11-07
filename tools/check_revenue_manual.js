@@ -151,10 +151,23 @@ sec('D 落库（与 Excel 同一张表、同一套幂等）');
 ok('D-① 手填也走 RevenueStore.commit（不另开一条写库路径）',
   /RevenueStore\.commit/.test(FN) && /action === 'revenue_save_manual'/.test(FN));
 
-ok('D-② 手填的指纹含具体数值（同样的数重复存 = 幂等；改了数 = 新版本要确认）',
-  /fileMd5:\s*'manual:'[\s\S]{0,80}JSON\.stringify\(vals\)|fileMd5:\s*'manual:'[\s\S]{0,120}fields/
-    .test(FN) || /'manual:'\s*\+\s*shopId/.test(FN),
-  'manual 指纹=' + /'manual:'/.test(FN));
+// 🔴 R621 事故回归：这条断言原来写成「含 JSON.stringify(vals) **或** 含 fields」——
+//   第一个分支正好就是**错误写法**，等于坏掉才算绿。结果 R620 线上手填保存一按就崩
+//   （vals 早被删了，ReferenceError），而 node --check 查不出来（引用错误不是语法错误）。
+//   现在改成：必须走后者的纯函数 manualKey，且手填分支里不许再出现 vals 这个词。
+const manualSeg = (() => {
+  const s = stripComments(FN);
+  const a = s.indexOf("action === 'revenue_save_manual'");
+  const b = s.indexOf("action === 'revenue_get'");
+  return a >= 0 ? s.slice(a, b > a ? b : a + 4000) : '';
+})();
+ok('D-② 手填的幂等指纹由 fields 经纯函数 manualKey 生成（同样的数重复存 = 幂等）',
+  /fileMd5:\s*RevenueDaily\.manualKey\(/.test(manualSeg) && /\bvals\b/.test(manualSeg) === false,
+  'manualKey=' + /RevenueDaily\.manualKey\(/.test(manualSeg) + ' 残留vals=' + (/\bvals\b/.test(manualSeg)));
+
+ok('D-②b 🔴 手填分支不得引用不存在的变量（R620 线上崩溃点：vals 未定义 ⇒ 保存必失败）',
+  !/\bvals\b/.test(manualSeg) && !/\bJSON\.stringify\(vals\)/.test(FN),
+  '出现 vals=' + /\bvals\b/.test(manualSeg));
 
 ok('D-③ 手填换月/换数同样要确认（不静默覆盖已有的数）',
   /confirm:\s*input\.confirm === true/.test(FN));
@@ -166,6 +179,70 @@ ok('D-④ 手填分支在「下载文件」之前（手填没有文件，放后�
     const b = s.indexOf('cloud.downloadFile');
     return a > 0 && b > 0 && a < b;
   })());
+
+// ============ E 分次填 + 上月参考（R621）============
+sec('E 分次填与"照上月改"（填表能力弱的老板不可能一次填全）');
+
+// E-① manualKey：顺序无关 / 值敏感 / 换店换月要区分
+const K1 = R.manualKey('s1', '2026-09', { cash: 100, scan: 5000 });
+const K2 = R.manualKey('s1', '2026-09', { scan: 5000, cash: 100 });
+const K3 = R.manualKey('s1', '2026-09', { scan: 5000, cash: 101 });
+const K4 = R.manualKey('s2', '2026-09', { cash: 100, scan: 5000 });
+const K5 = R.manualKey('s1', '2026-10', { cash: 100, scan: 5000 });
+ok('E-① 幂等键与表单顺序无关（顺序变了不该多出一条）', K1 === K2, K1 + ' / ' + K2);
+ok('E-② 幂等键对数值敏感（改一个数就是新版本，要走确认）', K1 !== K3);
+ok('E-③ 幂等键区分店铺与月份（换店换月不会互相冒充）', K1 !== K4 && K1 !== K5);
+
+// E-④ merge：第二次只填外卖，不能让上次的现金消失
+const MG = R.mergeFields({ cash: 1000, scan: 5000 }, { waimaiMeituan: 800 });
+ok('E-④ 分次填：这次只填外卖 ⇒ 上次的现金/扫码原样保留', MG.cash === 1000 && MG.scan === 5000 && MG.waimaiMeituan === 800,
+  JSON.stringify(MG));
+ok('E-⑤ 分次填：填同一个键 ⇒ 新值覆盖旧值（老板改数是正常需求）',
+  R.mergeFields({ cash: 1000 }, { cash: 1200 }).cash === 1200);
+ok('E-⑥ 分次填：显式填 0 ⇒ 覆盖成 0（想清零得有路可走）',
+  R.mergeFields({ cash: 1000 }, { cash: 0 }).cash === 0);
+ok('E-⑦ 本次一项没填（全空）⇒ 结果等于旧值，不会把数据抹成空',
+  JSON.stringify(R.mergeFields({ cash: 1000 }, {})) === JSON.stringify({ cash: 1000 }));
+
+// E-⑧ 云端真的用了合并：先读同月手填批次，再 merge
+ok('E-⑧ 手填保存前先读同月已有手填批次，并 mergeFields 合并（不是整体替换）',
+  /RevenueStore\.getActive/.test(manualSeg) && /manual_fields/.test(manualSeg)
+  && /RevenueDaily\.mergeFields\(/.test(manualSeg)
+  && /'manual'/.test(manualSeg));
+
+// E-⑨ 合并只在「同月已有手填」时做；同月是 Excel 的仍走确认替换（不能悄悄拼成混合数）
+ok('E-⑨ 只有同月已有**手填**才合并（同月是 Excel 仍要确认替换，不拼混合数）',
+  /prev\.source === 'manual'/.test(manualSeg));
+
+// E-⑩⑪ 上月参考 / 本月预填 的数据来源
+ok('E-⑩ 读库回传 manual_fields（页面要靠它做预填与上月参考）',
+  /manual_fields/.test(FN) && /manual_fields/.test(fs.readFileSync(P('cloudfunctions/importSalesBill/revenueStore.js'), 'utf8')));
+
+// E-⑫ 换月必须清掉上个月的预填/参考（串月是最难发现的错）
+const onMonthSeg = (() => {
+  const s = stripComments(PAGE);
+  const a = s.indexOf('onMonthChange');
+  return a >= 0 ? s.slice(a, a + 700) : '';
+})();
+ok('E-⑫ 换月清空预填与参考值（防止把 9 月的数当成 10 月的）',
+  /val:\s*''/.test(onMonthSeg) && /ph:\s*''/.test(onMonthSeg),
+  'onMonthChange 段长=' + onMonthSeg.length);
+
+// E-⑬⑭ 只报事实、不冒充：参考值走灰色 placeholder，不预填进输入框
+ok('E-⑬ 上月参考走 placeholder（灰色提示），不写进 value —— 避免被当成真数存进去',
+  /placeholder="\{\{it\.ph \|\| '0\.00'\}\}"/.test(WXML) && /it\.val/.test(WXML));
+ok('E-⑭ 页面明确告诉老板"灰色是上个月的数，不是这个月的"（一句话防串月）',
+  typeof MT.refPh === 'string' && /上月/.test(MT.refPh) && /上个月/.test(String(MT.refTip || ''))
+  && /不是这个月/.test(String(MT.refTip || '')),
+  'refPh=' + MT.refPh + ' refTip=' + String(MT.refTip || '').slice(0, 12));
+
+ok('E-⑪ 取上月用 prevMonth（1 月减成「0 月」的坑已有断言）',
+  /prevMonth\(month\)/.test(PAGE) && /mo - 2/.test(PAGE),
+  'prevMonth=' + /prevMonth\(month\)/.test(PAGE));
+
+// E-⑮ 填完当场回显金额（否则他只看到"存好了"，不知道填对没）
+ok('E-⑮ 保存成功回显"经营营收 ¥X"（填完就知道对不对）',
+  /savedTotalTpl/.test(PAGE) && typeof MT.savedTotalTpl === 'string' && /\{x\}/.test(String(MT.savedTotalTpl)));
 
 console.log('\n===== 手填汇总守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);

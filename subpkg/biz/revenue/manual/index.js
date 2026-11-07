@@ -14,6 +14,17 @@ const ui = require('../../../../utils/ui.js');
 const { TERMS } = require('../../../../miniprogram/i18n/terms.js');
 const T = TERMS.revenueManual;
 
+// 千分位：老板看「3,200.00」比「3200.00」快
+const money = (v) => (Number(v) || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+// 上一个月（不要用 setMonth 直接减：1 月会减成「0 月」）
+const prevMonth = (m) => {
+  const y = Number(String(m).slice(0, 4));
+  const mo = Number(String(m).slice(5, 7));
+  const d = new Date(y, mo - 2, 1);
+  const mm = d.getMonth() + 1;
+  return d.getFullYear() + '-' + (mm < 10 ? '0' : '') + mm;
+};
+
 // 分组：组标题 + 项。order 决定视觉顺序，也决定"最常用"的放前面。
 const GROUPS = [
   {
@@ -67,6 +78,8 @@ Page({
     groups: [],
     openMap: {},        // 折叠组展开状态
     saving: false,
+    baseMode: '',       // '' | 'prefill'（本月已填，预填现值）| 'ref'（拿上月当灰字参考）
+    baseTip: '',
     t: {
       title: T.title,
       monthLabel: T.monthLabel,
@@ -91,14 +104,55 @@ Page({
       month,
       groups: GROUPS.map((g) => ({
         key: g.key, title: g.title, hint: g.hint, collapse: g.collapse,
-        items: g.items.map((it) => ({ key: it.key, label: it.label, hint: it.hint, kb: it.kb, val: '' })),
+        items: g.items.map((it) => ({ key: it.key, label: it.label, hint: it.hint, kb: it.kb, val: '', ph: '' })),
       })),
       openMap: GROUPS.reduce((m, g) => { m[g.key] = !g.collapse; return m; }, {}),
     });
+    this.loadBase(month);
+  },
+
+  // 填表能力弱的人最缺的不是"框"，是"上次填了多少"和"这次填的对不对"。
+  // 这里做两件事：
+  //   ① 本月已填过 ⇒ **把存着的值预填回来**（他要改的是现值，不是重新回忆一遍）
+  //   ② 本月没填过 ⇒ 拿上个月的数当灰色提示（照抄改数，比凭空填容易一个量级）
+  // 拿不到就静默 —— 参考值只是帮忙，不能因为取不到就挡住他填数。
+  async loadBase(month) {
+    const setItems = (fields, mode) => {
+      const groups = this.data.groups.map((g) => Object.assign({}, g, {
+        items: g.items.map((it) => Object.assign({}, it, mode === 'prefill'
+          ? { val: (fields[it.key] != null ? String(fields[it.key]) : '') }
+          : { ph: (Number(fields[it.key]) > 0 ? (T.refPh + money(fields[it.key])) : '') })),
+      }));
+      this.setData({ groups, baseMode: mode, baseTip: mode === 'prefill' ? T.preTip : T.refTip });
+    };
+    try {
+      const got = await api.call('importSalesBill', { action: 'revenue_get', month });
+      const rs = got && got.revenue_stored;
+      if (rs && rs.source === 'manual' && rs.manual_fields) {
+        setItems(rs.manual_fields, 'prefill');
+        return;
+      }
+      const prev = prevMonth(month);
+      const g2 = await api.call('importSalesBill', { action: 'revenue_get', month: prev });
+      const rs2 = g2 && g2.revenue_stored;
+      if (rs2 && rs2.source === 'manual' && rs2.manual_fields) {
+        setItems(rs2.manual_fields, 'ref');
+        return;
+      }
+    } catch (e) {
+      // 参考值取不到不算错
+    }
+    this.setData({ baseMode: '', baseTip: '' });
   },
 
   onMonthChange(e) {
-    this.setData({ month: e.detail.value });
+    const month = e.detail.value;
+    // 换月必须清掉上一个月残留的预填/参考，否则会把 9 月的数当成 10 月的（串月是最难发现的错）
+    const groups = this.data.groups.map((g) => Object.assign({}, g, {
+      items: g.items.map((it) => Object.assign({}, it, { val: '', ph: '' })),
+    }));
+    this.setData({ month, groups, baseMode: '', baseTip: '' });
+    this.loadBase(month);
   },
 
   onToggleGroup(e) {
@@ -121,7 +175,9 @@ Page({
     this.data.groups.forEach((g) => {
       g.items.forEach((it) => {
         const raw = String(it.val == null ? '' : it.val).trim();
-        if (raw !== '' && Number(raw) > 0) fields[it.key] = Number(raw);
+        // 🔴 明确填 0 也要送出去：老板要「把这项清零」时得有路可走。
+        //   空着 = 没填（分次填时沿用上次），填 0 = 就是 0（覆盖上次）。
+        if (raw !== '' && isFinite(Number(raw))) fields[it.key] = Number(raw);
       });
     });
     return fields;
@@ -149,9 +205,16 @@ Page({
         return;
       }
       const miss = (d && d.missingChannels) || [];
+      // 填完必须当场告诉他"记下了多少" —— 只弹"存好了"，他还是不知道自己填对没填对
+      const tot = (d && d.revenue_manual && d.revenue_manual.revenueM1
+        && d.revenue_manual.revenueM1.totalYuan) || 0;
+      const mg = (d && d.merged) || {};
+      const lines = [T.savedTotalTpl.replace('{x}', money(tot))];
+      if (mg.kept > 0) lines.push(T.mergedTpl.replace('{a}', mg.added).replace('{k}', mg.kept));
+      lines.push(miss.length ? T.savedWithMissing : T.savedOk);
       wx.showModal({
         title: T.savedTitle,
-        content: miss.length ? T.savedWithMissing : T.savedOk,
+        content: lines.join('\n'),
         showCancel: false,
         success: () => wx.navigateBack(),
       });

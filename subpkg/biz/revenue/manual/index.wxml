@@ -16,6 +16,9 @@
 
   <view class="mn-tip">{{t.tip}}</view>
 
+  <!-- R621：上月参考 / 本月已填。一句话说清"灰色不是这个月的数"，否则最容易串月 -->
+  <view class="mn-base {{baseMode}}" wx:if="{{baseTip}}">{{baseTip}}</view>
+
   <view class="mn-group" wx:for="{{groups}}" wx:key="key" wx:for-item="g" wx:for-index="gi">
     <view class="mn-gh" bindtap="onToggleGroup" data-key="{{g.key}}">
       <text class="mn-gt">{{g.title}}</text>
@@ -27,7 +30,7 @@
       <view class="mn-item" wx:for="{{g.items}}" wx:key="key" wx:for-item="it" wx:for-index="ii">
         <text class="mn-il">{{it.label}}</text>
         <input class="mn-in" type="{{it.kb}}" value="{{it.val}}"
-               placeholder="0.00" bindinput="onInput" data-g="{{gi}}" data-i="{{ii}}" />
+               placeholder="{{it.ph || '0.00'}}" bindinput="onInput" data-g="{{gi}}" data-i="{{ii}}" />
         <text class="mn-ih" wx:if="{{it.hint}}">{{it.hint}}</text>
       </view>
     </block>

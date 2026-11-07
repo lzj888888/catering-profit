@@ -142,6 +142,11 @@ async function commit(ctx) {
     // excel = 平台/收银导出的原始表；manual = 老板手填的整月汇总。
     // 两者都进同一张表，但来源必须留痕 —— 手填的数不能当成"可对账的原始凭证"。
     source: ctx.source || 'excel',
+    // 手填才有：存原始那 11 个框的值。两个用途 ——
+    //   ① 下个月给老板当参考（"上月现金 3,200"，他照抄改数就行，不用回忆）
+    //   ② 支持分次填（想起来一个数补一个，底子在这里）
+    //   Excel 来源为 null：Excel 的原始单元格不在这里，硬凑会出现"看着像一回事其实不是一个东西"。
+    manual_fields: (ctx.source === 'manual' && ctx.manualFields) ? ctx.manualFields : null,
     caliber_version: CALIBER_VERSION,
     status: 'active',
     superseded_by: '',
@@ -195,6 +200,7 @@ async function getActive(ctx) {
     month: doc.month,
     file_name: doc.file_name || '',
     source: doc.source || 'excel',
+    manual_fields: doc.manual_fields || null,
     created_at: doc.created_at || '',
     caliber_version: doc.caliber_version || '',
     coverage: doc.coverage || null,

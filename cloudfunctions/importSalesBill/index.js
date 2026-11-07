@@ -83,7 +83,18 @@ exports.main = async (event) => {
     if (!/^\d{4}-\d{2}$/.test(month)) {
       return fail(ERROR_CODES.INVALID_PARAM, '请先选是哪个月（格式 YYYY-MM）');
     }
-    const built = RevenueDaily.manualToRows(input.fields || {}, month);
+    const typed = input.fields || {};
+    // 🔴 R621 分次填合并：老板这个月想起一个数就补一个。
+    //   若本月已有**手填**批次，以它为底合并 —— 不能因为第二次只填了外卖就把上次的现金抹掉。
+    //   （这条不是锦上添花：填表能力弱的人几乎不可能一次填全，会分好几次。）
+    const prev = await RevenueStore.getActive({ db, userId, shopId, month });
+    const prevManual = (prev && prev.source === 'manual' && prev.manual_fields) ? prev.manual_fields : null;
+    const fields = prevManual ? RevenueDaily.mergeFields(prevManual, typed) : typed;
+    const addedCount = Object.keys(typed).filter((k) => Number(typed[k]) > 0).length;
+    const keptCount = prevManual
+      ? Object.keys(fields).filter((k) => !(k in typed) && Number(fields[k]) > 0).length
+      : 0;
+    const built = RevenueDaily.manualToRows(fields, month);
     if (!built.filled) {
       return fail(ERROR_CODES.INVALID_PARAM, '一个数都没填，先填至少一项再保存');
     }
@@ -107,17 +118,18 @@ exports.main = async (event) => {
     // 哪些主要渠道还空着（老板不用懂术语，但要知道自己漏了什么）
     const CORE_KEYS = ['cash', 'scan', 'waimaiMeituan', 'waimaiJd', 'waimaiTaobao',
       'grouponMeituan', 'grouponDouyin'];
-    const F = input.fields || {};
-    const missingChannels = CORE_KEYS.filter((k) => !(Number(F[k]) > 0));
+    const missingChannels = CORE_KEYS.filter((k) => !(Number(fields[k]) > 0));
 
     const c = await RevenueStore.commit({
       db,
       userId,
       shopId,
-      fileMd5: 'manual:' + shopId + ':' + month + ':' + JSON.stringify(vals),
+      // 幂等键由**合并后的 fields** 生成（纯函数 manualKey）：同样的数再存一次 ⇒ duplicate
+      fileMd5: RevenueDaily.manualKey(shopId, month, fields),
       fileName: '手填汇总 ' + month,
       fileSize: 0,
       source: 'manual',
+      manualFields: fields,          // 存原值：下个月给老板当参考，也支持"想起来再补"
       result: parsed,
       confirm: input.confirm === true,
     });
@@ -131,6 +143,7 @@ exports.main = async (event) => {
     return ok({
       revenue_manual: parsed,
       missingChannels,
+      merged: { added: addedCount, kept: keptCount, totalKeys: Object.keys(fields).length },
       stored: { mode: c.mode, batch_id: c.batch_id, diff: c.diff },
     });
   }
@@ -152,6 +165,7 @@ exports.main = async (event) => {
         month: got.month,
         file_name: got.file_name,
         source: got.source,
+        manual_fields: got.manual_fields || null,
         created_at: got.created_at,
         caliber_version: got.caliber_version,
         coverage: got.coverage,

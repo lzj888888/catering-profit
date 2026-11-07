@@ -269,6 +269,43 @@ function manualToRows(fields, month) {
   return { rows: [header, row], filled: vals.filter((v) => v > 0).length, header };
 }
 
+/**
+ * 手填幂等键：同样的数再存一次 ⇒ 同一个键 ⇒ 库层判定 duplicate，不会多出一条。
+ * 🔴 键必须由 **fields** 生成。R620 这里误用了已删除的变量 `vals`（Excel 分支遗留），
+ *   运行时 ReferenceError ⇒ 手填保存 100% 失败，而 `node --check` 查不出来（引用错误不是语法错误）。
+ *   所以这里做成纯函数：可单测、可变异，不再让"拼在云端逻辑里"的东西没有判据。
+ * 顺序无关：按 key 排序后再拼，前端表单顺序变了也不会改变键。
+ */
+function manualKey(shopId, month, fields) {
+  const f = fields || {};
+  const body = Object.keys(f).sort().map((k) => {
+    const n = Number(f[k]);
+    return k + '=' + (isFinite(n) ? n : 0);
+  }).join('&');
+  return 'manual:' + shopId + ':' + month + ':' + body;
+}
+
+/**
+ * 分次填的合并规则：老板这个月想起来一个数就补一个，**不能因为第二次只填了外卖就把现金抹掉**。
+ * - base（库里已存的）作为底
+ * - next（这次提交的）同名覆盖，未出现的键原样保留
+ * - next 里显式写 0 视为"这项就是 0"，会覆盖（老板想清零有路可走）
+ */
+function mergeFields(base, next) {
+  const out = {};
+  const b = base || {};
+  const n = next || {};
+  Object.keys(b).forEach((k) => {
+    const v = Number(b[k]);
+    if (isFinite(v) && v > 0) out[k] = v;
+  });
+  Object.keys(n).forEach((k) => {
+    const v = Number(n[k]);
+    if (isFinite(v) && v >= 0) out[k] = v;
+  });
+  return out;
+}
+
 function parseRevenueDaily(rows) {
   const det = detectRevenueDaily(rows);
   if (!det.hit) {
@@ -497,4 +534,5 @@ module.exports = {
   detectRevenueDaily, parseRevenueDaily, parseLedgerText, normDate,
   buildCoverage, monthDaysOf,
   MANUAL_FIELDS, manualToRows, lastDayOfMonth,
+  manualKey, mergeFields,
 };
