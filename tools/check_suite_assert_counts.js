@@ -297,7 +297,7 @@ const CASES = [
   { key: 'check_m3_entry_naming', rel: 'tools/check_m3_entry_naming.js' },   // 16 条（A 9 + B 7）
   { key: 'check_m3_decision', rel: 'tools/check_m3_decision.js' },           // 23 条（A 10 + B 13）
   { key: 'check_import_encoding', rel: 'tools/check_import_encoding.js' },   // 23 条（A 10 + B 8 + C 5）
-  { key: 'check_revenue_daily', rel: 'tools/check_revenue_daily.js' },       // 23 条（A 4 + B 11 + C 3 + D 5）
+  { key: 'check_revenue_daily', rel: 'tools/check_revenue_daily.js' },       // 43 条（A 4 + B 11 + C 3 + D 5 + E 11 + F 9）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

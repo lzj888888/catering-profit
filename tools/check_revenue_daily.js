@@ -134,5 +134,148 @@ ok('D-④ 会员消费不得进公式（进了就是双计：充值已算过一�
 ok('D-⑤ 新赊出的挂账不得进公式（只算收回旧账）',
   R.REVENUE_FORMULA.indexOf('ledgerNew') < 0 && R.REVENUE_FORMULA.indexOf('ledgerRepay') >= 0);
 
+// ===================== E 双口径与 M1 权责制对齐（2026-11-07 李老师裁决）=====================
+//   🔴 这是本轮最重要的一组：李老师原话「充值的不能算作营业收入」「营收算法理论上要和 M1 看齐统一」
+//   ⇒ 营收必须用 M1 权责制口径；充值一律不计；两套口径的差额必须能被四组互换完全解释（无第五项）。
+console.log('\n=== E 组 双口径：营收取 M1 权责制，充值不计入 ===');
+
+ok('E-① 输出的营收是 M1 口径（revenueM1.totalYuan ≠ 表里营业收入，证明没混用）',
+  typeof out.revenueM1.totalYuan === 'number'
+  && Math.abs(out.revenueM1.totalYuan - out.cashInflow.declaredYuan) > 0.01,
+  'revenueM1=' + out.revenueM1.totalYuan + ' / declared=' + out.cashInflow.declaredYuan);
+
+ok('E-② 营收 = 堂食 + 外卖（分项加得上，无暗项）',
+  Math.abs((out.revenueM1.dineInYuan + out.revenueM1.takeawayYuan) - out.revenueM1.totalYuan) < 0.01,
+  out.revenueM1.dineInYuan + '+' + out.revenueM1.takeawayYuan + ' vs ' + out.revenueM1.totalYuan);
+
+ok('E-③ 营收 64,547.08 元 / 6,454,708 分（真数据锚点）',
+  out.revenueM1.totalYuan === 64547.08 && out.revenueM1.totalFen === 6454708,
+  '元=' + out.revenueM1.totalYuan + ' 分=' + out.revenueM1.totalFen);
+
+// 🔴 差分测试：把「充值」改大 10 倍，营收必须纹丝不动；现金流入必须跟着变。
+//   这比看源码强 —— 它直接证明「充值没进营收」这个行为，而不只是「代码里没写」。
+(() => {
+  const rows2 = FIX.rows.map((r) => r.slice());
+  const ci = out.cols.recharge;
+  let touched = 0;
+  for (let i = out.headerRow + 1; i < rows2.length; i++) {
+    const v = Number(String(rows2[i][ci] == null ? '' : rows2[i][ci]).replace(/,/g, '')) || 0;
+    if (v > 0) { rows2[i][ci] = String(v * 10); touched++; }
+  }
+  const out2 = R.parseRevenueDaily(rows2);
+  const revSame = Math.abs(out2.revenueM1.totalYuan - out.revenueM1.totalYuan) < 0.01;
+  const cashGrew = out2.cashInflow.totalYuan - out.cashInflow.totalYuan;
+  ok('E-④ 【差分】充值放大 10 倍 ⇒ 营收一分不变、现金流入跟着涨（证明充值没进营收）',
+    touched > 0 && revSame && cashGrew > 0,
+    '改了 ' + touched + ' 行 | 营收 ' + out2.revenueM1.totalYuan + '(应不变) | 现金流入 +' + Math.round(cashGrew));
+})();
+
+ok('E-⑤ 差额桥恒等式成立：(M1多算 − 老板多算) == M1营收 − 现金流入（无第五项）',
+  out.bridge.identityOk === true
+  && Math.abs(out.bridge.identityDiffYuan - out.bridge.diffYuan) < 0.01,
+  'identity=' + out.bridge.identityDiffYuan + ' diff=' + out.bridge.diffYuan);
+
+ok('E-⑥ 差额 4,846.28 元 / 8.12%（真数据锚点；老板多算 24,740 − M1 多算 29,586.28）',
+  out.bridge.diffYuan === 4846.28 && out.bridge.bossOverSum === 24740
+  && out.bridge.m1OverSum === 29586.28,
+  'diff=' + out.bridge.diffYuan + ' bossOver=' + out.bridge.bossOverSum + ' m1Over=' + out.bridge.m1OverSum);
+
+ok('E-⑦ 现金流入口径自带用途标签 purpose=cash_reconciliation（防上层误当营收）',
+  out.cashInflow.purpose === 'cash_reconciliation'
+  && String(out.cashInflow.note).indexOf('不是经营收入') >= 0);
+
+ok('E-⑧ 未确认含义的「茶楼」不计入营收，单列 pendingOther（不猜）',
+  out.revenueM1.pendingOtherYuan === 550
+  && out.revenueM1.pendingOtherKeys.join(',') === 'teahouse'
+  && out.revenueM1.totalYuan === Math.round((out.revenueM1.dineInYuan + out.revenueM1.takeawayYuan) * 100) / 100);
+
+ok('E-⑨ 源码级：M1 营收公式必须含 储值卡消费/挂账消费/团购/外卖，禁含 充值/挂账还款',
+  (() => {
+    const d = R.M1_DINEIN_KEYS, t = R.M1_TAKEAWAY_KEYS;
+    return d.indexOf('memberConsume') >= 0 && d.indexOf('ledgerNew') >= 0
+      && d.indexOf('grouponMeituan') >= 0 && d.indexOf('grouponDouyin') >= 0
+      && t.length === 3
+      && d.indexOf('recharge') < 0 && d.indexOf('ledgerRepay') < 0;
+  })(),
+  'dineIn=' + R.M1_DINEIN_KEYS.join(',') + ' | takeaway=' + R.M1_TAKEAWAY_KEYS.join(','));
+
+ok('E-⑩ 每班次同时带两套口径（revenueM1Yuan / cashInflowYuan），M1 可直接按班取用',
+  out.shifts.length > 0 && out.shifts.every((s) => typeof s.revenueM1Yuan === 'number'
+    && typeof s.cashInflowYuan === 'number'));
+
+ok('E-⑪ 按日聚合也带 M1 口径（days[].revenueM1Yuan），且逐日加总 == 月度营收',
+  (() => {
+    const sum = Math.round(out.days.reduce((s, d) => s + (d.revenueM1Yuan || 0), 0) * 100) / 100;
+    return out.days.every((d) => typeof d.revenueM1Yuan === 'number')
+      && Math.abs(sum - out.revenueM1.totalYuan) < 0.01;
+  })());
+
+// ===================== F 与 M1 记账页类目同源（防口径漂移）=====================
+//   为什么这组最值钱：M1 的 `TERMS.ledger.income` 才是收入类目的**权威表**。
+//   我们 M3 的营收公式若与它漂移，就会出现「同一个店，M1 算出 A、M3 算出 B」。
+//   ⇒ 不靠「口径说明写在文档里」，而是**机器对齐两张表**。
+console.log('\n=== F 组 与 M1 收入类目同源（TERMS.ledger.income 为权威）===');
+
+const TERMS = require(path.join(ROOT, 'miniprogram/i18n/terms.js')).TERMS;
+const M1_INCOME = TERMS.ledger.income;
+const m1Cat = (c) => (M1_INCOME.find((x) => x.category === c) || {});
+const m1DineItems = (m1Cat('dine_in').items) || [];
+const m1TakeItems = (m1Cat('takeaway').items) || [];
+const m1OtherItems = (m1Cat('other').items) || [];
+
+ok('F-① M1 堂食类目里必须有「储值卡消费 / 挂账消费 / 团购核销」（我们的营收靠这三项才不漏）',
+  m1DineItems.indexOf('储值卡消费') >= 0
+  && m1DineItems.some((x) => x.indexOf('挂账') >= 0)
+  && m1DineItems.some((x) => x.indexOf('团购') >= 0),
+  m1DineItems.join('/'));
+
+ok('F-② 🔴 M1 堂食类目里**不得出现「充值」**（M1 自己都不收充值，M3 更不能收）',
+  m1DineItems.every((x) => x.indexOf('充值') < 0)
+  && m1TakeItems.every((x) => x.indexOf('充值') < 0)
+  && m1OtherItems.every((x) => x.indexOf('充值') < 0));
+
+ok('F-③ 我们的堂食映射表**覆盖 M1 堂食全部细项**，一个不漏（防 M1 加项后我们没跟）',
+  (() => {
+    const mapped = R.M1_DINEIN_MAP.map((x) => x.m1);
+    const miss = m1DineItems.filter((x) => mapped.indexOf(x) < 0);
+    return miss.length === 0;
+  })(),
+  '未映射=' + m1DineItems.filter((x) => R.M1_DINEIN_MAP.map((y) => y.m1).indexOf(x) < 0).join(',') || '无');
+
+ok('F-④ 映射表里每个 m1 项都必须真存在于 M1 堂食类目（防我们编出不存在的类目）',
+  R.M1_DINEIN_MAP.every((x) => m1DineItems.indexOf(x.m1) >= 0),
+  R.M1_DINEIN_MAP.map((x) => x.m1).join(','));
+
+ok('F-⑤ 外卖映射覆盖 M1 前三项，且「其他外卖」作为显式缺口被记录（不假装覆盖）',
+  m1TakeItems.filter((x) => R.M1_TAKEAWAY_MAP.map((y) => y.m1).indexOf(x) >= 0).length === 3
+  && R.M1_TAKEAWAY_MISSING.indexOf('其他外卖') >= 0
+  && m1TakeItems.indexOf('其他外卖') >= 0,
+  'M1 外卖=' + m1TakeItems.join('/') + ' | 缺口=' + R.M1_TAKEAWAY_MISSING.join(','));
+
+ok('F-⑥ 茶楼不在 M1「其他业务收入」类目里 ⇒ 不计入营收的处理正确（不猜）',
+  m1OtherItems.indexOf('茶楼') < 0,
+  'M1 其他业务收入=' + m1OtherItems.join('/'));
+
+ok('F-⑦ keys 从映射表派生（单源）：改映射即改公式，不存在两处维护',
+  (() => {
+    const expect = [];
+    for (const x of R.M1_DINEIN_MAP) for (const k of x.keys) if (expect.indexOf(k) < 0) expect.push(k);
+    return R.M1_DINEIN_KEYS.join(',') === expect.join(',');
+  })(),
+  'derived=' + R.M1_DINEIN_KEYS.join(','));
+
+ok('F-⑧ M1 记账页那条红线还在（「首页营业收入别直接抄」「充值不算收入」）——'
+  + '它是我们两套口径的依据，删了就等于失去立论',
+  (() => {
+    const fh = (TERMS.ledger.dineMode || {}).fastHint || '';
+    return fh.indexOf('别直接抄') >= 0
+      && fh.indexOf('顾客充值的钱不算收入') >= 0
+      && fh.indexOf('按消费那天算') >= 0;
+  })());
+
+ok('F-⑨ 解析器头注必须指向 M1 依据（防后人删了依据只留公式）',
+  SRC.indexOf('TERMS.ledger.income') >= 0 || SRC.indexOf('terms.js') >= 0,
+  '头注指路=' + (SRC.indexOf('terms.js') >= 0));
+
 console.log('\n===== 营收日报表解析守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);
