@@ -59,4 +59,8 @@
 .rev-intro { background: #fff; border-radius: 16rpx; padding: 28rpx 24rpx; margin-bottom: 28rpx; }
 .rev-intro-t { font-size: 28rpx; color: #5a6678; line-height: 1.7; white-space: pre-wrap; }
 .rev-pick { margin-top: 8rpx; }
+/* R620 手填入入口：不是次要链接，是并列的第二条路 —— 所以做成卡片而不是小字 */
+.rev-manual { margin-top: 24rpx; background: #fff; border-radius: 16rpx; padding: 26rpx 24rpx; border-left: 8rpx solid #2b6cd4; }
+.rev-manual-t { display: block; font-size: 32rpx; color: #1a2233; font-weight: 600; }
+.rev-manual-s { display: block; font-size: 28rpx; color: #8792a3; line-height: 1.55; margin-top: 8rpx; }
 .rev-again { margin-top: 32rpx; }

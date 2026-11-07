@@ -91,6 +91,11 @@
       <text class="rev-intro-t">{{t.pickHint}}</text>
     </view>
     <button class="btn primary rev-pick" bindtap="onChoose" disabled="{{loading}}">{{t.pickBtn}}</button>
+    <!-- R620：不会做表的老板走这条 —— 手填几个数就能用，不必有 Excel -->
+    <view class="rev-manual" bindtap="goManual">
+      <text class="rev-manual-t">{{t.manualEntry}}</text>
+      <text class="rev-manual-s">{{t.manualSub}}</text>
+    </view>
   </block>
 
 </view>

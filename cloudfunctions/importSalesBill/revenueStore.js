@@ -139,6 +139,9 @@ async function commit(ctx) {
     file_md5: md5,
     file_name: ctx.fileName || '',
     file_size: ctx.fileSize || 0,
+    // excel = 平台/收银导出的原始表；manual = 老板手填的整月汇总。
+    // 两者都进同一张表，但来源必须留痕 —— 手填的数不能当成"可对账的原始凭证"。
+    source: ctx.source || 'excel',
     caliber_version: CALIBER_VERSION,
     status: 'active',
     superseded_by: '',
@@ -191,6 +194,7 @@ async function getActive(ctx) {
     batch_id: doc._id,
     month: doc.month,
     file_name: doc.file_name || '',
+    source: doc.source || 'excel',
     created_at: doc.created_at || '',
     caliber_version: doc.caliber_version || '',
     coverage: doc.coverage || null,

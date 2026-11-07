@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：249 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：250 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1474,6 +1474,12 @@ const SUITES = [
   //                    不碰 M1（shop_monthly_income / incomeItems）、不硬封账。
   //                    🔴 判源码关键词前必须剥注释 —— 本轮真踩：C-① 被自己注释里的表名击中。
   ['revenue-store', 'tools/check_revenue_store.js'],
+  //   revenue-manual = R620 手填汇总守卫（第 250 套件）。为「不会做 Excel 的老板」开的路，
+  //                    最容易坏在两处：① 口径分叉（手填另写一套营收算法）② 假的好消息
+  //                    （没有日明细/没有表可对账，却被显示成「整月齐全」「零差异」）。
+  //                    所以既判结构，也**真跑**手工转表 + 解析看数对不对；
+  //                    另守一条体验红线：文案里一个会计术语都不许有（老板看不懂等于没写）。
+  ['revenue-manual', 'tools/check_revenue_manual.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

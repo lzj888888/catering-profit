@@ -1,0 +1,39 @@
+<!-- subpkg/biz/revenue/manual/index.wxml —— R620 手填整月汇总
+     🔴 布局原则 = 老板的注意力顺序：
+        ① 先定月份（他要知道自己在记哪个月）
+        ② 店里收的钱（天天见，最好答）
+        ③ 外卖、团购（要去后台看，但页面都给"去哪看"）
+        ④ 充值与挂账（多数人答不上来，默认收起，但摆在那儿让他知道）
+        ⑤ 每个框下面一行小字：这个数去哪看。没有这行，他填不出来。 -->
+<view class="mn">
+
+  <view class="mn-month">
+    <text class="mn-lbl">{{t.monthLabel}}</text>
+    <picker mode="date" fields="month" value="{{month}}" bindchange="onMonthChange">
+      <view class="mn-pick">{{month}}</view>
+    </picker>
+  </view>
+
+  <view class="mn-tip">{{t.tip}}</view>
+
+  <view class="mn-group" wx:for="{{groups}}" wx:key="key" wx:for-item="g" wx:for-index="gi">
+    <view class="mn-gh" bindtap="onToggleGroup" data-key="{{g.key}}">
+      <text class="mn-gt">{{g.title}}</text>
+      <text class="mn-gx" wx:if="{{g.collapse}}">{{openMap[g.key] ? t.collapse : t.expand}}</text>
+    </view>
+    <text class="mn-ghint" wx:if="{{openMap[g.key] && g.hint}}">{{g.hint}}</text>
+
+    <block wx:if="{{openMap[g.key]}}">
+      <view class="mn-item" wx:for="{{g.items}}" wx:key="key" wx:for-item="it" wx:for-index="ii">
+        <text class="mn-il">{{it.label}}</text>
+        <input class="mn-in" type="{{it.kb}}" value="{{it.val}}"
+               placeholder="0.00" bindinput="onInput" data-g="{{gi}}" data-i="{{ii}}" />
+        <text class="mn-ih" wx:if="{{it.hint}}">{{it.hint}}</text>
+      </view>
+    </block>
+  </view>
+
+  <button class="btn primary mn-save" bindtap="onSave" disabled="{{saving}}">{{t.save}}</button>
+  <text class="mn-note">{{t.note}}</text>
+
+</view>

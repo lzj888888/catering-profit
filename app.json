@@ -85,6 +85,7 @@
         "takeaway/index",
         "groupon/index",
         "revenue/index",
+        "revenue/manual/index",
         "diag/input",
         "diag/result",
         "ai/consent"

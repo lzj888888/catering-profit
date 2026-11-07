@@ -131,6 +131,8 @@ Page({
       coverTitle: T.coverTitle,
       pickBtn: T.pickBtn,
       pickHint: T.pickHint,
+      manualEntry: T.manualEntry,
+      manualSub: T.manualSub,
       empty: T.empty,
       notMine: T.notMine,
       again: T.again,
@@ -179,6 +181,17 @@ Page({
 
   onAgain() {
     this.setData({ r: null, bridgeOpen: false });
+  },
+
+  // R620：不会做表的老板走手填
+  goManual() {
+    wx.navigateTo({ url: '/subpkg/biz/revenue/manual/index' });
+  },
+
+  // 从手填页回来要重新读库（他刚填的应该立刻出现）
+  onShow() {
+    if (this._loaded) this.loadStored();
+    this._loaded = true;
   },
 
   // 选文件 → 上传云存储 → importSalesBill 解析 + **落库**（R619）

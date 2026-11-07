@@ -73,6 +73,67 @@ exports.main = async (event) => {
   const owner = await assertShopOwner(db, shopId, userId);
   if (owner.error) return fail(owner.error, owner.msg);
 
+  // ===== 1c. R620 手填汇总分支：老板不会 Excel，就别逼他导表 =====
+  // 🔴 关键设计：手填**不另写一套算法**，而是把表单拼成「一行营收日报表」再走同一个
+  //    parseRevenueDaily ⇒ 口径与 Excel 链路逐字一致，将来改口径两边同时改，不会分叉。
+  //    （豆包批评里最狠的一条就是"明细一套算法、汇总另一套"，这里从结构上堵掉。）
+  if (event && event.action === 'revenue_save_manual') {
+    const input = event.input || event;
+    const month = String(input.month || '').trim();
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      return fail(ERROR_CODES.INVALID_PARAM, '请先选是哪个月（格式 YYYY-MM）');
+    }
+    const built = RevenueDaily.manualToRows(input.fields || {}, month);
+    if (!built.filled) {
+      return fail(ERROR_CODES.INVALID_PARAM, '一个数都没填，先填至少一项再保存');
+    }
+    const lastDom = RevenueDaily.lastDayOfMonth(month).slice(8);
+    const parsed = RevenueDaily.parseRevenueDaily(built.rows);
+    if (!parsed.ok || parsed.isEmpty) {
+      return fail(ERROR_CODES.INVALID_PARAM, '这组数没算出来，检查一下有没有填了但格式不对的项');
+    }
+    // 🔴 手填没有日明细、也没有"表里营业收入"可对账 ⇒ 这两处必须显式标成未知，
+    //   不能让它显示成"整月 30 天齐全"或"对账零差异"（那是假的好消息）。
+    parsed.coverage = {
+      ok: false, month, firstDate: month + '-01', lastDate: month + '-' + lastDom,
+      dayCount: 0, monthDays: Number(lastDom), missingDates: [], missingCount: 0,
+      tailMissingDates: [], tailMissingCount: 0, partial: false, complete: false,
+      manual: true,
+      note: '这组数是你手填的整月汇总，没有每天明细',
+    };
+    parsed.cashInflow.pass = null;         // 手填没有"表里营业收入"可比，pass 未知
+    parsed.cashInflow.checkedShifts = 0;
+    parsed.source = 'manual';
+    // 哪些主要渠道还空着（老板不用懂术语，但要知道自己漏了什么）
+    const CORE_KEYS = ['cash', 'scan', 'waimaiMeituan', 'waimaiJd', 'waimaiTaobao',
+      'grouponMeituan', 'grouponDouyin'];
+    const F = input.fields || {};
+    const missingChannels = CORE_KEYS.filter((k) => !(Number(F[k]) > 0));
+
+    const c = await RevenueStore.commit({
+      db,
+      userId,
+      shopId,
+      fileMd5: 'manual:' + shopId + ':' + month + ':' + JSON.stringify(vals),
+      fileName: '手填汇总 ' + month,
+      fileSize: 0,
+      source: 'manual',
+      result: parsed,
+      confirm: input.confirm === true,
+    });
+    if (!c.ok) return fail(ERROR_CODES.INVALID_PARAM, '这组数存不下来，稍后再试');
+    if (c.mode === 'need_confirm') {
+      return ok({
+        revenue_manual: parsed, need_confirm: true, diff: c.diff,
+        hint: '这个月已经有数据了，换成手填的这份会让总额变化，确认后才覆盖（旧版本保留可查）。',
+      });
+    }
+    return ok({
+      revenue_manual: parsed,
+      missingChannels,
+      stored: { mode: c.mode, batch_id: c.batch_id, diff: c.diff },
+    });
+  }
   // ===== 1b. R619 读库分支：进页面直接看上次导的，不用重传 =====
   // 🔴 必须放在「校验 fileID / 下载文件」**之前** —— 读库没有文件，走后面的流程会因为缺 fileID 直接失败。
   if (event && event.action === 'revenue_get') {
@@ -90,6 +151,7 @@ exports.main = async (event) => {
         batch_id: got.batch_id,
         month: got.month,
         file_name: got.file_name,
+        source: got.source,
         created_at: got.created_at,
         caliber_version: got.caliber_version,
         coverage: got.coverage,

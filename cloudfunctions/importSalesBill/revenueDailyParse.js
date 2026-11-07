@@ -230,6 +230,45 @@ function buildCoverage(dates) {
   };
 }
 
+// ===== E 手填汇总 → 一行日报表（R620）=====
+// 为什么要有：大部分餐饮老板不会做 Excel。手填不是"补充入口"，是主路之一。
+// 🔴 但手填**不另写一套营收算法** —— 把表单拼成「一行营收日报表」，再走同一个
+//    parseRevenueDaily。这样改口径时两条路同时生效，永远不会出现两套数。
+// 字段白名单照 COL_MAP 的列名来：前端只能传这些 key，不能自造列名绕过口径。
+const MANUAL_FIELDS = [
+  ['cash', '现金'], ['scan', '扫码'], ['recharge', '充值'],
+  ['memberConsume', '会员消费'], ['ledgerNew', '挂账人/金额'],
+  ['ledgerRepay', '挂账还款人/金额'], ['grouponMeituan', '美团团购'],
+  ['grouponDouyin', '抖音团购'], ['waimaiMeituan', '美团外卖'],
+  ['waimaiJd', '京东外卖'], ['waimaiTaobao', '淘宝闪购'],
+];
+
+function lastDayOfMonth(month) {
+  const y = Number(String(month).slice(0, 4));
+  const m = Number(String(month).slice(5, 7));
+  if (!y || !m) return '';
+  const d = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return month + '-' + pad2(d);
+}
+
+/**
+ * 手填字段 → 解析器能吃的二维矩阵（表头 + 一行汇总）
+ * @param {object} fields {cash: 123, scan: 456, ...}
+ * @param {string} month  'YYYY-MM'
+ * @returns {{rows: Array, filled: number, header: Array}}
+ */
+function manualToRows(fields, month) {
+  const f = fields || {};
+  const header = ['日期', '班次'].concat(MANUAL_FIELDS.map((x) => x[1]));
+  const vals = MANUAL_FIELDS.map((x) => {
+    const n = Number(f[x[0]]);
+    return isFinite(n) && n > 0 ? n : 0;
+  });
+  // 日期取当月最后一天：手填是整月汇总，没有"哪一天"的概念
+  const row = [lastDayOfMonth(month), '汇总'].concat(vals);
+  return { rows: [header, row], filled: vals.filter((v) => v > 0).length, header };
+}
+
 function parseRevenueDaily(rows) {
   const det = detectRevenueDaily(rows);
   if (!det.hit) {
@@ -457,4 +496,5 @@ module.exports = {
   BRIDGE_BOSS_OVER, BRIDGE_M1_OVER,
   detectRevenueDaily, parseRevenueDaily, parseLedgerText, normDate,
   buildCoverage, monthDaysOf,
+  MANUAL_FIELDS, manualToRows, lastDayOfMonth,
 };
