@@ -1,0 +1,15 @@
+守卫基线 RC=0（应 0）
+  ① 删掉编码嗅探（回到直接喂 buffer） ⇒ RC=1 转红=True OK
+      点名：❌ B-① GBK 文本走 type:"string" 分支（不是把二进制硬塞给 XLSX） ｜ {"type":"buffer","isString":false}
+      点名：❌ B-② matrix 表头 14 列全对（中文未坏） ｜ R1=["__BINARY_BRANCH__"]
+  ② GBK 回退失效（直接返回 utf8） ⇒ RC=1 转红=True OK
+      点名：❌ A-① 真美团 GBK CSV ⇒ 识别为 gbk，且解出正确表头 ｜ unknown / 首列=����
+      点名：❌ A-② GBK 解出的正文含正确菜名（不是乱码）
+  ③ 删掉 zip/OLE 头判断（xlsx 会被当文本） ⇒ RC=1 转红=True OK
+      点名：❌ A-⑥ 真 xlsx（PK 头）⇒ 返回 null，必须原路交 XLSX.read
+      点名：❌ A-⑦ xls（OLE 头 D0CF11E0）⇒ 返回 null
+  ④ 把 UTF-8 解码提到 zip 判断之前（顺序错） ⇒ RC=1 转红=True OK
+      点名：❌ C-③ 源码层：zip/OLE 头的判断在文本解码之前（顺序错了正常 xlsx 会全乱）
+还原后 RC=0（应 0）
+变异复核：4/4 真命中
+PASS 源码逐字节还原

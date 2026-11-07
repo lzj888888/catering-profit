@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：244 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：245 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1446,6 +1446,10 @@ const SUITES = [
   //   m3-decision      = R615 M3 决策台守卫：该动哪道菜的判据（中位数分界/亏损必低/
   //                      免费档不凑毛利/样本不足 fail-closed）+ 外卖瀑布 + 涨价试算。
   ['m3-decision', 'tools/check_m3_decision.js'],
+  //   import-encoding  = R615 导入编码守卫：平台后台下的是 GBK CSV，XLSX 按单字节解 ⇒
+  //                      中文全毁 ⇒ 判不出形态 ⇒ 只回「无法识别平台」。守「文本先嗅探再 read」
+  //                      与「zip/OLE 不被文本路径吞」，并用仓里真 GBK 美团表端到端验证。
+  ['import-encoding', 'tools/check_import_encoding.js'],
   //   new-cards      = 批次 3 三块新 UI 的**运行时**守卫（L2 页面桩：真跑 subpkg/biz/month/result.js）。
   //                    上面两套是静态文本断言，只能证「源码里有这一句」；证不了
   //                    「show 判据写错 ⇒ 卡片永不显示、而字符串一个没少」这类病。

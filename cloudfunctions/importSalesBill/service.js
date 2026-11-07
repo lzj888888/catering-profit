@@ -51,11 +51,55 @@ function fmtCell(cell) {
   return String(cell).trim();
 }
 
+// ===================== CSV 编码嗅探（R615 · 队列 #9）=====================
+// 🔴 为什么必须有：老板从平台后台下的是 **GBK 编码的 CSV**（实测美团「商品」表
+//   `mt_goods_20260907_20260913.csv`，md5 347fc8ea…，GBK 无 BOM）。
+//   `XLSX.read(buffer)` 对无 BOM 的 CSV 走单字节路径 ⇒ GBK 双字节被逐字节当 Latin-1 解，
+//   `日期`→`ÈÕÆÚ`、`煮小酥肉`→`ÖóÐ¡ËÖÈâ`，中文全毁 ⇒ 后面形态/列名判据再对也判不出。
+//   R242 当时实测「四道阻断」，其中形态别名与 YYYYMMDD 日期后续已修，
+//   到本轮**只剩编码这一道**（真跑：修好后能判出 waimai_goods，出 3 组 10 行）。
+// 🔴 为什么用 TextDecoder 而不是 iconv-lite：Node 自带全 ICU，`new TextDecoder('gbk')`
+//   零依赖、不加包体积、不用改 package.json 与部署清单。运行时不支持时 catch 住降级。
+// 🔴 为什么先判 zip/OLE 头：xlsx 是 zip（'PK'）、xls 是 OLE（D0 CF）。二进制走文本解码必坏，
+//   必须原路交给 XLSX.read。这条顺序错了会把正常 xlsx 全解成乱码。
+function countReplacement(s) {
+  let n = 0;
+  for (let i = 0; i < s.length; i++) if (s.charCodeAt(i) === 0xFFFD) n++;
+  return n;
+}
+
+/**
+ * 若 buffer 是文本类（CSV/TSV），返回 { text, encoding }；是 xlsx/xls 二进制则返回 null。
+ * 判据按「替换字符个数」比较，不靠猜：UTF-8 解出的坏字符比 GBK 多 ⇒ 认定原文件是 GBK。
+ */
+function decodeTextBuffer(buffer) {
+  const b = buffer;
+  if (!b || b.length < 4) return null;
+  // xlsx = ZIP（PK\x03\x04）；xls = OLE（D0 CF 11 E0）⇒ 不是文本，原路返回
+  if ((b[0] === 0x50 && b[1] === 0x4B) || (b[0] === 0xD0 && b[1] === 0xCF)) return null;
+  // Excel「Unicode 文本」导出是 UTF-16LE + BOM(FF FE)，先认掉，免得被当 GBK
+  if (b[0] === 0xFF && b[1] === 0xFE) return { text: b.toString('utf16le').replace(/^\uFEFF/, ''), encoding: 'utf16le' };
+  const u8 = b.toString('utf8');
+  const bad8 = countReplacement(u8);
+  if (bad8 === 0) return { text: u8, encoding: 'utf8' };
+  try {
+    const gbk = new TextDecoder('gbk').decode(b);
+    if (countReplacement(gbk) < bad8) return { text: gbk, encoding: 'gbk' };
+  } catch (e) {
+    // 运行时不支持 gbk：保持原样，让后面的「缺哪几列」诊断去说话，不假装成功
+  }
+  return { text: u8, encoding: 'unknown' };
+}
+
 /**
  * xlsx Buffer → matrix.json 同构结构 { sheets: { 表名: { rows, max_row, max_col } } }。
  */
 function bufferToMatrix(buffer) {
-  const wb = XLSX.read(buffer, { type: 'buffer', cellDates: true });
+  // 🔴 文本类先做编码嗅探再交给 XLSX：GBK CSV 直接喂 buffer 会中文全毁（见上方说明）。
+  const dec = decodeTextBuffer(buffer);
+  const wb = dec
+    ? XLSX.read(dec.text, { type: 'string', cellDates: true })
+    : XLSX.read(buffer, { type: 'buffer', cellDates: true });
   const sheets = {};
   for (const name of wb.SheetNames) {
     const ws = wb.Sheets[name];
@@ -994,6 +1038,7 @@ function detectDupImport(existing, incoming, platform) {
 
 module.exports = {
   bufferToMatrix, detectPlatform, guessHeader, parseBillMatrix, checkGradeA, SALES_SCHEMA, toNum,
+  decodeTextBuffer, countReplacement,   // R615：CSV 编码嗅探单源（守卫直接验，防「GBK 又坏了」无人知）
   pickSheet, normDate, PLATFORM_PROFILE,   // R245：P4 按签名找 sheet / 日期归一
   detectPlatformInRows, detectPlatformInMatrix,   // R250：两级表头（京东订单级）⇒ 平台判定逐行试签名，不靠 guessHeader 选行
   PLATFORM_AMBIGUOUS,                            // R253：多平台同时命中哨兵（上层必须显式比较，truthy 陷阱）
