@@ -26,6 +26,8 @@ const { checkImportShape, coveredDates } = require('../../../utils/importSanity.
 const AmountInput = require('../../../utils/amountInput.js');
 
 const TK = TERMS.ledger.takeaway;
+// R615 M3 决策台：外卖瀑布（纯函数，零云函数改动）
+const M3D = require('../../../utils/m3Decision.js');
 
 // 🔴 表形态**机器值**（必须与云函数 cloudfunctions/importSalesBill/service.js::DISH_SHAPES 逐字一致）。
 //   契约：云函数返回的 `shape` 是 **机器值**（'dish_sales' / 'combo_detail' / 'waimai_goods'），
@@ -185,6 +187,8 @@ Page({
       receipt: TK.receipt,
       profit: TK.profit,
       receiptRate: TK.receiptRate,
+      wfTitle: TK.wfTitle,
+      wfReceipt: TK.wfReceipt,
       dishCost: TK.dishCost,
       packCost: TK.packCost,
       revenue: TK.revenue,
@@ -571,6 +575,24 @@ Page({
         items,
         // A9：明细未下发 ⇒ 出「已算出汇总 + 展开入口」，不出空白区（空白区会被当成"坏了"）
         itemsLocked: !isPaid,
+        // R615 M3 决策台 Q3：把「到手率」拆成瀑布 —— 佣金/配送/补贴/推广各占几个点，
+        //   并给「到手率再低几个点就白干」。占比 + 到手率 ≡ 100%（守卫 B-⑩ 钉住）。
+        waterfall: (() => {
+          const wf = M3D.buildTakeawayWaterfall(result.cash);
+          if (!wf.ok) return null;
+          const LABEL = {
+            commission: TK.wfItemCommission, delivery: TK.wfItemDelivery,
+            deliverySubsidy: TK.wfItemDeliverySubsidy,
+            subsidyMerchant: TK.wfItemSubsidyMerchant, promo: TK.wfItemPromo,
+          };
+          return {
+            receiptPct: wf.receiptRatePct,
+            breakEvenText: wf.breakEvenDropPct == null ? ''
+              : String(TK.wfBreakEven).replace('{pct}', String(wf.breakEvenDropPct)),
+            items: wf.items.filter((x) => x.pct > 0)
+              .map((x) => ({ key: x.key, pct: x.pct, label: LABEL[x.key] || x.key })),
+          };
+        })(),
       },
     });
   },

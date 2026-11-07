@@ -78,3 +78,17 @@
 .ci-right { display: flex; align-items: center; flex-shrink: 0; margin-left: 12rpx; }
 .ci-meta { font-size: 28rpx; color: #6b7a90; margin-right: 16rpx; }
 .ci-profit { font-size: 30rpx; color: #1e9e5a; font-weight: 600; }
+
+/* ===== R615 M3 决策台 Q3：外卖瀑布 =====
+   条高 28rpx、圆角 8rpx；颜色沿用页面既有色系（暖=平台费用、绿=到手）。 */
+.wf-bar { display: flex; height: 28rpx; border-radius: 8rpx; overflow: hidden; margin: 12rpx 4rpx; background: #eef2f7; }
+.wf-seg { height: 100%; }
+.wf-commission { background: #c2701a; }
+.wf-delivery { background: #2a7fa8; }
+.wf-deliverySubsidy { background: #7f77dd; }
+.wf-subsidyMerchant { background: #b0528a; }
+.wf-promo { background: #8792a3; }
+.wf-receipt { background: #1a7d55; }
+.wf-legend { display: flex; flex-wrap: wrap; margin: 4rpx 4rpx 12rpx; }
+.wf-li { font-size: 28rpx; color: #5a6678; margin-right: 18rpx; }
+.wf-li-receipt { color: #1a7d55; font-weight: 600; }

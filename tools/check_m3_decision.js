@@ -54,6 +54,18 @@ ok('A-⑦ 免费档分支不产出毛利结论（不产 gainFen、不调 marginO
   const seg = i >= 0 && j > i ? DEC_SRC.slice(i, j) : '';
   return seg.length > 0 && seg.indexOf('gainFen:') < 0 && seg.indexOf('marginOf(') < 0;
 })());
+ok('A-⑧ 外卖页接了瀑布：require 决策模块 + onCalc 里算 waterfall + 两个术语键已登记',
+  /const M3D = require\('\.\.\/\.\.\/\.\.\/utils\/m3Decision\.js'\)/.test(fs.readFileSync(P('subpkg/biz/takeaway/index.js'), 'utf8'))
+  && /M3D\.buildTakeawayWaterfall\(result\.cash\)/.test(fs.readFileSync(P('subpkg/biz/takeaway/index.js'), 'utf8'))
+  && /wfTitle: TK\.wfTitle/.test(fs.readFileSync(P('subpkg/biz/takeaway/index.js'), 'utf8')));
+ok('A-⑨ 外卖 wxml 真渲染瀑布条（分段宽度 = 各项占比，含到手段）',
+  /\{\{view\.waterfall\.items\}\}/.test(fs.readFileSync(P('subpkg/biz/takeaway/index.wxml'), 'utf8'))
+  && /wf-\{\{item\.key\}\}/.test(fs.readFileSync(P('subpkg/biz/takeaway/index.wxml'), 'utf8'))
+  && /wf-receipt/.test(fs.readFileSync(P('subpkg/biz/takeaway/index.wxml'), 'utf8')));
+ok('A-⑩ 涨价影响面有「每 100 份毛利少」（值由成本差×100 算出，不是手写文案）',
+  /hundred_delta: api\.fenToYuan\(\(a\.new_total_cost_fen - a\.old_total_cost_fen\) \* 100, 2\)/
+    .test(fs.readFileSync(P('subpkg/tools/metrics/impact.js'), 'utf8'))
+  && /\{\{item\.hundred_delta\}\}/.test(fs.readFileSync(P('subpkg/tools/metrics/impact.wxml'), 'utf8')));
 
 // ===== B 纯函数真跑（合成 12 道菜：四格各 3 道）=====
 console.log('===== B 判据真跑 =====');

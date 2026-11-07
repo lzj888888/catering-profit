@@ -807,6 +807,17 @@ const TERMS = {
       receipt: '商家实收',
       profit: '单均理论利润',
       receiptRate: '到手率',
+      // ===== R615 M3 决策台 Q3：外卖瀑布（平台拿走了多少）=====
+      //   四项费用在 takeawayDerive 里本来就分开算（commission/delivery/deliverySubsidy/
+      //   subsidyMerchant/promo），但页面只给了「到手率」一个数 ⇒ 老板不知道贵在哪。
+      wfTitle: '平台拿走了多少',
+      wfReceipt: '你到手',
+      wfItemCommission: '佣金',
+      wfItemDelivery: '配送费',
+      wfItemDeliverySubsidy: '配送补贴',
+      wfItemSubsidyMerchant: '商家补贴',
+      wfItemPromo: '推广费',
+      wfBreakEven: '到手率再低 {pct} 个点，这单就白干',
       dishCost: '菜品成本',
       packCost: '包材成本',
       revenue: '收入',
@@ -2175,6 +2186,9 @@ const TERMS = {
     impactPrice: '现售价',
     impactCost: '成本',
     impactCostChange: '原成本 → 新成本',
+    // ===== R615 M3 决策台 S：涨价试算（售价不变时，每卖 100 份的毛利影响）=====
+    //   为什么用 100 份：不依赖销量数据也能给出量级感（老板心里有数"一天卖多少碗"）。
+    impactPer100: '售价不变时，每卖 100 份毛利少',
     impactMargin: '毛利率',
     impactBelowBand: (x) => `已跌破本业态参考带下限（${x}%）`,
     impactDriftDown: (o, n) => `档位 ${o}→${n}`,

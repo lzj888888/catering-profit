@@ -38,6 +38,7 @@ Page({
       impactEmpty: TERMS.card.impactEmpty,
       impactCard: TERMS.card.impactCard,
       impactPrice: TERMS.card.impactPrice,
+      impactPer100: TERMS.card.impactPer100,
       impactCostChange: TERMS.card.impactCostChange,
       impactMargin: TERMS.card.impactMargin,
       cur: '¥',
@@ -85,6 +86,8 @@ Page({
           card_code: a.card_code,
           name: a.name || '',
           price: a.price_fen > 0 ? api.fenToYuan(a.price_fen, 2) : '—',
+          // R615 决策台 S：售价不变时，每卖 100 份的毛利减少额（成本差 × 100 份）
+          hundred_delta: api.fenToYuan((a.new_total_cost_fen - a.old_total_cost_fen) * 100, 2),
           old_cost: api.fenToYuan(a.old_total_cost_fen, 2),
           new_cost: api.fenToYuan(a.new_total_cost_fen, 2),
           old_margin: oldM != null ? oldM.toFixed(1) : '—',

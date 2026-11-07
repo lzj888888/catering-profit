@@ -108,6 +108,19 @@
     <view class="cell"><text class="lbl">{{t.profit}}</text><text class="val strong">{{t.cur}}{{view.profit}}</text></view>
     <view class="cell"><text class="lbl">{{t.receiptRate}}</text><text class="val">{{view.receipt_rate}}%</text></view>
     <view class="warn" wx:if="{{view.rate_low}}">{{t.rateLowHint}}</view>
+    <!-- 🔴 R615 M3 决策台 Q3：平台拿走了多少（瀑布）—— 到手率一个数看不出贵在哪 -->
+    <block wx:if="{{view.waterfall}}">
+      <view class="sec">{{t.wfTitle}}</view>
+      <view class="wf-bar">
+        <view class="wf-seg wf-{{item.key}}" wx:for="{{view.waterfall.items}}" wx:key="key" style="width:{{item.pct}}%"></view>
+        <view class="wf-seg wf-receipt" style="width:{{view.waterfall.receiptPct}}%"></view>
+      </view>
+      <view class="wf-legend">
+        <text class="wf-li" wx:for="{{view.waterfall.items}}" wx:key="key">{{item.label}} {{item.pct}}%</text>
+        <text class="wf-li wf-li-receipt">{{t.wfReceipt}} {{view.waterfall.receiptPct}}%</text>
+      </view>
+      <view class="muted" wx:if="{{view.waterfall.breakEvenText}}">{{view.waterfall.breakEvenText}}</view>
+    </block>
   </block>
   <block wx:if="{{result && mode === 'accrual'}}">
     <view class="cell"><text class="lbl">{{t.revenue}}</text><text class="val">{{t.cur}}{{view.revenue}}</text></view>
