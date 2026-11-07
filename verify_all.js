@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：248 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：249 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1466,6 +1466,14 @@ const SUITES = [
   //                    本套件 5 场景 18 条断言钉住运行时值（正常/缺项/边界 20%/老后端无 three_cost/无账本），
   //                    5 条变异全部点名转红 ⇒ 证明断言有鉴别力；变异体只在 new Function 内存加载、不落盘。
   ['new-cards', 'tools/check_m1_new_cards.js'],
+  //   revenue-store  = R619 营收落库守卫（第 249 套件）。落库一旦错就是**静默错账**
+  //                    （老板看不出来，下次打开还以为是对的），所以不判"代码写了什么"，
+  //                    而是**桩一个 db 真跑落库逻辑**看行为：同文件重复导=幂等不新增 /
+  //                    同月换文件不确认=一行不写 / 确认后旧版降级但不物理删 / 跨月与跨店互不干扰 /
+  //                    读库只认 active 且不带月时取最近一次。另守两条红线：
+  //                    不碰 M1（shop_monthly_income / incomeItems）、不硬封账。
+  //                    🔴 判源码关键词前必须剥注释 —— 本轮真踩：C-① 被自己注释里的表名击中。
+  ['revenue-store', 'tools/check_revenue_store.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

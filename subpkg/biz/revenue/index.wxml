@@ -11,6 +11,9 @@
   <!-- ===== 结果态 ===== -->
   <block wx:if="{{r}}">
 
+    <!-- R619：这组数哪来的（导一次以后都能看，来源必须写清楚） -->
+    <view class="rev-src" wx:if="{{srcNote}}">{{srcNote}}</view>
+
     <!-- ① 主数：经营营收（M1 权责制） -->
     <view class="rev-hero">
       <text class="rev-hero-label">{{t.mainLabel}}</text>

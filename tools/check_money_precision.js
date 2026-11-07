@@ -322,6 +322,11 @@ const REGISTRY = {
   'utils/importSanity.js': {
     'IDENT|avgYuan * 100|#1': ['ratio', 'R303 一级校验：均价（元）归一到 2 位小数后再回报 —— **不是**元→分换算'],
   },
+  // R619 营收落库：差额摘要要把「新总额 − 旧总额」归一到 2 位小数再给老板看，
+  //   否则 64547.08 - 65000 这种会露出 0.3000000000000043 之类的浮点尾巴。
+  'cloudfunctions/importSalesBill/revenueStore.js': {
+    'PAREN|) * 100|#1': ['money', '重导差异摘要：总额差（元）归一到 2 位小数后再展示'],
+  },
   'utils/takeaway.js': {
     'PAREN|) * 100|#1': ['money', '外卖对账差额（元）归一到 2 位小数'],
     'PAREN|) * 100|#2': ['money', '打包费合计（元）归一到 2 位小数'],

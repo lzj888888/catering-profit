@@ -33,6 +33,8 @@ const COLLECTIONS = [
   'shop_ai_consent', 'shop_ai_insight',
   // A3（2026-11-05）：诊断台账 + 单次诊断额度（与单源 collections.js 同步）
   'shop_diagnosis_report', 'shop_diagnosis_credit',
+  // R619（2026-11-08）：营收日报表落库，一月一条 active（与单源 collections.js 同步）
+  'revenue_batch',
 ];
 
 // ===== 2. 索引定义（复合/唯一按批次 0 §2.4 索引段）=====
@@ -169,6 +171,11 @@ const INDEXES = {
   ],
   shop_diagnosis_credit: [
     { name: 'idx_dgc_user', keys: { user_id: 1 } },
+  ],
+  // R619：营收批次（与单源 collections.js 同步；不带 unique，同月允许多个历史版本）
+  revenue_batch: [
+    { name: 'idx_rvb_key', keys: { user_id: 1, shop_id: 1, month: 1, status: 1 } },
+    { name: 'idx_rvb_file', keys: { user_id: 1, shop_id: 1, file_md5: 1, status: 1 } },
   ],
 };
 

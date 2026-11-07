@@ -39,6 +39,11 @@ const COLLECTIONS = [
   //        额度字段混在同一条 doc 里，一旦续费就会被连带清掉（用户买了单次、续了月卡、额度消失）。
   //        额度是资产凭证，必须与订阅到期时间**物理隔离**。
   'shop_diagnosis_report', 'shop_diagnosis_credit',
+  // R619（2026-11-08）：营收日报表落库 —— 一个月一条 active，重导生成新版本、旧的标 superseded。
+  //   🔴 为什么不并进 shop_monthly_income：那是 M1 月度账的收入明细，
+  //      两边同时写同一笔收入会重复计算。先独立成表、留版本可追，
+  //      等确定「谁是权威源、老数据怎么迁」再谈合并（三司会诊的结论）。
+  'revenue_batch',
 ];
 
 // ===== 2. 索引定义 =====
@@ -211,6 +216,12 @@ const INDEXES = {
   ],
   shop_diagnosis_credit: [
     { name: 'idx_dgc_user', keys: { user_id: 1 } },
+  ],
+  // R619：营收批次。两个查询：按「店+月+active」取当前版本；按「店+文件md5」判重复导入。
+  //   都不带 unique —— 同月允许有多个 superseded 历史版本，唯一性由代码保证（一条 active）。
+  revenue_batch: [
+    { name: 'idx_rvb_key', keys: { user_id: 1, shop_id: 1, month: 1, status: 1 } },
+    { name: 'idx_rvb_file', keys: { user_id: 1, shop_id: 1, file_md5: 1, status: 1 } },
   ],
 };
 

@@ -35,6 +35,8 @@ const { parse: parseDSI1, groupByPlatformDate: parseDSI1Groups } = require('./ds
 //   否则会被 `stripComments` 当成块注释开头、把中间大段代码吞掉 —— 本轮真踩过，
 //   表现是幂等/pubic-surface/账单解析三个守卫同时红，且报的位置数字全都对不上。
 const RevenueDaily = require('./revenueDailyParse');
+// R619：营收日报表的落库/读取（只碰 revenue_batch 这一张新表，M1 一行不动）
+const RevenueStore = require('./revenueStore');
 
 // ===== R271：跨平台重复导入检测（查库版）=====
 // 为什么要单独一层：detectDupImport 是**零 IO 纯函数**（可直测），IO 全隔离在本函数内。
@@ -70,6 +72,38 @@ exports.main = async (event) => {
   const shopId = event && event.shop_id;
   const owner = await assertShopOwner(db, shopId, userId);
   if (owner.error) return fail(owner.error, owner.msg);
+
+  // ===== 1b. R619 读库分支：进页面直接看上次导的，不用重传 =====
+  // 🔴 必须放在「校验 fileID / 下载文件」**之前** —— 读库没有文件，走后面的流程会因为缺 fileID 直接失败。
+  if (event && event.action === 'revenue_get') {
+    const month = String(event.month || '').trim();
+    // month 可留空 ⇒ 取该店最近一次导入的（页面一进来就得有东西看，不能让老板先选月）
+    if (month && !/^\d{4}-\d{2}$/.test(month)) {
+      return fail(ERROR_CODES.INVALID_PARAM, 'month 格式应为 YYYY-MM（或留空取最近一次）');
+    }
+    const got = await RevenueStore.getActive({ db, userId, shopId, month });
+    if (!got) return ok({ revenue_stored: null, month });
+    // 与上传分支**同一形状**：前端 buildView 不用改两套
+    const rd = got.result || {};
+    return ok({
+      revenue_stored: {
+        batch_id: got.batch_id,
+        month: got.month,
+        file_name: got.file_name,
+        created_at: got.created_at,
+        caliber_version: got.caliber_version,
+        coverage: got.coverage,
+        revenueM1: rd.revenueM1,
+        cashInflow: rd.cashInflow,
+        bridge: rd.bridge,
+        channelYuan: rd.channelYuan,
+        days: rd.days,
+        shiftCount: rd.shiftCount,
+        unclassified: rd.unclassified,
+      },
+      from_store: true,
+    });
+  }
 
   // ===== 2. 校验 =====
   const v = validateInput(event);
@@ -107,9 +141,8 @@ exports.main = async (event) => {
   if (revOut) {
     // 🔴 回传前一刀切：shifts 明细不回传（24 班次 × 17 列没必要全给前端），
     //   只给「日级汇总 + 两套口径 + 差额桥 + 渠道」。老板要看的是结论，不是原始表。
-    return ok({
-      revenue_daily: {
-        shape: 'revenue_daily',
+    const payload = {
+      shape: 'revenue_daily',
         // A 现金流入（老板对现金账口径，**不是营收**）
         cashInflow: {
           formula: revOut.cashInflow.formula,
@@ -151,8 +184,52 @@ exports.main = async (event) => {
         unparsedLedger: (revOut.unparsedLedger || []).slice(0, 10),
         summaryOnlyRows: (revOut.summaryOnlyRows || []).slice(0, 10),
         client_request_id: clientRequestId || '',
-      },
-    });
+    };
+
+    // ===== R619 落库：commit=true 才存（默认 false ⇒ 与 R616 只读行为完全一致，向后兼容）=====
+    // 🔴 为什么要 confirm 两道：（豆包批评）"唯一约束不等于幂等"，同月换文件必须让老板看见
+    //   差异再决定，不能静默覆盖。同文件重复导则直接幂等，不弹任何东西。
+    const src = (event && event.input) || event || {};
+    if (src.commit === true) {
+      const crypto = require('crypto');
+      const fileMd5 = crypto.createHash('md5').update(buffer).digest('hex');
+      const c = await RevenueStore.commit({
+        db,
+        userId,
+        shopId,
+        fileMd5,
+        fileName: src.file_name || '',
+        fileSize: buffer.length,
+        result: revOut,
+        confirm: src.confirm === true,
+      });
+      if (!c.ok) {
+        return fail(ERROR_CODES.INVALID_PARAM,
+          '这张表里没有可识别的日期，算不出属于哪个月，暂时存不了。');
+      }
+      if (c.mode === 'need_confirm') {
+        // 同月已有数据、但这次是不同的文件 ⇒ 先给差异，等老板点确认
+        return ok({
+          revenue_daily: payload,
+          need_confirm: true,
+          diff: c.diff,
+          old_batch_id: c.old_batch_id,
+          old_file_name: c.old_file_name,
+          old_created_at: c.old_created_at,
+          hint: '这个月已经有数据了，换成这份会让总额变化，确认后才覆盖（旧版本保留可查）。',
+        });
+      }
+      return ok({
+        revenue_daily: payload,
+        stored: {
+          mode: c.mode,               // created / replaced / duplicate
+          batch_id: c.batch_id,
+          diff: c.diff,
+        },
+      });
+    }
+
+    return ok({ revenue_daily: payload });
   }
 
   // ===== 5b. 分流：堂食菜品销售表（批次 G）优先，识别不出再走外卖账单（批次 F）=====

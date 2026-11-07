@@ -228,12 +228,24 @@ ok('C-② 营收报表分支在菜品/账单识别之前（签名独特，先试
   + ' < 菜品@' + FN.indexOf('const dishDetect = detectDishMatrix(matrix)')
   + ' | 之前有调用=' + (FN.slice(0, FN.indexOf('RevenueDaily.detectRevenueDaily')).indexOf('detectDishMatrix(') >= 0));
 
-ok('C-③ 🔴 只读：该分支内不得写库（老板只是看一眼，不能改他任何数据）', (() => {
+// 🔴 R619 升级：R616 时这条是「分支内绝对不许写库」（当时是纯只读链路）。
+//   现在要落库了，但它必须是**可选的**：默认（不传 commit）= 只读，跟以前一模一样。
+//   所以判据从"零写库"改成"写库必须被 commit===true 门住，且不自己拼 collection"。
+//   ⚠️ 不能再用裸 `.update(` 判写库 —— `crypto.createHash('md5').update(buffer)` 会被误伤（本轮真踩）。
+ok('C-③ 🔴 默认只读：写库必须被 commit===true 门住，且只走 RevenueStore（不自己拼集合）', (() => {
   const i = FN.indexOf('RevenueDaily.detectRevenueDaily');
   const j = FN.indexOf('const dishDetect = detectDishMatrix(matrix)');
-  const seg = FN.slice(i, j > i ? j : i + 3000);
-  return seg.indexOf('collection(') < 0 && seg.indexOf('.add(') < 0 && seg.indexOf('.update(') < 0;
-})());
+  const seg = FN.slice(i, j > i ? j : i + 5000);
+  const directWrite = seg.indexOf('collection(') >= 0
+    || /\.add\(\s*\{/.test(seg) || /\.update\(\s*\{/.test(seg);
+  const gated = /commit === true/.test(seg);
+  return !directWrite && gated;
+})(), '直接写库=' + (() => {
+  const i = FN.indexOf('RevenueDaily.detectRevenueDaily');
+  const j = FN.indexOf('const dishDetect = detectDishMatrix(matrix)');
+  const seg = FN.slice(i, j > i ? j : i + 5000);
+  return (seg.indexOf('collection(') >= 0 || /\.add\(\s*\{/.test(seg) || /\.update\(\s*\{/.test(seg));
+})() + ' 被commit门住=' + /commit === true/.test(FN.slice(FN.indexOf('RevenueDaily.detectRevenueDaily'), FN.indexOf('const dishDetect = detectDishMatrix(matrix)'))));
 
 // 🔴 判「有没有把整表外发」这个行为，不判字面：第一次写成 `FN.indexOf('revOut.shifts') < 0`，
 //   把 `shiftCount: (revOut.shifts || []).length`（只取长度，合法）误伤了。

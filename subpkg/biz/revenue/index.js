@@ -114,6 +114,8 @@ Page({
     loading: false,
     r: null,            // 结果展示态（null = 还没选文件）
     bridgeOpen: false,  // 差额桥默认收起（先说结论，再展开依据）
+    srcNote: '',        // R619：这组数是从库里读的还是刚导的
+    fromStore: false,
     t: {
       mainLabel: T.mainLabel,
       mainNote: T.mainNote,
@@ -141,6 +143,34 @@ Page({
 
   onLoad() {
     ui.setTitle(T.title);
+    // 🔴 R619：进页面先看库里有没有 —— 导过一次就直接显示，不用再传文件。
+    //   这是这个页面从"计算器"变成"留得住数据"的关键一步。
+    this.loadStored();
+  },
+
+  // 读库：不带 month ⇒ 取最近一次导入的那一版
+  async loadStored(opts) {
+    if (this.data.loading) return;
+    this.setData({ loading: true });
+    try {
+      const d = await api.call('importSalesBill', { action: 'revenue_get' });
+      const rd = d && d.revenue_stored;
+      this.setData({ loading: false });
+      if (!rd) return;                      // 库里没有 ⇒ 保持「未选文件」态，让他导
+      this.setData({
+        r: this.buildView(rd),
+        srcNote: fill(T.storedNote, {
+          date: String(rd.created_at || '').slice(0, 10),
+          file: rd.file_name || '上次导入的表',
+        }),
+        fromStore: true,
+      });
+      if (opts && opts.done) wx.showToast({ title: T.storedToast, icon: 'success' });
+    } catch (e) {
+      this.setData({ loading: false });
+      // 读库失败不打扰（旧云端没这个分支时会报错，此时退回「上传」态即可）
+      if (opts && opts.strict) api.toastError(e);
+    }
   },
 
   onToggleBridge() {
@@ -151,7 +181,7 @@ Page({
     this.setData({ r: null, bridgeOpen: false });
   },
 
-  // 选文件 → 上传云存储 → importSalesBill 解析（只读，confirm 不传）
+  // 选文件 → 上传云存储 → importSalesBill 解析 + **落库**（R619）
   async onChoose() {
     if (this.data.loading) return;
     let file;
@@ -163,12 +193,16 @@ Page({
     }
     if (!file) return;
 
-    this.setData({ loading: true, r: null, bridgeOpen: false });
+    this.setData({ loading: true, r: null, bridgeOpen: false, srcNote: '', fromStore: false });
     wx.showLoading({ title: T.loading, mask: true });
     try {
       const cloudPath = 'revenue_daily/' + Date.now() + '_' + (file.name || 'revenue.xlsx');
       const up = await wx.cloud.uploadFile({ cloudPath, filePath: file.path });
-      const d = await api.call('importSalesBill', { fileID: up.fileID });
+      const d = await api.call('importSalesBill', {
+        fileID: up.fileID,
+        commit: true,                       // 🔴 落库：导一次以后都能看
+        file_name: file.name || '',
+      });
       wx.hideLoading();
       const rd = d && d.revenue_daily;
       if (!rd) {
@@ -177,7 +211,63 @@ Page({
         wx.showModal({ title: T.title, content: T.notMine, showCancel: false });
         return;
       }
-      this.setData({ loading: false, r: this.buildView(rd) });
+      // 同月已有数据、这次换了文件 ⇒ 先给差异，让他决定（不静默覆盖）
+      if (d && d.need_confirm) {
+        this.setData({ loading: false, r: this.buildView(rd) });
+        const df = d.diff || {};
+        const lines = [
+          '这个月已经有数据了。',
+          '原来：' + money(df.oldTotalYuan) + ' 元 / ' + (df.oldDayCount || 0) + ' 天',
+          '这份：' + money(df.newTotalYuan) + ' 元 / ' + (df.newDayCount || 0) + ' 天',
+          '差额：' + (df.totalDeltaYuan >= 0 ? '+' : '') + money(df.totalDeltaYuan) + ' 元',
+          '',
+          '确认替换？旧版本会保留，以后能查。',
+        ];
+        wx.showModal({
+          title: '要不要换成这份',
+          content: lines.join('\n'),
+          confirmText: '换成这份',
+          cancelText: '先不动',
+          success: (m) => {
+            if (m.confirm) this.recommit(up.fileID, file.name);
+          },
+        });
+        return;
+      }
+      this.setData({
+        loading: false,
+        r: this.buildView(rd),
+        srcNote: fill(T.storedNote, { date: T.today, file: file.name || '这份表' }),
+        fromStore: true,
+      });
+      const mode = d && d.stored && d.stored.mode;
+      wx.showToast({ title: mode === 'duplicate' ? T.dupToast : T.savedToast, icon: 'success' });
+    } catch (e) {
+      wx.hideLoading();
+      this.setData({ loading: false });
+      api.toastError(e);
+    }
+  },
+
+  // 老板确认替换后，带 confirm 重跑一次（此时云端才把旧版本降级）
+  async recommit(fileID, fileName) {
+    if (this.data.loading) return;
+    this.setData({ loading: true });
+    wx.showLoading({ title: T.loading, mask: true });
+    try {
+      const d = await api.call('importSalesBill', {
+        fileID, commit: true, confirm: true, file_name: fileName || '',
+      });
+      wx.hideLoading();
+      const rd = d && d.revenue_daily;
+      this.setData({ loading: false });
+      if (!rd) { wx.showModal({ title: T.title, content: T.notMine, showCancel: false }); return; }
+      this.setData({
+        r: this.buildView(rd),
+        srcNote: fill(T.storedNote, { date: T.today, file: fileName || '这份表' }),
+        fromStore: true,
+      });
+      wx.showToast({ title: T.savedToast, icon: 'success' });
     } catch (e) {
       wx.hideLoading();
       this.setData({ loading: false });
