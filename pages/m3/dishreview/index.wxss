@@ -38,3 +38,21 @@
 .more-t { font-size: 30rpx; color: #1e3a5f; font-weight: 600; }
 .more-sum { flex: 1; margin-left: 16rpx; font-size: 28rpx; color: #6b7a90; }
 .more-act { font-size: 28rpx; color: #2a4e7c; }
+
+/* ===== R615 M3 决策台：该动哪道菜 =====
+   字号与既有列表一致（正文 28rpx / 标题 30rpx），不新增视觉层级、不抢榜单的位置。 */
+.dec { background: #fff; border-radius: 16rpx; padding: 24rpx; margin: 8rpx 0 20rpx; }
+.dec-hd { display: flex; flex-direction: column; }
+.dec-title { font-size: 30rpx; color: #1e3a5f; font-weight: 600; }
+.dec-sub { font-size: 28rpx; color: #6b7a90; line-height: 1.5; margin-top: 6rpx; }
+.dec-median { font-size: 28rpx; color: #2a4e7c; margin-top: 12rpx; }
+.dec-ins { font-size: 28rpx; color: #6b7a90; line-height: 1.5; margin-top: 12rpx; }
+.dec-row { display: flex; align-items: baseline; padding: 18rpx 0; border-top: 1rpx solid #eef2f7; }
+.dec-kind { font-size: 28rpx; line-height: 1.4; padding: 2rpx 12rpx; border-radius: 8rpx; margin-right: 12rpx; flex-shrink: 0; }
+.dec-cut { background: #fdecea; color: #b03024; }
+.dec-raise { background: #fff4e5; color: #a8630a; }
+.dec-bundle { background: #eef4ff; color: #2a4e7c; }
+.dec-push { background: #eaf7ee; color: #1a7d55; }
+.dec-name { font-size: 28rpx; color: #1e3a5f; font-weight: 600; margin-right: 12rpx; flex-shrink: 0; }
+.dec-text { font-size: 28rpx; color: #5a6678; line-height: 1.5; flex: 1; }
+.dec-free { font-size: 28rpx; color: #a8630a; line-height: 1.5; margin-top: 12rpx; }

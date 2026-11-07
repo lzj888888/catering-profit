@@ -1,0 +1,29 @@
+== Q1 付费档 ==
+ok=true coverage=93.8 dishCount=12
+medianQty=120 medianMarginPct=33.4
+  1. [cut] 豪华套餐 qty=20 margin=-18.7% gain=- loss=300.00 share=-3.2
+  2. [cut] 双人套餐 qty=15 margin=-19% gain=- loss=200.00 share=-2.1
+  3. [cut] 儿童餐 qty=10 margin=-16.7% gain=- loss=100.00 share=-1.1
+  4. [raise] 肥肠面 qty=220 margin=13.6% gain=956.56 loss=- share=6.9
+  5. [raise] 豌杂面 qty=200 margin=11.1% gain=802.40 loss=- share=4.2
+四格计数={"many_high":3,"many_low":3,"few_high":3,"few_low":3}
+
+== 免费档 ==
+ok=true actions=5 kinds=top_sales
+是否含毛利字段=false
+
+== 数据不足 ==
+9 道 ⇒ insufficient=true reason=few_dishes
+覆盖 66.9% ⇒ insufficient=false reason=
+
+== Q2 套餐 ==
+  A 套餐 少赚=6.00 kind=raise
+  B 套餐 少赚=-3.00 kind=push
+
+== Q3 外卖瀑布 ==
+到手率=76 各项=commission:6% delivery:5% deliverySubsidy:2% subsidyMerchant:8% promo:3%
+占比和=24 + 到手率=100
+还能被多拿=13 个百分点
+
+== S 涨价 10% ==
+合计成本增加=2076.00 元；前3道=招牌牛肉面:210.00 酸辣粉:196.00 小面:156.00

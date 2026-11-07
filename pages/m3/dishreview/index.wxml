@@ -145,6 +145,28 @@
     <!-- 堂食榜（两来源分开呈现；外卖空态另列，不混榜）
          🔴 A8（2026-11-05）：免费档只给「销量排行」—— 表头与行都**隐藏毛利/毛利率两列**
          （用 wx:if 而不是显示「—」：五列表头写着"毛利排行榜"、下面全是横杠，老板会以为页面坏了）。 -->
+    <!-- 🔴 R615 M3 决策台：该动哪道菜（读现有复盘出参，零云函数改动）
+         分界线 = 本店当月销量 / 毛利率中位数，并把分界值写在页面上（不用行业阈值，D14）。
+         有结论 ⇒ 动作清单（先砍在亏的 → 再提价 → 再搭售 → 最后主推）；样本不足 ⇒ 只给原因、不给动作。 -->
+    <block wx:if="{{decision}}">
+      <view class="dec">
+        <view class="dec-hd">
+          <text class="dec-title">{{t.decTitle}}</text>
+          <text class="dec-sub">{{t.decSub}}</text>
+        </view>
+        <view class="dec-ins" wx:if="{{decision.insufficient}}">{{decision.insufficientText}}</view>
+        <block wx:else>
+          <view class="dec-median" wx:if="{{decision.medianLine}}">{{decision.medianLine}}</view>
+          <view class="dec-row" wx:for="{{decision.actions}}" wx:key="name">
+            <text class="dec-kind dec-{{item.kind}}">{{item.kindText}}</text>
+            <text class="dec-name">{{item.name}}</text>
+            <text class="dec-text">{{item.text}}</text>
+          </view>
+          <view class="dec-free" wx:if="{{decision.free}}">{{decision.freeNote}}</view>
+        </block>
+      </view>
+    </block>
+
     <view class="section-title">{{t.reviewDineIn}} · {{tier === 'free' ? t.reviewFreeRankTitle : t.reviewRankTitle}}</view>
     <view class="card2" wx:if="{{dineIn.length}}">
       <view class="row head">

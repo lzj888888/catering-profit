@@ -1,0 +1,12 @@
+守卫基线 RC=0（应 0）
+  排序反转（主推排第一） ⇒ RC=1 转红=True OK
+     点名：❌ B-④ 排序先砍在亏的（3 条 cut，按亏损降序 300/200/100）  (push:390000,push:224000,push:156000,bundle:28000,bund
+  纵轴改回单份毛利额 ⇒ RC=1 转红=True OK
+     点名：❌ B-② 四格各 3 道（分类没偏）  ({"many_high":6,"few_high":3,"few_low":3})
+  覆盖率闸门关掉 ⇒ RC=1 转红=True OK
+     点名：❌ B-⑨ 覆盖率 <60% ⇒ fail-closed（low_coverage，不给动作）  (cov=50.2)
+  免费档拦截删掉 ⇒ RC=1 转红=True OK
+     点名：❌ A-⑦ 免费档分支不产出毛利结论（不产 gainFen、不调 marginOf；允许 grossFen:null 占位）
+还原后 RC=0（应 0）
+变异复核：4/4 真命中
+PASS 源码逐字节还原

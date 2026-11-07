@@ -295,6 +295,7 @@ const CASES = [
   { key: 'check_m2_input_box', rel: 'tools/check_m2_input_box.js' },       // 13 条（A 10 + B 4 去掉重复计数见实跑）
   { key: 'check_m2_semantic_diff', rel: 'tools/check_m2_semantic_diff.js' }, // 14 条（A 7 + B 7）
   { key: 'check_m3_entry_naming', rel: 'tools/check_m3_entry_naming.js' },   // 16 条（A 9 + B 7）
+  { key: 'check_m3_decision', rel: 'tools/check_m3_decision.js' },           // 20 条（A 7 + B 13）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

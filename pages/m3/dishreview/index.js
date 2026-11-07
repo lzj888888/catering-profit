@@ -18,6 +18,8 @@ const { suggestCardIndex, BATCH_CHUNK } = require('../../../utils/dishMapSuggest
 //   为什么：`dataAdapter.js::listAll` 明文要求调用方把「已到读取上限、可能不全」透传到**用户面前**
 //   （可见降级），服务端照做了、前端此前零消费 ⇒ 超上限时静默少行。见 `utils/dataHealth.js` 头注。
 const dh = require('../../../utils/dataHealth.js');
+// R615 M3 决策台：把复盘出参组织成「该动哪道菜」（纯函数，零云函数改动）
+const M3D = require('../../../utils/m3Decision.js');
 // 🔴 R307：占比拆分参考榜（纯函数）—— 外卖销量拿不到时的**轻量补位**，见模块头注（含三条铁律）
 const { splitRank, MAX_ROWS, qtyText } = require('../../../utils/shareSplit.js');
 
@@ -79,6 +81,23 @@ Page({
       //   所以防误导不靠改名，靠**同屏把差在哪讲清**（外卖侧金额是平台侧金额、非商家到手）。
       reviewTakeawayMarginNote: TERMS.card.reviewTakeawayMarginNote,
       reviewMargin: TERMS.card.reviewMargin,
+      // R615 M3 决策台（wxml 用到就必须登记，漏了静默空白）
+      decTitle: TERMS.card.decTitle,
+      decSub: TERMS.card.decSub,
+      decMedianLine: TERMS.card.decMedianLine,
+      decKindCut: TERMS.card.decKindCut,
+      decKindRaise: TERMS.card.decKindRaise,
+      decKindBundle: TERMS.card.decKindBundle,
+      decKindPush: TERMS.card.decKindPush,
+      decCutText: TERMS.card.decCutText,
+      decRaiseText: TERMS.card.decRaiseText,
+      decBundleText: TERMS.card.decBundleText,
+      decPushText: TERMS.card.decPushText,
+      decInsFew: TERMS.card.decInsFew,
+      decInsCoverage: TERMS.card.decInsCoverage,
+      decInsNoDishes: TERMS.card.decInsNoDishes,
+      decInsNoMargin: TERMS.card.decInsNoMargin,
+      decFreeNote: TERMS.card.decFreeNote,
       reviewThreshold: TERMS.card.reviewThreshold,
       reviewThresholdHint: TERMS.card.reviewThresholdHint,
       reviewUnmatched: TERMS.card.reviewUnmatched,
@@ -182,6 +201,7 @@ Page({
     thresholdInput: '30',
     curMonth: '',
     dineIn: [],              // 堂食排行（已预处理展示字段）
+    decision: null,          // R615：该动哪道菜（null = 还没算）
     takeaway: null,          // 外卖：null=空态；否则 [{ platform, platformName, ranked, totals }]
     unmatched: [],           // 未匹配菜品
     totals: null,
@@ -435,6 +455,50 @@ Page({
     }));
     const totals = this.fmtTotals(d.totals);
 
+    // ===== R615 M3 决策台：该动哪道菜 =====
+    //   分界线用本店当月**中位数**；菜数 <10 或营收覆盖 <60% 只给原因、不给动作；
+    //   免费档后端本就不下发毛利 ⇒ 只给销量结构，绝不拿「营收 − 0 成本」凑毛利。
+    const decRows = ((isFree ? d.free_top : d.dine_in) || []).map((x) => ({
+      name: x.name || x.dish_key || '',
+      qty: Number(x.qty) || 0,
+      amountFen: Number(x.amountFen) || 0,
+      totalCostFen: x.totalCostFen == null ? null : Number(x.totalCostFen),
+      grossFen: x.grossFen == null ? null : Number(x.grossFen),
+    }));
+    const decUnmatchedAmount = unmatchedSorted.reduce((s, x) => s + (Number(x.amountFen) || 0), 0);
+    const decRaw = M3D.buildDishDecision({
+      rows: decRows, unmatchedAmountFen: decUnmatchedAmount, tier: isFree ? 'free' : 'full',
+    });
+    const TT = this.data.t;
+    const decFill = (tpl, map) => String(tpl || '').replace(/\{(\w+)\}/g,
+      (m, k) => (map[k] == null ? '' : String(map[k])));
+    const decInsText = !decRaw.insufficient ? '' : decFill(
+      decRaw.reason === 'few_dishes' ? TT.decInsFew
+        : decRaw.reason === 'low_coverage' ? TT.decInsCoverage
+          : decRaw.reason === 'no_dishes' ? TT.decInsNoDishes : TT.decInsNoMargin,
+      { n: decRaw.dishCount, pct: decRaw.coveragePct == null ? '—' : decRaw.coveragePct });
+    const decActions = (decRaw.actions || []).map((a) => {
+      if (a.kind === 'cut') return { kind: a.kind, kindText: TT.decKindCut, name: a.name,
+        text: decFill(TT.decCutText, { loss: fmtYuan(a.lossFen), cost: fmtYuan(a.costFen) }) };
+      if (a.kind === 'raise') return { kind: a.kind, kindText: TT.decKindRaise, name: a.name,
+        text: decFill(TT.decRaiseText, { margin: a.marginPct, gain: fmtYuan(a.gainFen) }) };
+      if (a.kind === 'bundle') return { kind: a.kind, kindText: TT.decKindBundle, name: a.name,
+        text: decFill(TT.decBundleText, { gross: fmtYuan(a.grossFen) }) };
+      return { kind: a.kind, kindText: TT.decKindPush, name: a.name,
+        text: decFill(TT.decPushText, { gross: fmtYuan(a.grossFen), share: a.sharePct == null ? '—' : a.sharePct }) };
+    });
+    const decision = {
+      insufficient: !!decRaw.insufficient,
+      insufficientText: decInsText,
+      free: !!decRaw.free,
+      freeNote: decRaw.free ? TT.decFreeNote : '',
+      medianLine: decRaw.insufficient ? '' : decFill(TT.decMedianLine, {
+        qty: decRaw.medianQty == null ? '—' : decRaw.medianQty,
+        margin: decRaw.medianMarginPct == null ? '—' : decRaw.medianMarginPct,
+      }),
+      actions: decActions,
+    };
+
     // ===== R255：「已关联菜品」列表（**解除入口**）=====
     //   为什么必须有这一块：**关联成功后该菜会从 unmatched 变 ranked** ⇒ 未匹配清单里没有它了。
     //   若不给独立的解除入口，用户既改不了也删不掉 ⇒ 挂错一次卡就是死结（A1 锚点的反面）。
@@ -601,6 +665,7 @@ Page({
       cardOptions,
       cardCodes,
       mappings,
+      decision,
       empty: dineIn.length === 0 && unmatched.length === 0 && !takeaway,
       // R260：批量模式开着时，刷新后重新算建议（已挂上的菜会消失，剩下的重算）
       batchCount: this.data.batchMode ? this.countBatchSel(unmatched) : 0,
