@@ -108,6 +108,16 @@
     <view class="hub-go">›</view>
   </view>
 
+  <!-- 🔴 R616：渠道营收（收款日报 → 双口径）。放在对账旁边：两者都是「汇总核对」类。 -->
+  <view class="hub-card" bindtap="goRevenue">
+    <view class="hub-ico hub-ico-revenue">{{t.icoRevenue}}</view>
+    <view class="hub-main">
+      <text class="hub-name">{{t.revenueTitle}}</text>
+      <text class="hub-desc">{{t.revenueSub}}</text>
+    </view>
+    <view class="hub-go">›</view>
+  </view>
+
   <view class="hub-card" bindtap="goRecon">
     <view class="hub-ico hub-ico-recon">{{t.icoRecon}}</view>
     <view class="hub-main">

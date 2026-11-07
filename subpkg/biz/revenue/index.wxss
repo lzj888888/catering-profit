@@ -1,0 +1,54 @@
+/* subpkg/biz/revenue/index.wxss —— R616 渠道营收
+   字号一律 ≥28rpx（AD-G1）；不写死 input 高度；只用页面既有的淡灰/深蓝配色。 */
+.rev { padding: 24rpx; }
+
+/* ===== ① 主数 ===== */
+.rev-hero { background: #fff; border-radius: 16rpx; padding: 28rpx 24rpx 24rpx; margin-bottom: 20rpx; }
+.rev-hero-label { display: block; font-size: 28rpx; color: #6b7a90; }
+.rev-hero-num { display: block; font-size: 60rpx; color: #1a7d55; font-weight: 600; line-height: 1.3; margin-top: 8rpx; }
+.rev-hero-note { display: block; font-size: 28rpx; color: #6b7a90; margin-top: 6rpx; }
+.rev-split { margin-top: 16rpx; display: flex; align-items: center; }
+.rev-split-i { font-size: 28rpx; color: #2a4e7c; }
+.rev-split-d { font-size: 28rpx; color: #c8d0dc; margin: 0 12rpx; }
+.rev-range { display: block; font-size: 28rpx; color: #8792a3; margin-top: 10rpx; }
+
+/* ===== ② 副数 + 差额 ===== */
+.rev-cmp { background: #f7f9fc; border-radius: 16rpx; padding: 22rpx 24rpx; margin-bottom: 20rpx; }
+.rev-cmp-row { display: flex; justify-content: space-between; align-items: baseline; padding: 6rpx 0; }
+.rev-cmp-l { font-size: 28rpx; color: #5a6678; }
+.rev-cmp-v { font-size: 32rpx; color: #1e3a5f; font-weight: 600; }
+.rev-cmp-v.up { color: #1a7d55; }
+.rev-cmp-v.down { color: #b03024; }
+.rev-note { display: block; font-size: 28rpx; color: #8792a3; line-height: 1.5; margin-top: 8rpx; }
+
+/* ===== ③ 差额桥（折叠） ===== */
+.rev-fold { display: flex; justify-content: space-between; align-items: center; background: #fff; border-radius: 16rpx; padding: 22rpx 24rpx; margin-bottom: 12rpx; }
+.rev-fold-t { font-size: 30rpx; color: #1e3a5f; font-weight: 600; }
+.rev-fold-ico { font-size: 28rpx; color: #2a7fa8; }
+.rev-bridge { background: #fff; border-radius: 16rpx; padding: 8rpx 24rpx 22rpx; margin-bottom: 20rpx; }
+.rev-bridge-hd { display: block; font-size: 28rpx; color: #6b7a90; margin: 16rpx 0 8rpx; }
+.rev-bridge-row { display: flex; justify-content: space-between; align-items: baseline; padding: 8rpx 0; border-top: 1rpx solid #f0f3f8; }
+.rev-bridge-l { font-size: 28rpx; color: #5a6678; flex: 1; line-height: 1.5; }
+.rev-bridge-v { font-size: 28rpx; font-weight: 600; margin-left: 16rpx; flex-shrink: 0; }
+.rev-bridge-v.add { color: #1a7d55; }
+.rev-bridge-v.sub { color: #b03024; }
+
+/* ===== ④ 渠道 ===== */
+.rev-sec { display: block; font-size: 30rpx; color: #1e3a5f; font-weight: 600; margin: 24rpx 0 12rpx; }
+.rev-chan { display: flex; align-items: center; background: #fff; border-radius: 12rpx; padding: 18rpx 24rpx; margin-bottom: 10rpx; }
+.rev-chan-tag { font-size: 28rpx; color: #2a7fa8; background: #eaf3f8; border-radius: 8rpx; padding: 2rpx 10rpx; margin-right: 14rpx; flex-shrink: 0; }
+.rev-chan-l { font-size: 28rpx; color: #1e3a5f; flex: 1; }
+.rev-chan-v { font-size: 30rpx; color: #1e3a5f; font-weight: 600; }
+
+/* ===== 对账结果 / 未确认项 / 口径提醒 ===== */
+.rev-recon { font-size: 28rpx; line-height: 1.5; padding: 16rpx 20rpx; border-radius: 12rpx; margin-top: 20rpx; }
+.rev-recon.ok { background: #eaf7ee; color: #1a7d55; }
+.rev-recon.bad { background: #fdf0e6; color: #a8630a; }
+.rev-pending { font-size: 28rpx; color: #a8630a; line-height: 1.5; margin-top: 14rpx; }
+.rev-tip { font-size: 28rpx; color: #8792a3; line-height: 1.6; margin-top: 20rpx; }
+
+/* ===== 未选文件态 ===== */
+.rev-intro { background: #fff; border-radius: 16rpx; padding: 28rpx 24rpx; margin-bottom: 28rpx; }
+.rev-intro-t { font-size: 28rpx; color: #5a6678; line-height: 1.7; white-space: pre-wrap; }
+.rev-pick { margin-top: 8rpx; }
+.rev-again { margin-top: 32rpx; }

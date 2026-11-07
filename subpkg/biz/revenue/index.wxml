@@ -1,0 +1,87 @@
+<!-- subpkg/biz/revenue/index.wxml —— R616 渠道营收（双口径展示）
+     🔴 布局顺序 = 老板的注意力顺序：
+        ① 我这个月经营营收多少（主数，最大）
+        ② 跟我记的对现金账差多少（副数 + 差额）
+        ③ 差在哪（默认收起，点开看依据）
+        ④ 各渠道贡献
+        ⑤ 口径提醒（一句，说明充值不算）
+     给两个数不给解释 = 制造疑问，所以 ③ 是必须的，不能省。 -->
+<view class="rev">
+
+  <!-- ===== 结果态 ===== -->
+  <block wx:if="{{r}}">
+
+    <!-- ① 主数：经营营收（M1 权责制） -->
+    <view class="rev-hero">
+      <text class="rev-hero-label">{{t.mainLabel}}</text>
+      <text class="rev-hero-num">¥{{r.mainText}}</text>
+      <text class="rev-hero-note">{{t.mainNote}}</text>
+      <view class="rev-split">
+        <text class="rev-split-i">堂食 ¥{{r.dineInText}}</text>
+        <text class="rev-split-d">·</text>
+        <text class="rev-split-i">外卖 ¥{{r.takeawayText}}</text>
+      </view>
+      <text class="rev-range" wx:if="{{r.rangeText}}">{{r.rangeText}} · {{r.dayCount}} 天 · {{r.shiftCount}} 个班次</text>
+    </view>
+
+    <!-- ② 副数：现金流入（对账口径）+ 差额 -->
+    <view class="rev-cmp">
+      <view class="rev-cmp-row">
+        <text class="rev-cmp-l">{{t.cashLabel}}</text>
+        <text class="rev-cmp-v">¥{{r.cashText}}</text>
+      </view>
+      <view class="rev-cmp-row">
+        <text class="rev-cmp-l">{{t.diffLabel}}</text>
+        <text class="rev-cmp-v {{r.diffUp ? 'up' : 'down'}}">{{r.diffText}}</text>
+      </view>
+      <text class="rev-note">{{t.cashNote}}</text>
+      <text class="rev-note">{{t.diffNote}}</text>
+    </view>
+
+    <!-- ③ 差额桥（默认收起：先说结论，再展开依据） -->
+    <view class="rev-fold" bindtap="onToggleBridge">
+      <text class="rev-fold-t">{{t.bridgeTitle}}</text>
+      <text class="rev-fold-ico">{{bridgeOpen ? '收起' : '展开'}}</text>
+    </view>
+    <view class="rev-bridge" wx:if="{{bridgeOpen}}">
+      <text class="rev-bridge-hd">{{t.bridgeM1Over}}</text>
+      <view class="rev-bridge-row" wx:for="{{r.m1Over}}" wx:key="key">
+        <text class="rev-bridge-l">{{item.label}}</text>
+        <text class="rev-bridge-v add">＋{{item.text}}</text>
+      </view>
+      <text class="rev-bridge-hd" wx:if="{{r.bossOver.length}}">{{t.bridgeBossOver}}</text>
+      <view class="rev-bridge-row" wx:for="{{r.bossOver}}" wx:key="key">
+        <text class="rev-bridge-l">{{item.label}}</text>
+        <text class="rev-bridge-v sub">−{{item.text}}</text>
+      </view>
+    </view>
+
+    <!-- ④ 各渠道贡献 -->
+    <block wx:if="{{r.hasChannel}}">
+      <text class="rev-sec">{{t.chanTitle}}</text>
+      <view class="rev-chan" wx:for="{{r.channels}}" wx:key="key">
+        <text class="rev-chan-tag">{{item.tag}}</text>
+        <text class="rev-chan-l">{{item.label}}</text>
+        <text class="rev-chan-v">¥{{item.text}}</text>
+      </view>
+    </block>
+
+    <!-- 对账结果：他表里那列跟我们反推的公式是否一致 -->
+    <view class="rev-recon {{r.reconOk ? 'ok' : 'bad'}}">{{r.reconText}}</view>
+    <view class="rev-pending" wx:if="{{r.pendingText}}">{{r.pendingText}}</view>
+
+    <!-- ⑤ 口径提醒（一句话，不长篇） -->
+    <view class="rev-tip">{{t.caliberTip}}</view>
+
+    <button class="btn ghost rev-again" bindtap="onAgain">{{t.again}}</button>
+  </block>
+
+  <!-- ===== 未选文件态 ===== -->
+  <block wx:else>
+    <view class="rev-intro">
+      <text class="rev-intro-t">{{t.pickHint}}</text>
+    </view>
+    <button class="btn primary rev-pick" bindtap="onChoose" disabled="{{loading}}">{{t.pickBtn}}</button>
+  </block>
+
+</view>

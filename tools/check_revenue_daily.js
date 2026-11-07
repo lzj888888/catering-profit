@@ -14,8 +14,10 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
-const R = require(path.join(ROOT, 'utils/revenueDailyParse.js'));
-const SRC = fs.readFileSync(path.join(ROOT, 'utils/revenueDailyParse.js'), 'utf8');
+// R616：解析器就近放在 importSalesBill 目录（不进小程序包、不分发 56 份副本）
+const DEC_PATH = 'cloudfunctions/importSalesBill/revenueDailyParse.js';
+const R = require(path.join(ROOT, DEC_PATH));
+const SRC = fs.readFileSync(path.join(ROOT, DEC_PATH), 'utf8');
 const FIX = JSON.parse(fs.readFileSync(
   path.join(ROOT, 'review/evidence/r615_revenue/revenue_v5_rows.json'), 'utf8'));
 

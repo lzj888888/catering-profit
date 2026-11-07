@@ -1,0 +1,159 @@
+// subpkg/biz/revenue/index.js —— R616 渠道营收（从老板的收款日报算，双口径展示）
+//
+// 这个页面只做一件事：让老板看清「我这个月经营营收多少」和「为什么跟我记的对不上」。
+//
+// 🔴 三条设计红线：
+//   1. **主数只给经营营收（M1 权责制）**。现金流入口径永远只作副数，并明写「含充值，只对账用」。
+//      依据 M1 既有红线（terms.js fastHint）：「顾客充值的钱不算收入，只有用余额买单才算」。
+//   2. **差额必须摊开给老板看**（差额桥），不能只给两个数让他自己猜。给两个数不给解释 = 制造疑问。
+//   3. **只读**：不写任何库、不改任何已有账目。老板选完文件出结果，关掉就没了。
+//      要落进 M1 月度账得先定 incomeItems 结构（独立一轮），本页不碰契约。
+const api = require('../../../utils/api.js');
+const ui = require('../../../utils/ui.js');
+const { TERMS } = require('../../../miniprogram/i18n/terms.js');
+const T = TERMS.revenue;
+
+// 千分位 + 两位小数（页面只显示，不参与计算）
+function money(v) {
+  const n = Number(v);
+  if (!isFinite(n)) return '—';
+  const neg = n < 0;
+  const s = Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return (neg ? '-' : '') + s;
+}
+function fill(tpl, map) {
+  return String(tpl || '').replace(/\{(\w+)\}/g, (m, k) => (map[k] == null ? '' : String(map[k])));
+}
+
+// 五个渠道的展示顺序与文案（顺序 = 老板关心的强弱：团购在前、外卖按金额）
+const CHANNELS = [
+  { key: 'grouponMeituan', label: T.chanGrouponMeituan, tag: '团购' },
+  { key: 'grouponDouyin', label: T.chanGrouponDouyin, tag: '团购' },
+  { key: 'waimaiMeituan', label: T.chanWaimaiMeituan, tag: '外卖' },
+  { key: 'waimaiJd', label: T.chanWaimaiJd, tag: '外卖' },
+  { key: 'waimaiTaobao', label: T.chanWaimaiTaobao, tag: '外卖' },
+];
+
+// 云端结构 → 展示态。数字全部来自云端，页面不自己算营收。
+function buildView(rd) {
+  const m1 = rd.revenueM1 || {};
+  const ci = rd.cashInflow || {};
+  const br = rd.bridge || {};
+
+  const m1Over = (br.m1Over || []).filter((x) => Number(x.yuan) > 0)
+    .map((x) => ({ key: x.key, label: x.label, text: money(x.yuan) }));
+  const bossOver = (br.bossOver || []).filter((x) => Number(x.yuan) > 0)
+    .map((x) => ({ key: x.key, label: x.label, text: money(x.yuan) }));
+
+  const rawChannels = rd.channelYuan || {};
+  const channels = CHANNELS
+    .filter((c) => Number(rawChannels[c.key]) > 0)
+    .map((c) => ({ key: c.key, label: c.label, tag: c.tag, text: money(rawChannels[c.key]) }));
+
+  const diff = Number(br.diffYuan) || 0;
+  const diffUp = diff >= 0;
+  const missCount = (ci.mismatches || []).length;
+
+  return {
+    mainText: money(m1.totalYuan),
+    dineInText: money(m1.dineInYuan),
+    takeawayText: money(m1.takeawayYuan),
+    cashText: money(ci.totalYuan),
+    diffText: (diffUp ? '+' : '') + money(diff) + (br.diffPct == null ? '' : '（' + br.diffPct + '%）'),
+    diffUp,
+    m1Over,
+    bossOver,
+    channels,
+    hasChannel: channels.length > 0,
+    // 对账结果：老板表里那列与我们反推公式是否一致（一致 = 他的记账方式没变）
+    reconOk: ci.pass === true,
+    reconText: ci.pass === true
+      ? fill(T.reconOk, { n: ci.checkedShifts })
+      : fill(T.reconBad, { n: missCount }),
+    // 未确认含义的列（茶楼）—— 不混进营收，但要告诉老板有这么一笔
+    pendingText: Number(m1.pendingOtherYuan) > 0
+      ? fill(T.pendingOther, { name: '茶楼', yuan: money(m1.pendingOtherYuan) })
+      : '',
+    dayCount: (rd.days || []).length,
+    shiftCount: rd.shiftCount || 0,
+    rangeText: (rd.days && rd.days.length)
+      ? (rd.days[0].date + ' ~ ' + rd.days[rd.days.length - 1].date)
+      : '',
+  };
+}
+
+Page({
+  data: {
+    loading: false,
+    r: null,            // 结果展示态（null = 还没选文件）
+    bridgeOpen: false,  // 差额桥默认收起（先说结论，再展开依据）
+    t: {
+      mainLabel: T.mainLabel,
+      mainNote: T.mainNote,
+      cashLabel: T.cashLabel,
+      cashNote: T.cashNote,
+      diffLabel: T.diffLabel,
+      diffNote: T.diffNote,
+      bridgeTitle: T.bridgeTitle,
+      bridgeM1Over: T.bridgeM1Over,
+      bridgeBossOver: T.bridgeBossOver,
+      chanTitle: T.chanTitle,
+      caliberTip: T.caliberTip,
+      pickBtn: T.pickBtn,
+      pickHint: T.pickHint,
+      empty: T.empty,
+      notMine: T.notMine,
+      again: T.again,
+    },
+  },
+
+  // 🔴 挂到 Page 上是为了让守卫能**真跑**装配逻辑（同 month/input 的 diffFacts 做法）：
+  //   静态分析看不出「主数到底是营收还是现金流入」，只有真跑一遍才知道。
+  buildView,
+
+  onLoad() {
+    ui.setTitle(T.title);
+  },
+
+  onToggleBridge() {
+    this.setData({ bridgeOpen: !this.data.bridgeOpen });
+  },
+
+  onAgain() {
+    this.setData({ r: null, bridgeOpen: false });
+  },
+
+  // 选文件 → 上传云存储 → importSalesBill 解析（只读，confirm 不传）
+  async onChoose() {
+    if (this.data.loading) return;
+    let file;
+    try {
+      const res = await wx.chooseMessageFile({ count: 1, type: 'file', extension: ['xlsx', 'xls'] });
+      file = res.tempFiles && res.tempFiles[0];
+    } catch (e) {
+      return;   // 用户取消，不当错误
+    }
+    if (!file) return;
+
+    this.setData({ loading: true, r: null, bridgeOpen: false });
+    wx.showLoading({ title: T.loading, mask: true });
+    try {
+      const cloudPath = 'revenue_daily/' + Date.now() + '_' + (file.name || 'revenue.xlsx');
+      const up = await wx.cloud.uploadFile({ cloudPath, filePath: file.path });
+      const d = await api.call('importSalesBill', { fileID: up.fileID });
+      wx.hideLoading();
+      const rd = d && d.revenue_daily;
+      if (!rd) {
+        // 认不出这张表（或被分到菜品/账单通道）⇒ 明确告诉他表头缺什么，别让他反复换文件
+        this.setData({ loading: false });
+        wx.showModal({ title: T.title, content: T.notMine, showCancel: false });
+        return;
+      }
+      this.setData({ loading: false, r: this.buildView(rd) });
+    } catch (e) {
+      wx.hideLoading();
+      this.setData({ loading: false });
+      api.toastError(e);
+    }
+  },
+});

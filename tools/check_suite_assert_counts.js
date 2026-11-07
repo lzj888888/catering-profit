@@ -298,6 +298,7 @@ const CASES = [
   { key: 'check_m3_decision', rel: 'tools/check_m3_decision.js' },           // 23 条（A 10 + B 13）
   { key: 'check_import_encoding', rel: 'tools/check_import_encoding.js' },   // 23 条（A 10 + B 8 + C 5）
   { key: 'check_revenue_daily', rel: 'tools/check_revenue_daily.js' },       // 43 条（A 4 + B 11 + C 3 + D 5 + E 11 + F 9）
+  { key: 'check_revenue_page', rel: 'tools/check_revenue_page.js' },         // 34 条（A 12 + B 12 + C 6 + D 4）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

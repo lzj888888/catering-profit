@@ -27,6 +27,9 @@ Page({
       importTitle: TERMS.hub.importTitle,
       importSub: TERMS.hub.importSub,
       icoImport: TERMS.hub.icoImport,
+      revenueTitle: TERMS.hub.revenueTitle,
+      revenueSub: TERMS.hub.revenueSub,
+      icoRevenue: TERMS.hub.icoRevenue,
       takeawayTitle: TERMS.hub.takeawayTitle,
       takeawaySub: TERMS.hub.takeawaySub,
       grouponTitle: TERMS.hub.grouponTitle,
@@ -134,6 +137,8 @@ Page({
   goTakeaway() { wx.navigateTo({ url: '/subpkg/biz/takeaway/index' }); },
   // 🔴 R615 M3 P0（#113 入口提级）：一级入口，直接落在销量导入 tab。
   goImport() { wx.navigateTo({ url: '/subpkg/biz/takeaway/index?tab=import' }); },
+  // 🔴 R616：渠道营收 —— 选收款日报 → 出「经营营收 + 现金流入 + 差额桥」。只读，不写库。
+  goRevenue() { wx.navigateTo({ url: '/subpkg/biz/revenue/index' }); },
   goGroupon() { wx.navigateTo({ url: '/subpkg/biz/groupon/index' }); },
   goRecon() { wx.navigateTo({ url: '/subpkg/tools/recon/index' }); },
   goReview() { wx.navigateTo({ url: '/pages/m3/dishreview/index' }); },

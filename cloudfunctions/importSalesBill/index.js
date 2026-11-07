@@ -28,6 +28,10 @@ const {
 } = require('./service');
 const { validateInput } = require('./validate');
 const { parse: parseDSI1, groupByPlatformDate: parseDSI1Groups } = require('./dsi1');   // R584：DSI-1 标准格式解析与分组
+// R616：老板自制《营收日报表》（日期×班次×渠道）的解析器。
+//   🔴 就近放在本函数目录，**不进 cloudfunctions/common/** —— 那份会被 sync_common 分发到
+//   全部 56 个云函数（每个多一个 cx_*.js），而只有本函数用得到。也不进小程序包（utils/）。
+const RevenueDaily = require('./revenueDailyParse');
 
 // ===== R271：跨平台重复导入检测（查库版）=====
 // 为什么要单独一层：detectDupImport 是**零 IO 纯函数**（可直测），IO 全隔离在本函数内。
@@ -82,7 +86,73 @@ exports.main = async (event) => {
   // ===== 4. xlsx → 矩阵 =====
   const matrix = bufferToMatrix(buffer);
 
-  // ===== 5. 分流：堂食菜品销售表（批次 G）优先，识别不出再走外卖账单（批次 F）=====
+  // ===== 5. 分流：营收日报表（R616）→ 堂食菜品表（批次 G）→ 外卖账单（批次 F）=====
+  // 🔴 R616 营收日报表放在**最前**：它的签名极独特（表头同一行同时含「日期」「班次」「现金」），
+  //   且不含任何菜品列、结算列 ⇒ 与菜品表/账单表的识别条件互斥，不会误判。
+  //   识别到就**只解析、不落库**：本表的用途是「看清各渠道与两套口径」，
+  //   要落进 M1 月度账得先定 incomeItems 结构（独立一轮），本轮不碰契约。
+  const revOut = (() => {
+    const names = Object.keys(matrix.sheets || {});
+    for (const nm of names) {
+      const rowsOf = (matrix.sheets[nm] || {}).rows || [];
+      if (!RevenueDaily.detectRevenueDaily(rowsOf).hit) continue;
+      const parsed = RevenueDaily.parseRevenueDaily(rowsOf);
+      if (parsed.ok && !parsed.isEmpty) return parsed;
+    }
+    return null;
+  })();
+  if (revOut) {
+    // 🔴 回传前一刀切：shifts 明细不回传（24 班次 × 17 列没必要全给前端），
+    //   只给「日级汇总 + 两套口径 + 差额桥 + 渠道」。老板要看的是结论，不是原始表。
+    return ok({
+      revenue_daily: {
+        shape: 'revenue_daily',
+        // A 现金流入（老板对现金账口径，**不是营收**）
+        cashInflow: {
+          formula: revOut.cashInflow.formula,
+          totalYuan: revOut.cashInflow.totalYuan,
+          totalFen: revOut.cashInflow.totalFen,
+          declaredYuan: revOut.cashInflow.declaredYuan,
+          declaredFen: revOut.cashInflow.declaredFen,
+          pass: revOut.cashInflow.pass,
+          checkedShifts: revOut.cashInflow.checkedShifts,
+          mismatches: (revOut.cashInflow.mismatches || []).slice(0, 5),
+          purpose: revOut.cashInflow.purpose,
+          note: revOut.cashInflow.note,
+        },
+        // B 经营营收（M1 权责制，**这才是营收**）
+        revenueM1: {
+          formula: revOut.revenueM1.formula,
+          basis: revOut.revenueM1.basis,
+          dineInYuan: revOut.revenueM1.dineInYuan,
+          dineInFen: revOut.revenueM1.dineInFen,
+          takeawayYuan: revOut.revenueM1.takeawayYuan,
+          takeawayFen: revOut.revenueM1.takeawayFen,
+          totalYuan: revOut.revenueM1.totalYuan,
+          totalFen: revOut.revenueM1.totalFen,
+          pendingOtherYuan: revOut.revenueM1.pendingOtherYuan,
+          pendingOtherFen: revOut.revenueM1.pendingOtherFen,
+          note: revOut.revenueM1.note,
+        },
+        // C 差额桥（老板会问「跟我记的为什么不一样」，这就是答案）
+        bridge: revOut.bridge,
+        channelYuan: revOut.channelYuan,
+        // 日级汇总：只给「哪天、营收多少、几个班次」
+        days: (revOut.days || []).map((d) => ({
+          date: d.date,
+          revenueM1Yuan: d.revenueM1Yuan,
+          cashInflowYuan: d.revenueComputedYuan,
+          shifts: (d.shifts || []).length,
+        })),
+        shiftCount: (revOut.shifts || []).length,
+        unparsedLedger: (revOut.unparsedLedger || []).slice(0, 10),
+        summaryOnlyRows: (revOut.summaryOnlyRows || []).slice(0, 10),
+        client_request_id: clientRequestId || '',
+      },
+    });
+  }
+
+  // ===== 5b. 分流：堂食菜品销售表（批次 G）优先，识别不出再走外卖账单（批次 F）=====
   const dishDetect = detectDishMatrix(matrix);
   if (dishDetect.shape) {
     // 🔴 R584：DSI-1 标准格式走**独立 handler** —— 它一份文件可能含多个渠道/平台

@@ -84,6 +84,7 @@
         "material/batch",
         "takeaway/index",
         "groupon/index",
+        "revenue/index",
         "diag/input",
         "diag/result",
         "ai/consent"
