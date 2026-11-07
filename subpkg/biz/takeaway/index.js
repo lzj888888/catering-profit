@@ -363,7 +363,7 @@ Page({
   async load() {
     try {
       await api.ensureShop();
-      ui.setTitle(TK.title);
+      this.syncTitle(this.data.tab);
       // 候选卡/套餐：非套餐卡（单品）+ 套餐卡都可作为一单的组成项
       const cd = await api.call('getCostCard', {});
       const dishes = (cd.list || []).map((c) => ({
@@ -640,7 +640,18 @@ Page({
   },
 
   // ===== M3.17 账单导入（批次 F 阶段① 第二 tab）=====
-  onTab(e) { this.setData({ tab: e.currentTarget.dataset.tab }); },
+  // 🔴 R615 M3 P0：页标题跟着 tab 走 —— import tab 承载的是全渠道销量导入，
+  //   仍挂「外卖每单赚多少」会让老板以为堂食销量不该在这导（#113 入口错觉）。
+  //   只改标题，不动 URL / 不动路由 / 不新建页面 ⇒ 零计算风险、既有守卫全部保留。
+  syncTitle(tab) {
+    const which = tab || this.data.tab;
+    ui.setTitle(which === 'import' ? (TK.importTitle || TK.title) : TK.title);
+  },
+  onTab(e) {
+    const tab = e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.tab;
+    this.setData({ tab });
+    this.syncTitle(tab);
+  },
 
   // 选文件 → 上传云存储 → importSalesBill(confirm=false) 预览（不落库）
   async onChooseFile() {

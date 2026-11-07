@@ -67,6 +67,17 @@
   <!-- ===== 第二层：有成本卡之后（顺序 = 三步走的 ②③：先导入，再看榜，最后进阶对账）===== -->
   <view class="hub-sec">{{t.secAfter}}</view>
 
+  <!-- 🔴 R615 M3 P0（#113）：全渠道销量导入提为一级卡 ——
+       原入口藏在「外卖每单赚多少」页的 tab2，老板从「去导销量」点进去会误会。 -->
+  <view class="hub-card" bindtap="goImport">
+    <view class="hub-ico hub-ico-import">{{t.icoImport}}</view>
+    <view class="hub-main">
+      <text class="hub-name">{{t.importTitle}}</text>
+      <text class="hub-desc">{{t.importSub}}</text>
+    </view>
+    <view class="hub-go">›</view>
+  </view>
+
   <view class="hub-card" bindtap="goTakeaway">
     <view class="hub-ico hub-ico-takeaway">{{t.icoTakeaway}}</view>
     <view class="hub-main">

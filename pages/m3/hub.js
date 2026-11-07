@@ -23,6 +23,10 @@ Page({
       cardSub: TERMS.hub.cardSub,
       materialTitle: TERMS.hub.materialTitle,
       materialSub: TERMS.hub.materialSub,
+      // 🔴 R615 M3 P0：一级「销量表导入」卡（wxml 用到就必须登记，漏了静默空白）
+      importTitle: TERMS.hub.importTitle,
+      importSub: TERMS.hub.importSub,
+      icoImport: TERMS.hub.icoImport,
       takeawayTitle: TERMS.hub.takeawayTitle,
       takeawaySub: TERMS.hub.takeawaySub,
       grouponTitle: TERMS.hub.grouponTitle,
@@ -119,14 +123,17 @@ Page({
     const i = Number((e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.step) || 0);
     if (i === 0) return wx.navigateTo({ url: '/subpkg/biz/material/index' });
     if (i === 1) return wx.navigateTo({ url: '/subpkg/biz/card/index' });
-    // 第③步落在「外卖」页的第二个 tab（销量导入入口，R259 起该 tab 主载形态 A/B/C 销量）
-    return wx.navigateTo({ url: '/subpkg/biz/takeaway/index?tab=import' });
+    // 🔴 R615 M3 P0：第③步与一级「销量表导入」卡共用同一入口；
+    //   落点页按 tab 动态切标题，不再出现「去导销量」却看见外卖标题。
+    return this.goImport();
   },
 
   // ===== 四个分区（跳转目标均已在 app.json::pages 注册）=====
   goCard() { wx.navigateTo({ url: '/subpkg/biz/card/index' }); },
   goMaterial() { wx.navigateTo({ url: '/subpkg/biz/material/index' }); },
   goTakeaway() { wx.navigateTo({ url: '/subpkg/biz/takeaway/index' }); },
+  // 🔴 R615 M3 P0（#113 入口提级）：一级入口，直接落在销量导入 tab。
+  goImport() { wx.navigateTo({ url: '/subpkg/biz/takeaway/index?tab=import' }); },
   goGroupon() { wx.navigateTo({ url: '/subpkg/biz/groupon/index' }); },
   goRecon() { wx.navigateTo({ url: '/subpkg/tools/recon/index' }); },
   goReview() { wx.navigateTo({ url: '/pages/m3/dishreview/index' }); },
