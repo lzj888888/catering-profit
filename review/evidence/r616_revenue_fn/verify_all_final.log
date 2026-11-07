@@ -1,0 +1,1742 @@
+
+✅ [suite-count] 头部注释 ≡ SUITES.length = 248（R59 守卫）
+✅ [suite-tracked] 248 个套件文件全部已入库（R92 守卫）
+
+===== [门禁 A-L] specs/dev-specs/prototype/check_error_codes.js =====
+  [门禁 A-L] ❌ FAIL (exit=1)
+══════ 规范层一致性机械门禁 ══════
+  · core/09 §1 wire code: 34 个
+  · core/09 §3 i18n key : 31 个
+  · terms.js ERROR_MESSAGES 键: 31 个
+  · terms.js CODE_TO_I18N 条目: 34 个
+  · core/10 §6 已登记 admin 函数   : 11 个
+  · 全树引用 admin 函数（已排除中间件/字段）: 11 个
+  · 配额口径(D组)扫描 : 64 个 .md+.txt；表格结构(E组)扫描 : 46 个 .md
+  · 字符完整性扫描           : 79 个（.md 46 / .js 15 / .txt 18）
+  · 派生精度一致性扫描 : 64 个 .md+.txt（禁 6.6667 / 0.03333 / 9.76）
+  · H5 购买页内容护栏 : 64 个 .md+.txt（命中须为否定句）
+  · 环境门禁结构断言 : 2 个云函数（init_db / seed_demo）
+  · 投喂链派生一致性 : 8 txt + 8 html 块 vs MD 单源（CRLF 已归一）
+  · 文档派生一致性 : 3 组（SMOKETEST_RUNBOOK / 新手上云操作手册 / 下一步工序清单 的 .txt ≡ .md，CRLF/BOM 已归一）
+  · common 同步一致性 : 各函数副本≡单源
+
+❌ 发现 1 处断裂：
+   1. [E1] 表格结构损坏（孤儿表行）上线材料_提审材料包_v1.md:103  | 33 | `subpkg/biz/revenue/index` | 渠道营收（R616：选老板自制的《营收日报表》「日期×班次×渠道」→ 出「经营营收（M1 权责制，充值不计）
+        该行不在任何完整表格内 —— 常见成因：①引用块（>）插在表格中间把表行挤出；②表行之间夹了不带空行的散文行（CommonMark 下同样中断表格）。表行必须连续排列。
+
+修法提示：
+  · A 类（缺 i18n 键） → 在 core/09 §3 表补一行 + i18n/terms.js ERROR_MESSAGES 补同键
+  · B 类（缺映射）     → 在 i18n/terms.js CODE_TO_I18N 补 wire → i18n 条目
+  · C 类（未登记函数） → 在 core/10 §6 契约表补一行函数名/入参/出参/鉴权
+  · D 类（配额旧值）   → 改回现行口径：M1=1 账套 / M3=5 张（2026-09-24 起配置下发）/ M2 不限套；导出全禁
+                         （若确属沿革记录，在同行加「作废 / 已回退 / 原规划」等豁免标记）
+  · E 类（表格结构）   → 把被引用块 / 散文行挤出的表行移回表内（紧邻表头，保持连续）
+  · F 类（字符损坏）   → 按原字补回被损坏的字（如「???行」补成「一行」），不可用其它字替代；
+                         本组扫描 .md + .js + .txt，注意 .js 里的注释同样在扫描范围内
+  · I 类（派生精度）   → 文档内出现 5 位小数金额（6.6667 / 0.03333）或旧笔误 9.76 即错：改为 4 位纪律值 6.66 / 0.0333 / 锚点 9.75；净料单位成本以 netCostPerGram 4 位为准
+                         ⚠️ 本组只守 specs/dev-specs/：桌面派生层（C_桌面已生成交付物 / B_工作台_parse）
+                         不在 A–K 任何一组覆盖内，那里的旧值只能靠「从仓库单源重生成」或「作废」消除
+
+===== [verify_seed_data] specs/dev-specs/prototype/verify_seed_data.js =====
+
+========== S1 · 基础双利润（2026-07，库存关/摊销关） ==========
+✅ S1-收入合计=64,000  | 实际=64000.00  预期=64000.00
+✅ S1-费用合计=32,840  | 实际=32840.00  预期=32840.00
+✅ S1-毛利(仅扣食材)=42,000  | 实际=42000.00  预期=42000.00
+✅ S1-毛利率=65.625%  | 实际=65.63  预期=65.63
+✅ S1-经营参考利润=9,160  | 实际=9160.00  预期=9160.00
+✅ S1-全要素真实利润=9,160（两口径相等）  | 实际=9160.00  预期=9160.00
+
+========== S2 · 库存+摊销（2026-08，口径锁验证） ==========
+✅ S2-真实消耗(倒轧)=23,000  | 实际=23000.00  预期=23000.00
+✅ S2-经营参考利润=9,160（仍用直接填22,000，不改用倒轧）  | 实际=9160.00  预期=9160.00
+✅ S2-全要素真实利润=3,476.67  | 实际=3476.67  预期=3476.67
+✅ S2-两利润差异=5,683.33  | 实际=5683.33  预期=5683.33
+
+========== S2 · 当月摊销合计（3 条资产并行） ==========
+✅ S2-当月摊销合计=4,683.33  | 实际=4683.33  预期=4683.33
+
+========== 2-R · 专业模式重算连锁（改 2026-07 期末 5,000→3,000） ==========
+✅ 2-R-改后 2026-08 全要素=5,476.67  | 实际=5476.67  预期=5476.67
+✅ 2-R-历史快照 2026-07 原值仍保留（概念项：旧记录不覆盖）  | 实际=true  预期=true
+
+========== S2b · 摊销边界（中途终止 / 自然到期） ==========
+✅ 旧空调 2026-01 摊销=333.33  | 实际=333.33  预期=333.33
+✅ 旧空调 2026-08(终止当月仍摊)=333.33  | 实际=333.33  预期=333.33
+✅ 旧空调 2026-09(终止次月=0)  | 实际=0.00  预期=0.00
+✅ 旧空调 2027-01=0  | 实际=0.00  预期=0.00
+✅ 旧空调 残值转处置损失=9,333.36  | 实际=9333.36  预期=9333.36
+✅ 招牌 2026-01 摊销=500  | 实际=500.00  预期=500.00
+✅ 招牌 2026-12(到期当月仍摊)=500  | 实际=500.00  预期=500.00
+✅ 招牌 2027-01(到期次月=0)  | 实际=0.00  预期=0.00
+
+========== S3 · 宫保鸡丁（单份，损耗5%，辅料0.5/份，售价28） ==========
+✅ 宫保鸡丁 单品原材料总成本=975分(整数)  | 实际=975.00  预期=975.00
+✅ 宫保鸡丁 单品毛利=18.25  | 实际=18.25  预期=18.25
+✅ 宫保鸡丁 毛利率=65.18%  | 实际=65.18  预期=65.18
+✅ 宫保鸡丁 倒推售价(目标毛利60%)=24.38  | 实际=24.38  预期=24.38
+
+========== S3 · 红油底料（批量预制，损耗0%，辅料2整批，产出10） ==========
+✅ 红油底料 整批总成本=4480分(整数)  | 实际=4480.00  预期=4480.00
+✅ 红油底料 单份半成品成本=448分(整数)  | 实际=448.00  预期=448.00
+
+========== S3 · 麻辣香锅（单份，引用红油底料虚拟原料，损耗3%） ==========
+✅ 麻辣香锅 单品原材料总成本=1235分(整数)  | 实际=1235.00  预期=1235.00
+✅ 麻辣香锅 单品毛利=25.65  | 实际=25.65  预期=25.65
+✅ 麻辣香锅 毛利率=67.50%  | 实际=67.50  预期=67.50
+
+========== S3 · 循环引用拦截（A→B→A） ==========
+✅ 循环引用被拦截（detectBomCycle=true）  | 实际=true  预期=true
+
+========== S3 · 快照不联动 + 手动刷新（3-R） ==========
+✅ 成本卡快照不联动（旧卡仍 9.75）  | 实际=9.75  预期=9.75
+✅ 快照纪律锁定：鸡胸肉 netCost==netCostPerGram(15,500,90)  | 实际=0.03  预期=0.03
+✅ 快照纪律锁定：花生米 netCost==netCostPerGram(10,500,100)  | 实际=0.02  预期=0.02
+✅ 快照纪律锁定：干辣椒 netCost==netCostPerGram(20,500,100)  | 实际=0.04  预期=0.04
+✅ 快照纪律锁定：葱姜蒜 netCost==netCostPerGram(5,500,100)  | 实际=0.01  预期=0.01
+✅ 快照纪律锁定：调料油 netCost==netCostPerGram(10,500,100)  | 实际=0.02  预期=0.02
+✅ 刷新净料单位成本=netCostPerGram(20,500,90)=0.0444（4位小数纪律锁定，整数严格）  | 实际=true  预期=true
+✅ 手动同步后 v2 总成本=1208分(整数)  | 实际=1208.00  预期=1208.00
+✅ 手动同步后 v2 总成本=12.08（v1=9.75 保留可回溯）  | 实际=12.08  预期=12.08
+
+========== S4 · 选址盈利沙盘（M2） ==========
+✅ S4-固定成本合计=21,300  | 实际=21300.00  预期=21300.00
+✅ S4-综合变动成本率=45%  | 实际=45.00  预期=45.00
+✅ S4-边际贡献率=55%  | 实际=55.00  预期=55.00
+✅ S4-保本月营业额=38,727.27  | 实际=38727.27  预期=38727.27
+✅ S4-保本日均=1,290.91（÷30）  | 实际=1290.91  预期=1290.91
+✅ S4-目标利润月营收=66,000  | 实际=66000.00  预期=66000.00
+✅ S4-目标利润日均=2,200  | 实际=2200.00  预期=2200.00
+✅ S4-无红警  | 实际=false  预期=false
+
+==============================
+验收自检结果：48 通过 / 0 失败  （误差红线 ≤ 0.01 元）
+==============================
+  [verify_seed_data] ✅ PASS  (✅ 48 条 / 段 11)
+
+===== [test_poc1] specs/dev-specs/prototype/test_poc1.js =====
+
+--- POC1 用例A: 旧空调（提前报废 2026-08）---
+✅ 旧空调 2026-01 月摊(当月即摊): 实际=33333 分  预期=33333 分
+✅ 旧空调 2026-08 月摊(终止当月在摊): 实际=33333 分  预期=33333 分
+✅ 旧空调 2026-09 月摊(次月停): 实际=0 分  预期=0 分
+✅ 🔵 旧空调残值(转处置损失): 实际=933336 分  预期=933336 分
+
+--- POC1 用例A: 招牌制作（自然到期）---
+✅ 招牌 2026-01 月摊: 实际=50000 分  预期=50000 分
+✅ 招牌 2026-12 月摊(到期当月在摊): 实际=50000 分  预期=50000 分
+✅ 招牌 2027-01 月摊(次月停): 实际=0 分  预期=0 分
+✅ 🔵 招牌已摊合计(严格=原值): 实际=600000 分  预期=600000 分
+
+--- POC1 用例B: 多资产并行 ---
+✅ 2026-08 三资产合计: 实际=468333 分  预期=468333 分
+✅ 2026-02 仅装修在摊: 实际=333333 分  预期=333333 分
+✅ 🔴 装修末月 2028-12 尾差倒挤: 实际=333345 分  预期=333345 分
+✅ 装修 2029-01 起=0: 实际=0 分  预期=0 分
+   (装修表共 36 期，末期 2028-12=3333.45，残值=0)
+
+==== POC1 结果：12 通过 / 0 失败 ====
+  [test_poc1] ✅ PASS  (✅ 12 条 / 段 4)
+
+===== [test_poc2] specs/dev-specs/prototype/test_poc2.js =====
+原料净料成本(元/g，用于核对):
+  鸡胸肉: 0.03330
+  花生米: 0.02000
+  干辣椒: 0.04000
+  葱姜蒜: 0.01000
+  调料油: 0.02000
+  牛油: 0.04000
+  花椒: 0.08000
+  豆瓣酱: 0.01600
+  香料: 0.12000
+  时蔬拼盘: 0.00600
+  肉丸: 0.04000
+
+--- POC2 用例A: 宫保鸡丁（单份）---
+✅ 明细净料成本合计(分): 实际=876.00  预期=876   4位纪律:0.0333×200=6.66+2.10
+✅ 🟢 单品原材料总成本(整数分): 实际=975.00  预期=975   口径B锁定 975 分（引擎产整数分；旧笔误 9.76 已排除）
+✅ 单品毛利(整数分): 实际=1825.00  预期=1825   28元−9.75元
+✅ 单品毛利率%: 实际=65.18  预期=65.18   基于锁定成本9.75推导
+
+--- POC2 用例B: 红油底料（批量→半成品）---
+✅ 整批明细合计(分): 实际=4280.00  预期=4280   4位纪律
+✅ 整批总成本(整数分): 实际=4480.00  预期=4480   引擎产整数分
+✅ 🟢 单份半成品成本(分): 实际=448.00  预期=448   4480÷10
+
+--- POC2 用例C: 麻辣香锅（引用红油半成品）---
+✅ 明细合计(分): 实际=1148.00  预期=1148   4位纪律
+✅ 🟢 单品原材料总成本(整数分): 实际=1235.00  预期=1235   (11.48+0.50)÷0.97=12.3505→1235分
+✅ 单品毛利(整数分): 实际=2565.00  预期=2565   38元−12.35元
+✅ 单品毛利率%: 实际=67.50  预期=67.5
+
+--- POC2 反算 ---
+✅ 目标毛利60% 售价(整数分): 实际=2438.00  预期=2438   9.75÷0.4=24.375→2438分
+
+--- POC2 用例E: 快照 ---
+✅ 保存后总成本(整数分,快照锁定): 实际=975.00  预期=975   快照锁定存储值 975 分
+✅ 改价后新版本明细(分): 实际=1098.00  预期=1098   4位纪律:0.0444×200=8.88+2.10
+✅ 🟢 同步后新版本总成本(整数分): 实际=1208.00  预期=1208
+
+--- POC2 用例D: 循环引用拦截 ---
+✅ A→B→A 检测: BOM_CYCLE_DETECTED（数据不入库）
+
+==== POC2 结果：16 通过 / 0 失败 ====
+  [test_poc2] ✅ PASS  (✅ 16 条 / 段 7)
+
+===== [test_poc3] specs/dev-specs/prototype/test_poc3.js =====
+
+--- S1 基础双利润（库存关/摊销关）---
+✅ 收入合计: 实际=6400000 分  预期=6400000 分
+✅ 费用合计: 实际=3284000 分  预期=3284000 分
+✅ 菜品毛利: 实际=4200000 分  预期=4200000 分
+✅ 菜品毛利率%: 实际=65.625  预期=65.625
+✅ 🟢 经营参考利润: 实际=916000 分  预期=916000 分
+✅ 🔵 全要素真实利润: 实际=916000 分  预期=916000 分
+✅ 待结算不进利润·收入合计不变: 实际=6400000 分  预期=6400000 分
+✅ 待结算不进利润·经营参考不变: 实际=916000 分  预期=916000 分
+✅ 待结算不进利润·全要素不变: 实际=916000 分  预期=916000 分
+
+--- S2 库存+摊销（口径锁）---
+✅ 本期真实消耗: 实际=2300000 分  预期=2300000 分
+✅ 🟢 经营参考利润: 实际=916000 分  预期=916000 分
+✅ 🔵 全要素真实利润: 实际=347667 分  预期=347667 分
+✅ 两利润差异: 实际=568333 分  预期=568333 分
+
+--- 选做 2-R 连锁重算（期初 3000）---
+✅ 本期真实消耗: 实际=2100000 分  预期=2100000 分
+✅ 🔵 全要素真实利润: 实际=547667 分  预期=547667 分
+
+==== 结果：15 通过 / 0 失败 ====
+  [test_poc3] ✅ PASS  (✅ 15 条 / 段 4)
+
+===== [test_poc4] specs/dev-specs/prototype/test_poc4.js =====
+
+--- POC4 场景 S4: 选址盈利沙盘（基础）---
+✅ 固定成本合计(分): 实际=2130000 分  预期=2130000 分
+✅ 综合变动成本率(%): 实际=45  预期=45
+✅ 边际贡献率(%): 实际=55  预期=55
+✅ 保本月营业额(分): 实际=3872727 分  预期=3872727 分
+✅ 保本日均营业额(分): 实际=129091 分  预期=129091 分
+✅ 目标利润月营收(分): 实际=6600000 分  预期=6600000 分
+✅ 目标利润日均(分): 实际=220000 分  预期=220000 分
+✅ 无红警
+
+--- POC4 红警边界: 变动率 95+8+2=105% ---
+✅ 综合变动率=105% 触发红警
+✅ 红警时保本为 null（不计算负数）
+✅ 红警时目标为 null
+
+--- POC4 含模拟摊销: 叠 +2000 元/月 ---
+✅ 含摊销固定合计(分): 实际=2330000 分  预期=2330000 分
+✅ 含摊销保本月营业额(分): 实际=4236364 分  预期=4236364 分
+✅ 含摊销保本日均(分): 实际=141212 分  预期=141212 分
+
+==== POC4 结果：14 通过 / 0 失败 ====
+  [test_poc4] ✅ PASS  (✅ 14 条 / 段 4)
+
+===== [batch0 代码自测] cloudfunctions/common/__tests__/batch0_selfcheck.js =====
+
+===== 批次0 自测结果（复审节点① 五条）=====
+✅ 点1·身份只来自OPENID(忽略伪造记录)  →  user.id=u_real
+✅ 点1·函数不接收event(签名为 ctx,db,audit)  →  resolveAuth.length=3（参数=ctx,db,audit，无 event 入口）
+✅ 点1b·首次自动建档返回user  →  user.id=u_mw659opdh36d
+✅ 点1b·建了默认shop  →  shop=1
+✅ 点1b·建了entitlement(expire_at=0)  →  expire_at=0
+✅ 点1b·建档写audit_log(AUTH_AUTO_PROVISION)  →  audit=1
+✅ 点2·越权→FORBIDDEN  →  error=FORBIDDEN
+✅ 点2·本人→放行（error=null 且回带 shop）  →  error=null
+✅ R72·空 key → false（该调用点不做幂等约束）  →  got=false
+✅ R72·未登记 key → false  →  got=false
+✅ R72·已登记 key → true（判为重复提交）  →  got=true
+✅ R72·换店同 reqId 不误拦（靠调用方前缀隔离）  →  A=true, B=false
+✅ R73·shopKey 格式 = <shopId>__<crid>  →  =shopA__req1
+✅ R73·shopKey 空 crid → 空串（= 该调用点不做约束）
+✅ R73·未登记 → null（不误判成"已处理过"）  →  got=null
+✅ R73·空 crid → null（无键不受约束）  →  got=null
+✅ R73·空 crid 时**连库都不查**（无谓读为 0）  →  lastWhere=undefined
+✅ R73🏆 往返一致：findPriorResult 取回 writeAudit 存的首次结果  →  got={"shop_id":"shopA","asset_id":"amort_1","client_request_id":"req_rt"}
+✅ R73·换店同 crid 不误命中（shop 维度隔离）
+✅ R73·两种形态对同一行判定一致（checkIdempotent 亦命中）
+✅ R73·命中行无 after_data → null（不当成首次结果返回）  →  got=null
+✅ 点3·软删记录不出现在列表  →  len=1
+✅ 点3·查询条件注入is_deleted=false  →  cond={"shop_id":"x","is_deleted":false}
+✅ 点3b·get 活跃文档返回文档本体(非{data})  →  alive={"_id":"g1","user_id":"owner","is_deleted":false}
+✅ 点3b·get 软删文档→null  →  dead=null
+✅ 点3b·get 不存在文档(reject)→null  →  missing=null
+✅ 点5·集合数=31  →  len=31
+✅ 点5·dev 环境 gate.blocked===undefined  →  blocked=undefined
+✅ 点5·prod 环境 gate.blocked===true  →  blocked=true
+✅ 点5·白名单精确匹配dev放行  →  blocked=undefined
+✅ 点5·白名单误配prod仍拒  →  blocked=true
+✅ 限流·第61次写触发RATE_LIMITED  →  limited=true
+✅ A6b·并发首进不得硬失败（撞唯一键要容错回读）  →  errors=[]
+✅ A6b·并发首进只建出 1 个 user  →  user=1
+✅ A6b·并发首进只建出 1 个 shop  →  shop=1
+✅ A6b·并发首进只建出 1 条 entitlement  →  ent=1
+✅ A6b·并发两次拿到同一个 user_id  →  ids=u_mw659ophe2kg,u_mw659ophe2kg
+✅ A6b·店铺 id 用单源确定性格式 shop_<user_id>  →  shop_id=shop_u_mw659ophe2kg
+✅ A6b·机制级：确定性 id ⇒ 同 user 第二次建店被库拒  →  rejected=true
+✅ A6b·机制级：仅剩 1 个店  →  shop=1
+✅ A6b·反向证据：随机 id 两次都成功 ⇒ 2 个店（这就是旧实现能建出重复店的原因）  →  shop=2
+🔶 点4 未完成：env.js:14-15 仍是占位符 —— 部署前置，非单测可判真；替换真实ID后重跑转 ✅（点⑤ 给 gate 喂输入属真测试，不受影响）
+
+合计：41 通过 / 0 失败（待办 1 项不计入失败）
+  [batch0 代码自测] ✅ PASS  (✅ 42 条 / 段 1)
+
+===== [batch1 代码自测] cloudfunctions/calcMonthlyProfit/selftest.js =====
+判据：金额锚点 = 整数分严格相等（无容差）；比率锚点 = ±0.01
+
+| # | 场景 | 指标 | 预期 | 实际 | 是否通过 |
+|---|---|---|---|---|---|
+| 1 | S1 | 收入合计 | 64000元(分:6400000) | 64000 | ✅ 通过 |
+| 2 | S1 | 费用合计 | 32840元(分:3284000) | 32840 | ✅ 通过 |
+| 3 | S1 | 菜品毛利 | 42000元(分:4200000) | 42000 | ✅ 通过 |
+| 4 | S1 | 菜品毛利率(%) | 65.63% | 65.63 | ✅ 通过 |
+| 5 | S1 | 🟢经营参考利润 | 9160元(分:916000) | 9160 | ✅ 通过 |
+| 6 | S1 | 🔵全要素真实利润 | 9160元(分:916000) | 9160 | ✅ 通过 |
+| 7 | S2 | 本期真实消耗 | 23000元(分:2300000) | 23000 | ✅ 通过 |
+| 8 | S2 | 🟢经营参考利润 | 8160元(分:816000) | 8160 | ✅ 通过 |
+| 9 | S2 | 🔵全要素真实利润 | 3476.67元(分:347667) | 3476.67 | ✅ 通过 |
+| 10 | S2 | 两利润差异 | 4683.33元(分:468333) | 4683.33 | ✅ 通过 |
+| 11 | 2-R | 本期真实消耗 | 21000元(分:2100000) | 21000 | ✅ 通过 |
+| 12 | 2-R | 🔵全要素真实利润 | 5476.67元(分:547667) | 5476.67 | ✅ 通过 |
+
+[断言A] R484 口径锁：S2 经营参考利润 = 816000 分（应 = 816000 = 用倒轧 23,000；若为 916000 说明又用回了手工填的 22,000）= ✅ 锁成立
+[断言B] 差异自洽（经营参考 − 全要素真实 === 差异）：✅ S1/S2/2-R 三场景均成立
+
+S1 系统汇总收入=64000元 、费用=32840元（均 Service 逐项累加，非前端传合计）
+S2 真实消耗=23000元 、直接填消耗=22000元
+S2 毛利率展示=64.06% （全精度 64.0625%）
+===== 入参对抗（validate）=====
+[入参 A1] 标量 100（整数分）→ 放行 → OK ✅
+[入参 A2] 标量 0 → 放行 → OK ✅
+[入参 A3] 标量字符串 "100" → 拒 → INVALID_PARAM ✅
+[入参 A4] 标量字符串 "0" → 拒 → INVALID_PARAM ✅
+[入参 A5] 标量小数 100.5 → 拒 → INVALID_PARAM ✅
+[入参 A6] 标量负数 -1 → 拒 → INVALID_PARAM ✅
+[入参 A7] 标量布尔 true → 拒 → INVALID_PARAM ✅
+[入参 A8] 标量数组 [] → 拒 → INVALID_PARAM ✅
+[入参 A9] 标量对象 {} → 拒 → INVALID_PARAM ✅
+[入参 A10] 标量 NaN → 拒 → INVALID_PARAM ✅
+[入参 A11] 标量 Infinity → 拒 → INVALID_PARAM ✅
+[入参 A12] 标量 undefined → 默认 0（设计：可省） → OK ✅
+[入参 A13] 标量 null → 默认 0（设计：可省） → OK ✅
+[入参 B1] 库存 opening_fen 数字 → 放行 → OK ✅
+[入参 B2] 库存 opening_fen 字符串 → 拒 → INVALID_PARAM ✅
+[入参 C1] 明细 {amount_fen:100} → 放行 → OK ✅
+[入参 C2] 明细 {amount_fen:"100"} → 拒 → INVALID_PARAM ✅
+[入参 C3] 明细只传 amountFen（缺 snake）→ 拒 → INVALID_PARAM ✅
+[入参 C4] 明细 amount_fen 与 amountFen 并存且相等 → 拒（R30 收紧，原为放行） → INVALID_PARAM ✅
+[入参 C5] 明细 amount_fen 与 amountFen 并存且不等 → 拒 → INVALID_PARAM ✅
+[入参 C6] 明细 {} 空对象 → 拒 → INVALID_PARAM ✅
+[入参 C7] 明细 {amount_fen:100.5} → 拒 → INVALID_PARAM ✅
+[入参 D1] 错误信息点名字段（amortize_fen） → OK ✅
+
+✅ 12/12 锚点 + 2 项自洽断言 + 23 条入参对抗用例（validate）全数通过（判据：金额=整数分严格相等）
+  [batch1 代码自测] ✅ PASS  (✅ 38 条 / 段 1)
+
+===== [batch2 代码自测] cloudfunctions/calcAmortize/selftest.js =====
+判据：金额锚点 = 整数分严格相等（无容差，单位：分；括号内为元）
+
+--- 用例 A · 边界（旧空调提前报废 2026-08 / 招牌自然到期）---
+✅ 旧空调 2026-01 当月即摊(推断①)  (=33333分)
+✅ 旧空调 2026-08 终止当月仍摊(推断②)  (=33333分)
+✅ 旧空调 2026-09 次月起停(推断④)  (=0分)
+✅ 🔵 旧空调残值(报废 2026-08)=9,333.36  (=933336分=9333.36元)
+🔍 [变异回验] 旧空调残值：期望±1分均判红，判据有 ±1 分鉴别力 = ✅
+✅ 招牌 2026-12 到期当月仍摊(推断③)  (=50000分)
+✅ 招牌 2027-01 次月起停(推断④)  (=0分)
+✅ 🔵 招牌已摊合计=6,000.00(尾差被末月吸收)  (=600000分=6000元)
+🔍 [变异回验] 招牌已摊合计：期望±1分均判红，判据有 ±1 分鉴别力 = ✅
+
+--- 用例 B · 多资产并行 + 尾差倒挤 ---
+✅ 2026-08 三资产合计=4,683.33  (=468333分=4683.33元)
+🔍 [变异回验] 2026-08 三资产合计：期望±1分均判红，判据有 ±1 分鉴别力 = ✅
+✅ 2026-02 仅装修在摊(加盟费/冰柜未开始)=3,333.33  (=333333分=3333.33元)
+✅ 🔴 装修末月 2028-12 尾差倒挤=3,333.45(非 3,333.33)  (=333345分=3333.45元)
+🔍 [变异回验] 装修末月尾差倒挤：期望±1分均判红，判据有 ±1 分鉴别力 = ✅
+✅ 装修 2029-01 起=0  (=0分)
+✅ 装修自然到期无残值  (=0分)
+✅ 装修全程累计=120,000.00(等于原值)  (=12000000分)
+✅ 装修共 36 期(2026-01~2028-12, 含两端)  (rows=36)
+
+--- 尾差倒挤鉴别力（base×N 对照，不依赖生产代码开关）---
+✅ 装修末月确实走了尾差倒挤（≠ base，=3,333.45）  (末月=333345分, base=333333分)
+✅ 真实全程累计=12,000.00（末月倒挤保证）  (=12000000分)
+✅ 若漏做倒挤累计=11,999,988（与真实不一致 → 判据有鉴别力）
+
+--- 输出对接批次 1（total_amount_fen + details 结构）---
+✅ details 含 3 条资产明细  (len=3)
+✅ details 金额为分整数 + 命名 amount_fen  (sum=468333分)
+✅ details 金额之和 === total_amount_fen
+✅ 冰柜 2026-08 in_period=true(2026-06已开始)
+✅ 旧空调 in_period=false 于 2026-09(提前停)
+
+--- 月份工具（统一经批次 0 utilTime 往返）---
+✅ addMonths("2026-01", 11) = "2026-12"
+✅ addMonths("2026-12", 1) = "2027-01"
+✅ addMonths("2028-12", 1) = "2029-01"(预告) 
+✅ formatMonthIndex(parseMonthIndex("2026-08")) 往返一致
+✅ MONTH_RE 拒非法月 "2026-13"
+✅ MONTH_RE 拒坏格式 "2026-1"
+
+--- validate 纪律（金额键字段非 JSON number → INVALID_PARAM，点名）---
+✅ [V] 合法调用 → OK 
+✅ [V] month 传坏 "2026-08-01" → INVALID_PARAM   点名: month 必须是 YYYY-MM（如 2026-01）
+✅ [V] shop_id 缺失 → INVALID_PARAM   点名: shop_id 必须是非空字符串
+✅ [V] 带 assets（含非法字段）被忽略 → 仍 OK → OK 
+
+--- R32 回归：docToAsset 守卫 start_month / total_months / terminate_month ---
+✅ docToAsset 合法资产放行
+✅ docToAsset start_month="bad" → 抛 INVALID_PARAM 并点名
+✅ docToAsset total_months=字符串"36" → 抛 INVALID_PARAM 并点名
+✅ docToAsset total_months=0 → 抛 INVALID_PARAM 并点名
+✅ docToAsset terminate_month="bad" → 抛 INVALID_PARAM 并点名
+✅ docToAsset terminate_month="2026-13" → 抛 INVALID_PARAM 并点名
+✅ docToAsset total_value 缺失（R34：唯一校验路径也须响亮失败） → 抛 INVALID_PARAM 并点名
+
+--- R35/R36 回归：docToAsset total_value 必须 JSON number、asset_id 必须非空字符串 ---
+✅ docToAsset total_value=null（静默当 0 元资产） → 抛 INVALID_PARAM 并点名
+✅ docToAsset total_value="" → 抛 INVALID_PARAM 并点名
+✅ docToAsset total_value=true → 抛 INVALID_PARAM 并点名
+✅ docToAsset total_value=[] → 抛 INVALID_PARAM 并点名
+✅ docToAsset total_value="100" 数字字符串 → 抛 INVALID_PARAM 并点名
+✅ docToAsset total_value=100（整数分）放行
+✅ docToAsset total_value=0（0 元资产合法）放行
+✅ docToAsset asset_id 缺失 → 抛 INVALID_PARAM 并点名
+✅ docToAsset asset_id=数字 → 抛 INVALID_PARAM 并点名
+✅ docToAsset asset_id="" 空串 → 抛 INVALID_PARAM 并点名
+✅ docToAsset asset_id="R36ok" 正常放行
+
+--- DataAdapter 软删过滤（读台账自动排除 is_deleted=true）---
+✅ 台账列表仅返回活跃资产(is_deleted=false)  (len=1)
+✅ 软删资产不进入列表(业务层无需过滤)
+✅ Controller 读台账=da.list(...) 同路径(软删天然排除)  (index.js 经 da.list 取台账（🔒 R71：原为恒真断言）)
+
+==== calcAmortize 批次 2 自测结果：57 通过 / 0 失败 ====
+  [batch2 代码自测] ✅ PASS  (✅ 57 条 / 段 10)
+
+===== [静态路径检查] tools/check_requires.js =====
+✅ §2 common 解构符号均已导出（引用 417 处 / 23 个符号；单源导出 56 个键）
+✅ 相对 require 全部可解析（扫描 1459 个 .js：小程序侧 61 / 云函数侧 1398；require 语句 4327 条，其中相对引用 4216 条，豁免 1 条）
+  [静态路径检查] ✅ PASS  (✅ 2 条)
+
+===== [页面声明守卫 R44] tools/check_pages.js =====
+✅ 页面声明校验通过（app.json 声明 33 页，pages/ 下实到 33 页；四件套必需项 .js/.wxml 齐全，无孤儿页；③ 死绑定 386 个绑定 0 命中、④ 34 个云函数调用 0 幽灵、⑤ 0 重复 id、⑥ 下拉钩子 19 页全部已开启）
+  [页面声明守卫 R44] ✅ PASS  (✅ 1 条)
+
+===== [合规守卫 R42] tools/check_compliance.js =====
+✅ 合规校验通过（扫描 73 个前端文件；未发现未加豁免的 auto_subscribe 引用）
+  [合规守卫 R42] ✅ PASS  (✅ 1 条)
+
+===== [单源派生守卫 R50] tools/check_admincore.js =====
+—— 单源：cloudfunctions\_adminCore\adminAuth.js（200 行，指纹 17feb263）
+—— 待校验副本：11 份；引用了该模块却缺副本的函数：0 个
+✅ 单源派生校验通过：11 份 adminAuth.js 副本均 ≡ cloudfunctions/_adminCore/adminAuth.js
+  [单源派生守卫 R50] ✅ PASS  (✅ 1 条)
+
+===== [自测形状守卫 R66/67/68] tools/check_selftest_shape.js =====
+
+[形状守卫 R66/R67/R68/R71] 扫描自测文件 71 个（R1 顶层 IIFE ≤1 / R2 exit 仅在末块或函数声明体内 / R3 退出码存在 / R71 无恒真断言）
+  [R67 登记完整性] 树内 71 个 ↔ SUITES 内 71 个；漏挂 0 / 孤儿 0
+  ⚠️ cloudfunctions/common/__tests__/batch0_selfcheck.js
+      ↳ R71 已豁免恒真断言 1 条（第 235 行，带 R71-ok 标记）
+  ⚠️ cloudfunctions/getCostCard/selftest.js
+      ↳ R3 全文无 process.exit / process.exitCode —— 断言失败时退出码仍为 0（fail-open）
+  ⚠️ tools/selftest_r174_inbound.js
+      ↳ R71 已豁免恒真断言 1 条（第 131 行，带 R71-ok 标记）
+✅ 全部 71 个自测形状合规（R1/R2 通过），且 Δ(SUITES) 双向为零（R67）；另有 3 条 WARN（不阻断）：cloudfunctions/common/__tests__/batch0_selfcheck.js、cloudfunctions/getCostCard/selftest.js、tools/selftest_r174_inbound.js
+  [自测形状守卫 R66/67/68] ✅ PASS  (✅ 1 条)
+
+===== [幂等覆盖守卫 R73] tools/check_idempotency.js =====
+===== I1 契约解析（fail-closed：解析不到就红）=====
+✅ 契约表解析出「+幂等」函数 ≥5 个  (解析到 13 个：saveLedger, saveAsset, saveMaterial, saveCostCard, syncCostCard, importSalesBill, clearSalesBills, saveDishMapping, savePlan, deleteAccount, manageShop, grantAiConsent, revokeAiConsent)
+✅ 契约解析含全部 5 个已交付函数  (缺：无)
+
+===== I2 契约覆盖（要求幂等的函数必须真在查重）=====
+✅ saveLedger 含幂等预检（契约 L44 标 +幂等）  (重放形态 findPriorResult)
+✅ saveAsset 含幂等预检（契约 L47 标 +幂等）  (重放形态 findPriorResult)
+✅ saveMaterial 含幂等预检（契约 L63 标 +幂等）  (重放形态 findPriorResult)
+✅ saveCostCard 含幂等预检（契约 L65 标 +幂等）  (重放形态 findPriorResult)
+✅ syncCostCard 含幂等预检（契约 L66 标 +幂等）  (重放形态 findPriorResult)
+✅ importSalesBill 含幂等预检（契约 L69 标 +幂等）  (重放形态 findPriorResult)
+✅ clearSalesBills 含幂等预检（契约 L72 标 +幂等）  (重放形态 findPriorResult)
+✅ saveDishMapping 含幂等预检（契约 L73 标 +幂等）  (重放形态 findPriorResult)
+✅ savePlan 含幂等预检（契约 L92 标 +幂等）  (重放形态 findPriorResult)
+✅ deleteAccount 含幂等预检（契约 L190 标 +幂等）  (拒绝形态 checkIdempotent)
+✅ manageShop 含幂等预检（契约 L193 标 +幂等）  (重放形态 findPriorResult)
+✅ grantAiConsent 含幂等预检（契约 L218 标 +幂等）  (重放形态 findPriorResult)
+✅ revokeAiConsent 含幂等预检（契约 L220 标 +幂等）  (重放形态 findPriorResult)
+
+===== I3 顺序不变量（预检必须早于首个业务写）=====
+✅ adminGrantEntitlement 注入形态的顺序判据落在 service.js  (存在)
+✅ adminGrantEntitlement 幂等预检早于首个写型依赖调用  (预检@876 vs 首写@1186)
+✅ adminManualOrder 注入形态的顺序判据落在 service.js  (存在)
+✅ adminManualOrder 幂等预检早于首个写型依赖调用  (预检@912 vs 首写@1528)
+✅ adminRefundMark 注入形态的顺序判据落在 service.js  (存在)
+✅ adminRefundMark 幂等预检早于首个写型依赖调用  (预检@969 vs 首写@2084)
+✅ clearSalesBills 幂等预检早于首个业务写  (预检@984 vs 首个业务写@2324)
+✅ deleteAccount 幂等预检早于首个业务写  (预检@829 vs 首个业务写@1194)
+✅ grantAiConsent 幂等预检早于首个业务写  (预检@1054 vs 首个业务写@1899)
+✅ importSalesBill 幂等预检早于首个业务写  (预检@6593 vs 首个业务写@9324)
+✅ manageShop 幂等预检早于首个业务写  (预检@1024 vs 首个业务写@2288)
+✅ revokeAiConsent 幂等预检早于首个业务写  (预检@1137 vs 首个业务写@1838)
+✅ saveAsset 幂等预检早于首个业务写  (预检@2266 vs 首个业务写@2923)
+✅ saveCostCard 幂等预检早于首个业务写  (预检@2808 vs 首个业务写@10292)
+✅ saveDishMapping 幂等预检早于首个业务写  (预检@1722 vs 首个业务写@2759)
+✅ saveLedger 幂等预检早于首个业务写  (预检@1156 vs 首个业务写@1807)
+✅ saveMaterial 幂等预检早于首个业务写  (预检@976 vs 首个业务写@1967)
+✅ savePlan 幂等预检早于首个业务写  (预检@1168 vs 首个业务写@2746)
+✅ syncCostCard 幂等预检早于首个业务写  (预检@5294 vs 首个业务写@11459)
+
+===== I4 登记同源（重放形态必须复用单源 shopKey）=====
+✅ clearSalesBills 查重键与登记键同源（用单源 shopKey）
+✅ grantAiConsent 查重键与登记键同源（用单源 shopKey）
+✅ importSalesBill 查重键与登记键同源（用单源 shopKey）
+✅ manageShop 查重键与登记键同源（用单源 shopKey）
+✅ revokeAiConsent 查重键与登记键同源（用单源 shopKey）
+✅ saveAsset 查重键与登记键同源（用单源 shopKey）
+✅ saveCostCard 查重键与登记键同源（用单源 shopKey）
+✅ saveDishMapping 查重键与登记键同源（用单源 shopKey）
+✅ saveLedger 查重键与登记键同源（用单源 shopKey）
+✅ saveMaterial 查重键与登记键同源（用单源 shopKey）
+✅ savePlan 查重键与登记键同源（用单源 shopKey）
+✅ syncCostCard 查重键与登记键同源（用单源 shopKey）
+
+===== I5 全量登记（有业务写的函数必须有幂等或登记豁免）=====
+✅ adminInit 无幂等实现但已登记豁免（含理由）  (已登记)
+✅ adminLogin 无幂等实现但已登记豁免（含理由）  (已登记)
+✅ adminLogout 无幂等实现但已登记豁免（含理由）  (已登记)
+✅ adminRefreshToken 无幂等实现但已登记豁免（含理由）  (已登记)
+✅ adminRevokeToken 无幂等实现但已登记豁免（含理由）  (已登记)
+✅ archiveMonth 无幂等实现但已登记豁免（含理由）  (已登记)
+✅ clearMonth 无幂等实现但已登记豁免（含理由）  (已登记)
+✅ getPlan 无幂等实现但已登记豁免（含理由）  (已登记)
+✅ getShopContext 无幂等实现但已登记豁免（含理由）  (已登记)
+✅ initDb 无幂等实现但已登记豁免（含理由）  (已登记)
+✅ payCallback 无幂等实现但已登记豁免（含理由）  (已登记)
+✅ payCreateOrder 无幂等实现但已登记豁免（含理由）  (已登记)
+✅ payRenew 无幂等实现但已登记豁免（含理由）  (已登记)
+✅ saveShopSetting 无幂等实现但已登记豁免（含理由）  (已登记)
+✅ smokeTest 无幂等实现但已登记豁免（含理由）  (已登记)
+
+===== I6 豁免不腐（登记必须仍然成立）=====
+✅ EXEMPT_WRITE[saveShopSetting] 仍然成立  (理由：写 shop 名称/备注 + upsert shop…)
+✅ EXEMPT_WRITE[archiveMonth] 仍然成立  (理由：只翻转 is_archive 标记（true/fal…)
+✅ EXEMPT_WRITE[clearMonth] 仍然成立  (理由：M1 清空某月：**软删**（is_deleted=…)
+✅ EXEMPT_WRITE[getShopContext] 仍然成立  (理由：读函数，唯一写是「无店铺时自动建档」（if (!sh…)
+✅ EXEMPT_WRITE[adminRevokeToken] 仍然成立  (理由：把指定管理员的**全部会话删光**（覆盖式终态）⇒ …)
+✅ EXEMPT_WRITE[adminLogout] 仍然成立  (理由：吊销**当前** token（从会话集合删除）⇒ 重…)
+✅ EXEMPT_WRITE[adminRefreshToken] 仍然成立  (理由：**有意非幂等**：每次刷新都要签发**新** to…)
+✅ EXEMPT_WRITE[payCallback] 仍然成立  (理由：契约 §5 明定幂等键 = **全局 transac…)
+✅ EXEMPT_WRITE[payCreateOrder] 仍然成立  (理由：契约 §5 鉴权列 = `user`（未标 +幂等）…)
+✅ EXEMPT_WRITE[payRenew] 仍然成立  (理由：同上（续费=再建一条 pending 订单）；exp…)
+✅ EXEMPT_WRITE[initDb] 仍然成立  (理由：仅 dev 生效（env 门禁 + blocked …)
+✅ EXEMPT_WRITE[smokeTest] 仍然成立  (理由：探针函数：只读写自建的 PROBE 探针集合（探测完…)
+✅ EXEMPT_WRITE[adminInit] 仍然成立  (理由：首超管引导（一次性）：靠「已存在首个 super 即…)
+✅ EXEMPT_WRITE[adminLogin] 仍然成立  (理由：登录是**审计/会话类追加写**：每次登录都该在 a…)
+✅ EXEMPT_WRITE[getPlan] 仍然成立  (理由：只读函数；唯一写是惰性清理超期软删的旧版本（物理删已…)
+
+===== I7 装饰性幂等键（写了非空 key 却从不查重 ⇒ 该 key 永不生效）=====
+✅ adminExport 写了非空 idempotency_key 却无查重 ⇒ 已登记理由  (已登记)
+✅ EXEMPT_KEY[adminExport] 仍然成立  (理由：导出是**只读**动作、无数据变更；after_da…)
+
+===== I8 单源幂等模块「行为对拍」（R298W：形态判据测不了行为，补真跑）=====
+✅ I8.0 前置：common/idempotency.js 可被真加载（不可加载 ⇒ 后续行为判据无法执行，不给假绿）  (已加载 3 个导出)
+✅ I8.1 shopKey 格式 = <shop_id>__<client_request_id>  (s1__c1)
+✅ I8.2 空 client_request_id ⇒ 空串（= 不做幂等约束，而非"拿空串当键"）
+✅ I8.3 checkIdempotent：空表 ⇒ false（未处理过）
+✅ I8.4 checkIdempotent：命中 ⇒ true
+✅ I8.5 checkIdempotent：空 key ⇒ false（fail-safe 方向：不做拒绝）
+✅ I8.6 findPriorResult：无记录 ⇒ null
+✅ I8.7 findPriorResult：有记录 ⇒ 返回 after_data（首次结果）  ({"ok":true,"n":7})
+✅ I8.8 findPriorResult：有记录但缺 after_data ⇒ null（不返回半个对象）
+✅ I8.9 findPriorResult：空 client_request_id ⇒ null
+✅ I8.10 🔴 不同 shop_id 不互相命中（防键退化成全局键）  (findPrior=null · checkIdem=false)
+✅ I8.11 🔴 同 shop 不同 client_request_id 不互相命中
+✅ I8.12 🔴 键同源：checkIdempotent(shopKey(s,c)) 与 findPriorResult(s,c) 命中同一行
+✅ I8.F1 影子样本：where 过滤被打瞎 ⇒ 隔离性确实失效（证明 I8.10 有鉴别力，非恒真）  (打瞎后串台（预期）)
+✅ I8.F2 判据非退化：本段断言数 ≥ 12（防"删判据 ⇒ 恒绿"）  (本段 14 条)
+
+===== 幂等覆盖守卫结果：93 通过 / 0 失败 =====
+  [幂等覆盖守卫 R73] ✅ PASS  (✅ 93 条 / 段 9)
+
+===== [建库单源同步守卫 R74] tools/check_schema_sync.js =====
+===== S1 集合清单一致（collections.js ↔ init_db.js）=====
+✅ S1 集合数一致  (单源 31 / 镜像 31)
+✅ S1 镜像无缺失集合  (无)
+✅ S1 镜像无多余集合  (无)
+✅ S1 顺序一致  (（顺序不影响正确性，仅提示）)
+
+===== S2 索引清单一致（逐集合，顺序无关）=====
+✅ S2 user  (2 条一致)
+✅ S2 shop  (2 条一致)
+✅ S2 shop_entitlement  (2 条一致)
+✅ S2 shop_subscription  (1 条一致)
+✅ S2 shop_payment_flow  (3 条一致)
+✅ S2 order_refund  (2 条一致)
+✅ S2 shop_monthly_account  (2 条一致)
+✅ S2 shop_monthly_income  (1 条一致)
+✅ S2 shop_monthly_expense  (1 条一致)
+✅ S2 shop_inventory  (1 条一致)
+✅ S2 shop_cost_card  (2 条一致)
+✅ S2 shop_cost_card_line  (1 条一致)
+✅ S2 shop_material  (2 条一致)
+✅ S2 shop_sandbox  (2 条一致)
+✅ S2 shop_amortize  (1 条一致)
+✅ S2 shop_switch  (1 条一致)
+✅ S2 audit_log  (4 条一致)
+✅ S2 admin_user  (1 条一致)
+✅ S2 admin_login_log  (1 条一致)
+✅ S2 subscription_plan  (1 条一致)
+✅ S2 feature_permissions  (1 条一致)
+✅ S2 shop_stored_value  (2 条一致)
+✅ S2 shop_credit_ledger  (2 条一致)
+✅ S2 shop_income_item  (1 条一致)
+✅ S2 shop_expense_item  (1 条一致)
+✅ S2 external_sales_daily  (3 条一致)
+✅ S2 shop_dish_mapping  (2 条一致)
+✅ S2 shop_ai_consent  (2 条一致)
+✅ S2 shop_ai_insight  (2 条一致)
+✅ S2 shop_diagnosis_report  (2 条一致)
+✅ S2 shop_diagnosis_credit  (1 条一致)
+✅ S2 索引总数一致  (单源 52 / 镜像 52)
+
+===== S3 单源结构不变量（collections.js 自身）=====
+✅ S3 INDEXES 的键都是已声明的集合  (覆盖 31 张集合)
+✅ S3 每条索引都有 keys  (无空 keys)
+✅ S3 unique 只取 true/未写
+
+===== S4 文档声明计数 == 实测 =====
+✅ S4 手册·索引总数 至少声明一次  (命中 1 处)
+✅ S4 手册·索引总数 声明值 == 实测索引总数  (52)
+✅ S4 手册·unique 数 至少声明一次  (命中 1 处)
+✅ S4 手册·unique 数 声明值 == 实测unique 数  (13)
+✅ S4 工序清单·标题条数 至少声明一次  (命中 1 处)
+✅ S4 工序清单·标题条数 声明值 == 实测索引总数  (52)
+✅ S4 工序清单·正文条数 至少声明一次  (命中 1 处)
+✅ S4 工序清单·正文条数 声明值 == 实测索引总数  (52)
+✅ S4 工序清单·重复次数 至少声明一次  (命中 1 处)
+✅ S4 工序清单·重复次数 声明值 == 实测索引总数  (52)
+✅ S4 工序清单·表说明条数 至少声明一次  (命中 1 处)
+✅ S4 工序清单·表说明条数 声明值 == 实测索引总数  (52)
+✅ S4 工序清单·集合数 至少声明一次  (命中 1 处)
+✅ S4 工序清单·集合数 声明值 == 实测集合数  (31)
+✅ S4 重启键·活声明至少一处（fail-closed）  (命中 3 行)
+✅ S4 重启键·活声明计数 == 实测索引总数  (L628=52 L641=52 L835=52)
+✅ S4 重启键·豁免仍生效「R74 建库单源同步（」  (2 处 · R74 条目：叙述 39→40 的变更本身 + 引用 Runbook 历史快照（该行含 2 处旧值）)
+✅ S4 重启键·豁免仍生效「2026-09-14 云端实测」  (1 处 · A7 定案的**历史实测记录**（记录当日实际值，非当前态声明）)
+✅ S4 重启键·豁免仍生效「R74 建库单源同步守卫」  (1 处 · §1.3 ⑨ 对 R74 的复盘，引用旧值作为教训)
+✅ S4 重启键·豁免仍生效「R75 自检脚本的期望值」  (1 处 · R75/R76 条目本身：叙述"期望值改派生 + 重启键改 40"的变更，合法引用旧值)
+✅ S4 重启键·unique 数 至少声明一次  (命中 1 处)
+✅ S4 重启键·unique 数 声明值 == 实测unique 数  (13)
+✅ S4 verify_docx.py 无写死的「计数类期望值」（须从同名 .md 派生）  (0 处（已全部派生）)
+
+===== S5 工序清单「逐条对照表」≡ 单源 =====
+✅ S5 定位到「逐条对照表」  (54 行（含表头/分隔线）)
+✅ S5 无无法解析的表格行  (0 行)
+✅ S5 对照表行数 == 索引总数  (表 52 行 / 单源 52 条)
+✅ S5 行号连续 1..N  (1..52)
+✅ S5 表内索引名无重复
+✅ S5 每条单源索引都在表中  (52 条)
+✅ S5 表中无单源之外的索引  (无)
+✅ S5 逐行字段（集合／索引名／升序降序／唯一）全等单源
+
+===== 建库单源同步守卫结果：70 通过 / 0 失败 =====
+  [建库单源同步守卫 R74] ✅ PASS  (✅ 70 条 / 段 6)
+
+===== [交接面引用位置守卫 R77] tools/check_handoff_paths.js =====
+✅ P1 协议含锚点行「WorkBuddy 报告」（fail-closed）  (第 16 行)
+✅ P1 锚点行含可解析绝对路径（盘符 + .workbuddy[/]memory）  (已给出盘符路径)
+✅ P2 协议点名诱饵「~\.workbuddy\memory」并在其后紧邻标注（云端画像缓存）  (已标注)
+✅ P2 协议点名诱饵「~\.workbuddy\MEMORY.md」并在其后紧邻标注（跨项目用户级记忆）  (已标注)
+✅ P3 活文档中报告路径的相对写法均可解析或已标注诱饵  (扫描 5 份活文档，0 处)
+✅ P4 至少解析到 1 个报告目录绝对路径（fail-closed）  (C:\Users\lzj\WorkBuddy\2026-09-08-22-08-11\.workbuddy\memory)
+✅ P4 每个报告目录均真实存在  (1 个目录全部存在)
+✅ P4 每个提到报告路径的活文档都给出了可解析的绝对路径  (4 份：review/README.md, SMOKETEST_RUNBOOK.md, 新手上云操作手册.md, specs/dev-specs/★知识存储点_2026-09-10.md)
+✅ P5 报告目录含 ≥1 份 `YYYY-MM-DD.md`  (27 份)
+   ℹ️ 最新报告：2026-11-03.md（2608 B，mtime 2026-11-03 05:23）
+✅ P6 诱饵「~\.workbuddy\memory」确实存在（标注不腐）  (~\.workbuddy\memory · 云端画像缓存)
+✅ P6 诱饵「~\.workbuddy\MEMORY.md」确实存在（标注不腐）  (~\.workbuddy\MEMORY.md · 跨项目用户级记忆)
+
+===== 交接面引用位置守卫结果：11 通过 / 0 失败 =====
+  [交接面引用位置守卫 R77] ✅ PASS  (✅ 11 条 / 段 1)
+
+===== [核对单派生守卫 R79] tools/gen_index_checklist.js --check =====
+===== 核对单派生守卫（方案② · 整份重算逐字比对）=====
+✅ C1 单源可读（fail-closed） · 集合 31 / 索引 52
+   查找单源：C:\Users\lzj\WorkBuddy\Claw\catering-profit\cloudfunctions\initDb\collections.js
+   查找核对单：C:\Users\lzj\WorkBuddy\Claw\catering-profit\索引补齐核对单.md
+✅ C2 核对单可读（fail-closed） · 7014 字符
+✅ C3 整份 ≡ 重算结果（剥 BOM + CRLF 归一 + 掩时间戳） · 6998 字符
+✅ C5 磁盘件无手填残留（§6 全由证据派生） · 无 `____` 占位
+✅ C6 磁盘件仍带「勿手工编辑」声明 · 声明在位
+✅ C7 时间戳掩蔽确实生效（正则不腐） · 已掩 → > 生成时间（已掩蔽）：<每次重跑都变>
+
+===== 核对单派生守卫结果：6 通过 / 0 失败 =====
+  [核对单派生守卫 R79] ✅ PASS  (✅ 6 条 / 段 2)
+
+===== [已证伪短语守卫 R85] tools/check_stale_claims.js =====
+===== 已证伪短语守卫 R85（概念级：已证伪说法必须带上下文标记）=====
+✅ S1 扫描面非空（读不到文件 = 判红，不许假装绿） · 2450 个文件（下限 20）
+✅ S2 活文档内无「裸的已证伪断言」 · 0 处（共 15 处命中均带上下文标记）
+
+ℹ️ 以下 8 处为**带标记的引用/留痕**（放行，但必须看得见）：
+   specs/dev-specs/★知识存储点_2026-09-10.md:610  [引述/留痕]  **R74 建库单源同步（本侧主动加固，R73 的溢出发现）**：`cloudfunctions/initDb/collections.js`（建库**单源**）与 `specs/dev-sp
+   specs/dev-specs/★知识存储点_2026-09-10.md:640  [引述/留痕]  脚本化走官方 HTTP API `POST /tcb/updateindex`（见 `tools/apply_indexes.js`；旧口径「索引改控制台手工建」已于 2026-09-17 *
+   tools/apply_indexes.js:9  [引述/留痕]  *   - 错的一半：**「只能手工」是假的**（**已证伪** · 2026-09-17）。官方 HTTP API 提供
+   tools/gen_index_checklist.js:21  [引述/留痕]  //      ⇒ 本单的用途随之改变：它不是"必须手工"的理由（该旧口径**已于 2026-09-17 证伪**），
+   下一步工序清单.md:178  [引述/留痕]  ⚠️ 枯燥 —— **有 AppSecret 就走 ①，别走 ③**（旧版这里写「只能手工」，已于 2026-09-17 证伪并改正）。
+   下一步工序清单.txt:178  [引述/留痕]  ⚠️ 枯燥 —— **有 AppSecret 就走 ①，别走 ③**（旧版这里写「只能手工」，已于 2026-09-17 证伪并改正）。
+   specs/dev-specs/★知识存储点_2026-09-10.md:672  [引述/留痕]  · **触发**：回查李老师 2026-09-21 那批真机反馈的闭环质量。「月份选择 只有两个月份」这一条，我在 round57 曾判成「这是设计不是 bug」⇒ 本轮回读源码实锤：**判错
+   specs/dev-specs/★知识存储点_2026-09-10.md:686  [引述/留痕]  `月份只有两个=设计`：凡把该现象判成「设计/不是 bug/正常现象」的行，必须带引述标记（如「曾」）。
+
+ℹ️ 以下 7 处为**政策类**（非能力限制，放行）：
+   BATCH0_DELIVERY.md:86  [政策]  3. **initDb 仅 dev**：`initDb` 部署到 **dev** 手动跑一次建 25 集合；**prod 的 25 张集合在控制台手工建，绝不部署 initDb 到 prod*
+   cloudfunctions/initDb/collections.js:326  [政策]  return { blocked: true, reason: 'INITDB_DEV_ONLY: initDb 仅允许 dev 环境，prod 集合请由控制台手工创建' };
+   cloudfunctions/initDb/package.json:4  [政策]  "description": "店算 · 一次性建库云函数（仅 dev，prod 集合由控制台手工创建）",
+   specs/dev-specs/prototype/init_db.js:232  [政策]  // 生产环境 25 张集合由云开发控制台手工创建（一次性），本函数**绝不部署到 prod**。
+   specs/dev-specs/prototype/init_db.js:254  [政策]  return { blocked: true, reason: 'INITDB_DEV_ONLY: initDb 仅允许 dev 环境，prod 集合请由控制台手工创建' };
+   下一步工序清单.md:22  [政策]  > `initDb` 有环境门禁（含 `prod` 子串一律拒绝）⇒ prod 集合必须走控制台手工建
+   下一步工序清单.txt:22  [政策]  > `initDb` 有环境门禁（含 `prod` 子串一律拒绝）⇒ prod 集合必须走控制台手工建
+
+ℹ️ S4 防回潮保留 · 不支持代码建索引 当前 0 命中（该说法已从活文档清除）⇒ 条目**不删**，用于防回潮；其有效性判据 = **变异回灌**（塞回该说法须转红）。
+
+===== 已证伪短语守卫结果：3 通过 / 0 失败 =====
+  [已证伪短语守卫 R85] ✅ PASS  (✅ 2 条 / 段 2)
+
+===== [batch3-calcBom] cloudfunctions/calcBom/selftest.js =====
+===== 用例 A · 宫保鸡丁（单份 · 第 0 层）=====
+✅ 鸡胸肉 15元/斤 出成率90% → 净料单位成本 4 位=0.0333(万分333)  (net=333)
+✅ 花生米 → 万分200 / 干辣椒 → 万分400 / 葱姜蒜 → 万分100 / 调料油 → 万分200
+✅ 明细净料成本合计=8.76(876分)  (=876分)
+✅ 🏆 宫保总成本 = 9.75 (975分)  (=975分)
+🔍 [变异回验] 宫保总成本：期望±1分均判红，±1 分鉴别力 = ✅
+✅ 单品毛利 = 18.25 (1825分)  (=1825分)
+✅ 单品毛利率 = 65.18%  (=65.18%)
+✅ 反算售价(目标毛利60%) = 24.38 (2438分)  (=2438分)
+🔍 [变异回验] 反算售价：期望±1分均判红，±1 分鉴别力 = ✅
+
+===== 用例 B · 红油底料（批量预制 · 第 1 层）=====
+✅ 牛油/花椒/豆瓣酱/香料 万分正确
+✅ 红油原料合计 = 42.80 (4280分)  (=4280分)
+✅ 整批总成本 = 44.80 (4480分)  (=4480分)
+✅ 🏆 红油单份半成品 = 4.48 (448分)  (=448分)
+🔍 [变异回验] 红油单份：期望±1分均判红，±1 分鉴别力 = ✅
+
+===== 用例 C · 麻辣香锅（引用半成品 · 第 2 层）=====
+✅ 时蔬万分60 / 肉丸万分400 / 红油虚拟万分44800
+✅ 麻辣明细合计 = 11.48 (1148分)  (=1148分)
+✅ 🏆 麻辣香锅总成本 = 12.35 (1235分)  (=1235分)
+🔍 [变异回验] 麻辣香锅总成本：期望±1分均判红，±1 分鉴别力 = ✅
+✅ 麻辣毛利 = 25.65 (2565分)  (=2565分)
+✅ 麻辣毛利率 = 67.50%  (=67.5%)
+
+===== 用例 E · 同步至最新价（鸡胸肉 15→20 元/斤）=====
+✅ 鸡胸肉 20元/斤 → 净料=0.0444(万分444)  (net=444)
+✅ 新明细合计 = 10.98 (1098分)  (=1098分)
+✅ 🏆 同步后新版本总成本 = 12.08 (1208分)  (=1208分)
+🔍 [变异回验] 同步后新版本总成本：期望±1分均判红，±1 分鉴别力 = ✅
+✅ ⚠️ 反证：辅料不随损耗放大会得 9.73（正确实现必须 ≠9.73）  (辅助放大法=9.221052631578948元, 正确答案=9.75)
+
+===== R38 判据缺口回归：防「逐行 round」（规范 service.js:16）=====
+✅ R38：高精度累积 → unit_cost_fen = 2498（非 2499）  (=2498分)
+🔍 [变异回验] R38 高精度累积：期望±1分均判红，±1 分鉴别力 = ✅
+✅ R38 变异：逐行 round 会得 2499 ≠ 规范值 2498（判据能抓住此 bug）  (逐行 round=2499分, 正确=2498分)
+✅ R38 总成本即明细合计（无损耗无辅料）
+
+===== R81 · mode 白名单（预览入口 + 引擎）=====
+✅ 预览入口：mode="b" → INVALID_PARAM  (实际=INVALID_PARAM)
+✅ 预览入口：mode=2 → INVALID_PARAM  (实际=INVALID_PARAM)
+✅ 预览入口：mode="C" → INVALID_PARAM  (实际=INVALID_PARAM)
+✅ 预览入口：mode="" → INVALID_PARAM  (实际=INVALID_PARAM)
+✅ 预览入口：mode 缺失 → INVALID_PARAM
+✅ 预览入口反向：mode='A' 放行
+✅ 引擎：mode="b" → 抛 INVALID_PARAM  (实际=INVALID_PARAM)
+✅ 引擎：mode=2 → 抛 INVALID_PARAM  (实际=INVALID_PARAM)
+✅ 引擎：mode="C" → 抛 INVALID_PARAM  (实际=INVALID_PARAM)
+✅ 引擎：mode="" → 抛 INVALID_PARAM  (实际=INVALID_PARAM)
+✅ 引擎反向：mode='B' 不抛
+
+==== calcBom 批次 3 自测结果：40 通过 / 0 失败 ====
+  [batch3-calcBom] ✅ PASS  (✅ 40 条 / 段 7)
+
+===== [batch3-detectCycle] cloudfunctions/detectCycle/selftest.js =====
+===== 用例 D · A→B→A 循环引用拦截 =====
+✅ A→B→A 检测到环 has_cycle=true
+✅ A→B→C 无环 has_cycle=false
+✅ A→A 自引用判环
+✅ 三节点环 A→B,B→C,C→A 判环
+✅ 空边无环
+
+===== 保存预检 willCycleBeCreated（saveCostCard 入口）=====
+✅ 已有 A→B，保存 B 引用 A → 判环（BOC 拦截）
+✅ 已有 A→B，保存 C 引用 A → 无环
+✅ 保存 B 引用自身 B → 判环
+✅ 新建半成品 D 引用 A → 无环
+
+===== 深度上限（冗余兜底 ≤5 层）=====
+✅ MAX_DEPTH 恒定为 5（强制遵守 §3）  (MAX_DEPTH=5)
+✅ 6 层深链（≥超 5 层兜底）判环  (len=6 边)
+✅ 4 层深链（≤5）无环
+
+==== detectCycle 批次 3 自测结果：12 通过 / 0 失败 ====
+  [batch3-detectCycle] ✅ PASS  (✅ 12 条 / 段 4)
+
+===== [batch3-saveMaterial] cloudfunctions/saveMaterial/selftest.js =====
+✅ 鸡胸肉 15元/斤 出成率90% → 万分333  (=333)
+✅ 鸡胸肉改 20元/斤 → 万分444（价变只会影响**新**快照）  (=444)
+✅ 红油底料每份 4.48 元 → 万分44800（虚拟，换算系数=1，单位=份）语义  (=44800)
+✅ 合法原料放行
+✅ purchase_price_fen 为字符串"1500" → INVALID_PARAM
+✅ convert_factor=0 → INVALID_PARAM
+✅ yield_rate=101 → INVALID_PARAM
+✅ 缺 shop_id → INVALID_PARAM
+
+==== saveMaterial 批次 3 自测结果：8 通过 / 0 失败 ====
+  [batch3-saveMaterial] ✅ PASS  (✅ 8 条 / 段 1)
+
+===== [batch3-saveCostCard] cloudfunctions/saveCostCard/selftest.js =====
+===== ① 快照构建 + 宫保鸡丁成本（total_cost 整数分）=====
+✅ 快照明细含净料单位成本快照（5 行）  (len=5)
+✅ 鸡胸肉快照 net_unit_cost=333（万分，非 ID 关联）
+✅ 🏆 落库 total_cost = 975（整数分）  (=975)
+
+===== ② 快照隔离（改原料价后旧版快照与成本不变）=====
+✅ 改价后**新**取到的鸡胸肉净料成本=444
+✅ **旧版快照**仍保留 333（快照隔离，不自动联动）
+✅ 🏆 改价后旧成本卡仍 = 9.75（975分）  (=975分)
+✅ 新卡（同步最新价）→ 12.08（1208分）  (=1208分)
+
+===== ③ 循环引用预检（命中即拒、不入库）=====
+✅ A→B，保存 B 引用 A → BOM 判环
+✅ 半成品引用自身 → 判环
+✅ Cards 不入库判定：拒绝即不落库（此处仅判定不产生任何写）  (Controller 判环命中即 fail(BOM_CYCLE_DETECTED)，无 INSERT（🔒 R71：原为恒真断言）)
+
+===== ④ 版本 / 虚拟半成品（每份成本）=====
+✅ 虚拟半成品（单位=份，换算=1）每份成本 4.48 → 万分44800  (net=44800)
+
+===== ⑤ 入参校验 =====
+✅ 合法成本卡放行
+✅ qty 为字符串 → INVALID_PARAM
+✅ 模式 B 缺 batch_output → INVALID_PARAM
+✅ 命令式：name 为空 → INVALID_PARAM
+
+===== ⑥ R81 · mode 白名单（入口 + 引擎双层）=====
+✅ 入口：mode="b" → INVALID_PARAM（不得静默兜底 A）  (实际=INVALID_PARAM)
+✅ 入口：mode=2 → INVALID_PARAM（不得静默兜底 A）  (实际=INVALID_PARAM)
+✅ 入口：mode="C" → INVALID_PARAM（不得静默兜底 A）  (实际=INVALID_PARAM)
+✅ 入口：mode="" → INVALID_PARAM（不得静默兜底 A）  (实际=INVALID_PARAM)
+✅ 入口：mode 缺失 → INVALID_PARAM（不得静默兜底 A）
+✅ 入口反向：mode='A' 放行
+✅ 入口反向：mode='B' + batch_output 放行
+✅ 引擎：mode="b" → 抛 INVALID_PARAM  (实际=INVALID_PARAM)
+✅ 引擎：mode=2 → 抛 INVALID_PARAM  (实际=INVALID_PARAM)
+✅ 引擎：mode="C" → 抛 INVALID_PARAM  (实际=INVALID_PARAM)
+✅ 引擎：mode="" → 抛 INVALID_PARAM  (实际=INVALID_PARAM)
+✅ 引擎：mode 缺失 → 抛 INVALID_PARAM
+✅ 引擎反向：mode='A' 不抛
+✅ 引擎反向：mode='B' 不抛
+
+===== M3.22（批次 A1）· judgeCardQuota 写侧配额判定 =====
+✅ ① 活跃逻辑卡数 4（额度 5）⇒ 放行
+✅ ② 活跃逻辑卡数 5（额度 5）⇒ 超免费额
+✅ ③ 活跃逻辑卡数 2000 ⇒ 超硬上限
+✅ ④ 版本不计：judgeCardQuota 只认 activeCount（card_code 去重后大小），无版本维度  (activeCount=4 即 4 个逻辑卡号，无论各卡多少版本)
+✅ ④ 出参含 free_limit/hard_limit 供前端取用
+✅ 缺 limits ⇒ 抛 SYSTEM_ERROR
+
+==== saveCostCard 批次 3/A1 自测结果：35 通过 / 0 失败 ====
+  [batch3-saveCostCard] ✅ PASS  (✅ 35 条 / 段 8)
+
+===== [batch3-syncCostCard] cloudfunctions/syncCostCard/selftest.js =====
+✅ 重算快照：鸡胸肉取**当前**444（不是旧333）
+✅ 🏆 同步后新版本总成本 = 12.08（1208分）  (=1208分)
+✅ 新版本明细合计 = 10.98（1098分）  (=1098分)
+✅ cardParamFromDoc 正确解析模式 A
+✅ #21 同内容（原料价未变）⇒ 判为相同、不建新版本
+✅ #21 反证：原料涨价 ⇒ 判为不同（必须建新版本）
+✅ #21 反证：明细行数不同 ⇒ 判为不同
+✅ #21 反证：子卡升版（成本未变）⇒ 判为不同（锁版本）
+✅ #21 反证：total_cost 不同 ⇒ 判为不同
+
+==== syncCostCard 批次 3 自测结果：9 通过 / 0 失败 ====
+  [batch3-syncCostCard] ✅ PASS  (✅ 9 条 / 段 1)
+
+===== [batch3-getMaterial] cloudfunctions/getMaterial/selftest.js =====
+✅ 出参 id / name / is_virtual 正确
+✅ 出参净料单位成本=333（万分，未丢失精度）  (=333)
+✅ 出参 unit_cost_fen=3（333万分→3分）  (=3)
+✅ 虚拟半成品(份) unit_cost_fen=448  (=448)
+✅ netUnitCostWan 聚能一致性(鸡胸 444)
+✅ validateInput 合法
+✅ validateInput is_virtual 非布尔拒
+
+==== getMaterial 批次 3 自测结果：7 通过 / 0 失败 ====
+  [batch3-getMaterial] ✅ PASS  (✅ 7 条 / 段 1)
+
+===== [batch3-getCostCard] cloudfunctions/getCostCard/selftest.js =====
+✅ 出参 card_code/version/total_cost_fen 正确
+✅ 出参 calc_mode → A（合同形态）
+✅ 出参附带 lines 数组（默认空，由 Controller 装配）
+✅ calc_mode=2 映射为 B
+✅ 明细行出参含 net_unit_cost=333 快照  (=333)
+✅ 明细行出参 line_net_cost_fen=666  (=666)
+✅ validateInput 无 card_code 放行（列表模式）
+✅ validateInput 带 card_code 放行（详情模式）
+===== G 组 · 明细行批量分组对拍（M6）=====
+✅ G-1 卡 row_a 分组 ≡ 逐卡查（3 行，含顺序）  (got 3 行)
+✅ G-2 卡 row_b 分组 ≡ 逐卡查（1 行）  (got 1 行)
+✅ G-3 卡 row_c 分组 ≡ 逐卡查（1 行）  (got 1 行)
+✅ G-4 不跨卡串行（row_a 里没有 row_b 的花生）
+✅ G-5 无行卡的取值为 undefined（Controller 用 `|| []` 兜底 ⇒ 空数组，不是 null）  (undefined)
+✅ G-6 缺 cost_card_row_id 的行被丢弃（不会聚成一个"无主"桶）  (size=3)
+✅ G-7 空输入 ⇒ 空 Map（空店不炸）
+===== H 组 · 解析生效卡单一入口（连锁后期零返工前提）=====
+✅ H-1 按 card_code 取最新版本（A=v3）  (A=3)
+✅ H-2 同 code 旧版本被覆盖（A 不含 v1/v2）
+✅ H-3 不同 code 互不影响（B=v2 仍在）
+✅ H-4 缺 card_code 的行被丢弃  (size=2)
+✅ H-5 空输入 ⇒ 空 Map（不炸）
+✅ H-6 详情模式取单卡
+✅ H-7 详情模式取不存在的卡 ⇒ null
+===== H2 组 · fail-closed 可信度评估（禁止凑数算毛利）=====
+✅ H2-1 有有效行 ⇒ 可信
+✅ H2-2 无任何明细行 ⇒ 不可信 + 缺「明细行」
+✅ H2-3 全 0 行 ⇒ 不可信 + 缺「有效用量/成本」
+
+==== getCostCard 全自测结果：25 通过 / 0 失败 ====
+  [batch3-getCostCard] ✅ PASS  (✅ 25 条 / 段 4)
+
+===== [batch4-archiveMonth] cloudfunctions/archiveMonth/selftest.js =====
+✅ 合法入参放行（archive 缺省 true）
+✅ archive=false → 取消归档
+✅ month 坏格式拒
+✅ month 越界拒
+✅ 缺 shop_id 拒
+
+==== archiveMonth 批次 4 自测结果：5 通过 / 0 失败 ====
+  [batch4-archiveMonth] ✅ PASS  (✅ 5 条 / 段 1)
+
+===== [batch4-calcSandbox] cloudfunctions/calcSandbox/selftest.js =====
+===== A 投入与固定成本 =====
+✅ A1 建店总投入 = 660,000（66000000分）  (=66000000分)
+✅ A2 月摊销 = 17,000（1700000分）  (=1700000分)
+✅ A3 不含摊销固定 = 21,000（2100000分）  (=2100000分)
+✅ A4 固定成本合计 = 38,000（3800000分）  (=3800000分)
+🔍 [变异回验] 固定成本合计：期望±1分均判红，±1 分鉴别力 = ✅
+
+===== B 变动成本率与边际贡献 =====
+✅ B1 食材成本率 = 100 − 65 = 35%  (=35%)
+✅ B2 挂钩费率合计 = 15%  (=15%)
+✅ B3 综合变动成本率 = 35 + 15 = 50%  (=50%)
+✅ B4 边际贡献率 = 0.5  (=0.5)
+✅ B5 红警 = false
+
+===== C 四个核心结果 =====
+✅ C1 🏆 保本月营业额 = 76,000（7600000分）  (=7600000分)
+🔍 [变异回验] 保本月营业额：期望±1分均判红，±1 分鉴别力 = ✅
+✅ C2 🏆 保本日均 = 2,533.33（253333分）  (=253333分)
+🔍 [变异回验] 保本日均：期望±1分均判红，±1 分鉴别力 = ✅
+✅ C3 🏆 目标利润月营收 = 106,000（10600000分）  (=10600000分)
+🔍 [变异回验] 目标利润月营收：期望±1分均判红，±1 分鉴别力 = ✅
+✅ C4 目标利润日均 = 3,533.33（353333分）  (=353333分)
+✅ C5 回本周期 = 660,000 ÷ 15,000 = 44 月  (=44月)
+
+===== D 餐饮指标对照（分母=保本营业额 76,000）=====
+✅ D1 指标条数 = 6（毛利率/房租/人工/能耗/管理/平台）  (=6)
+✅ D2 房租占比 = 12,000 ÷ 76,000 = 15.8%  (=15.8%)
+✅ D3 房租参考带（正餐·二三线）= 9%~15%  (=9%~15%)
+✅ D4 房租超带上限 ⇒ level=warn  (=warn)
+✅ D5 房租命中 M1.6 警戒线 15%（15.8 > 15）  (警戒线=15 命中=true)
+✅ D6 人工占比 = 9.2%（7,000 ÷ 76,000）  (=9.2%)
+✅ D7 人工低于参考带下限 ⇒ level=good  (=good)
+✅ D8 人工未命中警戒线 20%  (命中=false)
+✅ D9 菜品毛利率 = 65%（**用户直填值直接对照** —— round111 起不再换算成成本率）  (=65%)
+✅ D10 毛利率 65% 落在正餐带 60~66 内 ⇒ level=ok（达上限 66 才是 good）  (=ok)
+✅ D11 毛利率未命中 M1.6 警戒线 55%（gain 方向判"低于"才命中 ⇒ 65 不命中）  (警戒线=55 命中=false)
+✅ D12 平台费率 = 15% 超参考带上限 10% ⇒ level=bad  (=15% / bad)
+✅ D13 未填的能耗项占比 = null（未填 ≠ 0 元，前端渲染「—」而不编造 0%）  (=null)
+✅ D14 🔴 方向分区：毛利率 55%（正餐带 60~66）⇒ warn，**不是 good**（A16 后带值 60~66）  (55⇒warn / 66⇒good)
+✅ D15 🔴 人工带四业态 = 快餐16~20 / 正餐17~22 / 火锅15~18 / 茶饮15~18（[D4] 警戒线派生 · round113，A16 抬 lo 14→15）  (fastfood:16~20 dining:17~22 hotpot:15~18 cafe:15~18 other:15~22)
+✅ D17 🔴 labor 的 lo ≤ 本仓警戒线 20%（否则"优秀"与"命中警戒"会同时成立）  (fastfood:lo16 dining:lo17 hotpot:lo15 cafe:lo15 other:lo15)
+✅ D16 四业态毛利率带（快餐60~66 / 正餐60~66 / 火锅55~65 / 茶饮62~70 · A16 校准）  (fastfood:60~66 dining:60~66 hotpot:55~65 cafe:62~70 other:55~70)
+
+===== E 城市层级只调「有据可依」的项 =====
+✅ E1 正餐·一线 房租带 = 10.8%~18%（[9,15]×1.2 · A16 后）  ({"lo":10.8,"hi":18,"coef":1.2})
+✅ E2 正餐·县城 房租带 = 6.8%~11.3%（[9,15]×0.75 · A16 后）  ({"lo":6.8,"hi":11.3,"coef":0.75})
+✅ E3 正餐·一线 人工带 = 19.6%~25.3%（[17,22]×1.15 · 17×1.15 的浮点边界由 check_indicator_ref C-④ 钉死）  ({"lo":19.6,"hi":25.3,"coef":1.15})
+✅ E4 毛利率带**不随城市变**（一线采购贵但售价同步高）  (一线 66 / 县城 66)
+
+===== F 红警与边界（不编造数据）=====
+✅ F1 综合变动率 90+95=185% ⇒ red_alert=true  (=185%)
+✅ F2 红警下保本月营业额 = null
+✅ F3 红警下目标月营收 = null
+✅ F4 红警下指标对照 = 空数组（不基于无效分母编造）
+✅ F5 目标利润 = 0 ⇒ 回本周期 = null（不做除零编造）  (=null)
+✅ F6 目标利润 = 0 ⇒ 目标月营收 = 保本月营收  (7600000 / 7600000)
+✅ F7 无建店投入 ⇒ 月摊销 = 0、固定合计 = 21,000  (0 / 2100000)
+✅ F8 空入参不崩且全零
+
+===== G 参考带预览 bands_preview（round113：填表页"行业参考"的数据源）=====
+✅ G1 标准工况返回 6 项参考带（与用户填了什么无关）  (=6 项)
+✅ G2 预览带 ≡ indicators 的带（同一 bandOf 单源，不允许两套数）  (rent 9~15 / labor 17~22)
+✅ G3 预览带含方向（grossMargin=gain / 其余 cost）—— 前端据此选"偏高/偏低"文案表  (gm=gain rent=cost labor=cost)
+✅ G4 预览带带出警戒线（与 M1.6 并列展示，不互覆盖）  (rent=15 labor=20 gm=55)
+✅ G5 🔴 红警时预览带仍在（红警=算不出保本点，不等于"没有行业参考"）  (6 项)
+✅ G6 空入参也给默认业态（dining）的参考带，不崩
+
+===== H 参考金额反算（round114 · 预计月营业额锚点）=====
+✅ H1 填了预计营业额 ⇒ 反算 4 项（房租/人工/水电气/管理费）  (=4 项)
+✅ H2 房租参考金额 = 100,000 × 12% = 12,000（1200000分 · A16 后中值 12%）  (=1200000分)
+✅ H3 人工参考金额 = 19,500（1950000分）  (=1950000分)
+✅ H4 能耗/管理 = 4,000 / 6,000（固定项 key=utility，指标 indKey=energy —— 双键各归其位）  (utility=400000/energy manage=600000)
+✅ H5 🔴 未填营业额（0）⇒ 空数组，不编造 0 元
+✅ H6 🔴 pct 与 fen 自洽（fen == 营业额 × pct%，客户拿计算器可复算）  (rent:12%→1200000 labor:19.5%→1950000 utility:4%→400000 manage:6%→600000)
+✅ H7 城市系数生效：一线人工 22.5% ⇒ 2,250,000 分（22.45% 先定标再算金额）
+✅ H8 🔴 红警时参考金额仍在（红警=算不出保本点，不等于"我没有参考"）
+
+===== I 入参契约（round114 · 补测：此前 validate 零自测覆盖）=====
+✅ I1 🔴 空 fixed_items 必须放行（否则"没填就先看行业参考"整条路走不通 —— round114 修）  (error=null)
+✅ I2 空表单的 clean 可跑 service 且不崩（参考区间照常下发）
+✅ I3 预计月营业额缺省 = 0（选填；前端不传也不报错）
+✅ I4 预计月营业额非整数分 ⇒ 拒（放宽非空 ≠ 放宽格式）
+✅ I5 fixed_items 的 key 越白名单 / 重复 ⇒ 仍拒（放宽非空 ≠ 放宽内容）
+
+===== J 反推锚点（M2v1.1 · 目标反推）=====
+✅ J1 目标月营收 R = 100,000（10000000分）  (=10000000分)
+✅ J2 目标日均营收 = 333,333 分  (=333333分)
+✅ J3 房租上限 = 12,000（1200000分）  (=1200000分)
+✅ J4 月客流 = 2222.22  (=2222.22)
+✅ J5 日均客流 = 74.07  (=74.07)
+✅ J6 翻台 = 3.70  (=3.7)
+✅ J7 面积上限 = 300 ㎡  (=300)
+✅ J8 无红警 red_alert === false
+✅ J9 翻台未超阈值 ⇒ warn_keys 空  ([])
+
+===== K 入参契约（M2v1.1 反推 fail-closed）=====
+✅ K1 反推 + fixed 含 rent ⇒ 拒（重复计租）  (反推模式下房租由目标租金率导出，请勿在固定支出中重复填写房租)
+✅ K2 反推缺 open_days ⇒ 拒  (反推模式下 open_days（每月营业天数）必须是 1~31 的整数)
+✅ K3 反推 rev_price_fen = 0 ⇒ 拒  (反推模式下 rev_price_fen（客单价）必须是 > 0 的整数分)
+✅ K4 反推 seats = 0 ⇒ 拒  (反推模式下 seats（座位数）必须是 > 0 的整数)
+✅ K5 坪效缺省 ⇒ area_cap_sqm === null（不编造）  (=null)
+✅ K6 红警工况 ⇒ red_alert === true  (=true)
+✅ K7 红警 ⇒ R 与派生量全 null（不编造）  ([null,null,null,null])
+✅ K8 正算 mode 缺省 ⇒ 保本 76,000 / 目标 106,000 不漂  (=7600000 / 10600000)
+✅ K9 mode 非法值 ⇒ 拒  (mode 必须是 'forward' 或 'reverse'（当前值："sideways"）)
+✅ K10 反推 validate 出参 clean.mode === reverse 且反推字段齐备  ({"mode":"reverse","cityTier":"tier23","bizType":"dining","buildItems":[],"fixedItems":[{"key":"labor","fen":2800000}],"varItems":[],"grossMarginPct":60,"targetProfitFen":2000000,"expectedRevenueFen":0,"validDays":0,"rev_price_fen":4500,"seats":20,"open_days":30,"target_rent_rate":12,"pixel_eff_fen":4000})
+
+===== L #1 口径统一：validDays 日折算（round272）=====
+✅ L1 正向 validDays=26 ⇒ 保本日均 = 7600000÷26 = 292308  (=292308)
+✅ L2 正向 validDays=26 ⇒ 目标日均 = 10600000÷26 = 407692  (=407692)
+✅ L3 正向出参带 valid_days=26  (=26)
+✅ L4 正向不传 validDays ⇒ 回退 30（无回归）  (=253333)
+✅ L5 反向 openDays=26 ⇒ 目标日均 = 10000000÷26 = 384615  (=384615)
+✅ L6 反向出参带 valid_days=26  (=26)
+✅ L7 反向 openDays=26 ⇒ 日均客流 = 2222.22÷26 = 85.47  (=85.47)
+✅ L8 反向 openDays=26 ⇒ 翻台 = 2222.22÷(20×26) = 4.27  (=4.27)
+✅ L9 经 validate 全链路：wire `valid_days` ⇒ clean 键名对齐（防 snake/camel 漂移）  (clean.validDays=26)
+✅ L10 经 validate 全链路：保本日均 = 7600000÷26 = 292308（≠ ÷30 的 253333）  (=292308)
+✅ L11 经 validate 全链路：不传 valid_days ⇒ clean=0 ⇒ service 回退 30（无回归）  (clean.validDays=0 · daily=253333)
+✅ L12 经 validate 全链路：未填发 0 ⇒ 不报错、clean=0、service 回退 30（round273 回归）  (clean.validDays=0 · daily=253333)
+✅ L13 经 validate 全链路：真填了越界值 32 ⇒ 仍拒（防「放行 0」被误写成「不校验」）  (err=INVALID_PARAM)
+✅ L14 years=0 + no_amort（不摊销）⇒ 放行、计入建店总额、摊销为 0  (build_total=15000000 · amort=0)
+✅ L15 years=21 超上限 ⇒ 仍拒（防「放行 0」被误写成「不校验」）  (err=INVALID_PARAM)
+✅ L16 years=0 但**没标** no_amort（= 老板清空年限）⇒ 仍拒（防静默产数）  (err=INVALID_PARAM)
+
+==== calcSandbox M2 v2 自测结果：101 通过 / 0 失败 ====
+  [batch4-calcSandbox] ✅ PASS  (✅ 101 条 / 段 13)
+
+===== [batch4-getAmortSchedule] cloudfunctions/getAmortSchedule/selftest.js =====
+✅ 装修 2026-01 当月即摊 3,333.33
+✅ 装修 2028-12 末月尾差倒挤 = 3,333.45  (=333345)
+✅ 装修 2029-01 区间外 = 0
+✅ 2026-08 合计 = 装修3333.33 + 冰柜100 = 3,433.33  (=343333)
+✅ details 含 2 资产  (=2)
+✅ validateInput 合法月放行
+✅ validateInput 坏月拒
+
+==== getAmortSchedule 批次 4 自测结果：7 通过 / 0 失败 ====
+  [batch4-getAmortSchedule] ✅ PASS  (✅ 7 条 / 段 1)
+
+===== [batch4-saveLedger] cloudfunctions/saveLedger/selftest.js =====
+✅ S1 经营参考利润 = 9,160（916000分）  (=916000)
+✅ S1 全要素真实利润 = 9,160（口径锁，库存关无倒轧）  (=916000)
+✅ S2 真实消耗 = 23,000（倒轧）  (=2300000)
+✅ S2 经营参考 = 8,160（R484：开库存就用倒轧，出 9160 说明又用回了手填数）  (=816000)
+✅ 🏆 S2 全要素真实利润 = 3,476.67（347667分）  (=347667)
+✅ S2 两利润差异 = 4,683.33（468333分，只剩摊销）  (=468333)
+✅ 装修 2026-12 摊销 = 3,333.33  (=333333)
+✅ 🏆 装修末月 2028-12 尾差倒挤 = 3,333.45（333345分）  (=333345)
+✅ 合法月度账放行
+✅ 明细 amount_fen 为字符串 → INVALID_PARAM
+✅ 明细 amountFen 并存 → INVALID_PARAM（R30）
+✅ month 非 YYYY-MM → INVALID_PARAM
+
+===== A2 · 二级细项 sub_items（云函数汇总大类金额，前端不计算）=====
+✅ A2 形态A（sub_items）放行
+✅ A2 大类金额 = Σ 细项（8,000+25,000=33,000 元 → 3,300,000 分）  (=3300000)
+✅ A2 细项原样保留（含 subItem 名称）
+✅ A2 带 sub_items 时前端大类 amount_fen 不采信（以细项汇总=500 元）  (=50000)
+✅ A2 sub_item 超 20 字 → INVALID_PARAM
+✅ A2 sub_items 金额为字符串 → INVALID_PARAM
+✅ A2 空 sub_items → 大类 0 元且放行
+✅ A2 旧形态（单行 amount_fen）仍放行（回归）
+
+===== A1 · S1 费用四大类（运营/人工/营销/其他）经 sub_items 汇总后引擎锚点 =====
+✅ A1 运营大类汇总 = 10,300（1030000分）  (=1030000)
+✅ A1 人工大类汇总 = 15,000（1500000分）  (=1500000)
+✅ A1 营销大类汇总 = 7,240（724000分）  (=724000)
+✅ A1 其他大类汇总 = 300（30000分）  (=30000)
+✅ A1 🏆 全部费用合计 = 32,840（3284000分）
+✅ A1 营销团购/外卖佣金分列（两个独立细项不合并）
+✅ A1 🏆 经营参考 = 9,160（收入64,000 − 费用32,840 − 消耗22,000）
+
+==== saveLedger 批次 4/8 自测结果：27 通过 / 0 失败 ====
+  [batch4-saveLedger] ✅ PASS  (✅ 27 条 / 段 3)
+
+===== [batch4-getLedger] cloudfunctions/getLedger/selftest.js =====
+===== 1. 锚点回归（与 batch1 calcMonthlyProfit / batch4 saveLedger 同锚点）=====
+✅ S1 收入合计 = 64,000 元（6400000 分）  (=6400000)
+✅ S1 费用合计 = 32,840 元（3284000 分）  (=3284000)
+✅ 🏆 S1 经营参考利润 = 9,160（916000 分）  (=916000)
+✅ S1 全要素真实利润 = 9,160（库存关无倒轧）  (=916000)
+✅ S1 差异 = 0
+✅ S1 自洽校验位 diffCheck = true
+✅ S2 真实消耗 = 23,000（倒轧 5000+25000−7000）  (=2300000)
+✅ 🏆 S2 经营参考利润 = 8,160（R484：开库存就用倒轧 23,000）  (=816000)
+✅ S2 经营参考 ≠ 916000（反面断言：防"手填数又被塞回盘点模式"回归）
+✅ 🏆 S2 全要素真实利润 = 3,476.67（347667 分）  (=347667)
+✅ S2 两利润差异 = 4,683.33（468333 分，只剩摊销）  (=468333)
+✅ S2 毛利 = 64,000 − 23,000 = 41,000（4100000 分）  (=4100000)
+✅ S2 毛利率 = 64.0625%  (=64.06)
+===== 2. 跨函数等价（回读重算 ≡ 落库引擎，防口径漂移）=====
+✅ [S1 双关] getLedger ≡ saveLedger（逐字段 21 项）
+✅ [S2 双开] getLedger ≡ saveLedger（逐字段 21 项）
+✅ [空账（无收入无费用）] getLedger ≡ saveLedger（逐字段 21 项）
+✅ [零收入有开销（毛利率除零保护）] getLedger ≡ saveLedger（逐字段 21 项）
+✅ [仅库存开（倒轧为负：进少耗多）] getLedger ≡ saveLedger（逐字段 21 项）
+✅ [仅摊销开 + 小数摊销额] getLedger ≡ saveLedger（逐字段 21 项）
+✅ [脏输入（字符串/NaN/缺字段）] getLedger ≡ saveLedger（逐字段 21 项）
+✅ 零收入毛利率 = 0（不产生 NaN/Infinity）
+✅ 脏输入不产生 NaN（金额一律 num0 归一）
+✅ 金额出参一律整数分（Number.isInteger）
+===== 3. 入参面 =====
+✅ 合法入参放行
+✅ month "2026-13" → 拒
+✅ month "2026-1" → 拒（两位月）
+✅ month "202609" → 拒
+✅ month 缺失 → 拒（本函数 month 必填）
+✅ shop_id 缺失 → 拒
+✅ 支持 { input: {...} } 包裹层
+✅ 错误码 = INVALID_PARAM（全局标准码）
+===== 4. 静态形状守卫 =====
+✅ 顺序：resolveAuth → assertShopOwner → validateInput
+✅ 🔴 开关取服务端权威值（读 shop_switch 表，不信前端/落库快照）
+✅ 🔴 回读即重算（调 calcMonthlyProfit），不直接回吐库存值
+✅ 无记录返回空账而非报错（RESOURCE_NOT_FOUND 不得出现）
+✅ 读账走 DataAdapter（软删过滤）
+✅ 出参金额字段名与 service 一致（snake_case 契约）
+===== 5. round115 · M1 行业指标对照（细项归属 + 缺项不评级）=====
+✅ 细项归属：rent = 10,000 元（从 operation 大类里拆出）  (=1000000)
+✅ 细项归属：energy = 3,000 元（水费+电费合并）  (=300000)
+✅ 细项归属：labor = 15,000 元（细项名命中）  (=1500000)
+✅ 细项归属：mkt = 7,000 元（细项名命中）  (=700000)
+✅ 🔴 未识别细项无人认领（垃圾清运费 500 元不计入任何指标）  (Σ=3500000 未认领=50000)
+✅ 🔴 缺项**不出键**（而不是出 0 —— 0 会被当成「占比 0%，优秀」）
+✅ 🔴 operation 大类整额未拆细项 ⇒ rent/energy 均不出（不猜）
+✅ 自定义细项回落到大类归属（labor 下自建「临时工」不漏算）
+✅ 键映射 energy → utility（fixedFen 入参键，单源出，不靠调用方猜）
+✅ M1 口径 = 5 项且**不含 manage**（李老师 2026-09-24 拍板）  (grossMargin,rent,labor,energy,mkt)
+✅ 🔴 缺项 ⇒ 毛利率 pct=null（**不得**变成 0%/bad —— round115 实测抓过的真 bug）  (=null)
+✅ 🔴 缺项 ⇒ level=na（不评级）
+✅ 有数据的项照常评级（labor 15% 低于 dining 带下限 17% ⇒ good，且不得为 na）
+✅ 过滤后 5 项、无 manage
+✅ 🔴 出参经 M1 口径过滤（m1IndicatorsOf，不在前端/controller 里手筛）
+✅ 🔴 细项归属走单源 sumByTag（controller 不自己写映射表）
+✅ 🔴 fixedFen 键由 toFixedFen 转换（energy→utility 不靠猜）
+✅ 出参含 indicator_scope（业态/城市回显 + 是否默认口径）
+✅ 🔴 分母与 result **同源**（revenueFen 取 result.incomeTotalFen，不另立口径）
+✅ 读 shop 取业态 / 城市层级（参考带的前提输入）
+✅ R257 归档月 + 完整快照 ⇒ 用快照（实时全开也压不住）  (snapshot)
+✅ R257 归档月 + 快照全开 ⇒ 实时全关也压不住（反向）  (snapshot)
+✅ R257 未归档月 ⇒ 用实时（快照不参与）  (live)
+✅ R257 归档但快照缺失 ⇒ 回落实时（唯一 fail-open：老数据硬拒就再也看不了）  (live_no_snapshot)
+✅ R257 快照残缺（只一个布尔键）⇒ 判不完整、回落实时（不半用半不用的拼盘）  (live_no_snapshot)
+✅ R257 空入参不炸（未归档语义 ⇒ live 全关）
+✅ R257 controller 引入 resolveArchiveSwitches（纯函数单源）
+✅ R257 🔴 开关常量取自解算结果 sw.*（换回 swGet(...) = 缺口复发）
+✅ R257 🔴 引擎入参用的是上面那两个常量（简写），且块内不含实时 swGet  (block=152字)
+✅ R257 解算发生在重算之前（顺序：resolveArchiveSwitches 早于 calcMonthlyProfit）
+✅ R257 isArchive 判定与落库同源（acct.is_archive，不另立开关态）
+✅ R257 快照取自 acct.switch_used（与 saveLedger 落库字段同名同源）
+✅ R257 出参带 switch_source（归档月数字为什么没跟开关变，有一条可查线索）
+
+==== getLedger 自测结果：70 通过 / 0 失败 ====
+  [batch4-getLedger] ✅ PASS  (✅ 70 条 / 段 6)
+
+===== [batch4-getMonthList] cloudfunctions/getMonthList/selftest.js =====
+===== 1. 入参面 =====
+✅ 合法入参放行
+✅ shop_id 回传
+✅ shop_id 缺失 → 拒
+✅ shop_id 空串 → 拒
+✅ shop_id 非字符串 → 拒
+✅ event 为 null → 拒
+✅ event 为数组 → 拒（数组也是 object，须显式拒）  (数组被当作 event 时 shop_id 缺失 → 拒)
+✅ month 不是本函数入参（月份列表不需要 month）
+✅ 支持 { input: {...} } 包裹层
+✅ 错误码 = INVALID_PARAM（全局标准码）
+===== 2. 源码形状守卫（去重 / 倒序 / 归档态）=====
+✅ 顺序：resolveAuth → assertShopOwner → validateInput
+✅ 读 shop_monthly_account 且按 shop_id 过滤
+✅ 🔴 按 month 去重（同一月 upsert 理论一条，防御性去重）
+✅ 🔴 倒序（新在前）：`a.month < b.month ? 1 : -1`
+✅ 出参仅 month + is_archive（不泄漏金额/明细）
+✅ is_archive 强制布尔化（!!）
+✅ 空 month 行被跳过（不产生 month:"" 条目）
+
+==== getMonthList 自测结果：17 通过 / 0 失败 ====
+  [batch4-getMonthList] ✅ PASS  (✅ 17 条 / 段 3)
+
+===== [batch4-getShopContext] cloudfunctions/getShopContext/selftest.js =====
+===== 1. 入参面（shop_id 可选）=====
+✅ 不传 shop_id → 放行且归一空串（取默认店铺）
+✅ event 为 null → 拒（event 必须是对象）
+✅ shop_id 传空串 → 归一空串（等同缺省）
+✅ shop_id 非字符串 → 归一空串（不报错，按缺省处理）
+✅ shop_id 合法 → 原样回传
+✅ client_request_id 回传
+✅ 支持 { input: {...} } 包裹层
+✅ 错误码 = INVALID_PARAM（全局标准码）
+===== 2. switchesFromRows（行组 → 开关布尔）=====
+✅ 空行组 → 两开关均 false（缺行即关）
+✅ undefined 行组 → 两开关均 false（不抛）
+✅ 双开 → true/true
+✅ 库存关/摊销开 → false/true（不串键）
+✅ enabled 非布尔（1）→ truthy 化 true
+✅ 行缺 enabled 字段 → false（不抛）
+✅ 未知 switch_key 不污染出参
+✅ 出参仅两枚键（不多带行原文）
+===== 3. 跨函数常量守卫（读侧键集 ≡ 写侧，逐键逐值）=====
+✅ R298X-S1 前提：写侧 SWITCH_KEYS 键数 ≥ 5（删键即转红）  (实 5 键：inventory/amortize/takeawayParams/menuDishCount/buffetFoodCostTotal)
+✅ R298X-J1 读侧每个**同名键**的值都 ≡ 写侧（全键集，不再只挑两键）  (逐键逐值一致（同名 4 键）)
+✅ R298X-J2 读侧**缺**的键必须显式登记（新键只加在写侧 ⇒ 转红）  (缺 1 键，均已登记)
+✅ R298X-J2b 每条缺键登记都带 why（≥12 字，说明读侧为什么不需要）  (buffetFoodCostTotal:62字)
+✅ R298X-J2c 缺键登记表无陈旧键（读侧已补回 / 写侧无此键 ⇒ 红）  (1 条登记均有效)
+✅ R298X-J3 词表 ⊇ 写侧 SWITCH_KEYS 全部键值（新键必须进词表）  (词表 6 键 ⊇ 写侧 5 键)
+✅ R298X-J3b 词表每条都有归属（writer 与 reader 均非空）  (6 条均带 writer/reader)
+✅ R298X-J3c 直连字面量（switch_key ===/: 'X'）必须在词表内  (2 处直连字面量全部在册)
+✅ R298X-J3d 命名约定字面量（m3_* / *_switch）必须在 词表 ∪ 非键白名单 内  (实扫 11 种字面量，全部有归属)
+✅ R298X-J3e 前提：扫描面非退化（生产 .js ≥ 80）且两腿都有命中（直连 ≥2 / 命名 ≥5）  (扫描 227 个 .js · 直连 2 · 命名 11)
+✅ R298X-J4 每个注册键都真被某处引用（防"注册了却没人用"的死键）  (5 键均有引用点)
+✅ R298X-J5 本段断言数 ≥ 10（删掉任一腿即跌破下界）  (本段实跑 11 条)
+===== 4. 静态形状守卫 =====
+✅ 顺序：resolveAuth → validateInput（本函数无 shop 越权判定，按 user_id 取店）
+✅ 按 user_id 取店（非按前端传入 shop_id 直读）
+✅ 🔴 首店自动建档：复用单源 defaultShopId(userId)（确定性 _id，幂等由构造保证）
+✅ 🔴 建档落 user_id
+✅ 🔴 撞唯一键后必须回读（不得直接返回假 shop_id）
+✅ 🔴 回读仍为空 ⇒ fail-closed（SYSTEM_ERROR，不猜）
+✅ 新建标记 is_new_shop 回传（前端可提示）
+✅ 开关行经 service 映射（不内联 find）
+✅ 前提：出参区切片非空（─── ⇒ 零命中假绿）  (1378 字符)
+✅ 出参不泄漏 user_id / openid  (零泄漏)
+
+==== getShopContext 自测结果：38 通过 / 0 失败 ====
+  [batch4-getShopContext] ✅ PASS  (✅ 38 条 / 段 5)
+
+===== [batch4-getCardVersions] cloudfunctions/getCardVersions/selftest.js =====
+===== 1. cardToOut 映射契约 =====
+✅ card_code / version / name 原样
+✅ 🔴 calc_mode 2 → "B"（BOM 两层模式）
+✅ calc_mode 1 → "A"（单层）
+✅ calc_mode 缺省 → "A"（默认单层）
+✅ 字段重命名：aux_cost → aux_fen
+✅ 字段重命名：price_list → price_fen（售价 24.38 元 = 2438 分）
+✅ 字段重命名：total_cost → total_cost_fen（宫保锚点 975 分）
+✅ 金额一律整数分
+✅ 批次产出 batch_output 保留 null 语义（单份卡可为 null）
+✅ batch_output 缺省 → null（不误判为 0）
+✅ loss_rate 缺省 → 0
+✅ version 缺省 → 1（只 INSERT 模型下的首版）
+✅ lines 初始为空数组（明细另行装配，防重复装配）
+✅ 未知字段不外泄（出参键集固定）  (keys=22)
+===== 2. lineToOut 映射契约 =====
+✅ material_id/name/quantity 原样
+✅ 🔴 net_unit_cost 为**万分快照**（4480 = 4 位小数精度，非分）
+✅ 字段重命名：line_net_cost → line_net_cost_fen（单份 448 分锚点）
+✅ 缺字段 → 0（不产生 undefined）
+===== 3. 🔴 跨函数同口径（getCardVersions ≡ getCostCard）=====
+✅ [doc0] cardToOut ≡ getCostCard.cardToOutput（逐字段 22 项）
+✅ [doc1] cardToOut ≡ getCostCard.cardToOutput（逐字段 22 项）
+✅ [doc2] cardToOut ≡ getCostCard.cardToOutput（逐字段 22 项）
+✅ [doc3] cardToOut ≡ getCostCard.cardToOutput（逐字段 22 项）
+✅ [line0] lineToOut ≡ getCostCard.lineToOutput（逐字段）
+✅ [line1] lineToOut ≡ getCostCard.lineToOutput（逐字段）
+===== 4. 入参面 =====
+✅ 合法入参放行
+✅ card_code 缺失 → 拒（本函数按 card_code 查历史）
+✅ card_code 空串 → 拒
+✅ shop_id 缺失 → 拒
+✅ event 为 null → 拒
+✅ 支持 { input: {...} } 包裹层
+✅ 错误码 = INVALID_PARAM（全局标准码）
+===== 5. 静态形状守卫 =====
+✅ 顺序：resolveAuth → assertShopOwner → validateInput
+✅ 按 shop_id + card_code 双条件查（防跨店串号）
+✅ 🔴 版本倒序（b.version − a.version）
+✅ 🔴 明细按 sort_order 升序（与录入顺序一致）
+✅ 明细按 cost_card_row_id 关联（每版各装配自己的明细）
+✅ 🔴 只读：无 update/remove/set 调用（版本不可改写）
+✅ 出参带 card_code 回显（前端可校验）
+
+==== getCardVersions 自测结果：38 通过 / 0 失败 ====
+  [batch4-getCardVersions] ✅ PASS  (✅ 38 条 / 段 6)
+
+===== [batch4-saveAsset] cloudfunctions/saveAsset/selftest.js =====
+===== 1. 合法入参 + 归一化契约 =====
+✅ 合法资产放行
+✅ shop_id 回传
+✅ asset_id 缺省 → 空串（= 新增语义）
+✅ name 已 trim
+✅ value_fen 整数分原样保留（12,000,000 分 = 12 万元）
+✅ terminate_month 缺省 → 空串（未终止）
+✅ client_request_id 回传
+✅ 有 asset_id 时原样回传（= 编辑语义）
+===== 2. 金额单位契约：整数「分」 =====
+✅ value_fen 字符串 "100" → 拒（JSON number 契约）
+✅ value_fen 0 → 拒
+✅ value_fen 负数 → 拒
+✅ value_fen 小数 1.5 → 拒（金额必须是整数分）
+✅ value_fen 缺失 → 拒
+✅ value_fen NaN → 拒
+===== 3. 月份 / 时长 =====
+✅ start_month "2026-13" → 拒
+✅ start_month "2026-1" → 拒（月份必须两位）
+✅ start_month "2026-00" → 拒
+✅ start_month "2026-09" → 放行
+✅ total_months 0 → 拒
+✅ total_months 1 → 放行（1 个月也合法）
+✅ total_months 1.5 → 拒
+✅ total_months "12" → 拒
+✅ terminate_month "2026-13" → 拒
+✅ terminate_month "2026-06" → 放行
+✅ terminate_month "" → 归一空串（未终止）
+✅ terminate_month 非字符串（null/数字）→ 归一空串（宽松归一，不报错）
+===== 4. shop_id / 事件形态 =====
+✅ shop_id 缺失 → 拒
+✅ shop_id 空串 → 拒
+✅ asset 缺失 → 拒
+✅ asset 非对象 → 拒
+✅ event 为 null → 拒
+✅ asset.name 纯空白 → 拒（trim 后非空才算）
+✅ 支持 { input: {...} } 包裹层
+✅ 错误码 = INVALID_PARAM（全局标准码，非函数私有码）
+===== 5. 静态形状守卫（写操作特有）=====
+✅ 顺序：resolveAuth（鉴权）先于 assertShopOwner（越权）
+✅ 顺序：assertShopOwner 先于 validateInput（越权优先拒）
+✅ 编辑分支读目标走 DataAdapter（软删已过滤，不可复活）
+✅ 编辑分支：目标不存在 → RESOURCE_NOT_FOUND
+✅ 编辑分支：update 显式写 is_deleted: false（保持未软删态）
+✅ 新增分支：insert shop_amortize 且必落 shop_id / shop_id 取自 event
+✅ 新增分支：服务端 genId 生成 asset_id（不信任前端 id）
+✅ 金额落库字段名 = value_fen（与 validate 输出一致，防字段漂移）
+✅ 当月摊销不在此算（口径：由 getAmortSchedule / saveLedger 引擎算）
+
+==== saveAsset 自测结果：43 通过 / 0 失败 ====
+  [batch4-saveAsset] ✅ PASS  (✅ 43 条 / 段 6)
+
+===== [batch4-saveShopSetting] cloudfunctions/saveShopSetting/selftest.js =====
+===== 1. 开关三态语义（核心）=====
+✅ 不传 switches → 两开关均为 null（= 不动库）
+✅ 合法基线放行
+✅ inventory=true → true
+✅ 未传的 amortize 仍为 null（不被置 false）
+✅ 🔴 inventory=false → **false**（不是 null，必须真写库关闭）
+✅ 🔴 false 与 null 可区分（=== 断言，非真假值断言）
+✅ 两开关同时给 → 各自保留
+✅ switches 非对象（字符串）→ 归一为 null 两枚
+===== 2. 入参面 =====
+✅ switches.inventory 字符串 "true" → 拒
+✅ switches.inventory 数字 1 → 拒
+✅ switches.amortize null → 拒（undefined 才是"不动"，null 是非法类型）
+✅ name 非字符串 → 归一空串
+✅ remark 非字符串 → 归一空串
+✅ name 合法回传
+✅ 🔴 不传 name → undefined（= 不动库，防只改开关却清空店铺名）
+✅ 🔴 不传 remark → undefined（同上）
+✅ 🔴 undefined 与 "" 可区分（=== 断言，非真假值断言）
+✅ name 显式 "" → ""（保留清空能力）
+✅ shop_id 缺失 → 拒
+✅ event 为 null → 拒
+✅ 支持 { input: {...} } 包裹层
+✅ 错误码 = INVALID_PARAM（全局标准码）
+===== 3. 跨函数常量守卫（防漂移）=====
+✅ saveShopSetting.SWITCH_KEYS.inventory === getShopContext 同名键
+✅ saveShopSetting.SWITCH_KEYS.amortize === getShopContext 同名键
+✅ 键名 = inventory_switch（与 getLedger 读开关字面量一致）
+✅ 键名 = amortize_switch（与 getLedger 读开关字面量一致）
+✅ getLedger 读开关用同一字面量（跨函数字面量同源）
+===== 4. 静态形状守卫（写操作特有）=====
+✅ 顺序：resolveAuth → assertShopOwner → validateInput
+✅ 🔴 只对非 null 开关写库：`!== null` 判定存在（防未传开关被置 false）
+✅ 开关 upsert 以 shop_id + switch_key 为定位键（唯一键契约）
+✅ upsert 冲突回退：update 失败 → add（防竞态丢写）
+✅ 店铺名/备注写 shop 表（存在才写）
+✅ 🔴 name 写库以 `!== undefined` 判定存在（防未传被写空）
+✅ 🔴 remark 写库同样以 `!== undefined` 判定存在
+✅ 开关落库为服务端权威（返回体带 switches 供前端同步）
+
+==== saveShopSetting 自测结果：35 通过 / 0 失败 ====
+  [batch4-saveShopSetting] ✅ PASS  (✅ 35 条 / 段 5)
+
+===== [batch5-checkQuota] cloudfunctions/checkQuota/selftest.js =====
+===== 注入值驱动（正负互证：同一 activeCount 在不同 limits 下结论不同）=====
+✅ activeCount=3 在 cost_card=5 下不超限  (free=5)
+✅ activeCount=3 在 cost_card=2 下超限（正负互证）  (free=2)
+✅ 判定随注入值变化（同一 activeCount 两结论不同）
+✅ activeCount=5 在 cost_card=5 下 hit_free_limit（第 6 张触发）  (free=5)
+✅ activeCount=4 在 cost_card=5 下未超限（放行）
+✅ shop 0 家不超限 / 1 家超限（free_limit=1 注入）
+===== 硬上限（注入值驱动）=====
+✅ cost_card 达 hard_card=2000 命中硬上限
+✅ shop 达 hard_shop=200 命中硬上限
+✅ cost_card 100 仅超免费额、未触硬上限
+===== 缺配置 ⇒ 响亮失败（不静默放行）=====
+✅ 不传 limits ⇒ 抛 SYSTEM_ERROR
+✅ limits=null ⇒ 抛 SYSTEM_ERROR
+✅ limits 缺 hard_card ⇒ 抛 SYSTEM_ERROR（缺任一额度即响亮失败）
+===== 维度：不同用户各自独立（scope 独立）=====
+✅ 不同用户各自独立计数
+===== 软删不占额（DataAdapter 层语义）=====
+✅ 活跃数按 DataAdapter 过滤后传入（Service 不重复处理软删）
+===== 入参校验 =====
+✅ 合法 scope=shop
+✅ 非法 scope=m2 → INVALID_PARAM
+✅ 缺 scope → INVALID_PARAM
+
+==== checkQuota 批次 5/A1 自测结果：17 通过 / 0 失败 ====
+  [batch5-checkQuota] ✅ PASS  (✅ 17 条 / 段 7)
+
+===== [batch5-payCreateOrder] cloudfunctions/payCreateOrder/selftest.js =====
+===== 订单生成 =====
+✅ 生成订单号（PO 前缀）  (POMW65AKTX3M4T)
+✅ 金额=2590 分（整数）
+✅ plan_id/plan_name 原样携带
+✅ status=pending
+✅ enable_real_payment=false（私域阶段）
+✅ pay_params=null（无拉起参数，前端提示联系客服）
+✅ 订单号唯一性（两次不同）
+===== 入参校验 =====
+✅ 合法
+✅ 缺 plan_id → INVALID_PARAM
+✅ 缺 shop_id → INVALID_PARAM
+
+==== payCreateOrder 批次 5 自测结果：10 通过 / 0 失败 ====
+  [batch5-payCreateOrder] ✅ PASS  (✅ 10 条 / 段 3)
+
+===== [batch5-payCallback] cloudfunctions/payCallback/selftest.js =====
+===== 验签（fail-closed + 可注入）=====
+✅ 未注入验签器 → 拒绝（fail-closed）
+✅ 注入假验签器通过 → 放行
+✅ 注入假验签器拒绝 → 丢弃
+✅ 验签器抛异常 → 视为失败（不吞异常放行）
+===== 有效期累加（续费）=====
+✅ 未过期续费：原 expire_at + 30 天（累加）
+✅ 已过期续费：从当前时刻起算 +30 天
+✅ 无记录续费：从当前时刻 + 30 天
+===== 回调幂等（transaction_id 全局）=====
+✅ 首次回调：处理成功、非重复
+✅ 首次回调后 expire_at = now+30d
+✅ 流水写入 1 条
+✅ 重复回调：duplicated=true（幂等命中）
+✅ 重复回调：不再插入流水、不重复更新权益  (flows=1)
+✅ 新交易（续费）：累加 30+90 天  (expire=10368000000)
+✅ 缺 transaction_id → 抛 INVALID_PARAM
+===== 入参校验 =====
+✅ 合法（回调报文）
+✅ 空 event → INVALID_PARAM
+
+==== payCallback 批次 5 自测结果：16 通过 / 0 失败 ====
+  [batch5-payCallback] ✅ PASS  (✅ 16 条 / 段 5)
+
+===== [batch5-payQueryEntitlement] cloudfunctions/payQueryEntitlement/selftest.js =====
+===== 无记录 / 免费档 =====
+✅ 无记录 → expire_at:0, is_active:false（不报 RESOURCE_NOT_FOUND）
+===== 有效 / 过期 =====
+✅ 有效（+30 天）→ is_active=true, days_left=30  (days_left=30)
+✅ 过期（-2 天）→ is_active=false
+✅ 到期前 5 天 → days_left=5（结果页提示条用）  (days_left=5)
+✅ 到期前 7 天边界 → days_left=7
+===== 解耦铁律（不返回 plan_id）=====
+✅ 出参不含 plan_id
+===== 入参校验 =====
+✅ 合法
+✅ 缺 shop_id → INVALID_PARAM
+
+==== payQueryEntitlement 批次 5 自测结果：8 通过 / 0 失败 ====
+  [batch5-payQueryEntitlement] ✅ PASS  (✅ 8 条 / 段 5)
+
+===== [batch5-payRenew] cloudfunctions/payRenew/selftest.js =====
+===== 续费订单生成 =====
+✅ 生成续费订单号（PR 前缀）  (PRMW65AMAQ6D7Y)
+✅ 金额=19900 分
+✅ plan 携带 + status=pending
+✅ enable_real_payment=false
+✅ pay_params=null
+===== 入参校验 =====
+✅ 合法（含可选 shop_id）
+✅ 缺 plan_id → INVALID_PARAM
+
+==== payRenew 批次 5 自测结果：7 通过 / 0 失败 ====
+  [batch5-payRenew] ✅ PASS  (✅ 7 条 / 段 3)
+
+===== [batch5-payExpireNotify] cloudfunctions/payExpireNotify/selftest.js =====
+✅ 到期前 5 天 → 窗口内
+✅ 到期前 7 天边界 → 窗口内
+✅ 到期前 8 天 → 窗口外（不提醒）
+✅ 已过期 → 窗口外
+✅ 长期有效（+30d）→ 窗口外
+✅ 剩余 5 天 → days_left=5
+✅ 剩余 6.5 天 → days_left=7（向上取整，提前提醒）
+===== 入参校验（定时任务无入参）=====
+✅ 定时任务空入参合法
+
+==== payExpireNotify 批次 5 自测结果：8 通过 / 0 失败 ====
+  [batch5-payExpireNotify] ✅ PASS  (✅ 8 条 / 段 2)
+
+===== [batch5-payOrderList] cloudfunctions/payOrderList/selftest.js =====
+✅ 订单号/套餐名 映射
+✅ 金额=2590 分整数
+✅ 渠道/状态/生效期 映射
+✅ 缺省字段回落（status 默认 pending）
+===== 入参校验 =====
+✅ 合法
+✅ 缺 shop_id → INVALID_PARAM
+
+==== payOrderList 批次 5 自测结果：6 通过 / 0 失败 ====
+  [batch5-payOrderList] ✅ PASS  (✅ 6 条 / 段 2)
+
+===== [batch6-adminInit] cloudfunctions/adminInit/selftest.js =====
+===== env 门禁（对齐批次 0 initDb.gate 语义）=====
+✅ dev 环境放行
+✅ prod 环境恒拒
+✅ 空环境拒
+===== 首超管密码加盐哈希 =====
+✅ pwd_hash 为 scrypt 加盐哈希（128 hex）
+✅ 校验通过
+✅ 错误密码拒绝
+✅ 盐非明文（32 hex）
+
+==== adminInit 批次 6 自测结果：7 通过 / 0 失败 ====
+  [batch6-adminInit] ✅ PASS  (✅ 7 条 / 段 3)
+
+===== [batch6-adminLogin] cloudfunctions/adminLogin/selftest.js =====
+===== 密码加盐哈希（非明文 / 非裸 MD5）=====
+✅ scrypt 哈希长度 64 字节 hex(128)  (len=128)
+✅ 同一盐同一密码哈希稳定
+✅ 同一密码不同盐 → 哈希不同
+✅ verifyPassword 正确密码通过
+✅ verifyPassword 错误密码拒绝
+✅ verifyPassword 缺 salt/hash 拒绝
+✅ 盐为随机 hex（32 字符）
+===== 验收 1 · 5 次密码错误锁定 30 分钟 =====
+✅ 第 4 次失败 → 未锁定
+✅ 第 5 次失败 → 锁定截止 now+30min  (diff=1800000)
+✅ isLocked(locked_until=now+30min) → true
+✅ 锁定中（当前时间 < 截止）→ true
+✅ 已解锁（当前时间超过截止）→ false
+✅ isLocked(0/null) → false
+✅ LOCK_AFTER_FAILS=5 / LOCK_DURATION_MS=30min
+===== 验收 2 · token 7 天失效 =====
+✅ token 为 64 位 hex  (64)
+✅ TOKEN_TTL_MS = 7 天
+✅ tokenTtlMs() = 7 天
+===== adminAuth 中间件（requireAuth / parseBearer）=====
+✅ 有效 token + active 账号 → 注入 adminId/role
+✅ 过期 token → ADMIN_TOKEN_EXPIRED
+✅ 不存在 token → ADMIN_AUTH_FAILED
+✅ 空 token → ADMIN_AUTH_FAILED
+
+===== R48 · 账号状态校验（禁用旧 token 立即失效）=====
+✅ ① 禁用管理员旧 token → ADMIN_AUTH_FAILED（不等自然过期）
+✅ ② 正常管理员 token → 放行
+✅ ③ 账号记录不存在 → 拒绝（fail-closed）
+✅ ④ 账号读异常 → 拒绝（容错不放行）
+✅ ⑤ status 未知值 → 拒绝（fail-closed）
+✅ parseBearer 标准头
+✅ parseBearer 小写头
+✅ parseBearer 无 Bearer → 空串
+✅ parseBearer 缺头 → 空串
+✅ super 可访问 super 专属
+✅ op 访问 super 专属 → ADMIN_PERMISSION_DENIED
+✅ op 可访问 op 允许
+
+===== R62 · 账号状态判据单源化（登录闸门 ≡ 请求闸门）=====
+✅ R62-① isAdminActive({status:active}) → true
+✅ R62-② isAdminActive({status:disabled}) → false
+✅ R62-③ isAdminActive(未知值 pending_review) → false（fail-closed）
+✅ R62-④ isAdminActive(status 为空串) → false（此前可"登录成功"）
+✅ R62-⑤ isAdminActive(缺 status 字段) → false
+✅ R62-⑥ isAdminActive(null / undefined 行) → false
+✅ R62-⑦ ADMIN_STATUS_ACTIVE 常量已随单源导出
+✅ R62-⑧ 纯函数判据与中间件判据等价（两闸门同源）
+✅ R62-⑨ 登录闸门调用单源 isAdminActive(admin)
+✅ R62-⑩ 已无 status === 'disabled' 字面量判据（代码区）
+✅ R62-⑪ 登录闸门从 ./adminAuth 解构 isAdminActive
+
+==== adminLogin 批次 6 自测结果：44 通过 / 0 失败 ====
+  [batch6-adminLogin] ✅ PASS  (✅ 44 条 / 段 7)
+
+===== [batch6-adminRefreshToken] cloudfunctions/adminRefreshToken/selftest.js =====
+===== 刷新窗口（剩 <24h 才刷新）=====
+✅ 剩 20h → 触发刷新
+✅ 剩 24h 边界 → 不触发
+✅ 剩 5 天 → 不触发
+✅ 已过期 → 触发刷新（前端实际会重登）
+===== 吊销语义（adminLogout / adminRevokeToken）=====
+✅ 吊销前 token 有效
+✅ 吊销后 token → ADMIN_AUTH_FAILED
+✅ super 可吊销指定管理员
+✅ op 吊销 → 拒绝
+
+===== R54 · 审计留痕失败不阻断主流程 + console.error 留痕 =====
+✅ R54 审计写入失败 → 主流程仍成功（不抛）
+✅ R54 审计失败 → console.error 被调用（不静默）
+✅ R54 告警含操作名 [AUDIT_FAILED] adminRefreshToken  ([AUDIT_FAILED] adminRefreshToken: audit db down)
+✅ R54 告警不落敏感字段（openid/手机号/支付）
+
+==== adminRefreshToken 批次 6 自测结果：12 通过 / 0 失败 ====
+  [batch6-adminRefreshToken] ✅ PASS  (✅ 12 条 / 段 4)
+
+===== [batch6-adminLogout] cloudfunctions/adminLogout/selftest.js =====
+===== adminLogout：吊销当前 token =====
+✅ parseBearer 取 Authorization 头
+✅ 无 token → 空串（中间件拒）
+✅ 退出前会话有效
+✅ 退出后同一 token → ADMIN_AUTH_FAILED（立即失效）
+
+===== R54 · 审计留痕失败不阻断主流程 + console.error 留痕 =====
+✅ R54 审计写入失败 → 主流程仍成功（不抛）
+✅ R54 审计失败 → console.error 被调用（不静默）
+✅ R54 告警含操作名 [AUDIT_FAILED] adminLogout  ([AUDIT_FAILED] adminLogout: audit db down)
+✅ R54 告警不落敏感字段（openid/手机号/支付）
+
+==== adminLogout 批次 6/7 自测结果：8 通过 / 0 失败 ====
+  [batch6-adminLogout] ✅ PASS  (✅ 8 条 / 段 3)
+
+===== [batch6-adminRevokeToken] cloudfunctions/adminRevokeToken/selftest.js =====
+===== adminRevokeToken：角色拦截 + 全会话吊销 =====
+✅ super 吊销 → 放行
+✅ op 吊销 → ADMIN_PERMISSION_DENIED
+✅ adm_2 的两个会话全部删除
+✅ adm_1 会话不受影响
+✅ 被吊销 token → ADMIN_AUTH_FAILED
+
+===== R54 · 审计留痕失败不阻断主流程 + console.error 留痕 =====
+✅ R54 审计写入失败 → 主流程仍成功（不抛）
+✅ R54 审计失败 → console.error 被调用（不静默）
+✅ R54 告警含操作名 [AUDIT_FAILED] adminRevokeToken  ([AUDIT_FAILED] adminRevokeToken: audit db down)
+✅ R54 告警不落敏感字段（openid/手机号/支付）
+
+==== adminRevokeToken 批次 6 自测结果：9 通过 / 0 失败 ====
+  [batch6-adminRevokeToken] ✅ PASS  (✅ 9 条 / 段 3)
+
+===== [batch6-adminQueryUser] cloudfunctions/adminQueryUser/selftest.js =====
+===== openid 打码（防敏感泄露）=====
+✅ 长 openid → 前6后4 + ****（中间打码）  (oXk3m5****A1b2)
+✅ 打码不泄露完整 openid
+✅ 空 openid → 空串
+===== 档位判定（解耦铁律：只读 expire_at）=====
+✅ expire_at 有效 → paid
+✅ expire_at 过期 → free
+✅ 无权益(0) → free
+✅ 判定不依赖 plan_id、且走单源 isPaid（无手写到期比较）  (index.js：tier 仅由 expire_at 决定，判定走 common/entitlement.js::isPaid（R71/R213）)
+
+===== R53 · 店铺列表分页累取（A 类加固，service.fetchShopsAll 真实实现）=====
+✅ R53-① 20 家店 → 全部取到（旧 limit(20) 恰好取尽，分页同样取尽）
+✅ R53-② 150 家店（>20）→ 分页取尽，无静默截断  (len=150)
+✅ R53-② 分页命中：第 2 页 skip=100（+ R63 探针 skip=150/limit=1）  (hits=[{"skip":0,"limit":100},{"skip":100,"limit":100},{"skip":150,"limit":1}])
+✅ R53-③ 店铺数超过安全上限 → 抛 HARD_CAP_EXCEEDED（响亮失败）
+✅ R53-④ 无店铺 → 0 家
+
+===== R63 · 短页探针 + 形态守卫（service.makeShopPageQuery / asRows 真实实现）=====
+✅ R63-① 首页短页（5/100）→ 探针确证未耗尽，仍取尽 105 家（旧逻辑只取 5 家）  (len=105)
+✅ R63-② 探针不跳不重：id 连续 0..104
+✅ R63-③ 平台单次上限 30 条 ⇒ 页数用尽时响亮失败 HARD_CAP_EXCEEDED（不静默返回部分）  (HARD_CAP_EXCEEDED)
+✅ R63-④ 形态 {}(无 data) → 抛 SYSTEM_ERROR（不静默当空）
+✅ R63-⑤ 形态 {data:null} → 抛 SYSTEM_ERROR
+✅ R63-⑥ 形态 {data:[...]} → 正常返回数组
+✅ R63-⑦ 形态 {data:[]} → 返回 []（空 ≠ 异常）
+✅ R63-⑧ asRows(null/undefined) → []（无数据不是异常）
+✅ R63-⑨ asRows(非数组非 null) → 抛 SYSTEM_ERROR
+
+==== adminQueryUser 批次 6/7 自测结果：21 通过 / 0 失败 ====
+  [batch6-adminQueryUser] ✅ PASS  (✅ 21 条 / 段 5)
+
+===== [batch6-adminGrantEntitlement] cloudfunctions/adminGrantEntitlement/selftest.js =====
+===== 验收 3 · 未到期 → 原 expire_at 累加（不覆盖）=====
+✅ 未到期 +30 天 → 原值+30（非今日+30）  (=4320000000ms)
+===== 验收 4 · 已过期/无记录 → 从操作当日 + days（不顺延）=====
+✅ 已过期 +30 天 → 今日+30（不顺延原到期）  (=2592000000ms)
+✅ 无记录(0) +30 天 → 今日+30
+===== 验收 5 · 调权留痕（前后值/原因/操作人）=====
+✅ 调权后 expire_at = 原值 + 30 天
+✅ 返回 before/after
+✅ source=manual
+✅ action=ADMIN_GRANT_ENTITLEMENT
+✅ 前值记录（before_data.expire_at=原值）
+✅ 后值记录（after_data.expire_at=新值 + days + source）
+✅ 原因/操作人入审计
+✅ 幂等键写入审计
+✅ 重复提交 → ADMIN_OP_IDEMPOTENT
+✅ 重复提交不重复留痕/处理
+✅ 无 client_request_id → 正常处理（累加 +10）
+
+==== adminGrantEntitlement 批次 6 自测结果：14 通过 / 0 失败 ====
+  [batch6-adminGrantEntitlement] ✅ PASS  (✅ 14 条 / 段 4)
+
+===== [batch6-adminManualOrder] cloudfunctions/adminManualOrder/selftest.js =====
+✅ 新用户录单 → expire_at = 今日 + 31 天
+✅ 权益 source=manual
+✅ 订单写入（status=paid / channel=manual / 金额分）
+✅ 订单号 MO 前缀  (MOMU2MDMO037G8)
+✅ 订单关联 plan/user
+✅ 审计 action=ADMIN_MANUAL_ORDER 且含前后值
+✅ 未到期续费 → 原值 + 365 天（累加非覆盖）  (diff=33264000000)
+✅ 重复录单 → ADMIN_OP_IDEMPOTENT
+✅ 重复录单不重复写订单/权益
+✅ plan_id 不存在 → INVALID_PARAM
+
+==== adminManualOrder 批次 6 自测结果：10 通过 / 0 失败 ====
+  [batch6-adminManualOrder] ✅ PASS  (✅ 10 条 / 段 1)
+
+===== [batch6-adminOrderList] cloudfunctions/adminOrderList/selftest.js =====
+✅ 仅 is_deleted=false（软删不出现在后台列表）
+✅ 带 user_id 过滤
+✅ status=paid 过滤
+✅ 非法 status 不入条件
+✅ user_id + status 组合
+✅ 金额映射为整数分
+✅ 订单号/状态/支付时间映射
+
+==== adminOrderList 批次 6 自测结果：7 通过 / 0 失败 ====
+  [batch6-adminOrderList] ✅ PASS  (✅ 7 条 / 段 1)
+
+===== [batch6-adminRefundMark] cloudfunctions/adminRefundMark/selftest.js =====
+✅ 退款后 expire_at 回退至发权益前状态(0)  (=0)
+✅ 订单标记 refunded（不删除）
+✅ order_refund 写入（order_id/user_id/amount/reason/operator）
+✅ refund_at 服务端 UTC
+✅ 审计 action=ADMIN_REFUND + 前后值
+✅ 退款原因入审计
+✅ 重复退款 → ADMIN_OP_IDEMPOTENT
+✅ 重复退款不重复写 refund
+✅ 已退款订单再退 → REFUND_NOT_ALLOWED
+✅ 订单不存在 → ORDER_NOT_FOUND
+
+==== adminRefundMark 批次 6 自测结果：10 通过 / 0 失败 ====
+  [batch6-adminRefundMark] ✅ PASS  (✅ 10 条 / 段 1)
+
+===== [batch6-adminExport] cloudfunctions/adminExport/selftest.js =====
