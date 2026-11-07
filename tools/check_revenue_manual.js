@@ -244,5 +244,108 @@ ok('E-⑪ 取上月用 prevMonth（1 月减成「0 月」的坑已有断言）',
 ok('E-⑮ 保存成功回显"经营营收 ¥X"（填完就知道对不对）',
   /savedTotalTpl/.test(PAGE) && typeof MT.savedTotalTpl === 'string' && /\{x\}/.test(String(MT.savedTotalTpl)));
 
-console.log('\n===== 手填汇总守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
-process.exit(failN === 0 ? 0 : 1);
+// ============ F 真跑手填分支（R621）============
+// 🔴 静态扫描抓不住「引用了不存在的变量」这类错：R620 的 vals 就是这么上线的，
+//   node --check 也不报（引用错误不是语法错误）。所以这里把**云端分支原文**抠出来，
+//   用桩 db / 桩 Store 在 node 里真跑一遍 —— 跑得通才算没崩。
+sec('F 真跑云端手填分支（桩 db 执行 index.js 原文，不是扫字符串）');
+
+function extractBranch(src, marker) {
+  const s = stripComments(src);
+  const at = s.indexOf(marker);
+  if (at < 0) return '';
+  const open = s.indexOf('{', at);
+  if (open < 0) return '';
+  let depth = 0;
+  for (let i = open; i < s.length; i++) {
+    const c = s[i];
+    if (c === '{') depth++;
+    else if (c === '}') { depth--; if (depth === 0) return s.slice(open + 1, i); }
+  }
+  return '';
+}
+
+const BRANCH = extractBranch(FN, "action === 'revenue_save_manual'");
+
+function makeStubStore(prev) {
+  const calls = [];
+  return {
+    calls,
+    RevenueStore: {
+      getActive: async () => prev,
+      commit: async (ctx) => {
+        calls.push(ctx);
+        return { ok: true, mode: prev ? 'replaced' : 'created', batch_id: 'b1', diff: null };
+      },
+    },
+  };
+}
+
+function makeDeps() {
+  return {
+    fail: (code, msg) => ({ __fail: msg, code }),
+    ok: (x) => Object.assign({ __ok: true }, x),
+    ERROR_CODES: { INVALID_PARAM: 1001 },
+  };
+}
+
+async function runBranch(event, prev) {
+  const store = makeStubStore(prev);
+  const d = makeDeps();
+  // 参数名与 index.js 里的自由变量**逐个对齐**，否则真跑会报"未定义"（这本身就是判据价值）
+  const fn = new Function('db', 'userId', 'shopId', 'event',
+    'RevenueStore', 'RevenueDaily', 'fail', 'ok', 'ERROR_CODES',
+    'return (async () => {' + BRANCH + '\nreturn { __untouched: true };\n})();');
+  const out = await fn({}, 'u1', 's1', event, store.RevenueStore, R, d.fail, d.ok, d.ERROR_CODES)
+    .catch((e) => ({ __throw: String(e && e.message || e) }));
+  return { out, calls: store.calls };
+}
+
+(async () => {
+  ok('F-① 手填分支能从 index.js 抠出来（结构没被改写）', BRANCH.length > 200, '段长=' + BRANCH.length);
+
+  // F-② 首次填：两个数
+  const r1 = await runBranch({ action: 'revenue_save_manual', input: { month: '2026-09', fields: { cash: 1000, scan: 5000 } } });
+  ok('F-② 🔴 首次手填能跑通并落库（R620 这里会 ReferenceError：vals 未定义）',
+    !!(r1.out && r1.out.revenue_manual) && r1.calls.length === 1,
+    '营收=' + (r1.out && r1.out.revenue_manual && r1.out.revenue_manual.revenueM1.totalYuan));
+
+  // F-③ 分次填：本月已存 cash=1000，这次只填外卖 800 ⇒ 现金必须还在
+  const prev = { source: 'manual', manual_fields: { cash: 1000 }, result: {} };
+  const r2 = await runBranch(
+    { action: 'revenue_save_manual', input: { month: '2026-09', fields: { waimaiMeituan: 800 } } }, prev);
+  const mf = r2.calls[0] && r2.calls[0].manualFields;
+  ok('F-③ 🔴 真跑分次填：只填外卖 800 ⇒ 上次的现金 1000 仍在（不是整体替换）',
+    !!mf && mf.cash === 1000 && mf.waimaiMeituan === 800, JSON.stringify(mf));
+  ok('F-④ 真跑：合并后营收 = 堂食 1000 + 外卖 800 = 1800',
+    r2.out.revenue_manual.revenueM1.totalYuan === 1800,
+    String(r2.out.revenue_manual.revenueM1.totalYuan));
+  ok('F-⑤ 真跑：回传 merged 统计（页面要告诉老板"补了几项、沿用几项"）',
+    r2.out.merged && r2.out.merged.added === 1 && r2.out.merged.kept === 1, JSON.stringify(r2.out.merged));
+
+  // F-⑥ 幂等键由合并后的数生成：同样的输入两次 ⇒ 同一个键
+  const r3 = await runBranch({ action: 'revenue_save_manual', input: { month: '2026-09', fields: { cash: 1000, scan: 5000 } } });
+  ok('F-⑥ 真跑：同样的数两次 ⇒ 幂等键一致（不会多出一条）',
+    r3.calls[0].fileMd5 === r1.calls[0].fileMd5 && r1.calls[0].fileMd5.indexOf('manual:s1:2026-09:') === 0,
+    r1.calls[0].fileMd5);
+
+  // F-⑦ 一项没填 ⇒ 拒绝，且不落库
+  const r4 = await runBranch({ action: 'revenue_save_manual', input: { month: '2026-09', fields: {} } });
+  ok('F-⑦ 一项没填 ⇒ 明确拒绝且不写库（不落空记录）',
+    !!r4.out.__fail && r4.calls.length === 0, JSON.stringify(r4.out).slice(0, 40));
+
+  // F-⑧ 月份格式错 ⇒ 拒绝
+  const r5 = await runBranch({ action: 'revenue_save_manual', input: { month: '2026/09', fields: { cash: 1 } } });
+  ok('F-⑧ 月份格式不对 ⇒ 拒绝（不猜他要记哪个月）', !!r5.out.__fail && r5.calls.length === 0);
+
+  // F-⑨ 同月是 Excel ⇒ 不合并（走确认替换，不拼混合数）
+  const r6 = await runBranch(
+    { action: 'revenue_save_manual', input: { month: '2026-09', fields: { cash: 500 } } },
+    { source: 'excel', manual_fields: { scan: 9999 }, result: {} });
+  ok('F-⑨ 真跑：同月是 Excel ⇒ 不合并（不会把 Excel 的字段拼进手填）',
+    !!r6.calls[0] && r6.calls[0].manualFields.cash === 500 && r6.calls[0].manualFields.scan === undefined,
+    JSON.stringify(r6.calls[0] && r6.calls[0].manualFields));
+
+  console.log('\n===== 手填汇总守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
+  process.exit(failN === 0 ? 0 : 1);
+})();
