@@ -68,6 +68,12 @@
 
     <!-- 对账结果：他表里那列跟我们反推的公式是否一致 -->
     <view class="rev-recon {{r.reconOk ? 'ok' : 'bad'}}">{{r.reconText}}</view>
+    <!-- 数据到哪儿了（R618）：只报有没有缺口，不猜原因 -->
+    <view class="rev-cover {{r.cover.kind}}" wx:if="{{r.cover}}">
+      <text class="rev-cover-hd">{{t.coverTitle}}</text>
+      <text class="rev-cover-x">{{r.cover.text}}</text>
+      <text class="rev-cover-n" wx:if="{{r.cover.note}}">{{r.cover.note}}</text>
+    </view>
     <view class="rev-pending" wx:if="{{r.pendingText}}">{{r.pendingText}}</view>
 
     <!-- ⑤ 口径提醒（一句话，不长篇） -->

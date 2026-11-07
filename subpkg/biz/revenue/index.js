@@ -79,7 +79,34 @@ function buildView(rd) {
     rangeText: (rd.days && rd.days.length)
       ? (rd.days[0].date + ' ~ ' + rd.days[rd.days.length - 1].date)
       : '',
+    // 🔴 R618 覆盖范围：把「只填到几号」摆出来，让老板自己判断是没营业还是没导全
+    cover: buildCover(rd.coverage),
   };
+}
+
+// 覆盖范围 → 展示态。只描述事实（到哪天 / 缺几天），不替老板下结论。
+function buildCover(cv) {
+  if (!cv || !cv.ok) return null;
+  const short = (d) => String(d).slice(5).replace('-', '.');
+  if (cv.tailMissingCount > 0) {
+    const list = cv.tailMissingDates.map(short);
+    const shown = list.length <= 3 ? list.join('、') : (list.slice(0, 3).join('、') + ' 等');
+    return {
+      kind: 'tail',
+      text: fill(T.coverTail, { last: short(cv.lastDate), n: cv.tailMissingCount, dates: shown }),
+      note: T.coverNote,
+    };
+  }
+  if (cv.missingCount > 0) {
+    const list = cv.missingDates.map(short);
+    const shown = list.length <= 5 ? list.join('、') : (list.slice(0, 5).join('、') + ' 等');
+    return {
+      kind: 'mid',
+      text: fill(T.coverMid, { n: cv.missingCount, dates: shown }),
+      note: T.coverNote,
+    };
+  }
+  return { kind: 'ok', text: fill(T.coverOk, { n: cv.monthDays }), note: '' };
 }
 
 Page({
@@ -99,6 +126,7 @@ Page({
       bridgeBossOver: T.bridgeBossOver,
       chanTitle: T.chanTitle,
       caliberTip: T.caliberTip,
+      coverTitle: T.coverTitle,
       pickBtn: T.pickBtn,
       pickHint: T.pickHint,
       empty: T.empty,

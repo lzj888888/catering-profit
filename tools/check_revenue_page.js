@@ -80,6 +80,14 @@ const RD = {
   days: [{ date: '2026-09-01', revenueM1Yuan: 5976.53, cashInflowYuan: 4539.5, shifts: 2 },
     { date: '2026-09-13', revenueM1Yuan: 4181.4, cashInflowYuan: 4181.4, shifts: 2 }],
   shiftCount: 24,
+  // R618：真数据的覆盖范围（9.1-9.13，9 月 30 天 ⇒ 月末缺 17 天）
+  coverage: {
+    ok: true, month: '2026-09', firstDate: '2026-09-01', lastDate: '2026-09-13',
+    dayCount: 13, monthDays: 30, missingCount: 17, partial: true, complete: false,
+    missingDates: ['2026-09-14'], tailMissingCount: 17,
+    tailMissingDates: ['2026-09-14', '2026-09-15', '2026-09-16'],
+    note: '只到 09-13，之后 17 天没有记录',
+  },
 };
 
 // ===================== A 静态形态：两个数都在、主数归属正确 =====================
@@ -260,6 +268,51 @@ ok('D-③ hub 卡片文案与页面标题同源（G6 同族：卡名 ≠ 页标�
 
 ok('D-④ 页面标题走 ui.setTitle 与术语单源（不写死在 json）',
   PAGE.indexOf('ui.setTitle(T.title)') > 0);
+
+// ===================== F 覆盖范围（R618）：只报有没有数据，不猜原因 =====================
+console.log('\n=== F 组 覆盖范围 ===');
+
+const cvf = (patch) => pageCfg.buildView(Object.assign({}, RD, {
+  coverage: Object.assign({}, RD.coverage, patch),
+}));
+
+ok('F-① 🔴 真数据 9.1-9.13 ⇒ 报「月末缺 17 天」（不是静默通过）',
+  (() => { const c = pageCfg.buildView(RD).cover; return c && c.kind === 'tail' && c.text.indexOf('17') > 0; })(),
+  JSON.stringify(pageCfg.buildView(RD).cover));
+
+ok('F-② 整月齐全时给出齐全提示（不能永远报缺失）',
+  (() => {
+    const c = cvf({ missingCount: 0, tailMissingCount: 0, partial: false, complete: true }).cover;
+    return c && c.kind === 'ok' && c.text.indexOf('30') > 0;
+  })());
+
+ok('F-③ 只有中间缺天（月末是齐的）⇒ 走 mid，不误报成 tail',
+  (() => {
+    const c = cvf({ missingCount: 1, tailMissingCount: 0, missingDates: ['2026-09-07'] }).cover;
+    return c && c.kind === 'mid' && c.text.indexOf('09.07') > 0;
+  })());
+
+ok('F-④ 云端没给 coverage 时页面不崩、不显示空块（旧云端兼容）',
+  (() => {
+    const v = pageCfg.buildView(Object.assign({}, RD, { coverage: undefined }));
+    return v.cover === null && v.mainText === '64,547.08';
+  })());
+
+ok('F-⑤ 文案给两个可能，不替老板断定原因（没营业 / 没导全）',
+  String(TERMS.revenue.coverTail).indexOf('没营业') > 0
+  && String(TERMS.revenue.coverTail).indexOf('没导全') > 0
+  && String(TERMS.revenue.coverNote).indexOf('不代表账错') >= 0);
+
+ok('F-⑥ wxml 真的渲染了这块（文案存在但没渲染 = 白写）',
+  WXML.indexOf('{{r.cover.text}}') > 0 && WXML.indexOf('{{t.coverTitle}}') > 0);
+
+// 🔴 关键：日期缺口必须由云端算好送下来，页面**不许自己算**
+//   （页面自己 new Date 会踩时区/闰月/跨年，且和云端口径分叉）
+ok('F-⑦ 页面不自己算日期缺口（源码不得出现 new Date / getDate / getMonth）',
+  PAGE.indexOf('new Date') < 0 && PAGE.indexOf('getDate(') < 0 && PAGE.indexOf('getMonth(') < 0);
+
+ok('F-⑧ 覆盖范围不参与营收计算（cover 只能读 coverage，不能碰 revenueM1/cashInflow）',
+  /cover:\s*buildCover\(rd\.coverage\)/.test(PAGE));
 
 // ===================== 汇总 =====================
 console.log('\n===== 渠道营收页面守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');

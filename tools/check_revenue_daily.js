@@ -279,5 +279,79 @@ ok('F-⑨ 解析器头注必须指向 M1 依据（防后人删了依据只留公
   SRC.indexOf('TERMS.ledger.income') >= 0 || SRC.indexOf('terms.js') >= 0,
   '头注指路=' + (SRC.indexOf('terms.js') >= 0));
 
+// ===================== G 覆盖范围（R618）：算法层，不是装配层 =====================
+console.log('\n=== G 组 覆盖范围算法 ===');
+
+const cov = out.coverage || {};
+
+ok('G-① 🔴 真数据 9.1-9.13：整月 30 天 / 有数 13 天 / 月末缺 17 天',
+  cov.ok === true && cov.month === '2026-09' && cov.monthDays === 30
+  && cov.dayCount === 13 && cov.tailMissingCount === 17 && cov.partial === true,
+  JSON.stringify({ monthDays: cov.monthDays, dayCount: cov.dayCount, tail: cov.tailMissingCount }));
+
+ok('G-② 缺的日期是具体清单，不是只给个数（老板要看得见是哪个月哪日）',
+  Array.isArray(cov.tailMissingDates) && cov.tailMissingDates[0] === '2026-09-14'
+  && cov.tailMissingDates[cov.tailMissingDates.length - 1] === '2026-09-30',
+  '首末=' + (cov.tailMissingDates || [])[0] + '~' + (cov.tailMissingDates || []).slice(-1)[0]);
+
+// 🔴 这条必须用**构造用例**，不能靠真数据：真数据里 9.7 / 9.10 的晚班本来就有业务，
+//   光看真数据无法证明「只有合计行的那天有没有被算进覆盖」——
+//   实测把入参从 (days + summaryOnly) 改成只传 days，真数据断言照样全绿。
+//   构造「某天只有一个只填合计的早班」才是唯一有鉴别力的样本。
+const rowsOnlySummary = [
+  ['日期', '班次', '现金', '营业收入'],
+  ['2026-09-07', '早班', '', 3628.9],     // 业务列全空，只填了合计
+  ['2026-09-08', '早班', 500, 500],
+];
+const outOS = R.parseRevenueDaily(rowsOnlySummary);
+
+ok('G-③ 只有「合计」行的那天（无任何业务班次）也算有数据，不误报缺天',
+  outOS.ok === true && (outOS.summaryOnlyRows || []).length === 1
+  && outOS.coverage.dayCount === 2
+  && (outOS.coverage.missingDates || []).indexOf('2026-09-07') < 0,
+  'shifts=' + (outOS.shifts || []).length + ' summaryOnly=' + (outOS.summaryOnlyRows || []).length
+  + ' dayCount=' + outOS.coverage.dayCount
+  + ' 缺9.7=' + ((outOS.coverage.missingDates || []).indexOf('2026-09-07') >= 0));
+
+ok('G-④ 月末有缺时优先报月末（tail），不退回只说「中间缺 N 天」',
+  cov.tailMissingCount > 0 && cov.note.indexOf('只到') === 0 && cov.note.indexOf('17') > 0,
+  cov.note);
+
+// 边界：闰年 / 平年 / 空表 —— 日期天数是自己算的，必须过这三关
+ok('G-⑤ 闰年 2 月算 29 天（2028-02）',
+  R.monthDaysOf('2028-02') === 29, '2028-02=' + R.monthDaysOf('2028-02'));
+
+ok('G-⑥ 平年 2 月算 28 天（2026-02）',
+  R.monthDaysOf('2026-02') === 28, '2026-02=' + R.monthDaysOf('2026-02'));
+
+ok('G-⑦ 12 月算 31 天（跨年边界不会算成 0）',
+  R.monthDaysOf('2026-12') === 31 && R.monthDaysOf('2027-01') === 31,
+  '12月=' + R.monthDaysOf('2026-12') + ' 次年1月=' + R.monthDaysOf('2027-01'));
+
+ok('G-⑧ 空输入不崩，且明确 ok=false（不能返回「整月齐全」骗人）',
+  (() => {
+    const c = R.buildCoverage([]);
+    return c.ok === false && c.dayCount === 0 && c.partial === true && c.note;
+  })());
+
+ok('G-⑨ 整月齐全时 missingCount=0 且 note 说齐全',
+  (() => {
+    const all = [];
+    for (let i = 1; i <= 30; i++) all.push('2026-09-' + (i < 10 ? '0' + i : String(i)));
+    const c = R.buildCoverage(all);
+    return c.ok === true && c.missingCount === 0 && c.complete === true && c.note.indexOf('齐全') >= 0;
+  })());
+
+// 🔴 判据不恒真：同一天重复出现（两个班次）不能被算成两天
+ok('G-⑩ 同一天出现多次（多班次）只算 1 天（去重，防把 24 班次当 24 天）',
+  (() => {
+    const d = ['2026-09-01', '2026-09-01', '2026-09-02', '2026-09-02'];
+    const c = R.buildCoverage(d);
+    return c.dayCount === 2;
+  })());
+
+ok('G-⑪ 覆盖范围不参与金额（buildCoverage 只收日期，签名里没有金额参数）',
+  String(R.buildCoverage).indexOf('yuan') < 0 && String(R.buildCoverage).indexOf('Fen') < 0);
+
 console.log('\n===== 营收日报表解析守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);

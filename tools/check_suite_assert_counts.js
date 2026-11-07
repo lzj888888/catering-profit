@@ -297,8 +297,8 @@ const CASES = [
   { key: 'check_m3_entry_naming', rel: 'tools/check_m3_entry_naming.js' },   // 16 条（A 9 + B 7）
   { key: 'check_m3_decision', rel: 'tools/check_m3_decision.js' },           // 23 条（A 10 + B 13）
   { key: 'check_import_encoding', rel: 'tools/check_import_encoding.js' },   // 23 条（A 10 + B 8 + C 5）
-  { key: 'check_revenue_daily', rel: 'tools/check_revenue_daily.js' },       // 43 条（A 4 + B 11 + C 3 + D 5 + E 11 + F 9）
-  { key: 'check_revenue_page', rel: 'tools/check_revenue_page.js' },         // 34 条（A 12 + B 12 + C 6 + D 4）
+  { key: 'check_revenue_daily', rel: 'tools/check_revenue_daily.js' },       // 54 条（A 4 + B 11 + C 3 + D 5 + E 11 + F 9 + G 11 覆盖范围算法）
+  { key: 'check_revenue_page', rel: 'tools/check_revenue_page.js' },         // 42 条（A 12 + B 12 + C 6 + D 4 + F 8 覆盖范围装配）
   { key: 'check_comment_safety', rel: 'tools/check_comment_safety.js' },     // 7 条（A/B 行注释 + C 兜底 + D-G 自证）
 ];
 

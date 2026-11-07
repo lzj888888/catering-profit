@@ -169,6 +169,67 @@ function detectRevenueDaily(rows) {
  * @param {Array<Array>} rows bufferToMatrix 得到的二维行
  * @returns 结构化结果（金额同时给元与分；分供入库）
  */
+function monthDaysOf(ym) {
+  const y = Number(String(ym).slice(0, 4));
+  const m = Number(String(ym).slice(5, 7));
+  if (!y || !m || m < 1 || m > 12) return 0;
+  return new Date(Date.UTC(y, m, 0)).getUTCDate();
+}
+
+function pad2(n) {
+  return n < 10 ? '0' + n : String(n);
+}
+
+// ===== D 数据覆盖范围（R618）=====
+// 为什么必须有：老板的表经常只填到某一天。实测 8 月饿了么账单止于 8/28，
+//   8.29-8.31 三天共 444.68 元不是"没营业"，是账单没导全。
+//   只给总额不说"到几号"，老板自己发现不了这个缺口，反而会怀疑平台少给钱。
+// 注意：这里只报"有没有数据"，**不猜**没数据的原因是没营业还是没导全。
+function buildCoverage(dates) {
+  const uniq = [];
+  for (const d of dates || []) {
+    const s = String(d || '').trim();
+    if (s && uniq.indexOf(s) < 0) uniq.push(s);
+  }
+  uniq.sort();
+  if (!uniq.length) {
+    return {
+      ok: false, month: '', firstDate: '', lastDate: '', dayCount: 0, monthDays: 0,
+      missingDates: [], missingCount: 0, tailMissingDates: [], tailMissingCount: 0,
+      partial: true, complete: false, note: '表里没有任何一期数据',
+    };
+  }
+  const month = uniq[0].slice(0, 7);
+  const monthDays = monthDaysOf(month);
+  const has = {};
+  for (const d of uniq) if (d.slice(0, 7) === month) has[d] = true;
+  const missing = [];
+  for (let i = 1; i <= monthDays; i++) {
+    const d = month + '-' + pad2(i);
+    if (!has[d]) missing.push(d);
+  }
+  const lastDom = Number(uniq[uniq.length - 1].slice(8, 10)) || monthDays;
+  const tail = [];
+  for (let i = lastDom + 1; i <= monthDays; i++) tail.push(month + '-' + pad2(i));
+  return {
+    ok: true,
+    month,
+    firstDate: uniq[0],
+    lastDate: uniq[uniq.length - 1],
+    dayCount: uniq.length,
+    monthDays,
+    missingDates: missing,
+    missingCount: missing.length,
+    tailMissingDates: tail,
+    tailMissingCount: tail.length,
+    partial: missing.length > 0,
+    complete: missing.length === 0,
+    note: tail.length
+      ? ('只到 ' + uniq[uniq.length - 1].slice(5) + '，之后 ' + tail.length + ' 天没有记录')
+      : (missing.length ? ('中间有 ' + missing.length + ' 天没有记录') : '整月齐全'),
+  };
+}
+
 function parseRevenueDaily(rows) {
   const det = detectRevenueDaily(rows);
   if (!det.hit) {
@@ -351,6 +412,12 @@ function parseRevenueDaily(rows) {
   }
   const days = Object.keys(byDate).sort().map((d) => byDate[d]);
 
+  // ===== D 覆盖范围：把「只填到几号」这件事变成可见的数字 =====
+  // 只填了合计行的日期也算"有数据"（老板填法如此），否则会把 9.7 / 9.10 误报成缺天
+  const coverage = buildCoverage(
+    days.map((d) => d.date).concat(summaryOnlyRows.map((x) => x.date))
+  );
+
   return {
     ok: true,
     shape: 'revenue_daily',
@@ -365,6 +432,7 @@ function parseRevenueDaily(rows) {
     cashInflow,
     revenueM1,
     bridge,
+    coverage,
     // ⚠️ 兼容旧字段：`caliber` 现在只描述 A 口径（现金流入）的自检，**不代表营收**
     caliber: cashInflow,
     unclassified: {
@@ -388,4 +456,5 @@ module.exports = {
   M1_DINEIN_TEXT, M1_TAKEAWAY_TEXT, M1_REVENUE_TEXT,
   BRIDGE_BOSS_OVER, BRIDGE_M1_OVER,
   detectRevenueDaily, parseRevenueDaily, parseLedgerText, normDate,
+  buildCoverage, monthDaysOf,
 };
