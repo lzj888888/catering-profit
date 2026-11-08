@@ -878,13 +878,6 @@ Page({
     this.setData({ cityIdx: i, cityName: M.cityTiers[i].name });
     this.scheduleCalc();
   },
-  onBiz(e) {
-    const i = Number(e.detail.value);
-    this.setData({ bizIdx: i, bizName: M.bizTypes[i].name });
-    // M2v1.3：主分类变了 ⇒ 类内预设跟着换（不同 bizKey 的预设不同）
-    this.syncPresetOptions();
-    this.scheduleCalc();
-  },
 
   // ===== 建店投入 =====
   onBuildYuan(e) {
@@ -1895,7 +1888,6 @@ Page({
   // R442：展开/收起「更多分析」四张卡
   onToggleMore() { this.setData({ showMore: !this.data.showMore }); },
 
-  onToggleL2() { this.setData({ showL2: !this.data.showL2 }); },
 
   // 🔴 R452（D 项，李老师拍板：「费率折算放回，但必须标『估算』」）：`refreshFeeAmt()` 恢复。
   //   沿革：R439 加 → R447 删（因 R441 删 L3 时把消费端 `fee-amt` 行一起删了 ⇒ 纯写不读）

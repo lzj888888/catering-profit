@@ -134,7 +134,6 @@ Page({
   goCard() { wx.switchTab({ url: '/pages/m3/hub' }); },
   goSettings() { wx.navigateTo({ url: '/subpkg/tools/shop/setting' }); },
   goSwitch() { wx.navigateTo({ url: '/subpkg/tools/shop/switch' }); },
-  goMine() { wx.switchTab({ url: '/pages/mine/index' }); },
 
   // R234/J3：首页折叠引导条开关。
   //   ⚠️ 与月录入页的 `onToggleHintFold`（多键 map）**故意不同形**：那里是 15 处并列的提示、
