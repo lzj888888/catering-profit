@@ -288,6 +288,7 @@ Page({
     //   所以文案写「上次试算」。与后端 saveCostCard/service.js:105 同式：
     //   round((priceFen − unitCostFen) / priceFen × 10000) / 100。
     stickyMargin: '',
+    stickyHint: '',
     reverseResultPreview: '',
     previewCost: '',
     // M3.37 团购试算（纯前端、不落库；费率无默认值 ⇒ 只进 placeholder）
@@ -857,6 +858,7 @@ Page({
     if (this.data.cardType === '3') patch.comboSelfMargin = this.comboSelfMarginOf(this.data.previewCostFen, e.detail.value);
     this.setData(patch);
     this.checkAmounts();
+    this.refreshHint();
   },
   onActivityPrice(e) { this.setData({ activityPriceYuan: e.detail.value }); this.checkAmounts(); },
   onCategoryInput(e) { this.setData({ category: e.detail.value }); },
@@ -1047,6 +1049,7 @@ Page({
       if (this.data.cardType === '3') {
         this.setData({ comboSelfMargin: this.comboSelfMarginOf(costFen, this.data.priceYuan) });
       }
+      this.refreshHint();
     } catch (e) {
       // 静默失败：网络断了就保留上次的试算值，不弹错、不清空
     } finally {
@@ -1054,10 +1057,34 @@ Page({
     }
   },
 
+  // ===== R625：把「还差哪一个数」说清楚 =====
+  // 空态原来是「还没算成本 · 试算成本」—— 只说没数，不告诉下一步，老板会反复点、最后放弃。
+  // 这里按「加行 → 填用量 → 填售价」的顺序指路，一次只说**一个**缺口（说三个等于没说）。
+  liveHint() {
+    if (this.data.cardType === '3') return '';   // 套餐走子卡聚合，提示另做
+    const lines = this.data.lines || [];
+    const named = (l) => !!(l && (l.material_id || String(l.material_name || '').trim()));
+    if (!lines.some(named)) return TERMS.card.hintNeedLine;
+    const idx = lines.findIndex((l) => named(l) && !(Number(l.qty) > 0));
+    if (idx >= 0) return String(TERMS.card.hintNeedQty).replace('{n}', String(idx + 1));
+    if (!(Number(this.data.previewCostFen) > 0)) {
+      return TERMS.card.stickyEmpty + ' · ' + TERMS.card.stickyRecalc;
+    }
+    // 这里只判「有没有填」，不做元→分换算 ⇒ 不碰乘 100 的精度口径（金额守卫 C-① 也不该被这行触发）
+    if (!(Number(this.data.priceYuan) > 0)) return TERMS.card.hintNeedPrice;
+    return '';
+  },
+
+  refreshHint() {
+    const h = this.liveHint();
+    if (h !== this.data.stickyHint) this.setData({ stickyHint: h });
+  },
+
   commitLines(lines) {
     const rn = renumber(lines);
     this.setData({ lines: rn, hasPreset: isEstimatedCard(rn), estBanner: isEstimatedCard(rn) ? TERMS.card.estCardBanner.replace('{cat}', this.data.catLabel || '品类') : '' });
     this.scheduleLive();          // R624：料一变，成本与毛利率自己跟着变
+    this.refreshHint();           // R625：同时更新「还差哪个数」
     return rn;
   },
   // 用户动了某行 → 该行不再是「系统估」（自校正：系统估标记只认未被人碰过的行）

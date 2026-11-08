@@ -409,7 +409,7 @@
         <text class="sa-val">{{t.cur}}{{previewCost}}</text>
         <text class="sa-mg" wx:if="{{stickyMargin}}">{{t.grossMargin}} {{stickyMargin}}</text>
       </block>
-      <text class="sa-empty" wx:else>{{t.stickyEmpty}} · {{t.stickyRecalc}}</text>
+      <text class="sa-empty" wx:else>{{stickyHint || t.stickyEmpty}}</text>
     </view>
     <button class="btn primary sa-btn" bindtap="onSave">{{t.saveShort}}</button>
   </view>

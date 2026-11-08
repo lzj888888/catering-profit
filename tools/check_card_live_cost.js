@@ -98,5 +98,61 @@ ok('D-④ 套餐卡暂不走这条链路（子卡聚合另算，避免半成品�
 ok('D-⑤ 既有"改售价即时算毛利率"未被破坏（onPrice 仍用 marginTextOf）',
   /onPrice\(e\)[\s\S]{0,200}marginTextOf/.test(SRC));
 
+// ============ E 「还差哪个数」（R625）============
+// 空态原来只说「还没算成本」—— 告诉老板没数，却不告诉下一步，他会反复点然后放弃。
+// 这一组判两件事：**顺序对不对**（一次只指一个缺口）、**话是不是人话**（不是报错）。
+sec('E 还差哪个数（一次只说一个缺口）');
+
+const TERMS_ALL = require(P('miniprogram/i18n/terms.js')).TERMS;
+const CARD = TERMS_ALL.card;
+const HINT = fnBody('liveHint');
+const WXML = fs.readFileSync(P('subpkg/biz/card/edit.wxml'), 'utf8');
+
+ok('E-① 三条提示文案齐备（缺哪条都是空白，等于没提示）',
+  ['hintNeedLine', 'hintNeedQty', 'hintNeedPrice'].every((k) => typeof CARD[k] === 'string' && CARD[k].length >= 6),
+  ['hintNeedLine', 'hintNeedQty', 'hintNeedPrice'].map((k) => String(CARD[k] || '').slice(0, 6)).join(' / '));
+
+ok('E-② 提示里不出现「必填 / 错误 / 校验失败」这类报错口径（这里是提示，不是拦人）',
+  !/必填|错误|校验失败|非法/.test([CARD.hintNeedLine, CARD.hintNeedQty, CARD.hintNeedPrice].join('')));
+
+// 真跑：把页面里的 liveHint 原文抽出来，注入 data 跑一遍
+function runHint(data) {
+  // 页面里用的是 TERMS.card.xxx ⇒ 这里必须注入完整 TERMS，不能只给 .card（本轮真踩过）
+  const f = new Function('TERMS', 'return function liveHint() {' + HINT + '};')(TERMS_ALL);
+  return f.call({ data });
+}
+const L = (o) => Object.assign({ material_name: '', qty: '', material_id: '', input_type: 2 }, o);
+
+ok('E-③ 一行都没有 ⇒ 提示「先加一行配料」',
+  runHint({ cardType: '1', lines: [], previewCostFen: 0, priceYuan: '' }) === CARD.hintNeedLine);
+
+ok('E-④ 🔴 只有空行（点了「添加」还没填）⇒ 也说「先加一行配料」，不能报「第 1 行还差用量」',
+  runHint({ cardType: '1', lines: [L({})], previewCostFen: 0, priceYuan: '' }) === CARD.hintNeedLine);
+
+ok('E-⑤ 有配料名但没用量 ⇒ 具体指出哪一行',
+  runHint({ cardType: '1', lines: [L({ qty: '100' }), L({ material_name: '牛腩' })], previewCostFen: 0, priceYuan: '' })
+    === CARD.hintNeedQty.replace('{n}', '2'));
+
+ok('E-⑥ 配料齐了但成本还没回来 ⇒ 说「还没算成本 · 试算成本」（不许催他填售价）',
+  runHint({ cardType: '1', lines: [L({ material_name: '牛腩', qty: '200' })], previewCostFen: 0, priceYuan: '' })
+    === CARD.stickyEmpty + ' · ' + CARD.stickyRecalc);
+
+ok('E-⑦ 成本有了、没售价 ⇒ 提示「填上售价就能看毛利」',
+  runHint({ cardType: '1', lines: [L({ material_name: '牛腩', qty: '200' })], previewCostFen: 1200, priceYuan: '' })
+    === CARD.hintNeedPrice);
+
+ok('E-⑧ 全齐 ⇒ 不啰嗦，提示清空（此时该显示成本与毛利率）',
+  runHint({ cardType: '1', lines: [L({ material_name: '牛腩', qty: '200' })], previewCostFen: 1200, priceYuan: '38' }) === '');
+
+ok('E-⑨ 套餐卡暂不提示（子卡聚合另做，避免半成品误导）',
+  runHint({ cardType: '3', lines: [], previewCostFen: 0, priceYuan: '' }) === '');
+
+ok('E-⑩ 吸底条真的用 stickyHint 渲染（写了不接 = 白写）',
+  /\{\{stickyHint\s*\|\|/.test(WXML));
+
+ok('E-⑪ 三处会改变缺口的地方都刷了提示（改料 / 改售价 / 成本回来）',
+  (SRC.match(/refreshHint\(\)/g) || []).length >= 4,
+  'refreshHint 出现 ' + (SRC.match(/refreshHint\(\)/g) || []).length + ' 次（含定义处）');
+
 console.log('\n===== 自动重算守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);
