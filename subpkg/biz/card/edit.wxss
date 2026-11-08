@@ -207,3 +207,20 @@
 .ic-m { font-size: 26rpx; color: #2b7de9; }
 .ic-empty { font-size: 26rpx; color: #b45309; }
 .ic-hint { flex-basis: 100%; font-size: 24rpx; color: #b45309; }
+
+/* ===== R638 表单行排版（真机截图定位，不是猜）=====
+   现象：①「标签」输入框里 placeholder「如 招牌、辣、」被截断，后半截没了
+        ②「这道菜属于哪类」右侧的 picker **整个被挤到看不见**（老板只能看到说明文字，
+          所以才会"选了取消不了"——控件根本没露出来）
+   根因：全局 .field 是 `display:flex` 单行 + space-between。本页很多行塞了三个元素
+        （标签 + 控件 + 提示文字），提示文字挤在同一行里 ⇒ 把控件压到没宽度。
+   做法：本页局部覆盖 —— 允许换行，让「提示文字」独占一整行；控件改成弹性填充，
+       不再被 260rpx 死宽卡住。⚠️ 只改本页，不动全局 .field（会波及全站 20+ 页）。 */
+.field { flex-wrap: wrap; }
+.field .lbl { flex: 0 0 auto; margin-right: 16rpx; }
+.field .val-input { flex: 1 1 auto; width: auto; min-width: 0; }
+.field picker { flex: 1 1 auto; min-width: 0; }
+.field .picker { text-align: right; }
+.field .muted { flex: 1 1 100%; margin-top: 8rpx; line-height: 1.5; }
+/* 品类「清除」跟在 picker 之后，不单独占行 */
+.field .cat-clear { flex: 0 0 auto; }

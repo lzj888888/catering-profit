@@ -322,5 +322,25 @@ ok('J-③ 就近条用的是**同一份**数据（不许自己再算一遍，否
 ok('J-④ 就近条也要能提示缺什么（边填边知道差哪项）',
   /ic-empty[^>]*>\{\{stickyHint \|\|/.test(WXML_E) || /ic-hint[^>]*>\{\{stickyHint\}\}/.test(WXML_E));
 
+// ============ K 表单行排版（R638 真机截图定位）============
+// 截图铁证：①「标签」输入框里 placeholder「如 招牌、辣、」被截断 ②「这道菜属于哪类」
+// 右侧 picker **整个被挤到看不见**（老板只能看到说明文字，所以觉得"选了取消不了"）。
+// 根因：全局 .field 是单行 flex，本页多行塞了「标签+控件+提示」三个元素。
+sec('K 表单行排版（控件不能被挤没）');
+const CSS_E = fs.readFileSync(P('subpkg/biz/card/edit.wxss'), 'utf8');
+const APP_CSS = fs.readFileSync(P('app.wxss'), 'utf8');
+
+ok('K-① 本页 .field 允许换行（否则第三元素把控件挤没）',
+  /\.field\s*\{[^}]*flex-wrap:[ ]*wrap/.test(CSS_E));
+ok('K-② 提示文字独占一整行（挤在同一行就会压扁控件）',
+  /\.field\s+\.muted\s*\{[^}]*flex:[ ]*1[ ]+1[ ]+100%/.test(CSS_E));
+ok('K-③ 输入框改成弹性填充（不再被 260rpx 死宽截断 placeholder）',
+  /\.field\s+\.val-input\s*\{[^}]*flex:[ ]*1[ ]+1[ ]+auto/.test(CSS_E)
+  && /\.field\s+\.val-input\s*\{[^}]*width:[ ]*auto/.test(CSS_E));
+ok('K-④ picker 可伸缩（品类选择器必须看得见、点得到）',
+  /\.field\s+picker\s*\{[^}]*flex:[ ]*1[ ]+1[ ]+auto/.test(CSS_E));
+ok('K-⑤ 🔴 改动限定在本页：全局 .field 不许被本页需求改（会波及 20+ 页）',
+  !/\.field\s*\{[^}]*flex-wrap:[ ]*wrap/.test(APP_CSS));
+
 console.log('\n===== 自动重算守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);
