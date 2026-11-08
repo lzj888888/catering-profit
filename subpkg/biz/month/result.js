@@ -906,7 +906,6 @@ Page({
   //   ⚠️ 目标页在 pages/ 下（非分包），路径与 app.json 一致；没建卡时那边有自己的空态。
   goDishReview() { wx.navigateTo({ url: '/pages/m3/dishreview/index' }); },
   // A20：诊断补录页（9 项客观值；店级时点属性，补一次长期有效）
-  goDiagInput() { wx.navigateTo({ url: '/subpkg/biz/diag/input' }); },
   // 🔴 R612：深度诊断结论页（引擎唯一出口 getDiagnosis 的前端入口）
   goDiagnosis() { wx.navigateTo({ url: '/subpkg/biz/diag/result' }); },
   goInput() { wx.navigateTo({ url: '/subpkg/biz/month/input?month=' + this.data.month }); },
