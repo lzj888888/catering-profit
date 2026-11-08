@@ -80,6 +80,7 @@ Page({
     saving: false,
     baseMode: '',       // '' | 'prefill'（本月已填，预填现值）| 'ref'（拿上月当灰字参考）
     baseTip: '',
+    photo: '',          // R622 参考照片的本地临时路径 —— **只在本机**，不上传、不落库
     t: {
       title: T.title,
       monthLabel: T.monthLabel,
@@ -91,6 +92,9 @@ Page({
       tip: T.tip,
       note: T.note,
       emptyTip: T.emptyTip,
+      photoBtn: T.photoBtn,
+      photoTip: T.photoTip,
+      photoRemove: T.photoRemove,
     },
   },
 
@@ -153,6 +157,31 @@ Page({
     }));
     this.setData({ month, groups, baseMode: '', baseTip: '' });
     this.loadBase(month);
+  },
+
+  // R622：拍照当参考。**只取本地临时路径，不调云、不上传。**
+  //   为什么不识别：OCR 要钱、要过隐私协议、且手写小票识别率低；
+  //   而"他照着抄 3 个数"已经能解决 90% 的问题 —— 抄错了他自己认，不会变成系统的错。
+  onPickPhoto() {
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      sourceType: ['camera', 'album'],
+      success: (res) => {
+        const f = res && res.tempFiles && res.tempFiles[0];
+        if (f && f.tempFilePath) this.setData({ photo: f.tempFilePath });
+      },
+      fail: () => {},   // 用户取消拍照，不当错误
+    });
+  },
+
+  onPreviewPhoto() {
+    if (!this.data.photo) return;
+    wx.previewImage({ urls: [this.data.photo], current: this.data.photo });
+  },
+
+  onRemovePhoto() {
+    this.setData({ photo: '' });
   },
 
   onToggleGroup(e) {

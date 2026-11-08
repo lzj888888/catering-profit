@@ -161,7 +161,7 @@ sec('C 接线：调用点真的存在（防「函数写了没人用」）');
     termsA.includes('yieldRangeErr'), 'terms 双副本均已登记');
   // C-⑤ 反算 / 保存两条路都要拦（只拦一条 = 另一条照样算错）
   check('C-⑤ 🔴 反算（buildCalcLines）与保存（doSave）两条路都前置拦截',
-    /buildCalcLines\(\)\s*\{[\s\S]{0,400}?badYieldOf/.test(stripComments(card))
+    /buildCalcLines\([^)]*\)\s*\{[\s\S]{0,400}?badYieldOf/.test(stripComments(card))
     && /async doSave\(\)\s*\{[\s\S]{0,400}?badYieldOf/.test(stripComments(card)),
     '两条路均命中 badYieldOf 前置');
 }

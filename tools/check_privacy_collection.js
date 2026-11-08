@@ -66,6 +66,8 @@ const TOKEN_WHITELIST = new Set([
   'OPENID', 'openid',
   // R601：剪切板读写（第 8 项收集项）—— 仅在用户主动点「粘贴/复制」时调用
   'getClipboardData', 'setClipboardData',
+  // R622：手填页的「拍张照当参考」—— 取本地临时路径 + 放大查看，全流程不上传
+  'chooseMedia', 'previewImage',
 ]);
 
 const LEAST_FN = 4;  // 云函数 token 命中下限（防列错位零命中假绿）

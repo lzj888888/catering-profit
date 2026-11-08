@@ -849,8 +849,8 @@ Page({
     this.setData({ comboLines: rest.length ? rest : [ensureRid({ sub_card_ref: '', sub_card_name: '', qty: '1' })] });
   },
 
-  onLoss(e) { this.setData({ lossRate: e.detail.value }); },
-  onAux(e) { this.setData({ auxYuan: e.detail.value }); this.checkAmounts(); },
+  onLoss(e) { this.setData({ lossRate: e.detail.value }); this.scheduleLive(); },
+  onAux(e) { this.setData({ auxYuan: e.detail.value }); this.checkAmounts(); this.scheduleLive(); },
   onPrice(e) {
     const patch = { priceYuan: e.detail.value, stickyMargin: this.marginTextOf(this.data.previewCostFen, e.detail.value) };
     // P1 · 套餐本身毛利：售价变动即时重算（仅套餐卡）
@@ -997,9 +997,67 @@ Page({
 
   // ===== P0-3 估算卡：落盘明细行并重算「估算卡」标记（黄标 + 横幅） =====
   // 所有改动明细行的入口都走这里，避免「改了行却忘了更新 hasPreset」的漂移。
+  // ===== R624：改了哪行料，成本自己重算（不用再手点）=====
+  // 老板的痛：改完用量要往左上角点一下才看到新毛利。填表本就枯燥，还多一步。
+  // 做法：停手 900ms 后自动调一次 calcBom，让吸底条的「成本 / 毛利率」自己跳。
+  // 🔴 三条纪律：
+  //   ① 成本**仍然只在 calcBom 里算** —— 本页不复制引擎（R131 副本等价守卫兜底）。
+  //      本地只做「成本 → 毛利率」这一层展示换算（marginTextOf，本来就是展示层）。
+  //   ② **静默**：不 setTitle、不 toast、不 showLoading。他改个数，不该被打断。
+  //   ③ 算不出来就**保持上次的数**，并把 stale 标出来 —— 宁可显示旧数，不显示假数。
+  scheduleLive() {
+    // 套餐行改动走子卡聚合，先在单品链路上验证，套餐单独一轮再做
+    if (this.data.cardType === '3') return;
+    if (this._liveTimer) clearTimeout(this._liveTimer);
+    this._liveTimer = setTimeout(() => {
+      this._liveTimer = null;
+      this.liveCost();
+    }, 900);
+  },
+
+  // 反算/保存/自动重算共用同一份入参构造，防止三处各拼一套参数而漂移
+  buildCalcPayload(opts) {
+    const lines = this.buildCalcLines(opts);
+    if (!lines || lines.length === 0) return null;
+    const mode = this.data.cardType === '3' ? 'A' : this.data.calcMode;
+    return {
+      lines,
+      mode,
+      batch_output: mode === 'B' ? Number(this.data.batchOutput) : 0,
+      loss_pct: Number(this.data.lossRate) || 0,
+      auxYuan: Number(this.data.auxYuan) || 0,
+      target_margin_pct: Number(this.data.targetMargin) || 0,
+    };
+  },
+
+  async liveCost() {
+    if (this._liveBusy) return;              // 上一轮还没回来，别叠着发
+    const payload = this.buildCalcPayload({ silent: true });
+    if (!payload) return;                    // 明细不完整 ⇒ 什么都不做，绝不清空已有结果
+    this._liveBusy = true;
+    try {
+      const d = await api.call('calcBom', payload);
+      const costFen = (d && Number(d.unit_cost_fen)) || 0;
+      if (!(costFen > 0)) return;
+      this.setData({
+        previewCostFen: costFen,
+        previewCost: api.fenToYuan(costFen, 2),
+        stickyMargin: this.marginTextOf(costFen, this.data.priceYuan),
+      });
+      if (this.data.cardType === '3') {
+        this.setData({ comboSelfMargin: this.comboSelfMarginOf(costFen, this.data.priceYuan) });
+      }
+    } catch (e) {
+      // 静默失败：网络断了就保留上次的试算值，不弹错、不清空
+    } finally {
+      this._liveBusy = false;
+    }
+  },
+
   commitLines(lines) {
     const rn = renumber(lines);
     this.setData({ lines: rn, hasPreset: isEstimatedCard(rn), estBanner: isEstimatedCard(rn) ? TERMS.card.estCardBanner.replace('{cat}', this.data.catLabel || '品类') : '' });
+    this.scheduleLive();          // R624：料一变，成本与毛利率自己跟着变
     return rn;
   },
   // 用户动了某行 → 该行不再是「系统估」（自校正：系统估标记只认未被人碰过的行）
@@ -1260,11 +1318,15 @@ Page({
     return null;
   },
 
-  buildCalcLines() {
+  buildCalcLines(opts) {
+    // R624：silent=true 供「自动重算成本」用 —— 自动跑的时候不许弹 toast，
+    //   老板只是改了个用量，不该被他没点过的提示打断。
+    const silent = !!(opts && opts.silent);
+    const warn = (msg) => { if (!silent) wx.showToast({ title: msg, icon: 'none' }); };
     const out = [];
     // 🔴 R297：先过出成率上界（反算 / 保存两条路共用，防「试算出的成本也偏低」）
     if (this.badYieldOf()) {
-      wx.showToast({ title: TERMS.card.yieldRangeErr, icon: 'none' });
+      warn(TERMS.card.yieldRangeErr);
       return null;
     }
     // M3.16 / R190：**套餐也能算**（此前反算区只给单品用，套餐点了没反应）
@@ -1277,7 +1339,7 @@ Page({
         if (!sub || !(Number(sub.total_cost_fen) > 0)) continue;
         out.push({ quantity: qty, net_unit_cost: Number(sub.total_cost_fen) * 100, line_kind: 'main' });
       }
-      if (out.length === 0) { wx.showToast({ title: TERMS.card.comboSubCardPh, icon: 'none' }); return null; }
+      if (out.length === 0) { warn(TERMS.card.comboSubCardPh); return null; }
       return out;
     }
     for (const l of this.data.lines) {
@@ -1297,7 +1359,7 @@ Page({
         out.push({ quantity: qtyBase, net_unit_cost: m.net_unit_cost, line_kind: normalizeKind(l.line_kind) });
       }
     }
-    if (out.length === 0) { wx.showToast({ title: TERMS.card.qty, icon: 'none' }); return null; }
+    if (out.length === 0) { warn(TERMS.card.qty); return null; }
     return out;
   },
 

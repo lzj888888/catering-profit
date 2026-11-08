@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：250 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：251 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1480,6 +1480,10 @@ const SUITES = [
   //                    所以既判结构，也**真跑**手工转表 + 解析看数对不对；
   //                    另守一条体验红线：文案里一个会计术语都不许有（老板看不懂等于没写）。
   ['revenue-manual', 'tools/check_revenue_manual.js'],
+  //   card-live-cost = R624 成本卡「自动重算」守卫（第 251 套件）。改一行料的用量，
+  //                    吸底条的成本/毛利率应当自己变，不用再手点。坏法只有三种：
+  //                    ① 本页自己凑成本（绕开引擎）② 自动算时弹提示打扰他 ③ 算不出就把已有结果清空。
+  ['card-live-cost', 'tools/check_card_live_cost.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

@@ -46,9 +46,14 @@ ok('A-② 四个文件齐（js / wxml / wxss / json）',
     .every((ext) => fs.existsSync(P('subpkg/biz/revenue/manual/index' + ext))));
 
 // 手填页绝不能依赖 Excel —— 它存在的全部理由就是"老板没有表"
-ok('A-③ 手填页不依赖任何 Excel/文件选择能力（否则这条路对不会做表的人还是死路）',
+ok('A-③ 手填页不依赖 Excel 选文件；拍照只是可选参考，没拍也必须能存',
   stripComments(PAGE).indexOf('chooseMessageFile') < 0
-  && stripComments(PAGE).indexOf('chooseMedia') < 0);
+  && (() => {
+    const s = stripComments(PAGE);
+    const i = s.indexOf('onSave()');
+    const seg = i >= 0 ? s.slice(i, i + 900) : '';
+    return !/photo/.test(seg);
+  })());
 
 ok('A-④ 营收页有并列的手填入口（不是藏在角落的小字）',
   MAINWXML.indexOf('goManual') > 0 && MAIN.indexOf('goManual()') > 0
@@ -243,6 +248,52 @@ ok('E-⑪ 取上月用 prevMonth（1 月减成「0 月」的坑已有断言）',
 // E-⑮ 填完当场回显金额（否则他只看到"存好了"，不知道填对没）
 ok('E-⑮ 保存成功回显"经营营收 ¥X"（填完就知道对不对）',
   /savedTotalTpl/.test(PAGE) && typeof MT.savedTotalTpl === 'string' && /\{x\}/.test(String(MT.savedTotalTpl)));
+
+// ============ G 拍照当参考（R622）============
+// 这一功能的价值全在「不做识别」上：不调云、不上传、不落库 ⇒ 零成本、零隐私外泄、抄错是他自己认。
+// 所以判据的重点是**守住这条边界**，而不是判"能不能识别"。
+sec('G 拍照当参考（不上传、不识别、不落库）');
+
+const photoSeg = (() => {
+  const s = stripComments(PAGE);
+  const a = s.indexOf('onPickPhoto');
+  const b = s.indexOf('onToggleGroup');
+  return a >= 0 ? s.slice(a, b > a ? b : a + 1200) : '';
+})();
+
+ok('G-① 有拍照入口（can chooseMedia 选图，且相机与相册两条路都给）',
+  /wx\.chooseMedia/.test(photoSeg) && /mediaType:\s*\['image'\]/.test(photoSeg)
+  && /sourceType:\s*\[[^\]]*'camera'/.test(photoSeg) && /sourceType:\s*\[[^\]]*'album'/.test(photoSeg));
+
+ok('G-② 🔴 照片**不上传**：拍照与保存流程里不出现任何上云调用',
+  !/uploadFile/.test(photoSeg) && !/cloud\./.test(photoSeg) && !/api\.call/.test(photoSeg)
+  && !/uploadFile/.test(stripComments(PAGE).slice(stripComments(PAGE).indexOf('onSave'))),
+  '拍照段长=' + photoSeg.length);
+
+ok('G-③ 🔴 保存参数只有月份和数值（照片路径绝不能跟着提交）',
+  (() => {
+    const s = stripComments(PAGE);
+    const i = s.indexOf('revenue_save_manual');
+    const seg = i >= 0 ? s.slice(i, i + 400) : '';
+    return /input:\s*\{\s*month:/.test(seg) && /fields/.test(seg) && !/photo/.test(seg);
+  })());
+
+ok('G-④ 🔴 界面明说"不上传、不识别"（不写清楚，老板会以为我们把他账单传走了）',
+  /不上传/.test(String(MT.photoTip || '')) && /不识别/.test(String(MT.photoTip || '')),
+  String(MT.photoTip || '').slice(0, 18));
+
+ok('G-⑤ 不承诺"自动识别/自动填"（没做的能力不许写，假承诺比没有更伤）',
+  !/自动识别|自动填|智能识别/.test(String(MT.photoTip || '') + String(MT.photoBtn || '')));
+
+ok('G-⑥ 点照片能放大看（店里光线差、单据字小）',
+  /wx\.previewImage/.test(photoSeg) && /bindtap="onPreviewPhoto"/.test(WXML));
+
+ok('G-⑦ 拍的照能去掉（不让他被一张错图一直挂着）',
+  /onRemovePhoto/.test(PAGE) && /bindtap="onRemovePhoto"/.test(WXML) && typeof MT.photoRemove === 'string');
+
+ok('G-⑧ 照片显示区够大（≥300rpx 高），不是缩略图',
+  /\.mn-photo-img\s*\{[^}]*height:\s*(\d+)rpx/.test(WXSS)
+  && Number((WXSS.match(/\.mn-photo-img\s*\{[^}]*height:\s*(\d+)rpx/) || [0, 0])[1]) >= 300);
 
 // ============ F 真跑手填分支（R621）============
 // 🔴 静态扫描抓不住「引用了不存在的变量」这类错：R620 的 vals 就是这么上线的，

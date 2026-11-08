@@ -19,6 +19,20 @@
   <!-- R621：上月参考 / 本月已填。一句话说清"灰色不是这个月的数"，否则最容易串月 -->
   <view class="mn-base {{baseMode}}" wx:if="{{baseTip}}">{{baseTip}}</view>
 
+  <!-- R622：拍张照当参考。只在本机显示，不上传、不识别 —— 所以照片处理不产生任何费用，
+       也不会把他的账单传到外面去（隐私最省心的做法）。 -->
+  <block wx:if="{{!photo}}">
+    <view class="mn-photo-btn" bindtap="onPickPhoto">{{t.photoBtn}}</view>
+    <text class="mn-photo-tip">{{t.photoTip}}</text>
+  </block>
+  <view class="mn-photo-box" wx:else>
+    <image class="mn-photo-img" src="{{photo}}" mode="aspectFit" bindtap="onPreviewPhoto" />
+    <view class="mn-photo-bar">
+      <text class="mn-photo-tip">{{t.photoTip}}</text>
+      <text class="mn-photo-del" bindtap="onRemovePhoto">{{t.photoRemove}}</text>
+    </view>
+  </view>
+
   <view class="mn-group" wx:for="{{groups}}" wx:key="key" wx:for-item="g" wx:for-index="gi">
     <view class="mn-gh" bindtap="onToggleGroup" data-key="{{g.key}}">
       <text class="mn-gt">{{g.title}}</text>
