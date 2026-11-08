@@ -70,6 +70,8 @@
     <picker mode="selector" range="{{catOptions}}" value="{{catPicked}}" bindchange="onPickCategory">
       <view class="picker">{{catPicked >= 0 ? catOptions[catPicked] : t.catPickPh}}</view>
     </picker>
+    <!-- 🔴 R636：选了品类就得能取消（真机实测「必须得选一个」）。只撤系统预填行，用户自己填的不动。 -->
+    <text class="cat-clear" wx:if="{{catPicked >= 0}}" catchtap="onClearCategory">{{t.catClear}}</text>
     <text class="muted">{{t.catHint}}</text>
   </view>
   <!-- 三司会诊裁定·燃气燃料分摊：仅高耗能品类（energyFen>0）可开；默认不进卡 -->

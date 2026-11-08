@@ -276,5 +276,31 @@ ok('H-④ 算成功后必须清掉 stale（否则永远显示「待更新」）'
 ok('H-⑤ stale 的数字要变灰（看得出这不是当前值）',
   /\{\{previewStale \? 'sa-stale' : ''\}\}/.test(WXML_E));
 
+// ============ I 品类模板：换品类要跟着换、且能取消（R636 真机）============
+// 老板实测：选「卤味烧腊」出来黄卡（调料+五花肉）；换成「热炒蔬菜」**底下纹丝不动**；
+// 而且想取消品类取消不了（「必须得选一个」）。
+// 根因：预填只在「空卡」时执行 ⇒ 换品类时卡已不空，②③ 全跳过。
+sec('I 品类模板跟着换 + 可取消');
+const PICK = fnBody('onPickCategory');
+const CLEAR = fnBody('onClearCategory');
+
+ok('I-① 🔴 换品类要丢掉旧品类的预填行（否则五花肉永远留在那儿）',
+  /droppedPreset/.test(PICK) && /filter\(\(l\)\s*=>\s*!\(l\s*&&\s*l\.isPreset\)\)/.test(PICK));
+
+ok('I-② 用户自己填的行绝不能被丢（只删 isPreset；用户动过的行已被 editLineStripPreset 摘标）',
+  /isPreset/.test(PICK) && !/filter\(\(l\)\s*=>\s*l\.material_id\)/.test(PICK));
+
+ok('I-③ 换品类后要补新品类示例主料（条件必须含 droppedPreset，不能只看空卡）',
+  /\(wasEmpty \|\| droppedPreset\)/.test(PICK) && /sample_lines/.test(PICK));
+
+ok('I-④ 品类可清除（真机实测「必须得选一个」）',
+  !!CLEAR && /catPicked:.{0,3}-1/.test(CLEAR));
+
+ok('I-⑤ wxml 真的给了清除入口（写了不接 = 白写）',
+  /catchtap="onClearCategory"/.test(WXML_E));
+
+ok('I-⑥ 清除只撤系统预填行（用户自己的行一条不动）',
+  /filter\(\(l\)\s*=>\s*!\(l\s*&&\s*l\.isPreset\)\)/.test(CLEAR));
+
 console.log('\n===== 自动重算守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);

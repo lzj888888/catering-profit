@@ -136,6 +136,7 @@ Page({
       catFrom: TERMS.card.catFrom,
       catPickPh: TERMS.card.catPickPh,
       catHint: TERMS.card.catHint,
+    catClear: TERMS.card.catClear,
       estRowTag: TERMS.card.estRowTag,
       estCardHint: TERMS.card.estCardHint,
       save: TERMS.card.save,
@@ -667,9 +668,12 @@ Page({
       && !String((l && l.material_name) || '').trim()
       && !String((l && l.qty) || '').trim();
     const wasEmpty = this.data.lines.length === 0 || this.data.lines.every(isBlankLine);
-    // 空卡 ⇒ 丢掉出厂空行再预填：否则用户看到「一行空原料行 + 调料行」，
-    // 空行虽被保存时跳过，但它会顶掉第一行的说明位（界面像"没预填上"）。
-    let lines = wasEmpty ? [] : this.data.lines.slice();
+    // 🔴 R636（真机实测）：原来 `wasEmpty ? [] : slice()` —— **换品类时卡已不空，
+    //   于是 ②③ 全跳过 ⇒ 旧品类的「五花肉/调料」原地不动，老板换了品类看起来毫无反应**。
+    //   修法：把「系统预填行」（isPreset）先丢掉，**用户自己的行一条不动**（他们被 editLineStripPreset
+    //   摘掉 isPreset 后就不再是"系统预估"，绝不会被误删）。
+    const droppedPreset = !wasEmpty && this.data.lines.some((l) => l && l.isPreset);
+    let lines = wasEmpty ? [] : this.data.lines.filter((l) => !(l && l.isPreset)).slice();
     // ① 已有手工行若仍是出厂默认 100，套品类默认出净率
     lines = lines.map((l) => (l.input_type === 2 && (l.yield_rate === '100' || !l.yield_rate)
       ? Object.assign({}, l, { yield_rate: y }) : l));
@@ -688,8 +692,8 @@ Page({
     if (energyFen <= 0) {
       lines = lines.filter((l) => (l.material_name || '') !== ENERGY_NAME);
     }
-    // ③ 空卡（首建）补示例主料（价格留空，黄标可改）
-    if (wasEmpty && Array.isArray(cat.sample_lines)) {
+    // ③ 空卡（首建）或**从别的品类换过来**（丢了旧预填行）⇒ 补新品类示例主料（价格留空，黄标可改）
+    if ((wasEmpty || droppedPreset) && Array.isArray(cat.sample_lines)) {
       for (const s of cat.sample_lines) {
         lines.push(Object.assign(emptyManualLine(), {
           material_name: s.name, qty: String(s.qty), qty_unit: s.unit,
@@ -711,6 +715,29 @@ Page({
     this.refreshSpecHints();
     this.checkAmounts();
   },
+  // 🔴 R636（真机实测）：「品类」这个下拉**选了就取消不了**——老板原话「想取消还不行，必须得选一个」。
+  //   清除 = 只撤掉**系统预填行**（isPreset），用户自己填的行一条不动。
+  //   ⚠️ 不复用 picker 的「首项=不选」写法：那要把 catPicked 全部 +1 偏移，改动面大且容易越界；
+  //      这里用一个显式按钮，语义更直白（按了就是"不要这个品类了"）。
+  onClearCategory() {
+    const kept = (this.data.lines || []).filter((l) => !(l && l.isPreset));
+    this.setData({
+      category: '',
+      catLabel: '',
+      catPicked: -1,
+      catYieldDefault: '',
+      lossRate: '',
+      energyOn: false,
+      energyFen: 0,
+      lines: renumber(kept.length ? kept : [emptyManualLine()]),
+      hasPreset: false,
+      estBanner: '',
+    });
+    this.refreshSpecHints();
+    this.refreshHint();
+    this.scheduleLive();
+  },
+
   // ===== 三司会诊裁定·燃气燃料分摊开关：仅高耗能品类（energyFen>0）可开；开 ⇒ 追加燃料行，关 ⇒ 移除 =====
   onToggleEnergy(e) {
     const on = !!e.detail.value;

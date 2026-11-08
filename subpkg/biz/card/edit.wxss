@@ -194,3 +194,6 @@
 .sa-stale { color: #8a94a6; }
 /* R635：「还差哪个数」与数字同时显示（以前挤在 wx:else 里，算出过一次就再也不出现） */
 .sa-hint { display: block; font-size: 24rpx; color: #b45309; margin-top: 4rpx; }
+
+/* R636：品类「清除」—— 小字按钮，不抢主流程 */
+.cat-clear { font-size: 26rpx; color: #2b7de9; padding: 0 8rpx 0 16rpx; }
