@@ -185,5 +185,9 @@ ok('F-⑤ 删界面不动数据：菜品卡本来就不提交 groupon 字段（�
   !/groupon_price\s*:/.test(SRC) && !/groupon_rate\s*:/.test(SRC),
   '残留=' + /groupon_price\s*:/.test(SRC));
 
+ok('F-⑥ 死代码已清干净（界面上没了的输入，js 里也不许留处理函数与字段）',
+  !/onGrouponPrice|onGrouponRate|onGrouponPromo|calcGroupon\b|grouponView|grouponPriceYuan/.test(SRC),
+  '残留=' + /onGrouponPrice|calcGroupon\b|grouponView/.test(SRC));
+
 console.log('\n===== 自动重算守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);

@@ -20,7 +20,6 @@ const { CATEGORY_PRESETS, CONDIMENT_NAME, ENERGY_NAME } = require('../../../util
 const DI = require('../../../utils/dishImport.js');
 const DRAFT_PREFILL_KEY = DI.DRAFT_PREFILL_KEY;
 const { isEstimatedCard } = require('../../../utils/cardEst.js');  // P0-3 估算卡判定（单源）
-const { calcGrouponOrder } = require('../../../utils/grouponDerive.js');            // M3.37 团购渠道层（纯计算，不落库）
 
 // 本店填过的菜品分类（本地记忆，供下次点选；不新建集合、不上云 —— M3 v1.1 零新建集合红线）
 const EDIT_CATS_KEY = 'm3_dish_cats';
@@ -221,20 +220,7 @@ Page({
       comboSelfMarginTitle: TERMS.card.comboSelfMarginTitle,
       comboSelfMarginHint: TERMS.card.comboSelfMarginHint,
       // M3.37（R190）到店团购渠道层
-      grouponTitle: TERMS.card.grouponTitle,
       grouponGoLink: TERMS.card.grouponGoLink,
-      grouponHint: TERMS.card.grouponHint,
-      grouponPrice: TERMS.card.grouponPrice,
-      grouponPricePh: TERMS.card.grouponPricePh,
-      grouponRate: TERMS.card.grouponRate,
-      grouponRatePh: TERMS.card.grouponRatePh,
-      grouponPromo: TERMS.card.grouponPromo,
-      grouponCalc: TERMS.card.grouponCalc,
-      grouponCommission: TERMS.card.grouponCommission,
-      grouponNet: TERMS.card.grouponNet,
-      grouponProfit: TERMS.card.grouponProfit,
-      grouponNetRate: TERMS.card.grouponNetRate,
-      grouponVsDine: TERMS.card.grouponVsDine,
       // M3.20（批次 B 收尾）菜品模板
       templateFrom: TERMS.card.templateFrom,
       templatePickPh: TERMS.card.templatePickPh,
@@ -293,10 +279,6 @@ Page({
     reverseResultPreview: '',
     previewCost: '',
     // M3.37 团购试算（纯前端、不落库；费率无默认值 ⇒ 只进 placeholder）
-    grouponPriceYuan: '',
-    grouponRate: '',
-    grouponPromoYuan: '',
-    grouponView: null,
     materials: [],
     // 用量单位枚举（单源 utils/units.js；round151 起 = 与采购单位同池，基准单位仍恒为克）
     qtyUnits: units.QTY_UNITS.slice(),
@@ -1225,59 +1207,6 @@ Page({
     this.setData({ priceYuan: api.fenToYuan(this.data.reversePriceFen, 2) });
   },
 
-  // ============ M3.37 团购到手试算（R190） ============
-  // 口径（李老师 2026-10-02 定）：佣金基数 = **顾客实付的团购价**（不是原价）；费率店家自己填、无默认值。
-  // 成本来自引擎 calcBom（与单品/套餐同一条路，不另算一份）；费用侧纯前端，**不落库**。
-  onGrouponPrice(e) { this.setData({ grouponPriceYuan: e.detail.value, grouponView: null }); this.checkAmounts(); },
-  onGrouponRate(e) { this.setData({ grouponRate: e.detail.value, grouponView: null }); },
-  onGrouponPromo(e) { this.setData({ grouponPromoYuan: e.detail.value, grouponView: null }); this.checkAmounts(); },
-  async calcGroupon() {
-    const priceYuan = Number(this.data.grouponPriceYuan) || 0;
-    if (!(priceYuan > 0)) { wx.showToast({ title: TERMS.card.grouponNeedPrice, icon: 'none' }); return; }
-    const linesInput = this.buildCalcLines();
-    if (!linesInput) return;
-    try {
-      ui.setTitle(TERMS.card.grouponCalc);
-      const mode = this.data.cardType === '3' ? 'A' : this.data.calcMode;
-      const d = await api.call('calcBom', {
-        lines: linesInput,
-        mode,
-        batch_output: mode === 'B' ? Number(this.data.batchOutput) : 0,
-        loss_pct: Number(this.data.lossRate) || 0,
-        auxYuan: Number(this.data.auxYuan) || 0,
-      });
-      const costFen = d.unit_cost_fen || 0;
-      if (!(costFen > 0)) { wx.showToast({ title: TERMS.card.grouponNeedCost, icon: 'none' }); return; }
-      const v = calcGrouponOrder({
-        // 🔴 R298（B2）：**十进制安全** —— 原式 `Math.round(<元> * 100)` 在半步（真值恰为 x.xx5）会
-        //   **少进 1 分**（实测 qty=0.1 × 净料 14500 万分之元 ⇒ 真值 14.5 分，原式取 14）。根因与
-        //   `money.yuanToFen` 同一处浮点：`toFixed(10)` 只消 1e-13 量级噪声、不动真实半步。
-        //   成本引擎三副本（calcBom / saveCostCard / syncCostCard）**必须同源同口径**。
-        priceFen: Math.round(Number((priceYuan * 100).toFixed(10))),
-        costFen,
-        ratePct: Number(this.data.grouponRate) || 0,
-        promoFen: Math.round(Number(((Number(this.data.grouponPromoYuan) || 0) * 100).toFixed(10))),
-        dineFen: Math.round(Number(((Number(this.data.priceYuan) || 0) * 100).toFixed(10))),
-      });
-      // vsDineNeg = 堂食毛利 − 团购到手毛利 > 0 ⇒ 这个团购在拉低毛利 ⇒ 红字
-      this.setData({
-        grouponView: {
-          cost: api.fenToYuan(v.costFen, 2),
-          commission: api.fenToYuan(v.commissionFen, 2),
-          net: api.fenToYuan(v.netFen, 2),
-          profit: api.fenToYuan(v.profitFen, 2),
-          netRate: v.netRatePct,
-          profitRate: v.profitRatePct,
-          vsDine: api.fenToYuan(Math.abs(v.vsDineFen), 2),
-          vsDineNeg: v.vsDineFen > 0,
-          hasDine: v.hasDine,
-        },
-        previewCostFen: costFen,
-        previewCost: api.fenToYuan(costFen, 2),
-      });
-    } catch (e) { api.toastError(e); }
-  },
-
   // 🔴 R426（队列 #32）：本页金额栏体检 —— 与 M1 录入页**同一个** `utils/amountInput`、同一套判定。
   //   为什么这页更需要它（比 M1 更狠）：本页金额全是 `Number(x) || 0` 直转（没走 `yuanToFen`），
   //   粘贴「12,000」⇒ `Number` 得 **NaN** ⇒ `Math.round(NaN * 100)` 仍是 NaN ⇒ 提交上云的
@@ -1294,8 +1223,6 @@ Page({
     chk(this.data.priceYuan);
     chk(this.data.auxYuan);
     chk(this.data.activityPriceYuan);
-    chk(this.data.grouponPriceYuan);
-    chk(this.data.grouponPromoYuan);
     for (let i = 0; i < rows.length; i++) chk(rows[i] && rows[i].priceYuan);
     // 手工行单价（input_type=2）——它直接进净料成本，最不能读错的一格
     for (let j = 0; j < lines.length; j++) {
@@ -1418,7 +1345,6 @@ Page({
     //   该行仍显示**按 100 算出的**毛利率/成本/建议价（`result.marginPct` 直接来自服务端试算入参），
     //   数字看着正常、其实已经过期 —— 而**同一页**的失效策略本来是齐的：
     //     · `toggleSpec`（启用/停用）⇒ `result: ... null ...`
-    //     · `onGrouponPrice/Rate/Promo` ⇒ `grouponView: null`
     //   （「同一个修复合集的另一半没做完」——同族病第 4 型。）
     this.setData({
       specRows: this.data.specRows.map((r) => (r.spec_key === key ? Object.assign({}, r, { priceYuan: v, result: null }) : r)),
@@ -1712,11 +1638,7 @@ Page({
       batchOutput: '',
       reversePriceFen: 0, previewCostFen: 0, reverseResultPreview: '', previewCost: '',
       // 🔴 R297-⑥（审计 M3-B10）：团购那一组**同属「这道菜特有」**，必须跟 priceYuan 一起清。
-      //   原先只清了反算类结果、漏了团购 ⇒ 连续录下一道菜时，屏上还挂着上一道菜的
-      //   佣金/到手/毛利（含红字「比堂食低」）—— 那组数字对新菜根本不成立。
-      //   ⚠️ 与上方「刻意保留的门店级默认」（核算模式/损耗率/辅料/分类/标签/目标毛利率）不同类：
-      //      团购价与补贴是逐菜填的，留着就是错的。
-      grouponPriceYuan: '', grouponRate: '', grouponPromoYuan: '', grouponView: null,
+      // R626：团购那组字段已随输入块一起从本页移除（团购价属于渠道，去团购页填）。
       specRows: freshSpecRows(),
       // M3.16（批次 C）套餐：清空套餐特有字段（连续录入下一道默认回到单品）
       cardType: '1',

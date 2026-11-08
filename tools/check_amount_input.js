@@ -563,8 +563,13 @@ ok('③-8 反恒真：把所有 `this.checkAmounts();` 摘掉 ⇒ ②-26/②-34 
     return moneyInputs(mutated).length > 0 && miss.length === cardPairs.length;
   })());
 ok('③-9 反恒真：体检体里抹掉一个金额字段 ⇒ ②-27 必红',
-  cardFields.indexOf('grouponPromoYuan') >= 0
-  && cardChk.split('grouponPromoYuan').join('').indexOf('grouponPromoYuan') < 0);
+  // 🔴 R626：原写法把字段名写死成 grouponPromoYuan，那段团购试算整块移除后这条当场失效
+  //   （判据没坏，是它盯的字段没了）。改成**动态取体检体里真实存在的第一个字段** ——
+  //   以后再增删金额字段，这条不会因为"名字过时"而红。
+  (() => {
+    const f = (cardFields || []).find((x) => cardChk.indexOf(x) >= 0);
+    return !!f && cardChk.split(f).join('').indexOf(f) < 0;
+  })());
 ok('③-10 反恒真：把 onSave 的拦截条件改成恒假 ⇒ ②-29 必红',
   cardSave.split('checkAmounts() > 0').join('false').indexOf('checkAmounts()') < 0);
 // #548 / #549：证明新加的两条拦截不是恒真（摘掉关键调用 ⇒ 对应 ② 必红）
