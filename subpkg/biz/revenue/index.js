@@ -143,6 +143,25 @@ Page({
   //   静态分析看不出「主数到底是营收还是现金流入」，只有真跑一遍才知道。
   buildView,
 
+  // R631：把「为什么认不出」说清楚（与外卖页同一套文案，避免两页说法不一）
+  showNotMine(dg) {
+    const TK = TERMS.ledger.takeaway;
+    if (!dg) {
+      wx.showModal({ title: T.title, content: T.notMine, showCancel: false });
+      return;
+    }
+    const miss = (dg.missing && dg.missing[dg.nearest]) || [];
+    let body = '';
+    if (dg.reason === 'empty_table') body = TK.importDiagEmpty || '';
+    else if (dg.reason === 'cols_ok_but_excluded') body = (TK.importDiagExcluded || '').replace('{col}', dg.excludedBy || '');
+    else if (dg.reason === 'mixed_goods_column') body = (TK.importDiagMixed || '').replace('{col}', dg.mixedCol || '');
+    else body = (TK.importDiagBody || '').replace('{cols}', miss.join('、'));
+    const found = (dg.foundCols && dg.foundCols.length)
+      ? '\n' + (TK.importDiagFound || '').replace('{cols}', dg.foundCols.slice(0, 8).join('、'))
+      : '';
+    wx.showModal({ title: T.title, content: body + found, showCancel: false });
+  },
+
   onLoad() {
     ui.setTitle(T.title);
     // 🔴 R619：进页面先看库里有没有 —— 导过一次就直接显示，不用再传文件。
@@ -219,9 +238,14 @@ Page({
       wx.hideLoading();
       const rd = d && d.revenue_daily;
       if (!rd) {
-        // 认不出这张表（或被分到菜品/账单通道）⇒ 明确告诉他表头缺什么，别让他反复换文件
+        // 🔴 R631：认不出这张表 —— 云函数**早就**把「缺哪几列」算好放在 `d.diagnosis` 里了
+        //   （见 importSalesBill/index.js 里 `return ok({ diagnosis: diagnoseColumns(matrix) })`，
+        //    注释明写"文案由前端按 terms 拼"），而这里此前只弹一句通用的 T.notMine
+        //   ⇒ 诊断被扔掉，老板还是不知道要补哪一列，只能反复换文件。
+        //   ⚠️ 与外卖页 R286 同一套口径：四个 reason 分支 + "读到哪些列"，直接复用同一批文案，
+        //     不新造第二份说法（否则两页对同一张表会给出不同解释）。
         this.setData({ loading: false });
-        wx.showModal({ title: T.title, content: T.notMine, showCancel: false });
+        this.showNotMine(d && d.diagnosis);
         return;
       }
       // 同月已有数据、这次换了文件 ⇒ 先给差异，让他决定（不静默覆盖）

@@ -216,6 +216,34 @@ if (SVC && typeof SVC.diagnoseColumns === 'function') {
   fail('B-⑧ 拿不到 diagnoseColumns 函数 ⇒ 行为面无法验证（不许静默跳过）');
 }
 
+// ===== D 前端真的用了这份诊断（R631）=====
+// 同族病第 N 型：**后端算好、前端扔掉**。
+//   云函数早就 `return ok({ diagnosis: diagnoseColumns(matrix) })`，注释明写"文案由前端按 terms 拼"；
+//   而营收导入页此前只弹一句通用的 T.notMine ⇒ 老板永远看不到"缺哪几列"，只能反复换文件。
+//   ⇒ 这里钉死：营收页必须消费 diagnosis，且四种 reason 都要有分支，不许退回单句兜底。
+{
+  const revPath = path.join(ROOT, 'subpkg/biz/revenue/index.js');
+  let rev = '';
+  try { rev = fs.readFileSync(revPath, 'utf8'); } catch (e) { rev = ''; }
+  if (!rev) {
+    fail('D-① 读不到营收导入页（subpkg/biz/revenue/index.js）⇒ 无法验证前端是否消费诊断');
+  } else {
+    // 只看代码，不把注释当证据（注释里写着"缺哪几列"没用，要真的用）
+    const code = rev.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+    if (!/d\.diagnosis/.test(code)) fail('D-② 营收页没有读取 d.diagnosis ⇒ 诊断被丢弃（回到"只说一句不像我的表"）');
+    if (!/showNotMine\(/.test(code)) fail('D-③ 营收页没有 showNotMine 承接 ⇒ 诊断无处可显示');
+    // 四个 reason 分支缺一不可（少一个就会把某类表误导向"补列"）
+    ['empty_table', 'cols_ok_but_excluded', 'mixed_goods_column'].forEach((rs) => {
+      if (code.indexOf(rs) < 0) fail('D-④ showNotMine 缺 reason 分支：' + rs);
+    });
+    if (!/importDiagBody/.test(code)) fail('D-⑤ 缺列兜底分支（importDiagBody）未接线');
+    if (!/importDiagFound/.test(code)) fail('D-⑥ 没有告诉老板"表里读到了哪些列"⇒ 他不知道自己表被读成什么样');
+    // 反恒真：把消费点抹掉后，上面的判据必须能发现（防止我写了一条永远为真的断言）
+    const mutated = code.replace(/d\.diagnosis/g, 'null');
+    if (!/d\.diagnosis/.test(mutated) !== true) fail('D-⑦ 反恒真失效：抹掉 d.diagnosis 后判据仍为真');
+  }
+}
+
 // ===== C 自失效护栏：源文件一个都没扫到 ⇒ 判红 =====
 if (scanned === 0) {
   fail('C-① 六个源文件全部读不到 ⇒ 本守卫扫空恒绿（假绿），请检查路径');
