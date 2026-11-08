@@ -321,32 +321,16 @@
     <button class="btn ghost btn-block" bindtap="onExpandPro">{{t.expandProBtn}}</button>
   </view>
 
-  <!-- M3.37（R190）团购到手试算：
-       🔴 佣金基数 = **顾客实付的团购价**（原价 188 / 团购价 88 ⇒ 按 88 抽，不是按 188）；
-       费率店家自己填、**无默认值**（行业常见 6% 只作 placeholder，R128 同族）。
-       🔴 P0#7：专业项，新手模式默认收起 -->
-  <view class="reverse" wx:if="{{inputMode === 'pro' || showMore}}">
-    <view class="spec-title">{{t.grouponTitle}}</view>
-    <text class="muted">{{t.grouponHint}}</text>
-    <view class="cell">
-      <text class="lbl">{{t.grouponPrice}}</text>
-      <input class="val-input" type="digit" value="{{grouponPriceYuan}}" placeholder="{{t.grouponPricePh}}" bindinput="onGrouponPrice" adjust-position="{{true}}" cursor-spacing="20" />
-    </view>
-    <view class="cell">
-      <text class="lbl">{{t.grouponRate}}</text>
-      <input class="val-input" type="digit" value="{{grouponRate}}" placeholder="{{t.grouponRatePh}}" bindinput="onGrouponRate" adjust-position="{{true}}" cursor-spacing="20" />
-    </view>
-    <view class="cell">
-      <text class="lbl">{{t.grouponPromo}}</text>
-      <input class="val-input" type="digit" value="{{grouponPromoYuan}}" bindinput="onGrouponPromo" adjust-position="{{true}}" cursor-spacing="20" />
-    </view>
-    <button class="btn ghost btn-small" style="min-height:88rpx;" bindtap="calcGroupon">{{t.grouponCalc}}</button>
-    <block wx:if="{{grouponView}}">
-      <view class="muted">{{t.grouponCommission}}：{{t.cur}}{{grouponView.commission}}</view>
-      <view class="muted">{{t.grouponNet}}：{{t.cur}}{{grouponView.net}}（{{grouponView.netRate}}%）</view>
-      <view class="muted">{{t.grouponProfit}}：{{t.cur}}{{grouponView.profit}}（{{grouponView.profitRate}}%）</view>
-      <view class="muted" wx:if="{{grouponView.hasDine && grouponView.vsDineNeg}}" style="color:#e74c3c;">{{t.grouponVsDine}}：{{t.cur}}{{grouponView.vsDine}}</view>
-    </block>
+  <!-- 🔴 R626：这里原来是一整块「团购价 / 佣金率 / 推广费 + 算到手」的输入。
+       为什么删：团购价是**渠道属性**，不是菜品属性 ——
+         ① 同一个菜可能堂食 28、单独上团购 19.9、做成套餐又是另一个价，一个格子装不下；
+         ② 实测（真实引擎）：把单品团购价从 19.9 改成 9.9，套餐团购毛利**一分不动**（都是 10.75），
+            它只多出"这个菜团购到底多少钱"的第二个答案，让老板按单品价加总算套餐，估高 2.90 元；
+         ③ 它本来就不入库（只是页面临时输入），删掉不动任何已存数据。
+       ⇒ 唯一该填的地方是团购页（能选卡、填价、填佣金、出到手）。这里只留一句指路。
+       ⚠️ js 里的 onGrouponPrice / calcGroupon 暂留未删（不再有任何 wxml 绑定），下一轮清理。 -->
+  <view class="cell" bindtap="goGrouponPage" wx:if="{{cardType === '1' || cardType === '3'}}">
+    <text class="lbl" style="color:#2b6cd4;">{{t.grouponGoLink}}</text>
   </view>
 
   <!-- round150（M3.15）规格（大小份）：成本按组件类型缩放后**单独试算**。

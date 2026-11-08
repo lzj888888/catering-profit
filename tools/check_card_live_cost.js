@@ -154,5 +154,36 @@ ok('E-⑪ 三处会改变缺口的地方都刷了提示（改料 / 改售价 / �
   (SRC.match(/refreshHint\(\)/g) || []).length >= 4,
   'refreshHint 出现 ' + (SRC.match(/refreshHint\(\)/g) || []).length + ' 次（含定义处）');
 
+// ============ F 团购价归位（R626）============
+// 团购价是**渠道属性**，不是菜品属性：同一个菜可能堂食 28、单独上团购 19.9、套餐里又一个价。
+// 实测（真引擎）：把单品团购价 19.9 改成 9.9，套餐团购毛利一分不动（都 10.75）
+// ⇒ 它放在菜品卡上只多出一个"这个菜团购到底多少钱"的第二个答案，没有用途。
+// 这一组守两件事：**菜品卡上不许再有它**、**团购页仍是唯一入口**。
+sec('F 团购价归位（渠道的归渠道）');
+
+const HUB = fs.readFileSync(P('pages/m3/hub.js'), 'utf8');
+const GRP_WXML = fs.readFileSync(P('subpkg/biz/groupon/index.wxml'), 'utf8');
+
+ok('F-① 🔴 菜品卡不再有团购价/佣金率/推广费输入（渠道属性不塞进菜品）',
+  !/bindinput="onGrouponPrice"|bindinput="onGrouponRate"|bindinput="onGrouponPromo"/.test(WXML),
+  '残留=' + /bindinput="onGroupon(Price|Rate|Promo)"/.test(WXML));
+
+ok('F-② 菜品卡给出指路（删了入口不给出路 = 把人堵死）',
+  /bindtap="goGrouponPage"/.test(WXML) && typeof CARD.grouponGoLink === 'string' && CARD.grouponGoLink.length > 8);
+
+ok('F-③ 跳转路由与 hub 完全一致（不另造第二条路径）',
+  (() => {
+    const m1 = HUB.match(/url:\s*'(\/subpkg\/biz\/groupon[^']*)'/);
+    const m2 = SRC.match(/goGrouponPage\(\)\s*\{\s*wx\.navigateTo\(\{\s*url:\s*'([^']+)'/);
+    return !!m1 && !!m2 && m1[1] === m2[1];
+  })());
+
+ok('F-④ 团购页仍是唯一可填入口（价 + 费率都在那儿）',
+  /bindinput="onPrice"/.test(GRP_WXML) && /bindinput="onRate"/.test(GRP_WXML));
+
+ok('F-⑤ 删界面不动数据：菜品卡本来就不提交 groupon 字段（无 groupon_price 落库键）',
+  !/groupon_price\s*:/.test(SRC) && !/groupon_rate\s*:/.test(SRC),
+  '残留=' + /groupon_price\s*:/.test(SRC));
+
 console.log('\n===== 自动重算守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);

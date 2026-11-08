@@ -222,6 +222,7 @@ Page({
       comboSelfMarginHint: TERMS.card.comboSelfMarginHint,
       // M3.37（R190）到店团购渠道层
       grouponTitle: TERMS.card.grouponTitle,
+      grouponGoLink: TERMS.card.grouponGoLink,
       grouponHint: TERMS.card.grouponHint,
       grouponPrice: TERMS.card.grouponPrice,
       grouponPricePh: TERMS.card.grouponPricePh,
@@ -886,6 +887,8 @@ Page({
   onTargetMargin(e) { this.setData({ targetMargin: e.detail.value }); },
   // 真机反馈：改第 N 道菜的原料必须回列表页最顶部 ⇒ 编辑页给直达入口
   goMaterial() { wx.navigateTo({ url: '/subpkg/biz/material/index' }); },
+  // R626：团购价移到团购页填 —— 这里只负责把他送过去（路由与 hub 完全一致）
+  goGrouponPage() { wx.navigateTo({ url: '/subpkg/biz/groupon/index' }); },
 
   // ===== round149：用量单位 / 原料换算说明 =====
   // 单条原料的换算说明：采购价 ÷ 换算系数 ÷ 出成率 ⇒ 净料单价（元/克）。
