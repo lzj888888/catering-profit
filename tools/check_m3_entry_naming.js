@@ -119,5 +119,52 @@ ok('B-⑥ 真跑 onTab：切 tab 时 data 与标题同步切换（来回都成�
 ok('B-⑦ wxml 的 import tab 仍渲染 t.importTab（改名没把 tab 栏弄丢）',
   /data-tab="import"[^>]*>\{\{t\.importTab\}\}/.test(TKW));
 
+// ============ C 卡名 ≡ 点进去看到的标题（R633）============
+// R615 当时明说「reviewTitle/reconTitle 的命名清理留独立一轮」——这轮补上，并把它做成常驻判据。
+// 为什么要管：老板在枢纽页看到「每道菜/套餐成本毛利表」，点进去导航栏写「菜品成本毛利核算」，
+// 他会怀疑**自己是不是点错了**（G6 同族：卡名 ≠ 页标题）。
+// 口径：页面的真实标题 = json 的 navigationBarTitleText，或 setTitle(TERMS.x.y) 解析出来的值。
+console.log('\n===== C 卡名 ≡ 页标题 =====');
+const HUB_TERMS = require(P('miniprogram/i18n/terms.js')).TERMS;
+const g = (k) => k.split('.').reduce((o, p) => (o == null ? undefined : o[p]), HUB_TERMS);
+
+// 表里**显式登记**每张卡 → 目标页 → 标题来源（没有登记的卡如果出现在 hub 上，会被 C-① 抓到）
+const MAP = [
+  ['cardTitle', 'subpkg/biz/card/index', 'setTitle', 'card.listTitle'],
+  ['materialTitle', 'subpkg/biz/material/index', 'setTitle', 'card.materialListTitle'],
+  ['revenueTitle', 'subpkg/biz/revenue/index', 'json', ''],
+  ['grouponTitle', 'subpkg/biz/groupon/index', 'json', ''],
+  ['reviewTitle', 'pages/m3/dishreview/index', 'setTitle', 'card.reviewTitle'],
+  ['reconTitle', 'subpkg/tools/recon/index', 'setTitle', 'card.reconTitle'],
+];
+// takeaway 走动态标题（syncTitle），已由 B 组单独钉死，这里不重复管
+const SKIP = new Set(['takeawayTitle', 'importTitle', 'stepTitle']);
+
+MAP.forEach(([hubKey, page, src, termKey], i) => {
+  const hubName = g('hub.' + hubKey);
+  let pageName = '';
+  if (src === 'json') {
+    try { pageName = JSON.parse(fs.readFileSync(P(page + '.json'), 'utf8')).navigationBarTitleText || ''; } catch (e) { pageName = ''; }
+  } else {
+    pageName = g(termKey) || '';
+    // 还要确认这页**真的**把它设成了标题（写了 setTitle 才算数，光有词不算）
+    let js = '';
+    try { js = fs.readFileSync(P(page + '.js'), 'utf8'); } catch (e) { js = ''; }
+    if (js.indexOf('setTitle(' + termKey.replace(/^/, 'TERMS.') + ')') < 0
+      && js.indexOf(termKey + ')') < 0) pageName = pageName + '（未接线）';
+  }
+  ok(`C-${i + 1} hub.${hubKey} ≡ ${page} 的标题`,
+    !!hubName && hubName === pageName,
+    `卡名「${hubName}」/ 页标题「${pageName}」`);
+});
+
+ok('C-⑦ hub 上出现的入口都已登记（新增卡必须补进这张表，否则卡名与页标题会悄悄漂）',
+  (() => {
+    let js = '';
+    try { js = fs.readFileSync(P('pages/m3/hub.js'), 'utf8'); } catch (e) { return false; }
+    const gos = (js.match(/\n  go[A-Z][A-Za-z]*\(\)/g) || []).map((x) => x.trim().replace('()', ''));
+    return gos.length >= 7;   // 至少 7 个入口；数量骤降说明 hub 被大改，回来补这张表
+  })());
+
 console.log(`\n===== M3 入口命名守卫结果：${pass} 通过 / ${failN} 失败 =====`);
 process.exit(failN === 0 ? 0 : 1);

@@ -1,5 +1,6 @@
 {
   "usingComponents": {},
   "enablePullDownRefresh": false,
-  "backgroundTextStyle": "dark"
+  "backgroundTextStyle": "dark",
+  "navigationBarTitleText": "渠道营收"
 }
