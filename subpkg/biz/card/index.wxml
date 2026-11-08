@@ -67,8 +67,13 @@
       <view class="card-title card-title-flex">
         <checkbox wx:if="{{selectMode}}" checked="{{selected[item.card_code]}}" data-code="{{item.card_code}}" catchtap="onSelect" />
         {{item.name}}
-        <!-- round156：置顶标记（排序会把它们排到最前，但必须"看得出为什么在前面"） -->
-        <text class="tag tag-pin" wx:if="{{item.pinned}}">{{t.pinTag}}</text>
+        <!-- round156：置顶标记（排序会把它们排到最前，但必须"看得出为什么在前面"）
+             🔴 R629：`onPin` 早在 round156 就写好了（还带乐观更新 + 失败回滚），
+               但 wxml 里**从来没绑过** ⇒ 老板点不到，`pinned_cards` 永远是空的，
+               而列表排序偏偏以它为先。100 张卡的时候，「置顶」是唯一能救排序的东西。
+               所以这里做成**可点的小标签**而不是长按：R192 的教训是收纳过度会被判「功能丢了」。 -->
+        <text class="tag {{item.pinned ? 'tag-pin' : 'tag-pin-off'}}"
+              catchtap="onPin" data-code="{{item.card_code}}">{{item.pinned ? t.pinTag : t.pinAction}}</text>
         <text class="tag">{{item.calc_mode === 'A' ? t.calcModeA : t.calcModeB}}</text>
         <!-- 🔴 R309：成本变动（本版 vs 上一版单份成本）。只在"真的变了 & 上版成本>0"时才出现
              （见 subpkg/biz/card/index.js::costDriftText —— 三种情况一律不显示，绝不编数）。 -->

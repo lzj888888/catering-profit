@@ -109,6 +109,8 @@ Page({
       pinOn: TERMS.card.pinOn,
       pinOff: TERMS.card.pinOff,
       pinTag: TERMS.card.pinTag,
+      pinAction: TERMS.card.pinAction,
+      unpinAction: TERMS.card.unpinAction,
       // M3.16（批次 C）套餐标记
       cardTypeCombo: TERMS.card.cardTypeCombo,
       comboInsightLoseWarn: TERMS.card.comboInsightLoseWarn,
@@ -304,7 +306,12 @@ Page({
     const cat = this.data.categoryFilter;
     const tag = this.data.tagFilter;
     const list = this.data.all.filter((c) => {
-      if (kw && !c.name.toLowerCase().includes(kw)) return false;
+      // R629：搜索扩到「名称 + 分类 + 标签」—— 100 张卡时老板常记不住菜名，
+      //   但记得"牛肉类"。只搜名称等于逼他先想起准名字，那是给会计用的，不是给老板用的。
+      if (kw) {
+        const hay = ((c.name || '') + ' ' + (c.category || '') + ' ' + (c.tags || '')).toLowerCase();
+        if (hay.indexOf(kw) < 0) return false;
+      }
       if (cat && c.category !== cat) return false;
       if (tag) {
         const tags = c.tags.split(/[,，]/).map((x) => x.trim());
