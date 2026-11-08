@@ -18,6 +18,12 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 
 const common = require('./common');                 // 扁平派生副本（sync_common 生成）
+// 🔴 R641（本仓最贵的一类错误）：频控器必须**在 common 的 require 之后**创建。
+//   上一版把它插在 `const db = cloud.database()` 紧跟的下一行 —— 那时 `common` 还在 TDZ，
+//   模块加载直接抛 `Cannot access 'common' before initialization` ⇒ **整个云函数起不来**
+//   （导入 / 诊断 / 导出三个功能全部不可用，而静态判据只看'有没有声明'，看不出来）。
+//   同时仍须是**模块级单例**：写在 exports.main 里等于每次调用新建，频控无效。
+const rlCheck = common.rateLimit.makeDbRateLimiter(db);
 const { resolveAuth, assertShopOwner } = common;
 const { ERROR_CODES, ok, fail } = common;
 const { makeAdapter } = common.dataAdapter;
@@ -246,6 +252,9 @@ exports.main = async (event) => {
   const auth = await resolveAuth(ctx, db);
   if (auth.error) return fail(auth.error);
   const userId = auth.user.id;
+  // R634：导出：生成文件 + 批量取数，限 5/分 + 50/天（老板偶尔连导几张，5/分够用但不至于刷）
+  const _rl = await rlCheck(userId, 'export');
+  if (_rl.limited) return fail(_rl.code);
 
   const v = (event && event.input) || event || {};
   // M2v1.3：对比表导出（Excel 付费，复用 'export' 能力键）。前端已用 calcSandbox 重算好

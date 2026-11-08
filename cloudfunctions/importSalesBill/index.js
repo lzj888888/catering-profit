@@ -13,6 +13,12 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 
 const common = require('./common');                 // 扁平派生副本（sync_common 生成）
+// 🔴 R641（本仓最贵的一类错误）：频控器必须**在 common 的 require 之后**创建。
+//   上一版把它插在 `const db = cloud.database()` 紧跟的下一行 —— 那时 `common` 还在 TDZ，
+//   模块加载直接抛 `Cannot access 'common' before initialization` ⇒ **整个云函数起不来**
+//   （导入 / 诊断 / 导出三个功能全部不可用，而静态判据只看'有没有声明'，看不出来）。
+//   同时仍须是**模块级单例**：写在 exports.main 里等于每次调用新建，频控无效。
+const rlCheck = common.rateLimit.makeDbRateLimiter(db);
 const { resolveAuth, assertShopOwner } = common;
 const { ERROR_CODES, ok, fail } = common;
 const { nowUtc } = common.utilTime;
@@ -68,6 +74,10 @@ exports.main = async (event) => {
   const auth = await resolveAuth(ctx, db);
   if (auth.error) return fail(auth.error);
   const userId = auth.user.id;
+  // R634：重资源接口单独收紧（导入 3/分+20/天）。位置在鉴权之后、干活之前 ——
+  //   非法请求由鉴权当场拒绝、不占额度；走到这里的都是真会耗资源的。
+  const _rl = await rlCheck(userId, 'import');
+  if (_rl.limited) return fail(_rl.code);
 
   const shopId = event && event.shop_id;
   const owner = await assertShopOwner(db, shopId, userId);
