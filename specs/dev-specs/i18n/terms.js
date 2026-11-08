@@ -2130,6 +2130,11 @@ const TERMS = {
     dupCardGoEdit: '去改那张',
     dupCardKeepNew: '继续新建',
     savedReceipt: '成本 ¥{cost} · 毛利 ¥{gross} · 毛利率 {margin}%',
+    // R628：保存回执里加一句「在店里排第几」。这是给老板的**回报**，不是评价他的话。
+    //   🔴 只在数据全（列表未被截断）时才说；卡多被截断时宁可不提，也不给一个错名次。
+    //   口径只统计已定价的卡 —— 未定价的若被算成 0%，会把所有人都"抬"到前面去。
+    rankFirst: '这是你店里毛利率最高的一道（共 {n} 道菜）',
+    rankTpl: '在你 {n} 道菜里排第 {k}',
     comboInsightCustomerSave: '顾客省了',
     comboInsightMerchantLose: '我少赚了',
     comboInsightLoseWarn: '这个套餐在拉低你的毛利',

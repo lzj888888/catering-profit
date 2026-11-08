@@ -29,7 +29,9 @@ function fnBody(name) {
   // 🔴 必须按「方法定义」定位（行首两空格 + 名字 + 括号），不能用裸 indexOf ——
   //   裸查会先命中 `this.commitLines(...)` 这类**调用处**，抠出来的段落是错的，
   //   于是断言全红而代码其实是对的（本轮真踩过：C-⑦/C-⑧/D 组四连红）。
-  const at = SRC.indexOf('\n  ' + name + '(');
+  // 兼容 `async xxx(` 定义（R628 踩到：showSavedReceipt 是 async，裸查名字取不到 → G-①②③ 全红）
+  let at = SRC.indexOf('\n  ' + name + '(');
+  if (at < 0) at = SRC.indexOf('\n  async ' + name + '(');
   if (at < 0) return '';
   const open = SRC.indexOf('{', at);
   if (open < 0) return '';
@@ -188,6 +190,60 @@ ok('F-⑤ 删界面不动数据：菜品卡本来就不提交 groupon 字段（�
 ok('F-⑥ 死代码已清干净（界面上没了的输入，js 里也不许留处理函数与字段）',
   !/onGrouponPrice|onGrouponRate|onGrouponPromo|calcGroupon\b|grouponView|grouponPriceYuan/.test(SRC),
   '残留=' + /onGrouponPrice|calcGroupon\b|grouponView/.test(SRC));
+
+// ============ G 保存回执里的「排第几」（R628）============
+// 这是给老板的回报，不是评价。它最危险的坏法只有一个：**在残缺数据上算名次** ——
+// 卡多时 getCostCard 会截断且无排序，名次直接是错的，而老板会拿它当依据。
+sec('G 保存回执 · 排第几（数据不全宁可不说）');
+
+const RECEIPT = fnBody('showSavedReceipt');
+const RANK = fnBody('rankLine');
+
+ok('G-① 🔴 只在「数据未被截断」时才给排名（截断 = 名次错，宁可闭嘴）',
+  /dh\.isTruncated\(/.test(RECEIPT) && /!\s*dh\.isTruncated\(/.test(RECEIPT));
+
+ok('G-② 取不到就只说回执（失败静默，不弹错、不影响「已保存」）',
+  /catch/.test(RECEIPT) && !/showToast/.test(RECEIPT) && !/toastError/.test(RECEIPT));
+
+ok('G-③ 回执弹窗在排名逻辑之外 —— 排名失败也不许吞掉「已保存」',
+  /wx\.showModal\(/.test(RECEIPT) && RECEIPT.indexOf('showModal') > RECEIPT.indexOf('catch'));
+
+ok('G-④ 只统计已定价的卡（未定价若按 0% 算，会把所有人都"抬"到前面）',
+  /price_fen\)\s*>\s*0/.test(RANK) && /gross_margin_pct\s*!=\s*null/.test(RANK));
+
+ok('G-⑤ 少于 2 张不说排名（只有自己一张，说排第 1 没有意义）',
+  /arr\.length\s*<\s*2/.test(RANK));
+
+// 真跑：把页面里的 rankLine 原文抽出来，注入 TERMS 跑
+function runRank(myMargin, list) {
+  const self = {};
+  const f = new Function('TERMS', 'return function rankLine(myMargin, list) {' + RANK + '};')(TERMS_ALL);
+  return f.call(self, myMargin, list);
+}
+const L2 = (p, m) => ({ price_fen: p, gross_margin_pct: m });
+
+ok('G-⑥ 真跑：我的 74.7% 在 [82, 74.7, 60] 里排第 2',
+  runRank(74.7, [L2(3800, 82), L2(2500, 74.7), L2(1990, 60)]) === CARD.rankTpl.replace('{k}', '2').replace('{n}', '3'),
+  runRank(74.7, [L2(3800, 82), L2(2500, 74.7), L2(1990, 60)]));
+
+ok('G-⑦ 真跑：最高时说「最高的一道」，不说排第 1',
+  runRank(88, [L2(3800, 88), L2(2500, 74.7)]) === CARD.rankFirst.replace('{n}', '2'),
+  runRank(88, [L2(3800, 88), L2(2500, 74.7)]));
+
+ok('G-⑧ 真跑：未定价（price_fen=0）不参与 —— 它不该被当成 0% 垫底',
+  runRank(50, [L2(0, null), L2(3800, 88), L2(2500, 40)]) === CARD.rankTpl.replace('{k}', '2').replace('{n}', '2'),
+  runRank(50, [L2(0, null), L2(3800, 88), L2(2500, 40)]));
+
+ok('G-⑨ 真跑：只有自己一张 ⇒ 不返回排名（空字符串）',
+  runRank(74.7, [L2(2500, 74.7)]) === '');
+
+ok('G-⑩ 真跑：并列而非第一时，取较前名次（不人为分出高低）',
+  runRank(50, [L2(3800, 88), L2(2500, 50)]) === CARD.rankTpl.replace('{k}', '2').replace('{n}', '2'),
+  runRank(50, [L2(3800, 88), L2(2500, 50)]));
+
+ok('G-⑪ 真跑：并列第一时说「最高的一道」（它确实是最高的，不必说"并列第 1"）',
+  runRank(74.7, [L2(2500, 74.7), L2(2400, 74.7)]) === CARD.rankFirst.replace('{n}', '2'),
+  runRank(74.7, [L2(2500, 74.7), L2(2400, 74.7)]));
 
 console.log('\n===== 自动重算守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);

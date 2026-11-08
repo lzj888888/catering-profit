@@ -11,7 +11,8 @@ const api = require('../../../utils/api.js');
 const ui = require('../../../utils/ui.js');
 const units = require('../../../utils/units.js');
 const CardPaste = require('../../../utils/cardPaste.js');
-const AmountInput = require('../../../utils/amountInput.js');   // R426（队列 #32）：金额栏体检（纯判定，不改数）
+const AmountInput = require('../../../utils/amountInput.js');
+const dh = require('../../../utils/dataHealth.js');   // R628：判列表是否被截断（数据不全就不给排名）   // R426（队列 #32）：金额栏体检（纯判定，不改数）
 const { openPaywall } = require('../../../utils/paywall.js');
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 const { TEMPLATES, applyTemplate } = require('../../../utils/dishTemplates.js');   // M3.20 菜品模板（只预填，不写库）
@@ -1042,6 +1043,39 @@ Page({
     }
   },
 
+  // ===== R628：回执里加一句「在店里排第几」 =====
+  // 🔴 只在**数据全**的时候说（列表未被截断）。卡多时接口会截断且无排序，
+  //   在残缺数据上算名次 = 给老板一个错名次，比不给更糟 —— 宁可闭嘴。
+  // 口径：只统计「已定价」的卡（price_fen>0 且毛利率有值），未定价的不参与，否则会被当成 0% 拉低所有人。
+  rankLine(myMargin, list) {
+    if (myMargin == null || !isFinite(Number(myMargin))) return '';
+    const arr = (list || [])
+      .filter((c) => c && Number(c.price_fen) > 0 && c.gross_margin_pct != null)
+      .map((c) => Number(c.gross_margin_pct));
+    if (arr.length < 2) return '';
+    const better = arr.filter((v) => v > Number(myMargin) + 1e-9).length;
+    const rank = better + 1;
+    if (rank === 1) return String(TERMS.card.rankFirst).replace('{n}', String(arr.length));
+    return String(TERMS.card.rankTpl).replace('{k}', String(rank)).replace('{n}', String(arr.length));
+  },
+
+  async showSavedReceipt(receipt, o) {
+    // 排名只是加成：取不到就只说回执，绝不因为它失败而影响「已保存」这件事
+    let extra = '';
+    try {
+      const d = await api.call('getCostCard', {});
+      if (!dh.isTruncated(d)) extra = this.rankLine(o && o.gross_margin_pct, (d && d.list) || []);
+    } catch (e) {
+      extra = '';
+    }
+    wx.showModal({
+      title: TERMS.ui.savedDone,
+      content: receipt + (extra ? '\n' + extra : ''),
+      showCancel: false,
+      success: () => wx.navigateBack(),
+    });
+  },
+
   // ===== R625：把「还差哪一个数」说清楚 =====
   // 空态原来是「还没算成本 · 试算成本」—— 只说没数，不告诉下一步，老板会反复点、最后放弃。
   // 这里按「加行 → 填用量 → 填售价」的顺序指路，一次只说**一个**缺口（说三个等于没说）。
@@ -1597,16 +1631,12 @@ Page({
         // 🔴 R443：保存回执 —— 不只说「已保存」，直接把这张卡的结果报给老板，
         //   他当场就能判断对不对，不用再点进版本页核对。数字全部来自服务端返回值。
         const o = out || {};
-        wx.showModal({
-          title: TERMS.ui.savedDone,
-          content: this.fillTpl(TERMS.card.savedReceipt, {
-            cost: api.fenToYuan(o.total_cost_fen || 0, 2),
-            gross: api.fenToYuan(o.gross_profit_fen || 0, 2),
-            margin: o.gross_margin_pct != null ? o.gross_margin_pct : '—',
-          }),
-          showCancel: false,
-          success: () => wx.navigateBack(),
+        const receipt = this.fillTpl(TERMS.card.savedReceipt, {
+          cost: api.fenToYuan(o.total_cost_fen || 0, 2),
+          gross: api.fenToYuan(o.gross_profit_fen || 0, 2),
+          margin: o.gross_margin_pct != null ? o.gross_margin_pct : '—',
         });
+        this.showSavedReceipt(receipt, o);
       } else {
         // round156（新增态）：**不跳走**。改前是 `setTimeout(navigateBack, 600)` —— 存一道菜就被踢回列表，
         //   录 30 道菜要来回 60 次（李老师「100 道菜品，来回查找会很麻烦」的痛点之一）。
