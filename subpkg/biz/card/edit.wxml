@@ -204,6 +204,19 @@
   <view class="muted" style="margin:-8rpx 0 12rpx 4rpx;">{{t.qtyUnitHint}}</view>
   <view class="muted" style="margin:-4rpx 0 12rpx 4rpx;">{{t.lineKindHint}}</view>
   <button class="btn ghost btn-small" style="min-height:88rpx;" bindtap="addLine">{{t.addLine}}</button>
+
+  <!-- 🔴 R637（真机二次实测）：老板「输的时候弹键盘，要看结果得先把键盘收起再滑到底」。
+       底部那条是 fixed 的，键盘一弹就被盖住 ⇒ 在明细正下方再放一条**同一份数据**的结果条，
+       边填边能看到，不用滑到底、也不用收键盘。 -->
+  <view class="inline-cost">
+    <block wx:if="{{previewCostFen > 0}}">
+      <text class="ic-l">{{t.stickyLast}}</text>
+      <text class="ic-v">{{t.cur}}{{previewCost}}</text>
+      <text class="ic-m" wx:if="{{stickyMargin}}">{{t.grossMargin}} {{stickyMargin}}</text>
+    </block>
+    <text class="ic-empty" wx:else>{{stickyHint || t.stickyEmpty}}</text>
+    <text class="ic-hint" wx:if="{{stickyHint && previewCostFen > 0}}">{{stickyHint}}</text>
+  </view>
   <button class="btn ghost btn-small" style="min-height:88rpx;" bindtap="goMaterial">{{t.materialArchive}}</button>
   <!-- 🔴 R443：批量粘贴配料（解析在 utils/cardPaste.js；只在本页暂存，点「导入」才进 lines） -->
   <view class="paste-toggle" bindtap="onPasteToggle">{{t.pasteTitle}}{{pasteOpen ? ' ▾' : ' ▸'}}</view>

@@ -1054,7 +1054,17 @@ Page({
     //   但老板**删掉用量**后成本还挂着旧值（他会拿这个旧数字去定价）。
     //   ⇒ 改成：数字保留，但标记 `previewStale`（横条显示「上次试算」），并刷新「还差哪个数」。
     if (!payload) {
-      if (!this.data.previewStale) this.setData({ previewStale: true });
+      // 🔴 R637（真机二次实测）：上一轮我只把数字标灰、值仍留着 —— 老板原话
+      //   「把用量去掉之后，单份成本那块还是没有变化，卡死在那儿」。
+      //   对，**删了用量就算不出来，不该还挂一个数**：那个数是另一份配方的成本。
+      //   ⇒ 明细不完整时直接清空（而不是"保留+标灰"）。防闪烁仍由 900ms 防抖负责，
+      //     不会有"打一个字就闪"的问题 —— 只有当明细真的不完整时才清。
+      this.setData({
+        previewCostFen: 0,
+        previewCost: '',
+        stickyMargin: '',
+        previewStale: true,
+      });
       this.refreshHint();
       return;
     }

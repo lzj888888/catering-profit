@@ -77,15 +77,18 @@ sec('C 不打扰（他只是改了个数，不该被打断）');
 ok('C-① 🔴 静默：不弹 toast', !/showToast/.test(LIVE));
 ok('C-② 🔴 静默：不弹 loading', !/showLoading|hideLoading/.test(LIVE));
 ok('C-③ 🔴 静默：不改页面标题', !/setTitle/.test(LIVE));
-ok('C-④ 失败不清空、不弹错（保留上次试算值）',
-  /catch/.test(LIVE) && !/previewCostFen\s*:\s*0/.test(LIVE),
-  '有 catch=' + /catch/.test(LIVE));
+// 🔴 R637：范围收窄到 **catch 分支**。原来判「整个函数里不许出现 previewCostFen:0」，
+//   本意是「网络失败别清空」，但 R637 让"明细不完整"时正当清空 ⇒ 全函数判会把正当行为误杀。
+const LIVE_CATCH = (LIVE.match(/catch\s*\([^)]*\)\s*\{[\s\S]*?\}\s*finally/) || [''])[0];
+ok('C-④ 网络失败时不清空、不弹错（保留上次试算值）',
+  !!LIVE_CATCH && !/previewCostFen/.test(LIVE_CATCH) && !/showToast/.test(LIVE_CATCH),
+  'catch 段=' + (LIVE_CATCH ? LIVE_CATCH.length + '字符' : '未取到'));
 ok('C-⑤ 有并发闸（上一轮没回来不叠着发）', /_liveBusy/.test(LIVE));
 // 🔴 R635：判据升级 —— 原来要求「`if (!payload) return`」裸返回（保留旧值），
 //   真机实测证明那样会让老板拿着"删掉用量后的旧成本"去定价。
 //   现在要求：仍然早返回（不送空数组给引擎），但**必须标记 stale + 刷新提示**。
-ok('C-⑥ 空明细早返回，但必须标记 stale 并刷新提示（不得静默保留旧值当现值）',
-  /if\s*\(!payload\)\s*\{[\s\S]{0,220}previewStale:\s*true[\s\S]{0,80}refreshHint\(\)/.test(LIVE)
+ok('C-⑥ 🔴 明细不完整时必须**清空**成本（不是"保留+标灰"）并刷新提示',
+  /if\s*\(!payload\)\s*\{[\s\S]{0,700}previewCostFen:\s*0[\s\S]{0,300}previewStale:\s*true[\s\S]{0,120}refreshHint\(\)/.test(LIVE)
   && /silent:\s*true/.test(LIVE));
 ok('C-⑦ buildCalcLines 支持 silent，且静默时走 warn 而不是直接 showToast',
   /buildCalcLines\(opts\)/.test(SRC) && /const warn\s*=/.test(BUILD) && /if\s*\(!silent\)\s*wx\.showToast/.test(BUILD));
@@ -259,10 +262,12 @@ sec('H 真机实测两处修复');
 const WXML_E = fs.readFileSync(P('subpkg/biz/card/edit.wxml'), 'utf8');
 const RANK_SRC_LIVE = fnBody('liveCost');
 
-ok('H-① 🔴「还差哪个数」不得写在 wx:else 里（否则算出过一次成本就永不显示）',
+// 🔴 R637：范围收窄到**底部吸底条**（sticky-act）。就近结果条（.inline-cost）里
+//   在"没有成本"时用 wx:else 显示提示是**正当的**（那是唯一一行），不该被这条误杀。
+const STICKY_BLK = (WXML_E.match(/class="sticky-act"[\s\S]*?sa-hint[^>]*>[^<]*<\/text>/) || [''])[0];
+ok('H-① 🔴 底部条里「还差哪个数」不得写在 wx:else 里（否则算出过一次成本就永不显示）',
   /sa-hint[^>]*wx:if="\{\{stickyHint\}\}"/.test(WXML_E)
-  && !/wx:else="?\{?\{?\s*stickyHint/.test(WXML_E)
-  && !/wx:else>\{\{stickyHint/.test(WXML_E));
+  && !!STICKY_BLK && !/wx:else>\{\{stickyHint/.test(STICKY_BLK));
 
 ok('H-② 数字与提示可**同时**存在（数字说上次多少，提示说现在缺什么）',
   WXML_E.indexOf('sa-hint') > WXML_E.indexOf('sa-val'));
@@ -301,6 +306,21 @@ ok('I-⑤ wxml 真的给了清除入口（写了不接 = 白写）',
 
 ok('I-⑥ 清除只撤系统预填行（用户自己的行一条不动）',
   /filter\(\(l\)\s*=>\s*!\(l\s*&&\s*l\.isPreset\)\)/.test(CLEAR));
+
+// ============ J 二次实测：删用量要清空、且不用收键盘也能看结果（R637）============
+// 老板二次实测：①「把用量去掉，单份成本还是卡死在那儿」②「输的时候弹键盘，要看结果得先收键盘再滑到底」
+// ① 上一轮我只标灰没清空 —— 标灰对老板等于没变，他看到的仍是一个数。
+// ② 底部条是 fixed，键盘一弹就被盖住 ⇒ 明细正下方必须有一条**同一份数据**的结果条。
+sec('J 删用量清空 + 就近可看');
+ok('J-① 明细不完整时清空成本（留空而不是留旧数）',
+  /previewCostFen:[ ]*0/.test(RANK_SRC_LIVE) && /previewCost:[ ]*''/.test(RANK_SRC_LIVE));
+ok('J-② 明细正下方有就近结果条（键盘弹起时底部条会被盖住）',
+  /class="inline-cost"/.test(WXML_E));
+ok('J-③ 就近条用的是**同一份**数据（不许自己再算一遍，否则两处会不一致）',
+  /inline-cost[\s\S]{0,400}\{\{previewCost\}\}/.test(WXML_E)
+  && /inline-cost[\s\S]{0,400}\{\{stickyMargin\}\}/.test(WXML_E));
+ok('J-④ 就近条也要能提示缺什么（边填边知道差哪项）',
+  /ic-empty[^>]*>\{\{stickyHint \|\|/.test(WXML_E) || /ic-hint[^>]*>\{\{stickyHint\}\}/.test(WXML_E));
 
 console.log('\n===== 自动重算守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);

@@ -197,3 +197,13 @@
 
 /* R636：品类「清除」—— 小字按钮，不抢主流程 */
 .cat-clear { font-size: 26rpx; color: #2b7de9; padding: 0 8rpx 0 16rpx; }
+
+/* R637：明细正下方的实时结果条 —— 键盘弹起时底部 fixed 条会被盖住，这里就近再显示一份 */
+.inline-cost { display: flex; align-items: center; flex-wrap: wrap; gap: 12rpx;
+  background: #f5f9ff; border: 1rpx solid #dce8f7; border-radius: 12rpx;
+  padding: 16rpx 20rpx; margin: 12rpx 0 8rpx; }
+.ic-l { font-size: 26rpx; color: #6b7a90; }
+.ic-v { font-size: 34rpx; font-weight: 600; color: #1e3a5f; }
+.ic-m { font-size: 26rpx; color: #2b7de9; }
+.ic-empty { font-size: 26rpx; color: #b45309; }
+.ic-hint { flex-basis: 100%; font-size: 24rpx; color: #b45309; }
