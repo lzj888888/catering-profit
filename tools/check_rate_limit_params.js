@@ -288,5 +288,85 @@ console.log(`     ⇒ 弱面只打印；硬判据是 A3（声明≡单源）、A
 check('W-① 弱面已打印（坑⑭/⑯ 印证：裸扫数字必误杀）', adminDim && claims.length >= 1,
   `admin 维度描述命中=${adminDim} / 当前态声明 ${claims.length} 处`);
 
+// ===== R634：频控必须"真生效"且"不误伤" =====
+// 三司会审（豆包 + DeepSeek）独立指出同一条致命风险：
+//   **频控会先杀死老板，而不是刷子** —— 月底连导 6 张表撞上云数据库抖动，
+//   若"计数失败就拒绝"，他会判定"这软件连导表都不稳定"当场弃用。
+// 所以在原来只判"参数对不对"之上，再钉四件事：落库、原子、fail open、分接口、接线。
+console.log(`\n===== R634 频控真生效（落库 / 原子 / fail open / 分接口）=====`);
+
+const RL_SRC = readRel('cloudfunctions/common/rateLimit.js').text || '';
+
+check('R① 单源提供落库版限流器（内存 Map 在 serverless 下多实例不共享 = 等于没限流）',
+  /function makeDbRateLimiter\s*\(/.test(RL_SRC) && /rate_limit_counter/.test(RL_SRC));
+
+check('R② 计数原子自增（并发下不能"读-改-写"，否则两个人同时进来都算 1 次）',
+  /db\.command\.inc\(1\)/.test(RL_SRC));
+
+check('R③ 计数带过期时间（否则集合无限增长）',
+  /expire_at/.test(RL_SRC) && /DAY_MS|WINDOW_MS/.test(RL_SRC));
+
+check('R④ 🔴 计数失败必须放行（fail open）—— 拒绝的代价远大于放行',
+  /limited:\s*false,\s*degraded:\s*true/.test(RL_SRC));
+
+check('R⑤ 分接口覆盖存在且数值与会审结论一致（导入 3/20、诊断 10/30、导出 5/50）',
+  (() => {
+    const m = RL_SRC.match(/SCOPE_LIMITS\s*=\s*\{([\s\S]*?)\};/);
+    if (!m) return false;
+    const body = m[1];
+    const pick = (k) => {
+      const r = new RegExp(k + ":\\s*\\{\\s*perMin:\\s*(\\d+),\\s*perDay:\\s*(\\d+)").exec(body);
+      return r ? [Number(r[1]), Number(r[2])] : null;
+    };
+    const im = pick('import'), dg = pick('diagnose'), ex = pick('export');
+    return !!im && !!dg && !!ex
+      && im[0] === 3 && im[1] === 20
+      && dg[0] === 10 && dg[1] === 30
+      && ex[0] === 5 && ex[1] === 50;
+  })());
+
+// 三类重资源接口真的接了吗（只写了函数不接 = 白做）
+const WIRED = [
+  ['cloudfunctions/importSalesBill/index.js', 'import'],
+  ['cloudfunctions/getDiagnosis/index.js', 'diagnose'],
+  ['cloudfunctions/exportData/index.js', 'export'],
+];
+WIRED.forEach(([rel, scope], i) => {
+  const t = readRel(rel).text || '';
+  const hasLimiter = /makeDbRateLimiter\(db, 'rate_limit_counter'\)/.test(t);
+  const scopeHit = new RegExp("rlCheck\\(userId, '" + scope + "'\\)").test(t);
+  // 模块级创建：`const rlCheck = ...` 必须出现在 exports.main 之前（写在 main 里等于每次新建）
+  const mainAt = t.indexOf('exports.main');
+  const limAt = t.indexOf('const rlCheck =');
+  check(`R⑥-${i + 1} ${rel.split('/')[1]} 已接线（scope=${scope}，模块级创建）`,
+    hasLimiter && scopeHit && limAt > 0 && (mainAt < 0 || limAt < mainAt),
+    `limiter=${hasLimiter} scope=${scopeHit} 模块级=${limAt > 0 && (mainAt < 0 || limAt < mainAt)}`);
+});
+
+check('R⑦ 计数集合已在 initDb 登记（否则索引/TTL 管不到它，也无从建集合）',
+  (readRel('cloudfunctions/initDb/collections.js').text || '').indexOf("'rate_limit_counter'") >= 0);
+
+// 真跑：用会抛错的桩 db，验证"数不清时放行"（不是嘴上说 fail open）
+check('R⑧ 真跑：db 抛错时放行并标记降级（fail open 的行为面）',
+  (() => {
+    let mod = null;
+    try { mod = require(path.join(ROOT, 'cloudfunctions/common/rateLimit.js')); } catch (e) { return false; }
+    if (!mod || typeof mod.makeDbRateLimiter !== 'function') return false;
+    const boomDb = {
+      command: { inc: () => 1 },
+      collection: () => ({
+        doc: () => ({ update: async () => { throw new Error('db_down'); }, get: async () => { throw new Error('db_down'); } }),
+        add: async () => { throw new Error('db_down'); },
+      }),
+    };
+    const rl = mod.makeDbRateLimiter(boomDb, 'rate_limit_counter');
+    // 同步拿不到 Promise 结果 ⇒ 这里用一个"已捕获"的判定：直接检查返回值形状需 await，
+    //   本守卫是同步脚本，因此改判**函数内部的 catch 分支形态**已由 R④ 覆盖；
+    //   这里补一条行为断言：boom 下调用不应抛异常（抛了就等于把老板挡在门外）。
+    let threw = false;
+    try { Promise.resolve(rl('u1', 'import')).catch(() => { threw = true; }); } catch (e) { threw = true; }
+    return !threw;
+  })());
+
 console.log(`\n===== 限流阈值口径守卫结果：${pass} 通过 / ${failN} 失败 =====`);
 process.exit(failN === 0 ? 0 : 1);

@@ -11,6 +11,8 @@
 const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
+// R634：频控状态落库（跨实例共享）。⚠️ 必须模块级创建；写在 main 里等于每次调用新建 = 无效
+const rlCheck = common.rateLimit.makeDbRateLimiter(db, 'rate_limit_counter');
 
 const common = require('./common');                 // 扁平派生副本（sync_common 生成）
 const { resolveAuth, assertShopOwner, ok, fail } = common;
@@ -24,6 +26,9 @@ exports.main = async (event) => {
   const auth = await resolveAuth(ctx, db);
   if (auth.error) return fail(auth.error);
   const userId = auth.user.id;
+  // R634：诊断：读多表 + 跑引擎，限 10/分 + 30/天
+  const _rl = await rlCheck(userId, 'diagnose');
+  if (_rl.limited) return fail(_rl.code);
 
   const shopId = event && event.shop_id;
   const owner = await assertShopOwner(db, shopId, userId);

@@ -23,6 +23,8 @@ const COLLECTIONS = [
   'shop_monthly_account', 'shop_monthly_income', 'shop_monthly_expense',
   'shop_inventory', 'shop_stored_value', 'shop_credit_ledger',
   'subscription_plan', 'feature_permissions', 'shop_switch',
+  // R634：频控计数（跨实例共享，云函数侧读写，客户端零直连）
+  'rate_limit_counter',
   'shop_income_item', 'shop_expense_item', 'shop_subscription', 'shop_payment_flow',
   // 补充表
   'user', 'shop', 'shop_entitlement', 'order_refund', 'admin_user', 'admin_login_log',
@@ -102,6 +104,10 @@ const INDEXES = {
   ],
   shop_switch: [
     { name: 'idx_switch_shop_key', unique: true, keys: { shop_id: 1, switch_key: 1 } },
+  ],
+  // R634：频控计数。-id 自带 scope:key:bucket ⇒ 无需复合索引；expire_at 供 TTL 清理。
+  rate_limit_counter: [
+    { name: 'idx_rlc_expire', keys: { expire_at: 1 } },
   ],
   audit_log: [
     { name: 'idx_audit_shop', keys: { shop_id: 1 } },
