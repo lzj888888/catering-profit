@@ -1,0 +1,6 @@
+
+✅ [suite-count] 头部注释 ≡ SUITES.length = 249（R59 守卫）
+
+❌ [suite-tracked] 以下 1 个已登记套件**未纳入 git 索引**（R92：登记了没提交 ⇒ 远端复现不出这些成绩，且 R59 不会红）：
+   tools/check_revenue_store.js
+   处置：先 `git add` 并提交这些文件，再跑本校验器。

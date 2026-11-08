@@ -88,5 +88,59 @@ const probe = '  onSomethingNobodyUses() { return 1; }';
 const probeName = (probe.match(/^ {2}(?:async )?((?:on|go|toggle|do)[A-Z][A-Za-z0-9]*)\(/) || [])[1];
 ok('判据非恒真：一个没人绑、没人调的方法必须被认出来', probeName === 'onSomethingNobodyUses', 'probe=' + probeName);
 
+// ============ E 跳转死链（点了白屏）============
+// 页面跳一个 app.json 里没声明的路径 ⇒ 微信直接报错/白屏，老板只看到"打不开"。
+// 这类错**只有走到那个按钮才会暴露**，平时点不到就一直躺着。
+sec('E 跳转死链（目标页面必须存在）');
+{
+  const app = JSON.parse(fs.readFileSync(path.join(ROOT, 'app.json'), 'utf8'));
+  const declared = new Set(app.pages || []);
+  (app.subpackages || app.subPackages || []).forEach((sp) => {
+    (sp.pages || []).forEach((pp) => declared.add(sp.root.replace(/\/$/, '') + '/' + pp));
+  });
+  ok('app.json 声明页面数 ≥ 30（读到的量级正常）', declared.size >= 30, declared.size + ' 页');
+
+  const navRe = /(?:navigateTo|redirectTo|switchTab|reLaunch)\s*\(\s*\{\s*url:\s*['"]([^'"?]+)/g;
+  const dead = [];
+  const walkFiles = (dir) => {
+    for (const e of fs.readdirSync(path.join(ROOT, dir), { withFileTypes: true })) {
+      const rel = dir + '/' + e.name;
+      if (e.isDirectory()) { walkFiles(rel); continue; }
+      if (!/\.(js|wxml)$/.test(e.name)) continue;
+      const src = fs.readFileSync(path.join(ROOT, rel), 'utf8');
+      let m;
+      while ((m = navRe.exec(src)) !== null) {
+        const u = m[1].replace(/^\//, '');
+        if (u && !declared.has(u)) dead.push(rel + ' -> ' + u);
+      }
+    }
+  };
+  ['pages', 'subpkg'].forEach((d) => { if (fs.existsSync(path.join(ROOT, d))) walkFiles(d); });
+  ok('全仓跳转都指向已声明页面', dead.length === 0, dead.length ? dead.slice(0, 5).join(' | ') : '零死链');
+}
+
+// ============ F 反向孤儿（绑了但没实现 ⇒ 点了没反应）============
+// 与 A 组互补：A 组查「写了没人用」，F 组查「用了却没人写」。
+// 老板体验最差 —— 按钮看着在，点下去什么都不发生，还以为自己没点中。
+sec('F 反向孤儿（wxml 绑定的方法必须在 js 里存在）');
+{
+  const bindRe = /(?:bind|catch)(?::)?(?:tap|input|change|confirm|blur|focus|longpress|submit|scrolltolower|loadmore)\s*=\s*"([A-Za-z_$][\w$]*)"/g;
+  const missingImpl = [];
+  for (const js of files) {
+    const src = fs.readFileSync(js, 'utf8');
+    const wxml = fs.readFileSync(js.slice(0, -3) + '.wxml', 'utf8');
+    const names = new Set();
+    let m;
+    while ((m = bindRe.exec(wxml)) !== null) names.add(m[1]);
+    for (const n of names) {
+      if (new RegExp('(?:^|\\s)' + n + '\\s*\\(').test(src)) continue;
+      if (new RegExp('\\b' + n + '\\s*[:=]').test(src)) continue;
+      missingImpl.push(path.relative(ROOT, js.slice(0, -3) + '.wxml') + '::' + n);
+    }
+  }
+  ok('没有「绑了却没实现」的方法', missingImpl.length === 0,
+    missingImpl.length ? missingImpl.slice(0, 5).join(' | ') : '零命中');
+}
+
 console.log('\n===== 死功能守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);
