@@ -342,5 +342,28 @@ ok('K-④ picker 可伸缩（品类选择器必须看得见、点得到）',
 ok('K-⑤ 🔴 改动限定在本页：全局 .field 不许被本页需求改（会波及 20+ 页）',
   !/\.field\s*\{[^}]*flex-wrap:[ ]*wrap/.test(APP_CSS));
 
+// ============ L 手工行单价口径（R639 真机）============
+// 老板：「输一公斤三块，二次打开变成一克零点零零几，我对克不敏感，对一公斤才有感觉」。
+// 根因：手工行只落 net_unit_cost（折算成元/克），**老板填的原单位丢了**。
+// 修法：多存三个**只供回显**的字段（price_unit / manual_price_fen / manual_yield），
+//   引擎仍只读 net_unit_cost ⇒ 成本一分不变。
+sec('L 手工行单价按原单位回显');
+const EDIT_JS = fs.readFileSync(P('subpkg/biz/card/edit.js'), 'utf8');
+const SAVE_V = fs.readFileSync(P('cloudfunctions/saveCostCard/validate.js'), 'utf8');
+const SAVE_I = fs.readFileSync(P('cloudfunctions/saveCostCard/index.js'), 'utf8');
+
+ok('L-① 提交时带上原单位口径（否则二次打开只剩克价），且元→分走单源换算',
+  /manual_price_fen: api\.yuanToFen/.test(EDIT_JS) && /price_unit: l\.price_unit/.test(EDIT_JS));
+ok('L-② 云端校验放行这三个字段（不放行＝白带上去）',
+  /price_unit:/.test(SAVE_V) && /manual_price_fen:/.test(SAVE_V) && /manual_yield:/.test(SAVE_V));
+ok('L-③ 云端真的落库（只校验不落库＝还是丢）',
+  /price_unit: ln\.price_unit/.test(SAVE_I) && /manual_price_fen: ln\.manual_price_fen/.test(SAVE_I));
+ok('L-④ 读回按原单位还原；老卡（无这两字段）回落按克，不瞎猜',
+  /l\.price_unit && l\.manual_price_fen > 0/.test(EDIT_JS)
+  && /unitPriceYuan\b[\s\S]{0,120}yield_rate: '100'/.test(EDIT_JS));
+ok('L-⑤ 🔴 这三个字段**不许进计算**（引擎只认 net_unit_cost，否则成本会变）',
+  !/manualNetUnitWan\([^)]*manual_price_fen/.test(EDIT_JS)
+  && !/manual_price_fen/.test(fs.readFileSync(P('cloudfunctions/saveCostCard/service.js'), 'utf8')));
+
 console.log('\n===== 自动重算守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);

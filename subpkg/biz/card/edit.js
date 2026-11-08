@@ -546,6 +546,19 @@ Page({
               }
               // 手工行（material_id 空）：从快照反推净料单价（元/克），出成率固定 100（快照已是净料）
               const unitPriceYuan = l.net_unit_cost ? (l.net_unit_cost / 10000).toFixed(4) : '';
+              // 🔴 R639：若这张卡存过**老板当初填的原单位**（R639 之后保存的卡），按原单位还原显示 ——
+              //   老板按「3 元/公斤」进货，就该看到「3 元/公斤」，而不是「0.003 元/克」（他对克价无感）。
+              //   ⚠️ 老卡没有这两个字段 ⇒ 走下面的老逻辑（按克），不猜。
+              if (l.price_unit && l.manual_price_fen > 0) {
+                return {
+                  input_type: 2, material_id: '', material_name: l.material_name,
+                  qty: String(l.quantity), qty_unit: units.BASE_UNIT,
+                  price_unit: l.price_unit,
+                  unit_price_yuan: (l.manual_price_fen / 100).toFixed(2),
+                  yield_rate: String(l.manual_yield || 100),
+                  line_kind: l.line_kind || 'main',
+                };
+              }
               return { input_type: 2, material_id: '', material_name: l.material_name, qty: String(l.quantity), qty_unit: units.BASE_UNIT, unit_price_yuan: unitPriceYuan, yield_rate: '100', line_kind: l.line_kind || 'main' };
             }));
             // round150：规格快照回填（specs_json ⇒ 数组）。存量卡无此字段 ⇒ []。
@@ -1624,7 +1637,16 @@ Page({
             wx.showToast({ title: bad ? TERMS.card.yieldRangeErr : TERMS.card.manualUnitPrice, icon: 'none' });
             return;
           }
-          lines.push({ input_type: 2, name: (l.material_name || '').trim(), qty: qtyBase, net_unit_cost: wan, line_kind: kind });
+          lines.push({
+            input_type: 2, name: (l.material_name || '').trim(), qty: qtyBase, net_unit_cost: wan, line_kind: kind,
+            // 🔴 R639（真机实测）：把**老板填的原单位**一起送上去。
+            //   改前只送 net_unit_cost（折算成元/克）⇒ 二次打开只剩「0.003 元/克」，
+            //   而老板是按「3 元/公斤」进货的，对克价完全无感（涨价也看不出来）。
+            //   引擎计算**一分不动**（仍用 net_unit_cost），这两个字段只供回显还原。
+            price_unit: l.price_unit || units.BASE_UNIT,
+            manual_price_fen: api.yuanToFen(l.unit_price_yuan) || 0,
+            manual_yield: units.yieldRateOf(l.yield_rate) == null ? 100 : units.yieldRateOf(l.yield_rate),
+          });
         } else {
           if (!l.material_id) continue;
           lines.push({ material_id: l.material_id, qty: qtyBase, line_kind: kind });

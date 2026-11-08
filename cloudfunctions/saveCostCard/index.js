@@ -390,6 +390,11 @@ exports.main = async (event) => {
         // M3.14（R150）：组件分类 + 分组名（**引擎不读**；成本合计一分不变，分组只是视图）
         line_kind: ln.line_kind || 'main',
         group_name: ln.group_name || '',
+        // 🔴 R639：老板填的原单位口径（只供二次打开时还原显示，**引擎不读**）。
+        //   net_unit_cost 仍是唯一计算依据 ⇒ 成本一分不变。
+        price_unit: ln.price_unit || '',
+        manual_price_fen: ln.manual_price_fen || 0,
+        manual_yield: ln.manual_yield || 0,
         sort_order: i + 1,
       });
       lineRows.push({

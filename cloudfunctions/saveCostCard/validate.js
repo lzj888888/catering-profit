@@ -83,7 +83,17 @@ function validateInput(event) {
       } else {
         return err('手工录入行需传 unit_price_fen+yield_rate 或 net_unit_cost（二选一）');
       }
-      cLines.push({ material_id: '', input_type: 2, name: ln.name.trim(), quantity: qty, unit_price_fen: hasInput ? upf : undefined, yield_rate: hasInput ? yr : undefined, net_unit_cost: hasSnapshot ? nuc : undefined, line_kind: lineKind, group_name: groupName });
+      cLines.push({
+        material_id: '', input_type: 2, name: ln.name.trim(), quantity: qty,
+        unit_price_fen: hasInput ? upf : undefined, yield_rate: hasInput ? yr : undefined,
+        net_unit_cost: hasSnapshot ? nuc : undefined, line_kind: lineKind, group_name: groupName,
+        // 🔴 R639：老板填的**原单位口径**（只用于回显还原，不进任何计算）。
+        //   改前手工行只留折算后的 net_unit_cost（元/克）⇒ 二次打开显示「0.003 元/克」，
+        //   而老板按「3 元/公斤」进货，对克价无感、也看不出涨价。引擎仍只读 net_unit_cost。
+        price_unit: typeof ln.price_unit === 'string' ? ln.price_unit.trim().slice(0, 8) : '',
+        manual_price_fen: (Number.isInteger(ln.manual_price_fen) && ln.manual_price_fen >= 0) ? ln.manual_price_fen : 0,
+        manual_yield: (Number(ln.manual_yield) > 0 && Number(ln.manual_yield) <= 100) ? Number(ln.manual_yield) : 100,
+      });
     } else {
       if (typeof ln.material_id !== 'string' || !ln.material_id) {
         return err('明细行 material_id 必须是非空字符串');
