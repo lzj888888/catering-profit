@@ -114,6 +114,7 @@ Page({
       stickyEmpty: TERMS.card.stickyEmpty,
       needLineForCalc: TERMS.card.needLineForCalc,
       stickyLast: TERMS.card.stickyLast,
+    stickyStale: TERMS.card.stickyStale,
       saveShort: TERMS.card.saveShort,
       dishNamePh: TERMS.card.dishNamePh,
       calcMode: TERMS.card.calcMode,
@@ -277,6 +278,7 @@ Page({
     //   round((priceFen − unitCostFen) / priceFen × 10000) / 100。
     stickyMargin: '',
     stickyHint: '',
+    previewStale: false,   // R635：成本是上一次算的（当前明细不完整）
     reverseResultPreview: '',
     previewCost: '',
     // M3.37 团购试算（纯前端、不落库；费率无默认值 ⇒ 只进 placeholder）
@@ -1021,7 +1023,14 @@ Page({
   async liveCost() {
     if (this._liveBusy) return;              // 上一轮还没回来，别叠着发
     const payload = this.buildCalcPayload({ silent: true });
-    if (!payload) return;                    // 明细不完整 ⇒ 什么都不做，绝不清空已有结果
+    // 🔴 R635：原来这里 `if (!payload) return;` ——「绝不清空已有结果」本意是防闪烁，
+    //   但老板**删掉用量**后成本还挂着旧值（他会拿这个旧数字去定价）。
+    //   ⇒ 改成：数字保留，但标记 `previewStale`（横条显示「上次试算」），并刷新「还差哪个数」。
+    if (!payload) {
+      if (!this.data.previewStale) this.setData({ previewStale: true });
+      this.refreshHint();
+      return;
+    }
     this._liveBusy = true;
     try {
       const d = await api.call('calcBom', payload);
@@ -1031,6 +1040,7 @@ Page({
         previewCostFen: costFen,
         previewCost: api.fenToYuan(costFen, 2),
         stickyMargin: this.marginTextOf(costFen, this.data.priceYuan),
+        previewStale: false,          // R635：算成功了就不再是"上次"
       });
       if (this.data.cardType === '3') {
         this.setData({ comboSelfMargin: this.comboSelfMarginOf(costFen, this.data.priceYuan) });

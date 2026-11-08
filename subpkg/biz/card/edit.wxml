@@ -389,11 +389,15 @@
   <view class="sticky-act">
     <view class="sa-l" bindtap="reverseCalc">
       <block wx:if="{{previewCostFen > 0}}">
-        <text class="sa-cap">{{t.stickyLast}}</text>
-        <text class="sa-val">{{t.cur}}{{previewCost}}</text>
+        <text class="sa-cap">{{previewStale ? t.stickyStale : t.stickyLast}}</text>
+        <text class="sa-val {{previewStale ? 'sa-stale' : ''}}">{{t.cur}}{{previewCost}}</text>
         <text class="sa-mg" wx:if="{{stickyMargin}}">{{t.grossMargin}} {{stickyMargin}}</text>
       </block>
-      <text class="sa-empty" wx:else>{{stickyHint || t.stickyEmpty}}</text>
+      <text class="sa-empty" wx:else>{{t.stickyEmpty}}</text>
+      <!-- 🔴 R635：「还差哪个数」以前写在 wx:else 里 —— 一旦算出过一次成本（previewCostFen>0）
+           就永远走 if 分支，提示再也不出现（真机实测：老板从没见过这句话）。
+           ⇒ 改成独立显示，可与数字**同时**存在：数字告诉你上次多少，提示告诉你现在缺什么。 -->
+      <text class="sa-hint" wx:if="{{stickyHint}}">{{stickyHint}}</text>
     </view>
     <button class="btn primary sa-btn" bindtap="onSave">{{t.saveShort}}</button>
   </view>

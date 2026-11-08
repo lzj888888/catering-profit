@@ -301,7 +301,7 @@ const CASES = [
   { key: 'check_revenue_page', rel: 'tools/check_revenue_page.js' },         // 42 条（A 12 + B 12 + C 6 + D 4 + F 8 覆盖范围装配）
   { key: 'check_revenue_store', rel: 'tools/check_revenue_store.js' },       // 35 条（A 5 结构 + B 18 行为 + C 4 红线 + D 8 接线）
   { key: 'check_revenue_manual', rel: 'tools/check_revenue_manual.js' },     // 59 条（A 5 结构 + B 10 口径真跑 + C 7 老板能力 + D 5 落库 + E 15 分次填与上月参考 + F 9 真跑分支 + G 8 拍照当参考）
-  { key: 'check_card_live_cost', rel: 'tools/check_card_live_cost.js' },      // 50 条（A 5 结构 + B 4 引擎单源 + C 8 不打扰 + D 5 接线 + E 11 还差哪个数 + F 6 团购价归位 + G 11 排第几）
+  { key: 'check_card_live_cost', rel: 'tools/check_card_live_cost.js' },      // 55 条（A 5 结构 + B 4 引擎单源 + C 8 不打扰 + D 5 接线 + E 11 还差哪个数 + F 6 团购价归位 + G 11 排第几 + H 5 真机实测）
   { key: 'check_card_find', rel: 'tools/check_card_find.js' },          // 13 条（A 6 置顶入口 + B 5 搜索面 + C 2 上限前提）
   { key: 'check_orphan_handler', rel: 'tools/check_orphan_handler.js' },   // 7 条（扫描面 2 + 孤儿零命中 1 + 非恒真 1 + E 死链 2 + F 反向孤儿 1）
   { key: 'check_comment_safety', rel: 'tools/check_comment_safety.js' },     // 7 条（A/B 行注释 + C 兜底 + D-G 自证）

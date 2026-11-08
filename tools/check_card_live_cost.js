@@ -81,8 +81,12 @@ ok('C-④ 失败不清空、不弹错（保留上次试算值）',
   /catch/.test(LIVE) && !/previewCostFen\s*:\s*0/.test(LIVE),
   '有 catch=' + /catch/.test(LIVE));
 ok('C-⑤ 有并发闸（上一轮没回来不叠着发）', /_liveBusy/.test(LIVE));
-ok('C-⑥ 空明细直接 return（不清空已有结果、不送空数组给引擎）',
-  /if\s*\(!payload\)\s*return/.test(LIVE) && /silent:\s*true/.test(LIVE));
+// 🔴 R635：判据升级 —— 原来要求「`if (!payload) return`」裸返回（保留旧值），
+//   真机实测证明那样会让老板拿着"删掉用量后的旧成本"去定价。
+//   现在要求：仍然早返回（不送空数组给引擎），但**必须标记 stale + 刷新提示**。
+ok('C-⑥ 空明细早返回，但必须标记 stale 并刷新提示（不得静默保留旧值当现值）',
+  /if\s*\(!payload\)\s*\{[\s\S]{0,220}previewStale:\s*true[\s\S]{0,80}refreshHint\(\)/.test(LIVE)
+  && /silent:\s*true/.test(LIVE));
 ok('C-⑦ buildCalcLines 支持 silent，且静默时走 warn 而不是直接 showToast',
   /buildCalcLines\(opts\)/.test(SRC) && /const warn\s*=/.test(BUILD) && /if\s*\(!silent\)\s*wx\.showToast/.test(BUILD));
 ok('C-⑧ 🔴 buildCalcLines 的默认行为没变（不传参时仍然会提示）',
@@ -149,8 +153,10 @@ ok('E-⑧ 全齐 ⇒ 不啰嗦，提示清空（此时该显示成本与毛利�
 ok('E-⑨ 套餐卡暂不提示（子卡聚合另做，避免半成品误导）',
   runHint({ cardType: '3', lines: [], previewCostFen: 0, priceYuan: '' }) === '');
 
-ok('E-⑩ 吸底条真的用 stickyHint 渲染（写了不接 = 白写）',
-  /\{\{stickyHint\s*\|\|/.test(WXML));
+// 🔴 R635：原来判 `{{stickyHint || ...}}`（挤在 wx:else 里）—— 那正是「永不显示」的根源。
+//   现在要求提示**独立渲染**，且与数字可共存。
+ok('E-⑩ 吸底条真的渲染 stickyHint，且是独立显示（不塞进 wx:else）',
+  /sa-hint[^>]*wx:if="\{\{stickyHint\}\}"/.test(WXML));
 
 ok('E-⑪ 三处会改变缺口的地方都刷了提示（改料 / 改售价 / 成本回来）',
   (SRC.match(/refreshHint\(\)/g) || []).length >= 4,
@@ -244,6 +250,31 @@ ok('G-⑩ 真跑：并列而非第一时，取较前名次（不人为分出高�
 ok('G-⑪ 真跑：并列第一时说「最高的一道」（它确实是最高的，不必说"并列第 1"）',
   runRank(74.7, [L2(2500, 74.7), L2(2400, 74.7)]) === CARD.rankFirst.replace('{n}', '2'),
   runRank(74.7, [L2(2500, 74.7), L2(2400, 74.7)]));
+
+// ============ H 真机实测暴露的两处（R635）============
+// 老板实测两件事：①「还差哪个数」那句话**从来没出现过** ②删掉用量后成本数字**不动**。
+// 根因是同一个：底部横条的提示写在 `wx:else`（previewCostFen>0 不成立才显示），
+// 而 liveCost 在明细不完整时 `return`（保留旧值）⇒ 一旦算过一次，提示永久消失、数字永久卡住。
+sec('H 真机实测两处修复');
+const WXML_E = fs.readFileSync(P('subpkg/biz/card/edit.wxml'), 'utf8');
+const RANK_SRC_LIVE = fnBody('liveCost');
+
+ok('H-① 🔴「还差哪个数」不得写在 wx:else 里（否则算出过一次成本就永不显示）',
+  /sa-hint[^>]*wx:if="\{\{stickyHint\}\}"/.test(WXML_E)
+  && !/wx:else="?\{?\{?\s*stickyHint/.test(WXML_E)
+  && !/wx:else>\{\{stickyHint/.test(WXML_E));
+
+ok('H-② 数字与提示可**同时**存在（数字说上次多少，提示说现在缺什么）',
+  WXML_E.indexOf('sa-hint') > WXML_E.indexOf('sa-val'));
+
+ok('H-③ 明细不完整时必须标记 stale，不得静默保留旧值',
+  /if \(!payload\) \{[\s\S]{0,200}previewStale: true/.test(RANK_SRC_LIVE));
+
+ok('H-④ 算成功后必须清掉 stale（否则永远显示「待更新」）',
+  /previewStale: false/.test(RANK_SRC_LIVE));
+
+ok('H-⑤ stale 的数字要变灰（看得出这不是当前值）',
+  /\{\{previewStale \? 'sa-stale' : ''\}\}/.test(WXML_E));
 
 console.log('\n===== 自动重算守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);

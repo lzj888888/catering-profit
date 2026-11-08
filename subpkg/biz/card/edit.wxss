@@ -189,3 +189,8 @@
   text-align: center; font-size: 28rpx; white-space: nowrap; }
 /* 整体收紧一点（李老师："松松垮垮"）：行块内边距与块间距各减 2~4rpx，不动触控高度 */
 .line { padding: 8rpx 20rpx; margin-bottom: 8rpx; }
+
+/* R635：「上次试算（待更新）」—— 数字变灰，一眼看出这不是当前值 */
+.sa-stale { color: #8a94a6; }
+/* R635：「还差哪个数」与数字同时显示（以前挤在 wx:else 里，算出过一次就再也不出现） */
+.sa-hint { display: block; font-size: 24rpx; color: #b45309; margin-top: 4rpx; }
