@@ -217,6 +217,14 @@ exports.main = async (event) => {
         // M3.14（R150）：组件分类 + 分组名（引擎不认识 ⇒ 对成本零影响；在此**只做搬运**）
         line_kind: ln.line_kind || 'main',
         group_name: ln.group_name || '',
+        // 🔴 R640b（真机复测扒出来的）：原单位口径必须**在快照拼装这一层**就带上。
+        //   R639 只改了下面「落库」那一层 ⇒ 这里不带 ⇒ `ln.price_unit` 恒 undefined
+        //   ⇒ 落库永远空 ⇒ 读回回落克价 ⇒ **等于白改**（老板复测仍然是克数）。
+        //   教训：这条链是「前端提交 → validate → 快照拼装 → 落库 → 读回」，
+        //   任何一层漏了都白做，判据必须盯**每一层的接缝**，不能只看落库那一行。
+        price_unit: ln.price_unit || '',
+        manual_price_fen: ln.manual_price_fen || 0,
+        manual_yield: ln.manual_yield || 0,
       });
     }
     const mergedLines = [];

@@ -356,7 +356,14 @@ ok('L-① 提交时带上原单位口径（否则二次打开只剩克价），�
   /manual_price_fen: api\.yuanToFen/.test(EDIT_JS) && /price_unit: l\.price_unit/.test(EDIT_JS));
 ok('L-② 云端校验放行这三个字段（不放行＝白带上去）',
   /price_unit:/.test(SAVE_V) && /manual_price_fen:/.test(SAVE_V) && /manual_yield:/.test(SAVE_V));
-ok('L-③ 云端真的落库（只校验不落库＝还是丢）',
+// 🔴 R640b：这条链是「前端提交 → validate → **快照拼装** → 落库 → 读回」，
+//   任何一层漏了都白做。R639 只补了「落库」那层 ⇒ 快照拼装层没带 ⇒ ln.price_unit 恒 undefined
+//   ⇒ 落库永远空 ⇒ 读回回落克价 ⇒ 真机复测仍然是克数。判据必须盯**两处接缝**。
+const SNAP_AT = SAVE_I.indexOf('manualLines.push(');
+const SNAP_BLK = SNAP_AT >= 0 ? SAVE_I.slice(SNAP_AT, SNAP_AT + 1400) : '';
+ok('L-③a 快照拼装层带上原单位口径（漏这层 ⇒ 字段到不了落库）',
+  /price_unit:/.test(SNAP_BLK) && /manual_price_fen:/.test(SNAP_BLK));
+ok('L-③b 落库层真的写进去（只校验/只拼装不落库＝还是丢）',
   /price_unit: ln\.price_unit/.test(SAVE_I) && /manual_price_fen: ln\.manual_price_fen/.test(SAVE_I));
 ok('L-④ 读回按原单位还原；老卡（无这两字段）回落按克，不瞎猜',
   /l\.price_unit && l\.manual_price_fen > 0/.test(EDIT_JS)
