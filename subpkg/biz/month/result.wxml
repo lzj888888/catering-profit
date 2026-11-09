@@ -93,6 +93,15 @@
     </block>
   </view>
 
+  <!-- 🔴 R661（M3 Phase 2b）：月底「这个月卖了 N 道菜，M 道在亏」。
+       懒加载：loadLossSummary 在结果页渲染完之后才取，取不到就空串 ⇒ 整块不渲染。
+       ⚠️ 与下面 R443 的「去看哪道菜」是**同一件事的两个层次**（先说有几道、再给入口去改），
+          所以放一起、不另开卡片。有亏才把结论标红，全赚就不吓人。 -->
+  <view class="loss-summary" wx:if="{{lossSummaryText}}" bindtap="goDishReview">
+    <text class="loss-summary-txt {{lossSummaryHasLoss ? 'has-loss' : 'all-ok'}}">{{lossSummaryText}}</text>
+    <text class="loss-summary-go">{{t.lossSummaryGo}}</text>
+  </view>
+
   <!-- 🔴 R443：从「看到数」到「能去改」—— 结果页不该是死胡同 -->
   <view class="next-link" bindtap="goDishReview">{{t.nextDishReview}}</view>
 

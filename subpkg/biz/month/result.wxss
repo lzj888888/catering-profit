@@ -100,3 +100,13 @@
   font-size: 30rpx; font-weight: 700; color: #162c49;
   background: #fff; border-radius: 999rpx; padding: 16rpx 40rpx;
 }
+
+/* R661（Phase 2b）：月底「N 道菜 M 道在亏」—— 一句话 + 直达入口。
+   有亏标红（让老板立刻心疼），全赚走绿（给个正向反馈，不制造焦虑）。 */
+.loss-summary { display: flex; justify-content: space-between; align-items: center;
+  background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 16rpx;
+  box-shadow: 0 4rpx 16rpx rgba(30, 58, 95, 0.06); }
+.loss-summary-txt { font-size: 30rpx; flex: 1; line-height: 1.5; }
+.loss-summary-txt.has-loss { color: #c0392b; font-weight: 600; }
+.loss-summary-txt.all-ok { color: #1e7d4f; }
+.loss-summary-go { font-size: 26rpx; color: #2a4e7c; margin-left: 16rpx; flex-shrink: 0; }

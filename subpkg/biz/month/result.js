@@ -17,6 +17,9 @@ const BE = require('../../../utils/breakeven.js');
 // R444 收口：金额可读性判定（纯函数）—— 不静默清洗，读不成必须说出来（与 #25 同口径）
 // 🔴 R488：利润标题/副标题的**单一来源** —— 与首页、月首页同一份判断（名随数走）
 const profitLabel = require('../../../utils/profitLabel.js');
+// 🔴 R661（Phase 2b）：「在亏」的判定必须与菜品卡列表页同一个来源，不许在本页再定义一次
+const lossSum = require('../../../utils/lossSummary.js');
+// ⚠️ 截断判定复用本文件已有的 dh(=dataHealth)：我一开始另引一个 dishReview 也叫 dh ⇒ 重复声明，已删。
 
 // 🔴 R313：上一个月（跨月对比用）。纯字符串运算，不依赖 this / ui。
 function prevMonthOf(m) {
@@ -61,6 +64,7 @@ Page({
       indFoot: TERMS.modules.m1.indFoot,
       // R443：结果页「下一步」—— 去看是哪道菜在拖毛利
       nextDishReview: TERMS.m2.nextDishReview,
+      lossSummaryGo: TERMS.resultPage.lossSummaryGo,   // R661：月底汇总的直达入口文案
       // R443：现金流体检
       // A11：摊销三件套 / A13/A19：客流与会员
       amortTitle: TERMS.modules.m1.amortTitle,
@@ -216,6 +220,9 @@ Page({
     month: '',
     isArchive: false,
     loading: true,
+    // R661：月底「N 道菜 M 道在亏」，懒加载；空串 = 不显示
+    lossSummaryText: '',
+    lossSummaryHasLoss: false,
     showPer100: false,
     bandClass: '',
     bandText: '',
@@ -430,6 +437,10 @@ Page({
       //   `this.loadChecklist` 内部自带 try/catch 且**不返回 Promise 给调用方**：
       //   结果页先出，清单后到；清单失败只丢这张卡，不影响任何已算出的数。
       this.loadChecklist(d);
+      // 🔴 R661（Phase 2b）：月底「这个月卖了 N 道菜，M 道在亏」。
+      //   与 loadChecklist 同一模式 —— 内部自带 try/catch、不返回 Promise：
+      //   结果页先出、这句后到；取不到就**不显示**（锦上添花，不许因它弹错/拖慢首屏）。
+      this.loadLossSummary();
       // 批次 5：到期前 7 天常驻提示条（双渠道兜底）
       try {
         const ent = await entitle.fetchEntitlement();
@@ -680,6 +691,26 @@ Page({
    *   （本仓最贵的病：第二套口径）。
    * 为什么单月失败只跳过：历史少一个月 ⇒ 规则层按「有效历史月」自动重算；一个月份取失败不该把整卡弄没。
    */
+  // 🔴 R661（M3 Phase 2b）：月底「算过的/卖出的 N 道菜里 M 道在亏」。
+  //   数据源用 getDishReview（结果页本就在用同一函数取"这个月卖了什么"）⇒ **零新增云函数、零新增口径**。
+  //   三项口径钉死（都有理由，不是随手取的）：
+  //   ① 亏 = `isLossMaking`（负毛利）—— 与菜品卡列表页同一个单源；0% 保本、未定价都**不算亏**；
+  //   ② 只数堂食（`dine_in`）—— 外卖菜品按平台口径对不上成本卡，混进来会让 N 变成"平台 SKU 数"；
+  //   ③ N<3 不出句 —— 两道菜里一道亏就下结论，老板会反问"就两道也算？"，反而不可信。
+  //   ⚠️ 截断（truncated）时也不出：宁可不说，也不能用半份数据给结论。
+  async loadLossSummary() {
+    try {
+      const rng = ui.monthRange(this.data.month);
+      const d = await api.call('getDishReview', { biz_date_from: rng.from, biz_date_to: rng.to });
+      // 口径/边界（负毛利才算出、N<3 不出、截断不出）全在纯函数 `lossSummary.buildLossSummary` 里 ——
+      // 页面只管取数与落 setData，**不在这里再写一次判断**（否则两处口径迟早分叉）。
+      const r = lossSum.buildLossSummary(d.dine_in || [], dh.isTruncated(d));
+      this.setData({ lossSummaryText: r.text, lossSummaryHasLoss: r.hasLoss });
+    } catch (e) {
+      this.setData({ lossSummaryText: '', lossSummaryHasLoss: false });
+    }
+  },
+
   async loadChecklist(curLedger) {
     const empty = { has: false };
     if (!curLedger || !curLedger.account_id) { this.setData({ anom: empty }); return; }
