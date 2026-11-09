@@ -118,6 +118,7 @@ Page({
       stickyLast: TERMS.card.stickyLast,
     stickyStale: TERMS.card.stickyStale,
       saveShort: TERMS.card.saveShort,
+    savingNow: TERMS.card.savingNow,
       dishNamePh: TERMS.card.dishNamePh,
       calcMode: TERMS.card.calcMode,
       calcModeA: TERMS.card.calcModeA,
@@ -1023,7 +1024,30 @@ Page({
     const idx = Number(e.currentTarget.dataset.idx);
     const next = this.data.priceUnits[Number(e.detail.value)] || units.BASE_UNIT;
     const lines = this.data.lines.slice();
-    lines[idx] = Object.assign({}, lines[idx], { price_unit: next });
+    const cur = (lines[idx] && lines[idx].price_unit) || units.BASE_UNIT;
+    const num = Number(lines[idx] && lines[idx].unit_price_yuan);
+    const patch = { price_unit: next };
+    // 🔴 R650（李老师两次提到）：切单价单位时**必须换算数值**。
+    //   改前是「故意不换算，保住老板敲的那个数」——本意是防手抖，
+    //   但后果是：填 6 元/斤 → 切到「克」→ 还是 6 ⇒ 变成 **6 元/克 = 3000 元/斤**，
+    //   成本凭空放大 500 倍，且**零提示**。这个错会直接算错菜价，比"手抖"严重得多。
+    //   换算后物理量不变（6 元/斤 ≈ 0.012 元/克），老板想改数字再改，只是多一步。
+    if (cur !== next && isFinite(num) && num > 0) {
+      const fNext = units.factorOf(next);
+      const fCur = units.factorOf(cur);
+      if (fNext > 0 && fCur > 0) {
+        // toPrecision(12) 去掉二进制浮点尾巴（0.012 而不是 0.011999999999999999）
+        const conv = Number((num * (fNext / fCur)).toPrecision(12));
+        patch.unit_price_yuan = String(conv);
+        // 只在真的变了的时候说一句，且不打断（toast 2 秒）
+        wx.showToast({
+          title: this.fillTpl(TERMS.card.priceUnitConv, { from: num, fromU: cur, to: conv, toU: next }),
+          icon: 'none',
+          duration: 2000,
+        });
+      }
+    }
+    lines[idx] = Object.assign({}, lines[idx], patch);
     this.editLineStripPreset(idx, lines);
   },
   onManualYield(e) {

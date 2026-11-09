@@ -427,7 +427,10 @@
            ⇒ 改成独立显示，可与数字**同时**存在：数字告诉你上次多少，提示告诉你现在缺什么。 -->
       <text class="sa-hint" wx:if="{{stickyHint}}">{{stickyHint}}</text>
     </view>
-    <button class="btn primary sa-btn" bindtap="onSave">{{t.saveShort}}</button>
+    <!-- 🔴 R651（李老师：「点完保存页面突然就空了，填东西时候没有一个反应过程」）：
+         改前 `saving` 状态在 js 里有、**界面完全没用** ⇒ 点了按钮毫无变化，然后页面突然清空。
+         现在按钮自己转圈 + 禁用（同时防连击生成两个版本）。 -->
+    <button class="btn primary sa-btn" bindtap="onSave" loading="{{saving}}" disabled="{{saving}}">{{saving ? t.savingNow : t.saveShort}}</button>
   </view>
   </block>
 </view>

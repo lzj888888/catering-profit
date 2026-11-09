@@ -148,6 +148,69 @@ function loadPage(captured) {
   ok('④-c 🔴 单价数字显示为 8.00（不是 0.0016）', !!dl && dl.unit_price_yuan === '8.00', dl ? 'unit_price_yuan=' + dl.unit_price_yuan : '无');
   ok('④-d 出成率回填 100', !!dl && dl.yield_rate === '100', dl ? 'yield_rate=' + dl.yield_rate : '无');
 
+  // ============ U 切单价单位：数值必须跟着换算（R650）============
+  // 李老师两次提到「把克改成千克，前面那数不跟着变」。
+  // 改前是"故意不换算"——后果是 6 元/斤 切到克还显示 6 ⇒ 6 元/克 = 3000 元/斤，
+  // 成本凭空放大 500 倍且零提示。这个错会直接算错菜价。
+  console.log('\n===== U 切单位数值联动 =====');
+  const U = require(path.join(ROOT, 'utils/units.js'));
+  const IDX_JIN = U.QTY_UNITS.indexOf('斤');
+  const IDX_KE = U.QTY_UNITS.indexOf('克');
+  const IDX_KG = U.QTY_UNITS.indexOf('公斤');
+
+  function pageWith(price, unit) {
+    const captured2 = [];
+    const cfgU = loadPage(captured2);
+    const pU = Object.assign({}, cfgU);
+    pU.data = JSON.parse(JSON.stringify(cfgU.data));
+    pU.setData = function (patch) { for (const k in patch) this.data[k] = patch[k]; };
+    pU.data.lines = [{ rid: 'u1', input_type: 2, material_id: '', material_name: '板鸭',
+      qty: '500', qty_unit: '克', price_unit: unit, unit_price_yuan: String(price), yield_rate: '100', line_kind: 'main' }];
+    pU.data.priceUnits = U.QTY_UNITS.slice();
+    return pU;
+  }
+
+  // U-① 6 元/斤 → 切到克 ⇒ 0.012（不是 6）
+  const u1 = pageWith(6, '斤');
+  u1.onManualPriceUnit({ currentTarget: { dataset: { idx: 0 } }, detail: { value: String(IDX_KE) } });
+  ok('U-① 6 元/斤 切到「克」⇒ 数值变 0.012（不是原样 6）',
+    u1.data.lines[0].unit_price_yuan === '0.012' && u1.data.lines[0].price_unit === '克',
+    u1.data.lines[0].unit_price_yuan + ' 元/' + u1.data.lines[0].price_unit);
+
+  // U-② 可逆：0.012 元/克 → 切回斤 ⇒ 6
+  const u2 = pageWith(0.012, '克');
+  u2.onManualPriceUnit({ currentTarget: { dataset: { idx: 0 } }, detail: { value: String(IDX_JIN) } });
+  ok('U-② 可逆：0.012 元/克 切回「斤」⇒ 回到 6（换算无损）',
+    Number(u2.data.lines[0].unit_price_yuan) === 6, u2.data.lines[0].unit_price_yuan + ' 元/斤');
+
+  // U-③ 3 元/公斤 → 克 ⇒ 0.003
+  const u3 = pageWith(3, '公斤');
+  u3.onManualPriceUnit({ currentTarget: { dataset: { idx: 0 } }, detail: { value: String(IDX_KE) } });
+  ok('U-③ 3 元/公斤 切到「克」⇒ 0.003（不是 3）',
+    u3.data.lines[0].unit_price_yuan === '0.003', u3.data.lines[0].unit_price_yuan);
+
+  // U-④ 空值不换算、不报错（老板还没填数就改单位，很常见）
+  const u4 = pageWith('', '斤');
+  let threw = false;
+  try { u4.onManualPriceUnit({ currentTarget: { dataset: { idx: 0 } }, detail: { value: String(IDX_KE) } }); } catch (e) { threw = true; }
+  ok('U-④ 单价为空时切单位 ⇒ 不报错、只改单位', !threw && u4.data.lines[0].price_unit === '克' && u4.data.lines[0].unit_price_yuan === '',
+    'unit=' + u4.data.lines[0].price_unit + ' val=' + JSON.stringify(u4.data.lines[0].unit_price_yuan));
+
+  // U-⑤ 选了同一个单位 ⇒ 数值不动（不能把 6 变成 6.00000001）
+  const u5 = pageWith(6, '斤');
+  u5.onManualPriceUnit({ currentTarget: { dataset: { idx: 0 } }, detail: { value: String(IDX_JIN) } });
+  ok('U-⑤ 选同一个单位 ⇒ 数值原样不动', u5.data.lines[0].unit_price_yuan === '6', u5.data.lines[0].unit_price_yuan);
+
+  // U-⑥ 换算要走单源 factorOf，不许页面自己写 500/1000
+  const EDIT_U = require('fs').readFileSync(path.join(ROOT, 'subpkg/biz/card/edit.js'), 'utf8');
+  ok('U-⑥ 换算系数走单源 units.factorOf（页面不许硬编码 500/1000）',
+    /units\.factorOf\(next\)/.test(EDIT_U) && /units\.factorOf\(cur\)/.test(EDIT_U)
+    && !/num \* \(500 \/ 1000\)/.test(EDIT_U));
+
+  // U-⑦ 换算后要告诉老板（否则他以为"我填的数被改了"）
+  ok('U-⑦ 换算后给出提示文案（走 terms 单源）',
+    /TERMS\.card\.priceUnitConv/.test(EDIT_U) && !!require(path.join(ROOT, 'miniprogram/i18n/terms.js')).TERMS.card.priceUnitConv);
+
   console.log('\n===== 结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
   process.exit(failN === 0 ? 0 : 1);
 })();
