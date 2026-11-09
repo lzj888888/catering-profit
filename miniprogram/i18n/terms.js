@@ -3574,8 +3574,11 @@ const TERMS = {
     freeLimitShopTitle: '已达当前版本上限',
     freeLimitShopBody: '当前版本最多支持 {n} 家门店，暂不支持继续新增。',
     freeLimitCardTitle: '已达当前版本上限',
-    freeLimitCardBody: '当前版本最多支持 {n} 道菜计算成本（按算过成本的菜品去重计数），暂不支持继续新增。',
-    freeLimitGeneric: '当前版本已达使用上限，暂不支持继续新增。',
+    // 🔴 R645（会审 R636 段2）：撞配额时**不能让老板以为数据没了**。
+    //   改前只说「暂不支持继续新增」—— 老板第一反应是「我原来那 20 道菜是不是没了」，
+    //   而事实上一道都没少、能看能改。这句必须先安他的心，再谈升级。
+    freeLimitCardBody: '当前版本最多支持 {n} 道菜计算成本（按算过成本的菜品去重计数）。\n你已建的 {n} 道菜都还在，可以正常查看和修改，一道没少。',
+    freeLimitGeneric: '当前版本已达使用上限。你已填的内容都还在，可以正常查看和修改，一项没少。',
     // 支付结果
     successTitle: '已开通',
     successBody: (dateStr) => `有效期至 ${dateStr}`,

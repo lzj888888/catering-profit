@@ -95,5 +95,31 @@ const EDIT = fs.readFileSync(path.join(ROOT, 'subpkg/biz/card/edit.js'), 'utf8')
 ok('Q-⑪ 反恒真：afterSaved 里确有按 remain 分档的判断',
   /r <= 0 \? TERMS\.card\.quotaUsedUp/.test(EDIT) && /r === 1 \? TERMS\.card\.quotaLastOne/.test(EDIT));
 
+console.log('\n===== R 撞配额弹窗（会审 R636 段2：不做事后剥夺）=====');
+const TPAY = require(path.join(ROOT, 'miniprogram/i18n/terms.js')).TERMS.pay;
+const PAYWALL = fs.readFileSync(path.join(ROOT, 'utils/paywall.js'), 'utf8');
+
+// 🔴 改前文案只说「暂不支持继续新增」—— 老板第一反应是「我原来那 20 道菜是不是没了」。
+//   而事实上一道都没少、能看能改。**必须先安他的心，再谈升级。**
+ok('R-① 菜品配额文案必须说清「已建的那些都还在」',
+  /都还在/.test(TPAY.freeLimitCardBody), TPAY.freeLimitCardBody.slice(0, 40) + '…');
+ok('R-② 通用配额文案同样要说「已填的内容还在」',
+  /都还在/.test(TPAY.freeLimitGeneric), TPAY.freeLimitGeneric.slice(0, 40) + '…');
+ok('R-③ 文案要说清「能正常查看和修改」（否则等于告诉老板东西被锁了）',
+  /查看和修改/.test(TPAY.freeLimitCardBody) && /查看和修改/.test(TPAY.freeLimitGeneric));
+// 🔴 R645 教训：我一度加了「了解升级」第二出口（走客服会话），被 check_paywall_coverage 的
+//   L9-③ 当场拦下 —— 付费闸门是**关闭态**（私域开通阶段），出口文案不得含
+//   价格/支付/开通/客服/续费/升级 类词：闸门在但话诱导＝白关。已回退。
+//   ⇒ 判据改成**反向**：这几条文案里不许出现任何诱导词。
+const INDUCE = ['价格', '支付', '开通', '客服', '续费', '升级'];
+const hitWords = (t) => INDUCE.filter((w) => String(t || '').indexOf(w) >= 0);
+ok('R-④ 🔴 关闭态下撞配额文案**不得含**诱导词（价格/支付/开通/客服/续费/升级）',
+  hitWords(TPAY.freeLimitCardBody).length === 0 && hitWords(TPAY.freeLimitGeneric).length === 0,
+  '命中：' + (hitWords(TPAY.freeLimitCardBody).concat(hitWords(TPAY.freeLimitGeneric)).join('/') || '无'));
+ok('R-⑤ 撞配额弹窗保持单一出口（showCancel:false）—— 关闭态不给任何付费入口',
+  /showCancel:[ ]*false/.test(PAYWALL));
+ok('R-⑥ 文案走 terms 单源（页面/paywall 不许硬编码中文）',
+  !!TPAY.freeLimitCardBody && !!TPAY.freeLimitGeneric);
+
 console.log('\n===== 结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);

@@ -132,6 +132,13 @@ function showFreeLimit(opts) {
   wx.showModal({
     title: isShop ? TERMS.pay.freeLimitShopTitle : TERMS.pay.freeLimitCardTitle,
     content: body,
+    // 🔴 R645（会审 R636 段2）：这里**只做告知与安抚，不给任何付费出口**。
+    //   原因：付费闸门当前是关闭态（PAYWALL_ENABLED=false，私域开通阶段），
+    //   `check_paywall_coverage` 的 L9-③ 明确要求关闭态出口文案**不得含
+    //   价格/支付/开通/客服/续费/升级**类词 —— 闸门在但话诱导＝白关。
+    //   我一度加了「了解升级」（走客服会话），当场被这条判据拦下，**回退**。
+    //   ⇒ 真正的价值不在"多一个按钮"，而在文案：先说清「已建的一道没少」，
+    //     老板第一反应不是"我数据没了"，这就够了；想了解怎么继续，他自己会问。
     showCancel: false,
     confirmText: TERMS.buttons.gotIt,
     confirmColor: '#1e3a5f',
