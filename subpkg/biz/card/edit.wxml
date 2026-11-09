@@ -96,7 +96,7 @@
   </view>
 
   <!-- 批量模式：产出份数（仅单品：套餐无批量预制概念） -->
-  <view class="field" wx:if="{{cardType === '1' && calcMode === 'B'}}">
+  <view class="field" wx:if="{{cardType === '1' && calcMode === 'B' && (inputMode === 'pro' || showMore)}}">
     <text class="lbl">{{t.batchOutput}}</text>
     <input class="val-input" type="number" value="{{batchOutput}}" bindinput="onBatch"  adjust-position="{{true}}" cursor-spacing="20" />
     <text class="muted">{{t.batchHint}}</text>
@@ -287,7 +287,8 @@
   <!-- 分类 / 标签（后端 cardDoc 已有字段，本次真正传上去） -->
   <!-- 分类：**自由填写**（火锅的锅底/荤菜/素菜、营销栏目"大口吃肉"都选不出来 ⇒ 不能只给下拉）。
        组件用 input + chips 而非 picker 弹层：弹层×键盘在真机上是死结（见 PITFALLS §6）。 -->
-  <view class="line">
+  <!-- 🔴 R660（Phase 1 元数据归位）：分类收进「更多设置」。首屏只留 菜名→配料→售价→毛利率 -->
+  <view class="line" wx:if="{{inputMode === 'pro' || showMore}}">
     <text class="lbl">{{t.category}}</text>
     <input class="cat-input" value="{{category}}" placeholder="{{t.categoryPh}}" bindinput="onCategoryInput" adjust-position="{{true}}" cursor-spacing="20" />
     <view class="chip-row" wx:if="{{catChips.length}}">
@@ -297,7 +298,7 @@
     </view>
     <text class="muted">{{t.categoryHint}}</text>
   </view>
-  <view class="field">
+  <view class="field" wx:if="{{inputMode === 'pro' || showMore}}">
     <text class="lbl">{{t.tags}}</text>
     <input class="val-input" value="{{tags}}" placeholder="{{t.tagsPh}}" bindinput="onTags" />
     <text class="muted">{{t.tagsHint}}</text>
@@ -308,7 +309,7 @@
     <text class="lbl">{{t.lossRate}}</text>
     <input class="val-input" type="digit" value="{{lossRate}}" bindinput="onLoss"  adjust-position="{{true}}" cursor-spacing="20" />
   </view>
-  <view class="field">
+  <view class="field" wx:if="{{inputMode === 'pro' || showMore}}">
     <text class="lbl">{{t.auxAmount}}</text>
     <input class="val-input" type="digit" value="{{auxYuan}}" bindinput="onAux"  adjust-position="{{true}}" cursor-spacing="20" />
   </view>
@@ -317,12 +318,14 @@
     <text class="lbl">{{t.price}}</text>
     <input class="val-input" type="digit" value="{{priceYuan}}" bindinput="onPrice"  adjust-position="{{true}}" cursor-spacing="20" />
   </view>
-  <view class="field">
+  <view class="field" wx:if="{{inputMode === 'pro' || showMore}}">
     <text class="lbl">{{t.activityPrice}}</text>
     <input class="val-input" type="digit" value="{{activityPriceYuan}}" bindinput="onActivityPrice"  adjust-position="{{true}}" cursor-spacing="20" />
   </view>
-  <!-- R234/J4f：本句 ≥18 字 ⇒ 折叠（完整清点口径下补漏）。 -->
-  <view class="hint-fold">
+  <!-- R234/J4f：本句 ≥18 字 ⇒ 折叠（完整清点口径下补漏）。
+       🔴 R660：本折叠块属于「活动价」，活动价已收进更多设置 ⇒ 这里必须同步收，
+       否则新手会看到一句「活动价怎么填」的提示，却找不到活动价输入框。 -->
+  <view class="hint-fold" wx:if="{{inputMode === 'pro' || showMore}}">
     <view class="hint-fold-head" data-key="ceActPriceHint" bindtap="onToggleHintFold">
       <text class="hint-fold-guide">{{hintFold.ceActPriceHint ? t.hintFoldHide : t.hintFoldShow}}</text>
       <text class="hint-fold-arrow">{{hintFold.ceActPriceHint ? '▾' : '▸'}}</text>
