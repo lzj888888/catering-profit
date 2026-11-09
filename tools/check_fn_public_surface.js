@@ -73,6 +73,7 @@ const PUBLIC_FNS = [
   { fn: 'payCallback', why: '微信支付回调 —— 平台调用无登录态，改由 verifyCallbackSign 验签 fail-closed 兜底', mustSelfGuard: false },
   { fn: 'payExpireNotify', why: '定时触发器任务 —— R215 已加固：有用户 OPENID 即拒绝（只放行定时/控制台）', mustSelfGuard: true },
   { fn: 'smokeTest', why: '真云诊断探针（会建集合/写库）—— R215 已加固：有用户 OPENID 即拒绝', mustSelfGuard: true },
+  { fn: 'dbBackup', why: '数据库月度全量备份（写云存储）—— R652 按 R215 定式：有用户 OPENID 即拒绝', mustSelfGuard: true },
   // 🔴 R298（B4）：本项原先 `mustSelfGuard: false`，理由写的是「不读 OPENID、不写库」——
   //   那句**只回答了「它自己会不会写坏数据」，没回答「别人能不能调它」**。实测：
   //   `wx.cloud.callFunction({name:'verifyTangshi'})` 是**客户端可直达**的（其自身头注的触发方式就是 `mp.evaluate`），

@@ -223,6 +223,9 @@ const A15_EXEMPT = [
   /^cloudfunctions\/[^/]+\/cx_rateLimit\.js$/,
   /^cloudfunctions\/importSalesBill\//,
   /^cloudfunctions\/getDiagnosis\//,
+  // by=WorkBuddy / date=2026-11-09 / reason=R652 授权：新增月度备份函数 dbBackup
+  //   （含 33 个集合的 common 派生副本）。李老师明确要「数据库每月 1 日 10:00 自动备份」。
+  /^cloudfunctions\/dbBackup\//,
   /^cloudfunctions\/common\/index\.js$/,               // round110：聚合入口挂载 indicatorRef
   // M3 v1.1 批次 A1（round120 登记）：免费配额「配置化 + 写侧真拦截」——
   //   额度由 checkQuota/service.js 常量迁至 feature_permissions 种子；saveCostCard 新增写侧拦截；

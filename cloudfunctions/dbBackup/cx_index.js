@@ -1,0 +1,121 @@
+// cloudfunctions/common/index.js
+// 公共层单源（批次 0 地基）。后续 1~7 批云函数的复用方式（见 tools/sync_common.js）：
+//   本目录是「单源」，由 tools/sync_common.js 复制进每个 cloudfunctions/<func>/common/；
+//   云函数内统一 require('./common')（指向自身目录内的副本，而非 ../common —— 后者云端 MODULE_NOT_FOUND）。
+module.exports = {
+  errors: require('./cx_errors'),
+  ERROR_CODES: require('./cx_errors').ERROR_CODES,
+  ok: require('./cx_errors').ok,
+  fail: require('./cx_errors').fail,
+  // A6b（2026-09-19）：「唯一键冲突」判定单源 —— resolveAuth / getShopContext 建档容错共用。
+  isDuplicateKeyError: require('./cx_errors').isDuplicateKeyError,
+
+  utilTime: require('./cx_utilTime'),
+
+  money: require('./cx_money'),
+
+  dataAdapter: require('./cx_dataAdapter'),
+
+  auth: require('./cx_auth'),
+  resolveAuth: require('./cx_auth').resolveAuth,
+  assertShopOwner: require('./cx_auth').assertShopOwner,
+  // 🔴 2026-09-18 真云事故：auth.js 早已 export genId，但本聚合入口**漏导**，
+  //    而 archiveMonth/getShopContext/saveAsset/saveCostCard/saveLedger/saveMaterial/syncCostCard
+  //    都写 `const { ..., genId } = common` ⇒ 云端运行期 TypeError: genId is not a function。
+  //    最致命的一条 = getShopContext 建店分支 ⇒ **全新用户首次进入必崩**。
+  //    伴侣守卫：tools/check_requires.js §2「common 解构符号导出完整性」。
+  genId: require('./cx_auth').genId,
+  // 🔴 同族风险（勿重犯 genId 的错）：新增的单源符号**必须**在本聚合入口同时导出，
+  //    否则调用点 `const { defaultShopId } = common` 会在真云上 TypeError（本地测不出）。
+  //    伴侣守卫：tools/check_requires.js §2「common 解构符号导出完整性」。
+  defaultShopId: require('./cx_auth').defaultShopId,
+  defaultEntitlementId: require('./cx_auth').defaultEntitlementId,
+
+  idempotency: require('./cx_idempotency'),
+  rateLimit: require('./cx_rateLimit'),
+  audit: require('./cx_audit'),
+
+  // M2 餐饮指标参考库（分业态 × 分城市层级）· 口径单源
+  // ⚠️ 同 genId 的教训：新增单源符号务必在此聚合入口导出，否则云端 `const { indicatorRef } = common` 会 TypeError。
+  //    伴侣守卫：tools/check_requires.js §2。
+  indicatorRef: require('./cx_indicatorRef'),
+
+  // M3.28（批次 Q3）：付费判定单源 —— exportData 已切到此处；S1 套餐 / S2 外卖必须复用同一入口，
+  //   **严禁在函数体内再写一遍 `expireAt > nowUtc()`**（写第 2 遍那天就是"哪个能力算付费"出现双源的那天）。
+  //   ⚠️ 同 genId 教训：新符号务必在此聚合入口导出，否则云端 `const { hasFeature } = common` 会 TypeError。
+  entitlement: require('./cx_entitlement'),
+  hasFeature: require('./cx_entitlement').hasFeature,
+  isPaid: require('./cx_entitlement').isPaid,
+  PAID_FEATURES: require('./cx_entitlement').PAID_FEATURES,
+  // 🔴 R603：商业化开关（免费期）。新增单源符号必须在此聚合导出，
+  //    否则调用点 `common.FREE_ACCESS` 在真云上 undefined（genId 事故族）。
+  payFlags: require('./cx_payFlags'),
+  FREE_ACCESS: require('./cx_payFlags').FREE_ACCESS,
+
+  // A4（2026-11-05 · 规范 v1.1 §5.2）：深度诊断的**旁路**判定。
+  //   🔴 与上方 entitlement 是**两个维度**：entitlement 回答"付没付钱"，本模块回答
+  //      "这一次能不能跑诊断（去重/限流/额度）"。绝不加入 PAID_FEATURES —— 加了会牵连既有 hasFeature 语义。
+  //   ⚠️ 同 genId 教训：新符号必须在此聚合导出，否则云端 `common.canRunDiagnosis` 是 undefined。
+  diagnosisEntitlement: require('./cx_diagnosisEntitlement'),
+  canRunDiagnosis: require('./cx_diagnosisEntitlement').canRunDiagnosis,
+  DIAG_TYPES: require('./cx_diagnosisEntitlement').DIAG_TYPES,
+  DIAG_REPORT_COLL: require('./cx_diagnosisEntitlement').DIAG_REPORT_COLL,
+  DIAG_CREDIT_COLL: require('./cx_diagnosisEntitlement').DIAG_CREDIT_COLL,
+
+  // A5（2026-11-05）：诊断引擎（11 指标 + 6 红线）。**纯函数**，零 IO、零 db 依赖 ⇒ 可被 selftest 直接跑。
+  diagnosisEngine: require('./cx_diagnosisEngine'),
+  evaluateDiagnosis: require('./cx_diagnosisEngine').evaluateDiagnosis,
+  // A20-bis（2026-11-05）：补录枚举白名单 —— 校验层（saveShopSetting）与引擎认同一张表，禁止自抄。
+  DIAG_ENUM: require('./cx_diagnosisEngine').DIAG_ENUM,
+
+  // A14（2026-11-05）：退款规则唯一判定处（纯函数，零 IO）。
+  //   🔴 为什么放 common：下单、退款、客服后台三处都要判"能不能退"，写三份必然三种结论。
+  //   ⚠️ 只判定不动钱 —— 真实退款待阶段 B（虚拟支付接通）由调用方执行并落 order_refund 台账。
+  refundPolicy: require('./cx_refundPolicy'),
+  judgeRefund: require('./cx_refundPolicy').judgeRefund,
+  REFUND_CODES: require('./cx_refundPolicy').CODES,
+
+  // M3.14/M3.15（R150）：组件分类 + 多规格**派生层单源** —— 入参变换，5 份引擎副本一个不碰。
+  //   ⚠️ 同 genId 教训：新符号务必在此聚合入口导出，否则云端 `const { deriveSpec } = common` 会 TypeError。
+  //   伴侣守卫：tools/check_spec_derive.js（L1 符号齐备）+ tools/check_requires.js §2。
+  specDerive: require('./cx_specDerive'),
+  LINE_KINDS: require('./cx_specDerive').LINE_KINDS,
+  SPEC_PRESETS: require('./cx_specDerive').SPEC_PRESETS,
+  deriveSpec: require('./cx_specDerive').deriveSpec,
+  kindOf: require('./cx_specDerive').kindOf,
+  specsToJson: require('./cx_specDerive').specsToJson,
+  specsFromJson: require('./cx_specDerive').specsFromJson,
+  sanitizeSpecs: require('./cx_specDerive').sanitizeSpecs,
+
+  // M3.16（批次 C）：套餐引用型成本卡**派生层单源** —— 入参变换，5 份引擎副本一个不碰。
+  //   ⚠️ 同 genId 教训：新符号务必在此聚合入口导出，否则云端 `const { buildComboLines } = common` 会 TypeError。
+  comboDerive: require('./cx_comboDerive'),
+  buildComboLines: require('./cx_comboDerive').buildComboLines,
+  comboInsight: require('./cx_comboDerive').comboInsight,
+  judgeComboRef: require('./cx_comboDerive').judgeComboRef,
+
+  // R232 C-9：菜品名归一（dish_key）单源 —— 写侧 importSalesBill 与读侧 getDishReview 共用同一口径，
+  //   **严禁再内联第二份**（分叉 = 全菜匹配不上且不报错）。
+  //   ⚠️ 同 genId 教训：新符号务必在此聚合入口导出，否则云端 `const { normalizeDishName } = common` 会 TypeError。
+  //   伴侣守卫：tools/check_dish_key_single_source.js。
+  dishKey: require('./cx_dishKey'),
+  normalizeDishName: require('./cx_dishKey').normalizeDishName,
+
+  // R252：`external_sales_daily` 的 `_id` 形态解析**单源** —— 读侧 getSalesBills 与写侧 clearSalesBills
+  //   必须用同一份解析，否则「列表里看得见、清除时删不掉」（静默失效）。
+  //   ⚠️ 同 genId 教训：新符号务必在此聚合入口导出，否则云端 `const { parseSalesBillId } = common` 会 TypeError。
+  //   伴侣守卫：tools/check_salesbills.js。
+  salesBillId: require('./cx_salesBillId'),
+  parseSalesBillId: require('./cx_salesBillId').parseSalesBillId,
+
+  // R423 · 队列 #28：AI「出站」k-匿名门槛单源（设计稿 §5）——
+  //   `canSendToModel` 消费读侧 `getAiConsent` 的判定态，**不再判一遍四态**（避免第二份实现）；
+  //   不满足门槛时显式给 `fallback:'L0'`，调用方没有自由发挥的空间。
+  //   ⚠️ 同 genId 教训：新符号务必在此聚合入口导出，否则云端 `const { canSendToModel } = common`
+  //   会 TypeError（本地 require 单源文件测不出）。伴侣守卫：tools/check_requires.js §2。
+  aiGate: require('./cx_aiGate'),
+  canSendToModel: require('./cx_aiGate').canSendToModel,
+  judgeSample: require('./cx_aiGate').judgeSample,
+  SAMPLE_MIN: require('./cx_aiGate').SAMPLE_MIN,
+  AI_PURPOSES: require('./cx_aiGate').PURPOSES,
+};

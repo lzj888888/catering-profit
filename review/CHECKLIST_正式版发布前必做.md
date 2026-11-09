@@ -24,7 +24,7 @@ dev 库里的任何账套 / 台账 / 测试数据**不会**流到正式版。
 | prod 环境 | **不存在** | 同上，列表里没有第二个环境 |
 | 前端 prod 槽 | 仍是占位符 `catering-prod-xxxxxxxx` | `miniprogram/config/env.js` `ENV_MAP.prod` |
 | 前端当前激活环境 | `ACTIVE_ENV: 'dev'` | 同上（写死，不会自动切） |
-| 云函数 | **56 个**（58 个目录 − `common` / `_adminCore` 两个库目录） | `ls -d cloudfunctions/*/`（R410 复核；与云端 `list` 零差异） |
+| 云函数 | **57 个**（59 个目录 − `common` / `_adminCore` 两个库目录） | `ls -d cloudfunctions/*/`（R410 复核；与云端 `list` 零差异） |
 | 库结构 | **33 集合 / 55 索引**（13 unique） | `cloudfunctions/initDb/collections.js`（R410 运行时实读，非人工数行） |
 | 已建成索引 | dev 侧 **48/49**（第 4 条 `idx_ai_insight_shop_month` 未建，卡 AppSecret / 控制台窗口高度） | `tools/apply_indexes.js`（R410 复核；见队列 #12） |
 
@@ -78,7 +78,7 @@ dev 库里的任何账套 / 台账 / 测试数据**不会**流到正式版。
 
 | # | 动作 | 判据 |
 |---|---|---|
-| D1 | 全量部署 **55 个函数**（56 − `initDb`） | `cli cloud functions deploy --names <fn> -r`，**一次一个、必带 `-r`**（漏 `-r` = 覆盖云端 `wx-server-sdk` ⇒ 前端「网络不可用」） |
+| D1 | 全量部署 **56 个函数**（57 − `initDb`） | `cli cloud functions deploy --names <fn> -r`，**一次一个、必带 `-r`**（漏 `-r` = 覆盖云端 `wx-server-sdk` ⇒ 前端「网络不可用」） |
 | D2 | 🔴 **先在控制台定 all 函数 timeout 值，再全量部署** | 实测：`config.json` 的 `timeout` **不被采纳**（重启键 §该条），值只存在于控制台。**dev 定过 ≠ prod 生效**，必须重走「定值 → 部署 → `cli cloud functions info` 逐个回读」 |
 | D3 | `ADMIN_SETUP_TOKEN` 等凭证重配 | 凭证**不随环境走** |
 | D2-bis ✅ | **dev 存量缺口（R215c 发现 → R215d 已闭环）**：`importSalesBill` / `manageShop` 的 `timeout` 曾为 **3**，**2026-10-05 已抬到 20**；全量 44 函数回读 `timeout==3` = **0** | 判据 = `cli cloud functions info --names …`（**空格分隔**）的 `timeout` 列。**🔴 R215d 时点值（非当前现状，勿照此核对）：`{15:1, 20:40, 30:1, 60:2}`、`status` 44/44 `Active`**（`review/evidence/r215d_timeout/cli_info_all_44fn_after.txt`）。⚠️ **可复用纪律**：**新部署的函数 timeout 一律是平台默认 3** ⇒「部署完」≠「可用」，**每次部署新函数后必须回读 `timeout` 并手工抬到 20** | ✅ 已闭环（R215d · 键鼠代操控制台，见 `review/NOTE_2026-10-05_round215d_控制台抬timeout.md`） |
