@@ -224,3 +224,8 @@
 .field .muted { flex: 1 1 100%; margin-top: 8rpx; line-height: 1.5; }
 /* 品类「清除」跟在 picker 之后，不单独占行 */
 .field .cat-clear { flex: 0 0 auto; }
+
+/* R640：进货价主显 —— 老板对「一公斤多少钱」敏感，对「一克多少钱」无感 */
+.price-main-row { display: flex; align-items: baseline; gap: 10rpx; margin: 6rpx 0 2rpx; }
+.price-main { font-size: 32rpx; font-weight: 600; color: #1e3a5f; }
+.price-main-cap { font-size: 24rpx; color: #8a94a6; }

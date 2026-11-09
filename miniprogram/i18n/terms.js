@@ -2077,6 +2077,12 @@ const TERMS = {
     qtyUnit: '用量单位',
     qtyUnitHint: '按做菜手感选；换单位会自动换算数量，成本不变',
     matSpecHintOf: (p, u, f, yr, net) => `${p} 元/${u} ÷ ${f} ÷ 出成率 ${yr}% ⇒ 净料 ${net} 元/克`,
+    // 🔴 R640（真机）：「36 元/斤」是老板的语言，「0.0783 元/克」是机器的语言。
+    //   改前整句以「⇒ 净料 0.0783 元/克」收尾，老板只看见克价 ⇒ 涨价了也看不出来。
+    //   ⇒ 拆两段：主显进货价（大字），公式退为副说明。
+    priceMainCap: '你进货的价格',
+    matPriceMain: (p, u) => `${p} 元/${u}`,
+    matSpecFormulaOf: (f, yr, net) => `÷ ${f} ÷ 出成率 ${yr}% ⇒ 净料 ${net} 元/克`,
     matSpecHintEmpty: '选好原料后显示：采购价 ÷ 换算系数 ÷ 出成率 = 净料单价（元/克）',
     // ===== round150 · M3.14 组件分类 + M3.15 多规格（大小份）=====
     //   ⚠️ 组件类型的**机器键**单源在 `cloudfunctions/common/specDerive.js::LINE_KINDS`；

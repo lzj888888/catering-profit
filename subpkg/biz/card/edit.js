@@ -182,6 +182,7 @@ Page({
       qtyUnit: TERMS.card.qtyUnit,
       qtyUnitHint: TERMS.card.qtyUnitHint,
       matSpecHintEmpty: TERMS.card.matSpecHintEmpty,
+    priceMainCap: TERMS.card.priceMainCap,
       // round150（M3.14/M3.15）
       lineKindTitle: TERMS.card.lineKindTitle,
       lineKindHint: TERMS.card.lineKindHint,
@@ -935,8 +936,18 @@ Page({
     const out = src.map((l) => {
       if (l.input_type === 2) return Object.assign({}, l, { spec_hint: '', unit_warn: '' });
       const m = l.material_id ? mats.find((x) => x.id === l.material_id) : null;
+      // 🔴 R640：进货价主显（老板的语言）+ 换算公式副显（机器的语言）。
+      //   真机实测：整句以「⇒ 净料 0.0783 元/克」收尾，老板只看见克价 ⇒ 涨价也看不出。
+      const f = m ? Number(m.convert_factor) || 0 : 0;
+      const yr2 = m ? Number(m.yield_rate) || 0 : 0;
       return Object.assign({}, l, {
         spec_hint: m ? this.specHintOf(m) : TERMS.card.matSpecHintEmpty,
+        price_main: (m && f && yr2)
+          ? TERMS.card.matPriceMain(api.fenToYuan(m.purchase_price_fen || 0, 2), m.purchase_unit || TERMS.card.matUnitDefault)
+          : '',
+        spec_formula: (m && f && yr2)
+          ? TERMS.card.matSpecFormulaOf(f, yr2, ((Number(m.net_unit_cost) || 0) / 10000).toFixed(4))
+          : '',
         unit_warn: m ? this.unitWarnOf(m, l) : '',
       });
     });

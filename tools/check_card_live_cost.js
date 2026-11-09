@@ -365,5 +365,19 @@ ok('L-⑤ 🔴 这三个字段**不许进计算**（引擎只认 net_unit_cost�
   !/manualNetUnitWan\([^)]*manual_price_fen/.test(EDIT_JS)
   && !/manual_price_fen/.test(fs.readFileSync(P('cloudfunctions/saveCostCard/service.js'), 'utf8')));
 
+// ============ M 原料行进货价主显（R640 真机）============
+// 老板：「我对克不敏感，对一公斤、一件才敏感 —— 涨价了也看不出来。」
+// 改前原料行只有一句「36 元/斤 ÷ 500 ÷ 92% ⇒ 净料 0.0783 元/克」，眼睛落在最后的克价上。
+sec('M 原料行进货价主显');
+ok('M-① 行数据里有进货价主显字段（price_main）', /price_main:/.test(EDIT_JS));
+ok('M-② wxml 把进货价**单独**主显（大字 + 说明），不是埋在公式句尾',
+  /class="price-main"/.test(WXML_E) && /priceMainCap/.test(WXML_E));
+ok('M-③ 换算公式退为副说明（公式里不再重复采购价）',
+  /spec_formula/.test(EDIT_JS) && /matSpecFormulaOf/.test(EDIT_JS));
+ok('M-④ 没采购单位/换算系数时不硬造数字（回落原说明，不瞎算）',
+  /\(m && f && yr2\)/.test(EDIT_JS));
+ok('M-⑤ 主显文案走单源 terms（页面不许自己拼「元/斤」）',
+  /matPriceMain\(/.test(EDIT_JS) && /matPriceMain:/.test(fs.readFileSync(P('miniprogram/i18n/terms.js'), 'utf8')));
+
 console.log('\n===== 自动重算守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);

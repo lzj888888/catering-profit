@@ -127,7 +127,15 @@
            老板不用去档案页心算，也不会把「按斤买」的价当成「按克」的价填。 -->
       <!-- 🔴 R372：空态说明只在**第一行**出现一次。原来每行都印一遍同一句 30 字解释，
            三个配料就是三行重复文字（实测每行 30px）。 -->
-      <view class="muted spec-hint" wx:if="{{lines[index].spec_hint}}">{{lines[index].spec_hint}}</view>
+      <!-- 🔴 R640：进货价 **主显**（老板的语言），换算公式退为副说明。
+           改前整句以「⇒ 净料 0.0783 元/克」收尾 ⇒ 老板只看见克价，涨价也看不出来。
+           真机原话：「我对克不敏感，对一公斤、一件才敏感」。 -->
+      <view class="price-main-row" wx:if="{{lines[index].price_main}}">
+        <text class="price-main">{{lines[index].price_main}}</text>
+        <text class="price-main-cap">{{t.priceMainCap}}</text>
+      </view>
+      <view class="muted spec-hint" wx:if="{{lines[index].spec_formula}}">{{lines[index].spec_formula}}</view>
+      <view class="muted spec-hint" wx:elif="{{!lines[index].price_main && lines[index].spec_hint}}">{{lines[index].spec_hint}}</view>
       <view class="muted spec-hint" wx:elif="{{index === 0}}">{{t.matSpecHintEmpty}}</view>
       <!-- round151：跨计量族提示（只提示、不拦截）。参考产品在同样情形下静默算出 ¥6,000,000 无告警 -->
       <view class="warn-hint" wx:if="{{lines[index].unit_warn}}">{{lines[index].unit_warn}}</view>
