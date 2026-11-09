@@ -135,6 +135,8 @@ Page({
           terminate_month: a.terminate_month || '',
           group_id: a.group_id || '',
           batch_seq: a.batch_seq || 1,
+          // 🔴 R653：类别名（装修/加盟费/设备/押金/其他）；老数据没有该字段 ⇒ '' ⇒ 不渲染标签
+          kindName: this.kindNameOf(a.asset_kind),
           amount_fen: amountFen,
           amountYuan: api.fenToYuan(amountFen, 2),
           paid_months: a.paid_months || 0,
@@ -167,6 +169,15 @@ Page({
   },
 
   // round106（F5b）：留存数据文案 —— 期数与剩余额全部来自后端出参（引擎累加），前端只做格式化拼接。
+  // R653：类别 key → 中文名。只用于展示，不参与任何金额计算。
+  //   ⚠️ 走 terms 单源（TERMS.amortizePage.assetKinds），页面不硬编码「装修」这类词。
+  kindNameOf(key) {
+    if (!key) return '';
+    const list = TERMS.amortizePage.assetKinds || [];
+    const hit = list.find((k) => k.key === key);
+    return hit ? hit.name : '';
+  },
+
   progressOf(a) {
     const T = TERMS.amortizePage;
     const remainingYuan = '¥' + api.fenToYuan((a && a.remaining_fen) || 0, 2);

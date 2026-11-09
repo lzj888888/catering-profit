@@ -618,7 +618,11 @@ const PAGE_CASES = [
     js: 'subpkg/biz/month/assetEdit.js',
     wxss: 'subpkg/biz/month/assetEdit.wxss',
     keys: ['aeMonthHint', 'aeTotalHint'],
-    keepPlain: 2,   // fAmountHint 13 / fStartHint 7 / fTerminateHint 14 字 ⇒ 保持平铺
+    // R653：新增 `fKindHint`（「分类只影响怎么展示和汇总，不影响摊销金额」19 字）⇒ 平铺 2→3。
+    //   19 字仍在新分层线下界（≥18 才折）之上？—— 不：它**低于** 20 字这条历史线，
+    //   且只是一句"不影响金额"的安心理由，折起来反而让老板以为里面有坑 ⇒ 刻意保持平铺。
+    //   ⚠️ 改这个数字必须同时改 wxml 里的实际提示数，否则 F9 会用"数与实物不符"再拦一次。
+    keepPlain: 3,   // fAmountHint 13 / fStartHint 7 / fTerminateHint 14 / fKindHint 19 字 ⇒ 保持平铺
                     // ⚠️ J4f 补漏 `aeTotalHint`（fTotalHint 20 字，此前被我误判为平铺）
     segFolds: 0,    // 本页无区段级折叠
   },

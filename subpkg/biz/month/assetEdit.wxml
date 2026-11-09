@@ -16,6 +16,18 @@
       bindinput="onName" adjust-position="{{true}}" cursor-spacing="20" />
   </view>
 
+  <!-- 🔴 R653（M2 摊销分类）：装修 / 加盟费 / 设备 / 押金 / 其他。
+       改前全链路没有类别 ⇒ 30 万装修和 5 万加盟在摊销表里混成一坨，老板看不出钱花在哪。
+       可留空（老数据、或老板不想分类）⇒ 显示「未分类」，不影响任何金额。 -->
+  <view class="field">
+    <text class="lbl">{{t.fKind}}</text>
+    <picker mode="selector" range="{{assetKinds}}" range-key="name" value="{{kindIdx < 0 ? 0 : kindIdx}}"
+      bindchange="onKind" disabled="{{readOnly}}">
+      <view class="picker-val {{assetKind ? '' : 'ph'}}">{{assetKind ? assetKinds[kindIdx].name : t.kindUnset}} ▾</view>
+    </picker>
+  </view>
+  <view class="hint">{{t.fKindHint}}</view>
+
   <!-- 金额 -->
   <view class="field">
     <text class="lbl">{{t.fAmount}}</text>

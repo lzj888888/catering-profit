@@ -30,6 +30,9 @@ Page({
       appendTitle: T.appendTitle,
       appendHint: T.appendHint,
       fName: T.fName,
+      fKind: T.fKind,
+      fKindHint: T.fKindHint,
+      kindUnset: T.kindUnset,
       fNamePh: T.fNamePh,
       fAmount: T.fAmount,
       fAmountHint: T.fAmountHint,
@@ -69,6 +72,10 @@ Page({
     groupKey: '',
     batchSeq: 1,
     name: '',
+    // 🔴 R653：资产类别（装修/加盟费/设备/押金/其他）。老数据为空 ⇒ 显示「未分类」，不影响金额。
+    assetKind: '',
+    assetKinds: T.assetKinds || [],
+    kindIdx: -1,
     amountYuan: '',
     startMonth: '',
     totalMonths: '',
@@ -139,6 +146,9 @@ Page({
             init.startMonth = a.start_month || this.data.month;
             init.totalMonths = String(a.total_months || '');
             init.terminateMonth = a.terminate_month || '';
+            // R653：类别回填。老数据没有该字段 ⇒ 空字符串（页面显示「未分类」）
+            init.assetKind = a.asset_kind || '';
+            init.kindIdx = (this.data.assetKinds || []).findIndex((k) => k.key === (a.asset_kind || ''));
           }
         }
       } else if (this.data.mode === 'append') {
@@ -160,6 +170,11 @@ Page({
   },
 
   onName(e) { this.setData({ name: e.detail.value }); },
+  onKind(e) {
+    const i = Number(e.detail.value);
+    const list = this.data.assetKinds || [];
+    this.setData({ kindIdx: i, assetKind: (list[i] && list[i].key) || '' });
+  },
   onBack() { wx.navigateBack(); },
   onAmount(e) { this.setData({ amountYuan: e.detail.value }); this.checkAmounts(); },
   // 🔴 #549：金额可读性体检（只判定、不改数、不静默清洗）。返回 readable，并把栏数写进 data.badAmountCount。
@@ -214,6 +229,8 @@ Page({
       // 一次算清 = 只摊 1 个月（等价「全部算进 start_month 当月」），口径由后端 mode 决定
       total_months: isLump ? 1 : Number(this.data.totalMonths),
       mode: isLump ? 'lump' : 'amort',
+      // 🔴 R653：类别随资产落库。空字符串 = 未分类（老数据/老板没选），后端按 '' 存，不影响金额。
+      asset_kind: this.data.assetKind || '',
     };
     if (!isLump && this.data.terminateMonth) asset.terminate_month = this.data.terminateMonth;
     if (this.data.mode === 'edit') {

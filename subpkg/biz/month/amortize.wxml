@@ -67,6 +67,9 @@
   <view class="card2" wx:for="{{groups}}" wx:key="key" wx:for-item="g">
     <view class="card-title" bindtap="onToggleGroup" data-group="{{g.key}}">
       {{g.name}}
+      <!-- 🔴 R653：类别标签（装修 / 加盟费 / 设备 / 押金 / 其他）。
+           老数据没有类别 ⇒ kindName 为空 ⇒ 不渲染，不会出现空标签。 -->
+      <text class="tag kind" wx:if="{{!g.multi && g.batches[0].kindName}}">{{g.batches[0].kindName}}</text>
       <text class="tag" wx:if="{{g.multi}}">{{t.batchTotalPrefix}}{{g.count}}{{t.batchTotalSuffix}}</text>
       <text class="tag" wx:if="{{!g.multi && g.batches[0].terminate_month}}">{{t.terminateNow}}</text>
     </view>

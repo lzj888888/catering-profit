@@ -119,6 +119,8 @@ exports.main = async (event) => {
       updated_at: now, is_deleted: false,
     };
     if (a.group_id) { patch.group_id = a.group_id; patch.batch_seq = a.batch_seq; }
+    // R653：编辑时允许改分类（老板一开始归错类是常事）
+    patch.asset_kind = a.asset_kind || '';
     await db.collection('shop_amortize').doc(exist._id || a.asset_id).update({ data: patch });
     out = { shop_id: shopId, asset_id: a.asset_id, client_request_id: clientRequestId || '' };
   } else {
@@ -137,6 +139,7 @@ exports.main = async (event) => {
       // H1（批次 8c）：多次采购分组。「追加采购」= 新行 + group_id 指向首笔、batch_seq = 组内序号；
       //   独立资产 group_id=''、batch_seq=1（前端用自身 asset_id 当组键，故老数据行为不变）。
       group_id: a.group_id, batch_seq: a.batch_seq,
+      asset_kind: a.asset_kind || '',   // R653：类别（'' = 未分类），只用于展示与汇总
       // round107：处置方式。'amort' = 分期摊销（老行为）；'lump' = 一次算清（只影响 start_month 当月）
       mode: a.mode,
     });

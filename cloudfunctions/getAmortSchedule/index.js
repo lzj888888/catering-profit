@@ -71,6 +71,7 @@ exports.main = async (event) => {
     terminate_month: a.terminate_month || '',
     // H1（批次 8c）：多次采购分组字段透传（老数据无此字段 → '' / 1，前端按独立资产处理）
     group_id: a.group_id || '', batch_seq: a.batch_seq || 1,
+    asset_kind: a.asset_kind || '',   // R653：老数据没有该字段 ⇒ 空串（前端显示「未分类」）
     // round107：处置方式。缺字段的老数据一律按 'amort'（老行为不变）
     mode: a.mode === 'lump' ? 'lump' : 'amort',
   }));

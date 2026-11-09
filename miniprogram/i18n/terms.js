@@ -2877,6 +2877,19 @@ const TERMS = {
 
     // ===== round107：独立编辑页（assetEdit）=====
     editLumpTitle: '一次算清的投入',
+    // 🔴 R653（M2 摊销分类）：李老师要的「加盟费 / 装修摊销 / 管理费」要能分开看。
+    //   改前全链路（saveAsset / getAmortSchedule / 两个页面）**都没有类别字段**
+    //   ⇒ 老板录一笔 30 万装修 + 5 万加盟，摊销表里混成一坨，看不出钱花在哪。
+    fKind: '这笔钱是',
+    fKindHint: '分类只影响怎么展示和汇总，不影响摊销金额',
+    assetKinds: [
+      { key: 'renovation', name: '装修' },
+      { key: 'franchise', name: '加盟费' },
+      { key: 'equipment', name: '设备' },
+      { key: 'deposit', name: '押金' },
+      { key: 'other', name: '其他' },
+    ],
+    kindUnset: '未分类',
     editAmortTitle: '摊销资产',
     editLumpHint: '这笔钱全部算进所选月份的费用，之后不再影响别的月份',
     editAmortHint: '从开始月份起按月摊，摊完为止',

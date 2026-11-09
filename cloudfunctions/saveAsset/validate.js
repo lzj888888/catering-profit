@@ -53,6 +53,12 @@ function validateInput(event) {
   //   两类**可以同时存在**（李老师真机反馈：一个月既有一笔摊销、又有几笔小额一次算清）。
   const mode = (a.mode === 'lump') ? 'lump' : 'amort';
 
+  // 🔴 R653：资产类别（装修/加盟费/设备/押金/其他）。
+  //   只影响**展示与汇总**，绝不参与摊销金额计算 —— 所以非法值一律落成 ''（未分类），
+  //   **不报错**：老板选错分类不该阻止他存钱；但也不许把脏数据写进库（白名单收敛）。
+  const ASSET_KINDS = ['renovation', 'franchise', 'equipment', 'deposit', 'other'];
+  const assetKind = (typeof a.asset_kind === 'string' && ASSET_KINDS.indexOf(a.asset_kind) >= 0) ? a.asset_kind : '';
+
   // 自指组键（group_id === 自己）无意义且会让前端分组自相矛盾 → 拒，迫使前端传真实父键
   if (group_id && group_id === a.asset_id) return err('asset.group_id 不能等于自身 asset_id');
 
@@ -68,6 +74,7 @@ function validateInput(event) {
       terminate_month,
       group_id,
       batch_seq,
+      asset_kind: assetKind,   // R653：类别（'' = 未分类）
       mode,
     },
     input: { client_request_id: src.client_request_id || '' },
