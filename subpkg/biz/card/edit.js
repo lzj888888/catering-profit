@@ -302,6 +302,7 @@ Page({
     loadMissing: false,
     // round156：连续录入 —— 顶部「已保存」横幅记录刚存下的菜名；非空即显示（含返回列表出口）
     savedName: '',
+    quotaTip: '',
     saving: false,   // 防重复提交（连击保存会生成两个版本）
     // M3.16（批次 C）套餐：卡片类型（'1'=单品 / '3'=套餐）+ 子卡选择行 + 三个显示数。
     cardType: '1',
@@ -1720,7 +1721,7 @@ Page({
       } else {
         // round156（新增态）：**不跳走**。改前是 `setTimeout(navigateBack, 600)` —— 存一道菜就被踢回列表，
         //   录 30 道菜要来回 60 次（李老师「100 道菜品，来回查找会很麻烦」的痛点之一）。
-        this.afterSaved(card.name);
+        this.afterSaved(card.name, out && out.quota);
       }
     } catch (e) {
       this.setData({ saving: false });
@@ -1736,8 +1737,17 @@ Page({
   //      **另存新版本**，第一道菜的内容被静默顶掉。这是**数据正确性**问题，不是手感问题。
   //   ✅ **刻意保留门店级默认**（核算模式 / 损耗率 / 辅料 / 分类 / 标签 / 目标毛利率）：
   //      连续录同一家店的同类菜时这些大概率一样，留着才叫"连续"。
-  afterSaved(name) {
+  afterSaved(name, quota) {
+    // 🔴 R643（会审 R636 段1）：把「还能建 N 张」放进保存成功的常驻条。
+    //   只对**未付费**且拿得到额度时提示；编辑已有卡（不占额度）云端 quota 为 null ⇒ 不提示。
+    let quotaTip = '';
+    if (quota && !quota.is_paid && Number(quota.limit) > 0) {
+      const r = Number(quota.remain) || 0;
+      quotaTip = r <= 0 ? TERMS.card.quotaUsedUp
+        : (r === 1 ? TERMS.card.quotaLastOne : this.fillTpl(TERMS.card.quotaRemainTpl, { n: r }));
+    }
     this.setData({
+      quotaTip,
       savedName: name || '',
       saving: false,
       // —— 这道菜特有的：清 ——

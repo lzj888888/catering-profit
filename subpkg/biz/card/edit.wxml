@@ -18,6 +18,8 @@
        改前每存一道菜就 navigateBack 回列表，录 30 道菜要来回 60 次。 -->
   <view class="saved-bar" wx:if="{{savedName}}">
     <text class="saved-txt">{{t.savedOk}}「{{savedName}}」· {{t.savedHint}}</text>
+    <!-- 🔴 R643：还能建几张 —— 第 18 条就要说，不能等第 21 条被拒才让老板知道 -->
+    <text class="quota-tip" wx:if="{{quotaTip}}">{{quotaTip}}</text>
     <view class="saved-go" bindtap="backToList">{{t.backToList}}</view>
   </view>
 

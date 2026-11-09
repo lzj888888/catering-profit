@@ -229,3 +229,6 @@
 .price-main-row { display: flex; align-items: baseline; gap: 10rpx; margin: 6rpx 0 2rpx; }
 .price-main { font-size: 32rpx; font-weight: 600; color: #1e3a5f; }
 .price-main-cap { font-size: 24rpx; color: #8a94a6; }
+
+/* R643：保存成功条里的额度提示 —— 不打断连续录入，也不会像 toast 一闪而过 */
+.quota-tip { display: block; font-size: 26rpx; color: #b45309; margin-top: 6rpx; }

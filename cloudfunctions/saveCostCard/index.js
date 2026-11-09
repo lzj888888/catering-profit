@@ -297,6 +297,10 @@ exports.main = async (event) => {
   // 只有**新逻辑卡**才占额度（card_code 为空 = 新卡；或该 shop_id 下该 card_code 无在库版本 = version=1）；
   // 已存在卡号的「追加新版本」（version≥2）不占额度。
   // 维度 = shop_id（与 checkQuota/index.js 成本卡维度同口径：card_code 去重、版本不计、软删由 DataAdapter 过滤）。
+  // 🔴 R643（会审 R636 段1）：保存成功后要能告诉老板「还能建 N 张」，
+  //   所以配额余量必须**出参**带出去。改前只在超额时拦、从不告知余量 ⇒
+  //   老板到第 21 张才第一次知道有额度这回事（事后剥夺，体验最差的一档）。
+  let quotaOut = null;
   if (!card.card_code || nextVersion === 1) {
     let limits = null;
     try {
@@ -317,9 +321,11 @@ exports.main = async (event) => {
     }
     const activeCount = codes.size;
     let verdict;
+    let paidForQuota = false;
     try {
       // 🔴 R215b：付费判定走单源（只读 expire_at）
       const paid = common.isPaid(await common.entitlement.loadExpireAt(db, userId));
+      paidForQuota = paid;
       verdict = judgeCardQuota(limits, activeCount, paid);
     } catch (e) {
       return fail(ERROR_CODES.SYSTEM_ERROR, (e && e.message) || '配额判定失败');
@@ -330,6 +336,14 @@ exports.main = async (event) => {
     if (verdict.hit_free_limit) {
       return fail(ERROR_CODES.FREE_LIMIT_EXCEEDED); // 文案由前端 msgOf(code) 映射（禁硬编码中文）
     }
+    // 未超限：本次保存**会**占掉一个额度 ⇒ 余量按 activeCount+1 算
+    const usedAfter = activeCount + 1;
+    quotaOut = {
+      used: usedAfter,
+      limit: Number(limits.cost_card) || 0,
+      remain: Math.max(0, (Number(limits.cost_card) || 0) - usedAfter),
+      is_paid: !!paidForQuota,
+    };
   }
 
   const createdBy = userId;
@@ -472,6 +486,7 @@ exports.main = async (event) => {
     lines: lineRows,
     virtual_material_id: virtualMaterialId,
     client_request_id: clientRequestId || '',
+    quota: quotaOut,        // R643：{used, limit, remain, is_paid}；编辑已有卡（不占额度）时为 null
   };
 
   // 幂等登记：键必须走单源 shopKey()，与上面 findPriorResult 的**查重键同源** ——
