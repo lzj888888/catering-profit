@@ -26,6 +26,8 @@ const { isEstimatedCard } = require('../../../utils/cardEst.js');  // P0-3 估�
 
 // 本店填过的菜品分类（本地记忆，供下次点选；不新建集合、不上云 —— M3 v1.1 零新建集合红线）
 const EDIT_CATS_KEY = 'm3_dish_cats';
+// R666：分类候选的脏值判定（纯函数，便于真跑判据）
+const catFilter = require('../../../utils/categoryFilter.js');
 // 🔴 P0#7：新手/专业模式（与 M1 录入页同形）—— 本地记忆、按 shop 区分、换设备回默认
 const INPUT_MODE_KEY = 'card_input_mode_';
 
@@ -901,16 +903,29 @@ Page({
   },
   // 候选分类 = 当前值 + **本店填过的**（记住即复用，火锅店不会每次重打"锅底"）+ 建议池补齐。
   // 上限 14：再多会刷屏，且老板实际用的分类就那么几个。
+  // 🔴 R666（李老师反馈）：新建成本卡选「菜品分类」时，候选里冒出「猪肉 200g」这种**食材+用量**的词。
+  //
+  //   查证过程（都已排除）：预置表 `TERMS.card.dishCats` 是干净的（热菜/凉菜/荤菜…）；
+  //   写入点只存 `this.data.category`（老板自己填的）；导入按 `line.category` 匹配、默认空。
+  //   ⇒ **代码里找不到「猪肉 200g」变成分类的路径**，根因待定（可能是历史版本留下的脏数据、
+  //     或老板手填过）。**所以在入口做防御**：把明显不是分类的值挡在外面。
+  //
+  //   判据只挡「一眼是食材/用量」的，宁可漏挡不可误挡 ——
+  //   「大口吃肉」这种营销栏目名是老板有意为之（R626 已有教训：程序替他改字会造成"我明明填了却变了"）。
   buildCatChips(cur) {
     const seen = [];
     const push = (v) => {
       const s = String(v == null ? '' : v).trim();
       if (s && seen.indexOf(s) < 0) seen.push(s);
     };
+    // ⚠️ 当前值**不过滤**：万一已存的就是脏的，要让老板看见、能改；悄悄藏起来等于让他在错误的分类上继续存
     push(cur);
     let hist = [];
     try { hist = wx.getStorageSync(EDIT_CATS_KEY) || []; } catch (err) { hist = []; }
-    if (Array.isArray(hist)) hist.forEach(push);
+    // 历史里挡掉脏值（R666）—— 历史是自动累积的，脏一条会永久污染候选列表
+    if (Array.isArray(hist)) {
+      hist.forEach((v) => { if (!catFilter.isDirtyCat(v)) push(v); });
+    }
     (this.data.categoryOptions || TERMS.card.dishCats).forEach(push);
     return seen.slice(0, 14);
   },
