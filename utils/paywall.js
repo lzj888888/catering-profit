@@ -37,8 +37,19 @@ const PAYWALL_TYPES = ['saveLimit', 'export', 'combo', 'takeaway', 'dishreview',
  *   - onOrderCreated: (order) => void 下单成功回调（可选）
  *   - onCancel: 用户点「再想想/取消」回调（可选）
  */
+// 🔴 R663（队列 #117）：付费漏斗埋点。
+//   现状：`utils/track.js`（R646 建的最小埋点）**建好后零调用** —— 能力写了、没人用，
+//   和 R396 `anomalyRules`、R613 诊断页是同一类问题。本文件是付费墙唯一入口，
+//   在这里埋一次即可覆盖所有调用点，不必去 12 个页面各写一遍。
+//   ⚠️ `PAYWALL_ENABLED=false`（私域阶段）⇒ `openPaywall` 多数分支直接 return，
+//      真实会触发的是 `showFreeLimit`（配额用完）—— 那恰恰是漏斗最关键的节点。
+//   ⚠️ 只传枚举，禁传金额/菜名（track.js 硬约束第 2 条）。
+const track = require('./track.js').track;
+
 function openPaywall(type, opts) {
   if (PAYWALL_TYPES.indexOf(type) < 0) return; // 防误触发
+  // R663：记一次「付费墙被请求」。放在校验之后 —— 类型非法是代码缺陷，不该计入漏斗。
+  track('paywall_show', { type: type, on: PAYWALL_ENABLED ? '1' : '0' });
   // 🔴 提审期/免费期（PAYWALL_ENABLED=false）：不报价、不引导客服、不建单。
   //   ⚠️ R603 修正：能力类（export/combo/takeaway/dishreview/groupon）在免费期**根本不该走到这里**
   //      —— `utils/entitlement.js::fetchEntitlement` 已短路为 is_active=true，调用点自动放行。
@@ -85,6 +96,8 @@ function openPaywall(type, opts) {
  * 文案走 i18n 单源（TERMS.pay.iosBlocked*），禁硬编码。
  */
 function showIOSBlocked() {
+  // R663：iOS 被挡单独记 —— 它和"不想买"是完全不同的原因，混在一起会误判转化率。
+  track('paywall_ios_blocked', {});
   wx.showModal({
     title: TERMS.pay.iosBlockedTitle,
     content: TERMS.pay.iosBlockedBody,
@@ -126,6 +139,9 @@ function showNotOpen() {
  */
 function showFreeLimit(opts) {
   const isShop = opts.scope === 'shop';
+  // R663：配额撞顶 = 漏斗里最有信号的一步（老板真的到了"想加但加不了"）。
+  //   只记 scope 枚举（shop/card），不记张数金额。
+  track('free_limit_hit', { scope: isShop ? 'shop' : 'card' });
   const n = Number(opts.limit) || 0;
   const raw = isShop ? TERMS.pay.freeLimitShopBody : TERMS.pay.freeLimitCardBody;
   const body = n > 0 ? raw.replace('{n}', String(n)) : TERMS.pay.freeLimitGeneric;
