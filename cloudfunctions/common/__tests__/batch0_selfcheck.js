@@ -246,7 +246,7 @@ function check(name, cond, detail) {
     //    R402（2026-10-21）新增 shop_ai_consent / shop_ai_insight ⇒ 27 → 29（线上 dev 已建，补单源漂移）。
     //    A3（2026-11-05 批次 2）新增 shop_diagnosis_report / shop_diagnosis_credit ⇒ 29 → 31。
     //    R619（2026-11-08）新增 revenue_batch（营收日报表落库）⇒ 31 → 32。
-    check('点5·集合数=32', COLLECTIONS.length === 32, `len=${COLLECTIONS.length}`);
+    check('点5·集合数=33', COLLECTIONS.length === 33, `len=${COLLECTIONS.length}`);
     const gDev = gate('catering-dev-xxxxxx', '');
     const gProd = gate('catering-prod-xxxxxx', '');
     const gWhiteOk = gate('catering-dev-abc', 'catering-dev-abc');

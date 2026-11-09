@@ -213,6 +213,16 @@ const A15_EXEMPT = [
   /^cloudfunctions\/saveAsset\//,
   /^cloudfunctions\/calcSandbox\//,                    // round110：M2 契约 v2（service/validate/selftest）
   /^cloudfunctions\/common\/indicatorRef\.js$/,        // round110：新增指标参考库单源
+  // by=WorkBuddy / date=2026-11-09 / reason=R641 授权：频控落库（真修「内存 Map 在
+  //   serverless 下多实例不共享 = 等于没有频控」）。改动面必然很大，逐条列明、不放宽成全豁免：
+  //   ① common/rateLimit.js 重写（makeDbRateLimiter + SCOPE_LIMITS + fail open）
+  //   ② 每个函数目录下的 cx_rateLimit.js 是它的**派生副本**（sync_common 生成）⇒ 56 份同时变
+  //   ③ 接线：importSalesBill（导入）/ getDiagnosis（诊断）/ exportData（导出）三类重资源接口
+  //   ④ initDb/collections.js 登记 rate_limit_counter（initDb 已整体豁免，不另列）
+  /^cloudfunctions\/common\/rateLimit\.js$/,
+  /^cloudfunctions\/[^/]+\/cx_rateLimit\.js$/,
+  /^cloudfunctions\/importSalesBill\//,
+  /^cloudfunctions\/getDiagnosis\//,
   /^cloudfunctions\/common\/index\.js$/,               // round110：聚合入口挂载 indicatorRef
   // M3 v1.1 批次 A1（round120 登记）：免费配额「配置化 + 写侧真拦截」——
   //   额度由 checkQuota/service.js 常量迁至 feature_permissions 种子；saveCostCard 新增写侧拦截；
