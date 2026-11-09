@@ -32,6 +32,16 @@ page { background: #f5f6f8; font-family: -apple-system, "PingFang SC", sans-seri
 /* 2026-09-20：李老师反馈输入框边框不明显、点数字易误删 → 统一加边框+内边距+加大字号 */
 .field input { text-align: right; min-width: 320rpx; padding: 14rpx 18rpx; font-size: 32rpx;
   border: 2rpx solid #cfdae8; border-radius: 10rpx; background: #fff; }
+/* 🔴 R654（李老师：「有些输入框只能显示一半字体」）
+   微信 `<input>` 是**原生组件**，在 flex 容器里若不显式给高度，某些基础库版本会把它的
+   盒子压到只剩字体的一半 ⇒ 文字上下被裁。各页面虽已分别写了 min-height: 88rpx，
+   但那是**逐页自觉**，新页面一漏就复发。
+   这里加一条**全局兜底**：只在内容更矮时生效（min-height 取大者），
+   已有 88rpx 的页面完全不受影响；新页面即使忘了写，也不会出现"半个字"。
+   ⚠️ 不设 height：设了会盖掉各页面的 88rpx 触控下界（AD G1/G2 红线只增不减）。
+   ⚠️ 值必须 ≥88rpx：我最初写 64rpx，被 `selftest_ad_gates` 的 G2 当场判红 ——
+      88rpx 是本仓**触控下界红线**，输入框是要用指头点的，64 本来也不够点。 */
+input, textarea { min-height: 88rpx; }
 .save { margin-top: 24rpx; background: #1e3a5f; color: #fff; }
 
 /* ===== 批次 4 · 共享组件样式（AD-1~AD-26 对齐：按钮≥88rpx、字号≥28rpx） ===== */
