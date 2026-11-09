@@ -187,6 +187,7 @@ Page({
       exportBtn: TERMS.exportBtn.m1Report,
       aiPackBtn: TERMS.exportBtn.aiPackBtn,
       aiPackHint: TERMS.exportBtn.aiPackHint,
+      aiPackCopied: TERMS.exportBtn.aiPackCopied,
       aiPackLoading: TERMS.exportBtn.aiPackLoading,
       exportIng: TERMS.exp.exportIng,
       exportDone: TERMS.exp.exportDone,
@@ -956,8 +957,19 @@ Page({
         // 团购**不传**：按红线不进 M1，传了也会被装配层忽略（见 utils/grouponDerive.js 红线②）。
         channels: { takeaway: this._settleRaw || null },
       });
+      // 🔴 R646（会审 R638）：复制成功后带上**包号**，并埋点。
+      //   包号的价值：老板回头能指认"我发给 AI 的是哪一份"；我们也能据此对账。
+      const packText = pack.packToText(p);
       wx.setClipboardData({
-        data: pack.packToText(p),
+        data: packText,
+        success: () => {
+          require('../../../utils/track.js').track('ai_pack_copy', { pack_id: p.pack_id || '' });
+          wx.showModal({
+            title: this.data.t.aiPackBtn,
+            content: this.data.t.aiPackCopied.replace('{id}', p.pack_id || '—'),
+            showCancel: false,
+          });
+        },
         fail: () => wx.showModal({ title: this.data.t.aiPackBtn, content: this.data.t.aiPackFail, showCancel: false }),
       });
     } catch (e) {

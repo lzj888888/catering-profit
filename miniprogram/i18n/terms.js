@@ -3791,6 +3791,8 @@ const TERMS = {
     aiPackHint: '复制后可直接粘贴到你常用的 AI 里问；内容只有本月已算好的数字，不含预测。',
     aiPackEmpty: '本月还没有账本，先录入收入与费用再复制',
     aiPackFail: '复制没成功，请再试一次',
+    // R646（会审 R638）：复制成功后给出包号 + 引导 AI 解读。放最后一步，不打断主流程。
+    aiPackCopied: '已复制到剪贴板。\n包号 {id}\n\n直接粘给 WorkBuddy 或任意 AI 助手，它能读这份包给你出结论。',
     aiPackLoading: '正在整理诊断包…',
   },
 

@@ -20,6 +20,22 @@ const interp = require('./interpretation.js');
 
 const PACK_VERSION = 'ai-pack-1';
 
+/**
+ * 诊断包号（R646 · 会审 R638「带 pack_id」）。
+ * 🔴 必须是**确定性**的：同一份数据每次生成同一个号 ——
+ *   否则老板今天把包发给 AI、明天再发一次，号变了就对不上，包号反而制造混乱。
+ * 做法：FNV-1a 32 位 → 8 位十六进制。不用时间戳、不用随机数。
+ */
+function packId(month, shopBiz, shopCity, revenueFen, costFen) {
+  const seed = [month, shopBiz, shopCity, revenueFen, costFen].join('|');
+  let h = 0x811c9dc5;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+  }
+  return 'D' + month + '-' + ('0000000' + h.toString(16)).slice(-8);
+}
+
 // 5 个现成问题（老板可直接复制）。
 //   为什么固定 5 个而不是让 AI 自己想：老板不会提问，这才是他真正缺的东西。
 //   为什么同时保留 code 与 text：code 给机器（守卫/埋点/未来内嵌问答按 code 取术语文案），
@@ -192,8 +208,14 @@ function buildDiagnosisPack(input) {
     anomalies: anom,
   };
 
+  const mf = pickMoney(ledger);
   return {
     pack_version: PACK_VERSION,
+    // 🔴 R646：包号 —— 老板能拿它指认"我这份包"，也用于点击埋点对账
+    // ⚠️ 字段名取 MONEY_FIELDS 里的真实键（income_total_fen / gross_profit_fen），
+    //   写错键 ⇒ 包号里缺金额 ⇒ 改了金额号不变 ⇒ 包号失去指认意义（首跑就被 A-② 抓到）
+    pack_id: packId(i.month, shop.bizText, shop.cityText,
+      mf && mf.income_total_fen, mf && mf.gross_profit_fen),
     // 单位必须显式写死：AI 最容易犯的错就是把「分」当「元」⇒ 差 100 倍。
     units: 'money=fen(分); percent=百分数(45 表示 45%); ratio_pct=百分点差',
     month: String(i.month || ''),
@@ -397,6 +419,18 @@ function packToText(pack) {
 
   L.push('## 9 可以直接问的问题');
   q.forEach(function (x, idx) { L.push((idx + 1) + '. ' + (x.text || x.code)); });
+
+  // 🔴 R646（会审 R638）：末尾加「建议找 AI 解读」。
+  //   放在**最末尾**而不是开头：老板是先把包复制走、再看要不要深入，
+  //   放开头会打断「复制 → 粘贴」这个主流程。
+  L.push('');
+  L.push('---');
+  L.push('包号：' + (p.pack_id || '—'));
+  L.push('### 想更省事？让 AI 直接给你解读结论');
+  L.push('把上面**整段**原样发给 WorkBuddy（或任意 AI 助手），并说：'
+    + '「这是我的店算诊断包（包号 ' + (p.pack_id || '—') + '），请指出最该先改的三件事，'
+    + '每条给出预计能省/多赚多少钱，不要泛泛而谈。」');
+  L.push('> 包里的数字都是你店里真实的数，AI 只看这些，不会自己编。');
 
   return L.join('\n');
 }
