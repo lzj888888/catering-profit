@@ -33,8 +33,9 @@ const COLLECTIONS = [
   'shop_expense_item', 'shop_stored_value', 'shop_credit_ledger',
   'shop_dish_mapping', 'shop_ai_consent', 'shop_ai_insight',
   'shop_diagnosis_report', 'shop_diagnosis_credit',
-  'feature_permissions', 'anomaly_baseline', 'industry_band',
-  'audit_log', 'anomaly_config', 'feedback', 'app_config', 'region_config',
+  'feature_permissions', 'audit_log',
+  // 🔴 R655：同步删掉 6 个**单源里不存在**的集合名（见 ensureCollections 同处注释）。
+  //   备份不存在的集合会每次都记 failed ⇒ ok 永远 false ⇒ 告警疲劳，等于没有告警。
   // 🔴 R652：以下 7 个是**首跑守卫当场抓出来的漏备**（B-④ 从建库单源动态比对）。
   //   其中 external_sales_daily（外卖销量）与 revenue_batch（营收批次）是**真实业务数据**，
   //   user / admin_user / admin_login_log / subscription_plan / order_refund 也不能丢。
