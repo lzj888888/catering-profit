@@ -365,6 +365,21 @@ ok('L-③a 快照拼装层带上原单位口径（漏这层 ⇒ 字段到不了�
   /price_unit:/.test(SNAP_BLK) && /manual_price_fen:/.test(SNAP_BLK));
 ok('L-③b 落库层真的写进去（只校验/只拼装不落库＝还是丢）',
   /price_unit: ln\.price_unit/.test(SAVE_I) && /manual_price_fen: ln\.manual_price_fen/.test(SAVE_I));
+// 🔴 R640c：这条链是**五层**，实测被漏了三次（快照层、出参投影层）。
+//   最狠的一次：前四层全齐、门禁全绿，但「出参投影」是白名单 ⇒ 前端根本拿不到。
+//   ⇒ 一条判据横向扫全链，缺哪层直接点名。
+const GET_SVC = fs.readFileSync(P('cloudfunctions/getCostCard/service.js'), 'utf8');
+const CHAIN = [
+  ['提交', /manual_price_fen: api\.yuanToFen/.test(EDIT_JS)],
+  ['校验', /manual_price_fen:/.test(SAVE_V)],
+  ['快照', /price_unit:/.test(SNAP_BLK)],
+  ['落库', /manual_price_fen: ln\.manual_price_fen/.test(SAVE_I)],
+  ['出参', /manual_price_fen: doc\.manual_price_fen/.test(GET_SVC)],
+  ['读回', /l\.price_unit && l\.manual_price_fen > 0/.test(EDIT_JS)],
+];
+ok('L-③c 🔴 五层链路全通（提交→校验→快照→落库→出参投影）+ 读回，缺一层就点名',
+  CHAIN.every((x) => x[1]),
+  '缺口：' + (CHAIN.filter((x) => !x[1]).map((x) => x[0]).join(' / ') || '无'));
 ok('L-④ 读回按原单位还原；老卡（无这两字段）回落按克，不瞎猜',
   /l\.price_unit && l\.manual_price_fen > 0/.test(EDIT_JS)
   && /unitPriceYuan\b[\s\S]{0,120}yield_rate: '100'/.test(EDIT_JS));

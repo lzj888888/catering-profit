@@ -62,6 +62,14 @@ function lineToOutput(doc) {
     line_type: doc.line_type === 2 ? 2 : 1,    // 1 = 原料行 / 2 = 子卡行
     sub_card_ref: doc.sub_card_ref || '',
     sub_version: doc.sub_version != null ? doc.sub_version : 0,
+    // 🔴 R640c（真机第三次复测扒出来的）：本函数是**白名单投影** —— 没列在这里的字段一律不出参。
+    //   R639/R640b 把原单位口径加在「提交 → 校验 → 快照 → 落库」四层，
+    //   但**到这里被滤掉** ⇒ 前端拿不到 ⇒ 回落克价 ⇒ 老板看到的还是「0.00x 元/克」。
+    //   ⚠️ 这条链是五层：提交 → 校验 → 快照 → 落库 → **出参投影**，任何一层漏了都白做。
+    //   存量行缺这三个字段 ⇒ 给缺省值（fail-soft），前端据此回落克价，不瞎猜。
+    price_unit: doc.price_unit || '',
+    manual_price_fen: doc.manual_price_fen != null ? doc.manual_price_fen : 0,
+    manual_yield: doc.manual_yield != null ? doc.manual_yield : 0,
   };
 }
 

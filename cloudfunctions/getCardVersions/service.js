@@ -60,6 +60,10 @@ function lineToOut(doc) {
     line_type: doc.line_type === 2 ? 2 : 1,
     sub_card_ref: doc.sub_card_ref || '',
     sub_version: doc.sub_version != null ? doc.sub_version : 0,
+    // 🔴 R640c：与 getCostCard.lineToOutput 同字段集（这里的自测逐字段比对，漏一个就报）
+    price_unit: doc.price_unit || '',
+    manual_price_fen: doc.manual_price_fen != null ? doc.manual_price_fen : 0,
+    manual_yield: doc.manual_yield != null ? doc.manual_yield : 0,
   };
 }
 
