@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：257 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：258 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1501,6 +1501,8 @@ const SUITES = [
   ['money-hint', 'tools/check_money_hint.js'],
   // R646：诊断包推荐语（pack_id 确定性 + 末尾位置 + 埋点静默 + 不传敏感数据）
   ['ai-pack-advice', 'tools/check_ai_pack_advice.js'],
+  // R648：月报业态/地区切换（存 key 不存 _id；逐项存读闭环；云端真收字段）
+  ['month-scope', 'tools/check_month_scope.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

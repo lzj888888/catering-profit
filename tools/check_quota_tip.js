@@ -118,6 +118,15 @@ ok('R-④ 🔴 关闭态下撞配额文案**不得含**诱导词（价格/支付
   '命中：' + (hitWords(TPAY.freeLimitCardBody).concat(hitWords(TPAY.freeLimitGeneric)).join('/') || '无'));
 ok('R-⑤ 撞配额弹窗保持单一出口（showCancel:false）—— 关闭态不给任何付费入口',
   /showCancel:[ ]*false/.test(PAYWALL));
+// 🔴 R647（李老师 2026-11-09 拍板）：**免费档不给完整导出** ——「不能全给他白嫖」。
+//   会审 R636 段2 原稿里写过「可导出或升级」，但导出本身是付费能力（exportData 走 FEATURE_LOCKED）。
+//   若在撞配额弹窗里承诺"可导出"，等于给了一个我们并不打算兑现的出口：
+//   老板照着点 → 弹付费墙 → **比不承诺更伤人**。
+//   ⇒ 判据：这几条文案**不得出现导出/下载/Excel 类字样**。
+ok('R-⑦ 🔴 撞配额文案不得承诺「可以导出」（导出是付费能力，承诺了兑现不了更伤人）',
+  !/导出|下载|Excel|表格/.test(TPAY.freeLimitCardBody) && !/导出|下载|Excel|表格/.test(TPAY.freeLimitGeneric),
+  '检查：' + [TPAY.freeLimitCardBody, TPAY.freeLimitGeneric].filter((x) => /导出|下载|Excel|表格/.test(x)).length + ' 条命中');
+
 ok('R-⑥ 文案走 terms 单源（页面/paywall 不许硬编码中文）',
   !!TPAY.freeLimitCardBody && !!TPAY.freeLimitGeneric);
 
