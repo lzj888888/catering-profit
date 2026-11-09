@@ -20,6 +20,9 @@
     <text class="saved-txt">{{t.savedOk}}「{{savedName}}」· {{t.savedHint}}</text>
     <!-- 🔴 R643：还能建几张 —— 第 18 条就要说，不能等第 21 条被拒才让老板知道 -->
     <text class="quota-tip" wx:if="{{quotaTip}}">{{quotaTip}}</text>
+    <!-- 🔴 R644（会审 R637）：金额化 —— 「毛利率 18%」是会计语言，
+         「每卖一份亏 1.2 元」是他口袋里的语言。看一眼就会停下来。 -->
+    <text class="money-tip" wx:if="{{moneyTip}}">{{moneyTip}}</text>
     <view class="saved-go" bindtap="backToList">{{t.backToList}}</view>
   </view>
 

@@ -232,3 +232,6 @@
 
 /* R643：保存成功条里的额度提示 —— 不打断连续录入，也不会像 toast 一闪而过 */
 .quota-tip { display: block; font-size: 26rpx; color: #b45309; margin-top: 6rpx; }
+
+/* R644：金额化 —— 比毛利率更有冲击力，字号和颜色都要压得住 */
+.money-tip { display: block; font-size: 30rpx; font-weight: 600; color: #e74c3c; margin-top: 8rpx; }

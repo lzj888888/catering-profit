@@ -16,7 +16,9 @@ const dh = require('../../../utils/dataHealth.js');   // R628：判列表是否�
 const { openPaywall } = require('../../../utils/paywall.js');
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 const { TEMPLATES, applyTemplate } = require('../../../utils/dishTemplates.js');   // M3.20 菜品模板（只预填，不写库）
-const { CATEGORY_PRESETS, CONDIMENT_NAME, ENERGY_NAME } = require('../../../utils/categoryPresets.js');  // P0-2 品类默认模板（单源）
+const { CATEGORY_PRESETS, CONDIMENT_NAME, ENERGY_NAME } = require('../../../utils/categoryPresets.js');
+// 🔴 R644（会审 R637）：金额化单源 —— 把「毛利率 18%」变成「每卖一份亏 1.2 元」
+const { moneyHint } = require('../../../utils/moneyHint.js');
 // 🔴 R566：批量导入草稿的映射与暂存键（单源）—— 本页只消费，不自己拼字段名/键名
 const DI = require('../../../utils/dishImport.js');
 const DRAFT_PREFILL_KEY = DI.DRAFT_PREFILL_KEY;
@@ -303,6 +305,7 @@ Page({
     // round156：连续录入 —— 顶部「已保存」横幅记录刚存下的菜名；非空即显示（含返回列表出口）
     savedName: '',
     quotaTip: '',
+    moneyTip: '',
     saving: false,   // 防重复提交（连击保存会生成两个版本）
     // M3.16（批次 C）套餐：卡片类型（'1'=单品 / '3'=套餐）+ 子卡选择行 + 三个显示数。
     cardType: '1',
@@ -1721,7 +1724,14 @@ Page({
       } else {
         // round156（新增态）：**不跳走**。改前是 `setTimeout(navigateBack, 600)` —— 存一道菜就被踢回列表，
         //   录 30 道菜要来回 60 次（李老师「100 道菜品，来回查找会很麻烦」的痛点之一）。
-        this.afterSaved(card.name, out && out.quota);
+        // 🔴 R644（会审 R637）：金额化 —— 老板看得懂「亏 1.2 元」，看不懂「毛利率 18%」。
+        //   ⚠️ 出参名有历史包袱：`total_cost_fen` 实为**单份**成本（= result.unit_cost_fen）。
+        //   这里只算单份金额；总额必须等老板自己填销量（见 utils/moneyHint.js 头注）。
+        const oc = out || {};
+        const cFen = Number(oc.total_cost_fen) || 0;
+        const gFen = Number(oc.gross_profit_fen) || 0;
+        const mh = moneyHint(cFen, cFen + gFen, this.data.targetMargin);
+        this.afterSaved(card.name, oc.quota, mh.text);
       }
     } catch (e) {
       this.setData({ saving: false });
@@ -1737,7 +1747,7 @@ Page({
   //      **另存新版本**，第一道菜的内容被静默顶掉。这是**数据正确性**问题，不是手感问题。
   //   ✅ **刻意保留门店级默认**（核算模式 / 损耗率 / 辅料 / 分类 / 标签 / 目标毛利率）：
   //      连续录同一家店的同类菜时这些大概率一样，留着才叫"连续"。
-  afterSaved(name, quota) {
+  afterSaved(name, quota, moneyText) {
     // 🔴 R643（会审 R636 段1）：把「还能建 N 张」放进保存成功的常驻条。
     //   只对**未付费**且拿得到额度时提示；编辑已有卡（不占额度）云端 quota 为 null ⇒ 不提示。
     let quotaTip = '';
@@ -1748,6 +1758,7 @@ Page({
     }
     this.setData({
       quotaTip,
+      moneyTip: moneyText || '',   // R644：金额化（「每卖一份亏 1.2 元」）
       savedName: name || '',
       saving: false,
       // —— 这道菜特有的：清 ——
