@@ -1,4 +1,15 @@
-.val-input { text-align: right; font-size: 30rpx; width: 260rpx; }
+/* 🔴 R668（李老师真机续报）：不只是「菜品名称」，标签 / 制作损耗率 / 辅料分担 /
+   建议售价 / 活动特价 的输入框**全都截断**。这些字段共用 `.val-input` ⇒ 是普遍性问题，
+   只修 `.form .field .val-input` 那一条不够。
+   根因：全局 input{min-height:88rpx} 在带上下 padding 的盒子里被吃掉，且原生 input
+   的默认行盒按字号算 ⇒ 中文上下被裁。
+   修法（在**基础规则**上一次覆盖所有 .val-input）：
+     ① box-sizing:border-box + 上下 padding 归零 ⇒ 88rpx 全给内容区
+     ② line-height 与 min-height 同为 88rpx ⇒ 行盒与盒子对齐，不裁字
+   ⚠️ 仍不设 height：用 min-height 让盒子只增不减，用户调大系统字体时不会二次裁切。 */
+.val-input { text-align: right; font-size: 30rpx; width: 260rpx;
+  box-sizing: border-box; padding-top: 0; padding-bottom: 0;
+  min-height: 88rpx; line-height: 88rpx; }
 /* 菜品分类：自由输入 + 候选 chips。色值取 app.wxss 头注单源（墨蓝 #1e3a5f / 浅底 #e8eff7）；
    字号 28rpx = 新增字号下界（26rpx 必红）。 */
 .cat-input { width: 100%; box-sizing: border-box; text-align: left; font-size: 32rpx; padding: 16rpx 20rpx; background: #f3f7fb; border-radius: 12rpx; min-height: 88rpx; }
@@ -121,7 +132,14 @@
   flex-wrap: wrap;
 }
 .form .field .lbl { flex: 0 0 auto; padding-right: 16rpx; }
-.form .field .val-input { flex: 0 0 auto; width: 220rpx; min-width: 0; box-sizing: border-box; }
+/* 🔴 R668（李老师真机：「菜品名称」输入框汉字只露下半截）
+   根因：本规则用了 box-sizing:border-box，而全局 input{min-height:88rpx} 在这模式下
+   **把上下 padding(14rpx×2) 也算进 88rpx** ⇒ 内容区只剩 60rpx，中文被裁掉上半/下半。
+   横向扫全仓 wxss：这是唯一一个 border-box 却没显式给高度/行高的 input 规则。
+   修法：① 上下 padding 归零（左右保留，不影响对齐）② 显式 min-height + line-height。
+   ⚠️ 不设 height：会盖掉各页面的触控下界（R654 已踩过 64rpx 被 G2 判红）。 */
+.form .field .val-input { flex: 0 0 auto; width: 220rpx; min-width: 0; box-sizing: border-box;
+  padding-top: 0; padding-bottom: 0; min-height: 88rpx; line-height: 1.5; }
 .form .field .mode-group { flex: 1; justify-content: flex-end; }
 .form .field .muted { flex: 0 0 100%; padding: 0 0 10rpx; line-height: 1.45; }
 /* ⚠️ 88rpx 是 AD-G2 触控下界，不能为紧凑再压 */

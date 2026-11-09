@@ -41,7 +41,10 @@ page { background: #f5f6f8; font-family: -apple-system, "PingFang SC", sans-seri
    ⚠️ 不设 height：设了会盖掉各页面的 88rpx 触控下界（AD G1/G2 红线只增不减）。
    ⚠️ 值必须 ≥88rpx：我最初写 64rpx，被 `selftest_ad_gates` 的 G2 当场判红 ——
       88rpx 是本仓**触控下界红线**，输入框是要用指头点的，64 本来也不够点。 */
-input, textarea { min-height: 88rpx; }
+/* 🔴 R668：R654 只补了 min-height，没补行高。当某页自己加了 box-sizing:border-box
+   且带上下 padding 时，88rpx 被 padding 吃掉 ⇒ 中文仍被裁（李老师今天又复现了一次）。
+   ⇒ 兜底再加一条显式行高；border-box 页面自己负责把上下 padding 归零。 */
+input, textarea { min-height: 88rpx; line-height: 1.5; }
 .save { margin-top: 24rpx; background: #1e3a5f; color: #fff; }
 
 /* ===== 批次 4 · 共享组件样式（AD-1~AD-26 对齐：按钮≥88rpx、字号≥28rpx） ===== */
