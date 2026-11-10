@@ -285,27 +285,20 @@ ok('H-⑤ stale 的数字要变灰（看得出这不是当前值）',
 // 老板实测：选「卤味烧腊」出来黄卡（调料+五花肉）；换成「热炒蔬菜」**底下纹丝不动**；
 // 而且想取消品类取消不了（「必须得选一个」）。
 // 根因：预填只在「空卡」时执行 ⇒ 换品类时卡已不空，②③ 全跳过。
-sec('I 品类模板跟着换 + 可取消');
-const PICK = fnBody('onPickCategory');
-const CLEAR = fnBody('onClearCategory');
-
-ok('I-① 🔴 换品类要丢掉旧品类的预填行（否则五花肉永远留在那儿）',
-  /droppedPreset/.test(PICK) && /filter\(\(l\)\s*=>\s*!\(l\s*&&\s*l\.isPreset\)\)/.test(PICK));
-
-ok('I-② 用户自己填的行绝不能被丢（只删 isPreset；用户动过的行已被 editLineStripPreset 摘标）',
-  /isPreset/.test(PICK) && !/filter\(\(l\)\s*=>\s*l\.material_id\)/.test(PICK));
-
-ok('I-③ 换品类后要补新品类示例主料（条件必须含 droppedPreset，不能只看空卡）',
-  /\(wasEmpty \|\| droppedPreset\)/.test(PICK) && /sample_lines/.test(PICK));
-
-ok('I-④ 品类可清除（真机实测「必须得选一个」）',
-  !!CLEAR && /catPicked:.{0,3}-1/.test(CLEAR));
-
-ok('I-⑤ wxml 真的给了清除入口（写了不接 = 白写）',
-  /catchtap="onClearCategory"/.test(WXML_E));
-
-ok('I-⑥ 清除只撤系统预填行（用户自己的行一条不动）',
-  /filter\(\(l\)\s*=>\s*!\(l\s*&&\s*l\.isPreset\)\)/.test(CLEAR));
+// 🔴 R675：I 组整组改造。原来守「换品类丢旧预填行 / 可取消」（I-①~⑥）。
+//   2026-11-10 品类默认模板删除后，这些判据全部失效。
+//   **不重复造守卫**：删干净与否的完整判据在 `check_m3_page_behavior` 的 S/R/Y 组，
+//   这里只留一条最要紧的**回归防线**：确认编辑页真的没再引用那三个方法，
+//   否则页面会出现「绑定了不存在的方法」——点下去报 `is not a function`，界面像卡死。
+sec('I 品类默认模板已删（回归防线）');
+// SRC 在文件头已 stripComments（第 26 行）⇒ 直接用它，不再重复剥一次
+const EDIT_CODE_I = SRC;
+ok('I-① 🔴 编辑页代码里不再有 onPickCategory / onClearCategory / onToggleEnergy',
+  ['onPickCategory', 'onClearCategory', 'onToggleEnergy'].every((m) => EDIT_CODE_I.indexOf(m) < 0));
+ok('I-② 🔴 wxml 也不再绑定它们（方法删了界面还绑着 ⇒ 点击报 is not a function）',
+  ['onPickCategory', 'onClearCategory', 'onToggleEnergy'].every((m) => WXML_E.indexOf(m) < 0));
+ok('I-③ 🔴 出净率有接手方：套模板读 r.yield_rate + 选原料调 yieldOf（否则整鱼按 100 算，低估 35%）',
+  /String\(r\.yield_rate/.test(EDIT_CODE_I) && /yieldOf\(/.test(EDIT_CODE_I));
 
 // ============ J 二次实测：删用量要清空、且不用收键盘也能看结果（R637）============
 // 老板二次实测：①「把用量去掉，单份成本还是卡死在那儿」②「输的时候弹键盘，要看结果得先收键盘再滑到底」

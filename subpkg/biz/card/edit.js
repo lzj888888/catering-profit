@@ -15,14 +15,16 @@ const AmountInput = require('../../../utils/amountInput.js');
 const dh = require('../../../utils/dataHealth.js');   // R628：判列表是否被截断（数据不全就不给排名）   // R426（队列 #32）：金额栏体检（纯判定，不改数）
 const { openPaywall } = require('../../../utils/paywall.js');
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
-const { TEMPLATES, TEMPLATE_CATS, templatesByCat, applyTemplate } = require('../../../utils/dishTemplates.js');   // M3.20/R671 菜品模板（只预填，不写库）
-const { CATEGORY_PRESETS, CONDIMENT_NAME, ENERGY_NAME } = require('../../../utils/categoryPresets.js');
+const { TEMPLATES, TEMPLATE_CATS, templatesByCat, applyTemplate, yieldOf } = require('../../../utils/dishTemplates.js');   // M3.20/R671 菜品模板（只预填，不写库）
+// 🔴 R675：品类预设（CATEGORY_PRESETS / CONDIMENT_NAME / ENERGY_NAME）在编辑页**不再引用**。
+//   文件本身保留 —— 导入 Excel（import.js / dishImport.js）还在用它识别菜品分类。
 // 🔴 R644（会审 R637）：金额化单源 —— 把「毛利率 18%」变成「每卖一份亏 1.2 元」
 const { moneyHint } = require('../../../utils/moneyHint.js');
 // 🔴 R566：批量导入草稿的映射与暂存键（单源）—— 本页只消费，不自己拼字段名/键名
 const DI = require('../../../utils/dishImport.js');
 const DRAFT_PREFILL_KEY = DI.DRAFT_PREFILL_KEY;
-const { isEstimatedCard } = require('../../../utils/cardEst.js');  // P0-3 估算卡判定（单源）
+// 🔴 R675：`isEstimatedCard` 不再引入 —— 估算卡机制随品类默认模板一起删了，编辑页不再产生 isPreset 行。
+//   utils/cardEst.js 本身保留（导入路径 dishImport.js 仍在用）。
 
 // 本店填过的菜品分类（本地记忆，供下次点选；不新建集合、不上云 —— M3 v1.1 零新建集合红线）
 const EDIT_CATS_KEY = 'm3_dish_cats';
@@ -138,10 +140,8 @@ Page({
       pastePlaceholder: TERMS.card.pastePlaceholder,
       pasteParseBtn: TERMS.card.pasteParseBtn,
       pasteImportBtn: TERMS.card.pasteImportBtn,
-      catFrom: TERMS.card.catFrom,
-      catPickPh: TERMS.card.catPickPh,
-      catHint: TERMS.card.catHint,
-    catClear: TERMS.card.catClear,
+      // 🔴 R675：catFrom / catPickPh / catHint / catClear 四条映射已删 ——
+      //   它们对应的 wxml 元素（品类默认模板）整块删掉了，留着就是「映射到不存在的界面」。
       estRowTag: TERMS.card.estRowTag,
       estCardHint: TERMS.card.estCardHint,
       save: TERMS.card.save,
@@ -249,9 +249,9 @@ Page({
       loadMissingBody: TERMS.card.loadMissingBody,
       loadRetry: TERMS.card.loadRetry,
       loadBack: TERMS.card.loadBack,
-      // 三司会诊裁定（2026-10-29）：燃气燃料分摊开关文案 + 成本预览口径标注
-      energyToggle: TERMS.card.energyToggle,
-      energyHint: TERMS.card.energyHint,
+      // 🔴 R675：energyToggle / energyHint 两条映射已删（燃气分摊开关随品类一起删了 ——
+      //   燃气属期间费用，M1 月度支出已有真实账单科目，菜品级不再重复摊）。
+      //   costNote 保留：它标的是「成本预览口径」，与燃气无关。
       costNote: TERMS.card.costNote,
     },
     // R234/J4f：行内长提示折叠（本页 1 处，默认收起）。仓内统一实现。
@@ -337,17 +337,9 @@ Page({
     tplCatNames: TEMPLATE_CATS.map((c) => c.label),
     tplCatIdx: -1,
     tplKeys: [],          // 当前品类下的 tpl_key 列表（onPickTemplate 用它换算）
-    // P0-2 品类默认模板：选品类后预填出净率/损耗/调料油火/示例主料
-    catOptions: CATEGORY_PRESETS.map((c) => c.label),
-    catPicked: -1,
-    catYieldDefault: '',
-    catLabel: '',
-    // P0-2×三司会诊：燃气燃料分摊是否计入（仅高耗能品类 cat.energy_fen>0 时可开）。默认不进卡。
-    energyOn: false,
-    energyFen: 0,
-    // P0-3 估算卡：hasPreset=本卡是否仍含系统估行；estBanner=卡片级横幅文案（含品类名）
-    hasPreset: false,
-    estBanner: '',
+    // 🔴 R675：品类默认模板（catOptions/catPicked/catYieldDefault/catLabel）与
+    //   燃气分摊（energyOn/energyFen）、估算卡横幅（hasPreset/estBanner）**全部删除**。
+    //   原因见 edit.wxml 顶部注释。出净率改由模板行自带 + 选原料时按原料自动带出。
   },
 
   // R234/J4f：行内提示折叠开关（仓内统一形态 —— 多页同一实现）。
@@ -399,16 +391,15 @@ Page({
 
   // load() 完成 setData(init) 后调用（此时 materials 已就位，commitLines 的换算说明才算得出来）
   applyDraftPrefill(p) {
-    const catIdx = p.catKey ? CATEGORY_PRESETS.findIndex((c) => c.key === p.catKey) : -1;
+    // 🔴 R675：不再回填品类索引/catLabel（品类默认模板已删）。
+    //   `category` 只当**纯标签**回填（列表筛选还在用），不参与任何计算。
     this.setData({
       name: p.name,
       priceYuan: p.priceYuan,
-      category: p.category,
-      catLabel: p.catLabel,
-      catPicked: catIdx,
+      category: p.category || '',
       lossRate: p.lossRate,
     });
-    // 有示例主料才覆盖明细行；没有（未识别品类）就保留 load() 给的那一行空行
+    // 有预填行才覆盖；没有就保留 load() 给的那一行空行
     if (p.lines && p.lines.length) this.commitLines(p.lines);
   },
 
@@ -470,6 +461,13 @@ Page({
       spec_hint: this.specHintOf(m),
       // round151：换原料 ⇒ 跨族提示要跟着换（提示取决于该原料的采购单位）
       unit_warn: this.unitWarnOf(m, lines[idx]),
+      // 🔴 R675：**选原料时按原料自动带出出净率**（草鱼 65 / 里脊 95 / 叶菜 78）。
+      //   为什么必须有这一步：品类默认模板删掉后，手工行没人给净率了 ——
+      //   若一律按 100 算，老板选「草鱼」成本会**低估 35%**，而且界面毫无提示。
+      //   ⚠️ 只在该行还是「空/默认 100」时才覆盖：老板自己改过的值（如他买的是现成鱼片填 100）
+      //      不能被机器改回去 —— R626 踩过「我明明填了却变了」。
+      yield_rate: (!lines[idx].yield_rate || String(lines[idx].yield_rate) === '100')
+        ? String(yieldOf(m.name)) : lines[idx].yield_rate,
     });
     this.editLineStripPreset(idx, lines);
   },
@@ -708,113 +706,24 @@ Page({
     }
   },
 
-  // ===== P0-2 品类默认模板 × 三司会诊裁定：选品类 → 预填出净率/损耗/调料(含油盐酱醋)/示例主料（均可改）=====
-  // 口径（2026-10-29）：火=燃气燃料费属期间费用，不进默认食材毛利率；故默认只带「调料(含油盐酱醋)」，
-  //   燃气燃料作可选折叠项（仅高耗能品类 cat.energy_fen>0 可开），默认不进卡。
-  // 只给「行业默认估算」，不替老板定死：所有预填值用户都能改；出净率留空回退到品类默认（fail-closed）。
-  onPickCategory(e) {
-    const i = Number(e.detail.value);
-    const cat = CATEGORY_PRESETS[i];
-    if (!cat) return;
-    const y = String(cat.yield_rate);
-    // 🔴 R568：判据从「行数为 0」改为「没有任何已填内容」。
-    //   改前 `lines.length === 0` 对新建页**恒假**——`load()` 初始化就塞了一行空原料行（emptyLine），
-    //   于是下面 ③「空卡补示例主料」整段成了死代码。实测（模拟器，2026-10-29）：
-    //   新建 → 选「热炒荤菜」只得到调料行 ⇒ 单份成本 ¥0.51、毛利率 **98.66%** ——
-    //   品类预填承诺的「示例主料」没进来，成本低估 ⇒ 一张看着很赚的**假数卡**。
-    //   判据取「空行」而非「行数」：出厂空行 = 没有 material_id、没有行名、没有用量。
-    const isBlankLine = (l) => !String((l && l.material_id) || '').trim()
-      && !String((l && l.material_name) || '').trim()
-      && !String((l && l.qty) || '').trim();
-    const wasEmpty = this.data.lines.length === 0 || this.data.lines.every(isBlankLine);
-    // 🔴 R636（真机实测）：原来 `wasEmpty ? [] : slice()` —— **换品类时卡已不空，
-    //   于是 ②③ 全跳过 ⇒ 旧品类的「五花肉/调料」原地不动，老板换了品类看起来毫无反应**。
-    //   修法：把「系统预填行」（isPreset）先丢掉，**用户自己的行一条不动**（他们被 editLineStripPreset
-    //   摘掉 isPreset 后就不再是"系统预估"，绝不会被误删）。
-    const droppedPreset = !wasEmpty && this.data.lines.some((l) => l && l.isPreset);
-    let lines = wasEmpty ? [] : this.data.lines.filter((l) => !(l && l.isPreset)).slice();
-    // ① 已有手工行若仍是出厂默认 100，套品类默认出净率
-    lines = lines.map((l) => (l.input_type === 2 && (l.yield_rate === '100' || !l.yield_rate)
-      ? Object.assign({}, l, { yield_rate: y }) : l));
-    // ② 调料(含油盐酱醋)：没有则追加一条手动行，预填默认每份单价（line_kind='main'，规避引擎拒 line_kind）
-    const hasCond = lines.some((l) => (l.material_name || '') === CONDIMENT_NAME);
-    if (!hasCond) {
-      lines.push(Object.assign(emptyManualLine(), {
-        material_name: CONDIMENT_NAME,
-        qty: '1', qty_unit: '份', price_unit: '份',
-        unit_price_yuan: (cat.condiment_fen / 100).toFixed(2),
-        yield_rate: '100', line_kind: 'main', isPreset: true,
-      }));
-    }
-    // ②b 燃气燃料分摊：默认不进卡。切到「无能源建议值」的品类时清掉残留燃料行（重选场景）
-    const energyFen = Number(cat.energy_fen) || 0;
-    if (energyFen <= 0) {
-      lines = lines.filter((l) => (l.material_name || '') !== ENERGY_NAME);
-    }
-    // ③ 空卡（首建）或**从别的品类换过来**（丢了旧预填行）⇒ 补新品类示例主料（价格留空，黄标可改）
-    if ((wasEmpty || droppedPreset) && Array.isArray(cat.sample_lines)) {
-      for (const s of cat.sample_lines) {
-        lines.push(Object.assign(emptyManualLine(), {
-          material_name: s.name, qty: String(s.qty), qty_unit: s.unit,
-          yield_rate: y, isPreset: true,
-        }));
-      }
-    }
-    this.setData({
-      lossRate: String(cat.loss_rate),
-      catYieldDefault: y,
-      catLabel: cat.label,
-      catPicked: i,
-      energyOn: false,           // 重选品类 ⇒ 复位开关（燃料默认不进卡）
-      energyFen,
-      lines: renumber(lines),
-      hasPreset: true,
-      estBanner: TERMS.card.estCardBanner.replace('{cat}', cat.label),
-    });
-    this.refreshSpecHints();
-    this.checkAmounts();
-  },
-  // 🔴 R636（真机实测）：「品类」这个下拉**选了就取消不了**——老板原话「想取消还不行，必须得选一个」。
-  //   清除 = 只撤掉**系统预填行**（isPreset），用户自己填的行一条不动。
-  //   ⚠️ 不复用 picker 的「首项=不选」写法：那要把 catPicked 全部 +1 偏移，改动面大且容易越界；
-  //      这里用一个显式按钮，语义更直白（按了就是"不要这个品类了"）。
-  onClearCategory() {
-    const kept = (this.data.lines || []).filter((l) => !(l && l.isPreset));
-    this.setData({
-      category: '',
-      catLabel: '',
-      catPicked: -1,
-      catYieldDefault: '',
-      lossRate: '',
-      energyOn: false,
-      energyFen: 0,
-      lines: renumber(kept.length ? kept : [emptyManualLine()]),
-      hasPreset: false,
-      estBanner: '',
-    });
-    this.refreshSpecHints();
-    this.refreshHint();
-    this.scheduleLive();
-  },
+  // 🔴 R675（李老师：「这道菜属于哪类」可以删除了）：原 `onPickCategory` / `onClearCategory`
+  //   / `onToggleEnergy` 三个方法**整段删除**，不是注释掉。
+  //
+  //   删掉的是什么（三个方法一共扛了 7 件事）：
+  //     示例主料行（荤菜→猪肉150克）· 调料每份 0.5 元 · 损耗率 · 出净率（catYieldDefault）
+  //     燃气分摊 · 品类标签 catLabel · 估算卡横幅
+  //
+  //   为什么删：
+  //   ① **示例主料是错的起点**：老板建「宫保鸡丁」拿到「猪肉 150 克」，不改就存 ⇒ 一张看着
+  //      很赚的假数卡；全删重填 ⇒ 比从零填还多两步。**错的起点比空白更糟。**
+  //   ② 调料 0.5 元/份、燃气 0.15~0.4 元/份**都没有出处**（当初按授权拍的）。
+  //      燃气更严重：它属**期间费用**（categoryPresets.js:14 会诊已裁定不进单品毛利率），
+  //      而 M1 月度支出里已有「燃气费」真实账单 ⇒ 菜品级再分摊一次＝**同一笔钱记两处**。
+  //   ③ 出净率改由模板行自带（R674 `YIELD_RULES` 按原料给：里脊 95 / 整鱼 65 / 叶菜 78），
+  //      比「按品类一个值兜全部」准得多 —— 这是删品类**必须先做**的前置。
+  //
+  //   保留：`category` 字段（列表筛选/搜索还在用），入口在「更多设置」里当**纯标签**，不参与任何计算。
 
-  // ===== 三司会诊裁定·燃气燃料分摊开关：仅高耗能品类（energyFen>0）可开；开 ⇒ 追加燃料行，关 ⇒ 移除 =====
-  onToggleEnergy(e) {
-    const on = !!e.detail.value;
-    let lines = this.data.lines.slice();
-    const hasEnergy = lines.some((l) => (l.material_name || '') === ENERGY_NAME);
-    if (on && !hasEnergy && this.data.energyFen > 0) {
-      lines.push(Object.assign(emptyManualLine(), {
-        material_name: ENERGY_NAME,
-        qty: '1', qty_unit: '份', price_unit: '份',
-        unit_price_yuan: (this.data.energyFen / 100).toFixed(2),
-        yield_rate: '100', line_kind: 'main', isPreset: true,
-      }));
-    } else if (!on && hasEnergy) {
-      lines = lines.filter((l) => (l.material_name || '') !== ENERGY_NAME);
-    }
-    this.setData({ energyOn: on });
-    this.commitLines(lines);   // 重排 + 同步 hasPreset / 横幅
-  },
   // 子卡选择（picker 按 index 取）
   onComboSubCard(e) {
     const idx = Number(e.currentTarget.dataset.idx);
@@ -1051,7 +960,9 @@ Page({
     const idx = Number(e.currentTarget.dataset.idx);
     const val = (e && e.detail && e.detail.value) || 'archive';   // 'archive' | 'manual'
     const lines = this.data.lines.slice();
-    lines[idx] = val === 'manual' ? Object.assign(emptyManualLine(), { yield_rate: this.data.catYieldDefault || '100' }) : emptyLine();
+    // 🔴 R675：出净率不再借品类默认值。新建行还不知道是什么原料 ⇒ 先按 100（不做任何损耗假设），
+    //   老板选定原料后由 applyPickedMaterial 按**原料**自动带出（草鱼 65 / 里脊 95 / 叶菜 78）。
+    lines[idx] = val === 'manual' ? Object.assign(emptyManualLine(), { yield_rate: '100' }) : emptyLine();
     this.commitLines(lines);
   },
   // 手工行：名称 / 单价 / 出成率
@@ -1253,7 +1164,9 @@ Page({
 
   commitLines(lines) {
     const rn = renumber(lines);
-    this.setData({ lines: rn, hasPreset: isEstimatedCard(rn), estBanner: isEstimatedCard(rn) ? TERMS.card.estCardBanner.replace('{cat}', this.data.catLabel || '品类') : '' });
+    // 🔴 R675：不再同步 hasPreset / estBanner —— 估算卡机制随品类默认模板一起删掉了
+    //   （编辑页已经**不可能**产生 isPreset 行，横幅永远不显示，留着就是死代码）。
+    this.setData({ lines: rn });
     this.scheduleLive();          // R624：料一变，成本与毛利率自己跟着变
     this.refreshHint();           // R625：同时更新「还差哪个数」
     return rn;
@@ -1681,7 +1594,10 @@ Page({
           });
           costFen = d.unit_cost_fen || 0;
         } catch (e) { /* 预警失败不阻断 */ }
-        if (costFen > 0 && priceFen < costFen && !this.data.hasPreset) {
+        // 🔴 R675：条件里的 `!hasPreset` 去掉 —— 原来「估算卡不弹警告」是因为按品类估的成本不准，
+        //   弹了会误伤。现在没有估算了（成本全部来自模板行自带出净率 + 老板自己填的单价），
+        //   **售价低于成本就是真要亏**，必须弹。
+        if (costFen > 0 && priceFen < costFen) {
           wx.showModal({
             title: TERMS.card.warnPriceBelowCost,
             content: TERMS.card.warnPriceBelowCost,

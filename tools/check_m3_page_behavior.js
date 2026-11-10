@@ -15,14 +15,18 @@
 //   · 本套件 = **行为**面（页面源码真 require + 真调 onPickCategory，看 setData 真正送出什么）。
 //   ⚠️ 抄一份循环出来测会掩盖「页面根本没接上」（R298Y 教训：**读到了 ≠ 送出去了**）。
 //
-// 判据（A 空卡 / B 已有真行 / C 全品类 / D 变异回灌 / G 导入页剪贴板 / S 自失效）：
-//   A 空卡（只有出厂空行）⇒ 必须带出示例主料（猪肉/青椒）+ 调料，且**不留出厂空行**
-//   B 已有真行再选品类 ⇒ 示例主料**不得重复追加**，原有行保留
-//   C 11 个品类逐一 ⇒ 每个都至少带出 1 条非调料示例行（防「换个品类又漏」）
-//   D 变异：把判据改回 `lines.length === 0` ⇒ A-①/② 必须转红（否则本守卫是假绿）
-//   G 导入页「从剪贴板粘贴」（R570-G）：绑定在场 / 有内容就填并自动出预览 / 已有内容**追加不覆盖** /
+// 🔴 R675（2026-11-10）本套件**改造成反向守卫**。
+//   历史：R568~R636 它测「选品类后到底预填了什么」（A 空卡 / B 已有行 / C 11 品类 / D 变异）。
+//   李老师决定删掉「这道菜属于哪类」后，那些判据全部失效。
+//   **删功能不等于丢掉守卫** —— 改成守三件事：
+//     S 品类默认模板**删干净了**（方法/wxml 界面/燃气开关/估算卡横幅，剥注释后判）
+//     R 没删过头（category 字段仍在、列表筛选仍用、品类预设文件与 cardEst 保留给导入路径）
+//     Y 🔴 **出净率不能掉回 100** —— 品类原本是唯一给净率的人，它一走必须有接手方：
+//        模板行自带（applyTemplate 输出 yield_rate）+ 选原料时按原料联动（yieldOf）
+//     M 变异回灌：把 onPickCategory 加回 / 去掉 yield_rate / 去掉 yieldOf ⇒ 对应判据必须转红
+//   G 导入页「从剪贴板粘贴」（R570-G，与品类无关，**原样保留**）：
+//     绑定在场 / 有内容就填并自动出预览 / 已有内容**追加不覆盖** /
 //     剪贴板空与读失败都要说人话 / API 缺失不崩 / 变异回灌（改成覆盖式必须转红）
-//   S 自失效护栏：页面源码可达 / onPickCategory 在场 / 品类单源非空 / A 组样本确有区分力
 //
 // fail-closed：源码缺失 / 捕获不到 Page 配置 / 变异不转红 ⇒ 一律判红，绝不静默跳过。
 
@@ -98,97 +102,87 @@ const blankOf = (lines) => (lines || []).filter(
   (l) => !String(l.material_id || '').trim() && !String(l.material_name || '').trim() && !String(l.qty || '').trim()
 ).length;
 
-// ============ S 自失效护栏 ============
-console.log('\n===== S 自失效护栏：扫描面非退化 + 关键锚点在场 =====');
-check('S1 编辑页源码存在且可读', fs.existsSync(EDIT) && fs.readFileSync(EDIT, 'utf8').length > 1000);
-let origSrc = '';
-try { origSrc = fs.readFileSync(EDIT, 'utf8'); } catch (e) { /* S1 已红 */ }
-check('S2 源码含 onPickCategory 定义', /onPickCategory\s*\(/.test(origSrc));
-let presets = null;
-try { presets = require(PRESETS).CATEGORY_PRESETS; } catch (e) { /* C 组会红 */ }
-check('S3 品类单源非空且含 sample_lines', Array.isArray(presets) && presets.length > 0
-  && presets.every((c) => Array.isArray(c.sample_lines) && c.sample_lines.length > 0),
-  presets ? presets.length + ' 个品类' : 'require 失败');
+// ============ S 🔴 品类默认模板已删干净（R675 反向守卫）============
+// 为什么从「正向测预填」改成「反向守删除」：
+//   2026-11-10 李老师决定删掉「这道菜属于哪类」，理由是
+//     ① 示例主料是错的起点（建宫保鸡丁也拿到「猪肉 150 克」）；
+//     ② 调料 0.5 元/份、燃气 0.15~0.4 元/份都没出处；
+//     ③ 燃气属期间费用（M1 已有真实账单科目），菜品级再摊一次＝同一笔钱记两处。
+//   功能删掉后旧判据全部失效 —— **但删功能不等于丢掉守卫**：
+//     删不干净（方法删了 wxml 还留着 picker）⇒ 老板一点就报错；
+//     被偷偷加回来 ⇒ 那三条错误重新成立，必须有人重新审。
+console.log('\n===== S 品类默认模板已删干净（剥注释后判，防「注释里写着删了」假绿）=====');
+// EDIT 在文件头已声明，这里只补 WXML/LIST/TPL（避免重复声明）
+const WXML = path.join(ROOT, 'subpkg', 'biz', 'card', 'edit.wxml');
+const LIST = path.join(ROOT, 'subpkg', 'biz', 'card', 'index.js');
+const TPL = path.join(ROOT, 'utils', 'dishTemplates.js');
+const readIf = (f) => { try { return fs.readFileSync(f, 'utf8'); } catch (e) { return ''; } };
+// 剥注释：否则「注释里说明为什么删掉 onPickCategory」会被判成「方法还在」
+const stripC = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const editSrc = readIf(EDIT);
+const editCode = stripC(editSrc);
+const wxmlCode = stripC(readIf(WXML));
 
-let base = null;
-try { base = loadPage(origSrc, '原文件'); } catch (e) { check('S4 页面源码可加载', false, e.message); }
-check('S4 页面源码可加载且捕获到 onPickCategory', !!(base && typeof base.cfg.onPickCategory === 'function'));
+check('S1 编辑页源码存在且可读', editSrc.length > 1000, editSrc.length + ' 字符');
+['onPickCategory', 'onClearCategory', 'onToggleEnergy'].forEach((m, i) => {
+  check('S' + (2 + i) + ' 🔴 `' + m + '` 已删除（代码里不得出现）',
+    editCode.indexOf(m) < 0, editCode.indexOf(m) < 0 ? '已删' : '仍在代码中');
+});
+check('S5 🔴 「选品类」picker 已从界面删除（方法删了但界面还在 ⇒ 点了报错）',
+  wxmlCode.indexOf('onPickCategory') < 0 && wxmlCode.indexOf('catOptions') < 0);
+check('S6 🔴 「燃气燃料分摊」开关已删（期间费用，M1 已有真实账单，菜品级不再摊）',
+  wxmlCode.indexOf('energyFen') < 0 && wxmlCode.indexOf('onToggleEnergy') < 0);
+check('S7 🔴 「估算卡」黄底横幅已删（没有品类预填了，就不存在"估算卡"）',
+  wxmlCode.indexOf('est-banner') < 0 && wxmlCode.indexOf('hasPreset') < 0);
 
-// ============ A 空卡（只有出厂空行）============
-console.log('\n===== A 空卡：必须带出示例主料，且不留出厂空行 =====');
-const EMPTY_LINE = { input_type: 1, material_id: '', material_name: '', qty: '', qty_unit: '克', spec_hint: '', line_kind: 'main' };
-let aLines = null;
-try {
-  const p = newPage(base.cfg, [EMPTY_LINE]);
-  p.onPickCategory({ detail: { value: 0 } });     // 0 = 热炒荤菜
-  aLines = p.data.lines;
-} catch (e) { check('A0 onPickCategory 可执行', false, e.message); }
-const aNames = namesOf(aLines);
-check('A-① 空卡选品类后至少 3 行（调料 + 示例主料）', !!aLines && aLines.length >= 3,
-  aLines ? aLines.length + ' 行：' + aNames.join(' / ') : 'null');
-check('A-② 示例主料真的进来了（含「猪肉」与「青椒」）',
-  aNames.indexOf('猪肉') >= 0 && aNames.indexOf('青椒') >= 0, aNames.join(' / '));
-check('A-③ 调料行有且仅有一条', aNames.filter((n) => n === CONDIMENT).length === 1, aNames.join(' / '));
-check('A-④ 不再残留出厂空行', blankOf(aLines) === 0, blankOf(aLines) + ' 行空');
-check('A-⑤ 每行都是可保存的手工行（input_type=2）',
-  !!aLines && aLines.every((l) => Number(l.input_type) === 2),
-  aLines ? aLines.map((l) => l.input_type).join(',') : 'null');
-check('A-⑥ 出净率套了品类默认（85，不是出厂 100）',
-  !!aLines && aLines.filter((l) => l.material_name === '猪肉')[0] !== undefined
-  && Number(aLines.filter((l) => l.material_name === '猪肉')[0].yield_rate) === 85,
-  aLines ? JSON.stringify(aLines.filter((l) => l.material_name === '猪肉')[0]) : 'null');
+console.log('\n===== R 删品类时不能删过头的三样 =====');
+check('R1 `category` 字段仍保留 —— 列表筛选/搜索还在用，只是不再参与计算',
+  wxmlCode.indexOf('t.category') >= 0 && editCode.indexOf('category:') >= 0);
+check('R2 列表页仍按 category 出筛选项',
+  /category/i.test(readIf(LIST)), 'index.js 仍引用 category');
+check('R3 品类预设文件**必须保留** —— 导入 Excel（import.js）还在用它识别菜品分类',
+  fs.existsSync(PRESETS) && /CATEGORY_PRESETS/.test(readIf(path.join(ROOT, 'subpkg', 'biz', 'card', 'import.js'))));
+check('R4 `utils/cardEst.js` 保留 —— 导入路径 dishImport.js 仍在用 isEstimatedCard',
+  fs.existsSync(path.join(ROOT, 'utils', 'cardEst.js'))
+  && /isEstimatedCard/.test(readIf(path.join(ROOT, 'utils', 'dishImport.js'))));
 
-// ============ B 已有真行：不得重复追加 ============
-console.log('\n===== B 已有真行：再选品类不得重复补示例主料 =====');
-let bLines = null;
-try {
-  const real = { input_type: 2, material_id: '', material_name: '猪肉', qty: '150', qty_unit: '克', unit_price_yuan: '0.012', yield_rate: '85', line_kind: 'main' };
-  const p = newPage(base.cfg, [real]);
-  p.onPickCategory({ detail: { value: 0 } });
-  bLines = p.data.lines;
-} catch (e) { check('B0 onPickCategory 可执行', false, e.message); }
-const bNames = namesOf(bLines);
-check('B-① 原有行保留（猪肉 150g 单价 0.012）',
-  !!bLines && bLines.some((l) => l.material_name === '猪肉' && String(l.qty) === '150' && String(l.unit_price_yuan) === '0.012'),
-  bLines ? JSON.stringify(bLines.map((l) => l.material_name + '/' + l.qty + '/' + l.unit_price_yuan)) : 'null');
-check('B-② 猪肉不重复（只一条）', bNames.filter((n) => n === '猪肉').length === 1, bNames.join(' / '));
-check('B-③ 已卡不再补示例主料（青椒不应出现）', bNames.indexOf('青椒') < 0, bNames.join(' / '));
-check('B-④ 调料仍补且仅一条', bNames.filter((n) => n === CONDIMENT).length === 1, bNames.join(' / '));
+// ============ Y 🔴 出净率不能掉回 100（删品类最容易出的洞）============
+// 品类原本是唯一给净率的人。它一走，若没人接（模板行不带 / 选原料不联动），
+// 整条鱼的成本会低估 35%，而且**界面毫无提示** —— 这是本轮最需要守住的一条。
+console.log('\n===== Y 🔴 出净率不能掉回 100 =====');
+const tplSrc = readIf(TPL);
+check('Y1 🔴 `applyTemplate` 输出带 `yield_rate`（模板行自己带净率）',
+  /function applyTemplate/.test(tplSrc) && /yield_rate/.test(stripC(tplSrc.slice(tplSrc.indexOf('function applyTemplate')))));
+check('Y2 🔴 编辑页套模板时读 `r.yield_rate`，且**不再**出现 catYieldDefault',
+  /String\(r\.yield_rate/.test(editCode) && editCode.indexOf('catYieldDefault') < 0);
+check('Y3 🔴 选原料时按原料自动带出净率（`yieldOf` 被真调用，不是只 import）',
+  /yieldOf\(/.test(editCode),
+  /yieldOf\(/.test(editCode) ? '已联动' : '未联动 ⇒ 选草鱼仍按 100 算，成本低估 35%');
+check('Y4 只在「空/默认 100」时才覆盖 —— 老板手改过的值不能被机器改回去（R626 教训）',
+  /yield_rate:\s*\(\s*!lines\[idx\]\.yield_rate/.test(editCode));
 
-// ============ C 全品类：每个都要带出示例主料 ============
-console.log('\n===== C 11 个品类逐一：每个都必须带出示例主料 =====');
-let cBad = [];
-if (presets && base) {
-  for (let i = 0; i < presets.length; i++) {
-    try {
-      const p = newPage(base.cfg, [EMPTY_LINE]);
-      p.onPickCategory({ detail: { value: i } });
-      const ns = namesOf(p.data.lines);
-      const sample = ns.filter((n) => n !== CONDIMENT && n);
-      if (sample.length === 0) cBad.push(presets[i].key + '(0 条示例主料)');
-      else if (ns.filter((n) => n === CONDIMENT).length !== 1) cBad.push(presets[i].key + '(调料 ' + ns.filter((n) => n === CONDIMENT).length + ' 条)');
-    } catch (e) { cBad.push(presets[i].key + '(抛错: ' + e.message + ')'); }
-  }
+// ============ M 变异回灌：判据不能恒绿 ============
+console.log('\n===== M 变异回灌：判据有分辨力吗 =====');
+{
+  const mutated = editCode + '\n  onPickCategory(e) { return e; }\n';
+  check('M-① 变异体（加回 onPickCategory）能被 S2 抓到', mutated.indexOf('onPickCategory') >= 0);
+  check('M-② 原代码里确实没有 onPickCategory（M-① 不是恒真）', editCode.indexOf('onPickCategory') < 0);
 }
-check('C-① 每个品类都带出示例主料 + 恰一条调料', cBad.length === 0,
-  cBad.length ? cBad.join(' / ') : (presets ? presets.length + ' 个品类全过' : '无单源'));
-
-// ============ D 变异回灌：把判据改回 length===0 ⇒ 必须转红 ============
-console.log('\n===== D 变异回灌：判据退回 `lines.length === 0` 必须被抓到 =====');
-const TARGET = 'const wasEmpty = this.data.lines.length === 0 || this.data.lines.every(isBlankLine);';
-check('D-① 变异锚点在源码中（判据原文可定位）', origSrc.indexOf(TARGET) >= 0);
-let mutLines = null;
-try {
-  const mutSrc = origSrc.replace(TARGET, 'const wasEmpty = this.data.lines.length === 0;');
-  const mut = loadPage(mutSrc, '变异体');
-  const p = newPage(mut.cfg, [EMPTY_LINE]);
-  p.onPickCategory({ detail: { value: 0 } });
-  mutLines = p.data.lines;
-} catch (e) { /* D-② 会按 null 处理 */ }
-const mutNames = namesOf(mutLines);
-check('D-② 变异后 A-② 判据确实转红（示例主料不再出现 ⇒ 本守卫有分辨力）',
-  !(mutNames.indexOf('猪肉') >= 0 && mutNames.indexOf('青椒') >= 0),
-  '变异体行数 ' + (mutLines ? mutLines.length : 'null') + '：' + mutNames.join(' / '));
+{
+  const idx = tplSrc.indexOf('function applyTemplate');
+  const tail = tplSrc.slice(idx);
+  const mutated = tail.replace(/\n\s*yield_rate:[^\n]*\n/g, '\n');
+  // ⚠️ 首跑这条是红的 —— **不是判据失效，是判据被自己的注释命中**：applyTemplate 里
+  //   注释写着「行上若显式写了 yield_rate…」，变异只删了代码行、注释还在 ⇒ 字面仍含 yield_rate。
+  //   和 L-④（check_loss_summary）同一个坑 ⇒ 一律先剥注释再判，否则「越强调越被判成有」。
+  check('M-③ 变异体（去掉 applyTemplate 的 yield_rate）能被 Y1 抓到',
+    mutated !== tail && /yield_rate/.test(stripC(mutated)) === false);
+}
+{
+  // 变异：把 yieldOf 调用删掉 ⇒ Y3 必须红
+  const mutated = editCode.replace(/yieldOf\(/g, 'String(');
+  check('M-④ 变异体（去掉 yieldOf 调用）能被 Y3 抓到', /yieldOf\(/.test(mutated) === false);
+}
 
 // ============ G 导入页「从剪贴板粘贴」（R570-G）============
 // 为什么守这一层：长按弹系统菜单是**原生 UI**，自动化点不到、机型差异大；若只教长按，

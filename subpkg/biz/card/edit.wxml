@@ -75,22 +75,15 @@
     <text class="muted">{{t.templateHint}}</text>
   </view>
 
-  <!-- P0-2 品类默认模板：选品类 → 自动给默认出净率/损耗/调料油火（只估算，都可改）。仅新建态 + 单品。 -->
-  <view class="field" wx:if="{{!isEdit && cardType === '1'}}">
-    <text class="lbl">{{t.catFrom}}</text>
-    <picker mode="selector" range="{{catOptions}}" value="{{catPicked}}" bindchange="onPickCategory">
-      <view class="picker">{{catPicked >= 0 ? catOptions[catPicked] : t.catPickPh}}</view>
-    </picker>
-    <!-- 🔴 R636：选了品类就得能取消（真机实测「必须得选一个」）。只撤系统预填行，用户自己填的不动。 -->
-    <text class="cat-clear" wx:if="{{catPicked >= 0}}" catchtap="onClearCategory">{{t.catClear}}</text>
-    <text class="muted">{{t.catHint}}</text>
-  </view>
-  <!-- 三司会诊裁定·燃气燃料分摊：仅高耗能品类（energyFen>0）可开；默认不进卡 -->
-  <view class="field" wx:if="{{!isEdit && cardType === '1' && energyFen > 0}}">
-    <text class="lbl">{{t.energyToggle}}</text>
-    <switch checked="{{energyOn}}" bindchange="onToggleEnergy" color="#1e3a5f"/>
-    <text class="muted">{{t.energyHint}}</text>
-  </view>
+  <!-- 🔴 R675（李老师）：删掉「这道菜属于哪类」+ 燃气燃料分摊。
+       为什么删：
+       ① 品类会预填「猪肉 150 克」这种错主料（老板建宫保鸡丁也拿到猪肉），
+          而错的起点比空白更糟 —— 老板要么直接存（成本全错），要么全删重填（比从零填还多两步）；
+       ② 燃气属**期间费用**，代码头注（categoryPresets.js:14）2026-10-29 会诊已裁定
+          「不进单品食材毛利率」；而 M1 月度支出里**已有「燃气费」真实账单科目**
+          ⇒ 在菜品级再分摊一次，同一笔钱记两个地方，且每份 0.15/0.2/0.4 元本身无出处（是当初拍的）。
+       出净率改由模板行自带（R674 YIELD_RULES 按原料给），不再依赖品类。
+       category 字段保留为**纯标签**（列表筛选仍在用），入口在「更多设置」里。 -->
 
   <!-- 核算模式（仅单品）· 🔴 P0#7：新手模式默认收起，展开专业项才显示 -->
   <view class="field" wx:if="{{cardType === '1' && (inputMode === 'pro' || showMore)}}">
@@ -109,8 +102,6 @@
   </view>
 
   <view class="sec-lite">{{t.secCost}}</view>
-  <!-- P0-3 估算卡横幅：本卡仍含系统估行时提示（黄底格子=估的默认值，都能改） -->
-  <view class="est-banner" wx:if="{{hasPreset}}">{{estBanner}}</view>
   <!-- 明细行（录入方式：档案选择 / 临时手工）—— 仅单品 -->
   <block wx:if="{{cardType === '1'}}">
   <view class="line {{lines[index].isPreset ? 'line-est' : ''}}" wx:for="{{lines}}" wx:key="rid">
