@@ -29,7 +29,11 @@
     <view class="hero-bot">
       <view class="hero-figure" wx:if="{{hasProfit}}">
         <view class="hero-lab">{{profitTitle}}</view>
-        <view class="hero-num money">{{t.cur}} {{refProfit}}<text class="hero-unit">元</text></view>
+        <!-- 🔴 R683：原来这里渲染成「¥ 51900.00元」—— 货币符号和「元」字**同时出现**，
+             符号后还多一个空格。全仓其他金额一律只用 `¥` 前缀（结果页 ¥51900.00、
+             卡片列表 ¥6.50），首页这套是唯一的例外 ⇒ 统一成 `¥51900.00`，
+             并删掉已无引用的 `.hero-unit` 样式（留着它就是给后人一个"这里该有元字"的假线索）。 -->
+        <view class="hero-num money">{{t.cur}}{{refProfit}}</view>
       </view>
       <view class="hero-figure" wx:elif="{{profitKnown}}">
         <view class="hero-lab">{{t.heroNoData}}</view>

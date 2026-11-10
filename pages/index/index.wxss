@@ -67,7 +67,7 @@
 .hero-figure { flex: 1; min-width: 0; }
 .hero-lab { font-size: 28rpx; color: #a9c1da; margin-bottom: 4rpx; }
 .hero-num { font-size: 48rpx; font-weight: 800; color: #fff; letter-spacing: 0.4rpx; }
-.hero-unit { font-size: 28rpx; font-weight: 400; color: #a9c1da; margin-left: 6rpx; }
+/* R683：`.hero-unit`（金额后的「元」字）已删 —— 与 `¥` 前缀重复，见 index.wxml 注释。 */
 .hero-hint { font-size: 28rpx; color: #a9c1da; line-height: 1.5; }
 /* 出口按钮：有数据 = 「查看明细」描边款；空态 = 「录入本月经营数据」实心款占住 C 位 */
 .hero-cta {
