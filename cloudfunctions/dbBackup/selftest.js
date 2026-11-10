@@ -69,6 +69,6 @@ check('解析不到前缀时跳过（宁可少删也不误删）',
 check('deleteFile 分批（单次 ≤50）', /i \+= 50/.test(SRC));
 check('轮转结果挂进返回值（可被日志/调用方核查）', /summary\.rotation = rotation/.test(SRC));
 
-console.log(`\n==== dbBackup 轮转自测结果：${pass} 通过 / ${failN} 失败 ====`);
 console.log('⚠️ 未覆盖：轮转是否真删掉云端文件 —— 本机无云存储，只能看云端日志「轮转：删除 N 个超期文件」');
+console.log(`\n==== dbBackup 轮转自测结果：${pass} 通过 / ${failN} 失败 ====`);
 process.exit(failN === 0 ? 0 : 1);
