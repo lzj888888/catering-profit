@@ -11,6 +11,10 @@
        · 🔴 按钮文案不叫「记一笔」（会被理解成记当日流水，点进去却是一长串月度科目 ⇒ 觉得被骗）
        ============================================================ -->
   <view class="hero ovh">
+    <!-- R679：纯 CSS 装饰圆（不用图片）。深蓝底不再是一块平板。
+         ⚠️ 只做极淡白 4%~6%，不做渐变 —— 45 岁老板看渐变会觉得"这是促销页"。 -->
+    <view class="hero-deco a"></view>
+    <view class="hero-deco b"></view>
     <view class="hero-top">
       <view class="hero-shop">
         <!-- 长店名必须截断（否则挤压下面的净利数字，见 v3 样品「XX 重庆老火锅家常菜馆」实测） -->
@@ -38,37 +42,57 @@
       <!-- 🔴 空态永远不显示 ¥0（老板会读成"这店没赚钱"）；按钮也不叫「记一笔」 -->
       <view class="hero-cta {{hasProfit ? '' : 'solid'}}" bindtap="goMonth">{{hasProfit ? t.heroCtaDetail : t.heroCtaEnter}} ›</view>
     </view>
+
+    <!-- 🔴 R679：一行三列（营收 / 成本 / 毛利率）。
+         为什么加：原来首页只有「利润」一个数，老板想知道的下一层是"收了多少、花了多少"。
+         ⚠️ 数据全部来自同一次 getLedger，零新增接口（首页刚修完加载慢，不能再加调用）。
+         ⚠️ 有账本记录才显示；没有就整块不渲染 —— 绝不显示 0。 -->
+    <view class="hero-row" wx:if="{{hasProfit && heroIncome}}">
+      <view class="hero-col">
+        <view class="hero-col-lab">{{t.heroIncomeLab}}</view>
+        <view class="hero-col-num">{{heroIncome}}</view>
+      </view>
+      <view class="hero-col">
+        <view class="hero-col-lab">{{t.heroCostLab}}</view>
+        <view class="hero-col-num">{{heroCost}}</view>
+      </view>
+      <view class="hero-col">
+        <view class="hero-col-lab">{{t.heroGmLab}}</view>
+        <view class="hero-col-num">{{heroGm}}</view>
+      </view>
+    </view>
   </view>
 
   <!-- ============================================================
        三大模块（无序号 —— 红队判其为冗余且易发虚；区分靠**形状图标**，
        🔴 不用颜色区分：红绿在本仓已绑定「涨/跌」语义，当模块色会被读成盈亏）
        ============================================================ -->
-  <view class="mod ovh" bindtap="goMonth">
+  <!-- 🔴 R679：一大两小（M1 是老板最常用的入口 ⇒ 大卡；M2/M3 并排）。
+       原来三张完全同构 ⇒ 眼睛没有落点，老板反馈"太素"。
+       顺带：三横条约 608rpx → 大卡 + 并排约 400rpx，首屏松出约 200rpx。 -->
+  <view class="mod main ovh" bindtap="goMonth">
     <view class="mod-ico"><view class="i i-ledger"></view></view>
     <view class="mod-bd">
       <view class="mod-t">{{t.m1}}</view>
       <view class="mod-m">{{t.m1Sub}}</view>
+      <!-- 🔴 有数据说"有数据"，没数据说"去记第一笔" —— **绝不显示 0**
+           （老板会把 0 读成"我这块是空的/坏了"）。 -->
+      <view class="mod-chip {{hasProfit ? '' : 'act'}}">{{hasProfit ? t.modHasData : t.modGoEnter}}</view>
     </view>
     <view class="mod-go">›</view>
   </view>
 
-  <view class="mod ovh" bindtap="goSandbox">
-    <view class="mod-ico"><view class="i i-house"></view></view>
-    <view class="mod-bd">
+  <view class="mod-row">
+    <view class="mod sm ovh" bindtap="goSandbox">
+      <view class="mod-ico"><view class="i i-house"></view></view>
       <view class="mod-t">{{t.m2}}</view>
       <view class="mod-m">{{t.m2Sub}}</view>
     </view>
-    <view class="mod-go">›</view>
-  </view>
-
-  <view class="mod ovh" bindtap="goCard">
-    <view class="mod-ico"><view class="i i-pan"></view></view>
-    <view class="mod-bd">
+    <view class="mod sm ovh" bindtap="goCard">
+      <view class="mod-ico"><view class="i i-pan"></view></view>
       <view class="mod-t">{{t.m3}}</view>
       <view class="mod-m">{{t.m3Sub}}</view>
     </view>
-    <view class="mod-go">›</view>
   </view>
 
   <!-- ============================================================

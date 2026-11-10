@@ -34,6 +34,12 @@ Page({
       heroNoDataHint: TERMS.ui.heroNoDataHint,
       heroCtaEnter: TERMS.ui.heroCtaEnter,
       heroCtaDetail: TERMS.ui.heroCtaDetail,
+      // R679：hero 三列 + 模块卡状态
+      heroIncomeLab: TERMS.ui.heroIncomeLab,
+      heroCostLab: TERMS.ui.heroCostLab,
+      heroGmLab: TERMS.ui.heroGmLab,
+      modHasData: TERMS.ui.modHasData,
+      modGoEnter: TERMS.ui.modGoEnter,
       cur: TERMS.ui.currencySymbol,
       // ── R234/J3 首页折叠引导条（复用 exp.guideBody 四步，不新写文案）──
       // 🔴 三处登记的第二处：术语源有了、wxml 用了，这里漏映射 ⇒ 页面渲染成**空白**且零报错
@@ -52,6 +58,13 @@ Page({
     // ── R207 头卡数据区 ──
     curMonth: ui.nowMonth(),
     refProfit: '0.00',
+    // 🔴 R679：hero 三列 + 模块卡状态。**必须在 data 里声明**（
+    //   page-top-bindings 守卫会查「wxml 顶层绑定但 data 未定义」——
+    //   未声明时首次渲染是 undefined，微信会当"空值"处理，但守卫按红线判红，且
+    //   真机上可能出现"[渲染层网络层错误]"，所以一律先给空串。
+    heroIncome: '',
+    heroCost: '',
+    heroGm: '',
     hasProfit: false,
     // 🔴 三态标志：**未确定 ≠ 无数据**。为 false 时既不显示数字、也不显示「还没有本月数据」，
     //    否则老用户每次进首页都会先闪一帧空态文案再跳成数字（观感像抖屏）。
@@ -94,6 +107,14 @@ Page({
    * 🔴 静默降级：本请求只服务于一块**装饰性总结**，失败/未建档一律转空态，
    *    **不弹 toast、不阻塞主流程** —— 首页已经有一个 getShopContext 的失败提示，再加一个就是噪音。
    */
+  // R679：三列宽度只有 1/3 屏，86000 这种五位数会挤爆 ⇒ 上万走「X.X万」。
+  //   不用 fenToYuan 的原因：它给两位小数，三列并排会更长。
+  wanText(fen) {
+    const yuan = Math.round((Number(fen) || 0) / 100);
+    if (yuan >= 10000) return (Math.round(yuan / 1000) / 10) + '万';
+    return String(yuan);
+  },
+
   async loadRefProfit() {
     try {
       const d = await api.call('getLedger', { month: ui.nowMonth() });
@@ -114,7 +135,20 @@ Page({
       if (d.account_id && typeof fen === 'number' && Number.isFinite(fen)) {
         // 🔴 R488：标签由单一来源生成（名随数走）—— 同一个数在这里、月首页、结果页必然同名。
         const lab = profitLabel.pickProfitLabel(d, isPaid ? 'real' : 'ref');
-        this.setData({ hasProfit: true, refProfit: api.fenToYuan(fen, 2), profitKnown: true, profitTitle: lab.title });
+        // 🔴 R679：hero 三列。**全部来自同一次 getLedger**（零新增接口）——
+        //   首页刚修完"缓几秒"，这里绝不能再加一次调用。
+        //   成本 = 期间费用（expenseTotalFen）+ 直接材料（materialCostFen），与月度结果页同口径。
+        //   🔴 任一项为 0 就整行不显示（wxml 用 `hasProfit && heroIncome` 守）——
+        //      绝不渲染 "¥0"，老板会读成"这店没花钱/没赚钱"。
+        const incomeFen = Number(res.incomeTotalFen) || 0;
+        const costFen = (Number(res.expenseTotalFen) || 0) + (Number(res.materialCostFen) || 0);
+        const gm = Number(res.grossMarginRatePct);
+        this.setData({
+          hasProfit: true, refProfit: api.fenToYuan(fen, 2), profitKnown: true, profitTitle: lab.title,
+          heroIncome: incomeFen > 0 ? this.wanText(incomeFen) : '',
+          heroCost: costFen > 0 ? this.wanText(costFen) : '',
+          heroGm: Number.isFinite(gm) && res.incomeTotalFen > 0 ? Math.round(gm) + '%' : '',
+        });
       } else {
         this.setData({ hasProfit: false, profitKnown: true });
       }

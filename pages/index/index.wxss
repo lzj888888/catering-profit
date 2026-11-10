@@ -1,3 +1,7 @@
+/* 🔴 R679：首页改暖白米调（方案2）。只改本页 page 底色、不动 app.wxss ——
+   先看真机效果，认可了再推广；全站一起改一旦不对，定位成本高得多。 */
+page { background: #F6F3EC; }
+
 /* index page styles inherit from app.wxss（.money / .ovh 走全局单源，本页不自造第二份） */
 
 /* R199：底部 tabBar 上线后，首页收掉「我的」按钮后下半屏偏空
@@ -21,6 +25,9 @@
  *   ③ 首屏约束：hero 200 + 3×模块卡 ≈ 200 + 3×136 = 608rpx，iPhone SE 可视区宽裕 ⇒ 三条模块卡全露。
  * ============================================================ */
 .hero {
+  /* R679：装饰圆需要定位上下文 + 裁切（圆是负偏移的，不裁会溢出卡片） */
+  position: relative;
+  overflow: hidden;
   background: #1e3a5f;
   border-radius: 16rpx;
   padding: 16rpx 24rpx 20rpx;
@@ -85,37 +92,35 @@
  *   · 不加序号 1/2/3（冗余，且 28rpx 浅灰在右上角易与圆角/阴影粘连发虚）
  *   · 左侧竖条必须配 `.ovh`（app.wxss 单源），否则 8rpx 竖条会从圆角外面冒出「尖角」
  * ============================================================ */
+/* 🔴 R679（李老师）：「前面重后边轻，像一个括号、像倾斜的按钮」——**左侧竖条整块删除**。
+   两位 AI 诊断一致：色条贴在卡片左边缘，**打破了卡片的对称和闭合感**。
+   叠加上下文更明显：hero 深蓝（重色块）→ 白卡（轻色块）→ 亮黄竖条（跳色块）三重跳变。
+   ⇒ 去掉竖条，改用**图标色块**做锚点（锚点在卡内，不会把卡压歪）。
+   卡面纯白 → 暖白 #FFFDF8，与暖米白页面底形成柔和过渡而不是硬碰。 */
 .mod {
   position: relative;
-  background: #fff;
+  background: #FFFDF8;
   border-radius: 16rpx;
-  padding: 24rpx;
+  padding: 22rpx 24rpx;
   margin-bottom: 16rpx;
   display: flex;
   align-items: center;
-  box-shadow: 0 2rpx 10rpx rgba(30, 58, 95, 0.06);
-}
-.mod::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 8rpx;
-  background: #1e3a5f;
+  border: 1rpx solid #EDE6D8;
+  box-shadow: 0 2rpx 8rpx rgba(122, 78, 18, 0.05);
 }
 .mod-ico {
   flex: 0 0 72rpx;
   width: 72rpx;
   height: 72rpx;
   border-radius: 16rpx;
-  background: #e8eff7;
-  margin-right: 24rpx;
+  /* R679：暖黄浅版（原浅蓝 #e8eff7）—— 与深棕图标配，整卡主题统一 */
+  background: #EFE2C8;
+  margin-right: 22rpx;
 }
 .mod-bd { flex: 1; min-width: 0; }
-.mod-t { font-size: 32rpx; font-weight: 500; color: #222; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mod-m { font-size: 28rpx; color: #666; margin-top: 4rpx; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mod-go { flex: 0 0 auto; font-size: 36rpx; color: #b6c0cf; margin-left: 12rpx; }
+.mod-t { font-size: 32rpx; font-weight: 600; color: #1E3A5F; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mod-m { font-size: 28rpx; color: #5E6C7A; margin-top: 5rpx; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mod-go { flex: 0 0 auto; font-size: 36rpx; color: #B3A894; margin-left: 12rpx; }
 
 /* ============================================================
  * R234/J3 · 首页常驻折叠引导条
@@ -156,27 +161,95 @@
 /* 账本：三条横线（一条实元素 + 两条 box-shadow 复制） */
 .i-ledger::before {
   left: 18rpx; top: 22rpx; width: 36rpx; height: 4rpx;
-  background: #1e3a5f; border-radius: 2rpx;
-  box-shadow: 0 12rpx 0 #1e3a5f, 0 24rpx 0 #1e3a5f;
+  background: #7A4E12; border-radius: 2rpx;
+  box-shadow: 0 12rpx 0 #7A4E12, 0 24rpx 0 #7A4E12;
 }
 /* 房子：三角屋顶（边框技巧）+ 方形屋身 */
 .i-house::before {
   left: 20rpx; top: 16rpx; width: 0; height: 0;
   border-left: 16rpx solid transparent;
   border-right: 16rpx solid transparent;
-  border-bottom: 14rpx solid #1e3a5f;
+  border-bottom: 14rpx solid #7A4E12;
 }
 .i-house::after {
   left: 26rpx; top: 30rpx; width: 20rpx; height: 20rpx;
-  background: #1e3a5f; border-radius: 0 0 4rpx 4rpx;
+  background: #7A4E12; border-radius: 0 0 4rpx 4rpx;
 }
 /* 炒锅：半圆锅体 + 右侧手柄 */
 .i-pan::before {
   left: 16rpx; top: 30rpx; width: 28rpx; height: 14rpx;
-  border: 4rpx solid #1e3a5f; border-top: none;
+  border: 4rpx solid #7A4E12; border-top: none;
   border-radius: 0 0 18rpx 18rpx;
 }
 .i-pan::after {
   left: 46rpx; top: 28rpx; width: 12rpx; height: 4rpx;
-  background: #1e3a5f; border-radius: 2rpx;
+  background: #7A4E12; border-radius: 2rpx;
 }
+
+/* ============================================================
+ * 🔴 R679 · 一大两小 + hero 三列 + 装饰圆
+ *
+ * 为什么一大两小（采纳 DeepSeek 方案）：
+ *   原来三张卡**完全同构**（同白底、同大小、同「图标+两行字+箭头」）。
+ *   「素」的实质不是颜色少，是**没有主次** —— 三块同等重要，眼睛没有落点。
+ *   M1（月度核算）是老板最常用的入口 ⇒ 大卡；M2/M3 并排。
+ *   附带收益：三横条约 608rpx → 大卡 200 + 并排 184 ≈ 400rpx，首屏松出约 200rpx。
+ * 为什么不用 2×2：会留空或硬塞第四块，暗示"四个同等入口"，反而增加选择。
+ * ============================================================ */
+.mod-row { display: flex; gap: 16rpx; margin-bottom: 16rpx; }
+.mod.sm {
+  flex: 1 1 0;
+  min-width: 0;
+  margin-bottom: 0;
+  display: block;
+  padding: 20rpx 20rpx 22rpx;
+}
+.mod.sm .mod-ico { width: 64rpx; height: 64rpx; border-radius: 14rpx; margin: 0 0 14rpx; }
+/* 🔴 `.i` 是固定 72rpx（图标几何写死在里面），容器缩到 64rpx 会溢出 ⇒ 整体等比缩放。
+   ⚠️ 用 transform 而不是改 `.i` 尺寸：`.i-ledger/.i-house/.i-pan` 的边框/偏移都是按 72rpx 算的，
+      改尺寸要同时改十几处 rpx，必漂。 */
+.mod.sm .i { transform: scale(0.87); transform-origin: left top; }
+.mod.sm .mod-t { font-size: 30rpx; white-space: normal; line-height: 1.3; }
+/* 小卡副标题保持 28rpx（G1 红线）：靠**允许换行**换空间，不靠缩字 */
+.mod.sm .mod-m { font-size: 28rpx; white-space: normal; line-height: 1.35; }
+
+.mod.main { padding: 24rpx; }
+.mod.main .mod-ico { width: 84rpx; height: 84rpx; border-radius: 20rpx; }
+.mod.main .i { transform: scale(1.16); transform-origin: left top; }
+.mod.main .mod-t { font-size: 34rpx; }
+.mod.main .mod-m { font-size: 28rpx; }
+
+/* 状态胶囊：有数据走中性灰，没数据走强调色并带动作
+   🔴 绝不显示 0（老板会读成"这块是空的/坏了"），没数据就写"去记第一笔"。 */
+.mod-chip {
+  display: inline-block;
+  margin-top: 10rpx;
+  font-size: 28rpx;
+  line-height: 1.4;
+  padding: 4rpx 14rpx;
+  border-radius: 6rpx;
+  background: #F1EDE4;
+  color: #7A6A52;
+}
+.mod-chip.act { background: #F7E9CE; color: #7A4E12; font-weight: 500; }
+
+/* hero 装饰圆：纯 CSS，不用图片。只做极淡白（4%~6%），不做渐变不做阴影 ——
+   45 岁老板看渐变会觉得"这是促销页"。 */
+.hero-deco { position: absolute; border-radius: 50%; pointer-events: none; }
+.hero-deco.a { top: -68rpx; right: -56rpx; width: 220rpx; height: 220rpx; background: rgba(255, 255, 255, 0.055); }
+.hero-deco.b { bottom: -92rpx; left: -60rpx; width: 192rpx; height: 192rpx; background: rgba(255, 255, 255, 0.04); }
+
+/* hero 一行三列（营收 / 成本 / 毛利率）
+   目的：首页现在只有一个利润数字，老板想知道的下一层是"收了多少、花了多少"。
+   ⚠️ 数据全部来自**同一次** getLedger，零新增接口 —— 首页刚修完加载慢，不能再加调用。 */
+.hero-row {
+  display: flex;
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.16);
+  position: relative;
+}
+.hero-col { flex: 1 1 0; min-width: 0; text-align: center; }
+.hero-col + .hero-col { border-left: 1rpx solid rgba(255, 255, 255, 0.16); }
+.hero-col-lab { font-size: 28rpx; color: #8FB0D0; }
+.hero-col-num { font-size: 32rpx; color: #FFFFFF; font-weight: 600; margin-top: 4rpx; }

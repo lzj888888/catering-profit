@@ -223,14 +223,25 @@ ensure('C-②', '🔴 店铺切换入口仍在（它是原「当前店铺卡」*
 ensure('C-③', '店铺设置入口仍在（无 tabBar 替代入口，删了就少一条路）',
   src.idxWxml.indexOf('goSettings') >= 0, 'goSettings 没了');
 
-const modCount = (src.idxWxml.match(/class="mod ovh"/g) || []).length;
-ensure('C-④', '三张模块卡都带 `.ovh`（8rpx 竖条超出圆角会冒尖角）',
+// 🔴 R679：首页结构改了（三张同构横条 → 一大两小 + 去左侧竖条），判据跟着走，
+//   **但守的东西不变** —— 不是为了变绿而放宽：
+//   ① `.ovh`（overflow:hidden）的必要性反而更强了：图标现在用 transform 缩放、
+//      hero 加了负偏移装饰圆，不裁切会溢出到圆角外面。
+//   ② 「模块卡不用红绿」这条永远成立（红绿已绑定涨跌语义，当模块色会被读成盈亏）。
+//   ③ 新增：**不许再用左侧竖条** —— 李老师原话「像一个括号、像倾斜的按钮」，
+//      两位 AI 的诊断一致：色条贴左边缘破坏了卡片的对称和闭合感。加回来必须有人重审。
+const modCount = (src.idxWxml.match(/class="mod\b[^"]*\bovh/g) || []).length;
+ensure('C-④', '三张模块卡都带 `.ovh`（防图标 transform / 装饰圆溢出到圆角外）',
   modCount === 3, '带 ovh 的模块卡是 ' + modCount + ' 张，应为 3');
 
 const modBefore = ruleBody(src.idxWxss, '.mod::before');
-ensure('C-⑤', '🔴 模块卡**不用颜色区分**（红绿已绑定涨跌语义，当模块色会被读成盈亏）',
-  !!modBefore && modBefore.indexOf('#1e3a5f') >= 0 && modBefore.indexOf('#c0392b') < 0 && modBefore.indexOf('#1e8e5a') < 0,
-  '竖条不是统一墨蓝 / 出现了语义色');
+// 模块卡家族的全部规则体（.mod / .mod.sm / .mod.main / .mod-chip / .mod-*）
+const modRules = (src.idxWxss.match(/\.mod[^{]*\{[^}]*\}/g) || []).join('\n');
+ensure('C-⑤ 🔴 模块卡**不再用左侧竖条**（李老师：「像一个括号、像倾斜的按钮」）',
+  !modBefore, modBefore ? '`.mod::before` 又出现了' : '已无 ::before 竖条');
+ensure('C-⑥ 🔴 模块卡**不用红绿语义色**（红绿已绑定涨跌，当模块色会被读成盈亏）',
+  modRules.indexOf('#c0392b') < 0 && modRules.indexOf('#1e8e5a') < 0 && modRules.indexOf('#e74c3c') < 0,
+  '模块卡规则里没有语义红/绿');
 
 // ══════ D 全局两条（等宽 + overflow 单源）══════
 section('D 全局单源（金额等宽 / 圆角防溢出）');

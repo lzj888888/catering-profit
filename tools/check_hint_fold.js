@@ -493,11 +493,19 @@ if (!idxWxml || !idxJs || !idxWxss) {
   if ((idxWxml || '').length > 800) ok('E13', `index.wxml 非退化（${(idxWxml || '').length} 字节）`);
   else no('E13', 'index.wxml 过短，扫描面可疑');
   // 关键锚点：三张模块卡必须仍在（防「为了塞引导把模块卡删了」）
-  const mods = (idxWxml.match(/class="mod ovh"/g) || []).length;
+  // 🔴 R679：类名从 `mod ovh` 变成 `mod main ovh` / `mod sm ovh`（一大两小），
+  //   判据从"精确匹配类名字面"改成"匹配 mod 开头的任意 class 组合"。
+  //   **守的东西没变**：仍然是「首页必须有三张模块卡 + 引导条排在它们之后」。
+  //   只改字面不改意图 —— 否则每次调布局都要改守卫，那是判据在挑字面（T-⑥ 踩过）。
+  const MOD_RE = /class="mod\b[^"]*\bovh/g;
+  const mods = (idxWxml.match(MOD_RE) || []).length;
   if (mods === 3) ok('E14', '首页三张模块卡仍在（引导条未挤掉主入口）');
   else no('E14', `模块卡数 ${mods} ≠ 3 ⇒ 主入口被改动`);
   // 引导条必须在模块卡**之后**（先看到能做什么、再看到怎么用）
-  const iMod3 = idxWxml.lastIndexOf('class="mod ovh"');
+  let iMod3 = -1;
+  MOD_RE.lastIndex = 0;
+  let mm;
+  while ((mm = MOD_RE.exec(idxWxml)) !== null) iMod3 = mm.index;
   const iGuide = idxWxml.indexOf('class="guide-fold"');
   if (iMod3 >= 0 && iGuide > iMod3) ok('E15', '引导条位于三张模块卡之后（未遮挡主入口）');
   else no('E15', '引导条位置在模块卡之前/未找到 ⇒ 会挡住主入口');

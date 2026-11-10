@@ -397,6 +397,14 @@ const TERMS = {
     heroCtaEnter: '录入本月经营数据',
     heroCtaDetail: '查看明细',
     heroSwitch: '店铺管理',
+    // 🔴 R679：hero 一行三列（营收/成本/毛利率）—— 数据全部来自同一次 getLedger，零新增接口
+    heroIncomeLab: '营收',
+    heroCostLab: '成本',
+    heroGmLab: '毛利率',
+    // 🔴 R679：模块卡状态胶囊。**没数据不显示 0**（老板会读成"这块是空的/坏了"），
+    //   改说"去记第一笔"，给的是**动作**不是统计值。
+    modHasData: '已有本月数据',
+    modGoEnter: '去记第一笔 ›',
   },
 
   // ===== 十一、批次 4 页面级按钮/链接（补录）=====
