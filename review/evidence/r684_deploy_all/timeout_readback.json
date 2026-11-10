@@ -89,7 +89,7 @@
  },
  "ensureCollections": {
   "status": "Active",
-  "timeout": 3
+  "timeout": 20
  },
  "exportData": {
   "status": "Active",
@@ -97,7 +97,7 @@
  },
  "getAiConsent": {
   "status": "Active",
-  "timeout": 3
+  "timeout": 20
  },
  "getAmortSchedule": {
   "status": "Active",
@@ -113,7 +113,7 @@
  },
  "getDiagnosis": {
   "status": "Active",
-  "timeout": 3
+  "timeout": 20
  },
  "getDishReview": {
   "status": "Active",
@@ -149,7 +149,7 @@
  },
  "grantAiConsent": {
   "status": "Active",
-  "timeout": 3
+  "timeout": 20
  },
  "importSalesBill": {
   "status": "Active",
@@ -189,7 +189,7 @@
  },
  "revokeAiConsent": {
   "status": "Active",
-  "timeout": 3
+  "timeout": 20
  },
  "saveAsset": {
   "status": "Active",
@@ -229,6 +229,6 @@
  },
  "verifyTangshi": {
   "status": "Active",
-  "timeout": 3
+  "timeout": 20
  }
 }

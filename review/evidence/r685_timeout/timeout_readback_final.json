@@ -1,0 +1,234 @@
+{
+ "adminExport": {
+  "status": "Active",
+  "timeout": 60
+ },
+ "adminGrantEntitlement": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "adminInit": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "adminLogin": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "adminLogout": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "adminManualOrder": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "adminOrderList": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "adminQueryUser": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "adminRefreshToken": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "adminRefundMark": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "adminRevokeToken": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "archiveMonth": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "calcAmortize": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "calcBom": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "calcMonthlyProfit": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "calcSandbox": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "checkQuota": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "clearMonth": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "clearSalesBills": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "dbBackup": {
+  "status": "Active",
+  "timeout": 60
+ },
+ "deleteAccount": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "detectCycle": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "ensureCollections": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "exportData": {
+  "status": "Active",
+  "timeout": 60
+ },
+ "getAiConsent": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "getAmortSchedule": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "getCardVersions": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "getCostCard": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "getDiagnosis": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "getDishReview": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "getLedger": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "getMaterial": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "getMonthList": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "getPlan": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "getSalesBills": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "getShopContext": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "getShopList": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "grantAiConsent": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "importSalesBill": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "initDb": {
+  "status": "Active",
+  "timeout": 30
+ },
+ "manageShop": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "payCallback": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "payCreateOrder": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "payExpireNotify": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "payOrderList": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "payQueryEntitlement": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "payRenew": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "revokeAiConsent": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "saveAsset": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "saveCostCard": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "saveDishMapping": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "saveLedger": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "saveMaterial": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "savePlan": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "saveShopSetting": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "smokeTest": {
+  "status": "Active",
+  "timeout": 15
+ },
+ "syncCostCard": {
+  "status": "Active",
+  "timeout": 20
+ },
+ "verifyTangshi": {
+  "status": "Active",
+  "timeout": 20
+ }
+}
