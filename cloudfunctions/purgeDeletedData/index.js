@@ -108,6 +108,16 @@ async function countAll(collection, cond) {
 }
 
 exports.main = async (event) => {
+  // 🔴 R688 安全自保（按 R215 定式，与 dbBackup / smokeTest / payExpireNotify 同族）：
+  //   本函数会**物理删除数据**，绝不能从客户端可达。
+  //   有 OPENID 说明是小程序端调的 ⇒ 直接拒。
+  //   ⚠️ 首版漏了这段 —— 意味着任何用户都能 `wx.cloud.callFunction({name:'purgeDeletedData'})`
+  //      去触发清理，把别人"还差几天到期"的数据提前删掉。写清理逻辑时最容易忘的就是"谁能调我"。
+  const ctx = cloud.getWXContext() || {};
+  if (ctx.OPENID) {
+    return { ok: false, code: 'FORBIDDEN', msg: 'purgeDeletedData 仅允许定时触发' };
+  }
+
   const v = event || {};
   const dryRun = v.dryRun === true;                 // 红线③：可干跑
   const t0 = Date.now();

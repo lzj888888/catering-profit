@@ -65,6 +65,10 @@ const EXEMPT_WRITE = new Map([
   ['payRenew', '同上（续费=再建一条 pending 订单）；expire_at 的累加由 payCallback 按 transaction_id 幂等完成'],
 
   // ——— 环境隔离 / 探针 / 引导：本就不该在 prod 跑 ———
+  ['purgeDeletedData', 'R688 定时清理（每天 03:00），**纯定时触发、没有任何用户调用路径** ⇒ 无 client_request_id 可校验。'
+    + '它本身是**幂等到无意义**的：重复执行时匹配集为空（数据已删），remove 返回 removed=0，终态与执行一次完全相同；'
+    + '且「再跑一次」恰恰是它正常的重试语义（上次预算耗尽留下 skipped，下次接着删）⇒ 加幂等键反而会让重试被误拦。'
+    + '安全边界不靠幂等键而是靠三条：`delete_at` 必须非 0 且已满 15 天、单次 20 店上限、dryRun 预演'],
   ['initDb', '仅 dev 生效（env 门禁 + blocked 闸），且灌种子前先查集合是否已初始化 ⇒ 重复执行不产生第二条种子；'
     + 'prod 25 个集合由人工在控制台建，本函数不参与'],
   ['smokeTest', '探针函数：只读写自建的 PROBE 探针集合（探测完自删），**不碰任何业务集合**；仅 dev 手工触发'],

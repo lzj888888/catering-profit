@@ -89,6 +89,7 @@ function makeDb(seed) {
 
 // 在 require index.js 之前把 wx-server-sdk 换成假云
 let CURRENT_DB = makeDb({});
+let FAKE_OPENID = '';   // 非空 ⇒ 模拟「小程序端调用」，必须被拒
 // 🔴 必须用 Proxy 转发：index.js 顶部 `const db = cloud.database()` 在**模块加载时只调一次**，
 //   若这里直接 `database: () => CURRENT_DB`，db 会永久绑到最初那个空库，
 //   后面换了 CURRENT_DB 也白换 —— 首版就栽在这，表现为"实删 0 个店"却看不出原因。
@@ -103,7 +104,7 @@ const fakeCloud = {
       return typeof v === 'function' ? v.bind(CURRENT_DB) : v;
     },
   }),
-  getWXContext: () => ({}),
+  getWXContext: () => (FAKE_OPENID ? { OPENID: FAKE_OPENID } : {}),
 };
 const origLoad = Module._load;
 Module._load = function (request, parent, isMain) {
@@ -179,6 +180,19 @@ async function run() {
   check('audit_log 排在删除清单第一位（先清旧审计，再写本轮清理审计）',
     delList[0] === 'audit_log', `首位=${delList[0]}`);
 
+  // ===== S. 安全：客户端不可达 =====
+  console.log('\n===== S · 安全自保（客户端不得调用）=====');
+  FAKE_OPENID = 'oXXXX_user';
+  CURRENT_DB = makeDb(makeSeed());
+  const rForbidden = await fn.main({});
+  const sForbidden = CURRENT_DB.__store;
+  check('有 OPENID（客户端直调）时直接拒绝',
+    rForbidden && rForbidden.code === 'FORBIDDEN');
+  check('被拒时一条数据都没删（不是"先删再报错"）',
+    sForbidden.shop.length === 3 && sForbidden.shop_monthly_income.length === 3);
+  check('被拒时也没写审计（无副作用）',
+    !sForbidden.audit_log.some((d) => d.action === 'PURGE_DELETED_SHOP'));
+  FAKE_OPENID = '';
   // ===== C. 真跑：实删 =====
   console.log('\n===== C · 真跑 main()（实删）=====');
   CURRENT_DB = makeDb(makeSeed());

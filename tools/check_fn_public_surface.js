@@ -74,6 +74,8 @@ const PUBLIC_FNS = [
   { fn: 'payExpireNotify', why: '定时触发器任务 —— R215 已加固：有用户 OPENID 即拒绝（只放行定时/控制台）', mustSelfGuard: true },
   { fn: 'smokeTest', why: '真云诊断探针（会建集合/写库）—— R215 已加固：有用户 OPENID 即拒绝', mustSelfGuard: true },
   { fn: 'dbBackup', why: '数据库月度全量备份（写云存储）—— R652 按 R215 定式：有用户 OPENID 即拒绝', mustSelfGuard: true },
+  { fn: 'purgeDeletedData', why: '定时清理（**物理删除**已到期数据）—— R688 按 R215 定式：有用户 OPENID 即拒绝。'
+    + '否则任何用户都能 callFunction 触发清理，把别人"还差几天到期"的数据提前删掉', mustSelfGuard: true },
   { fn: 'ensureCollections', why: '建集合入口（建表是危险操作）—— R655 按 R215 定式：有用户 OPENID 即拒绝', mustSelfGuard: true },
   // 🔴 R298（B4）：本项原先 `mustSelfGuard: false`，理由写的是「不读 OPENID、不写库」——
   //   那句**只回答了「它自己会不会写坏数据」，没回答「别人能不能调它」**。实测：
