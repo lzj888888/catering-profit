@@ -112,7 +112,9 @@ check('L-g applyTemplate 返回行数 === tpl.lines.length', rows.length === tpl
 const rowBadKeys = rows.filter((r) => Object.keys(r).some((k) => PRICE_KEYS.some((p) => k.toLowerCase().indexOf(p) >= 0)));
 check('L-g 返回行不含 price/unit_cost/cost 键', rowBadKeys.length === 0,
   rowBadKeys.length ? `非法键：${JSON.stringify(rowBadKeys[0])}` : '行只含 line_name/qty/unit');
-check("L-g 返回行键集合 = {line_name, qty, unit}", rows.every((r) => Object.keys(r).sort().join(',') === 'line_name,qty,unit'), '');
+// ⚠️ R674：键集合加了 yield_rate（出净率跟行走，删品类的前置）。这不是放宽 ——
+//   价格类键（price/unit_cost/cost）仍由上面那条 L-g 守着，模板依旧「绝不预填价格」。
+check("L-g 返回行键集合 = {line_name, qty, unit, yield_rate}", rows.every((r) => Object.keys(r).sort().join(',') === 'line_name,qty,unit,yield_rate'), '');
 
 console.log('===== L-h · 模板模式随行（R317）=====');
 // 为什么守：火锅锅底是「炒一批料 → 打 N 锅」。模板若只带料单不带 mode B，

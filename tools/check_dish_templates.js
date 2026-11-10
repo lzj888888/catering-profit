@@ -82,8 +82,22 @@ if (niu) {
   const perPot = total / niu.batch_output;
   ok('T-⑦ 牛油锅底每锅量落在合理区间（2.0–3.5kg：常见「8两料+3~5斤油」）',
     perPot >= 2000 && perPot <= 3500, '整批 ' + total + 'g ÷ ' + niu.batch_output + ' 锅 = ' + Math.round(perPot) + 'g/锅');
-  ok('T-⑧ 套用输出只含 3 个字段（页面按这 3 个渲染，多给会被静默丢弃）',
-    Object.keys(applyTemplate(niu)[0]).sort().join(',') === 'line_name,qty,unit');
+  // ⚠️ R674：字段从 3 个变成 4 个 —— 新增 `yield_rate`（出净率跟行走）。
+  //   这不是"为了通过检查而放宽"：页面 `onPickTemplate` 已同步改成读 r.yield_rate，
+  //   否则「删掉品类」后整鱼会从 65% 掉到 100%，成本低估 35%。
+  ok('T-⑧ 套用输出恰好 4 个字段（line_name/qty/unit/yield_rate —— 多给会被页面静默丢弃）',
+    Object.keys(applyTemplate(niu)[0]).sort().join(',') === 'line_name,qty,unit,yield_rate',
+    Object.keys(applyTemplate(niu)[0]).sort().join(','));
+  ok('T-㉑ 🔴 每行出净率都在 30–100 之间（<30 或 >100 必是规则写错）',
+    TEMPLATES.every((t) => applyTemplate(t).every((r) => Number(r.yield_rate) >= 30 && Number(r.yield_rate) <= 100)),
+    '越界项：' + TEMPLATES.map((t) => applyTemplate(t).filter((r) => !(Number(r.yield_rate) >= 30 && Number(r.yield_rate) <= 100)).map((r) => t.dish_name + '/' + r.line_name)).flat().slice(0, 3).join(',') || '无');
+  ok('T-㉒ 🔴 出净率**按原料给**，不是全库一个值（按品类兜全库的错法：里脊和整鱼同值）',
+    (() => {
+      const vals = new Set();
+      TEMPLATES.forEach((t) => applyTemplate(t).forEach((r) => vals.add(Number(r.yield_rate))));
+      return vals.size >= 4;
+    })(),
+    '不同出净率取值数：' + (() => { const v = new Set(); TEMPLATES.forEach((t) => applyTemplate(t).forEach((r) => v.add(Number(r.yield_rate)))); return v.size; })());
 }
 
 console.log('\n===== T 🔴 分类必须与 M2 业态同一套词（不新造品类）=====');
@@ -146,6 +160,18 @@ const noCond = cookTpls.filter((t) => {
 ok('T-⑯ 🔴 每条炒菜模板至少含 2 种**核心调料**（油/盐/酱油/糖/醋/淀粉/料酒；豆瓣花椒辣椒不算）',
   noCond.length === 0,
   noCond.length ? noCond.map((t) => t.dish_name + '(' + t.lines.length + '行)').join(', ') : cookTpls.length + ' 道全部达标');
+
+console.log('\n===== T 出处说明（李老师定口径：统一一句，不指向具体来源）=====');
+const TERMS = require(path.join(ROOT, 'miniprogram/i18n/terms.js')).TERMS;
+const hint = (TERMS.card && TERMS.card.templateHint) || '';
+ok('T-⑱ 🔴 模板区有统一出处说明，且含「仅供参考」+「按自家实际调整」两层',
+  hint.indexOf('公开资料') >= 0 && hint.indexOf('仅供参考') >= 0 && hint.indexOf('实际') >= 0,
+  hint || '空');
+ok('T-⑲ 🔴 出处说明**不指向具体来源**（不写"来自某书/某网站/某大V"—— 指向权利人容易扯皮）',
+  !/来自.{0,6}(书|网站|公众号|抖音|老师|大V)|某某|某菜谱/.test(hint), hint.slice(0, 40));
+ok('T-⑳ 模板**绝不预填价格**（R138 红线①：价格随行就市，只能老板自己填）',
+  TEMPLATES.every((t) => (t.lines || []).every((l) => !/price|金额|元\/份|单价/.test(l.line_name || ''))),
+  '零预填价格');
 
 console.log('\n===== 结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);

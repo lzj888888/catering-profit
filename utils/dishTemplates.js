@@ -127,7 +127,7 @@ const TEMPLATES = [
     dish_name: '鱼香肉丝',
     lines: [
       { line_name: '猪里脊', qty: 150, unit: '克' },
-      { line_name: '木耳（泡发）', qty: 30, unit: '克' },
+      { line_name: '干木耳（泡发前）', qty: 5, unit: '克' },
       { line_name: '胡萝卜', qty: 50, unit: '克' },
       { line_name: '泡椒', qty: 20, unit: '克' },
       { line_name: '葱姜蒜', qty: 20, unit: '克' },
@@ -672,11 +672,63 @@ function getTemplate(key) {
  * @param {object} tpl 模板对象
  * @returns {Array<{line_name:string, qty:number, unit:string}>}
  */
+// 🔴 R674：**按原料**给出净料率（出成率），不再靠品类一个值兜全部。
+//
+//   为什么必须按原料（三司会诊 2026-11-10 共识，我 + 豆包 + DeepSeek 一致）：
+//     猪里脊 95% 和 整鱼 65% 差 30 个百分点，把它们都归到「热炒荤菜 85%」必然错；
+//     品类粒度太粗 —— 同一品类里既有净料又有毛料，一个值必然一半偏一半欠。
+//
+//   取值原则：**一律取行业经验区间的下沿（保守）**。
+//     出净率低估 ⇒ 净料单价算高 ⇒ 成本算高 ⇒ 老板不会误以为赚钱。
+//     反向错误（成本算低）会让老板以为在赚、实际在亏，那个代价大得多。
+//
+//   ⚠️ 匹配顺序即优先级，先命中先返回。顺序不是随手排的，有三处必须靠前：
+//     ① 「鸡精 / 辣椒油 / 蒸鱼豉油 / 番茄酱」含「鸡 / 辣椒 / 鱼 / 番茄」字样，
+//        若按主料规则匹配会被当成整鸡、整鱼、鲜番茄 ⇒ 调料规则必须排第一。
+//     ② 「牛肉末 / 猪肉末」含「牛 / 猪」，但它们是已加工净料（95%），
+//        必须排在「普通肉 88%」之前。
+//     ③ 「番茄酱」若排到「番茄 88%」之后也会错。
+const YIELD_RULES = [
+  // ① 纯调料 / 液体 / 腌制品 —— 采购即用，无择洗损耗
+  { re: /油|盐|糖|醋|酱油|豉油|酱|料酒|淀粉|鸡精|花椒|辣椒|豆瓣|豆豉|香料|膨松剂|醪糟|可乐|纯净水|^水$|牛奶|椰浆|植脂末|茶叶|茶包|咖啡豆|老汤|卤料包|酸菜|酵母/, y: 100 },
+  // ② 香辛料 —— 有去皮择洗损耗（用量小，差几分钱，不细究）
+  { re: /姜|葱|蒜|香菜|泡椒|榨菜|芽菜/, y: 90 },
+  // ③ 干货 —— 按干重称量，无损耗（「干木耳（泡发前）」也是这一类）
+  { re: /大米|米饭|面粉|面条|碱面|红薯粉|粉丝|西米|木薯粉圆|馄饨皮|花生|黄豆|干木耳|木耳/, y: 100 },
+  // ④ 已加工净肉 / 水产净料
+  { re: /里脊|鸡胸|鸡腿肉|肉末|杂酱|肉馅|虾/, y: 95 },
+  // ⑤ 禽类分割件（翅/爪已分割，损耗小）
+  { re: /鸡翅|鸡爪/, y: 95 },
+  // ⑥ 普通肉（带皮 / 带筋 / 带骨）
+  { re: /五花|牛腱|牛肉|排骨/, y: 88 },
+  // ⑦ 整鱼 —— 去鳞去内脏去骨，损耗最大的一类
+  { re: /草鱼|黑鱼|鲈鱼|整鱼/, y: 65 },
+  // ⑧ 叶菜 / 嫩茎 —— 择洗损耗大
+  { re: /青菜|韭菜|菠菜|生菜|豆芽|四季豆/, y: 78 },
+  // ⑨ 根茎 / 果实 —— 去皮去蒂
+  { re: /土豆|胡萝卜|萝卜|茄子|番茄|青椒|洋葱|柠檬|芒果|豌豆/, y: 88 },
+  // ⑩ 豆制品 / 蛋
+  { re: /豆腐|豆干|鸡蛋|蛋$/, y: 98 },
+];
+
+// 兜底 100：没匹配上的视为「采购即用的净料」。宁可保守（100），也不乱猜一个折减值。
+function yieldOf(name) {
+  const s = String(name || '');
+  for (let i = 0; i < YIELD_RULES.length; i += 1) {
+    if (YIELD_RULES[i].re.test(s)) return YIELD_RULES[i].y;
+  }
+  return 100;
+}
+
 function applyTemplate(tpl) {
   return (tpl && Array.isArray(tpl.lines) ? tpl.lines : []).map((l) => ({
     line_name: String((l && l.line_name) || ''),
     qty: l && l.qty,
     unit: String((l && l.unit) || ''),
+    // 🔴 R674：出净率**跟着行一起走**，不再靠「品类默认值」兜
+    //   —— 这是「删掉『这道菜属于哪类』」的前置条件：品类删了，行必须自己知道损耗。
+    //   行上若显式写了 yield_rate（个别原料要特例）则以它为准，否则按原料规则表推。
+    yield_rate: (l && l.yield_rate) || yieldOf(l && l.line_name),
   }));
 }
 
@@ -685,4 +737,4 @@ function templatesByCat(catKey) {
   return TEMPLATES.filter((t) => !catKey || t.cat === catKey);
 }
 
-module.exports = { TEMPLATES, TEMPLATE_CATS, templatesByCat, getTemplate, applyTemplate };
+module.exports = { TEMPLATES, TEMPLATE_CATS, templatesByCat, getTemplate, applyTemplate, yieldOf };
