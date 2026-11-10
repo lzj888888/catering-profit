@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：273 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：275 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1536,6 +1536,14 @@ const SUITES = [
   //       否则「跑通」还是自述。补的是「判据被抄写了 ≠ 判据被校验了」这一环，
   //       与 R92「索引已建≠生效」/ round53「判据存在≠被执行」/ R298Y「读到了≠送出去了」同族。
   ['runthrough-evidence', 'tools/check_runthrough_evidence.js'],
+  // R688：注销数据清理（queue #152）—— 真跑 main() 验证「该删的删了、不该删的一条没动」。
+  //      口径：经营数据 30 天硬删 / 支付流水与审计日志显式保护 / delete_at=0 不得当到期。
+  //      覆盖由自测 B 组守：从 initDb 索引**动态推导**所有含 shop_id 的集合，
+  //      断言「删除清单 ∪ 保护清单」全覆盖 —— 新增表忘登记会当场转红（不硬抄表名）。
+  ['purge-deleted', 'cloudfunctions/purgeDeletedData/selftest.js'],
+  // R688：备份轮转（备份原先只增不减 ⇒ 注销后 openid 与经营数据在云存储永久留明文）。
+  //      测 shiftStamp 跨年借位 + 保留期常量 + 轮转触发条件（仅本期完全成功才删旧的）。
+  ['backup-rotation', 'cloudfunctions/dbBackup/selftest.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

@@ -5,7 +5,10 @@
 //   · 关联 shop / shop_entitlement 置 is_deleted=true（或留待定时任务脱敏；本实现同步软删）
 //   · 历史业务数据（月账/成本卡/订单）**不硬删**（数据可追溯；误删恢复优先软删恢复）
 //   · 幂等：client_request_id 校验；二次确认在前端（本函数不弹窗）
-//   · 承诺 15 个工作日内完成数据处理（前端文案展示，本函数执行软删+匿名化）
+//   · 清理承诺：经营数据在注销满 30 天后由 `purgeDeletedData` **物理删除**（R688）。
+//     ⚠️ 原注释写「承诺 15 个工作日内完成数据处理」—— 全仓当时没有任何清理任务，
+//        那是一句永远不会发生的空头承诺。R688 建了 purgeDeletedData 才让这句话有执行者，
+//        同时把文案改成 15 天（与清理函数的 RETENTION_DAYS 同源口径）。
 const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
@@ -106,7 +109,7 @@ exports.main = async (event) => {
     user_id: userId,
     deleted: true,
     anon: true,
-    note: '账号已注销，历史数据已匿名化处理（15 个工作日内完成数据清理）',
+    note: '账号已注销。经营数据将在 15 天内彻底删除，支付记录按法规保留 3 年',
     client_request_id: clientRequestId || '',
   });
 };

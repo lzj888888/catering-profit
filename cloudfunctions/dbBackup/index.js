@@ -86,6 +86,21 @@ function stampOf(d) {
   return y + '-' + m;
 }
 
+// R688 轮转参数
+const KEEP_EPOCHS = 2;       // 保留期数：当期 + 上一期（最老数据约 60 天）
+const MAX_EPOCHS_BACK = 24;  // 最多往回找 24 期，防死循环/误扫太远
+
+/** '2026-11' + (-2) ⇒ '2026-09'。跨年正确进位/借位。 */
+function shiftStamp(stamp, delta) {
+  const m = /^(\d{4})-(\d{2})$/.exec(String(stamp || ''));
+  if (!m) return '';
+  let y = Number(m[1]);
+  let mo = Number(m[2]) + delta;
+  while (mo <= 0) { mo += 12; y -= 1; }
+  while (mo > 12) { mo -= 12; y += 1; }
+  return y + '-' + ('0' + mo).slice(-2);
+}
+
 exports.main = async (event) => {
   // 🔴 R652 安全自保（R215 定式）：本函数只允许**定时触发器**调。
   //   有 OPENID 说明是从小程序端（用户）来的 ⇒ 直接拒。
@@ -148,6 +163,54 @@ exports.main = async (event) => {
     elapsed_ms: Date.now() - t0,
     detail: { done: done, failed: failed, pending: pending },
   };
+
+  // ===== 轮转：删掉超期备份（R688 新增）=====
+  // 为什么必须做：本函数原先**只增不减** —— 每月往云存储写一批 <集合>.json，永不清理。
+  //   ⇒ 用户注销、主库删干净之后，`backup/<年月>/user.json` 里原始 openid 与全部经营数据
+  //     仍以明文永久留在对象存储里。**删除被备份击穿**，这是最不容易被想起来的一处。
+  //
+  // 保留期 KEEP_EPOCHS 期（当期 + 上一期）。不设 1 期的原因：只留当期意味着
+  //   「当月备份一旦失败，上一份也被删了」= 在最需要备份的时候没有备份。
+  //   2 期 ⇒ 最老数据约 60 天，隐私政策按「最长约 60 天」如实写（不写 30 天）。
+  //
+  // 只在本期**完全成功**时才轮转：半成功还删旧的 = 把仅存的完整备份也弄没了。
+  const rotation = { skipped: true, reason: '', deleted: 0, failed: 0, epochs: [] };
+  const sample = done.find((x) => x.file_id);
+  const marker = sample ? String(sample.file_id).indexOf('/backup/') : -1;
+  if (!ok || !done.length) {
+    rotation.reason = ok ? '本期无成功文件' : '本期未完全成功，跳过轮转（不能把仅存的完整备份删掉）';
+  } else if (marker < 0) {
+    rotation.reason = '无法从 file_id 解析存储前缀，跳过轮转（避免误删别的东西）';
+  } else {
+    // 前缀形如 cloud://<envId>.<bucket>/ ；只从**本次上传返回的 fileID** 提取，不硬编码
+    const prefix = String(sample.file_id).slice(0, marker + 1);
+    const files = [];
+    for (let d = KEEP_EPOCHS; d <= KEEP_EPOCHS + MAX_EPOCHS_BACK; d++) {
+      const old = shiftStamp(stamp, -d);
+      rotation.epochs.push(old);
+      for (const c of COLLECTIONS) {
+        if (SKIP.has(c)) continue;
+        files.push(prefix + 'backup/' + old + '/' + c + '.json');
+      }
+    }
+    rotation.skipped = false;
+    // deleteFile 单次最多 50 个，分批。删不到（文件本就不存在）算 normal，不阻断。
+    for (let i = 0; i < files.length; i += 50) {
+      const chunk = files.slice(i, i + 50);
+      try {
+        const r = await cloud.deleteFile({ fileList: chunk });
+        for (const f of ((r && r.fileList) || [])) {
+          if (f && f.status === 0) rotation.deleted++;
+          else rotation.failed++;
+        }
+      } catch (e) {
+        rotation.failed += chunk.length;
+      }
+    }
+    console.log('[dbBackup] 轮转：删除 ' + rotation.deleted + ' 个超期文件' +
+      '（保留最近 ' + KEEP_EPOCHS + ' 期；移除期次 ' + rotation.epochs.join(',') + '）');
+  }
+  summary.rotation = rotation;
 
   // 失败/未完成要在函数日志里**极其显眼**（否则"备份跑了"会一直看起来是绿的）
   console.log('[dbBackup] ' + (ok ? '✅' : '🔴') + ' ' + stamp +

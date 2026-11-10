@@ -123,7 +123,31 @@ Page({
   },
 
   // 查看隐私协议
+  //
+  // 🔴 R688：原先是一个 `wx.showModal` **自写一段话冒充隐私协议**，且那段话有两处与实现不符：
+  //   ① 写「收集昵称头像…用于账号识别与数据同步」—— 昵称头像只 `wx.setStorageSync` 存本地，
+  //      全仓没有任何云函数读它们，谈不上"同步"；
+  //   ② 写「不含手机号、支付信息等敏感数据」—— 我们**有**支付流水（`shop_payment_flow` /
+  //      `order_refund`），这句话在发生付费后就是假的。而最该写的经营财务数据一个字没提。
+  //
+  //   合规路径只有一条：打开微信官方的《用户隐私保护指引》（在 mp 后台填报、微信审核）。
+  //   自写文本只能作**兜底说明**，不能替代官方那份。
   onOpenPrivacy() {
+    if (wx.openPrivacyContract) {
+      wx.openPrivacyContract({
+        fail: () => {
+          // 后台尚未填报指引 / 基础库过低时会走这里 —— 不能静默失败，
+          // 否则用户点「隐私协议」什么都不发生，比显示一段不完整的话更糟
+          this.showPrivacyFallback();
+        },
+      });
+      return;
+    }
+    this.showPrivacyFallback();
+  },
+
+  // 兜底：官方指引打不开时的说明（内容必须与实现一致，见 terms.privacyDesc）
+  showPrivacyFallback() {
     wx.showModal({
       title: TERMS.exp.privacyTitle,
       content: TERMS.exp.privacyDesc,
