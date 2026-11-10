@@ -73,7 +73,16 @@ check(`L-e 全部 default_unit ∈ PURCHASE_UNITS（16 项）`, badUnit.length =
 console.log('===== L-f · 模板规模（20~35，封顶 35）=====');
 // 为什么是区间而不是定值：模板会继续按业态补（火锅/小面/卤味），定值每加一道就要改一次判据，
 //   而**真正的红线是上限**——模板超过 35 道后，picker 滚轮变成负担，且会强化"系统只有这些菜"的错觉。
-check('L-f 模板 20~35 道（封顶 35）', TEMPLATES.length >= 20 && TEMPLATES.length <= 35, `length=${TEMPLATES.length}`);
+// 🔴 R672：封顶从「总数 35」改成「**每类 ≤ 20**」。
+//   为什么改：R671 把模板改成两级选择后，"太长滚不动"这个约束的对象变了 ——
+//   原来 41 道平铺在一个下拉里确实难找；现在按品类分开，老板只面对**一个品类内**的列表。
+//   所以真正该守的是"每类不超过 20 条"（下拉一屏能扫完），不是总数。
+//   ⚠️ 总数仍给个宽上限（60），防止有人无限往里堆而不分类。
+const { TEMPLATE_CATS: CATS_F, templatesByCat: byCatF } = require('../utils/dishTemplates.js');
+const catTooMany = (CATS_F || []).map((c) => ({ c: c.label, n: byCatF(c.key).length })).filter((x) => x.n > 20);
+check('L-f 模板每类 ≤20 道（两级选择后按类控长，不是按总数）', catTooMany.length === 0,
+  catTooMany.length ? catTooMany.map((x) => x.c + '=' + x.n).join(',') : (CATS_F || []).map((c) => c.label + '=' + byCatF(c.key).length).join(' / '));
+check('L-f 模板总数 20~60 道（宽上限，防无限堆）', TEMPLATES.length >= 20 && TEMPLATES.length <= 60, `length=${TEMPLATES.length}`);
 const PRICE_KEYS = ['price', 'unit_cost', 'cost', 'price_fen', 'unit_cost_fen', 'cost_fen'];
 const deepHasPrice = (obj, path) => {
   if (Array.isArray(obj)) return obj.some((o, i) => deepHasPrice(o, `${path}[${i}]`));

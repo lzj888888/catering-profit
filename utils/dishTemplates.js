@@ -299,6 +299,261 @@ const TEMPLATES = [
       { line_name: '醪糟（每锅约10g）', qty: 100, unit: '克' },
     ],
   },
+  // ===== 快餐 / 小面（R672 新增，8 道）=====
+  // 🔴 数据口径：每份**门店出品量**（不是家庭份），用量为行业常见区间中值。
+  //   面条类成本结构最简单（面 + 浇头 + 调料），所以先做这一类验证流程。
+  // ⚠️ 面/粉的干湿换算各店不同（干面 150g ≈ 湿面 180g），老板按自家采购规格改。
+  {
+    cat: 'fastfood',
+    tpl_key: 'cq_xiaomian',
+    dish_name: '重庆小面（素面）',
+    lines: [
+      { line_name: '水面（碱面）', qty: 150, unit: '克' },
+      { line_name: '青菜', qty: 50, unit: '克' },
+      { line_name: '辣椒油', qty: 15, unit: '克' },
+      { line_name: '花椒面', qty: 2, unit: '克' },
+      { line_name: '酱油', qty: 10, unit: '克' },
+      { line_name: '猪油', qty: 10, unit: '克' },
+      { line_name: '蒜水', qty: 10, unit: '克' },
+      { line_name: '芽菜', qty: 10, unit: '克' },
+      { line_name: '葱花', qty: 5, unit: '克' },
+      { line_name: '盐', qty: 2, unit: '克' },
+      { line_name: '鸡精', qty: 3, unit: '克' },
+    ],
+  },
+  {
+    cat: 'fastfood',
+    tpl_key: 'wanzha_mian',
+    dish_name: '豌杂面',
+    lines: [
+      { line_name: '水面（碱面）', qty: 150, unit: '克' },
+      { line_name: '豌豆（耙豌豆）', qty: 50, unit: '克' },
+      { line_name: '猪肉末（杂酱）', qty: 50, unit: '克' },
+      { line_name: '青菜', qty: 50, unit: '克' },
+      { line_name: '郫县豆瓣', qty: 10, unit: '克' },
+      { line_name: '酱油', qty: 10, unit: '克' },
+      { line_name: '辣椒油', qty: 10, unit: '克' },
+      { line_name: '盐', qty: 2, unit: '克' },
+    ],
+  },
+  {
+    cat: 'fastfood',
+    tpl_key: 'hongshao_niuroumian',
+    dish_name: '红烧牛肉面',
+    lines: [
+      { line_name: '面条', qty: 150, unit: '克' },
+      { line_name: '牛肉', qty: 80, unit: '克' },
+      { line_name: '青菜', qty: 50, unit: '克' },
+      { line_name: '酱油', qty: 15, unit: '克' },
+      { line_name: '郫县豆瓣', qty: 10, unit: '克' },
+      { line_name: '冰糖', qty: 5, unit: '克' },
+      { line_name: '香料（八角桂皮等）', qty: 2, unit: '克' },
+      { line_name: '盐', qty: 3, unit: '克' },
+    ],
+  },
+  {
+    cat: 'fastfood',
+    tpl_key: 'suanlafen',
+    dish_name: '酸辣粉',
+    lines: [
+      { line_name: '红薯粉', qty: 150, unit: '克' },
+      { line_name: '酥花生', qty: 15, unit: '克' },
+      { line_name: '酥黄豆', qty: 10, unit: '克' },
+      { line_name: '榨菜', qty: 10, unit: '克' },
+      { line_name: '保宁醋', qty: 15, unit: '克' },
+      { line_name: '辣椒油', qty: 15, unit: '克' },
+      { line_name: '酱油', qty: 10, unit: '克' },
+      { line_name: '花椒面', qty: 2, unit: '克' },
+      { line_name: '蒜水', qty: 10, unit: '克' },
+    ],
+  },
+  {
+    cat: 'fastfood',
+    tpl_key: 'fanqie_jidanmian',
+    dish_name: '番茄鸡蛋面',
+    lines: [
+      { line_name: '面条', qty: 150, unit: '克' },
+      { line_name: '番茄', qty: 150, unit: '克' },
+      { line_name: '鸡蛋', qty: 100, unit: '克' },
+      { line_name: '葱花', qty: 5, unit: '克' },
+      { line_name: '食用油', qty: 20, unit: '克' },
+      { line_name: '盐', qty: 3, unit: '克' },
+      { line_name: '白糖', qty: 3, unit: '克' },
+    ],
+  },
+  {
+    cat: 'fastfood',
+    tpl_key: 'chaoshou',
+    dish_name: '红油抄手',
+    lines: [
+      { line_name: '馄饨皮', qty: 100, unit: '克' },
+      { line_name: '猪肉馅', qty: 80, unit: '克' },
+      { line_name: '辣椒油', qty: 15, unit: '克' },
+      { line_name: '酱油', qty: 10, unit: '克' },
+      { line_name: '蒜水', qty: 10, unit: '克' },
+      { line_name: '葱花', qty: 5, unit: '克' },
+      { line_name: '盐', qty: 2, unit: '克' },
+    ],
+  },
+  {
+    cat: 'fastfood',
+    tpl_key: 'huiguorou_gaifan',
+    dish_name: '回锅肉盖饭',
+    lines: [
+      // 💡 盖饭 = 米饭 + 一道菜。菜的部分也可直接用「正餐/炒菜」里的回锅肉模板，成本合并即可。
+      { line_name: '米饭', qty: 250, unit: '克' },
+      { line_name: '五花肉', qty: 100, unit: '克' },
+      { line_name: '青椒', qty: 50, unit: '克' },
+      { line_name: '蒜苗', qty: 30, unit: '克' },
+      { line_name: '郫县豆瓣', qty: 15, unit: '克' },
+      { line_name: '酱油', qty: 10, unit: '克' },
+      { line_name: '白糖', qty: 3, unit: '克' },
+      { line_name: '食用油', qty: 15, unit: '克' },
+    ],
+  },
+  {
+    cat: 'fastfood',
+    tpl_key: 'dan_chaofan',
+    dish_name: '蛋炒饭',
+    lines: [
+      { line_name: '米饭', qty: 250, unit: '克' },
+      { line_name: '鸡蛋', qty: 100, unit: '克' },
+      { line_name: '葱花', qty: 10, unit: '克' },
+      { line_name: '食用油', qty: 20, unit: '克' },
+      { line_name: '盐', qty: 3, unit: '克' },
+    ],
+  },
+  // ===== 咖啡茶饮（R672 新增，5 道）=====
+  // 🔴 饮品成本结构：原料单一、损耗极低，但**杯型差异大**（中杯/大杯差 30-50%）。
+  //   本模板按中杯（约 400-500ml）给，老板按自家杯型改。
+  {
+    cat: 'cafe',
+    tpl_key: 'americano',
+    dish_name: '美式咖啡（中杯）',
+    lines: [
+      { line_name: '咖啡豆', qty: 18, unit: '克' },
+      { line_name: '纯净水', qty: 200, unit: '毫升' },
+    ],
+  },
+  {
+    cat: 'cafe',
+    tpl_key: 'latte',
+    dish_name: '拿铁（中杯）',
+    lines: [
+      { line_name: '咖啡豆', qty: 18, unit: '克' },
+      { line_name: '牛奶', qty: 200, unit: '毫升' },
+    ],
+  },
+  {
+    cat: 'cafe',
+    tpl_key: 'zhenzhu_naicha',
+    dish_name: '珍珠奶茶（中杯）',
+    lines: [
+      { line_name: '红茶（茶包/茶叶）', qty: 5, unit: '克' },
+      { line_name: '奶精（植脂末）', qty: 30, unit: '克' },
+      { line_name: '白砂糖（或果糖）', qty: 20, unit: '克' },
+      { line_name: '珍珠（木薯粉圆）', qty: 50, unit: '克' },
+      { line_name: '水', qty: 300, unit: '毫升' },
+    ],
+  },
+  {
+    cat: 'cafe',
+    tpl_key: 'ningmeng_cha',
+    dish_name: '柠檬茶（中杯）',
+    lines: [
+      { line_name: '柠檬', qty: 50, unit: '克' },
+      { line_name: '红茶（茶包/茶叶）', qty: 5, unit: '克' },
+      { line_name: '白砂糖（或果糖）', qty: 25, unit: '克' },
+      { line_name: '水', qty: 400, unit: '毫升' },
+    ],
+  },
+  {
+    cat: 'cafe',
+    tpl_key: 'yangzhi_ganlu',
+    dish_name: '杨枝甘露（中杯）',
+    lines: [
+      { line_name: '芒果', qty: 150, unit: '克' },
+      { line_name: '西米', qty: 30, unit: '克' },
+      { line_name: '椰浆', qty: 100, unit: '毫升' },
+      { line_name: '白砂糖', qty: 15, unit: '克' },
+    ],
+  },
+
+  // ===== 其他（R672 新增，6 道：卤味 / 凉菜 / 早餐）=====
+  // 🔴 卤味的关键：**老汤是循环用的**，不是每次新配。所以「老汤」按"每份分摊量"填，
+  //   而不是"每锅新汤量" —— 否则卤味成本会虚高几倍。
+  //   补盐量取决于老汤用过多少次、蒸发多少，**给不了固定值**，老板按自家尝味定。
+  {
+    cat: 'other',
+    tpl_key: 'lu_niurou',
+    dish_name: '卤牛肉',
+    lines: [
+      { line_name: '牛腱子', qty: 200, unit: '克' },
+      { line_name: '老汤（循环使用·按份分摊）', qty: 100, unit: '毫升' },
+      { line_name: '卤料包（按份分摊）', qty: 5, unit: '克' },
+      { line_name: '酱油', qty: 15, unit: '克' },
+      { line_name: '盐（按老汤咸度补）', qty: 5, unit: '克' },
+      { line_name: '姜', qty: 10, unit: '克' },
+    ],
+  },
+  {
+    cat: 'other',
+    tpl_key: 'lu_jizhua',
+    dish_name: '卤鸡爪',
+    lines: [
+      { line_name: '鸡爪', qty: 200, unit: '克' },
+      { line_name: '老汤（循环使用·按份分摊）', qty: 80, unit: '毫升' },
+      { line_name: '卤料包（按份分摊）', qty: 4, unit: '克' },
+      { line_name: '酱油', qty: 12, unit: '克' },
+      { line_name: '冰糖', qty: 5, unit: '克' },
+      { line_name: '盐（按老汤咸度补）', qty: 4, unit: '克' },
+    ],
+  },
+  {
+    cat: 'other',
+    tpl_key: 'liangban_muer',
+    dish_name: '凉拌木耳',
+    lines: [
+      { line_name: '干木耳（泡发前）', qty: 20, unit: '克' },
+      { line_name: '蒜', qty: 10, unit: '克' },
+      { line_name: '保宁醋', qty: 15, unit: '克' },
+      { line_name: '辣椒油', qty: 10, unit: '克' },
+      { line_name: '酱油', qty: 8, unit: '克' },
+      { line_name: '香菜', qty: 5, unit: '克' },
+      { line_name: '盐', qty: 2, unit: '克' },
+    ],
+  },
+  {
+    cat: 'other',
+    tpl_key: 'doujiang',
+    dish_name: '豆浆（一碗）',
+    lines: [
+      { line_name: '黄豆（干）', qty: 50, unit: '克' },
+      { line_name: '水', qty: 500, unit: '毫升' },
+      { line_name: '白砂糖', qty: 10, unit: '克' },
+    ],
+  },
+  {
+    cat: 'other',
+    tpl_key: 'youtiao',
+    dish_name: '油条（一根）',
+    lines: [
+      { line_name: '面粉', qty: 100, unit: '克' },
+      { line_name: '酵母/膨松剂', qty: 2, unit: '克' },
+      { line_name: '盐', qty: 2, unit: '克' },
+      { line_name: '水', qty: 60, unit: '毫升' },
+      { line_name: '食用油（炸用·按根分摊）', qty: 15, unit: '克' },
+    ],
+  },
+  {
+    cat: 'other',
+    tpl_key: 'baizhou',
+    dish_name: '白粥（一碗）',
+    lines: [
+      { line_name: '大米', qty: 50, unit: '克' },
+      { line_name: '水', qty: 500, unit: '毫升' },
+    ],
+  },
 ];
 
 /**
