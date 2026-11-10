@@ -89,7 +89,7 @@
        而「报废」是**保留痕迹**的语义（把未摊余额转成处置损失），跟「填错了想直接抹掉」不是一回事。
        两类资产的删除文案不同（后果不同），由 js 按 kind 分流到 t.fDelete / t.confirmDelete。 -->
   <button class="btn ghost" wx:if="{{mode === 'edit' && !readOnly}}"
-    style="color:#e74c3c;border-color:#e74c3c;" bindtap="onDelete">{{t.fDelete}}</button>
+    style="color:#c0392b;border-color:#c0392b;" bindtap="onDelete">{{t.fDelete}}</button>
 
   <button class="btn ghost" bindtap="onBack">{{t.cancel}}</button>
 </view>

@@ -11,9 +11,18 @@
  *
  * 【暖底色板】R680 全站推广，替代原冷蓝三色（#f5f6f8 / #f3f7fb / #e8eff7）：
  *   页面底 #F6F3EC 米白 ／ 卡面 #FFFDF8 暖白 ／ 卡描边 #EDE6D8 米线
- *   浅底块 #FBF6EC ／ 副文字 #7C7264 暖灰（原冷蓝灰 #6b7a90）
+ *   浅底块 #FBF6EC
  *   为什么必须两层一起改：只把底改暖、字还留冷蓝灰 ⇒ 页面显「脏」；
  *   底与字同暖，才是「纸质账本」而不是「冷色报表」。
+ *
+ * 【文字三档 · R681 修正】暖化第一版把副文字换成了浅暖灰，落在米白底上
+ *   **对比度只有 2.4~4.3**（李老师真机反馈「有点金丝色，看着吃力、柔了」）。
+ *   现收成三档，最弱一档也过 4.5:1（WCAG AA 正文线），层级改由字号/字重承担：
+ *     正文  #2B2620（12.6:1）
+ *     次要  #5F564C / #6B6157（6.5 / 5.5:1）
+ *     最弱  #776C5E（4.6:1）—— 这是**文字的下限，不许再浅**
+ *   🔴 红线：今后「弱化」只准用字号/字重/位置，**不准用降色**。
+ *      金 #B77A2A（3.25:1）只能做图标底/装饰，**永远不许当文字色**。
  * ============================================================ */
 page { background: #F6F3EC; font-family: -apple-system, "PingFang SC", sans-serif; }
 .container { padding: 24rpx; }
@@ -26,17 +35,17 @@ page { background: #F6F3EC; font-family: -apple-system, "PingFang SC", sans-seri
    矩阵页 / 对比页正是踩此雷（2026-10-14 李老师连续几轮反馈「改了几次没改成横版」）。
    ⇒ 本轮**把雷拆了**：删掉这三条；并由 `tools/check_page_card_width.js` 机器守着
    「全局样式表里不得再出现精确类名 `.card`」。 */
-.label { display: block; font-size: 28rpx; color: #857A6B; }
-.value { display: block; font-size: 40rpx; font-weight: 700; color: #222; }
+.label { display: block; font-size: 28rpx; color: #776C5E; }
+.value { display: block; font-size: 40rpx; font-weight: 700; color: #2B2620; }
 .sub { font-size: 28rpx; color: #1e3a5f; }
-.sec { display: block; margin: 24rpx 8rpx 12rpx; font-weight: 700; color: #333; }
+.sec { display: block; margin: 24rpx 8rpx 12rpx; font-weight: 700; color: #3A332B; }
 .row { display: flex; justify-content: space-between; background: #FFFDF8; padding: 20rpx; border-radius: 16rpx; margin-bottom: 12rpx; align-items: center; }
 .row input { text-align: right; }
 .name { font-weight: 600; }
-.meta { display: block; font-size: 28rpx; color: #857A6B; margin: 6rpx 0; }
+.meta { display: block; font-size: 28rpx; color: #776C5E; margin: 6rpx 0; }
 .profit { font-size: 28rpx; color: #1e3a5f; }
 .del { color: #c0392b; padding: 0 20rpx; }
-.empty { text-align: center; color: #B5AB9C; padding: 40rpx; }
+.empty { text-align: center; color: #776C5E; padding: 40rpx; }
 .add { margin-top: 24rpx; background: #1e3a5f; color: #fff; }
 .form { padding: 24rpx; }
 .field { display: flex; justify-content: space-between; background: #FFFDF8; padding: 24rpx; border-radius: 16rpx; margin-bottom: 16rpx; align-items: center; }
@@ -75,13 +84,13 @@ input, textarea { min-height: 88rpx; line-height: 1.5; }
 .cell { display: flex; justify-content: space-between; align-items: center; padding: 24rpx 0; border-bottom: 1rpx solid #EFE8DA; font-size: 30rpx; }
 .cell:last-child { border-bottom: none; }
 .cell .lbl { color: #5F564C; }
-.cell .val { font-weight: 600; color: #222; }
+.cell .val { font-weight: 600; color: #2B2620; }
 .inp { background: #FFFDF8; border: 1rpx solid #EDE6D8; border-radius: 16rpx; padding: 24rpx; min-height: 88rpx; margin-bottom: 16rpx; font-size: 30rpx; }
 .inp input { width: 100%; }
 .inp textarea { width: 100%; min-height: 160rpx; font-size: 30rpx; }
 .label2 { display: block; font-size: 28rpx; color: #6B6157; margin: 16rpx 4rpx 8rpx; }
 .tag { display: inline-block; font-size: 28rpx; color: #1e3a5f; background: #F5EBD8; border-radius: 8rpx; padding: 4rpx 12rpx; margin-left: 12rpx; }
-.tag.lock { color: #A99E8E; background: #eee; }
+.tag.lock { color: #776C5E; background: #eee; }
 .card-title { font-size: 32rpx; font-weight: 700; margin-bottom: 12rpx; color: #1e3a5f; }
 .result-num { font-size: 56rpx; font-weight: 800; color: #1e3a5f; }
 .muted { color: #6B6157; font-size: 28rpx; }
@@ -104,9 +113,9 @@ input, textarea { min-height: 88rpx; line-height: 1.5; }
 .cm-opt { padding: 20rpx; border-radius: 16rpx; border: 2rpx solid #EDE6D8; margin-bottom: 12rpx; }
 .cm-opt:last-child { margin-bottom: 0; }
 .cm-opt.on { border-color: #1e3a5f; background: #FBF6EC; }
-.cm-opt-h { font-size: 30rpx; font-weight: 600; color: #222; }
+.cm-opt-h { font-size: 30rpx; font-weight: 600; color: #2B2620; }
 .cm-opt.on .cm-opt-h { color: #1e3a5f; }
-.cm-opt-d { font-size: 28rpx; color: #7C7264; margin-top: 6rpx; line-height: 1.5; }
+.cm-opt-d { font-size: 28rpx; color: #776C5E; margin-top: 6rpx; line-height: 1.5; }
 .cm-state { font-size: 28rpx; color: #6B6157; background: #FBF6EC; border-radius: 12rpx; padding: 16rpx 20rpx; margin: 12rpx 0; line-height: 1.6; }
 .cm-moved { font-size: 28rpx; color: #6B6157; background: #FBF6EC; border-radius: 12rpx; padding: 20rpx; margin: 12rpx 0; line-height: 1.6; }
 
@@ -125,11 +134,11 @@ input, textarea { min-height: 88rpx; line-height: 1.5; }
  *       本组只管"优劣 ↔ 颜色"的对应 —— 同一 level 在 M1 / M2 必须同色，故上提到全局。
  * 为什么上提：M1 结果页要复用 M2 的评级色，若各页各写一份，将来改配色必然漂。
  * ============================================================ */
-.lv-good { color: #1e8e5a; }
+.lv-good { color: #1a7d55; }
 .lv-ok { color: #1e3a5f; }
-.lv-warn { color: #d68910; }
+.lv-warn { color: #9A5B00; }
 .lv-bad { color: #c0392b; }
-.lv-na { color: #B5AB9C; }
+.lv-na { color: #776C5E; }
 
 /* ============================================================
  * R191：类型区隔色条（**色值单源** —— 新增区隔色只在此登记，页面 wxss 只引类名）
@@ -164,12 +173,12 @@ input, textarea { min-height: 88rpx; line-height: 1.5; }
 .card-head { display: flex; align-items: flex-start; justify-content: space-between; }
 .card-title-flex { flex: 1; min-width: 0; margin-bottom: 0; }
 /* 「⋯」必须 ≥88rpx 触控区（与 .btn-small 同一条红线） */
-.more { min-width: 88rpx; min-height: 88rpx; font-size: 40rpx; color: #9A9184; text-align: center; line-height: 88rpx; margin-left: 8rpx; }
+.more { min-width: 88rpx; min-height: 88rpx; font-size: 40rpx; color: #6B6157; text-align: center; line-height: 88rpx; margin-left: 8rpx; }
 /* 成本 / 毛利 / 版本 三行压一行 */
 .cell-inline { display: flex; align-items: center; flex-wrap: wrap; font-size: 30rpx; padding: 16rpx 0 4rpx; }
 .cell-inline .lbl { color: #5F564C; }
-.cell-inline .val { font-weight: 600; color: #222; margin-left: 8rpx; }
-.cell-inline .dot { color: #bbb; margin: 0 16rpx; }
+.cell-inline .val { font-weight: 600; color: #2B2620; margin-left: 8rpx; }
+.cell-inline .dot { color: #776C5E; margin: 0 16rpx; }
 
 /* ============================================================
  * 🔴 R192：卡片操作行（ops-mini）—— R191 的「全收进 ⋯」被判定为**过度收纳**
@@ -212,7 +221,7 @@ input, textarea { min-height: 88rpx; line-height: 1.5; }
 .hub-hero .hub-title { color: #fff; font-size: 40rpx; }
 .hub-hero .hub-sub { color: #d7e2ef; margin-top: 10rpx; }
 .hub-go { width: 56rpx; height: 56rpx; border-radius: 28rpx; background: #F3ECDF;
-  display: flex; align-items: center; justify-content: center; font-size: 32rpx; color: #A99E8E; margin-left: 12rpx; }
+  display: flex; align-items: center; justify-content: center; font-size: 32rpx; color: #776C5E; margin-left: 12rpx; }
 
 /* R192：版本历史页趋势图 —— 成本 / 售价**双柱同尺度**（李老师：图上要有价格也要有版本） */
 .trend-bar-cost { background: linear-gradient(180deg, #2a4e7c 0%, #162c49 100%); }
@@ -277,4 +286,4 @@ input, textarea { min-height: 88rpx; line-height: 1.5; }
 .sb-badge.ok { background: #eaf6f0; color: #1f7a53; }
 .sb-badge.warn { background: #fff3e0; color: #a45f00; }
 .sb-badge.bad { background: #fdecea; color: #c0392b; }
-.sb-badge.na { background: #F6F3EC; color: #9A9184; }
+.sb-badge.na { background: #F6F3EC; color: #6B6157; }

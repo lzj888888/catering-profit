@@ -16,7 +16,7 @@
 /* R622 拍照当参考：按钮和照片都 ≥88rpx 高，照片点开能放大（店里字小看不清） */
 .mn-photo-btn { margin: 0 8rpx; height: 88rpx; line-height: 88rpx; text-align: center;
   font-size: 30rpx; color: #2b6cd4; background: #f0f5ff; border-radius: 14rpx; }
-.mn-photo-tip { display: block; font-size: 28rpx; color: #A99E8E; line-height: 1.55; padding: 10rpx 8rpx 0; }
+.mn-photo-tip { display: block; font-size: 28rpx; color: #776C5E; line-height: 1.55; padding: 10rpx 8rpx 0; }
 .mn-photo-box { background: #FFFDF8; border-radius: 16rpx; padding: 16rpx 24rpx 20rpx; margin: 0 8rpx 20rpx; }
 .mn-photo-img { width: 100%; height: 420rpx; background: #f4f6f9; border-radius: 12rpx; }
 .mn-photo-bar { display: flex; align-items: flex-start; justify-content: space-between; }
@@ -25,13 +25,13 @@
 .mn-group { background: #FFFDF8; border-radius: 16rpx; padding: 8rpx 24rpx 20rpx; margin-bottom: 20rpx; }
 .mn-gh { display: flex; align-items: center; justify-content: space-between; min-height: 88rpx; }
 .mn-gt { font-size: 32rpx; color: #1a2233; font-weight: 600; }
-.mn-gx { font-size: 28rpx; color: #A99E8E; }
-.mn-ghint { display: block; font-size: 28rpx; color: #A99E8E; line-height: 1.55; margin-bottom: 12rpx; }
+.mn-gx { font-size: 28rpx; color: #776C5E; }
+.mn-ghint { display: block; font-size: 28rpx; color: #776C5E; line-height: 1.55; margin-bottom: 12rpx; }
 
 .mn-item { padding: 16rpx 0 8rpx; border-top: 1rpx solid #f0f2f5; }
 .mn-il { font-size: 30rpx; color: #26303f; }
 .mn-in { font-size: 34rpx; color: #1a2233; height: 88rpx; line-height: 88rpx; border-bottom: 1rpx solid #e6e9ef; }
-.mn-ih { display: block; font-size: 28rpx; color: #A99E8E; line-height: 1.55; margin-top: 8rpx; }
+.mn-ih { display: block; font-size: 28rpx; color: #776C5E; line-height: 1.55; margin-top: 8rpx; }
 
 .mn-save { margin-top: 32rpx; }
-.mn-note { display: block; font-size: 28rpx; color: #A99E8E; line-height: 1.6; margin-top: 20rpx; text-align: center; }
+.mn-note { display: block; font-size: 28rpx; color: #776C5E; line-height: 1.6; margin-top: 20rpx; text-align: center; }

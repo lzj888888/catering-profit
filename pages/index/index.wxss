@@ -121,7 +121,7 @@
 .mod-bd { flex: 1; min-width: 0; }
 .mod-t { font-size: 32rpx; font-weight: 600; color: #1E3A5F; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mod-m { font-size: 28rpx; color: #5E6C7A; margin-top: 5rpx; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mod-go { flex: 0 0 auto; font-size: 36rpx; color: #B3A894; margin-left: 12rpx; }
+.mod-go { flex: 0 0 auto; font-size: 36rpx; color: #776C5E; margin-left: 12rpx; }
 
 /* ============================================================
  * R234/J3 · 首页常驻折叠引导条
@@ -147,7 +147,7 @@
 .guide-fold-arrow { font-size: 28rpx; color: #1e3a5f; flex: 0 0 auto; margin-left: 12rpx; }
 .guide-fold-body {
   font-size: 28rpx;
-  color: #7C7264;
+  color: #776C5E;
   line-height: 1.6;
   padding: 16rpx 24rpx;
   background: #FBF6EC;

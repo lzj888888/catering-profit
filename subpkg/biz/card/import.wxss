@@ -7,7 +7,7 @@
   font-size: 28rpx; line-height: 1.6; color: #1e3a5f;
   background: #f7fafd; border: 2rpx solid #dde7f2; border-radius: 12rpx;
   padding: 16rpx; margin-top: 8rpx; }
-.imp-ta-ph { color: #a8b6c8; font-size: 28rpx; }
+.imp-ta-ph { color: #776C5E; font-size: 28rpx; }
 .imp-tip { margin-top: 12rpx; line-height: 1.6; }
 /* 🔴 R570-G：只占内容宽度（块级 .btn 会长到满宽 ⇒ 看起来像「主操作」，把解析按钮比下去）；
    margin-top 清零是因为 .btn 自带 24rpx，叠加后与输入框离得太远。 */
@@ -39,9 +39,9 @@
 .imp-price-input { width: 180rpx; height: 88rpx; box-sizing: border-box;
   text-align: right; font-size: 30rpx; color: #1e3a5f;
   background: #f7fafd; border: 2rpx solid #dde7f2; border-radius: 10rpx; padding: 0 12rpx; }
-.imp-unit { font-size: 28rpx; color: #7C7264; margin-left: 8rpx; }
+.imp-unit { font-size: 28rpx; color: #776C5E; margin-left: 8rpx; }
 
 .imp-reason { margin-top: 12rpx; font-size: 28rpx; color: #b3261e; line-height: 1.5; }
 .imp-go { margin-top: 16rpx; }
 
-.imp-empty { font-size: 28rpx; color: #7C7264; text-align: center; padding: 60rpx 0; }
+.imp-empty { font-size: 28rpx; color: #776C5E; text-align: center; padding: 60rpx 0; }

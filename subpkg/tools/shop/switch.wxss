@@ -54,7 +54,7 @@
 .row-ops .ops-btn.warn { background: #fdf3e3; color: #a2681a; }
 .row-ops .ops-btn.danger { background: #fdecea; color: #c0392b; }
 
-.more-hint { font-size: 28rpx; color: #A99E8E; margin: 12rpx 4rpx 40rpx; line-height: 1.6; }
+.more-hint { font-size: 28rpx; color: #776C5E; margin: 12rpx 4rpx 40rpx; line-height: 1.6; }
 
 /* ===== R234/J4e · 行内长提示折叠（句级，与月录入页 / M2 / assetEdit / amortize / takeaway 同形）=====
  * body 底色 #FBF6EC 与全局 `.hint` 同色 ⇒ 折叠前后视觉连贯。

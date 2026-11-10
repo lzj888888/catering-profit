@@ -33,7 +33,7 @@
   <view class="card2">
     <!-- R485：标题按模式变（盘点⇒本月利润 / 不盘点⇒估算利润），都带"利润"二字 -->
     <view class="muted">{{r.profitTitle}}</view>
-    <view class="result-num" style="color:#22a06b;">{{t.cur}}{{r.trueProfit}}</view>
+    <view class="result-num" style="color:#1a7d55;">{{t.cur}}{{r.trueProfit}}</view>
     <view class="muted">{{r.profitNote}}</view>
     <!-- 🔴 R489：钱扣在哪（摊销 / 一次算清）+ 倒轧用的是哪个期末库存。
          三行都"有话说才出现"：空行会把利润卡撑长，反而看不出重点。
@@ -73,7 +73,7 @@
         <text class="muted">=</text>
         <view style="display:flex;flex-direction:column;align-items:center;min-width:110rpx;">
           <text class="muted">{{t.flowLand}}</text>
-          <text class="val" style="color:#22a06b;">{{t.cur}}{{r.trueProfit}}</text>
+          <text class="val" style="color:#1a7d55;">{{t.cur}}{{r.trueProfit}}</text>
         </view>
       </view>
       <view class="muted">{{t.flowPer100}} {{t.cur}}{{r.per100}}　{{t.flowHint}}</view>

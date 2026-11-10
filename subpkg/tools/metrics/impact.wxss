@@ -2,7 +2,7 @@
 .hint { font-size: 28rpx; color: #1e3a5f; line-height: 1.5; margin: 8rpx 4rpx 16rpx; }
 .card-title { font-size: 30rpx; color: #1e3a5f; font-weight: 600; margin-bottom: 8rpx; }
 .cell { display: flex; justify-content: space-between; padding: 12rpx 4rpx; border-bottom: 1rpx solid #F0E9DC; }
-.lbl { font-size: 28rpx; color: #7C7264; }
+.lbl { font-size: 28rpx; color: #776C5E; }
 .val { font-size: 30rpx; color: #1e3a5f; }
-.warn { font-size: 28rpx; color: #e74c3c; line-height: 1.5; margin: 10rpx 4rpx; min-height: 88rpx; display: flex; align-items: center; }
-.empty { font-size: 28rpx; color: #7C7264; text-align: center; padding: 60rpx 0; }
+.warn { font-size: 28rpx; color: #c0392b; line-height: 1.5; margin: 10rpx 4rpx; min-height: 88rpx; display: flex; align-items: center; }
+.empty { font-size: 28rpx; color: #776C5E; text-align: center; padding: 60rpx 0; }

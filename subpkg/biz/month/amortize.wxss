@@ -20,8 +20,8 @@
   display: flex; justify-content: space-between; align-items: center;
   padding: 12rpx 0; border-top: 1rpx solid #EFE8DA;
 }
-.bh-txt { font-size: 28rpx; color: #857A6B; }
-.bh-arrow { font-size: 28rpx; color: #A99E8E; }
+.bh-txt { font-size: 28rpx; color: #776C5E; }
+.bh-arrow { font-size: 28rpx; color: #776C5E; }
 
 /* ===== round106（F5b）：留存数据行（剩余未摊 / 摊完月份）—— 纯展示，数值全由后端算 ===== */
 .prog {
@@ -36,9 +36,9 @@
   display: flex; align-items: center; justify-content: space-between;
   padding: 12rpx 0; border-bottom: 1rpx solid #EFE8DA; gap: 16rpx;
 }
-.lump-name { flex: 1; font-size: 30rpx; color: #222; }
-.lump-amt { font-size: 30rpx; font-weight: 600; color: #222; }
-.empty-inline { font-size: 28rpx; color: #A99E8E; padding: 20rpx 0; }
+.lump-name { flex: 1; font-size: 30rpx; color: #2B2620; }
+.lump-amt { font-size: 30rpx; font-weight: 600; color: #2B2620; }
+.empty-inline { font-size: 28rpx; color: #776C5E; padding: 20rpx 0; }
 
 /* ===== round109：收尾区 =====
    本页是「月度录入 → 库存盘点 → 一次性投入」的最后一步 ⇒ 填完必须给出明确的下一步，

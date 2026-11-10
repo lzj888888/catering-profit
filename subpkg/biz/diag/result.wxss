@@ -28,7 +28,7 @@
 .lv-insufficient .dg-badge { background: #A99E8E; }
 
 .dg-score { font-size: 56rpx; font-weight: 700; color: #1e3a5f; margin-top: 12rpx; }
-.dg-concl { font-size: 30rpx; color: #333; line-height: 1.65; margin-top: 8rpx; }
+.dg-concl { font-size: 30rpx; color: #3A332B; line-height: 1.65; margin-top: 8rpx; }
 
 .dg-sig {
   margin-top: 18rpx; padding: 18rpx 20rpx; border-radius: 12rpx;
@@ -36,19 +36,19 @@
 }
 .dg-sig.none { background: #FBF6EC; border-left-color: #1e3a5f; font-size: 28rpx; color: #6B6157; }
 .dg-sig-hd { font-size: 26rpx; color: #92610a; margin-bottom: 6rpx; }
-.dg-sig-tx { font-size: 30rpx; font-weight: 600; color: #333; line-height: 1.6; }
+.dg-sig-tx { font-size: 30rpx; font-weight: 600; color: #3A332B; line-height: 1.6; }
 
 /* ---------- ② 11 项拆解 ---------- */
 .dg-sec-hd { font-size: 32rpx; font-weight: 700; color: #1e3a5f; margin-bottom: 8rpx; }
 .ind { padding: 18rpx 0; border-bottom: 1rpx solid #EFE8DA; }
 .ind:last-child { border-bottom: none; }
 .ind-hd { display: flex; justify-content: space-between; align-items: center; }
-.ind-lbl { font-size: 30rpx; color: #333; }
+.ind-lbl { font-size: 30rpx; color: #3A332B; }
 .ind-sc { font-size: 30rpx; font-weight: 700; }
-.sc-good { color: #22a06b; }
+.sc-good { color: #1a7d55; }
 .sc-watch { color: #1e3a5f; }
 .sc-warn { color: #c0392b; }
-.sc-na { color: #A99E8E; font-weight: 400; font-size: 26rpx; }
+.sc-na { color: #776C5E; font-weight: 400; font-size: 26rpx; }
 
 .bar { height: 12rpx; background: #f0f2f5; border-radius: 6rpx; margin: 10rpx 0 6rpx; overflow: hidden; }
 .bar-in { height: 100%; border-radius: 6rpx; }
@@ -64,12 +64,12 @@
   padding: 16rpx 0; border-bottom: 1rpx solid #EFE8DA; font-size: 30rpx;
 }
 .miss-row:last-of-type { border-bottom: none; }
-.miss-lbl { color: #333; }
+.miss-lbl { color: #3A332B; }
 
 /* ---------- ④ 依据 + 免责 ---------- */
 .basis-line { padding: 4rpx 0; }
 .dg-disclaimer {
-  font-size: 24rpx; color: #A99E8E; line-height: 1.7;
+  font-size: 24rpx; color: #776C5E; line-height: 1.7;
   padding: 8rpx 8rpx 0; text-align: justify;
 }
 
@@ -85,7 +85,7 @@
 .bm-v { font-weight: 600; }
 /* 亏损 = 红（中国经营语境：亏是坏事，不是股市跌绿红涨那套；这里是账，不是行情） */
 .bm-v.neg { color: #c0392b; }
-.bm-v.pos { color: #22a06b; }
+.bm-v.pos { color: #1a7d55; }
 
 /* 🔴 R614 补丁：账本不足引导块。
    刻意与页底深色 banner 区分：这里是「信息 + 一条出路」，用浅底 + 左侧琥珀色条，
@@ -98,7 +98,7 @@
   border-radius: 12rpx;
 }
 .dg-mm-t { font-size: 28rpx; color: #2b3a4d; line-height: 1.6; }
-.dg-mm-h { margin-top: 8rpx; font-size: 28rpx; color: #6b7a8d; line-height: 1.6; }
+.dg-mm-h { margin-top: 8rpx; font-size: 28rpx; color: #6B6157; line-height: 1.6; }
 .dg-mm-a { margin-top: 14rpx; font-size: 28rpx; color: #2a4e7c; font-weight: 600; }
 
 /* ===== R615 处方层：下一步怎么做 =====

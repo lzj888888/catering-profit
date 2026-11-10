@@ -8,8 +8,8 @@
 .drill-caret { color: #1e3a5f; font-size: 28rpx; }
 .drill-body { padding: 12rpx 0 16rpx; }
 .drill-row { margin-bottom: 12rpx; }
-.drill-gname { font-size: 28rpx; font-weight: 600; color: #333; display: flex; justify-content: space-between; }
-.drill-gamt { color: #222; font-weight: 600; }
+.drill-gname { font-size: 28rpx; font-weight: 600; color: #3A332B; display: flex; justify-content: space-between; }
+.drill-gamt { color: #2B2620; font-weight: 600; }
 .drill-sub { display: flex; justify-content: space-between; padding: 6rpx 0 0 16rpx; font-size: 28rpx; color: #6B6157; }
 .drill-samt { color: #444; }
 
@@ -23,19 +23,19 @@
 /* 🔴 字号下界 28rpx（26rpx 会被守卫判红）；色值单源 app.wxss */
 .ind-head { padding: 4rpx 0 12rpx; }
 .ind-title { font-size: 30rpx; font-weight: 500; color: #1e3a5f; }
-.ind-sub { display: block; font-size: 28rpx; color: #9A9184; margin-top: 6rpx; }
+.ind-sub { display: block; font-size: 28rpx; color: #6B6157; margin-top: 6rpx; }
 
 .ind-scope { display: flex; align-items: center; flex-wrap: wrap; padding-bottom: 8rpx; }
 .ind-pk { font-size: 28rpx; color: #1e3a5f; border: 2rpx solid #dfe4ec; border-radius: 8rpx; padding: 6rpx 16rpx; margin-right: 16rpx; }
-.ind-scope-tip { font-size: 28rpx; color: #d68910; }
+.ind-scope-tip { font-size: 28rpx; color: #9A5B00; }
 
 .ind-row { padding: 16rpx 0; border-top: 2rpx solid #f2f4f8; }
 .ind-line1 { display: flex; align-items: center; justify-content: space-between; }
-.ind-name { font-size: 30rpx; color: #333; }
+.ind-name { font-size: 30rpx; color: #3A332B; }
 .ind-line2 { display: flex; align-items: baseline; margin-top: 6rpx; flex-wrap: wrap; }
 .ind-mine { font-size: 28rpx; color: #1e3a5f; }
 .ind-missing { font-size: 28rpx; color: #b6bcc8; }
-.ind-band { font-size: 28rpx; color: #9A9184; }
+.ind-band { font-size: 28rpx; color: #6B6157; }
 
 .ind-lv { font-size: 28rpx; padding: 2rpx 14rpx; border-radius: 20rpx; }
 .ind-lv.lv-good { background: #eaf6f0; }
@@ -44,7 +44,7 @@
 .ind-lv.lv-bad { background: #fdecea; }
 .ind-lv.lv-na { background: #f2f4f8; }
 
-.ind-note { font-size: 28rpx; color: #9A9184; padding-top: 12rpx; line-height: 1.5; }
+.ind-note { font-size: 28rpx; color: #6B6157; padding-top: 12rpx; line-height: 1.5; }
 
 /* ===== 暖化：结果页顶部「一句话结论 + 红黄绿带」（装饰性，不碰引擎口径）===== */
 /* 字号 28rpx 下界（G1 守卫）；色值走本页语义色，不引新品牌色 */
@@ -54,16 +54,16 @@
 .band-red { background: #fdecea; }
 .band-red .band-text { color: #c0392b; }
 .band-yellow { background: #fdf4e7; }
-.band-yellow .band-text { color: #b9770e; }
+.band-yellow .band-text { color: #9A5B00; }
 .band-green { background: #eaf6f0; }
-.band-green .band-text { color: #1e8e5a; }
+.band-green .band-text { color: #1a7d55; }
 
 /* 🔴 R314：体检卡「展开看依据」头 —— 复用 .cell 布局，只把颜色压弱，
    让它在视觉上明显是"次要入口"，不与上面三条结论争注意力。 */
 .be-more-head { border-top: 1rpx solid #EFE8DA; }
 /* 🔴 字号**必须 ≥28rpx**（AD-G1 红线：老板多是老花眼，26rpx 已被守卫判红一次）。
    视觉弱化只靠**颜色/字重**，不靠缩字号。 */
-.be-more-head .lbl { color: #9A9083; }
+.be-more-head .lbl { color: #776C5E; }
 
 /* R443：现金输入 + 可撑月数（字号走 28rpx 底线，selftest_ad_gates G1） */
 .runway-in { flex: 1 1 auto; text-align: right; font-size: 32rpx; color: #1f2329; }

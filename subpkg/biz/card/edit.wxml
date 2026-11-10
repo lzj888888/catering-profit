@@ -281,14 +281,14 @@
       <!-- 三个显示数：顾客省 / 我少赚 / 成本结构 -->
       <block wx:if="{{comboInsight}}">
         <view class="muted">{{t.comboInsightCustomerSave}}：{{t.cur}}{{comboInsight.customer_save_yuan}}</view>
-        <view class="muted" wx:if="{{comboInsight.merchant_lose_neg}}" style="color:#e74c3c;">{{t.comboInsightMerchantLose}}：{{t.cur}}{{comboInsight.merchant_lose_yuan}}（{{t.comboInsightLoseWarn}}）</view>
+        <view class="muted" wx:if="{{comboInsight.merchant_lose_neg}}" style="color:#c0392b;">{{t.comboInsightMerchantLose}}：{{t.cur}}{{comboInsight.merchant_lose_yuan}}（{{t.comboInsightLoseWarn}}）</view>
         <view class="muted" wx:else>{{t.comboInsightMerchantLose}}：{{t.cur}}{{comboInsight.merchant_lose_yuan}}</view>
         <view class="muted">{{t.comboInsightCostShare}}：</view>
         <block wx:for="{{comboInsight.cost_share}}" wx:key="name">
           <view class="muted" style="padding-left:24rpx;">{{item.name}} {{item.share_pct}}%</view>
         </block>
         <!-- P1 · 套餐本身毛利（售价 − 套餐成本）：与「顾客省/我少赚」并列，让老板一眼看到这套餐自己赚多少 -->
-        <view class="muted" wx:if="{{comboSelfMargin}}" style="color:#1e9e5a;font-weight:600;">{{t.comboSelfMarginTitle}}：{{t.cur}}{{comboSelfMargin.profit}}（{{t.comboSelfMarginHint}} · {{comboSelfMargin.rate}}）</view>
+        <view class="muted" wx:if="{{comboSelfMargin}}" style="color:#1a7d55;font-weight:600;">{{t.comboSelfMarginTitle}}：{{t.cur}}{{comboSelfMargin.profit}}（{{t.comboSelfMarginHint}} · {{comboSelfMargin.rate}}）</view>
       </block>
     </view>
   </block>
@@ -407,7 +407,7 @@
       <view class="spec-res" wx:if="{{sp.enabled && sp.result}}">
         <view class="spec-res-name">{{sp.result.name}}</view>
         <!-- R547（M1）：没填克重 ⇒ 云端 **不给数**（need_portion）。此处显式提示，绝不显示"0 元成本/100% 毛利"。 -->
-        <view class="muted" wx:if="{{sp.result.needPortion}}" style="color:#e74c3c;">{{t.specNeedPortion}}</view>
+        <view class="muted" wx:if="{{sp.result.needPortion}}" style="color:#c0392b;">{{t.specNeedPortion}}</view>
         <block wx:else>
         <view class="muted">{{t.specCostLabel}}：<text style="color:#1e3a5f;">{{t.cur}}{{sp.result.costYuan}}</text></view>
         <view class="muted" wx:if="{{sp.result.price_fen > 0}}">{{t.specMarginLabel}}：{{sp.result.marginPct}}%</view>

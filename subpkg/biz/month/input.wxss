@@ -29,7 +29,7 @@
 /* A2：大类组（收入/费用二级细项） */
 .group { background: #FFFDF8; border-radius: 12rpx; margin-bottom: 16rpx; padding: 8rpx 24rpx; }
 .group-head { display: flex; justify-content: space-between; align-items: center; padding: 20rpx 0; }
-.g-label { font-size: 30rpx; font-weight: 600; color: #222; }
+.g-label { font-size: 30rpx; font-weight: 600; color: #2B2620; }
 .g-toggle { font-size: 28rpx; color: #1e3a5f; }
 /* 2026-09-20 改两行：行①细项名 + ×；行②金额（整行宽、带边框）
    原一行三控件时金额框仅 220rpx，点中间数字易误删、边框不明显 —— 李老师真机反馈。 */
@@ -37,12 +37,12 @@
 .sub-block { padding: 10rpx 0; border-top: 1rpx solid #F3ECDF; }
 .sub-line1 { display: flex; align-items: center; gap: 10rpx; }
 .sub-item-inp {
-  flex: 1; min-width: 0; font-size: 30rpx; color: #222;
+  flex: 1; min-width: 0; font-size: 30rpx; color: #2B2620;
   padding: 10rpx 16rpx; background: #f7f9fc; border-radius: 10rpx;
 }
 /* 预设细项名（不可改）：与可编辑细项同字号同内边距，只是没有输入框底色。
    ⚠️ 别删这条 —— 少了它，固定名与可编辑名会左右错位（2026-09-21）。 */
-.sub-item-fixed { flex: 1; min-width: 0; font-size: 30rpx; color: #222; padding: 10rpx 16rpx; }
+.sub-item-fixed { flex: 1; min-width: 0; font-size: 30rpx; color: #2B2620; padding: 10rpx 16rpx; }
 /* ⚠️ AD 规范（ad-gates G2 硬守）：可点元素 min-height ≥ 88rpx —— **不可下调**。
    2026-09-21 李老师反馈「删除键太大、占地」⇒ 收窄 width + 去掉红底方块：
    视觉上只剩一个 × 字符（不占视觉面积），但**点击热区仍是 88rpx**。
@@ -54,7 +54,7 @@
 }
 .btn-del::after { display: none; }         /* 去掉小程序 button 默认边框 */
 .sub-line2 { display: flex; align-items: center; gap: 14rpx; margin-top: 8rpx; }
-.sub-amt-lbl { flex: 0 0 auto; font-size: 28rpx; color: #7C7264; }
+.sub-amt-lbl { flex: 0 0 auto; font-size: 28rpx; color: #776C5E; }
 .sub-line2 .val-input {
   flex: 1; width: auto; text-align: right; font-size: 34rpx;
   padding: 12rpx 18rpx; border: 2rpx solid #DCD2C0; border-radius: 10rpx; background: #FFFDF8;
@@ -69,7 +69,7 @@
 .group-ops-inline .btn-small { margin: 0; flex: 1 1 0; min-width: 0; padding: 0 12rpx; font-size: 26rpx; border-radius: 44rpx; }
 /* 「- 删除细项」默认中性灰；本组进入删除态才转红 —— **状态由颜色表达**，不再换文案成「完成删除」
    （李老师 2026-10-25：删完还要再点一次「完成」是多一步且无感）。 */
-.group-ops-inline .subop-del { color: #7C7264; border-color: #d8e0ea; }
+.group-ops-inline .subop-del { color: #776C5E; border-color: #d8e0ea; }
 .group-ops-inline .subop-del.is-del-on { color: #c0392b; border-color: #c0392b; background: #fdf1ef; font-weight: 600; }
 /* round102：展开态底部的「还没加的有：…」只读提示（点击直开预设面板） */
 .preset-hint { margin: 4rpx 0 0; }
@@ -81,7 +81,7 @@
    ⚠️ 同族病第 3 例：.sub-block(wxss:11, 09-20)、.dine-item(wxml:70, 09-21) 已因同一问题改两行
       —— 新增录入区**不要再写「标签+输入框+按钮」一行三控件**。 */
 .tw-detail-row { border-top: 1rpx solid #F3ECDF; padding: 12rpx 0; }
-.tw-plat-name { font-size: 30rpx; font-weight: 600; color: #222; margin-bottom: 8rpx; }
+.tw-plat-name { font-size: 30rpx; font-weight: 600; color: #2B2620; margin-bottom: 8rpx; }
 .tw-fields { display: flex; flex-direction: column; gap: 8rpx; }
 .tw-field { display: flex; flex-direction: column; gap: 4rpx; }
 .tw-field-head { display: flex; align-items: center; justify-content: space-between; }
@@ -90,29 +90,29 @@
 /* 粘贴＝轻量按钮：去掉描边与白底重心（视觉不再抢金额框），但**点击热区仍守 AD 规范 ≥88rpx，不可下调** */
 .paste-btn { flex: 0 0 auto; min-height: 88rpx; height: 88rpx; line-height: 88rpx; margin: 0; padding: 0 10rpx; font-size: 28rpx; background: #eef3fa; color: #1e3a5f; border: 0; border-radius: 8rpx; }
 .paste-btn::after { display: none; }
-.tw-subtotal { text-align: right; font-size: 28rpx; color: #857A6B; margin-top: 6rpx; }
+.tw-subtotal { text-align: right; font-size: 28rpx; color: #776C5E; margin-top: 6rpx; }
 /* round109：外卖**折叠态**摘要 —— 折叠时只读「各平台已填金额 + 合计」，点标题行才展开录入。
    （接的是原本那个"假箭头"：标题行的 ▾/▸ 一直有，但内容块压根不读 expanded —— 点了只翻符号。） */
 .tw-fold { border-top: 1rpx solid #F3ECDF; padding: 12rpx 0 4rpx; }
 .tw-fold-row { display: flex; justify-content: space-between; align-items: center; padding: 6rpx 0; }
 .tw-fold-name { font-size: 28rpx; color: #5F564C; }
 .tw-fold-amt { font-size: 30rpx; font-weight: 600; color: #1e3a5f; }
-.tw-fold-empty { font-size: 28rpx; color: #8a97a6; padding: 8rpx 0; line-height: 1.6; }
+.tw-fold-empty { font-size: 28rpx; color: #776C5E; padding: 8rpx 0; line-height: 1.6; }
 .tw-rec { background: #f7f8fa; border-radius: 12rpx; padding: 16rpx; margin-top: 12rpx; }
 .tw-rec-field { display: flex; align-items: center; gap: 10rpx; }
-.tw-rec-hint { font-size: 28rpx; color: #857A6B; margin-top: 8rpx; line-height: 1.5; }
+.tw-rec-hint { font-size: 28rpx; color: #776C5E; margin-top: 8rpx; line-height: 1.5; }
 .tw-rec-msg { font-size: 28rpx; color: #b45309; background: #fef3c7; border-radius: 8rpx; padding: 10rpx 14rpx; margin-top: 10rpx; line-height: 1.5; }
 /* R162（R161-3）：外卖专段顶部的**防双记边界句** —— 常驻说明（不是触发式告警），
    故用中性品牌色底而非告警黄：常驻黄块会盖过真正的配平提示，反而让人不看。 */
 /*   ⚠️ 字号一律 ≥28rpx（AD-G1 硬规，门禁 selftest_ad_gates 的 G1 当场判红）。 */
 .tw-boundary { font-size: 28rpx; color: #1e3a5f; background: #F5EBD8; border-radius: 8rpx; padding: 12rpx 14rpx; margin-bottom: 12rpx; line-height: 1.6; }
 /* R162（R161-2）：补贴框下的**固定口径小字** —— 抄数规则钉在框边，抄错一眼能看见（字号同样守 ≥28rpx） */
-.tw-field-note { font-size: 28rpx; color: #8a97a6; line-height: 1.5; padding: 4rpx 0 2rpx; }
+.tw-field-note { font-size: 28rpx; color: #776C5E; line-height: 1.5; padding: 4rpx 0 2rpx; }
 /* R163（R161-6）：归月口径句 —— 与边界句同底色但更浅，避免两条蓝块撞脸 */
 .tw-period { font-size: 28rpx; color: #5b6b7f; background: #F3ECDF; border-radius: 8rpx; padding: 10rpx 14rpx; margin-bottom: 12rpx; line-height: 1.6; }
 
 /* R85 · 费用侧营销项「取数路径」标注 */
-.exp-note { font-size: 28rpx; color: #A99E8E; padding: 2rpx 0 6rpx 20rpx; line-height: 1.5; }
+.exp-note { font-size: 28rpx; color: #776C5E; padding: 2rpx 0 6rpx 20rpx; line-height: 1.5; }
 .exp-note.promo { color: #b45309; }
 .promo-path { font-weight: 600; }
 .promo-hint { font-size: 28rpx; color: #b45309; margin-top: 4rpx; }
@@ -159,20 +159,20 @@
   padding: 20rpx 24rpx;
 }
 .fg-title { font-size: 28rpx; color: #5F564C; }
-.fg-toggle { font-size: 28rpx; color: #A99E8E; }
+.fg-toggle { font-size: 28rpx; color: #776C5E; }
 .fill-guide-body {
   border-top: 1rpx solid #ececec;
   padding: 8rpx 24rpx 16rpx;
   background: #FFFDF8;
 }
-.fg-line { font-size: 28rpx; color: #777; line-height: 1.6; padding: 6rpx 0; }
+.fg-line { font-size: 28rpx; color: #6B6157; line-height: 1.6; padding: 6rpx 0; }
 /* 2026-09-21 李老师反馈：口径句原样展开太占地方 ⇒ 收进折叠块，默认只留一行引导语。
    ⚠️ 类名仍叫 .scope（ad-gates G1 按它查字号 ≥28rpx，改名会让那条守卫静默失守）。 */
 .scope-fold { padding: 0 0 6rpx; }
 .scope-head { display: flex; align-items: center; justify-content: space-between; padding: 14rpx 8rpx; }
 .scope-guide { font-size: 28rpx; color: #1e3a5f; }
 .scope-arrow { font-size: 28rpx; color: #1e3a5f; }
-.scope { font-size: 28rpx; color: #7C7264; line-height: 1.6; padding: 12rpx 16rpx;
+.scope { font-size: 28rpx; color: #776C5E; line-height: 1.6; padding: 12rpx 16rpx;
   background: #FBF6EC; border-radius: 10rpx; margin: 0 0 12rpx; }
 
 /* ===== R234/J1（2026-10-07）· 通用「行内提示折叠」 =====
@@ -188,14 +188,14 @@
 .hint-fold-arrow { font-size: 28rpx; color: #1e3a5f; }
 /* 🔴 R500：堂食/外卖的「从哪抄」引导里带了 \n 分段（多家收银系统的路径对照），
    WXML 默认会把 \n 折叠成空格 ⇒ 必须 pre-wrap，否则老板看到的是一坨不分行的长文。 */
-.hint-fold-body { font-size: 28rpx; color: #7C7264; line-height: 1.6; padding: 12rpx 16rpx;
+.hint-fold-body { font-size: 28rpx; color: #776C5E; line-height: 1.6; padding: 12rpx 16rpx;
   background: #FBF6EC; border-radius: 10rpx; margin: 0 0 12rpx; white-space: pre-wrap; }
 
 /* ===== 2026-09-21 堂食录入模式（快速 / 分项 · 严格互斥 · 方案 A）=====
    ⚠️ 方案 A：选「分项」时总额由各渠道相加自动算出、不可手填 ⇒ 单一数据源，无需校验。
    ⚠️ 预设渠道名是**固定标签不可编辑**（省出的宽度全给金额框），只有「+ 添加渠道」的自定义行才可编辑。 */
 .dm-wrap { padding: 4rpx 0 8rpx; }
-.dm-sec { font-size: 28rpx; color: #7C7264; padding: 0 0 10rpx 8rpx; }
+.dm-sec { font-size: 28rpx; color: #776C5E; padding: 0 0 10rpx 8rpx; }
 .dm-opts { display: flex; gap: 12rpx; }
 .dm-opt {
   flex: 1; min-width: 0; padding: 16rpx 14rpx; border-radius: 12rpx;
@@ -203,7 +203,7 @@
 }
 .dm-opt.on { border: 2rpx solid #1e3a5f; background: #F5EBD8; }
 .dm-h { font-size: 28rpx; font-weight: 600; color: #1e3a5f; }
-.dm-d { font-size: 28rpx; color: #7C7264; margin-top: 6rpx; }
+.dm-d { font-size: 28rpx; color: #776C5E; margin-top: 6rpx; }
 
 /* 快速录入：一个总额框 */
 .dine-fast { padding: 12rpx 0; border-top: 1rpx solid #F3ECDF; }
@@ -216,11 +216,11 @@
 .dine-item { padding: 10rpx 0; border-top: 1rpx solid #F3ECDF; }
 .dine-line1 { display: flex; align-items: center; }
 .dine-name {
-  flex: 1 1 auto; min-width: 0; font-size: 30rpx; color: #222; line-height: 1.5;
+  flex: 1 1 auto; min-width: 0; font-size: 30rpx; color: #2B2620; line-height: 1.5;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .dine-name.inp { padding: 12rpx 16rpx; background: #f7f9fc; border-radius: 10rpx; }
-.dine-note { font-size: 28rpx; color: #8a97a6; line-height: 1.5; padding: 2rpx 0 6rpx 2rpx; }
+.dine-note { font-size: 28rpx; color: #776C5E; line-height: 1.5; padding: 2rpx 0 6rpx 2rpx; }
 .dine-line2 { display: flex; align-items: center; margin-top: 8rpx; }
 .dine-line2 .val-input { flex: 1 1 auto; width: auto; text-align: right; font-size: 34rpx; }
 .dine-amt { flex: 1 1 auto; width: auto; font-size: 34rpx; text-align: right; }
@@ -233,12 +233,12 @@
   display: flex; justify-content: space-between; align-items: center;
   padding: 18rpx 8rpx 6rpx; margin-top: 8rpx; border-top: 2rpx solid #e3eaf2;
 }
-.dine-sum-lbl { font-size: 28rpx; color: #7C7264; }
+.dine-sum-lbl { font-size: 28rpx; color: #776C5E; }
 .dine-sum-val { font-size: 34rpx; font-weight: 600; color: #1e3a5f; }
 
 /* P0#3：新手/老手模式切换（分段控件，复用 dm-opt 视觉语言；字号一律 ≥28rpx） */
 .im-wrap { padding: 4rpx 0 8rpx; }
-.im-sec { font-size: 28rpx; color: #7C7264; padding: 0 0 10rpx 8rpx; }
+.im-sec { font-size: 28rpx; color: #776C5E; padding: 0 0 10rpx 8rpx; }
 .im-opts { display: flex; gap: 12rpx; }
 .im-opt {
   flex: 1; min-width: 0; padding: 16rpx 14rpx; border-radius: 12rpx;
@@ -246,8 +246,8 @@
 }
 .im-opt.on { border: 2rpx solid #1e3a5f; background: #F5EBD8; }
 .im-h { font-size: 28rpx; font-weight: 600; color: #1e3a5f; }
-.im-d { font-size: 28rpx; color: #7C7264; margin-top: 6rpx; }
-.im-tip { font-size: 28rpx; color: #9A9184; line-height: 1.5; padding: 6rpx 8rpx 4rpx; }
+.im-d { font-size: 28rpx; color: #776C5E; margin-top: 6rpx; }
+.im-tip { font-size: 28rpx; color: #6B6157; line-height: 1.5; padding: 6rpx 8rpx 4rpx; }
 .im-expand { padding: 16rpx 0 4rpx; }
 .btn-block { width: 100%; min-height: 88rpx; }
 

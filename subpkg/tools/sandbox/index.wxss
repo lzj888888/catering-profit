@@ -5,7 +5,7 @@
 
 /* v1 遗留（结论行样式；v2 结果区改为表格化展示，保留以防其他引用） */
 .val-input { text-align: right; font-size: 32rpx; width: 280rpx; }
-.concl { font-size: 32rpx; font-weight: 700; color: #333; margin-bottom: 20rpx; line-height: 1.6; }
+.concl { font-size: 32rpx; font-weight: 700; color: #3A332B; margin-bottom: 20rpx; line-height: 1.6; }
 .concl .hl { color: #1e3a5f; font-size: 36rpx; }
 
 /* ===== M2v1.1 双 Tab（R234 改名：已有铺面 / 寻找铺面，并各带一句副标题）=====
@@ -19,17 +19,17 @@
 }
 .tab-item.on { background: #1e3a5f; color: #fff; font-weight: 600; }
 .tab-main { font-size: 32rpx; font-weight: 600; line-height: 1.35; }
-.tab-sub { font-size: 30rpx; font-weight: 400; line-height: 1.35; margin-top: 2rpx; color: #8b97a7; }
+.tab-sub { font-size: 30rpx; font-weight: 400; line-height: 1.35; margin-top: 2rpx; color: #6B6157; }
 .tab-item.on .tab-sub { color: #c9dcf0; }
 
 /* ===== 0 · 前提选择器（城市层级 / 经营类型）===== */
 .sel-row { display: flex; align-items: center; justify-content: space-between; min-height: 88rpx; border-bottom: 1rpx solid #F0E9DC; }
-.sel-lbl { font-size: 30rpx; color: #333; }
+.sel-lbl { font-size: 30rpx; color: #3A332B; }
 .sel-pk { flex: 0 0 auto; }
 .sel-val { font-size: 30rpx; color: #1e3a5f; font-weight: 600; padding: 8rpx 16rpx; background: #F3ECDF; border-radius: 8rpx; }
 /* R234：业态大类改为**只读回显**（由上面「打算开什么店」自动带出）⇒ 视觉上要"点不动"：
    降饱和 + 去加粗，避免用户把它当成还能选的第二道题。 */
-.sel-val.readonly { color: #7C7264; background: #f7f9fc; font-weight: 400; }
+.sel-val.readonly { color: #776C5E; background: #f7f9fc; font-weight: 400; }
 
 /* ===== 板块一级标题 ===== */
 .sec { position: relative; font-size: 40rpx; font-weight: 800; color: #1e3a5f; padding-left: 20rpx; margin: 8rpx 0 18rpx; line-height: 1.3; }
@@ -42,7 +42,7 @@
 
 /* ===== 明细行 ===== */
 .row { display: flex; align-items: center; min-height: 88rpx; }
-.row-name { flex: 0 0 220rpx; font-size: 30rpx; color: #333; }
+.row-name { flex: 0 0 220rpx; font-size: 30rpx; color: #3A332B; }
 /* 🔴 R341：输入项的语义补答（≤18 字），对齐输入框左边界；字号 28rpx 满足 AD-G1 */
 .row-hint { font-size: 30rpx; color: #6B6157; padding: 0 0 10rpx 220rpx; line-height: 1.4; }
 .row-in-wrap {
@@ -55,8 +55,8 @@
    多位数只露得出尾巴几位。⇒ 年限框收到 110rpx，金额框吃满剩余宽度并保底 260rpx。 */
 .row-in-wrap.yr { flex: 0 0 110rpx; }
 .row-in { flex: 1 1 auto; font-size: 30rpx; color: #1e3a5f; text-align: right; min-height: 40rpx; }
-.row-unit { font-size: 30rpx; color: #857A6B; margin-left: 6rpx; }
-.row-del { flex: 0 0 auto; font-size: 30rpx; color: #A99E8E; padding: 16rpx 0 16rpx 8rpx; }
+.row-unit { font-size: 30rpx; color: #776C5E; margin-left: 6rpx; }
+.row-del { flex: 0 0 auto; font-size: 30rpx; color: #776C5E; padding: 16rpx 0 16rpx 8rpx; }
 .add-row { font-size: 30rpx; color: #1e3a5f; min-height: 88rpx; line-height: 88rpx; }
 .row-val { flex: 1 1 auto; font-size: 30rpx; color: #1e3a5f; text-align: right; font-weight: 600; }
 .row-strong .row-name, .row-strong .row-val { font-weight: 700; color: #1e3a5f; }
@@ -66,7 +66,7 @@
 /* ===== ③ 毛利率滑杆 ===== */
 .mg-top { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6rpx; }
 .mg-val { font-size: 46rpx; font-weight: 800; color: #1e3a5f; }
-.mg-sub { font-size: 30rpx; color: #857A6B; }
+.mg-sub { font-size: 30rpx; color: #776C5E; }
 /* 🔴 R545：毛利率「从哪来」引导条 —— 轻底色（不用卡片，避免一张卡里再套一张卡），
    字号 28rpx 起（AD 门禁下界），按钮沿用 .btn-small 的 88rpx 触控红线。 */
 /* 🔴 R549 口径二选一（互斥）；28rpx 满足 AD-G1；选中态墨蓝实底 */
@@ -78,7 +78,7 @@
 .mscope-item:first-child { border-radius: 10rpx 0 0 10rpx; }
 .mscope-item:last-child { border-radius: 0 10rpx 10rpx 0; border-left: none; }
 .mscope-item.on { background: #1e3a5f; color: #fff; border-color: #1e3a5f; }
-.mscope-note { font-size: 28rpx; color: #7C7264; margin-top: 10rpx; }
+.mscope-note { font-size: 28rpx; color: #776C5E; margin-top: 10rpx; }
 /* 🔴 R549：9 字放不进 220rpx ⇒ 该行放宽，金额框随之变窄 */
 .row-name.wide { flex: 0 0 300rpx; }
 .margin-src { margin-top: 14rpx; padding: 16rpx 18rpx; background: #f6f8fb; border-radius: 10rpx; }
@@ -86,7 +86,7 @@
 .margin-src-note { display: block; font-size: 28rpx; color: #6B6157; line-height: 1.55; white-space: pre-line; }
 
 /* ===== 结果区 ===== */
-.cell.big .lbl { font-weight: 600; color: #333; }
+.cell.big .lbl { font-weight: 600; color: #3A332B; }
 /* 🔴 R543：保本线 hero（结果区第一张卡）—— 独立底色 + 大字，让测算完第一眼看到的就是它。
    配色只用页面既有的墨蓝体系，不另造色板。 */
 .be-hero {
@@ -118,12 +118,12 @@
 .tab.on { color: #1e3a5f; font-weight: 700; border-bottom-color: #1e3a5f; }
 .ind-row { display: flex; align-items: center; min-height: 88rpx; border-bottom: 1rpx solid #f0f3f7; }
 .ind-row.ind-head { border-bottom: 1rpx solid #dfe5ec; }
-.ind-c1 { flex: 0 0 200rpx; font-size: 30rpx; color: #333; }
+.ind-c1 { flex: 0 0 200rpx; font-size: 30rpx; color: #3A332B; }
 .ind-c2 { flex: 1 1 0; text-align: center; font-size: 30rpx; font-weight: 700; color: #1e3a5f; }
 .ind-c3 { flex: 1 1 0; text-align: center; font-size: 30rpx; color: #6B6157; }
 .ind-c4 { flex: 0 0 120rpx; text-align: right; font-size: 30rpx; }
 .ind-head .ind-c1, .ind-head .ind-c2, .ind-head .ind-c3, .ind-head .ind-c4 {
-  font-size: 30rpx; font-weight: 400; color: #857A6B;
+  font-size: 30rpx; font-weight: 400; color: #776C5E;
 }
 /* 评级配色已上提到全局 app.wxss（单源）——本页不再重复定义，跨模块同色同义（round115） */
 
@@ -157,7 +157,7 @@
 .verdict-lbl { font-size: 30rpx; color: #6B6157; }
 .verdict-val { font-size: 34rpx; font-weight: 700; color: #1e3a5f; }
 /* 行规区间是"对照基准"，不是"你的数" ⇒ 降字重降饱和，避免与上面那行主数字抢注意力 */
-.verdict-val.sub { font-size: 30rpx; font-weight: 400; color: #857A6B; }
+.verdict-val.sub { font-size: 30rpx; font-weight: 400; color: #776C5E; }
 .verdict-note {
   font-size: 30rpx; color: #6B6157; line-height: 1.6; padding: 14rpx 20rpx;
   background: #FBF6EC; border-radius: 12rpx; margin-top: 10rpx;
@@ -165,7 +165,7 @@
 /* 🔴 #7（P0-2，round272）：主结论卡加「6 项指标体检」条 —— 一眼看出哪项拖后腿。
    ⚠️ 配色不自造：`.lv-*` 评级色已在 app.wxss 单源，本文件不重复定义。 */
 .verdict-health { margin-top: 14rpx; padding-top: 14rpx; border-top: 1rpx solid #e3e9f0; }
-.vh-cap { font-size: 30rpx; color: #857A6B; display: block; margin-bottom: 8rpx; }
+.vh-cap { font-size: 30rpx; color: #776C5E; display: block; margin-bottom: 8rpx; }
 .vh-item { display: flex; align-items: center; justify-content: space-between; padding: 5rpx 0; }
 .vh-name { font-size: 30rpx; color: #444; }
 .vh-pct { font-size: 30rpx; color: #1e3a5f; font-weight: 600; flex: 1; text-align: center; }
@@ -182,16 +182,16 @@
   flex: 0 0 50%; box-sizing: border-box; padding-right: 20rpx;
   display: flex; align-items: center; justify-content: space-between; min-height: 88rpx;
 }
-.bp-name { font-size: 30rpx; color: #333; }
+.bp-name { font-size: 30rpx; color: #3A332B; }
 .bp-band { font-size: 30rpx; font-weight: 700; color: #1e3a5f; }
 /* round114：参考金额（起点）—— 与区间上下排列，灰字弱化，避免与"区间"抢注意力 */
 .bp-right { display: flex; flex-direction: column; align-items: flex-end; }
-.bp-amt { font-size: 30rpx; color: #A99E8E; }
+.bp-amt { font-size: 30rpx; color: #776C5E; }
 
 /* R193：草稿提示行（"已载入上次填的数"+ 清空重填） */
 .draft-bar { display: flex; align-items: center; justify-content: space-between; margin-top: 12rpx; }
 /* 🔴 字号 ≥28rpx 是硬红线（AD G1 机器判据） */
-.draft-note { flex: 1; font-size: 30rpx; color: #A99E8E; }
+.draft-note { flex: 1; font-size: 30rpx; color: #776C5E; }
 /* 本页不写内联 style（仓内惯例：修 6 起内联样式一律回 wxss） */
 .draft-btn { margin: 0; flex: 0 0 auto; }
 
@@ -207,10 +207,10 @@
 .sheet { width: 640rpx; background: #FFFDF8; border-radius: 16rpx; padding: 32rpx 32rpx 24rpx; }
 .sheet-title { font-size: 36rpx; font-weight: 700; color: #1e3a5f; margin-bottom: 20rpx; }
 .sheet-row { display: flex; align-items: center; min-height: 88rpx; border-bottom: 1rpx solid #F0E9DC; }
-.sheet-lbl { flex: 0 0 150rpx; font-size: 30rpx; color: #333; }
+.sheet-lbl { flex: 0 0 150rpx; font-size: 30rpx; color: #3A332B; }
 .sheet-in { flex: 1 1 auto; font-size: 32rpx; color: #1e3a5f; min-height: 40rpx; }
 .type-chips { flex: 1 1 auto; display: flex; }
-.chip { font-size: 30rpx; color: #7C7264; border: 1rpx solid #c4ccd6; border-radius: 10rpx; padding: 10rpx 24rpx; margin-right: 16rpx; }
+.chip { font-size: 30rpx; color: #776C5E; border: 1rpx solid #c4ccd6; border-radius: 10rpx; padding: 10rpx 24rpx; margin-right: 16rpx; }
 .chip.on { color: #fff; background: #1e3a5f; border-color: #1e3a5f; }
 .sheet-btns { display: flex; justify-content: flex-end; margin-top: 28rpx; }
 .sheet-btns .btn { margin: 0 0 0 20rpx; width: 220rpx; }
@@ -218,17 +218,17 @@
 /* ===== M2v1.3 · 业态参数包 / 三层披露 / 回本卡 ===== */
 .fold-toggle { font-size: 32rpx; color: #1e3a5f; font-weight: 600; padding: 20rpx 0; border-top: 1rpx solid #f0f3f7; margin-top: 8rpx; }
 .asm { display: flex; align-items: center; min-height: 88rpx; border-bottom: 1rpx solid #f0f3f7; }
-.asm-lbl { flex: 0 0 220rpx; font-size: 30rpx; color: #333; }
+.asm-lbl { flex: 0 0 220rpx; font-size: 30rpx; color: #3A332B; }
 .asm-input { flex: 1 1 auto; font-size: 30rpx; color: #1e3a5f; font-weight: 600; }
-.asm-src { flex: 0 0 auto; font-size: 30rpx; color: #A99E8E; margin-left: 12rpx; }
+.asm-src { flex: 0 0 auto; font-size: 30rpx; color: #776C5E; margin-left: 12rpx; }
 .payback-disclaimer { color: #b45309; }
 /* 🔴 #8（P1，round272）：全局测算边界免责声明（与 payback-disclaimer 互补，灰调以示边界） */
-.m2-disclaimer { color: #8a93a0; margin-top: 4rpx; }
+.m2-disclaimer { color: #776C5E; margin-top: 4rpx; }
 .calc-basis-formula { color: #6B6157; font-size: 30rpx; line-height: 1.6; margin-top: 10rpx; padding: 10rpx 14rpx; background: #FBF6EC; border-radius: 10rpx; }
 .payback-m3-btn { margin: 16rpx 0 0; }
 
 /* 🔴 R546：※ 图例 —— 比正文小一号、灰一档，像脚注而不像警告（它不是错，是说明）。 */
-.ref-legend { font-size: 28rpx; color: #9A9184; line-height: 1.5; }
+.ref-legend { font-size: 28rpx; color: #6B6157; line-height: 1.5; }
 
 /* 🔴 R234/J4 句级折叠 .hint-fold（与区段级 .fold-toggle 必须视觉可分）：
    .fold-toggle 收「整块参数区」（30rpx 加粗 + 上边框）；.hint-fold 收「一句说明」（28rpx 常规、无边框）。
@@ -257,7 +257,7 @@
 .th-title { font-size: 30rpx; font-weight: 600; color: #1e3a5f; margin-bottom: 6rpx; }
 .th-body { font-size: 30rpx; color: #6B6157; line-height: 1.6; margin-bottom: 10rpx; }
 .th-levels { display: flex; flex-direction: column; gap: 6rpx; }
-.th-lv { font-size: 30rpx; color: #A99E8E; line-height: 1.5; }
+.th-lv { font-size: 30rpx; color: #776C5E; line-height: 1.5; }
 .th-lv.on { color: #1e3a5f; font-weight: 600; }
 .th-dot { margin-right: 8rpx; }
 /* 结果吸底条：测算出数后常驻屏幕底部，老板滚长表单也看得见核心数 */
@@ -283,15 +283,15 @@
    ⚠️ 字号 ≥28rpx 是硬红线（AD G1）；用颜色区上下、不压字号。 */
 .sens-delta { font-size: 30rpx; font-weight: 600; margin-left: 16rpx; }
 .sens-delta.up { color: #c0392b; }
-.sens-delta.down { color: #1e8e3e; }
+.sens-delta.down { color: #1a7d55; }
 /* 🔴 瞬态「测算中」用独立类（非 .hint），避免被 hint-fold 守卫计入平铺提示数 */
-.sens-loading { font-size: 30rpx; color: #8a93a0; padding: 8rpx 0; }
+.sens-loading { font-size: 30rpx; color: #776C5E; padding: 8rpx 0; }
 
 /* 🔴 R327：正推表（做到某营业额能赚多少）
    ⚠️ 字号一律 ≥28rpx（AD-G1 可读性红线）；「赚/亏」只靠颜色区分，不靠缩字号。 */
 .pl-row { display: flex; align-items: center; padding: 14rpx 0; border-bottom: 1rpx solid #F3ECDF; }
 .pl-row.pl-head { border-bottom: 1rpx solid #e2e2e2; }
-.pl-c1 { flex: 1; font-size: 30rpx; color: #333; }
+.pl-c1 { flex: 1; font-size: 30rpx; color: #3A332B; }
 .pl-c2 { flex: 1; font-size: 32rpx; font-weight: 600; text-align: right; color: #1a1a1a; }
 .pl-c2.pl-ok { color: #1f7a4d; }
 .pl-c2.pl-warn { color: #b3491d; }
@@ -301,7 +301,7 @@
 .promo-real-inp { background: #f2f3f7; padding: 12rpx 18rpx; border-radius: 10rpx;
   font-size: 30rpx; width: 180rpx; text-align: right; margin-left: 12rpx; }
 .promo-real-unit { font-size: 30rpx; color: #6B6157; margin-left: 8rpx; }
-.promo-lb { flex: 0 0 190rpx; font-size: 30rpx; color: #333; line-height: 56rpx; }
+.promo-lb { flex: 0 0 190rpx; font-size: 30rpx; color: #3A332B; line-height: 56rpx; }
 .promo-chips { flex: 1 1 0; display: flex; flex-wrap: wrap; min-width: 0; }
 .promo-chips .chip { margin-bottom: 10rpx; }
 
@@ -317,7 +317,7 @@
 }
 /* R419：`.warn-note` 已提到 app.wxss（M1 月度录入页同用）⇒ 本地不再重复定义 */
 .ipt-num { flex: 1 1 auto; font-size: 30rpx; color: #1e3a5f; text-align: right; min-height: 40rpx; }
-.unit { font-size: 30rpx; color: #857A6B; margin-left: 6rpx; }
+.unit { font-size: 30rpx; color: #776C5E; margin-left: 6rpx; }
 /* 两个入口按钮原本会各自占满一行（.btn 是 display:flex 且无宽度限制） */
 .entry-row { display: flex; gap: 16rpx; }
 .entry-btn { flex: 1 1 0; min-width: 0; margin-top: 24rpx; }
@@ -332,12 +332,12 @@
 .tgt-back-line { white-space: normal; line-height: 1.5; }
 
 /* R436：顶部一行导航（填什么 → 看什么）。字号走 28rpx 底线（selftest_ad_gates G1）。 */
-.m2nav { font-size: 30rpx; color: #9A9184; line-height: 1.6; padding: 8rpx 24rpx 0; }
+.m2nav { font-size: 30rpx; color: #6B6157; line-height: 1.6; padding: 8rpx 24rpx 0; }
 
 /* R439：费率行「≈ 每月多少钱」—— 灰色小字但走 28rpx 底线；宽度不够时换行不挤掉输入框。 */
 .fee-amt { font-size: 30rpx; color: #6B6157; margin-left: 12rpx; flex: 0 0 auto; }
 
 /* 🔴 R570：人效/坪效缺数态 —— 数值位显示「—」，整卡可点（点了去填预计月营业额）。
    灰掉是刻意的：它表示「不是算不出来，是缺你一个数」，比整块消失诚实。 */
-.eff-need .val.muted { color: #9aa3af; }
+.eff-need .val.muted { color: #776C5E; }
 .eff-need .hint { color: #6b7280; }

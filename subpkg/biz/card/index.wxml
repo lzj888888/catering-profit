@@ -85,7 +85,7 @@
            高频操作下移到 ops-mini 行并**可见**；标题行只留名字 + 标签，扫读更干净。 -->
     </view>
     <!-- M3.16 套餐：我少赚为负 ⇒ 红字提示「这个套餐在拉低你的毛利」 -->
-    <view class="muted" wx:if="{{item.card_type === 3 && item.combo_lose_neg}}" style="color:#e74c3c;font-size:28rpx;">{{t.comboInsightLoseWarn}}</view>
+    <view class="muted" wx:if="{{item.card_type === 3 && item.combo_lose_neg}}" style="color:#c0392b;font-size:28rpx;">{{t.comboInsightLoseWarn}}</view>
     <!-- R191：成本 / 毛利 / 版本 三行压一行 ⇒ 一屏能放的卡数翻倍 -->
     <view class="cell-inline">
       <text class="lbl">{{t.totalCost}}</text>

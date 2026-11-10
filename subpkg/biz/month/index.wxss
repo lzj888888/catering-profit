@@ -16,7 +16,7 @@
   background: #FBF6EC; border-radius: 12rpx; margin: 0 0 12rpx; }
 
 /* 暖化：双口径常驻口径解释（P0#2，tab 下常显一行小字，不折叠） */
-.caliber-hint { font-size: 28rpx; color: #9A9184; line-height: 1.5; margin-top: 12rpx; }
+.caliber-hint { font-size: 28rpx; color: #6B6157; line-height: 1.5; margin-top: 12rpx; }
 
 /* 🔴 R489：倒轧依据行（「本数按期末库存 ¥28,000 倒轧 · 去核对」）——
  * 它可点（去库存页核对），所以要跟上面的静态小字区分开：用主色 + 下划线暗示"能点"。

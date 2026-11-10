@@ -1,10 +1,10 @@
 /* pages/m3/dishreview/index.wxss —— M3.33 单品毛利复盘页。字号 ≥28rpx、触控 ≥88rpx（AD 门禁）。 */
-.afterfact { font-size: 28rpx; color: #7C7264; line-height: 1.6; background: #FFFDF8; border-radius: 16rpx; padding: 24rpx; margin-bottom: 16rpx; }
+.afterfact { font-size: 28rpx; color: #776C5E; line-height: 1.6; background: #FFFDF8; border-radius: 16rpx; padding: 24rpx; margin-bottom: 16rpx; }
 .field { display: flex; align-items: center; margin-bottom: 8rpx; }
 .lbl { font-size: 28rpx; color: #1e3a5f; width: 300rpx; flex-shrink: 0; }
 .val-input { flex: 1; padding: 0 20rpx; background: #FFFDF8; border: 1rpx solid #F5EBD8; border-radius: 10rpx; min-height: 88rpx; font-size: 28rpx; }
 .field-save { display: flex; justify-content: flex-end; margin-top: 16rpx; }
-.muted { font-size: 28rpx; color: #7C7264; line-height: 1.5; }
+.muted { font-size: 28rpx; color: #776C5E; line-height: 1.5; }
 /* R299：`.warn-line`（数据截断可见降级）定义在**全局 app.wxss**（多页共用，色值单源），此处不复制第二份。 */
 .section-title { font-size: 30rpx; color: #1e3a5f; font-weight: 600; margin: 24rpx 4rpx 12rpx; }
 /* R272c：自助餐块上移到顶部，标题高亮便于在长页面一眼看到 */
@@ -12,23 +12,23 @@
 
 /* 排名表：自定义行（不复用全局 .row —— 那是「间隔卡」语义，这里是表行） */
 .row { display: flex; align-items: center; padding: 20rpx 8rpx; border-bottom: 1rpx solid #F0E9DC; font-size: 28rpx; }
-.row.head { color: #8896ab; font-size: 28rpx; border-bottom: 2rpx solid #F0E9DC; font-weight: 600; }
+.row.head { color: #6B6157; font-size: 28rpx; border-bottom: 2rpx solid #F0E9DC; font-weight: 600; }
 .c-name { flex: 2.2; min-width: 0; display: flex; flex-direction: column; }
 .c-qty { flex: 0.9; text-align: center; }
 .c-num { flex: 1.4; text-align: right; }
 .below { background: #fdf0ee; }
-.below .c-num { color: #e74c3c; font-weight: 600; }
-.snap { font-size: 28rpx; color: #c2701a; margin-top: 4rpx; }
-.zero { font-size: 28rpx; color: #A99E8E; margin-top: 4rpx; }
+.below .c-num { color: #c0392b; font-weight: 600; }
+.snap { font-size: 28rpx; color: #9A5B00; margin-top: 4rpx; }
+.zero { font-size: 28rpx; color: #776C5E; margin-top: 4rpx; }
 /* R251：未匹配菜品的「来源平台」标签（跨平台合并后标明出处；中性色，不与 .snap 的告警橙混用） */
-.plat { font-size: 28rpx; color: #7C7264; margin-top: 4rpx; }
+.plat { font-size: 28rpx; color: #776C5E; margin-top: 4rpx; }
 
 .cell { display: flex; justify-content: space-between; padding: 12rpx 4rpx; border-bottom: 1rpx solid #F0E9DC; }
 .val { font-size: 30rpx; color: #1e3a5f; }
 /* R272b：自助餐行业基准带子标题 + 实际成本率标色（偏高=红/偏低=橙）*/
 .subtitle { font-size: 28rpx; color: #1e3a5f; font-weight: 600; margin: 12rpx 4rpx 4rpx; }
-.val.warn { color: #e74c3c; font-weight: 600; }
-.val.note { color: #c2701a; }
+.val.warn { color: #c0392b; font-weight: 600; }
+.val.note { color: #9A5B00; }
 /* 🔴 R281 O2：首屏重构 —— 顶部红色待办条 + 两个折叠区入口行
    守本仓 UI 下限：字号 ≥28rpx、按钮触控高度 ≥88rpx；告警红沿用既有 #e74c3c（同 .val.warn），不引入新色。 */
 .todo-bar { display: flex; align-items: center; justify-content: space-between; background: #fdecea; border-left: 8rpx solid #e74c3c; border-radius: 8rpx; padding: 16rpx 20rpx; margin: 12rpx 0; }
@@ -36,7 +36,7 @@
 .todo-btn { min-height: 88rpx; line-height: 88rpx; font-size: 28rpx; color: #b03024; background: transparent; padding: 0 12rpx; }
 .more-bar { display: flex; align-items: center; padding: 20rpx 4rpx; border-top: 1rpx solid #F0E9DC; border-bottom: 1rpx solid #F0E9DC; margin-top: 12rpx; }
 .more-t { font-size: 30rpx; color: #1e3a5f; font-weight: 600; }
-.more-sum { flex: 1; margin-left: 16rpx; font-size: 28rpx; color: #7C7264; }
+.more-sum { flex: 1; margin-left: 16rpx; font-size: 28rpx; color: #776C5E; }
 .more-act { font-size: 28rpx; color: #2a4e7c; }
 
 /* ===== R615 M3 决策台：该动哪道菜 =====
@@ -44,9 +44,9 @@
 .dec { background: #FFFDF8; border-radius: 16rpx; padding: 24rpx; margin: 8rpx 0 20rpx; }
 .dec-hd { display: flex; flex-direction: column; }
 .dec-title { font-size: 30rpx; color: #1e3a5f; font-weight: 600; }
-.dec-sub { font-size: 28rpx; color: #7C7264; line-height: 1.5; margin-top: 6rpx; }
+.dec-sub { font-size: 28rpx; color: #776C5E; line-height: 1.5; margin-top: 6rpx; }
 .dec-median { font-size: 28rpx; color: #2a4e7c; margin-top: 12rpx; }
-.dec-ins { font-size: 28rpx; color: #7C7264; line-height: 1.5; margin-top: 12rpx; }
+.dec-ins { font-size: 28rpx; color: #776C5E; line-height: 1.5; margin-top: 12rpx; }
 .dec-row { display: flex; align-items: baseline; padding: 18rpx 0; border-top: 1rpx solid #F0E9DC; }
 .dec-kind { font-size: 28rpx; line-height: 1.4; padding: 2rpx 12rpx; border-radius: 8rpx; margin-right: 12rpx; flex-shrink: 0; }
 .dec-cut { background: #fdecea; color: #b03024; }

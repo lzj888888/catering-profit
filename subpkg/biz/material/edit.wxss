@@ -35,7 +35,7 @@
 .saved-bar { display: flex; align-items: center; justify-content: space-between;
   background: #F5EBD8; border-radius: 12rpx; padding: 8rpx 24rpx; margin-bottom: 16rpx; }
 .saved-txt { flex: 1; font-size: 28rpx; color: #1e3a5f; line-height: 1.5; padding: 12rpx 0; }
-.saved-go { font-size: 28rpx; color: #2b7de9; min-height: 88rpx; line-height: 88rpx; padding-left: 16rpx; }
+.saved-go { font-size: 28rpx; color: #1a5eb8; min-height: 88rpx; line-height: 88rpx; padding-left: 16rpx; }
 
 /* ===== R234/J4e · 行内长提示折叠（句级，与月录入页 / M2 / assetEdit / amortize / takeaway 同形）=====
  * body 底色 #FBF6EC 与全局 `.hint` 同色 ⇒ 折叠前后视觉连贯。

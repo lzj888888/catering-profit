@@ -119,7 +119,7 @@
       </view>
       <view class="row-ops">
         <button class="btn-small ghost" catchtap="onEditAsset" data-asset="{{b}}">{{t.edit}}</button>
-        <button class="btn-small ghost" style="color:#e74c3c;border-color:#e74c3c;" catchtap="onTerminate" data-asset="{{b}}">{{t.terminateNow}}</button>
+        <button class="btn-small ghost" style="color:#c0392b;border-color:#c0392b;" catchtap="onTerminate" data-asset="{{b}}">{{t.terminateNow}}</button>
       </view>
     </view>
 
@@ -131,7 +131,7 @@
       </view>
       <view class="row-ops">
         <button class="btn-small ghost" catchtap="onEditAsset" data-asset="{{g.batches[0]}}">{{t.edit}}</button>
-        <button class="btn-small ghost" style="color:#e74c3c;border-color:#e74c3c;" catchtap="onTerminate" data-asset="{{g.batches[0]}}">{{t.terminateNow}}</button>
+        <button class="btn-small ghost" style="color:#c0392b;border-color:#c0392b;" catchtap="onTerminate" data-asset="{{g.batches[0]}}">{{t.terminateNow}}</button>
       </view>
     </block>
 
