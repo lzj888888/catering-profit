@@ -10,6 +10,7 @@
 const api = require('../../../utils/api.js');
 const ui = require('../../../utils/ui.js');
 const entitle = require('../../../utils/entitlement.js');
+const moneyFmt = require('../../../utils/moneyFmt.js');
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 // 🔴 R311：体检算法（纯函数）—— 保本区间/归因/健康营收/结构性诊断
 const BE = require('../../../utils/breakeven.js');
@@ -772,7 +773,13 @@ Page({
       month: r.month,
       label: r.month.slice(5) + '月',
       isCur: r.month === cur,
-      text: api.fenToYuan(r.fen, 0),
+      /* 🔴 R682：柱下标原用 `api.fenToYuan(r.fen, 0)`，6 位数裸排（`819958`）——
+         真机实测 4 根柱的标签挤成一串，老板分不清是 8 万还是 82 万。
+         改用 moneyFmt（**既有单源，不新造格式化**）：≥1 万自动转「82.0万」，
+         标签从 6 字符压到 5 字符以内 ⇒ 不再挤，且自带量级。
+         精度损失可接受：精确值在上方主数字区（¥51900.00）承担，柱状图只承担"量级对比"。
+         ⚠️ 不足 1 万时按 moneyFmt 既有口径**不带千分位、不带单位**（与全站一致，不在此处破例）。 */
+      text: moneyFmt.formatFen(r.fen, { yuanUnit: '', fallback: '—' }),
       h: Math.max(8, Math.round((Math.abs(r.fen) / maxAbs) * 120)),
       up: r.fen >= 0,
     }));

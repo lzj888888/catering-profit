@@ -1,0 +1,4 @@
+04_hub OK
+05_mine FAIL timeout waiting for automator response
+card inject: "INJECTED"
+06_result OK
