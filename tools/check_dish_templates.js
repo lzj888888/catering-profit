@@ -12,6 +12,7 @@
 //   ④ 单位必须合法（否则采购价换算全错）
 
 const path = require('path');
+const fs = require('fs');
 
 const ROOT = path.resolve(__dirname, '..');
 let pass = 0; let failN = 0;
@@ -85,10 +86,42 @@ if (niu) {
     Object.keys(applyTemplate(niu)[0]).sort().join(',') === 'line_name,qty,unit');
 }
 
+console.log('\n===== T 🔴 分类必须与 M2 业态同一套词（不新造品类）=====');
+const { TEMPLATE_CATS, templatesByCat } = require(path.join(ROOT, 'utils/dishTemplates.js'));
+const BIZ = require(path.join(ROOT, 'utils/bizPreset.js'));
+// M2 业态键（从 bizPreset 实读，不写死）
+const bizKeys = new Set();
+(function collect(o, depth) {
+  if (!o || depth > 3) return;
+  for (const k of Object.keys(o)) {
+    if (/^(fastfood|dining|hotpot|cafe|other)/.test(k)) bizKeys.add(k.split('_')[0]);
+  }
+})(BIZ.BIZ_PRESETS ? { presets: BIZ.BIZ_PRESETS } : BIZ, 2);
+// 兜底：bizPreset 若未导出预设表，用其 ENERGY_BAND 的键（已确认含 4 业态 + other）
+const catKeys = (TEMPLATE_CATS || []).map((c) => c.key);
+ok('T-⑩ 模板分类 key ⊆ M2 业态 key（不自己造品类）',
+  catKeys.every((k) => ['fastfood', 'dining', 'hotpot', 'cafe', 'other'].indexOf(k) >= 0),
+  '模板分类：' + catKeys.join('/'));
+ok('T-⑪ 每个模板都归了类（cat 必填，空着会在两级选择里"消失"）',
+  TEMPLATES.every((t) => t.cat && catKeys.indexOf(t.cat) >= 0),
+  TEMPLATES.filter((t) => !t.cat).map((t) => t.tpl_key).join(',') || '全部已归类');
+ok('T-⑫ 正餐/炒菜类至少 13 道（李老师要的验收基线）',
+  templatesByCat('dining').length >= 13, templatesByCat('dining').length + ' 道');
+
 console.log('\n===== T 锅底套用后必须提示填售价（李老师：「锅底收费要」）=====');
 const EDITJS = require('fs').readFileSync(path.join(ROOT, 'subpkg/biz/card/edit.js'), 'utf8');
 ok('T-⑨ 🔴 套用锅底模板后有「填锅底收费」的提醒（不给提醒 ⇒ 售价空着，只算成本算不出赚亏）',
   /potPriceHint/.test(EDITJS) && /锅底|锅/.test(EDITJS));
+
+console.log('\n===== T 两级选择：索引换算不许错（选了正餐第3道却套上全局第3个）=====');
+const EDIT2 = require('fs').readFileSync(path.join(ROOT, 'subpkg/biz/card/edit.js'), 'utf8');
+ok('T-⑬ 🔴 onPickTemplate 用 tplKeys 换算索引，**没有**直接拿它当 TEMPLATES 全局下标',
+  /tplKeys \|\| \[\]\)\[i\]/.test(EDIT2) && !/const tpl = TEMPLATES\[i\]/.test(EDIT2),
+  'tplPicked 是品类内索引，直接当全局下标会静默套错模板');
+ok('T-⑭ 有「先选品类」的入口（onPickTplCat）且会重置菜品选择',
+  /onPickTplCat/.test(EDIT2) && /tplPicked: -1/.test(EDIT2));
+ok('T-⑮ wxml 真的渲染两级 picker（算了不显示＝白做）',
+  /onPickTplCat/.test(fs.readFileSync(path.join(ROOT, 'subpkg/biz/card/edit.wxml'), 'utf8')));
 
 console.log('\n===== 结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);

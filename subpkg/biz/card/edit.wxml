@@ -61,10 +61,16 @@
   </view>
 
   <!-- M3.20（批次 B 收尾）从模板新建：一键预填行名/用量/单位，价格全部留空。仅新建态 + 单品。 -->
-  <view class="field" wx:if="{{!isEdit && cardType === '1'}}">
+  <!-- 🔴 R671：两级选择 —— 先选业态大类（与 M2 同一套词），再选该品类下的菜。
+       为什么改：22 道平铺一个下拉，老板要滚很久才找到目标；先按品类收窄，一眼能挑到。
+       布局：这个 field 用 flex-wrap 让两个 picker 各占一行（并排会挤成 110rpx，点不准）。 -->
+  <view class="field tpl-field" wx:if="{{!isEdit && cardType === '1'}}">
     <text class="lbl">{{t.templateFrom}}</text>
-    <picker mode="selector" range="{{tplNames}}" value="{{tplPicked}}" bindchange="onPickTemplate">
-      <view class="picker">{{tplPicked >= 0 ? tplNames[tplPicked] : t.templatePickPh}}</view>
+    <picker class="tpl-pick" mode="selector" range="{{tplCatNames}}" value="{{tplCatIdx}}" bindchange="onPickTplCat">
+      <view class="picker">{{tplCatIdx >= 0 ? tplCatNames[tplCatIdx] : t.templateCatPh}}</view>
+    </picker>
+    <picker class="tpl-pick" mode="selector" range="{{tplNames}}" value="{{tplPicked}}" bindchange="onPickTemplate" disabled="{{!tplNames.length}}">
+      <view class="picker {{!tplNames.length ? 'picker-disabled' : ''}}">{{tplPicked >= 0 ? tplNames[tplPicked] : t.templatePickPh}}</view>
     </picker>
     <text class="muted">{{t.templateHint}}</text>
   </view>

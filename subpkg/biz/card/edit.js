@@ -15,7 +15,7 @@ const AmountInput = require('../../../utils/amountInput.js');
 const dh = require('../../../utils/dataHealth.js');   // R628：判列表是否被截断（数据不全就不给排名）   // R426（队列 #32）：金额栏体检（纯判定，不改数）
 const { openPaywall } = require('../../../utils/paywall.js');
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
-const { TEMPLATES, applyTemplate } = require('../../../utils/dishTemplates.js');   // M3.20 菜品模板（只预填，不写库）
+const { TEMPLATES, TEMPLATE_CATS, templatesByCat, applyTemplate } = require('../../../utils/dishTemplates.js');   // M3.20/R671 菜品模板（只预填，不写库）
 const { CATEGORY_PRESETS, CONDIMENT_NAME, ENERGY_NAME } = require('../../../utils/categoryPresets.js');
 // 🔴 R644（会审 R637）：金额化单源 —— 把「毛利率 18%」变成「每卖一份亏 1.2 元」
 const { moneyHint } = require('../../../utils/moneyHint.js');
@@ -233,6 +233,7 @@ Page({
       // M3.20（批次 B 收尾）菜品模板
       templateFrom: TERMS.card.templateFrom,
       templatePickPh: TERMS.card.templatePickPh,
+      templateCatPh: TERMS.card.templateCatPh,   // R671：两级选择第一步的占位
       templateHint: TERMS.card.templateHint,
       // ── R234/J4f 行内长提示折叠（本页 1 处）──
       // 🔴 三处登记的第二处：漏映射 ⇒ 页面渲染成**空白**且零报错（R124 同族）
@@ -330,6 +331,12 @@ Page({
     // M3.20（批次 B 收尾）菜品模板：picker range（20 道菜名）+ 当前选中项（-1 = 未选）
     tplNames: TEMPLATES.map((t) => t.dish_name),
     tplPicked: -1,
+    // 🔴 R671：两级选择 —— 先选业态大类（与 M2 同一套词），再选该品类下的菜
+    //   为什么两级：22 道平铺在一个下拉里，老板要滚很久才能找到"宫保鸡丁"；
+    //   按品类收窄后，正餐类 20 道里一眼就能挑到。
+    tplCatNames: TEMPLATE_CATS.map((c) => c.label),
+    tplCatIdx: -1,
+    tplKeys: [],          // 当前品类下的 tpl_key 列表（onPickTemplate 用它换算）
     // P0-2 品类默认模板：选品类后预填出净率/损耗/调料油火/示例主料
     catOptions: CATEGORY_PRESETS.map((c) => c.label),
     catPicked: -1,
@@ -642,9 +649,27 @@ Page({
 
   // ===== M3.20（批次 B 收尾）菜品模板：一键起行 =====
   // 选模板 → 预填行名 + 用量 + 单位（**价格全部留空**）；模板只省打字，保存仍走 saveCostCard、配额照扣。
+  // R671：选品类 → 刷新该品类下的菜品列表
+  onPickTplCat(e) {
+    const idx = Number(e.detail.value);
+    const cat = TEMPLATE_CATS[idx];
+    if (!cat) return;
+    const list = templatesByCat(cat.key);
+    this.setData({
+      tplCatIdx: idx,
+      tplKeys: list.map((t) => t.tpl_key),
+      // 菜品名用「品类内」列表，选中项归零（换品类后旧选择无意义）
+      tplPicked: -1,
+      tplNames: list.map((t) => t.dish_name),
+    });
+  },
+
   onPickTemplate(e) {
     const i = Number(e.detail.value);
-    const tpl = TEMPLATES[i];
+    // 🔴 R671：i 是「当前品类内」的索引 ⇒ 必须经 tplKeys 换算，不能直接当 TEMPLATES 的全局下标
+    //   （直接当全局下标会静默套错模板：选了「正餐」第 3 道，实际套上 TEMPLATES[3]）
+    const key = (this.data.tplKeys || [])[i];
+    const tpl = key ? TEMPLATES.filter((t) => t.tpl_key === key)[0] : null;
     if (!tpl) return;
     const rows = applyTemplate(tpl);
     // 模板行 → 手工行（input_type=2）：行名 + 用量 + 单位预填，单价留空等用户填

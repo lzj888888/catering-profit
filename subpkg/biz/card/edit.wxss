@@ -253,3 +253,11 @@
 
 /* R644：金额化 —— 比毛利率更有冲击力，字号和颜色都要压得住 */
 .money-tip { display: block; font-size: 30rpx; font-weight: 600; color: #e74c3c; margin-top: 8rpx; }
+
+/* R671：模板两级选择的布局 —— 两个 picker 各占一行，避免并排挤成 110rpx 点不准 */
+.tpl-field { flex-wrap: wrap; align-items: stretch; }
+.tpl-field .lbl { flex: 0 0 100%; padding-bottom: 8rpx; }
+.tpl-field .tpl-pick { flex: 0 0 100%; margin-bottom: 8rpx; }
+.tpl-field .tpl-pick .picker { width: 100%; box-sizing: border-box; }
+.tpl-field .muted { flex: 0 0 100%; }
+.picker-disabled { color: #a8b3c2; }

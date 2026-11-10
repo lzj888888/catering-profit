@@ -15,8 +15,22 @@
 // 可选：mode:'B' + batch_output:N（批量产出；仅在「一次投料、多次出品」的菜上使用，如火锅锅底/卤水/红油）。
 // 🔴 何时该用 mode B：**一次投的料，产出多份**（炒一锅料打 10 锅）⇒ 单份成本 = 整批 ÷ 产出数。
 //    若这道菜就是"一份投一份"（宫保鸡丁），**不要**加 mode，保持默认 A。
+// 🔴 R671：模板按**业态大类**分组，与 M2 业态（utils/bizPreset.js）**同一套词**。
+//   为什么不自己另造一套品类：老板在 M2 选过「火锅/烧烤」，到 M3 建卡看到同一个词才不用二次理解；
+//   自己造一套（如"热炒荤菜/卤味烧腊"）老板根本不知道对应他店里什么。
+//   ⚠️ key 必须与 bizPreset 的业态键一致（fastfood/dining/hotpot/cafe/other），
+//      由 tools/check_dish_templates.js 的 T-⑩ 守住，防两边漂移。
+const TEMPLATE_CATS = [
+  { key: 'dining',   label: '正餐 / 炒菜' },
+  { key: 'hotpot',   label: '火锅 / 烧烤' },
+  { key: 'fastfood', label: '快餐 / 小面' },
+  { key: 'cafe',     label: '咖啡茶饮' },
+  { key: 'other',    label: '其他' },
+];
+
 const TEMPLATES = [
   {
+    cat: 'dining',
     tpl_key: 'gongbao_jiding',
     dish_name: '宫保鸡丁',
     lines: [
@@ -27,6 +41,7 @@ const TEMPLATES = [
     ],
   },
   {
+    cat: 'dining',
     tpl_key: 'yuxiang_rousi',
     dish_name: '鱼香肉丝',
     lines: [
@@ -37,6 +52,7 @@ const TEMPLATES = [
     ],
   },
   {
+    cat: 'dining',
     tpl_key: 'mapo_doufu',
     dish_name: '麻婆豆腐',
     lines: [
@@ -47,6 +63,7 @@ const TEMPLATES = [
     ],
   },
   {
+    cat: 'dining',
     tpl_key: 'huiguo_rou',
     dish_name: '回锅肉',
     lines: [
@@ -56,6 +73,7 @@ const TEMPLATES = [
     ],
   },
   {
+    cat: 'dining',
     tpl_key: 'qingshuai_tudousi',
     dish_name: '酸辣土豆丝',
     lines: [
@@ -65,6 +83,7 @@ const TEMPLATES = [
     ],
   },
   {
+    cat: 'dining',
     tpl_key: 'fanqie_chao_dan',
     dish_name: '番茄炒蛋',
     lines: [
@@ -74,6 +93,7 @@ const TEMPLATES = [
     ],
   },
   {
+    cat: 'dining',
     tpl_key: 'hongshao_rou',
     dish_name: '红烧肉',
     lines: [
@@ -84,6 +104,7 @@ const TEMPLATES = [
     ],
   },
   {
+    cat: 'dining',
     tpl_key: 'shuizhu_yu',
     dish_name: '水煮鱼',
     lines: [
@@ -94,6 +115,7 @@ const TEMPLATES = [
     ],
   },
   {
+    cat: 'dining',
     tpl_key: 'lazi_ji',
     dish_name: '辣子鸡',
     lines: [
@@ -103,6 +125,7 @@ const TEMPLATES = [
     ],
   },
   {
+    cat: 'dining',
     tpl_key: 'tangcu_liji',
     dish_name: '糖醋里脊',
     lines: [
@@ -112,6 +135,7 @@ const TEMPLATES = [
     ],
   },
   {
+    cat: 'dining',
     tpl_key: 'suanrong_qingcai',
     dish_name: '蒜蓉青菜',
     lines: [
@@ -120,6 +144,7 @@ const TEMPLATES = [
     ],
   },
   {
+    cat: 'dining',
     tpl_key: 'qingzheng_luyu',
     dish_name: '清蒸鲈鱼',
     lines: [
@@ -130,6 +155,7 @@ const TEMPLATES = [
     ],
   },
   {
+    cat: 'dining',
     tpl_key: 'ganbian_sijidou',
     dish_name: '干煸四季豆',
     lines: [
@@ -139,6 +165,7 @@ const TEMPLATES = [
     ],
   },
   {
+    cat: 'dining',
     tpl_key: 'kele_jichi',
     dish_name: '可乐鸡翅',
     lines: [
@@ -147,6 +174,7 @@ const TEMPLATES = [
     ],
   },
   {
+    cat: 'dining',
     tpl_key: 'disan_xian',
     dish_name: '地三鲜',
     lines: [
@@ -156,6 +184,7 @@ const TEMPLATES = [
     ],
   },
   {
+    cat: 'dining',
     tpl_key: 'mayi_shangshu',
     dish_name: '蚂蚁上树',
     lines: [
@@ -165,6 +194,7 @@ const TEMPLATES = [
     ],
   },
   {
+    cat: 'dining',
     tpl_key: 'suancai_yu',
     dish_name: '酸菜鱼',
     lines: [
@@ -175,6 +205,7 @@ const TEMPLATES = [
     ],
   },
   {
+    cat: 'dining',
     tpl_key: 'hongshao_qiezi',
     dish_name: '红烧茄子',
     lines: [
@@ -185,6 +216,7 @@ const TEMPLATES = [
     ],
   },
   {
+    cat: 'dining',
     tpl_key: 'jiucai_chao_dan',
     dish_name: '韭菜炒鸡蛋',
     lines: [
@@ -193,6 +225,7 @@ const TEMPLATES = [
     ],
   },
   {
+    cat: 'dining',
     tpl_key: 'qingjiao_rousi',
     dish_name: '青椒肉丝',
     lines: [
@@ -219,6 +252,7 @@ const TEMPLATES = [
     //   ⚠️ 油量、料量各店差异极大（3-5 斤油/锅都正常）⇒ 老板必须按自家改，页面文案已写「模板只给例子」。
     //   💡 锅底一般另收锅底费（重庆 28-58、外地更高）⇒ 套用后请在「售价」填锅底费，
     //      系统就能算出「锅底赚不赚」—— 这是火锅店最容易被低估的一项。
+    cat: 'hotpot',
     tpl_key: 'niuyou_guodi',
     dish_name: '牛油锅底（自制·炒一桶打12锅）',
     mode: 'B',
@@ -245,6 +279,7 @@ const TEMPLATES = [
     // 🔴 R670：番茄锅底同样有**打锅辅料**这一层 —— 原模板只列了炒料，漏了葱/盐/鸡精/冰糖。
     //   番茄锅靠"酸甜鲜"立味，冰糖和鸡精尤其不能省（否则汤寡）。
     //   每锅约：底料 800g + 葱段 50g + 盐 10g + 鸡精 20g + 冰糖 10g。
+    cat: 'hotpot',
     tpl_key: 'fanqie_guodi',
     dish_name: '番茄锅底（自制·炒一桶打10锅）',
     mode: 'B',
@@ -291,4 +326,9 @@ function applyTemplate(tpl) {
   }));
 }
 
-module.exports = { TEMPLATES, getTemplate, applyTemplate };
+// R671：额外导出「按大类分组」的读法 —— 页面两级选择用这它，不用自己 group
+function templatesByCat(catKey) {
+  return TEMPLATES.filter((t) => !catKey || t.cat === catKey);
+}
+
+module.exports = { TEMPLATES, TEMPLATE_CATS, templatesByCat, getTemplate, applyTemplate };
