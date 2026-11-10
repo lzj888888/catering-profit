@@ -15,7 +15,9 @@ const AmountInput = require('../../../utils/amountInput.js');
 const dh = require('../../../utils/dataHealth.js');   // R628：判列表是否被截断（数据不全就不给排名）   // R426（队列 #32）：金额栏体检（纯判定，不改数）
 const { openPaywall } = require('../../../utils/paywall.js');
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
-const { TEMPLATES, TEMPLATE_CATS, templatesByCat, applyTemplate, yieldOf, matchTemplateByName, suggestTemplates } = require('../../../utils/dishTemplates.js');   // M3.20/R671 菜品模板（只预填，不写库）
+const { TEMPLATES, TEMPLATE_CATS, templatesByCat, applyTemplate, yieldOf, matchTemplateByName, suggestTemplates } = require('../../../utils/dishTemplates.js');
+// 🔴 R678：组件类型（主料/辅料/调料）自动推断 —— 老板不用每行手点
+const { inferLineKind, isUnset } = require('../../../utils/lineKind.js');   // M3.20/R671 菜品模板（只预填，不写库）
 // 🔴 R675：品类预设（CATEGORY_PRESETS / CONDIMENT_NAME / ENERGY_NAME）在编辑页**不再引用**。
 //   文件本身保留 —— 导入 Excel（import.js / dishImport.js）还在用它识别菜品分类。
 // 🔴 R644（会审 R637）：金额化单源 —— 把「毛利率 18%」变成「每卖一份亏 1.2 元」
@@ -478,15 +480,54 @@ Page({
       //      不能被机器改回去 —— R626 踩过「我明明填了却变了」。
       yield_rate: (!lines[idx].yield_rate || String(lines[idx].yield_rate) === '100')
         ? String(yieldOf(m.name)) : lines[idx].yield_rate,
+      // 🔴 R678：组件类型同理 —— **只在没设过时推断**。
+      //   老板明确选过「主料/辅料/调料」就不许改（R626 教训：「我明明填了却变了」）。
+      line_kind: isUnset(lines[idx].line_kind) ? inferLineKind(m.name) : lines[idx].line_kind,
     });
     this.editLineStripPreset(idx, lines);
   },
 
   async load() {
     try {
-      await api.ensureShop();
+      await api.ensureShop();          // 有缓存（app.globalData.shopLoaded）⇒ 二次进入是同步返回
       ui.setTitle(TERMS.card.listTitle);
-      const mat = await api.call('getMaterial', {});
+
+      // 🔴 R678（李老师：「新建菜品成本卡要缓几秒才出来」）—— 三个真因，逐个修：
+      //
+      // ① **原来的顺序是三个串行 await**：ensureShop → getMaterial → getCostCard。
+      //    一次等一次，全部回来才 `loading:false`，整页才渲染（wxml 第 1 行是
+      //    `<view class="form" wx:if="{{!loading}}">`）⇒ 用户看到"加载中"好几秒。
+      //    ⇒ 改成 **Promise.all 并行**，耗时 ≈ 最慢那一个，不是三个相加。
+      //
+      // ② **新建单品卡根本不需要 getCostCard**：那个列表只服务
+      //    「套餐选子卡」和「编辑态回填」。原来新建时也照拉，白等一次完整往返
+      //    （云函数冷启动时这一下就是 1–3 秒）。
+      //    ⇒ 只在「编辑态」或「套餐」时才拉。
+      //
+      // ③ **原料表没有缓存**：每次进页面都重拉全部原料（可能上百条）。
+      //    ⇒ 有缓存就**先渲染让页面立刻出来**，再后台静默刷新覆盖。
+      //      老板改价后回列表再进来，看到的是新价（后台刷），但页面是秒开的。
+      const MAT_CACHE = 'm3_materials_cache_v1';
+      const isNewSingle = !this.data.isEdit && this.data.cardType !== '3';
+
+      // ③ 先用缓存把页面撑起来（只在新建态：编辑态要用真数据回填，不能先渲染旧值）
+      if (isNewSingle) {
+        try {
+          const c = wx.getStorageSync(MAT_CACHE);
+          if (c && Array.isArray(c.materials) && c.materials.length) {
+            this.setData({ materials: c.materials, loading: false });
+          }
+        } catch (e) { /* 缓存坏了不影响正确性，走下面真取 */ }
+      }
+
+      // ①② 并行取；不需要的调用直接不给
+      const [mat, cd] = await Promise.all([
+        api.call('getMaterial', {}),
+        (this.data.isEdit || this.data.cardType === '3')
+          ? api.call('getCostCard', {}).catch(() => ({ list: [] }))
+          : Promise.resolve({ list: [] }),
+      ]);
+
       // round149：把「买」的那一侧也带进来（采购单位/换算系数/出成率/采购价），
       //   好让老板在明细行直接看见「36 元/斤 ÷ 500 ÷ 92% ⇒ 0.0783 元/克」，不用去档案页心算。
       const materials = (mat.list || []).map((m) => ({
@@ -499,12 +540,12 @@ Page({
         convert_factor: m.convert_factor || 0,
         yield_rate: m.yield_rate || 0,
       }));
-      // M3.16（批次 C）：拉一次成本卡列表 —— 候选子卡（非套餐）+ 编辑回填（单品/套餐都用它）。
-      let cardList = [];
-      try {
-        const cd = await api.call('getCostCard', {});
-        cardList = cd.list || [];
-      } catch (e) { cardList = []; }
+      // 原料表写缓存（供下次进页面秒开）。只存新建态 —— 编辑态的数据本来就要准，不缓存。
+      if (isNewSingle && materials.length) {
+        try { wx.setStorageSync(MAT_CACHE, { at: Date.now(), materials }); } catch (e) { /* 存不下就算了 */ }
+      }
+      // M3.16（批次 C）：成本卡列表 —— 候选子卡（非套餐）+ 编辑回填。上面已按需并行取到。
+      const cardList = (cd && cd.list) || [];
       const subCards = cardList
         .filter((x) => x.card_type !== 3)
         .map((x) => ({ card_code: x.card_code, name: x.name, total_cost_fen: x.total_cost_fen, price_fen: x.price_fen }));
@@ -763,6 +804,10 @@ Page({
       //   ② 李老师要删掉「这道菜属于哪类」—— 品类一删，catYieldDefault 就是空的，
       //      若还走兜底 '100'，整鱼从 65% 掉到 100% ⇒ **成本直接低估 35%**（界面毫无提示）。
       yield_rate: String(r.yield_rate || '100'),
+      // 🔴 R678：**套模板时自动标组件类型**。原来全标 main ⇒ 老板做「小份版」试算时
+      //   糖/醋/酱油/油跟着主料一起减半 ⇒ 成本算错，而界面完全看不出来。
+      //   （多规格试算按 line_kind 分别乘系数：主料 1→0.5，调料应该保持 1）
+      line_kind: inferLineKind(r.line_name),
     }));
     // 🔴 R317：**模式随模板走**。火锅锅底这类「炒一批料 → 打 N 锅」必须 mode B + 批量产出；
     //   若仍按 mode A 套用，整批料的成本会被当成「一锅」的成本 ⇒ **静默算错 N 倍**（界面看不出）。

@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：270 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：271 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1527,6 +1527,8 @@ const SUITES = [
   ['dish-templates', 'tools/check_dish_templates.js'],
   // R671：模板分类与两级选择（分类=M2业态同一套词 / 索引换算不许错 / 两级真渲染）
   ['dish-templates-twolevel', 'tools/check_dish_templates.js'],
+  // R678：组件类型自动推断（调料/辅料/主料/半成品判对 + 只在没设过时覆盖）
+  ['line-kind', 'tools/check_line_kind.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

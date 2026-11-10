@@ -300,6 +300,31 @@ ok('I-② 🔴 wxml 也不再绑定它们（方法删了界面还绑着 ⇒ 点�
 ok('I-③ 🔴 出净率有接手方：套模板读 r.yield_rate + 选原料调 yieldOf（否则整鱼按 100 算，低估 35%）',
   /String\(r\.yield_rate/.test(EDIT_CODE_I) && /yieldOf\(/.test(EDIT_CODE_I));
 
+// ============ P 进页面「缓几秒才出来」的性能护栏（R678）============
+// 李老师：「点新建菜品成本卡，所有页面都弹完了它才弹出来，要缓几秒」。
+// 根因是三个串行 await + 一个用不上的调用 + 没缓存：
+//   wxml 第 1 行是 `<view class="form" wx:if="{{!loading}}">` —— **整页被 loading 挡住**，
+//   所以「慢」表现出来就是整个页面都不出现。
+// 这三条必须守住，否则以后随便加一个 await 就又慢回去，而且没人会注意到。
+sec('P 进页面加载性能');
+const LOAD_BODY = fnBody('load');
+ok('P-① 🔴 load 用 Promise.all 并行取（串行三个 await = 三次往返相加）',
+  /Promise\.all/.test(LOAD_BODY), /Promise\.all/.test(LOAD_BODY) ? '已并行' : '仍是串行');
+ok('P-② 🔴 新建单品卡**不拉** getCostCard（那个列表只服务套餐选子卡 / 编辑回填）',
+  /cardType === '3'/.test(LOAD_BODY) && /isEdit \|\| /.test(LOAD_BODY),
+  '按 isEdit / 套餐条件取');
+ok('P-③ 🔴 原料表有本地缓存：先进（先渲染）后刷（后台更新）',
+  /m3_materials_cache/.test(LOAD_BODY) && /getStorageSync/.test(LOAD_BODY) && /setStorageSync/.test(LOAD_BODY));
+ok('P-④ 缓存只写「新建态」—— 编辑态数据要准，不能拿缓存的旧价回填',
+  /isNewSingle && materials\.length/.test(LOAD_BODY));
+ok('P-⑤ 缓存读取失败不影响正确性（try/catch 包住，走真取）',
+  /catch \(e\) \{ \/\* 缓存坏了不影响正确性/.test(LOAD_BODY) || /getStorageSync[\s\S]{0,200}catch/.test(LOAD_BODY));
+{
+  // 变异：把并行改回串行 ⇒ P-① 必须红
+  const mutated = LOAD_BODY.replace(/Promise\.all/g, 'serialFallback');
+  ok('P-⑥ 变异体（去掉 Promise.all 改回串行）能被 P-① 抓到', !/Promise\.all/.test(mutated));
+}
+
 // ============ J 二次实测：删用量要清空、且不用收键盘也能看结果（R637）============
 // 老板二次实测：①「把用量去掉，单份成本还是卡死在那儿」②「输的时候弹键盘，要看结果得先收键盘再滑到底」
 // ① 上一轮我只标灰没清空 —— 标灰对老板等于没变，他看到的仍是一个数。
