@@ -15,7 +15,7 @@ const AmountInput = require('../../../utils/amountInput.js');
 const dh = require('../../../utils/dataHealth.js');   // R628：判列表是否被截断（数据不全就不给排名）   // R426（队列 #32）：金额栏体检（纯判定，不改数）
 const { openPaywall } = require('../../../utils/paywall.js');
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
-const { TEMPLATES, TEMPLATE_CATS, templatesByCat, applyTemplate, yieldOf, matchTemplateByName } = require('../../../utils/dishTemplates.js');   // M3.20/R671 菜品模板（只预填，不写库）
+const { TEMPLATES, TEMPLATE_CATS, templatesByCat, applyTemplate, yieldOf, matchTemplateByName, suggestTemplates } = require('../../../utils/dishTemplates.js');   // M3.20/R671 菜品模板（只预填，不写库）
 // 🔴 R675：品类预设（CATEGORY_PRESETS / CONDIMENT_NAME / ENERGY_NAME）在编辑页**不再引用**。
 //   文件本身保留 —— 导入 Excel（import.js / dishImport.js）还在用它识别菜品分类。
 // 🔴 R644（会审 R637）：金额化单源 —— 把「毛利率 18%」变成「每卖一份亏 1.2 元」
@@ -238,6 +238,7 @@ Page({
       tplMatchTip: TERMS.card.tplMatchTip,
       tplMatchApply: TERMS.card.tplMatchApply,
       tplNoMatchTip: TERMS.card.tplNoMatchTip,
+      tplSuggestTip: TERMS.card.tplSuggestTip,   // R677：有相关候选时只指路
       templateHint: TERMS.card.templateHint,
       // ── R234/J4f 行内长提示折叠（本页 1 处）──
       // 🔴 三处登记的第二处：漏映射 ⇒ 页面渲染成**空白**且零报错（R124 同族）
@@ -345,6 +346,7 @@ Page({
     tplMatchKey: '',      // 匹配到的 tpl_key，空 = 不提示
     tplMatchName: '',     // 匹配到的标准菜名（提示语里显示）
     tplNoMatch: false,    // 菜名填了但库里没有 ⇒ 给「自己加原料」的引导
+    tplSuggest: 0,        // 库里**有相关的**（如自制/外购两道）⇒ 只指路，不替老板选
     // 🔴 R675：品类默认模板（catOptions/catPicked/catYieldDefault/catLabel）与
     //   燃气分摊（energyOn/energyFen）、估算卡横幅（hasPreset/estBanner）**全部删除**。
     //   原因见 edit.wxml 顶部注释。出净率改由模板行自带 + 选原料时按原料自动带出。
@@ -649,22 +651,35 @@ Page({
   onNameBlur(e) {
     const name = String((e && e.detail && e.detail.value) || this.data.name || '').trim();
     if (!name) {
-      if (this.data.tplMatchKey || this.data.tplNoMatch) this.setData({ tplMatchKey: '', tplMatchName: '', tplNoMatch: false });
+      if (this.data.tplMatchKey || this.data.tplNoMatch || this.data.tplSuggest) this.setData({ tplMatchKey: '', tplMatchName: '', tplNoMatch: false, tplSuggest: 0 });
       return;
     }
     // ① 已填了配料 ⇒ 一句话都不说
     if (!this.linesAllBlank()) {
-      if (this.data.tplMatchKey || this.data.tplNoMatch) this.setData({ tplMatchKey: '', tplMatchName: '', tplNoMatch: false });
+      if (this.data.tplMatchKey || this.data.tplNoMatch || this.data.tplSuggest) this.setData({ tplMatchKey: '', tplMatchName: '', tplNoMatch: false, tplSuggest: 0 });
       return;
     }
     const tpl = matchTemplateByName(name);
     if (!tpl) {
-      // ② 库里没有 —— 给「自己加」的引导，不要静默
-      if (!this.data.tplNoMatch || this.data.tplMatchKey) this.setData({ tplMatchKey: '', tplMatchName: '', tplNoMatch: true });
+      // ②-a 库里**有相关的**（老板输「牛油锅底」，库里有自制/外购两道）——
+      //   🔴 **不能自动套**：自制和外购的成本结构完全不同（一个按桶÷锅数、一个按斤买），
+      //   机器替他选等于让他拿错模型算账，而且算出来的数字看着还很正常。
+      //   所以只指路：「库里有 2 个相关的，从下面挑」。
+      const sug = suggestTemplates(name);
+      if (sug.length) {
+        if (this.data.tplSuggest !== sug.length || this.data.tplNoMatch || this.data.tplMatchKey) {
+          this.setData({ tplMatchKey: '', tplMatchName: '', tplNoMatch: false, tplSuggest: sug.length });
+        }
+        return;
+      }
+      // ②-b 真的没有 —— 给「自己加」的引导，不要静默
+      if (!this.data.tplNoMatch || this.data.tplMatchKey || this.data.tplSuggest) {
+        this.setData({ tplMatchKey: '', tplMatchName: '', tplNoMatch: true, tplSuggest: 0 });
+      }
       return;
     }
-    if (tpl.tpl_key === this.data.tplMatchKey && !this.data.tplNoMatch) return;   // ③ 同一条不重复
-    this.setData({ tplMatchKey: tpl.tpl_key, tplMatchName: tpl.dish_name, tplNoMatch: false });
+    if (tpl.tpl_key === this.data.tplMatchKey && !this.data.tplNoMatch && !this.data.tplSuggest) return;   // ③ 同一条不重复
+    this.setData({ tplMatchKey: tpl.tpl_key, tplMatchName: tpl.dish_name, tplNoMatch: false, tplSuggest: 0 });
   },
 
   // 配料区是否「一点内容都没有」（全是空行也算空）
@@ -773,7 +788,7 @@ Page({
       wx.showToast({ title: TERMS.card.potPriceHint, icon: 'none', duration: 3000 });
     }
     // 套过了就清掉匹配提示（配料区已经不空了）
-    this.setData({ tplMatchKey: '', tplMatchName: '', tplNoMatch: false });
+    this.setData({ tplMatchKey: '', tplMatchName: '', tplNoMatch: false, tplSuggest: 0 });
   },
 
   // 🔴 R675（李老师：「这道菜属于哪类」可以删除了）：原 `onPickCategory` / `onClearCategory`

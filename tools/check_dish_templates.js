@@ -20,7 +20,7 @@ function ok(name, cond, detail) {
   if (cond) { pass++; console.log('  ✅ ' + name + (detail ? ' —— ' + detail : '')); } else { failN++; console.log('  ❌ ' + name + (detail ? ' —— ' + detail : '')); }
 }
 
-const { TEMPLATES, applyTemplate, matchTemplateByName, normDishName } = require(path.join(ROOT, 'utils/dishTemplates.js'));
+const { TEMPLATES, applyTemplate, matchTemplateByName, suggestTemplates, normDishName } = require(path.join(ROOT, 'utils/dishTemplates.js'));
 const { PURCHASE_UNITS } = require(path.join(ROOT, 'utils/units.js'));
 
 console.log('\n===== T 基本契约 =====');
@@ -68,10 +68,14 @@ const potTpls = TEMPLATES.filter((t) => t.mode === 'B' && /锅底|锅/.test(t.di
 const potBad = potTpls.filter((t) => {
   const names = (t.lines || []).map((l) => l.line_name);
   const hasAroma = names.some((n) => /葱/.test(n)) && names.some((n) => /姜/.test(n));
-  const condN = ['醪糟', '冰糖', '鸡精', '盐'].filter((w) => names.some((n) => n.indexOf(w) >= 0)).length;
-  return !(hasAroma && condN >= 3);
+  // ⚠️ R677：原来要求「醪糟/冰糖/鸡精/盐 ≥3 种」⇒ 把「羊肉汤锅（清汤底）」判红。
+  //   **但清汤锅真的不放醪糟和冰糖** —— 那两样是红汤锅去燥提色用的。
+  //   判据不能要求"所有锅底一个配方"，否则等于逼人往清汤里加冰糖。
+  //   ⇒ 改成：葱+姜必须有（这是锅底的基本盘），调味辅料（醪糟/冰糖/鸡精/盐/香菜/白胡椒）≥2 种。
+  const condN = ['醪糟', '冰糖', '鸡精', '盐', '香菜', '白胡椒'].filter((w) => names.some((n) => n.indexOf(w) >= 0)).length;
+  return !(hasAroma && condN >= 2);
 });
-ok('T-⑥ 🔴 每个「一桶打多锅」的锅底模板都有打锅辅料（葱+姜，且醪糟/冰糖/鸡精/盐≥3 种）',
+ok('T-⑥ 🔴 每个「一桶打多锅」的锅底模板都有打锅辅料（葱+姜必有；调味辅料≥2 种，清汤锅不强求醪糟冰糖）',
   potBad.length === 0,
   potBad.length ? potBad.map((t) => t.tpl_key).join(',') + ' 缺打锅辅料' : potTpls.map((t) => t.dish_name).join(' / '));
 
@@ -169,9 +173,15 @@ ok('T-⑱ 🔴 模板区有统一出处说明，且含「仅供参考」+「按�
   hint || '空');
 ok('T-⑲ 🔴 出处说明**不指向具体来源**（不写"来自某书/某网站/某大V"—— 指向权利人容易扯皮）',
   !/来自.{0,6}(书|网站|公众号|抖音|老师|大V)|某某|某菜谱/.test(hint), hint.slice(0, 40));
-ok('T-⑳ 模板**绝不预填价格**（R138 红线①：价格随行就市，只能老板自己填）',
-  TEMPLATES.every((t) => (t.lines || []).every((l) => !/price|金额|元\/份|单价/.test(l.line_name || ''))),
-  '零预填价格');
+// ⚠️ R677：原判据查「行名里有没有 price/单价 字样」⇒ 把「水（熬汤用·单价可填0）」判红。
+//   **判据抓错了地方**：行名里的"单价"是给老板的提示语，不是价格字段。
+//   "绝不预填价格"该查的是**行对象上有没有价格类字段**（有值就会被当真价格用）。
+const PRICE_KEYS = ['price', 'unit_price', 'amount', 'cost', 'fen'];
+const priceLeak = TEMPLATES.map((t) => (t.lines || [])
+  .filter((l) => Object.keys(l).some((k) => PRICE_KEYS.some((p) => k.toLowerCase().indexOf(p) >= 0) && l[k] !== undefined && l[k] !== ''))
+  .map((l) => t.dish_name + '/' + l.line_name)).flat();
+ok('T-⑳ 模板**绝不预填价格**（R138 红线①：价格随行就市，只能老板自己填；查行上的价格字段，不查行名文案）',
+  priceLeak.length === 0, priceLeak.length ? priceLeak.slice(0, 3).join(',') : '零预填价格');
 
 console.log('\n===== N 输菜名自动匹配模板（R676，替代已删的品类选择器）=====');
 // 为什么要守：品类删了（R675），老板面对空白配料区。匹配是新的入口。
@@ -224,6 +234,31 @@ ok('N-⑨ 🔴 自动套用时**保留老板输入的菜名**（他输「重庆�
   /applyTplToCard\(tpl, -1, true\)/.test(EDITJ) && /if \(!keepName\) patch\.name/.test(EDITJ));
 ok('N-⑩ 配料区已有内容时不提示（点了会覆盖手工录入）',
   /if \(!this\.linesAllBlank\(\)\)/.test(EDITJ));
+
+console.log('\n===== N 火锅两种做法都在（李老师：外地多数买成品料，不自己炒）=====');
+// 为什么单列：自制和外购**成本结构完全不同** ——
+//   自制 = 炒一桶（油+料+香料一起下锅）÷ 出锅数（mode B）
+//   外购 = 底料按斤买 + 另加油 + 打锅辅料（mode A，一锅一份）
+// 少一种，那类店就套不上；套错了（用自制的模型算外购店）成本差好几倍，而且一眼看不出来。
+const potTpls2 = TEMPLATES.filter((t) => t.cat === 'hotpot');
+ok('N-⑪ 🔴 自制锅底（mode B）和外购锅底（mode A）都在',
+  potTpls2.some((t) => t.mode === 'B') && potTpls2.some((t) => t.mode !== 'B'),
+  potTpls2.map((t) => t.dish_name + '(' + (t.mode || 'A') + ')').join(' / '));
+ok('N-⑫ 锅底模板名里自带「自制 / 外购」区分（归一化会去掉括号，只写在括号里会重名）',
+  potTpls2.filter((t) => t.mode === 'B').every((t) => /自制/.test(t.dish_name))
+  && potTpls2.filter((t) => t.mode !== 'B').every((t) => /外购/.test(t.dish_name)),
+  potTpls2.map((t) => t.dish_name).join(' / '));
+
+console.log('\n===== N 有相关候选时只指路、不替老板选（R677）=====');
+// 老板输「牛油锅底」，库里有自制/外购两道 ⇒ 精确匹配落空。
+// 🔴 **绝不能自动选一个套上**：自制和外购算出来的成本差好几倍，而界面看不出错。
+ok('N-⑬ 🔴 有多个相关模板时，`suggestTemplates` 能列出来（不是让他以为库里没有）',
+  (() => { const g = suggestTemplates('牛油锅底'); return g.length >= 2; })(),
+  suggestTemplates('牛油锅底').map((t) => t.dish_name).join(' / '));
+ok('N-⑭ 🔴 有候选时页面**不清空也不自动套**，只给指路提示（wxml 有 tplSuggest 分支）',
+  /tplSuggest/.test(EDITW) && /tplSuggestTip/.test(EDITW) && /suggestTemplates\(name\)/.test(EDITJ));
+ok('N-⑮ 单字输入不猜（「面」「鸡」会命中一片，猜了就是误导）',
+  suggestTemplates('面').length === 0 && suggestTemplates('鸡').length === 0);
 
 console.log('\n===== 结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);

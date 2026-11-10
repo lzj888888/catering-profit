@@ -83,6 +83,9 @@
   <!-- 匹配不到时的引导：库里没有这道菜很正常（41 道 vs 老板 30-50 道菜单），
        不吭声老板会以为"输了没反应/功能坏了"。给一句怎么做，比沉默有用。 -->
   <view class="tpl-nomatch" wx:if="{{!isEdit && cardType === '1' && tplNoMatch}}">{{t.tplNoMatchTip}}</view>
+  <!-- 🔴 R677：库里有相关的（自制/外购这类）⇒ 只指路，不自动套 ——
+       自制和外购成本结构完全不同，机器替老板选等于让他拿错模型算账。 -->
+  <view class="tpl-nomatch" wx:if="{{!isEdit && cardType === '1' && tplSuggest > 0}}">{{t.tplSuggestTip}}</view>
 
   <!-- 🔴 R675（李老师）：删掉「这道菜属于哪类」+ 燃气燃料分摊。
        为什么删：

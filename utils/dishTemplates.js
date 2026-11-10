@@ -50,7 +50,7 @@ const TEMPLATES = [
     //      系统就能算出「锅底赚不赚」—— 这是火锅店最容易被低估的一项。
     cat: 'hotpot',
     tpl_key: 'niuyou_guodi',
-    dish_name: '牛油锅底（自制·炒一桶打12锅）',
+    dish_name: '自制牛油锅底（炒一桶打12锅）',
     mode: 'B',
     batch_output: 12,
     lines: [
@@ -77,7 +77,7 @@ const TEMPLATES = [
     //   每锅约：底料 800g + 葱段 50g + 盐 10g + 鸡精 20g + 冰糖 10g。
     cat: 'hotpot',
     tpl_key: 'fanqie_guodi',
-    dish_name: '番茄锅底（自制·炒一桶打10锅）',
+    dish_name: '自制番茄锅底（炒一桶打10锅）',
     mode: 'B',
     batch_output: 10,
     lines: [
@@ -398,6 +398,76 @@ const TEMPLATES = [
     ],
   },
 
+  // ===== 火锅：外购成品料（R677 新增）=====
+  // 🔴 李老师：外地火锅店**多数不自己炒料**，是买成品底料 ——「一斤底料多少钱，一锅打几两底料，
+  //   加上三斤或四斤五斤油」。这和自制的成本结构**完全不同**，硬用一个模板必然算错：
+  //     自制 = 炒一桶（油+料+香料一起下锅）÷ 出锅数
+  //     外购 = **底料按斤买** + 另加油（成品料含油少，店家常补） + 打锅辅料
+  //   所以单独做一个，用 mode A（一锅 = 一份），老板填多少就是多少，不用换算批次。
+  //   ⚠️ 每锅几两料、几斤油**各店差异极大**（7-8 两料 / 3-5 斤油都正常），
+  //      本模板按「8 两料 + 4 斤油」给，老板必须按自家改。
+  {
+    cat: 'hotpot',
+    tpl_key: 'niuyou_guodi_buy',
+    dish_name: '外购牛油锅底（一锅）',
+    lines: [
+      { line_name: '成品牛油底料（约8两）', qty: 400, unit: '克' },
+      { line_name: '牛油（另加）', qty: 2000, unit: '克' },
+      { line_name: '葱段', qty: 50, unit: '克' },
+      { line_name: '姜片', qty: 50, unit: '克' },
+      { line_name: '醪糟', qty: 25, unit: '克' },
+      { line_name: '冰糖', qty: 12, unit: '克' },
+      { line_name: '鸡精', qty: 25, unit: '克' },
+      { line_name: '盐', qty: 12, unit: '克' },
+    ],
+  },
+  {
+    cat: 'hotpot',
+    tpl_key: 'qingyou_guodi_buy',
+    dish_name: '外购清油锅底（一锅）',
+    lines: [
+      { line_name: '成品清油底料（约8两）', qty: 400, unit: '克' },
+      { line_name: '菜籽油（另加）', qty: 2000, unit: '克' },
+      { line_name: '葱段', qty: 50, unit: '克' },
+      { line_name: '姜片', qty: 50, unit: '克' },
+      { line_name: '醪糟', qty: 25, unit: '克' },
+      { line_name: '冰糖', qty: 12, unit: '克' },
+      { line_name: '鸡精', qty: 25, unit: '克' },
+      { line_name: '盐', qty: 12, unit: '克' },
+    ],
+  },
+  {
+    // 🔴 R677：羊肉汤锅 —— 李老师点名要的「一个汤底就能开店」那类。
+    //   和牛油锅底一样是「熬一桶 → 分 N 锅」，所以用 mode B。
+    //   骨水比按 1:4（10 斤骨配 40 斤水）—— 这是清汤锅的常见比例，
+    //   汤要白要浓就减水，要清就加水，老板按自家改。
+    //   ⚠️ 一锅 4L 汤里带 200g 骨 + 50g 肉（骨肉跟着汤一起上桌），所以「每锅」含骨肉不只是汤。
+    cat: 'hotpot',
+    tpl_key: 'yangrou_tangguo',
+    dish_name: '自制羊肉汤锅底（熬一桶打10锅）',
+    mode: 'B',
+    batch_output: 10,
+    lines: [
+      // ① 熬汤（整桶）
+      { line_name: '羊棒骨', qty: 2000, unit: '克' },
+      { line_name: '羊肉（带皮/腿肉）', qty: 500, unit: '克' },
+      { line_name: '姜', qty: 100, unit: '克' },
+      { line_name: '葱', qty: 100, unit: '克' },
+      { line_name: '白芷', qty: 20, unit: '克' },
+      { line_name: '花椒', qty: 10, unit: '克' },
+      // ⚠️ 水：**保留但标「可不计价」**。理由有二：
+      //   ① 水量决定出品量（骨水比 1:4），去掉老板就不知道一锅汤有多少；
+      //   ② 但自来水属**水电费（期间费用）**，和燃气同理（R675 已裁定不进单品毛利率），
+      //      单价填 0 或按吨价填都行 —— 别让它变成一项假成本。
+      { line_name: '水（熬汤用·单价可填0）', qty: 40000, unit: '毫升' },
+      // ② 打锅辅料（整批 10 锅的量 = 每锅量 × 10）
+      { line_name: '盐（每锅约12g·按汤量增减）', qty: 120, unit: '克' },
+      { line_name: '鸡精（每锅约15g）', qty: 150, unit: '克' },
+      { line_name: '葱段（打锅用·每锅约30g）', qty: 300, unit: '克' },
+      { line_name: '香菜（每锅约10g）', qty: 100, unit: '克' },
+    ],
+  },
+
   // ===== 快餐 / 小面（R672 新增，8 道）=====
   // 🔴 数据口径：每份**门店出品量**（不是家庭份），用量为行业常见区间中值。
   //   面条类成本结构最简单（面 + 浇头 + 调料），所以先做这一类验证流程。
@@ -700,7 +770,8 @@ const YIELD_RULES = [
   // ⑤ 禽类分割件（翅/爪已分割，损耗小）
   { re: /鸡翅|鸡爪/, y: 95 },
   // ⑥ 普通肉（带皮 / 带筋 / 带骨）
-  { re: /五花|牛腱|牛肉|排骨/, y: 88 },
+  // ⚠️ R677 补「羊」：原来只有牛/猪，羊肉（带皮/带骨）会掉到兜底 100 ⇒ 成本低估约 12%
+  { re: /五花|牛腱|牛肉|排骨|羊肉|羊腿|羊排|羊杂/, y: 88 },
   // ⑦ 整鱼 —— 去鳞去内脏去骨，损耗最大的一类
   { re: /草鱼|黑鱼|鲈鱼|整鱼/, y: 65 },
   // ⑧ 叶菜 / 嫩茎 —— 择洗损耗大
@@ -762,9 +833,24 @@ function matchTemplateByName(name) {
   return null;
 }
 
+// 🔴 R677：**候选提示** —— 老板输「牛油锅底」时，库里有「自制牛油锅底」和「外购牛油锅底」两道。
+//   精确匹配必然落空（两个都不完全等于输入），但**直接说"库里没有"是错的** —— 明明有。
+//   所以多一层：找出「模板名里包含输入」或「输入里包含模板名」的所有模板，
+//   交给页面去说「库里有 2 个相关的，请从上面挑」，而不是让老板以为没有。
+//   ⚠️ 只在**精确匹配落空时**用，且**不自动套用** —— 有歧义时机器不能替老板选
+//      （自制和外购的成本结构完全不同，选错了整张卡都错）。
+function suggestTemplates(name) {
+  const n = normDishName(name);
+  if (!n || n.length < 2) return [];      // 单字太宽（"面""鸡"会命中一片），不猜
+  return TEMPLATES.filter((t) => {
+    const tn = normDishName(t.dish_name);
+    return tn !== n && (tn.indexOf(n) >= 0 || n.indexOf(tn) >= 0);
+  });
+}
+
 // R671：额外导出「按大类分组」的读法 —— 页面两级选择用这它，不用自己 group
 function templatesByCat(catKey) {
   return TEMPLATES.filter((t) => !catKey || t.cat === catKey);
 }
 
-module.exports = { TEMPLATES, TEMPLATE_CATS, templatesByCat, getTemplate, applyTemplate, yieldOf, matchTemplateByName, normDishName };
+module.exports = { TEMPLATES, TEMPLATE_CATS, templatesByCat, getTemplate, applyTemplate, yieldOf, matchTemplateByName, suggestTemplates, normDishName };
