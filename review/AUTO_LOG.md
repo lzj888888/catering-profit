@@ -1394,3 +1394,17 @@
 - 修：首页 hero 金额渲染成 `¥ 51900.00元` —— 货币符号与「元」字**同时出现**，符号后还多一个空格，是全仓唯一例外（结果页 `¥51900.00`、卡片列表 `¥6.50` 都只有符号）。
   - 统一为 `¥51900.00`，并删掉已无引用的 `.hero-unit` 样式（留着它 = 给后人一个"这里本该有元字"的假线索）。
   - 横向排查：全仓其余 4 处「元」都是**输入框后缀**（`imp-unit`/`row-unit`/`real-unit`），输入框不该带 ¥ 前缀 ⇒ 正确，未动。
+
+## 2026-11-10 · R684 · 上线前全量云函数部署（队列 #125 → done）
+- [2026-11-10 18:1x] R684 李老师选「先把 58 个云函数部署齐」。按技能 `miniprogram-cloud-deploy` 执行，**先烟测再放量**（不做烟测直接批量=赌运气）。
+  - 烟测 `smokeTest` 21s HIT ⇒ 通道通，放量。第一批 30 个 **30/30**（8m47s）；第二批 27 个 **26/27**（9m42s，`revokeAiConsent` 中段 MISS）；单独补跑 **1/1**。
+  - 判据一律 `_judge_deploy.js` 的 `ALL_ROWS_HIT`，**不看 rc**（cli 失败也返回 rc=0，这是本仓最贵的教训之一）。全程带 `-r`、一次一个、未传 `--port`。
+  - `revokeAiConsent` 的 MISS 属技能 §3.1 记的"中段失败自愈"：单独重跑即成功，**没有重启 IDE**（重启是错误处置）。
+  - 双向对账：本地 58 ≡ 云端 59（云端多一个 `cleanupSmokeCards`，本地无，历史遗留，不阻塞上线）。
+  - 回读：**58/58 `Active`**。证据 `review/evidence/r684_deploy_all/`。
+- 🔴 **回读抓到一个上线阻断项（#147）**：6 个函数 `timeout = 3`（平台默认、从未被抬过）——
+  `ensureCollections` / `getAiConsent` / `getDiagnosis` / `grantAiConsent` / `revokeAiConsent` / `verifyTangshi`。
+  其中 **`getDiagnosis` 要读多集合 + 跑 11 项引擎，3 秒必超时 ⇒ 诊断页真机直接失败**。同 R215c 的 `importSalesBill`/`manageShop`。
+  - 为什么本轮改不了（技能 §9 三条路全堵、已实证）：`config.json` 写 timeout **随包上传但不生效**；`cli` **无**改配置子命令；云开发 HTTP API **无**该端点。
+  - ⇒ 唯一入口是**云开发控制台 → 云函数 → 该函数 → 版本与配置 → 高级配置 → 执行超时**，目标 20。改完必须 `cli info` 回读 timeout 列，别信控制台绿字。
+- 其余 timeout 分布（回读实测）：20×47 / 60×3（adminExport·exportData·dbBackup）/ 30×1（initDb）/ 15×1（smokeTest）/ **3×6**（即上面那 6 个）。

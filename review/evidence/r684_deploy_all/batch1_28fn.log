@@ -1,0 +1,66 @@
+ENV = cloud1-d4gphpoxy337f2a25   待部署 30 个: adminExport, adminGrantEntitlement, adminInit, adminLogin, adminLogout, adminManualOrder, adminOrderList, adminQueryUser, adminRefreshToken, adminRefundMark, adminRevokeToken, archiveMonth, calcAmortize, calcBom, calcMonthlyProfit, calcSandbox, checkQuota, clearMonth, clearSalesBills, dbBackup, deleteAccount, detectCycle, ensureCollections, exportData, getAiConsent, getAmortSchedule, getCardVersions, getCostCard, getDiagnosis, getDishReview
+[adminExport] try1 rc=0 用时=18.0s HIT | LOG = deploy_adminExport_1.log  (4827 bytes)   adminExport       ✅ 命中表格行   â adminExport â true    â 26         â '96.3 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[adminGrantEntitlement] try1 rc=0 用时=17.2s HIT | LOG = deploy_adminGrantEntitlement_1.log  (5587 bytes)   adminGrantEntitlement✅ 命中表格行   â adminGrantEntitlement â true    â 26         â '91.0 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[adminInit] try1 rc=0 用时=16.8s HIT | LOG = deploy_adminInit_1.log  (4039 bytes)   adminInit         ✅ 命中表格行   â adminInit â true    â 25         â '89.0 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[adminLogin] try1 rc=0 用时=17.2s HIT | LOG = deploy_adminLogin_1.log  (3561 bytes)   adminLogin        ✅ 命中表格行   â adminLogin â true    â 25         â '92.1 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[adminLogout] try1 rc=0 用时=16.7s HIT | LOG = deploy_adminLogout_1.log  (3621 bytes)   adminLogout       ✅ 命中表格行   â adminLogout â true    â 25         â '89.2 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[adminManualOrder] try1 rc=0 用时=16.8s HIT | LOG = deploy_adminManualOrder_1.log  (3906 bytes)   adminManualOrder  ✅ 命中表格行   â adminManualOrder â true    â 26         â '91.2 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[adminOrderList] try1 rc=0 用时=15.6s HIT | LOG = deploy_adminOrderList_1.log  (3791 bytes)   adminOrderList    ✅ 命中表格行   â adminOrderList â true    â 25         â '88.2 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[adminQueryUser] try1 rc=0 用时=18.0s HIT | LOG = deploy_adminQueryUser_1.log  (3791 bytes)   adminQueryUser    ✅ 命中表格行   â adminQueryUser â true    â 26         â '93.9 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[adminRefreshToken] try1 rc=0 用时=18.1s HIT | LOG = deploy_adminRefreshToken_1.log  (3963 bytes)   adminRefreshToken ✅ 命中表格行   â adminRefreshToken â true    â 25         â '89.8 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[adminRefundMark] try1 rc=0 用时=17.2s HIT | LOG = deploy_adminRefundMark_1.log  (3848 bytes)   adminRefundMark   ✅ 命中表格行   â adminRefundMark â true    â 26         â '91.5 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[adminRevokeToken] try1 rc=0 用时=16.7s HIT | LOG = deploy_adminRevokeToken_1.log  (3906 bytes)   adminRevokeToken  ✅ 命中表格行   â adminRevokeToken â true    â 25         â '89.2 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[archiveMonth] try1 rc=0 用时=16.4s HIT | LOG = deploy_archiveMonth_1.log  (3677 bytes)   archiveMonth      ✅ 命中表格行   â archiveMonth â true    â 25         â '85.0 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[calcAmortize] try1 rc=0 用时=17.5s HIT | LOG = deploy_calcAmortize_1.log  (3678 bytes)   calcAmortize      ✅ 命中表格行   â calcAmortize â true    â 26         â '95.7 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[calcBom] try1 rc=0 用时=20.1s HIT | LOG = deploy_calcBom_1.log  (4523 bytes)   calcBom           ✅ 命中表格行   â calcBom â true    â 26         â '96.5 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[calcMonthlyProfit] try1 rc=0 用时=17.4s HIT | LOG = deploy_calcMonthlyProfit_1.log  (5282 bytes)   calcMonthlyProfit ✅ 命中表格行   â calcMonthlyProfit â true    â 26         â '97.6 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[calcSandbox] try1 rc=0 用时=17.2s HIT | LOG = deploy_calcSandbox_1.log  (17459 bytes)   calcSandbox       ✅ 命中表格行   â calcSandbox â true    â 26         â '105.3 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[checkQuota] try1 rc=0 用时=16.5s HIT | LOG = deploy_checkQuota_1.log  (4751 bytes)   checkQuota        ✅ 命中表格行   â checkQuota â true    â 26         â '89.1 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[clearMonth] try1 rc=0 用时=17.1s HIT | LOG = deploy_clearMonth_1.log  (1188 bytes)   clearMonth        ✅ 命中表格行   â clearMonth â true    â 25         â '85.4 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[clearSalesBills] try1 rc=0 用时=17.4s HIT | LOG = deploy_clearSalesBills_1.log  (1283 bytes)   clearSalesBills   ✅ 命中表格行   â clearSalesBills â true    â 26         â '88.7 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[dbBackup] try1 rc=0 用时=16.7s HIT | LOG = deploy_dbBackup_1.log  (2376 bytes)   dbBackup          ✅ 命中表格行   â dbBackup â true    â 24         â '86.5 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[deleteAccount] try1 rc=0 用时=16.8s HIT | LOG = deploy_deleteAccount_1.log  (3734 bytes)   deleteAccount     ✅ 命中表格行   â deleteAccount â true    â 24         â '86.0 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[detectCycle] try1 rc=0 用时=16.8s HIT | LOG = deploy_detectCycle_1.log  (3621 bytes)   detectCycle       ✅ 命中表格行   â detectCycle â true    â 26         â '87.4 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[ensureCollections] try1 rc=0 用时=16.8s HIT | LOG = deploy_ensureCollections_1.log  (2768 bytes)   ensureCollections ✅ 命中表格行   â ensureCollections â true    â 23         â '84.6 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[exportData] try1 rc=0 用时=18.6s HIT | LOG = deploy_exportData_1.log  (9891 bytes)   exportData        ✅ 命中表格行   â exportData â true    â 24         â '96.4 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[getAiConsent] try1 rc=0 用时=8.2s MISS | LOG = deploy_getAiConsent_1.log  (1348 bytes)   getAiConsent      ❌ 未命中（该函数无 success=true 行） 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = false  |  DONE = true
+    -> 未命中，重跑（首轮常因 IDE 通道未起失败）
+[getAiConsent] try2 rc=0 用时=16.5s HIT | LOG = deploy_getAiConsent_2.log  (1226 bytes)   getAiConsent      ✅ 命中表格行   â getAiConsent â true    â 26         â '91.9 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[getAmortSchedule] try1 rc=0 用时=16.2s HIT | LOG = deploy_getAmortSchedule_1.log  (5208 bytes)   getAmortSchedule  ✅ 命中表格行   â getAmortSchedule â true    â 26         â '87.6 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[getCardVersions] try1 rc=0 用时=19.0s HIT | LOG = deploy_getCardVersions_1.log  (6415 bytes)   getCardVersions   ✅ 命中表格行   â getCardVersions â true    â 26         â '89.0 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[getCostCard] try1 rc=0 用时=16.6s HIT | LOG = deploy_getCostCard_1.log  (6103 bytes)   getCostCard       ✅ 命中表格行   â getCostCard â true    â 27         â '94.0 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[getDiagnosis] try1 rc=0 用时=17.9s HIT | LOG = deploy_getDiagnosis_1.log  (3677 bytes)   getDiagnosis      ✅ 命中表格行   â getDiagnosis â true    â 26         â '97.2 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[getDishReview] try1 rc=0 用时=17.7s HIT | LOG = deploy_getDishReview_1.log  (6347 bytes)   getDishReview     ✅ 命中表格行   â getDishReview â true    â 24         â '99.0 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+
+===== 部署汇总 =====
+adminExport          OK   18s
+adminGrantEntitlement OK   17s
+adminInit            OK   17s
+adminLogin           OK   17s
+adminLogout          OK   17s
+adminManualOrder     OK   17s
+adminOrderList       OK   16s
+adminQueryUser       OK   18s
+adminRefreshToken    OK   18s
+adminRefundMark      OK   17s
+adminRevokeToken     OK   17s
+archiveMonth         OK   16s
+calcAmortize         OK   18s
+calcBom              OK   20s
+calcMonthlyProfit    OK   17s
+calcSandbox          OK   17s
+checkQuota           OK   17s
+clearMonth           OK   17s
+clearSalesBills      OK   17s
+dbBackup             OK   17s
+deleteAccount        OK   17s
+detectCycle          OK   17s
+ensureCollections    OK   17s
+exportData           OK   19s
+getAiConsent         OK   25s
+getAmortSchedule     OK   16s
+getCardVersions      OK   19s
+getCostCard          OK   17s
+getDiagnosis         OK   18s
+getDishReview        OK   18s
+---- 30/30 OK ----

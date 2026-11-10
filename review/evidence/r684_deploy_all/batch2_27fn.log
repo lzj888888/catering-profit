@@ -1,0 +1,63 @@
+ENV = cloud1-d4gphpoxy337f2a25   待部署 27 个: getLedger, getMaterial, getMonthList, getPlan, getSalesBills, getShopContext, getShopList, grantAiConsent, importSalesBill, initDb, manageShop, payCallback, payCreateOrder, payExpireNotify, payOrderList, payQueryEntitlement, payRenew, revokeAiConsent, saveAsset, saveCostCard, saveDishMapping, saveLedger, saveMaterial, savePlan, saveShopSetting, syncCostCard, verifyTangshi
+[getLedger] try1 rc=0 用时=17.0s HIT | LOG = deploy_getLedger_1.log  (5856 bytes)   getLedger         ✅ 命中表格行   â getLedger â true    â 26         â '100.2 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[getMaterial] try1 rc=0 用时=16.7s HIT | LOG = deploy_getMaterial_1.log  (3621 bytes)   getMaterial       ✅ 命中表格行   â getMaterial â true    â 26         â '86.5 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[getMonthList] try1 rc=0 用时=16.5s HIT | LOG = deploy_getMonthList_1.log  (3678 bytes)   getMonthList      ✅ 命中表格行   â getMonthList â true    â 25         â '85.3 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[getPlan] try1 rc=0 用时=17.7s HIT | LOG = deploy_getPlan_1.log  (3798 bytes)   getPlan           ✅ 命中表格行   â getPlan â true    â 25         â '87.0 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[getSalesBills] try1 rc=0 用时=18.1s HIT | LOG = deploy_getSalesBills_1.log  (1632 bytes)   getSalesBills     ✅ 命中表格行   â getSalesBills â true    â 26         â '88.0 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[getShopContext] try1 rc=0 用时=17.9s HIT | LOG = deploy_getShopContext_1.log  (3791 bytes)   getShopContext    ✅ 命中表格行   â getShopContext â true    â 26         â '94.2 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[getShopList] try1 rc=0 用时=16.7s HIT | LOG = deploy_getShopList_1.log  (4828 bytes)   getShopList       ✅ 命中表格行   â getShopList â true    â 24         â '84.9 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[grantAiConsent] try1 rc=0 用时=7.7s MISS | LOG = deploy_grantAiConsent_1.log  (1387 bytes)   grantAiConsent    ❌ 未命中（该函数无 success=true 行） 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = false  |  DONE = true
+    -> 未命中，重跑（首轮常因 IDE 通道未起失败）
+[grantAiConsent] try2 rc=0 用时=16.5s HIT | LOG = deploy_grantAiConsent_2.log  (1263 bytes)   grantAiConsent    ✅ 命中表格行   â grantAiConsent â true    â 26         â '92.7 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[importSalesBill] try1 rc=0 用时=19.1s HIT | LOG = deploy_importSalesBill_1.log  (23272 bytes)   importSalesBill   ✅ 命中表格行   â importSalesBill â true    â 28         â '141.4 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[initDb] try1 rc=0 用时=16.0s HIT | LOG = deploy_initDb_1.log  (5452 bytes)   initDb            ✅ 命中表格行   â initDb  â true    â 25         â '96.5 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[manageShop] try1 rc=0 用时=17.4s HIT | LOG = deploy_manageShop_1.log  (5216 bytes)   manageShop        ✅ 命中表格行   â manageShop â true    â 26         â '99.7 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[payCallback] try1 rc=0 用时=17.1s HIT | LOG = deploy_payCallback_1.log  (3621 bytes)   payCallback       ✅ 命中表格行   â payCallback â true    â 26         â '89.1 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[payCreateOrder] try1 rc=0 用时=16.6s HIT | LOG = deploy_payCreateOrder_1.log  (3792 bytes)   payCreateOrder    ✅ 命中表格行   â payCreateOrder â true    â 26         â '86.5 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[payExpireNotify] try1 rc=0 用时=16.8s HIT | LOG = deploy_payExpireNotify_1.log  (6415 bytes)   payExpireNotify   ✅ 命中表格行   â payExpireNotify â true    â 26         â '86.0 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[payOrderList] try1 rc=0 用时=16.7s HIT | LOG = deploy_payOrderList_1.log  (3678 bytes)   payOrderList      ✅ 命中表格行   â payOrderList â true    â 26         â '84.9 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[payQueryEntitlement] try1 rc=0 用时=18.7s HIT | LOG = deploy_payQueryEntitlement_1.log  (4076 bytes)   payQueryEntitlement✅ 命中表格行   â payQueryEntitlement â true    â 26         â '85.9 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[payRenew] try1 rc=0 用时=17.0s HIT | LOG = deploy_payRenew_1.log  (3450 bytes)   payRenew          ✅ 命中表格行   â payRenew â true    â 26         â '85.7 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[revokeAiConsent] try1 rc=0 用时=8.0s MISS | LOG = deploy_revokeAiConsent_1.log  (1408 bytes)   revokeAiConsent   ❌ 未命中（该函数无 success=true 行） 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = false  |  DONE = true
+    -> 未命中，重跑（首轮常因 IDE 通道未起失败）
+[revokeAiConsent] try2 rc=0 用时=3.5s MISS | LOG = deploy_revokeAiConsent_2.log  (1401 bytes)   revokeAiConsent   ❌ 未命中（该函数无 success=true 行） 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = false  |  DONE = true
+    -> 未命中，重跑（首轮常因 IDE 通道未起失败）
+[saveAsset] try1 rc=0 用时=16.2s HIT | LOG = deploy_saveAsset_1.log  (4745 bytes)   saveAsset         ✅ 命中表格行   â saveAsset â true    â 26         â '93.2 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[saveCostCard] try1 rc=0 用时=19.5s HIT | LOG = deploy_saveCostCard_1.log  (10060 bytes)   saveCostCard      ✅ 命中表格行   â saveCostCard â true    â 26         â '105.6 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[saveDishMapping] try1 rc=0 用时=126.0s HIT | LOG = deploy_saveDishMapping_1.log  (1283 bytes)   saveDishMapping   ✅ 命中表格行   â saveDishMapping â true    â 26         â '97.2 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[saveLedger] try1 rc=0 用时=19.2s HIT | LOG = deploy_saveLedger_1.log  (6010 bytes)   saveLedger        ✅ 命中表格行   â saveLedger â true    â 26         â '98.8 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[saveMaterial] try1 rc=0 用时=17.0s HIT | LOG = deploy_saveMaterial_1.log  (3677 bytes)   saveMaterial      ✅ 命中表格行   â saveMaterial â true    â 26         â '88.1 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[savePlan] try1 rc=0 用时=19.2s HIT | LOG = deploy_savePlan_1.log  (7924 bytes)   savePlan          ✅ 命中表格行   â savePlan â true    â 27         â '99.4 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[saveShopSetting] try1 rc=0 用时=16.6s HIT | LOG = deploy_saveShopSetting_1.log  (7695 bytes)   saveShopSetting   ✅ 命中表格行   â saveShopSetting â true    â 26         â '94.2 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[syncCostCard] try1 rc=0 用时=16.5s HIT | LOG = deploy_syncCostCard_1.log  (3678 bytes)   syncCostCard      ✅ 命中表格行   â syncCostCard â true    â 26         â '97.7 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+[verifyTangshi] try1 rc=0 用时=18.3s HIT | LOG = deploy_verifyTangshi_1.log  (1244 bytes)   verifyTangshi     ✅ 命中表格行   â verifyTangshi â true    â 23         â '83.9 KB' â 完成行 `deploy cloudfunctions` : ✅ 有 ALL_ROWS_HIT = true  |  DONE = true
+
+===== 部署汇总 =====
+getLedger            OK   17s
+getMaterial          OK   17s
+getMonthList         OK   16s
+getPlan              OK   18s
+getSalesBills        OK   18s
+getShopContext       OK   18s
+getShopList          OK   17s
+grantAiConsent       OK   24s
+importSalesBill      OK   19s
+initDb               OK   16s
+manageShop           OK   17s
+payCallback          OK   17s
+payCreateOrder       OK   17s
+payExpireNotify      OK   17s
+payOrderList         OK   17s
+payQueryEntitlement  OK   19s
+payRenew             OK   17s
+revokeAiConsent      FAIL 11s
+saveAsset            OK   16s
+saveCostCard         OK   20s
+saveDishMapping      OK   126s
+saveLedger           OK   19s
+saveMaterial         OK   17s
+savePlan             OK   19s
+saveShopSetting      OK   17s
+syncCostCard         OK   17s
+verifyTangshi        OK   18s
+---- 26/27 OK ----
