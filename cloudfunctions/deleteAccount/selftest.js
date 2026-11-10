@@ -20,14 +20,46 @@ const SRC = (() => {
     .split('\n').map((l) => l.replace(/(^|[^:])\/\/.*$/, '$1')).join('\n');
 })();
 
-// 与 index.js 同款匿名化占位（不可逆）
-const ANON_OPENID = 'anonymous_' + '0'.repeat(12);
+// 🔴 R688：下面这组断言原先写的是「自己抄一个 ANON_OPENID 常量，再断言它等于自己」——
+//   实现怎么改都不会红，属于**判据恒真**。现改为：从源码提取真实派生逻辑并求值，
+//   再断言「逐用户唯一」这一关键性质（固定常量会让第 2 个注销用户撞 unique 索引）。
 const ANON_NICK = '已注销用户';
 
 console.log('===== PII 匿名化（openid/昵称 → 占位，不可复原）=====');
-check('openid 置为匿名占位（丢弃原值）', ANON_OPENID === 'anonymous_000000000000' && !ANON_OPENID.includes('oX'));
+
+// A：从源码取出 anonOpenidFor 的函数体并真跑（不抄常量）
+const anonFnSrc = SRC.match(/function anonOpenidFor\s*\([^)]*\)\s*\{[\s\S]*?\n\}/);
+check('源码存在 anonOpenidFor(userId) 派生函数', !!anonFnSrc,
+  'R688：匿名值必须逐用户唯一，不能是全局常量');
+let anonOpenidFor;
+if (anonFnSrc) {
+  // eslint-disable-next-line no-new-func
+  anonOpenidFor = new Function('return (' + anonFnSrc[0] + ')')();
+} else {
+  anonOpenidFor = function () { return 'anonymous_000000000000'; };
+}
+
+const v1 = anonOpenidFor('u_abc123');
+const v2 = anonOpenidFor('u_xyz789');
+check('两个不同用户得到不同匿名值（否则第 2 个注销撞 idx_openid 唯一键）',
+  v1 !== v2, `v1=${v1} v2=${v2}`);
+check('同一用户重复调用得同一值（幂等）', anonOpenidFor('u_abc123') === v1);
+check('匿名值不含原 openid 特征（无 oX/oY 前缀）',
+  !/^o[XY]/.test(v1.replace('anonymous_', '')) && /^anonymous_/.test(v1));
 check('昵称置为「已注销用户」', ANON_NICK === '已注销用户');
-check('占位不含原 openid 特征（无字母前缀 oX/oY）', !/^o[XY]/.test(ANON_OPENID));
+
+// B：变异自证 —— 把派生函数换回固定常量，唯一性断言必须转红
+const mutated = () => 'anonymous_000000000000';
+const mutUniq = mutated('u_abc123') !== mutated('u_xyz789');
+check('变异自证：固定常量版本被判为不唯一（证明上面的断言有分辨力）', mutUniq === false,
+  '若这里为 true，说明唯一性判据恒真，无法发现回退');
+
+// C：调用处确实用了派生函数，而不是别处写死常量
+check('index.js 写入 openid 时调用 anonOpenidFor(userId)',
+  /openid:\s*anonOpenidFor\(\s*userId\s*\)/.test(SRC));
+check('index.js 不再残留固定常量定义',
+  !/ANON_OPENID\s*=\s*'anonymous_'\s*\+\s*'0'\.repeat/.test(SRC),
+  'R688：固定常量会让第二个注销用户撞唯一键');
 
 console.log('===== 日志脱敏（验收 6：日志搜不到手机号/支付明文）=====');
 // 注销留痕 after_data 仅 user_id + 计数，不落 openid/昵称/手机号

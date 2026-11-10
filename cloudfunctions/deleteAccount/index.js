@@ -17,7 +17,21 @@ const { nowUtc } = common.utilTime;
 const { writeAudit } = common.audit;
 
 // 匿名化占位（不可逆：丢弃原值）
-const ANON_OPENID = 'anonymous_' + '0'.repeat(12);
+//
+// 🔴 R688 修复：原先 `ANON_OPENID = 'anonymous_' + '0'.repeat(12)` 是**全局固定常量**，
+//   而 `user.idx_openid` 是 **unique** 索引（`initDb/collections.js`）。
+//   ⇒ 第 1 个用户注销时把 openid 写成该常量并占用它；**第 2 个用户注销时 update 撞唯一键**
+//     ⇒ 整个注销流程抛错失败。症状只在"第 2 个人注销"时出现，极难被发现。
+//   证据：`review/evidence/r688_delete_bug/probe_anon_openid.js`（A-③ 唯一索引 + B-① 值重复必撞）。
+//
+//   改法：由 `user_id` 派生，逐用户唯一。
+//   为什么这样不破坏「不可逆」：`user_id` 来自 `genId('u_')`（`common/auth.js:18`），
+//   是 时间base36+随机base36，**与原 openid 无任何关联**，反推不出 openid。
+//   为什么不用时间戳/随机数：同一用户重复注销时应得到**同一个**值（幂等），
+//   而 `user_id` 在同一文档生命周期内不变 ⇒ 天然幂等。
+function anonOpenidFor(userId) {
+  return 'anonymous_' + String(userId || 'unknown');
+}
 const ANON_NICK = '已注销用户';
 
 exports.main = async (event) => {
@@ -48,7 +62,7 @@ exports.main = async (event) => {
   if (userDoc) {
     await db.collection('user').doc(userDoc._id).update({
       data: {
-        openid: ANON_OPENID,              // 匿名化：原 openid 不可复原
+        openid: anonOpenidFor(userId),     // 匿名化：原 openid 不可复原（R688：逐用户唯一）
         unionid: '',
         nickname: ANON_NICK,
         avatar: '',
