@@ -28,6 +28,6 @@
 .mat-kv { padding: 8rpx 0; align-items: baseline; font-size: 28rpx; }
 .mat-strong { color: #1e3a5f; font-weight: 700; }
 .mat-lb2 { margin-left: 16rpx; }
-.mat-brand { color: #555; }
+.mat-brand { color: #5F564C; }
 /* 换算串可能较长（"1 斤 = 500 克 ÷ 出成率 100%"）⇒ 允许换行，不截断 */
-.mat-spec { color: #6b7a90; flex: 1 1 auto; min-width: 0; white-space: normal; line-height: 1.5; }
+.mat-spec { color: #7C7264; flex: 1 1 auto; min-width: 0; white-space: normal; line-height: 1.5; }

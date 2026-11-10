@@ -1,16 +1,16 @@
-/* pages/takeaway/index.wxss —— M3.17 外卖单均试算页。色沿用主色系 #1e3a5f / #e8eff7，不新增品牌色。 */
+/* pages/takeaway/index.wxss —— M3.17 外卖单均试算页。色沿用主色系 #1e3a5f / #F5EBD8，不新增品牌色。 */
 
 /* 顶层 tab（单均测算 / 账单导入） */
-.tab-bar { display: flex; background: #eef2f7; border-radius: 12rpx; padding: 6rpx; margin-bottom: 16rpx; }
-.tab-item { flex: 1; text-align: center; font-size: 28rpx; color: #6b7a90; min-height: 88rpx; line-height: 88rpx; border-radius: 10rpx; }
+.tab-bar { display: flex; background: #F0E9DC; border-radius: 12rpx; padding: 6rpx; margin-bottom: 16rpx; }
+.tab-item { flex: 1; text-align: center; font-size: 28rpx; color: #7C7264; min-height: 88rpx; line-height: 88rpx; border-radius: 10rpx; }
 .tab-item.on { background: #1e3a5f; color: #fff; font-weight: 600; }
-.hint { font-size: 28rpx; color: #6b7a90; line-height: 1.5; margin: 8rpx 4rpx 16rpx; }
+.hint { font-size: 28rpx; color: #7C7264; line-height: 1.5; margin: 8rpx 4rpx 16rpx; }
 
 /* 口径切换 */
-.mode-switch { display: flex; background: #eef2f7; border-radius: 12rpx; padding: 6rpx; margin-bottom: 10rpx; }
-.mode-tab { flex: 1; text-align: center; font-size: 28rpx; color: #6b7a90; min-height: 88rpx; line-height: 88rpx; border-radius: 10rpx; }
+.mode-switch { display: flex; background: #F0E9DC; border-radius: 12rpx; padding: 6rpx; margin-bottom: 10rpx; }
+.mode-tab { flex: 1; text-align: center; font-size: 28rpx; color: #7C7264; min-height: 88rpx; line-height: 88rpx; border-radius: 10rpx; }
 .mode-tab.on { background: #1e3a5f; color: #fff; font-weight: 600; }
-.mode-desc { font-size: 28rpx; color: #6b7a90; line-height: 1.5; margin: 6rpx 4rpx 12rpx; }
+.mode-desc { font-size: 28rpx; color: #7C7264; line-height: 1.5; margin: 6rpx 4rpx 12rpx; }
 .base-note { font-size: 28rpx; color: #b45309; line-height: 1.5; margin: 0 4rpx 16rpx; padding: 10rpx 16rpx; background: #fdf6ec; border-radius: 10rpx; }
 
 /* 区块标题 */
@@ -19,20 +19,20 @@
 /* 行（菜品 / 包材） */
 .row { display: flex; align-items: center; margin-bottom: 10rpx; }
 .pick-grow { flex: 1; }
-.pick { padding: 0 24rpx; background: #fff; border: 1rpx solid #e8eff7; border-radius: 10rpx; color: #1e3a5f; font-size: 28rpx; min-height: 88rpx; line-height: 88rpx; }
-.qty-input, .price-input { width: 160rpx; margin-left: 12rpx; padding: 0 16rpx; background: #fff; border: 1rpx solid #e8eff7; border-radius: 10rpx; min-height: 88rpx; font-size: 28rpx; }
+.pick { padding: 0 24rpx; background: #FFFDF8; border: 1rpx solid #F5EBD8; border-radius: 10rpx; color: #1e3a5f; font-size: 28rpx; min-height: 88rpx; line-height: 88rpx; }
+.qty-input, .price-input { width: 160rpx; margin-left: 12rpx; padding: 0 16rpx; background: #FFFDF8; border: 1rpx solid #F5EBD8; border-radius: 10rpx; min-height: 88rpx; font-size: 28rpx; }
 .del { margin-left: 12rpx; color: #e74c3c; font-size: 40rpx; min-width: 88rpx; min-height: 88rpx; line-height: 88rpx; text-align: center; }
 
 /* 字段 */
 .field { display: flex; align-items: center; margin-bottom: 12rpx; flex-wrap: wrap; }
 .lbl { font-size: 28rpx; color: #1e3a5f; width: 220rpx; flex-shrink: 0; }
-.val-input { flex: 1; padding: 0 20rpx; background: #fff; border: 1rpx solid #e8eff7; border-radius: 10rpx; min-height: 88rpx; font-size: 28rpx; }
+.val-input { flex: 1; padding: 0 20rpx; background: #FFFDF8; border: 1rpx solid #F5EBD8; border-radius: 10rpx; min-height: 88rpx; font-size: 28rpx; }
 .mode-group { display: flex; }
 .mode-item { margin-right: 24rpx; font-size: 28rpx; color: #333; display: flex; align-items: center; }
-.payer-pick { padding: 0 24rpx; background: #e8eff7; border-radius: 10rpx; color: #1e3a5f; font-size: 28rpx; min-height: 88rpx; line-height: 88rpx; margin-left: 12rpx; }
+.payer-pick { padding: 0 24rpx; background: #F5EBD8; border-radius: 10rpx; color: #1e3a5f; font-size: 28rpx; min-height: 88rpx; line-height: 88rpx; margin-left: 12rpx; }
 
 /* 结果 */
-.cell { display: flex; justify-content: space-between; padding: 12rpx 4rpx; border-bottom: 1rpx solid #eef2f7; }
+.cell { display: flex; justify-content: space-between; padding: 12rpx 4rpx; border-bottom: 1rpx solid #F0E9DC; }
 .val { font-size: 30rpx; color: #1e3a5f; }
 .val.strong { font-weight: 700; }
 .warn { font-size: 28rpx; color: #e74c3c; line-height: 1.5; margin: 10rpx 4rpx; }
@@ -42,7 +42,7 @@
 /* ===== R234/J4d · 行内长提示折叠（句级，与月录入页 / M2 / assetEdit / amortize 同形）=====
  * 本页折 2 处（importPickHint 22 字 / importShapeCHint 20 字）；
  * `importPickPlatformHint`（17 字）**故意保持平铺** —— 它是确认按钮紧下方的操作提示。
- * body 底色 #f3f7fb 与全局 `.hint` 同色 ⇒ 折叠前后视觉连贯。
+ * body 底色 #FBF6EC 与全局 `.hint` 同色 ⇒ 折叠前后视觉连贯。
  * 🔴 字号一律 ≥28rpx（AD-G1）、头行 min-height ≥88rpx（AD-G2）。 */
 .hint-fold { padding: 0 0 6rpx; }
 .hint-fold-head { display: flex; align-items: center; justify-content: space-between;
@@ -53,8 +53,8 @@
 .hint-fold-title { font-size: 28rpx; color: #1e3a5f; font-weight: 600; flex: 1; }
 .hint-fold-guide { font-size: 28rpx; color: #1e3a5f; }
 .hint-fold-arrow { font-size: 28rpx; color: #1e3a5f; }
-.hint-fold-body { font-size: 28rpx; color: #4a5b70; line-height: 1.6; padding: 16rpx 20rpx;
-  background: #f3f7fb; border-radius: 12rpx; margin: 0 0 12rpx; }
+.hint-fold-body { font-size: 28rpx; color: #6B6157; line-height: 1.6; padding: 16rpx 20rpx;
+  background: #FBF6EC; border-radius: 12rpx; margin: 0 0 12rpx; }
 
 /* P0#8 导入成功结果条（常驻，给老板明确下一步） */
 .ok-bar { border: 2rpx solid #1e9e5a; background: #f1fbf5; padding: 20rpx 24rpx; border-radius: 12rpx; margin-top: 16rpx; }
@@ -65,9 +65,9 @@
 /* R590 认不出表时的「让 AI 帮你转」逃生口。
    copied-hint 用绿色＝「这一步成了」，与 warn（红＝要改）区分开；
    ai-fix-text 只在复制失败时摊开正文，所以要可选、可滚动，字号 28rpx 守 G1 下限。 */
-.ai-fix-hint { font-size: 28rpx; color: #4a5b70; line-height: 1.5; margin: 12rpx 4rpx 8rpx; }
+.ai-fix-hint { font-size: 28rpx; color: #6B6157; line-height: 1.5; margin: 12rpx 4rpx 8rpx; }
 .copied-hint { font-size: 28rpx; color: #1e9e5a; line-height: 1.5; margin: 12rpx 4rpx 0; }
-.ai-fix-text { display: block; font-size: 28rpx; color: #4a5b70; line-height: 1.6;
+.ai-fix-text { display: block; font-size: 28rpx; color: #6B6157; line-height: 1.6;
   background: #f5f7fa; border-radius: 8rpx; padding: 16rpx 20rpx; margin-top: 12rpx;
   white-space: pre-wrap; word-break: break-all; max-height: 600rpx; overflow-y: auto; }
 
@@ -76,19 +76,19 @@
 .ci-name { font-size: 28rpx; color: #1e3a5f; }
 .tag-combo { font-size: 28rpx; color: #fff; background: #1e3a5f; border-radius: 6rpx; padding: 2rpx 12rpx; margin-left: 12rpx; }
 .ci-right { display: flex; align-items: center; flex-shrink: 0; margin-left: 12rpx; }
-.ci-meta { font-size: 28rpx; color: #6b7a90; margin-right: 16rpx; }
+.ci-meta { font-size: 28rpx; color: #7C7264; margin-right: 16rpx; }
 .ci-profit { font-size: 30rpx; color: #1e9e5a; font-weight: 600; }
 
 /* ===== R615 M3 决策台 Q3：外卖瀑布 =====
    条高 28rpx、圆角 8rpx；颜色沿用页面既有色系（暖=平台费用、绿=到手）。 */
-.wf-bar { display: flex; height: 28rpx; border-radius: 8rpx; overflow: hidden; margin: 12rpx 4rpx; background: #eef2f7; }
+.wf-bar { display: flex; height: 28rpx; border-radius: 8rpx; overflow: hidden; margin: 12rpx 4rpx; background: #F0E9DC; }
 .wf-seg { height: 100%; }
 .wf-commission { background: #c2701a; }
 .wf-delivery { background: #2a7fa8; }
 .wf-deliverySubsidy { background: #7f77dd; }
 .wf-subsidyMerchant { background: #b0528a; }
-.wf-promo { background: #8792a3; }
+.wf-promo { background: #A99E8E; }
 .wf-receipt { background: #1a7d55; }
 .wf-legend { display: flex; flex-wrap: wrap; margin: 4rpx 4rpx 12rpx; }
-.wf-li { font-size: 28rpx; color: #5a6678; margin-right: 18rpx; }
+.wf-li { font-size: 28rpx; color: #6B6157; margin-right: 18rpx; }
 .wf-li-receipt { color: #1a7d55; font-weight: 600; }

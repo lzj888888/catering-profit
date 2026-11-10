@@ -1,0 +1,6 @@
+01_home shot OK  route=pages/index/index
+02_hub shot OK  route=EVAL_ERR
+03_mine shot FAIL: timeout waiting for automator response route=EVAL_ERR
+04_month_input shot OK  route=subpkg/biz/month/input
+05_card_list shot OK  route=EVAL_ERR
+06_sandbox shot OK  route=EVAL_ERR

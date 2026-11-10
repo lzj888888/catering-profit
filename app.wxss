@@ -1,10 +1,21 @@
 /* ============================================================
- * 店算小程序 · 全局样式（墨蓝主题 v2 · 2026-09-20）
- * 品牌色：墨蓝 #1e3a5f（渐变 #2a4e7c → #162c49）
- * 浅底：#e8eff7 / 提示底 #f3f7fb
+ * 店算小程序 · 全局样式（暖账本 v3 · 2026-11-10 / R680）
  * ⚠️ 旧橘黄 #ff6b35 已全量下线（含 app.json 导航栏与各页内联色）。
+ *
+ * 【双色体系】两个色各管一段，互不替代：
+ *   ① 墨蓝 #1e3a5f（渐变 #2a4e7c → #162c49）=「账本与数字」：
+ *      hero 头卡、主按钮、金额、品牌标识。它是「可信」的锚，不随暖化改变
+ *      （check_home_ui_v3 A-③ 已把这个色钉在首页 hero 上）。
+ *   ② 暖棕金 #7A4E12 / 强调金 #B77A2A =「餐饮的暖」：
+ *      模块图标、状态胶囊、次级强调。
+ *
+ * 【暖底色板】R680 全站推广，替代原冷蓝三色（#f5f6f8 / #f3f7fb / #e8eff7）：
+ *   页面底 #F6F3EC 米白 ／ 卡面 #FFFDF8 暖白 ／ 卡描边 #EDE6D8 米线
+ *   浅底块 #FBF6EC ／ 副文字 #7C7264 暖灰（原冷蓝灰 #6b7a90）
+ *   为什么必须两层一起改：只把底改暖、字还留冷蓝灰 ⇒ 页面显「脏」；
+ *   底与字同暖，才是「纸质账本」而不是「冷色报表」。
  * ============================================================ */
-page { background: #f5f6f8; font-family: -apple-system, "PingFang SC", sans-serif; }
+page { background: #F6F3EC; font-family: -apple-system, "PingFang SC", sans-serif; }
 .container { padding: 24rpx; }
 .summary { display: flex; flex-wrap: wrap; }
 /* 🔴🔴 R296d：原此处有三条**全局**半宽卡片规则 ——
@@ -15,23 +26,23 @@ page { background: #f5f6f8; font-family: -apple-system, "PingFang SC", sans-seri
    矩阵页 / 对比页正是踩此雷（2026-10-14 李老师连续几轮反馈「改了几次没改成横版」）。
    ⇒ 本轮**把雷拆了**：删掉这三条；并由 `tools/check_page_card_width.js` 机器守着
    「全局样式表里不得再出现精确类名 `.card`」。 */
-.label { display: block; font-size: 28rpx; color: #888; }
+.label { display: block; font-size: 28rpx; color: #857A6B; }
 .value { display: block; font-size: 40rpx; font-weight: 700; color: #222; }
 .sub { font-size: 28rpx; color: #1e3a5f; }
 .sec { display: block; margin: 24rpx 8rpx 12rpx; font-weight: 700; color: #333; }
-.row { display: flex; justify-content: space-between; background: #fff; padding: 20rpx; border-radius: 16rpx; margin-bottom: 12rpx; align-items: center; }
+.row { display: flex; justify-content: space-between; background: #FFFDF8; padding: 20rpx; border-radius: 16rpx; margin-bottom: 12rpx; align-items: center; }
 .row input { text-align: right; }
 .name { font-weight: 600; }
-.meta { display: block; font-size: 28rpx; color: #888; margin: 6rpx 0; }
+.meta { display: block; font-size: 28rpx; color: #857A6B; margin: 6rpx 0; }
 .profit { font-size: 28rpx; color: #1e3a5f; }
 .del { color: #c0392b; padding: 0 20rpx; }
-.empty { text-align: center; color: #aaa; padding: 40rpx; }
+.empty { text-align: center; color: #B5AB9C; padding: 40rpx; }
 .add { margin-top: 24rpx; background: #1e3a5f; color: #fff; }
 .form { padding: 24rpx; }
-.field { display: flex; justify-content: space-between; background: #fff; padding: 24rpx; border-radius: 16rpx; margin-bottom: 16rpx; align-items: center; }
+.field { display: flex; justify-content: space-between; background: #FFFDF8; padding: 24rpx; border-radius: 16rpx; margin-bottom: 16rpx; align-items: center; }
 /* 2026-09-20：李老师反馈输入框边框不明显、点数字易误删 → 统一加边框+内边距+加大字号 */
 .field input { text-align: right; min-width: 320rpx; padding: 14rpx 18rpx; font-size: 32rpx;
-  border: 2rpx solid #cfdae8; border-radius: 10rpx; background: #fff; }
+  border: 2rpx solid #DCD2C0; border-radius: 10rpx; background: #FFFDF8; }
 /* 🔴 R654（李老师：「有些输入框只能显示一半字体」）
    微信 `<input>` 是**原生组件**，在 flex 容器里若不显式给高度，某些基础库版本会把它的
    盒子压到只剩字体的一半 ⇒ 文字上下被裁。各页面虽已分别写了 min-height: 88rpx，
@@ -48,29 +59,33 @@ input, textarea { min-height: 88rpx; line-height: 1.5; }
 .save { margin-top: 24rpx; background: #1e3a5f; color: #fff; }
 
 /* ===== 批次 4 · 共享组件样式（AD-1~AD-26 对齐：按钮≥88rpx、字号≥28rpx） ===== */
-.card2 { background: #fff; border-radius: 20rpx; padding: 24rpx; margin-bottom: 16rpx;
-  box-shadow: 0 4rpx 16rpx rgba(30, 58, 95, 0.06); }
+.card2 { background: #FFFDF8; border-radius: 20rpx; padding: 24rpx; margin-bottom: 16rpx;
+  /* R680：卡面由纯白改暖白后，与米白页面底只差一档 ⇒ 必须给一条米线描边，
+     否则卡与底"糊"在一起、分不清哪里是卡。阴影也从冷蓝换成暖棕，
+     冷蓝阴影落在米白底上会泛灰蓝，是"冷冰冰"的最后一点残留。 */
+  border: 1rpx solid #EDE6D8;
+  box-shadow: 0 4rpx 16rpx rgba(122, 78, 18, 0.05); }
 .btn { display: flex; align-items: center; justify-content: center;
   min-height: 88rpx; margin-top: 24rpx; border-radius: 16rpx; font-size: 32rpx; font-weight: 600; }
 .btn.primary { background: linear-gradient(135deg, #2a4e7c 0%, #162c49 100%); color: #fff;
   box-shadow: 0 6rpx 16rpx rgba(30, 58, 95, 0.18); }
-.btn.ghost { background: #fff; color: #1e3a5f; border: 2rpx solid #1e3a5f; }
+.btn.ghost { background: #FFFDF8; color: #1e3a5f; border: 2rpx solid #1e3a5f; }
 .btn.disabled { background: #ccc; color: #fff; box-shadow: none; }
 .btn-small { min-height: 88rpx; padding: 0 24rpx; font-size: 28rpx; border-radius: 12rpx; }
-.cell { display: flex; justify-content: space-between; align-items: center; padding: 24rpx 0; border-bottom: 1rpx solid #f0f0f0; font-size: 30rpx; }
+.cell { display: flex; justify-content: space-between; align-items: center; padding: 24rpx 0; border-bottom: 1rpx solid #EFE8DA; font-size: 30rpx; }
 .cell:last-child { border-bottom: none; }
-.cell .lbl { color: #555; }
+.cell .lbl { color: #5F564C; }
 .cell .val { font-weight: 600; color: #222; }
-.inp { background: #fff; border-radius: 16rpx; padding: 24rpx; min-height: 88rpx; margin-bottom: 16rpx; font-size: 30rpx; }
+.inp { background: #FFFDF8; border: 1rpx solid #EDE6D8; border-radius: 16rpx; padding: 24rpx; min-height: 88rpx; margin-bottom: 16rpx; font-size: 30rpx; }
 .inp input { width: 100%; }
 .inp textarea { width: 100%; min-height: 160rpx; font-size: 30rpx; }
-.label2 { display: block; font-size: 28rpx; color: #666; margin: 16rpx 4rpx 8rpx; }
-.tag { display: inline-block; font-size: 28rpx; color: #1e3a5f; background: #e8eff7; border-radius: 8rpx; padding: 4rpx 12rpx; margin-left: 12rpx; }
-.tag.lock { color: #999; background: #eee; }
+.label2 { display: block; font-size: 28rpx; color: #6B6157; margin: 16rpx 4rpx 8rpx; }
+.tag { display: inline-block; font-size: 28rpx; color: #1e3a5f; background: #F5EBD8; border-radius: 8rpx; padding: 4rpx 12rpx; margin-left: 12rpx; }
+.tag.lock { color: #A99E8E; background: #eee; }
 .card-title { font-size: 32rpx; font-weight: 700; margin-bottom: 12rpx; color: #1e3a5f; }
 .result-num { font-size: 56rpx; font-weight: 800; color: #1e3a5f; }
-.muted { color: #666; font-size: 28rpx; }
-.hint { font-size: 28rpx; color: #4a5b70; background: #f3f7fb; border-radius: 12rpx; padding: 16rpx 20rpx; margin-bottom: 12rpx; line-height: 1.6; }
+.muted { color: #6B6157; font-size: 28rpx; }
+.hint { font-size: 28rpx; color: #6B6157; background: #FBF6EC; border-radius: 12rpx; padding: 16rpx 20rpx; margin-bottom: 12rpx; line-height: 1.6; }
 /* 🔴 R299：数据截断的**可见降级**行（全局单源，多页共用 —— 复盘页 / 成本卡列表 / 店铺清点）。
  * 为什么是全局：同一个语义（"服务端已达读取上限，你看的可能不全"）出现在 ≥2 个页面，
  *   各页各写一份色值 ⇒ 改主题时逐页漏改（本仓既有红线，见上方 R191 段）。
@@ -78,22 +93,22 @@ input, textarea { min-height: 88rpx; line-height: 1.5; }
  *   不用 .muted（灰字会被当成普通说明跳过）。深色模式已全站移除（见上），浅色底安全。 */
 .warn-line { font-size: 28rpx; color: #92610a; background: #fdf3d8; border-left: 8rpx solid #e8a33d; border-radius: 0 12rpx 12rpx 0; padding: 16rpx 20rpx; margin-bottom: 12rpx; line-height: 1.6; }
 .safe-bottom { padding-bottom: calc(env(safe-area-inset-bottom) + 24rpx); }
-.switch-row { display: flex; justify-content: space-between; align-items: center; padding: 24rpx 20rpx; background: #fff; border-radius: 16rpx; margin-bottom: 12rpx; }
+.switch-row { display: flex; justify-content: space-between; align-items: center; padding: 24rpx 20rpx; background: #FFFDF8; border: 1rpx solid #EDE6D8; border-radius: 16rpx; margin-bottom: 12rpx; }
 .switch-row .lbl2 { font-size: 30rpx; }
 .archived-bar { font-size: 28rpx; color: #92610a; background: #fdf3d8; border-radius: 12rpx; padding: 12rpx 20rpx; margin-bottom: 12rpx; }
 
 /* ===== 核算方式：就地二选一（2026-09-20 从店铺设置页迁入月度录入页）=====
  * 选中态 = 墨蓝描边 + 浅蓝底 + 标题带 ✓，三重可辨，不只靠颜色。 */
 .cm-sub { font-size: 30rpx; font-weight: 600; color: #1e3a5f; margin: 20rpx 4rpx 12rpx; }
-.cm-card { background: #fff; border-radius: 20rpx; padding: 16rpx; margin-bottom: 12rpx; }
-.cm-opt { padding: 20rpx; border-radius: 16rpx; border: 2rpx solid #e3e9f2; margin-bottom: 12rpx; }
+.cm-card { background: #FFFDF8; border: 1rpx solid #EDE6D8; border-radius: 20rpx; padding: 16rpx; margin-bottom: 12rpx; }
+.cm-opt { padding: 20rpx; border-radius: 16rpx; border: 2rpx solid #EDE6D8; margin-bottom: 12rpx; }
 .cm-opt:last-child { margin-bottom: 0; }
-.cm-opt.on { border-color: #1e3a5f; background: #f3f7fb; }
+.cm-opt.on { border-color: #1e3a5f; background: #FBF6EC; }
 .cm-opt-h { font-size: 30rpx; font-weight: 600; color: #222; }
 .cm-opt.on .cm-opt-h { color: #1e3a5f; }
-.cm-opt-d { font-size: 28rpx; color: #6b7a90; margin-top: 6rpx; line-height: 1.5; }
-.cm-state { font-size: 28rpx; color: #4a5b70; background: #f3f7fb; border-radius: 12rpx; padding: 16rpx 20rpx; margin: 12rpx 0; line-height: 1.6; }
-.cm-moved { font-size: 28rpx; color: #4a5b70; background: #f3f7fb; border-radius: 12rpx; padding: 20rpx; margin: 12rpx 0; line-height: 1.6; }
+.cm-opt-d { font-size: 28rpx; color: #7C7264; margin-top: 6rpx; line-height: 1.5; }
+.cm-state { font-size: 28rpx; color: #6B6157; background: #FBF6EC; border-radius: 12rpx; padding: 16rpx 20rpx; margin: 12rpx 0; line-height: 1.6; }
+.cm-moved { font-size: 28rpx; color: #6B6157; background: #FBF6EC; border-radius: 12rpx; padding: 20rpx; margin: 12rpx 0; line-height: 1.6; }
 
 /* ============================================================
  * ⚠️ 深色模式：已移除（2026-09-20 · 真机走查缺陷②）
@@ -114,7 +129,7 @@ input, textarea { min-height: 88rpx; line-height: 1.5; }
 .lv-ok { color: #1e3a5f; }
 .lv-warn { color: #d68910; }
 .lv-bad { color: #c0392b; }
-.lv-na { color: #aaa; }
+.lv-na { color: #B5AB9C; }
 
 /* ============================================================
  * R191：类型区隔色条（**色值单源** —— 新增区隔色只在此登记，页面 wxss 只引类名）
@@ -149,10 +164,10 @@ input, textarea { min-height: 88rpx; line-height: 1.5; }
 .card-head { display: flex; align-items: flex-start; justify-content: space-between; }
 .card-title-flex { flex: 1; min-width: 0; margin-bottom: 0; }
 /* 「⋯」必须 ≥88rpx 触控区（与 .btn-small 同一条红线） */
-.more { min-width: 88rpx; min-height: 88rpx; font-size: 40rpx; color: #8a94a6; text-align: center; line-height: 88rpx; margin-left: 8rpx; }
+.more { min-width: 88rpx; min-height: 88rpx; font-size: 40rpx; color: #9A9184; text-align: center; line-height: 88rpx; margin-left: 8rpx; }
 /* 成本 / 毛利 / 版本 三行压一行 */
 .cell-inline { display: flex; align-items: center; flex-wrap: wrap; font-size: 30rpx; padding: 16rpx 0 4rpx; }
-.cell-inline .lbl { color: #555; }
+.cell-inline .lbl { color: #5F564C; }
 .cell-inline .val { font-weight: 600; color: #222; margin-left: 8rpx; }
 .cell-inline .dot { color: #bbb; margin: 0 16rpx; }
 
@@ -163,12 +178,12 @@ input, textarea { min-height: 88rpx; line-height: 1.5; }
  *         ⋯ 只收低频 + 破坏性操作（置顶 / 复制 / 删除）—— 藏起来的功能等于没有。
  *   布局：两个 ghost 按钮 + 「⋯」同一行（不是各占一行：R191 反馈"每个按钮占一行"）。
  * ============================================================ */
-.ops-mini { display: flex; align-items: center; gap: 12rpx; margin-top: 12rpx; padding-top: 12rpx; border-top: 1rpx solid #eef1f5; }
+.ops-mini { display: flex; align-items: center; gap: 12rpx; margin-top: 12rpx; padding-top: 12rpx; border-top: 1rpx solid #F0E9DC; }
 .ops-btn { flex: 1; min-height: 88rpx; font-size: 28rpx; padding: 0 12rpx; }
 /* 虚拟原料没有可见按钮 ⇒ 用占位把「⋯」推到最右，与其它卡对齐（否则 ⋯ 会飘到左边） */
 .ops-spacer { flex: 1; }
 /* 「⋯」做成**看得见的按钮**（圆角浅底 + 边框），不再是裸的三个点 —— 裸点会被当成省略号装饰 */
-.more.round { width: 88rpx; min-width: 88rpx; border-radius: 44rpx; background: #f2f5f9; border: 2rpx solid #e3e9f2; margin-left: 0; }
+.more.round { width: 88rpx; min-width: 88rpx; border-radius: 44rpx; background: #F3ECDF; border: 2rpx solid #EDE6D8; margin-left: 0; }
 
 /* ============================================================
  * R192：枢纽页「整块立体」卡片（色值一律在此登记，页面 wxss 只写布局）
@@ -184,23 +199,27 @@ input, textarea { min-height: 88rpx; line-height: 1.5; }
 .hub-ico-card { background: linear-gradient(135deg, #2a4e7c 0%, #162c49 100%); }
 .hub-ico-material { background: linear-gradient(135deg, #2fae7c 0%, #1a7d55 100%); }
 .hub-ico-takeaway { background: linear-gradient(135deg, #c2701a 0%, #8f4f08 100%); }
-.hub-ico-recon { background: linear-gradient(135deg, #8792a3 0%, #566070 100%); }
+.hub-ico-recon { background: linear-gradient(135deg, #A99E8E 0%, #566070 100%); }
 .hub-ico-review { background: linear-gradient(135deg, #b0528a 0%, #7a345f 100%); }
-.hub-ico-groupon { background: linear-gradient(135deg, #e0552f 0%, #a8351a 100%); }
+/* 🔴 R680：团购图标原为红橙渐变 #e0552f→#a8351a。
+   但全仓红/绿已被**绑定成「亏损 / 安全」语义**（.lv-bad / .lv-good，李老师多次确认），
+   拿红色当模块标识 ⇒ 老板扫一眼会把"团购"读成"这块亏了"。
+   改为暖棕金（与首页模块图标同色），既归入暖账本色板，也不抢语义色。 */
+.hub-ico-groupon { background: linear-gradient(135deg, #B77A2A 0%, #7A4E12 100%); }
 .hub-ico-import { background: linear-gradient(135deg, #2a7fa8 0%, #17506e 100%); }
 .hub-ico-revenue { background: linear-gradient(135deg, #1a7d55 0%, #0f5237 100%); }
 /* hero 内的文字色（白字 + 淡蓝副文案）—— 色值单源，hub.wxss 不重复第二份 */
 .hub-hero .hub-title { color: #fff; font-size: 40rpx; }
 .hub-hero .hub-sub { color: #d7e2ef; margin-top: 10rpx; }
-.hub-go { width: 56rpx; height: 56rpx; border-radius: 28rpx; background: #f2f5f9;
-  display: flex; align-items: center; justify-content: center; font-size: 32rpx; color: #9aa4b2; margin-left: 12rpx; }
+.hub-go { width: 56rpx; height: 56rpx; border-radius: 28rpx; background: #F3ECDF;
+  display: flex; align-items: center; justify-content: center; font-size: 32rpx; color: #A99E8E; margin-left: 12rpx; }
 
 /* R192：版本历史页趋势图 —— 成本 / 售价**双柱同尺度**（李老师：图上要有价格也要有版本） */
 .trend-bar-cost { background: linear-gradient(180deg, #2a4e7c 0%, #162c49 100%); }
-.trend-bar-price { background: #b9cbe0; }
+.trend-bar-price { background: #E0D3BC; }
 /* 图例色点（与柱子同色 ⇒ 图例才指得对） */
 .lg-cost { background: #1e3a5f; }
-.lg-price { background: #b9cbe0; }
+.lg-price { background: #E0D3BC; }
 
 /* ============================================================
  * R207：金额等宽（tabular-nums）+ 卡片圆角防溢出 —— **全局单源**
@@ -229,7 +248,7 @@ input, textarea { min-height: 88rpx; line-height: 1.5; }
    🔴 只做"外壳骨架"：卡片 / 标题 / 主数值 / 徽标 / 明细行。内部表单仍用各页原有类，
       避免一次改 8 个 wxml 把表单逻辑和最值对齐搞坏。
    🔴 类名前缀 sb- = style B，全仓无同名冲突（加了先 grep 一遍）。 */
-.sb-page { background: #f2f4f7; min-height: 100vh; }
+.sb-page { background: #F6F3EC; min-height: 100vh; }
 /* 🔴 R437（队列 #6）：M3 三页（枢纽 / 物料 / 成本卡）的外壳取值并进**同一份声明**。
    为什么不是各页 wxss 抄一遍数值：抄一份就多一处漂移点，改圆角要改四处且必然漏一处。
    为什么枢纽页写在这组选择器里、而不是给 wxml 加类名：
@@ -241,20 +260,21 @@ input, textarea { min-height: 88rpx; line-height: 1.5; }
    只对**显式**同时带 sb-card 的列表卡生效，其余页面的 .card2 一个像素都不动。
    布局（flex / padding / 具体间距）仍在各页 wxss，本组只管"底色 + 圆角 + 阴影 + 卡间距"。 */
 .sb-card, .hub-card, .hub-flow, .hub-empty, .sb-card.card2 {
-  background: #fff; border-radius: 24rpx; padding: 28rpx; margin-bottom: 20rpx;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+  background: #FFFDF8; border-radius: 24rpx; padding: 28rpx; margin-bottom: 20rpx;
+  border: 1rpx solid #EDE6D8;
+  box-shadow: 0 2rpx 8rpx rgba(122, 78, 18, 0.04);
 }
 .sb-row2 { display: flex; gap: 20rpx; margin-bottom: 20rpx; }
 .sb-row2 .sb-card { flex: 1 1 0; margin-bottom: 0; }
-.sb-lbl { font-size: 28rpx; color: #646a73; margin-bottom: 10rpx; }
+.sb-lbl { font-size: 28rpx; color: #6B6157; margin-bottom: 10rpx; }
 .sb-num { font-size: 40rpx; font-weight: 700; color: #1f2329; font-variant-numeric: tabular-nums; }
 .sb-num-lg { font-size: 48rpx; }
-.sb-sec { font-size: 28rpx; color: #646a73; margin: 6rpx 0 10rpx; }
-.sb-itm { display: flex; align-items: center; justify-content: space-between; font-size: 28rpx; padding: 14rpx 0; border-bottom: 1rpx solid #f4f5f7; }
+.sb-sec { font-size: 28rpx; color: #6B6157; margin: 6rpx 0 10rpx; }
+.sb-itm { display: flex; align-items: center; justify-content: space-between; font-size: 28rpx; padding: 14rpx 0; border-bottom: 1rpx solid #F2EBDE; }
 .sb-itm:last-child { border-bottom: none; }
 .sb-itm-v { font-weight: 600; font-variant-numeric: tabular-nums; }
 .sb-badge { display: inline-block; font-size: 28rpx; font-weight: 600; padding: 2rpx 14rpx; border-radius: 20rpx; margin-left: 10rpx; }
 .sb-badge.ok { background: #eaf6f0; color: #1f7a53; }
 .sb-badge.warn { background: #fff3e0; color: #a45f00; }
 .sb-badge.bad { background: #fdecea; color: #c0392b; }
-.sb-badge.na { background: #f2f4f7; color: #8a94a6; }
+.sb-badge.na { background: #F6F3EC; color: #9A9184; }

@@ -10,11 +10,11 @@
 .lbl { font-size: 28rpx; color: #1e3a5f; flex-shrink: 0; }
 
 /* 金额录入框（落在 .field 内，复用 .field input 的右对齐 + 32rpx） */
-.val-input { flex: 1; padding: 0 20rpx; background: #fff; border: 1rpx solid #e8eff7; border-radius: 10rpx; min-height: 88rpx; font-size: 28rpx; }
+.val-input { flex: 1; padding: 0 20rpx; background: #FFFDF8; border: 1rpx solid #F5EBD8; border-radius: 10rpx; min-height: 88rpx; font-size: 28rpx; }
 
 /* 选卡 picker 触发器 */
 .pick-grow { flex: 1; }
-.pick { padding: 0 24rpx; background: #fff; border: 1rpx solid #e8eff7; border-radius: 10rpx; color: #1e3a5f; font-size: 28rpx; min-height: 88rpx; line-height: 88rpx; }
+.pick { padding: 0 24rpx; background: #FFFDF8; border: 1rpx solid #F5EBD8; border-radius: 10rpx; color: #1e3a5f; font-size: 28rpx; min-height: 88rpx; line-height: 88rpx; }
 
 /* 结果行强调 */
 .val.strong { font-weight: 700; }

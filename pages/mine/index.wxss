@@ -11,9 +11,9 @@
  *   同根因见 `subpkg/tools/shop/switch.wxss::.edit-btn`（那里也是靠 flex-basis 才定住宽度）。 */
 .profile-avatar { flex: 0 0 auto; display: flex; }
 .avatar-btn { flex: 0 0 120rpx; width: 120rpx; height: 120rpx; border-radius: 50%; padding: 0; margin: 0;
-  background: #f0f0f0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  background: #EFE8DA; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .avatar-img { width: 120rpx; height: 120rpx; border-radius: 50%; }
-.avatar-ph { color: #999; font-size: 28rpx; }
+.avatar-ph { color: #A99E8E; font-size: 28rpx; }
 .profile-name { flex: 1; display: flex; flex-direction: column; gap: 8rpx; }
 .nickname-inp { font-size: 30rpx; min-height: 88rpx; line-height: 88rpx; }
 

@@ -3,10 +3,10 @@
 /* R181j：保存按钮独立成层（不得与 val-input 同父，见 index.wxml 注释 / check_amount_input_row A1） */
 .field-save { display: flex; justify-content: flex-end; margin-bottom: 16rpx; }
 .lbl { font-size: 28rpx; color: #1e3a5f; width: 200rpx; flex-shrink: 0; }
-.val-input { flex: 1; padding: 0 20rpx; background: #fff; border: 1rpx solid #e8eff7; border-radius: 10rpx; min-height: 88rpx; font-size: 28rpx; }
-.picker { padding: 0 24rpx; background: #fff; border: 1rpx solid #e8eff7; border-radius: 10rpx; color: #1e3a5f; font-size: 28rpx; min-height: 88rpx; line-height: 88rpx; }
-.cell { display: flex; justify-content: space-between; padding: 12rpx 4rpx; border-bottom: 1rpx solid #eef2f7; }
+.val-input { flex: 1; padding: 0 20rpx; background: #FFFDF8; border: 1rpx solid #F5EBD8; border-radius: 10rpx; min-height: 88rpx; font-size: 28rpx; }
+.picker { padding: 0 24rpx; background: #FFFDF8; border: 1rpx solid #F5EBD8; border-radius: 10rpx; color: #1e3a5f; font-size: 28rpx; min-height: 88rpx; line-height: 88rpx; }
+.cell { display: flex; justify-content: space-between; padding: 12rpx 4rpx; border-bottom: 1rpx solid #F0E9DC; }
 .val { font-size: 30rpx; color: #1e3a5f; }
 .warn { font-size: 28rpx; color: #e74c3c; line-height: 1.5; margin: 10rpx 4rpx; }
 .attr-title { font-size: 28rpx; color: #1e3a5f; font-weight: 600; margin-bottom: 6rpx; }
-.muted { font-size: 28rpx; color: #6b7a90; line-height: 1.5; }
+.muted { font-size: 28rpx; color: #7C7264; line-height: 1.5; }

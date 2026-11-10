@@ -4,7 +4,7 @@
 .banner .btn-small { width: 160rpx; }
 
 /* ===== R234/J4e · 行内长提示折叠（句级，与月录入页 / M2 / assetEdit / amortize / takeaway 同形）=====
- * body 底色 #f3f7fb 与全局 `.hint` 同色 ⇒ 折叠前后视觉连贯。
+ * body 底色 #FBF6EC 与全局 `.hint` 同色 ⇒ 折叠前后视觉连贯。
  * 🔴 字号一律 ≥28rpx（AD-G1）、头行 min-height ≥88rpx（AD-G2）。
  * ⚠️ **不套外层白卡**（R234/J3 首版自伤教训）：外层只留间距，否则 body 嵌白卡 = 双层圆角。 */
 .hint-fold { padding: 0 0 6rpx; }
@@ -12,11 +12,11 @@
   min-height: 88rpx; padding: 14rpx 8rpx; }
 .hint-fold-guide { font-size: 28rpx; color: #1e3a5f; }
 .hint-fold-arrow { font-size: 28rpx; color: #1e3a5f; }
-.hint-fold-body { font-size: 28rpx; color: #4a5b70; line-height: 1.6; padding: 16rpx 20rpx;
-  background: #f3f7fb; border-radius: 12rpx; margin: 0 0 12rpx; }
+.hint-fold-body { font-size: 28rpx; color: #6B6157; line-height: 1.6; padding: 16rpx 20rpx;
+  background: #FBF6EC; border-radius: 12rpx; margin: 0 0 12rpx; }
 
 /* 暖化：双口径常驻口径解释（P0#2，tab 下常显一行小字，不折叠） */
-.caliber-hint { font-size: 28rpx; color: #8a94a6; line-height: 1.5; margin-top: 12rpx; }
+.caliber-hint { font-size: 28rpx; color: #9A9184; line-height: 1.5; margin-top: 12rpx; }
 
 /* 🔴 R489：倒轧依据行（「本数按期末库存 ¥28,000 倒轧 · 去核对」）——
  * 它可点（去库存页核对），所以要跟上面的静态小字区分开：用主色 + 下划线暗示"能点"。
@@ -29,4 +29,4 @@
 /* R611：归档按钮状态说明 —— 解释「为什么这月只看到一个按钮」，不新增卡片、不刺眼。
    字号 28rpx 守 AD-G1；浅底与上方「待归档」纯文字行区分开。 */
 .archive-note { margin-top: 10rpx; padding: 12rpx 16rpx; font-size: 28rpx;
-  line-height: 1.55; color: #4a5b70; background: #f3f7fb; border-radius: 12rpx; }
+  line-height: 1.55; color: #6B6157; background: #FBF6EC; border-radius: 12rpx; }

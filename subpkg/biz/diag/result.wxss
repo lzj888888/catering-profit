@@ -7,7 +7,7 @@
 
 /* ---------- ① 结论卡 ---------- */
 .dg-card {
-  background: #fff; border-radius: 20rpx; padding: 24rpx;
+  background: #FFFDF8; border-radius: 20rpx; padding: 24rpx;
   margin-bottom: 16rpx; box-shadow: 0 2rpx 10rpx rgba(30, 58, 95, 0.06);
 }
 /* 左侧 8rpx 色条标等级：一眼看到"红/橙/蓝/绿"，不用读字 */
@@ -25,7 +25,7 @@
 .lv-good .dg-badge { background: #22a06b; }
 .lv-warn .dg-badge { background: #e8a33d; }
 .lv-critical .dg-badge { background: #c0392b; }
-.lv-insufficient .dg-badge { background: #999; }
+.lv-insufficient .dg-badge { background: #A99E8E; }
 
 .dg-score { font-size: 56rpx; font-weight: 700; color: #1e3a5f; margin-top: 12rpx; }
 .dg-concl { font-size: 30rpx; color: #333; line-height: 1.65; margin-top: 8rpx; }
@@ -34,13 +34,13 @@
   margin-top: 18rpx; padding: 18rpx 20rpx; border-radius: 12rpx;
   background: #fdf3d8; border-left: 8rpx solid #e8a33d;
 }
-.dg-sig.none { background: #f3f7fb; border-left-color: #1e3a5f; font-size: 28rpx; color: #4a5b70; }
+.dg-sig.none { background: #FBF6EC; border-left-color: #1e3a5f; font-size: 28rpx; color: #6B6157; }
 .dg-sig-hd { font-size: 26rpx; color: #92610a; margin-bottom: 6rpx; }
 .dg-sig-tx { font-size: 30rpx; font-weight: 600; color: #333; line-height: 1.6; }
 
 /* ---------- ② 11 项拆解 ---------- */
 .dg-sec-hd { font-size: 32rpx; font-weight: 700; color: #1e3a5f; margin-bottom: 8rpx; }
-.ind { padding: 18rpx 0; border-bottom: 1rpx solid #f0f0f0; }
+.ind { padding: 18rpx 0; border-bottom: 1rpx solid #EFE8DA; }
 .ind:last-child { border-bottom: none; }
 .ind-hd { display: flex; justify-content: space-between; align-items: center; }
 .ind-lbl { font-size: 30rpx; color: #333; }
@@ -48,7 +48,7 @@
 .sc-good { color: #22a06b; }
 .sc-watch { color: #1e3a5f; }
 .sc-warn { color: #c0392b; }
-.sc-na { color: #999; font-weight: 400; font-size: 26rpx; }
+.sc-na { color: #A99E8E; font-weight: 400; font-size: 26rpx; }
 
 .bar { height: 12rpx; background: #f0f2f5; border-radius: 6rpx; margin: 10rpx 0 6rpx; overflow: hidden; }
 .bar-in { height: 100%; border-radius: 6rpx; }
@@ -61,7 +61,7 @@
 /* ---------- ③ 缺项引导 ---------- */
 .miss-row {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 16rpx 0; border-bottom: 1rpx solid #f0f0f0; font-size: 30rpx;
+  padding: 16rpx 0; border-bottom: 1rpx solid #EFE8DA; font-size: 30rpx;
 }
 .miss-row:last-of-type { border-bottom: none; }
 .miss-lbl { color: #333; }
@@ -69,7 +69,7 @@
 /* ---------- ④ 依据 + 免责 ---------- */
 .basis-line { padding: 4rpx 0; }
 .dg-disclaimer {
-  font-size: 24rpx; color: #999; line-height: 1.7;
+  font-size: 24rpx; color: #A99E8E; line-height: 1.7;
   padding: 8rpx 8rpx 0; text-align: justify;
 }
 
@@ -78,10 +78,10 @@
 .bm-hd { padding: 14rpx 0 6rpx; }
 .bm {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 10rpx 0; font-size: 28rpx; border-bottom: 1rpx solid #f5f5f5;
+  padding: 10rpx 0; font-size: 28rpx; border-bottom: 1rpx solid #F3ECDF;
 }
 .bm:last-child { border-bottom: none; }
-.bm-m { color: #666; }
+.bm-m { color: #6B6157; }
 .bm-v { font-weight: 600; }
 /* 亏损 = 红（中国经营语境：亏是坏事，不是股市跌绿红涨那套；这里是账，不是行情） */
 .bm-v.neg { color: #c0392b; }

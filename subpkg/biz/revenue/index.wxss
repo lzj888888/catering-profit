@@ -3,39 +3,39 @@
 .rev { padding: 24rpx; }
 
 /* ===== ① 主数 ===== */
-.rev-hero { background: #fff; border-radius: 16rpx; padding: 28rpx 24rpx 24rpx; margin-bottom: 20rpx; }
-.rev-hero-label { display: block; font-size: 28rpx; color: #6b7a90; }
+.rev-hero { background: #FFFDF8; border-radius: 16rpx; padding: 28rpx 24rpx 24rpx; margin-bottom: 20rpx; }
+.rev-hero-label { display: block; font-size: 28rpx; color: #7C7264; }
 .rev-hero-num { display: block; font-size: 60rpx; color: #1a7d55; font-weight: 600; line-height: 1.3; margin-top: 8rpx; }
-.rev-hero-note { display: block; font-size: 28rpx; color: #6b7a90; margin-top: 6rpx; }
+.rev-hero-note { display: block; font-size: 28rpx; color: #7C7264; margin-top: 6rpx; }
 .rev-split { margin-top: 16rpx; display: flex; align-items: center; }
 .rev-split-i { font-size: 28rpx; color: #2a4e7c; }
 .rev-split-d { font-size: 28rpx; color: #c8d0dc; margin: 0 12rpx; }
-.rev-range { display: block; font-size: 28rpx; color: #8792a3; margin-top: 10rpx; }
+.rev-range { display: block; font-size: 28rpx; color: #A99E8E; margin-top: 10rpx; }
 
 /* ===== ② 副数 + 差额 ===== */
 .rev-cmp { background: #f7f9fc; border-radius: 16rpx; padding: 22rpx 24rpx; margin-bottom: 20rpx; }
 .rev-cmp-row { display: flex; justify-content: space-between; align-items: baseline; padding: 6rpx 0; }
-.rev-cmp-l { font-size: 28rpx; color: #5a6678; }
+.rev-cmp-l { font-size: 28rpx; color: #6B6157; }
 .rev-cmp-v { font-size: 32rpx; color: #1e3a5f; font-weight: 600; }
 .rev-cmp-v.up { color: #1a7d55; }
 .rev-cmp-v.down { color: #b03024; }
-.rev-note { display: block; font-size: 28rpx; color: #8792a3; line-height: 1.5; margin-top: 8rpx; }
+.rev-note { display: block; font-size: 28rpx; color: #A99E8E; line-height: 1.5; margin-top: 8rpx; }
 
 /* ===== ③ 差额桥（折叠） ===== */
-.rev-fold { display: flex; justify-content: space-between; align-items: center; background: #fff; border-radius: 16rpx; padding: 22rpx 24rpx; margin-bottom: 12rpx; }
+.rev-fold { display: flex; justify-content: space-between; align-items: center; background: #FFFDF8; border-radius: 16rpx; padding: 22rpx 24rpx; margin-bottom: 12rpx; }
 .rev-fold-t { font-size: 30rpx; color: #1e3a5f; font-weight: 600; }
 .rev-fold-ico { font-size: 28rpx; color: #2a7fa8; }
-.rev-bridge { background: #fff; border-radius: 16rpx; padding: 8rpx 24rpx 22rpx; margin-bottom: 20rpx; }
-.rev-bridge-hd { display: block; font-size: 28rpx; color: #6b7a90; margin: 16rpx 0 8rpx; }
+.rev-bridge { background: #FFFDF8; border-radius: 16rpx; padding: 8rpx 24rpx 22rpx; margin-bottom: 20rpx; }
+.rev-bridge-hd { display: block; font-size: 28rpx; color: #7C7264; margin: 16rpx 0 8rpx; }
 .rev-bridge-row { display: flex; justify-content: space-between; align-items: baseline; padding: 8rpx 0; border-top: 1rpx solid #f0f3f8; }
-.rev-bridge-l { font-size: 28rpx; color: #5a6678; flex: 1; line-height: 1.5; }
+.rev-bridge-l { font-size: 28rpx; color: #6B6157; flex: 1; line-height: 1.5; }
 .rev-bridge-v { font-size: 28rpx; font-weight: 600; margin-left: 16rpx; flex-shrink: 0; }
 .rev-bridge-v.add { color: #1a7d55; }
 .rev-bridge-v.sub { color: #b03024; }
 
 /* ===== ④ 渠道 ===== */
 .rev-sec { display: block; font-size: 30rpx; color: #1e3a5f; font-weight: 600; margin: 24rpx 0 12rpx; }
-.rev-chan { display: flex; align-items: center; background: #fff; border-radius: 12rpx; padding: 18rpx 24rpx; margin-bottom: 10rpx; }
+.rev-chan { display: flex; align-items: center; background: #FFFDF8; border-radius: 12rpx; padding: 18rpx 24rpx; margin-bottom: 10rpx; }
 .rev-chan-tag { font-size: 28rpx; color: #2a7fa8; background: #eaf3f8; border-radius: 8rpx; padding: 2rpx 10rpx; margin-right: 14rpx; flex-shrink: 0; }
 .rev-chan-l { font-size: 28rpx; color: #1e3a5f; flex: 1; }
 .rev-chan-v { font-size: 30rpx; color: #1e3a5f; font-weight: 600; }
@@ -46,21 +46,21 @@
 .rev-recon.bad { background: #fdf0e6; color: #a8630a; }
 .rev-pending { font-size: 28rpx; color: #a8630a; line-height: 1.5; margin-top: 14rpx; }
 /* R619 数据来源：一眼能看到「这数是哪天导的、哪份表」，不是凭空冒出来的 */
-.rev-src { font-size: 28rpx; color: #8792a3; line-height: 1.5; margin-bottom: 16rpx; }
+.rev-src { font-size: 28rpx; color: #A99E8E; line-height: 1.5; margin-bottom: 16rpx; }
 /* R618 覆盖范围：tail/mid 是要老板确认的（黄），ok 是信息（灰）——都不报红 */.rev-cover { border-radius: 12rpx; padding: 18rpx 20rpx; margin-top: 16rpx; display: flex; flex-direction: column; }
 .rev-cover.tail, .rev-cover.mid { background: #fdf7e8; border-left: 6rpx solid #d9a441; }
 .rev-cover.ok { background: #f4f6f9; }
-.rev-cover-hd { font-size: 28rpx; color: #8792a3; margin-bottom: 6rpx; }
+.rev-cover-hd { font-size: 28rpx; color: #A99E8E; margin-bottom: 6rpx; }
 .rev-cover-x { font-size: 28rpx; line-height: 1.55; color: #26303f; }
-.rev-cover-n { font-size: 28rpx; color: #8792a3; line-height: 1.5; margin-top: 8rpx; }
-.rev-tip { font-size: 28rpx; color: #8792a3; line-height: 1.6; margin-top: 20rpx; }
+.rev-cover-n { font-size: 28rpx; color: #A99E8E; line-height: 1.5; margin-top: 8rpx; }
+.rev-tip { font-size: 28rpx; color: #A99E8E; line-height: 1.6; margin-top: 20rpx; }
 
 /* ===== 未选文件态 ===== */
-.rev-intro { background: #fff; border-radius: 16rpx; padding: 28rpx 24rpx; margin-bottom: 28rpx; }
-.rev-intro-t { font-size: 28rpx; color: #5a6678; line-height: 1.7; white-space: pre-wrap; }
+.rev-intro { background: #FFFDF8; border-radius: 16rpx; padding: 28rpx 24rpx; margin-bottom: 28rpx; }
+.rev-intro-t { font-size: 28rpx; color: #6B6157; line-height: 1.7; white-space: pre-wrap; }
 .rev-pick { margin-top: 8rpx; }
 /* R620 手填入入口：不是次要链接，是并列的第二条路 —— 所以做成卡片而不是小字 */
-.rev-manual { margin-top: 24rpx; background: #fff; border-radius: 16rpx; padding: 26rpx 24rpx; border-left: 8rpx solid #2b6cd4; }
+.rev-manual { margin-top: 24rpx; background: #FFFDF8; border-radius: 16rpx; padding: 26rpx 24rpx; border-left: 8rpx solid #2b6cd4; }
 .rev-manual-t { display: block; font-size: 32rpx; color: #1a2233; font-weight: 600; }
-.rev-manual-s { display: block; font-size: 28rpx; color: #8792a3; line-height: 1.55; margin-top: 8rpx; }
+.rev-manual-s { display: block; font-size: 28rpx; color: #A99E8E; line-height: 1.55; margin-top: 8rpx; }
 .rev-again { margin-top: 32rpx; }

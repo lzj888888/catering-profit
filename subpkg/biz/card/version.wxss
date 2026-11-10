@@ -1,29 +1,29 @@
 /* pages/card/version.wxss —— M3 成本卡版本历史 */
-.lines-title { font-size: 28rpx; font-weight: 700; color: #666; margin: 20rpx 0 8rpx; }
+.lines-title { font-size: 28rpx; font-weight: 700; color: #6B6157; margin: 20rpx 0 8rpx; }
 .line-row { display: flex; flex-direction: column; padding: 8rpx 0; font-size: 28rpx; }
 .line-main { display: flex; justify-content: space-between; align-items: center; }
 .line-row .lbl { color: #444; }
 /* S0 快照 5 字段（只读灰字） */
-.snapshot { display: flex; flex-wrap: wrap; gap: 4rpx 24rpx; margin-top: 6rpx; padding-left: 8rpx; font-size: 28rpx; color: #999; }
+.snapshot { display: flex; flex-wrap: wrap; gap: 4rpx 24rpx; margin-top: 6rpx; padding-left: 8rpx; font-size: 28rpx; color: #A99E8E; }
 
 /* M3.19（A3）成本趋势折线。字号 ≥28rpx（AD 门禁）；柱条容器固定高度、柱底对齐。 */
-.trend { margin: 8rpx 0 16rpx; padding: 16rpx 20rpx; background: #f5f8fc; border-radius: 12rpx; }
+.trend { margin: 8rpx 0 16rpx; padding: 16rpx 20rpx; background: #FBF6EC; border-radius: 12rpx; }
 .trend-title { font-size: 28rpx; color: #1e3a5f; font-weight: 600; margin-bottom: 12rpx; }
 /* R192：横向条形（每版本两行：成本 / 售价）—— 版本多、金额位数多都不挤。
    🔴 条形颜色一律走 app.wxss 的 .trend-bar-cost / .trend-bar-price（色值单源），本页不写第二份。 */
 .trend-row { display: flex; align-items: flex-start; padding: 10rpx 0; border-top: 1rpx solid #e7eef7; }
-.trend-row .trend-ver { width: 72rpx; font-size: 28rpx; color: #6b7a90; line-height: 44rpx; }
+.trend-row .trend-ver { width: 72rpx; font-size: 28rpx; color: #7C7264; line-height: 44rpx; }
 .trend-lines { flex: 1; min-width: 0; }
 .trend-line { display: flex; align-items: center; }
 /* 值不给死宽（金额位数不定）⇒ 右对齐 + 固定最小宽，保证同一列对齐 */
-.trend-val { min-width: 150rpx; text-align: right; font-size: 28rpx; color: #4a5b70; margin-left: 12rpx; }
+.trend-val { min-width: 150rpx; text-align: right; font-size: 28rpx; color: #6B6157; margin-left: 12rpx; }
 .trend-track { flex: 1; height: 22rpx; background: #eef3f9; border-radius: 11rpx; overflow: hidden; }
 /* min-width：极值差几十倍时（如 v5 ¥480 vs v1 ¥12），小值不能缩成"看不见"⇒ 至少留一小截 */
 .trend-fill { height: 100%; border-radius: 11rpx; min-width: 12rpx; }
 /* 图例：色点 + 名称（只靠颜色区分 = 让用户猜） */
 .trend-legend { display: flex; gap: 24rpx; margin-bottom: 12rpx; }
-.lg-item { display: flex; align-items: center; font-size: 28rpx; color: #6b7a90; }
+.lg-item { display: flex; align-items: center; font-size: 28rpx; color: #7C7264; }
 .lg-dot { width: 20rpx; height: 20rpx; border-radius: 4rpx; margin-right: 8rpx; }
 /* .lg-cost / .lg-price 的**颜色**在 app.wxss（色值单源），此处只给形状 */
-.trend-ver { font-size: 28rpx; color: #6b7a90; margin-top: 6rpx; }
-.trend-empty { font-size: 28rpx; color: #6b7a90; text-align: center; padding: 20rpx 0; }
+.trend-ver { font-size: 28rpx; color: #7C7264; margin-top: 6rpx; }
+.trend-empty { font-size: 28rpx; color: #7C7264; text-align: center; padding: 20rpx 0; }

@@ -13,4 +13,4 @@
 .group-pin { color: #1e3a5f; }
 .pick-item { margin-bottom: 12rpx; }
 /* 分类标签用弱色，避免与「虚拟原料」这种警示性 tag 抢注意力 */
-.tag-soft { background: #eef2f7; color: #5a6b7f; }
+.tag-soft { background: #F0E9DC; color: #5a6b7f; }

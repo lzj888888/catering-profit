@@ -170,7 +170,15 @@ if (!fs.existsSync(APP_WXSS)) {
   const appTxt = fs.readFileSync(APP_WXSS, 'utf8');
   if (appTxt.includes('深色模式：已移除')) ok('A5-①', '头部退役声明「深色模式：已移除」在场');
   else no('A5-①', '头部未见「深色模式：已移除」⇒ 声明被删、本段判据失效（若确要恢复深色，须整份配色 token 化全量适配，并同步删除本段）');
-  if (/page\s*\{[^}]*background:\s*#f5f6f8/.test(appTxt)) ok('A5-②', '声明前提成立：page 背景显式写死 #f5f6f8（不随系统切）');
+  /* 🔴 R680：A5-② 原本把判据写死成字面量 `background: #f5f6f8`。
+     本轮全站暖化（page 底 #f5f6f8 → #F6F3EC）时它当场判红 —— 这是**判据绑死了色值**，
+     而 A5 的本意不是"必须是这个色"，是"page 必须显式写死一个不透明底色，不随系统切"。
+     色值属于主题演进、会变；"显式写死"才是不该变的不变量。
+     ⇒ 改为：page 块内必须有 background: #hex。仍能抓住真正的退化
+        （删掉 background / 改成 inherit / 只靠 @media 给色 ⇒ 匹配不到）。
+     不改判据本意、只松掉绑死的取值，符合"判据挑成分不挑字面"的既有教训。 */
+  const pageBgM = /page\s*\{[^}]*background\s*:\s*(#[0-9a-fA-F]{3}|#[0-9a-fA-F]{6})\b/.exec(appTxt);
+  if (pageBgM) ok('A5-②', '声明前提成立：page 背景显式写死 ' + pageBgM[1] + '（不随系统切）');
   else no('A5-②', 'page 未显式写死浅底 ⇒ 深色手机可能回落到「黑底黑字」（真机走查缺陷② 复发）');
 }
 const darkHits = [];

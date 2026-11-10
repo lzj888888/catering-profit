@@ -1,0 +1,260 @@
+/* ============================================================
+ * 店算小程序 · 全局样式（墨蓝主题 v2 · 2026-09-20）
+ * 品牌色：墨蓝 #1e3a5f（渐变 #2a4e7c → #162c49）
+ * 浅底：#e8eff7 / 提示底 #f3f7fb
+ * ⚠️ 旧橘黄 #ff6b35 已全量下线（含 app.json 导航栏与各页内联色）。
+ * ============================================================ */
+page { background: #f5f6f8; font-family: -apple-system, "PingFang SC", sans-serif; }
+.container { padding: 24rpx; }
+.summary { display: flex; flex-wrap: wrap; }
+/* 🔴🔴 R296d：原此处有三条**全局**半宽卡片规则 ——
+   `.card { width: 48%; margin: 1%; ... }` / `.card.hl` / `.card.net`（早期首页九宫格的样式）。
+   它们已被首页现行的 `hero-*` 体系取代，**全仓零用量**（`class="card"` / 组合类 / 动态绑定三种写法实扫均为空）。
+   留着的唯一后果 = **雷**：任何页面只要复用 `.card` 这个类名，就会静默继承 `width: 48%`
+   ⇒ 卡片只剩半宽 ⇒ 卡内标签在 flex 行里被挤到 ~1 字宽 ⇒ 中文逐字断行 = **「竖版文字」**。
+   矩阵页 / 对比页正是踩此雷（2026-10-14 李老师连续几轮反馈「改了几次没改成横版」）。
+   ⇒ 本轮**把雷拆了**：删掉这三条；并由 `tools/check_page_card_width.js` 机器守着
+   「全局样式表里不得再出现精确类名 `.card`」。 */
+.label { display: block; font-size: 28rpx; color: #888; }
+.value { display: block; font-size: 40rpx; font-weight: 700; color: #222; }
+.sub { font-size: 28rpx; color: #1e3a5f; }
+.sec { display: block; margin: 24rpx 8rpx 12rpx; font-weight: 700; color: #333; }
+.row { display: flex; justify-content: space-between; background: #fff; padding: 20rpx; border-radius: 16rpx; margin-bottom: 12rpx; align-items: center; }
+.row input { text-align: right; }
+.name { font-weight: 600; }
+.meta { display: block; font-size: 28rpx; color: #888; margin: 6rpx 0; }
+.profit { font-size: 28rpx; color: #1e3a5f; }
+.del { color: #c0392b; padding: 0 20rpx; }
+.empty { text-align: center; color: #aaa; padding: 40rpx; }
+.add { margin-top: 24rpx; background: #1e3a5f; color: #fff; }
+.form { padding: 24rpx; }
+.field { display: flex; justify-content: space-between; background: #fff; padding: 24rpx; border-radius: 16rpx; margin-bottom: 16rpx; align-items: center; }
+/* 2026-09-20：李老师反馈输入框边框不明显、点数字易误删 → 统一加边框+内边距+加大字号 */
+.field input { text-align: right; min-width: 320rpx; padding: 14rpx 18rpx; font-size: 32rpx;
+  border: 2rpx solid #cfdae8; border-radius: 10rpx; background: #fff; }
+/* 🔴 R654（李老师：「有些输入框只能显示一半字体」）
+   微信 `<input>` 是**原生组件**，在 flex 容器里若不显式给高度，某些基础库版本会把它的
+   盒子压到只剩字体的一半 ⇒ 文字上下被裁。各页面虽已分别写了 min-height: 88rpx，
+   但那是**逐页自觉**，新页面一漏就复发。
+   这里加一条**全局兜底**：只在内容更矮时生效（min-height 取大者），
+   已有 88rpx 的页面完全不受影响；新页面即使忘了写，也不会出现"半个字"。
+   ⚠️ 不设 height：设了会盖掉各页面的 88rpx 触控下界（AD G1/G2 红线只增不减）。
+   ⚠️ 值必须 ≥88rpx：我最初写 64rpx，被 `selftest_ad_gates` 的 G2 当场判红 ——
+      88rpx 是本仓**触控下界红线**，输入框是要用指头点的，64 本来也不够点。 */
+/* 🔴 R668：R654 只补了 min-height，没补行高。当某页自己加了 box-sizing:border-box
+   且带上下 padding 时，88rpx 被 padding 吃掉 ⇒ 中文仍被裁（李老师今天又复现了一次）。
+   ⇒ 兜底再加一条显式行高；border-box 页面自己负责把上下 padding 归零。 */
+input, textarea { min-height: 88rpx; line-height: 1.5; }
+.save { margin-top: 24rpx; background: #1e3a5f; color: #fff; }
+
+/* ===== 批次 4 · 共享组件样式（AD-1~AD-26 对齐：按钮≥88rpx、字号≥28rpx） ===== */
+.card2 { background: #fff; border-radius: 20rpx; padding: 24rpx; margin-bottom: 16rpx;
+  box-shadow: 0 4rpx 16rpx rgba(30, 58, 95, 0.06); }
+.btn { display: flex; align-items: center; justify-content: center;
+  min-height: 88rpx; margin-top: 24rpx; border-radius: 16rpx; font-size: 32rpx; font-weight: 600; }
+.btn.primary { background: linear-gradient(135deg, #2a4e7c 0%, #162c49 100%); color: #fff;
+  box-shadow: 0 6rpx 16rpx rgba(30, 58, 95, 0.18); }
+.btn.ghost { background: #fff; color: #1e3a5f; border: 2rpx solid #1e3a5f; }
+.btn.disabled { background: #ccc; color: #fff; box-shadow: none; }
+.btn-small { min-height: 88rpx; padding: 0 24rpx; font-size: 28rpx; border-radius: 12rpx; }
+.cell { display: flex; justify-content: space-between; align-items: center; padding: 24rpx 0; border-bottom: 1rpx solid #f0f0f0; font-size: 30rpx; }
+.cell:last-child { border-bottom: none; }
+.cell .lbl { color: #555; }
+.cell .val { font-weight: 600; color: #222; }
+.inp { background: #fff; border-radius: 16rpx; padding: 24rpx; min-height: 88rpx; margin-bottom: 16rpx; font-size: 30rpx; }
+.inp input { width: 100%; }
+.inp textarea { width: 100%; min-height: 160rpx; font-size: 30rpx; }
+.label2 { display: block; font-size: 28rpx; color: #666; margin: 16rpx 4rpx 8rpx; }
+.tag { display: inline-block; font-size: 28rpx; color: #1e3a5f; background: #e8eff7; border-radius: 8rpx; padding: 4rpx 12rpx; margin-left: 12rpx; }
+.tag.lock { color: #999; background: #eee; }
+.card-title { font-size: 32rpx; font-weight: 700; margin-bottom: 12rpx; color: #1e3a5f; }
+.result-num { font-size: 56rpx; font-weight: 800; color: #1e3a5f; }
+.muted { color: #666; font-size: 28rpx; }
+.hint { font-size: 28rpx; color: #4a5b70; background: #f3f7fb; border-radius: 12rpx; padding: 16rpx 20rpx; margin-bottom: 12rpx; line-height: 1.6; }
+/* 🔴 R299：数据截断的**可见降级**行（全局单源，多页共用 —— 复盘页 / 成本卡列表 / 店铺清点）。
+ * 为什么是全局：同一个语义（"服务端已达读取上限，你看的可能不全"）出现在 ≥2 个页面，
+ *   各页各写一份色值 ⇒ 改主题时逐页漏改（本仓既有红线，见上方 R191 段）。
+ * 为什么必须醒目：它不是"附加信息"，而是"这页数字还准不准"的前提 ⇒ 用琥珀底 + 左侧色条，
+ *   不用 .muted（灰字会被当成普通说明跳过）。深色模式已全站移除（见上），浅色底安全。 */
+.warn-line { font-size: 28rpx; color: #92610a; background: #fdf3d8; border-left: 8rpx solid #e8a33d; border-radius: 0 12rpx 12rpx 0; padding: 16rpx 20rpx; margin-bottom: 12rpx; line-height: 1.6; }
+.safe-bottom { padding-bottom: calc(env(safe-area-inset-bottom) + 24rpx); }
+.switch-row { display: flex; justify-content: space-between; align-items: center; padding: 24rpx 20rpx; background: #fff; border-radius: 16rpx; margin-bottom: 12rpx; }
+.switch-row .lbl2 { font-size: 30rpx; }
+.archived-bar { font-size: 28rpx; color: #92610a; background: #fdf3d8; border-radius: 12rpx; padding: 12rpx 20rpx; margin-bottom: 12rpx; }
+
+/* ===== 核算方式：就地二选一（2026-09-20 从店铺设置页迁入月度录入页）=====
+ * 选中态 = 墨蓝描边 + 浅蓝底 + 标题带 ✓，三重可辨，不只靠颜色。 */
+.cm-sub { font-size: 30rpx; font-weight: 600; color: #1e3a5f; margin: 20rpx 4rpx 12rpx; }
+.cm-card { background: #fff; border-radius: 20rpx; padding: 16rpx; margin-bottom: 12rpx; }
+.cm-opt { padding: 20rpx; border-radius: 16rpx; border: 2rpx solid #e3e9f2; margin-bottom: 12rpx; }
+.cm-opt:last-child { margin-bottom: 0; }
+.cm-opt.on { border-color: #1e3a5f; background: #f3f7fb; }
+.cm-opt-h { font-size: 30rpx; font-weight: 600; color: #222; }
+.cm-opt.on .cm-opt-h { color: #1e3a5f; }
+.cm-opt-d { font-size: 28rpx; color: #6b7a90; margin-top: 6rpx; line-height: 1.5; }
+.cm-state { font-size: 28rpx; color: #4a5b70; background: #f3f7fb; border-radius: 12rpx; padding: 16rpx 20rpx; margin: 12rpx 0; line-height: 1.6; }
+.cm-moved { font-size: 28rpx; color: #4a5b70; background: #f3f7fb; border-radius: 12rpx; padding: 20rpx; margin: 12rpx 0; line-height: 1.6; }
+
+/* ============================================================
+ * ⚠️ 深色模式：已移除（2026-09-20 · 真机走查缺陷②）
+ * 原 @media (prefers-color-scheme: dark) 只改了 .card2/.cell/.label2，
+ * 漏掉 .card-title / .muted ⇒ 深色手机上是「黑底黑字、完全看不清」。
+ * 决策：全站统一浅色（page 背景已显式写死 #f5f6f8，不随系统切）。
+ * 若要重新支持深色，必须**整份配色 token 化后全量适配**，禁止只补几个类。
+ * ============================================================ */
+
+
+/* ============================================================
+ * 指标评级配色（round115 起为**全局单源**）
+ * 语义：level 承担"方向"（成本类高=坏、毛利率类低=坏，见 TERMS.m2.indLevels / indLevelsGain），
+ *       本组只管"优劣 ↔ 颜色"的对应 —— 同一 level 在 M1 / M2 必须同色，故上提到全局。
+ * 为什么上提：M1 结果页要复用 M2 的评级色，若各页各写一份，将来改配色必然漂。
+ * ============================================================ */
+.lv-good { color: #1e8e5a; }
+.lv-ok { color: #1e3a5f; }
+.lv-warn { color: #d68910; }
+.lv-bad { color: #c0392b; }
+.lv-na { color: #aaa; }
+
+/* ============================================================
+ * R191：类型区隔色条（**色值单源** —— 新增区隔色只在此登记，页面 wxss 只引类名）
+ * 为什么：李老师 2026-10-02 反馈「多张卡在一个页面上，分不清哪类是哪类」。
+ *   左侧色条解决"扫一眼分得出类型"；但色值若散在各页 ⇒ 改主题时逐页漏改（本仓既有红线）。
+ *   ⇒ 单品=墨蓝（品牌主色）/ 套餐=紫（本次新引入，只此一处）/ 原料=绿 / 外卖=琥珀 / 对账=灰蓝。
+ * ============================================================ */
+.stripe-dish { border-left-color: #1e3a5f; }
+.stripe-combo { border-left-color: #7c3aed; }
+.stripe-material { border-left-color: #22a06b; }
+.stripe-takeaway { border-left-color: #b45309; }
+.stripe-recon { border-left-color: #6b7280; }
+
+/* ============================================================
+ * R191：列表页通用布局（成本卡列表 / 原料库**同构**，故定义在全局，页面 wxss 不复制第二份）
+ * 要点：**减数量 + 压行数**，🔴 绝不缩尺寸 —— .btn-small 的 min-height 88rpx 是触控硬红线。
+ * ============================================================ */
+/* 顶部：搜索 + 新增同一行（新增不再沉到页面最底部 —— 20 张卡要翻 20 屏才能新建） */
+.top-row { display: flex; align-items: center; gap: 16rpx; }
+.top-inp { flex: 1; margin-bottom: 0; }
+/* 🔴 R195（真机实测修正）：`.top-add` 是**单类**选择器，`<button>` 自带的默认宽度（实测恒 184px）
+ *   会压过它 ⇒ 这里原写的 `width:200rpx; min-width:200rpx` **完全无效**，
+ *   实测顶栏「+ 新增」占 184px（设计值 200rpx = 104px），把搜索框挤到 174px（应 254px）。
+ *   判据：review/evidence/r195_shots/report_r195_{BEFORE,AFTER}.json（material + card 两页同构）。
+ *   修法与 `pages/shop/switch.wxss::.edit-btn` 同源：**走 flex 布局层的 flex-basis**，不与 button 的 width 打架。
+ *   ⚠️ 别改回 `width`（R194 曾据「flex 容器内才失效」的错误结论写下 width，已由 R195 实测推翻）。 */
+.top-add { flex: 0 0 200rpx; margin-top: 0; padding: 0 12rpx; font-size: 30rpx; }
+/* 结果计数 + 低频操作（降级为文字链，不再与筛选块抢同一行） */
+.meta-row { display: flex; align-items: center; justify-content: space-between; margin: 4rpx 0 8rpx; }
+.link { font-size: 28rpx; color: #1e3a5f; min-height: 88rpx; line-height: 88rpx; padding: 0 12rpx; }
+/* 卡片头部：标题区（占满剩余宽度）+ 右侧「⋯」 */
+.card-head { display: flex; align-items: flex-start; justify-content: space-between; }
+.card-title-flex { flex: 1; min-width: 0; margin-bottom: 0; }
+/* 「⋯」必须 ≥88rpx 触控区（与 .btn-small 同一条红线） */
+.more { min-width: 88rpx; min-height: 88rpx; font-size: 40rpx; color: #8a94a6; text-align: center; line-height: 88rpx; margin-left: 8rpx; }
+/* 成本 / 毛利 / 版本 三行压一行 */
+.cell-inline { display: flex; align-items: center; flex-wrap: wrap; font-size: 30rpx; padding: 16rpx 0 4rpx; }
+.cell-inline .lbl { color: #555; }
+.cell-inline .val { font-weight: 600; color: #222; margin-left: 8rpx; }
+.cell-inline .dot { color: #bbb; margin: 0 16rpx; }
+
+/* ============================================================
+ * 🔴 R192：卡片操作行（ops-mini）—— R191 的「全收进 ⋯」被判定为**过度收纳**
+ *   李老师 2026-10-03 反馈：「历史版本 / 同步最新价 都丢了」。
+ *   教训：⭐ 高频单卡操作（版本历史 / 同步至原料最新价）必须**看得见**，
+ *         ⋯ 只收低频 + 破坏性操作（置顶 / 复制 / 删除）—— 藏起来的功能等于没有。
+ *   布局：两个 ghost 按钮 + 「⋯」同一行（不是各占一行：R191 反馈"每个按钮占一行"）。
+ * ============================================================ */
+.ops-mini { display: flex; align-items: center; gap: 12rpx; margin-top: 12rpx; padding-top: 12rpx; border-top: 1rpx solid #eef1f5; }
+.ops-btn { flex: 1; min-height: 88rpx; font-size: 28rpx; padding: 0 12rpx; }
+/* 虚拟原料没有可见按钮 ⇒ 用占位把「⋯」推到最右，与其它卡对齐（否则 ⋯ 会飘到左边） */
+.ops-spacer { flex: 1; }
+/* 「⋯」做成**看得见的按钮**（圆角浅底 + 边框），不再是裸的三个点 —— 裸点会被当成省略号装饰 */
+.more.round { width: 88rpx; min-width: 88rpx; border-radius: 44rpx; background: #f2f5f9; border: 2rpx solid #e3e9f2; margin-left: 0; }
+
+/* ============================================================
+ * R192：枢纽页「整块立体」卡片（色值一律在此登记，页面 wxss 只写布局）
+ * 为什么重写：R191 的卡片＝白底 + 左侧 8rpx 色条 + 右侧一个灰箭头，无阴影
+ *   ⇒ 李老师反馈「长得像括号、前面立体、整体廉价」。根因＝**只有一条边有信息**。
+ *   正解：左侧换成品牌色**渐变图标块**（96rpx，带自身投影）⇒ 整张卡有体积、有抓手。
+ * ============================================================ */
+.hub-hero { background: linear-gradient(135deg, #2a4e7c 0%, #162c49 100%); border-radius: 20rpx; padding: 28rpx 28rpx 32rpx;
+  margin-bottom: 24rpx; box-shadow: 0 10rpx 24rpx rgba(30, 58, 95, 0.22); }
+.hub-ico { width: 96rpx; height: 96rpx; border-radius: 24rpx; margin-right: 24rpx;
+  display: flex; align-items: center; justify-content: center; font-size: 40rpx; font-weight: 700; color: #fff;
+  box-shadow: 0 6rpx 14rpx rgba(30, 58, 95, 0.20); }
+.hub-ico-card { background: linear-gradient(135deg, #2a4e7c 0%, #162c49 100%); }
+.hub-ico-material { background: linear-gradient(135deg, #2fae7c 0%, #1a7d55 100%); }
+.hub-ico-takeaway { background: linear-gradient(135deg, #c2701a 0%, #8f4f08 100%); }
+.hub-ico-recon { background: linear-gradient(135deg, #8792a3 0%, #566070 100%); }
+.hub-ico-review { background: linear-gradient(135deg, #b0528a 0%, #7a345f 100%); }
+.hub-ico-groupon { background: linear-gradient(135deg, #e0552f 0%, #a8351a 100%); }
+.hub-ico-import { background: linear-gradient(135deg, #2a7fa8 0%, #17506e 100%); }
+.hub-ico-revenue { background: linear-gradient(135deg, #1a7d55 0%, #0f5237 100%); }
+/* hero 内的文字色（白字 + 淡蓝副文案）—— 色值单源，hub.wxss 不重复第二份 */
+.hub-hero .hub-title { color: #fff; font-size: 40rpx; }
+.hub-hero .hub-sub { color: #d7e2ef; margin-top: 10rpx; }
+.hub-go { width: 56rpx; height: 56rpx; border-radius: 28rpx; background: #f2f5f9;
+  display: flex; align-items: center; justify-content: center; font-size: 32rpx; color: #9aa4b2; margin-left: 12rpx; }
+
+/* R192：版本历史页趋势图 —— 成本 / 售价**双柱同尺度**（李老师：图上要有价格也要有版本） */
+.trend-bar-cost { background: linear-gradient(180deg, #2a4e7c 0%, #162c49 100%); }
+.trend-bar-price { background: #b9cbe0; }
+/* 图例色点（与柱子同色 ⇒ 图例才指得对） */
+.lg-cost { background: #1e3a5f; }
+.lg-price { background: #b9cbe0; }
+
+/* ============================================================
+ * R207：金额等宽（tabular-nums）+ 卡片圆角防溢出 —— **全局单源**
+ * 为什么不上提就必漂：这两条是**全站通病**（在哪张金额/列表卡上都成立），
+ *   若各页各写一份 `.align-cash` / `overflow:hidden`，将来调一个、漏二十处 —— 本仓既有红线。
+ * ① .money —— 金额一律等宽数字
+ *     治的是李老师的原始痛点：不同行的 ¥4.20 / ¥18.50 / ¥2.60 **小数点不在一条线上**，
+ *     眼睛要逐行移，10 行原料就移 10 次 ⇒ 这是「看着复杂」最便宜的解法之一。
+ *     兼容（诚实声明）：不支持 tabular-nums 的 webview 会**静默降级**成比例数字
+ *     ⇒ 那时不对齐、但**照样能读**，属可接受降级，**不会破版**。
+ * ② .ovh —— 有左侧竖条/色条的卡片必须带
+ *     挡的是小程序高频坑：8rpx 竖条画在 16~20rpx 圆角外面 ⇒ 卡片左上角冒出一根「尖角」。
+ * ============================================================ */
+.money {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  /* fallback 字体族：等宽数字优先取系统 UI 字体的 tabular 形态，不引外部字体（不放进包体） */
+  font-family: -apple-system, "SF Pro Text", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+}
+.ovh { overflow: hidden; }
+/* R419：「要注意」提示行，M1/M2 共用（原只在 M2 页定义） */
+.warn-note { font-size: 28rpx; color: #92610a; line-height: 1.6; padding: 0 0 6rpx; }
+
+/* ===== 风格 B（卡片化）· 全局骨架（2026-10-22 李老师选型 B）=====
+   用法：页面根加 .sb-page，区块用 .sb-card，两列并排用 .sb-row2 包两个 .sb-card。
+   🔴 只做"外壳骨架"：卡片 / 标题 / 主数值 / 徽标 / 明细行。内部表单仍用各页原有类，
+      避免一次改 8 个 wxml 把表单逻辑和最值对齐搞坏。
+   🔴 类名前缀 sb- = style B，全仓无同名冲突（加了先 grep 一遍）。 */
+.sb-page { background: #f2f4f7; min-height: 100vh; }
+/* 🔴 R437（队列 #6）：M3 三页（枢纽 / 物料 / 成本卡）的外壳取值并进**同一份声明**。
+   为什么不是各页 wxss 抄一遍数值：抄一份就多一处漂移点，改圆角要改四处且必然漏一处。
+   为什么枢纽页写在这组选择器里、而不是给 wxml 加类名：
+     `tools/check_hub_guide.js` 的 S2「hub-card 出现 ≥5 次」与 G4「引导块下标 < 第一张卡下标」
+     都是按**字面量** `class="hub-card"` 定位的；给卡片加第二个类会让这两条当场判红，
+     而军规禁止为了迁就改码去改守卫判据 ⇒ 枢纽只能在**声明层**共享（它无 sb-card 类名）。
+   为什么列表卡另给 `.sb-card.card2` 一条复合选择器：`.card2` 是 17 个页面共用的全局类，
+   直接改它会外溢到月度/外卖/对账（本轮只授权改三页）⇒ 复合选择器特异度 0,2,0 > 0,1,0，
+   只对**显式**同时带 sb-card 的列表卡生效，其余页面的 .card2 一个像素都不动。
+   布局（flex / padding / 具体间距）仍在各页 wxss，本组只管"底色 + 圆角 + 阴影 + 卡间距"。 */
+.sb-card, .hub-card, .hub-flow, .hub-empty, .sb-card.card2 {
+  background: #fff; border-radius: 24rpx; padding: 28rpx; margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+}
+.sb-row2 { display: flex; gap: 20rpx; margin-bottom: 20rpx; }
+.sb-row2 .sb-card { flex: 1 1 0; margin-bottom: 0; }
+.sb-lbl { font-size: 28rpx; color: #646a73; margin-bottom: 10rpx; }
+.sb-num { font-size: 40rpx; font-weight: 700; color: #1f2329; font-variant-numeric: tabular-nums; }
+.sb-num-lg { font-size: 48rpx; }
+.sb-sec { font-size: 28rpx; color: #646a73; margin: 6rpx 0 10rpx; }
+.sb-itm { display: flex; align-items: center; justify-content: space-between; font-size: 28rpx; padding: 14rpx 0; border-bottom: 1rpx solid #f4f5f7; }
+.sb-itm:last-child { border-bottom: none; }
+.sb-itm-v { font-weight: 600; font-variant-numeric: tabular-nums; }
+.sb-badge { display: inline-block; font-size: 28rpx; font-weight: 600; padding: 2rpx 14rpx; border-radius: 20rpx; margin-left: 10rpx; }
+.sb-badge.ok { background: #eaf6f0; color: #1f7a53; }
+.sb-badge.warn { background: #fff3e0; color: #a45f00; }
+.sb-badge.bad { background: #fdecea; color: #c0392b; }
+.sb-badge.na { background: #f2f4f7; color: #8a94a6; }

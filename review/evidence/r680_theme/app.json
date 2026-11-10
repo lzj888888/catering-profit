@@ -1,0 +1,95 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/m3/hub",
+    "pages/m3/dishreview/index",
+    "pages/mine/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "开店算账",
+    "navigationBarBackgroundColor": "#1e3a5f",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f5f6f8",
+    "enablePullDownRefresh": false
+  },
+  "tabBar": {
+    "color": "#8a94a6",
+    "selectedColor": "#1e3a5f",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "核算",
+        "iconPath": "images/tab/tab_calc_normal.png",
+        "selectedIconPath": "images/tab/tab_calc_active.png"
+      },
+      {
+        "pagePath": "pages/m3/hub",
+        "text": "配方",
+        "iconPath": "images/tab/tab_cost_normal.png",
+        "selectedIconPath": "images/tab/tab_cost_active.png"
+      },
+      {
+        "pagePath": "pages/mine/index",
+        "text": "我的",
+        "iconPath": "images/tab/tab_mine_normal.png",
+        "selectedIconPath": "images/tab/tab_mine_active.png"
+      }
+    ]
+  },
+  "style": "v2",
+  "lazyCodeLoading": "requiredComponents",
+  "preloadRule": {
+    "pages/index/index": {
+      "network": "wifi",
+      "packages": ["subpkg/biz"]
+    },
+    "pages/m3/hub": {
+      "network": "wifi",
+      "packages": ["subpkg/tools"]
+    }
+  },
+  "subpackages": [
+    {
+      "root": "subpkg/tools",
+      "pages": [
+        "metrics/impact",
+        "sandbox/index",
+        "sandbox/list",
+        "sandbox/matrix",
+        "sandbox/compare",
+        "recon/index",
+        "pay/orders",
+        "shop/setting",
+        "shop/switch"
+      ]
+    },
+    {
+      "root": "subpkg/biz",
+      "pages": [
+        "month/index",
+        "month/input",
+        "month/inventory",
+        "month/amortize",
+        "month/assetEdit",
+        "month/result",
+        "card/index",
+        "card/edit",
+        "card/import",
+        "card/version",
+        "material/index",
+        "material/edit",
+        "material/pick",
+        "material/batch",
+        "takeaway/index",
+        "groupon/index",
+        "revenue/index",
+        "revenue/manual/index",
+        "diag/input",
+        "diag/result",
+        "ai/consent"
+      ]
+    }
+  ]
+}

@@ -1,10 +1,10 @@
 /* pages/material/edit.wxss —— 原料新增/编辑表单页 */
 .val-input { text-align: right; font-size: 30rpx; width: 320rpx; }
 .picker { color: #1e3a5f; font-size: 30rpx; min-height: 88rpx; line-height: 88rpx; }
-/* round149 采购单位 chips。色值取 app.wxss 头注单源（墨蓝 #1e3a5f / 浅底 #e8eff7）；
+/* round149 采购单位 chips。色值取 app.wxss 头注单源（墨蓝 #1e3a5f / 浅底 #F5EBD8）；
    字号 28rpx = 新增字号下界（26rpx 必红）。 */
 .chip-row { display: flex; flex-wrap: wrap; margin-top: 12rpx; }
-.chip { font-size: 28rpx; padding: 10rpx 22rpx; margin: 0 12rpx 12rpx 0; border-radius: 24rpx; background: #e8eff7; color: #1e3a5f; }
+.chip { font-size: 28rpx; padding: 10rpx 22rpx; margin: 0 12rpx 12rpx 0; border-radius: 24rpx; background: #F5EBD8; color: #1e3a5f; }
 .chip-on { background: #1e3a5f; color: #fff; }
 
 /* round151：采购单位改成「输入框 + ▾」包裹层 —— 箭头让"能选、能改"看得见（真机实测反馈：
@@ -19,26 +19,26 @@
    输入框会被撑到 320rpx，句子被挤断行。边框/背景继承 app.wxss `.field input`，不另起一套样式。 */
 .conv-wrap { display: flex; align-items: center; }
 .conv-wrap .conv-input { width: 180rpx; min-width: 180rpx; text-align: center; }
-.conv-eq { flex: none; font-size: 30rpx; color: #4a5b70; }
+.conv-eq { flex: none; font-size: 30rpx; color: #6B6157; }
 /* round155：右侧由静态基准词改为**单位 picker**（「1 件 = [ 20 ] [ 公斤 ▾ ]」）。
    沿用 R153 的「单位格」纪律：浅底 + 自身圆角 + 左侧留白 —— 否则「20」与「公斤」连读，
-   且看不出这一格可点。色值取 app.wxss 头注单源（浅底 #e8eff7 / 边框 #cfdae8 / 墨蓝 #1e3a5f）；
+   且看不出这一格可点。色值取 app.wxss 头注单源（浅底 #F5EBD8 / 边框 #DCD2C0 / 墨蓝 #1e3a5f）；
    字号 28rpx 起 = 新增字号下界。 */
 .conv-unit { margin-left: 14rpx; padding: 14rpx 18rpx; box-sizing: border-box; min-width: 96rpx;
-  text-align: center; background: #e8eff7; border: 2rpx solid #cfdae8; border-radius: 10rpx;
+  text-align: center; background: #F5EBD8; border: 2rpx solid #DCD2C0; border-radius: 10rpx;
   color: #1e3a5f; font-size: 30rpx; }
 .conv-unit::after { content: '▾'; margin-left: 10rpx; font-size: 28rpx; }
 
 /* round156：连续录入横幅 —— 新增态保存成功后就地显示"存的是哪个原料" + 显式返回出口。
-   色沿用主色系 #1e3a5f / #e8eff7（不新增品牌色）；字号 28rpx 起（新增下界）；
+   色沿用主色系 #1e3a5f / #F5EBD8（不新增品牌色）；字号 28rpx 起（新增下界）；
    触摸下界 88rpx —— 「返回列表」是唯一出口，必须够大够好点。 */
 .saved-bar { display: flex; align-items: center; justify-content: space-between;
-  background: #e8eff7; border-radius: 12rpx; padding: 8rpx 24rpx; margin-bottom: 16rpx; }
+  background: #F5EBD8; border-radius: 12rpx; padding: 8rpx 24rpx; margin-bottom: 16rpx; }
 .saved-txt { flex: 1; font-size: 28rpx; color: #1e3a5f; line-height: 1.5; padding: 12rpx 0; }
 .saved-go { font-size: 28rpx; color: #2b7de9; min-height: 88rpx; line-height: 88rpx; padding-left: 16rpx; }
 
 /* ===== R234/J4e · 行内长提示折叠（句级，与月录入页 / M2 / assetEdit / amortize / takeaway 同形）=====
- * body 底色 #f3f7fb 与全局 `.hint` 同色 ⇒ 折叠前后视觉连贯。
+ * body 底色 #FBF6EC 与全局 `.hint` 同色 ⇒ 折叠前后视觉连贯。
  * 🔴 字号一律 ≥28rpx（AD-G1）、头行 min-height ≥88rpx（AD-G2）。
  * ⚠️ **不套外层白卡**（R234/J3 首版自伤教训）：外层只留间距，否则 body 嵌白卡 = 双层圆角。 */
 .hint-fold { padding: 0 0 6rpx; }
@@ -46,5 +46,5 @@
   min-height: 88rpx; padding: 14rpx 8rpx; }
 .hint-fold-guide { font-size: 28rpx; color: #1e3a5f; }
 .hint-fold-arrow { font-size: 28rpx; color: #1e3a5f; }
-.hint-fold-body { font-size: 28rpx; color: #4a5b70; line-height: 1.6; padding: 16rpx 20rpx;
-  background: #f3f7fb; border-radius: 12rpx; margin: 0 0 12rpx; }
+.hint-fold-body { font-size: 28rpx; color: #6B6157; line-height: 1.6; padding: 16rpx 20rpx;
+  background: #FBF6EC; border-radius: 12rpx; margin: 0 0 12rpx; }

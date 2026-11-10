@@ -7,16 +7,16 @@
   ],
   "window": {
     "navigationBarTitleText": "开店算账",
-    "navigationBarBackgroundColor": "#1e3a5f",
-    "navigationBarTextStyle": "white",
-    "backgroundColor": "#f5f6f8",
+    "navigationBarBackgroundColor": "#FFFDF8",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#F6F3EC",
     "enablePullDownRefresh": false
   },
   "tabBar": {
-    "color": "#8a94a6",
-    "selectedColor": "#1e3a5f",
-    "backgroundColor": "#ffffff",
-    "borderStyle": "black",
+    "color": "#9A9184",
+    "selectedColor": "#1E3A5F",
+    "backgroundColor": "#FFFDF8",
+    "borderStyle": "white",
     "list": [
       {
         "pagePath": "pages/index/index",

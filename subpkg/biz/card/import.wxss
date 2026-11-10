@@ -18,7 +18,7 @@
   padding: 20rpx 4rpx 12rpx; }
 .imp-go-hint { margin: 4rpx 4rpx 16rpx; line-height: 1.6; }
 
-.imp-item { background: #fff; border-radius: 16rpx; padding: 20rpx; margin-bottom: 14rpx; }
+.imp-item { background: #FFFDF8; border-radius: 16rpx; padding: 20rpx; margin-bottom: 14rpx; }
 .imp-head { display: flex; align-items: center; justify-content: space-between; }
 .imp-name { font-size: 32rpx; font-weight: 600; color: #1e3a5f; flex: 1; min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -39,9 +39,9 @@
 .imp-price-input { width: 180rpx; height: 88rpx; box-sizing: border-box;
   text-align: right; font-size: 30rpx; color: #1e3a5f;
   background: #f7fafd; border: 2rpx solid #dde7f2; border-radius: 10rpx; padding: 0 12rpx; }
-.imp-unit { font-size: 28rpx; color: #6b7a90; margin-left: 8rpx; }
+.imp-unit { font-size: 28rpx; color: #7C7264; margin-left: 8rpx; }
 
 .imp-reason { margin-top: 12rpx; font-size: 28rpx; color: #b3261e; line-height: 1.5; }
 .imp-go { margin-top: 16rpx; }
 
-.imp-empty { font-size: 28rpx; color: #6b7a90; text-align: center; padding: 60rpx 0; }
+.imp-empty { font-size: 28rpx; color: #7C7264; text-align: center; padding: 60rpx 0; }

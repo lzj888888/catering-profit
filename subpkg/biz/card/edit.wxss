@@ -10,15 +10,15 @@
 .val-input { text-align: right; font-size: 30rpx; width: 260rpx;
   box-sizing: border-box; padding-top: 0; padding-bottom: 0;
   min-height: 88rpx; line-height: 88rpx; }
-/* 菜品分类：自由输入 + 候选 chips。色值取 app.wxss 头注单源（墨蓝 #1e3a5f / 浅底 #e8eff7）；
+/* 菜品分类：自由输入 + 候选 chips。色值取 app.wxss 头注单源（墨蓝 #1e3a5f / 浅底 #F5EBD8）；
    字号 28rpx = 新增字号下界（26rpx 必红）。 */
-.cat-input { width: 100%; box-sizing: border-box; text-align: left; font-size: 32rpx; padding: 16rpx 20rpx; background: #f3f7fb; border-radius: 12rpx; min-height: 88rpx; }
+.cat-input { width: 100%; box-sizing: border-box; text-align: left; font-size: 32rpx; padding: 16rpx 20rpx; background: #FBF6EC; border-radius: 12rpx; min-height: 88rpx; }
 .chip-row { display: flex; flex-wrap: wrap; margin-top: 12rpx; }
 /* 🔴 R570（李老师真机：「chip 格子留得窄，数字显示不全」）：加 min-width 72rpx + 左右 padding 到 24rpx
    + 固定行高 44rpx，并禁止内部折行（nowrap）⇒ 数字永远整块显示。
    ⚠️ 豆包原建议字号 24rpx，本仓 **AD G1 下界是 28rpx** ⇒ 取 28，不跟。 */
 .chip { font-size: 28rpx; padding: 0 24rpx; min-width: 72rpx; line-height: 72rpx; white-space: nowrap;
-  margin: 0 16rpx 12rpx 0; border-radius: 24rpx; background: #e8eff7; color: #1e3a5f;
+  margin: 0 16rpx 12rpx 0; border-radius: 24rpx; background: #F5EBD8; color: #1e3a5f;
   box-sizing: border-box; text-align: center; }
 .chip-on { background: #1e3a5f; color: #fff; }
 /* round149：明细行里的「买→用」换算说明（一行小字，避免把采购价当成净料价填） */
@@ -27,39 +27,39 @@
 
 /* round150（M3.14）组件类型 chips —— 字号 28rpx 起（上线前 AD 缺口 G1 下界） */
 .kind-row { display: flex; flex-wrap: wrap; align-items: center; margin-top: 8rpx; }
-.kind-lbl { font-size: 28rpx; color: #6b7a90; margin-right: 12rpx; }
-.kind-chip { font-size: 28rpx; padding: 8rpx 20rpx; margin: 0 12rpx 8rpx 0; border-radius: 22rpx; background: #e8eff7; color: #1e3a5f; }
+.kind-lbl { font-size: 28rpx; color: #7C7264; margin-right: 12rpx; }
+.kind-chip { font-size: 28rpx; padding: 8rpx 20rpx; margin: 0 12rpx 8rpx 0; border-radius: 22rpx; background: #F5EBD8; color: #1e3a5f; }
 .kind-on { background: #1e3a5f; color: #ffffff; }
 
 /* round150（M3.15）规格（大小份）小节 */
-.spec-box { margin: 8rpx 0 4rpx; padding: 16rpx 20rpx 20rpx; background: #f5f8fc; border-radius: 12rpx; }
+.spec-box { margin: 8rpx 0 4rpx; padding: 16rpx 20rpx 20rpx; background: #FBF6EC; border-radius: 12rpx; }
 .spec-title { font-size: 30rpx; color: #1e3a5f; font-weight: 600; margin-bottom: 6rpx; }
 .spec-row { margin-top: 12rpx; }
 .spec-head { display: flex; align-items: center; }
-.spec-name { font-size: 30rpx; padding: 8rpx 24rpx; border-radius: 24rpx; background: #e8eff7; color: #1e3a5f; margin-right: 12rpx; }
+.spec-name { font-size: 30rpx; padding: 8rpx 24rpx; border-radius: 24rpx; background: #F5EBD8; color: #1e3a5f; margin-right: 12rpx; }
 .spec-on { background: #1e3a5f; color: #ffffff; }
 .spec-res { margin-top: 10rpx; padding: 12rpx 16rpx; background: #ffffff; border-radius: 10rpx; }
 .spec-res-name { font-size: 28rpx; color: #1e3a5f; font-weight: 600; }
 .spec-apply { color: #2b7de9; font-size: 28rpx; }
 .mode-item { font-size: 30rpx; margin-right: 32rpx; display: flex; align-items: center; }
-.line { background: #fff; border-radius: 12rpx; padding: 16rpx 24rpx; margin-bottom: 16rpx; }
+.line { background: #FFFDF8; border-radius: 12rpx; padding: 16rpx 24rpx; margin-bottom: 16rpx; }
 .cell2 { display: flex; justify-content: space-between; align-items: center; padding: 12rpx 0; }
-.cell2 .lbl { font-size: 28rpx; color: #666; }
+.cell2 .lbl { font-size: 28rpx; color: #6B6157; }
 /* round151：picker 补下拉箭头 —— 改前只有文字样式，真机上看着像纯文本，用户不知道能点。 */
 .picker { color: #1e3a5f; font-size: 30rpx; min-height: 88rpx; line-height: 88rpx; }
 .picker::after { content: '▾'; margin-left: 12rpx; font-size: 28rpx; color: #1e3a5f; }
 /* round153：明细行输入框补边框 —— 本页用 `.cell2`（不是 `.field`），拿不到 app.wxss 那条
    `.field input` 的边框/底色 ⇒ 改前所有输入框就是"右对齐的一行字"，跟纯文本没有区别
-   （真机实测：老板找不到能下手的地方）。边框色沿用 app.wxss:29 的 #cfdae8，不另起一套。 */
+   （真机实测：老板找不到能下手的地方）。边框色沿用 app.wxss:29 的 #DCD2C0，不另起一套。 */
 /* 🔴 R570（李老师真机：「框大、字小、看着空」）：字号 30→32rpx、内边距 14→16rpx、圆角 10→12rpx、
    边框色降到 #d9dce3（更浅 ⇒ 框看起来不那么"空旷"）。
    ⚠️ 触控下界 88rpx、字号下界 28rpx（AD G1/G2）**只增不减**，本仓红线不动。 */
 .cell2 .val-input { box-sizing: border-box; text-align: right; padding: 16rpx 20rpx;
-  min-height: 88rpx; border: 2rpx solid #d9dce3; border-radius: 12rpx; background: #fff; font-size: 32rpx; }
+  min-height: 88rpx; border: 2rpx solid #d9dce3; border-radius: 12rpx; background: #FFFDF8; font-size: 32rpx; }
 /* round153：单位格 —— 给"这一格是单位、不是数字的一部分"划出视觉边界。
    改前数字与单位紧挨着，实测被连读成「50 克」（老板以为自己在填数量）。
    手段：浅底 + 自身圆角 + 左侧留白，三者叠加，跟白底输入框自然分开。 */
-.unit-pick { margin-left: 12rpx; padding: 0 24rpx; background: #e8eff7;
+.unit-pick { margin-left: 12rpx; padding: 0 24rpx; background: #F5EBD8;
   border-radius: 10rpx; color: #1e3a5f; font-size: 30rpx; min-height: 88rpx; line-height: 88rpx; }
 /* 用量 / 单价的数值框：定宽留出右侧单位格的位置（不再独占整行） */
 .qty-input, .price-input { width: 200rpx; }
@@ -70,45 +70,45 @@
   font-size: 28rpx; color: #e74c3c; min-height: 88rpx; line-height: 88rpx; }
 /* round151：跨计量族提示条。字号 28rpx = 新增下界；告警色不入品牌色单源（单源只管墨蓝/浅底） */
 .warn-hint { margin: 0 0 8rpx 4rpx; font-size: 28rpx; line-height: 1.5; color: #b45309; }
-.reverse { background: #fff; border-radius: 12rpx; padding: 16rpx 24rpx; margin-bottom: 16rpx; }
+.reverse { background: #FFFDF8; border-radius: 12rpx; padding: 16rpx 24rpx; margin-bottom: 16rpx; }
 
 /* round156：连续录入横幅 —— 保存成功后就地显示"存的是哪道菜" + 显式返回出口。
    改前存完立刻 navigateBack 把人踢回列表（录 30 道菜来回 60 次）。
-   色沿用主色系 #1e3a5f / #e8eff7（不新增品牌色）；字号 28rpx 起（新增下界）。
+   色沿用主色系 #1e3a5f / #F5EBD8（不新增品牌色）；字号 28rpx 起（新增下界）。
    触摸下界 88rpx —— 「返回列表」是唯一出口，必须够大够好点。 */
 .saved-bar { display: flex; align-items: center; justify-content: space-between;
-  background: #e8eff7; border-radius: 12rpx; padding: 8rpx 24rpx; margin-bottom: 16rpx; }
+  background: #F5EBD8; border-radius: 12rpx; padding: 8rpx 24rpx; margin-bottom: 16rpx; }
 .saved-txt { flex: 1; font-size: 28rpx; color: #1e3a5f; line-height: 1.5; padding: 12rpx 0; }
 .saved-go { font-size: 28rpx; color: #2b7de9; min-height: 88rpx; line-height: 88rpx; padding-left: 16rpx; }
 
 /* M3.16（批次 C）套餐：子卡选择行 + 三个显示数。色/字号沿用既有 spec-box / del-row / unit-pick 风格，不新增品牌色。 */
-.combo-box { margin: 8rpx 0 4rpx; padding: 16rpx 20rpx 20rpx; background: #f5f8fc; border-radius: 12rpx; }
+.combo-box { margin: 8rpx 0 4rpx; padding: 16rpx 20rpx 20rpx; background: #FBF6EC; border-radius: 12rpx; }
 .combo-row { display: flex; align-items: center; margin-top: 8rpx; }
-.combo-pick { flex: 1; padding: 0 24rpx; background: #fff; border-radius: 10rpx; color: #1e3a5f;
-  font-size: 30rpx; min-height: 88rpx; line-height: 88rpx; border: 1rpx solid #e8eff7; }
+.combo-pick { flex: 1; padding: 0 24rpx; background: #FFFDF8; border-radius: 10rpx; color: #1e3a5f;
+  font-size: 30rpx; min-height: 88rpx; line-height: 88rpx; border: 1rpx solid #F5EBD8; }
 /* ===== R234/J4f · 行内长提示折叠（句级，仓内统一形态）=====
- * body 底色 #f3f7fb 与全局 `.hint` 同色；不套外层白卡（防双层圆角）。
+ * body 底色 #FBF6EC 与全局 `.hint` 同色；不套外层白卡（防双层圆角）。
  * 🔴 字号 ≥28rpx（AD-G1）、头行 min-height ≥88rpx（AD-G2）。 */
 .hint-fold { padding: 0 0 6rpx; }
 .hint-fold-head { display: flex; align-items: center; justify-content: space-between;
   min-height: 88rpx; padding: 14rpx 8rpx; }
 .hint-fold-guide { font-size: 28rpx; color: #1e3a5f; }
 .hint-fold-arrow { font-size: 28rpx; color: #1e3a5f; }
-.hint-fold-body { font-size: 28rpx; color: #4a5b70; line-height: 1.6; padding: 16rpx 20rpx;
-  background: #f3f7fb; border-radius: 12rpx; margin: 0 0 12rpx; }
+.hint-fold-body { font-size: 28rpx; color: #6B6157; line-height: 1.6; padding: 16rpx 20rpx;
+  background: #FBF6EC; border-radius: 12rpx; margin: 0 0 12rpx; }
 
 /* ===== P0#7（2026-10-11）：新手/专业模式（与 M1 录入页同形）+ 反算前置说明 ===== */
 .im-wrap { padding: 4rpx 0 8rpx; }
-.im-sec { font-size: 28rpx; color: #6b7a90; padding: 0 0 10rpx 8rpx; }
+.im-sec { font-size: 28rpx; color: #7C7264; padding: 0 0 10rpx 8rpx; }
 .im-opts { display: flex; gap: 12rpx; }
-.im-opt { flex: 1; min-width: 0; padding: 16rpx 14rpx; border-radius: 12rpx; border: 2rpx solid #e3eaf2; background: #fff; }
-.im-opt.on { border: 2rpx solid #1e3a5f; background: #e8eff7; }
+.im-opt { flex: 1; min-width: 0; padding: 16rpx 14rpx; border-radius: 12rpx; border: 2rpx solid #e3eaf2; background: #FFFDF8; }
+.im-opt.on { border: 2rpx solid #1e3a5f; background: #F5EBD8; }
 .im-h { font-size: 28rpx; font-weight: 600; color: #1e3a5f; }
-.im-d { font-size: 28rpx; color: #6b7a90; margin-top: 6rpx; }
-.im-tip { font-size: 28rpx; color: #8a94a6; line-height: 1.5; padding: 6rpx 8rpx 4rpx; }
+.im-d { font-size: 28rpx; color: #7C7264; margin-top: 6rpx; }
+.im-tip { font-size: 28rpx; color: #9A9184; line-height: 1.5; padding: 6rpx 8rpx 4rpx; }
 .im-expand { padding: 16rpx 0 4rpx; }
 .btn-block { width: 100%; min-height: 88rpx; }
-.rev-pre { font-size: 28rpx; color: #8a94a6; line-height: 1.5; margin-bottom: 12rpx; }
+.rev-pre { font-size: 28rpx; color: #9A9184; line-height: 1.5; margin-bottom: 12rpx; }
 
 /* ===== R372（M3 UI 收紧）=====
  * 问题（模拟器实测，novice 新建态）：整页 1561px ≈ 3.15 屏；其中
@@ -122,7 +122,7 @@
  *   ③ 输入框在本页收窄（覆盖全局 `.field input{min-width:320rpx}`），给标签让位；
  *   ④ 配料卡与单元格的留白各收一档（触控下界 88rpx 不动）。
  */
-.sec-lite { font-size: 28rpx; color: #6b7a90; padding: 20rpx 8rpx 8rpx; }
+.sec-lite { font-size: 28rpx; color: #7C7264; padding: 20rpx 8rpx 8rpx; }
 
 .form .field {
   padding: 0 20rpx;
@@ -162,17 +162,17 @@
   box-shadow: 0 -4rpx 16rpx rgba(30, 58, 95, 0.06); }
 .sa-l { flex: 1; min-width: 0; min-height: 88rpx; display: flex; align-items: center;
   flex-wrap: wrap; column-gap: 12rpx; padding-right: 12rpx; }
-.sa-cap { font-size: 28rpx; color: #6b7a90; }
+.sa-cap { font-size: 28rpx; color: #7C7264; }
 .sa-val { font-size: 34rpx; font-weight: 800; color: #1e3a5f; font-variant-numeric: tabular-nums; }
 .sa-mg { font-size: 28rpx; color: #2f6b4f; }
-.sa-empty { font-size: 28rpx; color: #8a94a6; }
+.sa-empty { font-size: 28rpx; color: #9A9184; }
 .sa-btn { width: 220rpx; margin: 0; min-height: 88rpx; font-size: 30rpx; padding: 0; }
 /* R443：批量粘贴配料 —— 不另造色板，沿用页面既有字号 */
-.paste-toggle { font-size: 28rpx; color: #646a73; padding: 16rpx 0; }
+.paste-toggle { font-size: 28rpx; color: #6B6157; padding: 16rpx 0; }
 .paste-ta { width: 100%; min-height: 200rpx; border: 1rpx solid #e5e6eb; border-radius: 8rpx; padding: 16rpx; font-size: 28rpx; box-sizing: border-box; }
 .paste-row { display: flex; align-items: center; justify-content: space-between; padding: 12rpx 0; border-bottom: 1rpx solid #f2f3f5; }
 .pr-name { font-size: 28rpx; flex: 1 1 auto; }
-.pr-qty { font-size: 28rpx; color: #646a73; margin: 0 16rpx; }
+.pr-qty { font-size: 28rpx; color: #6B6157; margin: 0 16rpx; }
 .pr-st { font-size: 28rpx; }
 .pr-st.ok { color: #1e9e5a; }
 .pr-st.bad { color: #e74c3c; }
@@ -209,7 +209,7 @@
 .line { padding: 8rpx 20rpx; margin-bottom: 8rpx; }
 
 /* R635：「上次试算（待更新）」—— 数字变灰，一眼看出这不是当前值 */
-.sa-stale { color: #8a94a6; }
+.sa-stale { color: #9A9184; }
 /* R635：「还差哪个数」与数字同时显示（以前挤在 wx:else 里，算出过一次就再也不出现） */
 .sa-hint { display: block; font-size: 24rpx; color: #b45309; margin-top: 4rpx; }
 
@@ -220,7 +220,7 @@
 .inline-cost { display: flex; align-items: center; flex-wrap: wrap; gap: 12rpx;
   background: #f5f9ff; border: 1rpx solid #dce8f7; border-radius: 12rpx;
   padding: 16rpx 20rpx; margin: 12rpx 0 8rpx; }
-.ic-l { font-size: 26rpx; color: #6b7a90; }
+.ic-l { font-size: 26rpx; color: #7C7264; }
 .ic-v { font-size: 34rpx; font-weight: 600; color: #1e3a5f; }
 .ic-m { font-size: 26rpx; color: #2b7de9; }
 .ic-empty { font-size: 26rpx; color: #b45309; }
@@ -246,7 +246,7 @@
 /* R640：进货价主显 —— 老板对「一公斤多少钱」敏感，对「一克多少钱」无感 */
 .price-main-row { display: flex; align-items: baseline; gap: 10rpx; margin: 6rpx 0 2rpx; }
 .price-main { font-size: 32rpx; font-weight: 600; color: #1e3a5f; }
-.price-main-cap { font-size: 24rpx; color: #8a94a6; }
+.price-main-cap { font-size: 24rpx; color: #9A9184; }
 
 /* R643：保存成功条里的额度提示 —— 不打断连续录入，也不会像 toast 一闪而过 */
 .quota-tip { display: block; font-size: 26rpx; color: #b45309; margin-top: 6rpx; }

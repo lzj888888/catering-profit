@@ -1,6 +1,7 @@
-/* 🔴 R679：首页改暖白米调（方案2）。只改本页 page 底色、不动 app.wxss ——
-   先看真机效果，认可了再推广；全站一起改一旦不对，定位成本高得多。 */
-page { background: #F6F3EC; }
+/* 🔴 R679：首页改暖白米调（方案2），当时**只改本页 page 底色、不动 app.wxss** ——
+   先看真机效果，认可了再推广（李老师 2026-11-10：「效果很好，看起来不那么冷冰冰的了」）。
+   R680 起暖底已上提为全局（app.wxss `page { background: #F6F3EC }`），
+   本页那条 `page{}` 重复声明**已删** —— 留着它就是第二个漂移点，将来改主题必漏这一处。 */
 
 /* index page styles inherit from app.wxss（.money / .ovh 走全局单源，本页不自造第二份） */
 
@@ -8,7 +9,7 @@ page { background: #F6F3EC; }
  *    ⇒ 加一行弱引导，说明底部三个 tab 各自管什么。
  *    颜色走 .muted 那一档（#666 / 28rpx，恰好达「新增字号 ≥28rpx」红线），不引入新色值。 */
 .idx-tip {
-  color: #666;
+  color: #6B6157;
   font-size: 28rpx;
   line-height: 1.6;
   padding: 8rpx 4rpx 4rpx;
@@ -113,7 +114,7 @@ page { background: #F6F3EC; }
   width: 72rpx;
   height: 72rpx;
   border-radius: 16rpx;
-  /* R679：暖黄浅版（原浅蓝 #e8eff7）—— 与深棕图标配，整卡主题统一 */
+  /* R679：暖黄浅版（原浅蓝 #F5EBD8）—— 与深棕图标配，整卡主题统一 */
   background: #EFE2C8;
   margin-right: 22rpx;
 }
@@ -131,7 +132,7 @@ page { background: #F6F3EC; }
  *     且收起时白卡只有一行字、显得空。**与月录入页 `.hint-fold` 同构**：外层只留间距，
  *     头行直接贴在页面底色上、body 才是有底色的块 ⇒ 收起时几乎不占视觉重量。
  *   · 收起态只占一行：min-height 88rpx 保触控红线（AD-G2）。
- *   · 展开态浅蓝底取 #f5f8fc，与月录入页 `.hint-fold-body` **同色**（本仓同一语义用同一色值）。
+ *   · 展开态浅蓝底取 #FBF6EC，与月录入页 `.hint-fold-body` **同色**（本仓同一语义用同一色值）。
  *   · 🔴 字号一律 ≥28rpx（AD-G1）。
  * ============================================================ */
 .guide-fold { padding: 0 0 6rpx; }
@@ -146,10 +147,10 @@ page { background: #F6F3EC; }
 .guide-fold-arrow { font-size: 28rpx; color: #1e3a5f; flex: 0 0 auto; margin-left: 12rpx; }
 .guide-fold-body {
   font-size: 28rpx;
-  color: #6b7a90;
+  color: #7C7264;
   line-height: 1.6;
   padding: 16rpx 24rpx;
-  background: #f5f8fc;
+  background: #FBF6EC;
   border-radius: 12rpx;
   margin-bottom: 12rpx;
 }
