@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：272 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：273 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1532,6 +1532,10 @@ const SUITES = [
   // R681：文字对比度（李老师「有些字有点金丝色，看着吃力」⇒ 旧低对比文字色不得回流；
   //       只判 color 属性，色块/描边不管；深色底上的白字走白名单）
   ['text-contrast', 'tools/check_text_contrast.js'],
+  // R686：跑通证据守卫（队列 #121 的 B2）—— 真机回填的**数字必须与源码现算对得上**，
+  //       否则「跑通」还是自述。补的是「判据被抄写了 ≠ 判据被校验了」这一环，
+  //       与 R92「索引已建≠生效」/ round53「判据存在≠被执行」/ R298Y「读到了≠送出去了」同族。
+  ['runthrough-evidence', 'tools/check_runthrough_evidence.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
