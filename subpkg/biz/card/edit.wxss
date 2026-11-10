@@ -261,3 +261,18 @@
 .tpl-field .tpl-pick .picker { width: 100%; box-sizing: border-box; }
 .tpl-field .muted { flex: 0 0 100%; }
 .picker-disabled { color: #a8b3c2; }
+
+/* 🔴 R676：输菜名自动匹配模板 —— 提示条 + 匹配不到的引导。
+   为什么用「常驻提示条」而不是弹窗：李老师不喜欢多余弹窗，而且套用是他可选的动作，
+   弹窗会打断填卡（套不套用都得先关掉）。提示条只占一行，点右边就套，不点就继续填。
+   触控：右侧「套用模板」用 padding 撑到 ≥88rpx 高（G2 触控下界）。 */
+.tpl-match { display: flex; align-items: center; justify-content: space-between;
+  background: #eef4fb; border-left: 6rpx solid #2a4e7c; border-radius: 12rpx;
+  padding: 20rpx 24rpx; margin: 0 0 16rpx; }
+.tpl-match-txt { font-size: 28rpx; color: #2a4e7c; flex: 1; line-height: 1.5; }
+.tpl-match-go { font-size: 28rpx; font-weight: 600; color: #1e3a5f; flex-shrink: 0;
+  margin-left: 20rpx; padding: 22rpx 8rpx; }
+
+/* 匹配不到时的引导 —— 灰字，不抢注意力，但要能读到 */
+.tpl-nomatch { font-size: 26rpx; color: #7a8698; line-height: 1.6;
+  background: #f6f8fa; border-radius: 12rpx; padding: 20rpx 24rpx; margin: 0 0 16rpx; }

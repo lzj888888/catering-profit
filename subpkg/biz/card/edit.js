@@ -15,7 +15,7 @@ const AmountInput = require('../../../utils/amountInput.js');
 const dh = require('../../../utils/dataHealth.js');   // R628：判列表是否被截断（数据不全就不给排名）   // R426（队列 #32）：金额栏体检（纯判定，不改数）
 const { openPaywall } = require('../../../utils/paywall.js');
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
-const { TEMPLATES, TEMPLATE_CATS, templatesByCat, applyTemplate, yieldOf } = require('../../../utils/dishTemplates.js');   // M3.20/R671 菜品模板（只预填，不写库）
+const { TEMPLATES, TEMPLATE_CATS, templatesByCat, applyTemplate, yieldOf, matchTemplateByName } = require('../../../utils/dishTemplates.js');   // M3.20/R671 菜品模板（只预填，不写库）
 // 🔴 R675：品类预设（CATEGORY_PRESETS / CONDIMENT_NAME / ENERGY_NAME）在编辑页**不再引用**。
 //   文件本身保留 —— 导入 Excel（import.js / dishImport.js）还在用它识别菜品分类。
 // 🔴 R644（会审 R637）：金额化单源 —— 把「毛利率 18%」变成「每卖一份亏 1.2 元」
@@ -234,6 +234,10 @@ Page({
       templateFrom: TERMS.card.templateFrom,
       templatePickPh: TERMS.card.templatePickPh,
       templateCatPh: TERMS.card.templateCatPh,   // R671：两级选择第一步的占位
+      // R676：输菜名自动匹配模板
+      tplMatchTip: TERMS.card.tplMatchTip,
+      tplMatchApply: TERMS.card.tplMatchApply,
+      tplNoMatchTip: TERMS.card.tplNoMatchTip,
       templateHint: TERMS.card.templateHint,
       // ── R234/J4f 行内长提示折叠（本页 1 处）──
       // 🔴 三处登记的第二处：漏映射 ⇒ 页面渲染成**空白**且零报错（R124 同族）
@@ -337,6 +341,10 @@ Page({
     tplCatNames: TEMPLATE_CATS.map((c) => c.label),
     tplCatIdx: -1,
     tplKeys: [],          // 当前品类下的 tpl_key 列表（onPickTemplate 用它换算）
+    // 🔴 R676：输菜名自动匹配模板（替代已删的品类选择器）
+    tplMatchKey: '',      // 匹配到的 tpl_key，空 = 不提示
+    tplMatchName: '',     // 匹配到的标准菜名（提示语里显示）
+    tplNoMatch: false,    // 菜名填了但库里没有 ⇒ 给「自己加原料」的引导
     // 🔴 R675：品类默认模板（catOptions/catPicked/catYieldDefault/catLabel）与
     //   燃气分摊（energyOn/energyFen）、估算卡横幅（hasPreset/estBanner）**全部删除**。
     //   原因见 edit.wxml 顶部注释。出净率改由模板行自带 + 选原料时按原料自动带出。
@@ -628,6 +636,54 @@ Page({
   },
 
   onName(e) { this.setData({ name: e.detail.value }); },
+
+  // 🔴 R676（李老师：「删完品类，老板面对空白配料区不知道填什么」）：
+  //   输完菜名 → 自动匹配模板库 → 提示「检测到「宫保鸡丁」　套用模板」
+  //   这是**替代品类选择器**的入口（品类已删，R675）。
+  //
+  //   三个「不该提示」的条件，每个都有代价更高的反面：
+  //   ① 配料区已经有内容 ⇒ 不提示（点了会**覆盖老板的手工录入**，比不提示糟得多）；
+  //   ② 匹配不到 ⇒ 不提示套用，但给一句「库里没有，自己加原料」的引导
+  //      （大部分菜不在库里，没这句话老板会以为功能坏了）；
+  //   ③ 同一条已经提示过 ⇒ 不重复 setData（每次返回页面都闪一下很吵）。
+  onNameBlur(e) {
+    const name = String((e && e.detail && e.detail.value) || this.data.name || '').trim();
+    if (!name) {
+      if (this.data.tplMatchKey || this.data.tplNoMatch) this.setData({ tplMatchKey: '', tplMatchName: '', tplNoMatch: false });
+      return;
+    }
+    // ① 已填了配料 ⇒ 一句话都不说
+    if (!this.linesAllBlank()) {
+      if (this.data.tplMatchKey || this.data.tplNoMatch) this.setData({ tplMatchKey: '', tplMatchName: '', tplNoMatch: false });
+      return;
+    }
+    const tpl = matchTemplateByName(name);
+    if (!tpl) {
+      // ② 库里没有 —— 给「自己加」的引导，不要静默
+      if (!this.data.tplNoMatch || this.data.tplMatchKey) this.setData({ tplMatchKey: '', tplMatchName: '', tplNoMatch: true });
+      return;
+    }
+    if (tpl.tpl_key === this.data.tplMatchKey && !this.data.tplNoMatch) return;   // ③ 同一条不重复
+    this.setData({ tplMatchKey: tpl.tpl_key, tplMatchName: tpl.dish_name, tplNoMatch: false });
+  },
+
+  // 配料区是否「一点内容都没有」（全是空行也算空）
+  // ⚠️ 判据用「行里有没有真内容」而不是 lines.length —— load() 初始就塞一行空行，
+  //   按 length 判会恒假（R568 踩过同一个坑）。
+  linesAllBlank() {
+    const L = this.data.lines || [];
+    if (!L.length) return true;
+    return L.every((l) => !l
+      || (!String(l.material_name || '').trim() && !String(l.qty || '').trim()));
+  },
+
+  // 点「套用模板」—— 用匹配到的模板，但**保留老板自己输的菜名**
+  onApplyMatched() {
+    const key = this.data.tplMatchKey;
+    const tpl = key ? TEMPLATES.filter((t) => t.tpl_key === key)[0] : null;
+    if (!tpl) return;
+    this.applyTplToCard(tpl, -1, true);
+  },
   // R547（M8）：改模式 / 改出货量都要重算体检 —— 否则切到「按一批算」后横幅不出现
   //   （checkAmounts 只在金额栏的 handler 里被调用，模式与出货量都不是金额栏）。
   onMode(e) { this.setData({ calcMode: e.detail.value }); this.checkAmounts(); },
@@ -669,6 +725,17 @@ Page({
     const key = (this.data.tplKeys || [])[i];
     const tpl = key ? TEMPLATES.filter((t) => t.tpl_key === key)[0] : null;
     if (!tpl) return;
+    this.applyTplToCard(tpl, i, false);
+  },
+
+  // 🔴 R676：把「套用模板」抽出来 —— 两条入口共用一份逻辑：
+  //   ① 下拉选模板（onPickTemplate）② 输菜名自动匹配后点「套用」（onApplyMatched）
+  //   抄第二份必然漂移（R474 教训：抄一份必漂），而且套用涉及模式/批量产出/锅底提示三处边界。
+  // @param pickedIdx 品类内索引（下拉用；自动匹配传 -1，因为没有"下拉选中项"）
+  // @param keepName  保留老板自己输入的菜名（自动匹配时 true —— 他输「重庆小面」，
+  //                  模板叫「重庆小面（素面）」，**不能被改成模板名**，R626：我明明填了却变了）
+  applyTplToCard(tpl, pickedIdx, keepName) {
+    if (!tpl) return;
     const rows = applyTemplate(tpl);
     // 模板行 → 手工行（input_type=2）：行名 + 用量 + 单位预填，单价留空等用户填
     const lines = rows.map((r) => Object.assign({}, emptyManualLine(), {
@@ -687,7 +754,8 @@ Page({
     //   mode B 时顺手把专业项展开（核算模式 / 批量产出就在那一区，不展开老板看不到、改不了）。
     const tplMode = tpl.mode === 'B' ? 'B' : 'A';
     const batch = Number(tpl.batch_output);
-    const patch = { name: tpl.dish_name, lines: renumber(lines), tplPicked: i, cardType: '1', calcMode: tplMode };
+    const patch = { lines: renumber(lines), tplPicked: pickedIdx, cardType: '1', calcMode: tplMode };
+    if (!keepName) patch.name = tpl.dish_name;      // 自动匹配时保留老板输入的菜名
     if (tplMode === 'B') {
       patch.batchOutput = batch > 0 ? String(batch) : '';
       patch.showMore = true;
@@ -704,6 +772,8 @@ Page({
     if (tplMode === 'B' && /锅底|锅/.test(tpl.dish_name)) {
       wx.showToast({ title: TERMS.card.potPriceHint, icon: 'none', duration: 3000 });
     }
+    // 套过了就清掉匹配提示（配料区已经不空了）
+    this.setData({ tplMatchKey: '', tplMatchName: '', tplNoMatch: false });
   },
 
   // 🔴 R675（李老师：「这道菜属于哪类」可以删除了）：原 `onPickCategory` / `onClearCategory`

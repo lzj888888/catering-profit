@@ -20,7 +20,7 @@ function ok(name, cond, detail) {
   if (cond) { pass++; console.log('  ✅ ' + name + (detail ? ' —— ' + detail : '')); } else { failN++; console.log('  ❌ ' + name + (detail ? ' —— ' + detail : '')); }
 }
 
-const { TEMPLATES, applyTemplate } = require(path.join(ROOT, 'utils/dishTemplates.js'));
+const { TEMPLATES, applyTemplate, matchTemplateByName, normDishName } = require(path.join(ROOT, 'utils/dishTemplates.js'));
 const { PURCHASE_UNITS } = require(path.join(ROOT, 'utils/units.js'));
 
 console.log('\n===== T 基本契约 =====');
@@ -172,6 +172,58 @@ ok('T-⑲ 🔴 出处说明**不指向具体来源**（不写"来自某书/某�
 ok('T-⑳ 模板**绝不预填价格**（R138 红线①：价格随行就市，只能老板自己填）',
   TEMPLATES.every((t) => (t.lines || []).every((l) => !/price|金额|元\/份|单价/.test(l.line_name || ''))),
   '零预填价格');
+
+console.log('\n===== N 输菜名自动匹配模板（R676，替代已删的品类选择器）=====');
+// 为什么要守：品类删了（R675），老板面对空白配料区。匹配是新的入口。
+// 两个方向的错都要防：
+//   ① **误命中**（把「宫保鸡丁盖饭」套上「宫保鸡丁」）⇒ 漏掉米饭成本，老板看不出来；
+//   ② **不命中却静默**（输了没反应）⇒ 老板以为功能坏了。
+const nmCases = [
+  ['宫保鸡丁', '宫保鸡丁', '精确命中'],
+  ['宫保鸡丁（大份）', '宫保鸡丁', '括号注释不影响'],
+  [' 宫保 鸡丁 ', '宫保鸡丁', '空白不影响'],
+  ['重庆小面', '重庆小面（素面）', '模板名带括号时，输入主名也能命中'],
+  ['红烧牛肉面', '红烧牛肉面', '同菜名命中'],
+];
+let nmBad = [];
+nmCases.forEach(([q, exp]) => {
+  const got = matchTemplateByName(q);
+  if (!got || normDishName(got.dish_name) !== normDishName(exp)) nmBad.push(q + '→' + (got ? got.dish_name : 'null'));
+});
+ok('N-① 该命中的五例全部命中（精确 / 带括号 / 带空格 / 模板名带括号）', nmBad.length === 0, nmBad.join(',') || '5/5');
+
+// 🔴 误命中：这四例**必须不命中**，每个都会导致成本算错
+const nmMustMiss = ['宫保鸡丁盖饭', '牛肉面', '小面', '回锅肉丝'];
+const nmFalse = nmMustMiss.filter((q) => !!matchTemplateByName(q));
+ok('N-② 🔴 不许误命中：「宫保鸡丁盖饭」≠「宫保鸡丁」（盖饭还要加米饭，套上就漏成本）、「牛肉面」≠「红烧牛肉面」',
+  nmFalse.length === 0, nmFalse.length ? '误命中：' + nmFalse.join(',') : '4/4 正确不命中');
+ok('N-③ 空输入 / 纯空格 ⇒ 不命中也不崩', matchTemplateByName('') === null && matchTemplateByName('   ') === null);
+
+// 重名会让匹配有歧义（同一句话可能匹配到两道菜）
+const nmSeen = {};
+const nmDup = [];
+TEMPLATES.forEach((t) => { const n = normDishName(t.dish_name); if (nmSeen[n]) nmDup.push(n); nmSeen[n] = 1; });
+ok('N-④ 模板名归一化后不重名（重名 ⇒ 匹配有歧义，同一菜名可能套上另一道菜）',
+  nmDup.length === 0, nmDup.join(',') || TEMPLATES.length + ' 道无重名');
+
+// 变异回灌：改成「包含匹配」⇒ N-② 必须转红
+const nmMut = (q) => TEMPLATES.filter((t) => normDishName(q).indexOf(normDishName(t.dish_name)) >= 0)[0] || null;
+ok('N-⑤ 变异体（改成包含匹配）确实会误命中「宫保鸡丁盖饭」⇒ N-② 有分辨力',
+  !!nmMut('宫保鸡丁盖饭'));
+
+console.log('\n===== N 页面接线：写了函数 ≠ 触发得到 =====');
+const EDITJ = fs.readFileSync(path.join(ROOT, 'subpkg/biz/card/edit.js'), 'utf8');
+const EDITW = fs.readFileSync(path.join(ROOT, 'subpkg/biz/card/edit.wxml'), 'utf8');
+ok('N-⑥ 🔴 菜名输入框接了 bindblur（只写 onNameBlur 不绑 = 永远不触发）',
+  /bindblur="onNameBlur"/.test(EDITW));
+ok('N-⑦ 🔴 提示条真渲染了（wxml 里有 tplMatchKey 的条件块 + 套用按钮）',
+  /tplMatchKey/.test(EDITW) && /onApplyMatched/.test(EDITW));
+ok('N-⑧ 🔴 匹配不到时给引导，不是沉默（大部分菜不在库里）',
+  /tplNoMatch/.test(EDITW) && /tplNoMatchTip/.test(EDITW));
+ok('N-⑨ 🔴 自动套用时**保留老板输入的菜名**（他输「重庆小面」不能被改成「重庆小面（素面）」）',
+  /applyTplToCard\(tpl, -1, true\)/.test(EDITJ) && /if \(!keepName\) patch\.name/.test(EDITJ));
+ok('N-⑩ 配料区已有内容时不提示（点了会覆盖手工录入）',
+  /if \(!this\.linesAllBlank\(\)\)/.test(EDITJ));
 
 console.log('\n===== 结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);

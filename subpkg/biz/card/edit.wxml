@@ -45,7 +45,7 @@
   <view class="sec-lite">{{t.secBasic}}</view>
   <view class="field">
     <text class="lbl">{{t.dishName}}</text>
-    <input class="val-input" value="{{name}}" placeholder="{{t.dishNamePh}}" bindinput="onName" />
+    <input class="val-input" value="{{name}}" placeholder="{{t.dishNamePh}}" bindinput="onName" bindblur="onNameBlur" />
   </view>
 
   <!-- M3.16（批次 C）卡片类型：单品 / 套餐（引用型成本卡）
@@ -74,6 +74,15 @@
     </picker>
     <text class="muted">{{t.templateHint}}</text>
   </view>
+  <!-- 🔴 R676：输完菜名自动匹配模板（替代已删的品类选择器）。
+       只在「配料区还是空的」时候提示 —— 已填了内容再提示，一点就覆盖老板的手工录入。 -->
+  <view class="tpl-match" wx:if="{{!isEdit && cardType === '1' && tplMatchKey}}">
+    <text class="tpl-match-txt">{{t.tplMatchTip}}「{{tplMatchName}}」</text>
+    <text class="tpl-match-go" catchtap="onApplyMatched">{{t.tplMatchApply}}</text>
+  </view>
+  <!-- 匹配不到时的引导：库里没有这道菜很正常（41 道 vs 老板 30-50 道菜单），
+       不吭声老板会以为"输了没反应/功能坏了"。给一句怎么做，比沉默有用。 -->
+  <view class="tpl-nomatch" wx:if="{{!isEdit && cardType === '1' && tplNoMatch}}">{{t.tplNoMatchTip}}</view>
 
   <!-- 🔴 R675（李老师）：删掉「这道菜属于哪类」+ 燃气燃料分摊。
        为什么删：

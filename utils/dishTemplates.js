@@ -732,9 +732,39 @@ function applyTemplate(tpl) {
   }));
 }
 
+// 🔴 R676（李老师：「删完品类，老板面对空白配料区不知道填什么」）：
+//   老板输完菜名 → 自动匹配模板库 → 提示「检测到「宫保鸡丁」，要套用吗？」
+//   这是**替代品类选择器**的入口引导（品类已删，R675）。
+//
+//   匹配规则故意做**严**（只认归一化后相等），不接受包含匹配：
+//     「宫保鸡丁盖饭」≠「宫保鸡丁」—— 盖饭还要加米饭，套上宫保模板会**漏掉米饭成本**；
+//     「牛肉面」≠「红烧牛肉面」—— 两者配料不同。
+//   **宁可少提示，不能给错**：不提示的代价是老板自己填（他知道自己卖什么），
+//   给错的代价是一张成本错的卡（而且他看不出来）。
+function normDishName(v) {
+  return String(v == null ? '' : v)
+    .replace(/（[^）]*）/g, '')   // 全角括号及其内容（如「重庆小面（素面）」→「重庆小面」）
+    .replace(/\([^)]*\)/g, '')   // 半角括号
+    .replace(/\s+/g, '')         // 所有空白
+    .trim();
+}
+
+/**
+ * 按菜名找模板（纯读）。
+ * @returns {object|null} 命中返回模板对象，否则 null（**不猜**）
+ */
+function matchTemplateByName(name) {
+  const n = normDishName(name);
+  if (!n) return null;
+  for (let i = 0; i < TEMPLATES.length; i += 1) {
+    if (normDishName(TEMPLATES[i].dish_name) === n) return TEMPLATES[i];
+  }
+  return null;
+}
+
 // R671：额外导出「按大类分组」的读法 —— 页面两级选择用这它，不用自己 group
 function templatesByCat(catKey) {
   return TEMPLATES.filter((t) => !catKey || t.cat === catKey);
 }
 
-module.exports = { TEMPLATES, TEMPLATE_CATS, templatesByCat, getTemplate, applyTemplate, yieldOf };
+module.exports = { TEMPLATES, TEMPLATE_CATS, templatesByCat, getTemplate, applyTemplate, yieldOf, matchTemplateByName, normDishName };
