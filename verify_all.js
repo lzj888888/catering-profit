@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：288 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：289 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1585,6 +1585,16 @@ const SUITES = [
   //   ⚠️ 判的是**方向词是否存在**而非字面比对：合法改写只要仍说清方向就通过，
   //      否则守卫会退化成「不许动文案」的橡皮章。含 4 条反恒真。
   ['takeaway-semantics', 'tools/check_takeaway_semantics.js'],
+  // R716：外卖页「本单实收」（可选输入）守卫。R715 报告建议 1 ——
+  //   外卖页此前只有「标准单应付」（成本卡售价 × 份数 + 打包费 + 顾客配送费），
+  //   而外卖普遍加价 2~5 元、还有满减 ⇒ 老板拿到的利润是估的，不是这单真赚的。
+  //   守四件容易静默写错的事：① 填了实收不再逐项扣费（重复扣一次，利润平白少一截）
+  //                          ② 填了实收不给到手率（分母是标准单，加价单会算出 >100%）
+  //                          ③ 填了实收不画瀑布（各项占比重加对不上 100%）
+  //                          ④ 总额法标 available:false 且出空串不出 0.00
+  //   另守边界：0 / 负数 / 读不成的字，都不许被当成「这单实收 0 元」。
+  //   44 断言，页面桩真跑 onCalc + 5 条变异回灌。
+  ['takeaway-actual', 'tools/check_takeaway_actual.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

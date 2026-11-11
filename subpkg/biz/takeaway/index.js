@@ -138,6 +138,9 @@ function defaultParams() {
     promo_yuan: '',
     pack_fee_yuan: '',
     delivery_customer_yuan: '',
+    // 🔴 R716：本单商家实收（选填）。填了就用它算利润，且**不再逐项扣费**（已扣在里面）。
+    //   空串 = 未填 = 退回按上面参数估算 —— 不能把 0 当「这单实收 0 元」。
+    actual_receipt_yuan: '',
     s_user: { amount_yuan: '', payer: '' },
     s_merchant: { amount_yuan: '', payer: 'merchant' },
   };
@@ -182,6 +185,13 @@ Page({
       packFeePh: TK.packFeePh,
       deliveryCustomer: TK.deliveryCustomer,
       deliveryCustomerPh: TK.deliveryCustomerPh,
+      // R716：本单实收（可选）—— 填了按它算利润，不填按上面费率估
+      actualTitle: TK.actualTitle,
+      actualLabel: TK.actualLabel,
+      actualPh: TK.actualPh,
+      actualNote: TK.actualNote,
+      actualModeTip: TK.actualModeTip,
+      accrualUnavailable: TK.accrualUnavailable,
       subsidyTitle: TK.subsidyTitle,
       subsidyUser: TK.subsidyUser,
       subsidyMerchant: TK.subsidyMerchant,
@@ -191,6 +201,8 @@ Page({
       payerPlatform: TK.payerPlatform,
       resultTitle: TK.resultTitle,
       payment: TK.payment,
+      // R716：实测模式下同一行改叫「标准单应付」（那个数不再是顾客实付）
+      stdPayment: TK.stdPayment,
       receipt: TK.receipt,
       profit: TK.profit,
       receiptRate: TK.receiptRate,
@@ -282,6 +294,8 @@ Page({
       loading: TERMS.ui.loading,
       // P1 · 逐行毛利（外卖单订单 套餐毛利）
       itemGrossTitle: TK.itemGrossTitle,
+      // R716：实测模式下逐行毛利之和会大于本单利润（行毛利没扣平台抽成），必须先讲清
+      itemGrossActualNote: TK.itemGrossActualNote,
       itemGrossProfit: TK.itemGrossProfit,
       itemGrossMargin: TK.itemGrossMargin,
       // A9（2026-11-05）：明细锁定条文案（漏映射 ⇒ 渲染成空白且零报错，R124 同族）
@@ -490,6 +504,9 @@ Page({
       promo_yuan: p.promo_yuan,
       pack_fee_yuan: p.pack_fee_yuan,
       delivery_customer_yuan: p.delivery_customer_yuan,
+      // 🔴 R716：实收必须进体检。读不成（「22.5元」「1,200」）时 buildOrder 会静默转 0
+      //   ⇒ 老板以为按实收算了，实际退回估算 —— 两个数都不报错，只差一截，最难发现。
+      actual_receipt_yuan: p.actual_receipt_yuan,
       subsidy_user_yuan: (p.s_user || {}).amount_yuan,
       subsidy_merchant_yuan: (p.s_merchant || {}).amount_yuan,
       targetProfitYuan: this.data.targetProfitYuan,
@@ -534,6 +551,8 @@ Page({
       promo_fen: fen(p.promo_yuan),
       pack_fee_fen: fen(p.pack_fee_yuan),
       delivery_customer_fen: fen(p.delivery_customer_yuan),
+      // R716：实收（选填）。空串⇒0⇒calcTakeawayOrder 走估算，不把 0 当「实收 0 元」
+      actual_receipt_fen: fen(p.actual_receipt_yuan),
       s_user: { amount_fen: fen(p.s_user.amount_yuan), payer: p.s_user.payer || null },
       s_merchant: { amount_fen: fen(p.s_merchant.amount_yuan), payer: p.s_merchant.payer || null },
     };
@@ -580,10 +599,20 @@ Page({
         receipt_rate: result.cash.receipt_rate,
         dish_cost: fmt(result.cash.dish_cost_fen),
         pack_cost: fmt(result.cash.pack_cost_fen),
-        revenue: fmt(result.accrual.revenue_fen),
-        expense: fmt(result.accrual.expense_fen),
-        profit_accrual: fmt(result.accrual.profit_fen),
-        rate_low: result.cash.receipt_rate < 70,
+        // 🔴 R716：实测实收 ⇒ 总额法不可用。**给空串不给 '0.00'** —— 0.00 会被读成
+        //   「这单总额法算出来是 0」，而真相是「这套输入下算不了」。缺口要说出来。
+        revenue: result.accrual.available ? fmt(result.accrual.revenue_fen) : '',
+        expense: result.accrual.available ? fmt(result.accrual.expense_fen) : '',
+        profit_accrual: result.accrual.available ? fmt(result.accrual.profit_fen) : '',
+        // R716：实收是老板手填 ⇒ 换展示分支；并给出「估算实收」做对照（差多少＝加价与折让总量）
+        is_actual: result.cash.is_actual,
+        actual_receipt: fmt(result.cash.actual_receipt_fen),
+        estimated_receipt: fmt(result.cash.estimated_receipt_fen),
+        accrual_available: result.accrual.available,
+        // R716：{est} = 按参数估算的实收 —— 一句话同时答「费率有没有重复扣」和「你的参数估得准不准」
+        actualModeTip: String(TK.actualModeTip).replace('{est}', fmt(result.cash.estimated_receipt_fen)),
+        // 到手率可能是 null（实测模式 / 顾客支付为 0）⇒ 不能 `null < 70` 那样隐式判
+        rate_low: result.cash.receipt_rate != null && result.cash.receipt_rate < 70,
         // P1 · 逐行毛利（外卖单订单 套餐毛利）
         items,
         // A9：明细未下发 ⇒ 出「已算出汇总 + 展开入口」，不出空白区（空白区会被当成"坏了"）
@@ -591,6 +620,10 @@ Page({
         // R615 M3 决策台 Q3：把「到手率」拆成瀑布 —— 佣金/配送/补贴/推广各占几个点，
         //   并给「到手率再低几个点就白干」。占比 + 到手率 ≡ 100%（守卫 B-⑩ 钉住）。
         waterfall: (() => {
+          // 🔴 R716：实测实收时不画瀑布。瀑布每段的分母是 `payment`（标准单应付），
+          //   而实收里已经混进了加价/满减 —— 各项占比重加起来对不上 100%，
+          //   条会显示成「佣金 14% + 实收 76%」这种自相矛盾的图。宁可不画。
+          if (result.cash.is_actual) return null;
           const wf = M3D.buildTakeawayWaterfall(result.cash);
           if (!wf.ok) return null;
           const LABEL = {

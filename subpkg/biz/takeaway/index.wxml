@@ -102,6 +102,17 @@
     </picker>
   </view>
 
+  <!-- 🔴 R716（R715 报告建议 1）：更准一步 —— 直接填本单实收。
+       放在平台参数之后：老板正常流程是先填参数，填完看到这里才知道"还有更准的"。
+       只给一个框，不给两个（顾客实付 / 商家实收）—— 老板分不清就会填错，而填错的后果是
+       利润虚高一倍且零报错。这一格只要老板**确实知道**的那个数。 -->
+  <view class="sec">{{t.actualTitle}}</view>
+  <view class="field">
+    <text class="lbl">{{t.actualLabel}}</text>
+    <input class="val-input" type="digit" value="{{params.actual_receipt_yuan}}" data-field="actual_receipt_yuan" bindinput="onParam" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.actualPh}}" />
+  </view>
+  <view class="base-note">{{t.actualNote}}</view>
+
   <view class="warn" wx:if="{{badAmountCount > 0}}">{{t.amountBadTip}}</view>
   <view class="warn" wx:if="{{badQtyCount > 0}}">{{t.qtyBadTip}}</view>
   <button class="btn primary" style="margin-top:24rpx;" bindtap="onCalc">{{t.resultTitle}}</button>
@@ -109,12 +120,17 @@
   <!-- 结果区（双口径分别展示） -->
   <view class="sec" wx:if="{{result}}">{{t.resultTitle}}</view>
   <block wx:if="{{result && mode === 'cash'}}">
-    <view class="cell"><text class="lbl">{{t.payment}}</text><text class="val">{{t.cur}}{{view.payment}}</text></view>
+    <!-- 🔴 R716：填了实收 ⇒ 这一行不再是「顾客支付」而是「标准单应付」。
+         两个数并排才看得出「标准单 34 → 实收 26」中间被抽走多少；
+         若还叫「顾客支付」，老板会拿它跟顾客实付对，对不上就以为算错了。 -->
+    <view class="cell"><text class="lbl">{{view.is_actual ? t.stdPayment : t.payment}}</text><text class="val">{{t.cur}}{{view.payment}}</text></view>
     <view class="cell"><text class="lbl">{{t.receipt}}</text><text class="val">{{t.cur}}{{view.receipt}}</text></view>
     <view class="cell"><text class="lbl">{{t.dishCost}}</text><text class="val">{{t.cur}}{{view.dish_cost}}</text></view>
     <view class="cell"><text class="lbl">{{t.packCost}}</text><text class="val">{{t.cur}}{{view.pack_cost}}</text></view>
     <view class="cell"><text class="lbl">{{t.profit}}</text><text class="val strong">{{t.cur}}{{view.profit}}</text></view>
-    <view class="cell"><text class="lbl">{{t.receiptRate}}</text><text class="val">{{view.receipt_rate}}%</text></view>
+    <!-- 到手率在实测模式下不给（分母是标准单，加价/满减在它之外 ⇒ 会 >100% 或莫名偏低） -->
+    <view class="cell" wx:if="{{!view.is_actual}}"><text class="lbl">{{t.receiptRate}}</text><text class="val">{{view.receipt_rate}}%</text></view>
+    <view class="base-note" wx:if="{{view.is_actual}}">{{view.actualModeTip}}</view>
     <view class="warn" wx:if="{{view.rate_low}}">{{t.rateLowHint}}</view>
     <!-- 🔴 R615 M3 决策台 Q3：平台拿走了多少（瀑布）—— 到手率一个数看不出贵在哪 -->
     <block wx:if="{{view.waterfall}}">
@@ -131,14 +147,22 @@
     </block>
   </block>
   <block wx:if="{{result && mode === 'accrual'}}">
-    <view class="cell"><text class="lbl">{{t.revenue}}</text><text class="val">{{t.cur}}{{view.revenue}}</text></view>
-    <view class="cell"><text class="lbl">{{t.expense}}</text><text class="val">{{t.cur}}{{view.expense}}</text></view>
-    <view class="cell"><text class="lbl">{{t.profit}}</text><text class="val strong">{{t.cur}}{{view.profit_accrual}}</text></view>
+    <!-- 🔴 R716：填了实收 ⇒ 总额法算不了（它要顾客实付）。这里**不出 0.00**，
+         而是直说这一格为什么是空的 —— 显示 0 会被读成"这单总额法算出来是 0"。 -->
+    <block wx:if="{{view.accrual_available}}">
+      <view class="cell"><text class="lbl">{{t.revenue}}</text><text class="val">{{t.cur}}{{view.revenue}}</text></view>
+      <view class="cell"><text class="lbl">{{t.expense}}</text><text class="val">{{t.cur}}{{view.expense}}</text></view>
+      <view class="cell"><text class="lbl">{{t.profit}}</text><text class="val strong">{{t.cur}}{{view.profit_accrual}}</text></view>
+    </block>
+    <view class="base-note" wx:if="{{!view.accrual_available}}">{{t.accrualUnavailable}}</view>
   </block>
 
   <!-- P1 · 本单各菜品/套餐毛利（外卖单订单 套餐毛利可读性）-->
   <block wx:if="{{view.items.length}}">
     <view class="sec">{{t.itemGrossTitle}}</view>
+    <!-- 🔴 R716：填了实收后，逐行毛利之和会大于本单利润（行毛利按成本卡售价算、没扣抽成）。
+         实测 20.00 vs 14.00，差 6 元 —— 不解释，老板第一反应就是"算错了"。灰字不用橙色：这是解释不是警告。 -->
+    <view class="muted" wx:if="{{view.is_actual}}">{{t.itemGrossActualNote}}</view>
     <view class="cell" wx:for="{{view.items}}" wx:key="index">
       <view class="ci-left">
         <text class="ci-name">{{item.name}}</text>

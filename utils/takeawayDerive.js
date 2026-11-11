@@ -11,6 +11,8 @@
 //   ⑤ 打包费（收入）与包材成本（成本）两条腿都走、不得相抵。
 //   ⑥ 外卖单均利润**不得进 M1**（输出对象不含任何 monthly/ledger 类字段，守卫 R135）。
 //   ⑦ `commission_mode === 'fixed'` 时保底 min **不生效**（避免两条规则打架）。
+//   ⑧ `actual_receipt_fen` 填了就**只认它**，不再逐项扣费；且此时 `receipt_rate` 必须为 null、
+//      `accrual.available` 必须为 false（理由见下方 R716 注释块）。
 
 // ===================== 佣金（rate / fixed 两模式） =====================
 /**
@@ -71,6 +73,7 @@ function packCostOf(packs, lookup) {
  *   - params: { commission_mode, commission_rate, commission_min_fen, commission_fixed_fen,
  *               delivery_fee_fen, delivery_subsidy_fen, promo_fen,
  *               pack_fee_fen, delivery_customer_fen,
+ *               actual_receipt_fen,
  *               s_user: { amount_fen, payer }, s_merchant: { amount_fen, payer } }
  * @param {function} lookup (id) => { unit_cost_fen, price_fen }  卡/套餐解析器
  * @returns {{cash:{...}, accrual:{...}}} 两套口径（绝不混进同一个总数）
@@ -124,17 +127,39 @@ function calcTakeawayOrder(order, lookup) {
   const payment = goodsTotal + packFee + deliveryCustomer;       // 顾客支付 P
   // 🔴 H1（2026-10-27 审计）：推广费是**实打实的现金流出**，到手口径也必须扣。
   //   原实现只在总额法 expense 里扣 ⇒ 同一单两个利润数、填了推广费到手利润一分不变。
-  const receipt = payment - sMerchant - commission - d - deliverySubsidy - promo; // 商家实收 R
+  const estimatedReceipt = payment - sMerchant - commission - d - deliverySubsidy - promo; // 估算实收 R
+
+  // 🔴 R716（R715 报告建议 1）：允许老板直接填「本单商家实收」。
+  //   为什么需要：payment 是**标准单应付**（成本卡售价 × 份数 + 打包费 + 顾客配送费），
+  //   而外卖普遍在堂食价上加 2~5 元、还有满减/折扣 ⇒ 实收几乎永远不等于估算值，
+  //   老板拿到的是"估的利润"，不是"这单真赚的"。而老板手上确实有这个数：
+  //   外卖后台「订单详情 → 预计收入」。
+  //
+  //   为什么填了实收就**不再逐项扣费**：实收是平台结算后的结果，佣金/配送/推广已在里面扣过。
+  //   再扣一次 = 同一笔钱扣两遍，利润平白少一截，且零报错。
+  //
+  //   为什么此时 `receipt_rate` 必须为 null：这个字段叫「到手率」，分母只能是"顾客实际付了多少"。
+  //   payment 不等于顾客实付（加价/满减都在它之外），拿它当分母会算出 >100%（加价单）
+  //   或莫名偏低（折扣单）—— 两种都看着像 bug。宁可不给，也不给错的。
+  const actualReceipt = Math.max(0, Math.round(Number(params.actual_receipt_fen) || 0));
+  const isActual = actualReceipt > 0;
+
+  const receipt = isActual ? actualReceipt : estimatedReceipt;   // 商家实收 R
   const profit = receipt - dishCost - packCost;                  // 单均理论利润
-  const receiptRate = payment > 0 ? Math.round((receipt / payment) * 10000) / 100 : 0;
+  const receiptRate = (!isActual && payment > 0) ? Math.round((receipt / payment) * 10000) / 100 : null;
 
   // ===== 口径二：总额法（会计视角 · 与 M1 对得上）=====
   // 🔴 H1：收入 = 顾客实际支付（商品总价 + 打包费 + 顾客承担的配送费）。
   //   原实现把「商家补贴」加进收入、又在费用里减一次（净 0），却让到手口径单边减一次
   //   ⇒ 两口径利润恒差一个补贴额。改为与到手同一收入定义后，两口径利润恒等（T-h 锁死）。
-  const revenue = goodsTotal + packFee + deliveryCustomer;
-  const expense = commission + d + deliverySubsidy + sMerchant + promo; // 费用 = 佣金 + 配送服务费 + 补贴 + 推广
-  const accrualProfit = revenue - expense - dishCost - packCost;
+  // 🔴 R716：实测实收时总额法**不可用**（available:false，三个数给 null，不凑数）。
+  //   总额法要「顾客实付」才能走完 收入 − 费用；老板填的是商家到手（已扣完）。
+  //   拿标准单 payment 凑数会得到一个跟左边不同、且两个都不准的利润 —— 那正是 R714 记录的
+  //   「两个口径让人不理解」的加重版。缺口要说出来，不要用数字盖住。
+  const accrualAvailable = !isActual;
+  const revenue = accrualAvailable ? (goodsTotal + packFee + deliveryCustomer) : null;
+  const expense = accrualAvailable ? (commission + d + deliverySubsidy + sMerchant + promo) : null; // 费用 = 佣金 + 配送服务费 + 补贴 + 推广
+  const accrualProfit = accrualAvailable ? (revenue - expense - dishCost - packCost) : null;
 
   return {
     cash: {
@@ -152,13 +177,20 @@ function calcTakeawayOrder(order, lookup) {
       pack_cost_fen: Math.round(packCost),
       profit_fen: Math.round(profit),
       receipt_rate: receiptRate,
+      // R716：实收是否为老板手填（true ⇒ 利润不是估的，页面据此换展示分支、并停掉瀑布与到手率）
+      is_actual: isActual,
+      actual_receipt_fen: isActual ? actualReceipt : 0,
+      // 不填实收时的估算实收。页面可并排显示「估 X / 实 Y」—— 两者差多大，就是加价与折让的总量
+      estimated_receipt_fen: Math.round(estimatedReceipt),
     },
     accrual: {
-      revenue_fen: Math.round(revenue),
-      expense_fen: Math.round(expense),
+      // R716：false 表示「这套输入下这条路不成立」（不是缺数据），上层必须据此隐藏而不是显示 0
+      available: accrualAvailable,
+      revenue_fen: revenue == null ? null : Math.round(revenue),
+      expense_fen: expense == null ? null : Math.round(expense),
       dish_cost_fen: Math.round(dishCost),
       pack_cost_fen: Math.round(packCost),
-      profit_fen: Math.round(accrualProfit),
+      profit_fen: accrualProfit == null ? null : Math.round(accrualProfit),
     },
     // 🔴 P1 · 逐行毛利明细（外卖单订单 套餐毛利可读）：每道菜/套餐的售价、成本、毛利额、毛利率；
     //   套餐行 is_combo=true（消费方据此打「套餐」标签）；不进 M1（守卫 R135 仅约束聚合输出，明细同理不外溢）。
