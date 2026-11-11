@@ -1973,8 +1973,26 @@ Page({
     });
     wx.showToast({ title: TERMS.card.savedOk, icon: 'success' });
     wx.pageScrollTo({ scrollTop: 0, duration: 200 });
+    // 🔴 R709：补价模式**没有「连续录入」这个语义** —— 入口是导入页里的某一道菜，
+    //   下一道还在导入页等着。留在这页只会得到一片空白精简态（name / lines / priceYuan
+    //   上面刚被清空），而横幅仍写着「其余已填好」⇒ **文案与机制不一致**（R406 同族）。
+    //   回导入页后 `onShow → confirmSaved` 才会核对这道菜真存上了没并标「已保存」，
+    //   这条链才闭合；不回就等于 R704 那个校验在白等。
+    //   ⚠️ 900ms 不是拍脑袋：round156 的 600ms 被骂过「存一道菜就被踢回去」，但那是
+    //   新建连录场景（一盘 30 道菜要来回 60 次）。补价模式一次就是一道，连录发生在导入页，
+    //   性质相反；900ms 只为让「已保存」这条 toast 先露脸，不是拖延。
+    if (this.data.patchMode) {
+      this._backTimer = setTimeout(() => { this._backTimer = null; wx.navigateBack(); }, 900);
+    }
   },
 
   // 连续录入的显式出口（横幅上的「返回列表」）——不打断，也不把人困在本页
-  backToList() { wx.navigateBack(); },
+  backToList() {
+    // 🔴 R709：补价模式存完会自动回（见 afterSaved）。老板若在 toast 那 900ms 里**抢先**
+    //   点了「返回导入，继续下一道」，两个 navigateBack 会叠成「退两层」—— 编辑页 → 导入页
+    //   （自动那次）→ M3 枢纽（手动那次），导入页被一闪而过，老板以为这批菜丢了。
+    //   所以手动出口必须先撤掉待执行的自动回退。
+    if (this._backTimer) { clearTimeout(this._backTimer); this._backTimer = null; }
+    wx.navigateBack();
+  },
 });

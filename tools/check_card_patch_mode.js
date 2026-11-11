@@ -32,6 +32,31 @@ function ok(name, cond, detail) {
 const store = {};
 const sent = [];
 let toastMsgs = [];
+let navBacks = 0;          // G 组：页面是否真的返回上一页
+const timers = new Map();  // 页面里 >50ms 的定时器全部扣住，由测试显式 flush / 取消
+let timerSeq = 0;
+const realSetTimeout = setTimeout;   // 🔴 必须先抓真身：下面会替换 global.setTimeout
+
+/** 扣住页面长定时器（回退 / 实时试算都走 900ms），≤50ms 的放行给测试自己的 sleep。
+ *  ⚠️ 必须是 Map 而不是数组：`backToList` 会 clearTimeout 撤掉待执行的自动回退，
+ *     桩若把 clearTimeout 当空操作，撤回就没发生 ⇒ G-④ 会假红（代码没错，是桩没模拟取消）。 */
+function fakeSetTimeout(fn, ms) {
+  if ((ms || 0) <= 50) return realSetTimeout(fn, ms);
+  const id = ++timerSeq;
+  timers.set(id, fn);
+  return id;
+}
+function fakeClearTimeout(id) { timers.delete(id); }
+function flushTimers() {
+  const fns = Array.from(timers.values());
+  timers.clear();
+  for (const fn of fns) {
+    // 被扣住的有两类：回退回调，和 scheduleLive 的试算回调。
+    // 试算在本桩里可能因缺省数据抛错，与本套件无关 —— 吞掉，别让它变成 uncaughtException。
+    try { fn(); } catch (e) { /* noop */ }
+  }
+}
+function pendingTimers() { return timers.size; }
 
 function makeWx() {
   return {
@@ -41,7 +66,7 @@ function makeWx() {
     showToast: (o) => { toastMsgs.push((o && o.title) || ''); },
     showModal: () => {},
     navigateTo: () => {},
-    navigateBack: () => {},
+    navigateBack: () => { navBacks++; },
     pageScrollTo: () => {},
     setNavigationBarTitle: () => {},
     getSystemInfoSync: () => ({ windowWidth: 375, windowHeight: 667, platform: 'devtools' }),
@@ -115,9 +140,16 @@ function newPage() {
 async function withWx(fn) {
   const bakWx = global.wx;
   const bakApp = global.getApp;
+  const bakST = global.setTimeout;
+  const bakCT = global.clearTimeout;
   global.wx = makeWx();
   global.getApp = () => ({ globalData: { shop_id: 'shop_test', shopLoaded: true } });
-  try { return await fn(); } finally { global.wx = bakWx; global.getApp = bakApp; }
+  global.setTimeout = fakeSetTimeout;
+  global.clearTimeout = fakeClearTimeout;
+  try { return await fn(); } finally {
+    global.wx = bakWx; global.getApp = bakApp;
+    global.setTimeout = bakST; global.clearTimeout = bakCT;
+  }
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -247,6 +279,76 @@ let A = null;
     ok('E-③ 同上', false); ok('E-④ 同上', false); ok('E-⑤ 同上', false);
   }
 
+  // ============ G 组：存完去哪（文案承诺 vs 机制） ============
+  // 横幅原话是「存完自动回导入页继续下一道」。R708 首版只写了文案、afterSaved 压根没回：
+  // 它把 name/lines/priceYuan 清空后**留在本页**，于是老板看到的是——一片空白精简态，
+  // 而横幅还写着「其余已填好」。这不只是空页问题：导入页的 `onShow → confirmSaved`
+  // （R704）本来负责核对「这道菜真存上了没」并标「已保存」，不回就等于那个校验永远白等。
+  console.log('\n===== G 存完真的回导入页（文案承诺必须兑现），但只回补价模式这一次 =====');
+
+  // G-① 补价模式：填好价 → 保存 → 必须回上一页
+  for (const k of Object.keys(store)) delete store[k];
+  store[require(path.join(ROOT, 'utils/dishImport.js')).DRAFT_PREFILL_KEY] = makeDraft();
+  const G1 = newPage();
+  await withWx(async () => { G1.onLoad({ from_draft: '1' }); await sleep(20); });
+  G1.setData({
+    lines: [{ rid: 1, input_type: 2, material_id: '', material_name: '牛肉', qty: '300', qty_unit: '克',
+      price_unit: '克', unit_price_yuan: '42', yield_rate: '80', line_kind: 'main', qtyUnitIdx: 0, priceUnitIdx: 0 }],
+  });
+  navBacks = 0; timers.clear();
+  // 🔴 flushTimers 必须在桩内跑：回退回调里会摸 wx.navigateBack，桩一撤就 ReferenceError 被吞
+  await withWx(async () => { await G1.doSave(); await sleep(10); flushTimers(); });
+  ok('G-① 补价模式保存成功 ⇒ 真的返回导入页（横幅承诺「存完自动回导入页」）',
+    navBacks === 1, 'navigateBack 次数=' + navBacks);
+
+  // G-② 普通新建：**不许**回（round156 的「存完不跳走、留页连录」是本仓既定设计）
+  for (const k of Object.keys(store)) delete store[k];
+  const G2 = newPage();
+  await withWx(async () => { G2.onLoad({}); await sleep(20); });
+  G2.setData({
+    name: '小炒肉', priceYuan: '38', category: '炒菜',
+    lines: [{ rid: 1, input_type: 2, material_id: '', material_name: '猪肉', qty: '200', qty_unit: '克',
+      price_unit: '克', unit_price_yuan: '30', yield_rate: '100', line_kind: 'main', qtyUnitIdx: 0, priceUnitIdx: 0 }],
+  });
+  navBacks = 0; timers.clear();
+  await withWx(async () => { await G2.doSave(); await sleep(10); flushTimers(); });
+  ok('G-② 🔴 普通新建保存后**不**回退（留页连录是 round156 有意设计，不许被这一刀砍掉）',
+    navBacks === 0, 'navigateBack 次数=' + navBacks);
+
+  // G-③ 文案 ↔ 机制一致：横幅说了「自动回导入页」，afterSaved 里就得有受 patchMode 门控的回退。
+  //   ⚠️ 不能只查「有没有 navigateBack」——backToList 里也有一个，那样恒真。
+  const LEAN_DESC = String(TERMS.card.leanDesc || '');
+  const AS_BODY = (() => {
+    const i = SRC.indexOf('afterSaved(name, quota, moneyText) {');
+    if (i < 0) return '';
+    return SRC.slice(i, SRC.indexOf('\n  },', i) + 1);
+  })();
+  ok('G-③ 文案承诺「自动回导入页」⇒ afterSaved 里有**受 patchMode 门控**的 navigateBack（不是空话）',
+    !/自动回|回导入页/.test(LEAN_DESC)
+    || /if \(this\.data\.patchMode\)[\s\S]{0,120}wx\.navigateBack\(\)/.test(AS_BODY),
+    '文案含承诺=' + /自动回|回导入页/.test(LEAN_DESC) + ' / 函数体长度=' + AS_BODY.length);
+
+  // G-④ 900ms 窗口里的抢跑：老板看到 toast 立刻点「返回导入，继续下一道」
+  //   ⇒ 手动出口必须先撤掉待执行的自动回退，否则两次 navigateBack 叠成「退两层」，
+  //   导入页被一闪而过 ⇒ 老板以为这批菜丢了（比空白页更难查）。
+  for (const k of Object.keys(store)) delete store[k];
+  store[require(path.join(ROOT, 'utils/dishImport.js')).DRAFT_PREFILL_KEY] = makeDraft();
+  const G4 = newPage();
+  await withWx(async () => { G4.onLoad({ from_draft: '1' }); await sleep(20); });
+  G4.setData({
+    lines: [{ rid: 1, input_type: 2, material_id: '', material_name: '牛肉', qty: '300', qty_unit: '克',
+      price_unit: '克', unit_price_yuan: '42', yield_rate: '80', line_kind: 'main', qtyUnitIdx: 0, priceUnitIdx: 0 }],
+  });
+  navBacks = 0; timers.clear();
+  await withWx(async () => {
+    await G4.doSave();
+    await sleep(10);
+    G4.backToList();       // 抢在自动回退执行之前点手动出口
+    flushTimers();         // 自动回退若没被撤掉，这里会再退一次
+  });
+  ok('G-④ 🔴 900ms 内抢先点「返回导入」不会叠成退两层（叠了就略过导入页）',
+    navBacks === 1, 'navigateBack 次数=' + navBacks + '（期望 1，叠两次=2）');
+
   // ============ F 组：变异回灌 ============
   console.log('\n===== F 变异回灌：判据有分辨力（改坏了必须点名） =====');
   // F-① 把 applyLean 派生式改成恒 false ⇒ A-② 必须不成立
@@ -290,6 +392,47 @@ let A = null;
   await withWx(async () => { M3p.onLoad({}); await sleep(20); });
   ok('F-③ 变异「普通新建也进补价模式」⇒ B-① 会转红（来源标记有把关）',
     M3p.data.patchMode === true, '变异体 patchMode=' + M3p.data.patchMode);
+
+  // F-④ 让「回退」不再受 patchMode 门控（凡保存都回）⇒ G-② 必须转红
+  const M4 = loadPage((s) => s.replace('if (this.data.patchMode) {', 'if (true) {'));
+  const M4p = Object.assign({}, M4);
+  M4p.data = JSON.parse(JSON.stringify(M4.data));
+  M4p.setData = function (patch) { for (const k in patch) this.data[k] = patch[k]; };
+  for (const k of Object.keys(store)) delete store[k];
+  await withWx(async () => { M4p.onLoad({}); await sleep(20); });
+  M4p.setData({
+    name: '小炒肉', priceYuan: '38', category: '炒菜',
+    lines: [{ rid: 1, input_type: 2, material_id: '', material_name: '猪肉', qty: '200', qty_unit: '克',
+      price_unit: '克', unit_price_yuan: '30', yield_rate: '100', line_kind: 'main', qtyUnitIdx: 0, priceUnitIdx: 0 }],
+  });
+  navBacks = 0; timers.clear();
+  await withWx(async () => { await M4p.doSave(); await sleep(10); flushTimers(); });
+  ok('F-④ 变异「回退不受 patchMode 门控」⇒ 普通新建保存也被踢走（G-② 有分辨力）',
+    navBacks === 1, '变异体 navigateBack 次数=' + navBacks);
+
+  // F-⑤ 撤掉 backToList 里的 clearTimeout ⇒ G-④ 应变 2（证明这条判据不是恒真）
+  const M5 = loadPage((s2) => s2.replace(
+    'if (this._backTimer) { clearTimeout(this._backTimer); this._backTimer = null; }',
+    '/* MUT: 撤掉抢跑防护 */'
+  ));
+  const M5p = Object.assign({}, M5);
+  M5p.data = JSON.parse(JSON.stringify(M5.data));
+  M5p.setData = function (patch) { for (const k in patch) this.data[k] = patch[k]; };
+  for (const k of Object.keys(store)) delete store[k];
+  store[require(path.join(ROOT, 'utils/dishImport.js')).DRAFT_PREFILL_KEY] = makeDraft();
+  await withWx(async () => { M5p.onLoad({ from_draft: '1' }); await sleep(20); });
+  M5p.setData({
+    lines: [{ rid: 1, input_type: 2, material_id: '', material_name: '牛肉', qty: '300', qty_unit: '克',
+      price_unit: '克', unit_price_yuan: '42', yield_rate: '80', line_kind: 'main', qtyUnitIdx: 0, priceUnitIdx: 0 }],
+  });
+  navBacks = 0; timers.clear();
+  await withWx(async () => {
+    await M5p.doSave();
+    await sleep(10);
+    M5p.backToList();
+    flushTimers();
+  });
+  ok('F-⑤ 变异「撤掉抢跑防护」⇒ 退两次（G-④ 有分辨力）', navBacks === 2, '变异体 navigateBack 次数=' + navBacks);
 
   console.log('\n===== 补价模式页面行为守卫结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
   process.exit(failN === 0 ? 0 : 1);
