@@ -24,15 +24,16 @@ const matrix = lines.map((l) => l.split('\t'));
 //   全 0，我还以为解析器筛不出行。**是测试方式错，不是产品错。**
 const book = { sheets: { [BP.PLATFORM_PROFILE.meituan.sheet]: { rows: matrix } } };
 
-console.log('===== 输入 =====');
-console.log('行数(含表头) =', matrix.length);
-console.log('表头 =', JSON.stringify(matrix[0]));
 
 let pass = 0, fail = 0;
 const ok = (name, cond, detail) => {
   if (cond) { pass++; console.log(`✅ ${name}${detail ? '  (' + detail + ')' : ''}`); }
   else { fail++; console.log(`❌ ${name}${detail ? '  (' + detail + ')' : ''}`); }
 };
+
+// 「输入」段也要有断言（R66：段标题下零断言会被判"静默未跑"）
+ok('样本文件存在且行数合理（含表头 > 5 行）', matrix.length > 5, '行数=' + matrix.length);
+ok('表头含美团签名列「商家应收款」', (matrix[0] || []).indexOf('商家应收款') >= 0, JSON.stringify(matrix[0]));
 
 console.log('\n===== ① 平台能不能认出来 =====');
 const p1 = BP.detectPlatform(matrix[0]);
