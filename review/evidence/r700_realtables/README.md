@@ -2,8 +2,36 @@
 
 ## 这是什么
 
-李老师提供的**真实导出文件**（不是构造样本、不是豆包生成的），抽成 JSON 供 node 门禁读取。
+三张**平台导出的真实文件**（不是构造样本、不是豆包生成），抽成 JSON 供 node 门禁读取。
 由 `tools/check_bill_realtables.js` 消费，已注册进 `verify_all.js`（套件 `bill-realtables`）。
+
+## 🔴 先确认「真」——判据是 xlsx 元数据，不是文件名
+
+李老师提醒过：「这里表格有真实的，有后期豆包模拟生成的。」
+仓里 `review/evidence/` 下**两类文件混在一起**，靠文件名分辨不出来。用文件自带的
+`docProps/app.xml`、`docProps/core.xml` 判定（由 `check_bill_realtables.js` E 组机器校验）：
+
+| `Application` 字段 | 含义 | 判 |
+|---|---|---|
+| `Apache POI` | 平台**后端** Java 导出（真人不会用 POI，脚本模拟也不会） | 真表 |
+| `WPS 表格` / `Microsoft Excel` | 老板自己打开、另存过 | 真表 |
+| `openpyxl` / `Microsoft Excel Compatible` | Python 脚本生成 | **模拟** |
+
+本目录三张的实测元数据：
+
+| 文件 | Application | lastModifiedBy | 判定 |
+|---|---|---|---|
+| 美团账单 | `Apache POI` | — | **真表**（平台后端导出） |
+| 淘宝闪购 | `Apache POI` | `耙三样·耙牛肉` | **真表**（平台导出 + 老板动过） |
+| 美团商品 | `WPS 表格` | `符号` | **真表**（老板 WPS 另存） |
+
+对照反证：`review/evidence/r245_jd_profile/jd_sku_sample_doubao.xlsx` 元数据是
+`Microsoft Excel Compatible / Openpyxl 3.1.5` ⇒ 脚本模拟，**不可当真表用**。
+
+> ⚠️ **容易被误当成真表的两张**（本轮踩过）：
+> `owner_revenue_daily_202609_v5.xlsx`、`owner_takeaway_compare_202608.xlsx`
+> 文件名带 `owner_` 很像老板自己的表，但元数据是 `Microsoft Excel Compatible`（脚本生成）。
+> 真要拿它们做回归，必须先确认数据来源。
 
 ## 来源对应
 
@@ -62,3 +90,33 @@ R7  交易类型=订单部分退款     商家应收款=−39.85
 - 每条金额断言都配一条**独立复算**（直接遍历 JSON 求和，完全不经过解析器）——不采信被测代码自己的汇总。
 - 不比中文字面量做业务判断（`page-terms` P3-1 会判红）；要比就比**结构位置**（列索引）或数字。
 - 带一条**反恒真**断言：按修前口径算必须得到不同的值，证明判据有分辨力。
+
+## 附：`review/evidence/` 下 xlsx 的全量真伪盘点（2026-11-11）
+
+按上面的元数据判据把仓里所有 xlsx 扫了一遍：**真 10 / 模拟 17 / 未知 2**。
+
+**真表（可放心做回归）**
+
+| 文件 | Application | 备注 |
+|---|---|---|
+| `r615_wechat_real/meituan_bill_20260907-0913.xlsx` | Apache POI | 已接入本套件 |
+| `r181l_stage1_import_feed/fixtures/淘宝闪购.xlsx` | Apache POI | 已接入本套件 |
+| `r615_wechat_real/meituan_goods_20260907-0913.xlsx` | WPS 表格 | 已接入本套件（C 组） |
+| `r615_wechat_real/pos_combo_detail_20260907-0913.xlsx` | Apache POI | 套餐明细，**尚未接入** |
+| `r615_wechat_real/jd_order_export_20261014-1020.xlsx` | Apache POI | 京东订单，尚未接入 |
+| `r615_wechat_real/owner_inventory_202609_v3.xlsx` | WPS 表格 | 库存盘点，尚未接入 |
+| `r242_jd_bill/jd_bill_20260930.xlsx` | Apache POI | 京东账单，尚未接入 |
+| `r242_jd_bill/jd_sku_bill_20260930.xlsx` | Apache POI | 京东 SKU 账单，尚未接入 |
+| `r181l_stage1_import_feed/fixtures/09bbd01042244a1fa98e0d0f1963211b.xlsx` | Apache POI | 待辨认是哪张表 |
+| `r232_formc_sample/商品下载_20260907至20260913__…xlsx` | Microsoft Excel（by 蒋 敏） | 商品下载 |
+
+**模拟样本（可作格式参考，不可当"真表回归"的证据）**
+`jd_sku_sample_doubao.xlsx`、`dsi1_s1/s2_example.xlsx`、`_FAKE_dsi1_example.xlsx`、
+`output_店算_小店决策对比表_小面样例.xlsx`、`堂食建卡*.xlsx`（8 个）、
+`owner_revenue_daily_202609_v0_old/v5.xlsx`、`owner_takeaway_compare_202608.xlsx`
+
+**未知**
+`_variant_jd_sku_native.xlsx`、`_variant_jd_sku_withdata.xlsx`（Application=SheetJS，是解析器的变体实验文件，非原始导出）
+
+> 上表由元数据脚本生成，需要复核时重跑：解 `docProps/app.xml` 看 `Application`。
+> 别用「文件名像真的」当判据 —— `owner_*` 那两张就是反例。

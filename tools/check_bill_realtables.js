@@ -18,6 +18,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const zlib = require('zlib');   // E 组读 xlsx 的 docProps 用（解 deflate，零依赖）
 const BP = require('../utils/billParse.js');
 const DI = require('../utils/dishImport.js');
 
@@ -161,6 +162,83 @@ ok('D-② 京东订单级 profile 仍未配 keepContains（不受本次改动影
 ok('D-③ 美团 keepContains 只放「退款」（不放广告/保险，否则等于不筛）',
   Array.isArray(BP.PLATFORM_PROFILE.meituan.rowFilter.keepContains)
   && BP.PLATFORM_PROFILE.meituan.rowFilter.keepContains.length === 1, JSON.stringify(BP.PLATFORM_PROFILE.meituan.rowFilter.keepContains));
+
+// ================== E · 样本出处（真表 vs 脚本模拟） ==================
+// 起因：李老师提醒「这里表格有真实的，有后期豆包模拟生成的」。
+//   仓里 evidence 下混着两类文件：平台导出的真表，和早期用脚本/豆包造的样本
+//   （如 `jd_sku_sample_doubao.xlsx`、`dsi1_s1_example.xlsx`）。
+//   **把模拟样本当真表用，会让「回归通过」变成假象** —— 模拟样本本来就是照着解析器写的。
+//
+// 判据（写进 xlsx 的 docProps，改不掉、也编不出）：
+//   Application = Apache POI        → 平台**后端** Java 导出 ⇒ 真表（真人不会用 POI）
+//   Application = WPS 表格 / Excel  → 老板打开/另存过 ⇒ 真表
+//   Application = openpyxl / "Excel Compatible" → 脚本生成 ⇒ 模拟
+// 这里用 node 零依赖解 zip（中央目录 + inflateRaw）直接读元数据，不看文件名、不看注释。
+console.log('\n===== E · 样本出处（不许把模拟样本当真表） =====');
+function zipEntryText(buf, want) {
+  let eocd = -1;
+  for (let i = buf.length - 22; i >= 0; i--) {
+    if (buf.readUInt32LE(i) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) return null;
+  const cnt = buf.readUInt16LE(eocd + 10);
+  let p = buf.readUInt32LE(eocd + 16);
+  for (let k = 0; k < cnt; k++) {
+    if (buf.readUInt32LE(p) !== 0x02014b50) return null;
+    const method = buf.readUInt16LE(p + 10);
+    const csize = buf.readUInt32LE(p + 20);
+    const nameLen = buf.readUInt16LE(p + 28);
+    const extraLen = buf.readUInt16LE(p + 30);
+    const cmtLen = buf.readUInt16LE(p + 32);
+    const lho = buf.readUInt32LE(p + 42);
+    const name = buf.slice(p + 46, p + 46 + nameLen).toString('utf8');
+    if (name === want) {
+      const lNameLen = buf.readUInt16LE(lho + 26);
+      const lExtra = buf.readUInt16LE(lho + 28);
+      const start = lho + 30 + lNameLen + lExtra;
+      const raw = buf.slice(start, start + csize);
+      return method === 0 ? raw.toString('utf8') : zlib.inflateRawSync(raw).toString('utf8');
+    }
+    p += 46 + nameLen + extraLen + cmtLen;
+  }
+  return null;
+}
+function xlsxApp(file) {
+  if (!fs.existsSync(file)) return null;
+  const buf = fs.readFileSync(file);
+  const appXml = zipEntryText(buf, 'docProps/app.xml') || '';
+  const coreXml = zipEntryText(buf, 'docProps/core.xml') || '';
+  const grab = (tag, s) => {
+    const m = new RegExp('<' + tag + '[^>]*>([^<]*)</' + tag + '>').exec(s);
+    return m ? m[1] : '';
+  };
+  return {
+    app: grab('Application', appXml),
+    by: grab('cp:lastModifiedBy', coreXml),
+    created: grab('dcterms:created', coreXml),
+  };
+}
+// 真表判据：平台后端（POI）或 老板用 WPS/Excel 打开过
+const isReal = (m) => !!m && (/poi/i.test(m.app) || /wps|excel(?!.*compatible)/i.test(m.app) && !/compatible/i.test(m.app));
+const ROOT = path.join(__dirname, '..');
+const mtBillX = path.join(ROOT, 'review/evidence/r615_wechat_real/meituan_bill_20260907-0913.xlsx');
+const tbBillX = path.join(ROOT, 'review/evidence/r181l_stage1_import_feed/fixtures/淘宝闪购.xlsx');
+const mtGoodsX = path.join(ROOT, 'review/evidence/r615_wechat_real/meituan_goods_20260907-0913.xlsx');
+const fakeX = path.join(ROOT, 'review/evidence/r245_jd_profile/jd_sku_sample_doubao.xlsx');
+
+const m1 = xlsxApp(mtBillX), m2 = xlsxApp(tbBillX), m3 = xlsxApp(mtGoodsX), m4 = xlsxApp(fakeX);
+ok('E-① 美团账单来源是真表：xlsx 元数据 Application=Apache POI（平台后端 Java 导出）',
+  !!m1 && /poi/i.test(m1.app), m1 ? m1.app : '读不到元数据');
+ok('E-② 淘宝闪购来源是真表：同上（且 lastModifiedBy 是门店名，老板动过）',
+  !!m2 && /poi/i.test(m2.app), m2 ? m2.app + ' / by=' + m2.by : '读不到');
+ok('E-③ 美团商品表来源是真表：WPS 表格打开过（老板另存）',
+  !!m3 && /wps/i.test(m3.app), m3 ? m3.app + ' / by=' + m3.by : '读不到');
+ok('E-④ 说明：这三张不是脚本模拟（真表判据独立成立，不靠文件名/注释）',
+  isReal(m1) && isReal(m2) && isReal(m3));
+ok('E-⑤ 反证判据有分辨力：标了 doubao 的样本必须被判成「模拟」而非真表',
+  !!m4 && !isReal(m4), m4 ? m4.app : '读不到');
+ok('E-⑥ 三个 JSON 抽取自三张真 xlsx，且 xlsx 都还在（防止证据被删后 JSON 成孤儿）',
+  fs.existsSync(mtBillX) && fs.existsSync(tbBillX) && fs.existsSync(mtGoodsX));
 
 console.log('\n' + '='.repeat(60));
 console.log('===== 真表回归结果：' + pass + ' 通过 / ' + fail + ' 失败 =====');
