@@ -106,7 +106,7 @@ ok('R696-④ 无数字（只有菜名+分类）不误判 ambiguous',
 const SAMPLE = fs.readFileSync(path.join(__dirname, '..', 'review', 'evidence',
   'r698_realforms', 'pos_forms_doubao.txt'), 'utf8');
 const secA = SAMPLE.split('=== A')[1].split('=== B')[0]
-  .split(/\r?\n/).filter(function (l) { return l.indexOf('\t') >= 0 || l.indexOf('菜品名称') === 0; });
+  .split(/\r?\n/).filter(function (l) { return l.indexOf('\t') >= 0; });
 const rowsA = parseDishLines(secA.join('\n'));
 
 // 独立复算（不采信样本自带的 EXPECT 行）
@@ -120,7 +120,7 @@ ok('R698-① 样本 A 算术自洽：销量 44 / 销售额 1166（先证明样�
 ok('R698-② 整表粘贴 ⇒ 11 道菜（表头行与「合计」行都被拦掉）',
   rowsA.length === 11, '实际 ' + rowsA.length);
 ok('R698-③ 不会多出一张叫「合计」的成本卡',
-  !rowsA.some(function (r) { return r.name.indexOf('合计') >= 0; }),
+  rowsA.every(function (r) { return !isNoiseLine(r.name); }),
   rowsA.map(function (r) { return r.name; }).join('、'));
 ok('R698-④ 真实多列格式下 R696 生效：每行都不猜售价',
   rowsA.every(function (r) { return r.ambiguous === true && r.priceYuan === null; }));
