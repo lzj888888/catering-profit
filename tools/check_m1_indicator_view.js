@@ -217,8 +217,12 @@ console.log('\n===== H 口径同源：达标营业额必须与指标卡同一套
 // ⚠️ 旧判据 hasHardcodedPct **抓不到这个** —— 它只认「数字 + %」，而这里是 `hiPct: 15`（无百分号），
 //    所以必须单立一条（同一族病：判据在真因之外的位置全绿）。
 const hasHardcodedHi = (s) => /hiPct:\s*(15|22)\b/.test(s) || /targetRatePct:\s*12\b/.test(s);
-check('H-① buildBreakeven 收 inds 参数（后端指标进得来）', /buildBreakeven\(d, res, prevProfitFen, inds\)/.test(jsCode));
-check('H-② 调用处真的把 inds 传进去了', /buildBreakeven\(d, res, prevProfitFen, inds\)/.test(jsCode));
+// ⚠️ R690 放宽：原正则写死 `inds\)` 结尾，等于要求「参数表正好 4 个」——
+//   而这条判据的本意是「inds 这个后端指标进得来」。R690 在末尾加了 prevLedger（跨月归因要上月整账）
+//   ⇒ 功能没退化、参数还在，是判据把「实现细节」当成了「契约」。
+//   改成 `inds[,)]`：允许后面继续有参数，但只要 inds 不在第 4 位、或根本没传，仍然红。
+check('H-① buildBreakeven 收 inds 参数（后端指标进得来）', /buildBreakeven\(d, res, prevProfitFen, inds[,)]/.test(jsCode));
+check('H-② 调用处真的把 inds 传进去了', /buildBreakeven\(d, res, prevProfitFen, inds[,)]/.test(jsCode));
 check('H-③ 达标营业额的房租/人工上限不再写死（改用后端指标）',
   /hiPct: rentHi/.test(jsCode) && /hiPct: laborHi/.test(jsCode) && !/hiPct:\s*(15|22)\b/.test(jsCode));
 check('H-④ 房租目标率不再写死 12（改用该业态区间中点）',
@@ -235,7 +239,8 @@ check('H-⑧ 反恒真：改回写死 15/22 的变体必须被判红（证明 H-
 //   同一块作用域内触发 TDZ ⇒ be 拿不到业态区间、回落写死常数 ⇒ 改业态时数字不跟着变。
 //   静态判据全绿也照样崩（判据不读执行顺序就看不见），故单独立一条。
 const I_INDS = jsCode.indexOf('const inds = this.decorateInds(');
-const I_BE = jsCode.indexOf('buildBreakeven(d, res, prevProfitFen, inds)');
+// R690：同样去掉右括号 —— 本条关心的是「be 的计算在哪个位置」，不是参数表长什么样。
+const I_BE = jsCode.indexOf('buildBreakeven(d, res, prevProfitFen, inds');
 check('H-⑨ 顺序即判据：inds 的定义必须**早于** be 的计算（晚一步就 TDZ）',
   I_INDS >= 0 && I_BE >= 0 && I_INDS < I_BE, `inds@${I_INDS} / be@${I_BE}`);
 const I_FOLD = wxmlCode.indexOf('wx:if="{{beMore}}"');
