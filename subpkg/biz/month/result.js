@@ -44,6 +44,9 @@ const dh = require('../../../utils/dataHealth.js');
 //   本页只做两件事：① 编排取数（月份列表 + 逐月账本）② 把规则层的出参译成页面文案。
 //   ⚠️ 阈值/中位数/排序一律在规则层，页面零阈值、零金额差（PLAN_AI §3 口径红线）。
 const anomaly = require('../../../utils/anomalyRules.js');
+// R690：跨月归因（纯函数单源）—— 「比上月多赚 840 元」之后那句「为什么」。
+//   五个因子之和必须严格等于利润差，对不上就返回 ok:false **不编话**，详见该文件头注。
+const momExplain = require('../../../utils/momExplain.js');
 
 // 清单最多显示几项（其余折叠成一句「另有 N 项」）：老板一次最多看 5 条，再多等于没看。
 //   与规则层的 maxItems(=20) 不是同一件事：那是**算多少**，这是**显示多少**。
@@ -308,6 +311,8 @@ Page({
       // 🔴 R313：上月真钱利润（跨月对比）。**只读、失败不阻断**——拿不到就当没上月，
       //   绝不编 0（编 0 会让"比上月多赚"凭空出现）。
       let prevProfitFen = null;
+      // R690：上月**完整账本** —— 归因要五个因子，不能只有利润一个数
+      let prevLedger = null;
       try {
         const curM = d.month || this.data.month || '';
         const pm = prevMonthOf(curM);
@@ -318,10 +323,11 @@ Page({
           const pdr = (pd && pd.result) || {};
           if (pd && pd.account_id && pdr.total_factor_real_profit_fen != null) {
             prevProfitFen = Number(pdr.total_factor_real_profit_fen);
+            prevLedger = pd;   // R690：复用同一份出参做归因，不额外再请求一次
           }
         }
-      } catch (e) { prevProfitFen = null; }
-      const be = this.buildBreakeven(d, res, prevProfitFen, inds);
+      } catch (e) { prevProfitFen = null; prevLedger = null; }
+      const be = this.buildBreakeven(d, res, prevProfitFen, inds, prevLedger);
       // 🔴 R395（队列 #11）：分享卡片取数 —— 只留**原始分**。分享时不再从展示串反解：
       //   展示串经过 `fenToYuan(2)` ⇒「9,160.00」，反解回分必然带格式误差，也会在分享路径上再算一遍业务。
       // ⚠️ 这里**不放** `hasLedger`：它的单源是下面 setData 里那句（R298 定的 `d.account_id` 判据），
@@ -485,7 +491,7 @@ Page({
   // 🔴 R311：体检结论（**只解释、不重算利润**）
   //   食材成本**不在 expense_items 里**（calcMonthlyProfit/service.js:22-27 明写其属费用非食材成本），
   //   而它是最**大**的变动成本 ⇒ 必须显式传，否则保本线会大幅偏低（最危险的方向）。
-  buildBreakeven(d, res, prevProfitFen, inds) {
+  buildBreakeven(d, res, prevProfitFen, inds, prevLedger) {
     const T = this.data.t;
     // 🔴 R312：分 → "X.X万"（一位小数）。老板看"10.8万"比"¥108,491.00"快得多。
     const wan = (fen) => (Math.round((Number(fen || 0) / 100 / 10000) * 10) / 10) + String(T.beWan || '万');
@@ -568,8 +574,19 @@ Page({
           : String(T.beMomLess || '').replace('{a}', money));
       }
     }
+
+    // 🔴 R690：跨月归因 —— 光说"多赚了 840 元"不够，老板下一句一定是"为什么"。
+    //   只在**五因子之和严格等于利润差**时才给（对不上就不说，见 utils/momExplain.js 头注）：
+    //   按错误的原因去调经营，比不知道更糟。
+    let momText = '';
+    if (prevLedger) {
+      const mx = momExplain.explain(d, prevLedger);
+      if (mx.ok && mx.text) momText = mx.text;
+    }
     return {
       ok: true,
+      // R690：跨月归因文案（空串 = 对不上账/无显著变化，页面据此不显示这一行）
+      momText: momText,
       // 🔴 R395：保本额的**原始分**（分享标题要整数元，不能从 `lowText` 这种带千分位的串反解）
       breakevenFen: Number(bk.breakevenFen) || 0,
       title,

@@ -124,3 +124,8 @@
 .loss-summary-txt.has-loss { color: #c0392b; font-weight: 600; }
 .loss-summary-txt.all-ok { color: #1e7d4f; }
 .loss-summary-go { font-size: 26rpx; color: #2a4e7c; margin-left: 16rpx; flex-shrink: 0; }
+
+/* R690：跨月归因那一句（「主要是营业收入多了 2000 元；食材消耗多了 160 元抵掉一部分」）。
+ * 放在保本卡标题正下方 —— 它解释的就是标题里那个"比上月多赚 X 元"，贴着说不脱节。
+ * 字号 28rpx 是门禁下限（G1），不能为了"看着不像正文"写成 22。 */
+.mom-why { font-size: 28rpx; color: #57504A; line-height: 1.5; padding: 4rpx 0 12rpx; }
