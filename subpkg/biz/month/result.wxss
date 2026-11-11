@@ -13,6 +13,20 @@
 .drill-sub { display: flex; justify-content: space-between; padding: 6rpx 0 0 16rpx; font-size: 28rpx; color: #6B6157; }
 .drill-samt { color: #444; }
 
+/* R689（M3 优化 B）：费用分类占比「钱花在哪」——
+ * 目标：老板点开费用后 3 秒看出哪一类最贵（房租 / 人工 / 营销 / 其他）。
+ * 配色说明：分类名与金额用深色（#3A332B / #2B2620），**不用金色系**（R681 真机反馈「金丝色看着吃力」）；
+ *   进度条填充走主色深蓝 #1e3a5f，底色 #EFEAE3 与页面其它分隔线一致。
+ *   `tabular-nums` 让百分比竖排对齐（3.5% / 21.8% / 100% 不会左右跳）。 */
+.expstruct { margin-bottom: 18rpx; padding-bottom: 14rpx; border-bottom: 2rpx solid #EFEAE3; }
+.expstruct-hd { font-size: 24rpx; color: #57504A; margin-bottom: 10rpx; }
+.expstruct-row { display: flex; align-items: center; margin-bottom: 8rpx; }
+.expstruct-lb { width: 150rpx; flex-shrink: 0; font-size: 26rpx; color: #3A332B; font-weight: 600; }
+.expstruct-bar { flex: 1; height: 12rpx; background: #EFEAE3; border-radius: 6rpx; margin: 0 12rpx; overflow: hidden; }
+.expstruct-fill { height: 100%; background: #1e3a5f; border-radius: 6rpx; }
+.expstruct-pct { width: 92rpx; text-align: right; font-size: 26rpx; color: #3A332B; font-variant-numeric: tabular-nums; }
+.expstruct-amt { width: 170rpx; text-align: right; font-size: 26rpx; color: #2B2620; font-weight: 600; }
+
 
 /* 🔴 R489：倒轧依据行（「本数按期末库存 ¥28,000 倒轧 · 去核对」）——
  * 它可点（去库存页核对那个数），用主色 + 下划线暗示"能点"，与上方灰色小字区分。

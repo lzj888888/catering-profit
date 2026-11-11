@@ -122,6 +122,9 @@ Page({
       monthTotal: TERMS.resultPage.monthTotal,
       income: TERMS.resultPage.income,
       expense: TERMS.resultPage.expense,
+      // R689：费用分类占比的两条文案（页面零中文 ⇒ 必须走 t 映射，否则守 P2-1 判空白）
+      expStructTitle: TERMS.resultPage.expStructTitle,
+      expStructNoBase: TERMS.resultPage.expStructNoBase,
       grossProfit: TERMS.resultPage.grossProfit,
       grossMargin: TERMS.resultPage.grossMargin,
       materialCost: TERMS.resultPage.materialCost,
@@ -233,6 +236,8 @@ Page({
     hasLedger: false,
     incDetail: [],
     expDetail: [],
+    // R689（M3 优化 B）：费用按分类聚合 —— 「这个月钱去哪了」
+    expStruct: [],
     showIncDrill: false,
     showExpDrill: false,
     expireSoonDays: 0,
@@ -285,6 +290,8 @@ Page({
       // D1：保存原始明细（snake_case，含 sub_items），供下钻面板展示（前端不重算金额）
       const incDetail = this.buildDetail(d.income_items || []);
       const expDetail = this.buildDetail(d.expense_items || []);
+      // R689：费用分类聚合（同源同一次出参，不额外调云函数）
+      const expStruct = this.buildExpStruct(d.expense_items || []);
       // R302：外卖到手账 —— 由 M1 **已录**的数反算（详见 buildSettle 头注）
       const settle = this.buildSettle(d.income_items || [], d.expense_items || []);
       // round115：行业指标对照 —— 后端只回 key/数值/level 枚举，中文名与评级文案在前端补齐（术语单源在前端）
@@ -400,6 +407,7 @@ Page({
 
         incDetail,
         expDetail,
+        expStruct,
         settle,
         be,
         shareFacts,
@@ -903,6 +911,53 @@ Page({
   },
 
   // D1：把后端明细（snake_case 大类列表）转为下钻面板数据（大类 → 细项，金额仅格式化展示）
+  // R689（M3 优化 B）：「这个月钱去哪了」—— 费用按分类聚合。
+  //
+  // 数据源 = getLedger 出参 `expense_items`，每项 `{ category, name, amount_fen, sub_items }`
+  //   （结构由 `cloudfunctions/saveLedger/validate.js:35` 定，category 只有
+  //    operation / labor / marketing / other 四类）。
+  // label **复用** `TERMS.ledger.expense[].label` ⇒ 零新增中文（页面零中文字面量守得住）。
+  //
+  // 🔴 口径三条（都不是我随口定的）：
+  //   ① 分母 = **费用合计**，不含食材成本 —— 食材成本根本不在 expense_items 里，
+  //      见 `calcMonthlyProfit/service.js:22-27` 与 `utils/breakeven.js:72` 同一条说明。
+  //      把它算进分母会让「房租占比」凭空变小。
+  //   ② 金额为 0 的科目**不占一行**：否则一个没填的类会以「其他 0%」白占一行，
+  //      看起来像"有一类花销为 0"，而实际是"一分钱都没录"。
+  //   ③ 分母为 0 时 `pct` 回 **null**（前端显示「—」），**不回 0%** ——
+  //      「0%」会被读成"这一类没花钱"，而真相是"整个月一分费用都没录"。
+  buildExpStruct(expItems) {
+    const groups = TERMS.ledger.expense || [];
+    const labelOf = {};
+    for (const g of groups) labelOf[g.category] = g.label;
+
+    const map = {};
+    let total = 0;
+    for (const it of (expItems || [])) {
+      const c = it.category || 'other';
+      const amt = Number(it.amount_fen) || 0;
+      if (!amt) continue;                       // 口径②
+      map[c] = (map[c] || 0) + amt;
+      total += amt;
+    }
+
+    const rows = Object.keys(map).map((c) => {
+      const fen = map[c];
+      const pct = total > 0 ? Math.round((fen / total) * 1000) / 10 : null;   // 一位小数
+      return {
+        category: c,
+        label: labelOf[c] || c,
+        amount: api.fenToYuan(fen, 2),
+        pct: pct,                               // null ⇒ 前端「—」
+        // 百分比在 js 里拼好：wxml 里不出现字符串拼接（守 check_page_terms 的页面字面量判据）
+        pctText: pct == null ? '' : pct + '%',
+        bar: pct == null ? 0 : Math.min(100, pct),
+      };
+    });
+    // 金额降序 ⇒ 老板第一眼看到的就是花得最多的那一类
+    return rows.sort((a, b) => (b.pct || 0) - (a.pct || 0));
+  },
+
   buildDetail(items) {
     return (items || []).map((it) => {
       const subs = (it.sub_items || []).map((si) => ({

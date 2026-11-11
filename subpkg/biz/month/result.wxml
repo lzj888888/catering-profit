@@ -272,6 +272,18 @@
       <text class="val">{{t.cur}}{{r.expense}} <text class="drill-caret">{{showExpDrill ? '▴' : '▾'}}</text></text>
     </view>
     <view class="drill-body" wx:if="{{showExpDrill}}">
+      <!-- R689（M3 优化 B）：先给**结构**（这个月钱去哪了），再给明细。
+           放在明细之前是因为老板点开「费用」首先想知道"哪块最贵"，
+           而不是逐条看科目；占比条能让他 3 秒内看到房租/人工各占多少。 -->
+      <view class="expstruct" wx:if="{{expStruct.length}}">
+        <view class="expstruct-hd">{{t.expStructTitle}}</view>
+        <view class="expstruct-row" wx:for="{{expStruct}}" wx:key="category" wx:for-item="es">
+          <text class="expstruct-lb">{{es.label}}</text>
+          <view class="expstruct-bar"><view class="expstruct-fill" style="width:{{es.bar}}%"></view></view>
+          <text class="expstruct-pct">{{es.pctText || t.expStructNoBase}}</text>
+          <text class="expstruct-amt">{{t.cur}}{{es.amount}}</text>
+        </view>
+      </view>
       <view class="drill-row" wx:for="{{expDetail}}" wx:key="name" wx:for-item="g">
         <view class="drill-gname">{{g.name}} <text class="drill-gamt">{{t.cur}}{{g.amount}}</text></view>
         <view class="drill-sub" wx:for="{{g.sub_items}}" wx:key="index" wx:for-item="s">
