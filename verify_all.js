@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：279 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：280 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1553,6 +1553,8 @@ const SUITES = [
   ['mom-explain', 'tools/check_mom_explain.js'],
   // R692（易填性）：去建卡预填 —— 均价算对 / 算不出时不许编 / 菜名编码不破坏参数。
   ['card-prefill', 'tools/check_card_prefill.js'],
+  // R695：真实风格账单实测 —— 豆包生成的「美团导出」样本，混广告/保险/退款行，验筛行与 qty。
+  ['bill-realworld', 'tools/check_bill_realworld.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
