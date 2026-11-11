@@ -63,6 +63,9 @@
         <text wx:if="{{l.convert_factor}}">{{t.snapshotConvert}}：{{l.convert_factor}}</text>
         <text wx:if="{{l.yield_rate}}">{{t.snapshotYield}}：{{l.yield_rate}}%</text>
       </view>
+      <!-- 🔴 R712：手工录入行本来就没有档案采购价 —— 说清楚，别让老板以为「数据没导过来」。
+           只在整行一个快照字段都没有时才出这句（档案行有单价时不会出现）。 -->
+      <view class="snapshot snap-none" wx:elif="{{l.input_type === 2 && !l.brand_spec && !l.purchase_unit}}">{{t.snapshotNoArchive}}</view>
     </view>
 
     <!-- S0（任务 2）恢复此版本 -->

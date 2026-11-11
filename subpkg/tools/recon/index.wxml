@@ -10,6 +10,10 @@
     <text class="lbl">{{t.reconCoverage}}</text>
     <input class="val-input" type="number" value="{{menuDishCount}}" placeholder="{{t.reconCoveragePh}}" bindinput="onDishCount" adjust-position="{{true}}" cursor-spacing="20" />
   </view>
+  <!-- 🔴 R712（李老师真机：「只需要填在售菜品数就可以了吗？本意是算什么的」）：
+       这个数是**覆盖率分母**（已建卡的菜 ÷ 在售菜数），原来只有标签、没解释用途。
+       老板不知道它为什么能影响结果，就会跳过不填，然后结果一直被抑制。 -->
+  <view class="recon-why">{{t.reconCoverageWhy}}</view>
   <!-- 🔴 R181j 门禁方修：保存按钮**不得与 `val-input` 同父** —— 同层 = 同行 = 金额框被挤窄
        （`tools/check_amount_input_row.js` A1 硬判据：全仓「val-input 与 button 同父」块数必须 = 0）。
        原写法把 button 放在上面那个 .field 里 ⇒ A1 实测 1 处、门禁转红。此处独立成层。 -->

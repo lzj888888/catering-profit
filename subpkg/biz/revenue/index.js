@@ -116,6 +116,9 @@ Page({
     bridgeOpen: false,  // 差额桥默认收起（先说结论，再展开依据）
     srcNote: '',        // R619：这组数是从库里读的还是刚导的
     fromStore: false,
+    // R712：折叠块开合状态（与 card/index、card/edit、takeaway/index 同一套机制：
+    //   data-key 标识 + hintFold 字典，加一块**零 js 改动** —— 只加 wxml 与文案）
+    hintFold: {},
     t: {
       mainLabel: T.mainLabel,
       mainNote: T.mainNote,
@@ -131,6 +134,15 @@ Page({
       coverTitle: T.coverTitle,
       pickBtn: T.pickBtn,
       pickHint: T.pickHint,
+      // 🔴 R712：选文件前必须预告「会跳到微信聊天列表」，外加「去哪拿表 / 要哪些列」两块指引。
+      //   外卖页 trio 早就有，本页一个都没有（李老师真机：「它也没说怎么选，也没引导」）。
+      importWechatHint: TERMS.ui.importWechatHint,
+      hintFoldShow: TERMS.ledger.hintFoldShow,
+      hintFoldHide: TERMS.ledger.hintFoldHide,
+      pickWhereTitle: T.pickWhereTitle,
+      pickWhereBody: T.pickWhereBody,
+      pickColsTitle: T.pickColsTitle,
+      pickColsBody: T.pickColsBody,
       manualEntry: T.manualEntry,
       manualSub: T.manualSub,
       empty: T.empty,
@@ -200,6 +212,18 @@ Page({
 
   onAgain() {
     this.setData({ r: null, bridgeOpen: false });
+  },
+
+  // R712：折叠块开合。与 takeaway/index.js 同形（dataset.key → hintFold 字典），
+  //   不抽公共函数：三处实现都只有 6 行，抽出去要多一个模块与被 mock 面；
+  //   真要抽应连 card/index、card/edit 一起收，那是另一轮的活。
+  onToggleHintFold(e) {
+    const key = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.key) || '';
+    if (!key) return;
+    const cur = this.data.hintFold || {};
+    const next = Object.assign({}, cur);
+    next[key] = !cur[key];
+    this.setData({ hintFold: next });
   },
 
   // R620：不会做表的老板走手填

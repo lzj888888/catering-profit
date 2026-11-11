@@ -90,6 +90,31 @@
     <view class="rev-intro">
       <text class="rev-intro-t">{{t.pickHint}}</text>
     </view>
+
+    <!-- 🔴 R712（李老师真机：「它也没说怎么选，也没引导，点了就直接跳微信」）：
+         外卖页早就有「去哪拿表 / 要哪些列」两块折叠指引，本页一个都没有 ⇒ 补齐。
+         默认收起，只占一行标题；老板要看才展开（不影响首屏）。 -->
+    <view class="hint-fold">
+      <view class="hint-fold-head" data-key="revWhere" bindtap="onToggleHintFold">
+        <text class="hint-fold-title">{{t.pickWhereTitle}}</text>
+        <text class="hint-fold-guide">{{hintFold.revWhere ? t.hintFoldHide : t.hintFoldShow}}</text>
+        <text class="hint-fold-arrow">{{hintFold.revWhere ? '▾' : '▸'}}</text>
+      </view>
+      <view class="hint-fold-body" wx:if="{{hintFold.revWhere}}">{{t.pickWhereBody}}</view>
+    </view>
+    <view class="hint-fold">
+      <view class="hint-fold-head" data-key="revCols" bindtap="onToggleHintFold">
+        <text class="hint-fold-title">{{t.pickColsTitle}}</text>
+        <text class="hint-fold-guide">{{hintFold.revCols ? t.hintFoldHide : t.hintFoldShow}}</text>
+        <text class="hint-fold-arrow">{{hintFold.revCols ? '▾' : '▸'}}</text>
+      </view>
+      <view class="hint-fold-body" wx:if="{{hintFold.revCols}}">{{t.pickColsBody}}</view>
+    </view>
+
+    <!-- 🔴 R712：点按钮会**跳走**到微信聊天列表 —— 这是平台唯一能读文件的路，不能换。
+         所以「会跳走」这件事必须在**点之前**说，而不是等老板被弹走再解释。 -->
+    <view class="pick-jump-hint">{{t.importWechatHint}}</view>
+
     <button class="btn primary rev-pick" bindtap="onChoose" disabled="{{loading}}">{{t.pickBtn}}</button>
     <!-- R620：不会做表的老板走这条 —— 手填几个数就能用，不必有 Excel -->
     <view class="rev-manual" bindtap="goManual">

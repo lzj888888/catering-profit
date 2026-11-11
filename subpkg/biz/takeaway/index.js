@@ -201,6 +201,8 @@ Page({
       // M3.17 账单导入（批次 F 阶段① 第二 tab）
       importTab: TK.importTab,
       importPick: TK.importPick,
+      // 🔴 R712：点按钮会跳到微信聊天列表（平台唯一能读文件的路），必须**先**说。
+      importWechatHint: TERMS.ui.importWechatHint,
       importPickHint: TK.importPickHint,
       // R282：导入「去哪下载这张表」引导 —— 🔴 页面 t:{} 是**逐条列举**，
       //   漏登记 = 页面静默空白（本仓已踩过的红线，守 check_page_terms）。
@@ -678,10 +680,22 @@ Page({
   // 选文件 → 上传云存储 → importSalesBill(confirm=false) 预览（不落库）
   async onChooseFile() {
     if (this.data.importing) return;
+    // 🔴 R712（李老师真机：「它又系统异常就跳到微信那里去了，选择一个聊天」）：
+    //   「选文件」和「上传+解析」必须**分两个 try**。
+    //   原因：wx.chooseMessageFile 会跳到微信的会话列表让老板挑一个聊天里的文件，
+    //   老板在那里点返回/取消时 Promise 会 **reject**。原来两段写在同一个 try 里 ⇒
+    //   取消也被当成业务失败 ⇒ catch 走 api.toastError ⇒ 弹「系统异常，请稍后重试」。
+    //   老板看到的是「我只是退出来了，它说我系统异常」—— 比真报错更伤信任。
+    //   ⚠️ 与 subpkg/biz/revenue/index.js 的 onChoose 同口径（那边从一开始就是两段）。
+    let file;
     try {
       const res = await wx.chooseMessageFile({ count: 1, type: 'file', extension: ['xlsx'] });
-      const file = res.tempFiles && res.tempFiles[0];
-      if (!file) return;
+      file = res.tempFiles && res.tempFiles[0];
+    } catch (e) {
+      return;   // 用户取消，不当错误：不弹 toast、不改 importing
+    }
+    if (!file) return;
+    try {
       this.setData({ importing: true });
       wx.showLoading({ title: TERMS.ui.loading, mask: true });
       // 上传到云存储（路径带时间戳，防同名覆盖）

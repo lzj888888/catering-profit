@@ -35,6 +35,7 @@ Page({
       snapshotPrice: TERMS.card.snapshotPrice,
       snapshotConvert: TERMS.card.snapshotConvert,
       snapshotYield: TERMS.card.snapshotYield,
+      snapshotNoArchive: TERMS.card.snapshotNoArchive,
       // M3.19（批次 E）成本趋势折线
       impactTrend: TERMS.card.impactTrend,
       impactTrendSingle: TERMS.card.impactTrendSingle,
@@ -97,11 +98,20 @@ Page({
           net_unit_cost: l.net_unit_cost != null ? l.net_unit_cost : 0,
           line_net_cost: api.fenToYuan(l.line_net_cost_fen, 2),
           // S0 快照 5 字段（灰字展示）
+          // 🔴 R712（李老师真机：「采购价换算系数出成率全都是零」）：
+          //   0 不是真值，是「这一项不存在」的兜底 —— saveCostCard/index.js:214 对手工行
+          //   固定写 `purchase_price: 0, convert_factor: 0`（注释：手工行无原料可查）。
+          //   原来判断写成 `!= null` 再转字符串 ⇒ 0 变成 "0.00" / "0"，在 wxml 的
+          //   `wx:if="{{l.purchase_price}}"` 里**字符串为真** ⇒ 手工行被印成
+          //   「采购价 ¥0.00 / 换算系数 0 / 出成率 0%」，老板以为数据没导过来。
+          //   三个字段都只有 > 0 才有意义（采购价 0=白送、换算系数 0=除零、出成率 0=全损耗）。
+          //   ⚠️ 恢复版本（doRestore）只读 material_id/quantity/net_unit_cost/line_kind/group_name，
+          //      **不读这三个字段** ⇒ 此处置空对「恢复」零影响。
           brand_spec: l.brand_spec || '',
           purchase_unit: l.purchase_unit || '',
-          purchase_price: l.purchase_price != null ? api.fenToYuan(l.purchase_price, 2) : '',
-          convert_factor: l.convert_factor != null ? String(l.convert_factor) : '',
-          yield_rate: l.yield_rate != null ? String(l.yield_rate) : '',
+          purchase_price: (Number(l.purchase_price) || 0) > 0 ? api.fenToYuan(l.purchase_price, 2) : '',
+          convert_factor: (Number(l.convert_factor) || 0) > 0 ? String(l.convert_factor) : '',
+          yield_rate: (Number(l.yield_rate) || 0) > 0 ? String(l.yield_rate) : '',
           // 🔴 R298Y：行级往返字段（与卡级 card_type/specs 同族）——
           //   缺了它们，套餐子卡行在 `doRestore` 里会被当成「手工行」送出 ⇒ 与 onCopy 同一处失败。
           input_type: l.input_type === 2 ? 2 : 1,

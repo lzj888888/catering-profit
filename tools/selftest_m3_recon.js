@@ -154,6 +154,27 @@ const leaked = REASON_LITERALS.filter((r) => recoBody.indexOf(`'${r}'`) >= 0);
 check('R298X-⑩ 🔴 页面正文不得出现 reason 字面量（reason→文案 的判定只许在单源里）',
   leaked.length === 0, leaked.length ? '页面仍内联判定：' + leaked.join('、') : '零 reason 字面量');
 
+// ===== R712：「在售菜品数」必须解释自己是干什么的 =====
+// 李老师真机（2026-11-12）：「只需要填在售菜品数就可以了吗？套餐什么的？
+// 这个我也不知道他这个本意是算什么的。」
+// 它是对账页的**覆盖率分母**（已建卡的菜 ÷ 在售菜数）。原来只有一个标签，
+// 一个字没解释用途 ⇒ 老板跳过不填 ⇒ 结果一直被抑制，还以为是功能坏了。
+const recoSrcRaw = fs.readFileSync(path.join(__dirname, '..', 'subpkg', 'tools', 'recon', 'index.js'), 'utf8');
+const recoWxml = fs.readFileSync(path.join(__dirname, '..', 'subpkg', 'tools', 'recon', 'index.wxml'), 'utf8');
+const whyText = (TERMS.card && TERMS.card.reconCoverageWhy) || '';
+
+check('R712-① 文案单源存在（TERMS.card.reconCoverageWhy）', !!whyText, whyText ? whyText.slice(0, 20) + '…' : '缺失');
+check('R712-② 🔴 说明必须讲清「它是分母 / 覆盖率」——不解释用途等于没加',
+  !!whyText && /盖住|覆盖/.test(whyText) && /(几成|百分|比例)/.test(whyText), whyText ? '含覆盖率语义' : '缺失');
+check('R712-③ 说明必须点出「没建卡的菜会怎样」——这才是老板关心的后果',
+  !!whyText && /(按 0|虚高|没建卡|没建成本卡)/.test(whyText), whyText ? '含后果' : '缺失');
+check('R712-④ 页面把它渲染出来了（写了文案不显示 = 白写）',
+  recoWxml.indexOf('reconCoverageWhy') >= 0, '');
+check('R712-⑤ 页面把它映射进 t 了（少这个 key 页面就是空白且不报错）',
+  recoSrcRaw.indexOf('reconCoverageWhy') >= 0, '');
+check('R712-⑥ 反恒真：影子样本「只有标签、不解释用途」必须判红',
+  !(/盖住|覆盖/.test('在售菜品数') && /(几成|百分|比例)/.test('在售菜品数')), '影子样本已证伪');
+
 // ⑪ 前提：用例表非空（防「扫了空集所以全绿」）
 check('R298X-⑪ 前提：KEY_CASES 组数 ≥ 6（删用例即转红）', KEY_CASES.length >= 6, `实 ${KEY_CASES.length} 组`);
 

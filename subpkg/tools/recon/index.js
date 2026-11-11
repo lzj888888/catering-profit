@@ -18,6 +18,8 @@ Page({
       reconDiffFen: TERMS.card.reconDiffFen,
       reconCoverage: TERMS.card.reconCoverage,
       reconCoveragePh: TERMS.card.reconCoveragePh,
+      // 🔴 R712：这个数是覆盖率分母，原来只有一个标签、没解释用途（李老师：「本意是算什么的」）
+      reconCoverageWhy: TERMS.card.reconCoverageWhy,
       reconSave: TERMS.card.reconSave,
       reconIncludeCombo: TERMS.card.reconIncludeCombo,
       reconMonth: TERMS.card.reconMonth,

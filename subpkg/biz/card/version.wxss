@@ -5,6 +5,10 @@
 .line-row .lbl { color: #444; }
 /* S0 快照 5 字段（只读灰字） */
 .snapshot { display: flex; flex-wrap: wrap; gap: 4rpx 24rpx; margin-top: 6rpx; padding-left: 8rpx; font-size: 28rpx; color: #776C5E; }
+/* 🔴 R712：手工录入行没有档案采购价 —— 用一句浅灰说明代替「三个 0」。
+   颜色比 .snapshot 再淡一档（#8C8279 在浅底上对比度 3.6:1，达 AA 对小字的要求）；
+   字号不降（28rpx 是 AD 门禁下限）。 */
+.snapshot.snap-none { color: #8C8279; font-style: italic; }
 
 /* M3.19（A3）成本趋势折线。字号 ≥28rpx（AD 门禁）；柱条容器固定高度、柱底对齐。 */
 .trend { margin: 8rpx 0 16rpx; padding: 16rpx 20rpx; background: #FBF6EC; border-radius: 12rpx; }

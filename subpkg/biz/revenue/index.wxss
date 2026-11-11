@@ -64,3 +64,20 @@
 .rev-manual-t { display: block; font-size: 32rpx; color: #1a2233; font-weight: 600; }
 .rev-manual-s { display: block; font-size: 28rpx; color: #776C5E; line-height: 1.55; margin-top: 8rpx; }
 .rev-again { margin-top: 32rpx; }
+
+/* 🔴 R712：导入指引折叠块。与 takeaway/index、card/index、card/edit 三处**同形**；
+   这是第四份复制。技术债：应收进 app.wxss 单源，但那要同时改三页、
+   且页内定义优先级更高会盖住全局，风险大于收益 —— 留待专门一轮，此处先登记。 */
+.hint-fold { padding: 0 0 6rpx; }
+.hint-fold-head { display: flex; align-items: center; justify-content: space-between;
+  min-height: 88rpx; padding: 14rpx 8rpx; }
+.hint-fold-title { font-size: 28rpx; color: #1e3a5f; font-weight: 600; flex: 1; }
+.hint-fold-guide { font-size: 28rpx; color: #1e3a5f; }
+.hint-fold-arrow { font-size: 28rpx; color: #1e3a5f; }
+.hint-fold-body { font-size: 28rpx; color: #6B6157; line-height: 1.6; padding: 16rpx 20rpx;
+  background: #FBF6EC; border-radius: 12rpx; margin: 0 0 12rpx; }
+
+/* 选文件**之前**必须看到「会跳到微信」—— 所以不折叠。折起来等于没说。
+   字号 28rpx 是 AD 门禁下限，不再往下压。 */
+.pick-jump-hint { font-size: 28rpx; color: #7A5B2E; background: #FDF6EC;
+  border-radius: 12rpx; padding: 16rpx 20rpx; margin: 8rpx 0 12rpx; line-height: 1.55; }

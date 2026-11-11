@@ -92,3 +92,8 @@
 .wf-legend { display: flex; flex-wrap: wrap; margin: 4rpx 4rpx 12rpx; }
 .wf-li { font-size: 28rpx; color: #6B6157; margin-right: 18rpx; }
 .wf-li-receipt { color: #1a7d55; font-weight: 600; }
+
+/* 🔴 R712：选文件按钮上方的「会跳到微信」预告。两页共用（渠道营收 / 销量导入）。
+   不折叠：这是**点之前**必须看到的，折起来等于没说。28rpx 是 AD 门禁下限。 */
+.pick-jump-hint { font-size: 28rpx; color: #7A5B2E; background: #FDF6EC;
+  border-radius: 12rpx; padding: 16rpx 20rpx; margin: 8rpx 0 12rpx; line-height: 1.55; }
