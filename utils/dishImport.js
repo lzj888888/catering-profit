@@ -41,7 +41,14 @@ const CAT_KEYWORDS = {
 //     菜名里恰好叫「合计」的概率极低，而模糊匹配会误杀「合计拼盘」这类真菜。
 const NOISE_FIRST = ['合计', '小计', '总计', '汇总', '共计', '累计', '本页合计',
   'Total', 'TOTAL', '合计行', '总计金额'];
-const HEADER_FIRST = ['菜品名称', '菜名', '品名', '商品名称', '菜品', '名称', '菜品名'];
+const COL_NAME = ['菜品名称', '菜名', '品名', '商品名称', '品项名称', '菜品名', '商品名'];
+const COL_CAT = ['菜品分类', '菜品大类', '商品分类', '品项分类', '分类'];
+const COL_PRICE = ['单价', '定价', '售价', '商品单价'];
+// R700（真表实测暴露）：表头行判据必须与「列名别名」**同源**。
+//   修前 HEADER_FIRST 是手写另一份名单，里面有「商品名称」却没有「商品名」——
+//   而美团商品销量真表的表头恰好写「商品名」⇒ 表头行没被拦，被当成一道叫「商品名」的菜导进去。
+//   ⇒ 改成由 COL_NAME 派生。以后再加列名别名，拦表头自动跟着生效，不会再漏。
+const HEADER_FIRST = COL_NAME.concat(['菜品', '名称']);
 function isNoiseLine(raw) {
   const s = String(raw == null ? '' : raw).replace(/\r/g, '').trim();
   if (!s) return true;
@@ -59,9 +66,7 @@ function isNoiseLine(raw) {
 //   修法：先探测表头，按列名定位「菜名列 / 分类列 / 单价列」，不再假设位置。
 //   ⚠️ 单价列只认「单价/定价/售价」这类**单价值**；
 //     绝不把「原价金额 / 菜品收入金额 / 总金额」当单价 —— 那是金额合计，当单价会差出数量级。
-const COL_NAME = ['菜品名称', '菜名', '品名', '商品名称', '品项名称', '菜品名', '商品名'];
-const COL_CAT = ['菜品分类', '菜品大类', '商品分类', '品项分类', '分类'];
-const COL_PRICE = ['单价', '定价', '售价', '商品单价'];
+//   （列名常量 COL_NAME / COL_CAT / COL_PRICE 统一定义在 isNoiseLine 之前，见上方「单源」说明）
 
 function detectColumns(lines) {
   for (const raw of lines) {

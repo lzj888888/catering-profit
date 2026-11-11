@@ -60,7 +60,14 @@ const PLATFORM_PROFILE = {
     deny: [],
     billDate: C_BILL_DATE, net: C_MEITUAN_NET,
     bizType: '交易类型', order: '外卖订单',
-    rowFilter: { col: '交易类型', eq: '外卖订单' },   // 🔴 不筛 = 1747.95 错值
+    // 🔴 不筛 = 1747.95 错值（广告/保险混进来）
+    // 🔴 R700（真表实测暴露）：**退款必须留下冲减金额**，不能跟着广告/保险一起排掉。
+    //   真表 meituan_bill_20260907-0913.xlsx 实证：同一订单号 440229506410710878 有两行 ——
+    //     R4「外卖订单」+37.87 / R7「订单部分退款」−39.85
+    //   只按 eq 筛 ⇒ 退款整行被排除 ⇒ 收入算 130.66，而商家真实应收只有 90.81，
+    //   **多算 39.85（多 44%）**，页面看不出任何异常。
+    //   keepContains = 值里含关键词也放行（只放退款，广告/保险照排）。
+    rowFilter: { col: '交易类型', eq: '外卖订单', keepContains: ['退款'] },
     // 🔴 R695（真实账单实测暴露的假设差异）：
     //   原实现 `qtyRule: 'perRow'` —— 每行算一单，**退款单也被算成有效订单**。
     //   这个假设建立在「退款是单独的『交易类型』」之上（那 rowFilter 会排掉它）；
@@ -72,6 +79,9 @@ const PLATFORM_PROFILE = {
     //   ⚠️ 向后兼容：若某版账单**没有「订单状态」列**，`at()` 返回 undefined ≠ '已退款'
     //      ⇒ qty 仍为 1，行为与改动前完全一致（不臆造排除）。
     orderType: '订单状态', refund: '已退款',
+    // R700：退款的**第二种形态** —— 交易类型本身就叫「订单部分退款」，其订单状态写「订单完成」，
+    //   靠 orderType===refund 判不出来 ⇒ 会被算成一单有效订单（客单价被拉低）。
+    refundTypeContains: '退款',
     qtyRule: 'perRow_exceptRefund',
     excludeLabel: '非外卖订单（广告/保险）',
   },
@@ -305,8 +315,12 @@ function parseBillMatrix(matrix, opts) {
     // ⑤ 行过滤（档案驱动：美团=交易类型；京东订单级=订单类型==正向订单）
     if (rf) {
       const v = String(at(row, rf.col) == null ? '' : at(row, rf.col)).trim();
-      if (rf.eq != null && v !== rf.eq) { excludedRows++; continue; }
-      if (rf.ne != null && v === rf.ne) { excludedRows++; continue; }
+      // R700：keepContains —— 值里含关键词也放行。用于「退款行必须参与冲减」：
+      //   排除广告/保险是为了不让它们污染外卖收入，但退款不是另一种费用，而是**同一笔收入的减少**，
+      //   排掉它等于凭空多算收入。所以只对指定关键词开口，广告/保险照旧被排。
+      const kept = (rf.keepContains || []).some(function (k) { return v.indexOf(k) >= 0; });
+      if (rf.eq != null && v !== rf.eq && !kept) { excludedRows++; continue; }
+      if (rf.ne != null && v === rf.ne && !kept) { excludedRows++; continue; }
     }
     const net = toNum(at(row, prof.net));
     if (net == null) continue;                              // 空净额行跳过
@@ -315,7 +329,14 @@ function parseBillMatrix(matrix, opts) {
     let qty = 0;
     if (prof.qtyRule === 'perRow_exceptRefund') {
       const ot = String(at(row, prof.orderType) == null ? '' : at(row, prof.orderType)).trim();
-      qty = (ot === prof.refund) ? 0 : 1;                   // 🔴 退单不算有效订单
+      // R700：退款有两种形态，都要排除出「有效订单」：
+      //   ① 订单状态=已退款（R695 覆盖）
+      //   ② 交易类型本身含「退款」，如「订单部分退款」—— 这种行的订单状态写「订单完成」，
+      //      只判 ① 会把退款算成一单 ⇒ 客单价被拉低 ⇒ 所有按单价的判断跟着偏。
+      const bt = prof.bizType
+        ? String(at(row, prof.bizType) == null ? '' : at(row, prof.bizType)).trim() : '';
+      const isRefundType = !!(prof.refundTypeContains && bt.indexOf(prof.refundTypeContains) >= 0);
+      qty = (ot === prof.refund || isRefundType) ? 0 : 1;   // 🔴 退单不算有效订单
     } else if (prof.qtyRule === 'perRow') {
       qty = 1;
     } else if (prof.qtyRule === 'perOrderNo') {             // 🔴 长表/多行单：按单号去重
