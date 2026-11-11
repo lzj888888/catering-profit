@@ -17,6 +17,10 @@
 
   <!-- 本单菜品 -->
   <view class="sec">{{t.dishTitle}}</view>
+  <!-- 🔴 R715：「顾客支付」是用成本卡售价算的**标准单**，不是这一单实收。
+       此前页面一个字都没提，而外卖普遍加价 2~5 元、还有满减 ⇒ 老板会以为系统算错，
+       或更糟：照这个数去给外卖定价。必须在他填份数之前就说清。 -->
+  <view class="base-note">{{t.dishPriceNote}}</view>
   <view class="row" wx:for="{{items}}" wx:key="rid">
     <picker class="pick-grow" mode="selector" range="{{dishes}}" range-key="name" data-idx="{{index}}" bindchange="onItemPick">
       <view class="pick">{{items[index].card_name || t.dishPickPh}}</view>
@@ -28,6 +32,10 @@
 
   <!-- 包材 -->
   <view class="sec">{{t.packTitle}}</view>
+  <!-- 🔴 R715：「包材」是成本（你买餐盒），「平台参数」里的「打包费·顾客付」是收入。
+       两处都填餐盒钱、只差一个字 ⇒ 利润会被算成两倍，且两个数单看都"对"。
+       这句必须在这里（不是合并到平台参数区）：两区隔了几屏，填包材时看不到打包费。 -->
+  <view class="base-note">{{t.packNote}}</view>
   <view class="row" wx:for="{{packs}}" wx:key="rid">
     <input class="price-input" type="digit" value="{{packs[index].unit_price_yuan}}" data-idx="{{index}}" bindinput="onPackPrice" placeholder="{{t.packTempPh}}" adjust-position="{{true}}" cursor-spacing="20" />
     <input class="qty-input" type="number" value="{{packs[index].qty}}" data-idx="{{index}}" bindinput="onPackQty" placeholder="{{t.packQty}}" adjust-position="{{true}}" cursor-spacing="20" />
@@ -46,15 +54,15 @@
   </view>
   <view class="field" wx:if="{{params.commission_mode === 'rate'}}">
     <text class="lbl">{{t.commissionRate}}</text>
-    <input class="val-input" type="digit" value="{{params.commission_rate}}" data-field="commission_rate" bindinput="onParam" adjust-position="{{true}}" cursor-spacing="20" />
+    <input class="val-input" type="digit" value="{{params.commission_rate}}" data-field="commission_rate" bindinput="onParam" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.commissionRatePh}}" />
   </view>
   <view class="field" wx:if="{{params.commission_mode === 'rate'}}">
     <text class="lbl">{{t.commissionMin}}</text>
-    <input class="val-input" type="digit" value="{{params.commission_min_yuan}}" data-field="commission_min_yuan" bindinput="onParam" adjust-position="{{true}}" cursor-spacing="20" />
+    <input class="val-input" type="digit" value="{{params.commission_min_yuan}}" data-field="commission_min_yuan" bindinput="onParam" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.commissionMinPh}}" />
   </view>
   <view class="field" wx:if="{{params.commission_mode === 'fixed'}}">
     <text class="lbl">{{t.commissionFixed}}</text>
-    <input class="val-input" type="digit" value="{{params.commission_fixed_yuan}}" data-field="commission_fixed_yuan" bindinput="onParam" adjust-position="{{true}}" cursor-spacing="20" />
+    <input class="val-input" type="digit" value="{{params.commission_fixed_yuan}}" data-field="commission_fixed_yuan" bindinput="onParam" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.commissionFixedPh}}" />
   </view>
   <view class="field">
     <text class="lbl">{{t.deliveryFee}}</text>
@@ -70,11 +78,11 @@
   </view>
   <view class="field">
     <text class="lbl">{{t.packFee}}</text>
-    <input class="val-input" type="digit" value="{{params.pack_fee_yuan}}" data-field="pack_fee_yuan" bindinput="onParam" adjust-position="{{true}}" cursor-spacing="20" />
+    <input class="val-input" type="digit" value="{{params.pack_fee_yuan}}" data-field="pack_fee_yuan" bindinput="onParam" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.packFeePh}}" />
   </view>
   <view class="field">
     <text class="lbl">{{t.deliveryCustomer}}</text>
-    <input class="val-input" type="digit" value="{{params.delivery_customer_yuan}}" data-field="delivery_customer_yuan" bindinput="onParam" adjust-position="{{true}}" cursor-spacing="20" />
+    <input class="val-input" type="digit" value="{{params.delivery_customer_yuan}}" data-field="delivery_customer_yuan" bindinput="onParam" adjust-position="{{true}}" cursor-spacing="20" placeholder="{{t.deliveryCustomerPh}}" />
   </view>
 
   <!-- 补贴拆两行（承担方未选 ⇒ 不计入） -->
@@ -201,6 +209,24 @@
          「它又系统异常就跳到微信那里去了，选择一个聊天」）。 -->
     <view class="pick-jump-hint">{{t.importWechatHint}}</view>
     <button class="btn primary" bindtap="onChooseFile">{{t.importPick}}</button>
+
+    <!-- 🔴 R715（自救路径）：同一份销量数据有**两个导入入口**（本 tab 与排行榜页），
+         但清除入口只在排行榜页（`clearSalesBills`）。从本页导错的人在这里找不到回头路，
+         而本页此前也不说数据清在哪 —— 老板的结论会是「导错了没法改，完了」。
+         ⚠️ 折叠而非平铺：正常路径用不到，只在出错时才需要；标题本身就是搜索词。
+         ⚠️ 新增折叠块**必须同步登记到 `tools/check_hint_fold.js` 的 takeaway.keys**，
+            否则 F2「不得出现期望外折叠块」判红（这道闸是对的：防止折叠块被随手加满首屏）。 -->
+    <view class="hint-fold">
+      <view class="hint-fold-head" data-key="tkFixHint" bindtap="onToggleHintFold">
+        <text class="hint-fold-title">{{t.importClearFixTitle}}</text>
+        <text class="hint-fold-guide">{{hintFold.tkFixHint ? t.hintFoldHide : t.hintFoldShow}}</text>
+        <text class="hint-fold-arrow">{{hintFold.tkFixHint ? '▾' : '▸'}}</text>
+      </view>
+      <view class="hint-fold-body" wx:if="{{hintFold.tkFixHint}}">
+        <view>{{t.importClearFixBody}}</view>
+        <button class="btn ghost btn-small" bindtap="goDishReview">{{t.goClearBills}}</button>
+      </view>
+    </view>
 
     <!-- 🔴 R286：认不出这张表 ⇒ 「缺哪几列」诊断回执。
          ⚠️ 必须**独立成块**、不能挂进下面预览区的 wx:if：诊断态下 preview/grade 全为空，

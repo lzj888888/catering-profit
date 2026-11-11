@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：287 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：288 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1576,6 +1576,15 @@ const SUITES = [
   //   特异性相同（都是两个类），谁生效只取决于源码先后；挪一格就静默变回 50% 窄卡。
   //   判据真跑一遍层叠（匹配→特异性→顺序）算出 flex-direction / width，并含两条反恒真。
   ['hub-lead-strip', 'tools/check_hub_lead_strip.js'],
+  // R715：外卖页「词不达意 / 填不了 / 改不回」守卫。李老师 2026-11-12 原话：
+  //   「各个语义这个解释，你看看词不达意的地方有没有…不知怎么填数字…入错了数字怎么办，
+  //     表格导错了这个时候我们怎么纠正」。
+  //   守三条：① 同物异名方向相反（包材=成本 vs 打包费=收入、配送服务费·商家付 vs 配送费·顾客承担）
+  //          ② 「顾客支付」必须自述是按成本卡售价算的标准单、不是实收
+  //          ③ 清除销量的入口在排行榜页 ⇒ 本页必须指路（否则导错了「没法改」）
+  //   ⚠️ 判的是**方向词是否存在**而非字面比对：合法改写只要仍说清方向就通过，
+  //      否则守卫会退化成「不许动文案」的橡皮章。含 4 条反恒真。
+  ['takeaway-semantics', 'tools/check_takeaway_semantics.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

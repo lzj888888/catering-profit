@@ -663,7 +663,7 @@ const PAGE_CASES = [
     wxml: 'subpkg/biz/takeaway/index.wxml',
     js: 'subpkg/biz/takeaway/index.js',
     wxss: 'subpkg/biz/takeaway/index.wxss',
-    keys: ['tkPickHint', 'tkShapeCHint', 'tkWhereHint', 'tkColsHint'],
+    keys: ['tkPickHint', 'tkShapeCHint', 'tkWhereHint', 'tkColsHint', 'tkFixHint'],
     keepPlain: 1,   // importPickPlatformHint 17 字（确认按钮紧下方）⇒ 保持平铺
     segFolds: 0,
   },
