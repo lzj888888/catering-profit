@@ -702,8 +702,15 @@ function section12() {
   // 🔴 只在**新建**时生效：编辑态下 load() 会用卡里的名字回填，预填覆盖它就是"改了名还以为没改"。
   check('12-⑨ 🔴 预填只在新建态生效（编辑态不得覆盖卡里的菜名）',
     /prefillName\s*&&\s*!\(\(q && q\.card_code\)/.test(editSrc));
+  // ⚠️ R692 放宽：原正则要求 data-name 与 bindtap **紧邻**，等于把「属性顺序」当契约。
+  //   R692 在中间加了 data-amt / data-qty（预填售价要用）⇒ 功能没退化却判红。
+  //   改成 [^>]* 允许中间有其它属性 —— 但 data-name 与 goNewCard 必须在**同一个标签**上。
   check('12-⑩ 行内按钮把菜名带出去（wxml 绑定 data-name + goNewCard）',
-    /data-name="\{\{item\.name\}\}" bindtap="goNewCard"/.test(wxmlSrc));
+    /data-name="\{\{item\.name\}\}"[^>]*bindtap="goNewCard"/.test(wxmlSrc));
+  // R692：预填售价依赖这两个属性，缺一个就算不出均价（静默退回只预填菜名）
+  check('12-⑩b 同一按钮带上金额与份数（R692 均价预填的数据源）',
+    /data-amt="\{\{item\.amountFen\}\}"[^>]*data-qty="\{\{item\.qty\}\}"/.test(wxmlSrc)
+    || /data-qty="\{\{item\.qty\}\}"[^>]*data-amt="\{\{item\.amountFen\}\}"/.test(wxmlSrc));
 
   // P1-B：卡不够时不给批量关联按钮
   check('12-⑪ 🔴 批量关联入口受 shortCardGap 约束（卡数 < 未匹配数 ⇒ 不渲染该按钮）'
