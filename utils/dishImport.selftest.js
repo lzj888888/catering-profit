@@ -2,7 +2,7 @@
 // 形状约束（R66）：顶层无 IIFE；process.exit 仅在末块；断言失败以 ✅/❌ 明细 + 末行 `==== ... N 通过 / M 失败 ====` 汇总。
 const fs = require('fs');
 const path = require('path');
-const { isNoiseLine, parseDishLine, parseDishLines, matchCategory, buildDraftCard, draftStatusOf, prefillOf, hasThousandsSeparator, IMPORT_NO_AUTOSAVE } = require('./dishImport.js');
+const { isNoiseLine, detectColumns, parseDishLine, parseDishLines, matchCategory, buildDraftCard, draftStatusOf, prefillOf, hasThousandsSeparator, IMPORT_NO_AUTOSAVE } = require('./dishImport.js');
 
 let pass = 0, fail = 0;
 function ok(name, cond) {
@@ -129,6 +129,39 @@ ok('R698-⑤ isNoiseLine 精确匹配：真菜名「合计拼盘」不得被误�
 ok('R698-⑥ 常见合计/表头别名都拦得住',
   isNoiseLine('小计\t10\t200') && isNoiseLine('总计 100 999')
   && isNoiseLine('菜品名称\t菜品分类\t销售数量\t销售额\t单价'));
+
+
+// ===== R699：真实收银报表的列序（豆包联网检索到官方帮助文档，有来源 URL）=====
+// 来源已固化：review/evidence/r698_realforms/doubao_websearch_6forms.txt
+// 最关键的事实：**菜名不在第一列** —— 美团管家第 4 列、银豹第 2 列。
+const MEITUAN = [
+  '营业日期\t菜品大类\t菜品小类\t菜品名称\t销售数量\t原价金额\t菜品收入金额\t优惠金额',
+  '2026-06-12\t热菜\t川菜\t水煮鱼\t12\t696.00\t626.40\t69.60',
+  '2026-06-12\t饮品\t茶饮\t柠檬水\t25\t250.00\t225.00\t25.00',
+  '合计\t\t\t\t37\t946.00\t851.40\t94.60',
+].join('\n');
+const mtRows = parseDishLines(MEITUAN);
+ok('R699-① 美团管家列序：菜名取自第 4 列（不是日期）',
+  mtRows.length === 2 && mtRows[0].name === '水煮鱼' && mtRows[1].name === '柠檬水',
+  mtRows.map(function (r) { return r.name; }).join('、'));
+ok('R699-② 分类取自「菜品大类」列，且表头/合计行都被跳过',
+  mtRows[0].category === '热菜' && mtRows.length === 2);
+ok('R699-③ 该报表没有「单价」列 ⇒ 售价留空，绝不拿「原价金额」当单价',
+  mtRows.every(function (r) { return r.priceYuan === null; }),
+  mtRows.map(function (r) { return String(r.priceYuan); }).join('/'));
+const YINBAO = [
+  '操作\t商品名称\t商品条码\t规格\t单位\t商品分类\t现有库存\t销售数量\t商品总售价\t实收金额',
+  '正常\t美式咖啡\t6901\t大杯\t杯\t咖啡\t999\t30\t540.00\t480.00',
+].join('\n');
+ok('R699-④ 银豹列序：菜名取自第 2 列（「操作」不再被当菜名）',
+  parseDishLines(YINBAO)[0].name === '美式咖啡');
+ok('R699-⑤ 无表头的三列粘贴仍走老路径（回归：菜名+分类+售价）',
+  (function () {
+    const r = parseDishLines('鱼香肉丝,热炒荤菜,38');
+    return r.length === 1 && r[0].name === '鱼香肉丝' && r[0].priceYuan === 38;
+  })());
+ok('R699-⑥ detectColumns 在无表头时返回 null（保证能回落，不是恒真）',
+  detectColumns(['鱼香肉丝,热炒荤菜,38']) === null);
 
 
 console.log('==== 菜品批量导入逻辑自测结果：' + pass + ' 通过 / ' + fail + ' 失败 ====');

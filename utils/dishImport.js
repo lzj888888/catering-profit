@@ -49,6 +49,35 @@ function isNoiseLine(raw) {
   return NOISE_FIRST.indexOf(first) >= 0 || HEADER_FIRST.indexOf(first) >= 0;
 }
 
+// R699（真实报表实测暴露，比合计行严重）：真实收银报表**菜名不在第一列**。
+//   豆包联网检索到的官方帮助文档列序（有来源可核，见 review/evidence/r698_realforms/ 同名说明）：
+//     美团管家：营业日期 / 菜品大类 / 菜品小类 / 菜品名称 / 销售数量 / 原价金额 / ...
+//     银豹：操作 / 商品名称 / 商品条码 / 规格 / 单位 / 商品分类 / ... / 商品总售价 / 实收金额
+//     天财商龙：品项编码 / 品项名称 / 品项分类 / 销售数量 / 应收金额 / ...
+//   ⇒ 旧实现把第一列当菜名，整表粘贴后每道菜的名字都变成「2026-06-12」或「操作」，
+//     真菜名被挤进分类列 —— 名字错了整张卡就废了，而页面看着"有 4 行数据"，零报错。
+//   修法：先探测表头，按列名定位「菜名列 / 分类列 / 单价列」，不再假设位置。
+//   ⚠️ 单价列只认「单价/定价/售价」这类**单价值**；
+//     绝不把「原价金额 / 菜品收入金额 / 总金额」当单价 —— 那是金额合计，当单价会差出数量级。
+const COL_NAME = ['菜品名称', '菜名', '品名', '商品名称', '品项名称', '菜品名', '商品名'];
+const COL_CAT = ['菜品分类', '菜品大类', '商品分类', '品项分类', '分类'];
+const COL_PRICE = ['单价', '定价', '售价', '商品单价'];
+
+function detectColumns(lines) {
+  for (const raw of lines) {
+    if (raw.indexOf('\t') < 0) continue;
+    const parts = raw.split('\t').map(function (s) { return s.trim(); });
+    const idx = function (names) {
+      for (let i = 0; i < parts.length; i++) if (names.indexOf(parts[i]) >= 0) return i;
+      return -1;
+    };
+    const nameIdx = idx(COL_NAME);
+    if (nameIdx < 0) continue;
+    return { nameIdx: nameIdx, catIdx: idx(COL_CAT), priceIdx: idx(COL_PRICE) };
+  }
+  return null;
+}
+
 function parseDishLine(raw) {
   if (raw == null) return null;
   const s = String(raw).replace(/\r/g, '').trim();
@@ -114,6 +143,30 @@ function hasThousandsSeparator(raw) {
 // 解析整段粘贴文本 → 菜品数组（跳过空行/无菜名行）。
 function parseDishLines(text) {
   if (!text) return [];
+  // R699：有表头就按列名定位（真实报表 10+ 列、菜名常在第 2~5 列）；
+  //   没有表头就退回「第一列是菜名」的老路径 ⇒ 现有三列粘贴行为完全不变。
+  const all = String(text).split('\n')
+    .map(function (l) { return l.replace(/\r/g, ''); })
+    .filter(function (l) { return l.trim(); });
+  const cols = detectColumns(all);
+  if (cols && cols.nameIdx > 0) {
+    const out = [];
+    all.forEach(function (raw) {
+      const p = raw.split('\t').map(function (s) { return s.trim(); });
+      if (p.length <= cols.nameIdx) return;
+      const name = p[cols.nameIdx] || '';
+      if (!name || isNoiseLine(name)) return;
+      const priceRaw = cols.priceIdx >= 0 ? (p[cols.priceIdx] || '') : '';
+      out.push({
+        name: name,
+        category: cols.catIdx >= 0 ? (p[cols.catIdx] || '') : '',
+        priceYuan: /^\d+(\.\d+)?$/.test(priceRaw) ? Number(priceRaw) : null,
+        ambiguous: false,
+        ambNums: [],
+      });
+    });
+    return out;
+  }
   return String(text).split('\n')
     .map((l) => parseDishLine(l))
     .filter((x) => x && x.name);
@@ -244,4 +297,4 @@ function prefillOf(draft) {
   };
 }
 
-module.exports = { CAT_KEYWORDS, isNoiseLine, parseDishLine, parseDishLines, matchCategory, buildDraftCard, draftStatusOf, draftIssues, prefillOf, hasThousandsSeparator, IMPORT_NO_AUTOSAVE, DRAFT_PREFILL_KEY };
+module.exports = { CAT_KEYWORDS, isNoiseLine, detectColumns, parseDishLine, parseDishLines, matchCategory, buildDraftCard, draftStatusOf, draftIssues, prefillOf, hasThousandsSeparator, IMPORT_NO_AUTOSAVE, DRAFT_PREFILL_KEY };
