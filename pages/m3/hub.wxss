@@ -57,7 +57,10 @@
       `✓` 用它表示"完成"与全仓"绿=安全"的既有语义同向，不冲突。 */
 .hub-step {
   display: inline-block; min-width: 36rpx; margin-right: 6rpx;
-  font-size: 30rpx; font-weight: 700; color: #A99E8E;
+  /* 🔴 R708（text-contrast A-① 抓出的真问题）：原来是 #A99E8E，在卡片浅底上只有 2.38:1
+     —— 老板在太阳底下看手机基本读不出这个序号，而它正是"该做第几步"的唯一标记。
+     换成 app.wxss 已有的暖灰正文色 #776C5E（与 .hub-desc 同色），不引入新色。 */
+  font-size: 30rpx; font-weight: 700; color: #776C5E;
 }
 .hub-step.on { color: #1a7d55; }
 /* 点击反馈：原本 8 张卡点下去毫无变化（像死的）。只降透明度，不动背景 ——

@@ -14,6 +14,18 @@
   <view class="warn-note" wx:if="{{badQtyCount > 0}}">{{t.batchOutputBadTip}}</view>
   <view class="warn-note" wx:if="{{badUsageCount > 0}}">{{t.usageBadTip}}</view>
 
+  <!-- 🔴 R708：补价模式横幅。为什么要有它：
+       精简态把 20+ 控件收起来了，若不说一句，老板会以为「功能少了 / 草稿没带过来」。
+       这句话同时回答了三个问题：① 这是什么模式 ② 我该做什么 ③ 做完去哪。
+       逃生口放在同一块里 —— 就在他可能想找东西的位置，不用滚到底。 -->
+  <view class="lean-bar" wx:if="{{patchMode}}">
+    <view class="lean-head">
+      <text class="lean-tag">{{t.leanTitle}}</text>
+      <text class="lean-fold" bindtap="onLeanToggle">{{patchFull ? t.leanFoldBtn : t.leanFullBtn}}</text>
+    </view>
+    <text class="lean-desc" wx:if="{{!patchFull}}">{{t.leanDesc}}</text>
+  </view>
+
   <!-- round156：连续录入 —— 保存成功后**留在本页**，这条横幅是"存到哪了"的凭证 + 显式返回出口。
        改前每存一道菜就 navigateBack 回列表，录 30 道菜要来回 60 次。 -->
   <view class="saved-bar" wx:if="{{savedName}}">
@@ -27,7 +39,9 @@
   </view>
 
   <!-- 🔴 P0#7：新手/专业模式（与 M1 录入页同形）—— 新手先填核心项，专业项默认收起 -->
-  <view class="im-wrap">
+  <!-- 🔴 R708：补价模式下整块隐藏 —— 模式偏好排在「填菜名」**之前**，是精简态最挡路的一块，
+       而且草稿场景里「新手/专业」这个选择本身没有意义（他只有一个动作：补价）。 -->
+  <view class="im-wrap" wx:if="{{!lean}}">
     <view class="im-sec">{{t.inputModeTitle}}</view>
     <view class="im-opts">
       <view class="im-opt {{inputMode === 'novice' ? 'on' : ''}}" data-val="novice" bindtap="onPickInputMode">
@@ -40,7 +54,7 @@
       </view>
     </view>
   </view>
-  <view class="im-tip" wx:if="{{inputMode === 'novice' && !showMore}}">{{t.noviceTip}}</view>
+  <view class="im-tip" wx:if="{{inputMode === 'novice' && !showMore && !lean}}">{{t.noviceTip}}</view>
 
   <view class="sec-lite">{{t.secBasic}}</view>
   <view class="field">
@@ -51,7 +65,9 @@
   <!-- M3.16（批次 C）卡片类型：单品 / 套餐（引用型成本卡）
        R190：提到**名字下面第一步** —— 「是录一道菜，还是组一个套餐」先定，再谈别的；
        选套餐后隐藏「核算模式 / 批量产出 / 菜品模板」（套餐固定按「份」聚合，calc_mode 对其无意义）。 -->
-  <view class="field">
+  <!-- 🔴 R708：补价模式隐藏卡片类型 —— 草稿恒为单品（导入页只产单品草稿），
+       给一个「改成套餐」的开关，等于在补价路上开一个会**清空原料行口径**的岔路。 -->
+  <view class="field" wx:if="{{!lean}}">
     <text class="lbl">{{t.cardTypeLabel}}</text>
     <radio-group class="mode-group" bindchange="onCardType">
       <label class="mode-item"><radio value="1" checked="{{cardType === '1'}}" color="#1e3a5f"/>{{t.cardTypeDish}}</label>
@@ -64,7 +80,10 @@
   <!-- 🔴 R671：两级选择 —— 先选业态大类（与 M2 同一套词），再选该品类下的菜。
        为什么改：22 道平铺一个下拉，老板要滚很久才找到目标；先按品类收窄，一眼能挑到。
        布局：这个 field 用 flex-wrap 让两个 picker 各占一行（并排会挤成 110rpx，点不准）。 -->
-  <view class="field tpl-field" wx:if="{{!isEdit && cardType === '1'}}">
+  <!-- 🔴 R708：补价模式下模板区必须**整块隐藏** —— 这不是排版偏好，是防误触：
+       点模板会用模板行**覆盖**老板刚补好价的原料行（applyTemplate 里 `lines: renumber(lines)`），
+       补价补到一半点一下，价全没了。 -->
+  <view class="field tpl-field" wx:if="{{!isEdit && cardType === '1' && !lean}}">
     <text class="lbl">{{t.templateFrom}}</text>
     <picker class="tpl-pick" mode="selector" range="{{tplCatNames}}" value="{{tplCatIdx}}" bindchange="onPickTplCat">
       <view class="picker">{{tplCatIdx >= 0 ? tplCatNames[tplCatIdx] : t.templateCatPh}}</view>
@@ -76,16 +95,16 @@
   </view>
   <!-- 🔴 R676：输完菜名自动匹配模板（替代已删的品类选择器）。
        只在「配料区还是空的」时候提示 —— 已填了内容再提示，一点就覆盖老板的手工录入。 -->
-  <view class="tpl-match" wx:if="{{!isEdit && cardType === '1' && tplMatchKey}}">
+  <view class="tpl-match" wx:if="{{!isEdit && cardType === '1' && tplMatchKey && !lean}}">
     <text class="tpl-match-txt">{{t.tplMatchTip}}「{{tplMatchName}}」</text>
     <text class="tpl-match-go" catchtap="onApplyMatched">{{t.tplMatchApply}}</text>
   </view>
   <!-- 匹配不到时的引导：库里没有这道菜很正常（41 道 vs 老板 30-50 道菜单），
        不吭声老板会以为"输了没反应/功能坏了"。给一句怎么做，比沉默有用。 -->
-  <view class="tpl-nomatch" wx:if="{{!isEdit && cardType === '1' && tplNoMatch}}">{{t.tplNoMatchTip}}</view>
+  <view class="tpl-nomatch" wx:if="{{!isEdit && cardType === '1' && tplNoMatch && !lean}}">{{t.tplNoMatchTip}}</view>
   <!-- 🔴 R677：库里有相关的（自制/外购这类）⇒ 只指路，不自动套 ——
        自制和外购成本结构完全不同，机器替老板选等于让他拿错模型算账。 -->
-  <view class="tpl-nomatch" wx:if="{{!isEdit && cardType === '1' && tplSuggest > 0}}">{{t.tplSuggestTip}}</view>
+  <view class="tpl-nomatch" wx:if="{{!isEdit && cardType === '1' && tplSuggest > 0 && !lean}}">{{t.tplSuggestTip}}</view>
 
   <!-- 🔴 R675（李老师）：删掉「这道菜属于哪类」+ 燃气燃料分摊。
        为什么删：
@@ -117,12 +136,14 @@
   <!-- R693（易填性·填得对）：出成率是这张表单里**唯一没人解释过**的字段，
        而它填错的代价最大（净料成本 = 单价 ÷ 出成率，填 60 还是 0.6 直接差 100 倍）。
        只在**新手模式**给这一句：老手不需要，给了只是占地方。 -->
-  <view class="im-tip" wx:if="{{inputMode === 'novice' && cardType === '1'}}">{{t.yieldExplain}}</view>
+  <view class="im-tip" wx:if="{{inputMode === 'novice' && cardType === '1' && !lean}}">{{t.yieldExplain}}</view>
   <!-- 明细行（录入方式：档案选择 / 临时手工）—— 仅单品 -->
   <block wx:if="{{cardType === '1'}}">
   <view class="line {{lines[index].isPreset ? 'line-est' : ''}}" wx:for="{{lines}}" wx:key="rid">
     <view class="est-tag" wx:if="{{lines[index].isPreset}}">{{t.estRowTag}}</view>
-    <view class="cell2">
+    <!-- 🔴 R708：补价模式隐藏「录入方式」单选 —— 草稿行恒为手工行（input_type=2），
+         切到「档案」会重置该行的单价/出成率（见 onLineType），补价补到一半就被清空。 -->
+    <view class="cell2" wx:if="{{!lean}}">
       <text class="lbl">{{t.inputType}}</text>
       <!-- round153：红「×」删行按钮原本挂在这一行的最右边 ⇒ 实测被读成"取消临时手工录入"
            （这行本来就是「二选一」，旁边杵个红叉语义打架）。已挪到明细行末尾「删除本行」。 -->
@@ -186,7 +207,9 @@
              把"这是单位、不是数字的一部分"在视觉上切开。改前二者紧挨着，实测被连读成
              「50 克」（老板在疑惑自己是不是在填 50 克的数量）。
              ⚠️ 显示用 t.cur 拼，不写死货币符；单位值仍由 price_unit 驱动。 -->
-        <view class="lr-cell">
+        <!-- 🔴 R708：补价模式下「单价」是**唯一**要他填的格子 ⇒ 标签给个暖橙强调，
+             让他在一堆灰标签里一眼找到落点（只改颜色/字重，字号不动，守 AD 28rpx 红线）。 -->
+        <view class="lr-cell {{lean ? 'lr-key' : ''}}">
           <text class="lbl">{{t.manualUnitPrice}}</text>
           <view class="price-wrap">
             <input class="val-input price-input" type="digit" value="{{lines[index].unit_price_yuan}}" data-idx="{{index}}" bindinput="onManualPrice"  adjust-position="{{true}}" cursor-spacing="20" />
@@ -216,7 +239,7 @@
 
     <!-- round150（M3.14）组件类型：**只影响规格试算，不影响这份成本**。
          为什么必须有它：半份菜的「调料不减半」（否则没味）、耗材也不减半 ⇒ 分类错了半份成本就错。 -->
-    <view class="kind-row">
+    <view class="kind-row" wx:if="{{!lean}}">
       <text class="kind-lbl">{{t.lineKindTitle}}</text>
       <block wx:for="{{kindChips}}" wx:for-item="kc" wx:for-index="ki" wx:key="key">
         <text class="kind-chip {{lines[index].line_kind === kc.key ? 'kind-on' : ''}}" data-idx="{{index}}" data-kind="{{kc.key}}" bindtap="pickKind">{{kc.label}}</text>
@@ -227,8 +250,8 @@
          误触保护：只有这行**已经填了东西**才弹确认，空行直接删（见 edit.js::delLine）。 -->
     <view class="del-row" data-idx="{{index}}" bindtap="delLine">{{t.delLine}}</view>
   </view>
-  <view class="muted" style="margin:-8rpx 0 12rpx 4rpx;">{{t.qtyUnitHint}}</view>
-  <view class="muted" style="margin:-4rpx 0 12rpx 4rpx;">{{t.lineKindHint}}</view>
+  <view class="muted" style="margin:-8rpx 0 12rpx 4rpx;" wx:if="{{!lean}}">{{t.qtyUnitHint}}</view>
+  <view class="muted" style="margin:-4rpx 0 12rpx 4rpx;" wx:if="{{!lean}}">{{t.lineKindHint}}</view>
   <button class="btn ghost btn-small" style="min-height:88rpx;" bindtap="addLine">{{t.addLine}}</button>
 
   <!-- 🔴 R637（真机二次实测）：老板「输的时候弹键盘，要看结果得先把键盘收起再滑到底」。
@@ -243,10 +266,12 @@
     <text class="ic-empty" wx:else>{{stickyHint || t.stickyEmpty}}</text>
     <text class="ic-hint" wx:if="{{stickyHint && previewCostFen > 0}}">{{stickyHint}}</text>
   </view>
-  <button class="btn ghost btn-small" style="min-height:88rpx;" bindtap="goMaterial">{{t.materialArchive}}</button>
+  <button class="btn ghost btn-small" style="min-height:88rpx;" bindtap="goMaterial" wx:if="{{!lean}}">{{t.materialArchive}}</button>
   <!-- 🔴 R443：批量粘贴配料（解析在 utils/cardPaste.js；只在本页暂存，点「导入」才进 lines） -->
-  <view class="paste-toggle" bindtap="onPasteToggle">{{t.pasteTitle}}{{pasteOpen ? ' ▾' : ' ▸'}}</view>
-  <block wx:if="{{pasteOpen}}">
+  <!-- 🔴 R708：补价模式隐藏 —— 草稿里的原料行**已经**是解析好的，本页再粘一次是另一件事
+       （那属于上一页「批量录入原料」），摆在这里只会让老板以为要重来一遍。 -->
+  <view class="paste-toggle" bindtap="onPasteToggle" wx:if="{{!lean}}">{{t.pasteTitle}}{{pasteOpen ? ' ▾' : ' ▸'}}</view>
+  <block wx:if="{{pasteOpen && !lean}}">
     <textarea class="paste-ta" value="{{pasteText}}" bindinput="onPasteInput" placeholder="{{t.pastePlaceholder}}" maxlength="-1" adjust-position="{{true}}" cursor-spacing="20" />
     <view class="muted">{{t.pasteHint}}</view>
     <button class="btn ghost btn-small" style="min-height:88rpx;" bindtap="onPasteParse">{{t.pasteParseBtn}}</button>
@@ -318,13 +343,15 @@
   </view>
 
   <!-- 成本参数 -->
-  <view class="field">
+  <!-- 🔴 R708：补价模式隐藏损耗率 —— 横幅承诺「只补单价，其余已填好」，这里多一个格子就破了承诺；
+       草稿的损耗率已按品类预填（buildDraftCard 里 `loss_rate`），要改走「展开完整设置」。 -->
+  <view class="field" wx:if="{{!lean}}">
     <text class="lbl">{{t.lossRate}}</text>
     <input class="val-input" type="digit" value="{{lossRate}}" bindinput="onLoss"  adjust-position="{{true}}" cursor-spacing="20" />
   </view>
   <!-- R693（易填性·填得对）：损耗率同样只有标签、没有解释。新手模式给一句参考值，
        否则老板要么不填（默认值未必对），要么凭感觉填一个 30% 把成本算高。 -->
-  <view class="im-tip" wx:if="{{inputMode === 'novice'}}">{{t.lossExplain}}</view>
+  <view class="im-tip" wx:if="{{inputMode === 'novice' && !lean}}">{{t.lossExplain}}</view>
   <view class="field" wx:if="{{inputMode === 'pro' || showMore}}">
     <text class="lbl">{{t.auxAmount}}</text>
     <input class="val-input" type="digit" value="{{auxYuan}}" bindinput="onAux"  adjust-position="{{true}}" cursor-spacing="20" />
@@ -353,7 +380,10 @@
   </view>
 
   <!-- 反算售价（R190：单品 / 套餐**都能用** —— 此前套餐点了没反应，规范 v1.2 早定了套餐反算口径） -->
-  <view class="reverse">
+  <!-- 🔴 R708：补价模式隐藏反算售价 —— 反算的前提是「成本已经对了」，
+       而补价模式正在解决的就是成本不对。把它摆在售价下面，等于让老板用**还没补完的成本**
+       去反推售价。要反算就去展开完整设置（那里成本行已经在上面）。 -->
+  <view class="reverse" wx:if="{{!lean}}">
     <view class="muted rev-pre">{{t.reversePre}}</view>
     <view class="cell">
       <text class="lbl">{{t.targetMargin}}</text>
@@ -367,7 +397,9 @@
   </view>
 
   <!-- 🔴 P0#7：新手模式「展开专业项」入口（点一下全部专业项都显示；切模式会重置） -->
-  <view class="im-expand" wx:if="{{inputMode === 'novice' && !showMore}}">
+  <!-- 🔴 R708：补价模式不显示 —— 顶部横幅已有「展开完整设置」，两个展开入口是同一件事的
+       两个说法，摆在一页里只会让老板挑（李老师 R706 已就这一点提过一次）。 -->
+  <view class="im-expand" wx:if="{{inputMode === 'novice' && !showMore && !lean}}">
     <button class="btn ghost btn-block" bindtap="onExpandPro">{{t.expandProBtn}}</button>
   </view>
 
@@ -379,7 +411,7 @@
          ③ 它本来就不入库（只是页面临时输入），删掉不动任何已存数据。
        ⇒ 唯一该填的地方是团购页（能选卡、填价、填佣金、出到手）。这里只留一句指路。
        ⚠️ js 里的 onGrouponPrice / calcGroupon 暂留未删（不再有任何 wxml 绑定），下一轮清理。 -->
-  <view class="cell" bindtap="goGrouponPage" wx:if="{{cardType === '1' || cardType === '3'}}">
+  <view class="cell" bindtap="goGrouponPage" wx:if="{{(cardType === '1' || cardType === '3') && !lean}}">
     <text class="lbl" style="color:#2b6cd4;">{{t.grouponGoLink}}</text>
   </view>
 
@@ -430,7 +462,9 @@
   </view>
 
   <view style="height:20rpx;"></view>
-  <button class="btn primary" style="margin-top:0;" bindtap="onSave">{{t.save}}</button>
+  <!-- 🔴 R708：补价模式只留**吸底条**那一个保存键 —— 精简态整页一屏内看得完，
+       页面内再来一个「保存」与吸底按钮是同一个动作的两次出现。 -->
+  <button class="btn primary" style="margin-top:0;" bindtap="onSave" wx:if="{{!lean}}">{{t.save}}</button>
 
   <!-- 🔴 R374：吸底动作条。改前保存按钮在**第三屏底部**（整页 1367px），
        改个菜名也要一路滚到底；而且没有成本/毛利时老板不知道自己填的对不对。

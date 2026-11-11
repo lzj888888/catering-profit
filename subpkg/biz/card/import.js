@@ -13,6 +13,9 @@ const ui = require('../../../utils/ui.js');
 const api = require('../../../utils/api.js');
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 const DI = require('../../../utils/dishImport.js');
+// 🔴 R708：`truncated` 必须走单源判定（`=== true`），不在这里自己写 `res.truncated` 真值判断 ——
+//   契约是布尔，云端若回字符串 'true'/'1' 那就是契约破了，该判红而不是被宽松放行。
+const dh = require('../../../utils/dataHealth.js');
 const { CATEGORY_PRESETS } = require('../../../utils/categoryPresets.js');
 
 // 品类 picker：索引 0 = 未识别（老板可手动选），其余与 CATEGORY_PRESETS 顺序一致（+1 偏移）。
@@ -115,6 +118,16 @@ Page({
       await api.ensureShop();
       const res = await api.call('getCostCard', {});
       const list = (res && res.list) || [];
+      // 🔴 R708（truncated 消费面）：`getCostCard` 的 list 是 listAll 分页取全，
+      //   但 2 万行护栏处会**显式降级**并置 `truncated` ⇒ 这时「没找到同名卡」根本不能推出
+      //   「没存上」：刚存的那张可能就在被截掉的那一段。
+      //   三点 fail-closed：① 不标 saved（没核对上就不给结论）
+      //                    ② 绝不报「没保存」（假警报会让老板把同一道菜重填一遍）
+      //                    ③ 说出来，并指路去列表自己看（他能一眼看到真相，比我们猜准）
+      if (dh.isTruncated(res)) {
+        wx.showToast({ title: TERMS.card.impSavedUncertain, icon: 'none', duration: 3000 });
+        return;
+      }
       if (!list.some((c) => c.name === name)) {
         // 没存上：必须说，否则他回到列表找不到卡更懵
         wx.showToast({ title: TERMS.card.impSavedMiss, icon: 'none' });

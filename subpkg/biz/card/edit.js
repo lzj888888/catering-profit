@@ -117,6 +117,14 @@ Page({
     // 🔴 R704：保存后横幅上那个出口的文案 —— 按来源变（见 onLoad 的 from_draft 分支）。
     //   默认「返回列表」；从导入页进来时它是**回导入页**，文案得如实说。
     backLabel: TERMS.card.backToList,
+    // 🔴 R708：补价模式（从批量导入「去补价」进来）。草稿已带菜名/售价/示例主料/出成率，
+    //   老板唯一要做的事就是补单价 ⇒ 本页默认只留 菜名 + 原料行 + 售价 + 保存。
+    //   `patchMode` = 来源标记（onLoad 按 from_draft 置位，之后不变）；
+    //   `patchFull` = 老板主动点「展开完整设置」（逃生口，随时能看全）。
+    //   ⇒ `lean = patchMode && !patchFull` 才是「现在就精简」。
+    patchMode: false,
+    patchFull: false,
+    lean: false,
     t: {
       dishName: TERMS.card.dishName,
       secBasic: TERMS.card.secBasic,
@@ -186,6 +194,10 @@ Page({
       inputModePro: TERMS.card.inputModePro,
       inputModeProDesc: TERMS.card.inputModeProDesc,
       expandProBtn: TERMS.card.expandProBtn,
+      leanTitle: TERMS.card.leanTitle,
+      leanDesc: TERMS.card.leanDesc,
+      leanFullBtn: TERMS.card.leanFullBtn,
+      leanFoldBtn: TERMS.card.leanFoldBtn,
       noviceTip: TERMS.card.noviceTip,
       category: TERMS.card.category,
       categoryPh: TERMS.card.categoryPh,
@@ -401,10 +413,19 @@ Page({
       this.loadDraftPrefill();
       // 🔴 R704：栈里上一页是**导入页**（…→import→edit），`navigateBack` 回的是它。
       //   改前这里恒显示「返回列表」＝指向一个不会去的地方。
-      this.setData({ backLabel: TERMS.card.backToImport });
+      // 🔴 R708：同时进「补价模式」。草稿已经把菜名/售价/示例主料/出成率都填好了，
+      //   老板唯一缺的是**单价**；改前进来仍是 20+ 控件的全功能页（套餐/模板/核算模式/
+      //   规格/反算/团购 六块无关区域全在），补一道菜要跨六屏 —— 这是这条链最贵的一段。
+      //   ⇒ 默认只留 菜名 + 原料行 + 售价 + 保存，其余收在「展开完整设置」后面（见 wxml 的 lean 守卫）。
+      this.setData({ backLabel: TERMS.card.backToImport, patchMode: true, patchFull: false });
+      // 🔴 不在这里写 `lean: true` —— lean 只能由 patchMode/patchFull 派生（见 applyLean）。
+      //   直接写字面量＝第二份真相：哪天 patchFull 的默认值变了，这里就成了静默的错。
+      this.applyLean();
     }
     // 🔴 P0#7：读本地记的专业/新手偏好（按 shop 区分；换设备回默认 novice）
-    this.setData({ inputMode: this.loadInputMode() || 'novice' });
+    // 🔴 R708：补价模式下**强制 novice**。若老板本地记的是「专业」，这里会直接把
+    //   核算模式/批量产出/规格一起铺开 —— 精简态当场失效，而且他不知道为什么。
+    this.setData({ inputMode: this.data.patchMode ? 'novice' : (this.loadInputMode() || 'novice') });
     this.load();
   },
 
@@ -461,6 +482,25 @@ Page({
     this.saveInputMode(val);
   },
   onExpandPro() { this.setData({ showMore: true }); },
+
+  // 🔴 R708：补价模式的**逃生口**。
+  //   为什么必须有：走到精简态，老板偶尔仍要改分类/损耗、看规格试算、或发现草稿的
+  //   示例主料不对要走反算。若没有这个口，精简态就是**死胡同** —— 他只能退出去手动新建，
+  //   导入页辛苦认出来的菜名/售价/sku 全白填。
+  //   ⚠️ 这是「加一层」不是「换一页」：展开后就是原来那张全功能页，一个控件都没删。
+  onLeanToggle() {
+    this.setData({ patchFull: !this.data.patchFull });
+    this.applyLean();
+  },
+
+  // 🔴 R708：`lean` 的**唯一**求值点。
+  //   任何地方想让补价模式收起/展开，都只改 patchFull 再调这里 ——
+  //   不许直接 `setData({ lean: true/false })`：那是第二份真相，
+  //   与 patchFull 一旦不一致，wxml 里几十个 `!lean` 会一起指向错的那个。
+  //   守 tools/check_card_field_gating.js 的 P-R708-②。
+  applyLean() {
+    this.setData({ lean: !!(this.data.patchMode && !this.data.patchFull) });
+  },
 
   // round156：从「原料选择页」返回 → 消费回传。
   //   哨兵 `at`：进选择页**没选就返回**时，globalData 里没有新值（或还是上一轮的旧值），

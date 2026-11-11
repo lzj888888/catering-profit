@@ -279,3 +279,20 @@
 
 /* R692（易填性）：售价预填来源说明 —— 28rpx 是门禁下限（G1），不再往下压 */
 .prefill-note { font-size: 28rpx; color: #57504A; line-height: 1.5; padding: 6rpx 0 0; }
+
+/* 🔴 R708：补价模式横幅。色值全部取本页既有单源（墨蓝 #1e3a5f / 浅底 #FBF6EC / 暖灰 #776C5E），
+   不加新色 —— 一页里第三种底色会让「这是同一张表单」的感觉碎掉。
+   左边 6rpx 墨蓝竖条与 .tpl-match 同形（同为"这条是说明，不是字段"的语法）。 */
+.lean-bar { background: #FBF6EC; border-left: 6rpx solid #1e3a5f; border-radius: 12rpx;
+  padding: 16rpx 20rpx; margin: 0 0 16rpx; }
+.lean-head { display: flex; align-items: center; justify-content: space-between; }
+/* 字号 30rpx（标题档）/ 28rpx（正文档）—— 均不低于 AD G1 下界 28rpx */
+.lean-tag { font-size: 30rpx; color: #1e3a5f; font-weight: 600; }
+/* 逃生口：右侧「展开完整设置」用 padding 撑到 ≥88rpx 触控高（AD G2 下界） */
+.lean-fold { font-size: 28rpx; color: #1a5eb8; flex-shrink: 0; margin-left: 20rpx;
+  padding: 22rpx 4rpx; }
+.lean-desc { display: block; font-size: 28rpx; color: #776C5E; line-height: 1.5; margin-top: 2rpx; }
+
+/* 🔴 R708：补价模式下「单价」标签强调 —— 只改颜色/字重，字号沿用 .lbl，不动 AD 下界。
+   暖橙 #B45309 是与墨蓝对比度足够的「待办」色，且本页此前未用过 ⇒ 不与任何既有语义撞色。 */
+.lr-key .lbl { color: #B45309; font-weight: 600; }
