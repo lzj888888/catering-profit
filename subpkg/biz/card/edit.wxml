@@ -327,6 +327,9 @@
     <text class="lbl">{{t.price}}</text>
     <input class="val-input" type="digit" value="{{priceYuan}}" bindinput="onPrice"  adjust-position="{{true}}" cursor-spacing="20" />
   </view>
+  <!-- R692（易填性）：售价是预填来的（销量表均价）时给一句来源说明 ——
+       不说这句，老板会以为系统知道门市价；而团购/满减会把均价拉低，需要他核对。 -->
+  <view class="prefill-note" wx:if="{{prefillPriceNote}}">{{prefillPriceNote}}</view>
   <view class="field" wx:if="{{inputMode === 'pro' || showMore}}">
     <text class="lbl">{{t.activityPrice}}</text>
     <input class="val-input" type="digit" value="{{activityPriceYuan}}" bindinput="onActivityPrice"  adjust-position="{{true}}" cursor-spacing="20" />

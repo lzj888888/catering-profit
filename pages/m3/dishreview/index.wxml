@@ -347,7 +347,7 @@
         </block>
         <!-- R264：行内「去建卡」—— 带着这道菜名跳建卡页并预填（免手打，打错字就白建一张）。
              卡不够时（见上方引导）这是**唯一**该点的按钮。 -->
-        <button class="btn-small ghost" data-name="{{item.name}}" bindtap="goNewCard">{{t.reviewNewCard}}</button>
+        <button class="btn-small ghost" data-name="{{item.name}}" data-amt="{{item.amountFen}}" data-qty="{{item.qty}}" bindtap="goNewCard">{{t.reviewNewCard}}</button>
       </view>
       <view class="muted" wx:if="{{!cardOptions.length}}">{{t.reviewMapNoCard}}</view>
       <!-- ===== R260：批量关联（规范 v1.9）=====

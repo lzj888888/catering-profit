@@ -112,6 +112,8 @@ function normalizeKind(k) {
 
 Page({
   data: {
+    // R692：售价预填的来源提示（空串 = 非预填，不显示）
+    prefillPriceNote: '',
     t: {
       dishName: TERMS.card.dishName,
       secBasic: TERMS.card.secBasic,
@@ -373,6 +375,19 @@ Page({
     //   ⚠️ 只在**新建**时生效：编辑态下面 load() 会用卡里的名字回填，预填不该覆盖它。
     const prefillName = (q && q.dish_name) ? decodeURIComponent(q.dish_name) : '';
     if (prefillName && !((q && q.card_code) || '').length) this.setData({ name: prefillName });
+    // R692（易填性）：**售价也预填** —— 从复盘页「去建卡」带上来的均价（销售额 ÷ 销量）。
+    //   老板刚在榜上看到"这道菜卖了 1,234 元 / 43 份"，建卡时却要凭记忆再填一遍售价，
+    //   而这个数就在眼前。少一次输入，也少一次记错。
+    //   ⚠️ 只在新建态生效：编辑态 `load()` 会用卡里的真实售价回填（见 load 里 `init.priceYuan`），
+    //      预填若在编辑态生效，会把用户已存的价盖掉。
+    //   ⚠️ 均价含活动价（团购/满减）⇒ 可能低于门市价，所以带一句提示让他核对（不是静默填上）。
+    const prefillPrice = (q && q.price) ? Number(q.price) : 0;
+    if (prefillPrice > 0 && Number.isFinite(prefillPrice) && !((q && q.card_code) || '').length) {
+      this.setData({
+        priceYuan: prefillPrice.toFixed(2),
+        prefillPriceNote: TERMS.card.prefillPriceNote,
+      });
+    }
     // 🔴 R566（P0-4 UI）：批量导入页点「去补价」⇒ 整张草稿预填进来。
     //   传参走本地暂存而不是 URL：草稿含几十行动态字段，URL 有长度上限且中文要逐层编码。
     //   ⚠️ 只在新建态生效（编辑态 load() 要用卡里的真实数据回填，不能被草稿盖掉）。

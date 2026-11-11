@@ -556,6 +556,9 @@ Page({
       dishKey: x.dishKey,
       mappedCardName: nameByCode[mapByDishKey.get(x.dishKey) || ''] || '',
       qty: x.qty,
+      // R692（易填性）：算「去建卡」的预填售价要用**数字**金额 ——
+      //   `amountText` 是带千分位的字符串（"1,234.00"），拿它做除法会得 NaN。
+      amountFen: x.amountFen,
       amountText: fmtYuan(x.amountFen),
       platformText: Array.from(x.platforms).join(' / '),
       // 🔴 R251：0 元高份数行 = v1.7 C-5 的「口味询问类 SKU」（如「来点辣椒吗」43 份 / 0 元）。
@@ -1208,10 +1211,30 @@ Page({
   //   原路径：退出复盘 → M3 → 菜品卡 → 新建 → 手打菜名。51 道菜来回切，最容易错的就是菜名
   //   （打错一个字 = 建了另一道菜的卡，回来照样匹配不上 ⇒ 白建一张）。
   //   ⇒ 直接跳建卡页并把菜名带上（`subpkg/biz/card/edit` 的 onLoad 负责回填）。
-  //   🔴 菜名必须 `encodeURIComponent`：菜名里有空格/括号/加号（如「肥牛(大)」「A+B 套餐」），
-  //      不编码会被 URL 截断或把 `+` 解成空格 ⇒ 预填出来是错的名字（静默错）。
+  //   🔴 菜名必须 `encodeURIComponent`：菜名里有 `&` `#` `?` 空格（如「A&B 双拼」「宫保 鸡丁」），
+  //      不编码会让这些字符被当成 URL 分隔符 ⇒ 参数被截断、预填出来是错的名字（静默错）。
+  //      ⚠️ R692 订正：原文写「空格/括号/加号」不准确 —— `encodeURIComponent` 按标准**不编码** `()`
+  //      与 `+`，而它们在 URL 里合法、不会截断（`+` 在 query 里会被解成空格，所以还是要编码）。
+  //      真正的危险字符是 `&` `#` `?` 和空格。原说法已改，判据见 tools/check_card_prefill.js C 组。
+  //
+  //   R692（易填性）：**售价也一起带**。老板刚在榜上看到这道菜卖了多少钱、多少份，
+  //   建卡时还要凭记忆重新填一遍售价 —— 而这个数就在眼前（销售额 ÷ 销量 = 均价）。
+  //   ⚠️ 只在能算出**有效正数**时才带：qty=0 或金额缺失 ⇒ 不带（绝不塞一个 0 元售价进去，
+  //      那会让老板以为系统知道价格，实际是编的）。
+  //   ⚠️ 均价含活动价（团购/满减），可能低于门市价 ⇒ 建卡页给了提示让他核对（见 terms.card.prefillPriceNote）。
   goNewCard(e) {
-    const nm = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.name) || '';
-    wx.navigateTo({ url: '/subpkg/biz/card/edit?card_code=&dish_name=' + encodeURIComponent(nm) });
+    const ds = (e && e.currentTarget && e.currentTarget.dataset) || {};
+    const nm = ds.name || '';
+    const amtFen = Number(ds.amt) || 0;
+    const qty = Number(ds.qty) || 0;
+    let priceQ = '';
+    if (qty > 0 && amtFen > 0) {
+      const yuan = amtFen / 100 / qty;
+      // 保留两位；小于 0.01 元视作异常（数据脏）不带
+      if (yuan >= 0.01 && Number.isFinite(yuan)) priceQ = '&price=' + yuan.toFixed(2);
+    }
+    wx.navigateTo({
+      url: '/subpkg/biz/card/edit?card_code=&dish_name=' + encodeURIComponent(nm) + priceQ,
+    });
   },
 });
