@@ -83,6 +83,81 @@ function detectColumns(lines) {
   return null;
 }
 
+// R702（P0-A）：粘贴内容**体检** —— 回答「这张表该不该解析」，而不是「能解析出多少」。
+//
+// 🔴 为什么必须有这一层（真表实测）：
+//   老板把「单品关联套餐销售明细」整表粘进来，旧实现会**建出三张垃圾卡**：
+//     名字 =「统计方式：【套餐明细】；营业」/「菜品编码」/「D001」
+//   因为它的菜名列叫「单品名称」，不在 COL_NAME 里 ⇒ 定位不到 ⇒ 退回「第一列当菜名」，
+//   而第一列是「菜品编码」。**页面显示"有 3 行数据"，零报错** —— 老板以为导入成功了。
+//   同族的还有：美团「账单明细」第一列是结算id、淘宝账单第一列是结算日期。
+//
+//   而 `subpkg/biz/takeaway` 的统一导入器对套餐明细是**主动拒收**的（importSalesBill/index.js:206）。
+//   两条链路行为不一致 ⇒ 从「建卡」入口进来的表没有保护。本函数就是补这一层。
+//
+// 判据 = 三类「这不是菜单」的签名，**不猜、直接说清楚是哪一类**：
+//   ① combo_detail  表头含「套餐」+「单品名称」 ⇒ 拒收（套餐组分已在菜品销售统计里）
+//   ② no_name_col   有表头但找不到菜名列 / 多数行第一列像编码或日期 ⇒ 拒收
+//   ③ ok            其余一律放行（宁可放过，不可误杀 —— 老的三列粘贴必须不受影响）
+
+// 套餐明细表的**表头签名**（Excel 里原文就叫这两列）。
+// ⚠️ 这不是我们的术语值，是平台表格的列名 —— 所以集中成常量而不是散落字面量：
+//    一来 page-terms 的 P3-1 不用为「外部列名」开口子，二来改名时只改这一处。
+// 🔗 与云函数 `cloudfunctions/importSalesBill/service.js::detectDishShape` 的
+//    `has('套餐') && has('单品名称')` 同源。云函数是独立部署单元，不能 require 本文件，
+//    两份必须人工保持一致 —— 由 `utils/dishImport.selftest.js` 的 R702-⑤ 断言盯着。
+const COMBO_SIGN = { set: '套餐', item: '单品名称' };
+
+// 「像编码/日期，不像菜名」：纯 ASCII 数字串、日期串、字母前缀+数字。
+// ⚠️ 含中文一票否决 —— 「3号套餐」「A区拼盘」是真菜名，不能当编码。
+function looksLikeCode(s) {
+  const v = String(s == null ? '' : s).trim();
+  if (!v) return false;
+  if (/[\u4e00-\u9fa5]/.test(v)) return false;
+  if (/^\d{8}$/.test(v)) return true;                    // 20260910
+  if (/^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}/.test(v)) return true;   // 2026-09-10 / 2026.9.1
+  if (/^[A-Za-z]{1,4}[-_]?\d{2,}$/.test(v)) return true; // D001 / SKU-001 / A123
+  if (/^\d{6,}$/.test(v)) return true;                   // 条码
+  return false;
+}
+
+function diagnosePaste(text) {
+  const lines = String(text == null ? '' : text)
+    .split('\n').map(function (l) { return l.replace(/\r/g, ''); })
+    .filter(function (l) { return l.trim(); });
+  const out = { kind: 'ok', rawLines: lines.length, codeN: 0, total: 0 };
+  if (!lines.length) { out.kind = 'empty'; return out; }
+
+  // ① 套餐明细：表头签名。只看前 5 行（真实表头常在标题/说明行之后）
+  for (let i = 0; i < Math.min(lines.length, 5); i++) {
+    const cells = lines[i].split(/\t|[,，]/).map(function (s) { return s.trim(); });
+    if (cells.indexOf(COMBO_SIGN.set) >= 0 && cells.indexOf(COMBO_SIGN.item) >= 0) {
+      out.kind = 'combo_detail';
+      return out;
+    }
+  }
+
+  // ② 有表头却定位不到菜名列 —— 说明这张表的「名字」列叫别的名字
+  const cols = detectColumns(lines);
+  if (cols && cols.nameIdx < 0) { out.kind = 'no_name_col'; return out; }
+
+  // ③ 没有可识别的表头，但多数行的第一列像编码/日期 ⇒ 第一列不是菜名
+  //   阈值 0.6 + 至少 3 行：单行/双行不判，避免误杀「Coke」这类纯英文菜名偶发被当编码。
+  if (!cols) {
+    const firsts = lines
+      .map(function (l) { return (l.split(/\t|[,，]/)[0] || '').trim(); })
+      .filter(function (s) { return !!s; });
+    const codeN = firsts.filter(looksLikeCode).length;
+    out.codeN = codeN;
+    out.total = firsts.length;
+    if (firsts.length >= 3 && codeN / firsts.length >= 0.6) {
+      out.kind = 'no_name_col';
+      return out;
+    }
+  }
+  return out;
+}
+
 function parseDishLine(raw) {
   if (raw == null) return null;
   const s = String(raw).replace(/\r/g, '').trim();
@@ -302,4 +377,4 @@ function prefillOf(draft) {
   };
 }
 
-module.exports = { CAT_KEYWORDS, isNoiseLine, detectColumns, parseDishLine, parseDishLines, matchCategory, buildDraftCard, draftStatusOf, draftIssues, prefillOf, hasThousandsSeparator, IMPORT_NO_AUTOSAVE, DRAFT_PREFILL_KEY };
+module.exports = { CAT_KEYWORDS, isNoiseLine, detectColumns, diagnosePaste, looksLikeCode, COMBO_SIGN, parseDishLine, parseDishLines, matchCategory, buildDraftCard, draftStatusOf, draftIssues, prefillOf, hasThousandsSeparator, IMPORT_NO_AUTOSAVE, DRAFT_PREFILL_KEY };

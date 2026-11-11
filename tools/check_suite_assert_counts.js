@@ -207,6 +207,7 @@ const CASES = [
   { key: 'check_card_prefill', rel: 'tools/check_card_prefill.js' },    // 22 条（A/B/C/D/E 五组）
   { key: 'check_bill_realworld', rel: 'tools/check_bill_realworld.js' },  // 9 条（真实风格账单实测）
   { key: 'check_bill_realtables', rel: 'tools/check_bill_realtables.js' },  // 32 条（= A 8 + B 8 + C 7 + D 3 + E 6 出处真伪）
+  { key: 'check_import_paste_guard', rel: 'tools/check_import_paste_guard.js' },  // 21 条（A4 + B8 + C5 + D4）
   // R247：形态 C 平台 picker 一致性守卫 —— S 段三道下界护栏（picker ≥4 / enum ≥6 / 术语键 ≥4）
   //   + C 段 4 条合成样本自检是「非恒真」凭据；断言数不受守则「删掉 B 组两条」会静默通过。
   { key: 'check_picker_platform', rel: 'tools/check_picker_platform.js' },  // 15 条（S 4 + A 4 + B 3 + C 4）

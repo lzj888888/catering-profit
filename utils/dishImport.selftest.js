@@ -2,7 +2,7 @@
 // 形状约束（R66）：顶层无 IIFE；process.exit 仅在末块；断言失败以 ✅/❌ 明细 + 末行 `==== ... N 通过 / M 失败 ====` 汇总。
 const fs = require('fs');
 const path = require('path');
-const { isNoiseLine, detectColumns, parseDishLine, parseDishLines, matchCategory, buildDraftCard, draftStatusOf, prefillOf, hasThousandsSeparator, IMPORT_NO_AUTOSAVE } = require('./dishImport.js');
+const { isNoiseLine, detectColumns, diagnosePaste, looksLikeCode, COMBO_SIGN, parseDishLine, parseDishLines, matchCategory, buildDraftCard, draftStatusOf, prefillOf, hasThousandsSeparator, IMPORT_NO_AUTOSAVE } = require('./dishImport.js');
 
 let pass = 0, fail = 0;
 function ok(name, cond) {
@@ -167,6 +167,53 @@ ok('R699-⑤ 无表头的三列粘贴仍走老路径（回归：菜名+分类+�
   })());
 ok('R699-⑥ detectColumns 在无表头时返回 null（保证能回落，不是恒真）',
   detectColumns(['鱼香肉丝,热炒荤菜,38']) === null);
+
+// ===== R702：整表粘贴体检（先问「该不该解析」，而不是「能解析出几行」）=====
+// 真表实证（review/evidence/r700_realtables）：套餐明细整表粘贴，旧实现建出
+// 「统计方式：…」「菜品编码」「D001」三张卡，页面还显示"有 3 行数据"，零报错。
+// 统一导入器（subpkg/biz/takeaway）对同一张表是拒收的 —— 两条链路行为必须一致。
+ok('R702-① 套餐明细整表 ⇒ combo_detail（拒收，不建垃圾卡）',
+  diagnosePaste('统计方式：【套餐明细】；营业日期\n菜品编码\t套餐\t单品名称\t菜品类型\t单位\nD001\t川味套餐\t水煮鱼\t单品\t份').kind === 'combo_detail');
+
+ok('R702-② 账单整表（首列是结算日期）⇒ no_name_col（首列不是菜名）',
+  (function () {
+    const t = ['2026-08-04\t541520899\t耙三样·耙牛肉\t2026-08-01\t外卖订单\t26.02',
+      '2026-08-05\t541520899\t耙三样·耙牛肉\t2026-08-02\t外卖订单\t18.20',
+      '2026-08-06\t541520899\t耙三样·耙牛肉\t2026-08-03\t外卖订单\t24.62'].join('\n');
+    return diagnosePaste(t).kind === 'no_name_col';
+  })());
+
+ok('R702-③ 账单整表（首列是结算 id 数字）⇒ no_name_col',
+  (function () {
+    const t = ['157434321\t34081552\t耙三样_耙牛肉\t2026-08-03\t0.00',
+      '157434322\t34081552\t耙三样_耙牛肉\t2026-08-04\t12.00',
+      '157434323\t34081552\t耙三样_耙牛肉\t2026-08-05\t35.50'].join('\n');
+    return diagnosePaste(t).kind === 'no_name_col';
+  })());
+
+ok('R702-④ 回归：正常三列粘贴仍是 ok（老路径一点不受影响）',
+  diagnosePaste('鱼香肉丝,热炒荤菜,38\n凉拌黄瓜,凉拌,16').kind === 'ok');
+
+ok('R702-⑤ 阈值保护：少于 3 行不判编码（避免误杀纯英文菜名）',
+  diagnosePaste('Coke,Drinks,8').kind === 'ok' && diagnosePaste('Coke,Drinks,8\nSprite,Drinks,6').kind === 'ok');
+
+ok('R702-⑥ 反恒真：含中文一票否决 —— 「3号套餐」不得被判成编码',
+  looksLikeCode('3号套餐') === false && looksLikeCode('A区拼盘') === false);
+
+ok('R702-⑦ 判据确有分辨力：真编码/日期必须判 true',
+  looksLikeCode('D001') === true && looksLikeCode('20260910') === true
+  && looksLikeCode('2026-09-10') === true && looksLikeCode('6901234567890') === true);
+
+// 🔴 跨端同源：前端这套签名与云函数 detectDishShape 的判据必须一致。
+//   云函数是独立部署单元，不能 require 本文件 ⇒ 两份人工维护。
+//   这条断言就是防「改了一边忘了另一边」——那种漂移在页面上完全看不出来。
+ok('R702-⑧ 前端 COMBO_SIGN 与云函数 detectDishShape 同源（防两份漂移）',
+  (function () {
+    const svc = fs.readFileSync(path.join(__dirname, '..', 'cloudfunctions', 'importSalesBill', 'service.js'), 'utf8');
+    const q = (w) => "has('" + w + "')";
+    return svc.indexOf(q(COMBO_SIGN.set)) >= 0 && svc.indexOf(q(COMBO_SIGN.item)) >= 0;
+  })());
+
 
 
 console.log('==== 菜品批量导入逻辑自测结果：' + pass + ' 通过 / ' + fail + ' 失败 ====');

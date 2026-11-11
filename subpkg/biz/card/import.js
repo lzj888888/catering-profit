@@ -38,10 +38,15 @@ Page({
       pricePh: TERMS.card.impPricePh,
       catUnknown: TERMS.card.impCatUnknown,
       noRows: TERMS.card.impNoRows,
+      // R702（P0-A）：整表粘贴体检的两种拦截说明
+      blockCombo: TERMS.card.impBlockCombo,
+      blockNoName: TERMS.card.impBlockNoName,
     },
     text: '',
     rows: [],
     summaryText: '',
+    reconText: '',     // R702（P0-B）：对账行（粘贴行数 → 识别道数 → 跳过 → 已填价合计）
+    blockTip: '',      // R702（P0-A）：整表被拒时的说明（空 = 没被拒）
     catOptions: CAT_OPTIONS,
     parsed: false,      // 是否已解析过（未解析时不显示空态提示，免得一进来就报错）
   },
@@ -80,6 +85,22 @@ Page({
     const raws = src.split('\n')
       .map((s) => s.replace(/\r/g, ''))
       .filter((s) => s.trim());
+
+    // 🔴 R702（P0-A）：**先体检，再解析**。
+    //   区别是根本性的：旧逻辑只问「能解析出几行」，于是任何表都能"解析出东西"；
+    //   这里先问「这张表该不该解析」。真表实证 —— 套餐明细整表粘贴会建出
+    //   「统计方式：…」「菜品编码」「D001」三张垃圾卡，页面还显示"有 3 行数据"，零报错。
+    //   统一导入器（subpkg/biz/takeaway）对同一张表是拒收的，两条链路必须一致。
+    const diag = DI.diagnosePaste(src);
+    if (diag.kind === 'combo_detail' || diag.kind === 'no_name_col') {
+      this._rawN = 0;   // 没解析 ⇒ 对账行不参与
+      this.setData({
+        rows: [], summaryText: '', reconText: '', parsed: true,
+        blockTip: diag.kind === 'combo_detail' ? TERMS.card.impBlockCombo : TERMS.card.impBlockNoName,
+      });
+      return;
+    }
+    this._rawN = raws.length;   // R702（P0-B）：对账要「粘贴了几行」，改价重算时仍要用
     const rows = [];
     for (let i = 0; i < raws.length; i++) {
       const line = DI.parseDishLine(raws[i]);
@@ -87,11 +108,11 @@ Page({
       rows.push(this.buildRow(line, i, raws[i]));
     }
     if (!rows.length) {
-      this.setData({ rows: [], summaryText: '', parsed: true });
+      this.setData({ rows: [], summaryText: '', reconText: '', blockTip: '', parsed: true });
       wx.showToast({ title: TERMS.card.impNoRows, icon: 'none' });
       return;
     }
-    this.setData({ rows, parsed: true });
+    this.setData({ rows, parsed: true, blockTip: '' });
     this.syncSummary(rows);
   },
 
@@ -145,8 +166,19 @@ Page({
     const g = rows.filter((r) => r.status === 'green').length;
     const o = rows.filter((r) => r.status === 'orange').length;
     const r0 = rows.filter((r) => r.status === 'red').length;
+    // 🔴 R702（P0-B）：对账行。为什么值得单独一行：
+    //   今天美团退款那个 bug 的形态是「页面上有数、数字却是错的」——老板不看数就永远不会发现。
+    //   给三个他能独立核对的数：粘贴了几行 / 识别出几道 / 跳过几行，再加「已填价合计」。
+    //   任何一环对不上（比如菜单 30 道只识别出 12 道），当场就能看出来，而不是等毛利算错。
+    //   ⚠️ 跳过行数用「原始行 − 识别行」：表头行、合计行、噪音行都算在这里，不静默吞掉。
+    const rawN = this._rawN || n;
+    const skip = Math.max(0, rawN - n);
+    const priced = rows.filter((r) => r.price !== '' && Number(r.price) > 0);
+    const sum = priced.reduce((a, r) => a + Number(r.price), 0);
+
     this.setData({
       summaryText: TERMS.card.impSummary(n, g, o, r0),
+      reconText: TERMS.card.impRecon(rawN, n, skip, priced.length, sum.toFixed(2)),
     });
   },
 

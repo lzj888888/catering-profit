@@ -25,6 +25,10 @@
 
   <block wx:if="{{rows.length}}">
     <view class="imp-summary">{{summaryText}}</view>
+    <!-- R702（P0-B）：对账行 —— 粘贴行数 / 识别道数 / 跳过行数 / 已填价合计。
+         老板拿它与自己的菜单核一眼，能当场发现「只识别出一半」这类问题，
+         而不是等毛利算错了才知道。 -->
+    <view class="imp-recon" wx:if="{{reconText}}">{{reconText}}</view>
 
     <!-- 🔴 这条不是免责声明，是产品口径：示例主料没有价，直接保存会算出 90%+ 的假毛利 -->
     <view class="warn-line">{{t.noAuto}}</view>
@@ -54,5 +58,12 @@
     </view>
   </block>
 
-  <view class="imp-empty" wx:if="{{parsed && !rows.length}}">{{t.noRows}}</view>
+  <!-- R702（P0-A）：整表被拒 —— 套餐明细 / 找不到菜名列。
+       为什么不建卡：这类表建出来的卡名字是「统计方式：…」「菜品编码」「D001」，
+       页面还显示"有 3 行数据"，老板会以为导入成功了。宁可拦住并说清楚怎么办。 -->
+  <view class="imp-block" wx:if="{{parsed && !rows.length && blockTip}}">
+    <view class="imp-block-text">{{blockTip}}</view>
+  </view>
+
+  <view class="imp-empty" wx:if="{{parsed && !rows.length && !blockTip}}">{{t.noRows}}</view>
 </view>
