@@ -108,6 +108,9 @@ Page({
       catLabel: k ? draft.category : '',
       draft,
       thousands: DI.hasThousandsSeparator(raw),
+      // R696：这行有多个数字（销量/销售额/单价混在一起），解析器拒绝猜售价
+      ambiguous: !!line.ambiguous,
+      ambNumsText: (line.ambNums || []).join('、'),
     });
   },
 
@@ -119,6 +122,10 @@ Page({
     if (row.thousands) {
       // 优先报千分位：价格没解析出来是逗号造成的，说「缺售价」会指错路。
       reason = TERMS.card.impReasonThousands;
+    } else if (row.ambiguous) {
+      // R696：多个数字认不出售价 —— 必须说**为什么**，否则老板只看到"缺售价"，
+      //   回头再粘一次还是同样的结果。这里把候选数字列出来，他一眼就知道该删哪几列。
+      reason = TERMS.card.impReasonAmbiguous.replace('{nums}', row.ambNumsText || '');
     } else if (issues.noPrice && issues.noMain) {
       reason = TERMS.card.impReasonNoPrice + ' · ' + TERMS.card.impReasonNoMain;
     } else if (issues.noPrice) {

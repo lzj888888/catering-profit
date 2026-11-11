@@ -48,17 +48,39 @@ function parseDishLine(raw) {
   if (!parts.length) return null;
   const name = parts[0];
   let category = '';
-  let priceYuan = null;
+  // priceYuan 在下方数字扫描后统一声明（R696：多数字时不猜）
   // 剩余片段里：能 parse 成数字的当售价，其余当分类（取最后一个分类片段）
+  //
+  // 🔴 R696（真实报表实测暴露）：**一行里出现多个数字时，不许取第一个当售价**。
+  //
+  //   原实现 `if (priceYuan == null) priceYuan = n;` —— 只取**第一个**数字。
+  //   设计目标是「菜名 + 分类 + 售价」三列，那种情况下没毛病。
+  //   但老板手里真实的是美团「菜品销售统计」这类**完整报表**，直接整表粘贴过来是
+  //   最自然的操作，而它的列是「菜名 分类 销量 销售额 [单价]」——
+  //     · `红烧肉 热菜 120 3600 30` ⇒ 旧实现取 120（**销量**）当售价，真单价 30 被丢掉
+  //     · `宫保鸡丁 20 600`        ⇒ 旧实现取 20（销量），而 600 是销售额
+  //   ⇒ 售价错 ⇒ 整张卡的毛利率全错，**而且不报错、不提示**（静默错价）。
+  //
+  //   修法：数字多于 1 个就**不猜**，售价留空并标记 ambiguous，交给页面提示去补。
+  //   宁可他看到"售价没填"回去补一次，也不能替他挑一个数字 —— 挑错就是全盘错。
+  //   （与 hasThousandsSeparator「宁可红一次，不替它编数」同一口径。）
+  const nums = [];
   for (let i = 1; i < parts.length; i++) {
     const n = Number(parts[i]);
     if (parts[i] !== '' && !isNaN(n) && /^\d+(\.\d+)?$/.test(parts[i])) {
-      if (priceYuan == null) priceYuan = n;
+      nums.push(n);
     } else {
       category = parts[i];
     }
   }
-  return { name, category, priceYuan };
+  let priceYuan = null;
+  let ambiguous = false;
+  if (nums.length === 1) {
+    priceYuan = nums[0];
+  } else if (nums.length > 1) {
+    ambiguous = true;   // 多个数字：不取任何一个，交给页面提示
+  }
+  return { name, category, priceYuan, ambiguous, ambNums: ambiguous ? nums : [] };
 }
 
 /**

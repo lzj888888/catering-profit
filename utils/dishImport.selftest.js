@@ -81,5 +81,21 @@ ok('制表符优先：1,280 不被切成 1 元（宁可红，不静默错价）'
 ok('千分位检出：1,280 命中 / 1,2,3 三列不误判',
   hasThousandsSeparator('龙虾\t海鲜\t1,280') === true && hasThousandsSeparator('1,2,3') === false);
 
+// ===== R696（真实报表实测暴露）：多数字不许猜 =====
+// 美团「菜品销售统计」整表粘贴是老板最自然的操作，列是「菜名 分类 销量 销售额 [单价]」。
+// 旧实现取**第一个**数字当售价 ⇒ 拿销量当售价 ⇒ 毛利全错且零提示。
+ok('R696-① 多数字(120/3600/30) ⇒ 售价留空 + ambiguous',
+  (() => { const r = parseDishLine('红烧肉\t热菜\t120\t3600\t30');
+    return r.priceYuan === null && r.ambiguous === true && r.ambNums.length === 3; })());
+ok('R696-② 两数字(20/600) 也不猜（可能是销量+销售额）',
+  (() => { const r = parseDishLine('宫保鸡丁\t20\t600');
+    return r.priceYuan === null && r.ambiguous === true; })());
+ok('R696-③ 单数字仍正常取（设计目标三列不受影响）',
+  (() => { const r = parseDishLine('红烧肉\t热菜\t30');
+    return r.priceYuan === 30 && r.ambiguous === false; })());
+ok('R696-④ 无数字（只有菜名+分类）不误判 ambiguous',
+  (() => { const r = parseDishLine('红烧肉\t热菜');
+    return r.priceYuan === null && r.ambiguous === false; })());
+
 console.log('==== 菜品批量导入逻辑自测结果：' + pass + ' 通过 / ' + fail + ' 失败 ====');
 process.exit(fail === 0 ? 0 : 1);

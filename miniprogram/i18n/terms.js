@@ -2335,6 +2335,9 @@ const TERMS = {
     impStatusRed: '缺信息',
     impReasonNoPrice: '缺售价',
     impReasonNoMain: '品类没认出来',
+    // R696（真实报表实测）：美团「菜品销售统计」整表粘贴会带销量/销售额/单价三列数字，
+    //   解析器拒绝猜哪个是售价。这句必须**列出候选数字**，老板才知道该删哪几列。
+    impReasonAmbiguous: '这行有多个数字（{nums}），分不清哪个是售价 —— 请只保留「菜名 + 售价」再粘一次',
     impReasonThousands: '售价里有千分位逗号（如 1,280），请去掉逗号再解析',
     impPricePh: '售价',
     impSummary: (n, g, o, r) => `共 ${n} 道 · 已齐 ${g} · 待补价 ${o} · 缺信息 ${r}`,
