@@ -1,0 +1,35 @@
+[
+ {
+  "name": "21_takeaway",
+  "shot": "ok@try1",
+  "state": {
+   "route": "subpkg/biz/takeaway/index",
+   "reviewEmpty": null,
+   "baseNote": "佣金（技术服务费）的计费基数是商品总价，不含打包费。",
+   "empty": null,
+   "loading": false
+  }
+ },
+ {
+  "name": "22_revenue",
+  "shot": "ok@try1",
+  "state": {
+   "route": "pages/index/index",
+   "reviewEmpty": null,
+   "baseNote": null,
+   "empty": null,
+   "loading": false
+  }
+ },
+ {
+  "name": "23_review",
+  "shot": "ok@try1",
+  "state": {
+   "route": "pages/index/index",
+   "reviewEmpty": null,
+   "baseNote": null,
+   "empty": null,
+   "loading": false
+  }
+ }
+]

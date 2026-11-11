@@ -1,0 +1,64 @@
+{
+ "pages": [
+  {
+   "name": "11_hub_top",
+   "url": "/pages/m3/hub",
+   "state": {
+    "route": "pages/m3/hub",
+    "loading": null,
+    "subtitle": "原料、成本卡、外卖团购、对账复盘",
+    "reconWhatFor": null,
+    "hint": null,
+    "result": null,
+    "bills": null,
+    "cardCount": 5
+   },
+   "shotErr": "timeout waiting for automator response"
+  },
+  {
+   "name": "12_recon",
+   "url": "/subpkg/tools/recon/index",
+   "state": {
+    "route": "subpkg/tools/recon/index",
+    "loading": false,
+    "subtitle": null,
+    "reconWhatFor": "拿你月度账里记的收入，跟成本卡一道菜一道菜推出来的毛利率比一比：看差几个点、差多少钱，以及可能差在哪。",
+    "hint": null,
+    "result": "hasResult",
+    "bills": null,
+    "cardCount": null
+   },
+   "shotErr": "timeout waiting for automator response"
+  },
+  {
+   "name": "13_groupon",
+   "url": "/subpkg/biz/groupon/index",
+   "state": {
+    "route": "subpkg/biz/groupon/index",
+    "loading": false,
+    "subtitle": null,
+    "reconWhatFor": null,
+    "hint": "佣金按顾客实付的团购价算，不是按原价",
+    "result": null,
+    "bills": null,
+    "cardCount": null
+   },
+   "shotErr": "timeout waiting for automator response"
+  },
+  {
+   "name": "14_review",
+   "url": "/pages/m3/dishreview/index",
+   "state": {
+    "route": "pages/m3/dishreview/index",
+    "loading": false,
+    "subtitle": null,
+    "reconWhatFor": null,
+    "hint": null,
+    "result": null,
+    "bills": 0,
+    "cardCount": null
+   },
+   "shotErr": "timeout waiting for automator response"
+  }
+ ]
+}

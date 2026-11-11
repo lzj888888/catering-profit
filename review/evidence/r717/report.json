@@ -1,0 +1,95 @@
+{
+ "pages": [
+  {
+   "name": "01_hub",
+   "url": "/pages/m3/hub",
+   "ok": true,
+   "route": "pages/m3/hub",
+   "data": {
+    "tKeyCount": 42,
+    "secStartNote": "这两步是底子：原料有价，卡里才算得出成本",
+    "secAfterNote": "数来自三处：你导的销量表、收款日报、建好的成本卡",
+    "reconWhatFor": null
+   },
+   "shot": "ok"
+  },
+  {
+   "name": "02_recon",
+   "url": "/subpkg/tools/recon/index",
+   "ok": true,
+   "route": "subpkg/tools/recon/index",
+   "data": {
+    "tKeyCount": 23,
+    "secStartNote": null,
+    "secAfterNote": null,
+    "reconWhatFor": "拿你月度账里记的收入，跟成本卡一道菜一道菜推出来的毛利率比一比：看差几个点、差多少钱，以及可能差在哪。",
+    "loading": true
+   },
+   "shot": "ok"
+  },
+  {
+   "name": "03_takeaway_calc",
+   "url": "/subpkg/biz/takeaway/index",
+   "ok": true,
+   "routeErr": "timeout waiting for automator response",
+   "route": "subpkg/biz/takeaway/index",
+   "data": {
+    "tKeyCount": 136,
+    "secStartNote": null,
+    "secAfterNote": null,
+    "reconWhatFor": null,
+    "loading": false
+   },
+   "shot": "ok"
+  },
+  {
+   "name": "04_groupon",
+   "url": "/subpkg/biz/groupon/index",
+   "ok": true,
+   "routeErr": "timeout waiting for automator response",
+   "route": "pages/index/index",
+   "data": {
+    "tKeyCount": 29,
+    "secStartNote": null,
+    "secAfterNote": null,
+    "reconWhatFor": null,
+    "loading": false
+   },
+   "shot": "ok"
+  },
+  {
+   "name": "05_revenue",
+   "url": "/subpkg/biz/revenue/index",
+   "ok": true,
+   "route": "subpkg/biz/revenue/index",
+   "data": {
+    "tKeyCount": 26,
+    "secStartNote": null,
+    "secAfterNote": null,
+    "reconWhatFor": null,
+    "loading": true
+   },
+   "shot": "ok"
+  },
+  {
+   "name": "06_review",
+   "url": "/pages/m3/dishreview/index",
+   "ok": true,
+   "route": "pages/index/index",
+   "data": {
+    "tKeyCount": 29,
+    "secStartNote": null,
+    "secAfterNote": null,
+    "reconWhatFor": null,
+    "loading": true
+   },
+   "shot": "ok"
+  }
+ ],
+ "errors": [],
+ "channel": {
+  "connect": "ok",
+  "evaluate": 2,
+  "pageStack": 1
+ }
+}

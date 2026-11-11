@@ -105,6 +105,38 @@
   check('A-② 反恒真：已知坏样本（含「' + DEAD_WORD + '」）会被 A-① 判红',
     findDeadRef(['销量表请用上面的「' + DEAD_WORD + '」']).length === 1, '坏样本命中 1 条');
 
+  // 🔴 A-③/A-④（R717 真机走查补的漏）：A-① 只拦**六字**「销量表导入」，
+  //   而 hub 副标题一直写着**四字变体**「销量导入」—— 同一个已撤入口，换个写法就绕过了。
+  //   本轮真机截图就是这么发现漏网的（副标题「原料、成本卡、销量导入、利润复盘」）。
+  //   ⇒ 不再靠"猜变体"，改成**位置白名单**：这四字是外卖页内 tab 的真名，
+  //     只在 takeawaySub（指向那页内部）里合法，出现在任何别处 = 又在说本页有个不存在的入口。
+  const IMPORT_TAB = '销量导入';
+  function findStrayImportTab(obj, allowKey) {
+    return Object.keys(obj).filter((k) => k !== allowKey
+      && typeof obj[k] === 'string' && obj[k].indexOf(IMPORT_TAB) >= 0);
+  }
+  const stray = findStrayImportTab(hub, 'takeawaySub');
+  check('A-③ 「' + IMPORT_TAB + '」只允许出现在 takeawaySub（外卖页 tab 真名），别处出现 = 指向已撤入口',
+    stray.length === 0, stray.length ? '越界键：' + stray.join(',') : '0 处');
+  check('A-④ 反恒真：副标题写「' + IMPORT_TAB + '」会被 A-③ 判红',
+    findStrayImportTab({ subtitle: '原料、成本卡、' + IMPORT_TAB + '、利润复盘', takeawaySub: '「' + IMPORT_TAB + '」' }, 'takeawaySub')
+      .length === 1, '影子样本命中 subtitle');
+
+  // 🔴 A-⑤/A-⑥（R717 真机走查补的第二处）：排行榜页**自己就有**导入按钮（R707 把入口搬进了本页首屏），
+  //   可它的空态文案还写着「请先在『外卖』页导入《菜品销售统计》」—— 真机截图里，
+  //   同一屏同时出现「[导入销量表] 按钮」和「请先去外卖页导入」两条**互斥**的指路。
+  //   老板站在这页上，却被要求跑去另一页导同一份数据 ⇒ 这是"从哪获得数据"答了两次、答案还不同。
+  //   判据：空态文案必须点本页的按钮，不许出现别的页名。
+  function emptyPointsElsewhere(text) {
+    return text.indexOf('外卖') >= 0 || text.indexOf('导入销量表') < 0;
+  }
+  const reviewEmpty = (TERMS.card && TERMS.card.reviewEmpty) || '';
+  check('A-⑤ 排行榜空态必须点**本页**的「导入销量表」，不许把人赶去别的页',
+    reviewEmpty.length > 0 && !emptyPointsElsewhere(reviewEmpty), reviewEmpty.slice(0, 26));
+  check('A-⑥ 反恒真：旧句「请先在『外卖』页导入」会被 A-⑤ 判红',
+    emptyPointsElsewhere('还没有导入堂食销量，请先在「外卖」页导入《菜品销售统计》。') === true,
+    '旧句样本已证伪');
+
   // ================= B · 枢纽页：分区标题配「数从哪来」 =================
   console.log('\n===== B · M3 枢纽页：每组卡先说数从哪来 =====');
   const secN = (wxml.match(/class="hub-sec"/g) || []).length;
