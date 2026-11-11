@@ -191,6 +191,24 @@ const MENU = [
   ok('C-⑦ 恢复的行三色状态是**现算**的（status 非空、与 draft 对得上）',
     (C.data.rows || []).length > 0 && (C.data.rows || []).every((r) => !!r.status && !!r.statusText),
     (C.data.rows || []).map((r) => r.name + ':' + r.status).join(','));
+  // C-⑨ 恢复出来的行，点「去补价」必须把**缓存里那份草稿**送进本地暂存键 ——
+  //   否则恢复出一个能看不能用的列表（点进去是空草稿，比不恢复更坑）。
+  // ⚠️ 这里**不能**清 store —— 要验的正是「本地的整批能不能被接回来」，
+  //   清了就变成「空 store 能不能恢复」，必然 0 行（首版就这么假红了一次）。
+  const C9 = newPage();
+  await withWx(async () => { C9.onLoad(); await sleep(20); });
+  const C9rows = C9.data.rows || [];
+  ok('C-⑨（前置）恢复后确实拿到行', C9rows.length === 3, '行数=' + C9rows.length);
+  if (C9rows.length) {
+    await withWx(async () => { C9.onGoFill({ currentTarget: { dataset: { idx: 0 } } }); });
+    const pre = store[DI.DRAFT_PREFILL_KEY];
+    ok('C-⑩ 🔴 恢复的行点「去补价」⇒ 草稿真送进暂存键（不是空壳）',
+      !!pre && pre.name === '耙牛肉' && Array.isArray(pre.lines) && pre.lines.length > 0,
+      pre ? pre.name + '/lines=' + (pre.lines || []).length : '暂存键为空');
+  } else {
+    ok('C-⑩ 恢复的行点「去补价」⇒ 草稿真送进暂存键（不是空壳）', false, '前置未满足');
+  }
+
   await withWx(async () => { C.onDismissResume(); });
   ok('C-⑧ 点一下能收起说明（不是永久挂一条横幅）', C.data.resumeTip === '', C.data.resumeTip);
 
