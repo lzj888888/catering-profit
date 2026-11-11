@@ -122,8 +122,41 @@ ok('R698-② 整表粘贴 ⇒ 11 道菜（表头行与「合计」行都被拦�
 ok('R698-③ 不会多出一张叫「合计」的成本卡',
   rowsA.every(function (r) { return !isNoiseLine(r.name); }),
   rowsA.map(function (r) { return r.name; }).join('、'));
-ok('R698-④ 真实多列格式下 R696 生效：每行都不猜售价',
-  rowsA.every(function (r) { return r.ambiguous === true && r.priceYuan === null; }));
+// 🔴 R710（队列 #162）订正 R698-④ 的判据。
+//   原判据是「每行 priceYuan === null」，它把 R696 的意图（多数字不许瞎猜）实现成了
+//   「一律不给价」—— 而样本 A 的表头**明写着「单价」在第 5 列**，174÷3=58、190÷5=38…
+//   每行都自洽 ⇒ 单价本来就在那儿，给 null 才是缺陷（这就是 #162：nameIdx===0 时
+//   整条列定位被 `> 0` 排除掉，退回「第一个数字当售价」的老启发式）。
+//   ⚠️ 这不是「改判据迎合代码」，是**加强**：原判据只要 null 就过；新判据要求
+//   「有单价列就必须取到，且数值必须等于样本自身 销售额÷销量 的独立复算」。
+// ⚠️ 销量为 0 的行（样本里「鸭血」销量 0/销售额 0）没法用除法复算 —— 0/0＝NaN。
+//   那是判据的缺陷不是数据的缺陷，所以分两段：**所有行都要有价**，销量>0 的行再用
+//   样本自身的「销售额÷销量」复算。别为了让判据全绿就把 0 销量行整行跳过。
+const expectPrice = {};
+secA.forEach(function (l) {
+  const p = l.split('\t');
+  const q = Number(String(p[2] || '').trim());
+  if (/^\d+$/.test(String(p[2] || '').trim()) && !isNoiseLine(l) && q > 0) {
+    expectPrice[String(p[0] || '').trim()] = Number(p[3]) / q;
+  }
+});
+const allPriced = rowsA.length > 0 && rowsA.every(function (r) {
+  return r.priceYuan !== null && r.ambiguous === false;
+});
+const arithOk = rowsA.filter(function (r) { return expectPrice[r.name] != null; }).every(function (r) {
+  return Math.abs(r.priceYuan - expectPrice[r.name]) < 0.005;
+});
+ok('R698-④ 有表头且写名单价列：每行都取到价，且与 销售额÷销量 独立复算一致',
+  allPriced && arithOk && rowsA.length === 11,
+  '有价=' + allPriced + ' 复算=' + arithOk + ' 行数=' + rowsA.length + ' | '
+  + rowsA.map(function (r) { return r.name + '=' + r.priceYuan + '(期望' + expectPrice[r.name] + ')'; }).join(' '));
+
+// 🔴 R710 反向：**有表头但没有单价列**时，仍然一个字都不许猜。
+//   否则这次修 #162 会把 R696 一起推翻 —— 那是另一个方向的错。
+const noPriceTbl = parseDishLines('菜品名称\t菜品分类\t销售数量\n耙牛肉\t卤菜\t12');
+ok('R710-① 有表头但**无**单价列 ⇒ 售价留空、绝不用销量顶上（防这次修复把手伸太长）',
+  noPriceTbl.length === 1 && noPriceTbl[0].priceYuan === null && noPriceTbl[0].name === '耙牛肉',
+  JSON.stringify(noPriceTbl));
 ok('R698-⑤ isNoiseLine 精确匹配：真菜名「合计拼盘」不得被误杀',
   !isNoiseLine('合计拼盘\t热菜\t68'));
 ok('R698-⑥ 常见合计/表头别名都拦得住',

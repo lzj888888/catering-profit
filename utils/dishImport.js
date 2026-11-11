@@ -229,7 +229,15 @@ function parseDishLines(text) {
     .map(function (l) { return l.replace(/\r/g, ''); })
     .filter(function (l) { return l.trim(); });
   const cols = detectColumns(all);
-  if (cols && cols.nameIdx > 0) {
+  // 🔴 R710（队列 #162）：这里曾经写 `cols.nameIdx > 0`，把「菜名恰好在第 1 列」的表排除在列定位之外。
+  //   而 detectColumns 的契约是「找到了 COL_NAME 才返回对象」⇒ `cols` 非空本身就意味着 nameIdx ≥ 0，
+  //   再拿 `> 0` 筛一遍，等于把**一半的真实报表**推回老路径。老路径完全不看表头，
+  //   它只有「第一片段当菜名、第一个数字当售价」这一条启发式 ⇒ 两种静默错：
+  //     ① 有「售价」列但在第 5 列 ⇒ 拿不到，还把销量/销售额全列成候选（ambiguous）；
+  //     ② 只有「销量」没有「售价」⇒ 直接把**销量当售价**返回，且 ambiguous=false，
+  //        界面看着一切正常 —— 这比 ambiguous 更坏，老板不会去核。
+  //   ⚠️ 无表头时 cols 为 null，仍走老路径 ⇒ 三列粘贴的行为一字未变。
+  if (cols) {
     const out = [];
     all.forEach(function (raw) {
       const p = raw.split('\t').map(function (s) { return s.trim(); });
