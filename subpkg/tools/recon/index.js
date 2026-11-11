@@ -12,6 +12,8 @@ Page({
   data: {
     t: {
       reconTitle: TERMS.card.reconTitle,
+      // 🔴 R717：整页定位句（wxml 用到就必须登记 —— 漏登记 ⇒ 静默空白）
+      reconWhatFor: TERMS.card.reconWhatFor,
       reconMenuMargin: TERMS.card.reconMenuMargin,
       reconActualMargin: TERMS.card.reconActualMargin,
       reconDiffPp: TERMS.card.reconDiffPp,

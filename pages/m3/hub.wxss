@@ -102,10 +102,20 @@
       纯文字标题在 8 张卡之间没有任何停留感，加条之后老板扫一眼就知道"从这里切一刀"。 */
 .hub-sec {
   display: block; font-size: 28rpx; font-weight: 700; color: #1e3a5f;
-  margin: 8rpx 8rpx 16rpx;
+  /* 🔴 R717：底边距 16→4 —— 下面紧跟一行「数从哪来」小字，两者是一个整体，
+     间距要小于「小字 → 卡片」的间距，否则小字会被读成上一块的尾巴。 */
+  margin: 8rpx 8rpx 4rpx;
   padding-left: 16rpx;
   border-left: 6rpx solid #1e3a5f;
   line-height: 1.3;
+}
+
+/* 🔴 R717：分区标题下的**数据来源**小字（一行，不折叠、不换行挤成两行以上）
+   左边距 24rpx = 标题 6rpx 竖条 + 16rpx 内缩 + 2rpx 视觉对齐 ⇒ 与标题文字左边缘对齐。
+   ⚠️ 字号必须 ≥28rpx（AD 红线，check_m3_style_b）；颜色用现有次级色 #776C5E，不新造色。 */
+.hub-sec-note {
+  display: block; font-size: 28rpx; color: #776C5E;
+  margin: 0 8rpx 16rpx 24rpx; line-height: 1.45;
 }
 
 .hub-empty {

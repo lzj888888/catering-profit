@@ -53,6 +53,9 @@ Page({
       //   保留分区标题两键（它们现在承担"序号是什么意思"的唯一解释）。
       secStart: TERMS.hub.secStart,
       secAfter: TERMS.hub.secAfter,
+      // 🔴 R717：分区标题下的「数从哪来」小字（wxml 用到就必须登记 —— 漏登记 ⇒ 静默空白，本仓 R189 P2-1 同族）
+      secStartNote: TERMS.hub.secStartNote,
+      secAfterNote: TERMS.hub.secAfterNote,
       emptyTitle: TERMS.hub.emptyTitle,
       emptyDesc: TERMS.hub.emptyDesc,
       emptyBtn: TERMS.hub.emptyBtn,

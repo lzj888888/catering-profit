@@ -1,4 +1,11 @@
 <view class="container safe-bottom" wx:if="{{!loading}}">
+  <!-- ===== R717：整页定位句（必须先于任何输入框）=====
+       李老师 2026-11-12：「一眼就能知道这是干什么的，为什么放有这个按钮」。
+       本页进来第一眼是「月份 / 在售菜品数」两个框，没有任何一句说它在算什么 ——
+       R712 补的那条只解释了「在售菜品数」这一个字段，不是整页定位。
+       ⚠️ 用 `.recon-why` 同一个灰字类（不新造样式，AD 红线字号已合规 28rpx）。 -->
+  <view class="recon-why">{{t.reconWhatFor}}</view>
+
   <!-- 月份 + 在售菜品数 + 含套餐开关 -->
   <view class="field">
     <text class="lbl">{{t.reconMonth}}</text>
