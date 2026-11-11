@@ -9,18 +9,20 @@
 /* R689（M3 优化 A）：四象限 —— 2×2 格子。
  * 配色刻意**中性**（不用红/黄/绿）：四象限只说明"相对你自己店里其他菜的位置"，
  * 不是健康评级 —— 用红色会把"卖得少"渲染成"有危险"，而本项目没有任何行业基准支撑这种判断。
- * 数量用主色 #1e3a5f 突出（老板第一眼要看的是"每类各有几道"）。 */
+ * 数量用主色 #1e3a5f 突出（老板第一眼要看的是"每类各有几道"）。
+ * ⚠️ 字号**不得小于 28rpx**（门禁 G1 硬规则）：首版我写了 22/24/26 被门禁当场拦下，
+ *    这不是"样式偏好"而是可读性红线 —— 老板多在 40+ 岁，小字等于看不见。 */
 .quad-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12rpx; }
 .quad-cell { border: 1rpx solid #F0E9DC; border-radius: 12rpx; padding: 16rpx; background: #FFFDF9; }
 .quad-hd { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6rpx; }
-.quad-name { font-size: 26rpx; font-weight: 600; color: #3A332B; }
-.quad-count { font-size: 32rpx; font-weight: 700; color: #1e3a5f; font-variant-numeric: tabular-nums; }
-.quad-hint { font-size: 22rpx; color: #776C5E; margin-bottom: 10rpx; }
-.quad-names { font-size: 24rpx; color: #4A4238; line-height: 1.5; }
+.quad-name { font-size: 28rpx; font-weight: 600; color: #3A332B; }
+.quad-count { font-size: 34rpx; font-weight: 700; color: #1e3a5f; font-variant-numeric: tabular-nums; }
+.quad-hint { font-size: 28rpx; color: #776C5E; margin-bottom: 8rpx; }
+.quad-names { font-size: 28rpx; color: #4A4238; line-height: 1.4; }
 .quad-nm { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.quad-more { display: block; font-size: 22rpx; color: #776C5E; }
+.quad-more { display: block; font-size: 28rpx; color: #776C5E; }
 .quad-none { color: #8A8073; }
-.quad-note { margin-top: 16rpx; font-size: 22rpx; }
+.quad-note { margin-top: 16rpx; font-size: 28rpx; }
 /* R299：`.warn-line`（数据截断可见降级）定义在**全局 app.wxss**（多页共用，色值单源），此处不复制第二份。 */
 .section-title { font-size: 30rpx; color: #1e3a5f; font-weight: 600; margin: 24rpx 4rpx 12rpx; }
 /* R272c：自助餐块上移到顶部，标题高亮便于在长页面一眼看到 */
