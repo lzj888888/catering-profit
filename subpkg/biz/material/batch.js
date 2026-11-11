@@ -48,6 +48,10 @@ Page({
       unnamed: TERMS.card.matBatchUnnamed,
       checked: TERMS.card.matBatchChecked,
       back: TERMS.card.backToList,
+      blockTitle: TERMS.card.matBatchBlockTitle,
+      blockBody: TERMS.card.matBatchBlockBody,
+      allBadBody: TERMS.card.matBatchAllBadBody,
+      backTop: TERMS.card.matBatchBackTop,
       cur: '¥',
     },
     text: '',
@@ -60,6 +64,10 @@ Page({
     saving: false,
     doneText: '',
     failText: '',
+    // 🔴 R705：三种"导不进"的状态分开表达，别让老板自己去猜
+    blocked: false,      // 整表拦下（这是销售表，不是原料表）
+    blockSample: '',     // 拦下时把我们读到的第一行摆给他看
+    allBadTitle: '',     // 表是对的，但一条可导行都没有
   },
 
   onLoad() {
@@ -75,6 +83,32 @@ Page({
       return;
     }
     const r = batch.parsePaste(text, TERMS.card.matUnitDefault);
+    // 每次解析都清掉上一次的拦截/全坏态，否则改对了内容还挂着旧提示
+    const reset = {
+      parsed: true,
+      parseBtn: TERMS.card.matBatchReparse,
+      saveBtn: TERMS.card.matBatchSave,
+      doneText: '',
+      failText: '',
+      blocked: false,
+      blockSample: '',
+      allBadTitle: '',
+    };
+    // 🔴 R705：整表拦截 —— 老板把菜品销售表当原料表粘了。
+    //   为什么不产出行：红行会让他以为「要一条条补单位」，真实原因是**表选错了**，
+    //   方向错了他怎么补都补不完（12 条 vs 60 道菜）。
+    if (r.blocked === 'sales_table') {
+      this.setData(Object.assign({}, reset, {
+        rows: [],
+        okCount: 0,
+        badCount: 0,
+        checkedCount: 0,
+        countText: '',
+        blocked: true,
+        blockSample: TERMS.card.matBatchBlockSample(r.sample),
+      }));
+      return;
+    }
     // 展示态在 js 里算好 —— WXML 里不得调方法（check_list_ux 判据）
     const rows = r.rows.map((x) => ({
       index: x.index,
@@ -95,18 +129,19 @@ Page({
     const okCount = rows.filter((x) => x.ok).length;
     const badCount = rows.length - okCount;
     const checkedCount = rows.filter((x) => x.checked).length;
-    this.setData({
-      parsed: true,
+    this.setData(Object.assign({}, reset, {
       rows,
       okCount,
       badCount,
       checkedCount,
-      parseBtn: TERMS.card.matBatchReparse,
       countText: TERMS.card.matBatchCountOf(okCount, badCount),
-      saveBtn: TERMS.card.matBatchSave,
-      doneText: '',
-      failText: '',
-    });
+      // 🔴 R705：一条可导行都没有 ⇒ 界面上不再出现「全选/全不选/导入」，
+      //   改为一句话说明 + 一个「回顶部改」的按钮。原来那排按钮点下去毫无反应，
+      //   李老师的描述是「都点不动」——那不是按钮坏了，是**没有可操作对象**。
+      allBadTitle: rows.length > 0 && okCount === 0
+        ? TERMS.card.matBatchAllBadTitle(badCount)
+        : '',
+    }));
   },
 
   // 行选中切换：有问题的行**不许勾**（勾了也是保存失败，不如当场说清）
@@ -162,6 +197,13 @@ Page({
       doneText: TERMS.card.matBatchDoneOf(okN),
       failText: failed.length ? TERMS.card.matBatchFailOf(failed.length) + '：' + failed.slice(0, 5).join('、') : '',
     });
+  },
+
+  // 🔴 R705：回到顶部改粘贴内容 —— 回答李老师那句「是不是只能按左上角退出去重进」：
+  //   **不用退**。粘贴框和预览区是同一页，滚回去改完再点「重新解析」即可。
+  //   之前没这条路，是因为页面长、又没任何提示告诉他还能这么干。
+  onBackTop() {
+    wx.pageScrollTo({ scrollTop: 0, duration: 300 });
   },
 
   // 导入完回原料库（列表页 `onShow` 会重新拉，新原料立刻可见）

@@ -11,7 +11,7 @@
   </view>
 
   <view class="top-row">
-    <button class="btn primary top-add" bindtap="onParse">{{parseBtn}}</button>
+    <button class="btn primary full-btn" bindtap="onParse">{{parseBtn}}</button>
   </view>
 
   <!-- ② 预览区（解析后才出现） -->
@@ -21,9 +21,26 @@
       <text class="sec-count">{{countText}}</text>
     </view>
 
-    <view wx:if="{{rows.length === 0}}" class="empty">{{t.none}}</view>
+    <!-- 🔴 R705：整表拦截（菜品销售表被当成原料表粘进来）——
+         不再产 12 条红行。红行会让老板以为"要一条条补单位"，而真实原因是**表选错了**。 -->
+    <view class="guard guard-block" wx:if="{{blocked}}">
+      <text class="guard-t">{{t.blockTitle}}</text>
+      <text class="guard-b">{{t.blockBody}}</text>
+      <text class="guard-s">{{blockSample}}</text>
+    </view>
 
-    <view class="top-row" wx:else>
+    <view wx:if="{{!blocked && rows.length === 0}}" class="empty">{{t.none}}</view>
+
+    <!-- 🔴 R705：一条可导行都没有时，**不给**「全选 / 全不选 / 导入」——
+         一排点下去毫无反应、还被禁用的按钮，体感就是"这页面卡死了"（李老师原话「都点不动」）。
+         这里只留一件事：告诉他怎么改，并且**不用退出重来**。 -->
+    <view class="guard guard-bad" wx:if="{{allBadTitle}}">
+      <text class="guard-t">{{allBadTitle}}</text>
+      <text class="guard-b">{{t.allBadBody}}</text>
+      <button class="btn ghost guard-btn" bindtap="onBackTop">{{t.backTop}}</button>
+    </view>
+
+    <view class="top-row" wx:if="{{okCount > 0}}">
       <button class="btn-small ghost ops-btn" bindtap="onSelectAll">{{t.selectAll}}</button>
       <button class="btn-small ghost ops-btn" bindtap="onUnselect">{{t.unselect}}</button>
     </view>
@@ -43,8 +60,8 @@
       </view>
     </view>
 
-    <view class="top-row">
-      <button class="btn primary top-add" bindtap="onSave" disabled="{{saving || checkedCount === 0}}">{{saveBtn}}</button>
+    <view class="top-row" wx:if="{{okCount > 0}}">
+      <button class="btn primary full-btn" bindtap="onSave" disabled="{{saving || checkedCount === 0}}">{{saveBtn}}</button>
     </view>
   </block>
 

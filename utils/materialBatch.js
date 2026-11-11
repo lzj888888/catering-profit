@@ -21,6 +21,12 @@ function isNumLike(s) {
   return /^-?\d+(\.\d+)?$/.test(v);
 }
 
+// 🔴 R705：「这一格是不是合法采购单位」—— 区分「第 3 列是单位」还是「第 3 列是钱」。
+//   单位池单源取 utils/units.js，本文件不抄第二份。
+function isUnitWord(s) {
+  return units.PURCHASE_UNITS.indexOf(String(s == null ? '' : s).trim()) >= 0;
+}
+
 // 一行 → 列数组。分隔符优先级：**Tab（Excel 复制）> 逗号 > 分号 > 两个以上空格**。
 //   ⚠️ 单空格**默认不拆**：原料名里本来就有空格（「耙 牛肉」）。只有当「首段之后的段全是数字」时
 //      才按单空格拆 —— 那几乎只可能是手打的「炸鸡腿 18.5」这类速记。
@@ -39,7 +45,9 @@ function splitRow(line) {
 // 表头行识别：仅对**首行**判，且必须「名称类 + 价格类」同时在场。
 //   （只认名称类会把「炸鸡腿 名称待定」误当表头 ⇒ 丢一条真数据，比不识别更坏）
 const HEAD_NAME_RE = /名称|品名|原料名|材料名|原料|材料|商品/i;
-const HEAD_PRICE_RE = /单价|价格|金额|进价|采购价|price/i;
+// 🔴 R705：补「售价 / 销售额」—— 菜品销售表的表头原样粘进来时，老正则一条都匹配不上
+//   （「销售额(元)」既没有「单价」也没有「金额」子串），于是表头被当数据行解析。
+const HEAD_PRICE_RE = /单价|价格|金额|进价|采购价|售价|销售额|销量|price/i;
 function isHeaderRow(cells) {
   const joined = (cells || []).join(' ');
   return HEAD_NAME_RE.test(joined) && HEAD_PRICE_RE.test(joined);
@@ -58,6 +66,14 @@ function pickColumns(cells) {
   if (quick) {
     return { name: c[0], brand_spec: '', purchase_unit: c[2] || '', priceYuan: c[1], convert: '', yieldRate: '' };
   }
+  // 🔴 R705 第三形态「名称 | 规格/分类 | 单价」（三列，第 3 列是钱不是单位）
+  //   实测事故（李老师 2026-11-11 真机）：粘「耙牛肉 卤味烧腊 68」，老逻辑走位置语义把第 3 列
+  //   当**采购单位** ⇒ 报「单位不在可选池：68」，12 条全坏、一条都导不进。
+  //   为什么要判 `!isUnitWord(c[2])`：否则「炸鸡腿 箱装24 件」会被误当价格（那第 3 列 '件' 在池里
+  //   ⇒ 仍走位置语义，行为零变化）。判据宁可窄 —— 只认这三列、且第 3 列确实不是单位词。
+  if (c.length === 3 && !isNumLike(c[1]) && isNumLike(c[2]) && !isUnitWord(c[2])) {
+    return { name: c[0], brand_spec: c[1], purchase_unit: '', priceYuan: c[2], convert: '', yieldRate: '' };
+  }
   return {
     name: c[FIELD.NAME] || '',
     brand_spec: c[FIELD.BRAND] || '',
@@ -66,6 +82,24 @@ function pickColumns(cells) {
     convert: c[FIELD.CONV] || '',
     yieldRate: c[FIELD.YIELD] || '',
   };
+}
+
+// 🔴 R705：整表拦截 —— 「这不是原料表」
+//   老板会把**菜品销售表**当原料表粘进来（李老师 2026-11-11 就是这么测的）：
+//     「菜品名称 | 菜品分类 | 销售数量 | 销售额(元) | 售价」/「耙牛肉 | 卤味烧腊 | 12 | 816 | 68」
+//   老逻辑按位置语义读 ⇒ 第 3 列「12」被当采购单位 ⇒ 每条都报「单位不在可选池：12」，12 条全坏。
+//   🔴 为什么必须**拦**而不是「尽力解析」：销量/销售额对原料毫无意义，硬解析会把
+//      「销售额 816 元」记成一份原料的采购价 —— 假数字会进成本卡和毛利榜，比报错危险得多。
+//   判据（宁可窄）：列数 ≥4 + 第 2 列不是数字 + 第 3 列是数字却**不是合法单位**
+//     ⇒ 位置语义里的「第 3 列 = 采购单位」立不住 ⇒ 这不是我们认识的那种表。
+//   反证：标准六列「炸鸡腿|箱装24|件|195|24000|95」第 3 列 '件' 合法 ⇒ 不拦（回归靠守卫）。
+function looksLikeSalesTable(cells) {
+  const c = (cells || []).map((x) => String(x == null ? '' : x).trim());
+  if (c.length < 4) return false;         // 三列以内走 pickColumns 的第三形态，不拦
+  if (isNumLike(c[1])) return false;      // 第 2 列是数字 ⇒ 速记形态，不是销售表
+  if (!isNumLike(c[2])) return false;     // 第 3 列不是数字 ⇒ 正常位置语义
+  if (isUnitWord(c[2])) return false;     // 第 3 列是合法单位 ⇒ 正常位置语义
+  return true;
 }
 
 // 一行 → { ok, errors, row }。row 是**可直接喂 saveMaterial** 的入参形态（元→分在这一层做完）。
@@ -135,6 +169,8 @@ function parsePaste(text, defaultUnit) {
   const rows = [];
   let headerSkipped = false;
   let blankLines = 0;
+  let blocked = null;   // 'sales_table' ⇒ 整表拦（判据见 looksLikeSalesTable）
+  let sample = '';      // 拦下来时给老板看「我读到的是什么」，否则他不知道自己粘了啥
   let first = true;
   for (const line of lines) {
     const cells = splitRow(line);
@@ -148,14 +184,22 @@ function parsePaste(text, defaultUnit) {
       first = false;
       if (isHeaderRow(cells)) { headerSkipped = true; continue; }
     }
+    // 拦判定只看**第一条真数据**：一旦判为销售表，后面不再产出行
+    if (!rows.length && !blocked && looksLikeSalesTable(cells)) {
+      blocked = 'sales_table';
+      sample = cells.join(' · ');
+    }
+    if (blocked) continue;
     const b = buildRow(cells, defaultUnit);
     rows.push({ index: rows.length + 1, ok: b.ok, errors: b.errors, row: b.row, cells });
   }
-  return { rows, headerSkipped, blankLines };
+  return { rows, headerSkipped, blankLines, blocked, sample };
 }
 
 module.exports = {
   parsePaste,
+  looksLikeSalesTable,
+  isUnitWord,
   splitRow,
   isHeaderRow,
   pickColumns,

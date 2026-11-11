@@ -34,3 +34,29 @@
 .err-row { margin-top: 8rpx; }
 .err { font-size: 28rpx; line-height: 1.6; color: #c0392b; }
 .ok-text { color: #1e3a5f; }
+
+/* 🔴 R705（李老师 2026-11-11：「那个蓝色按钮，上面字也看不清，不知写的是什么内容」）——
+   真因不是配色，是**宽度**：本页复用了列表页的 `.top-add`（app.wxss 里 `flex: 0 0 200rpx`
+   = 固定 104px，是给「+ 新增」两个字设计的）。而这里放的是「导入选中的原料」7 个字
+   ⇒ 挤在一行里被压扁、折行，自然看不清写的是什么。
+   ⇒ 本页改用**撑满一行**的按钮，不复用列表页那个定宽类。 */
+.full-btn { flex: 1; margin-top: 0; padding: 0 16rpx; }
+
+/* ===== R705：两种「导不进」的显式说明（不是红字清单，是"下一步该干什么"） =====
+   ① guard-block：整表拦下来了（这是菜品销售表，不是原料表）
+   ② guard-bad  ：表是对的但 12 条全有错（缺单位/缺换算），一条都导不了
+   底色走暖色警示（与导入页 imp-block 同族），字号 ≥28rpx（AD 硬红线）。 */
+.guard {
+  padding: 24rpx;
+  margin: 0 0 16rpx;
+  border-radius: 16rpx;
+  background: #FFF7E8;
+  border: 1rpx solid #E8A33D;
+}
+.guard-bad { background: #FDECEA; border-color: #D9534F; }
+.guard-t { display: block; font-size: 32rpx; font-weight: 700; color: #7A4B08; margin-bottom: 10rpx; }
+.guard-bad .guard-t { color: #A3352F; }
+.guard-b { display: block; font-size: 28rpx; line-height: 1.7; color: #5F4A2A; white-space: pre-line; }
+.guard-bad .guard-b { color: #6B3A36; }
+.guard-s { display: block; font-size: 28rpx; line-height: 1.6; color: #8A7550; margin-top: 12rpx; }
+.guard-btn { margin-top: 20rpx; min-height: 88rpx; }

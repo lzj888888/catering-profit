@@ -230,5 +230,127 @@ check('C2-⑧ 空行与 # 注释不产出行（防噪音行 + 防"扫空恒绿"�
   c8.rows.length === 1 && c8.okCount === 1,
   'rows=' + c8.rows.length);
 
+
+// ===================== E · R705：粘错表 / 全坏 / 按钮看不清 =====================
+// 事故（李老师 2026-11-11 真机）：把**菜品销售表**粘进原料批量录入 ⇒ 12 条全报
+//   「单位不在可选池：68」（售价被当成采购单位），一条都导不进；
+//   底部「导入选中的原料」按钮既 disabled 又被 `.top-add` 的 200rpx 定宽挤成 104px ⇒
+//   字看不清。他以为「全选/全不选/按钮」都点不动，只能退出去重进。
+// 这里钉死三层：① 三列「名|规格|价」要认得对 ② 销售表要整表拦而不是硬解析
+//   ③ 样式层不许再退回「定宽 + 无效 disabled 类」。
+
+// --- E-① 三列 名|分类|价：价格要落到 priceYuan，不能落到 purchase_unit ---
+const e1 = batch.parsePaste('耙牛肉\t卤味烧腊\t68\n耙肥肠\t卤味烧腊\t58', '斤');
+check('E-① 三列「名称|分类|单价」⇒ 两条全 ok，第 3 列是**价**不是单位',
+  e1.rows.length === 2 && e1.rows.every((r) => r.ok)
+  && e1.rows[0].row.name === '耙牛肉' && e1.rows[0].row.purchase_price_fen === 6800,
+  JSON.stringify(e1.rows.map((r) => [r.row.name, r.row.brand_spec, r.row.purchase_price_fen, r.ok])));
+
+// --- E-② 同一形态：单位回落到默认单位，绝不变成 '68' ---
+check('E-② 三列形态下 purchase_unit 回落到默认单位（不是 68）',
+  e1.rows[0].row.purchase_unit === '斤' && e1.rows[1].row.purchase_unit === '斤',
+  'unit=' + JSON.stringify(e1.rows.map((r) => r.row.purchase_unit)));
+
+// --- E-③ 五列菜品表（真表头 + 真实数据）⇒ 整表拦，不产红行 ---
+const e3 = batch.parsePaste(
+  '菜品名称\t菜品分类\t销售数量\t销售额(元)\t售价\n耙牛肉\t卤味烧腊\t12\t816\t68', '斤');
+check('E-③ 菜品销售表 ⇒ blocked=sales_table 且 rows 为空（不刷 12 条红行）',
+  e3.blocked === 'sales_table' && e3.rows.length === 0,
+  'blocked=' + e3.blocked + ' rows=' + e3.rows.length);
+
+// --- E-④ 四列 名|分类|销量|售价 同样要拦 ---
+const e4 = batch.parsePaste('耙牛肉\t卤味烧腊\t12\t68', '斤');
+check('E-④ 四列「名称|分类|销量|售价」⇒ 同样整表拦',
+  e4.blocked === 'sales_table' && e4.rows.length === 0,
+  'blocked=' + e4.blocked);
+
+// --- E-⑤ 回归：标准六列**不许**被拦（拦错就等于把正常功能做没了）---
+const e5 = batch.parsePaste('炸鸡腿\t箱装24\t件\t195\t24000\t95', '斤');
+check('E-⑤ 反误伤：标准六列（第 3 列是合法单位「件」）不被拦，且价格/换算/出成率都在',
+  e5.blocked == null && e5.rows.length === 1 && e5.rows[0].ok
+  && e5.rows[0].row.purchase_unit === '件' && e5.rows[0].row.purchase_price_fen === 19500
+  && e5.rows[0].row.convert_factor === 24000 && e5.rows[0].row.yield_rate === 95,
+  'blocked=' + e5.blocked + ' ' + JSON.stringify(e5.rows[0] && e5.rows[0].row));
+
+// --- E-⑥ 回归：三列「名|规格|单位」第 3 列是单位词 ⇒ 不许被当成价 ---
+const e6 = batch.parsePaste('炸鸡腿\t箱装24\t件', '斤');
+check('E-⑥ 反误伤：三列里第 3 列是「件」⇒ 仍走位置语义（不当价），且要求填换算',
+  e6.blocked == null && e6.rows[0].row.purchase_unit === '件'
+  && e6.rows[0].row.purchase_price_fen === 0
+  && e6.rows[0].errors.join('').indexOf('换算系数必填') >= 0,
+  JSON.stringify(e6.rows[0] && e6.rows[0].errors));
+
+// --- E-⑥b 带「元」的价格**不许猜**：三列形态要求第 3 列是纯数字 ---
+//   红线 R138/R317：不许编价。`68元` 既不是纯数字、也不是单位词 ⇒ 必须落到
+//   「单位不在可选池」，让老板自己改成 68，而不是我们剥掉「元」字替他猜。
+//   （这条也把「第 3 列必须是数字」这个条件钉死 —— 变异 M6 删掉它会立刻红。）
+const e6b = batch.parsePaste('耙牛肉\t卤味烧腊\t68元', '斤');
+check('E-⑥b 三列里第 3 列是「68元」⇒ 报单位不合法（不剥「元」字猜价）',
+  e6b.blocked == null && e6b.rows.length === 1 && e6b.rows[0].ok === false
+  && e6b.rows[0].row.purchase_price_fen === 0
+  && e6b.rows[0].errors.join('').indexOf('单位不在可选池') >= 0,
+  JSON.stringify(e6b.rows[0] && e6b.rows[0].errors));
+
+// --- E-⑦ 反恒真：判据必须有分辨力（两种样本给出相反答案）---
+check('E-⑦ 反恒真：looksLikeSalesTable 对销售表 true、对原料表 false（不是恒真/恒假）',
+  batch.looksLikeSalesTable(['耙牛肉', '卤味烧腊', '12', '68']) === true
+  && batch.looksLikeSalesTable(['土豆', '箱装', '斤', '3']) === false
+  && batch.looksLikeSalesTable(['耙牛肉', '68']) === false,
+  'sales=' + batch.looksLikeSalesTable(['耙牛肉', '卤味烧腊', '12', '68'])
+  + ' normal=' + batch.looksLikeSalesTable(['土豆', '箱装', '斤', '3']));
+
+// --- E-⑧ 接线层：页面真的走 blocked 分支（函数存在 ≠ 页面调用）---
+const eWxml = read('subpkg/biz/material/batch.wxml') || '';
+const eJs = read('subpkg/biz/material/batch.js') || '';
+check('E-⑧ 接线：batch.js 判 r.blocked 并把 blocked/blockSample 送进 setData',
+  /r\.blocked\s*===\s*'sales_table'/.test(eJs) && /blocked:\s*true/.test(eJs)
+  && /blockSample:/.test(eJs));
+check('E-⑧b 渲染：wxml 有拦截块（guard-block）且在 rows 空态之前',
+  // 精确匹配完整 class 串：子串匹配会把 `guard-block-hidden` 也算命中（变异 M11 的教训）
+  eWxml.indexOf('class="guard guard-block"') >= 0
+  && eWxml.indexOf('class="guard guard-block"') < eWxml.indexOf("{{!blocked && rows.length === 0}}"));
+
+// --- E-⑨ 「全坏」不许留一排点不动的按钮 ---
+// ⚠️ 变异 M9 教训：只查 `allBadTitle:` 这个**键名**存在 ⇒ 把它赋成常量 false 照样绿。
+//   必须查到**判据表达式本身**（okCount === 0 且确实取了 badCount）。
+check('E-⑨ 全坏：allBadTitle 由 okCount === 0 判定 + 「回顶部改」按钮（onBackTop 真实现）',
+  /allBadTitle:\s*rows\.length\s*>\s*0\s*&&\s*okCount\s*===\s*0/.test(eJs)
+  && /matBatchAllBadTitle\(badCount\)/.test(eJs)
+  && /onBackTop\(/.test(eJs) && /wx\.pageScrollTo/.test(eJs)
+  && eWxml.indexOf('guard-bad') >= 0 && /bindtap="onBackTop"/.test(eWxml));
+check('E-⑨b 全坏时「全选/全不选」「导入」都以 okCount > 0 为前提（否则就是死按钮）',
+  (eWxml.match(/wx:if="\{\{okCount > 0\}\}"/g) || []).length >= 2,
+  '命中 ' + (eWxml.match(/wx:if="\{\{okCount > 0\}\}"/g) || []).length + ' 处');
+
+// --- E-⑩ 按钮宽度：不许再用列表页的 200rpx 定宽类（7 个字挤成 104px 是看不清的首因）---
+check('E-⑩ batch.wxml 不再使用 .top-add（flex:0 0 200rpx 定宽），改用 full-btn',
+  eWxml.indexOf('top-add') < 0 && /full-btn/.test(eWxml)
+  && /\n\.full-btn\s*\{[^}]*flex:\s*1/.test(read('subpkg/biz/material/batch.wxss') || ''),
+  'top-add=' + eWxml.indexOf('top-add'));
+
+// --- E-⑪ disabled 字看不清：全局必须有 `[disabled]` 真样式（类选择器从来没生效过）---
+//   判据**函数化**，好让 E-⑫ 用同一把尺子量影子样本（否则反恒真只是"写死 true"）。
+const eApp = read('app.wxss') || '';
+// 🔴 必须**逐属性**验 background 与 color 各自都带 !important ——
+//   变异回灌 M4 教训：只写 `/!important/.test(rule)` 时，删掉 background 那条
+//   仍能靠 color 的 !important 混过（判据过松 ⇒ 改坏也绿）。而这两条正对应
+//   「深蓝渐变底压过灰底」和「30% 黑字」两个独立成因，缺一条字就看不清。
+const disGuarded = (css) => {
+  const rule = (css.match(/\.btn\[disabled\][^{]*\{[^}]*\}/) || [''])[0];
+  if (!/\.btn\[disabled\]/.test(css)) return false;
+  // ⚠️ 必须带左边界：`color:` 会命中 `border-color:` 的子串 —— 变异 M4b 就是这么漏的
+  const imp = (prop) => new RegExp('(^|[;{\\s])' + prop + '\\s*:[^;]*!\\s*important').test(rule);
+  return imp('background') && imp('color');
+};
+check('E-⑪ app.wxss 有 `.btn[disabled]` 规则（属性选择器，且带 !important 压过内置样式）',
+  disGuarded(eApp) === true,
+  '规则长度=' + ((eApp.match(/\.btn\[disabled\][^{]*\{[^}]*\}/) || [''])[0].length));
+
+// --- E-⑫ 反恒真：同一判据对「旧写法」必须给 false（证明 E-⑪ 不是写什么都能过）---
+const eShadow = '.btn.disabled { background: #ccc; color: #fff; box-shadow: none; }';
+check('E-⑫ 反恒真：影子样本 `.btn.disabled{…}`（全仓零引用的旧写法）判红，真 app.wxss 判绿',
+  disGuarded(eShadow) === false && disGuarded(eApp) === true,
+  'shadow=' + disGuarded(eShadow) + ' real=' + disGuarded(eApp));
+
 console.log('\n===== 原料批量录入守卫：' + pass + ' 通过 / ' + failN + ' 失败 =====');
 process.exit(failN === 0 ? 0 : 1);

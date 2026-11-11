@@ -80,6 +80,23 @@ input, textarea { min-height: 88rpx; line-height: 1.5; }
   box-shadow: 0 6rpx 16rpx rgba(30, 58, 95, 0.18); }
 .btn.ghost { background: #FFFDF8; color: #1e3a5f; border: 2rpx solid #1e3a5f; }
 .btn.disabled { background: #ccc; color: #fff; box-shadow: none; }
+/* 🔴 R705：`disabled` 是**属性**，不是类 —— 全仓 51 处按钮写的都是 `disabled="{{…}}"`，
+   而上面那条 `.btn.disabled`（类选择器）**没有一处 wxml 用过**，等于从来没生效过。
+   真机后果（李老师 2026-11-11：「那个蓝色按钮，上面字也看不清」）：
+     ① 微信内置 `button[disabled]:not([type]){ color: rgba(0,0,0,.3) }` 权重 (0,2,1)
+        压过 `.btn.primary` 的 (0,2,0) ⇒ 字变成 30% 透明的黑；
+     ② 但底色来自 `.btn.primary` 的 `background: linear-gradient(…)`（background-image），
+        内置只覆盖 `background-color` ⇒ **渐变还在**，底仍是深蓝；
+     ③ 深蓝底 + 30% 黑字 ⇒ 基本看不出写的是什么。
+   ⇒ 这里用 `!important` 是必要的：内置 `button[disabled]` 的权重随基础库版本有差异，
+     我们不能可靠压过；而本段只命中「带 .btn 且真 disabled」的按钮，无外溢。
+   浅底 + 中灰字 = 一眼看出「这是禁用的」，同时仍读得清是什么操作。 */
+.btn[disabled], .btn.disabled {
+  background: #EDE7DB !important;
+  color: #A6988A !important;
+  border-color: #DDD5C6 !important;
+  box-shadow: none !important;
+}
 .btn-small { min-height: 88rpx; padding: 0 24rpx; font-size: 28rpx; border-radius: 12rpx; }
 .cell { display: flex; justify-content: space-between; align-items: center; padding: 24rpx 0; border-bottom: 1rpx solid #EFE8DA; font-size: 30rpx; }
 .cell:last-child { border-bottom: none; }
@@ -267,8 +284,10 @@ input, textarea { min-height: 88rpx; line-height: 1.5; }
    为什么列表卡另给 `.sb-card.card2` 一条复合选择器：`.card2` 是 17 个页面共用的全局类，
    直接改它会外溢到月度/外卖/对账（本轮只授权改三页）⇒ 复合选择器特异度 0,2,0 > 0,1,0，
    只对**显式**同时带 sb-card 的列表卡生效，其余页面的 .card2 一个像素都不动。
-   布局（flex / padding / 具体间距）仍在各页 wxss，本组只管"底色 + 圆角 + 阴影 + 卡间距"。 */
-.sb-card, .hub-card, .hub-flow, .hub-empty, .sb-card.card2 {
+   布局（flex / padding / 具体间距）仍在各页 wxss，本组只管"底色 + 圆角 + 阴影 + 卡间距"。
+   🔴 R706：`.hub-flow`（三步走独立引导块）已从本组**移除** —— 那块整体被删掉、折叠成
+      卡片名前的序号徽章了。留着它 = 一条永远不生效的死选择器，下一个人会以为还有这个块。 */
+.sb-card, .hub-card, .hub-empty, .sb-card.card2 {
   background: #FFFDF8; border-radius: 24rpx; padding: 28rpx; margin-bottom: 20rpx;
   border: 1rpx solid #EDE6D8;
   box-shadow: 0 2rpx 8rpx rgba(122, 78, 18, 0.04);

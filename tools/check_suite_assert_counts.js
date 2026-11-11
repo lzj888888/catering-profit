@@ -142,7 +142,7 @@ const CASES = [
   //   断言数不受守则「把 20 处调用点判据改回 owner.code / 删掉 G2 分支遍历」同样静默通过。
   { key: 'check_auth_guard_shape', rel: 'tools/check_auth_guard_shape.js' }, // 17 条（R194：G1 扫描面非退化 / G2 分支带 error / G3 无 ok()·fail() / G4 派生同形 / G5 锚点在场 / G6 调用点形状）
   { key: 'check_tabbar', rel: 'tools/check_tabbar.js' },
-  { key: 'check_material_batch', rel: 'tools/check_material_batch.js' }, // 34 条（R204：A 解析行为 9 / B 页面接线 8 / C 护栏 4 / D 正负样本 2；R211 补 3：带分隔符的空行必须按空行跳过——逗号 ⑩ / 分号 ⑪ / 40 行模板压力 ⑫；R443 补 8：菜品卡「粘贴配料表」解析 C2-①~⑧）
+  { key: 'check_material_batch', rel: 'tools/check_material_batch.js' }, // 34 条（R204：A 解析行为 9 / B 页面接线 8 / C 护栏 4 / D 正负样本 2；R211 补 3：带分隔符的空行必须按空行跳过——逗号 ⑩ / 分号 ⑪ / 40 行模板压力 ⑫；R443 补 8：菜品卡「粘贴配料表」解析 C2-①~⑧）；R705 补 15：粘错表整表拦（E-③④）/ 三列「名|规格|价」（E-①②）/ 不猜「68元」（E-⑥b）/ 全坏不给死按钮（E-⑨⑨b）/ 定宽类回归（E-⑩）/ disabled 属性选择器（E-⑪⑫）
   { key: 'check_home_ui_v3', rel: 'tools/check_home_ui_v3.js' }, // 32 条（R207：S 护栏 5 / A 头卡 13 / B 口径 4 / C 模块卡与入口保全 7 / D 全局单源 3；A-⑬~⑮=R298 hasProfit 必须以「有账本记录」为前置，否则新用户看到 ¥0.00）
   { key: 'check_shop_lifecycle', rel: 'tools/check_shop_lifecycle.js' }, // 29 条（R208：S 护栏 4 / A 配额语义 5（实跑 decideDelete）/ B 删空不死锁 6 / C 入口不藏 10 / D 文案对齐 4）
   { key: 'check_month_picker', rel: 'tools/check_month_picker.js' }, // 18 条（R209：S 护栏 4 / A handler 实跑 5 / B 后端实跑 4 / C 全仓回归 3 / D UI 一致 2）
@@ -233,7 +233,7 @@ const CASES = [
   //   失效有**两个方向**：关多了（连形态 A/C 一起关 ⇒ 复盘没输入，页面上看不出）
   //   与关少了（开关被改回 true ⇒ 账单又能落库）。
   { key: 'check_bill_import_gate', rel: 'tools/check_bill_import_gate.js' },  // 48 条（R271 增 F 段 20 条：跨平台重复导入防护）
-  { key: 'check_hub_guide', rel: 'tools/check_hub_guide.js' },  // 20 条（R263：枢纽页三步走/分层/空状态；G2 空状态严格 === 0 + G4 位置不变式；R704 加 G7 主操作不依赖异步计数）
+  { key: 'check_hub_guide', rel: 'tools/check_hub_guide.js' },  // 25 条（R263：枢纽页引导/分层/空状态；G2 空状态严格 === 0；R704 加 G7；R706 把「三步走独立块」折叠成卡片序号徽章 —— G1 改守徽章三态、G4 改守①②③顺序与首卡归属、G7 改为「不许有第二套入口 hub-flow/hub-quick」、新增 G8 徽章必须由 stepFlags 驱动（静态 ✓ 判红））
   { key: 'check_export_delivery', rel: 'tools/check_export_delivery.js' },  // 44 条（R265 导出投递 25 + R266 报表内容 18：E11 摊销在场 / E12~E14 表上加减对得上账 / E15~E16 摊销来源台账 / E18 两个开关状态）
   { key: 'check_page_card_width', rel: 'tools/check_page_card_width.js' },
   // R351：wxml class ↔ wxss 选择器集合比对。为什么值得受守：它守的是「用了但没定义样式」

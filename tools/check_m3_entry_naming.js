@@ -29,7 +29,8 @@ function ok(name, cond, detail) {
 
 // ===== A 组：形态判据（判行为，不判注释）=====
 console.log('===== A 入口归属与文案 =====');
-const importCard = /<view class="hub-card" bindtap="goImport">/.test(HUBW);
+// ⚠️ R706：卡片加了 hover-class 做点击反馈 ⇒ 不能用 `bindtap="goImport">` 死锚（属性变多就漏判）
+const importCard = /<view class="hub-card"[^>]*bindtap="goImport"/.test(HUBW);
 ok('A-① hub 有一级「销量表导入」卡（用 hub-card 类，不破 G4/S2 位置不变式）', importCard);
 // 🔴 R704：宫格布局把长副文案换成 *Short（每列 ≈155px，长描述会撑成 3~4 行、同排参差）。
 //   判据本意是「入口卡必须带一句解释用途的副文案」，**不是**「必须叫 importSub」
@@ -48,10 +49,13 @@ ok('A-②b 反恒真：副文案两个键都缺时必须判红',
 ok('A-③ hub.js 的 t:{} 登记了三个新键（漏登记 ⇒ 页面静默空白）',
   /importTitle: TERMS\.hub\.importTitle/.test(HUBJ) && /importSub: TERMS\.hub\.importSub/.test(HUBJ)
   && /icoImport: TERMS\.hub\.icoImport/.test(HUBJ));
-ok('A-④ goImport 落点带 tab=import，且 goStep(2) 复用它（同一个入口，不再两条 URL）',
+// 🔴 R706：goStep 已随三步走引导块删除（卡片自己 bindtap，不再需要中介按钮）。
+//   本意从「goStep(2) 与一级卡共用同一 URL」变成「全页只有一个 tab=import 落点」——
+//   守的东西不变：**不许再出现第二条通往销量导入的 URL**（两条 URL 就会走岔）。
+ok('A-④ goImport 落点带 tab=import，且全页只此一处（不再有第二条 URL 通往销量导入）',
   /goImport\(\) \{ wx\.navigateTo\(\{ url: '\/subpkg\/biz\/takeaway\/index\?tab=import' \}\); \}/.test(HUBJ)
-  && /return this\.goImport\(\);/.test(HUBJ)
-  && !/goStep[\s\S]{0,600}wx\.navigateTo\(\{ url: '[^']*tab=import' \}\);/.test(HUBJ));
+  && (HUBJ.match(/takeaway\/index\?tab=import/g) || []).length === 1
+  && !/goStep\s*\(/.test(HUBJ));
 ok('A-⑤ takeaway 有 syncTitle，且 load() 与 onTab 都调用（标题随 tab 与进页参数走）',
   /syncTitle\(tab\)\s*\{/.test(TKJ) && /this\.syncTitle\(this\.data\.tab\)/.test(TKJ)
   && /this\.syncTitle\(tab\)/.test(TKJ));
@@ -101,10 +105,13 @@ ok('B-② hub 的 t 三个新键真有值（不是 undefined）',
   h.data.t.importTitle === '销量表导入' && !!h.data.t.importSub && h.data.t.icoImport === '进',
   JSON.stringify(h.data.t.importTitle));
 NAV.length = 0;
-h.goStep({ currentTarget: { dataset: { step: 2 } } });
-h.goImport();
-ok('B-③ 真跑：三步走第③步与一级卡跳到同一 URL',
-  NAV.length === 2 && NAV[0] === NAV[1] && NAV[0].indexOf('tab=import') >= 0, NAV.join(' | '));
+h.goMaterial(); h.goCard(); h.goImport();
+ok('B-③ 真跑：①②③ 三张卡各跳各的，③ 的落点带 tab=import（卡片本身就是入口）',
+  NAV.length === 3
+  && NAV[0] === '/subpkg/biz/material/index'
+  && NAV[1] === '/subpkg/biz/card/index'
+  && NAV[2].indexOf('tab=import') >= 0,
+  NAV.join(' | '));
 
 const t = inst(TK);
 TITLES.length = 0;

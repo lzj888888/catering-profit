@@ -127,7 +127,10 @@
   const grp = sbGroup === null ? '' : sbGroup;
   check('A-⑥ 枢纽卡并入声明组（.hub-card 在选择器列表里 —— 它不能加类名，只能这样共享）',
     sbSelLine.indexOf('.hub-card') >= 0, sbSelLine.trim());
-  check('A-⑦ 三步走块并入声明组（.hub-flow）', sbSelLine.indexOf('.hub-flow') >= 0, sbSelLine.trim());
+  // 🔴 R706：三步走独立块已删（折叠成卡片序号徽章）⇒ `.hub-flow` 必须**同时**从
+  //   声明组和 hub.wxss 里消失。留着 = 一条永远不生效的死选择器，下一个人会以为还有这块。
+  check('A-⑦ 声明组里没有 .hub-flow 死选择器（三步走块 R706 已删）',
+    sbSelLine.indexOf('.hub-flow') < 0, sbSelLine.trim());
   check('A-⑧ 空状态块并入声明组（.hub-empty）', sbSelLine.indexOf('.hub-empty') >= 0, sbSelLine.trim());
   check('A-⑨ 列表卡用复合选择器 .sb-card.card2（保住 17 个共用 .card2 的页面不外溢）',
     sbSelLine.indexOf('.sb-card.card2') >= 0, sbSelLine.trim());
@@ -139,9 +142,11 @@
   const hubCardDup = anyRuleDeclares(hubWxssNoCmt, '.hub-card {', shellProps);
   check('B-① hub.wxss 的 .hub-card 不重写底色/圆角/阴影（写了 ⇒ 枢纽页停在风格 A 的双层蓝影）',
     hubCardDup === false, hubCardDup === null ? '规则不存在（改名了？）' : '声明体干净');
-  const hubFlowDup = anyRuleDeclares(hubWxssNoCmt, '.hub-flow {', shellProps);
-  check('B-② hub.wxss 的 .hub-flow 同上', hubFlowDup === false,
-    hubFlowDup === null ? '规则不存在' : '声明体干净');
+  // R706：`.hub-flow` 已删 ⇒ 这条从"不许重写底色"升级成"整条规则都不许存在"
+  //   （有人把它加回来时，必须连带并进声明组，否则页面会缺底色/圆角/阴影）
+  const hubFlowBack = hubWxssNoCmt.indexOf('.hub-flow') >= 0;
+  check('B-② hub.wxss 里不再有 .hub-flow 规则（R706 删块后不许残留/复活）',
+    hubFlowBack === false, hubFlowBack ? '又出现了' : '已清空');
   const hubEmptyDup = anyRuleDeclares(hubWxssNoCmt, '.hub-empty {', shellProps);
   check('B-③ hub.wxss 的 .hub-empty 同上（虚线边框是它专属语义，允许保留 border）',
     hubEmptyDup === false, hubEmptyDup === null ? '规则不存在' : '声明体干净');

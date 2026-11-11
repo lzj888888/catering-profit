@@ -51,9 +51,8 @@ Page({
       countSuffix: TERMS.card.countSuffix,
       // R299：数据截断的可见降级文案（单源 TERMS.ui.dataTruncated）
       dataTruncated: TERMS.ui.dataTruncated,
-      // R263：三步走 / 分层 / 空状态（wxml 用到就必须登记 —— 漏登记 ⇒ 页面静默空白）
-      flowTitle: TERMS.hub.flowTitle,
-      flowSteps: TERMS.hub.flowSteps,
+      // R706：三步走独立块已删（折叠成卡片名称前的序号徽章）⇒ flowTItle/flowSteps 不再登记。
+      //   保留分区标题两键（它们现在承担"序号是什么意思"的唯一解释）。
       secStart: TERMS.hub.secStart,
       secAfter: TERMS.hub.secAfter,
       emptyTitle: TERMS.hub.emptyTitle,
@@ -67,13 +66,9 @@ Page({
       icoGroupon: TERMS.hub.icoGroupon,
       icoRecon: TERMS.hub.icoRecon,
       icoReview: TERMS.hub.icoReview,
-      // 🔴 P0#6：快捷操作 + 付费小字（wxml 用到就必须登记 —— 漏登记 ⇒ 静默空白）
-      quickAdd: TERMS.hub.quickAdd,
+      // 🔴 P0#6：付费小字（wxml 用到就必须登记 —— 漏登记 ⇒ 静默空白）
+      //   R706：quickAdd 已删 —— 「＋新建菜品成本卡」与「菜品成本毛利」卡完全重复。
       payTag: TERMS.hub.payTag,
-      // 🔴 R281 O3：三步走线性化新增键（wxml 用到就必须登记 —— 漏登记 ⇒ 静默空白）
-      flowBtns: TERMS.hub.flowBtns,
-      flowAllDone: TERMS.hub.flowAllDone,
-      flowNextHint: TERMS.hub.flowNextHint,
     },
     // -1 = 没取到（就不显示这行）。🔴 **绝不能默认 0**：读不到时显示「共 0 张」
     //   会让老板以为卡丢了 —— 与本仓「不替用户编数」同一条纪律（M2 参考值只提示不预填）。
@@ -130,15 +125,8 @@ Page({
     });
   },
 
-  // 🔴 R281 O3：从引导块直接跳到「当前该做的那一步」，不用老板自己在 5 张卡里猜。
-  goStep(e) {
-    const i = Number((e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.step) || 0);
-    if (i === 0) return wx.navigateTo({ url: '/subpkg/biz/material/index' });
-    if (i === 1) return wx.navigateTo({ url: '/subpkg/biz/card/index' });
-    // 🔴 R615 M3 P0：第③步与一级「销量表导入」卡共用同一入口；
-    //   落点页按 tab 动态切标题，不再出现「去导销量」却看见外卖标题。
-    return this.goImport();
-  },
+  // 🔴 R706：goStep 已删 —— 三步走的直达按钮被移除，序号徽章所在的卡片本身就是入口
+  //   （① = goMaterial / ② = goCard / ③ = goImport），再留一个中介按钮只会多一条死路径。
 
   // ===== 四个分区（跳转目标均已在 app.json::pages 注册）=====
   goCard() { wx.navigateTo({ url: '/subpkg/biz/card/index' }); },

@@ -24,8 +24,7 @@
   background: #fdf2e0; border: 1rpx solid #f0d9b0; border-radius: 8rpx;
   padding: 4rpx 10rpx; margin-top: 8rpx;
 }
-/* 🔴 P0#6：快捷操作主按钮（有卡时常驻，一步建卡） */
-.hub-quick { margin: 4rpx 0 24rpx; min-height: 88rpx; font-weight: 600; }
+/* 🔴 R706：`.hub-quick`（＋新建菜品成本卡）已删 —— 与「菜品成本毛利」卡完全重复。 */
 
 /* ===== R704：两列宫格（李老师：「现在都是一行一行的」）=====
    8 张卡从 8 行压到 4 行，一眼能看完，不用滚两三屏。
@@ -50,23 +49,33 @@
 .hub-grid .hub-desc, .hub-grid .hub-count { font-size: 28rpx; margin-top: 6rpx; line-height: 1.45; }
 .hub-grid .hub-pay { margin-top: 6rpx; }
 
-/* ===== R263：三步走 / 分层标题 / 空状态 =====
-   ⚠️ 字号一律 ≥28rpx（本仓 AD 硬红线）；色值走 app.wxss 的品牌色，本文件只写中性字色。 */
-.hub-flow {
-  padding: 24rpx;
-  /* R437：底色/圆角/阴影/间距见 app.wxss 的 `.sb-*` 声明组 */
+/* ===== R706：步骤徽章（替代原来那整块「三步走」引导）=====
+   形态：卡名前 1 个字 —— 未做 `①`（暖灰）/ 做完 `✓`（墨绿）。
+   为什么是"一个字"而不是一行小字：李老师 2026-11-11「整篇都是字…上下都是字」——
+   删掉 7 行引导后又添回 3 行提示等于没改。序号的含义只在**分区标题**里解释一次。
+   🔴 墨绿选的是品牌色板里已有的 `#1a7d55`（同 .hub-ico-material），不引入新色；
+      `✓` 用它表示"完成"与全仓"绿=安全"的既有语义同向，不冲突。 */
+.hub-step {
+  display: inline-block; min-width: 36rpx; margin-right: 6rpx;
+  font-size: 30rpx; font-weight: 700; color: #A99E8E;
 }
-.hub-flow-t { display: block; font-size: 28rpx; font-weight: 700; color: #1e3a5f; margin-bottom: 12rpx; }
-.hub-flow-step { display: flex; align-items: flex-start; font-size: 28rpx; color: #5F564C; line-height: 1.7; }
-/* 🔴 R281 O3：三步走完成态（✓ 已完成 / ○ 待完成）+ 未完成步的直达按钮。
-   守本仓 UI 下限：字号 ≥28rpx、按钮触控高度 ≥88rpx；完成态用品牌墨蓝 #1e3a5f，不引入新色。 */
-.hub-flow-flag { display: inline-block; width: 44rpx; font-size: 28rpx; color: #776C5E; }
-.hub-flow-flag.on { color: #1e3a5f; font-weight: 700; }
-.hub-flow-txt { flex: 1; font-size: 28rpx; }
-.hub-flow-btn { margin-top: 16rpx; min-height: 88rpx; line-height: 88rpx; font-size: 30rpx; }
-.hub-flow-tip { display: block; margin-top: 8rpx; font-size: 28rpx; color: #776C5E; }
+.hub-step.on { color: #1a7d55; }
+/* 点击反馈：原本 8 张卡点下去毫无变化（像死的）。只降透明度，不动背景 ——
+   `.hub-card` 的底色/圆角/阴影由 app.wxss 的 `.sb-*` 单源给，本页不许重写（check_m3_style_b B-①）。 */
+.hub-card-tap { opacity: 0.78; }
 
-.hub-sec { display: block; font-size: 28rpx; font-weight: 700; color: #1e3a5f; margin: 8rpx 8rpx 16rpx; }
+/* ===== R263/R706：分层标题 / 空状态 =====
+   ⚠️ 字号一律 ≥28rpx（本仓 AD 硬红线）；色值走 app.wxss 的品牌色，本文件只写中性字色。
+   R706：三步走样式的整段（.hub-flow*）已删 —— 那个独立引导块被折叠成卡片名前的序号徽章。
+   🔴 分区标题现在要**承担序号解释**（"①②先做这两个"），所以给它一条竖色条做视觉锚点：
+      纯文字标题在 8 张卡之间没有任何停留感，加条之后老板扫一眼就知道"从这里切一刀"。 */
+.hub-sec {
+  display: block; font-size: 28rpx; font-weight: 700; color: #1e3a5f;
+  margin: 8rpx 8rpx 16rpx;
+  padding-left: 16rpx;
+  border-left: 6rpx solid #1e3a5f;
+  line-height: 1.3;
+}
 
 .hub-empty {
   padding: 32rpx 24rpx; border: 2rpx dashed #DCD0BB;
