@@ -139,6 +139,9 @@ Page({
       material: TERMS.card.material,
       qty: TERMS.card.qty,
       addLine: TERMS.card.addLine,
+      // R693：两个概念的人话解释（新手模式才显示）
+      yieldExplain: TERMS.card.yieldExplain,
+      lossExplain: TERMS.card.lossExplain,
       pasteTitle: TERMS.card.pasteTitle,
       pasteHint: TERMS.card.pasteHint,
       pastePlaceholder: TERMS.card.pastePlaceholder,

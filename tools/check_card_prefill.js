@@ -9,6 +9,7 @@
 //   ③ 没数据时硬塞一个 0 元售价 ⇒ 用户以为系统知道价格，实际是编的（比不填坏）。
 //   三种都不会报错，只有断言能拦。
 const path = require('path');
+const fs = require('fs');   // R693：E 组要读 wxml 原文验证"解释真的接上了"
 
 let pass = 0, failN = 0;
 function check(name, cond, detail) {
@@ -80,6 +81,26 @@ check('C-③ 加号不会变成空格（encodeURIComponent 会转成 %2B）',
   decodeURIComponent((u3.match(/dish_name=([^&]*)/) || [])[1] || ''));
 check('C-④ 空格被编码成 %20（不会被解成别的）',
   tap('宫保 鸡丁', 100000, 50).indexOf('%20') > 0);
+
+console.log('\n===== E · 出成率/损耗率有没有人话解释 =====');
+const T = require(path.join(__dirname, '../miniprogram/i18n/terms.js')).TERMS;
+const yx = T.card.yieldExplain || '';
+const lx = T.card.lossExplain || '';
+check('E-① 出成率有解释（这是这张表单里唯一没被解释过的字段）', yx.length > 0, yx);
+check('E-② 损耗率有解释', lx.length > 0, lx);
+// 与 check_hint_fold 的分界线一致：<18 字才允许平铺
+check('E-③ 两条都 <= 18 字（>=18 就得折进折叠块）',
+  yx.length <= 18 && lx.length <= 18, yx.length + '/' + lx.length);
+check('E-④ 出成率的解释用"斤/两"（老板的计量单位，不是"净料率"这种术语）',
+  yx.indexOf('斤') >= 0, yx);
+const editWxml = fs.readFileSync(path.join(__dirname, '../subpkg/biz/card/edit.wxml'), 'utf8');
+check('E-⑤ 出成率解释真的接到页面上（wxml 引用 t.yieldExplain）',
+  editWxml.indexOf('t.yieldExplain') > 0);
+check('E-⑥ 损耗率解释也接上了（wxml 引用 t.lossExplain）',
+  editWxml.indexOf('t.lossExplain') > 0);
+check('E-⑦ 两处都只在新手模式显示（老手不该被占地方）',
+  /novice[^}]*\}\}">\{\{t\.yieldExplain/.test(editWxml)
+  && /novice[^}]*\}\}">\{\{t\.lossExplain/.test(editWxml));
 
 console.log('\n===== D · 变异自证 =====');
 check('D-① 若漏了 /qty（直接拿金额当价）会得到 1234.00 而不是 28.70 ⇒ A-① 有分辨力',

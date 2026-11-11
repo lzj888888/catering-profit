@@ -114,6 +114,10 @@
   </view>
 
   <view class="sec-lite">{{t.secCost}}</view>
+  <!-- R693（易填性·填得对）：出成率是这张表单里**唯一没人解释过**的字段，
+       而它填错的代价最大（净料成本 = 单价 ÷ 出成率，填 60 还是 0.6 直接差 100 倍）。
+       只在**新手模式**给这一句：老手不需要，给了只是占地方。 -->
+  <view class="im-tip" wx:if="{{inputMode === 'novice' && cardType === '1'}}">{{t.yieldExplain}}</view>
   <!-- 明细行（录入方式：档案选择 / 临时手工）—— 仅单品 -->
   <block wx:if="{{cardType === '1'}}">
   <view class="line {{lines[index].isPreset ? 'line-est' : ''}}" wx:for="{{lines}}" wx:key="rid">
@@ -318,6 +322,9 @@
     <text class="lbl">{{t.lossRate}}</text>
     <input class="val-input" type="digit" value="{{lossRate}}" bindinput="onLoss"  adjust-position="{{true}}" cursor-spacing="20" />
   </view>
+  <!-- R693（易填性·填得对）：损耗率同样只有标签、没有解释。新手模式给一句参考值，
+       否则老板要么不填（默认值未必对），要么凭感觉填一个 30% 把成本算高。 -->
+  <view class="im-tip" wx:if="{{inputMode === 'novice'}}">{{t.lossExplain}}</view>
   <view class="field" wx:if="{{inputMode === 'pro' || showMore}}">
     <text class="lbl">{{t.auxAmount}}</text>
     <input class="val-input" type="digit" value="{{auxYuan}}" bindinput="onAux"  adjust-position="{{true}}" cursor-spacing="20" />
