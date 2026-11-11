@@ -49,6 +49,34 @@
 .hub-grid .hub-desc, .hub-grid .hub-count { font-size: 28rpx; margin-top: 6rpx; line-height: 1.45; }
 .hub-grid .hub-pay { margin-top: 6rpx; }
 
+/* ===== R713：第一层「① ② 先做这两个」改**整行横条**（李老师 2026-11-12 真机）=====
+   原话：「原料进价表、菜品成本毛利这两张卡跟下面五张长得一样，容易混，改成长条」。
+   问题不是丑，是**分不清层级** —— 上面两张是"必须先做、做完才有数"的主链路，
+   下面五张是"有数据之后拿来用的工具"，八张同形同尺寸 ⇒ 老板当成同一批功能挑着点。
+   ⇒ 层级差用**形态**给：这两张满宽横排（图标在左、文字在右），下面五张仍是两列宫格。
+   🔴 为什么不加底色区分：卡底色/圆角/阴影是 app.wxss `.sb-*` 单源，
+      页内重写会让本页偷偷脱离单源（check_m3_style_b B-① 判红），且下次调色只改一处会漏这页。
+   🔴 本组必须写在 `.hub-grid .hub-card` **之后**：两者特异性相同（0,2,0），
+      只靠源码顺序覆盖 —— 挪到前面去，横条会被宫格的 50% 宽 + 竖排覆盖回去。
+   🔴 不许为压高度把字号降到 28rpx 以下（AD 红线）；窄屏靠 `.hub-main` 自然换行。 */
+.hub-grid-lead { display: block; }
+/* 横条自带 flex 横排（顶层 .hub-card 已是 row），这里只需把宫格的 column 改回来 + 满宽 */
+.hub-grid-lead .hub-card {
+  width: 100%; box-sizing: border-box;
+  flex-direction: row; align-items: center;
+  padding: 26rpx 24rpx; margin-bottom: 16rpx;
+}
+/* 图标回到 88rpx：横条有整行宽度，不再需要为两列宫格缩到 72rpx */
+.hub-grid-lead .hub-ico {
+  flex: none;
+  width: 88rpx; height: 88rpx; border-radius: 22rpx; font-size: 40rpx;
+  margin-right: 22rpx; margin-bottom: 0;
+}
+/* 标题升一档（30→32rpx）：横条是主链路，标题要与下面宫格的卡名拉开半档 */
+.hub-grid-lead .hub-name { font-size: 32rpx; line-height: 1.3; }
+.hub-grid-lead .hub-desc, .hub-grid-lead .hub-count { font-size: 28rpx; margin-top: 4rpx; line-height: 1.45; }
+
+
 /* ===== R706：步骤徽章（替代原来那整块「三步走」引导）=====
    形态：卡名前 1 个字 —— 未做 `①`（暖灰）/ 做完 `✓`（墨绿）。
    为什么是"一个字"而不是一行小字：李老师 2026-11-11「整篇都是字…上下都是字」——

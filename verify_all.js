@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：286 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：287 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1571,6 +1571,11 @@ const SUITES = [
   ['import-batch-cache', 'tools/check_import_batch_cache.js'],
   ['import-guidance', 'tools/check_import_guidance.js'],
   ['snapshot-zero', 'tools/check_snapshot_zero.js'],
+  // R713：M3 枢纽页第一层「① ② 先做这两个」改**整行横条**（李老师 2026-11-12 真机①：
+  //   「这两张卡跟下面五张长得一样，容易混」）—— 守的是**层叠顺序**：lead 组与宫格组
+  //   特异性相同（都是两个类），谁生效只取决于源码先后；挪一格就静默变回 50% 窄卡。
+  //   判据真跑一遍层叠（匹配→特异性→顺序）算出 flex-direction / width，并含两条反恒真。
+  ['hub-lead-strip', 'tools/check_hub_lead_strip.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

@@ -44,23 +44,36 @@
        ⚠️ 卡片类名**仍是 hub-card，不许加第二个类** ——
           check_hub_guide S2 用精确匹配 hub-card 数卡数（改成多类名会数到 0 ⇒ 误报丢卡）。
           宫格样式靠父容器 `.hub-grid .hub-card` 覆盖，不靠额外类名。
-       ⚠️ 宫格里**不写 `.hub-go`「›」**：两列宽度下它只会挤标题，且整张卡可点已经够明显。 -->
-  <view class="hub-grid">
+       ⚠️ 宫格里**不写 `.hub-go`「›」**：两列宽度下它只会挤标题，且整张卡可点已经够明显。
+
+       🔴 R713（李老师 2026-11-12 真机）：「原料进价表、菜品成本毛利这两张卡跟下面五张
+          长得一样，容易混，改成长条」⇒ 第一层两张改成**整行横条**（图标在左、文字在右），
+          下面五张仍是两列宫格。层级差因此是**形态**给的（1 条 vs 半格），不是靠加底色 ——
+          底色/圆角/阴影属 app.wxss `.sb-*` 单源，页内重写会被 check_m3_style_b B-① 判红。
+       ⚠️ 横条用的父容器类 `hub-grid-lead` 只加在**容器**上，卡片仍是 `hub-card` 单类名
+          （S2 按字面量数卡数，多一个类名就数到 0 ⇒ 误报丢卡）。
+       ⚠️ 横条的 name/count/desc 必须包进 `.hub-main`：顶层 `.hub-card` 是 flex 横排，
+          不包的话三行文字会被拆成三列并排。 -->
+  <view class="hub-grid hub-grid-lead">
     <!-- ① 原料必须先有价，否则后面配料的成本是空的 ⇒ 排在最前 -->
     <view class="hub-card" bindtap="goMaterial" hover-class="hub-card-tap">
       <view class="hub-ico hub-ico-material">{{t.icoMaterial}}</view>
-      <text class="hub-name"><text class="hub-step {{stepFlags[0] ? 'on' : ''}}">{{stepFlags[0] ? '✓' : '①'}}</text>{{t.materialTitle}}</text>
-      <text class="hub-desc">{{t.materialShort}}</text>
+      <view class="hub-main">
+        <text class="hub-name"><text class="hub-step {{stepFlags[0] ? 'on' : ''}}">{{stepFlags[0] ? '✓' : '①'}}</text>{{t.materialTitle}}</text>
+        <text class="hub-desc">{{t.materialShort}}</text>
+      </view>
     </view>
 
     <!-- ② 配菜算出成本 -->
     <view class="hub-card" bindtap="goCard" hover-class="hub-card-tap">
       <view class="hub-ico hub-ico-card">{{t.icoCard}}</view>
-      <text class="hub-name"><text class="hub-step {{stepFlags[1] ? 'on' : ''}}">{{stepFlags[1] ? '✓' : '②'}}</text>{{t.cardTitle}}</text>
-      <!-- R706：卡数**始终显示**（未做时是"你现在有几张"，做完后是"这些都在里面"），
-           不跟完成态切换 —— 切了会让老板以为数字跳变。fail-closed：-1 不渲染。 -->
-      <text class="hub-count" wx:if="{{cardCount >= 0}}">{{t.countPrefix}}{{cardCount}}{{t.countSuffix}}</text>
-      <text class="hub-desc">{{t.cardShort}}</text>
+      <view class="hub-main">
+        <text class="hub-name"><text class="hub-step {{stepFlags[1] ? 'on' : ''}}">{{stepFlags[1] ? '✓' : '②'}}</text>{{t.cardTitle}}</text>
+        <!-- R706：卡数**始终显示**（未做时是"你现在有几张"，做完后是"这些都在里面"），
+             不跟完成态切换 —— 切了会让老板以为数字跳变。fail-closed：-1 不渲染。 -->
+        <text class="hub-count" wx:if="{{cardCount >= 0}}">{{t.countPrefix}}{{cardCount}}{{t.countSuffix}}</text>
+        <text class="hub-desc">{{t.cardShort}}</text>
+      </view>
     </view>
   </view>
 
