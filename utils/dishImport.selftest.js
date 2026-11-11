@@ -144,8 +144,13 @@ const mtRows = parseDishLines(MEITUAN);
 ok('R699-① 美团管家列序：菜名取自第 4 列（不是日期）',
   mtRows.length === 2 && mtRows[0].name === '水煮鱼' && mtRows[1].name === '柠檬水',
   mtRows.map(function (r) { return r.name; }).join('、'));
-ok('R699-② 分类取自「菜品大类」列，且表头/合计行都被跳过',
-  mtRows[0].category === '热菜' && mtRows.length === 2);
+// ⚠️ 判据改成**结构位置**而不是比值：比中文字面量会被 page-terms 的 P3-1 判红
+//   （术语改名就静默失灵）。这里要证的本就是「菜名取第 4 列、分类取第 2 列」。
+ok('R699-② 列定位正确：菜名列 idx=3、分类列 idx=1，且表头/合计行都被跳过',
+  (function () {
+    const c = detectColumns(MEITUAN.split(String.fromCharCode(10)));
+    return c && c.nameIdx === 3 && c.catIdx === 1 && mtRows.length === 2 && !!mtRows[0].category;
+  })());
 ok('R699-③ 该报表没有「单价」列 ⇒ 售价留空，绝不拿「原价金额」当单价',
   mtRows.every(function (r) { return r.priceYuan === null; }),
   mtRows.map(function (r) { return String(r.priceYuan); }).join('/'));
