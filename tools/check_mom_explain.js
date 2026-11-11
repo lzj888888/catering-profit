@@ -21,9 +21,12 @@ const M = require(path.join(__dirname, '../utils/momExplain.js'));
 const explain = M.explain;
 
 // 造一个月账：金额单位**分**
-const mk = (income, expense, consume, amort, lump) => {
+const mk = (income, expense, consume, amort, lump, takeDone) => {
   const profit = income - expense - consume - amort - lump;
-  return { result: {
+  return {
+    // R690 自查：盘点状态决定 real_consume 的算法（倒轧 vs 采购入库），必须参与口径判断
+    stock_take_done: takeDone === undefined ? true : takeDone,
+    result: {
     income_total_fen: income,
     expense_total_fen: expense,
     real_consume_fen: consume,
@@ -79,6 +82,25 @@ check('③ 缺利润 ⇒ ok=false（不能拿 Δ 反推利润）', explain(noPro
 // B-④ 缺整月
 check('④ 上月为 null ⇒ ok=false（不是当 0 算）',
   explain(cur, null).ok === false && explain(cur, null).reason === 'missing_side');
+
+// B-⑤ 口径不一致（R690 自查补的洞）—— 本月盘点、上月没盘点
+//   ⚠️ 这个样本的**五因子是平衡的**（数学上严丝合缝），所以旧的「不平衡就拦」根本挡不住它。
+//      正是这一点让这条检查必须单独存在：老板会看到「食材消耗少了」这种**换了算法造成的假象**。
+const takeCur = mk(1200000, 300000, 416000, 50000, 0, true);
+const noTakePrev = mk(1000000, 300000, 400000, 50000, 0, false);
+const rc = explain(takeCur, noTakePrev);
+check('⑤ 盘点状态不同 ⇒ ok=false（reason=caliber_mismatch）',
+  rc.ok === false && rc.reason === 'caliber_mismatch', rc.reason || '');
+check('⑤ 且不给任何文案（不能把换了算法说成食材消耗变了）', !rc.text, String(rc.text));
+check('⑤ 这个样本五因子其实**是平衡的** ⇒ 证明旧的不平衡校验拦不住口径问题',
+  (1200000 - 1000000) + (300000 - 300000) * -1 + (416000 - 400000) * -1
+  + (50000 - 50000) * -1 + 0 === 184000);
+check('⑤ 两个月都盘点 ⇒ 正常归因',
+  explain(mk(1200000, 300000, 416000, 50000, 0, true),
+          mk(1000000, 300000, 400000, 50000, 0, true)).ok === true);
+check('⑤ 两个月都没盘点 ⇒ 也正常归因（同口径就能比）',
+  explain(mk(1200000, 300000, 416000, 50000, 0, false),
+          mk(1000000, 300000, 400000, 50000, 0, false)).ok === true);
 
 // ===== C. 符号方向（最容易反的一处） =====
 console.log('\n===== C · 符号方向 =====');

@@ -53,6 +53,26 @@ function explain(cur, prev, opts) {
   const pr = pickResult(prev);
   if (!cr || !pr) return { ok: false, reason: 'missing_side' };
 
+  // ⓪ 口径一致性（R690 自查补的洞，**这条比下面的不平衡校验更隐蔽**）
+  //
+  //   `real_consume_fen`（食材消耗）有两种算法，取决于当月有没有**真的盘点**：
+  //     · 盘点了   ⇒ 倒轧值（期初 + 采购 − 期末）
+  //     · 没盘点   ⇒ 老板填的采购入库金额
+  //   （见 calcMonthlyProfit/service.js 头注 R484 段与 getLedger 的 stock_take_done）
+  //
+  //   两个月盘点状态不同 ⇒ 这两个数**业务上不可比**（一个含库存变动、一个不含）。
+  //   ⚠️ 危险在于：这种不可比**不会**被下面那条「五因子之和 ≡ 利润差」拦住 ——
+  //      利润本身就是按各自口径算的，所以数学上依然严丝合缝、平衡校验照样通过。
+  //      ⇒ 若不在这里拦，就会得出「食材消耗少了 3000 元」这种**看起来有据、其实是换算法**的结论。
+  //      老板据此以为"我控成本有成效"，比不知道更糟。
+  //
+  //   字段缺失按 false 处理（老月份可能没有 stock_take_done）：两个月都缺 ⇒ 视为同口径，可归因。
+  const curTake = (cur && cur.stock_take_done === true);
+  const prevTake = (prev && prev.stock_take_done === true);
+  if (curTake !== prevTake) {
+    return { ok: false, reason: 'caliber_mismatch', curTake: curTake, prevTake: prevTake };
+  }
+
   // ① 五个因子逐一取差额，任何一侧缺字段 ⇒ 不给归因（不补 0 硬算）
   const items = [];
   let sum = 0;
