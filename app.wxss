@@ -232,7 +232,8 @@ input, textarea { min-height: 88rpx; line-height: 1.5; }
    拿红色当模块标识 ⇒ 老板扫一眼会把"团购"读成"这块亏了"。
    改为暖棕金（与首页模块图标同色），既归入暖账本色板，也不抢语义色。 */
 .hub-ico-groupon { background: linear-gradient(135deg, #B77A2A 0%, #7A4E12 100%); }
-.hub-ico-import { background: linear-gradient(135deg, #2a7fa8 0%, #17506e 100%); }
+/* 🔴 R707：`.hub-ico-import` 已删 —— 「销量表导入」卡从 M3 移除，留着就是一条
+   永远不生效的死样式，下一个人会以为还有这张卡。导入入口现落在外卖页 tab2 与菜品排行榜。 */
 .hub-ico-revenue { background: linear-gradient(135deg, #1a7d55 0%, #0f5237 100%); }
 /* hero 内的文字色（白字 + 淡蓝副文案）—— 色值单源，hub.wxss 不重复第二份 */
 .hub-hero .hub-title { color: #fff; font-size: 40rpx; }

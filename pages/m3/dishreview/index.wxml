@@ -23,6 +23,21 @@
     </view>
     <view class="muted">{{rangeText}}</view>
 
+    <!-- ===== R707：销量导入的**就地入口** =====
+         🔴 为什么在本页：本页是本仓唯一吃「菜品级销量」的分析页，排行榜没数据时老板
+           需要的是「现在就能导」，不是「退出→回 M3→找导入卡→导完→退出来→再点回来」。
+           李老师 2026-11-11：「他正常就是进去之后他就需要看每单赚多少，然后你说导进去
+           退出来再去别处进，好多人没那个习惯」。M3 上那张「销量表导入」卡已因此撤掉。
+         ⚠️ 判据用 `!bills.length`：bills 是**已导入账单清单**（getSalesBills 读侧），
+           读取失败时 loadBills 会 setData({bills: []}) ⇒ 会显示本块。这是刻意的：
+           宁可多给一个"去导入"的入口，也不让老板对着一片空白猜。
+         ⚠️ 不在本块里写「支持哪些表 / 去哪下载」—— 那是导入页自己的折叠说明的活。 -->
+    <view class="card2" wx:if="{{!bills.length}}">
+      <view class="muted">{{t.reviewNoBillTitle}}</view>
+      <view class="muted">{{t.reviewNoBillDesc}}</view>
+      <button class="btn primary" bindtap="goImport">{{t.reviewNoBillBtn}}</button>
+    </view>
+
     <!-- ===== R299：数据截断的**可见降级** =====
          云函数出参 `truncated`（`dataAdapter.js::listAll` 的契约要求"必须透传到出参、可见降级"），
          复盘 / 成本卡 / 账单三次读取任一命中 ⇒ 屏幕上看到的可能不全。
@@ -413,6 +428,11 @@
     <view class="section-title">{{t.reviewBillsTitle}}</view>
     <view class="card2">
       <view class="muted">{{t.reviewBillsHint}}</view>
+      <!-- 🔴 R707：二次导入的常驻入口（首屏那块只在 `!bills.length` 出现；
+           已导过的老板想补一个月的数据，就从这个折叠区进来，不必回 M3 找入口）。 -->
+      <view class="field-save">
+        <button class="btn-small ghost" bindtap="goImport">{{t.reviewImportBtn}}</button>
+      </view>
 
       <view class="muted" wx:if="{{!bills.length}}">{{t.reviewBillsEmpty}}</view>
 

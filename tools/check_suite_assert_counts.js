@@ -303,7 +303,7 @@ const CASES = [
   { key: 'check_diag_actions', rel: 'tools/check_diag_actions.js' },       // 36 条（A 7 + B 10 + C 4 + D 5 + E 4 + F 6）
   { key: 'check_m2_input_box', rel: 'tools/check_m2_input_box.js' },       // 13 条（A 10 + B 4 去掉重复计数见实跑）
   { key: 'check_m2_semantic_diff', rel: 'tools/check_m2_semantic_diff.js' }, // 14 条（A 7 + B 7）
-  { key: 'check_m3_entry_naming', rel: 'tools/check_m3_entry_naming.js' },   // 23 条（A 9 + B 7 + C 7 卡名≡页标题）
+  { key: 'check_m3_entry_naming', rel: 'tools/check_m3_entry_naming.js' },  // 28 条（R615 入口归属/命名一致；R707 判据反转：A-① M3 不许有导入卡 + A-①b 反恒真、A-② 升级成守全部卡都有语、A-④/④b/④c 入口搬到排行榜并验首屏位置、B-② 反向断言死登记、B-③b goImport 悬空检测）   // 23 条（A 9 + B 7 + C 7 卡名≡页标题）
   { key: 'check_m3_decision', rel: 'tools/check_m3_decision.js' },           // 23 条（A 10 + B 13）
   { key: 'check_import_encoding', rel: 'tools/check_import_encoding.js' },   // 23 条（A 10 + B 8 + C 5）
   { key: 'check_revenue_daily', rel: 'tools/check_revenue_daily.js' },       // 54 条（A 4 + B 11 + C 3 + D 5 + E 11 + F 9 + G 11 覆盖范围算法）

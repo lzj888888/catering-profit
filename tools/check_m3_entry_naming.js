@@ -29,33 +29,93 @@ function ok(name, cond, detail) {
 
 // ===== A 组：形态判据（判行为，不判注释）=====
 console.log('===== A 入口归属与文案 =====');
-// ⚠️ R706：卡片加了 hover-class 做点击反馈 ⇒ 不能用 `bindtap="goImport">` 死锚（属性变多就漏判）
-const importCard = /<view class="hub-card"[^>]*bindtap="goImport"/.test(HUBW);
-ok('A-① hub 有一级「销量表导入」卡（用 hub-card 类，不破 G4/S2 位置不变式）', importCard);
-// 🔴 R704：宫格布局把长副文案换成 *Short（每列 ≈155px，长描述会撑成 3~4 行、同排参差）。
-//   判据本意是「入口卡必须带一句解释用途的副文案」，**不是**「必须叫 importSub」
-//   ⇒ 改成 Sub / Short 二者其一即可。仍要求「至少有一个」，不能松成两者都缺也能过。
-const hasImportSub = /\{\{t\.importSub\}\}/.test(HUBW) || /\{\{t\.importShort\}\}/.test(HUBW);
-ok('A-② 一级卡渲染 t.importTitle / 副文案（Sub 或宫格 Short）/ t.icoImport 三样',
-  /\{\{t\.importTitle\}\}/.test(HUBW) && hasImportSub && /\{\{t\.icoImport\}\}/.test(HUBW));
-// 反恒真：把两个副文案键都从影子样本里拿掉，上面那条判据必须不成立
-ok('A-②b 反恒真：副文案两个键都缺时必须判红',
+/**
+ * 🔴 R707 判据**反转**：M3 上不再有「销量表导入」卡。
+ *
+ * 原判据（R615）守「必须有这张卡」，因为当时把全渠道销量导入从外卖页 tab2 提成了一级入口。
+ * R707 撤回 —— 这是**产品判断变了，不是实现变了**：
+ *   导入是一个**动作**，而 M3 是「去哪干活」的清单（目的地）。
+ *   做成卡 = 让老板「先来这导、再退出去别处看」。李老师 2026-11-11 原话：
+ *   「他正常就是进去之后他就需要看每单赚多少…你导进去退出来再进，好多人没那个习惯」。
+ *   查证后它真正服务的下游只有一个半：
+ *     · 外卖单均测算 —— 同页 tab2，入口本来就在，不割裂；
+ *       ⚠️ 且该 tab 是纯手工测算器，**不读**导入数据 ⇒ 「导完看这单赚多少」是假出口，不设；
+ *     · 菜品排行榜 —— 原先只能看/删、不能导，是唯一真断点 ⇒ 入口补在那页（见 A-④）；
+ *     · 渠道营收（收款日报）、团购（手工填价）—— 数据源无关。
+ *
+ * ⇒ 本组现在守**反向**：这张卡不许回来。守卫反转不是放松，是**把这次决策锁住**：
+ *   谁把卡加回去，这里必须红。
+ */
+const importCardIn = (wxml) => /<view class="hub-card"[^>]*bindtap="goImport"/.test(wxml);
+ok('A-① M3 上**没有**「销量表导入」入口卡（导入是动作，不是目的地）',
+  importCardIn(HUBW) === false);
+// 反恒真：给一个把导入卡加回去的影子样本，同一判据必须给 true（即 A-① 会判红）
+ok('A-①b 反恒真：影子样本里把导入卡加回去，A-① 必须判红',
+  importCardIn(HUBW.replace(
+    '<view class="hub-grid">',
+    '<view class="hub-grid"><view class="hub-card" bindtap="goImport"></view>'
+  )) === true, '影子样本已证伪');
+
+/**
+ * 🔴 R704：宫格把长副文案换成 *Short（每列 ≈155px，长描述会撑 3~4 行、同排参差）。
+ * 原判据只守「导入卡那一张必须带副文案」，本意是**入口卡必须解释自己是干什么的**。
+ * 卡撤掉后本意不能跟着消失 ⇒ 升级成守**全部 hub-card**：每张都必须渲染 hub-desc。
+ * 这比原来更严（原来只查一张），也正好锁住「不许有裸卡名无解释」这条既有纪律。
+ * ⚠️ 不能用 `<view class="hub-card"[\s\S]*?</view>` 取块：卡内第一层就有
+ *   `<view class="hub-ico">…</view>`，非贪婪会当场截断、把 hub-desc 划到块外（假绿）。
+ *   按类名 split 才对 —— 每段恰是"从这张卡到下一张卡之前"。
+ */
+const cardChunks = HUBW.split('<view class="hub-card"').slice(1);
+const withDesc = cardChunks.filter((c) => /class="hub-desc"/.test(c));
+ok('A-② 每一张入口卡都带解释副文案（hub-desc；Short 或 Sub 皆可）',
+  cardChunks.length >= 7 && withDesc.length === cardChunks.length,
+  cardChunks.length + ' 张卡 / ' + withDesc.length + ' 张带副文案');
+// 反恒真：从影子样本抠掉一张卡的 hub-desc，条数必须掉下来（证明判据有分辨力）
+ok('A-②b 反恒真：抠掉一张卡的 hub-desc，A-② 必须判红',
   (function () {
-    const shadow = HUBW.replace(/\{\{t\.importSub\}\}/g, '').replace(/\{\{t\.importShort\}\}/g, '');
-    return !(/\{\{t\.importTitle\}\}/.test(shadow)
-      && (/\{\{t\.importSub\}\}/.test(shadow) || /\{\{t\.importShort\}\}/.test(shadow))
-      && /\{\{t\.icoImport\}\}/.test(shadow));
+    const shadow = HUBW.replace('<text class="hub-desc">{{t.cardShort}}</text>', '');
+    const ch = shadow.split('<view class="hub-card"').slice(1);
+    const wd = ch.filter((c) => /class="hub-desc"/.test(c));
+    return shadow.indexOf('{{t.cardShort}}') < 0 && wd.length < ch.length;
   })(), '影子样本已证伪');
-ok('A-③ hub.js 的 t:{} 登记了三个新键（漏登记 ⇒ 页面静默空白）',
-  /importTitle: TERMS\.hub\.importTitle/.test(HUBJ) && /importSub: TERMS\.hub\.importSub/.test(HUBJ)
-  && /icoImport: TERMS\.hub\.icoImport/.test(HUBJ));
-// 🔴 R706：goStep 已随三步走引导块删除（卡片自己 bindtap，不再需要中介按钮）。
-//   本意从「goStep(2) 与一级卡共用同一 URL」变成「全页只有一个 tab=import 落点」——
-//   守的东西不变：**不许再出现第二条通往销量导入的 URL**（两条 URL 就会走岔）。
-ok('A-④ goImport 落点带 tab=import，且全页只此一处（不再有第二条 URL 通往销量导入）',
-  /goImport\(\) \{ wx\.navigateTo\(\{ url: '\/subpkg\/biz\/takeaway\/index\?tab=import' \}\); \}/.test(HUBJ)
-  && (HUBJ.match(/takeaway\/index\?tab=import/g) || []).length === 1
-  && !/goStep\s*\(/.test(HUBJ));
+ok('A-③ hub.js 的 t:{} **不再**登记导入卡三键（与 A-① 呼应；漏删就是死登记，下一个人会以为还有卡）',
+  !/importTitle: TERMS\.hub\.importTitle/.test(HUBJ)
+  && !/importSub: TERMS\.hub\.importSub/.test(HUBJ)
+  && !/icoImport: TERMS\.hub\.icoImport/.test(HUBJ));
+/**
+ * 🔴 R707：入口搬到「菜品赚多赚少排行榜」（本仓唯一吃菜品级销量的分析页）。
+ * 守的仍是**接线**三件套（函数存在 ≠ 页面调用）：wxml 真绑定 + js 真实现 + 落点带 tab=import。
+ * 只写其中一件都会出现「按钮在、点了没反应」或「函数在、页面没入口」。
+ */
+const DRW = fs.readFileSync(P('pages/m3/dishreview/index.wxml'), 'utf8');
+const DRJ = fs.readFileSync(P('pages/m3/dishreview/index.js'), 'utf8');
+/**
+ * 🔴 变异 M4 教训：初版判据是 `/bindtap="goImport"/.test(DRW)` —— 页内**有两处**同名绑定
+ *   （首屏空态块 + 数据设置折叠区），抠掉首屏那个照样过 ⇒ 假绿。
+ *   ⇒ 必须数**恰好 2 处**，且首屏那块里必须真有按钮（A-④c）。
+ */
+const goBtnN = (DRW.match(/bindtap="goImport"/g) || []).length;
+ok('A-④ 排行榜页有就地导入入口：wxml 两处绑定（首屏 + 折叠区）+ js 真实现 + 落点带 tab=import',
+  goBtnN === 2
+  && /goImport\(\) \{ wx\.navigateTo\(\{ url: '\/subpkg\/biz\/takeaway\/index\?tab=import' \}\); \}/.test(DRJ),
+  '绑定 ' + goBtnN + ' 处');
+// 守「通往销量导入的 URL 只此一处」：M3 已无该 URL，排行榜恰好一处（多一处必是又开了岔路）
+ok('A-④b 通往销量导入的 URL 全仓只有排行榜这一处（M3 不再有第二条，避免走岔）',
+  (HUBJ.match(/takeaway\/index\?tab=import/g) || []).length === 0
+  && (DRJ.match(/takeaway\/index\?tab=import/g) || []).length === 1,
+  'hub=' + (HUBJ.match(/takeaway\/index\?tab=import/g) || []).length
+  + ' dr=' + (DRJ.match(/takeaway\/index\?tab=import/g) || []).length);
+/**
+ * 🔴 变异 M8 教训：初版只查页内**存在** `wx:if="{{!bills.length}}"` —— 可「数据设置」折叠区
+ *   里本来就有一行 `<view class="muted" wx:if="{{!bills.length}}">还没有导入任何账单。</view>`
+ *   ⇒ 把首屏整块挪走 / 关掉，判据仍被折叠区那行满足 ⇒ 假绿。
+ *   ⇒ 必须定位到**那个 card2 块本身**，并确认块内有按钮。
+ */
+const emptyIdx = DRW.indexOf('<view class="card2" wx:if="{{!bills.length}}">');
+const emptyBlock = emptyIdx >= 0 ? DRW.slice(emptyIdx, emptyIdx + 600) : '';
+ok('A-④c 未导入时首屏那块 card2 里就有导入按钮（不能只藏在折叠区：老板看不到就不会点）',
+  emptyIdx >= 0 && emptyBlock.indexOf('bindtap="goImport"') >= 0,
+  '首屏块@' + emptyIdx + ' 按钮在内=' + (emptyBlock.indexOf('bindtap="goImport"') >= 0));
 ok('A-⑤ takeaway 有 syncTitle，且 load() 与 onTab 都调用（标题随 tab 与进页参数走）',
   /syncTitle\(tab\)\s*\{/.test(TKJ) && /this\.syncTitle\(this\.data\.tab\)/.test(TKJ)
   && /this\.syncTitle\(tab\)/.test(TKJ));
@@ -90,7 +150,8 @@ const ui = require(P('utils/ui.js'));
 ui.setTitle = (t) => TITLES.push(t);
 require(P('pages/m3/hub.js'));
 require(P('subpkg/biz/takeaway/index.js'));
-const HUB = PAGES.find((c) => typeof c.goImport === 'function');
+// ⚠️ R707：原来按 goImport 认 HUB —— 该方法已随导入卡删除 ⇒ 改用 goMaterial 认领
+const HUB = PAGES.find((c) => typeof c.goMaterial === 'function');
 const TK = PAGES.find((c) => typeof c.syncTitle === 'function');
 ok('B-① 两页 Page 配置均加载成功（fail-closed）', !!HUB && !!TK);
 
@@ -101,17 +162,21 @@ function inst(cfg) {
   return p;
 }
 const h = inst(HUB);
-ok('B-② hub 的 t 三个新键真有值（不是 undefined）',
-  h.data.t.importTitle === '销量表导入' && !!h.data.t.importSub && h.data.t.icoImport === '进',
-  JSON.stringify(h.data.t.importTitle));
+// 🔴 R707 反向断言：三个键必须是 undefined —— 有值说明"卡删了但 t 还在登记"，
+//   那是死登记（页面不渲染却占着 i18n 键，下一个人会以为还有这张卡）。
+ok('B-② hub 的 t 里导入卡三键已是 undefined（删卡后不许留死登记）',
+  h.data.t.importTitle === undefined && h.data.t.importSub === undefined
+  && h.data.t.icoImport === undefined,
+  JSON.stringify([h.data.t.importTitle, h.data.t.importSub, h.data.t.icoImport]));
 NAV.length = 0;
-h.goMaterial(); h.goCard(); h.goImport();
-ok('B-③ 真跑：①②③ 三张卡各跳各的，③ 的落点带 tab=import（卡片本身就是入口）',
-  NAV.length === 3
+h.goMaterial(); h.goCard();
+ok('B-③ 真跑：①② 两张步骤卡各跳各的（3 次调用只剩 2 次，③ 已随卡删除）',
+  NAV.length === 2
   && NAV[0] === '/subpkg/biz/material/index'
-  && NAV[1] === '/subpkg/biz/card/index'
-  && NAV[2].indexOf('tab=import') >= 0,
+  && NAV[1] === '/subpkg/biz/card/index',
   NAV.join(' | '));
+ok('B-③b 真跑：goImport 已不是 hub 的方法（防止"方法还在、卡没了"的悬空入口）',
+  typeof h.goImport === 'undefined');
 
 const t = inst(TK);
 TITLES.length = 0;
@@ -156,7 +221,8 @@ const MAP = [
   ['reconTitle', 'subpkg/tools/recon/index', 'setTitle', 'card.reconTitle'],
 ];
 // takeaway 走动态标题（syncTitle），已由 B 组单独钉死，这里不重复管
-const SKIP = new Set(['takeawayTitle', 'importTitle', 'stepTitle']);
+// R707：'importTitle' 已不在 hub 上（卡删了）⇒ 从 SKIP 移除，免得下一个人以为它还被特殊对待
+const SKIP = new Set(['takeawayTitle', 'stepTitle']);
 
 MAP.forEach(([hubKey, page, src, termKey], i) => {
   const hubName = g('hub.' + hubKey);

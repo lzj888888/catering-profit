@@ -66,14 +66,19 @@
 
   <view class="hub-sec">{{t.secAfter}}</view>
 
+  <!-- ===== R707：「销量表导入」卡已从本页**移除** =====
+       🔴 为什么删：M3 是「去哪干活」的清单，而「导入」是一个**动作**，不是目的地。
+         把它做成一张卡 = 告诉老板「先来这个房间办事，办完再去别的房间看结果」——
+         这正是李老师说的割裂感（2026-11-11：「他正常就是进去之后就需要看每单赚多少，
+         然后你说导进去退出来再进，好多人没那个习惯」）。
+       🔴 查证后它真正服务的下游只有一个半（不是四个）：
+         · 外卖单均测算 —— 同页 tab2，自带入口，本来就不割裂；
+           ⚠️ 且该 tab 是**纯手工测算器**，不读导入数据，所以「导完看这单赚多少」是假出口，不设；
+         · 菜品赚多赚少排行榜 —— 原先**只能看/删、不能导**，是唯一真断点 ⇒ 入口补在那页首屏；
+         · 渠道营收、团购 —— 各自数据源独立（收款日报 / 手工填价），与销量表无关。
+       🔴 老板要导入时去哪：点「外卖每单赚多少」（页内 tab2）或「菜品赚多赚少排行榜」（首屏按钮）。
+         两处都是「需要这份数据的地方」，不需要先记住一个导入入口。 -->
   <view class="hub-grid">
-    <!-- ③ 有成本卡之后才谈得上"销量 × 毛利" -->
-    <view class="hub-card" bindtap="goImport" hover-class="hub-card-tap">
-      <view class="hub-ico hub-ico-import">{{t.icoImport}}</view>
-      <text class="hub-name"><text class="hub-step {{stepFlags[2] ? 'on' : ''}}">{{stepFlags[2] ? '✓' : '③'}}</text>{{t.importTitle}}</text>
-      <text class="hub-desc">{{t.importShort}}</text>
-    </view>
-
     <view class="hub-card" bindtap="goTakeaway" hover-class="hub-card-tap">
       <view class="hub-ico hub-ico-takeaway">{{t.icoTakeaway}}</view>
       <text class="hub-name">{{t.takeawayTitle}}</text>

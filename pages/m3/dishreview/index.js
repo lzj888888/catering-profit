@@ -173,6 +173,11 @@ Page({
       reviewBillsCleared: TERMS.card.reviewBillsCleared,
       reviewBillsClear: TERMS.card.reviewBillsClear,
       reviewBillsClearAll: TERMS.card.reviewBillsClearAll,
+      // 🔴 R707：销量导入入口从 M3 挪到本页（本页是本仓唯一吃「菜品级销量」的分析页）
+      reviewNoBillTitle: TERMS.card.reviewNoBillTitle,
+      reviewNoBillDesc: TERMS.card.reviewNoBillDesc,
+      reviewNoBillBtn: TERMS.card.reviewNoBillBtn,
+      reviewImportBtn: TERMS.card.reviewImportBtn,
       reviewBillsClearedNone: TERMS.card.reviewBillsClearedNone,
       reviewTotals: TERMS.card.reviewTotals,
       reviewTotalQty: TERMS.card.reviewTotalQty,
@@ -1127,6 +1132,22 @@ Page({
       },
     });
   },
+
+  /**
+   * 🔴 R707：就地导入销量表。
+   *
+   * 为什么把入口放在本页而不是 M3 的一张卡上：
+   *   本页是本仓**唯一**吃「菜品级销量」的分析页（`getDishReview` 的输入就是
+   *   `external_sales_daily`，与 `getSalesBills` 同源集合）。老板点进排行榜的
+   *   唯一目的就是看排行 —— 而排行没数据时，他需要的是「现在就能导」，
+   *   不是「退出、回 M3、找到导入卡、导完、再退出来、再点回来」。
+   *
+   * ⚠️ 复用外卖页那个 import tab（不复制一套导入 UI）：
+   *   导入逻辑含形态判定 / 平台选择 / 重复检测 / 结果条，抽一套等于两份真相源；
+   *   而 `importSalesBill` 云函数本就是同一个。此处只负责**把人送到那里**。
+   * ⚠️ 返回后本页 `onShow` 会重跑 `loadBills`，导完直接能看到新数据，不用刷新。
+   */
+  goImport() { wx.navigateTo({ url: '/subpkg/biz/takeaway/index?tab=import' }); },
 
   // 全部清除（二次确认 → clearSalesBills({all,confirm_all}) ）
   onClearAllBills() {

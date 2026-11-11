@@ -1920,7 +1920,7 @@ const TERMS = {
     versionReadonly: '历史版本只读，不可编辑',
     dishNamePh: '如 宫保鸡丁',
     // ===== 批次 P0（M3 v1.2）· 原料档案页（任务 1）=====
-    materialListTitle: '进货原料价表', // R191 改名：「档案」是内部说法，老板看不懂；用途另见 hub.materialSub
+    materialListTitle: '原料进价表', // R191 改名：「档案」是内部说法；R707 再去「进货」两字，与 hub.materialTitle 逐字一致（R263）
     matName: '原料名称',
     matNamePh: '如 鸡胸肉',
     matBrand: '品牌规格',
@@ -2643,6 +2643,13 @@ const TERMS = {
     reviewBillsTitle: '已导入账单',
     reviewBillsHint: '这里是本店已导入的销量数据。导错了可在此清除（清除后复盘不再统计，数据仍可追溯）。',
     reviewBillsEmpty: '还没有导入任何账单。',
+    // 🔴 R707：销量导入不再是 M3 上的一张卡（它是个动作，不是目的地）⇒
+    //   入口落到真正需要这份数据的页面上。本页吃 salesBills 却只能看/删，不能导，
+    //   是「导入完退出来再去别处看」这条割裂感的唯一真断点 ⇒ 在此补齐。
+    reviewNoBillTitle: '还没有销量数据',
+    reviewNoBillDesc: '导入堂食 / 外卖的菜品销量表，这里才有排行可看',
+    reviewNoBillBtn: '导入销量表',
+    reviewImportBtn: '导入销量表',
     reviewBillsBill: '账单合计',
     reviewBillsDish: '菜品明细',
     reviewBillsUnit: '条',
@@ -2815,17 +2822,17 @@ const TERMS = {
     // 🔴 R570（李老师真机：100 多道菜后「从哪看已建好的成本卡」）：副文案只讲了建卡，
     //   老板看不出这里就是**看已建卡**的入口 ⇒ 补半句。
     cardSub: '给每道菜、每个套餐算成本毛利，反推该卖多少钱；已建好的卡都在这里看',
-    materialTitle: '进货原料价表',
+    materialTitle: '原料进价表',
     // 🔴 R615 M3 P0：旧文案「改一次价，用它的菜全都跟着变」是**假承诺** ——
     //   saveMaterial/index.js:11 明写成本卡是 net_unit_cost 快照、改价不动旧卡，
     //   要变必须手动 syncCostCard 且生成新版本。改成如实描述。
     materialSub: '填原料进价；改价不动旧卡，可手动同步生成新版本',
-    // 🔴 R615 M3 P0（#113）：全渠道销量导入提为一级入口，不再藏在外卖页 tab2。
-    //   名字不叫「账单」：真账单导入当前是暂停态（check_bill_import_gate A-⑫ 守着），
-    //   本入口实际承载的是堂食/外卖的**菜品销量表**。
-    importTitle: '销量表导入',
-    importSub: '堂食、外卖的菜品销量表，都从这里进',
-    icoImport: '进',
+    // 🔴 R707：「销量表导入」这个一级入口**已取消**（R615 提级、R707 撤回）。
+    //   原因：它在 M3 上是把「一个动作」当成了「一个目的地」—— 老板被迫"先来这导、
+    //   再退出去别处看"。查证后它只服务一个半下游，且外卖那半个本来就有同页 tab2。
+    //   导入入口现落在**需要这份数据的地方**：外卖页 tab2 / 菜品排行榜首屏。
+    //   ⚠️ 别把 importTitle/importSub/importShort/icoImport 加回来 ——
+    //      check_m3_entry_naming A-⑧ 会判红（本页不许再有第二个"导入"入口）。
     // 🔴 R616：渠道营收（从收款日报算，双口径）。放「对账」旁边 = 都是汇总核对类。
     revenueTitle: '渠道营收',
     revenueSub: '用你记的收款日报，看清各渠道赚多少、跟经营营收差多少',
@@ -2845,9 +2852,8 @@ const TERMS = {
     //   宫格每列内容宽 ≈155px ⇒ 28rpx 约 11 字/行，超过 22 字就会撑成 3 行以上、
     //   同排两张卡高度对不齐。上面那批长 desc 保留不动（别处引用仍在），宫格另起一套短句。
     //   ⚠️ 短 ≠ 省掉解释：每条仍回答「拿它干什么」，只是把定语砍掉。
-    cardShort: '算每道菜成本毛利，反推该卖多少钱',
-    materialShort: '填进价；改价不动旧卡',
-    importShort: '堂食、外卖销量表都从这进',
+    cardShort: '建卡、改价、看排行，都在这',
+    materialShort: '建原料库；改价不动旧卡',
     takeawayShort: '算一单到手多少、赚多少',
     grouponShort: '算一单团购到手多少',
     reviewShort: '看哪道菜在拖毛利后腿',
@@ -2865,7 +2871,7 @@ const TERMS = {
     // ⚠️ 序号的含义**只在分区标题里解释一次**（不在每张卡上重复写"先填进价/再配料"）——
     //   卡片上只留一个 `①` / `✓`，再无第二行小字。否则删了 7 行又添回 3 行，等于没改。
     secStart: '① ② 先做这两个',
-    secAfter: '③ 导完销量，再看这些',
+    secAfter: '导入销量后，再看这些',
     emptyTitle: '从一张成本卡开始',
     emptyDesc: '选一道你最常卖的菜，填上原料和用量，马上就能看到它的成本、毛利，以及该卖多少钱。',
     emptyBtn: '新建成本卡',

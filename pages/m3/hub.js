@@ -23,10 +23,9 @@ Page({
       cardSub: TERMS.hub.cardSub,
       materialTitle: TERMS.hub.materialTitle,
       materialSub: TERMS.hub.materialSub,
-      // 🔴 R615 M3 P0：一级「销量表导入」卡（wxml 用到就必须登记，漏了静默空白）
-      importTitle: TERMS.hub.importTitle,
-      importSub: TERMS.hub.importSub,
-      icoImport: TERMS.hub.icoImport,
+      // 🔴 R707：「销量表导入」卡已从本页移除（导入是动作、不是目的地）⇒
+      //   importTitle / importSub / icoImport 三项**不再登记**，terms 里的同名键也已删。
+      //   导入入口挪到「外卖每单赚多少」（页内 tab2）与「菜品赚多赚少排行榜」（首屏按钮）。
       revenueTitle: TERMS.hub.revenueTitle,
       revenueSub: TERMS.hub.revenueSub,
       icoRevenue: TERMS.hub.icoRevenue,
@@ -41,7 +40,6 @@ Page({
       // 🔴 R704：两列宫格的短描述（wxml 用到就必须登记 —— 漏登记 ⇒ 静默空白）
       cardShort: TERMS.hub.cardShort,
       materialShort: TERMS.hub.materialShort,
-      importShort: TERMS.hub.importShort,
       takeawayShort: TERMS.hub.takeawayShort,
       grouponShort: TERMS.hub.grouponShort,
       reviewShort: TERMS.hub.reviewShort,
@@ -79,10 +77,10 @@ Page({
     //   ⇒ 必须可见降级（我原先把它列入 EXEMPT 是**判错了**：它不只是"取 length 做入口判断"，
     //   它把那个 length **渲染给用户看了**）。见 utils/dataHealth.js 头注。
     truncated: false,
-    // 🔴 R281 O3：三步完成态（初值全 false = 未完成；fail-closed：读失败也保持 false）。
-    //   nextStep = 第一个未完成的步序号；全部完成 = -1（此时显示「三步都做完了」而不是按钮）。
-    stepFlags: [false, false, false],
-    nextStep: 0,
+    // 🔴 R281 O3：步骤完成态（初值全 false = 未完成；fail-closed：读失败也保持 false）。
+    //   R707：从 3 项降到 2 项 —— 第③步「销量表导入」那张卡已从本页移除。
+    //   原 nextStep（第一个未完成步序号）没有任何消费者（wxml 与守卫都不读）⇒ 一并删除。
+    stepFlags: [false, false],
   },
 
   onShow() {
@@ -101,39 +99,37 @@ Page({
   // 只读展示「你已有多少张卡」，给第一张分区卡一个锚点。
   // fail-closed：失败保持 -1（不显示），数量只是锦上添花，不打扰用户。
   async loadCount() {
-    // 三个接口**都不加付费墙**（getMaterial / getCostCard / getSalesBills 属基础读能力）；
-    // 且一次并发取回，不额外增加往返（原来只取卡数，现在顺带喂三步完成态）。
+    // 两个接口**都不加付费墙**（getMaterial / getCostCard 属基础读能力）；
+    // 且一次并发取回，不额外增加往返。
+    // 🔴 R707：原先还并发一个 getSalesBills（只为第③步「销量表导入」的完成态）——
+    //   该卡已从本页移除 ⇒ 这一次往返**直接省掉**，M3 每次进页面少打一个云函数。
     // 🔴 fail-closed：任一接口失败 ⇒ 该项为 null ⇒ 对应步**保持未完成**（false / -1），
     //    绝不把"没读到"当成"已完成"或"共 0"（同一条纪律：不替用户编数）。
-    const [mat, card, sales] = await Promise.all([
+    const [mat, card] = await Promise.all([
       api.call('getMaterial', {}).catch(() => null),
       api.call('getCostCard', {}).catch(() => null),
-      api.call('getSalesBills', {}).catch(() => null),
     ]);
     const cardN = (card && Array.isArray(card.list)) ? card.list.length : -1;
     const flags = [
       !!(mat && Array.isArray(mat.list) && mat.list.length > 0),
       cardN > 0,
-      !!(sales && Array.isArray(sales.list) && sales.list.length > 0),
     ];
     // 🔴 R299：三次读取任一被服务端标记 `truncated` ⇒ 上方「共 N 张」是偏小的精确数 ⇒ 可见降级。
     this.setData({
       cardCount: cardN,
       stepFlags: flags,
-      nextStep: flags.indexOf(false),
-      truncated: dh.isTruncated(card) || dh.isTruncated(sales),
+      truncated: dh.isTruncated(card),
     });
   },
 
-  // 🔴 R706：goStep 已删 —— 三步走的直达按钮被移除，序号徽章所在的卡片本身就是入口
-  //   （① = goMaterial / ② = goCard / ③ = goImport），再留一个中介按钮只会多一条死路径。
+  // 🔴 R706：goStep 已删 —— 引导块的直达按钮被移除，序号徽章所在的卡片本身就是入口
+  //   （① = goMaterial / ② = goCard），再留一个中介按钮只会多一条死路径。
+  // 🔴 R707：goImport 也已删 —— 第③步那张「销量表导入」卡从本页移除了。
 
   // ===== 四个分区（跳转目标均已在 app.json::pages 注册）=====
   goCard() { wx.navigateTo({ url: '/subpkg/biz/card/index' }); },
   goMaterial() { wx.navigateTo({ url: '/subpkg/biz/material/index' }); },
   goTakeaway() { wx.navigateTo({ url: '/subpkg/biz/takeaway/index' }); },
-  // 🔴 R615 M3 P0（#113 入口提级）：一级入口，直接落在销量导入 tab。
-  goImport() { wx.navigateTo({ url: '/subpkg/biz/takeaway/index?tab=import' }); },
   // 🔴 R616：渠道营收 —— 选收款日报 → 出「经营营收 + 现金流入 + 差额桥」。只读，不写库。
   goRevenue() { wx.navigateTo({ url: '/subpkg/biz/revenue/index' }); },
   goGroupon() { wx.navigateTo({ url: '/subpkg/biz/groupon/index' }); },
