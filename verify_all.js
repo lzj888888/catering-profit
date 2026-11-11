@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：276 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：277 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1547,6 +1547,8 @@ const SUITES = [
   // R689（M3 优化 B）：费用分类占比 —— 除法三种静默错法（分母口径 / 0 分母 / 0 元占行）各有断言，
   //      并断言 label 复用 TERMS.ledger.expense（不新增中文）。变异自证见 D 组。
   ['exp-struct', 'tools/check_exp_struct.js'],
+  // R689（M3 优化 A）：四象限 —— 中位数分档 + 免费档拦截 + 菜太少不硬分，含变异自证。
+  ['quadrant', 'tools/check_quadrant.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

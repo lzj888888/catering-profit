@@ -167,6 +167,33 @@
       </view>
     </block>
 
+    <!-- R689（M3 优化 A）：四象限 —— 先给**结论**（哪些菜该主推、哪些该换），再给下面 21 行明细分。
+         之所以放在明细榜之前：老板打开这个页面要的是"我该动哪道菜"，
+         逐行看 21 个数只会让他关掉页面。分界线用本店中位数，页脚已注明依据。 -->
+    <block wx:if="{{quadrant}}">
+      <view class="section-title">{{t.quadTitle}}</view>
+      <view class="card2" wx:if="{{quadrant.ok}}">
+        <view class="quad-grid">
+          <view class="quad-cell" wx:for="{{quadrant.cells}}" wx:key="key" wx:for-item="qc">
+            <view class="quad-hd">
+              <text class="quad-name">{{qc.title}}</text>
+              <text class="quad-count">{{qc.count}}</text>
+            </view>
+            <view class="quad-hint">{{qc.hint}}</view>
+            <view class="quad-names" wx:if="{{!qc.empty}}">
+              <text class="quad-nm" wx:for="{{qc.names}}" wx:key="*this" wx:for-item="nm">{{nm}}</text>
+              <text class="quad-more" wx:if="{{qc.moreText}}">{{qc.moreText}}</text>
+            </view>
+            <view class="quad-names quad-none" wx:else>—</view>
+          </view>
+        </view>
+        <view class="muted quad-note">{{t.quadNote}}</view>
+      </view>
+      <view class="card2" wx:else>
+        <view class="muted">{{quadrant.needText}}</view>
+      </view>
+    </block>
+
     <view class="section-title">{{t.reviewDineIn}} · {{tier === 'free' ? t.reviewFreeRankTitle : t.reviewRankTitle}}</view>
     <view class="card2" wx:if="{{dineIn.length}}">
       <view class="row head">

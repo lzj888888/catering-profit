@@ -31,6 +31,17 @@ const fmtPct = (p) => (Number(p) || 0).toFixed(2) + '%';
 //   表现为「框填不进/丢焦点」。rid 仅渲染层用，提交时由 onSplitCalc 重建干净 payload（不含 rid）。
 const _ridPrefix = 'k' + Date.now().toString(36) + '_';
 let _ridSeq = 0;
+
+// R689（M3 优化 A）：中位数 —— 四象限的分界线用它，不用平均数。
+// 为什么不用平均数：一家店若有一道爆款卖 300 份、其余 20 份，
+// 平均数会被那一道拉高 ⇒ 「高销量」这一半只剩两三道菜，分档就失真了。
+function medianOf(arr) {
+  const a = (arr || []).slice().sort((x, y) => x - y);
+  const n = a.length;
+  if (!n) return 0;
+  return n % 2 ? a[(n - 1) / 2] : (a[n / 2 - 1] + a[n / 2]) / 2;
+}
+
 function ensureRid(r) {
   if (!r) r = {};
   if (!r.rid) r.rid = _ridPrefix + (_ridSeq++).toString(36);
@@ -41,6 +52,10 @@ Page({
   data: {
     t: {
       reviewTitle: TERMS.card.reviewTitle,
+      // R689（M3 优化 A）：四象限的标题与说明（格子内的标题/提示已在 buildQuadrant 里取好）
+      quadTitle: TERMS.card.quadTitle,
+      quadNote: TERMS.card.quadNote,
+      quadNeed: TERMS.card.quadNeed,
       reviewAfterFact: TERMS.card.reviewAfterFact,
       // 🔴 R307：占比拆分参考榜（估算）—— 逐条列举，漏登记 = 页面静默空白（守 check_page_terms）
       splitTitle: TERMS.card.splitTitle,
@@ -201,6 +216,8 @@ Page({
     thresholdInput: '30',
     curMonth: '',
     dineIn: [],              // 堂食排行（已预处理展示字段）
+    // R689（M3 优化 A）：四象限（销量 × 毛利）。null = 还没算/不该算（免费档或菜太少）
+    quadrant: null,
     decision: null,          // R615：该动哪道菜（null = 还没算）
     takeaway: null,          // 外卖：null=空态；否则 [{ platform, platformName, ranked, totals }]
     unmatched: [],           // 未匹配菜品
@@ -337,6 +354,80 @@ Page({
     };
   },
 
+  // R689（M3 优化 A）：四象限 —— 销量 × 毛利率
+  //
+  // 分档用**本店中位数**，不用行业绝对值：
+  //   「毛利率 30% 算低」在本项目零本地依据（没做过行业基准测算）；
+  //   而「比你自己店里一半的菜卖得少」是可验证、可解释的 ——
+  //   老板问「凭什么是低」，我们能指着他自己的数据回答，而不是搬一个不知道哪来的数。
+  //
+  // 只在 full 档算：免费档后端**不下发** marginPct（A8 那条红线），
+  //   给免费用户算四象限 = 把毛利结构白送出去。
+  //
+  // 少于 MIN_QUAD_N 道菜不算：3 道菜分四象限 ⇒ 每格 0~1 道，是噪音不是洞察。
+  //
+  // ⚠️ 一条已知边界（不是 bug，写在这里免得下一个人当缺陷修）：
+  //   分档用 `qty >= 中位数`。当**多数菜销量相同**时（很常见：一堆菜都是 20 份），
+  //   它们全都落在「卖得好」这一侧，四象限就退化成"按毛利率分两档"。
+  //   这不是分档写错了 —— 20 份确实不低于中位数；而是这批数据本身没有销量区分度。
+  //   真正的失败形态是"被一道爆款拉到只剩一两条算高销量"，中位数恰好防住了这个（见守卫 B-①）。
+  buildQuadrant(rows) {
+    const MIN_QUAD_N = 6;
+    // 只算「有成本卡、有毛利、销量>0」的菜：无卡（unmatched）与零销量的都分不出高低
+    const valid = (rows || []).filter((r) => r && r.hasMargin
+      && r.marginPct != null && Number(r.qty) > 0);
+    if (valid.length < MIN_QUAD_N) {
+      // 说清「差多少」而不是干巴巴一句"数据不足"：老板会知道还得再建几张卡
+      return {
+        ok: false,
+        need: MIN_QUAD_N,
+        have: valid.length,
+        needText: TERMS.card.quadNeed.replace('{n}', String(MIN_QUAD_N)),
+        cells: [],
+      };
+    }
+
+    const qtyMid = medianOf(valid.map((r) => Number(r.qty) || 0));
+    const marginMid = medianOf(valid.map((r) => Number(r.marginPct) || 0));
+
+    const defs = [
+      { key: 'star', title: TERMS.card.quadStar, hint: TERMS.card.quadStarHint },
+      { key: 'traffic', title: TERMS.card.quadTraffic, hint: TERMS.card.quadTrafficHint },
+      { key: 'potential', title: TERMS.card.quadPotential, hint: TERMS.card.quadPotentialHint },
+      { key: 'cut', title: TERMS.card.quadCut, hint: TERMS.card.quadCutHint },
+    ];
+    const bucket = { star: [], traffic: [], potential: [], cut: [] };
+    for (const r of valid) {
+      const highQty = Number(r.qty) >= qtyMid;
+      const highMargin = Number(r.marginPct) >= marginMid;
+      const k = highQty ? (highMargin ? 'star' : 'traffic') : (highMargin ? 'potential' : 'cut');
+      bucket[k].push(r);
+    }
+
+    const cells = defs.map((d) => {
+      const list = bucket[d.key].slice().sort((a, b) => (Number(b.qty) - Number(a.qty))
+        || (Number(b.marginPct) - Number(a.marginPct)));
+      return {
+        key: d.key,
+        title: d.title,
+        hint: d.hint,
+        count: list.length,
+        names: list.slice(0, 3).map((x) => x.name),
+        moreText: list.length > 3
+          ? TERMS.card.quadMore.replace('{n}', String(list.length - 3)) : '',
+        empty: list.length === 0,
+      };
+    });
+
+    return {
+      ok: true,
+      qtyMid: Math.round(qtyMid * 10) / 10,
+      marginMidText: fmtPct(marginMid),
+      total: valid.length,
+      cells,
+    };
+  },
+
   fmtTotals(t) {
     return t ? {
       qty: t.qty,
@@ -390,6 +481,9 @@ Page({
     //   免费档拿到的仍是「销量 + 营收」，够算覆盖率，也够让老板看出「我这 20 道菜只算全了 3 道」。
     const isFree = (d && d.tier) === 'free';
     const dineIn = (((isFree ? d.free_top : d.dine_in) || [])).map((x) => this.fmtRanked(x));
+    // R689（M3 优化 A）：四象限。免费档的 dineIn 里 hasMargin 全为 false ⇒ buildQuadrant 自带拦截，
+    //   这里不用再判 isFree（少一处分支 = 少一处能写错的地方）。
+    const quadrant = this.buildQuadrant(dineIn);
 
     // 🔴 R249-B（附带发现，与 is_deleted 同轮修）：外卖的「未匹配菜品」**只**嵌在
     //   `takeaway.by_platform[p].unmatched` 里，而前端**从不读**它（只读顶层 `d.unmatched`，
@@ -629,6 +723,7 @@ Page({
       freeMoreText,
       rangeText,
       dineIn,
+      quadrant,
       takeaway,
       unmatched,
       totals,
