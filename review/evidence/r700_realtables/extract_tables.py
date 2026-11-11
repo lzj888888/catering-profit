@@ -23,7 +23,8 @@ import json
 import openpyxl
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.dirname(os.path.dirname(HERE))
+# 本文件在 review/evidence/r700_realtables/ ⇒ 仓库根要往上**三层**
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
 
 JOBS = [
     ('review/evidence/r615_wechat_real/meituan_bill_20260907-0913.xlsx',
@@ -32,6 +33,23 @@ JOBS = [
      'taobao_bill.json'),
     ('review/evidence/r615_wechat_real/meituan_goods_20260907-0913.xlsx',
      'meituan_goods.json'),
+    # ===== R703：把仓里其余真表也纳入（原来只有 3 张进回归，7 张躺着没人跑）=====
+    # 09bbd0 = 美团**完整账单包**（4 sheet），其中「汇总信息」是平台自己的对账基准 ——
+    #   这是最理想的验证材料：不靠我们复算，直接比平台给的数。
+    ('review/evidence/r181l_stage1_import_feed/fixtures/09bbd01042244a1fa98e0d0f1963211b.xlsx',
+     'meituan_bill_pack.json'),
+    ('review/evidence/r242_jd_bill/jd_bill_20260930.xlsx',
+     'jd_bill.json'),
+    ('review/evidence/r242_jd_bill/jd_sku_bill_20260930.xlsx',
+     'jd_sku_bill.json'),
+    ('review/evidence/r232_formc_sample/商品下载_20260907至20260913__5366951484_20261006213915236.xlsx',
+     'goods_download.json'),
+    ('review/evidence/r615_wechat_real/jd_order_export_20261014-1020.xlsx',
+     'jd_order_export.json'),
+    ('review/evidence/r615_wechat_real/pos_combo_detail_20260907-0913.xlsx',
+     'combo_detail.json'),
+    ('review/evidence/r615_wechat_real/owner_inventory_202609_v3.xlsx',
+     'inventory.json'),
 ]
 
 

@@ -240,6 +240,164 @@ ok('E-⑤ 反证判据有分辨力：标了 doubao 的样本必须被判成「�
 ok('E-⑥ 三个 JSON 抽取自三张真 xlsx，且 xlsx 都还在（防止证据被删后 JSON 成孤儿）',
   fs.existsSync(mtBillX) && fs.existsSync(tbBillX) && fs.existsSync(mtGoodsX));
 
+// ================== F · 账单侧扩展（R703：原来只有 3 张进回归，这些一直躺着没跑） ==================
+// 云函数 service.js 只导出纯函数，但它 require 了 xlsx（本机没装）。
+// 用 Module._load 打空桩 —— 与 tools/check_bill_import_gate.js 同一做法（不是新发明）。
+console.log('\n===== F · 账单侧扩展（美团账单包 / 京东账单 / 京东SKU） =====');
+let SV = null;
+{
+  const Module = require('module');
+  const orig = Module._load;
+  Module._load = function (req) { if (req === 'xlsx') return {}; return orig.apply(this, arguments); };
+  try { SV = require('../cloudfunctions/importSalesBill/service.js'); } catch (e) { SV = null; }
+  finally { Module._load = orig; }
+}
+ok('F-⓪ 云函数纯函数可加载（xlsx 走空桩）', !!SV);
+
+const mtPack = load('meituan_bill_pack.json');
+const mtPackDet = BP.detectPlatformInMatrix(mtPack);
+// 🔴 这个文件是**完整账单包**：4 个 sheet 里「账单明细」是按日汇总（列名是「账单金额」），
+//   「订单明细」才是我们吃的那张（69 列）。认错 sheet = 收入口径整个错。
+ok('F-① 4 个 sheet 里认对「订单明细」（不是「账单明细」按日汇总）',
+  !!mtPackDet && mtPackDet.platform === 'meituan' && mtPackDet.sheet === '订单明细',
+  JSON.stringify(mtPackDet));
+
+const mtPackR = BP.parseBillMatrix(mtPack, { platform: 'meituan' });
+ok('F-② 2026-08 整月：到手 1826.64 元 / 50 单 / 50 行',
+  mtPackR.totals.amountFen === 182664 && mtPackR.totals.qty === 50 && mtPackR.totals.rowCount === 50,
+  fen(mtPackR.totals.amountFen) + ' 元 / ' + mtPackR.totals.qty + ' 单');
+ok('F-③ 只排除 47 行（广告 26 + 保险 21），与真表交易类型分布相符',
+  mtPackR.excluded.rows === 47, 'excluded=' + mtPackR.excluded.rows);
+
+// 🔴🔴 本套件**最强的一条验证**：用平台自己写的「汇总信息」sheet 当基准。
+//   为什么不只用独立复算：复算和解析器可能犯同一个理解错误（比如都把退款当广告）。
+//   平台汇总是第三方立场，且它把「外卖订单 49笔 1779.53」与「企业外卖订单 1笔 47.11」分开列 ——
+//   在「订单明细」里这两类都写「外卖订单」，所以我们必须拿到 1826.64 才对得上。
+{
+  const ws = mtPack.sheets['汇总信息'].rows;
+  const cell = (r, c) => String((ws[r] || [])[c] || '');
+  // R2: [门店数量, 1, 外卖订单, 49笔, 1,779.53元]  R7: [_, _, 企业外卖订单, 1笔, 47.11元]
+  ok('F-④ 平台自带「汇总信息」存在且写了外卖订单笔数/金额（对账基准可得）',
+    cell(1, 2).indexOf('外卖订单') >= 0 && cell(1, 3).indexOf('笔') >= 0,
+    cell(1, 2) + ' ' + cell(1, 3) + ' ' + cell(1, 4));
+  const parseYuan = (s) => Math.round(parseFloat(String(s).replace(/[,，元]/g, '')) * 100) || 0;
+  const parseCnt = (s) => parseInt(String(s).replace(/[^0-9]/g, ''), 10) || 0;
+  const normalAmt = parseYuan(cell(1, 4));       // 外卖订单 1779.53
+  const normalCnt = parseCnt(cell(1, 3));        // 49 笔
+  // 企业外卖订单在第 7 行（下标 6）
+  let bizAmt = 0, bizCnt = 0;
+  for (let r = 1; r < ws.length; r++) {
+    const row = ws[r] || [];
+    if (String(row[2] || '').indexOf('企业') >= 0) { bizCnt = parseCnt(row[3]); bizAmt = parseYuan(row[4]); }
+  }
+  ok('F-⑤ 平台汇总：外卖订单 49笔 1779.53 + 企业外卖订单 1笔 47.11 = 1826.64',
+    normalCnt === 49 && normalAmt === 177953 && bizCnt === 1 && bizAmt === 4711,
+    normalCnt + '笔/' + fen(normalAmt) + ' + ' + bizCnt + '笔/' + fen(bizAmt));
+  ok('F-⑥ 我们的解析结果 ≡ 平台两项之和（第三方立场对账，不是自己复算自己）',
+    normalAmt + bizAmt === mtPackR.totals.amountFen && normalCnt + bizCnt === mtPackR.totals.qty,
+    '平台=' + fen(normalAmt + bizAmt) + '/元 ' + (normalCnt + bizCnt) + '笔  我们=' + fen(mtPackR.totals.amountFen) + '元 ' + mtPackR.totals.qty + '笔');
+}
+
+const jdBill = load('jd_bill.json');
+const jdBillDet = BP.detectPlatformInMatrix(jdBill);
+ok('F-⑦ 京东账单（两级表头 R1 分组 / R2 真列名）认得出', !!jdBillDet && jdBillDet.platform === 'jd_order', JSON.stringify(jdBillDet));
+const jdBillR = BP.parseBillMatrix(jdBill, { platform: 'jd_order' });
+ok('F-⑧ 京东账单：正向订单 555.96 元 / 23 单（不筛 = 482.65，那是扣完推广费/保险的净打款）',
+  jdBillR.totals.amountFen === 55596 && jdBillR.totals.qty === 23,
+  fen(jdBillR.totals.amountFen) + ' 元 / ' + jdBillR.totals.qty + ' 单');
+ok('F-⑨ 京东账单排除 92 行（推广费 23 + 保险单 69）',
+  jdBillR.excluded.rows === 92, 'excluded=' + jdBillR.excluded.rows);
+{
+  const rows = jdBill.sheets[Object.keys(jdBill.sheets)[0]].rows;
+  const hdr = rows[1];
+  const iT = hdr.indexOf('订单类型'), iN = hdr.indexOf('应结金额');
+  let pos = 0, posN = 0;
+  for (let i = 2; i < rows.length; i++) {
+    if (String(rows[i][iT] || '').trim() !== '正向订单') continue;
+    const v = parseFloat(String(rows[i][iN] || '').replace(/,/g, ''));
+    if (Number.isNaN(v)) continue;
+    pos += Math.round(v * 100); posN++;
+  }
+  ok('F-⑩ 独立复算与解析器一致（不经过解析器）',
+    pos === jdBillR.totals.amountFen, '独立=' + fen(pos) + ' 元/' + posN + ' 行');
+}
+
+// 空样本：只有表头没有数据。断言的是「不崩、不编」——这比"能解析"更重要。
+const jdSku = load('jd_sku_bill.json');
+const jdSkuR = BP.parseBillMatrix(jdSku, { platform: 'jd_sku' });
+ok('F-⑪ 京东SKU 空表（只有表头）：0 元 / 0 单，不崩不编',
+  jdSkuR.totals.amountFen === 0 && jdSkuR.totals.qty === 0 && jdSkuR.totals.rowCount === 0,
+  JSON.stringify(jdSkuR.totals));
+
+// ================== G · 菜品侧扩展（R703） ==================
+console.log('\n===== G · 菜品侧扩展（外卖商品 / 京东订单 / 套餐明细 / 进销存） =====');
+const goodsDl = load('goods_download.json');
+const goodsRows = goodsDl.sheets['data'].rows;
+const gShape = SV ? SV.detectDishShape(goodsRows) : null;
+ok('G-① 外卖「商品下载」355 行 ⇒ 形态 C', gShape === 'waimai_goods', String(gShape));
+const goodsC = SV ? SV.parseDishSalesC(goodsRows) : { totals: {} };
+ok('G-② 商品下载：118 件 / 1823.08 元 / 354 行（独立复算一致）',
+  goodsC.totals.qty === 118 && goodsC.totals.amountFen === 182308 && goodsC.rows.length === 354,
+  JSON.stringify(goodsC.totals));
+ok('G-③ 该表把「销售额」排在「销量」**前面**，仍读对 —— 证明形态 C 按列名定位、不靠列序',
+  (function () {
+    const hdr = goodsRows[0];
+    return hdr.indexOf('销售额') < hdr.indexOf('销量');
+  })() && goodsC.totals.amountFen === 182308);
+
+const jdOrd = load('jd_order_export.json');
+const jdOrdRows = jdOrd.sheets['数据'].rows;
+ok('G-④ 京东订单导出 ⇒ 形态 D（商品混装在一列，无独立销量/销售额列）',
+  SV && SV.detectDishShape(jdOrdRows) === 'jd_order_export');
+const jdOrdR = SV ? SV.parseDishSalesD(jdOrdRows) : { totals: {}, rows: [] };
+ok('G-⑤ 京东订单：10 件 / 197.02 元 / 8 单（混装列还原正确）',
+  jdOrdR.totals.qty === 10 && jdOrdR.totals.amountFen === 19702 && jdOrdR.rows.length === 8,
+  JSON.stringify(jdOrdR.totals));
+ok('G-⑥ 混装列无未匹配项（unmatched 为空 —— 有残留就说明解析漏了商品）',
+  Array.isArray(jdOrdR.unmatched) && jdOrdR.unmatched.length === 0);
+
+const combo = load('combo_detail.json');
+const comboRows = combo.sheets[Object.keys(combo.sheets)[0]].rows;
+ok('G-⑦ 套餐明细 ⇒ 形态 B（主动拒收，套餐组分已在菜品销售统计里）',
+  SV && SV.detectDishShape(comboRows) === 'combo_detail');
+
+// 「认不出」也是一种**正确**行为：进销存表我们根本没有对应功能，
+// 硬塞进菜品/账单任一口径都是错的。这条断言防的就是「以后有人为了 KPI 让它认得出」。
+const inv = load('inventory.json');
+ok('G-⑧ 进销存表 ⇒ 认不出（预期：没有这个功能，认得出反而说明判据放得太松）',
+  SV && SV.detectDishShape(inv.sheets[Object.keys(inv.sheets)[0]].rows) === null,
+  String(SV ? SV.detectDishShape(inv.sheets[Object.keys(inv.sheets)[0]].rows) : 'SV 未加载'));
+
+// ================== H · 三种口径：把「看起来矛盾」变成机器可查的事实 ==================
+// 为什么单独一组：美团账单包里三个数都对得上，但**不相等** ——
+//   1826.64（外卖收入，含企业外卖订单）
+//   1779.53（平台口径的「外卖订单」，不含企业外卖订单）
+//   1747.95（账单金额 = 打款净额，扣完广告/保险）
+// 不知道这层关系的人，看到任一数字都会以为另外两个是 bug。
+console.log('\n===== H · 三种口径不许混（防后人误判成 bug） =====');
+{
+  const billAmt = mtPack.sheets['账单明细'].rows;
+  // 「汇总信息」R3 写了账单金额 1747.95
+  const sumRows = mtPack.sheets['汇总信息'].rows;
+  let billTotal = 0;
+  for (let r = 0; r < sumRows.length; r++) {
+    const row = sumRows[r] || [];
+    if (String(row[0] || '').indexOf('账单金额') >= 0) {
+      billTotal = Math.round(parseFloat(String(row[1]).replace(/[,，元]/g, '')) * 100) || 0;
+    }
+  }
+  ok('H-① 平台「账单金额」1747.95 元可得（这是打款净额，不是外卖收入）',
+    billTotal === 174795, fen(billTotal) + ' 元');
+  ok('H-② 外卖收入 1826.64 − 账单金额 1747.95 = 78.69 = 广告 76.41 + 保险 2.28',
+    mtPackR.totals.amountFen - billTotal === 7869,
+    '差 ' + fen(mtPackR.totals.amountFen - billTotal) + ' 元');
+  ok('H-③ 三个数互不相等，但每一个都能解释 —— 不是 bug（本条就是防误判的判据）',
+    new Set([182664, 177953, 174795]).size === 3 && mtPackR.totals.amountFen === 182664);
+  ok('H-④ 「账单明细」sheet 是按日汇总，列名是「账单金额」不是「商家应收款」',
+    (billAmt[1] || []).indexOf('账单金额') >= 0 && (billAmt[1] || []).indexOf('商家应收款') < 0,
+    JSON.stringify((billAmt[1] || []).slice(0, 6)));
+}
+
 console.log('\n' + '='.repeat(60));
 console.log('===== 真表回归结果：' + pass + ' 通过 / ' + fail + ' 失败 =====');
 process.exit(fail === 0 ? 0 : 1);
