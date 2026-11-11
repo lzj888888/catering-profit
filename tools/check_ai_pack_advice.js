@@ -47,7 +47,14 @@ ok('A-④ 推荐语在包**末尾**（放开头会打断「复制→粘贴」主
 ok('A-⑤ 推荐语里带上了真实包号（不是占位符）', txt.indexOf(a.pack_id) >= 0);
 ok('A-⑥ 推荐语给了**可直接照做**的问法（不是"快去问AI"这种空话）',
   /请指出最该先改的三件事/.test(txt) && /多少钱/.test(txt));
-ok('A-⑦ 明确说了「数字都是你店里真实的数，AI 不会自己编」', /不会自己编/.test(txt));
+// R697：原断言绑的是「AI 不会自己编」—— 那是替第三方 AI 担保，我们保证不了。
+//   判据随语义一起改：守的是「不替 AI 担保 + 教老板核对」，不是某个固定句子。
+ok('A-⑦ 不替 AI 担保，而是提醒「包里没见过的数字先回来核对」',
+  /先回来核对再信/.test(txt) && !/不会自己编/.test(txt));
+ok('A-⑦b 推荐语里不得出现「任意」（全称量词 = 无依据的能力承诺）',
+  !/任意/.test(txt) && !/任意/.test(require(path.join(ROOT, 'miniprogram/i18n/terms.js')).TERMS.exportBtn.aiPackCopied));
+ok('A-⑦c WorkBuddy 仍是首选（出现在「你常用的」之前）',
+  txt.indexOf('WorkBuddy') >= 0 && txt.indexOf('WorkBuddy') < txt.indexOf('你常用的'));
 ok('A-⑧ 推荐语排在第 9 节「可以直接问的问题」**之后**（不打断问题清单）',
   txt.indexOf('可以直接问的问题') < txt.indexOf('让 AI 直接给你解读结论'));
 
