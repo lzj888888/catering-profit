@@ -56,6 +56,7 @@ Page({
       quadTitle: TERMS.card.quadTitle,
       quadNote: TERMS.card.quadNote,
       quadNeed: TERMS.card.quadNeed,
+      quadAllLoss: TERMS.card.quadAllLoss,
       reviewAfterFact: TERMS.card.reviewAfterFact,
       // 🔴 R307：占比拆分参考榜（估算）—— 逐条列举，漏登记 = 页面静默空白（守 check_page_terms）
       splitTitle: TERMS.card.splitTitle,
@@ -389,6 +390,22 @@ Page({
 
     const qtyMid = medianOf(valid.map((r) => Number(r.qty) || 0));
     const marginMid = medianOf(valid.map((r) => Number(r.marginPct) || 0));
+
+    // 🔴 R690 自查补的洞：**整店毛利率中位数为负**时不许出四象限。
+    //   实测（见 tools/check_quadrant.js E 组）：若毛利率全是 -5%~-30%，
+    //   中位数 = -12.5%，于是「毛利高」这一侧装的是 -5%/-8%/-10% 的菜 ——
+    //   它们在"相对意义上"确实最高，但**每一道都在亏本卖**。
+    //   页面会给它们贴上「卖得好、毛利也高」并建议「保持现状」——
+    //   这是把人往更亏的方向按，比不给建议坏得多。
+    //   ⇒ 整店亏损时，这四类怎么分都没有意义（问题在定价，不在取舍），交给诊断引擎去说。
+    if (marginMid < 0) {
+      return {
+        ok: false,
+        reason: 'all_loss',
+        notText: TERMS.card.quadAllLoss,
+        cells: [],
+      };
+    }
 
     const defs = [
       { key: 'star', title: TERMS.card.quadStar, hint: TERMS.card.quadStarHint },

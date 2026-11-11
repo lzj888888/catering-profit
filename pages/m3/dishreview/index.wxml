@@ -190,7 +190,7 @@
         <view class="muted quad-note">{{t.quadNote}}</view>
       </view>
       <view class="card2" wx:else>
-        <view class="muted">{{quadrant.needText}}</view>
+        <view class="muted">{{quadrant.needText || quadrant.notText}}</view>
       </view>
     </block>
 

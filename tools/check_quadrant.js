@@ -124,6 +124,29 @@ check('格内按销量降序（老板先看到卖得最多的）',
 check('空格子标 empty=true（页面据此显示破折号而不是空白）',
   big.cells.some((c) => c.empty === true) || big.cells.every((c) => c.count > 0));
 
+// ===== E. 整店亏损（R690 自查补的洞）=====
+console.log('\n===== E · 整店毛利率为负 =====');
+// 六道菜的毛利率全是负的（-5% ~ -30%），中位数 = -12.5%
+const ALLLOSS = [
+  row('亏1', 100, -5), row('亏2', 90, -8), row('亏3', 80, -10),
+  row('亏4', 20, -15), row('亏5', 10, -20), row('亏6', 5, -30),
+];
+const ql = build(ALLLOSS);
+check('⑤ 整店毛利中位数为负 ⇒ ok=false（不许贴「卖得好、毛利也高」）',
+  ql.ok === false, 'ok=' + ql.ok);
+check('⑤ reason = all_loss（便于页面区分「菜太少」与「全在亏」）',
+  ql.reason === 'all_loss', String(ql.reason));
+check('⑤ 给的是「先解决定价」这类提示，不是四类建议',
+  typeof ql.notText === 'string' && ql.notText.indexOf('定价') > 0, ql.notText);
+// 对照：只要中位数 > 0，即使有个别负毛利菜，仍应正常出四象限
+const MIXED2 = [
+  row('正1', 100, 40), row('正2', 90, 35), row('正3', 80, 30),
+  row('正4', 70, 25), row('亏1', 60, -10), row('亏2', 50, -20),
+];
+const qm = build(MIXED2);
+check('⑤ 对照：混合（有赚有亏但中位数 > 0）仍正常出四象限',
+  qm.ok === true, 'ok=' + qm.ok + ' marginMid=' + qm.marginMidText);
+
 console.log('\n===== D · 变异自证 =====');
 const avg = (a) => a.reduce((s, x) => s + x, 0) / a.length;
 check('变异①：这道题用平均数会得到 66.7（≠ 中位数 20）⇒ 证明 A/B 组有分辨力',
