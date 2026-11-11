@@ -233,7 +233,7 @@ const CASES = [
   //   失效有**两个方向**：关多了（连形态 A/C 一起关 ⇒ 复盘没输入，页面上看不出）
   //   与关少了（开关被改回 true ⇒ 账单又能落库）。
   { key: 'check_bill_import_gate', rel: 'tools/check_bill_import_gate.js' },  // 48 条（R271 增 F 段 20 条：跨平台重复导入防护）
-  { key: 'check_hub_guide', rel: 'tools/check_hub_guide.js' },  // 17 条（R263：枢纽页三步走/分层/空状态；G2 空状态严格 === 0 + G4 位置不变式）
+  { key: 'check_hub_guide', rel: 'tools/check_hub_guide.js' },  // 20 条（R263：枢纽页三步走/分层/空状态；G2 空状态严格 === 0 + G4 位置不变式；R704 加 G7 主操作不依赖异步计数）
   { key: 'check_export_delivery', rel: 'tools/check_export_delivery.js' },  // 44 条（R265 导出投递 25 + R266 报表内容 18：E11 摊销在场 / E12~E14 表上加减对得上账 / E15~E16 摊销来源台账 / E18 两个开关状态）
   { key: 'check_page_card_width', rel: 'tools/check_page_card_width.js' },
   // R351：wxml class ↔ wxss 选择器集合比对。为什么值得受守：它守的是「用了但没定义样式」

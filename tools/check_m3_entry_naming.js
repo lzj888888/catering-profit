@@ -31,9 +31,20 @@ function ok(name, cond, detail) {
 console.log('===== A 入口归属与文案 =====');
 const importCard = /<view class="hub-card" bindtap="goImport">/.test(HUBW);
 ok('A-① hub 有一级「销量表导入」卡（用 hub-card 类，不破 G4/S2 位置不变式）', importCard);
-ok('A-② 一级卡渲染 t.importTitle / t.importSub / t.icoImport 三键',
-  /\{\{t\.importTitle\}\}/.test(HUBW) && /\{\{t\.importSub\}\}/.test(HUBW)
-  && /\{\{t\.icoImport\}\}/.test(HUBW));
+// 🔴 R704：宫格布局把长副文案换成 *Short（每列 ≈155px，长描述会撑成 3~4 行、同排参差）。
+//   判据本意是「入口卡必须带一句解释用途的副文案」，**不是**「必须叫 importSub」
+//   ⇒ 改成 Sub / Short 二者其一即可。仍要求「至少有一个」，不能松成两者都缺也能过。
+const hasImportSub = /\{\{t\.importSub\}\}/.test(HUBW) || /\{\{t\.importShort\}\}/.test(HUBW);
+ok('A-② 一级卡渲染 t.importTitle / 副文案（Sub 或宫格 Short）/ t.icoImport 三样',
+  /\{\{t\.importTitle\}\}/.test(HUBW) && hasImportSub && /\{\{t\.icoImport\}\}/.test(HUBW));
+// 反恒真：把两个副文案键都从影子样本里拿掉，上面那条判据必须不成立
+ok('A-②b 反恒真：副文案两个键都缺时必须判红',
+  (function () {
+    const shadow = HUBW.replace(/\{\{t\.importSub\}\}/g, '').replace(/\{\{t\.importShort\}\}/g, '');
+    return !(/\{\{t\.importTitle\}\}/.test(shadow)
+      && (/\{\{t\.importSub\}\}/.test(shadow) || /\{\{t\.importShort\}\}/.test(shadow))
+      && /\{\{t\.icoImport\}\}/.test(shadow));
+  })(), '影子样本已证伪');
 ok('A-③ hub.js 的 t:{} 登记了三个新键（漏登记 ⇒ 页面静默空白）',
   /importTitle: TERMS\.hub\.importTitle/.test(HUBJ) && /importSub: TERMS\.hub\.importSub/.test(HUBJ)
   && /icoImport: TERMS\.hub\.icoImport/.test(HUBJ));

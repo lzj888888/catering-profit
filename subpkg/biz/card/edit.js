@@ -114,6 +114,9 @@ Page({
   data: {
     // R692：售价预填的来源提示（空串 = 非预填，不显示）
     prefillPriceNote: '',
+    // 🔴 R704：保存后横幅上那个出口的文案 —— 按来源变（见 onLoad 的 from_draft 分支）。
+    //   默认「返回列表」；从导入页进来时它是**回导入页**，文案得如实说。
+    backLabel: TERMS.card.backToList,
     t: {
       dishName: TERMS.card.dishName,
       secBasic: TERMS.card.secBasic,
@@ -394,7 +397,12 @@ Page({
     // 🔴 R566（P0-4 UI）：批量导入页点「去补价」⇒ 整张草稿预填进来。
     //   传参走本地暂存而不是 URL：草稿含几十行动态字段，URL 有长度上限且中文要逐层编码。
     //   ⚠️ 只在新建态生效（编辑态 load() 要用卡里的真实数据回填，不能被草稿盖掉）。
-    if (!this.data.isEdit && q && q.from_draft) this.loadDraftPrefill();
+    if (!this.data.isEdit && q && q.from_draft) {
+      this.loadDraftPrefill();
+      // 🔴 R704：栈里上一页是**导入页**（…→import→edit），`navigateBack` 回的是它。
+      //   改前这里恒显示「返回列表」＝指向一个不会去的地方。
+      this.setData({ backLabel: TERMS.card.backToImport });
+    }
     // 🔴 P0#7：读本地记的专业/新手偏好（按 shop 区分；换设备回默认 novice）
     this.setData({ inputMode: this.loadInputMode() || 'novice' });
     this.load();

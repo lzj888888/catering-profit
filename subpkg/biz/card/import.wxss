@@ -35,6 +35,19 @@
 .imp-badge-green { color: #1f7a4d; background: #e6f6ec; }
 .imp-badge-orange { color: #92610a; background: #fdf3d8; }
 .imp-badge-red { color: #b3261e; background: #fdeceb; }
+/* R704：已保存徽章 —— 比绿色再重一档（实心），因为它是「这件事做完了」而不是「数据齐了」 */
+.imp-badge-saved { color: #ffffff; background: #1f7a4d; }
+
+/* R704：开做之前的准备（原料库体检）。放在粘贴框之前。
+   空库用暖色警示（给的是"先去建料"这条出路，不是报错）；有料用中性底，只是一句提示。 */
+.imp-prereq { margin: 0 0 20rpx; padding: 24rpx 22rpx;
+  background: #F5F8FB; border: 2rpx solid #dde7f2; border-radius: 14rpx; }
+.imp-prereq-warn { background: #FFF7E8; border-color: #E8A33D; }
+.imp-prereq-k { display: block; font-size: 28rpx; color: #776C5E; margin-bottom: 8rpx; }
+.imp-prereq-t { display: block; font-size: 30rpx; font-weight: 600; color: #1e3a5f; line-height: 1.5; }
+.imp-prereq-warn .imp-prereq-t { color: #6B4A1F; }
+.imp-prereq-d { display: block; font-size: 28rpx; color: #776C5E; line-height: 1.7; margin-top: 8rpx; }
+.imp-prereq-btn { display: inline-flex; margin-top: 16rpx; min-height: 88rpx; }
 
 .imp-meta { display: flex; align-items: center; justify-content: space-between;
   margin-top: 14rpx; gap: 16rpx; }

@@ -7,6 +7,17 @@
 
   <view class="hint">{{t.intro}}</view>
 
+  <!-- 🔴 R704：**开做之前的准备** —— 必须排在粘贴框之前（它是前置条件，不是使用说明）。
+       根因：老板从菜单导入走到「去补价」才发现要一道道填价，因为没人告诉他原料库能批量建；
+       建好之后「补价」＝选料（价格自动带出），不是填数字。放在页面底部等于没放。
+       `matN < 0`（没读到）⇒ 整块不渲染：宁可不说，也不误报「你还没有原料」。 -->
+  <view class="imp-prereq {{matTipBtn ? 'imp-prereq-warn' : ''}}" wx:if="{{matN >= 0}}">
+    <text class="imp-prereq-k">{{t.matTitle}}</text>
+    <text class="imp-prereq-t">{{matTipTitle}}</text>
+    <text class="imp-prereq-d">{{matTipDesc}}</text>
+    <view class="btn ghost btn-small imp-prereq-btn" wx:if="{{matTipBtn}}" bindtap="goMaterialBatch">{{t.matEmptyBtn}}</view>
+  </view>
+
   <view class="card2">
     <view class="card-title">{{t.pasteLabel}}</view>
     <textarea class="imp-ta" value="{{text}}" bindinput="onInput"
@@ -37,7 +48,10 @@
     <view class="imp-item" wx:for="{{rows}}" wx:key="key">
       <view class="imp-head">
         <text class="imp-name">{{item.name}}</text>
-        <text class="imp-badge imp-badge-{{item.status}}">{{item.statusText}}</text>
+        <!-- 🔴 R704：已保存优先于三色 —— 补完价回来这一行必须**看得出变了**，
+             否则老板会以为白干了一遍（改前本页没有 onShow，状态永远不会变）。 -->
+        <text class="imp-badge imp-badge-saved" wx:if="{{item.saved}}">{{t.savedBadge}}</text>
+        <text class="imp-badge imp-badge-{{item.status}}" wx:else>{{item.statusText}}</text>
       </view>
 
       <view class="imp-meta">

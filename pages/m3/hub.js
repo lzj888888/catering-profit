@@ -38,6 +38,15 @@ Page({
       reconSub: TERMS.hub.reconSub,
       reviewTitle: TERMS.hub.reviewTitle,
       reviewSub: TERMS.hub.reviewSub,
+      // 🔴 R704：两列宫格的短描述（wxml 用到就必须登记 —— 漏登记 ⇒ 静默空白）
+      cardShort: TERMS.hub.cardShort,
+      materialShort: TERMS.hub.materialShort,
+      importShort: TERMS.hub.importShort,
+      takeawayShort: TERMS.hub.takeawayShort,
+      grouponShort: TERMS.hub.grouponShort,
+      reviewShort: TERMS.hub.reviewShort,
+      revenueShort: TERMS.hub.revenueShort,
+      reconShort: TERMS.hub.reconShort,
       countPrefix: TERMS.card.countPrefix,
       countSuffix: TERMS.card.countSuffix,
       // R299：数据截断的可见降级文案（单源 TERMS.ui.dataTruncated）

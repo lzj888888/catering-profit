@@ -134,6 +134,28 @@
     typeof hub.takeawayTitle === 'string' && hub.takeawayTitle.indexOf('成本及利润') < 0,
     'takeawayTitle=' + JSON.stringify(hub.takeawayTitle));
 
+  // ================= G7 主操作不依赖异步计数 =================
+  // 🔴 R704（李老师真机：「整页都出来了，这个按钮才弹出来」）
+  //   形态：`wx:if="{{cardCount > 0}}"` + `cardCount` 初值 -1（未取到）
+  //   ⇒ 首页渲染时按钮不存在，等三个云函数回来才出现。
+  //   判据两条：① 不许用 `> 0`（-1 阶段为假 ⇒ 错过首次渲染）；
+  //             ② 必须仍是显式比较 `!== 0`（不能用真值判断 —— -1 为真，会让"没读到"也显示按钮，
+  //                与 G2-3 的 -1 语义纪律冲突）。
+  console.log('\n===== G7 · 主操作（新建成本卡）不依赖异步计数 =====');
+  const quickTag = (wxml.match(/<button[^>]*hub-quick[^>]*>/) || [])[0] || '';
+  const quickExpr = (quickTag.match(/wx:if\s*=\s*"([^"]*)"/) || [])[1] || '';
+  // 判据函数化 —— 只为让 G7-3 能拿影子样本打它（否则反恒真无从证伪）
+  const notGtZero = (expr) => !/cardCount\s*>\s*0/.test(expr);
+  const isStrictNe = (expr) => /^\s*\{\{\s*cardCount\s*!==\s*0\s*\}\}\s*$/.test(expr);
+  check('G7-1 主按钮判据不是 `cardCount > 0`（-1 阶段会漏渲染 ⇒ 按钮后弹出）',
+    notGtZero(quickExpr), '表达式 = ' + JSON.stringify(quickExpr));
+  check('G7-2 主按钮用显式比较 `cardCount !== 0`（不写真值判断）',
+    isStrictNe(quickExpr), '表达式 = ' + JSON.stringify(quickExpr));
+  // 反恒真：判据必须能对旧写法/真值写法判红 —— 否则 G7-1/G7-2 就是恒真断言
+  check('G7-3 反恒真：`{{cardCount > 0}}` 与 `{{cardCount}}` 都必须被判红',
+    notGtZero('{{cardCount > 0}}') === false && isStrictNe('{{cardCount}}') === false,
+    '影子样本已证伪');
+
   // ================= 自失效护栏 =================
   console.log('\n===== S · 自失效护栏（证明本守卫不是恒真）=====');
   const sizesOk = [HUB_WXML, HUB_JS, TERMS_A].every((p) => { try { return fs.statSync(p).size > 200; } catch (e) { return false; } });

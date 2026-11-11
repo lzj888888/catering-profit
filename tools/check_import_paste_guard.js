@@ -107,6 +107,33 @@ check('D-④ 对账文案在「无跳过、无价」时不输出空尾巴',
     === '粘贴 5 行 → 识别 5 道',
   require(path.join(ROOT, 'miniprogram/i18n/terms.js')).TERMS.card.impRecon(5, 5, 0, 0, '0.00'));
 
+// ================== E · 前置体检 + 补价回来要刷新（R704） ==================
+// 根因（李老师真机「有点发懵」）：老板从菜单导入走到「去补价」才发现要一道道填价 ——
+// 因为没人告诉他原料库能一次性批量建、建好后补价是**选料**（价自动带出）。
+// 另一半：补完价返回，那一行状态永远不变（本页改前只有 onLoad 没有 onShow）⇒ 以为白干了。
+sec('E · 前置体检 + 补价返回刷新（R704）');
+check('E-① 导入页有 onShow（没有它，补价回来状态永远不会变）',
+  /^\s*onShow\s*\(/m.test(js));
+check('E-② onShow 真的调用确认逻辑（定义了但没人调 = 假接线）',
+  /onShow\s*\([^)]*\)\s*\{[\s\S]{0,400}?this\.confirmSaved\s*\(/.test(js));
+// 🔴 关键：判据必须是「查库有没有这张卡」，不能是「点过就算」——
+//   老板可能进编辑页后中途退出、或保存失败（配额满/断网），按"点过"标绿就是假信号。
+check('E-③ 已保存判据走 getCostCard 查同名卡（不是"点过就算"）',
+  /confirmSaved[\s\S]{0,600}?getCostCard/.test(js) && /list\.some\(/.test(js));
+check('E-④ 体检结果 matN 初值为 -1（读不到就不显示，绝不默认 0 去误报"你还没有原料"）',
+  /matN\s*:\s*-1/.test(js));
+check('E-⑤ 体检块在粘贴框之前（放页面底部 = 等于没放，老板已经走到补价了）',
+  (function () {
+    const pre = wxml.indexOf('imp-prereq');
+    const box = wxml.indexOf('card2');
+    return pre > 0 && box > 0 && pre < box;
+  })(), 'imp-prereq@' + wxml.indexOf('imp-prereq') + ' card2@' + wxml.indexOf('card2'));
+check('E-⑥ 空库时给的是「批量录入」入口（几十种一次粘完，不是逐条新建）',
+  /\/subpkg\/biz\/material\/batch/.test(js));
+// 反恒真：把 onShow 从源码里抠掉，E-① 的判据必须转红
+check('E-⑦ 反恒真：抠掉 onShow 后 E-① 判据必须不成立',
+  !/^\s*onShow\s*\(/m.test(js.replace(/^\s*onShow\s*\(/m, '')), '影子样本已证伪');
+
 console.log('\n' + '='.repeat(60));
 console.log('===== 整表粘贴体检接线守卫结果：' + pass + ' 通过 / ' + fail + ' 失败 =====');
 process.exit(fail === 0 ? 0 : 1);

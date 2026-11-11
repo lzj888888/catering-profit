@@ -10,6 +10,7 @@
 // 🔴 解析/判定/映射全部在 utils/dishImport.js（纯逻辑，26 断言守着）；本页只负责：
 //   textarea 取值 → 每行匹配品类 → 展示三色 → 跳编辑页前把草稿放进本地暂存。
 const ui = require('../../../utils/ui.js');
+const api = require('../../../utils/api.js');
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 const DI = require('../../../utils/dishImport.js');
 const { CATEGORY_PRESETS } = require('../../../utils/categoryPresets.js');
@@ -38,6 +39,13 @@ Page({
       pricePh: TERMS.card.impPricePh,
       catUnknown: TERMS.card.impCatUnknown,
       noRows: TERMS.card.impNoRows,
+      // 🔴 R704：开做之前的准备（原料库体检）
+      matTitle: TERMS.card.impMatTitle,
+      matEmptyT: TERMS.card.impMatEmptyT,
+      matEmptyD: TERMS.card.impMatEmptyD,
+      matEmptyBtn: TERMS.card.impMatEmptyBtn,
+      matOkD: TERMS.card.impMatOkD,
+      savedBadge: TERMS.card.impSavedBadge,
       // R702（P0-A）：整表粘贴体检的两种拦截说明
       blockCombo: TERMS.card.impBlockCombo,
       blockNoName: TERMS.card.impBlockNoName,
@@ -47,11 +55,79 @@ Page({
     summaryText: '',
     reconText: '',     // R702（P0-B）：对账行（粘贴行数 → 识别道数 → 跳过 → 已填价合计）
     blockTip: '',      // R702（P0-A）：整表被拒时的说明（空 = 没被拒）
+    // 🔴 R704：原料库体检结果。-1 = 没读到（**不显示这块**，绝不默认 0）——
+    //   与本仓「不替用户编数」同一条纪律：网络一抖就报「你还没有原料」会把人吓去重建。
+    matN: -1,
+    matTipTitle: '',
+    matTipDesc: '',
+    matTipBtn: false,
     catOptions: CAT_OPTIONS,
     parsed: false,      // 是否已解析过（未解析时不显示空态提示，免得一进来就报错）
   },
 
-  onLoad() { ui.setTitle(TERMS.card.impTitle); },
+  onLoad() {
+    ui.setTitle(TERMS.card.impTitle);
+    this.loadMaterials();
+  },
+
+  // 🔴 R704（李老师真机「有点发懵」的根因，产品层）：
+  //   他把菜单导进来、走到「去补价」，才发现在这里要一道道填价 —— 因为**没有任何地方**
+  //   告诉过他：原料库能一次性批量建，建好之后「补价」是**选料**（价格自动带出），不是填数字。
+  //   ⇒ 本块放在粘贴框**之前**：它是前置条件，不是使用说明。放进页面底部等于没放。
+  //   fail-closed：读失败 ⇒ matN 保持 -1 ⇒ 整块不渲染（宁可不说，也不误报「你还没有原料」）。
+  async loadMaterials() {
+    try {
+      await api.ensureShop();
+      const res = await api.call('getMaterial', {});
+      const n = (res && Array.isArray(res.list)) ? res.list.length : -1;
+      if (n < 0) { this.setData({ matN: -1 }); return; }
+      this.setData({
+        matN: n,
+        matTipTitle: n > 0 ? TERMS.card.impMatOkT(n) : TERMS.card.impMatEmptyT,
+        matTipDesc: n > 0 ? TERMS.card.impMatOkD : TERMS.card.impMatEmptyD,
+        matTipBtn: n === 0,
+      });
+    } catch (e) {
+      this.setData({ matN: -1 });
+    }
+  },
+
+  // 空库时直达「批量录入」——那是几十种料一次粘完的入口，不是逐条新建
+  goMaterialBatch() { wx.navigateTo({ url: '/subpkg/biz/material/batch' }); },
+
+  // 🔴 R704（B-①）：补完价返回时，把**真的存进库了**那一行标成「已保存」。
+  //   改前：本页只有 onLoad，没有 onShow ⇒ 去补价再返回，那一行还是橙的，
+  //   老板会以为"白干了/没生效"，于是重复补一遍。
+  //   🔴 为什么不按「点过就算」：老板可能进编辑页后中途退出，或者保存失败（配额满/断网）。
+  //     按"点过"标绿＝假信号，与「不替用户编数」冲突。判据只认服务端返回的同名卡。
+  onShow() {
+    const name = this._pendingName;
+    if (!name) return;            // 首次进入 / 普通返回：什么都不做
+    this._pendingName = '';
+    this.confirmSaved(name);
+  },
+
+  async confirmSaved(name) {
+    const rows = this.data.rows || [];
+    const idx = rows.findIndex((r) => r.name === name);
+    if (idx < 0 || rows[idx].saved) return;
+    try {
+      await api.ensureShop();
+      const res = await api.call('getCostCard', {});
+      const list = (res && res.list) || [];
+      if (!list.some((c) => c.name === name)) {
+        // 没存上：必须说，否则他回到列表找不到卡更懵
+        wx.showToast({ title: TERMS.card.impSavedMiss, icon: 'none' });
+        return;
+      }
+      const next = rows.slice();
+      next[idx] = Object.assign({}, next[idx], { saved: true });
+      this.setData({ rows: next });
+      wx.showToast({ title: TERMS.card.impSavedOk(name), icon: 'none' });
+    } catch (e) {
+      // 查不到就不标：宁可不标，不标错
+    }
+  },
 
   onInput(e) { this.setData({ text: e.detail.value }); },
 
@@ -237,6 +313,9 @@ Page({
       wx.showToast({ title: TERMS.card.impSaveFail, icon: 'none' });
       return;
     }
+    // 🔴 R704：记下「派出去了哪一道」——只在这之后记（暂存失败就不算派出去），
+    //   回来时 onShow 靠它去查库确认是否真的存上了（见 confirmSaved）。
+    this._pendingName = row.name;
     wx.navigateTo({ url: '/subpkg/biz/card/edit?from_draft=1' });
   },
 });

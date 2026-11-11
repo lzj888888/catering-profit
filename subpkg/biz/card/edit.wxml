@@ -23,7 +23,7 @@
     <!-- 🔴 R644（会审 R637）：金额化 —— 「毛利率 18%」是会计语言，
          「每卖一份亏 1.2 元」是他口袋里的语言。看一眼就会停下来。 -->
     <text class="money-tip" wx:if="{{moneyTip}}">{{moneyTip}}</text>
-    <view class="saved-go" bindtap="backToList">{{t.backToList}}</view>
+    <view class="saved-go" bindtap="backToList">{{backLabel}}</view>
   </view>
 
   <!-- 🔴 P0#7：新手/专业模式（与 M1 录入页同形）—— 新手先填核心项，专业项默认收起 -->
