@@ -34,10 +34,25 @@ const CAT_KEYWORDS = {
 
 // 把一行「菜名[,分类][,售价]」拆成结构化对象。分隔符容忍多种；各字段 trim。
 // 返回 { name, category, priceYuan }；空行/无菜名返回 null（调用方跳过）。
+// R698（真实报表实测暴露）：整表粘贴必然带**表头行与合计行**，
+//   它们有名字、有数字，旧实现会把「合计」当成一道菜建卡（豆包复现的美团
+//   「菜品销售统计」12 行里就多出一张叫「合计」的卡）。
+//   ⇒ 在解析最前端拦掉。用**精确匹配首片段**，不模糊包含：
+//     菜名里恰好叫「合计」的概率极低，而模糊匹配会误杀「合计拼盘」这类真菜。
+const NOISE_FIRST = ['合计', '小计', '总计', '汇总', '共计', '累计', '本页合计',
+  'Total', 'TOTAL', '合计行', '总计金额'];
+const HEADER_FIRST = ['菜品名称', '菜名', '品名', '商品名称', '菜品', '名称', '菜品名'];
+function isNoiseLine(raw) {
+  const s = String(raw == null ? '' : raw).replace(/\r/g, '').trim();
+  if (!s) return true;
+  const first = s.split(/\t|[,，、/｜|]|\s+/)[0].trim();
+  return NOISE_FIRST.indexOf(first) >= 0 || HEADER_FIRST.indexOf(first) >= 0;
+}
+
 function parseDishLine(raw) {
   if (raw == null) return null;
   const s = String(raw).replace(/\r/g, '').trim();
-  if (!s) return null;
+  if (!s || isNoiseLine(raw)) return null;   // R698：表头/合计行不当菜
   // 分隔符：**有制表符就只按制表符切**（Excel/收银机复制出来的就是列分隔），
   //   否则退回「逗号/顿号/斜杠/竖线/空白」。
   // 🔴 为什么要先判制表符：Excel 复制的金额常带千分位 `1,280`，若同时接受逗号，
@@ -229,4 +244,4 @@ function prefillOf(draft) {
   };
 }
 
-module.exports = { CAT_KEYWORDS, parseDishLine, parseDishLines, matchCategory, buildDraftCard, draftStatusOf, draftIssues, prefillOf, hasThousandsSeparator, IMPORT_NO_AUTOSAVE, DRAFT_PREFILL_KEY };
+module.exports = { CAT_KEYWORDS, isNoiseLine, parseDishLine, parseDishLines, matchCategory, buildDraftCard, draftStatusOf, draftIssues, prefillOf, hasThousandsSeparator, IMPORT_NO_AUTOSAVE, DRAFT_PREFILL_KEY };

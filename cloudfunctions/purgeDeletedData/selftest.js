@@ -175,7 +175,7 @@ async function run() {
   check('含 shop_id 的集合全部有归属（删或显式保护）', uncovered.length === 0,
     uncovered.length ? '未登记：' + uncovered.join(',') : `覆盖 ${byShop.length} 张`);
   check('shop_payment_flow 在保护清单（电子商务法 3 年）', protList.includes('shop_payment_flow'));
-  check('audit_log 不在保护清单、而在删除清单（R688 修订：随经营数据 30 天删）',
+  check('audit_log 不在保护清单、而在删除清单（R688 修订：随经营数据 15 天删，与 RETENTION_DAYS 同源）',
     !protList.includes('audit_log') && delList.includes('audit_log'));
   check('audit_log 排在删除清单第一位（先清旧审计，再写本轮清理审计）',
     delList[0] === 'audit_log', `首位=${delList[0]}`);

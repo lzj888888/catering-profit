@@ -1,6 +1,8 @@
 // utils/dishImport.selftest.js —— P0-4 批量导入纯逻辑单源守卫（26 断言）
 // 形状约束（R66）：顶层无 IIFE；process.exit 仅在末块；断言失败以 ✅/❌ 明细 + 末行 `==== ... N 通过 / M 失败 ====` 汇总。
-const { parseDishLine, parseDishLines, matchCategory, buildDraftCard, draftStatusOf, prefillOf, hasThousandsSeparator, IMPORT_NO_AUTOSAVE } = require('./dishImport.js');
+const fs = require('fs');
+const path = require('path');
+const { isNoiseLine, parseDishLine, parseDishLines, matchCategory, buildDraftCard, draftStatusOf, prefillOf, hasThousandsSeparator, IMPORT_NO_AUTOSAVE } = require('./dishImport.js');
 
 let pass = 0, fail = 0;
 function ok(name, cond) {
@@ -96,6 +98,38 @@ ok('R696-③ 单数字仍正常取（设计目标三列不受影响）',
 ok('R696-④ 无数字（只有菜名+分类）不误判 ambiguous',
   (() => { const r = parseDishLine('红烧肉\t热菜');
     return r.priceYuan === null && r.ambiguous === false; })());
+
+// ===== R698：真实报表样式样本（豆包按美团管家/客如云后台导出的真实列序复现）=====
+// 来源：review/evidence/r698_realforms/pos_forms_doubao.txt
+// ⚠️ 这是「按真实样式复现」，不是从抖音/头条抓下来的原单据；算术已由本守卫独立复算核对。
+// 价值：手写三列样本测不出「整表粘贴」的障碍 —— 真实报表带表头行、合计行、3~4 个数字列。
+const SAMPLE = fs.readFileSync(path.join(__dirname, '..', 'review', 'evidence',
+  'r698_realforms', 'pos_forms_doubao.txt'), 'utf8');
+const secA = SAMPLE.split('=== A')[1].split('=== B')[0]
+  .split(/\r?\n/).filter(function (l) { return l.indexOf('\t') >= 0 || l.indexOf('菜品名称') === 0; });
+const rowsA = parseDishLines(secA.join('\n'));
+
+// 独立复算（不采信样本自带的 EXPECT 行）
+let qty = 0, amt = 0;
+secA.forEach(function (l) {
+  const p = l.split('\t');
+  if (/^\d+$/.test(String(p[2] || '').trim()) && !isNoiseLine(l)) { qty += Number(p[2]); amt += Number(p[3]); }
+});
+ok('R698-① 样本 A 算术自洽：销量 44 / 销售额 1166（先证明样本可信）',
+  qty === 44 && amt === 1166, qty + '/' + amt);
+ok('R698-② 整表粘贴 ⇒ 11 道菜（表头行与「合计」行都被拦掉）',
+  rowsA.length === 11, '实际 ' + rowsA.length);
+ok('R698-③ 不会多出一张叫「合计」的成本卡',
+  !rowsA.some(function (r) { return r.name.indexOf('合计') >= 0; }),
+  rowsA.map(function (r) { return r.name; }).join('、'));
+ok('R698-④ 真实多列格式下 R696 生效：每行都不猜售价',
+  rowsA.every(function (r) { return r.ambiguous === true && r.priceYuan === null; }));
+ok('R698-⑤ isNoiseLine 精确匹配：真菜名「合计拼盘」不得被误杀',
+  !isNoiseLine('合计拼盘\t热菜\t68'));
+ok('R698-⑥ 常见合计/表头别名都拦得住',
+  isNoiseLine('小计\t10\t200') && isNoiseLine('总计 100 999')
+  && isNoiseLine('菜品名称\t菜品分类\t销售数量\t销售额\t单价'));
+
 
 console.log('==== 菜品批量导入逻辑自测结果：' + pass + ' 通过 / ' + fail + ' 失败 ====');
 process.exit(fail === 0 ? 0 : 1);

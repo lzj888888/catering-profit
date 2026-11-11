@@ -288,5 +288,40 @@ if (weak.length) {
   weak.slice(0, 10).forEach((w) => console.log(`     ${w}`));
 }
 
+
+// ===== D 组（R698）：对外删除口径 ≡ 代码常量 =====
+// 根因：`dataCleanNote` 曾写「不硬删…周备份保留 30 天」，而 R688 实现的是
+//   15 天物理删除 + 每月备份保留 2 期；注销确认文案与隐私政策又各写一套。
+//   三处对外陈述互相打架，且**全仓零守卫**。这里把数字从代码常量解析出来再比，
+//   改了 RETENTION_DAYS / KEEP_EPOCHS 却不改文案 ⇒ 当场红。
+const purgeSrc = fs.readFileSync(path.join(ROOT, 'cloudfunctions/purgeDeletedData/index.js'), 'utf8');
+const backSrc = fs.readFileSync(path.join(ROOT, 'cloudfunctions/dbBackup/index.js'), 'utf8');
+const termSrc = fs.readFileSync(path.join(ROOT, 'miniprogram/i18n/terms.js'), 'utf8');
+const mRet = /const\s+RETENTION_DAYS\s*=\s*(\d+)\s*;/.exec(purgeSrc);
+const mKeep = /const\s+KEEP_EPOCHS\s*=\s*(\d+)\s*;/.exec(backSrc);
+const mNote = /dataCleanNote:\s*'([^']*)'/.exec(termSrc);
+const policySrc = fs.readFileSync(path.join(ROOT, DOC_REL), 'utf8');
+check('D-① 前提：两个常量与对外文案都能解析出（fail-closed）',
+  !!(mRet && mKeep && mNote), `ret=${mRet && mRet[1]} keep=${mKeep && mKeep[1]} note=${!!mNote}`);
+if (mRet && mKeep && mNote) {
+  const ret = mRet[1], keep = mKeep[1], note = mNote[1];
+  check('D-② 「我的」页文案里的删除天数 ≡ RETENTION_DAYS（不是抄死数字）',
+    note.indexOf(ret + ' 天内彻底删除') >= 0, note);
+  check('D-③ 文案里的备份期数 ≡ KEEP_EPOCHS',
+    note.indexOf('最近 ' + keep + ' 期') >= 0, note);
+  check('D-④ 旧的错误陈述已清除（不硬删 / 周备份 / 保留 30 天）',
+    !/不硬删|周备份|保留\s*30\s*天/.test(note), note);
+  check('D-⑤ 支付记录 3 年法定口径仍在文案里（别改丢了）',
+    /3\s*年/.test(note), note);
+  check('D-⑥ 隐私政策同步写了物理删除 + 与常量一致的天数/期数',
+    /物理删除/.test(policySrc)
+    && policySrc.indexOf(ret + ' 天后') >= 0
+    && policySrc.indexOf('最近 ' + keep + ' 期') >= 0);
+  // 反恒真：把正确数字换成错的，判据必须失效（证明不是恒真）
+  const badNote = note.replace(ret + ' 天内彻底删除', '999 天内彻底删除');
+  check('D-⑦ 反恒真：把天数改错 ⇒ D-② 必须不通过（证明判据有分辨力）',
+    badNote.indexOf(ret + ' 天内彻底删除') < 0);
+}
+
 console.log(`\n===== 隐私收集项清单口径守卫结果：${pass} 通过 / ${fails.length} 失败 =====`);
 process.exit(fails.length === 0 ? 0 : 1);
