@@ -35,6 +35,13 @@
   <view class="btn primary" bindtap="onParse">{{t.parse}}</view>
 
   <block wx:if="{{rows.length}}">
+    <!-- 🔴 R711：这是上次那批（页面被销毁过又回来了，自动接上）。
+         必须同时说清两件事：**这是上次的**（否则老板以为刚粘的）、**已补几道 / 还剩几道**
+         （否则他会把补过的再补一遍、同名的卡重复建）。整条可点收起。 -->
+    <view class="imp-resume" wx:if="{{resumeTip}}" bindtap="onDismissResume">
+      <text class="imp-resume-text">{{resumeTip}}</text>
+      <text class="imp-resume-tap">{{resumeClose}}</text>
+    </view>
     <view class="imp-summary">{{summaryText}}</view>
     <!-- R702（P0-B）：对账行 —— 粘贴行数 / 识别道数 / 跳过行数 / 已填价合计。
          老板拿它与自己的菜单核一眼，能当场发现「只识别出一半」这类问题，

@@ -66,11 +66,69 @@ Page({
     matTipBtn: false,
     catOptions: CAT_OPTIONS,
     parsed: false,      // 是否已解析过（未解析时不显示空态提示，免得一进来就报错）
+    resumeTip: '',      // 🔴 R711：接上了上次那批时的说明（空 = 没有可接的）
+    resumeClose: TERMS.card.impResumeClose,
   },
 
   onLoad() {
     ui.setTitle(TERMS.card.impTitle);
     this.loadMaterials();
+    this.restoreBatch();
+  },
+
+  // 🔴 R711：接上「上次没做完的那批」。
+  //
+  // 为什么这不是锦上添花：页面被销毁是**必现**路径 —— 老板补了 5 道、想回 M3 看一眼别的、
+  // 再点进来，页面就重建了。而重来一遍的代价**不对称**：已补完那 5 道云端已经有卡，
+  // 可重新粘贴后每行都是 `saved:false`、看着像一道没做过 ⇒ 老板会再补一遍、同名的卡被重复建。
+  // ⇒ 关键不是「省一次粘贴」，是**让 saved 标记跟着整批活下来**。
+  //
+  // 三条纪律：
+  //   ① fail-closed：读不到 / 结构不对 / 过期 ⇒ 就当没有，绝不半信半疑恢复半张表；
+  //   ② status/reason **不吃缓存的旧结论**，一律 decorate 现算（DI 的口径以后改了也不怕）；
+  //   ③ 过期顺手删 key —— 否则一个坏 key 会在这里被反复读、反复判、永远清不掉。
+  restoreBatch() {
+    let cache = null;
+    try {
+      cache = wx.getStorageSync(DI.BATCH_CACHE_KEY);
+    } catch (e) {
+      return;   // 读不到就当没有，绝不因为缓存坏了让页面起不来
+    }
+    if (!cache) return;
+    if (!DI.isBatchFresh(cache, Date.now())) {
+      try { wx.removeStorageSync(DI.BATCH_CACHE_KEY); } catch (e) { /* noop */ }
+      return;
+    }
+    const rows = cache.rows.map((r) => this.decorate(r));
+    this._rawN = Number(cache.rawN) || rows.length;
+    const done = rows.filter((r) => r.saved).length;
+    const left = rows.length - done;
+    this.setData({
+      text: String(cache.text || ''),
+      rows,
+      parsed: true,
+      blockTip: '',
+      resumeTip: left === 0 ? TERMS.card.impResumeNone(rows.length)
+        : (done === 0 ? TERMS.card.impResumeSingle(left) : TERMS.card.impResumeSome(left, done)),
+    });
+    this.syncSummary(rows);
+  },
+
+  onDismissResume() { this.setData({ resumeTip: '' }); },
+
+  // 整批落盘（**含 saved 标记**）。凡是会改变「补齐进度」的动作之后都必须调一次。
+  //   失败**不 toast**：这是背景动作，报出来只会让老板以为哪儿出错了；顶多下次重来一遍。
+  persistBatch() {
+    const rows = this.data.rows || [];
+    if (!rows.length) return;   // 空批次不落盘 —— 否则一次解析失败会把上一批覆盖成空壳
+    try {
+      wx.setStorageSync(DI.BATCH_CACHE_KEY, {
+        text: String(this.data.text || ''),
+        rows,
+        rawN: this._rawN || rows.length,
+        ts: Date.now(),
+      });
+    } catch (e) { /* noop */ }
   },
 
   // 🔴 R704（李老师真机「有点发懵」的根因，产品层）：
@@ -136,6 +194,8 @@ Page({
       const next = rows.slice();
       next[idx] = Object.assign({}, next[idx], { saved: true });
       this.setData({ rows: next });
+      // 🔴 R711：saved 标记必须立刻落盘 —— 它就是「老板不用重补」的唯一依据
+      this.persistBatch();
       wx.showToast({ title: TERMS.card.impSavedOk(name), icon: 'none' });
     } catch (e) {
       // 查不到就不标：宁可不标，不标错
@@ -169,6 +229,13 @@ Page({
 
   onParse(text) {
     // text 可选：剪贴板贴完直接把新文本递进来，避免依赖 setData 之后 this.data 的时序。
+    // 🔴 R711：但**data.text 也必须跟着对齐** —— persistBatch 存的是 `this.data.text`，
+    //   只更新入参不更新 data，落盘的原文就会是上一版（甚至空串）⇒ 下次恢复"有菜没原文"。
+    //   （这是页面桩抓出来的：真机走 textarea 时 onInput 已经写过 data，所以肉眼看不出来，
+    //     但「传参进来」这条路径一直是错的。）
+    if (typeof text === 'string' && text !== this.data.text) {
+      this.setData({ text: text });
+    }
     const src = (typeof text === 'string') ? text : String(this.data.text || '');
     // 保留原始行用于「千分位」提示：parseDishLines 会跳过空行，索引对不上 ⇒ 这里自己逐行走。
     const raws = src.split('\n')
@@ -201,8 +268,10 @@ Page({
       wx.showToast({ title: TERMS.card.impNoRows, icon: 'none' });
       return;
     }
-    this.setData({ rows, parsed: true, blockTip: '' });
+    this.setData({ rows, parsed: true, blockTip: '', resumeTip: '' });
     this.syncSummary(rows);
+    // 🔴 R711：解析成功即落盘 —— 从这一刻起这批就是「老板的活」，后面每次进度变化都要跟着写
+    this.persistBatch();
   },
 
   // 单行 → 展示项（品类匹配 / 草稿骨架 / 三色 / 缺项提示 全部走 dishImport 单源）
@@ -290,6 +359,7 @@ Page({
     rows[idx] = this.decorate(row);
     this.setData({ rows });
     this.syncSummary(rows);
+    this.persistBatch();
   },
 
   onPickCat(e) {
@@ -313,6 +383,7 @@ Page({
     }));
     this.setData({ rows });
     this.syncSummary(rows);
+    this.persistBatch();
   },
 
   // ===== 去补价 =====

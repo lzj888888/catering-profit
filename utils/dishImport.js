@@ -352,6 +352,36 @@ const IMPORT_NO_AUTOSAVE = '草稿只预填菜名/分类/售价与示例主料�
 // 导入页 → 编辑页 传草稿的**本地暂存键**（单源：两页各写一遍字符串迟早拼错，且拼错是静默不预填）。
 const DRAFT_PREFILL_KEY = 'DISH_IMPORT_DRAFT_ONE';
 
+// 🔴 R711：**整批**的本地暂存键（R711 之前只有「一道菜的草稿」落盘，整批 rows 和粘贴原文
+//   全躺在页面 data 里）。为什么必须落盘 —— 页面被销毁是**必现**路径，不是极端情况：
+//   老板补了 5 道 → 想回 M3 看一眼别的 → 再点进来 ⇒ 页面重建 ⇒ text 和 rows 全空。
+//   更坏的是重来一遍的代价不对称：已补完的 5 道**云端已经有卡**，可重新粘贴后每行都是
+//   `saved:false`、看着像没做过 ⇒ 老板会再补一遍，同名的卡被重复建。
+//   ⇒ saved 标记必须跟着整批一起活下来，这才是「不用重做」的关键，不只是省一次粘贴。
+const BATCH_CACHE_KEY = 'DISH_IMPORT_BATCH';
+// 批次有效期：7 天。不是为了省存储，是为了别让老板半年后进来看见一堆早已无关的菜名，
+//   还得自己判断"这是什么时候的"。过期就静默丢弃（比弹一句「有旧数据要恢复吗」干净）。
+const BATCH_TTL_MS = 7 * 24 * 3600 * 1000;
+
+/**
+ * 判断本地缓存能不能用来恢复。**纯函数**（时间由调用方传入）⇒ 可被门禁直接打。
+ * fail-closed：任何结构不对就当没有，绝不半信半疑地恢复半张表。
+ */
+function isBatchFresh(cache, nowMs) {
+  if (!cache || typeof cache !== 'object') return false;
+  if (typeof cache.text !== 'string' || !cache.text) return false;
+  if (!Array.isArray(cache.rows) || !cache.rows.length) return false;
+  const ts = Number(cache.ts);
+  if (!isFinite(ts) || ts <= 0) return false;
+  const now = Number(nowMs);
+  if (!isFinite(now)) return false;
+  // 未来时间戳（改过系统时间/时钟漂移）也当过期：不然「7 天后」永远算不到。
+  if (ts > now) return false;
+  if (now - ts > BATCH_TTL_MS) return false;
+  // 每一行至少得有名字和 draft 骨架，否则恢复出来是不能用的空壳
+  return cache.rows.every(function (r) { return r && typeof r.name === 'string' && r.name && r.draft; });
+}
+
 /**
  * 草稿卡 → 编辑页 `setData` 片段（唯一映射点，避免页面各写一遍字段名）。
  * 返回的 `lines` 已是编辑页行形态（含 picker 需要的 `qty_unit` / `price_unit`），
@@ -385,4 +415,4 @@ function prefillOf(draft) {
   };
 }
 
-module.exports = { CAT_KEYWORDS, isNoiseLine, detectColumns, diagnosePaste, looksLikeCode, COMBO_SIGN, parseDishLine, parseDishLines, matchCategory, buildDraftCard, draftStatusOf, draftIssues, prefillOf, hasThousandsSeparator, IMPORT_NO_AUTOSAVE, DRAFT_PREFILL_KEY };
+module.exports = { CAT_KEYWORDS, isNoiseLine, detectColumns, diagnosePaste, looksLikeCode, COMBO_SIGN, parseDishLine, parseDishLines, matchCategory, buildDraftCard, draftStatusOf, draftIssues, prefillOf, hasThousandsSeparator, IMPORT_NO_AUTOSAVE, DRAFT_PREFILL_KEY, BATCH_CACHE_KEY, BATCH_TTL_MS, isBatchFresh };
