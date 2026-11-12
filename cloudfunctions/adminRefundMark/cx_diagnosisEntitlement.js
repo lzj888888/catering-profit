@@ -13,10 +13,17 @@
 //
 // 🔴 前置事实（实测，不是假设）：`shop_entitlement` 只有 `expire_at` + `source`，**不记 plan_id**。
 //   `source` 是 'manual' / 订单来源，不是档位。⇒ 判定层**读不到用户买的是哪一档**。
-//   当前唯一的可依赖事实：启用的订阅档（月/季/年）**全部** `diag_unlimited:true`（李老师 2026-11-05 拍板）。
-//   ⇒ 判定简化为「isPaid ⇒ 期内不限次诊断」，并由 `tools/check_diag_entitlement.js` 的 S-③
-//     断言「所有 enabled 订阅档都含 diag_unlimited」，防止**将来新增一档不含诊断的订阅**
-//     时这条推导静默变成错的（那时必须改成读档位，不能靠注释提醒）。
+//   当前唯一的可依赖事实：启用的**订阅**档（月/季/年）**全部** `diag_unlimited:true`（李老师 2026-11-05 拍板）。
+//   口径要精确：`SEED_PLANS` 里 `plan_diag_single`（单次诊断档，grants='diag_credit'）是 enabled
+//   但 `diag_unlimited:false` —— 它不是订阅档，靠 `diag_credits` 走「单次额度」分支，两者不矛盾。
+//   ⇒ 判定简化为「isPaid ⇒ 期内不限次诊断」，并由 `tools/check_diag_entitlement.js` 的 **S-①**
+//     断言「所有 enabled 且非单次诊断的档都含 diag_unlimited:true」（**从 SEED_PLANS 实算，不手抄清单**），
+//     防止**将来新增一档不含诊断的订阅**时这条推导静默变成错的（那时必须改成读档位，不能靠注释提醒）。
+//     ⚠️ 该守卫 2026-11-12 之前**从未存在**（本注释一直指向一个不存在的文件），已由 R724c 补齐。
+//
+// 🔴 接线现状（R724c · 台账 R3-4）：本函数在 `getDiagnosis/index.js` **尚未被调用**，
+//   因为 `payFlags.FREE_ACCESS = true`（提审期全开）。翻成 false 前必须接线，
+//   由同一守卫的 W-② 在那一刻判红强制，不允许静默漏网。
 //
 // ⚠️ 新增符号必须在 common/index.js 聚合入口同步导出（genId 事故族；伴侣守卫 tools/check_requires.js §2）。
 

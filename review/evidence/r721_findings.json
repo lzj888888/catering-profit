@@ -228,13 +228,15 @@
       "id": "R3-4",
       "source": "R3-security",
       "severity": "P1",
-      "title": "getDiagnosis 无付费/额度闸门，canRunDiagnosis 零调用",
+      "title": "getDiagnosis 无付费/额度闸门，canRunDiagnosis 零调用（且注释指向的守卫文件从不存在）",
       "evidence": "cloudfunctions/getDiagnosis/index.js:30",
       "verified_by": "R3-推测",
-      "status": "deferred",
+      "status": "fixed",
       "verified": false,
-      "priority": "P1",
-      "next_action": "FREE_ACCESS 切 false 前接 canRunDiagnosis 并落 shop_diagnosis_report"
+      "priority": "",
+      "next_action": "",
+      "fix_evidence": "补上 tools/check_diag_entitlement.js（25 断言，此前只被 20 处注释引用、文件从不存在）：A 判据六分支顺序 8 条 / B fail-closed 5 条 / S 档位前提从 SEED_PLANS 实算 3 条 / W 接线一致性 4 条 / R 单源↔副本常量漂移 1 条 / D 4 条变异全部 exit=1 点名。**接线本身按 FREE_ACCESS=true 阶段不做**（见 challenge），改由 W-② 在 FREE_ACCESS 翻 false 时判红强制；getDiagnosis/index.js 已写明暂不接的原因与恢复条件；单源注释的断言编号 S-③→S-① 已校正并同步 59 个云函数副本",
+      "challenge": "两处唱反调。反方1「为什么不直接把闸门接上」：FREE_ACCESS=true 是当前产品口径（提审期全开），擅自接会突然把老板挡在诊断外，等于擅自改产品行为；且 canRunDiagnosis 依赖 shop_diagnosis_report 落库，而该表当前压根没有任何写入，硬接会让所有人 need_pay。⇒ 不接。反方2「补一个现在永远绿的守卫是不是假装修了」：W-③ 用「假如翻成 false」直接验证同一份入口会判 must_wire、W-④ 验证「没接线又没写原因」判 unexplained —— 有分辨力，不是恒真；且它同时补上了「注释承诺了守卫但文件不存在」这个真事实。⇒ 采纳。"
     },
     {
       "id": "R3-5",

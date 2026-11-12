@@ -8,6 +8,16 @@
 //   ② 诊断是低频（一季一次）且要独立计费/缓存，不该和月度账耦合。
 //
 // 安全：与其它读接口一致 —— resolveAuth + assertShopOwner（越权读别家店铺一律拒）。
+//
+// 🔴 R724c（台账 R3-4）：**深度诊断的付费/额度闸门尚未接线** —— 这是当前阶段的明确决定，不是遗漏。
+//   `common/diagnosisEntitlement.js::canRunDiagnosis` 已完整实现（24h 缓存去重 / 限流 /
+//   订阅期内不限次 / 单次额度 / 读失败 fail-closed），但本入口一次都没调用它。
+//   原因：`common/payFlags.js` 的 FREE_ACCESS = true（提审期、未接虚拟支付），语义是
+//   「不把用户挡在功能外」，与 M1/M2/M3 的既有付费墙共用同一个开关。
+//   ⇒ 什么时候必须接：把 FREE_ACCESS 改成 false **之前**必须先接线，并同时落
+//     `shop_diagnosis_report`（canRunDiagnosis 的 24h 去重与限流都依赖这张表）。
+//   ⇒ 谁来盯：`tools/check_diag_entitlement.js` 的 W-② 会在 FREE_ACCESS 翻成 false 的
+//     那一刻判红（现在绿是因为本段说明在场）；翻开关时没人能「忘了接」。
 const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();

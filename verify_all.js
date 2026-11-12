@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：296 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：297 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1667,6 +1667,18 @@ const SUITES = [
   //   （wx:for 的 0 起索引）吞成 -1 ⇒ 第一行点不动（李老师反复报过的「点不动」同型）。
   //   B 组 17 + P 组 14 + D 组 7 条变异回灌，全部 exit=1 点名。
   ['material-pages-stub', 'tools/check_material_pages_stub.js'],
+  // R724c · 台账 R3-4：深度诊断权益判定守卫。补上**注释长期指向但不存在的文件**
+  //   （common/diagnosisEntitlement.js 一直写「由 tools/check_diag_entitlement.js 的 S-③ 断言」，
+  //   而该文件从没被创建；20 处云端副本都这么写）。
+  //   更要紧的是接线现状：canRunDiagnosis 的缓存去重/限流/订阅/单次额度/fail-closed 全写好了，
+  //   但 getDiagnosis/index.js 一次都没调用 ⇒ 诊断当前完全免费。这**不是 bug**：
+  //   payFlags.FREE_ACCESS = true（提审期全开，与 M1/M2/M3 同一开关）。
+  //   真正的风险是将来翻开关时诊断成为唯一漏网的付费品且零报错。
+  //   ⇒ 本守卫不擅自接线（那会改变当前产品行为），而是把「FREE_ACCESS=false 时诊断必须接线」
+  //     变成机器判据：W-② 现在绿，翻开关那一刻自动红，没人能忘。
+  //   A 六分支顺序 / B fail-closed / S 档位前提从 SEED_PLANS 实算 / W 接线一致性 /
+  //   R 单源↔副本常量漂移 / D 4 条变异回灌（全部 exit=1 点名）。
+  ['diag-entitlement', 'tools/check_diag_entitlement.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
