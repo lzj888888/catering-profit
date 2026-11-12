@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：290 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：291 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1609,6 +1609,17 @@ const SUITES = [
   //      （hub 副标题写着四字「销量导入」绕过 A-① 的六字拦截；排行榜空态把人赶去外卖页导入，
   //       而本页自己就有按钮）⇒ 补 A-③/A-⑤ 两条位置判据 + 两条反恒真。
   ['m3-chain-clarity', 'tools/check_m3_chain_clarity.js'],
+  // R718：两套餐饮账单「数据会不会重叠」审计守卫。李老师 2026-11-12 原话：
+  //   「深度审计 M3 模块，提前准备餐饮账单去跑通，同时数据要输入 2 套不同的账，
+  //     看看会不会数据有重叠在一起的情况以及其他情况」。
+  //   准备两套**真能导入**的账单（不同店/不同月/不同平台：外卖形态C CSV + 堂食形态A xlsx
+  //   + M1 账本 + 成本卡），用生产纯函数真解析 → 真生成 _id → 真落内存库 → 按店/月读。
+  //   结论：云端 14 行 _id 全唯一、where(shop) 两账不混入、账单列表/复盘榜/对账各算各（🟢）；
+  //   但实锤两条**本地缓存跨店**缺陷：DISH_IMPORT_BATCH 全局 key ⇒ B 店读到 A 店整批进度；
+  //   draft_month_input_ 只带 month 不带 shop ⇒ B 店同月覆盖、A 店草稿丢失（🔴，报告已登记待拍板）。
+  //   另登记：不传月份区间会两月累加（506 份/805200 分，靠前端自觉的契约缺口 🟡）。
+  //   42 断言 + 7 条真变异回灌（临时改坏产品源码/账单/报告，跑完恢复，逐条点名）。
+  ['two-books-isolation', 'tools/check_two_books_isolation.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

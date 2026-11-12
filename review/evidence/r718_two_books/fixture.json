@@ -1,0 +1,187 @@
+{
+  "meta": {
+    "purpose": "R718 两套账隔离审计：同店/跨店、同月/跨月、同平台/跨平台",
+    "generated_by": "review/evidence/r718_two_books/make_bills.py",
+    "unit": "金额一律分(fen)；比例百分数"
+  },
+  "books": {
+    "A": {
+      "shop_id": "shop_guanyinqiao",
+      "shop_name": "老巷小面·观音桥店",
+      "month": "2026-09",
+      "takeaway_platform": "meituan",
+      "takeaway_rows": [
+        [
+          "20260905",
+          "小面",
+          30,
+          360.0
+        ],
+        [
+          "20260905",
+          "牛肉面",
+          20,
+          480.0
+        ],
+        [
+          "20260906",
+          "小面",
+          25,
+          300.0
+        ],
+        [
+          "20260906",
+          "牛肉面",
+          15,
+          360.0
+        ]
+      ],
+      "dine_period": "2026/09/07 至 2026/09/13",
+      "dine_biz_date": "2026-09-13",
+      "dine_rows": [
+        [
+          "小面",
+          120,
+          1440.0
+        ],
+        [
+          "牛肉面",
+          80,
+          1920.0
+        ],
+        [
+          "抄手",
+          60,
+          720.0
+        ]
+      ],
+      "ledger": {
+        "month": "2026-09",
+        "dine_in_fen": 408000,
+        "takeaway_fen": 150000,
+        "material_cost_fen": 250000
+      },
+      "cards": [
+        {
+          "card_code": "A_XM",
+          "name": "小面",
+          "price_fen": 1200,
+          "total_cost_fen": 400
+        },
+        {
+          "card_code": "A_NRM",
+          "name": "牛肉面",
+          "price_fen": 2400,
+          "total_cost_fen": 900
+        },
+        {
+          "card_code": "A_CS",
+          "name": "抄手",
+          "price_fen": 1200,
+          "total_cost_fen": 500
+        }
+      ],
+      "expect": {
+        "takeaway_qty": 90,
+        "takeaway_amount_fen": 150000,
+        "dine_qty": 260,
+        "dine_amount_fen": 408000,
+        "actual_income_fen": 558000,
+        "food_cost_fen": 250000,
+        "menu_margin_pct": 62.5
+      }
+    },
+    "B": {
+      "shop_id": "shop_jiefangbei",
+      "shop_name": "老巷小面·解放碑店",
+      "month": "2026-10",
+      "takeaway_platform": "eleme",
+      "takeaway_rows": [
+        [
+          "20261005",
+          "小面",
+          10,
+          120.0
+        ],
+        [
+          "20261005",
+          "抄手",
+          8,
+          96.0
+        ],
+        [
+          "20261006",
+          "小面",
+          12,
+          144.0
+        ],
+        [
+          "20261006",
+          "抄手",
+          6,
+          72.0
+        ]
+      ],
+      "dine_period": "2026/10/05 至 2026/10/11",
+      "dine_biz_date": "2026-10-11",
+      "dine_rows": [
+        [
+          "米线",
+          50,
+          800.0
+        ],
+        [
+          "肥肠面",
+          40,
+          880.0
+        ],
+        [
+          "抄手",
+          30,
+          360.0
+        ]
+      ],
+      "ledger": {
+        "month": "2026-10",
+        "dine_in_fen": 204000,
+        "takeaway_fen": 43200,
+        "material_cost_fen": 120000
+      },
+      "cards": [
+        {
+          "card_code": "B_XM",
+          "name": "小面",
+          "price_fen": 1200,
+          "total_cost_fen": 420
+        },
+        {
+          "card_code": "B_CS",
+          "name": "抄手",
+          "price_fen": 1200,
+          "total_cost_fen": 520
+        },
+        {
+          "card_code": "B_MX",
+          "name": "米线",
+          "price_fen": 1600,
+          "total_cost_fen": 600
+        },
+        {
+          "card_code": "B_FCM",
+          "name": "肥肠面",
+          "price_fen": 2200,
+          "total_cost_fen": 850
+        }
+      ],
+      "expect": {
+        "takeaway_qty": 36,
+        "takeaway_amount_fen": 43200,
+        "dine_qty": 120,
+        "dine_amount_fen": 204000,
+        "actual_income_fen": 247200,
+        "food_cost_fen": 120000,
+        "menu_margin_pct": 61.45
+      }
+    }
+  }
+}
