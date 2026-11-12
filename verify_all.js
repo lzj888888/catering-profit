@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：300 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：301 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1703,6 +1703,16 @@ const SUITES = [
   //   ⑤ pinned 标记没打在数据上（WXML 不支持方法调用，必须在 JS 算好）。
   //   A 装配 9 / B 过滤排序 9 / C 置顶 4 / D 虚拟只读 5 / E 删除 3 / F 导航 3 / M 4 条变异。
   ['material-index-stub', 'tools/check_material_index_stub.js'],
+  // R724g · 台账 R1-8（零桩页第四个）：资产编辑 —— 一次性投入/分期摊销的**唯一录入入口**，
+  //   落库直接进台账与双利润引擎。四类静默错误：
+  //   ① 金额读不成数字被静默按 0 存（#549：yuanToFen 对「12,000」fail-soft 返回 0）
+  //      —— 必须保存前硬拦，且要给**指名提示**（拦住≠给对原因：第二道 fen>0 也拦得住，
+  //      但只会说「请填金额」，老板不知道是千分位的问题）；
+  //   ② 校验顺序（名称 → 金额可读 → 金额>0 → 起始月 → 月数）；
+  //   ③ lump 没强制 total_months=1（跟随老板填的值 ⇒ 一次算清被摊成多月，当月利润虚高）；
+  //   ④ 删除文案整块覆盖 t（实测丢 33 个词条 ⇒ 界面一片空白）。
+  //   A onLoad 6 / B 回填 7 / C 校验 9 / D 载荷 8 / E 删除 3 / M 4 条变异。
+  ['asset-edit-stub', 'tools/check_asset_edit_stub.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
