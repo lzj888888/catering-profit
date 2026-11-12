@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：302 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：303 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1722,6 +1722,12 @@ const SUITES = [
   //   H-① 关时为空 / H-② 开时非空（分辨力：跟着开关走，不是删掉）/ H-③ 每处带 wx:if /
   //   H-④ 前后端开关互为取反 / H-⑤ 引用单源 / H-⑥ 变异回灌。
   ['hub-paytag', 'tools/check_hub_paytag.js'],
+  // R724j · 台账 R1-8（零桩页第五个）：店铺设置。页面只有 71 行，但有一处跨页互踩的雷：
+  //   2026-09-20 把「库存/摊销」核算开关迁出本页到月度录入页 ⇒ 本页 onSave **绝不能传 switches**
+  //   （saveShopSetting 语义是「未传=不动库」，传了就把老板刚选的核算方式静默冲掉，界面照提示「已保存」）。
+  //   另有两条：保存后不重拉 ⇒ 返回上一页还是旧店名；onShow 改读缓存 ⇒ 别处改完回来看到旧值。
+  //   A 读回 4 / B 保存载荷 6 / C 生命周期 2 / M 2 条变异。
+  ['shop-setting-stub', 'tools/check_shop_setting_stub.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

@@ -11,7 +11,23 @@
 .mode-tab { flex: 1; text-align: center; font-size: 28rpx; color: #776C5E; min-height: 88rpx; line-height: 88rpx; border-radius: 10rpx; }
 .mode-tab.on { background: #1e3a5f; color: #fff; font-weight: 600; }
 .mode-desc { font-size: 28rpx; color: #776C5E; line-height: 1.5; margin: 6rpx 4rpx 12rpx; }
-.base-note { font-size: 28rpx; color: #b45309; line-height: 1.5; margin: 0 4rpx 16rpx; padding: 10rpx 16rpx; background: #fdf6ec; border-radius: 10rpx; }
+/* 🔴 R724j（台账 R2-6）：口径说明块**降视觉重量**。
+   改前：浅黄底 + 整块 padding + 圆角 ⇒ 首屏 4 个这样的块连成一片色块墙，
+   老板扫一眼就「整段跳过」（李老师真机原话同型问题）。
+   改后：去底色、去圆角，只留左侧一条竖线 + 内边距 ⇒ 从「4 个色块」变成
+   「4 行带标记的说明」，信息量一字未减、位置一字未动（check_takeaway_semantics
+   的 B-④ 位置断言照旧成立），但不再形成视觉阻断。
+   ⚠️ 字号仍 28rpx（AD 红线下限），颜色只调亮不改色相。 */
+.base-note {
+  font-size: 28rpx;
+  color: #a16207;
+  line-height: 1.5;
+  margin: 0 4rpx 14rpx;
+  padding: 2rpx 0 2rpx 16rpx;
+  background: transparent;
+  border-left: 4rpx solid #f0c680;
+  border-radius: 0;
+}
 
 /* 区块标题 */
 .sec { font-size: 30rpx; color: #1e3a5f; font-weight: 600; margin: 24rpx 0 10rpx; }

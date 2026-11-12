@@ -180,10 +180,12 @@
       "title": "外卖计算页首屏平铺 4 个橙色说明块，老板容易整段跳过",
       "evidence": "subpkg/biz/takeaway/index.wxml:16",
       "verified_by": "R2-已核实",
-      "status": "deferred",
+      "status": "fixed",
       "verified": true,
       "priority": "P1",
-      "next_action": "把 dishPriceNote/packNote/actualNote 收成对应字段旁折叠提示，首屏只留 1 条口径说明"
+      "next_action": "把 dishPriceNote/packNote/actualNote 收成对应字段旁折叠提示，首屏只留 1 条口径说明",
+      "fix_evidence": "**只降视觉重量，不动一个字、不动位置**：subpkg/biz/takeaway/index.wxss 的 .base-note 去掉浅黄底(#fdf6ec)+圆角+整块 padding，改为 background:transparent + border-left:4rpx solid #f0c680 + 左内边距 16rpx；字号保持 28rpx（AD 红线）。check_takeaway_semantics.js 新增 S-①~S-④ 4 条断言（规则可解析/不得回退色块/必须保留竖线/字号≥28rpx）。真变异：改回 background:#fdf6ec ⇒ S-② 转红 exit=1。模拟器复验：首屏说明从「4 个浅黄块连成一片」变成「4 行带竖线的说明」，且**「平台参数」由屏外变为首屏可见**（对照 02-takeaway.png 与 02-takeaway-after.png）",
+      "challenge": "三条备选方案都被否掉：①合并前两条文案 —— 不行，check_takeaway_semantics 的 B-④ 是**位置断言**（dishPriceNote 必须在填份数之前），合并/下移直接破坏 R715 定的语义；②改成折叠 —— 不行，本来就整段跳过的人不会去点开折叠，等于把信息藏得更深；③缩短文案 —— 只省 1 行，效果有限。真正压人的是**色块密度**（4 个黄块连成一片），不是字数 ⇒ 只改样式。代价是文字颜色从 #b45309 调亮到 #a16207 以适配无底背景，对比度略有下降，已用左竖线补足可识别性。"
     },
     {
       "id": "R3-1",
@@ -271,13 +273,13 @@
       "source": "R1-gate-blindspot",
       "severity": "P1",
       "title": "桩型守卫仍只占 15.2%（32/211 个 check_*.js），仍有多页只有静态形状守卫",
-      "evidence": "R724d~g 实扫 34 个 Page 页面 × 29 个桩型 tools：原零桩 8 个，已补 4 个（pages/index/index 32、month/amortize 34、material/index 37、month/assetEdit 37），剩 4 个",
+      "evidence": "R724d~j 实扫 34 个 Page 页面 × 30 个桩型 tools：原零桩 8 个，已补 5 个（pages/index 32、month/amortize 34、material/index 37、month/assetEdit 37、tools/shop/setting 14），剩 3 个",
       "verified_by": "R724-现扫",
       "status": "deferred",
       "verified": true,
       "challenge": "反方：桩型守卫成本高于静态守卫，是不是该接受 15% 这个比例？判断：不能——R724 补的两个桩当场抓出 R1-7（第一行点不动），正是形状守卫零感知的那类；比例低意味着大部分页面「写对了」但从没跑过。但也不该为凑比例乱补，只补高风险页（录入/算钱/授权类）。",
       "priority": "P1",
-      "next_action": "剩 4 个：shop/setting（店铺配置）→ tools/pay/orders（订单）→ tools/sandbox/compare / sandbox/list（低频，可最后）。每补一页必须带至少 1 条变异回灌，仍走 L2 桩层"
+      "next_action": "剩 3 个：tools/pay/orders（订单，商业化相关）→ tools/sandbox/compare、tools/sandbox/list（低频，可最后）。每补一页必须带至少 1 条变异回灌，仍走 L2 桩层"
     },
     {
       "id": "R3-6",
@@ -300,11 +302,12 @@
       "title": "本地 storage 残留三个历史 key（m3_dish_cats / sandbox_draft_v1 旧格式 / takeout_mode_旧shopid）未清理",
       "evidence": "R724i 模拟器实测 wx.getStorageInfoSync：m3_dish_cats=[]、sandbox_draft_v1=V1无shop_id字段、takeout_mode_shop_mu6j87v1itrs_2026-09=fast",
       "verified_by": "R724i 真云实测（2026-11-13）",
-      "status": "deferred",
+      "status": "fixed",
       "verified": true,
-      "challenge": "反方：现网读不到它们（key 拼法已变/缺字段被丢弃），清它是不是白干？判断：确实无害，但「读不到」依赖两件事同时成立——key 拼法不变 + 恢复逻辑仍然比对 shop_id。任一条被后人简化，就会读到脏值。属「低成本防御」而非「真 bug」，故 P2 不 P1。",
+      "challenge": "复核推翻了自己的结论。原判断「需要登出时逐个清这三个 key」是错的：clearStorageSync 本来就是全清，历史 key 早已被覆盖。但「全清」这件事此前**没有任何断言**——若将来有人为省事改成按 key 逐个删（历史上真出现过这种写法），三个历史 key 和导出清单 key 都会漏，而门禁照绿。所以保留这条待办的价值不在「清 key」，在「守住全清语义」。",
       "priority": "P2",
-      "next_action": "在 pages/mine/index.js::doLogout 的清理流程里并列加一步：干掉这三个历史 key（m3_dish_cats、sandbox_draft_v1、takeout_mode_*）。必须逐 key try/catch，且放在 clearStorageSync 之前（同 R3-1 导出件清理的教训）"
+      "next_action": "在 pages/mine/index.js::doLogout 的清理流程里并列加一步：干掉这三个历史 key（m3_dish_cats、sandbox_draft_v1、takeout_mode_*）。必须逐 key try/catch，且放在 clearStorageSync 之前（同 R3-1 导出件清理的教训）",
+      "fix_evidence": "**核查结论：无需改产品代码** —— pages/mine/index.js::doLogout 里的 wx.clearStorageSync() 已清全部 storage，三个历史 key 登出即清（原 next_action 写错了，登记时没查 doLogout）。真正补的是**保护「全清」语义**：tools/check_r723_p0_fixes.js 新增 B-⑦（前提：登出前 store 里确有 4 个 key，否则 B-⑧ 是空跑）+ B-⑧（登出后 store.size===0）。真变异验证：把 clearStorageSync 改成 removeStorageSync 单删 ⇒ B-⑧ 转红并列出 4 个残留（r723_exported_files / m3_dish_cats / sandbox_draft_v1 / takeout_mode_shop_mu6j87v1itrs_2026-09），整体 exit=1。"
     }
   ]
 }

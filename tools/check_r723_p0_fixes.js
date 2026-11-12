@@ -151,7 +151,19 @@ async function main() {
   global.setTimeout = (fn) => { fn(); return 0; };
   const S1 = loadMine();
   S1.store.set(EF.EXPORTED_FILES_KEY, NAMES.slice());
+  // R724j（台账 R3-7）：塞三个**历史残留 key** 进去，验「登出清空全部 storage」而不只是清当前认识的 key。
+  //   这三个 key 是 2026-11-13 模拟器实测在真机 storage 里发现的（R720 之前的裸写法 / 旧格式）。
+  //   它们本身无害（现网读不到），但「读不到」依赖 key 拼法与恢复逻辑两件事同时不变 ——
+  //   任一条被后人简化就会读到脏值。登出全清是最后的兜底。
+  S1.store.set('m3_dish_cats', []);
+  S1.store.set('sandbox_draft_v1', { v: 1 });
+  S1.store.set('takeout_mode_shop_mu6j87v1itrs_2026-09', 'fast');
+  const keysBefore = S1.store.size;
   await S1.p.doLogout();
+  ok('B-⑦ 前提：登出前 store 里确实有 4 个 key（含 1 个导出清单 + 3 个历史残留）—— 否则 B-⑧ 是空跑恒真',
+    keysBefore === 4, '登出前=' + keysBefore);
+  ok('B-⑧ 🔴 登出后 storage **全空**（含历史残留 key）—— 必须走 clearStorageSync 全清，不能只按 key 逐个删',
+    S1.store.size === 0, '剩余=' + JSON.stringify(Array.from(S1.store.keys())));
   const unlinks1 = S1.log.filter((x) => x[0] === 'unlink');
   ok('B-① 注销真的按清单删了 2 个导出文件（含无统一前缀的店名文件）',
     unlinks1.length === 2 && unlinks1.every((x) => x[1].indexOf('/wxfs/') === 0), JSON.stringify(unlinks1));

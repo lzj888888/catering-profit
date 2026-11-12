@@ -38,6 +38,7 @@ const HINT_TOOL = path.join(ROOT, 'tools/check_hint_fold.js');
 const SRC = fs.readFileSync(PAGE_JS, 'utf8');
 const W = fs.readFileSync(PAGE_WXML, 'utf8');
 const HINT_SRC = fs.readFileSync(HINT_TOOL, 'utf8');
+const WXSS_SRC = fs.readFileSync(path.join(ROOT, 'subpkg/biz/takeaway/index.wxss'), 'utf8');
 
 let pass = 0, fail = 0;
 function ok(name, cond, detail) {
@@ -151,6 +152,33 @@ ok('X-③ 只在注释里写方向词不会被判绿（剥注释后取不到）'
 // X-④ 若删掉 wxml 里的渲染，A-⑦ / B-④ 必须判红
 ok('X-④ 删掉 wxml 的 `{{t.packNote}}` ⇒ A-⑦ 会判红',
   W.replace('{{t.packNote}}', '').indexOf('{{t.packNote}}') < 0);
+
+// ===== R724j（台账 R2-6）：口径说明块**视觉重量**守卫 =====
+// 背景：首屏有 4 个 `.base-note`（佣金基数 / 顾客支付口径 / 包材说明 / 实收说明）。
+//   原来每个都是「浅黄底 + 整块 padding + 圆角」⇒ 连成一片色块墙，老板扫一眼就整段跳过
+//   （李老师真机反馈同型问题：「一眼看上去全是字，就不看了」）。
+//   改法是**只降视觉重量、不动一个字、不动位置**：去底色、去圆角，留左侧竖线当「这是说明」的标记。
+//   ⚠️ 为什么用样式而不是删文案：`dishPriceNote` 必须留在填份数**之前**（B-④ 位置断言，
+//      那是 R715 花一轮定下来的），合并/下移都会破坏语义；真正压人的是色块密度。
+//   ⚠️ 为什么守它：样式最容易被「后来者觉得不好看」改回色块，而改回去**不会有任何报错**，
+//      只会让老板重新整段跳过 —— 属典型「静默回退」。
+const mBaseNote = /\.base-note\s*\{([^}]*)\}/.exec(WXSS_SRC);
+const baseNoteRule = mBaseNote ? mBaseNote[1] : '';
+ok('S-① `.base-note` 规则可解析（解析不出 = 判据失效，宁红不猜）', !!mBaseNote,
+  mBaseNote ? baseNoteRule.replace(/\s+/g, ' ').slice(0, 60) + '…' : '未找到');
+const mBg = /background\s*:\s*([^;]+)/.exec(baseNoteRule);
+const bgVal = mBg ? mBg[1].trim() : '';
+// ⚠️ 不用 `(?!transparent)` 前瞻：`\s*` 会回溯到空格前，前瞻就落在空格上 ⇒ 误判
+//    （我第一版就是这么写的，`background: transparent` 被判成色块）。
+const opaqueBg = !!bgVal && bgVal !== 'transparent' && bgVal !== 'none' && bgVal !== 'initial';
+ok('S-② 🔴 不得回退成不透明色块（4 个连成一片正是老板整段跳过的原因）',
+  !!baseNoteRule && !opaqueBg, bgVal || '(无 background)');
+ok('S-③ 必须保留「这是说明」的视觉标记（左侧竖线），纯裸文字会和正文混在一起',
+  /border-left\s*:\s*\d+rpx\s+solid/.test(baseNoteRule),
+  (baseNoteRule.match(/border-left\s*:\s*[^;]+/) || ['(无 border-left)'])[0]);
+const mFs = /font-size\s*:\s*(\d+)rpx/.exec(baseNoteRule);
+ok('S-④ 字号 ≥28rpx（AD 红线下限，说明文字也不能变小来省地方）',
+  !!mFs && Number(mFs[1]) >= 28, mFs ? mFs[1] + 'rpx' : '未声明');
 
 console.log('\n============================================================');
 const total = pass + fail;
