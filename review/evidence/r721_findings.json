@@ -13,7 +13,7 @@
     "prepared_to_fix": 6,
     "challenge_result": "1 建议不修 / 4 修法要改 / 1 只需改名",
     "verified": 14,
-    "total": 19
+    "total": 20
   },
   "blindspot": {
     "guards": 207,
@@ -278,6 +278,20 @@
       "challenge": "反方：桩型守卫成本高于静态守卫，是不是该接受 15% 这个比例？判断：不能——R724 补的两个桩当场抓出 R1-7（第一行点不动），正是形状守卫零感知的那类；比例低意味着大部分页面「写对了」但从没跑过。但也不该为凑比例乱补，只补高风险页（录入/算钱/授权类）。",
       "priority": "P1",
       "next_action": "剩 4 个：shop/setting（店铺配置）→ tools/pay/orders（订单）→ tools/sandbox/compare / sandbox/list（低频，可最后）。每补一页必须带至少 1 条变异回灌，仍走 L2 桩层"
+    },
+    {
+      "id": "R3-6",
+      "source": "R3-security",
+      "severity": "P1",
+      "title": "M3 枢纽四张卡片硬编码「需开通」标签：功能全开却标付费，老板不敢点",
+      "evidence": "pages/m3/hub.wxml:109/116/123/136 硬编码 {{t.payTag}}，hub.js 的 payTag 无任何条件；同时 utils/featureFlags.js:57 PAYWALL_ENABLED=false 且 cloudfunctions/common/payFlags.js FREE_ACCESS=true",
+      "verified_by": "R724h 模拟器实测（2026-11-13 01:00 前后，8 页走查截图 review/evidence/r724h_simulator/）",
+      "status": "fixed",
+      "verified": true,
+      "challenge": "反方：也许「需开通」是有意的「预约/意向」提示，不是付费？判断：terms 里该键名就是 payTag（付费小字），同组还有「导出需开通/外卖需开通」等付费墙文案，语义明确是付费；且产品当前阶段明确 FREE_ACCESS=true「不把用户挡在功能外」，标签与口径直接冲突。采纳修，但只做「跟随开关」而非删除（PAYWALL_ENABLED=true 时标签自动回来）。",
+      "priority": "",
+      "next_action": "",
+      "fix_evidence": "hub.js payTag 改为 PAYWALL_ENABLED ? TERMS.hub.payTag : (空串)（引用 featureFlags 单源）；wxml 四处加 wx:if；新增 tools/check_hub_paytag.js（6 断言：关时为空/开时非空/每处带条件/前后端开关互反/引用单源/变异）；模拟器复验 payTag 为空串 且截图确认四卡无标签、高度一致"
     }
   ]
 }

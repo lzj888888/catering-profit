@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：301 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：302 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1713,6 +1713,15 @@ const SUITES = [
   //   ④ 删除文案整块覆盖 t（实测丢 33 个词条 ⇒ 界面一片空白）。
   //   A onLoad 6 / B 回填 7 / C 校验 9 / D 载荷 8 / E 删除 3 / M 4 条变异。
   ['asset-edit-stub', 'tools/check_asset_edit_stub.js'],
+  // R724h · 台账 R3-5（**模拟器实测发现的真 UI 矛盾**，静态判据看不出来）：
+  //   pages/m3/hub.wxml 四张卡片（外卖/团购/复盘/对账）挂着 {{t.payTag}}「需开通」，
+  //   而 hub.js 里它是无条件硬编码。当时 PAYWALL_ENABLED=false / 云端 FREE_ACCESS=true
+  //   （提审期全开）⇒ 四张卡点进去就能用，标签却说「需要开通」⇒ 老板不敢点。
+  //   为什么静态守卫看不出来：字符串「需开通」确实在 wxml 里、确实是产品要的词，
+  //   单看源码永远是对的；只有把页面**真跑起来读 data.t.payTag** 才发现当前开关下不该出现。
+  //   H-① 关时为空 / H-② 开时非空（分辨力：跟着开关走，不是删掉）/ H-③ 每处带 wx:if /
+  //   H-④ 前后端开关互为取反 / H-⑤ 引用单源 / H-⑥ 变异回灌。
+  ['hub-paytag', 'tools/check_hub_paytag.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

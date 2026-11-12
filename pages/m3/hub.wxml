@@ -106,21 +106,21 @@
     <view class="hub-card" bindtap="goTakeaway" hover-class="hub-card-tap">
       <view class="hub-ico hub-ico-takeaway">{{t.icoTakeaway}}</view>
       <text class="hub-name">{{t.takeawayTitle}}</text>
-      <text class="hub-pay">{{t.payTag}}</text>
+      <text class="hub-pay" wx:if="{{t.payTag}}">{{t.payTag}}</text>
       <text class="hub-desc">{{t.takeawayShort}}</text>
     </view>
 
     <view class="hub-card" bindtap="goGroupon" hover-class="hub-card-tap">
       <view class="hub-ico hub-ico-groupon">{{t.icoGroupon}}</view>
       <text class="hub-name">{{t.grouponTitle}}</text>
-      <text class="hub-pay">{{t.payTag}}</text>
+      <text class="hub-pay" wx:if="{{t.payTag}}">{{t.payTag}}</text>
       <text class="hub-desc">{{t.grouponShort}}</text>
     </view>
 
     <view class="hub-card" bindtap="goReview" hover-class="hub-card-tap">
       <view class="hub-ico hub-ico-review">{{t.icoReview}}</view>
       <text class="hub-name">{{t.reviewTitle}}</text>
-      <text class="hub-pay">{{t.payTag}}</text>
+      <text class="hub-pay" wx:if="{{t.payTag}}">{{t.payTag}}</text>
       <text class="hub-desc">{{t.reviewShort}}</text>
     </view>
 
@@ -133,7 +133,7 @@
     <view class="hub-card" bindtap="goRecon" hover-class="hub-card-tap">
       <view class="hub-ico hub-ico-recon">{{t.icoRecon}}</view>
       <text class="hub-name">{{t.reconTitle}}</text>
-      <text class="hub-pay">{{t.payTag}}</text>
+      <text class="hub-pay" wx:if="{{t.payTag}}">{{t.payTag}}</text>
       <text class="hub-desc">{{t.reconShort}}</text>
     </view>
   </view>

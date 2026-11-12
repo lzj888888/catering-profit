@@ -13,6 +13,7 @@ const ui = require('../../utils/ui.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 const shopGuard = require('../../utils/shopGuard.js');
 const dh = require('../../utils/dataHealth.js');   // 🔴 R299：出参 `truncated` 的可见降级（单源）
+const { PAYWALL_ENABLED } = require('../../utils/featureFlags.js');
 
 Page({
   data: {
@@ -69,7 +70,14 @@ Page({
       icoReview: TERMS.hub.icoReview,
       // 🔴 P0#6：付费小字（wxml 用到就必须登记 —— 漏登记 ⇒ 静默空白）
       //   R706：quickAdd 已删 —— 「＋新建菜品成本卡」与「菜品成本毛利」卡完全重复。
-      payTag: TERMS.hub.payTag,
+      //   🔴 R724h（2026-11-13 模拟器实测，台账 R3-5）：
+      //   这里此前是**无条件硬编码** `TERMS.hub.payTag`（「需开通」）。但当前
+      //   前端 `PAYWALL_ENABLED=false`、云端 `FREE_ACCESS=true`（提审期全开）⇒
+      //   外卖/团购/复盘/对账 四张卡片**点进去就能用**，标签却写「需开通」
+      //   ⇒ 老板以为要付钱、不敢点 —— 正是李老师说的「人点都不敢点进去」。
+      //   ⇒ 改为随付费墙开关：只有真正开启付费墙时才显示这个标签。
+      //   判据由 `tools/check_hub_paytag.js` 守（标签真值 ≡ PAYWALL_ENABLED）。
+      payTag: PAYWALL_ENABLED ? TERMS.hub.payTag : '',
     },
     // -1 = 没取到（就不显示这行）。🔴 **绝不能默认 0**：读不到时显示「共 0 张」
     //   会让老板以为卡丢了 —— 与本仓「不替用户编数」同一条纪律（M2 参考值只提示不预填）。

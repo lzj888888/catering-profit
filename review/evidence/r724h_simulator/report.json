@@ -1,0 +1,77 @@
+[
+  {
+    "name": "01-home",
+    "url": "/pages/index/index",
+    "ok": true,
+    "state": {
+      "route": "pages/index/index",
+      "loading": false,
+      "shopName": "Abc",
+      "hasProfit": true,
+      "profitKnown": true,
+      "profitTitle": "估算利润",
+      "refProfit": "51900.00"
+    }
+  },
+  {
+    "name": "02-takeaway",
+    "url": "/subpkg/biz/takeaway/index",
+    "ok": false,
+    "err": "timeout waiting for automator response"
+  },
+  {
+    "name": "03-recon",
+    "url": "/subpkg/tools/recon/index",
+    "ok": true,
+    "state": {
+      "route": "pages/index/index",
+      "loading": false,
+      "hasResult": false,
+      "emptyText": ""
+    }
+  },
+  {
+    "name": "04-hub",
+    "url": "/pages/m3/hub",
+    "ok": false,
+    "err": "timeout waiting for automator response"
+  },
+  {
+    "name": "05-material",
+    "url": "/subpkg/biz/material/index",
+    "ok": true,
+    "state": {
+      "route": "pages/index/index",
+      "loading": false,
+      "all": 0,
+      "list": 0,
+      "catOptions": 0
+    }
+  },
+  {
+    "name": "06-amortize",
+    "url": "/subpkg/biz/month/amortize?month=2026-11",
+    "ok": false,
+    "err": "timeout waiting for automator response"
+  },
+  {
+    "name": "07-assetEdit",
+    "url": "/subpkg/biz/month/assetEdit?kind=lump&month=2026-11",
+    "ok": true,
+    "state": {
+      "route": "subpkg/biz/month/assetEdit",
+      "loading": true,
+      "kind": "lump",
+      "mode": "new",
+      "readOnly": false,
+      "name": "",
+      "tKeys": 34
+    }
+  },
+  {
+    "name": "08-consent",
+    "url": "/subpkg/biz/ai/consent",
+    "ok": false,
+    "err": "timeout waiting for automator response"
+  }
+]
