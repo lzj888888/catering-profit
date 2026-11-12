@@ -271,13 +271,13 @@
       "source": "R1-gate-blindspot",
       "severity": "P1",
       "title": "桩型守卫仍只占 15.2%（32/211 个 check_*.js），仍有多页只有静态形状守卫",
-      "evidence": "R724d/e 实扫 34 个 Page 页面 × 27 个桩型 tools：原零桩 8 个，已补 2 个（pages/index/index 32 断言、month/amortize 34 断言），剩 6 个",
+      "evidence": "R724d/e/f 实扫 34 个 Page 页面 × 28 个桩型 tools：原零桩 8 个，已补 3 个（pages/index/index 32、month/amortize 34、material/index 37），剩 5 个",
       "verified_by": "R724-现扫",
       "status": "deferred",
       "verified": true,
       "challenge": "反方：桩型守卫成本高于静态守卫，是不是该接受 15% 这个比例？判断：不能——R724 补的两个桩当场抓出 R1-7（第一行点不动），正是形状守卫零感知的那类；比例低意味着大部分页面「写对了」但从没跑过。但也不该为凑比例乱补，只补高风险页（录入/算钱/授权类）。",
       "priority": "P1",
-      "next_action": "剩 6 个按风险排：material/index（原料库高频）→ month/assetEdit（资产算钱/与 amortize 同一条链路）→ shop/setting（店铺配置）→ tools/pay/orders（订单）→ sandbox/compare / sandbox/list（低频）。每补一页必须带至少 1 条变异回灌，仍走 L2 桩层"
+      "next_action": "剩 5 个按风险排：month/assetEdit（资产算钱，与 amortize 同链路）→ shop/setting（店铺配置）→ tools/pay/orders（订单）→ sandbox/compare / sandbox/list（低频）。每补一页必须带至少 1 条变异回灌，仍走 L2 桩层"
     }
   ]
 }

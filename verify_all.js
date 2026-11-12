@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：299 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：300 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1695,6 +1695,14 @@ const SUITES = [
   //   ④ goHome 只会 navigateBack ⇒ 直接进入本页时栈里只有自己，「回首页」点了没反应。
   //   A 装配 7 / B 分组 7 / C 小工具 2 / D 开关 4 / E 归档与出口 6 / F 报废 4 / M 4 条变异。
   ['amortize-page-stub', 'tools/check_amortize_page_stub.js'],
+  // R724f · 台账 R1-8（零桩页按风险排第三）：原料库列表 —— 查价/改价/删档/影响面的总入口。
+  //   五类静默错误：① 置顶乐观更新失败不回滚（界面停在「看起来成功」，换手机顺序又变）；
+  //   ② 虚拟原料当普通原料（编辑/删除本就不可做，菜单项也必须只留「置顶」一项）；
+  //   ③ 换算基准单位写死「克」（round151 真误导：「1 箱 = 24 克」，正解是箱→个）；
+  //   ④ 排序丢置顶顺序（置顶在前且按老板点选先后，不是字母序）；
+  //   ⑤ pinned 标记没打在数据上（WXML 不支持方法调用，必须在 JS 算好）。
+  //   A 装配 9 / B 过滤排序 9 / C 置顶 4 / D 虚拟只读 5 / E 删除 3 / F 导航 3 / M 4 条变异。
+  ['material-index-stub', 'tools/check_material_index_stub.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
