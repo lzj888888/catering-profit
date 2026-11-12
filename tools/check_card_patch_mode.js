@@ -30,6 +30,11 @@ function ok(name, cond, detail) {
 
 // ============ 页面桩 ============
 const store = {};
+// 🔴 R720：页面读预填已改走 ss.shopKey(...)，桩必须用**同一把钥匙**喂数据，
+//   否则 A-⑥/A-⑦/A-⑧/E-④ 会因为「读不到」而假红。第二参是 shopKey 明留给单测的口子。
+const SS_R720 = require(path.join(ROOT, 'utils/shopSwitcher.js'));
+const PREFILL_KEY = SS_R720.shopKey(
+  require(path.join(ROOT, 'utils/dishImport.js')).DRAFT_PREFILL_KEY, 'shop_test');
 const sent = [];
 let toastMsgs = [];
 let navBacks = 0;          // G 组：页面是否真的返回上一页
@@ -177,7 +182,7 @@ let A = null;
 (async () => {
   // 每次 onLoad 前清空本地偏好，避免上一场景污染
   for (const k of Object.keys(store)) delete store[k];
-  store[require(path.join(ROOT, 'utils/dishImport.js')).DRAFT_PREFILL_KEY] = makeDraft();
+  store[PREFILL_KEY] = makeDraft();
   A = newPage();
   await withWx(async () => { A.onLoad({ from_draft: '1' }); await sleep(20); });
 
@@ -192,8 +197,8 @@ let A = null;
     (A.data.lines || []).length >= 2 && A.data.lines.some((l) => l.material_name === '牛肉'),
     '行数=' + (A.data.lines || []).length + ' / ' + (A.data.lines || []).map((l) => l.material_name).join(','));
   ok('A-⑦ 草稿读完即删（否则下次手动新建会被这张草稿污染）',
-    !store[require(path.join(ROOT, 'utils/dishImport.js')).DRAFT_PREFILL_KEY],
-    '暂存键 ' + (store[require(path.join(ROOT, 'utils/dishImport.js')).DRAFT_PREFILL_KEY] ? '仍在(红)' : '已清'));
+    !store[PREFILL_KEY],
+    '暂存键 ' + (store[PREFILL_KEY] ? '仍在(红)' : '已清'));
   ok('A-⑧ 菜名/售价按草稿预填（补价模式的前提是「其余都已填好」）',
     A.data.name === '耙牛肉' && Number(A.data.priceYuan) === 68,
     'name=' + A.data.name + ' price=' + A.data.priceYuan);
@@ -232,7 +237,7 @@ let A = null;
   console.log('\n===== D 本地「专业」偏好不许破掉精简态（但也不能把偏好整个废掉） =====');
   for (const k of Object.keys(store)) delete store[k];
   store['card_input_mode_shop_test'] = 'pro';
-  store[require(path.join(ROOT, 'utils/dishImport.js')).DRAFT_PREFILL_KEY] = makeDraft();
+  store[PREFILL_KEY] = makeDraft();
   const D1 = newPage();
   await withWx(async () => { D1.onLoad({ from_draft: '1' }); await sleep(20); });
   ok('D-① 🔴 记着「专业」⇒ 补价模式仍强制 novice（否则高级项一铺开，精简态当场失效）',
@@ -288,7 +293,7 @@ let A = null;
 
   // G-① 补价模式：填好价 → 保存 → 必须回上一页
   for (const k of Object.keys(store)) delete store[k];
-  store[require(path.join(ROOT, 'utils/dishImport.js')).DRAFT_PREFILL_KEY] = makeDraft();
+  store[PREFILL_KEY] = makeDraft();
   const G1 = newPage();
   await withWx(async () => { G1.onLoad({ from_draft: '1' }); await sleep(20); });
   G1.setData({
@@ -332,7 +337,7 @@ let A = null;
   //   ⇒ 手动出口必须先撤掉待执行的自动回退，否则两次 navigateBack 叠成「退两层」，
   //   导入页被一闪而过 ⇒ 老板以为这批菜丢了（比空白页更难查）。
   for (const k of Object.keys(store)) delete store[k];
-  store[require(path.join(ROOT, 'utils/dishImport.js')).DRAFT_PREFILL_KEY] = makeDraft();
+  store[PREFILL_KEY] = makeDraft();
   const G4 = newPage();
   await withWx(async () => { G4.onLoad({ from_draft: '1' }); await sleep(20); });
   G4.setData({
@@ -366,7 +371,7 @@ let A = null;
   ));
   for (const k of Object.keys(store)) delete store[k];
   store['card_input_mode_shop_test'] = 'pro';
-  store[require(path.join(ROOT, 'utils/dishImport.js')).DRAFT_PREFILL_KEY] = makeDraft();
+  store[PREFILL_KEY] = makeDraft();
   const M2p = (() => {
     const p = Object.assign({}, M2);
     p.data = JSON.parse(JSON.stringify(M2.data));
@@ -419,7 +424,7 @@ let A = null;
   M5p.data = JSON.parse(JSON.stringify(M5.data));
   M5p.setData = function (patch) { for (const k in patch) this.data[k] = patch[k]; };
   for (const k of Object.keys(store)) delete store[k];
-  store[require(path.join(ROOT, 'utils/dishImport.js')).DRAFT_PREFILL_KEY] = makeDraft();
+  store[PREFILL_KEY] = makeDraft();
   await withWx(async () => { M5p.onLoad({ from_draft: '1' }); await sleep(20); });
   M5p.setData({
     lines: [{ rid: 1, input_type: 2, material_id: '', material_name: '牛肉', qty: '300', qty_unit: '克',

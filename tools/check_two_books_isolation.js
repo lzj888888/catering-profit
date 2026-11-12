@@ -16,8 +16,7 @@
 //   C 本地缓存隔离（🔴 本轮实锤的两条真缺陷）：页面桩真跑「切店」——
 //     C-1 整批导入进度缓存 key 不带 shop ⇒ B 店读到 A 店批次（串数据）；
 //     C-2 月输入草稿 key 只带 month 不带 shop ⇒ B 店覆盖 A 店草稿（丢数据）。
-//     ⚠️ 这两条**如实登记为已知缺陷**，守卫守的是「缺陷被点名登记在报告里」，
-//        不是把缺陷判绿。等李老师拍板后修复，再把 C 段改成「修复后必须不串」。
+//     🔴 R720 已修复：C-②/C-⑤ 已反转为「必须不串」，报告仍须点名登记（含修复状态）。
 //   D 变异回灌：改坏隔离关键处（去 shop / 去区间 / 去 where），守卫必须非 0 且点名。
 //   E 反恒真：判据必须给已知坏样本相反答案（防「恒真橡皮章」）。
 //
@@ -229,6 +228,7 @@ ok('B-⑩ 标准菜单毛利率各店各算（成本卡按 shop 隔离）',
 console.log('\n===== C. 本地缓存/草稿：页面桩真跑「切店」=====');
 
 const DI = require(path.join(ROOT, 'utils/dishImport.js'));
+const SS = require(path.join(ROOT, 'utils/shopSwitcher.js'));
 function makePage(file, shopId, store) {
   let cfg = null;
   global.Page = (c) => { cfg = c; };
@@ -243,7 +243,7 @@ function makePage(file, shopId, store) {
   const orig = Module._load;
   Module._load = function (request) {
     if (/utils[\\/]api\.js$/.test(request)) return { ensureShop: async () => ({ shop_id: shopId }), call: async () => ({ list: [], rows: [] }), toastError() {}, say() {} };
-    if (/utils[\\/]shopSwitcher\.js$/.test(request)) return { currentShopId: () => shopId, restoreLastShop: async () => {}, switchShop: async () => {} };
+    if (/utils[\\/]shopSwitcher\.js$/.test(request)) return Object.assign({}, SS, { currentShopId: () => shopId, shopKey: (b) => SS.shopKey(b, shopId), restoreLastShop: async () => {}, switchShop: async () => {} });
     return orig.apply(this, arguments);
   };
   const key = require.resolve(path.join(ROOT, file));
@@ -261,21 +261,24 @@ const storeC1 = {};
 const lines = DI.parseDishLines('A店麻婆豆腐 28\nA店回锅肉 32');
 const batchRows = lines.map(l => ({ key: 'k_' + l.name, name: l.name, price: String(l.priceYuan),
   catKey: '', catIdx: 0, catLabel: '', draft: DI.buildDraftCard(l), saved: false }));
-storeC1[DI.BATCH_CACHE_KEY] = { text: 'A店麻婆豆腐 28\nA店回锅肉 32', rows: batchRows,
+const c1KeyA = SS.shopKey(DI.BATCH_CACHE_KEY, 'shop_a');
+storeC1[c1KeyA] = { text: 'A店麻婆豆腐 28\nA店回锅肉 32', rows: batchRows,
   rawN: batchRows.length, ts: Date.now() - 1000 };
-ok('C-① 前提：缓存结构合规且**新鲜**（否则「没串」只是过期兜底的假绿）',
-  DI.isBatchFresh(storeC1[DI.BATCH_CACHE_KEY], Date.now()) === true);
+ok('C-① 前提：A 店缓存结构合规且**新鲜**（否则「没串」只是过期兜底的假绿）',
+  DI.isBatchFresh(storeC1[c1KeyA], Date.now()) === true
+  && c1KeyA !== SS.shopKey(DI.BATCH_CACHE_KEY, 'shop_b'));
 
 const pB1 = makePage('subpkg/biz/card/import.js', 'shop_b', storeC1);
 pB1._rawN = 0;
 pB1.restoreBatch();
 const namesB = (pB1.data.rows || []).map(r => r.name);
 const c1Leak = namesB.some(n => String(n).indexOf('A店') >= 0);
-ok('C-② 🔴 实锤：整批导入进度缓存 key 不带 shop ⇒ B 店读到 A 店批次（串数据）',
-  c1Leak === true && pB1.data.parsed === true,
+ok('C-② 🔴 R720 已修：B 店读不到 A 店批次（两店各占一格）',
+  c1Leak === false && pB1.data.parsed !== true,
   'B店 rows=' + JSON.stringify(namesB) + ' | resumeTip=' + String(pB1.data.resumeTip || '').slice(0, 24));
-ok('C-③ 该 key 确实是全局常量（单源 DI.BATCH_CACHE_KEY，无 shop 段）',
-  DI.BATCH_CACHE_KEY === 'DISH_IMPORT_BATCH' && DI.BATCH_CACHE_KEY.indexOf('shop') < 0);
+ok('C-③ 🔴 R720：base 仍是单源常量，但调用点走 ss.shopKey 按店拼',
+  DI.BATCH_CACHE_KEY === 'DISH_IMPORT_BATCH'
+  && /getStorageSync\(ss\.shopKey\(DI\.BATCH_CACHE_KEY\)\)/.test(fs.readFileSync(path.join(ROOT, 'subpkg/biz/card/import.js'), 'utf8')));
 
 // C-2 月输入草稿：A 店存 → B 店同月存（覆盖）→ 切回 A 店（丢）
 const storeC2 = {};
@@ -293,20 +296,26 @@ pA2b.applyDraftFromStorage();
 const c2Leak = JSON.stringify(pA2b.data.incomeGroups).indexOf('B店独有收入') >= 0;
 const c2Lost = JSON.stringify(pA2b.data.incomeGroups).indexOf('A店独有收入') < 0;
 ok('C-④ 🟢 草稿**串读**被 draft.shop_id 校验挡住（现有防线有效）', c2Leak === false);
-ok('C-⑤ 🔴 实锤：草稿 key 只带 month 不带 shop ⇒ B 店同月覆盖，A 店草稿**丢失**',
-  c2Lost === true && storeC2['draft_month_input_2026-09'].shop_id === 'shop_b',
+ok('C-⑤ 🔴 R720 已修：A 店草稿不再丢失，切回 A 店能读回自己的数',
+  c2Lost === false && c2Leak === false
+  && storeC2[SS.shopKey('draft_month_input_2026-09', 'shop_a')].shop_id === 'shop_a'
+  && storeC2[SS.shopKey('draft_month_input_2026-09', 'shop_b')].shop_id === 'shop_b',
   '切回A店 incomeGroups=' + JSON.stringify(pA2b.data.incomeGroups));
 const inputSrc = fs.readFileSync(path.join(ROOT, 'subpkg/biz/month/input.js'), 'utf8');
-ok('C-⑥ 该 key 拼法确认：常量 = draft_month_input_（无 shop）+ 只拼 this.data.month',
+ok('C-⑥ 🔴 R720：草稿写入已改走 ss.shopKey(DRAFT_KEY + month)',
   /const DRAFT_KEY = 'draft_month_input_';/.test(inputSrc) &&
-  /wx\.setStorageSync\(DRAFT_KEY \+ this\.data\.month, \{/.test(inputSrc) &&
-  !/DRAFT_KEY \+\s*(sid|shopId|this\.data\.shop)/.test(inputSrc),
-  '常量无 shop 段，写入只拼 month');
+  /wx\.setStorageSync\(ss\.shopKey\(DRAFT_KEY \+ this\.data\.month\), \{/.test(inputSrc) &&
+  !/wx\.setStorageSync\(DRAFT_KEY \+ this\.data\.month, \{/.test(inputSrc),
+  '不再有裸 month key 落盘');
 
 // C-3 缺陷必须被**点名登记**在报告里（不许悄悄藏）
 const report = fs.existsSync(REPORT) ? fs.readFileSync(REPORT, 'utf8') : '';
-ok('C-⑦ 报告如实登记「整批导入进度跨店串」缺陷', report.indexOf('DISH_IMPORT_BATCH') >= 0 && /跨店|串|切店/.test(report));
-ok('C-⑧ 报告如实登记「月草稿跨店覆盖丢失」缺陷', report.indexOf('draft_month_input_') >= 0 && /丢失|覆盖/.test(report));
+ok('C-⑦ 报告如实登记「整批导入进度跨店串」缺陷 + R720 修复状态', report.indexOf('DISH_IMPORT_BATCH') >= 0 && /跨店|串|切店/.test(report) && /R720/.test(report));
+ok('C-⑧ 报告如实登记「月草稿跨店覆盖丢失」缺陷 + R720 修复状态', report.indexOf('draft_month_input_') >= 0 && /丢失|覆盖/.test(report) && /R720/.test(report));
+ok('C-⑨ 🔴 R720：shopKey 是单源，且无店态 fail-closed 到 __NO_SHOP__ 独立格',
+  typeof SS.shopKey === 'function'
+  && SS.shopKey('X', 'shop_a') !== SS.shopKey('X', 'shop_b')
+  && SS.shopKey('X', '').indexOf('__NO_SHOP__') >= 0);
 
 // ===================== D. 变异回灌：改坏隔离，守卫必须点名抓 =====================
 console.log('\n===== D. 变异回灌（把关键隔离改坏，判据必须转红）=====');

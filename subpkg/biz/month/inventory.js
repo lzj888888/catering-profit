@@ -98,7 +98,7 @@ Page({
   applyDraftFromStorage() {
     const sid = ss.currentShopId();
     if (!sid) return;   // 店铺上下文未就绪 ⇒ 等 load() 末尾再来
-    const draft = wx.getStorageSync(DRAFT_KEY + this.data.month);
+    const draft = wx.getStorageSync(ss.shopKey(DRAFT_KEY + this.data.month));
     // 🔴 同 M1 填表页 —— 盘点草稿也按店隔离（期初/采购/期末都是**金额**，串店即污染账本）。
     if (!draft || this.data.saved || draft.shop_id !== sid) return;
     this.setData({
@@ -119,7 +119,7 @@ Page({
     // 🔴 R443b：拿不到店铺就不写盘（否则用空店草稿覆盖真草稿）
     const sid = ss.currentShopId();
     if (!sid) return;
-    wx.setStorageSync(DRAFT_KEY + this.data.month, {
+    wx.setStorageSync(ss.shopKey(DRAFT_KEY + this.data.month), {
       shop_id: sid,   // R443：切店后不得回填到别的店
       openingYuan: this.data.openingYuan,
       purchaseYuan: this.data.purchaseYuan,
@@ -296,7 +296,7 @@ Page({
         client_request_id: 'in_' + Date.now(),
       });
       this.setData({ saved: true });
-      wx.removeStorageSync(DRAFT_KEY + this.data.month);
+      wx.removeStorageSync(ss.shopKey(DRAFT_KEY + this.data.month));
       wx.showToast({ title: TERMS.ui.savedDone, icon: 'success' });
       setTimeout(() => wx.navigateBack(), 500);
     } catch (e) { api.toastError(e); }

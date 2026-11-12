@@ -24,6 +24,7 @@ const { inferLineKind, isUnset } = require('../../../utils/lineKind.js');   // M
 const { moneyHint } = require('../../../utils/moneyHint.js');
 // 🔴 R566：批量导入草稿的映射与暂存键（单源）—— 本页只消费，不自己拼字段名/键名
 const DI = require('../../../utils/dishImport.js');
+const ss = require('../../../utils/shopSwitcher.js');   // R720：本地缓存 key 按店隔离（单源 shopKey）
 const DRAFT_PREFILL_KEY = DI.DRAFT_PREFILL_KEY;
 // 🔴 R675：`isEstimatedCard` 不再引入 —— 估算卡机制随品类默认模板一起删了，编辑页不再产生 isPreset 行。
 //   utils/cardEst.js 本身保留（导入路径 dishImport.js 仍在用）。
@@ -437,8 +438,8 @@ Page({
   loadDraftPrefill() {
     let d = null;
     try {
-      d = wx.getStorageSync(DRAFT_PREFILL_KEY);
-      wx.removeStorageSync(DRAFT_PREFILL_KEY);
+      d = wx.getStorageSync(ss.shopKey(DRAFT_PREFILL_KEY));
+      wx.removeStorageSync(ss.shopKey(DRAFT_PREFILL_KEY));
     } catch (e) { return; }              // 读不到就当没预填（不打断新建流程）
     if (!d || !d.name) return;
     const p = DI.prefillOf(d);
@@ -579,7 +580,7 @@ Page({
       // ③ 先用缓存把页面撑起来（只在新建态：编辑态要用真数据回填，不能先渲染旧值）
       if (isNewSingle) {
         try {
-          const c = wx.getStorageSync(MAT_CACHE);
+          const c = wx.getStorageSync(ss.shopKey(MAT_CACHE));
           if (c && Array.isArray(c.materials) && c.materials.length) {
             this.setData({ materials: c.materials, loading: false });
           }
@@ -608,7 +609,7 @@ Page({
       }));
       // 原料表写缓存（供下次进页面秒开）。只存新建态 —— 编辑态的数据本来就要准，不缓存。
       if (isNewSingle && materials.length) {
-        try { wx.setStorageSync(MAT_CACHE, { at: Date.now(), materials }); } catch (e) { /* 存不下就算了 */ }
+        try { wx.setStorageSync(ss.shopKey(MAT_CACHE), { at: Date.now(), materials }); } catch (e) { /* 存不下就算了 */ }
       }
       // M3.16（批次 C）：成本卡列表 —— 候选子卡（非套餐）+ 编辑回填。上面已按需并行取到。
       const cardList = (cd && cd.list) || [];
@@ -1064,7 +1065,7 @@ Page({
     // ⚠️ 当前值**不过滤**：万一已存的就是脏的，要让老板看见、能改；悄悄藏起来等于让他在错误的分类上继续存
     push(cur);
     let hist = [];
-    try { hist = wx.getStorageSync(EDIT_CATS_KEY) || []; } catch (err) { hist = []; }
+    try { hist = wx.getStorageSync(ss.shopKey(EDIT_CATS_KEY)) || []; } catch (err) { hist = []; }
     // 历史里挡掉脏值（R666）—— 历史是自动累积的，脏一条会永久污染候选列表
     if (Array.isArray(hist)) {
       hist.forEach((v) => { if (!catFilter.isDirtyCat(v)) push(v); });
@@ -1880,10 +1881,10 @@ Page({
     card.category = String(this.data.category || '').trim();
     if (card.category) {
       try {
-        const hist = wx.getStorageSync(EDIT_CATS_KEY) || [];
+        const hist = wx.getStorageSync(ss.shopKey(EDIT_CATS_KEY)) || [];
         const arr = Array.isArray(hist) ? hist.slice() : [];
         if (arr.indexOf(card.category) < 0) arr.push(card.category);
-        wx.setStorageSync(EDIT_CATS_KEY, arr.slice(-40));
+        wx.setStorageSync(ss.shopKey(EDIT_CATS_KEY), arr.slice(-40));
       } catch (err) { /* 本地字典失败不影响保存 */ }
     }
     if (this.data.saving) return;   // 连击保护：重复提交会生成两个版本

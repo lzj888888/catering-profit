@@ -13,6 +13,7 @@ const ui = require('../../../utils/ui.js');
 const api = require('../../../utils/api.js');
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 const DI = require('../../../utils/dishImport.js');
+const ss = require('../../../utils/shopSwitcher.js');   // R720：本地缓存 key 按店隔离（单源 shopKey）
 // 🔴 R708：`truncated` 必须走单源判定（`=== true`），不在这里自己写 `res.truncated` 真值判断 ——
 //   契约是布尔，云端若回字符串 'true'/'1' 那就是契约破了，该判红而不是被宽松放行。
 const dh = require('../../../utils/dataHealth.js');
@@ -90,13 +91,13 @@ Page({
   restoreBatch() {
     let cache = null;
     try {
-      cache = wx.getStorageSync(DI.BATCH_CACHE_KEY);
+      cache = wx.getStorageSync(ss.shopKey(DI.BATCH_CACHE_KEY));
     } catch (e) {
       return;   // 读不到就当没有，绝不因为缓存坏了让页面起不来
     }
     if (!cache) return;
     if (!DI.isBatchFresh(cache, Date.now())) {
-      try { wx.removeStorageSync(DI.BATCH_CACHE_KEY); } catch (e) { /* noop */ }
+      try { wx.removeStorageSync(ss.shopKey(DI.BATCH_CACHE_KEY)); } catch (e) { /* noop */ }
       return;
     }
     const rows = cache.rows.map((r) => this.decorate(r));
@@ -122,7 +123,7 @@ Page({
     const rows = this.data.rows || [];
     if (!rows.length) return;   // 空批次不落盘 —— 否则一次解析失败会把上一批覆盖成空壳
     try {
-      wx.setStorageSync(DI.BATCH_CACHE_KEY, {
+      wx.setStorageSync(ss.shopKey(DI.BATCH_CACHE_KEY), {
         text: String(this.data.text || ''),
         rows,
         rawN: this._rawN || rows.length,
@@ -392,7 +393,7 @@ Page({
     const row = this.data.rows[idx];
     if (!row || !row.name) return;
     try {
-      wx.setStorageSync(DI.DRAFT_PREFILL_KEY, row.draft);
+      wx.setStorageSync(ss.shopKey(DI.DRAFT_PREFILL_KEY), row.draft);
     } catch (err) {
       wx.showToast({ title: TERMS.card.impSaveFail, icon: 'none' });
       return;

@@ -3,7 +3,13 @@
 - 日期：2026-11-12
 - 触发：李老师「深度审计 M3 模块，提前准备餐饮账单去跑通，同时数据要输入 2 套不同的账，看看会不会数据有重叠在一起的情况以及其他情况。」
 - 方法：**不用推断，用生产源码真跑**。准备两套真能导入的餐饮账单 → 用 `importSalesBill` / `getDishReview` / `getSalesBills` / `reconDerive` 的生产纯函数真解析、真生成 `_id`、真落内存库、真按店/月读取 → 逐位比对。
-- 复现：`node tools/check_two_books_isolation.js`（42 断言 + 变异回灌）；账单实物与 fixture 在 `review/evidence/r718_two_books/`。
+- 复现：`node tools/check_two_books_isolation.js`（R718 当时 42 断言 + 变异回灌）；账单实物与 fixture 在 `review/evidence/r718_two_books/`。
+- 🔴 **R720 状态更新（2026-11-12，李老师「继续」）：本报告 §4 的两条 P0 已修复**。
+  单源 `utils/shopSwitcher.js::shopKey(base)` 给本地 key 加店铺维度，
+  `DISH_IMPORT_BATCH` / `DISH_IMPORT_DRAFT_ONE` / `draft_month_input_` / `draft_month_inv_`
+  等 7 类 key 的 18 个读写点全部改走它；旧裸 key 不迁移（宁丢不串）。
+  本守卫 C-②/C-⑤ 已反转为「修复后必须不串」，并新增 C-⑨ 验 `shopKey` 单源与无店态独立格。
+  下文 §2/§3 保留 R718 当时的**缺陷取证**作为修复前基线，不改写。
 
 ---
 
@@ -116,7 +122,7 @@ B 店 onHide  → 同 key 被覆盖, shop_id=shop_b
 
 ---
 
-## 4. 建议修复顺序（**未动代码，等李老师拍板**）
+## 4. 修复顺序（**R720 已落地**；下表保留 R718 当时的评估）
 
 本轮是审计 + 跑通 + 取证，**没有修改任何产品代码**（数字口径一律不碰，遵守此前约定）。
 
@@ -128,7 +134,11 @@ B 店 onHide  → 同 key 被覆盖, shop_id=shop_b
 | P1 | 云端 `getDishReview` 对**缺区间**的调用做 fail-closed 或至少出参显式标 `range_all=true` | 云函数 | 中；会动 R301 的兼容语义，需先定产品口径 |
 | P2 | 同店同日重导覆盖前给一句「这会覆盖已导入的同日数据」 | 导入页预览 | 低 |
 
-守卫 `check_two_books_isolation.js` 的 C 段目前**把两条缺陷如实判为「存在并已登记」**；修复落地后应把 C-②/C-⑤ 改成「修复后必须不串」，并同步本报告状态。
+🔴 R720：守卫 `check_two_books_isolation.js` 的 C-②/C-⑤ **已改成「修复后必须不串」**，
+并新增 C-③/C-⑥ 验调用点确实走 `ss.shopKey`、C-⑨ 验单源与 fail-closed。
+两条 P0 已修；P1/P2（本地其它全局 key、云端缺区间、重导覆盖提示）见
+`review/AUDIT_M3_R719_本地存储横向审计.md` §6，其中 `m3_dish_cats` / `m3_materials_cache_v1`
+也已由 R720 一并修复。
 
 ---
 

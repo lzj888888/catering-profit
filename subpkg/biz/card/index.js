@@ -4,6 +4,7 @@
 // ⚠️ 批次 P0（任务 2）：补齐搜索/筛选/删除（软删全部版本）/复制（新 card_code）/
 //   同步至原料最新价（接 syncCostCard，单张+批量）；加「原料档案」入口。
 const api = require('../../../utils/api.js');
+const ss = require('../../../utils/shopSwitcher.js');   // R720：本地缓存 key 按店隔离（单源 shopKey）
 const ui = require('../../../utils/ui.js');
 const { openPaywall, openService } = require('../../../utils/paywall.js');
 const exportFile = require('../../../utils/exportFile.js');   // R265：导出投递单源（落盘 + 打开 + 转发兜底）
@@ -230,7 +231,14 @@ Page({
         }
       }
       // 本店用过的分类写进本地字典 ⇒ 编辑页 chips 直接可点（新建卡也不用重打"锅底"）
-      try { wx.setStorageSync(LIST_CATS_KEY, Array.from(catSeen).slice(0, 40)); } catch (err) { /* 忽略 */ }
+      // 🔴 R720：与编辑页统一「追加累积」语义。原来是 Array.from(catSeen) **全量覆盖写**，
+      //   会把编辑页辛苦攒的分类历史整批抹掉（R719 §4 跨页互踩）；key 同时按店隔离。
+      try {
+        const oldCats = wx.getStorageSync(ss.shopKey(LIST_CATS_KEY)) || [];
+        const merged = Array.isArray(oldCats) ? oldCats.slice() : [];
+        for (const cat of catSeen) if (merged.indexOf(cat) < 0) merged.push(cat);
+        wx.setStorageSync(ss.shopKey(LIST_CATS_KEY), merged.slice(-40));
+      } catch (err) { /* 忽略 */ }
       // 🔴 R395：分享取数 —— **只统计已定价的卡**（未定价 `margin=null`）。
       //   把未定价算进分母 ⇒ 标题会说「12 道菜里 5 道毛利低」，而其中几道根本没定价（假结论）。
       //   档位线取 `marginBand.MID`（单源），不在本页再写一个 40。

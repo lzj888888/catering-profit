@@ -349,8 +349,11 @@ const DRAFT_TARGETS = [
 for (const t of DRAFT_TARGETS) {
   const raw = stripLineComments(fs.readFileSync(path.join(ROOT, t.p), 'utf8'));
   const L = raw.split('\n');
-  const wi = L.findIndex(function (ln) { return /setStorageSync\(DRAFT_/.test(ln); });
-  const ri = L.findIndex(function (ln) { return /getStorageSync\(DRAFT_/.test(ln); });
+  // 🔴 R720：M1 两页的草稿 key 已改走单源 ss.shopKey(DRAFT_KEY + month)。
+  //   两种写法都认（M2 测算草稿仍是裸 DRAFT_KEY）—— R443 教训：只认一种写法会立刻误红。
+  //   「key 必须按店隔离」由 check_m3_storage_isolation.js A-⑨ 统一守，这里不重复加断言。
+  const wi = L.findIndex(function (ln) { return /setStorageSync\(\s*(?:ss\.shopKey\(\s*)?DRAFT_/.test(ln); });
+  const ri = L.findIndex(function (ln) { return /getStorageSync\(\s*(?:ss\.shopKey\(\s*)?DRAFT_/.test(ln); });
   const wWin = wi < 0 ? '' : L.slice(wi, wi + 20).join('\n');
   const rWin = ri < 0 ? '' : L.slice(Math.max(0, ri - 30), ri + 30).join('\n');
 

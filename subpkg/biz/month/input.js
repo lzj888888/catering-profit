@@ -343,7 +343,7 @@ Page({
   applyDraftFromStorage() {
     const sid = ss.currentShopId();
     if (!sid) return;   // 店铺上下文未就绪 ⇒ 什么都不做（等 load 末尾再调，绝不用空店覆盖）
-    const draft = wx.getStorageSync(DRAFT_KEY + this.data.month);
+    const draft = wx.getStorageSync(ss.shopKey(DRAFT_KEY + this.data.month));
     // 🔴 草稿必须属于**当前店铺**：切店后老草稿仍躺在本地，若照读 ⇒ 把 A 店填了一半的数
     //   当 B 店的初始值，老板一点保存就把 A 店数据写进 B 店账本（跨店污染，事后难查）。
     if (!draft || this.data.saved || draft.shop_id !== sid) return;
@@ -385,7 +385,7 @@ Page({
     //   照写会用"空店草稿"覆盖真草稿（老板退出那一刻 ensureShop 可能还没完成 ⇒ 数据白丢）。
     const sid = ss.currentShopId();
     if (!sid) return;
-    wx.setStorageSync(DRAFT_KEY + this.data.month, {
+    wx.setStorageSync(ss.shopKey(DRAFT_KEY + this.data.month), {
       shop_id: sid,   // R443：切店后不得回填到别的店
       incomeGroups: this.data.incomeGroups,
       expenseGroups: this.data.expenseGroups,
@@ -1935,7 +1935,7 @@ Page({
         client_request_id: 'li_' + Date.now(),
       });
       this.setData({ saved: true });
-      wx.removeStorageSync(DRAFT_KEY + this.data.month); // 已保存 → 清草稿
+      wx.removeStorageSync(ss.shopKey(DRAFT_KEY + this.data.month)); // 已保存 → 清草稿
       wx.showToast({ title: TERMS.ui.savedDone, icon: 'success' });
       setTimeout(() => wx.navigateBack(), 500);
     } catch (e) { api.toastError(e); }

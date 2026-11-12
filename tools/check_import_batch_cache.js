@@ -23,6 +23,10 @@ const ROOT = path.resolve(__dirname, '..');
 const PAGE = path.join(ROOT, 'subpkg/biz/card/import.js');
 const SRC = fs.readFileSync(PAGE, 'utf8');
 const DI = require(path.join(ROOT, 'utils/dishImport.js'));
+// 🔴 R720：页面落盘已改走 ss.shopKey(...)，桩读 store 必须用同一把钥匙；
+//   否则 store[裸key] 恒为 undefined（G-① 会直接 TypeError 崩掉整个套件）。
+const SS_R720 = require(path.join(ROOT, 'utils/shopSwitcher.js'));
+const K = (b) => SS_R720.shopKey(b, 'shop_test');
 const { TERMS } = require(path.join(ROOT, 'miniprogram/i18n/terms.js'));
 
 let pass = 0; let failN = 0;
@@ -128,11 +132,11 @@ const MENU = [
   const A = newPage();
   await withWx(async () => { A.onLoad(); await sleep(20); });
   ok('A-① 首次进页面：本地还没有批次（不是一进来就写空壳）',
-    !store[DI.BATCH_CACHE_KEY], 'key=' + (store[DI.BATCH_CACHE_KEY] ? '有(红)' : '无'));
+    !store[K(DI.BATCH_CACHE_KEY)], 'key=' + (store[K(DI.BATCH_CACHE_KEY)] ? '有(红)' : '无'));
 
   await withWx(async () => { A.onParse(MENU); await sleep(10); });
   ok('A-② 解析出 3 道菜', (A.data.rows || []).length === 3, '行数=' + (A.data.rows || []).length);
-  const c1 = store[DI.BATCH_CACHE_KEY];
+  const c1 = store[K(DI.BATCH_CACHE_KEY)];
   ok('A-③ 🔴 解析成功后真的落盘了（不是等老板点保存才存）', !!c1, c1 ? 'ts=' + c1.ts : '未落盘');
   if (c1) {
     ok('A-④ 落盘里带原文（老板回来能看到自己粘的是什么）',
@@ -165,7 +169,7 @@ const MENU = [
   });
   ok('B-① 核对上之后那一行被标 saved', !!B.data.rows.find((r) => r.name === '耙牛肉' && r.saved),
     (B.data.rows || []).map((r) => r.name + ':' + !!r.saved).join(','));
-  const c2 = store[DI.BATCH_CACHE_KEY];
+  const c2 = store[K(DI.BATCH_CACHE_KEY)];
   ok('B-② 🔴 saved 标记**立刻**落盘了（不等下次解析，否则杀掉就丢）',
     !!c2 && Array.isArray(c2.rows) && c2.rows.some((r) => r.name === '耙牛肉' && r.saved),
     c2 ? (c2.rows || []).map((r) => r.name + ':' + !!r.saved).join(',') : '未落盘');
@@ -201,7 +205,7 @@ const MENU = [
   ok('C-⑨（前置）恢复后确实拿到行', C9rows.length === 3, '行数=' + C9rows.length);
   if (C9rows.length) {
     await withWx(async () => { C9.onGoFill({ currentTarget: { dataset: { idx: 0 } } }); });
-    const pre = store[DI.DRAFT_PREFILL_KEY];
+    const pre = store[K(DI.DRAFT_PREFILL_KEY)];
     ok('C-⑩ 🔴 恢复的行点「去补价」⇒ 草稿真送进暂存键（不是空壳）',
       !!pre && pre.name === '耙牛肉' && Array.isArray(pre.lines) && pre.lines.length > 0,
       pre ? pre.name + '/lines=' + (pre.lines || []).length : '暂存键为空');
@@ -223,16 +227,16 @@ const MENU = [
 
   // D-① 超过 7 天
   for (const k of Object.keys(store)) delete store[k];
-  store[DI.BATCH_CACHE_KEY] = mkCache({ ts: Date.now() - 8 * 24 * 3600 * 1000 });
+  store[K(DI.BATCH_CACHE_KEY)] = mkCache({ ts: Date.now() - 8 * 24 * 3600 * 1000 });
   const D1 = newPage();
   await withWx(async () => { D1.onLoad(); await sleep(20); });
   ok('D-① 超过 7 天 ⇒ 不恢复，且顺手把 key 删掉（否则坏 key 会被反复读）',
-    (D1.data.rows || []).length === 0 && !store[DI.BATCH_CACHE_KEY],
-    '行数=' + (D1.data.rows || []).length + ' key=' + (store[DI.BATCH_CACHE_KEY] ? '仍在(红)' : '已清'));
+    (D1.data.rows || []).length === 0 && !store[K(DI.BATCH_CACHE_KEY)],
+    '行数=' + (D1.data.rows || []).length + ' key=' + (store[K(DI.BATCH_CACHE_KEY)] ? '仍在(红)' : '已清'));
 
   // D-② rows 为空
   for (const k of Object.keys(store)) delete store[k];
-  store[DI.BATCH_CACHE_KEY] = mkCache({ rows: [] });
+  store[K(DI.BATCH_CACHE_KEY)] = mkCache({ rows: [] });
   const D2 = newPage();
   await withWx(async () => { D2.onLoad(); await sleep(20); });
   ok('D-② rows 是空数组 ⇒ 不恢复（空壳没有恢复的意义）',
@@ -240,7 +244,7 @@ const MENU = [
 
   // D-③ 行里没有 draft 骨架
   for (const k of Object.keys(store)) delete store[k];
-  store[DI.BATCH_CACHE_KEY] = mkCache({ rows: [{ name: '耙牛肉', price: '68.00' }] });
+  store[K(DI.BATCH_CACHE_KEY)] = mkCache({ rows: [{ name: '耙牛肉', price: '68.00' }] });
   const D3 = newPage();
   await withWx(async () => { D3.onLoad(); await sleep(20); });
   ok('D-③ 行缺 draft ⇒ 整批不恢复（绝不半信半疑恢复半张表）',
@@ -248,7 +252,7 @@ const MENU = [
 
   // D-④ 时间戳在未来（系统时间被改过）
   for (const k of Object.keys(store)) delete store[k];
-  store[DI.BATCH_CACHE_KEY] = mkCache({ ts: Date.now() + 365 * 24 * 3600 * 1000 });
+  store[K(DI.BATCH_CACHE_KEY)] = mkCache({ ts: Date.now() + 365 * 24 * 3600 * 1000 });
   const D4 = newPage();
   await withWx(async () => { D4.onLoad(); await sleep(20); });
   ok('D-④ 时间戳在将来 ⇒ 不恢复（否则「7 天后」永远算不到）',
@@ -256,7 +260,7 @@ const MENU = [
 
   // D-⑤ text 不是字符串
   for (const k of Object.keys(store)) delete store[k];
-  store[DI.BATCH_CACHE_KEY] = mkCache({ text: 123 });
+  store[K(DI.BATCH_CACHE_KEY)] = mkCache({ text: 123 });
   const D5 = newPage();
   await withWx(async () => { D5.onLoad(); await sleep(20); });
   ok('D-⑤ text 不是字符串 ⇒ 不恢复（结构不对就当没有）',
@@ -267,7 +271,7 @@ const MENU = [
   for (const k of Object.keys(store)) delete store[k];
   const E = newPage();
   await withWx(async () => { E.onLoad(); await sleep(20); E.onParse(MENU); await sleep(10); });
-  const before = JSON.stringify(store[DI.BATCH_CACHE_KEY] || {});
+  const before = JSON.stringify(store[K(DI.BATCH_CACHE_KEY)] || {});
   // 再粘一张「套餐明细」（会被体检拒收 ⇒ rows 空）
   await withWx(async () => {
     E.onParse('套餐\t单品名称\n耙牛肉\t牛肉');
@@ -275,8 +279,8 @@ const MENU = [
   });
   ok('E-① 被体检拒收时 rows 清空', (E.data.rows || []).length === 0, '行数=' + (E.data.rows || []).length);
   ok('E-② 🔴 但**本地那批没被覆盖**（空批次不落盘，否则老板手滑一次旧活全没）',
-    JSON.stringify(store[DI.BATCH_CACHE_KEY] || {}) === before,
-    '覆盖前长度=' + before.length + ' 现在=' + JSON.stringify(store[DI.BATCH_CACHE_KEY] || {}).length);
+    JSON.stringify(store[K(DI.BATCH_CACHE_KEY)] || {}) === before,
+    '覆盖前长度=' + before.length + ' 现在=' + JSON.stringify(store[K(DI.BATCH_CACHE_KEY)] || {}).length);
 
   // ============ F 组：docs / 接线 ============
   console.log('\n===== F 接线与单源 =====');
@@ -320,9 +324,9 @@ const MENU = [
   });
   ok('G-① 变异「标已保存后不落盘」⇒ 盘上的 saved 仍是 false（B-② 有分辨力）',
     !!M1p.data.rows.find((r) => r.name === '耙牛肉' && r.saved)
-    && !(store[DI.BATCH_CACHE_KEY].rows || []).find((r) => r.name === '耙牛肉' && r.saved),
+    && !(store[K(DI.BATCH_CACHE_KEY)].rows || []).find((r) => r.name === '耙牛肉' && r.saved),
     '界面saved=' + !!M1p.data.rows.find((r) => r.name === '耙牛肉' && r.saved)
-    + ' 盘上saved=' + !!(store[DI.BATCH_CACHE_KEY].rows || []).find((r) => r.name === '耙牛肉' && r.saved));
+    + ' 盘上saved=' + !!(store[K(DI.BATCH_CACHE_KEY)].rows || []).find((r) => r.name === '耙牛肉' && r.saved));
 
   // G-② 去掉 onLoad 里的恢复调用 ⇒ C-② 必须不成立
   const M2 = loadPage((s) => s.replace('    this.restoreBatch();\n', ''));
@@ -342,24 +346,24 @@ const MENU = [
   const G3 = mkPage(CFG);
   for (const kk of Object.keys(store)) delete store[kk];
   await withWx(async () => { G3.onLoad(); await sleep(20); G3.onParse(MENU); await sleep(10); });
-  const before3 = JSON.stringify(store[DI.BATCH_CACHE_KEY] || {});
+  const before3 = JSON.stringify(store[K(DI.BATCH_CACHE_KEY)] || {});
   G3.setData({ rows: [] });
   await withWx(async () => { G3.persistBatch(); });
   ok('G-③ 第二道防线：persistBatch 自己对空批次早退（不覆盖上一批）',
-    JSON.stringify(store[DI.BATCH_CACHE_KEY] || {}) === before3,
-    '覆盖前后相同=' + (JSON.stringify(store[DI.BATCH_CACHE_KEY] || {}) === before3));
+    JSON.stringify(store[K(DI.BATCH_CACHE_KEY)] || {}) === before3,
+    '覆盖前后相同=' + (JSON.stringify(store[K(DI.BATCH_CACHE_KEY)] || {}) === before3));
 
   // 变异：删掉早退 ⇒ 空批次真的会覆盖（证明 G-③ 不是恒真）
   const M3 = loadPage((x) => x.replace('    if (!rows.length) return;   // 空批次不落盘', '    // MUT'));
   const M3p = mkPage(M3);
   for (const kk of Object.keys(store)) delete store[kk];
   await withWx(async () => { M3p.onLoad(); await sleep(20); M3p.onParse(MENU); await sleep(10); });
-  const before3b = JSON.stringify(store[DI.BATCH_CACHE_KEY] || {});
+  const before3b = JSON.stringify(store[K(DI.BATCH_CACHE_KEY)] || {});
   M3p.setData({ rows: [] });
   await withWx(async () => { M3p.persistBatch(); });
   ok('G-③b 变异「删掉空批次早退」⇒ 真的被空壳覆盖（G-③ 有分辨力）',
-    JSON.stringify(store[DI.BATCH_CACHE_KEY] || {}) !== before3b,
-    '覆盖前后相同=' + (JSON.stringify(store[DI.BATCH_CACHE_KEY] || {}) === before3b));
+    JSON.stringify(store[K(DI.BATCH_CACHE_KEY)] || {}) !== before3b,
+    '覆盖前后相同=' + (JSON.stringify(store[K(DI.BATCH_CACHE_KEY)] || {}) === before3b));
 
   // G-④ 过期判断去掉 ⇒ D-① 必须不成立
   const M4 = loadPage((s) => s.replace('  if (now - ts > BATCH_TTL_MS) return false;', '  // MUT: 不判过期'));

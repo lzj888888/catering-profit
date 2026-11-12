@@ -70,4 +70,29 @@ function currentShopId() {
   } catch (e) { return ''; }
 }
 
-module.exports = { fetchShopList, persistShopId, restoreShopId, switchShop, restoreLastShop, PERSIST_KEY, currentShopId };
+/**
+ * 🔴 R720（李老师 2026-11-12「继续」）：本地 storage key 的**店铺维度唯一拼法**。
+ *
+ * 背景：R718/R719 两轮审计实锤 7 类全局 key 跨店串数据 / 覆盖丢失 ——
+ *   DISH_IMPORT_BATCH（整批导入进度）、DISH_IMPORT_DRAFT_ONE（单菜预填）、
+ *   m3_dish_cats（分类字典）、m3_materials_cache_v1（原料缓存）、
+ *   draft_month_input_ / draft_month_inv_（月度草稿 / 盘点草稿）。
+ *   根因：切店只改 globalData.shop_id，本地 key 却不带店 ⇒ 两店共用一格。
+ *
+ * 三条纪律：
+ *   ① 单源 —— 本地业务缓存一律走这里拼 key，不许各页再写一遍 getApp()；
+ *   ② fail-closed —— 拿不到店铺时落到 `__NO_SHOP__` 独立格，与任何真实店都不互串；
+ *      旧缓存读不到就当没有，宁丢不串（与 currentShopId 同口径）；
+ *   ③ 第二参 shopId **只给守卫/单测构造场景用**，产品代码一律只传 base
+ *      （check_m3_storage_isolation.js A-⑧ 判产品源码里调用只传 1 个实参）。
+ *
+ * @param {string} base 原始 key（常量字面量，不带店）
+ * @param {string} [shopId] 仅测试用；不传则取 currentShopId()
+ */
+function shopKey(base, shopId) {
+  const sid = shopId === undefined ? currentShopId() : (shopId || '');
+  if (!sid) return String(base) + '__NO_SHOP__';
+  return String(base) + '_shop_' + sid;
+}
+
+module.exports = { fetchShopList, persistShopId, restoreShopId, switchShop, restoreLastShop, PERSIST_KEY, currentShopId, shopKey };
