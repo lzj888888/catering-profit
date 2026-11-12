@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：291 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：292 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1620,6 +1620,19 @@ const SUITES = [
   //   另登记：不传月份区间会两月累加（506 份/805200 分，靠前端自觉的契约缺口 🟡）。
   //   42 断言 + 7 条真变异回灌（临时改坏产品源码/账单/报告，跑完恢复，逐条点名）。
   ['two-books-isolation', 'tools/check_two_books_isolation.js'],
+  // R719：M3 本地存储隔离「横向全量排查」守卫。李老师 2026-11-12「再跑一轮审计」⇒
+  //   接着 R718 的尾巴：上轮只抽查 4 个本地 key，其余只列「修复建议」无取证，
+  //   且按红线「不采信任何自述（含我方上轮）」必须脱离上轮报告独立重算。
+  //   A 段守卫**自己全量扫产品源码**（41 个 storage 调用逐个提第一实参），
+  //     任何未归类登记的新全局 key 直接判红 ⇒ 横向防漏可长期生效；
+  //   B 段页面桩真 require 6 个页面、同一份本地 store 里切店，真跑 6 个场景：
+  //     S1/S2 独立复核 R718 两条红（成立）；S3 单菜预填跨店带出 A 店菜名+12 元售价；
+  //     S4 分类字典跨店 + **跨页同 key**（EDIT_CATS_KEY === LIST_CATS_KEY，写入语义互斥）；
+  //     S5 原料缓存首屏短暂串店（后台会纠正，诚实定级 🟡）；S6 对照组 6 个按 shop 的
+  //     key 不误伤、切回原样读回 ⇒ 证明修法现成。
+  //   C 共同根因：switchShop() 只置 shopLoaded=false，不清缓存不加维度。
+  //   32 断言 + 7 条真变异回灌（临时改坏产品源码/报告，跑完恢复，逐条点名）。
+  ['m3-storage-isolation', 'tools/check_m3_storage_isolation.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
