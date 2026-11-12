@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：292 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：293 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1631,8 +1631,19 @@ const SUITES = [
   //     S5 原料缓存首屏短暂串店（后台会纠正，诚实定级 🟡）；S6 对照组 6 个按 shop 的
   //     key 不误伤、切回原样读回 ⇒ 证明修法现成。
   //   C 共同根因：switchShop() 只置 shopLoaded=false，不清缓存不加维度。
-  //   R720 修复后 35 断言（B 组反转 + A-⑧/A-⑨ + C-⑨）；变异见 R720 提交信息。
+  //   R721 交叉审后 36 断言（B-③ 改名 + 补好样本反向腿）；变异见 R720 提交信息。
   ['m3-storage-isolation', 'tools/check_m3_storage_isolation.js'],
+  // R721：审计发现台账守卫。李老师 2026-11-12「不停找出短板随时修复……除了正常审计
+  //   还有什么方法、用不用去技能库找技能、有没有几个人一起审审完挑毛病这种交叉方式……
+  //   你想方案，因为你现在是总设计师」。三根标准：好用 / 省心 / 数据安全。
+  //   守的不是「有没有 bug」，是「发现会不会悄悄消失」：
+  //     ① 每条发现必须有证据 file:line + 来源 + 核实状态；
+  //     ② status=fixed 必须有 fix_evidence，且守卫去**产品源码核对**不是嘴上说说；
+  //     ③ status=deferred 必须有 priority + next_action（不许挂着没下一步）；
+  //     ④ 准备修的条目必须记录唱反调结论；⑤ 桩型占比 <30% 必须对应一条 P0/P1 待办；
+  //     ⑥ 判据自身用合成坏样本反恒真。
+  //   台账 review/evidence/r721_findings.json（17 条）+ 方案 review/DESIGN_R721_持续发现漏洞机制.md。
+  ['audit-findings-ledger', 'tools/check_audit_findings_ledger.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

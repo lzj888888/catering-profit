@@ -246,8 +246,13 @@ ok('B-① 🔴 R720：B 店 restoreBatch() 读不到 A 店批次（两店各占�
   JSON.stringify(s1Names));
 ok('B-② S1 连带：B 店界面不再出现「还有 2 道没补完」的续做提示',
   B1.data.parsed !== true && !/没补完/.test(String(B1.data.resumeTip)), String(B1.data.resumeTip));
-ok('B-③ 反恒真：坏缓存（缺 draft 骨架）isBatchFresh=false ⇒ B 店不会误恢复',
+// 🔴 R721 唱反调复核：原 B-③ 被误标「反恒真」—— isBatchFresh=false 只证明坏缓存
+//   结构触发兜底，与 A/B 两店 key 是否隔离无关。真正能给相反答案的是 B-① 的
+//   shopKey 退化判据（M1 变异已真跑过），换样本零新增证伪力 ⇒ 这里只改名 + 补缺失的反向腿。
+ok('B-③ 前提：坏缓存（缺 draft 骨架）isBatchFresh=false ⇒ 不把过期兜底误读成隔离成功',
   DI.isBatchFresh({ text: 'x', rows: [{ name: 'n' }], ts: Date.now() - 1000 }, Date.now()) === false);
+ok('B-③b 反恒真：结构合规的**好样本** isBatchFresh=true（判据不是恒假）',
+  DI.isBatchFresh({ text: 'x', rows: [{ name: 'n', draft: {} }], ts: Date.now() - 1000 }, Date.now()) === true);
 
 // ---- S2 复核 R718 红②：月草稿覆盖 ----
 const s2 = new Map();
