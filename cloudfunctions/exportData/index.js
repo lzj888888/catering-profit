@@ -394,12 +394,25 @@ exports.main = async (event) => {
     // A7：M2 免费导出附带「关于本表」工作表（署名 + 口径 + 来源指引）。
     //   做成**第二张表**而不是往数据表尾塞行 —— 塞行会把首列撑宽、破坏表格版式，
     //   而这份件正是要拿给外人看的，版式就是专业度。
-    content = (isM2FreeExport && !sheets)
-      ? xlsxSheetsBase64([
+    //
+    // 🔴 R724k（台账 R3-2）：**所有 xlsx 导出**都带署名页，不再只限 M2 免费件。
+    //   为什么改：M1 月报与 M3 成本卡是**付费件、含成本与利润的核心数据**，外传风险
+    //   比免费引流件更高；而此前**恰恰是它们没有署名**（免费件反而有）—— 口径反了。
+    //   为什么不能真的「防转发」：铁律② showMenu 必开（R265），不给右上角「…」老板
+    //   拿到文件也存不下来、转不出去，那等于导出白做。本地文件一旦生成，技术上拦不住转发。
+    //   ⇒ 署名页是唯一可行且不损可用性的手段：让每一份流出去的件都带着「谁家的、什么时候、
+    //     什么口径」，至少可追溯、可溯源，而不是一张无主表。
+    const aboutSheet = {
+      name: '关于本表',
+      header: ['项目', '内容'],
+      rows: buildAboutRows({ shopName: shopName, stamp: stamp }),
+    };
+    content = sheets
+      ? xlsxSheetsBase64(sheets.concat([aboutSheet]))
+      : xlsxSheetsBase64([
         { name: SHEET_NAME[scope] || 'Sheet1', header: header, rows: body },
-        { name: '关于本表', header: ['项目', '内容'], rows: buildAboutRows({ shopName: shopName, stamp: stamp }) },
-      ])
-      : (sheets ? xlsxSheetsBase64(sheets) : xlsxBase64(header, body, SHEET_NAME[scope] || 'Sheet1'));
+        aboutSheet,
+      ]);
     // 🔴 依赖缺失必须**响亮失败**：静默回退成 CSV 会让用户又回到「导出完成但打不开」的原点。
     if (!content) return fail(ERROR_CODES.SYSTEM_ERROR, '导出服务未安装 xlsx 依赖，暂时无法生成 Excel');
     encoding = 'base64';

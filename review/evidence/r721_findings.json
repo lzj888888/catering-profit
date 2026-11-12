@@ -208,10 +208,12 @@
       "title": "导出/分享无防转发分级，付费件与免费引流件同一条路径",
       "evidence": "utils/exportFile.js:47",
       "verified_by": "R3-已核实",
-      "status": "deferred",
+      "status": "fixed",
       "verified": true,
-      "priority": "P1",
-      "next_action": "商业化切换前定付费件防转发口径；当前 FREE_ACCESS=true 属提审期设计，不写成既成漏洞"
+      "priority": "",
+      "next_action": "",
+      "fix_evidence": "云函数 exportData 的 xlsx 分支改为**所有导出件**都带「关于本表」署名页。改前只有 M2 免费引流件带，而 M1 月报 / M3 成本卡这两个**含成本与利润核心数据的付费件反而没署名** —— 口径反了。改动一处：统一构造 aboutSheet + sheets.concat([aboutSheet])，单表分支同一份。**已部署上云**（cli deploy exportData -r，日志表格行 │ exportData │ true │ 24 │ 97.1 KB │）。**真云真文件验证**：模拟器调 exportData 取回 M1 月报 base64（35352 字符 / 26514 字节）→ Python 解 zip → sheet 从 4 张变 5 张：利润表/收入费用明细/摊销来源/口径说明/**关于本表**；署名页内容实测为「本表由 店算 · 餐饮盈亏平衡测算 / 生成时间 2026-11-12 18:18 UTC / 测算对象 李家小面 / 数据来源 … / 免责 …」。check_export_delivery 新增 F1~F4；变异改回旧口径 isM2FreeExport && !sheets ⇒ F4 转红 exit=1。",
+      "challenge": "「防转发」本身做不到：showMenu 必开是 R265 的硬要求（不给右上角「…」，老板拿到文件也存不下、转不出去，等于导出白做）；本地文件一旦生成，技术上拦不住转发。所以 R3-2 可做的不是「防」，是「可追溯 + 分级」。分级其实**已经存在**（isM2FreeExport 那套：免费件拿传播、付费件拿留档），缺的是署名覆盖面 —— 恰恰最该署名的付费件没有。真正的「访问控制型防转发」（链接失效/水印追踪/在线只读）需要 H5 或服务端渲染载体，属产品决策，不在本轮范围，之前也已明确 H5 暂不做。"
     },
     {
       "id": "R3-3",

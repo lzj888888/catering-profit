@@ -267,6 +267,21 @@
     noteGet2('库存开关') === '开' && noteGet2('摊销开关') === '开'
     && /不含摊销/.test(noteGet2('经营参考利润')) && /当月摊销/.test(noteGet2('全要素真实利润')));
 
+  // ================= E · 署名页覆盖（R724k / 台账 R3-2）=================
+  // 背景：署名页「关于本表」原来**只加在 M2 免费引流件**上，而 M1 月报 / M3 成本卡
+  //   是**付费件、含成本与利润核心数据**，外传风险更高，反而没有署名 —— 口径反了。
+  //   ⚠️ 技术上拦不住本地文件被转发（showMenu 必开是 R265 硬要求，否则老板存不下文件），
+  //      ⇒ 署名页是唯一不损可用性的「可追溯」手段。
+  console.log('\n===== E · 署名页覆盖所有 xlsx 导出（付费件同样署名）=====');
+  const aboutCount = (fnCode.match(/aboutSheet/g) || []).length;
+  check('F1 xlsx 分支构造了 aboutSheet（署名页对象）', /const aboutSheet\s*=/.test(fnCode), '出现 ' + aboutCount + ' 次');
+  check('F2 🔴 sheets 有值时也 concat 署名页（月度报表是多 sheet，同样要带）',
+    /sheets\.concat\(\[aboutSheet\]\)/.test(fnCode));
+  check('F3 单表导出同样带署名页（定义 1 + concat 1 + 单表 1 ⇒ 至少 3 处引用）',
+    aboutCount >= 3, '出现 ' + aboutCount + ' 次');
+  check('F4 🔴 不得残留旧口径「仅 isM2FreeExport 才加署名」（那正是付费件漏署名的原因）',
+    !/isM2FreeExport\s*&&\s*!sheets/.test(fnCode));
+
   // ================= D 自检（证明判据有分辨力）=================
   console.log('\n===== D · 判据自检（正负样本）=====');
   const neg = ['csv', 'json', 'txt', 'CSV'].every((f) => OPENABLE[f] === undefined);

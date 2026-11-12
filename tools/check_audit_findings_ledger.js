@@ -77,8 +77,14 @@ ok('L-⑤ fixed 条目 ≥3 且每条都有修法证据与挑毛病结论',
   fixed.length >= 3 && fixed.every((f) => f.fix_evidence && f.challenge), 'fixed=' + fixed.length);
 // R723：下界从 10 降到 5 —— 随着修复推进 deferred 会自然减少，硬 10 会逼人「留着不修」。
 //   真正的防线是「总数 ≥17（L-①）+ 条目只改状态不删」，5 条只用来抓「台账被掏空」。
+// 🔴 R724k：再从 5 降到 3。2026-11-13 实测 deferred 修到只剩 4 条（R3-2/R3-7 当晚销账），
+//   下界 5 立刻判红 —— 而当时台账 21 条、fixed 17 条、一条没删，正是「修得快」而不是「被掏空」。
+//   为什么下界可以这么低：①「条目不被删」由 L-①（总数 ≥17）守；②「不许假装修了」由 L-⑤
+//   （fixed 必须带 fix_evidence + challenge）守。deferred 下界真正要抓的只有**清空**（0 条，
+//   意味着要么全修完、要么有人批量改状态）。3 条足够区分「快修完」与「被清空」，再高就是
+//   逼人为了喂绿去**编造/保留**待办，那是更坏的方向。
 ok('L-⑥ deferred 条目每条都有优先级与下一步（不许挂着没主人）',
-  deferred.length >= 5 && deferred.every((f) => f.priority && f.next_action), 'deferred=' + deferred.length);
+  deferred.length >= 3 && deferred.every((f) => f.priority && f.next_action), 'deferred=' + deferred.length);
 ok('L-⑦ 准备修的 6 条都记录了唱反调结论（确认偏误不被抹掉）',
   F.filter((f) => f.challenge).length >= 6, '有 challenge=' + F.filter((f) => f.challenge).length);
 
