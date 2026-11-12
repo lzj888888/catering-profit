@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：298 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：299 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1688,6 +1688,13 @@ const SUITES = [
   //   A 权益分流 6 / B 三态 4 / C hero 4 / D wanText 5 / E bootstrap 5 / F 跳转与生命周期 4 /
   //   M 4 条变异回灌（M-2 需同时拆**两道** account_id 判据才退化——页面本来是双保险，这一点也被记下来了）。
   ['home-page-stub', 'tools/check_home_page_stub.js'],
+  // R724e · 台账 R1-8（剩余零桩页按风险排）：摊销页。摊销额是**直接进利润的费用**，
+  //   此前零桩。四类静默错误：① 开关乐观更新失败**不回滚** ⇒ 页面说已开、后端没存
+  //   ⇒ 老板对着一份少算了摊销的利润做决定（本页最贵，零报错）；② 归档期没拦住
+  //   ⇒ 已出报表被悄悄改写；③ 同一资产再投一笔（group_id 相同）漏聚合 ⇒ 看到两行以为记重；
+  //   ④ goHome 只会 navigateBack ⇒ 直接进入本页时栈里只有自己，「回首页」点了没反应。
+  //   A 装配 7 / B 分组 7 / C 小工具 2 / D 开关 4 / E 归档与出口 6 / F 报废 4 / M 4 条变异。
+  ['amortize-page-stub', 'tools/check_amortize_page_stub.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
