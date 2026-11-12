@@ -13,7 +13,7 @@
     "prepared_to_fix": 6,
     "challenge_result": "1 建议不修 / 4 修法要改 / 1 只需改名",
     "verified": 14,
-    "total": 20
+    "total": 21
   },
   "blindspot": {
     "guards": 207,
@@ -292,6 +292,19 @@
       "priority": "",
       "next_action": "",
       "fix_evidence": "hub.js payTag 改为 PAYWALL_ENABLED ? TERMS.hub.payTag : (空串)（引用 featureFlags 单源）；wxml 四处加 wx:if；新增 tools/check_hub_paytag.js（6 断言：关时为空/开时非空/每处带条件/前后端开关互反/引用单源/变异）；模拟器复验 payTag 为空串 且截图确认四卡无标签、高度一致"
+    },
+    {
+      "id": "R3-7",
+      "source": "R3-security",
+      "severity": "P2",
+      "title": "本地 storage 残留三个历史 key（m3_dish_cats / sandbox_draft_v1 旧格式 / takeout_mode_旧shopid）未清理",
+      "evidence": "R724i 模拟器实测 wx.getStorageInfoSync：m3_dish_cats=[]、sandbox_draft_v1=V1无shop_id字段、takeout_mode_shop_mu6j87v1itrs_2026-09=fast",
+      "verified_by": "R724i 真云实测（2026-11-13）",
+      "status": "deferred",
+      "verified": true,
+      "challenge": "反方：现网读不到它们（key 拼法已变/缺字段被丢弃），清它是不是白干？判断：确实无害，但「读不到」依赖两件事同时成立——key 拼法不变 + 恢复逻辑仍然比对 shop_id。任一条被后人简化，就会读到脏值。属「低成本防御」而非「真 bug」，故 P2 不 P1。",
+      "priority": "P2",
+      "next_action": "在 pages/mine/index.js::doLogout 的清理流程里并列加一步：干掉这三个历史 key（m3_dish_cats、sandbox_draft_v1、takeout_mode_*）。必须逐 key try/catch，且放在 clearStorageSync 之前（同 R3-1 导出件清理的教训）"
     }
   ]
 }

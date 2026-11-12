@@ -1,0 +1,45 @@
+{
+  "shopA": "shop_u_mu6j87t1a283_sc_1794313024786 (李家小面)",
+  "shopB": "shop_u_mu6j87t1a283_sc_1793886738334 (顺水鱼馆)",
+  "seed": {
+    "material": "A店专属锅底 1200分/斤 500g",
+    "asset": "A店装修费 300000分 2026-09起 3个月"
+  },
+  "crossShop": {
+    "A_materials": [
+      "A店专属锅底"
+    ],
+    "A_assets": [
+      "A店装修费"
+    ],
+    "A_total_fen": 200000,
+    "B_materials": [],
+    "B_assets": [],
+    "B_total_fen": 0
+  },
+  "months": {
+    "2026-08": 0,
+    "2026-09": 200000,
+    "2026-10": 200000,
+    "2026-11": 200000,
+    "2026-12": 0
+  },
+  "storageKeys": [
+    "takeout_mode_shop_mu6j87v1itrs_2026-09",
+    "m3_dish_cats",
+    "sandbox_draft_v1",
+    "shop_switcher_shop_id"
+  ],
+  "notes": "A店造了2轮(幂等键不同)故有2条同名;已全部软删清理; B店全程未写入",
+  "cleanup": {
+    "before": {
+      "materials": 2,
+      "assets": 2
+    },
+    "after": {
+      "materials": 0,
+      "assets": 0,
+      "total_fen": 0
+    }
+  }
+}

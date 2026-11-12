@@ -1,0 +1,56 @@
+{
+  "seed": {
+    "mCode": "SUCCESS",
+    "mMsg": "ok",
+    "aCode": "SUCCESS",
+    "aMsg": "ok"
+  },
+  "a": {
+    "codes": [
+      "SUCCESS",
+      "SUCCESS"
+    ],
+    "names": [
+      "A店专属锅底",
+      "A店专属锅底"
+    ],
+    "assets": [
+      "A店装修费",
+      "A店装修费"
+    ],
+    "total": 200000
+  },
+  "b": {
+    "names": [],
+    "assets": [],
+    "total": 0,
+    "keys": [
+      "takeout_mode_shop_mu6j87v1itrs_2026-09",
+      "m3_dish_cats",
+      "sandbox_draft_v1",
+      "shop_switcher_shop_id"
+    ]
+  },
+  "months": {
+    "2026-08": {
+      "total": 0,
+      "n": 2
+    },
+    "2026-09": {
+      "total": 200000,
+      "n": 2
+    },
+    "2026-10": {
+      "total": 200000,
+      "n": 2
+    },
+    "2026-11": {
+      "total": 200000,
+      "n": 2
+    },
+    "2026-12": {
+      "total": 0,
+      "n": 2
+    }
+  }
+}
