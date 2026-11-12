@@ -82,10 +82,12 @@
       "title": "subpkg/biz/ai/consent 零守卫提及（AI 授权同意页）",
       "evidence": "app.json 路由 / tools 零命中",
       "verified_by": "R1-已核实",
-      "status": "deferred",
+      "status": "fixed",
       "verified": true,
-      "priority": "P1",
-      "next_action": "补授权页行为守卫并纳入盲区扫描白名单核销"
+      "priority": "",
+      "next_action": "",
+      "fix_evidence": "tools/check_ai_consent_page.js（24 断言 / 4 段：A 判据 6、B 同意契约 7、C 界面契约 7，D 组 4 条真变异回灌全部 exit=1 且点名）；scope 三项 ≡ cloudfunctions/common/aiGate.js:35 PURPOSES 逐项有序比对（同源不手抄）；已挂 verify_all SUITES，全量 295/295 绿",
+      "challenge": "反方：这页是合规说明页，AI 功能按 specs 的 ADR_2026-09-28 仍属预留、尚未对老板开放，给未上线页补行为守卫是否过度投入？判断：授权写错是不可逆的合规问题（旧条款同意覆盖新同意 / 空版本同意 / unique 索引重复写失败），且守卫秒级 24 断言、成本远低于线上事故 —— 采纳；但边界只守「授权语义 + 契约同源 + 文案 key 全覆盖」，不守视觉好坏（那是真机轮的活）。"
     },
     {
       "id": "R1-6",

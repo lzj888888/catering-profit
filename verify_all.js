@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：294 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：295 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1651,6 +1651,13 @@ const SUITES = [
   //   A/B/C 用页面桩真跑（不是只判源码形状），D 组反恒真；24 断言 + 7 条真变异回灌点名。
   //   报告 review/AUDIT_R723_P0修复验收.md。
   ['r723-p0-fixes', 'tools/check_r723_p0_fixes.js'],
+  // R724：R1-5 台账条目的守卫 —— AI 授权同意页（合规页）此前全仓零行为守卫，
+  //   只有两处注释提及。这一页最危险的失效不是崩，而是「老板点了同意、到底同意了哪几项、
+  //   同意的是哪版条款」没人能看见。四类静默失效：① 判据读 state 枚举（改名即永久显示未开）/
+  //   ② grant 不带 policy_version（条款升级照放行）/ ③ 拿不到版本仍发 grant（记录空同意）/
+  //   ④ busy 不拦（unique 索引写失败）。A/B/C 组页面桩真跑，D 组 4 条变异回灌点名；
+  //   scope 三项 ≡ 云函数 aiGate.PURPOSES 逐项有序比对（同源，不手抄）。
+  ['ai-consent-page', 'tools/check_ai_consent_page.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
