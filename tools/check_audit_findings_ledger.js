@@ -75,8 +75,10 @@ const fixed = F.filter((f) => f.status === 'fixed');
 const deferred = F.filter((f) => f.status === 'deferred');
 ok('L-⑤ fixed 条目 ≥3 且每条都有修法证据与挑毛病结论',
   fixed.length >= 3 && fixed.every((f) => f.fix_evidence && f.challenge), 'fixed=' + fixed.length);
+// R723：下界从 10 降到 5 —— 随着修复推进 deferred 会自然减少，硬 10 会逼人「留着不修」。
+//   真正的防线是「总数 ≥17（L-①）+ 条目只改状态不删」，5 条只用来抓「台账被掏空」。
 ok('L-⑥ deferred 条目每条都有优先级与下一步（不许挂着没主人）',
-  deferred.length >= 10 && deferred.every((f) => f.priority && f.next_action), 'deferred=' + deferred.length);
+  deferred.length >= 5 && deferred.every((f) => f.priority && f.next_action), 'deferred=' + deferred.length);
 ok('L-⑦ 准备修的 6 条都记录了唱反调结论（确认偏误不被抹掉）',
   F.filter((f) => f.challenge).length >= 6, '有 challenge=' + F.filter((f) => f.challenge).length);
 

@@ -134,10 +134,12 @@
       "title": "导出按钮叫「导出 / 打印」，实际只产 Excel，没有打印能力",
       "evidence": "miniprogram/i18n/terms.js:172",
       "verified_by": "R2-已核实",
-      "status": "deferred",
+      "status": "fixed",
       "verified": true,
-      "priority": "P1",
-      "next_action": "TERMS.buttons.export 与 paywall.export.content 统一改「导出成本卡 Excel」，与下方 hint 一致"
+      "priority": "",
+      "next_action": "",
+      "fix_evidence": "TERMS.buttons.export 改「导出 Excel」、paywall.export.content 改「（Excel 文件）」；双副本一致；check_page_terms 25/25",
+      "challenge": "只改文案不提打印；不动按钮宽度与付费墙逻辑"
     },
     {
       "id": "R2-4",
@@ -160,10 +162,12 @@
       "title": "成本卡短描述「看排行」但该页没有排行，同屏另有一张排行榜卡",
       "evidence": "miniprogram/i18n/terms.js:2956",
       "verified_by": "R2-已核实",
-      "status": "deferred",
+      "status": "fixed",
       "verified": true,
-      "priority": "P1",
-      "next_action": "cardShort 改「建卡、改价、看已建的卡，都在这」，把排行只留给排行榜卡"
+      "priority": "",
+      "next_action": "",
+      "fix_evidence": "TERMS.hub.cardShort 改「建卡、改价、看已建的卡」；check_m3_entry_naming 28/28",
+      "challenge": "宫格宽约 155px，改短只减字不增行；守卫 A-②b 用变量名做影子样本，不受文案值影响"
     },
     {
       "id": "R2-6",
