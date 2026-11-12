@@ -1,0 +1,70 @@
+- initialize
+
+(node:18324) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)
+√ IDE server has started, listening on http://127.0.0.1:10896
+- query cloudfunctions list
+- fetching cloudfunctions list
+√ query cloudfunctions list
+
+* adminExport
+* adminGrantEntitlement
+* adminInit
+* adminLogin
+* adminLogout
+* adminManualOrder
+* adminOrderList
+* adminQueryUser
+* adminRefreshToken
+* adminRefundMark
+* adminRevokeToken
+* archiveMonth
+* calcAmortize
+* calcBom
+* calcMonthlyProfit
+* calcSandbox
+* checkQuota
+* cleanupSmokeCards
+* clearMonth
+* clearSalesBills
+* dbBackup
+* deleteAccount
+* detectCycle
+* ensureCollections
+* exportData
+* getAiConsent
+* getAmortSchedule
+* getCardVersions
+* getCostCard
+* getDiagnosis
+* getDishReview
+* getLedger
+* getMaterial
+* getMonthList
+* getPlan
+* getSalesBills
+* getShopContext
+* getShopList
+* grantAiConsent
+* importSalesBill
+* initDb
+* manageShop
+* payCallback
+* payCreateOrder
+* payExpireNotify
+* payOrderList
+* payQueryEntitlement
+* payRenew
+* purgeDeletedData
+* revokeAiConsent
+* saveAsset
+* saveCostCard
+* saveDishMapping
+* saveLedger
+* saveMaterial
+* savePlan
+* saveShopSetting
+* smokeTest
+* syncCostCard
+* verifyTangshi
+
