@@ -13,7 +13,7 @@
     "prepared_to_fix": 6,
     "challenge_result": "1 建议不修 / 4 修法要改 / 1 只需改名",
     "verified": 14,
-    "total": 17
+    "total": 19
   },
   "blindspot": {
     "guards": 207,
@@ -70,10 +70,12 @@
       "title": "material/batch 与 material/pick 只有静态形状守卫，无页面桩真跑",
       "evidence": "tools/check_material_batch.js:118",
       "verified_by": "R1-已核实",
-      "status": "deferred",
+      "status": "fixed",
       "verified": true,
-      "priority": "P1",
-      "next_action": "补页面桩守卫，真跑保存接线、幂等键、脏行默认不勾选"
+      "priority": "",
+      "next_action": "",
+      "fix_evidence": "tools/check_material_pages_stub.js（38 断言：B 组 17 真跑 batch 解析→勾选→保存→失败隔离；P 组 14 跑 pick 分组/置顶顺序/搜索/回传哨兵；D 组 7 条变异全部 exit=1 点名）；顺带修掉 R1-7 真缺陷",
+      "challenge": "反方：这两页已有静态形状守卫（check_material_batch.js 49 断言），再补页面桩是不是重复投入？判断：静态守卫只能看「字符串在不在」，看不到「整表拦截/全坏态/脏行默认不勾/重解析清旧提示」四个分支走没走到；实测立刻抓出 R1-7（第一行点不动）——这就是形状守卫零感知的那类。采纳；边界只跑数据→界面的组装，不验视觉。"
     },
     {
       "id": "R1-5",
@@ -247,6 +249,33 @@
       "next_action": "",
       "fix_evidence": "pages/mine/index.js::doLogout 补清 globalData.switches 与 pickMaterial；check_r723_p0_fixes.js B-④ 页面桩真验",
       "challenge": "顺带修，无独立挑毛病轮次；属内存轻量残留，改动面仅两行"
+    },
+    {
+      "id": "R1-7",
+      "source": "R1-gate-blindspot",
+      "severity": "P2",
+      "title": "原料批量录入第一行点不动：data-i 是 wx:for 的 0 起索引，被「|| -1」吞成 -1",
+      "evidence": "subpkg/biz/material/batch.js:149 改前 Number(... || -1) + batch.wxml:48 data-i=\"{{index}}\"",
+      "verified_by": "R724-桩层实测（补 R1-4 守卫时抓到）",
+      "status": "fixed",
+      "verified": true,
+      "challenge": "反方：只是体验瑕疵、不影响算钱，值不值得动产品代码？判断：这是李老师反复报过的「点不动」同型（R705 那批根因就是「没有可操作对象」），修法一行且有 D-7 变异守住，改；边界是只改索引解析，不动选中语义与 fail-closed 规则。",
+      "priority": "",
+      "next_action": "",
+      "fix_evidence": "batch.js onToggleRow 改为 Number.isInteger + 非负显式判定；tools/check_material_pages_stub.js B-④ 断言 + D-7 变异回灌（改回「0 被吞」必须转红）"
+    },
+    {
+      "id": "R1-8",
+      "source": "R1-gate-blindspot",
+      "severity": "P1",
+      "title": "桩型守卫仍只占 15.2%（32/211 个 check_*.js），仍有多页只有静态形状守卫",
+      "evidence": "R724 后实扫 tools/check_*.js：含 global.Page / loadPage 的 32 个，其余 179 个只判源码形状",
+      "verified_by": "R724-现扫",
+      "status": "deferred",
+      "verified": true,
+      "challenge": "反方：桩型守卫成本高于静态守卫，是不是该接受 15% 这个比例？判断：不能——R724 补的两个桩当场抓出 R1-7（第一行点不动），正是形状守卫零感知的那类；比例低意味着大部分页面「写对了」但从没跑过。但也不该为凑比例乱补，只补高风险页（录入/算钱/授权类）。",
+      "priority": "P1",
+      "next_action": "按「零桩且高风险」排序补：revenue（营收录入）、groupon（团购）、diag（诊断结果）优先；每补一页必须带至少 1 条变异回灌，仍走 L2 桩层不进真机"
     }
   ]
 }

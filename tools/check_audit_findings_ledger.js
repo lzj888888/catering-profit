@@ -109,8 +109,14 @@ const stubN = tools.filter((f) => {
   return /global\.Page|loadPage\(/.test(s);
 }).length;
 const ratio = stubN / tools.length;
-ok('L-⑫ 桩型占比 <30% 时，台账里必须有一条对应 P0/P1 待办',
-  ratio >= 0.3 || F.some((f) => f.id === 'R1-4' && f.status === 'deferred' && /^P[01]$/.test(f.priority)),
+// R724：判据从「绑死 R1-4」改成「认任意一条真写了『桩』的 P0/P1 待办」。
+//   为什么必须改：R1-4 是本条判据原本指定的那张票，它修完后判据就永久失去对象 ⇒
+//   要么逼人把 R1-4 改回 deferred（假装修了），要么判据常红。两者都比「换一张票」坏。
+//   放宽的只是「哪张票」，没有放宽「必须真有一张、且必须 P0/P1、且必须写桩」。
+const hasStubDebt = F.some((f) => f.status === 'deferred' && /^P[01]$/.test(f.priority)
+  && /桩/.test(String(f.title || '') + String(f.next_action || '')));
+ok('L-⑫ 桩型占比 <30% 时，台账里必须有一条 P0/P1 的「补桩」待办（不绑死单个 id，随进度换票）',
+  ratio >= 0.3 || hasStubDebt,
   '实测桩型 ' + stubN + '/' + tools.length + ' = ' + (ratio * 100).toFixed(1) + '%');
 ok('L-⑬ 方案文档在场且写明六条腿 / 节奏 / 挑毛病战果',
   fs.existsSync(path.join(ROOT, DESIGN_REL))

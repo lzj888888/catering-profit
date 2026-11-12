@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：295 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：296 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1658,6 +1658,15 @@ const SUITES = [
   //   ④ busy 不拦（unique 索引写失败）。A/B/C 组页面桩真跑，D 组 4 条变异回灌点名；
   //   scope 三项 ≡ 云函数 aiGate.PURPOSES 逐项有序比对（同源，不手抄）。
   ['ai-consent-page', 'tools/check_ai_consent_page.js'],
+  // R724 · R1-4 台账条目：原料两页（批量录入 batch / 选原料 pick）此前只有静态形状守卫，
+  //   没有一处真跑页面代码。形状对不等于分支到得了：
+  //   batch 的「整表拦截 / 全坏态 / 脏行默认不勾 / 重解析清旧提示 / 分批并发 + 单条失败隔离 +
+  //   幂等键每组唯一」五个分支，静态判据只能看到字符串在不在；pick 的「置顶严格按点选先后 /
+  //   置顶项不在分类组重复」是筛选逻辑对不对，不是代码写没写。
+  //   🔴 本轮实测当场抓出 R1-7 真缺陷：onToggleRow 的 `Number(dataset.i || -1)` 把第一行
+  //   （wx:for 的 0 起索引）吞成 -1 ⇒ 第一行点不动（李老师反复报过的「点不动」同型）。
+  //   B 组 17 + P 组 14 + D 组 7 条变异回灌，全部 exit=1 点名。
+  ['material-pages-stub', 'tools/check_material_pages_stub.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

@@ -146,7 +146,13 @@ Page({
 
   // 行选中切换：有问题的行**不许勾**（勾了也是保存失败，不如当场说清）
   onToggleRow(e) {
-    const i = Number((e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.i) || -1);
+    // 🔴 R724：`data-i="{{index}}"` 是 wx:for 的**内置索引，从 0 起**。
+    //   改前写成 `Number(dataset.i || -1)` ⇒ 第一行 i=0 被 `||` 当假值吃成 -1 ⇒ rows[-1] 为 undefined
+    //   ⇒ 直接 return。表现是「第一行点上去没反应」（李老师反复报过的「点不动」同型）。
+    //   这里改成显式判整数，非法输入（undefined/NaN/负数）一律忽略。
+    const raw = e && e.currentTarget && e.currentTarget.dataset ? e.currentTarget.dataset.i : undefined;
+    const i = Number(raw);
+    if (!Number.isInteger(i) || i < 0) return;
     const row = this.data.rows[i];
     if (!row || !row.ok) return;
     const key = 'rows[' + i + '].checked';
