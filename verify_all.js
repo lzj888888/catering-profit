@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：297 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：298 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1679,6 +1679,15 @@ const SUITES = [
   //   A 六分支顺序 / B fail-closed / S 档位前提从 SEED_PLANS 实算 / W 接线一致性 /
   //   R 单源↔副本常量漂移 / D 4 条变异回灌（全部 exit=1 点名）。
   ['diag-entitlement', 'tools/check_diag_entitlement.js'],
+  // R724d · 台账 R1-8：首页行为守卫。扫全部 34 个页面，仍有 8 个零桩，首页是流量最高的一个
+  //   （每个老板每次打开都第一眼看到），此前只有静态守卫看「文案/结构在不在」。
+  //   四类静默错误：① 权益分流接错（免费档必须显示经营参考利润 operation_ref_profit_fen，
+  //   接反了与月首页/结果页对不上，零报错——正是 R484/R493 要消灭的困惑）；
+  //   ② 三态塌成两态（无账本渲染 ¥0）；③ hero 三列把 0 渲染出来；
+  //   ④ tabBar 页用 navigateTo（微信直接失败，R199 踩过）。
+  //   A 权益分流 6 / B 三态 4 / C hero 4 / D wanText 5 / E bootstrap 5 / F 跳转与生命周期 4 /
+  //   M 4 条变异回灌（M-2 需同时拆**两道** account_id 判据才退化——页面本来是双保险，这一点也被记下来了）。
+  ['home-page-stub', 'tools/check_home_page_stub.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
