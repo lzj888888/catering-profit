@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：293 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：294 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1644,6 +1644,13 @@ const SUITES = [
   //     ⑥ 判据自身用合成坏样本反恒真。
   //   台账 review/evidence/r721_findings.json（17 条）+ 方案 review/DESIGN_R721_持续发现漏洞机制.md。
   ['audit-findings-ledger', 'tools/check_audit_findings_ledger.js'],
+  // R723：R721 台账三条 P0 修复的行为守卫（李老师 2026-11-12「好的，继续」⇒ 按 P0 顺序自主推进）。
+  //   R1-1 元守卫注释喂绿（引号感知剥注释 + S5-② 反恒真）；
+  //   R3-1 导出件注销清理（会话清单、清理先于 clearStorageSync、逐文件吞异常）；
+  //   R2-1 对账页按 reason 分叉跳转（判定只在单源 reconDerive.fixTargetOf）。
+  //   A/B/C 用页面桩真跑（不是只判源码形状），D 组反恒真；24 断言 + 7 条真变异回灌点名。
+  //   报告 review/AUDIT_R723_P0修复验收.md。
+  ['r723-p0-fixes', 'tools/check_r723_p0_fixes.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

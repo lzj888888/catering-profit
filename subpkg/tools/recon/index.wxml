@@ -53,6 +53,8 @@
       </view>
     </block>
     <view class="warn" wx:if="{{result.suppressed}}">{{result.suppressText}}</view>
+    <!-- 🔴 R723：只有「要去别的页补数」才给直达按钮，其余抑制原因只留文字说明 -->
+    <button class="recon-fix" wx:if="{{result.fixUrl}}" bindtap="goFix">{{result.fixLabel}}</button>
   </view>
 
   <!-- 归因清单（只列方向，不下结论；抑制时不给） -->

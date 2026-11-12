@@ -6,7 +6,7 @@
 const api = require('../../../utils/api.js');
 const ui = require('../../../utils/ui.js');
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
-const { calcMenuMargin, calcActualDishMargin, reconcile, suppressKeyOf } = require('../../../utils/reconDerive.js');
+const { calcMenuMargin, calcActualDishMargin, reconcile, suppressKeyOf, fixTargetOf } = require('../../../utils/reconDerive.js');
 
 Page({
   data: {
@@ -88,6 +88,13 @@ Page({
   },
   onIncludeCombo(e) { this.setData({ includeCombo: e.detail.value }); this.calc(this.data.curMonth, this.data.savedDishCount); },
   onDishCount(e) { this.setData({ menuDishCount: e.detail.value }); },
+  // 🔴 R723：抑制提示的回头路。navigateTo 是压栈，本页只有 onLoad、不重建，
+  //   刚输未保存的 menuDishCount 回来仍在（R721 挑毛病曾担心会丢，已按源码排除）。
+  goFix() {
+    const url = this.data.result && this.data.result.fixUrl;
+    if (!url) return;
+    wx.navigateTo({ url: url });
+  },
 
   async calc(month, savedCount) {
     try {
@@ -115,6 +122,8 @@ Page({
       if (rec.suppressed) {
         suppressText = TERMS.card[suppressKeyOf(rec, actual.reason)] || TERMS.card.reconSuppressGeneric;
       }
+      // 🔴 R723：去哪儿补数只在单源 reconDerive.fixTargetOf 里判，页面不写 reason 字面量
+      const fix = fixTargetOf(rec, actual.reason);
       this.setData({
         result: {
           menuPct: menu.pct,
@@ -126,6 +135,9 @@ Page({
           income_fen: actual.income_fen,
           coverage,
           suppressText,
+          // 🔴 R723：直达入口由单源给出；其余抑制原因 fixUrl 为空 ⇒ wxml 不渲染按钮
+          fixUrl: fix.url,
+          fixLabel: fix.labelKey ? (TERMS.card[fix.labelKey] || '') : '',
           // 展示格式化（分→元、百分号拼接都在 js 做，wxml 只摆位）
           menuPctText: menu.pct == null ? '—' : (menu.pct.toFixed(2) + '%'),
           actualPctText: actual.pct == null ? '—' : (actual.pct.toFixed(2) + '%'),

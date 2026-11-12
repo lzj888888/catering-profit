@@ -2493,6 +2493,9 @@ const TERMS = {
     reconSuppressNoPrice: '菜品成本卡还没填售价，算不出标准菜单毛利率。请到菜品成本里把售价补上。',
     reconSuppressNoIncome: '本月还没录收入，算不出实际菜品毛利率。请先到月度录入里把收入记上。',
     reconSuppressGeneric: '本月数据还不够，差值可能失真，暂不显示。',
+    // 🔴 R723（R721 台账 R2-1）：只有「要去别的页补数」的两种原因才给直达按钮
+    reconFixGoCostCard: '去补售价',
+    reconFixGoLedger: '去记收入',
     reconAttributionTitle: '差额可能来自（只列方向，不下结论）：',
     reconAttr1: '① 有菜没建卡（覆盖率缺口）',
     reconAttr2: '② 卡内价 ≠ 原料现价（部分卡用了旧价）',

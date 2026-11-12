@@ -30,11 +30,12 @@
       "title": "元守卫 check_suite_coverage 的「间接引用」未剥注释，可被注释喂绿",
       "evidence": "tools/check_suite_coverage.js:243",
       "verified_by": "R1-已核实",
-      "status": "deferred",
+      "status": "fixed",
       "verified": true,
       "challenge": "部分成立：朴素剥 // 会误伤 http:// 等字符串字面量；且 check_selftest_shape R67 是第二道防线。应复用引号感知 stripJs 并把间接引用改为解析 require/execFileSync 字符串实参",
-      "priority": "P0",
-      "next_action": "复用 check_m2_no_cost_rate.js:63-96 的引号感知剥离逻辑，改判据为解析调用实参，并配一条注释变体变异样本"
+      "priority": "",
+      "next_action": "",
+      "fix_evidence": "tools/check_suite_coverage.js 内置引号感知 stripJsComments、拼接前剥注释、新增 S5-② 反恒真；断言数 10→11 已同步声明；check_r723_p0_fixes.js A 组 5 断言 + M1/M2 变异点名"
     },
     {
       "id": "R1-2",
@@ -105,11 +106,12 @@
       "title": "对账页抑制提示要求去别的页录入，结果区却无跳转",
       "evidence": "subpkg/tools/recon/index.wxml:55",
       "verified_by": "R2-已核实",
-      "status": "deferred",
+      "status": "fixed",
       "verified": true,
       "challenge": "真问题但固定跳转方向给错：6 种抑制原因里 3-4 种目标在本页；且刚输未保存的 menuDishCount 会丢",
-      "priority": "P0",
-      "next_action": "按 result.reason 分叉，仅 no_income/no_price 给对应跳转，跳前调 onSaveCount() 或明确提示保存"
+      "priority": "",
+      "next_action": "",
+      "fix_evidence": "utils/reconDerive.js::fixTargetOf 单源分叉；recon/index.js 只调单源、goFix 真跳转；wxml 按钮受 fixUrl 门控；check_r723_p0_fixes.js C 组 9 断言 + M5/M6/M7 变异点名"
     },
     {
       "id": "R2-2",
@@ -182,11 +184,12 @@
       "title": "导出件明文长期留在 USER_DATA_PATH，注销只 clearStorageSync 不清文件",
       "evidence": "utils/exportFile.js:20 / pages/mine/index.js:196",
       "verified_by": "R3-已核实",
-      "status": "deferred",
+      "status": "fixed",
       "verified": true,
       "challenge": "真问题但「白名单前缀」是假修好（文件名以店名开头无统一前缀）；unlinkSync 抛异常会卡住登出；清理须在 clearStorageSync 之前读清单；别在模块加载期调 getFileSystemManager",
-      "priority": "P0",
-      "next_action": "会话导出文件名清单存 storage，注销前读出、按清单逐文件 try/catch unlink，异常不阻断 switchTab；配页面桩守卫验顺序与吞异常"
+      "priority": "",
+      "next_action": "",
+      "fix_evidence": "utils/exportFile.js 会话清单 + clearExportedFiles()；pages/mine/index.js 在 clearStorageSync 之前调用；页面桩取证顺序与吞异常；check_r723_p0_fixes.js B 组 6 断言 + M3/M4 变异点名"
     },
     {
       "id": "R3-2",
@@ -232,10 +235,12 @@
       "title": "登出对 globalData 清理不全，switches / pickMaterial 残留",
       "evidence": "pages/mine/index.js:201",
       "verified_by": "R3-已核实",
-      "status": "deferred",
+      "status": "fixed",
       "verified": true,
-      "priority": "P2",
-      "next_action": "doLogout 补清 switches 与 pickMaterial"
+      "priority": "",
+      "next_action": "",
+      "fix_evidence": "pages/mine/index.js::doLogout 补清 globalData.switches 与 pickMaterial；check_r723_p0_fixes.js B-④ 页面桩真验",
+      "challenge": "顺带修，无独立挑毛病轮次；属内存轻量残留，改动面仅两行"
     }
   ]
 }

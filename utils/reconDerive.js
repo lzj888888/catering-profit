@@ -142,10 +142,27 @@ function suppressKeyOf(rec, actualReason) {
   return 'reconSuppressGeneric';
 }
 
+/**
+ * 🔴 R723（R721 台账 R2-1）：抑制原因 → 「去哪儿补数」的**唯一判定点**。
+ *   只给「要去别的页才能解决」的两种原因直达入口；覆盖率不足 / 没填在售数 /
+ *   改用分项录入都在本页或无固定目标，固定跳走会把老板带错方向。
+ *   ⚠️ reason 字面量只许出现在这里（selftest_m3_recon R298X-⑩ 会扫页面正文）。
+ * @returns {{url:string, labelKey:string}}
+ */
+function fixTargetOf(rec, actualReason) {
+  const r = (rec && rec.reason) || '';
+  if (r === 'menu_no_price') return { url: '/subpkg/biz/card/index', labelKey: 'reconFixGoCostCard' };
+  if (r === 'actual_no_data' && actualReason !== 'need_detail_income') {
+    return { url: '/subpkg/biz/month/input', labelKey: 'reconFixGoLedger' };
+  }
+  return { url: '', labelKey: '' };
+}
+
 module.exports = {
   calcMenuMargin,
   calcActualDishMargin,
   reconcile,
   suppressKeyOf,
+  fixTargetOf,
   GOODS_FIELD,
 };

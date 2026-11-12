@@ -15,6 +15,40 @@ const { TERMS } = require('../miniprogram/i18n/terms.js');
 // 🔴 硬编码白名单 = 微信 openDocument 官方合法值（含 csv 就会静默失败，别加）
 const OPENABLE = { doc: 'doc', docx: 'docx', xls: 'xls', xlsx: 'xlsx', ppt: 'ppt', pptx: 'pptx', pdf: 'pdf' };
 
+// 🔴 R723（R721 台账 R3-1）：本会话导出文件名清单。只记文件名、不记内容；
+//   注销时按清单逐个删，避免收入/成本/进价/店名月份以明文长期留在 USER_DATA_PATH。
+//   ⚠️ 不能用「文件名前缀」做白名单：导出件以真实店名开头（exportData 生成
+//      `${shopName}_${month}_月度报表.xlsx`），没有统一前缀 ⇒ 会漏删成假修好。
+const EXPORTED_FILES_KEY = 'r723_exported_files';
+
+function rememberExported(filename) {
+  try {
+    if (typeof wx.getStorageSync !== 'function' || typeof wx.setStorageSync !== 'function') return;
+    const raw = wx.getStorageSync(EXPORTED_FILES_KEY) || [];
+    const list = Array.isArray(raw) ? raw.slice() : [];
+    if (list.indexOf(filename) < 0) list.push(filename);
+    wx.setStorageSync(EXPORTED_FILES_KEY, list.slice(-50));
+  } catch (e) { /* 记不下不影响导出主流程 */ }
+}
+
+/** 注销前调用：按清单删本次会话导出的文件。任何异常都不阻断登出。 */
+function clearExportedFiles() {
+  let list = [];
+  try {
+    const raw = wx.getStorageSync(EXPORTED_FILES_KEY) || [];
+    list = Array.isArray(raw) ? raw : [];
+  } catch (e) { return { attempted: 0, removed: 0, failed: 0 }; }
+  let removed = 0, failed = 0;
+  try {
+    const fs = wx.getFileSystemManager();
+    for (const name of list) {
+      try { fs.unlinkSync(`${wx.env.USER_DATA_PATH}/${name}`); removed++; }
+      catch (e) { failed++; }   // 不存在 / 被占用 / 无权限：都算过，绝不打断登出
+    }
+  } catch (e) { /* 拿不到文件系统也不阻断登出 */ }
+  return { attempted: list.length, removed: removed, failed: failed };
+}
+
 function writeFileToSandbox(filename, content, encoding) {
   const fs = wx.getFileSystemManager();
   const filePath = `${wx.env.USER_DATA_PATH}/${filename}`;
@@ -32,6 +66,7 @@ function writeFileToSandbox(filename, content, encoding) {
     wx.showToast({ title: TERMS.expFile.writeFail, icon: 'none' });
     return '';
   }
+  rememberExported(filename);
   return filePath;
 }
 
@@ -80,4 +115,4 @@ function deliver(res) {
   });
 }
 
-module.exports = { deliver, OPENABLE };
+module.exports = { deliver, OPENABLE, clearExportedFiles, EXPORTED_FILES_KEY };

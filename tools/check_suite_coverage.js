@@ -36,6 +36,36 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 const RUNNER = 'verify_all.js';
 
+// 🔴 R723（R721 台账 R1-1）：间接引用判据原来把 SUITES 脚本源码**原样拼接**做
+//   `includes(f)`，注释里随手写一句 `// 运行：node tools/check_x.js` 就能把没挂
+//   SUITES 的判据算成「已间接引用」⇒ S5「零漏网」假绿。
+//   修法：拼接前剥注释，且**引号感知**（字符串字面量里的 http:// 不能切坏）。
+//   ⚠️ 与 tools/check_m2_no_cost_rate.js:63-88 的 stripJs 同款；那个文件是独立
+//      脚本（末尾 process.exit）、不能 require，故在本文件内置一份精简实现。
+function stripJsComments(src) {
+  let out = '', i = 0, st = null;
+  const n = src.length;
+  while (i < n) {
+    const c = src[i], c2 = src[i + 1];
+    if (st === 'line') { if (c === '\n') { st = null; out += c; } i++; continue; }
+    if (st === 'block') { if (c === '*' && c2 === '/') { st = null; i += 2; } else i++; continue; }
+    if (st === 'sq' || st === 'dq' || st === 'tpl') {
+      const q = st === 'sq' ? "'" : st === 'dq' ? '"' : '`';
+      if (c === '\\') { out += c + (c2 === undefined ? '' : c2); i += 2; continue; }
+      out += c;
+      if (c === q) st = null;
+      i++; continue;
+    }
+    if (c === '/' && c2 === '/') { st = 'line'; i += 2; continue; }
+    if (c === '/' && c2 === '*') { st = 'block'; i += 2; continue; }
+    if (c === "'") { st = 'sq'; out += c; i++; continue; }
+    if (c === '"') { st = 'dq'; out += c; i++; continue; }
+    if (c === '`') { st = 'tpl'; out += c; i++; continue; }
+    out += c; i++;
+  }
+  return out;
+}
+
 // 面 A：生产判据脚本（命名前缀 = 判据身份；放错目录/改错名字都会被这条抓出来）
 // ⚠️ `key` 是**固定身份**，`dir` 是可变路径：工作树下界只按 key 取，
 //   否则把 dir 改错时「键跟着改」⇒ 下界查不到 ⇒ 断言恒真（round86 M-C 实证，与 round61「锚点随定义漂移」同族）。
@@ -234,7 +264,7 @@ function suitesBlock() {
   for (const s of suites) {
     const fp = path.join(ROOT, s);
     if (s.endsWith('.js') && fs.existsSync(fp)) {
-      try { indirectSrc += fs.readFileSync(fp, 'utf8') + '\n'; } catch (_) { /* 读不了就不算间接 */ }
+      try { indirectSrc += stripJsComments(fs.readFileSync(fp, 'utf8')) + '\n'; } catch (_) { /* 读不了就不算间接 */ }
     }
   }
   const orphan = [];
@@ -245,6 +275,13 @@ function suitesBlock() {
   }
   check('S5 面 A ' + faceA.length + ' 个判据零漏网', orphan.length === 0,
     orphan.length ? '未挂 SUITES：' + orphan.join(', ') : '全部已挂（含间接包装）');
+  // 🔴 R723 反恒真：判据必须给「只在注释里提过路径」的坏样本相反答案，
+  //   且不能误伤「字符串字面量里是真实引用」的好样本（verify_docx.py 靠它间接引用）。
+  const FAKE_PATH = 'tools/zz_r723_comment_only.js';
+  const badSrc = '// 运行：node ' + FAKE_PATH + '\nconst x = 1;\n';
+  const goodSrc = "const PY_SRC = '" + FAKE_PATH + "';\n";
+  check('S5-② 反恒真：注释变体不算间接引用，字符串字面量里的真实引用仍算',
+    !stripJsComments(badSrc).includes(FAKE_PATH) && stripJsComments(goodSrc).includes(FAKE_PATH));
 
   console.log('\n===== S6 证据目录：面 B 判据类脚本须逐条豁免 =====');
   const faceB = files.filter((f) => FACE_B.test(f) && FACE_B_NAME.test(path.basename(f)));

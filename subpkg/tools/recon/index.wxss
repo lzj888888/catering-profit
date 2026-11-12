@@ -14,3 +14,7 @@
 /* 🔴 R712：在售菜品数的用途说明（覆盖率分母）。紧跟在输入行下面，
    margin-top 取负值抵消 .field 的 16rpx 下边距，让它贴着那个框，不另起一块。 */
 .recon-why { font-size: 28rpx; color: #776C5E; line-height: 1.55; margin: -8rpx 4rpx 16rpx; }
+
+/* 🔴 R723：抑制提示旁的直达按钮。AD 红线：字号 28rpx、触控区 88rpx。 */
+.recon-fix { font-size: 28rpx; color: #1e3a5f; background: #eef4fb; border-radius: 12rpx;
+  min-height: 88rpx; line-height: 88rpx; margin: 12rpx 4rpx 8rpx; }

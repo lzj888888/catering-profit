@@ -125,6 +125,8 @@ const CLASSES = {
   SHOP_KEY: ['ss.shopKey(DRAFT_PREFILL_KEY)', 'ss.shopKey(DI.DRAFT_PREFILL_KEY)',
     'ss.shopKey(MAT_CACHE)', 'ss.shopKey(EDIT_CATS_KEY)', 'ss.shopKey(LIST_CATS_KEY)',
     'ss.shopKey(DI.BATCH_CACHE_KEY)', 'ss.shopKey(DRAFT_KEY + this.data.month)'],
+  // R723：会话级导出清单（注销时按它删文件）；不是店铺业务数据，故不按 shop 拼。
+  SESSION_SCOPE: ['EXPORTED_FILES_KEY'],
   CLEAR: [''],                                                   // clearStorageSync()
 };
 const ALLOWED = new Set(Object.values(CLASSES).flat());

@@ -7,6 +7,7 @@ const ui = require('../../utils/ui.js');
 const loading = require('../../utils/loading.js');
 const { TERMS } = require('../../miniprogram/i18n/terms.js');
 const shopGuard = require('../../utils/shopGuard.js');
+const exportFile = require('../../utils/exportFile.js');   // R723：注销前清理导出件
 
 Page({
   data: {
@@ -192,6 +193,10 @@ Page({
         // G6：注销为不可逆操作 → 触觉反馈
         if (wx.vibrateShort) { try { wx.vibrateShort({ type: 'medium' }); } catch (err) { /* 部分机型不支持，忽略 */ } }
         await api.call('deleteAccount', { client_request_id: 'acc_' + Date.now() });
+        // 🔴 R723：导出件是**文件**、不是 storage，clearStorageSync() 清不掉。
+        //   必须**先**按清单删（清完 storage 就读不到清单了），再清缓存。
+        //   clearExportedFiles 内部全 try/catch，任何失败都不阻断登出。
+        exportFile.clearExportedFiles();
         // 清本地缓存 + 退出
         wx.clearStorageSync();
         const app = getApp();
@@ -203,6 +208,9 @@ Page({
           app.globalData.shopLoaded = false;
           app.globalData.no_shop = false;
           app.globalData.noShopPrompted = false;
+          // 🔴 R723（R721 台账 R3-5）：内存残留一并清，别把上一账号的口径开关/原料名带过去
+          app.globalData.switches = { inventorySwitchOn: false, amortizeSwitchOn: false };
+          app.globalData.pickMaterial = null;
         }
         api.say(TERMS.exp.logoutDone);
         // 🔴 R199：`pages/index/index` 已改为**底部 tabBar 页** ⇒ `wx.reLaunch` 到 tabBar 页会失败
