@@ -167,7 +167,10 @@ const DISH_CHANNELS = [
     grain: GRANULARITY.UNKNOWN,
     caliber: AMOUNT_CALIBER.ACTUAL_INCOME,
     status: 'absent',
-    note: '⬜ 样例未到货（R284 口径：能提供的表是「四张表」那批，不含团购核销表）'
+    // R727：这里说的「样例未到货」**只指团购核销表**，不是外卖/堂食销量表 ——
+    //   四张平台表 2026-10 已到货并机核（见 review/evidence/r721_findings.json R3-13），
+    //   本仓曾三次把它们误记成「待提供」⇒ 这句必须点名对象，别再被读成通用缺口。
+    note: '⬜ **仅团购核销表**样例未到货（R284 口径：四张平台表那批不含团购核销表）'
        + '⇒ 先留契约位，待拿到真样例再补 shape 与列名别名表。**不猜列名**。',
   },
 ];
