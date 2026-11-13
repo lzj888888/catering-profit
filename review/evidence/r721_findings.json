@@ -13,7 +13,7 @@
     "prepared_to_fix": 6,
     "challenge_result": "1 建议不修 / 4 修法要改 / 1 只需改名",
     "verified": 14,
-    "total": 23
+    "total": 24
   },
   "blindspot": {
     "guards": 207,
@@ -289,6 +289,20 @@
       "priority": "",
       "next_action": "已闭合：最后 2 个零桩页（revenue/manual/index、metrics/impact）按 scan_zero_stub_pages.js 唯一口径复核后补桩并挂 verify_all SUITES，零桩归 0。后续新增 Page 页面须同样「先桩后合」，每轮开工先扫零桩名单。",
       "fix_evidence": "2026-11-13 续补：新增 tools/check_month_index_stub.js（M1 月度首页，30 断言/3 变异）+ tools/check_groupon_index_stub.js（团购试算页，28 断言/4 变异）+ tools/check_material_edit_stub.js（原料新增/编辑表单页，23 断言/5 变异，守 R426 金额铁律/round155 系数>0/R297 出成率上界/R406 成本三要素键/afterSaved 清 id）；本轮再补 tools/check_revenue_manual_index_stub.js（营收手录页，8 断言/7 变异，守串月清空 R620/空保存拦截/重入保护/collect 过滤非数/need_confirm 不二次落盘/recommit 必带 confirm/prefill·ref·prevMonth 边界）+ tools/check_metrics_impact_stub.js（涨价影响面页，6 断言/5 变异，守 dry_run 红线 R203/中文名解码 R203/hundred_delta×100 R615/降级提示/下拉刷新 R379）。四桩均挂 verify_all SUITES，全量 311/311 通过。零桩页由 5 降为 0（34 个 Page 页面全部有桩）。"
+    },
+    {
+      "id": "R1-9",
+      "source": "R1-gate-blindspot",
+      "severity": "P1",
+      "title": "桩型占保护比仍 19.9%（<30%）：持续把仅静态形状守卫的页面补成页面桩",
+      "evidence": "tools/check_audit_findings_ledger.js L-⑫ 实算：tools/ 下 check_*.js 共 226 个，含 global.Page|loadPage 的桩型 45 个 = 19.9%（目标 ≥30%）",
+      "verified_by": "L-⑫ 实算",
+      "status": "deferred",
+      "verified": true,
+      "challenge": "R1-8 已把「34 个 Page 页面零桩」清零，但 L-⑫ 口径是「桩型工具占全部 check_*.js 的比例」，与零桩页不是一回事：仍 181 个非桩工具（含静态形状守卫 / 合规 / 门禁 / 派生类守卫）。把其中确有 Page 源码可真跑的静态守卫逐步改写为页面桩，是 L-⑫ 要的持续推进项，与 R1-8 互补不重复。优先级 P1、不绑死单页，随进度换票。",
+      "priority": "P1",
+      "next_action": "挑「有 Page 页面但只有静态形状守卫」的工具改写为页面桩（global.Page 真跑页面源码），每补一批用 L-⑫ 重算占比，达到 30% 即关。不为凑数把纯静态守卫硬改——只改确有 Page 源码可跑的；每轮开工先扫零桩名单确认无回归。",
+      "fix_evidence": ""
     },
     {
       "id": "R3-6",
