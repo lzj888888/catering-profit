@@ -460,6 +460,60 @@ function computeCoverage(allSales, matchedKeys, buffetFoodCostTotalFen) {
   };
 }
 
+/**
+ * R729：按实际销量加权的「标准菜单毛利率」——**只回一个聚合标量**。
+ *
+ * 🔴 为什么单独写、不改 rankReview：rankReview 的 ranked 元素是付费档的逐菜明细
+ *   （含 totalCostFen / grossFen / marginPct），免费档刻意剥掉这些字段。本函数复用
+ *   **全量 ranked**（不是 Top10 截断后的数组）与**全量 cards**（云端原始 doc，
+ *   售价字段 = price_list、成本 = total_cost），只在服务端算完返一个数，
+ *   不把任何逐菜成本/毛利/售价带回免费档出参。
+ *
+ * 🔴 与 utils/reconDerive.js::calcMenuMarginWeighted 口径一致：
+ *   1 − Σ(qty × unitCost) / Σ(qty × price)。
+ *   分母用**成本卡标价 price_list**，绝不用销量行 amountFen（实收含优惠 ⇒ 那算的是
+ *   「实际毛利率」，不是「标准毛利率加权」）—— 这是两家外部会诊都漏掉的字段级差异。
+ *
+ * 🔴 三道护栏（会诊裁定）：
+ *   ① 只用全量 ranked；② 覆盖率 = 已匹配销量 qty / 全部销量 qty，< 0.9 ⇒ pct=null
+ *      且 reason='low_match'（绝不拿半截样本给老板结论）；③ 无销量/无价 ⇒ pct=null。
+ * @param {Array<object>} ranked rankReview 的**全量**返回（含 card_code / qty）
+ * @param {Array<object>} cards shop_cost_card 原始行（含 card_code / version / price_list / total_cost）
+ * @param {number} totalSalesQty 全店当月销量份数（含未匹配），用于算覆盖率
+ * @returns {{pct:number|null, reason:string, coverage:number, matchedQty:number, totalQty:number}}
+ */
+function calcWeightedMenuPct(ranked, cards, totalSalesQty) {
+  // 取各 card_code 最新版本（与 rankReview 步骤 1 同口径）
+  const latest = new Map();
+  for (const c of (cards || [])) {
+    const cc = c && c.card_code;
+    if (!cc) continue;
+    const cur = latest.get(cc);
+    if (!cur || (c.version || 0) > (cur.version || 0)) latest.set(cc, c);
+  }
+  let revenueFen = 0, costFen = 0, matchedQty = 0;
+  for (const r of (ranked || [])) {
+    const c = latest.get(r && r.card_code);
+    if (!c) continue;
+    const q = Number(r && r.qty) || 0;
+    if (!(q > 0)) continue;
+    const p = Number(c.price_list) || 0;
+    const cost = Number(c.total_cost) || 0;
+    if (p <= 0) continue;                 // 没填售价的卡不参与，绝不静默按 0 计入
+    revenueFen += q * p;
+    costFen += q * cost;
+    matchedQty += q;
+  }
+  const totalQty = Number(totalSalesQty) || 0;
+  const coverage = totalQty > 0 ? Math.round((matchedQty / totalQty) * 10000) / 100 : 0;
+  const base = { coverage, matchedQty, totalQty };
+  if (matchedQty === 0) return Object.assign({ pct: null, reason: 'no_match' }, base);
+  if (revenueFen === 0) return Object.assign({ pct: null, reason: 'no_price' }, base);
+  if (coverage < 90) return Object.assign({ pct: null, reason: 'low_match' }, base);
+  return Object.assign({ pct: Math.round((1 - costFen / revenueFen) * 10000) / 100, reason: '' }, base);
+}
+
 module.exports = { buildDishReview, buildTakeawayReview, rankReview, splitSales, mergeTotals, TOTALS_FIELDS, computeCoverage, classifyDishKey, filterByRange, countDataDays,
+  calcWeightedMenuPct,
   // R574 / #110：粒度感知的覆盖天数（守卫直接验）
   coverageStats, spanDaysInclusive, mergeRanges };

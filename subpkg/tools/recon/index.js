@@ -17,6 +17,9 @@ Page({
       reconMenuMargin: TERMS.card.reconMenuMargin,
       // 🔴 R726（R714 E-1）：菜单毛利率是售价加权估算，必须让老板知道它不等于实际菜结构
       reconMenuPriceNote: TERMS.card.reconMenuPriceNote,
+      reconWeightedLabel: TERMS.card.reconWeightedLabel,
+      reconWeightedNote: TERMS.card.reconWeightedNote,
+      reconWeightedMissing: TERMS.card.reconWeightedMissing,
       reconActualMargin: TERMS.card.reconActualMargin,
       reconDiffPp: TERMS.card.reconDiffPp,
       reconDiffFen: TERMS.card.reconDiffFen,
@@ -100,9 +103,17 @@ Page({
 
   async calc(month, savedCount) {
     try {
-      const [ledger, cardsRes] = await Promise.all([
+      // 🔴 R729：第三个数据源 = 免费档 getDishReview 的聚合标量（result.js:730 同款既有用法）。
+      //   ui.monthRange 给闭区间，与云端 filterByRange 一致；异常时返回空对象 ⇒ 下面降级，
+      //   **绝不因为取数失败就把整个对账页搞挂，也绝不静默把加权口径当成售价口径**。
+      const rng = ui.monthRange(month);
+      const [ledger, cardsRes, reviewRes] = await Promise.all([
         api.call('getLedger', { month }),
         api.call('getCostCard', {}),
+        (rng.from && rng.to)
+          ? api.call('getDishReview', { biz_date_from: rng.from, biz_date_to: rng.to })
+              .catch(() => ({}))
+          : Promise.resolve({}),
       ]);
       const cards = (cardsRes.list || []).map((c) => ({
         card_type: c.card_type,
@@ -142,6 +153,13 @@ Page({
           fixLabel: fix.labelKey ? (TERMS.card[fix.labelKey] || '') : '',
           // 展示格式化（分→元、百分号拼接都在 js 做，wxml 只摆位）
           menuPctText: menu.pct == null ? '—' : (menu.pct.toFixed(2) + '%'),
+          // 🔴 R729：并列双口径。weighted_menu_pct 缺失/为 null ⇒ 明示原因，绝不静默回落售价口径。
+          weightedPct: (reviewRes && typeof reviewRes.weighted_menu_pct === 'number')
+            ? reviewRes.weighted_menu_pct : null,
+          weightedPctText: (reviewRes && typeof reviewRes.weighted_menu_pct === 'number')
+            ? (reviewRes.weighted_menu_pct.toFixed(2) + '%') : '—',
+          weightedReason: (reviewRes && reviewRes.weighted_reason) || 'unavailable',
+          weightedCoverage: (reviewRes && reviewRes.weighted_coverage) || 0,
           actualPctText: actual.pct == null ? '—' : (actual.pct.toFixed(2) + '%'),
           diffPpText: rec.diffPp == null ? '—' : (rec.diffPp.toFixed(2) + ' pp'),
           diffFenText: rec.diffFen == null ? '—' : api.fenToYuan(rec.diffFen, 2),

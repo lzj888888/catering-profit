@@ -2478,6 +2478,9 @@ const TERMS = {
     reconDiffPp: '差值',
     reconDiffFen: '折算金额',
     reconMenuPriceNote: '成本卡毛利率是按售价估算的（默认每道菜卖得一样多），不等于你实际卖出去的菜的结构。便宜菜卖得多时，这个数通常偏低，所以「实际比标准高」不一定是成本记漏了。',
+    reconWeightedLabel: '按实际销量加权',
+    reconWeightedNote: '这个数用当月每道菜实际卖了几份来加权，比上面那个只按售价算的更贴近你的真实菜结构。两个都给你看，不互相替代。',
+    reconWeightedMissing: '本月没有可匹配的菜品销量，或未匹配上的销量太多 —— 这个数先不给，避免拿半截数据下结论。',
     reconCoverage: '在售菜品数',
     reconCoveragePh: '本月在售菜品数',
     // 🔴 R712（李老师真机：「只需要填在售菜品数就可以了吗？套餐什么的？本意是算什么的」）：

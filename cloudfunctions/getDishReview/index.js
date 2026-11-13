@@ -32,7 +32,7 @@ const { toMonth } = common.utilTime;
 
 // 🔴 R232f：算法层已外提到 service.js（纯函数 · 零 db）⇒ 6 处口径首次可被独立复算。
 //   本文件只负责：鉴权 → 付费墙 → 取数 → 调 service → 返回。
-const { buildDishReview, buildTakeawayReview, splitSales, mergeTotals, computeCoverage, filterByRange, coverageStats } = require('./service');
+const { buildDishReview, buildTakeawayReview, splitSales, mergeTotals, computeCoverage, filterByRange, coverageStats, calcWeightedMenuPct } = require('./service');
 
 exports.main = async (event) => {
   const ctx = cloud.getWXContext();
@@ -174,6 +174,10 @@ exports.main = async (event) => {
   //   ⚠️ 外卖的毛利榜不给，但**外卖的未匹配清单必须合并回顶层** —— 那是老板自己导入的数据，
   //      也是「去建卡」的入口；把它一起藏了，免费档就变成一张空壳，谁也不会因此付钱。
   if (tier === 'free') {
+    // 🔴 R729：加权标量必须用**全量 ranked**（下面的 freeTop 只是 slice(0,10) 的展示副本），
+    //   且用成本卡标价 price_list 而非销量实收 amountFen（后者含优惠 ⇒ 口径会变成「实际毛利率」）。
+    //   只回一个聚合数 + 覆盖率/原因，不回任何逐菜成本、毛利或售价 ⇒ 付费档卖的「可拆解结论」不受影响。
+    const weighted = calcWeightedMenuPct(ranked, cards, totals.qty);
     const FREE_TOP_N = 10;
     const byQty = ranked.slice().sort((a, b) =>
       (b.qty - a.qty) || (b.amountFen - a.amountFen) || String(a.name).localeCompare(String(b.name)));
@@ -219,6 +223,10 @@ exports.main = async (event) => {
       coverageC: coverage.coverageC,
       buffet: coverage.buffet,
       truncated: truncatedFlag,
+      // 🔴 R729：加权口径（聚合标量，非逐菜明细）。pct=null 时前端必须明示原因，绝不静默回落售价口径。
+      weighted_menu_pct: weighted.pct,
+      weighted_reason: weighted.reason,
+      weighted_coverage: weighted.coverage,
       client_request_id: reqId,
     });
   }

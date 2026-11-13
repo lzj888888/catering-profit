@@ -96,14 +96,19 @@ function judgeStale(facts) {
   return hits;
 }
 
-/** C-③ 的可复算判据：会诊结论是否已回写（不钉死任何阶段性措辞） */
+/** C-③ 的可复算判据：会诊结论已回写 + 待办有主人（**不钉死任何阶段性措辞**）
+ *  🔴 R729 第二次纠偏：R728 曾把「next_action 含 S4/落码/拍板」写死，结论一推进到
+ *     「部署」就转红；更早的 R727 还写死过「含三司会诊」。两次都是同一病：
+ *     把**阶段关键词**当永久事实。⇒ 现在只判结构性事实：证据里有会诊稿、
+ *     next_action 非空且有下一步动作、R3-12 的 E-3 已定案。措辞怎么改都不该红。
+ */
 function judgeReviewDone(ledger) {
   if (!ledger || !Array.isArray(ledger.findings)) return false;
   const f9 = ledger.findings.find((x) => x.id === 'R3-9');
   const f12 = ledger.findings.find((x) => x.id === 'R3-12');
   return !!(f9 && f12
     && /R727_三司会诊|REVIEW_2026-11-13/.test(String(f9.fix_evidence))
-    && /S4|落码|拍板/.test(String(f9.next_action))
+    && String(f9.next_action || '').trim().length >= 20
     && /已可定案/.test(String(f12.next_action)));
 }
 
@@ -160,7 +165,7 @@ ok('D-① 好样本零问题 / 抽掉 R3-13⇒红 / 写回「等样例」⇒红 
   good.length === 0 && badNoTicket.length > 0 && badStale.length > 0 && badContract.length > 0 && badQueue.length > 0,
   'good=' + good.length + ' noTicket=' + badNoTicket.length + ' stale=' + badStale.length
   + ' contract=' + badContract.length + ' queue=' + badQueue.length);
-// 🔴 R728：C-③ 改成「会诊完成有据」后必须证明它不是恒真 —— 用合成坏样本真跑判据。
+// 🔴 R729：C-③ 只判结构性事实 ⇒ 合成样本要证明「改阶段措辞不红、清空内容才红」。
 const badNoReview = judgeReviewDone(Object.assign({}, facts.ledger, {
   findings: facts.ledger.findings.map((f) => f.id === 'R3-9'
     ? Object.assign({}, f, { fix_evidence: '（会诊稿证据被删）' }) : f),
@@ -169,8 +174,13 @@ const badNoNext = judgeReviewDone(Object.assign({}, facts.ledger, {
   findings: facts.ledger.findings.map((f) => f.id === 'R3-9'
     ? Object.assign({}, f, { next_action: '' }) : f),
 }));
-ok('D-①b 反恒真：抹掉会诊稿证据 / 清空后续步骤 ⇒ 判据应转假',
-  judgeReviewDone(facts.ledger) === true && badNoReview === false && badNoNext === false);
+// 阶段措辞改成完全不同的说法（部署/真机），语义等价 ⇒ 必须仍为真
+const rephrase = judgeReviewDone(Object.assign({}, facts.ledger, {
+  findings: facts.ledger.findings.map((f) => f.id === 'R3-9'
+    ? Object.assign({}, f, { next_action: '部署两个云函数并真机点一次验证，通道已烟测通过。' }) : f),
+}));
+ok('D-①b 反恒真：抹掉会诊稿证据 / 清空后续步骤 ⇒ 转假；换成完全不同的阶段措辞 ⇒ 仍为真',
+  judgeReviewDone(facts.ledger) === true && badNoReview === false && badNoNext === false && rephrase === true);
 ok('D-② 归档判据非恒真：把「四张全在」喂成「三张」应被 A-① 识别',
   (() => {
     const fake = Object.assign({}, facts, { present: facts.present.slice(0, 3), missing: ['jd_sku_bill'] });

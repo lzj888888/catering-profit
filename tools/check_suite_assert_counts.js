@@ -316,6 +316,7 @@ const CASES = [
   { key: 'check_comment_safety', rel: 'tools/check_comment_safety.js' },     // 7 条（A/B 行注释 + C 兜底 + D-G 自证）
   { key: 'check_r714_decisions', rel: 'tools/check_r714_decisions.js' },  // 20 条（A 4 + B 7 + C 3 + D 6 加权算法层）
   { key: 'check_sales_sample_facts', rel: 'tools/check_sales_sample_facts.js' }, // 10 条（A 1 + B 3 + C 3 + D 3 反恒真）
+  { key: 'check_r729_weighted_wiring', rel: 'tools/check_r729_weighted_wiring.js' }, // 16 条（A 8 服务端与上屏 + B 5 页面桩 + C 3 反恒真）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];
