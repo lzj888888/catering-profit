@@ -26,6 +26,11 @@
 
 const fs = require('fs');
 const path = require('path');
+// R724l / 台账 R1-6：反恒真影子样本原来只有「完全没有」与「真消费」两种，
+//   缺了本文件头注释里**自己写明**的那个病 —— 注释里为了解释来由会写
+//   `require('.../dataHealth.js')` 与 `dh.isTruncated(...)`，若对全文做正则就被喂成恒真。
+//   ⇒ 复用 R1-3 抽出的唯一口径（引号感知剥注释），不再各写一份。
+const { stripJsComments } = require('./_lib/strip_js_comments.js');
 
 const ROOT = path.join(__dirname, '..');
 let pass = 0;
@@ -146,7 +151,10 @@ for (const f of pageFiles) {
 const RE_REQUIRE_DH = /require\([^)]*dataHealth\.js['"]\)/;
 const RE_CALL_DH = /\w+\.isTruncated\(/;
 function consumesTruncated(src) {
-  return RE_REQUIRE_DH.test(src) && RE_CALL_DH.test(src);
+  // 🔴 必须剥注释再判：否则「注释里写了 require + isTruncated」的页面会被当成已消费
+  //    （R298Y / M7 变异实测过的同族病；本轮 ④-e~④-g 三条影子样本把它钉死）。
+  const clean = stripJsComments(src);
+  return RE_REQUIRE_DH.test(clean) && RE_CALL_DH.test(clean);
 }
 
 const unhandled = [];
@@ -182,6 +190,47 @@ for (const p of POS) {
 }
 const wired = POS.filter((p) => consumers.some((c) => c.file === p));
 ok('④-d 三个真消费点都确实在 consumers 里（防"修了但判据看不见"）', wired.length === POS.length, wired.join(' / '));
+
+// 🔴 R1-6 补齐：④-a 只有「什么都没写」一种坏样本，无法证明「注释喂成恒真」被堵住。
+//   下面三条影子样本全部是「注释里有字样、真代码没有真消费」，判据必须一律判不通过。
+const FAKE_LINE_COMMENT = [
+  "// 说明：本页按契约应 require('../../utils/dataHealth.js')，再用 dh.isTruncated(r) 判断",
+  "const api = require('../../utils/api.js');",
+  "const r = await api.call('getCostCard', {});",
+  'this.setData({ list: r.list });',
+].join('\n');
+ok('④-e 🔴 反恒真·行注释变体：注释里写全 require + isTruncated ⇒ 必须判不通过',
+  !consumesTruncated(FAKE_LINE_COMMENT));
+
+const FAKE_BLOCK_COMMENT = [
+  '/* 契约备忘：',
+  "   const dh = require('../../utils/dataHealth.js');",
+  '   const t = dh.isTruncated(r); */',
+  "const api = require('../../utils/api.js');",
+  "const r = await api.call('getCostCard', {});",
+  'this.setData({ list: r.list });',
+].join('\n');
+ok('④-f 🔴 反恒真·块注释变体：整段说明被 /* */ 包住 ⇒ 必须判不通过',
+  !consumesTruncated(FAKE_BLOCK_COMMENT));
+
+const FAKE_HALF_COMMENT = [
+  "// const dh = require('../../utils/dataHealth.js');   ← 真 require 被注释掉",
+  "const api = require('../../utils/api.js');",
+  "const r = await api.call('getCostCard', {});",
+  'this.setData({ t: dh.isTruncated(r) });',
+].join('\n');
+ok('④-g 🔴 反恒真·半注释变体：只剩调用、require 是假 ⇒ 必须判不通过',
+  !consumesTruncated(FAKE_HALF_COMMENT));
+
+// 反向腿：剥注释不能把**真消费**也一起剥掉（否则守卫变成「一律判不通过」）。
+const REAL_WITH_NOISE = [
+  "// 备忘：dh.isTruncated(r) 的含义见 utils/dataHealth.js",
+  "const dh = require('../../utils/dataHealth.js');",
+  "const r = await api.call('getCostCard', {});",
+  'this.setData({ t: dh.isTruncated(r) });',
+].join('\n');
+ok('④-h 反向腿：真消费 + 注释干扰 ⇒ 仍必须判通过（防剥注释剥过头）',
+  consumesTruncated(REAL_WITH_NOISE));
 
 // ============ 结论 ============
 const total = pass + problems.length;

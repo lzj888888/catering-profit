@@ -1,0 +1,26 @@
+# R724l 云控制台只读复核（2026-11-13 07:5x GMT+8）
+# 纪律：cloud-console-audit §1 CLI-first；全程只读，未改任何配置
+
+## islogin
+- initialize
+
+(node:22320) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)
+√ IDE server has started, listening on http://127.0.0.1:10896
+- preparing
+
+{"login":true}
+√ islogin
+
+## cloud env list
+- initialize
+
+(node:22092) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)
+√ IDE server has started, listening on http://127.0.0.1:10896
+- query env list
+- fetching cloud env list
+√ query env list
+
+* cloud1-d4gphpoxy337f2a25
+

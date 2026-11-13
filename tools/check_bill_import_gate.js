@@ -31,6 +31,10 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+// R724l / 台账 R1-3：S-④ 原来对 verify_all.js **全文**做正则，注释里出现一次
+//   `check_salesbills.js` 就恒真（与 check_suite_coverage 的严格口径一松一紧）。
+//   改走共享单源：剥注释 + 只取 SUITES 块 + 只认带引号的数组元素。
+const { stripJsComments, suitesBlock, suitePaths } = require('./_lib/strip_js_comments.js');
 
 const ROOT = path.resolve(__dirname, '..');
 const P = {
@@ -68,8 +72,21 @@ check('S-② 三个"账单"云函数**都还在**（暂停展示 ≠ 撤功能�
 check('S-③ 落库写入仍在（唯一改的是"能不能走到这一步"，不是"能不能写"）',
   /db\.collection\('external_sales_daily'\)[\s\S]{0,40}\.set\(/.test(fnIdx));
 const verifyAll = read(path.join(ROOT, 'verify_all.js'));
+const SALESBILL = 'tools/check_salesbills.js';
+const suiteBlk = suitesBlock(verifyAll);
+const registered = suitePaths(suiteBlk ? stripJsComments(suiteBlk) : '');
 check('S-④ 原有守卫 check_salesbills 仍在 SUITES（隐藏入口 ≠ 拆守卫）',
-  /check_salesbills\.js/.test(verifyAll));
+  !!suiteBlk && registered.indexOf(SALESBILL) >= 0,
+  'SUITES 块=' + !!suiteBlk + ' 已登记 ' + registered.length + ' 项');
+// 🔴 反恒真样本：把那一行**整行注释掉**（字符串仍留在文件里）。
+//   旧判据 /check_salesbills\.js/.test(全文) 会照样绿 ⇒ 假绿；新判据必须判红。
+const realLine = verifyAll.split('\n').find((l) => l.indexOf(SALESBILL) >= 0);
+const fake = realLine ? verifyAll.replace(realLine, '// ' + realLine) : verifyAll;
+const fakeBlk = suitesBlock(fake);
+const fakeRegistered = suitePaths(fakeBlk ? stripJsComments(fakeBlk) : '');
+check('S-⑤ 🔴 反恒真：SUITES 项被注释掉但字符串仍在 ⇒ 判据必须转红（全文正则会假绿）',
+  !!realLine && fakeRegistered.indexOf(SALESBILL) < 0 && /check_salesbills\.js/.test(fake),
+  '全文仍含字符串=' + /check_salesbills\.js/.test(fake) + ' 严格口径判红=' + (fakeRegistered.indexOf(SALESBILL) < 0));
 
 console.log('\n===== A 源码面（只关账单，不误伤形态 A/C）=====');
 const reFlags = /const BILL_IMPORT_ENABLED\s*=\s*(true|false)\s*;/;

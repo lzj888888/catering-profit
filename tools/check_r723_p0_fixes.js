@@ -40,17 +40,21 @@ function finish() {
 // =====================================================================
 console.log('\n===== A. 元守卫：注释变体不再能喂绿 =====');
 const scSrc = read('tools/check_suite_coverage.js');
-// 真抽出生产函数（不复制实现），避免「守卫里另写一份」的假绿
+// R724l（台账 R1-3）：R723 把剥注释函数**内置在 check_suite_coverage.js**，本轮把它抽到
+//   tools/_lib/strip_js_comments.js 单源（两个判据共用）。能力没变、位置变了。
+//   ⇒ 仍坚持「真抽生产函数、不复制实现」，只是改从共享模块抽；并要求 coverage 真的 require 它。
+const libSrc = read('tools/_lib/strip_js_comments.js');
 let stripFn = null;
-const mStart = scSrc.indexOf('function stripJsComments(src) {');
+const mStart = libSrc.indexOf('function stripJsComments(src) {');
 if (mStart >= 0) {
-  const mEnd = scSrc.indexOf('\n}\n', mStart);
+  const mEnd = libSrc.indexOf('\n}\n', mStart);
   if (mEnd > 0) {
-    try { stripFn = new Function(scSrc.slice(mStart, mEnd + 3) + '\nreturn stripJsComments;')(); }
+    try { stripFn = new Function(libSrc.slice(mStart, mEnd + 3) + '\nreturn stripJsComments;')(); }
     catch (e) { /* 下面判红 */ }
   }
 }
-ok('A-① 生产源码里有引号感知剥注释函数，且真的能加载执行', typeof stripFn === 'function');
+ok('A-① 生产源码里有引号感知剥注释函数，且真的能加载执行',
+  typeof stripFn === 'function' && /_lib\/strip_js_comments\.js/.test(scSrc));
 ok('A-② 拼接间接引用证据时确实调用了它（不是摆设）',
   /indirectSrc \+= stripJsComments\(/.test(scSrc));
 const FAKE = 'tools/zz_r723_comment_only.js';
@@ -60,8 +64,11 @@ ok('A-③ 反恒真：注释里提路径不算引用，字符串字面量里的�
   !!stripFn && !stripFn(badSrc).includes(FAKE) && stripFn(goodSrc).includes(FAKE));
 ok('A-④ 不误伤字符串里的 http://（引号感知，不是无脑切 //）',
   !!stripFn && stripFn(goodSrc).includes('http://x/y'));
-ok('A-⑤ 元守卫自身留了 S5-② 反恒真断言（断言数 10→11 已同步声明）',
-  /S5-② 反恒真/.test(scSrc) && /`check_suite_coverage`=11/.test(read('specs/dev-specs/★知识存储点_2026-09-10.md')));
+// R724l：原来这里写死「声明 =11」的快照。加 S9 后变 12，快照当场红 ——
+//   而「声明 ≡ 实跑断言数」本来就是 check_suite_assert_counts.js 的职责（唯一声明处守卫）。
+//   ⇒ A-⑤ 不再重复管数字，改守「两条反恒真/单源判据都在场」，比写死数字更严也更不易漂。
+ok('A-⑤ 元守卫自身留有 S5-② 反恒真 + S9 口径单源断言（数字一致性交 check_suite_assert_counts）',
+  /S5-② 反恒真/.test(scSrc) && /S9 「剥注释/.test(scSrc));
 
 // =====================================================================
 // 页面桩：只 stub 依赖模块，页面源码与 utils/exportFile.js 都是真 require

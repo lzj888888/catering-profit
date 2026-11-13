@@ -58,10 +58,12 @@
       "title": "check_bill_import_gate S-④ 与 check_suite_coverage 对「是否挂 SUITES」判据一松一紧",
       "evidence": "tools/check_bill_import_gate.js:71",
       "verified_by": "R1-已核实",
-      "status": "deferred",
+      "status": "fixed",
       "verified": true,
-      "priority": "P2",
-      "next_action": "改为复用 suitesBlock() 同源判据，别整文件 includes"
+      "priority": "",
+      "next_action": "",
+      "fix_evidence": "抽 tools/_lib/strip_js_comments.js 作唯一口径（引号感知剥注释 + SUITES 块解析 + suitePaths 只认带引号数组元素）；check_suite_coverage 删内置实现、改 require 共享模块（含 suitesBlock 也走共享）；check_bill_import_gate S-④ 由「对 verify_all.js 全文做 /check_salesbills\\.js/ 正则」改为「剥注释 + 只取 SUITES 块 + 精确匹配登记项」，并新增 S-⑤ 反恒真影子样本（整行注释掉但字符串仍在 ⇒ 全文正则会假绿、严格口径必须判红）。另在 check_suite_coverage 加 S9：两个守卫都必须 require 共享模块且不得再内嵌 function stripJsComments，防「一松一紧」悄悄回来。**真变异**：临时把 verify_all.js 的 sales-bills 项注释掉 ⇒ S-④ 转红 exit=1，还原后绿。断言数声明同步：check_suite_coverage 11→12、check_bill_import_gate 48→49，check_suite_assert_counts 126/0 绿。",
+      "challenge": "反方：S-④ 只判「一个旧守卫有没有被拆」，值得为它抽共享模块吗？判断：值的不是那条断言，是「同一件事两个守卫给出不同严格度」这个**结构性后门** —— 只要全文正则还在，任何人在注释里写一句路径就能让「是否挂 SUITES」的判据假绿，而 check_suite_coverage 的 S5 已经花 R723 一轮堵过同样的洞。抽单源 + S9 锁定，成本低于将来再踩一次。边界：tools/check_m2_no_cost_rate.js 仍内置第三份同款算法（它不判 SUITES、是独立脚本末尾 process.exit），本轮**未改**，如实登记为余留；将来若要三处归一需单独验证后再动。"
     },
     {
       "id": "R1-4",
@@ -98,10 +100,12 @@
       "title": "check_truncated_surfaced 反恒真影子样本缺「注释变体」",
       "evidence": "tools/check_truncated_surfaced.js:174",
       "verified_by": "R1-推测",
-      "status": "deferred",
+      "status": "fixed",
       "verified": false,
-      "priority": "P2",
-      "next_action": "补一条「注释里写 require+调用、真代码没有」的影子样本，验证能给相反答案"
+      "priority": "",
+      "next_action": "",
+      "fix_evidence": "check_truncated_surfaced.js 的 consumesTruncated() 改为**先剥注释再判**（复用 R1-3 抽出的 tools/_lib/strip_js_comments.js 唯一口径，不另写实现）；补齐 4 条影子样本：④-e 行注释变体、④-f 块注释变体、④-g 半注释变体（require 被注释、调用在真代码）、④-h 反向腿（真消费+注释干扰仍判通过，防剥过头）。守卫 20→24 断言全绿；改严后真实页面判定未变（生产者 4 / 调用点 12 / 已消费 10 / 登记 3），说明没有页面靠注释混过。**真变异**：把 consumesTruncated 改回「对全文做正则」⇒ ④-e/f/g 三条同时转红 exit=1，还原后绿。该文件不在断言数唯一声明列表内，无需同步计数。",
+      "challenge": "反方：文件头注释早就写明了「只 grep 词会被注释喂成恒真」，加几条影子样本是不是形式主义？判断：恰恰相反 —— **注释写了 ≠ 判据做了**。原文 R298Y/M7 说这个洞被抓到过，但③的判据本体仍是对全文做正则，④-a 的坏样本只是「什么都没写」，根本覆盖不到注释变体。补样本后判据当场暴露洞，必须连实现一起改（剥注释）才绿。这是「先补样本、再被样本逼着修实现」的正常顺序，不是凑数。"
     },
     {
       "id": "R2-1",
@@ -219,14 +223,16 @@
       "id": "R3-3",
       "source": "R3-security",
       "severity": "P1",
-      "title": "R722 云控制台核查：备份零脱敏属实，但权限已封死、越权路径排除",
-      "evidence": "review/evidence/r722_cloud_console/06_storage_permission.png, 09_backup_202611.png, 11_db_permission.png, 14_env_permission_bottom.png; cli_env_list.txt",
-      "verified_by": "R722-云控制台截图+CLI-cloud-env-list",
-      "status": "deferred",
+      "title": "备份零脱敏：已完成处置判定（明文仍在，泄露路径排除、留存约 60 天、前提已锁进门禁）",
+      "evidence": "R722 GUI 实测：云存储仅创建者可读写 / 数据库数据权限封死 / 未登录访问开关关 ⇒ 泄露路径排除；backup/2026-11/ 下明文 admin_user.json / audit_log.json(137KB) / external_sales_daily.json(212KB) 属实。R724l 本轮 CLI 复核（review/evidence/r724l_cloud_console/cli_recheck.txt）：login=true、环境仍仅 cloud1-d4gphpoxy337f2a25 一个，prod 未建。**新读源码纠正一处旧表述**：R688 已实现轮转 KEEP_EPOCHS=2（约 60 天）、且只在完全成功时删旧 ⇒ 不是「明文永久留存」。",
+      "verified_by": "R722 GUI 5 项 + R724l CLI 只读复核 + 源码实读 + 处置口径文档",
+      "status": "fixed",
       "verified": true,
-      "priority": "P2",
-      "next_action": "权限已核实封死（云存储/数据库均「仅创建者可读写」、未登录访问开关关），无需紧急修；备份剔除 openid/pwd_hash/token 属治理改进，非当前漏洞。详见 review/AUDIT_R722_云控制台实操核查.md",
-      "cloud_evidence": "云控制台只读核查：存储权限/数据库数据权限/未登录访问开关/backup 目录/环境清单；未改任何配置；cli cloud functions list 缺 --env 首跑失败未测到函数级配置"
+      "priority": "",
+      "next_action": "",
+      "cloud_evidence": "云控制台只读核查：存储权限/数据库数据权限/未登录访问开关/backup 目录/环境清单；未改任何配置；cli cloud functions list 缺 --env 首跑失败未测到函数级配置",
+      "fix_evidence": "**处置判定完成，不是修好了脱敏**：review/NOTE_R724l_备份数据处置口径.md 写明敏感集合清单（从 dbBackup 源码实算）、为什么不脱敏（备份要可恢复 / 泄露路径已排除 / 真正手段是服务端加密属产品决策）、四个前提与重评触发事件、本轮未测到的项（5 项 GUI 未重跑 / 函数级 60s 超时配置未复核 / 存储加密未调研）。新增 tools/check_backup_data_handling.js（15 断言 / H 组 11 + M 组 4 变异全 exit=1 点名），把「判定依赖的前提」钉进门禁：KEEP_EPOCHS≤2、轮转只在完全成功时、OPENID 自保、敏感集合名单文档↔源码双向一致。全程**未改云控制台配置、未改 dbBackup 代码、未重新部署**（cloud-console-audit 只读红线）。",
+      "challenge": "反方：明文摆在那儿，为什么不顺手脱敏？三条否决：① 字段级脱敏会毁掉备份的可恢复性，真出事那天备了一份不能恢复的文件比不备更糟；② 当前拿到备份的唯一途径是云端凭据本身失守，那种情况下攻击者本来就能直读数据库，脱敏备份救不了；③ 有效手段是服务端加密/KMS，需调研云开发是否支持、密钥谁管、恢复流程，属产品+运维决策，不是一次审计能顺手做的。⇒ 只做「判定 + 前提锁定」，并在文档里写死「前提变化必须重评」。反方2「销账是不是假装问题消失」：title 已明写「明文仍在」，fix_evidence 明写「不是修好了」，且守卫会持续监控前提；销的是**处置判定**这件事，不是漏洞本身。"
     },
     {
       "id": "R3-4",
@@ -274,14 +280,15 @@
       "id": "R1-8",
       "source": "R1-gate-blindspot",
       "severity": "P1",
-      "title": "桩型守卫仍只占 15.2%（32/211 个 check_*.js），仍有多页只有静态形状守卫",
-      "evidence": "R724d~j 实扫 34 个 Page 页面 × 30 个桩型 tools：原零桩 8 个，已补 5 个（pages/index 32、month/amortize 34、material/index 37、month/assetEdit 37、tools/shop/setting 14），剩 3 个",
+      "title": "桩型守卫占比仅 18.2%（40/220），且仍有 5 个高频/算钱页只有静态形状守卫",
+      "evidence": "R724l 用固化口径 tools/scan_zero_stub_pages.js 实扫：34 个 Page 页面 / 220 个 check_*.js / 桩型 40（global.Page|loadPage 口径，18.2%）；零桩 5 个：subpkg/biz/groupon/index、subpkg/biz/material/edit、subpkg/biz/month/index、subpkg/biz/revenue/manual/index、subpkg/tools/metrics/impact。本轮已按 R724d 名单补完最后 3 页（pay/orders 30 断言、sandbox/compare+list 合一 45 断言），8 条变异全 exit=1 点名；R724d 名单 8 页至此全部有桩。",
       "verified_by": "R724-现扫",
       "status": "deferred",
       "verified": true,
-      "challenge": "反方：桩型守卫成本高于静态守卫，是不是该接受 15% 这个比例？判断：不能——R724 补的两个桩当场抓出 R1-7（第一行点不动），正是形状守卫零感知的那类；比例低意味着大部分页面「写对了」但从没跑过。但也不该为凑比例乱补，只补高风险页（录入/算钱/授权类）。",
+      "challenge": "🔴 本轮我**先销账又撤回**：销账后重扫发现 R724d 那份「零桩 8 个」名单本身不完整 —— 换一次扫描写法冒出 5 个完全不重叠的零桩页，且 groupon/material-edit/month-index/revenue-manual 比我刚补的 sandbox 两个更高频、更贴算钱。根因不是「漏补」，是**扫描口径每次都不同，名单不可复现**，导致优先级排错。已固化成 tools/scan_zero_stub_pages.js（唯一口径，--json 机器读），不再写临时 node -e。⇒ R1-8 范围未闭合，保持 deferred P1；不另开重复票。",
       "priority": "P1",
-      "next_action": "剩 3 个：tools/pay/orders（订单，商业化相关）→ tools/sandbox/compare、tools/sandbox/list（低频，可最后）。每补一页必须带至少 1 条变异回灌，仍走 L2 桩层"
+      "next_action": "按「高频 × 贴算钱」补这 5 页：month/index（月度总入口）→ material/edit（原料改价，直接进成本）→ groupon/index（团购单量算钱）→ revenue/manual/index（营收手录）→ metrics/impact（涨价影响面，低频可最后）。每页带至少 1 条变异回灌；每轮开工先跑 scan_zero_stub_pages.js 复核名单，不靠记忆。",
+      "fix_evidence": ""
     },
     {
       "id": "R3-6",

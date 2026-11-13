@@ -39,32 +39,10 @@ const RUNNER = 'verify_all.js';
 // 🔴 R723（R721 台账 R1-1）：间接引用判据原来把 SUITES 脚本源码**原样拼接**做
 //   `includes(f)`，注释里随手写一句 `// 运行：node tools/check_x.js` 就能把没挂
 //   SUITES 的判据算成「已间接引用」⇒ S5「零漏网」假绿。
-//   修法：拼接前剥注释，且**引号感知**（字符串字面量里的 http:// 不能切坏）。
-//   ⚠️ 与 tools/check_m2_no_cost_rate.js:63-88 的 stripJs 同款；那个文件是独立
-//      脚本（末尾 process.exit）、不能 require，故在本文件内置一份精简实现。
-function stripJsComments(src) {
-  let out = '', i = 0, st = null;
-  const n = src.length;
-  while (i < n) {
-    const c = src[i], c2 = src[i + 1];
-    if (st === 'line') { if (c === '\n') { st = null; out += c; } i++; continue; }
-    if (st === 'block') { if (c === '*' && c2 === '/') { st = null; i += 2; } else i++; continue; }
-    if (st === 'sq' || st === 'dq' || st === 'tpl') {
-      const q = st === 'sq' ? "'" : st === 'dq' ? '"' : '`';
-      if (c === '\\') { out += c + (c2 === undefined ? '' : c2); i += 2; continue; }
-      out += c;
-      if (c === q) st = null;
-      i++; continue;
-    }
-    if (c === '/' && c2 === '/') { st = 'line'; i += 2; continue; }
-    if (c === '/' && c2 === '*') { st = 'block'; i += 2; continue; }
-    if (c === "'") { st = 'sq'; out += c; i++; continue; }
-    if (c === '"') { st = 'dq'; out += c; i++; continue; }
-    if (c === '`') { st = 'tpl'; out += c; i++; continue; }
-    out += c; i++;
-  }
-  return out;
-}
+//   R724l（台账 R1-3）：剥注释与 SUITES 块解析**抽到 tools/_lib/strip_js_comments.js 单源**，
+//   本文件与 check_bill_import_gate.js 共用 —— 原先「一个严格、一个全文正则」的一松一紧，
+//   等于给「是否挂 SUITES」留了后门。改口径只改那一处；S9 断言守「不许再内嵌第二份」。
+const { stripJsComments, suitesBlock: sharedSuitesBlock } = require('./_lib/strip_js_comments.js');
 
 // 面 A：生产判据脚本（命名前缀 = 判据身份；放错目录/改错名字都会被这条抓出来）
 // ⚠️ `key` 是**固定身份**，`dir` 是可变路径：工作树下界只按 key 取，
@@ -172,11 +150,7 @@ function worktreeFaceA() {
 // 从而让"只在收尾映射里出现、并未真正挂 SUITES"的脚本被误判为已覆盖 ⇒ 守卫当场失明。
 function suitesBlock() {
   const src = fs.readFileSync(path.join(ROOT, RUNNER), 'utf8');
-  const start = src.indexOf('const SUITES = [');
-  if (start < 0) return null;
-  const end = src.indexOf('\n];', start);
-  if (end < 0) return null;
-  return src.slice(start, end);
+  return sharedSuitesBlock(src);
 }
 
 (function main() {
@@ -303,6 +277,19 @@ function suitesBlock() {
   const invoked = faceB.filter((f) => suites.includes(f));
   check('S8 面 B 零个脚本被 SUITES 引用', invoked.length === 0,
     invoked.length ? '实为生产判据、不该豁免：' + invoked.join(', ') : '前提成立');
+
+  // S9（R724l / 台账 R1-3）：口径单源的机器判据。
+  //   只把 S-④ 改严一次不够 —— 将来有人图省事在任一守卫里再写一份精简剥注释，
+  //   「一松一紧」会悄悄回来且无人报警。⇒ 两个守卫都必须 require 共享模块、
+  //   且都不得内嵌 function stripJsComments。
+  const covSrc = fs.readFileSync(__filename, 'utf8');
+  const billSrc = fs.readFileSync(path.join(ROOT, 'tools', 'check_bill_import_gate.js'), 'utf8');
+  const LIB = '_lib/strip_js_comments.js';
+  check('S9 「剥注释 / SUITES 块」口径单源：两个判据共用共享模块，且都不再内嵌第二份',
+    covSrc.indexOf(LIB) >= 0 && billSrc.indexOf(LIB) >= 0
+    && !/function\s+stripJsComments\s*\(/.test(covSrc)
+    && !/function\s+stripJsComments\s*\(/.test(billSrc),
+    'coverage=' + (covSrc.indexOf(LIB) >= 0) + ' bill=' + (billSrc.indexOf(LIB) >= 0));
 
   const failN = bad.length;
   console.log('\n===== SUITES 覆盖守卫结果：' + pass.length + ' 通过 / ' + failN + ' 失败 =====');

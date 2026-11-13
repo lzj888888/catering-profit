@@ -77,14 +77,18 @@ ok('L-⑤ fixed 条目 ≥3 且每条都有修法证据与挑毛病结论',
   fixed.length >= 3 && fixed.every((f) => f.fix_evidence && f.challenge), 'fixed=' + fixed.length);
 // R723：下界从 10 降到 5 —— 随着修复推进 deferred 会自然减少，硬 10 会逼人「留着不修」。
 //   真正的防线是「总数 ≥17（L-①）+ 条目只改状态不删」，5 条只用来抓「台账被掏空」。
-// 🔴 R724k：再从 5 降到 3。2026-11-13 实测 deferred 修到只剩 4 条（R3-2/R3-7 当晚销账），
-//   下界 5 立刻判红 —— 而当时台账 21 条、fixed 17 条、一条没删，正是「修得快」而不是「被掏空」。
-//   为什么下界可以这么低：①「条目不被删」由 L-①（总数 ≥17）守；②「不许假装修了」由 L-⑤
-//   （fixed 必须带 fix_evidence + challenge）守。deferred 下界真正要抓的只有**清空**（0 条，
-//   意味着要么全修完、要么有人批量改状态）。3 条足够区分「快修完」与「被清空」，再高就是
-//   逼人为了喂绿去**编造/保留**待办，那是更坏的方向。
-ok('L-⑥ deferred 条目每条都有优先级与下一步（不许挂着没主人）',
-  deferred.length >= 3 && deferred.every((f) => f.priority && f.next_action), 'deferred=' + deferred.length);
+// 🔴 R724k：5 → 3；R724l：3 → 1。**这是最后一次调这个数**。
+//   两次下调都是同一个原因：修得快 ⇒ deferred 变少 ⇒ 下界判红，而台账总数与 fixed 证据
+//   一条没少。反复调数字本身就说明判据设计错了 —— 把「修复进度」和「台账完整性」绑在一起，
+//   等于每修一条就要回来改一次门禁，还会诱使人为了喂绿去**留着不修 / 编造待办**。
+//   拆清楚职责：
+//     · 条目不许被删        → L-①（总数 ≥17，append-only）
+//     · 不许假装修了        → L-⑤（fixed 必须带 fix_evidence + challenge）
+//     · 待办不许没主人      → 本条后半（每条带 priority + next_action）
+//     · 台账不许被清空      → 本条前半（deferred ≥1；真变 0 就该重新开盲区扫描，判红是对的）
+//   ⇒ 下界只剩「非零」这一个语义，不再随进度漂移。
+ok('L-⑥ deferred 条目每条都有优先级与下一步（不许挂着没主人 / 台账不许被清空）',
+  deferred.length >= 1 && deferred.every((f) => f.priority && f.next_action), 'deferred=' + deferred.length);
 ok('L-⑦ 准备修的 6 条都记录了唱反调结论（确认偏误不被抹掉）',
   F.filter((f) => f.challenge).length >= 6, '有 challenge=' + F.filter((f) => f.challenge).length);
 

@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：303 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：306 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1728,6 +1728,21 @@ const SUITES = [
   //   另有两条：保存后不重拉 ⇒ 返回上一页还是旧店名；onShow 改读缓存 ⇒ 别处改完回来看到旧值。
   //   A 读回 4 / B 保存载荷 6 / C 生命周期 2 / M 2 条变异。
   ['shop-setting-stub', 'tools/check_shop_setting_stub.js'],
+  // R724l · 台账 R1-8 收尾（零桩 8 个全部补齐）：
+  //   · pay/orders —— 唯一会表态「售卖虚拟商品」的页。三重门（PAYWALL_ENABLED / !isIOS /
+  //     到期窗口）任一漏了都是提审/苹果审核问题；onRenew 还有第二道纵深（防 wxml 改版、
+  //     deep link 直达）。30 断言 / 4 变异。
+  //   · sandbox/compare + sandbox/list —— 两页共享同一份 getPlan 数据，放同一进程**跨页对拍**
+  //     （R297-④ 历史 bug：反推方案两页显示两个数，单页桩永远证不了）。45 断言 / 4 变异，
+  //     含勾选态算进数据、实时重算透传、画布预热首击出图、Excel 免费不弹墙。
+  ['pay-orders-stub', 'tools/check_pay_orders_stub.js'],
+  ['sandbox-pages-stub', 'tools/check_sandbox_pages_stub.js'],
+  // R724l · 台账 R3-3：备份零脱敏的**处置前提**守卫（不修脱敏，守「前提别悄悄变」）。
+  //   字段级脱敏会破坏备份可恢复性；真正手段是服务端加密/KMS（产品+运维决策）。
+  //   H 组锁：处置口径在场且如实写明权限结论/未测项/重评触发事件；敏感集合从 dbBackup
+  //   源码实算与文档双向核对；KEEP_EPOCHS≤2；轮转只在完全成功时；OPENID 自保；CLI 复核证据。
+  //   M 组 4 条变异（改大留存期/拆轮转保护/拆自保/漏列敏感集合）全部 exit=1 点名。
+  ['backup-data-handling', 'tools/check_backup_data_handling.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
