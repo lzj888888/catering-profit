@@ -7,12 +7,13 @@
 //   且上轮结论属于「自述」，按李老师红线（不采信任何自述，含我方上轮）必须独立重算。
 //
 // ===== 本轮回答两个问题 =====
-//   ① 全仓 41 个 storage 调用横向扫一遍，还有多少全局 key 会跨店串？（不是抽样）
+//   ① 全仓逐个 storage 调用横向扫一遍，还有多少全局 key 会跨店串？（不是抽样；数量由扫描现场算，不写死）
 //   ② R718 的两条红，脱离上轮报告重新真跑一遍，还成立吗？
 //
 // ===== 五段判据 =====
 //   A 全量清单：守卫**自己扫产品源码**（pages/subpkg/utils/miniprogram/cloudfunctions，
-//     排除 node_modules），41 个调用逐个提取第一参数；任何不在归类表里的新 key 直接判红
+//     只跳仓根的 tools/specs/review/evidence 与任意层级的 node_modules；数量现场算、不写死），
+//     每个调用逐个提取第一参数；任何不在归类表里的新 key 直接判红
 //     ⇒ 以后谁新增一个不带 shop 的全局 key 会被当场抓住，不是「我记得就登记」。
 //   B 页面桩真跑：真 require 6 个页面源码，同一份本地 storage 里切店，取证 6 个场景
 //     （S1 整批批次 / S2 月草稿 / S3 单菜预填 / S4 分类字典 / S5 原料缓存 / S6 对照组）。
@@ -48,7 +49,14 @@ function ok(name, cond, extra) {
 console.log('\n===== A. 全量扫描（守卫自扫产品源码）=====');
 
 const SCAN_DIRS = ['pages', 'subpkg', 'utils', 'miniprogram', 'cloudfunctions'];
-const SKIP_DIRS = new Set(['node_modules', 'miniprogram_npm', '.git', 'review', 'tools', 'specs', 'evidence', '__pycache__']);
+// 🔴 R725（2026-11-13）修扫描面盲区：跳过名单原来按**目录名全树匹配**，
+//   'tools' 这一条把产品目录 `subpkg/tools/`（算钱沙盘 / 场景矩阵 / 涨价影响页）整棵跳过了 ⇒
+//   A-①/A-⑤/A-⑨ 一直在**不完整集合**上盖章：`SB_MATRIX_SEED_V1` 这个全局 key
+//   （值里装房租/装修/加盟/面积/工资）从未被登记、也从未被判红。后果是真事故：
+//   A 店点「生成矩阵」写入种子 → 切到 B 店进矩阵页，`applySeed(seed, true)` 静默应用
+//   A 店的投入算矩阵，界面毫无提示。⇒ 跳过只对**仓根同名目录**生效（用相对路径精确判）。
+const SKIP_TOP_REL = new Set(['tools', 'specs', 'review', 'evidence']);
+const SKIP_ANY = new Set(['node_modules', 'miniprogram_npm', '__pycache__']);
 
 function jsFiles(roots) {
   const out = [];
@@ -57,8 +65,11 @@ function jsFiles(roots) {
     if (!fs.existsSync(abs)) continue;
     const walk = (d) => {
       for (const e of fs.readdirSync(d, { withFileTypes: true })) {
-        if (e.isDirectory()) { if (!SKIP_DIRS.has(e.name) && !e.name.startsWith('.')) walk(path.join(d, e.name)); }
-        else if (e.name.endsWith('.js')) out.push(path.join(d, e.name));
+        if (e.isDirectory()) {
+          const rel = path.relative(ROOT, path.join(d, e.name)).replace(/\\/g, '/');
+          if (e.name.startsWith('.') || SKIP_ANY.has(e.name) || SKIP_TOP_REL.has(rel)) continue;
+          walk(path.join(d, e.name));
+        } else if (e.name.endsWith('.js')) out.push(path.join(d, e.name));
       }
     };
     walk(abs);
@@ -101,9 +112,15 @@ for (const f of jsFiles(SCAN_DIRS)) {
 const byTop = {};
 for (const c of allCalls) { const t = c.file.split('/')[0]; byTop[t] = (byTop[t] || 0) + 1; }
 
-ok('A-① 全量扫到 ≥40 个 storage 调用（当前 41），且 pages/subpkg/utils 三处都有',
+ok('A-① 全量扫到 ≥40 个 storage 调用（当前 ' + allCalls.length + '），且 pages/subpkg/utils 三处都有',
   allCalls.length >= 40 && ['pages', 'subpkg', 'utils'].every((d) => byTop[d] > 0),
   JSON.stringify(byTop));
+// 🔴 R725 反回归：上面那个跳过名单的 bug 一旦被改回去，subpkg/tools 的调用会**静默消失**，
+//   而 A-①（≥40）和 A-⑤（无未登记 key）照样全绿 —— 必须有一条断言专门钉住「扫描面覆盖沙盘目录」。
+ok('A-①b 🔴 R725 反回归：扫描面必须覆盖 subpkg/tools（曾因跳过名单按目录名全树匹配而整棵漏扫）',
+  allCalls.some((c) => c.file.indexOf('subpkg/tools/') === 0)
+  && allCalls.filter((c) => c.file.indexOf('subpkg/tools/') === 0).length >= 5,
+  'subpkg/tools 命中 ' + allCalls.filter((c) => c.file.indexOf('subpkg/tools/') === 0).length + ' 处');
 ok('A-② 扫描面非退化：产品 js 文件数 ≥ 1000（防把目录名写错扫成空集合）',
   jsFiles(SCAN_DIRS).length >= 1000, String(jsFiles(SCAN_DIRS).length));
 ok('A-③ 反恒真：只扫 pages 一个目录 ⇒ 调用数明显变少（判据不是恒真）',
@@ -125,6 +142,11 @@ const CLASSES = {
   SHOP_KEY: ['ss.shopKey(DRAFT_PREFILL_KEY)', 'ss.shopKey(DI.DRAFT_PREFILL_KEY)',
     'ss.shopKey(MAT_CACHE)', 'ss.shopKey(EDIT_CATS_KEY)', 'ss.shopKey(LIST_CATS_KEY)',
     'ss.shopKey(DI.BATCH_CACHE_KEY)', 'ss.shopKey(DRAFT_KEY + this.data.month)'],
+  // 🔴 R725：沙盘（subpkg/tools/）两处全局 key 补进 shop 维度 —— 这两处此前因扫描面盲区
+  //   （跳过名单按目录名全树匹配，'tools' 误杀产品目录 subpkg/tools/）长期没被登记也没被判红。
+  //   种子: A 店「生成矩阵」写的房租/装修/加盟/面积/工资，B 店进矩阵页会被静默沿用；
+  //   草稿: 全局一格 ⇒ A 店草稿被 B 店保存覆盖丢失。
+  SHOP_KEY_SANDBOX: ['matrixSeed.seedKey()', 'ss.shopKey(SANDBOX_DRAFT_KEY)'],
   // R723：会话级导出清单（注销时按它删文件）；不是店铺业务数据，故不按 shop 拼。
   SESSION_SCOPE: ['EXPORTED_FILES_KEY'],
   CLEAR: [''],                                                   // clearStorageSync()
@@ -174,6 +196,16 @@ ok('A-⑨ 🔴 R720：18 个读写点无残留裸 key（每个 StorageSync 都�
     }
     return bare === 0;
   })());
+// 🔴 R725：A-⑨ 的清单是写死的 5 个文件 ⇒ 沙盘目录天然不在其中。这条改成**从扫描结果反推**
+//   （不写死文件名）：subpkg/tools/ 下每一个 storage 调用都必须带 shopKey/seedKey。
+//   ⇒ 以后沙盘页再新增一个 storage 调用，不按店拼会当场判红，不需要有人记得来加文件名。
+ok('A-⑩ 🔴 R725：沙盘目录（subpkg/tools/）无裸 key —— 每处都按店拼（判据从扫描结果反推，不写死文件名）',
+  (() => {
+    const sb = allCalls.filter((c) => c.file.indexOf('subpkg/tools/') === 0);
+    return sb.length >= 5 && sb.every((c) => /shopKey\(|seedKey\(/.test(c.arg));
+  })(),
+  allCalls.filter((c) => c.file.indexOf('subpkg/tools/') === 0 && !/shopKey\(|seedKey\(/.test(c.arg))
+    .map((c) => c.file + ':' + c.line + '=' + c.arg).join(' | '));
 
 console.log('\n===== B. 页面桩真跑（R720 修复后必须不串）=====');
 
@@ -447,6 +479,30 @@ collectAsync().then(() => {
   ok('B-⑮ 反恒真：B 店最终确实拿到自己的原料（不是「什么都不显示」的假绿）',
     Array.isArray(S5.bSets) && S5.bSets.some((arr) => arr.indexOf('B店专用豆瓣') >= 0),
     JSON.stringify(S5.bSets));
+
+  // ---- S7（R725）：沙盘 → 场景矩阵 的种子跨店串用 ----
+  //   A 店填房租 12000 / 面积 80 → 「生成矩阵」写种子 → 切 B 店进矩阵页 readSeed()。
+  //   修前矩阵页读全局 SB_MATRIX_SEED_V1 ⇒ 拿到的就是 A 店这份，且 onLoad 会 applySeed(seed,true)
+  //   静默应用 —— 界面看不出异常，老板拿 A 店成本给 B 店做决策。
+  let s7Err = null, bSeed = null, aSeed = null;
+  try {
+    const s7 = new Map();
+    const A7 = loadPage('subpkg/tools/sandbox/index.js', s7, A_SHOP, {});
+    A7.data.mode = 'single';
+    A7.data.rentYuan = '12000';
+    A7.data.areaNum = '80';
+    A7.goMatrix();
+    bSeed = loadPage('subpkg/tools/sandbox/matrix.js', s7, B_SHOP, {}).readSeed();
+    aSeed = loadPage('subpkg/tools/sandbox/matrix.js', s7, A_SHOP, {}).readSeed();
+  } catch (e) { s7Err = (e && e.message) || String(e); }
+  ok('B-⑯ 🔴 R725：B 店 matrix.readSeed() 读不到 A 店的种子（切店不再静默沿用上家店投入）',
+    bSeed === null && !s7Err, JSON.stringify({ bSeed, err: s7Err }));
+  // 反恒真：若种子路径根本是死的，B-⑯ 也会绿（「永远读不到」）。必须证明 A 店自己读得到。
+  // ⚠️ 这两条**必须成对看**，实测（M-1 变异）已证明：只把读侧改回全局 key 时，B-⑯ 仍绿
+  //   （写侧已按店，全局那格本来就是空的 ⇒ B 读不到是真话但不是隔离的功劳），是 B-⑰ 转红
+  //   才点出「读路径已与写路径分叉」。⇒ 谁删掉 B-⑰，B-⑯ 立刻退化成橡皮章。
+  ok('B-⑰ 反恒真：A 店自己读得到同一份种子（房租 12000 / 面积 80）⇒ B-⑯ 不是假绿',
+    !!aSeed && Number(aSeed.rent) === 12000 && Number(aSeed.area) === 80, JSON.stringify(aSeed));
 
   console.log('\n============================================================');
   console.log('===== M3 本地存储隔离守卫（R720 修复后）：' + pass + ' 通过 / ' + problems.length + ' 失败 =====');

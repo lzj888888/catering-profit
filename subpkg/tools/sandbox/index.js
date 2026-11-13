@@ -60,7 +60,9 @@ function writeSeed(d) {
   put('mg', d.manageYuan);
   // 🔴 R549：毛利率口径也要带 —— 否则矩阵页按默认 dish 重算，与单页口径不一致（双轨）
   if (d.marginScope === 'net' || d.marginScope === 'dish') seed.marginScope = d.marginScope;
-  try { wx.setStorageSync(matrixSeed.KEY, seed); } catch (e) { /* 存储失败不阻断跳转：矩阵页会回落默认 */ }
+  // 🔴 R725：种子里装的是本店房租/装修/加盟/面积/工资 —— 必须按店各占一格，
+  //   否则切店后矩阵页会静默沿用上一家店的投入（详见 utils/matrixSeed.js::seedKey）。
+  try { wx.setStorageSync(matrixSeed.seedKey(), seed); } catch (e) { /* 存储失败不阻断跳转：矩阵页会回落默认 */ }
   return seed;
 }
 // R412（队列 #24）：渠道占比规则单源 —— 「外卖 + 团购 ≤ 100%」的判定必须可被机器验，
@@ -98,7 +100,9 @@ const BUILD_ALL = Object.keys(M.buildItems);
 // 🔴 R296b：`VAR_ALL` 随 ④「挂钩费用」明细卡删除（原仅 `onAddVar` 使用）。
 const DEBOUNCE_MS = 700;
 // R193：M2 本地草稿键（此前算完即丢 —— 不存不导不记忆，退出重进全部重填）
-const DRAFT_KEY = 'sandbox_draft_v1';
+// R725：改名 + 按店拼（原 `DRAFT_KEY` 与月度页同名易混；且全局一格 ⇒ A 店草稿被 B 店覆盖丢失）。
+//   值里仍带 shop_id 并校验，属**双保险**（key 已按店，万一 key 撞了也不回填到别店）。
+const SANDBOX_DRAFT_KEY = 'sandbox_draft_v1';
 
 // 行工厂：把「术语里的中文名」直接塞进行对象，wxml 只渲染 {{item.name}} ——
 // 避免在 WXML 里写动态键（{{t.xxx[item.key]}}）这种解析边界写法。
@@ -730,7 +734,7 @@ Page({
   // 🔴 只在 scheduleCalc（用户真的改过）里写盘 ⇒ 从没填过的人不会看到"已载入"的假提示。
   saveDraft() {
     try {
-      wx.setStorageSync(DRAFT_KEY, {
+      wx.setStorageSync(ss.shopKey(SANDBOX_DRAFT_KEY), {
         v: 1,
         shop_id: ss.currentShopId(),   // R443：切店后不得回填到别的店
         cityIdx: this.data.cityIdx,
@@ -782,7 +786,7 @@ Page({
 
   restoreDraft() {
     let d = null;
-    try { d = wx.getStorageSync(DRAFT_KEY); } catch (e) { d = null; }
+    try { d = wx.getStorageSync(ss.shopKey(SANDBOX_DRAFT_KEY)); } catch (e) { d = null; }
     // 🔴 R443：草稿只认**本店** —— 切到 B 店后，A 店填的房租/毛利率/客单价绝不能回填进来
     //   （否则老板按 A 店的成本给 B 店做决策，且界面上看不出任何异常）。
     if (!d || d.v !== 1 || d.shop_id !== ss.currentShopId()) return false;
@@ -866,7 +870,7 @@ Page({
       confirmColor: '#e74c3c',
       success: (r) => {
         if (!r.confirm) return;
-        try { wx.removeStorageSync(DRAFT_KEY); } catch (e) { /* 忽略 */ }
+        try { wx.removeStorageSync(ss.shopKey(SANDBOX_DRAFT_KEY)); } catch (e) { /* 忽略 */ }
         wx.reLaunch({ url: '/subpkg/tools/sandbox/index' });
       },
     });

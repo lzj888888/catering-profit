@@ -460,7 +460,9 @@ Page({
   //   ⚠️ R548 只带了 8 项投入、**没带经营类型与城市** ⇒ 这就是"看不到读取入口"的真因。
   readSeed() {
     let s = null;
-    try { s = wx.getStorageSync(matrixSeed.KEY); } catch (e) { s = null; }
+    // 🔴 R725：必须读**本店**那一格。原来读全局 SB_MATRIX_SEED_V1 ⇒ 切店后会把上一家店
+    //   的房租/装修/加盟/面积/工资当成自己的，进页 applySeed(seed,true) 静默算出一张错矩阵。
+    try { s = wx.getStorageSync(matrixSeed.seedKey()); } catch (e) { s = null; }
     return (s && s.v === 1) ? s : null;
   },
 

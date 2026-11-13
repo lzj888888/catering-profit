@@ -13,7 +13,7 @@
     "prepared_to_fix": 6,
     "challenge_result": "1 建议不修 / 4 修法要改 / 1 只需改名",
     "verified": 14,
-    "total": 24
+    "total": 25
   },
   "blindspot": {
     "guards": 207,
@@ -358,6 +358,20 @@
       "challenge": "反方：C 判据已修成「未验成」了，为什么还留 deferred 而不是直接关掉？判断：撤回的是**假绿**，不是把问题验完了。R719 当时明确写「桩只证 setData 被调用，首屏那一下是否肉眼可见、持续多久属 L3/真机，本轮未做」；这次 L3 采样又选错了对象（切店后未重新导航，页面实例未重建，data 本就不会变），等于同一个空白仍在。⇒ 保留 deferred，别用「判据修好了」冒充「问题验完了」。",
       "priority": "P1",
       "next_action": "做专门探针：切店后**重新 reLaunch 进目标页**（走缓存渲染的那些页，如 card/edit / material/index），在极短等待（0/100/300/600/1000ms）连续采 data，构造 A 店缓存标记再切 B 店，看首屏有没有闪过 A 店值；必须带反恒真腿（B 店也写不同标记，证明页面确实在读那个 key）。真机轮顺带用肉眼确认「闪一下」是否存在"
+    },
+    {
+      "id": "R3-8",
+      "source": "R3-security",
+      "severity": "P1",
+      "title": "沙盘种子 SB_MATRIX_SEED_V1 是全局 key 且不校验店：切店后矩阵页静默沿用上一家店的房租/装修/加盟算盈亏",
+      "evidence": "subpkg/tools/sandbox/index.js:64 writeSeed → wx.setStorageSync(matrixSeed.KEY, seed)；subpkg/tools/sandbox/matrix.js:467 readSeed → wx.getStorageSync(matrixSeed.KEY)，只校验 s.v===1；matrix.js:380-381 onLoad 分支 `if (seed && seed.mode === mode) this.applySeed(seed, true)` ⇒ **进页静默应用**。utils/matrixSeed.js:13 KEY='SB_MATRIX_SEED_V1'，seed 值内无 shop_id、读时也不比对。旁证（为什么一直没人发现）：tools/check_m3_storage_isolation.js 的跳过名单按**目录名**全树匹配，'tools' 把产品目录 subpkg/tools/ 整棵跳过 ⇒ 该 key 从未进入 A-⑤ 归类表；修扫描面后 A-⑤ 立即转红并点名 \"matrixSeed.KEY\",\"DRAFT_KEY\"。",
+      "verified_by": "2026-11-13 源码定位（file:line）+ 扫描面修复前后对照（A-⑤ 红/绿）+ B-⑯/B-⑰ 页面桩真跑",
+      "status": "fixed",
+      "verified": true,
+      "challenge": "反方①：种子只是「临时传递」不算数据存储，串了顶多默认值偏一点？否 —— seed 带 rent/decor/equip/franchise/area/lu/lt/mg + 4 个摊销年限，正是盈亏矩阵的全部输入；老板会拿 A 店成本给 B 店定租金、定装修预算，界面无任何提示。反方②：干脆删掉种子功能？否 —— R550 明确要「读取我填的数据」，删了等于退回 R549 的体验缺失。反方③：改成「值里塞 shop_id + 读时比对」（R443 沙盘草稿老写法）够不够？不够 —— 两店共用一格，B 店保存会**覆盖**A 店的种子（R718/R719 已记过的覆盖丢失类）。⇒ 采用按店 key（R720 同款：各占一格，旧种子读不到就当没有，宁丢不串）。另外「B-⑯ 单条会被单侧变异骗过」也已实测：只改读侧时 B-⑯ 仍绿、是 B-⑰ 转红点出的分叉 —— 所以两条必须成对存在。",
+      "priority": "",
+      "next_action": "已闭合：种子与沙盘草稿都按店各占一格；守卫扫描面补上 subpkg/tools，并加 A-①b（反回归：扫描面必须覆盖沙盘目录）、A-⑩（从扫描结果反推，不写死文件名）。后续 subpkg/tools 下新增 storage 调用若不按店拼会当场判红，不需要有人记得回来登记。",
+      "fix_evidence": "① utils/matrixSeed.js 新增 seedKey()=ss.shopKey(KEY)，key 拼法单源（两页只准调它）；② sandbox/index.js:64 写种子改 seedKey()，3 处沙盘草稿改 ss.shopKey(SANDBOX_DRAFT_KEY)（常量由 DRAFT_KEY 改名，与月度页同名易混）；③ matrix.js readSeed() 改读 seedKey()；④ check_m3_storage_isolation.js：跳过名单改成只跳**仓根同名目录**（相对路径精确判），新增 A-①b 反回归 + A-⑩ 沙盘无裸 key（判据从扫描结果反推），归类表新增 SHOP_KEY_SANDBOX，新增 B-⑯（B 店 readSeed 读不到 A 店种子）+ B-⑰（反恒真：A 店自己读得到 12000/80）。⑤ check_write_reentry_guard.js 判据认新常量名（三种写法都认，避免误红）。验证：m3-storage-isolation 40/40、write-reentry 73/73、auto-queue 28/28；真变异 M-1（读侧改回全局 key）B-⑰ exit=1 点名、M-2（复现跳过名单 bug）A-①b 报「subpkg/tools 命中 0 处」且 A-⑤ 照旧全绿（坐实盲区会静默盖章）；全量门禁 311/311。"
     }
   ]
 }
