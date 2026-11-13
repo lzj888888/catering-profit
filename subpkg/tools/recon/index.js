@@ -15,6 +15,8 @@ Page({
       // 🔴 R717：整页定位句（wxml 用到就必须登记 —— 漏登记 ⇒ 静默空白）
       reconWhatFor: TERMS.card.reconWhatFor,
       reconMenuMargin: TERMS.card.reconMenuMargin,
+      // 🔴 R726（R714 E-1）：菜单毛利率是售价加权估算，必须让老板知道它不等于实际菜结构
+      reconMenuPriceNote: TERMS.card.reconMenuPriceNote,
       reconActualMargin: TERMS.card.reconActualMargin,
       reconDiffPp: TERMS.card.reconDiffPp,
       reconDiffFen: TERMS.card.reconDiffFen,

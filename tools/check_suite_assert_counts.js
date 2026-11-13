@@ -314,6 +314,7 @@ const CASES = [
   { key: 'check_card_find', rel: 'tools/check_card_find.js' },          // 13 条（A 6 置顶入口 + B 5 搜索面 + C 2 上限前提）
   { key: 'check_orphan_handler', rel: 'tools/check_orphan_handler.js' },   // 7 条（扫描面 2 + 孤儿零命中 1 + 非恒真 1 + E 死链 2 + F 反向孤儿 1）
   { key: 'check_comment_safety', rel: 'tools/check_comment_safety.js' },     // 7 条（A/B 行注释 + C 兜底 + D-G 自证）
+  { key: 'check_r714_decisions', rel: 'tools/check_r714_decisions.js' },  // 14 条（A 4 名单 + B 7 落地真跑 + C 3 反恒真）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

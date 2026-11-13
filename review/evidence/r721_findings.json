@@ -13,7 +13,7 @@
     "prepared_to_fix": 6,
     "challenge_result": "1 建议不修 / 4 修法要改 / 1 只需改名",
     "verified": 14,
-    "total": 25
+    "total": 29
   },
   "blindspot": {
     "guards": 207,
@@ -372,6 +372,58 @@
       "priority": "",
       "next_action": "已闭合：种子与沙盘草稿都按店各占一格；守卫扫描面补上 subpkg/tools，并加 A-①b（反回归：扫描面必须覆盖沙盘目录）、A-⑩（从扫描结果反推，不写死文件名）。后续 subpkg/tools 下新增 storage 调用若不按店拼会当场判红，不需要有人记得回来登记。",
       "fix_evidence": "① utils/matrixSeed.js 新增 seedKey()=ss.shopKey(KEY)，key 拼法单源（两页只准调它）；② sandbox/index.js:64 写种子改 seedKey()，3 处沙盘草稿改 ss.shopKey(SANDBOX_DRAFT_KEY)（常量由 DRAFT_KEY 改名，与月度页同名易混）；③ matrix.js readSeed() 改读 seedKey()；④ check_m3_storage_isolation.js：跳过名单改成只跳**仓根同名目录**（相对路径精确判），新增 A-①b 反回归 + A-⑩ 沙盘无裸 key（判据从扫描结果反推），归类表新增 SHOP_KEY_SANDBOX，新增 B-⑯（B 店 readSeed 读不到 A 店种子）+ B-⑰（反恒真：A 店自己读得到 12000/80）。⑤ check_write_reentry_guard.js 判据认新常量名（三种写法都认，避免误红）。验证：m3-storage-isolation 40/40、write-reentry 73/73、auto-queue 28/28；真变异 M-1（读侧改回全局 key）B-⑰ exit=1 点名、M-2（复现跳过名单 bug）A-①b 报「subpkg/tools 命中 0 处」且 A-⑤ 照旧全绿（坐实盲区会静默盖章）；全量门禁 311/311。"
+    },
+    {
+      "id": "R3-9",
+      "source": "R714-考题实测",
+      "severity": "P1",
+      "title": "R714 E-1：菜单标准毛利率按售价加权 ⇒ 数据全对也对不上账（偏差恒正），销量加权待产品决策",
+      "evidence": "review/AUDIT_M3_R714_考题实测.md §三 E-1；R726 用当前 utils/reconDerive.js 真跑复现：青菜 12元/成本4元 卖300份 + 招牌鱼 88元/成本60元 卖20份 ⇒ 菜单 36.00% / 实际 55.22% / diff +19.22pp / 1030.19元 / suppressed=false；给 cards 传 qty 后 calcMenuMargin 仍返回 36%（不认销量）。",
+      "verified_by": "R726-现跑",
+      "status": "deferred",
+      "verified": true,
+      "challenge": "🔴 反方一：为什么不算 fixed？因为「明示口径」只让老板不再读出反结论，系统性恒正偏差本身没消除 —— 把告知当修复就是自欺。🔴 反方二：为什么不直接按销量加权？实测对账页 calc() 只调 getLedger + getCostCard，没有菜品级销量；销量在 cloudfunctions/getDishReview 且带付费墙 m3_dishreview（index.js 头注）。硬接 = 让免费对账依赖付费功能，是产品定位决策，不是技术能自己拍的。🔴 反方三：R715 说「排行榜已有每菜销量」⇒ 但那是另一个付费页的数据，不能默认可用。",
+      "priority": "P1",
+      "next_action": "需李老师拍板一个前置问题：「免费对账页是否可以读取付费墙 m3_dishreview 的销量数据？」① 可 ⇒ 有销量时按销量加权、无销量退回售价加权；② 不可 ⇒ 保持售价加权 + 明示文案（现状），并把这页定位改为「结构参考」而非「对账结论」。另需美团/京东外卖销量表样例确认销量粒度（是否带规格）。在拍板前保持 deferred，不擅自接付费数据。",
+      "fix_evidence": "R726 已落地「无销量表」分支的诚实标注：miniprogram/i18n/terms.js + specs/dev-specs/i18n/terms.js 双副本新增 reconMenuPriceNote；subpkg/tools/recon/index.js t 映射登记；index.wxml 结果区渲染（复用 .muted 类）。现状：老板能看到「按售价估算，不等于实际菜结构，便宜菜卖得多时这个数通常偏低」。"
+    },
+    {
+      "id": "R3-10",
+      "source": "R714-考题实测",
+      "severity": "P2",
+      "title": "R714 E-2：同名两张成本卡，销量归谁取决于数据库返回顺序且后果未告知",
+      "evidence": "review/AUDIT_M3_R714_考题实测.md §三 E-2：两张「酸菜鱼」（成本 30/18 元）卖 10 份 880 元，cards 顺序不同 ⇒ 毛利率 79.55% vs 65.91%，差 13.64pp；getDishReview/service.js 用 Map 后写覆盖先写。修前 dupCardTip 只说「会出现两张同名卡」，未说「销量只算一张」。",
+      "verified_by": "R726-现跑",
+      "status": "fixed",
+      "verified": true,
+      "challenge": "🔴 反方：为什么不硬拦同名卡？老板确实可能需要「酸菜鱼（大份）/（小份）」两张卡，硬拦会打断既有录入；且改动要动 saveCostCard 写入侧与云端校验，面大。选「允许 + 讲清后果 + 给改名引导」是改动最小且诚实的解。残余：排行榜对「同名多卡」未给提示，另见 R3-12。",
+      "fix_evidence": "R726：terms 双副本 dupCardTip 补「导入销量时只会算到其中一张，另一张会一直显示 0 销量 —— 建议改名区分规格（如「大份/小份」）」。R726 真跑 require terms 核对两副本逐字一致、文案含后果语义。"
+    },
+    {
+      "id": "R3-11",
+      "source": "R714-考题实测",
+      "severity": "P2",
+      "title": "R714 E-6：reconcile 对 coverage = NaN / Infinity / \"abc\" 静默放行失真对账结论",
+      "evidence": "review/AUDIT_M3_R714_考题实测.md §三 E-6；R726 修前真跑：coverage=NaN/Infinity/\"abc\" 三者均 suppressed=false 且 diffPp=15（`== null` 挡不住、`< 0.6` 恒 false）。当前页面路径不可达，但 H5 诊断 / Excel 导出复用即中招。",
+      "verified_by": "R726-现跑",
+      "status": "fixed",
+      "verified": true,
+      "challenge": "🔴 反方一：为什么不加新 reason + 新文案？会碰 suppressKeyOf 映射表 / KEY_CASES / TERMS 双副本 / fixTargetOf，还要动 selftest_m3_recon 断言数声明；而「算不出覆盖率」与既有 coverage_missing 语义完全相符，复用它是最小且不引入分叉的修法。🔴 反方二：会不会误伤合法字符串？R726 真跑 coverage=1 / 0.8 仍 suppressed=false、0.25 仍 coverage_low、null 仍 coverage_missing，行为不变。",
+      "fix_evidence": "R726：utils/reconDerive.js::reconcile 首判改为 `coverage == null || !Number.isFinite(Number(coverage))` ⇒ 三种非法值一律 reason=coverage_missing 且 diffPp=null；未新增 reason 字面量（不碰 R298X-⑩ 页面零字面量判据）。既有 selftest_m3_recon 33/33、check_r723_p0_fixes 26/26 均绿。"
+    },
+    {
+      "id": "R3-12",
+      "source": "R714-考题实测",
+      "severity": "P2",
+      "title": "R714 口径漂移：「三件待拍板」在 R715 / R718 / R719 指的不是同一组；E-3/E-4/E-5 残余待办归口",
+      "evidence": "R726 全仓核对：R714 原文 §六 列 5 条建议 + 1 条「需产品决策」，根本没有「三件」；R715 §三「需要你拍板的三条」= A 外卖本单售价 / B 售价加权 / C 同名卡；R718:147 与 R719:201 复述的「R714 三件待拍板」= 售价加权 / 同名卡 / reconcile NaN。交集仅 B、C；A 已在 R716 做掉（subpkg/biz/takeaway/index.js:141「本单商家实收（选填）」），第三件被静默换成 E-6。根因：这三条从未进机器台账，只靠各轮报告末尾一行字传递 ⇒ 无单一真源、无守卫、无过期标记。",
+      "verified_by": "R726-现扫",
+      "status": "fixed",
+      "verified": true,
+      "challenge": "🔴 反方：把 E-3/E-4/E-5 塞进一张「残余」票会不会又是含糊的一行字？会，如果只写标题。故本票 next_action 逐条给出各自前置条件，且 R3-9/R3-10/R3-11 三张分票 + 新守卫 check_r714_decisions 断言把「口径名单」机器化：以后报告再写「R714 三件」必须与台账 id 对得上，否则守卫转红。",
+      "priority": "P2",
+      "next_action": "E-3 半份销量：R714 原文唯一标「需产品决策」——需先拿到美团/京东外卖平台导出样例，确认是否带规格；带 ⇒ 可自动匹配，不带 ⇒ 只能引导老板建带规格后缀的卡（算法不改）。E-4 两口径「利润必然相同」文案：R716 已判定加「本单实收」后实测模式下不再恒等 ⇒ 原建议失效，不落码；若未来恢复纯双口径模式再评估。E-5 卡详情标「N 个原料已停用」：低优先，待真机轮顺带看卡片详情是否已有位置。",
+      "fix_evidence": "R726：R714 口径拆成 R3-9（E-1，deferred）/ R3-10（E-2，fixed）/ R3-11（E-6，fixed）/ 本票（漂移与残余）四张台账条目，机器可读；新增 tools/check_r714_decisions.js 守卫盯名单与代码落地一致，杜绝「报告里一行字」式传递。"
     }
   ]
 }

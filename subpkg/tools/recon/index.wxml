@@ -38,6 +38,8 @@
       <text class="lbl">{{t.reconMenuMargin}}</text>
       <text class="val">{{result.menuPctText}}</text>
     </view>
+    <!-- 🔴 R726（R714 E-1）：不写这句，数据全对老板也会读出反结论 -->
+    <view class="muted">{{t.reconMenuPriceNote}}</view>
     <view class="cell">
       <text class="lbl">{{t.reconActualMargin}}</text>
       <text class="val">{{result.actualPctText}}</text>

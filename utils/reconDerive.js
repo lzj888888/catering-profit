@@ -97,7 +97,10 @@ function reconcile(input) {
   const incomeFen = Number(p.incomeFen) || 0;
 
   let reason = '';
-  if (coverage == null) reason = 'coverage_missing';
+  // 🔴 R726（R714 E-6）：coverage = NaN / Infinity / 'abc' 时，`== null` 挡不住、`< 0.6` 恒 false
+  //   ⇒ 会静默放行一个失真的对账结论（当前页面不可达，但 H5 诊断 / Excel 导出复用即中招）。
+  //   一律按「算不出覆盖率」抑制，与未填在售数同一 reason，不新造文案、不新造 reason 字面量。
+  if (coverage == null || !Number.isFinite(Number(coverage))) reason = 'coverage_missing';
   else if (Number(coverage) < 0.6) reason = 'coverage_low';
   else if (menuPct == null) reason = 'menu_no_price';
   else if (actualPct == null) reason = 'actual_no_data';

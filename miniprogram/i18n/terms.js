@@ -2269,7 +2269,7 @@ const TERMS = {
     // 🔴 R443：三处「该说出来却没说的话」——子卡成本已变 / 同名卡 / 保存回执
     comboStaleTip: '子卡成本已变：{n} 张（套餐成本 {sign}{money} 元）· 重新保存即按新成本',
     dupCardTitle: '已有同名卡',
-    dupCardTip: '「{name}」已有一张（成本 ¥{cost}）。继续新建会出现两张同名卡。',
+    dupCardTip: '「{name}」已有一张（成本 ¥{cost}）。继续新建会出现两张同名卡，导入销量时只会算到其中一张，另一张会一直显示 0 销量 —— 建议改名区分规格（如「大份/小份」）。',
     dupCardGoEdit: '去改那张',
     dupCardKeepNew: '继续新建',
     savedReceipt: '成本 ¥{cost} · 毛利 ¥{gross} · 毛利率 {margin}%',
@@ -2477,6 +2477,7 @@ const TERMS = {
     reconActualMargin: '账上算的实际毛利率',
     reconDiffPp: '差值',
     reconDiffFen: '折算金额',
+    reconMenuPriceNote: '成本卡毛利率是按售价估算的（默认每道菜卖得一样多），不等于你实际卖出去的菜的结构。便宜菜卖得多时，这个数通常偏低，所以「实际比标准高」不一定是成本记漏了。',
     reconCoverage: '在售菜品数',
     reconCoveragePh: '本月在售菜品数',
     // 🔴 R712（李老师真机：「只需要填在售菜品数就可以了吗？套餐什么的？本意是算什么的」）：
