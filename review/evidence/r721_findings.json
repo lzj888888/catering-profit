@@ -17,7 +17,7 @@
   },
   "blindspot": {
     "guards": 207,
-    "stub_guards": 31,
+    "stub_guards": 32,
     "static_only_guards": 64,
     "pages": 34,
     "zero_mention_pages": 1
@@ -280,15 +280,15 @@
       "id": "R1-8",
       "source": "R1-gate-blindspot",
       "severity": "P1",
-      "title": "桩型守卫占比仅 18.2%（40/220），且仍有 5 个高频/算钱页只有静态形状守卫",
+      "title": "桩型守卫占比仍偏低，且仍有 2 个高频/算钱页只有静态形状守卫",
       "evidence": "R724l 用固化口径 tools/scan_zero_stub_pages.js 实扫：34 个 Page 页面 / 220 个 check_*.js / 桩型 40（global.Page|loadPage 口径，18.2%）；零桩 5 个：subpkg/biz/groupon/index、subpkg/biz/material/edit、subpkg/biz/month/index、subpkg/biz/revenue/manual/index、subpkg/tools/metrics/impact。本轮已按 R724d 名单补完最后 3 页（pay/orders 30 断言、sandbox/compare+list 合一 45 断言），8 条变异全 exit=1 点名；R724d 名单 8 页至此全部有桩。",
       "verified_by": "R724-现扫",
       "status": "deferred",
       "verified": true,
       "challenge": "🔴 本轮我**先销账又撤回**：销账后重扫发现 R724d 那份「零桩 8 个」名单本身不完整 —— 换一次扫描写法冒出 5 个完全不重叠的零桩页，且 groupon/material-edit/month-index/revenue-manual 比我刚补的 sandbox 两个更高频、更贴算钱。根因不是「漏补」，是**扫描口径每次都不同，名单不可复现**，导致优先级排错。已固化成 tools/scan_zero_stub_pages.js（唯一口径，--json 机器读），不再写临时 node -e。⇒ R1-8 范围未闭合，保持 deferred P1；不另开重复票。",
       "priority": "P1",
-      "next_action": "2026-11-13 续补：已补 month/index（30 断言/3 变异，全绿 exit=1 点名）+ groupon/index（28 断言/4 变异，全绿）。剩 3 页按「高频 × 贴算钱」：material/edit（原料改价，直接进成本，最重）→ revenue/manual/index（营收手录）→ metrics/impact（涨价影响面，低频最后）。每页带 ≥1 条变异回灌；每轮开工先跑 scan_zero_stub_pages.js 复核名单，不靠记忆。",
-      "fix_evidence": "2026-11-13：新增 tools/check_month_index_stub.js（M1 月度首页，30 断言/3 变异）+ tools/check_groupon_index_stub.js（团购试算页，28 断言/4 变异），已挂 verify_all SUITES，全量 308/308 通过。零桩页由 5 降为 3（material/edit、revenue/manual/index、metrics/impact）。"
+      "next_action": "2026-11-13 续补：已补 month/index（30 断言/3 变异）+ groupon/index（28 断言/4 变异）+ material/edit（23 断言/5 变异，守 R426 金额铁律/round155 系数>0/R297 出成率上界/R406 成本三要素键/afterSaved 清 id）。剩 2 页按「高频 × 贴算钱」：revenue/manual/index（营收手录）→ metrics/impact（涨价影响面，低频最后）。每页带 ≥1 条变异回灌；每轮开工先跑 scan_zero_stub_pages.js 复核名单，不靠记忆。",
+      "fix_evidence": "2026-11-13：新增 tools/check_month_index_stub.js（M1 月度首页，30 断言/3 变异）+ tools/check_groupon_index_stub.js（团购试算页，28 断言/4 变异）+ tools/check_material_edit_stub.js（原料新增/编辑表单页，23 断言/5 变异，均已挂 verify_all SUITES，全量 309/309 通过。零桩页由 5 降为 2（revenue/manual/index、metrics/impact）。"
     },
     {
       "id": "R3-6",
