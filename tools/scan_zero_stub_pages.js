@@ -10,8 +10,10 @@
 // 口径（改这里必须同步改报告与台账 evidence，不许再写临时脚本）：
 //   面 A「页面」= subpkg/ 与 pages/ 下所有 .js（排除 *.selftest.js），
 //        去掉行注释后匹配 /^Page\(\{/m（真注册了 Page 的才算页面）。
-//   面 B「桩型工具」= tools/check_*.js 中源码含 global.Page 或 loadPage( 的
-//        （与 tools/check_audit_findings_ledger.js 的 L-⑫ 同源口径）。
+//   面 B「桩型工具」= tools/check_*.js 中源码含 global.Page 或 loadPage( 的。
+//        ⚠️ 面 B 只用来**找谁可能覆盖了这一页**，不能当「覆盖率」指标：它数的是写法不是覆盖
+//        （check_month_picker / check_revenue_manual 已在真跑 handler，只因没写这个字面量不计入）。
+//        L-⑫ 已改为直接 require 本文件的 zeroStubCount，口径只此一份。
 //   判据 = 面 B 任一工具的源码里**出现该页面的相对路径字符串**（正斜杠）。
 //        不认「同目录别的文件」「只在注释里提一句文件名」——必须是可追溯的路径。
 //   ⚠️ 局限：若桩型工具用变量拼接路径动态 loadPage，本扫描会误报零桩；
@@ -20,7 +22,8 @@
 // 运行：node tools/scan_zero_stub_pages.js           （人读）
 //       node tools/scan_zero_stub_pages.js --json   （机器读）
 // 本文件**不挂 verify_all SUITES**：它是发现工具不是判据，挂进去会让「覆盖率」
-// 变成自我指涉。由 review 报告人工引用其输出。
+//   变成自我指涉。但它被 tools/check_audit_findings_ledger.js 的 L-⑫ require 消费
+//   （零桩页必须为 0 这条判据的唯一数据源），所以口径改动会直接改门禁，不许随手改。
 
 const fs = require('fs');
 const path = require('path');
@@ -73,14 +76,20 @@ const result = {
   zeroStubCount: zero.length,
 };
 
-if (JSON_OUT) {
-  console.log(JSON.stringify(result, null, 2));
-} else {
-  console.log('零桩页面扫描（唯一口径）');
-  console.log('  Page 页面 : ' + result.totalPages);
-  console.log('  check_*.js: ' + result.totalTools + '，其中桩型 ' + result.stubTools
-    + '（' + result.stubRatio + '%）');
-  console.log('  零桩页面  : ' + result.zeroStubCount + ' 个');
-  zero.forEach((p) => console.log('    · ' + p));
-  console.log('\n⚠️ 误报排查：若某页其实由桩型工具用变量动态 loadPage，先读该工具再判，不要改本口径。');
+// 导出与打印分离：被 require 时**不打印**（否则会把 L-⑫ 的输出冲成一锅粥）。
+// 消费方：tools/check_audit_findings_ledger.js 的 L-⑫（只读 zeroStubCount / zeroStubPages）。
+module.exports = result;
+
+if (require.main === module) {
+  if (JSON_OUT) {
+    console.log(JSON.stringify(result, null, 2));
+  } else {
+    console.log('零桩页面扫描（唯一口径）');
+    console.log('  Page 页面 : ' + result.totalPages);
+    console.log('  check_*.js: ' + result.totalTools + '，其中桩型 ' + result.stubTools
+      + '（' + result.stubRatio + '%，⚠️ 写法指标不是覆盖率）');
+    console.log('  零桩页面  : ' + result.zeroStubCount + ' 个');
+    zero.forEach((p) => console.log('    · ' + p));
+    console.log('\n⚠️ 误报排查：若某页其实由桩型工具用变量动态 loadPage，先读该工具再判，不要改本口径。');
+  }
 }

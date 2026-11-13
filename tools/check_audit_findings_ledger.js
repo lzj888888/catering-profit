@@ -12,7 +12,7 @@
 //     ② status=fixed 必须有 fix_evidence，且 L-⑦ 会去**产品源码核对状态不是嘴上说说**；
 //     ③ status=deferred 必须有 priority + next_action（不许挂着没下一步）；
 //     ④ 准备修的条目必须记录「唱反调」结论（防确认偏误被抹掉）；
-//     ⑤ 门禁盲区（桩型占比过低）必须在台账里对应一条 P0/P1 待办；
+//     ⑤ 门禁盲区（零桩页 >0，口径 tools/scan_zero_stub_pages.js）必须在台账里对应一条 P0/P1 待办；
 //     ⑥ 判据自身用合成坏样本做反恒真，防「恒真橡皮章」。
 //
 // ⚠️ 台账是 append-only 的**发现档案**：条目只能改 status，不许删。
@@ -66,7 +66,7 @@ const F = (data && data.findings) || [];
 const sources = [...new Set(F.map((f) => f.source))];
 ok('L-③ 三个独立切面都在台账里（交叉审不是一个人审的）',
   ['R1-gate-blindspot', 'R2-ux', 'R3-security'].every((s) => sources.indexOf(s) >= 0), sources.join(','));
-ok('L-④ meta 如实登记交叉审规模（3 reviewer + 1 唱反调 + 6 条准备修 + 17 条发现）',
+ok('L-④ meta 如实登记交叉审规模（3 reviewer + 1 唱反调 + 6 条准备修，条目数与 findings 长度一致）',
   data && data.cross_review && data.cross_review.reviewers === 3 && data.cross_review.adversarial === 1
   && data.cross_review.prepared_to_fix === 6 && data.cross_review.total === F.length,
   JSON.stringify(data && data.cross_review));
@@ -113,21 +113,35 @@ ok('L-⑪ terms 双副本逐字节一致（改一份等于白改）', md5(t1) ==
 
 // ===== L-⑫：盲区必须对应待办（把「别留隐患」变成机器判据）=====
 console.log('\n===== L″. 盲区与反恒真 =====');
-const tools = fs.readdirSync(path.join(ROOT, 'tools')).filter((f) => /^check_.*\.js$/.test(f));
-const stubN = tools.filter((f) => {
-  const s = fs.readFileSync(path.join(ROOT, 'tools', f), 'utf8');
-  return /global\.Page|loadPage\(/.test(s);
-}).length;
-const ratio = stubN / tools.length;
-// R724：判据从「绑死 R1-4」改成「认任意一条真写了『桩』的 P0/P1 待办」。
-//   为什么必须改：R1-4 是本条判据原本指定的那张票，它修完后判据就永久失去对象 ⇒
-//   要么逼人把 R1-4 改回 deferred（假装修了），要么判据常红。两者都比「换一张票」坏。
-//   放宽的只是「哪张票」，没有放宽「必须真有一张、且必须 P0/P1、且必须写桩」。
-const hasStubDebt = F.some((f) => f.status === 'deferred' && /^P[01]$/.test(f.priority)
-  && /桩/.test(String(f.title || '') + String(f.next_action || '')));
-ok('L-⑫ 桩型占比 <30% 时，台账里必须有一条 P0/P1 的「补桩」待办（不绑死单个 id，随进度换票）',
-  ratio >= 0.3 || hasStubDebt,
-  '实测桩型 ' + stubN + '/' + tools.length + ' = ' + (ratio * 100).toFixed(1) + '%');
+// 🔴 2026-11-13 判据重写（旧判据是**假信号**，已废；留档防后人再踩）：
+//   旧：桩型工具数 / 全部 check_*.js < 30% ⇒ 台账里必须有一条 P0/P1「补桩」待办。
+//   为什么废：那个分子只数「源码里出现 global.Page 或 loadPage( 这个**字面量**」的工具。
+//     实测 tools/check_month_picker.js 头部明写「实跑真函数体：把 handler 抠出来、用伪造
+//     Page 上下文调用，判行为不判字面」——它已经在真跑页面行为，只因没写这个字面量就不计入；
+//     tools/check_revenue_manual.js 同理（「既判结构，也真跑一遍」）。
+//     ⇒ 这个比例测的是**写法**不是**覆盖**，19.9% 是假信号。拿它当进度条会诱导
+//       「为凑正则给静态守卫硬塞 global.Page」——正是本机制要防的「为喂绿改码」。
+//   新：口径换成 tools/scan_zero_stub_pages.js 的 zeroStubCount（唯一口径，直接 require，
+//     绝不在这里写第三份页面扫描逻辑 —— R1-3 的教训：口径多一份，名单就不可复现）。
+//     语义：零桩页 = 0 才算没欠账；一旦 >0，台账必须挂一条 P0/P1 补桩待办。
+const scan = require('./scan_zero_stub_pages.js');
+const zeroN = scan.zeroStubCount;
+function judgeStubDebt(zeroCount, findings) {
+  if (zeroCount === 0) return true; // 零桩清零 ⇒ 无欠账，不逼人挂票
+  return findings.some((f) => f.status === 'deferred' && /^P[01]$/.test(f.priority)
+    && /桩/.test(String(f.title || '') + String(f.next_action || '')));
+}
+ok('L-⑫ 零桩页必须为 0（口径=scan_zero_stub_pages.js），>0 时须挂 P0/P1「补桩」待办',
+  judgeStubDebt(zeroN, F),
+  '实测零桩 ' + zeroN + ' 个' + (zeroN ? '：' + scan.zeroStubPages.join('、') : '')
+  + '（Page ' + scan.totalPages + ' / check_* ' + scan.totalTools + '）');
+// 反恒真：零桩现为 0，本条平时必然绿 ⇒ 必须用合成样本证明它**能红**，否则就是橡皮章。
+ok('L-⑫′ 反恒真：零桩>0 无票⇒红 / 有 P1 票⇒绿 / 只有 P2 票⇒红 / 零桩=0⇒绿',
+  judgeStubDebt(2, []) === false
+  && judgeStubDebt(2, [{ status: 'deferred', priority: 'P1', title: '补桩' }]) === true
+  && judgeStubDebt(2, [{ status: 'deferred', priority: 'P2', title: '补桩' }]) === false
+  && judgeStubDebt(2, [{ status: 'fixed', priority: 'P1', title: '补桩' }]) === false
+  && judgeStubDebt(0, []) === true);
 ok('L-⑬ 方案文档在场且写明六条腿 / 节奏 / 挑毛病战果',
   fs.existsSync(path.join(ROOT, DESIGN_REL))
   && /六条腿|分层取证|唱反调|节奏/.test(fs.readFileSync(path.join(ROOT, DESIGN_REL), 'utf8')));
