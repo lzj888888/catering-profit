@@ -349,15 +349,15 @@
     {
       "id": "R4-2",
       "source": "R4-l3-probe",
-      "severity": "P1",
-      "title": "R719「首屏缓存串店窗口」仍未验成：L3 探针 C 判据首版恒真假绿，已自我证伪并撤回",
-      "evidence": "review/evidence/r724m_l3_probe/l3_report.json（C=null + cUnverifiedReason）、log_run2_恒真判据.log（时间轴 4 点同值）、log_run3_修复后.log（检测函数反恒真自检通过）",
+      "severity": "P2",
+      "title": "首屏缓存「同店旧值闪现」仍未做 L3/真机确认；跨店串数据这条已由结构+桩双证排除",
+      "evidence": "review/evidence/r724m_l3_probe/l3_report.json（C=null + cUnverifiedReason）、log_run2_恒真判据.log（时间轴 4 点同值）、log_run3_修复后.log（检测函数反恒真自检通过）。🔴 R725 新增证据（本条范围收窄的依据）：① 结构面 —— 产品侧 51 个 storage 调用全量扫描（check_m3_storage_isolation.js A-①/A-①b/A-⑩），页面侧读写**全部**经 ss.shopKey 或 matrixSeed.seedKey，唯一非按店的只剩 pages/mine 的 user_avatar / user_nickname（跟着微信号走，非店数据）；② 行为面 —— B-⑪..B-⑰ 真跑页面桩：A 店写缓存/种子/草稿后切 B 店，B 的每一次 setData 都不含 A 店值（B-⑭），且 B 确实拿到自己的数据（B-⑮/B-⑰ 反恒真）。⇒ **从 storage 到首屏这条跨店路径已被机器证明不存在**。",
       "verified_by": "R724m 模拟器实测 + 自我证伪",
       "status": "deferred",
       "verified": true,
-      "challenge": "反方：C 判据已修成「未验成」了，为什么还留 deferred 而不是直接关掉？判断：撤回的是**假绿**，不是把问题验完了。R719 当时明确写「桩只证 setData 被调用，首屏那一下是否肉眼可见、持续多久属 L3/真机，本轮未做」；这次 L3 采样又选错了对象（切店后未重新导航，页面实例未重建，data 本就不会变），等于同一个空白仍在。⇒ 保留 deferred，别用「判据修好了」冒充「问题验完了」。",
-      "priority": "P1",
-      "next_action": "做专门探针：切店后**重新 reLaunch 进目标页**（走缓存渲染的那些页，如 card/edit / material/index），在极短等待（0/100/300/600/1000ms）连续采 data，构造 A 店缓存标记再切 B 店，看首屏有没有闪过 A 店值；必须带反恒真腿（B 店也写不同标记，证明页面确实在读那个 key）。真机轮顺带用肉眼确认「闪一下」是否存在"
+      "challenge": "反方①：C 判据已修成「未验成」了，为什么还留 deferred 而不是直接关掉？判断：撤回的是**假绿**，不是把问题验完了。R719 当时明确写「桩只证 setData 被调用，首屏那一下是否肉眼可见、持续多久属 L3/真机，本轮未做」；那次 L3 采样又选错了对象（切店后未重新导航，页面实例未重建，data 本就不会变）。反方②：R725 已把跨店路径证死了，这条是不是可以关？判断：可以**降级但不能关**——被证死的是「跨店读到别家数据」，没被证的是「同店旧缓存的首屏闪现」（切回 A 店时先显示 A 店的旧值再刷新，属观感/误导，不属算错）。R720 之后这类值已按店隔离，最坏情况是「旧了」不是「串了」，故降 P1→P2，但保留 deferred 等真机肉眼那一下。",
+      "priority": "P2",
+      "next_action": "① 真机轮顺带肉眼确认：切回同一家店进走缓存的页面，首屏是否先闪旧值再刷新（只需记录有无 + 持续感，不必量化）；② 若要量化再做 L3：切店后**重新 reLaunch 进目标页**，0/100/300/600/1000ms 连续采 data，A/B 两店各写不同标记，带反恒真腿（B 店也写标记证明页面确实在读那个 key）。跨店部分不必重验——A-①/A-①b/A-⑩ + B-⑪..B-⑰ 已覆盖。"
     },
     {
       "id": "R3-8",
