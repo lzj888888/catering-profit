@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：306 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：308 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1737,6 +1737,17 @@ const SUITES = [
   //     含勾选态算进数据、实时重算透传、画布预热首击出图、Excel 免费不弹墙。
   ['pay-orders-stub', 'tools/check_pay_orders_stub.js'],
   ['sandbox-pages-stub', 'tools/check_sandbox_pages_stub.js'],
+  // R1-8（本轮续补零桩页）· M1 月度经营首页 + 到店团购试算页行为守卫。
+  //   month/index：每月必进的总入口，静默错误最伤人 —— 月份下拉并集去重倒序（新店补录上月不缺选项）、
+  //     有没有账本 = account_id（R298·C2，d.result 对无账本月恒为对象不能当判据）、onMonthChange 取 picker
+  //     下标（R209 真机「点月就报错」回归）、权益失败 fail-closed 到免费档、归档/取消归档/清空载荷正确。
+  //     30 断言 / 3 变异（account_id 判据、下标取值、monthIndex 写死）。
+  //   groupon/index：唯一产出「这一单到手多少」的页 —— 候选卡成本映射（card_code→card_id / total_cost_fen→
+  //     单位成本）、截断可见降级（R299）、金额可读前置拦截（R443 千分位/全角/空格/负号）、onCalc 三道前置、
+  //     view 映射保真（vsDine 绝对值 / vsDineMore 符号勿反）、A9 永久免费不重新挂墙。
+  //     28 断言 / 4 变异（去金额拦截、翻 vsDineMore 符号、成本写死 0、去填价拦截）。
+  ['month-index-stub', 'tools/check_month_index_stub.js'],
+  ['groupon-index-stub', 'tools/check_groupon_index_stub.js'],
   // R724l · 台账 R3-3：备份零脱敏的**处置前提**守卫（不修脱敏，守「前提别悄悄变」）。
   //   字段级脱敏会破坏备份可恢复性；真正手段是服务端加密/KMS（产品+运维决策）。
   //   H 组锁：处置口径在场且如实写明权限结论/未测项/重评触发事件；敏感集合从 dbBackup
