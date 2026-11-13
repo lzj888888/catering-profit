@@ -13,7 +13,7 @@
     "prepared_to_fix": 6,
     "challenge_result": "1 建议不修 / 4 修法要改 / 1 只需改名",
     "verified": 14,
-    "total": 21
+    "total": 23
   },
   "blindspot": {
     "guards": 207,
@@ -317,6 +317,33 @@
       "priority": "P2",
       "next_action": "在 pages/mine/index.js::doLogout 的清理流程里并列加一步：干掉这三个历史 key（m3_dish_cats、sandbox_draft_v1、takeout_mode_*）。必须逐 key try/catch，且放在 clearStorageSync 之前（同 R3-1 导出件清理的教训）",
       "fix_evidence": "**核查结论：无需改产品代码** —— pages/mine/index.js::doLogout 里的 wx.clearStorageSync() 已清全部 storage，三个历史 key 登出即清（原 next_action 写错了，登记时没查 doLogout）。真正补的是**保护「全清」语义**：tools/check_r723_p0_fixes.js 新增 B-⑦（前提：登出前 store 里确有 4 个 key，否则 B-⑧ 是空跑）+ B-⑧（登出后 store.size===0）。真变异验证：把 clearStorageSync 改成 removeStorageSync 单删 ⇒ B-⑧ 转红并列出 4 个残留（r723_exported_files / m3_dish_cats / sandbox_draft_v1 / takeout_mode_shop_mu6j87v1itrs_2026-09），整体 exit=1。"
+    },
+    {
+      "id": "R4-1",
+      "source": "R4-l3-probe",
+      "severity": "P1",
+      "title": "L3 交互探针自身缺陷：finally 未切回原店 + 还原校验只读首页店名 ⇒ 污染 dev 两家店名却自报「已还原」",
+      "evidence": "review/evidence/r724m_l3_probe/log_run1_假还原.log（自报还原成 Abc）与 log_run2_恒真判据.log（下一次备份读到 __L3探针_937995）对照；独立复核 independent_verify.txt",
+      "verified_by": "R724m 模拟器 + 真云实测（2026-11-13），两次连跑暴露",
+      "status": "fixed",
+      "verified": true,
+      "challenge": "反方：只是测试脚本、没改产品代码，值得开台账票吗？判断：值得，而且这是本轮最贵的一条 —— 它同时踩中两个红线：① 探针写脏了 dev（Abc/999 两家店名被改成探针名），差点带着污染继续跑；② 更危险的是**自述「✅ 数据已还原」是假的**，校验只看当前首页店名，而当时停在对照店上，读到 Abc 只是因为把对照店改名成了 Abc。李老师反复强调「不采信任何自述（含我方上轮）」，这条正是活样本。⇒ 登记并修根因，不放过。",
+      "priority": "",
+      "next_action": "",
+      "fix_evidence": "探针 tools/probe_l3_interaction.js 三重加固：① 备份从「当前店名」改为**全量店名快照**（5 家 id+name）；② finally 先 SWITCH_SHOP 切回原店，再 RESTORE_ALL 按 shop_id 逐店写回（saveShopSetting 支持显式 shop_id、name 三态不传 remark）；③ 校验改为 getShopList 全量逐条比对，任一不一致判红并保留备份文件，绝不退化成「读首页店名」。另提供 --restore 逐店兜底。dev 数据已用 saveShopSetting 精确改回 Abc/999（remark 实测全为空串、未污染），并由**独立脚本**复核 5 家店名全部干净。第 3 次重跑：全量 5 家与快照一致、A/B 坐实、C 如实标未验。"
+    },
+    {
+      "id": "R4-2",
+      "source": "R4-l3-probe",
+      "severity": "P1",
+      "title": "R719「首屏缓存串店窗口」仍未验成：L3 探针 C 判据首版恒真假绿，已自我证伪并撤回",
+      "evidence": "review/evidence/r724m_l3_probe/l3_report.json（C=null + cUnverifiedReason）、log_run2_恒真判据.log（时间轴 4 点同值）、log_run3_修复后.log（检测函数反恒真自检通过）",
+      "verified_by": "R724m 模拟器实测 + 自我证伪",
+      "status": "deferred",
+      "verified": true,
+      "challenge": "反方：C 判据已修成「未验成」了，为什么还留 deferred 而不是直接关掉？判断：撤回的是**假绿**，不是把问题验完了。R719 当时明确写「桩只证 setData 被调用，首屏那一下是否肉眼可见、持续多久属 L3/真机，本轮未做」；这次 L3 采样又选错了对象（切店后未重新导航，页面实例未重建，data 本就不会变），等于同一个空白仍在。⇒ 保留 deferred，别用「判据修好了」冒充「问题验完了」。",
+      "priority": "P1",
+      "next_action": "做专门探针：切店后**重新 reLaunch 进目标页**（走缓存渲染的那些页，如 card/edit / material/index），在极短等待（0/100/300/600/1000ms）连续采 data，构造 A 店缓存标记再切 B 店，看首屏有没有闪过 A 店值；必须带反恒真腿（B 店也写不同标记，证明页面确实在读那个 key）。真机轮顺带用肉眼确认「闪一下」是否存在"
     }
   ]
 }

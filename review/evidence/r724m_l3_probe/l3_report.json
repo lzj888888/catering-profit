@@ -1,0 +1,81 @@
+{
+  "at": "2026-11-13T00:58:21.301Z",
+  "layer": "L3 模拟器 + 真 dev 云",
+  "chains": {
+    "A": {
+      "baselineName": "Abc",
+      "probeName": "__L3探针_511153",
+      "homeShopName": "__L3探针_511153",
+      "pass": true
+    },
+    "B": {
+      "shops": 5,
+      "from": "shop_u_mu6j87t1a283_sc_1792852528523",
+      "other": {
+        "shop_id": "shop_u_mu6j87t1a283_sc_1792855514629",
+        "name": "999"
+      },
+      "switched": {
+        "shop_id": "shop_u_mu6j87t1a283_sc_1792855514629",
+        "shopLoaded": false
+      },
+      "homeShopName": "999",
+      "material": {
+        "all": 0,
+        "list": 0,
+        "loading": false
+      },
+      "materialDiscriminating": false,
+      "materialNote": "两家店原料库当前都是空的（R724i 测试数据已清理），all=0 无法区分「切店后正确读到空库」与「根本没重拉」⇒ 此观察不作证据，B 的判据只看首页店名",
+      "pass": true,
+      "otherName": "999"
+    },
+    "C": {
+      "samples": [
+        {
+          "t": 0,
+          "shopName": "__L3探针_511153",
+          "loading": false,
+          "hasProfit": true
+        },
+        {
+          "t": 400,
+          "shopName": "__L3探针_511153",
+          "loading": false,
+          "hasProfit": true
+        },
+        {
+          "t": 1000,
+          "shopName": "__L3探针_511153",
+          "loading": false,
+          "hasProfit": true
+        },
+        {
+          "t": 2000,
+          "shopName": "__L3探针_511153",
+          "loading": false,
+          "hasProfit": true
+        }
+      ],
+      "detectorSane": true,
+      "oldNameUsed": "__L3探针_511153",
+      "staleSamples": 4,
+      "pass": null,
+      "reason": "采样发生在「切店后、重新导航前」，页面实例未重建、data 不会变，4 点同值属必然、无信息量；首版判据还拿错基线（Abc vs 探针名）导致恒真假绿。首屏缓存串店需另做「切店后重新进页 + 短等待连续采样」的专门探针，本轮如实标未验。"
+    }
+  },
+  "verdict": {
+    "A": true,
+    "B": true,
+    "C": null,
+    "cUnverifiedReason": "采样发生在「切店后、重新导航前」，页面实例未重建、data 不会变，4 点同值属必然、无信息量；首版判据还拿错基线（Abc vs 探针名）导致恒真假绿。首屏缓存串店需另做「切店后重新进页 + 短等待连续采样」的专门探针，本轮如实标未验。",
+    "note": "C=null 一律表示「未验成」，不是通过；A/B 才是本轮坐实的两条链路"
+  },
+  "restore": {
+    "switchedBackTo": "shop_u_mu6j87t1a283_sc_1792852528523",
+    "wrote": 5,
+    "homeReads": "Abc",
+    "mismatch": [],
+    "ok": true
+  }
+}
