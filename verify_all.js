@@ -1,6 +1,6 @@
 // verify_all.js —— 仓库根一键串联校验器
 // 运行：node verify_all.js
-// 串联：309 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：311 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1749,6 +1749,16 @@ const SUITES = [
   ['month-index-stub', 'tools/check_month_index_stub.js'],
   ['groupon-index-stub', 'tools/check_groupon_index_stub.js'],
   ['material-edit-stub', 'tools/check_material_edit_stub.js'],
+  // R1-8 续补（零桩页）：营收手录页行为守卫。
+  //   revenue/manual/index：串月残留清空（R620 红线）、空保存拦截、重入保护、collect 过滤非数、
+  //     need_confirm 不二次落盘/不穿透、recommit 必带 confirm、prefill/ref + prevMonth 边界（1月→去年12月）。
+  //   8 断言 / 7 变异（去串月清空、去空保存拦截、去重入保护、去 isFinite、漏 need_confirm return、漏 recommit confirm、prevMonth 朴素写法）。
+  ['revenue-manual-index-stub', 'tools/check_revenue_manual_index_stub.js'],
+  // R1-8 续补（零桩页）：涨价影响面页行为守卫。
+  //   tools/metrics/impact：dry_run 红线（只预览绝不改卡）、中文名解码（R203）、hundred_delta×100（R615）、
+  //     降级提示（亏本/跌破带，marginDrift 单源）、下拉刷新重拉（R379）。
+  //   6 断言 / 5 变异（漏 dry_run、漏解码、漏 ×100、漏亏本提示、漏下拉刷新重拉）。
+  ['metrics-impact-stub', 'tools/check_metrics_impact_stub.js'],
   // R724l · 台账 R3-3：备份零脱敏的**处置前提**守卫（不修脱敏，守「前提别悄悄变」）。
   //   字段级脱敏会破坏备份可恢复性；真正手段是服务端加密/KMS（产品+运维决策）。
   //   H 组锁：处置口径在场且如实写明权限结论/未测项/重评触发事件；敏感集合从 dbBackup
