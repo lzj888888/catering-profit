@@ -15,7 +15,7 @@ const { resolveAuth, assertShopOwner } = common;
 const { ERROR_CODES, ok, fail } = common;
 const { makeAdapter } = common.dataAdapter;
 
-const { buildBillList } = require('./service');
+const { buildBillList, buildDishDetail } = require('./service');
 const { validateInput } = require('./validate');
 
 exports.main = async (event) => {
@@ -71,5 +71,11 @@ exports.main = async (event) => {
     summary: filteredSummary,
     truncated,
     client_request_id: v.input.client_request_id,
+    // 🔴 R728：仅 detail=true 时给菜品级权重表；不传时该字段根本不出现，
+    //   老调用方（pages/m3/dishreview/index.js 的 getSalesBills({})）行为一字不变。
+    ...(v.detail ? { dish_detail: buildDishDetail(rows, {
+      biz_date_from: v.biz_date_from, biz_date_to: v.biz_date_to,
+      includeCleared: v.include_cleared,
+    }) } : {}),
   });
 };

@@ -13,7 +13,7 @@ function check(name, cond, detail) {
 
 const fs = require('fs');
 const path = require('path');
-const { calcMenuMargin, calcActualDishMargin, reconcile, suppressKeyOf, GOODS_FIELD } = require('../utils/reconDerive.js');
+const { calcMenuMargin, calcMenuMarginWeighted, calcActualDishMargin, reconcile, suppressKeyOf, GOODS_FIELD } = require('../utils/reconDerive.js');
 const { TERMS } = require('../miniprogram/i18n/terms.js');
 
 console.log('===== D · 标准菜单毛利率 =====');
@@ -179,5 +179,29 @@ check('R712-⑥ 反恒真：影子样本「只有标签、不解释用途」必�
 check('R298X-⑪ 前提：KEY_CASES 组数 ≥ 6（删用例即转红）', KEY_CASES.length >= 6, `实 ${KEY_CASES.length} 组`);
 
 console.log('\n' + '='.repeat(60));
+// ===== R728 S3：按销量加权的标准菜单毛利率（并列口径，绝不替换旧口径）=====
+const WCARDS = [
+  { dish_key: '青菜', price_fen: 1200, total_cost_fen: 400 },
+  { dish_key: '招牌鱼', price_fen: 8800, total_cost_fen: 6000 },
+];
+const wA = calcMenuMarginWeighted(WCARDS, { 青菜: 300, 招牌鱼: 20 }, {});
+const wB = calcMenuMarginWeighted(WCARDS, { 青菜: 20, 招牌鱼: 300 }, {});
+check('R728-A 现状售价加权仍 36.00%（新函数不得改旧口径）', calcMenuMargin(WCARDS, {}).pct === 36, String(calcMenuMargin(WCARDS, {}).pct));
+check('R728-B 便宜菜卖得多 ⇒ 加权 55.22%、差 +19.22pp', wA.pct === 55.22, String(wA.pct));
+check('R728-C 🔴 贵菜卖得多 ⇒ 加权 32.13%、差 −3.87pp（推翻「偏差恒正」）', wB.pct === 32.13, String(wB.pct));
+check('R728-D 销量相等时加权 ≡ 售价加权（证明旧注释「销售额均匀」写错）',
+  calcMenuMarginWeighted(WCARDS, { 青菜: 300, 招牌鱼: 300 }, {}).pct === calcMenuMargin(WCARDS, {}).pct,
+  'q=300:300 应等于 Σ售价口径');
+check('R728-E 无销量 ⇒ pct=null + reason=no_qty（绝不静默回落售价口径）',
+  calcMenuMarginWeighted(WCARDS, {}, {}).pct === null
+  && calcMenuMarginWeighted(WCARDS, {}, {}).reason === 'no_qty');
+check('R728-F 部分卡无销量 ⇒ 只算有销量的卡，并如实报 unmatchedCards',
+  (() => { const r = calcMenuMarginWeighted(WCARDS, { 青菜: 10 }, {}); return r.matchedCards === 1 && r.unmatchedCards === 1; })());
+check('R728-G 零售价卡 ⇒ reason=no_price（不许除零、不许返回 0）',
+  calcMenuMarginWeighted([{ dish_key: 'A', price_fen: 0, total_cost_fen: 100 }], { A: 5 }, {}).reason === 'no_price');
+check('R728-H 负 qty（退货）不参与权重但也不崩',
+  calcMenuMarginWeighted(WCARDS, { 青菜: -3 }, {}).reason === 'no_qty');
+check('R728-I 反恒真：加权样本非空（不是「永远 null」的假绿）', wA.totalQty === 320 && wB.totalQty === 320);
+
 console.log(`===== M3.21 对账自测结果：${pass} 通过 / ${fail} 失败 =====`);
 process.exit(fail === 0 ? 0 : 1);

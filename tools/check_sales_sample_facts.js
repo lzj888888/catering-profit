@@ -96,6 +96,17 @@ function judgeStale(facts) {
   return hits;
 }
 
+/** C-③ 的可复算判据：会诊结论是否已回写（不钉死任何阶段性措辞） */
+function judgeReviewDone(ledger) {
+  if (!ledger || !Array.isArray(ledger.findings)) return false;
+  const f9 = ledger.findings.find((x) => x.id === 'R3-9');
+  const f12 = ledger.findings.find((x) => x.id === 'R3-12');
+  return !!(f9 && f12
+    && /R727_三司会诊|REVIEW_2026-11-13/.test(String(f9.fix_evidence))
+    && /S4|落码|拍板/.test(String(f9.next_action))
+    && /已可定案/.test(String(f12.next_action)));
+}
+
 console.log('\nR727 · 销量样例「已到货」事实守卫（防第三次复发）');
 
 // ---------- A 归档在场 ----------
@@ -124,12 +135,11 @@ ok('C-① 台账 R3-13 在场且为 fixed（样例事实有票、有证据、有
   })());
 ok('C-② 🔴 活文档零「样例待提供 / 等样例 / 付费墙读销量」过期表述',
   stale.length === 0, stale.slice(0, 4).join(' | '));
-ok('C-③ R3-9 不再要求拍板、R3-12 的 E-3 已改为可定案',
-  !!facts.ledger && (() => {
-    const f9 = (facts.ledger.findings || []).find((x) => x.id === 'R3-9');
-    const f12 = (facts.ledger.findings || []).find((x) => x.id === 'R3-12');
-    return f9 && f12 && /三司会诊/.test(String(f9.next_action)) && /已可定案/.test(String(f12.next_action));
-  })());
+// 🔴 R728 纠偏：初版要求 R3-9 的 next_action 含「三司会诊」字样 —— 那是**会诊阶段的时点快照**。
+//   会诊结论一回写，字样自然消失，守卫反而转红（把进度当缺陷）。⇒ 改判「会诊完成有据」：
+//   修法证据里须留会诊稿路径 + 已列后续落码步骤，而不是钉死某个阶段措辞。
+ok('C-③ R3-9 会诊结论已回写（不钉死阶段字样）、R3-12 的 E-3 已改为可定案',
+  judgeReviewDone(facts.ledger));
 
 // ---------- D 反恒真 ----------
 console.log('\n===== D. 反恒真（合成坏样本必须被抓）=====');
@@ -150,6 +160,17 @@ ok('D-① 好样本零问题 / 抽掉 R3-13⇒红 / 写回「等样例」⇒红 
   good.length === 0 && badNoTicket.length > 0 && badStale.length > 0 && badContract.length > 0 && badQueue.length > 0,
   'good=' + good.length + ' noTicket=' + badNoTicket.length + ' stale=' + badStale.length
   + ' contract=' + badContract.length + ' queue=' + badQueue.length);
+// 🔴 R728：C-③ 改成「会诊完成有据」后必须证明它不是恒真 —— 用合成坏样本真跑判据。
+const badNoReview = judgeReviewDone(Object.assign({}, facts.ledger, {
+  findings: facts.ledger.findings.map((f) => f.id === 'R3-9'
+    ? Object.assign({}, f, { fix_evidence: '（会诊稿证据被删）' }) : f),
+}));
+const badNoNext = judgeReviewDone(Object.assign({}, facts.ledger, {
+  findings: facts.ledger.findings.map((f) => f.id === 'R3-9'
+    ? Object.assign({}, f, { next_action: '' }) : f),
+}));
+ok('D-①b 反恒真：抹掉会诊稿证据 / 清空后续步骤 ⇒ 判据应转假',
+  judgeReviewDone(facts.ledger) === true && badNoReview === false && badNoNext === false);
 ok('D-② 归档判据非恒真：把「四张全在」喂成「三张」应被 A-① 识别',
   (() => {
     const fake = Object.assign({}, facts, { present: facts.present.slice(0, 3), missing: ['jd_sku_bill'] });

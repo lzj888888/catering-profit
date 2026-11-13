@@ -18,7 +18,10 @@ const GOODS_FIELD = (TERMS.ledger && TERMS.ledger.takeawayMode && TERMS.ledger.t
 const round2 = (n) => Math.round(n * 100 + 1e-9) / 100;
 
 /**
- * M3 侧：标准菜单毛利率（权重 = 售价，隐含"各菜品销售额均匀"假设）。
+ * M3 侧：标准菜单毛利率（Σ 售价 / Σ 成本 口径）。
+ * 🔴 R728 订正：旧注释写「隐含各菜品销售额均匀假设」是错的。真跑验证：
+ *   1 − Σc/Σp 数学上等价于「各菜品**销量相等**」时的销量加权（q=1:1 与 q=300:300 都得 36.00%）。
+ *   而「销售额均匀」是另一回事（按销售额加权会得到完全不同的权重）。
  * 公式：1 − Σ(card.total_cost_fen) ÷ Σ(card.price_fen)，返回百分数（64.84 表示 64.84%）。
  * 🔴 默认排除套餐（card_type === 3）；includeCombo 为 true 时含。
  * @param {Array<{card_type?:number, price_fen:number, total_cost_fen:number}>} cards
@@ -161,8 +164,41 @@ function fixTargetOf(rec, actualReason) {
   return { url: '', labelKey: '' };
 }
 
+/**
+ * R728 S3：按实际销量加权的标准菜单毛利率。
+ *   menuPct = 1 − Σ(qty_i × cost_i) / Σ(qty_i × price_i)
+ * 🔴 与 calcMenuMargin **并列返回**，绝不替换、绝不自动切换（没有销量数据的月份由调用方明示）。
+ * 🔴 qtyByDish 的键 = 成本卡的 dish_key；匹配不上的卡按 qty=0 处理并计入 unmatchedCards，
+ *    绝不「默认 1 份」静默填充（那会把加权退化成售价加权，且零报错）。
+ * @param {Array<{card_type?:number, price_fen:number, total_cost_fen:number, dish_key?:string}>} cards
+ * @param {object} qtyByDish { [dish_key]: number }
+ * @param {{includeCombo?:boolean}} [opts]
+ * @returns {{pct:number|null, reason?:string, matchedCards:number, unmatchedCards:number, totalQty:number}}
+ */
+function calcMenuMarginWeighted(cards, qtyByDish, opts) {
+  const includeCombo = !!(opts && opts.includeCombo);
+  const qmap = qtyByDish || {};
+  const list = (Array.isArray(cards) ? cards : []).filter((c) => c && (!includeCombo && c.card_type === 3 ? false : true));
+  let revenueFen = 0, costFen = 0, matched = 0, unmatched = 0, totalQty = 0;
+  for (const c of list) {
+    const key = String(c.dish_key || '').trim();
+    const q = Number(qmap[key]);
+    if (!key || !Number.isFinite(q) || q <= 0) { unmatched++; continue; }
+    const p = Number(c.price_fen) || 0;
+    const cost = Number(c.total_cost_fen) || 0;
+    revenueFen += q * p;
+    costFen += q * cost;
+    totalQty += q;
+    matched++;
+  }
+  if (matched === 0) return { pct: null, reason: 'no_qty', matchedCards: 0, unmatchedCards: unmatched, totalQty: 0 };
+  if (revenueFen === 0) return { pct: null, reason: 'no_price', matchedCards: matched, unmatchedCards: unmatched, totalQty };
+  return { pct: round2((1 - costFen / revenueFen) * 100), matchedCards: matched, unmatchedCards: unmatched, totalQty };
+}
+
 module.exports = {
   calcMenuMargin,
+  calcMenuMarginWeighted,
   calcActualDishMargin,
   reconcile,
   suppressKeyOf,

@@ -1,6 +1,8 @@
 // cloudfunctions/getSalesBills/validate.js —— 入参校验（纯函数）。
 // 契约（core/10）：getSalesBills 入参
-//   { shop_id, biz_date_from?, biz_date_to?, platform?, include_cleared?, client_request_id? }
+//   { shop_id, biz_date_from?, biz_date_to?, platform?, include_cleared?, client_request_id?, detail? }
+// 🔴 R728：detail=true（要菜品级明细）时 biz_date_from/to **必传** —— 缺参直接拒，
+//   绝不退回读全表（R301：不传区间会把历次导入的多个月累加，页面却按当月呈现）。
 const { ERROR_CODES } = require('./common');
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -17,6 +19,10 @@ function validateInput(event) {
   if (to && !DATE_RE.test(to)) return err('biz_date_to 必须是 YYYY-MM-DD');
 
   const platform = (typeof src.platform === 'string' && src.platform) ? src.platform : '';
+  const detail = src.detail === true;
+  if (detail && (!from || !to || from >= to)) {
+    return err('detail=true 时 biz_date_from / biz_date_to 必传，且 from < to（半开区间）');
+  }
 
   return {
     error: null,
@@ -25,6 +31,7 @@ function validateInput(event) {
     biz_date_to: to,
     platform,
     include_cleared: src.include_cleared === true,
+    detail,
     input: { client_request_id: src.client_request_id || '' },
   };
 }

@@ -166,6 +166,45 @@ const covFake = judgeCoverageFinite(alwaysSuppress);
 ok('C-③ 行为判据非恒真：喂一个「永远抑制」的假实现 ⇒ B-② 的反恒真腿能识别',
   covFake.evil.every((x) => x.suppressed) && covFake.good.some((x) => x.suppressed === true && x.diffPp === null));
 
+// ---------- D R728 销量加权纯函数层（判行为，不判字面）----------
+// 背景：会诊后落地的 S1/S2/S3 是**独立可复算的算法层**，暂不接前端、不碰付费墙
+// （前端接线会动到 getDishReview 免费档出参，属商业化口径决策，待李老师审定）。
+console.log('\n===== D. R728 加权算法层（未接前端）=====');
+const GS = require(path.join(ROOT, 'cloudfunctions/getSalesBills/service.js'));
+const GV = require(path.join(ROOT, 'cloudfunctions/getSalesBills/validate.js'));
+const WC = [
+  { dish_key: '青菜', price_fen: 1200, total_cost_fen: 400 },
+  { dish_key: '招牌鱼', price_fen: 8800, total_cost_fen: 6000 },
+];
+const wLow = RD.calcMenuMarginWeighted(WC, { 青菜: 300, 招牌鱼: 20 }, {});
+const wHigh = RD.calcMenuMarginWeighted(WC, { 青菜: 20, 招牌鱼: 300 }, {});
+ok('D-① 加权函数在场且真跑：便宜菜卖得多 55.22% / 贵菜卖得多 32.13%',
+  typeof RD.calcMenuMarginWeighted === 'function' && wLow.pct === 55.22 && wHigh.pct === 32.13,
+  JSON.stringify({ low: wLow.pct, high: wHigh.pct }));
+ok('D-② 🔴 「偏差恒正」不成立：两组分布差为 +19.22pp 与 −3.87pp（推翻 R714 原判断）',
+  wLow.pct > RD.calcMenuMargin(WC, {}).pct && wHigh.pct < RD.calcMenuMargin(WC, {}).pct);
+ok('D-③ 无销量 ⇒ pct=null + no_qty（绝不静默回落售价口径）',
+  (() => { const r = RD.calcMenuMarginWeighted(WC, {}, {}); return r.pct === null && r.reason === 'no_qty'; })());
+ok('D-④ 半开区间 + 跨月区间排除 + 缺参 fail-closed（S2 三条同验）',
+  (() => {
+    const rows = [
+      { biz_date: '2026-11-01', dish_key: '青菜', qty: 10 },
+      { biz_date: '2026-12-01', dish_key: '青菜', qty: 99 },
+      { biz_date: '2026-11-10', dish_key: '区间', qty: 8, granularity: 'interval', period_from: '2026-10-28', period_to: '2026-11-03' },
+    ];
+    const d = GS.buildDishDetail(rows, { biz_date_from: '2026-11-01', biz_date_to: '2026-12-01' });
+    const noRange = GS.buildDishDetail(rows, {});
+    return d.qtyByDish['青菜'] === 10 && !d.qtyByDish['区间'] && d.interval_cross_month_rows === 1
+      && noRange.reason === 'missing_range' && Object.keys(noRange.qtyByDish).length === 0;
+  })());
+ok('D-⑤ detail=true 缺区间必拒 / 老调用（无 detail）行为不变',
+  GV.validateInput({ shop_id: 's', detail: true }).error !== null
+  && GV.validateInput({ shop_id: 's', detail: true, biz_date_from: '2026-11-01', biz_date_to: '2026-12-01' }).error === null
+  && GV.validateInput({ shop_id: 's' }).detail === false);
+ok('D-⑥ 反恒真：加权函数非恒真（销量相等时 ≡ 售价加权；空权重时 ≠ 售价加权）',
+  RD.calcMenuMarginWeighted(WC, { 青菜: 300, 招牌鱼: 300 }, {}).pct === RD.calcMenuMargin(WC, {}).pct
+  && RD.calcMenuMarginWeighted(WC, {}, {}).pct !== RD.calcMenuMargin(WC, {}).pct);
+
 console.log('\n============================================================');
 console.log('===== R714 算钱口径守卫结果：' + pass + ' 通过 / ' + bad.length + ' 失败 =====');
 if (bad.length) {

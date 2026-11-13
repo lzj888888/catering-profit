@@ -86,4 +86,72 @@ function buildBillList(rows, opts) {
   return { list, summary, unknownCount };
 }
 
-module.exports = { buildBillList };
+/**
+ * R728 S1/S2：菜品级销量明细（供「按销量加权」的标准毛利率用）。
+ *
+ * 与 buildBillList 的分工：那条按 (kind, platform, biz_date) 聚合成「我导过哪几份」；
+ *   这条按 dish_key 聚合成「每道菜卖了几份」—— 是**权重表**，不是给用户看的列表，
+ *   所以不违背文件头「不逐行返回」（本函数返回的是聚合后的 map，不是 51 行原始流水）。
+ *
+ * 🔴 半开区间：只取 biz_date >= from && biz_date < to（to = 下月 01 号）。
+ *   对账页月份 YYYY-MM 由调用方转成 from/to 两个 YYYY-MM-DD，服务层强制必传，
+ *   缺参直接回 reason='missing_range' 且 qtyByDish 为空 —— 绝不退回「读全表」（R301 静默错数）。
+ * 🔴 granularity：堂食《菜品销售统计》是**区间汇总表**（一行代表整段 7 天，biz_date 只是
+ *   区间末日）。区间行必须 period_from/period_to 都落在 [from,to) 内才计入；
+ *   跨月的区间行**排除并如实上报** interval_cross_month_rows，绝不静默归到某一边。
+ * 🔴 qty 取整：schema 要求 integer，但真实 POS 有 3280.3（称重菜）。权重用**原值**不取整
+ *   —— 加权是相对权重，取整反而引入偏差；只如实上报 fractional_qty_rows 供复核。
+ * 🔴 不按 platform 去重：external_sales_daily 每行本就是独立销量行（_id 幂等），
+ *   按 platform 分组反会丢跨平台销量。同一 dish_key 直接累加 qty（含负 qty 退货）。
+ *
+ * @param {Array<object>} rows external_sales_daily 原始行（含软删标记）
+ * @param {object} opts { biz_date_from, biz_date_to, includeCleared? }
+ * @returns {{qtyByDish:object, dish_count:number, total_qty:number, matched_rows:number,
+ *            unmatched_rows:number, fractional_qty_rows:number, interval_rows:number,
+ *            interval_cross_month_rows:number, reason:string}}
+ */
+function buildDishDetail(rows, opts) {
+  const o = opts || {};
+  const from = String(o.biz_date_from || '');
+  const to = String(o.biz_date_to || '');
+  const includeCleared = !!o.includeCleared;
+  const out = {
+    qtyByDish: {}, dish_count: 0, total_qty: 0, matched_rows: 0,
+    unmatched_rows: 0, fractional_qty_rows: 0, interval_rows: 0,
+    interval_cross_month_rows: 0, reason: '',
+  };
+  if (!from || !to || from >= to) { out.reason = 'missing_range'; return out; }
+
+  for (const r of (rows || [])) {
+    if (!r) continue;
+    const cleared = r.is_deleted === true;
+    if (cleared && !includeCleared) continue;
+
+    const bd = String(r.biz_date || '');
+    // 半开区间：>= 月初 且 < 下月 01
+    if (!(bd >= from && bd < to)) continue;
+
+    // 区间汇总行：两端都必须落在本月内，跨月则排除（绝不静默归边）
+    if (r.granularity === 'interval') {
+      out.interval_rows++;
+      const pf = String(r.period_from || bd), pt = String(r.period_to || bd);
+      if (!(pf >= from && pt < to)) { out.interval_cross_month_rows++; continue; }
+    }
+
+    const key = String(r.dish_key || '').trim();
+    if (!key) { out.unmatched_rows++; continue; }  // 账单级行（dish_key=''）不计入菜品权重
+
+    const q = Number(r.qty);
+    if (!Number.isFinite(q)) { out.unmatched_rows++; continue; }
+    if (!Number.isInteger(q)) out.fractional_qty_rows++;
+
+    out.qtyByDish[key] = (out.qtyByDish[key] || 0) + q;
+    out.total_qty += q;
+    out.matched_rows++;
+  }
+  out.dish_count = Object.keys(out.qtyByDish).length;
+  if (out.matched_rows === 0) out.reason = 'no_dish_rows';
+  return out;
+}
+
+module.exports = { buildBillList, buildDishDetail };
