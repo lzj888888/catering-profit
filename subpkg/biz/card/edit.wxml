@@ -59,7 +59,7 @@
   <view class="sec-lite">{{t.secBasic}}</view>
   <view class="field">
     <text class="lbl">{{t.dishName}}</text>
-    <input class="val-input" value="{{name}}" placeholder="{{t.dishNamePh}}" bindinput="onName" bindblur="onNameBlur" />
+    <input class="val-input" value="{{name}}" placeholder="{{t.dishNamePh}}" bindinput="onName" bindblur="onNameBlur" adjust-position="{{true}}" cursor-spacing="20" />
   </view>
 
   <!-- M3.16（批次 C）卡片类型：单品 / 套餐（引用型成本卡）
@@ -199,7 +199,7 @@
       <view class="cell2 line-row2">
         <view class="lr-cell">
           <text class="lbl">{{t.manualName}}</text>
-          <input class="val-input" value="{{lines[index].material_name}}" placeholder="{{t.manualNamePh}}" data-idx="{{index}}" bindinput="onManualName" />
+          <input class="val-input" value="{{lines[index].material_name}}" placeholder="{{t.manualNamePh}}" data-idx="{{index}}" bindinput="onManualName" adjust-position="{{true}}" cursor-spacing="20" />
         </view>
         <!-- round151：单价 = 「输入框 + 单位 ▾」并排（对齐参考产品实测布局）。
              改前单位写死在 label 里（「单价（元/克）」）⇒ 老板买 6 元/斤的肉，得先心算 0.012 才敢填。
@@ -338,7 +338,7 @@
   </view>
   <view class="field" wx:if="{{inputMode === 'pro' || showMore}}">
     <text class="lbl">{{t.tags}}</text>
-    <input class="val-input" value="{{tags}}" placeholder="{{t.tagsPh}}" bindinput="onTags" />
+    <input class="val-input" value="{{tags}}" placeholder="{{t.tagsPh}}" bindinput="onTags" adjust-position="{{true}}" cursor-spacing="20" />
     <text class="muted">{{t.tagsHint}}</text>
   </view>
 
