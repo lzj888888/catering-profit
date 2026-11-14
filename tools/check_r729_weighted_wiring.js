@@ -99,8 +99,8 @@ ok('A-④ 🔴 pct=null 的每条路径都带 reason（不许静默失败）',
 ok('A-⑤ 免费档边界：返回值零逐菜字段（不泄 totalCostFen/grossFen/marginPct/price）',
   ['totalCostFen', 'grossFen', 'marginPct', 'price_list', 'ranked', 'cards']
     .every((k) => Object.keys(wGood).indexOf(k) < 0), Object.keys(wGood).join(','));
-ok('A-⑥ 服务端源码用全量 ranked 而非 freeTop（Top10 陷阱）',
-  /calcWeightedMenuPct\(ranked, cards, totals\.qty\)/.test(rd('cloudfunctions/getDishReview/index.js')));
+ok('A-⑥ 服务端源码用全量【全渠道】ranked 而非 freeTop（Top10 陷阱）',
+  /calcWeightedMenuPct\(allChannelRanked, cards, totals\.qty\)/.test(rd('cloudfunctions/getDishReview/index.js')));
 ok('A-⑦ 免费档出参只加三个聚合字段，未把逐菜字段带回',
   (() => {
     const src = rd('cloudfunctions/getDishReview/index.js');
@@ -163,6 +163,43 @@ console.log('\n===== B. 对账页三条路径（页面桩真跑）=====');
     ok('C-③ 页面桩反恒真：若把降级分支写成「回落售价口径」应被 B-③/B-④ 识别',
       n.p.data.result.weightedPct !== n.p.data.result.menuPct
       && e.p.data.result.weightedPct !== e.p.data.result.menuPct);
+
+    // ---------- D. R194-A 通道口径（真实引擎复现 + 修复锁）----------
+    console.log('\n===== D. R194-A 加权标量通道口径（真实引擎）=====');
+    const D_DEPS = {
+      normalizeDishName: (s) => String(s == null ? '' : s).trim(),
+      toMonth: () => '2026-11',
+      lookupCardCode: (dk) => (['A', 'B'].indexOf(String(dk)) >= 0 ? String(dk) : ''),
+    };
+    const D_CARDS = [
+      { card_code: 'A', version: 1, name: '外卖菜A', price_list: 2000, total_cost: 800, created_at: '2026-11-01' },
+      { card_code: 'B', version: 1, name: '外卖菜B', price_list: 3000, total_cost: 1500, created_at: '2026-11-01' },
+    ];
+    const D_allRanked = (dine, take) => {
+      const arr = (dine.dine_in || []).slice();
+      const bp = take.by_platform || {};
+      for (const p of Object.keys(bp)) { const r = bp[p] && bp[p].ranked; if (Array.isArray(r)) arr.push(...r); }
+      return arr;
+    };
+    // 纯外卖店
+    const d1 = S.buildDishReview([], D_CARDS, D_DEPS);
+    const t1 = S.buildTakeawayReview([{ dish_key: 'A', qty: 100, amount: 200000, platform: 'meituan' }, { dish_key: 'B', qty: 100, amount: 300000, platform: 'meituan' }], D_CARDS, D_DEPS);
+    const tot1 = S.mergeTotals(d1.totals, t1.totals);
+    const w1 = S.calcWeightedMenuPct(D_allRanked(d1, t1), D_CARDS, tot1.qty);
+    ok('D-① 🔴 纯外卖店（全渠道接线）加权标量返回有效 pct（=54.00%，非 no_match）', w1.pct === 54 && w1.reason === '', JSON.stringify(w1));
+    // 混合店
+    const d2 = S.buildDishReview([{ dish_key: 'A', qty: 50, amount: 100000, platform: 'pos' }], D_CARDS, D_DEPS);
+    const t2 = S.buildTakeawayReview([{ dish_key: 'B', qty: 50, amount: 150000, platform: 'meituan' }], D_CARDS, D_DEPS);
+    const tot2 = S.mergeTotals(d2.totals, t2.totals);
+    const w2 = S.calcWeightedMenuPct(D_allRanked(d2, t2), D_CARDS, tot2.qty);
+    ok('D-② 🔴 混合店（全渠道接线）加权标量返回有效 pct（=54.00%，非 low_match 抑制）', w2.pct === 54 && w2.reason === '', JSON.stringify(w2));
+    // 反恒真：退回"仅堂食 ranked" ⇒ 纯外卖店必变回 no_match（证明此断言能抓回归）
+    const regress = S.calcWeightedMenuPct(d1.dine_in, D_CARDS, tot1.qty);
+ok('D-③ 反恒真：退回仅堂食 ranked ⇒ 纯外卖店变回 no_match（抓回归）', regress.pct === null && regress.reason === 'no_match', JSON.stringify(regress));
+    // 源码锁：index.js 不再用"仅堂食 ranked"喂加权，且改用全渠道 ranked
+    const idxSrcD = rd('cloudfunctions/getDishReview/index.js');
+    ok('D-④ 🔴 源码锁：index.js 不再调用 calcWeightedMenuPct(ranked, cards, totals.qty)（仅堂食口径必删）', !/calcWeightedMenuPct\(ranked, cards, totals\.qty\)/.test(idxSrcD));
+    ok('D-⑤ 🔴 源码锁：index.js 用全渠道 ranked（allChannelRanked）喂加权', /allChannelRanked/.test(idxSrcD) && /calcWeightedMenuPct\(allChannelRanked, cards, totals\.qty\)/.test(idxSrcD));
 
     console.log('\n============================================================');
     console.log('===== R729 加权接线守卫结果：' + pass + ' 通过 / ' + bad.length + ' 失败 =====');

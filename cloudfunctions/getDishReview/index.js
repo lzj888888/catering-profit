@@ -177,7 +177,17 @@ exports.main = async (event) => {
     // 🔴 R729：加权标量必须用**全量 ranked**（下面的 freeTop 只是 slice(0,10) 的展示副本），
     //   且用成本卡标价 price_list 而非销量实收 amountFen（后者含优惠 ⇒ 口径会变成「实际毛利率」）。
     //   只回一个聚合数 + 覆盖率/原因，不回任何逐菜成本、毛利或售价 ⇒ 付费档卖的「可拆解结论」不受影响。
-    const weighted = calcWeightedMenuPct(ranked, cards, totals.qty);
+    // 🔴 R194-A 修复：加权标量分子必须用【全渠道 ranked】（堂食 + 各平台外卖），
+    //   与分母 totals.qty（全渠道，R254 已合并）口径一致；否则纯外卖店恒 no_match、
+    //   混合店覆盖率被结构性压低甚至被 low_match 抑制（同文件 computeCoverage 已是全渠道口径）。
+    const allChannelRanked = ranked.slice();
+    if (takeawayResult.by_platform) {
+      for (const p of Object.keys(takeawayResult.by_platform)) {
+        const pr = takeawayResult.by_platform[p] && takeawayResult.by_platform[p].ranked;
+        if (Array.isArray(pr)) allChannelRanked.push(...pr);
+      }
+    }
+    const weighted = calcWeightedMenuPct(allChannelRanked, cards, totals.qty);
     const FREE_TOP_N = 10;
     const byQty = ranked.slice().sort((a, b) =>
       (b.qty - a.qty) || (b.amountFen - a.amountFen) || String(a.name).localeCompare(String(b.name)));
