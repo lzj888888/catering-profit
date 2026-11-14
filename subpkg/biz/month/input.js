@@ -1673,6 +1673,9 @@ Page({
       // 🔴 R732：摘要必须跟随摊销开关。getAmortSchedule 一直返回 amortize_switch_on（服务端权威），
       //   本页原来没消费它 ⇒ 开关关着仍报「分月摊 ¥4,333」，老板拿去和月报（0）对不上。
       //   fail-closed：字段缺失（老云函数版本）按「未启用」显示，宁可多说一句也不谎报已计入。
+      // 🔴 R736：开关已从 UI 删除，但**字段仍在**（历史月份靠它）。v2 生效月起该字段恒 true
+      //   ⇒ 正常月份走 `assetAmortSum`；只有翻 2026-11 之前的老月份才会出现「未启用」措辞。
+      //   这条分支不是废码 —— 它是老月份唯一还能说清"那个月没扣"的地方。
       const amortOn = d.amortize_switch_on === true;
       const amortSumFn = amortOn ? TERMS.calcMethod.assetAmortSum : TERMS.calcMethod.assetAmortSumOff;
       this.setData({

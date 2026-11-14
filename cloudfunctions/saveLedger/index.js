@@ -25,6 +25,10 @@ const SWITCH_KEY_INVENTORY = 'inventory_switch';
 //   本函数从台账（shop_amortize 的 mode='lump' 行）自行求和，不再有「缺省 = 不动」的可选标量入参。
 //   删掉死函数而不是留着：留着的死代码会让下一个人以为还有那条入参路径。
 const SWITCH_KEY_AMORTIZE = 'amortize_switch';
+// 🔴 R736（李老师拍板 · 三家会诊一致）：摊销规则 v2 的时间闸门。
+//   此常量必须与 calcMonthlyProfit/service.js 的同名常量**逐字一致**（守卫逐字比对）。
+//   含义：该月起摊销一律按台账计入利润；更早的月份仍按老逻辑（快照/开关）。
+const AMORT_RULE_V2_FROM = '2026-11';
 const GRACE_DAYS_MS = 7 * 24 * 3600 * 1000;
 
 exports.main = async (event) => {
@@ -106,9 +110,12 @@ exports.main = async (event) => {
     // round107：处置方式；缺字段的老数据一律 'amort'
     mode: a.mode === 'lump' ? 'lump' : 'amort',
   }));
-  // 摊销：amortizeSwitch 开时才计（**这个口径没变**）；只吃 mode='amort' 的行
+  // 摊销：R736 规则 v2 起**一律计入**（不再看开关）；更早的月份仍随开关。
+  //   ⚠️ 这里必须与 calcMonthlyProfit/service.js::amortRuleV2 逐字同源 —— 若此处漏判，
+  //      台账根本不求和 ⇒ amortizeFen=0 传下去，下游再"一律计入"也只是把 0 计入。
+  const amortV2 = String(v.month || '') >= AMORT_RULE_V2_FROM;
   let amortizeFen = 0;
-  if (amortizeSwitchOn) {
+  if (amortizeSwitchOn || amortV2) {
     amortizeFen = amortizeTotalForMonth(ledgerRows.filter((a) => a.mode !== 'lump'), v.month);
   }
   // 一次性投入：只收「计入月份 == 本月」的 mode='lump' 行；与摊销**互不排斥**（round107 去掉互斥）
@@ -127,6 +134,7 @@ exports.main = async (event) => {
   //   round103 的库存静默清零、round106 的首版 allowZero 误传，都是这一类）。
   const effectiveLumpSumFen = ledgerLumpSumFen;
   const result = calcMonthlyProfit({
+    month: v.month,                    // 🔴 R736：时间闸门按月份判断，漏传等于规则失效
     incomeItems: v.incomeItems,
     expenseItems: v.expenseItems,
     directConsumeFen: v.directConsumeFen,

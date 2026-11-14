@@ -5,6 +5,12 @@ const { ERROR_CODES } = require('./common');
 function monthIndex(ym) { const [y, m] = String(ym || '').split('-').map(Number); return y * 12 + (m - 1); }
 function fmtMonthIdx(idx) { const y = Math.floor(idx / 12), m = idx % 12; return `${y}-${String(m + 1).padStart(2, '0')}`; }
 
+// 🔴 R736（李老师拍板 · 三家会诊一致）：摊销规则 v2 的时间闸门。
+//   与 calcMonthlyProfit/service.js 的同名常量**逐字一致**（守卫比对）。
+//   本页是摊销管理的「结果位」：v2 起页首合计恒等于台账应摊额，不再随开关归零。
+const AMORT_RULE_V2_FROM = '2026-11';
+function amortRuleV2(month) { return String(month || '') >= AMORT_RULE_V2_FROM; }
+
 // ===== R735：归档月回读必须用「落库时的开关快照」 =====
 // 🔴 **与 `cloudfunctions/getLedger/service.js::resolveArchiveSwitches` 逐字同源**
 //   （守卫 `tools/check_amort_switch_matrix.js` C-⑥ 钉死两份正文一致，漂移即红）。
@@ -63,4 +69,4 @@ function amortizeForMonth(assets, month) {
   return { total_amount_fen: total, details };
 }
 
-module.exports = { amortizeForMonth, amountForMonth, resolveArchiveSwitches, fmtMonthIdx, monthIndex, ERROR_CODES };
+module.exports = { amortizeForMonth, amountForMonth, resolveArchiveSwitches, fmtMonthIdx, monthIndex, amortRuleV2, AMORT_RULE_V2_FROM, ERROR_CODES };

@@ -6,6 +6,9 @@
 //    批次 4 禁止改动批次 1~3 云函数，故本副本是"派生存档"，不是覆盖。
 
 // ===================== 批次 1 引擎内嵌：双利润（与 calcMonthlyProfit/service.js 同款） =====================
+// 🔴 R736：摊销规则 v2 的时间闸门。与 calcMonthlyProfit/service.js 同名常量**逐字一致**。
+const AMORT_RULE_V2_FROM = '2026-11';
+
 function calcMonthlyProfit(clean) {
   const incomeItems = (clean && clean.incomeItems) || [];
   const expenseItems = (clean && clean.expenseItems) || [];
@@ -37,7 +40,12 @@ function calcMonthlyProfit(clean) {
   const materialCostFen = realConsumeFen;
   const grossProfitFen = Math.round(incomeTotalFen - materialCostFen);
   const grossMarginRatePct = incomeTotalFen === 0 ? 0 : (grossProfitFen / incomeTotalFen) * 100;
-  const effectiveAmortizeFen = amortizeSwitchOn ? Math.round(amortizeFen) : 0;
+  // 🔴 R736：v2 起一律计入（不看开关）；更早的月份仍随开关。
+  //   与 calcMonthlyProfit/service.js、getLedger/service.js 同源同口径 —— 改一处必改三处。
+  //   ⚠️ 漏改本文件是最阴的一种：页面按新规则报「已计入」，而**落库**的 effective_amortize_fen
+  //      仍是 0 ⇒ 导出月报与页面打架，且归档后永远对不上（本轮就是这么发现的，守卫 C7-3 抓到）。
+  const amortV2 = String((clean && clean.month) || '') >= AMORT_RULE_V2_FROM;
+  const effectiveAmortizeFen = (amortV2 || amortizeSwitchOn) ? Math.round(amortizeFen) : 0;
   // R477：参考口径取数 —— 库存开且「直接填的消耗」没有正数 ⇒ 回落倒轧。
   //   判据为什么是 ≤ 0 而不是「未填」：库存模式下前端恒传 0（subpkg/biz/month/inventory.js:240
   //   写死 `|| 0`），那个 0 是占位、不承载老板意图 ⇒ 按"未填"处理。详见 calcMonthlyProfit/service.js 头部。
@@ -57,7 +65,9 @@ function calcMonthlyProfit(clean) {
     operationRefProfitFen, totalFactorRealProfitFen, profitDiffFen,
     // R477：参考口径取数与来源（前端解释差异的取数单源）+ 口径版本标识
     refMaterialFen, refMaterialSource, directProvided, profitCaliberVersion,
-    switchUsed: { inventorySwitchOn, amortizeSwitchOn },
+    // 🔴 R736：落库快照记的是**该月实际生效**的摊销口径 —— v2 月份摊销确实计入了，
+    //   快照就该报 true。漏改这里 ⇒ 归档后读快照说"没计入"、可金额明明记了 ⇒ 两页互相打脸。
+    switchUsed: { inventorySwitchOn, amortizeSwitchOn: amortV2 ? true : amortizeSwitchOn, amortRuleV2: amortV2 },
     diffCheck: operationRefProfitFen - totalFactorRealProfitFen === profitDiffFen,
   };
 }

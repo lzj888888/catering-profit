@@ -9,7 +9,7 @@ const common = require('./common');                 // 扁平派生副本（sync
 const { resolveAuth, assertShopOwner } = common;
 const { ok, fail } = common;
 const { makeAdapter } = common.dataAdapter;
-const { amortizeForMonth, amountForMonth, resolveArchiveSwitches, monthIndex, fmtMonthIdx } = require('./service');
+const { amortizeForMonth, amountForMonth, resolveArchiveSwitches, monthIndex, fmtMonthIdx, amortRuleV2 } = require('./service');
 const { validateInput } = require('./validate');
 
 // round106（F5b）：留存数据 —— 「已摊多少期 / 还剩余多少未摊 / 哪个月摊完」。
@@ -83,6 +83,10 @@ exports.main = async (event) => {
     liveAmortizeSwitchOn: liveAmortizeOn,
   });
   const amortizeSwitchOn = sw.amortizeSwitchOn;
+  // 🔴 R736：规则 v2 起，本页「本月摊销合计」恒等于台账应摊额 —— 不再有「关掉开关 ⇒ 显示 0」。
+  //   前端仍读 amortize_switch_on 决定话术，所以这里直接给生效值（v2 月份恒 true）。
+  //   amort_rule_v2 单独返回：前端据此区分「老月份按旧规则未计入」与「新规则已计入」。
+  const amortV2 = amortRuleV2(v.month);
 
   const res = await da.list('shop_amortize', { shop_id: shopId });
   const rows = ((res && res.data) || []).map((a) => ({
@@ -121,8 +125,10 @@ exports.main = async (event) => {
     // round108：摊销开关（服务端权威）—— 前端**必须**用这个值渲染开关，不得读 globalData 缓存
     // 🔴 R735：归档月这里返回的是**落库快照值**（source='snapshot'），与 getLedger 同口径。
     //   switch_source 一并返回，便于排查「这个月的开关到底按哪份算的」。
-    amortize_switch_on: amortizeSwitchOn,
+    amortize_switch_on: amortV2 ? true : amortizeSwitchOn,
     switch_source: sw.source,
+    // 🔴 R736：该月按哪套摊销规则算的（true = 一律计入）。前端据此渲染历史月的旧规则说明条。
+    amort_rule_v2: amortV2,
     total_amount_fen: sched.total_amount_fen,
     details: sched.details,
     client_request_id: v.input.client_request_id || '',

@@ -44,6 +44,9 @@ exports.main = async (event) => {
 
   // ===== 4. 组装干净数据 → Service 纯计算 =====
   const clean = {
+    // 🔴 R736：月份必须传进引擎 —— 摊销规则 v2 的时间闸门按月份判断（见 service.js 顶部长注释）。
+    //   漏传 ⇒ 恒走老逻辑 ⇒ 界面说"已计入"而引擎算出 0，是最典型的"两处口径各算一套"。
+    month: v.input.month || '',
     incomeItems: v.incomeItems,        // 收入明细（分）
     expenseItems: v.expenseItems,      // 费用明细（分）
     directConsumeFen: v.input.directConsumeFen,

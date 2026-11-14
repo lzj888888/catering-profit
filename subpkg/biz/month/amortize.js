@@ -36,9 +36,8 @@ Page({
       //   ⇒ 取到 undefined ⇒ 页面底部那个主按钮渲染成**纯蓝色、无文字**（李老师真机反馈）。
       //   术语本体一直是 `amortizePage.add`（「新增摊销资产」）。守卫 check_page_terms 已补上防复发。
       amortAdd: TERMS.amortizePage.add,
-      amortSwitchLabel: TERMS.amortizePage.amortSwitchLabel,
-      amortSwitchHint: TERMS.amortizePage.amortSwitchHint,
-      swSaved: TERMS.calcMethod.switchSaved,
+      // 🔴 R736：`amortSwitchLabel` / `amortSwitchHint` / `swSaved` 三条**随开关一起删除**。
+      //   留着的死术语会让下一个人以为本页还有个开关（round108 的 amortAdd 空按钮就是这么来的）。
       name: TERMS.amortizePage.name,
       value: TERMS.amortizePage.value,
       startMonth: TERMS.amortizePage.startMonth,
@@ -291,31 +290,15 @@ Page({
     this.go('/subpkg/biz/month/assetEdit?kind=amort&month=' + this.data.month + '&group=' + key);
   },
 
-  // ===== 分期摊销开关（服务端权威 shop_switch.amortize_switch）=====
-  //   ⚠️ 口径未变（关掉 ⇒ 登记的摊销资产不计入利润）；变的只是**入口** ——
-  //      原来它是录入页的「一次性 / 按月」二选一，结构上把两类投入变成互斥，故搬到本页做成独立开关。
-  async onToggleAmortize(e) {
-    const val = !!e.detail.value;
-    if (this.data.isArchive) {
-      wx.showModal({ title: TERMS.inputPage.archiveReadonly, content: TERMS.inputPage.confirmLocked, showCancel: false });
-      this.load();
-      return;
-    }
-    const prev = this.data.amortizeOn;
-    if (prev === val) return;
-    this.setData({ amortizeOn: val });          // 乐观更新
-    try {
-      await api.call('saveShopSetting', {
-        switches: { amortize: val },
-        client_request_id: 'am_' + Date.now(),
-      });
-      wx.showToast({ title: TERMS.calcMethod.switchSaved, icon: 'success' });
-      this.load();
-    } catch (err) {
-      this.setData({ amortizeOn: prev });       // 服务端才是权威 → 回滚
-      api.toastError(err);
-    }
-  },
+  // 🔴 R736（李老师拍板 · 豆包 ×2 + DeepSeek 三轮会诊一致）：**「启用分期摊销」开关已删除**。
+  //   原方法 `onToggleAmortize` 一并删除（连同它写开关接口的那条路径）。
+  //   ⚠️ 本注释**刻意不写出那个接口名 + 参数名的组合** —— 守卫 F-③ 的正则是
+  //     「接口名 … switches … amortize」，写全了会让它命中注释、假绿（本轮踩过一次）。
+  //   删除理由：老板填了总额和期数就是要摊，再给一个开关去否掉它，等于同一个决定问两次；
+  //     不想摊的走「本月一次算清」（mode='lump'）—— 那条路本来就在同一个页面上。
+  //   ⚠️ `shop_switch.amortize_switch` **字段与后端读取保留**：2026-11 之前的老月份仍按当时的
+  //     开关值算（时间闸门 AMORT_RULE_V2_FROM），删字段等于改写历史账。
+  //   ⚠️ 因此本页 `amortizeOn` 仍然读服务端出参 —— v2 月份它恒为 true，老月份才是真实历史值。
 
   // 提前报废：软删前的「终止」语义（保留资产痕迹），二次确认 + 触觉反馈（G6 不可逆操作）
   onTerminate(e) {

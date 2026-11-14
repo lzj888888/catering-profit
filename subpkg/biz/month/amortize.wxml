@@ -3,11 +3,12 @@
   <view class="archived-bar" wx:if="{{isArchive}}">{{t.archiveReadonly}}</view>
 
   <!-- 本月摊销合计（分期摊销的当月影响）
-       🔴 R732：开关关闭时标题改口径并补一句说明。
-       🔴 R735（李老师真机：「开关关了，最上面本月摊销合计还有数值显示，不知道正不正常」）：
-         这个位置是**结果位**，名字叫"合计" ⇒ 大数字必须是「本月真正计入利润的摊销」。
-         开关关闭时显示 ¥0.00（本月确实没扣），台账应摊额下移到附注 —— 让老板既看到"没扣"，
-         也看到"这笔钱每月该摊多少"，两个事实不打架。 -->
+       🔴 R736（李老师拍板 · 豆包 ×2 + DeepSeek 三轮会诊一致）：**开关本体已删除**，摊销一律按台账计入。
+         本块现在是「结果位」：标题叫「本月计入利润的摊销」，大数字 = 台账应摊额，两者恒等。
+       ⚠️ `shownTotalYuan` / `offNote` 这套「未计入」分支**不是废码** —— 它现在只服务**老月份**：
+         2026-11 之前按旧规则算过的月份，那个月确实没扣（时间闸门 AMORT_RULE_V2_FROM）。
+         李老师当时的困惑正是「上面 0、下面 4333 到底哪个真」⇒ 现在页首标题自带「计入利润」，
+         行内改叫「月应摊额」，两句话说的不是同一件事，不再打架。 -->
   <view class="card2">
     <view class="muted">{{amortizeOn ? t.monthTotal : t.monthTotalOff}}</view>
     <view class="result-num">{{t.cur}}{{shownTotalYuan}}</view>
@@ -53,24 +54,15 @@
     </view>
   </view>
 
-  <!-- ===== ② 分期摊销（mode='amort'）===== -->
-  <!-- 🔴 R735：本区块每行的「月摊销 ¥X」是**台账属性**（这笔资产每月摊多少），与开关无关，必须保留；
-       但开关关闭时整块都不进本月利润 ⇒ 区块标题改台账口径，一眼可见行内数字不是本月扣的钱。 -->
+  <!-- ===== ② 分期摊销（mode='amort'）=====
+       🔴 R736：**「启用分期摊销」开关已整块删除**（含它下面那条折叠说明）。
+         删除理由（李老师原话 + 三家会诊一致）：老板填了总额和期数，这个动作本身就是「要摊」；
+         再用一个开关去否掉它，等于同一个决定问两次。不想摊的走上面「本月一次算清」—— 那里本来就有入口。
+         残骸来源：这个开关是 round107 拆掉「一次性计入当月 / 按月分摊」二选一之后留下的半具尸体。
+       ⚠️ 页面**不再有任何东西能改它**，但 `shop_switch.amortize_switch` 字段与读取逻辑**必须保留** ——
+         2026-11 之前的老月份仍按当时的开关值算（时间闸门），删字段等于改写历史。
+       每行「月应摊额」是**台账属性**（这笔资产每月摊多少），与开关无关，永远显示。 -->
   <view class="cm-sub">{{amortizeOn ? t.amortSectionTitle : t.amortSectionTitleOff}}</view>
-
-  <view class="switch-row">
-    <view class="lbl2">{{t.amortSwitchLabel}}</view>
-    <switch checked="{{amortizeOn}}" color="#1e3a5f" bindchange="onToggleAmortize" />
-  </view>
-  <!-- R234/J4c：本句 18 字（≥18）⇒ 折叠。说明「关掉开关的后果」，属于**改设置前必须先看**的提示，
-       平铺时它紧跟在 switch 下面、会把「分期摊销」整块往下推 ⇒ 折起来。 -->
-  <view class="hint-fold">
-    <view class="hint-fold-head" data-key="amSwitchHint" bindtap="onToggleHintFold">
-      <text class="hint-fold-guide">{{hintFold.amSwitchHint ? t.hintFoldHide : t.hintFoldShow}}</text>
-      <text class="hint-fold-arrow">{{hintFold.amSwitchHint ? '▾' : '▸'}}</text>
-    </view>
-    <view class="hint-fold-body" wx:if="{{hintFold.amSwitchHint}}">{{t.amortSwitchHint}}</view>
-  </view>
 
   <view class="card2" wx:for="{{groups}}" wx:key="key" wx:for-item="g">
     <view class="card-title" bindtap="onToggleGroup" data-group="{{g.key}}">

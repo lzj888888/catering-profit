@@ -11,7 +11,7 @@ const { resolveAuth, assertShopOwner } = common;
 const { ERROR_CODES, ok, fail } = common;
 const { indicatorRef } = common;                    // round115：M1 行业指标对照（口径单源，见 common/indicatorRef.js §七）
 const { makeAdapter } = common.dataAdapter;
-const { calcMonthlyProfit, resolveArchiveSwitches } = require('./service');
+const { calcMonthlyProfit, resolveArchiveSwitches, amortizeTotalForMonth, AMORT_RULE_V2_FROM } = require('./service');
 const { validateInput } = require('./validate');
 
 // A2 兼容：库内明细可能是旧格式（camelCase amountFen）或新格式（snake_case amount_fen + sub_items）。
@@ -121,7 +121,17 @@ exports.main = async (event) => {
   const inventoryOut = invToSnake(inventory);
   const openingAuto = !acct && !!prevMonth;
   if (openingAuto) inventoryOut.opening_fen = prevClosingFen;
-  const amortizeFen = (acct && acct.amortize_fen) || 0;
+  // 🔴 R736：摊销金额的取数随规则切换 ——
+  //   v2 月份（>= 生效月）：**从台账重算**。不能沿用落库的 `amortize_fen`，
+  //     因为 v2 上线前开关关着的店，saveLedger 压根没求和 ⇒ 落库值恒 0 ⇒
+  //     「界面说本月计入、引擎算出来是 0」的静默错账（会诊后补的第三个坑）。
+  //   老月份：仍用落库值 —— 那个数是当时按开关算出来的历史事实，重算等于改写旧账。
+  const amortRes = await da.list('shop_amortize', { shop_id: shopId });
+  const amortRows = ((amortRes && amortRes.data) || []).filter((a) => a.mode !== 'lump' && a.start_month);
+  const amortV2Now = String(v.month || '') >= AMORT_RULE_V2_FROM;
+  const amortizeFen = amortV2Now
+    ? amortizeTotalForMonth(amortRows, v.month)
+    : ((acct && acct.amortize_fen) || 0);
   // round106（F2）：一次性投入（分）—— 回读时必须带进引擎，否则重算的利润与落库值对不上
   const lumpSumFen = num0(acct && acct.lump_sum_fen);
 
@@ -173,8 +183,8 @@ exports.main = async (event) => {
   //   · 起 = start_month；止 = min(自然到期月, terminate_month)
   //   · 剩余期数**含本月**（本月这期还得摊）
   //   · 多条资产并存时取**最晚摊完**的那条撑时间轴（「全部摊完」才有意义）
-  const amortRes = await da.list('shop_amortize', { shop_id: shopId });
-  const amortRows = ((amortRes && amortRes.data) || []).filter((a) => a.mode !== 'lump' && a.start_month);
+  //   ⚠️ R736：`amortRows` 在上方摊销金额取数处已经读过（v2 需要它重算），此处**不再重复 list**。
+  //     重复 list 不只是多一次 IO —— 两份数据若在两次读之间被改，进度与金额会来自不同快照。
   const mi = monthIdxOf(v.month);
   let remainPeriods = 0;
   let endMonthMax = '';
@@ -267,8 +277,10 @@ exports.main = async (event) => {
     // A11：摊销三件套。after_profit_fen 的口径是**总因素真实利润 + 本月摊销**，依据
     //   getLedger/service.js:73（摊销只进真实利润；参考利润本来就不扣摊销 ⇒ 拿参考利润去加等于凭空多算一笔）。
     //   switch_on=false 时 this_fen 恒 0、after 恒等当前真实利润 ⇒ 前端必须显示「未开启摊销」而不是「0 元提升」。
+    //   🔴 R736：v2 月份 switch_on 恒 true（那个月摊销确实计入了）—— 前端据此不再显示「未开启摊销」。
+    //     漏改这一处会出现「引擎扣了钱，页面却说没开启」的自相矛盾。
     amort_extra: {
-      switch_on: amortizeSwitchOn,
+      switch_on: result.amortRuleV2 ? true : amortizeSwitchOn,
       this_fen: result.effectiveAmortizeFen,
       remaining_periods: remainPeriods,
       end_month: endMonthMax,
@@ -300,7 +312,8 @@ exports.main = async (event) => {
     //   round107 去掉了「按月分摊时恒 0」的互斥规则（摊销与一次算清是两笔不同的钱，可共存）。
     lump_sum_fen: lumpSumFen,
     effective_lump_sum_fen: result.effectiveLumpSumFen,
-    switches: { inventorySwitchOn, amortizeSwitchOn },
+    // 🔴 R736：v2 月份摊销一律计入 ⇒ switches 里也必须报 true，否则前端「未启用」话术会与已扣的钱打架
+    switches: { inventorySwitchOn, amortizeSwitchOn: result.amortRuleV2 ? true : amortizeSwitchOn },
     result: {
       income_total_fen: result.incomeTotalFen,
       expense_total_fen: result.expenseTotalFen,

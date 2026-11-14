@@ -58,6 +58,36 @@
  *  - pendingSettlementFen 待结算（分，现金流指标，绝不进入毛利/利润）
  * @returns {object} 计算报告（金额一律「分」整数 + 对应元数；毛利率双字段）
  */
+
+// 🔴🔴 R736（2026-11-15 李老师拍板 · 豆包 ×2 + DeepSeek 三轮会诊一致）：
+//   **摊销规则 v2 —— 时间闸门。**
+//
+//   病根：`amortize_switch` 是 round107 那对「一次性计入当月 / 按月分摊」二选一被拆掉之后
+//     留下来的**半具尸体**。二选一没了（两类投入改为可共存），开关本体却留着，语义退化成
+//     「已登记的摊销资产要不要计入利润」—— 而老板填总额 + 期数的动作本身已经表达了「要摊」。
+//     于是同一个决定被问了两次，第二次还能否掉第一次。李老师原话：
+//       「摊销的数我还添了……我又把开关关了，那不让摊销、填那个数，它意义本身也不在。」
+//
+//   裁决（三家一致）：删掉用户可见开关，摊销一律按台账计入；「不摊」走「一次算清」（mode='lump'）。
+//
+//   ⚠️ 但**历史月份一个字都不许改**（老板翻旧账发现利润少了 4333，会认定系统算错）。
+//     ⇒ 用**时间闸门**而不是「按归档态判断」：归档态会随老板操作翻转（可取消归档），闸门是纯函数。
+//     ⇒ `month >= AMORT_RULE_V2_FROM` ⇒ 一律计入；更早的月份 ⇒ 老逻辑（快照优先，无快照读实时开关）。
+//
+//   ⚠️ 为什么不做「台账重排 / 补摊」：会诊中 DeepSeek 建议「剩余未摊 ÷ 剩余期数重排」，
+//     已用 `getAmortSchedule::progressOf` 源码证伪 —— 那段**完全不读开关**，关开关期间台账期数
+//     照常前进、剩余未摊照常递减。所谓「未摊金额缺失」是把「利润没扣」误读成「台账没摊」。
+//     ⇒ 本改动**不动任何台账数据**，只改利润表取数。
+//
+//   ⚠️ 三副本同源铁律：本文件 / `getLedger/service.js` / `saveLedger/index.js` 的这段判断
+//     必须逐字一致，改一处必改三处（守卫 `tools/check_amort_rule_v2.js` 逐字比对）。
+const AMORT_RULE_V2_FROM = '2026-11';
+
+/** 该月是否适用摊销规则 v2（摊销一律计入）。month 形如 'YYYY-MM'；空值/坏值 ⇒ false（回落到老逻辑，fail-safe）。 */
+function amortRuleV2(month) {
+  return String(month || '') >= AMORT_RULE_V2_FROM;
+}
+
 function calcMonthlyProfit(clean) {
   // ===== 0. 输入防护（仅缺省容忍，负数/坏类型由 Controller 拦截）=====
   const incomeItems = (clean && clean.incomeItems) || [];
@@ -97,8 +127,9 @@ function calcMonthlyProfit(clean) {
     incomeTotalFen === 0 ? 0 : (grossProfitFen / incomeTotalFen) * 100;
   const grossMarginRatePctDisplay = rounded2(grossMarginRatePct);
 
-  // ===== 4. 当月摊销实际计入值（摊销开关关 → 不计入 0） =====
-  const effectiveAmortizeFen = amortizeSwitchOn ? fenRoundN(amortizeFen) : 0;
+  // ===== 4. 当月摊销实际计入值（R736：规则 v2 起一律计入；更早的月份仍随开关） =====
+  const amortV2 = amortRuleV2(clean && clean.month);
+  const effectiveAmortizeFen = (amortV2 || amortizeSwitchOn) ? fenRoundN(amortizeFen) : 0;
   // round107 纠正：原为「与按月分摊互斥」（amortizeSwitchOn ? 0 : lumpSumFen）—— 那是错的。
   //   摊销资产与一次算清的投入是两笔不同的钱，一个月可以两者都有；互斥会把后者悄悄丢掉。
   //   防重复靠「同一笔钱只登记一行」（mode 二选一）。三副本（本文件 / saveLedger / getLedger）同源同口径。
@@ -152,7 +183,11 @@ function calcMonthlyProfit(clean) {
     refMaterialFen, refMaterialSource, directProvided,
     profitCaliberVersion,
     // 口径信息
-    switchUsed: { inventorySwitchOn, amortizeSwitchOn },
+    // 🔴 R736：快照记录的是**该月实际生效的**摊销口径 —— v2 之后的月份摊销确实计入了，
+    //   所以快照里的 amortizeSwitchOn 恒为 true（那不是"开关开着"，是"这个月扣了"）。
+    //   amortRuleV2 单独记一笔，用于事后排查「这个月按哪套规则算的」。
+    switchUsed: { inventorySwitchOn, amortizeSwitchOn: amortV2 ? true : amortizeSwitchOn, amortRuleV2: amortV2 },
+    amortRuleV2: amortV2,
     // 待结算为现金流指标，仅回显，绝不参与毛利/利润
     pendingSettlementFen,
     // 自洽校验

@@ -129,8 +129,10 @@ async function runPage(switchOn, src) {
   ck('H-② 开关关 ⇒ 台账应摊额仍在附注里（信息不丢：老板要知道这笔钱每月该摊多少）',
     String(off.data.totalYuan) === '4333.33' && String(off.data.offNote).indexOf('4333.33') >= 0,
     `台账「${off.data.totalYuan}」/ 附注「${off.data.offNote}」`);
-  ck('H-③ 开关关 ⇒ 附注明确写了「不计入」（不能只有数字没有口径）',
-    String(off.data.offNote).indexOf('不计入') >= 0, `附注「${off.data.offNote}」`);
+  // 🔴 R736：文案从「开关关闭不计入利润」改成「该月未计入利润」—— 开关已删除，
+  //   再说"开关关闭"等于指向一个不存在的控件。判据跟着改成「未计入」，语义没变。
+  ck('H-③ 未计入时 ⇒ 附注明确写了「未计入」（不能只有数字没有口径）',
+    String(off.data.offNote).indexOf('未计入') >= 0, `附注「${off.data.offNote}」`);
   ck('H-④ 开关关 ⇒ 每笔资产「月摊销」**仍有值**（台账属性，不许被我顺手清零：设备 = 1000.00）',
     (off.data.assets || []).every((a) => Number(a.amountYuan) > 0)
       && (off.data.assets || []).some((a) => a.amountYuan === '1000.00'),
