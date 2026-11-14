@@ -9,7 +9,8 @@
 //   最危险的不是「没修」，是三个月后没人记得它存在、或台账写着 fixed 但源码根本没动。
 //   ⇒ 把每次交叉审的发现落成机器台账 review/evidence/r721_findings.json，由本守卫天天盯：
 //     ① 每条必须有证据 file:line + 来源 + 核实状态；
-//     ② status=fixed 必须有 fix_evidence，且 L-⑦ 会去**产品源码核对状态不是嘴上说说**；
+//     ② status 只允许 fixed / deferred（词表白名单）；status=fixed 必须有 fix_evidence，
+//        且 L-⑦ 会去**产品源码核对状态不是嘴上说说**；
 //     ③ status=deferred 必须有 priority + next_action（不许挂着没下一步）；
 //     ④ 准备修的条目必须记录「唱反调」结论（防确认偏误被抹掉）；
 //     ⑤ 门禁盲区（零桩页 >0，口径 tools/scan_zero_stub_pages.js）必须在台账里对应一条 P0/P1 待办；
@@ -36,6 +37,13 @@ const DESIGN_REL = 'review/DESIGN_R721_持续发现漏洞机制.md';
 
 // ===== 可复用的判据（能被合成样本复算 ⇒ 不是藏在流程里的恒真）=====
 const REQUIRED = ['id', 'source', 'severity', 'title', 'evidence', 'verified_by', 'status', 'verified'];
+// 🔴 R730：状态词表白名单。
+//   事故：R729b(04e950e) 把 R3-9 的 status 从 deferred 写成 open —— 而下面所有完整性规则
+//     只对 'fixed' / 'deferred' 生效 ⇒ 'open' 既不受「修了没证据」约束、也不受「待办没主人」
+//     约束，**从所有检查里静默漏过**；只有 check_r714_decisions 的 STATUS_RULE 撞红才暴露。
+//   语义上 R3-9 仍是 P1 待办（有 priority + next_action，等真机验证）⇒ 词表不该有第三种值。
+//   ⇒ 加白名单：状态写成词表外的值本身就是缺陷，先判红再谈别的。
+const STATUS_VOCAB = ['fixed', 'deferred'];
 function validateLedger(d) {
   const p = [];
   if (!d || !Array.isArray(d.findings)) return ['台账不可解析'];
@@ -44,6 +52,9 @@ function validateLedger(d) {
     REQUIRED.forEach((k) => {
       if (!f || f[k] === undefined || f[k] === null || f[k] === '') p.push('证据缺失:' + tag + ':' + k);
     });
+    if (f && f.status !== undefined && f.status !== null && STATUS_VOCAB.indexOf(f.status) < 0) {
+      p.push('状态词表外:' + tag + ':' + f.status);
+    }
     if (f && f.status === 'fixed') {
       if (!f.fix_evidence) p.push('修了没证据:' + tag);
       if (!f.challenge) p.push('挑毛病结论缺失:' + tag);
@@ -60,7 +71,7 @@ try { data = JSON.parse(fs.readFileSync(path.join(ROOT, LEDGER_REL), 'utf8')); }
 ok('L-① 台账在场且可解析，条目数 ≥17', !!data && Array.isArray(data.findings) && data.findings.length >= 17,
   data && data.findings ? String(data.findings.length) : '读不到');
 const issues = validateLedger(data);
-ok('L-② 每条发现都有 id/source/证据/来源/状态（零字段缺失）', issues.length === 0, issues.slice(0, 3).join(' | '));
+ok('L-② 每条发现都有 id/source/证据/来源/状态，且状态在词表 {fixed,deferred} 内（零字段缺失 + 零状态漂移）', issues.length === 0, issues.slice(0, 3).join(' | '));
 
 const F = (data && data.findings) || [];
 const sources = [...new Set(F.map((f) => f.source))];
@@ -156,9 +167,15 @@ const badNext = validateLedger(Object.assign({}, data, {
 const badFix = validateLedger(Object.assign({}, data, {
   findings: F.map((f, i) => i === 0 ? Object.assign({}, f, { status: 'fixed', fix_evidence: '', challenge: '' }) : f),
 }));
-ok('L-⑭ 反恒真：好样本零问题，坏样本三条都给相反答案',
-  good.length === 0 && has(badEvidence, '证据缺失') && has(badNext, '下一步缺失') && has(badFix, '修了没证据'),
-  'good=' + good.length + ' badEvidence=' + badEvidence.length + ' badNext=' + badNext.length + ' badFix=' + badFix.length);
+// R730：词表白名单的反恒真腿 —— 合成一条 status=open（真实事故里出现过的漂移值），必须被抓
+const badStatus = validateLedger(Object.assign({}, data, {
+  findings: F.map((f, i) => i === 0 ? Object.assign({}, f, { status: 'open' }) : f),
+}));
+ok('L-⑭ 反恒真：好样本零问题，坏样本四条都给相反答案（含状态词表外）',
+  good.length === 0 && has(badEvidence, '证据缺失') && has(badNext, '下一步缺失') && has(badFix, '修了没证据')
+  && has(badStatus, '状态词表外'),
+  'good=' + good.length + ' badEvidence=' + badEvidence.length + ' badNext=' + badNext.length
+  + ' badFix=' + badFix.length + ' badStatus=' + badStatus.length);
 
 console.log('\n============================================================');
 console.log('===== 审计发现台账守卫结果：' + pass + ' 通过 / ' + problems.length + ' 失败 =====');
