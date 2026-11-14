@@ -1670,11 +1670,16 @@ Page({
       const lumps = d.lumps || [];
       const assets = d.assets || [];
       const lumpSum = lumps.reduce((s, x) => s + (x.amount_fen || 0), 0);
+      // 🔴 R732：摘要必须跟随摊销开关。getAmortSchedule 一直返回 amortize_switch_on（服务端权威），
+      //   本页原来没消费它 ⇒ 开关关着仍报「分月摊 ¥4,333」，老板拿去和月报（0）对不上。
+      //   fail-closed：字段缺失（老云函数版本）按「未启用」显示，宁可多说一句也不谎报已计入。
+      const amortOn = d.amortize_switch_on === true;
+      const amortSumFn = amortOn ? TERMS.calcMethod.assetAmortSum : TERMS.calcMethod.assetAmortSumOff;
       this.setData({
         assetSummaryLump: lumps.length > 0
           ? TERMS.calcMethod.assetLumpSum(lumps.length, api.fenToYuan(lumpSum, 2)) : '',
         assetSummaryAmort: assets.length > 0
-          ? TERMS.calcMethod.assetAmortSum(assets.length, api.fenToYuan(d.total_amount_fen || 0, 2)) : '',
+          ? amortSumFn(assets.length, api.fenToYuan(d.total_amount_fen || 0, 2)) : '',
       });
     } catch (e) {
       this.setData({ assetSummaryLump: '', assetSummaryAmort: '' });

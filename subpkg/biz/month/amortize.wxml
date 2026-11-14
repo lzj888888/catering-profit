@@ -2,10 +2,13 @@
   <!-- 归档月只读提示 -->
   <view class="archived-bar" wx:if="{{isArchive}}">{{t.archiveReadonly}}</view>
 
-  <!-- 本月摊销合计（分期摊销的当月影响） -->
+  <!-- 本月摊销合计（分期摊销的当月影响）
+       🔴 R732：开关关闭时标题改口径并补一句说明 —— 数字仍是台账应摊额（事实），
+         但必须让人一眼看出「这笔钱这个月没进利润」，否则与上面那个开关在同一屏打架。 -->
   <view class="card2">
-    <view class="muted">{{t.monthTotal}}</view>
+    <view class="muted">{{amortizeOn ? t.monthTotal : t.monthTotalOff}}</view>
     <view class="result-num">{{t.cur}}{{totalYuan}}</view>
+    <view class="muted" wx:if="{{!amortizeOn}}">{{t.monthTotalOffHint}}</view>
   </view>
 
   <!-- R234/J4c：🔴 **本句 134 字 —— 全站最长的一条提示**，原先以 `class="hint scope-hint"`（复合 class）

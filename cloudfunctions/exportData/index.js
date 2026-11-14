@@ -151,6 +151,18 @@ function buildMonthlySheets(c) {
     const gapFen = real - refMat;
     const diffFen = row.profit_diff_fen != null ? nz(row.profit_diff_fen) : gapFen + amort;
 
+    // 🔴 R732（演练 D-⑧ 判红修复）：金额与备注必须**同源**。
+    //   旧写法：金额取 row.amortize_fen，备注只看 amOn ⇒ 老账（switch_used 缺失、本字段上线前归档的月份）
+    //   会出现「这一行显示 ¥4,333，备注却写『摊销开关关闭 ⇒ 本月不计入』」—— 一句话否掉同一行左边的数。
+    //   现在按**金额实际有没有计入**措辞，四种组合各自说得清，不再有自相矛盾的行。
+    const amortNote = amort > 0
+      ? (amOn
+        ? '资产台账按分摊月数逐笔计算（见「摊销来源」）'
+        : '该月按旧口径落库：台账摊销已计入，当前摊销开关为关（历史月不改）')
+      : (amOn
+        ? '摊销开关已开，但本月台账无应摊资产'
+        : '摊销开关关闭 ⇒ 本月不计入');
+
     // —— 表1：利润表（从上往下加减，能对上账）——
     const profitRows = [
       ['营业收入', yuan(incTotal), '收入明细逐项累加（见「收入费用明细」）'],
@@ -174,7 +186,7 @@ function buildMonthlySheets(c) {
         refSrc === 'reverse'
           ? '参考口径已用倒轧值 ⇒ 两者相等，无差异'
           : (invOn ? '库存开关开：真实消耗 = 期初 + 采购 − 期末' : '库存开关关：两者相等，无差异')],
-      ['　减：当月摊销', yuan(amort), amOn ? '资产台账按分摊月数逐笔计算（见「摊销来源」）' : '摊销开关关闭 ⇒ 本月不计入'],
+      ['　减：当月摊销', yuan(amort), amortNote],
       ['＝ 全要素真实利润', yuan(realP), '= 经营参考利润 − 消耗差异 − 当月摊销'],
       ['', '', ''],
       ['〔补充指标〕', '', ''],
@@ -210,7 +222,24 @@ function buildMonthlySheets(c) {
         a.name || '', yuan(valFen), a.start_month || '', months || '', a.terminate_month || '', perYuan,
       ];
     });
-    assetRows.push(['合计', '本月摊销合计（服务端计算）', '', '', '', '', yuan(amort)]);
+    assetRows.push(['合计', '本月摊销合计（实际计入）', '', '', '', '', yuan(amort)]);
+    // 🔴 R732（演练 D-⑥ 判红修复）：开关关闭时，上面每笔资产的「月均参考」仍有数字（台账是事实），
+    //   而合计行是**实际计入** 0 ⇒ 老板拿计算器把明细一加，得 4,333.33，跟合计行 0 对不上，
+    //   会以为导出件算错了（实际是"台账该摊多少"与"本月真扣了多少"两件事）。
+    //   ⇒ 不一致时补一条**差异行**，把台账应收额单独列出来，两份数各自都能对上。
+    //   ⚠️ 只在「开关关 且 台账确实有应摊额」时插入 ⇒ 开关打开时表结构与既往完全一致（不扰既有对账）。
+    if (!amOn) {
+      const ledgerAmortSum = assets
+        .filter((a) => a.mode !== 'lump')
+        .reduce((s, a) => {
+          const months = nz(a.total_months);
+          const valFen = a.value_fen != null ? nz(a.value_fen) : nz(a.total_value);
+          return s + (months > 0 ? Math.round(valFen / months) : 0);
+        }, 0);
+      if (ledgerAmortSum > 0) {
+        assetRows.push(['合计', '台账应收摊销（开关关闭·本月未计入利润）', '', '', '', '', yuan(ledgerAmortSum)]);
+      }
+    }
     assetRows.push(['合计', '本月一次性投入（本月计入）', '', '', '', '', yuan(lump)]);
 
     // —— 表4：口径说明（每个数怎么来的 + 两个开关状态）——

@@ -3074,6 +3074,11 @@ const TERMS = {
   amortizePage: {
     title: '一次性投入',
     monthTotal: '本月摊销合计',
+    // 🔴 R732：开关就在本页，关掉后若顶部仍裸报「本月摊销合计 ¥4,333」，同一屏上下自相矛盾
+    //   （上面开关是关，下面说这个月摊了 4,333）——李老师问的"开关到底生没生效"正是这类观感。
+    //   关掉时标题改口径：数字仍显示（台账该摊多少是事实），但一眼看出它没进利润。
+    monthTotalOff: '本月摊销合计（开关关闭·不计入利润）',
+    monthTotalOffHint: '开关关闭 ⇒ 这笔不计入本月利润',
     add: '新增摊销资产',
     name: '名称',
     value: '原值（元）',
@@ -3361,6 +3366,9 @@ const TERMS = {
     // 摘要两行：笔数与金额均由后端算，前端只拼文案
     assetLumpSum: (n, amt) => `一次算清 ¥${amt}（${n} 笔）`,
     assetAmortSum: (n, amt) => `分月摊 ¥${amt}（${n} 项）`,
+    // 🔴 R732：开关关闭时摘要必须带「未启用」—— getAmortSchedule 早就把 amortize_switch_on 返回了，
+    //   前端不消费 ⇒ 开关关着还在录入页告诉老板「分月摊 ¥4,333」，和月报的 0 对不上。
+    assetAmortSumOff: (n, amt) => `分月摊 ¥${amt}（${n} 项）· 未启用，不计入利润`,
     assetSumEmpty: '还没登记过，点上面去登记',
     assetGo: '去登记 / 管理',
     switchSaved: '已切换',

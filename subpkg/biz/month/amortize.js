@@ -17,6 +17,9 @@ Page({
     t: {
       title: TERMS.amortizePage.title,
       monthTotal: TERMS.amortizePage.monthTotal,
+      // R732：开关关闭时的合计标题与说明（同一屏不能既说"关"又说"摊了 4,333"）
+      monthTotalOff: TERMS.amortizePage.monthTotalOff,
+      monthTotalOffHint: TERMS.amortizePage.monthTotalOffHint,
       // round107：本月一次算清清单
       lumpSectionTitle: TERMS.amortizePage.lumpSectionTitle,
       lumpSectionHint: TERMS.amortizePage.lumpSectionHint,

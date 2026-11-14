@@ -317,6 +317,9 @@ const CASES = [
   { key: 'check_r714_decisions', rel: 'tools/check_r714_decisions.js' },  // 20 条（A 4 + B 7 + C 3 + D 6 加权算法层）
   { key: 'check_sales_sample_facts', rel: 'tools/check_sales_sample_facts.js' }, // 10 条（A 1 + B 3 + C 3 + D 3 反恒真）
   { key: 'check_r729_weighted_wiring', rel: 'tools/check_r729_weighted_wiring.js' }, // 27 条（A 8 + B 5 + C 3 + D 5 全渠道加权 + E 6 全渠道销量榜）
+  // R731 新增时漏登记（本轮 R732 补记，诚实标注 —— 它此前不受断言数守卫保护）
+  { key: 'check_island_back', rel: 'tools/check_island_back.js' }, // 25 条（A 判据行为面 + B 路由纯函数 + C 三页接线 + D 反恒真 + E 覆盖面）
+  { key: 'check_amort_switch_matrix', rel: 'tools/check_amort_switch_matrix.js' }, // 45 条（A 引擎 + B 台账 + C 快照 + D 导出 + E 沙盘 + F 11 页 + G 变异）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];
