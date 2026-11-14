@@ -262,6 +262,9 @@ Page({
       tplMatchApply: TERMS.card.tplMatchApply,
       tplNoMatchTip: TERMS.card.tplNoMatchTip,
       tplSuggestTip: TERMS.card.tplSuggestTip,   // R677：有相关候选时只指路
+      // R731：已套用模板的撤销口文案
+      tplAppliedTip: TERMS.card.tplAppliedTip,
+      tplClearBtn: TERMS.card.tplClearBtn,
       templateHint: TERMS.card.templateHint,
       // ── R234/J4f 行内长提示折叠（本页 1 处）──
       // 🔴 三处登记的第二处：漏映射 ⇒ 页面渲染成**空白**且零报错（R124 同族）
@@ -370,6 +373,11 @@ Page({
     tplMatchName: '',     // 匹配到的标准菜名（提示语里显示）
     tplNoMatch: false,    // 菜名填了但库里没有 ⇒ 给「自己加原料」的引导
     tplSuggest: 0,        // 库里**有相关的**（如自制/外购两道）⇒ 只指路，不替老板选
+    // 🔴 R731：模板**已套用**标记 —— 有它才有「清除」入口。
+    //   为什么必须有：套用会把 lines 整块换成模板行（applyTplToCard），原状是**不可撤销**的
+    //   ⇒ 老板误点一次只能退出重进（连已填的菜名/价格一起丢）。改前页面没有任何撤销口。
+    tplApplied: false,
+    tplAppliedName: '',   // 已套用的模板菜名（提示语里显示是哪道）
     // 🔴 R675：品类默认模板（catOptions/catPicked/catYieldDefault/catLabel）与
     //   燃气分摊（energyOn/energyFen）、估算卡横幅（hasPreset/estBanner）**全部删除**。
     //   原因见 edit.wxml 顶部注释。出净率改由模板行自带 + 选原料时按原料自动带出。
@@ -881,7 +889,12 @@ Page({
     //   mode B 时顺手把专业项展开（核算模式 / 批量产出就在那一区，不展开老板看不到、改不了）。
     const tplMode = tpl.mode === 'B' ? 'B' : 'A';
     const batch = Number(tpl.batch_output);
-    const patch = { lines: renumber(lines), tplPicked: pickedIdx, cardType: '1', calcMode: tplMode };
+    const patch = {
+      lines: renumber(lines), tplPicked: pickedIdx, cardType: '1', calcMode: tplMode,
+      // 🔴 R731：置「已套用」标记 —— 有它页面才渲染「清除模板内容」。
+      //   套用是**覆盖式**的（lines 整块被模板行替换），没有这个撤销口就只能退出重进。
+      tplApplied: true, tplAppliedName: tpl.dish_name || '',
+    };
     if (!keepName) patch.name = tpl.dish_name;      // 自动匹配时保留老板输入的菜名
     if (tplMode === 'B') {
       patch.batchOutput = batch > 0 ? String(batch) : '';
@@ -901,6 +914,39 @@ Page({
     }
     // 套过了就清掉匹配提示（配料区已经不空了）
     this.setData({ tplMatchKey: '', tplMatchName: '', tplNoMatch: false, tplSuggest: 0 });
+  },
+
+  // 🔴 R731（李老师 2026-11-14 真机原话）：「不小心点成套用模板了，我现在要把它清了，
+  //   你现在又没有清除这个套用模板这个选项，整个我还得重新退出去重新进来」。
+  //   根因：`applyTplToCard` 是**覆盖式**的（lines 被模板行整块替换）⇒ 原状不可撤销，页面无任何出口。
+  //   本方法补撤销口。边界三条（都不是可选）：
+  //     ① 只清**配料行**：菜名是老板自己输的、售价与模板无关 ⇒ 一律保留；
+  //     ② 已填单价时**先确认**：清掉的可能是他真金白银填过的数，一点就没比误套更气人；
+  //     ③ 模式与批量产出一并复位：模板可能把 calcMode 切到 B（火锅锅底这类），
+  //        留着会让「整批料钱当一道菜」继续算错（与 R317 同一个坑，只是反方向）。
+  onClearTpl() {
+    const hasPrice = (this.data.lines || []).some((l) => String((l && l.unit_price_yuan) || '').trim());
+    const doClear = () => {
+      this.setData({
+        lines: renumber([emptyLine()]),   // 与新建态初始行**同一个工厂**，不另造形状
+        tplApplied: false,
+        tplAppliedName: '',
+        tplPicked: -1,                    // picker 回到「再选这道菜」，否则看着像没清
+        calcMode: 'A',
+        batchOutput: '',
+      });
+      this.refreshSpecHints();
+      this.checkAmounts();
+    };
+    if (!hasPrice) { doClear(); return; }
+    wx.showModal({
+      title: TERMS.card.tplClearTitle,
+      content: TERMS.card.tplClearConfirm,
+      // ⚠️ confirmText / cancelText 上限 4 字（tools/check_modal_button_len.js 红线）
+      confirmText: TERMS.card.tplClearOk,
+      cancelText: TERMS.card.tplClearCancel,
+      success: (r) => { if (r.confirm) doClear(); },
+    });
   },
 
   // 🔴 R675（李老师：「这道菜属于哪类」可以删除了）：原 `onPickCategory` / `onClearCategory`

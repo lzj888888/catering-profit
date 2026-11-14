@@ -18,6 +18,9 @@ const BE = require('../../../utils/breakeven.js');
 // R444 收口：金额可读性判定（纯函数）—— 不静默清洗，读不成必须说出来（与 #25 同口径）
 // 🔴 R488：利润标题/副标题的**单一来源** —— 与首页、月首页同一份判断（名随数走）
 const profitLabel = require('../../../utils/profitLabel.js');
+// 🔴 R731：孤岛页兜底返回 —— 本页是 m1 分享卡片的落地页（shareCard.PATH.m1），
+//   从分享 / 最近使用直接落地时页面栈深度 = 1 ⇒ 微信不给「←」箭头，必须自己补出口。
+const islandBack = require('../../../utils/islandBack.js');
 // 🔴 R661（Phase 2b）：「在亏」的判定必须与菜品卡列表页同一个来源，不许在本页再定义一次
 const lossSum = require('../../../utils/lossSummary.js');
 // ⚠️ 截断判定复用本文件已有的 dh(=dataHealth)：我一开始另引一个 dishReview 也叫 dh ⇒ 重复声明，已删。
@@ -54,6 +57,8 @@ const ANOM_SHOW_MAX = 5;
 
 Page({
   data: {
+    // R731：孤岛页标记（页面栈深度 = 1 时为 true ⇒ 渲染「回首页」条，见 onShow）
+    island: false,
     // 🔴 R314：体检卡「依据」默认收起（老板先看结论/动作，想追依据再展开）
     beMore: false,
     // A11：摊销三件套（getLedger.amort_extra 的展示态）/ A13：客流与会员
@@ -61,6 +66,9 @@ Page({
     t: {
       beMoreShow: TERMS.card.beMoreShow,
       beMoreHide: TERMS.card.beMoreHide,
+      // R731：孤岛条文案（判据在 utils/islandBack.js）
+      islandBack: TERMS.nav.islandBack,
+      islandBackTip: TERMS.nav.islandBackTip,
       // R433：行业指标对照卡文案
       indTitle: TERMS.modules.m1.indTitle,
       indBandLbl: TERMS.modules.m1.indBandLbl,
@@ -270,6 +278,15 @@ Page({
     this.setData({ month });
     this.load();
   },
+
+  // R731：孤岛页判据（页面栈深度 = 1 ⇒ 无系统「←」箭头）。
+  //   必须放 onShow 而不是 onLoad：本页 navigateTo 到子页再返回时栈深会变，需每次重算。
+  onShow() {
+    this.setData({ island: islandBack.need() });
+  },
+
+  // R731：孤岛态点「回首页」—— 本页属 M1，回「核算」tab
+  onIslandBack() { islandBack.goHome('m1'); },
 
   async load() {
     this.setData({ loading: true });

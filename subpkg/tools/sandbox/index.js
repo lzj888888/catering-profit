@@ -17,6 +17,9 @@ const ss = require('../../../utils/shopSwitcher.js');   // R443：草稿必须�
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 // 🔴 R395：分享卡片标题装配（纯函数单源）—— 见 `utils/shareCard.js` 头注
 const shareCard = require('../../../utils/shareCard.js');
+// 🔴 R731：孤岛页兜底返回 —— 本页是 m2 分享卡片的落地页（shareCard.PATH.m2），
+//   从分享 / 最近使用直接落地时页面栈深度 = 1 ⇒ 微信不给「←」箭头，必须自己补出口。
+const islandBack = require('../../../utils/islandBack.js');
 // 🔴 R550：产品级开关单源（见 utils/featureFlags.js）。PROMO_ENABLED=false ⇒ 沙盘「做活动会怎样」整卡隐藏。
 const { PROMO_ENABLED } = require('../../../utils/featureFlags.js');
 // 🔴 R550：矩阵种子的 key / 字段映射单源（utils/matrixSeed.js）—— 首页写、矩阵页读，绝不各写一份。
@@ -113,7 +116,12 @@ const mkRow = (k, nameMap, noteMap, extra) =>
 
 Page({
   data: {
+    // R731：孤岛页标记（页面栈深度 = 1 时为 true ⇒ 渲染「回首页」条，见 onShow）
+    island: false,
     t: {
+      // R731：孤岛条文案（判据在 utils/islandBack.js）
+      islandBack: TERMS.nav.islandBack,
+      islandBackTip: TERMS.nav.islandBackTip,
       // R193：本地草稿（漏登记 ⇒ 页面静默空白，本仓 R189 P2-1 同族）
       draftRestored: M.draftRestored,
       clearDraft: M.clearDraft,
@@ -628,6 +636,13 @@ Page({
   },
 
   onLoad() { this._seq = 0; this.bootstrap(); },
+
+  // R731：孤岛页判据（页面栈深度 = 1 ⇒ 无系统「←」箭头）。
+  //   放 onShow：本页 navigateTo 到矩阵页 / 方案页再返回时栈深会变，需每次重算。
+  onShow() { this.setData({ island: islandBack.need() }); },
+
+  // R731：孤岛态点「回首页」—— 本页属 M2，回「核算」tab
+  onIslandBack() { islandBack.goHome('m2'); },
   onUnload() { if (this._timer) clearTimeout(this._timer); },
 
   async bootstrap() {

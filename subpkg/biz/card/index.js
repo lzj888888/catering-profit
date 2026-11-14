@@ -11,6 +11,9 @@ const exportFile = require('../../../utils/exportFile.js');   // R265：导出�
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 // 🔴 R395：分享卡片标题装配（纯函数单源）—— 见 `utils/shareCard.js` 头注
 const shareCard = require('../../../utils/shareCard.js');
+// 🔴 R731：孤岛页兜底返回 —— 本页是 m3 分享卡片的落地页（shareCard.PATH.m3），
+//   从分享 / 最近使用直接落地时页面栈深度 = 1 ⇒ 微信不给「←」箭头，必须自己补出口。
+const islandBack = require('../../../utils/islandBack.js');
 
 // 🔴 R309：成本变动标签（纯展示，不改任何计算）
 //   食材涨价是餐饮最痛的变量，而**成本卡的版本模型里已经存着两版的成本** ——
@@ -54,9 +57,14 @@ const MARGIN_OPTIONS = [
 
 Page({
   data: {
+    // R731：孤岛页标记（页面栈深度 = 1 时为 true ⇒ 渲染「回首页」条，见 onShow）
+    island: false,
     t: {
       costDriftUp: TERMS.card.costDriftUp,
       costDriftDown: TERMS.card.costDriftDown,
+      // R731：孤岛条文案（判据在 utils/islandBack.js）
+      islandBack: TERMS.nav.islandBack,
+      islandBackTip: TERMS.nav.islandBackTip,
       listTitle: TERMS.card.listTitle,
       addCard: TERMS.buttons.addCostCard,
       totalCost: TERMS.card.totalCost,
@@ -172,7 +180,15 @@ Page({
     this.setData({ hintFold: next });
   },
 
-  onShow() { this.load(); },
+  onShow() {
+    // R731：先判孤岛（栈深 = 1），再 load。放 onShow 而不是 onLoad ——
+    //   从本页 navigateTo 到编辑页再返回，栈深会变回 1，必须每次重算才准。
+    this.setData({ island: islandBack.need() });
+    this.load();
+  },
+
+  // R731：孤岛态点「回首页」—— 本页是 M3，回「配方」hub（tabBar 页，必须 switchTab）
+  onIslandBack() { islandBack.goHome('m3'); },
 
   async load() {
     // R566：重载回默认视图（否则上次「只看亏本」会静默延续，老板以为卡丢了）

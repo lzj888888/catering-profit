@@ -47,15 +47,21 @@
 .row-hint { font-size: 30rpx; color: #6B6157; padding: 0 0 10rpx 220rpx; line-height: 1.4; }
 .row-in-wrap {
   flex: 1 1 auto; display: flex; align-items: center;
-  border: 1rpx solid #dfe5ec; border-radius: 10rpx; padding: 6rpx 14rpx; background: #FFFDF8;
+  border: 1rpx solid #dfe5ec; border-radius: 10rpx; padding: 6rpx 12rpx; background: #FFFDF8;
   margin-right: 12rpx; min-height: 88rpx;
 }
 /* 🔴 R543（李老师 2026-10-27）：「输个 5 万只出来 5000」——
    年限框原固定 168rpx（只放「5 年」两个字），把金额框挤到 200rpx 出头；金额又是右对齐 ⇒
-   多位数只露得出尾巴几位。⇒ 年限框收到 110rpx，金额框吃满剩余宽度并保底 260rpx。 */
-.row-in-wrap.yr { flex: 0 0 110rpx; }
-.row-in { flex: 1 1 auto; font-size: 30rpx; color: #1e3a5f; text-align: right; min-height: 40rpx; }
-.row-unit { font-size: 30rpx; color: #776C5E; margin-left: 6rpx; }
+   多位数只露得出尾巴几位。⇒ 年限框收到 110rpx，金额框吃满剩余宽度并保底 260rpx。
+   🔴 R731（李老师 2026-11-14 真机）：「年限那框感觉没留完整，因为它没露出边来」——
+   110rpx 放「12 年」时数字与「年」字左右都贴框线（内净宽只剩 66rpx）。⇒ 收到 132rpx：
+   数字区 66→88rpx，够「12」，且左右各留出可见留白。 */
+.row-in-wrap.yr { flex: 0 0 132rpx; }
+/* 🔴 R731：金额框内数字**不再贴右边框**。右对齐是财务习惯（保留），
+   但原来 input 右端直接顶到「元」字、数字再往右就是框线 ⇒ 曲屏机上看着像被裁。
+   padding-right 给数字留 4rpx 呼吸，配合 .row-unit 的 margin-left 10rpx（原 6）共 14rpx 间隙。 */
+.row-in { flex: 1 1 auto; font-size: 30rpx; color: #1e3a5f; text-align: right; min-height: 40rpx; padding-right: 4rpx; }
+.row-unit { font-size: 30rpx; color: #776C5E; margin-left: 10rpx; }
 .row-del { flex: 0 0 auto; font-size: 30rpx; color: #776C5E; padding: 16rpx 0 16rpx 8rpx; }
 .add-row { font-size: 30rpx; color: #1e3a5f; min-height: 88rpx; line-height: 88rpx; }
 .row-val { flex: 1 1 auto; font-size: 30rpx; color: #1e3a5f; text-align: right; font-weight: 600; }

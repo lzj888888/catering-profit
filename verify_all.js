@@ -4,7 +4,7 @@
 //       + R727 销量样例事实守卫（tools/check_sales_sample_facts.js，四张平台表在仓 + 粒度/规格实跑解析，防「样例待提供」第三次复发）
 //       + R726 算钱口径守卫（tools/check_r714_decisions.js，R714 三件口径由台账四票机器化：
 //         名单 ≡ 落地、E-6 真跑非有限 coverage 抑制、E-1/E-2 文案双副本与上屏、含反恒真）
-// 串联：314 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：315 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1775,6 +1775,9 @@ const SUITES = [
   ['sales-sample-facts', 'tools/check_sales_sample_facts.js'],
   // R729 · 加权双口径接线：服务端免费档聚合标量 + 对账页并列展示与降级（页面桩真跑）。
   ['weighted-wiring', 'tools/check_r729_weighted_wiring.js'],
+  // R731 · 孤岛页兜底返回：分享卡片 / 最近使用 / 微信重启恢复到子页面时栈深 = 1 ⇒ 无系统「←」箭头，
+  //   `utils/islandBack.js` 判据行为面 + 三个分享落地页接线面 + 反恒真 + shareCard.PATH 覆盖面。
+  ['island-back', 'tools/check_island_back.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

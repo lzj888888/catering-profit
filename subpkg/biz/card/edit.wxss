@@ -277,6 +277,17 @@
 .tpl-nomatch { font-size: 26rpx; color: #776C5E; line-height: 1.6;
   background: #f6f8fa; border-radius: 12rpx; padding: 20rpx 24rpx; margin: 0 0 16rpx; }
 
+/* 🔴 R731：已套用模板 + 清除入口。
+   与 .tpl-match 同形（左 6rpx 竖条 = "这是说明，不是字段"），但用**暖色**：
+   蓝色那条是"建议你可以做"，这条是"已经发生了一个可撤销的动作"——两件事不能长一样。
+   字号 28rpx 是门禁下限（G1）；右侧「清除模板」padding 撑到 ≥88rpx 触控下界（G2）。 */
+.tpl-applied { display: flex; align-items: center; justify-content: space-between;
+  background: #FBF6EC; border-left: 6rpx solid #a45f00; border-radius: 12rpx;
+  padding: 16rpx 20rpx 16rpx 24rpx; margin: 0 0 16rpx; }
+.tpl-applied-txt { font-size: 28rpx; color: #6B4A10; flex: 1 1 auto; line-height: 1.5; }
+.tpl-applied-clear { font-size: 28rpx; font-weight: 600; color: #a45f00;
+  flex: 0 0 auto; margin-left: 20rpx; padding: 22rpx 8rpx; }
+
 /* R692（易填性）：售价预填来源说明 —— 28rpx 是门禁下限（G1），不再往下压 */
 .prefill-note { font-size: 28rpx; color: #57504A; line-height: 1.5; padding: 6rpx 0 0; }
 

@@ -1,3 +1,13 @@
+<!-- 🔴 R731（李老师 2026-11-14 真机）：孤岛页兜底返回。
+     从分享卡片 / 最近使用 / 微信重启恢复直接落到本页时，页面栈深度 = 1
+     ⇒ 微信不渲染系统「←」返回箭头，页面自身也没有出口 ⇒ 老板出不去。
+     放在三态（loading / 有结果 / 空态）**之外**：loading 卡住时更需要这个出口。
+     正常点击（核算 tab → 本月结果）栈深 = 2，系统自带「←」⇒ 本条不渲染。 -->
+<view class="island-bar" wx:if="{{island}}" bindtap="onIslandBack">
+  <text class="island-arrow">‹</text>
+  <text class="island-txt">{{t.islandBack}}</text>
+  <text class="island-tip">{{t.islandBackTip}}</text>
+</view>
 <!-- 修 1：三态拆分 —— loading / 有结果 / 空态（无账本或接口异常，中性表述 + 去录入出口）
      R298·C1 修：结果分支判据由 `r` 改为 `hasLedger`（账本存在性）—— 缘由见文末空态分支处注释。 -->
 <view class="container safe-bottom" wx:if="{{loading}}">

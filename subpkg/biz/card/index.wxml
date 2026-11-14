@@ -1,4 +1,15 @@
 <view class="container safe-bottom sb-page">
+  <!-- 🔴 R731（李老师 2026-11-14 真机）：孤岛页兜底返回。
+       为什么要有：从分享卡片 / 最近使用 / 微信重启恢复直接落到本页时，页面栈深度 = 1
+       ⇒ 微信不渲染系统「←」返回箭头，而页面自身也没有出口 ⇒ 老板出不去，只能杀进程重进。
+       正常点击（配方 hub → 本页）栈深 = 2，系统自带「←」⇒ 本条不渲染，零干扰。
+       判据单源 utils/islandBack.js；实测证据 review/evidence/r731_navstack_probe.js。 -->
+  <view class="island-bar" wx:if="{{island}}" bindtap="onIslandBack" hover-class="hub-card-tap">
+    <text class="island-arrow">‹</text>
+    <text class="island-txt">{{t.islandBack}}</text>
+    <text class="island-tip">{{t.islandBackTip}}</text>
+  </view>
+
   <!-- ===== R299：数据截断的**可见降级** =====
        云函数出参 `truncated`（`dataAdapter.js::listAll` 契约要求"必须透传到出参、可见降级"）。
        成本卡是版本模型（只 INSERT）⇒ 卡多/改得勤的店会先撞上限；截断时列表少卡且**无排序**，

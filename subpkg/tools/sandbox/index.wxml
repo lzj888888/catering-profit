@@ -1,3 +1,12 @@
+<!-- 🔴 R731（李老师 2026-11-14 真机）：孤岛页兜底返回。
+     从分享卡片 / 最近使用 / 微信重启恢复直接落到本页时，页面栈深度 = 1
+     ⇒ 微信不渲染系统「←」返回箭头，页面自身也没有出口 ⇒ 老板出不去。
+     正常点击（核算 tab → 经营盈亏沙盘）栈深 = 2，系统自带「←」⇒ 本条不渲染。 -->
+<view class="island-bar" wx:if="{{island}}" bindtap="onIslandBack">
+  <text class="island-arrow">‹</text>
+  <text class="island-txt">{{t.islandBack}}</text>
+  <text class="island-tip">{{t.islandBackTip}}</text>
+</view>
 <view class="container safe-bottom {{stickKpi ? 'has-stick' : ''}}" wx:if="{{!loading}}">
 
   <!-- M2v1.2：我的方案入口（标题栏右侧常驻按钮） -->

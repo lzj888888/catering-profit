@@ -307,3 +307,17 @@ input, textarea { min-height: 88rpx; line-height: 1.5; }
 .sb-badge.warn { background: #fff3e0; color: #a45f00; }
 .sb-badge.bad { background: #fdecea; color: #c0392b; }
 .sb-badge.na { background: #F6F3EC; color: #6B6157; }
+
+/* ===== 🔴 R731 · 孤岛页兜底返回条 =====
+   什么时候出现：页面**直接落地**打开（分享卡片 / 最近使用 / 微信重启恢复）⇒ 页面栈深度 = 1
+   ⇒ 微信不渲染系统「←」箭头，而页面自身也无出口 ⇒ 老板被困。
+   正常点击进入（栈深 ≥2）时**不渲染**，所以它不是常驻横杠。
+   判据单源：utils/islandBack.js::need()；三个落地页接线见 check_island_back.js 守卫。 */
+.island-bar {
+  display: flex; align-items: center;
+  min-height: 80rpx; padding: 0 24rpx;
+  background: #FFFDF8; border-bottom: 1rpx solid #E8E1D2;
+}
+.island-arrow { font-size: 34rpx; color: #1e3a5f; margin-right: 10rpx; line-height: 1; }
+.island-txt { font-size: 28rpx; color: #1e3a5f; font-weight: 600; }
+.island-tip { flex: 1 1 auto; margin-left: 12rpx; font-size: 28rpx; color: #776C5E; text-align: right; }

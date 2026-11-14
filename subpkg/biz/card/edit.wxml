@@ -93,6 +93,13 @@
     </picker>
     <text class="muted">{{t.templateHint}}</text>
   </view>
+  <!-- 🔴 R731（李老师 2026-11-14 真机）：「点错了套用模板，想清掉但页面没有这个选项，
+       整个我还得重新退出去重新进来」。套用是覆盖式的（lines 整块被模板行替换）⇒ 补撤销口。
+       只清配料行，菜名/售价保留；已填单价时先确认（见 edit.js::onClearTpl）。 -->
+  <view class="tpl-applied" wx:if="{{!isEdit && cardType === '1' && tplApplied && !lean}}">
+    <text class="tpl-applied-txt">{{t.tplAppliedTip}}「{{tplAppliedName}}」</text>
+    <text class="tpl-applied-clear" catchtap="onClearTpl">{{t.tplClearBtn}}</text>
+  </view>
   <!-- 🔴 R676：输完菜名自动匹配模板（替代已删的品类选择器）。
        只在「配料区还是空的」时候提示 —— 已填了内容再提示，一点就覆盖老板的手工录入。 -->
   <view class="tpl-match" wx:if="{{!isEdit && cardType === '1' && tplMatchKey && !lean}}">
