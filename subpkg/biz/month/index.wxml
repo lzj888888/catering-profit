@@ -79,8 +79,13 @@
   <block wx:if="{{result}}">
     <!-- 快捷入口 -->
     <button class="btn primary" bindtap="goInput">{{t.goInput}}</button>
-    <button class="btn" wx:if="{{switches.inventorySwitchOn}}" bindtap="goInventory">{{t.goInventory}}</button>
-    <button class="btn" wx:if="{{switches.amortizeSwitchOn}}" bindtap="goAmortize">{{t.goAmortize}}</button>
+    <!-- 🔴 R733：这两个是**功能入口**，不是开关的状态显示 ⇒ 不能拿开关当闸门。
+         开关的语义是「计不计入利润」，不是「能不能管理台账」。原来开关一关按钮就凭空消失，
+         而录入页的「管理摊销资产」并无此限制 ⇒ 同一功能两页入口条件不一致；
+         老板关了开关想补登历史资产/盘点时，会找不到入口（还会以为功能被砍了）。
+         进去之后由各页自己说明"当前未启用"（摊销页 R732 已做，库存页 R733 补上）。 -->
+    <button class="btn" bindtap="goInventory">{{t.goInventory}}</button>
+    <button class="btn" bindtap="goAmortize">{{t.goAmortize}}</button>
     <button class="btn ghost" bindtap="goResult">{{t.goResult}}</button>
     <button class="btn ghost" wx:if="{{canArchive}}" bindtap="onArchive">{{t.archiveNow}}</button>
     <button class="btn ghost" wx:if="{{canArchivePrev}}" bindtap="onArchivePrev">{{t.archivePrev}}</button>

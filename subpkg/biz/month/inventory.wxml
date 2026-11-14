@@ -3,6 +3,10 @@
     {{t.archiveReadonly}}<text wx:if="{{inGrace}}"> · {{t.graceNote}}</text>
   </view>
 
+  <!-- 🔴 R733：开关关着也能进本页（入口不再被 gate），但必须当场说清"这笔没在算利润"。
+       否则填完期初/采购/期末发现利润没变，会当成 bug —— 与 R732 摊销页同款处理。 -->
+  <view class="muted" wx:if="{{!inventorySwitchOn}}">{{t.offBar}}</view>
+
   <view class="field">
     <view class="lbl-col">
       <text class="lbl">{{t.opening}}</text>

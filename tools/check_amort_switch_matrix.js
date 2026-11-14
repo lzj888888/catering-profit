@@ -399,6 +399,35 @@ ck('F-⑩ 资产编辑页不做摊销金额计算（计算下沉引擎，开关�
   assetEditJs.indexOf('amortizeSwitchOn') < 0 && assetEditJs.indexOf('amortize_switch') < 0,
   'assetEdit.js 无开关判据');
 
+// 🔴 F-⑪ 入口可达性（R733 补的盲区）：F-⑨ 只证明"页内有新增按钮"，没证明"能走到那一页"。
+//   月报页原先把两个**功能入口**当开关的状态显示，写成 wx:if="{{switches.xxxSwitchOn}}"
+//   ⇒ 开关一关按钮凭空消失，老板想补登历史数据找不到门（还会以为功能被砍）。
+//   判据：goAmortize / goInventory 这两个 bindtap 所在的 button 不得带开关条件。
+const monthIdxWxml = read('subpkg/biz/month/index.wxml');
+function gateFree(wxml, handler) {
+  // 取出所有含该 handler 的 button 起始标签，逐个检查有没有 wx:if 里带 SwitchOn
+  const re = new RegExp(`<button[^>]*bindtap="${handler}"[^>]*>`, 'g');
+  const tags = wxml.match(re) || [];
+  if (!tags.length) return { ok: false, why: '未找到入口按钮' };
+  const gated = tags.filter((t) => /wx:if="\{\{[^}]*SwitchOn/.test(t));
+  return { ok: gated.length === 0, why: gated.length ? `被 gate ${gated.length} 个` : `${tags.length} 个入口均无开关条件` };
+}
+const gAmo = gateFree(monthIdxWxml, 'goAmortize');
+const gInv = gateFree(monthIdxWxml, 'goInventory');
+ck('F-⑪ 月报页「管理摊销资产」入口不被开关 gate（开关只管计不计入，不管能不能管台账）',
+  gAmo.ok, gAmo.why);
+ck('F-⑫ 月报页「录入库存」入口不被开关 gate（同 F-⑪，两页入口条件必须一致）',
+  gInv.ok, gInv.why);
+
+// 🔴 F-⑬ 入口放开后必须"进去就知道状态"：库存页开关关着要当场说明这笔没在算。
+//   否则老板填完期初/采购/期末发现利润没变，会当成 bug（与 R732 摊销页同款处理）。
+const invWxml = read('subpkg/biz/month/inventory.wxml');
+const invJs = read('subpkg/biz/month/inventory.js');
+ck('F-⑬ 库存页开关关着时有「未启用」说明（入口放开的前提条件，缺了就是半修）',
+  /wx:if="\{\{!inventorySwitchOn\}\}"/.test(invWxml)
+  && invWxml.indexOf('t.offBar') >= 0 && invJs.indexOf('TERMS.inventoryPage.offBar') >= 0,
+  'offBar 已接线（wxml 条件 + js 术语映射）');
+
 // ==================================================================
 // 组 G · 反恒真（证明这些断言不是"怎么写都过"）
 // ==================================================================

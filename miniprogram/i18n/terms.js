@@ -3053,6 +3053,10 @@ const TERMS = {
     closingAux: '白话：月底盘点，库房里还剩多少没用掉的',
     save: '保存库存',
     hintFormula: '保存后由服务端按库存倒轧计算真实消耗。',
+    // 🔴 R733：「录入库存」入口原本被开关 gate 住（开关关就进不来了），现在入口常开 ⇒
+    //   开关关着进来必须当场说明「这笔口径没在算」，否则老板填完发现利润没变会当成 bug。
+    //   ⚠️ 压在 18 字以内、用 .muted 不用 .hint：撞 R234/J4c 分层线（≥18 字必须折叠）。
+    offBar: '未启用：本月利润按你直接填的消耗算',
     // B：实时预览（纯前端读 getLedger.result.real_consume_fen，零后端改动）
     realConsumePreview: '本月真实原料消耗',
     realConsumePreviewNote: '倒轧 = 月初剩的 + 本月买的 − 月底剩的。你不用手算，保存后自动出数。',

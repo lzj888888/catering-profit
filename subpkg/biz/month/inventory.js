@@ -29,6 +29,8 @@ Page({
       closingAux: TERMS.inventoryPage.closingAux,
       save: TERMS.inventoryPage.save,
       hintFormula: TERMS.inventoryPage.hintFormula,
+      // R733：开关未启用时的当场说明（入口已不再被开关 gate，进去必须知道当前不算这笔）
+      offBar: TERMS.inventoryPage.offBar,
       realConsumePreview: TERMS.inventoryPage.realConsumePreview,
       realConsumePreviewNote: TERMS.inventoryPage.realConsumePreviewNote,
       cur: '¥',
