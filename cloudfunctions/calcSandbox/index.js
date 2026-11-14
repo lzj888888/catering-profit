@@ -74,7 +74,11 @@ exports.main = async (event) => {
   // ===== 3. Service 纯计算 =====
   const r = calcSandbox(v.clean);
 
-  // ===== 3.5. M2v1.1 反推分支：mode='reverse' ⇒ 调 calcSandboxReverse，出参追加 reverse 块 =====
+  // ===== 3.5. 反推分支：mode='reverse' ⇒ 调 calcSandboxReverse，出参追加 reverse 块 =====
+  // ⚠️ 可达性澄清（审计 2026-11-14 · §五 线索 B 更正）：当前前端"寻找铺面/反推"已改走矩阵页
+  //   （subpkg/tools/sandbox 不再向 calcSandbox 送 mode='reverse'），故本分支从前端不可达；
+  //   保留是为兼容历史 reverse 方案快照——savePlan 同样依赖 calcSandboxReverse（见 savePlan/index.js:92）。
+  //   本函数被 savePlan + 守卫 check_m2_reverse_rent 真实消费，**不可删**。
   const out = {
     shop_id: shopId,
     client_request_id: v.input.client_request_id || '',
