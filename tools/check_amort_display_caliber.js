@@ -69,10 +69,17 @@ global.wx = {
 // api 只保留 call / ensureShop / toastError / fenToYuan（其余走真实现）
 const apiMod = require(F('utils/api.js'));
 let scheduleSwitchOn = false;
+// 🔴 R737：桩必须**真实复刻**服务端语义，不能手搓一个布尔塞进去。
+//   原来这里直接 `amortize_switch_on: scheduleSwitchOn` ⇒ 无论传哪个月，页面拿到的都是桩给的开关，
+//   「v2 月份（>=2026-11）服务端恒报 true」这条事实在页面层完全没被测到。
+//   ⇒ 现在用**生产函数** amortRuleV2 派生：v2 月份恒 true，老月份才是快照值。
+let scheduleMonth = MONTH;
 apiMod.call = async (name) => {
   if (name === 'getAmortSchedule') {
+    const v2 = sched.amortRuleV2(scheduleMonth);
+    const monthOut = scheduleMonth;
     return {
-      shop_id: 's1', month: MONTH,
+      shop_id: 's1', month: monthOut,
       assets: ASSETS.map((a) => ({
         asset_id: a.asset_id, name: a.name, value_fen: a.total_value,
         start_month: a.start_month, total_months: a.total_months, terminate_month: '',
@@ -80,7 +87,8 @@ apiMod.call = async (name) => {
         remaining_fen: a.total_value, end_month: '2029-12',
       })),
       lumps: [], lump_total_fen: 0, is_archive: false,
-      amortize_switch_on: scheduleSwitchOn,
+      amortize_switch_on: v2 ? true : scheduleSwitchOn,
+      amort_rule_v2: v2,
       switch_source: 'live',
       total_amount_fen: Math.round(LEDGER_TOTAL),
       details: schedOut.details,
@@ -93,7 +101,7 @@ apiMod.ensureShop = async () => {};
 apiMod.toastError = () => {};
 
 // 允许用**变异后的源码**加载页面（内存编译，不落盘 —— 同 check_amort_switch_matrix 的 loadMutant 手法）
-function loadPage(src) {
+function loadPage(src, month) {
   let cfg = null;
   global.Page = (c) => { cfg = c; };
   const abs = F('subpkg/biz/month/amortize.js');
@@ -105,14 +113,15 @@ function loadPage(src) {
   const p = Object.assign({}, cfg);
   p.data = JSON.parse(JSON.stringify(cfg.data));
   p.setData = function (patch) { for (const k in patch) this.data[k] = patch[k]; };
-  p.data.month = MONTH;
+  p.data.month = month || MONTH;
   return p;
 }
 const PAGE_SRC = read('subpkg/biz/month/amortize.js');
 
-async function runPage(switchOn, src) {
+async function runPage(switchOn, src, month) {
   scheduleSwitchOn = switchOn;
-  const p = loadPage(src || PAGE_SRC);
+  scheduleMonth = month || MONTH;
+  const p = loadPage(src || PAGE_SRC, month);
   await p.load();
   return p;
 }
@@ -156,6 +165,45 @@ async function runPage(switchOn, src) {
   const numLine = (amWxml.split('\n').find((l) => l.indexOf('result-num') >= 0) || '');
   ck('H-⑩ wxml 页首大数字绑的是 shownTotalYuan（若改回 totalYuan，H-① 会绿在假数据上）',
     numLine.indexOf('shownTotalYuan') >= 0, numLine.trim());
+
+  // ==================================================================
+  group('K · v2 月份（>=2026-11）：规则已改，开关不再是事实来源');
+  // ==================================================================
+  // 🔴 R737 交叉审计补的缺口：上面 H/I 段全跑在 MONTH='2026-10'（老月份），
+  //   **v2 月份在页面层从来没被测过** —— 而李老师真机打开的正是 2026-11。
+  //   那天开关已经从界面上删掉了，服务端出参恒报「已计入」；页面若还按老逻辑走，
+  //   会显示 ¥0.00 + 「未计入」，跟实际扣了钱的事实相反。
+  const v2Off = await runPage(false, null, '2026-11');
+  const v2On = await runPage(true, null, '2026-11');
+  const v2Old = await runPage(false, null, '2026-10');
+
+  ck('K-① 2026-11 + 开关关 ⇒ 页首仍报台账应摊 4333.33（v2 起一律计入，开关说了不算）',
+    String(v2Off.data.shownTotalYuan) === '4333.33', `实得「${v2Off.data.shownTotalYuan}」`);
+  ck('K-② 2026-11 ⇒ 附注为空（既然计入了，就别再解释"没扣"）',
+    String(v2Off.data.offNote) === '', `实得「${v2Off.data.offNote}」`);
+  ck('K-③ 2026-11 ⇒ 页面拿到的开关是服务端**生效值** true（不是快照里的 false）',
+    v2Off.data.amortizeOn === true, `实得 ${v2Off.data.amortizeOn}`);
+  ck('K-④ 2026-11 ⇒ 每笔资产「月应摊额」照常展示（台账属性，与计不计入无关）',
+    (v2Off.data.assets || []).length > 0 && (v2Off.data.assets || []).every((a) => Number(a.amountYuan) > 0),
+    (v2Off.data.assets || []).map((a) => a.amountYuan).join(','));
+  ck('K-⑤ 【对照】2026-10 + 开关关 ⇒ 页首仍是 0.00（证明 K-① 不是恒报台账额）',
+    String(v2Old.data.shownTotalYuan) === '0.00', `实得「${v2Old.data.shownTotalYuan}」`);
+  ck('K-⑥ 2026-11 下开关开/关数字完全相同（该月开关已无任何作用，符合"删掉开关"的设计）',
+    String(v2Off.data.shownTotalYuan) === String(v2On.data.shownTotalYuan)
+    && String(v2Off.data.offNote) === String(v2On.data.offNote),
+    `关「${v2Off.data.shownTotalYuan}」/ 开「${v2On.data.shownTotalYuan}」`);
+
+  // K-⑦ 变异回灌：把生产函数 amortRuleV2 改成恒 false ⇒ K-① 必须当场转红。
+  //   变的是**生产代码路径**（桩调用它），不是我手写的桩常量 ⇒ 证明 K-① 真在测那条链路。
+  {
+    const orig = sched.amortRuleV2;
+    sched.amortRuleV2 = () => false;
+    let mutOut;
+    try { mutOut = await runPage(false, null, '2026-11'); } finally { sched.amortRuleV2 = orig; }
+    ck('K-⑦ 变异回灌：amortRuleV2 恒 false ⇒ K-① 当场转红（非恒真）',
+      String(mutOut.data.shownTotalYuan) === '0.00',
+      `变异后「${mutOut.data.shownTotalYuan}」（期望 0.00 = 已退回老逻辑，说明 K-① 会红）`);
+  }
 
   // ==================================================================
   group('I · 归档月快照（与 getLedger 同口径，防"同月两页互相打脸"）');

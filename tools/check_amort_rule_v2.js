@@ -196,12 +196,221 @@ function loadMutant(rel, from, to) {
 }
 
 // ============================================================================
+sec('E · 喂参完整性（R737 交叉审计第一轮抓出的盲区）');
+// 🔴 为什么单独立一段：上面 A/B 段测的是**副本函数本身**，它们全绿也挡不住「上游没把 month 传进来」。
+//   本轮实测：getLedger/index.js 调引擎时漏传 month ⇒ 闸门恒 false ⇒
+//     2026-11/12 的真实利润每月多算 5,277.78 元，而 service 层单测 100% 通过。
+//   ⇒ 只测函数必漏，必须钉**每个调用点**。
+function stripComments(src) {
+  return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+}
+const CALL_SITES = [
+  'cloudfunctions/calcMonthlyProfit/index.js',
+  'cloudfunctions/saveLedger/index.js',
+  'cloudfunctions/getLedger/index.js',
+];
+{
+  const bad = [];
+  const detail = [];
+  CALL_SITES.forEach((rel) => {
+    const src = stripComments(read(rel));
+    // 两种调用形态都要支持：
+    //   ① calcMonthlyProfit({ month: ..., ... })      —— 字面量直接传
+    //   ② calcMonthlyProfit(clean)                    —— 传组装好的变量（calcMonthlyProfit/index.js 就是这样）
+    // 只认 ①、遇到 ② 就判「命中 0 处」⇒ 这条检查会空转恒绿（第一版就这么写的，当场被自己抓到）。
+    const re = /calcMonthlyProfit\(\s*(\{[^)]*?\}|[A-Za-z_$][\w$]*)\s*\)/g;
+    let m;
+    let hit = 0;
+    while ((m = re.exec(src)) !== null) {
+      hit++;
+      const arg = m[1];
+      let body = arg;
+      if (!arg.startsWith('{')) {
+        // 传的是变量 ⇒ 找到它的定义块
+        const defRe = new RegExp('(?:const|let|var)\\s+' + arg.replace(/\$/g, '\\$') + '\\s*=\\s*\\{');
+        const dm = defRe.exec(src);
+        body = dm ? src.slice(dm.index, src.indexOf('};', dm.index) + 2) : '';
+        if (!body) { bad.push(rel + ' #' + hit + '（传变量 ' + arg + ' 但找不到定义）'); continue; }
+      }
+      if (!/\bmonth\s*:/.test(body)) bad.push(rel + ' #' + hit + '（' + arg.slice(0, 20) + '）');
+    }
+    detail.push(rel.split('/').slice(1).join('/') + '=' + hit);
+    ck('E-① ' + rel + ' 存在 calcMonthlyProfit 调用点', hit > 0, '命中 ' + hit + ' 处');
+  });
+  ck('E-② 每个调用点都传了 month（漏传 = 该链路时间闸门失效，且行为测试抓不到）',
+    bad.length === 0, bad.length ? ('漏传：' + bad.join(' / ')) : detail.join(' '));
+}
+
+// E-③ 出参的「开关」必须报**生效值**，不能回传快照原值。
+//   为什么单独钉字面：前端（摊销页页首 / 结果页 amortView / 输入页摘要）读的都是这个字段，
+//   它一旦回传快照原值，v2 月份页面就会显示「未计入 / 未开启摊销」，而钱其实扣了 ——
+//   R735 那个「同月两页互相打脸」就是这个字段惹的。
+{
+  const sched = stripComments(read('cloudfunctions/getAmortSchedule/index.js'));
+  const ledger = stripComments(read('cloudfunctions/getLedger/index.js'));
+  const e3 = [];
+  if (!/amortize_switch_on:\s*amortV2\s*\?\s*true\s*:/.test(sched)) {
+    e3.push('getAmortSchedule/index.js: amortize_switch_on 未按 v2 修正');
+  }
+  if (!/const\s+amortV2\s*=\s*amortRuleV2\(\s*v\.month\s*\)/.test(sched)) {
+    e3.push('getAmortSchedule/index.js: 没有 amortV2 = amortRuleV2(v.month)');
+  }
+  if (!/amort_rule_v2:\s*amortV2/.test(sched)) {
+    e3.push('getAmortSchedule/index.js: 未透出 amort_rule_v2（前端无法区分「老月份未计入」与「新规则已计入」）');
+  }
+  if (!/switch_on:\s*result\.amortRuleV2\s*\?\s*true\s*:/.test(ledger)) {
+    e3.push('getLedger/index.js: amort_extra.switch_on 未按 v2 修正');
+  }
+  if (!/amortizeSwitchOn:\s*result\.amortRuleV2\s*\?\s*true\s*:/.test(ledger)) {
+    e3.push('getLedger/index.js: switches.amortizeSwitchOn 未按 v2 修正');
+  }
+  ck('E-③ 两处出参都报「生效值」（前端读的就是这个字段，回传快照原值 = 页面撒谎）',
+    e3.length === 0, e3.length ? e3.join(' / ') : '5 个点位全对');
+}
+
+// E-④ 归档月**不许重算**摊销 —— 「v2 要重算」与「归档只读」冲突时，归档赢。
+//   反例（本轮实测出来的）：2026-11 归档后老板删掉一条资产 ⇒ 若无此保护，
+//     封账月的摊销与利润会被今天的台账倒灌改写 ⇒「已归档=只读」第四次变成假话
+//     （前三次分别栽在开关快照 R257、归档快照 R735、结果位 R735）。
+{
+  const gl = stripComments(read('cloudfunctions/getLedger/index.js'));
+  const ex = stripComments(read('cloudfunctions/exportData/index.js'));
+  const miss = [];
+  if (!/amortV2Now\s*&&\s*!isArchiveNow/.test(gl)) miss.push('getLedger: 未加 !isArchiveNow 保护');
+  if (!/const\s+isArchiveNow\s*=\s*!!\(acct\s*&&\s*acct\.is_archive\);\s*\n\s*const\s+amortizeFen\s*=/.test(gl)) {
+    miss.push('getLedger: isArchiveNow 未在摊销取数**之前**声明（顺序错 ⇒ 保护失效）');
+  }
+  // ⚠️ 必须钉**摊销取数那一行**的形态，不能只要求「文件里某处出现过 !isArchiveRow」——
+  //   第一版判据就是后者，我变异掉 `const amort = ...` 那一行、留着 realP/diffFen 两处，
+  //   断言照样绿（假绿，当场被自己抓到）。判据要收在**真正决定金额的那一行**上。
+  if (!/const\s+amort\s*=\s*\(amortV2\s*&&\s*!isArchiveRow\)\s*\?/.test(ex)) {
+    miss.push('exportData: 摊销取数那一行缺 !isArchiveRow 保护（会与页面打架）');
+  }
+  ck('E-④ 归档月不重算摊销（归档只读优先于 v2 重算；两处都要有，缺一处就打架）',
+    miss.length === 0, miss.length ? miss.join(' / ') : 'getLedger + exportData 双双在位');
+}
+
+// ============================================================================
+sec('F · 导出件口径（R737 第二轮：导出件与页面必须同数）');
+// 症状（本轮 fixture 实测）：R736 部署前保存的 2026-11（落库摊销 0、快照 false），
+//   页面走重算显示 5,277.78，导出件念落库 0 ⇒ 老板拿导出件对账，认定系统算错，
+//   且利润表「经营参考 − 摊销」跟「全要素真实利润」差一整笔，表内不平。
+{
+  const Module = require('module');
+  const _origLoad = Module._load;
+  const dbStub = {
+    command: { in: (x) => x, eq: (x) => x },
+    serverDate: () => 0,
+    collection: () => ({ where: () => ({ get: async () => ({ data: [] }) }) }),
+  };
+  Module._load = function (request, parent, isMain) {
+    if (request === 'wx-server-sdk') return { init() {}, DYNAMIC_CURRENT_ENV: 'stub', database: () => dbStub };
+    return _origLoad.apply(this, arguments);
+  };
+  const EXP = require(path.join(ROOT, 'cloudfunctions/exportData/index.js'));
+  Module._load = _origLoad;
+
+  const ASSETS_T = [
+    { asset_id: 'a1', name: '装修', mode: 'amort', start_month: '2026-09', total_months: 36, total_value: 13000000 },
+    { asset_id: 'a2', name: '设备', mode: 'amort', start_month: '2026-10', total_months: 24, total_value: 4000000 },
+    { asset_id: 'a3', name: '转让费', mode: 'lump', start_month: '2026-09', total_months: 1, total_value: 5000000 },
+  ];
+  const LEDGER_1011 = 361111 + 166667;   // 2026-10/11 台账应摊（手算，不用被测代码）
+  function mkRow(month, savedAmort, savedOn) {
+    const inc = 10000000, exp = 3000000, real = 2000000, lump = 5000000;
+    const opRef = inc - exp - real - lump;
+    return {
+      month, income_items: [], expense_items: [],
+      income_total_fen: inc, expense_total_fen: exp,
+      direct_consume_fen: real, real_consume_fen: real,
+      amortize_fen: savedAmort, lump_sum_fen: lump,
+      operation_ref_profit_fen: opRef,
+      total_factor_real_profit_fen: opRef - savedAmort,
+      profit_diff_fen: savedAmort,
+      gross_profit_fen: inc - real, gross_margin_pct: 80,
+      ref_material_source: 'direct',
+      switch_used: { inventorySwitchOn: false, amortizeSwitchOn: savedOn },
+    };
+  }
+  // 金额列位置随表而变（利润表 [1]、摊销来源表最后一列）⇒ 从右往左找第一个数字
+  function rowFen(row) {
+    if (!row) return NaN;
+    for (let i = row.length - 1; i >= 0; i--) {
+      const c = row[i];
+      if (c === '' || c == null) continue;
+      const n = Number(c);
+      if (Number.isFinite(n)) return Math.round(n * 100);
+    }
+    return NaN;
+  }
+  function findRow(rows, key) {
+    return (rows || []).find((r) => (r || []).some(
+      (c) => String(c == null ? '' : c).replace(/[\s　]/g, '').indexOf(key) >= 0));
+  }
+  function build(month, savedAmort, savedOn) {
+    return EXP.buildMonthlySheets({
+      shopName: 'T', month, stamp: 0, row: mkRow(month, savedAmort, savedOn), assets: ASSETS_T,
+    });
+  }
+
+  // F-① v2 月份，部署前保存的账：摊销必须按台账重算，不许念落库 0
+  {
+    const sh = build('2026-11', 0, false);
+    const rows = sh.find((s) => s.name === '利润表').rows;
+    const amort = rowFen(findRow(rows, '减：当月摊销'));
+    ck('F-① v2 月份导出件摊销 = 台账应摊 5,277.78（不念落库 0）',
+      amort === LEDGER_1011, '实得 ' + amort);
+    // F-② 表内恒等式：真实利润 = 经营参考 − 消耗差异 − 摊销（本 fixture 消耗差异为 0）
+    const realP = rowFen(findRow(rows, '全要素真实利润'));
+    const opRef = rowFen(findRow(rows, '经营参考利润'));
+    ck('F-② 导出件表内加减必须成立（老板拿计算器核这张表）',
+      realP === opRef - amort, '真实=' + realP + ' 参考−摊销=' + (opRef - amort));
+    // F-③ v2 月份不得出现「台账应收摊销（开关关闭…）」差异行
+    const hasDiff = !!findRow(sh.find((s) => s.name === '摊销来源').rows, '台账应收摊销');
+    ck('F-③ v2 月份不得出现「开关关闭·本月未计入」差异行（会让老板以为没扣）', !hasDiff, '差异行存在');
+    // F-④ 口径说明表写「不适用」而不是「关」
+    const amRow = findRow(sh.find((s) => s.name === '口径说明').rows, '摊销开关');
+    ck('F-④ 口径说明表对 v2 月份写「不适用」', /不适用/.test(String(amRow[1])), String(amRow[1]));
+  }
+  // F-⑤ 老月份（2026-10）历史不许改：摊销仍读落库 0，且差异行照出
+  {
+    const sh = build('2026-10', 0, false);
+    const rows = sh.find((s) => s.name === '利润表').rows;
+    const amort = rowFen(findRow(rows, '减：当月摊销'));
+    const diff = rowFen(findRow(sh.find((s) => s.name === '摊销来源').rows, '台账应收摊销'));
+    ck('F-⑤ 老月份摊销仍为落库 0（历史一字不改），同时给出台账应收差异行',
+      amort === 0 && diff === LEDGER_1011, '摊销=' + amort + ' 差异行=' + diff);
+    const amRow = findRow(sh.find((s) => s.name === '口径说明').rows, '摊销开关');
+    ck('F-⑥ 老月份口径说明如实写「关」', /^关$/.test(String(amRow[1])), String(amRow[1]));
+  }
+  // F-⑦ 尾差倒挤：36 期合计必须正好等于原值（一分不多一分不少）
+  {
+    const sh = build('2029-08', 0, false);   // 装修末月 = 2026-09 + 35
+    const amort = rowFen(findRow(sh.find((s) => s.name === '利润表').rows, '减：当月摊销'));
+    ck('F-⑦ 末月尾差倒挤（2029-08 装修末月 = 361,115 分；设备 24 期已摊完）',
+      amort === 361115, '实得 ' + amort);
+  }
+}
+
+// ============================================================================
 sec('D · 自失效护栏（锚点漂移会让上面两条恒绿）');
 ck('D-① 两个变异锚点在当前源码中都存在',
   SRC.main.indexOf("const AMORT_RULE_V2_FROM = '2026-11';") >= 0
   && SRC.main.indexOf('const effectiveAmortizeFen = (amortV2 || amortizeSwitchOn) ? fenRoundN(amortizeFen) : 0;') >= 0,
   '锚点在位');
 ck('D-② 断言总数 ≥ 15（防本文件被掏空后仍报「全绿」）', pass + fail >= 15, String(pass + fail));
+// D-③ R737：导出段的四个变异锚点也必须在位（不在位 ⇒ F 段是假绿）
+{
+  const expSrc = read('cloudfunctions/exportData/index.js');
+  const anchors = [
+    'const amort = (amortV2 && !isArchiveRow) ? amortLedger : nz(row.amortize_fen);',
+    'const amOn = amortV2 ? true : !!sw.amortizeSwitchOn;',
+    'if (end === naturalEnd) return asset.total_value - base * (N - 1);',
+    'const realP = (amortV2 && !isArchiveRow) ? Math.round(opRef - gapFen - amort) : nz(row.total_factor_real_profit_fen);',
+  ];
+  const miss = anchors.filter((a) => expSrc.indexOf(a) < 0);
+  ck('D-③ 导出段四个变异锚点在位（漂移 ⇒ F 段恒绿）', miss.length === 0, miss.length ? ('缺：' + miss.join(' / ')) : '四个都在');
+}
 
 // ============================================================================
 console.log('\n摊销规则 v2（时间闸门）结果：' + pass + ' 通过 / ' + fail + ' 失败（共 ' + (pass + fail) + ' 条）');

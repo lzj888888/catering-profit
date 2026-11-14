@@ -129,7 +129,13 @@ exports.main = async (event) => {
   const amortRes = await da.list('shop_amortize', { shop_id: shopId });
   const amortRows = ((amortRes && amortRes.data) || []).filter((a) => a.mode !== 'lump' && a.start_month);
   const amortV2Now = String(v.month || '') >= AMORT_RULE_V2_FROM;
-  const amortizeFen = amortV2Now
+  // 🔴 R737（交叉审计第二轮抓出）：**归档月不重算**，这条比「v2 要重算」优先。
+  //   理由：归档 = 封账，那个月的数字连同「算它用的台账」一起冻结。
+  //   若归档后仍从台账重算，老板删掉/改掉一条资产，封账月的利润就跟着变 ⇒「已归档=只读」再次变成假话
+  //   （与 R257 用开关快照、R735 用归档快照是同一个病根的第四张脸）。
+  //   `isArchiveNow` 在下方原本才声明，这里提到前面 —— 它只依赖 acct，无副作用。
+  const isArchiveNow = !!(acct && acct.is_archive);
+  const amortizeFen = (amortV2Now && !isArchiveNow)
     ? amortizeTotalForMonth(amortRows, v.month)
     : ((acct && acct.amortize_fen) || 0);
   // round106（F2）：一次性投入（分）—— 回读时必须带进引擎，否则重算的利润与落库值对不上
@@ -158,7 +164,7 @@ exports.main = async (event) => {
   //   否则归档后改一次开关，封账月的利润就漂了（「已归档=只读」在这条路径上是假的）。
   //   快照由 saveLedger 落库（switch_used = 引擎产出的 {inventorySwitchOn, amortizeSwitchOn}）。
   //   未归档月仍用实时值（开关是实时建模控件，改了就应立刻看到效果；下次保存快照随之更新）。
-  const isArchiveNow = !!(acct && acct.is_archive);
+  //   （`isArchiveNow` 已在摊销取数处提前声明 —— 归档月不重算摊销，见上方注释）
   const sw = resolveArchiveSwitches({
     isArchive: isArchiveNow,
     switchUsed: acct && acct.switch_used,
@@ -169,7 +175,17 @@ exports.main = async (event) => {
   const amortizeSwitchOn = sw.amortizeSwitchOn;
 
   // ===== 重算（防篡改）=====
+  // 🔴 R737（交叉审计第一轮抓出）：**必须传 month**。
+  //   引擎副本的时间闸门读 `clean.month`（`String(clean.month||'') >= '2026-11'`）；
+  //   本处原先没传 ⇒ 闸门恒 false ⇒ 走老逻辑「按开关归零」⇒
+  //     ① `effectiveAmortizeFen` 恒 0：上方刚从台账重算出 5,277.78 喂进来，又被归零，
+  //        2026-11/12 的真实利润每月**多算 5,277.78 元**（fixture 实测）；
+  //     ② 连带 `result.amortRuleV2` 恒 false ⇒ 下方 `amort_extra.switch_on` 与 `switches`
+  //        都退回看开关 ⇒ 结果页对已计入的月份显示「未开启摊销」。
+  //   为什么 service 层单测全绿也没抓到：三份副本的函数本身都是对的，错在**上游喂参**。
+  //   ⇒ 守卫 `check_amort_rule_v2` 的 E 段专门钉「每个调用点都传 month」（只测 service 必漏）。
   const result = calcMonthlyProfit({
+    month: v.month,                    // 🔴 时间闸门按月份判断，漏传等于规则失效
     incomeItems, expenseItems, directConsumeFen, amortizeFen,
     inventory, amortizeSwitchOn, inventorySwitchOn,
     lumpSumFen,

@@ -204,8 +204,46 @@
   // E5-②：光「读了台账」不够 —— 还得**真的传进纯函数**（写成 assets: [] 照样不红，表就整段空了）
   check('E5-② main 把台账读出的行真的传进纯函数（传空数组 ⇒ 摊销来源表整段消失）',
     /assets: \(aRes && aRes\.data\) \|\| \[\]/.test(fnCode));
-  check('E6 禁止在导出里重算摊销公式（摊销引擎已有三个同源副本，再写一份＝静默错账）',
-    !/amountForMonth|amortizeForMonth|amortizeTotalForMonth/.test(fnCode));
+  // 🔴 E6 原来是「禁止在导出里重算摊销公式」——那条原则在 R737 被**有据地**破例了一次，这里改成精确约束。
+  //   为什么破例：摊销规则 v2（2026-11 起一律计入）让「落库值」不再是唯一真相源。
+  //     R736 部署**之前**保存过的月份，落库 amortize_fen 是按老逻辑（开关关 ⇒ 0）写的；
+  //     页面走 getLedger 重算显示 5,277.78，导出件却念 0 ⇒ 导出件与页面永久打架，且利润表加减不平。
+  //     老板是拿导出件对账的，这个不一致比「多一份副本」危险得多。
+  //   ⇒ 允许内嵌，但必须满足三条硬约束（缺一条即红）：
+  //     ① 函数体与摊销引擎 `getAmortSchedule/service.js` **逐字同源**（只许差下划线前缀）
+  //     ② 导出侧只有**这一份**实现（出现第二组函数名 ⇒ 真的成了第四个真相源 ⇒ 红）
+  //     ③ 行为面有真值测试（由 tools/check_amort_rule_v2.js 的 F 段跑，逐月比对）
+  function _extractFn(src, name) {
+    const i = src.indexOf('function ' + name + '(');
+    if (i < 0) return null;
+    const j = src.indexOf('{', i);
+    let depth = 0;
+    for (let k = j; k < src.length; k++) {
+      if (src[k] === '{') depth++;
+      else if (src[k] === '}') { depth--; if (!depth) return src.slice(i, k + 1); }
+    }
+    return null;
+  }
+  const _norm = (s) => (s || '').replace(/_amountForMonth/g, 'amountForMonth')
+    .replace(/_monthIndex/g, 'monthIndex').replace(/\s+/g, ' ');
+  const schedSvc = fs.readFileSync(path.join(ROOT, 'cloudfunctions/getAmortSchedule/service.js'), 'utf8');
+  const fSchedAmount = _extractFn(schedSvc, 'amountForMonth');
+  const fExpAmount = _extractFn(fnCode, '_amountForMonth');
+  const fSchedIdx = _extractFn(schedSvc, 'monthIndex');
+  const fExpIdx = _extractFn(fnCode, '_monthIndex');
+  const sameSource = !!fSchedAmount && !!fExpAmount && _norm(fSchedAmount) === _norm(fExpAmount)
+    && !!fSchedIdx && !!fExpIdx && _norm(fSchedIdx) === _norm(fExpIdx);
+  check('E6 导出侧摊销取数与摊销引擎**逐字同源**（允许内嵌一份，但必须可逐字验证；各写一套即红）',
+    sameSource,
+    `amountForMonth=${!!fExpAmount} 同源=${sameSource}`);
+  // E6-②：只有一份 —— 出现 `amortizeForMonth`（另一套命名）就说明有人在导出里另起了一套
+  check('E6-② 导出侧只有这一份摊销实现（不得另起 amortizeForMonth / 第二套命名）',
+    !/amortizeForMonth\s*\(/.test(fnCode));
+  // E6-③ 内嵌副本必须带出处注释（将来收进 common 单源时，得知道该删哪一段）
+  //   ⚠️ 必须用**原文** fnSrc 判断：fnCode 已 stripComments，注释在那儿根本不存在，
+  //     拿 fnCode 判这条会永远红（第一版就是这么写的，当场被自己抓到）。
+  check('E6-③ 内嵌副本标注了出处与「收进 common 时一并删除」的提示',
+    /收进 cloudfunctions\/common/.test(fnSrc));
   check('E7 明细表展开 sub_items（大类下面的细项也要能看见）', /sub_items/.test(fnCode));
   check('E8 口径说明里带两个服务端开关状态（库存 / 摊销）',
     /库存开关/.test(fnCode) && /摊销开关/.test(fnCode));
