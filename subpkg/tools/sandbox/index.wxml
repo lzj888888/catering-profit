@@ -417,7 +417,10 @@
   <!-- 🔴 R556（李老师："点不动，不点也自动出数"）：它确实冗余 —— 改任意数字 700ms 后会自动重算。
        但保留成**次要的重试入口**有用（网络失败时可手动再算一次）⇒ 降级成 ghost + 改文案「重新测算」。
        ⚠️ 不在这里加平铺说明：会破坏 check_hint_fold 的「短提示 ≤18 字」分层线（实测 23→25 判红）。 -->
-  <button class="btn ghost calc-btn" bindtap="onCalcBtn">{{t.recalc}}</button>
+  <!-- 🔴 R734（李老师第二次反馈「点了没反应」）：R570 加的 1 秒 toast 不够 —— 数字前后一样时
+       老板看不出它算过。改成**按钮自带三态**：按下「重算中…」→ 算完「✓ 已重算」停 1.5 秒 → 回「重新测算」。
+       反应落在按钮本身，不靠一闪而过的提示；`recalcBusy` 同时防连点（连点会重复请求云端）。 -->
+  <button class="btn ghost calc-btn {{recalcJustDone ? 'calc-done' : ''}}" bindtap="onCalcBtn">{{recalcBusy ? t.recalcBusy : (recalcJustDone ? t.recalcDoneBtn : t.recalc)}}</button>
 
   <!-- 🔴 R297 第四轮（审计 B12）：结果区**唯一锚点**。原先把 `id="m2result"` 挂在两张结果卡上
        （反推卡 + 主结论卡），而主结论卡带 `verdict.level !== 'na'` 条件 ⇒ 无判定时锚点整块不存在，

@@ -118,6 +118,11 @@ Page({
   data: {
     // R731：孤岛页标记（页面栈深度 = 1 时为 true ⇒ 渲染「回首页」条，见 onShow）
     island: false,
+    // 🔴 R734：重新测算按钮的三态（空闲 / 重算中 / 刚算完停 1.5 秒）
+    //   原因是「点了没反应」被反馈了两次（R570 加 toast 未根治）：数字前后一样 + toast 一闪而过
+    //   ⇒ 反馈必须落在**按钮自身**，让老板看见"它真的动了"。busy 同时兼防连点重入。
+    recalcBusy: false,
+    recalcJustDone: false,
     t: {
       // R731：孤岛条文案（判据在 utils/islandBack.js）
       islandBack: TERMS.nav.islandBack,
@@ -190,6 +195,9 @@ Page({
       //   R545 那个「去建成本卡」按钮已撤：它打断填表闭环，且「建一张卡就自动算出来了」是假承诺。
       recalc: M.recalc,
       recalcDone: M.recalcDone,
+      // R734：按钮三态文案（按下/算完），解决「点了没反应」——反应要落在按钮本身
+      recalcBusy: M.recalcBusy,
+      recalcDoneBtn: M.recalcDoneBtn,
       marginSrcNote: M.marginSrcNote,
       // 🔴 R549：口径二选一
       marginScopeLabel: M.marginScopeLabel,
@@ -1246,9 +1254,22 @@ Page({
    */
   // 🔴 R570（李老师真机：「重新测算」点不动）：它**真的会算**，但改数字 700ms 就自动重算过了，
   //   所以点完数字不变、也没有 loading ⇒ 观感就是「点不动」。补一句 1 秒提示，让老板知道点到了。
-  onCalcBtn() {
-    wx.showToast({ title: this.data.t.recalcDone, icon: 'none', duration: 1000 });
-    return this.onCalc(false);
+  // 🔴 R734（第二次被反馈「点了没反应」）：toast 一闪而过不够 ⇒ 改成**按钮自带三态**：
+  //   按下 →「重算中…」，算完 →「✓ 已重算」停 1.5 秒再回「重新测算」。
+  //   busy 同时兼防连点（连点会重复请求云端）。不再发 toast —— 两处反馈打架反而更乱。
+  async onCalcBtn() {
+    if (this.data.recalcBusy) return;
+    this.setData({ recalcBusy: true, recalcJustDone: false });
+    try {
+      await this.onCalc(false);
+      this.setData({ recalcBusy: false, recalcJustDone: true });
+      // 让「✓ 已重算」至少亮 1.5 秒：结算很快，不驻留就等于没发生
+      clearTimeout(this._recalcT);
+      this._recalcT = setTimeout(() => { this.setData({ recalcJustDone: false }); }, 1500);
+    } catch (err) {
+      // 错误提示由 onCalc 内部统一 toast，这里只负责把按钮恢复可点
+      this.setData({ recalcBusy: false, recalcJustDone: false });
+    }
   },
 
   // 🔴 R570：人效/坪效缺数态的补填入口 —— 点了直接定位到「预计月营业额」输入框并聚焦。

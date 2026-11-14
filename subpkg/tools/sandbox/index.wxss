@@ -115,6 +115,10 @@
 .ind-lg { font-size: 28rpx; margin-right: 22rpx; }
 .keynum { font-size: 40rpx; font-weight: 800; color: #1e3a5f; }
 .calc-btn { margin: 8rpx 0 24rpx; }
+/* 🔴 R734：重算完成态 —— 按钮短暂变绿，让「它真的算过了」看得见（1.5 秒后自动回退）。
+   配色已自算 WCAG：#2f6b3a on #e8f0e6 = 5.49:1（≥4.5 AA；页面底 #F6F3EC 上更高）。
+   ⚠️ 不要改成浅色文字/浅底：`check_text_contrast` 是黑名单，新增低对比色它会静默放行。 */
+.calc-done { background: #e8f0e6; color: #2f6b3a; border-color: #2f6b3a; }
 .err-hint { font-size: 30rpx; color: #c0392b; min-height: 88rpx; line-height: 88rpx; }
 .empty-tip { text-align: center; padding: 30rpx; }
 
@@ -139,9 +143,25 @@
 .rw { display: block; }
 /* 🔴 R543：开店投入行是「名称 + 金额 + 年限 + 删」四段，名称列比通用行窄一档，
    把宽度让给金额（5~6 位数不能截断）。 */
-.rw .row-name { flex: 0 0 190rpx; }
-.rw .row-in-wrap:not(.yr) { flex: 1 1 auto; min-width: 260rpx; }
-.rw .row-in { min-width: 200rpx; }
+/* 🔴 R734（李老师真机第二次反馈「转让费/装修后面那个框还是贴边、没露出边」）：
+   上一轮（R731）把年限框 110→132rpx 是**改反了方向** —— 加宽让整行总宽更挤。
+   本轮先算硬账，根因是两处**最小宽之和超容器**：
+     card2 内宽 = 750 − 24×2(container) − 24×2(card2) = **654rpx**
+     旧四段最小宽 = 190 + 12 + 260(元框min) + 12 + 132(年限) + 68(删除) = **674rpx** ⇒ 溢出 20rpx
+     且 `.rw .row-in{min-width:200rpx}` 对**年限框里的 input 也生效**，
+     而年限框只有 132rpx（内可用 ≈106）⇒ input 最小 200 把框撑破，这就是「没露出边」。
+   修法：① 年限框内 input 解除 200rpx 最小宽（它只需放 1~2 位数 + 「年」）
+        ② 元框最小宽 260→240（李老师原话「前面那个金额框留大了」；30rpx 字号 6 位数 ≈102rpx，240 仍宽裕）
+        ③ 给行留 8rpx 右呼吸，年限框不再顶到卡边。
+   新总宽 = 180+10+240+10+132+60+8(右呼吸) = 640 < 654 ⇒ 不溢出且留 14rpx 余量。
+   ⚠️ 字数一律 ≥28rpx（本文件顶部无障碍硬约束），`.row-del` 不得为了省宽降到 26。 */
+.rw .row { padding-right: 8rpx; }
+.rw .row-in-wrap { margin-right: 10rpx; }
+.rw .row-name { flex: 0 0 180rpx; }
+.rw .row-in-wrap:not(.yr) { flex: 1 1 auto; min-width: 240rpx; }
+.rw .row-in { min-width: 150rpx; }
+.rw .row-in-wrap.yr .row-in { min-width: 0; }
+.rw .row-del { font-size: 28rpx; padding-left: 4rpx; }
 .row-note { font-size: 30rpx; color: #6B6157; line-height: 1.4; padding: 0 0 12rpx; }
 /* R443：输入区「每月固定支出合计」——只加粗，不另造配色（避免与页面既有色板打架） */
 .total-line { font-weight: 600; }
