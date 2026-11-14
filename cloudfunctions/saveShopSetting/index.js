@@ -141,7 +141,7 @@ exports.main = async (event) => {
     } else if (bfRow) {
       await db.collection('shop_switch').doc(bfRow._id || bfRow.id).update({ data: { value: v.buffet_food_cost_total, updated_at: now } });
     } else {
-      await da.insert('shop_switch', { shop_id: shopId, switch_key: key, value: v.buffet_food_cost_total });
+      await da.insert('shop_switch', { shop_id: shopId, switch_key: key, value: v.buffet_food_cost_total, updated_at: now });
     }
   }
 

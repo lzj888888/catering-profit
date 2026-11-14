@@ -2716,9 +2716,25 @@ const TERMS = {
     reviewBuffetMeals: '售出份数',
     reviewBuffetPerCapitaPrice: '人均售价',
     reviewBuffetPerCapitaCost: '人均食材成本',
-    reviewBuffetNoCost: '待填写（在「设置」页填本月自助食材消耗）',
+    reviewBuffetNoCost: '待填写',
     reviewBuffetGrossMargin: '人均毛利率',
-    reviewBuffetHint: '自助餐=一份钱随便吃，不建单品成本卡。人均食材成本 = 本月自助线食材消耗 ÷ 售出份数；请在「设置」页填写本月自助食材消耗总额（单位：分）。',
+    // 🔴 R738（补一个「死指路」）：原文案写「在『设置』页填本月自助食材消耗」，
+    //   而店铺设置页（subpkg/tools/shop/setting）全仓**没有这个输入框** ——
+    //   后端 saveShopSetting 支持该键、getDishReview 也在读，唯独前端零写入入口。
+    //   老板真按提示去设置页只会扑空 ⇒ 入口回产到**看见缺口的那一行**（本页就地填）。
+    //   这也与 2026-09-20「把开关放到真正要用到的计算步骤旁边」的既有决策同向。
+    reviewBuffetCostLabel: '本月自助线食材消耗',
+    reviewBuffetCostPh: '填总额，如 24000',
+    reviewBuffetCostUnit: '元',
+    reviewBuffetCostSave: '保存',
+    reviewBuffetCostBad: '请填数字金额（元）',
+    reviewBuffetCostSaved: '已保存',
+    reviewBuffetCostClear: '清空',
+    // 已填时的回显：「已录 ¥24,000.00（2026-11-15）」——录入时间从服务端 updated_at 来，
+    //   ⚠️ 该键是**店铺级单值**、不按月存，跨月不更新就会拿旧数算本月人均 ⇒ 时间必须让老板看见。
+    reviewBuffetCostRecorded: (amt, at) => `已录 ¥${amt}（${at}）`,
+    reviewBuffetCostStale: '这个数是别的月份填的，请按本月实际更新。',
+    reviewBuffetHint: '自助餐=一份钱随便吃，不建单品成本卡。人均食材成本 = 本月自助线食材消耗 ÷ 售出份数；在你看到「待填写」的那一行直接填本月总额（单位：元）。',
     // R272b：行业基准带（网上平均数据，2024-2025）—— 成本率=食材成本÷售价
     reviewBuffetBenchTitle: '行业参考人均食材成本（按成本率）',
     reviewBuffetBenchLow: '冻品/蓝领客群为主',

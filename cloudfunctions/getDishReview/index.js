@@ -136,12 +136,15 @@ exports.main = async (event) => {
     for (const p of Object.keys(takeawayResult.by_platform)) collectKeys(takeawayResult.by_platform[p].ranked);
   }
   let buffetFoodCostTotalFen = null;
+  let buffetFoodCostUpdatedAt = 0;
   try {
     const bsRes = await da.list('shop_switch', { shop_id: shopId, switch_key: 'm3_buffet_food_cost_total' });
     const bsRow = (bsRes && bsRes.data && bsRes.data[0]) || null;
     if (bsRow && bsRow.value != null && bsRow.value !== '') buffetFoodCostTotalFen = Number(bsRow.value) || null;
-  } catch (e) { buffetFoodCostTotalFen = null; }
-  const coverage = computeCoverage(allTagged, matchedKeys, buffetFoodCostTotalFen);
+    // R738：录入时间随值一起回（前端用它提示「这个数是几月填的」，见 service 内注释）
+    if (bsRow && bsRow.updated_at) buffetFoodCostUpdatedAt = Number(bsRow.updated_at) || 0;
+  } catch (e) { buffetFoodCostTotalFen = null; buffetFoodCostUpdatedAt = 0; }
+  const coverage = computeCoverage(allTagged, matchedKeys, buffetFoodCostTotalFen, { updatedAt: buffetFoodCostUpdatedAt });
 
   // ===== 4c. R255：映射表**带出**（供前端展示「已关联 / 解除」）=====
   //   🔴 零额外查询：`mapping` 是第 4b 步已经读进来的同一份数据，此处只做投影（不新增一次 listAll）。

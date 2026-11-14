@@ -74,3 +74,16 @@
 .dec-name { font-size: 28rpx; color: #1e3a5f; font-weight: 600; margin-right: 12rpx; flex-shrink: 0; }
 .dec-text { font-size: 28rpx; color: #6B6157; line-height: 1.5; flex: 1; }
 .dec-free { font-size: 28rpx; color: #a8630a; line-height: 1.5; margin-top: 12rpx; }
+
+/* ===== R738：自助线食材消耗就地录入 =====
+   硬约束（selftest_ad_gates）：G1 字号 ≥28rpx、G2 触控 min-height ≥88rpx。
+   ⚠️ `.bf-row .lbl` 复用本页 `.lbl`（300rpx 固定宽 + 不收缩）；输入框必须 min-width:0，
+      否则 flex 下 `min-width:auto` 会按内容撑开、把单位挤出屏幕（R734 沙盘年限框同款坑）。 */
+.bf-row { display: flex; align-items: center; padding: 12rpx 4rpx; border-bottom: 1rpx solid #F0E9DC; }
+.bf-inp { flex: 1; min-width: 0; min-height: 88rpx; padding: 0 16rpx; background: #FFFDF8;
+          border: 1rpx solid #F5EBD8; border-radius: 10rpx; font-size: 28rpx; }
+.bf-unit { font-size: 28rpx; color: #6B6157; flex-shrink: 0; padding-left: 12rpx; }
+.bf-ops { display: flex; align-items: center; justify-content: space-between; padding: 8rpx 4rpx 0; }
+.bf-note { flex: 1; }
+.bf-save { margin: 0; flex-shrink: 0; }
+.bf-warn { color: #9A5B00; padding: 8rpx 4rpx 0; }

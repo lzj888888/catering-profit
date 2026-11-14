@@ -242,6 +242,8 @@ const REGISTRY = {
   },
   'pages/m3/dishreview/index.js': {
     'IDENT|rankedFen * 100|#1': ['ratio', '覆盖率（金额口径）：已匹配 ÷ 全部 → 百分数'],
+    // R738：自助线食材消耗「元 → 分」（老板手输，必须整数分入库）
+    'IDENT|num * 100|#1': ['money', '自助线食材消耗（元）→ 分；老板手输，乘积进 toFixed(10) 保证十进制安全'],
   },
   'subpkg/biz/material/edit.js': {
     'PAREN|) * 100|#1': ['money', '原料采购价（元）→ 分（老板手输）'],

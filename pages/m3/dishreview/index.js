@@ -25,6 +25,14 @@ const { splitRank, MAX_ROWS, qtyText } = require('../../../utils/shareSplit.js')
 
 const fenYuan = (fen) => (Number(fen) || 0) / 100;
 const fmtYuan = (fen) => fenYuan(fen).toFixed(2);
+// R738：录入时间戳 → 「YYYY-MM-DD」/「YYYY-MM」。
+//   只用于**展示与跨月判断**，不参与任何金额计算；刻意不用 toISOString（会按 UTC 偏移串日）。
+const _pad2 = (n) => (n < 10 ? '0' + n : String(n));
+const _ymdOf = (ts) => {
+  const d = new Date(Number(ts) || 0);
+  return d.getFullYear() + '-' + _pad2(d.getMonth() + 1) + '-' + _pad2(d.getDate());
+};
+const _ymOf = (ts) => _ymdOf(ts).slice(0, 7);
 const fmtPct = (p) => (Number(p) || 0).toFixed(2) + '%';
 // R606-bis：行级可编辑循环的稳定身份键工厂（与 month/input.js 同款）。
 //   wx:for 用位置键 + 每次按键整体重赋值数组 ⇒ 原生 <input> 按下标复用 DOM ⇒ 节点身份错位、
@@ -151,6 +159,12 @@ Page({
       reviewBuffetBenchHigh: TERMS.card.reviewBuffetBenchHigh,
       reviewBuffetBenchHint: TERMS.card.reviewBuffetBenchHint,
       reviewBuffetActual: TERMS.card.reviewBuffetActual,
+      // R738：自助线食材消耗就地录入（四个键，漏映射 ⇒ 真机静默空白，见 check_page_terms 判据②）
+      reviewBuffetCostLabel: TERMS.card.reviewBuffetCostLabel,
+      reviewBuffetCostPh: TERMS.card.reviewBuffetCostPh,
+      reviewBuffetCostUnit: TERMS.card.reviewBuffetCostUnit,
+      reviewBuffetCostSave: TERMS.card.reviewBuffetCostSave,
+      reviewBuffetCostStale: TERMS.card.reviewBuffetCostStale,
       // R260 批量关联（第三处登记）
       reviewBatchEnter: TERMS.card.reviewBatchEnter,
       reviewBatchExit: TERMS.card.reviewBatchExit,
@@ -273,6 +287,14 @@ Page({
     buffet_rateHighPct: 0,
     buffet_actualRateText: '',
     buffet_flagClass: '',
+    // ===== R738：自助线食材消耗总额的**就地录入**（元）=====
+    //   · buffetCostYuan：输入框现值（元，字符串；空串 = 未填/待清空）
+    //   · buffetCostRecordedText：已录回显「已录 ¥X（YYYY-MM-DD）」
+    //   · buffetCostStale：录的月份 ≠ 本页统计月份 ⇒ 提示更新（该键是店铺级单值，不按月存）
+    buffetCostYuan: '',
+    buffetCostSaving: false,
+    buffetCostRecordedText: '',
+    buffetCostStale: false,
     mappings: [],         // 已关联菜品（来自 getDishReview 出参 mapping）+ 展示字段
     // ===== R260 批量关联（规范 v1.9）=====
     batchMode: false,     // 批量模式：行的选择只记在本机，点「保存全部关联」才提交
@@ -715,6 +737,16 @@ Page({
     const buffet_perCapitaCostText = fmtYuan(bf.perCapitaCostFen || 0);
     const buffet_grossMarginText = (bf.grossMarginPct != null) ? (String(bf.grossMarginPct) + '%') : '';
     const buffet_hasCostInput = !!bf.hasCostInput;
+    // ===== R738：已录的「自助线食材消耗总额」回显 =====
+    //   值来自 getDishReview 出参 `buffet.foodCostTotalFen`（分），录入时间 `foodCostUpdatedAt`（ms）。
+    //   ⚠️ 该键是**店铺级单值**、不按月存 ⇒ 若录入月份 ≠ 本页统计月份，必须提醒老板更新，
+    //      否则会拿上个月的消耗去除本月的份数（数字看着合理、实际是错的）。
+    const buffetCostFen = Number(bf.foodCostTotalFen) > 0 ? Number(bf.foodCostTotalFen) : 0;
+    const buffetCostYuan = buffetCostFen > 0 ? fenYuan(buffetCostFen).toFixed(2) : '';
+    const _recAt = Number(bf.foodCostUpdatedAt) || 0;
+    const buffetCostRecordedText = (buffetCostFen > 0 && _recAt > 0)
+      ? TERMS.card.reviewBuffetCostRecorded(fmtYuan(buffetCostFen), _ymdOf(_recAt)) : '';
+    const buffetCostStale = !!(buffetCostFen > 0 && _recAt > 0 && _ymOf(_recAt) !== String(this.data.month || ''));
     // R272b：行业基准带（来自 getDishReview 服务端 benchmark）
     const bm = bf.benchmark || {};
     const buffet_benchLowText = fmtYuan(bm.costLowFen || 0);
@@ -781,6 +813,10 @@ Page({
       buffet_rateHighPct,
       buffet_actualRateText,
       buffet_flagClass,
+      // R738：自助线食材消耗就地录入（回显值 + 录入日期 + 跨月提醒）
+      buffetCostYuan,
+      buffetCostRecordedText,
+      buffetCostStale,
       // R255：卡列表 + 已关联列表（picker 与解除入口的数据源）
       cardOptions,
       cardCodes,
@@ -1083,6 +1119,45 @@ Page({
       api.toastError(err);
     } finally {
       this.setData({ mappingBusy: false });
+    }
+  },
+
+  // ===== R738：自助线食材消耗总额（就地录入 · 元 → 分）=====
+  //   为什么在这页填：老板看到的是「人均食材成本 待填写」，入口就应该在这一行旁边 ——
+  //   跳去「设置」页那条路此前是**死指路**（设置页没有这个输入框，全仓零写入入口）。
+  //   后端：saveShopSetting 的 `buffet_food_cost_total` 只收**非负整数（分）**，null = 清空（删行）。
+  onBuffetCostInput(e) {
+    this.setData({ buffetCostYuan: (e && e.detail && e.detail.value) || '' });
+  },
+
+  async onSaveBuffetCost() {
+    if (this.data.buffetCostSaving) return;
+    const raw = String(this.data.buffetCostYuan == null ? '' : this.data.buffetCostYuan).trim();
+    let fen = null;                       // null = 清空（老板把框删空再保存 = 撤掉这个数）
+    if (raw !== '') {
+      const num = Number(raw);
+      if (!isFinite(num) || num < 0) {
+        wx.showToast({ title: TERMS.card.reviewBuffetCostBad, icon: 'none' });
+        return;                           // 不许把脏输入发到云端（后端会拒，但错误码对老板没意义）
+      }
+      // 老板按**元**填；库内一律「分」整数（全仓铁律）⇒ 在此换算，四舍五入到分。
+      //   ⚠️ 十进制安全形态（check_money_precision C-④）：0.07*100 = 7.000000000000001，
+      //   必须把乘积放进 toFixed(10) 里再取整 —— 否则会出现 700.0000000000001 这类非整数分。
+      fen = Math.round(Number((num * 100).toFixed(10)));
+    }
+    this.setData({ buffetCostSaving: true });
+    try {
+      await api.call('saveShopSetting', {
+        buffet_food_cost_total: fen,
+        client_request_id: 'bc_' + Date.now(),
+      });
+      wx.showToast({ title: TERMS.card.reviewBuffetCostSaved, icon: 'success' });
+      // 重算：人均食材成本 / 人均毛利率 / 实际成本率三处都吃这个值，必须整页重拉
+      await this.load();
+    } catch (err) {
+      api.toastError(err);
+    } finally {
+      this.setData({ buffetCostSaving: false });
     }
   },
 

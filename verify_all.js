@@ -4,7 +4,7 @@
 //       + R727 销量样例事实守卫（tools/check_sales_sample_facts.js，四张平台表在仓 + 粒度/规格实跑解析，防「样例待提供」第三次复发）
 //       + R726 算钱口径守卫（tools/check_r714_decisions.js，R714 三件口径由台账四票机器化：
 //         名单 ≡ 落地、E-6 真跑非有限 coverage 抑制、E-1/E-2 文案双副本与上屏、含反恒真）
-// 串联：318 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：319 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1792,6 +1792,14 @@ const SUITES = [
   //   改动会动利润数字 ⇒ 立常驻守卫：A 四份副本同源 + B 真跑四个生产函数 + C 变异回灌 + D 自失效护栏。
   //   ⚠️ 本轮就是靠同类判据抓到 saveLedger/service.js 漏改（落库值恒 0，导出与页面打架）。
   ['amort-rule-v2', 'tools/check_amort_rule_v2.js'],
+  // R738 · 「自助线食材消耗」录入闭环：R272 的提示让老板「去设置页填」，而设置页
+  //   **从来没有这个输入框** —— 后端 saveShopSetting 支持该键、getDishReview 也在读，
+  //   唯独前端零写入入口 ⇒ 老板按提示去设置页只会扑空（「死指路」：不报错、门禁全绿）。
+  //   守：A 接线点 + B 真跑页面（元→分/十进制安全/负数不外发/清空=null/失败不卡死）
+  //   + C 后端出参 + D 跨月提醒（店铺级单值 vs 按月统计）+ E 变异回灌。
+  //   ⚠️ 追加在列表末尾：C3 判据按**位置**核对「第 N 套件」，中间插队会让后面 8 个
+  //      套件的序号声明全部错位（本轮实测踩到，已改回追加）。
+  ['buffet-cost-entry', 'tools/check_buffet_cost_entry.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

@@ -91,6 +91,24 @@
           <text class="val" wx:if="{{buffet_hasCostInput}}">{{t.cur}}{{buffet_perCapitaCostText}}</text>
           <text class="val" wx:else>{{t.reviewBuffetNoCost}}</text>
         </view>
+        <!-- ===== R738：自助线食材消耗总额 · **就地录入** =====
+             🔴 缺口：R272 的提示写「在『设置』页填写本月自助食材消耗」，而店铺设置页
+                （subpkg/tools/shop/setting）**从来没有这个输入框** —— 后端 saveShopSetting 支持该键、
+                getDishReview 也在读，唯独前端零写入入口 ⇒ 老板按提示去设置页只会扑空（死指路）。
+             ⇒ 入口放到**看见「待填写」的同一行旁边**：填完立刻重算人均成本，不用跳页。
+             ⚠️ 该键是**店铺级单值**（不按月存）⇒ 已填时下面回显「已录 ¥X（日期）」，
+                若录的月份不等于本页统计月份，再补一句「请按本月实际更新」（否则会拿旧数算本月人均）。 -->
+        <view class="bf-row">
+          <text class="lbl">{{t.reviewBuffetCostLabel}}</text>
+          <input class="bf-inp" type="digit" value="{{buffetCostYuan}}" placeholder="{{t.reviewBuffetCostPh}}"
+                 adjust-position="{{true}}" cursor-spacing="24" bindinput="onBuffetCostInput" />
+          <text class="bf-unit">{{t.reviewBuffetCostUnit}}</text>
+        </view>
+        <view class="bf-ops">
+          <text class="muted bf-note" wx:if="{{buffetCostRecordedText}}">{{buffetCostRecordedText}}</text>
+          <button class="btn-small bf-save" catchtap="onSaveBuffetCost" disabled="{{buffetCostSaving}}">{{t.reviewBuffetCostSave}}</button>
+        </view>
+        <view class="muted bf-warn" wx:if="{{buffetCostStale}}">{{t.reviewBuffetCostStale}}</view>
         <view class="cell" wx:if="{{buffet_hasCostInput}}"><text class="lbl">{{t.reviewBuffetGrossMargin}}</text><text class="val">{{buffet_grossMarginText}}</text></view>
         <!-- R272b：行业基准带（网上平均数据）-->
         <view class="subtitle">{{t.reviewBuffetBenchTitle}}</view>

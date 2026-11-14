@@ -373,7 +373,7 @@ function classifyDishKey(name) {
  * @param {number|null} buffetFoodCostTotalFen 本月自助餐线食材消耗总额（分），来自店铺设置；null=未填
  * @returns {{coverageA:Object, coverageC:Object, buffet:Object}}
  */
-function computeCoverage(allSales, matchedKeys, buffetFoodCostTotalFen) {
+function computeCoverage(allSales, matchedKeys, buffetFoodCostTotalFen, opts) {
   let madeRevenue = 0, madeMatchedRevenue = 0;
   let buffetRevenue = 0, buffetMeals = 0;
   let retailRevenue = 0;
@@ -445,6 +445,15 @@ function computeCoverage(allSales, matchedKeys, buffetFoodCostTotalFen) {
       perCapitaCostFen,
       grossMarginPct,
       hasCostInput: !!(buffetFoodCostTotalFen && buffetFoodCostTotalFen > 0),
+      // 🔴 R738：把**已填的总额**与**录入时间**一并回给前端。
+      //   起因：R272 写的提示是「请在『设置』页填写本月自助食材消耗总额」，
+      //   而店铺设置页（subpkg/tools/shop/setting）**从来没有这个输入框** —— 全仓零写入入口，
+      //   这条提示把老板指到了一块空地（「死指路」）。后端 saveShopSetting 一直支持该键，
+      //   消费端 getDishReview 也在读，唯独缺前端入口 ⇒ 本轮回产把入口放到**看见缺口的那一页**。
+      //   `foodCostTotalFen` 供输入框回显（null=未填）；`foodCostUpdatedAt` 供页面提示「录于何时」
+      //   —— 该键是**店铺级单值**、不按月存，跨月不更新会拿旧数算本月人均，必须让老板看得见。
+      foodCostTotalFen: (buffetFoodCostTotalFen && buffetFoodCostTotalFen > 0) ? buffetFoodCostTotalFen : null,
+      foodCostUpdatedAt: Number((opts && opts.updatedAt) || 0),
       // R272b：行业基准带（低/中/高），供对照「你的实际是否合合理」
       benchmark: {
         rateLowPct: Math.round(BENCH.low * 100),
