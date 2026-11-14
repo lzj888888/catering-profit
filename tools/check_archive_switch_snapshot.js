@@ -64,12 +64,16 @@ const engineCopies = [
   path.join(ROOT, 'cloudfunctions', 'calcMonthlyProfit', 'service.js'),
   path.join(ROOT, 'cloudfunctions', 'getLedger', 'service.js'),
 ];
-const engineHit = engineCopies.map((p) => /switchUsed:\s*\{\s*inventorySwitchOn,\s*amortizeSwitchOn\s*\}/.test(read(p)));
-check('S-③ 引擎三份副本都产出 switchUsed:{inventorySwitchOn, amortizeSwitchOn}（键名同源）',
+// 🔴 R736：calcMonthlyProfit 的 switchUsed 多了「v2 月份恒 true」与 amortRuleV2 标记，
+//   字面不再是 `{ inventorySwitchOn, amortizeSwitchOn }` 那个最简形态。
+//   ⇒ 判据放宽为「三份都产出 switchUsed，且两个原有键都在」——键名同源这件事没变，
+//     变的是 **值怎么来**（v2 月份摊销确实计入了，快照就该报 true），这正是要守的东西。
+const engineHit = engineCopies.map((p) => /switchUsed:\s*\{[^}]*inventorySwitchOn[^}]*amortizeSwitchOn/.test(read(p)));
+check('S-③ 引擎三份副本都产出 switchUsed（含 inventorySwitchOn / amortizeSwitchOn 两键，键名同源）',
   engineHit.every(Boolean), JSON.stringify(engineHit));
 check('S-④ 读侧引入了解算函数（require 里带 resolveArchiveSwitches）',
-  /const \{\s*calcMonthlyProfit,\s*resolveArchiveSwitches\s*\}\s*=\s*require\('\.\/service'\)/.test(idx),
-  String(/resolveArchiveSwitches\s*\}\s*=\s*require\('\.\/service'\)/.test(idx)));
+  /const \{[^}]*resolveArchiveSwitches[^}]*\}\s*=\s*require\('\.\/service'\)/.test(idx),
+  String(/resolveArchiveSwitches[^}]*\}\s*=\s*require\('\.\/service'\)/.test(idx)));
 check('S-⑤ 解算函数在 service.js 里导出（读得到才谈得上用）',
   /module\.exports\s*=\s*\{[^}]*resolveArchiveSwitches/.test(svc));
 
@@ -126,8 +130,16 @@ const gas = read(path.join(ROOT, 'cloudfunctions', 'getAmortSchedule', 'index.js
 check('A2-③ getAmortSchedule 仍带 is_archive 出参（前端归档拦截的前提未被拆掉）',
   /is_archive:\s*isArchive/.test(gas), String(/is_archive:\s*isArchive/.test(gas)));
 const amortPage = read(path.join(ROOT, 'subpkg', 'biz', 'month', 'amortize.js'));
-check('A2-④ 摊销页归档态下拦住改开关（onToggleAmortize 里 isArchive 早退）',
-  /onToggleAmortize/.test(amortPage) && /if \(this\.data\.isArchive\)/.test(amortPage));
+// 🔴 R736：开关已删除 ⇒ 原断言「onToggleAmortize 里有 isArchive 早退」失去对象。
+//   ⚠️ 直接改字面会踩假绿：R736 的说明注释里写了方法名，`/onToggleAmortize/` 照样命中；
+//     `if (this.data.isArchive)` 在 onAddAmort / go 里也有 ⇒ 两条拼起来恒真。
+//   ⇒ 先剥注释，再要求「方法调用形态」（名字后面跟左括号），最后判**不得存在**。
+const amortPageCode = amortPage
+  .replace(/\/\*[\s\S]*?\*\//g, '')
+  .split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+check('A2-④ 🔴 摊销页已无改开关入口（剥注释后 onToggleAmortize 方法不得存在）',
+  !/onToggleAmortize\s*\(/.test(amortPageCode),
+  '剥注释后命中=' + /onToggleAmortize\s*\(/.test(amortPageCode));
 
 console.log('\n===== B 行为面（真调生产纯函数，不看源码字面）=====');
 let R = null;

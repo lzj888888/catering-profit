@@ -644,11 +644,15 @@ const PAGE_CASES = [
     //      ⇒ 本 case 是"按字面形态匹配会漏"的回归样本（同 R102-⑤ 的 \r\n、变异锚点写死缩进）。
     //   ⚠️ 同页 `lumpSectionHint`（16 字）必须保持平铺 —— 16 与 18 只差 2 字，
     //      是检验"分层线没被挪动"的最贴近样本。
+    // 🔴 R736：`amSwitchHint`（18 字）**随「启用分期摊销」开关一起删除** —— 那段说明讲的是
+    //   「关掉开关的后果」，开关没了，说明也没有对象了（摊销一律按台账计入）。
+    //   ⚠️ 代价：本 case 原先持有的「18 字压线样本」消失。分层线判据本身没变，
+    //      下界样本改由 `specs` 里的 LAYER_MIN 常量断言守（见下方 K 组），不再依赖某一处文案。
     name: 'amortize',
     wxml: 'subpkg/biz/month/amortize.wxml',
     js: 'subpkg/biz/month/amortize.js',
     wxss: 'subpkg/biz/month/amortize.wxss',
-    keys: ['amScopeHint', 'amSwitchHint'],
+    keys: ['amScopeHint'],
     keepPlain: 2,   // lumpSectionHint 16 字 + 另一处短提示 ⇒ 保持平铺（旧预期 1 被过期缓存掩盖）
     segFolds: 0,
   },

@@ -352,8 +352,15 @@ ck('F-② 利润标签单源按开关选文案（开关关 ⇒ 不说"已扣摊�
   /const amortOn = !!sw\.amortizeSwitchOn/.test(profitLabel), 'profitLabel.js amortOn');
 
 const amortizeJs = read('subpkg/biz/month/amortize.js');
-ck('F-③ 摊销页开关写服务端 saveShopSetting（不是只改前端 data）',
-  /saveShopSetting[\s\S]{0,120}?switches[\s\S]{0,80}?amortize/.test(amortizeJs), 'amortize.js onToggleAmortize');
+// 🔴 R736：开关已删除 ⇒ 本组断言**反向**：页面**不得**再写这个开关接口。
+//   ⚠️ 必须先剥掉注释再判 —— 上一版直接对全文跑正则，而 R736 的说明注释里顺笔写了接口名，
+//     结果「删了开关」反而让 F-③ 变绿（注释冒充代码，本仓已踩过第二次：getShopContext J3c）。
+const amortizeJsCode = amortizeJs
+  .replace(/\/\*[\s\S]*?\*\//g, '')
+  .split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+ck('F-③ 摊销页**不得**再写 amortize 开关接口（R736 已删除；剥注释后判定，注释提名字不算数）',
+  !/saveShopSetting[\s\S]{0,120}?switches[\s\S]{0,80}?amortize/.test(amortizeJsCode),
+  '剥注释后命中=' + /saveShopSetting[\s\S]{0,120}?switches[\s\S]{0,80}?amortize/.test(amortizeJsCode));
 
 const amortizeWxml = read('subpkg/biz/month/amortize.wxml');
 const SAME_PAGE_SWITCH = /switch checked="\{\{amortizeOn\}\}"/.test(amortizeWxml);
@@ -452,7 +459,10 @@ function loadMutant(relFile, from, to) {
   M._compile(src.replace(from, to), abs);
   return { exp: M.exports };
 }
-const ANCHOR = 'const effectiveAmortizeFen = amortizeSwitchOn ? fenRoundN(amortizeFen) : 0;';
+// 🔴 R736：引擎那一行加了时间闸门（`amortV2 || amortizeSwitchOn`），锚点形态随之变化。
+//   变异语义不变：摘掉判据 ⇒ 老月份（无 month / < 生效月）也会照扣 ⇒ A-① 必须转红。
+//   ⚠️ 这里**故意不传 month** ⇒ amortRuleV2(undefined) = false ⇒ 走的是老逻辑，正是本组要证的那条路。
+const ANCHOR = 'const effectiveAmortizeFen = (amortV2 || amortizeSwitchOn) ? fenRoundN(amortizeFen) : 0;';
 const mut = loadMutant('cloudfunctions/calcMonthlyProfit/service.js', ANCHOR,
   'const effectiveAmortizeFen = fenRoundN(amortizeFen);');
 let mutantCaught = false;

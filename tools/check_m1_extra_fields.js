@@ -109,7 +109,10 @@ const amortBlock = (() => {
 ok('A-③ 剩余期数排除 mode=\'lump\'（一次性投入没有"还剩几期"）', amortBlock.indexOf("mode !== 'lump'") >= 0);
 ok('A-④ 剩余期数含本月（从 max(本月, 开始月) 起算）', amortBlock.indexOf('Math.max(mi, st)') >= 0 && amortBlock.indexOf('end - from + 1') >= 0);
 ok('A-④b 摊销段确实被截到了（防上面两条空转恒真）', amortBlock.length > 400, amortBlock.length + ' 字符');
-ok('A-⑤ switch_on 随出参下发（前端据此显示"不适用"而非"0 元提升"）', gL.indexOf('switch_on: amortizeSwitchOn') >= 0);
+// 🔴 R736：v2 月份摊销一律计入 ⇒ switch_on 必须报 true（否则引擎扣了钱、页面却说"未开启摊销"）。
+//   判据从「字面等于 amortizeSwitchOn」改成「先看 amortRuleV2 再回落开关」—— 语义更强，不是放宽。
+ok('A-⑤ switch_on 随出参下发，且 v2 月份恒 true（引擎扣了钱，页面就不许说"未开启"）',
+  /switch_on:\s*result\.amortRuleV2 \? true : amortizeSwitchOn/.test(gL));
 ok('A-⑥ 结果页按 switch_on / has 三态渲染（不是只有一个 else）', SRC.resultWxml.indexOf('!amortView.on') >= 0 && SRC.resultWxml.indexOf('!amortView.has') >= 0);
 // 🔴 反面：整页不得出现未定义的裸键 `amort.` / `tr.`。
 //   2026-11-05 实测：批量改键名时 `{{!amort.on}}` 不含 `{{amort.` 子串 ⇒ 漏改 3 处，

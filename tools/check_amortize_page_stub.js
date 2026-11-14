@@ -222,49 +222,41 @@ function S(o) {
     && p.findMonthAmount(null, 'a1') === 0);
 
   // =====================================================
-  // D · 摊销开关（本页最贵：失败必须回滚）
+  // D · 摊销开关已删除（R736 · 李老师拍板 · 豆包 ×2 + DeepSeek 三家会诊一致）
+  //   原 D 段守的是「开关乐观更新 + 失败回滚 + 归档只读」—— 那套断言随开关一起退休。
+  //   现在守的是**反方向**：开关必须真的没了，且结果位不再被任何东西归零。
   // =====================================================
-  sec('D · 摊销开关（乐观更新 + 失败回滚 + 归档只读）');
+  sec('D · 摊销开关已删除（摊销一律按台账计入）');
 
-  reset();
-  saveThrows = true;
   p = fresh(cfg);
-  p.data.month = '2026-11';
-  p.data.amortizeOn = true;
-  await p.onToggleAmortize({ detail: { value: false } });
-  check('D-① 🔴 保存失败 ⇒ 开关必须回滚到原值（否则页面说已关、后端还开着，利润口径错）',
-    p.data.amortizeOn === true && seen.toastError === 1,
-    'amortizeOn=' + p.data.amortizeOn + ' toastError=' + seen.toastError);
+  check('D-① 🔴 页面**不得**再有 onToggleAmortize —— 开关删除后残留的方法就是第二个真相源',
+    typeof p.onToggleAmortize !== 'function',
+    'type=' + typeof p.onToggleAmortize);
 
-  reset();
-  p = fresh(cfg);
-  p.data.month = '2026-11';
-  p.data.amortizeOn = true;
-  await p.onToggleAmortize({ detail: { value: true } });
-  check('D-② 值没变 ⇒ 不发请求（避免无意义的写库与幂等键消耗）',
-    (seen.calls || []).length === 0, '调用数=' + (seen.calls || []).length);
+  const WXML = fs.readFileSync(path.join(ROOT, 'subpkg/biz/month/amortize.wxml'), 'utf8');
+  check('D-② 模板里不得再出现 onToggleAmortize 绑定（绑到已删方法 ⇒ 老板一点就抛错）',
+    !/onToggleAmortize/.test(WXML), '命中=' + /onToggleAmortize/.test(WXML));
+
+  check('D-③ 模板里不得再渲染 switch 组件（本页已无任何开关）',
+    !/<switch[\s>]/.test(WXML), '命中=' + /<switch[\s>]/.test(WXML));
 
   reset();
   schedule = S({ amortize_switch_on: true });
   p = fresh(cfg);
   p.data.month = '2026-11';
-  p.data.amortizeOn = false;
-  await p.onToggleAmortize({ detail: { value: true } });
-  const saveCall = (seen.calls || []).filter((c) => c.name === 'saveShopSetting')[0];
-  check('D-③ 成功 ⇒ 调 saveShopSetting 带 switches.amortize + 幂等键',
-    !!saveCall && saveCall.params.switches && saveCall.params.switches.amortize === true
-    && /^am_\d+$/.test(String(saveCall.params.client_request_id)),
-    saveCall ? JSON.stringify(saveCall.params) : '未调用');
+  await p.load();
+  check('D-④ v2 月份：页首大数字恒等于台账应摊额（不再被开关归零）',
+    p.data.shownTotalYuan === '3160.00' && p.data.shownTotalYuan === p.data.totalYuan,
+    'shown=' + p.data.shownTotalYuan + ' total=' + p.data.totalYuan);
 
   reset();
-  schedule = S({ is_archive: true, amortize_switch_on: false });
+  schedule = S({ amortize_switch_on: false });
   p = fresh(cfg);
-  p.data.month = '2026-11';
-  p.data.isArchive = true;
-  await p.onToggleAmortize({ detail: { value: true } });
-  check('D-④ 🔴 归档期 ⇒ 弹「已锁定」且**不发保存请求**（已出报表不许被悄悄改写）',
-    !!seen.modal && (seen.calls || []).filter((c) => c.name === 'saveShopSetting').length === 0,
-    'modal=' + (seen.modal && seen.modal.title));
+  p.data.month = '2026-10';
+  await p.load();
+  check('D-⑤ 后端报未计入时（只可能出现在 2026-11 之前的老月份）仍显示 ¥0.00 + 附注 —— 历史一个字不改',
+    p.data.shownTotalYuan === '0.00' && !!p.data.offNote,
+    'shown=' + p.data.shownTotalYuan + ' offNote=' + (p.data.offNote || '(空)'));
 
   // =====================================================
   // E · 只读拦截 / 出口
@@ -377,12 +369,13 @@ function S(o) {
     loadCfg();
   }
 
-  await mut('M-1 失败不回滚', "this.setData({ amortizeOn: prev });       // 服务端才是权威 → 回滚", '',
-    'D-① 失败回滚', async (mc) => {
-      reset(); saveThrows = true;
-      const mp = fresh(mc); mp.data.month = '2026-11'; mp.data.amortizeOn = true;
-      await mp.onToggleAmortize({ detail: { value: false } });
-      return { degraded: mp.data.amortizeOn === false, detail: 'amortizeOn=' + mp.data.amortizeOn };
+  // R736：原 M-1 变的是「开关失败不回滚」，那条代码已随开关删除 ⇒ 锚点必然漂移。
+  //   新 M-1 守反方向：**只要有人把开关方法加回来，D-① 必须转红**（证明 D 段不是恒绿）。
+  await mut('M-1 开关方法被加回来', '  // 提前报废：软删前的「终止」语义',
+    '  onToggleAmortize(e) { this.setData({ amortizeOn: !!e.detail.value }); },\n\n  // 提前报废：软删前的「终止」语义',
+    'D-① 开关已删除', async (mc) => {
+      const mp = fresh(mc);
+      return { degraded: typeof mp.onToggleAmortize === 'function', detail: 'type=' + typeof mp.onToggleAmortize };
     });
 
   await mut('M-2 分组不聚合（每笔独立）', 'const key = r.group_id || r.asset_id;', 'const key = r.asset_id;',
