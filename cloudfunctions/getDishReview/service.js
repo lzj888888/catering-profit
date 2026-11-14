@@ -513,7 +513,46 @@ function calcWeightedMenuPct(ranked, cards, totalSalesQty) {
   return Object.assign({ pct: Math.round((1 - costFen / revenueFen) * 10000) / 100, reason: '' }, base);
 }
 
+/**
+ * R194-A 同根修复：免费档「销量榜 Top N + 已建卡数」必须**全渠道**（堂食 + 各平台外卖）。
+ * 原实现只用堂食 ranked ⇒ 纯外卖店空榜 / 已建卡 0、混合店漏掉外卖菜。
+ * 合并口径：按 dish_key 汇总跨渠道同菜（qty / amountFen 相加）；纯堂食输入下与旧行为**逐行等价**
+ *   （rankReview 已按 dish_key 聚合，堂食 ranked 内 dish_key 唯一 ⇒ 合并即恒等）。
+ * @param {Array} rankedDineIn 堂食 ranked（buildDishReview().dine_in）
+ * @param {{by_platform?:Object}} takeawayResult buildTakeawayReview() 的返回
+ * @param {number} n Top N
+ * @returns {{top:Array, totalDistinct:number}}
+ */
+function buildFreeTop(rankedDineIn, takeawayResult, n) {
+  const merged = new Map();
+  const add = (r) => {
+    const k = (r && r.dish_key == null ? '' : String(r.dish_key)).trim();
+    if (!k) return;
+    const q = Number(r.qty) || 0, a = Number(r.amountFen) || 0;
+    const cur = merged.get(k);
+    if (cur) { cur.qty += q; cur.amountFen += a; }
+    else merged.set(k, {
+      dish_key: r.dish_key, name: r.name, card_code: r.card_code,
+      qty: q, amountFen: a, snapshot_month: r.snapshot_month,
+    });
+  };
+  for (const r of (rankedDineIn || [])) add(r);
+  const bp = (takeawayResult && takeawayResult.by_platform) || {};
+  for (const p of Object.keys(bp)) {
+    const arr = bp[p] && bp[p].ranked;
+    if (Array.isArray(arr)) for (const r of arr) add(r);
+  }
+  const mergedArr = Array.from(merged.values());
+  const byQty = mergedArr.slice().sort((x, y) =>
+    (y.qty - x.qty) || (y.amountFen - x.amountFen) || String(x.name).localeCompare(String(y.name)));
+  const top = byQty.slice(0, n).map((x) => ({
+    dish_key: x.dish_key, name: x.name, card_code: x.card_code,
+    qty: x.qty, amountFen: x.amountFen, snapshot_month: x.snapshot_month,
+  }));
+  return { top, totalDistinct: mergedArr.length };
+}
+
 module.exports = { buildDishReview, buildTakeawayReview, rankReview, splitSales, mergeTotals, TOTALS_FIELDS, computeCoverage, classifyDishKey, filterByRange, countDataDays,
-  calcWeightedMenuPct,
+  calcWeightedMenuPct, buildFreeTop,
   // R574 / #110：粒度感知的覆盖天数（守卫直接验）
   coverageStats, spanDaysInclusive, mergeRanges };

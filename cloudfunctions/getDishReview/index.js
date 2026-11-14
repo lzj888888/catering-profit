@@ -32,7 +32,7 @@ const { toMonth } = common.utilTime;
 
 // 🔴 R232f：算法层已外提到 service.js（纯函数 · 零 db）⇒ 6 处口径首次可被独立复算。
 //   本文件只负责：鉴权 → 付费墙 → 取数 → 调 service → 返回。
-const { buildDishReview, buildTakeawayReview, splitSales, mergeTotals, computeCoverage, filterByRange, coverageStats, calcWeightedMenuPct } = require('./service');
+const { buildDishReview, buildTakeawayReview, splitSales, mergeTotals, computeCoverage, filterByRange, coverageStats, calcWeightedMenuPct, buildFreeTop } = require('./service');
 
 exports.main = async (event) => {
   const ctx = cloud.getWXContext();
@@ -189,16 +189,9 @@ exports.main = async (event) => {
     }
     const weighted = calcWeightedMenuPct(allChannelRanked, cards, totals.qty);
     const FREE_TOP_N = 10;
-    const byQty = ranked.slice().sort((a, b) =>
-      (b.qty - a.qty) || (b.amountFen - a.amountFen) || String(a.name).localeCompare(String(b.name)));
-    const freeTop = byQty.slice(0, FREE_TOP_N).map((x) => ({
-      dish_key: x.dish_key,
-      name: x.name,
-      card_code: x.card_code,
-      qty: x.qty,
-      amountFen: x.amountFen,
-      snapshot_month: x.snapshot_month,
-    }));
+    // 🔴 R194-A 同根：销量榜/已建卡数也用全渠道（按 dish_key 合并跨渠道同菜；纯堂食逐行等价）。
+    const freeTopRes = buildFreeTop(ranked, takeawayResult, FREE_TOP_N);
+    const freeTop = freeTopRes.top;
     const freeUnmatched = (unmatched || []).slice();
     if (takeawayResult.by_platform) {
       for (const p of Object.keys(takeawayResult.by_platform)) {
@@ -211,7 +204,7 @@ exports.main = async (event) => {
       tier: 'free',
       free_top: freeTop,             // 销量 Top N（无成本/毛利字段）
       free_top_n: FREE_TOP_N,
-      free_ranked_total: ranked.length,   // 「一共 N 道已建卡」⇒ 让他自己看出还差多少没看到
+      free_ranked_total: freeTopRes.totalDistinct,   // 「一共 N 道已建卡」（全渠道去重）⇒ 让他自己看出还差多少没看到
       mapping: mappingList,
       range: {
         from: rangeFrom,

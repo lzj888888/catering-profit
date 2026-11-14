@@ -201,6 +201,26 @@ ok('D-③ 反恒真：退回仅堂食 ranked ⇒ 纯外卖店变回 no_match（�
     ok('D-④ 🔴 源码锁：index.js 不再调用 calcWeightedMenuPct(ranked, cards, totals.qty)（仅堂食口径必删）', !/calcWeightedMenuPct\(ranked, cards, totals\.qty\)/.test(idxSrcD));
     ok('D-⑤ 🔴 源码锁：index.js 用全渠道 ranked（allChannelRanked）喂加权', /allChannelRanked/.test(idxSrcD) && /calcWeightedMenuPct\(allChannelRanked, cards, totals\.qty\)/.test(idxSrcD));
 
+    // ---------- E. R194-A 同根：免费档销量榜 / 已建卡数 全渠道 ----------
+    console.log('\n===== E. R194-A 同根：免费档销量榜全渠道 =====');
+    const eTake = S.buildTakeawayReview([{ dish_key: 'A', qty: 100, amount: 200000, platform: 'meituan' }, { dish_key: 'B', qty: 60, amount: 180000, platform: 'meituan' }], D_CARDS, D_DEPS);
+    const ePureTake = S.buildFreeTop([], eTake, 10);
+    ok('E-① 🔴 纯外卖店：销量榜非空（≥2 道），旧实现为空', ePureTake.top.length >= 2 && ePureTake.totalDistinct >= 2, JSON.stringify({ len: ePureTake.top.length, total: ePureTake.totalDistinct }));
+    const eDine = S.buildDishReview([{ dish_key: 'A', qty: 50, amount: 100000, platform: 'pos' }], D_CARDS, D_DEPS);
+    const eTake2 = S.buildTakeawayReview([{ dish_key: 'B', qty: 40, amount: 120000, platform: 'meituan' }], D_CARDS, D_DEPS);
+    const eMixed = S.buildFreeTop(eDine.dine_in, eTake2, 10);
+    ok('E-② 混合店：销量榜含堂食 A 与外卖 B（totalDistinct=2）', eMixed.totalDistinct === 2 && eMixed.top.map((x) => x.dish_key).sort().join(',') === 'A,B', JSON.stringify(eMixed.totalDistinct));
+    const eDine3 = S.buildDishReview([{ dish_key: 'A', qty: 50, amount: 100000, platform: 'pos' }, { dish_key: 'B', qty: 80, amount: 240000, platform: 'pos' }], D_CARDS, D_DEPS);
+    const ePureDine = S.buildFreeTop(eDine3.dine_in, { by_platform: {}, totals: {} }, 10);
+    const eOld = eDine3.dine_in.slice().sort((a, b) => (b.qty - a.qty) || (b.amountFen - a.amountFen) || String(a.name).localeCompare(String(b.name))).slice(0, 10);
+    ok('E-③ 纯堂食：与旧实现逐行等价（不改既有行为）', ePureDine.top.length === eOld.length && ePureDine.top.every((x, i) => x.dish_key === eOld[i].dish_key && x.qty === eOld[i].qty), JSON.stringify(ePureDine.top.map((x) => x.dish_key + ':' + x.qty)));
+    const eDine4 = S.buildDishReview([{ dish_key: 'A', qty: 50, amount: 100000, platform: 'pos' }], D_CARDS, D_DEPS);
+    const eTake4 = S.buildTakeawayReview([{ dish_key: 'A', qty: 30, amount: 60000, platform: 'meituan' }], D_CARDS, D_DEPS);
+    const eDup = S.buildFreeTop(eDine4.dine_in, eTake4, 10);
+    ok('E-④ 跨渠道同菜去重：同 dish_key ⇒ 1 行、qty 相加（不重复）', eDup.top.length === 1 && eDup.top[0].qty === 80 && eDup.totalDistinct === 1, JSON.stringify(eDup));
+    ok('E-⑤ 🔴 源码锁：index.js 用 buildFreeTop 生成销量榜', /buildFreeTop\(ranked, takeawayResult, FREE_TOP_N\)/.test(rd('cloudfunctions/getDishReview/index.js')));
+    ok('E-⑥ 🔴 源码锁：free_ranked_total 不再用仅堂食 ranked.length', !/free_ranked_total:\s*ranked\.length/.test(rd('cloudfunctions/getDishReview/index.js')));
+
     console.log('\n============================================================');
     console.log('===== R729 加权接线守卫结果：' + pass + ' 通过 / ' + bad.length + ' 失败 =====');
     if (bad.length) { bad.forEach((p) => console.log('   ❌ ' + p)); process.exit(1); }
