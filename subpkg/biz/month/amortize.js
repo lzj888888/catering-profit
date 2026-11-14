@@ -18,6 +18,7 @@ Page({
       title: TERMS.amortizePage.title,
       monthTotal: TERMS.amortizePage.monthTotal,
       // R732：开关关闭时的合计标题与说明（同一屏不能既说"关"又说"摊了 4,333"）
+      // R735：标题再明确「本月未扣」，并把台账额下移成附注（金额部分在 load 里拼，见 offNote）
       monthTotalOff: TERMS.amortizePage.monthTotalOff,
       monthTotalOffHint: TERMS.amortizePage.monthTotalOffHint,
       // round107：本月一次算清清单
@@ -29,6 +30,8 @@ Page({
       lumpAdd: TERMS.amortizePage.lumpAdd,
       // 分期摊销区块
       amortSectionTitle: TERMS.amortizePage.amortSectionTitle,
+      // R735：开关关闭时区块标题改成台账口径（行内「月摊销」数值照旧显示，但整块标注不进本月利润）
+      amortSectionTitleOff: TERMS.amortizePage.amortSectionTitleOff,
       // ⚠️ round108 修复：这里原来写 `TERMS.amortizePage.amortAdd` —— **该键在 terms.js 里不存在**
       //   ⇒ 取到 undefined ⇒ 页面底部那个主按钮渲染成**纯蓝色、无文字**（李老师真机反馈）。
       //   术语本体一直是 `amortizePage.add`（「新增摊销资产」）。守卫 check_page_terms 已补上防复发。
@@ -72,7 +75,13 @@ Page({
     },
     month: '',
     totalFen: 0,
-    totalYuan: '0.00',       // 初值必须有（接口失败时渲染「¥0.00」而非裸「¥」）
+    totalYuan: '0.00',       // 台账每月应摊（与开关无关，是台账事实）—— 附注与区块用
+    // 🔴 R735（李老师真机：「开关关了，最上面本月摊销合计还有数值显示」）：
+    //   页首那个大数字的位置代表**本月结果**，名字又叫"合计" ⇒ 它必须是「本月真正计入利润的摊销」。
+    //   开关关闭 ⇒ 显示 0.00（本月确实没扣）；台账应摊额移到下方附注 offNote，信息不丢。
+    //   ⚠️ 这两个字段只影响**显示**，不动任何金额计算（引擎侧 effectiveAmortizeFen 早已按开关归零）。
+    shownTotalYuan: '0.00',
+    offNote: '',             // 开关关闭时的台账附注（含台账应摊额）
     lumps: [],               // 本月一次算清清单（金额全由后端出参换算）
     lumpTotalYuan: '0.00',
     assets: [],
@@ -151,9 +160,20 @@ Page({
         };
       });
 
+      // 🔴 R735：页首大数字 = 本月**实际计入利润**的摊销。
+      //   开关关闭 ⇒ 0.00；台账应摊额进附注（老板仍能看到"这笔钱每月该摊多少"，但它不扣本月）。
+      const amortOn = !!d.amortize_switch_on;
+      const ledgerYuan = api.fenToYuan(d.total_amount_fen || 0, 2);
+
       this.setData({
         totalFen: d.total_amount_fen || 0,
+        // ⚠️ 这一行刻意保持「就地换算」的字面形态：`selftest_ui_fix` 用字面判据守
+        //   「load 成功路径必须把 total_amount_fen 换算后写进 totalYuan（别忘赋值）」。
+        //   改成复用 ledgerYuan 会让那条断言判红 —— 那是守卫的字面弱点，不是这里的错；
+        //   本轮不改守卫（改它要动断言数声明），用重复一次换算换零风险。
         totalYuan: api.fenToYuan(d.total_amount_fen || 0, 2),
+        shownTotalYuan: amortOn ? ledgerYuan : '0.00',
+        offNote: amortOn ? '' : TERMS.amortizePage.monthTotalOffNote(ledgerYuan),
         lumps,
         lumpTotalYuan: api.fenToYuan(d.lump_total_fen || 0, 2),
         assets,
@@ -161,7 +181,7 @@ Page({
         // round108（真机缺陷修复）：开关值**只认本次云函数出参**（`amortize_switch_on`），
         //   不再读 `app.globalData.switches` —— 那是只在 getShopContext 时刷新的前端缓存，
         //   保存开关后没人刷新它 ⇒ 重拉时读回旧值 ⇒ 开关「自己弹回打开」（李老师真机反馈）。
-        amortizeOn: !!d.amortize_switch_on,
+        amortizeOn: amortOn,
         isArchive: !!d.is_archive,
         loading: false,
       });

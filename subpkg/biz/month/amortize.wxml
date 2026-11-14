@@ -3,12 +3,15 @@
   <view class="archived-bar" wx:if="{{isArchive}}">{{t.archiveReadonly}}</view>
 
   <!-- 本月摊销合计（分期摊销的当月影响）
-       🔴 R732：开关关闭时标题改口径并补一句说明 —— 数字仍是台账应摊额（事实），
-         但必须让人一眼看出「这笔钱这个月没进利润」，否则与上面那个开关在同一屏打架。 -->
+       🔴 R732：开关关闭时标题改口径并补一句说明。
+       🔴 R735（李老师真机：「开关关了，最上面本月摊销合计还有数值显示，不知道正不正常」）：
+         这个位置是**结果位**，名字叫"合计" ⇒ 大数字必须是「本月真正计入利润的摊销」。
+         开关关闭时显示 ¥0.00（本月确实没扣），台账应摊额下移到附注 —— 让老板既看到"没扣"，
+         也看到"这笔钱每月该摊多少"，两个事实不打架。 -->
   <view class="card2">
     <view class="muted">{{amortizeOn ? t.monthTotal : t.monthTotalOff}}</view>
-    <view class="result-num">{{t.cur}}{{totalYuan}}</view>
-    <view class="muted" wx:if="{{!amortizeOn}}">{{t.monthTotalOffHint}}</view>
+    <view class="result-num">{{t.cur}}{{shownTotalYuan}}</view>
+    <view class="muted" wx:if="{{!amortizeOn}}">{{offNote}}</view>
   </view>
 
   <!-- R234/J4c：🔴 **本句 134 字 —— 全站最长的一条提示**，原先以 `class="hint scope-hint"`（复合 class）
@@ -51,7 +54,9 @@
   </view>
 
   <!-- ===== ② 分期摊销（mode='amort'）===== -->
-  <view class="cm-sub">{{t.amortSectionTitle}}</view>
+  <!-- 🔴 R735：本区块每行的「月摊销 ¥X」是**台账属性**（这笔资产每月摊多少），与开关无关，必须保留；
+       但开关关闭时整块都不进本月利润 ⇒ 区块标题改台账口径，一眼可见行内数字不是本月扣的钱。 -->
+  <view class="cm-sub">{{amortizeOn ? t.amortSectionTitle : t.amortSectionTitleOff}}</view>
 
   <view class="switch-row">
     <view class="lbl2">{{t.amortSwitchLabel}}</view>

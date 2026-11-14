@@ -9,7 +9,7 @@ const common = require('./common');                 // 扁平派生副本（sync
 const { resolveAuth, assertShopOwner } = common;
 const { ok, fail } = common;
 const { makeAdapter } = common.dataAdapter;
-const { amortizeForMonth, amountForMonth, monthIndex, fmtMonthIdx } = require('./service');
+const { amortizeForMonth, amountForMonth, resolveArchiveSwitches, monthIndex, fmtMonthIdx } = require('./service');
 const { validateInput } = require('./validate');
 
 // round106（F5b）：留存数据 —— 「已摊多少期 / 还剩余多少未摊 / 哪个月摊完」。
@@ -59,9 +59,30 @@ exports.main = async (event) => {
   //     时写一次 —— 保存开关后**没有任何人刷新它** ⇒ 页面保存后重拉时读回**旧值**（true）⇒ 开关自己弹回打开。
   //   修法与 getLedger 一致：**页面只认云函数出参**（渲染本页的那次调用就是唯一真相源），不认前端缓存。
   //   注：开关本身的口径没变 —— 关掉 ⇒ 摊销不进真实利润（引擎 `effectiveAmortizeFen` 已按此实现）。
+  //
+  // 🔴 R735（多轮审计挖出的连带缺陷）：**归档月必须用落库快照，不能用实时开关**。
+  //   与 getLedger 同一纪律（R257）：归档月的展示值每次读都现算，参与计算的参数必须一起冻结。
+  //   病灶：本页原先直接读实时 shop_switch ⇒ 归档后关掉开关，摊销页说「本月未扣」，
+  //     而结果页/月报列表经 getLedger 走快照、说「扣了」 ⇒ **同一月份两个页面互相打脸**。
+  //   ⚠️ 本轮把页首大数字改成跟开关走（关闭 ⇒ ¥0.00），若不修这里，矛盾会被放大成显性错误。
   const swRes = await da.list('shop_switch', { shop_id: shopId });
   const swRows = (swRes && swRes.data) || [];
-  const amortizeSwitchOn = !!((swRows.find((r) => r.switch_key === 'amortize_switch') || {}).enabled);
+  // ⚠️ 这里刻意用**两处显式字面**而不是一个通用 `swGet(key)`：
+  //   `getShopContext/selftest.js` 的 R298X-J3e 要求「直连 switch_key === 开关名字面 的命中 ≥2」，
+  //   它守的是「静态扫描面没退化」这个前提（扫描面空了，后面的键覆盖检查会恒绿）。
+  //   换成通用函数后字面消失 ⇒ 命中数掉到 1 ⇒ 前提断言判红（实测踩过，不是产品缺陷）。
+  //   ⚠️ 本注释不要在反引号里写出「switch_key 后面跟一个带引号的示例键名」——
+  //     J3c 的正则会把注释里的示例当成真字面，判「未登记键」（本轮踩过一次）。
+  //   显式写法同时也更直白：看到 switch_key 就知道读的是哪把开关。
+  const liveInventoryOn = !!((swRows.find((r) => r.switch_key === 'inventory_switch') || {}).enabled);
+  const liveAmortizeOn = !!((swRows.find((r) => r.switch_key === 'amortize_switch') || {}).enabled);
+  const sw = resolveArchiveSwitches({
+    isArchive,
+    switchUsed: acc && acc.switch_used,
+    liveInventorySwitchOn: liveInventoryOn,
+    liveAmortizeSwitchOn: liveAmortizeOn,
+  });
+  const amortizeSwitchOn = sw.amortizeSwitchOn;
 
   const res = await da.list('shop_amortize', { shop_id: shopId });
   const rows = ((res && res.data) || []).map((a) => ({
@@ -98,7 +119,10 @@ exports.main = async (event) => {
     // round107：该月归档态（前端据此把一次性投入与台账操作置只读；服务端另有硬拦截）
     is_archive: isArchive,
     // round108：摊销开关（服务端权威）—— 前端**必须**用这个值渲染开关，不得读 globalData 缓存
+    // 🔴 R735：归档月这里返回的是**落库快照值**（source='snapshot'），与 getLedger 同口径。
+    //   switch_source 一并返回，便于排查「这个月的开关到底按哪份算的」。
     amortize_switch_on: amortizeSwitchOn,
+    switch_source: sw.source,
     total_amount_fen: sched.total_amount_fen,
     details: sched.details,
     client_request_id: v.input.client_request_id || '',

@@ -4,7 +4,7 @@
 //       + R727 销量样例事实守卫（tools/check_sales_sample_facts.js，四张平台表在仓 + 粒度/规格实跑解析，防「样例待提供」第三次复发）
 //       + R726 算钱口径守卫（tools/check_r714_decisions.js，R714 三件口径由台账四票机器化：
 //         名单 ≡ 落地、E-6 真跑非有限 coverage 抑制、E-1/E-2 文案双副本与上屏、含反恒真）
-// 串联：316 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：317 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1782,6 +1782,11 @@ const SUITES = [
   //   七层判据：引擎双侧真跑 / 台账与开关解耦 / 归档快照固化 / 导出三表自洽 /
   //   沙盘测算口径 / 11 个页面接线 / 变异回灌反恒真。
   ['amort-switch-matrix', 'tools/check_amort_switch_matrix.js'],
+  // R735 · 摊销「结果位显示口径」：李老师「开关关了，最上面本月摊销合计还有数值显示，不知道正不正常。
+  //   设备月摊销也显示数值。摊销这块你处理完，务必多轮审计」。
+  //   第三次同病根换皮（R732 呈现层 / R733 入口 / R735 结果位）⇒ 这次把「结果位必须跟开关走」立成判据：
+  //   H 页首大数字跟开关（真跑页面读 data）+ I 归档月用落库快照（与 getLedger 同口径）+ J 变异回灌。
+  ['amort-display-caliber', 'tools/check_amort_display_caliber.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
