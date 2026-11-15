@@ -214,11 +214,22 @@ exports.main = async (event) => {
   //   且不含任何菜品列、结算列 ⇒ 与菜品表/账单表的识别条件互斥，不会误判。
   //   识别到就**只解析、不落库**：本表的用途是「看清各渠道与两套口径」，
   //   要落进 M1 月度账得先定 incomeItems 结构（独立一轮），本轮不碰契约。
+  // 🔴 R746 / GAP-3：缺列 fail-closed —— 表被认出来（有日期/班次/现金）但业务列缺了，
+  //   旧代码 get() 返回 null ⇒ num(null)=0 ⇒ 静默少算（真表少 888.88 元）且自检照样 pass。
+  //   现在先查缺列：缺则记下诊断、不当营收表用；只有「一张表齐全且解析非空」才走老路径。
+  //   ⚠️ 只作用于**上传的 xlsx**；手填路径（manualToRows）在上方，不走这里，不受影响。
+  const revMissing = { shape: 'revenue_daily', reason: 'missing_cols', cols: [], sheet: '' };
   const revOut = (() => {
     const names = Object.keys(matrix.sheets || {});
     for (const nm of names) {
       const rowsOf = (matrix.sheets[nm] || {}).rows || [];
-      if (!RevenueDaily.detectRevenueDaily(rowsOf).hit) continue;
+      const det = RevenueDaily.detectRevenueDaily(rowsOf);
+      if (!det.hit) continue;
+      const missing = RevenueDaily.missingRevenueCols(det.cols);
+      if (missing.length) {
+        if (!revMissing.cols.length) { revMissing.cols = missing; revMissing.sheet = nm; }
+        continue;
+      }
       const parsed = RevenueDaily.parseRevenueDaily(rowsOf);
       if (parsed.ok && !parsed.isEmpty) return parsed;
     }
@@ -316,6 +327,22 @@ exports.main = async (event) => {
     }
 
     return ok({ revenue_daily: payload });
+  }
+
+  // 🔴 R746 / GAP-3：认出是营收日报但**缺业务列** ⇒ 走 ok 通道回诊断（与 R286 认不出表同一通道），
+  //   fail-closed：不落库、不给预览、不产生任何数据，只把「该补哪几列」说清楚。
+  //   前端 revenue 页的 showNotMine 已能消费 dg.missing / dg.reason，这里补一个 revenue 分支。
+  if (revMissing.cols.length) {
+    return ok({
+      diagnosis: {
+        shape: 'revenue_daily',
+        sheet: revMissing.sheet,
+        reason: 'revenue_missing_cols',
+        missing: { revenue: revMissing.cols },
+        nearest: 'revenue',
+      },
+      client_request_id: clientRequestId || '',
+    });
   }
 
   // ===== 5b. 分流：堂食菜品销售表（批次 G）优先，识别不出再走外卖账单（批次 F）=====

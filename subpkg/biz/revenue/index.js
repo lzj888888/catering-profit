@@ -167,6 +167,9 @@ Page({
     if (dg.reason === 'empty_table') body = TK.importDiagEmpty || '';
     else if (dg.reason === 'cols_ok_but_excluded') body = (TK.importDiagExcluded || '').replace('{col}', dg.excludedBy || '');
     else if (dg.reason === 'mixed_goods_column') body = (TK.importDiagMixed || '').replace('{col}', dg.mixedCol || '');
+    // 🔴 R746 / GAP-3：营收日报表缺业务列 —— 与菜品表「分列」不同，这里是「补列」，
+    //   且要说清这次没算的原因（缺列按 0 会少算钱）。后端只回结构化缺列，文案走 terms 单源。
+    else if (dg.reason === 'revenue_missing_cols') body = (TK.importDiagRevenueCols || '').replace('{cols}', miss.join('、'));
     else body = (TK.importDiagBody || '').replace('{cols}', miss.join('、'));
     const found = (dg.foundCols && dg.foundCols.length)
       ? '\n' + (TK.importDiagFound || '').replace('{cols}', dg.foundCols.slice(0, 8).join('、'))

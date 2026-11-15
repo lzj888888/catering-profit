@@ -140,8 +140,13 @@ const PLATFORM_PROFILE = {
     deny: [],
     billDate: C_BILL_DATE, net: C_MEITUAN_NET,
     bizType: '交易类型', order: '外卖订单',
-    rowFilter: { col: '交易类型', eq: '外卖订单' },
-    qtyRule: 'perRow',
+    // 🔴 R746 / GAP-1：与 utils/billParse.js 同源同步（R695/R700 只修了 utils，生产这份落后两版）。
+    //   keepContains：退款行必须留下冲减金额（真表多算 39.85 元 / 44%）。
+    //   orderType/refund + refundTypeContains：两种退款形态都不算有效订单（客单价不被拉低）。
+    rowFilter: { col: '交易类型', eq: '外卖订单', keepContains: ['退款'] },
+    orderType: '订单状态', refund: '已退款',
+    refundTypeContains: '退款',
+    qtyRule: 'perRow_exceptRefund',
     excludeLabel: '非外卖订单（广告/保险）',
   },
   jd_order: {
@@ -318,8 +323,11 @@ function parseBillMatrix(matrix, opts) {
     const row = allRows[i] || [];
     if (rf) {
       const v = String(at(row, rf.col) == null ? '' : at(row, rf.col)).trim();
-      if (rf.eq != null && v !== rf.eq) { excludedRows++; continue; }
-      if (rf.ne != null && v === rf.ne) { excludedRows++; continue; }
+      // 🔴 R746 / GAP-1：与 utils/billParse.js 同源 —— keepContains 只放指定关键词（退款冲减），
+      //   广告/保险照旧排除。缺这条 ⇒ 退款整行被排掉 ⇒ 收入多算（真表 39.85 元 / 44%）。
+      const kept = (rf.keepContains || []).some(function (k) { return v.indexOf(k) >= 0; });
+      if (rf.eq != null && v !== rf.eq && !kept) { excludedRows++; continue; }
+      if (rf.ne != null && v === rf.ne && !kept) { excludedRows++; continue; }
     }
     const net = toNum(at(row, prof.net));
     if (net == null) continue;
@@ -327,7 +335,13 @@ function parseBillMatrix(matrix, opts) {
     let qty = 0;
     if (prof.qtyRule === 'perRow_exceptRefund') {
       const ot = String(at(row, prof.orderType) == null ? '' : at(row, prof.orderType)).trim();
-      qty = (ot === prof.refund) ? 0 : 1;
+      // 🔴 R746 / GAP-1：与 utils/billParse.js 同源 —— 退款两种形态都要排除出有效订单：
+      //   ① 订单状态=已退款；② 交易类型本身含「退款」（如「订单部分退款」，状态却写「订单完成」）。
+      //   只判 ① 会把退款算成一单 ⇒ 客单价被拉低 ⇒ 所有按单价的判断跟着偏。
+      const bt = prof.bizType
+        ? String(at(row, prof.bizType) == null ? '' : at(row, prof.bizType)).trim() : '';
+      const isRefundType = !!(prof.refundTypeContains && bt.indexOf(prof.refundTypeContains) >= 0);
+      qty = (ot === prof.refund || isRefundType) ? 0 : 1;
     } else if (prof.qtyRule === 'perRow') {
       qty = 1;
     } else if (prof.qtyRule === 'perOrderNo') {

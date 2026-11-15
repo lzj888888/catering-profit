@@ -144,7 +144,9 @@ function showFreeLimit(opts) {
   track('free_limit_hit', { scope: isShop ? 'shop' : 'card' });
   const n = Number(opts.limit) || 0;
   const raw = isShop ? TERMS.pay.freeLimitShopBody : TERMS.pay.freeLimitCardBody;
-  const body = n > 0 ? raw.replace('{n}', String(n)) : TERMS.pay.freeLimitGeneric;
+  // 🔴 R746 / G3：freeLimitCardBody 里有**两个** `{n}`（「最多支持 {n} 道」+「你已建的 {n} 道」），
+  //   String.replace 只换第一个 ⇒ 老板会看到「你已建的 {n} 道菜都还在」。改全局替换。
+  const body = n > 0 ? raw.replace(/\{n\}/g, String(n)) : TERMS.pay.freeLimitGeneric;
   wx.showModal({
     title: isShop ? TERMS.pay.freeLimitShopTitle : TERMS.pay.freeLimitCardTitle,
     content: body,

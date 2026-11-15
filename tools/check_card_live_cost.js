@@ -320,9 +320,17 @@ ok('P-④ 缓存只写「新建态」—— 编辑态数据要准，不能拿缓
 ok('P-⑤ 缓存读取失败不影响正确性（try/catch 包住，走真取）',
   /catch \(e\) \{ \/\* 缓存坏了不影响正确性/.test(LOAD_BODY) || /getStorageSync[\s\S]{0,200}catch/.test(LOAD_BODY));
 {
-  // 变异：把并行改回串行 ⇒ P-① 必须红
+  // 🔴 R746 修 P-⑥ 装饰性自证：原判据只自证「字符串替换生效」，从未把变异体喂回 P-①；
+  //   即使把 P-① 改成恒真 ()=>true，旧 P-⑥ 仍绿 ⇒ 这是假绿。
+  //   现在把 P-① 的判据抽成函数，真把 mutated 喂回去，断言 true→false。
+  const p1Judge = (body) => /Promise\.all/.test(body);  // 与上面 P-① 同一判据（字面量同步，见下 P-⑦）
   const mutated = LOAD_BODY.replace(/Promise\.all/g, 'serialFallback');
-  ok('P-⑥ 变异体（去掉 Promise.all 改回串行）能被 P-① 抓到', !/Promise\.all/.test(mutated));
+  ok('P-⑥ 变异体（去掉 Promise.all 改回串行）喂回 P-① 判据必须由绿转红（反恒真）',
+    p1Judge(LOAD_BODY) === true && p1Judge(mutated) === false,
+    `原件=${p1Judge(LOAD_BODY)} 变异=${p1Judge(mutated)}`);
+  ok('P-⑦ P-⑥ 用的判据与 P-① 字面判据一致（防两处判据漂移导致 P-⑥ 假证）',
+    p1Judge.toString().indexOf('Promise\\.all') >= 0
+    && /Promise\.all/.test(LOAD_BODY) === p1Judge(LOAD_BODY));
 }
 
 // ============ J 二次实测：删用量要清空、且不用收键盘也能看结果（R637）============

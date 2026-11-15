@@ -1031,6 +1031,9 @@ const TERMS = {
       importDiagTitle: '这张表还差这几列',
       importDiagBody: '缺：{cols}。如果这几样其实挤在同一格里（例如「商品名,单价,数量」写在一格），请先在 Excel 里按逗号分列，再导出一次。',
       importDiagFound: '表里读到这些列：{cols}',
+      // 🔴 R746 / GAP-3：营收日报表缺业务列 —— 与菜品表的「分列」话术不同，这里是「补列」，
+      //   且要说清为什么这次没算（缺列按 0 会少算钱）。后端只回结构化缺列，文案在此单源。
+      importDiagRevenueCols: '这张表缺：{cols}。营收日报表按这些列算收入，缺了会少算，所以这次没有导入。请按原来的列名补回这几列再导一次。',
       // ===== R590：认不出表时的「让 AI 帮你转」逃生口 =====
       // 为什么需要：老板手上这张表结构对不上，除了「去 Excel 里改」没有别的出路。
       //   而改列名/删合计行/分列这些活，正是 AI 最擅长、老板最不会的事。
@@ -2048,7 +2051,10 @@ const TERMS = {
     priceUnitConv: '已换算：{from} 元/{fromU} ≈ {to} 元/{toU}',
     quotaRemainTpl: '免费额度还能建 {n} 张',
     quotaLastOne: '免费额度只剩最后 1 张',
-    quotaUsedUp: '免费额度已用完 —— 这道菜已存好，下一道需升级',
+    // 🔴 R746：去掉「下一道需升级」—— 免费期全站无开通入口（paywall 明禁「开通/升级」），
+    //   这句话是死指路，且踩提审红线（featureFlags:47-48「出现去开通即整包驳回」）。
+    //   改成与 pay.freeLimitGeneric 同源的中性告知：说清状态 + 安抚已存内容，不诱导任何付费出口。
+    quotaUsedUp: '当前版本额度已用完 —— 这道菜已存好，已填的内容都还在，可以正常查看和修改',
     savedHint: '可以接着录入下一道',
     backToList: '返回列表',
     // 🔴 R704：从批量导入页点「去补价」进来的那条栈，`navigateBack` 回到的是**导入页**，
@@ -4237,7 +4243,9 @@ const ERROR_MESSAGES = {
   'ERR.SOFT_DELETED': '该数据已删除',
   'ERR.ARCHIVED_LOCKED': '这个月已归档，先取消归档再改',
   'ERR.SNAPSHOT_IMMUTABLE': '历史快照不可修改',
-  'ERR.FREE_LIMIT': '已达免费上限，开通后解锁',
+  // 🔴 R746：原「已达免费上限，开通后解锁」是死指路 + 提审红线（免费期 paywall 明禁「开通/升级/解锁」，
+  //   featureFlags:47-48 出现「去开通」即整包驳回）。改中性表述，与 pay.freeLimitGeneric 同源。
+  'ERR.FREE_LIMIT': '已达当前版本上限，你已填的内容都还在，可以正常查看和修改',
   'ERR.HARD_CAP': '已达系统上限，请联系客服',
   'ERR.FEATURE_LOCKED': '该功能需开通后使用',
   'ERR.PLAN_MISMATCH': '套餐信息异常，请联系客服',

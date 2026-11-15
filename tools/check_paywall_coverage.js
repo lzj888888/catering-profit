@@ -63,7 +63,8 @@ const mTypes = pwSrc.match(/const\s+PAYWALL_TYPES\s*=\s*\[([\s\S]*?)\]/);
 const TYPES = mTypes ? (mTypes[1].match(/'([^']+)'|"([^"]+)"/g) || []).map((s) => s.slice(1, -1)) : [];
 
 let TERMS = null;
-try { const mod = require(path.join(ROOT, TERMS_REL)); TERMS = mod && mod.TERMS ? mod.TERMS : mod; } catch (_) { TERMS = null; }
+let MOD = null;
+try { MOD = require(path.join(ROOT, TERMS_REL)); TERMS = MOD && MOD.TERMS ? MOD.TERMS : MOD; } catch (_) { TERMS = null; }
 const paywall = TERMS && TERMS.paywall;
 
 /** 能力键 → 弹窗键（`m3_combo` → `combo`；无前缀原样返回） */
@@ -413,10 +414,18 @@ const notOpenBody = fnBody(pwSrc, 'showNotOpen');
 const freeLimitBody = fnBody(pwSrc, 'showFreeLimit');
 const BAD_WORDS = ['联系客服', '客服', '开通', '购买', '续费', '支付', '付款', '元/', '¥', '价格', '订阅', '会员', '升级', '付费'];
 const payT = (TERMS && TERMS.pay) || {};
+// 🔴 R746：把「配额错误码文案」也纳入禁词扫描面 ——
+//   G1 实证：ERR.FREE_LIMIT / card.quotaUsedUp 含「开通后解锁」「下一道需升级」，
+//   经 api.js msgOf → toast 直达老板，而 L9-③ 原扫描面只有 TERMS.pay.* ⇒ 漏网。
+//   这两句虽不属于弹窗组件，但同属「关闭态出口对用户说的话」，必须同一把尺。
+const cardT = (TERMS && TERMS.card) || {};
+const errT = (MOD && MOD.ERROR_MESSAGES) || {};   // R746：ERROR_MESSAGES 是模块顶层导出，不在 TERMS 下
 const notOpenText = [
   payT.notOpenTitle, payT.notOpenBody,
   payT.freeLimitShopTitle, payT.freeLimitShopBody,
   payT.freeLimitCardTitle, payT.freeLimitCardBody, payT.freeLimitGeneric,
+  cardT.quotaUsedUp, cardT.quotaRemainTpl, cardT.quotaLastOne,
+  errT['ERR.FREE_LIMIT'],
 ].filter(Boolean).join('');
 const notOpenHits = BAD_WORDS.filter((w) => notOpenText.indexOf(w) >= 0);
 // 同时要求两个函数体都**引用**单源文案（防绕开 terms 直接硬编码一句诱导话）
@@ -427,6 +436,14 @@ check('L9-③ 🔴 关闭态两个出口（兜底/配额）都必须引用单源
   notOpenHits.length ? `文案命中禁词：${notOpenHits.join('、')}`
     : (!usesTerms ? '函数体未引用 TERMS.pay.notOpen* / freeLimit*（疑似硬编码）'
       : `两个出口文案干净（合计 ${notOpenText.length} 字符）`));
+
+// 🔴 R746 反恒真：证明 L9-③ 的扫描面确实覆盖了 ERR.FREE_LIMIT / card.quotaUsedUp，
+//   而不是「扫描面为空 ⇒ 恒绿」。方法：把 G1 的两句旧文案喂进同一套 BAD_WORDS，必须命中。
+const g1OldText = '已达免费上限，开通后解锁' + '免费额度已用完 —— 这道菜已存好，下一道需升级';
+const g1OldHits = BAD_WORDS.filter((w) => g1OldText.indexOf(w) >= 0);
+check('L9-③b 🔴 反恒真：G1 旧文案「开通后解锁/下一道需升级」必须被同一把尺判红（证明扫描面非空且有牙）',
+  g1OldHits.length > 0 && notOpenText.indexOf('开通后解锁') < 0 && notOpenText.indexOf('下一道需升级') < 0,
+  `旧文案命中：${g1OldHits.join('、')}；现行文案已无这两句`);
 
 // L9-④ 纵深：绕过弹窗直调下单函数时也必须被拦。
 //   `onConfirm` 是 payCreateOrder 的唯一前端入口；`orders.onRenew` 是 payRenew 的唯一入口。

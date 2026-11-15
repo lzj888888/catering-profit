@@ -306,6 +306,28 @@ function mergeFields(base, next) {
   return out;
 }
 
+// 🔴 R746 / GAP-3：营收表**缺列 fail-closed**。
+//   原状态：detectRevenueDaily 只要求「日期/班次/现金」三列即认表，其余业务列缺了
+//   `get()` 返回 null ⇒ `num(null)=0` ⇒ 静默少算（真表实测少 888.88 元），
+//   而自检恒等式两边同减仍 pass ⇒ 老板完全看不出。
+//   这里把「哪些 key 缺了」做成**纯函数**供 index.js 的 xlsx 上传路径判 fail-closed；
+//   ⚠️ 不放在 parseRevenueDaily 内部 —— 手填路径（manualToRows 合成的稀疏行）本就只有部分列，
+//      强制全覆盖会误伤。只有「上传了一张自称营收日报的表」才需要全列齐全。
+//   必需面 = 现金流入公式 ∪ M1 堂食 ∪ M1 外卖（与营收计算真正相关的列，不含对账/合计/茶楼）。
+const REVENUE_REQUIRED_KEYS = uniqByMap(
+  M1_DINEIN_MAP.concat(M1_TAKEAWAY_MAP).concat([{ keys: REVENUE_FORMULA }])
+);
+const KEY_TO_CN = (() => {
+  const m = {};
+  for (const cn of Object.keys(COL_MAP)) m[COL_MAP[cn]] = cn;
+  return m;
+})();
+function missingRevenueCols(cols) {
+  const got = cols || {};
+  return REVENUE_REQUIRED_KEYS.filter((k) => got[k] === undefined)
+    .map((k) => KEY_TO_CN[k] || k);
+}
+
 function parseRevenueDaily(rows) {
   const det = detectRevenueDaily(rows);
   if (!det.hit) {
@@ -531,7 +553,7 @@ module.exports = {
   M1_DINEIN_MAP, M1_TAKEAWAY_MAP, M1_TAKEAWAY_MISSING,
   M1_DINEIN_TEXT, M1_TAKEAWAY_TEXT, M1_REVENUE_TEXT,
   BRIDGE_BOSS_OVER, BRIDGE_M1_OVER,
-  detectRevenueDaily, parseRevenueDaily, parseLedgerText, normDate,
+  detectRevenueDaily, parseRevenueDaily, missingRevenueCols, parseLedgerText, normDate,
   buildCoverage, monthDaysOf,
   MANUAL_FIELDS, manualToRows, lastDayOfMonth,
   manualKey, mergeFields,
