@@ -113,17 +113,17 @@ function buildAboutRows(c) {
 // R266：分 → 元（**仅导出展示用**；库内与引擎一律「分」整数）
 function yuan(fen) { return Math.round(Number(fen) || 0) / 100; }
 
-// 🔴 R737（交叉审计第一轮）：导出件必须与**页面**同口径，不能只念落库快照。
-//   起因：v2 月份（>=2026-11）页面走 getLedger「从台账重算」，导出件却读 `row.amortize_fen`。
-//     而 R736 部署**之前**保存过的月份，那个字段是按老逻辑（开关关 ⇒ 0）落的 ⇒
-//     同一家店同一个月：页面说扣了 5,277.78，导出的 Excel 说 0，且利润表加减不平。
-//   做法：v2 月份一律从台账重算（与 getAmortSchedule::amountForMonth 逐字同源）。
+// 🔴 R737 → R740：导出件必须与**页面**同口径，不能只念落库快照。
+//   起因：页面走 getLedger「从台账重算」，导出件却读 `row.amortize_fen`。而 R736 部署
+//      **之前**保存过的月份，那个字段是按老逻辑（开关关 ⇒ 0）落的 ⇒ 同一家店同一个月：
+//      页面说扣了 5,277.78，导出的 Excel 说 0，且利润表加减不平。
+//   做法：**未归档月一律从台账重算**（与 getAmortSchedule::amountForMonth 逐字同源）；
+//      归档月读落库冻结值（归档 = 封账，不许被后来的台账改动倒灌）。
+//   R740 之前这里还有一层 `month >= '2026-11'` 的闸门，已随全局一起拆掉 —— 它挡住的月份
+//      是**永久蒸发**（不是延后），理由见 calcMonthlyProfit/service.js 顶部长注释。
 //   ⚠️ 这是**第五份**副本（calcMonthlyProfit / saveLedger / getLedger / getAmortSchedule / 本文件）。
 //     微信云开发每个云函数独立打包，跨函数 require 在云端 MODULE_NOT_FOUND ⇒ 现阶段只能多副本 + 守卫。
-//     守卫 `tools/check_amort_rule_v2.js` 的 A 段逐字比对常量与函数体，漂移即红。
-//   为什么必须「本期生效」而不动历史：更早的月份仍读落库值 —— 那是当时按开关算出来的历史事实。
-const AMORT_RULE_V2_FROM = '2026-11';
-function amortRuleV2(month) { return String(month || '') >= AMORT_RULE_V2_FROM; }
+//     守卫 `tools/check_amort_no_gate.js` 逐字比对函数体，漂移即红。
 
 function _monthIndex(ym) { const [y, m] = String(ym || '').split('-').map(Number); return y * 12 + (m - 1); }
 
@@ -160,10 +160,7 @@ function buildMonthlySheets(c) {
     const expense = row.expense_items || [];
     const sw = row.switch_used || {};
     const invOn = !!sw.inventorySwitchOn;
-    // 🔴 R737：v2 月份摊销一律计入 ⇒ 落库快照里那个「关」不再代表本月事实。
-    //   快照是**历史参数**，规则是**本月生效的口径**；两者冲突时，金额与话术都跟规则走。
-    const amortV2 = amortRuleV2(month);
-    const amOn = amortV2 ? true : !!sw.amortizeSwitchOn;
+    // 🔴 R740：摊销一律计入 ⇒ 不再从快照读开关值。快照是**历史参数**，规则是**本月生效的口径**。
     const nz = (x) => (Number(x) || 0);
     const sumFen = (arr) => (arr || []).reduce((s, it) => s + nz(it && it.amount_fen), 0);
     // 汇总一律优先取**引擎已落库的值**（服务端权威）；老数据缺字段才回退明细累加（口径与引擎一致）
@@ -180,11 +177,11 @@ function buildMonthlySheets(c) {
         total_value: a.total_value != null ? a.total_value : (a.value_fen || 0),
       })),
       month,
-    );    // 🔴 R737：**归档月不重算**（与 getLedger 同一条铁律，缺一条两处就打架）。
+    );
+    // 🔴 R740：归档月不重算 ⇒ 读落库冻结值；未归档月一律从台账重算（与页面 getLedger 同源）。
     //   归档 = 封账，那个月的数字连同「算它用的台账」一起冻结；归档后改台账不许倒灌旧账。
-    //   ⇒ 未归档的 v2 月份才重算；归档月一律读落库冻结值。
     const isArchiveRow = !!row.is_archive;
-    const amort = (amortV2 && !isArchiveRow) ? amortLedger : nz(row.amortize_fen);
+    const amort = isArchiveRow ? nz(row.amortize_fen) : amortLedger;
     const lump = nz(row.lump_sum_fen);
     const opRef = nz(row.operation_ref_profit_fen);
     // ⚠️ `realP` / `diffFen` 依赖「消耗差异」，必须等 gapFen 算出来再定 —— 见下方 R737 段。
@@ -200,27 +197,27 @@ function buildMonthlySheets(c) {
     const refSrc = row.ref_material_source === 'reverse' ? 'reverse' : 'direct';
     const refMat = refSrc === 'reverse' ? real : direct;
     const gapFen = real - refMat;
-    // 🔴 R737：v2 月份的摊销额若被重算过，落库的「真实利润」「两口径差额」就是旧口径值
-    //   （它们当时是按 amortize_fen=0 落的）⇒ 表内立刻不平：
+    // 🔴 R740：未归档月摊销从台账重算 ⇒ 落库的「真实利润」「两口径差额」是旧口径值
+    //   （可能按 amortize_fen=0 落的）⇒ 表内立刻不平：
     //     「＝经营参考利润 − 消耗差异 − 当月摊销」算一遍，跟「＝全要素真实利润」那行差一整笔摊销。
-    //   所以这两个数必须**跟着摊销重算**，恒等式才在纸上成立（老板是拿计算器核这张表的）。
+    //   所以这两个数必须**跟着摊销走**，恒等式才在纸上成立（老板是拿计算器核这张表的）。
+    //   归档月读落库值（封账），与上一行的 amort 判据严格同源。
     //   opRef 不含摊销 ⇒ 落库值可靠，直接用它当锚点。
-    const realP = (amortV2 && !isArchiveRow) ? Math.round(opRef - gapFen - amort) : nz(row.total_factor_real_profit_fen);
-    const diffFen = (amortV2 && !isArchiveRow) ? gapFen + amort
-      : (row.profit_diff_fen != null ? nz(row.profit_diff_fen) : gapFen + amort);
+    const realP = isArchiveRow ? nz(row.total_factor_real_profit_fen) : Math.round(opRef - gapFen - amort);
+    const diffFen = isArchiveRow
+      ? (row.profit_diff_fen != null ? nz(row.profit_diff_fen) : gapFen + amort)
+      : gapFen + amort;
 
     // 🔴 R732（演练 D-⑧ 判红修复）：金额与备注必须**同源**。
-    //   旧写法：金额取 row.amortize_fen，备注只看 amOn ⇒ 老账（switch_used 缺失、本字段上线前归档的月份）
+    //   旧写法：金额取 row.amortize_fen，备注只看开关 ⇒ 老账（switch_used 缺失、本字段上线前归档的月份）
     //   会出现「这一行显示 ¥4,333，备注却写『摊销开关关闭 ⇒ 本月不计入』」—— 一句话否掉同一行左边的数。
-    //   现在按**金额实际有没有计入**措辞，四种组合各自说得清，不再有自相矛盾的行。
+    //   现在按**金额实际有没有计入**措辞，各种组合各自说得清，不再有自相矛盾的行。
     const amortNote = amort > 0
-      ? (amOn
-        ? '资产台账按分摊月数逐笔计算（见「摊销来源」）'
-        : '该月按旧口径落库：台账摊销已计入，当前摊销开关为关（历史月不改）')
-      : (amOn
-        // 🔴 R737：v2 月份开关已经删掉了，再说「开关已开」是描述一个不存在的控件。
-        ? (amortV2 ? '本月台账无应摊资产（2026-11 起摊销一律计入）' : '摊销开关已开，但本月台账无应摊资产')
-        : '摊销开关关闭 ⇒ 本月不计入');
+      ? '资产台账按分摊月数逐笔计算（见「摊销来源」）'
+      : (amortLedger > 0
+        // 归档月读的是落库冻结值；若台账现在算出来有应摊、而落库是 0，说明那是旧口径封的账。
+        ? '该月已封账：台账现有应摊额，但落库值按当时口径为 0（历史月不改）'
+        : '本月台账无应摊资产（无在摊资产，或已全部摊完）');
 
     // —— 表1：利润表（从上往下加减，能对上账）——
     const profitRows = [
@@ -270,11 +267,11 @@ function buildMonthlySheets(c) {
 
     // —— 表3：摊销来源（摊销这笔钱是从哪几笔资产来的）——
     // 🔴 R737：本段原注释写着「本函数**不重算摊销公式**（这里再写一份 = 第四个真相源）」。
-    //   那条原则本身没错，但它在 v2 之后**保不住导出件的正确性**了：
-    //   规则从「随开关」变成「按月份闸门」，落库值只在「用新代码保存过」时才符合新规则；
-    //   老板完全可能打开旧账直接导出（不重存），此时落库 amortize_fen 是 0 而页面是 5,277.78。
+    //   那条原则本身没错，但它在规则变更之后**保不住导出件的正确性**了：
+    //   落库值只在「用新代码保存过」时才符合新规则；老板完全可能打开旧账直接导出（不重存），
+    //   此时落库 amortize_fen 是 0 而页面是 5,277.78。
     //   ⇒ 两害相权：多一份副本（有守卫逐字比对 + 真值测试兜住尾差分叉）
-    //     胜过「导出件与页面永久打架且表内不平」。守卫 `check_amort_rule_v2` A 段钉死五份一致。
+    //     胜过「导出件与页面永久打架且表内不平」。守卫 `check_amort_no_gate.js` D 段钉死五份一致。
     //   ⚠️ 若将来把 amountForMonth 收进 cloudfunctions/common/ 单源派生，请一并删除本副本。
     const assetRows = assets.map((a) => {
       const valFen = a.value_fen != null ? nz(a.value_fen) : nz(a.total_value);
@@ -294,11 +291,11 @@ function buildMonthlySheets(c) {
     //   🔴 R737：这里原来用 `round(原值 / 月数)` 估算，**没看起摊月与到期月** ——
     //     已摊完的资产照样被算进去、未开始的也被算进去、末月尾差也不算 ⇒ 差异行与「摊销来源」
     //     逐笔明细注定对不上（老板一加就发现）。改为与合计行同一个精确函数。
-    if (!amOn) {
-      const ledgerAmortSum = amortLedger;
-      if (ledgerAmortSum > 0) {
-        assetRows.push(['合计', '台账应收摊销（开关关闭·本月未计入利润）', '', '', '', '', yuan(ledgerAmortSum)]);
-      }
+    // 🔴 R740：判据从「开关关」改为「**本月计入额 ≠ 台账应收额**」—— 更通用，且正是真正会让
+    //   老板算不平的那种情形（典型：归档月按旧口径封账，落库 0，而台账现在算得出应摊额）。
+    //   未归档月两者恒等 ⇒ 不插入，表结构与既往完全一致（不扰既有对账）。
+    if (amort !== amortLedger && amortLedger > 0) {
+      assetRows.push(['合计', '台账应收摊销（与本月计入额不一致，原因见「口径说明」）', '', '', '', '', yuan(amortLedger)]);
     }
     assetRows.push(['合计', '本月一次性投入（本月计入）', '', '', '', '', yuan(lump)]);
 
@@ -310,7 +307,7 @@ function buildMonthlySheets(c) {
       ['生成时间', nowTxt],
       ['金额单位', '元（库内与引擎一律以「分」整数计算，本表展示保留 2 位小数）'],
       ['库存开关', invOn ? '开' : '关'],
-      ['摊销开关', amortV2 ? '不适用（2026-11 起摊销一律计入，见下）' : (amOn ? '开' : '关')],
+      ['摊销开关', '不适用（摊销一律计入利润，开关已取消）'],
       // 🔴 R490：R479 只条件化了「减：食材消耗」与「消耗差异」两行，这两处**公式说明**仍写死「本月填写」
       //   ⇒ 库存模式（倒轧）下，同一张表上一行说「库存倒轧」、下一行说「本月填写」，导出件自相矛盾。
       //   说明必须跟着 refSrc 走：老板拿这张表复核时，公式行就是他的核对依据。
@@ -319,9 +316,7 @@ function buildMonthlySheets(c) {
         : '= 营业收入 − 费用合计 − 本月填写食材消耗 − 一次性投入（不含摊销，现金流视角）'],
       ['全要素真实利润', '= 营业收入 − 费用合计 − 真实食材消耗 − 当月摊销 − 一次性投入'],
       ['真实食材消耗', invOn ? '库存开关开 ⇒ 期初库存 + 本月采购 − 期末库存' : '库存开关关 ⇒ 等于本月填写值'],
-      ['当月摊销', amortV2
-        ? '由资产台账逐笔按分摊月数计算（末月尾差倒挤）；2026-11 起一律计入利润'
-        : '由资产台账逐笔按分摊月数计算（末月尾差倒挤）；摊销开关关闭时为 0'],
+      ['当月摊销', '由资产台账逐笔按分摊月数计算（末月尾差倒挤）；一律计入利润'],
       ['一次性投入', '资产台账中处置方式 = 「一次算清」，且计入月份 = 本月的投入'],
       ['月均参考', '= 资产原值 ÷ 分摊月数，仅供估算；逐笔实际金额以「本月摊销合计」为准'],
       ['待结算', '本表不列：待结算是现金流指标，不进入毛利与利润'],

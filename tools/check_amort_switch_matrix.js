@@ -99,19 +99,22 @@ const OFF = runEngine(false);
 const ON = runEngine(true);
 
 // ==================================================================
-// 组 A · 月利润引擎（calcMonthlyProfit）—— 钱的层面，开关到底动没动
+// 组 A · 月利润引擎（calcMonthlyProfit）—— 🔴 R740 后：开关对金额**零影响**
 // ==================================================================
-group('A · 月利润引擎');
+//   R735/R736 时这里测的是「开=扣、关=归零」。R740 拆掉闸门并让开关退役后，
+//   判据反过来：**不管开关传什么，金额都必须一样**。这比原来更强 ——
+//   原来只要有一侧对就算过，现在要求两侧完全相同。
+group('A · 月利润引擎（开关零影响）');
 
-ck('A-① 开关关 ⇒ effectiveAmortizeFen 归零（台账有 4,333.33 也不计）',
-  OFF.effectiveAmortizeFen === 0, `off=${OFF.effectiveAmortizeFen}`);
+ck('A-① 开关关 ⇒ effectiveAmortizeFen 仍 === 台账月应摊额（不再归零）',
+  OFF.effectiveAmortizeFen === LEDGER_MONTHLY, `off=${OFF.effectiveAmortizeFen} 台账=${LEDGER_MONTHLY}`);
 
 ck('A-② 开关开 ⇒ effectiveAmortizeFen === 台账月应摊额',
   ON.effectiveAmortizeFen === LEDGER_MONTHLY, `on=${ON.effectiveAmortizeFen} 台账=${LEDGER_MONTHLY}`);
 
-ck('A-③ 真实利润被开关**真的**扣掉了一笔（差额 === 摊销额）',
-  OFF.totalFactorRealProfitFen - ON.totalFactorRealProfitFen === LEDGER_MONTHLY,
-  `off=${OFF.totalFactorRealProfitFen} on=${ON.totalFactorRealProfitFen} 差=${OFF.totalFactorRealProfitFen - ON.totalFactorRealProfitFen}`);
+ck('A-③ 真实利润**不因开关而变**（两侧完全相等 —— 开关已退役，不许再影响一分钱）',
+  OFF.totalFactorRealProfitFen === ON.totalFactorRealProfitFen,
+  `off=${OFF.totalFactorRealProfitFen} on=${ON.totalFactorRealProfitFen}`);
 
 ck('A-④ 经营参考利润**不受**开关影响（现金流视角，本来就不含摊销）',
   OFF.operationRefProfitFen === ON.operationRefProfitFen,
@@ -121,18 +124,19 @@ ck('A-⑤ 一次性投入**不受**开关控制（round107：两笔钱互不排�
   OFF.effectiveLumpSumFen === LUMP && ON.effectiveLumpSumFen === LUMP,
   `off=${OFF.effectiveLumpSumFen} on=${ON.effectiveLumpSumFen}`);
 
-ck('A-⑥ 开关关时仍回显台账原值 amortizeFen（供页面解释"台账有但本月没算"）',
-  OFF.amortizeFen === LEDGER_MONTHLY, `off.amortizeFen=${OFF.amortizeFen}`);
+ck('A-⑥ 两侧都如实回显台账原值 amortizeFen',
+  OFF.amortizeFen === LEDGER_MONTHLY && ON.amortizeFen === LEDGER_MONTHLY,
+  `off=${OFF.amortizeFen} on=${ON.amortizeFen}`);
 
-ck('A-⑦ switchUsed 回显真实开关（供导出/审计追溯）',
-  OFF.switchUsed.amortizeSwitchOn === false && ON.switchUsed.amortizeSwitchOn === true,
+ck('A-⑦ switchUsed 恒记 true（"这个月扣了摊销"，不再回显已退役的开关）',
+  OFF.switchUsed.amortizeSwitchOn === true && ON.switchUsed.amortizeSwitchOn === true,
   JSON.stringify([OFF.switchUsed, ON.switchUsed]));
 
-ck('A-⑧ 双侧两口径自洽（diffCheck 均真，改开关没破坏等式）',
+ck('A-⑧ 双侧两口径自洽（diffCheck 均真）',
   OFF.diffCheck === true && ON.diffCheck === true, `off=${OFF.diffCheck} on=${ON.diffCheck}`);
 
-ck('A-⑨ 两口径差额双侧不同（反恒真：若都相等说明开关根本没参与）',
-  OFF.profitDiffFen !== ON.profitDiffFen,
+ck('A-⑨ 两口径差额两侧**相同**（反恒真改向：若不同说明开关又偷偷参与了计算）',
+  OFF.profitDiffFen === ON.profitDiffFen,
   `off.diff=${OFF.profitDiffFen} on.diff=${ON.profitDiffFen}`);
 
 // ==================================================================
@@ -239,13 +243,15 @@ ck('D-① 开关开 ⇒ 利润表「减：当月摊销」= 台账额',
   numOf(cellOf(profitOn, '减：当月摊销', 1)) === 4333.33 || numOf(cellOf(profitOn, '减：当月摊销', 1)) === 4333,
   `on=${cellOf(profitOn, '减：当月摊销', 1)}`);
 
-ck('D-② 开关关 ⇒ 利润表「减：当月摊销」= 0 且备注说清"不计入"',
-  numOf(cellOf(profitOff, '减：当月摊销', 1)) === 0
-  && String(cellOf(profitOff, '减：当月摊销', 2)).indexOf('不计入') >= 0,
+ck('D-② 开关关 ⇒ 利润表「减：当月摊销」仍 = 4333.33，备注按台账口径（不再说"不计入"）',
+  numOf(cellOf(profitOff, '减：当月摊销', 1)) === 4333.33
+  && String(cellOf(profitOff, '减：当月摊销', 2)).indexOf('不计入') < 0
+  && String(cellOf(profitOff, '减：当月摊销', 2)).indexOf('分摊月数') >= 0,
   `value=${cellOf(profitOff, '减：当月摊销', 1)} note=${cellOf(profitOff, '减：当月摊销', 2)}`);
 
-ck('D-③ 开关关 ⇒ 全要素真实利润 === 经营参考利润（没有偷偷扣摊销）',
-  numOf(cellOf(profitOff, '全要素真实利润', 1)) === numOf(cellOf(profitOff, '经营参考利润', 1)),
+ck('D-③ 开关关 ⇒ 全要素真实利润 = 参考利润 − 摊销（开关已退役，两侧必须同形）',
+  Math.abs(numOf(cellOf(profitOff, '经营参考利润', 1)) - numOf(cellOf(profitOff, '全要素真实利润', 1)) - 4333.33) < 0.01
+  || Math.abs(numOf(cellOf(profitOff, '经营参考利润', 1)) - numOf(cellOf(profitOff, '全要素真实利润', 1)) - 4333) < 0.01,
   `real=${cellOf(profitOff, '全要素真实利润', 1)} ref=${cellOf(profitOff, '经营参考利润', 1)}`);
 
 ck('D-④ 开关开 ⇒ 全要素真实利润 = 参考利润 − 摊销（差正好一笔）',
@@ -253,9 +259,9 @@ ck('D-④ 开关开 ⇒ 全要素真实利润 = 参考利润 − 摊销（差正
   || numOf(cellOf(profitOn, '经营参考利润', 1)) - numOf(cellOf(profitOn, '全要素真实利润', 1)) === 4333,
   `差=${numOf(cellOf(profitOn, '经营参考利润', 1)) - numOf(cellOf(profitOn, '全要素真实利润', 1))}`);
 
-ck('D-⑤ 表4「摊销开关」行如实反映：关=关 / 开=开',
-  String(cellOf(findSheet(shOff, '口径').rows, '摊销开关', 1)).trim() === '关'
-  && String(cellOf(findSheet(shOn, '口径').rows, '摊销开关', 1)).trim() === '开',
+ck('D-⑤ 表4「摊销开关」行两侧都写「不适用（开关已取消）」',
+  String(cellOf(findSheet(shOff, '口径').rows, '摊销开关', 1)).indexOf('不适用') >= 0
+  && String(cellOf(findSheet(shOn, '口径').rows, '摊销开关', 1)).indexOf('不适用') >= 0,
   `off=${cellOf(findSheet(shOff, '口径').rows, '摊销开关', 1)} on=${cellOf(findSheet(shOn, '口径').rows, '摊销开关', 1)}`);
 
 // —— D-⑥ 探针：开关关闭时「摊销来源」表的明细 vs 两份合计 ——
@@ -264,8 +270,11 @@ ck('D-⑤ 表4「摊销开关」行如实反映：关=关 / 开=开',
 const detailSumOff = srcOff.filter((r) => r[0] === '分期摊销').reduce((s, r) => s + numOf(r[6]), 0);
 const ledgerRowOff = numOf((srcOff.find((r) => r[0] === '合计' && String(r[1]).indexOf('台账应收摊销') >= 0) || [])[6]);
 const totalOff = numOf((srcOff.find((r) => r[0] === '合计' && String(r[1]).indexOf('本月摊销合计') >= 0) || [])[6]);
-ck('D-⑥ 【开关关闭】明细之和 === 「台账应收摊销」行，且「实际计入」行 === 0（两份账各自对得上）',
-  Math.abs(detailSumOff - ledgerRowOff) < 0.01 && totalOff === 0,
+// —— D-⑥ 探针：R740 后「台账应收摊销」差异行**不该出现** ——
+//   差异行的用途是「合计行 ≠ 台账应摊额」时给老板一个能对上的第二列。
+//   未归档月两者恒等 ⇒ 不插入（表结构与既往一致）；只有归档月按旧口径封账时才会出现。
+ck('D-⑥ 【开关关闭】未归档月不插入「台账应收摊销」差异行，且明细之和 === 本月摊销合计',
+  ledgerRowOff === 0 && Math.abs(detailSumOff - totalOff) < 0.01,
   `明细和=${detailSumOff.toFixed(2)} 台账应收行=${ledgerRowOff} 实际计入行=${totalOff}`);
 
 const detailSumOn = srcOn.filter((r) => r[0] === '分期摊销').reduce((s, r) => s + numOf(r[6]), 0);
@@ -440,8 +449,8 @@ ck('F-⑬ 库存页开关关着时有「未启用」说明（入口放开的前�
 // ==================================================================
 group('G · 反恒真');
 
-ck('G-① 若开关完全不起作用，A-①/A-③ 会同时变红 ⇒ 本组不是恒真',
-  OFF.effectiveAmortizeFen !== ON.effectiveAmortizeFen,
+ck('G-① 反恒真标定：两侧金额相同且都 > 0（若都归零，A-① 会「相等」得毫无意义）',
+  OFF.effectiveAmortizeFen === ON.effectiveAmortizeFen && OFF.effectiveAmortizeFen > 0,
   `${OFF.effectiveAmortizeFen} vs ${ON.effectiveAmortizeFen}`);
 
 ck('G-② 台账月应摊额 ≠ 0 ⇒ D-⑥/E-① 有可比对象（不是拿 0 比 0 装作通过）',
@@ -462,9 +471,14 @@ function loadMutant(relFile, from, to) {
 // 🔴 R736：引擎那一行加了时间闸门（`amortV2 || amortizeSwitchOn`），锚点形态随之变化。
 //   变异语义不变：摘掉判据 ⇒ 老月份（无 month / < 生效月）也会照扣 ⇒ A-① 必须转红。
 //   ⚠️ 这里**故意不传 month** ⇒ amortRuleV2(undefined) = false ⇒ 走的是老逻辑，正是本组要证的那条路。
-const ANCHOR = 'const effectiveAmortizeFen = (amortV2 || amortizeSwitchOn) ? fenRoundN(amortizeFen) : 0;';
+// 🔴 R740 改向：R736 时变异是「摘掉闸门」；现在生产代码就是无条件的，所以要**加回**判据，
+//   验证 A-① 能抓到「有人又把开关/月份判据塞回引擎」这种回归。
+const ANCHOR = 'const effectiveAmortizeFen = fenRoundN(amortizeFen);';
+//   ⚠️ 变异表达式必须自己读 `clean.amortizeSwitchOn` —— R740 后引擎里**已经没有**
+//     `amortizeSwitchOn` 这个局部变量了（那正是本次拆除的结果）。直接引用旧变量名
+//     会让变异版抛 ReferenceError，把「变异没生效」伪装成「断言失败」。
 const mut = loadMutant('cloudfunctions/calcMonthlyProfit/service.js', ANCHOR,
-  'const effectiveAmortizeFen = fenRoundN(amortizeFen);');
+  'const effectiveAmortizeFen = (clean && clean.amortizeSwitchOn) ? fenRoundN(amortizeFen) : 0;');
 let mutantCaught = false;
 let mutantDetail = mut.err || '';
 if (mut.exp) {
@@ -473,10 +487,11 @@ if (mut.exp) {
     inventory: {}, lumpSumFen: LUMP, amortizeFen: LEDGER_MONTHLY,
     amortizeSwitchOn: false, inventorySwitchOn: false,
   });
-  mutantCaught = r.effectiveAmortizeFen === LEDGER_MONTHLY;
-  mutantDetail = `变异后 off.effective=${r.effectiveAmortizeFen}（期望=${LEDGER_MONTHLY}）`;
+  // 变异后关态归零 ⇒ 正是 A-①（期望台账额）会转红的形态
+  mutantCaught = r.effectiveAmortizeFen === 0;
+  mutantDetail = `变异后 off.effective=${r.effectiveAmortizeFen}（期望 0 = 已退回开关控制，说明 A-① 会红）`;
 }
-ck('G-③ 变异回灌：摘掉引擎的开关判据后「关着也照扣」⇒ A-① 确实能抓到（非恒真）',
+ck('G-③ 变异回灌：把开关判据塞回引擎 ⇒ 关态归零，A-① 当场转红（非恒真）',
   mutantCaught, mutantDetail);
 
 // ============================ 输出 ============================

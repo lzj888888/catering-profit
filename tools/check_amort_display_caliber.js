@@ -69,14 +69,13 @@ global.wx = {
 // api 只保留 call / ensureShop / toastError / fenToYuan（其余走真实现）
 const apiMod = require(F('utils/api.js'));
 let scheduleSwitchOn = false;
-// 🔴 R737：桩必须**真实复刻**服务端语义，不能手搓一个布尔塞进去。
-//   原来这里直接 `amortize_switch_on: scheduleSwitchOn` ⇒ 无论传哪个月，页面拿到的都是桩给的开关，
-//   「v2 月份（>=2026-11）服务端恒报 true」这条事实在页面层完全没被测到。
-//   ⇒ 现在用**生产函数** amortRuleV2 派生：v2 月份恒 true，老月份才是快照值。
+// 🔴 R740：服务端**恒报 `amortize_switch_on: true`**（摊销一律计入，开关已退役）。
+//   这里不再调用任何 `amortRuleV2` —— 那个函数连同时间闸门已经在 R740 拆掉了。
+//   桩若继续"按月派生开关"，测的就是一个生产环境不存在的世界（R737 的教训：
+//   桩按引擎的样子造数据，而不是按库的样子造 ⇒ 断言再严也必然假绿）。
 let scheduleMonth = MONTH;
 apiMod.call = async (name) => {
   if (name === 'getAmortSchedule') {
-    const v2 = sched.amortRuleV2(scheduleMonth);
     const monthOut = scheduleMonth;
     return {
       shop_id: 's1', month: monthOut,
@@ -87,8 +86,8 @@ apiMod.call = async (name) => {
         remaining_fen: a.total_value, end_month: '2029-12',
       })),
       lumps: [], lump_total_fen: 0, is_archive: false,
-      amortize_switch_on: v2 ? true : scheduleSwitchOn,
-      amort_rule_v2: v2,
+      // R740：恒 true —— 与 getAmortSchedule/index.js 的真实出参一致
+      amortize_switch_on: true,
       switch_source: 'live',
       total_amount_fen: Math.round(LEDGER_TOTAL),
       details: schedOut.details,
@@ -128,82 +127,64 @@ async function runPage(switchOn, src, month) {
 
 (async () => {
   // ==================================================================
-  group('H · 页首结果位（开关关掉后大数字必须报"本月没扣"）');
+  group('H · 页首结果位：恒等于台账应摊额（R740 拆闸门后不分月份、不看开关）');
   // ==================================================================
+  // 🔴 R740 推翻 R735 的 H 段口径。原判据是「开关关 ⇒ 页首报 0.00」，那是开关还活着时的规则；
+  //   R736 删了开关、R740 拆了月份闸门之后，服务端恒报 `amortize_switch_on: true`，
+  //   页面**任何情况下**都必须显示台账应摊额。若某天页面又报 0.00，说明有人在页面里
+  //   重新加回了开关/月份判据 —— 那正是本段要抓的。
   const off = await runPage(false);
   const on = await runPage(true);
 
-  ck('H-① 开关关 ⇒ 页首大数字 shownTotalYuan === 「0.00」（本月确实没扣这笔钱）',
-    String(off.data.shownTotalYuan) === '0.00', `实得「${off.data.shownTotalYuan}」`);
-  ck('H-② 开关关 ⇒ 台账应摊额仍在附注里（信息不丢：老板要知道这笔钱每月该摊多少）',
-    String(off.data.totalYuan) === '4333.33' && String(off.data.offNote).indexOf('4333.33') >= 0,
-    `台账「${off.data.totalYuan}」/ 附注「${off.data.offNote}」`);
-  // 🔴 R736：文案从「开关关闭不计入利润」改成「该月未计入利润」—— 开关已删除，
-  //   再说"开关关闭"等于指向一个不存在的控件。判据跟着改成「未计入」，语义没变。
-  ck('H-③ 未计入时 ⇒ 附注明确写了「未计入」（不能只有数字没有口径）',
-    String(off.data.offNote).indexOf('未计入') >= 0, `附注「${off.data.offNote}」`);
-  ck('H-④ 开关关 ⇒ 每笔资产「月摊销」**仍有值**（台账属性，不许被我顺手清零：设备 = 1000.00）',
+  ck('H-① 页首大数字 shownTotalYuan === 台账应摊额 4333.33（一律计入，不问开关、不问月份）',
+    String(off.data.shownTotalYuan) === '4333.33', `实得「${off.data.shownTotalYuan}」`);
+  ck('H-② 附注为空（既然一律计入，就不该再解释"本月没扣"）',
+    off.data.offNote === '', `实得「${off.data.offNote}」`);
+  ck('H-③ 每笔资产「月应摊额」仍有值（台账属性，不许被顺手清零：设备 = 1000.00）',
     (off.data.assets || []).every((a) => Number(a.amountYuan) > 0)
       && (off.data.assets || []).some((a) => a.amountYuan === '1000.00'),
     (off.data.assets || []).map((a) => a.amountYuan).join(','));
-  ck('H-⑤ 开关关 ⇒ 分期摊销区块标题走「台账口径」版（整块标注不进本月利润，行内数字不必逐个化妆）',
-    String(off.data.t.amortSectionTitleOff).indexOf('不计入') >= 0,
-    `标题「${off.data.t.amortSectionTitleOff}」`);
-  ck('H-⑥ 【对照组】开关开 ⇒ 页首大数字 === 台账应摊额（证明 H-① 不是恒 0）',
-    String(on.data.shownTotalYuan) === '4333.33', `实得「${on.data.shownTotalYuan}」`);
-  ck('H-⑦ 开关开 ⇒ 附注为空（开着就别解释"没扣"，少一句是一句）',
-    on.data.offNote === '', `实得「${on.data.offNote}」`);
-  ck('H-⑧ 台账额两侧完全相同（⇒ 变的只有"计不计入"这一层，台账事实没被改动）',
-    String(on.data.totalYuan) === String(off.data.totalYuan),
-    `开「${on.data.totalYuan}」/ 关「${off.data.totalYuan}」`);
-  ck('H-⑨ 页面拿到的开关值确实跟随出参（不是读前端缓存导致"弹回"）',
-    off.data.amortizeOn === false && on.data.amortizeOn === true,
+  ck('H-④ 页首台账额 === 引擎算出的台账合计（页面不许自己另算一套口径）',
+    Math.round(Number(String(off.data.totalYuan).replace(/,/g, '')) * 100) === Math.round(LEDGER_TOTAL),
+    `页面「${off.data.totalYuan}」/ 引擎 ${LEDGER_TOTAL / 100}`);
+  ck('H-⑤ 页面拿到的开关值恒 true（服务端权威；若变 false 说明有人把出参改回了快照值）',
+    off.data.amortizeOn === true && on.data.amortizeOn === true,
     `关=${off.data.amortizeOn} 开=${on.data.amortizeOn}`);
+  const m08 = await runPage(false, null, '2026-08');
+  const m10 = await runPage(false, null, '2026-10');
+  const m11 = await runPage(false, null, '2026-11');
+  ck('H-⑥ 历史月份（2026-08，闸门时代本该报"未计入"的月）页首同样报全额',
+    String(m08.data.shownTotalYuan) === '4333.33', `实得「${m08.data.shownTotalYuan}」`);
+  ck('H-⑦ 三个月（2026-08 / 2026-10 / 2026-11）页首完全一致 —— 结构上已无月份判据',
+    String(m08.data.shownTotalYuan) === String(m10.data.shownTotalYuan)
+    && String(m10.data.shownTotalYuan) === String(m11.data.shownTotalYuan),
+    `08「${m08.data.shownTotalYuan}」/ 10「${m10.data.shownTotalYuan}」/ 11「${m11.data.shownTotalYuan}」`);
 
   // 源码锁：wxml 的大数字必须绑 shownTotalYuan（防改回 totalYuan）
   const amWxml = read('subpkg/biz/month/amortize.wxml');
   const numLine = (amWxml.split('\n').find((l) => l.indexOf('result-num') >= 0) || '');
-  ck('H-⑩ wxml 页首大数字绑的是 shownTotalYuan（若改回 totalYuan，H-① 会绿在假数据上）',
+  ck('H-⑧ wxml 页首大数字绑的是 shownTotalYuan（若改回 totalYuan，H-① 会绿在假数据上）',
     numLine.indexOf('shownTotalYuan') >= 0, numLine.trim());
 
-  // ==================================================================
-  group('K · v2 月份（>=2026-11）：规则已改，开关不再是事实来源');
-  // ==================================================================
-  // 🔴 R737 交叉审计补的缺口：上面 H/I 段全跑在 MONTH='2026-10'（老月份），
-  //   **v2 月份在页面层从来没被测过** —— 而李老师真机打开的正是 2026-11。
-  //   那天开关已经从界面上删掉了，服务端出参恒报「已计入」；页面若还按老逻辑走，
-  //   会显示 ¥0.00 + 「未计入」，跟实际扣了钱的事实相反。
-  const v2Off = await runPage(false, null, '2026-11');
-  const v2On = await runPage(true, null, '2026-11');
-  const v2Old = await runPage(false, null, '2026-10');
-
-  ck('K-① 2026-11 + 开关关 ⇒ 页首仍报台账应摊 4333.33（v2 起一律计入，开关说了不算）',
-    String(v2Off.data.shownTotalYuan) === '4333.33', `实得「${v2Off.data.shownTotalYuan}」`);
-  ck('K-② 2026-11 ⇒ 附注为空（既然计入了，就别再解释"没扣"）',
-    String(v2Off.data.offNote) === '', `实得「${v2Off.data.offNote}」`);
-  ck('K-③ 2026-11 ⇒ 页面拿到的开关是服务端**生效值** true（不是快照里的 false）',
-    v2Off.data.amortizeOn === true, `实得 ${v2Off.data.amortizeOn}`);
-  ck('K-④ 2026-11 ⇒ 每笔资产「月应摊额」照常展示（台账属性，与计不计入无关）',
-    (v2Off.data.assets || []).length > 0 && (v2Off.data.assets || []).every((a) => Number(a.amountYuan) > 0),
-    (v2Off.data.assets || []).map((a) => a.amountYuan).join(','));
-  ck('K-⑤ 【对照】2026-10 + 开关关 ⇒ 页首仍是 0.00（证明 K-① 不是恒报台账额）',
-    String(v2Old.data.shownTotalYuan) === '0.00', `实得「${v2Old.data.shownTotalYuan}」`);
-  ck('K-⑥ 2026-11 下开关开/关数字完全相同（该月开关已无任何作用，符合"删掉开关"的设计）',
-    String(v2Off.data.shownTotalYuan) === String(v2On.data.shownTotalYuan)
-    && String(v2Off.data.offNote) === String(v2On.data.offNote),
-    `关「${v2Off.data.shownTotalYuan}」/ 开「${v2On.data.shownTotalYuan}」`);
-
-  // K-⑦ 变异回灌：把生产函数 amortRuleV2 改成恒 false ⇒ K-① 必须当场转红。
-  //   变的是**生产代码路径**（桩调用它），不是我手写的桩常量 ⇒ 证明 K-① 真在测那条链路。
+  // 变异回灌：把桩改成「服务端报未计入」⇒ H-① 必须当场转红
   {
-    const orig = sched.amortRuleV2;
-    sched.amortRuleV2 = () => false;
+    const realCall = apiMod.call;
+    apiMod.call = async (name) => {
+      const out = await realCall(name);
+      if (name === 'getAmortSchedule' && out && out.amortize_switch_on !== undefined) out.amortize_switch_on = false;
+      return out;
+    };
     let mutOut;
-    try { mutOut = await runPage(false, null, '2026-11'); } finally { sched.amortRuleV2 = orig; }
-    ck('K-⑦ 变异回灌：amortRuleV2 恒 false ⇒ K-① 当场转红（非恒真）',
+    try { mutOut = await runPage(false); } finally { apiMod.call = realCall; }
+    ck('H-⑨ 变异回灌：服务端报「未计入」⇒ 页面退回报 0.00（证明 H-① 真在测这条链路）',
       String(mutOut.data.shownTotalYuan) === '0.00',
-      `变异后「${mutOut.data.shownTotalYuan}」（期望 0.00 = 已退回老逻辑，说明 K-① 会红）`);
+      `变异后「${mutOut.data.shownTotalYuan}」（0.00 = 已退回老逻辑，说明 H-① 会红）`);
   }
+
+  // ---- K 段（R737）已并入上面的 H 段 ----
+  //   原 K 段测的是「2026-11 起服务端恒报已计入，页面不许再报 0」。R740 拆掉月份闸门后，
+  //   **所有月份**都满足这条，K 段变成了 H 段的特例 ⇒ 合并（H-⑥/H-⑦ 已覆盖月份维度）。
+  //   同时删掉的还有 K-⑦ 的变异锚点 `sched.amortRuleV2` —— 那个生产函数本身已随闸门删除。
 
   // ==================================================================
   group('I · 归档月快照（与 getLedger 同口径，防"同月两页互相打脸"）');
@@ -253,26 +234,29 @@ async function runPage(switchOn, src, month) {
   // 🔴 I-⑦：**变异回灌暴露的断言缺口，本轮补上**
   //   只验「快照函数被调用」不够 —— 实测把出参改回 `swGet('amortize_switch')`（调用照旧、结果被覆盖）
   //   时 I-⑤ 仍绿 ⇒ 必须直接钉住**赋值来源**。
-  ck('I-⑦ 出参开关**取自快照结果** sw.amortizeSwitchOn，全文不得再出现 `= swGet(\'amortize_switch\')`',
-    /amortizeSwitchOn\s*=\s*sw\.amortizeSwitchOn/.test(gsIdx)
-      && !/amortizeSwitchOn\s*=\s*swGet\(\s*['"]amortize_switch['"]\s*\)/.test(gsIdx),
-    '赋值来源正确且无实时覆盖');
+  ck('I-⑦ 出参开关恒为字面量 true（R740：摊销一律计入，不再从快照/实时读开关）',
+    /amortize_switch_on:\s*true\s*,/.test(gsIdx)
+      && !/amortizeSwitchOn\s*=\s*sw\.amortizeSwitchOn/.test(gsIdx)
+      && !/amortizeSwitchOn\s*=\s*swGet\(/.test(gsIdx),
+    '恒 true 且无快照/实时覆盖');
 
   // ==================================================================
   group('J · 反恒真（证明 H/I 测得到东西）');
   // ==================================================================
-  // J-① 变异：把页首口径改回「直接报台账额」（R732 的老写法），H-① 必须转红
+  // J-① 变异：把页首口径改成「恒报 0.00」（= 有人又加回了开关/月份判据），H-① 必须转红。
+  //   🔴 R740 改向：R735 时变异方向是「改成直接报台账额」（那时正常态是 0）；
+  //   现在正常态就是台账额，所以变异方向反过来 —— 否则变异前后都是同一个数，J-① 会假绿。
   const H_ANCHOR = "shownTotalYuan: amortOn ? ledgerYuan : '0.00',";
   let j1 = { caught: false, detail: '变异锚点未找到（源码已改，请同步本守卫）' };
   if (PAGE_SRC.indexOf(H_ANCHOR) >= 0) {
-    const mutSrc = PAGE_SRC.replace(H_ANCHOR, 'shownTotalYuan: ledgerYuan,');
+    const mutSrc = PAGE_SRC.replace(H_ANCHOR, "shownTotalYuan: '0.00',");
     const mp = await runPage(false, mutSrc);
     j1 = {
-      caught: String(mp.data.shownTotalYuan) !== '0.00',
-      detail: `变异后 off.shownTotalYuan=「${mp.data.shownTotalYuan}」（期望 ≠0.00）`,
+      caught: String(mp.data.shownTotalYuan) !== '4333.33',
+      detail: `变异后 off.shownTotalYuan=「${mp.data.shownTotalYuan}」（期望 ≠4333.33 ⇒ H-① 会红）`,
     };
   }
-  ck('J-① 变异回灌：把页首口径改回「直接报台账额」⇒ H-① 当场转红（非恒真）', j1.caught, j1.detail);
+  ck('J-① 变异回灌：页首改成「恒报 0.00」⇒ H-① 当场转红（非恒真）', j1.caught, j1.detail);
 
   // J-② 变异：把快照判据摘掉（永远用实时），I-① 必须转红
   const I_ANCHOR = "if (!inp.isArchive) return Object.assign({ source: 'live' }, LIVE);";

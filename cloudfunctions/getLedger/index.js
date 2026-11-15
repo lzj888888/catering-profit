@@ -11,7 +11,7 @@ const { resolveAuth, assertShopOwner } = common;
 const { ERROR_CODES, ok, fail } = common;
 const { indicatorRef } = common;                    // round115：M1 行业指标对照（口径单源，见 common/indicatorRef.js §七）
 const { makeAdapter } = common.dataAdapter;
-const { calcMonthlyProfit, resolveArchiveSwitches, amortizeTotalForMonth, AMORT_RULE_V2_FROM } = require('./service');
+const { calcMonthlyProfit, resolveArchiveSwitches, amortizeTotalForMonth } = require('./service');
 const { validateInput } = require('./validate');
 
 // A2 兼容：库内明细可能是旧格式（camelCase amountFen）或新格式（snake_case amount_fen + sub_items）。
@@ -143,16 +143,18 @@ exports.main = async (event) => {
       total_value: a.value_fen != null ? a.value_fen : a.total_value,
       asset_id: a.asset_id || a._id,
     }));
-  const amortV2Now = String(v.month || '') >= AMORT_RULE_V2_FROM;
-  // 🔴 R737（交叉审计第二轮抓出）：**归档月不重算**，这条比「v2 要重算」优先。
-  //   理由：归档 = 封账，那个月的数字连同「算它用的台账」一起冻结。
-  //   若归档后仍从台账重算，老板删掉/改掉一条资产，封账月的利润就跟着变 ⇒「已归档=只读」再次变成假话
-  //   （与 R257 用开关快照、R735 用归档快照是同一个病根的第四张脸）。
-  //   `isArchiveNow` 在下方原本才声明，这里提到前面 —— 它只依赖 acct，无副作用。
+  // 🔴 R740：**未归档月一律按台账算，归档月读落库快照**。这里不再有月份闸门。
+  //   曾经是 `(amortV2Now && !isArchiveNow)` —— 多一层 `month >= '2026-11'` 判据。
+  //   R737 那轮交叉审计抓出的 P0 就长在这个判据上：调用点漏传 month ⇒ 闸门恒 false
+  //   ⇒ 每月少扣 5,277.78，而三份引擎副本各自都是对的、service 层单测全绿。
+  //   ⇒ 闸门拆掉后，「漏传 month 导致规则失效」这类缺陷**结构上不可能再发生**。
+  //   ⚠️ 但归档优先这条**必须保留**：归档 = 封账，那个月的数字连同「算它用的台账」一起冻结。
+  //     若归档后仍从台账重算，老板删掉/改掉一条资产，封账月的利润就跟着变 ⇒「已归档=只读」变成假话
+  //     （与 R257 用开关快照、R735 用归档快照是同一个病根的第四张脸）。
   const isArchiveNow = !!(acct && acct.is_archive);
-  const amortizeFen = (amortV2Now && !isArchiveNow)
-    ? amortizeTotalForMonth(amortRows, v.month)
-    : ((acct && acct.amortize_fen) || 0);
+  const amortizeFen = isArchiveNow
+    ? ((acct && acct.amortize_fen) || 0)
+    : amortizeTotalForMonth(amortRows, v.month);
   // round106（F2）：一次性投入（分）—— 回读时必须带进引擎，否则重算的利润与落库值对不上
   const lumpSumFen = num0(acct && acct.lump_sum_fen);
 
@@ -187,22 +189,21 @@ exports.main = async (event) => {
     liveAmortizeSwitchOn: swGet('amortize_switch'),
   });
   const inventorySwitchOn = sw.inventorySwitchOn;
-  const amortizeSwitchOn = sw.amortizeSwitchOn;
+  // R740：`amortizeSwitchOn` 不再参与任何计算（摊销一律计入）。归档快照里仍会读到它，
+  //   但只作为历史留痕 —— 归档月「有没有扣摊销」由落库的 amortize_fen 表达，不由开关表达。
 
   // ===== 重算（防篡改）=====
-  // 🔴 R737（交叉审计第一轮抓出）：**必须传 month**。
-  //   引擎副本的时间闸门读 `clean.month`（`String(clean.month||'') >= '2026-11'`）；
-  //   本处原先没传 ⇒ 闸门恒 false ⇒ 走老逻辑「按开关归零」⇒
-  //     ① `effectiveAmortizeFen` 恒 0：上方刚从台账重算出 5,277.78 喂进来，又被归零，
-  //        2026-11/12 的真实利润每月**多算 5,277.78 元**（fixture 实测）；
-  //     ② 连带 `result.amortRuleV2` 恒 false ⇒ 下方 `amort_extra.switch_on` 与 `switches`
-  //        都退回看开关 ⇒ 结果页对已计入的月份显示「未开启摊销」。
-  //   为什么 service 层单测全绿也没抓到：三份副本的函数本身都是对的，错在**上游喂参**。
-  //   ⇒ 守卫 `check_amort_rule_v2` 的 E 段专门钉「每个调用点都传 month」（只测 service 必漏）。
+  // 🔴 **必须传 month**。R740 之前是因为时间闸门读 `clean.month`；闸门拆掉后，
+  //   month 仍是**台账取数参数**（`amortizeTotalForMonth(amortRows, v.month)` 靠它定位这一期），
+  //   而且引擎重算的其它口径（如月份相关展示）也要它。
+  //   历史教训保留在这里，因为它是「喂参完整性」最典型的一例：
+  //   R737 时本处漏传 month ⇒ 闸门恒 false ⇒ 每月少扣 5,277.78，而三份引擎副本各自都对、
+  //   service 层单测全绿 —— 错在**上游喂参**，行为测试喂参正确就永远抓不到。
+  //   ⇒ 守卫 `check_amort_no_gate.js` 的 E 段仍逐个调用点核对传参。
   const result = calcMonthlyProfit({
-    month: v.month,                    // 🔴 时间闸门按月份判断，漏传等于规则失效
+    month: v.month,                    // 🔴 台账按此定位月份，漏传 ⇒ 摊销取数落到错误期
     incomeItems, expenseItems, directConsumeFen, amortizeFen,
-    inventory, amortizeSwitchOn, inventorySwitchOn,
+    inventory, inventorySwitchOn,
     lumpSumFen,
   });
 
@@ -310,11 +311,12 @@ exports.main = async (event) => {
     amortize_fen: amortizeFen,
     // A11：摊销三件套。after_profit_fen 的口径是**总因素真实利润 + 本月摊销**，依据
     //   getLedger/service.js:73（摊销只进真实利润；参考利润本来就不扣摊销 ⇒ 拿参考利润去加等于凭空多算一笔）。
-    //   switch_on=false 时 this_fen 恒 0、after 恒等当前真实利润 ⇒ 前端必须显示「未开启摊销」而不是「0 元提升」。
-    //   🔴 R736：v2 月份 switch_on 恒 true（那个月摊销确实计入了）—— 前端据此不再显示「未开启摊销」。
-    //     漏改这一处会出现「引擎扣了钱，页面却说没开启」的自相矛盾。
+    //   🔴 R740：摊销一律计入 ⇒ switch_on 恒 true（这里报的是「摊销功能是否开启」，不是「本月有没有钱可扣」）。
+    //     本月到底扣了多少由 this_fen 表达；「无资产在摊」由 remaining_periods=0 表达，两条判据分开。
+    //     R736 时这里还跟着月份闸门走（闸门开 ⇒ true），R740 拆掉闸门后直接就是 true，
+    //     行为与原先 11 月及以后完全一致，只是不再有"哪个月不一样"这回事。
     amort_extra: {
-      switch_on: result.amortRuleV2 ? true : amortizeSwitchOn,
+      switch_on: true,
       this_fen: result.effectiveAmortizeFen,
       remaining_periods: remainPeriods,
       end_month: endMonthMax,
@@ -346,8 +348,8 @@ exports.main = async (event) => {
     //   round107 去掉了「按月分摊时恒 0」的互斥规则（摊销与一次算清是两笔不同的钱，可共存）。
     lump_sum_fen: lumpSumFen,
     effective_lump_sum_fen: result.effectiveLumpSumFen,
-    // 🔴 R736：v2 月份摊销一律计入 ⇒ switches 里也必须报 true，否则前端「未启用」话术会与已扣的钱打架
-    switches: { inventorySwitchOn, amortizeSwitchOn: result.amortRuleV2 ? true : amortizeSwitchOn },
+    // 🔴 R740：摊销一律计入 ⇒ switches 里摊销恒 true（否则前端「未启用」话术会与已扣的钱打架）
+    switches: { inventorySwitchOn, amortizeSwitchOn: true },
     result: {
       income_total_fen: result.incomeTotalFen,
       expense_total_fen: result.expenseTotalFen,

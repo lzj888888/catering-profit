@@ -35,12 +35,10 @@ function resolveArchiveSwitches(input) {
   };
 }
 
-// 🔴 R736（李老师拍板 · 豆包 ×2 + DeepSeek 三轮会诊一致）：摊销规则 v2 的时间闸门。
-//   本文件是 calcMonthlyProfit 的**内嵌副本**（归档月要按快照重算），所以这条判断在这里
-//   也必须有一份，且与 calcMonthlyProfit/service.js 逐字一致（守卫 `tools/check_amort_rule_v2.js` 逐字比对）。
-//   含义：该月起摊销一律按台账计入利润；更早的月份仍按老逻辑（归档读快照 / 未归档读实时开关）。
-const AMORT_RULE_V2_FROM = '2026-11';
-
+// 🔴 R740：摊销**一律计入**，本文件不再有月份闸门。
+//   本文件是 calcMonthlyProfit 的内嵌副本（归档月按快照重算），「一律计入」与主副本同源。
+//   冻结职责只由「归档」承担：归档月调用方直接喂落库金额（见 index.js），不走台账重算。
+//   守卫 `tools/check_amort_no_gate.js` 钉死：三份引擎副本都不得再出现按月份判断摊销的判据。
 function calcMonthlyProfit(clean) {
   const incomeItems = (clean && clean.incomeItems) || [];
   const expenseItems = (clean && clean.expenseItems) || [];  // R477：直接填的消耗 —— 先**归一化**再判断（不许直接 === 0）。
@@ -52,7 +50,6 @@ function calcMonthlyProfit(clean) {
     && !(typeof rawDirect === 'number' && Number.isNaN(rawDirect));
   const directConsumeFen = directProvided ? num0(rawDirect) : 0;
   const amortizeFen = num0(clean && clean.amortizeFen);
-  const amortizeSwitchOn = !!(clean && clean.amortizeSwitchOn);
   const inventorySwitchOn = !!(clean && clean.inventorySwitchOn);
   // round106（F2）：一次性投入（分）—— 与 saveLedger/service.js 同源同口径
   // round107：去掉「与摊销互斥」（原 amortizeSwitchOn ? 0 : lumpSumFen）。理由见 saveLedger/service.js。
@@ -67,10 +64,9 @@ function calcMonthlyProfit(clean) {
   const materialCostFen = realConsumeFen;
   const grossProfitFen = Math.round(incomeTotalFen - materialCostFen);
   const grossMarginRatePct = incomeTotalFen === 0 ? 0 : (grossProfitFen / incomeTotalFen) * 100;
-  // 🔴 R736：v2 起一律计入（不看开关）；更早的月份仍随开关。
+  // 🔴 R740：一律计入（不看开关、不看月份）。金额由调用方按台账/落库快照决定。
   //   与 calcMonthlyProfit/service.js 同源同口径 —— 改一处必改三处。
-  const amortV2 = String((clean && clean.month) || '') >= AMORT_RULE_V2_FROM;
-  const effectiveAmortizeFen = (amortV2 || amortizeSwitchOn) ? Math.round(amortizeFen) : 0;
+  const effectiveAmortizeFen = Math.round(amortizeFen);
   // R477：参考口径取数 —— 库存开且「直接填的消耗」没有正数 ⇒ 回落倒轧。
   //   判据为什么是 ≤ 0 而不是「未填」：库存模式下前端恒传 0（subpkg/biz/month/inventory.js:240
   //   写死 `|| 0`），那个 0 是占位、不承载老板意图 ⇒ 按"未填"处理。详见 calcMonthlyProfit/service.js 头部。
@@ -85,14 +81,12 @@ function calcMonthlyProfit(clean) {
     grossProfitFen, grossMarginRatePct,
     grossMarginRatePctDisplay: Math.round((grossMarginRatePct + Number.EPSILON) * 100) / 100,
     amortizeFen, effectiveAmortizeFen,
-    // 🔴 R736：本月按哪套规则算的 —— 上层据此把「未开启摊销」这类话术判对
-    amortRuleV2: amortV2,
     lumpSumFen, effectiveLumpSumFen,
     operationRefProfitFen, totalFactorRealProfitFen, profitDiffFen,
     // R477：参考口径取数与来源（前端解释差异的取数单源）+ 口径版本标识
     refMaterialFen, refMaterialSource, directProvided, profitCaliberVersion,
-    // 🔴 R736：与 saveLedger / calcMonthlyProfit 同形 —— v2 月份摊销确实计入了，快照报 true。
-    switchUsed: { inventorySwitchOn, amortizeSwitchOn: amortV2 ? true : amortizeSwitchOn, amortRuleV2: amortV2 },
+    // 🔴 R740：摊销一律计入 ⇒ 快照恒记 true（"这个月扣了摊销"，不是"开关开着"）。
+    switchUsed: { inventorySwitchOn, amortizeSwitchOn: true },
     diffCheck: operationRefProfitFen - totalFactorRealProfitFen === profitDiffFen,
   };
 }
@@ -121,5 +115,4 @@ function amortizeTotalForMonth(assets, month) {
 module.exports = {
   calcMonthlyProfit, resolveArchiveSwitches, ERROR_CODES,
   amortizeTotalForMonth, amountForMonth, monthIndex,
-  AMORT_RULE_V2_FROM,
 };

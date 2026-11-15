@@ -33,8 +33,9 @@ const r1 = calcMonthlyProfit({ incomeItems: INCOME_ITEMS, expenseItems: EXPENSE_
 check('S1 收入合计 = 64,000 元（6400000 分）', r1.incomeTotalFen === 6400000, `=${r1.incomeTotalFen}`);
 check('S1 费用合计 = 32,840 元（3284000 分）', r1.expenseTotalFen === 3284000, `=${r1.expenseTotalFen}`);
 check('🏆 S1 经营参考利润 = 9,160（916000 分）', r1.operationRefProfitFen === 916000, `=${r1.operationRefProfitFen}`);
-check('S1 全要素真实利润 = 9,160（库存关无倒轧）', r1.totalFactorRealProfitFen === 916000, `=${r1.totalFactorRealProfitFen}`);
-check('S1 差异 = 0', r1.profitDiffFen === 0);
+// 🔴 R740：摊销一律计入 ⇒ 9,160 − 4,683.33 = 4,476.67；两口径差异也随之变成一整笔摊销
+check('S1 全要素真实利润 = 4,476.67（R740：开关关也扣摊销，库存关无倒轧）', r1.totalFactorRealProfitFen === 447667, `=${r1.totalFactorRealProfitFen}`);
+check('S1 差异 = 4,683.33（= 摊销一笔，参考利润本来就不含它）', r1.profitDiffFen === 468333, `=${r1.profitDiffFen}`);
 check('S1 自洽校验位 diffCheck = true', r1.diffCheck === true);
 
 const r2 = calcMonthlyProfit({ incomeItems: INCOME_ITEMS, expenseItems: EXPENSE_ITEMS, directConsumeFen: DIRECT_CONSUME_FEN, amortizeFen: AMORTIZE_FEN, amortizeSwitchOn: true, inventorySwitchOn: true, inventory: { openingFen: 5000 * YUAN, purchaseFen: 25000 * YUAN, closingFen: 7000 * YUAN } });
@@ -173,15 +174,16 @@ check('R257 空入参不炸（未归档语义 ⇒ live 全关）',
 
 // 静态形状：controller 必须把解算结果喂进引擎，而不是 swGet(...) 的实时值
 check('R257 controller 引入 resolveArchiveSwitches（纯函数单源）', /resolveArchiveSwitches/.test(body));
-check('R257 🔴 开关常量取自解算结果 sw.*（换回 swGet(...) = 缺口复发）',
+// 🔴 R740：摊销开关已退役 ⇒ 只剩下库存开关需要从解算结果取；反而要**反对**再引入 amortizeSwitchOn
+check('R257 🔴 库存开关取自解算结果 sw.*（换回 swGet(...) = 缺口复发）；摊销开关已退役',
   /const inventorySwitchOn = sw\.inventorySwitchOn;/.test(body)
-  && /const amortizeSwitchOn = sw\.amortizeSwitchOn;/.test(body)
+  && !/const amortizeSwitchOn\s*=\s*sw\.amortizeSwitchOn;/.test(body)
   && !/SwitchOn\s*=\s*swGet\(/.test(body));
 // 引擎入参是**简写多行**（amortizeSwitchOn, inventorySwitchOn,），故按调用块取，不做整行匹配
 const iCall = body.indexOf('calcMonthlyProfit({');
 const callBlock = iCall >= 0 ? body.slice(iCall, body.indexOf('});', iCall)) : '';
-check('R257 🔴 引擎入参用的是上面那两个常量（简写），且块内不含实时 swGet',
-  callBlock.indexOf('inventorySwitchOn') >= 0 && callBlock.indexOf('amortizeSwitchOn') >= 0
+check('R257 🔴 引擎入参用的是解算后的常量（简写），且块内不含实时 swGet',
+  callBlock.indexOf('inventorySwitchOn') >= 0
   && callBlock.indexOf('swGet(') < 0, `block=${callBlock.length}字`);
 check('R257 解算发生在重算之前（顺序：resolveArchiveSwitches 早于 calcMonthlyProfit）',
   body.indexOf('resolveArchiveSwitches({') >= 0 && body.indexOf('calcMonthlyProfit({') > body.indexOf('resolveArchiveSwitches({'));

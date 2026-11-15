@@ -83,7 +83,9 @@ const CASES = [
   { id: 3,  scene: 'S1',  metric: '菜品毛利',          kind: 'fen',  get: (r) => r.grossProfitFen,             exp: 4200000 },
   { id: 4,  scene: 'S1',  metric: '菜品毛利率(%)',     kind: 'rate', get: (r) => r.grossMarginRatePctDisplay,  exp: 65.63,   tol: 0.01 }, // 65.625 → 65.63 同口径
   { id: 5,  scene: 'S1',  metric: '🟢经营参考利润',    kind: 'fen',  get: (r) => r.operationRefProfitFen,      exp: 916000 },
-  { id: 6,  scene: 'S1',  metric: '🔵全要素真实利润',  kind: 'fen',  get: (r) => r.totalFactorRealProfitFen,   exp: 916000 },
+  // 🔴 R740：摊销一律计入 ⇒ S1（开关 false）也要扣 4,683.33 ⇒ 916000−468333=447667。
+  //   当年这条锚点锁的是「开关关⇒不扣摊销」，那条规则已经拆掉了。
+  { id: 6,  scene: 'S1',  metric: '🔵全要素真实利润',  kind: 'fen',  get: (r) => r.totalFactorRealProfitFen,   exp: 447667 },
   { id: 7,  scene: 'S2',  metric: '本期真实消耗',      kind: 'fen',  get: (r) => r.realConsumeFen,             exp: 2300000 },
   // 🔴 R484 定案（李老师 2026-10-25）：开库存 = 盘点了 ⇒ 就用倒轧 23,000，老板不用也不该再填
   //   ⇒ 参考利润 816,000（原 916,000 锚点的前提「开库存仍用手工填的数」已被本次定案推翻）。

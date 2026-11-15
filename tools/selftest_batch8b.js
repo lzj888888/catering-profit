@@ -713,15 +713,16 @@ check('A9-⑯ 摊销与一次性投入**可共存**（一次算清不被归 0；
 //     · 开关**开** ⇒ effAmort=50000、真实利润 350000
 //     · 开关**关** ⇒ effAmort=**0**、真实利润 400000（摊销被摘掉 ⇒ 利润回到未摊状态）
 //     · 且**参考利润不随开关变**（摊销只进真实利润 —— 本仓既有口径，一并钉住防漂移）
+// 🔴 R740 反转：开关已退役 ⇒ 两态产出必须**完全相同**（原来要求差 50000）。
 const a9SwOffBad = A9_ENGINES.filter((f) => {
   const eng = require(path.join(ROOT, 'cloudfunctions/' + f)).calcMonthlyProfit;
   const on = eng(Object.assign({}, a9Clean, { amortizeFen: 50000, amortizeSwitchOn: true }));
   const off = eng(Object.assign({}, a9Clean, { amortizeFen: 50000, amortizeSwitchOn: false }));
-  return !(off.effectiveAmortizeFen === 0
-    && off.totalFactorRealProfitFen === 400000
+  return !(off.effectiveAmortizeFen === 50000
+    && off.totalFactorRealProfitFen === 350000
     && on.totalFactorRealProfitFen === 350000
     && off.operationRefProfitFen === on.operationRefProfitFen
-    && off.totalFactorRealProfitFen - on.totalFactorRealProfitFen === 50000);
+    && off.totalFactorRealProfitFen === on.totalFactorRealProfitFen);
 });
 check('A9-⑰ 开关关掉 ⇒ 摊销**不计入利润**（effAmort=0、真实利润 +摊销额；参考利润不随开关变；三副本一致）',
   a9SwOffBad.length === 0, a9SwOffBad.length ? ('未达标：' + a9SwOffBad.join(', ')) : '三副本一致');

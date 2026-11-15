@@ -162,7 +162,8 @@ if (allLoaded) {
   check('C-① S1 收入合计 = 6,400,000 分（实测 ' + bs.incomeTotalFen + '）', bs.incomeTotalFen === 6400000);
   check('C-② S1 费用合计 = 3,284,000 分（实测 ' + bs.expenseTotalFen + '）', bs.expenseTotalFen === 3284000);
   check('C-③ S1 🟢经营参考利润 = 916,000（实测 ' + bs.operationRefProfitFen + '）', bs.operationRefProfitFen === 916000);
-  check('C-④ S1 🔵全要素真实利润 = 916,000（库存关无倒轧，实测 ' + bs.totalFactorRealProfitFen + '）', bs.totalFactorRealProfitFen === 916000);
+  // 🔴 R740：摊销一律计入 ⇒ 916,000 − 468,333 = 447,667（原锚点锁的是「开关关不扣摊销」）
+  check('C-④ S1 🔵全要素真实利润 = 447,667（R740：开关关也扣摊销，实测 ' + bs.totalFactorRealProfitFen + '）', bs.totalFactorRealProfitFen === 447667);
   check('C-⑤ S2 本期真实消耗 = 2,300,000（实测 ' + b2.realConsumeFen + '）', b2.realConsumeFen === 2300000);
   // 🔴 R484 定案：开库存 = 盘点了 ⇒ 参考口径就用倒轧 23,000 ⇒ 816,000
   //   （原 916,000 锚点的前提「开库存仍用手工填的数」已被本次定案推翻）
@@ -194,11 +195,12 @@ if (allLoaded) {
   check('D-① 输入敏感：期初 +1 分时输出必须不同（对拍有分辨力）',
     sig(BASE.calcMonthlyProfit(a1)) !== sig(BASE.calcMonthlyProfit(a2)));
 
-  // D-② 输入敏感：只改摊销开关 ⇒ 输出必须不同
+  // 🔴 D-② 输入**中性**（R740 反转）：摊销开关已退役 ⇒ 改它不许改变任何输出。
+  //   原断言要求"必须不同"，那是开关还活着时的口径；现在反过来锁"它彻底不参与计算"。
   const b1 = S2(), b2 = S2();
   b2.amortizeSwitchOn = false;
-  check('D-② 输入敏感：摊销开关 true→false 时输出必须不同',
-    sig(BASE.calcMonthlyProfit(b1)) !== sig(BASE.calcMonthlyProfit(b2)));
+  check('D-② 输入中性：摊销开关 true→false 时输出必须完全相同（R740：开关已退役）',
+    sig(BASE.calcMonthlyProfit(b1)) === sig(BASE.calcMonthlyProfit(b2)));
 
   // D-③ 变体实现：构造「参考利润偏移 1 分」的假引擎，断言对拍判它不等
   const shifted = (p) => {

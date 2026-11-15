@@ -309,21 +309,17 @@
     c7NoCache ? '页面只认服务端出参' : '页面仍在读前端缓存 ⇒ 保存后重拉会读回旧值、开关弹回');
 
   const engines108 = ['saveLedger/service.js', 'getLedger/service.js', 'calcMonthlyProfit/service.js'];
-  // 🔴 R736：口径腿形态变了（加了时间闸门 `(amortV2 || amortizeSwitchOn)`），旧字面匹配失效。
-  //   新判据**比旧的更强**，三条一起判，缺一即红：
-  //     ① 归零腿还在（老月份「关掉 ⇒ 归 0」这条口径没被顺手删掉）
-  //     ② 三份带**同一个**闸门常量（漏一份 ⇒ 那条链路的摊销永远不生效，或历史月被改写）
-  //     ③ 快照记的是生效值（否则归档后读快照说"没计入"、金额却记了 ⇒ 两页互相打脸）
-  //   ⚠️ 本轮正是靠这条抓到 `saveLedger/service.js` 漏改 —— 那是三份里最阴的一份：
-  //     页面按新规则报「已计入」，落库的 effective_amortize_fen 却是 0，导出月报与页面打架。
+  // 🔴 R740 反转：三条判据从「必须有闸门」变成「必须没有闸门」——
+  //     ① 一律计入（无开关腿）② 无时间闸门常量/函数 ③ 快照恒 true
+  //   方向反过来，强度不减：原来是"确认闸门在"，现在是"确认闸门再也回不来"。
   const c7LegBad = engines108.filter((f) => {
     const src = fs.readFileSync(path.join(CF, f), 'utf8');
-    const hasSwitchLeg = /effectiveAmortizeFen\s*=[^;]*amortizeSwitchOn[^;]*:\s*0;/.test(src);
-    const hasGate = /AMORT_RULE_V2_FROM\s*=\s*'2026-11'/.test(src);
-    const hasSnap = /switchUsed:\s*\{[^}]*amortRuleV2/.test(src);
-    return !(hasSwitchLeg && hasGate && hasSnap);
+    const noSwitchLeg = /const effectiveAmortizeFen = (fenRoundN|Math\.round)\(amortizeFen\);/.test(src);
+    const noGate = !/AMORT_RULE_V2_FROM/.test(src) && !/amortRuleV2/.test(src);
+    const snapTrue = /switchUsed:\s*\{[^}]*amortizeSwitchOn:\s*true/.test(src);
+    return !(noSwitchLeg && noGate && snapTrue);
   });
-  check('C7-3 三副本引擎都保留「关掉 ⇒ 摊销归 0」的口径腿 + 同一个时间闸门 + 快照报生效值（R736）',
+  check('C7-3 三副本引擎都是「一律计入」：无开关腿、无时间闸门、快照恒 true（R740）',
     c7LegBad.length === 0,
     c7LegBad.length ? ('缺腿：' + c7LegBad.join(', ')) : '三副本均在位且同源');
 

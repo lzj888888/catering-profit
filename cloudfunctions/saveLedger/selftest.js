@@ -21,7 +21,8 @@ const AMORTIZE_FEN = Math.round(4683.33 * YUAN); // 468333
 // ===== S1：库存关 / 摊销关 =====
 const r1 = calcMonthlyProfit({ incomeItems: INCOME_ITEMS, expenseItems: EXPENSE_ITEMS, directConsumeFen: DIRECT_CONSUME_FEN, amortizeFen: AMORTIZE_FEN, amortizeSwitchOn: false, inventorySwitchOn: false, inventory: {} });
 check('S1 经营参考利润 = 9,160（916000分）', r1.operationRefProfitFen === 916000, `=${r1.operationRefProfitFen}`);
-check('S1 全要素真实利润 = 9,160（口径锁，库存关无倒轧）', r1.totalFactorRealProfitFen === 916000, `=${r1.totalFactorRealProfitFen}`);
+// 🔴 R740：摊销一律计入 ⇒ 9,160 − 4,683.33 = 4,476.67（原锚点 9,160 锁的是「开关关不扣摊销」，规则已拆）
+check('S1 全要素真实利润 = 4,476.67（R740：开关关也扣摊销）', r1.totalFactorRealProfitFen === 447667, `=${r1.totalFactorRealProfitFen}`);
 
 // ===== S2：库存开 / 摊销开 =====
 const r2 = calcMonthlyProfit({ incomeItems: INCOME_ITEMS, expenseItems: EXPENSE_ITEMS, directConsumeFen: DIRECT_CONSUME_FEN, amortizeFen: AMORTIZE_FEN, amortizeSwitchOn: true, inventorySwitchOn: true, inventory: { openingFen: 5000 * YUAN, purchaseFen: 25000 * YUAN, closingFen: 7000 * YUAN } });

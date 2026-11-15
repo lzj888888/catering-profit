@@ -80,17 +80,18 @@ check('S-⑤ 解算函数在 service.js 里导出（读得到才谈得上用）'
 console.log('\n===== A 源码面（归档月回读走快照，不走实时）=====');
 check('A-① controller 真的调用 resolveArchiveSwitches({...})（不只是 import 了）',
   /const sw = resolveArchiveSwitches\(\{/.test(idx), String(/const sw = resolveArchiveSwitches\(\{/.test(idx)));
-check('A-② 🔴 开关常量取自解算结果 sw.*（改回 swGet(...) = 缺口复发）',
+// 🔴 R740：摊销开关已退役 ⇒ 只剩库存开关仍需从解算结果取；反而要**反对**再引入 amortizeSwitchOn。
+check('A-② 🔴 库存开关取自解算结果 sw.*（改回 swGet(...) = 缺口复发）；摊销开关已退役',
   /const inventorySwitchOn = sw\.inventorySwitchOn;/.test(idx)
-  && /const amortizeSwitchOn = sw\.amortizeSwitchOn;/.test(idx)
+  && !/const amortizeSwitchOn\s*=\s*sw\.amortizeSwitchOn;/.test(idx)
   && !/SwitchOn\s*=\s*swGet\(/.test(idx),
   `取sw=${/const inventorySwitchOn = sw\.inventorySwitchOn;/.test(idx)} 无实时直取=${!/SwitchOn\s*=\s*swGet\(/.test(idx)}`);
 // 引擎入参是**简写多行**（amortizeSwitchOn, inventorySwitchOn,）⇒ 按调用块取，不做整行匹配
 const iCall = idx.indexOf('calcMonthlyProfit({');
 const callBlock = iCall >= 0 ? idx.slice(iCall, idx.indexOf('});', iCall)) : '';
-check('A-③ 🔴 喂进引擎的是上面那两个常量（简写），且调用块内不含实时 swGet',
+check('A-③ 🔴 喂进引擎的是解算后的常量（简写），且调用块内不含实时 swGet',
   callBlock.length > 0 && callBlock.indexOf('inventorySwitchOn') >= 0
-  && callBlock.indexOf('amortizeSwitchOn') >= 0 && callBlock.indexOf('swGet(') < 0,
+  && callBlock.indexOf('swGet(') < 0,
   `block=${callBlock.length}字 swGet=${callBlock.indexOf('swGet(')}`);
 check('A-④ 🔴 解算发生在重算之前（顺序：resolveArchiveSwitches 早于 calcMonthlyProfit）',
   idx.indexOf('resolveArchiveSwitches({') > 0
@@ -201,7 +202,7 @@ const OLD_SRC = 'const inventorySwitchOn = swGet(\'inventory_switch\');\n'
   + 'const result = calcMonthlyProfit({ incomeItems, expenseItems, inventory, amortizeSwitchOn, inventorySwitchOn });';
 check('C-① 影子：旧形态（swGet 直取）在 A-② 判据上必须判红（证明有分辨力）',
   !(/const inventorySwitchOn = sw\.inventorySwitchOn;/.test(OLD_SRC)
-    && /const amortizeSwitchOn = sw\.amortizeSwitchOn;/.test(OLD_SRC)),
+    && !/const amortizeSwitchOn\s*=\s*sw\.amortizeSwitchOn;/.test(OLD_SRC)),
   String(/const inventorySwitchOn = sw\.inventorySwitchOn;/.test(OLD_SRC)));
 // 影子②：「只看归档、不看快照完整度」的假实现 ⇒ B-④ 那条必须失效
 const fakeArchiveOnly = (inp) => (inp && inp.isArchive

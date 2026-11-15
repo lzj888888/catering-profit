@@ -51,42 +51,38 @@
  *  - incomeItems     收入明细（分）: [{ amountFen }]，系统内部汇总，禁止前端传合计
  *  - expenseItems    费用明细（分）: [{ amountFen }]（房租/人工/水电等在列，属费用非食材成本）
  *  - directConsumeFen 直接填的当月食材耗材总消耗（分）
- *  - amortizeFen      当月摊销总费用（分，外部传入；本批不实现摊销算法）
- *  - amortizeSwitchOn 摊销开关（服务端权威）
+ *  - amortizeFen      当月摊销总费用（分，外部传入；调用方负责按台账算）
+ *  - amortizeSwitchOn 已退役（R740：摊销一律计入）。入参仍可能被传进来，**引擎不再读它**。
  *  - inventorySwitchOn 库存开关（服务端权威）
  *  - inventory        库存（分）: { openingFen, purchaseFen, closingFen }，库存开关开时用
  *  - pendingSettlementFen 待结算（分，现金流指标，绝不进入毛利/利润）
  * @returns {object} 计算报告（金额一律「分」整数 + 对应元数；毛利率双字段）
  */
 
-// 🔴🔴 R736（2026-11-15 李老师拍板 · 豆包 ×2 + DeepSeek 三轮会诊一致）：
-//   **摊销规则 v2 —— 时间闸门。**
+// 🔴🔴 R736 → R740：摊销**一律计入**，没有时间闸门。
 //
-//   病根：`amortize_switch` 是 round107 那对「一次性计入当月 / 按月分摊」二选一被拆掉之后
-//     留下来的**半具尸体**。二选一没了（两类投入改为可共存），开关本体却留着，语义退化成
-//     「已登记的摊销资产要不要计入利润」—— 而老板填总额 + 期数的动作本身已经表达了「要摊」。
-//     于是同一个决定被问了两次，第二次还能否掉第一次。李老师原话：
+//   病根（R736 会诊）：`amortize_switch` 是 round107 那对「一次性计入当月 / 按月分摊」二选一
+//     被拆掉之后留下来的**半具尸体**。二选一没了（两类投入改为可共存），开关本体却留着，
+//     语义退化成「已登记的摊销资产要不要计入利润」—— 而老板填总额 + 期数的动作本身
+//     已经表达了「要摊」。于是同一个决定被问了两次，第二次还能否掉第一次。李老师原话：
 //       「摊销的数我还添了……我又把开关关了，那不让摊销、填那个数，它意义本身也不在。」
-//
 //   裁决（三家一致）：删掉用户可见开关，摊销一律按台账计入；「不摊」走「一次算清」（mode='lump'）。
 //
-//   ⚠️ 但**历史月份一个字都不许改**（老板翻旧账发现利润少了 4333，会认定系统算错）。
-//     ⇒ 用**时间闸门**而不是「按归档态判断」：归档态会随老板操作翻转（可取消归档），闸门是纯函数。
-//     ⇒ `month >= AMORT_RULE_V2_FROM` ⇒ 一律计入；更早的月份 ⇒ 老逻辑（快照优先，无快照读实时开关）。
+//   R736 当时还留了一道**时间闸门**（`month >= '2026-11'` 才计入），理由是「历史月份一个字都不许改」。
+//   R740 把闸门也拆了 —— 因为**它保护的是个错的数**：
+//     · 小程序尚未上线，不存在「别的老板已经看过的历史数字」；
+//     · 被挡住的月份不是「延后扣」，是**永久蒸发**：实测 2026-08 起摊的 36,000 元装修，
+//       带闸门时 36 期逐月求和只有 33,000，摊完也补不回来（探针 review/evidence/r740_gate_cost_probe.js）；
+//     · 开关早已删掉，用户**没有任何界面**能为历史月表达「这笔我要摊」—— 闸门是没有出口的牢。
 //
-//   ⚠️ 为什么不做「台账重排 / 补摊」：会诊中 DeepSeek 建议「剩余未摊 ÷ 剩余期数重排」，
-//     已用 `getAmortSchedule::progressOf` 源码证伪 —— 那段**完全不读开关**，关开关期间台账期数
-//     照常前进、剩余未摊照常递减。所谓「未摊金额缺失」是把「利润没扣」误读成「台账没摊」。
-//     ⇒ 本改动**不动任何台账数据**，只改利润表取数。
+//   冻结职责从此**只由「归档」承担**：`is_archive=true` ⇒ 读落库快照（见 getLedger / exportData）。
+//     归档是用户主动动作、语义明确、可撤销；日期闸门是代码里写死的常量，用户看不见也动不了。
+//     两套冻结机制并存必然打架 —— R737 的 P0（`getLedger` 漏传 month ⇒ 闸门恒 false ⇒
+//     每月少扣 5,277.78，而行为测试因为喂参正确全绿）就是这套机制自己长出来的。
 //
-//   ⚠️ 三副本同源铁律：本文件 / `getLedger/service.js` / `saveLedger/index.js` 的这段判断
-//     必须逐字一致，改一处必改三处（守卫 `tools/check_amort_rule_v2.js` 逐字比对）。
-const AMORT_RULE_V2_FROM = '2026-11';
-
-/** 该月是否适用摊销规则 v2（摊销一律计入）。month 形如 'YYYY-MM'；空值/坏值 ⇒ false（回落到老逻辑，fail-safe）。 */
-function amortRuleV2(month) {
-  return String(month || '') >= AMORT_RULE_V2_FROM;
-}
+//   ⇒ 本引擎**不再判月份**：未归档月由调用方喂台账应摊额，这里一律计入。
+//   ⚠️ 三副本同源铁律不变：本文件 / `getLedger/service.js` / `saveLedger/service.js` 的
+//     「一律计入」必须逐字一致（守卫 `tools/check_amort_no_gate.js` 逐字比对）。
 
 function calcMonthlyProfit(clean) {
   // ===== 0. 输入防护（仅缺省容忍，负数/坏类型由 Controller 拦截）=====
@@ -102,7 +98,7 @@ function calcMonthlyProfit(clean) {
   const amortizeFen = num0(clean && clean.amortizeFen);
   // round106（F2）：一次性投入（分）—— 与 getLedger/saveLedger 的引擎副本同源同口径
   const lumpSumFen = num0(clean && clean.lumpSumFen);
-  const amortizeSwitchOn = !!(clean && clean.amortizeSwitchOn);
+  // R740：`amortizeSwitchOn` 已退役，不再读取（摊销一律按台账计入，见第 4 段）。
   const inventorySwitchOn = !!(clean && clean.inventorySwitchOn);
   const inv = (clean && clean.inventory) || {};
   const pendingSettlementFen = num0(clean && clean.pendingSettlementFen);
@@ -127,9 +123,10 @@ function calcMonthlyProfit(clean) {
     incomeTotalFen === 0 ? 0 : (grossProfitFen / incomeTotalFen) * 100;
   const grossMarginRatePctDisplay = rounded2(grossMarginRatePct);
 
-  // ===== 4. 当月摊销实际计入值（R736：规则 v2 起一律计入；更早的月份仍随开关） =====
-  const amortV2 = amortRuleV2(clean && clean.month);
-  const effectiveAmortizeFen = (amortV2 || amortizeSwitchOn) ? fenRoundN(amortizeFen) : 0;
+  // ===== 4. 当月摊销实际计入值（R740：一律计入 —— 没有开关、也没有月份判据）=====
+  //   ⚠️ `amortizeFen` 由调用方负责按**台账**算出（未归档月）。归档月在调用方就分支掉了
+  //   （读落库快照），根本不会走到这里重算。所以这行不需要任何条件。
+  const effectiveAmortizeFen = fenRoundN(amortizeFen);
   // round107 纠正：原为「与按月分摊互斥」（amortizeSwitchOn ? 0 : lumpSumFen）—— 那是错的。
   //   摊销资产与一次算清的投入是两笔不同的钱，一个月可以两者都有；互斥会把后者悄悄丢掉。
   //   防重复靠「同一笔钱只登记一行」（mode 二选一）。三副本（本文件 / saveLedger / getLedger）同源同口径。
@@ -183,11 +180,9 @@ function calcMonthlyProfit(clean) {
     refMaterialFen, refMaterialSource, directProvided,
     profitCaliberVersion,
     // 口径信息
-    // 🔴 R736：快照记录的是**该月实际生效的**摊销口径 —— v2 之后的月份摊销确实计入了，
-    //   所以快照里的 amortizeSwitchOn 恒为 true（那不是"开关开着"，是"这个月扣了"）。
-    //   amortRuleV2 单独记一笔，用于事后排查「这个月按哪套规则算的」。
-    switchUsed: { inventorySwitchOn, amortizeSwitchOn: amortV2 ? true : amortizeSwitchOn, amortRuleV2: amortV2 },
-    amortRuleV2: amortV2,
+    // 🔴 R740：摊销一律计入 ⇒ 快照里的 amortizeSwitchOn 恒 true
+    //   （那不是"开关开着"，是"这个月扣了摊销"）。字段名沿用历史命名，供归档月回读。
+    switchUsed: { inventorySwitchOn, amortizeSwitchOn: true },
     // 待结算为现金流指标，仅回显，绝不参与毛利/利润
     pendingSettlementFen,
     // 自洽校验
