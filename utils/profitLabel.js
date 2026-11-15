@@ -98,6 +98,16 @@ function pickProfitLabel(ledger, caliber) {
   const amortOn = !!sw.amortizeSwitchOn;
   const amortFen = Math.max(0, toFen(res.effective_amortize_fen) || 0);
   const lumpFen = Math.max(0, toFen(ledger && ledger.effective_lump_sum_fen) || 0);
+  // 🔴 R744：本月计入额里可能含「提前报废资产的未摊余额」（一次性处置损失）。
+  //   若只报「其中摊销 ¥9666.69 已扣」，老板会以为这个月突然多摊了一个月 —— 摊销页已有解释，
+  //   结果页必须说同一句话（与 R735/R741「两页不许打架」同一条纪律）。
+  //   ⚠️ 只做文案拆分，不动任何金额：disposalFen 由 getLedger 出参给，页面不重算。
+  const disposalFen = Math.max(0, toFen(ledger && ledger.disposal_loss_fen) || 0);
+  const amortLine = amortFen > 0
+    ? (disposalFen > 0 && disposalFen <= amortFen
+      ? RP.amortLine(yuan(amortFen)) + '（含提前报废未摊余额 ¥' + yuan(disposalFen) + '，一次性计入）'
+      : RP.amortLine(yuan(amortFen)))
+    : RP.amortNone;
 
   // 「一次算清」的投入：两个口径**都扣**、只在当月扣一次（不受摊销开关控制）。
   //   ⚠️ 它是"摊销关"那个月最容易误读的一笔 —— 副标题说"未扣摊销"，
@@ -131,7 +141,7 @@ function pickProfitLabel(ledger, caliber) {
       // R492：与盘点分支（下同）保持**同一套三态** —— 摊销关 ⇒ 不说；开且扣了 ⇒ 报金额；开但为 0 ⇒ 明说没有。
       //   旧写法只在"扣了"时说一句，同样「摊销开 + 本月 0」的组合会因为没盘点而**少一句话**
       //   （NOTE_R489 §3.3 定的是"摊销开则同上"）⇒ 老板分不清"摊销表空着"和"没扣"，与"钱扣在哪要说清"相反。
-      amortText: !amortOn ? '' : (amortFen > 0 ? RP.amortLine(yuan(amortFen)) : RP.amortNone),
+      amortText: !amortOn ? '' : amortLine,
       lumpText,
     };
   }
@@ -145,7 +155,7 @@ function pickProfitLabel(ledger, caliber) {
     basis: 'stocktake',
     closingFen: closingFenOf(ledger),
     // 摊销金额说一次就够：开关开且真扣了 ⇒ 报金额；开关开但本月为 0 ⇒ 明说没有
-    amortText: !amortOn ? '' : (amortFen > 0 ? RP.amortLine(yuan(amortFen)) : RP.amortNone),
+    amortText: !amortOn ? '' : amortLine,
     lumpText,
   };
 }

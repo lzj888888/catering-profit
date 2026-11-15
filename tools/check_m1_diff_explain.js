@@ -338,6 +338,33 @@ check('H-⑫ 反恒真：永不说摊销的实现必须被判红 ⇒ 证明 H-�
 check('H-⑬ 反恒真：声称 stocktake 却无 closingFen 的假实现必须逐条判红 ⇒ 证明 H-⑦ 不是恒真',
   judgeBasis(() => ({ basis: 'stocktake', closingFen: null })) === NO_CLOSING_SAMPLES.length);
 
+// —— H2 · R744：提前报废处置损失必须在结果页说明里拆开（与摊销页说同一句话）——
+//   病灶：R744 把处置损失并入「本月计入额」后，结果页若只说「其中摊销 ¥9666.69 已扣」，
+//   老板会以为这个月突然多摊了一个月。摊销页已有 disposalNote，结果页必须同源解释。
+//   判据跑真实现（不扫源码字面），并带一组反恒真（去掉拆分说明必须被抓到）。
+function labelWith(amortFen, disposalFen) {
+  return haveLabel ? labelMod.pickProfitLabel({
+    result: { effective_amortize_fen: amortFen, income_total_fen: 500000,
+      material_cost_fen: 0, real_consume_fen: 0, ref_material_source: 'direct' },
+    switches: { inventorySwitchOn: false, amortizeSwitchOn: true },
+    disposal_loss_fen: disposalFen, effective_lump_sum_fen: 0,
+    inventory: {}, stock_take_done: true,
+  }, 'real').amortText : '__NO_LABEL__';
+}
+const r744With = labelWith(966669, 933336);
+const r744Without = labelWith(33333, 0);
+check('H2-① 有提前报废 ⇒ 结果页说明含「提前报废未摊余额」及金额 9333.36',
+  /提前报废未摊余额/.test(r744With) && /9333\.36/.test(r744With) && /一次性计入/.test(r744With),
+  r744With);
+check('H2-② 无报废 ⇒ 文案一字不变（仍只报摊销额，不出现处置损失字样）',
+  /333\.33/.test(r744Without) && !/提前报废/.test(r744Without),
+  r744Without);
+check('H2-③ 拆分说明不改金额：含报废时报的仍是完整的 9666.69',
+  /9666\.69/.test(r744With), r744With);
+check('H2-④ 反恒真：把拆分说明摘掉（只报总额）⇒ H2-① 立刻判红',
+  !(/提前报废未摊余额/.test('其中摊销 ¥9666.69 已扣') && /9333\.36/.test('其中摊销 ¥9666.69 已扣')),
+  '旧文案不含拆分 ⇒ 判据有牙');
+
 // ===================== I. R493：真实盘点落库链路（stock_take_done 五跳透传） =====================
 console.log('');
 console.log('===== I. R493：真实盘点落库链路（前端→validate→saveLedger→getLedger→标签）=====');

@@ -275,7 +275,7 @@ const CASES = [
   // R479：差异说明条件化 —— 断言数不受守则「把 A-⑥ 两条文案写成同值」会静默通过
   //   （分支留着、值一样 ⇒ 形同没条件化，正是本守卫要对付的假条件化）。
   // R493：H 段（摊销/依据三态行为面 21 条）+ I 段（真实盘点 5 跳链路 6 条）⇒ 33→60。
-  { key: 'check_m1_diff_explain', rel: 'tools/check_m1_diff_explain.js' },   // 60 条（H21 + I6 为 R493 新增；分段计数以实跑 pass 数为准）
+  { key: 'check_m1_diff_explain', rel: 'tools/check_m1_diff_explain.js' },   // 64 条（H21 + I6 为 R493 新增；分段计数以实跑 pass 数为准）
   // D1（2026-10-27 拍板 + 审计 H1 实证）：空表单 fail-closed 行为守卫 —— 19 条 = P4 + Q2 + A6 + B3 + C2 + E2
   { key: 'check_m2_forward_failclosed', rel: 'tools/check_m2_forward_failclosed.js' }, // 25 条（P/Q/A/B/C/E/F 七组；F=人效坪效缺项感知 6 条：空表单装配 rent/labor=0 + 引擎非空保本证门禁必要 + hasFixed(空)=false + 正控 hasFixed(填)=true + 变异 >0→>=0 可抓）
   // D3 + D3-C（2026-10-27 拍板/第二轮）：任一项>0 即采用 —— 20 条 = P3 + A9 + B1 + C5 + E2
