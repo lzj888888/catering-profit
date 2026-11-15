@@ -4,7 +4,7 @@
 //       + R727 销量样例事实守卫（tools/check_sales_sample_facts.js，四张平台表在仓 + 粒度/规格实跑解析，防「样例待提供」第三次复发）
 //       + R726 算钱口径守卫（tools/check_r714_decisions.js，R714 三件口径由台账四票机器化：
 //         名单 ≡ 落地、E-6 真跑非有限 coverage 抑制、E-1/E-2 文案双副本与上屏、含反恒真）
-// 串联：321 个套件（R740 内部一换一：amort-rule-v2 → amort-no-gate；R741 追加 archive-no-fake） = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：322 个套件（R740 内部一换一：amort-rule-v2 → amort-no-gate；R741 追加 archive-no-fake；R742 追加 amort-invariants） = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1816,6 +1816,12 @@ const SUITES = [
   //   守：A 无建账调用 + fail-closed 分支 + 先判后写 + genId 连带退役 + B 变异回灌。
   //   ⚠️ 既有归档类套件全抓不到 —— 它们都假设「账已经存在」，没人问过"不存在时怎么办"。
   ['archive-no-fake', 'tools/check_archive_no_fake.js'],
+  // R742 · 摊销「万无一失」不变量守卫：李老师「跨月/新增/重叠/店铺/数据库」五问，逐条变可判红断言。
+  //   A 三份生产引擎逐字同源（防谁改一处忘改另一处） + B 朴素/UTC 两套时区口径结果一致（防实现漂移）
+  //   + C 闭包(摊销和+残值≡原值) + D 新增可加性(只从 start_month 起生效) + E 重叠不重复(各明细之和≡total)
+  //   + F 店铺纯度(引擎不认 shop_id) + G 模拟对账(重复行/孤儿shop/非法字段/归档漂移四类脏数据都能扫出)。
+  //   每条带变异回灌证明非恒真。
+  ['amort-invariants', 'tools/check_amort_invariants.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
