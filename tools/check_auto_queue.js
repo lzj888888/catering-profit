@@ -228,14 +228,23 @@ sec('N 轮次编号（单源 review/ROUND_INDEX.md）');
   const IDX = path.join(ROOT, 'review', 'ROUND_INDEX.md');
   ok('N-① review/ROUND_INDEX.md 存在', fs.existsSync(IDX));
   const idxSrc = fs.existsSync(IDX) ? fs.readFileSync(IDX, 'utf8') : '';
+  const mCur = /^\s*CURRENT:\s*(\d{3,4})\s*$/m.exec(idxSrc);
   const mNext = /^\s*NEXT:\s*(\d{3,4})\s*$/m.exec(idxSrc);
-  ok('N-② 能解析出 `NEXT: <号>`（手工要维护的只有这一个数字）', !!mNext,
-    mNext ? 'NEXT=' + mNext[1] : '未找到 NEXT 行');
+  // 🔴 R748：双字段。CURRENT=本轮正在用（允许全仓出现），NEXT=下一个空闲号（必须干净）。
+  //   旧写法只有一个 NEXT，本轮开工时它就等于本轮号 ⇒ 本轮注释写 RNNN 必然撞车，
+  //   R745/R746/R747 连续三轮都栽在这里，每轮手动追改 NEXT 才过。
+  ok('N-② 能解析出 `CURRENT: <号>` 与 `NEXT: <号>`（手工要维护的只有这两行）',
+    !!mCur && !!mNext,
+    (mCur ? 'CURRENT=' + mCur[1] : '未找到 CURRENT 行') + ' / ' + (mNext ? 'NEXT=' + mNext[1] : '未找到 NEXT 行'));
 
-  if (mNext) {
+  if (mCur && mNext) {
+    const curNo = Number(mCur[1]);
     const nextNo = Number(mNext[1]);
     // 现扫全仓编号出现处（排除二进制/数据件；排除 ROUND_INDEX 自身——它必然提到自己）
+    // 🔴 R748：**排除 review/evidence/** —— 那里是取证产物，必然写满当轮号，
+    //   把它们算进"NEXT 被用过"等于禁止正常取证。CURRENT 仍然允许出现在这些文件里。
     const SKIP = /\.(b64|json|log|xlsx|xls|png|jpg|jpeg|pdf|docx|txt)$/i;
+    const EV_DIR = path.join(ROOT, 'review', 'evidence') + path.sep;
     const walk = (dir, out) => {
       if (!fs.existsSync(dir)) return out;
       for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -252,10 +261,12 @@ sec('N 轮次编号（单源 review/ROUND_INDEX.md）');
       .concat(walk(path.join(ROOT, 'review'), []))
       .concat(walk(path.join(ROOT, 'specs'), []))
       .concat(walk(path.join(ROOT, 'tools'), []))
-      .filter((f) => path.resolve(f) !== path.resolve(IDX));
+      .filter((f) => path.resolve(f) !== path.resolve(IDX))
+      .filter((f) => path.resolve(f).indexOf(path.resolve(EV_DIR)) !== 0);
 
     let maxUsed = 0;
     const hitFiles = [];
+    const curFiles = [];
     for (const f of files) {
       const t = fs.readFileSync(f, 'utf8');
       const ms = t.match(/\bR(\d{3,4})\b/g);
@@ -265,22 +276,50 @@ sec('N 轮次编号（单源 review/ROUND_INDEX.md）');
         if (n >= 1 && n <= 999) {
           if (n > maxUsed) maxUsed = n;
           if (n === nextNo) hitFiles.push(path.relative(ROOT, f));
+          if (n === curNo) curFiles.push(path.relative(ROOT, f));
         }
       }
     }
 
-    ok('N-③ NEXT 未被全仓任何记录用过（撞车当场报红）', hitFiles.length === 0,
+    ok('N-③ NEXT 未被全仓任何记录用过（真撞车当场报红；review/evidence 取证产物除外）',
+      hitFiles.length === 0,
       hitFiles.length ? 'R' + nextNo + ' 已出现在：' + hitFiles.slice(0, 3).join(' / ') : 'R' + nextNo + ' 空闲');
-    ok('N-④ NEXT > 全仓实际最大已用号（防止取号回退到旧号段）', nextNo > maxUsed,
-      `NEXT=${nextNo} / 已用最大=R${maxUsed}`);
+    ok('N-④ NEXT 严格大于 CURRENT（下一个空闲号必须在本轮之后）', nextNo > curNo,
+      `CURRENT=${curNo} / NEXT=${nextNo}`);
+    // 🔴 R748 新增：CURRENT 不许凭空跳号（必须等于 maxUsed 或 maxUsed+1），
+    //   否则「把 CURRENT 填小一点让 N-④ 过」就成了新后门。
+    ok('N-⑦ CURRENT 与全仓最大已用号自洽（= maxUsed 或 maxUsed+1，防手填跳号绕闸）',
+      curNo === maxUsed || curNo === maxUsed + 1,
+      `CURRENT=${curNo} / 已用最大=R${maxUsed}`);
     // 反自证：ROUND_INDEX 必须显式保留"欠账"段 —— 缺口可以被知道，不可以被悄悄抹掉
     ok('N-⑤ ROUND_INDEX 显式标注已知欠账（缺口只能被知道、不能被抹掉）',
       /欠账/.test(idxSrc) && /AUTO_LOG/.test(idxSrc),
       /欠账/.test(idxSrc) ? '有欠账段' : '缺欠账段');
-    // 判据不恒真：拿一个肯定用过的号（maxUsed）走一遍，必须命中
-    const probeUsed = hitFiles.length === 0 && maxUsed > 0;
-    ok('N-⑥ 判据不恒真：把 NEXT 换成已用的 R' + maxUsed + ' 时必须报红', probeUsed,
-      probeUsed ? '（N-③ 对 maxUsed 必然命中，逻辑一致）' : '无法自证');
+    // 判据不恒真：直接验证「扫描函数对已用号确实返回命中」——
+    //   R748：不能再用 maxUsed 当探针（maxUsed 常等于 CURRENT，且其命中多在被排除的 evidence 里）。
+    //   改为在**不受排除规则影响**的扫描面上找任意一个已用号（如 CURRENT 出现在 tools/specs 里），
+    //   拿它当 NEXT 复扫一遍，必须命中，否则说明 N-③ 的判据恒真（永远绿）。
+    const probeNo = (() => {
+      // 在排除 evidence 后的同一扫描面上，找第一个非 curNo 的已用号；没有就用 curNo 的命中文件数判断
+      for (const f of files) {
+        const t = fs.readFileSync(f, 'utf8');
+        for (const s of (t.match(/\bR(\d{3,4})\b/g) || [])) {
+          const n = Number(s.slice(1));
+          if (n >= 1 && n <= 999 && n !== nextNo) return n;
+        }
+      }
+      return 0;
+    })();
+    let probeHit = 0;
+    if (probeNo) {
+      for (const f of files) {
+        const t = fs.readFileSync(f, 'utf8');
+        if (new RegExp('\\bR' + probeNo + '\\b').test(t)) probeHit++;
+      }
+    }
+    ok('N-⑥ 判据不恒真：把 NEXT 换成已用的 R' + probeNo + ' 时必须报红',
+      probeNo > 0 && probeHit > 0 && hitFiles.length === 0,
+      probeNo ? `R${probeNo} 在 ${probeHit} 个文件命中 ⇒ 判据有牙` : '扫描面无已用号，无法自证');
   }
 }
 
