@@ -107,6 +107,32 @@ group('C · 闭包：历史摊销和 + 处置损失 ≡ 原值');
   const sum2 = months('2024-01', '2035-12').reduce((s, mo) => s + gl.amountForMonth(a2, mo), 0);
   ck('C-② 变异回灌：处置损失少 1 分 ⇒ 闭包破（证明 C 有牙）',
     (sum2 + D([a2], '2026-08') - 1) !== a2.total_value, `少 1 分即不等`);
+
+  // 🔴 R744c（李老师真机核对）：ABC 店铺 11 月摊销 20000 元、无提前报废资产。
+  //   我给验收说明里的 9666.69/9333.36 只是规范 S2b 测试锚点（旧空调 12000/36），
+  //   **不是产品常量**。这条钉死「无报废 ⇒ 处置损失恒 0 ⇒ 摊销与利润逐分不变」，
+  //   防以后有人把处置损失误加到正常月份（那才会让老板的 20000 变成别的数）。
+  const SHOP_ASSETS = [
+    { asset_id: 'a1', name: '门店装修', mode: 'amort', value_fen: 72000000, total_value: 72000000,
+      start_month: '2026-01', total_months: 36, terminate_month: '' },
+    { asset_id: 'b1', name: '设备A', mode: 'amort', value_fen: 36000000, total_value: 36000000,
+      start_month: '2026-01', total_months: 36, terminate_month: '' },
+    { asset_id: 'b2', name: '设备B', mode: 'amort', value_fen: 36000000, total_value: 36000000,
+      start_month: '2026-01', total_months: 36, terminate_month: '' },
+  ];
+  const shopAmort = gl.amortizeTotalForMonth(SHOP_ASSETS.slice(0, 1), '2026-11');
+  const shopDisposal = D(SHOP_ASSETS.slice(0, 1), '2026-11');
+  const shopAmort2 = gl.amortizeTotalForMonth(SHOP_ASSETS.slice(1), '2026-11');
+  const shopDisposal2 = D(SHOP_ASSETS.slice(1), '2026-11');
+  ck('C-③ 真机同款（摊销 20000 元、无报废）：处置损失 = 0，本月计入额 ≡ 摊销额',
+    shopDisposal === 0 && shopAmort === 2000000 && shopAmort + shopDisposal === shopAmort,
+    `摊销 ${yuan(shopAmort)} 元 / 损失 ${yuan(shopDisposal)} 元`);
+  ck('C-④ 两笔各 10000 叠加仍 20000 元且处置损失 0（多资产同样不受影响）',
+    shopDisposal2 === 0 && shopAmort2 === 2000000,
+    `摊销 ${yuan(shopAmort2)} 元 / 损失 ${yuan(shopDisposal2)} 元`);
+  ck('C-⑤ 三副本对无报废场景取值一致（防某份副本误算残值）',
+    [gl, sl, gs].every((e) => e.disposalLossForMonth(SHOP_ASSETS, '2026-11') === 0),
+    '3/3 均为 0');
 })();
 
 // ===================== D 归档冻结（真跑 Controller）=====================

@@ -330,7 +330,7 @@ const CASES = [
   { key: 'check_amort_metamorphic', rel: 'tools/check_amort_metamorphic.js' }, // 16 条（R743：① 平移 2 + ② 叠加 2 + ③ 对拍 2 + ④ 闭包 2 + ⑤ 边界 4 + ⑥ 自失效 4）
   // R744：处置损失口径守卫纳入断言数下界保护 —— 它有归档冻结真跑与 4 条变异回灌，
   //   删掉任一段判据仍全绿，只有本守卫能发现（与 round73 同族）。
-  { key: 'check_amort_disposal', rel: 'tools/check_amort_disposal.js' }, // 21 条（R744：A 金额 4 + B 时间 4 + C 闭包 2 + D 归档冻结 5 + E 同源 3 + F 自失效 3）
+  { key: 'check_amort_disposal', rel: 'tools/check_amort_disposal.js' }, // 24 条（R744：A 金额 4 + B 时间 4 + C 闭包 2 + D 归档冻结 5 + E 同源 3 + F 自失效 3）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];
