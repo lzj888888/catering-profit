@@ -75,3 +75,21 @@
 - **SOP**：以后要冻结某月，用「结账归档」，不要再想加日期常量。`check_amort_no_gate.js` A-①/A-② 会当场抓住。
 - **待李老师确认**：是否需要把 10 月之前**已归档**的月份也解冻重算（默认不动：归档即封账）。
 - **真机验收**：11 月结果页「摊销还有多久」卡 + 摊销页页首合计；另外请顺手看一眼 **10 月**的结果页摊销是否已从 ¥0.00 变成实际金额。
+
+## 八、门禁与上云记录（2026-11-15）
+
+- **门禁**：`node verify_all.js` ⇒ **320/320 套件通过**（`_gate_r740b.log`）。
+- **提交**：`c86fa23` → 已推 `origin/dev`。
+- **部署**（`_deploy_fns.py`，一次一个、带 `-r`，判据走 `_judge_deploy.js` 表格行命中）：
+
+| 函数 | 结果 | 用时 | filesCount | packSize |
+|---|---|---|---|---|
+| calcMonthlyProfit | OK | 18s | 26 | 99.7 KB |
+| getLedger | OK | 19s | 26 | 103.8 KB |
+| saveLedger | OK | 18s | 26 | 100.0 KB |
+| getAmortSchedule | OK | 17s | 26 | 90.3 KB |
+| exportData | OK | 20s | 24 | 99.9 KB |
+
+- **部署后回读**（`cli cloud functions info`）：5/5 `Active`，`runtime Nodejs16.13`；
+  timeout 分别 20/20/20/20/60 —— **与部署前一致，未被冲回默认 3**。
+- **真机码**：`R740_20261115_095239` · 出码 09:53:25 · 失效≈10:18:25 · HEAD `c86fa23` · 机器验码解出真实链接。
