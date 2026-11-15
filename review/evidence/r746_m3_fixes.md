@@ -91,8 +91,17 @@
 - 本轮改动面：`cloudfunctions/importSalesBill/{index.js,revenueDailyParse.js,service.js}`、`miniprogram/i18n/terms.js` + `specs/dev-specs/i18n/terms.js` 双副本、`subpkg/biz/revenue/index.js`、`utils/paywall.js`、3 个既有守卫 + 2 个新守卫、断言数/套件数/重启键声明。
 - **需要重新部署的云函数只有 `importSalesBill`**（GAP-3 的 index/revenueDailyParse + GAP-1 的 service 都在它里面）；G1/G3 是前端与 i18n，不用部署。
 
-## 7. 提交、部署与真机码（收口后回填）
-（见下方最终回复）
+## 7. 提交、部署与真机码
+- 提交 `c4f8fb0` → dev（工作树干净）。
+- 部署通道先烟测 `smokeTest` HIT（19.2s），再部署 `importSalesBill`：**表格行命中** `│ importSalesBill │ true │ 28 │ '143.4 KB' │` + `deploy cloudfunctions` 完成行，19.3s（`_judge_deploy.js` 判据 `ALL_ROWS_HIT=true`，不看 rc）。
+- 回读配置：`status='Active'` / `timeout=20` / `runtime='Nodejs16.13'` —— 与部署前一致，未被冲掉。
+- 真机码：`R746_20261115_200912`，出码 23:08:30 / 失效≈23:33:30 / HEAD `c4f8fb0`；2x PNG（940×940）机器验码解出真实链接、内码区 829×819 未裁切；落桌面 `店算_真机预览码_R746.jpg`。**未弹窗**（李老师明确要求）。
+
+## 8. 真机验收要点（待李老师扫码）
+1. **GAP-3**：渠道营收页上传一张「缺了美团外卖列」的营收日报表 ⇒ 应弹「这张表缺：美团外卖…按这些列算收入，缺了会少算，所以这次没有导入」，**不落库、不给预览**（改前会静默算 300）；完整表导入仍正常（零回归）。
+2. **GAP-1**：外卖页上传含「订单部分退款」行的美团账单 ⇒ 预览收入应为正确值（真表 90.81 元，改前 130.66 元多算 39.85）；qty 不把退款算成有效单。⚠️ 当前 `BILL_IMPORT_ENABLED=false`，落库仍被拦，只验预览数字。
+3. **G1**：用一个已撞免费额度的账号去存第 N+1 道成本卡 ⇒ toast 应为「已达当前版本上限，你已填的内容都还在…」，**无「开通/升级/解锁」**；额度弹窗里 `{n}` 全部替换成数字（G3）。
+4. **零回归**：ABC 店铺正常月份的数字应与之前一字不差（本轮未碰金额引擎）。
 
 ## 6. 未动 / 待拍板（如实登记）
 - **K-1 免费额度 3/5/20 三值冲突**：产品口径，未拍板未改；G1 用中性文案绕开。
