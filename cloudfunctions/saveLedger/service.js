@@ -87,8 +87,36 @@ function amountForMonth(asset, month) {
   return base;
 }
 // 当月摊销总费用 = 各活跃资产当月摊销之和（资产由 Controller 经 DataAdapter 软删过滤后传入）
+
+// ===== R744：提前报废「资产处置损失」（同源函数，四副本逐字同构，守卫 check_amort_metamorphic 钉死）=====
+// 规范 02_模拟测试数据集.md:185/205 + 开发规范v1.0_M1:90/94 + 04_核对清单:24 明文：
+//   「终止月后未摊销余额（原值 − 已摊合计）作为资产处置/报废损失一次性计入当期」。
+// R743 独立审计抓出：calcAmortize(POC) 算了 residual_loss，但它是死代码，生产链路从未消费
+//   ⇒ 老板点「提前报废」、弹窗说「未摊余额将作为处置损失计入」，这笔钱实际从未进过利润表（永久蒸发）。
+// 判据（三条同时成立才计）：
+//   ① 资产提前终止（terminate_month 早于自然到期月）；
+//   ② 且本月 === terminate_month（只在报废当月一次性计，绝不逐月重复）；
+//   ③ 金额 = 原值 − base × 已摊期数（已摊期数含终止当月，因「终止当月仍摊」）。
+// 闭包：历史逐月摊销和 + 本函数处置损失 ≡ 原值 ⇒ 整笔投入全部体现，不多不少。
+function disposalLossForMonth(assets, month) {
+  let sum = 0;
+  for (const a of (assets || [])) {
+    if (a.mode === 'lump' || !a.start_month || !a.terminate_month) continue;
+    const start = monthIndex(a.start_month);
+    const naturalEnd = start + (Number(a.total_months) || 0) - 1;
+    const term = monthIndex(a.terminate_month);
+    if (!(term < naturalEnd)) continue;                 // 非提前终止（自然到期无残值）
+    if (term !== monthIndex(month)) continue;        // 只在报废当月计一次
+    const paidPeriods = term - start + 1;
+    const base = a.total_months > 0 ? Math.round(a.total_value / a.total_months) : 0;
+    const residual = (Number(a.total_value) || 0) - base * paidPeriods;
+    if (residual > 0) sum += residual;
+  }
+  return sum;
+}
+
 function amortizeTotalForMonth(assets, month) {
   return (assets || []).reduce((s, a) => s + amountForMonth(a, month), 0);
 }
 
-module.exports = { calcMonthlyProfit, amortizeTotalForMonth, amountForMonth, monthIndex };
+module.exports = { calcMonthlyProfit, amortizeTotalForMonth, disposalLossForMonth, amountForMonth, monthIndex };

@@ -17,7 +17,7 @@ const { resolveAuth, assertShopOwner, genId } = common;
 const { ERROR_CODES, ok, fail } = common;
 const { makeAdapter } = common.dataAdapter;
 const { nowUtc } = common.utilTime;
-const { calcMonthlyProfit, amortizeTotalForMonth } = require('./service');
+const { calcMonthlyProfit, amortizeTotalForMonth, disposalLossForMonth } = require('./service');
 const { validateInput } = require('./validate');
 
 const SWITCH_KEY_INVENTORY = 'inventory_switch';
@@ -111,7 +111,10 @@ exports.main = async (event) => {
   //   ⚠️ 这里曾经有一道时间闸门（month >= '2026-11'），漏判的后果是「台账根本不求和 ⇒
   //      amortizeFen=0 传下去，下游再"一律计入"也只是把 0 计入」。现在结构上不可能漏：
   //      没有条件分支，就没有"某条链路忘了判"。
-  const amortizeFen = amortizeTotalForMonth(ledgerRows.filter((a) => a.mode !== 'lump'), v.month);
+  // 🔴 R744：提前报废处置损失并入「本月计入额」（引擎零改动，利润自动扣）。
+  //   只在 terminate_month 当月计一次；闭包 = 历史摊销和 + 处置损失 ≡ 原值。
+  const disposalLossFen = disposalLossForMonth(ledgerRows.filter((a) => a.mode !== 'lump'), v.month);
+  const amortizeFen = amortizeTotalForMonth(ledgerRows.filter((a) => a.mode !== 'lump'), v.month) + disposalLossFen;
   // 一次性投入：只收「计入月份 == 本月」的 mode='lump' 行；与摊销**互不排斥**（round107 去掉互斥）
   const ledgerLumpSumFen = ledgerRows
     .filter((a) => a.mode === 'lump' && a.start_month === v.month)
@@ -174,6 +177,8 @@ exports.main = async (event) => {
     income_items: incomeItemsSnake, expense_items: expenseItemsSnake,
     direct_consume_fen: v.directConsumeFen,
     amortize_fen: amortizeFen,
+    // R744：提前报废处置损失（归档月读此快照，历史不追）
+    disposal_loss_fen: disposalLossFen,
     // 汇总结果（分整数）
     income_total_fen: result.incomeTotalFen,
     expense_total_fen: result.expenseTotalFen,
@@ -235,6 +240,7 @@ exports.main = async (event) => {
     profit_ref: result.operationRefProfitFen,
     profit_true: result.totalFactorRealProfitFen,
     amortize_fen: amortizeFen,
+    disposal_loss_fen: disposalLossFen,
     lump_sum_fen: result.effectiveLumpSumFen,
     real_consume_fen: result.realConsumeFen,
     switch_used: result.switchUsed,

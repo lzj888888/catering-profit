@@ -142,6 +142,34 @@ function _amountForMonth(asset, month) {
   return base;
 }
 
+
+// ===== R744：提前报废「资产处置损失」（同源函数，四副本逐字同构，守卫 check_amort_metamorphic 钉死）=====
+// 规范 02_模拟测试数据集.md:185/205 + 开发规范v1.0_M1:90/94 + 04_核对清单:24 明文：
+//   「终止月后未摊销余额（原值 − 已摊合计）作为资产处置/报废损失一次性计入当期」。
+// R743 独立审计抓出：calcAmortize(POC) 算了 residual_loss，但它是死代码，生产链路从未消费
+//   ⇒ 老板点「提前报废」、弹窗说「未摊余额将作为处置损失计入」，这笔钱实际从未进过利润表（永久蒸发）。
+// 判据（三条同时成立才计）：
+//   ① 资产提前终止（terminate_month 早于自然到期月）；
+//   ② 且本月 === terminate_month（只在报废当月一次性计，绝不逐月重复）；
+//   ③ 金额 = 原值 − base × 已摊期数（已摊期数含终止当月，因「终止当月仍摊」）。
+// 闭包：历史逐月摊销和 + 本函数处置损失 ≡ 原值 ⇒ 整笔投入全部体现，不多不少。
+function _disposalLossForMonth(assets, month) {
+  let sum = 0;
+  for (const a of (assets || [])) {
+    if (a.mode === 'lump' || !a.start_month || !a.terminate_month) continue;
+    const start = _monthIndex(a.start_month);
+    const naturalEnd = start + (Number(a.total_months) || 0) - 1;
+    const term = _monthIndex(a.terminate_month);
+    if (!(term < naturalEnd)) continue;                 // 非提前终止（自然到期无残值）
+    if (term !== _monthIndex(month)) continue;        // 只在报废当月计一次
+    const paidPeriods = term - start + 1;
+    const base = a.total_months > 0 ? Math.round(a.total_value / a.total_months) : 0;
+    const residual = (Number(a.total_value) || 0) - base * paidPeriods;
+    if (residual > 0) sum += residual;
+  }
+  return sum;
+}
+
 function _amortizeTotalForMonth(assets, month) {
   return (assets || [])
     .filter((a) => a.mode !== 'lump' && a.start_month)
@@ -178,12 +206,15 @@ function buildMonthlySheets(c) {
     //    编辑时只写 `value_fen`、**不删旧的 total_value` ⇒ 两字段并存且值不同是真实可达的。
     //    后果：本行利润表按旧值算，下方「摊销来源」表3（:277）按新值列 ⇒ 同一份导出件自相矛盾，
     //    老板拿去复核会认定系统算错。`check_amort_no_gate.js` D 段钉死五份一致的正是这条。
-    const amortLedger = _amortizeTotalForMonth(
-      assets.map((a) => Object.assign({}, a, {
-        total_value: a.value_fen != null ? a.value_fen : nz(a.total_value),
-      })),
-      month,
-    );
+    // 🔴 R744：本月计入额 = 台账摊销 + 提前报废处置损失（与 getLedger / getAmortSchedule 同源）。
+    //   并入这一个变量后，利润表「减：当月摊销」、表3 合计、realP / diffFen 全部自动跟随，
+    //   不存在「某一条线忘了加」的漏点（与 R740 拆闸门同一条纪律：判据收敛到一个出口）。
+    //   ⚠️ 归档月读落库 amortize_fen（封账时已含当时的处置损失），历史不追。
+    const assetsForCaliber = assets.map((a) => Object.assign({}, a, {
+      total_value: a.value_fen != null ? a.value_fen : nz(a.total_value),
+    }));
+    const disposalLoss = _disposalLossForMonth(assetsForCaliber, month);
+    const amortLedger = _amortizeTotalForMonth(assetsForCaliber, month) + disposalLoss;
     // 🔴 R740：归档月不重算 ⇒ 读落库冻结值；未归档月一律从台账重算（与页面 getLedger 同源）。
     //   归档 = 封账，那个月的数字连同「算它用的台账」一起冻结；归档后改台账不许倒灌旧账。
     const isArchiveRow = !!row.is_archive;
@@ -307,6 +338,11 @@ function buildMonthlySheets(c) {
     if (isArchiveRow && amort !== amortLedger) {
       assetRows.push(['合计', '台账应收摊销（与本月计入额不一致，原因见「口径说明」）', '', '', '', '', yuan(amortLedger)]);
     }
+    // R744：提前报废处置损失单列一行，让老板拿计算器能核对「本月计入额」的构成。
+    //   disposalLoss 为 0 时不插入 ⇒ 既有账目的表结构一字不变。
+    if (!isArchiveRow && disposalLoss > 0) {
+      assetRows.push(['合计', '其中：提前报废资产处置损失（未摊余额，一次性计入）', '', '', '', '', yuan(disposalLoss)]);
+    }
     assetRows.push(['合计', '本月一次性投入（本月计入）', '', '', '', '', yuan(lump)]);
 
     // —— 表4：口径说明（每个数怎么来的 + 两个开关状态）——
@@ -327,6 +363,7 @@ function buildMonthlySheets(c) {
       ['全要素真实利润', '= 营业收入 − 费用合计 − 真实食材消耗 − 当月摊销 − 一次性投入'],
       ['真实食材消耗', invOn ? '库存开关开 ⇒ 期初库存 + 本月采购 − 期末库存' : '库存开关关 ⇒ 等于本月填写值'],
       ['当月摊销', '由资产台账逐笔按分摊月数计算（末月尾差倒挤）；一律计入利润'],
+      ['资产处置损失', '资产提前报废时，未摊余额（原值 − 已摊合计）在报废当月一次性计入；已归档月按封账时的落库值，不追溯'],
       ['一次性投入', '资产台账中处置方式 = 「一次算清」，且计入月份 = 本月的投入'],
       ['月均参考', '= 资产原值 ÷ 分摊月数，仅供估算；逐笔实际金额以「本月摊销合计」为准'],
       ['待结算', '本表不列：待结算是现金流指标，不进入毛利与利润'],

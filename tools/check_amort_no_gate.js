@@ -96,9 +96,21 @@ ck('A-④ 三份引擎都不再定义 amortizeSwitchOn 局部变量（开关已�
   withSwitchVar.length === 0, withSwitchVar.length ? '仍有：' + withSwitchVar.join(',') : '已清除');
 
 // 归档优先判据必须保留（这是唯一该留的冻结机制）
+// 🔴 R744：不再钉"三元逐字长这样" —— 处置损失并入后，未归档分支多一项，
+//   旧的精确正则会把**等价改写**判假红（gate-suite-checklist §13 反向伤害第二型：形态窄）。
+//   改判语义：① 有 isArchiveNow 三元 ② 归档分支读 acct.amortize_fen ③ 未归档分支含台账求和。
+//   方向不变（仍要求"归档读落库 / 未归档读台账"），只是容许等价的表达式形态。
+const A5_PASS = (src) => /isArchiveNow\s*\?/.test(src)
+  && /\(\(acct && acct\.amortize_fen\) \|\| 0\)/.test(src)
+  && /amortizeTotalForMonth\(amortRows, v\.month\)/.test(src);
 ck('A-⑤ getLedger 保留「归档读落库 / 未归档读台账」两分支',
-  /isArchiveNow\s*\?\s*\(\(acct && acct\.amortize_fen\) \|\| 0\)\s*:\s*amortizeTotalForMonth\(amortRows, v\.month\)/.test(SRC.glIdx),
-  '三元形态在位');
+  A5_PASS(SRC.glIdx),
+  '三元形态在位（归档读快照 + 未归档台账求和）');
+// R744：语义化判据必须自证非恒真 —— 摘掉「归档读快照」这一侧，判据必须转红
+ck('A-⑤b 变异回灌：归档分支改读台账 ⇒ A-⑤ 当场转红（证明语义判据有牙）',
+  !A5_PASS(SRC.glIdx.replace(/\(\(acct && acct\.amortize_fen\) \|\| 0\)/,
+    'amortizeTotalForMonth(amortRows, v.month)')),
+  '已检出');
 ck('A-⑥ exportData 保留「归档读落库 / 未归档读台账」两分支',
   /const amort = isArchiveRow \? nz\(row\.amortize_fen\) : amortLedger;/.test(SRC.exp),
   '三元形态在位');
@@ -241,8 +253,11 @@ ck('D-② getLedger 未归档月的 amortizeFen 来自 amortizeTotalForMonth（�
   /isArchiveNow\s*\n?\s*\?/.test(SRC.glIdx) && /amortizeTotalForMonth\(amortRows, v\.month\)/.test(SRC.glIdx),
   '台账取数在位');
 
-ck('D-③ saveLedger 一律从台账求和（无 if 分支包裹）',
-  /const amortizeFen = amortizeTotalForMonth\(ledgerRows\.filter\(\(a\) => a\.mode !== 'lump'\), v\.month\);/.test(SRC.slIdx),
+// 🔴 R744：同上 —— 处置损失并入后，amortizeFen 是「台账求和 + 处置损失」两行组装，
+//   旧判据钉整行字面会假红。改判语义：存在无条件（非 if 包裹）的台账求和，且不在归档分支里。
+ck('D-③ saveLedger 一律从台账求和（无 if 分支包裹；R744 允许后续并入处置损失）',
+  /amortizeTotalForMonth\(ledgerRows\.filter\(\(a\) => a\.mode !== 'lump'\), v\.month\)/.test(SRC.slIdx)
+  && !/if\s*\([^)]*\)\s*\{[^}]*amortizeTotalForMonth\(ledgerRows/.test(SRC.slIdx),
   '无条件取数在位');
 
 ck('D-④ exportData 未归档月用 _amortizeTotalForMonth 重算',

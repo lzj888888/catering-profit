@@ -9,7 +9,7 @@ const common = require('./common');                 // 扁平派生副本（sync
 const { resolveAuth, assertShopOwner } = common;
 const { ok, fail } = common;
 const { makeAdapter } = common.dataAdapter;
-const { amortizeForMonth, amountForMonth, resolveArchiveSwitches, monthIndex, fmtMonthIdx } = require('./service');
+const { amortizeForMonth, disposalLossForMonth, amountForMonth, resolveArchiveSwitches, monthIndex, fmtMonthIdx } = require('./service');
 const { validateInput } = require('./validate');
 
 // round106（F5b）：留存数据 —— 「已摊多少期 / 还剩余多少未摊 / 哪个月摊完」。
@@ -114,7 +114,18 @@ exports.main = async (event) => {
   //   现算值不丢：作为 `recomputed_total_fen` 一起返回。前端**只在两者不等时**说明差异，
   //   满足「可见 + 可比」；「可操作」不新增入口 —— 取消归档（archive:false）本就是现成能力。
   //   ⚠️ 未归档月 `caliber_drift_fen` 恒 0，前端据此判断「要不要出那句说明」，不自己算差。
-  const recomputedTotalFen = sched.total_amount_fen;
+  // 🔴 R744：页首「本月计入额」必须与结果页同源 —— 提前报废处置损失也计入（终止月当月一次性）。
+  //   ⚠️ 两个概念必须分开，别把「落库快照值」拿去当「台账现算值」：
+  //     · recomputedDisposal = **永远按台账现算**（供漂移披露，证明"现在的算法会算成多少"）
+  //     · snapshotDisposal  = 归档时落库的处置损失（老账无此字段 ⇒ 0，历史不追）
+  //     · 页首/出参用哪个，由 isArchive 决定；现算口径本身不受归档与否影响。
+  //   R744 首版在这里把归档月的 disposalLossFen 取成快照 ⇒ recomputedTotalFen 被污染，
+  //   caliber_drift_fen 恒 0 ⇒ 漂移没披露（探针当场抓出）。
+  const recomputedDisposal = disposalLossForMonth(assets, v.month);
+  const disposalLossFen = isArchive
+    ? ((acc && acc.disposal_loss_fen != null) ? Math.round(acc.disposal_loss_fen) : 0)
+    : recomputedDisposal;
+  const recomputedTotalFen = sched.total_amount_fen + recomputedDisposal;
   const snapshotFen = (acc && acc.amortize_fen != null)
     ? Math.round(acc.amortize_fen) : recomputedTotalFen;
   const totalAmountFen = isArchive ? snapshotFen : recomputedTotalFen;
@@ -141,6 +152,8 @@ exports.main = async (event) => {
     amortize_switch_on: true,
     switch_source: sw.source,
     total_amount_fen: totalAmountFen,
+    // R744：本月资产处置损失（提前报废未摊余额）；归档月取自落库快照，可为 0。
+    disposal_loss_fen: disposalLossFen,
     // 🔴 R741：台账现算值（不改动，纯对照）+ 与封账值的差额（未归档恒 0）。
     //   顺序纪律：`total_amount_fen` 仍是页首大数字的唯一来源，这两个是**附加信息**，
     //   任何页面都不得拿 `recomputed_total_fen` 去替换页首金额（那等于偷偷改封账数）。

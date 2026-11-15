@@ -11,7 +11,7 @@ const { resolveAuth, assertShopOwner } = common;
 const { ERROR_CODES, ok, fail } = common;
 const { indicatorRef } = common;                    // round115：M1 行业指标对照（口径单源，见 common/indicatorRef.js §七）
 const { makeAdapter } = common.dataAdapter;
-const { calcMonthlyProfit, resolveArchiveSwitches, amortizeTotalForMonth } = require('./service');
+const { calcMonthlyProfit, resolveArchiveSwitches, amortizeTotalForMonth, disposalLossForMonth } = require('./service');
 const { validateInput } = require('./validate');
 
 // A2 兼容：库内明细可能是旧格式（camelCase amountFen）或新格式（snake_case amount_fen + sub_items）。
@@ -53,6 +53,11 @@ function toSnake(items) {
 //   **原样透传**，而库存页是**照契约**读 `opening_fen` 的 ⇒ 三个框永远读不到值
 //   （真机反馈「原来填写过的数字不出来」的根因）。此处兼容两种来源命名，不留新的「同义字段双轨」。
 function num0(v) { const n = Number(v); return Number.isFinite(n) ? n : 0; }
+// R744：一次性投入按台账现算（与 saveLedger/index.js §5 逐字同口径：mode='lump' 且 start_month===本月）
+function ledgerLumpFromRows(rows, month) {
+  return (rows || []).filter((a) => a.mode === 'lump' && a.start_month === month)
+    .reduce((s, a) => s + num0(a.total_value), 0);
+}
 function invToSnake(inv) {
   const s = inv || {};
   return {
@@ -137,12 +142,14 @@ exports.main = async (event) => {
   //     而真库里根本没有这个字段 —— 「按引擎的样子造数据」而不是「按库的样子造数据」，必假绿。
   //   映射写法与 `getAmortSchedule/index.js:94`、`saveLedger/index.js:109`、
   //     `exportData/index.js:180` 逐字同源（同一个坑不能有四种补法）。
-  const amortRows = ((amortRes && amortRes.data) || [])
-    .filter((a) => a.mode !== 'lump' && a.start_month)
+  // R744：全量台账行（含 mode='lump'）—— 供一次性投入按台账现算（L-2）。
+  //   ⚠️ 不能复用下面的 amortRows：它已 filter 掉 lump 行，拿它算 lump 恒为 0。
+  const ledgerRows = ((amortRes && amortRes.data) || [])
     .map((a) => Object.assign({}, a, {
       total_value: a.value_fen != null ? a.value_fen : a.total_value,
       asset_id: a.asset_id || a._id,
     }));
+  const amortRows = ledgerRows.filter((a) => a.mode !== 'lump' && a.start_month);
   // 🔴 R740：**未归档月一律按台账算，归档月读落库快照**。这里不再有月份闸门。
   //   曾经是 `(amortV2Now && !isArchiveNow)` —— 多一层 `month >= '2026-11'` 判据。
   //   R737 那轮交叉审计抓出的 P0 就长在这个判据上：调用点漏传 month ⇒ 闸门恒 false
@@ -152,11 +159,21 @@ exports.main = async (event) => {
   //     若归档后仍从台账重算，老板删掉/改掉一条资产，封账月的利润就跟着变 ⇒「已归档=只读」变成假话
   //     （与 R257 用开关快照、R735 用归档快照是同一个病根的第四张脸）。
   const isArchiveNow = !!(acct && acct.is_archive);
+  // 🔴 R744：提前报废的「资产处置损失」—— 未归档月从台账现算，归档月读落库快照（历史不追）。
+  //   它并入 amortizeFen 传给引擎（amortizeFen 语义是「本月计入额」），利润因此自动扣这笔钱。
+  //   ⚠️ 归档月必须原样读 acct.amortize_fen：那个月封账时落库的值已含（或不含）当时的处置损失，
+  //      重算等于改写历史账（R741 裁决）。快照缺 disposal_loss_fen 的老数据 ⇒ 0，不追。
+  const disposalLossFen = isArchiveNow
+    ? num0(acct && acct.disposal_loss_fen)
+    : disposalLossForMonth(amortRows, v.month);
   const amortizeFen = isArchiveNow
     ? ((acct && acct.amortize_fen) || 0)
-    : amortizeTotalForMonth(amortRows, v.month);
-  // round106（F2）：一次性投入（分）—— 回读时必须带进引擎，否则重算的利润与落库值对不上
-  const lumpSumFen = num0(acct && acct.lump_sum_fen);
+    : (amortizeTotalForMonth(amortRows, v.month) + disposalLossFen);
+  // 🔴 R744（L-2）：一次性投入与摊销 **对称** —— 未归档月按台账现算，归档月读落库快照。
+  //   原实现未归档月也读 acct.lump_sum_fen ⇒ 老板先存账、后登记资产时，这笔投入不进利润（要重存一次才对）。
+  const lumpSumFen = isArchiveNow
+    ? num0(acct && acct.lump_sum_fen)
+    : ledgerLumpFromRows(ledgerRows, v.month);
 
   // A2：归一为 camelCase 喂引擎（引擎读 amountFen）；返回侧再转 snake_case
   const incomeItems = normalizeToCamel(rawIncome);
@@ -309,6 +326,8 @@ exports.main = async (event) => {
     opening_source_month: openingAuto ? prevMonth : '',
     opening_prev_fen: prevClosingFen,
     amortize_fen: amortizeFen,
+    // R744：本月「资产处置损失」（提前报废未摊余额）。归档月取落库快照，可为 0。
+    disposal_loss_fen: disposalLossFen,
     // A11：摊销三件套。after_profit_fen 的口径是**总因素真实利润 + 本月摊销**，依据
     //   getLedger/service.js:73（摊销只进真实利润；参考利润本来就不扣摊销 ⇒ 拿参考利润去加等于凭空多算一笔）。
     //   🔴 R740：摊销一律计入 ⇒ switch_on 恒 true（这里报的是「摊销功能是否开启」，不是「本月有没有钱可扣」）。

@@ -90,6 +90,9 @@ Page({
     // 🔴 R741：归档月「封账值 ≠ 现台账重算值」的说明（服务端给差额，前端只格式化）。
     //   默认空 ⇒ 不渲染；只有归档月且差额非 0 才有值。
     archiveDriftNote: '',
+    // 🔴 R744：本月有资产提前报废 ⇒ 页首「计入利润」里含一笔一次性的处置损失，
+    //   不解释的话老板会以为这个月摊销突然暴涨。金额由服务端 disposal_loss_fen 给，前端只格式化。
+    disposalNote: '',
     hasArchiveDrift: false,
     loading: true,
     // R234/J4c：行内长提示折叠（本页仅 1 处，默认收起）。与月录入页 / M2 / assetEdit **同一实现**。
@@ -201,6 +204,10 @@ Page({
         amortizeOn: amortOn,
         isArchive: !!d.is_archive,
         archiveDriftNote: driftNote,
+        // R744：提前报废处置损失计入当月 ⇒ 解释页首数字的构成（金额只由服务端给，前端不重算）
+        disposalNote: (d.disposal_loss_fen > 0)
+          ? TERMS.amortizePage.disposalLossNote(api.fenToYuan(d.disposal_loss_fen, 2))
+          : '',
         hasArchiveDrift: !!driftNote,
         loading: false,
       });

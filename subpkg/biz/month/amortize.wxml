@@ -17,6 +17,8 @@
     <!-- 🔴 R741（三司会诊 D-2）：归档月封账值 ≠ 按现台账重算值 ⇒ 说明差异并指路。
          金额**不动**（大数字仍是封账值），差额来自服务端 `caliber_drift_fen`，前端不重算。 -->
     <view class="archive-drift" wx:if="{{hasArchiveDrift}}">{{archiveDriftNote}}</view>
+    <!-- 🔴 R744：本月有提前报废资产 ⇒ 页首大数字含一笔一次性的未摊余额，解释构成防误解。 -->
+    <view class="archive-drift" wx:if="{{disposalNote}}">{{disposalNote}}</view>
   </view>
 
   <!-- R234/J4c：🔴 **本句 134 字 —— 全站最长的一条提示**，原先以 `class="hint scope-hint"`（复合 class）
