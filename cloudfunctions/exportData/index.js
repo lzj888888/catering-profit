@@ -172,9 +172,15 @@ function buildMonthlySheets(c) {
     //   不这么做的后果（本轮 fixture 实测）：R736 部署前保存的 2026-11，
     //   页面显示摊销 5,277.78、导出件印 0.00，且利润表「收入−费用−消耗−一次性」算出来
     //   跟「＝全要素真实利润」那一行对不上 —— 老板拿导出件复核，会认定系统算错。
+    // 🔴 R743（独立审计 P0-2）：字段优先级必须与页面三处**同向** —— `value_fen` 优先，
+    //    `total_value` 仅作旧数据回落。原写法反过来（`total_value` 优先），
+    //    根因：`specs/dev-specs/prototype/seed_demo.js:198` 写 `total_value`，而 `saveAsset/index.js`
+    //    编辑时只写 `value_fen`、**不删旧的 total_value` ⇒ 两字段并存且值不同是真实可达的。
+    //    后果：本行利润表按旧值算，下方「摊销来源」表3（:277）按新值列 ⇒ 同一份导出件自相矛盾，
+    //    老板拿去复核会认定系统算错。`check_amort_no_gate.js` D 段钉死五份一致的正是这条。
     const amortLedger = _amortizeTotalForMonth(
       assets.map((a) => Object.assign({}, a, {
-        total_value: a.total_value != null ? a.total_value : (a.value_fen || 0),
+        total_value: a.value_fen != null ? a.value_fen : nz(a.total_value),
       })),
       month,
     );
@@ -294,7 +300,11 @@ function buildMonthlySheets(c) {
     // 🔴 R740：判据从「开关关」改为「**本月计入额 ≠ 台账应收额**」—— 更通用，且正是真正会让
     //   老板算不平的那种情形（典型：归档月按旧口径封账，落库 0，而台账现在算得出应摊额）。
     //   未归档月两者恒等 ⇒ 不插入，表结构与既往完全一致（不扰既有对账）。
-    if (amort !== amortLedger && amortLedger > 0) {
+    // 🔴 R743（独立审计 P0-3）：去掉 `&& amortLedger > 0` —— 它漏报了两类方向相反的漂移：
+    //   ① 归档月落库有值、台账现算 0（资产事后被删/改期）；
+    //   ② 落库冻结值为负（脏数据）。这两种都是「本月计入额 ≠ 台账应收额」，都应报。
+    //   未归档月 amort 恒等于 amortLedger，故判据收紧为「归档月 + 不等」仍不扰既有对账。
+    if (isArchiveRow && amort !== amortLedger) {
       assetRows.push(['合计', '台账应收摊销（与本月计入额不一致，原因见「口径说明」）', '', '', '', '', yuan(amortLedger)]);
     }
     assetRows.push(['合计', '本月一次性投入（本月计入）', '', '', '', '', yuan(lump)]);

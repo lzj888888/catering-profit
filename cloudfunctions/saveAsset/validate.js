@@ -36,6 +36,15 @@ function validateInput(event) {
   }
   const terminate_month = (typeof a.terminate_month === 'string' && a.terminate_month) ? a.terminate_month : '';
   if (terminate_month && !MONTH_RE.test(terminate_month)) return err('asset.terminate_month 必须是 YYYY-MM 或留空');
+  // 🔴 R743（独立审计 P0-1）：必须校验终止月 **不早于** 起摊月。
+  //   起因：`amountForMonth` 的区间是 [start, min(自然到期, terminate)]，若 terminate < start
+  //   ⇒ end < start ⇒ 区间为空 ⇒ 该资产**每一分钱都不摊**，但资产行仍挂在台账、账面显示原值。
+  //   M1 利润因此被静默高估整笔，而老板在页面上完全看不出来（探针实测 36,000 元资产 84 个月求和 = 0）。
+  //   规范 `02_模拟测试数据集.md:185` 的语义是「中途终止」，从来不包含「起摊前就终止」。
+  //   YYYY-MM 字典序 ≡ 时间序，直接比字符串即可，不引入新的月份工具。
+  if (terminate_month && terminate_month < a.start_month) {
+    return err('asset.terminate_month 不能早于 start_month（终止月需在起摊月当月或之后）');
+  }
 
   // H1：分组字段（可选）。group_id 是「同一资产的多次采购」归组键；batch_seq 是该组内第几笔（≥1 整数）。
   //   缺省时：group_id = ''（独立资产，前端把自身 asset_id 当作组键）、batch_seq = 1。

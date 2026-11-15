@@ -325,6 +325,9 @@ const CASES = [
   // R742 新增：摊销「万无一失」不变量守卫纳入断言数下界保护 —— 它的 A/B/C/D/E/F/G 七段 + 每条变异回灌，
   //   删掉任一段（如把 C 闭包撤掉、或把 D 可加性判据改假）判据仍全绿而证明力归零，只有本守卫能发现。
   { key: 'check_amort_invariants', rel: 'tools/check_amort_invariants.js' }, // 21 条（R742：A 同源 3 + B 时区一致 2 + C 闭包 5 + D 可加性 3 + E 重叠 3 + F 店铺纯度 1 + G 模拟对账 4）
+  // R743：跨月数学性质守卫纳入断言数下界保护 —— 它有 6 段护栏与 4 条变异回灌，
+  //   删掉任一段（或把随机样本数调小）判据仍全绿，只有本守卫能发现（与 round73 同族）。
+  { key: 'check_amort_metamorphic', rel: 'tools/check_amort_metamorphic.js' }, // 16 条（R743：① 平移 2 + ② 叠加 2 + ③ 对拍 2 + ④ 闭包 2 + ⑤ 边界 4 + ⑥ 自失效 4）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];
