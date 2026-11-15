@@ -88,6 +88,7 @@ Page({
       amortAfterHint: TERMS.modules.m1.amortAfterHint,
       amortOff: TERMS.modules.m1.amortOff,
       amortNone: TERMS.modules.m1.amortNone,
+      amortLast: TERMS.modules.m1.amortLast,   // R739：末月边界（剩余期数不含本月后 remain=0）
       // 🔴 R614：深度诊断专属区块（页面最末，不用 card2）
       diagKicker: TERMS.modules.m1.diagKicker,
       diagEntry: TERMS.modules.m1.diagEntry,
@@ -391,6 +392,9 @@ Page({
             show: true,
             on,                       // 摊销开关（关 ⇒ 显示"不适用"，不显示"0 元提升"）
             has,                      // 真的还有在摊的投入
+            // 🔴 R739：末月边界 —— 剩余期数改为「不含本月」后，最后一期 remain=0，
+            //   但本月这笔钱确实扣了。若沿用 has=false 会显示「还没有在摊的投入」（假话）。
+            last: on && !has && Number(ae.this_fen) > 0,
             remain: has ? Number(ae.remaining_periods) : 0,
             endMonth: has ? (ae.end_month || '') : '',
             thisFen: on ? fen(ae.this_fen) : '',

@@ -127,7 +127,22 @@ exports.main = async (event) => {
   //     「界面说本月计入、引擎算出来是 0」的静默错账（会诊后补的第三个坑）。
   //   老月份：仍用落库值 —— 那个数是当时按开关算出来的历史事实，重算等于改写旧账。
   const amortRes = await da.list('shop_amortize', { shop_id: shopId });
-  const amortRows = ((amortRes && amortRes.data) || []).filter((a) => a.mode !== 'lump' && a.start_month);
+  // 🔴 R739（本轮探针抓出 · P0）：**必须先把落库行映射成引擎字段名，再喂公式**。
+  //   落库字段是 `value_fen`（见 saveAsset/index.js:116），而引擎 `amountForMonth` 读 `asset.total_value`。
+  //   原先这里直接把 DB 原始行塞进 `amortizeTotalForMonth` ⇒ `total_value` 恒 undefined ⇒
+  //   `Math.round(undefined / 36)` = NaN ⇒ 合计 NaN ⇒ 下游 `num0()` 归 0。
+  //   后果（2026-11 起每个未归档月份）：摊销页从台账算得好好的（它做了映射），
+  //     结果页/月报算出来 ¥0.00 ⇒ **利润被高估一整笔摊销**，且两个页面互相打脸。
+  //   ⚠️ 为什么 R737 的 fixture 没抓到：r737_fixture.js 用的是引擎字段名 `total_value`，
+  //     而真库里根本没有这个字段 —— 「按引擎的样子造数据」而不是「按库的样子造数据」，必假绿。
+  //   映射写法与 `getAmortSchedule/index.js:94`、`saveLedger/index.js:109`、
+  //     `exportData/index.js:180` 逐字同源（同一个坑不能有四种补法）。
+  const amortRows = ((amortRes && amortRes.data) || [])
+    .filter((a) => a.mode !== 'lump' && a.start_month)
+    .map((a) => Object.assign({}, a, {
+      total_value: a.value_fen != null ? a.value_fen : a.total_value,
+      asset_id: a.asset_id || a._id,
+    }));
   const amortV2Now = String(v.month || '') >= AMORT_RULE_V2_FROM;
   // 🔴 R737（交叉审计第二轮抓出）：**归档月不重算**，这条比「v2 要重算」优先。
   //   理由：归档 = 封账，那个月的数字连同「算它用的台账」一起冻结。
@@ -197,7 +212,10 @@ exports.main = async (event) => {
   //   口径必须与 getAmortSchedule::progressOf 一致（两处各算一套 ⇒ 摊销页说剩 3 期、结果页说剩 5 期）。
   //   · 只吃 mode='amort' 的行（mode='lump' 当月就结束了，没有「还剩几期」）
   //   · 起 = start_month；止 = min(自然到期月, terminate_month)
-  //   · 剩余期数**含本月**（本月这期还得摊）
+  //   · 🔴 R739：剩余期数**不含本月** —— 本月这期在本月利润里已经扣掉了（`effective_amortize_fen`）。
+  //     原写「含本月」是为了说「本月这期还得摊」，但那句话对老板是错的：钱已经扣了，
+  //     他会拿摊销页的「已摊 2/36」去对结果页的「还剩 35 期」，2+35=37 > 36 ⇒ 多出一期，谁也解释不清。
+  //     现口径：已摊期数（含本月，见 getAmortSchedule::progressOf）+ 剩余期数（不含本月）= 总期数。
   //   · 多条资产并存时取**最晚摊完**的那条撑时间轴（「全部摊完」才有意义）
   //   ⚠️ R736：`amortRows` 在上方摊销金额取数处已经读过（v2 需要它重算），此处**不再重复 list**。
   //     重复 list 不只是多一次 IO —— 两份数据若在两次读之间被改，进度与金额会来自不同快照。
@@ -215,8 +233,8 @@ exports.main = async (event) => {
       if (Number.isFinite(t) && t < end) end = t;
     }
     if (mi > end) continue;                        // 这笔已摊完
-    const from = Math.max(mi, st);                 // 本月早于开始月 ⇒ 从开始月起算
-    const r = end - from + 1;
+    // 本月已摊 ⇒ 剩 end-mi 期；本月早于起摊月 ⇒ 还剩整整 tm 期（end-st+1 与之一致）
+    const r = (mi < st) ? (end - st + 1) : (end - mi);
     if (r > remainPeriods) remainPeriods = r;
     const em = monthOfIdx(end);
     if (em && (!endMonthMax || em > endMonthMax)) endMonthMax = em;

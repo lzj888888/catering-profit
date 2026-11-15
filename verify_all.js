@@ -4,7 +4,7 @@
 //       + R727 销量样例事实守卫（tools/check_sales_sample_facts.js，四张平台表在仓 + 粒度/规格实跑解析，防「样例待提供」第三次复发）
 //       + R726 算钱口径守卫（tools/check_r714_decisions.js，R714 三件口径由台账四票机器化：
 //         名单 ≡ 落地、E-6 真跑非有限 coverage 抑制、E-1/E-2 文案双副本与上屏、含反恒真）
-// 串联：319 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：320 个套件 = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1800,6 +1800,16 @@ const SUITES = [
   //   ⚠️ 追加在列表末尾：C3 判据按**位置**核对「第 N 套件」，中间插队会让后面 8 个
   //      套件的序号声明全部错位（本轮实测踩到，已改回追加）。
   ['buffet-cost-entry', 'tools/check_buffet_cost_entry.js'],
+  // R739 · 摊销「跨月延续」：李老师「10 月有摊销资产要摊 36 个月，下月数据会自动过去吗？
+  //   一直摊销完数据会跟着变吗？中途新增摊销/一次性资产能不能正常叠加？能显示还有多少期未摊吗？」
+  //   此前所有摊销守卫都只测**单月**，没有一条把 37 个月串起来跑 —— 而「跨月」是摊销的全部意义。
+  //   本轮靠这条串月跑出两个真缺陷：① getLedger 拿 DB 原始行直塞公式（落库是 value_fen、
+  //   引擎读 total_value）⇒ NaN ⇒ 2026-11 起结果页/月报摊销恒 ¥0.00，利润被高估；
+  //   ② 摊销页「已摊 2/36」与结果页「还剩 35 期」口径都含本月 ⇒ 2+35=37 > 36。
+  //   守：A 跨月延续 + B 闭包（求和≡原值）+ C 两页一致 + D 剩余期数 + E 归档冻结 + F 变异回灌。
+  //   ⚠️ fixture **只许用真库字段名**（C-④ 专门钉这条）：R737 的 fixture 用 total_value 造数，
+  //      等于「按引擎的样子造数据」，所以 P0 被判绿 —— 假绿的根子是 fixture 不真，不是断言不严。
+  ['amort-rollforward', 'tools/check_amort_rollforward.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

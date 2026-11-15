@@ -107,7 +107,12 @@ const amortBlock = (() => {
   return (a >= 0 && b > a) ? gL.slice(a, b) : '';
 })();
 ok('A-③ 剩余期数排除 mode=\'lump\'（一次性投入没有"还剩几期"）', amortBlock.indexOf("mode !== 'lump'") >= 0);
-ok('A-④ 剩余期数含本月（从 max(本月, 开始月) 起算）', amortBlock.indexOf('Math.max(mi, st)') >= 0 && amortBlock.indexOf('end - from + 1') >= 0);
+// 🔴 R739：口径反转 —— 原来写「含本月（从 max(本月, 开始月) 起算）」，理由是"本月这期还得摊"。
+//   但那句话是错的：打开这个月时，本月这期**已经扣进利润**（effective_amortize_fen）。
+//   结果是摊销页「已摊 2/36」+ 结果页「还剩 35 期」= 37 > 36，老板一加就对不上。
+//   ⇒ 现口径：本月已摊 ⇒ 剩 `end - mi`；本月早于起摊月 ⇒ 剩整期数 `end - st + 1`。
+ok('A-④ 剩余期数**不含本月**（本月这期已扣进利润；`end - mi`，起摊前为整期数）',
+  amortBlock.indexOf('(end - mi)') >= 0 && amortBlock.indexOf('end - from + 1') < 0);
 ok('A-④b 摊销段确实被截到了（防上面两条空转恒真）', amortBlock.length > 400, amortBlock.length + ' 字符');
 // 🔴 R736：v2 月份摊销一律计入 ⇒ switch_on 必须报 true（否则引擎扣了钱、页面却说"未开启摊销"）。
 //   判据从「字面等于 amortizeSwitchOn」改成「先看 amortRuleV2 再回落开关」—— 语义更强，不是放宽。

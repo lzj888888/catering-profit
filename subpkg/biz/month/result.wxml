@@ -149,6 +149,7 @@
   <view class="card2" wx:if="{{hasLedger && amortView.show}}">
     <view class="cell drill-head"><text class="lbl">{{t.amortTitle}}</text></view>
     <view class="muted" wx:if="{{!amortView.on}}">{{t.amortOff}}</view>
+    <view class="muted" wx:elif="{{amortView.last}}">{{t.amortLast}}</view>
     <view class="muted" wx:elif="{{!amortView.has}}">{{t.amortNone}}</view>
     <block wx:else>
       <view class="cell">
