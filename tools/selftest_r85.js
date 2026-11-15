@@ -444,6 +444,12 @@ const A15_EXEMPT = [
   //   diagnosisEngine 组装成可达接口（现金流改失血口径 + 分区业态阈值 + 两条等级闸门）。
   //   引擎与副本条目已在 A5 批次登记，此处只补新函数目录。
   /^cloudfunctions\/getDiagnosis\//,
+  // R741（2026-11-15 李老师授权「三司会诊后按你的想法处理」）—— 三司会诊裁决 D-3：
+  //   `archiveMonth` 在目标月没有账时**不再 insert 一条全 0 账再标归档**，改为 fail-closed
+  //   （RESOURCE_NOT_FOUND）。原行为等于替用户生成一笔「利润 0」的零申报，且此后永久只读。
+  //   这是**缺陷修复**而非顺手改逻辑：归档的语义是「确认一个已存在的数」，不是「生成一个数」。
+  //   专项守卫：tools/check_archive_no_fake.js（A 段 6 条 + B 段变异回灌）。
+  /^cloudfunctions\/archiveMonth\//,
 ];
 check('A15 云函数逻辑零改动（仅 initDb 建库单源 + 本批授权函数豁免）', (() => {
   const { execFileSync } = require('child_process');

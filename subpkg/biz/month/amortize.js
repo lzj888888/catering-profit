@@ -87,6 +87,10 @@ Page({
     groups: [],              // 按「同一资产」分组的视图（每组 = 该资产的 N 笔投入）
     amortizeOn: false,       // 服务端权威开关（shop_switch.amortize_switch）
     isArchive: false,
+    // 🔴 R741：归档月「封账值 ≠ 现台账重算值」的说明（服务端给差额，前端只格式化）。
+    //   默认空 ⇒ 不渲染；只有归档月且差额非 0 才有值。
+    archiveDriftNote: '',
+    hasArchiveDrift: false,
     loading: true,
     // R234/J4c：行内长提示折叠（本页仅 1 处，默认收起）。与月录入页 / M2 / assetEdit **同一实现**。
     hintFold: {},
@@ -164,6 +168,20 @@ Page({
       const amortOn = !!d.amortize_switch_on;
       const ledgerYuan = api.fenToYuan(d.total_amount_fen || 0, 2);
 
+      // 🔴 R741（三司会诊裁决 D-2）：归档月若「封账值」与「按现台账重算值」不等，出一句说明。
+      //   · 页首大数字**仍是封账值**（服务端 total_amount_fen 已在归档月改读落库快照），
+      //     页面绝不拿 drift 去改金额 —— 那等于替用户偷偷改一笔已封账的数。
+      //   · 差额来自服务端 `caliber_drift_fen`，前端不重算（本仓铁律：第二套口径 = 病）。
+      //   · 文案不用「口径 / 摊销」这类词（豆包：老板看不懂），只说「算法变了、差多少钱、怎么办」。
+      const driftFen = d.caliber_drift_fen || 0;
+      const driftNote = (d.is_archive && driftFen !== 0)
+        ? TERMS.amortizePage.archiveDriftNote(
+          api.fenToYuan(d.total_amount_fen || 0, 2),
+          api.fenToYuan(d.recomputed_total_fen || 0, 2),
+          api.fenToYuan(Math.abs(driftFen), 2)
+        )
+        : '';
+
       this.setData({
         totalFen: d.total_amount_fen || 0,
         // ⚠️ 这一行刻意保持「就地换算」的字面形态：`selftest_ui_fix` 用字面判据守
@@ -182,6 +200,8 @@ Page({
         //   保存开关后没人刷新它 ⇒ 重拉时读回旧值 ⇒ 开关「自己弹回打开」（李老师真机反馈）。
         amortizeOn: amortOn,
         isArchive: !!d.is_archive,
+        archiveDriftNote: driftNote,
+        hasArchiveDrift: !!driftNote,
         loading: false,
       });
     } catch (e) {

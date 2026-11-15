@@ -74,9 +74,16 @@ let scheduleSwitchOn = false;
 //   桩若继续"按月派生开关"，测的就是一个生产环境不存在的世界（R737 的教训：
 //   桩按引擎的样子造数据，而不是按库的样子造 ⇒ 断言再严也必然假绿）。
 let scheduleMonth = MONTH;
+// 🔴 R741：归档月场景桩。null = 未归档（默认，保持既有断言不变）。
+//   非 null 时返回「封账值 snapshot ≠ 现算值 recomputed」的真实出参形态 ——
+//   **出参字段名必须与 getAmortSchedule/index.js 一致**（R737 教训：桩按引擎的样子造
+//   而不是按库/接口的样子造 ⇒ 断言再严也必然假绿）。
+let scheduleArchive = null;
 apiMod.call = async (name) => {
   if (name === 'getAmortSchedule') {
     const monthOut = scheduleMonth;
+    const snap = scheduleArchive ? scheduleArchive.snapshot : Math.round(LEDGER_TOTAL);
+    const recomputed = scheduleArchive ? scheduleArchive.recomputed : Math.round(LEDGER_TOTAL);
     return {
       shop_id: 's1', month: monthOut,
       assets: ASSETS.map((a) => ({
@@ -85,11 +92,15 @@ apiMod.call = async (name) => {
         group_id: '', batch_seq: 1, paid_months: 10, total_periods: a.total_months,
         remaining_fen: a.total_value, end_month: '2029-12',
       })),
-      lumps: [], lump_total_fen: 0, is_archive: false,
+      lumps: [], lump_total_fen: 0,
+      is_archive: !!scheduleArchive,
       // R740：恒 true —— 与 getAmortSchedule/index.js 的真实出参一致
       amortize_switch_on: true,
-      switch_source: 'live',
-      total_amount_fen: Math.round(LEDGER_TOTAL),
+      switch_source: scheduleArchive ? 'snapshot' : 'live',
+      total_amount_fen: snap,
+      // R741：新增的两个出参，与生产同名字段
+      recomputed_total_fen: recomputed,
+      caliber_drift_fen: scheduleArchive ? (recomputed - snap) : 0,
       details: schedOut.details,
       client_request_id: '',
     };
@@ -117,9 +128,10 @@ function loadPage(src, month) {
 }
 const PAGE_SRC = read('subpkg/biz/month/amortize.js');
 
-async function runPage(switchOn, src, month) {
+async function runPage(switchOn, src, month, archive) {
   scheduleSwitchOn = switchOn;
   scheduleMonth = month || MONTH;
+  scheduleArchive = archive || null;
   const p = loadPage(src || PAGE_SRC, month);
   await p.load();
   return p;
@@ -241,12 +253,74 @@ async function runPage(switchOn, src, month) {
     '恒 true 且无快照/实时覆盖');
 
   // ==================================================================
+  group('L · 归档月「金额」维度（R741 三司会诊 D-5：守卫必须钉钱，不能只钉开关参数）');
+  // ==================================================================
+  // 🔴 立项：R735 修过「同月两页互相打脸」，R740 拆闸门时把 `getAmortSchedule` 的
+  //   `total_amount_fen` 写成恒 `sched.total_amount_fen`（台账现算），而 getLedger 归档月读
+  //   `acct.amortize_fen` 快照 ⇒ 归档月一旦漂移，摊销页报 A、结果页报 B。
+  //   **而本脚本 I 段测的是 `amortize_switch_on`（参数），桩里 `is_archive` 硬编码 false** ⇒
+  //   一个断言都没碰过「归档月页首到底显示多少钱」。守参数不守金额，是这条回归能活下来的原因。
+  const ARCH = { snapshot: 0, recomputed: Math.round(LEDGER_TOTAL) };   // 封账 0 / 现算 4333.33
+
+  // 页首赋值行 —— L-⑥ 与 J-① 共用同一个锚点（两处必须钉同一行，否则一个变异灵一个不灵）。
+  //   提出到这里是因为 L 段在 J 段之前，`const` 在 J 段里声明会撞 TDZ（实测报错过一次）。
+  const H_ANCHOR = "shownTotalYuan: amortOn ? ledgerYuan : '0.00',";
+
+  // L-① 静态：服务端出参必须真的从落库快照取（否则页面再怎么显示都是错源）
+  ck('L-① 服务端 getAmortSchedule 归档月 total_amount_fen 取自落库快照（isArchive ? snapshot : 现算）',
+    /const\s+totalAmountFen\s*=\s*isArchive\s*\?\s*snapshotFen\s*:\s*recomputedTotalFen/.test(gsIdx)
+      && /acc\.amortize_fen/.test(gsIdx)
+      && /total_amount_fen:\s*totalAmountFen/.test(gsIdx),
+    '三元在位 + acc.amortize_fen + 出参接线');
+
+  // L-② 静态：现算值必须作为「对照」一起返回（否则披露只有「可见」没有「可比」）
+  ck('L-② 出参同时给 recomputed_total_fen 与 caliber_drift_fen（披露的「可比」条件）',
+    /recomputed_total_fen:\s*recomputedTotalFen/.test(gsIdx)
+      && /caliber_drift_fen:\s*caliberDriftFen/.test(gsIdx),
+    '两个对照字段都在');
+
+  const archPage = await runPage(true, null, MONTH, ARCH);
+  ck('L-③ 归档月页首 = **封账值** 0.00（不是现算 4333.33）—— 页面绝不用重算值替换封账数',
+    String(archPage.data.shownTotalYuan) === '0.00',
+    `实得「${archPage.data.shownTotalYuan}」`);
+
+  ck('L-④ 归档月出差异说明，且三个金额都在（封账 0.00 / 现算 4333.33 / 差额 4333.33）',
+    archPage.data.hasArchiveDrift === true
+      && /0\.00/.test(archPage.data.archiveDriftNote || '')
+      && /4333\.33/.test(archPage.data.archiveDriftNote || '')
+      && /取消归档/.test(archPage.data.archiveDriftNote || ''),
+    `note=「${archPage.data.archiveDriftNote}」`);
+
+  const livePage = await runPage(true, null, MONTH, null);
+  ck('L-⑤ 【对照】未归档月不出差异说明（证明 L-④ 不是恒真）',
+    livePage.data.hasArchiveDrift === false && !livePage.data.archiveDriftNote,
+    `hasArchiveDrift=${livePage.data.hasArchiveDrift}`);
+
+  // L-⑥ 变异回灌：把页首改成用「重算值」（= 偷偷改封账数）⇒ L-③ 必须转红
+  //   ⚠️ 锚点必须选 `shownTotalYuan` 那一行本身 —— 我第一版把变异插在同一个 setData 的
+  //     `totalFen:` 处，结果被紧随其后的 `shownTotalYuan:` 覆盖 ⇒ 变异体跑出来还是 0.00，
+  //     看着像"断言不灵"，实际是"变异没生效"（同 R740 G-③ 的坑：变异没编进生效路径）。
+  let l6 = { caught: false, detail: '变异锚点未找到（源码已改，请同步本守卫）' };
+  if (PAGE_SRC.indexOf(H_ANCHOR) >= 0) {
+    const mutSrc = PAGE_SRC.replace(
+      H_ANCHOR,
+      "shownTotalYuan: amortOn ? api.fenToYuan(d.recomputed_total_fen || 0, 2) : '0.00',"
+    );
+    const mp = await runPage(true, mutSrc, MONTH, ARCH);
+    l6 = {
+      caught: String(mp.data.shownTotalYuan) !== '0.00',
+      detail: `变异后归档月页首=「${mp.data.shownTotalYuan}」（期望 ≠0.00 ⇒ L-③ 会红）`,
+    };
+  }
+  ck('L-⑥ 变异回灌：页首改用「重算值」⇒ L-③ 当场转红（证明守的是钱，不是参数）', l6.caught, l6.detail);
+
+  // ==================================================================
   group('J · 反恒真（证明 H/I 测得到东西）');
   // ==================================================================
   // J-① 变异：把页首口径改成「恒报 0.00」（= 有人又加回了开关/月份判据），H-① 必须转红。
   //   🔴 R740 改向：R735 时变异方向是「改成直接报台账额」（那时正常态是 0）；
   //   现在正常态就是台账额，所以变异方向反过来 —— 否则变异前后都是同一个数，J-① 会假绿。
-  const H_ANCHOR = "shownTotalYuan: amortOn ? ledgerYuan : '0.00',";
+  //   🔴 R741：锚点 `H_ANCHOR` 已上移到 L 段开头声明（两段共用）。
   let j1 = { caught: false, detail: '变异锚点未找到（源码已改，请同步本守卫）' };
   if (PAGE_SRC.indexOf(H_ANCHOR) >= 0) {
     const mutSrc = PAGE_SRC.replace(H_ANCHOR, "shownTotalYuan: '0.00',");

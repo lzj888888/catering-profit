@@ -107,6 +107,19 @@ exports.main = async (event) => {
   const lumps = rows.filter((a) => a.mode === 'lump' && a.start_month === v.month);
   const sched = amortizeForMonth(assets, v.month);
 
+  // 🔴 R741（三司会诊裁决 D-2）：归档月必须读**落库快照**，与 getLedger 同一纪律。
+  //   R740 拆闸门时，本行被写成恒 `sched.total_amount_fen`（台账现算），而 getLedger 对归档月读
+  //   `acct.amortize_fen` 快照 ⇒ 归档月一旦漂移（落库值与现算不等），摊销页显示 A、结果页显示 B，
+  //   同一月份两个页面互相打脸 —— 这正是 R735 修过的病，被 R740 重新长了出来。
+  //   现算值不丢：作为 `recomputed_total_fen` 一起返回。前端**只在两者不等时**说明差异，
+  //   满足「可见 + 可比」；「可操作」不新增入口 —— 取消归档（archive:false）本就是现成能力。
+  //   ⚠️ 未归档月 `caliber_drift_fen` 恒 0，前端据此判断「要不要出那句说明」，不自己算差。
+  const recomputedTotalFen = sched.total_amount_fen;
+  const snapshotFen = (acc && acc.amortize_fen != null)
+    ? Math.round(acc.amortize_fen) : recomputedTotalFen;
+  const totalAmountFen = isArchive ? snapshotFen : recomputedTotalFen;
+  const caliberDriftFen = isArchive ? (recomputedTotalFen - snapshotFen) : 0;
+
   return ok({
     shop_id: shopId, month: v.month,
     assets: assets.map((a) => Object.assign({
@@ -127,7 +140,12 @@ exports.main = async (event) => {
     // 🔴 R740：摊销一律计入 ⇒ 恒 true（开关本身已从 UI 删除，见 R736）。
     amortize_switch_on: true,
     switch_source: sw.source,
-    total_amount_fen: sched.total_amount_fen,
+    total_amount_fen: totalAmountFen,
+    // 🔴 R741：台账现算值（不改动，纯对照）+ 与封账值的差额（未归档恒 0）。
+    //   顺序纪律：`total_amount_fen` 仍是页首大数字的唯一来源，这两个是**附加信息**，
+    //   任何页面都不得拿 `recomputed_total_fen` 去替换页首金额（那等于偷偷改封账数）。
+    recomputed_total_fen: recomputedTotalFen,
+    caliber_drift_fen: caliberDriftFen,
     details: sched.details,
     client_request_id: v.input.client_request_id || '',
   });

@@ -320,7 +320,8 @@ const CASES = [
   // R731 新增时漏登记（本轮 R732 补记，诚实标注 —— 它此前不受断言数守卫保护）
   { key: 'check_island_back', rel: 'tools/check_island_back.js' }, // 25 条（A 判据行为面 + B 路由纯函数 + C 三页接线 + D 反恒真 + E 覆盖面）
   { key: 'check_amort_switch_matrix', rel: 'tools/check_amort_switch_matrix.js' }, // 48 条（A 引擎开关零影响 + B 台账 + C 快照 + D 导出 + E 沙盘 + F 11 页 + 入口可达性 + G 变异）
-  { key: 'check_amort_display_caliber', rel: 'tools/check_amort_display_caliber.js' }, // 19 条（R740：H 页首恒等于台账应摊额 9 + I 归档快照 7 + J 变异回灌 3）
+  { key: 'check_amort_display_caliber', rel: 'tools/check_amort_display_caliber.js' }, // 25 条（R741：H 页首恒等于台账应摊额 9 + I 归档快照 7 + L 归档金额维度 6 + J 变异回灌 3）
+  { key: 'check_archive_no_fake', rel: 'tools/check_archive_no_fake.js' }, // 12 条（R741：S 扫描面 2 + A 归档不许造账 6 + B 反恒真 4）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

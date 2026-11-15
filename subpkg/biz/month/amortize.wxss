@@ -66,3 +66,8 @@
 
 /* R653：资产类别标签 —— 与「N 笔合计」「已终止」区分开，用浅靛底不抢主色 */
 .tag.kind { background: #eef2ff; color: #4338ca; margin-left: 8rpx; }
+
+/* 🔴 R741（三司会诊 D-2）：归档月「封账值 ≠ 现台账重算值」的说明。
+   视觉上刻意低调（灰字、无底色）：它不是警告，是解释；页首大数字仍是封账值，不许抢主位。
+   字号 28rpx 守住 AD-G1（<28rpx 会被无障碍检查判红）。 */
+.archive-drift { font-size: 28rpx; color: #6B6157; line-height: 1.6; margin-top: 10rpx; }

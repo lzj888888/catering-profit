@@ -6,13 +6,17 @@
        🔴 R736（李老师拍板 · 豆包 ×2 + DeepSeek 三轮会诊一致）：**开关本体已删除**，摊销一律按台账计入。
          本块现在是「结果位」：标题叫「本月计入利润的摊销」，大数字 = 台账应摊额，两者恒等。
        ⚠️ `shownTotalYuan` / `offNote` 这套「未计入」分支**不是废码** —— 它现在只服务**老月份**：
-         2026-11 之前按旧规则算过的月份，那个月确实没扣（时间闸门 AMORT_RULE_V2_FROM）。
+         在旧规则下算过、且已封账的月份，那个月确实没扣。R740 已拆掉时间闸门（新月份一律按台账计入），
+         但**已封账的月份不会因为拆闸门而变**（归档即封账，R741 三司会诊再次确认）⇒ 这条分支长期有效。
          李老师当时的困惑正是「上面 0、下面 4333 到底哪个真」⇒ 现在页首标题自带「计入利润」，
          行内改叫「月应摊额」，两句话说的不是同一件事，不再打架。 -->
   <view class="card2">
     <view class="muted">{{amortizeOn ? t.monthTotal : t.monthTotalOff}}</view>
     <view class="result-num">{{t.cur}}{{shownTotalYuan}}</view>
     <view class="muted" wx:if="{{!amortizeOn}}">{{offNote}}</view>
+    <!-- 🔴 R741（三司会诊 D-2）：归档月封账值 ≠ 按现台账重算值 ⇒ 说明差异并指路。
+         金额**不动**（大数字仍是封账值），差额来自服务端 `caliber_drift_fen`，前端不重算。 -->
+    <view class="archive-drift" wx:if="{{hasArchiveDrift}}">{{archiveDriftNote}}</view>
   </view>
 
   <!-- R234/J4c：🔴 **本句 134 字 —— 全站最长的一条提示**，原先以 `class="hint scope-hint"`（复合 class）
