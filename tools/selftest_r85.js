@@ -201,6 +201,13 @@ const A15_EXEMPT = [
   /^cloudfunctions\/exportData\/index\.js$/,     // round265：导出改出真 xlsx（SheetJS + base64 + encoding 出参），属缺陷修复而非同步动作
   /^cloudfunctions\/exportData\/package\.json$/, // round265：新增 xlsx 依赖声明（require 与依赖必须同源，由 check_fn_deps 另守）
   /^cloudfunctions\/initDb\//,
+  // by=WorkBuddy / date=2026-11-16 / reason=R748 授权（李老师「数据的安全储存这些你都要考虑」）：
+  //   上线后补「备份结果可观测」+ 每日健康巡检。两处改动是一个需求的两端：
+  //   ① dbBackup 把本次结果写 audit_log（原只 console.log ⇒ 备份静默失败没人知道）；
+  //   ② 新增 dbHealthCheck（每日跑，读最近备份记录判健康，超 35 天断档即告警）。
+  //   缺任一端巡检就读不到数据。仍按 round103 白名单式登记，不放宽成 cloudfunctions/ 全豁免。
+  /^cloudfunctions\/dbHealthCheck\//,
+  /^cloudfunctions\/dbBackup\/index\.js$/,
   // by=WorkBuddy / date=2026-10-20 / reason=R376 授权：M1「清空某月」需要新函数 clearMonth
   //   （软删 + 归档锁 + 审计留痕）与 saveLedger 的**复活软删行**（唯一索引 shop_id+month
   //   不允许重建同月）；两者是同一需求的两端，缺任一端清空后该月就再也存不进去。

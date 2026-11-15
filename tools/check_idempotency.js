@@ -72,6 +72,13 @@ const EXEMPT_WRITE = new Map([
   ['initDb', '仅 dev 生效（env 门禁 + blocked 闸），且灌种子前先查集合是否已初始化 ⇒ 重复执行不产生第二条种子；'
     + 'prod 25 个集合由人工在控制台建，本函数不参与'],
   ['smokeTest', '探针函数：只读写自建的 PROBE 探针集合（探测完自删），**不碰任何业务集合**；仅 dev 手工触发'],
+  // by=WorkBuddy / date=2026-11-16 / reason=R748（李老师授权补线上可观测性）：
+  //   两者都是**纯定时任务**，没有任何用户调用路径 ⇒ 无 client_request_id 可校验；
+  //   且写入都是 audit_log 的**追加式日志**（每次运行就该留一条，属审计语义要求逐次留痕），
+  //   被幂等拦反而是错的 —— 与 purgeDeletedData / adminLogin 同族。
+  ['dbHealthCheck', 'R748 每日健康巡检（09:30）：**纯定时触发**（有 OPENID 即 FORBIDDEN），只读 audit_log + 写一条巡检结论，'
+    + '不碰任何业务集合、不改金额。结论记录是**追加式**（每天一条，可查趋势）⇒ 重复执行终态是"多一条同日记录"，'
+    + '不放大业务数据；加幂等键反而抹掉"今天巡检了几次"这一排障信息。'],
   ['adminInit', '首超管引导（一次性）：靠「已存在首个 super 即拒（ADMIN_ALREADY_INIT）」做天然闸门，'
     + '而非 client_request_id；且仅 dev / 首次运行的 env 门禁下可用'],
   ['adminLogin', '登录是**审计/会话类追加写**：每次登录都该在 admin_login_log 留一条记录（审计语义要求逐次留痕），'
