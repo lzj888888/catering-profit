@@ -819,8 +819,19 @@ async function handleDSI1Import({ shopId, userId, clientRequestId, dishDetect, m
   const sheetRows = matrix.sheets[dishDetect.sheet].rows;
   const parsed = parseDSI1(sheetRows);
   if (!parsed.ok) {
-    // 人话 + 行号原样透出（老板能照着改表，而不是只看到「格式错误」）
-    return fail(ERROR_CODES.INVALID_PARAM, parsed.error);
+    // 🔴 R747 / GAP-4：原 `fail(INVALID_PARAM, parsed.error)` 的注释承诺「人话+行号原样透出」，
+    //   但 utils/api.js:60/69 会把 fail 的 msg **整条覆盖**成 msgOf(code) 通用文案
+    //   （原始 msg 只落 console.warn）⇒ 老板只看到「参数有误」，照着改不了表。
+    //   改走 ok 的 data 诊断通道（与 R286 认不出表/R746 缺列同一条），fail-closed 语义不变：
+    //   不落库、不给预览、不给确认按钮，只是把「第几行什么问题」说清楚。
+    return ok({
+      diagnosis: {
+        shape: 'dsi1',
+        reason: 'dsi1_invalid',
+        detail: parsed.error,
+      },
+      client_request_id: clientRequestId || '',
+    });
   }
 
   // 按 (platform, bizDate) 分组 —— 抽成纯函数以便单测（第 225 套件 D 组）

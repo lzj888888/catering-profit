@@ -4,7 +4,7 @@
 //       + R727 销量样例事实守卫（tools/check_sales_sample_facts.js，四张平台表在仓 + 粒度/规格实跑解析，防「样例待提供」第三次复发）
 //       + R726 算钱口径守卫（tools/check_r714_decisions.js，R714 三件口径由台账四票机器化：
 //         名单 ≡ 落地、E-6 真跑非有限 coverage 抑制、E-1/E-2 文案双副本与上屏、含反恒真）
-// 串联：326 个套件（R740 内部一换一：amort-rule-v2 → amort-no-gate；R741 追加 archive-no-fake；R742 追加 amort-invariants；R743 追加 amort-metamorphic；R744 追加 amort-disposal；R746 追加 revenue-missing-cols + bill-prod-sync） = 6 个 specs 套件（门禁 A–L + seed/poc1-4）+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：328 个套件（R740 内部一换一：amort-rule-v2 → amort-no-gate；R741 追加 archive-no-fake；R742 追加 amort-invariants；R743 追加 amort-metamorphic；R744 追加 amort-disposal；R746 追加 revenue-missing-cols + bill-prod-sync；R747 追加 net-unit-parity + dsi1-error-channel） = 6 个 specs 套件+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1838,6 +1838,12 @@ const SUITES = [
   // R746 · 账单解析生产/自测同源守卫（GAP-1）：真调生产 SV.parseBillMatrix 断言 9081 分，
   //   防 R695/R700 只修 utils 侧导致生产多算 39.85 元（R181m 同族盲区）。
   ['bill-prod-sync', 'tools/check_bill_parse_prod_sync.js'],
+  // R747 · 净料成本参数化对拍器：前端完整精度 vs 云端分位截断的差异被钉死，
+  //   5 副本逐点等价 + 差异方向可解释 + 主链路契约 + 误传陷阱量化 + 变异回灌。
+  ['net-unit-parity', 'tools/check_net_unit_parity.js'],
+  // R747 · DSI-1 行级错误通道守卫：解析错误「第 N 行」原被 api.js 覆盖成通用文案，
+  //   现改走 ok diagnosis 人话直出（fail-closed 不变），api.js 全局设计不被动。
+  ['dsi1-error-channel', 'tools/check_dsi1_error_channel.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。

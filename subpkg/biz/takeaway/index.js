@@ -764,6 +764,11 @@ Page({
           //   否则老板看着自己的表有「商品信息」，却被要求"补 商品名称/销量/销售额"，
           //   只会怀疑自己导错了表（而真正该做的是在 Excel 里按逗号分列）。
           body = (TK.importDiagMixed || '').replace('{col}', dg.mixedCol || '');
+        } else if (dg.reason === 'dsi1_invalid') {
+          // 🔴 R747 / GAP-4：DSI-1 逐列校验的错误是「第 N 行 + 具体问题」的人话，
+          //   原走 fail 被 api.js 覆盖成通用「参数有误」，老板没法照着改表。
+          //   现在走 ok data 通道，detail 原样显示（后端解析器的文案已在 dsi1.js 单源）。
+          body = dg.detail || TK.importDiagBody || '';
         } else {
           body = (TK.importDiagBody || '').replace('{cols}', miss.join('、'));
         }
