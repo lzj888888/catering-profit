@@ -2803,7 +2803,7 @@ const TERMS = {
     reviewBillsClearAllConfirm: '确定清除**全部**已导入账单？清除后复盘将变为空，请谨慎操作。',
     reviewBillsClearedToast: '已清除',
     reviewBillsClearedNone: '没有可清除的数据',
-    reviewSnapshotOf: (m) => `该卡成本为 ${m} 月快照`,
+    reviewSnapshotOf: (m) => `该卡成本为 ${m} 月快照（比本月新）：本页毛利按这个新成本重算，和当月月报里的毛利会不同，不是月报错了。`,
     // 🔴 R301：统计期间的**如实标注**（契约出参 `range{from,to,days}` 的人话）。
     //   为什么必须有：复盘榜在此之前是**跨月累计**却按"当前月"呈现 ⇒ 老板会以为"这道菜这个月卖过"
     //   （真样本就是 7 天表，"一段"冒充"整月"）。期间口径**不许由前端猜**、也必须**讲给用户听**。
