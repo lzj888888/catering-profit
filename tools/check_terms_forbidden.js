@@ -164,11 +164,14 @@ function main() {
   }
   info('面 A 命中 ' + hits.length + ' 处');
 
-  // ===== T4 扫描面 B：pages/**/*.wxml 可见文案（防硬编码绕过 TERMS）=====
-  process.stdout.write('\n===== T4 扫描面 B：pages/**/*.wxml 可见文案（剥注释）=====\n');
+  // ===== T4 扫描面 B：pages/ + subpkg/ 下 **/*.wxml 可见文案（防硬编码绕过 TERMS）=====
+  // 🔴 收口（M2 交叉审计）：原只扫 pages（4 个 wxml），而 M2/M3 全部页面在 subpkg（30 个 wxml）——
+  //    守卫对分包硬编码禁词全盲。实测当前 subpkg wxml 零违规，但"这次没违规"不等于"扫得到"：
+  //    范围漏了，下次谁在分包 wxml 写「赚钱」守卫照样绿。⇒ 扫描面补齐 pages + subpkg。
+  process.stdout.write('\n===== T4 扫描面 B：pages/ + subpkg/ 的 wxml 可见文案（剥注释）=====\n');
   const wxmlHits = [];
   let wxmlN = 0;
-  (function walk(dir) {
+  const walk = function (dir) {
     if (!fs.existsSync(dir)) return;
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       const fp = path.join(dir, e.name);
@@ -183,8 +186,9 @@ function main() {
         });
       }
     }
-  })(path.join(ROOT, 'pages'));
-  check('T4 扫到 wxml 文件', wxmlN > 0, wxmlN + ' 个');
+  };
+  [path.join(ROOT, 'pages'), path.join(ROOT, 'subpkg')].forEach((d) => walk(d));
+  check('T4 扫到 wxml 文件（含分包）', wxmlN > 0, wxmlN + ' 个');
   // 🔴 admin-h5 是内部管理后台，**不进小程序审核** ⇒ 显式声明范围外，不静默放过也不误报。
   info('范围外（显式声明）：admin-h5/** 为内部后台，不进小程序审核，故不纳入本守卫扫描面。');
   check('T4b wxml 可见文案零违规', wxmlHits.length === 0,
