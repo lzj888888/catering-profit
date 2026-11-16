@@ -1,0 +1,176 @@
+# MIGRATION RUNBOOK · 新账号迁移执行手册（照着敲版）
+
+> 用途：李老师注册好个体户小程序后，把源码从旧个人账号迁到新账号的**逐步操作清单**。
+> 前提裁决：`PLAN_2026-11-16_DEV环境归属裁决_终裁.md`（A：测试留旧号，新号只放 prod）。
+> 基线 Tag：`baseline-pre-migration-20261116`（出问题 `git checkout` 这个 Tag 就回到迁移前）。
+> 记忆口诀：**改 2 处配置 → 部署函数 → 建表 → 灌种子 → 传触发器 → 真机验一轮**。
+
+---
+
+## 0 前置条件（谁做完才能开工）
+
+| # | 条件 | 谁 | 状态 |
+|---|---|---|---|
+| 0-1 | 个体户小程序注册完成 + 30 元认证通过 | 李老师 | ⬜ |
+| 0-2 | 拿到新 **AppID**（后台 → 开发管理 → 开发设置） | 李老师 | ⬜ |
+| 0-3 | 新账号开通云开发，建 1 个环境（命名建议 `prod`），拿到**环境 ID** | 李老师 | ⬜ |
+| 0-4 | 备案已提交（可与 0-1~0-3 并行，**不阻塞迁移**） | 李老师 | ⬜ |
+| 0-5 | 基线 Tag 已打（`baseline-pre-migration-20261116`） | 巴迪 | ✅ |
+| 0-6 | 当前 dev 全绿（329/329）、0 未推提交 | 巴迪 | ✅ |
+
+> ⚠️ 0-3 的环境**别选免费额度当正式用**——官方明确"开发免费、正式使用需付费"。备案通过后按量计费。
+
+---
+
+## 1 代码改动（2 处，改完必须跑门禁）
+
+### 1-1 `project.config.json` 第 3 行
+```
+"appid": "wx新AppID"
+```
+> 🔴 这是全仓**唯一一处**生产代码硬编码 AppID（已 grep 验证）。其余 `review/evidence/` 里的历史 JSON 是证据快照，不动。
+
+### 1-2 `cloudfunctions/initDb/config.json`
+```
+"DEV_ENV_ID": "新环境ID"
+```
+> 作用：① 部署器 `_deploy_fns.py::env_id()` 从这里读目标环境；② `initDb` 的 dev-only 门禁放行。
+> ⚠️ 一旦改成新环境 ID，**部署器就会把函数推到新环境**——这就是切换开关，别提前改。
+
+### 1-3 `miniprogram/config/env.js`（视需要）
+```
+ENV_MAP.prod: '新环境ID'   // 若走 ACTIVE_ENV=prod
+ACTIVE_ENV: 'prod'          // 上线包才切
+```
+> 本方案新账号只有 1 个环境。两种写法：
+> - **推荐**：`ENV_MAP.dev = 新环境ID`，`ACTIVE_ENV` 保持 `dev`（最少改动，`initDb` 门禁天然放行）
+> - 或：`ENV_MAP.prod = 新环境ID` + `ACTIVE_ENV = 'prod'`（语义更正，但要确认 `env.js` 的 prod 分支逻辑）
+>
+> ⚠️ 上线前必查：`getEnv()` 有 fallback 到 dev 的逻辑，**别让正式包静默回落到旧环境**。
+
+### 1-4 改完立即验
+```bash
+cd C:/Users/lzj/WorkBuddy/Claw/catering-profit
+node verify_all.js          # 必须 329/329
+node tools/check_auto_queue.js
+node tools/check_env_ready.js
+node tools/check_collection_perms.js
+```
+
+---
+
+## 2 部署 60 个云函数
+
+### 2-1 先烟测定通道（铁律，不做就赌运气）
+```bash
+python review/evidence/_deploy_fns.py smokeTest
+```
+✅ 判据：日志有 `│ smokeTest │ true │ ... │`，**不看 rc**（cli 部署失败也返回 0）。
+
+### 2-2 分批部署（别一次 60 个）
+```bash
+python review/evidence/_deploy_fns.py --from-head    # 只推最近提交动过的函数
+```
+> 首次迁移是全量：按业务分组推，一组一验，别一口气全上。每组看日志表格行有 `true`。
+> 必带 `-r`（脚本内部已带）——漏了会覆盖云端 `wx-server-sdk`，全站"网络不可用"。
+
+### 2-3 部署后回读配置
+```bash
+"C:/Program Files (x86)/Tencent/微信web开发者工具/cli.bat" cloud functions info --project "C:/Users/lzj/WorkBuddy/Claw/catering-profit" -e 新环境ID --names importSalesBill
+```
+✅ 判据：`status='Active'` / `timeout=20`（新函数默认 3 秒的要去控制台抬到 20）。
+
+---
+
+## 3 建表 + 灌种子
+
+### 3-1 建 33 集合 + 索引
+- 调 `ensureCollections`（**专为 prod 设计的入口**，绕开 initDb 的 dev-only 门禁）。
+- 或走控制台手工建——但步骤多、易点错、无可复核痕迹。
+
+✅ 判据：集合数 **33**、索引数按 `initDb/collections.js` 声明核对；`check_schema_sync` / `check_collection_perms` 绿。
+
+### 3-2 灌种子
+- 套餐、费用项、收入项、免费档额度（`plan_free.limits.cost_card = 20`）。
+- 新环境是空的，`initDb` 一键灌（此时 1-2 已改成新环境 ID，门禁放行）。
+
+✅ 判据：`feature_permissions` 里 `plan_free` 行存在且 `cost_card=20`；费用/收入项字典齐全。
+
+---
+
+## 4 上传 4 个触发器（🔴 最易漏）
+
+`triggers` 声明在代码里，但 **deploy 不会启用它们**。必须 IDE 资源管理器里，
+展开每个函数目录 → **右键 `config.json` 文件** → 「上传触发器」。
+
+| 函数 | 触发时间 | 用途 |
+|---|---|---|
+| `dbBackup` | 每月 1 日 10:00 | 数据库备份 |
+| `dbHealthCheck` | 每日 09:30 | 健康巡检 |
+| `purgeDeletedData` | 每日 03:00 | 软删满期物理删 |
+| `payExpireNotify` | （按 config） | 权益到期提醒 |
+
+> ⚠️ 本方案里 `dbHealthCheck` / `dbBackup` 的触发器**在原账号也还没上传**（R748 遗留 GUI 待办）。
+> 新账号迁移时一并处理，别两边都欠着。
+> ✅ 判据：控制台触发器列表能看到 4 条（cli 的 `info` 不返回触发器，只能看控制台）。
+
+---
+
+## 5 真机验一轮（不能省）
+
+用新 AppID 出码，走完整链路：
+
+| 步骤 | 期望 |
+|---|---|
+| 扫码进小程序 | 首启隐私弹窗正常 |
+| 自动建店 | 不卡在"必须先建店" |
+| 录一个月账 | 数字算对（ABC 店铺对照） |
+| 建成本卡 + 出毛利 | 与旧 dev 同数据一字不差 |
+| 导入营收日报表（完整表） | 正常落库 |
+| 导入缺列表 | 弹「缺：美团外卖…这次没有导入」，不落库 |
+| 导出月报 | 文件可打开 |
+
+✅ 判据：与旧 dev 同数据对拍零差异。任一不符 → 停在迁阶段，别提审。
+
+---
+
+## 6 上线 + 回滚
+
+### 6-1 提审
+- 类目：**工具 → 计算器**（被拒兜底 IT科技 → 软件服务）
+- 首版**必须全量发布**（官方规则，首个版本没有分阶段发布选项）
+- 后续版本才走 10% → 50% → 100%
+
+### 6-2 回滚（三级）
+| 场景 | 操作 |
+|---|---|
+| 云函数 BUG（算钱错） | 版本流量切回稳定版，**秒级全端无感** |
+| 前端 BUG | 后台终止分阶段发布 → 回退上一全量版本 |
+| 账号整体不可用 | **切回旧个人 dev**（A 方案独有兜底） |
+| 代码层面回退 | `git checkout baseline-pre-migration-20261116` |
+
+---
+
+## 7 常见坑（迁移当天对照）
+
+| 坑 | 防法 |
+|---|---|
+| 改了 `initDb/config.json` 的环境 ID 却忘了改 `env.js` | 第 1 步两处一起改，改完跑 `check_env_ready.js` |
+| 部署器推到了旧环境 | 看部署日志第一行 `ENV = xxx` 确认是新环境 ID |
+| 触发器没上传，定时任务一次都没跑 | 第 4 步单独列了，控制台复核 4 条 |
+| 新函数 timeout=3 秒导致超时 | `info` 回读，不一致去控制台抬到 20 |
+| 正式包静默回落旧环境 | 查 `env.js::getEnv()` 的 fallback，上线前确认 ACTIVE_ENV |
+| 数据库表缺索引导致慢查询 | 3-1 后跑 schema/collection 守卫 |
+| 备案名称与小程序名称不一致 | 后台名称与备案必须**完全一致**，否则警告/封禁功能 |
+
+---
+
+## 8 迁移后的固定动作
+
+- [ ] 打发布版本 Tag：`git tag -a v1.0.0 -m "首次上线"` 并 push
+- [ ] `OPS_RUNBOOK`（三级响应 + 回滚 + 巡检怎么看）归档
+- [ ] 备份从月度改每日（**待办，上线前补**）
+- [ ] 支付回调环境隔离（**接支付前必做**）
+- [ ] 账单金额告警（**上线前补**）
+
+> 以上 3 条待办都已在 `PLAN_2026-11-16_与豆包总方案对齐_共识.md` 登记，别漏。
