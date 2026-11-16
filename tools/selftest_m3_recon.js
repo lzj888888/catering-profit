@@ -38,6 +38,18 @@ check('D 抑制时只回两个 pct、diffPp 为 null', suppressed.diffPp === nul
 check('D 抑制时两个 pct 仍可读', suppressed.menuPct === 64.84 && suppressed.actualPct === 55, '');
 const missingCov = reconcile({ menuPct: menu.pct, actualPct: 55, coverage: null, incomeFen: 100000 });
 check('D 覆盖率缺失（null）⇒ 抑制', missingCov.suppressed === true && missingCov.diffPp === null, JSON.stringify(missingCov));
+// 上界：成本卡含停售老卡时 coverage 会 >1（卡数 ÷ 在售数），菜单毛利被稀释 ⇒ 必须抑制。
+// 11-12 发现 A 悬空至今：30 在售+70 停售 ⇒ coverage 3.33、毛利 32%（真值 60%）、虚高 28pp。
+const overCov = reconcile({ menuPct: 32, actualPct: 60, coverage: 3.33, incomeFen: 9000000 });
+check('D 上界 coverage=3.33（卡多于在售）⇒ 抑制且 reason=coverage_high',
+  overCov.suppressed === true && overCov.reason === 'coverage_high' && overCov.diffPp === null && overCov.diffFen === null,
+  JSON.stringify(overCov));
+check('D 上界 coverage=1.5（仅多 15 张老卡）也抑制（不是只在极端值才挡）',
+  reconcile({ menuPct: 46.67, actualPct: 60, coverage: 1.5, incomeFen: 100000 }).suppressed === true, '');
+check('D 边界 coverage=1.0 合法不抑制（上界是 >1 不是 >=1）',
+  reconcile({ menuPct: 60, actualPct: 60, coverage: 1, incomeFen: 100000 }).suppressed === false, '');
+check('D coverage_high → 专属文案键 reconSuppressCoverageHigh（单源）',
+  suppressKeyOf(overCov) === 'reconSuppressCoverageHigh', suppressKeyOf(overCov));
 
 console.log('===== 细项名单源 =====');
 check("细项名取自单源（GOODS_FIELD === TERMS.ledger.takeawayMode.goodsField）",

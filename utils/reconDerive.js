@@ -87,8 +87,9 @@ function calcActualDishMargin(ledger) {
 
 /**
  * 率对率对账：M1 实际菜品毛利率 vs M3 标准菜单毛利率。
- * 🔴 覆盖率闸门（fail-closed）：coverage < 0.6 或 coverage 为 null（未填在售菜品数）或任一 pct === null
- *    ⇒ suppressed: true，只回两个 pct，diffPp / diffFen / 归因一律置 null。
+ * 🔴 覆盖率闸门（fail-closed）：coverage < 0.6（在售菜太多、卡不够）或 coverage > 1（卡比在售菜还多，
+ *    历史停售卡稀释菜单毛利）或 coverage 无效（null/NaN/Infinity）⇒ suppressed: true，
+ *    只回两个 pct，diffPp / diffFen / 归因一律置 null。合法区间 [0.6, 1]。
  * @param {{menuPct:number|null, actualPct:number|null, coverage:number|null, incomeFen:number}} input
  * @returns {{suppressed:boolean, menuPct:number|null, actualPct:number|null, diffPp:number|null, diffFen:number|null, reason?:string}}
  */
@@ -105,6 +106,11 @@ function reconcile(input) {
   //   一律按「算不出覆盖率」抑制，与未填在售数同一 reason，不新造文案、不新造 reason 字面量。
   if (coverage == null || !Number.isFinite(Number(coverage))) reason = 'coverage_missing';
   else if (Number(coverage) < 0.6) reason = 'coverage_low';
+  // 🔴 上界闸门：coverage = 已建卡数 ÷ 在售菜数。成本卡是**历史累计**（含停售老卡），
+  //    分母却是"本月在售数"，故 coverage 可能远大于 1。此时菜单毛利率的分母混进停售菜被稀释，
+  //    对账差值虚高（实测 30 在售+70 停售 ⇒ coverage 3.33、毛利 32% vs 真值 60%、虚高 28pp）。
+  //    与下界同源 fail-closed：coverage>1 说明"卡数比在售菜还多"，样本不可比 ⇒ 抑制，不输出错数。
+  else if (Number(coverage) > 1) reason = 'coverage_high';
   else if (menuPct == null) reason = 'menu_no_price';
   else if (actualPct == null) reason = 'actual_no_data';
 
@@ -124,7 +130,7 @@ function reconcile(input) {
  *     修前 `subpkg/tools/recon/index.js` 在页面里内联一段 if/else，只给了 3 个分支，
  *     `menu_no_price`（菜品卡没填售价）与 `actual_no_data`（本月没录收入）**被兜底**
  *     到「覆盖率不足（<60%）」的文案上。而 `reconcile` 的判定顺序是
- *        coverage_missing → coverage_low → menu_no_price → actual_no_data
+ *        coverage_missing → coverage_low → coverage_high → menu_no_price → actual_no_data
  *     ⇒ 能走到后两者，说明**覆盖率是够的（≥60%）**。于是用户在覆盖率 100% 的页面上
  *     读到「覆盖率不足」，会去补「在售菜品数」——**真问题是没填售价 / 没录收入**，
  *     诊断方向被文案带反了。（同族于本仓「探测器坏了与命中 0 长得一样」。）
@@ -140,6 +146,7 @@ function suppressKeyOf(rec, actualReason) {
   const r = (rec && rec.reason) || '';
   if (r === 'coverage_missing') return 'reconSuppressNoCount';
   if (r === 'coverage_low') return 'reconSuppressCoverage';
+  if (r === 'coverage_high') return 'reconSuppressCoverageHigh';
   if (r === 'menu_no_price') return 'reconSuppressNoPrice';
   if (r === 'actual_no_data') {
     // 实际侧无数据分两种：外卖快速录入拆不出商品总价（有专属文案）／本月没录收入。

@@ -2519,6 +2519,7 @@ const TERMS = {
     reconIncludeCombo: '含套餐',
     reconMonth: '月份',
     reconSuppressCoverage: '覆盖率不足（<60%），差值可能失真，暂不显示。',
+    reconSuppressCoverageHigh: '成本卡数已超过在售菜品数（含已停售的老卡），标准毛利被稀释、差值会失真，暂不显示。可到菜品成本里核对老卡。',
     reconSuppressDetail: '本月外卖用了快速录入，拆不出商品总价，请改用分项录入。',
     reconSuppressNoCount: '请先填写「本月在售菜品数」，才能算覆盖率。',
     // 🔴 R298X：以下三条补的是「抑制原因不是覆盖率」时的**专属文案**。
