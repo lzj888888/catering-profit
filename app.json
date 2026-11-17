@@ -6,7 +6,7 @@
     "pages/mine/index"
   ],
   "window": {
-    "navigationBarTitleText": "开店算账",
+    "navigationBarTitleText": "餐饮智算",
     "navigationBarBackgroundColor": "#FFFDF8",
     "navigationBarTextStyle": "black",
     "backgroundColor": "#F6F3EC",

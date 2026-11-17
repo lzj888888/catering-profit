@@ -244,7 +244,7 @@ const TERMS = {
   aiConsent: {
     navTitle: 'AI 辅助分析',
     title: 'AI 辅助分析授权',
-    lead: '开启后，店算会把汇总后的经营数据交给 AI，帮你看问题、给建议。',
+    lead: '开启后，餐饮智算会把汇总后的经营数据交给 AI，帮你看问题、给建议。',
     stNone: '还没开启',
     stOk: '已开启',
     stStale: '条款已更新，需要重新确认',
@@ -275,7 +275,7 @@ const TERMS = {
 
   // ===== 七、应用信息（上架审核）=====
   app: {
-    title: '开店算账',
+    title: '餐饮智算',
     category: '工具 → 效率', // 禁选 金融 / 理财
   },
 
