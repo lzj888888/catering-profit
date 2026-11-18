@@ -733,7 +733,14 @@ Page({
     //   ⚠️ 与 subpkg/biz/revenue/index.js 的 onChoose 同口径（那边从一开始就是两段）。
     let file;
     try {
-      const res = await wx.chooseMessageFile({ count: 1, type: 'file', extension: ['xlsx'] });
+      // 🔴 R748：可选扩展名必须 ⊇ 云端真正能解析的格式，否则「后端修好了、前端选不到」= 白修。
+      //   事故形态（本仓 ROADMAP:1518 早就记录过同族）：云端 enum/能力扩了、picker 漏加 ⇒
+      //   老板手里的文件是灰的，页面又零报错，最后归因成「小程序不支持我的表」。
+      //   实况：后端 `bufferToMatrix` 早已支持 CSV（R615 专为真实美团 GBK CSV 加的编码嗅探，
+      //     样本 review/evidence/r242_mt_goods/mt_goods_20260907_20260913.csv）与 xls（OLE），
+      //     而这里此前只放行 `xlsx` ⇒ 美团/京东后台导出的 csv 一律进不来。
+      //   守卫：tools/check_import_ext_parity.js（B 段钉「picker ⊇ 后端可解析格式」，D 段自证判据有牙）。
+      const res = await wx.chooseMessageFile({ count: 1, type: 'file', extension: ['xlsx', 'csv', 'xls'] });
       file = res.tempFiles && res.tempFiles[0];
     } catch (e) {
       return;   // 用户取消，不当错误：不弹 toast、不改 importing

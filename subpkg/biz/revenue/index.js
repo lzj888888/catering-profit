@@ -245,7 +245,10 @@ Page({
     if (this.data.loading) return;
     let file;
     try {
-      const res = await wx.chooseMessageFile({ count: 1, type: 'file', extension: ['xlsx', 'xls'] });
+      // 🔴 R748：与销量导入同一条判据 —— 本页调的也是 `importSalesBill`（同一 `bufferToMatrix`
+      //   解析链，CSV 走 decodeTextBuffer 嗅探）⇒ 前端可选格式不得窄于后端能力。
+      //   守卫：tools/check_import_ext_parity.js B-③（两处 picker 都必须 ≥ csv|xlsx 基线）。
+      const res = await wx.chooseMessageFile({ count: 1, type: 'file', extension: ['xlsx', 'xls', 'csv'] });
       file = res.tempFiles && res.tempFiles[0];
     } catch (e) {
       return;   // 用户取消，不当错误

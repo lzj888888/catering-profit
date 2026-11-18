@@ -221,17 +221,121 @@ function mergeTotals(a, b) {
  * @param {string} to   `YYYY-MM-DD`
  * @returns {{rows:Array, from:string, to:string, days:number}} `days` = 结果集内**实际有数据的天数**（去重）
  */
+/**
+ * 区间表跨月分摊（纯函数 · 零 IO · 可复算）—— R748
+ *
+ * 🔴 为什么必须有（2026-11-17 交叉审计 G1，实跑反例）：
+ *   堂食《菜品销售统计》是 7 天区间汇总表，落库 `biz_date` = 区间**末日**
+ *   （`importSalesBill/service.js::extractBizDate`，为幂等刻意如此）。
+ *   而本文件此前**只按 `biz_date` 单点过滤** ⇒ 一张 `2026-10-28 ~ 2026-11-03` 的表
+ *   在**10 月查不到（0 行）**、在 **11 月整段计入（700）**：
+ *   ```
+ *   实测：查 10 月 ⇒ rows=0；查 11 月 ⇒ rows=1, qty=700
+ *   ```
+ *   ⇒ 每月约一张跨月表，那 4~6 天的堂食销量与毛利**静默错月**，零报错零提示。
+ *   同仓 `getSalesBills` 用的是**区间双端**判定（service.js:100/137）⇒ 两处口径分叉。
+ *
+ * 口径（与摊销的"尾差倒挤"同一定式，保证跨月守恒）：
+ *   · 区间整段落在查询内 ⇒ **原样返回**（不改一个数，老的整月查询逐字等价）。
+ *   · 与查询**完全不相交** ⇒ 剔除。
+ *   · **部分相交** ⇒ 按月切开：中间月按 `round(值 × 该月天数 / 区间天数)`，
+ *     **最后一个月取「总量 − 前面已分之和」**（尾差倒挤）⇒ 各月相加恒等于原值，不多不少。
+ *   · 切出来的每一段把 `period_from/period_to` 收窄到该月内的相交部分，
+ *     `biz_date` 取该段末日 ⇒ `countDataDays` / `coverageStats` 在两个月里各算各的天数，
+ *     不会把 7 天重复计两次。
+ *
+ * @param {{period_from:string,period_to:string,qty:*,amount:*}} row
+ * @returns {Array<{ym:string,days:number,qty:number,amount:number,from:string,to:string}>}
+ */
+function splitIntervalByMonth(row) {
+  const pf = String((row && row.period_from) || '');
+  const pt = String((row && row.period_to) || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(pf) || !/^\d{4}-\d{2}-\d{2}$/.test(pt) || pf > pt) return [];
+  const totalDays = spanDaysInclusive(pf, pt);
+  if (!totalDays) return [];
+  const qty = Number(row.qty) || 0;
+  const amount = Number(row.amount) || 0;
+  const months = monthsBetween(pf, pt);
+  const parts = [];
+  let usedQ = 0;
+  let usedA = 0;
+  for (let i = 0; i < months.length; i++) {
+    const mb = monthBounds(months[i]);
+    const a = pf > mb[0] ? pf : mb[0];
+    const b = pt < mb[1] ? pt : mb[1];
+    const days = spanDaysInclusive(a, b);
+    const isLast = i === months.length - 1;
+    let q = 0;
+    let am = 0;
+    if (days > 0) {
+      if (isLast) { q = qty - usedQ; am = amount - usedA; }
+      else { q = Math.round((qty * days) / totalDays); am = Math.round((amount * days) / totalDays); }
+      usedQ += q;
+      usedA += am;
+    }
+    parts.push({ ym: months[i], days: days, qty: q, amount: am, from: a, to: b });
+  }
+  return parts;
+}
+
+/** `pf..pt` 覆盖到的年月列表（含两端） */
+function monthsBetween(pf, pt) {
+  const out = [];
+  let y = Number(pf.slice(0, 4));
+  let m = Number(pf.slice(5, 7));
+  const yEnd = Number(pt.slice(0, 4));
+  const mEnd = Number(pt.slice(5, 7));
+  let guard = 0;
+  while ((y < yEnd || (y === yEnd && m <= mEnd)) && guard++ < 600) {
+    out.push(y + '-' + String(m).padStart(2, '0'));
+    m += 1;
+    if (m > 12) { m = 1; y += 1; }
+  }
+  return out;
+}
+
+/** `YYYY-MM` → 该月首末日的日期区间 */
+function monthBounds(ym) {
+  const y = Number(ym.slice(0, 4));
+  const m = Number(ym.slice(5, 7));
+  if (!y || !m) return ['', ''];
+  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return [ym + '-01', ym + '-' + String(last).padStart(2, '0')];
+}
+
 function filterByRange(sales, from, to) {
   const rows0 = sales || [];
   const f = (from == null ? '' : String(from)).trim();
   const t = (to == null ? '' : String(to)).trim();
   if (!f || !t) return { rows: rows0, from: '', to: '', days: countDataDays(rows0) };
   if (f > t) return { rows: [], from: f, to: t, days: 0 };
-  const rows = rows0.filter((s) => {
+  const rows = [];
+  for (const s of rows0) {
     const d = (s && s.biz_date == null ? '' : String(s.biz_date)).trim();
-    return !!d && d >= f && d <= t;
-  });
-  return { rows, from: f, to: t, days: countDataDays(rows) };
+    const g = (s && s.granularity ? String(s.granularity) : '').trim();
+    const pf = (s && s.period_from ? String(s.period_from) : '').trim();
+    const pt = (s && s.period_to ? String(s.period_to) : '').trim();
+    const isInterval = g === 'interval' && pf && pt && pf <= pt;
+    if (!isInterval) {
+      if (!!d && d >= f && d <= t) rows.push(s);
+      continue;
+    }
+    if (pf >= f && pt <= t) { rows.push(s); continue; }   // 整段在范围内 ⇒ 原样（逐字等价）
+    if (pt < f || pf > t) continue;                        // 完全不相交
+    for (const part of splitIntervalByMonth(s)) {
+      if (part.days <= 0) continue;
+      if (part.to < f || part.from > t) continue;
+      rows.push(Object.assign({}, s, {
+        qty: part.qty,
+        amount: part.amount,
+        biz_date: part.to,
+        period_from: part.from,
+        period_to: part.to,
+        prorated: true,
+      }));
+    }
+  }
+  return { rows: rows, from: f, to: t, days: countDataDays(rows) };
 }
 
 /**
@@ -564,4 +668,6 @@ function buildFreeTop(rankedDineIn, takeawayResult, n) {
 module.exports = { buildDishReview, buildTakeawayReview, rankReview, splitSales, mergeTotals, TOTALS_FIELDS, computeCoverage, classifyDishKey, filterByRange, countDataDays,
   calcWeightedMenuPct, buildFreeTop,
   // R574 / #110：粒度感知的覆盖天数（守卫直接验）
-  coverageStats, spanDaysInclusive, mergeRanges };
+  coverageStats, spanDaysInclusive, mergeRanges,
+  // R748：跨月区间分摊（纯函数，守卫/探针直接验）
+  splitIntervalByMonth, monthsBetween, monthBounds };

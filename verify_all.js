@@ -4,7 +4,7 @@
 //       + R727 销量样例事实守卫（tools/check_sales_sample_facts.js，四张平台表在仓 + 粒度/规格实跑解析，防「样例待提供」第三次复发）
 //       + R726 算钱口径守卫（tools/check_r714_decisions.js，R714 三件口径由台账四票机器化：
 //         名单 ≡ 落地、E-6 真跑非有限 coverage 抑制、E-1/E-2 文案双副本与上屏、含反恒真）
-// 串联：330 个套件（R740 内部一换一：amort-rule-v2 → amort-no-gate；R741 追加 archive-no-fake；R742 追加 amort-invariants；R743 追加 amort-metamorphic；R744 追加 amort-disposal；R746 追加 revenue-missing-cols + bill-prod-sync；R747 追加 net-unit-parity + dsi1-error-channel；R748 追加 db-health-check；追加 recon-page-behavior） = 6 个 specs 套件+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
+// 串联：332 个套件（R740 内部一换一：amort-rule-v2 → amort-no-gate；R741 追加 archive-no-fake；R742 追加 amort-invariants；R743 追加 amort-metamorphic；R744 追加 amort-disposal；R746 追加 revenue-missing-cols + bill-prod-sync；R747 追加 net-unit-parity + dsi1-error-channel；R748 追加 db-health-check + import-ext-parity + dishreview-crossmonth；追加 recon-page-behavior） = 6 个 specs 套件+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
 //       含 batch4 六函数补齐 R57）+ 静态路径检查（tools/check_requires.js）+ 页面声明守卫（tools/check_pages.js，R44）
 //       + 合规守卫（tools/check_compliance.js，R42）+ 单源派生守卫（tools/check_admincore.js，R50）
@@ -1849,6 +1849,20 @@ const SUITES = [
   ['db-health-check', 'tools/check_db_health_check.js'],
   // 对账页行为桩：真跑 calc() 钉住覆盖率上界/抑制文案/套餐排除 + 变异回灌。
   ['recon-page-behavior', 'tools/check_recon_page_behavior.js'],
+  //   import-ext-parity = R748 导入扩展名对等守卫（2026-11-17 交叉审计 G2）：
+  //                      `bufferToMatrix` 早已支持 CSV（R615 的编码嗅探就是为真美团 CSV 加的）
+  //                      和 xls（OLE），而 picker 只放行 `xlsx` ⇒ 老板手里的 csv **是灰的**，
+  //                      页面零报错 ⇒ 被归因成「小程序不支持我的表」。
+  //                      守「前端可选格式 ⊇ 后端可解析格式」，并用仓里真 GBK 美团表证明后端能力；
+  //                      D 段喂变异体自证判据有牙（改回只有 xlsx / 塞 pdf 都必须转红）。
+  ['import-ext-parity', 'tools/check_import_ext_parity.js'],
+  //   dishreview-crossmonth = R748 跨月区间分摊守卫（2026-11-17 交叉审计 G1）：
+  //                      堂食 7 天汇总表的 biz_date 落在区间**末日**，而 filterByRange 曾只按
+  //                      biz_date 单点过滤 ⇒ 跨月时起始月**查不到**、结束月**整段计入**
+  //                      （实测 10 月 0 行 / 11 月 700），与 getSalesBills 的区间双端口径分叉。
+  //                      守「按月分摊 + 尾差倒挤守恒（200 组随机）」＋「整月内区间/逐日/历史行零回归」
+  //                      ＋「覆盖天数不重复」；F 段用旧实现复算自证判据有牙。
+  ['dishreview-crossmonth', 'tools/check_dishreview_crossmonth.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
