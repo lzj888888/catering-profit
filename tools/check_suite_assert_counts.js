@@ -349,6 +349,10 @@ const CASES = [
   { key: 'check_net_unit_parity', rel: 'tools/check_net_unit_parity.js' }, // 13 条（R747：参数化对拍 5副本等价 + 差异可解释 + 误传陷阱 + 变异）
   { key: 'check_dsi1_error_channel', rel: 'tools/check_dsi1_error_channel.js' }, // 13 条（R747：行级错误走 ok diagnosis + api.js 全局不动 + 变异）
   { key: 'check_db_health_check', rel: 'tools/check_db_health_check.js' }, // 18 条（R748：备份四态 + 集合可读性 + 边界 + 自保 + 不越线声明 + 变异）
+  // 2026-11-24（R752）：耗用核查。**为什么必须受守**：本套件的核心断言是
+  //   ① 恒等式「耗用偏差 ≡ 采购偏差」（4 组数据）② 四种「算不了」必须拦住 ③ 文案键必须真实存在。
+  //   其中任一条被删，都会让"给假数"重新变成可能，而门禁照绿 —— 正是本守卫存在的理由。
+  { key: 'consume_derive', rel: 'utils/consumeDerive.selftest.js' }, // 37 条（恒等式 + 四种算不了 + 反恒真 + 文案键存在性）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

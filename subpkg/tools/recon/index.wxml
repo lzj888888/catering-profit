@@ -74,5 +74,48 @@
     <view class="muted">{{t.reconAttr3}}</view>
     <view class="muted">{{t.reconAttr4}}</view>
   </view>
+  <!-- ===== 段二 · 耗用核查（2026-11-24 新增，李老师提需求）=====
+       与上面「率对率对账」是**同一个问题的两个视角**：上面比毛利率，这里比金额。
+         率视角：实际毛利率 58% vs 标准 63%   ⇒ 差 5 个百分点
+         金额视角：实际耗用 1.7万 vs 理论 1.2万 ⇒ 多花 5000 元
+       🔴 算不了时只显示「缺什么 + 去哪儿补」，**绝不显示假数**
+         （成本卡没建全 / 没导入销量 / 没填库存 / 免费层拿不到成本，四种都要单独说清）。 -->
+  <view class="card2" wx:if="{{consume}}">
+    <view class="attr-title">{{t.reconConsumeTitle}}</view>
+    <view class="recon-why">{{t.reconConsumeWhatFor}}</view>
+
+    <block wx:if="{{consume.ok}}">
+      <view class="cell">
+        <text class="lbl">{{t.reconConsumeTheoryLabel}}</text>
+        <text class="val">{{t.cur}}{{consume.theoryText}}</text>
+      </view>
+      <view class="cell">
+        <text class="lbl">{{t.reconConsumeActualLabel}}</text>
+        <text class="val">{{t.cur}}{{consume.actualText}}</text>
+      </view>
+      <view class="cell">
+        <text class="lbl">{{t.reconConsumeVarianceLabel}}</text>
+        <text class="val {{consume.over ? 'warn' : ''}}">{{t.cur}}{{consume.varianceText}}（{{consume.variancePctText}}）</text>
+      </view>
+      <!-- 倒推采购：第二个问法，和上面「差额」是同一个数（恒等式，见 utils/consumeDerive.js 文件头证明） -->
+      <view class="cell">
+        <text class="lbl">{{t.reconConsumeShouldPurchase}}</text>
+        <text class="val">{{t.cur}}{{consume.shouldPurchaseText}}</text>
+      </view>
+      <view class="cell">
+        <text class="lbl">{{t.reconConsumeActualPurchaseLabel}}</text>
+        <text class="val">{{t.cur}}{{consume.actualPurchaseText}}</text>
+      </view>
+      <view class="muted">{{t.reconConsumeCoverageNote}}</view>
+      <view class="muted">{{t.reconConsumeNoJudge}}</view>
+      <view class="warn" wx:if="{{consume.crossWarn}}">{{t.reconConsumeCrossWarn}}</view>
+    </block>
+
+    <block wx:else>
+      <view class="warn">{{consume.missText}}</view>
+      <!-- 🔴 只在「去别的页才能解决」时给直达按钮（免费层不给 —— 那是付费墙的事，不是数据问题） -->
+      <button class="recon-fix" wx:if="{{consume.missUrl}}" bindtap="goConsumeFix" data-url="{{consume.missUrl}}">{{t.reconConsumeGoFix}}</button>
+    </block>
+  </view>
 </view>
 <view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

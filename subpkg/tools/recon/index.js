@@ -7,6 +7,10 @@ const api = require('../../../utils/api.js');
 const ui = require('../../../utils/ui.js');
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 const { calcMenuMargin, calcActualDishMargin, reconcile, suppressKeyOf, fixTargetOf } = require('../../../utils/reconDerive.js');
+// 🔴 2026-11-24（李老师提需求）：耗用核查 —— 理论耗用 vs 实际耗用 → 偏差 + 倒推应有采购。
+//   与上面「率对率」是同一问题的两个视角（率 vs 金额），数据同源（getLedger + getDishReview），
+//   故并入本页成一个页面两段，不新建页面（见 review/PLAN_2026-11-24_采购合理性与食材跑冒滴漏_诊断方案.md）。
+const { consumeVariance, missingOf } = require('../../../utils/consumeDerive.js');
 
 Page({
   data: {
@@ -38,6 +42,19 @@ Page({
       reconAttr2: TERMS.card.reconAttr2,
       reconAttr3: TERMS.card.reconAttr3,
       reconAttr4: TERMS.card.reconAttr4,
+      // ===== 段二 · 耗用核查（2026-11-24 新增）=====
+      // ⚠️ wxml 用到的每个 t.<键> 都必须在此登记（漏登记 ⇒ 静默空白，本仓踩过的坑）
+      reconConsumeTitle: TERMS.card.reconConsumeTitle,
+      reconConsumeWhatFor: TERMS.card.reconConsumeWhatFor,
+      reconConsumeTheoryLabel: TERMS.card.reconConsumeTheoryLabel,
+      reconConsumeActualLabel: TERMS.card.reconConsumeActualLabel,
+      reconConsumeVarianceLabel: TERMS.card.reconConsumeVarianceLabel,
+      reconConsumeShouldPurchase: TERMS.card.reconConsumeShouldPurchase,
+      reconConsumeActualPurchaseLabel: TERMS.card.reconConsumeActualPurchaseLabel,
+      reconConsumeCoverageNote: TERMS.card.reconConsumeCoverageNote,
+      reconConsumeNoJudge: TERMS.card.reconConsumeNoJudge,
+      reconConsumeCrossWarn: TERMS.card.reconConsumeCrossWarn,
+      reconConsumeGoFix: TERMS.card.reconConsumeGoFix,
       cur: '¥',
       loading: TERMS.ui.loading,
       save: TERMS.buttons.save,
@@ -101,6 +118,14 @@ Page({
     wx.navigateTo({ url: url });
   },
 
+  // 🔴 2026-11-24：段二「算不了」时的直达入口（与 goFix 同构，读 consume.missUrl）
+  goConsumeFix(e) {
+    const url = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.url)
+      || (this.data.consume && this.data.consume.missUrl);
+    if (!url) return;
+    wx.navigateTo({ url: url });
+  },
+
   async calc(month, savedCount) {
     try {
       // 🔴 R729：第三个数据源 = 免费档 getDishReview 的聚合标量（result.js:730 同款既有用法）。
@@ -137,6 +162,40 @@ Page({
       }
       // 🔴 R723：去哪儿补数只在单源 reconDerive.fixTargetOf 里判，页面不写 reason 字面量
       const fix = fixTargetOf(rec, actual.reason);
+
+      // ===== 段二 · 耗用核查（2026-11-24）=====
+      // 🔴 数据同源、口径独立：理论耗用来自 getDishReview.totals.costFen（只含已建卡菜），
+      //   实际耗用由 consumeDerive 按库存三栏自己倒轧（并与引擎 real_consume_fen 交叉印证）。
+      //   ⚠️ 与段一的「实际毛利率」不是同一个算法（段一用引擎 material_cost_fen，段二用三栏直算），
+      //     两者可能因入库时点差异而不同 —— 这是**如实反映**，不是矛盾，页面上都摆出来。
+      const cv = consumeVariance({ ledger: ledger, review: reviewRes });
+      let consume;
+      if (cv.ok) {
+        consume = {
+          ok: true,
+          theoryText: api.fenToYuan(cv.theoreticalFen, 2),
+          actualText: api.fenToYuan(cv.actualFen, 2),
+          varianceText: api.fenToYuan(cv.varianceFen, 2),
+          // 正数=比应有多花，负数=比应有少用；给符号让老板一眼看方向
+          variancePctText: (cv.variancePct > 0 ? '+' : '') + cv.variancePct.toFixed(1) + '%',
+          over: cv.varianceFen > 0,
+          shouldPurchaseText: api.fenToYuan(cv.shouldPurchaseFen, 2),
+          actualPurchaseText: api.fenToYuan(cv.actualPurchaseFen, 2),
+          coveragePct: Math.round(cv.qtyCoverage * 100),
+          // 三栏直算 与 引擎倒轧 不一致 ⇒ 提示"数据可能被改动过"，但不改数
+          crossWarn: cv.crossCheckOk === false,
+        };
+      } else {
+        // 🔴 算不了必须说清缺什么、去哪儿补（文案键走单源 missingOf，页面不写 reason 字面量）
+        const miss = missingOf(cv.reason);
+        consume = {
+          ok: false,
+          missText: TERMS.card[miss.labelKey] || '',
+          missUrl: miss.url,
+          coveragePct: (cv.qtyCoverage != null) ? Math.round(cv.qtyCoverage * 100) : null,
+        };
+      }
+
       this.setData({
         result: {
           menuPct: menu.pct,
@@ -164,6 +223,7 @@ Page({
           diffPpText: rec.diffPp == null ? '—' : (rec.diffPp.toFixed(2) + ' pp'),
           diffFenText: rec.diffFen == null ? '—' : api.fenToYuan(rec.diffFen, 2),
         },
+        consume,
       });
     } catch (e) { api.toastError(e); }
   },

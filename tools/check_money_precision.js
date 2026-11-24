@@ -338,6 +338,18 @@ const REGISTRY = {
     'PAREN|) * 100|#2': ['money', '打包费合计（元）归一到 2 位小数'],
     'PAREN|) * 100|#3': ['ratio', 'R302 外卖到手账：到手率 = 到手额 ÷ 外卖营收 → 百分数（**不是**元→分换算）'],
   },
+  // 2026-11-24（R752）：耗用核查。四处**全是「比值 → 百分数」**，不是元→分：
+  //   本模块金额一律「分」进出（theoreticalFen / actualFen / varianceFen），
+  //   全程没有元→分或分→元的乘法换算，所以不可能是 money 类。
+  //   ⚠️ 逐条登记而非合并，防以后有人往这里塞金额换算（同 promoImpact 的理由）。
+  'utils/consumeDerive.js': {
+    'IDENT|n * 100|#1': ['ratio', 'round2() 通用舍入：小数 → 2 位小数（先 ×100 取整再 ÷100），与金额换算无关'],
+    'PAREN|) * 100|#1': ['ratio', '耗用偏差率 = (实际 − 理论) ÷ 理论 → 百分数，仅展示方向/幅度'],
+  },
+  'subpkg/tools/recon/index.js': {
+    'IDENT|cv.qtyCoverage * 100|#1': ['ratio', '销量覆盖率（0~1 比率）→ 百分数供页面展示「覆盖约 N%」'],
+    'IDENT|cv.qtyCoverage * 100|#2': ['ratio', '同上，算不了分支里回显覆盖率（两分支各一处）'],
+  },
 };
 
 const KINDS = ['money', 'ratio', 'scaled_int', 'token'];

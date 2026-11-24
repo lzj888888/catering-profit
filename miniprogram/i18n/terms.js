@@ -2536,6 +2536,27 @@ const TERMS = {
     reconAttr2: '② 卡内价 ≠ 原料现价（部分卡用了旧价）',
     reconAttr3: '③ 出品超耗 / 损耗 / 报废 / 赠送',
     reconAttr4: '④ 口径差异（外卖到手 vs 总额法）',
+    // ===== 段二 · 耗用核查（2026-11-24 新增；与「率对率对账」同页两段 = 同一问题的率视角 vs 金额视角）=====
+    //   🔴 文案纪律：不出现「付费/订阅/会员费」（改用「开通」，见 TERMS.forbidden）；
+    //     不给绝对阈值评价（业态差异大，凭空给「超过 5% 就是浪费」属假精确）。
+    //   ⚠️ 键名用 reconConsume* 而非 consume*：TERMS.calcMethod 里已有 consumeTitle/consumeDirect 一组
+    //     （「原料用掉多少」的口径选择），同名跨组虽不报错，但排查时极易张冠李戴。
+    reconConsumeTitle: '耗用核查',
+    reconConsumeWhatFor: '账上实际用掉的料钱，和按你卖的菜应该用掉的钱，差多少。倒过来看就是「采购该采多少」。',
+    reconConsumeTheoryLabel: '按销量应运用',
+    reconConsumeActualLabel: '账上实际用掉',
+    reconConsumeVarianceLabel: '差额',
+    reconConsumeShouldPurchase: '倒推应有采购',
+    reconConsumeActualPurchaseLabel: '实际采购',
+    reconConsumeCoverageNote: '只统计了已建成本卡的菜；覆盖不到六成时会提示先补卡，不硬给数。',
+    reconConsumeNoJudge: '第一次只记录差额、不评价好坏；从第二个月起可以跟自己的历史比。',
+    reconConsumeCrossWarn: '库存三栏算出的实际耗用，和系统记录的对不上，本月账可能被改过，建议核对。',
+    reconConsumeGoFix: '去处理',
+    reconConsumeNeedSales: '本月还没导入销量。先导入销量，才知道按菜单该用掉多少料。',
+    reconConsumeNeedInventory: '本月库存三栏还没填全。先填期初、采购、期末，才能倒轧实际用掉多少。',
+    reconConsumeNeedUpgrade: '开通后可查看耗用核查。',
+    reconConsumeNeedCoverage: '已建立成本卡的菜覆盖销量不足六成，样本不可比。先把常卖的菜建成成本卡。',
+    reconConsumeNeedTheory: '成本卡里的成本还是 0。先补上原料用量和单价。',
     // ===== M3.33（批次 G） 单品毛利复盘（导入销量 → 排行榜）=====
     //   【事后复盘】口径文案（v1.2 §M3.35 原文），落 card 命名空间、不新建顶层命名空间。
     reviewTitle: '菜品赚多赚少排行榜',
