@@ -35,9 +35,18 @@ const num0 = (v) => {
 };
 
 // 销量覆盖率下限：低于此值理论耗用样本不可比，抑制。
-// 🔴 与 reconDerive 的 [0.6, 1] 同源思路，但上限不设 1：
-//   销量覆盖率天然 ≤ 1（matchedQty ≤ totalQty），不会出现卡数口径那种「卡比菜多」的情形。
-const MIN_QTY_COVERAGE = 0.6;
+//
+// 🔴🔴 2026-11-24 实测从 0.6 提到 0.9（这是本模块最贵的一条修正，必须留证）：
+//   原设 0.6（沿用 reconDerive 的卡数口径），但在「菜品多、销量悬殊」的真实餐厅下会**凭空造偏差**：
+//   实测 100 道菜长尾分布、账上实际耗用正好等于全量理论耗用（即真实偏差 = 0）时：
+//     覆盖率 71% ⇒ 显示偏差 +93.7%    覆盖率 78% ⇒ +57.0%    覆盖率 85% ⇒ +31.4%
+//     覆盖率 94% ⇒ +11.7%             覆盖率 96% ⇒ +7.6%     覆盖率 100% ⇒ 0.0%
+//   根因：理论耗用只含**已建卡**的菜（分母小），实际耗用是**全量**（分子大）⇒ 偏差恒虚高。
+//   危害：老板看到「多花 93.7%」会去追责厨师/换供应商 —— **拿错数冤枉人比不给数恶劣得多**。
+//   ⇒ 提到 0.9：未修正时误差约 15~20%，叠加下面的「按覆盖率外推」后约 8%，可接受；
+//     0.6 时即便外推仍差 37.8%（外推假设「未建卡菜成本结构与已建卡相近」，长尾下不成立）。
+//   ⚠️ 上界不设 1：销量覆盖率天然 ≤ 1（matchedQty ≤ totalQty），不会出现卡数口径那种「卡比菜多」。
+const MIN_QTY_COVERAGE = 0.9;
 
 const REASONS = {
   NO_SALES: 'no_sales',             // 本月没导入销量 / 销量为 0 ⇒ 理论耗用无从谈起
@@ -124,7 +133,15 @@ function consumeVariance(input) {
   }
 
   // ---------- 5) 计算 ----------
-  const theoreticalFen = Math.round(num0(rawCost));
+  const theoryMatchedFen = Math.round(num0(rawCost));   // 只含**已建卡**的菜（实算，无假设）
+  // 🔴 按覆盖率外推全量理论耗用：未建卡的菜按「与已建卡同比例成本」估。
+  //   为什么必须外推：不比的话分子（全量实际）配小分母（只含建卡的理论）⇒ 偏差恒虚高，
+  //   实测 94% 覆盖率下真实无偏差也会显示 +11.7%（详见 MIN_QTY_COVERAGE 处留证）。
+  //   为什么外推也不完美：它假设「未建卡菜的成本结构与已建卡相近」，长尾菜偏高/偏低时不成立
+  //   ⇒ 所以 0.9 下界 + 页面标注 `extrapolated` 双保险，绝不把估算当实算展示。
+  const theoreticalFen = Math.round(theoryMatchedFen / qc.coverage);
+  const extrapolated = qc.coverage < 1;
+
   // 实际耗用：本模块自己倒轧一遍，并与引擎出参交叉印证（不一致说明数据被改过或口径漂了）
   const actualFen = Math.round(openingFen + purchaseFen - closingFen);
   const engineActualFen = (ledger.result && ledger.result.real_consume_fen != null)
@@ -133,13 +150,14 @@ function consumeVariance(input) {
   //   引擎值与它不符只做提示字段返回，由页面决定是否提示「数据可能被改动」。
   const crossCheckOk = (engineActualFen == null) ? null : (engineActualFen === actualFen);
 
-  if (!(theoreticalFen > 0)) {
+  if (!(theoryMatchedFen > 0)) {
     // 理论耗用为 0 时偏差率无意义（除零）；仍返回两个金额让页面能说「理论上该用 0」
     return {
       ok: false,
       reason: REASONS.ZERO_THEORY,
       actualFen,
       theoreticalFen,
+      theoryMatchedFen,
       qtyCoverage: qc.coverage,
     };
   }
@@ -158,6 +176,10 @@ function consumeVariance(input) {
     actualFen,
     varianceFen,
     variancePct,
+    // 🔴 理论耗用的两个口径必须都给：实算（只含已建卡）与外推（全量估算）。
+    //   页面在 extrapolated=true 时必须标明「含未建卡菜按比例估算」，不许把估算当实算展示。
+    theoryMatchedFen,
+    extrapolated,
     // 倒推采购（第二个问法，同一个答案）
     shouldPurchaseFen,
     actualPurchaseFen: Math.round(purchaseFen),

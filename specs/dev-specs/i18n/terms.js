@@ -2548,15 +2548,16 @@ const TERMS = {
     reconConsumeVarianceLabel: '差额',
     reconConsumeShouldPurchase: '倒推应有采购',
     reconConsumeActualPurchaseLabel: '实际采购',
-    reconConsumeCoverageNote: '只统计了已建成本卡的菜；覆盖不到六成时会提示先补卡，不硬给数。',
+    reconConsumeCoverageNote: '只统计了已建成本卡的菜；覆盖不到九成时会提示先补卡，不硬给数。',
     reconConsumeNoJudge: '第一次只记录差额、不评价好坏；从第二个月起可以跟自己的历史比。',
     reconConsumeCrossWarn: '库存三栏算出的实际耗用，和系统记录的对不上，本月账可能被改过，建议核对。',
     reconConsumeGoFix: '去处理',
     reconConsumeNeedSales: '本月还没导入销量。先导入销量，才知道按菜单该用掉多少料。',
     reconConsumeNeedInventory: '本月库存三栏还没填全。先填期初、采购、期末，才能倒轧实际用掉多少。',
     reconConsumeNeedUpgrade: '开通后可查看耗用核查。',
-    reconConsumeNeedCoverage: '已建立成本卡的菜覆盖销量不足六成，样本不可比。先把常卖的菜建成成本卡。',
+    reconConsumeNeedCoverage: '已建成本卡的菜覆盖销量不足九成，算出来的差额会虚高。先把常卖的菜建成成本卡。',
     reconConsumeNeedTheory: '成本卡里的成本还是 0。先补上原料用量和单价。',
+    reconConsumeTheoryEst: '含未建卡菜按比例估算',
     // ===== M3.33（批次 G） 单品毛利复盘（导入销量 → 排行榜）=====
     //   【事后复盘】口径文案（v1.2 §M3.35 原文），落 card 命名空间、不新建顶层命名空间。
     reviewTitle: '菜品赚多赚少排行榜',

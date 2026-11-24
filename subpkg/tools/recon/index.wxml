@@ -89,6 +89,9 @@
         <text class="lbl">{{t.reconConsumeTheoryLabel}}</text>
         <text class="val">{{t.cur}}{{consume.theoryText}}</text>
       </view>
+      <!-- 🔴 覆盖率不满 100% 时理论耗用是**外推估算**（未建卡的菜按同比例成本估），
+           必须在数字正下方标明，否则老板会把估算当实算（实测 94% 覆盖下真实无偏差也显示 +11.7%）。 -->
+      <view class="muted" wx:if="{{consume.extrapolated}}">{{t.reconConsumeTheoryEst}} · 已覆盖 {{consume.coveragePct}}% 销量</view>
       <view class="cell">
         <text class="lbl">{{t.reconConsumeActualLabel}}</text>
         <text class="val">{{t.cur}}{{consume.actualText}}</text>

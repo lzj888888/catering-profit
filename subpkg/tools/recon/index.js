@@ -55,6 +55,7 @@ Page({
       reconConsumeNoJudge: TERMS.card.reconConsumeNoJudge,
       reconConsumeCrossWarn: TERMS.card.reconConsumeCrossWarn,
       reconConsumeGoFix: TERMS.card.reconConsumeGoFix,
+      reconConsumeTheoryEst: TERMS.card.reconConsumeTheoryEst,
       cur: '¥',
       loading: TERMS.ui.loading,
       save: TERMS.buttons.save,
@@ -182,6 +183,8 @@ Page({
           shouldPurchaseText: api.fenToYuan(cv.shouldPurchaseFen, 2),
           actualPurchaseText: api.fenToYuan(cv.actualPurchaseFen, 2),
           coveragePct: Math.round(cv.qtyCoverage * 100),
+          // 覆盖率不满 100% ⇒ 理论耗用是外推估算，页面须标明（见 wxml 理论行下方）
+          extrapolated: cv.extrapolated === true,
           // 三栏直算 与 引擎倒轧 不一致 ⇒ 提示"数据可能被改动过"，但不改数
           crossWarn: cv.crossCheckOk === false,
         };

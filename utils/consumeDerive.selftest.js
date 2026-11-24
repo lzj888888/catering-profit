@@ -115,17 +115,44 @@ const THEORY_FEN = 582000;   // 5820 元
 
 // ===== 6) 覆盖率闸门（含边界与反恒真）=====
 {
-  // 已建卡 430 份、未匹配 500 份 ⇒ 覆盖率 430/930 = 46.2% < 60% ⇒ 抑制
+  // 已建卡 430 份、未匹配 500 份 ⇒ 覆盖率 430/930 = 46.2% < 90% ⇒ 抑制
   const low = consumeVariance({ ledger: mkLedger(1200000, 2000000, 1500000), review: mkReview({ ranked: RANKED, unmatchedQty: 500 }) });
   check('覆盖率 46.2% ⇒ coverage_low', low.ok === false && low.reason === REASONS.COVERAGE_LOW, low.reason);
   check('coverage_low 时仍回报真实覆盖率供页面解释', low.qtyCoverage === 0.46, '=' + low.qtyCoverage);
 
-  // 恰好 60%：已建卡 600 份、未匹配 400 份 ⇒ 600/1000 = 0.6，必须**放行**（下界取 ≥，不是 >）
-  const SIX_HUNDRED = [{ dish_key: 'd9', qty: 600, totalCostFen: 600 * 1000 }];
-  const edge = consumeVariance({ ledger: mkLedger(1200000, 2000000, 1500000), review: mkReview({ ranked: SIX_HUNDRED, unmatchedQty: 400 }) });
-  check('覆盖率恰好 60% ⇒ 放行（下界是 ≥ 不是 >）', edge.ok === true, edge.reason || 'ok');
-  check('覆盖率恰好 60% 时 qtyCoverage = 0.6', edge.qtyCoverage === 0.6, '=' + edge.qtyCoverage);
-  check('MIN_QTY_COVERAGE 常量与判据同源', MIN_QTY_COVERAGE === 0.6);
+  // 🔴 反恒真（本轮最贵的修正）：覆盖率 71% 但「真实偏差 = 0」的样本必须被拦住，
+  //   而不是显示一个虚高的偏差。实测未拦住时 71% 覆盖率会显示 +93.7% ⇒ 老板会去冤枉厨师。
+  //   构造：已建卡 710 份成本 7100 元；总销量 1000 份；账上实际耗用正好 = 7100/0.71 = 10000 元（真实偏差 0）
+  const PART = [{ dish_key: 'd1', qty: 710, totalCostFen: 710000  /* 7100 元 */ }];
+  const part = consumeVariance({
+    ledger: mkLedger(0, 1000000, 0),   // 实际耗用 = 10000 元 = 理论外推值 ⇒ 真实偏差 0
+    review: mkReview({ ranked: PART, unmatchedQty: 290 }),
+  });
+  check('反恒真：覆盖率 71% + 真实偏差 0 ⇒ 必须拦住（不能显示虚高偏差）',
+    part.ok === false && part.reason === REASONS.COVERAGE_LOW, part.ok ? ('给出了偏差 ' + part.variancePct + '%') : part.reason);
+
+  // 恰好 90%：已建卡 900 份、未匹配 100 份 ⇒ 0.9，必须**放行**（下界取 ≥，不是 >）
+  const NINE_HUNDRED = [{ dish_key: 'd9', qty: 900, totalCostFen: 900 * 1000 }];
+  const edge = consumeVariance({ ledger: mkLedger(1200000, 2000000, 1500000), review: mkReview({ ranked: NINE_HUNDRED, unmatchedQty: 100 }) });
+  check('覆盖率恰好 90% ⇒ 放行（下界是 ≥ 不是 >）', edge.ok === true, edge.reason || 'ok');
+  check('覆盖率恰好 90% 时 qtyCoverage = 0.9', edge.qtyCoverage === 0.9, '=' + edge.qtyCoverage);
+  check('MIN_QTY_COVERAGE 常量与判据同源（0.9，实测从 0.6 上调）', MIN_QTY_COVERAGE === 0.9);
+}
+
+// ===== 6b) 按覆盖率外推：理论耗用必须放大到全量，且标明是估算 =====
+{
+  // 覆盖率 90%：实算 9000 元 ⇒ 外推全量 = 9000/0.9 = 10000 元
+  const NINE_HUNDRED = [{ dish_key: 'd9', qty: 900, totalCostFen: 900000  /* 9000 元 */ }];
+  const r = consumeVariance({ ledger: mkLedger(0, 1000000, 0), review: mkReview({ ranked: NINE_HUNDRED, unmatchedQty: 100 }) });
+  check('外推：实算 9000 元 / 覆盖 90% ⇒ 理论耗用 10000 元', r.ok === true && r.theoreticalFen === 1000000, '=' + r.theoreticalFen);
+  check('外推：theoryMatchedFen 保留实算值 9000 元（不被外推污染）', r.theoryMatchedFen === 900000, '=' + r.theoryMatchedFen);
+  check('外推：extrapolated=true（页面须标明"含未建卡按比例估算"）', r.extrapolated === true);
+  check('外推：真实偏差 0 时外推后偏差率应 ≈ 0', Math.abs(r.variancePct) < 0.01, '=' + r.variancePct);
+
+  // 全覆盖时不得外推（extrapolated=false），且两个口径相等 —— 反恒真：防"永远打估算标"
+  const full = consumeVariance({ ledger: mkLedger(1200000, 2000000, 1500000), review: mkReview({ ranked: RANKED }) });
+  check('全覆盖 ⇒ extrapolated=false（不滥用"估算"标注）', full.extrapolated === false);
+  check('全覆盖 ⇒ theoreticalFen === theoryMatchedFen', full.theoreticalFen === full.theoryMatchedFen);
 }
 
 // ===== 7) 理论耗用为 0 ⇒ zero_theory（不许除零）=====
@@ -187,9 +214,10 @@ const THEORY_FEN = 582000;   // 5820 元
     'reconConsumeTitle', 'reconConsumeWhatFor', 'reconConsumeTheoryLabel', 'reconConsumeActualLabel',
     'reconConsumeVarianceLabel', 'reconConsumeShouldPurchase', 'reconConsumeActualPurchaseLabel',
     'reconConsumeCoverageNote', 'reconConsumeNoJudge', 'reconConsumeCrossWarn', 'reconConsumeGoFix',
+    'reconConsumeTheoryEst',
   ];
   const missPage = pageKeys.filter((k) => typeof TERMS.card[k] !== 'string' || !TERMS.card[k]);
-  check('页面段二 11 个文案键全部存在', missPage.length === 0, missPage.join(',') || '全部命中');
+  check('页面段二 12 个文案键全部存在', missPage.length === 0, missPage.join(',') || '全部命中');
 
   // 反向：不得与 TERMS.calcMethod 的 consumeXxx 组撞名（跨组撞名不报错但极易张冠李戴）
   check('段二键名统一 reconConsume 前缀（不与 calcMethod.consumeXxx 混）',
