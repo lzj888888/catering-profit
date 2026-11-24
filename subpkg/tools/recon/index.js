@@ -148,8 +148,15 @@ Page({
     }
   },
 
+  /** 上一个月（months 是倒序列表 ⇒ curMonth 的下一项即上月）；找不到 ⇒ 空串 */
+  prevMonthOf(month) {
+    const ms = this.data.months || [];
+    const i = ms.indexOf(month);
+    return (i >= 0 && i + 1 < ms.length) ? ms[i + 1] : '';
+  },
+
   /**
-   * 读某月已存的「原料盘点」：{ [material_id]: {o, p, c} }（数量，按采购单位）。
+   * 读某月已存的「原料盘点」：{ [material_id]: {o, p, c, a} }（数量按采购单位，a=采购金额元）。
    * 与非线性耗用同机制：本地按店按月存，换设备会丢（第二期暂不迁云端）。
    */
   loadMatInv(month) {

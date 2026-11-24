@@ -137,7 +137,7 @@ const CASES = [
   { key: 'selftest_m3_takeaway', rel: 'tools/selftest_m3_takeaway.js' }, // 24 条（M3.17：T-a~T-h，含 H1 两口径勾稽）
   { key: 'selftest_m3_impact', rel: 'tools/selftest_m3_impact.js' }, // 17 条（M3.19：C-a/C-a2/C-b/dry-run）
   { key: 'selftest_m3_recon', rel: 'tools/selftest_m3_recon.js' }, // 46 条（M3.21 原 33 + R728 加权 9 + 覆盖率上界 4）
-  { key: 'check_recon_page_behavior', rel: 'tools/check_recon_page_behavior.js' }, // 14 条（对账页行为桩：S3 + A5 + B3 + C1 + F2 + 收尾1）
+  { key: 'check_recon_page_behavior', rel: 'tools/check_recon_page_behavior.js' }, // 25 条（对账页行为桩：S3 + A5 + B3 + C1 + F2 + 收尾1）
 
   { key: 'selftest_bill_parse', rel: 'tools/selftest_bill_parse.js' }, // 70 条（批次 F 15 + R245 P1 京东串味 5 + P2~P6 京东两形态/取数/日期 17 + 平台枚举三副本 2 + R250 平台自动判定逐候选行试签名 14 + R253 D 段多平台同时命中 17）
   { key: 'selftest_grade_gate', rel: 'tools/selftest_grade_gate.js' }, // 11 条（批次 F：甲级三门）
