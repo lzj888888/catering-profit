@@ -5,6 +5,8 @@
 // 🔴 覆盖率分母：用户在页面上填「本月在售菜品数」，存 shop_switch（m3_menu_dish_count）；未填 ⇒ coverage null ⇒ 抑制。
 const api = require('../../../utils/api.js');
 const ui = require('../../../utils/ui.js');
+// 🔴 2026-11-24：非销售耗用（员工餐/试吃/报损）按月存本地，必须按店隔离（与库存页草稿同机制）
+const ss = require('../../../utils/shopSwitcher.js');
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
 const { calcMenuMargin, calcActualDishMargin, reconcile, suppressKeyOf, fixTargetOf } = require('../../../utils/reconDerive.js');
 // 🔴 2026-11-24（李老师提需求）：耗用核查 —— 理论耗用 vs 实际耗用 → 偏差 + 倒推应有采购。
@@ -56,6 +58,11 @@ Page({
       reconConsumeCrossWarn: TERMS.card.reconConsumeCrossWarn,
       reconConsumeGoFix: TERMS.card.reconConsumeGoFix,
       reconConsumeTheoryEst: TERMS.card.reconConsumeTheoryEst,
+      reconConsumeNonsales: TERMS.card.reconConsumeNonsales,
+      reconConsumeNonsalesPh: TERMS.card.reconConsumeNonsalesPh,
+      reconConsumeNonsalesWhy: TERMS.card.reconConsumeNonsalesWhy,
+      reconConsumeReal: TERMS.card.reconConsumeReal,
+      reconConsumeRealNote: TERMS.card.reconConsumeRealNote,
       cur: '¥',
       loading: TERMS.ui.loading,
       save: TERMS.buttons.save,
@@ -65,6 +72,7 @@ Page({
     curMonth: '',
     includeCombo: false,
     menuDishCount: '',   // 输入框字符串值
+    nonsalesYuan: '',    // 员工餐/试吃/报损占用的食材金额（元，字符串）
     savedDishCount: null, // 库内存的（null = 未填）
     result: null,        // { menuPct, actualPct, diffPp, diffFen, suppressed, reason, income_fen }
     loading: true,
@@ -95,19 +103,39 @@ Page({
         menuDishCount: savedDishCount == null ? '' : String(savedDishCount),
         loading: false,
       });
-      this.calc(cur, savedDishCount);
+      // 读回本月已存的「非销售耗用」（按店按月隔离；换设备会丢，第二期迁进云函数时解决）
+      const nonsalesFen = this.loadNonsales(cur);
+      this.setData({ nonsalesYuan: nonsalesFen > 0 ? api.fenToYuan(nonsalesFen, 2) : '' });
+      this.calc(cur, savedDishCount, nonsalesFen);
     } catch (e) {
       this.setData({ loading: false });
       api.toastError(e);
     }
   },
 
+  /**
+   * 读某月已存的「非销售耗用」（分）；读不到 = 0。
+   * 🔴 按店按月隔离（ss.shopKey）。换设备/重装会丢，届时需重填 —— 第二期迁进云函数时解决。
+   */
+  loadNonsales(month) {
+    try {
+      const v = wx.getStorageSync(ss.shopKey('nonsales_' + month));
+      return (typeof v === 'number' && isFinite(v) && v >= 0) ? v : 0;
+    } catch (e) { return 0; }
+  },
+
   onMonthChange(e) {
     const i = Number(e.detail.value);
     const m = this.data.months[i];
     if (!m) return;
-    this.setData({ monthIndex: i, curMonth: m });
-    this.calc(m, this.data.savedDishCount);
+    // 🔴 必须同时把该月的非销售耗用读回来：否则输入框显示上月数、计算却用 0，两者打架
+    const fen = this.loadNonsales(m);
+    this.setData({
+      monthIndex: i,
+      curMonth: m,
+      nonsalesYuan: fen > 0 ? api.fenToYuan(fen, 2) : '',
+    });
+    this.calc(m, this.data.savedDishCount, fen);
   },
   onIncludeCombo(e) { this.setData({ includeCombo: e.detail.value }); this.calc(this.data.curMonth, this.data.savedDishCount); },
   onDishCount(e) { this.setData({ menuDishCount: e.detail.value }); },
@@ -127,7 +155,7 @@ Page({
     wx.navigateTo({ url: url });
   },
 
-  async calc(month, savedCount) {
+  async calc(month, savedCount, nonsalesFen) {
     try {
       // 🔴 R729：第三个数据源 = 免费档 getDishReview 的聚合标量（result.js:730 同款既有用法）。
       //   ui.monthRange 给闭区间，与云端 filterByRange 一致；异常时返回空对象 ⇒ 下面降级，
@@ -169,7 +197,7 @@ Page({
       //   实际耗用由 consumeDerive 按库存三栏自己倒轧（并与引擎 real_consume_fen 交叉印证）。
       //   ⚠️ 与段一的「实际毛利率」不是同一个算法（段一用引擎 material_cost_fen，段二用三栏直算），
       //     两者可能因入库时点差异而不同 —— 这是**如实反映**，不是矛盾，页面上都摆出来。
-      const cv = consumeVariance({ ledger: ledger, review: reviewRes });
+      const cv = consumeVariance({ ledger: ledger, review: reviewRes, nonsalesFen: nonsalesFen });
       let consume;
       if (cv.ok) {
         consume = {
@@ -183,6 +211,11 @@ Page({
           shouldPurchaseText: api.fenToYuan(cv.shouldPurchaseFen, 2),
           actualPurchaseText: api.fenToYuan(cv.actualPurchaseFen, 2),
           coveragePct: Math.round(cv.qtyCoverage * 100),
+          // 🔴 扣掉员工餐/试吃/报损后的「真正说不清的」——这才是老板该去查的数
+          nonsalesText: cv.nonsalesFen > 0 ? api.fenToYuan(cv.nonsalesFen, 2) : '',
+          realVarianceText: api.fenToYuan(cv.realVarianceFen, 2),
+          realVariancePctText: (cv.realVariancePct > 0 ? '+' : '') + cv.realVariancePct.toFixed(1) + '%',
+          realOver: cv.realVarianceFen > 0,
           // 覆盖率不满 100% ⇒ 理论耗用是外推估算，页面须标明（见 wxml 理论行下方）
           extrapolated: cv.extrapolated === true,
           // 三栏直算 与 引擎倒轧 不一致 ⇒ 提示"数据可能被改动过"，但不改数
@@ -229,6 +262,30 @@ Page({
         consume,
       });
     } catch (e) { api.toastError(e); }
+  },
+
+  // 🔴 员工餐/试吃/报损：占用店里食材但**不产生销售**，不扣掉就会被当成差额，等于冤枉老板。
+  //   只算「用店里食材做的」；不含发给员工的现金餐补（在人工费用里）、不含请客招待。
+  onNonsales(e) {
+    const raw = e.detail.value;
+    this.setData({ nonsalesYuan: raw });
+    const fen = this.nonsalesFenOf(raw);
+    // 读不成数字 ⇒ 不写存储、不重算（避免把错数存下来，页面仍显示上一次的有效结果）
+    if (fen == null) return;
+    try { wx.setStorageSync(ss.shopKey('nonsales_' + this.data.curMonth), fen); } catch (err) { /* 存不下不影响本次计算 */ }
+    this.calc(this.data.curMonth, this.data.savedDishCount, fen);
+  },
+
+  /**
+   * 元字符串 → 分；空 = 0；读不成/负数 = null（调用方据此不落库、不重算）。
+   * 走 api.yuanToFen 而非自己 *100：金额换算必须单一入口（本仓金额精度守卫的要求）。
+   */
+  nonsalesFenOf(raw) {
+    const str = String(raw == null ? '' : raw).trim();
+    if (str === '') return 0;
+    const n = Number(str);
+    if (!isFinite(n) || n < 0) return null;
+    return api.yuanToFen(n);
   },
 
   async onSaveCount() {

@@ -32,6 +32,16 @@
     <switch checked="{{includeCombo}}" bindchange="onIncludeCombo" color="#1e3a5f" />
   </view>
 
+  <!-- ===== 员工餐 / 试吃 / 报损（2026-11-24）=====
+       🔴 为什么必须填：这些东西**耗了食材但没产生销售**，不扣掉就会被全部算进差额，
+         等于系统在告诉老板「你被偷了」——把正常经营损耗当舞弊（三司会诊的共识缺口）。
+       ⚠️ 口径：只算「用店里食材做的」；不含发给员工的现金餐补（那在人工费用里）、不含请客招待。 -->
+  <view class="field">
+    <text class="lbl">{{t.reconConsumeNonsales}}</text>
+    <input class="val-input" type="digit" value="{{nonsalesYuan}}" placeholder="{{t.reconConsumeNonsalesPh}}" bindinput="onNonsales" adjust-position="{{true}}" cursor-spacing="20" />
+  </view>
+  <view class="recon-why">{{t.reconConsumeNonsalesWhy}}</view>
+
   <!-- 结果区（抑制时只显示两个数 + 原因，不显示差值/金额/归因） -->
   <view class="card2" wx:if="{{result}}">
     <view class="cell">
@@ -100,6 +110,17 @@
         <text class="lbl">{{t.reconConsumeVarianceLabel}}</text>
         <text class="val {{consume.over ? 'warn' : ''}}">{{t.cur}}{{consume.varianceText}}（{{consume.variancePctText}}）</text>
       </view>
+      <!-- 🔴 扣掉员工餐/试吃/报损后的「真正说不清的」—— 这才是老板该去查的数。
+           不填上面那个数时它等于总差额，页面用 note 提示"可能偏大"。 -->
+      <view class="cell" wx:if="{{consume.nonsalesText}}">
+        <text class="lbl">{{t.reconConsumeNonsales}}</text>
+        <text class="val">−{{t.cur}}{{consume.nonsalesText}}</text>
+      </view>
+      <view class="cell">
+        <text class="lbl">{{t.reconConsumeReal}}</text>
+        <text class="val {{consume.realOver ? 'warn' : ''}}">{{t.cur}}{{consume.realVarianceText}}（{{consume.realVariancePctText}}）</text>
+      </view>
+      <view class="muted">{{t.reconConsumeRealNote}}</view>
       <!-- 倒推采购：第二个问法，和上面「差额」是同一个数（恒等式，见 utils/consumeDerive.js 文件头证明） -->
       <view class="cell">
         <text class="lbl">{{t.reconConsumeShouldPurchase}}</text>

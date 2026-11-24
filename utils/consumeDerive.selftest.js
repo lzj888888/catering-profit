@@ -209,19 +209,79 @@ const THEORY_FEN = 582000;   // 5820 元
   }
   check('missingOf 的每个 labelKey 都在 TERMS.card 里真实存在', missing.length === 0, missing.join(',') || '全部命中');
 
-  // 反向：页面段二 wxml 用到的 11 个键也必须在场（漏一个就是一处静默空白）
+  // 反向：页面段二 wxml 用到的 17 个键也必须在场（漏一个就是一处静默空白）
   const pageKeys = [
     'reconConsumeTitle', 'reconConsumeWhatFor', 'reconConsumeTheoryLabel', 'reconConsumeActualLabel',
     'reconConsumeVarianceLabel', 'reconConsumeShouldPurchase', 'reconConsumeActualPurchaseLabel',
     'reconConsumeCoverageNote', 'reconConsumeNoJudge', 'reconConsumeCrossWarn', 'reconConsumeGoFix',
     'reconConsumeTheoryEst',
+    // 第一期（非销售耗用）五个
+    'reconConsumeNonsales', 'reconConsumeNonsalesPh', 'reconConsumeNonsalesWhy',
+    'reconConsumeReal', 'reconConsumeRealNote',
   ];
   const missPage = pageKeys.filter((k) => typeof TERMS.card[k] !== 'string' || !TERMS.card[k]);
-  check('页面段二 12 个文案键全部存在', missPage.length === 0, missPage.join(',') || '全部命中');
+  check('页面段二 17 个文案键全部存在', missPage.length === 0, missPage.join(',') || '全部命中');
 
   // 反向：不得与 TERMS.calcMethod 的 consumeXxx 组撞名（跨组撞名不报错但极易张冠李戴）
   check('段二键名统一 reconConsume 前缀（不与 calcMethod.consumeXxx 混）',
     pageKeys.every((k) => k.indexOf('reconConsume') === 0));
+}
+
+// ===== 9b) 🔴 扣除非销售耗用（员工餐/试吃/报损）—— 三司会诊的最高优先级缺口 =====
+//   不扣 = 把正常经营损耗算成"差额"，等于系统在说老板被偷了。
+{
+  const base = { ledger: mkLedger(1200000, 2000000, 1500000), review: mkReview({ ranked: RANKED }) };
+  // 基线：不填非销售耗用 ⇒ 与老行为完全一致（向后兼容，防改动破坏既有页面）
+  const r0 = consumeVariance(base);
+  check('非销售耗用缺省 ⇒ realVarianceFen ≡ varianceFen（向后兼容）',
+    r0.nonsalesFen === 0 && r0.realVarianceFen === r0.varianceFen, '=' + r0.realVarianceFen);
+  check('非销售耗用缺省 ⇒ realVariancePct ≡ variancePct', r0.realVariancePct === r0.variancePct);
+
+  // 报 800 元员工餐/试吃/报损 ⇒ 真正说不清的 = 11180 − 800 = 10380 元
+  const r1 = consumeVariance(Object.assign({}, base, { nonsalesFen: 80000 }));
+  check('扣 800 元 ⇒ 说不清的 = 10380 元', r1.realVarianceFen === 1038000, '=' + r1.realVarianceFen);
+  check('扣 800 元 ⇒ 原差额 varianceFen 不被篡改（两个数都要显示给老板）', r1.varianceFen === 1118000, '=' + r1.varianceFen);
+  check('扣 800 元 ⇒ 比率同步下降', r1.realVariancePct < r1.variancePct, r1.realVariancePct + '% < ' + r1.variancePct + '%');
+
+  // 🔴 反恒真：非销售耗用报得比差额还大 ⇒ 必须如实出负数（"比标准还省"），不许强行归零
+  const r2 = consumeVariance(Object.assign({}, base, { nonsalesFen: 2000000 }));
+  check('非销售 > 差额 ⇒ 如实出负数，不归零',
+    r2.realVarianceFen === -882000 && r2.realVariancePct < 0, '=' + r2.realVarianceFen);
+
+  // 非法入参（负数）⇒ 按 0 处理，不把"少报"变成"多扣"
+  const r3 = consumeVariance(Object.assign({}, base, { nonsalesFen: -500 }));
+  check('非销售耗用为负 ⇒ 归零（不反向放大差额）', r3.nonsalesFen === 0 && r3.realVarianceFen === 1118000);
+
+  // 非数字/NaN ⇒ 按 0，不产生 NaN 传染到页面
+  const r4 = consumeVariance(Object.assign({}, base, { nonsalesFen: 'abc' }));
+  check('非销售耗用非数字 ⇒ 按 0（不产生 NaN）', r4.nonsalesFen === 0 && Number.isFinite(r4.realVarianceFen));
+}
+
+// ===== 13) 🔴 页面接线断言（纯函数测不到的那类 bug，用源码级断言钉住）=====
+//   背景：本轮实际写出来的 bug —— 切月份时只调了 calc() 没重读该月的非销售耗用，
+//   结果输入框显示上月数、计算却用 0，两个数打架。纯函数 selftest 抓不到这类问题。
+{
+  const fs = require('fs');
+  const path = require('path');
+  const reconJs = fs.readFileSync(path.join(__dirname, '..', 'subpkg/tools/recon/index.js'), 'utf8');
+  const reconWxml = fs.readFileSync(path.join(__dirname, '..', 'subpkg/tools/recon/index.wxml'), 'utf8');
+
+  const mMonth = /onMonthChange\(e\)\s*\{[\s\S]{0,600}?\n  \}/.exec(reconJs);
+  check('接线：切换月份时重读该月非销售耗用（防"显示上月数/计算用0"）',
+    !!mMonth && /loadNonsales\(/.test(mMonth[0]), mMonth ? '已含' : '未找到 onMonthChange');
+
+  check('接线：计算时把 nonsalesFen 传给 consumeVariance',
+    /consumeVariance\(\{[^}]*nonsalesFen/.test(reconJs));
+
+  check('接线：输入框绑定 onNonsales 且该 handler 存在',
+    /bindinput="onNonsales"/.test(reconWxml) && /onNonsales\(e\)\s*\{/.test(reconJs));
+
+  check('接线：非销售耗用按店按月隔离（走 ss.shopKey，不是裸 key）',
+    /loadNonsales\(month\)[\s\S]{0,300}ss\.shopKey\('nonsales_'/.test(reconJs));
+
+  // 反恒真：把上面任一条改成"裸存"或"不传参"，对应断言必须变红（此处直接验判据本身可失效）
+  check('反恒真：「不传 nonsalesFen」的写法必须被判红',
+    !/consumeVariance\(\{\s*ledger:\s*ledger\s*\}\)/.test(reconJs));
 }
 
 console.log('\n==== 耗用核查核心自测：' + pass + ' 通过 / ' + failN + ' 失败 ====');

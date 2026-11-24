@@ -81,6 +81,13 @@ function qtyCoverageOf(review) {
  * @param {object} input.ledger        getLedger 出参
  * @param {object} input.review        getDishReview 出参（可为 null / {} ⇒ 按"没销量"处理）
  * @param {boolean} [input.inventorySwitchOn] 库存开关（缺省读 ledger.switches.inventorySwitchOn）
+ * @param {number} [input.nonsalesFen] 非销售耗用（分）—— 员工餐/试吃/报损**占用店里食材**的金额。
+ *   🔴 口径（必须与页面文案一致，否则又变成"把正常损耗当舞弊"）：
+ *     只算「用店里食材做的」，**不含**发给员工的现金餐补（那在人工费用里）、
+ *     不含请客招待（那是招待费）、不含外部买的盒饭。
+ *     为什么单独输入而不是从支出「员工餐」科目取：支出记的是**费用**（可能是现金），
+ *     本处要的是**被吃掉的食材成本**，两者口径不同，挪用会重复或错位。
+ *   ⚠️ 老板估小了"说不清的"就变大、估大了就变小 —— 页面必须提示这是估算项。
  * @returns {object} ok=true 时给全套数；ok=false 时给 reason（页面据此显示「算不了 + 缺什么」）
  */
 function consumeVariance(input) {
@@ -168,6 +175,16 @@ function consumeVariance(input) {
   const varianceFen = actualFen - theoreticalFen;      // 正数 = 比应有多花了
   const variancePct = round2((varianceFen / theoreticalFen) * 100);
 
+  // ---------- 6) 扣除非销售耗用 —— 三司会诊的最高优先级缺口 ----------
+  // 🔴 为什么必须扣：员工餐/试吃/报废一定存在，它们**耗了食材但没产生销售**，
+  //   不扣就会被全部算进"差额"，等于系统在告诉老板「你被偷了」——把正常经营损耗当舞弊。
+  //   ⚠️ 扣完之后仍叫「真正说不清的」，**不叫"浪费"**：会诊共识是产品只提示异常、不做定性。
+  //   ⚠️ 允许扣成负数：若老板报的非销售耗用比总差额还大，说明差额本身可能是"省了"，
+  //     此时输出负值（比标准还省），这是如实反映，不强行归零。
+  const nonsalesFen = Math.max(0, Math.round(num0(p.nonsalesFen)));
+  const realVarianceFen = varianceFen - nonsalesFen;
+  const realVariancePct = round2((realVarianceFen / theoreticalFen) * 100);
+
   // 倒推应有采购（与方差同源，见文件头恒等式证明）
   const shouldPurchaseFen = Math.round(theoreticalFen + closingFen - openingFen);
   const purchaseVarianceFen = purchaseFen - shouldPurchaseFen;   // 恒等于 varianceFen
@@ -179,6 +196,10 @@ function consumeVariance(input) {
     actualFen,
     varianceFen,
     variancePct,
+    // 🔴 扣掉非销售耗用之后「真正说不清的」——这才是老板该去查的数
+    nonsalesFen,
+    realVarianceFen,
+    realVariancePct,
     // 🔴 理论耗用的两个口径必须都给：实算（只含已建卡）与外推（全量估算）。
     //   页面在 extrapolated=true 时必须标明「含未建卡菜按比例估算」，不许把估算当实算展示。
     theoryMatchedFen,

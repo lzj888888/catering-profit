@@ -147,6 +147,12 @@ const CLASSES = {
   //   种子: A 店「生成矩阵」写的房租/装修/加盟/面积/工资，B 店进矩阵页会被静默沿用；
   //   草稿: 全局一格 ⇒ A 店草稿被 B 店保存覆盖丢失。
   SHOP_KEY_SANDBOX: ['matrixSeed.seedKey()', 'ss.shopKey(SANDBOX_DRAFT_KEY)'],
+  // 🔴 2026-11-24：对账页「非销售耗用」（员工餐/试吃/报损，按月存）。已走单源 shopKey 按店隔离
+  //   ⇒ 归 SHOP_KEY 而不是 GLOBAL_DEFECT。两处读/写都登记（loadNonsales 读、onNonsales 写）。
+  //   ⚠️ 为什么不并进 shop_monthly_account：那是云函数写入路径，改它要部署；
+  //     上线前选"零云函数改动"，代价是换设备会丢（页面已提示重填），第二期再迁。
+  SHOP_KEY_CONSUME: ['ss.shopKey(\'nonsales_\' + month)',
+    'ss.shopKey(\'nonsales_\' + this.data.curMonth)'],
   // R723：会话级导出清单（注销时按它删文件）；不是店铺业务数据，故不按 shop 拼。
   SESSION_SCOPE: ['EXPORTED_FILES_KEY'],
   CLEAR: [''],                                                   // clearStorageSync()

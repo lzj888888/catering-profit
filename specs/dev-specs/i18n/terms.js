@@ -2558,6 +2558,14 @@ const TERMS = {
     reconConsumeNeedCoverage: '已建成本卡的菜覆盖销量不足九成，算出来的差额会虚高。先把常卖的菜建成成本卡。',
     reconConsumeNeedTheory: '成本卡里的成本还是 0。先补上原料用量和单价。',
     reconConsumeTheoryEst: '含未建卡菜按比例估算',
+    // 🔴 2026-11-24 第一期：把「差额」拆干净 —— 员工餐/试吃/报损耗了食材但不产生销售，
+    //   不扣掉就会被全算进差额，等于说老板被偷了（三司会诊共识缺口）。
+    //   口径必须写死：只算用店里食材做的，不含现金餐补、不含请客招待。
+    reconConsumeNonsales: '员工餐/试吃/报损',
+    reconConsumeNonsalesPh: '占用的食材金额（元）',
+    reconConsumeNonsalesWhy: '只算用店里食材做的：员工餐、试菜、报废。不算发给员工的现金餐补、请客招待。',
+    reconConsumeReal: '真正说不清的',
+    reconConsumeRealNote: '已扣掉上面填的损耗。这个数才是建议去核对的；没填损耗时它会偏大。',
     // ===== M3.33（批次 G） 单品毛利复盘（导入销量 → 排行榜）=====
     //   【事后复盘】口径文案（v1.2 §M3.35 原文），落 card 命名空间、不新建顶层命名空间。
     reviewTitle: '菜品赚多赚少排行榜',

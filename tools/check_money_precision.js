@@ -345,6 +345,7 @@ const REGISTRY = {
   'utils/consumeDerive.js': {
     'IDENT|n * 100|#1': ['ratio', 'round2() 通用舍入：小数 → 2 位小数（先 ×100 取整再 ÷100），与金额换算无关'],
     'PAREN|) * 100|#1': ['ratio', '耗用偏差率 = (实际 − 理论) ÷ 理论 → 百分数，仅展示方向/幅度'],
+    'PAREN|) * 100|#2': ['ratio', '扣除非销售耗用后的「说不清」偏差率 = (差额 − 非销售) ÷ 理论 → 百分数，仅展示'],
   },
   'subpkg/tools/recon/index.js': {
     'IDENT|cv.qtyCoverage * 100|#1': ['ratio', '销量覆盖率（0~1 比率）→ 百分数供页面展示「覆盖约 N%」'],
