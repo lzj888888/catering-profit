@@ -134,6 +134,42 @@ const MATERIALS = [
     noTheory.ok === false && noTheory.reason === 'no_theory' && noTheory.items.length === 1, noTheory.reason);
 }
 
+// ===== 5b) 🔴 G3（2026-11-25 M3 变动面审计）：理论量极小时差率必须抑制 =====
+//   实测过：理论 0.001 斤 / 实际 10 斤 ⇒ 差率 1000000%，页面上没法看。
+//   处理原则：**差量照给**（10 − 0.001 这个事实有意义），**差率不给**（分母太小比率无意义）。
+{
+  const tiny = materialUsage({
+    cards: [{ card_code: 'C', lines: [{ material_id: 'm', quantity: 0.5, line_type: 1 }] }],
+    dineIn: [{ card_code: 'C', qty: 1 }],
+    materials: [{ id: 'm', name: '微量料', purchase_unit: '斤', convert_factor: 1000, yield_rate: 50 }],
+    inventoryItems: [{ material_id: 'm', opening_qty: 0, purchase_qty: 10, closing_qty: 0 }],
+  });
+  const it = tiny.items && tiny.items[0];
+  check('G3 理论量 0.001 ⇒ pctSuppressed=true（不给差率）', !!it && it.pctSuppressed === true, it && String(it.theoryQty));
+  check('G3 差率置 null（不是 0，也不是 1000000%）', !!it && it.diffPct === null, it && 'diffPct=' + it.diffPct);
+  check('G3 差量照给（10 − 0.001 ≈ 10.00 这个事实有意义）', !!it && it.diffQty === 10, it && 'diffQty=' + it.diffQty);
+  check('G3 理论量仍如实返回（不因抑制差率就抹掉理论值）', !!it && it.theoryQty === 0.001, it && String(it.theoryQty));
+
+  // 边界：理论量**恰好** 0.01（= 5克 × 1份 ÷ 500换算 ÷ 100%出成率）⇒ 不该抑制（判据是 < 不是 <=）
+  const edge = materialUsage({
+    cards: [{ card_code: 'C', lines: [{ material_id: 'm', quantity: 5, line_type: 1 }] }],
+    dineIn: [{ card_code: 'C', qty: 1 }],
+    materials: [{ id: 'm', name: '边界料', purchase_unit: '斤', convert_factor: 500, yield_rate: 100 }],
+    inventoryItems: [{ material_id: 'm', opening_qty: 0, purchase_qty: 1, closing_qty: 0 }],
+  });
+  const e = edge.items && edge.items[0];
+  check('G3 边界：理论量恰好 0.01 ⇒ 不抑制（用 < 不用 <=）',
+    !!e && e.pctSuppressed === false && e.diffPct != null, e && ('theory=' + e.theoryQty + ' diffPct=' + e.diffPct));
+
+  // 反恒真：正常量级（牛肉 84.71 斤）绝不抑制
+  const normal = materialUsage({
+    cards: CARDS, dineIn: DINE_IN, materials: MATERIALS,
+    inventoryItems: [{ material_id: 'mat_beef', opening_qty: 10, purchase_qty: 70, closing_qty: 15 }],
+  });
+  const beefN = normal.items && normal.items.find((x) => x.material_id === 'mat_beef');
+  check('G3 反恒真：正常量级（84.71 斤）不抑制', !!beefN && beefN.pctSuppressed === false && beefN.diffPct != null);
+}
+
 // ===== 6) 没销量时理论量为 0 ⇒ 无理论值（不是"该用 0 斤"）=====
 {
   const r = materialUsage({

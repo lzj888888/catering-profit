@@ -36,6 +36,13 @@ const num0 = (v) => {
 };
 const round2 = (n) => Math.round(n * 100 + 1e-9) / 100;
 
+// 🔴 G3（2026-11-25 M3 变动面审计发现）：理论量极小时**差率会爆表**。
+//   实测：理论 0.001 斤 / 实际 10 斤 ⇒ 差率 1000000%，页面上没法看（数学上不算错，但不可读、会误导）。
+//   处理：**差量照给**（10 − 0.001 = 9.999 斤这个事实有意义），但**差率不给**（分母太小，比率无意义）。
+//   阈值取 0.01 个采购单位（斤/公斤）—— 约 5 克，正常原料不可能只该用这么点，
+//   一旦出现说明"成本卡用量填错了"或"这个原料只在一道很冷门的菜里用了一点点"。
+const MIN_THEORY_QTY_FOR_PCT = 0.01;
+
 /**
  * 把某原料在成本卡里的净料克数，汇总成「按采购单位的理论采购量」。
  * @param {Array} cards getCostCard.list（含 lines）
@@ -140,9 +147,11 @@ function materialUsage(input) {
 
     let diffQty = null;
     let diffPct = null;
+    // G3：理论量太小时只给差量、不给差率（见 MIN_THEORY_QTY_FOR_PCT 注释）
+    const pctSuppressed = hasTheory && th.theoryQty < MIN_THEORY_QTY_FOR_PCT;
     if (hasTheory) {
       diffQty = round2(actualQty - th.theoryQty);
-      diffPct = round2((diffQty / th.theoryQty) * 100);
+      diffPct = pctSuppressed ? null : round2((diffQty / th.theoryQty) * 100);
       comparableCount++;
     }
 
@@ -150,11 +159,14 @@ function materialUsage(input) {
       material_id: mid,
       name: String(mat.name || it.name || mid),
       unit: String(mat.purchase_unit || ''),
-      theoryQty: hasTheory ? round2(th.theoryQty) : null,
+      // ⚠️ 小值不能走 round2：round2(0.001)=0 ⇒ 页面会显示「该买 0.00 斤」，荒谬。
+      //   pctSuppressed 时保留原值，页面显示成「<0.01」。
+      theoryQty: hasTheory ? (pctSuppressed ? th.theoryQty : round2(th.theoryQty)) : null,
       actualQty: round2(actualQty),
       diffQty,
       diffPct,
       hasTheory,
+      pctSuppressed,
       yieldRate: th.yieldRate,
       convertFactor: th.convertFactor,
       netGram: round2(th.netGram),

@@ -69,6 +69,7 @@ Page({
       reconConsumeNonsalesWhy: TERMS.card.reconConsumeNonsalesWhy,
       reconConsumeReal: TERMS.card.reconConsumeReal,
       reconConsumeRealNote: TERMS.card.reconConsumeRealNote,
+      reconConsumeNonsalesTooBig: TERMS.card.reconConsumeNonsalesTooBig,
       // ===== 段三 · 分原料看（第二期）=====
       // ⚠️ wxml 用到的每个 t.<键> 都必须在此登记（漏登记 ⇒ 静默空白）
       reconMaterialTitle: TERMS.card.reconMaterialTitle,
@@ -81,6 +82,7 @@ Page({
       reconMaterialActual: TERMS.card.reconMaterialActual,
       reconMaterialDiff: TERMS.card.reconMaterialDiff,
       reconMaterialNote: TERMS.card.reconMaterialNote,
+      reconMaterialPctSuppressed: TERMS.card.reconMaterialPctSuppressed,
       // ===== 第三期 · 量价拆分 =====
       // ⚠️ wxml 用到的每个 t.<键> 都必须在此登记（漏登记 ⇒ 静默空白）
       reconPriceCur: TERMS.card.reconPriceCur,
@@ -261,12 +263,15 @@ Page({
         purVal: (v.p == null || v.p === '') ? '' : String(v.p),
         closeVal: (v.c == null || v.c === '') ? '' : String(v.c),
         amtVal: (v.a == null || v.a === '') ? '' : String(v.a),
-        theoryText: x.th.theoryQty.toFixed(2),
+        // G3 连带：理论量 < 0.01 时显示「<0.01」而不是「0.00」（0.00 会被读成根本不用买）
+        theoryText: (x.th.theoryQty >= 0.01) ? x.th.theoryQty.toFixed(2) : '<0.01',
         // 实际与差：填了才出；没填留空（wxml 用 wx:if 控制）
         actualText: filled ? it.actualQty.toFixed(2) : '',
         diffText: (filled && it.diffPct != null)
           ? ((it.diffPct > 0 ? '+' : '') + it.diffPct.toFixed(1) + '%') : '',
         diffOver: !!(filled && it.diffPct != null && it.diffPct > 0),
+        // G3（审计）：理论量太小 ⇒ 只给差量、不给差率，页面说明原因
+        pctSuppressed: !!(it && it.pctSuppressed),
         noTheory: !x.th.theoryQty,
         // 量价拆分展示（只给事实；有值才显示）
         hasPrice: !!(pv && pv.ok),
@@ -418,6 +423,8 @@ Page({
           realVarianceText: api.fenToYuan(cv.realVarianceFen, 2),
           realVariancePctText: (cv.realVariancePct > 0 ? '+' : '') + cv.realVariancePct.toFixed(1) + '%',
           realOver: cv.realVarianceFen > 0,
+          // G2（审计）：填的损耗超过实际用掉的料 ⇒ 页面提示核对，但不改数
+          nonsalesTooBig: cv.nonsalesTooBig === true,
           // 覆盖率不满 100% ⇒ 理论耗用是外推估算，页面须标明（见 wxml 理论行下方）
           extrapolated: cv.extrapolated === true,
           // 三栏直算 与 引擎倒轧 不一致 ⇒ 提示"数据可能被改动过"，但不改数

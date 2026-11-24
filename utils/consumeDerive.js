@@ -185,6 +185,13 @@ function consumeVariance(input) {
   const realVarianceFen = varianceFen - nonsalesFen;
   const realVariancePct = round2((realVarianceFen / theoreticalFen) * 100);
 
+  // 🔴 G2（2026-11-25 M3 变动面审计发现）：非销售耗用**没有上限校验**。
+  //   实测：实际耗用 9000 元时填 999999.99，页面显示「比标准省 99200%」——老板手滑多打个 0 就会这样。
+  //   处理原则：**不开除判据、不归零**（归零等于擅自改老板填的数），只加标记让页面提示核对。
+  //   为什么不 fail-closed：这一段的意义就是"把账算干净"，一旦因为一个输入越界就整段消失，
+  //   老板只会以为功能坏了，而他真正需要的是"你填的损耗比实际用掉的料还多，请核对"。
+  const nonsalesTooBig = nonsalesFen > actualFen;
+
   // 倒推应有采购（与方差同源，见文件头恒等式证明）
   const shouldPurchaseFen = Math.round(theoreticalFen + closingFen - openingFen);
   const purchaseVarianceFen = purchaseFen - shouldPurchaseFen;   // 恒等于 varianceFen
@@ -198,6 +205,7 @@ function consumeVariance(input) {
     variancePct,
     // 🔴 扣掉非销售耗用之后「真正说不清的」——这才是老板该去查的数
     nonsalesFen,
+    nonsalesTooBig,
     realVarianceFen,
     realVariancePct,
     // 🔴 理论耗用的两个口径必须都给：实算（只含已建卡）与外推（全量估算）。

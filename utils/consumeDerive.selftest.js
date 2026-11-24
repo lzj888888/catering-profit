@@ -248,6 +248,17 @@ const THEORY_FEN = 582000;   // 5820 元
   check('非销售 > 差额 ⇒ 如实出负数，不归零',
     r2.realVarianceFen === -882000 && r2.realVariancePct < 0, '=' + r2.realVarianceFen);
 
+  // 🔴 G2（2026-11-25 M3 变动面审计）：非销售耗用**超过实际用掉的料**时要有标记。
+  //   实测过：实际耗用 9000 元时填 999999.99，页面显示「比标准省 99200%」而无人提示。
+  //   注意标记的语义是「请核对」，**不是**拒绝计算 —— 数照给，老板自己判断。
+  check('G2 非销售 > 实际耗用 ⇒ nonsalesTooBig=true（页面提示核对，但不出数吗？不，仍出数）',
+    r2.nonsalesTooBig === true && r2.ok === true, 'tooBig=' + r2.nonsalesTooBig + ' ok=' + r2.ok);
+  check('G2 非销售不超实际耗用 ⇒ nonsalesTooBig=false（不打扰）', r0.nonsalesTooBig === false);
+  // 边界：恰好等于实际耗用 ⇒ 不算超（用 >= 会误伤"正好全吃掉"的极端真实情况）
+  const rEdge = consumeVariance(Object.assign({}, base, { nonsalesFen: 1700000 }));
+  check('G2 边界：非销售 == 实际耗用 ⇒ 不算超（用 > 不用 >=）',
+    rEdge.nonsalesTooBig === false, '=' + rEdge.nonsalesTooBig);
+
   // 非法入参（负数）⇒ 按 0 处理，不把"少报"变成"多扣"
   const r3 = consumeVariance(Object.assign({}, base, { nonsalesFen: -500 }));
   check('非销售耗用为负 ⇒ 归零（不反向放大差额）', r3.nonsalesFen === 0 && r3.realVarianceFen === 1118000);

@@ -352,8 +352,8 @@ const CASES = [
   // 2026-11-24（R752）：耗用核查。**为什么必须受守**：本套件的核心断言是
   //   ① 恒等式「耗用偏差 ≡ 采购偏差」（4 组数据）② 四种「算不了」必须拦住 ③ 文案键必须真实存在。
   //   其中任一条被删，都会让"给假数"重新变成可能，而门禁照绿 —— 正是本守卫存在的理由。
-  { key: 'consume_derive', rel: 'utils/consumeDerive.selftest.js' }, // 57 条
-  { key: 'material_usage', rel: 'utils/materialUsage.selftest.js' }, // 32 条（R754 第二期：出成率还原毛料 + 无理论值不给 0 + 页面接线）
+  { key: 'consume_derive', rel: 'utils/consumeDerive.selftest.js' }, // 60 条
+  { key: 'material_usage', rel: 'utils/materialUsage.selftest.js' }, // 38 条（R754 第二期：出成率还原毛料 + 无理论值不给 0 + 页面接线）
   { key: 'price_variance', rel: 'utils/priceVariance.selftest.js' }, // 19 条（R755 第三期：量价恒等式 + 掩盖场景必须拆出来）（恒等式 + 四种算不了 + 反恒真 + 文案键存在性）
 ];
 

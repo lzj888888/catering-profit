@@ -2514,11 +2514,11 @@ const TERMS = {
     // 🔴 R712（李老师真机：「只需要填在售菜品数就可以了吗？套餐什么的？本意是算什么的」）：
     //   它是对账页的**覆盖率分母** —— 已建成本卡的菜 ÷ 在售菜数 = 你的成本卡盖住了几成在卖的菜。
     //   原来只有一个标签，一个字没解释用途，老板当然不知道填它为什么能影响结果。
-    reconCoverageWhy: '你店里这个月在卖多少道菜（含套餐就一起数进来）。填了才知道你的成本卡盖住了几成 —— 没建卡的那几道，成本按 0 算，毛利率会虚高。',
+    reconCoverageWhy: '你店里这个月在卖多少道菜（含套餐就一起数进来）。填了才知道你的成本卡盖住了几成（这个比例叫「菜品覆盖率」）—— 没建卡的那几道，成本按 0 算，毛利率会虚高。',
     reconSave: '保存在售数',
     reconIncludeCombo: '含套餐',
     reconMonth: '月份',
-    reconSuppressCoverage: '覆盖率不足（<60%），差值可能失真，暂不显示。',
+    reconSuppressCoverage: '菜品覆盖率不足（建了卡的菜少于在售菜品的 60%），差值可能失真，暂不显示。',
     reconSuppressCoverageHigh: '成本卡数已超过在售菜品数（含已停售的老卡），标准毛利被稀释、差值会失真，暂不显示。可到菜品成本里核对老卡。',
     reconSuppressDetail: '本月外卖用了快速录入，拆不出商品总价，请改用分项录入。',
     reconSuppressNoCount: '请先填写「本月在售菜品数」，才能算覆盖率。',
@@ -2548,14 +2548,14 @@ const TERMS = {
     reconConsumeVarianceLabel: '差额',
     reconConsumeShouldPurchase: '倒推应有采购',
     reconConsumeActualPurchaseLabel: '实际采购',
-    reconConsumeCoverageNote: '只统计了已建成本卡的菜；覆盖不到九成时会提示先补卡，不硬给数。',
+    reconConsumeCoverageNote: '只统计了已建成本卡的菜；这些菜占到本月销量的九成以上才算得准，不到就先补卡。',
     reconConsumeNoJudge: '第一次只记录差额、不评价好坏；从第二个月起可以跟自己的历史比。',
     reconConsumeCrossWarn: '库存三栏算出的实际耗用，和系统记录的对不上，本月账可能被改过，建议核对。',
     reconConsumeGoFix: '去处理',
     reconConsumeNeedSales: '本月还没导入销量。先导入销量，才知道按菜单该用掉多少料。',
     reconConsumeNeedInventory: '本月库存三栏还没填全。先填期初、采购、期末，才能倒轧实际用掉多少。',
     reconConsumeNeedUpgrade: '开通后可查看耗用核查。',
-    reconConsumeNeedCoverage: '已建成本卡的菜覆盖销量不足九成，算出来的差额会虚高。先把常卖的菜建成成本卡。',
+    reconConsumeNeedCoverage: '已建成本卡的菜只占本月销量的九成以下，算出来的差额会虚高。先把常卖的菜建成成本卡。',
     reconConsumeNeedTheory: '成本卡里的成本还是 0。先补上原料用量和单价。',
     reconConsumeTheoryEst: '含未建卡菜按比例估算',
     // 🔴 2026-11-24 第一期：把「差额」拆干净 —— 员工餐/试吃/报损耗了食材但不产生销售，
@@ -2566,6 +2566,7 @@ const TERMS = {
     reconConsumeNonsalesWhy: '只算用店里食材做的：员工餐、试菜、报废。不算发给员工的现金餐补、请客招待。',
     reconConsumeReal: '真正说不清的',
     reconConsumeRealNote: '已扣掉上面填的损耗。这个数才是建议去核对的；没填损耗时它会偏大。',
+    reconConsumeNonsalesTooBig: '填的损耗比实际用掉的料还多，请核对（是不是多打了个 0）。',
     // ===== 第二期 · 分原料核对（2026-11-24）=====
     //   只让老板盘 3~5 个「最值钱」的原料，就能从「总额差多少」下到「哪个料超了」。
     //   🔴 口径：理论用量已按出成率还原成**毛料采购量**（净料克数 ÷ 出成率 ÷ 换算系数），
@@ -2582,6 +2583,7 @@ const TERMS = {
     reconMaterialActual: '实际用掉',
     reconMaterialDiff: '差',
     reconMaterialNoTheory: '没建成本卡，只能看实际用量',
+    reconMaterialPctSuppressed: '用量太小，比不了',
     reconMaterialNeedItems: '还没填原料盘点。挑 3~5 个最值钱的原料，填采购量和期末剩多少。',
     reconMaterialNeedCards: '这些原料没出现在任何成本卡里，算不出该用多少。先补成本卡。',
     reconMaterialNote: '差得多不等于被拿走：也可能是配方改了、出成率填错、盘点不准。核对后再判断。',

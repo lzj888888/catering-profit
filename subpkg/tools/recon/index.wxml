@@ -121,6 +121,9 @@
         <text class="val {{consume.realOver ? 'warn' : ''}}">{{t.cur}}{{consume.realVarianceText}}（{{consume.realVariancePctText}}）</text>
       </view>
       <view class="muted">{{t.reconConsumeRealNote}}</view>
+      <!-- G2（2026-11-25 审计）：填的损耗超过实际用掉的料 ⇒ 提示核对，但不改老板填的数、
+           也不让整段消失（消失会让人以为功能坏了，而他真正需要的是"你多打了个 0"）。 -->
+      <view class="warn" wx:if="{{consume.nonsalesTooBig}}">{{t.reconConsumeNonsalesTooBig}}</view>
       <!-- 倒推采购：第二个问法，和上面「差额」是同一个数（恒等式，见 utils/consumeDerive.js 文件头证明） -->
       <view class="cell">
         <text class="lbl">{{t.reconConsumeShouldPurchase}}</text>
@@ -169,6 +172,9 @@
           <text class="muted">{{t.reconMaterialActual}} {{item.actualText}}{{item.unit}}</text>
           <text class="val {{item.diffOver ? 'warn' : ''}}" wx:if="{{item.diffText}}">{{t.reconMaterialDiff}} {{item.diffText}}</text>
         </view>
+        <!-- G3（2026-11-25 审计）：理论量太小（< 0.01 采购单位）时不给差率 —— 分母太小比率会爆表
+             （实测 0.001 斤对 10 斤 ⇒ 差率 1000000%，没法看）。差量照给，只把比率换成这句话。 -->
+        <view class="muted" wx:if="{{item.pctSuppressed}}">{{t.reconMaterialPctSuppressed}}</view>
         <!-- ===== 第三期 · 量价拆分 =====
              把「多花了多少」拆成「买贵了多少」+「多买了多少」。
              🔴 金额持平也可能是「买贵 + 少买」互相抵消 —— 拆开才看得见（实测 +2250 / −2250 = 0）。
