@@ -164,9 +164,13 @@ async function runCalc(p, month, savedCount) { await p.calc(month, savedCount); 
   //   ⇒ 结论：凡「页面调 this.X()」的地方，都要有桩真跑到，grep 与编译都靠不住。
   sec('G 段三 · 分原料看 + 量价拆分（真跑 buildMaterialView / onMatQty）');
   {
+    // 🔴 fixture 必须用 getMaterial 的**真实出参字段名** purchase_price_fen（不是 purchase_price）。
+    //   2026-11-25 实测：页面写成 purchase_price ⇒ price 恒 0 ⇒ 排序静默失效，而桩照着页面的错名字造数
+    //   ⇒ **桩自己也绿**。与 R737 同族（按引擎的样子造数，不按库的样子造）。
+    //   并故意把「食用油」排在「牛肉」之前：排序若失效，顺序不会变，G-②b 会红。
     const MATS3 = [
-      { material_id: 'm_beef', name: '牛肉', purchase_unit: '斤', purchase_price: 1800, convert_factor: 500, yield_rate: 85 },
-      { material_id: 'm_oil', name: '食用油', purchase_unit: '斤', purchase_price: 900, convert_factor: 500, yield_rate: 100 },
+      { id: 'm_oil', name: '食用油', purchase_unit: '斤', purchase_price_fen: 900, convert_factor: 500, yield_rate: 100 },
+      { id: 'm_beef', name: '牛肉', purchase_unit: '斤', purchase_price_fen: 1800, convert_factor: 500, yield_rate: 85 },
     ];
     const CARDS3 = [
       { card_code: 'C1', card_type: 1, price_fen: 2800, lines: [{ material_id: 'm_beef', quantity: 120, line_type: 1 }] },
@@ -203,6 +207,10 @@ async function runCalc(p, month, savedCount) { await p.calc(month, savedCount); 
       // G-①：这一条就是本次真 bug 的守卫 —— 漏写 prevMonthOf 时这里必红（TypeError）
       check('G-① buildMaterialView 真跑不抛异常（防「调用 this.X 但没定义」白屏）',
         threw === null, threw ? (threw.message || String(threw)) : 'ok');
+      // G-②b：按「理论采购金额」降序 —— 抓 purchase_price_fen 读错导致的静默排序失效
+      check('G-②b 按理论采购金额降序：牛肉(1525元) 排在 食用油(171元) 之前',
+        !!view && view.rows[0] && view.rows[0].material_id === 'm_beef',
+        view && view.rows[0] && ('第1行=' + view.rows[0].name));
       check('G-② 出 2 行且 ok=true', !!view && view.ok === true && view.rows.length === 2,
         view && ('rows=' + view.rows.length + ' reason=' + view.reason));
 

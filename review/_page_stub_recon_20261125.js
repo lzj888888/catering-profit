@@ -45,13 +45,16 @@ p.data.months = ['2026-11', '2026-10', '2026-09'];   // 倒序，curMonth 的下
 p.data.curMonth = '2026-11';
 
 // ============ 三、测试数据（与 _e2e_test 同一套）============
+// 🔴 fixture 必须用 getMaterial 的**真实出参字段名**（purchase_price_fen），否则桩自己也会绿。
+//   见 R737 同族教训：按引擎的样子造数，而不是按库的样子造。
+//   并且故意把「食用油」排在「牛肉」之前 —— 若排序失效（price 恒 0），顺序不会变，断言会红。
 const MATERIALS = [
-  { material_id: 'm_beef', name: '牛肉', purchase_unit: '斤', purchase_price: 1800, convert_factor: 500, yield_rate: 85 },
-  { material_id: 'm_pork', name: '猪肉', purchase_unit: '斤', purchase_price: 1400, convert_factor: 500, yield_rate: 95 },
-  { material_id: 'm_noodle', name: '面条', purchase_unit: '斤', purchase_price: 400, convert_factor: 500, yield_rate: 100 },
-  { material_id: 'm_oil', name: '食用油', purchase_unit: '斤', purchase_price: 900, convert_factor: 500, yield_rate: 100 },
-  { material_id: 'm_rice', name: '大米', purchase_unit: '斤', purchase_price: 320, convert_factor: 500, yield_rate: 100 },
-  { material_id: 'm_pep', name: '青椒', purchase_unit: '斤', purchase_price: 500, convert_factor: 500, yield_rate: 90 },
+  { id: 'm_oil', name: '食用油', purchase_unit: '斤', purchase_price_fen: 900, convert_factor: 500, yield_rate: 100 },
+  { id: 'm_beef', name: '牛肉', purchase_unit: '斤', purchase_price_fen: 1800, convert_factor: 500, yield_rate: 85 },
+  { id: 'm_pork', name: '猪肉', purchase_unit: '斤', purchase_price_fen: 1400, convert_factor: 500, yield_rate: 95 },
+  { id: 'm_noodle', name: '面条', purchase_unit: '斤', purchase_price_fen: 400, convert_factor: 500, yield_rate: 100 },
+  { id: 'm_rice', name: '大米', purchase_unit: '斤', purchase_price_fen: 320, convert_factor: 500, yield_rate: 100 },
+  { id: 'm_pep', name: '青椒', purchase_unit: '斤', purchase_price_fen: 500, convert_factor: 500, yield_rate: 90 },
 ];
 const CARDS = [
   { card_code: 'C001', card_type: 1, price_fen: 2800, lines: [
@@ -90,6 +93,11 @@ const view = p.buildMaterialView('2026-11', { list: CARDS }, { dine_in: DINE_IN 
 
 check('buildMaterialView 不抛异常且 ok=true', !!view && view.ok === true, view && view.reason);
 check('出 6 行（top8 内只有 6 个原料）', view && view.rows.length === 6, view && '=' + view.rows.length);
+// 🔴 排序断言：fixture 里油排在牛肉前，按「理论采购金额」降序后牛肉必须排第 1。
+//   若 purchase_price_fen 读成 undefined（写成 purchase_price）⇒ price 恒 0 ⇒ 顺序不变 ⇒ 这条必红。
+check('按「理论采购金额」降序：牛肉(1525元) 排在 食用油(171元) 之前',
+  view && view.rows[0] && view.rows[0].material_id === 'm_beef',
+  view && view.rows[0] && ('第1行=' + view.rows[0].name));
 
 const beef = view.rows.find((r) => r.material_id === 'm_beef');
 const oil = view.rows.find((r) => r.material_id === 'm_oil');

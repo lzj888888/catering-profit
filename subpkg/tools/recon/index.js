@@ -198,7 +198,15 @@ Page({
     for (const m of matList) {
       const th = theoryQtyOf(cards, qMap, m);
       if (!(th.theoryQty > 0)) continue;
-      const price = Number(m.purchase_price) || 0;
+      // 🔴🔴 getMaterial 返回的单价字段是 `purchase_price_fen`（分），**不是** `purchase_price`。
+      //   2026-11-25 实测抓到的隐蔽 bug：写成 purchase_price ⇒ 恒 0 ⇒ 每个原料的
+      //   「理论采购金额」都等于 0 ⇒ 排序全平 ⇒「最值钱的排前面」静默失效
+      //   （不崩、不报错、门禁全绿，只有真接上后端才会发现）。
+      //   ⚠️ 桩测试救不了这一类：fixture 若按页面写的名字造数，桩自己也绿 —— 与 R737 同族
+      //   （「按引擎的样子造而不按库的样子造」）。fixture 必须用**云函数真实出参字段名**。
+      //   保留 purchase_price 兜底：万一以后契约改名成裸字段也不至于又静默归零。
+      const priceRaw = (m.purchase_price_fen != null) ? m.purchase_price_fen : m.purchase_price;
+      const price = Number(priceRaw) || 0;
       cand.push({ m, th, amount: th.theoryQty * price });
     }
     cand.sort((a, b) => b.amount - a.amount);
