@@ -37,5 +37,20 @@
   </view>
 
   <view wx:if="{{orders.length === 0 && !loading}}" class="empty">{{t.empty}}</view>
+
+  <!-- 售后直达：付费用户查订单/要凭证/有疑问，不必退回「我的」页找客服。
+       🔴 open-type=contact 只能挂 <button>；照 R193 透明覆盖层写法，视觉等同普通 cell。
+       后台未绑定客服人员时会话拉不起 ⇒ 旁边保留「意见反馈」兜底（t.feedback）。 -->
+  <view class="card2 aftersale-card">
+    <view class="cell service-cell">
+      <text class="lbl">{{t.serviceEntry}}</text>
+      <text class="val muted">›</text>
+      <button class="cell-btn-cover" open-type="contact" session-from="orders"></button>
+    </view>
+    <view class="cell" bindtap="onFeedback">
+      <text class="lbl">{{t.feedback}}</text>
+      <text class="val muted">›</text>
+    </view>
+  </view>
 </view>
 <view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

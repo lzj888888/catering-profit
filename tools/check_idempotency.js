@@ -60,6 +60,12 @@ const EXEMPT_WRITE = new Map([
   ['payCallback', '契约 §5 明定幂等键 = **全局 transaction_id**（微信支付订单号），非 client_request_id 体系：'
     + 'handleCallback 先 `where({transaction_id: txn})` 查重、命中即返回成功不重复发权益（对应 ORDER_DUPLICATE）。'
     + '本守卫的 5 种形态不覆盖它 ⇒ 登记于此；**换键是契约决定，勿"统一"成 client_request_id**'],
+  ['xpayNotify', '微信**虚拟支付**发货回调（三司会诊 2026-11-22 新建，payCallback 冻结不复用）：幂等键 = '
+    + '**业务单号 OutTradeNo**（= payCreateOrder 的 order_no，shop_payment_flow 已有 unique 索引 idx_pay_order），'
+    + '非 client_request_id、非 transaction_id（后者只对账）。handleDelivery 先 `readOrder(OutTradeNo)`，'
+    + 'status=DELIVERED 即 3 秒幂等返回；金额/plan 用订单快照校验、diag_credit 独立字段不碰月卡；'
+    + '有效期发放走 where(期望值).update(inc) 条件累加 + stats.updated CAS（并发买两次不丢加时）。'
+    + '本守卫的 5 种形态不覆盖回调类换键 ⇒ 登记于此，理由与 payCallback 同族（**勿统一成 client_request_id**）'],
   ['payCreateOrder', '契约 §5 鉴权列 = `user`（未标 +幂等）：重复提交只多一条 status=pending 的流水，'
     + '**不发放任何权益**（权益只由 payCallback 按 transaction_id 发放）⇒ 无数据放大；前端另有 withLock 防连点'],
   ['payRenew', '同上（续费=再建一条 pending 订单）；expire_at 的累加由 payCallback 按 transaction_id 幂等完成'],

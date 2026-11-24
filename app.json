@@ -26,7 +26,7 @@
       },
       {
         "pagePath": "pages/m3/hub",
-        "text": "配方",
+        "text": "菜品账",
         "iconPath": "images/tab/tab_cost_normal.png",
         "selectedIconPath": "images/tab/tab_cost_active.png"
       },

@@ -268,6 +268,34 @@ const dupDecl = files.filter((f) => /\.md$/.test(f) && f.startsWith('specs/'))
 check('C9 唯一声明处不扩散（其它 .md 不得再自称本口径单源）', dupDecl.length === 0,
   dupDecl.join(' | ') || `仅 ${DOC_REL} 一处`);
 
+// —— C10（2026-11-23）：「不收集」段与收集表的**中文描述型互斥**自检 ——
+// 根因：第 9 项登记「参考照片（相册选择或当场拍照）」，而「不收集」段曾写
+//   「❌ 相册（…不读相册）」、附录写「相册相关 API 均未出现」——两处字面打架，提审属自相矛盾风险。
+//   C7 只解析「无 `API` 调用」句式，抓不到这种不带 API 名的中文互斥 ⇒ 补本组。
+const policyText = fs.readFileSync(path.join(ROOT, DOC_REL), 'utf8');
+const pLines = policyText.split(/\r?\n/);
+let ncStart = -1, ncEnd = pLines.length;
+pLines.forEach((l, i) => {
+  if (/我们\*\*不\*\*收集/.test(l)) ncStart = i;
+  else if (ncStart >= 0 && ncEnd === pLines.length && /^---\s*$/.test(l.trim())) ncEnd = i;
+});
+const ncBlock = ncStart >= 0 ? pLines.slice(ncStart, ncEnd).join('\n') : '';
+check('C10-① 前提：「不收集」段可定位（fail-closed）', ncStart >= 0 && ncBlock.length > 0,
+  `L${ncStart + 1}~L${ncEnd}`);
+const photoKw = /相册|拍照|照片|摄像头/;
+const exceptKw = /例外|除[^，。；]{0,24}外|上表第\s*\d+\s*项|仅用户主动/;
+const photoLines = ncBlock.split(/\r?\n/).filter((l) => photoKw.test(l));
+const conflictLines = photoLines.filter((l) => !exceptKw.test(l));
+check('C10-② 「不收集」段提及相册/拍照须显式写例外（否则与第 9 项「参考照片」自相矛盾）',
+  ncStart >= 0 && photoLines.length > 0 && conflictLines.length === 0,
+  conflictLines.map((l) => l.trim().slice(0, 80)).join(' | ') || `${photoLines.length} 处提及均带例外限定`);
+// 反恒真：旧的错误句式必须被本判据拦下（证明不是恒真）
+const badPhrase = '- ❌ 相册（头像走微信官方 chooseAvatar 能力，不读相册）';
+check('C10-③ 反恒真：无例外限定的旧句式必须被 C10-② 判据拦下',
+  photoKw.test(badPhrase) && !exceptKw.test(badPhrase));
+check('C10-④ 附录不得再写「相册相关 API 均未出现」（chooseMedia 已作为第 9 项登记）',
+  !/相册相关\s*API\s*均未出现/.test(policyText));
+
 // —— 弱面：只明示，不判红（坑⑭/⑯）
 const weak = [];
 let weakScan = 0;

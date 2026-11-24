@@ -30,6 +30,11 @@ Page({
       renew: TERMS.pay.renew,
       contactService: TERMS.pay.contactService,
       contactServiceHint: TERMS.pay.contactServiceHint,
+      // 🔴 售后直达入口用 serviceEntry（"联系客服"），**不能**用 contactService（"联系客服开通"）：
+      //    后者含"开通"，提审期（PAYWALL_ENABLED=false）被审核员看到=售卖表态。
+      //    contactService 仅留给 onRenew 的 modal（check_pay_orders_stub C-④ 钉死，勿动）。
+      serviceEntry: TERMS.exp.serviceEntry,
+      feedback: TERMS.exp.feedback,
       thinkAgain: TERMS.buttons.thinkAgain,
       cur: '¥',
       loading: TERMS.ui.loading,
@@ -79,8 +84,12 @@ Page({
 
   statusText(s) {
     const t = this.data.t;
-    if (s === 'paid') return t.statusPaid;
-    if (s === 'pending') return t.statusPending;
+    // 🔴 2026-11-24（R1）：`shop_payment_flow.status` 落库是小写；xpayNotify 发货后是 'delivered'。
+    //   旧实现只认 paid/pending，'delivered' 会掉进 statusManual（显示「手动开通」）—— 对真付费用户是错的。
+    //   delivered = 已支付且权益已发放，对用户而言就是「已支付」。
+    const k = String(s == null ? '' : s).toLowerCase();
+    if (k === 'paid' || k === 'delivered') return t.statusPaid;
+    if (k === 'pending') return t.statusPending;
     return t.statusManual;
   },
 
@@ -123,6 +132,15 @@ Page({
         });
       }
     } catch (e) { api.toastError(e); }
+  },
+
+  // 售后兜底：客服会话拉不起（后台未绑定/基础库过低）时走官方意见反馈
+  onFeedback() {
+    if (wx.openFeedback) {
+      wx.openFeedback({});
+    } else {
+      wx.showToast({ title: TERMS.exp.feedbackHint, icon: 'none' });
+    }
   },
 
   onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()); },

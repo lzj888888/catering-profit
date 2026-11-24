@@ -457,6 +457,16 @@ const A15_EXEMPT = [
   //   这是**缺陷修复**而非顺手改逻辑：归档的语义是「确认一个已存在的数」，不是「生成一个数」。
   //   专项守卫：tools/check_archive_no_fake.js（A 段 6 条 + B 段变异回灌）。
   /^cloudfunctions\/archiveMonth\//,
+  // R749（2026-11-23 李老师「确定方案后再动手/好的听你的」授权）—— 三司会诊裁定 §2 P0：
+  //   全新建虚拟支付发货回调 xpayNotify（payCallback 冻结不复用——两套接口族）。
+  //   纯逻辑内核 + 41 断言自测，零 schema 改动，未部署未真机（一期骨架）。
+  //   专项守卫：cloudfunctions/xpayNotify/selftest.js + verify_all batch5-xpayNotify 套件。
+  /^cloudfunctions\/xpayNotify\//,
+  // 2026-11-23 李老师「距离上线还差哪些 去补齐这些」授权 —— 补虚拟支付单号合规断言：
+  //   genOrderNo 产出须 8–32 字符 / 非 `_` 开头 / 可直接喂 buildVirtualPaySign（防微信 -15002）。
+  //   仅改 selftest（测试面），service.js 业务逻辑一字未动。按 round103 白名单式精确登记，
+  //   不放宽成 cloudfunctions/ 全豁免（那样守卫作废）。
+  /^cloudfunctions\/payCreateOrder\/selftest\.js$/,
 ];
 check('A15 云函数逻辑零改动（仅 initDb 建库单源 + 本批授权函数豁免）', (() => {
   const { execFileSync } = require('child_process');

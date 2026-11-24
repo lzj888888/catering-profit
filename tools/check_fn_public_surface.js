@@ -72,6 +72,7 @@ const PUBLIC_FNS = [
   { fn: 'initDb', why: '一次性建库（仅 dev 部署 + 自带 env 门禁）—— 管理员手动运行一次', mustSelfGuard: false },
   { fn: 'dbHealthCheck', why: '每日健康巡检（定时触发）—— 读全租户 audit_log，故必须自守来源：有 OPENID 即拒', mustSelfGuard: true },
   { fn: 'payCallback', why: '微信支付回调 —— 平台调用无登录态，改由 verifyCallbackSign 验签 fail-closed 兜底', mustSelfGuard: false },
+  { fn: 'xpayNotify', why: '微信虚拟支付发货回调 —— 平台调用无登录态，与 payCallback 同族：验签 fail-closed（未注入官方验签器一律拒绝）兜底', mustSelfGuard: false },
   { fn: 'payExpireNotify', why: '定时触发器任务 —— R215 已加固：有用户 OPENID 即拒绝（只放行定时/控制台）', mustSelfGuard: true },
   { fn: 'smokeTest', why: '真云诊断探针（会建集合/写库）—— R215 已加固：有用户 OPENID 即拒绝', mustSelfGuard: true },
   { fn: 'dbBackup', why: '数据库月度全量备份（写云存储）—— R652 按 R215 定式：有用户 OPENID 即拒绝', mustSelfGuard: true },

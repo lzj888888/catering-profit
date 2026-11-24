@@ -6,3 +6,11 @@
  *   修法 = 选择器提到**双类** `.btn.btn-block` —— 与实测**生效**的 `.banner .btn-small`（同为双类）同档。
  *   ⚠️ 复测若得 402 (=366+2×2×9) 则是 content-box 叠加 border/padding，届时加 `box-sizing: border-box`。 */
 .btn.btn-block { width: 100%; box-sizing: border-box; }
+
+/* 售后直达入口：照 R193 透明覆盖层写法（button 只接点击，视觉由普通 cell 渲染）。
+   ⚠️ 别把 .cell 塞进 <button>：button 内置 text-align 会赢，文字居中、箭头不在最右。 */
+.service-cell { position: relative; }
+.cell-btn-cover { position: absolute; top: 0; right: 0; bottom: 0; left: 0;
+  width: 100%; height: 100%; padding: 0; margin: 0; background: transparent;
+  border: none; border-radius: 0; line-height: normal; }
+.cell-btn-cover::after { border: none; }

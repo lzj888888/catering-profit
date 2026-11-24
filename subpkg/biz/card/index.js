@@ -187,7 +187,7 @@ Page({
     this.load();
   },
 
-  // R731：孤岛态点「回首页」—— 本页是 M3，回「配方」hub（tabBar 页，必须 switchTab）
+  // R731：孤岛态点「回首页」—— 本页是 M3，回「菜品账」hub（tabBar 页，必须 switchTab）
   onIslandBack() { islandBack.goHome('m3'); },
 
   async load() {

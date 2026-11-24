@@ -108,6 +108,20 @@
     </block>
   </view>
 
+  <!-- 售后直达：结果与老板观感不符时当场找客服/反馈，不必退回「我的」页。
+       open-type=contact 只能挂 <button>；照 R193 透明覆盖层写法，视觉等同普通行。 -->
+  <view class="dg-card dg-aftersale">
+    <view class="cell service-cell">
+      <text class="lbl">{{t.serviceEntry}}</text>
+      <text class="val muted">›</text>
+      <button class="cell-btn-cover" open-type="contact" session-from="diag_result"></button>
+    </view>
+    <view class="cell" bindtap="onFeedback">
+      <text class="lbl">{{t.feedback}}</text>
+      <text class="val muted">›</text>
+    </view>
+  </view>
+
   <!-- 开发版可见：服务端耗时（判断 3 秒超时够不够），正式版不渲染 -->
   <view class="muted dg-asof" wx:if="{{devNote}}">{{devNote}}</view>
   <view class="dg-disclaimer">{{t.disclaimer}}</view>

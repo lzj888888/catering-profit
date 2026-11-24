@@ -84,6 +84,10 @@ Page({
       actLevelTry: T.actLevelTry,
       actLevelLater: T.actLevelLater,
       disclaimer: T.disclaimer,
+      // 售后直达：诊断结果若与老板实际观感不符，可当场联系客服/反馈（值取自 exp 单源，页面零中文字面量）
+      // 键名统一 serviceEntry（与订单页/「我的」页一致，便于守卫按同一把尺校验）
+      serviceEntry: TERMS.exp.serviceEntry,
+      feedback: TERMS.exp.feedback,
     },
     levelClass: 'na',
     levelLabel: '',
@@ -328,5 +332,14 @@ Page({
       planInsufficient,
       planEmpty,
     });
+  },
+
+  // 售后兜底：结果与老板观感不符时当场反馈；客服入口见 wxml（open-type=contact）
+  onFeedback() {
+    if (wx.openFeedback) {
+      wx.openFeedback({});
+    } else {
+      wx.showToast({ title: TERMS.exp.feedbackHint, icon: 'none' });
+    }
   },
 });

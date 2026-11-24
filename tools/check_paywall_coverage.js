@@ -511,6 +511,38 @@ check('L9-⑧ 前后端开关同源：云端 FREE_ACCESS === !前端 PAYWALL_ENA
   !!backVal && derivedOk && backVal === expectBack,
   `前端 PAYWALL_ENABLED=${flagVal || '解析失败'} / 派生=${derivedOk} / 云端 FREE_ACCESS=${backVal || '解析失败'}（期望 ${expectBack}）`);
 
+// L9-⑨ 🔴 2026-11-23 实测盲区补丁：售后客服入口（open-type="contact"）的**可见文案**
+//   必须是 serviceEntry（"联系客服"），不许用 contactService（"联系客服开通"）。
+//   为什么：contactService 含「开通」，提审期（PAYWALL_ENABLED=false）一颗可见按钮上出现「开通」，
+//   等于对审核员表态「这里有付费功能」，可被判诱导付费/未开放功能暗示。
+//   为什么 L9-③ 拦不到：它只扫 TERMS.pay.notOpen*/freeLimit*/card.quota*/ERR.FREE_LIMIT 这组
+//   「关闭态弹窗文案」，扫不到**页面级**客服入口 —— 本次实证：门禁 333/333 全绿，
+//   但订单页按钮真显示「联系客服开通」（我桩跑 orders.js 才发现）。同族病：扫了 A 面漏了 B 面。
+const KF_WXML = ['subpkg/tools/pay/orders.wxml', 'subpkg/biz/diag/result.wxml', 'pages/mine/index.wxml'];
+const kfBad = [];
+let kfScanned = 0;
+for (const wf of KF_WXML) {
+  const src = read(wf);
+  if (!src) continue;
+  const lines = src.split('\n');
+  // ⚠️ 必须只匹配**真实 button 标签**：mine 页注释里也写着 open-type="contact"（解释为什么要用原生按钮），
+  //    按裸字符串找会命中注释行、把扫描窗口错位到注释块 ⇒ 误判"未绑定"。
+  const i = lines.findIndex((l) => /<button[^>]*open-type\s*=\s*["']contact["']/.test(l));
+  if (i < 0) continue;
+  kfScanned++;
+  // 取客服按钮前 10 行（覆盖整个 cell 块的文案绑定）
+  const block = lines.slice(Math.max(0, i - 10), i + 1).join('\n');
+  if (/t\.contactService/.test(block)) kfBad.push(wf + ' 用了 t.contactService（含"开通"）');
+  else if (!/t\.serviceEntry/.test(block)) kfBad.push(wf + ' 未绑定 t.serviceEntry');
+}
+// 反恒真：构造一个"错误样本"（用 contactService），必须被判据认出来，否则判据是空转的
+const KF_SHADOW = '<text class="lbl">{{t.contactService}}</text>\n<button open-type="contact"></button>';
+check('L9-⑨ 🔴 售后客服入口可见文案不得用含"开通"的 contactService（提审期=售卖表态），须用 serviceEntry',
+  kfScanned >= 3 && kfBad.length === 0 && /t\.contactService/.test(KF_SHADOW),
+  kfBad.length ? '违规：' + kfBad.join(' | ')
+    : (kfScanned < 3 ? `仅扫到 ${kfScanned} 处客服入口（期望 ≥3：我的/订单/诊断）`
+      : `三处入口文案合规，文案键均为 serviceEntry（反恒真样本可判红）`));
+
 // ⚠️ R69：本守卫的**最后一行必须**是「N 通过 / M 失败」收尾行 —— 收尾文案一律排在它**之前**。
 if (fails.length) console.log('失败项：' + fails.join(' | '));
 console.log(fails.length === 0

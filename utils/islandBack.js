@@ -11,18 +11,18 @@
 //   ③ 小程序被微信后台回收后重新打开，恢复到原页面。
 //
 // 🔴 实测依据（不是推测）：`review/evidence/r731_navstack_probe.js` 用真实模拟器读 `getCurrentPages()`
-//   · 配方 hub --navigateTo--> /subpkg/biz/card/index ⇒ 栈深 2 ⇒ 有「←」（正常点击路径本来就没问题）
+//   · 菜品账 hub --navigateTo--> /subpkg/biz/card/index ⇒ 栈深 2 ⇒ 有「←」（正常点击路径本来就没问题）
 //   · reLaunch/direct 落地 /subpkg/biz/card/index    ⇒ 栈深 1 ⇒ 无「←」（孤岛）
 //   ⚠️ 所以「加这条」不是修一个假想问题，而是补一个真实存在的死角；正常路径栈深 ≥2 时**不渲染**，
 //      零干扰（不做成常驻条，否则等于给每页加一条永远用不上的横杠）。
 //
 // 🤖 守卫：`tools/check_island_back.js`（判据行为面 + 三个落地页接线面 + 反恒真）
 
-// 落回哪个首页：**按模块回到它自己的家**，不要一律踢回核算 tab（老板从配方点进去的，回去还在配方）
+// 落回哪个首页：**按模块回到它自己的家**，不要一律踢回核算 tab（老板从菜品账点进去的，回去还在菜品账）
 const HOME = {
   m1: '/pages/index/index', // 月度盈利核算 → 核算 tab
   m2: '/pages/index/index', // 经营盈亏沙盘 → 核算 tab
-  m3: '/pages/m3/hub',      // 菜品成本毛利 → 配方 tab（hub 是 tabBar 页，switchTab 才合法）
+  m3: '/pages/m3/hub',      // 菜品成本毛利 → 菜品账 tab（hub 是 tabBar 页，switchTab 才合法）
 };
 
 const DEFAULT_HOME = '/pages/index/index';
