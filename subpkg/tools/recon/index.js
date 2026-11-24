@@ -13,6 +13,9 @@ const { calcMenuMargin, calcActualDishMargin, reconcile, suppressKeyOf, fixTarge
 //   与上面「率对率」是同一问题的两个视角（率 vs 金额），数据同源（getLedger + getDishReview），
 //   故并入本页成一个页面两段，不新建页面（见 review/PLAN_2026-11-24_采购合理性与食材跑冒滴漏_诊断方案.md）。
 const { consumeVariance, missingOf } = require('../../../utils/consumeDerive.js');
+// 🔴 2026-11-24 第二期：原料级用量核对（理论 vs 实际）。口径见 utils/materialUsage.js 文件头
+//   （关键：成本卡的 quantity 是**净料克数**，理论采购量要 ÷出成率 ÷换算系数 还原成毛料）。
+const { materialUsage, theoryQtyOf, missingKeyOf } = require('../../../utils/materialUsage.js');
 
 Page({
   data: {
@@ -63,6 +66,17 @@ Page({
       reconConsumeNonsalesWhy: TERMS.card.reconConsumeNonsalesWhy,
       reconConsumeReal: TERMS.card.reconConsumeReal,
       reconConsumeRealNote: TERMS.card.reconConsumeRealNote,
+      // ===== 段三 · 分原料看（第二期）=====
+      // ⚠️ wxml 用到的每个 t.<键> 都必须在此登记（漏登记 ⇒ 静默空白）
+      reconMaterialTitle: TERMS.card.reconMaterialTitle,
+      reconMaterialWhy: TERMS.card.reconMaterialWhy,
+      reconMaterialTheory: TERMS.card.reconMaterialTheory,
+      reconMaterialOpening: TERMS.card.reconMaterialOpening,
+      reconMaterialPurchase: TERMS.card.reconMaterialPurchase,
+      reconMaterialClosing: TERMS.card.reconMaterialClosing,
+      reconMaterialActual: TERMS.card.reconMaterialActual,
+      reconMaterialDiff: TERMS.card.reconMaterialDiff,
+      reconMaterialNote: TERMS.card.reconMaterialNote,
       cur: '¥',
       loading: TERMS.ui.loading,
       save: TERMS.buttons.save,
@@ -114,6 +128,126 @@ Page({
   },
 
   /**
+   * 读某月已存的「原料盘点」：{ [material_id]: {o, p, c} }（数量，按采购单位）。
+   * 与非线性耗用同机制：本地按店按月存，换设备会丢（第二期暂不迁云端）。
+   */
+  loadMatInv(month) {
+    try {
+      const v = wx.getStorageSync(ss.shopKey('matinv_' + month));
+      return (v && typeof v === 'object') ? v : {};
+    } catch (e) { return {}; }
+  },
+
+  saveMatInv(month, obj) {
+    try { wx.setStorageSync(ss.shopKey('matinv_' + month), obj); } catch (e) { /* 存不下不影响本次计算 */ }
+  },
+
+  /**
+   * 段三 · 分原料看：从「总额差多少」下到「哪个原料超了」。
+   * 🔴 候选自动排序：成本卡里出现过的原料，按「理论采购金额」降序取前 8 —— 老板不用自己挑，
+   *   系统已经按值钱程度排好（top3~5 通常覆盖食材成本 60%+，是性价比最高的盘点范围）。
+   * 🔴 理论量口径见 utils/materialUsage.js 文件头：净料克数 ÷ 出成率 ÷ 换算系数 = 毛料采购量。
+   * @returns {{ok:boolean, reason?:string, missText?:string, rows:Array}}
+   */
+  buildMaterialView(month, cardsRes, reviewRes, matRes) {
+    const matList = (matRes && Array.isArray(matRes.list)) ? matRes.list : [];
+    const dineIn = (reviewRes && Array.isArray(reviewRes.dine_in)) ? reviewRes.dine_in : [];
+    const cards = (cardsRes && Array.isArray(cardsRes.list)) ? cardsRes.list : [];
+    if (!matList.length) {
+      return { ok: false, reason: 'no_material', missText: TERMS.card.reconMaterialNeedItems, rows: [] };
+    }
+
+    // 逐菜销量：{ card_code → qty }（materialUsage/theoryQtyOf 都用这个口径）
+    const qMap = {};
+    for (const d of dineIn) {
+      const c = String((d && d.card_code) || '').trim();
+      if (!c) continue;
+      qMap[c] = (Number(qMap[c]) || 0) + (Number(d && d.qty) || 0);
+    }
+
+    // 候选：有理论用量的原料，按「理论采购金额」降序（单价×理论量）
+    const cand = [];
+    for (const m of matList) {
+      const th = theoryQtyOf(cards, qMap, m);
+      if (!(th.theoryQty > 0)) continue;
+      const price = Number(m.purchase_price) || 0;
+      cand.push({ m, th, amount: th.theoryQty * price });
+    }
+    cand.sort((a, b) => b.amount - a.amount);
+    const top = cand.slice(0, 8);
+    if (!top.length) {
+      return { ok: false, reason: 'no_theory', missText: TERMS.card.reconMaterialNeedCards, rows: [] };
+    }
+
+    const savedInv = this.loadMatInv(month);
+    const invItems = [];
+    for (const x of top) {
+      const mid = String(x.m.material_id || x.m.id || '').trim();
+      const v = savedInv[mid] || {};
+      invItems.push({
+        material_id: mid,
+        opening_qty: Number(v.o) || 0,
+        purchase_qty: Number(v.p) || 0,
+        closing_qty: Number(v.c) || 0,
+      });
+    }
+    const calcRes = materialUsage({ cards, dineIn, materials: matList, inventoryItems: invItems });
+    const byId = {};
+    for (const it of (calcRes.items || [])) byId[it.material_id] = it;
+
+    const rows = top.map((x) => {
+      const mid = String(x.m.material_id || x.m.id || '').trim();
+      const v = savedInv[mid] || {};
+      const it = byId[mid] || null;
+      // 只有老板真填了数（三栏非全 0）才显示「实际/差」；没填只显示理论值，避免"用 0 斤"的假结论
+      const filled = it && (Number(it.actualQty) !== 0 || Number(v.o) || Number(v.p) || Number(v.c));
+      return {
+        material_id: mid,
+        name: String(x.m.name || mid),
+        unit: String(x.m.purchase_unit || ''),
+        openVal: (v.o == null || v.o === '') ? '' : String(v.o),
+        purVal: (v.p == null || v.p === '') ? '' : String(v.p),
+        closeVal: (v.c == null || v.c === '') ? '' : String(v.c),
+        theoryText: x.th.theoryQty.toFixed(2),
+        // 实际与差：填了才出；没填留空（wxml 用 wx:if 控制）
+        actualText: filled ? it.actualQty.toFixed(2) : '',
+        diffText: (filled && it.diffPct != null)
+          ? ((it.diffPct > 0 ? '+' : '') + it.diffPct.toFixed(1) + '%') : '',
+        diffOver: !!(filled && it.diffPct != null && it.diffPct > 0),
+        noTheory: !x.th.theoryQty,
+      };
+    });
+
+    return { ok: true, rows };
+  },
+
+  /**
+   * 段三输入：老板填原料的期初/采购/期末（数量，按采购单位 = 毛料）。
+   * 🔴 只重算段三，不重跑云函数收数（原始返回缓存在 this._matRaw）——否则每敲一个数字就打 4 个云函数。
+   * 🔴 读不成数字 ⇒ 不落库（避免把脏值存下来），但输入框已由 setData 保留用户所见。
+   */
+  onMatQty(e) {
+    const ds = (e && e.currentTarget && e.currentTarget.dataset) || {};
+    const mid = String(ds.mid || '');
+    const k = String(ds.k || '');
+    if (!mid || ['o', 'p', 'c'].indexOf(k) < 0) return;
+    const val = (e.detail && e.detail.value != null) ? String(e.detail.value) : '';
+    const n = Number(val);
+    if (val !== '' && (!isFinite(n) || n < 0)) return;   // 非法输入不落库
+
+    const month = this.data.curMonth;
+    const saved = this.loadMatInv(month);
+    const cur = saved[mid] || {};
+    cur[k] = (val === '') ? '' : n;
+    saved[mid] = cur;
+    this.saveMatInv(month, saved);
+
+    const raw = this._matRaw;
+    if (!raw) return;
+    this.setData({ material: this.buildMaterialView(month, raw.cardsRes, raw.reviewRes, raw.matRes) });
+  },
+
+  /**
    * 读某月已存的「非销售耗用」（分）；读不到 = 0。
    * 🔴 按店按月隔离（ss.shopKey）。换设备/重装会丢，届时需重填 —— 第二期迁进云函数时解决。
    */
@@ -161,13 +295,15 @@ Page({
       //   ui.monthRange 给闭区间，与云端 filterByRange 一致；异常时返回空对象 ⇒ 下面降级，
       //   **绝不因为取数失败就把整个对账页搞挂，也绝不静默把加权口径当成售价口径**。
       const rng = ui.monthRange(month);
-      const [ledger, cardsRes, reviewRes] = await Promise.all([
+      const [ledger, cardsRes, reviewRes, matRes] = await Promise.all([
         api.call('getLedger', { month }),
         api.call('getCostCard', {}),
         (rng.from && rng.to)
           ? api.call('getDishReview', { biz_date_from: rng.from, biz_date_to: rng.to })
               .catch(() => ({}))
           : Promise.resolve({}),
+        // 原料档案（含出成率/换算系数/单价）：算理论用量必须用。取不到 ⇒ 段三显示算不了，不影响段一段二
+        api.call('getMaterial', {}).catch(() => ({})),
       ]);
       const cards = (cardsRes.list || []).map((c) => ({
         card_type: c.card_type,
@@ -232,6 +368,11 @@ Page({
         };
       }
 
+      // 段三 · 分原料看（2026-11-24 第二期）：从「总额差多少」下到「哪个原料超了」
+      // 🔴 缓存原始返回：onMatQty 每敲一个数字都要重算段三，不能每次都重跑 4 个云函数
+      this._matRaw = { cardsRes, reviewRes, matRes };
+      const materialView = this.buildMaterialView(month, cardsRes, reviewRes, matRes);
+
       this.setData({
         result: {
           menuPct: menu.pct,
@@ -260,6 +401,7 @@ Page({
           diffFenText: rec.diffFen == null ? '—' : api.fenToYuan(rec.diffFen, 2),
         },
         consume,
+        material: materialView,
       });
     } catch (e) { api.toastError(e); }
   },

@@ -141,5 +141,37 @@
       <button class="recon-fix" wx:if="{{consume.missUrl}}" bindtap="goConsumeFix" data-url="{{consume.missUrl}}">{{t.reconConsumeGoFix}}</button>
     </block>
   </view>
+
+  <!-- ===== 段三 · 分原料看（2026-11-24 第二期）=====
+       从「总额差多少」下到「哪个原料超了」。候选由系统按「理论采购金额」自动排前 8 ——
+       老板不用挑，最值钱的已经排在前面（top3~5 通常覆盖食材成本 60%+）。
+       🔴 口径：理论量已按出成率还原成**毛料**（净料克数 ÷ 出成率 ÷ 换算系数），
+         所以老板要按「整块/整袋、没切的」来数。口径不一致时这个比较就不成立（三司会诊结论）。 -->
+  <view class="card2" wx:if="{{material}}">
+    <view class="attr-title">{{t.reconMaterialTitle}}</view>
+    <view class="recon-why">{{t.reconMaterialWhy}}</view>
+
+    <block wx:if="{{material.ok}}">
+      <view class="mat-row" wx:for="{{material.rows}}" wx:key="material_id">
+        <view class="mat-head">
+          <text class="mat-name">{{item.name}}</text>
+          <text class="muted">{{t.reconMaterialTheory}} {{item.theoryText}}{{item.unit}}</text>
+        </view>
+        <view class="mat-inputs">
+          <input class="mat-in" type="digit" value="{{item.openVal}}" placeholder="{{t.reconMaterialOpening}}" data-mid="{{item.material_id}}" data-k="o" bindinput="onMatQty" />
+          <input class="mat-in" type="digit" value="{{item.purVal}}" placeholder="{{t.reconMaterialPurchase}}" data-mid="{{item.material_id}}" data-k="p" bindinput="onMatQty" />
+          <input class="mat-in" type="digit" value="{{item.closeVal}}" placeholder="{{t.reconMaterialClosing}}" data-mid="{{item.material_id}}" data-k="c" bindinput="onMatQty" />
+        </view>
+        <view class="mat-result" wx:if="{{item.actualText}}">
+          <text class="muted">{{t.reconMaterialActual}} {{item.actualText}}{{item.unit}}</text>
+          <text class="val {{item.diffOver ? 'warn' : ''}}" wx:if="{{item.diffText}}">{{t.reconMaterialDiff}} {{item.diffText}}</text>
+        </view>
+      </view>
+      <view class="muted">{{t.reconMaterialNote}}</view>
+    </block>
+    <block wx:else>
+      <view class="warn">{{material.missText}}</view>
+    </block>
+  </view>
 </view>
 <view wx:else class="container"><view class="muted">{{t.loading}}</view></view>

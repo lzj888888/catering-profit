@@ -18,3 +18,14 @@
 /* 🔴 R723：抑制提示旁的直达按钮。AD 红线：字号 28rpx、触控区 88rpx。 */
 .recon-fix { font-size: 28rpx; color: #1e3a5f; background: #eef4fb; border-radius: 12rpx;
   min-height: 88rpx; line-height: 88rpx; margin: 12rpx 4rpx 8rpx; }
+
+/* ===== 2026-11-24 第二期：分原料看 =====
+   三个数量输入并排（期初/采购/期末）。AD 红线：字号 28rpx、触控 ≥88rpx。
+   ⚠️ 用 .mat-in 而不是 .val-input：.val-input 受 A1 判据约束（不得与 button 同父），此处无 button 但也别混用。 */
+.mat-row { padding: 16rpx 4rpx; border-bottom: 1rpx solid #F0E9DC; }
+.mat-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10rpx; }
+.mat-name { font-size: 30rpx; color: #1e3a5f; font-weight: 600; }
+.mat-inputs { display: flex; margin-bottom: 10rpx; }
+.mat-in { flex: 1; padding: 0 16rpx; background: #FFFDF8; border: 1rpx solid #F5EBD8; border-radius: 10rpx; min-height: 88rpx; font-size: 28rpx; margin-right: 12rpx; }
+.mat-in:last-child { margin-right: 0; }
+.mat-result { display: flex; justify-content: space-between; }

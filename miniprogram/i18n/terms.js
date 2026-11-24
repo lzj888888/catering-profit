@@ -2566,6 +2566,24 @@ const TERMS = {
     reconConsumeNonsalesWhy: '只算用店里食材做的：员工餐、试菜、报废。不算发给员工的现金餐补、请客招待。',
     reconConsumeReal: '真正说不清的',
     reconConsumeRealNote: '已扣掉上面填的损耗。这个数才是建议去核对的；没填损耗时它会偏大。',
+    // ===== 第二期 · 分原料核对（2026-11-24）=====
+    //   只让老板盘 3~5 个「最值钱」的原料，就能从「总额差多少」下到「哪个料超了」。
+    //   🔴 口径：理论用量已按出成率还原成**毛料采购量**（净料克数 ÷ 出成率 ÷ 换算系数），
+    //     所以老板按采购单位（斤/公斤）填就能直接比。
+    reconMaterialTitle: '分原料看',
+    reconMaterialWhy: '只挑最值钱的 3~5 个原料填，就能看出哪个用超了。按平时采购的单位填（斤/公斤）。',
+    reconMaterialAdd: '添加原料',
+    reconMaterialPick: '选择原料',
+    reconMaterialOpening: '期初剩',
+    reconMaterialPurchase: '本月采购',
+    reconMaterialClosing: '期末剩',
+    reconMaterialTheory: '按菜单该买',
+    reconMaterialActual: '实际用掉',
+    reconMaterialDiff: '差',
+    reconMaterialNoTheory: '没建成本卡，只能看实际用量',
+    reconMaterialNeedItems: '还没填原料盘点。挑 3~5 个最值钱的原料，填采购量和期末剩多少。',
+    reconMaterialNeedCards: '这些原料没出现在任何成本卡里，算不出该用多少。先补成本卡。',
+    reconMaterialNote: '差得多不等于被拿走：也可能是配方改了、出成率填错、盘点不准。核对后再判断。',
     // ===== M3.33（批次 G） 单品毛利复盘（导入销量 → 排行榜）=====
     //   【事后复盘】口径文案（v1.2 §M3.35 原文），落 card 命名空间、不新建顶层命名空间。
     reviewTitle: '菜品赚多赚少排行榜',
