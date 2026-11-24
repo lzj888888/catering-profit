@@ -19,6 +19,8 @@ const { materialUsage, theoryQtyOf, missingKeyOf } = require('../../../utils/mat
 // 🔴 2026-11-24 第三期：量价拆分 —— 把「多花了多少」拆成「买贵了多少」+「多买了多少」。
 //   恒等式：价格影响 + 数量影响 ≡ 金额总变化（见 utils/priceVariance.js 文件头证明）。
 const { priceVariance, priceAlertOf } = require('../../../utils/priceVariance.js');
+// 🔴 T1（2026-11-25）：核查数据持久化 —— 云存储 JSON + 本地兜底（换设备能读回）
+const store = require('../../../utils/consumeStore.js');
 
 Page({
   data: {
@@ -144,6 +146,8 @@ Page({
       const nonsalesFen = this.loadNonsales(cur);
       this.setData({ nonsalesYuan: nonsalesFen > 0 ? api.fenToYuan(nonsalesFen, 2) : '' });
       this.calc(cur, savedDishCount, nonsalesFen);
+      // 🔴 T1：先本地秒开，再异步从云端同步一次（云端有更新就覆盖；云端没有就把本地推上去）
+      this.syncFromCloud(cur).catch(() => { /* 云端不可用不影响本次查看 */ });
     } catch (e) {
       this.setData({ loading: false });
       api.toastError(e);
@@ -314,8 +318,93 @@ Page({
     this.saveMatInv(month, saved);
 
     const raw = this._matRaw;
+    // 🔴 T1：上传与渲染**解绑** —— 即使 _matRaw 没缓存（理论上不该发生），老板填的数也必须存下来，
+    //   否则会出现"看着填进去了、切个月回来没了"。
+    this.schedulePush(month);
     if (!raw) return;
     this.setData({ material: this.buildMaterialView(month, raw.cardsRes, raw.reviewRes, raw.matRes) });
+  },
+
+  /**
+   * 🔴 T1（2026-11-25）：把本地存储的原料盘点转成 consumeStore 的 items 结构。
+   * 本地格式 { [mid]: {o,p,c,a} }（a=采购金额元），云端格式 [{material_id, *_qty, purchase_amount_fen}]。
+   */
+  matItemsOf(month) {
+    const saved = this.loadMatInv(month);
+    const out = [];
+    for (const mid of Object.keys(saved)) {
+      const v = saved[mid] || {};
+      const amtYuan = Number(v.a);
+      out.push({
+        material_id: mid,
+        opening_qty: Number(v.o) || 0,
+        purchase_qty: Number(v.p) || 0,
+        closing_qty: Number(v.c) || 0,
+        purchase_amount_fen: (isFinite(amtYuan) && amtYuan > 0) ? api.yuanToFen(amtYuan) : 0,
+      });
+    }
+    return out;
+  },
+
+  /** 把云端读到的数据**写回本地**（保持既有读取路径不变：本地永远是渲染来源） */
+  applyCloud(month, payload) {
+    if (!payload) return;
+    try { wx.setStorageSync(ss.shopKey('nonsales_' + month), payload.nonsalesFen || 0); } catch (e) { /* 忽略 */ }
+    const inv = {};
+    for (const it of (payload.items || [])) {
+      if (!it || !it.material_id) continue;
+      inv[it.material_id] = {
+        o: it.opening_qty,
+        p: it.purchase_qty,
+        c: it.closing_qty,
+        a: it.purchase_amount_fen > 0 ? (it.purchase_amount_fen / 100) : '',
+      };
+    }
+    try { wx.setStorageSync(ss.shopKey('matinv_' + month), inv); } catch (e) { /* 忽略 */ }
+  },
+
+  /**
+   * 推送到云存储（长期真相）。
+   * 🔴 失败不提示、不阻塞：本地已经写过，本次会话不受影响（网络抖动时弹"保存失败"只会吓人）。
+   */
+  pushToCloud(month) {
+    const sid = ss.currentShopId();
+    if (!sid) return;
+    const payload = store.payloadOf(month, this.loadNonsales(month), this.matItemsOf(month));
+    store.saveCloud(sid, month, payload).catch(() => { /* 已在 saveCloud 内部吞掉，这里兜底 */ });
+  },
+
+  /** 防抖：老板每敲一个数字不能都发一次上传 */
+  schedulePush(month) {
+    if (this._pushTimer) clearTimeout(this._pushTimer);
+    this._pushTimer = setTimeout(() => {
+      this._pushTimer = null;
+      this.pushToCloud(month);
+    }, 800);
+  },
+
+  /**
+   * 从云端同步一次。
+   * 二分：
+   *   · 云端**有**数据 ⇒ 覆盖本地并重算（换设备后第一次进页面就是走这条）
+   *   · 云端**没有**   ⇒ 把本地现有数据推上去（老用户已填的本地数据自动迁移）
+   */
+  async syncFromCloud(month) {
+    const sid = ss.currentShopId();
+    if (!sid) return;
+    const cloud = await store.loadCloud(sid, month);
+    if (cloud) {
+      // 云端更新过才算（防止把刚填的覆盖成旧的）
+      const localAt = Number(wx.getStorageSync(ss.shopKey('consume_sync_at_' + month)) || 0);
+      if (Number(cloud.updatedAt) > localAt) {
+        this.applyCloud(month, cloud);
+        try { wx.setStorageSync(ss.shopKey('consume_sync_at_' + month), Number(cloud.updatedAt) || 0); } catch (e) { /* 忽略 */ }
+        this.setData({ nonsalesYuan: cloud.nonsalesFen > 0 ? api.fenToYuan(cloud.nonsalesFen, 2) : '' });
+        this.calc(month, this.data.savedDishCount, cloud.nonsalesFen || 0);
+      }
+    } else {
+      this.pushToCloud(month);   // 首次/老数据：把本地推上去
+    }
   },
 
   /**
@@ -489,6 +578,7 @@ Page({
     if (fen == null) return;
     try { wx.setStorageSync(ss.shopKey('nonsales_' + this.data.curMonth), fen); } catch (err) { /* 存不下不影响本次计算 */ }
     this.calc(this.data.curMonth, this.data.savedDishCount, fen);
+    this.schedulePush(this.data.curMonth);   // T1：防抖上传云端
   },
 
   /**

@@ -151,7 +151,9 @@ const CLASSES = {
   //   ⇒ 归 SHOP_KEY 而不是 GLOBAL_DEFECT。两处读/写都登记（loadNonsales 读、onNonsales 写）。
   //   ⚠️ 为什么不并进 shop_monthly_account：那是云函数写入路径，改它要部署；
   //     上线前选"零云函数改动"，代价是换设备会丢（页面已提示重填），第二期再迁。
-  SHOP_KEY_MATINV: ['ss.shopKey(\'matinv_\' + month)'],   // R754 第二期：原料盘点（按店按月，已走单源 shopKey）
+  SHOP_KEY_MATINV: ['ss.shopKey(\'matinv_\' + month)'],
+  // R757 T1：云同步水位线（记录本地已同步到的云端 updatedAt，防把刚填的覆盖成旧的）。按店按月隔离。
+  SHOP_KEY_SYNC_AT: ['ss.shopKey(\'consume_sync_at_\' + month)'],   // R754 第二期：原料盘点（按店按月，已走单源 shopKey）
   SHOP_KEY_CONSUME: ['ss.shopKey(\'nonsales_\' + month)',
     'ss.shopKey(\'nonsales_\' + this.data.curMonth)'],
   // R723：会话级导出清单（注销时按它删文件）；不是店铺业务数据，故不按 shop 拼。
