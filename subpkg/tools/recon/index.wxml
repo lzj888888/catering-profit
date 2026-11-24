@@ -161,11 +161,28 @@
           <input class="mat-in" type="digit" value="{{item.openVal}}" placeholder="{{t.reconMaterialOpening}}" data-mid="{{item.material_id}}" data-k="o" bindinput="onMatQty" />
           <input class="mat-in" type="digit" value="{{item.purVal}}" placeholder="{{t.reconMaterialPurchase}}" data-mid="{{item.material_id}}" data-k="p" bindinput="onMatQty" />
           <input class="mat-in" type="digit" value="{{item.closeVal}}" placeholder="{{t.reconMaterialClosing}}" data-mid="{{item.material_id}}" data-k="c" bindinput="onMatQty" />
+          <!-- 第三期：采购金额（元）。有这个数才能算「本月均价」，进而与上月比价、做量价拆分。
+               ⚠️ 不填就只能看数量偏差，看不出「买贵了多少」——那正是回扣最可能的藏身处。 -->
+          <input class="mat-in" type="digit" value="{{item.amtVal}}" placeholder="{{t.reconMaterialAmount}}" data-mid="{{item.material_id}}" data-k="a" bindinput="onMatQty" />
         </view>
         <view class="mat-result" wx:if="{{item.actualText}}">
           <text class="muted">{{t.reconMaterialActual}} {{item.actualText}}{{item.unit}}</text>
           <text class="val {{item.diffOver ? 'warn' : ''}}" wx:if="{{item.diffText}}">{{t.reconMaterialDiff}} {{item.diffText}}</text>
         </view>
+        <!-- ===== 第三期 · 量价拆分 =====
+             把「多花了多少」拆成「买贵了多少」+「多买了多少」。
+             🔴 金额持平也可能是「买贵 + 少买」互相抵消 —— 拆开才看得见（实测 +2250 / −2250 = 0）。
+             只给事实，不写"回扣/贪污"：涨价也可能是行情、季节、品质变化。 -->
+        <view class="mat-price" wx:if="{{item.hasPrice}}">
+          <text class="muted">{{t.reconPriceCur}} {{item.priceCurText}} 元/{{item.unit}}</text>
+          <text class="muted {{item.priceChgLevel === 'up' ? 'warn' : ''}}" wx:if="{{item.priceChgText}}">{{t.reconPriceChange}} {{item.priceChgText}}</text>
+        </view>
+        <view class="mat-price" wx:if="{{item.priceImpactText}}">
+          <text class="muted {{item.priceImpactOver ? 'warn' : ''}}">{{t.reconPriceImpact}} {{item.priceImpactText}} 元</text>
+          <text class="muted {{item.qtyImpactOver ? 'warn' : ''}}">{{t.reconQtyImpact}} {{item.qtyImpactText}} 元</text>
+        </view>
+        <view class="muted" wx:if="{{item.priceNeedAmount}}">{{t.reconPriceNeedAmount}}</view>
+        <view class="muted" wx:if="{{item.priceNeedPrev}}">{{t.reconPriceNeedPrev}}</view>
       </view>
       <view class="muted">{{t.reconMaterialNote}}</view>
     </block>

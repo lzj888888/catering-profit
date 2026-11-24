@@ -2577,6 +2577,7 @@ const TERMS = {
     reconMaterialOpening: '期初剩',
     reconMaterialPurchase: '本月采购',
     reconMaterialClosing: '期末剩',
+    reconMaterialAmount: '采购金额（元）',
     reconMaterialTheory: '按菜单该买',
     reconMaterialActual: '实际用掉',
     reconMaterialDiff: '差',
@@ -2584,6 +2585,16 @@ const TERMS = {
     reconMaterialNeedItems: '还没填原料盘点。挑 3~5 个最值钱的原料，填采购量和期末剩多少。',
     reconMaterialNeedCards: '这些原料没出现在任何成本卡里，算不出该用多少。先补成本卡。',
     reconMaterialNote: '差得多不等于被拿走：也可能是配方改了、出成率填错、盘点不准。核对后再判断。',
+    // ===== 第三期 · 量价拆分（2026-11-24）=====
+    //   把「多花了多少」拆成「买贵了多少」+「多买了多少」。这是会诊指出的唯一能碰回扣的角度：
+    //   金额 = 数量 × 单价，只看金额两变量互相掩盖；拆开后两者各自可比。
+    reconPriceCur: '本月均价',
+    reconPriceChange: '比上月',
+    reconPriceImpact: '其中买贵',
+    reconQtyImpact: '其中多买',
+    reconPriceNeedAmount: '填了采购金额才能算均价',
+    reconPriceNeedPrev: '上月没填，无法比价',
+    reconPriceNote: '涨价也可能是行情、季节、品质变化。这里只把多花的钱拆开，不定性。',
     // ===== M3.33（批次 G） 单品毛利复盘（导入销量 → 排行榜）=====
     //   【事后复盘】口径文案（v1.2 §M3.35 原文），落 card 命名空间、不新建顶层命名空间。
     reviewTitle: '菜品赚多赚少排行榜',

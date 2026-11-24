@@ -16,6 +16,9 @@ const { consumeVariance, missingOf } = require('../../../utils/consumeDerive.js'
 // 🔴 2026-11-24 第二期：原料级用量核对（理论 vs 实际）。口径见 utils/materialUsage.js 文件头
 //   （关键：成本卡的 quantity 是**净料克数**，理论采购量要 ÷出成率 ÷换算系数 还原成毛料）。
 const { materialUsage, theoryQtyOf, missingKeyOf } = require('../../../utils/materialUsage.js');
+// 🔴 2026-11-24 第三期：量价拆分 —— 把「多花了多少」拆成「买贵了多少」+「多买了多少」。
+//   恒等式：价格影响 + 数量影响 ≡ 金额总变化（见 utils/priceVariance.js 文件头证明）。
+const { priceVariance, priceAlertOf } = require('../../../utils/priceVariance.js');
 
 Page({
   data: {
@@ -74,9 +77,27 @@ Page({
       reconMaterialOpening: TERMS.card.reconMaterialOpening,
       reconMaterialPurchase: TERMS.card.reconMaterialPurchase,
       reconMaterialClosing: TERMS.card.reconMaterialClosing,
+      reconMaterialAmount: TERMS.card.reconMaterialAmount,
       reconMaterialActual: TERMS.card.reconMaterialActual,
       reconMaterialDiff: TERMS.card.reconMaterialDiff,
       reconMaterialNote: TERMS.card.reconMaterialNote,
+      // ===== 第三期 · 量价拆分 =====
+      // ⚠️ wxml 用到的每个 t.<键> 都必须在此登记（漏登记 ⇒ 静默空白）
+      reconPriceCur: TERMS.card.reconPriceCur,
+      reconPriceChange: TERMS.card.reconPriceChange,
+      reconPriceImpact: TERMS.card.reconPriceImpact,
+      reconQtyImpact: TERMS.card.reconQtyImpact,
+      reconPriceNeedAmount: TERMS.card.reconPriceNeedAmount,
+      reconPriceNeedPrev: TERMS.card.reconPriceNeedPrev,
+      reconPriceNote: TERMS.card.reconPriceNote,
+      // ===== 第三期 · 量价拆分 =====
+      reconPriceCur: TERMS.card.reconPriceCur,
+      reconPriceChange: TERMS.card.reconPriceChange,
+      reconPriceImpact: TERMS.card.reconPriceImpact,
+      reconQtyImpact: TERMS.card.reconQtyImpact,
+      reconPriceNeedAmount: TERMS.card.reconPriceNeedAmount,
+      reconPriceNeedPrev: TERMS.card.reconPriceNeedPrev,
+      reconPriceNote: TERMS.card.reconPriceNote,
       cur: '¥',
       loading: TERMS.ui.loading,
       save: TERMS.buttons.save,
@@ -180,6 +201,9 @@ Page({
     }
 
     const savedInv = this.loadMatInv(month);
+    // 第三期：上月盘点（用于量价对比）。上月没填 ⇒ priceVariance 只给本期均价、不编同比。
+    const prevMonth = this.prevMonthOf(month);
+    const savedPrev = prevMonth ? this.loadMatInv(prevMonth) : {};
     const invItems = [];
     for (const x of top) {
       const mid = String(x.m.material_id || x.m.id || '').trim();
@@ -201,6 +225,19 @@ Page({
       const it = byId[mid] || null;
       // 只有老板真填了数（三栏非全 0）才显示「实际/差」；没填只显示理论值，避免"用 0 斤"的假结论
       const filled = it && (Number(it.actualQty) !== 0 || Number(v.o) || Number(v.p) || Number(v.c));
+
+      // ===== 第三期 · 量价拆分（本月 vs 上月）=====
+      // 🔴 恒等式：价格影响 + 数量影响 ≡ 金额总变化（见 utils/priceVariance.js 文件头证明）。
+      //   金额持平也可能是"买贵 + 少买"互相抵消 —— 只有拆开才看得见。
+      const amtYuanCur = Number(v.a);
+      const amtFenCur = (isFinite(amtYuanCur) && amtYuanCur > 0) ? api.yuanToFen(amtYuanCur) : 0;
+      const pvObj = (savedPrev[mid]) ? {
+        qty: Number(savedPrev[mid].p) || 0,
+        amountFen: (() => { const a = Number(savedPrev[mid].a); return (isFinite(a) && a > 0) ? api.yuanToFen(a) : 0; })(),
+      } : null;
+      const pv = priceVariance({ qty: Number(v.p) || 0, amountFen: amtFenCur }, pvObj);
+      const alert = priceAlertOf(pv);
+
       return {
         material_id: mid,
         name: String(x.m.name || mid),
@@ -208,6 +245,7 @@ Page({
         openVal: (v.o == null || v.o === '') ? '' : String(v.o),
         purVal: (v.p == null || v.p === '') ? '' : String(v.p),
         closeVal: (v.c == null || v.c === '') ? '' : String(v.c),
+        amtVal: (v.a == null || v.a === '') ? '' : String(v.a),
         theoryText: x.th.theoryQty.toFixed(2),
         // 实际与差：填了才出；没填留空（wxml 用 wx:if 控制）
         actualText: filled ? it.actualQty.toFixed(2) : '',
@@ -215,6 +253,19 @@ Page({
           ? ((it.diffPct > 0 ? '+' : '') + it.diffPct.toFixed(1) + '%') : '',
         diffOver: !!(filled && it.diffPct != null && it.diffPct > 0),
         noTheory: !x.th.theoryQty,
+        // 量价拆分展示（只给事实；有值才显示）
+        hasPrice: !!(pv && pv.ok),
+        priceCurText: (pv && pv.ok) ? api.fenToYuan(pv.priceCurFen, 2) : '',
+        priceChgText: (pv && pv.ok && pv.decomposed)
+          ? ((pv.priceChangePct > 0 ? '+' : '') + pv.priceChangePct.toFixed(1) + '%') : '',
+        priceChgLevel: alert.level,
+        priceImpactText: (pv && pv.ok && pv.decomposed) ? api.fenToYuan(Math.abs(pv.priceImpactFen), 2) : '',
+        priceImpactOver: !!(pv && pv.ok && pv.decomposed && pv.priceImpactFen > 0),
+        qtyImpactText: (pv && pv.ok && pv.decomposed) ? api.fenToYuan(Math.abs(pv.qtyImpactFen), 2) : '',
+        qtyImpactOver: !!(pv && pv.ok && pv.decomposed && pv.qtyImpactFen > 0),
+        // 没填采购金额 / 上月没填 —— 两种"算不了"要分开说，否则老板会去补错地方
+        priceNeedAmount: !!(pv && pv.ok === false && pv.reason === 'no_amount'),
+        priceNeedPrev: !!(pv && pv.ok && !pv.decomposed),
       };
     });
 
@@ -230,7 +281,7 @@ Page({
     const ds = (e && e.currentTarget && e.currentTarget.dataset) || {};
     const mid = String(ds.mid || '');
     const k = String(ds.k || '');
-    if (!mid || ['o', 'p', 'c'].indexOf(k) < 0) return;
+    if (!mid || ['o', 'p', 'c', 'a'].indexOf(k) < 0) return;
     const val = (e.detail && e.detail.value != null) ? String(e.detail.value) : '';
     const n = Number(val);
     if (val !== '' && (!isFinite(n) || n < 0)) return;   // 非法输入不落库

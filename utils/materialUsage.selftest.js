@@ -166,9 +166,19 @@ const MATERIALS = [
   check('接线：并发多取了 getMaterial（否则拿不到出成率/换算系数，理论量算不出来）',
     /api\.call\('getMaterial'/.test(reconJs));
 
-  check('接线：三个数量输入框都绑 onMatQty 并带 data-k（o/p/c）',
-    (reconWxml.match(/bindinput="onMatQty"/g) || []).length === 3
-    && /data-k="o"/.test(reconWxml) && /data-k="p"/.test(reconWxml) && /data-k="c"/.test(reconWxml));
+  // 🔴 2026-11-24 第三期：输入框从 3 个（期初/采购/期末）增到 4 个（+采购金额）。
+  //   断言跟着改，但**必须是 4 而不是 ≥3** —— 少一个就说明有人删了某个维度（比如砍掉金额），
+  //   那样量价拆分就静默失效了（页面还在、数永远是空）。
+  check('接线：四个输入框都绑 onMatQty 并带 data-k（o/p/c/a —— a 是采购金额，第三期）',
+    (reconWxml.match(/bindinput="onMatQty"/g) || []).length === 4
+    && /data-k="o"/.test(reconWxml) && /data-k="p"/.test(reconWxml)
+    && /data-k="c"/.test(reconWxml) && /data-k="a"/.test(reconWxml));
+
+  check('接线：onMatQty 接受 a 键（采购金额），否则金额填了也不落库',
+    /\['o',\s*'p',\s*'c',\s*'a'\]\.indexOf\(k\)/.test(reconJs));
+
+  check('接线：buildMaterialView 里调 priceVariance 且读了上月盘点（否则没有比价基准）',
+    /priceVariance\(\{[\s\S]{0,200}prevMonth/.test(reconJs) || /savedPrev\[mid\][\s\S]{0,200}priceVariance/.test(reconJs));
 
   check('接线：onMatQty 用缓存的原始返回局部重算（不得每次重跑 4 个云函数）',
     /onMatQty\(e\)\s*\{[\s\S]{0,900}this\._matRaw/.test(reconJs)

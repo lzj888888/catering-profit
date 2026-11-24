@@ -25,7 +25,11 @@
 .mat-row { padding: 16rpx 4rpx; border-bottom: 1rpx solid #F0E9DC; }
 .mat-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10rpx; }
 .mat-name { font-size: 30rpx; color: #1e3a5f; font-weight: 600; }
-.mat-inputs { display: flex; margin-bottom: 10rpx; }
-.mat-in { flex: 1; padding: 0 16rpx; background: #FFFDF8; border: 1rpx solid #F5EBD8; border-radius: 10rpx; min-height: 88rpx; font-size: 28rpx; margin-right: 12rpx; }
-.mat-in:last-child { margin-right: 0; }
+.mat-inputs { display: flex; flex-wrap: wrap; margin-bottom: 4rpx; }
+/* 2026-11-24 第三期：4 个输入框（期初/采购/期末/采购金额）改 2×2 布局，
+   否则一排 4 个在手机上每个只剩 ~150rpx，输不进数字。 */
+.mat-in { flex: 0 0 calc(50% - 6rpx); padding: 0 16rpx; background: #FFFDF8; border: 1rpx solid #F5EBD8; border-radius: 10rpx; min-height: 88rpx; font-size: 28rpx; margin: 0 12rpx 12rpx 0; box-sizing: border-box; }
+.mat-in:nth-child(2n) { margin-right: 0; }
 .mat-result { display: flex; justify-content: space-between; }
+/* 第三期：量价拆分那两行（本月均价/比上月、其中买贵/其中多买） */
+.mat-price { display: flex; justify-content: space-between; margin-top: 6rpx; }
