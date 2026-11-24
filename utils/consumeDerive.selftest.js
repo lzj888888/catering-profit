@@ -80,7 +80,7 @@ const THEORY_FEN = 582000;   // 5820 元
     const r = consumeVariance({ ledger: mkLedger(o, p, c), review: mkReview({ ranked: RANKED }) });
     if (!r.ok || r.purchaseVarianceFen !== r.varianceFen) { allEq = false; details.push(`${o}/${p}/${c}:${r.varianceFen}≠${r.purchaseVarianceFen}`); }
   }
-  check('恒等式：4 组数据下「耗用偏差」≡「采购偏差」', allEq, details.join(',') || '全部相等');
+  check('代数恒等：4 组数据下「耗用偏差」≡「以实际期末为基准的采购偏差」（≠ 买多买少的判据）', allEq, details.join(',') || '全部相等');
 }
 
 // ===== 3) 🔴 反恒真：把 costFen 删掉必须判 unpaid，绝不能当 0 =====
