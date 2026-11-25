@@ -147,9 +147,10 @@
         <text class="pw-k">{{t.promoResNewMargin}}</text>
         <text class="pw-v">{{res.newMarginPct}}%</text>
       </view>
-      <view class="pw-cell">
-        <text class="pw-k">{{t.promoResTraffic}}</text>
-        <text class="pw-v pw-hot">{{res.trafficMultiple}}×</text>
+      <!-- 原来这里是「客人要多来几倍」(1.67×)，与上面风险块的「多来 66.67%」是同一件事 ⇒ 换成单数对比更具体 -->
+      <view class="pw-cell" wx:if="{{res.ordersNow}}">
+        <text class="pw-k">{{t.promoResOrdersNow}}</text>
+        <text class="pw-v">{{res.ordersNow}}{{t.promoOrdersUnit}}</text>
       </view>
       <view class="pw-cell" wx:if="{{res.revenueNeededYuan}}">
         <text class="pw-k">{{t.promoResRevenue}}</text>

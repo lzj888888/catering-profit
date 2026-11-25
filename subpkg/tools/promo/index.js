@@ -67,6 +67,7 @@ Page({
       promoResRevenue: t.promoResRevenue,
       promoResOrders: t.promoResOrders,
       promoOrdersUnit: t.promoOrdersUnit,
+      promoResOrdersNow: t.promoResOrdersNow,
       promoResCritical: t.promoResCritical,
       promoResCriticalHint: t.promoResCriticalHint,
       promoBelowThreshold: t.promoBelowThreshold,

@@ -1881,6 +1881,7 @@ const TERMS = {
     promoPriceHint: '填了才知道「要多来多少客人」——这个数才是真实压力',
     promoYuanUnit: '元',
     promoOrdersUnit: '单',
+    promoResOrdersNow: '现在一天',
     promoZheUnit: '折',
     promoKindLabel: '活动形式',
     promoKindOff: '直接打折',
