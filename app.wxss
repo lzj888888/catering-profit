@@ -10,7 +10,12 @@
  *      模块图标、状态胶囊、次级强调。
  *
  * 【暖底色板】R680 全站推广，替代原冷蓝三色（#f5f6f8 / #f3f7fb / #e8eff7）：
- *   页面底 #F6F3EC 米白 ／ 卡面 #FFFDF8 暖白 ／ 卡描边 #EDE6D8 米线
+ *   页面底 #F7F2E6 暖米黄 ／ 卡面 #FFFDF8 暖白 ／ 卡描边 #EDE6D8 米线
+ *   🔴 R760（2026-11-26）：底色 #F6F3EC → #F7F2E6（蓝通道 -6，去掉青白感）。
+ *      来源：李老师给的两张「功夫 Harness」参考图，机器取色其页面底 #F7F2E6；
+ *      反馈「M3 整体进来底色太过于青白色，看着不舒服」。
+ *      全站单源一处改（page / .sb-page / .sb-badge.na 同步），不搞页面级覆盖 ——
+ *      留第二份底色就是下一个漂移点（R680 同款教训）。
  *   浅底块 #FBF6EC
  *   为什么必须两层一起改：只把底改暖、字还留冷蓝灰 ⇒ 页面显「脏」；
  *   底与字同暖，才是「纸质账本」而不是「冷色报表」。
@@ -24,7 +29,7 @@
  *   🔴 红线：今后「弱化」只准用字号/字重/位置，**不准用降色**。
  *      金 #B77A2A（3.25:1）只能做图标底/装饰，**永远不许当文字色**。
  * ============================================================ */
-page { background: #F6F3EC; font-family: -apple-system, "PingFang SC", sans-serif; }
+page { background: #F7F2E6; font-family: -apple-system, "PingFang SC", sans-serif; }
 .container { padding: 24rpx; }
 .summary { display: flex; flex-wrap: wrap; }
 /* 🔴🔴 R296d：原此处有三条**全局**半宽卡片规则 ——
@@ -275,7 +280,7 @@ input, textarea { min-height: 88rpx; line-height: 1.5; }
    🔴 只做"外壳骨架"：卡片 / 标题 / 主数值 / 徽标 / 明细行。内部表单仍用各页原有类，
       避免一次改 8 个 wxml 把表单逻辑和最值对齐搞坏。
    🔴 类名前缀 sb- = style B，全仓无同名冲突（加了先 grep 一遍）。 */
-.sb-page { background: #F6F3EC; min-height: 100vh; }
+.sb-page { background: #F7F2E6; min-height: 100vh; }
 /* 🔴 R437（队列 #6）：M3 三页（枢纽 / 物料 / 成本卡）的外壳取值并进**同一份声明**。
    为什么不是各页 wxss 抄一遍数值：抄一份就多一处漂移点，改圆角要改四处且必然漏一处。
    为什么枢纽页写在这组选择器里、而不是给 wxml 加类名：
@@ -306,7 +311,7 @@ input, textarea { min-height: 88rpx; line-height: 1.5; }
 .sb-badge.ok { background: #eaf6f0; color: #1f7a53; }
 .sb-badge.warn { background: #fff3e0; color: #a45f00; }
 .sb-badge.bad { background: #fdecea; color: #c0392b; }
-.sb-badge.na { background: #F6F3EC; color: #6B6157; }
+.sb-badge.na { background: #F7F2E6; color: #6B6157; }
 
 /* ===== 🔴 R731 · 孤岛页兜底返回条 =====
    什么时候出现：页面**直接落地**打开（分享卡片 / 最近使用 / 微信重启恢复）⇒ 页面栈深度 = 1

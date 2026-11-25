@@ -1,0 +1,12 @@
+{
+  "time": "2026-11-25T22:59:46.439Z",
+  "shots": [
+    {
+      "route": "pages/index/index",
+      "path": "C:/Users/lzj/WorkBuddy/Claw/catering-profit/review/evidence/r760_home.png"
+    }
+  ],
+  "errors": [
+    "导航失败: pages/m3/hub"
+  ]
+}
