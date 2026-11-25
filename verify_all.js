@@ -4,7 +4,7 @@
 //       + R727 销量样例事实守卫（tools/check_sales_sample_facts.js，四张平台表在仓 + 粒度/规格实跑解析，防「样例待提供」第三次复发）
 //       + R726 算钱口径守卫（tools/check_r714_decisions.js，R714 三件口径由台账四票机器化：
 //         名单 ≡ 落地、E-6 真跑非有限 coverage 抑制、E-1/E-2 文案双副本与上屏、含反恒真）
-// 串联：339 个套件（2026-11-24 R1 追加 pay-flow-contract「订单流水跨函数字段/状态契约」；
+// 串联：340 个套件（2026-11-24 R1 追加 pay-flow-contract「订单流水跨函数字段/状态契约」；
 //       2026-11-24 R752 追加 consume-derive「耗用核查：理论 vs 实际 恒等式 + 四种算不了必须拦住」；
 //       R740 内部一换一：amort-rule-v2 → amort-no-gate；R741 追加 archive-no-fake；R742 追加 amort-invariants；R743 追加 amort-metamorphic；R744 追加 amort-disposal；R746 追加 revenue-missing-cols + bill-prod-sync；R747 追加 net-unit-parity + dsi1-error-channel；R748 追加 db-health-check + import-ext-parity + dishreview-crossmonth；追加 recon-page-behavior；R749 追加 batch5-xpayNotify 虚拟支付发货内核幂等/状态机/分流自测） = 6 个 specs 套件+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
@@ -1891,6 +1891,10 @@ const SUITES = [
   // R757 交叉审计固化：双写一致性（水位线 / 字段级覆盖 / 防抖中断三个真丢数据洞）。
   //   页面桩真跑 + 变异回灌，14 条。
   ['consume-dualwrite', 'tools/check_consume_dualwrite.js'],
+  // R757 活动测算（2026-11-25）：纯手填「这活动做完还赚不赚」。
+  //   守三件：① 10 类活动折算正确 ② 与国外 Breakeven Sales Uplift 基准对拍（65%打8折=+44%）
+  //   ③ 流水倍数 ≠ 客流倍数这个最核心的区分。46 条。
+  ['promo-calc', 'utils/promoCalc.selftest.js'],
 ];
 
 // 🔒 R59 守卫（自校验）：头部注释「// 串联：N 个套件」必须 ≡ SUITES.length。
