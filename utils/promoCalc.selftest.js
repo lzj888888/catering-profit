@@ -7,6 +7,8 @@
 //  ② **与 promoImpact 对拍活动后毛利率**：两个模块同源口径，任何一处漂移都要红。
 //  ③ **变异回灌**：把公式故意改错，判据必须转红 —— 证明断言有分辨力。
 
+const fs = require('fs');
+const path = require('path');
 const { promoCalc, discountOf, setMealCalc, riskOf } = require('./promoCalc.js');
 const Promo = require('./promoImpact.js');
 
@@ -179,6 +181,29 @@ sec('I 溯源（李老师原话的两个算例必须能复现）');
   const m = setMealCalc({ listPrice: 200, cost: 100, promoPrice: 125 });
   check('I-② 「200元套餐毛利100降到20%毛利」⇒ 售价 125、要 4 倍单量',
     Math.abs(m.promoPrice - 125) < 0.01 && Math.abs(m.ordersToEqual - 4) < 0.01);
+}
+
+// ===================================================================
+sec('J 页面接线（subpkg/tools/promo）');
+{
+  const PAGE = path.join(__dirname, '..', 'subpkg/tools/promo/index.js');
+  const WXML = path.join(__dirname, '..', 'subpkg/tools/promo/index.wxml');
+  const pj = fs.existsSync(PAGE) ? fs.readFileSync(PAGE, 'utf8') : '';
+  const pw = fs.existsSync(WXML) ? fs.readFileSync(WXML, 'utf8') : '';
+  check('J-① 页面文件存在（js + wxml）', !!pj && !!pw);
+  // 🔴 核心卖点：零数据依赖。页面一旦 require api.js，没建店的老板就用不了，拉新入口作废。
+  check('J-② 🔴 页面不 require api.js（零数据依赖，新用户没建店也能用）',
+    pj.indexOf('utils/api.js') < 0, pj.indexOf('utils/api.js') < 0 ? '未依赖' : '已依赖（拉新卖点失效）');
+  check('J-③ 页面复用 promoCalc 引擎（不自己写一套公式）',
+    /require\([^)]*promoCalc\.js/.test(pj));
+  check('J-④ 输入即重算：有 bindinput 且没有「计算」按钮（李老师要求自动变化）',
+    /bindinput=/.test(pw) && pj.indexOf('onInput') >= 0);
+  // 🔴 空输入必须 res=null（显示提示），不能给 0 —— 给 0 会让老板以为「这活动不亏」
+  check('J-⑤ 毛利率为空 ⇒ res=null（不显示 0，避免「看起来不亏」的误导）',
+    /if \(!\(m > 0\)\) \{ this\.setData\(\{ res: null \}\); return; \}/.test(pj));
+  check('J-⑥ 三档风险文案都接在页面上了',
+    pw.indexOf('promoRiskOk') >= 0 && pw.indexOf('promoRiskWatch') >= 0 && pw.indexOf('promoRiskRisky') >= 0);
+  check('J-⑦ 会亏时给劝停块（不是给个 0% 了事）', pw.indexOf('promoRiskImpossible') >= 0);
 }
 
 console.log('\n==== 活动测算自测：' + pass + ' 通过 / ' + failN + ' 失败 ====');

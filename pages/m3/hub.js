@@ -67,6 +67,9 @@ Page({
       icoTakeaway: TERMS.hub.icoTakeaway,
       icoGroupon: TERMS.hub.icoGroupon,
       icoRecon: TERMS.hub.icoRecon,
+      icoPromo: TERMS.hub.icoPromo,
+      promoTitle: TERMS.hub.promoTitle,
+      promoSub: TERMS.hub.promoSub,
       icoReview: TERMS.hub.icoReview,
       // 🔴 P0#6：付费小字（wxml 用到就必须登记 —— 漏登记 ⇒ 静默空白）
       //   R706：quickAdd 已删 —— 「＋新建菜品成本卡」与「菜品成本毛利」卡完全重复。
@@ -145,6 +148,8 @@ Page({
   goRevenue() { wx.navigateTo({ url: '/subpkg/biz/revenue/index' }); },
   goGroupon() { wx.navigateTo({ url: '/subpkg/biz/groupon/index' }); },
   goRecon() { wx.navigateTo({ url: '/subpkg/tools/recon/index' }); },
+  // R757：做活动划算吗（纯手填轻工具，零数据依赖）
+  goPromo() { wx.navigateTo({ url: '/subpkg/tools/promo/index' }); },
   goReview() { wx.navigateTo({ url: '/pages/m3/dishreview/index' }); },
 
   // R193：全局开了下拉刷新但本页未实现 ⇒ 下拉转圈、松手没反应（假刷新）。

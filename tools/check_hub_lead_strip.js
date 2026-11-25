@@ -20,7 +20,9 @@
 //      但它只取**第一次**出现的 `.hub-card {`，新加的复合选择器它抓不到 ⇒ 这里补上）。
 //
 // 判据：
-//   A 结构面：lead 容器恰好 1 个且在第二层宫格之前；lead 内恰好 2 张卡、宫格内 5 张；
+//   A 结构面：lead 容器恰好 1 个且在第二层宫格之前；lead 内恰好 2 张卡、宫格内 6 张；
+//      （R757 2026-11-25：新增「做活动划算吗」卡 ⇒ 宫格 5→6、总卡 7→8。
+//        宫格 6 张正好 2×3 排满，比原来的 5 张（末行只 1 张）更整齐，故不拆不并。）
 //             卡片类名仍是**单类名** hub-card；每张横条卡内用 `.hub-main` 把文字包成一组
 //   B 层叠裁决：把 hub.wxss **真跑一遍层叠**（匹配 → 特异性 → 源码顺序），算出
 //             「横条内的 .hub-card 最终 flex-direction / width」与「宫格内的」分别是多少 ——
@@ -167,12 +169,12 @@
   const gridZone = wxml.slice(iGrid);
   const leadCards = countOf(leadZone, 'class="hub-card"');
   const gridCards = countOf(gridZone, 'class="hub-card"');
-  check('A-③ 横条里恰好 2 张卡、宫格里 5 张（横条不许吞掉工具卡，也不许只剩 1 张）',
-    leadCards === 2 && gridCards === 5 && totalCards === 7,
+  check('A-③ 横条里恰好 2 张卡、宫格里 6 张（横条不许吞掉工具卡，也不许只剩 1 张）',
+    leadCards === 2 && gridCards === 6 && totalCards === 8,
     'lead=' + leadCards + ' grid=' + gridCards + ' 总=' + totalCards);
   // 卡片类名不许变成 "hub-card xxx"：S2/G4 按字面量数卡数，多一个类就数到 0
   check('A-④ 卡片仍是**单类名** `class="hub-card"`（加了第二个类 ⇒ check_hub_guide S2 数到 0 ⇒ 误报丢卡）',
-    totalCards === 7, '字面量命中 ' + totalCards + ' 处');
+    totalCards === 8, '字面量命中 ' + totalCards + ' 处');
   // 三行文字必须包进一组，否则 flex 会把 name/count/desc 排成三列
   const nMain = countOf(leadZone, 'class="hub-main"');
   check('A-⑤ 两张横条卡各自用 `.hub-main` 把标题/卡数/描述包成一组（不包 ⇒ 三行文字被 flex 排成三列）',

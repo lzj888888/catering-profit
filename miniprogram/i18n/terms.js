@@ -1866,6 +1866,65 @@ const TERMS = {
 
   // ===== 十四、M3 成本卡页面文案 =====
   card: {
+    // ===== R757 做活动划算吗（2026-11-25，纯手填轻工具）=====
+    // 🔴 定位：零数据依赖，没记账没建卡的老板也能用 ⇒ 拉新入口。
+    //   与 M2 沙盘的活动试验台（PROMO_ENABLED=false）不是一回事：那个要固定费用算保本营业额，
+    //   本页不要固定费用，算「要保住原来那笔毛利得多来多少客人」。
+    promoIntro: '填三个数，就知道这个活动做完还赚不赚。不用先记账、不用建成本卡。',
+    promoSecNow: '一、你现在的数',
+    promoSecAct: '二、你想做的活动',
+    promoMarginLabel: '现在毛利率',
+    promoMarginHint: '（售价 − 成本）÷ 售价。例：卖 20 元、成本 8 元 ⇒ 60%',
+    promoRevenueLabel: '一天流水',
+    promoRevenueHint: '填了才知道「要多做多少钱」；不填只算倍数',
+    promoPriceLabel: '客单价',
+    promoPriceHint: '填了才知道「要多来多少客人」——这个数才是真实压力',
+    promoYuanUnit: '元',
+    promoOrdersUnit: '单',
+    promoZheUnit: '折',
+    promoKindLabel: '活动形式',
+    promoKindOff: '直接打折',
+    promoKindThreshold: '满多少减多少',
+    promoKindBogo: '买几赠几',
+    promoKindNth: '第 N 件半价',
+    promoKindVoucher: '代金券',
+    promoKindShare: '同行免单',
+    promoKindStored: '储值赠金',
+    promoKindOffset: '积分抵现',
+    promoKindDirect: '时段/品类限定',
+    promoParamDiscount: '打几折（8 折填 0.8）',
+    promoParamThreshold: '满多少',
+    promoParamCut: '减多少',
+    promoParamBuy: '买几份',
+    promoParamFree: '赠/免几份',
+    promoParamN: '第几件半价',
+    promoParamFace: '券面额',
+    promoParamPeople: '几个人同行',
+    promoParamPrincipal: '充值金额',
+    promoParamBonus: '赠送金额',
+    promoParamPayable: '应付金额',
+    promoParamOffset: '抵现金额',
+    promoBelowThresholdHint: '客单没到门槛也按「达标后」算——做活动本来就是为了把客单拉到门槛',
+    promoResTitle: '三、算下来是这样',
+    promoRiskPrefix: '客人要多来 ',
+    promoRiskOk: '这个幅度做得到',
+    promoRiskWatch: '有点勉强：想清楚再上',
+    promoRiskRisky: '基本做不到：换个方式更划算',
+    promoRiskImpossible: '这个折扣会亏本，不要做',
+    promoResDiscount: '相当于打',
+    promoResNewMargin: '活动后毛利率',
+    promoResTraffic: '客人要多来几倍',
+    promoResRevenue: '流水要做到',
+    promoResOrders: '一天要卖',
+    promoResCritical: '再低就亏：最低只能打',
+    promoResCriticalHint: '低于这个折扣，卖一件亏一件',
+    promoEmptyHint: '把「现在毛利率」填上，就能算',
+    promoImpossibleHint: '这个折扣已经低于你的毛利率，卖得越多亏得越多。要么减让力度，要么先降成本。',
+    promoAltTitle: '换个方式，更省钱',
+    promoAlt1: '送小菜比降价划算——送的成本只是食材钱，降价让出去的是全部毛利。',
+    promoAlt2: '闲时做，别在忙时做——忙时打折，本来要来的客人也打了折，等于白送。',
+    promoAlt3: '升级不降价——加量或换好料，比直接降价少伤毛利。',
+    promoFoot: '只做算术推演：毛利率与流水由你自己填，结果取决于这些数准不准。',
     // R693（易填性·填得对）：出成率与损耗率**从未被解释过** —— 新手模式只说"专业项已收起"。
     //   填错的代价很实：出成率填 60 而不是 60%（语义混成 0.6/60 两种理解）会让净料成本翻倍，
     //   老板看到的毛利全是错的。文案压在 18 字内（与 hint_fold 的平铺/折叠分界一致）。
@@ -3089,6 +3148,7 @@ const TERMS = {
     //   改成两边都点名：一边是月度账里记的，一边是成本卡算出来的。
     reconShort: '月度账算的 和 菜品卡算的 比一比',
 
+
     // ===== R706：三步走**折叠进卡片**（李老师 2026-11-11）=====
     // 原形态（R263）是**独立引导块**：标题 + 3 行步骤 + 1 个直达按钮 + 1 行提示，
     // 外加一个全局「＋ 新建菜品成本卡」按钮 —— 与下面 8 张卡**功能完全重复**
@@ -3126,6 +3186,9 @@ const TERMS = {
     icoMaterial: '料',
     icoTakeaway: '外',
     icoRecon: '账',
+    icoPromo: '促',
+    promoTitle: '做活动划算吗',
+    promoSub: '满减/折扣/买赠，算完还赚不赚',
     icoReview: '榜',
     grouponTitle: '团购每单赚多少',
     grouponSub: '算一单团购到手多少、赚多少；不进月度账',

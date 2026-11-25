@@ -136,5 +136,10 @@
       <text class="hub-pay" wx:if="{{t.payTag}}">{{t.payTag}}</text>
       <text class="hub-desc">{{t.reconShort}}</text>
     </view>
+    <view class="hub-card" bindtap="goPromo" hover-class="hub-card-tap">
+      <view class="hub-ico hub-ico-recon">{{t.icoPromo}}</view>
+      <text class="hub-name">{{t.promoTitle}}</text>
+      <text class="hub-desc">{{t.promoSub}}</text>
+    </view>
   </view>
 </view>

@@ -60,6 +60,7 @@
         "sandbox/matrix",
         "sandbox/compare",
         "recon/index",
+        "promo/index",
         "pay/orders",
         "shop/setting",
         "shop/switch"

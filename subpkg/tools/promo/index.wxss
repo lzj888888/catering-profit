@@ -1,0 +1,217 @@
+/* subpkg/tools/promo/index.wxss —— 做活动划算吗（R757）
+   ⚠️ AD 门禁：正文 ≥28rpx、输入框/可点区域 ≥88rpx 高。 */
+.pw {
+  padding: 24rpx 28rpx 60rpx;
+}
+
+.pw-intro {
+  font-size: 28rpx;
+  color: #5b6472;
+  line-height: 1.6;
+  padding: 20rpx 24rpx;
+  background: #f4f7fb;
+  border-radius: 12rpx;
+  margin-bottom: 28rpx;
+}
+
+.pw-sec {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1f2733;
+  margin: 36rpx 0 16rpx;
+}
+
+.pw-row {
+  display: flex;
+  align-items: center;
+  min-height: 96rpx;
+  border-bottom: 1rpx solid #eef1f5;
+}
+
+.pw-lbl {
+  flex: 0 0 auto;
+  font-size: 29rpx;
+  color: #2b3442;
+  min-width: 240rpx;
+}
+
+.pw-in {
+  flex: 1;
+  text-align: right;
+  font-size: 32rpx;
+  color: #1f2733;
+  min-height: 96rpx;
+  line-height: 96rpx;
+}
+
+.pw-unit {
+  flex: 0 0 auto;
+  font-size: 28rpx;
+  color: #78828f;
+  margin-left: 10rpx;
+}
+
+.pw-hint {
+  font-size: 24rpx;
+  color: #8b95a3;
+  line-height: 1.55;
+  padding: 8rpx 0 12rpx;
+}
+
+.pw-pick {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 96rpx;
+  border-bottom: 1rpx solid #eef1f5;
+}
+
+.pw-pickv {
+  font-size: 30rpx;
+  color: #2f6bd8;
+}
+
+.pw-empty {
+  font-size: 28rpx;
+  color: #8b95a3;
+  text-align: center;
+  padding: 60rpx 0;
+}
+
+/* ===== 风险判定：结果区最显眼的一条 ===== */
+.pw-risk {
+  font-size: 34rpx;
+  font-weight: 700;
+  padding: 24rpx;
+  border-radius: 12rpx;
+  text-align: center;
+  margin-bottom: 8rpx;
+}
+
+.pw-risk-ok {
+  background: #e9f7ef;
+  color: #1c7a43;
+}
+
+.pw-risk-watch {
+  background: #fff6e5;
+  color: #a36a00;
+}
+
+.pw-risk-risky {
+  background: #fdeaea;
+  color: #c0392b;
+}
+
+.pw-risk-impossible {
+  background: #fdeaea;
+  color: #c0392b;
+}
+
+.pw-risk-note {
+  font-size: 26rpx;
+  color: #5b6472;
+  text-align: center;
+  padding: 10rpx 0 20rpx;
+  line-height: 1.5;
+}
+
+.pw-out {
+  background: #fff;
+  border-radius: 12rpx;
+  border: 1rpx solid #eef1f5;
+  padding: 4rpx 24rpx;
+}
+
+.pw-cell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 88rpx;
+  border-bottom: 1rpx solid #f4f6f9;
+}
+
+.pw-cell:last-child {
+  border-bottom: none;
+}
+
+.pw-k {
+  font-size: 28rpx;
+  color: #5b6472;
+}
+
+.pw-v {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1f2733;
+}
+
+.pw-hot {
+  color: #c0392b;
+}
+
+.pw-crit {
+  margin-top: 20rpx;
+  padding: 20rpx 24rpx;
+  background: #f4f7fb;
+  border-radius: 12rpx;
+}
+
+.pw-crit-t {
+  font-size: 28rpx;
+  color: #5b6472;
+}
+
+.pw-crit-v {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #1f2733;
+  margin-left: 14rpx;
+}
+
+.pw-crit-h {
+  display: block;
+  font-size: 24rpx;
+  color: #8b95a3;
+  margin-top: 8rpx;
+}
+
+.pw-alt {
+  font-size: 27rpx;
+  color: #2b3442;
+  line-height: 1.65;
+  padding: 14rpx 20rpx;
+  background: #fafbfd;
+  border-left: 4rpx solid #2f6bd8;
+  border-radius: 6rpx;
+  margin-bottom: 12rpx;
+}
+
+.pw-bad {
+  margin-top: 28rpx;
+  padding: 28rpx 24rpx;
+  background: #fdeaea;
+  border-radius: 12rpx;
+}
+
+.pw-bad-t {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #c0392b;
+  line-height: 1.4;
+}
+
+.pw-bad-d {
+  font-size: 27rpx;
+  color: #7d3b34;
+  line-height: 1.6;
+  margin-top: 12rpx;
+}
+
+.pw-foot {
+  font-size: 24rpx;
+  color: #98a1ad;
+  line-height: 1.6;
+  padding: 40rpx 0 20rpx;
+  text-align: center;
+}
