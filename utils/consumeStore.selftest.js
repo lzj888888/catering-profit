@@ -5,7 +5,7 @@
 //   所以 parsePayload 必须容错返回 null，而不是抛异常。
 // ⚠️ 真实上传/下载要真机验（wx.cloud 在 node 里没有），这里只证「没网/没云时能降级」。
 
-const { cloudPathOf, payloadOf, parsePayload, saveCloud, loadCloud, SCHEMA_VERSION } = require('./consumeStore.js');
+const { cloudPathOf, payloadOf, parsePayload, saveCloud, loadCloud, parseEnvBucket, SCHEMA_VERSION } = require('./consumeStore.js');
 
 let pass = 0, failN = 0;
 function check(name, cond, detail) {
@@ -41,6 +41,19 @@ function check(name, cond, detail) {
   check('payloadOf 字符串数量转成数字', p.items[0].opening_qty === 5, typeof p.items[0].opening_qty);
   check('payloadOf 金额为负 ⇒ 归零（不允许负采购额）',
     payloadOf('2026-11', -100, []).nonsalesFen === 0);
+}
+
+// ===== 2) fileID 解析（真机实测后补的一环）=====
+//   🔴 背景：`getTempFileURL` **不认 cloudPath**（实测 status=1），只认 fileID。
+//   而 fileID = cloud://{env}.{bucket}/{path}，这两个值无法推导、又不能硬编码（app.js 铁律）。
+//   ⇒ 靠上传探针文件从返回值里解析。这个解析必须准，否则整条读回链路断。
+{
+  const eb = parseEnvBucket('cloud://envX.bktY/consume_check/s1/2026-11.json');
+  check('parseEnvBucket 解析 env', eb && eb.env === 'envX', eb && eb.env);
+  check('parseEnvBucket 解析 bucket', eb && eb.bucket === 'bktY', eb && eb.bucket);
+  check('parseEnvBucket 非法输入 ⇒ null（不产生半截对象）',
+    parseEnvBucket('') === null && parseEnvBucket('not-a-fileid') === null && parseEnvBucket(null) === null);
+  check('parseEnvBucket 对 http url 也返 null（只认 cloud://）', parseEnvBucket('https://x/y.json') === null);
 }
 
 // ===== 3) 解析容错（本模块最要紧的一组）=====

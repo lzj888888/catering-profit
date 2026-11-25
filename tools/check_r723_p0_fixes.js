@@ -191,8 +191,12 @@ async function main() {
   ok('B-⑤ 反恒真：第 2 个文件 unlink 抛异常时，登出仍继续 switchTab（fail-soft）',
     S2.log.filter((x) => x[0] === 'unlink').length === 2
     && S2.log.some((x) => x[0] === 'switchTab'), JSON.stringify(S2.log.map((x) => x[0])));
+  // 🔴 2026-11-25：原判据是 `/SESSION_SCOPE: \['EXPORTED_FILES_KEY'\]/` —— **字面量写死**，
+  //   只要往这个数组里加任何 key（本次 T1 加了 BUCKET_KEY，env/bucket 缓存，与店无关）
+  //   就会假红。这正是 gate-suite-checklist §13「守卫反向伤害第二型」：判据按字面而实现是数组。
+  //   本条的**本意**是「导出清单 key 已登记」，不是「只能有一个」⇒ 改成"含该 key"。
   ok('B-⑥ 导出清单 key 已在 R719 守卫归类表登记（横向防漏不漏）',
-    /SESSION_SCOPE: \['EXPORTED_FILES_KEY'\]/.test(read('tools/check_m3_storage_isolation.js')));
+    /SESSION_SCOPE: \[[^\]]*'EXPORTED_FILES_KEY'[^\]]*\]/.test(read('tools/check_m3_storage_isolation.js')));
   global.setTimeout = oldTimeout;
 
   // ===================================================================

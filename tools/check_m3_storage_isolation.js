@@ -153,11 +153,15 @@ const CLASSES = {
   //     上线前选"零云函数改动"，代价是换设备会丢（页面已提示重填），第二期再迁。
   SHOP_KEY_MATINV: ['ss.shopKey(\'matinv_\' + month)'],
   // R757 T1：云同步水位线（记录本地已同步到的云端 updatedAt，防把刚填的覆盖成旧的）。按店按月隔离。
-  SHOP_KEY_SYNC_AT: ['ss.shopKey(\'consume_sync_at_\' + month)'],   // R754 第二期：原料盘点（按店按月，已走单源 shopKey）
+  SHOP_KEY_SYNC_AT: ['ss.shopKey(\'consume_sync_at_\' + month)'],
+  // T1 诊断痕迹：上传失败时留一条原因（便于排查本地有、云端没有）。按店隔离。
+  SHOP_KEY_UPLOAD_ERR: ['ss.shopKey(\'consume_upload_err\')'],   // R754 第二期：原料盘点（按店按月，已走单源 shopKey）
   SHOP_KEY_CONSUME: ['ss.shopKey(\'nonsales_\' + month)',
     'ss.shopKey(\'nonsales_\' + this.data.curMonth)'],
   // R723：会话级导出清单（注销时按它删文件）；不是店铺业务数据，故不按 shop 拼。
-  SESSION_SCOPE: ['EXPORTED_FILES_KEY'],
+  // consumeStore.BUCKET_KEY：云存储的 env/bucket 缓存（**与店无关**，同一环境所有店共用）。
+  //   为什么必须缓存：getTempFileURL 只认 fileID，而 fileID 要靠 env/bucket 拼。
+  SESSION_SCOPE: ['EXPORTED_FILES_KEY', 'BUCKET_KEY'],
   CLEAR: [''],                                                   // clearStorageSync()
 };
 const ALLOWED = new Set(Object.values(CLASSES).flat());

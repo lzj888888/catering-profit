@@ -369,9 +369,25 @@ Page({
    */
   pushToCloud(month) {
     const sid = ss.currentShopId();
-    if (!sid) return;
-    const payload = store.payloadOf(month, this.loadNonsales(month), this.matItemsOf(month));
-    store.saveCloud(sid, month, payload).catch(() => { /* 已在 saveCloud 内部吞掉，这里兜底 */ });
+    if (!sid) return Promise.resolve({ ok: false, reason: 'no_sid' });
+    let payload;
+    try {
+      payload = store.payloadOf(month, this.loadNonsales(month), this.matItemsOf(month));
+    } catch (e) {
+      // 构造 payload 就炸（比如 api.yuanToFen 不存在）—— 原来这里会被 setTimeout 吞掉，
+      // 表现为"本地写进去了、云端没有"，极难排查。现在留痕。
+      const r = { ok: false, reason: 'payload:' + ((e && e.message) || String(e)) };
+      try { wx.setStorageSync(ss.shopKey('consume_upload_err'), JSON.stringify(r)); } catch (e2) { /* 忽略 */ }
+      return Promise.resolve(r);
+    }
+    return store.saveCloud(sid, month, payload).then((r) => {
+      // 失败留痕（只在本地记一条，不弹 toast 打扰老板）；成功则清掉旧痕迹
+      try {
+        if (r && r.ok) wx.removeStorageSync(ss.shopKey('consume_upload_err'));
+        else wx.setStorageSync(ss.shopKey('consume_upload_err'), JSON.stringify(Object.assign({ month: month }, r)));
+      } catch (e3) { /* 忽略 */ }
+      return r;
+    });
   },
 
   /** 防抖：老板每敲一个数字不能都发一次上传 */

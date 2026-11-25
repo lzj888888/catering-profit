@@ -355,7 +355,7 @@ const CASES = [
   { key: 'consume_derive', rel: 'utils/consumeDerive.selftest.js' }, // 60 条
   { key: 'material_usage', rel: 'utils/materialUsage.selftest.js' }, // 38 条（R754 第二期：出成率还原毛料 + 无理论值不给 0 + 页面接线）
   { key: 'price_variance', rel: 'utils/priceVariance.selftest.js' }, // 19 条（R755 第三期：量价恒等式 + 掩盖场景必须拆出来）
-  { key: 'consume_store', rel: 'utils/consumeStore.selftest.js' }, // 28 条（R757 T1：坏数据不白屏 + 上云接线）（恒等式 + 四种算不了 + 反恒真 + 文案键存在性）
+  { key: 'consume_store', rel: 'utils/consumeStore.selftest.js' }, // 32 条（R757 T1：坏数据不白屏 + 上云接线）（恒等式 + 四种算不了 + 反恒真 + 文案键存在性）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];
