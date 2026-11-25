@@ -3119,7 +3119,7 @@ const TERMS = {
     // 🔴 R616：渠道营收（从收款日报算，双口径）。放「对账」旁边 = 都是汇总核对类。
     revenueTitle: '渠道营收',
     revenueSub: '用你记的收款日报，看清各渠道赚多少、跟经营营收差多少',
-    icoRevenue: '渠',
+    icoRevenue: '/images/hub/revenue.png',   // R758：单字「渠」→ 线性图标（见 hub 组 ico* 段注释）
     // 🔴 R263：卡名必须与**页面自己的标题**一致 —— `subpkg/biz/takeaway` 的标题取自
     //   `TERMS.ledger.takeaway.title` =「外卖单均测算」。原名「外卖菜品成本及利润」
     //   既与页内标题打架（点进去标题换了个名字），又把"导入"这个后台动作摆进了功能名
@@ -3181,19 +3181,35 @@ const TERMS = {
     emptyTplHint: '进去也能套用现成模板',
     // 「涨价影响面」不单独占一张卡：它的入口埋在原料库每条原料上（点具体原料才谈得上影响面），
     //   摆在枢纽页会变成「不知道先选哪个原料」的死路 —— 保持 5 张（含单品毛利复盘）。
-    // R192：分区卡左侧图标块的**单字**（不用 emoji：微信真机在部分字体下宽高不一致、会塌行）
-    //   ⚠️ 这不是装饰：图标块 = 整卡体积感的抓手（替代 R191 那条被判「像括号」的左侧色条）
-    icoCard: '卡',
-    icoMaterial: '料',
-    icoTakeaway: '外',
-    icoRecon: '账',
-    icoPromo: '促',
+    // 🔴 R758（李老师 2026-11-25：单字图标「一个字当 LOGO，感觉有点单薄、全是文字感」）
+    //   单字 → **线性图标 PNG**（tools/gen_hub_icons.py 生成，可复现）。
+    //   ⚠️ 值从单字改成图片路径，**键名一个不动** —— 键是视图层的稳定契约，
+    //      check_page_terms 的 P2 按 `t.icoXxx` 查登记、check_hub_lead_strip A-⑥ 按字面量数图标块。
+    //   为什么 PNG 不用 SVG / iconfont / emoji：本仓真机踩过 emoji 塌行（R192）与 webview
+    //      对 SVG 支持不定的坑；位图零依赖、任何基础库版本都按像素渲染。
+    //   色值仍由 app.wxss 的 .hub-ico-* 渐变底单源给出，这里只放**路径**。
+    icoCard: '/images/hub/card.png',
+    icoMaterial: '/images/hub/material.png',
+    icoTakeaway: '/images/hub/takeaway.png',
+    icoRecon: '/images/hub/recon.png',
+    icoPromo: '/images/hub/promo.png',
     promoTitle: '做活动划算吗',
     promoSub: '满减/折扣/买赠，算完还赚不赚',
-    icoReview: '榜',
+    icoReview: '/images/hub/review.png',
     grouponTitle: '团购每单赚多少',
     grouponSub: '算一单团购到手多少、赚多少；不进月度账',
-    icoGroupon: '团',
+    icoGroupon: '/images/hub/groupon.png',
+    // 🔴 R758 卡片状态徽标（企业级 UI：视觉元素要带信息量，不是纯装饰）：
+    //   三类语义，全部对应**真实状态/属性**，没有一个是为好看编出来的：
+    //     · 已录/待补 —— 由 stepFlags 驱动（原料库 / 成本卡是否真有数据），fail-closed：读失败=待补
+    //     · 工具 —— 纯手填、不依赖店内数据的测算器（外卖单均 / 团购 / 活动）
+    //     · 看数 —— 要拿已有数据来核对/排行的（榜单 / 渠道营收 / 对账）
+    //   ⚠️ 禁用「已/完成/成功」以外的完成态误导词；这里的"已录"是已完成态，语义真。
+    badgeDone: '已录',
+    badgeTodo: '待补',
+    badgeBuilt: '已建',
+    badgeTool: '工具',
+    badgeData: '看数',
     // 🔴 P0#6（2026-10-11）：付费小字（外卖 / 单品毛利复盘 / 对账 属付费域；成本卡 + 原料库免费）
     //   付费卡挂一行小字，老板一眼知道哪些要开通，不点进去才发现有墙。
     //   ⚠️ 值禁用「付费 / 订阅 / 会员费」（触发虚拟支付审核）；用「开通」系（check_terms_forbidden T5 守着）。

@@ -61,16 +61,23 @@ Page({
       emptyDesc: TERMS.hub.emptyDesc,
       emptyBtn: TERMS.hub.emptyBtn,
       emptyTplHint: TERMS.hub.emptyTplHint,
-      // R192：图标块单字（wxml 用到就必须登记 —— 漏登记 ⇒ 页面静默空白，本仓 R189 P2-1 同族）
+      // R758：图标块从单字改线性 PNG（键名不变；wxml 用到就必须登记 —— 漏登记 ⇒ 静默空白）
       icoCard: TERMS.hub.icoCard,
       icoMaterial: TERMS.hub.icoMaterial,
       icoTakeaway: TERMS.hub.icoTakeaway,
       icoGroupon: TERMS.hub.icoGroupon,
       icoRecon: TERMS.hub.icoRecon,
       icoPromo: TERMS.hub.icoPromo,
+      icoRevenue: TERMS.hub.icoRevenue,
       promoTitle: TERMS.hub.promoTitle,
       promoSub: TERMS.hub.promoSub,
       icoReview: TERMS.hub.icoReview,
+      // R758：卡片状态徽标（真实语义 —— 见 terms.hub 徽标段注释）
+      badgeDone: TERMS.hub.badgeDone,
+      badgeTodo: TERMS.hub.badgeTodo,
+      badgeBuilt: TERMS.hub.badgeBuilt,
+      badgeTool: TERMS.hub.badgeTool,
+      badgeData: TERMS.hub.badgeData,
       // 🔴 P0#6：付费小字（wxml 用到就必须登记 —— 漏登记 ⇒ 静默空白）
       //   R706：quickAdd 已删 —— 「＋新建菜品成本卡」与「菜品成本毛利」卡完全重复。
       //   🔴 R724h（2026-11-13 模拟器实测，台账 R3-5）：

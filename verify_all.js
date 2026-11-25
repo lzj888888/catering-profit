@@ -4,7 +4,8 @@
 //       + R727 销量样例事实守卫（tools/check_sales_sample_facts.js，四张平台表在仓 + 粒度/规格实跑解析，防「样例待提供」第三次复发）
 //       + R726 算钱口径守卫（tools/check_r714_decisions.js，R714 三件口径由台账四票机器化：
 //         名单 ≡ 落地、E-6 真跑非有限 coverage 抑制、E-1/E-2 文案双副本与上屏、含反恒真）
-// 串联：340 个套件（2026-11-24 R1 追加 pay-flow-contract「订单流水跨函数字段/状态契约」；
+// 串联：341 个套件（2026-11-25 R758 追加 hub-icons「M3 枢纽页线性图标 + 状态徽标：资源/接线/徽标三面 + 反恒真」；
+//       2026-11-24 R1 追加 pay-flow-contract「订单流水跨函数字段/状态契约」；
 //       2026-11-24 R752 追加 consume-derive「耗用核查：理论 vs 实际 恒等式 + 四种算不了必须拦住」；
 //       R740 内部一换一：amort-rule-v2 → amort-no-gate；R741 追加 archive-no-fake；R742 追加 amort-invariants；R743 追加 amort-metamorphic；R744 追加 amort-disposal；R746 追加 revenue-missing-cols + bill-prod-sync；R747 追加 net-unit-parity + dsi1-error-channel；R748 追加 db-health-check + import-ext-parity + dishreview-crossmonth；追加 recon-page-behavior；R749 追加 batch5-xpayNotify 虚拟支付发货内核幂等/状态机/分流自测） = 6 个 specs 套件+ 批次0~7 代码自测（batch0/1/2/3/4/5/6/7，
 //       含 M1 结果页三态判据守卫 tools/check_m1_result_tristate.js（R298·C1 / #443：未建档月走空态、不挂红带）。
@@ -1582,6 +1583,12 @@ const SUITES = [
   //   特异性相同（都是两个类），谁生效只取决于源码先后；挪一格就静默变回 50% 窄卡。
   //   判据真跑一遍层叠（匹配→特异性→顺序）算出 flex-direction / width，并含两条反恒真。
   ['hub-lead-strip', 'tools/check_hub_lead_strip.js'],
+  // R758：M3 枢纽页图标与状态徽标守卫（李老师 2026-11-25：「一个字当 LOGO，有点单薄、
+  //   整体有点素、全是文字感」）⇒ 8 个单字图标换成线性 PNG + 每张卡挂真实语义徽标。
+  //   守三条：① 8 个 PNG 在位且是真 PNG（魔数）+ 生成脚本可复现 ② wxml 用 <image> 接线、
+  //   terms 路径解析到真文件、没退回单字裸插值 ③ 5 个徽标键三处齐（terms/页面 t/wxml）。
+  //   含 3 道反恒真（坏 src / 单字回退 / 坏路径必须判红）。
+  ['hub-icons', 'tools/check_hub_icons.js'],
   // R715：外卖页「词不达意 / 填不了 / 改不回」守卫。李老师 2026-11-12 原话：
   //   「各个语义这个解释，你看看词不达意的地方有没有…不知怎么填数字…入错了数字怎么办，
   //     表格导错了这个时候我们怎么纠正」。

@@ -64,18 +64,18 @@
   <view class="hub-grid hub-grid-lead">
     <!-- ① 原料必须先有价，否则后面配料的成本是空的 ⇒ 排在最前 -->
     <view class="hub-card" bindtap="goMaterial" hover-class="hub-card-tap">
-      <view class="hub-ico hub-ico-material">{{t.icoMaterial}}</view>
+      <view class="hub-ico hub-ico-material"><image class="hub-ico-img" src="{{t.icoMaterial}}" mode="aspectFit" aria-hidden="true"/></view>
       <view class="hub-main">
-        <text class="hub-name"><text class="hub-step {{stepFlags[0] ? 'on' : ''}}">{{stepFlags[0] ? '✓' : '①'}}</text>{{t.materialTitle}}</text>
+        <text class="hub-name"><text class="hub-step {{stepFlags[0] ? 'on' : ''}}">{{stepFlags[0] ? '✓' : '①'}}</text>{{t.materialTitle}}<text class="sb-badge {{stepFlags[0] ? 'ok' : 'na'}} hub-badge">{{stepFlags[0] ? t.badgeDone : t.badgeTodo}}</text></text>
         <text class="hub-desc">{{t.materialShort}}</text>
       </view>
     </view>
 
     <!-- ② 配菜算出成本 -->
     <view class="hub-card" bindtap="goCard" hover-class="hub-card-tap">
-      <view class="hub-ico hub-ico-card">{{t.icoCard}}</view>
+      <view class="hub-ico hub-ico-card"><image class="hub-ico-img" src="{{t.icoCard}}" mode="aspectFit" aria-hidden="true"/></view>
       <view class="hub-main">
-        <text class="hub-name"><text class="hub-step {{stepFlags[1] ? 'on' : ''}}">{{stepFlags[1] ? '✓' : '②'}}</text>{{t.cardTitle}}</text>
+        <text class="hub-name"><text class="hub-step {{stepFlags[1] ? 'on' : ''}}">{{stepFlags[1] ? '✓' : '②'}}</text>{{t.cardTitle}}<text class="sb-badge {{stepFlags[1] ? 'ok' : 'na'}} hub-badge">{{stepFlags[1] ? t.badgeBuilt : t.badgeTodo}}</text></text>
         <!-- R706：卡数**始终显示**（未做时是"你现在有几张"，做完后是"这些都在里面"），
              不跟完成态切换 —— 切了会让老板以为数字跳变。fail-closed：-1 不渲染。 -->
         <text class="hub-count" wx:if="{{cardCount >= 0}}">{{t.countPrefix}}{{cardCount}}{{t.countSuffix}}</text>
@@ -104,41 +104,47 @@
          两处都是「需要这份数据的地方」，不需要先记住一个导入入口。 -->
   <view class="hub-grid">
     <view class="hub-card" bindtap="goTakeaway" hover-class="hub-card-tap">
-      <view class="hub-ico hub-ico-takeaway">{{t.icoTakeaway}}</view>
+      <view class="hub-ico hub-ico-takeaway"><image class="hub-ico-img" src="{{t.icoTakeaway}}" mode="aspectFit" aria-hidden="true"/></view>
       <text class="hub-name">{{t.takeawayTitle}}</text>
+      <text class="sb-badge na hub-badge-grid">{{t.badgeTool}}</text>
       <text class="hub-pay" wx:if="{{t.payTag}}">{{t.payTag}}</text>
       <text class="hub-desc">{{t.takeawayShort}}</text>
     </view>
 
     <view class="hub-card" bindtap="goGroupon" hover-class="hub-card-tap">
-      <view class="hub-ico hub-ico-groupon">{{t.icoGroupon}}</view>
+      <view class="hub-ico hub-ico-groupon"><image class="hub-ico-img" src="{{t.icoGroupon}}" mode="aspectFit" aria-hidden="true"/></view>
       <text class="hub-name">{{t.grouponTitle}}</text>
+      <text class="sb-badge na hub-badge-grid">{{t.badgeTool}}</text>
       <text class="hub-pay" wx:if="{{t.payTag}}">{{t.payTag}}</text>
       <text class="hub-desc">{{t.grouponShort}}</text>
     </view>
 
     <view class="hub-card" bindtap="goReview" hover-class="hub-card-tap">
-      <view class="hub-ico hub-ico-review">{{t.icoReview}}</view>
+      <view class="hub-ico hub-ico-review"><image class="hub-ico-img" src="{{t.icoReview}}" mode="aspectFit" aria-hidden="true"/></view>
       <text class="hub-name">{{t.reviewTitle}}</text>
+      <text class="sb-badge na hub-badge-grid">{{t.badgeData}}</text>
       <text class="hub-pay" wx:if="{{t.payTag}}">{{t.payTag}}</text>
       <text class="hub-desc">{{t.reviewShort}}</text>
     </view>
 
     <view class="hub-card" bindtap="goRevenue" hover-class="hub-card-tap">
-      <view class="hub-ico hub-ico-revenue">{{t.icoRevenue}}</view>
+      <view class="hub-ico hub-ico-revenue"><image class="hub-ico-img" src="{{t.icoRevenue}}" mode="aspectFit" aria-hidden="true"/></view>
       <text class="hub-name">{{t.revenueTitle}}</text>
+      <text class="sb-badge na hub-badge-grid">{{t.badgeData}}</text>
       <text class="hub-desc">{{t.revenueShort}}</text>
     </view>
 
     <view class="hub-card" bindtap="goRecon" hover-class="hub-card-tap">
-      <view class="hub-ico hub-ico-recon">{{t.icoRecon}}</view>
+      <view class="hub-ico hub-ico-recon"><image class="hub-ico-img" src="{{t.icoRecon}}" mode="aspectFit" aria-hidden="true"/></view>
       <text class="hub-name">{{t.reconTitle}}</text>
+      <text class="sb-badge na hub-badge-grid">{{t.badgeData}}</text>
       <text class="hub-pay" wx:if="{{t.payTag}}">{{t.payTag}}</text>
       <text class="hub-desc">{{t.reconShort}}</text>
     </view>
     <view class="hub-card" bindtap="goPromo" hover-class="hub-card-tap">
-      <view class="hub-ico hub-ico-recon">{{t.icoPromo}}</view>
+      <view class="hub-ico hub-ico-recon"><image class="hub-ico-img" src="{{t.icoPromo}}" mode="aspectFit" aria-hidden="true"/></view>
       <text class="hub-name">{{t.promoTitle}}</text>
+      <text class="sb-badge na hub-badge-grid">{{t.badgeTool}}</text>
       <text class="hub-desc">{{t.promoSub}}</text>
     </view>
   </view>

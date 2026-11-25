@@ -7,6 +7,11 @@
 .hub-title { display: block; font-size: 36rpx; font-weight: 700; color: #2B2620; }
 .hub-sub { display: block; font-size: 28rpx; color: #776C5E; margin-top: 8rpx; }
 
+/* ===== R758：图标块内的线性 PNG =====
+   图标块本身（.hub-ico / .hub-ico-*）的尺寸与渐变底由 app.wxss 单源给出，本文件只管**内部图片**。
+   🔴 图片占容器 72%（首版 60% 实测偏小、色块显空；放大后白描边仍离边缘 14%，不会糊边）。 */
+.hub-ico-img { width: 72%; height: 72%; display: block; }
+
 .hub-card {
   display: flex; align-items: center; padding: 28rpx 24rpx;
   /* 🔴 R437（队列 #6）：底色 / 圆角 / 阴影 / 卡间距统一由 app.wxss 的 `.sb-*` 声明组给出，
@@ -41,6 +46,9 @@
   /* 同排等高：一张描述 2 行、一张 3 行时底部不会参差 */
   align-self: stretch;
 }
+/* R758：宫格卡里的类型徽标 —— 紧跟卡名、描述之前。
+   ⚠️ 样式（字号/配色/圆角）走 .sb-badge 单源，这里只写布局间距，不写 font-size（AD 红线也守着）。 */
+.hub-badge-grid { margin-top: 10rpx; }
 .hub-grid .hub-ico {
   margin-right: 0; margin-bottom: 14rpx;
   width: 72rpx; height: 72rpx; border-radius: 20rpx; font-size: 34rpx;
@@ -83,6 +91,9 @@
    删掉 7 行引导后又添回 3 行提示等于没改。序号的含义只在**分区标题**里解释一次。
    🔴 墨绿选的是品牌色板里已有的 `#1a7d55`（同 .hub-ico-material），不引入新色；
       `✓` 用它表示"完成"与全仓"绿=安全"的既有语义同向，不冲突。 */
+/* R758：横条卡名内的完成态徽标（紧跟标题文字）—— sb-badge 单源给字号/配色，这里只给间距 */
+.hub-badge { margin-left: 10rpx; }
+
 .hub-step {
   display: inline-block; min-width: 36rpx; margin-right: 6rpx;
   /* 🔴 R708（text-contrast A-① 抓出的真问题）：原来是 #A99E8E，在卡片浅底上只有 2.38:1

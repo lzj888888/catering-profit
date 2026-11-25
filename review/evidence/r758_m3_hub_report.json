@@ -1,0 +1,69 @@
+{
+  "route": "pages/m3/hub",
+  "cardCount": -1,
+  "stepFlags": [
+    false,
+    false
+  ],
+  "icons": [
+    {
+      "key": "icoCard",
+      "value": "/images/hub/card.png"
+    },
+    {
+      "key": "icoMaterial",
+      "value": "/images/hub/material.png"
+    },
+    {
+      "key": "icoTakeaway",
+      "value": "/images/hub/takeaway.png"
+    },
+    {
+      "key": "icoGroupon",
+      "value": "/images/hub/groupon.png"
+    },
+    {
+      "key": "icoReview",
+      "value": "/images/hub/review.png"
+    },
+    {
+      "key": "icoRevenue",
+      "value": "/images/hub/revenue.png"
+    },
+    {
+      "key": "icoRecon",
+      "value": "/images/hub/recon.png"
+    },
+    {
+      "key": "icoPromo",
+      "value": "/images/hub/promo.png"
+    }
+  ],
+  "badges": [
+    {
+      "key": "badgeDone",
+      "value": "已录"
+    },
+    {
+      "key": "badgeTodo",
+      "value": "待补"
+    },
+    {
+      "key": "badgeBuilt",
+      "value": "已建"
+    },
+    {
+      "key": "badgeTool",
+      "value": "工具"
+    },
+    {
+      "key": "badgeData",
+      "value": "看数"
+    }
+  ],
+  "assertions": {
+    "icons": true,
+    "badges": true,
+    "screenshot": true
+  }
+}
