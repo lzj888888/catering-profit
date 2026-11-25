@@ -316,6 +316,7 @@ Page({
     cur[k] = (val === '') ? '' : n;
     saved[mid] = cur;
     this.saveMatInv(month, saved);
+    this.markLocalNew(month);   // 交叉审计：同上，防云端旧值覆盖
 
     const raw = this._matRaw;
     // 🔴 T1：上传与渲染**解绑** —— 即使 _matRaw 没缓存（理论上不该发生），老板填的数也必须存下来，
@@ -367,27 +368,82 @@ Page({
    * 推送到云存储（长期真相）。
    * 🔴 失败不提示、不阻塞：本地已经写过，本次会话不受影响（网络抖动时弹"保存失败"只会吓人）。
    */
-  pushToCloud(month) {
+  /**
+   * 🔴 交叉审计修（2026-11-25，豆包 Q4-1）：上传前**必须先读云端做字段级合并**。
+   *   原实现只用本地两栏组装整个 payload ⇒ 设备A填的原料盘点在云端，设备B只填了员工餐，
+   *   B 本地 items 为空 ⇒ 上传 items=[] ⇒ **把 A 的原料盘点清空**（实测复现见
+   *   review/evidence/r758_cross_audit/_probe_fields.js）。
+   *   合并规则（保守，宁可留旧也不清空）：
+   *     · 本地水位线 > 云端 updatedAt ⇒ 本地才是新的，全用本地；
+   *     · 否则本地某字段"没值"（nonsales=0 / items=[]）⇒ 用云端同字段补齐。
+   *   ⚠️ 代价：老板想"故意清空"原料盘点时，会被云端旧值补回来。清空是低频且可重来，
+   *      比"另一台设备的数据被静默清空"好得多。
+   */
+  async pushToCloud(month) {
     const sid = ss.currentShopId();
-    if (!sid) return Promise.resolve({ ok: false, reason: 'no_sid' });
+    if (!sid) return { ok: false, reason: 'no_sid' };
+    let cloud = null;
+    let localNonsales = 0;
+    let localItems = [];
+    let localAt = 0;
+    try {
+      localNonsales = this.loadNonsales(month);
+      localItems = this.matItemsOf(month);
+      localAt = Number(wx.getStorageSync(ss.shopKey('consume_sync_at_' + month)) || 0);
+      cloud = await store.loadCloud(sid, month);   // 读失败返回 null，不阻塞
+    } catch (e) { /* 读云端失败 ⇒ 按没有云端处理，仍用本地 */ }
+
+    let nonsales = localNonsales;
+    let items = localItems;
+    if (cloud && localAt <= Number(cloud.updatedAt || 0)) {
+      // 本地不是更新的 ⇒ 本地缺的字段用云端补，绝不传空数组/0 去覆盖
+      if (!(nonsales > 0)) nonsales = Number(cloud.nonsalesFen) || 0;
+      if (!items.length) items = Array.isArray(cloud.items) ? cloud.items : [];
+    }
+
     let payload;
     try {
-      payload = store.payloadOf(month, this.loadNonsales(month), this.matItemsOf(month));
+      payload = store.payloadOf(month, nonsales, items);
     } catch (e) {
-      // 构造 payload 就炸（比如 api.yuanToFen 不存在）—— 原来这里会被 setTimeout 吞掉，
-      // 表现为"本地写进去了、云端没有"，极难排查。现在留痕。
+      // 构造 payload 就炸 —— 原来这里会被 setTimeout 吞掉，表现为"本地有、云端没有"。留痕。
       const r = { ok: false, reason: 'payload:' + ((e && e.message) || String(e)) };
       try { wx.setStorageSync(ss.shopKey('consume_upload_err'), JSON.stringify(r)); } catch (e2) { /* 忽略 */ }
-      return Promise.resolve(r);
-    }
-    return store.saveCloud(sid, month, payload).then((r) => {
-      // 失败留痕（只在本地记一条，不弹 toast 打扰老板）；成功则清掉旧痕迹
-      try {
-        if (r && r.ok) wx.removeStorageSync(ss.shopKey('consume_upload_err'));
-        else wx.setStorageSync(ss.shopKey('consume_upload_err'), JSON.stringify(Object.assign({ month: month }, r)));
-      } catch (e3) { /* 忽略 */ }
       return r;
-    });
+    }
+    const r = await store.saveCloud(sid, month, payload);
+    // 失败留痕（只在本地记一条，不弹 toast 打扰老板）；成功则清掉旧痕迹
+    try {
+      if (r && r.ok) wx.removeStorageSync(ss.shopKey('consume_upload_err'));
+      else wx.setStorageSync(ss.shopKey('consume_upload_err'), JSON.stringify(Object.assign({ month: month }, r)));
+    } catch (e3) { /* 忽略 */ }
+    return r;
+  },
+
+  /**
+   * 🔴 交叉审计修（2026-11-25，豆包 Q1-2）：防抖 800ms 期间若页面被切后台/系统回收，
+   *   setTimeout 不会执行 ⇒ 老板刚填的数只在本地，清缓存/卸载就永久丢了。
+   *   离开页面时把挂起的上传立刻补发（有 _pushTimer 才说明有未落的改动）。
+   */
+  onHide() {
+    if (this._pushTimer) {
+      clearTimeout(this._pushTimer);
+      this._pushTimer = null;
+      this.pushToCloud(this.data.curMonth);
+    }
+  },
+
+  onUnload() {
+    if (this.onHide) this.onHide();
+  },
+
+  /**
+   * 🔴 交叉审计修（2026-11-25）：本地一写入就**推高水位线**。
+   *   否则会出现：老板刚填 200 元（本地新），但 localAt 还是 0；
+   *   此时 syncFromCloud 读到云端旧值（updatedAt=100）⇒ 100 > 0 ⇒ **旧值把新值盖掉，数据丢失**。
+   *   实测复现见 review/evidence/r758_cross_audit/_probe.js。
+   */
+  markLocalNew(month) {
+    try { wx.setStorageSync(ss.shopKey('consume_sync_at_' + month), Date.now()); } catch (e) { /* 忽略 */ }
   },
 
   /** 防抖：老板每敲一个数字不能都发一次上传 */
@@ -593,6 +649,7 @@ Page({
     // 读不成数字 ⇒ 不写存储、不重算（避免把错数存下来，页面仍显示上一次的有效结果）
     if (fen == null) return;
     try { wx.setStorageSync(ss.shopKey('nonsales_' + this.data.curMonth), fen); } catch (err) { /* 存不下不影响本次计算 */ }
+    this.markLocalNew(this.data.curMonth);   // 交叉审计：本地比云端新，别让云端旧值盖回来
     this.calc(this.data.curMonth, this.data.savedDishCount, fen);
     this.schedulePush(this.data.curMonth);   // T1：防抖上传云端
   },
