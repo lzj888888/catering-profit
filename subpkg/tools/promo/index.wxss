@@ -78,42 +78,62 @@
   padding: 60rpx 0;
 }
 
-/* ===== 风险判定：结果区最显眼的一条 ===== */
-.pw-risk {
-  font-size: 34rpx;
+/* ===== R759 第一段主角：折扣换算大字（老板 80% 心智就是「几折」） ===== */
+.pw-convert {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1e3a5f, #2f6bd8);
+  border-radius: 16rpx;
+  padding: 36rpx 24rpx 30rpx;
+  margin: 28rpx 0 8rpx;
+}
+
+.pw-convert-k {
+  font-size: 28rpx;
+  color: #d7e3f5;
+}
+
+.pw-convert-v {
+  font-size: 88rpx;
   font-weight: 700;
-  padding: 24rpx;
-  border-radius: 12rpx;
+  color: #fff;
+  line-height: 1.2;
+  margin-top: 8rpx;
+}
+
+.pw-formula {
+  font-size: 28rpx;
+  color: #eaf1fb;
+  margin-top: 10rpx;
+  padding: 8rpx 20rpx;
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 24rpx;
+}
+
+.pw-convert-err {
+  font-size: 28rpx;
+  color: #8b95a3;
   text-align: center;
-  margin-bottom: 8rpx;
+  padding: 44rpx 0 12rpx;
 }
 
-.pw-risk-ok {
-  background: #e9f7ef;
-  color: #1c7a43;
-}
-
-.pw-risk-watch {
-  background: #fff6e5;
-  color: #a36a00;
-}
-
-.pw-risk-risky {
-  background: #fdeaea;
-  color: #c0392b;
-}
-
-.pw-risk-impossible {
-  background: #fdeaea;
-  color: #c0392b;
-}
-
-.pw-risk-note {
+/* ===== R759 第二段：回本（次要，才要毛利率） ===== */
+.pw-back-intro {
   font-size: 26rpx;
-  color: #5b6472;
+  color: #78828f;
+  line-height: 1.55;
+  padding: 0 0 8rpx;
+}
+
+.pw-back-empty {
+  font-size: 28rpx;
+  color: #8b95a3;
   text-align: center;
-  padding: 10rpx 0 20rpx;
-  line-height: 1.5;
+  padding: 40rpx 0;
+  background: #fafbfd;
+  border-radius: 12rpx;
 }
 
 .pw-out {
@@ -174,17 +194,6 @@
   font-size: 24rpx;
   color: #8b95a3;
   margin-top: 8rpx;
-}
-
-.pw-alt {
-  font-size: 27rpx;
-  color: #2b3442;
-  line-height: 1.65;
-  padding: 14rpx 20rpx;
-  background: #fafbfd;
-  border-left: 4rpx solid #2f6bd8;
-  border-radius: 6rpx;
-  margin-bottom: 12rpx;
 }
 
 .pw-bad {

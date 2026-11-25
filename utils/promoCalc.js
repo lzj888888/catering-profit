@@ -119,6 +119,45 @@ function discountOf(kind, p) {
 const round4 = (n) => Number(Number(n).toFixed(4));
 
 /**
+ * 🔴 R759（李老师纠偏）：折扣换算**独立于毛利率**。
+ *   原话：「买2送1相当于打几折，最终大部分都去到『是打了几折』这个问题」。
+ *   老板 90% 的心智是「这个活动等于几折」，不该被「先填毛利率」卡住。
+ *   本函数只做活动规则 → 折扣，不读、不需要毛利率；页面第一段用它。
+ *   第二段「要多少才回到原来的利润」才用 promoCalc（要毛利率）。
+ */
+function promoConvert(kind, rule) {
+  const r = discountOf(kind, rule || {});
+  if (!r.ok) return { ok: false, reason: r.reason };
+  return {
+    ok: true,
+    discount: r.d,
+    formula: formulaOf(kind, rule || {}),
+    note: r.note || '',
+  };
+}
+
+/** 推导式：把「几折」的中间算式摆出来（李老师：中间有什么数值是怎么体现的） */
+function fmtNum(n) {
+  const x = Number(n);
+  if (!isFinite(x)) return '?';
+  return Number.isInteger(x) ? String(x) : String(Number(x.toFixed(2)));
+}
+function formulaOf(kind, p) {
+  const q = p || {};
+  const n = fmtNum;
+  switch (String(kind || '')) {
+    case 'threshold': return '(' + n(q.threshold) + '−' + n(q.cut) + ')÷' + n(q.threshold);
+    case 'bogo': return n(q.buy) + '÷(' + n(q.buy) + '+' + n(q.free) + ')';
+    case 'nth': return '(' + n(q.n) + '−1+0.5)÷' + n(q.n);
+    case 'voucher': return '(' + n(q.threshold) + '−' + n(q.face) + ')÷' + n(q.threshold);
+    case 'share': return '(' + n(q.people) + '−' + n(q.free) + ')÷' + n(q.people);
+    case 'stored': return n(q.principal) + '÷(' + n(q.principal) + '+' + n(q.bonus) + ')';
+    case 'offset': return '(' + n(q.payable) + '−' + n(q.offset) + ')÷' + n(q.payable);
+    default: return ''; // 直接填折扣 / 时段品类：无推导式，填的就是折扣
+  }
+}
+
+/**
  * 主测算。
  * @param {object} p
  * @param {number} p.marginPct      现在毛利率（百分数，50 表示 50%）
@@ -239,4 +278,4 @@ function setMealCalc(p) {
   return out;
 }
 
-module.exports = { promoCalc, discountOf, setMealCalc, riskOf, round2, round4, PCT };
+module.exports = { promoCalc, promoConvert, discountOf, formulaOf, setMealCalc, riskOf, round2, round4, PCT };

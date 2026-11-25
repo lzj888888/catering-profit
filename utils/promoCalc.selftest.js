@@ -9,7 +9,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { promoCalc, discountOf, setMealCalc, riskOf } = require('./promoCalc.js');
+const { promoCalc, promoConvert, discountOf, formulaOf, setMealCalc, riskOf } = require('./promoCalc.js');
 const Promo = require('./promoImpact.js');
 
 let pass = 0, failN = 0;
@@ -184,6 +184,36 @@ sec('I 溯源（李老师原话的两个算例必须能复现）');
 }
 
 // ===================================================================
+sec('I-R759 折扣换算独立入口（不依赖毛利率）');
+{
+  // 核心纠偏：老板问「买2送1几折」时，不该被「先填毛利率」卡住。
+  const r = promoConvert('bogo', { buy: 2, free: 1 });
+  check('I-① promoConvert 不需毛利率也能出折扣', r.ok && Math.abs(r.discount - 0.6667) < 1e-6,
+    r.ok ? String(r.discount) : r.reason);
+  check('I-② 买2送1 推导式 = 2÷(2+1)', formulaOf('bogo', { buy: 2, free: 1 }) === '2÷(2+1)',
+    formulaOf('bogo', { buy: 2, free: 1 }));
+  check('I-③ 满100减30 推导式 = (100−30)÷100',
+    formulaOf('threshold', { threshold: 100, cut: 30 }) === '(100−30)÷100',
+    formulaOf('threshold', { threshold: 100, cut: 30 }));
+  check('I-④ 代金券 80代100 推导式 = (100−80)÷100',
+    formulaOf('voucher', { face: 80, threshold: 100 }) === '(100−80)÷100',
+    formulaOf('voucher', { face: 80, threshold: 100 }));
+  // 对拍：promoConvert.discount 必须等于 discountOf.d（同一个折扣，不许两套口径）
+  for (const [k, r0] of [['off', { discount: 0.8 }], ['bogo', { buy: 3, free: 1 }],
+    ['voucher', { face: 50, threshold: 200 }], ['stored', { principal: 500, bonus: 100 }]]) {
+    const cv = promoConvert(k, r0);
+    const raw = discountOf(k, r0);
+    check('I-对拍 折扣口径一致 ' + k, cv.ok && raw.ok && cv.discount === raw.d,
+      cv.ok ? String(cv.discount) : cv.reason);
+  }
+  // 反恒真：坏规则必须判红，不能给出假折扣
+  const bad = promoConvert('bogo', { buy: 0, free: 1 });
+  check('I-⑤ 🔴 反恒真：买0送1 必须判红', bad.ok === false && bad.reason === 'badRule', bad.reason);
+  // 直接打折无推导式（填的就是折扣）
+  check('I-⑥ 直接打折无推导式（不编中间数）', formulaOf('off', { discount: 0.8 }) === '');
+}
+
+// ===================================================================
 sec('J 页面接线（subpkg/tools/promo）');
 {
   const PAGE = path.join(__dirname, '..', 'subpkg/tools/promo/index.js');
@@ -198,12 +228,16 @@ sec('J 页面接线（subpkg/tools/promo）');
     /require\([^)]*promoCalc\.js/.test(pj));
   check('J-④ 输入即重算：有 bindinput 且没有「计算」按钮（李老师要求自动变化）',
     /bindinput=/.test(pw) && pj.indexOf('onInput') >= 0);
-  // 🔴 空输入必须 res=null（显示提示），不能给 0 —— 给 0 会让老板以为「这活动不亏」
-  check('J-⑤ 毛利率为空 ⇒ res=null（不显示 0，避免「看起来不亏」的误导）',
-    /if \(!\(m > 0\)\) \{ this\.setData\(\{ res: null \}\); return; \}/.test(pj));
-  check('J-⑥ 三档风险文案都接在页面上了',
-    pw.indexOf('promoRiskOk') >= 0 && pw.indexOf('promoRiskWatch') >= 0 && pw.indexOf('promoRiskRisky') >= 0);
-  check('J-⑦ 会亏时给劝停块（不是给个 0% 了事）', pw.indexOf('promoRiskImpossible') >= 0);
+  // 🔴 R759 纠偏核心：折扣换算独立于毛利率 —— 页面必须 require promoConvert，
+  //   且换算区的显示**不能**被毛利率为空的 return 拦住。
+  check('J-⑤ 🔴 页面用 promoConvert 做独立折扣换算（不被毛利率卡住）',
+    /promoConvert/.test(pj) && /convert/.test(pw));
+  check('J-⑥ 推导式接在页面上（中间数值看得见）', pw.indexOf('conv.formula') >= 0);
+  // 毛利率为空 ⇒ 回本区 null（不显示 0）；但换算区不受影响 —— 两段分离
+  check('J-⑦ 毛利率为空 ⇒ back=null（回本区不显示假数）',
+    /back: null/.test(pj) && /promoBackEmpty/.test(pw));
+  check('J-⑧ 活动后毛利率 / 流水 / 单数三段回本结果都在',
+    pw.indexOf('back.newMarginPct') >= 0 && pw.indexOf('back.revenueNeededYuan') >= 0 && pw.indexOf('back.ordersNeeded') >= 0);
 }
 
 console.log('\n==== 活动测算自测：' + pass + ' 通过 / ' + failN + ' 失败 ====');

@@ -1,0 +1,28 @@
+{
+  "route": "subpkg/tools/promo/index",
+  "step1": {
+    "conv": {
+      "ok": true,
+      "discountText": "6.67折",
+      "formula": "2÷(2+1)",
+      "note": ""
+    },
+    "back": null
+  },
+  "step2": {
+    "back": {
+      "ok": true,
+      "newMarginPct": 25,
+      "revenueNeededYuan": 16000,
+      "ordersNeeded": 120,
+      "ordersNow": 40,
+      "trafficUpliftPct": 199.94
+    }
+  },
+  "assertions": {
+    "convIndependentOfMargin": true,
+    "breakevenNumbers": true,
+    "screenshot": true
+  },
+  "allPass": true
+}

@@ -357,7 +357,7 @@ const CASES = [
   { key: 'price_variance', rel: 'utils/priceVariance.selftest.js' }, // 19 条（R755 第三期：量价恒等式 + 掩盖场景必须拆出来）
   { key: 'consume_store', rel: 'utils/consumeStore.selftest.js' }, // 32 条（R757 T1：坏数据不白屏 + 上云接线）（恒等式 + 四种算不了 + 反恒真 + 文案键存在性）
   { key: 'consume_dualwrite', rel: 'tools/check_consume_dualwrite.js' }, // 14 条（R757 交叉审计：三个真丢数据洞 + 变异回灌）
-  { key: 'promo_calc', rel: 'utils/promoCalc.selftest.js' }, // 53 条（R757 活动测算：10 类活动折算 + 国外基准对拍 + 流水≠客流）
+  { key: 'promo_calc', rel: 'utils/promoCalc.selftest.js' }, // 64 条（R757 10 类折算 + R759 折扣换算独立入口/推导式 11 条；国外基准对拍 + 流水≠客流）
 ];
 
 const HIST = ['原写', '此前', '曾写', '旧值', '历史', 'round', '轮次', '演进'];

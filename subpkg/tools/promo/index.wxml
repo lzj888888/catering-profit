@@ -1,12 +1,111 @@
-<!-- subpkg/tools/promo/index.wxml —— 做活动划算吗（R757）
-     设计原则：一屏能填完、填完立刻出数，不设「计算」按钮。
+<!-- subpkg/tools/promo/index.wxml —— 活动换算 · 回本测算（R759 重构）
+     主次：① 活动→几折（不依赖毛利率，进来就会）② 要多少才回到原利润（才要毛利率）。
      ⚠️ 文案一律走 terms 单源，本文件不写字面量。 -->
 <view class="pw">
 
   <view class="pw-intro">{{t.promoIntro}}</view>
 
-  <!-- ===== 一、你现在的数（都自己填） ===== -->
-  <view class="pw-sec">{{t.promoSecNow}}</view>
+  <!-- ================= 第一段（主）：这个活动相当于几折 ================= -->
+  <view class="pw-sec">{{t.promoSecConvert}}</view>
+
+  <picker mode="selector" range="{{kindNames}}" value="{{kindIndex}}" bindchange="onKindChange">
+    <view class="pw-pick">
+      <text class="pw-lbl">{{t.promoKindLabel}}</text>
+      <text class="pw-pickv">{{kindNames[kindIndex]}} ›</text>
+    </view>
+  </picker>
+
+  <block wx:if="{{show.discount}}">
+    <view class="pw-row">
+      <text class="pw-lbl">{{t.promoParamDiscount}}</text>
+      <input class="pw-in" type="digit" data-f="discount" value="{{rule.discount}}" bindinput="onInput" placeholder="0.8" />
+    </view>
+  </block>
+  <block wx:if="{{show.threshold}}">
+    <view class="pw-row">
+      <text class="pw-lbl">{{t.promoParamThreshold}}</text>
+      <input class="pw-in" type="digit" data-f="threshold" value="{{rule.threshold}}" bindinput="onInput" placeholder="100" />
+    </view>
+  </block>
+  <block wx:if="{{show.cut}}">
+    <view class="pw-row">
+      <text class="pw-lbl">{{t.promoParamCut}}</text>
+      <input class="pw-in" type="digit" data-f="cut" value="{{rule.cut}}" bindinput="onInput" placeholder="30" />
+    </view>
+  </block>
+  <block wx:if="{{show.buy}}">
+    <view class="pw-row">
+      <text class="pw-lbl">{{t.promoParamBuy}}</text>
+      <input class="pw-in" type="number" data-f="buy" value="{{rule.buy}}" bindinput="onInput" placeholder="2" />
+    </view>
+  </block>
+  <block wx:if="{{show.free}}">
+    <view class="pw-row">
+      <text class="pw-lbl">{{t.promoParamFree}}</text>
+      <input class="pw-in" type="number" data-f="free" value="{{rule.free}}" bindinput="onInput" placeholder="1" />
+    </view>
+  </block>
+  <block wx:if="{{show.n}}">
+    <view class="pw-row">
+      <text class="pw-lbl">{{t.promoParamN}}</text>
+      <input class="pw-in" type="number" data-f="n" value="{{rule.n}}" bindinput="onInput" placeholder="2" />
+    </view>
+  </block>
+  <block wx:if="{{show.face}}">
+    <view class="pw-row">
+      <text class="pw-lbl">{{t.promoParamFace}}</text>
+      <input class="pw-in" type="digit" data-f="face" value="{{rule.face}}" bindinput="onInput" placeholder="30" />
+    </view>
+  </block>
+  <block wx:if="{{show.people}}">
+    <view class="pw-row">
+      <text class="pw-lbl">{{t.promoParamPeople}}</text>
+      <input class="pw-in" type="number" data-f="people" value="{{rule.people}}" bindinput="onInput" placeholder="4" />
+    </view>
+  </block>
+  <block wx:if="{{show.principal}}">
+    <view class="pw-row">
+      <text class="pw-lbl">{{t.promoParamPrincipal}}</text>
+      <input class="pw-in" type="digit" data-f="principal" value="{{rule.principal}}" bindinput="onInput" placeholder="1000" />
+    </view>
+  </block>
+  <block wx:if="{{show.bonus}}">
+    <view class="pw-row">
+      <text class="pw-lbl">{{t.promoParamBonus}}</text>
+      <input class="pw-in" type="digit" data-f="bonus" value="{{rule.bonus}}" bindinput="onInput" placeholder="200" />
+    </view>
+  </block>
+  <block wx:if="{{show.payable}}">
+    <view class="pw-row">
+      <text class="pw-lbl">{{t.promoParamPayable}}</text>
+      <input class="pw-in" type="digit" data-f="payable" value="{{rule.payable}}" bindinput="onInput" placeholder="100" />
+    </view>
+  </block>
+  <block wx:if="{{show.offset}}">
+    <view class="pw-row">
+      <text class="pw-lbl">{{t.promoParamOffset}}</text>
+      <input class="pw-in" type="digit" data-f="offset" value="{{rule.offset}}" bindinput="onInput" placeholder="20" />
+    </view>
+  </block>
+
+  <!-- 换算结果：大字「几折」+ 推导式（不依赖毛利率） -->
+  <block wx:if="{{conv && conv.ok}}">
+    <view class="pw-convert">
+      <text class="pw-convert-k">{{t.promoResDiscount}}</text>
+      <text class="pw-convert-v">{{conv.discountText}}</text>
+      <view class="pw-formula" wx:if="{{conv.formula}}">{{t.promoFormulaPrefix}}{{conv.formula}}</view>
+    </view>
+  </block>
+  <block wx:elif="{{conv && !conv.ok}}">
+    <view class="pw-convert-err">{{t.promoConvertBad}}</view>
+  </block>
+  <block wx:else>
+    <view class="pw-convert-err">{{t.promoConvertEmpty}}</view>
+  </block>
+
+  <!-- ================= 第二段（次）：要多少才回到原来的利润 ================= -->
+  <view class="pw-sec">{{t.promoSecBack}}</view>
+  <view class="pw-back-intro">{{t.promoBackIntro}}</view>
 
   <view class="pw-row">
     <text class="pw-lbl">{{t.promoMarginLabel}}</text>
@@ -29,160 +128,44 @@
   </view>
   <view class="pw-hint">{{t.promoPriceHint}}</view>
 
-  <!-- ===== 二、你想做的活动 ===== -->
-  <view class="pw-sec">{{t.promoSecAct}}</view>
-
-  <picker mode="selector" range="{{kindNames}}" value="{{kindIndex}}" bindchange="onKindChange">
-    <view class="pw-pick">
-      <text class="pw-lbl">{{t.promoKindLabel}}</text>
-      <text class="pw-pickv">{{kindNames[kindIndex]}} ›</text>
-    </view>
-  </picker>
-
-  <block wx:if="{{show.discount}}">
-    <view class="pw-row">
-      <text class="pw-lbl">{{t.promoParamDiscount}}</text>
-      <input class="pw-in" type="digit" data-f="discount" value="{{rule.discount}}" bindinput="onInput" placeholder="0.8" />
+  <!-- 回本结果：毛利率空 ⇒ 提示；会亏 ⇒ 劝停；否则三段结果 -->
+  <block wx:if="{{!back}}">
+    <view class="pw-back-empty">{{t.promoBackEmpty}}</view>
+  </block>
+  <block wx:elif="{{!back.ok}}">
+    <view class="pw-bad">
+      <view class="pw-bad-t">{{t.promoBackBad}}</view>
+      <view class="pw-bad-d">{{t.promoResCritical}} {{back.criticalDiscountShow}}</view>
     </view>
   </block>
-
-  <block wx:if="{{show.threshold}}">
-    <view class="pw-row">
-      <text class="pw-lbl">{{t.promoParamThreshold}}</text>
-      <input class="pw-in" type="digit" data-f="threshold" value="{{rule.threshold}}" bindinput="onInput" placeholder="100" />
-    </view>
-  </block>
-
-  <block wx:if="{{show.cut}}">
-    <view class="pw-row">
-      <text class="pw-lbl">{{t.promoParamCut}}</text>
-      <input class="pw-in" type="digit" data-f="cut" value="{{rule.cut}}" bindinput="onInput" placeholder="30" />
-    </view>
-    <view class="pw-hint">{{t.promoBelowThresholdHint}}</view>
-  </block>
-
-  <block wx:if="{{show.buy}}">
-    <view class="pw-row">
-      <text class="pw-lbl">{{t.promoParamBuy}}</text>
-      <input class="pw-in" type="number" data-f="buy" value="{{rule.buy}}" bindinput="onInput" placeholder="2" />
-    </view>
-  </block>
-
-  <block wx:if="{{show.n}}">
-    <view class="pw-row">
-      <text class="pw-lbl">{{t.promoParamN}}</text>
-      <input class="pw-in" type="number" data-f="n" value="{{rule.n}}" bindinput="onInput" placeholder="2" />
-    </view>
-  </block>
-
-  <block wx:if="{{show.face}}">
-    <view class="pw-row">
-      <text class="pw-lbl">{{t.promoParamFace}}</text>
-      <input class="pw-in" type="digit" data-f="face" value="{{rule.face}}" bindinput="onInput" placeholder="30" />
-    </view>
-  </block>
-
-  <block wx:if="{{show.people}}">
-    <view class="pw-row">
-      <text class="pw-lbl">{{t.promoParamPeople}}</text>
-      <input class="pw-in" type="number" data-f="people" value="{{rule.people}}" bindinput="onInput" placeholder="4" />
-    </view>
-  </block>
-
-  <block wx:if="{{show.free}}">
-    <view class="pw-row">
-      <text class="pw-lbl">{{t.promoParamFree}}</text>
-      <input class="pw-in" type="number" data-f="free" value="{{rule.free}}" bindinput="onInput" placeholder="1" />
-    </view>
-  </block>
-
-  <block wx:if="{{show.principal}}">
-    <view class="pw-row">
-      <text class="pw-lbl">{{t.promoParamPrincipal}}</text>
-      <input class="pw-in" type="digit" data-f="principal" value="{{rule.principal}}" bindinput="onInput" placeholder="1000" />
-    </view>
-  </block>
-
-  <block wx:if="{{show.bonus}}">
-    <view class="pw-row">
-      <text class="pw-lbl">{{t.promoParamBonus}}</text>
-      <input class="pw-in" type="digit" data-f="bonus" value="{{rule.bonus}}" bindinput="onInput" placeholder="200" />
-    </view>
-  </block>
-
-  <block wx:if="{{show.payable}}">
-    <view class="pw-row">
-      <text class="pw-lbl">{{t.promoParamPayable}}</text>
-      <input class="pw-in" type="digit" data-f="payable" value="{{rule.payable}}" bindinput="onInput" placeholder="100" />
-    </view>
-  </block>
-
-  <block wx:if="{{show.offset}}">
-    <view class="pw-row">
-      <text class="pw-lbl">{{t.promoParamOffset}}</text>
-      <input class="pw-in" type="digit" data-f="offset" value="{{rule.offset}}" bindinput="onInput" placeholder="20" />
-    </view>
-  </block>
-
-  <!-- ===== 三、结果 ===== -->
-  <block wx:if="{{!res}}">
-    <view class="pw-empty">{{t.promoEmptyHint}}</view>
-  </block>
-
-  <block wx:if="{{res && res.ok}}">
+  <block wx:else>
     <view class="pw-sec">{{t.promoResTitle}}</view>
-
-    <!-- 风险判定放最前：老板先看要不要做 -->
-    <view class="pw-risk pw-risk-{{res.riskLevel}}">{{t.promoRiskPrefix}}{{res.trafficUpliftPct}}%</view>
-    <view class="pw-risk-note" wx:if="{{res.riskLevel === 'ok'}}">{{t.promoRiskOk}}</view>
-    <view class="pw-risk-note" wx:if="{{res.riskLevel === 'watch'}}">{{t.promoRiskWatch}}</view>
-    <view class="pw-risk-note" wx:if="{{res.riskLevel === 'risky'}}">{{t.promoRiskRisky}}</view>
-
     <view class="pw-out">
       <view class="pw-cell">
-        <text class="pw-k">{{t.promoResDiscount}}</text>
-        <text class="pw-v">{{res.discountShow}}</text>
+        <text class="pw-k">{{t.promoResNewMargin}}</text>
+        <text class="pw-v">{{back.newMarginPct}}%</text>
+      </view>
+      <view class="pw-cell" wx:if="{{back.ordersNow}}">
+        <text class="pw-k">{{t.promoResOrdersNow}}</text>
+        <text class="pw-v">{{back.ordersNow}}{{t.promoOrdersUnit}}</text>
+      </view>
+      <view class="pw-cell" wx:if="{{back.revenueNeededYuan}}">
+        <text class="pw-k">{{t.promoResRevenue}}</text>
+        <text class="pw-v">{{back.revenueNeededYuan}}{{t.promoYuanUnit}}</text>
+      </view>
+      <view class="pw-cell" wx:if="{{back.ordersNeeded}}">
+        <text class="pw-k">{{t.promoResOrders}}</text>
+        <text class="pw-v">{{back.ordersNeeded}}{{t.promoOrdersUnit}}</text>
       </view>
       <view class="pw-cell">
-        <text class="pw-k">{{t.promoResNewMargin}}</text>
-        <text class="pw-v">{{res.newMarginPct}}%</text>
-      </view>
-      <!-- 原来这里是「客人要多来几倍」(1.67×)，与上面风险块的「多来 66.67%」是同一件事 ⇒ 换成单数对比更具体 -->
-      <view class="pw-cell" wx:if="{{res.ordersNow}}">
-        <text class="pw-k">{{t.promoResOrdersNow}}</text>
-        <text class="pw-v">{{res.ordersNow}}{{t.promoOrdersUnit}}</text>
-      </view>
-      <view class="pw-cell" wx:if="{{res.revenueNeededYuan}}">
-        <text class="pw-k">{{t.promoResRevenue}}</text>
-        <text class="pw-v">{{res.revenueNeededYuan}}{{t.promoYuanUnit}}</text>
-      </view>
-      <view class="pw-cell" wx:if="{{res.ordersNeeded}}">
-        <text class="pw-k">{{t.promoResOrders}}</text>
-        <text class="pw-v">{{res.ordersNeeded}}{{t.promoOrdersUnit}}</text>
+        <text class="pw-k">{{t.promoResTraffic}}</text>
+        <text class="pw-v pw-hot">+{{back.trafficUpliftPct}}%</text>
       </view>
     </view>
-
     <view class="pw-crit">
       <text class="pw-crit-t">{{t.promoResCritical}}</text>
-      <text class="pw-crit-v">{{res.criticalDiscountShow}}</text>
+      <text class="pw-crit-v">{{back.criticalDiscountShow}}</text>
       <text class="pw-crit-h">{{t.promoResCriticalHint}}</text>
-    </view>
-
-    <view class="pw-hint" wx:if="{{res.note === 'below_threshold'}}">{{t.promoBelowThreshold}}</view>
-
-    <!-- 更省钱的三个做法 -->
-    <view class="pw-sec">{{t.promoAltTitle}}</view>
-    <view class="pw-alt">{{t.promoAlt1}}</view>
-    <view class="pw-alt">{{t.promoAlt2}}</view>
-    <view class="pw-alt">{{t.promoAlt3}}</view>
-  </block>
-
-  <!-- 会亏：直接劝停，不给半截数 -->
-  <block wx:if="{{res && !res.ok}}">
-    <view class="pw-bad">
-      <view class="pw-bad-t">{{t.promoRiskImpossible}}</view>
-      <view class="pw-bad-d" wx:if="{{res.criticalDiscount}}">{{t.promoResCritical}} {{res.criticalDiscountShow}}</view>
-      <view class="pw-bad-d">{{t.promoImpossibleHint}}</view>
     </view>
   </block>
 
