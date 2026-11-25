@@ -254,6 +254,49 @@ async function runCalc(p, month, savedCount) { await p.calc(month, savedCount); 
     }
   }
 
+  // ===== H. 抑制态不许露出具体数值（2026-11-25 真机实测）=====
+  // 真机截图实证：suppressed 时红字写「暂不显示」，上面却明晃晃显示「实际毛利率 100.00%」——
+  // 100% 的来由是「账上没库存数据 ⇒ 实际成本算成 0」，老板会以为真赚 100%。
+  sec('H 抑制态数值遮蔽（真机实测修）');
+  {
+    const wxml = fs.readFileSync(path.join(ROOT, 'subpkg/tools/recon/index.wxml'), 'utf8');
+    check('H-① 实际毛利率在 suppressed 时只显示「—」（不露 100.00%）',
+      wxml.indexOf("result.suppressed ? '—' : result.actualPctText") >= 0,
+      '找不到该三元即视为回退');
+    check('H-② 反恒真：字符串若被挪回裸用，判据会失效',
+      wxml.indexOf('<text class="val">{{result.actualPctText}}</text>') < 0);
+  }
+
+  // ===== I. 段三「算不了」按成因分流（2026-11-25 真机实测）=====
+  // 真机实证：店铺有 5 张成本卡、1 个原料，段三却说「这些原料没出现在任何成本卡里，先补成本卡」——
+  // 因为那些卡的明细行 material_id 全为空（手工行）。老板照提示补卡，补了还是不行。
+  // ⇒ 三种成因必须分开指路，否则文案把人往错的方向支。
+  sec('I 段三「算不了」的成因分流');
+  {
+    const pI = loadPage(origSrc);   // 独立实例：p3 是 G 组块内变量，这里拿不到
+    pI.data.months = ['2026-08', '2026-07'];
+    const MAT1 = [{ id: 'm1', name: '豆腐', purchase_unit: '件', purchase_price_fen: 5000, convert_factor: 10000, yield_rate: 100 }];
+    const v1 = pI.buildMaterialView('2026-08', { list: [] }, { dine_in: [] }, { list: MAT1 });
+    check('I-① 一张卡都没有 ⇒ 指去建卡', v1.missKey === 'reconMaterialNeedCards', v1.missKey);
+    const v2 = pI.buildMaterialView('2026-08',
+      { list: [{ card_code: 'c1', lines: [{ material_id: '', quantity: 200 }] }] },
+      { dine_in: [{ card_code: 'c1', qty: 10 }] }, { list: MAT1 });
+    check('I-② 有卡但明细全是手填（material_id 空）⇒ 指去改成选原料（真机实测那种）',
+      v2.missKey === 'reconMaterialAllManual', v2.missKey);
+    const v3 = pI.buildMaterialView('2026-08',
+      { list: [{ card_code: 'c1', lines: [{ material_id: 'm1', quantity: 200 }] }] },
+      { dine_in: [] }, { list: MAT1 });
+    check('I-③ 卡有关联但没销量 ⇒ 指去导销量', v3.missKey === 'reconMaterialNoSales', v3.missKey);
+    const v4 = pI.buildMaterialView('2026-08',
+      { list: [{ card_code: 'c1', lines: [{ material_id: 'm1', quantity: 200 }] }] },
+      { dine_in: [{ card_code: 'c1', qty: 10 }] }, { list: MAT1 });
+    check('I-④ 齐活 ⇒ 必须真出数（不能永远卡在「算不了」）', v4.ok === true && v4.rows.length === 1,
+      'ok=' + v4.ok + ' rows=' + (v4.rows || []).length);
+    check('I-⑤ 三种文案互不相同（不是同一句换个名字）',
+      TERMS.card.reconMaterialNeedCards !== TERMS.card.reconMaterialAllManual
+      && TERMS.card.reconMaterialAllManual !== TERMS.card.reconMaterialNoSales);
+  }
+
   console.log('\n===== 对账页行为桩结果：' + pass + ' 通过 / ' + failN + ' 失败 =====');
   process.exit(failN === 0 ? 0 : 1);
 })().catch((e) => {

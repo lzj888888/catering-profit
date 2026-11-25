@@ -223,7 +223,22 @@ Page({
     //   ⇒ 5 行 × 4 栏 = 20 个数（含可选的采购金额），回到约束内。
     const top = cand.slice(0, 5);
     if (!top.length) {
-      return { ok: false, reason: 'no_theory', missText: TERMS.card.reconMaterialNeedCards, rows: [] };
+      // 🔴 2026-11-25 真机实测：三种成因原来共用一句「先补成本卡」。
+      //   实测店铺有 5 张成本卡、1 个原料，却仍显示「这些原料没出现在任何成本卡里」——
+      //   因为那些卡的明细行 material_id 全为空（手工行，没关联原料库）。
+      //   老板照提示去「补卡」，补了还是不行 ⇒ 得按成因分开指路。
+      const cardList = (cardsRes && cardsRes.list) || [];
+      // ⚠️ 这里不能用 num0（那是 materialUsage 的内部函数，页面里没有 —— 会 ReferenceError，
+      //   而 check_js_syntax 只编译不执行、照样绿。本仓已第三次踩这个坑）
+      const hasAnyLine = cardList.some((c) => (c.lines || []).length > 0);
+      const anyLinked = cardList.some((c) => (c.lines || []).some((l) => l && l.material_id && (Number(l.quantity) || 0) > 0));
+      const anyQty = Object.keys(qMap).some((k) => (Number(qMap[k]) || 0) > 0);
+      let missKey = 'reconMaterialNeedCards';
+      // 三层：一张卡都没有 ⇒ 去建卡；有卡但明细全是手填（material_id 空）⇒ 去改成选原料；有卡有关联但没销量 ⇒ 去导销量
+      if (!hasAnyLine) missKey = 'reconMaterialNeedCards';
+      else if (!anyLinked) missKey = 'reconMaterialAllManual';
+      else if (!anyQty) missKey = 'reconMaterialNoSales';
+      return { ok: false, reason: 'no_theory', missText: TERMS.card[missKey], missKey, rows: [] };
     }
 
     const savedInv = this.loadMatInv(month);

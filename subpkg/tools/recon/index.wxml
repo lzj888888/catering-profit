@@ -59,7 +59,12 @@
     <view class="muted" wx:if="{{result.weightedPct === null}}">{{t.reconWeightedMissing}}</view>
     <view class="cell">
       <text class="lbl">{{t.reconActualMargin}}</text>
-      <text class="val">{{result.actualPctText}}</text>
+      <!-- 🔴 2026-11-25 真机实测修：原来这里无条件显示 actualPctText，
+           而 suppressed 时的红字却写「暂不显示」⇒ 出现「100.00% + 暂不显示」并存的怪象。
+           100% 的来由：账上没库存数据 ⇒ 实际成本算成 0 ⇒ 毛利率必然 100%，会误导老板以为真赚 100%。
+           ⇒ 抑制态一律只显示「—」（与上面「按实际销量加权 —」同一种表示），
+             真实数值等数据齐了再露。 -->
+      <text class="val">{{result.suppressed ? '—' : result.actualPctText}}</text>
     </view>
     <block wx:if="{{!result.suppressed}}">
       <view class="cell">
