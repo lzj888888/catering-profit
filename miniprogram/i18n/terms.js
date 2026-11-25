@@ -2572,7 +2572,7 @@ const TERMS = {
     //   🔴 口径：理论用量已按出成率还原成**毛料采购量**（净料克数 ÷ 出成率 ÷ 换算系数），
     //     所以老板按采购单位（斤/公斤）填就能直接比。
     reconMaterialTitle: '分原料看',
-    reconMaterialWhy: '只挑最值钱的 3~5 个原料填，就能看出哪个用超了。按平时采购的单位填（斤/公斤）。',
+    reconMaterialWhy: '系统按采购金额挑出最值钱的 5 个原料（通常覆盖九成以上食材钱）。按平时采购的单位填（斤/公斤）。',
     reconMaterialAdd: '添加原料',
     reconMaterialPick: '选择原料',
     reconMaterialOpening: '期初剩',
@@ -2594,7 +2594,7 @@ const TERMS = {
     reconPriceChange: '比上月',
     reconPriceImpact: '其中买贵',
     reconQtyImpact: '其中多买',
-    reconPriceNeedAmount: '填了采购金额才能算均价',
+    reconPriceNeedAmount: '这行填了采购金额才能算均价（不填也能看用量，只是看不出买贵没买贵）',
     reconPriceNeedPrev: '上月没填，无法比价',
     reconPriceNote: '涨价也可能是行情、季节、品质变化。这里只把多花的钱拆开，不定性。',
     // ===== M3.33（批次 G） 单品毛利复盘（导入销量 → 排行榜）=====

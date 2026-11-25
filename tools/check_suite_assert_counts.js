@@ -353,7 +353,7 @@ const CASES = [
   //   ① 恒等式「耗用偏差 ≡ 采购偏差」（4 组数据）② 四种「算不了」必须拦住 ③ 文案键必须真实存在。
   //   其中任一条被删，都会让"给假数"重新变成可能，而门禁照绿 —— 正是本守卫存在的理由。
   { key: 'consume_derive', rel: 'utils/consumeDerive.selftest.js' }, // 60 条
-  { key: 'material_usage', rel: 'utils/materialUsage.selftest.js' }, // 38 条（R754 第二期：出成率还原毛料 + 无理论值不给 0 + 页面接线）
+  { key: 'material_usage', rel: 'utils/materialUsage.selftest.js' }, // 41 条（R754 第二期：出成率还原毛料 + 无理论值不给 0 + 页面接线）
   { key: 'price_variance', rel: 'utils/priceVariance.selftest.js' }, // 19 条（R755 第三期：量价恒等式 + 掩盖场景必须拆出来）
   { key: 'consume_store', rel: 'utils/consumeStore.selftest.js' }, // 32 条（R757 T1：坏数据不白屏 + 上云接线）（恒等式 + 四种算不了 + 反恒真 + 文案键存在性）
   { key: 'consume_dualwrite', rel: 'tools/check_consume_dualwrite.js' }, // 14 条（R757 交叉审计：三个真丢数据洞 + 变异回灌）

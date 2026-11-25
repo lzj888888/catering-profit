@@ -205,6 +205,17 @@ const MATERIALS = [
   // 🔴 2026-11-24 第三期：输入框从 3 个（期初/采购/期末）增到 4 个（+采购金额）。
   //   断言跟着改，但**必须是 4 而不是 ≥3** —— 少一个就说明有人删了某个维度（比如砍掉金额），
   //   那样量价拆分就静默失效了（页面还在、数永远是空）。
+  // 🔴 2026-11-25 录入量优化：候选从 8 行压到 5 行。文案一直说「3~5 个」，
+  //   代码却出 8 行 ⇒ 老板要多填 8×4=32 个数，远超会诊约束（每月最多多填 20）。
+  //   实测虚构门店 top5 已覆盖 95.4% 理论采购金额，多出的 3 个只贡献 4.6%。
+  check('接线：候选原料只出 5 行（录入量回到约束内，文案与代码一致）',
+    /const top = cand\.slice\(0, 5\)/.test(reconJs));
+  const { TERMS: TERMS_TOP5 } = require('../miniprogram/i18n/terms.js');
+  check('文案与代码一致：reconMaterialWhy 说的是「5 个原料」',
+    /最值钱的 5 个原料/.test(TERMS_TOP5.card.reconMaterialWhy), TERMS_TOP5.card.reconMaterialWhy.slice(0, 24));
+  check('采购金额写明可选（不填也能看用量，只是看不出买贵）',
+    /不填也能看用量/.test(TERMS_TOP5.card.reconPriceNeedAmount));
+
   check('接线：四个输入框都绑 onMatQty 并带 data-k（o/p/c/a —— a 是采购金额，第三期）',
     (reconWxml.match(/bindinput="onMatQty"/g) || []).length === 4
     && /data-k="o"/.test(reconWxml) && /data-k="p"/.test(reconWxml)

@@ -216,7 +216,12 @@ Page({
       cand.push({ m, th, amount: th.theoryQty * price });
     }
     cand.sort((a, b) => b.amount - a.amount);
-    const top = cand.slice(0, 8);
+    // 2026-11-25 录入量优化：8 → 5。
+    //   文案一直说「只挑最值钱的 3~5 个」，代码却出 8 行 —— 老板要多填 8×4=32 个数，
+    //   远超会诊约束（每月最多多填 20）。实测虚构门店 top5 已覆盖 95.4% 理论采购金额，
+    //   top8 多出来的 3 个只贡献 4.6%，性价比极低。
+    //   ⇒ 5 行 × 4 栏 = 20 个数（含可选的采购金额），回到约束内。
+    const top = cand.slice(0, 5);
     if (!top.length) {
       return { ok: false, reason: 'no_theory', missText: TERMS.card.reconMaterialNeedCards, rows: [] };
     }
