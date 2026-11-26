@@ -54,7 +54,15 @@
   <block wx:if="{{show.face}}">
     <view class="pw-row">
       <text class="pw-lbl">{{t.promoParamFace}}</text>
-      <input class="pw-in" type="digit" data-f="face" value="{{rule.face}}" bindinput="onInput" placeholder="30" />
+      <input class="pw-in" type="digit" data-f="face" value="{{rule.face}}" bindinput="onInput" placeholder="80" />
+      <text class="pw-unit">{{t.promoYuanUnit}}</text>
+    </view>
+    <view class="pw-hint">{{t.promoParamFaceHint}}</view>
+  </block>
+  <block wx:if="{{show.limit}}">
+    <view class="pw-row">
+      <text class="pw-lbl">{{t.promoParamLimit}}</text>
+      <input class="pw-in" type="number" data-f="limit" value="{{rule.limit}}" bindinput="onInput" placeholder="2" />
     </view>
   </block>
   <block wx:if="{{show.people}}">
@@ -94,6 +102,8 @@
       <text class="pw-convert-k">{{t.promoResDiscount}}</text>
       <text class="pw-convert-v">{{conv.discountText}}</text>
       <view class="pw-formula" wx:if="{{conv.formula}}">{{t.promoFormulaPrefix}}{{conv.formula}}</view>
+      <!-- R761 代金券限用张数：只提示凑单门槛，不改折扣（豆包评审 A 口径） -->
+      <view class="pw-limit-tip" wx:if="{{conv.limitInfo}}">{{t.promoLimitPrefix}}{{conv.limitInfo.maxSpend}}{{t.promoLimitSuffix}}</view>
     </view>
   </block>
   <block wx:elif="{{conv && !conv.ok}}">
@@ -166,6 +176,55 @@
       <text class="pw-crit-t">{{t.promoResCritical}}</text>
       <text class="pw-crit-v">{{back.criticalDiscountShow}}</text>
       <text class="pw-crit-h">{{t.promoResCriticalHint}}</text>
+    </view>
+  </block>
+
+  <!-- ================= 第三段（R761）：填活动后毛利率，倒推要做多少 ================= -->
+  <view class="pw-sec">{{t.promoSecReverse}}</view>
+  <view class="pw-back-intro">{{t.promoReverseIntro}}</view>
+
+  <view class="pw-row">
+    <text class="pw-lbl">{{t.promoTargetMarginLabel}}</text>
+    <input class="pw-in" type="digit" data-f="targetMarginPct" value="{{targetMarginPct}}" bindinput="onInput" placeholder="20" />
+    <text class="pw-unit">%</text>
+  </view>
+  <view class="pw-hint">{{t.promoTargetMarginHint}}</view>
+
+  <block wx:if="{{!reverse}}">
+    <view class="pw-back-empty">{{t.promoReverseEmpty}}</view>
+  </block>
+  <block wx:elif="{{!reverse.ok}}">
+    <view class="pw-bad">
+      <view class="pw-bad-t">{{t.promoReverseBad}}</view>
+    </view>
+  </block>
+  <block wx:else>
+    <view class="pw-convert pw-convert-sm">
+      <text class="pw-convert-k">{{t.promoResReverseDiscount}}</text>
+      <text class="pw-convert-v">{{reverse.discountText}}</text>
+      <view class="pw-formula">{{reverse.newMarginPct}}% · {{t.promoFormulaPrefix}}{{reverse.discount}}</view>
+    </view>
+    <view class="pw-out">
+      <view class="pw-cell">
+        <text class="pw-k">{{t.promoResNewMargin}}</text>
+        <text class="pw-v">{{reverse.newMarginPct}}%</text>
+      </view>
+      <view class="pw-cell" wx:if="{{reverse.ordersNow}}">
+        <text class="pw-k">{{t.promoResOrdersNow}}</text>
+        <text class="pw-v">{{reverse.ordersNow}}{{t.promoOrdersUnit}}</text>
+      </view>
+      <view class="pw-cell" wx:if="{{reverse.revenueNeededYuan}}">
+        <text class="pw-k">{{t.promoResRevenue}}</text>
+        <text class="pw-v">{{reverse.revenueNeededYuan}}{{t.promoYuanUnit}}</text>
+      </view>
+      <view class="pw-cell" wx:if="{{reverse.ordersNeeded}}">
+        <text class="pw-k">{{t.promoResOrders}}</text>
+        <text class="pw-v">{{reverse.ordersNeeded}}{{t.promoOrdersUnit}}</text>
+      </view>
+      <view class="pw-cell">
+        <text class="pw-k">{{t.promoResTraffic}}</text>
+        <text class="pw-v pw-hot">+{{reverse.trafficUpliftPct}}%</text>
+      </view>
     </view>
   </block>
 

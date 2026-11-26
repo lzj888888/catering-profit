@@ -112,11 +112,28 @@
   border-radius: 24rpx;
 }
 
+/* R761 代金券限用张数：凑单提示（在蓝色换算块内，弱一档但不隐身） */
+.pw-limit-tip {
+  font-size: 26rpx;
+  color: #f7e6b8;
+  line-height: 1.5;
+  margin-top: 12rpx;
+}
+
 .pw-convert-err {
   font-size: 28rpx;
   color: #8b95a3;
   text-align: center;
   padding: 44rpx 0 12rpx;
+}
+
+/* R761 第三段「填毛利率反算」的折扣块：比主换算块小一档，保持主次 */
+.pw-convert-sm {
+  padding: 20rpx 24rpx;
+  margin-bottom: 16rpx;
+}
+.pw-convert-sm .pw-convert-v {
+  font-size: 52rpx;
 }
 
 /* ===== R759 第二段：回本（次要，才要毛利率） ===== */

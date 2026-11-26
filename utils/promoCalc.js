@@ -77,12 +77,15 @@ function discountOf(kind, p) {
       if (!pos(n) || n < 2) return { ok: false, reason: 'badRule' };
       return { ok: true, d: round4(((n - 1) + 0.5) / n) };
     }
-    // 代金券：面额 V、门槛 X ⇒ d = (X−V)/X
+    // 代金券 🔴 R761 口径纠偏：face = **实付多少钱**（花 80 买 100 面额就填 80）。
+    //   旧口径把 face 当「减额」，导致「80代100」算成 (100−80)/100=2折 —— 与老板心智相反。
+    //   新口径统一为 d = 实付/抵额：80代100 ⇒ 0.8；满100减30 ⇒ 实付70填进去 ⇒ 0.7。
+    //   豆包 2026-11-26 独立评审推荐此口径（单券折扣是固有属性，不被使用张数改变）。
     case 'voucher': {
-      const face = Number(q.face);
-      const x = Number(q.threshold);
-      if (!pos(face) || !pos(x) || face >= x) return { ok: false, reason: 'badRule' };
-      return { ok: true, d: round4((x - face) / x) };
+      const face = Number(q.face);           // 实付（购价）
+      const x = Number(q.threshold);         // 抵额（面额）
+      if (!pos(face) || !pos(x) || face > x) return { ok: false, reason: 'badRule' };
+      return { ok: true, d: round4(face / x) };
     }
     // 同行免单：N 人里免 K 人 ⇒ d = (N−K)/N
     case 'share': {
@@ -126,13 +129,26 @@ const round4 = (n) => Number(Number(n).toFixed(4));
  *   第二段「要多少才回到原来的利润」才用 promoCalc（要毛利率）。
  */
 function promoConvert(kind, rule) {
-  const r = discountOf(kind, rule || {});
+  const q = rule || {};
+  const r = discountOf(kind, q);
   if (!r.ok) return { ok: false, reason: r.reason };
+  // 🔴 R761 代金券「限用几张」（豆包评审 A 口径）：限用张数**不改变单券折扣**，
+  //   只输出「满多少可用最多几张」的提示数字，让老板知道要凑到多少消费。
+  //   算法层只给数字（count / maxSpend），中文文案留给 terms 单源（本仓纪律）。
+  let limitInfo = null;
+  if (String(kind) === 'voucher') {
+    const n = Number(q.limit);
+    const x = Number(q.threshold);
+    if (isFinite(n) && n >= 1 && isFinite(x) && x > 0) {
+      limitInfo = { count: Math.floor(n), maxSpend: round2(Math.floor(n) * x) };
+    }
+  }
   return {
     ok: true,
     discount: r.d,
-    formula: formulaOf(kind, rule || {}),
+    formula: formulaOf(kind, q),
     note: r.note || '',
+    limitInfo: limitInfo,
   };
 }
 
@@ -149,7 +165,7 @@ function formulaOf(kind, p) {
     case 'threshold': return '(' + n(q.threshold) + '−' + n(q.cut) + ')÷' + n(q.threshold);
     case 'bogo': return n(q.buy) + '÷(' + n(q.buy) + '+' + n(q.free) + ')';
     case 'nth': return '(' + n(q.n) + '−1+0.5)÷' + n(q.n);
-    case 'voucher': return '(' + n(q.threshold) + '−' + n(q.face) + ')÷' + n(q.threshold);
+    case 'voucher': return n(q.face) + '÷' + n(q.threshold);
     case 'share': return '(' + n(q.people) + '−' + n(q.free) + ')÷' + n(q.people);
     case 'stored': return n(q.principal) + '÷(' + n(q.principal) + '+' + n(q.bonus) + ')';
     case 'offset': return '(' + n(q.payable) + '−' + n(q.offset) + ')÷' + n(q.payable);
@@ -278,4 +294,41 @@ function setMealCalc(p) {
   return out;
 }
 
-module.exports = { promoCalc, promoConvert, discountOf, formulaOf, setMealCalc, riskOf, round2, round4, PCT };
+/**
+ * 🔴 R761（李老师原话）：低价引流套餐「直接填活动后毛利率反算」。
+ *   原话：「正常 200 块毛利 100（50%），现在变成毛利率 20%，需要做多少流水才能覆盖到原来水平」。
+ *   这是与 promoCalc **反方向**的入口：promoCalc 填折扣→算毛利率；本函数填目标毛利率→反推折扣。
+ *   推导：G1 = (G0 − (1−d)·100)/d ⇒ d = (100−G0)/(100−G1)（G0/G1 都是百分数）。
+ *   对拍：G0=50/G1=20 ⇒ d=0.625（6.25折）⇒ 流水×2.5、单量×4（与 promoCalc 正算回带一致）。
+ *   fail-closed：G0/G1 必须 (0,100]；G1>=G0 表示活动没降毛利 ⇒ 不需要反算。
+ * @param {object} p
+ * @param {number} p.marginPct       现在毛利率（百分数）
+ * @param {number} p.targetMarginPct 活动后目标毛利率（百分数，老板直接填）
+ * @param {number} [p.revenueYuan]   现在流水（元，选填）
+ * @param {number} [p.avgPriceYuan]  客单价（元，选填）
+ */
+function reverseFromMargin(p) {
+  const q = p || {};
+  const g0 = Number(q.marginPct);
+  const g1 = Number(q.targetMarginPct);
+  if (!(g0 > 0) || g0 > 100) return { ok: false, reason: 'badMargin' };
+  if (!(g1 > 0) || g1 > 100) return { ok: false, reason: 'badTargetMargin' };
+  if (g1 >= g0) return { ok: false, reason: 'noDrop', hint: '活动后毛利率没降，不需要反算' };
+
+  const d = round4((100 - g0) / (100 - g1));
+  // 复用 promoCalc 正算：保证反算结果与正算同一套口径（流水/单量/风险），不写第二套公式
+  const r = promoCalc({ marginPct: g0, discount: d,
+    revenueYuan: q.revenueYuan, avgPriceYuan: q.avgPriceYuan });
+  if (!r.ok) return { ok: false, reason: r.reason, discount: d };
+  return {
+    ok: true, discount: d, discountPct: r.discountPct,
+    criticalDiscount: r.criticalDiscount,
+    revenueMultiple: r.revenueMultiple, trafficMultiple: r.trafficMultiple,
+    trafficUpliftPct: r.trafficUpliftPct, riskLevel: r.riskLevel,
+    revenueNeededYuan: r.revenueNeededYuan,
+    ordersNeeded: r.ordersNeeded, ordersNow: r.ordersNow,
+    newMarginPct: r.newMarginPct,
+  };
+}
+
+module.exports = { promoCalc, promoConvert, discountOf, formulaOf, setMealCalc, reverseFromMargin, riskOf, round2, round4, PCT };

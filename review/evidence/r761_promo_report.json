@@ -1,0 +1,35 @@
+{
+  "ok": true,
+  "steps": [
+    {
+      "name": "voucher80代100限2",
+      "data": {
+        "ok": true,
+        "text": "8折",
+        "formula": "80÷100",
+        "limit": {
+          "count": 2,
+          "maxSpend": 200
+        },
+        "back": null,
+        "reverse": null
+      }
+    },
+    {
+      "name": "reverse50to20",
+      "data": {
+        "ok": true,
+        "text": "6.25折",
+        "newMargin": 20,
+        "rev": 20000,
+        "now": 40,
+        "need": 160,
+        "traffic": 300,
+        "revMul": 2.5,
+        "traMul": 4
+      }
+    }
+  ],
+  "pass1": true,
+  "pass2": true
+}

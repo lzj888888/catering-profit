@@ -9,7 +9,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { promoCalc, promoConvert, discountOf, formulaOf, setMealCalc, riskOf } = require('./promoCalc.js');
+const { promoCalc, promoConvert, discountOf, formulaOf, setMealCalc, reverseFromMargin, riskOf } = require('./promoCalc.js');
 const Promo = require('./promoImpact.js');
 
 let pass = 0, failN = 0;
@@ -32,7 +32,8 @@ sec('A 活动形式 → 等效折扣');
   t('bogo', { buy: 2, free: 1 }, 0.6667, '买2赠1');
   t('bogo', { buy: 1, free: 1 }, 0.5, '买1赠1（=5折）');
   t('nth', { n: 2 }, 0.75, '第2件半价');
-  t('voucher', { face: 30, threshold: 100 }, 0.7, '100元券减30');
+  t('voucher', { face: 70, threshold: 100 }, 0.7, '100抵用券实付70（=满100减30）');
+  t('voucher', { face: 80, threshold: 100 }, 0.8, '80代100（实付80/抵额100=8折，R761纠偏）');
   t('share', { people: 4, free: 1 }, 0.75, '4人同行1人免单');
   t('stored', { principal: 1000, bonus: 200 }, 0.8333, '充1000送200');
   t('offset', { payable: 100, offset: 20 }, 0.8, '积分抵20元');
@@ -195,8 +196,8 @@ sec('I-R759 折扣换算独立入口（不依赖毛利率）');
   check('I-③ 满100减30 推导式 = (100−30)÷100',
     formulaOf('threshold', { threshold: 100, cut: 30 }) === '(100−30)÷100',
     formulaOf('threshold', { threshold: 100, cut: 30 }));
-  check('I-④ 代金券 80代100 推导式 = (100−80)÷100',
-    formulaOf('voucher', { face: 80, threshold: 100 }) === '(100−80)÷100',
+  check('I-④ 代金券 80代100 推导式 = 80÷100（R761 纠偏，实付÷抵额）',
+    formulaOf('voucher', { face: 80, threshold: 100 }) === '80÷100',
     formulaOf('voucher', { face: 80, threshold: 100 }));
   // 对拍：promoConvert.discount 必须等于 discountOf.d（同一个折扣，不许两套口径）
   for (const [k, r0] of [['off', { discount: 0.8 }], ['bogo', { buy: 3, free: 1 }],
@@ -211,6 +212,48 @@ sec('I-R759 折扣换算独立入口（不依赖毛利率）');
   check('I-⑤ 🔴 反恒真：买0送1 必须判红', bad.ok === false && bad.reason === 'badRule', bad.reason);
   // 直接打折无推导式（填的就是折扣）
   check('I-⑥ 直接打折无推导式（不编中间数）', formulaOf('off', { discount: 0.8 }) === '');
+  // 🔴 R761 代金券限用张数（豆包评审 A 口径）：限用不改折扣，只给凑单提示数字
+  const lim = promoConvert('voucher', { face: 80, threshold: 100, limit: 2 });
+  check('I761-券① 80代100限2张 ⇒ 折扣仍 0.8（限用不改折扣）', lim.ok && Math.abs(lim.discount - 0.8) < 1e-6,
+    lim.ok ? String(lim.discount) : lim.reason);
+  check('I761-券② 限2张 ⇒ 提示满200可用最多2张（只给数字）',
+    lim.limitInfo && lim.limitInfo.count === 2 && lim.limitInfo.maxSpend === 200,
+    JSON.stringify(lim.limitInfo));
+  const lim0 = promoConvert('voucher', { face: 80, threshold: 100 });
+  check('I761-券③ 未填限用 ⇒ limitInfo=null（不编提示）', lim0.ok && lim0.limitInfo === null,
+    JSON.stringify(lim0.limitInfo));
+  check('I761-券④ 🔴 反恒真：实付>抵额判红（80代70不可能）',
+    discountOf('voucher', { face: 80, threshold: 70 }).ok === false);
+}
+
+// ===================================================================
+sec('I-R761 直接填活动后毛利率反算（李老师原话的低价套餐口径）');
+{
+  // 原话：正常 200 毛利 100（50%），现在变 20%，要做多少流水覆盖原水平。
+  const r = reverseFromMargin({ marginPct: 50, targetMarginPct: 20, revenueYuan: 8000, avgPriceYuan: 200 });
+  check('I761-① G0=50→G1=20 反算 6.25 折', r.ok && Math.abs(r.discount - 0.625) < 1e-6,
+    r.ok ? String(r.discount) : r.reason);
+  check('I761-② 反算流水×2.5、单量×4（李老师对拍值）',
+    r.ok && Math.abs(r.revenueMultiple - 2.5) < 1e-6 && Math.abs(r.trafficMultiple - 4) < 1e-6,
+    r.ok ? ('×' + r.revenueMultiple + ' / ×' + r.trafficMultiple) : r.reason);
+  check('I761-③ 反算给出 G1=20 / 流水 20000 / 单量 40→160',
+    r.ok && r.newMarginPct === 20 && Math.abs(r.revenueNeededYuan - 20000) < 0.01
+      && r.ordersNow === 40 && r.ordersNeeded === 160,
+    r.ok ? (r.newMarginPct + '% / ' + r.revenueNeededYuan + ' / ' + r.ordersNow + '→' + r.ordersNeeded) : r.reason);
+  // 反算↔正算闭环：反推的折扣喂回 promoCalc 必须回到同一个目标毛利率（双向对拍）
+  for (const g1 of [10, 20, 30, 40, 45]) {
+    const rv = reverseFromMargin({ marginPct: 50, targetMarginPct: g1 });
+    const fw = promoCalc({ marginPct: 50, discount: rv.discount });
+    check('I761-闭环 反算→正算回到 G1=' + g1,
+      rv.ok && fw.ok && Math.abs(fw.newMarginPct - g1) < 0.02,
+      rv.ok ? (rv.discount + '→' + (fw.ok ? fw.newMarginPct : fw.reason)) : rv.reason);
+  }
+  // fail-closed：目标毛利率没降 / 越界，必须判红不编数
+  check('I761-④ 🔴 反恒真：G1>=G0（没降毛利）判红', reverseFromMargin({ marginPct: 50, targetMarginPct: 50 }).reason === 'noDrop');
+  check('I761-⑤ 🔴 反恒真：G1 越界(0/101)判红',
+    reverseFromMargin({ marginPct: 50, targetMarginPct: 0 }).reason === 'badTargetMargin'
+    && reverseFromMargin({ marginPct: 50, targetMarginPct: 101 }).reason === 'badTargetMargin');
+  check('I761-⑥ 🔴 反恒真：G0 越界判红', reverseFromMargin({ marginPct: 101, targetMarginPct: 20 }).reason === 'badMargin');
 }
 
 // ===================================================================
@@ -238,6 +281,12 @@ sec('J 页面接线（subpkg/tools/promo）');
     /back: null/.test(pj) && /promoBackEmpty/.test(pw));
   check('J-⑧ 活动后毛利率 / 流水 / 单数三段回本结果都在',
     pw.indexOf('back.newMarginPct') >= 0 && pw.indexOf('back.revenueNeededYuan') >= 0 && pw.indexOf('back.ordersNeeded') >= 0);
+  // R761 新增：第三段反算 + 代金券实付口径 + 限用提示都接进页面了
+  check('J-⑨ R761 第三段反算接进页面（目标毛利率输入 + reverse 结果）',
+    pw.indexOf('data-f="targetMarginPct"') >= 0 && pw.indexOf('reverse.discountText') >= 0
+      && pj.indexOf('reverseFromMargin') >= 0);
+  check('J-⑩ R761 代金券实付口径 + 限用提示接进页面',
+    pw.indexOf('data-f="limit"') >= 0 && pw.indexOf('conv.limitInfo.maxSpend') >= 0);
 }
 
 console.log('\n==== 活动测算自测：' + pass + ' 通过 / ' + failN + ' 失败 ====');

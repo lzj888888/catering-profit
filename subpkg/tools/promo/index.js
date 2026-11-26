@@ -12,7 +12,7 @@
 // 🔴 输入即重算（李老师）：bindinput 即时出数，不设「计算」按钮。
 
 const { TERMS } = require('../../../miniprogram/i18n/terms.js');
-const { promoCalc, promoConvert } = require('../../../utils/promoCalc.js');
+const { promoCalc, promoConvert, reverseFromMargin } = require('../../../utils/promoCalc.js');
 
 const t = TERMS.card;
 
@@ -43,6 +43,10 @@ Page({
       promoParamFree: t.promoParamFree,
       promoParamN: t.promoParamN,
       promoParamFace: t.promoParamFace,
+      promoParamFaceHint: t.promoParamFaceHint,
+      promoParamLimit: t.promoParamLimit,
+      promoLimitPrefix: t.promoLimitPrefix,
+      promoLimitSuffix: t.promoLimitSuffix,
       promoParamPeople: t.promoParamPeople,
       promoParamPrincipal: t.promoParamPrincipal,
       promoParamBonus: t.promoParamBonus,
@@ -74,19 +78,37 @@ Page({
       promoResTraffic: t.promoResTraffic,
       promoResCritical: t.promoResCritical,
       promoResCriticalHint: t.promoResCriticalHint,
+      // 第三段：填活动后毛利率反算（R761）
+      promoSecReverse: t.promoSecReverse,
+      promoReverseIntro: t.promoReverseIntro,
+      promoTargetMarginLabel: t.promoTargetMarginLabel,
+      promoTargetMarginHint: t.promoTargetMarginHint,
+      promoReverseEmpty: t.promoReverseEmpty,
+      promoReverseBad: t.promoReverseBad,
+      promoResReverseDiscount: t.promoResReverseDiscount,
+      promoResReverseNeed: t.promoResReverseNeed,
+      promoResNewMargin: t.promoResNewMargin,
+      promoResRevenue: t.promoResRevenue,
+      promoResOrders: t.promoResOrders,
+      promoResTraffic: t.promoResTraffic,
+      promoYuanUnit: t.promoYuanUnit,
+      promoOrdersUnit: t.promoOrdersUnit,
       promoFoot: t.promoFoot,
     },
     kindNames: [],
     kindIndex: 0,
     kind: 'off',
-    rule: { discount: '', threshold: '', cut: '', buy: '', free: '', n: '', face: '', people: '', principal: '', bonus: '', payable: '', offset: '' },
+    rule: { discount: '', threshold: '', cut: '', buy: '', free: '', n: '', face: '', limit: '', people: '', principal: '', bonus: '', payable: '', offset: '' },
     // 第二段三填（李老师要的"都他自己填"）
     marginPct: '',
     revenueYuan: '',
     avgPriceYuan: '',
-    // 两段结果彼此独立
-    conv: null,   // 第一段：折扣换算（不依赖毛利率）
-    back: null,   // 第二段：回本测算（依赖毛利率）
+    // 第三段两填（R761：直接填活动后毛利率反算）
+    targetMarginPct: '',
+    // 三段结果彼此独立
+    conv: null,     // 第一段：折扣换算（不依赖毛利率）
+    back: null,     // 第二段：回本测算（依赖毛利率+折扣）
+    reverse: null,  // 第三段：填活动后毛利率反算（R761）
     show: {},
   },
 
@@ -103,7 +125,7 @@ Page({
       threshold: { threshold: true, cut: true },
       bogo: { buy: true, free: true },
       nth: { n: true },
-      voucher: { face: true, threshold: true },
+      voucher: { face: true, threshold: true, limit: true },
       share: { people: true, free: true },
       stored: { principal: true, bonus: true },
       offset: { payable: true, offset: true },
@@ -122,7 +144,7 @@ Page({
     const f = (e.currentTarget.dataset.f || '');
     if (!f) return;
     const v = e.detail.value;
-    if (f === 'marginPct' || f === 'revenueYuan' || f === 'avgPriceYuan') {
+    if (f === 'marginPct' || f === 'revenueYuan' || f === 'avgPriceYuan' || f === 'targetMarginPct') {
       const patch = {}; patch[f] = v;
       this.setData(patch, () => this.recalc());
       return;
@@ -140,16 +162,18 @@ Page({
   },
 
   /**
-   * 两段分离重算：
-   *   ① conv：只要活动规则填齐就算出折扣 —— **毛利率无关**，这是 80% 心智。
-   *   ② back：conv.ok 且毛利率 >0 才算回本；毛利率空 ⇒ back=null（不显示假数）。
+   * 三段分离重算（彼此独立，一段坏不影响另一段）：
+   *   ① conv：只要活动规则填齐就算出折扣 —— **毛利率无关**，这是主入口。
+   *   ② back：conv.ok 且毛利率 >0 才算回本；毛利率空 ⇒ back=null。
+   *   ③ reverse：R761 填活动后毛利率反算 —— 只要两个毛利率填了就算，不依赖活动规则。
    */
   recalc() {
     const d = this.data;
     // 第一段：独立折扣换算（不被毛利率卡住）
     const cv = promoConvert(d.kind, d.rule);
     const conv = cv.ok
-      ? { ok: true, discountText: this.asZhe(cv.discount), formula: cv.formula, note: cv.note }
+      ? { ok: true, discountText: this.asZhe(cv.discount), formula: cv.formula,
+          note: cv.note, limitInfo: cv.limitInfo }
       : { ok: false };
     // 第二段：回本（依赖第一段折扣 + 毛利率）
     let back = null;
@@ -164,7 +188,21 @@ Page({
       if (r && r.ok) r.criticalDiscountShow = this.asZhe(r.criticalDiscount);
       back = r;
     }
-    // 🔴 一次 setData 设两段：嵌套回调在 evaluate/真机快速连填时会丢 back（本次实拍踩到）
-    this.setData({ conv: conv, back: back });
+    // 第三段（R761）：填活动后毛利率反算 —— 只需现毛利率 + 目标毛利率，不依赖活动规则。
+    //   流水/客单复用第二段填的值（老板填一次），但即使没填流水也能出「×几倍」。
+    let reverse = null;
+    const gm = Number(d.marginPct);
+    const tm = Number(d.targetMarginPct);
+    if (gm > 0 && tm > 0) {
+      const rr = reverseFromMargin({
+        marginPct: gm, targetMarginPct: tm,
+        revenueYuan: Number(d.revenueYuan) || undefined,
+        avgPriceYuan: Number(d.avgPriceYuan) || undefined,
+      });
+      if (rr && rr.ok) rr.discountText = this.asZhe(rr.discount);
+      reverse = rr;
+    }
+    // 🔴 一次 setData 设三段：嵌套回调在 evaluate/真机快速连填时会丢结果（R759 实拍踩到）
+    this.setData({ conv: conv, back: back, reverse: reverse });
   },
 });

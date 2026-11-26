@@ -1892,7 +1892,13 @@ const TERMS = {
     promoParamBuy: '买几份',
     promoParamFree: '赠/免几份',
     promoParamN: '第几件半价',
-    promoParamFace: '券面额',
+    // 🔴 R761 口径纠偏：face = 实付（花80买100面额就填80），统一算 实付÷抵额。
+    //   旧文案「券面额」让老板把「80代100」填成80却按减额算成2折 —— 与心智相反。
+    promoParamFace: '实付多少钱',
+    promoParamFaceHint: '80代100填80；满100减30填70',
+    promoParamLimit: '每单限用几张',
+    promoLimitPrefix: '要凑满',
+    promoLimitSuffix: '元，才能用最多这几张（几折不随张数变）',
     promoParamPeople: '几个人同行',
     promoParamPrincipal: '充值金额',
     promoParamBonus: '赠送金额',
@@ -1924,7 +1930,18 @@ const TERMS = {
     promoResTraffic: '客人要多来',
     promoResCritical: '再低就亏：最低只能打',
     promoResCriticalHint: '低于这个折扣，卖一件亏一件',
+    // 🔴 R761 第三段：李老师原话「毛利率变20%，要做多少流水覆盖原来水平」——
+    //   直接填活动后毛利率，反算要打几折、流水×几倍、单量×几倍。
+    promoSecReverse: '三、我已经知道活动后毛利率，倒推要做多少',
+    promoReverseIntro: '比如正常毛利50%，做活动后只剩20%，填20就能倒推',
+    promoTargetMarginLabel: '活动后毛利率',
+    promoTargetMarginHint: '活动做完，每一百块流水里还剩多少毛利',
+    promoReverseEmpty: '填上现在和活动后的毛利率，就能倒推',
+    promoReverseBad: '活动后毛利率必须大于0、且低于现在的毛利率',
+    promoResReverseDiscount: '相当于打',
+    promoResReverseNeed: '要做到这些才持平',
     promoFoot: '只做算术推演：毛利率与流水由你自己填，结果取决于这些数准不准。',
+
     // R693（易填性·填得对）：出成率与损耗率**从未被解释过** —— 新手模式只说"专业项已收起"。
     //   填错的代价很实：出成率填 60 而不是 60%（语义混成 0.6/60 两种理解）会让净料成本翻倍，
     //   老板看到的毛利全是错的。文案压在 18 字内（与 hint_fold 的平铺/折叠分界一致）。
