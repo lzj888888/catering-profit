@@ -246,11 +246,20 @@ function buildActions(d) {
 
   // ---- 3. 数据不足时不给处方（不给"半本账"开药方）----
   if (dg.level === 'insufficient') {
+    // 🔴 R766：原则不变（不给处方），但**已经算出来的危险信号不该被吞掉**。
+    //   实测场景：老板只填了「账面现金 + 月净亏」，覆盖率不够 ⇒ 整页只说"账还不够，先把数据补上"，
+    //   而"照这个亏法只能撑 2 个月"其实**已经算出来了** —— 他关掉页面都不知道自己有个红灯。
+    //   这里只回一个**已算出的数**（不附任何动作/建议），是否展示由前端拼文案决定 ⇒ 不越「不给半本账开药方」的界。
+    const monthsRaw = (cashFen !== null && burnFen !== null && burnFen > 0) ? cashFen / burnFen : null;
+    const precheck = (monthsRaw !== null && monthsRaw < 3)
+      ? { key: 'cash', months: Number(monthsRaw.toFixed(1)) }
+      : null;
     return {
       tier: 'insufficient',
       tierText: '',
       actions: [],
       reason: 'insufficient',
+      precheck,
     };
   }
 
@@ -259,6 +268,7 @@ function buildActions(d) {
     tierText: TIER_TEXT[tier] || '',
     actions,
     reason: actions.length ? '' : 'no_weak_metric',
+    precheck: null,
   };
 }
 

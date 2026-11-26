@@ -112,6 +112,7 @@ Page({
     planTierText: '',
     planActions: [],
     planInsufficient: '',
+    planPrecheck: '',
     planEmpty: '',
   },
 
@@ -297,6 +298,13 @@ Page({
     }));
     const planInsufficient = (level === 'insufficient') ? T.actInsufficient : '';
     const planEmpty = (!planInsufficient && planActions.length === 0) ? T.actEmpty : '';
+    // 🔴 R766：数据不足时，**已经算出来**的危险信号要说出来（只报数、不给处方）。
+    //   云函数已在 plan.precheck 里给了 { key:'cash', months }（<3 个月才给）；
+    //   本页只做字符串拼装，不判断危险、不算数。
+    const pc = planRaw.precheck;
+    const planPrecheck = (pc && pc.key === 'cash' && pc.months !== null && pc.months !== undefined)
+      ? (T.planPrecheckCashPre + pc.months + T.planPrecheckCashSuf)
+      : '';
 
     // ---- 分数：数据不足时**不给分** ----
     //   覆盖率不到 70% 的"100 分"是归一化出来的幻觉（只剩口碑/租约在算），
@@ -330,6 +338,7 @@ Page({
       planTierText: planRaw.tierText || '',
       planActions,
       planInsufficient,
+      planPrecheck,
       planEmpty,
     });
   },

@@ -307,7 +307,7 @@ const CASES = [
   //   删掉 A-③（漏字段必须点名）或 B-②（onShow 必须真调 load）就静默退回事故状态，
   //   而门禁照旧全绿。9 条 = A 4 + B 3 + C 2。
   { key: 'check_diag_facts_sync', rel: 'tools/check_diag_facts_sync.js' }, // 19 条（A 4 + B 3 + C 2 + D 7 + E 3）
-  { key: 'check_diag_actions', rel: 'tools/check_diag_actions.js' },       // 36 条（A 7 + B 10 + C 4 + D 5 + E 4 + F 6）
+  { key: 'check_diag_actions', rel: 'tools/check_diag_actions.js' },       // 39 条（A 7 + B 10 + C 7 + D 5 + E 4 + F 6；R766 补 C⑤~⑦：数据不足时已算出的危险信号不许被吞）
   { key: 'check_m2_input_box', rel: 'tools/check_m2_input_box.js' },       // 13 条（A 10 + B 4 去掉重复计数见实跑）
   { key: 'check_m2_semantic_diff', rel: 'tools/check_m2_semantic_diff.js' }, // 14 条（A 7 + B 7）
   { key: 'check_m3_entry_naming', rel: 'tools/check_m3_entry_naming.js' },  // 28 条（R615 入口归属/命名一致；R707 判据反转：A-① M3 不许有导入卡 + A-①b 反恒真、A-② 升级成守全部卡都有语、A-④/④b/④c 入口搬到排行榜并验首屏位置、B-② 反向断言死登记、B-③b goImport 悬空检测）   // 23 条（A 9 + B 7 + C 7 卡名≡页标题）

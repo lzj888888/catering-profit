@@ -44,6 +44,8 @@
     <view class="muted">{{t.actHint}}</view>
     <view class="dg-plan-tier" wx:if="{{planTierText}}">{{planTierText}}</view>
     <view class="hint" wx:if="{{planInsufficient}}">{{planInsufficient}}</view>
+    <!-- 🔴 R766：数据不足时也别把已经算出来的危险信号一起吞掉（只报数，不给处方） -->
+    <view class="warn-line" wx:if="{{planPrecheck}}">{{planPrecheck}}</view>
     <view class="hint" wx:if="{{planEmpty}}">{{planEmpty}}</view>
     <view class="dg-act" wx:for="{{planActions}}" wx:key="key" wx:for-item="a">
       <view class="dg-act-hd">

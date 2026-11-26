@@ -128,6 +128,33 @@ sec('C 事实缺失必须闭嘴（防 undefined% / NaN 元）');
     insuff.actions.length === 0 && insuff.tier === 'insufficient');
   ok('C-④ 数据不足时前端有明确出路文案，不是空卡片',
     /planInsufficient/.test(WXML) && /actInsufficient/.test(TERMS));
+
+  // 🔴 R766：数据不足时**已经算出来**的危险信号不能被一起吞掉（只报数、不给处方）
+  const partial = {
+    bizType: 'dining', revenueFen: 24000000, netProfitFen: -1000000,
+    cashOnHandFen: 2000000, avgMonthlyNetLossFen: 1000000,   // 现金 2 万 / 月亏 1 万 ⇒ 2 个月
+  };
+  const insuffDanger = ACTIONS.buildActions({
+    diagnosis: ENG.evaluateDiagnosis(partial), derived: {}, input: partial,
+  });
+  ok('C-⑤ 数据不足 + 现金只够撑 2 个月 ⇒ precheck 报出这个数，且仍不给一条处方',
+    insuffDanger.actions.length === 0 && !!insuffDanger.precheck
+      && insuffDanger.precheck.key === 'cash' && insuffDanger.precheck.months === 2,
+    JSON.stringify({ actions: insuffDanger.actions.length, precheck: insuffDanger.precheck }));
+
+  const partialSafe = Object.assign({}, partial, {
+    cashOnHandFen: 10000000,      // 现金 10 万 / 月亏 1 万 ⇒ 10 个月
+  });
+  const insuffSafe = ACTIONS.buildActions({
+    diagnosis: ENG.evaluateDiagnosis(partialSafe), derived: {}, input: partialSafe,
+  });
+  ok('C-⑥ 🔴 反证：数据不足但现金能撑 10 个月 ⇒ 不乱报警（precheck 必须为空）',
+    insuffSafe.precheck === null, JSON.stringify(insuffSafe.precheck));
+
+  ok('C-⑦ precheck 真接到页面（云端出参 + 页面拼装 + wxml 渲染，缺一不算）',
+    /precheck/.test(read('cloudfunctions/getDiagnosis/actions.js'))   // 云端出参名是 precheck
+      && /planPrecheck/.test(read('subpkg/biz/diag/result.js'))       // 页面字段是 planPrecheck
+      && /planPrecheck/.test(WXML) && /planPrecheckCashPre/.test(TERMS));
 }
 
 // ===================== D 合规红线 =====================
