@@ -1889,6 +1889,12 @@ const TERMS = {
     promoParamDiscount: '打几折（8 折填 0.8）',
     promoParamThreshold: '满多少',
     promoParamCut: '减多少',
+    // R763（R762 审计 P0）：满减折扣随客单价变，页面给手填框 + 保守估算提示
+    promoParamAvgPrice: '客单价（估算满减用）',
+    promoParamAvgPriceHint: '例：满100减30、客单150，实际是8折；不填就按门槛算，结果偏保守',
+    promoNoAvgPrefix: '未填客单价，按门槛 ',
+    promoNoAvgSuffix: ' 元估算（保守）',
+    promoBelowThreshold: '客单价没到门槛，按门槛算（做活动就是把客单拉到门槛）',
     promoParamBuy: '买几份',
     promoParamFree: '赠/免几份',
     promoParamN: '第几件半价',

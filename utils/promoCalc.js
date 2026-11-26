@@ -58,8 +58,11 @@ function discountOf(kind, p) {
       const y = Number(q.cut);
       const a = Number(q.avgPrice);
       if (!pos(x) || !pos(y) || y >= x) return { ok: false, reason: 'badRule' };
-      const base = (isFinite(a) && a > 0 && a > x) ? a : x;
-      const note = (isFinite(a) && a > 0 && a < x) ? 'below_threshold' : '';
+      const avgOk = isFinite(a) && a > 0;
+      const base = (avgOk && a > x) ? a : x;
+      // 🔴 R763（R762 审计 P0）：客单价留空时不再沉默按门槛算 —— 标记 no_avg_price，
+      //   由页面明确告知老板「这是按门槛估的保守折扣」，不能冒充真实折扣。
+      const note = !avgOk ? 'no_avg_price' : (a < x ? 'below_threshold' : '');
       const d = (base - y) / base;
       if (!(d > 0) || d > 1) return { ok: false, reason: 'badDiscount' };
       return { ok: true, d: round4(d), note: note };
@@ -162,7 +165,12 @@ function formulaOf(kind, p) {
   const q = p || {};
   const n = fmtNum;
   switch (String(kind || '')) {
-    case 'threshold': return '(' + n(q.threshold) + '−' + n(q.cut) + ')÷' + n(q.threshold);
+    // 🔴 R763：推导式的分母必须和折扣分母是同一个数（客单价 >门槛时用客单价）
+    case 'threshold': {
+      const a = Number(q.avgPrice);
+      const base = (isFinite(a) && a > 0 && a > Number(q.threshold)) ? a : q.threshold;
+      return '(' + n(base) + '−' + n(q.cut) + ')÷' + n(base);
+    }
     case 'bogo': return n(q.buy) + '÷(' + n(q.buy) + '+' + n(q.free) + ')';
     case 'nth': return '(' + n(q.n) + '−1+0.5)÷' + n(q.n);
     case 'voucher': return n(q.face) + '÷' + n(q.threshold);

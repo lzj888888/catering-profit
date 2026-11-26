@@ -44,6 +44,12 @@ Page({
       promoParamN: t.promoParamN,
       promoParamFace: t.promoParamFace,
       promoParamFaceHint: t.promoParamFaceHint,
+      // 🔴 R763（R762 审计 P0）：满减客单价手填框 + 保守估算提示
+      promoParamAvgPrice: t.promoParamAvgPrice,
+      promoParamAvgPriceHint: t.promoParamAvgPriceHint,
+      promoNoAvgPrefix: t.promoNoAvgPrefix,
+      promoNoAvgSuffix: t.promoNoAvgSuffix,
+      promoBelowThreshold: t.promoBelowThreshold,
       promoParamLimit: t.promoParamLimit,
       promoLimitPrefix: t.promoLimitPrefix,
       promoLimitSuffix: t.promoLimitSuffix,
@@ -98,7 +104,7 @@ Page({
     kindNames: [],
     kindIndex: 0,
     kind: 'off',
-    rule: { discount: '', threshold: '', cut: '', buy: '', free: '', n: '', face: '', limit: '', people: '', principal: '', bonus: '', payable: '', offset: '' },
+    rule: { discount: '', threshold: '', cut: '', avgPrice: '', buy: '', free: '', n: '', face: '', limit: '', people: '', principal: '', bonus: '', payable: '', offset: '' },
     // 第二段三填（李老师要的"都他自己填"）
     marginPct: '',
     revenueYuan: '',
@@ -122,7 +128,8 @@ Page({
   showOf(kind) {
     const m = {
       off: { discount: true },
-      threshold: { threshold: true, cut: true },
+      // 🔴 R763：满减的等效折扣依赖客单价，页面必须让老板填（仍纯手填、不读店里数据）
+      threshold: { threshold: true, cut: true, avgPrice: true },
       bogo: { buy: true, free: true },
       nth: { n: true },
       voucher: { face: true, threshold: true, limit: true },
@@ -171,9 +178,16 @@ Page({
     const d = this.data;
     // 第一段：独立折扣换算（不被毛利率卡住）
     const cv = promoConvert(d.kind, d.rule);
+    // 🔴 R763：把引擎的 note 标记翻成老板看得懂的话——没填客单不能冒充真实折扣，
+    //   低于门槛要说清「按门槛算」的原因（引擎有 note 但页面以前不显示 ⇒ 假覆盖）。
+    let noteText = '';
+    if (cv.note === 'below_threshold') noteText = t.promoBelowThreshold;
+    else if (cv.note === 'no_avg_price') {
+      noteText = t.promoNoAvgPrefix + (Number(d.rule.threshold) || 0) + t.promoNoAvgSuffix;
+    }
     const conv = cv.ok
       ? { ok: true, discountText: this.asZhe(cv.discount), formula: cv.formula,
-          note: cv.note, limitInfo: cv.limitInfo }
+          note: cv.note, noteText: noteText, limitInfo: cv.limitInfo }
       : { ok: false };
     // 第二段：回本（依赖第一段折扣 + 毛利率）
     let back = null;

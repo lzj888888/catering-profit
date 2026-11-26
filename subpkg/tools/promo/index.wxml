@@ -33,6 +33,15 @@
       <input class="pw-in" type="digit" data-f="cut" value="{{rule.cut}}" bindinput="onInput" placeholder="30" />
     </view>
   </block>
+  <!-- 🔴 R763（R762 审计 P0）：满减的实际折扣随客单价变；不填则按门槛保守估算，并在结果区明说 -->
+  <block wx:if="{{show.avgPrice}}">
+    <view class="pw-row">
+      <text class="pw-lbl">{{t.promoParamAvgPrice}}</text>
+      <input class="pw-in" type="digit" data-f="avgPrice" value="{{rule.avgPrice}}" bindinput="onInput" placeholder="150" />
+      <text class="pw-unit">{{t.promoYuanUnit}}</text>
+    </view>
+    <view class="pw-hint">{{t.promoParamAvgPriceHint}}</view>
+  </block>
   <block wx:if="{{show.buy}}">
     <view class="pw-row">
       <text class="pw-lbl">{{t.promoParamBuy}}</text>
@@ -102,6 +111,8 @@
       <text class="pw-convert-k">{{t.promoResDiscount}}</text>
       <text class="pw-convert-v">{{conv.discountText}}</text>
       <view class="pw-formula" wx:if="{{conv.formula}}">{{t.promoFormulaPrefix}}{{conv.formula}}</view>
+      <!-- R763：客单价未填/低于门槛的口径提示（保守估算，不冒充真实折扣） -->
+      <view class="pw-limit-tip" wx:if="{{conv.noteText}}">{{conv.noteText}}</view>
       <!-- R761 代金券限用张数：只提示凑单门槛，不改折扣（豆包评审 A 口径） -->
       <view class="pw-limit-tip" wx:if="{{conv.limitInfo}}">{{t.promoLimitPrefix}}{{conv.limitInfo.maxSpend}}{{t.promoLimitSuffix}}</view>
     </view>

@@ -44,6 +44,10 @@ sec('A 活动形式 → 等效折扣');
   const r = discountOf('threshold', { threshold: 100, cut: 30, avgPrice: 80 });
   check('A-② 客单低于门槛 ⇒ 按门槛算 + note=below_threshold（不报错、不静默）',
     r.ok && r.note === 'below_threshold' && Math.abs(r.d - 0.7) < 1e-6, JSON.stringify(r));
+  // 🔴 R763：客单留空不再沉默按门槛算，必须标记让页面告知「保守估算」
+  const r0 = discountOf('threshold', { threshold: 100, cut: 30 });
+  check('A-⑥ R763 客单留空 ⇒ 按门槛算 + note=no_avg_price（页面须提示保守估算）',
+    r0.ok && Math.abs(r0.d - 0.7) < 1e-6 && r0.note === 'no_avg_price', JSON.stringify(r0));
   // 反例：规则本身非法必须拒
   check('A-③ 减免 ≥ 门槛 ⇒ badRule（不可能的活动）',
     discountOf('threshold', { threshold: 100, cut: 100 }).reason === 'badRule');
@@ -193,9 +197,12 @@ sec('I-R759 折扣换算独立入口（不依赖毛利率）');
     r.ok ? String(r.discount) : r.reason);
   check('I-② 买2送1 推导式 = 2÷(2+1)', formulaOf('bogo', { buy: 2, free: 1 }) === '2÷(2+1)',
     formulaOf('bogo', { buy: 2, free: 1 }));
-  check('I-③ 满100减30 推导式 = (100−30)÷100',
+  check('I-③ 满100减30 未填客单 推导式 = (100−30)÷100',
     formulaOf('threshold', { threshold: 100, cut: 30 }) === '(100−30)÷100',
     formulaOf('threshold', { threshold: 100, cut: 30 }));
+  check('I-③b R763 满100减30 客单150 ⇒ 推导式分母=客单 (150−30)÷150',
+    formulaOf('threshold', { threshold: 100, cut: 30, avgPrice: 150 }) === '(150−30)÷150',
+    formulaOf('threshold', { threshold: 100, cut: 30, avgPrice: 150 }));
   check('I-④ 代金券 80代100 推导式 = 80÷100（R761 纠偏，实付÷抵额）',
     formulaOf('voucher', { face: 80, threshold: 100 }) === '80÷100',
     formulaOf('voucher', { face: 80, threshold: 100 }));
@@ -287,6 +294,11 @@ sec('J 页面接线（subpkg/tools/promo）');
       && pj.indexOf('reverseFromMargin') >= 0);
   check('J-⑩ R761 代金券实付口径 + 限用提示接进页面',
     pw.indexOf('data-f="limit"') >= 0 && pw.indexOf('conv.limitInfo.maxSpend') >= 0);
+  // 🔴 R763（R762 审计 P0）：满减客单价必须在第一段接线，且提示上屏
+  check('J-⑪ R763 页面第一段有客单价输入 data-f="avgPrice"（引擎认、页面也要给填）',
+    pw.indexOf('data-f="avgPrice"') >= 0);
+  check('J-⑫ R763 showOf(threshold) 暴露 avgPrice + recalc 提示上屏',
+    /threshold:\s*\{[^}]*avgPrice:\s*true/.test(pj) && pw.indexOf('conv.noteText') >= 0);
 }
 
 console.log('\n==== 活动测算自测：' + pass + ' 通过 / ' + failN + ' 失败 ====');
