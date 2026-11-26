@@ -2,7 +2,7 @@
 // 病根：旧版把「相当于几折」藏在结果区、还被「毛利率为空就 return」卡住 ⇒ 主次颠倒。
 // 守卫用**页面桩真跑** promo/index.js 的 recalc（不靠源码字面量、不依赖 IDE），机器验证：
 //   A 换算独立：不填毛利率，买2送1 → 6.67折 + 推导式，back=null
-//   B 回本对拍：填 50%/8000/200 → 毛利25%/流水16000/单量40→120/客流+199.94%
+//   B 回本对拍：填 50%/8000/200 → 毛利25%/流水16000/单量40→120/客流+200%
 //   C 两段联动：换活动形式（满100减30）→ 折扣与回本都跟着变
 //   D 反恒真：坏规则必须判红，且不能污染旧结果
 const fs = require('fs');
@@ -59,7 +59,9 @@ check('B-② 活动后毛利率 = 25%', b1 && b1.newMarginPct === 25, b1 && Stri
 check('B-③ 流水 = 16000 元', b1 && b1.revenueNeededYuan === 16000, b1 && String(b1.revenueNeededYuan));
 check('B-④ 单量 40 → 120', b1 && b1.ordersNow === 40 && b1.ordersNeeded === 120,
   b1 && (b1.ordersNow + '→' + b1.ordersNeeded));
-check('B-⑤ 客流压力 +199.94%', b1 && Math.abs(b1.trafficUpliftPct - 199.94) < 0.01,
+// R764：折扣不再先取整到 4 位，6.67 折的客流压力恢复到精确 +200%（原 199.94% 是舍入误差）
+check('B-⑤ 客流压力 +200%（R764 精度修正，原 199.94 为舍入误差）',
+  b1 && Math.abs(b1.trafficUpliftPct - 200) < 0.01,
   b1 && String(b1.trafficUpliftPct));
 
 // ---- C 两段联动：换成满100减30 ----

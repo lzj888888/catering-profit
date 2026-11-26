@@ -63,6 +63,9 @@ const PCT_ANCHORS = [
   'marginPct',
   // R761（2026-11-26）：第三段「活动后毛利率」—— 百分比框，登记进锚点。
   'targetMarginPct',
+  // R764（2026-11-26）：赠品活动的「赠品成本率」—— 百分比框，登记进锚点（type=digit 已合规）。
+  //   注意绑定名是 rule.giftCostPct（活动规则都在 rule 里），不是裸字段名。
+  'rule.giftCostPct',
 ];
 // 纯计数字段（反向锚点：它们出现在百分比命中集里 ⇒ 判据过宽）
 // 🔴 R525：`seatsPerTableNum` 已随「单桌座位数」输入删除（翻台率下线）⇒ 从锚点表移除，不留僵尸项。

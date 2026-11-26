@@ -9,7 +9,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { promoCalc, promoConvert, discountOf, formulaOf, setMealCalc, reverseFromMargin, riskOf } = require('./promoCalc.js');
+const { promoCalc, promoConvert, discountOf, formulaOf, setMealCalc, reverseFromMargin, promoEffect, riskOf } = require('./promoCalc.js');
 const Promo = require('./promoImpact.js');
 
 let pass = 0, failN = 0;
@@ -29,13 +29,13 @@ sec('A 活动形式 → 等效折扣');
   t('off', { discount: 0.8 }, 0.8, '打8折');
   t('threshold', { threshold: 100, cut: 30, avgPrice: 100 }, 0.7, '满100减30（客单100）');
   t('threshold', { threshold: 100, cut: 30, avgPrice: 150 }, 0.8, '满100减30（客单150）');
-  t('bogo', { buy: 2, free: 1 }, 0.6667, '买2赠1');
+  t('bogo', { buy: 2, free: 1 }, 2 / 3, '买2赠1（精确 2/3，R764 不再先取整）');
   t('bogo', { buy: 1, free: 1 }, 0.5, '买1赠1（=5折）');
   t('nth', { n: 2 }, 0.75, '第2件半价');
   t('voucher', { face: 70, threshold: 100 }, 0.7, '100抵用券实付70（=满100减30）');
   t('voucher', { face: 80, threshold: 100 }, 0.8, '80代100（实付80/抵额100=8折，R761纠偏）');
   t('share', { people: 4, free: 1 }, 0.75, '4人同行1人免单');
-  t('stored', { principal: 1000, bonus: 200 }, 0.8333, '充1000送200');
+  t('stored', { principal: 1000, bonus: 200 }, 5 / 6, '充1000送200（精确 5/6）');
   t('offset', { payable: 100, offset: 20 }, 0.8, '积分抵20元');
   t('direct', { discount: 0.85 }, 0.85, '时段限定直接给0.85');
 }
@@ -193,7 +193,7 @@ sec('I-R759 折扣换算独立入口（不依赖毛利率）');
 {
   // 核心纠偏：老板问「买2送1几折」时，不该被「先填毛利率」卡住。
   const r = promoConvert('bogo', { buy: 2, free: 1 });
-  check('I-① promoConvert 不需毛利率也能出折扣', r.ok && Math.abs(r.discount - 0.6667) < 1e-6,
+  check('I-① promoConvert 不需毛利率也能出折扣（精确 2/3）', r.ok && Math.abs(r.discount - 2 / 3) < 1e-9,
     r.ok ? String(r.discount) : r.reason);
   check('I-② 买2送1 推导式 = 2÷(2+1)', formulaOf('bogo', { buy: 2, free: 1 }) === '2÷(2+1)',
     formulaOf('bogo', { buy: 2, free: 1 }));
@@ -299,6 +299,109 @@ sec('J 页面接线（subpkg/tools/promo）');
     pw.indexOf('data-f="avgPrice"') >= 0);
   check('J-⑫ R763 showOf(threshold) 暴露 avgPrice + recalc 提示上屏',
     /threshold:\s*\{[^}]*avgPrice:\s*true/.test(pj) && pw.indexOf('conv.noteText') >= 0);
+  // 🔴 R764（豆包会审）：每满/封顶、赠品成本率、第四段效果评估都必须真接线
+  check('J-⑬ R764 每满/封顶接线（mode picker + data-f="cap" + onModeChange）',
+    pw.indexOf('bindchange="onModeChange"') >= 0 && pw.indexOf('data-f="cap"') >= 0
+      && pj.indexOf('onModeChange') >= 0);
+  check('J-⑭ R764 赠品接线（data-f="giftValue" / "giftCostPct" + show.giftValue）',
+    pw.indexOf('data-f="giftValue"') >= 0 && pw.indexOf('data-f="giftCostPct"') >= 0
+      && /gift:\s*\{[^}]*giftValue:\s*true/.test(pj));
+  check('J-⑮ R764 第四段输入接线（预计实收/天数/一次性投入/固定成本）',
+    pw.indexOf('data-f="expectedRevenueYuan"') >= 0 && pw.indexOf('data-f="days"') >= 0
+      && pw.indexOf('data-f="oneTimeCostYuan"') >= 0 && pw.indexOf('data-f="fixedCostPerDay"') >= 0);
+  check('J-⑯ R764 第四段结果上屏（netText / originalGross / breakEvenDailyYuan）',
+    pw.indexOf('effect.netText') >= 0 && pw.indexOf('effect.originalGross') >= 0
+      && pw.indexOf('effect.breakEvenDailyYuan') >= 0 && pj.indexOf('promoEffect') >= 0);
+  check('J-⑰ R764 保本线原价口径上屏 + 赠品临界值不套折扣显示',
+    pw.indexOf('back.listRevenueNeededYuan') >= 0 && pw.indexOf('back.criticalIsLoss') >= 0);
+}
+
+// ===================================================================
+sec('K R764 每满/封顶 · 赠品成本口径 · 活动效果评估（豆包会审缺口）');
+{
+  // 满减：单档 vs 每满（「满100减30」≠「每满100减30」）
+  const once = promoConvert('threshold', { threshold: 100, cut: 30, avgPrice: 120 });
+  const each = promoConvert('threshold', { threshold: 100, cut: 30, avgPrice: 250, mode: 'each' });
+  check('K-① 单档 满100减30 客单120 ⇒ 7.5折（用户原例）',
+    once.ok && Math.abs(once.discount - 0.75) < 1e-9 && once.cutTotal === 30, once.formula);
+  check('K-② 每满 客单250 ⇒ 减60 ⇒ (250−60)÷250=7.6折',
+    each.ok && Math.abs(each.discount - 0.76) < 1e-9 && each.cutTotal === 60,
+    each.formula + ' d=' + each.discount);
+  const capped = promoConvert('threshold', { threshold: 100, cut: 30, avgPrice: 250, mode: 'each', cap: 50 });
+  check('K-③ 每满+封顶50 ⇒ 只减50 ⇒ 8折 + capped=true',
+    capped.ok && Math.abs(capped.discount - 0.8) < 1e-9 && capped.capped === true && capped.cutTotal === 50,
+    capped.formula + ' capped=' + capped.capped);
+  const below = promoConvert('threshold', { threshold: 100, cut: 30, avgPrice: 80, mode: 'each' });
+  check('K-④ 每满但客单80<门槛 ⇒ 按门槛7折 + below_threshold（不编数）',
+    below.ok && Math.abs(below.discount - 0.7) < 1e-9 && below.note === 'below_threshold',
+    below.note + ' ' + below.formula);
+
+  // 赠品：宣传口径折扣 vs 商家真实成本（关键坑）
+  const gift = promoConvert('gift', { avgPrice: 100, giftValue: 30, giftCostPct: 30 });
+  check('K-⑤ 赠品 客单100/标价30/成本率30% ⇒ 宣传口径7.69折 + 真实成本9元/百元9元',
+    gift.ok && Math.abs(gift.discount - 100 / 130) < 1e-9
+      && gift.giftCostYuan === 9 && gift.lossPer100 === 9,
+    'd=' + gift.discount + ' cost=' + gift.giftCostYuan + ' loss=' + gift.lossPer100);
+  const gb = promoCalc({ marginPct: 50, kind: 'gift', rule: { avgPrice: 100, giftValue: 30, giftCostPct: 30 },
+    revenueYuan: 8000, avgPriceYuan: 100 });
+  check('K-⑥ 赠品回本 G0=50 ⇒ 新毛利率41%、流水×1.2195、客流=流水倍数（不降价）',
+    gb.ok && gb.newMarginPct === 41 && Math.abs(gb.revenueMultiple - 1.2195) < 1e-3
+      && gb.trafficMultiple === gb.revenueMultiple && Math.abs(gb.revenueNeededYuan - 9756) < 1,
+    'g1=' + gb.newMarginPct + ' rev×' + gb.revenueMultiple + ' traffic×' + gb.trafficMultiple
+      + ' need=' + gb.revenueNeededYuan);
+  check('K-⑦ 🔴 赠品不许套折扣口径：客流倍数 ≠ 50/(50−23.08)=1.858（那是按标价算的假数）',
+    gb.ok && Math.abs(gb.trafficMultiple - 1.858) > 0.5, '实际 ' + gb.trafficMultiple);
+  const gBad = promoConvert('gift', { avgPrice: 100, giftValue: 30, giftCostPct: 120 });
+  const gNoBase = promoConvert('gift', { giftValue: 30, giftCostPct: 30 });
+  check('K-⑧ 🔴 反恒真：赠品成本率>100 / 客单空 ⇒ 都判红（不编数）',
+    gBad.ok === false && gNoBase.ok === false, gBad.reason + '/' + gNoBase.reason);
+
+  // 统一对比口径：满减30元/百元 vs 赠品9元/百元
+  check('K-⑨ 统一口径：满减(客单120)=25元/百元 vs 赠品9元/百元，老板才能横向比',
+    once.lossPer100 === 25 && gift.lossPer100 === 9,
+    '满减(客单120)=' + once.lossPer100 + ' 赠品=' + gift.lossPer100);
+
+  // 原价 vs 实收口径（保本线对不上账的坑）
+  const bk = promoCalc({ marginPct: 50, discount: 0.7, revenueYuan: 8000, avgPriceYuan: 100 });
+  check('K-⑩ 保本线双口径：实收14000 / 原价20000（=14000÷0.7）',
+    bk.ok && Math.abs(bk.revenueNeededYuan - 14000) < 0.01 && Math.abs(bk.listRevenueNeededYuan - 20000) < 0.02,
+    bk.revenueNeededYuan + '/' + bk.listRevenueNeededYuan);
+
+  // 第四段：预计赔/赚
+  const eff = promoEffect({
+    marginPct: 50, newMarginPct: bk.newMarginPct, newMarginPctExact: bk.newMarginPctExact,
+    baselineRevenueYuan: 8000, expectedRevenueYuan: 15000, days: 7, oneTimeCostYuan: 500,
+  });
+  check('K-⑪ 效果评估 满减：原毛利28000/活动毛利30000/净多赚1500',
+    eff.ok && eff.originalGross === 28000 && Math.abs(eff.promoGross - 30000) < 0.1
+      && Math.abs(eff.netDiff - 1500) < 0.1 && eff.profitable === true,
+    JSON.stringify({ o: eff.originalGross, p: eff.promoGross, net: eff.netDiff }));
+  const effBE = promoEffect({
+    marginPct: 50, newMarginPct: bk.newMarginPct, newMarginPctExact: bk.newMarginPctExact,
+    baselineRevenueYuan: 8000, expectedRevenueYuan: 14000, days: 7,
+  });
+  check('K-⑫ 在保本线上做 ⇒ 净差≈0（证明保本线与效果评估同一口径）',
+    effBE.ok && Math.abs(effBE.netDiff) < 1, String(effBE.netDiff));
+  const effGift = promoEffect({
+    marginPct: 50, newMarginPct: gb.newMarginPct, newMarginPctExact: gb.newMarginPctExact,
+    baselineRevenueYuan: 8000, expectedRevenueYuan: 10000, days: 7, oneTimeCostYuan: 500,
+  });
+  check('K-⑬ 赠品同一套效果评估：原28000/活动28700/净多赚200（跨活动可比）',
+    effGift.ok && effGift.originalGross === 28000 && Math.abs(effGift.netDiff - 200) < 0.1,
+    String(effGift.netDiff));
+  const badDays = promoEffect({ marginPct: 50, newMarginPct: 41, baselineRevenueYuan: 8000, expectedRevenueYuan: 10000, days: 0 });
+  const badExp = promoEffect({ marginPct: 50, newMarginPct: 41, baselineRevenueYuan: 8000, expectedRevenueYuan: -1, days: 7 });
+  const badG1 = promoEffect({ marginPct: 50, newMarginPct: 0, baselineRevenueYuan: 8000, expectedRevenueYuan: 10000, days: 7 });
+  check('K-⑭ 🔴 反恒真：天数0 / 预计流水<0 / 活动后毛利率0 ⇒ 全判红',
+    badDays.ok === false && badExp.ok === false && badG1.ok === false,
+    [badDays.reason, badExp.reason, badG1.reason].join('/'));
+  const dayFixed = promoEffect({
+    marginPct: 50, newMarginPct: 41, baselineRevenueYuan: 8000, expectedRevenueYuan: 10000,
+    days: 7, oneTimeCostYuan: 0, fixedCostPerDay: 300,
+  });
+  check('K-⑮ 固定成本口径：净差 = 700 − 300×7 = −1400（活动毛利涨了但净利是负的）',
+    dayFixed.ok && dayFixed.invest === 2100 && Math.abs(dayFixed.netDiff + 1400) < 0.1,
+    'invest=' + dayFixed.invest + ' net=' + dayFixed.netDiff);
 }
 
 console.log('\n==== 活动测算自测：' + pass + ' 通过 / ' + failN + ' 失败 ====');

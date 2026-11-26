@@ -63,22 +63,33 @@ function discountOf(kind, p) {
       // 🔴 R763（R762 审计 P0）：客单价留空时不再沉默按门槛算 —— 标记 no_avg_price，
       //   由页面明确告知老板「这是按门槛估的保守折扣」，不能冒充真实折扣。
       const note = !avgOk ? 'no_avg_price' : (a < x ? 'below_threshold' : '');
-      const d = (base - y) / base;
+      // 🔴 R764（豆包会审缺口）：单档 once / 每满 each（可封顶）。
+      //   「满100减30」只减一次；「每满100减30」客单250要减60（封顶见 cap）。
+      //   减额必须按**客单价**算，不能按门槛算——否则每满永远只显示一档力度。
+      const each = String(q.mode || 'once') === 'each';
+      const rawCut = each ? Math.floor(base / x) * y : y;
+      const cap = Number(q.cap);
+      const capOk = isFinite(cap) && cap > 0;
+      const cutTotal = capOk ? Math.min(rawCut, cap) : rawCut;
+      if (!(cutTotal > 0) || cutTotal >= base) return { ok: false, reason: 'badDiscount' };
+      const d = (base - cutTotal) / base;
       if (!(d > 0) || d > 1) return { ok: false, reason: 'badDiscount' };
-      return { ok: true, d: round4(d), note: note };
+      return { ok: true, d: d, note: note,
+        mode: each ? 'each' : 'once', cutTotal: round2(cutTotal),
+        capped: capOk && rawCut > cap };
     }
     // 买 M 赠 K：等效 d = M / (M+K)
     case 'bogo': {
       const m = Number(q.buy);
       const k = Number(q.free);
       if (!pos(m) || !pos(k)) return { ok: false, reason: 'badRule' };
-      return { ok: true, d: round4(m / (m + k)) };
+      return { ok: true, d: m / (m + k) };
     }
     // 第 N 件半价：均价折扣 = ((N−1) + 0.5) / N
     case 'nth': {
       const n = Number(q.n);
       if (!pos(n) || n < 2) return { ok: false, reason: 'badRule' };
-      return { ok: true, d: round4(((n - 1) + 0.5) / n) };
+      return { ok: true, d: ((n - 1) + 0.5) / n };
     }
     // 代金券 🔴 R761 口径纠偏：face = **实付多少钱**（花 80 买 100 面额就填 80）。
     //   旧口径把 face 当「减额」，导致「80代100」算成 (100−80)/100=2折 —— 与老板心智相反。
@@ -88,28 +99,40 @@ function discountOf(kind, p) {
       const face = Number(q.face);           // 实付（购价）
       const x = Number(q.threshold);         // 抵额（面额）
       if (!pos(face) || !pos(x) || face > x) return { ok: false, reason: 'badRule' };
-      return { ok: true, d: round4(face / x) };
+      return { ok: true, d: face / x };
     }
     // 同行免单：N 人里免 K 人 ⇒ d = (N−K)/N
     case 'share': {
       const n = Number(q.people);
       const k = Number(q.free);
       if (!pos(n) || !pos(k) || k >= n) return { ok: false, reason: 'badRule' };
-      return { ok: true, d: round4((n - k) / n) };
+      return { ok: true, d: (n - k) / n };
     }
     // 储值赠金：充 P 送 B ⇒ 实付占面值比 = P/(P+B)
     case 'stored': {
       const pr = Number(q.principal);
       const bo = Number(q.bonus);
       if (!pos(pr) || !(Number(bo) >= 0)) return { ok: false, reason: 'badRule' };
-      return { ok: true, d: round4(pr / (pr + bo)) };
+      return { ok: true, d: pr / (pr + bo) };
     }
     // 积分抵现 / 任意「应付 A、减免 V」
     case 'offset': {
       const a = Number(q.payable);
       const v = Number(q.offset);
       if (!pos(a) || !(Number(v) >= 0) || v >= a) return { ok: false, reason: 'badRule' };
-      return { ok: true, d: round4((a - v) / a) };
+      return { ok: true, d: (a - v) / a };
+    }
+    // 🔴 R764（豆包会审关键坑）：赠品。赠品标价 30、成本率 30% ⇒ 商家真实成本只有 9 元。
+    //   d 这里是**顾客感知/宣传口径**（付 base 拿 base+标价 的东西）；算账必须用 costYuan/lossPer100。
+    //   ⚠ 绝不能把标价 30 当让利塞进 promoCalc —— 会把损失高估 3 倍多，且客流倍数算错。
+    case 'gift': {
+      const base = Number(q.avgPrice);
+      const value = Number(q.giftValue);
+      const c = Number(q.giftCostPct);
+      if (!pos(base) || !pos(value) || !(Number(c) >= 0) || c > 100) return { ok: false, reason: 'badRule' };
+      const cost = round2(value * c / 100);
+      return { ok: true, d: base / (base + value), note: 'gift_list_price',
+        costYuan: cost, lossPer100: round2(cost / base * 100) };
     }
     // 时段/品类限定、阶梯拼团：老板直接填等效折扣
     case 'direct': {
@@ -146,12 +169,21 @@ function promoConvert(kind, rule) {
       limitInfo = { count: Math.floor(n), maxSpend: round2(Math.floor(n) * x) };
     }
   }
+  // 🔴 R764：统一对比口径 = 每 100 元原价流水的商家成本损失（元）。
+  //   满减/折扣 = 折扣率本身；赠品 = 赠品成本÷客单×100（不是标价！）。
+  //   老板横向比「满减30 vs 送标价30」时，看这个数才不会被标价骗。
+  const lossPer100 = (r.lossPer100 !== undefined) ? r.lossPer100 : round2((1 - r.d) * 100);
   return {
     ok: true,
     discount: r.d,
     formula: formulaOf(kind, q),
     note: r.note || '',
     limitInfo: limitInfo,
+    lossPer100: lossPer100,
+    giftCostYuan: r.costYuan,
+    mode: r.mode || 'once',
+    cutTotal: r.cutTotal,
+    capped: !!r.capped,
   };
 }
 
@@ -166,10 +198,17 @@ function formulaOf(kind, p) {
   const n = fmtNum;
   switch (String(kind || '')) {
     // 🔴 R763：推导式的分母必须和折扣分母是同一个数（客单价 >门槛时用客单价）
+    // 🔴 R764：每满/封顶时减额取实际减的总额（客单250每满100减30 ⇒ (250−60)÷250）
     case 'threshold': {
       const a = Number(q.avgPrice);
-      const base = (isFinite(a) && a > 0 && a > Number(q.threshold)) ? a : q.threshold;
-      return '(' + n(base) + '−' + n(q.cut) + ')÷' + n(base);
+      const x = Number(q.threshold);
+      const y = Number(q.cut);
+      const base = (isFinite(a) && a > 0 && a > Number(x)) ? a : x;
+      const each = String(q.mode || 'once') === 'each';
+      const rawCut = each ? Math.floor(base / x) * y : y;
+      const cap = Number(q.cap);
+      const cut = (isFinite(cap) && cap > 0) ? Math.min(rawCut, cap) : rawCut;
+      return '(' + n(base) + '−' + n(cut) + ')÷' + n(base);
     }
     case 'bogo': return n(q.buy) + '÷(' + n(q.buy) + '+' + n(q.free) + ')';
     case 'nth': return '(' + n(q.n) + '−1+0.5)÷' + n(q.n);
@@ -177,6 +216,8 @@ function formulaOf(kind, p) {
     case 'share': return '(' + n(q.people) + '−' + n(q.free) + ')÷' + n(q.people);
     case 'stored': return n(q.principal) + '÷(' + n(q.principal) + '+' + n(q.bonus) + ')';
     case 'offset': return '(' + n(q.payable) + '−' + n(q.offset) + ')÷' + n(q.payable);
+    // R764：赠品折扣是宣传口径（付原价拿原价+赠品标价）
+    case 'gift': return n(q.avgPrice) + '÷(' + n(q.avgPrice) + '+' + n(q.giftValue) + ')';
     default: return ''; // 直接填折扣 / 时段品类：无推导式，填的就是折扣
   }
 }
@@ -191,6 +232,47 @@ function formulaOf(kind, p) {
  * @param {string} [p.kind]         活动形式
  * @param {object} [p.rule]         该形式的参数
  */
+/**
+ * 🔴 R764 赠品独立模型（不能复用 promoCalc 的折扣模型）。
+ *   根因：赠品**不压低实收**，只增加成本。硬塞成等效折扣会让客流倍数算错：
+ *     毛利50/日销8000/客单100、送标价30成本9 ⇒ 真实 g1=41%、流水×1.22、客流×1.22；
+ *     若硬塞 d=50/41 进 promoCalc，客流会算成 ×1.44（假数）。
+ *   统一对比口径：每百元原价流水的成本损失 lossPer100 = 赠品成本÷客单×100。
+ */
+function giftModel(q, r) {
+  const g0 = Number(q.marginPct);
+  const loss = Number(r.lossPer100);
+  const g1 = round2(g0 - loss);
+  const criticalLoss = round2(g0);
+  if (!(g1 > 0)) {
+    return { ok: false, reason: 'impossible', kind: 'gift', lossPer100: loss,
+      giftCostYuan: r.costYuan, newMarginPct: g1, criticalLossPct: criticalLoss, note: r.note };
+  }
+  const mult = round4(g0 / g1);
+  const uplift = round2((mult - 1) * 100);
+  const out = {
+    ok: true, kind: 'gift', reason: '',
+    lossPer100: loss, giftCostYuan: r.costYuan,
+    // 宣传口径折扣（只展示，不参与算账）
+    discount: r.d, discountPct: round2((1 - r.d) * 100),
+    newMarginPct: g1, newMarginPctExact: round4(g1), marginDropPp: round2(g0 - g1),
+    // 赠品不降价 ⇒ 流水倍数 = 客流倍数（与满减「流水≠客流」刻意不同）
+    revenueMultiple: mult, trafficMultiple: mult, trafficUpliftPct: uplift,
+    criticalLossPct: criticalLoss, riskLevel: riskOf(uplift, g1), note: r.note,
+  };
+  const rev = Number(q.revenueYuan);
+  if (isFinite(rev) && rev > 0) {
+    out.revenueNeededYuan = round2(rev * mult);
+    out.listRevenueNeededYuan = out.revenueNeededYuan; // 赠品实收 = 原价流水
+  }
+  const price = Number(q.avgPriceYuan);
+  if (isFinite(price) && price > 0 && rev > 0) {
+    out.ordersNow = Math.round(rev / price);
+    out.ordersNeeded = Math.ceil(rev / price * mult);
+  }
+  return out;
+}
+
 function promoCalc(p) {
   const q = p || {};
   const g0 = Number(q.marginPct);
@@ -201,16 +283,20 @@ function promoCalc(p) {
   if (q.kind) {
     const r = discountOf(q.kind, q.rule || {});
     if (!r.ok) return { ok: false, reason: r.reason };
+    // 🔴 R764：赠品走独立模型，绝不套折扣口径
+    if (String(q.kind) === 'gift') return giftModel(q, r);
     d = r.d; note = r.note || '';
   } else {
     d = Number(q.discount);
     if (!(d > 0) || d > 1) return { ok: false, reason: 'badDiscount' };
   }
 
-  const discountPct = round2((1 - d) * 100);       // 折扣率百分数（ratio 类，非金额）
+  // 🔴 R764：折扣率必须保留**精确值**参与计算，只在显示时取整。
+  //   先 round2 到 33.33 再算毛利率，会让 6.67 折的保本线从 16000 漂成 15997.6（真踩到）。
+  const discountPctExact = (1 - d) * 100;
+  const discountPct = round2(discountPctExact);    // 折扣率百分数（ratio 类，非金额）
   // 活动后毛利率：GA = (G0 − 折扣率) / 折扣系数（与 promoImpact 同源口径，selftest 对拍）
-  // 活动后毛利率 = (现毛利率 − 折扣率) ÷ 折扣系数（等价 promoImpact 的 (G0−δ)/(1−δ)）
-  const g1 = (g0 - discountPct) / d;
+  const g1 = (g0 - discountPctExact) / d;
   const newMarginPct = round2(g1);
   if (!(newMarginPct > 0)) {
     return {
@@ -220,16 +306,22 @@ function promoCalc(p) {
   }
 
   // 流水倍数 = G0 / G1（保住原毛利额需要的营业额倍数）
-  const revenueMultiple = round4(g0 / newMarginPct);
+  // 🔴 R764：必须用**未取整**的 g1 —— 用 round2 后的 28.57 会把 1.75 算成 1.7501、保本线多 1 元
+  const revenueMultiple = round4(g0 / g1);
   // 客流/单量倍数 = G0 / (G0 − 折扣率%)  —— 与国外 Breakeven Sales Uplift 等价
-  const denom = g0 - discountPct;
+  // 同一根因：分母也用精确折扣率，否则 6.67 折会算成 +199.94% 而真值是 +200%
+  const denom = g0 - discountPctExact;
   const trafficMultiple = denom > 0 ? round4(g0 / denom) : null;
   const trafficUpliftPct = denom > 0 ? round2((g0 / denom - 1) * 100) : null;
 
   const out = {
     ok: true, reason: '',
     discount: d, discountPct: discountPct,
+    // R764 统一对比口径：每百元原价流水的成本损失（满减/折扣 = 折扣率本身）
+    lossPer100: discountPct,
     newMarginPct: newMarginPct,
+    // 精确值（未取整）供第四段回带，避免 round2 让保本线差几块钱
+    newMarginPctExact: round4(g1),
     marginDropPp: round2(g0 - newMarginPct),
     revenueMultiple: revenueMultiple,
     trafficMultiple: trafficMultiple,
@@ -241,7 +333,12 @@ function promoCalc(p) {
   };
 
   const rev = Number(q.revenueYuan);
-  if (isFinite(rev) && rev > 0) out.revenueNeededYuan = round2(rev * revenueMultiple);
+  if (isFinite(rev) && rev > 0) {
+    out.revenueNeededYuan = round2(rev * (g0 / g1));
+    // 🔴 R764：同时给「原价流水」口径 —— 保本实收 14000 ≠ 老板按原价算的 20000，
+    //   不标清楚老板会对不上账（豆包会审 §二 指出的口径坑）。
+    out.listRevenueNeededYuan = round2(out.revenueNeededYuan / d);
+  }
   const price = Number(q.avgPriceYuan);
   if (isFinite(price) && price > 0 && trafficMultiple !== null) {
     out.ordersNeeded = Math.ceil(rev > 0 ? rev / price * trafficMultiple : 0);
@@ -339,4 +436,64 @@ function reverseFromMargin(p) {
   };
 }
 
-module.exports = { promoCalc, promoConvert, discountOf, formulaOf, setMealCalc, reverseFromMargin, riskOf, round2, round4, PCT };
+/**
+ * 🔴 R764 第四段「活动效果评估」：把「卖多少才不亏」升级成「预计赔/赚多少钱」。
+ *   前两段答的是"要多少"（保本线），本函数答"实际多少"——差别就在**活动后预计流水**这个预测值。
+ *   口径：老板填「活动后预计日**实收**流水」（满减是打折后的到账额；赠品等于原价流水）。
+ *   原毛利 = 原日流水 × 天数 × G0%
+ *   活动毛利 = 预计日实收 × 天数 × g1%
+ *   净差 = 毛利差 − 一次性投入 − 日均固定成本×天数
+ * @param {object} p
+ * @param {number} p.marginPct           活动前毛利率（百分数）
+ * @param {number} p.newMarginPct        活动后毛利率（百分数，由 promoCalc/giftModel 给出）
+ * @param {number} p.baselineRevenueYuan 活动前日实收流水（元）
+ * @param {number} p.expectedRevenueYuan 活动后预计日实收流水（元）
+ * @param {number} p.days                活动天数
+ * @param {number} [p.oneTimeCostYuan]   一次性投入（宣传/物料，元，默认 0）
+ * @param {number} [p.fixedCostPerDay]   日均固定成本（房租+固定人工，元，默认 0 ⇒ 只到毛利层）
+ */
+function promoEffect(p) {
+  const q = p || {};
+  const g0 = Number(q.marginPct);
+  // 优先用未取整的精确毛利率（promoCalc/giftModel 的 newMarginPctExact）
+  const g1 = Number(q.newMarginPctExact !== undefined && q.newMarginPctExact !== null
+    ? q.newMarginPctExact : q.newMarginPct);
+  const base = Number(q.baselineRevenueYuan);
+  const exp = Number(q.expectedRevenueYuan);
+  const days = Number(q.days);
+  const once = (q.oneTimeCostYuan === undefined || q.oneTimeCostYuan === '' || q.oneTimeCostYuan === null)
+    ? 0 : Number(q.oneTimeCostYuan);
+  const fixed = (q.fixedCostPerDay === undefined || q.fixedCostPerDay === '' || q.fixedCostPerDay === null)
+    ? 0 : Number(q.fixedCostPerDay);
+  if (!(g0 > 0) || g0 > 100) return { ok: false, reason: 'badMargin' };
+  if (!(g1 > 0) || g1 > 100) return { ok: false, reason: 'badNewMargin' };
+  if (!(base > 0) || !(exp >= 0) || !(days > 0)) return { ok: false, reason: 'badInput' };
+  if (!(once >= 0) || !(fixed >= 0)) return { ok: false, reason: 'badInput' };
+
+  const originalGross = round2(base * days * g0 / PCT);
+  const promoGross = round2(exp * days * g1 / PCT);
+  const grossDiff = round2(promoGross - originalGross);
+  const invest = round2(once + fixed * days);
+  const netDiff = round2(grossDiff - invest);
+  // 不含一次性投入的保本日实收：g0/g1 是保毛利额所需的流水倍数
+  const breakEvenDailyYuan = round2(base * g0 / g1);
+  return {
+    ok: true, reason: '',
+    days: days,
+    originalGross: originalGross,
+    promoGross: promoGross,
+    grossDiff: grossDiff,
+    invest: invest,
+    netDiff: netDiff,
+    profitable: netDiff > 0,
+    // 折成日均，便于和老板"一天多赚多少"的心智对齐
+    netPerDay: round2(netDiff / days),
+    breakEvenDailyYuan: breakEvenDailyYuan,
+    revenueMultiple: round4(g0 / g1),
+  };
+}
+
+module.exports = {
+  promoCalc, promoConvert, discountOf, formulaOf, setMealCalc,
+  reverseFromMargin, promoEffect, riskOf, round2, round4, PCT,
+};

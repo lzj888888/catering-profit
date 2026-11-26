@@ -234,6 +234,75 @@
   margin-top: 12rpx;
 }
 
+/* ===== R764 统一对比口径：每百元原价流水的商家成本损失（蓝色块外，弱一档） ===== */
+.pw-loss {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16rpx 24rpx;
+  background: #f4f7fb;
+  border-radius: 12rpx;
+  margin-bottom: 4rpx;
+}
+
+.pw-loss-k {
+  font-size: 27rpx;
+  color: #5b6472;
+}
+
+.pw-loss-v {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1f2733;
+}
+
+/* ===== R764 第四段：预计赔/赚大字（赚=暖金不报警，亏=红报警） ===== */
+.pw-eff {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 28rpx 24rpx 24rpx;
+  border-radius: 16rpx;
+  margin: 22rpx 0 16rpx;
+}
+
+.pw-eff-win {
+  background: #fdf3e3;
+  border: 1rpx solid #f0d9b5;
+}
+
+.pw-eff-lose {
+  background: #fdeaea;
+  border: 1rpx solid #f3c9c9;
+}
+
+.pw-eff-k {
+  font-size: 28rpx;
+  color: #5b6472;
+}
+
+.pw-eff-v {
+  font-size: 72rpx;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-top: 6rpx;
+}
+
+.pw-eff-win .pw-eff-v {
+  color: #b45309;
+}
+
+.pw-eff-lose .pw-eff-v {
+  color: #c0392b;
+}
+
+.pw-eff-u {
+  font-size: 28rpx;
+  color: #78828f;
+  margin-top: 2rpx;
+}
+
 .pw-foot {
   font-size: 24rpx;
   color: #98a1ad;

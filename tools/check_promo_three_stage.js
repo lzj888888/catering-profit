@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-// check_promo_three_stage.js —— R761 活动测算「三段分离」守卫（页面桩真跑 recalc，不依赖 IDE）
-// 承 R759 的 check_promo_two_stage.js（两段），本守卫守第三段 + 代金券口径纠偏 + 限用提示。
+// check_promo_three_stage.js —— 活动测算「分段分离」守卫（页面桩真跑 recalc，不依赖 IDE）
+// 沿革：R759 两段（换算 / 回本）→ R761 第三段（填毛利率反算）→ **R764 第四段（预计赔赚）**。
+//   文件名沿用 three_stage 是历史原因（改名会牵动套件登记），实际覆盖 A~F 六组、四段全测。
 // 纪律：机器真跑页面源码 + 反恒真，不靠肉眼看、不采信自述。
 const fs = require('fs');
 
@@ -162,6 +163,118 @@ sec('E R759 丢数形态防回潮（R762 变异 M5：两次 setData 原守卫抓
   ok('E-① recalc 内仅一次 setData（R759 真机丢数形态不许回潮）', calls === 1, '实际 ' + calls + ' 次');
   ok('E-② 这一次 setData 同时落 conv/back/reverse（三段同帧，不许拆回调）',
     /setData\s*\(\s*\{[\s\S]*?conv:[\s\S]*?back:[\s\S]*?reverse:/.test(body), body.slice(-160));
+  ok('E-③ R764 这一次 setData 也同帧落 effect（四段同帧）', /effect:/.test(body));
+}
+
+sec('F R764 每满/封顶 + 赠品成本口径 + 第四段效果评估（页面桩真跑）');
+{
+  // 每满：客单250 ⇒ 减60
+  const p = makePage();
+  p.data.kind = 'threshold';
+  p.data.rule = { threshold: '100', cut: '30', avgPrice: '250', mode: 'each', cap: '' };
+  p.recalc();
+  ok('F-① 每满 客单250 ⇒ 7.6折 + 推导式 (250−60)÷250',
+    p.data.conv.ok && p.data.conv.discountText === '7.6折'
+      && p.data.conv.formula === '(250−60)÷250',
+    p.data.conv.discountText + ' / ' + p.data.conv.formula);
+
+  // 每满 + 封顶
+  const p2 = makePage();
+  p2.data.kind = 'threshold';
+  p2.data.rule = { threshold: '100', cut: '30', avgPrice: '250', mode: 'each', cap: '50' };
+  p2.recalc();
+  ok('F-② 每满+封顶50 ⇒ 8折 + 提示已封顶只减50',
+    p2.data.conv.ok && p2.data.conv.discountText === '8折'
+      && /封顶/.test(p2.data.conv.noteText) && /50/.test(p2.data.conv.noteText),
+    p2.data.conv.discountText + ' / ' + p2.data.conv.noteText);
+
+  // 单档不受封顶影响（防「封顶串味到单档」）
+  const p2b = makePage();
+  p2b.data.kind = 'threshold';
+  p2b.data.rule = { threshold: '100', cut: '30', avgPrice: '250', mode: 'once', cap: '50' };
+  p2b.recalc();
+  ok('F-③ 单档 + 填了封顶 ⇒ 仍只减30（封顶只对每满生效，不串味）',
+    p2b.data.conv.ok && p2b.data.conv.discountText === '8.8折',
+    p2b.data.conv.discountText);
+
+  // 赠品：宣传折扣 7.69折，真实成本 9 元/百元 9 元
+  const p3 = makePage();
+  p3.data.kind = 'gift';
+  p3.data.rule = { avgPrice: '100', giftValue: '30', giftCostPct: '30' };
+  p3.data.marginPct = '50';
+  p3.data.revenueYuan = '8000';
+  p3.data.avgPriceYuan = '100';
+  p3.recalc();
+  ok('F-④ 赠品 宣传口径7.69折 + 提示真实成本9元 + 每百元让利9元',
+    p3.data.conv.ok && p3.data.conv.discountText === '7.69折'
+      && p3.data.conv.lossPer100 === 9 && /9/.test(p3.data.conv.noteText),
+    p3.data.conv.discountText + ' / loss=' + p3.data.conv.lossPer100 + ' / ' + p3.data.conv.noteText);
+  ok('F-⑤ 赠品回本 41% 且客流倍数=流水倍数（不套折扣口径）',
+    p3.data.back && p3.data.back.ok && p3.data.back.newMarginPct === 41
+      && p3.data.back.trafficMultiple === p3.data.back.revenueMultiple,
+    p3.data.back && (p3.data.back.newMarginPct + '% rev×' + p3.data.back.revenueMultiple
+      + ' traffic×' + p3.data.back.trafficMultiple));
+  ok('F-⑥ 赠品临界值显示为「每百元让利上限 %」而不是折扣',
+    p3.data.back && p3.data.back.criticalIsLoss === true && /%$/.test(p3.data.back.criticalShow),
+    p3.data.back && p3.data.back.criticalShow);
+
+  // 第四段：满减 7 折，预计实收 15000/天，7 天，投入 500 ⇒ 净多赚 1500
+  const p4 = makePage();
+  p4.data.kind = 'off';
+  p4.data.rule = { discount: '0.7' };
+  p4.data.marginPct = '50';
+  p4.data.revenueYuan = '8000';
+  p4.data.avgPriceYuan = '100';
+  p4.data.expectedRevenueYuan = '15000';
+  p4.data.days = '7';
+  p4.data.oneTimeCostYuan = '500';
+  p4.recalc();
+  ok('F-⑦ 第四段 满减7折/预计15000/7天/投入500 ⇒ 净多赚≈1500',
+    p4.data.effect && p4.data.effect.ok && Math.abs(p4.data.effect.netDiff - 1500) < 0.1,
+    p4.data.effect && String(p4.data.effect.netDiff));
+  ok('F-⑧ 第四段结果带正负号（老板一眼看赚还是赔）',
+    p4.data.effect && /^\+/.test(p4.data.effect.netText), p4.data.effect && p4.data.effect.netText);
+  ok('F-⑨ 保本线双口径同时上屏（实收14000 / 原价20000）',
+    p4.data.back && Math.abs(p4.data.back.revenueNeededYuan - 14000) < 0.01
+      && Math.abs(p4.data.back.listRevenueNeededYuan - 20000) < 0.02,
+    p4.data.back && (p4.data.back.revenueNeededYuan + '/' + p4.data.back.listRevenueNeededYuan));
+
+  // 反恒真：缺天数 ⇒ 不出效果；缺毛利率 ⇒ back/effect 都空
+  const p5 = makePage();
+  p5.data.kind = 'off';
+  p5.data.rule = { discount: '0.7' };
+  p5.data.marginPct = '50';
+  p5.data.revenueYuan = '8000';
+  p5.data.expectedRevenueYuan = '15000';
+  p5.data.days = '';
+  p5.recalc();
+  ok('F-⑩ 🔴 天数空 ⇒ effect=null（不拿默认值编赔赚）', p5.data.effect === null,
+    String(p5.data.effect));
+
+  const p6 = makePage();
+  p6.data.kind = 'off';
+  p6.data.rule = { discount: '0.7' };
+  p6.data.expectedRevenueYuan = '15000';
+  p6.data.days = '7';
+  p6.recalc();
+  ok('F-⑪ 🔴 没毛利率 ⇒ back=null 且 effect=null（第四段依赖活动后毛利率）',
+    p6.data.back === null && p6.data.effect === null,
+    JSON.stringify({ back: p6.data.back, effect: p6.data.effect }));
+
+  // 赠品 + 第四段：赠品不降价，预计实收=原价流水
+  const p7 = makePage();
+  p7.data.kind = 'gift';
+  p7.data.rule = { avgPrice: '100', giftValue: '30', giftCostPct: '30' };
+  p7.data.marginPct = '50';
+  p7.data.revenueYuan = '8000';
+  p7.data.avgPriceYuan = '100';
+  p7.data.expectedRevenueYuan = '10000';
+  p7.data.days = '7';
+  p7.data.oneTimeCostYuan = '500';
+  p7.recalc();
+  ok('F-⑫ 赠品走同一套效果评估：净多赚≈200（跨活动可比）',
+    p7.data.effect && p7.data.effect.ok && Math.abs(p7.data.effect.netDiff - 200) < 0.1,
+    p7.data.effect && String(p7.data.effect.netDiff));
 }
 
 console.log('\n==== 三段分离守卫：' + pass + ' 通过 / ' + failN + ' 失败 ====');

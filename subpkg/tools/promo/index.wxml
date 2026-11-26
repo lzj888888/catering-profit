@@ -1,5 +1,6 @@
-<!-- subpkg/tools/promo/index.wxml —— 活动换算 · 回本测算（R759 重构）
-     主次：① 活动→几折（不依赖毛利率，进来就会）② 要多少才回到原利润（才要毛利率）。
+<!-- subpkg/tools/promo/index.wxml —— 活动换算 · 回本测算（R759 重构 / R764 补口径+效果评估）
+     主次：① 活动→几折（不依赖毛利率，进来就会）② 要多少才回到原利润（才要毛利率）
+           ③ 填活动后毛利率反算 ④ 填预计流水+天数 → 预计赔/赚多少钱。
      ⚠️ 文案一律走 terms 单源，本文件不写字面量。 -->
 <view class="pw">
 
@@ -33,6 +34,23 @@
       <input class="pw-in" type="digit" data-f="cut" value="{{rule.cut}}" bindinput="onInput" placeholder="30" />
     </view>
   </block>
+  <!-- R764：单档 / 每满（每满才封顶） -->
+  <block wx:if="{{show.mode}}">
+    <picker mode="selector" range="{{modeNames}}" value="{{modeIndex}}" bindchange="onModeChange">
+      <view class="pw-pick">
+        <text class="pw-lbl">{{t.promoModeLabel}}</text>
+        <text class="pw-pickv">{{modeNames[modeIndex]}} ›</text>
+      </view>
+    </picker>
+  </block>
+  <block wx:if="{{show.cap && modeIndex === 1}}">
+    <view class="pw-row">
+      <text class="pw-lbl">{{t.promoParamCap}}</text>
+      <input class="pw-in" type="digit" data-f="cap" value="{{rule.cap}}" bindinput="onInput" placeholder="60" />
+      <text class="pw-unit">{{t.promoYuanUnit}}</text>
+    </view>
+    <view class="pw-hint">{{t.promoParamCapHint}}</view>
+  </block>
   <!-- 🔴 R763（R762 审计 P0）：满减的实际折扣随客单价变；不填则按门槛保守估算，并在结果区明说 -->
   <block wx:if="{{show.avgPrice}}">
     <view class="pw-row">
@@ -41,6 +59,23 @@
       <text class="pw-unit">{{t.promoYuanUnit}}</text>
     </view>
     <view class="pw-hint">{{t.promoParamAvgPriceHint}}</view>
+  </block>
+  <!-- R764：赠品标价 + 赠品成本率（真实让利看成本，不看标价） -->
+  <block wx:if="{{show.giftValue}}">
+    <view class="pw-row">
+      <text class="pw-lbl">{{t.promoParamGiftValue}}</text>
+      <input class="pw-in" type="digit" data-f="giftValue" value="{{rule.giftValue}}" bindinput="onInput" placeholder="30" />
+      <text class="pw-unit">{{t.promoYuanUnit}}</text>
+    </view>
+    <view class="pw-hint">{{t.promoParamGiftValueHint}}</view>
+  </block>
+  <block wx:if="{{show.giftCostPct}}">
+    <view class="pw-row">
+      <text class="pw-lbl">{{t.promoParamGiftCostPct}}</text>
+      <input class="pw-in" type="digit" data-f="giftCostPct" value="{{rule.giftCostPct}}" bindinput="onInput" placeholder="30" />
+      <text class="pw-unit">%</text>
+    </view>
+    <view class="pw-hint">{{t.promoParamGiftCostPctHint}}</view>
   </block>
   <block wx:if="{{show.buy}}">
     <view class="pw-row">
@@ -111,10 +146,15 @@
       <text class="pw-convert-k">{{t.promoResDiscount}}</text>
       <text class="pw-convert-v">{{conv.discountText}}</text>
       <view class="pw-formula" wx:if="{{conv.formula}}">{{t.promoFormulaPrefix}}{{conv.formula}}</view>
-      <!-- R763：客单价未填/低于门槛的口径提示（保守估算，不冒充真实折扣） -->
+      <!-- R763/R764：客单价未填 / 低于门槛 / 赠品按标价 / 已封顶 的口径提示 -->
       <view class="pw-limit-tip" wx:if="{{conv.noteText}}">{{conv.noteText}}</view>
       <!-- R761 代金券限用张数：只提示凑单门槛，不改折扣（豆包评审 A 口径） -->
       <view class="pw-limit-tip" wx:if="{{conv.limitInfo}}">{{t.promoLimitPrefix}}{{conv.limitInfo.maxSpend}}{{t.promoLimitSuffix}}</view>
+    </view>
+    <!-- R764 统一对比口径：每百元原价流水的商家成本损失 -->
+    <view class="pw-loss" wx:if="{{conv.lossPer100}}">
+      <text class="pw-loss-k">{{t.promoResLossPer100}}</text>
+      <text class="pw-loss-v">{{conv.lossPer100}}{{t.promoLossUnit}}</text>
     </view>
   </block>
   <block wx:elif="{{conv && !conv.ok}}">
@@ -149,14 +189,14 @@
   </view>
   <view class="pw-hint">{{t.promoPriceHint}}</view>
 
-  <!-- 回本结果：毛利率空 ⇒ 提示；会亏 ⇒ 劝停；否则三段结果 -->
+  <!-- 回本结果：毛利率空 ⇒ 提示；会亏 ⇒ 劝停；否则结果 -->
   <block wx:if="{{!back}}">
     <view class="pw-back-empty">{{t.promoBackEmpty}}</view>
   </block>
   <block wx:elif="{{!back.ok}}">
     <view class="pw-bad">
       <view class="pw-bad-t">{{t.promoBackBad}}</view>
-      <view class="pw-bad-d">{{t.promoResCritical}} {{back.criticalDiscountShow}}</view>
+      <view class="pw-bad-d">{{t.promoResCritical}} {{back.criticalShow}}</view>
     </view>
   </block>
   <block wx:else>
@@ -174,6 +214,11 @@
         <text class="pw-k">{{t.promoResRevenue}}</text>
         <text class="pw-v">{{back.revenueNeededYuan}}{{t.promoYuanUnit}}</text>
       </view>
+      <!-- R764：同时给原价流水口径，老板才和自账对得上 -->
+      <view class="pw-cell" wx:if="{{back.listRevenueNeededYuan}}">
+        <text class="pw-k">{{t.promoResRevenueList}}</text>
+        <text class="pw-v">{{back.listRevenueNeededYuan}}{{t.promoYuanUnit}}</text>
+      </view>
       <view class="pw-cell" wx:if="{{back.ordersNeeded}}">
         <text class="pw-k">{{t.promoResOrders}}</text>
         <text class="pw-v">{{back.ordersNeeded}}{{t.promoOrdersUnit}}</text>
@@ -184,9 +229,9 @@
       </view>
     </view>
     <view class="pw-crit">
-      <text class="pw-crit-t">{{t.promoResCritical}}</text>
-      <text class="pw-crit-v">{{back.criticalDiscountShow}}</text>
-      <text class="pw-crit-h">{{t.promoResCriticalHint}}</text>
+      <text class="pw-crit-t">{{back.criticalIsLoss ? t.promoResCriticalLoss : t.promoResCritical}}</text>
+      <text class="pw-crit-v">{{back.criticalShow}}</text>
+      <text class="pw-crit-h">{{back.criticalIsLoss ? t.promoResCriticalLossHint : t.promoResCriticalHint}}</text>
     </view>
   </block>
 
@@ -236,6 +281,76 @@
         <text class="pw-k">{{t.promoResTraffic}}</text>
         <text class="pw-v pw-hot">+{{reverse.trafficUpliftPct}}%</text>
       </view>
+    </view>
+  </block>
+
+  <!-- ================= 第四段（R764）：活动效果评估 —— 预计赔/赚多少钱 ================= -->
+  <view class="pw-sec">{{t.promoSecEffect}}</view>
+  <view class="pw-back-intro">{{t.promoEffectIntro}}</view>
+
+  <view class="pw-row">
+    <text class="pw-lbl">{{t.promoEffectExpLabel}}</text>
+    <input class="pw-in" type="digit" data-f="expectedRevenueYuan" value="{{expectedRevenueYuan}}" bindinput="onInput" placeholder="10000" />
+    <text class="pw-unit">{{t.promoYuanUnit}}</text>
+  </view>
+  <view class="pw-hint">{{t.promoEffectExpHint}}</view>
+
+  <view class="pw-row">
+    <text class="pw-lbl">{{t.promoEffectDaysLabel}}</text>
+    <input class="pw-in" type="number" data-f="days" value="{{days}}" bindinput="onInput" placeholder="7" />
+    <text class="pw-unit">{{t.promoEffectDaysUnit}}</text>
+  </view>
+
+  <view class="pw-row">
+    <text class="pw-lbl">{{t.promoEffectOnceLabel}}</text>
+    <input class="pw-in" type="digit" data-f="oneTimeCostYuan" value="{{oneTimeCostYuan}}" bindinput="onInput" placeholder="0" />
+    <text class="pw-unit">{{t.promoYuanUnit}}</text>
+  </view>
+  <view class="pw-hint">{{t.promoEffectOnceHint}}</view>
+
+  <view class="pw-row">
+    <text class="pw-lbl">{{t.promoEffectFixedLabel}}</text>
+    <input class="pw-in" type="digit" data-f="fixedCostPerDay" value="{{fixedCostPerDay}}" bindinput="onInput" placeholder="0" />
+    <text class="pw-unit">{{t.promoYuanUnit}}</text>
+  </view>
+  <view class="pw-hint">{{t.promoEffectFixedHint}}</view>
+
+  <block wx:if="{{!effect}}">
+    <view class="pw-back-empty">{{t.promoEffectEmpty}}</view>
+  </block>
+  <block wx:elif="{{!effect.ok}}">
+    <view class="pw-bad">
+      <view class="pw-bad-t">{{t.promoEffectBad}}</view>
+    </view>
+  </block>
+  <block wx:else>
+    <view class="pw-eff {{effect.profitable ? 'pw-eff-win' : 'pw-eff-lose'}}">
+      <text class="pw-eff-k">{{effect.profitable ? t.promoEffectProfit : t.promoEffectLoss}}</text>
+      <text class="pw-eff-v">{{effect.netText}}</text>
+      <text class="pw-eff-u">{{t.promoYuanUnit}}</text>
+    </view>
+    <view class="pw-out">
+      <view class="pw-cell">
+        <text class="pw-k">{{t.promoEffectOriginal}}</text>
+        <text class="pw-v">{{effect.originalGross}}{{t.promoYuanUnit}}</text>
+      </view>
+      <view class="pw-cell">
+        <text class="pw-k">{{t.promoEffectPromo}}</text>
+        <text class="pw-v">{{effect.promoGross}}{{t.promoYuanUnit}}</text>
+      </view>
+      <view class="pw-cell">
+        <text class="pw-k">{{t.promoEffectGrossDiff}}</text>
+        <text class="pw-v">{{effect.grossDiffText}}{{t.promoYuanUnit}}</text>
+      </view>
+      <view class="pw-cell" wx:if="{{effect.invest > 0}}">
+        <text class="pw-k">{{t.promoEffectInvest}}</text>
+        <text class="pw-v">-{{effect.invest}}{{t.promoYuanUnit}}</text>
+      </view>
+    </view>
+    <view class="pw-crit">
+      <text class="pw-crit-t">{{t.promoEffectBreakEven}}</text>
+      <text class="pw-crit-v">{{effect.breakEvenDailyYuan}}{{t.promoYuanUnit}}</text>
+      <text class="pw-crit-h">{{t.promoEffectBreakEvenHint}}</text>
     </view>
   </block>
 
