@@ -43,6 +43,8 @@
     <view class="dg-sec-hd">{{t.actTitle}}</view>
     <view class="muted">{{t.actHint}}</view>
     <view class="dg-plan-tier" wx:if="{{planTierText}}">{{planTierText}}</view>
+    <!-- 🔴 R772：需关注档指出「最该盯哪一项」（按最容易改挑，非丢分最多） -->
+    <view class="dg-focus" wx:if="{{watchFocus}}">{{watchFocus}}</view>
     <view class="hint" wx:if="{{planInsufficient}}">{{planInsufficient}}</view>
     <!-- 🔴 R766：数据不足时也别把已经算出来的危险信号一起吞掉（只报数，不给处方） -->
     <view class="warn-line" wx:if="{{planPrecheck}}">{{planPrecheck}}</view>

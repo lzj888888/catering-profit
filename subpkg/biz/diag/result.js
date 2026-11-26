@@ -112,6 +112,7 @@ Page({
     planTierText: '',
     planActions: [],
     planInsufficient: '',
+    watchFocus: '',
     planPrecheck: '',
     planEmpty: '',
   },
@@ -296,7 +297,36 @@ Page({
       levelText: LV_AC[a.level] || '',
       levelClass: a.level || 'try',
     }));
-    const planInsufficient = (level === 'insufficient') ? T.actInsufficient : '';
+    // 🔴 R772：数据不足分两种说法 —— 缺「记账自动项」和缺「要去找的项」，
+    //   老板该做的事完全不同（一个要等一两个月，一个今天就能补）。
+    //   判据用引擎已分类好的 kind：auto = 记账自动，manual = 手填/去查。
+    const planInsufficient = (level === 'insufficient')
+      ? ((missAutoCount > 0 && !(dv.monthsUsed > 0))
+        ? T.actInsufficientAuto
+        : (miss.length > 0 ? T.actInsufficientManual : T.actInsufficient))
+      : '';
+
+    // 🔴 R772：需关注档要指出「当前最该盯哪一项」——按"最容易改"挑，**不按"丢分最多"挑**。
+    //   为什么：丢分多 ≠ 能改（净利率丢 15 分，但它是综合结果，老板不知道从哪下手）；
+    //   老板能自己动手、30–60 天见得到变化的，才值得先指出来。
+    //   district（商圈）老板改不了 ⇒ 永久排除。难度值为会诊交叉后的经验值，非精确量化。
+    const FIX_DIFF = {
+      grossMargin: 2, labor: 3, rent: 4, lease: 4,
+      rating: 5, cash: 5, debt: 5, traffic: 6, loss: 6, profit: 7, district: 99,
+    };
+    let watchFocus = '';
+    if (level === 'watch' && anchors.length) {
+      const cand = anchors
+        .filter((a) => FIX_DIFF[a.key] !== 99)
+        .sort((x, y) => (FIX_DIFF[x.key] || 9) - (FIX_DIFF[y.key] || 9));
+      if (cand.length) {
+        const hit = cand[0];
+        const idx = planActions.findIndex((p) => p.key === hit.key);
+        watchFocus = (idx >= 0)
+          ? (T.watchFocusPre + hit.label + T.watchFocusMid + (idx + 1) + T.watchFocusSuf)
+          : (T.watchFocusPre + hit.label + T.watchFocusEnd);
+      }
+    }
     const planEmpty = (!planInsufficient && planActions.length === 0) ? T.actEmpty : '';
     // 🔴 R766：数据不足时，**已经算出来**的危险信号要说出来（只报数、不给处方）。
     //   云函数已在 plan.precheck 里给了 { key:'cash', months }（<3 个月才给）；
@@ -338,6 +368,7 @@ Page({
       planTierText: planRaw.tierText || '',
       planActions,
       planInsufficient,
+      watchFocus,
       planPrecheck,
       planEmpty,
     });
