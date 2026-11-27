@@ -1926,6 +1926,9 @@ const TERMS = {
     promoResDiscount: '相当于打',
     promoZheUnit: '折',
     promoFormulaPrefix: '怎么算：',
+    // 🔴 R779：①段防误导——折扣只是价格让利，不等于划算；判断要往下填完②段
+    promoDiscountNote: '这只是价格折扣，不代表划算。要判断做不做，往下填完「是赚还是赔」。',
+    promoBaselineMissing: '⚠ 填「现在日流水」才能算赚还是赔',
     promoConvertEmpty: '选好活动、填上规则，这里就出折扣',
     promoConvertBad: '规则还没填全或填得不对——比如买几赠几要填两个大于 0 的数',
     // 第二段（次）：回本测算（才要毛利率）
@@ -1934,7 +1937,8 @@ const TERMS = {
     promoMarginLabel: '现在毛利率',
     promoMarginHint: '（售价 − 成本）÷ 售价。例：卖 20 元、成本 8 元 ⇒ 60%',
     promoRevenueLabel: '现在一天流水',
-    promoRevenueHint: '填了才知道「要做多少钱」；不填只算要涨几成',
+    // 🔴 R779：日流水是增量口径的基线，很多老板心里没准数 ⇒ 给可执行的估算路径，不给默认值
+    promoRevenueHint: '填了才算得出赚还是赔。不知道就翻最近 7 天收款记录算平均，或：每天接单数 × 客单价',
     promoPriceLabel: '现在客单价',
     promoPriceHint: '填了才知道「要卖多少单」——单数才是真实压力',
     promoYuanUnit: '元',
@@ -1957,9 +1961,8 @@ const TERMS = {
     promoEffectDaysLabel: '活动做几天',
     promoEffectDaysUnit: ' 天',
     promoEffectOnceLabel: '一次性投入',
-    promoEffectOnceHint: '宣传、物料、达人探店等，没有填 0',
-    promoEffectFixedLabel: '每天固定成本',
-    promoEffectFixedHint: '房租＋固定人工；空着或填 0 ＝ 只算到毛利层',
+    // 🔴 R779：明说「不含房租和固定人工」——那两项做不做活动都要付，不是活动投入（三司会诊+4个案例一致）
+    promoEffectOnceHint: '宣传、物料、达人探店等只为这次活动花的钱，没有填 0；不含房租和固定人工',
     promoEffectEmpty: '填了预计每天实收和天数，这里出预计赔赚',
     promoEffectBad: '这几个数填得不对：预计实收要 ≥0、天数要 >0',
     promoEffectTitle: '预计结果',

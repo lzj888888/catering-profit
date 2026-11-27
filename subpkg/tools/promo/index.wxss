@@ -21,6 +21,16 @@
   margin: 36rpx 0 16rpx;
 }
 
+/* 🔴 R779：原④并入②后的子标题（比 pw-sec 弱一档，表示"同一段的下半"） */
+.pw-subsec {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #35506b;
+  margin: 32rpx 0 12rpx;
+  padding-left: 16rpx;
+  border-left: 6rpx solid #7fa8d0;
+}
+
 .pw-row {
   display: flex;
   align-items: center;

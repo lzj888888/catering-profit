@@ -442,7 +442,11 @@ function reverseFromMargin(p) {
  *   口径：老板填「活动后预计日**实收**流水」（满减是打折后的到账额；赠品等于原价流水）。
  *   原毛利 = 原日流水 × 天数 × G0%
  *   活动毛利 = 预计日实收 × 天数 × g1%
- *   净差 = 毛利差 − 一次性投入 − 日均固定成本×天数
+ *   🔴 R779 口径修正（三司会诊 + 独立复核）：净差 = 毛利差 − 一次性投入。
+ *     改前还扣了「日均固定成本×天数」，但房租和固定人工**做不做活动都要付**，
+ *     属两边都存在的沉没成本，在「活动相比不做多赚/赔多少」里必须抵消 —— 扣它等于扣两次。
+ *     实测：原日流水8000/毛利60% → 8折后50%/7天预计11000/房租人工800每天/海报500：
+ *       改前「赔1200」，改后「赚4400」，方向完全相反。
  * @param {object} p
  * @param {number} p.marginPct           活动前毛利率（百分数）
  * @param {number} p.newMarginPct        活动后毛利率（百分数，由 promoCalc/giftModel 给出）
@@ -450,7 +454,6 @@ function reverseFromMargin(p) {
  * @param {number} p.expectedRevenueYuan 活动后预计日实收流水（元）
  * @param {number} p.days                活动天数
  * @param {number} [p.oneTimeCostYuan]   一次性投入（宣传/物料，元，默认 0）
- * @param {number} [p.fixedCostPerDay]   日均固定成本（房租+固定人工，元，默认 0 ⇒ 只到毛利层）
  */
 function promoEffect(p) {
   const q = p || {};
@@ -463,17 +466,16 @@ function promoEffect(p) {
   const days = Number(q.days);
   const once = (q.oneTimeCostYuan === undefined || q.oneTimeCostYuan === '' || q.oneTimeCostYuan === null)
     ? 0 : Number(q.oneTimeCostYuan);
-  const fixed = (q.fixedCostPerDay === undefined || q.fixedCostPerDay === '' || q.fixedCostPerDay === null)
-    ? 0 : Number(q.fixedCostPerDay);
   if (!(g0 > 0) || g0 > 100) return { ok: false, reason: 'badMargin' };
   if (!(g1 > 0) || g1 > 100) return { ok: false, reason: 'badNewMargin' };
   if (!(base > 0) || !(exp >= 0) || !(days > 0)) return { ok: false, reason: 'badInput' };
-  if (!(once >= 0) || !(fixed >= 0)) return { ok: false, reason: 'badInput' };
+  if (!(once >= 0)) return { ok: false, reason: 'badInput' };
 
   const originalGross = round2(base * days * g0 / PCT);
   const promoGross = round2(exp * days * g1 / PCT);
   const grossDiff = round2(promoGross - originalGross);
-  const invest = round2(once + fixed * days);
+  // 🔴 R779：只扣一次性投入。固定成本两边都付 ⇒ 已互相抵消，不得再扣（见函数头注释）。
+  const invest = round2(once);
   const netDiff = round2(grossDiff - invest);
   // 不含一次性投入的保本日实收：g0/g1 是保毛利额所需的流水倍数
   const breakEvenDailyYuan = round2(base * g0 / g1);

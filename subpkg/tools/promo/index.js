@@ -124,6 +124,9 @@ Page({
       promoResReverseNeed: t.promoResReverseNeed,
       // 第四段：活动效果评估（R764）
       promoSecEffect: t.promoSecEffect,
+      // 🔴 R779：①段防误导 + 基线缺失提示
+      promoDiscountNote: t.promoDiscountNote,
+      promoBaselineMissing: t.promoBaselineMissing,
       promoEffectIntro: t.promoEffectIntro,
       promoEffectExpLabel: t.promoEffectExpLabel,
       promoEffectExpHint: t.promoEffectExpHint,
@@ -163,11 +166,11 @@ Page({
     avgPriceYuan: '',
     // 第三段两填（R761：直接填活动后毛利率反算）
     targetMarginPct: '',
-    // 第四段四填（R764：活动后预计流水 / 天数 / 一次性投入 / 日均固定成本）
+    // 第二段（合并原④）：活动后预计流水 / 天数 / 一次性投入
+    // 🔴 R779：删掉「日均固定成本」——做不做活动房租都要付，扣它等于扣两次（会诊+案例一致）
     expectedRevenueYuan: '',
     days: '',
     oneTimeCostYuan: '',
-    fixedCostPerDay: '',
     // 各段结果彼此独立
     conv: null,     // 第一段：折扣换算（不依赖毛利率）
     back: null,     // 第二段：回本测算（依赖毛利率+折扣）
@@ -220,7 +223,7 @@ Page({
     const v = e.detail.value;
     // 顶层字段（不属于活动规则的）
     const TOP = ['marginPct', 'revenueYuan', 'avgPriceYuan', 'targetMarginPct',
-      'expectedRevenueYuan', 'days', 'oneTimeCostYuan', 'fixedCostPerDay'];
+      'expectedRevenueYuan', 'days', 'oneTimeCostYuan'];
     if (TOP.indexOf(f) >= 0) {
       const patch = {}; patch[f] = v;
       this.setData(patch, () => this.recalc());
@@ -308,11 +311,14 @@ Page({
       reverse = rr;
     }
 
-    // 第四段（R764）：活动效果评估 —— 必须已有活动后毛利率（back.ok）+ 预计流水 + 天数
+    // 第二段下半（R764建/R779并）：赚赔评估 —— 必须已有活动后毛利率（back.ok）+ 预计流水 + 天数
     let effect = null;
     const expRaw = String(d.expectedRevenueYuan == null ? '' : d.expectedRevenueYuan).trim();
     const daysRaw = String(d.days == null ? '' : d.days).trim();
-    if (back && back.ok && expRaw !== '' && daysRaw !== '') {
+    const baseRaw = String(d.revenueYuan == null ? '' : d.revenueYuan).trim();
+    // 🔴 R779：基线（现在日流水）是增量口径的必要条件 —— 缺它就让 effect 保持 null，
+    //   页面走 !effect 分支显示「填现在日流水才能算赚还是赔」；不能丢个 ok:false 让老板以为是算错了。
+    if (back && back.ok && baseRaw !== '' && Number(baseRaw) > 0 && expRaw !== '' && daysRaw !== '') {
       const eff = promoEffect({
         marginPct: m,
         newMarginPct: back.newMarginPct,
@@ -321,7 +327,6 @@ Page({
         expectedRevenueYuan: Number(expRaw),
         days: Number(daysRaw),
         oneTimeCostYuan: d.oneTimeCostYuan,
-        fixedCostPerDay: d.fixedCostPerDay,
       });
       if (eff && eff.ok) {
         eff.netText = (eff.netDiff > 0 ? '+' : '') + eff.netDiff;

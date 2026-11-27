@@ -308,7 +308,8 @@ sec('J 页面接线（subpkg/tools/promo）');
       && /gift:\s*\{[^}]*giftValue:\s*true/.test(pj));
   check('J-⑮ R764 第四段输入接线（预计实收/天数/一次性投入/固定成本）',
     pw.indexOf('data-f="expectedRevenueYuan"') >= 0 && pw.indexOf('data-f="days"') >= 0
-      && pw.indexOf('data-f="oneTimeCostYuan"') >= 0 && pw.indexOf('data-f="fixedCostPerDay"') >= 0);
+      && pw.indexOf('data-f="oneTimeCostYuan"') >= 0 && pw.indexOf('data-f="fixedCostPerDay"') < 0
+      && pw.indexOf('promoDiscountNote') >= 0);
   check('J-⑯ R764 第四段结果上屏（netText / originalGross / breakEvenDailyYuan）',
     pw.indexOf('effect.netText') >= 0 && pw.indexOf('effect.originalGross') >= 0
       && pw.indexOf('effect.breakEvenDailyYuan') >= 0 && pj.indexOf('promoEffect') >= 0);
@@ -395,13 +396,41 @@ sec('K R764 每满/封顶 · 赠品成本口径 · 活动效果评估（豆包�
   check('K-⑭ 🔴 反恒真：天数0 / 预计流水<0 / 活动后毛利率0 ⇒ 全判红',
     badDays.ok === false && badExp.ok === false && badG1.ok === false,
     [badDays.reason, badExp.reason, badG1.reason].join('/'));
-  const dayFixed = promoEffect({
-    marginPct: 50, newMarginPct: 41, baselineRevenueYuan: 8000, expectedRevenueYuan: 10000,
-    days: 7, oneTimeCostYuan: 0, fixedCostPerDay: 300,
+  // 🔴 R779：固定成本不得重复扣 —— 做不做活动房租都付，两边抵消。
+  //   原日流水8000/毛利60% → 8折后50%/7天预计11000/房租人工800每天/海报500：
+  //   改前「赔1200」，改后「赚4400」（会诊+独立复核+4案例一致）。
+  const r779 = promoEffect({
+    marginPct: 60, newMarginPct: 50, baselineRevenueYuan: 8000, expectedRevenueYuan: 11000,
+    days: 7, oneTimeCostYuan: 500,
   });
-  check('K-⑮ 固定成本口径：净差 = 700 − 300×7 = −1400（活动毛利涨了但净利是负的）',
-    dayFixed.ok && dayFixed.invest === 2100 && Math.abs(dayFixed.netDiff + 1400) < 0.1,
-    'invest=' + dayFixed.invest + ' net=' + dayFixed.netDiff);
+  check('K-⑮ 🔴 增量口径：原毛利33600/活动毛利38500/海报500 ⇒ 净赚4400（改前误扣固定成本说赔1200）',
+    r779.ok && r779.originalGross === 33600 && r779.promoGross === 38500
+      && r779.invest === 500 && Math.abs(r779.netDiff - 4400) < 0.1 && r779.profitable === true,
+    'invest=' + r779.invest + ' net=' + r779.netDiff);
+
+  // 反恒真：即使硬塞 fixedCostPerDay 这个已废弃键，也不许它影响结果（防有人把旧口径偷偷加回来）
+  const r779old = promoEffect({
+    marginPct: 60, newMarginPct: 50, baselineRevenueYuan: 8000, expectedRevenueYuan: 11000,
+    days: 7, oneTimeCostYuan: 500, fixedCostPerDay: 800,
+  });
+  check('K-⑯ 反恒真：硬塞已废弃的 fixedCostPerDay=800 ⇒ 净差仍为 4400（固定成本不得重进公式）',
+    r779old.ok && Math.abs(r779old.netDiff - 4400) < 0.1 && r779old.invest === 500,
+    'invest=' + r779old.invest + ' net=' + r779old.netDiff);
+
+  // 基线缺失时必须 fail-closed：promoEffect 本身不许拿 base=0 硬算（页面另走 !effect 分支给引导）
+  const noBase = promoEffect({
+    marginPct: 60, newMarginPct: 50, baselineRevenueYuan: 0, expectedRevenueYuan: 11000,
+    days: 7, oneTimeCostYuan: 500,
+  });
+  check('K-⑰ 基线缺失 fail-closed：现在日流水=0 ⇒ promoEffect 判 badInput（不许把没基线当成"赚翻了"）',
+    noBase.ok === false && noBase.reason === 'badInput', noBase.reason);
+
+  // 页面接线：缺基线时 effect 保持 null（显示引导），不是 ok:false（那会说"算错了"）
+  //   ⚠️ 前段的 pj 定义在它自己的块作用域里，此处必须重新读（不能复用）。
+  const pjR779 = fs.readFileSync(path.join(__dirname, '..', 'subpkg/tools/promo/index.js'), 'utf8');
+  check('K-⑱ 页面接线：effect 组装前先查 baseRaw>0，缺基线时不进 promoEffect（走引导分支）',
+    /baseRaw !== '' && Number\(baseRaw\) > 0/.test(pjR779) && /promoBaselineMissing/.test(pjR779),
+    'baseRaw 守卫');
 }
 
 console.log('\n==== 活动测算自测：' + pass + ' 通过 / ' + failN + ' 失败 ====');
