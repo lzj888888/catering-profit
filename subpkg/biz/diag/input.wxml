@@ -66,6 +66,19 @@
     </view>
     <view class="hint small">{{t.debtHint}}</view>
 
+    <!-- 🔴 R773：只有选了「有借钱」才追问 —— 没借钱的人一个字都不用多填。
+         用老板的话问（「月供」是房贷语境的词，餐饮小店不说这个词）。
+         空着 = 没填（这项不判）；填 0 = 明确没有；两者语义不同，不许合并。 -->
+    <block wx:if="{{debtIdx > 0}}">
+      <view class="field">
+        <text class="lbl">{{t.repayLabel}}</text>
+        <input class="val-input" type="digit" confirm-type="done"
+          placeholder="{{t.repayPh}}" value="{{repayYuan}}"
+          bindinput="onRepay" adjust-position="{{true}}" cursor-spacing="20" />
+      </view>
+      <view class="hint small">{{t.repayHint}}</view>
+    </block>
+
     <!-- R612：重大食安 —— **只问一个**，不拆档（李老师拍板，见 terms 注释） -->
     <view class="field">
       <text class="lbl">{{t.foodSafety}}</text>
@@ -93,6 +106,16 @@
         adjust-position="{{true}}" cursor-spacing="20" />
     </view>
     <view class="hint small">{{t.cashHint}}</view>
+
+    <!-- 🔴 R773：储值 = 顾客卡里没花完的钱，关店要退 ⇒ 是负债。
+         不用「负债」这个词（老板听不懂），用他自己的说法。空着不判、不影响结论。 -->
+    <view class="field">
+      <text class="lbl">{{t.storedLabel}}</text>
+      <input class="val-input" type="digit" confirm-type="done"
+        placeholder="{{t.storedPh}}" value="{{storedYuan}}"
+        bindinput="onStored" adjust-position="{{true}}" cursor-spacing="20" />
+    </view>
+    <view class="hint small">{{t.storedHint}}</view>
   </view>
 
   <button class="btn primary" bindtap="onSave" disabled="{{saving}}">{{t.save}}</button>

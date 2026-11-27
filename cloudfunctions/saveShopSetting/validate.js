@@ -138,6 +138,13 @@ function validateInput(event) {
       // 账面现金（分）：上限 100 亿分（1 亿元）—— 再高不是这家店的钱
       e = takeInt('cash_on_hand_fen', 'cash_on_hand_fen', 10000000000);
       if (e) return err(e);
+      // 🔴 R773：每月还账（分）。**空 = 没填（这项不判），0 = 明确没有** —— 两者语义不同，都允许。
+      //   上限同现金（1 亿元）；这笔钱进「现金可撑月数」分母（经营亏损 + 月供本金）。
+      e = takeInt('monthly_repay_fen', 'monthly_repay_fen', 10000000000);
+      if (e) return err(e);
+      // 🔴 R773：顾客卡里没消费的余额（分）。空 = 不判；0 = 明确没做过储值。
+      e = takeInt('stored_balance_fen', 'stored_balance_fen', 10000000000);
+      if (e) return err(e);
       e = takeEnum('review_trend', 'review_trend', DIAG_ENUM.reviewTrend);
       if (e) return err(e);
       e = takeEnum('business_district', 'business_district', DIAG_ENUM.businessDistrict);

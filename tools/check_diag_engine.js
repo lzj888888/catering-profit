@@ -215,6 +215,38 @@ check('E-⑱ 城市系数真生效：一线人工/房租警戒上抬后，同一
   const foodEv = E.evaluateDiagnosis(Object.assign({}, FULL, { foodSafetyEvent: true })).redlineHit.find((r) => r.code === 'R4');
   check('K-⑥ 重大食安为单一布尔档（不拆分），且证据串写明"影响经营"',
     !!foodEv && /影响经营|重大/.test(foodEv.evidence), foodEv ? foodEv.evidence : '未命中');
+
+  // ===== M 段（R773）：每月还账（月供）进「现金流出」，但**不进失血率** =====
+  //   为什么这两条必须分开：损益表里没有"还贷款本金"这一项（只有利息），
+  //   所以 ① 只看净亏损 ⇒ 可撑月数被高估；② 若把本金算进失血率 ⇒ 只是还贷重的店被
+  //   误判成"经营恶化"。两个错误方向相反，必须用不同分母。
+  const L_BASE = {
+    bizType: 'dining', cityTier: 'tier2', revenueFen: 10000000,
+    netProfitFen: -1000000, avgMonthlyNetLossFen: 1000000,
+    cashOnHandFen: 8000000, lossMonths: 3,
+  };
+  const lNoRepay = E.evaluateDiagnosis(L_BASE).metrics.find((m) => m.key === 'cash');
+  const lWithRepay = E.evaluateDiagnosis(Object.assign({}, L_BASE, { monthlyRepayFen: 1250000 })).metrics.find((m) => m.key === 'cash');
+  check('M-① 🔴 月供进现金流出：8 万现金/月亏 1 万 ⇒ 8.0 个月；再加月供 1.25 万 ⇒ 3.6 个月',
+    /8\.0 个月/.test(lNoRepay.note) && /3\.6 个月/.test(lWithRepay.note),
+    `${lNoRepay.note} → ${lWithRepay.note}`);
+
+  const lZero = E.evaluateDiagnosis(Object.assign({}, L_BASE, { monthlyRepayFen: 0 })).metrics.find((m) => m.key === 'cash');
+  check('M-② 月供填 0 与不填，可撑月数必须相同（0=明确没有、空=没填：语义不同但计算等价）',
+    lZero.note === lNoRepay.note, `${lZero.note} vs ${lNoRepay.note}`);
+
+  // 反证：若有人把月供也算进失血率，这条立刻红
+  const L_R2 = { bizType: 'dining', revenueFen: 10000000, netProfitFen: -2000000, avgMonthlyNetLossFen: 2000000, cashOnHandFen: 5000000, lossMonths: 4 };
+  const lR2a = (E.evaluateDiagnosis(L_R2).redlineHit.find((r) => r.code === 'R2') || {}).evidence || '';
+  const lR2b = (E.evaluateDiagnosis(Object.assign({}, L_R2, { monthlyRepayFen: 1000000 })).redlineHit.find((r) => r.code === 'R2') || {}).evidence || '';
+  check('M-③ 🔴 月供不进失血率（本金不是经营亏损）：R2 里「每月亏掉营业额的 20.0%」两边必须一致',
+    /20\.0%/.test(lR2a) && /20\.0%/.test(lR2b), `${lR2a.slice(0, 40)} || ${lR2b.slice(0, 40)}`);
+
+  const lWin = E.evaluateDiagnosis(Object.assign({}, L_BASE, {
+    netProfitFen: 3000000, avgMonthlyNetLossFen: -3000000, monthlyRepayFen: 1000000,
+  })).metrics.find((m) => m.key === 'cash');
+  check('M-④ 反证：净赚 3 万 / 月供 1 万 ⇒ 现金在增加，不得说「撑几个月」（否则还贷重的盈利店被误判危险）',
+    lWin.score === 100 && /增加/.test(lWin.note) && !/撑/.test(lWin.note), lWin.note);
 }
 
 // ---------- M 组：R614 营收趋势换源（防「客流人次」偷偷回到判据里）----------

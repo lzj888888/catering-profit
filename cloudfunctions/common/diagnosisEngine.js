@@ -131,6 +131,28 @@ const pct = (part, whole) => {
   return (a / b) * 100;
 };
 
+/**
+ * 每月现金净流出（正数 = 在吃现金；负数 = 在攒现金）。
+ * 🔴 R773：**经营亏损 ≠ 现金流出**，这两个口径必须分开，混用会同时错两处：
+ *   ① 损益表里没有「还贷款本金」这一项（只有利息）⇒ 月供本金不进 netProfit
+ *      ⇒ 只看净亏损会把「能撑 8 个月」算成真的，实际可能只有 3.5 个月；
+ *   ② 但「失血率 = 月亏 ÷ 营收」必须仍用**经营亏损**（本金偿还不是经营亏损，
+ *      把它算进失血率会让一家只是还贷重的店被误判为"经营恶化"）。
+ *   ⇒ 本函数只产出「现金口径」给现金流项与红线用；失血率一律读 burn 字段。
+ * 老板填了「每月还账」⇒ outflow = 经营亏损 + 月供；没填（null）⇒ 退化为旧口径。
+ * @returns {{burn:number|null, repay:number|null, outflow:number|null}} 单位均为「分」
+ */
+function outflowOf(i) {
+  let burn = num(i.avgMonthlyNetLossFen);
+  if (burn === null) {
+    const np = num(i.netProfitFen);
+    burn = np === null ? null : -np;
+  }
+  const repay = num(i.monthlyRepayFen);
+  return { burn, repay, outflow: burn === null ? null : burn + (repay === null ? 0 : repay) };
+}
+
+
 // ===== 四、11 个指标的评分函数 =====
 // 每项返回 { score:0..100|null, note:string, basis:string }
 // score === null ⇔ 数据不足（不计入分母）。
@@ -199,24 +221,35 @@ const METRICS = [
     score: (i) => {
       const cash = num(i.cashOnHandFen);
       if (cash === null) return { score: null, note: '缺账面现金', basis: '' };
-      const avgLoss = num(i.avgMonthlyNetLossFen);
-      const cur = pct(i.netProfitFen, i.revenueFen);
-      // 分母：优先 3 月均净亏损；缺失则用当月净利反推（并标注）
-      let burn = null; let burnBasis = '';
-      if (avgLoss !== null) { burn = avgLoss; burnBasis = '近 3 个月平均净亏损'; }
-      else if (i.netProfitFen !== null && i.netProfitFen !== undefined) {
-        const np = num(i.netProfitFen);
-        if (np !== null) { burn = -np; burnBasis = '仅按当月净利推算（单月波动大）'; }
+      const o = outflowOf(i);
+      if (o.burn === null) return { score: null, note: '缺月均净亏损或当月净利', basis: '' };
+      const burnBasis = (num(i.avgMonthlyNetLossFen) !== null) ? '近 3 个月平均净亏损' : '仅按当月净利推算（单月波动大）';
+      // 🔴 R773：分母用**现金流出**（含每月还账），不是纯经营亏损。见 outflowOf 注释。
+      const repayTxt = (o.repay === null || o.repay <= 0)
+        ? '' : `；另加每月还账 ${Math.round(o.repay / 100)} 元`;
+      if (o.outflow === 0) {
+        return {
+          score: 100,
+          // 没填月供的店不能说"还完每月的账"——老板会以为系统凭空给他编了一笔贷款
+          note: (o.repay > 0 ? '还完每月的账刚好打平，现金不增不减' : '当前不亏损、也不结余，现金不增不减'),
+          basis: burnBasis + repayTxt,
+        };
       }
-      if (burn === null) return { score: null, note: '缺月均净亏损或当月净利', basis: '' };
-      // 不亏损（burn ≤ 0）：不存在"撑几个月"的问题，现金流项满分
-      if (burn <= 0) {
-        return { score: 100, note: '当前不亏损，现金在积累', basis: burnBasis };
+      if (o.outflow < 0) {
+        return {
+          score: 100,
+          note: (o.repay > 0 ? '还完每月的账，现金还在增加' : '当前不亏损，现金在积累'),
+          basis: burnBasis + repayTxt,
+        };
       }
-      const months = cash / burn;
+      const months = cash / o.outflow;
       const safe = tOf('cashSafeMonthsByBiz', i.bizType);
       const s = months < 1 ? 0 : (months >= safe ? 100 : lerp(months, 1, 0, safe, 100));
-      return { score: Math.round(s), note: `照当前亏损速度还能撑 ${months.toFixed(1)} 个月`, basis: `${burnBasis}；安全线 ${safe} 个月` };
+      return {
+        score: Math.round(s),
+        note: `照当前${(o.repay > 0 ? '亏损加还账' : '亏损')}速度还能撑 ${months.toFixed(1)} 个月`,
+        basis: `${burnBasis}${repayTxt}；安全线 ${safe} 个月`,
+      };
     },
   },
   // 4 客流与营收趋势 10 —— 同比 ≥0 得 100；达下滑警戒得 20
@@ -366,14 +399,14 @@ const REDLINES = [
     check: (i) => {
       // 🔴 R612：与 15 分现金流项**同一口径**（现金 ÷ 月均净亏损），不再用刚性支出。
       //   若用旧口径会出现自相矛盾：页面说"还能撑 10 个月"，红线却判"现金枯竭"。
+      // 🔴 R773：分母统一走 outflowOf（含月供本金）—— 与 15 分项同一口径，否则又出同页矛盾。
       const cash = num(i.cashOnHandFen);
       if (cash === null) return { judged: false, evidence: '缺账面现金，无法判定' };
-      const avgLoss = num(i.avgMonthlyNetLossFen);
-      let burn = avgLoss;
-      if (burn === null) { const np = num(i.netProfitFen); burn = np === null ? null : -np; }
-      if (burn === null) return { judged: false, evidence: '缺月均净亏损或当月净利，无法判定' };
-      if (burn <= 0) return { judged: true, hit: false, evidence: '当前不亏损，现金在积累' };
-      const months = cash / burn;
+      const o = outflowOf(i);
+      if (o.burn === null) return { judged: false, evidence: '缺月均净亏损或当月净利，无法判定' };
+      if (o.outflow === 0) return { judged: true, hit: false, evidence: (o.repay > 0 ? '还完每月的账刚好打平，现金不增不减' : '当前不亏损、也不结余，现金不增不减') };
+      if (o.outflow < 0) return { judged: true, hit: false, evidence: '当前不亏损，现金在积累' };
+      const months = cash / o.outflow;
       return { judged: true, hit: months < 1, evidence: `照当前亏损速度还能撑 ${months.toFixed(1)} 个月（<1 个月即触发）` };
     },
   },
@@ -390,14 +423,17 @@ const REDLINES = [
       //   底线 2 不变：任一数据缺失一律「未判定」，不许拿近似量顶替。
       const cash = num(i.cashOnHandFen);
       const rev = num(i.revenueFen);
-      let burn = num(i.avgMonthlyNetLossFen);
-      if (burn === null) { const np = num(i.netProfitFen); burn = np === null ? null : -np; }
+      const o = outflowOf(i);
+      const burn = o.burn;
       if (cash === null || burn === null || rev === null || rev <= 0) {
         return { judged: false, evidence: '缺现金/月均净亏损/营业额，无法判定' };
       }
       if (burn <= 0) return { judged: true, hit: false, evidence: '当前不亏损，不构成持续失血' };
+      // 🔴 R773 两个口径分开：失血率用**经营亏损**（本金不是经营亏损）；
+      //   「撑几个月」用**现金流出**（含月供本金）⇒ 一家只是还贷重的店不会因还贷被判"经营恶化"，
+      //   但它的现金安全判断仍然是准的。
       const bleed = (burn / rev) * 100;
-      const months = cash / burn;
+      const months = cash / o.outflow;
       const warn = TUNABLE.bleedRateWarnPct;
       const safe = tOf('cashSafeMonthsByBiz', i.bizType);
       const m = num(i.lossMonths);
@@ -438,12 +474,12 @@ const REDLINES = [
       const d = String(i.debtLevel || '');
       const cash = num(i.cashOnHandFen);
       if (!d || cash === null) return { judged: false, evidence: '缺借贷情况或现金数据，无法判定' };
-      const avgLoss = num(i.avgMonthlyNetLossFen);
-      let burn = avgLoss;
-      if (burn === null) { const np = num(i.netProfitFen); burn = np === null ? null : -np; }
-      if (burn === null) return { judged: false, evidence: '缺月均净亏损或当月净利，无法判定' };
-      if (burn <= 0) return { judged: true, hit: false, evidence: `借贷 ${d}，但当前不亏损（不像输血维持）` };
-      const months = cash / burn;
+      // 🔴 R773：与 R1/cash 项统一走 outflowOf（含月供本金）
+      const o = outflowOf(i);
+      if (o.burn === null) return { judged: false, evidence: '缺月均净亏损或当月净利，无法判定' };
+      if (o.outflow === 0) return { judged: true, hit: false, evidence: (o.repay > 0 ? `借贷 ${d}，但还完账刚好打平（不像输血维持）` : `借贷 ${d}，但当前不亏损也不结余（不像输血维持）`) };
+      if (o.outflow < 0) return { judged: true, hit: false, evidence: `借贷 ${d}，但当前不亏损（不像输血维持）` };
+      const months = cash / o.outflow;
       return { judged: true, hit: d === 'heavy' && months < 3, evidence: `借贷 ${d}，照当前亏损速度还能撑 ${months.toFixed(1)} 个月（<3 且大量持续即触发）` };
     },
   },

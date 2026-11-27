@@ -169,6 +169,10 @@ function assemble(args) {
     renewIncreasePct: numOrNull(df.renew_increase_pct),
     debtLevel: df.debt_level || null,
     cashOnHandFen: numOrNull(df.cash_on_hand_fen),
+    // 🔴 R773：每月还账（分）进「现金可撑月数」分母；空 = 没填（退化为旧口径），0 = 明确没有
+    monthlyRepayFen: numOrNull(df.monthly_repay_fen),
+    // 🔴 R773：顾客卡余额（分）—— 储值兑付判断用；空 = 不判
+    storedBalanceFen: numOrNull(df.stored_balance_fen),
     // 重大食安：只认 true / false；undefined/null ⇒ 引擎判「未判定」（不是"没问题"）
     foodSafetyEvent: (df.food_safety_event === true || df.food_safety_event === false) ? df.food_safety_event : null,
   };

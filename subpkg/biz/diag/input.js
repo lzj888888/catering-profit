@@ -79,6 +79,13 @@ Page({
       debtHint: T.debtHint,
       cash: T.cash,
       cashHint: T.cashHint,
+      // 🔴 R773：每月还账 + 顾客卡余额（页面桩守卫 page-terms 会逐键核对，缺一个就是静默空白）
+      repayLabel: T.repayLabel,
+      repayPh: T.repayPh,
+      repayHint: T.repayHint,
+      storedLabel: T.storedLabel,
+      storedPh: T.storedPh,
+      storedHint: T.storedHint,
       save: T.save,
       pending: T.pending,
       trendOpts: T.trendOpts,
@@ -98,6 +105,9 @@ Page({
     leaseMonths: '',
     renewIncrease: '',
     cashYuan: '',
+    // 🔴 R773：空 = 没填（这项不判）；0 = 明确没有。两者语义不同，不许合并
+    repayYuan: '',
+    storedYuan: '',
     loading: true,
     saving: false,
   },
@@ -123,6 +133,8 @@ Page({
         leaseMonths: df.lease_months_left != null ? String(df.lease_months_left) : '',
         renewIncrease: df.renew_increase_pct != null ? String(df.renew_increase_pct) : '',
         cashYuan: df.cash_on_hand_fen != null ? api.fenToYuan(df.cash_on_hand_fen) : '',
+        repayYuan: df.monthly_repay_fen != null ? api.fenToYuan(df.monthly_repay_fen) : '',
+        storedYuan: df.stored_balance_fen != null ? api.fenToYuan(df.stored_balance_fen) : '',
         // 枚举回显：拿 key 反查下标。查不到（脏数据/旧枚举）⇒ -1（显示"待补"），不猜成第 0 项
         trendIdx: T.trendKeys.indexOf(df.review_trend),
         districtIdx: T.districtKeys.indexOf(df.business_district),
@@ -149,6 +161,8 @@ Page({
   onLeaseMonths(e) { this.setData({ leaseMonths: e.detail.value }); },
   onRenewIncrease(e) { this.setData({ renewIncrease: e.detail.value }); },
   onCash(e) { this.setData({ cashYuan: e.detail.value }); },
+  onRepay(e) { this.setData({ repayYuan: e.detail.value }); },
+  onStored(e) { this.setData({ storedYuan: e.detail.value }); },
   onPickTrend(e) { this.setData({ trendIdx: Number(e.detail.value) }); },
   onPickDistrict(e) { this.setData({ districtIdx: Number(e.detail.value) }); },
   onPickDebt(e) { this.setData({ debtIdx: Number(e.detail.value) }); },
@@ -207,6 +221,20 @@ Page({
       cashFen = api.yuanToFen(cs);
     }
 
+    // 每月还账 / 顾客卡余额：同样 fail-closed（非法输入报错，不静默洗成 0）
+    let repayFen = null;
+    const repayStr = String(this.data.repayYuan == null ? '' : this.data.repayYuan).trim();
+    if (repayStr !== '') {
+      if (!/^\d+(\.\d{1,2})?$/.test(repayStr)) return { error: T.errCash };
+      repayFen = api.yuanToFen(repayStr);
+    }
+    let storedFen = null;
+    const storedStr = String(this.data.storedYuan == null ? '' : this.data.storedYuan).trim();
+    if (storedStr !== '') {
+      if (!/^\d+(\.\d{1,2})?$/.test(storedStr)) return { error: T.errCash };
+      storedFen = api.yuanToFen(storedStr);
+    }
+
     const pick = (keys, idx) => (idx >= 0 && idx < keys.length ? keys[idx] : null);
 
     return {
@@ -235,6 +263,8 @@ Page({
           return null;
         })(),
         cash_on_hand_fen: cashFen,
+        monthly_repay_fen: repayFen,
+        stored_balance_fen: storedFen,
       },
     };
   },
