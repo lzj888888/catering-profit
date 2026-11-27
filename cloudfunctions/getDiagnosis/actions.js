@@ -39,16 +39,20 @@ const num = (v) => {
   return Number.isFinite(n) ? n : null;
 };
 
-// 🔴 阈值单源：房租警戒从引擎导出的 RENT_WARN_HI（由 BANDS 派生，A16 教训）取，
-//   并按城市系数换算 —— 不许在处方层另抄一个 15。
+// 🔴 阈值单源：房租三档从引擎 BIZ_HARD 取，不许在处方层另抄数字。
 //   `./common` 是 sync_common 生成的扁平副本，云端每函数独立包内能 require 到。
+//   🔴 R776：改前这里返回的是「15 × 城市系数」，两个错一起犯：
+//     ① 15% 在智库裁决里是**健康线**，不是警戒线（警戒 18%）——文案把健康说成警戒；
+//     ② 城市系数只该作用**优秀档**，乘在健康线上会让一线健康线变 18%（等于放宽）。
 const ENG = require('./common').diagnosisEngine;
-function rentWarnOf(bizType, cityTier) {
-  const HI = ENG.RENT_WARN_HI || { other: 15 };
-  const COEF = ENG.RENT_COEF || {};
-  const hi = HI[bizType] !== undefined ? HI[bizType] : HI.other;
-  const coef = COEF[cityTier] !== undefined ? COEF[cityTier] : 1;
-  return Math.round(hi * coef * 10) / 10;
+function rentHealthOf(bizType) {
+  const hard = (ENG.BIZ_HARD && (ENG.BIZ_HARD[bizType] || ENG.BIZ_HARD.other)) || {};
+  // 字段级兜底（不是整体兜底）：cx 副本未同步时 hard 存在但新字段缺失，
+  // 只做整体兜底会让模板输出「健康线 undefined%」，随后被带数校验拦掉 ⇒ 整条动作消失。
+  return {
+    healthy: hard.rentHealthy == null ? 15 : hard.rentHealthy,
+    warn: hard.rentWarn == null ? 18 : hard.rentWarn,
+  };
 }
 
 /**
@@ -66,7 +70,8 @@ const RULES = [
   {
     key: 'rent', ruleId: 'V钱-3', level: 'now', needs: ['rentPct', 'rentWarnPct'],
     when: (m) => m.hasData && m.score !== null && m.score < 80,
-    text: (f) => `房租占营业额 ${f.rentPct}%，同业态警戒约 ${f.rentWarnPct}%。`
+    // 🔴 R776：说清"健康线"与"警戒线"两个数，不再把健康线叫警戒线
+    text: (f) => `房租占营业额 ${f.rentPct}%，同业态健康线 ${f.rentWarnPct}%、警戒线 ${f.rentDangerPct}%。`
       + `先拿近几个月流水跟房东谈降租；谈不动就把目标放在提坪效（延长高峰时段、翻台或外卖）。`,
     boundary: '若租约还剩很久且是自建/自有房产，谈降租这条不适用，只看坪效。',
   },
@@ -186,7 +191,9 @@ function buildActions(d) {
   const burnFen = num(input.avgMonthlyNetLossFen);
   const cashFen = num(input.cashOnHandFen);
   const grossPct = num(input.foodCostRatePct);
-  const rentWarnPct = rentWarnOf(input.bizType, input.cityTier); // 引擎 RENT_WARN_HI × 城市系数，单源
+  const rentTier = rentHealthOf(input.bizType);   // 引擎 BIZ_HARD：健康线/警戒线（均不乘城市系数）
+  const rentWarnPct = rentTier.healthy;
+  const rentDangerPct = rentTier.warn;
   // 🔴 R775：**现金流出必须与引擎 `outflowOf` 同源**。
   //   本文件是第二个算「能撑几个月」的地方（第三个是分档），漏一处就出现
   //   「指标卡说 3.6 个月、处方说 8 个月」的同页矛盾 —— R612/R615 已经踩过两次。
@@ -202,6 +209,7 @@ function buildActions(d) {
   const facts = {
     rentPct: num(input.rentRatePct),
     rentWarnPct,
+    rentDangerPct,
     laborPct: num(input.laborCostRatePct),
     grossPct: grossPct === null ? '' : (100 - grossPct).toFixed(1),
     burnYuan: burnFen === null ? '' : yuan(burnFen),

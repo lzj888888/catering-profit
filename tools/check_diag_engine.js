@@ -287,6 +287,32 @@ check('E-⑱ 城市系数真生效：一线人工/房租警戒上抬后，同一
     r7Blank && !r7Zero.redlineUnjudged.some((r) => r.code === 'R7')
       && !r7Zero.redlineHit.some((r) => r.code === 'R7'),
     `空白=${r7Blank ? '未判定✓' : '✗'} / 填0=${r7Zero.redlineHit.length === 0 ? '不命中✓' : '✗'}`);
+
+  // ===== N 段（R776）：房租四档曲线 + 城市系数只作用优秀档 =====
+  const RENT_BASE = {
+    bizType: 'fastfood', revenueFen: 10000000, netProfitFen: 200000, avgMonthlyNetLossFen: -200000,
+    cashOnHandFen: 50000000, lossMonths: 0, foodCostRatePct: 35, laborCostRatePct: 18,
+  };
+  const rentScore = (city, pct) => E.evaluateDiagnosis(Object.assign({}, RENT_BASE, { cityTier: city, rentRatePct: pct }))
+    .metrics.find((m) => m.key === 'rent');
+
+  const r12 = rentScore('tier2', 12), r15 = rentScore('tier2', 15), r18 = rentScore('tier2', 18);
+  check('N-① 🔴 房租四档曲线：二线快餐 12%（优秀）100 分 / 15%（健康）55 分 / 18%（偏高）25 分',
+    r12.score === 100 && r15.score === 55 && r18.score === 25,
+    `${r12.score}/${r15.score}/${r18.score}`);
+
+  // 反证：若有人把健康线也乘城市系数，一线 15% 会变 100 分（改前就是这个错）
+  const r1st15 = rentScore('tier1', 15);
+  check('N-② 🔴 城市系数只作用优秀档：一线 15% 与二线 15% 必须同分（都 55），不得因为一线就满分',
+    r1st15.score === r15.score, `一线=${r1st15.score} 二线=${r15.score}`);
+  check('N-③ 优秀档确实乘了系数：一线 14% ⇒ 100 分（优秀线 12×1.2=14.4，二线同值只有 70 分）',
+    rentScore('tier1', 14).score === 100 && rentScore('tier2', 14).score === 70,
+    `一线14%=${rentScore('tier1', 14).score} 二线14%=${rentScore('tier2', 14).score}`);
+
+  // 茶饮单独放宽：22% 仍算健康（55 分），若用餐饮的 15% 去卡会直接判死
+  const cafe22 = E.evaluateDiagnosis(Object.assign({}, RENT_BASE, { bizType: 'cafe', cityTier: 'tier2', rentRatePct: 22 }))
+    .metrics.find((m) => m.key === 'rent');
+  check('N-④ 茶饮放宽生效：22% 得 55 分（健康线 22），不被餐饮 15% 误杀', cafe22.score === 55, String(cafe22.score));
 }
 
 // ---------- M 组：R614 营收趋势换源（防「客流人次」偷偷回到判据里）----------

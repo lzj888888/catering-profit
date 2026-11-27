@@ -105,9 +105,11 @@ sec('B 五条硬标准（防退化成正确的废话）');
   ok('B-⑧b 【顺序】第一条必须是「先做」级（页面桩实测：净利率项丢分最多却是 later，不重排会让老板第一眼看到最不急的那条）',
     plan.actions.length === 0 || plan.actions[0].level === 'now',
     plan.actions.map((a) => a.level).join(' > ') || '无动作');
-  ok('B-⑨ 【房租警戒单源】处方层不得硬编码 15，必须取引擎 RENT_WARN_HI × 城市系数',
+  // 🔴 R776：房租三档改从引擎 BIZ_HARD 取（优秀/健康/警戒），不再用 RENT_WARN_HI（那是 BANDS 上沿）。
+  ok('B-⑨ 【房租三档单源】处方层不得硬编码房租数字，必须取引擎 BIZ_HARD（健康线 + 警戒线）',
     !/rentWarnPct\s*=\s*15/.test(read('cloudfunctions/getDiagnosis/actions.js'))
-    && /RENT_WARN_HI/.test(read('cloudfunctions/getDiagnosis/actions.js')));
+    && /BIZ_HARD/.test(read('cloudfunctions/getDiagnosis/actions.js'))
+    && /rentDangerPct/.test(read('cloudfunctions/getDiagnosis/actions.js')));
 
   // 🔴 B-⑩/B-⑪（R775）：处方层是**第二个**算「能撑几个月」的地方（第三个是分档 tier）。
   //   漏改一处就会出现「指标卡说 3.6 个月、处方说 8 个月」的同页矛盾（R612/R615 踩过两次）。

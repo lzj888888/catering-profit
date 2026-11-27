@@ -33,12 +33,17 @@
 //   规范明令：「禁止用参考带区间下限去反推/替换红线单点值」（三司会诊结论）。
 //   批次 3 校准 BANDS 时**不要顺手改这里**，两者是两层语义。
 const BIZ_HARD = {
-  fastfood: { laborWarn: 20, rentBase: 12, grossMarginHealthy: 64, threeCostWarn: 68 },
-  dining: { laborWarn: 22, rentBase: 13, grossMarginHealthy: 60, threeCostWarn: 75 },
-  hotpot: { laborWarn: 18, rentBase: 11, grossMarginHealthy: 55, threeCostWarn: 74 },
-  cafe: { laborWarn: 18, rentBase: 18, grossMarginHealthy: 65, threeCostWarn: 71 },
+  // 🔴 R776：房租三档按智库 02 册 3.1 裁决拆开（改前只有一个 rentBase，被当成"满分线"用）。
+  //   · rentBase    = **优秀线**（乘城市系数，一线 14.4 / 地县 9）—— 智库原话「系数只作用优秀档」
+  //   · rentHealthy = **健康线 15%**（不乘系数）
+  //   · rentWarn    = **警戒线 18%**（不乘系数）—— 超它才是"不合理"
+  //   茶饮单独放宽（健康 22 / 警戒 25）：面积小、坪效高、房租绝对值低，用餐饮的 15% 去卡会误杀。
+  fastfood: { laborWarn: 20, rentBase: 12, rentHealthy: 15, rentWarn: 18, grossMarginHealthy: 64, threeCostWarn: 68 },
+  dining: { laborWarn: 22, rentBase: 13, rentHealthy: 15, rentWarn: 18, grossMarginHealthy: 60, threeCostWarn: 75 },
+  hotpot: { laborWarn: 18, rentBase: 11, rentHealthy: 15, rentWarn: 18, grossMarginHealthy: 55, threeCostWarn: 74 },
+  cafe: { laborWarn: 18, rentBase: 18, rentHealthy: 22, rentWarn: 25, grossMarginHealthy: 65, threeCostWarn: 71 },
   // 未细分行业：取四类最宽松值（避免误伤），上层须标注「未细分行业，仅供粗估」
-  other: { laborWarn: 22, rentBase: 13, grossMarginHealthy: 55, threeCostWarn: 75 },
+  other: { laborWarn: 22, rentBase: 13, rentHealthy: 15, rentWarn: 18, grossMarginHealthy: 55, threeCostWarn: 75 },
 };
 const BIZ_KEYS = Object.keys(BIZ_HARD);
 // 房租警戒 = 参考带上沿（BANDS.rent[1]）× 城市系数。取上沿而非基准值：
@@ -330,10 +335,25 @@ const METRICS = [
     score: (i) => {
       const v = num(i.rentRatePct);
       if (v === null) return { score: null, note: '缺房租占比', basis: '' };
+      // 🔴 R776：四档曲线（智库 02 册 3.1）。改前是「≤15×系数 得满分」，等于把**健康线**当满分线、
+      //   且让城市系数作用在健康线上（一线 18% 竟能拿满分）——那是"该警戒判成健康"。
+      //   现在：优秀线（乘系数）满分 → 健康线 55 分 → 警戒线 25 分 → 警戒×1.6 归零。
       const coef = RENT_COEF[i.cityTier] == null ? 1 : RENT_COEF[i.cityTier];
-      const hi = (RENT_WARN_HI[i.bizType] || RENT_WARN_HI.other) * coef;
-      const s = v <= hi ? 100 : Math.max(0, lerp(v, hi, 100, hi * 1.5, 0));
-      return { score: Math.round(s), note: `房租占比 ${v.toFixed(1)}%`, basis: `本业态上沿 ${hi.toFixed(1)}%（含城市系数 ${coef}）` };
+      const hard = BIZ_HARD[i.bizType] || BIZ_HARD.other;
+      const excellent = hard.rentBase * coef;   // 优秀线：唯一乘城市系数的档
+      const healthy = hard.rentHealthy;         // 健康线：不乘
+      const warn = hard.rentWarn;               // 警戒线：不乘
+      let s;
+      if (v <= excellent) s = 100;
+      else if (v <= healthy) s = lerp(v, excellent, 100, healthy, 55);
+      else if (v <= warn) s = lerp(v, healthy, 55, warn, 25);
+      else s = Math.max(0, lerp(v, warn, 25, warn * 1.6, 0));
+      const tier = v <= excellent ? '优秀' : (v <= healthy ? '健康' : (v <= warn ? '偏高' : '警戒'));
+      return {
+        score: Math.round(s),
+        note: `房租占比 ${v.toFixed(1)}%（${tier}）`,
+        basis: `本业态优秀线 ${excellent.toFixed(1)}%（含城市系数 ${coef}）、健康线 ${healthy}%、警戒线 ${warn}%`,
+      };
     },
   },
   // 8 口碑 5 —— ≥4.8 满分；4.0~4.8 线性 60→100；<4.0 → 0~60；再按差评趋势调整
