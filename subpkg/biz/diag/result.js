@@ -7,7 +7,7 @@
 // 🔴 1. **不叫「红线」**。对外一律「风险信号」，且**一次只显示最严重的一条**。
 //      理由：直接抛「命中 5 条红线」会让个体老板觉得被咒店倒，直接弃用。
 // 🔴 2. **用事实句，不用判决句**。引擎给的是「现金枯竭」，页面必须译成
-//      「账上的钱撑不到下个月的开支」。翻译表在 TERMS.diagResult.sigR1~R6，页面不写中文。
+//      「账上的钱撑不到下个月的开支」。翻译表在 TERMS.diagResult.sigR1~R7，页面不写中文。
 // 🔴 3. **先给结论，再引导补录**。一进页面就有结论（有多少数据算多少），
 //      缺项只作为「补这一两项会更准」的单点提示，绝不做成"填完 9 项才出结果"的问卷。
 //
@@ -31,10 +31,10 @@ const CONCL = {
   good: T.conclGood, watch: T.conclWatch, warn: T.conclWarn,
   critical: T.conclCritical, insufficient: T.conclInsufficient,
 };
-// 六条信号的**事实化**表述。键与引擎 REDLINES 的 code 一一对应（R1~R6）。
+// 红线信号的**事实化**表述。键与引擎 REDLINES 的 code 一一对应（R1~R7；R7 储值为 R774 新增）。
 const SIG = {
   R1: T.sigR1, R2: T.sigR2, R3: T.sigR3,
-  R4: T.sigR4, R5: T.sigR5, R6: T.sigR6,
+  R4: T.sigR4, R5: T.sigR5, R6: T.sigR6, R7: T.sigR7,
 };
 // 缺项一次只指 1~2 项（豆包：一次抛一堆 = 问卷，老板直接放弃）
 const MISS_SHOW_MAX = 2;

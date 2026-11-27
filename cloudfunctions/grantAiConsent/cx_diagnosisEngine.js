@@ -492,6 +492,31 @@ const REDLINES = [
       return { judged: true, hit, evidence: `剩余 ${m} 个月，续租涨 ${inc}%，净利率 ${r.toFixed(1)}%` };
     },
   },
+  {
+    code: 'R7', label: '储值退不起',
+    // 🔴 R774：储值是「顾客卡里没花完的钱」，关店要退 ⇒ 是**负债不是收入**。
+    //   很多老板把储值当现金花了，关店那天才发现还欠客户钱 —— 这是关店成本里最容易被漏掉的一块。
+    //   判据：储值余额 ÷ 账面现金 > 4（三司会诊交叉结论：
+    //     豆包原话「>1 会误杀正常做储值的店，建议放宽到 4」；Claude 同向）。
+    //   ⚠️ 口径说明：为什么不用「储值 ÷ 月核销额」——老板不知道月核销额，填不出来（可填性优先）。
+    //   ⚠️ 空着 = 这项判不了（judged:false），**不等于"没有储值"**；填 0 才是明确没做过。
+    check: (i) => {
+      const stored = num(i.storedBalanceFen);
+      const cash = num(i.cashOnHandFen);
+      if (stored === null) return { judged: false, evidence: '没填顾客卡余额，无法判定' };
+      if (stored <= 0) return { judged: true, hit: false, evidence: '顾客卡里没有未消费的余额' };
+      if (cash === null) return { judged: false, evidence: '缺账面现金，无法判断储值退不退得起' };
+      if (cash <= 0) {
+        return { judged: true, hit: true, evidence: `顾客卡里还有 ${Math.round(stored / 100)} 元没消费，账上现金为 0` };
+      }
+      const ratio = stored / cash;
+      return {
+        judged: true,
+        hit: ratio > 4,
+        evidence: `顾客卡里还有 ${Math.round(stored / 100)} 元没消费，账上现金 ${Math.round(cash / 100)} 元（${ratio.toFixed(1)} 倍，超 4 倍即触发）`,
+      };
+    },
+  },
 ];
 
 // ===== 六、主入口 =====
@@ -540,13 +565,21 @@ function evaluateDiagnosis(input) {
   if (!hasCoreFinance) {
     level = 'insufficient';
     levelLabel = '数据不足';
-  } else if (coverage < TUNABLE.coverageMin) {
-    level = 'insufficient';
-    levelLabel = '数据不足';
   } else if (redlineHit.length > 0) {
-    // 🔴 红线一旦命中，直接高危，不看总分（原模型口径）
+    // 🔴 R774（李老师拍板「红线是第一生死线，其他打分只是辅助证明」）：
+    //   **红线优先于覆盖率闸门**。改前顺序是「覆盖率不足 ⇒ 数据不足」排在红线前面，
+    //   后果是：一家现金只够撑 0.5 个月的店，因为毛利/口碑没填（覆盖率 40%），
+    //   整页只显示"数据不足" —— **红线被一条覆盖率规则吞掉了**。
+    //   红线的第一性数据是「现金 / 商圈 / 食安 / 租约 / 借贷」，不是账本完整度；
+    //   这些都能判且已判出命中，就不该因为"评分项没填够"而闭嘴。
     level = 'critical';
     levelLabel = '高危';
+  } else if (coverage < TUNABLE.coverageMin) {
+    // 覆盖率不足且**没有红线命中**时才退到「数据不足」：
+    //   此时分数不可信（归一化会虚高），但至少可以告诉老板"红线都判过了，没发现问题"，
+    //   由前端按 redlineUnjudged 的数量分两种说法（见 result.js planInsufficient）。
+    level = 'insufficient';
+    levelLabel = '数据不足';
   } else if (score === null) {
     level = 'insufficient';
     levelLabel = '数据不足';

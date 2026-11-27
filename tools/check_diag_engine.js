@@ -60,8 +60,8 @@ check('E-① 11 个指标全部在列', E.METRICS.length === 11, `${E.METRICS.le
 check('E-② 权重合计恒为 100（不是 100 就说明有人改了权重没补平）',
   E.METRICS.reduce((s, m) => s + m.weight, 0) === 100,
   String(E.METRICS.reduce((s, m) => s + m.weight, 0)));
-check('E-③ 6 条红线在列，编号 R1~R6 连续',
-  E.REDLINES.length === 6 && E.REDLINES.map((r) => r.code).join(',') === 'R1,R2,R3,R4,R5,R6',
+check('E-③ 7 条红线在列，编号 R1~R7 连续（R7 储值兑付为 R774 新增）',
+  E.REDLINES.length === 7 && E.REDLINES.map((r) => r.code).join(',') === 'R1,R2,R3,R4,R5,R6,R7',
   E.REDLINES.map((r) => r.code).join(','));
 
 check('E-④ 满数据样本：覆盖率 100、全部指标有分（若这里不是 100，说明有指标读的字段名写错了）',
@@ -247,6 +247,46 @@ check('E-⑱ 城市系数真生效：一线人工/房租警戒上抬后，同一
   })).metrics.find((m) => m.key === 'cash');
   check('M-④ 反证：净赚 3 万 / 月供 1 万 ⇒ 现金在增加，不得说「撑几个月」（否则还贷重的盈利店被误判危险）',
     lWin.score === 100 && /增加/.test(lWin.note) && !/撑/.test(lWin.note), lWin.note);
+
+  // 🔴 M-⑦（R774）：**红线优先于覆盖率闸门** —— 李老师「红线是第一生死线，其他打分只是辅助证明」。
+  //   改前：「覆盖率 <70% ⇒ 数据不足」排在红线判定**之前** ⇒ 一家现金只够撑 0.5 个月的店，
+  //   因为毛利/口碑没填，整页只显示「数据不足」，**红线被覆盖率规则吞掉**。
+  //   构造：只有营收/利润/现金三项有数（覆盖率 ~40%），现金 5 千 / 月亏 1 万 ⇒ R1 必命中。
+  const lowCovRedline = E.evaluateDiagnosis({
+    bizType: 'dining',
+    revenueFen: 10000000, netProfitFen: -1000000, avgMonthlyNetLossFen: 1000000,
+    cashOnHandFen: 500000, lossMonths: 2,
+  });
+  check('M-⑦ 🔴 红线优先于覆盖率：红线命中但覆盖率不足 ⇒ 必须判高危，不得判「数据不足」',
+    lowCovRedline.level === 'critical' && lowCovRedline.redlineHit.some((r) => r.code === 'R1'),
+    `level=${lowCovRedline.level} coverage=${lowCovRedline.coverage} 红线=${lowCovRedline.redlineHit.map((r) => r.code).join(',') || '无'}`);
+
+  // M-⑥ 反向：覆盖率不足且**无红线命中** ⇒ 仍判「数据不足」（不能反过来把没数据说成健康）
+  const lowCovClean = E.evaluateDiagnosis({
+    bizType: 'dining',
+    revenueFen: 10000000, netProfitFen: 500000, avgMonthlyNetLossFen: -500000,
+    cashOnHandFen: 80000000, lossMonths: 0,
+  });
+  check('M-⑧ 反向：覆盖率不足且无红线 ⇒ 仍判「数据不足」（不许把没数据说成健康）',
+    lowCovClean.level === 'insufficient', `level=${lowCovClean.level} coverage=${lowCovClean.coverage}`);
+
+  // M-⑨/M-⑩（R774）：储值红线 R7 —— 储值 40 万 / 现金 8 万 = 5 倍 ⇒ 命中；20 万 / 8 万 = 2.5 倍 ⇒ 不命中
+  const R7_BASE = {
+    bizType: 'dining', revenueFen: 10000000, netProfitFen: 200000, avgMonthlyNetLossFen: -200000,
+    cashOnHandFen: 8000000, lossMonths: 0,
+  };
+  const r7Hit = E.evaluateDiagnosis(Object.assign({}, R7_BASE, { storedBalanceFen: 40000000 })).redlineHit.find((r) => r.code === 'R7');
+  const r7Miss = E.evaluateDiagnosis(Object.assign({}, R7_BASE, { storedBalanceFen: 20000000 })).redlineHit.find((r) => r.code === 'R7');
+  check('M-⑨ 🔴 储值红线 R7：储值 40 万 / 现金 8 万（5 倍）⇒ 命中；20 万（2.5 倍）⇒ 不命中',
+    !!r7Hit && !r7Miss, `5倍=${r7Hit ? '命中' : '未命中'} / 2.5倍=${r7Miss ? '命中' : '未命中'}`);
+
+  // 空着 ≠ 填 0：没填储值 ⇒ 该项「未判定」（不是"没问题"）；填 0 ⇒ 判过且不命中
+  const r7Blank = E.evaluateDiagnosis(R7_BASE).redlineUnjudged.some((r) => r.code === 'R7');
+  const r7Zero = E.evaluateDiagnosis(Object.assign({}, R7_BASE, { storedBalanceFen: 0 }));
+  check('M-⑩ 反证：没填储值 ⇒ R7 判「未判定」（不许谎报成"没问题"）；填 0 ⇒ 判过且不命中',
+    r7Blank && !r7Zero.redlineUnjudged.some((r) => r.code === 'R7')
+      && !r7Zero.redlineHit.some((r) => r.code === 'R7'),
+    `空白=${r7Blank ? '未判定✓' : '✗'} / 填0=${r7Zero.redlineHit.length === 0 ? '不命中✓' : '✗'}`);
 }
 
 // ---------- M 组：R614 营收趋势换源（防「客流人次」偷偷回到判据里）----------
