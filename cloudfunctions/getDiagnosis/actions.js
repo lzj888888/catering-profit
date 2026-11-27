@@ -152,17 +152,22 @@ const RULES = [
 ];
 
 /** 分档（智库 V断-3 原文：<3月别大动作砍固定成本 / 3-6月可试1-2动作 / >6月别慌） */
+// 🔴 R778：分档边界抽成常量 —— 判据和文案原本各自写死 3/6（与 R777 抓到的 R6 同族），
+//   改判据不改文案 ⇒ 老板看到「撑不到 3 个月」而系统实际按 4 个月判，反之亦然。
+//   文案用插值 ⇒ 常量一改，两处同时跟着变，不需要记得同步两处。
+const SURVIVAL_TIER_TH = { urgent: 3, cautious: 6 };
+
 function survivalTier(months) {
   if (months === null) return 'unknown';
-  if (months < 3) return 'urgent';
-  if (months < 6) return 'cautious';
+  if (months < SURVIVAL_TIER_TH.urgent) return 'urgent';
+  if (months < SURVIVAL_TIER_TH.cautious) return 'cautious';
   return 'steady';
 }
 
 const TIER_TEXT = {
-  urgent: '账上的钱撑不到 3 个月：这一两周只做「砍固定成本」这类不花钱的动作，先别做装修、扩店、大改菜单。',
-  cautious: '还能撑 3–6 个月：可以试 1–2 个动作，每做完一个看一次下月账有没有变化，别一次全改。',
-  steady: '还能撑 6 个月以上：不用慌，按下面顺序一项一项来，改完一个月再看数。',
+  urgent: `账上的钱撑不到 ${SURVIVAL_TIER_TH.urgent} 个月：这一两周只做「砍固定成本」这类不花钱的动作，先别做装修、扩店、大改菜单。`,
+  cautious: `还能撑 ${SURVIVAL_TIER_TH.urgent}–${SURVIVAL_TIER_TH.cautious} 个月：可以试 1–2 个动作，每做完一个看一次下月账有没有变化，别一次全改。`,
+  steady: `还能撑 ${SURVIVAL_TIER_TH.cautious} 个月以上：不用慌，按下面顺序一项一项来，改完一个月再看数。`,
   unknown: '',
 };
 
@@ -293,4 +298,4 @@ function buildActions(d) {
   };
 }
 
-module.exports = { RULES, TIER_TEXT, TIER_LIMIT, survivalTier, buildActions, yuan };
+module.exports = { RULES, TIER_TEXT, TIER_LIMIT, SURVIVAL_TIER_TH, survivalTier, buildActions, yuan };

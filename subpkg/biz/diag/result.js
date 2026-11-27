@@ -112,6 +112,7 @@ Page({
     planTierText: '',
     planActions: [],
     planInsufficient: '',
+    planRedlineNote: '',
     watchFocus: '',
     planPrecheck: '',
     planEmpty: '',
@@ -306,6 +307,16 @@ Page({
         : (miss.length > 0 ? T.actInsufficientManual : T.actInsufficient))
       : '';
 
+    // 🔴 R778：数据不足时把「红线判过没有」说清楚 —— 引擎注释早承诺"前端按 redlineUnjudged 分两种说法"，
+    //   但一直没实现：老板只看到「账还不够」，白来一趟。这里补上，且**未判定绝不说成没问题**。
+    //   两种说法是并列信息（缺什么数据 + 硬指标状态），不是互斥分支。
+    const unjudgedN = (dg.redlineUnjudged || []).length;
+    const planRedlineNote = (level === 'insufficient')
+      ? (unjudgedN === 0
+        ? T.redlineAllClear
+        : T.redlineSomeUnknown.replace('{n}', String(unjudgedN)))
+      : '';
+
     // 🔴 R772：需关注档要指出「当前最该盯哪一项」——按"最容易改"挑，**不按"丢分最多"挑**。
     //   为什么：丢分多 ≠ 能改（净利率丢 15 分，但它是综合结果，老板不知道从哪下手）；
     //   老板能自己动手、30–60 天见得到变化的，才值得先指出来。
@@ -368,6 +379,7 @@ Page({
       planTierText: planRaw.tierText || '',
       planActions,
       planInsufficient,
+      planRedlineNote,
       watchFocus,
       planPrecheck,
       planEmpty,

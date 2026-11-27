@@ -307,7 +307,7 @@ const CASES = [
   //   删掉 A-③（漏字段必须点名）或 B-②（onShow 必须真调 load）就静默退回事故状态，
   //   而门禁照旧全绿。9 条 = A 4 + B 3 + C 2。
   { key: 'check_diag_facts_sync', rel: 'tools/check_diag_facts_sync.js' }, // 19 条（A 4 + B 3 + C 2 + D 7 + E 3）
-  { key: 'check_redline_sync', rel: 'tools/check_redline_sync.js' },      // 14 条（A 抽取器自证 2 + B 逐条比对 6 + C 反向裸阈值 3 + D 覆盖面 3；R777）
+  { key: 'check_redline_sync', rel: 'tools/check_redline_sync.js' },      // 19 条（A 抽取器自证 2 + B 逐条比对 6 + C 反向裸阈值 3 + D 覆盖面 4；R778 加 E 段 4 条分档文案）
   { key: 'check_diag_actions', rel: 'tools/check_diag_actions.js' },       // 39 条（A 7 + B 10 + C 7 + D 5 + E 4 + F 6；R766 补 C⑤~⑦：数据不足时已算出的危险信号不许被吞）
   { key: 'check_m2_input_box', rel: 'tools/check_m2_input_box.js' },       // 13 条（A 10 + B 4 去掉重复计数见实跑）
   { key: 'check_m2_semantic_diff', rel: 'tools/check_m2_semantic_diff.js' }, // 14 条（A 7 + B 7）

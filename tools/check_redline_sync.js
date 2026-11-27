@@ -177,6 +177,53 @@ ok('D-② 双副本 terms 字节一致（页面与规格各一份，改一处不
 ok('D-③ 红线文案里不得出现「可扛上限」这类已撤销概念（R615 已删，R772 才发现还挂在 R2 上）',
   !JSON.stringify(SIG).includes('可扛上限'), 'R2 文案已改口径');
 
+// R778：数据不足时「未判定」绝不能说成「没问题」——这是这套模型最危险的谎。
+ok('D-④ 数据不足两条文案就位：全判过才说「没发现致命问题」，有未判必须明说不能算没问题',
+  /没发现致命问题/.test(SIG.redlineAllClear || '')
+    && /\{n\}/.test(SIG.redlineSomeUnknown || '')
+    && /不能算/.test(SIG.redlineSomeUnknown || '')
+    && /redlineAllClear/.test(READ('subpkg/biz/diag/result.js'))
+    && /redlineSomeUnknown/.test(READ('subpkg/biz/diag/result.js')),
+  '全判过=' + (SIG.redlineAllClear || '').slice(0, 20) + '… / 未判=' + (SIG.redlineSomeUnknown || '').slice(0, 24) + '…');
+
+// ============ 六、E 段：处方层分档文案 ↔ 分档边界（R778） ============
+sec('E · 处方层分档文案 ↔ 判据边界（同族：判据写死 3/6、文案也写死 3/6）');
+{
+  const actSrc = READ('cloudfunctions/getDiagnosis/actions.js');
+  let A = null;
+  try { A = require(path.join(ROOT, 'cloudfunctions/getDiagnosis/actions.js')); } catch (e) { A = null; }
+  const THN = A && A.SURVIVAL_TIER_TH;
+
+  ok('E-① 分档阈值已导出且边界行为与常量一致（2.9→急 / 3→可试 / 5.9→可试 / 6→稳）',
+    !!THN && A.survivalTier(THN.urgent - 0.1) === 'urgent'
+      && A.survivalTier(THN.urgent) === 'cautious'
+      && A.survivalTier(THN.cautious - 0.1) === 'cautious'
+      && A.survivalTier(THN.cautious) === 'steady',
+    THN ? JSON.stringify(THN) : '未导出 SURVIVAL_TIER_TH');
+
+  ok('E-② 三档文案里的月数 == 判据常量（文案由插值生成，常量一改两处同变）',
+    !!THN && !!A.TIER_TEXT
+      && A.TIER_TEXT.urgent.includes(`${THN.urgent} 个月`)
+      && A.TIER_TEXT.cautious.includes(`${THN.urgent}–${THN.cautious} 个月`)
+      && A.TIER_TEXT.steady.includes(`${THN.cautious} 个月以上`),
+    THN ? `urgent=${THN.urgent} cautious=${THN.cautious}` : '无阈值');
+
+  // 源码级：TIER_TEXT 定义区内不许出现写死的「N 个月」（插值 ${...} 不含数字字面量，天然不匹配）
+  const tStart = actSrc.indexOf('const TIER_TEXT');
+  const tEnd = actSrc.indexOf('};', tStart);
+  const tSeg = tStart >= 0 && tEnd > tStart ? actSrc.slice(tStart, tEnd) : '';
+  const hard = [];
+  const reMonth = /(\d+(?:\.\d+)?)\s*个月/g;
+  let hm;
+  while ((hm = reMonth.exec(tSeg))) hard.push(hm[0]);
+  ok('E-③ TIER_TEXT 源码区内无写死的「N 个月」（必须走 SURVIVAL_TIER_TH 插值）',
+    tSeg.length > 0 && hard.length === 0,
+    hard.length ? '写死：' + hard.join(', ') : '全部插值');
+
+  ok('E-④ 数据不足时不给分档结论（unknown 文案必须为空，不能凭空说"还能撑 X 个月"）',
+    !!A && A.TIER_TEXT.unknown === '', A && A.TIER_TEXT ? JSON.stringify(A.TIER_TEXT.unknown) : '未读到');
+}
+
 // ============ 汇总 ============
 console.log(`\n===== 红线文案与判据一致性守卫结果：${pass} 通过 / ${failN} 失败 =====`);
 process.exit(failN === 0 ? 0 : 1);
