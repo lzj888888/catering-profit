@@ -67,6 +67,9 @@ module.exports = {
   evaluateDiagnosis: require('./cx_diagnosisEngine').evaluateDiagnosis,
   // A20-bis（2026-11-05）：补录枚举白名单 —— 校验层（saveShopSetting）与引擎认同一张表，禁止自抄。
   DIAG_ENUM: require('./cx_diagnosisEngine').DIAG_ENUM,
+  // 🔴 R777：红线阈值常量（单源）。伴侣守卫 tools/check_redline_sync.js 把中文文案里的
+  //   数字与本表逐条比对 —— R772「文案改了代码没改」那类漂移由此兜住。
+  REDLINE_TH: require('./cx_diagnosisEngine').REDLINE_TH,
 
   // A14（2026-11-05）：退款规则唯一判定处（纯函数，零 IO）。
   //   🔴 为什么放 common：下单、退款、客服后台三处都要判"能不能退"，写三份必然三种结论。

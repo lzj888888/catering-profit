@@ -557,5 +557,45 @@ sec('W 弱面（其它 .md 提及本库，只明示不判红）');
     `${hits.length} 份：${hits.slice(0, 4).join('、')}${hits.length > 4 ? ' …' : ''}（只明示不判红）`);
 }
 
+// ===== F 段（R777）：参考带上沿 ≡ 诊断健康线 =====
+// 🔴 为什么加这段：`BANDS[*].rent` 的**上沿同时被当成"好的分界线"**（levelOf 超它即 warn「偏高」），
+//   而诊断引擎另有 `BIZ_HARD.rentHealthy`（健康线）在不断分。两个数一旦不等，
+//   同一家店会出现「M1 说偏高、诊断说健康」——R776 把茶饮放宽到 22/25 时本表没跟上，正是这一例。
+//   ⇒ rent 的上沿必须恒等于健康线；labor 的 warn 线同理（BIZ_HARD.laborWarn）。
+sec('F 参考带上沿 ≡ 诊断健康线（防"M1 说偏高、诊断说健康"）');
+{
+  let ENG = null;
+  try { ENG = require(path.join(ROOT, 'cloudfunctions/common/diagnosisEngine.js')); } catch (e) { ENG = null; }
+  check('F-① 诊断引擎可读且导出 BIZ_HARD（读不到即红，防扫空恒绿）',
+    !!(ENG && ENG.BIZ_HARD && code && code.BANDS),
+    ENG && ENG.BIZ_HARD ? Object.keys(ENG.BIZ_HARD).join(',') : '未读到');
+
+  if (ENG && ENG.BIZ_HARD && code && code.BANDS) {
+    const named = code.BIZ_KEYS.filter((b) => b !== 'other');
+    const bad = [];
+    named.forEach((b) => {
+      const band = code.BANDS[b];
+      const hard = ENG.BIZ_HARD[b];
+      if (!band || !hard) { bad.push(`${b}:缺表`); return; }
+      if (band.rent[1] !== hard.rentHealthy) bad.push(`${b}.rent 上沿 ${band.rent[1]} ≠ 健康线 ${hard.rentHealthy}`);
+      if (band.labor[1] !== hard.laborWarn) bad.push(`${b}.labor 上沿 ${band.labor[1]} ≠ 警戒 ${hard.laborWarn}`);
+    });
+    check('F-② 4 个实名业态：BANDS.rent 上沿 ≡ rentHealthy、BANDS.labor 上沿 ≡ laborWarn', bad.length === 0,
+      bad.length ? '漂移：' + bad.join(' | ') : named.map((b) => `${b} ${code.BANDS[b].rent[1]}/${ENG.BIZ_HARD[b].rentHealthy}`).join(' '));
+
+    // other 是"并集取最大"的派生量 ⇒ 断言它等于 4 类的最大，而不是等于 other 自己的健康线
+    const maxRent = Math.max(...named.map((b) => ENG.BIZ_HARD[b].rentHealthy));
+    const maxLabor = Math.max(...named.map((b) => ENG.BIZ_HARD[b].laborWarn));
+    check('F-③ 兜底 other：rent 上沿 = 4 类健康线最大值、labor 上沿 = 4 类警戒最大值（派生量，不许自定）',
+      code.BANDS.other.rent[1] === maxRent && code.BANDS.other.labor[1] === maxLabor,
+      `other rent ${code.BANDS.other.rent[1]}(应 ${maxRent}) / labor ${code.BANDS.other.labor[1]}(应 ${maxLabor})`);
+
+    // 行为级：茶饮 20% 在两边必须同一个结论（这是当初抓到的原病例）
+    const lvCafe = code.levelOf(20, code.bandOf('cafe', 'rent', 'tier2').lo, code.bandOf('cafe', 'rent', 'tier2').hi, 'cost');
+    check('F-④ 原病例回归：茶饮房租 20% ⇒ M1 不再判「偏高」（健康线 22 以内），与诊断同为「健康」',
+      lvCafe === 'ok', `M1 level=${lvCafe}（应 ok）/ 诊断健康线 ${ENG.BIZ_HARD.cafe.rentHealthy}`);
+  }
+}
+
 console.log(`\n===== 餐饮指标参考库口径守卫结果：${pass} 通过 / ${failN} 失败 =====`);
 process.exit(failN === 0 ? 0 : 1);

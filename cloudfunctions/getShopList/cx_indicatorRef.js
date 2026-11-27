@@ -112,11 +112,14 @@ const BANDS = {
   fastfood: { grossMargin: [60, 66], labor: [16, 20], rent: [8, 15], mkt: [3, 8], energy: [2, 4], manage: [4, 8] },
   dining: { grossMargin: [60, 66], labor: [17, 22], rent: [9, 15], mkt: [5, 10], energy: [3, 5], manage: [4, 8] },
   hotpot: { grossMargin: [55, 65], labor: [15, 18], rent: [8, 15], mkt: [5, 10], energy: [4, 6], manage: [4, 8] },
-  cafe: { grossMargin: [62, 70], labor: [15, 18], rent: [9, 18], mkt: [3, 8], energy: [1, 3], manage: [4, 8] },
+  // 🔴 R777：cafe.rent 上沿 18→22。上沿就是『健康线』，必须与诊断引擎 BIZ_HARD.rentHealthy 同值
+  //   （R776 把茶饮健康线放宽到 22/警戒 25，本表没跟上 ⇒ M1 说茶饮 20% "偏高"、诊断说"健康"，同期两结论）。
+  cafe: { grossMargin: [62, 70], labor: [15, 18], rent: [9, 22], mkt: [3, 8], energy: [1, 3], manage: [4, 8] },
   // 🔴 通用兜底（4 类带**并集**，随上面 8 项改值同步重算）：grossMargin[55,70]/labor[15,22]/rent[8,18]/mkt[3,10]/energy[1,6]/manage[4,8]
   //   —— 满足 C-⑫（gain.hi≥55、cost.lo≤警戒线：rent.lo8≤15 / labor.lo15≤20）；前端标注"未细分行业，仅供粗估"。
   //   ⚠️ 它是**派生量不是独立口径**：4 类带任一改动后，必须按「lo 取各类最小、hi 取各类最大」重算，否则兜底会收紧到漏判。
-  other: { grossMargin: [55, 70], labor: [15, 22], rent: [8, 18], mkt: [3, 10], energy: [1, 6], manage: [4, 8] },
+  //   🔴 R777：rent 上沿 18→22（cafe 放宽到 22 后，按"hi 取最大"必须跟到 22；不改会收紧成漏判）。
+  other: { grossMargin: [55, 70], labor: [15, 22], rent: [8, 22], mkt: [3, 10], energy: [1, 6], manage: [4, 8] },
 };
 
 // 🔴 R386（AI 解释锚点）：BANDS 必须有**版本号**，否则同一句「你的毛利率低于行业带」

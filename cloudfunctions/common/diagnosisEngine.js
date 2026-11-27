@@ -409,7 +409,30 @@ const METRICS = [
   },
 ];
 
-// ===== 五、6 条红线（一票否决）=====
+// ===== 四-2、红线阈值常量（R777 新增 · 单源）=====
+// 🔴 为什么必须抽出来：R772 我把 sigR6 文案改成「不到 1 年到期、涨幅超过三成」，
+//   而 R6 判据当时还是 `m <= 3 && inc >= 20` —— **文案改了、代码没改**，
+//   老板看到的解释和系统实际判断标准差了三倍。这类漂移靠人眼捡不住（R2 的"可扛上限"
+//   也是人工发现的），所以：所有红线阈值集中在这里，判据只许引用、evidence 只许插值，
+//   再由 `tools/check_redline_sync.js` 把**中文文案里的数字**与这里的常量逐条比对。
+// ⚠️ 改这里的任何一个数，必须同步改 TERMS.diagResult.sigR* 的表述，否则守卫判红。
+const REDLINE_TH = {
+  R1: { months: 1 },                                                  // 现金撑不到 1 个月
+  R2: { bleedPct: TUNABLE.bleedRateWarnPct, safeMonthsKey: 'cashSafeMonthsByBiz' }, // 失血率≥20% 且撑不到安全线
+  // R3 是枚举（商圈五档里只有 structural_loss 触发），无数字阈值；R4 是布尔 + 采集窗口。
+  //   🔴 R777：把 R4 的「近 1 年」窗口也收到这里 —— 补录问法原本没限定时间，
+  //   而结果页写"近 12 个月发生过"，老板答的可能是一年前的旧事 ⇒ 文案替他改了答案。
+  R3: { triggerKey: 'structural_loss' },
+  R4: { lookbackMonths: 12 },
+  R5: { months: 3 },                                                  // 靠借钱 + 撑不过 3 个月
+  // 🔴 R777：按三司会诊 §六 裁决改口径（<12 月 + 涨≥30% + 净利率<5%）。
+  //   · 原代码 m<=3：只盯"马上到期"，漏掉"还剩 8 个月但明年要涨三成"这种最典型的租约断崖
+  //   · 原代码 r<0：要等已经亏损才算，太晚 —— 会诊裁决改成净利率<5%（不到 5% 就已经没有抗涨空间）
+  R6: { leaseMonths: 12, increasePct: 30, netMarginPct: 5 },
+  R7: { ratio: 4 },                                                   // 储值余额 ÷ 账面现金 > 4
+};
+
+// ===== 五、7 条红线（一票否决）=====
 // 每条返回 { code, label, hit:boolean, judged:boolean, evidence:string }
 // 🔴 judged=false = 数据不足**未判定**（不是"没命中"）。上层必须把这两者分开呈现：
 //    把「没数据」显示成「安全」是这套模型最危险的谎 —— 老板会以为查过了没问题。
@@ -427,7 +450,8 @@ const REDLINES = [
       if (o.outflow === 0) return { judged: true, hit: false, evidence: (o.repay > 0 ? '还完每月的账刚好打平，现金不增不减' : '当前不亏损、也不结余，现金不增不减') };
       if (o.outflow < 0) return { judged: true, hit: false, evidence: '当前不亏损，现金在积累' };
       const months = cash / o.outflow;
-      return { judged: true, hit: months < 1, evidence: `照当前亏损速度还能撑 ${months.toFixed(1)} 个月（<1 个月即触发）` };
+      const th = REDLINE_TH.R1.months;
+      return { judged: true, hit: months < th, evidence: `照当前亏损速度还能撑 ${months.toFixed(1)} 个月（<${th} 个月即触发）` };
     },
   },
   {
@@ -454,8 +478,8 @@ const REDLINES = [
       //   但它的现金安全判断仍然是准的。
       const bleed = (burn / rev) * 100;
       const months = cash / o.outflow;
-      const warn = TUNABLE.bleedRateWarnPct;
-      const safe = tOf('cashSafeMonthsByBiz', i.bizType);
+      const warn = REDLINE_TH.R2.bleedPct;
+      const safe = tOf(REDLINE_TH.R2.safeMonthsKey, i.bizType);
       const m = num(i.lossMonths);
       const hit = bleed >= warn && months < safe;
       return {
@@ -500,7 +524,8 @@ const REDLINES = [
       if (o.outflow === 0) return { judged: true, hit: false, evidence: (o.repay > 0 ? `借贷 ${d}，但还完账刚好打平（不像输血维持）` : `借贷 ${d}，但当前不亏损也不结余（不像输血维持）`) };
       if (o.outflow < 0) return { judged: true, hit: false, evidence: `借贷 ${d}，但当前不亏损（不像输血维持）` };
       const months = cash / o.outflow;
-      return { judged: true, hit: d === 'heavy' && months < 3, evidence: `借贷 ${d}，照当前亏损速度还能撑 ${months.toFixed(1)} 个月（<3 且大量持续即触发）` };
+      const th = REDLINE_TH.R5.months;
+      return { judged: true, hit: d === 'heavy' && months < th, evidence: `借贷 ${d}，照当前亏损速度还能撑 ${months.toFixed(1)} 个月（<${th} 且大量持续即触发）` };
     },
   },
   {
@@ -508,8 +533,15 @@ const REDLINES = [
     check: (i) => {
       const m = num(i.leaseMonthsLeft); const inc = num(i.renewIncreasePct); const r = pct(i.netProfitFen, i.revenueFen);
       if (m === null || inc === null || r === null) return { judged: false, evidence: '缺剩余租期/续租涨幅/净利率，无法判定' };
-      const hit = m <= 3 && inc >= 20 && r < 0;
-      return { judged: true, hit, evidence: `剩余 ${m} 个月，续租涨 ${inc}%，净利率 ${r.toFixed(1)}%` };
+      // 🔴 R777：判据与 sigR6 文案对齐（<12 月 + 涨≥30% + 净利率<5%）。
+      //   改前是 m<=3 / inc>=20 / r<0 —— 三个数都比文案严，导致"文案说会触发、实际不触发"。
+      const th = REDLINE_TH.R6;
+      const hit = m < th.leaseMonths && inc >= th.increasePct && r < th.netMarginPct;
+      return {
+        judged: true, hit,
+        evidence: `剩余 ${m} 个月，续租涨 ${inc}%，净利率 ${r.toFixed(1)}%`
+          + `（触发条件：剩余<${th.leaseMonths} 个月 且 涨幅≥${th.increasePct}% 且 净利率<${th.netMarginPct}%）`,
+      };
     },
   },
   {
@@ -529,11 +561,12 @@ const REDLINES = [
       if (cash <= 0) {
         return { judged: true, hit: true, evidence: `顾客卡里还有 ${Math.round(stored / 100)} 元没消费，账上现金为 0` };
       }
+      const th = REDLINE_TH.R7.ratio;
       const ratio = stored / cash;
       return {
         judged: true,
-        hit: ratio > 4,
-        evidence: `顾客卡里还有 ${Math.round(stored / 100)} 元没消费，账上现金 ${Math.round(cash / 100)} 元（${ratio.toFixed(1)} 倍，超 4 倍即触发）`,
+        hit: ratio > th,
+        evidence: `顾客卡里还有 ${Math.round(stored / 100)} 元没消费，账上现金 ${Math.round(cash / 100)} 元（${ratio.toFixed(1)} 倍，超 ${th} 倍即触发）`,
       };
     },
   },
@@ -668,6 +701,7 @@ module.exports = {
   RENT_COEF,
   LABOR_COEF,
   TUNABLE,
+  REDLINE_TH,
   tOf,
   LEVEL_CUT,
   DIAG_ENUM,

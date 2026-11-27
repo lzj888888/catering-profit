@@ -120,13 +120,18 @@ check('E-⑫ 🔴 「没数据」必须落在 redlineUnjudged，**不得**被当
 check('E-⑬ 反恒真：食安事件填 true ⇒ R4 必须命中（证明 E-⑫ 不是"永远未判定"）',
   E.evaluateDiagnosis(Object.assign({}, FULL, { foodSafetyEvent: true })).redlineHit.some((r) => r.code === 'R4'));
 
-// R6 三条件同时成立才触发
-const r6Hit = Object.assign({}, FULL, { leaseMonthsLeft: 2, renewIncreasePct: 25, netProfitFen: -1000000 });
-const r6No = Object.assign({}, FULL, { leaseMonthsLeft: 2, renewIncreasePct: 25, netProfitFen: 1000000 });
-check('E-⑭ 🔴 R6 必须**三个条件同时**成立（租期≤3 + 涨≥20% + 亏损）：只满足两条不得触发',
-  E.evaluateDiagnosis(r6Hit).redlineHit.some((r) => r.code === 'R6')
-  && !E.evaluateDiagnosis(r6No).redlineHit.some((r) => r.code === 'R6'),
-  `三条件全满足=命中 / 仅缺亏损=${E.evaluateDiagnosis(r6No).redlineHit.length} 条命中`);
+// 🔴 R777：R6 口径按三司会诊裁决改为「剩余<12 月 + 涨幅≥30% + 净利率<5%」。
+//   本断言同步升级为**逐条件剥离**：每抽掉一个条件都必须不触发（只测"全满足/缺一条"抓不住漏改）。
+const r6Of = (extra) => E.evaluateDiagnosis(Object.assign({}, FULL, extra));
+const R6_OK = { leaseMonthsLeft: 8, renewIncreasePct: 35, netProfitFen: 400000 }; // 营收 1000 万 ⇒ 净利率 4%
+const r6All = r6Of(R6_OK).redlineHit.some((r) => r.code === 'R6');
+const r6NoLease = r6Of(Object.assign({}, R6_OK, { leaseMonthsLeft: 18 })).redlineHit.some((r) => r.code === 'R6');
+const r6NoInc = r6Of(Object.assign({}, R6_OK, { renewIncreasePct: 10 })).redlineHit.some((r) => r.code === 'R6');
+const r6NoLoss = r6Of(Object.assign({}, R6_OK, { netProfitFen: 3000000 })).redlineHit.some((r) => r.code === 'R6'); // 净利率 30%
+check('E-⑭ 🔴 R6 三条件同时成立才触发（剩余<12 月 + 涨幅≥30% + 净利率<5%），剥离任一条件都不得触发',
+  r6All && !r6NoLease && !r6NoInc && !r6NoLoss,
+  `全满足=${r6All ? '命中✓' : '✗'} / 租期够长=${r6NoLease ? '误触发✗' : '不触发✓'}`
+    + ` / 涨幅小=${r6NoInc ? '误触发✗' : '不触发✓'} / 净利率高=${r6NoLoss ? '误触发✗' : '不触发✓'}`);
 
 // 短板排序按 失分×权重
 const anchors = base.anchors;
