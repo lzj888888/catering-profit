@@ -108,6 +108,25 @@ sec('B 五条硬标准（防退化成正确的废话）');
   ok('B-⑨ 【房租警戒单源】处方层不得硬编码 15，必须取引擎 RENT_WARN_HI × 城市系数',
     !/rentWarnPct\s*=\s*15/.test(read('cloudfunctions/getDiagnosis/actions.js'))
     && /RENT_WARN_HI/.test(read('cloudfunctions/getDiagnosis/actions.js')));
+
+  // 🔴 B-⑩/B-⑪（R775）：处方层是**第二个**算「能撑几个月」的地方（第三个是分档 tier）。
+  //   漏改一处就会出现「指标卡说 3.6 个月、处方说 8 个月」的同页矛盾（R612/R615 踩过两次）。
+  //   B-⑩ 源码级：runwayMonths 必须走 outflowFen（含月供），不得直接用 burnFen。
+  const ACT_SRC = read('cloudfunctions/getDiagnosis/actions.js');
+  ok('B-⑩ 🔴 处方层可撑月数与引擎同源（含月供）：runwayMonths 不得只用 burnFen',
+    /outflowFen/.test(ACT_SRC) && !/cashFen\s*\/\s*burnFen/.test(ACT_SRC));
+
+  //   B-⑪ 行为级：同样 8 万现金 / 月亏 1 万，加月供 1.25 万后分档必须从「6 个月以上」掉到「3–6 个月」。
+  const REPAY_INPUT = {
+    bizType: 'dining', cityTier: 'tier2',
+    revenueFen: 10000000, netProfitFen: -1000000, avgMonthlyNetLossFen: 1000000,
+    cashOnHandFen: 8000000, lossMonths: 3, monthlyRepayFen: 1250000,
+    foodCostRatePct: 40, laborCostRatePct: 22, rentRatePct: 20,
+    ratingScore: 4.4, businessDistrict: 'stable', leaseMonthsLeft: 30, renewIncreasePct: 5,
+  };
+  const repayPlan = ACTIONS.buildActions({ diagnosis: ENG.evaluateDiagnosis(REPAY_INPUT), derived: {}, input: REPAY_INPUT });
+  ok('B-⑪ 🔴 月供进分档：8 万现金/月亏 1 万/月供 1.25 万 ⇒ 分档必须说「3–6 个月」，不得是「6 个月以上」',
+    /3[–-]6 个月/.test(repayPlan.tierText), repayPlan.tierText || '（空）');
 }
 
 // ===================== C fail-closed =====================

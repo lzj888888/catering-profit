@@ -187,22 +187,35 @@ function buildActions(d) {
   const cashFen = num(input.cashOnHandFen);
   const grossPct = num(input.foodCostRatePct);
   const rentWarnPct = rentWarnOf(input.bizType, input.cityTier); // 引擎 RENT_WARN_HI × 城市系数，单源
+  // 🔴 R775：**现金流出必须与引擎 `outflowOf` 同源**。
+  //   本文件是第二个算「能撑几个月」的地方（第三个是分档），漏一处就出现
+  //   「指标卡说 3.6 个月、处方说 8 个月」的同页矛盾 —— R612/R615 已经踩过两次。
+  //   口径：经营亏损（缺月均则用当月净利反推）+ 每月还账本金；本金不进损益表，所以必须单独加。
+  const repayFen = num(input.monthlyRepayFen);
+  let outflowFen = null;
+  if (burnFen !== null) {
+    outflowFen = burnFen + (repayFen === null ? 0 : repayFen);
+  } else if (input.netProfitFen !== null && input.netProfitFen !== undefined) {
+    const npFen = num(input.netProfitFen);
+    outflowFen = npFen === null ? null : (-npFen + (repayFen === null ? 0 : repayFen));
+  }
   const facts = {
     rentPct: num(input.rentRatePct),
     rentWarnPct,
     laborPct: num(input.laborCostRatePct),
     grossPct: grossPct === null ? '' : (100 - grossPct).toFixed(1),
     burnYuan: burnFen === null ? '' : yuan(burnFen),
+    // 失血率：只认**经营亏损**（本金不是经营亏损），与引擎 loss 项同口径
     bleedPct: (burnFen !== null && burnFen > 0 && revFen !== null && revFen > 0)
       ? ((burnFen / revFen) * 100).toFixed(1) : '',
     lossMonths: num(input.lossMonths) === null ? '若干' : String(num(input.lossMonths)),
-    runwayMonths: (cashFen !== null && burnFen !== null && burnFen > 0)
-      ? (cashFen / burnFen).toFixed(1) : '',
+    runwayMonths: (cashFen !== null && outflowFen !== null && outflowFen > 0)
+      ? (cashFen / outflowFen).toFixed(1) : '',
   };
 
-  // 生存月数：优先用引擎 cash 项已算好的 note 同源算法，避免另起一套口径
+  // 生存月数：与上面 facts.runwayMonths 同一口径（现金流出，含月供），不再另起一套
   const tier = survivalTier(
-    (cashFen !== null && burnFen !== null && burnFen > 0) ? cashFen / burnFen : null
+    (cashFen !== null && outflowFen !== null && outflowFen > 0) ? cashFen / outflowFen : null
   );
   const lim = TIER_LIMIT[tier] || TIER_LIMIT.unknown;
 
@@ -250,7 +263,7 @@ function buildActions(d) {
     //   实测场景：老板只填了「账面现金 + 月净亏」，覆盖率不够 ⇒ 整页只说"账还不够，先把数据补上"，
     //   而"照这个亏法只能撑 2 个月"其实**已经算出来了** —— 他关掉页面都不知道自己有个红灯。
     //   这里只回一个**已算出的数**（不附任何动作/建议），是否展示由前端拼文案决定 ⇒ 不越「不给半本账开药方」的界。
-    const monthsRaw = (cashFen !== null && burnFen !== null && burnFen > 0) ? cashFen / burnFen : null;
+    const monthsRaw = (cashFen !== null && outflowFen !== null && outflowFen > 0) ? cashFen / outflowFen : null;
     const precheck = (monthsRaw !== null && monthsRaw < 3)
       ? { key: 'cash', months: Number(monthsRaw.toFixed(1)) }
       : null;
