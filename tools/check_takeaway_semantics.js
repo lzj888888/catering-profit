@@ -184,6 +184,33 @@ console.log('\n============================================================');
 const total = pass + fail;
 // ⚠️ 末行必须是 `N 通过 / M 失败` 形态：verify_all 的 R69 只认**最后 1 个非空非分隔行**
 //    里的 `数字 通过`。补一句「✅ 全部 N 条通过」会把汇总行挤出窗口 ⇒ 判「未走完收尾」。
+// ===== R780：口径降级（老板不懂「到手/总额法」这类会计词）=====
+// 改前页面上半部三层同权重的选择排成一串（顶层2 tab + 口径2 tab + 佣金2 radio），
+// 老板不知道哪个是换算法、哪个是换输入。改法：默认只给到手算法，总额法收进结果区下方折叠。
+ok('R780-① 顶部口径切换已删（不许 mode-switch / data-mode / onMode 回到页面上）',
+  !/mode-switch|data-mode=/.test(W) && !/^\s*onMode\(e\)/m.test(SRC),
+  '顶部只剩「单均测算 | 销量导入」两个功能 tab');
+
+ok('R780-② 到手口径结果默认显示（不依赖 mode），结果标题已换成人话',
+  /<block wx:if="\{\{result\}\}">/.test(W)
+    && TERMS.ledger.takeaway.modeCash === '这单赚多少'
+    && !/mode === 'cash'/.test(W),
+  TERMS.ledger.takeaway.modeCash);
+
+ok('R780-③ 总额法只在结果区下方的「更多」折叠里（more-body 内含 profit_accrual）',
+  /more-head/.test(W) && /more-body/.test(W)
+    && /profit_accrual/.test(W.slice(W.indexOf('more-body'))),
+  '默认收起 moreOpen=false');
+
+ok('R780-④ 折叠只切显示不切算法：onToggleMore 只改 moreOpen，mode 不出现在其函数体',
+  SRC.indexOf('onToggleMore() { this.setData({ moreOpen: !this.data.moreOpen }); }') >= 0
+    && SRC.indexOf('moreOpen: false') >= 0,
+  '两套数仍由 calcTakeawayOrder 一次算完');
+
+ok('R780-⑤ 会计术语不再上屏（modeCash/modeAccrual 已换成老板的话）',
+  !/到手口径|总额法/.test(JSON.stringify(TERMS.ledger.takeaway)),
+  '「这单赚多少」/「按总额记账」');
+
 if (fail > 0) {
   console.log('===== 外卖页语义守卫结果：' + pass + ' 通过 / ' + fail + ' 失败 =====');
   console.log('❌ 有 ' + fail + ' 条判据未通过');

@@ -154,6 +154,9 @@ Page({
       modeAccrual: TK.modeAccrual,
       modeCashDesc: TK.modeCashDesc,
       modeAccrualDesc: TK.modeAccrualDesc,
+      // 🔴 R780：折叠入口文案（结果区下方，不是页面顶部）
+      moreCaliber: TK.moreCaliber,
+      moreCaliberHint: TK.moreCaliberHint,
       commissionBaseNote: TK.commissionBaseNote,
       amountBadTip: TERMS.ui.amountBadTip,
       qtyBadTip: TK.qtyBadTip,
@@ -315,7 +318,10 @@ Page({
     // 🔴 R259：账单导入开关（单源 utils/featureFlags.js）。false ⇒ 账单预览不展示数字、
     //   不给「确认导入」按钮；形态 A/B/C（堂食菜品统计 / 套餐明细 / 外卖商品销量）照常可导。
     billImportOn: FLAGS.BILL_IMPORT_ENABLED,
-    mode: 'cash',          // 'cash' 到手口径 | 'accrual' 总额法口径
+    // 🔴 R780：口径不再做成顶部 tab —— 默认就是到手算法；总额法只在结果区下方折叠里看。
+    //   mode 保留恒为 'cash'（下游 view 与守卫仍读它），不要再给用户切。
+    mode: 'cash',
+    moreOpen: false,       // 「更多：换个算法看」默认收起
     // R234/J4d：行内长提示折叠（本页 2 处，默认收起）。与月录入页 / M2 / assetEdit / amortize **同一实现**。
     hintFold: {},
     dishes: [],            // 候选卡/套餐（含 card_type）
@@ -424,7 +430,8 @@ Page({
   },
 
   // ===== 录入事件 =====
-  onMode(e) { this.setData({ mode: e.currentTarget.dataset.mode }); },
+  // 🔴 R780：只切折叠显示，绝不改 mode / 不动计算（两套数一次算完）
+  onToggleMore() { this.setData({ moreOpen: !this.data.moreOpen }); },
   onItemPick(e) {
     const idx = Number(e.currentTarget.dataset.idx);
     const opt = this.data.dishes[Number(e.detail.value)];

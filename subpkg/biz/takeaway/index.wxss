@@ -6,11 +6,14 @@
 .tab-item.on { background: #1e3a5f; color: #fff; font-weight: 600; }
 .hint { font-size: 28rpx; color: #776C5E; line-height: 1.5; margin: 8rpx 4rpx 16rpx; }
 
-/* 口径切换 */
-.mode-switch { display: flex; background: #F0E9DC; border-radius: 12rpx; padding: 6rpx; margin-bottom: 10rpx; }
-.mode-tab { flex: 1; text-align: center; font-size: 28rpx; color: #776C5E; min-height: 88rpx; line-height: 88rpx; border-radius: 10rpx; }
-.mode-tab.on { background: #1e3a5f; color: #fff; font-weight: 600; }
-.mode-desc { font-size: 28rpx; color: #776C5E; line-height: 1.5; margin: 6rpx 4rpx 12rpx; }
+/* 🔴 R780：顶部口径切换已删（老板不懂「到手/总额法」且几乎不用）。
+   总额法收进结果区下方的「更多」折叠 —— 只在看完结果后想对账的人才点开。 */
+.more-caliber { margin: 24rpx 0 8rpx; border-top: 1rpx solid #E8E0D2; padding-top: 18rpx; }
+.more-head { display: flex; align-items: center; justify-content: space-between; }
+.more-title { font-size: 28rpx; color: #1e3a5f; }
+.more-arrow { font-size: 28rpx; color: #1e3a5f; }
+.more-hint { font-size: 24rpx; color: #9A8F80; margin-top: 6rpx; }
+.more-body { margin-top: 12rpx; }
 /* 🔴 R724j（台账 R2-6）：口径说明块**降视觉重量**。
    改前：浅黄底 + 整块 padding + 圆角 ⇒ 首屏 4 个这样的块连成一片色块墙，
    老板扫一眼就「整段跳过」（李老师真机原话同型问题）。

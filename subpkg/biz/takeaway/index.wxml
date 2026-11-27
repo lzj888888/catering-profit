@@ -7,12 +7,6 @@
 
   <!-- ===== tab 1：单均测算（现有内容）===== -->
   <block wx:if="{{tab === 'calc'}}">
-  <!-- 口径切换 + 顶部口径名 + 人话解释（两套数字不混） -->
-  <view class="mode-switch">
-    <view class="mode-tab {{mode === 'cash' ? 'on' : ''}}" data-mode="cash" bindtap="onMode">{{t.modeCash}}</view>
-    <view class="mode-tab {{mode === 'accrual' ? 'on' : ''}}" data-mode="accrual" bindtap="onMode">{{t.modeAccrual}}</view>
-  </view>
-  <view class="mode-desc">{{mode === 'cash' ? t.modeCashDesc : t.modeAccrualDesc}}</view>
   <view class="base-note">{{t.commissionBaseNote}}</view>
 
   <!-- 本单菜品 -->
@@ -118,8 +112,8 @@
   <button class="btn primary" style="margin-top:24rpx;" bindtap="onCalc">{{t.resultTitle}}</button>
 
   <!-- 结果区（双口径分别展示） -->
-  <view class="sec" wx:if="{{result}}">{{t.resultTitle}}</view>
-  <block wx:if="{{result && mode === 'cash'}}">
+  <view class="sec" wx:if="{{result}}">{{t.modeCash}}</view>
+  <block wx:if="{{result}}">
     <!-- 🔴 R716：填了实收 ⇒ 这一行不再是「顾客支付」而是「标准单应付」。
          两个数并排才看得出「标准单 34 → 实收 26」中间被抽走多少；
          若还叫「顾客支付」，老板会拿它跟顾客实付对，对不上就以为算错了。 -->
@@ -146,16 +140,25 @@
       <view class="muted" wx:if="{{view.waterfall.breakEvenText}}">{{view.waterfall.breakEvenText}}</view>
     </block>
   </block>
-  <block wx:if="{{result && mode === 'accrual'}}">
-    <!-- 🔴 R716：填了实收 ⇒ 总额法算不了（它要顾客实付）。这里**不出 0.00**，
-         而是直说这一格为什么是空的 —— 显示 0 会被读成"这单总额法算出来是 0"。 -->
-    <block wx:if="{{view.accrual_available}}">
-      <view class="cell"><text class="lbl">{{t.revenue}}</text><text class="val">{{t.cur}}{{view.revenue}}</text></view>
-      <view class="cell"><text class="lbl">{{t.expense}}</text><text class="val">{{t.cur}}{{view.expense}}</text></view>
-      <view class="cell"><text class="lbl">{{t.profit}}</text><text class="val strong">{{t.cur}}{{view.profit_accrual}}</text></view>
-    </block>
-    <view class="base-note" wx:if="{{!view.accrual_available}}">{{t.accrualUnavailable}}</view>
-  </block>
+  <!-- 🔴 R780：总额法（会计口径）老板几乎不用 ⇒ 收进结果区下方的「更多」折叠。
+       两套数仍由 calcTakeawayOrder 一次算完，这里只切显示，不碰计算。 -->
+  <view class="more-caliber" wx:if="{{result}}">
+    <view class="more-head" bindtap="onToggleMore">
+      <text class="more-title">{{t.moreCaliber}}</text>
+      <text class="more-arrow">{{moreOpen ? '▾' : '▸'}}</text>
+    </view>
+    <view class="more-body" wx:if="{{moreOpen}}">
+      <view class="base-note">{{t.modeAccrualDesc}}</view>
+      <!-- 🔴 R716：填了实收 ⇒ 总额法算不了（它要顾客实付）。不出 0.00，直说为什么空。 -->
+      <block wx:if="{{view.accrual_available}}">
+        <view class="cell"><text class="lbl">{{t.revenue}}</text><text class="val">{{t.cur}}{{view.revenue}}</text></view>
+        <view class="cell"><text class="lbl">{{t.expense}}</text><text class="val">{{t.cur}}{{view.expense}}</text></view>
+        <view class="cell"><text class="lbl">{{t.modeAccrual}}</text><text class="val strong">{{t.cur}}{{view.profit_accrual}}</text></view>
+      </block>
+      <view class="base-note" wx:if="{{!view.accrual_available}}">{{t.accrualUnavailable}}</view>
+    </view>
+    <view class="more-hint" wx:if="{{!moreOpen}}">{{t.moreCaliberHint}}</view>
+  </view>
 
   <!-- P1 · 本单各菜品/套餐毛利（外卖单订单 套餐毛利可读性）-->
   <block wx:if="{{view.items.length}}">
