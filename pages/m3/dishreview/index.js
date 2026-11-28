@@ -65,6 +65,10 @@ Page({
       quadNote: TERMS.card.quadNote,
       quadNeed: TERMS.card.quadNeed,
       quadAllLoss: TERMS.card.quadAllLoss,
+      // 🔴 R781：换轴后新增的上屏文案（漏登记 = 页面静默空白，守 check_page_terms）
+      quadConc: TERMS.card.quadConc,
+      quadConcHigh: TERMS.card.quadConcHigh,
+      quadConcLow: TERMS.card.quadConcLow,
       reviewAfterFact: TERMS.card.reviewAfterFact,
       // 🔴 R307：占比拆分参考榜（估算）—— 逐条列举，漏登记 = 页面静默空白（守 check_page_terms）
       splitTitle: TERMS.card.splitTitle,
@@ -364,6 +368,9 @@ Page({
       //   碰巧同名时两个数一起错（用户可见的错数，见 evidence FINDINGS §2）。
       dishKey: x.dish_key || x.name || '',
       name: x.name || x.dish_key,
+      // 🔴 R781：分类目比要 category；换轴（毛利率→毛利额）要 grossFen 数值（grossText 是字符串不能算）
+      category: x.category == null ? '' : String(x.category),
+      grossFen: x.grossFen == null ? null : x.grossFen,
       qty: x.qty,
       revenueText: fmtYuan(x.amountFen),
       // 🔴 R264：覆盖率要按**金额**算 ⇒ 数值必须带到展示层（`revenueText` 是字符串，不能相减）
@@ -401,9 +408,12 @@ Page({
   //   真正的失败形态是"被一道爆款拉到只剩一两条算高销量"，中位数恰好防住了这个（见守卫 B-①）。
   buildQuadrant(rows) {
     const MIN_QUAD_N = 6;
+    // 🔴 R781：单菜样本门槛 —— 卖不到 10 份的菜波动极大，贴"占位菜"标签会让老板直接砍掉试销款。
+    //   仍参与分档（否则小样本会消失），但标 `lowSample` 由页面提示"样本不足，先观察"。
+    const LOW_SAMPLE_QTY = 10;
     // 只算「有成本卡、有毛利、销量>0」的菜：无卡（unmatched）与零销量的都分不出高低
     const valid = (rows || []).filter((r) => r && r.hasMargin
-      && r.marginPct != null && Number(r.qty) > 0);
+      && r.grossFen != null && Number(r.qty) > 0);
     if (valid.length < MIN_QUAD_N) {
       // 说清「差多少」而不是干巴巴一句"数据不足"：老板会知道还得再建几张卡
       return {
@@ -416,16 +426,16 @@ Page({
     }
 
     const qtyMid = medianOf(valid.map((r) => Number(r.qty) || 0));
-    const marginMid = medianOf(valid.map((r) => Number(r.marginPct) || 0));
 
-    // 🔴 R690 自查补的洞：**整店毛利率中位数为负**时不许出四象限。
-    //   实测（见 tools/check_quadrant.js E 组）：若毛利率全是 -5%~-30%，
-    //   中位数 = -12.5%，于是「毛利高」这一侧装的是 -5%/-8%/-10% 的菜 ——
-    //   它们在"相对意义上"确实最高，但**每一道都在亏本卖**。
-    //   页面会给它们贴上「卖得好、毛利也高」并建议「保持现状」——
-    //   这是把人往更亏的方向按，比不给建议坏得多。
-    //   ⇒ 整店亏损时，这四类怎么分都没有意义（问题在定价，不在取舍），交给诊断引擎去说。
-    if (marginMid < 0) {
+    // 🔴 R690 自查补的洞（R781 换轴后保留同一条保护）：
+    //   若**每份毛利额（CM）**的加权平均为负，说明整批菜卖一份亏一份 ⇒ 四类怎么分都没意义
+    //   （问题在定价，不在取舍），交给诊断引擎去说。
+    //   改前判的是毛利率中位数；换轴后判「每份 CM 的加权平均 < 0」，语义更强（真的每份都在亏）。
+    const cmOf = (r) => (Number(r.qty) > 0 ? Number(r.grossFen) / Number(r.qty) : 0);
+    const allQty = valid.reduce((s2, r) => s2 + Number(r.qty), 0);
+    const allCm = valid.reduce((s2, r) => s2 + Number(r.grossFen), 0);
+    const cmAvgAll = allQty > 0 ? allCm / allQty : 0;
+    if (cmAvgAll < 0) {
       return {
         ok: false,
         reason: 'all_loss',
@@ -441,16 +451,49 @@ Page({
       { key: 'cut', title: TERMS.card.quadCut, hint: TERMS.card.quadCutHint },
     ];
     const bucket = { star: [], traffic: [], potential: [], cut: [] };
+    // 🔴 R781：**分类目比**（主菜跟主菜比，不跨类目）。
+    //   为什么必须分：招牌红烧肉每份留 25 元、可乐每份留 3 元，混在一起算加权平均，
+    //   可乐必然落到「低毛利」侧被判成占位菜 —— 而它本来是「顺手加」的角色。
+    //   这正会误砍高周转小件（资料 §0 点名的最大风险）。
+    //   分法：按 category 分组；组内 ≥3 道 → 组内独立算分界线；不足 3 道 → 并入「未分类」兜底组。
+    //   兜底组保证「category 大量为空」的存量数据行为与改动前等价。
+    const GROUP_MIN = 3;
+    const byCat = new Map();
     for (const r of valid) {
-      const highQty = Number(r.qty) >= qtyMid;
-      const highMargin = Number(r.marginPct) >= marginMid;
-      const k = highQty ? (highMargin ? 'star' : 'traffic') : (highMargin ? 'potential' : 'cut');
-      bucket[k].push(r);
+      const c = String(r.category || '').trim();
+      const k = c === '' ? '__none__' : c;
+      if (!byCat.has(k)) byCat.set(k, []);
+      byCat.get(k).push(r);
+    }
+    const groups = [];
+    let fallback = [];
+    for (const [k, list] of byCat) {
+      if (k === '__none__' || list.length < GROUP_MIN) { fallback = fallback.concat(list); continue; }
+      groups.push(list);
+    }
+    if (fallback.length) groups.push(fallback);
+
+    for (const list of groups) {
+      const gQty = medianOf(list.map((r) => Number(r.qty) || 0));
+      // 🔴 分界线 = 该组「总毛利额 ÷ 总份数」（加权平均每份留下多少钱），
+      //   不是各菜毛利率的简单平均 —— 资料 §2.1 锁定口径。
+      const gQtySum = list.reduce((s2, r) => s2 + Number(r.qty), 0);
+      const gCmSum = list.reduce((s2, r) => s2 + Number(r.grossFen), 0);
+      const gCmMid = gQtySum > 0 ? gCmSum / gQtySum : 0;
+      for (const r of list) {
+        const highQty = Number(r.qty) >= gQty;
+        const highCm = cmOf(r) >= gCmMid;
+        const k = highQty ? (highCm ? 'star' : 'traffic') : (highCm ? 'potential' : 'cut');
+        bucket[k].push(r);
+      }
     }
 
     const cells = defs.map((d) => {
-      const list = bucket[d.key].slice().sort((a, b) => (Number(b.qty) - Number(a.qty))
-        || (Number(b.marginPct) - Number(a.marginPct)));
+      // 🔴 R781：格内按**总毛利额**降序（谁最值得先处理），销量只作次序
+      const list = bucket[d.key].slice().sort((a, b) => (Number(b.grossFen) - Number(a.grossFen))
+        || (Number(b.qty) - Number(a.qty)));
+      // 低样本：卖不到 10 份的菜，贴强标签会害人；页面据此加"样本不足"提示
+      const lowCnt = list.filter((x) => Number(x.qty) < LOW_SAMPLE_QTY).length;
       return {
         key: d.key,
         title: d.title,
@@ -459,15 +502,32 @@ Page({
         names: list.slice(0, 3).map((x) => x.name),
         moreText: list.length > 3
           ? TERMS.card.quadMore.replace('{n}', String(list.length - 3)) : '',
+        lowSampleText: lowCnt > 0
+          ? TERMS.card.quadLowSample.replace('{n}', String(lowCnt)) : '',
         empty: list.length === 0,
       };
     });
 
+    // 🔴 R781：集中度 —— 回答"菜单是不是太长"。
+    //   按总毛利额降序，取前 20%（至少 1 道）的菜，看它们贡献了全部毛利额的多少。
+    const byGross = valid.slice().sort((a, b) => Number(b.grossFen) - Number(a.grossFen));
+    const topN = Math.max(1, Math.round(byGross.length * 0.2));
+    const grossAll = byGross.reduce((s2, r) => s2 + Number(r.grossFen), 0);
+    const grossTop = byGross.slice(0, topN).reduce((s2, r) => s2 + Number(r.grossFen), 0);
+    const concPct = grossAll !== 0 ? Math.round((grossTop / grossAll) * 1000) / 10 : null;
+
     return {
       ok: true,
       qtyMid: Math.round(qtyMid * 10) / 10,
-      marginMidText: fmtPct(marginMid),
+      cmAvgText: fmtYuan(Math.round(cmAvgAll)),
+      cmAvgFen: Math.round(cmAvgAll),
       total: valid.length,
+      concTopN: topN,
+      concPct: concPct,
+      concText: (concPct == null) ? ''
+        : TERMS.card.quadConc.replace('{k}', String(topN))
+          .replace('{p}', String(byGross.length))
+          .replace('{v}', String(concPct)),
       cells,
     };
   },

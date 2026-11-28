@@ -218,7 +218,14 @@
               <text class="quad-more" wx:if="{{qc.moreText}}">{{qc.moreText}}</text>
             </view>
             <view class="quad-names quad-none" wx:else>—</view>
+            <!-- 🔴 R781：卖不到 10 份的菜先观察，别让老板按标签直接砍掉试销款 -->
+            <view class="quad-low" wx:if="{{qc.lowSampleText}}">{{qc.lowSampleText}}</view>
           </view>
+        </view>
+        <!-- 🔴 R781：集中度 —— 回答「菜单是不是太长」 -->
+        <view class="quad-conc" wx:if="{{quadrant.concText}}">
+          <text class="quad-conc-main">{{quadrant.concText}}</text>
+          <text class="quad-conc-hint">{{quadrant.concPct >= 50 ? t.quadConcHigh : t.quadConcLow}}</text>
         </view>
         <view class="muted quad-note">{{t.quadNote}}</view>
       </view>

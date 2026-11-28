@@ -99,6 +99,8 @@ function rankReview(sales, cards, deps) {
       totalCostFen,
       grossFen,
       marginPct,
+      // 🔴 R781：分类目比需要它（主菜跟主菜比，不跨类目）—— 缺省空串走「未分类」组。
+      category: card.category == null ? '' : String(card.category),
       snapshot_month: toMonth(card.created_at),
     });
   }
