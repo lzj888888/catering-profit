@@ -20,6 +20,7 @@
 //   ③ 零销量菜参与分档 ⇒ 中位数被拉低 ⇒ 一堆"高销量"假象；
 //   ④ 菜太少（3~5 道）硬分四类 ⇒ 每格 0~1 道，是噪音却摆得像结论。
 const path = require('path');
+const fs = require('fs');
 
 let pass = 0, failN = 0;
 function check(name, cond, detail) {
@@ -258,6 +259,33 @@ check('H-⑥ 🔴 混合类目 ⇒ 未归类的 1 道不进四格（四格合计
 check('H-⑥b 未归类必须说出来并带菜名，不许静默吞掉',
   typeof qPart.unclassifiedText === 'string' && qPart.unclassifiedText.indexOf('没填类目') >= 0,
   String(qPart.unclassifiedText).slice(0, 30));
+
+// ===== I. R783：类目缺失的出口 + 纯外卖店文案（页面层，源码级）=====
+//   ⚠️ 这两条是**源码级**断言（buildView 是 async 且要拉成本卡，桩成本过高）。
+//   判据写得尽量严：把 `&&` 改成 `||`、或删掉任一半条件，都会判红。
+console.log('===== I · R783 类目出口与纯外卖店 =====');
+const PAGE_SRC = fs.readFileSync(path.join(__dirname, '..', 'pages/m3/dishreview/index.js'), 'utf8');
+const PAGE_WXML = fs.readFileSync(path.join(__dirname, '..', 'pages/m3/dishreview/index.wxml'), 'utf8');
+const T_CARD = require(path.join(__dirname, '..', 'miniprogram/i18n/terms.js')).TERMS.card;
+
+check('I-① 🔴 纯外卖店判据必须**同时**要求「堂食 0 行」和「外卖有菜」（只判一个都会误伤）',
+  /!quadrant\.ok\s*&&\s*!quadrant\.reason\s*&&\s*dineIn\.length === 0\s*&&\s*tkDishCnt > 0/.test(PAGE_SRC),
+  'dineIn.length === 0 && tkDishCnt > 0');
+
+check('I-② 该分支用专用文案（不许继续说"菜不够 6 道"，那是让老板白去补建卡）',
+  /reason: 'no_dinein',\s*notText: TERMS\.card\.quadNoDineIn/.test(PAGE_SRC)
+    && typeof T_CARD.quadNoDineIn === 'string' && T_CARD.quadNoDineIn.indexOf('堂食') >= 0,
+  String(T_CARD.quadNoDineIn).slice(0, 22));
+
+check('I-③ 🔴 类目缺失必须有**可点的下一步**：JS 方法 + wxml 按钮 + 文案键，三件齐（缺一即死指路）',
+  /goFillCategory\(\)\s*\{\s*wx\.navigateTo/.test(PAGE_SRC)
+    && /bindtap="goFillCategory"/.test(PAGE_WXML)
+    && typeof T_CARD.quadFillCat === 'string' && T_CARD.quadFillCat.length > 0,
+  'goFillCategory + bindtap + quadFillCat');
+
+check('I-④ 按钮只在「全店比」时出现（按类目比时不需要，别多加一个链接）',
+  /quadrant\.ok && quadrant\.scope === 'whole_shop'/.test(PAGE_WXML),
+  'wx:if scope === whole_shop');
 
 console.log(`\n==== 四象限守卫结果：${pass} 通过 / ${failN} 失败 ====`);
 process.exit(failN === 0 ? 0 : 1);

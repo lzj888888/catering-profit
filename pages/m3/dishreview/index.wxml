@@ -208,6 +208,8 @@
       <!-- 🔴 R782：先说清这四格是「按类目比」还是「全店一起比」。
            改前无条件印「主菜跟主菜比」，而 category 在默认建卡流程里是看不见的 ⇒ 那句是假的。 -->
       <view class="quad-scope" wx:if="{{quadrant.ok}}">{{quadrant.scopeText}}</view>
+      <!-- 🔴 R783：类目缺失时给**可点的下一步**（不是只在文字里说"去成本卡"） -->
+      <view class="quad-scope-act" wx:if="{{quadrant.ok && quadrant.scope === 'whole_shop'}}" bindtap="goFillCategory">{{t.quadFillCat}}</view>
       <view class="card2" wx:if="{{quadrant.ok}}">
         <!-- 🔴 R782：部分亏损先点名最亏那道（全亏时整块走下面的 else 分支） -->
         <view class="quad-loss-warn" wx:if="{{quadrant.lossWarnText}}">{{quadrant.lossWarnText}}</view>

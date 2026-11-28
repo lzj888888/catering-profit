@@ -69,6 +69,8 @@ Page({
       quadConc: TERMS.card.quadConc,
       quadConcHigh: TERMS.card.quadConcHigh,
       quadConcLow: TERMS.card.quadConcLow,
+      // 🔴 R783：类目缺失的直达按钮文案（漏登记 = 按钮空白，守 check_page_terms）
+      quadFillCat: TERMS.card.quadFillCat,
       reviewAfterFact: TERMS.card.reviewAfterFact,
       // 🔴 R307：占比拆分参考榜（估算）—— 逐条列举，漏登记 = 页面静默空白（守 check_page_terms）
       splitTitle: TERMS.card.splitTitle,
@@ -641,7 +643,18 @@ Page({
     const dineIn = (((isFree ? d.free_top : d.dine_in) || [])).map((x) => this.fmtRanked(x));
     // R689（M3 优化 A）：四象限。免费档的 dineIn 里 hasMargin 全为 false ⇒ buildQuadrant 自带拦截，
     //   这里不用再判 isFree（少一处分支 = 少一处能写错的地方）。
-    const quadrant = this.buildQuadrant(dineIn);
+    // 🔴 R783：四象限只吃堂食（buildQuadrant(dineIn)）。纯外卖店 / 没导堂食的店原本会被
+    //   `quadNeed`「有成本卡的菜满 6 道才能分四类」误导成"我还得再建几张卡"——实际是堂食一道菜都没有。
+    //   判据要**同时**满足：堂食 0 行 + 外卖有已建卡的菜（只满足一个都可能真是菜太少）。
+    const tkDishCnt = (d.takeaway && d.takeaway.by_platform)
+      ? Object.keys(d.takeaway.by_platform).reduce(
+        (n, k) => n + (((d.takeaway.by_platform[k] || {}).ranked) || []).length, 0)
+      : 0;
+    let quadrant = this.buildQuadrant(dineIn);
+    // `!quadrant.reason` ⇒ 走的是"菜太少"那条分支（all_loss 自带 reason，不能覆盖）
+    if (!quadrant.ok && !quadrant.reason && dineIn.length === 0 && tkDishCnt > 0) {
+      quadrant = { ok: false, reason: 'no_dinein', notText: TERMS.card.quadNoDineIn, cells: [] };
+    }
 
     // 🔴 R249-B（附带发现，与 is_deleted 同轮修）：外卖的「未匹配菜品」**只**嵌在
     //   `takeaway.by_platform[p].unmatched` 里，而前端**从不读**它（只读顶层 `d.unmatched`，
@@ -1416,6 +1429,9 @@ Page({
 
   // 「去映射」= 去建缺失的成本卡（未匹配菜品没有对应卡 ⇒ 建了卡即自动匹配）
   goMap() { wx.navigateTo({ url: '/subpkg/biz/card/index' }); },
+  // 🔴 R783：类目缺失时的直达入口。R572 的教训：入口必须回到「看见缺口的那一行」，
+  //   只在文字里写"去成本卡"而页面上没有入口 = 死指路（老板点了没反应/无处可点）。
+  goFillCategory() { wx.navigateTo({ url: '/subpkg/biz/card/index' }); },
 
   // ===== R264：带着菜名去建卡（**预填**）=====
   //   原路径：退出复盘 → M3 → 菜品卡 → 新建 → 手打菜名。51 道菜来回切，最容易错的就是菜名

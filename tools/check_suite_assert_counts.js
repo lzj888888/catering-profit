@@ -209,7 +209,7 @@ const CASES = [
   // R689/R690/R692（M3 优化三件套 + 易填性）：新增套件必须同时登记「声明行」与这里，
   //   否则 A5-② 判「声明行含未受守 key」—— 本条注释上方那行已写明这个坑，我还是踩了一次。
   { key: 'check_exp_struct', rel: 'tools/check_exp_struct.js' },        // 14 条（A/B/C/D 四组）
-  { key: 'check_quadrant', rel: 'tools/check_quadrant.js' },            // 40 条（R781 换轴 + R782 审计修正：A/B 基础、C 分类目比 4、D 样本门槛、E 全亏、F 集中度 5、G 变异 3、H 审计六处 10 条）
+  { key: 'check_quadrant', rel: 'tools/check_quadrant.js' },            // 44 条（R781 换轴 + R782 审计六处 10 条 + R783 类目出口/纯外卖店 4 条；A/B 基础、C 分类目比 4、D 样本门槛、E 全亏、F 集中度 5、G 变异 3）
   { key: 'check_mom_explain', rel: 'tools/check_mom_explain.js' },      // 25 条（A/B/C/D/E 五组）
   { key: 'check_card_prefill', rel: 'tools/check_card_prefill.js' },    // 22 条（A/B/C/D/E 五组）
   { key: 'check_bill_realworld', rel: 'tools/check_bill_realworld.js' },  // 9 条（真实风格账单实测）

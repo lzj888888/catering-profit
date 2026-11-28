@@ -30,6 +30,15 @@
 /* 🔴 R782：四格是「按类目比」还是「全店一起比」的前置说明 —— 放在标题下，别放页脚 */
 .quad-scope { margin: -4rpx 0 12rpx; font-size: 28rpx; line-height: 1.5; color: #6B6157; }
 
+/* 🔴 R783：类目缺失的直达按钮 —— 视觉上像链接，不抢四格的权重 */
+.quad-scope-act {
+  display: inline-block; margin: -4rpx 0 12rpx;
+  /* 🔴 ad-gates G2：可点区域必须 ≥88rpx（44pt），56rpx 在真机上点不准 */
+  padding: 18rpx 24rpx; min-height: 88rpx; line-height: 52rpx;
+  font-size: 28rpx; color: #1e3a5f;
+  background: #EEF4FB; border-radius: 8rpx;
+}
+
 /* 🔴 R782：部分亏损的顶部警示（红调、但不至于盖过四格） */
 .quad-loss-warn {
   margin-bottom: 16rpx; padding: 14rpx 18rpx;
