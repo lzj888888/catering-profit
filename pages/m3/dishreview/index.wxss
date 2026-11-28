@@ -27,6 +27,19 @@
 /* 🔴 R781：格内"样本不足"提示（弱一档、不抢象限名） */
 .quad-low { margin-top: 8rpx; font-size: 28rpx; color: #9A8F80; line-height: 1.4; }
 
+/* 🔴 R782：四格是「按类目比」还是「全店一起比」的前置说明 —— 放在标题下，别放页脚 */
+.quad-scope { margin: -4rpx 0 12rpx; font-size: 28rpx; line-height: 1.5; color: #6B6157; }
+
+/* 🔴 R782：部分亏损的顶部警示（红调、但不至于盖过四格） */
+.quad-loss-warn {
+  margin-bottom: 16rpx; padding: 14rpx 18rpx;
+  font-size: 28rpx; line-height: 1.5; color: #8A3B2E;
+  background: #FBF0EC; border-radius: 10rpx; border-left: 6rpx solid #D08A72;
+}
+
+/* 🔴 R782：没进四格的菜（无类目/同类不足 3 道），弱一档 */
+.quad-unc { margin-top: 16rpx; font-size: 28rpx; line-height: 1.5; color: #8A8175; }
+
 /* 🔴 R781：集中度一行 —— 回答"菜单是不是太长" */
 .quad-conc { margin-top: 20rpx; padding: 16rpx 20rpx; background: #F7F3EA; border-radius: 10rpx; }
 .quad-conc-main { display: block; font-size: 28rpx; color: #1f2733; font-weight: 600; line-height: 1.5; }

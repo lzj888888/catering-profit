@@ -205,7 +205,12 @@
          逐行看 21 个数只会让他关掉页面。分界线用本店中位数，页脚已注明依据。 -->
     <block wx:if="{{quadrant}}">
       <view class="section-title">{{t.quadTitle}}</view>
+      <!-- 🔴 R782：先说清这四格是「按类目比」还是「全店一起比」。
+           改前无条件印「主菜跟主菜比」，而 category 在默认建卡流程里是看不见的 ⇒ 那句是假的。 -->
+      <view class="quad-scope" wx:if="{{quadrant.ok}}">{{quadrant.scopeText}}</view>
       <view class="card2" wx:if="{{quadrant.ok}}">
+        <!-- 🔴 R782：部分亏损先点名最亏那道（全亏时整块走下面的 else 分支） -->
+        <view class="quad-loss-warn" wx:if="{{quadrant.lossWarnText}}">{{quadrant.lossWarnText}}</view>
         <view class="quad-grid">
           <view class="quad-cell" wx:for="{{quadrant.cells}}" wx:key="key" wx:for-item="qc">
             <view class="quad-hd">
@@ -227,6 +232,8 @@
           <text class="quad-conc-main">{{quadrant.concText}}</text>
           <text class="quad-conc-hint">{{quadrant.concPct >= 50 ? t.quadConcHigh : t.quadConcLow}}</text>
         </view>
+        <!-- 🔴 R782：没进四格的菜单独列出（无类目 / 同类菜不足 3 道），不静默吞掉 -->
+        <view class="quad-unc" wx:if="{{quadrant.unclassifiedText}}">{{quadrant.unclassifiedText}}</view>
         <view class="muted quad-note">{{t.quadNote}}</view>
       </view>
       <view class="card2" wx:else>

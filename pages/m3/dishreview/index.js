@@ -427,21 +427,38 @@ Page({
 
     const qtyMid = medianOf(valid.map((r) => Number(r.qty) || 0));
 
-    // 🔴 R690 自查补的洞（R781 换轴后保留同一条保护）：
-    //   若**每份毛利额（CM）**的加权平均为负，说明整批菜卖一份亏一份 ⇒ 四类怎么分都没意义
-    //   （问题在定价，不在取舍），交给诊断引擎去说。
-    //   改前判的是毛利率中位数；换轴后判「每份 CM 的加权平均 < 0」，语义更强（真的每份都在亏）。
+    // 🔴 R782：整店全亏的判据从「加权平均 CM < 0」改成「亏损菜占比」。
+    //   审计实测（交叉审计 §二 E）：29 道每份赚 5 元 + 1 道每份亏 300 元卖 1000 份
+    //   ⇒ 加权 CM = −1.20 元 ⇒ 整页四象限被抹掉，还印出「这些菜的毛利都是负的」——
+    //   30 道里 29 道为正，这是**假话**。加权平均会被单道巨亏拉负，不能代表"整店在亏"。
+    //   改判「亏损菜道数 ÷ 总道数」：只有绝大多数菜在亏，才说明问题在定价而不是取舍。
+    const ALL_LOSS_RATIO = 0.8;
     const cmOf = (r) => (Number(r.qty) > 0 ? Number(r.grossFen) / Number(r.qty) : 0);
     const allQty = valid.reduce((s2, r) => s2 + Number(r.qty), 0);
     const allCm = valid.reduce((s2, r) => s2 + Number(r.grossFen), 0);
     const cmAvgAll = allQty > 0 ? allCm / allQty : 0;
-    if (cmAvgAll < 0) {
+
+    const lossList = valid.filter((r) => cmOf(r) < 0);
+    const lossCnt = lossList.length;
+    if (lossCnt / valid.length >= ALL_LOSS_RATIO) {
       return {
         ok: false,
         reason: 'all_loss',
-        notText: TERMS.card.quadAllLoss,
+        lossCnt,
+        totalCnt: valid.length,
+        notText: TERMS.card.quadAllLoss
+          .replace('{n}', String(lossCnt)).replace('{m}', String(valid.length)),
         cells: [],
       };
+    }
+    // 部分亏损：四象限照出（不能因为少数菜把整页删掉），但顶部点名最亏的那道。
+    let lossWarnText = '';
+    if (lossCnt > 0) {
+      const worst = lossList.slice().sort((a, b) => cmOf(a) - cmOf(b))[0];
+      lossWarnText = TERMS.card.quadLossWarn
+        .replace('{n}', String(lossCnt))
+        .replace('{name}', worst.name)
+        .replace('{v}', fmtYuan(Math.abs(Math.round(cmOf(worst)))));
     }
 
     const defs = [
@@ -465,13 +482,29 @@ Page({
       if (!byCat.has(k)) byCat.set(k, []);
       byCat.get(k).push(r);
     }
-    const groups = [];
-    let fallback = [];
+    // 🔴 R782：兜底组不再"合成一组参与四格" —— 审计实测（§二 D）：
+    //   2 道饮品 + 4 道无类目 ⇒ 只有 1 组，可乐重新和红烧肉一起比，分类目比**静默失效**；
+    //   而 GROUP_MIN=3 什么也没拦住（兜底组自己也成组、自己算分界线）。
+    //   改法：类目内不足 3 道 / 无类目的菜 → 进 unclassified，**不参与四格**（见下方返回）。
+    //   若一家店完全没有能分类的类目 ⇒ 退化成"全店一组"（与 R781 之前一致，保住可用性），
+    //   但页面会明说"现在全店一起比"，不再声称"主菜跟主菜比"。
+    const catGroups = [];
+    let unclassified = [];
     for (const [k, list] of byCat) {
-      if (k === '__none__' || list.length < GROUP_MIN) { fallback = fallback.concat(list); continue; }
-      groups.push(list);
+      if (k === '__none__' || list.length < GROUP_MIN) { unclassified = unclassified.concat(list); continue; }
+      catGroups.push(list);
     }
-    if (fallback.length) groups.push(fallback);
+
+    let groups;
+    let scope;
+    if (catGroups.length === 0) {
+      groups = [valid];
+      scope = 'whole_shop';
+      unclassified = [];            // 全店比时所有菜都参与，不存在"没归类"
+    } else {
+      groups = catGroups;
+      scope = 'by_category';
+    }
 
     for (const list of groups) {
       const gQty = medianOf(list.map((r) => Number(r.qty) || 0));
@@ -489,9 +522,14 @@ Page({
     }
 
     const cells = defs.map((d) => {
-      // 🔴 R781：格内按**总毛利额**降序（谁最值得先处理），销量只作次序
-      const list = bucket[d.key].slice().sort((a, b) => (Number(b.grossFen) - Number(a.grossFen))
-        || (Number(b.qty) - Number(a.qty)));
+      // 🔴 R781：格内按**总毛利额**降序（谁最值得先处理），销量只作次序。
+      // 🔴 R782：但 cut 格必须**反过来**（升序）—— 这一格里总毛利额是负数，
+      //   降序等于「最不亏的排前面、最亏的折叠进『还有 N 道』」。审计实测（§一 B）：
+      //   被藏起来的那道占该格亏损额 71.6%，老板砍完前三道账面几乎不动。
+      const isCut = d.key === 'cut';
+      const list = bucket[d.key].slice().sort(isCut
+        ? ((a, b) => (Number(a.grossFen) - Number(b.grossFen)) || (Number(a.qty) - Number(b.qty)))
+        : ((a, b) => (Number(b.grossFen) - Number(a.grossFen)) || (Number(b.qty) - Number(a.qty))));
       // 低样本：卖不到 10 份的菜，贴强标签会害人；页面据此加"样本不足"提示
       const lowCnt = list.filter((x) => Number(x.qty) < LOW_SAMPLE_QTY).length;
       return {
@@ -508,13 +546,16 @@ Page({
       };
     });
 
-    // 🔴 R781：集中度 —— 回答"菜单是不是太长"。
-    //   按总毛利额降序，取前 20%（至少 1 道）的菜，看它们贡献了全部毛利额的多少。
+    // 🔴 R781：集中度 —— 回答"菜单是不是太长"。按总毛利额降序，取前 20%（至少 1 道）。
+    // 🔴 R782：分母**只算正毛利** —— 审计实测（§二 I-2）：毛利 [1000,−50,−50,10,10,10] 元时
+    //   分子可大于分母 ⇒ 页面印出「贡献了全部毛利的 107.5%」。亏损菜不贡献正毛利，
+    //   放进分母只会让百分比失真；只取正毛利后 concPct 恒 ≤100。
+    const posFen = (r) => Math.max(Number(r.grossFen), 0);
     const byGross = valid.slice().sort((a, b) => Number(b.grossFen) - Number(a.grossFen));
     const topN = Math.max(1, Math.round(byGross.length * 0.2));
-    const grossAll = byGross.reduce((s2, r) => s2 + Number(r.grossFen), 0);
-    const grossTop = byGross.slice(0, topN).reduce((s2, r) => s2 + Number(r.grossFen), 0);
-    const concPct = grossAll !== 0 ? Math.round((grossTop / grossAll) * 1000) / 10 : null;
+    const grossAll = byGross.reduce((s2, r) => s2 + posFen(r), 0);
+    const grossTop = byGross.slice(0, topN).reduce((s2, r) => s2 + posFen(r), 0);
+    const concPct = grossAll > 0 ? Math.round((grossTop / grossAll) * 1000) / 10 : null;
 
     return {
       ok: true,
@@ -522,6 +563,19 @@ Page({
       cmAvgText: fmtYuan(Math.round(cmAvgAll)),
       cmAvgFen: Math.round(cmAvgAll),
       total: valid.length,
+      // 🔴 R782：四格是"按类目比"还是"全店一起比"—— 页面据此选说明文案，
+      //   不再无条件印「主菜跟主菜比」（没填类目时那句话是假的）。
+      scope,
+      scopeText: scope === 'by_category' ? TERMS.card.quadScopeCategory : TERMS.card.quadScopeWhole,
+      // 🔴 R782：部分亏损的顶部警示（全亏时走上面的 all_loss 分支，不会到这）
+      lossWarnText,
+      // 🔴 R782：没进四格的菜（无类目 / 类目内不足 3 道）—— 单独列出来，不静默吞掉
+      unclassifiedCount: unclassified.length,
+      unclassifiedNames: unclassified.slice(0, 3).map((x) => x.name),
+      unclassifiedText: unclassified.length === 0 ? ''
+        : TERMS.card.quadUnclassified
+          .replace('{n}', String(unclassified.length))
+          .replace('{names}', unclassified.slice(0, 3).map((x) => x.name).join('、')),
       concTopN: topN,
       concPct: concPct,
       concText: (concPct == null) ? ''

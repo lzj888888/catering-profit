@@ -145,7 +145,9 @@ const ALLLOSS = [
   row('亏4', 20, -15), row('亏5', 10, -20), row('亏6', 5, -30),
 ];
 const qal = build(ALLLOSS);
-check('⑦ 每份毛利额加权平均 < 0 ⇒ ok=false（不许贴「卖得好、也真赚钱」）', qal.ok === false, 'ok=' + qal.ok);
+// 🔴 R782：判据已从「加权平均 CM<0」改成「亏损菜占比 ≥80%」——加权平均会被单道巨亏拉负，
+//   不能代表"整店在亏"（见下方 H-② 的反例）。这里的用例是 6 道全亏 ⇒ 占比 100%，新判据照样拦。
+check('⑦ 亏损菜占比 ≥80% ⇒ ok=false（不许贴「卖得好、也每份留得多」）', qal.ok === false, 'ok=' + qal.ok);
 check('⑦ reason = all_loss（页面据此区分"菜太少"与"全在亏"）', qal.reason === 'all_loss', String(qal.reason));
 check('⑦ 给的是「先解决定价」这类提示，不是四类建议',
   typeof qal.notText === 'string' && qal.notText.indexOf('定价') > 0, qal.notText);
@@ -155,7 +157,7 @@ const MIXED = [
   row('正4', 70, 25), row('亏1', 60, -10), row('亏2', 50, -20),
 ];
 const qmx = build(MIXED);
-check('⑦ 对照：混合（有赚有亏但加权平均 > 0）仍正常出四象限', qmx.ok === true, 'ok=' + qmx.ok);
+check('⑦ 对照：4 赚 2 亏（亏损占 33%）仍正常出四象限', qmx.ok === true, 'ok=' + qmx.ok);
 
 // ===== F. 展示字段与集中度（R781）=====
 console.log('===== F · 展示字段与集中度 =====');
@@ -182,6 +184,80 @@ check('变异②：若不过滤 hasMargin，免费档 6 道会全落 cut ⇒ 与
   FREE.filter((r) => r.hasMargin).length === 0 && qf.ok === false);
 check('变异③：把类目强行合并后可乐必落 cut ⇒ 证明分类目比有分辨力',
   nmM('cut').indexOf('可乐') >= 0);
+
+// ===== H. R782：交叉审计后的六处修正 =====
+//   来源：`Desktop\豆包剪辑\00_总索引与决策\交叉审计_R781四象限_2026-11-28.md`
+//   每条都对应一个"上线后会输出错误结论"的实测反例，不是防御性演练。
+console.log('===== H · R782 审计修正 =====');
+
+// H-① cut 格升序 —— 审计 §一 B：降序会把最亏的折叠进「还有 N 道」（实测占该格亏损 71.6%）
+const CUT4 = [
+  row('热1', 100, 30), row('热2', 90, 25), row('热3', 80, 20),
+  row('亏1元', 4, -1), row('亏5元', 3, -5), row('亏50元', 2, -50), row('亏300元', 1, -300),
+];
+const cutCell = build(CUT4).cells.find((c) => c.key === 'cut');
+check('H-① 🔴 cut 格按总毛利额**升序**：最亏的必须排第一，不许被折叠',
+  !!cutCell && cutCell.names[0] === '亏300元', cutCell ? cutCell.names.join('、') : '无 cut 格');
+
+// H-② 少数巨亏不许抹整页 —— 审计 §二 E 原病例
+const FEW_BIG_LOSS = [];
+for (let i = 0; i < 29; i++) FEW_BIG_LOSS.push(row('赚' + i, 10, 5));
+FEW_BIG_LOSS.push(row('巨亏', 1000, -300));
+const qFew = build(FEW_BIG_LOSS);
+check('H-② 🔴 1 道巨亏把加权平均拉负 ⇒ **仍须出四象限**（改前整页抹掉 + 印「毛利都是负的」假话）',
+  qFew.ok === true, 'ok=' + qFew.ok + (qFew.notText ? ' / ' + String(qFew.notText).slice(0, 16) : ''));
+check('H-②b 部分亏损必须在顶部点名最亏那道（不许沉默）',
+  typeof qFew.lossWarnText === 'string' && qFew.lossWarnText.indexOf('巨亏') >= 0,
+  String(qFew.lossWarnText).slice(0, 30));
+
+// H-③ 全亏闸门按占比 —— 测两侧（90% 拦 / 60% 放行；后者加权平均仍为负，正是改判据的分界）
+const LOSS90 = [];
+for (let i = 0; i < 9; i++) LOSS90.push(row('亏' + i, 10, -5));
+LOSS90.push(row('赚', 10, 5));
+const LOSS60 = [];
+for (let i = 0; i < 6; i++) LOSS60.push(row('亏' + i, 10, -5));
+for (let i = 0; i < 4; i++) LOSS60.push(row('赚' + i, 10, 5));
+const q90 = build(LOSS90), q60 = build(LOSS60);
+check('H-③ 🔴 亏损菜 90% ⇒ 拦（ok=false），且文案带真实道数',
+  q90.ok === false && /\d+/.test(String(q90.notText)), String(q90.notText).slice(0, 30));
+check('H-③b 亏损菜 60% ⇒ 放行（加权平均仍为负，但多数菜在赚 ⇒ 四象限有意义）',
+  q60.ok === true, 'ok=' + q60.ok);
+
+// H-④ 集中度含亏损菜时不许 >100% —— 审计 §二 I-2 原病例（改前实测 107.5%）
+const CONC_LOSS = [
+  row('大赚', 100, 10), row('小亏1', 10, -5), row('小亏2', 10, -5),
+  row('小赚1', 10, 1), row('小赚2', 10, 1), row('小赚3', 10, 1),
+];
+const qConc = build(CONC_LOSS);
+check('H-④ 🔴 有亏损菜时集中度仍 ≤100%（分母只算正毛利）',
+  qConc.concPct === null || qConc.concPct <= 100, String(qConc.concPct));
+
+// H-⑤ 没填类目 ⇒ 必须说「全店一起比」—— category 在默认建卡（novice）流程里不渲染，
+//   所以「主菜跟主菜比」对绝大多数店是假话（审计 §二 H）
+const NO_CAT = [
+  row('热1', 200, 25), row('热2', 180, 20), row('热3', 160, 15), row('米饭', 300, 2),
+  row('可乐', 40, 3), row('酸梅汤', 35, 4),
+];
+const qNoCat = build(NO_CAT);
+check('H-⑤ 🔴 无类目 ⇒ scope=whole_shop（页面据此改说「全店一起比」）',
+  qNoCat.scope === 'whole_shop', String(qNoCat.scope));
+check('H-⑤b 无类目时说明里**不得**出现「同类目内」',
+  typeof qNoCat.scopeText === 'string' && qNoCat.scopeText.indexOf('同类目内') < 0,
+  String(qNoCat.scopeText).slice(0, 24));
+
+// H-⑥ 混合类目 ⇒ 未归类的菜不进四格、单独列（审计 §二 D：2 道饮品 + 4 道无类目曾合并成 1 组混比）
+const PART_CAT = [
+  row('热1', 200, 25, '热菜'), row('热2', 180, 20, '热菜'), row('热3', 160, 15, '热菜'),
+  row('饮1', 40, 3, '饮品'), row('饮2', 35, 4, '饮品'), row('饮3', 30, 2.5, '饮品'),
+  row('没填类目', 50, 10),
+];
+const qPart = build(PART_CAT);
+const sumPart = qPart.cells.reduce((s2, c) => s2 + c.count, 0);
+check('H-⑥ 🔴 混合类目 ⇒ 未归类的 1 道不进四格（四格合计 6 道，不是 7）',
+  sumPart === 6 && qPart.unclassifiedCount === 1, `四格 ${sumPart} / 未归类 ${qPart.unclassifiedCount}`);
+check('H-⑥b 未归类必须说出来并带菜名，不许静默吞掉',
+  typeof qPart.unclassifiedText === 'string' && qPart.unclassifiedText.indexOf('没填类目') >= 0,
+  String(qPart.unclassifiedText).slice(0, 30));
 
 console.log(`\n==== 四象限守卫结果：${pass} 通过 / ${failN} 失败 ====`);
 process.exit(failN === 0 ? 0 : 1);
